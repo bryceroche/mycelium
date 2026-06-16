@@ -175,7 +175,8 @@ class LlamaLayer:
         self._scale = 1.0 / math.sqrt(cfg.head_dim)
 
     def __call__(self, x: Tensor, rope_cos: Tensor, rope_sin: Tensor,
-                 attn_mask: Tensor | None = None) -> Tensor:
+                 attn_mask: Tensor | None = None,
+                 lora: "dict | None" = None) -> Tensor:
         cfg = self.cfg
         B, S, H = x.shape
         nh = cfg.num_attention_heads
@@ -186,7 +187,13 @@ class LlamaLayer:
         h = _rms_norm(x, self.attn_norm, cfg.rms_norm_eps).cast(x.dtype)
 
         # --- Attention ---
-        q = (h @ self.wq.cast(x.dtype)).reshape(B, S, nh,  hd).transpose(1, 2)  # (B, nh, S, hd)
+        # lora (v300-2 expand/compress toggle): optional phase-toggled low-rank
+        # deltas on wq (routing), wo (attn write-back), w_down (FFN write-back).
+        # Adapted projection = h@W + (h@A)@B; B zero-init => zero delta at step 0.
+        qproj = h @ self.wq.cast(x.dtype)
+        if lora is not None:
+            qproj = qproj + (h @ lora["wq_A"].cast(x.dtype)) @ lora["wq_B"].cast(x.dtype)
+        q = qproj.reshape(B, S, nh,  hd).transpose(1, 2)  # (B, nh, S, hd)
         k = (h @ self.wk.cast(x.dtype)).reshape(B, S, nkv, hd).transpose(1, 2)  # (B, nkv, S, hd)
         v = (h @ self.wv.cast(x.dtype)).reshape(B, S, nkv, hd).transpose(1, 2)  # (B, nkv, S, hd)
 
@@ -204,6 +211,8 @@ class LlamaLayer:
         attn = scores.clip(-1e4, 1e4).softmax(-1).cast(v.dtype)
         ctx = (attn @ v).transpose(1, 2).reshape(B, S, H)  # (B, S, H)
         attn_out = ctx @ self.wo.cast(x.dtype)
+        if lora is not None:
+            attn_out = attn_out + (ctx @ lora["wo_A"].cast(x.dtype)) @ lora["wo_B"].cast(x.dtype)
 
         x = x + attn_out
 
@@ -213,17 +222,22 @@ class LlamaLayer:
         # --- SwiGLU FFN ---
         gate = (h2 @ self.w_gate.cast(x.dtype)).silu()
         up   = (h2 @ self.w_up.cast(x.dtype))
-        ffn_out = (gate * up) @ self.w_down.cast(x.dtype)
+        gu   = gate * up
+        ffn_out = gu @ self.w_down.cast(x.dtype)
+        if lora is not None:
+            ffn_out = ffn_out + (gu @ lora["wdown_A"].cast(x.dtype)) @ lora["wdown_B"].cast(x.dtype)
 
         return x + ffn_out
 
     def forward_return_weights(self, x: Tensor, rope_cos: Tensor, rope_sin: Tensor,
-                               attn_mask: Tensor | None = None) -> tuple[Tensor, Tensor]:
+                               attn_mask: Tensor | None = None,
+                               lora: "dict | None" = None) -> tuple[Tensor, Tensor]:
         """Same as __call__ but also returns post-softmax attention weights.
 
         Returns (x_out, attn_w) where attn_w is (B, nh, S, S).
         Used by v200 #237+ instrumentation (per-latent THINK attention entropy, §7).
-        NOTE: keep consistent with __call__ — any change there must mirror here.
+        NOTE: keep consistent with __call__ — any change there must mirror here
+        (including the v300-2 lora hooks on wq/wo/w_down).
         Eager-only; not called inside JIT paths.
         """
         cfg = self.cfg
@@ -235,8 +249,11 @@ class LlamaLayer:
         # --- Pre-attention RMSNorm ---
         h = _rms_norm(x, self.attn_norm, cfg.rms_norm_eps).cast(x.dtype)
 
-        # --- Attention ---
-        q = (h @ self.wq.cast(x.dtype)).reshape(B, S, nh,  hd).transpose(1, 2)
+        # --- Attention --- (v300-2 lora mirror of __call__)
+        qproj = h @ self.wq.cast(x.dtype)
+        if lora is not None:
+            qproj = qproj + (h @ lora["wq_A"].cast(x.dtype)) @ lora["wq_B"].cast(x.dtype)
+        q = qproj.reshape(B, S, nh,  hd).transpose(1, 2)
         k = (h @ self.wk.cast(x.dtype)).reshape(B, S, nkv, hd).transpose(1, 2)
         v = (h @ self.wv.cast(x.dtype)).reshape(B, S, nkv, hd).transpose(1, 2)
 
@@ -252,13 +269,18 @@ class LlamaLayer:
         attn = scores.clip(-1e4, 1e4).softmax(-1).cast(v.dtype)
         ctx = (attn @ v).transpose(1, 2).reshape(B, S, H)
         attn_out = ctx @ self.wo.cast(x.dtype)
+        if lora is not None:
+            attn_out = attn_out + (ctx @ lora["wo_A"].cast(x.dtype)) @ lora["wo_B"].cast(x.dtype)
 
         x = x + attn_out
 
         h2 = _rms_norm(x, self.ffn_norm, cfg.rms_norm_eps).cast(x.dtype)
         gate = (h2 @ self.w_gate.cast(x.dtype)).silu()
         up   = (h2 @ self.w_up.cast(x.dtype))
-        ffn_out = (gate * up) @ self.w_down.cast(x.dtype)
+        gu   = gate * up
+        ffn_out = gu @ self.w_down.cast(x.dtype)
+        if lora is not None:
+            ffn_out = ffn_out + (gu @ lora["wdown_A"].cast(x.dtype)) @ lora["wdown_B"].cast(x.dtype)
 
         return x + ffn_out, attn
 

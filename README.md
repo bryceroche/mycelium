@@ -1,632 +1,498 @@
-# Mycelium v4: The Breathing Transformer
+# Mycelium: The Breathing Transformer
 
-A small (87M-param) iterative transformer that performs factor-graph
-inference via K passes through 4 shared Pythia-410M layers.
+A small (~87M-param) iterative transformer that solves constraint problems
+by **breathing** — K passes through 4 shared Pythia-410M layers, each pass
+one round of factor-graph inference in a 1024d residual stream.
 
 **Author:** Bryce + Claude
-**Date:** 2026-06-01 (refactored after the v98 Sudoku pivot)
+**Date:** 2026-06-16
 **Deadline:** December 25, 2026
 **Platform:** Shadow Glass (AMD 7900 XTX, 24GB) · tinygrad + AM driver · no ROCm
-**Target:** MATH-500 (current empirical benchmarks: Sudoku, GSM8K via factor graphs)
+**Target:** MATH-500 (current empirical bench: KenKen CSP / Property-2 adaptive-depth)
 
-> The conceptual arc that motivated the project (sine-wave breath, π-cycled
-> RoPE, BirdNET-parallel heads, Controller / Notebook / LookupTable closed
-> feedback loop) was largely deprecated by the v98 Sudoku pivot of 2026-05-29.
-> The original vision is archived at
-> [`docs/archive/vision_v1_to_v95.md`](docs/archive/vision_v1_to_v95.md) and
-> the pre-pivot empirical state at
-> [`docs/archive/empirical_v45_to_v95.md`](docs/archive/empirical_v45_to_v95.md).
-> This README describes what the system IS, not what it was envisioned to be.
-
----
-
-## 1. What this is
-
-The breathing transformer is a small iterative model that performs
-factor-graph inference. The 4 Pythia-410M L0-L3 layers are shared
-across K breaths; each breath does one pass through them and accumulates
-into a 1024d residual stream. Structured per-head attention masks encode
-the factor topology (which cells affect which other cells). A learnable
-per-breath `delta_gate` scalar controls how much each breath updates the
-running state; a per-breath calibration head produces a scalar
-"confidence" signal. A variant-specific codebook reads out the residual
-stream as a soft distribution over digit values; per-breath weighted
-cross-entropy supervision (the "ladder") makes K breaths matter.
-
-The architecture is three-instances-of-one-design:
-
-- **v98 Sudoku** — 81 cells × 9 digits, K=20 breaths, row/col/box
-  attention masks. **97.65% cell / 79.0% puzzle accuracy on easy.**
-- **v100-v107 (factor graphs, number-level)** — variable number of cells
-  with values in [0, 99] or [0, 199], K=10 breaths, per-op-type
-  attention masks + topological staging. v107 (hybrid 200) reaches
-  **24.2% on GSM8K** after Haiku-distilled factor-graph extraction.
-- **v105 family (factor graphs, digit-level)** — same as v100 but with
-  per-position digit codebooks (5 positions × 10 digits) and RoPE on
-  the digit axis. Currently at ~5% plateau; mean-field collapse
-  diagnosed via linear probe; Y-soft adjacent-only attention fix is
-  under test.
-
-All three share the same backbone, training loop structure, and
-"iterative prefill in a 1024d residual stream" execution model. The
-legacy machinery from the original vision (`Controller`, `Notebook`,
-`LookupTable`, sine-modulated temperature, π-cycled per-breath RoPE)
-still lives in `mycelium/breathing.py` so the legacy import surface stays
-clean, but no current trainer calls those code paths.
-
-For the original conceptual vision, see
-[`docs/archive/vision_v1_to_v95.md`](docs/archive/vision_v1_to_v95.md).
-For the paper draft, see [`paper/outline.md`](paper/outline.md).
-For the natural-language → factor-graph parser (Phase 1) spec, see
-[`docs/phase1_nl_parser_spec.md`](docs/phase1_nl_parser_spec.md).
+> **The authoritative current brief is [`CLAUDE.md`](CLAUDE.md)** (direction,
+> specs, editing rules). The active next-direction design note is
+> [`docs/hyperbolic_mask_generator_spec.md`](docs/hyperbolic_mask_generator_spec.md).
+> The pre-v98 conceptual arc (sine-wave breath, π-cycled RoPE, Controller /
+> Notebook / LookupTable loop) is archived at
+> [`docs/archive/`](docs/archive/). The full v100–v300 lineage is preserved in
+> git history (removed from the working tree in the Jun-16 clean).
 
 ---
 
-## 2. The architecture, precisely
+## The vision: a three-tier architecture around a learned Poincaré ball
 
-### 2.1 Per-breath forward pass
+The project is building toward **one architecture in three tiers**. The bottom
+tier is built and validated; the upper two are the active research program.
+
+```
+┌──────────────────────────────────────────────────────────────────────┐
+│ TIER 1 — STRUCTURAL MAPPING  (continuous topology embedding)           │
+│   A problem's geometry + dependency-logic → continuous coordinates     │
+│   in a learned Poincaré (hyperbolic) ball.                             │
+│   STATUS: SPEC-STAGE — not built or tested.                            │
+└───────────────────────────────┬────────────────────────────────────────┘
+                                │  coordinates
+┌───────────────────────────────┴────────────────────────────────────────┐
+│ TIER 2 — THE COMPILER  (the "virtual factor graph")                    │
+│   THE HYPERBOLIC MASK GENERATOR. Compiles the Tier-1 coordinates into   │
+│   the attention masks the executor consumes — instead of hardwiring     │
+│   them. A differentiable virtual machine.                              │
+│   STATUS: SPEC-STAGE — foothold NOT yet built or tested.               │
+│   docs/hyperbolic_mask_generator_spec.md                               │
+└───────────────────────────────┬────────────────────────────────────────┘
+                                │  attention masks
+┌───────────────────────────────┴────────────────────────────────────────┐
+│ TIER 3 — THE CORE EXECUTOR  (the validated v98 KenKen breather)        │
+│   Pure iterative deduction on whatever masks Tier 2 provides. Shared    │
+│   Pythia-410M L0-L3, K=16 breaths, per-breath delta_gate + calibration  │
+│   head, value-codebook readout, per-breath weighted-CE ladder,          │
+│   gold-free convergence instrument.                                    │
+│   STATUS: ★ VALIDATED AND LIVE ★  (the Property-2 K=16 curriculum run   │
+│           is training now). mycelium/kenken.py                         │
+└──────────────────────────────────────────────────────────────────────┘
+```
+
+**What is built versus spec'd — read this carefully, it is the central
+honesty discipline of the project.** ONLY **Tier 3** is validated, built, and
+live. **Tiers 1 and 2** — the Poincaré embedding and the hyperbolic mask
+generator — are the **active research program**: spec'd in
+[`docs/hyperbolic_mask_generator_spec.md`](docs/hyperbolic_mask_generator_spec.md),
+with the foothold **not yet built or tested**. The three-tier picture is "the
+architecture we are building toward," with Tier 3 done and Tiers 1–2 as the
+next, spec-stage work. Nothing in this document states or implies that Tiers
+1–2 are built, working, or validated.
+
+### Why hyperbolic (Tier 1)
+
+Problem topologies are **hierarchical**: a cell sits inside a cage inside a
+board; a DAG sub-computation nests inside a larger computation. Hyperbolic
+space embeds hierarchy with low distortion — trees fit in a Poincaré ball
+almost isometrically where they crowd badly in Euclidean space. The radial
+coordinate becomes an **abstraction level**: near the origin = abstract /
+high-level, near the boundary = concrete / leaf-level. Mapping a problem's
+structure to a point cloud in this ball replaces rigid one-hot problem IDs
+with a **continuous structural signature**, which is what makes
+interpolation and transfer across problem classes even thinkable.
+
+### Why the generator is buildable where the perceiver wasn't (Tier 2)
+
+Tier 2 generates each attention mask from the Tier-1 coordinates. The
+mechanism (per
+[`docs/hyperbolic_mask_generator_spec.md`](docs/hyperbolic_mask_generator_spec.md)):
+
+- **One coordinate field PER RELATION** (row / col / cage). This is not a
+  convenience — it is a structural necessity. A single metric space cannot
+  hold row ∪ col ∪ cage at once: cell A=(0,0) must be close to B=(0,1) (same
+  row) and to C=(1,0) (same col), yet B and C must be far — and the triangle
+  inequality forbids it (`d(B,C) ≤ d(A,B)+d(A,C)`). v98 already resolves this
+  with separate head-groups; the geometry mirrors that exactly.
+- **Closed-form, anchored at t=0 to reproduce the v98 hard mask exactly.**
+  Each relation's groups become max-separated anchors on a shell of the ball;
+  the bias is `bias = -softplus(α·(d_hyp − r))`, with `r` and `α` *dialed*
+  (not fitted) so within-group ≈ 0 and between-group ≈ −1e4. Match to ~1e-3.
+- **Then RELAXED.** The coordinates unfreeze and co-train with the executor.
+
+This anchor discipline is **why Tier 2 is buildable where the perceiver was
+not**. The hyperbolic generator initializes to the validated hard mask and
+then relaxes — **learning relaxes a known geometry, it never discovers one
+from random.** That neutralizes the attention-bootstrap wall (task gradient
+through softmax is too weak to grow a new attention pathway from scratch —
+see the editing rules) that killed every perceiver attempt. The earlier
+"Mycelium blueprint" placed a *perceiver* as the executor; **that perceiver
+is retired** (see below), and the executor is now the validated v98 breather.
+Do not confuse this three-tier architecture with the retired perceiver-core.
+
+### The deep prize: the geodesic engine
+
+The payoff that makes the hyperbolic detour worth taking is a single chain of
+identities:
+
+> **deduction-depth ↔ radial traversal ↔ breath-count.**
+
+If the mask radius `r` can move inward as breaths progress, the breath cycle
+becomes a **geodesic engine**. The "exhale" (the waist projection) drives the
+representation *inward* toward the origin — toward abstraction — which
+**auto-widens the attention horizon** (a smaller `r` lets a cell attend
+further). The "inhale" descends back *outward* to project onto concrete local
+nodes. Each breath is then a literal radial traversal of the hierarchy, and
+the number of breaths a problem needs is read off the depth it must climb.
+
+This is pursued in **phases, deliberately NOT bundled** (per the spec's
+roadmap):
+
+1. **Foothold — static global `r` (per relation).** Prove the geometry can
+   *hold* the mask AND that ONE shared coordinate field generalizes across
+   N=5/6/7. One variable only.
+2. **The climb — monotonic `r_k` per breath.** A non-decreasing radius
+   schedule: the continuous form of the v100 topological-staging mask. Read
+   off whether the learned schedule accelerates on deeper puzzles.
+3. **The ultimate — `r = f(|z|)`.** The horizon becomes a function of radial
+   position: the waist's inward climb auto-widens the horizon and the climb
+   *is* the expansion. Earn it; do not start here (that is the perceiver
+   bootstrap mistake repeated).
+
+**Testbed caveat (keep this).** KenKen is **flat** — lateral row/col/cage
+cliques, no nested DAG. The radial-depth bloom that Tiers 1–2 are designed to
+exploit is richest on **hierarchical** problems (e.g. GSM8K DAGs). So the
+N=5/6/7 foothold cleanly proves the static geometry, but a *muted* KenKen
+radial signal is the geometry faithfully reflecting a flat problem — NOT a
+manifold failure. Reserve the radial-depth verdict for a DAG testbed.
+
+---
+
+## Tier 3 — the validated executor (the breathing transformer)
+
+Everything below is built, validated, and live. Tier 3 is the foundation the
+upper tiers extend; it is the v98 executor — **not a perceiver**.
+
+### The one-paragraph mechanism
+
+A small iterative transformer (4 Pythia-410M L0-L3 layers, **shared** across
+all K breaths, h=1024, 16 heads, ~87M params) performs factor-graph inference
+by K passes through the same weights. Each breath: add a per-breath additive
+marker → 4-layer transformer with a **structured per-head attention mask**
+encoding the factor topology → an optional projection waist → a learnable
+per-breath `delta_gate` residual blend → per-breath layernorm + value-codebook
+readout → per-breath calibration head. The K breaths are JIT-unrolled into one
+graph. Training uses a per-breath weighted CE — the **ladder**,
+`loss = Σ_k (1 + k/(K-1)) · CE(logits_k, target)` — which is what makes the K
+axis do work.
+
+### Per-breath forward pass
 
 Each of K breaths runs the same code on the same shared weights:
 
-1. **Embed.** If breath 0, the input (Sudoku grid / factor graph nodes)
-   is embedded into `x ∈ ℝ^(B×T×1024)`. Otherwise `x = x_prev_breath`.
-2. **Add per-breath marker.** A small additive embedding
-   `breath_embed[k]` (orthogonal across breaths) is added to the
-   residual, separating per-breath gradients without forcing
-   specialization.
-3. **4 Pythia L0-L3 layers (shared across breaths).** Attention uses
-   the architecture's structured per-head mask
-   (§2.2). Within each layer, head-dim 64, FFN intermediate 4096,
-   standard RMSNorm + RoPE for token positions. **No π-cycled RoPE
-   across breaths** — the legacy diversity mechanism is replaced by the
-   per-head structural mask.
-4. **(v105.1.2+ only) IB semantic codebook attention.** 32-entry
-   semantic codebook from IB clustering on Pythia embeddings; LoRA-init
-   gate so step-0 forward equals no-codebook baseline.
-5. **(v105.1.2+ only) Projection waist (1024 → 512 → 1024).** Explicit
-   lossy "Quantize" step in the codec framing. LoRA-init gate so the
-   gate lifts gradually during training rather than disrupting warm-start.
-6. **Delta gate residual update.**
-   `x_{k+1} = x_pre + sigmoid(gate_k) * (x_post - x_pre)`. The gates
-   are a single learnable `(K_max,)` tensor — static across problems,
-   not controller-emitted.
-7. **Per-breath layernorm + codebook readout.** The codebook is variant-
-   specific (§2.2). Output is a soft distribution over digit values.
-8. **Per-breath calibration head.** Scalar per-breath, trained against
-   the detached argmax-correctness target. Conceptually the
-   Dopri5-style error estimator for adaptive K; not yet used for early
-   stopping in the trainer (it's training-only signal so far).
+1. **Embed.** Breath 0 embeds the input grid into `x ∈ ℝ^(B×T×1024)`;
+   otherwise `x = x_prev_breath`.
+2. **Add per-breath marker.** An orthogonal additive `breath_embed[k]`
+   separates per-breath gradients without forcing specialization.
+3. **4 Pythia L0-L3 layers (shared across breaths).** Attention uses the
+   structured per-head mask. Head-dim 64, FFN 4096, standard RMSNorm + RoPE
+   for token positions. **No π-cycled RoPE across breaths** — the legacy
+   diversity mechanism is replaced by the per-head structural mask.
+4. **(Optional) projection waist.** An explicit lossy compression step
+   (the "exhale" Tier 2's geodesic roadmap will eventually drive radially).
+5. **Delta-gate residual update.**
+   `x_{k+1} = x_pre + sigmoid(gate_k) · (x_post − x_pre)`. The gates are a
+   single learnable `(K_max,)` tensor — static across problems, NOT
+   controller-emitted.
+6. **Per-breath layernorm + codebook readout.** A value codebook reads the
+   residual stream as a soft distribution over cell values.
+7. **Per-breath calibration head.** Scalar confidence per breath, trained
+   against the detached argmax-correctness target. Conceptually the Dopri5-
+   style error estimator for adaptive K.
 
-The K breaths are unrolled into a single tinygrad JIT graph at compile
-time. The per-breath weighted CE
-(`loss = Σ_k (1 + k/(K-1)) * CE(logits_k, target)`) is the "ladder"
-that makes the K axis do work.
+### The KenKen instantiation
 
-### 2.2 The architectural lever per problem topology
+The current executor is `mycelium/kenken.py` — a **direct mirror of the v98
+Sudoku design** (box → arithmetic cage):
 
-The "instrument" (Pythia + iterated layers + masked attention) is
-universal. What differs across problem classes is the topology of the
-structured attention mask, the readout codebook, and K. Together with
-the per-breath ladder loss, these three knobs specialize the architecture
-to a problem topology (the "musical keys" framing — see §2.3).
+- Variable-N (N∈{5,6,7}) Latin-square + arithmetic-cage CSP on a fixed 7×7 =
+  49-cell grid.
+- **K=16 breaths** (the live curriculum run).
+- **Hard row/col/cage attention masks**: a 5/5/5/1 head split (5 heads each
+  for row / col / cage AllDifferent cliques + 1 global head). The cage clique
+  is a symmetric per-puzzle membership mask built per batch.
+- **A per-cage verification inlet** — arithmetic enters as a *feature* added
+  to each cage cell's residual stream (target value + op + cage-size,
+  log-magnitude bucketed), never as an op-type attention mask.
+- **A 7-value codebook** (values 1..7) readout.
+- **A gold-free convergence instrument**: the Property-2 adaptive-depth
+  telegraph (below) declares a puzzle *settled* when consecutive per-cell
+  beliefs stop moving, with no access to the answer.
 
-| Problem topology | Attention mask | Codebook | K |
-|---|---|---|---|
-| Cyclic (Sudoku) | 5 heads each for row / col / box (per-cell AllDifferent cliques) + 1 global head | 9-digit single-cell | 20 |
-| Tree DAG (arithmetic) | Per-op-type masks (4 ops × 4 heads) + topological staging (breath k sees up to depth k) | 100-bin / 200-bin number-level | 10 |
-| Chain (digit decomposition) | Y-soft adjacent-only within-variable attention (testing as of 2026-06-01) | 10-digit × 5 positions, RoPE on the digit axis | 8 |
+### The architectural lever per topology
 
-**Sudoku (cyclic key).** The 27 AllDifferent constraints are baked
-into the attention masks: 5 attention heads each restrict attention to
-row-mates / column-mates / box-mates of the current cell, plus 1
-global head. K=20 because loopy BP on a 27-constraint factor graph
-needs that many iterations to converge for hard puzzles. See
-`mycelium/sudoku.py`.
-
-**Number-level factor graph (directional key).** Topological staging
-mask GROWS across breaths: at breath 0 the model only "sees" observed
-leaves, by breath k=depth the full DAG is visible. The per-op-type
-masks specialize 4 heads each to add / sub / mul / div factor types.
-See `mycelium/factor_graph_v100.py` through `factor_graph_v107.py`.
-
-**Digit-level factor graph (chain key).** Same as number-level but
-the readout is per-position (5 positions × 10 digits each). The
-position axis carries its own RoPE (right-aligned: ones-digit always
-RoPE position 0). The Y-soft fix (testing) restricts within-variable
-attention to adjacent positions only, breaking the mean-field collapse
-where all positions of one variable averaged together. See
-`mycelium/factor_graph_v105_1_2.py` and `factor_graph_v105_4.py`.
-
-### 2.3 The three conceptual frameworks (all valid views)
-
-The same execution is described by three different vocabularies:
-
-- **JPEG codec.** Each breath is a learned compression codec:
-  Transform (basis rotation via attention) → Quantize (waist
-  projection, v105+) → Encode (delta_gate carries survivors to next
-  breath) → Psychoacoustic model (per-breath CE is the learned model
-  of what to preserve).
-- **ODE integrator.** `dx/dt = -∇E(x)` with the factor graph energy
-  E. 4 transformer layers per breath = 4 RK4-like stages (each layer
-  is one gradient estimate; residual stream is the running sum); K
-  breaths = K integration steps; delta_gate = adaptive step size;
-  calibration head = Dopri5-style error estimator for adaptive K.
-- **Approximate belief propagation.** Factor graph inference via
-  message passing; the model learns the messages. Per-head attention
-  masks = factor topology; K breaths = K loopy-BP rounds; per-breath
-  weighted CE = monotonic belief refinement. The signature is
-  geometric energy decay (Sudoku: 21.0 → 0.71 over K=1 to K=20 at
-  rate ~0.5×/3 breaths) and the 7-orders-of-magnitude correlation
-  between cell accuracy and puzzle accuracy (joint MAP, not
-  independent marginals).
-
-These are not three theories; they are three vocabularies for the same
-mathematical object — **a learned approximate iterative solver for
-joint MAP inference on a factor graph, structured as an ODE integrator
-with energy-based dynamics**. Foundation: attention IS one Hopfield
-energy descent step (Ramsauer et al., 2020). See
-`memory/project_ode_integrator_framing.md` and `paper/outline.md`.
-
-### 2.4 The musical keys: topology determines breathing rhythm
-
-The architecture's "instrument" is universal but each problem class is
-in a different topological **key** that requires its own breathing
-**rhythm**:
+The "instrument" (Pythia + iterated layers + masked attention) is universal.
+What specializes it to a problem is the **topology of the attention mask**,
+the **readout codebook**, and **K**. Three "musical keys" recur:
 
 | Key | Topology | Rhythm |
 |---|---|---|
-| Cyclic | Loopy graph, symmetric AllDiff cliques | Symmetric per-head masks (Sudoku) |
-| Directional | Tree, asymmetric functional constraints | Topological staging (v100+) |
-| Chain | Sequential dependencies within a variable | Adjacent-only attention (v105 Y-soft) |
-| Cadence | Forward + backward cycles | Alternating direction (untested) |
+| Cyclic | Loopy graph, symmetric AllDifferent cliques | Symmetric per-head masks (Sudoku / KenKen) |
+| Directional | Tree / DAG, asymmetric functional constraints | Topological staging (the climb) |
+| Chain | Sequential dependencies within a variable | Adjacent-only attention |
 
-v98's Sudoku success and v99's negative result on arithmetic DAGs are
-the same finding viewed from two angles. Rotation breathing works for
-cyclic key; it fails on directional key, where the right rhythm is
-staging. Same instrument, different scale. See
-`memory/project_musical_keys_topology.md`.
+Same instrument, different scale. Sudoku/KenKen are the cyclic key, where
+symmetric rotational breathing works. Tier 2's monotonic-`r_k` climb is the
+**continuous form of the directional-key staging mask** — which is exactly why
+a hierarchical DAG testbed is where the geometry will bloom.
 
-### 2.5 The two-phase system
+### Three vocabularies for one object
 
-Comprehension (NL → factor graph) and inference (factor graph → answer)
-are different computational regimes that should use different model sizes:
+The same execution is described three ways, all valid:
 
-```
-┌──────────────────────────────────────────────────────────┐
-│ Phase 1: COMPREHENSION (large model, one-shot)            │
-│ "Janet has 16 eggs..."                                    │
-│         ↓                                                 │
-│ NL Parser (Haiku / fine-tuned T5-small / DistilBERT)      │
-│         ↓                                                 │
-│ Factor Graph: variables, factors, observed, query         │
-└────────────────────┬─────────────────────────────────────┘
-                     ↓
-┌────────────────────┴─────────────────────────────────────┐
-│ Phase 2: INFERENCE (small model, iterative, on device)    │
-│ Factor Graph                                              │
-│         ↓                                                 │
-│ Breathing Transformer (87M, 377MB)                        │
-│ dx/dt = -∇E(x, constraints)                               │
-│ K breaths of ODE integration                              │
-│         ↓                                                 │
-│ Converged variable assignments → answer                   │
-└──────────────────────────────────────────────────────────┘
-```
+- **JPEG codec.** Each breath is a learned compression codec: Transform
+  (attention) → Quantize (waist) → Encode (delta_gate) → psychoacoustic model
+  (the per-breath CE).
+- **ODE integrator.** `dx/dt = −∇E(x)` on the factor-graph energy E. 4 layers
+  per breath = RK4-like stages; K breaths = K integration steps; delta_gate =
+  step size; calibration head = Dopri5-style adaptive-timestep error
+  estimator.
+- **Approximate belief propagation.** Per-head masks = factor topology; K
+  breaths = K loopy-BP rounds; per-breath weighted CE = monotonic belief
+  refinement. The signature is geometric energy decay (Sudoku: 21.0 → 0.71
+  over K=1…20) and the multi-orders-of-magnitude correlation between cell
+  accuracy and puzzle accuracy (joint MAP, not independent marginals).
 
-The 410M GSM8K failure was Phase 1 being undersized for comprehension.
-v98 Sudoku worked because Phase 1 is trivial (grid IS factor graph)
-and the architecture is sized correctly for Phase 2. The breathing
-transformer IS Phase 2. Building Phase 1 (NL parser) is the path to
-GSM8K, not redesigning the inference engine. See
-`docs/phase1_nl_parser_spec.md`.
+These are three vocabularies for one mathematical object — **a learned
+approximate iterative solver for joint MAP inference on a factor graph,
+structured as an ODE integrator with energy-based dynamics.** Foundation:
+attention IS one Hopfield energy-descent step (Ramsauer et al., 2020). See
+[`paper/outline.md`](paper/outline.md),
+`memory/project_factor_graph_framing.md`, and
+`memory/project_ode_integrator_framing.md`.
 
 ---
 
-## 3. Empirical status (current)
+## Empirical status (honest)
 
-```
-v98 Sudoku:         97.65% cell / 79.0% puzzle on easy (validated)
-                    83.33% cell / 6.5% puzzle on medium
-                    76.16% cell / 0.0% puzzle on hard
-v100-v107 (number): 40-48% cell_acc on synthetic [0,99] factor graphs
-v107 (hybrid 200):  24.2% cell_acc on GSM8K factor graphs
-v105 family (digit): 12 attempts hit ~5% plateau (Jun 1 diagnosis:
-                    mean-field collapse at Pythia L0, readout-side
-                    fixes mechanically cannot recover)
+### The KenKen reframe — what the "0 puzzle-acc ceiling" actually was
 
-v109-v110 architecture stack (Jun 4-5):
-  v109 (waist + alternation):   easy 0.399, med 0.333, hard 0.293
-  v109pi (+ π-cycled Q):        easy 0.502, med 0.434, hard 0.337
-  v110-step3 prod (10K chain):  easy 0.610, med 0.509, hard 0.399
-                                ★ project all-times across all difficulties
-                                  (calibration-driven Goldilocks step,
-                                   accumulate notebook, sin² photon waist)
+The apparent **"0 puzzle-acc ceiling"** on hard puzzles was an **eval-regime
+artifact, not an architecture wall.** v98 Sudoku scores ~97% cell / 79% puzzle
+when graded on its **easy band (43%-givens)**; the *same model* collapses to
+~5% puzzle on its **33%-givens band**. KenKen made this explicit and reframed
+the project's central empirical question accordingly. The headline number was
+never about whether the breather can solve — it was about which band it was
+graded on.
 
-Inference + training arc on v110-step3 (Jun 6-7, 50-puzzle subsets):
-  baseline cont8_step1000:          hard 0.3761, easy 0.5726, med 0.4910
-  PUCT search (best config):        hard 0.3700 (-0.0061, 11× cost)
-  MC-BP @ noise=0.01 inference:     hard 0.3823 (+0.0061, 2.8× cost)
-  SBP training (denoising score
-    matching at residual stream):   hard 0.3914 (+0.0153, free at inference)
+### Property-2 first read — UNTESTABLE-by-restriction
 
-  v112b architectural factorization (NEW PROJECT HIGH — Jun 7):
-    shared learned node_topology tensor (67K new params total) +
-    per-position residual gating
-    hard det BP:                    0.3884 (+0.0123)
-    hard + MC-BP @ noise=0.005:     0.3945 ★ NEW HIGH (+0.0184)
-    med  det BP:                    0.5135 (+0.0225)
-    med  + MC-BP @ noise=0.01:      0.5180 (+0.0270)
-    easy det BP:                    0.6290 (+0.0564)
-    easy + MC-BP @ noise=0.01:      0.6371 ★ +0.0645 — biggest gain
-    easy query_acc:                 0.4600 (+0.20 — 10 more queries
-                                            correctly answered)
+Property-2 is the adaptive-depth claim: *harder puzzles should take more
+breaths to settle.* The **first read was UNTESTABLE by restriction**, and the
+honesty matters:
 
-v107 (hybrid 200): 24.2% cell_acc on GSM8K factor graphs
+- On the **hard-only K=8 model**, the settled set was **depth-narrow** — there
+  was no breath-count spread *with* depth, so the correlation is undefined
+  (restriction of range), not weak.
+- The companion `rho ≈ 0.5` that initially looked promising was a **ceiling
+  artifact**: the `rho_no_ceiling` control (drop puzzles that hit the K
+  ceiling) **sign-flipped**, which is the tell that the raw correlation was
+  carried by ceiling-pinned puzzles.
 
-Phase 1 (NL parser): designed (`mycelium/phase1_classifier.py`); not
-                    yet trained.
-```
+The **live K=16 curriculum run is training now.** Early peek (underpowered,
+not a verdict): the settled set is **deepening**, and **N=5 settled rho = 0.72
+with rho_no_ceiling = 0.67** — encouraging and *consistent*, but underpowered
+against the bar. The analyzer was patched so a restriction-of-range no longer
+reports as a win — it reports **UNTESTABLE** — and `rho_no_ceiling` is now a
+**required companion control** on every read.
 
-### 3.1 The v98 Sudoku breakthrough (May 29)
+### Property-2 read discipline (the bar)
 
-**The most important measurement in the project.** K-sweep at K ∈ {1,
-3, 5, 8, 12, 15, 18, 20}, n=200 per difficulty:
+The convergence instrument and its read are deliberately conservative. The
+discipline (in `scripts/analyze_kenken_property2.py`):
 
-```
-K    easy puzzle  easy cell  medium puzzle  medium cell  avg energy (easy)
- 1     0.0%        82.1%       0.0%           69.1%       21.0
- 3    10.0%        91.9%       0.0%           76.6%        7.2
- 5    33.5%        94.8%       0.0%           79.8%        3.5
- 8    56.0%        96.4%       1.0%           81.3%        1.8
-12    72.5%        97.3%       2.5%           82.4%        1.1
-15    75.0%        97.5%       5.5%           82.8%        0.86
-18    77.0%        97.6%       6.0%           83.2%        0.75
-20    79.0%        97.65%      6.5%           83.33%       0.71
-```
+- **Min-based instrument.** breath-count = gold-free argmin of the consecutive
+  belief change; no peeking at the answer.
+- **settled = correct.** Only puzzles the instrument calls *settled* count
+  toward the primary statistic.
+- **Depth-spread first.** If the settled set has no breath-count spread across
+  depth, the read is **UNTESTABLE**, not "weak" — restriction of range is not
+  a null result.
+- **`rho_no_ceiling` companion control.** Report rho both with and without
+  ceiling-hit puzzles; a sign flip invalidates the raw rho.
+- **The bar:** HILL-STANDS requires **lower-CI Spearman rho > 0.30 AND
+  permutation p < 0.01** in ≥2/3 of qualifying bins (a bin qualifies only with
+  settled-n ≥ 50 and frac-settled-strict ≥ 0.80).
 
-The constraint energy decays **geometrically at rate ~0.5× per ~3 K** —
-the mathematical signature of loopy BP convergence on a factor graph
-with cycles.
+### The v98 Sudoku K-sweep — the central paper claim
 
-The **7-orders-of-magnitude correlation** at medium difficulty:
-independent-cell prediction baseline is 0.833^81 ≈ 3×10⁻⁷; observed
-puzzle accuracy is 6.5%; ratio is 2×10⁵ above independent baseline. The
-model is solving structures (joint MAP), not classifying independent
-cells.
-
-### 3.2 The journey and key findings
-
-- **v98 Sudoku validated the factor-graph framing.** After 17 GSM8K
-  architectural variants (v82-v97) plateaued at 0-1.7%, the strategic
-  pivot to Sudoku revealed the breathing transformer is approximate
-  joint MAP inference on a factor graph. Six-component recipe
-  documented in `memory/project_v98_sudoku_validates_paradigm.md`.
-- **v99 was the directional-key failure mode.** Same architecture on
-  arithmetic DAGs converged to a uniform-distribution fixed point —
-  9% accuracy flat across K=1 to K=10. The moment-matching constraint
-  energy has a trivial low-energy attractor. Architecture works
-  mechanically; the breathing rhythm was wrong for that topology.
-- **v100 fixed it with topological staging.** Mask GROWS across
-  breaths; later breaths see deeper DAG nodes; aligned init
-  (`state_embed[i] = digit_codebook[i]`) was the v98 unlock v99
-  missed. Result: 40-48% on synthetic factor graphs (number-level).
-- **v107 reached GSM8K.** Hybrid 200-bin codebook (handles up to
-  4-digit numbers); 24.2% cell accuracy on GSM8K factor graphs
-  (Phase 2 only, oracle factor graphs from Haiku distillation).
-- **v105 family hit a wall on digits.** 12 attempts at per-position
-  digit prediction stalled at ~5%. Linear probe diagnostic (Jun 1)
-  identified mean-field collapse — across positions of one variable
-  the hidden states become identical, so different position
-  predictions are impossible. The collapse pins to Pythia L0 itself;
-  readout-side fixes mechanically cannot recover (see
-  `memory/project_v105_collapse_unbreakable.md`).
-- **v110-step3 prod chain reached project all-times (Jun 5).** Calibration-
-  driven Goldilocks step regulation (`step_k / (1 - calib_k)` CoV
-  penalty) made the calibration head functional, lifting all three
-  difficulties through a 9500-step warm-start chain: easy 0.610
-  (crossed 60%), med 0.509 (crossed 50%), hard 0.399 (near 0.40).
-- **The search-vs-sampling arc (Jun 6) — independence is the key.**
-  Tested PUCT search (correlated tree-path samples — regression),
-  MC-BP inference (independent noise at inference — small lift), and
-  SBP training (independent noise during training — biggest lift on
-  hard, +0.0153, free at inference). The hierarchy mirrors the
-  independence quality of each method. SBP training as denoising
-  score matching (Vincent 2011) at the residual-stream injection
-  point became the project's previous best training-time row.
-- **The factorization breakthrough (Jun 7) — v112b.** Adding ONE
-  learnable tensor `node_topology` of shape (T=24, latent_dim=64),
-  with two derived adaptations (attention bias and per-position
-  residual gate), lifts all three difficulties: hard +0.0184
-  (new project high, beats SBP-alone), med +0.0270, easy +0.0645.
-  Easy query accuracy lifts +0.20 (10 more puzzles correctly answered
-  out of 50). The mechanism finding is sharper than the prediction:
-  the **per-position residual gate is load-bearing** (Wres_norm grew
-  0 → 0.503 monotonically), while the **pairwise attention bias is
-  not** (bias_scale stayed at zero). See §3.3 below.
-
-See `paper/outline.md` for the full empirical writeup with figures.
-
-### 3.3 The v112b factorization breakthrough (Jun 7)
-
-The breathing transformer's INPUT (factor graphs) and OUTPUT (tree
-codebook over digits) are both factored — they explicitly represent
-the problem's structure. The MIDDLE was monolithic: residual stream
-1024d single blob, shared transformer for all positions, shared waist
-compression, shared codebook. Every position got identical treatment;
-the model had to *implicitly* re-factorize via attention patterns.
-
-**The mycelium namesake principle made architectural:** mushroom roots
-don't decompose substrate by sucking it into one central processor.
-They decompose in parallel at thousands of local sites, each handling
-a tiny chunk, coordinating only through minimal shared chemical signals.
-The architecture should have the same topology.
-
-**v112b adds ONE learnable tensor** `fg_v115_node_topology: (T=24,
-latent_dim=64)` — 1,536 parameters that give each position (variable or
-factor) a learned identity. Three derived adaptations:
-
-```python
-# Attention bias: pairwise topology similarity added to combined mask
-attn_bias = attn_bias_scale * (node_topology @ node_topology.T)  # (T, T)
-combined_mask = stk_h + head_op_mask + attn_bias
-
-# Per-position residual gate: each position gets its own activation pattern
-gate_per_pos = (node_topology @ W_res_gate).tanh()       # (T, hidden)
-x = x * (1.0 + gate_per_pos)                              # per-position modulation
-```
-
-Total new params: **~67K** (1.5K topology + 65K residual-gate projection
-+ 1 bias-scale). All zero-init scaled so step 0 forward is byte-identical
-to v110-step3 baseline; warm-starts cleanly from v110-step3 ckpts.
-
-**What worked vs what didn't — the mechanism finding.**
-
-```
-PREDICTED load-bearing: pairwise attention bias = topology @ topology.T
-                         → learned soft edge strengths replacing binary masks
-                         → REFUTED. bias_scale stayed near zero throughout
-                           training (-0.0026 at step 5000). The existing
-                           per-op-type binary masks already capture
-                           connectivity adequately. Edges are not the
-                           bottleneck.
-
-ACTUAL load-bearing:    per-position residual gate = tanh(topology @ W_res)
-                         → each position gets its own activation pattern in
-                           the shared backbone's residual space
-                         → VALIDATED. Wres_norm grew 0.000 → 0.503
-                           MONOTONICALLY over 5000 steps. Topology vectors
-                           learned ANTI-CORRELATED identities (sim01:
-                           +0.024 → -0.154), confirming distinct per-node
-                           roles emerged.
-```
-
-The factorization that helps is **not about which positions talk to
-which** (already captured by binary masks); it's about **what each
-position computes** (per-node activation patterns in the shared
-backbone).
-
-**Results on 50-puzzle apples-to-apples subsets, every config compared
-at its best:**
-
-```
-                    baseline       v112b               Δ best vs baseline
-HARD:               0.3823 @0.01   0.3945 @0.005       +0.0122  NEW HIGH
-                                                                (beats SBP 0.3914)
-MEDIUM:             0.5045 @0.01   0.5180 @0.01        +0.0135
-EASY:               0.5887 @0.01   0.6371 @0.01        +0.0484
-QUERY easy:         0.2800         0.4600              +0.18    ★★★
-```
-
-**Step 4500 and final ckpts produce IDENTICAL 50-puzzle results** —
-the result is reproducible, not a lucky moment.
-
-**Why v112b composes with MC-BP averaging.** SBP training sharpens
-attractors via training noise. v112b factors per-node computation via
-architecture. MC-BP averages over remaining uncertainty at inference.
-The architecture produces *more structured* posteriors with cleaner
-alternative fixed points; MC averaging finds those alternatives more
-reliably. v112b + MC-BP @ 0.005 is the strongest single config in the
-project.
-
-**Phase 2 direction** (validated by Phase 1 mechanism finding): pursue
-MORE per-position gating mechanisms — waist routing (different
-positions use different waist channels), codebook attention (each
-position attends to its own subset of the codebook), per-position
-delta_gate scaling (each position takes its own step size). ALL
-GATING mechanisms (per-node adaptation of shared backbone), NOT
-pairwise structures. See
-`memory/project_v112b_phase1_validates_factorization.md`.
+The most important measurement in the project: a K-sweep on easy puzzles where
+**constraint energy decays geometrically at ~0.5× per ~3 breaths**, 21.0 → 0.71
+over K=1…20. That geometric decay is the mathematical signature of loopy-BP
+convergence on a factor graph with cycles. The **multi-orders-of-magnitude
+correlation** between cell accuracy and puzzle accuracy is the diagnostic that
+the model is solving *structures* (joint MAP), not classifying independent
+cells. See `memory/project_v98_sudoku_validates_paradigm.md` and
+[`paper/outline.md`](paper/outline.md).
 
 ---
 
-## 4. Editing rules (load-bearing)
+## Editing rules (load-bearing)
 
 These rules are still load-bearing in current code:
 
-- **No mid-breath token generation.** Reasoning stays in the 1024d
-  residual stream. Generation (when present, e.g. v80-era AR decode
-  variants) happens once at the end. Empirically: "had had had"
-  collapse within 2 autoregressive loops if violated.
-- **Diversity must be structural, not learned.** v98 row/col/box
-  masks, v100 topological staging masks, v105 per-digit RoPE are all
-  geometric. Every v1-v3 learned diversity mechanism (scales, soft
-  tokens, codebooks, fingerprints) collapsed to constant within one
-  epoch.
-- **Digit-spaced for arithmetic** (partial). v98 uses single-cell
-  digits; v100+ uses number bins or per-digit codebooks. Whole-number
-  BPE tokens force memorization. The v105 family explores per-position
-  digit prediction; this is still load-bearing but the position layout
-  matters (MSD-first + right-aligned RoPE + valid_mask, see
-  `memory/feedback_digit_vs_number_prediction.md`).
-- **KV cache invariants.** Size to actual seq length; pad eval
-  batches to fixed batch_size so compiled graphs match; compile once
-  during first eval, replay for the rest of the run.
-- **Bryce wants root-cause perf fixes**, not workarounds, when perf is
-  the bottleneck.
-- **Gradient separation rule (legacy, currently moot).** If a
-  Controller-like decision module is ever reintroduced, its gradient
-  must never reach transformer weights. Use a separate optimizer and
-  verify with the parameter-change smoke. No Controller is in the
-  current code path, so this is dormant.
+- **No mid-breath token generation.** Reasoning stays in the 1024d residual
+  stream; tokens (if any) are generated once at the end. Empirically: "had had
+  had" collapse within 2 autoregressive loops if violated.
+- **Diversity must be structural, not learned.** Row/col/cage masks and
+  topological staging are geometric. Every v1–v3 learned diversity mechanism
+  (scales, soft tokens, codebooks, fingerprints) collapsed to constant within
+  one epoch.
+- **Factor per-NODE, not per-EDGE.** Prefer per-position gating (each position
+  gets its own activation pattern in the shared backbone) over pairwise
+  structures (learned attention biases, edge-strength tensors). The v112b
+  finding: a per-position residual gate became load-bearing while a pairwise
+  attention-bias channel refused to engage. Edges are already captured by the
+  binary masks; per-node activation patterns are what is missing. See
+  `memory/project_v112b_phase1_validates_factorization.md`.
+- **Attention-bootstrap principle.** A new attention pathway needs direct
+  supervision (or a known-good init) for ~500 steps — task gradient through
+  softmax is too weak to grow one from random. Codebook selection (≤32-way)
+  bootstraps from task gradient alone; pointer attention (~30+ positions) does
+  not. This is precisely why Tier 2 **anchors to the validated hard mask and
+  relaxes** rather than learning a mask from scratch — and why the perceiver,
+  which had no such anchor, hit a gradient void.
+- **Property-2 read discipline** (above): min-based instrument, settled =
+  correct, depth-spread first, `rho_no_ceiling` control, bar = lower-CI
+  rho > 0.30 + p < 0.01.
+- **KV cache invariants.** Size to actual seq length; pad eval batches to a
+  fixed batch size so compiled graphs match; compile once during first eval,
+  replay for the rest.
+- **Bryce wants root-cause perf fixes**, not workarounds, when perf is the
+  bottleneck.
+- **Gradient separation (legacy, currently moot).** If a Controller-like
+  decision module is ever reintroduced, its gradient must never reach
+  transformer weights — separate optimizer, parameter-change smoke. No
+  Controller is in the current code path.
 
 ---
 
-## 5. Specifications
+## Specifications
 
-### Initialization
+**Initialization.** Pythia-410M layers 0-3 (attention + FFN weights), token
+embeddings (50304 × 1024), untied output head. In v98+ all 4 layers share the
+SAME weights across all K breaths — no phase-specific copies.
 
-Pythia-410M layers 0-3 (attention + FFN weights), token embeddings
-(50304 × 1024), and untied output head. In v98+ all 4 layers share the
-SAME weights across all K breaths (no phase-specific copies — that
-was a v1-v95 design and was dropped in the pivot).
+**Model dimensions.** Hidden 1024, 16 heads × head-dim 64, FFN 4096, vocab
+50304, max seq 512. 4 transformer layers in the iterated stack, shared across
+breaths.
 
-### Model dimensions
+**K.** KenKen K=16 (live curriculum); v98 Sudoku used K=20. No global ceiling —
+AMD 7900 XTX JIT capacity (~20 breaths) is the practical limit.
 
-Hidden 1024, 16 heads × head_dim 64, FFN 4096, vocab 50304, max seq 512.
-4 transformer layers in the iterated stack (shared across breaths).
+**Parameters.** ~87M total: ~35.7M shared transformer processing + ~51.5M
+token embeddings. The 7-value codebook and verification inlet add a small tail.
 
-K varies per architecture: Sudoku=20, v100=10, v105=8, v107=10. No
-global ceiling — JIT capacity on the AMD 7900 XTX is the practical
-limit (~20 breaths in the current trainer graphs).
+**Memory.** ~5GB mixed precision on a 7900 XTX, ~19GB headroom. Batch 32–64 at
+FIXED_LEN=160 for the 49-cell grid. KV cache sized to actual sequence length.
 
-### Parameters
+**Substrate laws (AM-driver landmines).** No `dtypes.float32` literal inside
+the JIT step; `scores.clip(-1e4, 1e4)` for numerical stability; `where()`-gated
+NaN guard (multiply-gate fails because NaN×0=NaN); scalar `isfinite`. For the
+hyperbolic metric specifically: clamp `|z|² ≤ 1 − 1e-5` and the arccosh
+argument `≥ 1 + 1e-7`, and mirror the −1e4 block magnitude (not −inf) so the
+softmax stays finite. See `memory/reference_tinygrad_am_quirks.md` and
+[`docs/hyperbolic_mask_generator_spec.md`](docs/hyperbolic_mask_generator_spec.md) §4.
 
-- Sudoku: ~87M total (35.7M shared transformer processing + 51.5M
-  token embeddings; no separate output head, codebook is 9 digits).
-- v100/v107 (number-level): ~87M same as Sudoku, with a 100- or 200-bin
-  codebook in place of digit values.
-- v105.1.2+ (digit-level + waist + IB codebook): adds ~1M from the
-  1024 → 512 → 1024 LoRA-init waist and ~1.6M from the 32 × 1024
-  semantic codebook. Both gated by zero-init scalars so step 0 forward
-  equals the no-extras baseline.
-
-### Memory
-
-~5GB total mixed precision on a 7900 XTX, ~19GB headroom. Batch size
-32-64 at FIXED_LEN=160 for Sudoku; 8-16 at FIXED_LEN=256 for factor
-graphs. KV cache sized to actual sequence length.
-
-### Inference engine
-
-JIT-fused KV cache, per-batch position tracking, fixed-batch eval that
-compiles once and reuses across checkpoints. 42.8× over the original
-uncached path on the L3 eval set; bit-for-bit identical outputs. See
-`memory/project_inference_engine.md`.
-
-### Platform
-
-AMD Radeon RX 7900 XTX (24GB GDDR6, ~120 TFLOPS FP16). Tinygrad
-framework with AM custom userspace driver (working since 2026-05-11 —
-Secure Boot off + `vm.compact_unevictable_allowed=0`). No ROCm, no
-CUDA, no PyTorch. Ubuntu 24.04.
+**Platform.** AMD Radeon RX 7900 XTX (24GB GDDR6). Tinygrad + AM custom
+userspace driver (working since 2026-05-11 — Secure Boot off +
+`vm.compact_unevictable_allowed=0`). No ROCm, no CUDA, no PyTorch. Ubuntu 24.04.
 
 ---
 
-## 6. Repository structure
+## What we carry forward — and what we left behind
+
+**Forward (the validated Tier-3 design):**
+
+- Pythia-410M L0-L3 init, FULL weight sharing across breaths.
+- Iterative prefill (K passes, residual stream as persistent state).
+- Per-breath `delta_gate` (replaces the v1-v95 controller-emitted gate).
+- Per-breath calibration head (Dopri5-style error estimator).
+- Per-breath weighted CE supervision (the ladder).
+- Structured per-head attention masks (replaces π-cycled RoPE).
+- Value-codebook readout.
+- Per-node residual gating (v112b): same shared backbone, different
+  per-position activations — the mycelium principle made architectural.
+- The copy-machine principle (no mid-breath token gen) and the
+  structural-not-learned diversity rule.
+
+**Left behind:**
+
+- **The perceiver — RETIRED.** Refuted 5× as an add-on (v118–v121), and the
+  v300 perceiver-CORE failed flat at chance. The earlier Mycelium blueprint
+  used a perceiver as the executor; we **replaced it with the validated v98
+  executor**. Tier 3 is the v98 breather, not a perceiver — and the hyperbolic
+  generator's anchor-and-relax discipline (Tier 2) is precisely the thing the
+  perceiver lacked. See `memory/project_v121_perceiver_5x_refuted.md` and
+  `memory/project_v118_ablation_perceiver_diagnosis.md`.
+- Llama 1B, LoRA atoms / continuous scales, straight-through estimators, soft
+  token diversity (all v1–v3).
+- Controller, Notebook, LookupTable (v1–v95 — module code preserved for import
+  compatibility, called by no current trainer).
+- π-cycled per-breath RoPE and sine-modulated within-breath temperature
+  (v1–v95 — replaced by structured masks and a single fixed temperature).
+- The WaistController GSM8K-via-AR-decode paradigm (v54–v95).
+- **The full v100–v300 lineage** (v100–v121 residual-stream factor graphs, the
+  v105 digit family, the v200/v300 perceiver-core) — **preserved in git
+  history**, removed from the working tree in the Jun-16 clean.
+
+---
+
+## Repository map
 
 ```
 mycelium/
-  breathing.py                — Pythia L0-L3 backbone, BreathingTransformer
-                                 class (contains LEGACY Controller / Notebook /
-                                 LookupTable that v98+ doesn't call — preserved
-                                 for backward import compatibility only)
-  controller.py               — LEGACY: Notebook + Controller (v1-v95 era)
-  lookup_table.py             — LEGACY: 16×1024 prime-op matcher (v1-v95 era)
-  sudoku.py + sudoku_data.py  — v98 Sudoku architecture and data
-  factor_graph_v100..v107.py  — number-level factor graph variants
-  factor_graph_v105_1_2.py    — digit-level + AR conditioning
-                                 (Bryce's "die on this hill")
-  factor_graph_v105_3.py      — LSD-first refactor of v105.1.2
-  factor_graph_v105_4.py      — hierarchical codebooks (mag head,
-                                 per-pos digits, hier IB)
-  phase1_classifier.py        — DistilBERT-based NL parser (Phase 1)
-  pythia.py                   — Pythia weight loader
+  kenken.py            — the live Tier-3 executor (v98 KenKen breather)
+  pythia.py            — Pythia weight loader
+  breathing.py         — Pythia L0-L3 backbone + LEGACY Controller / Notebook /
+                          LookupTable (import-compat only; no trainer calls it)
 
 scripts/
-  v98_sudoku_{prod,smoke}.sh  — Sudoku train + smoke
-  sudoku_train.py             — Sudoku trainer
-  eval_v98_sudoku.py          — Sudoku eval
-  v98_k_sweep.sh              — K-sweep for figure 2 of the paper
-  v100..v107_factor_graph_*   — number-level factor graph train/eval
-  v105_*_factor_graph_*       — digit-level factor graph variants
-  v105_1_2_v2_*               — current digit-level prod runs
-                                 (lateral / number-MSE / Fourier / log-uniform / AR-MSD)
-  phase1_*                    — Phase 1 build, train, eval
-  diag_*                      — diagnostics:
-                                  diag_v98_per_breath_convergence.py
-                                  diag_v105_*_per_position_acc.py
-                                  diag_v105_4_linear_probe.py
-                                  diag_ib_clustering.py + diag_ib_tree_export.py
+  kenken_train.py             — KenKen trainer (the live K=16 curriculum run)
+  build_kenken_data.py        — KenKen puzzle generator
+  analyze_kenken_property2.py — the gold-free Property-2 convergence read
 
 docs/
-  archive/                    — pre-v98 historical content
-    vision_v1_to_v95.md       — original architecture vision (deprecated)
-    empirical_v45_to_v95.md   — GSM8K WaistController era results
-    closed_loop_seven_components.md — pre-pivot CLAUDE.md §2
-  phase1_nl_parser_spec.md    — Phase 1 design doc
+  hyperbolic_mask_generator_spec.md — ★ the active Tier-1/Tier-2 design note ★
+  archive/                          — pre-v98 historical content
+    vision_v1_to_v95.md             — original architecture vision (deprecated)
+    empirical_v45_to_v95.md         — GSM8K WaistController era results
+    closed_loop_seven_components.md — the pre-pivot seven-component framing
 
 paper/
-  outline.md                  — current paper draft
-                                 ("The Shape of Thought: Iterative
-                                  Reasoning Through Learned Energy
-                                  Descent on Factor Graphs")
-  figures/                    — paper figures
-  references.bib              — citations
+  outline.md           — current paper draft
 
-.cache/                       — checkpoints, data, IB centroids
-                                 (gitignored). Key files:
-  sudoku_ckpts/v98_prod_final.safetensors      — v98 final
-  fg_v107_ckpts/v107_prod_step1000.safetensors — v107 GSM8K champion
-  v98_ksweep/K*.log                            — K-sweep results
+CLAUDE.md              — ★ the authoritative current brief ★
 ```
 
----
-
-## 7. Roadmap
-
-**End-of-month goal (June 2026).** Workshop-tier paper draft submission:
-v98 Sudoku result, v100/v107 factor-graph generalization, energy decay
-characterization, three-vocabulary framing (codec / ODE / BP). Held
-for 3-4 weeks to add Phase 1 (NL parser) + IB-anchored Phase 2
-codebook + end-to-end GSM8K result before submission. See
-`memory/project_big_paper_strategy.md`.
-
-**Open architectural questions:**
-
-- **v112b Phase 2:** with per-position residual gating validated as the
-  load-bearing factorization mechanism, extend the same principle to
-  other components — per-position waist channel routing, per-position
-  codebook attention, per-position delta_gate scaling. ALL gating
-  mechanisms, not pairwise structures.
-- **Can SBP training + v112b architecture compose?** They lift different
-  parts of the curve (SBP sharpens attractors via training noise;
-  v112b factors per-node computation via architecture). The hypothesis
-  is they're orthogonal and the combination would push hard above 0.40.
-- Can a small Phase 1 classifier (~60-90M params) parse GSM8K NL to
-  factor graphs at >85% accuracy? T5-small vs DistilBERT spec at
-  `docs/phase1_nl_parser_spec.md`. Now the load-bearing path for
-  end-to-end GSM8K — Phase 2 (the inference engine) is empirically
-  strong enough to ship the architecture story.
-- **Closed:** v106 PUCT search on v110-step3 — robust negative across
-  8 configurations. The locally-consistent-but-globally-wrong attractor
-  problem made search amplification multiplicative on BP miscalibration.
-  `mycelium/factor_graph_v106_step3.py` preserved for future use when
-  BP quality improves.
-
-**Deadline.** December 25, 2026 — MATH-500 (current bench is
-GSM8K-via-factor-graphs at the v107 24% level).
+The v100–v300 modules (`factor_graph_v1*`, `v200`, `v300`, the perceiver-core,
+the v105 digit family) and their docs were removed from the tree in the Jun-16
+clean; they live in git history.
 
 ---
 
-## Appendix: Conceptual archive
+## Memory-note pointers
 
-For the project's original conceptual vision (sine-wave breath,
-π-cycled per-head RoPE, BirdNET-parallel heads, Controller / Notebook
-/ LookupTable closed feedback loop), see:
+- `memory/project_kenken_property2_first_read_untestable.md` — the
+  UNTESTABLE-by-restriction first read; rho_no_ceiling sign-flip; K=16 plan.
+- `memory/project_v98_sudoku_validates_paradigm.md` — the six-component recipe.
+- `memory/project_factor_graph_framing.md` — breathing = learned approximate BP.
+- `memory/project_ode_integrator_framing.md` — the ODE-integrator identity.
+- `memory/project_musical_keys_topology.md` — topology determines breathing
+  rhythm (cyclic vs directional vs chain).
+- `memory/project_v112b_phase1_validates_factorization.md` — per-node gating
+  validated, pairwise attention bias refuted.
+- `memory/project_v121_perceiver_5x_refuted.md` and
+  `memory/project_v118_ablation_perceiver_diagnosis.md` — why the perceiver is
+  retired.
+- `memory/project_big_paper_strategy.md` — paper holding strategy.
+- `memory/reference_tinygrad_am_quirks.md` — the AM-driver / JIT substrate laws.
 
-- [`docs/archive/vision_v1_to_v95.md`](docs/archive/vision_v1_to_v95.md) — original architecture vision (deprecated)
-- [`docs/archive/empirical_v45_to_v95.md`](docs/archive/empirical_v45_to_v95.md) — GSM8K WaistController era results
-- [`docs/archive/closed_loop_seven_components.md`](docs/archive/closed_loop_seven_components.md) — the seven-component framing
+---
 
-These describe what the project WAS, not what it IS. They are preserved
-as design history.
+## Roadmap
+
+**Live now.** The Property-2 K=16 curriculum run (Tier 3). The read is gated on
+the bar above; the first read was UNTESTABLE-by-restriction and the K=16 run is
+the powered retry.
+
+**Active research program (Tiers 1–2).** The hyperbolic mask generator, per
+[`docs/hyperbolic_mask_generator_spec.md`](docs/hyperbolic_mask_generator_spec.md),
+in deliberately-unbundled phases:
+
+1. **Foothold** — frozen, calibrated, per-relation fields; replication sanity
+   (byte-match the boolean mask) then N=5/6/7 generalization (does ONE field
+   serve all three N). Not yet built or tested.
+2. **The climb** — monotonic `r_k` per breath (continuous topological staging).
+3. **The ultimate** — `r = f(|z|)`, the geodesic engine, on a hierarchical DAG
+   testbed where the radial-depth bloom can actually appear.
+
+Each phase is **strictly additive and gated behind a banked result**: with
+`KENKEN_HYP_MASK` off, the forward is byte-identical to the validated executor,
+so the working engine is never at risk — the geometry only ships if it beats
+the frozen-hard-mask baseline.
+
+**Deadline.** December 25, 2026 — MATH-500.
