@@ -149,3 +149,121 @@ the goal. Then DAGs, where pooling + hierarchy actually pay.
   tangent-clamp + grad-norm logging harness (the validated relaxation rig).
 - `mycelium/kenken_llama.py`: the 512-waist + `_rms_norm_detached` seam (for §5).
 - `docs/hyperbolic_mask_generator_spec.md`: the Tier-2 spec + §8 relaxation harness + findings.
+
+---
+
+## 9. RESULTS — Brick-1 (2026-06-16): the perceiver BREATHED
+
+After 5 flatlines, the first non-refutation. The routing-bootstrap wall was a **geometric
+init problem**, not an inherent flaw — anchored, it woke up.
+
+- **Engagement GENUINE (the kill switch is alive):** read `select_norm` ~0.45 / write ~0.59
+  vs the **uniform floor 1/√S ≈ 0.14**; read entropy ~2.1 nats vs ~3.9 uniform → attention is
+  *peaked*, not flat; stable across 50 steps, grads finite. The 5-perceiver death signature
+  (routing → uniform) did NOT happen. Review independently confirmed genuine.
+- **The anchor is load-bearing:** independent-simplex base gave membership 0.008; the
+  **segment-mean of the constraint's cell tangents** lifted it to 0.785/0.883.
+- **Triangle-inequality, confirmed + handled:** single unified ball rejected at t=0
+  (membership 0.785 < 0.95 — a cell in row∩col∩cage → overlapping centroids, Tier-2 §0
+  verbatim); **data-driven fallback to per-constraint** (0.883; row/col recall 1.000 exact,
+  cage 0.847 = the per-instance floor brick-2 relaxes).
+- **Off-chance but modest, under FROZEN routing:** cell_acc 0.187→0.189 vs 0.143 chance — it
+  *breathes* (off-chance start, no chance-plateau = cured wall), it does not yet *deduce*.
+
+**Brick-1 caveats (carry into brick-2):**
+1. **Kill-metric mis-calibrated:** `select_norm` floors at 1/√S (can't reach 0), so the
+   trainer's "ALIVE if >1e-3" flag is non-discriminating (would false-positive a dead-flat
+   run). Genuine *this* time (human read vs floor + entropy), but FIX before relying on it:
+   DEAD if within ~10% of the floor / `read_max` near 1/S; ALIVE only clearly above.
+2. **Generalizability debt:** the path that trains (per-constraint) is KenKen-shaped (3
+   relation-type fields). The role-agnostic single ball — the clean "anchor to constraints,
+   not roles" story — was rejected at t=0. Brick-2 must report whether unfreezing g_φ closes
+   the 0.785→0.95 single-path gap (restoring it).
+3. **Perf/substrate ceilings:** K=8 is the AM-driver limit (K=12 HUNG the device — large-JIT
+   quirk); fp32 THINK required (fp16 overflowed at the late breath); **~23 s/step (≈9× v98)**
+   → training to v98-level (~8000 steps ≈ 50 h) is infeasible without a perf root-cause fix.
+
+## 10. Brick-2 plan (the deduction test) — per-constraint FIRST
+
+- **Goal = the TREND, not the match:** does cell_acc *clearly climb* once g_φ unfreezes, in a
+  feasible ~500–1000 steps (~3–6 h at 23 s/step). Climb → the engine deduces → then invest in
+  the perf root-cause for a full train-up. Flat (with clean routing) → can't deduce → stop.
+- **Per-constraint FIRST** (clean 0.883 routing isolates deduction), **then single-path**
+  (deduction confirmed → isolates whether g_φ closes the geometry gap). NOT single-only
+  (confounds deduction with muddy routing).
+- **Bake in:** the kill-metric recalibration (vs uniform floor) + per-step trajectory
+  persistence (JSONL in run_dir, auditable) + K=8 + fp32 THINK. `main`/v98 stays the fallback.
+
+## 11. Generalizability: paying off the per-constraint debt (factor-graph spine, derived not hardcoded)
+
+Brick-1's per-constraint fallback ({row,col,cage} 3-field) is KenKen-shaped — generalizability
+debt. The generalist resolution, in order (a *generalizability* thread, gated behind brick-2
+deduction):
+1. **Relaxed single ball first.** Does unfreezing g_φ warp the *single* unified ball enough to
+   reproduce membership (close brick-1's 0.785→0.95 gap)? If yes → χ=1, the pristine unified
+   geodesic engine (one radial axis), no fragmentation. The cleanest outcome.
+2. **Derived greedy graph-coloring (the fallback, replacing hardcoded {row,col,cage}).** If the
+   single ball is *irreducibly* triangle-bound: build the **constraint-conflict graph** (two
+   constraints adjacent iff they share a cell), **greedily color** it (NOT NP-optimal — just
+   disjoint-per-color), and give each color its own metric subspace. Within a color no two
+   constraints share a cell → each cell in ≤1 → triangle-safe by construction. For KenKen this
+   *derives* {row,col,cage} from the adjacency; for any factor graph it discovers the right
+   partition. **No grid logic, ever.**
+   - **Density-adaptive:** χ = chromatic number scales with overlap density — sparse graph → 1
+     color → the unified ball; dense (KenKen) → ~3. The unified engine is the sparse/hierarchical
+     case, which is also where hyperbolic curvature pays — the cases align.
+   - **Fragments routing, NOT the engine:** colors are separate READ/WRITE geometries, but the
+     THINK (latent self-attn) mixes across all latents of all colors → deduction stays unified;
+     only the radial-hierarchy becomes per-color (minor).
+3. **The generalist spine:** factor graph → bipartite (variables + constraints, the engine never
+   sees "row") → g_φ DeepSets placement → relaxed single ball, else derived greedy-coloring →
+   latents anchor to the right routing hubs, fully agnostic to rows/cols/grid. The DAG pivot is
+   then a *parameter* (feed its factor graph), not a rewrite.
+
+## 12. DEFERRED — the temporal axis: π-cycled aperiodic wave (SHELVED, data-gated)
+
+If §1–§11 are the **spatial** axis (the Poincaré ball + g_φ route latents to the right
+constraints), the **temporal** axis is the complementary question: how does the engine keep
+breath *k* distinct from breath *k′* so a deep recurrent chain through shared weights does not
+**phase-lock / resonate** (activations at a late breath accidentally aligning with an early one,
+trapping the deduction in a loop)? Proposed mechanism: a **π-cycled aperiodic wave** (π-RoPE) —
+an irrational-frequency phase embedded in the state so the phase signature *never* repeats,
+giving every breath a unique continuous chronological timestamp.
+
+**The architectural ruling — "discrete-marker-now, continuous-wave-when-K≫8":**
+- **Discrete temporal anchor = today.** The per-breath additive orthogonal marker `breath_embed`
+  (`perceiver_poincare.py:706-729/:365-369`; the **validated V11 champion** mechanism) already
+  gives K *discrete* orthogonal timestamps. At **K=8** (the AM-driver ceiling) eight markers
+  trivially separate eight breaths — there is no "step 50" to collide with. Phase-lock is a
+  **deep-time (large-K) pathology**; using an irrational π-wave to separate 8 steps is an atomic
+  clock for a boiled egg.
+- **Continuous temporal anchor = the unbounded-K future.** The aperiodic wave's real
+  justification is that it scales to **K ≫ 8 without enumerating K embeddings** — exactly the
+  **geodesic-engine deep-deduction regime** (`r=f(|z|)`, breath-as-radial-traversal; the deep
+  prize in CLAUDE.md §0). That is its home: where deduction depth physically demands many breaths
+  and the discrete marker set would have to grow unboundedly.
+
+**History receipts (why this is shelved, not adopted):**
+- Resonance is **real and already met**: V22 found literal head-collision resonance dips at
+  multiples of π/8; the fix that *worked* was **V23a frozen per-head pitch with max-decorrelation
+  init** — a STRUCTURAL fix, consistent with the durable rule "diversity must be structural, not
+  learned." π-cycled within-breath RoPE specifically is on the **long-abandoned** list
+  (CLAUDE.md §7). So the wave does NOT override the structural decorrelation that already solved
+  resonance — it is a *complementary continuous temporal anchor for large K*, nothing more.
+
+**Placement ruling (for when it IS motivated — do NOT wire until then):**
+- For the **phase-lock purpose** → the **THINK loop (the "Dancer", 1024-d active recurrent
+  state)**. That is where the recurrence through shared weights lives, so that is where
+  resonance would form.
+- Timestamping the **"Silhouette" (512-d) as it is written to the notebook** is a *separate*
+  function — memory ordering / branch disambiguation, a **Brick-4 (hyperbolic-MCTS notebook)**
+  concern — NOT the anti-resonance fix. Two distinct jobs; only the Dancer one is about
+  phase-lock. Neither the Dancer/Silhouette split nor the notebook exists yet (deferred bricks).
+
+**Data-driven trigger (the gate — do NOT pull this forward speculatively):** add the aperiodic
+wave ONLY when BOTH (a) K physically scales ≫ 8 (deduction depth demands it), AND (b) the data
+shows a phase-lock signature — **periodicity in the convergence-instrument JSD** or a
+**plateauing-with-cycling cell_acc** in the trajectory JSONL. Near-term hook: the brick-2
+deduction read should **scan the trajectory for periodicity/phase-lock signatures** so the
+decision to bring the wave forward is evidence-driven. Until then it stays shelved; introducing
+it would also violate one-variable-at-a-time (it would confound the g_φ deduction gate).
