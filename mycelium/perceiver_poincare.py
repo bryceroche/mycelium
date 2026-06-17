@@ -113,6 +113,22 @@ PERCEIVER_FP16_THINK = int(os.environ.get("PERCEIVER_FP16_THINK", "0")) > 0
 # JIT; bakes as a compile-time constant, NOT a float32 Tensor literal).
 PERCEIVER_THINK_RMS_EPS = float(os.environ.get("PERCEIVER_THINK_RMS_EPS", "1e-6"))
 
+# --- CONVERGENCE TOGGLE: ISOLATED per-breath RMSNorm on the THINK input, FP32.
+# The brick-2 deduction run showed the per-breath CE ladder INVERTS late: breath 0
+# has the lowest CE (best) and breath 7 the highest (worst) — the K-breath iteration
+# OVERSHOOTS/DIVERGES (later breaths degrade the answer; delta b0_CE-b7_CE ~0 early
+# -> ~-0.43 late). The accumulated latent residual grows ~K x across breaths, so its
+# scale balloons and the THINK step overshoots. An RMSNorm on the THINK input is a
+# CONTRACTION that rescales the grown residual back to unit RMS every breath, which
+# should BOUND the divergence. PERCEIVER_FP16_THINK ALREADY applies this exact renorm
+# but BUNDLED with an fp16 cast (it was built as an overflow fix, not a convergence
+# fix). This toggle ISOLATES the renorm in pure FP32 (NO fp16 cast) so the
+# convergence effect can be tested cleanly. =0 (default): byte-identical to HEAD
+# (fp32 THINK, NO renorm). =1: fp32 THINK WITH the renorm (reuses PERCEIVER_THINK_RMS_EPS).
+# PRECEDENCE: if BOTH this and PERCEIVER_FP16_THINK are set, FP16_THINK wins (its
+# fp16 path already renorms; this toggle is a no-op there).
+PERCEIVER_THINK_RENORM = int(os.environ.get("PERCEIVER_THINK_RENORM", "0")) > 0
+
 # --- PERF FIX C: DEFUSE THE WHOLE-BREATH FUSED BACKWARD. Root cause (pinned, not
 # re-derived): the breath loop has ZERO materialisation boundaries between
 # READ -> THINK -> WRITE, so autograd fuses the entire breath's backward into ONE
@@ -141,6 +157,49 @@ PERCEIVER_DEFUSE_BREATH = int(os.environ.get("PERCEIVER_DEFUSE_BREATH", "0")) > 
 # the mega-kernel, and it is the brick-2 re-freeze watch-item. =0 (default):
 # return grad_norm, byte-identical to committed HEAD. =1: drop the logged scalar.
 PERCEIVER_FAST_GRADNORM = int(os.environ.get("PERCEIVER_FAST_GRADNORM", "0")) > 0
+
+# --- TOGGLE (1): PERCEIVER_NOTEBOOK — a K-slot EXTERNAL Tensor memory the latents
+# READ from + WRITE to each breath, so the K-breath iteration ACCUMULATES state in
+# a persistent store instead of overwriting the small latent pool (the brick-2
+# K-breath iteration diverged late; a persistent store may stabilise it). Design
+# adapted from the validated v110-acc ACCUMULATE notebook (slot += gated update)
+# + the v61 multi-head-cross-attn-over-slots READ pattern + the v120/v121
+# perceiver-as-NOTEBOOK zero-init-output-projection bootstrap (the only perceiver
+# notebook that did NOT hit the routing-bootstrap wall):
+#   - a notebook of PERCEIVER_NB_SLOTS x PERCEIVER_NB_DIM, ZERO-initialised PER-BATCH
+#     (no learned init -> the path is exactly inert at t=0).
+#   - READ (each breath): latents are the QUERY, slots are the KEY/VALUE; multi-head
+#     cross-attention -> a read context added to the latent residual.
+#   - WRITE (each breath): the notebook ACCUMULATES a gated multi-head update from
+#     the latents (slot += sigmoid(gate)*update), so state persists/integrates.
+#   CRITICAL bootstrap-safety (the wall that killed 5 perceivers): BOTH output
+#   projections are ZERO-INIT -> the entire notebook path is EXACTLY 0 at t=0:
+#     * WRITE output proj (perc_nb_write_o_w/b) zero -> every slot accumulates 0 ->
+#       the slot content is purely the slot_pos seed (no write contribution).
+#     * READ output proj (perc_nb_read_o_w/b) zero -> the read context is EXACTLY 0
+#       even though the slots carry the non-zero slot_pos -> the latents are
+#       unperturbed -> BYTE-IDENTICAL to HEAD while the path is active-but-untrained.
+#   The bootstrap SEED is the SMALL-RANDOM (NON-ZERO) per-slot positional embedding
+#   perc_nb_slot_pos: the READ attends over it, so the read_o INPUT is non-zero and
+#   dL/d(read_o) is live from step 1 (a zero output proj over a NON-ZERO input still
+#   gets gradient — the proven v120 asymmetry). Self-unlocking order: read_o moves
+#   first (seeded by slot_pos) -> then write_o (its grad flows through the now-non-
+#   zero read_o). =0 (default): the ENTIRE notebook path is skipped -> byte-identical.
+PERCEIVER_NOTEBOOK = int(os.environ.get("PERCEIVER_NOTEBOOK", "0")) > 0
+PERCEIVER_NB_SLOTS = int(os.environ.get("PERCEIVER_NB_SLOTS", "24"))
+PERCEIVER_NB_DIM = int(os.environ.get("PERCEIVER_NB_DIM", "256"))
+PERCEIVER_NB_HEADS = int(os.environ.get("PERCEIVER_NB_HEADS", "4"))
+
+# --- TOGGLE (2): PERCEIVER_PI_ROPE — per-breath rotation of the THINK self-attn
+# QUERY vectors by angle k*pi/PERCEIVER_K_MAX at breath k (the v109pi Option A:
+# Q-ONLY rotation). RoPE-style 2D rotation applied to Q INSIDE _latent_layer_forward
+# at the seam where Q is formed (before the q@k scores). Rotating ONLY Q (not K)
+# makes each breath read the latent pool from a breath-dependent phase, giving the
+# K-breath iteration a learnable per-breath "clock" without touching the keys.
+# =0 (default): no rotation -> Q passes through unchanged -> BYTE-IDENTICAL to HEAD
+# (the rotation angle for breath k is threaded as a scalar; when the toggle is off
+# the rotation is skipped entirely, not applied-with-angle-0).
+PERCEIVER_PI_ROPE = int(os.environ.get("PERCEIVER_PI_ROPE", "0")) > 0
 
 
 # ---- cross-field hyperbolic distance (latents <-> cells) ---------------------
@@ -371,6 +430,86 @@ def cell_coords(model: Any, relation: str = "single") -> Tensor:
     return _exp0_map(v.cast(dtypes.float))                             # (49, dim)
 
 
+# ---- TOGGLE (1): PERCEIVER_NOTEBOOK — K-slot accumulate memory ---------------
+# Multi-head cross-attention over an external slot store (v61 read pattern) with a
+# v110-acc ACCUMULATE write (slot += gated update) and the v120/v121 zero-init
+# output-projection bootstrap. All ops are substrate-legal (no float32 literal in
+# the JIT step; single-kernel softmax; no .contiguous()/.realize() in the breath
+# loop — these helpers add none).
+
+def _nb_init_storage(Bn: int) -> Tensor:
+    """Per-batch notebook storage (Bn, n_slots, nb_dim), ZERO-init (path inert at
+    t=0; no learned init -> exactly zero contribution until the WRITE proj trains)."""
+    return Tensor.zeros((Bn, PERCEIVER_NB_SLOTS, PERCEIVER_NB_DIM), dtype=dtypes.float)
+
+
+def _nb_read(model: Any, latent_hidden: Tensor, storage: Tensor,
+             latent_valid: Tensor) -> Tensor:
+    """READ: latents (QUERY) multi-head cross-attend INTO the slots (KEY/VALUE).
+
+    latent_hidden (B,L,H); storage (B,n_slots,nb_dim). Returns a read context
+    (B,L,H) to ADD to the latent residual. At t=0 storage is all-zero -> attended
+    is zero -> read_o(0)=0 -> the context is EXACTLY 0 (byte-identical-off). read_o
+    is SMALL-RANDOM (not zero): it is the live gradient path that lets the zero-init
+    WRITE proj bootstrap.
+    """
+    Bn = int(latent_hidden.shape[0])
+    L = int(latent_hidden.shape[1])
+    nh = PERCEIVER_NB_HEADS
+    D = PERCEIVER_NB_DIM
+    hd = D // nh
+    x = latent_hidden.cast(dtypes.float)
+    slots = storage.cast(dtypes.float) + model.perc_nb_slot_pos.reshape(1, PERCEIVER_NB_SLOTS, D).cast(dtypes.float)
+    q = x @ model.perc_nb_read_q_w.cast(dtypes.float) + model.perc_nb_read_q_b.cast(dtypes.float)  # (B,L,D)
+    k = slots @ model.perc_nb_read_k_w.cast(dtypes.float) + model.perc_nb_read_k_b.cast(dtypes.float)  # (B,S,D)
+    v = slots @ model.perc_nb_read_v_w.cast(dtypes.float) + model.perc_nb_read_v_b.cast(dtypes.float)  # (B,S,D)
+    q = q.reshape(Bn, L, nh, hd).transpose(1, 2)                       # (B,nh,L,hd)
+    k = k.reshape(Bn, PERCEIVER_NB_SLOTS, nh, hd).transpose(1, 2)      # (B,nh,S,hd)
+    v = v.reshape(Bn, PERCEIVER_NB_SLOTS, nh, hd).transpose(1, 2)      # (B,nh,S,hd)
+    scores = (q @ k.transpose(-2, -1)) * (1.0 / math.sqrt(hd))         # (B,nh,L,S)
+    attn = scores.clip(-PERCEIVER_BLOCK, PERCEIVER_BLOCK).softmax(-1)
+    attended = (attn @ v).transpose(1, 2).reshape(Bn, L, D)           # (B,L,D)
+    read_ctx = attended @ model.perc_nb_read_o_w.cast(dtypes.float) + model.perc_nb_read_o_b.cast(dtypes.float)  # (B,L,H)
+    # zero the read context for pad latents (well-defined; they carry no state).
+    read_ctx = read_ctx * latent_valid.reshape(Bn, L, 1).cast(dtypes.float)
+    return read_ctx
+
+
+def _nb_write(model: Any, latent_hidden: Tensor, storage: Tensor,
+              latent_valid: Tensor) -> Tensor:
+    """WRITE (ACCUMULATE): slots (QUERY) multi-head cross-attend OVER the latents
+    (KEY/VALUE) for a per-slot update, then slot += sigmoid(gate)*update.
+
+    The slot QUERY is a learned table (perc_nb_write_slot_q (n_slots,D)); the latents
+    are the source. write_o (perc_nb_write_o_w/b) is ZERO-INIT -> update == 0 at t=0
+    -> slots stay all-zero -> byte-identical-off AND the notebook learns from a
+    NEUTRAL anchor (no random bootstrap — the wall the 5 prior perceivers hit). Pad
+    latents are blocked out of the slot attention so they contribute nothing.
+    """
+    Bn = int(latent_hidden.shape[0])
+    L = int(latent_hidden.shape[1])
+    nh = PERCEIVER_NB_HEADS
+    D = PERCEIVER_NB_DIM
+    hd = D // nh
+    x = latent_hidden.cast(dtypes.float)
+    slot_q = model.perc_nb_write_slot_q.reshape(1, PERCEIVER_NB_SLOTS, D).expand(Bn, PERCEIVER_NB_SLOTS, D).cast(dtypes.float)
+    q = slot_q @ model.perc_nb_write_q_w.cast(dtypes.float) + model.perc_nb_write_q_b.cast(dtypes.float)  # (B,S,D)
+    k = x @ model.perc_nb_write_k_w.cast(dtypes.float) + model.perc_nb_write_k_b.cast(dtypes.float)        # (B,L,D)
+    val = x @ model.perc_nb_write_v_w.cast(dtypes.float) + model.perc_nb_write_v_b.cast(dtypes.float)      # (B,L,D)
+    q = q.reshape(Bn, PERCEIVER_NB_SLOTS, nh, hd).transpose(1, 2)      # (B,nh,S,hd)
+    k = k.reshape(Bn, L, nh, hd).transpose(1, 2)                      # (B,nh,L,hd)
+    val = val.reshape(Bn, L, nh, hd).transpose(1, 2)                 # (B,nh,L,hd)
+    scores = (q @ k.transpose(-2, -1)) * (1.0 / math.sqrt(hd))        # (B,nh,S,L)
+    # block pad latents out of the slot attention (additive -BLOCK on pad keys).
+    lv_block = (latent_valid.reshape(Bn, 1, 1, L).cast(dtypes.float) - 1.0) * PERCEIVER_BLOCK
+    scores = (scores + lv_block).clip(-PERCEIVER_BLOCK, PERCEIVER_BLOCK)
+    attn = scores.softmax(-1)                                        # (B,nh,S,L)
+    attended = (attn @ val).transpose(1, 2).reshape(Bn, PERCEIVER_NB_SLOTS, D)  # (B,S,D)
+    update = attended @ model.perc_nb_write_o_w.cast(dtypes.float) + model.perc_nb_write_o_b.cast(dtypes.float)  # (B,S,D) ZERO at t=0
+    gate = model.perc_nb_write_gate.cast(dtypes.float).sigmoid().reshape(1, PERCEIVER_NB_SLOTS, 1)  # (1,S,1) in (0,1)
+    return storage.cast(dtypes.float) + gate * update                # ACCUMULATE: slot += gated update
+
+
 # ---- the breath cycle: READ -> THINK -> WRITE -> readout --------------------
 
 def perceiver_breathing_forward(model: Any, batch: Any, K: int,
@@ -490,6 +629,10 @@ def perceiver_breathing_forward(model: Any, batch: Any, K: int,
     # cells = the WRITE source's QUERY field; cell_hidden starts as the embedding.
     cell_hidden = cell_embed                                          # (B,49,H)
 
+    # TOGGLE (1): allocate the per-batch ACCUMULATE notebook (zero-init -> inert at
+    # t=0). When PERCEIVER_NOTEBOOK=0 the whole path is skipped (byte-identical HEAD).
+    nb_storage = _nb_init_storage(Bn) if PERCEIVER_NOTEBOOK else None
+
     for k in range(K):
         # === READ: each latent attends to cells via -d_hyp(z_latent, z_cell). ===
         be_k = breath_embed[k].reshape(1, 1, -1).cast(dtypes.float)   # (1,1,H)
@@ -500,6 +643,12 @@ def perceiver_breathing_forward(model: Any, batch: Any, K: int,
         if PERCEIVER_DEFUSE_BREATH:
             ctx_l = ctx_l.contiguous()
         latent_in = latent_hidden + ctx_l + be_k                     # (B,L,H)
+        # TOGGLE (1) READ: latents cross-attend INTO the notebook slots; the read
+        # context is added to the latent residual. At t=0 the slots are all-zero
+        # (and stay zero — write_o is zero-init), so this adds EXACTLY 0.
+        if PERCEIVER_NOTEBOOK:
+            nb_read_ctx = _nb_read(model, latent_hidden, nb_storage, latent_valid)  # (B,L,H), 0 at t=0
+            latent_in = latent_in + nb_read_ctx
         latent_in = latent_in * latent_valid.reshape(Bn, L, 1)        # zero pad latents
 
         # === THINK: latent self-attention through the shared Pythia L0-L3. ===
@@ -523,12 +672,30 @@ def perceiver_breathing_forward(model: Any, batch: Any, K: int,
             # before the fp16 cast prevents the breath-11 fp16 overflow at the
             # source. PERCEIVER_THINK_RMS_EPS is a Python float scalar (legal in
             # JIT — bakes as a compile-time constant, NOT a float32 Tensor literal).
+            # PRECEDENCE: FP16_THINK wins over THINK_RENORM (this fp16 path already
+            # renorms; the THINK_RENORM toggle is a no-op when FP16_THINK is set).
             rms = (latent_in.square().mean(axis=-1, keepdim=True) + PERCEIVER_THINK_RMS_EPS).rsqrt()
             h = (latent_in * rms).cast(dtypes.half)
+        elif PERCEIVER_THINK_RENORM:
+            # ISOLATED FP32 renorm (the convergence test): the SAME single-kernel
+            # RMSNorm as the fp16 path but with NO fp16 cast — stay fp32. The
+            # accumulated latent residual grows ~K x across breaths; renormalising
+            # to unit RMS before the THINK contracts that growth, which should bound
+            # the late-breath CE-ladder inversion (overshoot/divergence). Placed at
+            # the EXACT seam the fp16 path uses. PERCEIVER_THINK_RMS_EPS is a Python
+            # float scalar (legal in JIT — bakes as a compile-time constant, NOT a
+            # float32 Tensor literal). Single-kernel RMSNorm; no float32 literal.
+            rms = (latent_in.square().mean(axis=-1, keepdim=True) + PERCEIVER_THINK_RMS_EPS).rsqrt()
+            h = (latent_in * rms).cast(dtypes.float)
         else:
             h = latent_in.cast(dtypes.float)
+        # TOGGLE (2) PI-ROPE: per-breath Q-only rotation angle = k*pi/K_max (v109pi
+        # Option A). Python float scalar -> bakes as a compile-time constant in the
+        # JIT step (NOT a float32 Tensor literal). None -> rotation skipped entirely
+        # in _latent_layer_forward (byte-identical-off, NOT applied-with-angle-0).
+        pi_rope_angle = (k * math.pi / float(K_max)) if PERCEIVER_PI_ROPE else None
         for layer in layers[:4]:
-            h = _latent_layer_forward(layer, h, attn_bias)
+            h = _latent_layer_forward(layer, h, attn_bias, pi_rope_angle)
         # DEFUSE seam (b) — HIGHEST-LEVERAGE: realize-barrier on the THINK output
         # at the THINK/WRITE boundary (the seam the eater name 5423 arg 439 shows
         # fused). This is the cut that fragments the monolithic occ-0 mega-kernel.
@@ -544,6 +711,13 @@ def perceiver_breathing_forward(model: Any, batch: Any, K: int,
         gate_k = model.perc_delta_gate[k].cast(dtypes.float).reshape(1, 1, 1)
         latent_hidden = latent_hidden + gate_k * (h - latent_hidden)  # (B,L,H)
         latent_hidden = latent_hidden * latent_valid.reshape(Bn, L, 1)
+
+        # === NOTEBOOK WRITE (TOGGLE 1, ACCUMULATE): slots += gated update from the
+        # post-THINK latents (slot += sigmoid(gate)*write_o(...)). write_o is zero-
+        # init -> the update is EXACTLY 0 at t=0 -> the slots stay all-zero forever
+        # until write_o trains -> byte-identical-off + neutral-anchor bootstrap. ===
+        if PERCEIVER_NOTEBOOK:
+            nb_storage = _nb_write(model, latent_hidden, nb_storage, latent_valid)
 
         # === WRITE: each cell attends to latents via -d_hyp(z_cell, z_latent). ===
         ctx_c, write_attn = _cross_attend(d_write, latent_hidden, latent_valid, tau)  # (B,49,H),(B,49,L)
@@ -591,11 +765,41 @@ def _latent_self_attn_bias(latent_valid: Tensor, n_heads: int) -> Tensor:
     return bias.contiguous()
 
 
-def _latent_layer_forward(layer: Any, x: Tensor, attn_bias: Tensor) -> Tensor:
-    """One Pythia L0-L3 layer over the LATENT field (full self-attn, no RoPE).
+def _pi_rope_rotate_q(q: Tensor, angle: float) -> Tensor:
+    """Per-breath Q-only RoPE-style rotation by a SINGLE breath-dependent angle
+    (v109pi Option A). q: (B, n_heads, L, head_dim). Splits head_dim into adjacent
+    (even, odd) 2D pairs and rotates each pair by the SAME scalar `angle` (a Python
+    float -> bakes as a compile-time const in the JIT, NOT a float32 Tensor literal;
+    cos/sin are Python math, so no dtype literal enters the graph). Q-only: K is
+    untouched, so breath k reads the latent pool from a rotated phase.
+    """
+    hd = int(q.shape[-1])
+    half = hd // 2
+    cos = math.cos(angle)
+    sin = math.sin(angle)
+    q_even = q[..., 0:2 * half:2]                                     # (B,nh,L,half)
+    q_odd = q[..., 1:2 * half:2]                                      # (B,nh,L,half)
+    rot_even = q_even * cos - q_odd * sin
+    rot_odd = q_even * sin + q_odd * cos
+    # interleave the rotated pairs back to (..., 2*half); stack on a new last axis
+    # then flatten the trailing (half,2) -> (2*half). If hd is odd, append the tail.
+    rot = Tensor.stack(rot_even, rot_odd, dim=-1).reshape(*q.shape[:-1], 2 * half)
+    if hd > 2 * half:
+        rot = Tensor.cat(rot, q[..., 2 * half:], dim=-1)
+    return rot
+
+
+def _latent_layer_forward(layer: Any, x: Tensor, attn_bias: Tensor,
+                          pi_rope_angle: float | None = None) -> Tensor:
+    """One Pythia L0-L3 layer over the LATENT field (full self-attn, no base RoPE).
 
     Mirror of kenken_layer_forward but over the (B, L, H) latent field instead of
     (B, 49, H) cells — the THINK step. Pythia-init shared weights, same every breath.
+
+    pi_rope_angle (TOGGLE 2, PERCEIVER_PI_ROPE): if not None, rotate ONLY Q by this
+    breath-dependent angle (Q-only per-breath rotation, v109pi Option A) AFTER the Q
+    projection + reshape, BEFORE the q@k scores. None (default) -> Q unchanged ->
+    byte-identical to HEAD.
     """
     cfg = layer.cfg
     Bn, L, H = x.shape
@@ -608,6 +812,11 @@ def _latent_layer_forward(layer: Any, x: Tensor, attn_bias: Tensor) -> Tensor:
     q = (attn_in_dt @ layer.wq + layer.bq).reshape(Bn, L, cfg.n_heads, cfg.head_dim).transpose(1, 2)
     k = (attn_in_dt @ layer.wk + layer.bk).reshape(Bn, L, cfg.n_heads, cfg.head_dim).transpose(1, 2)
     v = (attn_in_dt @ layer.shared.wv + layer.shared.bv).reshape(Bn, L, cfg.n_heads, cfg.head_dim).transpose(1, 2)
+
+    # TOGGLE (2) PI-ROPE: rotate ONLY Q by the per-breath angle (Q-only, v109pi
+    # Option A). Skipped entirely when angle is None (byte-identical-off).
+    if pi_rope_angle is not None:
+        q = _pi_rope_rotate_q(q, pi_rope_angle)
 
     scale = 1.0 / math.sqrt(cfg.head_dim)
     scores = q @ k.transpose(-2, -1) * scale                         # (B,n_heads,L,L)
@@ -845,6 +1054,13 @@ def attach_perceiver_params(model: Any, hidden: int, n_heads: int,
     model.perc_n_global = int(PERCEIVER_N_GLOBAL)
     model.perc_dim = int(dim)
 
+    # ---- TOGGLE (1) NOTEBOOK params (ALWAYS allocated so the state_dict/param-list
+    # shapes are consistent across runs; the path is gated OFF by PERCEIVER_NOTEBOOK
+    # and is inert when off). WRITE output proj is ZERO-INIT (the byte-identical-off
+    # + neutral-anchor guarantee); READ output proj is SMALL-RANDOM (the live grad
+    # path that bootstraps the zero-init WRITE proj). ----
+    attach_perceiver_notebook_params(model, hidden)
+
     # ---- g_phi DeepSets encoder (zero-init rho last layer -> g_phi==0 at t=0) ----
     attach_perceiver_gphi_params(model, dim=dim)
 
@@ -930,6 +1146,105 @@ def attach_perceiver_gphi_params(model: Any, dim: int,
     model.perc_gphi_rho_w, model.perc_gphi_rho_b = _mlp(rho_dims, zero_last=True)
 
 
+def attach_perceiver_notebook_params(model: Any, hidden: int) -> None:
+    """TOGGLE (1) NOTEBOOK params: a K-slot ACCUMULATE memory the latents read/write.
+
+    READ  (latents=Q, slots=K/V): q/k/v_w (H->D / D->D) + read_o (D->H). read_o is
+          ZERO-INIT -> the read context is EXACTLY 0 at t=0 (byte-identical-off), but
+          its INPUT (attended-over-the-non-zero slot_pos seed) is non-zero, so
+          dL/d(read_o) is live from step 1 -> read_o bootstraps FIRST.
+    WRITE (slots=Q via a learned slot-query table, latents=K/V): q/k/v_w + write_o
+          (D->D). write_o is ZERO-INIT — at t=0 every slot accumulates EXACTLY 0, so
+          the slot content is purely slot_pos (no write contribution) and the WRITE
+          learns from a neutral anchor. write_o bootstraps SECOND (its grad flows
+          through read_o, which must be non-zero first).
+    slot_pos: a learned per-slot positional embedding (SMALL-RANDOM, NON-ZERO; added
+          to the slots before the READ K/V projection). Breaks slot permutation
+          symmetry AND is the bootstrap SEED — the non-zero KV content that makes
+          read_o's gradient live at t=0 (the v120 asymmetry re-derived for a notebook
+          whose storage is zero-init: SOMETHING the READ sees must be non-zero; here
+          it is slot_pos). The read context is still EXACTLY 0 (read_o zero-init).
+    write_slot_q: the learned per-slot WRITE query table (small random).
+    write_gate: per-slot accumulate gate (sigmoid -> (0,1); init -2.0 so the gate is
+          ~0.12 at t=0 — a small, stable accumulate step; irrelevant until write_o
+          trains since write_o=0 zeroes the update it gates).
+    The storage itself is NOT a param (zero-init per-batch in _nb_init_storage). Both
+    OUTPUT projections (read_o, write_o) are ZERO-INIT -> the entire notebook path is
+    EXACTLY 0 at t=0 -> byte-identical to HEAD whether the toggle is off OR on-untrained.
+    """
+    D = PERCEIVER_NB_DIM
+    S = PERCEIVER_NB_SLOTS
+    assert D % PERCEIVER_NB_HEADS == 0, \
+        f"PERCEIVER_NB_DIM={D} must be divisible by PERCEIVER_NB_HEADS={PERCEIVER_NB_HEADS}"
+    rng = np.random.RandomState(20260617)
+
+    def _w(din: int, dout: int, zero: bool) -> Tensor:
+        if zero:
+            arr = np.zeros((din, dout), dtype=np.float32)
+        else:
+            arr = (rng.randn(din, dout) * (1.0 / math.sqrt(din))).astype(np.float32)
+        return Tensor(arr, dtype=dtypes.float).contiguous()
+
+    def _b(d: int) -> Tensor:
+        return Tensor.zeros((d,), dtype=dtypes.float).contiguous()
+
+    # READ: latents (H) -> Q (D); slots (D) -> K/V (D); attended (D) -> read_o (H).
+    model.perc_nb_read_q_w = _w(hidden, D, zero=False)
+    model.perc_nb_read_q_b = _b(D)
+    model.perc_nb_read_k_w = _w(D, D, zero=False)
+    model.perc_nb_read_k_b = _b(D)
+    model.perc_nb_read_v_w = _w(D, D, zero=False)
+    model.perc_nb_read_v_b = _b(D)
+    # read_o ZERO-INIT (output dim = hidden, added to latents) -> the read context
+    # is EXACTLY 0 at t=0 even though the slots carry the non-zero slot_pos seed
+    # (byte-identical-off). read_o is the FIRST proj to bootstrap: its INPUT
+    # (attended-over-slot_pos) is non-zero, so dL/d(read_o) is non-zero from step 1
+    # (the v120 asymmetry: a zero output proj over a NON-ZERO input still gets grad).
+    model.perc_nb_read_o_w = _w(D, hidden, zero=True)
+    model.perc_nb_read_o_b = _b(hidden)
+
+    # WRITE: slot-query table (S,D); slots->Q, latents (H)->K/V; attended (D)->write_o.
+    model.perc_nb_write_slot_q = Tensor(
+        (rng.randn(S, D) * 0.02).astype(np.float32), dtype=dtypes.float).contiguous()
+    model.perc_nb_write_q_w = _w(D, D, zero=False)
+    model.perc_nb_write_q_b = _b(D)
+    model.perc_nb_write_k_w = _w(hidden, D, zero=False)
+    model.perc_nb_write_k_b = _b(D)
+    model.perc_nb_write_v_w = _w(hidden, D, zero=False)
+    model.perc_nb_write_v_b = _b(D)
+    # write_o ZERO-INIT — THE bootstrap-safety guarantee (slots stay zero at t=0).
+    model.perc_nb_write_o_w = _w(D, D, zero=True)
+    model.perc_nb_write_o_b = _b(D)
+    # per-slot accumulate gate: init -2.0 -> sigmoid ~ 0.12 (small, stable step).
+    model.perc_nb_write_gate = Tensor(
+        (np.ones((S,), dtype=np.float32) * -2.0), dtype=dtypes.float).contiguous()
+    # learned per-slot positional embedding (small random; breaks slot symmetry).
+    model.perc_nb_slot_pos = Tensor(
+        (rng.randn(S, D) * 0.02).astype(np.float32), dtype=dtypes.float).contiguous()
+
+
+def perceiver_notebook_parameters(model: Any) -> list[Tensor]:
+    """TOGGLE (1) NOTEBOOK trainable tensors as a flat list. Returned only when the
+    notebook path is ACTIVE (PERCEIVER_NOTEBOOK=1); when off the path has no grad
+    path, so including them would trip AdamW's grad-is-None assert (the same path-
+    awareness perceiver_parameters uses for the inactive ball-path cell field)."""
+    if not hasattr(model, "perc_nb_write_o_w"):
+        return []
+    return [
+        model.perc_nb_read_q_w, model.perc_nb_read_q_b,
+        model.perc_nb_read_k_w, model.perc_nb_read_k_b,
+        model.perc_nb_read_v_w, model.perc_nb_read_v_b,
+        model.perc_nb_read_o_w, model.perc_nb_read_o_b,
+        model.perc_nb_write_slot_q,
+        model.perc_nb_write_q_w, model.perc_nb_write_q_b,
+        model.perc_nb_write_k_w, model.perc_nb_write_k_b,
+        model.perc_nb_write_v_w, model.perc_nb_write_v_b,
+        model.perc_nb_write_o_w, model.perc_nb_write_o_b,
+        model.perc_nb_write_gate,
+        model.perc_nb_slot_pos,
+    ]
+
+
 def perceiver_parameters(model: Any, ball_path: str = "single") -> list[Tensor]:
     """Trainable perceiver params for the ACTIVE ball-path. Cell coords ARE trained
     (the cells learn their factor-graph positions; the anchor is the t=0 init) +
@@ -954,6 +1269,10 @@ def perceiver_parameters(model: Any, ball_path: str = "single") -> list[Tensor]:
         model.perc_position_embed,
     ]
     params += perceiver_gphi_parameters(model)
+    # TOGGLE (1): only train the notebook tensors when the path is ACTIVE (else no
+    # grad path -> AdamW grad-is-None assert). The tensors are always allocated.
+    if PERCEIVER_NOTEBOOK:
+        params += perceiver_notebook_parameters(model)
     return params
 
 
@@ -1050,4 +1369,28 @@ def perceiver_state_dict(model: Any) -> dict[str, Tensor]:
     for i, (W, b) in enumerate(zip(model.perc_gphi_rho_w, model.perc_gphi_rho_b)):
         sd[f"perc.gphi_rho_w{i}"] = W
         sd[f"perc.gphi_rho_b{i}"] = b
+    # TOGGLE (1) NOTEBOOK params (always persisted — allocated regardless of the
+    # toggle so a notebook-on resume can warm-start from a notebook-off ckpt).
+    if hasattr(model, "perc_nb_write_o_w"):
+        sd.update({
+            "perc.nb_read_q_w": model.perc_nb_read_q_w,
+            "perc.nb_read_q_b": model.perc_nb_read_q_b,
+            "perc.nb_read_k_w": model.perc_nb_read_k_w,
+            "perc.nb_read_k_b": model.perc_nb_read_k_b,
+            "perc.nb_read_v_w": model.perc_nb_read_v_w,
+            "perc.nb_read_v_b": model.perc_nb_read_v_b,
+            "perc.nb_read_o_w": model.perc_nb_read_o_w,
+            "perc.nb_read_o_b": model.perc_nb_read_o_b,
+            "perc.nb_write_slot_q": model.perc_nb_write_slot_q,
+            "perc.nb_write_q_w": model.perc_nb_write_q_w,
+            "perc.nb_write_q_b": model.perc_nb_write_q_b,
+            "perc.nb_write_k_w": model.perc_nb_write_k_w,
+            "perc.nb_write_k_b": model.perc_nb_write_k_b,
+            "perc.nb_write_v_w": model.perc_nb_write_v_w,
+            "perc.nb_write_v_b": model.perc_nb_write_v_b,
+            "perc.nb_write_o_w": model.perc_nb_write_o_w,
+            "perc.nb_write_o_b": model.perc_nb_write_o_b,
+            "perc.nb_write_gate": model.perc_nb_write_gate,
+            "perc.nb_slot_pos": model.perc_nb_slot_pos,
+        })
     return sd

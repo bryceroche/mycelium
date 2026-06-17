@@ -51,7 +51,8 @@ from mycelium.perceiver_poincare import (
     PERCEIVER_K_MAX, PERCEIVER_TAU, PERCEIVER_RHO, PERCEIVER_DIM,
     PERCEIVER_N_GLOBAL,
     PERCEIVER_HOIST_BIAS, PERCEIVER_FP16_THINK, PERCEIVER_DEFUSE_BREATH,
-    PERCEIVER_FAST_GRADNORM,
+    PERCEIVER_FAST_GRADNORM, PERCEIVER_THINK_RENORM,
+    PERCEIVER_NOTEBOOK, PERCEIVER_PI_ROPE,
     attach_perceiver_params, perceiver_parameters, perceiver_state_dict,
     perceiver_breathing_forward, t0_anchor_check, clamp_perceiver_tangent_norms,
     perceiver_gphi_parameters, perceiver_active_cell_coords,
@@ -129,10 +130,20 @@ def _compile_step(model, opt, K: int, B: int, L: int, ball_path: str,
     # breath backward), so they must each compile their own graph — no silent
     # retrace. DEFUSE_BREATH changes ONLY fusion grouping (byte-identical values),
     # but the realize barriers produce a different kernel graph, so it must key.
+    # THINK_RENORM adds an fp32 RMSNorm op at the THINK seam (different graph body
+    # vs the no-renorm fp32 path), so it must key too — otherwise an =1 run would
+    # silently reuse the =0 (no-renorm) graph.
+    # PERCEIVER_NOTEBOOK adds the READ/WRITE notebook cross-attn ops (+ the K-slot
+    # accumulate carry) to the breath body; PERCEIVER_PI_ROPE adds the per-breath
+    # Q-only rotation in the THINK attention. Each builds a structurally DIFFERENT
+    # graph (extra ops / extra closed-over params), so both MUST key — an =1 run
+    # must not silently reuse the =0 graph.
     key = (id(model), id(opt), int(K), int(B), int(L), str(ball_path),
            float(constraint_weight), float(grad_clip),
            bool(PERCEIVER_HOIST_BIAS), bool(PERCEIVER_FP16_THINK),
-           bool(PERCEIVER_DEFUSE_BREATH), bool(PERCEIVER_FAST_GRADNORM))
+           bool(PERCEIVER_DEFUSE_BREATH), bool(PERCEIVER_FAST_GRADNORM),
+           bool(PERCEIVER_THINK_RENORM),
+           bool(PERCEIVER_NOTEBOOK), bool(PERCEIVER_PI_ROPE))
     if key in _JIT_CACHE:
         return _JIT_CACHE[key]
 
