@@ -95,6 +95,53 @@ PERCEIVER_NORM_CLAMP = KENKEN_HYP_NORM_CLAMP
 PERCEIVER_ARG_MIN = KENKEN_HYP_ARG_MIN
 PERCEIVER_BLOCK = 1e4
 
+# --- PERF FIX A: hoist the loop-invariant latent self-attn bias out of the
+# K-breath loop. latent_valid is loop-invariant (extracted once, never mutated
+# inside the loop), so _latent_self_attn_bias is byte-identical every breath.
+# Building it once (mirroring v98 kenken.py:1121) eliminates K-1 per-breath
+# np.eye host->GPU uploads + K-1 .contiguous() fusion barriers. =0 (default):
+# rebuild in-loop, byte-identical to committed HEAD. =1: hoist before the loop.
+PERCEIVER_HOIST_BIAS = int(os.environ.get("PERCEIVER_HOIST_BIAS", "0")) > 0
+
+# --- PERF FIX B: run the 4-layer Pythia THINK in fp16 activations (AMD packed
+# fp16 GEMM path, ~2x throughput, matching v98 kenken.py:1141) WITH a per-breath
+# RMSNorm renorm on the accumulated latent residual (the fix for the breath-11
+# fp16 overflow — the residual grows ~K x across breaths). =0 (default): fp32
+# THINK + NO renorm, byte-identical to committed HEAD. =1: fp16 THINK + renorm.
+PERCEIVER_FP16_THINK = int(os.environ.get("PERCEIVER_FP16_THINK", "0")) > 0
+# RMSNorm epsilon for the fp16 renorm (Python float scalar — substrate-legal in
+# JIT; bakes as a compile-time constant, NOT a float32 Tensor literal).
+PERCEIVER_THINK_RMS_EPS = float(os.environ.get("PERCEIVER_THINK_RMS_EPS", "1e-6"))
+
+# --- PERF FIX C: DEFUSE THE WHOLE-BREATH FUSED BACKWARD. Root cause (pinned, not
+# re-derived): the breath loop has ZERO materialisation boundaries between
+# READ -> THINK -> WRITE, so autograd fuses the entire breath's backward into ONE
+# monolithic fp32 reduction mega-kernel (AMD knum 5423, arg 439) that runs at
+# occupancy 0 / ~1 GFLOP/s = 44% of the 22.1 s/step (all occ-0 kernels = 95%).
+# v98 (kenken.py) does NOT collapse because it materialises per-stage, so its
+# backward stays many small occ-5-39 kernels (step 0.84 s). FIX: insert
+# .contiguous() at the three breath seams (READ ctx, THINK output, WRITE ctx).
+# .contiguous() is a REALIZE BARRIER — it changes ONLY fusion grouping, NOT
+# values, so fwd+bwd are byte-identical; it just fragments the mega-kernel into
+# the small per-stage kernels that tile well. Substrate-legal (no float32 literal,
+# no per-param isnan). =0 (default): NONE fire, byte-identical to committed HEAD.
+PERCEIVER_DEFUSE_BREATH = int(os.environ.get("PERCEIVER_DEFUSE_BREATH", "0")) > 0
+
+# --- PERF FIX D: do NOT MATERIALISE the all-param grad_norm as a JIT output.
+# Root cause (pinned, controlled A/B + single-output ablation; NOT re-derived):
+# the all-param grad-clip sq_sum over the 31.6M param-grads is CHEAP when it is
+# CONSUMED IN-GRAPH (it feeds the clip's clip_coef, so it tiles into the backward),
+# but it becomes a standalone occ-0 reduction MEGA-KERNEL the moment grad_norm is
+# forced to MATERIALISE as a RETURNED scalar (ablation: omit grad_norm -> 0.35 s;
+# +grad_norm realized -> 24.07 s; all other outputs cost <=0.5 s combined). FIX:
+# keep the in-graph grad-clip EXACTLY as HEAD (compute the norm, scale the grads ->
+# training byte-identical), but when =1 DROP grad_norm from the return tuple / the
+# packed-log stack so the sq_sum is consumed for the clip and never realized. The
+# small g_phi-only grad norm (~0.1M params) is KEPT — it is a tiny reduction, not
+# the mega-kernel, and it is the brick-2 re-freeze watch-item. =0 (default):
+# return grad_norm, byte-identical to committed HEAD. =1: drop the logged scalar.
+PERCEIVER_FAST_GRADNORM = int(os.environ.get("PERCEIVER_FAST_GRADNORM", "0")) > 0
+
 
 # ---- cross-field hyperbolic distance (latents <-> cells) ---------------------
 # kenken._d_hyp_pairwise is WITHIN one field (M,M). The perceiver needs a CROSS
@@ -430,6 +477,16 @@ def perceiver_breathing_forward(model: Any, batch: Any, K: int,
     cell_logits_history = []
     engagement_history = []
 
+    # PERF FIX A: hoist the loop-invariant latent self-attn bias BEFORE the loop
+    # (latent_valid is loop-invariant — extracted at the top, never mutated in the
+    # loop body, which writes only latent_hidden/cell_hidden + appends to history).
+    # Same pattern v98 uses (build_kenken_attn_bias hoisted before the loop at
+    # kenken.py:1121). Pays the np.eye upload + .contiguous() barrier ONCE instead
+    # of K times, eliminating K-1 forced materialisation barriers that break
+    # cross-breath kernel fusion. Numerically identical (pure loop-invariant CSE).
+    if PERCEIVER_HOIST_BIAS:
+        attn_bias = _latent_self_attn_bias(latent_valid, cfg.n_heads)  # (B,n_heads,L,L)
+
     # cells = the WRITE source's QUERY field; cell_hidden starts as the embedding.
     cell_hidden = cell_embed                                          # (B,49,H)
 
@@ -437,6 +494,11 @@ def perceiver_breathing_forward(model: Any, batch: Any, K: int,
         # === READ: each latent attends to cells via -d_hyp(z_latent, z_cell). ===
         be_k = breath_embed[k].reshape(1, 1, -1).cast(dtypes.float)   # (1,1,H)
         ctx_l, read_attn = _cross_attend(d_read, cell_hidden, cell_valid, tau)  # (B,L,H),(B,L,49)
+        # DEFUSE seam (a): realize-barrier on the READ context so the READ backward
+        # cannot fuse into the THINK backward. Byte-identical (.contiguous() = pure
+        # fusion-grouping barrier, no value change). See PERCEIVER_DEFUSE_BREATH.
+        if PERCEIVER_DEFUSE_BREATH:
+            ctx_l = ctx_l.contiguous()
         latent_in = latent_hidden + ctx_l + be_k                     # (B,L,H)
         latent_in = latent_in * latent_valid.reshape(Bn, L, 1)        # zero pad latents
 
@@ -444,20 +506,53 @@ def perceiver_breathing_forward(model: Any, batch: Any, K: int,
         # Full self-attn over latents (a latent attends to all VALID latents). The
         # mask is per-batch (latent validity). delta_gate-style residual: the THINK
         # output BLENDS with the prior latent state (perceiver residual). The latent
-        # field is SMALL (L~59 vs 49 cells), so the THINK runs in FP32 — fp16 carry
-        # overflowed (max ~65504) on the LATE breaths (the residual stream grows
-        # across the 4-layer stack + K breaths -> breath-11 NaN in the fp16 path).
-        # fp32 here is cheap (small L) and eliminates the overflow at the source.
-        attn_bias = _latent_self_attn_bias(latent_valid, cfg.n_heads)  # (B,n_heads,L,L)
-        h = latent_in.cast(dtypes.float)
+        # field is SMALL (L~59 vs 49 cells), so the THINK runs in FP32 by default —
+        # fp16 carry overflowed (max ~65504) on the LATE breaths (the residual stream
+        # grows ~K x across the 4-layer stack + K breaths -> breath-11 NaN). PERF
+        # FIX B (PERCEIVER_FP16_THINK=1) runs the THINK in fp16 (~2x AMD throughput)
+        # and tames that overflow with a per-breath RMSNorm renorm on the latent
+        # residual BEFORE the fp16 cast (the renorm rescales the grown residual back
+        # to unit RMS, so the fp16 softmax inputs stay bounded at every breath).
+        # PERF FIX A (PERCEIVER_HOIST_BIAS): the bias is loop-invariant. When =1 it
+        # was hoisted before the loop; when =0 rebuild it here (byte-identical HEAD).
+        if not PERCEIVER_HOIST_BIAS:
+            attn_bias = _latent_self_attn_bias(latent_valid, cfg.n_heads)  # (B,n_heads,L,L)
+        if PERCEIVER_FP16_THINK:
+            # Single-kernel RMSNorm renorm on the accumulated latent residual: the
+            # residual grows ~K x across breaths, so renormalising to unit RMS
+            # before the fp16 cast prevents the breath-11 fp16 overflow at the
+            # source. PERCEIVER_THINK_RMS_EPS is a Python float scalar (legal in
+            # JIT — bakes as a compile-time constant, NOT a float32 Tensor literal).
+            rms = (latent_in.square().mean(axis=-1, keepdim=True) + PERCEIVER_THINK_RMS_EPS).rsqrt()
+            h = (latent_in * rms).cast(dtypes.half)
+        else:
+            h = latent_in.cast(dtypes.float)
         for layer in layers[:4]:
             h = _latent_layer_forward(layer, h, attn_bias)
+        # DEFUSE seam (b) — HIGHEST-LEVERAGE: realize-barrier on the THINK output
+        # at the THINK/WRITE boundary (the seam the eater name 5423 arg 439 shows
+        # fused). This is the cut that fragments the monolithic occ-0 mega-kernel.
+        # Placed BEFORE the fp32 cast so it barriers the raw THINK output in either
+        # dtype path. Byte-identical (.contiguous() = pure fusion-grouping barrier).
+        if PERCEIVER_DEFUSE_BREATH:
+            h = h.contiguous()
+        # Cast the THINK output back to fp32 for the delta-gate blend so the
+        # persistent latent_hidden residual is ALWAYS accumulated in fp32 (the
+        # state that grows across K breaths). In the fp32 path h is already fp32
+        # and this cast is a no-op (byte-identical to HEAD).
+        h = h.cast(dtypes.float)
         gate_k = model.perc_delta_gate[k].cast(dtypes.float).reshape(1, 1, 1)
         latent_hidden = latent_hidden + gate_k * (h - latent_hidden)  # (B,L,H)
         latent_hidden = latent_hidden * latent_valid.reshape(Bn, L, 1)
 
         # === WRITE: each cell attends to latents via -d_hyp(z_cell, z_latent). ===
         ctx_c, write_attn = _cross_attend(d_write, latent_hidden, latent_valid, tau)  # (B,49,H),(B,49,L)
+        # DEFUSE seam (c): realize-barrier on the WRITE context so the WRITE
+        # backward cannot fuse back into the THINK backward (and so the next
+        # breath's READ starts from a materialised cell state). Byte-identical
+        # (.contiguous() = pure fusion-grouping barrier). See PERCEIVER_DEFUSE_BREATH.
+        if PERCEIVER_DEFUSE_BREATH:
+            ctx_c = ctx_c.contiguous()
         cell_hidden = cell_embed + ctx_c                            # (B,49,H) re-read latents
         cell_hidden = cell_hidden * cell_valid.reshape(Bn, N_CELLS, 1)
 

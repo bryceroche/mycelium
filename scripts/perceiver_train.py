@@ -50,6 +50,8 @@ from mycelium.kenken import kenken_constraint_energy, kenken_accuracy, convergen
 from mycelium.perceiver_poincare import (
     PERCEIVER_K_MAX, PERCEIVER_TAU, PERCEIVER_RHO, PERCEIVER_DIM,
     PERCEIVER_N_GLOBAL,
+    PERCEIVER_HOIST_BIAS, PERCEIVER_FP16_THINK, PERCEIVER_DEFUSE_BREATH,
+    PERCEIVER_FAST_GRADNORM,
     attach_perceiver_params, perceiver_parameters, perceiver_state_dict,
     perceiver_breathing_forward, t0_anchor_check, clamp_perceiver_tangent_norms,
     perceiver_gphi_parameters, perceiver_active_cell_coords,
@@ -121,8 +123,16 @@ def _compile_step(model, opt, K: int, B: int, L: int, ball_path: str,
     discriminator) and the g_phi grad norm + max|z| (the now-unfrozen routing's
     liveness probes). All computed in-graph from the validity masks + grads.
     """
+    # PERF FIX A/B/C toggles in the cache key: each (HOIST_BIAS, FP16_THINK,
+    # DEFUSE_BREATH) config builds a structurally DIFFERENT graph (hoisted vs
+    # in-loop bias; fp32 vs fp16 THINK + renorm; fused vs .contiguous()-fragmented
+    # breath backward), so they must each compile their own graph — no silent
+    # retrace. DEFUSE_BREATH changes ONLY fusion grouping (byte-identical values),
+    # but the realize barriers produce a different kernel graph, so it must key.
     key = (id(model), id(opt), int(K), int(B), int(L), str(ball_path),
-           float(constraint_weight), float(grad_clip))
+           float(constraint_weight), float(grad_clip),
+           bool(PERCEIVER_HOIST_BIAS), bool(PERCEIVER_FP16_THINK),
+           bool(PERCEIVER_DEFUSE_BREATH), bool(PERCEIVER_FAST_GRADNORM))
     if key in _JIT_CACHE:
         return _JIT_CACHE[key]
 
@@ -283,10 +293,20 @@ def _compile_step(model, opt, K: int, B: int, L: int, ball_path: str,
 
         opt.step()
 
-        return (
+        # PERF FIX D (PERCEIVER_FAST_GRADNORM): the in-graph grad-clip ABOVE is
+        # byte-identical either way (grad_norm is still computed and STILL drives
+        # clip_coef -> the grads are scaled identically). The ONLY difference is
+        # whether grad_norm is MATERIALISED as a returned scalar. When =1 it is
+        # OMITTED from the return tuple (so the all-param sq_sum stays consumed
+        # in-graph for the clip and never becomes the standalone occ-0 mega-kernel).
+        # gphi_grad_norm (small ~0.1M-param reduction, the brick-2 watch-item) is
+        # KEPT in both modes.
+        head = (
             total.realize(), healthy.realize(), cell_loss.realize(),
             energy.realize(), train_cell_acc.realize(), train_puzzle_acc.realize(),
-            grad_norm.realize(),
+        )
+        gn = () if PERCEIVER_FAST_GRADNORM else (grad_norm.realize(),)
+        tail = (
             eng_read_sel.realize(), eng_read_ent.realize(), eng_read_max.realize(),
             eng_write_sel.realize(), eng_write_ent.realize(), eng_write_max.realize(),
             floor_read.realize(), floor_write.realize(),
@@ -294,6 +314,7 @@ def _compile_step(model, opt, K: int, B: int, L: int, ball_path: str,
             gphi_grad_norm.realize(), max_z.realize(), max_latent_z.realize(),
             *(ce.realize() for ce in per_breath_ce),
         )
+        return head + gn + tail
 
     _JIT_CACHE[key] = _step
     print(f"[JIT] perceiver step ready; first call compiles (~60-90s)…", flush=True)
@@ -496,10 +517,18 @@ def main():
             batch.value_domain_mask, batch.latent_membership,
             batch.latent_valid, batch.latent_type,
         )
+        # PERF FIX D: under PERCEIVER_FAST_GRADNORM the all-param grad_norm scalar
+        # is NOT returned (it stays consumed in-graph for the byte-identical clip).
+        # Re-insert a sentinel at its position so the pack/unpack/log indices below
+        # stay IDENTICAL in both modes (the in-graph clip is unaffected either way).
+        if PERCEIVER_FAST_GRADNORM:
+            grad_norm_t = Tensor(float("nan"))
+            outs = outs[:6] + (grad_norm_t,) + outs[6:]
         (total_t, healthy_t, cell_loss_t, energy_t, cell_acc_t, puzzle_acc_t,
          grad_norm_t, eR_sel, eR_ent, eR_max, eW_sel, eW_ent, eW_max,
          floor_read_t, floor_write_t, read_max_floor_t, write_max_floor_t,
          gphi_gn_t, max_z_t, max_latent_z_t) = outs[:20]
+        per_breath_ce_t = list(outs[20:])  # already realized in _step; host read only
 
         # tangent rim guard (Tier-2 §7) AFTER opt.step. BRICK-2 FIX: scoped to the
         # ACTIVE ball_path's cell fields ONLY (the brick-1 caveat: it touched the
@@ -516,6 +545,7 @@ def main():
             floor_read_t.reshape(()), floor_write_t.reshape(()),
             read_max_floor_t.reshape(()), write_max_floor_t.reshape(()),
             gphi_gn_t.reshape(()), max_z_t.reshape(()), max_latent_z_t.reshape(()),
+            *(c.reshape(()) for c in per_breath_ce_t),
         ).realize()  # one enqueue, no host block
 
         if step % LOG_EVERY == 0 or step == 1:
@@ -530,6 +560,7 @@ def main():
             read_max_floor_v, write_max_floor_v = float(v[13]), float(v[14])
             gphi_gn_v, max_z_v = float(v[15]), float(v[16])
             max_latent_z_v = float(v[17])
+            per_breath_ce_v = [float(x) for x in v[18:18 + len(per_breath_ce_t)]]
             last_floors = {"read": floor_read_v, "write": floor_write_v,
                            "read_max": read_max_floor_v,
                            "write_max": write_max_floor_v}
@@ -546,8 +577,9 @@ def main():
             w_alive = _alive_vs_floor(eng["write_select_norm"], floor_write_v,
                                       eng["write_max"], write_max_floor_v)
             dt = time.time() - t0
+            gn_str = "n/a(fast)" if PERCEIVER_FAST_GRADNORM else f"{gn_v:.3e}"
             print(f"[step {step:3d}] loss={loss_v:.4f} cell_ce={ce_v:.4f} "
-                  f"cell_acc={acc_v:.3f} grad_norm={gn_v:.3e} "
+                  f"cell_acc={acc_v:.3f} grad_norm={gn_str} "
                   f"gphi_grad={gphi_gn_v:.3e} max_z={max_z_v:.3f} "
                   f"max_latent_z={max_latent_z_v:.3f} "
                   f"({dt:.1f}s, {dt/step:.2f}s/step)", flush=True)
@@ -560,7 +592,11 @@ def main():
             # BRICK-2 trajectory persistence (one JSONL line per LOG_EVERY).
             rec = {
                 "step": step, "cell_acc": acc_v, "loss": loss_v,
-                "cell_ce": ce_v, "grad_norm": gn_v,
+                "cell_ce": ce_v,
+                # PERF FIX D: grad_norm is not measured under FAST_GRADNORM (the
+                # clip is byte-identical, only the logged scalar is dropped) -> log
+                # None so the JSONL stays strict-JSON-parseable (no bare NaN).
+                "grad_norm": (None if PERCEIVER_FAST_GRADNORM else gn_v),
                 "read_select_norm": eng["read_select_norm"],
                 "write_select_norm": eng["write_select_norm"],
                 "read_max": eng["read_max"], "write_max": eng["write_max"],
@@ -572,6 +608,7 @@ def main():
                 "read_alive": r_alive, "write_alive": w_alive,
                 "gphi_grad_norm": gphi_gn_v, "max_z": max_z_v,
                 "max_latent_z": max_latent_z_v,
+                "per_breath_ce": per_breath_ce_v,
                 "nan": (healthy_v < 0.5),
             }
             traj_f.write(json.dumps(rec) + "\n")
