@@ -323,6 +323,38 @@ PERCEIVER_NB_PIROPE = int(os.environ.get("PERCEIVER_NB_PIROPE", "0")) > 0
 PERCEIVER_SHARP_REG = int(os.environ.get("PERCEIVER_SHARP_REG", "0")) > 0
 PERCEIVER_SHARP_REG_LAMBDA = float(os.environ.get("PERCEIVER_SHARP_REG_LAMBDA", "0.0"))
 
+# --- FROZEN-ROUTING MODE (PERCEIVER_FREEZE_ROUTING):
+# When =1, EXCLUDES all ROUTING params from the AdamW optimizer, leaving only the
+# DEDUCTION params trained. Routing params:
+#   - g_phi (perc_gphi_*): the DeepSets corrector that perturbs the latent coords
+#     away from the anchor; zero-init at t=0 -> correction=0 -> latent = anchor.
+#   - active-path cell coords (perc_cell_v or perc_cell_v_{row,col,cage}): the
+#     trainable tangent coords that define the READ/WRITE geometry.
+# Keeping these frozen means the routing geometry stays at the t=0 anchor
+# (correction=0 -> latent z = segment-mean of the cell anchors = the ~exact v98-
+# like factor-graph membership). The DEDUCTION params (THINK Pythia L0-L3 attn/FFN,
+# perc_value_codebook, perc_state_embed, perc_position_embed, perc_latent_type_embed,
+# perc_breath_embed, perc_delta_gate, notebook if on, silhouette if on) all train.
+#
+# EXPERIMENT HYPOTHESIS: brick-2 unfroze g_phi and the routing drifted away from
+# the anchor (read entropy rose from ~1.5 to ~3.5 nats; the model "forgot the rules"
+# -> cell_acc plateaued at 0.37). FREEZE_ROUTING holds the geometry at the anchor
+# and tests whether the plateau is caused by routing drift vs insufficient deduction
+# capacity. If FREEZE_ROUTING recovers cell_acc beyond 0.37 -> the drift IS the bug.
+#
+# SAFETY NOTE: excluding params from the optimizer is substrate-safe (no grad-is-None
+# risk — that only fires for params INCLUDED in opt.params that have no forward path;
+# here we simply omit the routing params so their grad is never used/checked by AdamW).
+# The excluded tensors still participate in the forward (their values are read to build
+# z_latent and the distances) — they just accumulate gradients that are never applied.
+#
+# DEFAULT-OFF: =0 -> current brick-2 param-set (g_phi + coords trained), byte-identical.
+# JIT CACHE KEY: bool(PERCEIVER_FREEZE_ROUTING) is added to _compile_step's key
+# (excluding routing params changes opt.step()'s graph body -> must not reuse the
+# brick-2 graph). When =0 the key is extended by False -> the brick-2 key is unchanged
+# (all-False at that position = the brick-2 cache hit still succeeds, byte-identical).
+PERCEIVER_FREEZE_ROUTING = int(os.environ.get("PERCEIVER_FREEZE_ROUTING", "0")) > 0
+
 
 # ---- cross-field hyperbolic distance (latents <-> cells) ---------------------
 # kenken._d_hyp_pairwise is WITHIN one field (M,M). The perceiver needs a CROSS
@@ -1761,6 +1793,56 @@ def perceiver_active_cell_coords(model: Any, ball_path: str = "single") -> list[
     if ball_path == "single":
         return [model.perc_cell_v]
     return [model.perc_cell_v_row, model.perc_cell_v_col, model.perc_cell_v_cage]
+
+
+def perceiver_deduction_parameters(model: Any, ball_path: str = "single") -> list[Tensor]:
+    """FROZEN-ROUTING mode param-set: DEDUCTION params ONLY (routing excluded).
+
+    ROUTING (excluded — stays frozen at anchor):
+      - g_phi encoder (perc_gphi_*): zero-init -> correction=0 -> latent = anchor.
+      - active-path cell coords: the tangent params that define the READ/WRITE distances.
+        (perc_cell_v for single; perc_cell_v_{row,col,cage} for per_constraint)
+
+    DEDUCTION (included — trained):
+      - THINK: Pythia L0-L3 attn + FFN (wv/bv/wo/bo/w_out/b_out/in_ln/post_ln,
+               per-layer wq/bq/wk/bk/w_in/b_in) — NOT included here; those come
+               from collect_params's SharedBlock harvest, called before this fn.
+      - perc_latent_type_embed  (4, H)      — the per-type latent hidden init
+      - perc_breath_embed       (K_max, H)  — per-breath additive latent marker
+      - perc_delta_gate         (K_max,)    — per-breath THINK residual blend
+      - perc_value_codebook     (N_MAX, H)  — the cell-readout codebook
+      - perc_state_embed        (8, H)      — cell input embedding
+      - perc_position_embed     (49, H)     — cell position embedding
+      - notebook params (if PERCEIVER_NOTEBOOK=1; unchanged — notebook is deduction)
+      - silhouette params (if PERCEIVER_SILHOUETTE=1; unchanged — sil is deduction)
+
+    The caller (collect_params / main) MUST NOT also call perceiver_parameters when
+    FREEZE_ROUTING=1 — this function is the REPLACEMENT for perceiver_parameters in
+    that mode. perceiver_parameters always includes g_phi + coords (the brick-2 set).
+
+    SAFETY: the excluded routing tensors (g_phi + coords) still participate in the
+    forward (their VALUES are read to build z_latent / distances); they just accumulate
+    gradients that AdamW never applies. This is substrate-safe (no grad-is-None risk:
+    that only fires for params INCLUDED in opt.params with no forward path; here we
+    simply do not include them, so AdamW never inspects their .grad attribute)."""
+    params: list[Tensor] = [
+        model.perc_latent_type_embed,
+        model.perc_breath_embed,
+        model.perc_delta_gate,
+        model.perc_value_codebook,
+        model.perc_state_embed,
+        model.perc_position_embed,
+    ]
+    # Notebook and silhouette are deduction-side (they process the latent hidden states
+    # AFTER the routing distances are fixed); include when their paths are active.
+    if PERCEIVER_NOTEBOOK:
+        params += perceiver_notebook_parameters(model)
+    if PERCEIVER_SILHOUETTE:
+        params += perceiver_silhouette_parameters(model)
+    # NOTE: g_phi (perceiver_gphi_parameters) and cell coords
+    # (perceiver_active_cell_coords) are intentionally OMITTED — they are the routing
+    # params whose freeze is the whole point of this mode.
+    return params
 
 
 def gphi_param_snapshot(model: Any) -> dict[str, "np.ndarray"]:

@@ -56,7 +56,9 @@ from mycelium.perceiver_poincare import (
     PERCEIVER_PI_ROPE_QK, PERCEIVER_PI_ROPE_ANGLE_SCALE, PERCEIVER_PI_ROPE_PERHEAD,
     PERCEIVER_SILHOUETTE, PERCEIVER_SIL_DIM, PERCEIVER_NB_PIROPE,
     PERCEIVER_SHARP_REG, PERCEIVER_SHARP_REG_LAMBDA,
-    attach_perceiver_params, perceiver_parameters, perceiver_state_dict,
+    PERCEIVER_FREEZE_ROUTING,
+    attach_perceiver_params, perceiver_parameters, perceiver_deduction_parameters,
+    perceiver_state_dict,
     perceiver_breathing_forward, t0_anchor_check, clamp_perceiver_tangent_norms,
     perceiver_gphi_parameters, perceiver_active_cell_coords,
     gphi_param_snapshot, gphi_drift, latent_coords,
@@ -81,8 +83,13 @@ def cast_layers_fp32(model):
 
 
 def collect_params(model, ball_path: str = "single") -> list[Tensor]:
-    """Trainable: shared L0-L3 attn/FFN (the THINK layers) + final LN + perceiver
-    (only the ACTIVE ball-path's cell field — the inactive field has no grad path)."""
+    """Trainable: shared L0-L3 attn/FFN (the THINK layers) + final LN + perceiver.
+
+    When PERCEIVER_FREEZE_ROUTING=0 (default/brick-2): perceiver_parameters includes
+    g_phi + active-path cell coords + deduction params (the full unfrozen set).
+    When PERCEIVER_FREEZE_ROUTING=1: perceiver_deduction_parameters EXCLUDES g_phi +
+    cell coords so the routing geometry is frozen at the t=0 anchor. The THINK layers
+    and final LN are always trained (they are never routing)."""
     params: list[Tensor] = []
     sw = model.block.shared
     params += [sw.wv, sw.bv, sw.wo, sw.bo, sw.w_out, sw.b_out,
@@ -90,7 +97,10 @@ def collect_params(model, ball_path: str = "single") -> list[Tensor]:
     for layer in model.block.layers:
         params += [layer.wq, layer.bq, layer.wk, layer.bk, layer.w_in, layer.b_in]
     params += [model.ln_f_g, model.ln_f_b]
-    params += perceiver_parameters(model, ball_path=ball_path)
+    if PERCEIVER_FREEZE_ROUTING:
+        params += perceiver_deduction_parameters(model, ball_path=ball_path)
+    else:
+        params += perceiver_parameters(model, ball_path=ball_path)
     return params
 
 
@@ -164,6 +174,11 @@ def _compile_step(model, opt, K: int, B: int, L: int, ball_path: str,
     # PERCEIVER_PI_ROPE_ANGLE_SCALE). lambda=0.0 + SHARP_REG=1 still keys uniquely
     # (the entropy graph is still built; the trainer skips adding to total via the
     # Python-level gate `if PERCEIVER_SHARP_REG and _srl > 0`).
+    # PERCEIVER_FREEZE_ROUTING=1: the optimizer is built over the DEDUCTION-ONLY param
+    # set (g_phi + cell coords excluded). opt.step() calls Adam update ops ONLY for
+    # the params in opt.params — a smaller set -> a different graph body than the
+    # full brick-2 set. MUST key so =0 and =1 never silently share a compiled graph.
+    # When =0 the key appends False -> the =0 key is distinct from any future =1 key.
     key = (id(model), id(opt), int(K), int(B), int(L), str(ball_path),
            float(constraint_weight), float(grad_clip),
            bool(PERCEIVER_HOIST_BIAS), bool(PERCEIVER_FP16_THINK),
@@ -174,7 +189,14 @@ def _compile_step(model, opt, K: int, B: int, L: int, ball_path: str,
            bool(PERCEIVER_PI_ROPE_PERHEAD),
            bool(PERCEIVER_SILHOUETTE), int(PERCEIVER_SIL_DIM),
            bool(PERCEIVER_NB_PIROPE),
-           bool(PERCEIVER_SHARP_REG), float(PERCEIVER_SHARP_REG_LAMBDA))
+           bool(PERCEIVER_SHARP_REG), float(PERCEIVER_SHARP_REG_LAMBDA),
+           bool(PERCEIVER_FREEZE_ROUTING))
+    # PERCEIVER_FREEZE_ROUTING: when =1 opt.params is the DEDUCTION-ONLY set (g_phi
+    # + cell coords excluded). opt.step() operates on a smaller param list -> a
+    # different graph body than the full brick-2 set. MUST key so =0 and =1 compile
+    # separate graphs and never silently reuse each other. When =0 the key appends
+    # False -> the brick-2 key is extended by one False but is otherwise identical
+    # to the pre-FREEZE_ROUTING key (no false-cache-miss against old compiled graphs).
     if key in _JIT_CACHE:
         return _JIT_CACHE[key]
 
@@ -404,7 +426,10 @@ def main():
     KENKEN_TRAIN = getenv("KENKEN_TRAIN", ".cache/kenken_train.jsonl")
     KENKEN_TEST = getenv("KENKEN_TEST", ".cache/kenken_test.jsonl")
 
-    print("=== Perceiver-Poincaré BRICK-2 (deduction test: g_phi UNFROZEN, routing co-adapts) ===")
+    _mode_tag = ("FREEZE-ROUTING (routing FROZEN at anchor, deduction trains)"
+                 if PERCEIVER_FREEZE_ROUTING
+                 else "BRICK-2 (deduction test: g_phi UNFROZEN, routing co-adapts)")
+    print(f"=== Perceiver-Poincaré {_mode_tag} ===")
     print(f"device={Device.DEFAULT}  B={BATCH}  K={K}  steps={STEPS}  lr={LR}")
     print(f"tau={PERCEIVER_TAU}  rho={PERCEIVER_RHO}  dim={PERCEIVER_DIM}  "
           f"n_global={PERCEIVER_N_GLOBAL}  ball_path={BALL_PATH_ENV}")
@@ -476,16 +501,17 @@ def main():
     Tensor.training = True
 
     # ---- build the optimizer over ONLY the active ball-path's params (the inactive
-    # cell field has no grad path -> would trip AdamW's grad-is-None assert). ----
+    # cell field has no grad path -> would trip AdamW's grad-is-None assert).
+    # When PERCEIVER_FREEZE_ROUTING=1, collect_params calls perceiver_deduction_parameters
+    # (excludes g_phi + cell coords); when =0 it calls perceiver_parameters (full set). ----
     params = collect_params(model, ball_path=ball_path)
     n_params = sum(int(np.prod(t.shape)) for t in params)
     print(f"  trainable params ({ball_path}): {n_params/1e6:.1f}M")
 
-    # BRICK-2 UNFREEZE CONFIRM: the optimizer trains the FULL anchored perceiver =
-    # {THINK (Pythia L0-L3) + readout + delta_gate + g_phi + active-path coords}.
-    # NOTHING dead. Verify g_phi + the active coords are present (the now-unfrozen
-    # routing) and the inactive cell field is ABSENT (no grad path).
+    # ---- PARAM-SET PARTITION AUDIT (printed in BOTH modes so the partition is always
+    # on record; assertion logic differs by mode). ----
     pid = {id(p) for p in params}
+    gphi_total = len(perceiver_gphi_parameters(model))
     gphi_in = [p for p in perceiver_gphi_parameters(model) if id(p) in pid]
     coords_in = [p for p in perceiver_active_cell_coords(model, ball_path) if id(p) in pid]
     inactive_coords = ([model.perc_cell_v_row, model.perc_cell_v_col, model.perc_cell_v_cage]
@@ -496,24 +522,51 @@ def main():
          model.block.shared.bo, model.block.shared.w_out, model.block.shared.b_out]
         + [getattr(l, a) for l in model.block.layers
            for a in ("wq", "bq", "wk", "bk", "w_in", "b_in")]) if id(p) in pid)
-    print(f"  UNFREEZE param-set: THINK={think_in} tensors  readout=[value_codebook,"
-          f"state_embed,position_embed,ln_f]  delta_gate={1 if id(model.perc_delta_gate) in pid else 0}"
-          f"  g_phi={len(gphi_in)}/{len(perceiver_gphi_parameters(model))} tensors"
-          f"  active_coords({ball_path})={len(coords_in)}  inactive_coords_present={len(inactive_in)}")
-    assert len(gphi_in) == len(perceiver_gphi_parameters(model)) and len(gphi_in) > 0, \
-        "g_phi NOT fully in optimizer (brick-2 requires UNFROZEN g_phi)"
-    assert len(coords_in) == len(perceiver_active_cell_coords(model, ball_path)), \
-        "active-path cell coords NOT in optimizer (brick-2 requires UNFROZEN coords)"
-    assert len(inactive_in) == 0, "inactive cell field is in the optimizer (dead param)"
-    assert id(model.perc_delta_gate) in pid, "delta_gate not in optimizer"
+    delta_gate_in = 1 if id(model.perc_delta_gate) in pid else 0
+
+    if PERCEIVER_FREEZE_ROUTING:
+        # FROZEN-ROUTING: g_phi and coords MUST be excluded; deduction MUST be present.
+        print(f"  FREEZE-ROUTING param-set:"
+              f"  THINK={think_in} tensors"
+              f"  readout=[value_codebook,state_embed,position_embed,ln_f]"
+              f"  delta_gate={delta_gate_in}"
+              f"  type_embed={1 if id(model.perc_latent_type_embed) in pid else 0}"
+              f"  breath_embed={1 if id(model.perc_breath_embed) in pid else 0}"
+              f"  --- EXCLUDED (frozen at anchor): ---"
+              f"  g_phi={len(gphi_in)}/{gphi_total} (expect 0)"
+              f"  active_coords({ball_path})={len(coords_in)} (expect 0)"
+              f"  inactive_coords_present={len(inactive_in)} (expect 0)")
+        assert len(gphi_in) == 0, \
+            f"g_phi IS in the optimizer under FREEZE_ROUTING=1 ({len(gphi_in)} tensors present — bug)"
+        assert len(coords_in) == 0, \
+            f"active cell coords ARE in the optimizer under FREEZE_ROUTING=1 ({len(coords_in)} present — bug)"
+        assert len(inactive_in) == 0, "inactive cell field is in the optimizer (dead param)"
+        assert delta_gate_in == 1, "delta_gate not in optimizer (deduction param must be trained)"
+    else:
+        # BRICK-2 UNFREEZE CONFIRM: the optimizer trains the FULL anchored perceiver =
+        # {THINK (Pythia L0-L3) + readout + delta_gate + g_phi + active-path coords}.
+        print(f"  UNFREEZE param-set: THINK={think_in} tensors  readout=[value_codebook,"
+              f"state_embed,position_embed,ln_f]  delta_gate={delta_gate_in}"
+              f"  g_phi={len(gphi_in)}/{gphi_total} tensors"
+              f"  active_coords({ball_path})={len(coords_in)}  inactive_coords_present={len(inactive_in)}")
+        assert len(gphi_in) == gphi_total and len(gphi_in) > 0, \
+            "g_phi NOT fully in optimizer (brick-2 requires UNFROZEN g_phi)"
+        assert len(coords_in) == len(perceiver_active_cell_coords(model, ball_path)), \
+            "active-path cell coords NOT in optimizer (brick-2 requires UNFROZEN coords)"
+        assert len(inactive_in) == 0, "inactive cell field is in the optimizer (dead param)"
+        assert delta_gate_in == 1, "delta_gate not in optimizer"
 
     opt = AdamW(params, lr=LR, weight_decay=0.0)
 
     run_dir = os.path.join(".cache/perceiver_ckpts", RUN_NAME)
     os.makedirs(run_dir, exist_ok=True)
+    _routing_desc = ("FROZEN at anchor (g_phi+coords excluded from optimizer)"
+                     if PERCEIVER_FREEZE_ROUTING else
+                     "UNFROZEN (g_phi+coords trained, routing co-adapts)")
     provenance = {
-        "arch_version": "perceiver_poincare_brick2",
-        "core": "perceiver_anchored_deduction (g_phi UNFROZEN, routing co-adapts)",
+        "arch_version": ("perceiver_poincare_freeze_routing"
+                         if PERCEIVER_FREEZE_ROUTING else "perceiver_poincare_brick2"),
+        "core": f"perceiver_anchored_deduction (routing {_routing_desc})",
         "base": "Pythia-410M (L0-L3 THINK layers, shared every breath)",
         "K": K, "B": BATCH, "LR": LR, "steps": STEPS, "seed": SEED,
         "L_max": L_MAX, "n_cages_max": N_CAGES_MAX, "n_global": PERCEIVER_N_GLOBAL,
@@ -523,8 +576,14 @@ def main():
                             "selected": ball_path, "match_thresh": MATCH_THRESH},
         "trainable_params_M": round(n_params / 1e6, 3),
         "constraint_weight": CONSTRAINT_WEIGHT,
-        "unfreeze_param_set": "THINK(Pythia L0-L3) + readout + delta_gate + g_phi + "
-                              f"active-path coords ({ball_path})",
+        "freeze_routing": bool(PERCEIVER_FREEZE_ROUTING),
+        "param_set_desc": (
+            "DEDUCTION ONLY: THINK(Pythia L0-L3) + readout + delta_gate + "
+            "type_embed + breath_embed (g_phi + cell_coords FROZEN at anchor)"
+            if PERCEIVER_FREEZE_ROUTING else
+            "FULL: THINK(Pythia L0-L3) + readout + delta_gate + g_phi + "
+            f"active-path coords ({ball_path})"
+        ),
         "kill_metric": "floor-relative (select_norm vs per-field uniform floor "
                        "1/sqrt(S); ALIVE > 1.3*floor OR max >> 1/S)",
         "trajectory": "trajectory.jsonl (per-LOG_EVERY)",
@@ -540,23 +599,30 @@ def main():
 
     chance = 1.0 / float(N_MAX)
     print(f"\n=== TRAINING ({STEPS} steps; chance cell_acc ~= 1/{N_MAX} = {chance:.3f}) ===")
-    print(f"  KILL METRIC (BRICK-2 recalibrated): select_norm vs the per-field "
+    print(f"  KILL METRIC (recalibrated): select_norm vs the per-field "
           f"UNIFORM FLOOR 1/sqrt(S). DEAD if within ~10% of floor AND max near 1/S; "
           f"ALIVE only CLEARLY above (sel>1.3*floor OR max>>1/S).")
-    print(f"  GOAL (brick-2): does cell_acc CLIMB once g_phi unfreezes (the deduction "
-          f"test)? + g_phi drift > 0 (routing co-adapts).\n")
+    if PERCEIVER_FREEZE_ROUTING:
+        print(f"  GOAL (FREEZE-ROUTING): does cell_acc CLIMB beyond the brick-2 plateau "
+              f"(0.37)? routing FROZEN at anchor -> tests if routing DRIFT was the bug.\n"
+              f"  g_phi_grad_norm should be ~0 (excluded from opt; grads exist but unused).\n")
+    else:
+        print(f"  GOAL (brick-2): does cell_acc CLIMB once g_phi unfreezes (the deduction "
+              f"test)? + g_phi drift > 0 (routing co-adapts).\n")
     t0 = time.time()
     # engagement trajectory for the final verdict.
     eng_traj = []
     acc_traj = []
-    max_latent_z_traj = []  # BRICK-2 latent rim-norm probe (purely additive)
+    max_latent_z_traj = []  # latent rim-norm probe (purely additive)
     nan_steps = 0
     first_eng = None
     last_floors = {"read": 0.0, "write": 0.0, "read_max": 0.0, "write_max": 0.0}
 
-    # BRICK-2: g_phi DRIFT probe — snapshot the (now-unfrozen) g_phi encoder BEFORE
-    # training so the verdict can prove it MOVED (rho output zero-init -> any
-    # non-zero rho drift == the routing co-adapts the deduction).
+    # g_phi DRIFT probe — snapshot the g_phi encoder BEFORE training.
+    # FREEZE_ROUTING=0 (brick-2): g_phi is in the optimizer and should MOVE (rho drift > 0).
+    # FREEZE_ROUTING=1: g_phi is EXCLUDED from the optimizer; drift should stay ~0 (only
+    # gradient accumulation noise — no Adam update applied). A non-zero drift here would
+    # mean the freeze is broken.
     gphi_snap0 = gphi_param_snapshot(model)
 
     # BRICK-2: per-LOG_EVERY trajectory JSONL (auditable artifact, not just stdout).
@@ -702,8 +768,9 @@ def main():
 
     traj_f.close()
 
-    # ---- final verdict (BRICK-2: floor-relative kill-metric + g_phi drift) ----
-    print("\n=== BRICK-2 VERDICT ===")
+    # ---- final verdict (floor-relative kill-metric + g_phi drift) ----
+    _verdict_tag = "FREEZE-ROUTING VERDICT" if PERCEIVER_FREEZE_ROUTING else "BRICK-2 VERDICT"
+    print(f"\n=== {_verdict_tag} ===")
     first_acc = acc_traj[0]
     last_acc = float(np.mean(acc_traj[-min(5, len(acc_traj)):]))
     print(f"  cell_acc: step1={first_acc:.3f} -> last5_mean={last_acc:.3f} "
@@ -726,20 +793,28 @@ def main():
           f"-> {_alive_vs_floor(wN, fw, wmaxN, fwm)}")
     print(f"  (DEAD = within 10% of floor AND max near 1/S; ALIVE = sel>1.3*floor "
           f"OR max>>1/S)")
-    # BRICK-2: g_phi DRIFT — proof the now-unfrozen routing co-adapts.
+    # g_phi DRIFT probe.
+    # FREEZE_ROUTING=0 (brick-2): drift > 0 means routing co-adapts (expected).
+    # FREEZE_ROUTING=1: drift should be ~0 (only gradient noise, no Adam update applied).
+    #   A large drift under FREEZE_ROUTING=1 would mean the freeze is broken.
     drift = gphi_drift(model, gphi_snap0)
-    print(f"  --- g_phi DRIFT (unfrozen routing co-adapt) ---")
+    _drift_label = ("g_phi DRIFT (FREEZE mode: should be ~0 — optimizer excluded)"
+                    if PERCEIVER_FREEZE_ROUTING else
+                    "g_phi DRIFT (brick-2: unfrozen routing co-adapt; expect >0)")
+    print(f"  --- {_drift_label} ---")
     print(f"  drift_total={drift['drift_total']:.4e}  drift_rho(output)="
-          f"{drift['drift_rho']:.4e}  -> g_phi {'MOVES' if drift['drift_total'] > 0 else 'FROZEN'}")
-    # BRICK-2: latent rim-norm probe — does g_phi push a LATENT toward the rim
-    # (|z|->1) that the cell-only max_z would miss?
+          f"{drift['drift_rho']:.4e}  -> g_phi {'MOVES (check freeze!)' if (PERCEIVER_FREEZE_ROUTING and drift['drift_total'] > 1e-6) else ('MOVES' if drift['drift_total'] > 0 else 'FROZEN')}")
+    # latent rim-norm probe — does g_phi push a LATENT toward the rim (|z|->1)?
     if max_latent_z_traj:
         mlz0 = max_latent_z_traj[0]
         mlzN = float(np.max(max_latent_z_traj[-min(5, len(max_latent_z_traj)):]))
         mlz_all = float(np.max(max_latent_z_traj))
-        print(f"  --- LATENT BALL-NORM (g_phi rim probe) ---")
+        print(f"  --- LATENT BALL-NORM (latent rim probe) ---")
         print(f"  max_latent_z: step1={mlz0:.3f} -> last5_max={mlzN:.3f}  "
               f"run_max={mlz_all:.3f}  (rim if -> 1.0)")
+    if PERCEIVER_FREEZE_ROUTING:
+        print(f"  FREEZE-ROUTING: routing geometry HELD at anchor; cell_acc > 0.37 = "
+              f"routing drift WAS the brick-2 plateau cause.")
     print(f"  NaN steps: {nan_steps}/{STEPS}  (where()-gated guard)")
     print(f"  selected ball_path: {ball_path}  "
           f"(t=0 membership_match={selected_chk['membership_match']:.3f})")
