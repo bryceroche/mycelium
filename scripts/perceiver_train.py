@@ -58,6 +58,7 @@ from mycelium.perceiver_poincare import (
     PERCEIVER_SHARP_REG, PERCEIVER_SHARP_REG_LAMBDA,
     PERCEIVER_FREEZE_ROUTING,
     PERCEIVER_PERSIST_CELLS,
+    PERCEIVER_CELL_MP,
     attach_perceiver_params, perceiver_parameters, perceiver_deduction_parameters,
     perceiver_state_dict,
     perceiver_breathing_forward, t0_anchor_check, clamp_perceiver_tangent_norms,
@@ -192,7 +193,8 @@ def _compile_step(model, opt, K: int, B: int, L: int, ball_path: str,
            bool(PERCEIVER_NB_PIROPE),
            bool(PERCEIVER_SHARP_REG), float(PERCEIVER_SHARP_REG_LAMBDA),
            bool(PERCEIVER_FREEZE_ROUTING),
-           bool(PERCEIVER_PERSIST_CELLS))
+           bool(PERCEIVER_PERSIST_CELLS),
+           bool(PERCEIVER_CELL_MP))
     # PERCEIVER_FREEZE_ROUTING: when =1 opt.params is the DEDUCTION-ONLY set (g_phi
     # + cell coords excluded). opt.step() operates on a smaller param list -> a
     # different graph body than the full brick-2 set. MUST key so =0 and =1 compile
@@ -536,6 +538,10 @@ def main():
     # (no forward path -> AdamW grad-is-None assert if included). Always check.
     cell_dg_in = 1 if id(model.perc_cell_delta_gate) in pid else 0
 
+    from mycelium.perceiver_poincare import perceiver_cell_mp_parameters
+    cell_mp_params = perceiver_cell_mp_parameters(model)
+    cell_mp_in = sum(1 for p in cell_mp_params if id(p) in pid)
+
     if PERCEIVER_FREEZE_ROUTING:
         # FROZEN-ROUTING: g_phi and coords MUST be excluded; deduction MUST be present.
         print(f"  FREEZE-ROUTING param-set:"
@@ -543,6 +549,7 @@ def main():
               f"  readout=[value_codebook,state_embed,position_embed,ln_f]"
               f"  delta_gate={delta_gate_in}"
               f"  cell_delta_gate={cell_dg_in} (expect {1 if PERCEIVER_PERSIST_CELLS else 0})"
+              f"  cell_mp={cell_mp_in}/{len(cell_mp_params)} (expect {len(cell_mp_params) if PERCEIVER_CELL_MP else 0})"
               f"  type_embed={1 if id(model.perc_latent_type_embed) in pid else 0}"
               f"  breath_embed={1 if id(model.perc_breath_embed) in pid else 0}"
               f"  --- EXCLUDED (frozen at anchor): ---"
@@ -561,12 +568,19 @@ def main():
         else:
             assert cell_dg_in == 0, \
                 "perc_cell_delta_gate IS in optimizer under PERSIST_CELLS=0 (no forward path — grad-is-None risk)"
+        if PERCEIVER_CELL_MP:
+            assert cell_mp_in == len(cell_mp_params), \
+                f"cell-MP params NOT fully in optimizer under CELL_MP=1 ({cell_mp_in}/{len(cell_mp_params)} — bug)"
+        else:
+            assert cell_mp_in == 0, \
+                f"cell-MP params ARE in optimizer under CELL_MP=0 (no forward path — grad-is-None risk)"
     else:
         # BRICK-2 UNFREEZE CONFIRM: the optimizer trains the FULL anchored perceiver =
         # {THINK (Pythia L0-L3) + readout + delta_gate + g_phi + active-path coords}.
         print(f"  UNFREEZE param-set: THINK={think_in} tensors  readout=[value_codebook,"
               f"state_embed,position_embed,ln_f]  delta_gate={delta_gate_in}"
               f"  cell_delta_gate={cell_dg_in} (expect {1 if PERCEIVER_PERSIST_CELLS else 0})"
+              f"  cell_mp={cell_mp_in}/{len(cell_mp_params)} (expect {len(cell_mp_params) if PERCEIVER_CELL_MP else 0})"
               f"  g_phi={len(gphi_in)}/{gphi_total} tensors"
               f"  active_coords({ball_path})={len(coords_in)}  inactive_coords_present={len(inactive_in)}")
         assert len(gphi_in) == gphi_total and len(gphi_in) > 0, \
@@ -581,6 +595,12 @@ def main():
         else:
             assert cell_dg_in == 0, \
                 "perc_cell_delta_gate IS in optimizer under PERSIST_CELLS=0 (no forward path — grad-is-None risk)"
+        if PERCEIVER_CELL_MP:
+            assert cell_mp_in == len(cell_mp_params), \
+                f"cell-MP params NOT fully in optimizer under CELL_MP=1 ({cell_mp_in}/{len(cell_mp_params)} — bug)"
+        else:
+            assert cell_mp_in == 0, \
+                f"cell-MP params ARE in optimizer under CELL_MP=0 (no forward path — grad-is-None risk)"
 
     opt = AdamW(params, lr=LR, weight_decay=0.0)
 

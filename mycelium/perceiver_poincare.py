@@ -388,6 +388,65 @@ PERCEIVER_FREEZE_ROUTING = int(os.environ.get("PERCEIVER_FREEZE_ROUTING", "0")) 
 # graph body AND the optimizer param-set -> must not reuse the =0 graph).
 PERCEIVER_PERSIST_CELLS = int(os.environ.get("PERCEIVER_PERSIST_CELLS", "0")) > 0
 
+# --- TOGGLE (5): PERCEIVER_CELL_MP — DIRECT cell<->cell message-passing step.
+#
+# ROOT CAUSE of the inert K-breath iteration (mechanically confirmed): the breath
+# loop is READ(latents<-cells) -> THINK(latents self-attend) -> WRITE(cells<-latents).
+# Cells NEVER refine EACH OTHER. v98's ladder descends because cells propagate
+# constraints DIRECTLY to their row/col/cage PEER cells each breath (constraint
+# propagation -> convergence). Without this, the perceiver reaches a fixed point at
+# breath 1 and the remaining K-1 breaths do nothing. This toggle adds the missing
+# peer propagation.
+#
+# MECHANISM (when =1): after the WRITE step (after cell_hidden is updated from
+# latents), each cell attends to its CONSTRAINT-PEER cells (cells sharing >=1 factor)
+# via a dedicated multi-head self-attention block. The peer context is gated into the
+# persistent cell residual. Requires PERCEIVER_PERSIST_CELLS=1 (asserted at runtime).
+#
+# CELL-CELL ADJACENCY: derived from the (B, L, 49) membership tensor already in the
+# batch: adj[b, i, j] = 1 iff cells i and j share >=1 factor latent =
+#   (membership.transpose(1,2) @ membership)[b, i, j] > 0
+# i.e. adjacency = membership.T @ membership > 0, shape (B, 49, 49).
+# This EXACTLY recovers v98's row+col+cage peer structure: cells i and j are adjacent
+# iff they appear in the same row, col, or cage constraint latent. Includes self.
+# We use a SINGLE combined adjacency (all relations, all heads) rather than the
+# per-head row/col/cage split of v98, because the membership is relation-agnostic at
+# this level and the dedicated block has its own learned Q/K/V/O projections.
+#
+# IMPLEMENTATION: dedicated multi-head self-attention block (new Q/K/V/O params,
+# NOT the shared Pythia layers). Chosen over option (a) reuse-shared-Pythia because:
+#   - The shared Pythia W_o cannot be zero-init (it is also the THINK W_o; zeroing it
+#     would break the THINK path). A dedicated W_o CAN be zero-init -> bootstrap-safe.
+#   - A dedicated block is cleaner: the cell-MP is a new, separable mechanism with its
+#     own learned projections; sharing the THINK weights couples deduction and peer-MP.
+# Attention idiom matches _latent_layer_forward: scores.clip(-1e4,1e4).softmax(-1),
+# no RoPE (the adjacency IS the structure), fp32 throughout. n_heads = cfg.n_heads.
+#
+# BOOTSTRAP-SAFETY: W_o (perc_cell_mp_o_w/b) is ZERO-INIT -> the cell-MP output is
+# EXACTLY 0 at t=0 -> byte-identical to HEAD when off AND a neutral start when on.
+# The hard adjacency mask (mirroring v98's hard {0,-1e4} peer mask) gives the attention
+# structured support from step 0 — task gradient through softmax over a known peer set
+# IS sufficient (unlike random ~30+-position pointers; this is the analogous mask that
+# makes v98 bootstrap, applied here at the cell level). The gate perc_cell_mp_gate
+# (K_max,) init=0.5 is secondary — the primary bootstrap guarantee is the zero-init W_o.
+#
+# REFINE PERSISTENT RESIDUAL: cell_hidden += gate_k * cell_mp_ctx, where cell_mp_ctx
+# is the output of the dedicated block and gate_k = sigmoid(perc_cell_mp_gate[k]).
+# This adds directly to the persistent cell residual (not a full delta-gate blend with
+# cell_embed, to keep cell-MP orthogonal to the WRITE update above it).
+#
+# PARAM-SET DISCIPLINE: perc_cell_mp_{q/k/v}_w, perc_cell_mp_{q/k/v}_b,
+# perc_cell_mp_o_w, perc_cell_mp_o_b, perc_cell_mp_gate included ONLY when
+# PERCEIVER_CELL_MP=1 (when off these params have no forward path -> must NOT be in
+# the optimizer). Included in perceiver_deduction_parameters when FREEZE_ROUTING=1,
+# and in perceiver_parameters when FREEZE_ROUTING=0 (mirroring perc_cell_delta_gate).
+#
+# DEFAULT-OFF: =0 -> the entire cell-MP path is skipped -> byte-identical to HEAD.
+# =1: requires PERCEIVER_PERSIST_CELLS=1 (asserted at forward-call time).
+# JIT CACHE KEY: bool(PERCEIVER_CELL_MP) added to _compile_step (different graph body
+# + different optimizer param-set -> must not reuse the =0 graph).
+PERCEIVER_CELL_MP = int(os.environ.get("PERCEIVER_CELL_MP", "0")) > 0
+
 
 # ---- cross-field hyperbolic distance (latents <-> cells) ---------------------
 # kenken._d_hyp_pairwise is WITHIN one field (M,M). The perceiver needs a CROSS
@@ -865,6 +924,10 @@ def perceiver_breathing_forward(model: Any, batch: Any, K: int,
     """
     assert hasattr(model, "perc_cell_v"), \
         "model has no perceiver params; was PERCEIVER_TASK set before attach?"
+    if PERCEIVER_CELL_MP:
+        assert PERCEIVER_PERSIST_CELLS, \
+            "PERCEIVER_CELL_MP=1 requires PERCEIVER_PERSIST_CELLS=1 (cell-MP refines " \
+            "the persistent cell residual; without it the update is overwritten each breath)"
     if ball_path is None:
         ball_path = PERCEIVER_BALL_PATH
 
@@ -969,6 +1032,15 @@ def perceiver_breathing_forward(model: Any, batch: Any, K: int,
     # cross-breath kernel fusion. Numerically identical (pure loop-invariant CSE).
     if PERCEIVER_HOIST_BIAS:
         attn_bias = _latent_self_attn_bias(latent_valid, cfg.n_heads)  # (B,n_heads,L,L)
+
+    # TOGGLE (5) CELL_MP: build the loop-invariant cell-cell adjacency bias BEFORE
+    # the K-breath loop. membership is loop-invariant (extracted once, never mutated
+    # inside the loop). Hoisting mirrors the PERCEIVER_HOIST_BIAS pattern for the
+    # latent self-attn bias. Pays the np.eye upload + .contiguous() barrier ONCE.
+    # When CELL_MP=0: skipped entirely (cell_mp_bias is never defined; the if-block
+    # in the loop is also skipped -> byte-identical HEAD).
+    if PERCEIVER_CELL_MP:
+        cell_mp_bias = _build_cell_mp_bias(membership, cell_valid, cfg.n_heads)  # (B,nh,49,49)
 
     # cells = the WRITE source's QUERY field; cell_hidden starts as the embedding.
     cell_hidden = cell_embed                                          # (B,49,H)
@@ -1125,6 +1197,37 @@ def perceiver_breathing_forward(model: Any, batch: Any, K: int,
             cell_hidden = cell_embed + ctx_c                            # (B,49,H) re-read latents
         cell_hidden = cell_hidden * cell_valid.reshape(Bn, N_CELLS, 1)
 
+        # === TOGGLE (5) CELL_MP: direct cell<->cell message-passing. ===
+        # Each cell attends to its constraint-peer cells (cells sharing >=1 factor)
+        # via a dedicated MHA block (separate Q/K/V/O from the THINK layers). The
+        # cell-MP context is gated additively into the persistent cell residual.
+        #
+        # REQUIRES PERCEIVER_PERSIST_CELLS=1: the cell-MP refines the persistent cell
+        # residual across breaths; without persistent state the update would be
+        # overwritten each breath by the WRITE reconstruct. Asserted at forward-entry.
+        #
+        # PLACEMENT: AFTER the WRITE update (cell_hidden is post-latent-blend), BEFORE
+        # the sharpness reg and readout. The cell-cell peer step refines what the WRITE
+        # just deposited — exactly as in v98 where cell-cell attention (the row/col/cage
+        # heads) runs on the cell state produced by that breath's transformer pass.
+        #
+        # BOOTSTRAP: perc_cell_mp_o_w is ZERO-INIT -> cell_mp_ctx == 0 at t=0 ->
+        # cell_hidden is BYTE-IDENTICAL to the PERSIST_CELLS path at init. The
+        # structured adjacency mask means the attention has non-zero peer support from
+        # step 0, so the task gradient is sufficient to bootstrap (mirror of how v98's
+        # hard row/col/cage masks bootstrap without a zero-init gate).
+        #
+        # GATE: perc_cell_mp_gate (K_max,) init=0.5 -> sigmoid(0.5)~0.62. This does
+        # NOT gate the t=0 bootstrap (W_o zero-init already guarantees exactly 0 at t=0
+        # regardless of the gate); it is a per-breath learned weighting of the cell-MP
+        # contribution post-bootstrap, matching the style of perc_cell_delta_gate.
+        if PERCEIVER_CELL_MP:
+            cell_mp_ctx = _cell_mp_forward(
+                model, cell_hidden, cell_mp_bias, cfg.n_heads, cfg.head_dim)  # (B,49,H)
+            mp_gate_k = model.perc_cell_mp_gate[k].cast(dtypes.float).sigmoid().reshape(1, 1, 1)
+            cell_hidden = cell_hidden + mp_gate_k * cell_mp_ctx         # gate into residual
+            cell_hidden = cell_hidden * cell_valid.reshape(Bn, N_CELLS, 1)  # re-zero pad cells
+
         # === SHARPNESS REG: accumulate per-breath coupled reg into loss. ===
         # COUPLED READ term: reg_read = (1/n_valid) * sum_i( H_read_i * |z_latent_i|^2 )
         #   H_read_i    = per-latent row entropy (nats) from log_softmax (stable).
@@ -1203,6 +1306,87 @@ def _latent_self_attn_bias(latent_valid: Tensor, n_heads: int) -> Tensor:
     bias = (1.0 - allow) * (-1e4)                                    # 0 allow / -1e4 block
     bias = bias.expand(Bn, n_heads, L, L)
     return bias.contiguous()
+
+
+def _build_cell_mp_bias(membership: Tensor, cell_valid: Tensor,
+                        n_heads: int) -> Tensor:
+    """Build the (B, n_heads, 49, 49) cell-cell adjacency bias for CELL_MP.
+
+    cell i may attend to cell j iff they share >=1 factor latent, derived from:
+      adj[b,i,j] = (membership[b,:,i] · membership[b,:,j]) > 0
+                 = (membership.transpose(1,2) @ membership)[b,i,j] > 0
+    i.e. adjacency = cells that co-appear in any constraint. This EXACTLY recovers
+    v98's row+col+cage peer structure (i~j iff same row, same col, or same cage).
+    Includes self (every cell is in its own constraint, so the diagonal is always 1).
+
+    SINGLE combined adjacency (all relations, all heads): consistent with the fact
+    that the membership table is relation-agnostic at this level; no per-head split.
+    The dedicated Q/K/V/O projections learn what to extract from each peer pool.
+
+    Validity masking mirrors build_kenken_attn_bias EXACTLY:
+      - pad key cells blocked (valid_key=0 -> add -BLOCK to that column).
+      - pad query rows -> self-only (eye, guarantees no all-block softmax row).
+    {0,1} adjacency -> {0,-1e4} bias, exactly as v98.
+
+    Substrate-legal: no dtypes.float32 literal baked as a graph const; single
+    matmul + threshold; no .contiguous() except for the final output barrier.
+    """
+    Bn = int(membership.shape[0])
+    # adj: (B, 49, 49) float {0, 1} — 1 iff cells share >=1 factor latent.
+    m = membership.cast(dtypes.float)                                   # (B,L,49)
+    adj = m.transpose(1, 2) @ m                                        # (B,49,49) dot counts
+    # threshold: adj > 0 -> allow=1; adj==0 -> allow=0. Use minimum(1.0) to cap counts.
+    allow = adj.clip(0.0, 1.0)                                         # (B,49,49) {0,1}
+    # Validity masking (mirror build_kenken_attn_bias).
+    eye49 = Tensor(np.eye(N_CELLS, dtype=np.float32), dtype=dtypes.float).reshape(1, N_CELLS, N_CELLS)
+    valid_key = cell_valid.reshape(Bn, 1, N_CELLS)                     # (B,1,49) key validity
+    allow = allow * valid_key.cast(allow.dtype)                        # block pad keys
+    valid_q = cell_valid.reshape(Bn, N_CELLS, 1)                       # (B,49,1) query validity
+    allow = allow * valid_q.cast(allow.dtype) + eye49 * (1.0 - valid_q.cast(allow.dtype))
+    # Convert {0,1} allow -> {0,-1e4} bias, then broadcast to n_heads.
+    bias = (1.0 - allow) * (-1e4)                                      # (B,49,49)
+    bias = bias.reshape(Bn, 1, N_CELLS, N_CELLS).expand(Bn, n_heads, N_CELLS, N_CELLS)
+    return bias.contiguous()
+
+
+def _cell_mp_forward(model: Any, cell_hidden: Tensor, mp_bias: Tensor,
+                     n_heads: int, head_dim: int) -> Tensor:
+    """Dedicated cell-self-attention step (TOGGLE 5, PERCEIVER_CELL_MP).
+
+    cell_hidden: (B, 49, H) persistent cell residual (PERCEIVER_PERSIST_CELLS).
+    mp_bias:     (B, n_heads, 49, 49) {0,-1e4} cell-cell adjacency bias.
+
+    Dedicated Q/K/V/O projections (new params perc_cell_mp_{q/k/v/o}_w/b). W_o
+    (perc_cell_mp_o_w/b) is ZERO-INIT -> the cell-MP output is EXACTLY 0 at t=0 ->
+    byte-identical to HEAD at init; bootstraps from the task gradient over the known
+    structured peer mask (the adjacency IS the anchor; no random pointer bootstrap).
+
+    Returns the cell-MP context (B, 49, H) — gated into cell_hidden by the caller.
+    No RoPE (the adjacency provides the structure). scores.clip(-1e4,1e4) substrate law.
+    Substrate-legal: no dtypes.float32 literal in the JIT; fp32 throughout.
+    """
+    Bn = int(cell_hidden.shape[0])
+    S = int(cell_hidden.shape[1])                                       # 49
+    H = int(cell_hidden.shape[2])
+    x = cell_hidden.cast(dtypes.float)
+    q = (x @ model.perc_cell_mp_q_w.cast(dtypes.float)
+         + model.perc_cell_mp_q_b.cast(dtypes.float))                  # (B,49,H)
+    k = (x @ model.perc_cell_mp_k_w.cast(dtypes.float)
+         + model.perc_cell_mp_k_b.cast(dtypes.float))                  # (B,49,H)
+    v = (x @ model.perc_cell_mp_v_w.cast(dtypes.float)
+         + model.perc_cell_mp_v_b.cast(dtypes.float))                  # (B,49,H)
+    q = q.reshape(Bn, S, n_heads, head_dim).transpose(1, 2)            # (B,nh,49,hd)
+    k = k.reshape(Bn, S, n_heads, head_dim).transpose(1, 2)            # (B,nh,49,hd)
+    v = v.reshape(Bn, S, n_heads, head_dim).transpose(1, 2)            # (B,nh,49,hd)
+    scale = 1.0 / math.sqrt(head_dim)
+    scores = q @ k.transpose(-2, -1) * scale                           # (B,nh,49,49)
+    scores = scores + mp_bias.cast(scores.dtype)
+    attn = scores.clip(-1e4, 1e4).softmax(-1)
+    ctx = (attn @ v).transpose(1, 2).reshape(Bn, S, H)                 # (B,49,H)
+    # W_o is ZERO-INIT -> exactly 0 at t=0 (bootstrap-safe). Output is in H space.
+    out = (ctx @ model.perc_cell_mp_o_w.cast(dtypes.float)
+           + model.perc_cell_mp_o_b.cast(dtypes.float))                # (B,49,H)
+    return out
 
 
 def _pi_rope_rotate_q(q: Tensor, angle: float) -> Tensor:
@@ -1532,6 +1716,12 @@ def attach_perceiver_params(model: Any, hidden: int, n_heads: int,
     model.perc_n_global = int(PERCEIVER_N_GLOBAL)
     model.perc_dim = int(dim)
 
+    # ---- TOGGLE (5) CELL_MP params (ALWAYS allocated so state_dict shapes are
+    # consistent; path gated OFF by PERCEIVER_CELL_MP and gated OUT of the optimizer
+    # when off — no forward path when off -> must not be in optimizer). See
+    # attach_perceiver_cell_mp_params for the zero-init W_o bootstrap guarantee. ----
+    attach_perceiver_cell_mp_params(model, hidden, n_heads)
+
     # ---- TOGGLE (1) NOTEBOOK params (ALWAYS allocated so the state_dict/param-list
     # shapes are consistent across runs; the path is gated OFF by PERCEIVER_NOTEBOOK
     # and is inert when off). BOTH output projs are ZERO-INIT (the byte-identical-off
@@ -1629,6 +1819,52 @@ def attach_perceiver_gphi_params(model: Any, dim: int,
     model.perc_gphi_phi_w, model.perc_gphi_phi_b = _mlp(phi_dims, zero_last=False)
     rho_dims = [width + 1] + [width] * (n_layers - 1) + [dim]
     model.perc_gphi_rho_w, model.perc_gphi_rho_b = _mlp(rho_dims, zero_last=True)
+
+
+def attach_perceiver_cell_mp_params(model: Any, hidden: int,
+                                    n_heads: int) -> None:
+    """TOGGLE (5) CELL_MP params: dedicated Q/K/V/O for the cell-cell MHA step.
+
+    Shape: Q/K/V are (H, H) projections (full-width, matching the THINK projections).
+    O (perc_cell_mp_o_w, perc_cell_mp_o_b) is ZERO-INIT -> the cell-MP output is
+    EXACTLY 0 at t=0 -> byte-identical to HEAD when off AND neutral-anchor when on.
+    Q/K/V are small-random init (1/sqrt(H) scale), matching the Pythia style.
+
+    perc_cell_mp_gate (K_max,) init=0.5: per-breath scalar gate (passed through
+    sigmoid in the forward -> ~0.62 at t=0). The gate is secondary to the W_o
+    zero-init (the primary bootstrap guarantee); it provides a learned per-breath
+    weighting of the cell-MP contribution post-bootstrap, analogous to perc_cell_delta_gate.
+
+    ALWAYS allocated (same discipline as perc_cell_delta_gate and notebook params:
+    allocate regardless of the toggle so state-dict shapes are consistent across runs;
+    path is gated OUT of the optimizer when PERCEIVER_CELL_MP=0 — no forward path
+    when off -> must not be in optimizer -> would trip AdamW's grad-is-None assert).
+    """
+    k_max = int(model.perc_delta_gate.shape[0])
+    rng = np.random.RandomState(20260620)
+    scale = 1.0 / math.sqrt(hidden)
+
+    def _w(din: int, dout: int, zero: bool) -> Tensor:
+        if zero:
+            arr = np.zeros((din, dout), dtype=np.float32)
+        else:
+            arr = (rng.randn(din, dout) * scale).astype(np.float32)
+        return Tensor(arr, dtype=dtypes.float).contiguous()
+
+    def _b(d: int) -> Tensor:
+        return Tensor.zeros((d,), dtype=dtypes.float).contiguous()
+
+    model.perc_cell_mp_q_w = _w(hidden, hidden, zero=False)
+    model.perc_cell_mp_q_b = _b(hidden)
+    model.perc_cell_mp_k_w = _w(hidden, hidden, zero=False)
+    model.perc_cell_mp_k_b = _b(hidden)
+    model.perc_cell_mp_v_w = _w(hidden, hidden, zero=False)
+    model.perc_cell_mp_v_b = _b(hidden)
+    # O is ZERO-INIT — the bootstrap-safety guarantee (cell_mp_ctx == 0 at t=0).
+    model.perc_cell_mp_o_w = _w(hidden, hidden, zero=True)
+    model.perc_cell_mp_o_b = _b(hidden)
+    # Per-breath gate: init 0.5 -> sigmoid(0.5) ~ 0.62. Secondary to the W_o guarantee.
+    model.perc_cell_mp_gate = Tensor.full((k_max,), 0.5, dtype=dtypes.float).contiguous()
 
 
 def attach_perceiver_notebook_params(model: Any, hidden: int) -> None:
@@ -1782,6 +2018,21 @@ def perceiver_notebook_parameters(model: Any) -> list[Tensor]:
     return params
 
 
+def perceiver_cell_mp_parameters(model: Any) -> list[Tensor]:
+    """TOGGLE (5) CELL_MP trainable tensors. Returned ONLY when PERCEIVER_CELL_MP=1;
+    when off, these params have no forward path -> including them would trip AdamW's
+    grad-is-None assert. The tensors are always ALLOCATED (state-dict consistency)."""
+    if not hasattr(model, "perc_cell_mp_o_w"):
+        return []
+    return [
+        model.perc_cell_mp_q_w, model.perc_cell_mp_q_b,
+        model.perc_cell_mp_k_w, model.perc_cell_mp_k_b,
+        model.perc_cell_mp_v_w, model.perc_cell_mp_v_b,
+        model.perc_cell_mp_o_w, model.perc_cell_mp_o_b,
+        model.perc_cell_mp_gate,
+    ]
+
+
 def perceiver_parameters(model: Any, ball_path: str = "single") -> list[Tensor]:
     """Trainable perceiver params for the ACTIVE ball-path. Cell coords ARE trained
     (the cells learn their factor-graph positions; the anchor is the t=0 init) +
@@ -1819,6 +2070,10 @@ def perceiver_parameters(model: Any, ball_path: str = "single") -> list[Tensor]:
     # no grad path through it). perc_sil_w/b are always allocated.
     if PERCEIVER_SILHOUETTE:
         params += perceiver_silhouette_parameters(model)
+    # TOGGLE (5): only train the cell-MP tensors when the path is ACTIVE (else no
+    # grad path -> AdamW grad-is-None assert). The tensors are always allocated.
+    if PERCEIVER_CELL_MP:
+        params += perceiver_cell_mp_parameters(model)
     return params
 
 
@@ -1903,6 +2158,11 @@ def perceiver_deduction_parameters(model: Any, ball_path: str = "single") -> lis
         params += perceiver_notebook_parameters(model)
     if PERCEIVER_SILHOUETTE:
         params += perceiver_silhouette_parameters(model)
+    # TOGGLE (5): CELL_MP is deduction-side (it refines the cell residual AFTER the
+    # routing READ/WRITE are fixed). Include when the path is active; exclude when off
+    # (no forward path -> AdamW grad-is-None assert if included). Always allocated.
+    if PERCEIVER_CELL_MP:
+        params += perceiver_cell_mp_parameters(model)
     # NOTE: g_phi (perceiver_gphi_parameters) and cell coords
     # (perceiver_active_cell_coords) are intentionally OMITTED — they are the routing
     # params whose freeze is the whole point of this mode.
@@ -2019,5 +2279,19 @@ def perceiver_state_dict(model: Any) -> dict[str, Tensor]:
         sd.update({
             "perc.sil_w": model.perc_sil_w,
             "perc.sil_b": model.perc_sil_b,
+        })
+    # TOGGLE (5) CELL_MP params (always persisted — allocated regardless of the
+    # toggle so a cell-mp-on resume can warm-start from a cell-mp-off ckpt).
+    if hasattr(model, "perc_cell_mp_o_w"):
+        sd.update({
+            "perc.cell_mp_q_w": model.perc_cell_mp_q_w,
+            "perc.cell_mp_q_b": model.perc_cell_mp_q_b,
+            "perc.cell_mp_k_w": model.perc_cell_mp_k_w,
+            "perc.cell_mp_k_b": model.perc_cell_mp_k_b,
+            "perc.cell_mp_v_w": model.perc_cell_mp_v_w,
+            "perc.cell_mp_v_b": model.perc_cell_mp_v_b,
+            "perc.cell_mp_o_w": model.perc_cell_mp_o_w,
+            "perc.cell_mp_o_b": model.perc_cell_mp_o_b,
+            "perc.cell_mp_gate": model.perc_cell_mp_gate,
         })
     return sd
