@@ -55,6 +55,7 @@ from mycelium.perceiver_poincare import (
     PERCEIVER_NOTEBOOK, PERCEIVER_PI_ROPE,
     PERCEIVER_PI_ROPE_QK, PERCEIVER_PI_ROPE_ANGLE_SCALE, PERCEIVER_PI_ROPE_PERHEAD,
     PERCEIVER_SILHOUETTE, PERCEIVER_SIL_DIM, PERCEIVER_NB_PIROPE,
+    PERCEIVER_SHARP_REG, PERCEIVER_SHARP_REG_LAMBDA,
     attach_perceiver_params, perceiver_parameters, perceiver_state_dict,
     perceiver_breathing_forward, t0_anchor_check, clamp_perceiver_tangent_norms,
     perceiver_gphi_parameters, perceiver_active_cell_coords,
@@ -154,6 +155,15 @@ def _compile_step(model, opt, K: int, B: int, L: int, ball_path: str,
     # PERCEIVER_NB_PIROPE adds _pi_rope_rotate_q calls in the notebook READ (Q-only)
     #   and on the write source, each with a per-breath compile-time angle constant
     #   (structurally different graph body from the un-rotated notebook path).
+    # PERCEIVER_SHARP_REG adds the entropy-reg graph into the breath loop (different
+    # graph body vs the no-reg path: extra log_softmax ops + entropy reductions +
+    # accumulation into sharp_reg_sum). It MUST key so =1 does not silently reuse the
+    # =0 graph. PERCEIVER_SHARP_REG_LAMBDA bakes as a compile-time Python float
+    # constant inside the JIT (_srl in perceiver_breathing_forward) — a different
+    # lambda bakes a different scale constant, so it also keys (same discipline as
+    # PERCEIVER_PI_ROPE_ANGLE_SCALE). lambda=0.0 + SHARP_REG=1 still keys uniquely
+    # (the entropy graph is still built; the trainer skips adding to total via the
+    # Python-level gate `if PERCEIVER_SHARP_REG and _srl > 0`).
     key = (id(model), id(opt), int(K), int(B), int(L), str(ball_path),
            float(constraint_weight), float(grad_clip),
            bool(PERCEIVER_HOIST_BIAS), bool(PERCEIVER_FP16_THINK),
@@ -163,7 +173,8 @@ def _compile_step(model, opt, K: int, B: int, L: int, ball_path: str,
            bool(PERCEIVER_PI_ROPE_QK), float(PERCEIVER_PI_ROPE_ANGLE_SCALE),
            bool(PERCEIVER_PI_ROPE_PERHEAD),
            bool(PERCEIVER_SILHOUETTE), int(PERCEIVER_SIL_DIM),
-           bool(PERCEIVER_NB_PIROPE))
+           bool(PERCEIVER_NB_PIROPE),
+           bool(PERCEIVER_SHARP_REG), float(PERCEIVER_SHARP_REG_LAMBDA))
     if key in _JIT_CACHE:
         return _JIT_CACHE[key]
 
@@ -194,7 +205,7 @@ def _compile_step(model, opt, K: int, B: int, L: int, ball_path: str,
         batch.latent_valid = latent_valid
         batch.latent_type = latent_type
 
-        cell_logits_history, eng_history = perceiver_breathing_forward(
+        cell_logits_history, eng_history, sharp_reg = perceiver_breathing_forward(
             model, batch, K=K, ball_path=ball_path, collect_engagement=True)
 
         # ---- per-breath weighted CE ladder (REUSE the kenken supervision form):
@@ -231,6 +242,19 @@ def _compile_step(model, opt, K: int, B: int, L: int, ball_path: str,
         train_puzzle_acc = eq_valid.prod(axis=-1).mean().detach()
 
         total = cell_loss + cw * energy
+        # SHARPNESS REG: add lambda * (mean_read_entropy + mean_write_entropy) to
+        # the training loss BEFORE backward so the gradient flows to z_latent /
+        # z_cell / g_phi / the coords (the whole point — push the routing sharp).
+        # sharp_reg is the per-breath mean of (H_read + H_write) from the forward;
+        # lambda (_srl_val) bakes as a compile-time Python float constant (substrate-
+        # legal; same pattern as the constraint_weight cw above). Gate on both
+        # toggles at Python level so default-off is byte-identical (no extra add op
+        # when off; sharp_reg is Tensor.zeros(()) and never participates in the graph
+        # when PERCEIVER_SHARP_REG=0; the gate here ensures it does not modify total
+        # even when SHARP_REG=1+lambda=0 is used as a diagnostic-only mode).
+        _srl_val = float(PERCEIVER_SHARP_REG_LAMBDA)
+        if PERCEIVER_SHARP_REG and _srl_val > 0:
+            total = total + _srl_val * sharp_reg
         total.backward()
 
         # ---- NaN guard — where()-gated SELECT (never multiply-gate) ----
@@ -337,12 +361,18 @@ def _compile_step(model, opt, K: int, B: int, L: int, ball_path: str,
             energy.realize(), train_cell_acc.realize(), train_puzzle_acc.realize(),
         )
         gn = () if PERCEIVER_FAST_GRADNORM else (grad_norm.realize(),)
+        # sharp_reg: the per-breath mean of (coupled_read_reg + blanket_write_reg).
+        # coupled_read_reg = (1/n_valid) * sum_i( H_read_i * |z_latent_i|^2 ) per breath.
+        # blanket_write_reg = mean_cell H_write per breath.  Logged to trajectory JSONL
+        # so the magnitude of the coupled term can be tracked across the run.
+        # When PERCEIVER_SHARP_REG=0 this is Tensor.zeros(()) — safe to realize always.
         tail = (
             eng_read_sel.realize(), eng_read_ent.realize(), eng_read_max.realize(),
             eng_write_sel.realize(), eng_write_ent.realize(), eng_write_max.realize(),
             floor_read.realize(), floor_write.realize(),
             read_max_floor.realize(), write_max_floor.realize(),
             gphi_grad_norm.realize(), max_z.realize(), max_latent_z.realize(),
+            sharp_reg.realize(),
             *(ce.realize() for ce in per_breath_ce),
         )
         return head + gn + tail
@@ -555,11 +585,19 @@ def main():
         if PERCEIVER_FAST_GRADNORM:
             grad_norm_t = Tensor(float("nan"))
             outs = outs[:6] + (grad_norm_t,) + outs[6:]
+        # Output tuple layout (after the FAST_GRADNORM sentinel re-insert):
+        # [0-5]  total, healthy, cell_loss, energy, cell_acc, puzzle_acc
+        # [6]    grad_norm (or nan sentinel)
+        # [7-12] eng: eR_sel, eR_ent, eR_max, eW_sel, eW_ent, eW_max
+        # [13-16] floors: floor_read, floor_write, read_max_floor, write_max_floor
+        # [17-19] gphi_gn, max_z, max_latent_z
+        # [20]   sharp_reg (per-breath mean H_read + H_write; 0.0 when reg is off)
+        # [21:]  per_breath_ce
         (total_t, healthy_t, cell_loss_t, energy_t, cell_acc_t, puzzle_acc_t,
          grad_norm_t, eR_sel, eR_ent, eR_max, eW_sel, eW_ent, eW_max,
          floor_read_t, floor_write_t, read_max_floor_t, write_max_floor_t,
-         gphi_gn_t, max_z_t, max_latent_z_t) = outs[:20]
-        per_breath_ce_t = list(outs[20:])  # already realized in _step; host read only
+         gphi_gn_t, max_z_t, max_latent_z_t, sharp_reg_t) = outs[:21]
+        per_breath_ce_t = list(outs[21:])  # already realized in _step; host read only
 
         # tangent rim guard (Tier-2 §7) AFTER opt.step. BRICK-2 FIX: scoped to the
         # ACTIVE ball_path's cell fields ONLY (the brick-1 caveat: it touched the
@@ -576,8 +614,11 @@ def main():
             floor_read_t.reshape(()), floor_write_t.reshape(()),
             read_max_floor_t.reshape(()), write_max_floor_t.reshape(()),
             gphi_gn_t.reshape(()), max_z_t.reshape(()), max_latent_z_t.reshape(()),
+            sharp_reg_t.reshape(()),
             *(c.reshape(()) for c in per_breath_ce_t),
         ).realize()  # one enqueue, no host block
+        # packed layout: [0-4] loss/healthy/ce/acc/gn; [5-10] eng; [11-14] floors;
+        # [15-17] gphi_gn/max_z/max_latent_z; [18] sharp_reg; [19:] per_breath_ce
 
         if step % LOG_EVERY == 0 or step == 1:
             v = packed.numpy()  # the only host sync this step
@@ -591,7 +632,8 @@ def main():
             read_max_floor_v, write_max_floor_v = float(v[13]), float(v[14])
             gphi_gn_v, max_z_v = float(v[15]), float(v[16])
             max_latent_z_v = float(v[17])
-            per_breath_ce_v = [float(x) for x in v[18:18 + len(per_breath_ce_t)]]
+            sharp_reg_v = float(v[18])
+            per_breath_ce_v = [float(x) for x in v[19:19 + len(per_breath_ce_t)]]
             last_floors = {"read": floor_read_v, "write": floor_write_v,
                            "read_max": read_max_floor_v,
                            "write_max": write_max_floor_v}
@@ -609,8 +651,10 @@ def main():
                                       eng["write_max"], write_max_floor_v)
             dt = time.time() - t0
             gn_str = "n/a(fast)" if PERCEIVER_FAST_GRADNORM else f"{gn_v:.3e}"
+            sreg_str = (f"{sharp_reg_v:.4f}" if PERCEIVER_SHARP_REG else "off")
             print(f"[step {step:3d}] loss={loss_v:.4f} cell_ce={ce_v:.4f} "
                   f"cell_acc={acc_v:.3f} grad_norm={gn_str} "
+                  f"sharp_reg={sreg_str} "
                   f"gphi_grad={gphi_gn_v:.3e} max_z={max_z_v:.3f} "
                   f"max_latent_z={max_latent_z_v:.3f} "
                   f"({dt:.1f}s, {dt/step:.2f}s/step)", flush=True)
@@ -628,6 +672,11 @@ def main():
                 # clip is byte-identical, only the logged scalar is dropped) -> log
                 # None so the JSONL stays strict-JSON-parseable (no bare NaN).
                 "grad_norm": (None if PERCEIVER_FAST_GRADNORM else gn_v),
+                # sharp_reg: per-breath mean of (coupled_read_reg + blanket_write_reg).
+                # coupled_read_reg = mean_i(H_read_i * |z_latent_i|^2) over valid latents.
+                # blanket_write_reg = mean_cell(H_write). Non-zero only when REG=1.
+                # 0.0 when off (Tensor.zeros(()) / K — always present in JSONL).
+                "sharp_reg": sharp_reg_v,
                 "read_select_norm": eng["read_select_norm"],
                 "write_select_norm": eng["write_select_norm"],
                 "read_max": eng["read_max"], "write_max": eng["write_max"],
@@ -730,7 +779,7 @@ def _quick_eval(model, loader, K, ball_path, max_batches):
     n_cells = 0
     nb = 0
     for batch in loader.iter_eval(batch_size=loader.batch_size):
-        cell_logits_history, _ = perceiver_breathing_forward(
+        cell_logits_history, _, _ = perceiver_breathing_forward(
             model, batch, K=K, ball_path=ball_path, collect_engagement=False)
         acc, _ = kenken_accuracy(cell_logits_history[-1], batch)
         cv = batch.cell_valid.realize().numpy()

@@ -264,6 +264,65 @@ PERCEIVER_SIL_DIM = int(os.environ.get("PERCEIVER_SIL_DIM", "512"))
 # =0 (default): no phase stamp -> BYTE-IDENTICAL to HEAD.
 PERCEIVER_NB_PIROPE = int(os.environ.get("PERCEIVER_NB_PIROPE", "0")) > 0
 
+# --- SHARPNESS REGULARIZER (PERCEIVER_SHARP_REG / PERCEIVER_SHARP_REG_LAMBDA):
+# COUPLED radial sharpness penalty — couples each latent's READ entropy to its
+# squared Poincaré norm |z_latent|^2.
+#
+# Hypothesis: over training the routing FLATTENS (read entropy 2.5→3.5 nats,
+# read select_norm 0.45→0.20) and renorm-alone DEGRADES (cell_acc 0.37→0.31).
+# A BLANKET entropy penalty treats the origin equally with the rim, which over-
+# constrains global latents (|z|~0) that NEED broad attention.  The coupled form
+# correctly targets the rim: penalty is proportional to |z|^2, so:
+#   latent at origin (|z|~0) -> |z|^2~0 -> ~zero penalty (broad READ OK).
+#   latent at rim (|z|~0.9)  -> |z|^2~0.81 -> strong push toward entropy=0.
+# The model satisfies the penalty by EITHER sharpening at the rim OR staying
+# central — both are valid gradients, giving g_phi real geometric freedom.
+#
+# COUPLED penalty (the READ term, the load-bearing one):
+#   reg_read = (1 / n_valid_latents) * sum_i( H_i * |z_latent_i|^2 )
+#   H_i     = per-latent row entropy = -sum_j p_{ij} log p_{ij}   (nats)
+#   |z_i|^2 = squared norm of latent i's rim-clamped ball coords
+#            (the SAME coords max_latent_z is the max of; in-graph, NOT detached)
+# Averaged over K breaths; lambda bakes as a compile-time Python float scalar.
+#
+# WRITE term decision: cells sit at max_z~0.701, well off the rim and not
+# escaping.  A small BLANKET write entropy is retained (not coupled) to keep mild
+# pressure on the WRITE routing without over-constraining cell-side geometry.
+# The write contribution to the logged scalar is:  reg_write = mean_cell H_write.
+# Total logged reg = mean_k( reg_read_k + reg_write_k ) — per-breath mean.
+#
+# DIFFERENTIABILITY: both H_i (via log_softmax) AND |z_latent_i|^2 (via the
+# exp0_map + g_phi path) are live in the autograd graph.  The gradient therefore
+# backprops to g_phi (the DeepSets encoder) AND to perc_cell_v / perc_cell_v_*
+# (the cell tangent params that set the latent anchor).  The model can satisfy
+# the penalty by sharpening (moving d_hyp geometry) OR by reducing |z| (staying
+# central) — this is the geometric freedom intended.  |z_latent| is NOT detached.
+#
+# NUMERICAL STABILITY: H computed from log_softmax (avoids the log(softmax+eps)
+# composition error documented in reference_tinygrad_am_quirks.md).
+#
+# SUBSTRATE-LEGAL: no dtypes.float32 literal baked into the JIT graph; lambda is
+# a Python float scalar (compile-time constant); |z|^2 is a single pow+sum kernel;
+# no new .contiguous() in the breath loop; no new params.
+#
+# DEFAULT-OFF (byte-identical to HEAD): when PERCEIVER_SHARP_REG=0 OR lambda=0.0
+# the sharp_reg_sum is Tensor.zeros(()) and NOT added to total. Both flags are in
+# the JIT cache key (different graph bodies: SHARP_REG=1 adds the |z|^2 * H_read
+# graph nodes + blanket H_write; SHARP_REG=0 skips entirely).
+#
+# SUGGESTED STARTING LAMBDA (coupled form):
+#   reg_read ~ H_read_rim * |z|^2_rim ~ 2.5 * 0.81 ~ 2.0 nats (rim latents)
+#   reg_write (blanket) ~ 2.5 nats; combined ~ 4.5 nats (vs blanket ~5-7 nats).
+#   cell_ce ~ 1.8 nats.  For < 50% of CE: lambda * 4.5 < 0.9 -> lambda < 0.20.
+#   Starting point: lambda = 0.05 (reg ~ 0.22 nats, ~12% of CE); the |z|^2
+#   weighting reduces the effective scale vs the old blanket (origin latents
+#   contribute ~0), so the same starting lambda is slightly LESS aggressive.
+#   Sweep: 0.01, 0.05, 0.10, 0.20.  Too large -> rim latents collapse to 1-cell;
+#   too small -> no effect on entropy drift.
+# =0 (default): PERCEIVER_SHARP_REG=0 or PERCEIVER_SHARP_REG_LAMBDA=0.0 -> off.
+PERCEIVER_SHARP_REG = int(os.environ.get("PERCEIVER_SHARP_REG", "0")) > 0
+PERCEIVER_SHARP_REG_LAMBDA = float(os.environ.get("PERCEIVER_SHARP_REG_LAMBDA", "0.0"))
+
 
 # ---- cross-field hyperbolic distance (latents <-> cells) ---------------------
 # kenken._d_hyp_pairwise is WITHIN one field (M,M). The perceiver needs a CROSS
@@ -309,7 +368,8 @@ def _d_hyp_cross(za: Tensor, zb: Tensor) -> Tensor:
 
 # ---- READ / WRITE cross-attention (the engagement mechanism) ----------------
 
-def _cross_attn_weights(d_cross: Tensor, valid_src: Tensor, tau: float) -> Tensor:
+def _cross_attn_weights(d_cross: Tensor, valid_src: Tensor,
+                        tau: float) -> tuple[Tensor, Tensor]:
     """The geometry-driven cross-attention weights (no src_hidden needed).
 
     attn = softmax_S( -d_cross / tau  + (valid_src-1)*BLOCK ). (B,Q,S) rows sum to
@@ -317,6 +377,15 @@ def _cross_attn_weights(d_cross: Tensor, valid_src: Tensor, tau: float) -> Tenso
     GEOMETRY as the logit (no learned Q/K projection at the read/write boundary —
     the ball IS the router). Padding sources get a -BLOCK additive logit so they
     never win the softmax.
+
+    Returns (attn (B,Q,S), log_attn (B,Q,S)) where log_attn = log_softmax(logits).
+    log_attn is stashed from the PRE-SOFTMAX logits so entropy H = -sum(p*lp) is
+    numerically stable (avoids the log(softmax+eps) composition error documented in
+    reference_tinygrad_am_quirks.md; the log_softmax path is the safe pattern).
+    When PERCEIVER_SHARP_REG is off log_attn is still computed (it reuses the
+    clipped-logits graph node already in scope — no extra softmax), but the entropy
+    reg term in perceiver_breathing_forward is Tensor.zeros(()) and NOT added to
+    the loss.
     """
     Bn = int(d_cross.shape[0])
     S = int(d_cross.shape[2])
@@ -324,11 +393,13 @@ def _cross_attn_weights(d_cross: Tensor, valid_src: Tensor, tau: float) -> Tenso
     src_block = (valid_src.reshape(Bn, 1, S) - 1.0) * PERCEIVER_BLOCK  # 0 valid / -BLOCK pad
     logits = logits + src_block
     logits = logits.clip(-PERCEIVER_BLOCK, PERCEIVER_BLOCK)
-    return logits.softmax(axis=-1)                                     # (B,Q,S)
+    attn = logits.softmax(axis=-1)                                     # (B,Q,S)
+    log_attn = logits.log_softmax(axis=-1)                             # (B,Q,S) stable log-p
+    return attn, log_attn
 
 
 def _cross_attend(d_cross: Tensor, src_hidden: Tensor, valid_src: Tensor,
-                  tau: float) -> tuple[Tensor, Tensor]:
+                  tau: float) -> tuple[Tensor, Tensor, Tensor]:
     """One direction of cross-attention over -d_hyp logits.
 
     d_cross:    (B, Q, S) hyperbolic distance from each QUERY node to each SOURCE.
@@ -336,11 +407,13 @@ def _cross_attend(d_cross: Tensor, src_hidden: Tensor, valid_src: Tensor,
     valid_src:  (B, S)    1.0 valid / 0.0 padding source.
     tau:        attention temperature on the -d_hyp logits.
 
-    Returns (ctx (B,Q,H), attn (B,Q,S)).
+    Returns (ctx (B,Q,H), attn (B,Q,S), log_attn (B,Q,S)).
+    log_attn = log_softmax(logits) — stashed for numerically stable entropy
+    computation in the sharpness regularizer (PERCEIVER_SHARP_REG).
     """
-    attn = _cross_attn_weights(d_cross, valid_src, tau)               # (B,Q,S)
+    attn, log_attn = _cross_attn_weights(d_cross, valid_src, tau)     # (B,Q,S) each
     ctx = attn @ src_hidden.cast(attn.dtype)                          # (B,Q,H)
-    return ctx, attn
+    return ctx, attn, log_attn
 
 
 # ---- DeepSets g_phi over a constraint's cell-set (REUSE the Tier-2 pattern) ---
@@ -711,9 +784,19 @@ def perceiver_breathing_forward(model: Any, batch: Any, K: int,
              cell_hidden = cell_embed + ctx_c   (cells re-read the latents each breath)
       READOUT: per-cell value-codebook logits (value-domain masked).
 
-    Returns (cell_logits_history[K], engagement_history) where engagement_history
-    is a list of K dicts (READ/WRITE select_norm + entropy + max-attn) when
-    collect_engagement, else []. The latent hidden states are the residual.
+    Returns (cell_logits_history[K], engagement_history, sharp_reg) where
+    engagement_history is a list of K dicts (READ/WRITE select_norm + entropy +
+    max-attn) when collect_engagement, else []. sharp_reg is a scalar Tensor = mean
+    over K breaths of (reg_read_k + reg_write_k) where:
+      reg_read_k  = coupled (1/n_valid) * sum_i( H_read_i * |z_latent_i|^2 )
+                    (rim latents penalised proportionally to their radial distance;
+                     origin latents free; |z_latent| is NOT detached -> backprops
+                     to g_phi + perc_cell_v; H computed from log_softmax).
+      reg_write_k = blanket mean over valid cells of H_write (cells are off-rim;
+                    a small flat pressure, not coupled).
+    When PERCEIVER_SHARP_REG=0 sharp_reg is Tensor.zeros(()) (byte-identical to
+    HEAD; the trainer gates on SHARP_REG+lambda before adding to total).
+    The latent hidden states are the residual.
     """
     assert hasattr(model, "perc_cell_v"), \
         "model has no perceiver params; was PERCEIVER_TASK set before attach?"
@@ -791,6 +874,27 @@ def perceiver_breathing_forward(model: Any, batch: Any, K: int,
     cell_logits_history = []
     engagement_history = []
 
+    # SHARPNESS REG accumulator: sum of per-breath (reg_read_k + reg_write_k) scalars.
+    # Initialised to a concrete zero so the JIT sees a consistent graph node on breath
+    # 0 (same pattern as cell_loss_sum). When PERCEIVER_SHARP_REG is off the if-block
+    # is skipped and sharp_reg_sum stays zero; the trainer gates on SHARP_REG + lambda
+    # before adding to total. Substrate-legal: no float32 Tensor literal; no extra
+    # .contiguous() in the breath loop.
+    #
+    # COUPLED REG: pre-compute |z_latent_i|^2 (B,L) ONCE before the loop.
+    # z_latent is loop-invariant (recomputed from params each forward but never
+    # mutated inside the breath loop). Stays in-graph (NOT detached) so the gradient
+    # flows through |z|^2 back to g_phi and perc_cell_v_*. Single pow+sum kernel;
+    # no .contiguous() (no materialization barrier needed here — z_latent is already
+    # realized as the output of _rim_clamp_ball, the where()-gated shrink).
+    # Computed even when PERCEIVER_SHARP_REG=0 (it is just a cheap (B,L) pow+sum that
+    # is dead-code-eliminated by the JIT when the reg block is skipped); alternatively
+    # guard under `if PERCEIVER_SHARP_REG` — we leave it unconditional to keep the
+    # JIT graph shape consistent with and without the reg toggle at import time, and
+    # because the dead branch is trivially elided.
+    z_sq_norm = z_latent.cast(dtypes.float).pow(2).sum(axis=-1)  # (B,L) in-graph
+    sharp_reg_sum = Tensor.zeros((), dtype=dtypes.float).contiguous()
+
     # PERF FIX A: hoist the loop-invariant latent self-attn bias BEFORE the loop
     # (latent_valid is loop-invariant — extracted at the top, never mutated in the
     # loop body, which writes only latent_hidden/cell_hidden + appends to history).
@@ -811,7 +915,8 @@ def perceiver_breathing_forward(model: Any, batch: Any, K: int,
     for k in range(K):
         # === READ: each latent attends to cells via -d_hyp(z_latent, z_cell). ===
         be_k = breath_embed[k].reshape(1, 1, -1).cast(dtypes.float)   # (1,1,H)
-        ctx_l, read_attn = _cross_attend(d_read, cell_hidden, cell_valid, tau)  # (B,L,H),(B,L,49)
+        ctx_l, read_attn, read_log_attn = _cross_attend(               # (B,L,H),(B,L,49),(B,L,49)
+            d_read, cell_hidden, cell_valid, tau)
         # DEFUSE seam (a): realize-barrier on the READ context so the READ backward
         # cannot fuse into the THINK backward. Byte-identical (.contiguous() = pure
         # fusion-grouping barrier, no value change). See PERCEIVER_DEFUSE_BREATH.
@@ -933,7 +1038,8 @@ def perceiver_breathing_forward(model: Any, batch: Any, K: int,
                 nb_storage = _nb_write(model, latent_hidden, nb_storage, latent_valid)
 
         # === WRITE: each cell attends to latents via -d_hyp(z_cell, z_latent). ===
-        ctx_c, write_attn = _cross_attend(d_write, latent_hidden, latent_valid, tau)  # (B,49,H),(B,49,L)
+        ctx_c, write_attn, write_log_attn = _cross_attend(             # (B,49,H),(B,49,L),(B,49,L)
+            d_write, latent_hidden, latent_valid, tau)
         # DEFUSE seam (c): realize-barrier on the WRITE context so the WRITE
         # backward cannot fuse back into the THINK backward (and so the next
         # breath's READ starts from a materialised cell state). Byte-identical
@@ -942,6 +1048,43 @@ def perceiver_breathing_forward(model: Any, batch: Any, K: int,
             ctx_c = ctx_c.contiguous()
         cell_hidden = cell_embed + ctx_c                            # (B,49,H) re-read latents
         cell_hidden = cell_hidden * cell_valid.reshape(Bn, N_CELLS, 1)
+
+        # === SHARPNESS REG: accumulate per-breath coupled reg into loss. ===
+        # COUPLED READ term: reg_read = (1/n_valid) * sum_i( H_read_i * |z_latent_i|^2 )
+        #   H_read_i    = per-latent row entropy (nats) from log_softmax (stable).
+        #   |z_latent_i|^2 = squared norm of latent i's rim-clamped ball coords.
+        #                    Computed from z_sq_norm (B,L), hoisted before the loop;
+        #                    NOT detached -> gradient flows to g_phi + perc_cell_v_*.
+        #   Effect: origin latents (|z|~0) -> ~0 penalty (broad READ free);
+        #           rim latents (|z|~0.9)  -> |z|^2~0.81 -> sharp push.
+        #   The model satisfies by EITHER sharpening at the rim (entropy down)
+        #   OR staying central (|z|^2 down) — both valid gradient directions.
+        # BLANKET WRITE term: reg_write = mean over valid cells of H_write.
+        #   Cells are stable at max_z~0.701 (not escaping); a flat blanket penalty
+        #   maintains mild pressure on WRITE routing. NOT coupled (no cell |z|^2
+        #   weighting) because cell geometry is not the load-bearing target here.
+        # Default-off: when PERCEIVER_SHARP_REG=0 the if-block is skipped entirely
+        # (byte-identical HEAD — sharp_reg_sum stays zero, never touches the loss).
+        # When lambda=0.0: the block runs (builds the entropy graph) but the reg
+        # is zero-scaled and the trainer gates on _srl>0 before adding to total.
+        if PERCEIVER_SHARP_REG:
+            # COUPLED READ: per-latent entropy weighted by |z_latent_i|^2.
+            r = read_attn.cast(dtypes.float)                          # (B,L,49)
+            lp_r = read_log_attn.cast(dtypes.float)                   # (B,L,49) log_softmax
+            h_read_rows = -(r * lp_r).sum(axis=-1)                   # (B,L) per-latent H
+            lvf = latent_valid.cast(dtypes.float)                     # (B,L)
+            lden = lvf.sum() + 1e-6
+            # Weight each latent's entropy by its |z|^2 (in-graph, live gradient).
+            # h_read_rows * z_sq_norm: elementwise (B,L); mask by latent_valid; mean.
+            h_read_coupled = (h_read_rows * z_sq_norm * lvf).sum() / lden  # scalar
+            # BLANKET WRITE: plain mean entropy over valid cells (no |z|^2 weighting).
+            w = write_attn.cast(dtypes.float)                         # (B,49,L)
+            lp_w = write_log_attn.cast(dtypes.float)                  # (B,49,L) log_softmax
+            h_write_rows = -(w * lp_w).sum(axis=-1)                   # (B,49) per-cell H
+            cvf = cell_valid.cast(dtypes.float)                       # (B,49)
+            cden = cvf.sum() + 1e-6
+            h_write_mean = (h_write_rows * cvf).sum() / cden          # scalar (differentiable)
+            sharp_reg_sum = sharp_reg_sum + h_read_coupled + h_write_mean  # accumulate over K
 
         # === READOUT: per-cell value-codebook logits (value-domain masked). ===
         x_ln = _layernorm(cell_hidden, model.ln_f_g, model.ln_f_b,
@@ -958,7 +1101,15 @@ def perceiver_breathing_forward(model: Any, batch: Any, K: int,
             engagement_history.append(_engagement_stats(
                 read_attn, cell_valid, write_attn, latent_valid))
 
-    return cell_logits_history, engagement_history
+    # sharp_reg_sum: scalar Tensor = sum over K breaths of (reg_read_k + reg_write_k)
+    # where reg_read_k = coupled (|z|^2-weighted) READ entropy, reg_write_k = blanket
+    # WRITE entropy. Divide by K so the magnitude is per-breath (consistent across K;
+    # otherwise K=20 needs 2.5x smaller lambda than K=8).
+    # When PERCEIVER_SHARP_REG=0: sharp_reg is Tensor.zeros(()) (branch was never
+    # entered); byte-identical to HEAD. The trainer multiplies by _srl (lambda)
+    # and gates on both flags before adding to total.
+    sharp_reg = sharp_reg_sum / float(K)                               # scalar (per-breath mean)
+    return cell_logits_history, engagement_history, sharp_reg
 
 
 def _latent_self_attn_bias(latent_valid: Tensor, n_heads: int) -> Tensor:
