@@ -355,6 +355,39 @@ PERCEIVER_SHARP_REG_LAMBDA = float(os.environ.get("PERCEIVER_SHARP_REG_LAMBDA", 
 # (all-False at that position = the brick-2 cache hit still succeeds, byte-identical).
 PERCEIVER_FREEZE_ROUTING = int(os.environ.get("PERCEIVER_FREEZE_ROUTING", "0")) > 0
 
+# --- PERSISTENT CELL STATE (PERCEIVER_PERSIST_CELLS):
+# The bug: the breath loop RECONSTRUCTS cell_hidden every breath from the static
+# cell_embed + a fresh latent READ:
+#   cell_hidden = cell_embed + ctx_c   # (B,49,H) re-read latents  <-- current HEAD
+# So the ONLY state that persists across K breaths is latent_hidden (the 59-latent
+# delta-gate residual). The 49 cell hidden states are thrown away and rebuilt from
+# scratch each breath — the cell-level deductions never accumulate across breaths.
+# This is the structural reason the per-breath CE ladder DEGRADES (later breaths
+# are no better than earlier ones): there is no cell-side persistent state to refine.
+# v98 Sudoku does the OPPOSITE — the cell residual IS the persistent state, refined
+# directly every breath — which is why v98's per-breath CE ladder DESCENDS.
+#
+# FIX: treat cell_hidden as a PERSISTENT accumulator across the K breaths (mirror
+# of the latent delta-gate residual). Per-breath update:
+#   cell_target  = cell_embed + ctx_c           # this breath's reconstruction
+#   cell_hidden  = cell_hidden + gate_k * (cell_target - cell_hidden)   # v98-style blend
+# At gate=0.5 (the init) this is a running blend of the per-breath reconstructs.
+# At gate=1.0 this reproduces the current reconstruct exactly (byte-identical-off).
+#
+# NEW PARAM: perc_cell_delta_gate  (K_max,)  — mirror of perc_delta_gate.
+#   init = 0.5  (active persistence from step 0; gate=1.0 would reproduce HEAD).
+# PARAM-SET DISCIPLINE: included ONLY when PERCEIVER_PERSIST_CELLS=1 (when off the
+# tensor is never in a forward path, so it MUST NOT be in the optimizer — AdamW
+# would assert grad-is-None). The gate is deduction-side (like perc_delta_gate):
+# included in perceiver_deduction_parameters when FREEZE_ROUTING=1, and in
+# perceiver_parameters when FREEZE_ROUTING=0.
+#
+# DEFAULT-OFF: =0 -> cell_hidden = cell_embed + ctx_c (byte-identical to HEAD).
+# =1: persistent cell accumulator with perc_cell_delta_gate blend.
+# JIT CACHE KEY: bool(PERCEIVER_PERSIST_CELLS) added to _compile_step (changes the
+# graph body AND the optimizer param-set -> must not reuse the =0 graph).
+PERCEIVER_PERSIST_CELLS = int(os.environ.get("PERCEIVER_PERSIST_CELLS", "0")) > 0
+
 
 # ---- cross-field hyperbolic distance (latents <-> cells) ---------------------
 # kenken._d_hyp_pairwise is WITHIN one field (M,M). The perceiver needs a CROSS
@@ -1078,7 +1111,18 @@ def perceiver_breathing_forward(model: Any, batch: Any, K: int,
         # (.contiguous() = pure fusion-grouping barrier). See PERCEIVER_DEFUSE_BREATH.
         if PERCEIVER_DEFUSE_BREATH:
             ctx_c = ctx_c.contiguous()
-        cell_hidden = cell_embed + ctx_c                            # (B,49,H) re-read latents
+        # TOGGLE: PERCEIVER_PERSIST_CELLS — make the cell hidden state a PERSISTENT
+        # accumulator across breaths (v98-style delta-gate blend) instead of
+        # reconstructing from scratch each breath. The init at line ~941
+        # `cell_hidden = cell_embed` is the k=0 starting state; persistence
+        # accumulates deduction across the K breaths. Default-off = byte-identical
+        # to HEAD (the else branch = current reconstruct).
+        if PERCEIVER_PERSIST_CELLS:
+            cell_gate_k = model.perc_cell_delta_gate[k].cast(dtypes.float).reshape(1, 1, 1)
+            cell_target = cell_embed + ctx_c                            # this breath's read
+            cell_hidden = cell_hidden + cell_gate_k * (cell_target - cell_hidden)  # persistent blend
+        else:
+            cell_hidden = cell_embed + ctx_c                            # (B,49,H) re-read latents
         cell_hidden = cell_hidden * cell_valid.reshape(Bn, N_CELLS, 1)
 
         # === SHARPNESS REG: accumulate per-breath coupled reg into loss. ===
@@ -1451,6 +1495,16 @@ def attach_perceiver_params(model: Any, hidden: int, n_heads: int,
     model.perc_breath_embed = Tensor(be, dtype=dtypes.float).contiguous()
     # per-breath THINK residual blend (init 1.0 = full update; mirror sudoku).
     model.perc_delta_gate = Tensor.ones((k_max,), dtype=dtypes.float).contiguous()
+    # per-breath CELL residual blend (PERCEIVER_PERSIST_CELLS).
+    # init = 0.5: active persistence from step 0 (gate=1.0 would reproduce the
+    # current reconstruct exactly; gate=0.5 forces cell deductions to accumulate).
+    # Shape (K_max,) mirrors perc_delta_gate exactly.
+    # ALWAYS allocated so state_dict shapes are consistent across runs regardless
+    # of the toggle — gated OUT of the optimizer when PERCEIVER_PERSIST_CELLS=0
+    # (no forward path when off -> must not be in optimizer; see param-set fns).
+    model.perc_cell_delta_gate = (
+        Tensor.full((k_max,), 0.5, dtype=dtypes.float).contiguous()
+    )
 
     # ---- learned per-type latent hidden init (4 types: row/col/cage/global) ----
     lt = (np.random.RandomState(2407).randn(4, hidden) * PERCEIVER_LATENT_INIT).astype(np.float32)
@@ -1751,6 +1805,11 @@ def perceiver_parameters(model: Any, ball_path: str = "single") -> list[Tensor]:
         model.perc_state_embed,
         model.perc_position_embed,
     ]
+    # TOGGLE PERCEIVER_PERSIST_CELLS: perc_cell_delta_gate has a forward path ONLY
+    # when the toggle is on — must not be in the optimizer when off (AdamW would
+    # assert grad-is-None). perc_cell_delta_gate is always allocated; only gated in.
+    if PERCEIVER_PERSIST_CELLS:
+        params.append(model.perc_cell_delta_gate)
     params += perceiver_gphi_parameters(model)
     # TOGGLE (1): only train the notebook tensors when the path is ACTIVE (else no
     # grad path -> AdamW grad-is-None assert). The tensors are always allocated.
@@ -1833,6 +1892,11 @@ def perceiver_deduction_parameters(model: Any, ball_path: str = "single") -> lis
         model.perc_state_embed,
         model.perc_position_embed,
     ]
+    # TOGGLE PERCEIVER_PERSIST_CELLS: perc_cell_delta_gate is deduction-side (it
+    # blends the cell residual AFTER the routing READ/WRITE are fixed). Include when
+    # the toggle is on. When off, no forward path -> must NOT be in the optimizer.
+    if PERCEIVER_PERSIST_CELLS:
+        params.append(model.perc_cell_delta_gate)
     # Notebook and silhouette are deduction-side (they process the latent hidden states
     # AFTER the routing distances are fixed); include when their paths are active.
     if PERCEIVER_NOTEBOOK:
@@ -1904,6 +1968,7 @@ def perceiver_state_dict(model: Any) -> dict[str, Tensor]:
         "perc.latent_type_embed": model.perc_latent_type_embed,
         "perc.breath_embed": model.perc_breath_embed,
         "perc.delta_gate": model.perc_delta_gate,
+        "perc.cell_delta_gate": model.perc_cell_delta_gate,
         "perc.value_codebook": model.perc_value_codebook,
         "perc.state_embed": model.perc_state_embed,
         "perc.position_embed": model.perc_position_embed,

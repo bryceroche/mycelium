@@ -57,6 +57,7 @@ from mycelium.perceiver_poincare import (
     PERCEIVER_SILHOUETTE, PERCEIVER_SIL_DIM, PERCEIVER_NB_PIROPE,
     PERCEIVER_SHARP_REG, PERCEIVER_SHARP_REG_LAMBDA,
     PERCEIVER_FREEZE_ROUTING,
+    PERCEIVER_PERSIST_CELLS,
     attach_perceiver_params, perceiver_parameters, perceiver_deduction_parameters,
     perceiver_state_dict,
     perceiver_breathing_forward, t0_anchor_check, clamp_perceiver_tangent_norms,
@@ -190,13 +191,20 @@ def _compile_step(model, opt, K: int, B: int, L: int, ball_path: str,
            bool(PERCEIVER_SILHOUETTE), int(PERCEIVER_SIL_DIM),
            bool(PERCEIVER_NB_PIROPE),
            bool(PERCEIVER_SHARP_REG), float(PERCEIVER_SHARP_REG_LAMBDA),
-           bool(PERCEIVER_FREEZE_ROUTING))
+           bool(PERCEIVER_FREEZE_ROUTING),
+           bool(PERCEIVER_PERSIST_CELLS))
     # PERCEIVER_FREEZE_ROUTING: when =1 opt.params is the DEDUCTION-ONLY set (g_phi
     # + cell coords excluded). opt.step() operates on a smaller param list -> a
     # different graph body than the full brick-2 set. MUST key so =0 and =1 compile
     # separate graphs and never silently reuse each other. When =0 the key appends
     # False -> the brick-2 key is extended by one False but is otherwise identical
     # to the pre-FREEZE_ROUTING key (no false-cache-miss against old compiled graphs).
+    # PERCEIVER_PERSIST_CELLS: when =1 the breath loop uses the delta-gate cell-blend
+    # branch instead of the reconstruct branch (different graph body: extra gate
+    # indexing + blend ops in the breath loop) AND adds perc_cell_delta_gate to the
+    # optimizer param-set (different opt.step() graph). MUST key — =0 and =1 must
+    # never share a compiled graph. Default =0 appends False -> =0 key is the prior
+    # key extended by one False (no false-cache-miss against old compiled graphs).
     if key in _JIT_CACHE:
         return _JIT_CACHE[key]
 
@@ -523,6 +531,10 @@ def main():
         + [getattr(l, a) for l in model.block.layers
            for a in ("wq", "bq", "wk", "bk", "w_in", "b_in")]) if id(p) in pid)
     delta_gate_in = 1 if id(model.perc_delta_gate) in pid else 0
+    # PERCEIVER_PERSIST_CELLS audit: perc_cell_delta_gate must be IN the optimizer
+    # when PERSIST_CELLS=1 (deduction-side; active forward path) and OUT when =0
+    # (no forward path -> AdamW grad-is-None assert if included). Always check.
+    cell_dg_in = 1 if id(model.perc_cell_delta_gate) in pid else 0
 
     if PERCEIVER_FREEZE_ROUTING:
         # FROZEN-ROUTING: g_phi and coords MUST be excluded; deduction MUST be present.
@@ -530,6 +542,7 @@ def main():
               f"  THINK={think_in} tensors"
               f"  readout=[value_codebook,state_embed,position_embed,ln_f]"
               f"  delta_gate={delta_gate_in}"
+              f"  cell_delta_gate={cell_dg_in} (expect {1 if PERCEIVER_PERSIST_CELLS else 0})"
               f"  type_embed={1 if id(model.perc_latent_type_embed) in pid else 0}"
               f"  breath_embed={1 if id(model.perc_breath_embed) in pid else 0}"
               f"  --- EXCLUDED (frozen at anchor): ---"
@@ -542,11 +555,18 @@ def main():
             f"active cell coords ARE in the optimizer under FREEZE_ROUTING=1 ({len(coords_in)} present — bug)"
         assert len(inactive_in) == 0, "inactive cell field is in the optimizer (dead param)"
         assert delta_gate_in == 1, "delta_gate not in optimizer (deduction param must be trained)"
+        if PERCEIVER_PERSIST_CELLS:
+            assert cell_dg_in == 1, \
+                "perc_cell_delta_gate NOT in optimizer under PERSIST_CELLS=1 (deduction param — bug)"
+        else:
+            assert cell_dg_in == 0, \
+                "perc_cell_delta_gate IS in optimizer under PERSIST_CELLS=0 (no forward path — grad-is-None risk)"
     else:
         # BRICK-2 UNFREEZE CONFIRM: the optimizer trains the FULL anchored perceiver =
         # {THINK (Pythia L0-L3) + readout + delta_gate + g_phi + active-path coords}.
         print(f"  UNFREEZE param-set: THINK={think_in} tensors  readout=[value_codebook,"
               f"state_embed,position_embed,ln_f]  delta_gate={delta_gate_in}"
+              f"  cell_delta_gate={cell_dg_in} (expect {1 if PERCEIVER_PERSIST_CELLS else 0})"
               f"  g_phi={len(gphi_in)}/{gphi_total} tensors"
               f"  active_coords({ball_path})={len(coords_in)}  inactive_coords_present={len(inactive_in)}")
         assert len(gphi_in) == gphi_total and len(gphi_in) > 0, \
@@ -555,6 +575,12 @@ def main():
             "active-path cell coords NOT in optimizer (brick-2 requires UNFROZEN coords)"
         assert len(inactive_in) == 0, "inactive cell field is in the optimizer (dead param)"
         assert delta_gate_in == 1, "delta_gate not in optimizer"
+        if PERCEIVER_PERSIST_CELLS:
+            assert cell_dg_in == 1, \
+                "perc_cell_delta_gate NOT in optimizer under PERSIST_CELLS=1 (deduction param — bug)"
+        else:
+            assert cell_dg_in == 0, \
+                "perc_cell_delta_gate IS in optimizer under PERSIST_CELLS=0 (no forward path — grad-is-None risk)"
 
     opt = AdamW(params, lr=LR, weight_decay=0.0)
 
@@ -718,11 +744,15 @@ def main():
             dt = time.time() - t0
             gn_str = "n/a(fast)" if PERCEIVER_FAST_GRADNORM else f"{gn_v:.3e}"
             sreg_str = (f"{sharp_reg_v:.4f}" if PERCEIVER_SHARP_REG else "off")
+            # Light gate-logging (one .numpy() per LOG_EVERY; skipped when off to
+            # avoid a host sync on an optimizer-absent tensor).
+            cell_gate_str = (f" cell_gate={float(model.perc_cell_delta_gate.mean().numpy()):.3f}"
+                             if PERCEIVER_PERSIST_CELLS else "")
             print(f"[step {step:3d}] loss={loss_v:.4f} cell_ce={ce_v:.4f} "
                   f"cell_acc={acc_v:.3f} grad_norm={gn_str} "
                   f"sharp_reg={sreg_str} "
                   f"gphi_grad={gphi_gn_v:.3e} max_z={max_z_v:.3f} "
-                  f"max_latent_z={max_latent_z_v:.3f} "
+                  f"max_latent_z={max_latent_z_v:.3f}{cell_gate_str} "
                   f"({dt:.1f}s, {dt/step:.2f}s/step)", flush=True)
             print(f"          READ  sel={eng['read_select_norm']:.4f} "
                   f"floor={floor_read_v:.4f} max={eng['read_max']:.3f} "
