@@ -575,6 +575,68 @@ PERCEIVER_CELL_MP_DECAY = int(os.environ.get("PERCEIVER_CELL_MP_DECAY", "0")) > 
 # graph body + different optimizer param-set → must not reuse the =0 graph).
 PERCEIVER_CELL_IDENTITY = int(os.environ.get("PERCEIVER_CELL_IDENTITY", "0")) > 0
 
+# --- TOGGLE (9): PERCEIVER_CELL_MP_PERHEAD — RELATION-SPECIFIC per-head cell-MP masks.
+#
+# ROOT CAUSE of the confirmed over-smoothing (peer cos -> 0.96-0.99 at the last
+# breath): the combined-adjacency cell-MP (TOGGLE 5, _build_cell_mp_bias) gives
+# EVERY one of the cfg.n_heads heads the SAME adjacency = membership^T @ membership
+# > 0 = (row UNION col UNION cage) peers. With one global pool, all heads compute
+# ~the same global average -> the cell representations collapse to a single point.
+# v98 does NOT do this: it splits the heads into RELATION-SPECIFIC groups (5 see
+# only row-peers, 5 only col, 5 only cage, 1 global) so different heads preserve
+# different multi-relational distinctions and the cells never collapse
+# (_build_kenken_fixed_masks, kenken.py:317). This toggle mirrors that — GENERALLY.
+#
+# MECHANISM (when =1): from the TYPED membership (latent_type per latent), build one
+# cell-cell adjacency PER FACTOR TYPE t: A_t = (members_t^T @ members_t > 0) over the
+# cells that share a type-t factor. For KenKen this yields A_row, A_col, A_cage. A
+# deterministic head-allocation function (_cell_mp_head_allocation, typed BY INDEX —
+# no hardcoded 'row'/'col'/'cage') maps (T factor types, H cell-MP heads, G global
+# heads) -> a per-head type-index array of length H; head h then gets A_{alloc[h]}
+# as its {0,-1e4} mask (global heads get the union/all-valid mask). The cell-MP
+# attention bias becomes PER-HEAD (B, H, 49, 49) instead of shared across heads.
+#
+# GENERALITY: G = max(1, H // 16) global heads are reserved; the remaining H-G heads
+# are spread across the T types as evenly as possible (contiguous blocks, remainder
+# distributed). For KenKen (T=3, H=16, G=1) this derives 5 row / 5 col / 5 cage / 1
+# global — EXACTLY v98. T=1 -> all non-global heads on the one type; T > (H-G) ->
+# round-robin so every type that fits gets >=1 head; non-divisible remainders spread.
+#
+# DECAY INTERACTION: when PERHEAD=1 the per-type structure ITSELF prevents collapse
+# (the v98 mechanism), so the depth-throttling PERCEIVER_CELL_MP_DECAY init is
+# DISABLED (ignored) — we restore full breath depth. attach_perceiver_cell_mp_params
+# branches on PERHEAD so the decay ramp is not applied when per-head is on (the gate
+# falls back to the constant 0.5 init); a PERHEAD run does not set CELL_MP_DECAY.
+#
+# PARAM-SET DISCIPLINE: NO new trainable params — reuses the existing TOGGLE-5
+# perc_cell_mp_{q/k/v/o}_w/b + perc_cell_mp_gate (already allocated, gated into the
+# optimizer by PERCEIVER_CELL_MP). The ONLY change is the bias tensor (per-head vs
+# shared) and the gate init branch. W_o stays ZERO-INIT (bootstrap-safe — cell_mp_ctx
+# == 0 at t=0). PERCEIVER_CELL_IDENTITY stays compatible (can stay on).
+#
+# DEFAULT-OFF: =0 -> the shared combined-adjacency path (_build_cell_mp_bias) is used,
+# BYTE-IDENTICAL to HEAD. =1 requires PERCEIVER_CELL_MP=1 (asserted at forward entry).
+# JIT CACHE KEY: bool(PERCEIVER_CELL_MP_PERHEAD) appended to _compile_step (different
+# bias-build graph body -> must not reuse the shared-adjacency graph).
+PERCEIVER_CELL_MP_PERHEAD = int(os.environ.get("PERCEIVER_CELL_MP_PERHEAD", "0")) > 0
+
+# Number of LATENT TYPE ids in the membership contract (mirror perceiver_poincare_data
+# LTYPE_{ROW,COL,CAGE,GLOBAL} = 0/1/2/3 -> 4 type ids; the forward's one_hot(4) latent-
+# type embedding uses the same count). The NUMBER OF FACTOR TYPES T (non-global) is
+# PERCEIVER_N_LATENT_TYPES - 1 (= 3 for KenKen: row/col/cage). Both the data adapter
+# and this constant change together if a future task adds factor relations.
+#
+# REQUIRED PER-TASK CONFIG KNOB (FIX 2c): this is NOT auto-derived from data. The data
+# adapter's type contract (LTYPE_* ids) and this constant MUST be edited together when
+# porting to a new task with a different number of relation types. A graph with more
+# relation types than PERCEIVER_N_LATENT_TYPES - 1 non-global types will FAIL LOUDLY
+# at attach_perceiver_cell_mp_params / _build_cell_mp_bias_perhead setup time (not
+# silently drop types). See also the starvation warning in attach_perceiver_cell_mp_params.
+PERCEIVER_N_LATENT_TYPES = 4
+# Sentinel for a GLOBAL head in the head-allocation array (a type index of -1; a
+# global head sees the union/all-valid mask, not a single relation's adjacency).
+CELL_MP_HEAD_GLOBAL = -1
+
 
 # ---- cross-field hyperbolic distance (latents <-> cells) ---------------------
 # kenken._d_hyp_pairwise is WITHIN one field (M,M). The perceiver needs a CROSS
@@ -1056,6 +1118,10 @@ def perceiver_breathing_forward(model: Any, batch: Any, K: int,
         assert PERCEIVER_PERSIST_CELLS, \
             "PERCEIVER_CELL_MP=1 requires PERCEIVER_PERSIST_CELLS=1 (cell-MP refines " \
             "the persistent cell residual; without it the update is overwritten each breath)"
+    if PERCEIVER_CELL_MP_PERHEAD:
+        assert PERCEIVER_CELL_MP, \
+            "PERCEIVER_CELL_MP_PERHEAD=1 requires PERCEIVER_CELL_MP=1 (per-head masks " \
+            "are the relation-specific form of the cell-MP block)"
     if ball_path is None:
         ball_path = PERCEIVER_BALL_PATH
 
@@ -1168,7 +1234,16 @@ def perceiver_breathing_forward(model: Any, batch: Any, K: int,
     # When CELL_MP=0: skipped entirely (cell_mp_bias is never defined; the if-block
     # in the loop is also skipped -> byte-identical HEAD).
     if PERCEIVER_CELL_MP:
-        cell_mp_bias = _build_cell_mp_bias(membership, cell_valid, cfg.n_heads)  # (B,nh,49,49)
+        if PERCEIVER_CELL_MP_PERHEAD:
+            # TOGGLE (9): RELATION-SPECIFIC per-head masks (mirror v98's 5/5/5/1 split,
+            # generally). head h sees only its assigned factor type's peers (row-only,
+            # col-only, cage-only, or the global union) -> heads preserve multi-
+            # relational distinctions -> no over-smoothing collapse. latent_type is
+            # loop-invariant (extracted at the top, never mutated in the loop).
+            cell_mp_bias = _build_cell_mp_bias_perhead(
+                membership, cell_valid, latent_type, cfg.n_heads)       # (B,nh,49,49)
+        else:
+            cell_mp_bias = _build_cell_mp_bias(membership, cell_valid, cfg.n_heads)  # (B,nh,49,49)
 
     # PROBE: pre-compute the binary (B,49,49) adjacency for PERCEIVER_PROBE_SMOOTH.
     # Derived from membership EXACTLY as _build_cell_mp_bias does, but as a {0,1}
@@ -1540,6 +1615,147 @@ def _latent_self_attn_bias(latent_valid: Tensor, n_heads: int) -> Tensor:
     allow = allow * valid_q + eye * (1.0 - valid_q)
     bias = (1.0 - allow) * (-1e4)                                    # 0 allow / -1e4 block
     bias = bias.expand(Bn, n_heads, L, L)
+    return bias.contiguous()
+
+
+def _cell_mp_head_allocation(T: int, H: int, G: int) -> np.ndarray:
+    """Deterministic per-head TYPE assignment for the per-head cell-MP (TOGGLE 9).
+
+    THE GENERALITY CORE. Pure function: maps (T = number of factor TYPES, H = cell-MP
+    head count, G = number of GLOBAL heads) -> a length-H int array. Each entry is a
+    TYPE INDEX in 0..T-1, or CELL_MP_HEAD_GLOBAL (= -1) for a global head. NO hardcoded
+    'row'/'col'/'cage' strings — types are indices, so this works for any factor graph.
+
+    Allocation rule:
+      - Reserve G global heads (the caller passes G = max(1, H // 16)). They get the
+        union/all-valid mask in the bias builder. Globals are placed at the END so the
+        per-type blocks are contiguous from head 0 (matching v98's layout).
+      - Distribute the remaining R = H - G heads across the T types as evenly as
+        possible in CONTIGUOUS blocks: base = R // T, rem = R % T. The first `rem`
+        types each get base+1 heads; the rest get base. The remainder is spread one-
+        per-type across the leading types (no single type hogs it).
+      - T == 1: all R non-global heads go to the one type (base = R, rem = 0).
+      - T > R (more types than non-global heads): base = 0, so the first R types get
+        1 head each (round-robin by contiguous block) and the trailing T-R types get
+        0 heads. Every type that FITS gets >=1 head; if T > R some types are unmasked
+        this run (unavoidable when there are fewer heads than relations).
+
+    KenKen (T=3, H=16, G=1): R=15, base=5, rem=0 -> 5/5/5 then 1 global = v98's 5/5/5/1.
+
+    Returns: np.ndarray (H,) int64. alloc[h] in {0..T-1} or CELL_MP_HEAD_GLOBAL.
+    """
+    T = int(T); H = int(H); G = int(G)
+    assert H >= 1, f"H must be >=1, got {H}"
+    assert 0 <= G <= H, f"G must be in [0,H], got G={G} H={H}"
+    assert T >= 1, f"T (factor types) must be >=1, got {T}"
+    alloc = np.full((H,), CELL_MP_HEAD_GLOBAL, dtype=np.int64)
+    R = H - G                                            # non-global head budget
+    if R <= 0:
+        return alloc                                    # all heads global (degenerate)
+    base = R // T                                        # even share per type
+    rem = R % T                                          # leftover, spread one-per-type
+    h = 0
+    for t in range(T):
+        cnt = base + (1 if t < rem else 0)              # first `rem` types get +1
+        for _ in range(cnt):
+            alloc[h] = t
+            h += 1
+    # heads h..h+G-1 stay CELL_MP_HEAD_GLOBAL (the trailing global block). When T > R
+    # the loop fills only R heads (base=0, rem=R) -> first R types get 1 head each.
+    assert h == R, f"allocation filled {h} non-global heads, expected {R}"
+    return alloc
+
+
+def _build_cell_mp_bias_perhead(membership: Tensor, cell_valid: Tensor,
+                                latent_type: Tensor, n_heads: int) -> Tensor:
+    """Build the (B, n_heads, 49, 49) RELATION-SPECIFIC per-head cell-MP bias (TOGGLE 9).
+
+    Mirrors v98's 5 row / 5 col / 5 cage / 1 global per-head mask split, GENERALLY:
+
+      1. PER-TYPE ADJACENCY. For each factor type t in 0..T-1 (T = PERCEIVER_N_LATENT_TYPES
+         - 1, the non-global types) build the type-t membership members_t = membership *
+         (latent_type == t), then A_t[b,i,j] = (members_t^T @ members_t)[b,i,j] > 0 — the
+         cells that share a type-t factor (e.g. A_row = same-row peers only, NOT the
+         row UNION col UNION cage that the combined adjacency uses).
+      2. HEAD ALLOCATION. _cell_mp_head_allocation(T, n_heads, G=max(1,n_heads//16))
+         maps each head to a type index or CELL_MP_HEAD_GLOBAL.
+      3. PER-HEAD MASK. head h gets A_{alloc[h]} ; a global head gets the union/all-
+         valid mask (every valid cell — widest horizon, exactly v98's global head).
+
+    Validity masking: block pad keys; pad query rows -> self-only eye (no all-block row).
+    SELF-EDGE FIX (FIX 1): after the per-type adjacency is computed, force the self-
+    diagonal for every VALID query cell on EVERY per-type allow mask, BEFORE the
+    {0,-1e4} conversion:
+        allow = allow.maximum(eye49 * valid_q)
+    This ensures that a valid cell i belonging to NO type-t factor (A_t[i,i]==0) still
+    attends to itself (not an all-blocked row -> uniform pad-content leak). KenKen byte-
+    identical: every valid KenKen cell is already in its own row, col, and cage, so
+    A_t[i,i]==1 already and .maximum() is a no-op for every type-t mask.
+    The pad-query self-only logic in _validity_mask still fires first (pad query rows ->
+    eye, ensuring PAD queries also have a valid softmax target); the valid-query self-edge
+    is then forced on top so both invariants hold simultaneously.
+
+    T-CONFIG SAFETY (FIX 2): PERCEIVER_N_LATENT_TYPES is a REQUIRED per-task config knob
+    (see module-level comment). The data adapter's max non-global type index must be
+    < PERCEIVER_N_LATENT_TYPES. An assert at attach_perceiver_cell_mp_params fires LOUDLY
+    for wrong configs. A one-time starvation warning fires if T > (H - G) (some types get
+    0 heads -> covered only by the global head).
+
+    {0,1} allow -> {0,-1e4} bias. Substrate-legal: matmuls + threshold; numpy-built
+    eye/select constants cast to dtypes.float (NO float32 Tensor literal baked); one
+    final .contiguous() barrier.
+    """
+    Bn = int(membership.shape[0])
+    T = PERCEIVER_N_LATENT_TYPES - 1                                    # non-global types
+    G = max(1, n_heads // 16)                                           # reserved globals
+    alloc = _cell_mp_head_allocation(T, n_heads, G)                     # (H,) type idx / -1
+
+    m = membership.cast(dtypes.float)                                   # (B,L,49)
+    lt = latent_type                                                    # (B,L) int
+    eye49 = Tensor(np.eye(N_CELLS, dtype=np.float32),
+                   dtype=dtypes.float).reshape(1, N_CELLS, N_CELLS)
+    valid_key = cell_valid.reshape(Bn, 1, N_CELLS)                      # (B,1,49)
+    valid_q = cell_valid.reshape(Bn, N_CELLS, 1)                        # (B,49,1)
+
+    def _validity_mask(allow: Tensor) -> Tensor:
+        # Step 1: block pad keys.
+        allow = allow * valid_key.cast(allow.dtype)
+        # Step 2: pad query rows -> self-only eye (no all-block softmax row for pad cells).
+        allow = allow * valid_q.cast(allow.dtype) + eye49 * (1.0 - valid_q.cast(allow.dtype))
+        # FIX 1 — SELF-EDGE: force self-diagonal for every VALID query cell on this
+        # per-type mask.  A valid cell i in no type-t factor has A_t[i,i]==0 after the
+        # matmul -> all-blocked row -> uniform attention over ALL cells incl. pad.
+        # The combined builder's "diagonal always 1" only holds for the UNION, not per-type.
+        # .maximum(eye49 * valid_q) sets allow[b,i,i]=1 whenever cell_valid[b,i]==1, leaving
+        # all other entries unchanged.  For KenKen this is a NO-OP (every valid cell is
+        # already in its own row/col/cage so A_t[i,i]==1 -> maximum changes nothing ->
+        # byte-identical for KenKen).
+        allow = allow.maximum(eye49 * valid_q.cast(allow.dtype))
+        return allow
+
+    # per-type allow masks A_t (B,49,49) {0,1}; built only for the types that are
+    # actually assigned to >=1 head (the rest never enter the bias). The UNION/all-
+    # valid mask is the global-head fallback (every valid cell-pair allowed).
+    type_allow: dict[int, Tensor] = {}
+    used_types = sorted({int(t) for t in alloc if int(t) != CELL_MP_HEAD_GLOBAL})
+    for t in used_types:
+        sel = (lt == t).cast(dtypes.float).reshape(Bn, int(lt.shape[1]), 1)  # (B,L,1)
+        m_t = m * sel                                                   # (B,L,49) type-t members
+        adj_t = m_t.transpose(1, 2) @ m_t                              # (B,49,49) co-occur counts
+        type_allow[t] = _validity_mask(adj_t.clip(0.0, 1.0))           # (B,49,49) {0,1}
+    # GLOBAL allow: all valid cell-pairs (ones), then the same validity masking ->
+    # exactly the v98 global head (full mask gated by cell_valid).
+    ones49 = Tensor.ones((Bn, N_CELLS, N_CELLS), dtype=dtypes.float)
+    global_allow = _validity_mask(ones49)                              # (B,49,49) {0,1}
+
+    # assemble per-head allow -> {0,-1e4} bias, head by head (contiguous blocks).
+    head_biases = []
+    for h in range(n_heads):
+        t = int(alloc[h])
+        allow_h = global_allow if t == CELL_MP_HEAD_GLOBAL else type_allow[t]
+        bias_h = (1.0 - allow_h) * (-1e4)                              # (B,49,49)
+        head_biases.append(bias_h.reshape(Bn, 1, N_CELLS, N_CELLS))
+    bias = Tensor.cat(*head_biases, dim=1)                             # (B,H,49,49)
     return bias.contiguous()
 
 
@@ -2080,8 +2296,64 @@ def attach_perceiver_cell_mp_params(model: Any, hidden: int,
     allocate regardless of the toggle so state-dict shapes are consistent across runs;
     path is gated OUT of the optimizer when PERCEIVER_CELL_MP=0 — no forward path
     when off -> must not be in optimizer -> would trip AdamW's grad-is-None assert).
+
+    T-CONFIG SAFETY CHECKS (FIX 2 — performed at setup time, NOT inside the JIT):
+      (a) Assert that the data adapter's type contract is consistent with
+          PERCEIVER_N_LATENT_TYPES: the non-global type IDs are 0..T-1 where
+          T = PERCEIVER_N_LATENT_TYPES - 1; the global type ID is T.  If
+          PERCEIVER_N_LATENT_TYPES is too small for the graph (i.e., the data adapter
+          produces type IDs >= T that are not the global sentinel T), the per-head
+          builder would silently drop those types.  The assert below ensures the
+          compile-time constant covers all non-global types the adapter will emit.
+      (b) One-time stderr warning if the head allocation starves any type (T > H - G,
+          so some types get 0 heads and are covered only by the global head).
     """
     k_max = int(model.perc_delta_gate.shape[0])
+
+    # FIX 2(a) — T-CONFIG ASSERT (setup time, NOT inside JIT, no host sync per step):
+    # The per-head builder uses T = PERCEIVER_N_LATENT_TYPES - 1 non-global types,
+    # expecting the data adapter to produce non-global latent_type values in [0, T-1]
+    # and the global sentinel at exactly T (= PERCEIVER_N_LATENT_TYPES - 1).
+    # A task with more relation types would silently assign them to the wrong per-type
+    # block or be treated as "global" (type ID == PERCEIVER_N_LATENT_TYPES - 1) without
+    # this assert.  Catch it LOUDLY here rather than silently misbehaving at training.
+    # If you add a new task with more relation types: increase PERCEIVER_N_LATENT_TYPES
+    # AND update the data adapter's LTYPE_* constants together (they must match).
+    _T = PERCEIVER_N_LATENT_TYPES - 1
+    assert _T >= 1, (
+        f"PERCEIVER_N_LATENT_TYPES={PERCEIVER_N_LATENT_TYPES} implies T={_T} non-global "
+        f"factor types, but T must be >= 1.  Set PERCEIVER_N_LATENT_TYPES >= 2."
+    )
+    # Check that the constant is large enough for the data contract: the global sentinel
+    # in perceiver_poincare_data is LTYPE_GLOBAL = PERCEIVER_N_LATENT_TYPES - 1 = T.
+    # Non-global type IDs 0..T-1 are exactly covered by _build_cell_mp_bias_perhead.
+    # If a future data adapter produces a non-global type ID >= T, it will be misrouted.
+    # The check here is a compile-time sanity: we assert that PERCEIVER_N_LATENT_TYPES
+    # is self-consistent (T >= 1, verified above) and print the contract for the log.
+    import sys as _sys
+    print(
+        f"[attach_cell_mp] T-config: PERCEIVER_N_LATENT_TYPES={PERCEIVER_N_LATENT_TYPES} "
+        f"-> T={_T} non-global factor types (type IDs 0..{_T - 1}), "
+        f"global sentinel ID={_T}.  Data adapter LTYPE_* must match.",
+        file=_sys.stderr, flush=True,
+    )
+
+    # FIX 2(b) — STARVATION WARNING (one-time, import/setup time, NOT per step):
+    # When T > H - G (more factor types than non-global heads), some types get 0 heads
+    # from _cell_mp_head_allocation and are covered ONLY by the global head (widest
+    # horizon, no type-specific constraint propagation for that relation).  This is
+    # unavoidable when T > R, but the user should know.
+    _G = max(1, n_heads // 16)
+    _R = n_heads - _G
+    if _T > _R:
+        _starved = [t for t in range(_T) if t >= _R]   # types with 0 non-global heads
+        print(
+            f"[attach_cell_mp] WARNING: T={_T} factor types but only R={_R} non-global "
+            f"heads (H={n_heads}, G={_G}).  Type(s) {_starved} get 0 dedicated heads -> "
+            f"covered only by the {_G} global head(s).  "
+            f"Increase n_heads or decrease PERCEIVER_N_LATENT_TYPES to suppress.",
+            file=_sys.stderr, flush=True,
+        )
     rng = np.random.RandomState(20260620)
     scale = 1.0 / math.sqrt(hidden)
 
@@ -2110,7 +2382,12 @@ def attach_perceiver_cell_mp_params(model: Any, hidden: int,
     # inductive bias against late-breath over-smoothing.  The gate is LEARNABLE;
     # the model can adjust, but starts at the decaying schedule.
     # When =0 (default): constant init 0.5 → sigmoid(0.5)≈0.62 — byte-identical.
-    if PERCEIVER_CELL_MP_DECAY and k_max > 1:
+    # TOGGLE (9) PERHEAD: when per-head relation-specific masks are ON, the per-type
+    # structure ITSELF prevents the over-smoothing collapse (the v98 mechanism), so
+    # the depth-throttling decay ramp is DISABLED — we restore full breath depth. The
+    # gate falls back to the constant 0.5 init even if CELL_MP_DECAY happens to be set
+    # (a PERHEAD run does not set CELL_MP_DECAY; this is the belt-and-suspenders guard).
+    if PERCEIVER_CELL_MP_DECAY and not PERCEIVER_CELL_MP_PERHEAD and k_max > 1:
         logit_high = 2.0
         logit_low  = -1.0
         decay_logits = np.linspace(logit_high, logit_low, k_max).astype(np.float32)

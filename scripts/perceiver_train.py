@@ -62,6 +62,7 @@ from mycelium.perceiver_poincare import (
     PERCEIVER_CELL_RENORM,
     PERCEIVER_CELL_MP_DECAY,
     PERCEIVER_CELL_IDENTITY,
+    PERCEIVER_CELL_MP_PERHEAD,
     attach_perceiver_params, perceiver_parameters, perceiver_deduction_parameters,
     perceiver_state_dict,
     perceiver_breathing_forward, t0_anchor_check, clamp_perceiver_tangent_norms,
@@ -200,7 +201,8 @@ def _compile_step(model, opt, K: int, B: int, L: int, ball_path: str,
            bool(PERCEIVER_CELL_MP),
            bool(PERCEIVER_CELL_RENORM),
            bool(PERCEIVER_CELL_MP_DECAY),
-           bool(PERCEIVER_CELL_IDENTITY))
+           bool(PERCEIVER_CELL_IDENTITY),
+           bool(PERCEIVER_CELL_MP_PERHEAD))
     # PERCEIVER_FREEZE_ROUTING: when =1 opt.params is the DEDUCTION-ONLY set (g_phi
     # + cell coords excluded). opt.step() operates on a smaller param list -> a
     # different graph body than the full brick-2 set. MUST key so =0 and =1 compile
@@ -222,6 +224,12 @@ def _compile_step(model, opt, K: int, B: int, L: int, ball_path: str,
     # + cell_embed skip + re-zero) after the cell-MP block (different graph body: extra
     # gate indexing + add ops). Also adds perc_cell_identity_gate to the optimizer
     # param-set (different opt.step() graph). MUST key — =0 and =1 must never share.
+    # PERCEIVER_CELL_MP_PERHEAD: when =1 the cell-MP bias is RELATION-SPECIFIC per-head
+    # (_build_cell_mp_bias_perhead: per-type adjacencies + Tensor.cat of H head blocks)
+    # instead of the shared combined adjacency broadcast to all heads. Structurally
+    # different bias-build graph body (different ops + a different closed-over gate init
+    # branch). MUST key so =0 and =1 never silently share a compiled graph. No new
+    # optimizer params (reuses the TOGGLE-5 cell-MP tensors).
     if key in _JIT_CACHE:
         return _JIT_CACHE[key]
 
