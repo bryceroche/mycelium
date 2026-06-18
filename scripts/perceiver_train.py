@@ -53,6 +53,7 @@ from mycelium.perceiver_poincare import (
     PERCEIVER_HOIST_BIAS, PERCEIVER_FP16_THINK, PERCEIVER_DEFUSE_BREATH,
     PERCEIVER_FAST_GRADNORM, PERCEIVER_THINK_RENORM,
     PERCEIVER_NOTEBOOK, PERCEIVER_PI_ROPE,
+    PERCEIVER_PI_ROPE_QK, PERCEIVER_PI_ROPE_ANGLE_SCALE, PERCEIVER_PI_ROPE_PERHEAD,
     attach_perceiver_params, perceiver_parameters, perceiver_state_dict,
     perceiver_breathing_forward, t0_anchor_check, clamp_perceiver_tangent_norms,
     perceiver_gphi_parameters, perceiver_active_cell_coords,
@@ -135,15 +136,23 @@ def _compile_step(model, opt, K: int, B: int, L: int, ball_path: str,
     # silently reuse the =0 (no-renorm) graph.
     # PERCEIVER_NOTEBOOK adds the READ/WRITE notebook cross-attn ops (+ the K-slot
     # accumulate carry) to the breath body; PERCEIVER_PI_ROPE adds the per-breath
-    # Q-only rotation in the THINK attention. Each builds a structurally DIFFERENT
-    # graph (extra ops / extra closed-over params), so both MUST key — an =1 run
-    # must not silently reuse the =0 graph.
+    # rotation in the THINK attention. Each builds a structurally DIFFERENT graph
+    # (extra ops / extra closed-over params), so both MUST key — an =1 run must not
+    # silently reuse the =0 graph.
+    # The three PI_ROPE sub-knobs each change the rotation's GRAPH BODY and must key:
+    #   PI_ROPE_QK adds the K-rotation ops; PI_ROPE_PERHEAD swaps scalar cos/sin for
+    #   per-head cos/sin Tensors (a different op + closed-over const); ANGLE_SCALE
+    #   bakes a different compile-time angle constant per breath (1.0 default is the
+    #   current angle bit-for-bit). ANGLE_SCALE is keyed as a float so distinct
+    #   scales compile distinct graphs (and 1.0 reuses the current graph).
     key = (id(model), id(opt), int(K), int(B), int(L), str(ball_path),
            float(constraint_weight), float(grad_clip),
            bool(PERCEIVER_HOIST_BIAS), bool(PERCEIVER_FP16_THINK),
            bool(PERCEIVER_DEFUSE_BREATH), bool(PERCEIVER_FAST_GRADNORM),
            bool(PERCEIVER_THINK_RENORM),
-           bool(PERCEIVER_NOTEBOOK), bool(PERCEIVER_PI_ROPE))
+           bool(PERCEIVER_NOTEBOOK), bool(PERCEIVER_PI_ROPE),
+           bool(PERCEIVER_PI_ROPE_QK), float(PERCEIVER_PI_ROPE_ANGLE_SCALE),
+           bool(PERCEIVER_PI_ROPE_PERHEAD))
     if key in _JIT_CACHE:
         return _JIT_CACHE[key]
 

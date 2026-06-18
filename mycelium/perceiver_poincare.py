@@ -209,6 +209,37 @@ PERCEIVER_NB_HEADS = int(os.environ.get("PERCEIVER_NB_HEADS", "4"))
 # the rotation is skipped entirely, not applied-with-angle-0).
 PERCEIVER_PI_ROPE = int(os.environ.get("PERCEIVER_PI_ROPE", "0")) > 0
 
+# --- TOGGLE (2) SUB-KNOBS: three COMPOSABLE fixes for the Q-only π-rope (each
+# defaults to the CURRENT Q-only behavior, so all-at-default is BYTE-IDENTICAL to
+# the existing PERCEIVER_PI_ROPE). They only have any effect when PERCEIVER_PI_ROPE
+# is on (the angle is None and the rotation is skipped entirely when PI_ROPE is off,
+# so PI_ROPE=0 stays byte-identical to HEAD regardless of these sub-knobs).
+#
+# (2a) PERCEIVER_PI_ROPE_QK (=0 default, Q-only): when =1 AND PI_ROPE on, rotate
+#   BOTH Q and K by the SAME per-breath angle (RELATIVE RoPE) instead of Q-only.
+#   Q-only is an ABSOLUTE rotation (Q swings toward pi while K stays put -> Q/K
+#   relative phase flips), the suspected cause of the rim-pinning; rotating K too
+#   restores a RELATIVE rotation (only the q-k phase difference matters). =0 ->
+#   _pi_rope_rotate_q is applied to Q only (current); =1 -> applied to K as well.
+PERCEIVER_PI_ROPE_QK = int(os.environ.get("PERCEIVER_PI_ROPE_QK", "0")) > 0
+
+# (2b) PERCEIVER_PI_ROPE_ANGLE_SCALE (=1.0 default, float): the per-breath angle
+#   becomes k*pi/K_max * ANGLE_SCALE. 1.0 = current (sweeps to ~pi over K breaths);
+#   0.5 -> sweeps to ~pi/2 (a gentler swing that never flips Q past the K phase).
+#   A Python float -> bakes as a compile-time constant in the JIT (NOT a float32
+#   Tensor literal). At 1.0 the angle is bit-for-bit the current k*pi/float(K_max)
+#   (multiplying by the literal 1.0 is the identity in IEEE-754).
+PERCEIVER_PI_ROPE_ANGLE_SCALE = float(os.environ.get("PERCEIVER_PI_ROPE_ANGLE_SCALE", "1.0"))
+
+# (2c) PERCEIVER_PI_ROPE_PERHEAD (=0 default, all heads same): when =1 AND PI_ROPE
+#   on, add a STATIC per-head angle offset (head h gets a constant +h*pi/n_heads,
+#   the V23a max-decorrelation init) that composes ADDITIVELY with the per-breath
+#   angle. =0 -> every head rotates by the SAME scalar angle (current); =1 -> head h
+#   rotates by angle + h*pi/n_heads (a per-head cos/sin vector, built from numpy and
+#   cast to dtypes.float -> no float32 Tensor literal in the JIT). The =0 path uses
+#   the exact Python math.cos/sin scalar (byte-identical to the current rotation).
+PERCEIVER_PI_ROPE_PERHEAD = int(os.environ.get("PERCEIVER_PI_ROPE_PERHEAD", "0")) > 0
+
 
 # ---- cross-field hyperbolic distance (latents <-> cells) ---------------------
 # kenken._d_hyp_pairwise is WITHIN one field (M,M). The perceiver needs a CROSS
@@ -724,11 +755,14 @@ def perceiver_breathing_forward(model: Any, batch: Any, K: int,
             h = (latent_in * rms).cast(dtypes.float)
         else:
             h = latent_in.cast(dtypes.float)
-        # TOGGLE (2) PI-ROPE: per-breath Q-only rotation angle = k*pi/K_max (v109pi
-        # Option A). Python float scalar -> bakes as a compile-time constant in the
-        # JIT step (NOT a float32 Tensor literal). None -> rotation skipped entirely
-        # in _latent_layer_forward (byte-identical-off, NOT applied-with-angle-0).
-        pi_rope_angle = (k * math.pi / float(K_max)) if PERCEIVER_PI_ROPE else None
+        # TOGGLE (2) PI-ROPE: per-breath rotation angle = k*pi/K_max * ANGLE_SCALE
+        # (v109pi Option A; ANGLE_SCALE=1.0 default -> bit-for-bit the current
+        # k*pi/float(K_max)). Python float scalar -> bakes as a compile-time constant
+        # in the JIT step (NOT a float32 Tensor literal). None -> rotation skipped
+        # entirely in _latent_layer_forward (byte-identical-off, NOT angle-0). The QK
+        # and PERHEAD sub-knobs are module-level flags read inside the rotation.
+        pi_rope_angle = ((k * math.pi / float(K_max)) * PERCEIVER_PI_ROPE_ANGLE_SCALE
+                         if PERCEIVER_PI_ROPE else None)
         for layer in layers[:4]:
             h = _latent_layer_forward(layer, h, attn_bias, pi_rope_angle)
         # DEFUSE seam (b) — HIGHEST-LEVERAGE: realize-barrier on the THINK output
@@ -801,19 +835,41 @@ def _latent_self_attn_bias(latent_valid: Tensor, n_heads: int) -> Tensor:
 
 
 def _pi_rope_rotate_q(q: Tensor, angle: float) -> Tensor:
-    """Per-breath Q-only RoPE-style rotation by a SINGLE breath-dependent angle
-    (v109pi Option A). q: (B, n_heads, L, head_dim). Splits head_dim into adjacent
-    (even, odd) 2D pairs and rotates each pair by the SAME scalar `angle` (a Python
-    float -> bakes as a compile-time const in the JIT, NOT a float32 Tensor literal;
-    cos/sin are Python math, so no dtype literal enters the graph). Q-only: K is
-    untouched, so breath k reads the latent pool from a rotated phase.
+    """Per-breath RoPE-style rotation by a breath-dependent angle (v109pi Option A).
+    q: (B, n_heads, L, head_dim). Splits head_dim into adjacent (even, odd) 2D pairs
+    and rotates each pair. Norm-preserving (a 2D rotation per pair). Used for BOTH Q
+    and (when PERCEIVER_PI_ROPE_QK) K — the name is historical (Q-only was the v109pi
+    default); the function itself is field-agnostic.
+
+    PERHEAD sub-knob (PERCEIVER_PI_ROPE_PERHEAD): when OFF (default), every head
+    rotates by the SAME scalar `angle` via Python math.cos/sin (a compile-time const
+    in the JIT, NOT a float32 Tensor literal) -> byte-identical to the original.
+    When ON, head h rotates by angle + h*pi/n_heads (the V23a static decorrelation),
+    so cos/sin become per-head VECTORS built from numpy and cast to dtypes.float
+    (legal in the JIT — same pattern as the np.eye bias; NO float32 Tensor literal)
+    and broadcast over the head axis (1, n_heads, 1, 1).
     """
     hd = int(q.shape[-1])
     half = hd // 2
-    cos = math.cos(angle)
-    sin = math.sin(angle)
     q_even = q[..., 0:2 * half:2]                                     # (B,nh,L,half)
     q_odd = q[..., 1:2 * half:2]                                      # (B,nh,L,half)
+    if PERCEIVER_PI_ROPE_PERHEAD:
+        # Per-head angle = angle + h*pi/n_heads (static V23a offset, constant across
+        # breaths). cos/sin are (1, n_heads, 1, 1) so they broadcast over the (B, nh,
+        # L, half) pairs WITHOUT touching head_dim — head h gets its own rotation.
+        # Built via numpy + cast to dtypes.float: no float32 Tensor literal baked.
+        nh = int(q.shape[1])
+        head_idx = np.arange(nh, dtype=np.float32)
+        ang = angle + head_idx * (math.pi / float(nh))               # (nh,)
+        cos = Tensor(np.cos(ang).astype(np.float32),
+                     dtype=dtypes.float).reshape(1, nh, 1, 1).cast(q.dtype)
+        sin = Tensor(np.sin(ang).astype(np.float32),
+                     dtype=dtypes.float).reshape(1, nh, 1, 1).cast(q.dtype)
+    else:
+        # Original scalar path: same angle for all heads. Python float scalars ->
+        # compile-time constants in the JIT (NOT float32 Tensor literals).
+        cos = math.cos(angle)
+        sin = math.sin(angle)
     rot_even = q_even * cos - q_odd * sin
     rot_odd = q_even * sin + q_odd * cos
     # interleave the rotated pairs back to (..., 2*half); stack on a new last axis
@@ -831,10 +887,11 @@ def _latent_layer_forward(layer: Any, x: Tensor, attn_bias: Tensor,
     Mirror of kenken_layer_forward but over the (B, L, H) latent field instead of
     (B, 49, H) cells — the THINK step. Pythia-init shared weights, same every breath.
 
-    pi_rope_angle (TOGGLE 2, PERCEIVER_PI_ROPE): if not None, rotate ONLY Q by this
-    breath-dependent angle (Q-only per-breath rotation, v109pi Option A) AFTER the Q
-    projection + reshape, BEFORE the q@k scores. None (default) -> Q unchanged ->
-    byte-identical to HEAD.
+    pi_rope_angle (TOGGLE 2, PERCEIVER_PI_ROPE): if not None, rotate Q by this
+    breath-dependent angle (per-breath rotation, v109pi Option A) AFTER the Q
+    projection + reshape, BEFORE the q@k scores. When PERCEIVER_PI_ROPE_QK is on,
+    K is rotated by the SAME angle too (RELATIVE RoPE). None (default) -> Q (and K)
+    unchanged -> byte-identical to HEAD.
     """
     cfg = layer.cfg
     Bn, L, H = x.shape
@@ -848,10 +905,15 @@ def _latent_layer_forward(layer: Any, x: Tensor, attn_bias: Tensor,
     k = (attn_in_dt @ layer.wk + layer.bk).reshape(Bn, L, cfg.n_heads, cfg.head_dim).transpose(1, 2)
     v = (attn_in_dt @ layer.shared.wv + layer.shared.bv).reshape(Bn, L, cfg.n_heads, cfg.head_dim).transpose(1, 2)
 
-    # TOGGLE (2) PI-ROPE: rotate ONLY Q by the per-breath angle (Q-only, v109pi
-    # Option A). Skipped entirely when angle is None (byte-identical-off).
+    # TOGGLE (2) PI-ROPE: rotate Q by the per-breath angle (v109pi Option A).
+    # Skipped entirely when angle is None (byte-identical-off). When
+    # PERCEIVER_PI_ROPE_QK is on, ALSO rotate K by the SAME angle (RELATIVE RoPE:
+    # only the q-k phase difference matters, so the absolute Q swing no longer flips
+    # vs an un-rotated K). Default (QK off) -> Q-only, byte-identical to the current.
     if pi_rope_angle is not None:
         q = _pi_rope_rotate_q(q, pi_rope_angle)
+        if PERCEIVER_PI_ROPE_QK:
+            k = _pi_rope_rotate_q(k, pi_rope_angle)
 
     scale = 1.0 / math.sqrt(cfg.head_dim)
     scores = q @ k.transpose(-2, -1) * scale                         # (B,n_heads,L,L)
