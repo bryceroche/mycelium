@@ -61,6 +61,7 @@ from mycelium.kenken import (
     N_MAX, N_CELLS,
     _poincare_anchors, _tangent_for_anchors, _exp0_map,
     KENKEN_HYP_NORM_CLAMP, KENKEN_HYP_ARG_MIN,
+    codebook_ortho_penalty,
 )
 
 
@@ -322,6 +323,71 @@ PERCEIVER_NB_PIROPE = int(os.environ.get("PERCEIVER_NB_PIROPE", "0")) > 0
 # =0 (default): PERCEIVER_SHARP_REG=0 or PERCEIVER_SHARP_REG_LAMBDA=0.0 -> off.
 PERCEIVER_SHARP_REG = int(os.environ.get("PERCEIVER_SHARP_REG", "0")) > 0
 PERCEIVER_SHARP_REG_LAMBDA = float(os.environ.get("PERCEIVER_SHARP_REG_LAMBDA", "0.0"))
+
+# --- ANTI-COLLAPSE REG 1: PERCEIVER_CODEBOOK_ORTHO (float lambda, default 0.0 = OFF).
+# Codebook-orthogonality penalty on the VALUE codebook perc_value_codebook (N_MAX, H).
+#
+# MOTIVATION: the value-basin probe confirmed severe mode-collapse: top_value_frac up
+# to 0.80 (true prior 1/7=0.143) and KL(pred||true) rising to ~1.1. The 6<->7 collapse
+# in v98 Sudoku had IDENTICAL symptoms and was FIXED by this penalty in kenken.py
+# (KENKEN_CODEBOOK_ORTHO). Reuse the SAME mechanism on perc_value_codebook.
+#
+# MECHANISM: reuses kenken.codebook_ortho_penalty — mean-square off-diagonal of the
+# ROW-NORMALIZED Gram matrix G = Vn @ Vn^T where Vn = L2-row-normalised codebook.
+# Off-diagonal entries are exactly pairwise cosines (diagonal = 1). Minimizing
+# ROTATES collinear rows apart — the geometric fix a scalar reweight cannot perform.
+# Applied to perc_value_codebook (N_MAX=7 rows, H=1024 cols); the valid range is
+# all 7 rows (N_MAX entries, no padding on the value axis).
+#
+# PENALTY: lambda * codebook_ortho_penalty(model.perc_value_codebook).
+# Computed ONCE outside the breath loop (codebook is loop-invariant).
+# Added to the training total AFTER backward is called by the trainer (same as
+# sharp_reg: the forward returns the scalar; the trainer gates and adds).
+#
+# DEFAULT-OFF: lambda=0.0 -> returned scalar is Tensor.zeros(()) and the trainer
+# skips the add (gate: `if _col > 0`). Byte-identical to HEAD when off.
+# NO new params (perc_value_codebook already exists).
+# JIT CACHE KEY: float(PERCEIVER_CODEBOOK_ORTHO) bakes as a compile-time Python float
+# constant; a different lambda produces a different scale op in the JIT graph -> must
+# key. lambda=0.0 returns zeros() -> graph is dead-branch-identical to off.
+PERCEIVER_CODEBOOK_ORTHO = float(os.environ.get("PERCEIVER_CODEBOOK_ORTHO", "0.0"))
+
+# --- ANTI-COLLAPSE REG 2: PERCEIVER_VALUE_BALANCE (float lambda, default 0.0 = OFF).
+# Batch-marginal anti-mode-collapse penalty: KL(q_pred || q_true) where q_pred is
+# the batch-mean predicted value distribution and q_true is the batch-mean gold
+# distribution (DETACHED — a constant target).
+#
+# MOTIVATION: complementary to CODEBOOK_ORTHO (which acts on geometry). This acts on
+# the DISTRIBUTION: if the model collapses to predicting one value for most cells,
+# q_pred peaks at that value while q_true is ~uniform(1/7). The KL penalises that
+# mismatch and pushes the batch-marginal predicted mix toward the true marginal.
+# Does NOT micromanage per-cell confidence — only the BATCH-LEVEL mix.
+#
+# MECHANISM:
+#   Use the FINAL breath's cell logits (cell_logits_history[-1], the most collapsed).
+#   p_cell = softmax over N_MAX dim -> (B, 49, N_MAX) per-cell predicted probs.
+#   q_pred = mean of p_cell over VALID cells and batch (supervision mask):
+#             supervise = cell_valid * (1-observed)  as in the CE loss; mean over
+#             valid supervised cells -> (N_MAX,) batch-marginal predicted distribution.
+#   q_true = per-value histogram from batch.gold over the same supervised cells,
+#            NORMALIZED to sum to 1.0, DETACHED (constant target; no gradient).
+#   Penalty = lambda * KL(q_pred || q_true)
+#           = lambda * sum_v  q_pred[v] * (log(q_pred[v]+1e-6) - log(q_true[v]+1e-6)).
+#   Differentiable in q_pred; q_true is detached.
+#
+# SUBSTRATE NOTES: the KL is a tiny (N=7) reduction — NOT a per-element attention
+# log (no instability). log on a length-7 vector + 1e-6 guard is safe. No
+# dtypes.float32 Tensor literal inside the JIT: lambda bakes as a Python float
+# compile-time constant; q_true is a Tensor built from a sum + normalize (pure ops,
+# no cast literal). Single small reduction; does NOT violate the AM-driver graph-size
+# constraint.
+#
+# DEFAULT-OFF: lambda=0.0 -> returned scalar is Tensor.zeros(()) and the trainer
+# skips the add. Byte-identical to HEAD when off.
+# NO new params.
+# JIT CACHE KEY: float(PERCEIVER_VALUE_BALANCE) bakes as a compile-time constant ->
+# must key so distinct lambdas compile distinct graphs.
+PERCEIVER_VALUE_BALANCE = float(os.environ.get("PERCEIVER_VALUE_BALANCE", "0.0"))
 
 # --- FROZEN-ROUTING MODE (PERCEIVER_FREEZE_ROUTING):
 # When =1, EXCLUDES all ROUTING params from the AdamW optimizer, leaving only the
@@ -1098,18 +1164,22 @@ def perceiver_breathing_forward(model: Any, batch: Any, K: int,
              cell_hidden = cell_embed + ctx_c   (cells re-read the latents each breath)
       READOUT: per-cell value-codebook logits (value-domain masked).
 
-    Returns (cell_logits_history[K], engagement_history, sharp_reg) where
-    engagement_history is a list of K dicts (READ/WRITE select_norm + entropy +
-    max-attn) when collect_engagement, else []. sharp_reg is a scalar Tensor = mean
-    over K breaths of (reg_read_k + reg_write_k) where:
-      reg_read_k  = coupled (1/n_valid) * sum_i( H_read_i * |z_latent_i|^2 )
-                    (rim latents penalised proportionally to their radial distance;
-                     origin latents free; |z_latent| is NOT detached -> backprops
-                     to g_phi + perc_cell_v; H computed from log_softmax).
-      reg_write_k = blanket mean over valid cells of H_write (cells are off-rim;
-                    a small flat pressure, not coupled).
-    When PERCEIVER_SHARP_REG=0 sharp_reg is Tensor.zeros(()) (byte-identical to
-    HEAD; the trainer gates on SHARP_REG+lambda before adding to total).
+    Returns (cell_logits_history[K], engagement_history, sharp_reg,
+              codebook_ortho_reg, value_balance_reg) where:
+    - engagement_history: list of K dicts (READ/WRITE select_norm + entropy +
+      max-attn) when collect_engagement, else [].
+    - sharp_reg: scalar Tensor = mean over K breaths of (reg_read_k + reg_write_k).
+        reg_read_k  = coupled (1/n_valid) * sum_i( H_read_i * |z_latent_i|^2 )
+        reg_write_k = blanket mean over valid cells of H_write.
+      Tensor.zeros(()) when PERCEIVER_SHARP_REG=0 (byte-identical off).
+    - codebook_ortho_reg: scalar Tensor = mean-square off-diagonal cosine of the
+      row-normalised perc_value_codebook Gram matrix (the v98 anti-collapse tool).
+      Tensor.zeros(()) when PERCEIVER_CODEBOOK_ORTHO=0.0 (byte-identical off).
+    - value_balance_reg: scalar Tensor = KL(q_pred || q_true) where q_pred is the
+      batch-mean predicted value distribution from the final breath's logits and
+      q_true is the batch-mean gold distribution (detached). Penalises mode-collapse
+      directly at the distribution level. Tensor.zeros(()) when PERCEIVER_VALUE_BALANCE=0.0.
+    When PERCEIVER_PROBE_SMOOTH=1 returns a 6-tuple with smooth_history appended.
     The latent hidden states are the residual.
     """
     assert hasattr(model, "perc_cell_v"), \
@@ -1592,13 +1662,59 @@ def perceiver_breathing_forward(model: Any, batch: Any, K: int,
     # entered); byte-identical to HEAD. The trainer multiplies by _srl (lambda)
     # and gates on both flags before adding to total.
     sharp_reg = sharp_reg_sum / float(K)                               # scalar (per-breath mean)
-    # PROBE: when PERCEIVER_PROBE_SMOOTH=1, return the 4-tuple with smooth_history.
-    # When =0 (default) return the existing 3-tuple — byte-identical to HEAD.
-    # The caller (perceiver_train._step) always unpacks 3 values; the probe is only
-    # called from the eager probe script which unpacks 4.
+
+    # ANTI-COLLAPSE REG 1: PERCEIVER_CODEBOOK_ORTHO — codebook-orthogonality penalty.
+    # Reuses kenken.codebook_ortho_penalty (the proven v98 anti-collapse tool).
+    # Computed ONCE (perc_value_codebook is loop-invariant; N_MAX=7 rows).
+    # When lambda=0.0: Tensor.zeros(()) returned, trainer skips add (byte-identical).
+    _col = float(PERCEIVER_CODEBOOK_ORTHO)
+    if _col > 0:
+        codebook_ortho_reg = codebook_ortho_penalty(model.perc_value_codebook)
+    else:
+        codebook_ortho_reg = Tensor.zeros((), dtype=dtypes.float).contiguous()
+
+    # ANTI-COLLAPSE REG 2: PERCEIVER_VALUE_BALANCE — batch-marginal KL(q_pred||q_true).
+    # Uses the FINAL breath's logits (cell_logits_history[-1] — the most collapsed).
+    # q_pred: batch-mean softmax over valid supervised cells -> (N_MAX,).
+    # q_true: batch-mean gold histogram over the same cells, DETACHED (constant target).
+    # KL = sum_v q_pred[v] * (log(q_pred[v]+1e-6) - log(q_true[v]+1e-6)).
+    # When lambda=0.0: Tensor.zeros(()) returned, trainer skips add (byte-identical).
+    _vbl = float(PERCEIVER_VALUE_BALANCE)
+    if _vbl > 0:
+        # Build the supervision mask (mirrors the CE loss mask in the trainer).
+        _observed_vb = (input_cells > 0).cast(dtypes.float)             # (B,49)
+        _sup_vb = cell_valid * (1.0 - _observed_vb)                     # (B,49) float
+        _sup_sum_vb = _sup_vb.sum() + 1e-6                              # scalar
+
+        # Per-cell predicted probs from the FINAL breath's logits (B,49,N_MAX).
+        _logits_fin = cell_logits_history[-1].cast(dtypes.float)         # (B,49,N_MAX)
+        _p_cell = _logits_fin.softmax(axis=-1)                           # (B,49,N_MAX)
+
+        # q_pred: weighted mean over supervised cells (B,49) -> (N_MAX,).
+        _q_pred = (_p_cell * _sup_vb.reshape(Bn, N_CELLS, 1)).sum(axis=(0, 1)) / _sup_sum_vb
+
+        # q_true: per-value histogram from batch.gold over supervised cells.
+        # gold_idx: 0-based index (gold - 1).clip(0, N_MAX-1) -> (B,49).
+        # One-hot (B,49,N_MAX) -> mask by supervision -> sum -> normalize. DETACHED.
+        _gold_idx_vb = (batch.gold - 1).clip(0, N_MAX - 1)              # (B,49) int
+        _gold_oh = _gold_idx_vb.one_hot(N_MAX).cast(dtypes.float)       # (B,49,N_MAX)
+        _q_true = (_gold_oh * _sup_vb.reshape(Bn, N_CELLS, 1)).sum(axis=(0, 1))
+        _q_true = (_q_true / (_q_true.sum() + 1e-6)).detach()           # (N_MAX,) detached
+
+        # KL(q_pred || q_true) — tiny N=7 reduction, log on length-7 vector.
+        value_balance_reg = (
+            _q_pred * (_q_pred + 1e-6).log() - _q_pred * (_q_true + 1e-6).log()
+        ).sum()
+    else:
+        value_balance_reg = Tensor.zeros((), dtype=dtypes.float).contiguous()
+
+    # PROBE: when PERCEIVER_PROBE_SMOOTH=1, return the 5-tuple with smooth_history.
+    # When =0 (default) return the 4-tuple (adds codebook_ortho_reg, value_balance_reg).
+    # All callers updated to unpack 4 values (extra _ for the new anti-collapse regs).
     if PERCEIVER_PROBE_SMOOTH:
-        return cell_logits_history, engagement_history, sharp_reg, smooth_history
-    return cell_logits_history, engagement_history, sharp_reg
+        return (cell_logits_history, engagement_history, sharp_reg,
+                codebook_ortho_reg, value_balance_reg, smooth_history)
+    return cell_logits_history, engagement_history, sharp_reg, codebook_ortho_reg, value_balance_reg
 
 
 def _latent_self_attn_bias(latent_valid: Tensor, n_heads: int) -> Tensor:

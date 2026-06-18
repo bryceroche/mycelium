@@ -365,7 +365,7 @@ def profile_one_step(model: Any, batch: PerceiverBatch, K: int,
     # is NOT inside any timed phase; only its backward()/opt.step() are timed, and
     # those carry the same kernel/FLOP/GB cost as the real run.
     # -----------------------------------------------------------------------
-    rebuilt_history, _ = perceiver_breathing_forward(
+    rebuilt_history, _, _, _, _ = perceiver_breathing_forward(
         model, batch, K=K, ball_path=ball_path, collect_engagement=False)
 
     observed = (input_cells > 0).cast(dtypes.float)
@@ -471,7 +471,7 @@ def profile_one_step(model: Any, batch: PerceiverBatch, K: int,
     opt.zero_grad()
     GlobalCounters.reset()
     t_fs0 = time.perf_counter()
-    fs_hist, _ = perceiver_breathing_forward(
+    fs_hist, _, _, _, _ = perceiver_breathing_forward(
         model, batch, K=K, ball_path=ball_path, collect_engagement=False)
     fs_loss_sum = Tensor.zeros((), dtype=dtypes.float).contiguous()
     fs_wsum = 0.0

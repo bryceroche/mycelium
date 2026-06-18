@@ -99,7 +99,7 @@ def build_jit_step(model, opt, K: int, B: int, L: int, ball_path: str):
         batch.latent_valid = latent_valid
         batch.latent_type = latent_type
 
-        cell_logits_history, _ = perceiver_breathing_forward(
+        cell_logits_history, _, _, _, _ = perceiver_breathing_forward(
             model, batch, K=K, ball_path=ball_path, collect_engagement=False)
 
         observed = (input_cells > 0).cast(dtypes.float)

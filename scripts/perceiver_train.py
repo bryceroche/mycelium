@@ -56,6 +56,7 @@ from mycelium.perceiver_poincare import (
     PERCEIVER_PI_ROPE_QK, PERCEIVER_PI_ROPE_ANGLE_SCALE, PERCEIVER_PI_ROPE_PERHEAD,
     PERCEIVER_SILHOUETTE, PERCEIVER_SIL_DIM, PERCEIVER_NB_PIROPE,
     PERCEIVER_SHARP_REG, PERCEIVER_SHARP_REG_LAMBDA,
+    PERCEIVER_CODEBOOK_ORTHO, PERCEIVER_VALUE_BALANCE,
     PERCEIVER_FREEZE_ROUTING,
     PERCEIVER_PERSIST_CELLS,
     PERCEIVER_CELL_MP,
@@ -196,6 +197,7 @@ def _compile_step(model, opt, K: int, B: int, L: int, ball_path: str,
            bool(PERCEIVER_SILHOUETTE), int(PERCEIVER_SIL_DIM),
            bool(PERCEIVER_NB_PIROPE),
            bool(PERCEIVER_SHARP_REG), float(PERCEIVER_SHARP_REG_LAMBDA),
+           float(PERCEIVER_CODEBOOK_ORTHO), float(PERCEIVER_VALUE_BALANCE),
            bool(PERCEIVER_FREEZE_ROUTING),
            bool(PERCEIVER_PERSIST_CELLS),
            bool(PERCEIVER_CELL_MP),
@@ -260,7 +262,8 @@ def _compile_step(model, opt, K: int, B: int, L: int, ball_path: str,
         batch.latent_valid = latent_valid
         batch.latent_type = latent_type
 
-        cell_logits_history, eng_history, sharp_reg = perceiver_breathing_forward(
+        (cell_logits_history, eng_history, sharp_reg,
+         codebook_ortho_reg, value_balance_reg) = perceiver_breathing_forward(
             model, batch, K=K, ball_path=ball_path, collect_engagement=True)
 
         # ---- per-breath weighted CE ladder (REUSE the kenken supervision form):
@@ -310,6 +313,17 @@ def _compile_step(model, opt, K: int, B: int, L: int, ball_path: str,
         _srl_val = float(PERCEIVER_SHARP_REG_LAMBDA)
         if PERCEIVER_SHARP_REG and _srl_val > 0:
             total = total + _srl_val * sharp_reg
+        # ANTI-COLLAPSE REG 1: codebook-orthogonality (v98's proven anti-collapse tool).
+        # Penalises off-diagonal cosines of the row-normalised value-codebook Gram matrix.
+        # When _col=0.0 codebook_ortho_reg is Tensor.zeros(()) — gate is byte-identical.
+        _col_val = float(PERCEIVER_CODEBOOK_ORTHO)
+        if _col_val > 0:
+            total = total + _col_val * codebook_ortho_reg
+        # ANTI-COLLAPSE REG 2: batch-marginal KL(q_pred||q_true).
+        # When _vbl=0.0 value_balance_reg is Tensor.zeros(()) — gate is byte-identical.
+        _vbl_val = float(PERCEIVER_VALUE_BALANCE)
+        if _vbl_val > 0:
+            total = total + _vbl_val * value_balance_reg
         total.backward()
 
         # ---- NaN guard — where()-gated SELECT (never multiply-gate) ----
@@ -421,6 +435,9 @@ def _compile_step(model, opt, K: int, B: int, L: int, ball_path: str,
         # blanket_write_reg = mean_cell H_write per breath.  Logged to trajectory JSONL
         # so the magnitude of the coupled term can be tracked across the run.
         # When PERCEIVER_SHARP_REG=0 this is Tensor.zeros(()) — safe to realize always.
+        # codebook_ortho_reg: mean-sq off-diagonal cosine of the row-normalised value-
+        # codebook Gram matrix (the v98 anti-collapse tool). Tensor.zeros(()) when off.
+        # value_balance_reg: KL(q_pred||q_true) batch-marginal anti-collapse. zeros() when off.
         tail = (
             eng_read_sel.realize(), eng_read_ent.realize(), eng_read_max.realize(),
             eng_write_sel.realize(), eng_write_ent.realize(), eng_write_max.realize(),
@@ -428,6 +445,7 @@ def _compile_step(model, opt, K: int, B: int, L: int, ball_path: str,
             read_max_floor.realize(), write_max_floor.realize(),
             gphi_grad_norm.realize(), max_z.realize(), max_latent_z.realize(),
             sharp_reg.realize(),
+            codebook_ortho_reg.realize(), value_balance_reg.realize(),
             *(ce.realize() for ce in per_breath_ce),
         )
         return head + gn + tail
@@ -744,12 +762,15 @@ def main():
         # [13-16] floors: floor_read, floor_write, read_max_floor, write_max_floor
         # [17-19] gphi_gn, max_z, max_latent_z
         # [20]   sharp_reg (per-breath mean H_read + H_write; 0.0 when reg is off)
-        # [21:]  per_breath_ce
+        # [21]   codebook_ortho_reg (mean-sq off-diag cosine of codebook gram; 0.0 when off)
+        # [22]   value_balance_reg (KL(q_pred||q_true) batch-marginal; 0.0 when off)
+        # [23:]  per_breath_ce
         (total_t, healthy_t, cell_loss_t, energy_t, cell_acc_t, puzzle_acc_t,
          grad_norm_t, eR_sel, eR_ent, eR_max, eW_sel, eW_ent, eW_max,
          floor_read_t, floor_write_t, read_max_floor_t, write_max_floor_t,
-         gphi_gn_t, max_z_t, max_latent_z_t, sharp_reg_t) = outs[:21]
-        per_breath_ce_t = list(outs[21:])  # already realized in _step; host read only
+         gphi_gn_t, max_z_t, max_latent_z_t, sharp_reg_t,
+         codebook_ortho_t, value_balance_t) = outs[:23]
+        per_breath_ce_t = list(outs[23:])  # already realized in _step; host read only
 
         # tangent rim guard (Tier-2 §7) AFTER opt.step. BRICK-2 FIX: scoped to the
         # ACTIVE ball_path's cell fields ONLY (the brick-1 caveat: it touched the
@@ -767,10 +788,12 @@ def main():
             read_max_floor_t.reshape(()), write_max_floor_t.reshape(()),
             gphi_gn_t.reshape(()), max_z_t.reshape(()), max_latent_z_t.reshape(()),
             sharp_reg_t.reshape(()),
+            codebook_ortho_t.reshape(()), value_balance_t.reshape(()),
             *(c.reshape(()) for c in per_breath_ce_t),
         ).realize()  # one enqueue, no host block
         # packed layout: [0-4] loss/healthy/ce/acc/gn; [5-10] eng; [11-14] floors;
-        # [15-17] gphi_gn/max_z/max_latent_z; [18] sharp_reg; [19:] per_breath_ce
+        # [15-17] gphi_gn/max_z/max_latent_z; [18] sharp_reg;
+        # [19] codebook_ortho_reg; [20] value_balance_reg; [21:] per_breath_ce
 
         if step % LOG_EVERY == 0 or step == 1:
             v = packed.numpy()  # the only host sync this step
@@ -785,7 +808,9 @@ def main():
             gphi_gn_v, max_z_v = float(v[15]), float(v[16])
             max_latent_z_v = float(v[17])
             sharp_reg_v = float(v[18])
-            per_breath_ce_v = [float(x) for x in v[19:19 + len(per_breath_ce_t)]]
+            codebook_ortho_v = float(v[19])
+            value_balance_v = float(v[20])
+            per_breath_ce_v = [float(x) for x in v[21:21 + len(per_breath_ce_t)]]
             last_floors = {"read": floor_read_v, "write": floor_write_v,
                            "read_max": read_max_floor_v,
                            "write_max": write_max_floor_v}
@@ -804,13 +829,15 @@ def main():
             dt = time.time() - t0
             gn_str = "n/a(fast)" if PERCEIVER_FAST_GRADNORM else f"{gn_v:.3e}"
             sreg_str = (f"{sharp_reg_v:.4f}" if PERCEIVER_SHARP_REG else "off")
+            col_str = (f"{codebook_ortho_v:.4f}" if PERCEIVER_CODEBOOK_ORTHO > 0 else "off")
+            vbl_str = (f"{value_balance_v:.4f}" if PERCEIVER_VALUE_BALANCE > 0 else "off")
             # Light gate-logging (one .numpy() per LOG_EVERY; skipped when off to
             # avoid a host sync on an optimizer-absent tensor).
             cell_gate_str = (f" cell_gate={float(model.perc_cell_delta_gate.mean().numpy()):.3f}"
                              if PERCEIVER_PERSIST_CELLS else "")
             print(f"[step {step:3d}] loss={loss_v:.4f} cell_ce={ce_v:.4f} "
                   f"cell_acc={acc_v:.3f} grad_norm={gn_str} "
-                  f"sharp_reg={sreg_str} "
+                  f"sharp_reg={sreg_str} cb_ortho={col_str} val_bal={vbl_str} "
                   f"gphi_grad={gphi_gn_v:.3e} max_z={max_z_v:.3f} "
                   f"max_latent_z={max_latent_z_v:.3f}{cell_gate_str} "
                   f"({dt:.1f}s, {dt/step:.2f}s/step)", flush=True)
@@ -833,6 +860,8 @@ def main():
                 # blanket_write_reg = mean_cell(H_write). Non-zero only when REG=1.
                 # 0.0 when off (Tensor.zeros(()) / K — always present in JSONL).
                 "sharp_reg": sharp_reg_v,
+                "codebook_ortho_reg": codebook_ortho_v,
+                "value_balance_reg": value_balance_v,
                 "read_select_norm": eng["read_select_norm"],
                 "write_select_norm": eng["write_select_norm"],
                 "read_max": eng["read_max"], "write_max": eng["write_max"],
@@ -944,7 +973,7 @@ def _quick_eval(model, loader, K, ball_path, max_batches):
     n_cells = 0
     nb = 0
     for batch in loader.iter_eval(batch_size=loader.batch_size):
-        cell_logits_history, _, _ = perceiver_breathing_forward(
+        cell_logits_history, _, _, _, _ = perceiver_breathing_forward(
             model, batch, K=K, ball_path=ball_path, collect_engagement=False)
         acc, _ = kenken_accuracy(cell_logits_history[-1], batch)
         cv = batch.cell_valid.realize().numpy()

@@ -90,7 +90,7 @@ def run_one(defuse: bool):
     opt = AdamW(params, lr=0.0, weight_decay=0.0)  # lr=0: step would be a no-op anyway; we DON'T step
     opt.zero_grad()
 
-    cell_logits_history, _ = perceiver_breathing_forward(
+    cell_logits_history, _, _, _, _ = perceiver_breathing_forward(
         model, batch, K=K, ball_path=BALL_PATH, collect_engagement=False)
 
     input_cells = batch.input_cells
