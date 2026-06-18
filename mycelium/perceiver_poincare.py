@@ -94,6 +94,14 @@ PERCEIVER_LATENT_INIT = float(os.environ.get("PERCEIVER_LATENT_INIT", "0.02"))
 PERCEIVER_NORM_CLAMP = KENKEN_HYP_NORM_CLAMP
 PERCEIVER_ARG_MIN = KENKEN_HYP_ARG_MIN
 PERCEIVER_BLOCK = 1e4
+# Rim bound for the LATENT ball points (the same MAX_ZNORM the trainer uses to
+# clamp the CELL tangent coords post-step). The cell clamp is a post-optimizer
+# param shrink (clamp_perceiver_tangent_norms); the latents are NOT params — they
+# are recomputed each forward from g_phi — so they need an IN-GRAPH rim bound in
+# latent_coords, mirroring the same bound. Correctness fix, always-on, no toggle:
+# when a latent's ball-norm |z| stays <= MAX_ZNORM the clamp does not bind and is
+# byte-identical (the where()-gated 1.0 branch). Default 0.9 = the trainer default.
+PERCEIVER_MAX_ZNORM = float(os.environ.get("MAX_ZNORM", "0.9"))
 
 # --- PERF FIX A: hoist the loop-invariant latent self-attn bias out of the
 # K-breath loop. latent_valid is loop-invariant (extracted once, never mutated
@@ -335,6 +343,32 @@ def gphi_latent_corrections(model: Any, membership: Tensor) -> Tensor:
 
 # ---- latent + cell coordinate construction (the ANCHOR) ----------------------
 
+def _rim_clamp_ball(z: Tensor, max_znorm: float) -> Tensor:
+    """In-graph rim bound: shrink ball points so |z| <= max_znorm (Tier-2 §7).
+
+    The CELL coords are bounded by the post-step param clamp
+    (clamp_perceiver_tangent_norms); the LATENT coords are recomputed each forward
+    from g_phi (NOT params) so they need this IN-GRAPH equivalent — same MAX_ZNORM
+    bound, applied to the SAME post-exp0 ball-norm the max_latent_z probe measures.
+
+    Mechanism: per-row radial shrink, where()-gated.
+      scale = where(|z| > max_znorm, max_znorm/|z|, 1.0);  z_out = z * scale.
+    SUBSTRATE-LEGAL: single-kernel |z| reduction; where()-GATE (not a multiply that
+    could NaN — the divide max_znorm/|z| only feeds the gated branch, taken only
+    when |z| > max_znorm ~ 0.9 > 0, so it is always finite; eps-floored divisor as a
+    second guard). No dtypes.float32 literal; no .contiguous()/.realize().
+    BOUNDARY-SAFE: clamps BEFORE |z| can reach 1 (caps |z| at ~0.9 < 1, so
+    |z|^2 <= 0.81 < 1-1e-5, well inside the d_hyp boundary guard).
+    BYTE-IDENTICAL when not binding: rows with |z| <= max_znorm take the 1.0 branch
+    -> z*1.0 == z exactly (the renorm-only baseline, max_latent_z ~ 0.71, untouched).
+    """
+    z32 = z.cast(dtypes.float)
+    norm = (z32.pow(2).sum(axis=-1, keepdim=True) + 1e-12).sqrt()     # (...,1) |z|, eps-floored
+    cap = Tensor(max_znorm, dtype=dtypes.float)
+    scale = (norm > cap).where(cap / norm, Tensor(1.0, dtype=dtypes.float))
+    return z32 * scale
+
+
 def _latent_cell_tangents(model: Any, membership: Tensor, ball_path: str,
                           latent_type: Tensor | None) -> Tensor:
     """Per-batch (B, 49, dim) cell TANGENT field each latent reads its cells from.
@@ -408,7 +442,8 @@ def latent_coords(model: Any, membership: Tensor, ball_path: str = "single",
             base = base_row * is_row + base_col * is_col + base_cage * is_cage
     corr = gphi_latent_corrections(model, membership)                 # (B,L,dim) zero at t=0
     tan = base + corr                                                 # (B,L,dim) tangent
-    return _exp0_map(tan)                                             # (B,L,dim) ball
+    z = _exp0_map(tan)                                                # (B,L,dim) ball, |z|<1
+    return _rim_clamp_ball(z, PERCEIVER_MAX_ZNORM)                    # |z| <= MAX_ZNORM
 
 
 def cell_coords(model: Any, relation: str = "single") -> Tensor:
@@ -1056,9 +1091,10 @@ def attach_perceiver_params(model: Any, hidden: int, n_heads: int,
 
     # ---- TOGGLE (1) NOTEBOOK params (ALWAYS allocated so the state_dict/param-list
     # shapes are consistent across runs; the path is gated OFF by PERCEIVER_NOTEBOOK
-    # and is inert when off). WRITE output proj is ZERO-INIT (the byte-identical-off
-    # + neutral-anchor guarantee); READ output proj is SMALL-RANDOM (the live grad
-    # path that bootstraps the zero-init WRITE proj). ----
+    # and is inert when off). BOTH output projs are ZERO-INIT (the byte-identical-off
+    # + neutral-anchor guarantee). The live grad path is read_o over the NON-ZERO
+    # slot_pos seed (the v120 asymmetry: zero output proj over non-zero input still
+    # gets grad) -> read_o self-unlocks first, then write_o bootstraps through it. ----
     attach_perceiver_notebook_params(model, hidden)
 
     # ---- g_phi DeepSets encoder (zero-init rho last layer -> g_phi==0 at t=0) ----
