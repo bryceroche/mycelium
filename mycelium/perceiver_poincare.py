@@ -447,6 +447,35 @@ PERCEIVER_PERSIST_CELLS = int(os.environ.get("PERCEIVER_PERSIST_CELLS", "0")) > 
 # + different optimizer param-set -> must not reuse the =0 graph).
 PERCEIVER_CELL_MP = int(os.environ.get("PERCEIVER_CELL_MP", "0")) > 0
 
+# --- TOGGLE (6): PERCEIVER_CELL_RENORM — per-breath RMSNorm on the persistent
+# cell_hidden residual, mirroring PERCEIVER_THINK_RENORM for the latent path.
+#
+# MOTIVATION: the persistent cell residual (PERSIST_CELLS accumulation + CELL_MP
+# additions) grows unbounded across the K breaths with no normalization. The last
+# breath blows up (per_breath_ce = [..., 1.265, 1.256, 1.266, 1.598] — b7 jumps
+# to 1.598). The analogous latent divergence was fixed by PERCEIVER_THINK_RENORM
+# (a per-breath RMSNorm on latent_in before THINK). This toggle applies the same
+# contraction to cell_hidden AFTER all per-breath cell updates (persist blend +
+# cell-MP), so the readout AND the next breath's READ + cell-MP all consume a
+# bounded cell state.
+#
+# PLACEMENT: AFTER PERCEIVER_PERSIST_CELLS blend AND after PERCEIVER_CELL_MP
+# update (the very last mutation of cell_hidden in the breath body), BEFORE the
+# sharpness reg and readout. The renorm also re-zeros pad cells (mirror of
+# cell_hidden * cell_valid.reshape(...) on both update paths).
+#
+# IMPLEMENTATION: single-kernel RMSNorm, fp32. Reuses PERCEIVER_THINK_RMS_EPS
+# (the same Python float scalar — substrate-legal in JIT, bakes as a compile-time
+# constant, NOT a float32 Tensor literal). 0 new params.
+#
+# DEFAULT-OFF: =0 -> renorm step skipped entirely -> byte-identical to HEAD.
+# =1: MUST be used with PERCEIVER_PERSIST_CELLS=1 (asserted at forward-call time;
+#     without persistence the cell state is reconstructed each breath, so renorm
+#     would be a no-op at best and misleading at worst).
+# JIT CACHE KEY: bool(PERCEIVER_CELL_RENORM) added to _compile_step (different
+# graph body -> must not reuse the =0 graph).
+PERCEIVER_CELL_RENORM = int(os.environ.get("PERCEIVER_CELL_RENORM", "0")) > 0
+
 
 # ---- cross-field hyperbolic distance (latents <-> cells) ---------------------
 # kenken._d_hyp_pairwise is WITHIN one field (M,M). The perceiver needs a CROSS
@@ -1226,6 +1255,25 @@ def perceiver_breathing_forward(model: Any, batch: Any, K: int,
                 model, cell_hidden, cell_mp_bias, cfg.n_heads, cfg.head_dim)  # (B,49,H)
             mp_gate_k = model.perc_cell_mp_gate[k].cast(dtypes.float).sigmoid().reshape(1, 1, 1)
             cell_hidden = cell_hidden + mp_gate_k * cell_mp_ctx         # gate into residual
+            cell_hidden = cell_hidden * cell_valid.reshape(Bn, N_CELLS, 1)  # re-zero pad cells
+
+        # === TOGGLE (6) CELL_RENORM: per-breath RMSNorm on the persistent cell
+        # residual, mirroring PERCEIVER_THINK_RENORM for the latent path. ===
+        # PLACEMENT: AFTER both the PERSIST_CELLS delta-gate blend (lines above)
+        # AND the CELL_MP gated addition (block above) — the last mutation of
+        # cell_hidden in the breath body. The readout and the next breath's READ
+        # + cell-MP all consume the renorm-bounded cell state.
+        # PERCEIVER_THINK_RMS_EPS is a Python float scalar (substrate-legal in
+        # JIT — bakes as a compile-time constant, NOT a float32 Tensor literal).
+        # Single-kernel RMSNorm; 0 new params; re-zeros pad cells after renorm
+        # (mirror of cell_hidden * cell_valid.reshape(...) on both update paths).
+        # DEFAULT-OFF: when PERCEIVER_CELL_RENORM=0 the block is skipped entirely
+        # and cell_hidden is byte-identical to HEAD.
+        if PERCEIVER_CELL_RENORM:
+            assert PERCEIVER_PERSIST_CELLS, \
+                "PERCEIVER_CELL_RENORM=1 requires PERCEIVER_PERSIST_CELLS=1"
+            rms = (cell_hidden.square().mean(axis=-1, keepdim=True) + PERCEIVER_THINK_RMS_EPS).rsqrt()
+            cell_hidden = cell_hidden * rms
             cell_hidden = cell_hidden * cell_valid.reshape(Bn, N_CELLS, 1)  # re-zero pad cells
 
         # === SHARPNESS REG: accumulate per-breath coupled reg into loss. ===

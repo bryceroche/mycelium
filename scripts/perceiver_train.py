@@ -59,6 +59,7 @@ from mycelium.perceiver_poincare import (
     PERCEIVER_FREEZE_ROUTING,
     PERCEIVER_PERSIST_CELLS,
     PERCEIVER_CELL_MP,
+    PERCEIVER_CELL_RENORM,
     attach_perceiver_params, perceiver_parameters, perceiver_deduction_parameters,
     perceiver_state_dict,
     perceiver_breathing_forward, t0_anchor_check, clamp_perceiver_tangent_norms,
@@ -194,7 +195,8 @@ def _compile_step(model, opt, K: int, B: int, L: int, ball_path: str,
            bool(PERCEIVER_SHARP_REG), float(PERCEIVER_SHARP_REG_LAMBDA),
            bool(PERCEIVER_FREEZE_ROUTING),
            bool(PERCEIVER_PERSIST_CELLS),
-           bool(PERCEIVER_CELL_MP))
+           bool(PERCEIVER_CELL_MP),
+           bool(PERCEIVER_CELL_RENORM))
     # PERCEIVER_FREEZE_ROUTING: when =1 opt.params is the DEDUCTION-ONLY set (g_phi
     # + cell coords excluded). opt.step() operates on a smaller param list -> a
     # different graph body than the full brick-2 set. MUST key so =0 and =1 compile
