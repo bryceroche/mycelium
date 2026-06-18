@@ -240,6 +240,30 @@ PERCEIVER_PI_ROPE_ANGLE_SCALE = float(os.environ.get("PERCEIVER_PI_ROPE_ANGLE_SC
 #   the exact Python math.cos/sin scalar (byte-identical to the current rotation).
 PERCEIVER_PI_ROPE_PERHEAD = int(os.environ.get("PERCEIVER_PI_ROPE_PERHEAD", "0")) > 0
 
+# --- TOGGLE (3): PERCEIVER_SILHOUETTE — side-channel waist (W_sil: H->SIL_DIM)
+# applied to the THINK OUTPUT (post-delta-gate latent_hidden) each breath, computed
+# AFTER the 4 Pythia layers, OFF the reasoning path. The compressed common-mode is
+# used ONLY as the notebook WRITE source when PERCEIVER_NOTEBOOK is also on — it is
+# NEVER fed back into the latent residual / THINK (that is the v80 in-path bottleneck
+# that deletes arithmetic). When PERCEIVER_NOTEBOOK is off, the silhouette is still
+# computed but goes unused (the path remains inert). Sole effect: when both NOTEBOOK
+# and SILHOUETTE are on, the notebook stores the SIL_DIM silhouette instead of the
+# full H latent state.
+# =0 (default): no silhouette computed -> BYTE-IDENTICAL to HEAD.
+PERCEIVER_SILHOUETTE = int(os.environ.get("PERCEIVER_SILHOUETTE", "0")) > 0
+# Silhouette dimension (half the hidden dim = 512 for Pythia-410M with H=1024).
+PERCEIVER_SIL_DIM = int(os.environ.get("PERCEIVER_SIL_DIM", "512"))
+
+# --- TOGGLE (4): PERCEIVER_NB_PIROPE — per-breath phase stamp on the NOTEBOOK
+# WRITE and the slot-READ QUERY only. NEVER touches the THINK query (3 variants proved
+# THINK-query π → rim escape + flat training; see §12). When on, breath k imprints
+# phase k*π/K_max on (a) the silhouette before it is written to the notebook slot and
+# (b) the multi-head read Q so reads match by phase. Reuses _pi_rope_rotate_q. Has no
+# effect when PERCEIVER_NOTEBOOK=0 (the notebook path is skipped entirely). K-caveat:
+# value is large-K (K≫8); at K=8 breath_embed suffices → expect ~no K=8 benefit.
+# =0 (default): no phase stamp -> BYTE-IDENTICAL to HEAD.
+PERCEIVER_NB_PIROPE = int(os.environ.get("PERCEIVER_NB_PIROPE", "0")) > 0
+
 
 # ---- cross-field hyperbolic distance (latents <-> cells) ---------------------
 # kenken._d_hyp_pairwise is WITHIN one field (M,M). The perceiver needs a CROSS
@@ -576,6 +600,91 @@ def _nb_write(model: Any, latent_hidden: Tensor, storage: Tensor,
     return storage.cast(dtypes.float) + gate * update                # ACCUMULATE: slot += gated update
 
 
+# ---- TOGGLE (3): PERCEIVER_SILHOUETTE helpers --------------------------------
+
+def _sil_project(model: Any, latent_hidden: Tensor, latent_valid: Tensor) -> Tensor:
+    """Side-channel silhouette projection: W_sil(H -> SIL_DIM) of the post-THINK
+    latent_hidden each breath.  SIDE-CHANNEL ONLY — the result is NEVER added back
+    to latent_hidden or fed into the THINK (that is the v80 in-path bottleneck).
+    Its only use is as the notebook WRITE source when NOTEBOOK + SILHOUETTE are both
+    on.  Pad latents are zeroed so they don't pollute the slots.
+    Substrate-legal: no float32 literal in JIT; single matmul; no .contiguous()."""
+    Bn = int(latent_hidden.shape[0])
+    L = int(latent_hidden.shape[1])
+    x = latent_hidden.cast(dtypes.float)
+    sil = x @ model.perc_sil_w.cast(dtypes.float) + model.perc_sil_b.cast(dtypes.float)  # (B,L,SIL_DIM)
+    sil = sil * latent_valid.reshape(Bn, L, 1).cast(dtypes.float)    # zero pad latents
+    return sil
+
+
+def _nb_write_sil(model: Any, sil: Tensor, storage: Tensor,
+                  latent_valid: Tensor) -> Tensor:
+    """WRITE (ACCUMULATE) from SILHOUETTE source: slots += sigmoid(gate)*sil_write_o(...)
+
+    Like _nb_write but the latent K/V projections take the SIL_DIM silhouette as
+    their source instead of the full H latent_hidden.  The slot QUERY table is SHARED
+    with _nb_write (same perc_nb_write_slot_q).  The sil-specific K/V projections
+    (perc_nb_sil_write_k/v_w/b) plus sil_write_o (ZERO-INIT) are the only new params.
+    write_o ZERO-INIT -> update == 0 at t=0 -> byte-identical-off AND neutral-anchor
+    bootstrap (same guarantee as _nb_write).  Substrate-legal (no float32 literal,
+    no .contiguous()/.realize() in the breath loop)."""
+    Bn = int(sil.shape[0])
+    L = int(sil.shape[1])
+    nh = PERCEIVER_NB_HEADS
+    D = PERCEIVER_NB_DIM
+    hd = D // nh
+    src = sil.cast(dtypes.float)
+    slot_q = model.perc_nb_write_slot_q.reshape(1, PERCEIVER_NB_SLOTS, D).expand(Bn, PERCEIVER_NB_SLOTS, D).cast(dtypes.float)
+    q = slot_q @ model.perc_nb_write_q_w.cast(dtypes.float) + model.perc_nb_write_q_b.cast(dtypes.float)  # (B,S,D)
+    k = src @ model.perc_nb_sil_write_k_w.cast(dtypes.float) + model.perc_nb_sil_write_k_b.cast(dtypes.float)   # (B,L,D)
+    val = src @ model.perc_nb_sil_write_v_w.cast(dtypes.float) + model.perc_nb_sil_write_v_b.cast(dtypes.float)  # (B,L,D)
+    q = q.reshape(Bn, PERCEIVER_NB_SLOTS, nh, hd).transpose(1, 2)    # (B,nh,S,hd)
+    k = k.reshape(Bn, L, nh, hd).transpose(1, 2)                     # (B,nh,L,hd)
+    val = val.reshape(Bn, L, nh, hd).transpose(1, 2)                  # (B,nh,L,hd)
+    scores = (q @ k.transpose(-2, -1)) * (1.0 / math.sqrt(hd))       # (B,nh,S,L)
+    lv_block = (latent_valid.reshape(Bn, 1, 1, L).cast(dtypes.float) - 1.0) * PERCEIVER_BLOCK
+    scores = (scores + lv_block).clip(-PERCEIVER_BLOCK, PERCEIVER_BLOCK)
+    attn = scores.softmax(-1)                                         # (B,nh,S,L)
+    attended = (attn @ val).transpose(1, 2).reshape(Bn, PERCEIVER_NB_SLOTS, D)   # (B,S,D)
+    update = attended @ model.perc_nb_sil_write_o_w.cast(dtypes.float) + model.perc_nb_sil_write_o_b.cast(dtypes.float)  # (B,S,D) ZERO at t=0
+    gate = model.perc_nb_write_gate.cast(dtypes.float).sigmoid().reshape(1, PERCEIVER_NB_SLOTS, 1)
+    return storage.cast(dtypes.float) + gate * update
+
+
+def _nb_read_pi(model: Any, latent_hidden: Tensor, storage: Tensor,
+                latent_valid: Tensor, angle: float) -> Tensor:
+    """READ with π-phase-stamped query (TOGGLE 4, PERCEIVER_NB_PIROPE).
+
+    Same as _nb_read but rotates the multi-head READ query by `angle` = k*π/K_max
+    (the per-breath phase) using _pi_rope_rotate_q, so slot reads match by phase.
+    The rotation is applied AFTER the Q projection + reshape, BEFORE the q@k scores —
+    the same placement as the THINK π-RoPE.  Only the READ Q is rotated (NOT K/V and
+    NOT the THINK query — that is the NEVER-touch-THINK-query rule).
+    Called when PERCEIVER_NB_PIROPE=1 AND PERCEIVER_NOTEBOOK=1; falls back to
+    _nb_read when NB_PIROPE is off (byte-identical default path unchanged)."""
+    Bn = int(latent_hidden.shape[0])
+    L = int(latent_hidden.shape[1])
+    nh = PERCEIVER_NB_HEADS
+    D = PERCEIVER_NB_DIM
+    hd = D // nh
+    x = latent_hidden.cast(dtypes.float)
+    slots = storage.cast(dtypes.float) + model.perc_nb_slot_pos.reshape(1, PERCEIVER_NB_SLOTS, D).cast(dtypes.float)
+    q = x @ model.perc_nb_read_q_w.cast(dtypes.float) + model.perc_nb_read_q_b.cast(dtypes.float)  # (B,L,D)
+    k = slots @ model.perc_nb_read_k_w.cast(dtypes.float) + model.perc_nb_read_k_b.cast(dtypes.float)  # (B,S,D)
+    v = slots @ model.perc_nb_read_v_w.cast(dtypes.float) + model.perc_nb_read_v_b.cast(dtypes.float)  # (B,S,D)
+    q = q.reshape(Bn, L, nh, hd).transpose(1, 2)                      # (B,nh,L,hd)
+    # π-phase stamp on the READ Q only (NOT K, NOT the THINK query).
+    q = _pi_rope_rotate_q(q, angle)                                    # (B,nh,L,hd) phase-stamped
+    k = k.reshape(Bn, PERCEIVER_NB_SLOTS, nh, hd).transpose(1, 2)     # (B,nh,S,hd)
+    v = v.reshape(Bn, PERCEIVER_NB_SLOTS, nh, hd).transpose(1, 2)     # (B,nh,S,hd)
+    scores = (q @ k.transpose(-2, -1)) * (1.0 / math.sqrt(hd))        # (B,nh,L,S)
+    attn = scores.clip(-PERCEIVER_BLOCK, PERCEIVER_BLOCK).softmax(-1)
+    attended = (attn @ v).transpose(1, 2).reshape(Bn, L, D)           # (B,L,D)
+    read_ctx = attended @ model.perc_nb_read_o_w.cast(dtypes.float) + model.perc_nb_read_o_b.cast(dtypes.float)  # (B,L,H)
+    read_ctx = read_ctx * latent_valid.reshape(Bn, L, 1).cast(dtypes.float)
+    return read_ctx
+
+
 # ---- the breath cycle: READ -> THINK -> WRITE -> readout --------------------
 
 def perceiver_breathing_forward(model: Any, batch: Any, K: int,
@@ -712,9 +821,18 @@ def perceiver_breathing_forward(model: Any, batch: Any, K: int,
         # TOGGLE (1) READ: latents cross-attend INTO the notebook slots; the read
         # context is added to the latent residual. At t=0 the slots are all-zero
         # (and stay zero — write_o is zero-init), so this adds EXACTLY 0.
+        # TOGGLE (4) NB_PIROPE: when on, use _nb_read_pi (π-stamped READ Q) so reads
+        # match by phase. read_o is ZERO-INIT so the context is EXACTLY 0 at t=0
+        # regardless of the phase stamp (bootstrap-safe; the rim-clamp on latent_coords
+        # already bounds the ball coords; the read_ctx is further masked by
+        # latent_valid so pad latents are zeroed).
         if PERCEIVER_NOTEBOOK:
-            nb_read_ctx = _nb_read(model, latent_hidden, nb_storage, latent_valid)  # (B,L,H), 0 at t=0
-            latent_in = latent_in + nb_read_ctx
+            nb_angle_read = k * math.pi / float(K_max)
+            if PERCEIVER_NB_PIROPE:
+                nb_read_ctx = _nb_read_pi(model, latent_hidden, nb_storage, latent_valid, nb_angle_read)
+            else:
+                nb_read_ctx = _nb_read(model, latent_hidden, nb_storage, latent_valid)
+            latent_in = latent_in + nb_read_ctx                       # (B,L,H), 0 at t=0
         latent_in = latent_in * latent_valid.reshape(Bn, L, 1)        # zero pad latents
 
         # === THINK: latent self-attention through the shared Pythia L0-L3. ===
@@ -781,12 +899,38 @@ def perceiver_breathing_forward(model: Any, batch: Any, K: int,
         latent_hidden = latent_hidden + gate_k * (h - latent_hidden)  # (B,L,H)
         latent_hidden = latent_hidden * latent_valid.reshape(Bn, L, 1)
 
-        # === NOTEBOOK WRITE (TOGGLE 1, ACCUMULATE): slots += gated update from the
-        # post-THINK latents (slot += sigmoid(gate)*write_o(...)). write_o is zero-
-        # init -> the update is EXACTLY 0 at t=0 -> the slots stay all-zero forever
-        # until write_o trains -> byte-identical-off + neutral-anchor bootstrap. ===
+        # === TOGGLE (3) SILHOUETTE: side-channel W_sil(H->SIL_DIM) of the post-THINK
+        # latent_hidden. AFTER the delta-gate blend, NEVER fed back into latent_hidden
+        # or the THINK (side-channel only). Only computed when NOTEBOOK is also on so
+        # perc_sil_w/b always have a forward path (SILHOUETTE=1 + NOTEBOOK=0 would be
+        # a no-consumer dead end that trips the AdamW grad-is-None assert).
+        if PERCEIVER_SILHOUETTE and PERCEIVER_NOTEBOOK:
+            sil = _sil_project(model, latent_hidden, latent_valid)    # (B,L,SIL_DIM)
+
+        # === NOTEBOOK WRITE (TOGGLE 1, ACCUMULATE) ===
+        # When SILHOUETTE is also on: write the SIL_DIM silhouette (optionally
+        # π-stamped) instead of the full H latent_hidden. This is the "compressed
+        # memory" test from §13 — does 512-silhouette memory beat the failed full-
+        # state notebook?  When SILHOUETTE is off: write latent_hidden as before.
+        # write_o (both paths) is ZERO-INIT -> the update is EXACTLY 0 at t=0 ->
+        # byte-identical-off + neutral-anchor bootstrap.
         if PERCEIVER_NOTEBOOK:
-            nb_storage = _nb_write(model, latent_hidden, nb_storage, latent_valid)
+            if PERCEIVER_SILHOUETTE:
+                # TOGGLE (4) NB_PIROPE: π-stamp the silhouette before writing so the
+                # slot phase matches the write breath. Reshape (B,L,SIL_DIM) to
+                # (B,1,L,SIL_DIM) (treat as one head for _pi_rope_rotate_q) then back.
+                # The per-breath angle is k*π/K_max (the same scale as THINK PI_ROPE).
+                # NEVER applied to the THINK query — this is MEMORY only.
+                if PERCEIVER_NB_PIROPE:
+                    nb_angle = k * math.pi / float(K_max)
+                    sil4d = sil.reshape(Bn, 1, L, PERCEIVER_SIL_DIM)
+                    sil4d = _pi_rope_rotate_q(sil4d, nb_angle)
+                    sil_to_write = sil4d.reshape(Bn, L, PERCEIVER_SIL_DIM)
+                else:
+                    sil_to_write = sil
+                nb_storage = _nb_write_sil(model, sil_to_write, nb_storage, latent_valid)
+            else:
+                nb_storage = _nb_write(model, latent_hidden, nb_storage, latent_valid)
 
         # === WRITE: each cell attends to latents via -d_hyp(z_cell, z_latent). ===
         ctx_c, write_attn = _cross_attend(d_write, latent_hidden, latent_valid, tau)  # (B,49,H),(B,49,L)
@@ -1159,6 +1303,12 @@ def attach_perceiver_params(model: Any, hidden: int, n_heads: int,
     # gets grad) -> read_o self-unlocks first, then write_o bootstraps through it. ----
     attach_perceiver_notebook_params(model, hidden)
 
+    # ---- TOGGLE (3) SILHOUETTE params (ALWAYS allocated; path gated off by the
+    # toggle). perc_sil_w / perc_sil_b: H -> SIL_DIM, small-random init. NOT an
+    # injecting projection (it feeds the notebook WRITE source which is gated by the
+    # zero-init write_o); the zero-init guarantee is on write_o (notebook side). ----
+    attach_perceiver_silhouette_params(model, hidden)
+
     # ---- g_phi DeepSets encoder (zero-init rho last layer -> g_phi==0 at t=0) ----
     attach_perceiver_gphi_params(model, dim=dim)
 
@@ -1320,15 +1470,56 @@ def attach_perceiver_notebook_params(model: Any, hidden: int) -> None:
     model.perc_nb_slot_pos = Tensor(
         (rng.randn(S, D) * 0.02).astype(np.float32), dtype=dtypes.float).contiguous()
 
+    # TOGGLE (3+1) SILHOUETTE write params: K/V projections for the SIL_DIM->D path
+    # (used by _nb_write_sil when PERCEIVER_NOTEBOOK+PERCEIVER_SILHOUETTE are both on).
+    # ALWAYS allocated (same discipline as the base notebook params: allocate regardless
+    # of the toggle so state-dict shapes are consistent; path is gated by the toggle).
+    # perc_nb_sil_write_o_w is ZERO-INIT -> the silhouette write update is EXACTLY 0
+    # at t=0 -> byte-identical-off + neutral-anchor bootstrap (same guarantee as
+    # perc_nb_write_o_w). The slot_q and write_gate are SHARED with the base write path.
+    SD = PERCEIVER_SIL_DIM
+    model.perc_nb_sil_write_k_w = _w(SD, D, zero=False)
+    model.perc_nb_sil_write_k_b = _b(D)
+    model.perc_nb_sil_write_v_w = _w(SD, D, zero=False)
+    model.perc_nb_sil_write_v_b = _b(D)
+    # sil write_o ZERO-INIT — bootstrap-safety guarantee for the silhouette write path.
+    model.perc_nb_sil_write_o_w = _w(D, D, zero=True)
+    model.perc_nb_sil_write_o_b = _b(D)
+
+
+def attach_perceiver_silhouette_params(model: Any, hidden: int,
+                                       sil_dim: int | None = None) -> None:
+    """TOGGLE (3) SILHOUETTE params: W_sil (H -> SIL_DIM) side-channel projection.
+
+    ALWAYS allocated (same discipline as notebook params — state-dict shape consistency
+    across runs; path gated by PERCEIVER_SILHOUETTE). Small-random init (NOT zero-init):
+    this is NOT an injecting projection — it only feeds the notebook WRITE source, and
+    the zero-init guarantee sits on the write_o proj (perc_nb_sil_write_o_w) which
+    ensures t=0 contribution is exactly 0. The sil_w bias is zero (standard affine).
+    """
+    if sil_dim is None:
+        sil_dim = PERCEIVER_SIL_DIM
+    rng = np.random.RandomState(20260619)
+    arr = (rng.randn(hidden, sil_dim) * (1.0 / math.sqrt(hidden))).astype(np.float32)
+    model.perc_sil_w = Tensor(arr, dtype=dtypes.float).contiguous()
+    model.perc_sil_b = Tensor.zeros((sil_dim,), dtype=dtypes.float).contiguous()
+
 
 def perceiver_notebook_parameters(model: Any) -> list[Tensor]:
     """TOGGLE (1) NOTEBOOK trainable tensors as a flat list. Returned only when the
     notebook path is ACTIVE (PERCEIVER_NOTEBOOK=1); when off the path has no grad
     path, so including them would trip AdamW's grad-is-None assert (the same path-
-    awareness perceiver_parameters uses for the inactive ball-path cell field)."""
+    awareness perceiver_parameters uses for the inactive ball-path cell field).
+
+    Includes the silhouette-specific write projections (perc_nb_sil_write_*) only when
+    PERCEIVER_SILHOUETTE is also on. Although these params are always ALLOCATED (state-dict
+    shape consistency), _nb_write_sil is only called when SILHOUETTE=1, so they only have
+    a forward path in that config. Including them when SILHOUETTE=0 would trip AdamW's
+    grad-is-None assert — the zero-init claim in the original docstring was incorrect;
+    zero-init params with no forward path still produce None grad, not zero grad."""
     if not hasattr(model, "perc_nb_write_o_w"):
         return []
-    return [
+    params = [
         model.perc_nb_read_q_w, model.perc_nb_read_q_b,
         model.perc_nb_read_k_w, model.perc_nb_read_k_b,
         model.perc_nb_read_v_w, model.perc_nb_read_v_b,
@@ -1341,6 +1532,17 @@ def perceiver_notebook_parameters(model: Any) -> list[Tensor]:
         model.perc_nb_write_gate,
         model.perc_nb_slot_pos,
     ]
+    # Silhouette-specific write projections: only include when SILHOUETTE is also on.
+    # Although these params are always ALLOCATED (state-dict consistency), _nb_write_sil
+    # is only called when PERCEIVER_SILHOUETTE=1, so they only have a forward path then.
+    # Including them when SILHOUETTE=0 trips AdamW's grad-is-None assert (no grad path).
+    if PERCEIVER_SILHOUETTE and hasattr(model, "perc_nb_sil_write_o_w"):
+        params += [
+            model.perc_nb_sil_write_k_w, model.perc_nb_sil_write_k_b,
+            model.perc_nb_sil_write_v_w, model.perc_nb_sil_write_v_b,
+            model.perc_nb_sil_write_o_w, model.perc_nb_sil_write_o_b,
+        ]
+    return params
 
 
 def perceiver_parameters(model: Any, ball_path: str = "single") -> list[Tensor]:
@@ -1371,7 +1573,20 @@ def perceiver_parameters(model: Any, ball_path: str = "single") -> list[Tensor]:
     # grad path -> AdamW grad-is-None assert). The tensors are always allocated.
     if PERCEIVER_NOTEBOOK:
         params += perceiver_notebook_parameters(model)
+    # TOGGLE (3): only train the silhouette projection when the path is ACTIVE (else
+    # no grad path through it). perc_sil_w/b are always allocated.
+    if PERCEIVER_SILHOUETTE:
+        params += perceiver_silhouette_parameters(model)
     return params
+
+
+def perceiver_silhouette_parameters(model: Any) -> list[Tensor]:
+    """TOGGLE (3) SILHOUETTE trainable tensors (perc_sil_w, perc_sil_b). Returned
+    only when PERCEIVER_SILHOUETTE=1; when off there is no grad path through the
+    silhouette projection, so including it would trip AdamW's grad-is-None assert."""
+    if not hasattr(model, "perc_sil_w"):
+        return []
+    return [model.perc_sil_w, model.perc_sil_b]
 
 
 def perceiver_gphi_parameters(model: Any) -> list[Tensor]:
@@ -1490,5 +1705,21 @@ def perceiver_state_dict(model: Any) -> dict[str, Tensor]:
             "perc.nb_write_o_b": model.perc_nb_write_o_b,
             "perc.nb_write_gate": model.perc_nb_write_gate,
             "perc.nb_slot_pos": model.perc_nb_slot_pos,
+        })
+    # TOGGLE (3+1) SILHOUETTE write params (always persisted with notebook params).
+    if hasattr(model, "perc_nb_sil_write_o_w"):
+        sd.update({
+            "perc.nb_sil_write_k_w": model.perc_nb_sil_write_k_w,
+            "perc.nb_sil_write_k_b": model.perc_nb_sil_write_k_b,
+            "perc.nb_sil_write_v_w": model.perc_nb_sil_write_v_w,
+            "perc.nb_sil_write_v_b": model.perc_nb_sil_write_v_b,
+            "perc.nb_sil_write_o_w": model.perc_nb_sil_write_o_w,
+            "perc.nb_sil_write_o_b": model.perc_nb_sil_write_o_b,
+        })
+    # TOGGLE (3) SILHOUETTE projection params (always persisted).
+    if hasattr(model, "perc_sil_w"):
+        sd.update({
+            "perc.sil_w": model.perc_sil_w,
+            "perc.sil_b": model.perc_sil_b,
         })
     return sd

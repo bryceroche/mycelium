@@ -267,3 +267,59 @@ shows a phase-lock signature — **periodicity in the convergence-instrument JSD
 deduction read should **scan the trajectory for periodicity/phase-lock signatures** so the
 decision to bring the wave forward is evidence-driven. Until then it stays shelved; introducing
 it would also violate one-variable-at-a-time (it would confound the g_φ deduction gate).
+
+## 13. THE CATHEDRAL — integrated dancer / silhouette / notebook / π-memory-wave (spec; build-ready, FIRE-GATED)
+
+The integrated cross-breath memory system. Each breath: the renorm-stabilized **Dancer**
+(1024-d THINK state) is projected to a compressed **Silhouette** (512-d common-mode) via a
+SIDE-CHANNEL waist; the silhouette is **π-stamped** (aperiodic chronological phase) and written
+to a **Notebook** tensor slot; later breaths read the π-stamped slots back to disambiguate and
+build on prior sub-deductions. **The bet: ORGANIZE deductions across breaths — not add raw
+capacity.**
+
+**GATING (read first):** FIRE only if the foundation-capacity gate (renorm-alone @ 5000 steps)
+shows the foundation has capacity (cell_acc climbs toward v98). If the foundation plateaus at
+~0.37, the cathedral is **futile** — memory cannot add capacity the foundation lacks (you'd be
+storing weak deductions). Built default-off byte-identical so it never disturbs the validated
+renorm baseline, and not fired until the gate verdict + an explicit go.
+
+**Components (composable toggles, default-off byte-identical, in the JIT cache key):**
+1. **Dancer (`PERCEIVER_THINK_RENORM`, have it):** the 1024-d THINK loop, renorm-stabilized.
+   UNCHANGED. Full-fidelity — NO compression in the reasoning path (the v80 lesson: an in-path
+   waist deletes the arithmetic KenKen needs).
+2. **Silhouette (`PERCEIVER_SILHOUETTE`, side-channel waist):** a projection `W_sil: 1024→512` of
+   the THINK OUTPUT each breath, computed AFTER the THINK, OFF the reasoning path. The compressed
+   common-mode, used ONLY as the notebook write source — NEVER fed back into the THINK (that is
+   the in-path v80 bottleneck). Its only effect is via the (zero-init) notebook write → bootstrap-
+   safe by construction.
+3. **π-stamp (`PERCEIVER_NB_PIROPE`, the memory wave — on the MEMORY, NEVER the compute):** as the
+   silhouette is written to slot at breath k, imprint phase `k·π/K_max` (RoPE-style on the write +
+   the slot-read query, so reads can match/disambiguate by phase). NOTEBOOK write/read ONLY —
+   NEVER the THINK query (3 variants proved compute-π → rim escape + flat). K-caveat: value is
+   large-K (K≫8); at K=8 `breath_embed` suffices → expect ~no K=8 benefit; built for the deep-
+   recurrence future, off until K can scale.
+4. **Notebook (`PERCEIVER_NOTEBOOK`, extend the existing K-slot memory):** stores the π-stamped
+   silhouettes. WRITE: π-stamped silhouette → slot (accumulate). READ: π-aware cross-attn over
+   slots → injected into the latent state. **THE READ INJECTION IS THE RIM-RISK** (it feeds the
+   compute → perturbs g_φ → latents flee the rim; proven — the full-1024 notebook drove
+   max_latent_z → 0.90). MANDATORY mitigations: zero-init read-out proj (t=0 contribution exactly
+   0, the verified pattern); the latent rim-clamp (committed); a small/gated read. The cathedral
+   notebook stores the **512 silhouette** (compressed) vs the current full-1024 store — the open
+   test is whether compressed memory behaves better than the full-state notebook (which failed:
+   flat + rim).
+
+**Lessons baked in (the build MUST honor — these are WHY prior screens failed):** π on MEMORY not
+the THINK query; silhouette/waist SIDE-CHANNEL not in-path; ALL injecting projections (write +
+read) ZERO-INIT → bootstrap-safe + byte-identical-off; the latent rim-clamp covers everything;
+default-off byte-identical (master + sub toggles) + JIT cache key + substrate-legal (no float32
+literal in JIT, single-kernel, no .contiguous() in the breath loop) + FAST_GRADNORM-compatible.
+
+**Ablation plan (one-variable-at-a-time — the bundle lesson):** built together, but EVALUATED
+incrementally on separate gates — (i) renorm + silhouette-notebook (no π): does *compressed*
+memory beat the failed full-state notebook AND stay rim-clean? (ii) +π-stamp: only meaningful at
+K≫8. NEVER fire the 4-component big-bang and read one number.
+
+**Honest expected outcome:** given the fragility pattern (every compute-feeding addition → rim),
+the read injection likely still pressures the rim (contained by the clamp). The live hope: the
+*compressed* silhouette memory is cleaner than the full-state notebook → better retrieval →
+enables refinement (fixes the flat ladder). Unproven; the gate + ablation (i) decide it.

@@ -54,6 +54,7 @@ from mycelium.perceiver_poincare import (
     PERCEIVER_FAST_GRADNORM, PERCEIVER_THINK_RENORM,
     PERCEIVER_NOTEBOOK, PERCEIVER_PI_ROPE,
     PERCEIVER_PI_ROPE_QK, PERCEIVER_PI_ROPE_ANGLE_SCALE, PERCEIVER_PI_ROPE_PERHEAD,
+    PERCEIVER_SILHOUETTE, PERCEIVER_SIL_DIM, PERCEIVER_NB_PIROPE,
     attach_perceiver_params, perceiver_parameters, perceiver_state_dict,
     perceiver_breathing_forward, t0_anchor_check, clamp_perceiver_tangent_norms,
     perceiver_gphi_parameters, perceiver_active_cell_coords,
@@ -145,6 +146,14 @@ def _compile_step(model, opt, K: int, B: int, L: int, ball_path: str,
     #   bakes a different compile-time angle constant per breath (1.0 default is the
     #   current angle bit-for-bit). ANGLE_SCALE is keyed as a float so distinct
     #   scales compile distinct graphs (and 1.0 reuses the current graph).
+    # PERCEIVER_SILHOUETTE adds the W_sil side-channel projection + conditionally
+    #   replaces _nb_write with _nb_write_sil in the breath body (structurally
+    #   different graph body: different closed-over params + different source dim).
+    #   SIL_DIM bakes as a compile-time constant in the rotation reshape; keyed as
+    #   an int so distinct dims compile distinct graphs.
+    # PERCEIVER_NB_PIROPE adds _pi_rope_rotate_q calls in the notebook READ (Q-only)
+    #   and on the write source, each with a per-breath compile-time angle constant
+    #   (structurally different graph body from the un-rotated notebook path).
     key = (id(model), id(opt), int(K), int(B), int(L), str(ball_path),
            float(constraint_weight), float(grad_clip),
            bool(PERCEIVER_HOIST_BIAS), bool(PERCEIVER_FP16_THINK),
@@ -152,7 +161,9 @@ def _compile_step(model, opt, K: int, B: int, L: int, ball_path: str,
            bool(PERCEIVER_THINK_RENORM),
            bool(PERCEIVER_NOTEBOOK), bool(PERCEIVER_PI_ROPE),
            bool(PERCEIVER_PI_ROPE_QK), float(PERCEIVER_PI_ROPE_ANGLE_SCALE),
-           bool(PERCEIVER_PI_ROPE_PERHEAD))
+           bool(PERCEIVER_PI_ROPE_PERHEAD),
+           bool(PERCEIVER_SILHOUETTE), int(PERCEIVER_SIL_DIM),
+           bool(PERCEIVER_NB_PIROPE))
     if key in _JIT_CACHE:
         return _JIT_CACHE[key]
 
