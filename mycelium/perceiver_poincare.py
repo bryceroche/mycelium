@@ -1337,7 +1337,7 @@ def t0_anchor_check(model: Any, batch: Any, ball_path: str,
         is_cage = (t == 2).cast(dtypes.float).reshape(Bn, int(z_latent.shape[1]), 1)
         d_read = d_row * is_row + d_col * is_col + d_cage * is_cage
 
-    read_attn = _cross_attn_weights(d_read, cell_valid, PERCEIVER_TAU)  # (B,L,49)
+    read_attn, _ = _cross_attn_weights(d_read, cell_valid, PERCEIVER_TAU)  # (B,L,49)
     read_np = read_attn.realize().numpy()                          # (B,L,49)
     mem_np = membership.realize().numpy()                          # (B,L,49)
     lv_np = latent_valid.realize().numpy()                         # (B,L)
