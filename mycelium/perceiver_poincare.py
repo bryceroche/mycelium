@@ -476,6 +476,105 @@ PERCEIVER_CELL_MP = int(os.environ.get("PERCEIVER_CELL_MP", "0")) > 0
 # graph body -> must not reuse the =0 graph).
 PERCEIVER_CELL_RENORM = int(os.environ.get("PERCEIVER_CELL_RENORM", "0")) > 0
 
+# --- PROBE: PERCEIVER_PROBE_SMOOTH — over-smoothing diagnostic.
+#
+# When =1, each breath (AFTER cell_hidden is fully finalized — post PERSIST +
+# CELL_MP + CELL_RENORM, right before the readout) computes two scalars and
+# appends them to a returned `smooth_history` list:
+#
+#   h_n = cell_hidden / (||cell_hidden||_H + 1e-6)   (unit-L2 per cell, per batch)
+#   sim = h_n @ h_n^T                               (B,49,49) pairwise cosine
+#   valid_pair[b,i,j] = cell_valid[b,i] * cell_valid[b,j]  (both cells valid)
+#   adjacency[b,i,j]  = membership^T @ membership > 0      (constraint peers)
+#   peer_cos    = mean(sim * adjacency * valid_pair, zero diagonal)
+#   nonpeer_cos = mean(sim * (1-adjacency) * valid_pair)
+#
+#   smooth_history[k] = (peer_cos_k, nonpeer_cos_k)   Python floats
+#
+# RETURN SIGNATURE: when PERCEIVER_PROBE_SMOOTH=1 the function returns a
+# 4-tuple (cell_logits_history, engagement_history, sharp_reg, smooth_history).
+# When =0 (default) it returns the existing 3-tuple — BYTE-IDENTICAL to HEAD.
+#
+# NOT JIT'd: this probe is designed for eager evaluation only. The per-breath
+# .numpy() calls inside the probe are outside any TinyJit scope, so the
+# graph-size / replay-hang AM-driver limits do not apply.
+#
+# DEFAULT-OFF (=0): no probe code executes, return signature unchanged, behaviour
+# byte-identical to HEAD. Setting =1 triggers assertions that PERCEIVER_CELL_MP=1
+# (the adjacency comes from the membership tensor which is always available, but
+# the over-smoothing hypothesis is only testable when the cell-MP path is active).
+PERCEIVER_PROBE_SMOOTH = int(os.environ.get("PERCEIVER_PROBE_SMOOTH", "0")) > 0
+
+# --- TOGGLE (7): PERCEIVER_CELL_MP_DECAY — decaying cell-MP gate schedule.
+#
+# MOTIVATION: the confirmed over-smoothing collapse (peer cos 0.993, gap ~0 at b7)
+# shows the cell-MP is too loud at the LATE breaths.  The fix: give the gate a
+# DECREASING inductive bias so early breaths propagate constraints loudly and late
+# breaths stay soft-but-non-zero (they still refine, they stop washing out the
+# individual cell identity).
+#
+# MECHANISM (when =1): perc_cell_mp_gate is initialised with a LINEAR ramp in
+# logit space from +2.0 at k=0 (sigmoid≈0.88, loud) down to -1.0 at k=K_max-1
+# (sigmoid≈0.27, quiet-not-off).  The gate remains LEARNABLE — the model can
+# adjust the schedule, but it starts with the decay inductive bias.
+# Fully-off (sigmoid=0) is deliberately avoided: a zero late-gate reverts to the
+# inert no-MP ladder, which doesn't help.  The logit range [+2.0, -1.0] covers
+# sigmoid(2)≈0.88 → sigmoid(-1)≈0.27 — wide enough to express the decay, narrow
+# enough to bootstrap from.
+#
+# When =0: perc_cell_mp_gate retains its current constant init (0.5 for all k) —
+# byte-identical to HEAD.
+#
+# PARAM-SET DISCIPLINE: this flag changes ONLY the INIT of perc_cell_mp_gate, not
+# the forward graph.  No new params.  The JIT cache key does NOT need a new entry
+# (the graph body is unchanged; only the weight values differ at step 0).
+# The flag MUST still be appended to _compile_step's key because it changes the
+# gate-init values baked into the closed-over model object — even though the graph
+# is structurally identical, a different init is a different experiment.
+#
+# DEFAULT-OFF: =0 → constant 0.5 init (byte-identical to HEAD).
+# =1: requires PERCEIVER_CELL_MP=1 (no-op otherwise; attach_perceiver_cell_mp_params
+#     branches on the flag).
+PERCEIVER_CELL_MP_DECAY = int(os.environ.get("PERCEIVER_CELL_MP_DECAY", "0")) > 0
+
+# --- TOGGLE (8): PERCEIVER_CELL_IDENTITY — post-cell-MP identity re-anchor.
+#
+# MOTIVATION: the PERSIST update already re-injects cell_embed BEFORE the cell-MP,
+# but the cell-MP averaging can wash that signal away.  A "sticky note" skip from
+# cell_embed AFTER the cell-MP, BEFORE the renorm, re-anchors each cell's original
+# identity so averaging cannot erase it.
+#
+# MECHANISM (when =1): after CELL_MP (or after the PERSIST update when CELL_MP=0)
+# and BEFORE CELL_RENORM, add:
+#   cell_hidden = cell_hidden + sigmoid(perc_cell_identity_gate) * cell_embed
+# with re-zeroing of pad cells after (mirror of the cell_valid gate elsewhere).
+#
+# NEW PARAM: perc_cell_identity_gate — a per-breath (K_max,) learnable scalar
+# (NOT a single global scalar, so the model can tune re-anchor strength per breath).
+# Init: logit value so sigmoid≈0.35, i.e. initialised at -0.619 (natural log of
+# 0.35/0.65), providing a moderate active re-anchor from step 0.
+#
+# PARAM-SET DISCIPLINE:
+#   - ALLOCATED only when PERCEIVER_CELL_IDENTITY=1 (attach_perceiver_cell_identity_params).
+#   - Included in perceiver_parameters when PERCEIVER_CELL_IDENTITY=1 (and gated OUT
+#     when =0 — no forward path → AdamW grad-is-None assert if included).
+#   - Included in perceiver_deduction_parameters when PERCEIVER_CELL_IDENTITY=1
+#     (cell-identity is deduction-side, same reasoning as perc_cell_delta_gate).
+#   - Also included in perceiver_cell_mp_parameters when PERCEIVER_CELL_IDENTITY=1
+#     so the single audit point (perceiver_cell_mp_parameters gated on CELL_MP) is
+#     NOT the right home — see perceiver_cell_identity_parameters() instead.
+#   - state-dict: persisted under "perc.cell_identity_gate" when allocated.
+#
+# PLACEMENT: AFTER all cell_hidden mutations from PERSIST + CELL_MP (so the re-anchor
+# fires on the FINAL per-breath cell state), BEFORE CELL_RENORM (so the identity-
+# anchored state is normalised together with the rest of cell_hidden).
+#
+# DEFAULT-OFF: =0 → block skipped, perc_cell_identity_gate not allocated → byte-
+# identical to HEAD. Requires PERCEIVER_PERSIST_CELLS=1 (asserted at runtime).
+# JIT CACHE KEY: bool(PERCEIVER_CELL_IDENTITY) added to _compile_step (different
+# graph body + different optimizer param-set → must not reuse the =0 graph).
+PERCEIVER_CELL_IDENTITY = int(os.environ.get("PERCEIVER_CELL_IDENTITY", "0")) > 0
+
 
 # ---- cross-field hyperbolic distance (latents <-> cells) ---------------------
 # kenken._d_hyp_pairwise is WITHIN one field (M,M). The perceiver needs a CROSS
@@ -1071,6 +1170,27 @@ def perceiver_breathing_forward(model: Any, batch: Any, K: int,
     if PERCEIVER_CELL_MP:
         cell_mp_bias = _build_cell_mp_bias(membership, cell_valid, cfg.n_heads)  # (B,nh,49,49)
 
+    # PROBE: pre-compute the binary (B,49,49) adjacency for PERCEIVER_PROBE_SMOOTH.
+    # Derived from membership EXACTLY as _build_cell_mp_bias does, but as a {0,1}
+    # float WITHOUT the {0,-1e4} conversion (we need the binary allow mask to
+    # separate peer vs non-peer pairs). Diagonal included (self-adjacency); the
+    # probe zeros the diagonal when averaging. Computed OUTSIDE the JIT scope
+    # (the probe never runs inside TinyJit), so .numpy() + Python-level reduction
+    # are fine. DEFAULT-OFF: the if-block is skipped entirely when =0.
+    if PERCEIVER_PROBE_SMOOTH:
+        assert PERCEIVER_CELL_MP, \
+            "PERCEIVER_PROBE_SMOOTH=1 requires PERCEIVER_CELL_MP=1 (adjacency is " \
+            "only meaningful when the cell-MP path is active)"
+        # Recover the binary {0,1} adjacency: same formula as _build_cell_mp_bias
+        # but WITHOUT masking by cell_valid (we mask in the probe via valid_pair).
+        _m_f = membership.cast(dtypes.float)                    # (B,L,49)
+        _adj_raw = (_m_f.transpose(1, 2) @ _m_f).realize()     # (B,49,49)
+        # clip to {0,1}: any co-occurrence count -> 1.0
+        _adj_bin = _adj_raw.clip(0.0, 1.0).realize()           # (B,49,49) {0,1}
+        # smooth_history: list of (peer_cos, nonpeer_cos) Python float tuples,
+        # one entry per breath (appended inside the loop when the flag is on).
+        smooth_history: list[tuple[float, float]] = []
+
     # cells = the WRITE source's QUERY field; cell_hidden starts as the embedding.
     cell_hidden = cell_embed                                          # (B,49,H)
 
@@ -1257,6 +1377,33 @@ def perceiver_breathing_forward(model: Any, batch: Any, K: int,
             cell_hidden = cell_hidden + mp_gate_k * cell_mp_ctx         # gate into residual
             cell_hidden = cell_hidden * cell_valid.reshape(Bn, N_CELLS, 1)  # re-zero pad cells
 
+        # === TOGGLE (8) CELL_IDENTITY: post-cell-MP identity re-anchor. ===
+        # PLACEMENT: AFTER the CELL_MP block (or after the PERSIST update when
+        # CELL_MP=0) and BEFORE CELL_RENORM.  The re-anchor fires on the FINAL
+        # per-breath cell_hidden (after all averaging), so it cannot be washed
+        # away by the cell-MP.  The PERSIST update already injects cell_embed
+        # BEFORE the cell-MP, but the averaging can erase it — this adds it back
+        # AFTER, as a per-breath learnable-gated skip.
+        #
+        # FORWARD: cell_hidden += sigmoid(perc_cell_identity_gate[k]) * cell_embed
+        # Then re-zero pad cells (mirror of cell_valid guard elsewhere).
+        #
+        # GATE: perc_cell_identity_gate (K_max,) init≈-0.619 → sigmoid≈0.35 (a
+        # moderate active re-anchor from step 0; the model can adjust per breath).
+        #
+        # SUBSTRATE-LEGAL: no float32 literal inside the JIT; sigmoid + reshape
+        # mirror the perc_cell_mp_gate idiom. Re-zero uses cell_valid (already in
+        # scope). cell_embed (B,49,H) is already in scope (set before the loop).
+        #
+        # DEFAULT-OFF: when PERCEIVER_CELL_IDENTITY=0 the block is skipped
+        # entirely → cell_hidden is byte-identical to HEAD.
+        if PERCEIVER_CELL_IDENTITY:
+            assert PERCEIVER_PERSIST_CELLS, \
+                "PERCEIVER_CELL_IDENTITY=1 requires PERCEIVER_PERSIST_CELLS=1"
+            id_gate_k = model.perc_cell_identity_gate[k].cast(dtypes.float).sigmoid().reshape(1, 1, 1)
+            cell_hidden = cell_hidden + id_gate_k * cell_embed          # re-anchor identity
+            cell_hidden = cell_hidden * cell_valid.reshape(Bn, N_CELLS, 1)  # re-zero pad cells
+
         # === TOGGLE (6) CELL_RENORM: per-breath RMSNorm on the persistent cell
         # residual, mirroring PERCEIVER_THINK_RENORM for the latent path. ===
         # PLACEMENT: AFTER both the PERSIST_CELLS delta-gate blend (lines above)
@@ -1275,6 +1422,40 @@ def perceiver_breathing_forward(model: Any, batch: Any, K: int,
             rms = (cell_hidden.square().mean(axis=-1, keepdim=True) + PERCEIVER_THINK_RMS_EPS).rsqrt()
             cell_hidden = cell_hidden * rms
             cell_hidden = cell_hidden * cell_valid.reshape(Bn, N_CELLS, 1)  # re-zero pad cells
+
+        # === PROBE: PERCEIVER_PROBE_SMOOTH — over-smoothing diagnostic. ===
+        # Runs AFTER cell_hidden is fully finalized (post PERSIST + CELL_MP +
+        # CELL_RENORM), right before the readout.  This captures the state that
+        # the readout actually sees, so the cosine values directly explain the
+        # readout collapse.  NOT in the JIT critical path — runs EAGER only.
+        # DEFAULT-OFF: the block is skipped entirely when =0 (byte-identical HEAD).
+        if PERCEIVER_PROBE_SMOOTH:
+            # Unit-normalize cell_hidden along H (eager; no grad needed).
+            _h = cell_hidden.cast(dtypes.float).realize()            # (B,49,H)
+            _norm = (_h.square().sum(axis=-1, keepdim=True).sqrt() + 1e-6).realize()
+            _h_n = (_h / _norm).realize()                            # (B,49,H) unit L2
+            # (B,49,49) pairwise cosine: sim[b,i,j] = h_n[b,i] · h_n[b,j]
+            _sim = (_h_n @ _h_n.transpose(1, 2)).realize()           # (B,49,49)
+            # valid-pair mask: cell_valid[b,i] * cell_valid[b,j]
+            _cv = cell_valid.cast(dtypes.float).realize()            # (B,49)
+            _vp = (_cv.reshape(Bn, N_CELLS, 1) * _cv.reshape(Bn, 1, N_CELLS)).realize()  # (B,49,49)
+            # zero the diagonal (self-similarity is always 1; not informative)
+            _eye49 = Tensor(np.eye(N_CELLS, dtype=np.float32), dtype=dtypes.float)
+            _off_diag = (1.0 - _eye49.reshape(1, N_CELLS, N_CELLS)).realize()
+            _vp_off = (_vp * _off_diag).realize()                    # (B,49,49)
+            # peer mask (binary adjacency, pre-computed before the loop)
+            _adj = _adj_bin.realize()                                 # (B,49,49)
+            # peer pairs: adjacency AND valid AND off-diagonal
+            _peer_mask = (_adj * _vp_off).realize()
+            # non-peer pairs: NOT adjacent AND valid AND off-diagonal
+            _nonpeer_mask = ((1.0 - _adj) * _vp_off).realize()
+            _peer_sum = (_sim * _peer_mask).sum().realize()
+            _peer_n   = _peer_mask.sum().realize()
+            _nonp_sum = (_sim * _nonpeer_mask).sum().realize()
+            _nonp_n   = _nonpeer_mask.sum().realize()
+            _peer_cos_val   = float(_peer_sum.numpy()) / (float(_peer_n.numpy()) + 1e-6)
+            _nonp_cos_val   = float(_nonp_sum.numpy()) / (float(_nonp_n.numpy()) + 1e-6)
+            smooth_history.append((_peer_cos_val, _nonp_cos_val))
 
         # === SHARPNESS REG: accumulate per-breath coupled reg into loss. ===
         # COUPLED READ term: reg_read = (1/n_valid) * sum_i( H_read_i * |z_latent_i|^2 )
@@ -1336,6 +1517,12 @@ def perceiver_breathing_forward(model: Any, batch: Any, K: int,
     # entered); byte-identical to HEAD. The trainer multiplies by _srl (lambda)
     # and gates on both flags before adding to total.
     sharp_reg = sharp_reg_sum / float(K)                               # scalar (per-breath mean)
+    # PROBE: when PERCEIVER_PROBE_SMOOTH=1, return the 4-tuple with smooth_history.
+    # When =0 (default) return the existing 3-tuple — byte-identical to HEAD.
+    # The caller (perceiver_train._step) always unpacks 3 values; the probe is only
+    # called from the eager probe script which unpacks 4.
+    if PERCEIVER_PROBE_SMOOTH:
+        return cell_logits_history, engagement_history, sharp_reg, smooth_history
     return cell_logits_history, engagement_history, sharp_reg
 
 
@@ -1770,6 +1957,12 @@ def attach_perceiver_params(model: Any, hidden: int, n_heads: int,
     # attach_perceiver_cell_mp_params for the zero-init W_o bootstrap guarantee. ----
     attach_perceiver_cell_mp_params(model, hidden, n_heads)
 
+    # ---- TOGGLE (8) CELL_IDENTITY params (allocated ONLY when
+    # PERCEIVER_CELL_IDENTITY=1; gated OUT of the optimizer when off). See
+    # attach_perceiver_cell_identity_params for the init + placement. ----
+    if PERCEIVER_CELL_IDENTITY:
+        attach_perceiver_cell_identity_params(model)
+
     # ---- TOGGLE (1) NOTEBOOK params (ALWAYS allocated so the state_dict/param-list
     # shapes are consistent across runs; the path is gated OFF by PERCEIVER_NOTEBOOK
     # and is inert when off). BOTH output projs are ZERO-INIT (the byte-identical-off
@@ -1911,8 +2104,53 @@ def attach_perceiver_cell_mp_params(model: Any, hidden: int,
     # O is ZERO-INIT — the bootstrap-safety guarantee (cell_mp_ctx == 0 at t=0).
     model.perc_cell_mp_o_w = _w(hidden, hidden, zero=True)
     model.perc_cell_mp_o_b = _b(hidden)
-    # Per-breath gate: init 0.5 -> sigmoid(0.5) ~ 0.62. Secondary to the W_o guarantee.
-    model.perc_cell_mp_gate = Tensor.full((k_max,), 0.5, dtype=dtypes.float).contiguous()
+    # Per-breath gate: when PERCEIVER_CELL_MP_DECAY=1, initialise with a LINEAR
+    # DECREASING ramp in logit space: gate[0]=+2.0 (sigmoid≈0.88, loud) down to
+    # gate[K_max-1]=-1.0 (sigmoid≈0.27, quiet-not-off).  This gives the decay
+    # inductive bias against late-breath over-smoothing.  The gate is LEARNABLE;
+    # the model can adjust, but starts at the decaying schedule.
+    # When =0 (default): constant init 0.5 → sigmoid(0.5)≈0.62 — byte-identical.
+    if PERCEIVER_CELL_MP_DECAY and k_max > 1:
+        logit_high = 2.0
+        logit_low  = -1.0
+        decay_logits = np.linspace(logit_high, logit_low, k_max).astype(np.float32)
+        model.perc_cell_mp_gate = Tensor(decay_logits, dtype=dtypes.float).contiguous()
+    else:
+        model.perc_cell_mp_gate = Tensor.full((k_max,), 0.5, dtype=dtypes.float).contiguous()
+
+
+def attach_perceiver_cell_identity_params(model: Any) -> None:
+    """TOGGLE (8) CELL_IDENTITY params: per-breath learnable scalar re-anchor gate.
+
+    perc_cell_identity_gate (K_max,): per-breath logit scalar.  sigmoid(gate[k])
+    is the re-anchor strength for breath k (how much of cell_embed is added back
+    after the cell-MP step).
+
+    Init: -0.619 for all k so sigmoid(-0.619) ≈ 0.35 — a moderate active re-anchor
+    from step 0.  (-0.619 = log(0.35/0.65), the logit for sigmoid=0.35.)
+
+    ALLOCATION DISCIPLINE: ONLY allocated when PERCEIVER_CELL_IDENTITY=1.
+    When off, the tensor does not exist on the model object → no forward path,
+    no optimizer entry (gated by PERCEIVER_CELL_IDENTITY in both perceiver_parameters
+    and perceiver_deduction_parameters).  This is the opposite of the CELL_MP params
+    (which are always allocated for state-dict consistency); the identity gate is
+    excluded from state-dict when off so a CELL_IDENTITY=0 checkpoint is not
+    polluted by the extra tensor.
+    """
+    k_max = int(model.perc_delta_gate.shape[0])
+    # logit for sigmoid≈0.35: log(0.35 / 0.65) ≈ -0.619
+    init_logit = math.log(0.35 / 0.65)
+    model.perc_cell_identity_gate = Tensor.full(
+        (k_max,), init_logit, dtype=dtypes.float).contiguous()
+
+
+def perceiver_cell_identity_parameters(model: Any) -> list[Tensor]:
+    """TOGGLE (8) CELL_IDENTITY trainable tensors.  Returned ONLY when
+    PERCEIVER_CELL_IDENTITY=1; when off the tensor is not allocated → nothing to
+    return (and including it would trip AdamW's grad-is-None assert)."""
+    if not PERCEIVER_CELL_IDENTITY or not hasattr(model, "perc_cell_identity_gate"):
+        return []
+    return [model.perc_cell_identity_gate]
 
 
 def attach_perceiver_notebook_params(model: Any, hidden: int) -> None:
@@ -2122,6 +2360,10 @@ def perceiver_parameters(model: Any, ball_path: str = "single") -> list[Tensor]:
     # grad path -> AdamW grad-is-None assert). The tensors are always allocated.
     if PERCEIVER_CELL_MP:
         params += perceiver_cell_mp_parameters(model)
+    # TOGGLE (8): only train the cell-identity gate when the path is ACTIVE (tensor
+    # not even allocated when off -> perceiver_cell_identity_parameters returns []).
+    if PERCEIVER_CELL_IDENTITY:
+        params += perceiver_cell_identity_parameters(model)
     return params
 
 
@@ -2211,6 +2453,10 @@ def perceiver_deduction_parameters(model: Any, ball_path: str = "single") -> lis
     # (no forward path -> AdamW grad-is-None assert if included). Always allocated.
     if PERCEIVER_CELL_MP:
         params += perceiver_cell_mp_parameters(model)
+    # TOGGLE (8): CELL_IDENTITY is deduction-side (re-anchors the cell residual after
+    # the cell-MP step; tensor not allocated when off).
+    if PERCEIVER_CELL_IDENTITY:
+        params += perceiver_cell_identity_parameters(model)
     # NOTE: g_phi (perceiver_gphi_parameters) and cell coords
     # (perceiver_active_cell_coords) are intentionally OMITTED — they are the routing
     # params whose freeze is the whole point of this mode.
@@ -2342,4 +2588,8 @@ def perceiver_state_dict(model: Any) -> dict[str, Tensor]:
             "perc.cell_mp_o_b": model.perc_cell_mp_o_b,
             "perc.cell_mp_gate": model.perc_cell_mp_gate,
         })
+    # TOGGLE (8) CELL_IDENTITY — persisted ONLY when allocated (allocated only when
+    # PERCEIVER_CELL_IDENTITY=1 so hasattr is the right gate).
+    if hasattr(model, "perc_cell_identity_gate"):
+        sd["perc.cell_identity_gate"] = model.perc_cell_identity_gate
     return sd

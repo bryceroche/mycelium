@@ -60,6 +60,8 @@ from mycelium.perceiver_poincare import (
     PERCEIVER_PERSIST_CELLS,
     PERCEIVER_CELL_MP,
     PERCEIVER_CELL_RENORM,
+    PERCEIVER_CELL_MP_DECAY,
+    PERCEIVER_CELL_IDENTITY,
     attach_perceiver_params, perceiver_parameters, perceiver_deduction_parameters,
     perceiver_state_dict,
     perceiver_breathing_forward, t0_anchor_check, clamp_perceiver_tangent_norms,
@@ -196,7 +198,9 @@ def _compile_step(model, opt, K: int, B: int, L: int, ball_path: str,
            bool(PERCEIVER_FREEZE_ROUTING),
            bool(PERCEIVER_PERSIST_CELLS),
            bool(PERCEIVER_CELL_MP),
-           bool(PERCEIVER_CELL_RENORM))
+           bool(PERCEIVER_CELL_RENORM),
+           bool(PERCEIVER_CELL_MP_DECAY),
+           bool(PERCEIVER_CELL_IDENTITY))
     # PERCEIVER_FREEZE_ROUTING: when =1 opt.params is the DEDUCTION-ONLY set (g_phi
     # + cell coords excluded). opt.step() operates on a smaller param list -> a
     # different graph body than the full brick-2 set. MUST key so =0 and =1 compile
@@ -209,6 +213,15 @@ def _compile_step(model, opt, K: int, B: int, L: int, ball_path: str,
     # optimizer param-set (different opt.step() graph). MUST key — =0 and =1 must
     # never share a compiled graph. Default =0 appends False -> =0 key is the prior
     # key extended by one False (no false-cache-miss against old compiled graphs).
+    # PERCEIVER_CELL_MP_DECAY: changes ONLY the init of perc_cell_mp_gate (a decay
+    # ramp vs constant 0.5). The graph body is structurally identical, but the closed-
+    # over model object has different gate weights → different experiment. Keyed so the
+    # two inits never silently share a compiled graph (no graph-body change, but keying
+    # here is the standard discipline for ANY module-flag that changes the step).
+    # PERCEIVER_CELL_IDENTITY: when =1 adds the identity re-anchor block (sigmoid gate
+    # + cell_embed skip + re-zero) after the cell-MP block (different graph body: extra
+    # gate indexing + add ops). Also adds perc_cell_identity_gate to the optimizer
+    # param-set (different opt.step() graph). MUST key — =0 and =1 must never share.
     if key in _JIT_CACHE:
         return _JIT_CACHE[key]
 
@@ -540,9 +553,12 @@ def main():
     # (no forward path -> AdamW grad-is-None assert if included). Always check.
     cell_dg_in = 1 if id(model.perc_cell_delta_gate) in pid else 0
 
-    from mycelium.perceiver_poincare import perceiver_cell_mp_parameters
+    from mycelium.perceiver_poincare import (perceiver_cell_mp_parameters,
+                                              perceiver_cell_identity_parameters)
     cell_mp_params = perceiver_cell_mp_parameters(model)
     cell_mp_in = sum(1 for p in cell_mp_params if id(p) in pid)
+    cell_id_params = perceiver_cell_identity_parameters(model)
+    cell_id_in = sum(1 for p in cell_id_params if id(p) in pid)
 
     if PERCEIVER_FREEZE_ROUTING:
         # FROZEN-ROUTING: g_phi and coords MUST be excluded; deduction MUST be present.
@@ -552,6 +568,7 @@ def main():
               f"  delta_gate={delta_gate_in}"
               f"  cell_delta_gate={cell_dg_in} (expect {1 if PERCEIVER_PERSIST_CELLS else 0})"
               f"  cell_mp={cell_mp_in}/{len(cell_mp_params)} (expect {len(cell_mp_params) if PERCEIVER_CELL_MP else 0})"
+              f"  cell_identity={cell_id_in}/{len(cell_id_params)} (expect {len(cell_id_params) if PERCEIVER_CELL_IDENTITY else 0})"
               f"  type_embed={1 if id(model.perc_latent_type_embed) in pid else 0}"
               f"  breath_embed={1 if id(model.perc_breath_embed) in pid else 0}"
               f"  --- EXCLUDED (frozen at anchor): ---"
@@ -576,6 +593,12 @@ def main():
         else:
             assert cell_mp_in == 0, \
                 f"cell-MP params ARE in optimizer under CELL_MP=0 (no forward path — grad-is-None risk)"
+        if PERCEIVER_CELL_IDENTITY:
+            assert cell_id_in == len(cell_id_params), \
+                f"cell-identity params NOT fully in optimizer under CELL_IDENTITY=1 ({cell_id_in}/{len(cell_id_params)} — bug)"
+        else:
+            assert cell_id_in == 0, \
+                f"cell-identity param IS in optimizer under CELL_IDENTITY=0 (no forward path — grad-is-None risk)"
     else:
         # BRICK-2 UNFREEZE CONFIRM: the optimizer trains the FULL anchored perceiver =
         # {THINK (Pythia L0-L3) + readout + delta_gate + g_phi + active-path coords}.
@@ -583,6 +606,7 @@ def main():
               f"state_embed,position_embed,ln_f]  delta_gate={delta_gate_in}"
               f"  cell_delta_gate={cell_dg_in} (expect {1 if PERCEIVER_PERSIST_CELLS else 0})"
               f"  cell_mp={cell_mp_in}/{len(cell_mp_params)} (expect {len(cell_mp_params) if PERCEIVER_CELL_MP else 0})"
+              f"  cell_identity={cell_id_in}/{len(cell_id_params)} (expect {len(cell_id_params) if PERCEIVER_CELL_IDENTITY else 0})"
               f"  g_phi={len(gphi_in)}/{gphi_total} tensors"
               f"  active_coords({ball_path})={len(coords_in)}  inactive_coords_present={len(inactive_in)}")
         assert len(gphi_in) == gphi_total and len(gphi_in) > 0, \
@@ -603,6 +627,12 @@ def main():
         else:
             assert cell_mp_in == 0, \
                 f"cell-MP params ARE in optimizer under CELL_MP=0 (no forward path — grad-is-None risk)"
+        if PERCEIVER_CELL_IDENTITY:
+            assert cell_id_in == len(cell_id_params), \
+                f"cell-identity params NOT fully in optimizer under CELL_IDENTITY=1 ({cell_id_in}/{len(cell_id_params)} — bug)"
+        else:
+            assert cell_id_in == 0, \
+                f"cell-identity param IS in optimizer under CELL_IDENTITY=0 (no forward path — grad-is-None risk)"
 
     opt = AdamW(params, lr=LR, weight_decay=0.0)
 
