@@ -122,9 +122,32 @@ from tinygrad import Tensor, dtypes
 # Bands are ordered easy -> hard by circuit_depth D.  Mirrors coloring's d10..d25
 # density bands and KenKen's g40..g10 givens bands: a coarse difficulty label by
 # the depth of the deepest gate.  D2/D3/D4/D5 == "target max depth".
+#
+# DEEP-SKINNY bands D6..D16: generated via a NEAR-CHAIN (caterpillar) topology
+# that keeps node count n ≤ s_max=49 for large D.  A pure backbone chain of D+1
+# nodes reaches depth D; a caterpillar adds up to ~2 side leaves per backbone
+# segment for structural variety.  Deep bands use generate_skinny_instance()
+# instead of generate_instance() — a narrower generator that avoids exponential
+# fan-out at each level.  See generate_skinny_instance() for the exact topology.
+# Node-count math: backbone = D+1 nodes (IDs 0..D), ≤2 side leaves per non-root
+# backbone gate = ≤2*(D-1) extra leaves → max n = D+1+2*(D-1) = 3D-1.
+# At D=16: 3*16-1 = 47 ≤ 49. ✓
 # ---------------------------------------------------------------------------
 BANDS = ["D2", "D3", "D4", "D5"]
 _BAND_TARGET_D = {"D2": 2, "D3": 3, "D4": 4, "D5": 5}
+
+# Deep-skinny bands D6..D16 (even-spaced + D7 for convenience).
+# Use generate_skinny_instance() for any band in DEEP_BANDS.
+DEEP_BANDS = ["D6", "D8", "D10", "D12", "D14", "D16"]
+_DEEP_BAND_TARGET_D: dict[str, int] = {
+    "D6": 6, "D7": 7, "D8": 8, "D9": 9,
+    "D10": 10, "D11": 11, "D12": 12, "D13": 13,
+    "D14": 14, "D15": 15, "D16": 16,
+}
+
+# Combined band registry — ALL valid band names (shallow + deep).
+ALL_BANDS = BANDS + DEEP_BANDS
+_ALL_BAND_TARGET_D: dict[str, int] = {**_BAND_TARGET_D, **_DEEP_BAND_TARGET_D}
 
 # Gate type catalog.  AND/OR/NOT is the PRIMARY corpus (XOR opt-in).
 # The type INDEX is its position in the active gate_types tuple, so AND=0, OR=1,
@@ -193,14 +216,22 @@ def shuffle_lvl(lvl: list[int], n: int, rng: random.Random) -> list[int]:
 # ---------------------------------------------------------------------------
 
 def _band_for_depth(D: int) -> str:
-    """Bucket a circuit_depth D (max lvl) into a difficulty band D2..D5."""
+    """Bucket a circuit_depth D (max lvl) into a difficulty band name.
+
+    Shallow bands D2..D5 match exactly.  Deep depths D>=6 return "D<D>" exactly
+    (e.g. D=12 -> "D12") — these map to the DEEP_BANDS / _DEEP_BAND_TARGET_D
+    registry.  A depth that exceeds any named band falls back to "D<D>".
+    """
     if D <= 2:
         return "D2"
     if D == 3:
         return "D3"
     if D == 4:
         return "D4"
-    return "D5"
+    if D == 5:
+        return "D5"
+    # Deep: return the exact "D<D>" name (whether or not it is in DEEP_BANDS).
+    return f"D{D}"
 
 
 # ---------------------------------------------------------------------------
@@ -324,6 +355,167 @@ def generate_instance(rng: random.Random, s_max: int,
     return None
 
 
+def generate_skinny_instance(rng: random.Random, s_max: int,
+                              band: str,
+                              gate_types: tuple[str, ...] = ("AND", "OR", "NOT"),
+                              max_side_leaves: int = 2,
+                              max_resample: int = 200) -> dict | None:
+    """Generate ONE deep-skinny Boolean-circuit instance via a NEAR-CHAIN topology.
+
+    Strategy — the CATERPILLAR construction:
+      PHASE 1 (LEAVES): Allocate the root leaf (node 0) plus up to max_side_leaves
+          additional leaf nodes (nodes 1..n_side_leaves).  All leaf bits are random.
+          Side leaves get IDs BEFORE all backbone gates so the topological ordering
+          invariant (operands have strictly lower IDs than the gate) is preserved.
+
+      PHASE 2 (BACKBONE): Build a chain of D gates (IDs n_side_leaves+1 .. n_leaves+D).
+          Gate at position p in the chain:
+            * draws FIRST operand from the previous chain gate (or the root leaf for p=1),
+              GUARANTEEING the chain contributes depth p.
+            * may draw SECOND operand from any strictly-lower node (all leaves +
+              earlier chain gates), chosen uniformly at random.
+          Side leaves are RANDOMLY assigned as the second operand of one backbone gate
+          each (if the gate is binary), at node-assignment time — so they are wired in
+          with IDs that are strictly lower than the gate that uses them.
+
+    Node-count bound:
+      n = (1 + max_side_leaves) leaves + D gates
+        = D + 1 + max_side_leaves
+      At D=16 and max_side_leaves=2: n ≤ 19 ≤ 49. ✓
+      At D=16 and max_side_leaves=30: n ≤ 47 ≤ 49. ✓
+
+    Topological-order invariant: ALL leaf IDs < ALL gate IDs, so the forward
+    topo-eval loop in node-id order is always valid (every operand is lower-ID).
+
+    Returns the same dict schema as generate_instance (n, n_leaves, n_gates,
+    operands, gtypes, gtype_idx, bits, leaf_bits, lvl, circuit_depth, band).
+    Returns None if generation fails (caller resamples).
+    """
+    target_D = _ALL_BAND_TARGET_D.get(band, _BAND_TARGET_D.get(band, 3))
+    if target_D < 2:
+        # Fall back to the generic generator for very shallow targets.
+        return generate_instance(rng, s_max, band, gate_types=gate_types,
+                                 max_resample=max_resample)
+
+    type_index = {gt: i for i, gt in enumerate(gate_types)}
+
+    for _ in range(max_resample):
+        # ---- PHASE 1: allocate leaves ----------------------------------------
+        # Determine how many side leaves to actually add (bounded by s_max).
+        # max_side_leaves is an upper bound; we use it directly.
+        n_side = max(0, int(max_side_leaves))
+        total_n = 1 + n_side + target_D    # leaves + backbone gates
+        if total_n > s_max:
+            # Trim side leaves to fit.
+            n_side = max(0, s_max - 1 - target_D)
+            total_n = 1 + n_side + target_D
+        if total_n > s_max:
+            continue
+
+        # IDs 0 .. n_leaves-1  are leaves  (root at 0, side leaves at 1..n_side)
+        # IDs n_leaves .. n_leaves+D-1 are backbone gates (chain position 1..D)
+        n_leaves_total = 1 + n_side
+
+        operands: list[list[int]] = [[] for _ in range(n_leaves_total)]
+        gtypes: list[str | None] = [None] * n_leaves_total
+        bits: list[int] = [rng.randint(0, 1) for _ in range(n_leaves_total)]
+
+        # Randomly assign each side leaf to one backbone gate position (1..D-1)
+        # so at most ONE side leaf per gate (skip duplicates; extra side leaves
+        # remain "unused" — they'll still be valid leaf nodes, just not wired
+        # into any gate, meaning no gate uses them as an operand.  That is fine
+        # for the contract (a leaf with no fan-out is just a given node), but
+        # we WANT them wired so they show up in the membership rows.
+        # Approach: assign each side leaf to a DISTINCT gate slot in 1..D-1.
+        gate_slots = list(range(1, target_D))     # backbone positions that may accept a side leaf
+        rng.shuffle(gate_slots)
+        # side_leaf_for[chain_pos] = leaf_id if chain_pos has a side leaf, else None
+        side_leaf_for: dict[int, int] = {}
+        for sl_idx in range(n_side):
+            if sl_idx < len(gate_slots):
+                side_leaf_for[gate_slots[sl_idx]] = 1 + sl_idx   # leaf IDs 1..n_side
+
+        # ---- PHASE 2: build backbone chain ------------------------------------
+        # prev_gate_id tracks the PREVIOUS backbone gate's node ID (or root leaf 0
+        # for the first gate).
+        ok = True
+        prev_id = 0                     # root leaf (ID 0)
+        for chain_pos in range(1, target_D + 1):
+            gt = gate_types[rng.randrange(len(gate_types))]
+            fanin = _FANIN[gt]
+            gate_id = n_leaves_total + (chain_pos - 1)     # monotonically increasing
+
+            if fanin == 1:
+                ops = [prev_id]
+            else:
+                # Second operand: prefer the assigned side leaf (if any); otherwise
+                # any strictly-lower node.  The pool of strictly-lower nodes at this
+                # point includes all leaves (0..n_leaves_total-1) PLUS backbone
+                # gates at positions 1..chain_pos-1 (IDs n_leaves_total .. gate_id-1).
+                sl = side_leaf_for.get(chain_pos)
+                if sl is not None:
+                    # Use the assigned side leaf as the second operand.
+                    ops = [prev_id, sl]
+                else:
+                    # Pick any strictly-lower node (excluding prev_id for diversity,
+                    # but fall back to prev_id if no alternative exists).
+                    lower_pool = list(range(gate_id))    # all nodes with ID < gate_id
+                    other_pool = [x for x in lower_pool if x != prev_id]
+                    if other_pool:
+                        ops = [prev_id, rng.choice(other_pool)]
+                    else:
+                        ops = [prev_id, prev_id]
+                rng.shuffle(ops)
+
+            operands.append(list(ops))
+            gtypes.append(gt)
+            # Evaluate bits — all operand IDs are < gate_id (guaranteed by construction).
+            op_bits = [bits[o] for o in ops]
+            bits.append(_eval_gate(gt, op_bits))
+            prev_id = gate_id
+
+        if not ok:
+            continue
+
+        n = len(operands)
+        assert n == total_n, f"n={n} != total_n={total_n}"
+        if n > s_max:
+            continue
+
+        # ---- verify longest-path depth ----------------------------------------
+        lvl = _longest_path_lvl(n, operands)
+        D = max(lvl)
+        if D != target_D:
+            # Depth mismatch (should be rare; can happen if a chain gate happened
+            # to be NOT with only prev_id — and prev_id is far from the root).
+            # Simply resample.
+            continue
+
+        # ---- finalize -----------------------------------------------------------
+        n_leaves = sum(1 for g in gtypes if g is None)
+        n_gates = n - n_leaves
+        if n_gates == 0:
+            continue
+
+        gtype_idx = [type_index[g] if g is not None else -1 for g in gtypes]
+        leaf_bits = [bits[v] for v in range(n) if gtypes[v] is None]
+
+        return {
+            "n": n,
+            "n_leaves": n_leaves,
+            "n_gates": n_gates,
+            "operands": operands,
+            "gtypes": gtypes,
+            "gtype_idx": gtype_idx,
+            "bits": bits,
+            "leaf_bits": leaf_bits,
+            "lvl": lvl,
+            "circuit_depth": D,
+            "band": band,
+        }
+    return None
+
+
 def generate_corpus(n_instances: int, s_max: int, seed: int = 0,
                     bands: list[str] | None = None,
                     gate_types: tuple[str, ...] = ("AND", "OR", "NOT"),
@@ -333,18 +525,26 @@ def generate_corpus(n_instances: int, s_max: int, seed: int = 0,
     Returns a list of instance dicts (see generate_instance).  Bands are sampled
     round-robin so the corpus is balanced across depth; every instance evaluates to
     a unique gold by topological forward-eval.
+
+    Deep bands (in DEEP_BANDS, D6..D16) automatically route to
+    generate_skinny_instance() which uses the near-chain topology that keeps
+    n ≤ s_max for large D.  Shallow bands (D2..D5) use generate_instance().
     """
     bands = bands or BANDS
     rng = random.Random(seed)
     out: list[dict] = []
     bi = 0
     attempts = 0
-    max_attempts = n_instances * 200 + 1000
+    max_attempts = n_instances * 500 + 2000
     while len(out) < n_instances and attempts < max_attempts:
         band = bands[bi % len(bands)]
         bi += 1
         attempts += 1
-        inst = generate_instance(rng, s_max, band, gate_types=gate_types)
+        # Route to the appropriate generator based on the band's target depth.
+        if band in _DEEP_BAND_TARGET_D:
+            inst = generate_skinny_instance(rng, s_max, band, gate_types=gate_types)
+        else:
+            inst = generate_instance(rng, s_max, band, gate_types=gate_types)
         if inst is not None:
             out.append(inst)
     if len(out) < n_instances:
@@ -813,8 +1013,65 @@ def _smoke() -> None:
     one = loader.iter_eval(batch_size=4).__next__()
     assert one.deduction_depth == one.circuit_depth
 
+    # 7. DEEP-SKINNY smoke: generate deep instances for D6..D16 and verify:
+    #    (a) longest-path depth == target D (band is honest)
+    #    (b) n <= 49 (fits in the engine grid)
+    #    (c) gold is correct (topo-eval)
+    print("[circuit_data] checking deep-skinny bands D6..D16...", flush=True)
+    for target_band in ["D6", "D8", "D10", "D12", "D16"]:
+        target_d = _DEEP_BAND_TARGET_D[target_band]
+        found = 0
+        rng_sk = random.Random(999 + target_d)
+        for _ in range(500):
+            inst = generate_skinny_instance(rng_sk, 49, target_band)
+            if inst is None:
+                continue
+            assert inst["n"] <= 49, \
+                f"deep-skinny {target_band}: n={inst['n']} > 49"
+            assert inst["circuit_depth"] == target_d, \
+                f"deep-skinny {target_band}: circuit_depth={inst['circuit_depth']} != {target_d}"
+            # Verify gold via independent topo-eval.
+            n_i = inst["n"]
+            operands_i = inst["operands"]
+            gtypes_i = inst["gtypes"]
+            bits_i = inst["bits"]
+            recomputed = []
+            for v in range(n_i):
+                if not operands_i[v]:          # leaf
+                    recomputed.append(bits_i[v])
+                else:
+                    expected = _eval_gate(gtypes_i[v],
+                                         [recomputed[o] for o in operands_i[v]])
+                    recomputed.append(expected)
+            for v in range(n_i):
+                assert recomputed[v] == bits_i[v], \
+                    f"deep-skinny {target_band} node {v}: gold {bits_i[v]} != reeval {recomputed[v]}"
+            found += 1
+            if found >= 5:
+                break
+        assert found >= 3, \
+            f"deep-skinny {target_band}: only generated {found}/5 in 500 attempts"
+        print(f"  {target_band}: {found} instances OK "
+              f"(D={target_d}, last n={inst['n']})", flush=True)  # type: ignore[possibly-unbound]
+
+    # 8. deep loader smoke: CircuitLoader with DEEP_BANDS generates and packs correctly.
+    deep_loader = CircuitLoader(
+        n_instances=80, s_max=49, n_values=2,
+        batch_size=4, seed=17,
+        bands=["D6", "D8", "D10", "D12"],
+    )
+    deep_batch = deep_loader.sample_batch()
+    assert deep_batch.input_cells.shape == (4, 49)
+    assert deep_batch.cell_valid.shape == (4, 49)
+    assert deep_batch.gold.shape == (4, 49)
+    for b_idx in range(4):
+        D_b = deep_batch.circuit_depth[b_idx]
+        n_b = deep_batch.n[b_idx]
+        assert D_b >= 6 and D_b <= 12, f"deep_loader: circuit_depth={D_b} out of [6,12]"
+        assert n_b <= 49, f"deep_loader: n={n_b} > 49"
+
     print("[circuit_data] _smoke OK: gate cliques + topo gold + longest-path lvl "
-          "+ depth-shuffle NULL + engine contract verified.")
+          "+ depth-shuffle NULL + engine contract + deep-skinny D6..D16 verified.")
 
 
 if __name__ == "__main__":

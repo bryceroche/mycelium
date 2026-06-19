@@ -625,6 +625,25 @@ def _build_circuit_task(K, BATCH, EVAL_BATCH, SEED, n_heads):
     else:
         gate_types = ("AND", "OR", "NOT")          # loader default
 
+    # Band selection: FG_CIRCUIT_BANDS overrides the default D2..D5 set.
+    # Deep bands (D6..D16) are generated via generate_skinny_instance() inside
+    # circuit_data.generate_corpus() when any band is in DEEP_BANDS.
+    # Example: FG_CIRCUIT_BANDS=D4,D5,D6,D8,D10,D12,D14,D16 for deep-mix training.
+    circuit_bands_env = getenv("FG_CIRCUIT_BANDS", "").strip()
+    if circuit_bands_env:
+        from mycelium.circuit_data import _ALL_BAND_TARGET_D
+        circuit_bands: list[str] | None = [
+            b.strip().upper() for b in circuit_bands_env.split(",") if b.strip()
+        ]
+        # Validate band names.
+        for cb in circuit_bands:
+            if cb not in _ALL_BAND_TARGET_D:
+                raise ValueError(
+                    f"FG_CIRCUIT_BANDS: unknown band {cb!r}; "
+                    f"valid bands: {sorted(_ALL_BAND_TARGET_D.keys())}")
+    else:
+        circuit_bands = None   # defaults to BANDS (D2..D5) inside CircuitLoader
+
     # ONE in-memory loader: generates the corpus, splits train/test internally,
     # fixes n_gates_max (the static JIT topology width) and owns the gate-type set.
     loader = CircuitLoader(
@@ -634,6 +653,7 @@ def _build_circuit_task(K, BATCH, EVAL_BATCH, SEED, n_heads):
         batch_size=BATCH,
         seed=SEED,
         gate_types=gate_types,
+        bands=circuit_bands,
     )
 
     # T = number of non-global gate types — read from the loader (authoritative).
@@ -645,7 +665,8 @@ def _build_circuit_task(K, BATCH, EVAL_BATCH, SEED, n_heads):
 
     print(f"  circuit: n_gates_max={loader.n_gates_max} "
           f"n_factor_types(T)={n_factor_types} "
-          f"gate_types={getattr(loader, 'gate_types', gate_types)}")
+          f"gate_types={getattr(loader, 'gate_types', gate_types)} "
+          f"bands={circuit_bands or 'default(D2..D5)'}")
 
     def to_factor_batch(cb):
         # CircuitBatch already satisfies the FactorGraphBatch contract (same
