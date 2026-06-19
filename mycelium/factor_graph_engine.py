@@ -57,12 +57,20 @@ from typing import Any, Callable
 import numpy as np
 from tinygrad import Tensor, dtypes
 
-from mycelium.factor_masks import build_factor_attn_bias
+from mycelium.factor_masks import (
+    build_factor_attn_bias,
+    build_factor_hyperbolic_attn_bias,
+    FG_HYP_MASK,
+)
 # Import the general helpers that kenken.py already exposes:
 from mycelium.kenken import (
     kenken_layer_forward,    # (layer, x, attn_bias, cos, sin) -> x  — general S
     codebook_ortho_penalty,  # (codebook) -> scalar  — domain-free
 )
+
+# FG_HYP_FREEZE: when FG_HYP_MASK=1, freeze the hyperbolic anchor params
+# (default 1 = frozen).  Set FG_HYP_FREEZE=0 for Step 3 relaxation.
+FG_HYP_FREEZE: bool = int(os.environ.get("FG_HYP_FREEZE", "1")) > 0
 
 
 # ---------------------------------------------------------------------------
@@ -305,10 +313,20 @@ def factor_breathing_forward(model: Any, batch: FactorGraphBatch,
 
     # (a) COUPLED: build per-batch attention bias from factor membership.
     # This is the ONLY call replaced vs the kenken original.
-    attn_bias = build_factor_attn_bias(
-        membership, latent_type, cell_valid,
-        spec.n_heads, spec.n_factor_types, S,
-    )  # (B, n_heads, s_max, s_max)
+    # FG_HYP_MASK=0 (default) -> boolean {0,-1e4} mask (byte-identical to v98).
+    # FG_HYP_MASK=1           -> geometric Poincaré mask (~1e-3-identical at t=0
+    #                            when anchors are frozen; requires
+    #                            attach_factor_hyperbolic_params to have been called).
+    if FG_HYP_MASK:
+        attn_bias = build_factor_hyperbolic_attn_bias(
+            model, membership, latent_type, cell_valid,
+            spec.n_heads, spec.n_factor_types, S,
+        )  # (B, n_heads, s_max, s_max)
+    else:
+        attn_bias = build_factor_attn_bias(
+            membership, latent_type, cell_valid,
+            spec.n_heads, spec.n_factor_types, S,
+        )  # (B, n_heads, s_max, s_max)
 
     # (e) OPTIONAL inlet: domain plug for per-cell arithmetic/structural hints.
     # When has_factor_inlet=False or batch.factor_inlet is None: zeros (no contribution).

@@ -212,7 +212,9 @@ def main():
         FactorGraphSpec,
         attach_factor_graph_params,
         factor_breathing_forward,
+        FG_HYP_MASK,
     )
+    from mycelium.factor_masks import attach_factor_hyperbolic_params
     from mycelium.graph_coloring_data import GraphColoringLoader
 
     spec = FactorGraphSpec(
@@ -233,6 +235,35 @@ def main():
     cast_layers_fp32(model)
 
     attach_factor_graph_params(model, hidden=cfg.hidden, spec=spec)
+
+    # FG_HYP_MASK=1 (frozen-confirm): build the coloring anchor tables from a
+    # representative batch.  For graph coloring T=1 (one edge relation), so there
+    # is ONE anchor table fg_hyp_anchors_0, sized by n_edges_max.
+    # We reconstruct the SAME GraphColoringLoader FIRST to get n_edges_max, then
+    # sample a reference batch for G_t sizing.
+    if FG_HYP_MASK:
+        print(f"[FG_HYP_MASK=1] building coloring anchor tables ...", flush=True)
+        _ref_loader = GraphColoringLoader(
+            n_instances=N_INSTANCES,
+            s_max=S_MAX,
+            k_colors=N_VALUES,
+            batch_size=EVAL_BATCH,
+            seed=SEED,
+        )
+        _ref_batch = _ref_loader.sample_batch()
+        _mem_np = _ref_batch.membership.realize().numpy()   # (B, n_edges_max, S)
+        _lt_np  = _ref_batch.latent_type.realize().numpy()  # (B, n_edges_max)
+        attach_factor_hyperbolic_params(
+            model,
+            n_heads=spec.n_heads,
+            n_factor_types=spec.n_factor_types,
+            s_max=spec.s_max,
+            membership_np=_mem_np,
+            latent_type_np=_lt_np,
+        )
+        del _ref_loader, _ref_batch, _mem_np, _lt_np
+        print(f"  coloring hyperbolic params attached (frozen).", flush=True)
+
     Device[Device.DEFAULT].synchronize()
 
     print(f"loading checkpoint: {CKPT}", flush=True)

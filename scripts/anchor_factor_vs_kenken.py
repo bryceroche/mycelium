@@ -88,7 +88,9 @@ from mycelium.factor_graph_engine import (
     factor_breathing_forward,
     make_kenken_factor_batch,
     factor_accuracy,
+    FG_HYP_MASK,
 )
+from mycelium.factor_masks import attach_factor_hyperbolic_params
 
 # ---------------------------------------------------------------------------
 # Paths
@@ -232,6 +234,30 @@ def main():
         has_factor_inlet=True,
     )
     attach_factor_graph_params(model, hidden=cfg.hidden, spec=spec)
+
+    # FG_HYP_MASK=1 (frozen-confirm): build anchor tables from representative
+    # KenKen membership.  Use a sample batch so G_t is determined from real data.
+    # The anchor tables are FROZEN (not in any optimizer); the geometric mask ==
+    # the hard mask to ~1e-3, so the anchor compare should still PASS.
+    if FG_HYP_MASK:
+        print(f"\n[3b] FG_HYP_MASK=1: attach_factor_hyperbolic_params ...")
+        _tmp_loader = KenKenLoader(TEST_PATH, batch_size=EVAL_BATCH, seed=999,
+                                   n_cages_max=N_CAGES_MAX)
+        _tmp_kb = _tmp_loader.sample_batch()
+        from mycelium.factor_graph_engine import make_kenken_factor_batch as _mkfb2
+        _tmp_fb = _mkfb2(_tmp_kb, spec)
+        _mem_np = _tmp_fb.membership.realize().numpy()
+        _lt_np  = _tmp_fb.latent_type.realize().numpy()
+        attach_factor_hyperbolic_params(
+            model,
+            n_heads=spec.n_heads,
+            n_factor_types=spec.n_factor_types,
+            s_max=spec.s_max,
+            membership_np=_mem_np,
+            latent_type_np=_lt_np,
+        )
+        del _tmp_loader, _tmp_kb, _tmp_fb, _mem_np, _lt_np
+        print(f"  hyperbolic params attached (frozen).")
 
     # Copy trained kenken params into fg slots.
     _copy_kenken_to_fg(model)

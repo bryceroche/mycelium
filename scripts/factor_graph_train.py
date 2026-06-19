@@ -102,7 +102,9 @@ from mycelium.factor_graph_engine import (
     attach_factor_graph_params, factor_graph_parameters,
     factor_breathing_forward, factor_loss, factor_accuracy,
     make_kenken_factor_batch,
+    FG_HYP_MASK, FG_HYP_FREEZE,
 )
+from mycelium.factor_masks import attach_factor_hyperbolic_params
 
 
 # ---------------------------------------------------------------------------
@@ -243,7 +245,8 @@ def _compile_jit_fg_step(model, opt, spec: FactorGraphSpec, task: str,
            int(K), int(B),
            float(constraint_weight), float(calib_weight), float(ortho_lambda),
            float(grad_clip), float(label_smoothing), float(stoch_depth_p),
-           bool(has_inlet))
+           bool(has_inlet),
+           bool(FG_HYP_MASK), bool(FG_HYP_FREEZE))
     if key in _JIT_FG_CACHE:
         return _JIT_FG_CACHE[key]
 
@@ -715,6 +718,28 @@ def main():
     # The GENERAL factor-graph params (fg_state_embed / fg_position_embed /
     # fg_value_codebook / fg_calib_head / fg_breath_embed / fg_delta_gate).
     attach_factor_graph_params(model, hidden=hidden, spec=spec)
+
+    # FG_HYP_MASK=1: build the per-type Poincaré anchor tables and attach them.
+    # We need a REPRESENTATIVE membership/latent_type to determine G_t per type.
+    # Use the first training batch drawn from the task's loader.
+    if FG_HYP_MASK:
+        _ref_native = task.train_loader.sample_batch()
+        _ref_fb = task.to_factor_batch(_ref_native)
+        _mem_np = _ref_fb.membership.realize().numpy()       # (B_ref, L, s_max)
+        _lt_np  = _ref_fb.latent_type.realize().numpy()      # (B_ref, L)
+        print(f"  [FG_HYP_MASK=1] attach_factor_hyperbolic_params "
+              f"(dim={os.environ.get('FG_HYP_DIM','48')}, "
+              f"rho={os.environ.get('FG_HYP_RHO','0.7')}, freeze={FG_HYP_FREEZE})")
+        attach_factor_hyperbolic_params(
+            model,
+            n_heads=spec.n_heads,
+            n_factor_types=spec.n_factor_types,
+            s_max=spec.s_max,
+            membership_np=_mem_np,
+            latent_type_np=_lt_np,
+        )
+        del _ref_native, _ref_fb, _mem_np, _lt_np
+
     Device[Device.DEFAULT].synchronize()
 
     # ---- params: backbone + fg params (+ kenken inlet tables when present).
@@ -724,6 +749,22 @@ def main():
         t = getattr(model, nm, None)
         if t is not None:
             params.append(t)
+
+    # FG_HYP_MASK=1 + FG_HYP_FREEZE=0 (Step 3 relax): add the hyperbolic anchor
+    # params as a separate optimizer param group.  When FG_HYP_FREEZE=1 (default,
+    # Step 2 frozen-confirm) they are NOT added — they are fixed constants and the
+    # optimizer never touches them.
+    if FG_HYP_MASK and not FG_HYP_FREEZE:
+        from mycelium.factor_masks import cell_mp_head_allocation, CELL_MP_HEAD_GLOBAL
+        _G = max(1, spec.n_heads // 16)
+        _alloc = cell_mp_head_allocation(spec.n_factor_types, spec.n_heads, _G)
+        _used_types = sorted({int(t) for t in _alloc if int(t) != CELL_MP_HEAD_GLOBAL})
+        for _t in _used_types:
+            _anchors = getattr(model, f"fg_hyp_anchors_{_t}", None)
+            if _anchors is not None:
+                params.append(_anchors)
+        print(f"  [FG_HYP_FREEZE=0] added hyperbolic anchor params to optimizer "
+              f"(types={_used_types})")
     n_params = sum(int(np.prod(t.shape)) for t in params)
     print(f"  trainable params: {n_params/1e6:.1f}M  (spec: s_max={spec.s_max} "
           f"n_values={spec.n_values} T={spec.n_factor_types} "
