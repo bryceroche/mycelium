@@ -35,6 +35,30 @@ FG_HYP_MASK : int (env, default 0)
     Toggle: 0 => build_factor_attn_bias (boolean, byte-identical),
             1 => build_factor_hyperbolic_attn_bias (geometric, ~1e-3-identical).
 
+RUNG-2 RELAXATION KNOBS (ported from kenken.py; default-off = byte-identical frozen)
+-----------------------------------------------------------------------------------
+FG_HYP_RELAX : int (env, default 0)
+    0 => the proven FROZEN geometric mask: anchors stored as BALL POINTS, used RAW in
+         d_hyp (NO exp_0), SATURATED alpha = margin*2*BLOCK/d_out -> exact {0,-1e4} mask.
+    1 => RELAXATION: anchors stored as learnable TANGENT params (exp_0 maps them into the
+         ball), SOFT-BLOCK alpha (see FG_HYP_RELAX_BLOCK_ARG) so the d_hyp BACKWARD has a
+         non-vanishing coord gradient (Finding A), the §7 boundary guards become live.
+FG_HYP_RELAX_BLOCK_ARG : float (env, default 20)
+    The soft-block target (only when FG_HYP_RELAX=1). alpha = margin*target/r lands the
+    between-group softplus arg at margin*target so BOTH tails stay open (gradient ~1e4
+    not 0) while the leak exp(-arg) stays well under the 1e-3 attention-weight tolerance.
+FG_HYP_JITTER : float (env, default 1e-3)
+    Tiny tangent jitter on the relaxed anchor init (break init-degeneracy; t=0 mask still
+    matches <1e-3). Applied ONLY under FG_HYP_RELAX.
+FG_HYP_MAX_ZNORM : float (env, default 0.9)
+    Rim guard: clamp_factor_hyp_tangent_norms shrinks |v| so |z|=tanh(|v|)<=this after
+    each optimizer step (keeps 1/(1-|z|^2) bounded in the d_hyp backward).
+FG_HYP_EUCLID : int (env, default 0)
+    Capacity-matched control arm (spec §8.1): 1 => replace d_hyp with Euclidean ||u-v||
+    over the SAME coord params (no exp_0), r/alpha recalibrated to the EUCLIDEAN anchor
+    distances so the control ALSO reproduces the hard mask at t=0. To CLAIM geometry,
+    hyperbolic must BEAT this control. 0 (default) => hyperbolic d_hyp.
+
 DESIGN NOTES
 ------------
 * No perceiver-specific imports: only tinygrad + numpy + the substrate
@@ -110,8 +134,10 @@ from mycelium.kenken import (
     _exp0_map,                   # Tensor (...,dim) -> (...,dim) Tensor ball
     _d_hyp_pairwise,             # Tensor (...,M,dim) -> (...,M,M) Tensor d_hyp
     _relation_bias_from_z,       # (z, r, alpha) -> (...,M,M) Tensor bias
+    _relation_bias_from_coord_euclid,  # (c, r, alpha) -> (...,M,M) Tensor euclid bias
     _hyp_d_out,                  # (rho, G) -> float  closed-form d_out simplex
     _min_between_anchor_distance, # (anchors: np (A,dim)) -> float poincare min-d
+    _min_between_anchor_distance_euclid,  # (anchors: np (A,dim)) -> float L2 min-d
 )
 
 # Toggle: 0 => boolean build_factor_attn_bias (byte-identical, no new params);
@@ -134,8 +160,118 @@ FG_HYP_BLOCK: float = 1e4
 # in the computed d_hyp doesn't leave blocked cells at -1e4 +/- epsilon.
 FG_HYP_ALPHA_MARGIN: float = float(os.environ.get("FG_HYP_ALPHA_MARGIN", "4.0"))
 
+# ---- RUNG-2 RELAXATION (the SOFT-BLOCK regime; ported from kenken.py) ----------
+# docs spec §8 + Finding A. The FROZEN foothold calibrates alpha = margin*2*BLOCK/d_out
+# with BLOCK=1e4 -> alpha ~ 1e4 -> the softplus is FULLY SATURATED on BOTH tails ->
+# softplus'(±huge)=0 -> the d_hyp BACKWARD yields EXACTLY ZERO coord gradient (Finding A:
+# a faithful sharp mask gives a VANISHING gradient -> 'relaxation does nothing' FALSE
+# null). Lowering FG_HYP_ALPHA_MARGIN alone CANNOT fix this — alpha is dominated by the
+# 2*BLOCK/d_out term, not the margin. The RELAX knob below recalibrates alpha so the
+# between-group softplus ARG lands at a MODEST target (FG_HYP_RELAX_BLOCK_ARG): alpha =
+# margin * target / r. At target~20 a blocked entry's bias is ~-margin*20, i.e. the
+# attention leak is exp(-arg) (mask faithful WELL under the 1e-3 attention-weight
+# tolerance) WHILE the softplus is in its responsive region so BOTH tails stay open and
+# coord gradients flow. ONLY used when FG_HYP_RELAX is ON; the frozen foothold keeps the
+# BLOCK-saturated calibration (byte-identical). r (= d_out/2) is unchanged in both modes.
+#
+# FG_HYP_RELAX: master gate. 0 (default) => frozen foothold (ball-point anchors used raw,
+#   saturated alpha, NO exp_0) — byte-identical to the proven frozen geometric mask. 1 =>
+#   the anchors become learnable TANGENT params (exp_0 maps them into the ball), the
+#   soft-block alpha opens both softplus tails, and the §7 boundary guards become live.
+FG_HYP_RELAX: int = int(os.environ.get("FG_HYP_RELAX", "0")) > 0
+# The soft-block target (only consulted when FG_HYP_RELAX=1). Default 20 mirrors
+# KENKEN_HYP_RELAX_BLOCK_ARG: leak ~ exp(-margin*20) << 1e-3, gradient ~1e4 not 0.
+FG_HYP_RELAX_BLOCK_ARG: float = float(os.environ.get("FG_HYP_RELAX_BLOCK_ARG", "20.0"))
+# Epsilon tangent jitter on the anchor init when relaxing (mirroring KENKEN_HYP_JITTER).
+# Breaks any init-degeneracy between same-shape anchor tables so the relations can
+# specialize. Tiny (1e-3) so the t=0 mask still matches well under 1e-3. ONLY applied
+# under FG_HYP_RELAX; the frozen path stays the exact closed-form anchor (jitter=0).
+FG_HYP_JITTER: float = float(os.environ.get("FG_HYP_JITTER", "1e-3"))
+# Bounded-tangent-norm rim guard (mirroring KENKEN_HYP_MAX_ZNORM). After each optimizer
+# step the trainer clamps |v| so |z|=tanh(|v|) stays <= this (keeps 1/(1-|z|^2) bounded
+# in the d_hyp backward — the boundary-gradient landmine). atanh(0.9) ~ 1.4722.
+FG_HYP_MAX_ZNORM: float = float(os.environ.get("FG_HYP_MAX_ZNORM", "0.9"))
+
+# ---- EUCLIDEAN CONTROL ARM (spec §8.1 capacity-matched control; ported from kenken) --
+# When ON: replace d_hyp(z_i,z_j) with the Euclidean ||u_i - u_j|| over the SAME coord
+# params (identical shapes / param-count), so a capacity-matched Euclidean-vs-hyperbolic
+# comparison is possible. To CLAIM geometry, hyperbolic must BEAT Euclidean (the v112b
+# attribution control). The coord is used DIRECTLY as the Euclidean point (NO exp_0); r
+# and alpha are recalibrated to the EUCLIDEAN anchor distances so the Euclidean arm ALSO
+# reproduces the hard mask at t=0 (same zero-init discipline). The ONLY differences vs
+# the hyperbolic arm are the distance (L2 vs arccosh) and the missing exp_0 — capacity is
+# otherwise identical. Default 0 (hyperbolic, unchanged).
+FG_HYP_EUCLID: int = int(os.environ.get("FG_HYP_EUCLID", "0")) > 0
+
 # Sentinel: a head slot assigned to the global (union/all-valid) mask.
 CELL_MP_HEAD_GLOBAL: int = -1
+
+
+# ---- PER-RELATION BIAS ARM DISPATCH (ported from kenken._relation_bias_dispatch) -----
+# A single seam so the clique-union path stays arm-agnostic. The factor-mask anchors are
+# stored as BALL POINTS in the FROZEN path (used directly, NO exp_0) and as TANGENT params
+# under RELAX (exp_0 maps them into the ball). The `is_tangent` flag selects which.
+#
+#   FG_HYP_EUCLID=0 (hyperbolic):
+#     is_tangent=True  (relax) -> z = exp_0(coord), then d_hyp.
+#     is_tangent=False (frozen)-> coord is ALREADY a ball point, used raw in d_hyp.
+#   FG_HYP_EUCLID=1 (control): coord used DIRECTLY as the Euclidean point (NO exp_0),
+#     d = ||u-v||. Identical shapes/param-count -> capacity-matched.
+#
+# NOTE the FROZEN default (FG_HYP_RELAX=0, FG_HYP_EUCLID=0) routes is_tangent=False ->
+# coord raw -> d_hyp: the EXACT original computation, so the frozen geometric mask stays
+# byte-identical. Only relax flips is_tangent=True (adding the exp_0 reparameterization).
+def _factor_relation_bias_dispatch(coord: Tensor, r: float, alpha: float,
+                                   is_tangent: bool) -> Tensor:
+    """Dispatch one relation's per-factor bias by arm (hyperbolic / Euclidean).
+
+    coord       : (..., M, dim) — a ball point (is_tangent=False) or a tangent param
+                  (is_tangent=True). For the Euclidean arm the coord is used directly as
+                  the Euclidean point regardless of is_tangent (NO exp_0).
+    r, alpha    : the (arm-correct) calibrated softplus threshold / sharpness.
+    is_tangent  : True under FG_HYP_RELAX (apply exp_0 for the hyperbolic arm); False for
+                  the frozen ball-point path (use raw — byte-identical original).
+    """
+    if FG_HYP_EUCLID:
+        return _relation_bias_from_coord_euclid(coord, r, alpha)
+    z = _exp0_map(coord) if is_tangent else coord
+    return _relation_bias_from_z(z, r, alpha)
+
+
+def clamp_factor_hyp_tangent_norms(model: object,
+                                   max_znorm: float = FG_HYP_MAX_ZNORM) -> None:
+    """Rim guard (spec §7; ported from kenken.clamp_hyp_tangent_norms). Clamp each anchor
+    row's tangent norm |v| so |z|=tanh(|v|) stays <= max_znorm (keeps 1/(1-|z|^2) bounded
+    in the d_hyp backward — the boundary-gradient landmine). Call AFTER each optimizer
+    step, ONLY in relax (FG_HYP_RELAX=1, where the anchors are tangent params).
+
+    Per-ROW scaling: rows with |v| <= atanh(max_znorm) are untouched; longer rows are
+    radially shrunk to the cap. In-place via .assign (mirrors the optimizer's own
+    updates). JIT/AM-safe pure tensor ops (no float32 literal baked, no isnan loop).
+
+    Iterates over every attached fg_hyp_anchors_{t} tangent table (one per used type).
+    No-op when no such tables exist (frozen path attaches ball points, but the trainer
+    only calls this under relax where they are tangents).
+    """
+    max_vnorm = float(math.atanh(min(max(max_znorm, 0.0), 1.0 - 1e-7)))
+    t_idx = 0
+    while True:
+        anchors = getattr(model, f"fg_hyp_anchors_{t_idx}", None)
+        if anchors is None:
+            # Types are contiguous from 0 in the allocation, but a leading type may be
+            # unused (T>R). Probe a few extra slots before giving up.
+            if t_idx > 64:
+                break
+            t_idx += 1
+            continue
+        v = anchors.cast(dtypes.float)
+        norm = (v.pow(2).sum(axis=-1, keepdim=True) + 1e-12).sqrt()           # (M,1)
+        # scale = min(1, max_vnorm / |v|): only shrink rows past the cap.
+        scale = (Tensor(np.array(max_vnorm, dtype=np.float32), dtype=dtypes.float)
+                 / norm).minimum(Tensor(np.array(1.0, dtype=np.float32),
+                                        dtype=dtypes.float))
+        anchors.assign((v * scale).cast(anchors.dtype)).realize()
+        t_idx += 1
 
 
 def cell_mp_head_allocation(T: int, H: int, G: int) -> np.ndarray:
@@ -330,12 +466,20 @@ def attach_factor_hyperbolic_params(
 
     Computes, for each type t used by at least one non-global head:
       - anchor table (G_t, dim): simplex for G_t <= dim+1, spherical code otherwise.
-      - r_t = d_out_t / 2,  alpha_t = margin * 2 * BLOCK / d_out_t.
+      - r_t = d_out_t / 2.
+      - alpha_t = margin * 2 * BLOCK / d_out_t (FROZEN, saturated) OR
+                  margin * RELAX_BLOCK_ARG / r_t (RELAX, soft-block — Finding A).
 
     Attached as:
-      model.fg_hyp_anchors_{t}  Tensor (G_t, dim) float   — ball points (rho * dir).
+      model.fg_hyp_anchors_{t}  Tensor (G_t, dim) float   — BALL POINTS (rho*dir) when
+                                FG_HYP_RELAX=0 (used raw, byte-identical frozen mask); or
+                                TANGENT params (exp_0(v)==ball points, +jitter) when
+                                FG_HYP_RELAX=1 (learnable; the trainer adds them to the
+                                optimizer and clamps their norm via the §7 rim guard).
       model.fg_hyp_r_{t}        float                      — half-distance threshold.
-      model.fg_hyp_alpha_{t}    float                      — softplus sharpness.
+      model.fg_hyp_alpha_{t}    float                      — softplus sharpness (arm- and
+                                mode-aware: euclid recalibrates to L2 distances; relax
+                                uses the soft-block target).
 
     Also attaches:
       model.fg_hyp_n_heads      int     (saved for the bias builder)
@@ -393,22 +537,60 @@ def attach_factor_hyperbolic_params(
         # builder sends pad rows to the last anchor slot by convention.
         G_t_alloc = G_t + 1
 
-        # Build anchor table: simplex for small G, spherical code for large G.
+        # Build anchor table (BALL POINTS): simplex for small G, spherical code for large.
         if (G_t_alloc - 1) <= dim:
             anchors_np = _poincare_anchors(G_t_alloc, dim, rho)
         else:
             anchors_np = _spherical_anchors(G_t_alloc, dim, rho)
-        anchors_np = anchors_np.astype(np.float32)
+        anchors_ball = anchors_np.astype(np.float32)                    # (G_t, dim) ball
 
-        # Calibrate r and alpha from the ACTUAL min between-anchor distance
-        # (robust to both simplex and spherical code).
-        d_out = _min_between_anchor_distance(anchors_np.astype(np.float64))
+        # ---- RUNG-2 STORAGE + CALIBRATION (arm- and mode-aware) ----
+        # FROZEN (FG_HYP_RELAX=0): store the BALL POINTS and use them RAW in the bias
+        #   builder (is_tangent=False, NO exp_0) — the EXACT original computation -> the
+        #   frozen geometric mask stays byte-identical.
+        # RELAX (FG_HYP_RELAX=1): store TANGENT params v s.t. exp_0(v) == the ball points
+        #   (is_tangent=True -> the bias builder applies exp_0). The tangent
+        #   parameterization keeps |z|=tanh(|v|)<1 automatically and is what the §7
+        #   rim-guard clamp shrinks — the boundary-gradient landmine is live now.
+        if FG_HYP_RELAX:
+            coords_np = _tangent_for_anchors(
+                anchors_ball.astype(np.float64)).astype(np.float32)    # (G_t, dim) tangent
+            # tiny tangent jitter (break init-degeneracy across same-shape tables so the
+            # relations can specialize). Deterministic seed so a run reproduces; tiny
+            # (1e-3) so the t=0 mask still matches well under 1e-3.
+            if FG_HYP_JITTER > 0.0:
+                rng_j = np.random.RandomState(20260616 + int(t))
+                coords_np = (coords_np + FG_HYP_JITTER
+                             * rng_j.randn(*coords_np.shape).astype(np.float32))
+        else:
+            coords_np = anchors_ball                                   # ball points (raw)
+
+        # Calibrate r/alpha from the ACTUAL min between-anchor distance (robust to both
+        # simplex and spherical code), in the ARM-CORRECT metric so BOTH arms reproduce
+        # the hard mask at t=0:
+        #   HYPERBOLIC arm: d_out = Poincare min-distance over the BALL POINTS (exp_0 of
+        #     the stored tangents under relax round-trips to these exact ball points, so
+        #     the ball-point d_out is correct for the relaxed coord too).
+        #   EUCLIDEAN  arm: d_out = L2 min-distance over the COORD AS STORED (the coord IS
+        #     the Euclidean point — no exp_0): tangent separation under relax, ball-point
+        #     separation when frozen. SAME shapes -> capacity-matched control.
+        if FG_HYP_EUCLID:
+            d_out = _min_between_anchor_distance_euclid(coords_np.astype(np.float64))
+        else:
+            d_out = _min_between_anchor_distance(anchors_ball.astype(np.float64))
         r_t = d_out / 2.0
-        alpha_t = alpha_margin * 2.0 * FG_HYP_BLOCK / max(d_out, 1e-9)
+        # alpha: SATURATED (frozen, exact {0,-1e4} mask) vs SOFT-BLOCK (relax, gradient
+        # flows). The frozen branch is the original 2*BLOCK/d_out; the relax branch lands
+        # the between-group softplus arg at margin*RELAX_BLOCK_ARG (Finding A — unsaturate
+        # the BLOCK-dominated alpha so BOTH tails stay open). r is unchanged in both modes.
+        if FG_HYP_RELAX:
+            alpha_t = alpha_margin * FG_HYP_RELAX_BLOCK_ARG / max(r_t, 1e-9)
+        else:
+            alpha_t = alpha_margin * 2.0 * FG_HYP_BLOCK / max(d_out, 1e-9)
 
         # Attach to model.
         setattr(model, f"fg_hyp_anchors_{t}",
-                Tensor(anchors_np, dtype=dtypes.float).contiguous())
+                Tensor(coords_np, dtype=dtypes.float).contiguous())
         setattr(model, f"fg_hyp_r_{t}", r_t)
         setattr(model, f"fg_hyp_alpha_{t}", alpha_t)
 
@@ -587,9 +769,16 @@ def build_factor_hyperbolic_attn_bias(
         sv = sent_val.expand(Bn, L, 1, dim)            # (B,L,1,dim)
         z_li = m_4d * fa + (1.0 - m_4d) * sv          # (B, L, s_max, dim)
 
-        # Per-factor bias: reshape to (B*L, s_max, dim), compute d_hyp, reshape back.
+        # Per-factor bias: reshape to (B*L, s_max, dim), compute the per-relation bias,
+        # reshape back. ARM DISPATCH (Rung-2): FROZEN -> ball points used raw in d_hyp
+        # (is_tangent=False -> NO exp_0 -> the EXACT original computation, byte-identical).
+        # RELAX -> the coord is a TANGENT param: hyperbolic arm applies exp_0(z_flat) then
+        # d_hyp; Euclidean arm (FG_HYP_EUCLID=1) uses z_flat DIRECTLY as the L2 point (no
+        # exp_0). The non-member sentinel placement is preserved (the both-members gate
+        # below blocks any non-member pair regardless of the geometric value).
         z_flat = z_li.reshape(Bn * L, s_max, dim)       # (B*L, s_max, dim)
-        bias_flat = _relation_bias_from_z(z_flat, r_t, alpha_t)  # (B*L, s_max, s_max)
+        bias_flat = _factor_relation_bias_dispatch(
+            z_flat, r_t, alpha_t, is_tangent=FG_HYP_RELAX)  # (B*L, s_max, s_max)
         bias_vol = bias_flat.reshape(Bn, L, s_max, s_max)        # (B, L, s_max, s_max)
 
         # BOTH-MEMBERS GATE: force to -BLOCK where EITHER cell is a non-member.

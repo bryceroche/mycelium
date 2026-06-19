@@ -89,6 +89,7 @@ _FG_PARAM_NAMES = [
 
 
 def model_state_dict_fg(model) -> dict:
+    from mycelium.factor_graph_engine import FG_HYP_MASK
     sd = {"ln_f.g": model.ln_f_g, "ln_f.b": model.ln_f_b}
     sw = model.block.shared
     for a in ("wv", "bv", "wo", "bo", "w_out", "b_out",
@@ -100,6 +101,19 @@ def model_state_dict_fg(model) -> dict:
     for nm in _FG_PARAM_NAMES:
         sd[nm] = getattr(model, nm)
     # No kenken inlet params for the circuit task (has_factor_inlet=False).
+    # Per-type hyperbolic anchor tables (only present when FG_HYP_MASK=1).
+    # Saved so load_ckpt restores the relaxed anchors from a trained checkpoint.
+    if FG_HYP_MASK:
+        t_idx = 0
+        while True:
+            anchors = getattr(model, f"fg_hyp_anchors_{t_idx}", None)
+            if anchors is None:
+                if t_idx > 64:
+                    break
+                t_idx += 1
+                continue
+            sd[f"fg_hyp_anchors_{t_idx}"] = anchors
+            t_idx += 1
     return sd
 
 

@@ -127,7 +127,11 @@ from mycelium.factor_graph_engine import (
     make_kenken_factor_batch,
     FG_HYP_MASK, FG_HYP_FREEZE,
 )
-from mycelium.factor_masks import attach_factor_hyperbolic_params
+from mycelium.factor_masks import (
+    attach_factor_hyperbolic_params,
+    clamp_factor_hyp_tangent_norms,
+    FG_HYP_RELAX, FG_HYP_EUCLID,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -199,6 +203,20 @@ def model_state_dict_fg(model) -> dict:
         t = getattr(model, nm, None)
         if t is not None:
             sd[nm] = t
+    # Per-type hyperbolic anchor tables (only present when FG_HYP_MASK=1).
+    # Saved regardless of FG_HYP_FREEZE so a RELAXED run's trained anchors
+    # are preserved and a round-trip load_ckpt restores them exactly.
+    if FG_HYP_MASK:
+        t_idx = 0
+        while True:
+            anchors = getattr(model, f"fg_hyp_anchors_{t_idx}", None)
+            if anchors is None:
+                if t_idx > 64:
+                    break
+                t_idx += 1
+                continue
+            sd[f"fg_hyp_anchors_{t_idx}"] = anchors
+            t_idx += 1
     return sd
 
 
@@ -269,7 +287,11 @@ def _compile_jit_fg_step(model, opt, spec: FactorGraphSpec, task: str,
            float(constraint_weight), float(calib_weight), float(ortho_lambda),
            float(grad_clip), float(label_smoothing), float(stoch_depth_p),
            bool(has_inlet),
-           bool(FG_HYP_MASK), bool(FG_HYP_FREEZE))
+           bool(FG_HYP_MASK), bool(FG_HYP_FREEZE),
+           # Rung-2 relax knobs CHANGE THE TRACED GRAPH BODY (exp_0 vs raw coord,
+           # euclid vs hyp distance, soft-block vs saturated alpha), so they MUST be
+           # keyed — a stale graph under a flipped knob is silent corruption.
+           bool(FG_HYP_RELAX), bool(FG_HYP_EUCLID))
     if key in _JIT_FG_CACHE:
         return _JIT_FG_CACHE[key]
 
@@ -966,6 +988,14 @@ def main():
         fb = task.to_factor_batch(native)
         ins = _jit_inputs(fb, spec, task.has_inlet, hidden, _draw_stoch_keep())
         outs = step_fn(*ins)
+
+        # RUNG-2 RIM GUARD (spec §7): under relaxation the hyperbolic anchors are TANGENT
+        # params and the d_hyp backward's 1/(1-|z|^2) explodes near the ball boundary.
+        # Clamp |v| so |z|=tanh(|v|) stays off the rim, AFTER each optimizer step (the
+        # step runs inside the JIT; this in-place assign runs outside it). No-op unless
+        # FG_HYP_MASK=1 and FG_HYP_FREEZE=0 (anchors are in the optimizer == relaxing).
+        if FG_HYP_MASK and not FG_HYP_FREEZE and FG_HYP_RELAX:
+            clamp_factor_hyp_tangent_norms(model)
 
         total_t      = outs[0]
         healthy_t    = outs[1]
