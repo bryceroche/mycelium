@@ -387,12 +387,13 @@ def b0_pure_deduce(deduce_fn, n_vertices, edges, k, s_max, cell_valid_np,
 # CONFIG GRID — the five ablation configs (all share the ONE skeleton)
 # ===========================================================================
 
-CONFIGS = ["B0", "B1", "B2", "B2b", "B3"]
+CONFIGS = ["B0", "B1", "B2", "B2c", "B2b", "B3"]
 
 CONFIG_DESC = {
     "B0":  "pure deduction, no search (one forward, argmax)              [floor]",
     "B1":  "search, NO propagation (noop) + DSATUR + LCV                 [search-only]",
     "B2":  "search, NEURAL prop + ENTROPY varorder + policy valorder     [THE PROPOSAL]",
+    "B2c": "search, NEURAL prop + ENTROPY varorder + LCV valorder        [value-order fix]",
     "B2b": "search, NEURAL prop + DSATUR varorder + LCV valorder         [ablate orderer]",
     "B3":  "symbolic ceiling: AC-3 + DSATUR + LCV                        [ceiling]",
 }
@@ -442,7 +443,7 @@ def run_config_on_instance(
             budget=budget, seed=seed,
             can_certify_unsat=True,            # B1 is complete -> may certify unsat
         )
-    elif config in ("B2", "B2b"):
+    elif config in ("B2", "B2b", "B2c"):
         prop, ent_var, pol_val = make_neural_plugins(
             deduce_fn, n_vertices, edges_n, k, s_max, cell_valid_np,
             conf_thresh=conf_thresh, reference_coloring=reference_coloring,
@@ -471,6 +472,16 @@ def run_config_on_instance(
                 propagate_fn=prop,
                 varorder_fn=ent_var,
                 valorder_fn=pol_val,
+                budget=budget, seed=seed,
+                can_certify_unsat=False,       # neural prop CANNOT certify unsat (Fix 1)
+                fallback_fn=_complete_fallback,
+            )
+        elif config == "B2c":              # neural prop + ENTROPY varorder + LCV valorder
+            res = backtrack_search(         # isolates value-ordering vs B2 (entropy fixed)
+                n_vertices, edges_n, k,
+                propagate_fn=prop,
+                varorder_fn=ent_var,
+                valorder_fn=lcv_valorder,
                 budget=budget, seed=seed,
                 can_certify_unsat=False,       # neural prop CANNOT certify unsat (Fix 1)
                 fallback_fn=_complete_fallback,
@@ -952,7 +963,7 @@ def run_gpu_eval():
                         cfg, deduce_fn, nv, edges, N_VALUES, S_MAX, cv_np[b],
                         budget=bud, seed=env["SEED"], conf_thresh=CONF_THRESH,
                         reference_coloring=reference_coloring,
-                        stats=clamp_stats if cfg in ("B2", "B2b") else None,
+                        stats=clamp_stats if cfg in ("B2", "B2b", "B2c") else None,
                     )
                     agg = results[cfg][bud]
                     agg["n"] += 1
@@ -976,7 +987,7 @@ def run_gpu_eval():
     summarised = {cfg: {b: _summarise_agg(results[cfg][b]) for b in budgets}
                   for cfg in configs}
     _print_comparison_table(summarised, budgets)
-    if any(c in configs for c in ("B2", "B2b")):
+    if any(c in configs for c in ("B2", "B2b", "B2c")):
         _print_clampdepth(clamp_stats)
 
     print("\n  config legend:", flush=True)
