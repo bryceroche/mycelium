@@ -35,6 +35,20 @@ TASK SWITCH (FG_TASK env, default kenken):
            no domain constraint energy (CE + calib only). The import is lazy
            (inside the coloring branch) so a missing data module never breaks the
            kenken path or the trainer's CPU import.
+  circuit  spec=FactorGraphSpec(s_max=<FG_S_MAX>, n_values=2,
+                                n_factor_types=3 (AND/OR/NOT; 4 when XOR on via
+                                FG_CIRCUIT_XOR=1), n_heads=16, k_max=K,
+                                has_factor_inlet=False).
+           CircuitLoader (mycelium.circuit_data — IN-MEMORY generator, NOT
+           path-based; the RUNG-1 deduction-depth testbed: a Boolean circuit is a
+           DAG, so accuracy-vs-level is THE deduction-depth read) produces
+           FactorGraphBatch-compatible batches directly (input_cells, membership
+           (B,L,49) with one factor per GATE, latent_type {0..T-1 gate types /
+           T=global sentinel for padding gate rows}, cell_valid, value_domain_mask
+           (B,49,2) [two boolean values], gold (B,49)) plus python-side per-NODE
+           lvl + per-instance circuit_depth/band/n metadata. No verification inlet,
+           no domain constraint energy (CE + calib only). Lazy import so a missing
+           data module never breaks the kenken/coloring paths or the CPU import.
 
 JIT cache key (PORT from kenken_train) includes EVERY shape/runtime-determining
 constant AND the spec params: task, s_max, n_values, n_factor_types,
@@ -79,6 +93,15 @@ Env vars:
   FG_N_VALUES=<k>               number of colors (codebook size)
   FG_N_FACTOR_TYPES=1           coloring has one relation (edge); default 1
   FG_N_INSTANCES=8000           total corpus size (GraphColoringLoader generates in-memory)
+  --- circuit task ---
+  FG_S_MAX=49                   sequence length (n gate/input nodes padded; engine
+                                asserts S==49, so keep 49)
+  FG_N_INSTANCES=8000           total corpus size (CircuitLoader generates in-memory)
+  FG_CIRCUIT_XOR=0              include XOR gates (T=4 when on; default off -> T=3
+                                AND/OR/NOT). spec.n_factor_types follows this flag.
+  FG_CIRCUIT_GATE_TYPES=        optional explicit gate-type list (comma-separated,
+                                e.g. "and,or,not"); overrides FG_CIRCUIT_XOR. The
+                                loader sizes T from this; the spec follows the loader.
 """
 import gc
 import json
@@ -542,6 +565,82 @@ def _build_coloring_task(K, BATCH, EVAL_BATCH, SEED, n_heads):
     )
 
 
+def _build_circuit_task(K, BATCH, EVAL_BATCH, SEED, n_heads):
+    """Boolean-circuit task: CircuitLoader (IN-MEMORY, NOT path-based) produces
+    FactorGraphBatch-compatible batches directly (input_cells, membership
+    (B,L,49) — one factor per GATE, latent_type {0..T-1 gate types / T=global
+    sentinel for padding}, cell_valid, value_domain_mask (B,49,2), gold (B,49)).
+    No verification inlet, no domain constraint energy (CE + calib only). The
+    import is LAZY so a missing data module never breaks the kenken/coloring paths
+    or the trainer's CPU import.
+
+    THE RUNG-1 TESTBED. Unlike KenKen (flat lateral cliques) and coloring (binary
+    not-equal edges), a Boolean circuit is a DAG: a gate's output is a deduction
+    over its inputs, and a deep circuit chains many such deductions. The per-NODE
+    `lvl` (topological depth) is therefore the deduction-depth axis the eval reads.
+
+    ONE loader owns the internal train/test split (mirrors GraphColoringLoader /
+    KenKenLoader). sample_batch() draws from train; iter_eval() iterates test. The
+    JIT topology width (n_gates_max) is fixed to loader.n_gates_max after corpus
+    generation. The number of gate (factor) TYPES T is owned by the loader — the
+    spec follows the loader so the membership/latent_type the engine sees always
+    matches spec.n_factor_types (a mismatch is silent corruption, PORT #3)."""
+    from mycelium.circuit_data import CircuitLoader
+
+    s_max = int(getenv("FG_S_MAX", "49"))
+    n_values = 2                                    # Boolean: {0, 1}
+    n_instances = int(getenv("FG_N_INSTANCES", "8000"))
+
+    # Gate-type set: explicit list overrides the XOR toggle. The loader owns T;
+    # spec.n_factor_types is read from loader AFTER construction (PORT #3 guard).
+    # Keys MUST be UPPERCASE — CircuitLoader keys on ('AND','OR','NOT','XOR').
+    gate_types_env = getenv("FG_CIRCUIT_GATE_TYPES", "").strip()
+    use_xor = int(getenv("FG_CIRCUIT_XOR", "0")) > 0
+    if gate_types_env:
+        gate_types: tuple[str, ...] = tuple(g.strip().upper() for g in gate_types_env.split(",") if g.strip())
+    elif use_xor:
+        gate_types = ("AND", "OR", "NOT", "XOR")
+    else:
+        gate_types = ("AND", "OR", "NOT")          # loader default
+
+    # ONE in-memory loader: generates the corpus, splits train/test internally,
+    # fixes n_gates_max (the static JIT topology width) and owns the gate-type set.
+    loader = CircuitLoader(
+        n_instances=n_instances,
+        s_max=s_max,
+        n_values=n_values,
+        batch_size=BATCH,
+        seed=SEED,
+        gate_types=gate_types,
+    )
+
+    # T = number of non-global gate types — read from the loader (authoritative).
+    n_factor_types = int(loader.n_factor_types)
+
+    spec = FactorGraphSpec(s_max=s_max, n_values=n_values,
+                           n_factor_types=n_factor_types, n_heads=n_heads,
+                           k_max=K, has_factor_inlet=False)
+
+    print(f"  circuit: n_gates_max={loader.n_gates_max} "
+          f"n_factor_types(T)={n_factor_types} "
+          f"gate_types={getattr(loader, 'gate_types', gate_types)}")
+
+    def to_factor_batch(cb):
+        # CircuitBatch already satisfies the FactorGraphBatch contract (same
+        # tensor attrs); pass through directly.
+        return cb
+
+    return _Task(
+        spec=spec,
+        train_loader=loader,
+        test_loader=loader,   # same object; eval_iter uses loader.iter_eval()
+        to_factor_batch=to_factor_batch,
+        constraint_energy_fn=None,
+        has_inlet=False,
+        eval_iter=lambda: loader.iter_eval(batch_size=EVAL_BATCH),
+    )
+
+
 def _jit_inputs(fb: FactorGraphBatch, spec: FactorGraphSpec, has_inlet: bool,
                 hidden: int, stoch_keep: Tensor):
     """Pull the stable JIT-input tuple out of a FactorGraphBatch. The inlet is
@@ -641,8 +740,8 @@ def main():
     global model
 
     TASK = getenv("FG_TASK", "kenken").strip().lower()
-    assert TASK in ("kenken", "coloring"), \
-        f"FG_TASK must be kenken|coloring, got {TASK!r}"
+    assert TASK in ("kenken", "coloring", "circuit"), \
+        f"FG_TASK must be kenken|coloring|circuit, got {TASK!r}"
 
     K = int(getenv("FG_K_MAX", getenv("K", "16")))
     BATCH = int(getenv("BATCH", 8))
@@ -684,9 +783,14 @@ def main():
           f"stoch_depth_p={STOCH_DEPTH_P}")
     if TASK == "kenken":
         print(f"train_path={FG_TRAIN}  test_path={FG_TEST}")
-    else:
+    elif TASK == "coloring":
         print(f"coloring corpus: FG_N_INSTANCES={getenv('FG_N_INSTANCES','8000')} "
               f"s_max={getenv('FG_S_MAX','49')} k={getenv('FG_N_VALUES','?')} (in-memory)")
+    else:
+        print(f"circuit corpus: FG_N_INSTANCES={getenv('FG_N_INSTANCES','8000')} "
+              f"s_max={getenv('FG_S_MAX','49')} n_values=2 "
+              f"xor={getenv('FG_CIRCUIT_XOR','0')} "
+              f"gate_types={getenv('FG_CIRCUIT_GATE_TYPES','(default)')} (in-memory)")
     print(f"warm-start={'COLD' if not RESUME_FROM else RESUME_FROM}")
     print()
 
@@ -711,8 +815,10 @@ def main():
     if TASK == "kenken":
         task = _build_kenken_task(K, BATCH, EVAL_BATCH, SEED, hidden, n_heads,
                                   model, FG_TRAIN, FG_TEST)
-    else:
+    elif TASK == "coloring":
         task = _build_coloring_task(K, BATCH, EVAL_BATCH, SEED, n_heads)
+    else:
+        task = _build_circuit_task(K, BATCH, EVAL_BATCH, SEED, n_heads)
     spec = task.spec
 
     # The GENERAL factor-graph params (fg_state_embed / fg_position_embed /
@@ -802,7 +908,10 @@ def main():
         },
         **({"train_path": FG_TRAIN, "test_path": FG_TEST} if TASK == "kenken"
            else {"n_instances": int(getenv("FG_N_INSTANCES", "8000")),
-                 "corpus": "in-memory"}),
+                 "corpus": "in-memory",
+                 **({"circuit_xor": int(getenv("FG_CIRCUIT_XOR", "0")) > 0,
+                     "circuit_gate_types": getenv("FG_CIRCUIT_GATE_TYPES", "")}
+                    if TASK == "circuit" else {})}),
         "trainable_params_M": round(n_params / 1e6, 3),
         "ckpt_dir": run_dir,
     }
