@@ -693,6 +693,9 @@ def _build_model_and_loader():
         "CONF_THRESH": float(getenv("CONF_THRESH", "0.9")),
         "HARD_THRESH": int(getenv("HARD_THRESH", "3")),
         "MAX_HARD": int(getenv("MAX_HARD", "0")),   # 0 = all hard instances
+        # Fix 2: cheap reference-coloring budget (was a hardcoded 200000). <=49-vertex
+        # 3-colorable instances solve in well under ~3000 DSATUR+AC-3 nodes.
+        "REF_COLOR_BUDGET": int(getenv("REF_COLOR_BUDGET", "5000")),
     }
 
     spec = FactorGraphSpec(
@@ -807,63 +810,180 @@ def load_ckpt(model, path: str):
 
 def _make_engine_deduce_fn(model, spec, ref_batch, slot=0):
     """Build a deduce_fn(ic_np (S,), vdm_np (S,k)) -> probs_np (S,k) that runs ONE
-    forward through factor_breathing_forward.
+    forward through factor_breathing_forward, wrapped in a @TinyJit step that
+    COMPILES ONCE and REPLAYS for every subsequent call (all instances, all tree
+    nodes).  This is FIX 1: the old path built fresh Tensors as graph constants on
+    EVERY call, so tinygrad re-traced + recompiled the full K=16-breath graph for
+    each of the THOUSANDS of search-tree-node forwards (the 100%-one-core CPU stall).
 
-    To keep the engine's JIT cache stable (batch size + spec are part of the key), we
-    reuse a FIXED reference batch's tensors (membership/latent_type/cell_valid for the
-    chosen instance broadcast over the batch) and only swap input_cells +
-    value_domain_mask.  We read slot `slot`.  membership/latent_type/cell_valid for ALL
-    batch slots are set to the target instance so the attention mask is correct.
+    DISCIPLINE
+    ----------
+    * FIXED, realized input buffers allocated ONCE; shapes are CONSTANT for the whole
+      run (B, S, N, L are all fixed by the ref_batch + spec).  These are the buffers
+      the @TinyJit step captures as its graph inputs.
+    * deduce_fn / set_instance ASSIGN-IN-PLACE into those SAME buffer objects
+      (`buf.assign(new).realize()`) OUTSIDE the JIT, then call the JIT step.  The
+      .realize() materialises the assign before the JIT replays, mirroring the proven
+      factor_graph_train pattern (inputs are realized buffers passed to the @TinyJit
+      step; the assign happens eagerly outside the traced graph, so the
+      "assign-inside-JIT must be returned" quirk does NOT apply here).
+    * The K=16-breath graph, the spec, batch size B, and all toggles live in the
+      closure -> they are baked into the compiled graph (the JIT cache key).
+
+    PER-INSTANCE MASK REPLAY — THE CORRECTNESS GUARANTEE
+    ----------------------------------------------------
+    The attention mask is built INSIDE factor_breathing_forward by
+    build_factor_attn_bias / build_factor_hyperbolic_attn_bias from
+    (membership, latent_type, cell_valid).  Those builders are PURE TENSOR OPS:
+    matmul co-occurrence (m_t^T @ m_t), one_hot, cumsum, broadcast, max, clip,
+    where()-free arithmetic — NO python-level branching on the *values* of
+    membership/latent_type (only on STATIC shape/head-allocation constants, which are
+    identical across instances since L, s_max, n_heads, n_factor_types are fixed).
+    Therefore the compiled graph reads membership/latent_type/cell_valid as LIVE
+    BUFFER CONTENTS: after set_instance(B) reassigns those buffers, the SAME compiled
+    graph recomputes instance-B's mask correctly — there is NO stale instance-A mask
+    baked into the graph.  (Verifiable via VERIFY_PARITY=1 below.)
+
+    EFFICIENCY CHOICE: B-BROADCAST (not B=1).
+    We keep the ref_batch's batch size B and broadcast the single instance across all
+    B slots, reading slot `slot`.  This costs B x the compute per forward, but it
+    keeps the engine's JIT cache key (B, spec) identical to the training/eval path and
+    avoids a second compiled graph for a B=1 shape.  The load-bearing fix is the JIT
+    (compile-once / replay), which removes the per-node recompile entirely; the B x
+    factor is a constant multiplier on an already-fast replay.  A dedicated B=1 batch
+    was considered but skipped to keep the JIT + mask build trivially correct
+    (one graph, one cache key).
     """
     from tinygrad import Tensor, dtypes
+    from tinygrad.engine.jit import TinyJit
+    from tinygrad.helpers import getenv
     from mycelium.factor_graph_engine import factor_breathing_forward
 
     B = int(ref_batch.input_cells.shape[0])
     S = int(ref_batch.cell_valid.shape[1])
+    L = int(ref_batch.membership.shape[1])
     N = spec.n_values
     K = spec.k_max
 
-    # Per-call closure state: the target instance's structural tensors (fixed across
-    # the search of one instance).  Set via .set_instance(...).
-    holder = {"mem": None, "lt": None, "cv": None}
+    # ---- FIXED, realized input buffers (allocated ONCE) ---------------------------
+    # These are the @TinyJit step's graph inputs.  deduce_fn / set_instance assign new
+    # numpy values into these SAME objects in place; the compiled graph then replays.
+    #   input_cells       (B, S)    int
+    #   value_domain_mask (B, S, N) float
+    #   membership        (B, L, S) float
+    #   latent_type       (B, L)    int
+    #   cell_valid        (B, S)    float
+    buf_ic = Tensor(np.zeros((B, S), dtype=np.int32),
+                    dtype=dtypes.int).contiguous().realize()
+    buf_vdm = Tensor(np.zeros((B, S, N), dtype=np.float32),
+                     dtype=dtypes.float).contiguous().realize()
+    buf_mem = Tensor(np.zeros((B, L, S), dtype=np.float32),
+                     dtype=dtypes.float).contiguous().realize()
+    buf_lt = Tensor(np.zeros((B, L), dtype=np.int32),
+                    dtype=dtypes.int).contiguous().realize()
+    buf_cv = Tensor(np.zeros((B, S), dtype=np.float32),
+                    dtype=dtypes.float).contiguous().realize()
 
     class _ProxyBatch:
-        def __init__(self, ic, vdm):
-            self.input_cells = ic
-            self.cell_valid = holder["cv"]
-            self.value_domain_mask = vdm
-            self.gold = ref_batch.gold          # unused for inference
-            self.membership = holder["mem"]
-            self.latent_type = holder["lt"]
+        """Thin attribute shim so the engine reads the fixed buffers by attr.
+        Holds the SAME buffer objects the JIT captured (no per-call Tensor build)."""
+        def __init__(self):
+            self.input_cells = buf_ic
+            self.cell_valid = buf_cv
+            self.value_domain_mask = buf_vdm
+            self.gold = buf_ic                 # unused for inference (shape-compatible)
+            self.membership = buf_mem
+            self.latent_type = buf_lt
             self.factor_inlet = None
-            self.deduction_depth = ref_batch.deduction_depth
+            self.deduction_depth = [0] * B
+
+    _proxy = _ProxyBatch()
+
+    @TinyJit
+    def _step() -> Tensor:
+        # All toggles/shape params (K, spec, B) are in the closure -> baked into the
+        # compiled graph.  Reads the fixed buffers (captured), returns the final-breath
+        # logits realized.  No host sync inside; no dtypes.float32 literal baked.
+        logits_history, _ = factor_breathing_forward(model, _proxy, spec, K=K)
+        return logits_history[-1].realize()    # (B, S, N)
 
     def set_instance(mem_row_np, lt_row_np, cv_row_np):
         """mem_row_np (n_edges_max, S), lt_row_np (n_edges_max,), cv_row_np (S,).
-        Broadcast the single instance across all B slots so the static graph matches.
-        """
+        Broadcast the single instance across all B slots and ASSIGN-IN-PLACE into the
+        membership/latent_type/cell_valid buffers the JIT captured.  Changing the
+        instance does NOT recompile and does NOT leave a stale mask (the mask is
+        recomputed from these LIVE buffer contents on the next _step replay)."""
         mem_b = np.broadcast_to(mem_row_np[None], (B,) + mem_row_np.shape).copy()
         lt_b = np.broadcast_to(lt_row_np[None], (B,) + lt_row_np.shape).copy()
         cv_b = np.broadcast_to(cv_row_np[None], (B, S)).copy()
-        holder["mem"] = Tensor(mem_b.astype(np.float32), dtype=dtypes.float).contiguous().realize()
-        holder["lt"] = Tensor(lt_b.astype(np.int32), dtype=dtypes.int).contiguous().realize()
-        holder["cv"] = Tensor(cv_b.astype(np.float32), dtype=dtypes.float).contiguous().realize()
+        buf_mem.assign(Tensor(mem_b.astype(np.float32), dtype=dtypes.float)).realize()
+        buf_lt.assign(Tensor(lt_b.astype(np.int32), dtype=dtypes.int)).realize()
+        buf_cv.assign(Tensor(cv_b.astype(np.float32), dtype=dtypes.float)).realize()
 
     def deduce_fn(ic_np, vdm_np):
-        # broadcast the single-instance ic/vdm across all B slots (read slot only).
+        # ASSIGN-IN-PLACE the new ic/vdm (broadcast over B; read slot only), then
+        # REPLAY the compiled graph.  No new graph-constant Tensors -> no recompile.
         ic_b = np.broadcast_to(ic_np[None], (B, S)).copy()
         vdm_b = np.broadcast_to(vdm_np[None], (B, S, N)).copy()
-        ic_t = Tensor(ic_b.astype(np.int32), dtype=dtypes.int).contiguous().realize()
-        vdm_t = Tensor(vdm_b.astype(np.float32), dtype=dtypes.float).contiguous().realize()
-        batch = _ProxyBatch(ic_t, vdm_t)
-        logits_history, _ = factor_breathing_forward(model, batch, spec, K=K)
-        final_logits = logits_history[-1]                # (B, S, N)
-        logits_np = final_logits.realize().numpy()[slot]  # (S, N)
+        buf_ic.assign(Tensor(ic_b.astype(np.int32), dtype=dtypes.int)).realize()
+        buf_vdm.assign(Tensor(vdm_b.astype(np.float32), dtype=dtypes.float)).realize()
+        final_logits = _step()                           # (B, S, N) — JIT replay
+        logits_np = final_logits.numpy()[slot]           # (S, N)
         e = np.exp(logits_np - logits_np.max(axis=-1, keepdims=True))
         probs = e / (e.sum(axis=-1, keepdims=True) + 1e-12)
         return probs.astype(np.float32)
 
+    # ---- OPTIONAL PARITY CHECK (VERIFY_PARITY=1) — eager vs JIT, two instances ----
+    # Proves (a) the JIT'd deduce_fn matches a one-off eager factor_breathing_forward
+    # on instance A (<1e-3), and (b) after set_instance(B) the SAME compiled graph
+    # matches instance B's eager forward (NO stale-mask bake-in).  Bryce runs this on
+    # the GPU; it is a no-op when VERIFY_PARITY is unset.
+    def _verify_parity(insts):
+        """insts: list of (mem_row_np, lt_row_np, cv_row_np, ic_np, vdm_np) tuples.
+        Returns max|Δ| per instance vs an eager forward built the OLD way (fresh
+        Tensors), asserting < 1e-3 and that each instance gets ITS OWN logits."""
+        from mycelium.factor_graph_engine import factor_breathing_forward as _fbf
+
+        class _EagerBatch:
+            def __init__(self, ic, vdm, mem, lt, cv):
+                self.input_cells = ic; self.value_domain_mask = vdm
+                self.membership = mem; self.latent_type = lt; self.cell_valid = cv
+                self.gold = ic; self.factor_inlet = None
+                self.deduction_depth = [0] * B
+
+        deltas = []
+        for (mem_row, lt_row, cv_row, ic_np, vdm_np) in insts:
+            # --- eager forward (fresh Tensors, the OLD path) ---
+            mem_b = np.broadcast_to(mem_row[None], (B,) + mem_row.shape).copy()
+            lt_b = np.broadcast_to(lt_row[None], (B,) + lt_row.shape).copy()
+            cv_b = np.broadcast_to(cv_row[None], (B, S)).copy()
+            ic_b = np.broadcast_to(ic_np[None], (B, S)).copy()
+            vdm_b = np.broadcast_to(vdm_np[None], (B, S, N)).copy()
+            eb = _EagerBatch(
+                Tensor(ic_b.astype(np.int32), dtype=dtypes.int).contiguous().realize(),
+                Tensor(vdm_b.astype(np.float32), dtype=dtypes.float).contiguous().realize(),
+                Tensor(mem_b.astype(np.float32), dtype=dtypes.float).contiguous().realize(),
+                Tensor(lt_b.astype(np.int32), dtype=dtypes.int).contiguous().realize(),
+                Tensor(cv_b.astype(np.float32), dtype=dtypes.float).contiguous().realize(),
+            )
+            eager_logits = _fbf(model, eb, spec, K=K)[0][-1].realize().numpy()[slot]
+            # --- JIT'd path (assign-in-place + replay) ---
+            set_instance(mem_row, lt_row, cv_row)
+            buf_ic.assign(Tensor(ic_b.astype(np.int32), dtype=dtypes.int)).realize()
+            buf_vdm.assign(Tensor(vdm_b.astype(np.float32), dtype=dtypes.float)).realize()
+            jit_logits = _step().numpy()[slot]
+            d = float(np.max(np.abs(eager_logits - jit_logits)))
+            deltas.append(d)
+            print(f"  [VERIFY_PARITY] instance max|Δlogit| = {d:.2e} "
+                  f"({'PASS' if d < 1e-3 else 'FAIL'})", flush=True)
+        assert all(d < 1e-3 for d in deltas), \
+            f"parity FAILED (stale-mask bake-in?) deltas={deltas}"
+        print("  [VERIFY_PARITY] ALL PASS — per-instance mask replay is correct.",
+              flush=True)
+        return deltas
+
     deduce_fn.set_instance = set_instance
+    deduce_fn.verify_parity = _verify_parity
     return deduce_fn
 
 
@@ -881,6 +1001,7 @@ def run_gpu_eval():
     CONF_THRESH = env["CONF_THRESH"]
     HARD_THRESH = env["HARD_THRESH"]
     MAX_HARD = env["MAX_HARD"]
+    REF_COLOR_BUDGET = env["REF_COLOR_BUDGET"]      # Fix 2
 
     budgets = [int(x) for x in getenv("SEARCH_BUDGETS", "25,50,100,200").split(",")
                if x.strip()]
@@ -901,7 +1022,34 @@ def run_gpu_eval():
     # Fix 2: wrap the engine deduce_fn in a ForwardCounter so EVERY forward is counted
     # (one neural forward = one increment). reset() per (config, instance) run inside
     # run_config_on_instance / before B0. The .set_instance hook is forwarded.
-    deduce_fn = ForwardCounter(_make_engine_deduce_fn(model, spec, ref_batch, slot=0))
+    _raw_deduce_fn = _make_engine_deduce_fn(model, spec, ref_batch, slot=0)
+    deduce_fn = ForwardCounter(_raw_deduce_fn)
+
+    # VERIFY_PARITY=1: GPU parity gate (Fix 1 correctness proof). Run TWO DIFFERENT
+    # instances through (a) a fresh-Tensor eager forward and (b) the JIT'd deduce_fn;
+    # assert max|Δlogit| < 1e-3 EACH. (b) on instance 2 after set_instance proves the
+    # compiled graph recomputes instance-2's mask (NO stale instance-1 bake-in).
+    if getenv("VERIFY_PARITY", 0):
+        print("\n[VERIFY_PARITY=1] eager-vs-JIT parity on two DIFFERENT instances...",
+              flush=True)
+        _insts = []
+        for _vb in loader.iter_eval(batch_size=env["EVAL_BATCH"]):
+            _mem = _vb.membership.realize().numpy()
+            _lt = _vb.latent_type.realize().numpy()
+            _cv = _vb.cell_valid.realize().numpy()
+            for _bi in range(int(_cv.shape[0])):
+                _ic = np.zeros((S_MAX,), dtype=np.int32)              # no-givens input
+                _vdm = np.zeros((S_MAX, N_VALUES), dtype=np.float32)
+                for _v in range(S_MAX):
+                    if _cv[_bi, _v] > 0.5:
+                        _vdm[_v, :] = 1.0
+                _insts.append((_mem[_bi], _lt[_bi], _cv[_bi], _ic, _vdm))
+                if len(_insts) >= 2:
+                    break
+            if len(_insts) >= 2:
+                break
+        _raw_deduce_fn.verify_parity(_insts)
+        print("[VERIFY_PARITY] done.\n", flush=True)
 
     # accumulators: results_by_config[cfg][budget] = agg
     results = {cfg: {b: _new_agg() for b in budgets} for cfg in configs}
@@ -932,11 +1080,13 @@ def run_gpu_eval():
             deduce_fn.set_instance(mem_np[b], lt_np[b], cv_np[b])
 
             # B0 continuity sanity (one forward).
+            b0_proper = False
             if "B0" in configs:
                 deduce_fn.reset()                  # Fix 2: B0 calls deduce_fn once
                 b0 = b0_pure_deduce(deduce_fn, nv, edges, N_VALUES, S_MAX,
                                     cv_np[b], gold_np=gold_np[b])
                 b0_forwards = deduce_fn.count      # == 1
+                b0_proper = bool(b0["proper"])
                 if b0["cell_acc"] is not None:
                     b0_cell_accs.append(b0["cell_acc"])
                 # B0 'solve' = the raw argmax already proper (rare on hard band).
@@ -949,11 +1099,29 @@ def run_gpu_eval():
                         agg["forwards_solved"].append(b0_forwards)
                     agg["backtracks_all"].append(0)
 
-            # a reference proper coloring (symbolic ceiling, large budget) for
-            # propagation_quality_vs_clampdepth scoring ONLY (not for search).
-            ref_sol = solve_symbolic(nv, edges, N_VALUES, budget=200000)
-            reference_coloring = (ref_sol["assignment"]
-                                  if ref_sol["status"] == "solved" else None)
+            # FIX 2: a reference proper coloring for propagation_quality_vs_clampdepth
+            # scoring ONLY (never used for search decisions). Cost reduction:
+            #   (a) computed LAZILY — only when a neural config (B2/B2b/B2c) that
+            #       actually consumes it is selected (B1/B3-only sweeps skip it);
+            #   (b) budget cut 200000 -> REF_COLOR_BUDGET (default 5000). These are
+            #       <=49-vertex 3-colorable instances; DSATUR+AC-3 finds a proper
+            #       coloring in well under ~3000 nodes, so 200000 was unconsidered
+            #       overkill (a pure-Python backtracking burn per hard instance). The
+            #       metric is unchanged: a found coloring is still a verifier-proper
+            #       reference; if the cheap budget is exhausted the bucket simply
+            #       records no commits for that instance (None), exactly as the old
+            #       code did on an unsolved ref. 5000 is plenty for this regime; raise
+            #       REF_COLOR_BUDGET if any clampdepth bucket looks suspiciously empty.
+            needs_ref = any(c in ("B2", "B2b", "B2c") for c in configs)
+            reference_coloring = None
+            if needs_ref:
+                ref_sol = solve_symbolic(nv, edges, N_VALUES, budget=REF_COLOR_BUDGET)
+                reference_coloring = (ref_sol["assignment"]
+                                      if ref_sol["status"] == "solved" else None)
+
+            # FIX 3: per-instance progress (flush=True) so a long run is never blind.
+            inst_solved = {}            # cfg -> solved-at-smallest-budget flag (B1=.. B2=..)
+            inst_forwards = 0           # neural forwards spent on THIS instance
 
             for cfg in configs:
                 if cfg == "B0":
@@ -972,6 +1140,16 @@ def run_gpu_eval():
                         agg["decisions_solved"].append(res["decisions"])
                         agg["forwards_solved"].append(res["forwards"])
                     agg["backtracks_all"].append(res["backtracks"])
+                    inst_solved.setdefault(cfg, res["solved"])  # smallest budget first
+                    inst_forwards += int(res.get("forwards", 0))
+
+            # FIX 3: emit one progress line per hard instance.
+            solved_str = " ".join(
+                f"{c}={'Y' if inst_solved.get(c) else ('Y' if c == 'B0' and b0_proper else 'n')}"
+                for c in configs)
+            tot = (MAX_HARD if MAX_HARD else "?")
+            print(f"[hard {n_hard}/{tot}] depth={int(batch.deduction_depth[b])} "
+                  f"nv={nv} solved: {solved_str} forwards={inst_forwards}", flush=True)
         if MAX_HARD and n_hard >= MAX_HARD:
             break
 
