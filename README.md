@@ -1,17 +1,26 @@
-# Mycelium: The Breathing Transformer
+# Mycelium: A General Factor-Graph Reasoning Engine
 
-A small (~87M-param) iterative transformer that solves constraint problems
-by **breathing** — K passes through 4 shared Pythia-410M layers, each pass
-one round of factor-graph inference in a 1024d residual stream.
+ONE engine, ANY factor graph. A small (~87M-param) iterative transformer that
+solves constraint problems by **breathing** — K passes through 4 shared
+Pythia-410M layers, each pass one round of factor-graph inference in a 1024d
+residual stream — driven *purely* from a factor graph (variables + typed factor
+nodes + membership), with no problem-specific architecture. **Generality is the
+thesis:** the same weights and the same forward run graph coloring, hierarchical
+Boolean circuits, and KenKen.
 
 **Author:** Bryce + Claude
-**Date:** 2026-06-16
+**Date:** 2026-06-20
 **Deadline:** December 25, 2026
 **Platform:** Shadow Glass (AMD 7900 XTX, 24GB) · tinygrad + AM driver · no ROCm
-**Target:** MATH-500 (current empirical bench: KenKen CSP / Property-2 adaptive-depth)
+**Target:** MATH-500 (current empirical benches: graph coloring · Boolean
+circuits · KenKen CSP)
 
 > **The authoritative current brief is [`CLAUDE.md`](CLAUDE.md)** (direction,
-> specs, editing rules). The active next-direction design note is
+> specs, editing rules). The two active design notes are the general symbolic
+> search tier
+> [`docs/general_factor_graph_search.md`](docs/general_factor_graph_search.md)
+> (Phases 0+2 built and validated) and — spec-stage only — the hyperbolic mask
+> generator
 > [`docs/hyperbolic_mask_generator_spec.md`](docs/hyperbolic_mask_generator_spec.md).
 > The pre-v98 conceptual arc (sine-wave breath, π-cycled RoPE, Controller /
 > Notebook / LookupTable loop) is archived at
@@ -20,131 +29,123 @@ one round of factor-graph inference in a 1024d residual stream.
 
 ---
 
-## The vision: a three-tier architecture around a learned Poincaré ball
+## The thesis: one engine, any factor graph
 
-The project is building toward **one architecture in three tiers**. The bottom
-tier is built and validated; the upper two are the active research program.
+The holy grail is **generality**. A problem's topology should not be hardwired.
+A factor graph — variables + typed factor nodes + membership — is the universal
+description, and Mycelium is **one engine that consumes that description and
+deduces**, with no problem-specific code in its core. The proven shape is two
+layers:
 
 ```
 ┌──────────────────────────────────────────────────────────────────────┐
-│ TIER 1 — STRUCTURAL MAPPING  (continuous topology embedding)           │
-│   A problem's geometry + dependency-logic → continuous coordinates     │
-│   in a learned Poincaré (hyperbolic) ball.                             │
-│   STATUS: SPEC-STAGE — not built or tested.                            │
-└───────────────────────────────┬────────────────────────────────────────┘
-                                │  coordinates
-┌───────────────────────────────┴────────────────────────────────────────┐
-│ TIER 2 — THE COMPILER  (the "virtual factor graph")                    │
-│   THE HYPERBOLIC MASK GENERATOR. Compiles the Tier-1 coordinates into   │
-│   the attention masks the executor consumes — instead of hardwiring     │
-│   them. A differentiable virtual machine.                              │
-│   STATUS: SPEC-STAGE — foothold NOT yet built or tested.               │
-│   docs/hyperbolic_mask_generator_spec.md                               │
-└───────────────────────────────┬────────────────────────────────────────┘
-                                │  attention masks
-┌───────────────────────────────┴────────────────────────────────────────┐
-│ TIER 3 — THE CORE EXECUTOR  (the validated v98 KenKen breather)        │
-│   Pure iterative deduction on whatever masks Tier 2 provides. Shared    │
+│ THE GENERAL DEDUCER  (the validated v98-lineage breathing executor)    │
+│   Iterative factor-graph inference from membership alone. Shared        │
 │   Pythia-410M L0-L3, K=16 breaths, per-breath delta_gate + calibration  │
-│   head, value-codebook readout, per-breath weighted-CE ladder,          │
-│   gold-free convergence instrument.                                    │
-│   STATUS: ★ VALIDATED AND LIVE ★  (the Property-2 K=16 curriculum run   │
-│           is training now). mycelium/kenken.py                         │
+│   head, value-codebook readout, per-breath weighted-CE ladder, a        │
+│   gold-free convergence instrument. Per-head attention masks are built  │
+│   from membership; the verification inlet carries each factor's         │
+│   relation. Byte-identical to the v98 KenKen executor on KenKen inputs. │
+│   STATUS: ★ VALIDATED ★ on THREE structurally different factor graphs:  │
+│           graph coloring · hierarchical Boolean circuits · KenKen.      │
+│           mycelium/factor_graph_engine.py  ·  mycelium/kenken.py        │
+└───────────────────────────────┬────────────────────────────────────────┘
+                                │  the deducer proposes (advisory ordering)
+┌───────────────────────────────┴────────────────────────────────────────┐
+│ THE GENERAL SYMBOLIC SEARCH TIER  ("Path B": deducer proposes,          │
+│   complete systematic search disposes)                                  │
+│   Sound + complete backtracking: verifier / GAC propagation / MRV       │
+│   var-ordering / LCV val-ordering, all DERIVED GENERICALLY from one      │
+│   per-factor-type predicate. DSATUR = MRV-on-coloring and AC-3 = GAC-   │
+│   on-not-equal, proven by construction. Validated on coloring, Boolean  │
+│   SAT, and KenKen with ZERO general-core changes.                       │
+│   STATUS: ★ Phases 0+2 BUILT + VALIDATED ★ (branch mycelium-factor-     │
+│           graph). Neural-ordering arm is spec-stage.                     │
+│   docs/general_factor_graph_search.md  ·  mycelium/csp_core.py          │
 └──────────────────────────────────────────────────────────────────────┘
 ```
 
-**What is built versus spec'd — read this carefully, it is the central
-honesty discipline of the project.** ONLY **Tier 3** is validated, built, and
-live. **Tiers 1 and 2** — the Poincaré embedding and the hyperbolic mask
-generator — are the **active research program**: spec'd in
-[`docs/hyperbolic_mask_generator_spec.md`](docs/hyperbolic_mask_generator_spec.md),
-with the foothold **not yet built or tested**. The three-tier picture is "the
-architecture we are building toward," with Tier 3 done and Tiers 1–2 as the
-next, spec-stage work. Nothing in this document states or implies that Tiers
-1–2 are built, working, or validated.
+**What is built versus spec'd — read this carefully, it is the central honesty
+discipline of the project.** The **general deducer** and the **general symbolic
+search tier (Phases 0+2)** are built and validated. The **Poincaré (hyperbolic)
+embedding + hyperbolic mask generator** — the would-be continuous-topology layer
+— remain **SPEC-STAGE, not built or tested**
+([`docs/hyperbolic_mask_generator_spec.md`](docs/hyperbolic_mask_generator_spec.md)),
+and the radial-depth "deep prize" they were meant to pay off has been **refuted
+on the DAG testbed** (see below). Nothing in this document states or implies
+that the hyperbolic layer is built, working, or validated.
 
-### Why hyperbolic (Tier 1)
+### The two channels — the clean conceptual frame
 
-Problem topologies are **hierarchical**: a cell sits inside a cage inside a
-board; a DAG sub-computation nests inside a larger computation. Hyperbolic
-space embeds hierarchy with low distortion — trees fit in a Poincaré ball
-almost isometrically where they crowd badly in Euclidean space. The radial
-coordinate becomes an **abstraction level**: near the origin = abstract /
-high-level, near the boundary = concrete / leaf-level. Mapping a problem's
-structure to a point cloud in this ball replaces rigid one-hot problem IDs
-with a **continuous structural signature**, which is what makes
-interpolation and transfer across problem classes even thinkable.
+A factor graph splits into two orthogonal channels, and every component lands in
+exactly one:
 
-### Why the generator is buildable where the perceiver wasn't (Tier 2)
+- **TOPOLOGY** — *who connects to whom.* This is membership, and it drives the
+  per-head **attention masks** in the deducer (its structural, geometric
+  channel).
+- **SEMANTICS** — *what relation must hold.* This is the per-factor-type
+  **predicate**. In the symbolic search tier the predicate registry IS the
+  semantics channel; in the neural deducer its twin is the **verification
+  inlet** (each factor's op / target / size, added as a feature, never as an
+  attention channel).
 
-Tier 2 generates each attention mask from the Tier-1 coordinates. The
-mechanism (per
-[`docs/hyperbolic_mask_generator_spec.md`](docs/hyperbolic_mask_generator_spec.md)):
+Topology is structural and shared across problems of a class; semantics is one
+small function per relation type. Holding them apart is what keeps the engine
+general: a new domain contributes only a predicate (+ a thin bridge), never new
+core machinery.
 
-- **One coordinate field PER RELATION** (row / col / cage). This is not a
-  convenience — it is a structural necessity. A single metric space cannot
-  hold row ∪ col ∪ cage at once: cell A=(0,0) must be close to B=(0,1) (same
-  row) and to C=(1,0) (same col), yet B and C must be far — and the triangle
-  inequality forbids it (`d(B,C) ≤ d(A,B)+d(A,C)`). v98 already resolves this
-  with separate head-groups; the geometry mirrors that exactly.
-- **Closed-form, anchored at t=0 to reproduce the v98 hard mask exactly.**
-  Each relation's groups become max-separated anchors on a shell of the ball;
-  the bias is `bias = -softplus(α·(d_hyp − r))`, with `r` and `α` *dialed*
-  (not fitted) so within-group ≈ 0 and between-group ≈ −1e4. Match to ~1e-3.
-- **Then RELAXED.** The coordinates unfreeze and co-train with the executor.
+### The deducer's real superpower: parallel deduction that scales
 
-This anchor discipline is **why Tier 2 is buildable where the perceiver was
-not**. The hyperbolic generator initializes to the validated hard mask and
-then relaxes — **learning relaxes a known geometry, it never discovers one
-from random.** That neutralizes the attention-bootstrap wall (task gradient
-through softmax is too weak to grow a new attention pathway from scratch —
-see the editing rules) that killed every perceiver attempt. The earlier
-"Mycelium blueprint" placed a *perceiver* as the executor; **that perceiver
-is retired** (see below), and the executor is now the validated v98 breather.
-Do not confuse this three-tier architecture with the retired perceiver-core.
+The headline empirical finding from the Boolean-circuit DAG testbed
+(`mycelium/circuit_data.py`): **distributed deduction is PARALLEL, and it
+scales sub-linearly in depth.** A 4-layer transformer performs ~4 attention
+hops per breath, so the engine resolves **~4 deduction levels per breath**. It
+therefore solves deep circuits in roughly `K_min ≈ D/4` breaths — e.g. depth-16
+circuits in ~4 breaths — `acc(K≈4, D=16) ≈ acc(K=16, D=16)`
+(`scripts/eval_circuit_scaling.py`). This is the engine's actual advantage:
+**parallel breadth, not depth-sequential descent.**
 
-### The deep prize: the geodesic engine
+### The general symbolic search tier (Path B)
 
-The payoff that makes the hyperbolic detour worth taking is a single chain of
-identities:
+When constraints are clean and verifiable, the deducer's value is the *ordering
+proposal*; a sound, complete symbolic search disposes — "the deducer proposes,
+complete systematic search disposes"
+([`docs/general_factor_graph_search.md`](docs/general_factor_graph_search.md)).
+The design's guarantee: the **only** domain-specific code is a per-factor-type
+predicate plus a thin bridge. Everything else — the verifier, GAC propagation,
+MRV variable-ordering, LCV value-ordering, backtracking — is derived
+generically. Two identities are proven *by construction*, not asserted:
+**DSATUR = MRV-on-coloring** and **AC-3 = GAC-on-not-equal**.
 
-> **deduction-depth ↔ radial traversal ↔ breath-count.**
+It is validated on three structurally different domains with **zero general-core
+changes** each:
 
-If the mask radius `r` can move inward as breaths progress, the breath cycle
-becomes a **geodesic engine**. The "exhale" (the waist projection) drives the
-representation *inward* toward the origin — toward abstraction — which
-**auto-widens the attention horizon** (a smaller `r` lets a cell attend
-further). The "inhale" descends back *outward* to project onto concrete local
-nodes. Each breath is then a literal radial traversal of the hierarchy, and
-the number of breaths a problem needs is read off the depth it must climb.
+- **graph coloring** — binary not-equal factors;
+- **Boolean SAT** — n-ary clause factors (GAC on a clause = unit propagation);
+- **KenKen** — param-carrying arithmetic cages + 7-ary all-different; this
+  needed only a new predicate + bridge + one specialized all-different
+  propagator slotted through the *existing* dispatch seam.
 
-This is pursued in **phases, deliberately NOT bundled** (per the spec's
-roadmap):
+### Where neural search would earn its keep (the honest limit)
 
-1. **Foothold — static global `r` (per relation).** Prove the geometry can
-   *hold* the mask AND that ONE shared coordinate field generalizes across
-   N=5/6/7. One variable only.
-2. **The climb — monotonic `r_k` per breath.** A non-decreasing radius
-   schedule: the continuous form of the v100 topological-staging mask. Read
-   off whether the learned schedule accelerates on deeper puzzles.
-3. **The ultimate — `r = f(|z|)`.** The horizon becomes a function of radial
-   position: the waist's inward climb auto-widens the horizon and the climb
-   *is* the expansion. Earn it; do not start here (that is the perceiver
-   bootstrap mistake repeated).
-
-**Testbed caveat (keep this).** KenKen is **flat** — lateral row/col/cage
-cliques, no nested DAG. The radial-depth bloom that Tiers 1–2 are designed to
-exploit is richest on **hierarchical** problems (e.g. GSM8K DAGs). So the
-N=5/6/7 foothold cleanly proves the static geometry, but a *muted* KenKen
-radial signal is the geometry faithfully reflecting a flat problem — NOT a
-manifold failure. Reserve the radial-depth verdict for a DAG testbed.
+The key empirical finding, stated honestly: **on clean verifiable CSPs,
+symbolic search dominates.** It solves for free with smaller trees; the learned
+*probabilistic* propagation arm was **net-negative** — a propagation commit must
+be logically FORCED, not a confident guess. So the neural deducer's demonstrated
+value is **generality + parallel deduction, NOT search value or ordering.**
+Neural search would only pay off where symbolic propagation is *unavailable* —
+soft, learned, or natural-language-specified constraints. That frontier is the
+forward research direction (below), not a current result.
 
 ---
 
-## Tier 3 — the validated executor (the breathing transformer)
+## The general deducer (the breathing transformer)
 
-Everything below is built, validated, and live. Tier 3 is the foundation the
-upper tiers extend; it is the v98 executor — **not a perceiver**.
+Everything below is built and validated. The deducer is the v98-lineage
+breathing executor — **not a perceiver** (the perceiver is retired; see below).
+`mycelium/factor_graph_engine.py` parameterizes it for an arbitrary typed factor
+graph and is **byte-identical to the v98 KenKen executor (`mycelium/kenken.py`)
+when driven with KenKen inputs** at matching hyperparameters.
 
 ### The one-paragraph mechanism
 
@@ -172,7 +173,7 @@ Each of K breaths runs the same code on the same shared weights:
    for token positions. **No π-cycled RoPE across breaths** — the legacy
    diversity mechanism is replaced by the per-head structural mask.
 4. **(Optional) projection waist.** An explicit lossy compression step
-   (the "exhale" Tier 2's geodesic roadmap will eventually drive radially).
+   (the "exhale").
 5. **Delta-gate residual update.**
    `x_{k+1} = x_pre + sigmoid(gate_k) · (x_post − x_pre)`. The gates are a
    single learnable `(K_max,)` tensor — static across problems, NOT
@@ -190,7 +191,7 @@ Sudoku design** (box → arithmetic cage):
 
 - Variable-N (N∈{5,6,7}) Latin-square + arithmetic-cage CSP on a fixed 7×7 =
   49-cell grid.
-- **K=16 breaths** (the live curriculum run).
+- **K=16 breaths** (the curriculum default).
 - **Hard row/col/cage attention masks**: a 5/5/5/1 head split (5 heads each
   for row / col / cage AllDifferent cliques + 1 global head). The cage clique
   is a symmetric per-puzzle membership mask built per batch.
@@ -211,13 +212,15 @@ the **readout codebook**, and **K**. Three "musical keys" recur:
 | Key | Topology | Rhythm |
 |---|---|---|
 | Cyclic | Loopy graph, symmetric AllDifferent cliques | Symmetric per-head masks (Sudoku / KenKen) |
-| Directional | Tree / DAG, asymmetric functional constraints | Topological staging (the climb) |
+| Directional | Tree / DAG, asymmetric functional constraints | Parallel level-resolution (~4 levels / breath; Boolean circuits) |
 | Chain | Sequential dependencies within a variable | Adjacent-only attention |
 
-Same instrument, different scale. Sudoku/KenKen are the cyclic key, where
-symmetric rotational breathing works. Tier 2's monotonic-`r_k` climb is the
-**continuous form of the directional-key staging mask** — which is exactly why
-a hierarchical DAG testbed is where the geometry will bloom.
+Same instrument, different scale. Coloring / Sudoku / KenKen are the cyclic key,
+where symmetric AllDifferent masks work; the Boolean-circuit DAG is the
+directional key, where the engine resolves several depth-levels per breath (the
+parallel-deduction finding above). The same shared weights and the same forward
+run all three — only the membership-derived masks, the readout codebook, and K
+change.
 
 ### Three vocabularies for one object
 
@@ -248,6 +251,54 @@ attention IS one Hopfield energy-descent step (Ramsauer et al., 2020). See
 
 ## Empirical status (honest)
 
+### Generality — one engine, three structurally different factor graphs
+
+The load-bearing result of this arc: the **same** breathing deducer — same
+shared weights, same forward — solves three factor graphs that share *nothing*
+structurally:
+
+- **graph coloring** (binary not-equal cliques),
+- **hierarchical Boolean circuits** (a layered AND/OR/NOT DAG;
+  `mycelium/circuit_data.py`),
+- **KenKen** (Latin-square + param-carrying arithmetic cages).
+
+The only per-domain inputs are the membership-derived masks, the readout
+codebook, and the verification inlet — no domain-specific architecture. The
+general wrapper (`mycelium/factor_graph_engine.py`) is **byte-identical to the
+v98 KenKen executor on KenKen inputs**, which pins generality to a validated
+baseline rather than a fresh claim.
+
+### Parallel deduction scales sub-linearly in depth
+
+On the Boolean-circuit DAG, the engine resolves **~4 deduction levels per breath**
+(a 4-layer transformer ≈ 4 attention hops). It solves deep circuits in roughly
+`K_min ≈ D/4` breaths — `acc(K≈4, D=16) ≈ acc(K=16, D=16)`
+(`scripts/eval_circuit_scaling.py`). The engine is **depth-parallel, not
+depth-sequential** — this is its real superpower.
+
+### Symbolic search dominates on clean CSPs (the honest negative)
+
+On clean, verifiable CSPs the **general symbolic search tier** (coloring / SAT /
+KenKen, zero general-core changes) solves with smaller trees, for free. The
+learned **probabilistic** propagation arm was **net-negative**: committing the
+deducer's confident guesses *causes* backtracks. The lesson, banked: *a
+propagation commit must be logically FORCED, not a confident guess.* The neural
+deducer's demonstrated value is therefore generality + parallel deduction, **not**
+search value/ordering — neural search would only earn its keep where symbolic
+propagation is unavailable (soft / learned / NL constraints).
+See [`docs/general_factor_graph_search.md`](docs/general_factor_graph_search.md).
+
+### Radial-depth "deep prize" — REFUTED on the DAG testbed (honest null)
+
+The hyperbolic layer's would-be payoff was *deduction-depth ↔ radial position ↔
+breath-count.* On the Boolean-circuit DAG — exactly the hierarchical testbed
+reserved for this verdict — it is a **clean null** (rho ≈ 0.13 against the
+matched depth-shuffle control; `scripts/analyze_circuit_rho.py`). The mechanism
+explains the null: the engine is **depth-PARALLEL** (~4 levels per breath), so it
+does not perform depth-ordered radial traversal. The radial-depth claim is not
+the expected payoff; treat the hyperbolic layer's transfer/interpolation value as
+unproven (see "What is spec-stage" below).
+
 ### The KenKen reframe — what the "0 puzzle-acc ceiling" actually was
 
 The apparent **"0 puzzle-acc ceiling"** on hard puzzles was an **eval-regime
@@ -272,12 +323,15 @@ honesty matters:
   ceiling) **sign-flipped**, which is the tell that the raw correlation was
   carried by ceiling-pinned puzzles.
 
-The **live K=16 curriculum run is training now.** Early peek (underpowered,
-not a verdict): the settled set is **deepening**, and **N=5 settled rho = 0.72
+A **K=16 curriculum retrain** is the powered retry. An early peek (underpowered,
+not a verdict) showed the settled set **deepening** and **N=5 settled rho = 0.72
 with rho_no_ceiling = 0.67** — encouraging and *consistent*, but underpowered
-against the bar. The analyzer was patched so a restriction-of-range no longer
-reports as a win — it reports **UNTESTABLE** — and `rho_no_ceiling` is now a
-**required companion control** on every read.
+against the bar; no powered verdict has been banked. The analyzer was patched so
+a restriction-of-range no longer reports as a win — it reports **UNTESTABLE** —
+and `rho_no_ceiling` is now a **required companion control** on every read.
+(Adaptive-depth is a separate question from the radial-depth null above:
+Property-2 asks whether *harder* puzzles settle later in breath-count, not
+whether breath-count tracks radial position.)
 
 ### Property-2 read discipline (the bar)
 
@@ -332,9 +386,12 @@ These rules are still load-bearing in current code:
   supervision (or a known-good init) for ~500 steps — task gradient through
   softmax is too weak to grow one from random. Codebook selection (≤32-way)
   bootstraps from task gradient alone; pointer attention (~30+ positions) does
-  not. This is precisely why Tier 2 **anchors to the validated hard mask and
-  relaxes** rather than learning a mask from scratch — and why the perceiver,
-  which had no such anchor, hit a gradient void.
+  not. This is why the engine **derives its masks from membership** (a known-good
+  structural input) rather than learning a topology from scratch — and why the
+  perceiver, which had no such anchor, hit a gradient void. (It is also why the
+  spec-stage hyperbolic generator was designed to *anchor* to the hard mask and
+  relax; in practice that relaxation is gradient-dead off the partition case —
+  see "What is spec-stage" below.)
 - **Property-2 read discipline** (above): min-based instrument, settled =
   correct, depth-spread first, `rho_no_ceiling` control, bar = lower-CI
   rho > 0.30 + p < 0.01.
@@ -360,8 +417,9 @@ SAME weights across all K breaths — no phase-specific copies.
 50304, max seq 512. 4 transformer layers in the iterated stack, shared across
 breaths.
 
-**K.** KenKen K=16 (live curriculum); v98 Sudoku used K=20. No global ceiling —
-AMD 7900 XTX JIT capacity (~20 breaths) is the practical limit.
+**K.** KenKen / coloring / circuits use K=16; v98 Sudoku used K=20. No global
+ceiling — AMD 7900 XTX JIT capacity (~20 breaths) is the practical limit. On the
+circuit DAG, `K_min ≈ D/4` suffices (parallel deduction).
 
 **Parameters.** ~87M total: ~35.7M shared transformer processing + ~51.5M
 token embeddings. The 7-value codebook and verification inlet add a small tail.
@@ -383,9 +441,30 @@ userspace driver (working since 2026-05-11 — Secure Boot off +
 
 ---
 
+## What is spec-stage (NOT built — do not imply otherwise)
+
+- **The Poincaré (hyperbolic) embedding + the hyperbolic mask generator** (the
+  would-be continuous-topology layer,
+  [`docs/hyperbolic_mask_generator_spec.md`](docs/hyperbolic_mask_generator_spec.md)).
+  **Spec only.** The geometry can reproduce hard masks **frozen** (byte-exact),
+  but its transfer/interpolation payoff is **unproven**, and mask relaxation is
+  **gradient-dead for non-partition factor graphs** (it has no gradient to learn
+  from off the clean-partition case).
+- **The radial-depth "deep prize"** (deduction-depth ↔ radial position ↔
+  breath-count) is **REFUTED** on the Boolean-circuit DAG testbed (honest null,
+  rho ≈ 0.13). The engine is depth-PARALLEL, not depth-sequential, so it does
+  not do depth-ordered radial traversal. This is not the expected payoff and
+  should not be framed as one.
+- **The neural-ordering search arm** (the deducer guiding which branch to try
+  first) is spec-stage; on clean CSPs symbolic search already dominates, so this
+  arm is reserved for the soft/learned-constraint frontier where symbolic
+  propagation is unavailable.
+
+---
+
 ## What we carry forward — and what we left behind
 
-**Forward (the validated Tier-3 design):**
+**Forward (the validated general-deducer design):**
 
 - Pythia-410M L0-L3 init, FULL weight sharing across breaths.
 - Iterative prefill (K passes, residual stream as persistent state).
@@ -398,15 +477,20 @@ userspace driver (working since 2026-05-11 — Secure Boot off +
   per-position activations — the mycelium principle made architectural.
 - The copy-machine principle (no mid-breath token gen) and the
   structural-not-learned diversity rule.
+- **Generality, made architectural** (`mycelium/factor_graph_engine.py`): masks
+  + readout + verification inlet derived from membership and a per-factor-type
+  predicate, so a new domain adds a predicate + bridge, never new core code.
+- **The general symbolic search tier** (`mycelium/csp_core.py` — Path B): a
+  sound, complete fallback that solves clean CSPs for free; the deducer's role
+  there is advisory ordering only.
 
 **Left behind:**
 
 - **The perceiver — RETIRED.** Refuted 5× as an add-on (v118–v121), and the
   v300 perceiver-CORE failed flat at chance. The earlier Mycelium blueprint
   used a perceiver as the executor; we **replaced it with the validated v98
-  executor**. Tier 3 is the v98 breather, not a perceiver — and the hyperbolic
-  generator's anchor-and-relax discipline (Tier 2) is precisely the thing the
-  perceiver lacked. See `memory/project_v121_perceiver_5x_refuted.md` and
+  executor**. The engine is the v98-lineage breathing deducer, **not** a
+  perceiver. See `memory/project_v121_perceiver_5x_refuted.md` and
   `memory/project_v118_ablation_perceiver_diagnosis.md`.
 - Llama 1B, LoRA atoms / continuous scales, straight-through estimators, soft
   token diversity (all v1–v3).
@@ -425,18 +509,31 @@ userspace driver (working since 2026-05-11 — Secure Boot off +
 
 ```
 mycelium/
-  kenken.py            — the live Tier-3 executor (v98 KenKen breather)
+  kenken.py            — the v98 KenKen breather (the regression oracle; never touched)
+  factor_graph_engine.py — the GENERAL deducer (parameterizes kenken.py for any
+                          typed factor graph; byte-identical on KenKen inputs)
+  circuit_data.py      — the hierarchical Boolean-circuit DAG testbed
+  graph_coloring_data.py — the graph-coloring testbed
+  csp_core.py          — the GENERAL symbolic search core (verifier / GAC / MRV /
+                          LCV / backtracking; ZERO domain identifiers)
+  csp_registry.py      — the per-factor-type predicate registry (the SEMANTICS channel)
+  csp_domains.py       — domain content: coloring + KenKen predicates and bridges
   pythia.py            — Pythia weight loader
   breathing.py         — Pythia L0-L3 backbone + LEGACY Controller / Notebook /
                           LookupTable (import-compat only; no trainer calls it)
 
 scripts/
-  kenken_train.py             — KenKen trainer (the live K=16 curriculum run)
+  factor_graph_train.py       — the general-deducer trainer (coloring / circuits)
+  kenken_train.py             — KenKen trainer (K=16 curriculum)
   build_kenken_data.py        — KenKen puzzle generator
+  search_coloring.py / search_kenken.py — the symbolic search drivers
+  eval_circuit_scaling.py     — the parallel-deduction (K_min ≈ D/4) read
+  analyze_circuit_rho.py      — the radial-depth null read (rho ≈ 0.13)
   analyze_kenken_property2.py — the gold-free Property-2 convergence read
 
 docs/
-  hyperbolic_mask_generator_spec.md — ★ the active Tier-1/Tier-2 design note ★
+  general_factor_graph_search.md    — ★ the search tier (Phases 0+2 built) ★
+  hyperbolic_mask_generator_spec.md — the hyperbolic layer design (SPEC-STAGE)
   archive/                          — pre-v98 historical content
     vision_v1_to_v95.md             — original architecture vision (deprecated)
     empirical_v45_to_v95.md         — GSM8K WaistController era results
@@ -454,8 +551,14 @@ clean; they live in git history.
 
 ---
 
-## Memory-note pointers
+## Design-doc + memory-note pointers
 
+- `docs/general_factor_graph_search.md` — the general symbolic search tier (the
+  predicate-driven core; the Path-B honest negative; Phases 0+2 built).
+- `mycelium/factor_graph_engine.py` (module docstring) — the general deducer and
+  its byte-identical-on-KenKen contract.
+- `mycelium/circuit_data.py` (module docstring) — the Boolean-circuit DAG testbed
+  (where parallel deduction was measured and the radial-depth claim was refuted).
 - `memory/project_kenken_property2_first_read_untestable.md` — the
   UNTESTABLE-by-restriction first read; rho_no_ceiling sign-flip; K=16 plan.
 - `memory/project_v98_sudoku_validates_paradigm.md` — the six-component recipe.
@@ -475,24 +578,31 @@ clean; they live in git history.
 
 ## Roadmap
 
-**Live now.** The Property-2 K=16 curriculum run (Tier 3). The read is gated on
-the bar above; the first read was UNTESTABLE-by-restriction and the K=16 run is
-the powered retry.
+**Proven this arc.** One general deducer on three structurally different factor
+graphs (coloring / circuits / KenKen); parallel deduction that scales
+sub-linearly in depth (`K_min ≈ D/4`); a general symbolic search tier (Phases
+0+2) validated on coloring / SAT / KenKen with zero general-core changes.
 
-**Active research program (Tiers 1–2).** The hyperbolic mask generator, per
-[`docs/hyperbolic_mask_generator_spec.md`](docs/hyperbolic_mask_generator_spec.md),
-in deliberately-unbundled phases:
+**The forward direction — the real frontier.** On clean verifiable CSPs,
+symbolic search already wins, so the neural deducer's *generality* is the prize
+to push, not its search value. The target is a problem class where **symbolic
+propagation isn't enough** — soft / probabilistic / learned / NL-specified
+constraints — while keeping the engine **strictly general** (no domain-specific
+core code) and **minimizing the weight retraining** needed to switch tasks.
+This is forward research, not a banked result.
 
-1. **Foothold** — frozen, calibrated, per-relation fields; replication sanity
-   (byte-match the boolean mask) then N=5/6/7 generalization (does ONE field
-   serve all three N). Not yet built or tested.
-2. **The climb** — monotonic `r_k` per breath (continuous topological staging).
-3. **The ultimate** — `r = f(|z|)`, the geodesic engine, on a hierarchical DAG
-   testbed where the radial-depth bloom can actually appear.
+**Still open (not closed).** Bank a *powered* Property-2 (adaptive-depth)
+verdict from a K=16 curriculum retrain, against the conservative bar above
+(min-based instrument, settled = correct, `rho_no_ceiling` control). This is the
+*harder-puzzles-settle-later* question, distinct from the refuted radial-depth
+claim.
 
-Each phase is **strictly additive and gated behind a banked result**: with
-`KENKEN_HYP_MASK` off, the forward is byte-identical to the validated executor,
-so the working engine is never at risk — the geometry only ships if it beats
-the frozen-hard-mask baseline.
+**Reserved / spec-stage (gated, additive, never on the critical path).** The
+hyperbolic mask generator
+([`docs/hyperbolic_mask_generator_spec.md`](docs/hyperbolic_mask_generator_spec.md))
+remains spec-only: the radial-depth prize is refuted on the DAG and relaxation is
+gradient-dead off the partition case, so it is pursued (if at all) only as a
+strictly-additive experiment behind a flag — with it off, the forward is
+byte-identical to the validated engine, so the working engine is never at risk.
 
 **Deadline.** December 25, 2026 — MATH-500.

@@ -5,11 +5,12 @@ This is the single place a domain's constraint semantics live (spec §2.2, §2.5
   * a thin BRIDGE that reads (membership, latent_type, value_domain_mask, params) out
     of the engine's tensors into a general csp_core.Problem.
 
-Phase 0 ships COLORING ONLY. KenKen and circuit predicates/bridges are present as
-DOCUMENTED STUBS / TODOs per the spec's leak table (§5) — the registry entry shapes
-are sketched so Phase 2/4 is a small table addition, but they raise NotImplementedError
-until their grounding (build_kenken_data.cage_ok / circuit_data._eval_gate) and the
-all-different specialized propagator (L-ALLDIFF) are wired.
+COLORING (Phase 0) and KenKen (Phase 2) are SHIPPED + VALIDATED — KenKen via cage_pred +
+problem_from_kenken + the L-ALLDIFF all-different specialized propagator, added here with
+ZERO csp_core/csp_registry edits (the one-trick-pony guarantee). The CIRCUIT predicate/
+bridge (Phase 4) remains a DOCUMENTED STUB per the spec's leak table (§5, L-ASYM): its
+registry-entry shape is sketched but it raises NotImplementedError until the ordered-scope
+bridge (gate output vs operands) and circuit_data._eval_gate grounding are wired.
 
 CONVENTIONS (must match the coloring data + the legacy csp_search module):
   * Values used inside the core are 0-indexed (a coloring color is 0..k-1).

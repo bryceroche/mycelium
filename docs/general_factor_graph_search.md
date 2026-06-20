@@ -1,8 +1,15 @@
 # General factor-graph search tier — design spec (two-layer, predicate-driven)
 
-**Status:** SPEC — not built. Refactor target of `mycelium/csp_search.py`
-(coloring-only today) + `scripts/search_coloring.py` (the neural driver). Author:
-Bryce + Claude.
+**Status:** PARTLY BUILT — Phases 0 and 2 are BUILT + VALIDATED + committed (branch
+`mycelium-factor-graph`: commit `6af771c` Phase 0, commit `afc4a2f` Phase 2). The
+predicate-driven core (`csp_core.py` + `csp_registry.py` + `csp_domains.py`) is real and
+solves coloring (byte-identical to the legacy reference), SAT, and KenKen with ZERO
+domain identifiers in the core. The later phases (Phase 1 generic-equivalence selftests,
+Phase 3 neural-ordering on KenKen, Phase 4 circuit + MCTS slot) and the NEURAL-ORDERING
+ARM remain SPEC-STAGE — no trained KenKen deducer ckpt exists yet, and the symbolic-vs-
+neural-ordering verdict (§6.2 Phase 3) has not been banked. Refactor target was
+`mycelium/csp_search.py` (coloring-only) + `scripts/search_coloring.py` (the neural
+driver). Author: Bryce + Claude.
 
 This tier WRAPS Tier 3 (the validated breathing deducer): **the deducer proposes the
 order, complete systematic search disposes.** It is general over the factor-graph
@@ -472,11 +479,11 @@ NQUEENS = {COL:  FactorType("col",  lambda f,p,v: -1 in v or v[0]!=v[1], arity_h
 
 | leak | verdict | resolution |
 |---|---|---|
-| **L-ALLDIFF**: KenKen row/col as ONE n-ary all-different is `7^7 ≈ 823k` > cap → generic GAC SKIPS it (forward-check only). | **DOCUMENTED EXTENSION POINT** | The predictable first specialized propagator: a Hall-interval / value-occurrence all-different via `FactorType.specialized_propagator`. KenKen is the first generality test AND the first place this is needed. Until shipped, KenKen rows/cols rely on forward-check, weaker than AC-3-strength (report this). |
+| **L-ALLDIFF**: KenKen row/col as ONE n-ary all-different is `7^7 ≈ 823k` > cap → generic GAC SKIPS it (forward-check only). | **RESOLVED (Phase 2, `afc4a2f`)** | SHIPPED: the all-different specialized propagator via `FactorType.specialized_propagator`. Sound and scope-guarded to the permutation regime (an adversarial review caught an off-permutation unsoundness in the naive value-occurrence form). KenKen rows/cols now propagate at full all-different strength, not just forward-check. |
 | **L-ARITY**: generic GAC enumerates `∏|D(other members)|` per revise — exponential in arity; safe for launch domains, blows up for wide cages / 9-cell sum cages. | **ABSORB w/ GUARD** | The `arity_cap` (mirrors `propagate():217`) makes the guard explicit; over-cap factors get an opt-in specialized propagator. The generic path is the CORRECTNESS reference; specialized ones are pure-speed swaps behind an equivalence test. |
-| **L-ASYM**: asymmetric n-ary factors (gate `out == f(ins)`; KenKen sub/div order-dependent) need to know WHICH scope member is the output / operand order, but membership encodes scope as an UNORDERED clique. | **DOCUMENTED — bridge boundary** | `Factor.scope` is an ORDERED tuple with a registry-understood convention (element 0 = output for gates). The bridge cannot recover order from a symmetric clique alone → the domain's `factor_params`/bridge supplies ordered scope from the data generator's side-tensors, NOT from membership. A real generality gap at the Layer-1/bridge boundary, resolved there, never in Layer 2. |
+| **L-ASYM**: asymmetric n-ary factors (gate `out == f(ins)`; KenKen sub/div order-dependent) need to know WHICH scope member is the output / operand order, but membership encodes scope as an UNORDERED clique. | **RESOLVED (Phase 2, `afc4a2f`) for KenKen** | Resolved exactly at the bridge boundary as specified: `problem_from_kenken`'s `cage_pred` is order-INDEPENDENT for sub/div (tries both operand orders), so no ordered-scope recovery from the symmetric clique is needed for KenKen. The general convention (`Factor.scope` ordered, element 0 = output) stands for gates (Phase 4, still spec). |
 | **L-MONO**: the hole-monotonicity contract (assigning a hole never flips `VIOLATED`→not) is REQUIRED for sound partial-pruning but not enforced; a non-monotone predicate (e.g. XOR-parity) silently breaks the gate. | **ABSORB w/ selftest** | Document loudly; add a per-registered-type randomized monotonicity selftest at registration (sample partial→full extensions, cheap, run once). |
-| **L-PARAM**: `edges_from_membership` assumes 2-ones rows + no params; KenKen op/target live in `cage_op`/`cage_target`, not membership. | **ABSORB** | The bridge takes a `factor_params(b, l)` callback to pull per-instance params from the domain's side-tensors. Without it only param-free types bridge; arithmetic factors need the plumbing (cleanly, one callback). |
+| **L-PARAM**: `edges_from_membership` assumes 2-ones rows + no params; KenKen op/target live in `cage_op`/`cage_target`, not membership. | **RESOLVED (Phase 2, `afc4a2f`)** | SHIPPED: `problem_from_kenken` pulls per-instance params from the domain's side-tensors and feeds the cage the EXACT integer `(op, target)` (not the lossy inlet bucket). Arithmetic factors bridge cleanly via the one callback, as specified. |
 | **L-TIE**: DSATUR-as-MRV recovers the same ORDER, not the byte-identical tie-stream of `dsatur_varorder` (sat-then-degree-then-index vs remaining-then-factors-then-index). | **ABSORB, note** | They coincide structurally on not-equal; the regression test compares DECISION/SOLVE counts on a fixed fixture set, not node-by-node identity. Risk is only to the "byte-identical refactor" phrasing, not correctness. |
 | **L-DENSE**: N-Queens / coloring materialize O(n²) binary factors; `var_factors` + the GAC queue scale with factor count. | **DOCUMENTED EXTENSION POINT** | Allow an "implicit/parametric" FactorType (one instance + a scope-generator covering an all-pairs relation) so the propagator iterates pairs without materializing n² objects. Until then correct but slow on dense domains. |
 | **L-CDCL**: SAT at scale wants CDCL (clause learning, VSIDS, watched literals), not DFS+GAC. | **OUT-OF-SCOPE → Layer-2 strategy** | "SAT falls out" means CORRECT + complete, NOT a good SAT solver. CDCL is a new Layer-2 strategy (zero domain code), which the contract explicitly supports. |
@@ -518,22 +525,45 @@ mycelium/csp_search.py  ->  SPLIT (coloring becomes a registered domain, not a d
 
 ### 6.2 Phased plan + gating (each phase gates the next)
 
-- **Phase 0 — refactor under green tests (no behavior change).** Split the module;
-  express coloring as `not_equal` + `problem_from_coloring`. **GATE:** the existing
-  coloring CPU selftest passes UNCHANGED; `solve_symbolic` decisions/backtracks
+- **Phase 0 — refactor under green tests (no behavior change). [DONE — commit `6af771c`]**
+  Split the module; express coloring as `not_equal` + `problem_from_coloring`. **GATE:**
+  the existing coloring CPU selftest passes UNCHANGED; `solve_symbolic` decisions/backtracks
   byte-identical on the C5/K4/3-prism fixtures; the `search_coloring.py` shim reproduces
   the published GPU coloring ablation numbers.
+  **RESULT:** refactored `mycelium/csp_search.py` into `csp_core.py` (general, ZERO domain
+  identifiers) + `csp_registry.py` + `csp_domains.py` (coloring predicate + bridge) +
+  `csp_coloring_legacy.py` (frozen reference) + `scripts/test_csp_parity.py`. Reproduces
+  coloring byte-identical (`solve_symbolic` new==old on 22+ fixtures; GPU anchors B0 0.025
+  / B1 0.85 / B2b 0.825 / B3 0.95 exact; `VERIFY_PARITY` max|dlogit|=0). Generality proven:
+  zero domain identifiers in core; a full SAT domain was added via predicate + bridge alone
+  (solved + certified UNSAT) touching neither core nor registry.
 - **Phase 1 — generic Layer-1 equivalence.** Prove `gac_propagate(not_equal)` reproduces
   `ac3_propagate` (decisions/backtracks identical on the coloring fixtures), MRV-pick ==
   DSATUR-pick on a forward-checked coloring state (incl. ties), and enumerator ==
   specialized propagator where one exists. **GATE:** byte-identical coloring B3; the CPU
   mock end-to-end still solves the 3-prism.
-- **Phase 2 — KenKen port (the FIRST GENERALITY TEST).** Add `all_diff` + `cage` registry
-  entries (cage REUSES `cage_ok`, EXACT integer target via the bridge, not the bucket) +
-  `problem_from_kenken`. Ship the all-different specialized propagator (L-ALLDIFF).
-  **GATE:** ZERO coloring identifiers in the KenKen path; symbolic B3 solves ≥ the
-  leak-free corpus's known-solvable set within budget (cross-check vs `build_kenken_
-  data.propagate` as ground truth).
+- **Phase 2 — KenKen port (the FIRST GENERALITY TEST). [DONE — commit `afc4a2f`]** Add
+  `all_diff` + `cage` registry entries (cage REUSES `cage_ok`, EXACT integer target via the
+  bridge, not the bucket) + `problem_from_kenken`. Ship the all-different specialized
+  propagator (L-ALLDIFF). **GATE:** ZERO coloring identifiers in the KenKen path; symbolic
+  B3 solves ≥ the leak-free corpus's known-solvable set within budget (cross-check vs
+  `build_kenken_data.propagate` as ground truth).
+  **RESULT:** KenKen solved by the SAME core — `git diff` shows only `csp_domains.py`
+  changed (`csp_core` / `csp_registry` untouched). Added `cage_pred` (partial-aware,
+  L-MONO-monotone) + `problem_from_kenken` bridge (L-PARAM exact `op,target`; L-ASYM
+  order-independent sub/div) + the L-ALLDIFF specialized all-different propagator (sound;
+  scope-guarded to the permutation regime after an adversarial review caught an
+  off-permutation unsoundness). Symbolic search solves 100% across all givens bands
+  (g40/g30/g20/g10); B3 (GAC + all-different) collapses the tree vs B1 (g10: 305 decisions
+  → 0.9). Files: `scripts/search_kenken.py`, `scripts/test_kenken_parity.py`.
+  **PHASE 2 FINDING (reinforces the spec's thesis).** On KenKen too, symbolic GAC + the
+  all-different propagator TRIVIALIZES the search (~1 decision even on the hardest g10 band),
+  so — exactly like coloring — there is little search headroom left for neural ordering.
+  This strengthens the §1 thesis: symbolic search dominates clean (cleanly-predicated) CSPs;
+  the neural deducer's value is GENERALITY + parallel deduction, not tree-pruning here. The
+  neural-ordering arm (Phase 3) remains GATED on a trained KenKen deducer (no checkpoint
+  yet) and is unlikely to earn its keep on clean CSPs — its real test is the soft /
+  non-symbolic frontier (§4).
 - **Phase 3 — neural ordering on KenKen.** Wire the KenKen deducer ckpt as ordering
   priors (MRV-tie entropy + LCV bias) via the SAME `_make_engine_deduce_fn` (already
   domain-agnostic; re-run `VERIFY_PARITY` on KenKen's 3-type membership before trusting
@@ -643,8 +673,14 @@ the topology (Poincaré) ball.
 
 ---
 
-**Status restated:** SPEC — not built. The grounding (coloring skeleton, `cage_ok`,
-`propagate()`'s GAC + arity guard, `_eval_gate`, the engine's per-variable marginals)
-is all in-tree and verified; this document specifies the refactor that lifts it into one
-predicate-driven, factor-graph-general search tier, with KenKen as the first
-zero-coloring-code generality test.
+**Status restated:** PARTLY BUILT — Phases 0 and 2 are DONE + VALIDATED + committed
+(branch `mycelium-factor-graph`: `6af771c` Phase 0, `afc4a2f` Phase 2). The
+predicate-driven core now exists and solves coloring (byte-identical to the legacy
+reference), SAT, and KenKen with ZERO domain identifiers in the core; the symbolic-search
+generality thesis is demonstrated, and on KenKen — as on coloring — symbolic GAC +
+all-different trivializes the search, leaving little headroom for neural ordering on clean
+CSPs. SPEC-STAGE still: Phase 1 generic-equivalence selftests, Phase 3 neural ordering
+(gated on a trained KenKen deducer that does not yet exist), Phase 4 circuit + MCTS slot,
+and the neural-ordering arm's verdict. The remaining grounding (`propagate()`'s GAC +
+arity guard, `_eval_gate`, the engine's per-variable marginals) is in-tree and verified;
+the neural arm's real test is the soft / non-symbolic frontier (§4), not clean CSPs.
