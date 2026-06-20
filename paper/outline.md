@@ -52,10 +52,10 @@ domains by swapping only a per-domain predicate file and a thin bridge. But on e
 quality axis we measured — clean CSPs, soft-MRF marginals, soft-MRF MAP, and the
 radial-depth hypothesis — the learned engine is dominated by a cheaper bespoke method.
 
-The paper's structure reflects this split. §3 establishes the generality result
-(the main positive claim). §4 establishes the deducer's characterized edge (amortized
-constraint propagation, ~4 hops/breath, linear in depth). §5 establishes the three
-honest negatives (the main boundaries on where the engine adds value). §6 explains
+The paper's structure reflects this split. §3 presents the architecture; §4 establishes
+the generality result (the main positive claim); §5 establishes the deducer's characterized
+edge (amortized constraint propagation, ~4 hops/breath, linear in depth); §6 establishes the
+three honest negatives (the main boundaries on where the engine adds value); §7 explains
 what the novelty actually is.
 
 **Contributions:**
