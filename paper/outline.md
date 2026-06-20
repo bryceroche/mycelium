@@ -18,9 +18,12 @@ is one per-factor-type predicate plus a thin bridge.
 
 **The contribution is generality, not solution quality.** The same engine solves graph
 coloring, Boolean SAT, KenKen, and hierarchical Boolean circuits with zero general-core
-edits each. The deducer's distributed deduction is *parallel* and scales sub-linearly
-in depth (~4 deduction levels per breath; depth-16 circuits in ~4 breaths, with
-K=4/K=16 cell-accuracy ratio of 0.95).
+edits each. The deducer resolves ~1 deduction level per transformer layer, so a breath
+(4 layers) advances the propagation front ~4 levels and depth-16 circuits need ~4 breaths
+(K=4/K=16 cell-accuracy ratio of 0.95) — LINEAR in depth (a 4× constant-factor
+amortization, since each breath's 4 layers all do useful propagation), with the
+parallelism in BREADTH (all nodes at a given level resolve together in one attention
+pass), NOT depth (resolved sequentially, ~1 level/layer).
 
 On inference **quality**, the engine beats nothing. On clean verifiable CSPs, symbolic
 search dominates (symbolic AC-3 0.95 vs deducer-alone 0.025; learned probabilistic
@@ -30,8 +33,9 @@ closes 100% of the MAP gap on flat 2D Ising). The radial-depth thesis
 (deduction-depth ↔ radial position ↔ breath-count) is refuted: ρ(settle-breath,
 topological-depth) = 0.134, well below the 0.30 bar. The Poincaré / hyperbolic
 mask generator is spec-stage; the perceiver is retired (5× refuted). **The honest
-edge is cross-domain generality plus amortized-fast parallel deduction — not superior
-inference quality.**
+edge is cross-domain generality plus amortized constraint propagation (4 hops/breath,
+breadth-parallel, layer-sequential at ~1 level/layer) — not superior inference
+quality.**
 
 ---
 
@@ -49,9 +53,10 @@ quality axis we measured — clean CSPs, soft-MRF marginals, soft-MRF MAP, and t
 radial-depth hypothesis — the learned engine is dominated by a cheaper bespoke method.
 
 The paper's structure reflects this split. §3 establishes the generality result
-(the main positive claim). §4 establishes the deducer's characterized edge (parallel
-deduction, sub-linear in depth). §5 establishes the three honest negatives (the main
-boundaries on where the engine adds value). §6 explains what the novelty actually is.
+(the main positive claim). §4 establishes the deducer's characterized edge (amortized
+constraint propagation, ~4 hops/breath, linear in depth). §5 establishes the three
+honest negatives (the main boundaries on where the engine adds value). §6 explains
+what the novelty actually is.
 
 **Contributions:**
 
@@ -60,10 +65,12 @@ boundaries on where the engine adds value). §6 explains what the novelty actual
    (proven by `git diff`: only `csp_domains.py` changes). The search-tier core
    (`csp_core.py` + `csp_registry.py`) has zero domain identifiers in executable code.
 
-2. **Characterized parallel-deduction edge.** ~4 deduction levels resolved per breath;
-   depth-16 circuits in ~4 breaths (K=4/K=16 ratio 0.95); per-depth accuracy flat
-   D6–D16. Framed honestly as depth-parallelism of the learned engine, not a speed
-   claim against bespoke solvers.
+2. **Characterized amortized-propagation edge.** ~1 deduction level per transformer
+   layer → ~4 levels resolved per breath; depth-16 circuits in ~4 breaths (K=4/K=16
+   ratio 0.95); per-depth accuracy flat D6–D16. Framed honestly as a 4× constant-factor
+   amortization (linear in depth, breadth-parallel and layer-sequential) — NOT
+   depth-parallelism, NOT sub-linear scaling, NOT a beat of the sequential-depth bound,
+   and not a speed claim against bespoke solvers.
 
 3. **Three rigorous negatives.** Clean CSPs: symbolic search dominates, neural
    propagation net-negative. Soft MRFs: cheap baselines win marginals and MAP, flat
@@ -240,10 +247,15 @@ bridge per domain, zero search-core edits.
 
 ---
 
-## 5. The deducer's characterized edge — generality + parallel deduction
+## 5. The deducer's characterized edge — generality + amortized constraint propagation (4 hops/breath)
 
-The deducer's distributed deduction is **parallel, not depth-sequential**, and scales
-sub-linearly in depth. Numbers from the recorded run on the trained `fg_circuit`
+The deducer resolves **~1 deduction level per transformer layer**; a breath is 4 layers,
+so it advances the propagation front **~4 levels per breath** and depth-D needs ~D/4
+breaths — **LINEAR in depth** (a 4× constant-factor amortization because each breath's 4
+layers all do useful propagation), NOT sub-linear, and it does NOT beat the fundamental
+sequential-depth bound. The parallelism is **BREADTH** (all nodes at a given level resolve
+together in one attention pass), NOT depth (the depth axis is resolved sequentially, ~1
+level per layer). Numbers from the recorded run on the trained `fg_circuit`
 checkpoint (commit `b8d73a1`, `scripts/eval_circuit_scaling.py`; the checkpoint is not
 in-tree, so these are recorded-run outputs, not script-reproducible without the
 checkpoint):
@@ -253,13 +265,21 @@ checkpoint):
 - **Per-depth accuracy is flat** (no depth ceiling): D6 0.958 / D8 0.966 / D10 0.944 /
   D12 0.953 / D14 0.935 / D16 0.923 — gentle ~3.5 pt decline over 10 depth levels.
 - **The mechanism.** Each breath is a 4-layer transformer ≈ ~4 attention hops of
-  constraint propagation → **~4 deduction levels resolve per breath** → `K_min ≈ D/4`,
-  sub-linear in depth. This is the loopy-BP wavefront signature.
+  constraint propagation → it advances the propagation front **~4 deduction levels per
+  breath ON AVERAGE** → `K_min ≈ D/4`, **linear in depth** (a 4× constant-factor
+  amortization, since each breath's 4 layers all do useful propagation). The residual
+  ~5% from extra breaths is iterative refinement (the loopy structure), so it is "~4
+  levels/breath on average", not a clean in-order wavefront. The depth axis is
+  SEQUENTIAL (~1 level/layer); the parallelism is BREADTH (all nodes at a given level
+  resolve together in one attention pass).
 
 The characterized edge is amortized: a fixed forward pass (within the AMD 7900 XTX
 JIT capacity of ~20 breaths) resolves depth that a sequential solver would pay for
-step-by-step. This is a claim about depth-parallelism on the circuit DAG — **not** a
-meta-learning, transfer, or train-to-larger-problems claim.
+step-by-step — but it does NOT beat the fundamental sequential-depth bound (a depth-D
+chain still needs ≥ D sequential propagation steps; the engine pays ~D layer-applications
+≈ D/4 breaths). This is a claim about a constant-factor amortization of constraint
+propagation on the circuit DAG — **not** depth-parallelism, sub-linear scaling,
+meta-learning, transfer, or a train-to-larger-problems claim.
 
 ---
 
@@ -354,9 +374,13 @@ of 0.30 → NULL.**
 The signal is real, not degenerate (15 unique settle-breaths, std 4.4, range [2, 16],
 p_perm 0.0001, n=10214; depth-shuffle null collapsed to ρ ≈ 0.02) — but it is well
 below the bar. The engine solves hierarchy (~0.97 cell, no depth ceiling) via
-**distributed constraint-satisfaction, not depth-ordered radial traversal**. This is
-*consistent* with §5: the engine is depth-PARALLEL (~4 levels per breath), which is
-precisely why settle-breath does not track depth.
+**distributed constraint-satisfaction, not depth-ordered radial traversal**. Note the
+honest TENSION with §5: a clean ~1-level/layer wavefront would actually PREDICT a coarse
+settle-breath ≈ depth/4 correlation, so the ρ=0.13 NULL is in *tension* with a clean
+in-order wavefront, NOT evidence for it. The two findings do not "support each other";
+they measure different things. The K-sweep (§5) gives the breath-budget scaling (~4
+levels/breath amortized); the settle-breath null shows breath-ALLOCATION does not cleanly
+track topological depth. The exact within-breath propagation ORDER is UNRESOLVED.
 
 The Poincaré / hyperbolic mask generator (the mechanism that was meant to deliver the
 radial-depth payoff) is **SPEC-STAGE**: the geometry can reproduce the hard masks
@@ -373,11 +397,13 @@ The contribution is **(a) cross-domain generality** — one engine, any factor g
 zero general-core edits, demonstrated on four structurally different domains —
 **(b) the rigorous negatives** — three independent, instrumented refutations that map
 exactly where a learned solver does and does not pay off — and **(c) the amortized
-framing** — the deducer's value is a fixed parallel forward pass (~4 deduction levels
-per breath), not better answers than a bespoke solver.
+framing** — the deducer's value is a fixed forward pass that advances the propagation
+front ~4 levels per breath (~1 level/layer, breadth-parallel and layer-sequential, a 4×
+constant-factor amortization), not better answers than a bespoke solver.
 
 **The reframe is the durable conclusion:** the deducer's proven edge is GENERALITY +
-AMORTIZED-FAST PARALLEL inference, NOT inference quality. On clean CSPs symbolic
+amortized constraint propagation (4 hops/breath, breadth-parallel, layer-sequential),
+NOT inference quality. On clean CSPs symbolic
 search dominates; on soft MRFs cheap baselines win; on the DAG the radial prize is
 refuted. The novelty is engineering + generality, stated as such, not extrapolated to a
 quality headline. The "learned loopy BP" framing is a framing of an approximate
@@ -423,7 +449,8 @@ The forward program for this engine is gated strictly on the verified base:
 The decisive test is neural ordering on top of symbolic GAC on KenKen (not coloring,
 where GAC trivializes the tree). Gated on a trained KenKen deducer checkpoint. If the
 ordering arm adds value, it will be the first positive neural-quality signal; if it
-doesn't, the "generality + amortized parallel deduction" framing stands as complete.
+doesn't, the "generality + amortized constraint propagation (4 hops/breath,
+breadth-parallel, layer-sequential)" framing stands as complete.
 
 ### 9.2 Broader factor-graph domains (structural generality, not quality)
 Additional domains (n-queens, scheduling, SMT fragments with bounded theories) test the
@@ -461,9 +488,10 @@ All numbers trace to committed artifacts (§11). Key results:
 - SAT: solved + UNSAT-certified through predicate + bridge API alone
 - Circuits: deducer D6–D16, cell_acc 0.923–0.958
 
-**Parallel deduction (§5):**
+**Amortized constraint propagation (§5):**
 - K=4 / K=16 ratio on depth-16 circuits: **0.95**
-- ~4 deduction levels per breath; `K_min ≈ D/4`
+- ~1 level/layer → ~4 deduction levels per breath; `K_min ≈ D/4` (linear in depth, a 4×
+  constant-factor amortization; breadth-parallel, layer-sequential)
 
 **Clean CSPs — neural propagation net-negative (§6.1):**
 - B2b (0.825) ≤ B1 (0.85); CONF_THRESH → 1.0 → byte-identical to B1
