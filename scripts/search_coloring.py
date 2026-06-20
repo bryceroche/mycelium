@@ -104,21 +104,101 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(_THIS_FILE)))
 
 import numpy as np  # noqa: E402
 
-from mycelium.csp_search import (  # noqa: E402
+# PHASE-0 REFACTOR: the search now drives through the GENERAL predicate-driven core
+# (mycelium/csp_core.py) + the coloring DOMAIN (mycelium/csp_domains.py), NOT the
+# old coloring-specific csp_search module. The neural deducer enters ONLY as ORDERING
+# PRIORS wrapping the general MRV/LCV; it is NEVER a propagate path (commit only when
+# forced) except behind the explicitly-kept refuted B2 auto-commit ablation arm.
+#   DSATUR  -> mrv_varorder on the not-equal registry (proven, parity-pinned)
+#   AC-3    -> gac_propagate on the not-equal predicate (proven, parity-pinned)
+#   LCV     -> the general lcv_valorder
+#   verifier-> verify_complete / is_consistent_partial (via the coloring wrappers)
+from mycelium.csp_core import (  # noqa: E402
     UNASSIGNED,
     CSPState,
-    assign_vertex,
+    Problem,
+    assign_var,
     backtrack_search,
-    build_adjacency,
-    edges_from_membership,
-    is_complete_proper,
-    is_proper_partial,
-    normalize_edges,
-    noop_propagate,
-    dsatur_varorder,
+    gac_propagate,
     lcv_valorder,
-    solve_symbolic,
+    mrv_varorder,
+    noop_propagate,
+    solve_symbolic as _core_solve_symbolic,
 )
+from mycelium.csp_domains import (  # noqa: E402
+    coloring_registry,
+    edges_from_membership,
+    is_complete_proper_coloring,
+    is_proper_partial_coloring,
+    problem_from_coloring,
+)
+# Coloring-only graph utilities (edge normalization / adjacency) used by the neural
+# plug-ins for entropy-degree tie-breaks and edge handling — pure coloring helpers,
+# kept in the legacy module's normalize_edges/build_adjacency (no search logic).
+from mycelium.csp_coloring_legacy import (  # noqa: E402
+    build_adjacency,
+    normalize_edges,
+)
+
+
+# ===========================================================================
+# COLORING<->GENERAL-CORE ADAPTERS (keep the driver's coloring-shaped call sites)
+# ===========================================================================
+# These translate the driver's coloring vocabulary (vertices/colors/edges) into the
+# general core's vocabulary (vars/values/factors), so the ablation grid, metrics, and
+# run commands are byte-for-byte preserved while the SEARCH runs through csp_core.
+
+def _coloring_problem(n_vertices, edges, k):
+    """Build a general not-equal Problem for one coloring instance (cached registry)."""
+    return problem_from_coloring(n_vertices, edges, k, registry=coloring_registry())
+
+
+def is_complete_proper(assignment, edges, n_vertices, k=None):
+    """Coloring success arbiter via the GENERAL verify_complete (csp_domains wrapper).
+    k defaults to (max color + 1) if omitted, matching the legacy signature's leniency
+    — but the driver always passes k, so this is just signature parity."""
+    if k is None:
+        present = [int(c) for c in (assignment.values() if isinstance(assignment, dict)
+                                    else assignment) if int(c) != UNASSIGNED]
+        k = (max(present) + 1) if present else 1
+    return is_complete_proper_coloring(assignment, n_vertices, edges, k)
+
+
+def is_proper_partial(assignment, edges, n_vertices=None):
+    """Coloring soundness gate via the GENERAL is_consistent_partial (csp_domains
+    wrapper). n_vertices defaults to (max index + 1); the driver always passes it."""
+    if n_vertices is None:
+        if isinstance(assignment, dict):
+            n_vertices = (max(assignment) + 1) if assignment else 0
+        else:
+            n_vertices = len(assignment)
+    present = [int(c) for c in (assignment.values() if isinstance(assignment, dict)
+                                else assignment) if int(c) != UNASSIGNED]
+    k = (max(present) + 1) if present else 1
+    return is_proper_partial_coloring(assignment, n_vertices, edges, k)
+
+
+def solve_symbolic(n_vertices, edges, k, budget=100000, seed=0):
+    """The B3 symbolic ceiling, coloring signature -> general core. Plugs
+    {gac_propagate(not_equal), mrv_varorder(=DSATUR), lcv_valorder} via the core's
+    solve_symbolic on the not-equal Problem."""
+    return _core_solve_symbolic(_coloring_problem(n_vertices, edges, k),
+                                budget=budget, seed=seed)
+
+
+def assign_vertex(state, v, c):
+    """Coloring alias for the general assign_var (var=vertex, value=color)."""
+    return assign_var(state, v, c)
+
+
+def dsatur_varorder(state):
+    """DSATUR == general MRV on the not-equal registry (proven, parity-pinned)."""
+    return mrv_varorder(state)
+
+
+# NOTE: the general lcv_valorder(state, v, prior=None) is imported directly and used by
+# the symbolic configs (B1/B3) with the legacy (state, v) call shape — its optional
+# `prior` arg defaults to None, so B1/B3 read identically to the legacy LCV.
 
 
 # ===========================================================================
@@ -267,18 +347,25 @@ def make_neural_plugins(
         """CLAMP assigned -> ONE forward -> AUTO-COMMIT confident, consistent,
         proper-keeping unassigned vertices.  Iterate until no new commit (each round
         re-deduces with the newly-committed vertices clamped — this is the productive
-        propagation that collapses the tree, G4)."""
+        propagation that collapses the tree, G4).
+
+        THIS IS THE REFUTED B2 AUTO-COMMIT ARM (spec §3.2): kept ONLY so the negative
+        result stays reproducible, run behind can_certify_unsat=False + a complete
+        fallback. It is NOT the default and NOT sanctioned — a sound commit must be
+        FORCED (gac's sole-survivor), never a 0.9-confident guess. The general core has
+        NO prior_biased_propagate; this arm lives entirely in the driver."""
         s = state.copy()
         n_clamped_before = s.n_assigned        # clamp-depth at entry (for stats)
+        n_real = state.problem.n_vars
         last_probs = None
-        # bounded fixpoint: at most n_vertices rounds (each commits >=1 or stops).
-        for _round in range(s.n_vertices + 1):
+        # bounded fixpoint: at most n_vars rounds (each commits >=1 or stops).
+        for _round in range(n_real + 1):
             probs_np = _run_deduce(s)
             last_probs = probs_np
             committed_any = False
             # gather candidates sorted by confidence so the most-certain commit first.
             cands = []
-            for v in s.unassigned_vertices():
+            for v in s.unassigned_vars():
                 if cell_valid_np[v] <= 0.5:
                     continue
                 p = probs_np[v]
@@ -286,15 +373,15 @@ def make_neural_plugins(
                 cands.append((float(p[top]), v, top))
             cands.sort(reverse=True)            # highest confidence first
             for conf, v, top in cands:
-                if s.colors[v] != UNASSIGNED:
+                if s.values[v] != UNASSIGNED:
                     continue                    # already committed this round
                 if conf <= conf_thresh:
                     break                       # rest are below threshold
                 if top not in s.domains[v]:
                     continue                    # SOUND: respect domain pruning
-                cand = assign_vertex(s, v, top)
+                cand = assign_var(s, v, top)
                 # SOUND: never commit a color that violates an assigned neighbour.
-                if not is_proper_partial(cand.colors, edges_n, s.n_vertices):
+                if not is_proper_partial(cand.values, edges_n, n_real):
                     continue
                 _record_autocommit(v, top, n_clamped_before)
                 s = cand
@@ -308,37 +395,34 @@ def make_neural_plugins(
         return s
 
     def neural_entropy_varorder(state: CSPState) -> int:
-        """Highest-ENTROPY unresolved vertex (G2).  Reads stashed entropy; if absent
-        (no propagation ran), runs one forward to compute it."""
+        """MRV primary; deducer-ENTROPY as the tie-break among the MRV-optimal set (G2,
+        finding c). This is the SANCTIONED ordering-prior path (spec §3.2): the neural
+        signal reorders, the verifier+GAC prune. Reads stashed entropy; if absent (no
+        propagation ran), runs one forward to compute it.
+
+        Implemented as the general mrv_varorder with a per-var entropy `prior`, so it
+        REDUCES to pure MRV when the deducer is absent/uninformative (strictly additive).
+        """
         ent = state.meta.get("entropy")
         if not ent:
             probs_np = _run_deduce(state)
             ent = _entropy_per_vertex(probs_np)
-        best_v = UNASSIGNED
-        best_key = None
-        for v in state.unassigned_vertices():
-            if cell_valid_np[v] <= 0.5:
-                continue
-            e = ent.get(v, 1.0)
-            deg = len(adj[v]) if v < len(adj) else 0
-            # max entropy, then max degree, then min index (deterministic).
-            key = (e, deg, -v)
-            if best_key is None or key > best_key:
-                best_key = key
-                best_v = v
-        return best_v
+        # Build a length-n_vars prior: entropy where known, else 0 (no bias).
+        n_real = state.problem.n_vars
+        prior = [float(ent.get(v, 0.0)) for v in range(n_real)]
+        return mrv_varorder(state, prior=prior)
 
     def neural_policy_valorder(state: CSPState, v: int) -> list:
-        """Candidate colors ordered by deducer softmax descending, filtered to D(v).
-        NOTE: success does NOT depend on the policy being a good prior — the verifier
-        prunes — but policy order still beats arbitrary (gold is 2nd-choice ~69%)."""
+        """LCV order biased by the deducer marginal (advisory, domain-filtered; spec
+        §3.2: prob-then-LCV, value-order 2nd-order). Implemented as the general
+        lcv_valorder with a per-value `prior` = the deducer softmax for v, so it reduces
+        to pure LCV when the deducer is absent (strictly additive)."""
         beliefs = state.meta.get("beliefs") or {}
         p = beliefs.get(v)
         if p is None:
             probs_np = _run_deduce(state)
             p = probs_np[v].tolist()
-        order = sorted(range(k), key=lambda c: -p[c])
-        return [c for c in order if c in state.domains[v]]
+        return lcv_valorder(state, v, prior=list(p))
 
     return neural_propagate, neural_entropy_varorder, neural_policy_valorder
 
@@ -426,6 +510,7 @@ def run_config_on_instance(
     captured by the shared ForwardCounter (so the fallback cost is counted honestly).
     """
     edges_n = normalize_edges(edges, n_vertices)
+    problem = _coloring_problem(n_vertices, edges_n, k)   # the general not-equal Problem
 
     # Fix 2: reset the per-run forward counter (no-op for symbolic configs / a plain
     # deduce_fn). Read .count back after the run to attribute forwards to THIS config.
@@ -433,12 +518,13 @@ def run_config_on_instance(
         deduce_fn.reset()
 
     if config == "B3":
+        # B3 ceiling = gac_propagate(not_equal) + mrv(=DSATUR) + lcv via the core.
         res = solve_symbolic(n_vertices, edges_n, k, budget=budget, seed=seed)
     elif config == "B1":
         res = backtrack_search(
-            n_vertices, edges_n, k,
+            problem,
             propagate_fn=noop_propagate,
-            varorder_fn=dsatur_varorder,
+            varorder_fn=dsatur_varorder,       # == general mrv_varorder
             valorder_fn=lcv_valorder,
             budget=budget, seed=seed,
             can_certify_unsat=True,            # B1 is complete -> may certify unsat
@@ -458,7 +544,7 @@ def run_config_on_instance(
             calls it, so the only forwards charged to the fallback are the wasted
             neural ones already spent before the dead-end."""
             return backtrack_search(
-                n_vertices, edges_n, k,
+                problem,
                 propagate_fn=noop_propagate,
                 varorder_fn=dsatur_varorder,
                 valorder_fn=lcv_valorder,
@@ -468,7 +554,7 @@ def run_config_on_instance(
 
         if config == "B2":
             res = backtrack_search(
-                n_vertices, edges_n, k,
+                problem,
                 propagate_fn=prop,
                 varorder_fn=ent_var,
                 valorder_fn=pol_val,
@@ -478,7 +564,7 @@ def run_config_on_instance(
             )
         elif config == "B2c":              # neural prop + ENTROPY varorder + LCV valorder
             res = backtrack_search(         # isolates value-ordering vs B2 (entropy fixed)
-                n_vertices, edges_n, k,
+                problem,
                 propagate_fn=prop,
                 varorder_fn=ent_var,
                 valorder_fn=lcv_valorder,
@@ -488,7 +574,7 @@ def run_config_on_instance(
             )
         else:  # B2b: neural prop but symbolic orderer + valorder (ablate the orderer)
             res = backtrack_search(
-                n_vertices, edges_n, k,
+                problem,
                 propagate_fn=prop,
                 varorder_fn=dsatur_varorder,
                 valorder_fn=lcv_valorder,
@@ -1394,7 +1480,7 @@ def _selftest() -> bool:
     prop_bug, ent_bug, pol_bug = make_neural_plugins(
         corner_mock, n, edges, k, s_max, cell_valid_np, conf_thresh=0.9)
     res_bug = backtrack_search(
-        n, edges, k, propagate_fn=prop_bug, varorder_fn=ent_bug,
+        _coloring_problem(n, edges, k), propagate_fn=prop_bug, varorder_fn=ent_bug,
         valorder_fn=pol_bug, budget=300, seed=1,
         can_certify_unsat=True, fallback_fn=None)
     _check("fix1: WITHOUT guard, corner-trap propagator returns the BUG (false 'unsat')",
