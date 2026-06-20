@@ -1,803 +1,511 @@
-# The Shape of Thought: Iterative Reasoning Through Learned Energy Descent on Factor Graphs
+# Mycelium: A General Factor-Graph Reasoning Engine
 
-**Authors:** Bryce Roche, Claude Opus 4.7 (Anthropic)
+**Authors:** Bryce Roche, Claude (Anthropic)
 **Domain:** theshapeofthought.ai
+**Status:** WORKING DRAFT — aligned to `docs/general_engine_results.md` (2026-06-20)
 
 ---
 
 ## Abstract
 
-We introduce the breathing transformer, a small (87M parameter, ~377MB, phone-deployable) architecture that performs iterative reasoning by looping four shared transformer layers K times. Each iteration descends an energy landscape defined by the constraint structure of the input, yielding three equivalent descriptions: a learned RK4-stage ODE integrator, an instance of approximate belief propagation on a factor graph, and iterated modern Hopfield energy descent. On Sudoku, the architecture achieves 79% puzzle accuracy on easy puzzles at K=20, with puzzle accuracy exceeding independent-cell predictions by **seven orders of magnitude** — the empirical signature of joint MAP inference, distinct from per-variable classification.
+We introduce Mycelium, a **general factor-graph reasoning engine**: one engine for any
+factor graph (variable nodes + typed factor nodes + membership), with no per-domain
+core surgery between problem classes. The engine has two validated halves — a general
+**deducer** (the v98-lineage breathing transformer: Pythia-410M L0–L3 shared across
+K=16 breaths, framed as learned loopy belief propagation) and a general symbolic
+**search tier** ("deducer proposes, complete search disposes"), whose only domain code
+is one per-factor-type predicate plus a thin bridge.
 
-The architecture's iterative benefit is conditional on a precise design principle: **the breathing rhythm must match the underlying factor graph's topological symmetry**. Rotational breathing (π-cycled position encoding) succeeds on cyclic factor graphs (Sudoku, 79%); the same mechanism fails on tree-structured factor graphs at 9% chance accuracy. Topological staging — attention masks that progressively widen across breaths — restores belief-propagation behavior on trees, reaching 40-48% cell accuracy on synthetic arithmetic factor graphs with monotonic accuracy decline by DAG depth (the empirical mixing-time signature of message passing). A learned compression bottleneck adds an additional 6-7 points when training instances share structural priors, with projection-based and codebook-based compression statistically indistinguishable.
+**The contribution is generality, not solution quality.** The same engine solves graph
+coloring, Boolean SAT, KenKen, and hierarchical Boolean circuits with zero general-core
+edits each. The deducer's distributed deduction is *parallel* and scales sub-linearly
+in depth (~4 deduction levels per breath; depth-16 circuits in ~4 breaths, with
+K=4/K=16 cell-accuracy ratio of 0.95).
 
-The same architecture cannot solve natural-language math problems alone (2.7% on GSM8K across 17 monolithic variants) — the bottleneck is comprehension, not iteration. We propose a two-phase decomposition (large parser one-shot, then small breathing transformer iteratively) and close with four falsifiable predictions, each a concrete experiment testable in 1-2 weeks of work. The framework predicts when iteration is the right architectural choice based on structural properties of the data.
+On inference **quality**, the engine beats nothing. On clean verifiable CSPs, symbolic
+search dominates (symbolic AC-3 0.95 vs deducer-alone 0.025; learned probabilistic
+propagation is net-negative with no positive operating point at any CONF_THRESH). On
+soft MRFs, cheap baselines close the gap (loopy BP for marginals; simulated annealing
+closes 100% of the MAP gap on flat 2D Ising). The radial-depth thesis
+(deduction-depth ↔ radial position ↔ breath-count) is refuted: ρ(settle-breath,
+topological-depth) = 0.134, well below the 0.30 bar. The Poincaré / hyperbolic
+mask generator is spec-stage; the perceiver is retired (5× refuted). **The honest
+edge is cross-domain generality plus amortized-fast parallel deduction — not superior
+inference quality.**
 
 ---
 
 ## 1. Introduction
 
-Large language models reason in a single forward pass. Each token prediction flows through N layers exactly once. The computational budget is fixed regardless of problem difficulty — a trivial addition and a complex multi-step derivation receive identical compute.
+A factor graph — variable nodes, typed factor nodes, and a membership relation — is
+general enough to express graph coloring, Boolean SAT, arithmetic CSPs (KenKen), and
+layered Boolean circuits in the same vocabulary. The central question of this work is
+whether ONE engine, with no per-domain core surgery, can reason over all of them.
 
-We propose an alternative: a small model (87M parameters) that ITERATES. Four transformer layers are looped K times, with each iteration ("breath") refining the representation through diverse attention geometry and compressed commitment. The architecture implements a form of iterative prefill — all reasoning occurs in representation space before any token generation.
+We answer **yes for generality** and **no for inference quality**. The same engine
+(same weights, same architecture, same forward pass) solves four structurally different
+domains by swapping only a per-domain predicate file and a thin bridge. But on every
+quality axis we measured — clean CSPs, soft-MRF marginals, soft-MRF MAP, and the
+radial-depth hypothesis — the learned engine is dominated by a cheaper bespoke method.
 
-The key insight: iterative attention with shared weights on a structured problem implements approximate belief propagation on the problem's factor graph. Each breath is one round of message passing. The representation converges to the factor graph's fixed point — the solution.
-
-We validate this on Sudoku, a canonical constraint satisfaction problem with explicit factor structure (27 AllDifferent constraints over 81 variables). The breathing transformer achieves 79.0% puzzle accuracy on unseen easy puzzles at K=20 and generalizes to medium-difficulty puzzles never seen during training, all within 87M parameters and 377MB peak memory.
+The paper's structure reflects this split. §3 establishes the generality result
+(the main positive claim). §4 establishes the deducer's characterized edge (parallel
+deduction, sub-linear in depth). §5 establishes the three honest negatives (the main
+boundaries on where the engine adds value). §6 explains what the novelty actually is.
 
 **Contributions:**
 
-1. The breathing transformer architecture: shared-weight iterative prefill with π-cycled attention diversity, waist-bottleneck commitment, and adaptive convergence detection
+1. **Generality result.** One engine, four factor-graph domains (graph coloring,
+   Boolean SAT, KenKen, Boolean circuits), zero general-core edits between domains
+   (proven by `git diff`: only `csp_domains.py` changes). The search-tier core
+   (`csp_core.py` + `csp_registry.py`) has zero domain identifiers in executable code.
 
-2. Empirical demonstration that iterative attention implements approximate belief propagation, evidenced by 7-order-of-magnitude correlation above independent-variable predictions
+2. **Characterized parallel-deduction edge.** ~4 deduction levels resolved per breath;
+   depth-16 circuits in ~4 breaths (K=4/K=16 ratio 0.95); per-depth accuracy flat
+   D6–D16. Framed honestly as depth-parallelism of the learned engine, not a speed
+   claim against bespoke solvers.
 
-3. Theoretical connection to modern Hopfield energy descent and loopy BP, establishing breathing transformers as a general substrate for energy-based inference
+3. **Three rigorous negatives.** Clean CSPs: symbolic search dominates, neural
+   propagation net-negative. Soft MRFs: cheap baselines win marginals and MAP, flat
+   and DAG. Radial-depth: refuted (ρ = 0.134). The negatives are as much the science
+   as the generality win.
 
-4. Practical demonstration of trading model size for thinking time: 87M parameters achieving reasoning depth equivalent to ~600M single-pass models, fitting in 377MB for edge deployment
+4. **Architecture: the two-channel separation.** TOPOLOGY (who connects whom → masks)
+   and SEMANTICS (what relation holds → verification inlet) are kept strictly separate.
+   This discipline, validated by v100's "C2 death" (folding op-type into mask channels
+   failed), is why the engine generalizes across domains.
 
 ---
 
 ## 2. Related Work
 
-### 2.1 Iterative and Recurrent Transformers
+### 2.1 Iterative and Recurrent Neural Reasoners
 - Universal Transformers (Dehghani et al., 2019) — shared weights with halting
 - Adaptive Computation Time (Graves, 2016) — learned stopping
 - DEQ (Bai et al., 2019) — implicit-depth equilibrium models
-- Our distinction: π-cycled diversity prevents representational collapse across iterations; waist bottleneck forces commitment per iteration
+- Our distinction: the breathing transformer performs iterative PREFILL (reasoning in
+  residual space), not autoregressive decoding; the per-breath weighted-CE ladder is
+  load-bearing for the K axis.
 
-### 2.2 Belief Propagation and Neural Networks
-- NeuroSAT (Selsam et al., 2019) — GNN-based SAT via message passing
-- Recurrent Relational Networks (Palm et al., 2018) — Sudoku via learned message passing
-- Graph Neural Networks as BP (Yedidia et al., 2003; Dai et al., 2016)
-- Our distinction: standard transformer attention (not GNN) implements BP; factor topology as inductive bias via attention masking
+### 2.2 Neural Combinatorial Optimization and Solvers
+- NeuroSAT (Selsam et al., 2019) — GNN-based SAT via learned message passing
+- Recurrent Relational Networks (Palm et al., 2018) — Sudoku via GNN
+- EfficientSAT / Pointer Networks (Vinyals et al., 2015)
+- Our distinction: we measure honestly where the learned engine is dominated by
+  symbolic search (CONF_THRESH sweep, §5.1); we do not claim quality wins.
 
-### 2.3 Energy-Based Models and Attention
-- Modern Hopfield Networks (Ramsauer et al., 2021) — softmax attention as energy descent
-- Hopfield networks (1982) — associative memory via energy minimization
-- Our contribution: K breaths = K steps of Hopfield energy descent; empirical demonstration of convergence
+### 2.3 Constraint Programming and CSP Solvers
+- AC-3, DSATUR, LCV (classical); Gecode, Chuffed, OR-Tools (modern solvers)
+- Our search tier proves (by construction) that GAC-is-AC-3 and MRV-is-DSATUR, while
+  remaining domain-free. The comparison is honest: AC-3 ceiling 0.95 vs deducer 0.025
+  on coloring.
 
-### 2.4 Small Model Reasoning
-- Chain-of-thought (Wei et al., 2022) — reasoning through token generation
-- Our distinction: reasoning in representation space, not token space; no copies-of-copies; fixed memory, variable compute
+### 2.4 Belief Propagation and Factor Graphs
+- Yedidia et al. (2003): BP on factor graphs; Ramsauer et al. (2021): softmax
+  attention as modern Hopfield energy descent
+- Our claim is a FRAMING (the deducer IS loopy BP, approximately), not a claim that
+  it inherits BP convergence guarantees. The soft-MRF experiments (§5.2) test this
+  framing and find cheap loopy BP already wins there too.
 
 ---
 
 ## 3. Architecture
 
-The breathing transformer is small (87M parameters total: 35.7M shared transformer layers + 51.5M token embeddings) and structured around six load-bearing components. We describe each as implemented in our best-performing v100 / v101 variants on factor graphs and v98 on Sudoku. The components share infrastructure; differences between Sudoku and factor-graph variants are noted where they apply.
+### 3.1 The two channels — the conceptual frame
 
-### 3.1 The breathing loop
+A factor graph decomposes into two orthogonal channels:
 
-The core mechanism is K iterations of 4 shared transformer layers over the same input. The 4 layers are initialized from Pythia-410M's first four blocks (L0-L3) and remain shared across all K iterations:
+- **TOPOLOGY** — *who connects to whom* (membership). Drives the per-head attention
+  masks in the deducer; drives neighborhood / GAC incidence in the search tier.
+- **SEMANTICS** — *what relation must hold* (the predicate / verification content).
+  In the deducer it is the per-factor verification inlet; in the search tier it is the
+  predicate registry.
+
+The channels are independent: graph coloring and a hypothetical "adjacent-equal"
+problem share the *same* topology but have *opposite* predicates. Keeping the two
+separate is not optional — v100's "C2 death" (folding constraint semantics into the
+mask channel) failed (`memory/project_factor_graph_two_channels.md`), which is why the
+rule reads *arithmetic as VERIFICATION, never an op-type mask channel.*
+
+### 3.2 The general deducer (the breathing transformer)
+
+The deducer is the v98-lineage breathing transformer, **byte-identical to the validated
+v98 KenKen executor when driven with KenKen inputs** (same architecture, same shared
+weights, same forward). It is **not a perceiver** — the perceiver is retired (§7).
 
 ```
-state_0 = embed_input(problem)                           # initial residual
+state_0 = embed_input(problem)
 for k in 0, 1, ..., K-1:
-    h = state_k + breath_embed[k]                        # per-breath marker
-    h = Layer_0(h, attn_mask_k)
+    h = state_k + breath_embed[k] + inlet_h        # per-breath marker + semantics
+    h = Layer_0(h, attn_mask_k)                    # topology mask
     h = Layer_1(h, attn_mask_k)
     h = Layer_2(h, attn_mask_k)
     h = Layer_3(h, attn_mask_k)
-    state_{k+1} = state_k + delta_gate[k] * (h - state_k)  # gated update
-final_logits = state_K @ output_codebook.T              # decode at end
+    state_{k+1} = state_k + delta_gate[k] * (h - state_k)
+cell_logits_k = layernorm(state_k) @ codebook.T   # per-cell independent softmax
 ```
 
-K = 20 on Sudoku, K = 10 on factor graphs (the upper limit determined by AMD JIT capacity). Every breath performs the SAME operation; gradients pull in a consistent direction because the output target is constant across breaths. Per-breath weighted CE supervision (weight_k = 1 + k/(K-1)) trains all breaths simultaneously, with later breaths weighted more.
-
-**Per-breath orthogonal additive embedding.** `breath_embed: (K, H)` is QR-orthonormalized at initialization with scale 0.5. Each breath gets a distinct orthogonal direction added to the residual; this separates gradients across iterations of shared-weight inference without specializing the underlying computation. Without per-breath markers, the K iterations collapse to equivalent updates and the per-breath ladder vanishes.
-
-**delta_gate per breath.** `delta_gate: (K,)` is a learnable per-breath scalar (initialized to 1.0) that controls the step size of each iteration. Functionally it plays the role of step size in an ODE integrator (§8.2). After training, the magnitude of delta_gate per breath measures the model's convergence: large early, small late as the system approaches its fixed point.
-
-### 3.2 Topological staging — the key innovation for tree topologies
-
-For directional factor graphs (arithmetic DAGs, dependency graphs), each breath's attention mask is restricted to variable positions at DAG depth ≤ k. The mask grows monotonically with k:
-
-```
-visible_at_breath_k = { v : DAG_depth(v) <= k }
-attn_mask_k[i, j] = bipartite_adjacency[i, j] AND
-                    visible_at_breath_k[i] AND
-                    visible_at_breath_k[j]
-```
-
-At breath 0, only observed leaves are visible to themselves. At breath 1, depth-1 factor outputs become visible. By breath K, the full DAG is exposed. This is what makes iteration NECESSARY on trees: information has to be earned by waiting for predecessor breaths, mirroring exact BP's leaves → query message flow.
-
-The mask is dynamic per problem (factor graphs have varying topology) but the DAG depth assignment is precomputed in the data loader. This adds negligible cost — the per-batch mask construction is one numpy outer product per breath, vectorized.
-
-For cyclic factor graphs (Sudoku), topological staging is not used. There is no DAG ordering on a cyclic graph; the analogous mechanism is per-head π-cycled RoPE, which provides a different rotational viewing angle per breath. The two mechanisms (rotational diversity vs. topological staging) are key-specific — see §8.1.
-
-### 3.3 Factor-aligned attention masking
-
-Heads are hardwired to specific factor types at initialization. For Sudoku's 27 AllDifferent factors over 81 cells, the 16 attention heads are partitioned:
-
-```
-Heads 0-4:   row factors    (5 heads × 9 row constraints)
-Heads 5-9:   col factors    (5 heads × 9 col constraints)
-Heads 10-14: box factors    (5 heads × 9 box constraints)
-Head 15:     global         (1 head, no mask — cross-factor reasoning)
-```
-
-For factor graphs with arithmetic factors, the partition is by operation type:
-
-```
-Heads 0-3:   add factors only
-Heads 4-7:   sub factors only
-Heads 8-11:  mul factors only
-Heads 12-15: div factors only
-```
-
-Each head's attention mask blocks edges that don't match its assigned factor type. The model learns the MESSAGE-PASSING FUNCTION within each factor type, not WHICH factors exist (that is given). This hardwiring is critical: empirical comparison of hard head specialization (v100/v101/v103) against soft factor-type embedding (an earlier variant) showed the hardwired version reaches a working architecture 5× faster, with cleaner per-breath ladder formation.
-
-The trade-off: on problems with no factors of a given type, the corresponding heads are idle. This is acceptable because the alternative (heads learn their own specialization) creates gradient ambiguity that empirically prevents the architecture from working at all.
-
-### 3.4 Waist bottleneck (conditional on shared topology)
-
-Optional in v101 and v103, omitted in v98 and v100. Each breath includes an additional residual correction that forces commitment via a lossy bottleneck: the residual is projected to 512d, optionally quantized against a 32-entry shared codebook, and projected back to 1024d. The reconstruction is added to the residual via a LoRA-style zero-initialized gate, so the bottleneck has zero effect at step 0 and unlocks gradually through training. This warm-start preservation allows the bottleneck to be added to an already-trained backbone without destroying the existing solution.
-
-The mechanism's purpose is to force the model to **commit** at each iteration. Information that doesn't survive the bottleneck is information the model has decided is not important at this breath. The lossy step IS the commitment mechanism.
-
-Both v98 Sudoku and v100 factor graphs reach strong accuracy without the waist (79% and 40.7% respectively). The waist adds 6-7 percentage points on factor graphs (§6.4), conditional on training instances sharing structural priors across the dataset (the applicability condition formalized in §8.3). Within compression variants, projection-based (v101) and codebook-based (v103) implementations are statistically indistinguishable at n=600 — compression PRESENCE is load-bearing, compression SHAPE is interchangeable at this scale.
-
-### 3.5 Constraint energy as training signal
-
-The factor-graph constraint energy is computed differentiably from the soft variable distributions and added to the loss alongside the per-breath CE:
-
-**Sudoku (AllDifferent factors).** For each row, column, and box:
-
-```
-E_row(probs) = Σ_d (Σ_cells_in_row probs[cell, d] - 1)^2
-E_total = Σ_rows E_row + Σ_cols E_col + Σ_boxes E_box
-```
-
-The sum of probabilities for each digit over each clique should equal 1 (each digit appears once). Squared deviation measures violation. Energy is 0 when constraints are exactly satisfied.
-
-**Arithmetic factor graphs (functional factors).** For each factor with operation `op` and arguments arg1, arg2 producing result:
-
-```
-expected_result_dist = op_convolve(softmax(logits[arg1]), softmax(logits[arg2]), op)
-actual_result_dist = softmax(logits[result])
-E_factor = KL(actual_result_dist || expected_result_dist)
-```
-
-The convolution computes the expected distribution of `op(arg1, arg2)` given the soft distributions of the arguments. KL divergence measures how far the model's prediction is from this constraint. v103 uses this exact KL energy (computed in numpy, outside the JIT backward, as a diagnostic). v100/v101 use a moment-matching approximation (mean and variance match instead of full distribution match) for tractability — though this has the uniform-distribution attractor problem described in §6.2.
-
-The energy is observed to decay geometrically across breaths on Sudoku (21.0 at K=1 → 0.71 at K=20, rate ~0.5× per ~3 breaths) and on factor graphs. The decay is the empirical signature of energy descent (§4.2, §8.2).
-
-### 3.6 Adaptive convergence
-
-A calibration head predicts P(solution correct | current state) from the pooled residual at each breath:
-
-```
-calib_k = sigmoid(pool(state_k) @ W_calib + b_calib)
-```
-
-Supervision: target_k = 0.5 + (correct - 0.5) × (k/(K-1)), where `correct` is the ground-truth indicator (detached from backbone gradient). Early breaths target 0.5 (uncertain); late breaths target the actual correctness signal. The detached supervision prevents the calibration signal from corrupting the backbone.
-
-The trained calibration head provides three functions:
-1. **Confidence reporting** at inference time (useful for downstream systems that can defer uncertain cases).
-2. **Adaptive K** (future extension): when calib_k exceeds a threshold, halt iteration. Easy puzzles converge at K=5; hard puzzles run to K=20.
-3. **Error estimation** in the ODE-integrator framing (§8.2): analogous to Dopri5's auxiliary integrator providing local error estimates.
-
-On v98 Sudoku, calibration reaches 0.79 on easy puzzles at K=20 (committed) and 0.27 on hard (model knows it hasn't converged). The asymmetry tracks per-puzzle convergence — the model's self-assessment is well-calibrated to its actual accuracy.
-
-### 3.7 Inference economics
-
-```
-                     Parameters    Memory    Easy problem    Hard problem
-Standard 28-layer:    ~600M       ~3.6GB    1400 FLOPs      1400 FLOPs (fixed)
-Breathing 4-layer:    87M         ~377MB     972 FLOPs      6480 FLOPs (adaptive)
-```
-
-7× fewer parameters. 10× less memory. The architecture trades memory for compute — enabling deployment on phones, watches, and embedded devices where memory is the binding constraint while compute is plentiful.
-
-The adaptive compute pattern (easy puzzles consume fewer breaths) emerges from training without explicit per-problem K-selection. With adaptive K halting (§3.6), the easy/hard FLOPs gap widens further: easy problems halt at K=5 (~700 FLOPs), hard problems run to K=20 (~5800 FLOPs). The model spends compute proportional to problem difficulty.
-
-Combined with a Phase 1 parser (§8.4) for natural-language tasks, the full system is ~500MB on disk: ~250MB for the parser (T5-small) and ~377MB for the breathing transformer. Phase 1 runs once per problem; Phase 2 iterates as deeply as needed. This compute split matches the natural cost structure of decomposable reasoning problems.
-
----
-
-## 4. Sudoku as Factor Graph Inference
-
-### 4.1 The Sudoku Factor Graph
-
-81 variable nodes (cells), 27 factor nodes (9 rows + 9 columns + 9 boxes). Each factor enforces AllDifferent over its 9 connected variables. The solution is the unique assignment satisfying all 27 constraints simultaneously.
-
-### 4.2 Breathing as Belief Propagation
-
-Each breath implements one round of approximate message passing:
-
-- **Factor → variable messages:** Attention heads aligned to row/column/box factors propagate constraint information to cells. "Cell (3,5) cannot be 5 or 8 because those values are taken in row 3."
-
-- **Variable → factor messages:** Updated cell beliefs inform subsequent factor evaluations. "Cell (3,5) believes {2,4,7,9} — this constrains column 5's possibilities."
-
-- **Convergence:** After K rounds, beliefs stabilize at the BP fixed point. The B16-B19 plateau (delta ≈ 0.09) IS the empirical signature of BP convergence.
-
-### 4.3 Constraint Energy as Training Signal
-
-```
-E = Σ_rows ||softmax(row_cells) - uniform||²
-  + Σ_cols ||softmax(col_cells) - uniform||²  
-  + Σ_boxes ||softmax(box_cells) - uniform||²
-```
-
-Energy = 0 when all constraints satisfied. Training minimizes constraint energy alongside cell-classification CE. Observed: energy drops from ~600 (random) to ~0.2 (near-satisfied) during training.
-
-### 4.4 Joint Structure Evidence
-
-Independent-cell prediction at 82% cell accuracy: 0.82^81 ≈ 0.0000007% puzzle accuracy.
-Observed: 5.1% puzzle accuracy on medium puzzles.
-Ratio: 7,000,000× above independence.
-
-The model solves JOINT STRUCTURES, not independent cells. Errors are correlated — whole constraint-connected regions are correct or incorrect together. This is the signature of factor graph inference.
-
----
-
-## 5. Theoretical Connection
-
-### 5.1 Modern Hopfield Energy Descent
-
-Ramsauer et al. (2021) showed that transformer attention with softmax computes one step of energy descent on a modern Hopfield network:
-
-```
-E = -log Σ_i exp(x^T · k_i)
-Attention update: x ← Σ_i softmax(x^T · k_i) · v_i = one gradient step on E
-```
-
-K breaths of attention = K steps of Hopfield energy descent. The breathing transformer explicitly implements K rounds of this energy descent with shared weights.
-
-### 5.2 Loopy Belief Propagation
-
-On factor graphs with cycles (like Sudoku's overlapping row/column/box constraints), exact BP doesn't converge. Loopy BP iterates message passing and often finds good approximate solutions.
-
-The breathing transformer implements loopy BP: each breath sends messages along cyclic constraint paths. The per-breath diversity mechanisms (π-cycled RoPE or orthogonal embeddings) act as damping — preventing oscillation by ensuring each round's messages differ slightly from the previous round's.
-
-### 5.3 ODE Interpretation
-
-The Hopfield and BP framings can be unified under a single dynamical-systems view. The breathing transformer implements a learned integrator for the system
-
-```
-dx/dt = -∇E(x, constraints)
-```
-
-where E is the constraint energy of the factor graph and x is the state of soft variable distributions. Each breath corresponds to one integration step. The trajectory across K breaths traces a path on the energy landscape from the initial state (observed variables one-hot, unknowns uniform) toward a fixed point (energy minimum, all constraints satisfied).
-
-The 4 transformer layers within a single breath are the 4 stages of an RK4-style integrator: each layer computes one gradient estimate; the residual stream accumulates these estimates; the delta_gate update applies the weighted combination. Higher-order integration in 4 stages per step.
-
-The Hopfield equivalence (§5.1) supplies the per-layer gradient computation — attention IS one Hopfield energy descent step. The BP equivalence (§5.2) supplies the larger structure — K iterations approximate loopy BP message passing. The ODE view connects them: BP messages ARE Hopfield gradient steps on the factor-graph energy landscape, and the K iterations ARE numerical integration of that descent.
-
-Three architectural components map onto standard ODE-solver constructs:
-
-| ODE solver construct | Breathing transformer realization |
+Key components:
+
+- **Iterative shared-weight prefill.** K passes through Pythia-410M L0–L3 (h=1024,
+  16 heads × 64, FFN 4096), SAME weights every breath. ~35.7M shared transformer
+  params + ~51.5M token embeddings = ~87M total.
+- **Per-head masks built at runtime from membership** (topology channel). For each
+  factor type, adjacency `A_t = membership_tᵀ @ membership_t > 0`; heads are
+  allocated by `cell_mp_head_allocation` (deterministic, pure numpy); `{0, −1e4}`
+  additive bias. Masks vary per problem — never hardwired. KenKen example: T=3 types,
+  H=16, G=1 → 5 row / 5 col / 5 cage / 1 global (`mycelium/factor_masks.py`).
+- **Per-breath additive marker.** Orthogonal embedding (QR, scale 0.5); separates
+  per-breath gradients without forcing specialization.
+- **Verification inlet** (semantics channel). Per-factor relation content (KenKen:
+  op-type 4-way + log-bucketed target + cage-size). Added to the residual every breath
+  — never gated.
+- **Per-breath `delta_gate`.** Learnable convex residual blend (init ones = full
+  update). K breaths JIT-unrolled into one graph.
+- **Value-codebook readout.** Orthonormal codebook (QR), aligned to state embedding
+  at init; per-cell independent softmax. This is the **mean-field ceiling** for
+  marginals (§5.2) — a structural property, not a bug.
+- **Per-breath calibration head.** Mean-pooled valid cells → scalar confidence;
+  trained by MSE against a gold-free convergence instrument.
+- **Per-breath weighted-CE ladder.** `weight_k = 1 + k/(K−1)` — the reason the K
+  axis is meaningful.
+
+Three equivalent framings of the same object: K breaths = **loopy-BP rounds** (masks =
+factor topology, codebook softmax = beliefs); K breaths = **iterative ODE integration**
+stepping energy descent; K breaths = **iterative prefill** with residual as persistent
+state.
+
+### 3.3 The general symbolic search tier
+
+A predicate-driven, sound, complete CSP solver. The **only** domain code is one
+per-factor-type predicate plus a thin bridge; everything else derives generically from
+the predicate:
+
+| derived operation | derivation |
 |---|---|
-| Step size h | delta_gate per breath |
-| Multi-stage gradient evaluation | 4 transformer layers per breath |
-| Error estimator (Dopri5) | Calibration head |
-| Adaptive timestep | Future: confidence-based K halting |
-| Multistep methods (Adams-Bashforth) | Notebook carrying gradient history |
-| Implicit methods | Future: fixed-point iteration per breath |
+| **verifier** (`verify_complete`) | every factor predicate `== SAT` on the complete assignment |
+| **partial-soundness gate** (`is_consistent_partial`) | no factor predicate `== VIOLATED` on its partial tuple |
+| **GAC propagation** (`gac_propagate`) | prune unsupported values; commit only logically forced moves (sole survivor of a domain) |
+| **MRV var-ordering** | fewest legal values, tie-break factor-degree then index |
+| **LCV val-ordering** | value removing fewest options from co-factor members |
 
-Several components are already present (delta_gate, multi-stage, error estimator). Others are natural extensions identified by the ODE framing (§8.2). The framing predicts that improvements known to help numerical integrators — adaptive timestepping, higher-order methods on stiff systems — should improve the breathing transformer on analogous regimes.
-
-### 5.4 The JPEG codec view — alternation as learned compression
-
-The Hopfield, BP, and ODE framings (§5.1–5.3) describe what happens within a single breath. They do not explain why the alternation pattern in v109+ (waist active on even breaths, gated off on odd breaths) lifts hard cell accuracy by +0.07 over the non-alternating baseline. A fourth interpretation does: the alternation IS a learned image codec. Expand breaths gather information; collapse breaths run the full codec pipeline.
-
-JPEG's four-stage pipeline (per 8×8 block) maps onto the collapse breath:
-
-| JPEG stage | Function | Collapse-breath realization |
-|---|---|---|
-| Transform | Decorrelate via frequency basis (DCT) | Attention focuses on most relevant constraint edges — the topology mask plus v112b's per-node gating select which message channels matter |
-| Quantize | Lossy commitment, discard sub-threshold coefficients | Waist bottleneck 1024d → 512d → 1024d projects through a constrained subspace; the gate scalar controls the rate-distortion knob |
-| Encode | Discrete output via Huffman coding | Tree codebook 5-level per-digit readout produces a finite discrete commitment from continuous beliefs |
-| Psychoacoustic model | Per-block quality metric guiding quantization aggressiveness | Per-breath calibration head outputs P(correct \| state) — the same signal that drives Goldilocks step regulation in v110-step3 |
-
-Two consequences fall out of this framing.
-
-**Codec structure was discovered, not designed.** The expand breaths are codec-free: pure information gathering through attention with no compression. The collapse breaths run all four codec stages in sequence. v109's empirical finding that alternation drives the K-sweep flip (pos4 hard +0.007 with K, recovering from v108's −0.059) is the codec view: information needs both gathering and committing, and those are different operations that should not happen simultaneously. The architecture converged on the codec partition before we had the vocabulary to describe it.
-
-**Rate-distortion factorizes per node.** A uniform waist projects every variable through the same 1024→512 subspace at the same gate scalar. JPEG's psychoacoustic model adapts the quantization matrix per block (different blocks tolerate different distortion). The v112b shared topology tensor (Jun 7) provides the same adaptation in our setting: `tanh(node_topology @ W_res_gate)` gives each variable its own per-channel scaling of the residual stream, so the rate (which channels survive) is learned per-node. v112b's mechanism finding — pairwise attention bias refuted (`bias_scale ≈ 0`) while per-position residual gate validated (`Wres_norm` grew 0 → 0.503 monotonically) — is the empirical claim that the load-bearing factorization is per-node bitrate, not per-edge connectivity.
-
-**A unified system view.** Phase 1 (NL → factor graph parsing, §8.4) is a sequence-to-structure transform. Phase 2 expand breaths propagate beliefs across the parsed structure. Phase 2 collapse breaths run the JPEG codec to commit those beliefs into a discrete answer. Three algorithms — parsing, propagation, compression — share one Pythia-410M backbone, distinguished by the per-breath attention mask and waist gate. Whether the same shared weights are adequate for all three roles, or whether per-phase LoRA specialization is required, is a falsifiable empirical question (§9.5).
+The predicate is three-valued (`VIOLATED / UNVIOLATED / SAT`); hole-monotonicity
+(L-MONO) is enforced by a randomized check at registration. **DSATUR-is-MRV** and
+**AC-3-is-GAC** are proven *by construction* — the core never knows it is doing DSATUR
+or AC-3 (`mycelium/csp_core.py`, `csp_registry.py`, `csp_domains.py`). A cost guard
+(`arity_cap = 20000`) routes oversized factors to an optional `specialized_propagator`
+(e.g. `l_alldiff_propagator` for 7-ary all-different), keeping the tier sound and
+tractable. The neural signal, when present, enters **only as a prior to the orderers —
+never into `gac_propagate`**.
 
 ---
 
-## 6. Experiments
+## 4. The generality result — one engine, four factor graphs, zero core edits
 
-### 6.1 Sudoku Constraint Propagation
+The same engine spans four structurally different factor graphs. The search tier's
+core has **zero domain identifiers in executable code** — every grep hit is
+docstring/comment prose — and the *only* file that changes between domains is the
+bridge `csp_domains.py` (proven by `git diff`).
 
-**Setup:** Pythia-410M backbone (layers 0-3), K=20 breaths, 512d waist, factor-aligned attention masking. Training on algorithmically generated puzzles with curriculum (easy → mixed difficulty).
-
-**Results at K=20 (n=200 per difficulty):**
-
-| Metric | Easy | Medium | Hard |
+| domain | factor structure | search-core edits | result (source) |
 |---|---|---|---|
-| Cell accuracy | 97.65% | 83.33% | 76.16% |
-| Puzzle accuracy | **79.0%** | 6.5% | 0.0% |
-| Constraint energy (mean) | 0.71 | 4.86 | 6.80 |
-| Calibration head | 0.789 | 0.428 | 0.272 |
+| **Graph coloring** | binary `not-equal` cliques (flat, non-partition) | zero | symbolic AC-3 (B3) **0.95**, no-prop (B1) **0.85** @b100; pure deduction alone **0.025** |
+| **Boolean SAT** | n-ary clauses | zero (predicate + bridge only) | solved + UNSAT-certified by leak-hunter add, touching neither core nor registry |
+| **KenKen** | param-carrying n-ary arithmetic cages + 7-ary all-different (flat partition) | zero (`git diff` = only `csp_domains.py`) | symbolic B1 + B3 **100%** across all givens bands g40–g10 |
+| **Boolean circuits** | AND/OR/NOT layered DAG (hierarchical) | zero | deducer solves + scales (§5) |
 
-**K-sweep — the BP convergence curve.** Inference at K ∈ {1, 3, 5, 8, 12, 15, 18, 20}, n=200 per difficulty:
+**Phase 0 (commit `6af771c`) — faithful + general.** The refactored core reproduces
+coloring byte-identically: `solve_symbolic` new==old on 22+ fixtures (status +
+decisions + backtracks), GAC==AC-3 on live branches, MRV==DSATUR at every node;
+105 tests PASS + 15 fixtures with real backtracking. GPU anchors reproduce exactly
+(B0 0.025 / B1 0.85 / B2b 0.825 / B3 0.95), `VERIFY_PARITY max|Δlogit| = 0`, n=40,
+~14 min wall.
 
-| K | easy puzzle | easy cell | medium puzzle | medium cell | hard puzzle | hard cell | avg energy (easy) |
-|---|---|---|---|---|---|---|---|
-| 1 | 0.0% | 82.1% | 0.0% | 69.1% | 0.0% | 63.6% | 21.0 |
-| 3 | 10.0% | 91.9% | 0.0% | 76.6% | 0.0% | 70.0% | 7.2 |
-| 5 | 33.5% | 94.8% | 0.0% | 79.8% | 0.0% | 72.9% | 3.5 |
-| 8 | 56.0% | 96.4% | 1.0% | 81.3% | 0.0% | 74.3% | 1.8 |
-| 12 | 72.5% | 97.3% | 2.5% | 82.4% | 0.0% | 75.3% | 1.1 |
-| 15 | 75.0% | 97.5% | 5.5% | 82.8% | 0.0% | 75.8% | 0.86 |
-| 18 | 77.0% | 97.6% | 6.0% | 83.2% | 0.0% | 76.0% | 0.75 |
-| 20 | **79.0%** | 97.6% | 6.5% | 83.3% | 0.0% | 76.2% | 0.71 |
+**Phase 2 (commit `afc4a2f`) — real generality.** The untouched core solves KenKen —
+structurally unlike coloring — with domain code only in `csp_domains.py` (`cage_pred`
++ `problem_from_kenken` + the `l_alldiff_propagator`). Symbolic GAC collapses the
+search tree exactly as the propagation-strength claim predicts:
 
-The constraint energy decays geometrically with characteristic rate ~0.5× per ~3 K — exactly what loopy BP predicts on a factor graph with cycles. This is the mathematical signature of the underlying inference operation. The puzzle-accuracy curve follows the energy curve, lagging slightly (you need MOST constraints satisfied before any puzzle is FULLY correct).
-
-**Figure 1.** Constraint energy decay across breaths on Sudoku, K-sweep at K ∈ {1, 3, 5, 8, 12, 15, 18, 20}. Observed mean violation (n=200 easy puzzles per K, blue points) with exponential fit E(K) ≈ 21·exp(-0.18K) overlaid (dashed line, R² > 0.99 on log-energy). The geometric decay rate of ~0.18 nats/breath is the empirical signature of loopy belief propagation on a factor graph with cycles; the rate parameter encodes the mixing time of message-passing on Sudoku's 27-clique structure. The accompanying puzzle accuracy curve (right axis, green) lags the energy curve by approximately the breaths required for marginal beliefs to commit to a unique configuration.
-
-**Per-breath convergence diagnostic.** For each of K=20 breaths, we measure Δₖ = average number of cells whose argmax prediction changed from breath k-1 to k.
-
-```
-Cells changed between breaths (Δₖ):
-              B1     B5     B10    B15    B19
-  easy:    13.05 → 1.17 → 0.20 → 0.09 → 0.05  ← CONVERGED to BP fixed point
-  medium:  19.45 → 3.08 → 0.97 → 0.44 → 0.45  ← still settling (Δ ≈ 0.4 floor)
-  hard:    22.92 → 3.77 → 1.03 → 0.51 → 0.39  ← still settling
-
-Cumulative cell accuracy:
-              B0     B5     B10    B15    B19
-  easy:    81.9% → 94.6% → 96.5% → 96.8% → 97.0%  (asymptote by B12)
-  medium:  68.9% → 80.2% → 81.5% → 81.8% → 82.3%  (slow climb continues)
-  hard:    63.6% → 73.6% → 75.8% → 76.6% → 77.0%  (slow climb continues)
-```
-
-Easy puzzles reach the BP fixed point by B12 — Δ near zero, cell accuracy plateaued. Medium and hard never fully converge in K=20 (Δ ≈ 0.4 floor) — their mixing times exceed our training budget. The model has detected its own non-convergence: calibration head outputs 0.43 (medium) and 0.27 (hard) vs 0.79 (easy converged).
-
-This is exactly the BP behavior predicted by theory:
-- Sparse problems (high givens, easy) have short mixing times — converge fast
-- Dense problems (low givens, hard) have long mixing times — converge slow
-- The mixing time depends on the factor graph's structural connectivity
-
-**Implication:** the K=20 ceiling is a training budget choice, not an architectural limit. K=30 or K=40 training should lift medium and hard substantially. Future work.
-
-**The 7-orders-of-magnitude correlation.** At medium cell accuracy of 83.3%, independent-cell prediction baseline is 0.833^81 ≈ 3×10⁻⁷. Observed puzzle accuracy: 6.5%. Ratio: **2×10⁵ above independence**. The model's per-cell errors are correlated — when it misses, it misses correlated clusters of cells within constraint cliques. This is the empirical signature of joint MAP inference on a factor graph, distinct from independent per-variable classification.
-
-**OOD generalization:** Medium puzzles never seen during early training; accuracy emerges through curriculum annealing. Constraint propagation transfers across difficulty levels.
-
-### 6.2 Factor graphs with rotational breathing — the wrong key
-
-The Sudoku result raised an immediate question: does the breathing-as-BP framework transfer to arbitrary factor graphs? We generated 50,000 synthetic arithmetic factor graphs — DAGs of 3-8 variables connected by 2-5 arithmetic operations (add/sub/mul/div), with values in [0, 99]. The same Pythia-410M backbone, the same K=10 breaths, the same per-breath supervision pattern, the same π-cycled rotational breathing that worked on Sudoku.
-
-The architecture failed completely.
-
-**Results (n=600, K=10 on the test set):**
-
-| Difficulty | Cell accuracy | Query accuracy |
+| band | decisions B1 → B3 | backtracks B1 → B3 |
 |---|---|---|
-| Easy (n_vars=3-4) | 9.4% | 10.0% |
-| Medium (n_vars=5-6) | 8.1% | 13.1% |
-| Hard (n_vars=7-8) | 9.3% | 0.0% |
+| g40 | 28.6 → **0.0** | — |
+| g10 (hardest) | 305.1 → **0.9** | 386.3 → **1.1** |
 
-Cell accuracy is at chance floor (1/100 = 1%, model gets ~9× above chance from observed cells alone). Query accuracy — the meaningful metric, measured on the unobserved variable the problem asks about — is essentially random.
+The all-different's Hall value-occurrence rule was scope-guarded to the permutation
+regime after an adversarial review caught an off-permutation unsoundness — sound as
+deployed and now soundly general.
 
-**Yet the underlying BP dynamics ARE working.** The K-sweep on v99's final checkpoint shows constraint energy decaying geometrically across breaths — the signature pattern that worked on Sudoku:
+**The one-trick-pony guarantee held:** four domain-distant problem classes, predicate +
+bridge per domain, zero search-core edits.
 
-| K | Cell accuracy | Constraint energy |
-|---|---|---|
-| 1 | 8.3% | 4.4M |
-| 2 | 8.2% | 2.5M (47% reduction) |
-| 5 | 8.4% | 1.1M |
-| 10 | 9.4% | 0.7M |
+---
 
-The model is performing iterative inference. Each breath reduces energy by ~50%. But the accuracy is flat: **K=1 ≈ K=10 ≈ chance**.
+## 5. The deducer's characterized edge — generality + parallel deduction
 
-**Two further diagnostics confirm the failure mode is structural:**
+The deducer's distributed deduction is **parallel, not depth-sequential**, and scales
+sub-linearly in depth. Numbers from the recorded run on the trained `fg_circuit`
+checkpoint (commit `b8d73a1`, `scripts/eval_circuit_scaling.py`; the checkpoint is not
+in-tree, so these are recorded-run outputs, not script-reproducible without the
+checkpoint):
 
-First, the per-breath CE ladder is **flat across breaths**. On v99 at step 2000:
-```
-per_breath_ce[B0..B9]: 1.96 1.94 1.92 1.91 ... 1.90 1.89 1.89 1.89
-```
-B0 to B9 differ by only 0.07 — the model converges to the same output regardless of which breath we read. On Sudoku at step 200, the corresponding ladder was B0=0.99 → B14=0.60 (Δ=0.39). The breathing isn't producing iterative refinement on factor graphs.
+- **K-sweep on depth-16 circuits.** cell_acc at K=4 is **0.877** vs K=16 **0.923** —
+  ratio **0.95**. Four breaths recover 95% of full-K performance.
+- **Per-depth accuracy is flat** (no depth ceiling): D6 0.958 / D8 0.966 / D10 0.944 /
+  D12 0.953 / D14 0.935 / D16 0.923 — gentle ~3.5 pt decline over 10 depth levels.
+- **The mechanism.** Each breath is a 4-layer transformer ≈ ~4 attention hops of
+  constraint propagation → **~4 deduction levels resolve per breath** → `K_min ≈ D/4`,
+  sub-linear in depth. This is the loopy-BP wavefront signature.
 
-Second, no depth correlation. K=10 cell accuracy stratified by DAG depth:
-```
-depth=2: 8.9%   depth=4: 9.9%   depth=6: 9.0%
-depth=3: 8.1%   depth=5: 6.3%   depth=7: 8.2%
-```
-Completely flat. On Sudoku, the equivalent metric showed monotonic decline with mixing-time complexity. On factor graphs, no signal.
+The characterized edge is amortized: a fixed forward pass (within the AMD 7900 XTX
+JIT capacity of ~20 breaths) resolves depth that a sequential solver would pay for
+step-by-step. This is a claim about depth-parallelism on the circuit DAG — **not** a
+meta-learning, transfer, or train-to-larger-problems claim.
 
-**The diagnosis: rotational breathing is wrong for tree-structured factor graphs.** Sudoku's cyclic factor graph has rotational symmetry — each cell appears in three overlapping cliques (row, column, box), and information must propagate around cycles. The π-cycled RoPE provides a different "viewing angle" each breath, which is exactly what loopy BP needs.
+---
 
-Arithmetic DAGs have no rotational symmetry. Information flows in one direction, leaf → query. Rotating the input doesn't reveal new constraint paths because there are no cycles to rotate around. The model correctly determines that additional breaths add no useful information and converges to a uniform-ish wrong fixed point — energy decays by the variance-matching loss being satisfied at any broad distribution, while the gold values remain unidentified.
+## 6. The honest boundaries
 
-**Compression-as-commitment is conditional on structural sharing.** This is the failure mode of v99 viewed from a different angle: the model learns instance-specific compressions because each factor graph has a different topology, and those compressions don't transfer to test instances. We return to this in §6.4.
+The engine beats nothing on inference QUALITY. The three negatives below are
+independent, each instrumented, each gated before any build. They are load-bearing —
+they make the generality claim credible.
 
-### 6.3 Topological staging — the right key for trees
+### 6.1 On clean verifiable CSPs, symbolic search DOMINATES — and learned propagation is NET-NEGATIVE
 
-If rotation is wrong for trees, what's the right breathing pattern? The answer follows from BP theory: on a tree, exact belief propagation converges in O(depth) messages, with information flowing from leaves toward the query. The right breathing rhythm should mirror this — each breath should process one additional layer of the DAG.
+On hard 3-coloring (depth ≥ 3, n=40), symbolic methods win for free; the learned
+probabilistic propagator costs forwards and hurts (commit `649855a`):
 
-**The v100 architecture introduced five changes to the v99 baseline:**
-
-1. **Topological staging masks** — Breath k sees variable positions up to DAG depth k. The mask grows across breaths; earlier breaths cannot "see" deep structure until predecessors have committed.
-
-2. **Aligned init** — For the 100-way domain codebook, initialize the variable state embedding such that observed value k projects directly to logit k at step 0. The model only learns the *factor computation*, not the projection.
-
-3. **Hard head specialization** — Assign 4 attention heads per operation type: heads 0-3 process add edges, 4-7 sub, 8-11 mul, 12-15 div. Each head has a single, structurally-determined job.
-
-4. **Factor-execute auxiliary loss** — Direct supervision on factor node hidden states: after seeing the two argument variables, the factor node should encode the gold result. Bypasses the slow discovery via main CE alone.
-
-5. **KL energy on convolved distributions** — Replace the moment-matching energy (which has a uniform-distribution attractor) with exact convolution + KL divergence between predicted and expected result distributions.
-
-**Results (n=600, K-sweep on final ckpt):**
-
-| K | Overall cell | K=10 vs K=1 gap |
-|---|---|---|
-| 1 | 22.8% | — |
-| 3 | 37.8% | +15.0pt |
-| 5 | 40.1% | +17.3pt |
-| 8 | 40.7% | +17.9pt |
-| 10 | 40.7% | +17.9pt |
-
-**Three BP signatures are now present:**
-
-**Signature 1: K=10 outperforms K=1 by 17.9 points.** Breathing is doing real work. The accuracy gap is the empirical evidence that iterative inference is engaged.
-
-**Signature 2: Per-breath CE ladder forms.** At training step 2000, B0=1.6 → B9=1.4 (Δ=0.22); by step 5000, Δ=0.5-0.6 consistently. The model produces progressively refined outputs across breaths.
-
-**Signature 3: Depth correlation appears.** Stratified by DAG depth at K=10:
-
-```
-Depth   Cell accuracy
-  2      48.4%   ← shallow chains converge cleanly
-  3      44.6%
-  4      43.5%
-  5      40.0%
-  6      35.2%
-  7      28.2%   ← deepest chains hardest to propagate
-```
-
-Monotonic decline with depth — exactly what BP theory predicts. Deeper DAGs require more message-passing hops; with K=10 hops available, depth-7 chains can't fully propagate, and accuracy degrades smoothly with structural complexity. This is the **mixing-time signature** of message-passing inference, measurable per-instance through DAG depth.
-
-**Compare to v99 at K=10 (flat, ~9% across all depths).** The structural change from rotational to topological breathing converts a non-functional architecture into a working BP solver on the same data.
-
-### 6.4 Compression as commitment — type doesn't matter, presence does
-
-Given a working inference architecture (v100), we tested whether the JPEG-codec-style compression that we hypothesized was load-bearing (§3, §16 of the supplementary) actually contributes to factor-graph performance. Two compression mechanisms were compared as residual additions to the v100 backbone:
-
-- **v101 (projection waist):** standard 1024 → 512 → 1024 LoRA-style bottleneck. Compression is via dimensionality reduction.
-- **v103 (VQ-VAE):** 1024 → 512 encoder, then soft codebook match against 32 shared 512d primitives, then 512 → 1024 decoder. Compression is via codebook quantization.
-
-Both architectures warm-start from v100's final checkpoint and train for 3000 additional steps. The codebook is shared across all problems and trained end-to-end.
-
-**Results (n=600, K=10):**
-
-| Architecture | Compression | Overall cell | K=1 cell | K=10 vs K=1 gap |
+| config @b100 | solve_rate | decisions | backtracks | forwards/solve |
 |---|---|---|---|---|
-| v100 | None | 40.7% | 22.8% | +17.9pt |
-| v101 | Projection (1024→512→1024) | 47.6% | 25.9% | +21.7pt |
-| v103 | VQ-VAE (32-entry codebook in 512d) | 46.6% | 23.9% | +22.8pt |
+| B3 symbolic AC-3 (ceiling) | **0.95** | 16.1 | 15.6 | 0 |
+| B1 symbolic, no propagation | **0.85** | 46.9 | 29.5 | 0 |
+| B2b neural-prop + DSATUR + LCV | 0.825 | 44.2 | 31.6 | 48.3 |
+| B2 neural-prop + entropy + policy | 0.475 | 45.2 | 83.3 | 55.8 |
+| B2c neural-prop + entropy + LCV | 0.350 | 52.9 | 101.6 | 67.4 |
 
-**Compression adds 6-7 points** over the no-compression baseline. Both architectures show this lift. The K=1 → K=10 gap also widens with compression — the bottleneck doesn't just improve absolute accuracy, it amplifies the benefit of additional breaths.
+B2b (0.825) ≤ B1 (0.85): adding the neural propagator marginally HURTS, costs ~48
+forwards, and does not collapse the tree.
 
-**The choice of compression structure is not statistically distinguishable at n=600.** Testing v101 (47.57%) against v103 (46.61%):
-- Standard error of difference: SE = √(p̄(1−p̄)(2/n)) ≈ 2.88pp
-- z = (47.57 − 46.61) / 2.88 = 0.33
-- p ≈ 0.74
+**The mechanism, nailed by a CONF_THRESH sweep — "commit only when forced."**
+B2b solve_rate @b100 vs commit threshold: at 0.90 it is **0.825** (below no-prop,
+i.e. commits are net-losing bets); at 0.95/0.99/1.0 it is **0.850** (== B1). At
+threshold = 1.0 (never commit) **B2b is byte-identical to B1** (decisions 46.9 ==
+46.9, backtracks 29.5 == 29.5). **No threshold rises above B1 → neural probabilistic
+propagation has ZERO positive operating point on coloring.** The design principle,
+proven not argued: *a propagation commit must be a logically FORCED move; the neural
+signal's role is ORDERING, not committing.* (This is a finding about the deducer's
+signal on clean CSPs; it does not generalize to constraints where symbolic propagation
+is unavailable.)
 
-The 1pp gap between projection and codebook compression is consistent with noise. The clean finding is that **compression-as-commitment is the load-bearing mechanism; the structure of the compression (projection vs codebook) is interchangeable at this scale.**
+The search-tier viability gate (commit `b973197`) localizes why: G1 (policy ranks gold)
+**FAILS** — mean gold-prob **0.261 < uniform 1/k = 0.333** at wrong vertices
+(confidently wrong); G2 (entropy flags ambiguity) **PASSES**, AUC **0.69**; G4 (clamp
+gold, re-deduce) **PASSES** monotonically, **+0.77 / +1.08 / +2.21 pt** for 1/2/4
+clamps. Calibration-vs-frac-correct correlation is a weak **~0.27–0.31**. The search
+*substrate* works (localize + propagate); the learned *prior + value* do not, on clean
+CSPs.
 
-**The codebook does show one architectural advantage:** at the deepest DAGs, where rotational propagation chains are longest, v103 maintains accuracy slightly better than v101:
+### 6.2 The soft-MRF frontier is BURIED — marginals and MAP, flat and DAG
 
-```
-Depth   v100    v101    v103
-  6     35.2%   43.5%   43.9%
-  7     28.2%   36.9%   37.3%
-```
+Soft / probabilistic factor graphs (Ising/Potts) are the regime where the clean-CSP
+net-negative might invert: a soft factor is never VIOLATED, so symbolic GAC has no
+admissible move; the task becomes #P-hard marginals + NP-hard MAP, whose tractable
+SOTA is loopy BP — which the deducer *is*, approximately. Two kill-gates ran before
+any training.
 
-The codebook's topology-invariant compression (32 shared primitives that all problems must use) shows a small edge where memorization of instance-specific patterns is hardest. The gap is below statistical significance at n=79 per cell, but the direction is consistent with theory.
+**Gate-1 — marginals (commit `4c8f6eb`, `scripts/frontier_bp_gap_gate.py`): WEAK PASS
+= effectively a SOFT-KILL.** On toroidal 2D Ising (brute-force-exact vs damped loopy
+BP), the BP-vs-exact gap and its localizability are anti-correlated: at β 0.3–0.5
+error is localized but the gap is tiny (MAE ≤ 0.01, BP ≈ exact); at β ≥ 0.9 the gap
+is large (MAE 0.10–0.35) but per-spin error is *more uniform than random noise* AND BP
+stops converging (convergence rate as low as **17%** — up to ~83% non-convergent; mean
+convergence on large-gap cells ~**45%**, i.e. ~55% non-convergent on the mean). Only
+1/10 gap-cells is both localized-above-null and on a stable BP fixed point.
 
-### Summary: rhythm × topology determines whether breathing works
+**Gate-2 — MAP + DAG salvage (commit `688f1b5`, `scripts/frontier_map_dag_probe.py`):
+KILL, by both the build's verdict and an independent adversarial re-derivation.** On
+flat 2D Ising MAP the gap is real (Hamming to 0.60) but **cheap simulated annealing
+closes ~87%**, and a stronger SA (2000 sweeps × 5 restarts) closes **100% on every
+cell**; where any residual survives, BP is 25–38% non-convergent and the wrong nodes
+are unlocalizable by BP confidence (AUC 0.33–0.53 = chance). On the DAG noisy-circuit,
+**max-product BP finds the exact MPE in every band** (Hamming 0.000, 100% convergence,
+robust to ε ≤ 0.30) — the DAG is BP-trivial, no gap for a learned corrector.
 
-The three preceding sections form a single empirical story relating breathing rhythm to graph topology:
+**The mean-field ceiling (structural, not a bug).** The readout is a per-cell-
+independent softmax (`cell_logits = layernorm(x) @ codebookᵀ`, `factor_graph_engine.py:386`).
+A product-form readout can only emit mean-field (independent) marginals — it
+structurally projects away the pairwise correlations that *are* the marginal. A true
+marginals win would need a Bethe / pairwise readout — a real core change. This is
+load-bearing (the small codebook bootstraps from task gradient; a joint posterior is
+intractable), not fixable with better training.
 
-|                      | **Cyclic graph (Sudoku)** | **Tree graph (DAG)** |
-|----------------------|-------------------------|---------------------|
-| **Rotational rhythm** | v98 ✓ (79% puzzle, exponential energy decay) | v99 ✗ (9% chance, flat ladder, no depth correlation) |
-| **Topological rhythm** | (future work — see §9) | v100/v101/v103 ✓ (40-48% cell, +18pt K-sweep gap, depth-correlated) |
+Verdict: across the full matrix — clean CSPs (symbolic wins), soft-MRF marginals
+(gate-1), soft-MRF MAP (gate-2), flat and DAG — *deducer beats BP/symbolic on
+inference quality* is **refuted**.
 
-The diagonal entries succeed; the off-diagonal entry fails. Both mechanisms produce **constraint energy decay across breaths** — that is, both engage the underlying BP machinery. The difference is whether that descent converges to the gold solution (diagonal) or to a uniform-distribution wrong fixed point (off-diagonal).
+### 6.3 The radial-depth "deep prize" is REFUTED
 
-The empty cell is a testable prediction. BP theory says topological staging requires a DAG ordering; cyclic graphs do not admit such ordering naturally. We predict that topological breathing on Sudoku would fail or, at best, reduce to rotational breathing under some ad-hoc ordering choice. Testing this is left to future work.
+The hypothesis — deduction-depth ↔ radial position ↔ breath-count, the breath cycle
+as a geodesic engine — does NOT hold on the Boolean-circuit DAG testbed (commit
+`98d1bea`):
 
-The findings refine the JPEG-codec framework (§3.3, supplementary §16). Compression-as-commitment is real and adds 6-7 points consistently, but it is **conditional on the breathing rhythm matching the underlying graph topology**. Without that match (v99), no amount of compression helps. With that match (v100→v101/v103), the compression provides clean additional lift.
+**ρ(per-node settle-breath, topological depth) = 0.134, lower-CI 0.115, against a bar
+of 0.30 → NULL.**
 
-### 6.5 Templated Arithmetic (Prior Results)
+The signal is real, not degenerate (15 unique settle-breaths, std 4.4, range [2, 16],
+p_perm 0.0001, n=10214; depth-shuffle null collapsed to ρ ≈ 0.02) — but it is well
+below the bar. The engine solves hierarchy (~0.97 cell, no depth ceiling) via
+**distributed constraint-satisfaction, not depth-ordered radial traversal**. This is
+*consistent* with §5: the engine is depth-PARALLEL (~4 levels per breath), which is
+precisely why settle-breath does not track depth.
 
-**Setup:** Same Pythia-410M backbone, K=8 breaths, π-cycled RoPE.
-
-**Results:**
-
-| Task | Accuracy | Architecture |
-|---|---|---|
-| ARITH_HARD (single-step, 3-digit) | 75% | v4 breathing |
-| L4_MIXED (2-step word problems) | 66% | v6 sine temp |
-| L4.5 aligned (3-step) | 89% | v55 waist |
-| ARITH_HARD without rotation | 2% | ablation |
-
-**The 73-point ablation:** Removing π-cycled RoPE drops ARITH_HARD from 75% to 2%. This is the single largest ablation effect, demonstrating that per-breath attention diversity is the load-bearing mechanism.
-
-### 6.6 GSM8K Natural Language (Negative Result, Motivating the Two-Phase Architecture)
-
-17 architectural variants tested across three months of iteration. Maximum end-to-end accuracy on GSM8K: 2.7%. The ceiling is natural language comprehension at the 410M scale, not architectural limitation of the breathing transformer.
-
-This is consistent with our §6.2-§6.4 findings: the breathing transformer **cannot** parse complex English into mathematical structure (a one-shot language task requiring world knowledge), but **can** execute multi-step computation once that structure is provided as a factor graph (an iterative computational task that matches the architecture's strengths).
-
-This motivates a two-phase architecture (developed in §8.3): Phase 1 uses a larger model (Haiku via distillation, or a similar parser) to convert NL → factor graph in one shot; Phase 2 (the breathing transformer at 87M parameters) solves the factor graph via energy descent. The same compute split that makes Sudoku tractable (the grid IS the factor graph — Phase 1 is trivial) generalizes to GSM8K by externalizing the comprehension to a larger model.
+The Poincaré / hyperbolic mask generator (the mechanism that was meant to deliver the
+radial-depth payoff) is **SPEC-STAGE**: the geometry can reproduce the hard masks
+frozen (byte-exact at t=0), but **relaxation is gradient-dead for non-partition factor
+graphs** (clique-union co-location has no per-node radial DOF to learn from). Geometric
+transfer / interpolation is UNPROVEN and is now gated on the blocked relaxation AND
+the refuted radial-depth thesis. See `docs/hyperbolic_mask_generator_spec.md`.
 
 ---
 
-## 7. Portable Principles Discovered
+## 7. Honest positioning — what the novelty actually is
 
-Seven principles validated across 30+ experiments that transfer beyond this architecture:
+The contribution is **(a) cross-domain generality** — one engine, any factor graph,
+zero general-core edits, demonstrated on four structurally different domains —
+**(b) the rigorous negatives** — three independent, instrumented refutations that map
+exactly where a learned solver does and does not pay off — and **(c) the amortized
+framing** — the deducer's value is a fixed parallel forward pass (~4 deduction levels
+per breath), not better answers than a bespoke solver.
 
-1. **Attention bootstrap threshold:** New attention pathways with >16-way softmax require direct supervision for ~500 steps (6× confirmed)
-
-2. **Paradigm-specific masking:** Parallel emission needs 4 masks; autoregressive needs 2. Conflating them breaks training.
-
-3. **Per-iteration supervision is load-bearing:** Architectures with shared-weight loops MUST have per-iteration loss. Funneling all loss through the final iteration creates template attractors.
-
-4. **Projection chain attenuation:** Each additional projection in the gradient path attenuates signal ~5×. Keep the path from loss to parameters SHORT.
-
-5. **Trajectory over ceiling:** A system with monotonic improvement has trajectory; a system with template attractors has a ceiling. Trajectory beats ceiling regardless of current accuracy.
-
-6. **Parse ≠ accuracy:** Structural validity of output (100% parse) does not imply content correctness (0% accuracy). Surface metrics lie.
-
-7. **Breath ladder as diagnostic:** Monotonic CE descent across breaths = working iterative supervision. Flat CE across breaths = broken.
+**The reframe is the durable conclusion:** the deducer's proven edge is GENERALITY +
+AMORTIZED-FAST PARALLEL inference, NOT inference quality. On clean CSPs symbolic
+search dominates; on soft MRFs cheap baselines win; on the DAG the radial prize is
+refuted. The novelty is engineering + generality, stated as such, not extrapolated to a
+quality headline. The "learned loopy BP" framing is a framing of an approximate
+iterative solver trained on CSPs — not a soft-factor BP variant that inherits BP's
+convergence guarantees.
 
 ---
 
-## 8. Discussion
-
-The empirical results in §6 are unified by four theoretical framings, each describing the breathing transformer from a different angle. We present them in order of increasing mathematical specificity. Each subsection closes with a falsifiable prediction that follows from the framing.
-
-### 8.1 Musical keys: rhythm-topology matching
-
-The 2×2 table at the end of §6.4 encodes a design principle: **the breathing rhythm must match the symmetry of the underlying factor graph**. We name the principle by analogy to music — every problem class is in a "key," and a piece written in one key cannot be played with another key's harmonic conventions and expected to resolve.
-
-Two keys are empirically validated in this work:
-
-**Cyclic key** (Sudoku, n-queens, graph coloring, constraint-satisfaction problems). Factor graphs with overlapping cliques that share variables. Information must propagate AROUND cycles, often visiting the same variable multiple times via different paths. The right rhythm is **rotational** — π-cycled position encoding gives each breath a different viewing angle, sampling messages along distinct cyclic paths across iterations. This is mechanically what loopy BP does on factor graphs with cycles.
-
-**Directional key** (arithmetic DAGs, computational pipelines, dependency graphs). Factor graphs that are trees with implicit ordering from leaves to query. Information flows in one direction. The right rhythm is **topological staging** — each breath processes one more layer of the DAG, with information earned by waiting for predecessor breaths. This is mechanically what exact BP does on trees, requiring O(depth) message-passing steps.
-
-The two keys do not interchange. §6.1 shows rotational breathing succeeds on Sudoku (cyclic) at 79% puzzle accuracy; §6.2 shows the identical mechanism fails on factor graphs (directional) at 9% chance. §6.3 shows topological staging succeeds on factor graphs (directional) at 40-48%; the empty cell in the 2×2 — topological breathing on cyclic graphs — remains untested.
-
-The framework's value for practitioners is that it converts an architectural choice (which breathing pattern to implement) into a structural property of the data (which symmetries the factor graph has). For a new domain, examining the topology selects the breathing rhythm; no trial-and-error across breathing mechanisms is needed.
-
-**Falsifiable prediction:** Topological breathing applied to Sudoku should fail. Specifically, implementing depth-based attention masking on the Sudoku factor graph requires imposing an ad-hoc ordering (e.g., row-major, or column-major, or any other) because cyclic graphs have no natural DAG topology. The result should fall between the v98 ceiling (79% puzzle accuracy) and the no-rotation ablation floor (2%) — and we predict it falls closer to the floor than to the ceiling, because imposing a directional order on a symmetric problem actively breaks the rotational symmetry that loopy BP exploits.
-
-### 8.2 The ODE integrator: three vocabularies, one mathematical object
-
-The musical-keys framing is mechanistic; the ODE integrator framing is mathematical. The breathing transformer **literally implements** a learned numerical integrator for the dynamical system
-
-```
-    dx/dt = -∇E(x, constraints)
-```
-
-where E is the constraint energy of the factor graph (§4.3) and x is the state of soft variable distributions over their domains. Each breath corresponds to one integration step. The 4 transformer layers within one breath are the 4 stages of an RK4-style higher-order method:
-
-```
-RK4:                              Breathing transformer:
-  k1 = f(x_n)                       h1 = Layer_0(x_n)
-  k2 = f(x_n + h·k1/2)              h2 = Layer_1(h1)
-  k3 = f(x_n + h·k2/2)              h3 = Layer_2(h2)
-  k4 = f(x_n + h·k3)                h4 = Layer_3(h3)
-  x_{n+1} = x_n + h·Σ(k)/6         x_{n+1} = x_n + delta_gate·(h4 - x_n)
-```
-
-The residual stream accumulates intermediate gradient estimates across stages. The `delta_gate` parameter plays the role of step size h. The calibration head plays the role of an error estimator analogous to Dopri5's higher-order auxiliary integrator: predicting whether the current state has converged enough to halt integration. The convergence plateau observed on easy Sudoku puzzles (delta → 0 by breath 12, §6.1) is the integrator reaching its fixed point.
-
-This framing connects directly to Ramsauer et al. (2021): softmax attention IS one step of energy descent on a modern Hopfield network with energy E_H(x) = -log Σ_i exp(x^T k_i). Each transformer layer literally computes one gradient step on a learned Hopfield energy landscape. K breaths × 4 layers per breath = 4K Hopfield gradient steps. Training aligns the implicit Hopfield energy E_H with the explicit factor-graph energy E so what appears externally as "iterative attention" is mechanistically energy descent on a learned approximate factor-graph posterior.
-
-Three vocabularies — ODE integrator (computer science), energy descent (statistical physics), approximate belief propagation (machine learning) — describe the same mathematical object. Each provides inference tools the others lack:
-- ODE integrator brings adaptive timestepping (the calibration head as error estimator), multistep methods (the notebook as gradient history), and implicit methods (fixed-point iteration within a breath).
-- Energy descent brings stability analysis (Lyapunov functions on the energy landscape) and basin characterization (which initial conditions converge to which fixed points).
-- BP brings convergence rate predictions (mixing time scaling with graph structural properties) and message structure (which heads carry which kinds of messages).
-
-The convergence of these vocabularies onto one object suggests the breathing transformer is not just a heuristic architecture but an instance of a well-defined class of learned approximate inference solvers.
-
-**Falsifiable prediction:** If breathing literally implements RK4-stage integration, then deeper per-breath architectures (8 layers per breath, analogous to RK8) should outperform shallower ones (4 layers per breath, RK4) on stiff dynamical systems — problems where some constraints converge fast and others slow. Concretely: on Sudoku's hardest puzzles (where the per-breath delta plateau Δ ≈ 0.4 at K=20 indicates non-convergence), an 8-layers-per-breath architecture should reach a lower delta floor than the current 4-layers-per-breath architecture under matched compute budget (8 layers × K=10 vs 4 layers × K=20). The prediction does NOT extend to easy puzzles (where 4 stages already converge) — making it a sharp test of higher-order integration's value, falsifiable by training and evaluating the two configurations.
-
-### 8.3 Compression as commitment, conditional on shared topology
-
-A standard transformer with residual connections is unidirectionally additive: each layer adds information to the residual stream. There is no mechanism for the model to deliberately **commit** to a particular interpretation; later layers can always add information that contradicts earlier processing. The model accumulates beliefs but never discards them.
-
-The waist projection (1024 → 512 → 1024) present in v101 and v103 (§6.4) introduces an explicit lossy step. The model must distill 1024 dimensions of accumulated state into 512 before reconstructing back. Information that does not survive that bottleneck is information the model has decided is not important at this iteration. The lossy step IS the commitment mechanism.
-
-This structure matches the JPEG/MP3 codec pattern applied to thought:
-- **Transform**: attention rotates the residual into a task-relevant basis (π-cycled RoPE for cyclic key, factor-aligned masking for directional key).
-- **Quantize**: the waist projection deliberately discards dimensions.
-- **Encode**: the residual stream and notebook carry the survivors to the next breath.
-- **Psychoacoustic model**: the next breath's CE loss is the *learned* analog of MP3's perceptual model — "what does the next breath need from this iteration?" Unlike MP3's hand-designed model based on human hearing thresholds, ours is learned end-to-end through the task gradient.
-
-§6.4 demonstrated that compression adds 6-7 points over the no-compression baseline (v100 → v101/v103), regardless of whether the compression is structured as a projection (v101) or a codebook quantization (v103). The applicability condition emerges from comparing §6.2 (where compression cannot be added because the rhythm is wrong) to §6.4 (where compression cleanly amplifies a working architecture):
-
-**Compression-as-commitment helps when the structural prior is shared across instances.** For Sudoku, the factor structure (27 AllDifferent cliques on a 9×9 grid) is identical across all puzzles — the waist learns ONE compression scheme and it generalizes by construction. For arithmetic DAGs, the topology varies across instances, but the operation set is fixed (add/sub/mul/div), so the compression can still extract shared structure. v103's codebook makes this explicit: 32 shared primitives that all problems must reuse, forcing topology-invariant compression.
-
-The compression amplifies the architecture's iteration benefit: the K=1→K=10 gap widens from +17.9pt (no compression) to +21.7pt (projection) to +22.8pt (codebook). Compression doesn't just raise absolute accuracy; it makes additional breaths more informative.
-
-**Falsifiable prediction:** Compression-as-commitment should help by 5-10pp on any task with high structural sharing across instances (graph coloring with fixed-degree graphs, scheduling with fixed task types, sorting networks). Compression's benefit should monotonically decline as instance-set topological diversity grows. Operationalizing topological diversity as the information-theoretic entropy of the instance set's structural distribution: we predict the compression benefit declines smoothly (not abruptly) as this entropy increases. The prediction is testable by constructing controlled datasets with parametrized structural diversity.
-
-### 8.4 Two-phase architecture: comprehension and inference need different models
-
-The §6.6 GSM8K failure pattern (17 architectures plateauing at 2-3% over three months) is consistent with a structural separation in the underlying computation. Comprehension — parsing English into a mathematical factor graph — is a one-shot language task that benefits from model size and language priors. Inference — executing constraint propagation on the resulting graph — is an iterative computational task that benefits from iteration depth and architectural specialization.
-
-When the same parameters do both, gradients pull in opposing directions. The parsing gradient says "this verb token should be associated with subtraction." The inference gradient says "this residual position should encode operand binding state." Through shared weights, the optimizer takes the average, and a parameter set that does both poorly emerges. We observed this empirically across 17 architectural variants (§6.6), each plateauing at the same 2-3% accuracy ceiling regardless of breathing pattern, supervision schedule, or compression structure.
-
-The architectural remedy is to separate the phases into independently-parameterized models, with a structured intermediate (the factor graph) as the interface:
-
-**Phase 1 — Comprehension** (NL → factor graph): A larger model (Haiku via distillation, or a similar parser at ~1B parameters; alternatively a domain-specific parser as small as 60M via T5-small distilled from Haiku labels) runs once per problem. Outputs a structured factor graph encoding variables, factors, and observed values. The breathing transformer never sees natural language.
-
-**Phase 2 — Inference** (factor graph → answer): The breathing transformer (87M parameters, ~377MB, edge-deployable) consumes the factor graph from Phase 1 and runs K breaths of constraint propagation. Returns the converged variable assignment. This is the architecture validated in §6.1-§6.4.
-
-For Sudoku, Phase 1 is the identity function: the 9×9 grid IS the factor graph. This explains why Sudoku worked at 87M parameters with no NL component — we used the architecture for the computational task it is suited for and skipped the comprehension task it is not. For GSM8K, Phase 1 is the binding bottleneck, and our v98-v100 results demonstrate that the inference engine is competent (40-48% on synthetic factor graphs). Building Phase 1 is the path to closing the GSM8K loop.
-
-The two-phase decomposition has a practical implication for deployment: large model parses once (possibly in the cloud), small model reasons iteratively on device. The compute split matches the natural cost structure — comprehension is expensive but happens once; iteration is cheap but happens many times.
-
-**Falsifiable prediction:** Pairing the breathing transformer (Phase 2) with an external NL parser (Phase 1) — for instance, a T5-small distilled on Haiku-generated (NL, factor graph) pairs — will exceed the 2.7% GSM8K ceiling observed for the breathing transformer alone by a wide margin. The predicted end-to-end accuracy is 30-45%, with the precise value determined by parser quality. Specifically: if the parser achieves P_struct on structural correctness (the factor graph matches a valid parse of the problem) and Phase 2 achieves P_inf on the synthetic factor graphs of equivalent complexity, end-to-end accuracy will approximate P_struct × P_inf. The breathing transformer's value is constant; the parser determines the system's ceiling.
-
-### 8.5 Everything is a tree: the unifying view
-
-The frameworks of §8.1-§8.4 describe the breathing transformer from different angles. A single deeper observation unifies them: **the architecture is a tree-navigator, and the problems it solves all decompose into tree-structured search spaces**. Four trees, each navigated by the same mechanism, with two complementary traversal strategies.
-
-#### The four trees
-
-**Tree 1 — The operation tree** (semantic codebook structure). Hierarchical clustering of factor types on Pythia embeddings of natural-language operation descriptions yields a 4-op × 8-subleaf tree of 32 leaves. Each leaf is a coherent semantic role ("convert minutes to hours" → DIV.0.1, "find half of N" → DIV.0.2.1). This is the codebook (v103/v104).
-
-**Tree 2 — The value tree** (digit decomposition). A number is a sequence of digit positions, each a 10-way variable. The value 1234 is the leaf at depth 4 of a tree with root "ten-thousands" and branching factor 10. This is the v105 architecture (§9.6).
-
-**Tree 3 — The DAG tree** (factor-graph topology). Each factor graph is itself a DAG with leaves (observed values) and a root (the query). Topological depth gives a natural breath ordering. This is what the topological staging masks of §6.3 navigate.
-
-**Tree 4 — The parse tree** (NL → factor graph). The Phase 1 parser explores a space of possible factor-graph parses of the natural-language input. Different parses are different paths through this tree; the correct parse is one specific path.
-
-#### Each tree has its own traversal mechanism
-
-```
-Tree            Strategy             Mechanism
-────────────    ─────────────────    ────────────────────────
-Operation       classification       per-breath codebook selection
-Value           digit commitment     digit-by-digit decoding
-DAG             topological flow    progressive visibility per breath
-Parse           candidate search     MCTS over Phase 1 outputs
-```
-
-What's striking is that the same K breaths simultaneously descend ALL of these trees. Each breath performs a coordinated step:
-
-- On the **operation** tree: refine which of 32 IB leaves each factor represents
-- On the **value** tree: commit one more digit position toward a peaked distribution
-- On the **DAG** tree: propagate one more layer of constraint information
-- On the **parse** tree: implicitly weight the current parse against alternatives
-
-The 4 transformer layers within a breath aren't just RK4 stages (§8.2) — they are also one step of descent down each of these trees, in parallel, through shared weights.
-
-#### Belief propagation and MCTS as complementary tree-navigation strategies
-
-The architecture admits two distinct ways of moving down a tree:
-
-**Belief propagation (continuous, parallel).** At each breath, soft distributions over tree children evolve via energy descent. Information flows smoothly down all trees simultaneously. Fast and parallel, but only when the right child to descend is clearly distinguishable.
-
-**Monte Carlo tree search (discrete, sequential).** When BP's marginals remain ambiguous (calibration head < threshold), commit to one specific child, run BP again with the commitment as a clamp, score the result, and either accept or backtrack. Slow and sequential, but it can resolve ambiguities that BP alone cannot.
-
-The two are complementary, not competing. The calibration head is the SWITCH:
-
-```
-Adaptive compute structure:
-  calib > 0.9:   easy problem, BP alone resolves all trees       (~10ms × K)
-  calib 0.7-0.9: medium problem, BP + few MCTS rollouts on
-                 the most uncertain tree node                      (~1s)
-  calib < 0.7:   hard problem, MCTS commits multiple digits
-                 with BP rollouts evaluating each commitment       (~10s+)
-  
-  The model itself decides how hard to think.
-  Compute allocates to uncertainty.
-```
-
-This is the AlphaZero pattern at architecture level: a fast neural evaluator (BP) inside a discrete search algorithm (MCTS). The breathing transformer IS the evaluator; MCTS provides the discrete search the evaluator alone can't do.
-
-#### Why this unifies the prior frameworks
-
-The musical-keys framework (§8.1) says rhythm must match topology. In the tree-navigation view: the right rhythm IS the right tree-traversal strategy. Cyclic graphs need rotational breathing because their associated trees (multiple intersecting cliques) need angular sampling. DAGs need topological staging because their associated trees (single rooted dependency tree) need depth-ordered descent.
-
-The ODE-integrator framework (§8.2) describes the continuous descent. The tree-navigation view places that descent in a discrete combinatorial space. BP is continuous tree-descent (gradient on soft distributions); MCTS is discrete tree-search (commit and backtrack).
-
-The compression-as-commitment framework (§8.3) describes what each breath leaves behind. In the tree-navigation view: each breath descends one level, and the lossy compression is what allows the model to forget the alternatives at the previous level. Without compression, every alternative would be carried forward, defeating the tree-descent dynamic.
-
-The two-phase architecture (§8.4) splits work between the parse tree (Phase 1) and the other three trees (Phase 2). Each phase navigates the tree it's best suited for: Phase 1 (large model) explores the parse tree; Phase 2 (small model + iteration) descends the operation, value, and DAG trees in parallel.
-
-#### Falsifiable prediction
-
-If the architecture is genuinely a tree-navigator with BP as the continuous evaluator and MCTS as the discrete search, then:
-
-1. **BP+MCTS should outperform BP-alone on problems where BP's calibration is low** — but provide no benefit where calibration is already high. The gain from MCTS should be proportional to the entropy of BP's final marginal distributions.
-
-2. **Computational cost should scale with problem difficulty in a predictable way.** Easy problems (high BP calibration) take K breaths × 4 layers ≈ 40 unit-operations. Hard problems (low BP calibration) take K × 4 × N_rollouts ≈ 40 × N_rollouts. The MCTS budget N_rollouts should be approximately log-linear with the inverse of BP's calibration confidence.
-
-Both predictions are testable in 1-2 weeks of work using the v105 + v106 architectures.
-
-The Shape of Thought is a tree. The breath descends it. One level per breath. When the path is clear, flow downhill via BP. When the path forks, search and backtrack via MCTS. The calibration head knows which strategy to use.
+## 8. What is NOT claimed / spec-stage / retired
+
+- **No quality SOTA claim.** The engine does not beat SOTA or any bespoke solver on
+  inference quality. Symbolic search dominates clean CSPs; loopy BP wins soft-MRF
+  marginals; SA wins MAP.
+- **No positive operating point for neural probabilistic propagation on clean CSPs.**
+  It is net-negative; the CONF_THRESH → 1.0 sweep confirms zero positive operating
+  point (byte-identical to no-propagation at best).
+- **Soft MRFs are NOT a promising future direction.** The frontier is BURIED on both
+  marginals and MAP, flat and DAG. (The probes are tractable-regime testbeds with exact
+  references.)
+- **The radial-depth "deep prize" is REFUTED** (ρ ≈ 0.13). It is not a future
+  direction or extension point.
+- **The Poincaré / hyperbolic embedding and hyperbolic mask generator are NOT built,
+  NOT working, NOT validated.** They are SPEC-STAGE. Relaxation is gradient-dead for
+  non-partition factor graphs; geometric transfer is UNPROVEN and doubly gated.
+- **The perceiver is RETIRED** — 5× refuted (v118–v121; v300 failed flat at chance).
+  The engine is the v98-lineage breathing deducer, not a perceiver.
+- **Neural deducer + symbolic search does NOT beat symbolic alone** on KenKen. Symbolic
+  GAC + all-different trivializes the tree (305 → 0.9 decisions on g10), leaving no
+  residual for neural ordering.
+- **The neural-ordering verdict on KenKen is UNVERIFIED.** The coloring neural-ordering
+  numbers use the refuted auto-commit propagation + complete fallback at n=40 — not a
+  clean ordering-only test. The decisive test (neural ordering on top of symbolic GAC,
+  on KenKen where GAC is weaker) is gated on a trained KenKen deducer checkpoint that
+  does not yet exist.
 
 ---
 
-## 9. Future Work
+## 9. Limitations and future work
 
-The four falsifiable predictions in §8 each define a concrete experiment. Beyond those direct tests, the framework opens five research directions.
+The forward program for this engine is gated strictly on the verified base:
 
-### 9.1 The two-phase GSM8K system (Phase 1 parser + Phase 2 inference)
+### 9.1 Neural-ordering arm on KenKen (unverified, gated)
+The decisive test is neural ordering on top of symbolic GAC on KenKen (not coloring,
+where GAC trivializes the tree). Gated on a trained KenKen deducer checkpoint. If the
+ordering arm adds value, it will be the first positive neural-quality signal; if it
+doesn't, the "generality + amortized parallel deduction" framing stands as complete.
 
-The most immediate extension is closing the GSM8K loop end-to-end by building the Phase 1 parser predicted in §8.4. The plan: distill ~5,000 (NL, factor graph) pairs from Haiku-class models, fine-tune a T5-small parser (60M params, ~70MB quantized) to map natural-language problems to factor graphs, then run the resulting parses through the existing breathing transformer.
-
-Predicted end-to-end GSM8K accuracy: 30-45%, dependent on parser quality. The two-phase decomposition is forced by gradient-conflict considerations (§8.4): comprehension and inference cannot share parameters without each pulling the optimizer in opposing directions. A separate parser eliminates the conflict.
-
-Total system footprint: ~450MB on disk (~70MB parser + ~377MB inference engine). Edge-deployable on modern phones.
-
-### 9.2 Higher-order ODE integration (deeper per-breath)
-
-The ODE framing (§8.2) predicts that 8-layer-per-breath architectures should outperform 4-layer-per-breath ones on stiff systems specifically — problems where some constraints converge fast and others slow. Sudoku's hardest puzzles exhibit this stiffness empirically (per-breath delta plateaus at 0.4 at K=20, indicating non-convergence).
-
-The minimal test: train a v98-equivalent architecture with 8 shared Pythia layers per breath at K=10 (matched compute vs. v98's 4 layers × K=20) and compare on the hard subset. If deeper-per-breath outperforms more-breaths under matched compute, the higher-order integration hypothesis is validated.
+### 9.2 Broader factor-graph domains (structural generality, not quality)
+Additional domains (n-queens, scheduling, SMT fragments with bounded theories) test the
+one-trick-pony guarantee: do they also require only a predicate + bridge, with zero
+core edits? The claim is structural generality; quality comparisons to bespoke solvers
+should be expected to favor the bespoke solver.
 
 ### 9.3 Adaptive K via the calibration head
+The calibration head is trained; what remains is inference-time halting (halt when
+`calib_k > threshold`) and threshold tuning. This is a deduction-efficiency result
+(fewer breaths for easier problems), not a quality improvement.
 
-The calibration head (§3.6) is trained to predict P(solution correct), with detached supervision targeting 0.5 at early breaths and the actual correctness label at late breaths. After training, calibration tracks per-puzzle convergence (0.79 on easy converged puzzles, 0.27 on hard non-converged).
+### 9.4 Hierarchical testbeds for the radial-depth question
+The radial-depth thesis was refuted on Boolean circuits. If a qualitatively different
+testbed (deeply hierarchical, non-Boolean, with measurable abstraction levels) yields a
+different ρ result, that would revise the verdict — but such a testbed and such a
+result do not currently exist. The refutation stands until contradicted by evidence.
 
-Adaptive K means halting when calib_k > threshold (e.g., 0.7). Easy puzzles halt at K=5 (saving ~75% of inference compute); hard puzzles run to K=20. The mechanism is already trained — what remains is the inference-time loop modification and threshold tuning. We predict average compute reduction of 50%+ on mixed-difficulty workloads with no accuracy loss.
-
-### 9.4 Multistep methods using the notebook as gradient history
-
-The notebook component already carries previous-breath state across iterations. The ODE framing identifies this as the precursor to multistep methods (Adams-Bashforth, Adams-Moulton) that use a weighted combination of past gradients for higher accuracy without additional forward passes. Current implementation effectively does AB1 (uses only the current breath's gradient).
-
-AB2-AB4 implementations would store the last 2-4 breaths' updates and combine them via the standard Adams coefficients. Negligible memory cost (the notebook already exists); minor computation cost (one linear combination per breath); potentially significant accuracy improvement per iteration. This is a free upgrade in principle.
-
-### 9.5 Phase-specialized computation as a falsifiable hypothesis
-
-The JPEG codec view (§5.4) partitions the breathing transformer's K iterations into three computational regimes: parsing (Phase 1, NL → factor graph), propagation (expand breaths, information gathering), and compression (collapse breaths, the four-stage codec). The current architecture runs all three regimes through the same shared Pythia-410M backbone, distinguished only by per-breath attention mask and waist gate. An open question is whether per-regime weight specialization would lift accuracy.
-
-The hypothesis: each regime requires different computational primitives. Parsing benefits from broad linguistic competence (token boundary detection, span resolution, panama-hat-style compound noun handling). Propagation benefits from broad attention (gather constraint information across the graph). Compression benefits from focused attention into the bottleneck (decide what to keep, what to discard). Shared weights performing all three may compromise on each.
-
-The minimal falsifiable test: add a rank-16 LoRA adaptation specialized for collapse breaths only. ~2M new parameters trained alongside the existing 87M backbone. Measure hard cell accuracy on factor-graph 50-puzzle subset against v112b's 0.3945 baseline. If +0.005 or better, the phase-specialization hypothesis is validated and Expand and Phase 1 LoRAs are justified. If flat, the bottleneck is elsewhere (input precision, attractor sharpness, factorization).
-
-The efficient endpoint, if validated through individual ablation: three rank-16 LoRA adaptations on one shared Pythia backbone — Phase 1 LoRA for parsing, Expand LoRA for propagation, Collapse LoRA for compression — totalling ~6M new parameters atop 87M shared. The full system retains its 87M backbone footprint while gaining per-regime computational specialization. Three musicians sharing one instrument, each adding their own style.
-
-The hypothesis must be tested before commitment. The v112b finding (Jun 7) is instructive: the predicted load-bearing component (pairwise attention bias) refused to engage, while the secondary mechanism (per-position residual gating) became dominant. Phase-specialized LoRA may follow the same pattern — the specialization that helps may not be the specialization we expect.
-
-### 9.6 Broader factor-graph domains
-
-The 2×2 framework (§6.4) places the breathing transformer within a class of architectures parameterized by (breathing rhythm, factor graph topology). Each (key, topology) pair admits its own validation:
-
-- **Constraint satisfaction with fixed topology**: graph coloring on fixed graphs, n-queens, scheduling. Compression should help (per §8.3 prediction).
-- **Algorithmic problems**: sorting networks, dynamic programming (Bellman-Ford), shortest paths. These have known DAG structure; the directional key applies.
-- **Logic problems**: SAT instances with shared structural patterns, SMT problems with bounded theories. Each instance class needs its own factor topology.
-- **Decision-making under uncertainty**: factor graphs from POMDPs and Bayesian networks. The constraint energy generalizes to log-probability of joint configurations.
-
-The framework's value is that it converts architectural decisions into structural questions about the data: identify the factor graph, choose the rhythm matching its topology, decide whether compression applies based on cross-instance structural sharing.
+### 9.5 The Poincaré geometry front-end (spec-stage, doubly gated)
+The hyperbolic mask generator spec (`docs/hyperbolic_mask_generator_spec.md`) remains
+a valid spec-stage design. But it is gated on two conditions that currently block it:
+(a) the relaxation must become gradient-alive for non-partition factor graphs, and
+(b) the radial-depth thesis must be reconsidered on a deeper testbed. Neither condition
+is currently met. Building toward it before those conditions are met is premature.
 
 ---
 
-## 10. Conclusion
+## 10. Experimental summary
 
-We have introduced the breathing transformer — a small (87M parameter, ~377MB) architecture that performs iterative reasoning by looping shared transformer layers K times, with each iteration refining a representation via energy descent on a factor-graph-defined energy landscape. The architecture admits three equivalent mathematical descriptions: it is a learned ODE integrator (4 layers per breath = 4 RK4 stages), an instance of approximate belief propagation (K breaths = K message-passing rounds), and an iterated application of modern Hopfield energy descent (each attention layer is one Hopfield gradient step). These three views describe the same mathematical object from computer science, statistical physics, and machine learning perspectives.
+All numbers trace to committed artifacts (§11). Key results:
 
-Empirically, the architecture validates this identity through three convergent signatures: per-breath constraint energy decay, per-breath cell-accuracy ladders, and depth-correlated accuracy degradation. On Sudoku, the 87M-parameter model reaches 79% easy puzzle accuracy with a 7-orders-of-magnitude correlation above independent-cell baseline — the empirical signature of joint MAP inference, distinct from per-variable classification. On synthetic arithmetic factor graphs, the same architecture with topological staging reaches 40-48% cell accuracy depending on compression choices, with the K=10 vs K=1 gap providing direct empirical evidence that iteration is doing work.
+**Generality (§4):**
+- Coloring: symbolic AC-3 (B3) 0.95 / no-prop (B1) 0.85 / deducer-alone (B0) 0.025
+- KenKen: symbolic B1 + B3 100% across g40–g10
+- SAT: solved + UNSAT-certified through predicate + bridge API alone
+- Circuits: deducer D6–D16, cell_acc 0.923–0.958
 
-The cross-architecture comparison (v98 / v99 / v100 / v101 / v103) demonstrates a precise design principle: **the breathing rhythm must match the underlying factor graph's topological symmetry**. Rotational breathing works on cyclic graphs (Sudoku, 79%); the same rotational mechanism fails on tree-structured factor graphs (v99, 9% chance). Topological staging — masks that progressively widen across breaths — restores BP behavior on trees (v100, 40-48%). The 2×2 framework (rhythm × topology) explains both the successes and the failures within a single principle.
+**Parallel deduction (§5):**
+- K=4 / K=16 ratio on depth-16 circuits: **0.95**
+- ~4 deduction levels per breath; `K_min ≈ D/4`
 
-Compression-as-commitment (the JPEG-codec waist bottleneck) provides additional 6-7 points on factor graphs but only when paired with the right breathing rhythm. The applicability condition (§8.3) makes the framework testable: compression helps when training data shares structural priors across instances; it has diminishing benefit when topology varies arbitrarily. Among compression structures, the projection-based waist (v101) and the codebook-quantization waist (v103) are statistically indistinguishable at our sample sizes — compression PRESENCE is load-bearing; compression SHAPE is interchangeable at this scale.
+**Clean CSPs — neural propagation net-negative (§6.1):**
+- B2b (0.825) ≤ B1 (0.85); CONF_THRESH → 1.0 → byte-identical to B1
+- G1 (policy) FAILS: mean gold-prob 0.261 < 1/k = 0.333
+- G2 (entropy) PASSES: AUC 0.69; G4 (clamp+deduce) PASSES: +0.77/+1.08/+2.21 pt
 
-Three findings have practical consequences for deployment:
+**Soft MRFs — cheap baselines win (§6.2):**
+- Gate-1 marginals (flat Ising): BP ≈ exact in tractable band; gap regime has
+  17–45% convergence
+- Gate-2 MAP (flat Ising): SA closes 87% (stronger SA 100%); MAP DAG: max-product
+  BP exact (Hamming 0.000)
+- Mean-field ceiling: structural per-cell-independent softmax
 
-1. **Small models can perform sophisticated inference when given structured input.** The breathing transformer's 87M parameters are sufficient for joint MAP estimation on factor graphs of realistic complexity. The architecture trades model size for iteration depth, fitting comfortably on phone-class hardware.
+**Radial-depth refuted (§6.3):**
+- ρ(settle-breath, depth) = **0.134**, lower-CI 0.115, bar 0.30 → NULL
 
-2. **Comprehension and inference are different computational regimes.** Forcing both into one model creates gradient conflicts that limit performance to the worse of the two tasks. The two-phase architecture (large parser + small breathing transformer) decouples these, allowing each component to be sized appropriately.
+---
 
-3. **Iteration is conditional on rhythm-topology matching.** Practitioners can predict whether iteration will help on a new problem by examining the factor graph: cyclic structure with overlapping cliques → rotational breathing; directional structure with topological ordering → staged breathing. No empirical trial-and-error required.
+## 11. Sources
 
-The shape of thought, we propose, is not a single forward pass. It is a breath — a deliberate iteration that refines a belief about the world through repeated message passing on the structure of the problem itself. Each breath descends the energy landscape one step. Each step commits a little more to the answer. The model breathes until convergence, then reads out what it has come to believe.
+Every quantitative claim traces to a committed artifact:
 
-The architecture is small. The mathematics is well-defined. The findings are reproducible. The remaining work — closing the GSM8K loop via the two-phase architecture, validating higher-order integration on stiff systems, extending to broader factor-graph domains — is concrete, specified, and bounded. We hope the breathing transformer, and the rhythm-topology design principle it instantiates, provide a useful frame for building small models that reason — and a falsifiable framework for predicting when iteration is the right architectural choice.
+**Commits.** `6af771c` Phase 0 (predicate-driven general core) · `afc4a2f` Phase 2
+(KenKen generality) · `b973197` search-tier gate (G1/G2/G4) · `649855a` Path B
+(verifier-driven branch-and-propagate, CONF_THRESH sweep) · `b8d73a1` B3 scaling
+probe (deep-skinny circuits) · `98d1bea` B3 settle-breath vs depth analyzer (radial
+refutation) · `4c8f6eb` frontier gate-1 (BP-gap kill-gate) · `688f1b5` frontier
+salvage probe (MAP + DAG KILL).
+
+**Code.** `mycelium/factor_graph_engine.py` (deducer; per-cell readout `:386`) ·
+`mycelium/factor_masks.py` (runtime masks, `cell_mp_head_allocation`) ·
+`mycelium/csp_core.py` / `csp_registry.py` / `csp_domains.py` (search tier) ·
+`mycelium/kenken.py` (v98 regression oracle) · `mycelium/circuit_data.py` /
+`graph_coloring_data.py` (testbeds) · `scripts/eval_circuit_scaling.py` ·
+`scripts/analyze_circuit_rho.py` · `scripts/search_coloring.py` (CONF_THRESH sweep) ·
+`scripts/search_kenken.py` · `scripts/frontier_bp_gap_gate.py` ·
+`scripts/frontier_map_dag_probe.py`.
+
+**Docs.** `docs/general_engine_results.md` (the authoritative consolidated write-up
+this outline mirrors) · `docs/general_factor_graph_search.md` ·
+`docs/hyperbolic_mask_generator_spec.md` (SPEC-STAGE) · `CLAUDE.md` · `README.md`.
+
+*Note on reproducibility: §5's circuit-scaling numbers and §6.3's ρ=0.134 are
+recorded-run outputs on a trained `fg_circuit` checkpoint not in-tree; they are
+reproducible from that checkpoint + the committed scripts, not from the scripts alone.*

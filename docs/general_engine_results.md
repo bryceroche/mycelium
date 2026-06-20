@@ -184,11 +184,11 @@ problem classes, predicate + bridge per domain, zero search-core edits.
 
 The deducer's distributed deduction is **parallel, not depth-sequential**, and it
 scales sub-linearly in depth (probe machinery committed at `b8d73a1`,
-`scripts/eval_circuit_scaling.py`; the numbers below are from the recorded run on the
-trained `fg_circuit` checkpoint, logged in
-`memory/project_distributed_deduction_scales_parallel.md` — they depend on that
-checkpoint, which is not in-tree, so they are not reproducible from the committed script
-alone).
+`scripts/eval_circuit_scaling.py`; the numbers below were **freshly reproduced 2026-06-20**
+and committed to `docs/circuit_scaling_results.md` — full table + the exact command +
+checkpoint. They are reproducible from the on-disk checkpoint
+`fg_circuit_deep_k16_step1200` via the committed script; the checkpoint itself is not
+committed to git, since checkpoints are not version-controlled).
 
 - **K-sweep on depth-16 circuits.** cell_acc at K=4 is **0.877** vs K=16 **0.923** —
   ratio **0.95**. Four breaths recover 95% of full-K performance. All depth bands D6–D16
@@ -392,10 +392,11 @@ circuits) · `98d1bea` B3 settle-breath vs depth analyzer (radial refutation) ·
 
 **Memory / docs.** *(`memory/` is the agent memory store outside the repo tree, not a
 committed directory; the in-tree, clone-reproducible artifacts are the commit hashes,
-the scripts, and `docs/` above. The memory notes are supplementary records of runs —
-in particular §4's circuit-scaling numbers and §5.3's ρ=0.134 are recorded-run outputs
-on a trained `fg_circuit` checkpoint that is not in-tree, so they are reproducible only
-from that checkpoint, not from the committed scripts alone.)*
+the scripts, and `docs/` above. §4's circuit-scaling numbers were freshly reproduced
+2026-06-20 and committed to `docs/circuit_scaling_results.md` (table + command +
+checkpoint), reproducible from the on-disk checkpoint via the committed script. §5.3's
+ρ=0.134 remains a recorded-run output on a trained `fg_circuit` checkpoint, reproducible
+from that checkpoint, not the committed scripts alone. Checkpoints are not version-controlled.)*
 `memory/project_phase0_general_search_core.md` ·
 `project_phase2_kenken_generality_proven.md` ·
 `project_pathb_search_coloring_result_jun19.md` ·
