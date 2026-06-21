@@ -122,6 +122,7 @@ _INLET_PARAM_NAMES = [
     "fg_inlet_size_embed",
     "fg_inlet_w",
     "fg_inlet_b",
+    "fg_inlet_gate",
 ]
 
 
@@ -154,6 +155,15 @@ def attach_factor_inlet_params(model: Any, hidden: int,
     fg_inlet_size_embed   (INLET_MAX_CAGE_SIZE, d_size) — KenKen cage-size embedding.
     fg_inlet_w            (d_type+d_op+d_tgt+d_size, hidden) — projection.
     fg_inlet_b            (hidden,)                   — projection bias (zero init).
+    fg_inlet_gate         (N_GLOBAL_TYPES,)           — per-factor-type inlet gate,
+                          ZERO-INIT. The inlet contribution of each latent is scaled by
+                          gate[its global type] BEFORE the membership scatter. At init
+                          (gate=0) the gated inlet contributes EXACTLY 0 -> the forward
+                          is byte-identical to inlet-OFF (the bootstrap-safe zero-init
+                          pattern, cf the notebook/cathedral W_o zero-init). Each type's
+                          gate opens independently ONLY if that type's inlet earns
+                          gradient (KenKen cages: discriminative -> opens; coloring
+                          edges: constant DC -> stays ~0, never re-harming coloring).
     """
     rng = np.random.RandomState(seed)
     model.fg_inlet_type_embed = Tensor(
@@ -174,6 +184,10 @@ def attach_factor_inlet_params(model: Any, hidden: int,
         (rng.randn(d_total, hidden) * w_scale).astype(np.float32),
         dtype=dtypes.float).contiguous()
     model.fg_inlet_b = Tensor.zeros((hidden,), dtype=dtypes.float).contiguous()
+    # Per-factor-type inlet gate — ZERO-INIT. One scalar per global factor type. At
+    # init the gated inlet contributes EXACTLY 0 (byte-identical to inlet-OFF); each
+    # type's gate opens independently only if that type's inlet earns gradient.
+    model.fg_inlet_gate = Tensor.zeros((N_GLOBAL_TYPES,), dtype=dtypes.float).contiguous()
 
 
 def factor_inlet_parameters(model: Any) -> list[Tensor]:
@@ -272,6 +286,31 @@ def build_generic_factor_inlet(model: Any,
     # ---- per-latent feature -> project to H. ----
     latent_feat = Tensor.cat(type_e, op_e, tgt_e, sz_e, dim=-1)   # (B, L, d_total)
     latent_inlet = latent_feat @ W_inlet + b_inlet                # (B, L, H)
+
+    # ---- ZERO-INIT per-factor-type gate (the bootstrap-safe fix). ----
+    # Each latent's projected inlet is scaled by gate[its global type] BEFORE the
+    # membership scatter, so a coloring cell's edge-inlet is scaled by
+    # gate[coloring_edge], a kenken cell's cage-inlet by gate[cage], etc. Gates are
+    # INDEPENDENT per type, so KenKen's gate opening does NOT re-harm coloring. At
+    # init the gate is all-zero -> the gated inlet is EXACTLY 0 -> the whole inlet
+    # contribution vanishes -> byte-identical to inlet-OFF (and to native).
+    #
+    # The gate table is (N_GLOBAL_TYPES,); we append a single non-trainable 0 sentinel
+    # slot so the one-hot over TYPE_TABLE_ROWS (= N_GLOBAL_TYPES + 1) lines up. The
+    # sentinel slot is a dynamic Tensor.zeros (NOT a baked float32 const) so the JIT
+    # graph stays AM-driver-safe; pad latents carry the sentinel id and all-zero
+    # membership, so they scatter nothing regardless.
+    inlet_gate = getattr(model, "fg_inlet_gate", None)
+    if inlet_gate is not None:
+        gate_full = Tensor.cat(
+            inlet_gate.cast(latent_inlet.dtype),
+            Tensor.zeros((1,), dtype=latent_inlet.dtype),       # sentinel slot = 0
+            dim=0,
+        )                                                        # (TYPE_TABLE_ROWS,)
+        # Per-latent gate via the same type one-hot used for the type embedding:
+        # (B, L, TYPE_TABLE_ROWS) @ (TYPE_TABLE_ROWS,) -> (B, L).
+        gate_per_latent = (type_oh.cast(latent_inlet.dtype) @ gate_full)  # (B, L)
+        latent_inlet = latent_inlet * gate_per_latent.reshape(B, L, 1)
 
     # ---- scatter latent -> cell via membership: (B, S, L) @ (B, L, H) -> (B, S, H).
     # A cell in several latents SUMS their projected features. Pad latents have

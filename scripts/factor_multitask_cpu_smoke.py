@@ -124,13 +124,19 @@ def main():
         lg = logits_history[-1]
         assert lg.shape == (B, spec.s_max, 7), f"{d}: bad logits shape {lg.shape}"
 
-        # CHECK B: the generic inlet carries the domain's semantics (non-zero on
-        # member cells; not all-zero like the off path).
+        # CHECK B (UPDATED for the ZERO-INIT per-factor-type gate): at init the gate
+        # is all-zero, so the gated generic inlet contributes EXACTLY 0 -> the forward
+        # is byte-identical to inlet-OFF -> every domain (param-free coloring included)
+        # bootstraps exactly like native. (The OLD live-inlet design asserted
+        # energy>0 here; the gate fix makes energy==0 at init the CORRECT state. The
+        # gate's ability to OPEN + carry semantics is checked in CHECK B-open below.)
         inlet_np = fb.factor_inlet.realize().numpy()
         cv = fb.cell_valid.realize().numpy()
         valid_mask = cv > 0.5
         inlet_valid_energy = float(np.abs(inlet_np)[valid_mask].sum())
-        assert inlet_valid_energy > 1e-3, f"{d}: inlet is empty (no semantics carried)"
+        assert inlet_valid_energy == 0.0, \
+            f"{d}: zero-init gate must make the inlet EXACTLY 0 at init (got "\
+            f"{inlet_valid_energy}); the gate is not truly zero-init"
 
         # CHECK C: the masked codebook ZEROES unused value slots. The engine adds
         # value_bias = (1-vdm)*(-1e4); softmax over the 7 slots must put ~0 prob on
@@ -169,16 +175,31 @@ def main():
         assert max_illegal_prob < 1e-2, \
             f"{d}: masked codebook leaked prob {max_illegal_prob} onto illegal slots"
 
-    # CHECK B': KenKen inlet (op/target/size) DIFFERS from a type-id-only inlet built
-    # on the same membership -> the arithmetic semantics are genuinely carried.
+    # CHECK B-open (gate live): with the kenken-type gates OPENED, the KenKen inlet
+    # (op/target/size) is non-zero AND DIFFERS from a type-id-only inlet -> the
+    # arithmetic semantics flow through once the discriminative cage gate opens. We
+    # open the gate to 1.0 for every kenken type (row/col/cage) just for this check,
+    # then restore it to zero-init.
+    from mycelium.factor_inlet import GLOBAL_TYPE_IDS
     kk = per_domain_native["kenken"]
+    g_saved = model.fg_inlet_gate
+    g_open = np.zeros((N_GLOBAL_TYPES,), dtype=np.float32)
+    for nm in ("kenken_row", "kenken_col", "kenken_cage"):
+        g_open[GLOBAL_TYPE_IDS[nm]] = 1.0
+    model.fg_inlet_gate = Tensor(g_open, dtype=dtypes.float).contiguous().realize()
+    inlet_full = build_generic_factor_inlet(
+        model, kk.membership, kk.latent_type, kk.cell_valid,
+        op=kk.inlet_op, target=kk.inlet_target, size=kk.inlet_size).realize().numpy()
     inlet_typeonly = build_generic_factor_inlet(
         model, kk.membership, kk.latent_type, kk.cell_valid,
         op=None, target=None, size=None).realize().numpy()
-    inlet_full = kk.factor_inlet.realize().numpy()
+    model.fg_inlet_gate = g_saved   # restore zero-init
+    kk_open_energy = float(np.abs(inlet_full).sum())
     kk_sem_diff = float(np.abs(inlet_full - inlet_typeonly).max())
-    print(f"\n  kenken op/target/size semantics carried (inlet differs from "
-          f"type-id-only): max|delta|={kk_sem_diff:.4f} (>0)")
+    print(f"\n  kenken gate OPENED: inlet energy={kk_open_energy:.2f} (>0) and "
+          f"op/target/size semantics carried (differs from type-id-only): "
+          f"max|delta|={kk_sem_diff:.4f} (>0)")
+    assert kk_open_energy > 1e-3, "opened kenken gate must make the inlet non-zero"
     assert kk_sem_diff > 1e-3, "kenken arithmetic semantics NOT carried by the inlet"
 
     # ---- tiny MULTI-STEP smoke: a few AdamW steps per domain; all 3 losses MOVE.
