@@ -132,6 +132,11 @@ from mycelium.factor_masks import (
     clamp_factor_hyp_tangent_norms,
     FG_HYP_RELAX, FG_HYP_EUCLID,
 )
+from mycelium.factor_inlet import (
+    GLOBAL_TYPE_IDS, N_GLOBAL_TYPES,
+    attach_factor_inlet_params, factor_inlet_param_names,
+    factor_inlet_parameters, build_generic_factor_inlet,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -185,6 +190,10 @@ _KENKEN_INLET_NAMES = [
     "kenken_op_embed", "kenken_target_embed", "kenken_size_embed",
     "kenken_inlet_w", "kenken_inlet_b",
 ]
+# Generic semantics-as-input inlet params (only present in the MULTI-TASK path,
+# attach_factor_inlet_params). Saved only when attached, so single-domain ckpts are
+# byte-identical (they never carry these keys).
+_GENERIC_INLET_NAMES = factor_inlet_param_names()
 
 
 def model_state_dict_fg(model) -> dict:
@@ -200,6 +209,11 @@ def model_state_dict_fg(model) -> dict:
         sd[nm] = getattr(model, nm)
     # Verification-inlet params are saved only when attached (kenken task).
     for nm in _KENKEN_INLET_NAMES:
+        t = getattr(model, nm, None)
+        if t is not None:
+            sd[nm] = t
+    # Generic semantics-as-input inlet params (only present in the multi-task path).
+    for nm in _GENERIC_INLET_NAMES:
         t = getattr(model, nm, None)
         if t is not None:
             sd[nm] = t
@@ -258,7 +272,8 @@ def _compile_jit_fg_step(model, opt, spec: FactorGraphSpec, task: str,
                          label_smoothing: float = 0.0,
                          stoch_depth_p: float = 0.0,
                          constraint_energy_fn=None,
-                         has_inlet: bool = False):
+                         has_inlet: bool = False,
+                         multitask: bool = False, mix_key: str = ""):
     """Compile + return a TinyJit'd train step for the general factor forward.
 
     JIT cache key includes EVERY shape/runtime-determining constant AND the spec
@@ -287,6 +302,12 @@ def _compile_jit_fg_step(model, opt, spec: FactorGraphSpec, task: str,
            float(constraint_weight), float(calib_weight), float(ortho_lambda),
            float(grad_clip), float(label_smoothing), float(stoch_depth_p),
            bool(has_inlet),
+           # Multi-task is a DISTINCT graph: FG_MULTITASK flips the spec (N_max=7
+           # codebook, T=N_GLOBAL_TYPES, generic inlet) and the batch shapes (L padded
+           # to L_max). FG_MIX hashes the domain set so different mixes never share a
+           # JIT graph. When OFF (default) these are (False, "") — the single-domain
+           # key is unchanged, so old single-task graphs stay cache-compatible.
+           bool(multitask), str(mix_key),
            bool(FG_HYP_MASK), bool(FG_HYP_FREEZE),
            # Rung-2 relax knobs CHANGE THE TRACED GRAPH BODY (exp_0 vs raw coord,
            # euclid vs hyp distance, soft-block vs saturated alpha), so they MUST be
@@ -315,13 +336,12 @@ def _compile_jit_fg_step(model, opt, spec: FactorGraphSpec, task: str,
     @TinyJit
     def _step(input_cells: Tensor, gold: Tensor, cell_valid: Tensor,
               value_domain_mask: Tensor, membership: Tensor, latent_type: Tensor,
-              factor_inlet: Tensor, stoch_keep: Tensor):
+              factor_inlet: Tensor, stoch_keep: Tensor,
+              inlet_op: Tensor, inlet_target: Tensor, inlet_size: Tensor):
         opt.zero_grad()
 
         # Lightweight batch shim so the engine reads per-instance tensors by attr.
-        # All tensor attrs are JIT inputs (re-traced each replay). The inlet is
-        # ALWAYS passed (zeros when off) so the signature is stable; the spec's
-        # has_factor_inlet flag decides whether the engine reads it.
+        # All tensor attrs are JIT inputs (re-traced each replay).
         class _B:
             pass
         batch = _B()
@@ -331,7 +351,20 @@ def _compile_jit_fg_step(model, opt, spec: FactorGraphSpec, task: str,
         batch.value_domain_mask = value_domain_mask
         batch.membership = membership
         batch.latent_type = latent_type
-        batch.factor_inlet = factor_inlet if has_inlet else None
+
+        # MULTI-TASK: build the GENERIC inlet IN-GRAPH from the raw per-latent semantic
+        # ids (op/target/size), so the inlet params are in the loss graph and TRAIN every
+        # step (the general-weights thesis). SINGLE-DOMAIN: the engine's pre-built
+        # factor_inlet path is unchanged (the inlet tensor is passed through as before).
+        # inlet_op/target/size are ALWAYS passed (zeros when single-domain) so the JIT
+        # signature is stable; only the multitask branch reads them — a compile-time
+        # constant, NOT a runtime python branch on domain-id.
+        if multitask:
+            batch.factor_inlet = build_generic_factor_inlet(
+                model, membership, latent_type, cell_valid,
+                op=inlet_op, target=inlet_target, size=inlet_size)
+        else:
+            batch.factor_inlet = factor_inlet if has_inlet else None
 
         # Forward: K constant → loop unrolls → static graph topology.
         logits_history, calib_history = factor_breathing_forward(
@@ -425,7 +458,14 @@ def _compile_jit_fg_step(model, opt, spec: FactorGraphSpec, task: str,
         healthy_b = total.isfinite()
         healthy = healthy_b.cast(dtypes.float)
         for p in jit_params:
-            if p.grad is not None:
+            if p.grad is None:
+                # A param untouched by THIS step's graph (e.g. an inlet sub-table whose
+                # value slot no domain in the batch indexed) gets no grad; AdamW.step()
+                # requires a grad on every param. Fill with zeros (a no-op update). This
+                # is multitask-only in effect (single-domain touches all its params).
+                if multitask:
+                    p.grad = Tensor.zeros_like(p)
+            else:
                 p.grad = healthy_b.where(p.grad, Tensor.zeros_like(p.grad))
 
         # Optional global-norm gradient clipping (single sq_sum kernel; AM-safe).
@@ -480,6 +520,12 @@ class _Task:
         self.constraint_energy_fn = constraint_energy_fn
         self.has_inlet = has_inlet
         self.eval_iter = eval_iter                   # () -> iterator of native batches
+        # Multi-task fields (default OFF -> single-domain path is byte-identical).
+        self.is_multitask = False
+        self.mix = None
+        self.adapters = None
+        self.eval_loaders = None
+        self.L_max = None
 
 
 def _zeros_inlet(B, S, H):
@@ -684,17 +730,427 @@ def _build_circuit_task(K, BATCH, EVAL_BATCH, SEED, n_heads):
     )
 
 
+# ---------------------------------------------------------------------------
+# MULTI-TASK (GENERAL-WEIGHTS) HARNESS  — FG_MULTITASK=1 / FG_TASK=multi.
+#
+# ONE dense shared Pythia-410M backbone co-trained on {coloring, circuit, kenken}
+# under ONE unified spec. The model distinguishes domains/factor-types ONLY from the
+# INPUT: the membership topology + the generic semantics inlet (per-factor GLOBAL
+# type-id, + KenKen op/target/size) + the universal masked value-codebook. NO MoE,
+# NO LoRA, NO routing, NO per-domain weight/branch in the backbone.
+#
+# ADDITIVE: default OFF -> the single-domain FG_TASK={coloring,circuit,kenken} path is
+# byte-identical (this whole section is dead code unless FG_MULTITASK=1).
+# ---------------------------------------------------------------------------
+
+# Unified spec constants (the general-weights contract).
+MT_S_MAX = 49                  # all domains lay on the 7x7 = 49-cell grid.
+MT_N_MAX = 7                   # universal codebook size (KenKen size; the max).
+MT_T = N_GLOBAL_TYPES          # global factor-type count (mask-builder T).
+MT_SENTINEL = N_GLOBAL_TYPES   # global padding/sentinel latent_type id.
+
+
+def _circuit_gate_global_id(gate_name: str) -> int:
+    """Map a circuit gate-type name (AND/OR/NOT/XOR) to its GLOBAL type id."""
+    return GLOBAL_TYPE_IDS[f"circuit_{gate_name.lower()}"]
+
+
+def _np_int(t: Tensor) -> np.ndarray:
+    return t.realize().numpy().astype(np.int32)
+
+
+def _np_f(t: Tensor) -> np.ndarray:
+    return t.realize().numpy().astype(np.float32)
+
+
+def _pad_membership_np(mem: np.ndarray, L_max: int) -> np.ndarray:
+    """Pad (B, L, S) membership rows to (B, L_max, S) with all-zero pad rows."""
+    B, L, S = mem.shape
+    if L == L_max:
+        return mem
+    assert L <= L_max, f"membership L={L} exceeds L_max={L_max}"
+    out = np.zeros((B, L_max, S), dtype=np.float32)
+    out[:, :L, :] = mem
+    return out
+
+
+def _pad_latent_type_np(lt: np.ndarray, L_max: int) -> np.ndarray:
+    """Pad (B, L) latent_type to (B, L_max) with the global sentinel id."""
+    B, L = lt.shape
+    if L == L_max:
+        return lt
+    out = np.full((B, L_max), MT_SENTINEL, dtype=np.int32)
+    out[:, :L] = lt
+    return out
+
+
+def _pad_vdm_np(vdm: np.ndarray) -> np.ndarray:
+    """Pad (B, S, n) value_domain_mask to (B, S, MT_N_MAX) with 0 on unused slots."""
+    B, S, n = vdm.shape
+    if n == MT_N_MAX:
+        return vdm
+    assert n <= MT_N_MAX, f"value_domain_mask n={n} exceeds N_max={MT_N_MAX}"
+    out = np.zeros((B, S, MT_N_MAX), dtype=np.float32)
+    out[:, :, :n] = vdm
+    return out
+
+
+class _MultiTaskBatch:
+    """A unified, single-domain batch padded to the multi-task JIT topology.
+
+    Satisfies the FactorGraphBatch contract (same tensor attrs). Built by a per-domain
+    adapter: latent_type remapped to GLOBAL ids, membership padded to L_max, vdm padded
+    to N_max=7. Carries `domain` for per-domain logging.
+
+    THE INLET IS TRAINABLE: instead of a pre-built (detached) factor_inlet tensor, the
+    multi-task batch carries the RAW per-latent semantic id tensors (op/target/size,
+    B x L_max int). The JIT step builds the generic inlet IN-GRAPH from these via
+    build_generic_factor_inlet, so the inlet params are in the loss graph and get
+    gradient every step (the general-weights thesis: the shared backbone LEARNS the
+    predicate registry). This mirrors kenken_train.py, which builds its verification
+    inlet inside the JIT — NOT the general engine's pre-built (frozen) inlet path.
+
+    factor_inlet stays None on a _MultiTaskBatch (the in-graph build supersedes it);
+    eval (eager, not jitted) builds the inlet eagerly via build_generic_factor_inlet
+    so the trained inlet params are read at eval time too.
+    """
+    def __init__(self, input_cells, cell_valid, value_domain_mask, gold,
+                 membership, latent_type, domain, deduction_depth,
+                 inlet_op, inlet_target, inlet_size):
+        self.input_cells = input_cells
+        self.cell_valid = cell_valid
+        self.value_domain_mask = value_domain_mask
+        self.gold = gold
+        self.membership = membership
+        self.latent_type = latent_type
+        self.factor_inlet = None             # built in-graph (JIT) / eager (eval).
+        self.domain = domain
+        self.deduction_depth = deduction_depth
+        # Raw per-latent semantic ids (B, L_max) int — the inlet INPUTS.
+        self.inlet_op = inlet_op
+        self.inlet_target = inlet_target
+        self.inlet_size = inlet_size
+
+
+def _build_multitask_adapter(domain: str, model, L_max: int, hidden: int,
+                             gate_types: "tuple[str, ...] | None" = None):
+    """Return a callable native_batch -> _MultiTaskBatch for one domain.
+
+    The adapter does the FOUR domain-agnosticizations that turn a per-domain native
+    batch into the unified contract:
+      1. REMAP latent_type to GLOBAL type ids (so the shared mask-builder + inlet
+         separate every domain's factor-types FROM INPUT).
+      2. PAD membership (B,L,S) -> (B,L_max,S) and latent_type (B,L) -> (B,L_max) so
+         the JIT topology is stable regardless of which domain is sampled.
+      3. PAD value_domain_mask (B,S,n) -> (B,S,7) (universal masked codebook): unused
+         value slots are 0 -> the engine's (1-vdm)*(-1e4) bias zeroes them in-graph.
+      4. BUILD the generic semantics inlet (per-latent GLOBAL type-id, + KenKen
+         op/target/size; coloring/circuit carry the type-id alone).
+
+    Remapping/padding are done on the NUMPY side (data loading), NOT in the JIT graph
+    — no python branch on domain-id inside the backbone (the dense-only rule). The
+    adapter emits the RAW per-latent semantic id tensors (op/target/size, B x L_max);
+    the JIT step builds the generic inlet IN-GRAPH from them (so the inlet params train).
+    coloring/circuit carry no arithmetic -> their op/target/size are all-zero (row 0 of
+    each table = the "no-param" slot); only the GLOBAL type-id distinguishes them.
+    """
+    def _zero_sem(B):
+        z = np.zeros((B, L_max), dtype=np.int32)
+        return (Tensor(z, dtype=dtypes.int).contiguous().realize(),
+                Tensor(z.copy(), dtype=dtypes.int).contiguous().realize(),
+                Tensor(z.copy(), dtype=dtypes.int).contiguous().realize())
+
+    if domain == "coloring":
+        from mycelium.graph_coloring_data import LTYPE_EDGE
+        edge_gid = GLOBAL_TYPE_IDS["coloring_edge"]
+
+        def adapt(cb):
+            B = int(cb.input_cells.shape[0])
+            lt = _np_int(cb.latent_type)                      # (B, L) local: 0 edge / 1 pad
+            # Remap: local edge (0) -> global edge id; everything else -> sentinel.
+            lt_g = np.where(lt == LTYPE_EDGE, edge_gid, MT_SENTINEL).astype(np.int32)
+            lt_g = _pad_latent_type_np(lt_g, L_max)
+            mem = _pad_membership_np(_np_f(cb.membership), L_max)
+            vdm = _pad_vdm_np(_np_f(cb.value_domain_mask))
+            membership_t = Tensor(mem, dtype=dtypes.float).contiguous().realize()
+            latent_type_t = Tensor(lt_g, dtype=dtypes.int).contiguous().realize()
+            vdm_t = Tensor(vdm, dtype=dtypes.float).contiguous().realize()
+            op_t, tgt_t, sz_t = _zero_sem(B)
+            return _MultiTaskBatch(
+                input_cells=cb.input_cells, cell_valid=cb.cell_valid,
+                value_domain_mask=vdm_t, gold=cb.gold,
+                membership=membership_t, latent_type=latent_type_t,
+                domain="coloring", deduction_depth=cb.deduction_depth,
+                inlet_op=op_t, inlet_target=tgt_t, inlet_size=sz_t)
+        return adapt
+
+    if domain == "circuit":
+        assert gate_types is not None, "circuit adapter needs gate_types for the remap"
+        # Local gate-type idx i -> global id by NAME (loader's gate_types order).
+        local_to_global = {i: _circuit_gate_global_id(g) for i, g in enumerate(gate_types)}
+        # Build a lookup vector indexed by local idx in [0, T_local]; sentinel -> sentinel.
+        T_local = len(gate_types)
+        remap_vec = np.full((T_local + 1,), MT_SENTINEL, dtype=np.int32)
+        for i in range(T_local):
+            remap_vec[i] = local_to_global[i]
+
+        def adapt(cb):
+            B = int(cb.input_cells.shape[0])
+            lt = _np_int(cb.latent_type)                      # (B, L) local 0..T-1 / T pad
+            lt_clipped = np.clip(lt, 0, T_local)              # T = sentinel row
+            lt_g = remap_vec[lt_clipped].astype(np.int32)     # (B, L) global ids
+            lt_g = _pad_latent_type_np(lt_g, L_max)
+            mem = _pad_membership_np(_np_f(cb.membership), L_max)
+            vdm = _pad_vdm_np(_np_f(cb.value_domain_mask))
+            membership_t = Tensor(mem, dtype=dtypes.float).contiguous().realize()
+            latent_type_t = Tensor(lt_g, dtype=dtypes.int).contiguous().realize()
+            vdm_t = Tensor(vdm, dtype=dtypes.float).contiguous().realize()
+            op_t, tgt_t, sz_t = _zero_sem(B)
+            return _MultiTaskBatch(
+                input_cells=cb.input_cells, cell_valid=cb.cell_valid,
+                value_domain_mask=vdm_t, gold=cb.gold,
+                membership=membership_t, latent_type=latent_type_t,
+                domain="circuit", deduction_depth=cb.deduction_depth,
+                inlet_op=op_t, inlet_target=tgt_t, inlet_size=sz_t)
+        return adapt
+
+    if domain == "kenken":
+        from mycelium.kenken_data import N_MAX
+        row_gid = GLOBAL_TYPE_IDS["kenken_row"]
+        col_gid = GLOBAL_TYPE_IDS["kenken_col"]
+        cage_gid = GLOBAL_TYPE_IDS["kenken_cage"]
+        # The KenKen factor batch lays latents as [N_MAX rows | N_MAX cols | C cages].
+        # Local type 0=row, 1=col, 2=cage -> global row/col/cage ids.
+        local_to_global_kk = np.array([row_gid, col_gid, cage_gid], dtype=np.int32)
+
+        def adapt(kb_pair):
+            # kb_pair = (KenKenBatch, FactorGraphBatch-from-make_kenken_factor_batch).
+            # Reuse make_kenken_factor_batch's membership/latent_type (rows/cols/cages),
+            # REMAP local 0/1/2 -> global ids, and emit the per-latent op/target/size ids
+            # aligned to the cage latents (the JIT builds the inlet in-graph from them).
+            kb, fb = kb_pair
+            lt = _np_int(fb.latent_type)                      # (B, L) local 0/1/2
+            lt_g = local_to_global_kk[np.clip(lt, 0, 2)].astype(np.int32)
+            lt_g = _pad_latent_type_np(lt_g, L_max)
+            mem = _pad_membership_np(_np_f(fb.membership), L_max)
+            vdm = _pad_vdm_np(_np_f(fb.value_domain_mask))    # already 7 wide -> no-op
+            membership_t = Tensor(mem, dtype=dtypes.float).contiguous().realize()
+            latent_type_t = Tensor(lt_g, dtype=dtypes.int).contiguous().realize()
+            vdm_t = Tensor(vdm, dtype=dtypes.float).contiguous().realize()
+
+            # Per-latent op/target/size: rows/cols carry no arithmetic (id 0), cages
+            # carry the real cage_op/cage_target/cage_size. Build (B, L_max) int.
+            B = int(kb.cage_op.shape[0])
+            C = int(kb.cage_op.shape[1])
+            n_rowcol = 2 * N_MAX
+            op_np = np.zeros((B, L_max), dtype=np.int32)
+            tgt_np = np.zeros((B, L_max), dtype=np.int32)
+            sz_np = np.zeros((B, L_max), dtype=np.int32)
+            op_np[:, n_rowcol:n_rowcol + C] = _np_int(kb.cage_op)
+            tgt_np[:, n_rowcol:n_rowcol + C] = _np_int(kb.cage_target)
+            sz_np[:, n_rowcol:n_rowcol + C] = _np_int(kb.cage_size)
+            op_t = Tensor(op_np, dtype=dtypes.int).contiguous().realize()
+            tgt_t = Tensor(tgt_np, dtype=dtypes.int).contiguous().realize()
+            sz_t = Tensor(sz_np, dtype=dtypes.int).contiguous().realize()
+            return _MultiTaskBatch(
+                input_cells=kb.input_cells, cell_valid=kb.cell_valid,
+                value_domain_mask=vdm_t, gold=kb.gold,
+                membership=membership_t, latent_type=latent_type_t,
+                domain="kenken", deduction_depth=kb.deduction_depth,
+                inlet_op=op_t, inlet_target=tgt_t, inlet_size=sz_t)
+        return adapt
+
+    raise ValueError(f"unknown multi-task domain {domain!r}")
+
+
+class _MultiTaskLoader:
+    """Round-robin / weight-sampled domain loader. Each batch is PURE single-domain.
+
+    Holds {domain -> (native_loader, adapter)} and a weight vector. sample_batch()
+    samples a domain ~ weights, draws its native batch, and adapts it to the unified
+    _MultiTaskBatch contract. eval_iter(domain) iterates ONE domain's test set.
+    """
+    def __init__(self, domain_loaders: dict, adapters: dict, weights: dict,
+                 seed: int):
+        self.domains = list(domain_loaders.keys())
+        self.loaders = domain_loaders
+        self.adapters = adapters
+        w = np.array([float(weights[d]) for d in self.domains], dtype=np.float64)
+        self.probs = (w / w.sum()).tolist()
+        self.rng = np.random.RandomState(seed + 7)
+
+    def sample_domain(self) -> str:
+        idx = self.rng.choice(len(self.domains), p=self.probs)
+        return self.domains[idx]
+
+    def sample_batch(self, domain: "str | None" = None):
+        d = domain or self.sample_domain()
+        native = self.loaders[d].sample_batch()
+        return self.adapters[d](native)
+
+
+def _build_multitask_task(K, BATCH, EVAL_BATCH, SEED, hidden, n_heads, model,
+                          train_path, test_path, mix, weights):
+    """Build the unified multi-task _Task (the GENERAL-WEIGHTS harness).
+
+    Steps:
+      1. Build each sub-domain's NATIVE loader (KenKen file-based; coloring/circuit
+         in-memory). The KenKen native loader returns KenKenBatch; we wrap it so the
+         adapter receives (kb, make_kenken_factor_batch(kb)).
+      2. PROBE each domain's L (membership rows) by drawing one batch; set L_max =
+         max over domains -> the stable JIT topology width.
+      3. UNIFIED spec: s_max=49, n_values=7, n_factor_types=N_GLOBAL_TYPES, n_heads,
+         has_factor_inlet=True. (Attach generic-inlet + fg params happens in main.)
+      4. Per-domain adapters + the _MultiTaskLoader.
+
+    The constraint_energy_fn is None for the multi-task run (KenKen's energy is a
+    metric, not a per-step loss here; keeping it out keeps the JIT signature uniform).
+    """
+    # ---- unified spec FIRST (we need has_factor_inlet=True before any inlet build).
+    spec = FactorGraphSpec(s_max=MT_S_MAX, n_values=MT_N_MAX,
+                           n_factor_types=MT_T, n_heads=n_heads, k_max=K,
+                           has_factor_inlet=True)
+
+    # ---- native loaders + raw (un-padded) membership widths.
+    native_loaders: dict = {}
+    raw_specs: dict = {}      # domain -> dict with L, gate_types, etc.
+
+    if "coloring" in mix:
+        from mycelium.graph_coloring_data import GraphColoringLoader
+        s_max = MT_S_MAX
+        n_values = int(getenv("FG_COLORING_N_VALUES", getenv("FG_N_VALUES", "3")))
+        assert 0 < n_values <= MT_N_MAX, \
+            f"coloring k={n_values} must be in 1..{MT_N_MAX} for the universal codebook"
+        n_instances = int(getenv("FG_COLORING_N_INSTANCES",
+                                 getenv("FG_N_INSTANCES", "8000")))
+        cl = GraphColoringLoader(n_instances=n_instances, s_max=s_max,
+                                 k_colors=n_values, batch_size=BATCH, seed=SEED)
+        native_loaders["coloring"] = cl
+        raw_specs["coloring"] = {"L": int(cl.n_edges_max), "gate_types": None,
+                                 "n_values": n_values}
+
+    if "circuit" in mix:
+        from mycelium.circuit_data import CircuitLoader
+        s_max = MT_S_MAX
+        n_instances = int(getenv("FG_CIRCUIT_N_INSTANCES",
+                                 getenv("FG_N_INSTANCES", "8000")))
+        gate_types_env = getenv("FG_CIRCUIT_GATE_TYPES", "").strip()
+        use_xor = int(getenv("FG_CIRCUIT_XOR", "0")) > 0
+        if gate_types_env:
+            gtypes = tuple(g.strip().upper() for g in gate_types_env.split(",") if g.strip())
+        elif use_xor:
+            gtypes = ("AND", "OR", "NOT", "XOR")
+        else:
+            gtypes = ("AND", "OR", "NOT")
+        circ = CircuitLoader(n_instances=n_instances, s_max=s_max, n_values=2,
+                             batch_size=BATCH, seed=SEED, gate_types=gtypes)
+        native_loaders["circuit"] = circ
+        raw_specs["circuit"] = {"L": int(circ.n_gates_max),
+                                "gate_types": tuple(circ.gate_types), "n_values": 2}
+
+    if "kenken" in mix:
+        from mycelium.kenken import attach_kenken_params  # noqa: F401 (inlet not used)
+        from mycelium.kenken_data import KenKenLoader, load_jsonl, N_MAX
+        kk_spec = FactorGraphSpec(s_max=49, n_values=7, n_factor_types=3,
+                                  n_heads=n_heads, k_max=K, has_factor_inlet=True)
+        train_recs = load_jsonl(train_path)
+        test_recs = load_jsonl(test_path)
+        corpus_n_cages_max = max(
+            max(len(r["cages"]) for r in train_recs),
+            max(len(r["cages"]) for r in test_recs),
+        )
+        n_cages_max = int(getenv("KENKEN_N_CAGES_MAX", str(corpus_n_cages_max)))
+        assert n_cages_max >= corpus_n_cages_max
+        kk_train = KenKenLoader(train_path, batch_size=BATCH, seed=SEED,
+                                n_cages_max=n_cages_max)
+        kk_test = KenKenLoader(test_path, batch_size=EVAL_BATCH, seed=SEED + 1,
+                               n_cages_max=n_cages_max)
+
+        class _KKWrap:
+            """Wrap KenKenLoader so sample_batch returns (kb, factor_batch)."""
+            def __init__(self, loader):
+                self.loader = loader
+                self._kk_spec = kk_spec
+            def sample_batch(self):
+                kb = self.loader.sample_batch()
+                fb = make_kenken_factor_batch(kb, self._kk_spec)
+                return (kb, fb)
+            def iter_eval(self, batch_size=None):
+                for kb in self.loader.iter_eval(batch_size=batch_size or EVAL_BATCH):
+                    yield (kb, make_kenken_factor_batch(kb, self._kk_spec))
+
+        kk_train_w = _KKWrap(kk_train)
+        kk_test_w = _KKWrap(kk_test)
+        native_loaders["kenken"] = kk_train_w
+        # L for kenken = 7 rows + 7 cols + n_cages_max cages.
+        raw_specs["kenken"] = {"L": int(N_MAX + N_MAX + n_cages_max),
+                               "gate_types": None, "n_values": 7,
+                               "test_loader": kk_test_w}
+
+    # ---- L_max = max membership width over the mix (stable JIT topology).
+    L_max = max(rs["L"] for rs in raw_specs.values())
+    print(f"  [multi] L_max={L_max}  per-domain L="
+          f"{{{', '.join(f'{d}:{raw_specs[d]['L']}' for d in mix)}}}", flush=True)
+
+    # ---- per-domain adapters.
+    adapters: dict = {}
+    for d in mix:
+        adapters[d] = _build_multitask_adapter(
+            d, model, L_max, hidden, gate_types=raw_specs[d]["gate_types"])
+
+    mt_loader = _MultiTaskLoader(native_loaders, adapters, weights, SEED)
+
+    # ---- eval test loaders (per-domain).
+    eval_loaders: dict = {}
+    for d in mix:
+        if d == "kenken":
+            eval_loaders[d] = raw_specs[d]["test_loader"]
+        else:
+            eval_loaders[d] = native_loaders[d]   # in-memory loader owns the split
+
+    # Pack everything the train/eval loop needs onto the _Task.
+    task = _Task(
+        spec=spec, train_loader=mt_loader, test_loader=mt_loader,
+        to_factor_batch=lambda x: x,             # mt_loader already returns _MultiTaskBatch
+        constraint_energy_fn=None, has_inlet=True,
+        eval_iter=None,                          # multi-task uses per-domain eval below
+    )
+    task.is_multitask = True
+    task.mix = list(mix)
+    task.adapters = adapters
+    task.eval_loaders = eval_loaders
+    task.L_max = L_max
+    return task
+
+
+def _zeros_sem(B, L):
+    z = np.zeros((B, L), dtype=np.int32)
+    return Tensor(z, dtype=dtypes.int).contiguous().realize()
+
+
 def _jit_inputs(fb: FactorGraphBatch, spec: FactorGraphSpec, has_inlet: bool,
                 hidden: int, stoch_keep: Tensor):
-    """Pull the stable JIT-input tuple out of a FactorGraphBatch. The inlet is
-    ALWAYS passed (zeros when off) so the JIT signature is stable across tasks."""
+    """Pull the stable JIT-input tuple out of a FactorGraphBatch. The pre-built inlet
+    AND the raw semantic ids are ALWAYS passed (zeros when unused) so the JIT signature
+    is stable across single-domain / multi-task. Single-domain reads factor_inlet (the
+    pre-built tensor); multi-task reads inlet_op/target/size (builds the inlet in-graph)."""
     B = int(fb.input_cells.shape[0])
     if has_inlet and fb.factor_inlet is not None:
         inlet = fb.factor_inlet.cast(dtypes.float)
     else:
         inlet = _zeros_inlet(B, spec.s_max, hidden)
+    L = int(fb.membership.shape[1])
+    inlet_op = getattr(fb, "inlet_op", None)
+    if inlet_op is None:
+        inlet_op = _zeros_sem(B, L)
+        inlet_target = _zeros_sem(B, L)
+        inlet_size = _zeros_sem(B, L)
+    else:
+        inlet_target = fb.inlet_target
+        inlet_size = fb.inlet_size
     return (fb.input_cells, fb.gold, fb.cell_valid, fb.value_domain_mask,
-            fb.membership, fb.latent_type, inlet, stoch_keep)
+            fb.membership, fb.latent_type, inlet, stoch_keep,
+            inlet_op, inlet_target, inlet_size)
 
 
 # ---------------------------------------------------------------------------
@@ -759,6 +1215,72 @@ def evaluate(task: _Task, K: int, max_batches: int) -> dict:
     }
 
 
+def evaluate_multitask(task: _Task, K: int, max_batches: int) -> dict:
+    """Per-domain eval for the multi-task harness. Returns {domain: {cell_acc, ...}}.
+
+    Each domain is evaluated SEPARATELY on its own test set (the adapter pads + builds
+    the inlet just like training). The per-domain split is what the convergence
+    instrument correlates against each domain's own deduction-depth axis."""
+    Tensor.training = False
+    spec = task.spec
+    out: dict = {}
+    for d in task.mix:
+        adapt = task.adapters[d]
+        loader = task.eval_loaders[d]
+        cell_eq_sum = 0.0
+        n_cells = 0
+        puzzle_eq_sum = 0
+        n_puzzles = 0
+        pb_ce_first = None
+        n_batches = 0
+        for native in loader.iter_eval():
+            fb = adapt(native)
+            # Build the generic inlet eagerly (same in-graph op the JIT step uses) so
+            # eval reads the TRAINED inlet params.
+            fb.factor_inlet = build_generic_factor_inlet(
+                model, fb.membership, fb.latent_type, fb.cell_valid,
+                op=fb.inlet_op, target=fb.inlet_target, size=fb.inlet_size).realize()
+            logits_history, _ = factor_breathing_forward(model, fb, spec, K=K)
+            final_logits = logits_history[-1]
+            cell_valid_np = fb.cell_valid.realize().numpy()
+            gold_np = fb.gold.realize().numpy().astype(np.int32)
+            pred_np = (final_logits.argmax(axis=-1) + 1).realize().numpy().astype(np.int32)
+            eq_np = ((pred_np == gold_np).astype(np.float32) * cell_valid_np)
+            Bn = int(cell_valid_np.shape[0])
+            for b in range(Bn):
+                valid = cell_valid_np[b] > 0.5
+                nv = int(valid.sum())
+                if nv == 0:
+                    continue
+                cell_eq_sum += float(eq_np[b].sum())
+                n_cells += nv
+                puzzle_eq_sum += int(np.all(pred_np[b][valid] == gold_np[b][valid]))
+                n_puzzles += 1
+            if pb_ce_first is None:
+                observed = (fb.input_cells > 0).cast(dtypes.float)
+                supervise = (fb.cell_valid * (1.0 - observed)).reshape(Bn * spec.s_max)
+                sup_sum = supervise.sum() + 1e-6
+                gold_idx = (fb.gold - 1).clip(0, spec.n_values - 1).reshape(Bn * spec.s_max)
+                pb = []
+                for logits in logits_history:
+                    ce = logits.reshape(Bn * spec.s_max, spec.n_values
+                                        ).sparse_categorical_crossentropy(
+                        gold_idx, reduction="none")
+                    pb.append(float(((ce * supervise).sum() / sup_sum).realize().numpy()))
+                pb_ce_first = pb
+            n_batches += 1
+            if n_batches >= max_batches:
+                break
+        out[d] = {
+            "cell_acc": cell_eq_sum / max(n_cells, 1),
+            "puzzle_acc": puzzle_eq_sum / max(n_puzzles, 1),
+            "n_puzzles": n_puzzles,
+            "per_breath_ce": pb_ce_first or [],
+        }
+    Tensor.training = True
+    return out
+
+
 def _print_eval_table(res: dict, K: int) -> None:
     print(f"  test: cell_acc={res['cell_acc']:.3f} "
           f"puzzle_acc={res['puzzle_acc']:.3f} n={res['n_puzzles']}", flush=True)
@@ -783,8 +1305,27 @@ def main():
     global model
 
     TASK = getenv("FG_TASK", "kenken").strip().lower()
-    assert TASK in ("kenken", "coloring", "circuit"), \
-        f"FG_TASK must be kenken|coloring|circuit, got {TASK!r}"
+    # FG_MULTITASK=1 OR FG_TASK=multi triggers the general-weights harness.
+    MULTITASK = int(getenv("FG_MULTITASK", "0")) > 0 or TASK == "multi"
+    if MULTITASK:
+        TASK = "multi"
+    assert TASK in ("kenken", "coloring", "circuit", "multi"), \
+        f"FG_TASK must be kenken|coloring|circuit|multi, got {TASK!r}"
+    # The mix + weights (default all three, equal weight).
+    MIX = [m.strip().lower() for m in getenv("FG_MIX", "coloring,circuit,kenken").split(",")
+           if m.strip()]
+    if MULTITASK:
+        for m in MIX:
+            assert m in ("coloring", "circuit", "kenken"), \
+                f"FG_MIX domain {m!r} unsupported (SAT is search-tier; excluded)"
+    MIX_WEIGHTS_ENV = getenv("FG_MIX_WEIGHTS", "").strip()  # e.g. "coloring:1,circuit:1,kenken:1"
+    MIX_WEIGHTS = {m: 1.0 for m in MIX}
+    if MIX_WEIGHTS_ENV:
+        for pair in MIX_WEIGHTS_ENV.split(","):
+            if ":" in pair:
+                k_, v_ = pair.split(":")
+                if k_.strip().lower() in MIX_WEIGHTS:
+                    MIX_WEIGHTS[k_.strip().lower()] = float(v_)
 
     K = int(getenv("FG_K_MAX", getenv("K", "16")))
     BATCH = int(getenv("BATCH", 8))
@@ -860,8 +1401,17 @@ def main():
                                   model, FG_TRAIN, FG_TEST)
     elif TASK == "coloring":
         task = _build_coloring_task(K, BATCH, EVAL_BATCH, SEED, n_heads)
-    else:
+    elif TASK == "circuit":
         task = _build_circuit_task(K, BATCH, EVAL_BATCH, SEED, n_heads)
+    else:   # multi (GENERAL-WEIGHTS harness)
+        # The generic inlet params MUST be attached BEFORE the task is built (the
+        # per-domain adapters call build_generic_factor_inlet on `model`).
+        attach_factor_inlet_params(model, hidden=hidden)
+        print(f"  [multi] generic inlet attached: type_table_rows={MT_T + 1} "
+              f"(N_GLOBAL_TYPES={N_GLOBAL_TYPES}); mix={MIX} weights={MIX_WEIGHTS}",
+              flush=True)
+        task = _build_multitask_task(K, BATCH, EVAL_BATCH, SEED, hidden, n_heads,
+                                     model, FG_TRAIN, FG_TEST, MIX, MIX_WEIGHTS)
     spec = task.spec
 
     # The GENERAL factor-graph params (fg_state_embed / fg_position_embed /
@@ -871,6 +1421,12 @@ def main():
     # FG_HYP_MASK=1: build the per-type Poincaré anchor tables and attach them.
     # We need a REPRESENTATIVE membership/latent_type to determine G_t per type.
     # Use the first training batch drawn from the task's loader.
+    # NOTE: hyperbolic masks are Tier-2 research, out of scope for the multi-task
+    # general-weights harness — incompatible (one anchor field per type can't span a
+    # cross-domain type set with one representative batch). Disallow the combination.
+    if FG_HYP_MASK and task.is_multitask:
+        raise ValueError("FG_HYP_MASK=1 is not supported with FG_MULTITASK (Tier-2 "
+                         "hyperbolic masks are single-domain; disable one).")
     if FG_HYP_MASK:
         _ref_native = task.train_loader.sample_batch()
         _ref_fb = task.to_factor_batch(_ref_native)
@@ -894,10 +1450,14 @@ def main():
     # ---- params: backbone + fg params (+ kenken inlet tables when present).
     params = collect_backbone_params(model) + factor_graph_parameters(model)
     # KenKen verification-inlet params (trained — they're LIVE at init, not gated).
+    # In the multi-task path these are NOT attached (the generic inlet replaces them).
     for nm in _KENKEN_INLET_NAMES:
         t = getattr(model, nm, None)
         if t is not None:
             params.append(t)
+    # Generic semantics-as-input inlet params (multi-task only; LIVE at init).
+    if task.is_multitask:
+        params += factor_inlet_parameters(model)
 
     # FG_HYP_MASK=1 + FG_HYP_FREEZE=0 (Step 3 relax): add the hyperbolic anchor
     # params as a separate optimizer param group.  When FG_HYP_FREEZE=1 (default,
@@ -950,6 +1510,12 @@ def main():
             "stoch_depth_p": STOCH_DEPTH_P,
         },
         **({"train_path": FG_TRAIN, "test_path": FG_TEST} if TASK == "kenken"
+           else {"multitask": True, "mix": MIX, "mix_weights": MIX_WEIGHTS,
+                 "L_max": task.L_max, "n_global_factor_types": N_GLOBAL_TYPES,
+                 "generic_inlet": True, "universal_codebook_N": MT_N_MAX,
+                 **({"train_path": FG_TRAIN, "test_path": FG_TEST}
+                    if "kenken" in MIX else {})}
+           if TASK == "multi"
            else {"n_instances": int(getenv("FG_N_INSTANCES", "8000")),
                  "corpus": "in-memory",
                  **({"circuit_xor": int(getenv("FG_CIRCUIT_XOR", "0")) > 0,
@@ -967,14 +1533,22 @@ def main():
         Tensor.training = False
         print(f"\n=== EVAL-ONLY (no training; ckpt={RESUME_FROM or 'COLD'}) ===")
         t_eval = time.time()
-        res = evaluate(task, K=K, max_batches=EVAL_BATCHES)
-        _print_eval_table(res, K)
+        if task.is_multitask:
+            res = evaluate_multitask(task, K=K, max_batches=EVAL_BATCHES)
+            for d in task.mix:
+                print(f"  [{d}]", end=" ")
+                _print_eval_table(res[d], K)
+        else:
+            res = evaluate(task, K=K, max_batches=EVAL_BATCHES)
+            _print_eval_table(res, K)
         print(f"  (eval-only done in {time.time() - t_eval:.1f}s; NO ckpt written)",
               flush=True)
         return
 
-    # ---- JIT compile the train step.
+    # ---- JIT compile the train step.  Multi-task: keyed with (multitask, mix_key)
+    # so the unified graph is cached separately from any single-domain graph.
     Tensor.training = True
+    mix_key = ",".join(sorted(task.mix)) if task.is_multitask else ""
     step_fn = _compile_jit_fg_step(
         model, opt, spec, TASK, K=K, B=BATCH,
         constraint_weight=CONSTRAINT_WEIGHT, calib_weight=CALIB_WEIGHT,
@@ -982,6 +1556,7 @@ def main():
         label_smoothing=LABEL_SMOOTHING, stoch_depth_p=STOCH_DEPTH_P,
         constraint_energy_fn=task.constraint_energy_fn,
         has_inlet=task.has_inlet,
+        multitask=task.is_multitask, mix_key=mix_key,
     )
 
     # ---- stochastic-depth keep-mask RNG (fed as a JIT input so the drop pattern
@@ -1003,10 +1578,19 @@ def main():
     t0 = time.time()
     log_acc = None
     log_n = 0
+    # Per-domain loss/acc tracking (multi-task only; CPU-side floats accumulated per
+    # LOG_EVERY window). Keeps the JIT step domain-agnostic — domain attribution is
+    # external (each batch is pure single-domain, so its scalars belong to one domain).
+    mt_dom_acc = {d: {"loss": 0.0, "cell_acc": 0.0, "n": 0} for d in (task.mix or [])}
 
     for step in range(1, STEPS + 1):
-        native = task.train_loader.sample_batch()
-        fb = task.to_factor_batch(native)
+        if task.is_multitask:
+            cur_domain = task.train_loader.sample_domain()
+            fb = task.train_loader.sample_batch(domain=cur_domain)
+        else:
+            cur_domain = None
+            native = task.train_loader.sample_batch()
+            fb = task.to_factor_batch(native)
         ins = _jit_inputs(fb, spec, task.has_inlet, hidden, _draw_stoch_keep())
         outs = step_fn(*ins)
 
@@ -1030,13 +1614,25 @@ def main():
         pb_calib_ts  = outs[8 + K:8 + 2 * K]
 
         cur = total_t.reshape(1).cat(cell_ce_t.reshape(1), energy_t.reshape(1),
-                                     calib_t.reshape(1), healthy_t.reshape(1))
+                                     calib_t.reshape(1), healthy_t.reshape(1),
+                                     cell_acc_t.reshape(1))
         log_acc = cur.realize() if log_acc is None else (log_acc + cur).realize()
         log_n += 1
 
+        # Per-domain accumulation (multi-task): one host sync of (cell_ce, cell_acc)
+        # per step — attributed to the sampled domain. Cheap (two scalars).
+        if task.is_multitask:
+            dce = float(cell_ce_t.numpy())
+            dca = float(cell_acc_t.numpy())
+            md = mt_dom_acc[cur_domain]
+            md["loss"] += dce
+            md["cell_acc"] += dca
+            md["n"] += 1
+
         if step % LOG_EVERY == 0:
             v = log_acc.numpy()  # the ONLY host sync in the hot loop (per LOG_EVERY)
-            loss_a, cell_ce_a, energy_a, calib_a, healthy_a = (float(x) for x in v)
+            loss_a, cell_ce_a, energy_a, calib_a, healthy_a, cell_acc_a = (
+                float(x) for x in v)
             n_skips = int(round(log_n - healthy_a))
             if n_skips > 0:
                 print(f"[NaN-skip] {n_skips} step(s) in [{step-log_n+1}..{step}] had "
@@ -1046,6 +1642,18 @@ def main():
                   f"cell_ce={cell_ce_a/log_n:.4f} energy={energy_a/log_n:.4f} "
                   f"calib={calib_a/log_n:.4f}  ({dt:.1f}s, {dt/step:.2f}s/step)",
                   flush=True)
+            if task.is_multitask:
+                parts = []
+                for d in task.mix:
+                    md = mt_dom_acc[d]
+                    if md["n"] > 0:
+                        parts.append(f"{d}[ce={md['loss']/md['n']:.3f} "
+                                     f"acc={md['cell_acc']/md['n']:.3f} n={md['n']}]")
+                    else:
+                        parts.append(f"{d}[--]")
+                print(f"    per-domain: {'  '.join(parts)}", flush=True)
+                mt_dom_acc = {d: {"loss": 0.0, "cell_acc": 0.0, "n": 0}
+                              for d in task.mix}
             log_acc = None
             log_n = 0
 
@@ -1071,8 +1679,14 @@ def main():
         if step % EVAL_EVERY == 0:
             print(f"  evaluating on test ({EVAL_BATCHES} batches × B={EVAL_BATCH})...",
                   flush=True)
-            res = evaluate(task, K=K, max_batches=EVAL_BATCHES)
-            _print_eval_table(res, K)
+            if task.is_multitask:
+                res = evaluate_multitask(task, K=K, max_batches=EVAL_BATCHES)
+                for d in task.mix:
+                    print(f"  [{d}]", end=" ")
+                    _print_eval_table(res[d], K)
+            else:
+                res = evaluate(task, K=K, max_batches=EVAL_BATCHES)
+                _print_eval_table(res, K)
 
         if step % CKPT_EVERY == 0:
             ckpt_path = os.path.join(run_dir, f"{RUN_NAME}_step{step}.safetensors")
