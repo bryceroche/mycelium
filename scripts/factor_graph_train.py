@@ -337,7 +337,8 @@ def _compile_jit_fg_step(model, opt, spec: FactorGraphSpec, task: str,
     def _step(input_cells: Tensor, gold: Tensor, cell_valid: Tensor,
               value_domain_mask: Tensor, membership: Tensor, latent_type: Tensor,
               factor_inlet: Tensor, stoch_keep: Tensor,
-              inlet_op: Tensor, inlet_target: Tensor, inlet_size: Tensor):
+              inlet_op: Tensor, inlet_target: Tensor, inlet_size: Tensor,
+              head_type_oh: Tensor, head_is_global: Tensor):
         opt.zero_grad()
 
         # Lightweight batch shim so the engine reads per-instance tensors by attr.
@@ -363,8 +364,16 @@ def _compile_jit_fg_step(model, opt, spec: FactorGraphSpec, task: str,
             batch.factor_inlet = build_generic_factor_inlet(
                 model, membership, latent_type, cell_valid,
                 op=inlet_op, target=inlet_target, size=inlet_size)
+            # PER-BATCH head allocation (THE FIX): the multitask batch routes the engine
+            # to build_factor_attn_bias_multitask via these tensors. Always set in the
+            # multitask graph (a compile-time branch on `multitask`, NOT on domain-id);
+            # their VALUES (which domain's allocation) vary per replay without recompile.
+            batch.head_type_oh = head_type_oh
+            batch.head_is_global = head_is_global
         else:
             batch.factor_inlet = factor_inlet if has_inlet else None
+            # Single-domain: do NOT set head_type_oh/head_is_global -> the engine takes
+            # the original build_factor_attn_bias path (byte-identical).
 
         # Forward: K constant → loop unrolls → static graph topology.
         logits_history, calib_history = factor_breathing_forward(
@@ -816,7 +825,8 @@ class _MultiTaskBatch:
     """
     def __init__(self, input_cells, cell_valid, value_domain_mask, gold,
                  membership, latent_type, domain, deduction_depth,
-                 inlet_op, inlet_target, inlet_size):
+                 inlet_op, inlet_target, inlet_size,
+                 head_type_oh=None, head_is_global=None):
         self.input_cells = input_cells
         self.cell_valid = cell_valid
         self.value_domain_mask = value_domain_mask
@@ -830,10 +840,38 @@ class _MultiTaskBatch:
         self.inlet_op = inlet_op
         self.inlet_target = inlet_target
         self.inlet_size = inlet_size
+        # PER-BATCH head->GLOBAL-type allocation tensors (THE HEAD-ALLOC FIX).
+        # head_type_oh: (H, T) one-hot over global types; head_is_global: (H,1,1).
+        # Computed host-side per domain (the domain's NATIVE allocation mapped to its
+        # PRESENT global types); the engine routes to build_factor_attn_bias_multitask
+        # when these are present. Single-domain batches never set them.
+        self.head_type_oh = head_type_oh
+        self.head_is_global = head_is_global
+
+
+def _present_global_types(domain: str,
+                          gate_types: "tuple[str, ...] | None") -> "list[int]":
+    """The GLOBAL factor-type ids PRESENT in a pure single-domain batch of `domain`.
+
+    Sorted so the native head allocation lays contiguous per-type head blocks in a
+    stable order. coloring -> [edge]; circuit -> the gate-type ids in gate_types
+    order; kenken -> [row, col, cage]. These drive native_head_alloc_for_present_types
+    (the head-alloc fix): coloring P=1 -> 15 edge-heads; kenken/circuit P=3 -> 5/5/5.
+    """
+    if domain == "coloring":
+        return [GLOBAL_TYPE_IDS["coloring_edge"]]
+    if domain == "circuit":
+        assert gate_types is not None
+        return [_circuit_gate_global_id(g) for g in gate_types]
+    if domain == "kenken":
+        return [GLOBAL_TYPE_IDS["kenken_row"], GLOBAL_TYPE_IDS["kenken_col"],
+                GLOBAL_TYPE_IDS["kenken_cage"]]
+    raise ValueError(f"unknown multi-task domain {domain!r}")
 
 
 def _build_multitask_adapter(domain: str, model, L_max: int, hidden: int,
-                             gate_types: "tuple[str, ...] | None" = None):
+                             gate_types: "tuple[str, ...] | None" = None,
+                             n_heads: int = 16, n_factor_types: int = MT_T):
     """Return a callable native_batch -> _MultiTaskBatch for one domain.
 
     The adapter does the FOUR domain-agnosticizations that turn a per-domain native
@@ -860,6 +898,21 @@ def _build_multitask_adapter(domain: str, model, L_max: int, hidden: int,
                 Tensor(z.copy(), dtype=dtypes.int).contiguous().realize(),
                 Tensor(z.copy(), dtype=dtypes.int).contiguous().realize())
 
+    # PER-DOMAIN NATIVE HEAD ALLOCATION (THE FIX), computed ONCE (constant per domain).
+    # present_global_types -> native_head_alloc_for_present_types -> the (H,) global-type
+    # array -> the (head_type_oh, head_is_global) tensors the engine routes on. These are
+    # the SAME for every batch of this domain (the allocation depends only on which types
+    # are present, not on the instance), so we build them once and re-attach per batch.
+    from mycelium.factor_masks import (
+        native_head_alloc_for_present_types, head_alloc_to_tensors,
+    )
+    present = _present_global_types(domain, gate_types)
+    head_global_type = native_head_alloc_for_present_types(present, n_heads)
+    head_type_oh_t, head_is_global_t = head_alloc_to_tensors(
+        head_global_type, n_factor_types)
+    head_type_oh_t = head_type_oh_t.realize()
+    head_is_global_t = head_is_global_t.realize()
+
     if domain == "coloring":
         from mycelium.graph_coloring_data import LTYPE_EDGE
         edge_gid = GLOBAL_TYPE_IDS["coloring_edge"]
@@ -881,7 +934,8 @@ def _build_multitask_adapter(domain: str, model, L_max: int, hidden: int,
                 value_domain_mask=vdm_t, gold=cb.gold,
                 membership=membership_t, latent_type=latent_type_t,
                 domain="coloring", deduction_depth=cb.deduction_depth,
-                inlet_op=op_t, inlet_target=tgt_t, inlet_size=sz_t)
+                inlet_op=op_t, inlet_target=tgt_t, inlet_size=sz_t,
+                head_type_oh=head_type_oh_t, head_is_global=head_is_global_t)
         return adapt
 
     if domain == "circuit":
@@ -911,7 +965,8 @@ def _build_multitask_adapter(domain: str, model, L_max: int, hidden: int,
                 value_domain_mask=vdm_t, gold=cb.gold,
                 membership=membership_t, latent_type=latent_type_t,
                 domain="circuit", deduction_depth=cb.deduction_depth,
-                inlet_op=op_t, inlet_target=tgt_t, inlet_size=sz_t)
+                inlet_op=op_t, inlet_target=tgt_t, inlet_size=sz_t,
+                head_type_oh=head_type_oh_t, head_is_global=head_is_global_t)
         return adapt
 
     if domain == "kenken":
@@ -957,7 +1012,8 @@ def _build_multitask_adapter(domain: str, model, L_max: int, hidden: int,
                 value_domain_mask=vdm_t, gold=kb.gold,
                 membership=membership_t, latent_type=latent_type_t,
                 domain="kenken", deduction_depth=kb.deduction_depth,
-                inlet_op=op_t, inlet_target=tgt_t, inlet_size=sz_t)
+                inlet_op=op_t, inlet_target=tgt_t, inlet_size=sz_t,
+                head_type_oh=head_type_oh_t, head_is_global=head_is_global_t)
         return adapt
 
     raise ValueError(f"unknown multi-task domain {domain!r}")
@@ -1096,7 +1152,8 @@ def _build_multitask_task(K, BATCH, EVAL_BATCH, SEED, hidden, n_heads, model,
     adapters: dict = {}
     for d in mix:
         adapters[d] = _build_multitask_adapter(
-            d, model, L_max, hidden, gate_types=raw_specs[d]["gate_types"])
+            d, model, L_max, hidden, gate_types=raw_specs[d]["gate_types"],
+            n_heads=n_heads, n_factor_types=spec.n_factor_types)
 
     mt_loader = _MultiTaskLoader(native_loaders, adapters, weights, SEED)
 
@@ -1133,7 +1190,11 @@ def _jit_inputs(fb: FactorGraphBatch, spec: FactorGraphSpec, has_inlet: bool,
     """Pull the stable JIT-input tuple out of a FactorGraphBatch. The pre-built inlet
     AND the raw semantic ids are ALWAYS passed (zeros when unused) so the JIT signature
     is stable across single-domain / multi-task. Single-domain reads factor_inlet (the
-    pre-built tensor); multi-task reads inlet_op/target/size (builds the inlet in-graph)."""
+    pre-built tensor); multi-task reads inlet_op/target/size (builds the inlet in-graph).
+
+    The PER-BATCH head-allocation tensors (head_type_oh (H,T), head_is_global (H,1,1))
+    are ALSO always passed (zeros when single-domain) so the JIT signature is stable;
+    only the multitask graph reads them (compile-time branch on `multitask`)."""
     B = int(fb.input_cells.shape[0])
     if has_inlet and fb.factor_inlet is not None:
         inlet = fb.factor_inlet.cast(dtypes.float)
@@ -1148,9 +1209,20 @@ def _jit_inputs(fb: FactorGraphBatch, spec: FactorGraphSpec, has_inlet: bool,
     else:
         inlet_target = fb.inlet_target
         inlet_size = fb.inlet_size
+    head_type_oh = getattr(fb, "head_type_oh", None)
+    if head_type_oh is None:
+        H = int(spec.n_heads)
+        T = int(spec.n_factor_types)
+        head_type_oh = Tensor(np.zeros((H, T), dtype=np.float32),
+                              dtype=dtypes.float).contiguous().realize()
+        head_is_global = Tensor(np.zeros((H, 1, 1), dtype=np.float32),
+                                dtype=dtypes.float).contiguous().realize()
+    else:
+        head_is_global = fb.head_is_global
     return (fb.input_cells, fb.gold, fb.cell_valid, fb.value_domain_mask,
             fb.membership, fb.latent_type, inlet, stoch_keep,
-            inlet_op, inlet_target, inlet_size)
+            inlet_op, inlet_target, inlet_size,
+            head_type_oh, head_is_global)
 
 
 # ---------------------------------------------------------------------------

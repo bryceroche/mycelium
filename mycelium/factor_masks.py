@@ -328,6 +328,186 @@ def cell_mp_head_allocation(T: int, H: int, G: int) -> np.ndarray:
     return alloc
 
 
+def native_head_alloc_for_present_types(present_global_types: "list[int]",
+                                        n_heads: int) -> np.ndarray:
+    """PER-BATCH native head->GLOBAL-type allocation for the multi-task harness.
+
+    THE HEAD-ALLOCATION FIX. The multi-task spec carries the union of all domains'
+    global factor-types (T = N_GLOBAL_TYPES = 8). Deriving the head allocation from
+    that union (cell_mp_head_allocation(8, 16, 1)) gives only ~2 heads per global
+    type, so a PURE single-domain batch (e.g. coloring: only the edge type is
+    present) gets just 2 of 16 heads on its one live relation — the other 13 heads
+    are allocated to types ABSENT in the batch and sit DEAD. Native single-domain
+    coloring (T=1) instead uses 15 edge-heads + 1 global. This crippled coloring
+    (15 active heads -> 2) and it stalled at chance.
+
+    The fix: because every multi-task batch is PURE single-domain, allocate the 16
+    heads to ONLY the domain's PRESENT global types using the domain's NATIVE
+    allocation. This is computed ON THE HOST per batch (the trainer knows the batch
+    domain) and threaded into the mask builder as a tensor — NO data-dependent
+    control flow inside the JIT graph, and NO per-domain weights (the Q/K/V heads
+    are the SAME 16 across all domains; ONLY the per-head MASK assignment changes).
+
+    Mapping: run cell_mp_head_allocation(P, n_heads, G) with P = number of PRESENT
+    types -> a LOCAL allocation over 0..P-1 (e.g. coloring P=1 -> 15 local-0 + 1
+    global; kenken/circuit P=3 -> 5/5/5 + 1 global). Then translate each local type
+    index back to its GLOBAL type id via present_global_types[local_idx]. Global
+    heads keep CELL_MP_HEAD_GLOBAL.
+
+    Examples (n_heads=16, G=1):
+      coloring present=[0]        -> P=1 -> 15 heads on GLOBAL type 0  + 1 global.
+      kenken   present=[5,6,7]    -> P=3 -> 5 on 5, 5 on 6, 5 on 7     + 1 global.
+      circuit  present=[1,2,3]    -> P=3 -> 5 on 1, 5 on 2, 5 on 3     + 1 global.
+
+    Parameters
+    ----------
+    present_global_types : list of distinct GLOBAL type ids present in the batch
+                           (sorted or not; order sets the contiguous-block order).
+    n_heads              : total attention heads (16).
+
+    Returns
+    -------
+    np.ndarray shape (n_heads,) int64 — each entry a GLOBAL type id or
+    CELL_MP_HEAD_GLOBAL (= -1) for a global head.
+    """
+    present = list(present_global_types)
+    P = len(present)
+    assert P >= 1, "need at least one present global type"
+    H = int(n_heads)
+    G = max(1, H // 16)
+    local_alloc = cell_mp_head_allocation(P, H, G)        # (H,) in {0..P-1, -1}
+    out = np.full((H,), CELL_MP_HEAD_GLOBAL, dtype=np.int64)
+    for h in range(H):
+        lt = int(local_alloc[h])
+        if lt == CELL_MP_HEAD_GLOBAL:
+            continue
+        out[h] = int(present[lt])
+    return out
+
+
+def head_alloc_to_tensors(head_global_type: np.ndarray, n_factor_types: int):
+    """Convert a per-head GLOBAL-type allocation (host array) into the two JIT-stable
+    tensors the multi-task mask builder consumes:
+
+      head_type_oh : Tensor (H, T) float — one-hot over the T global types for each
+                     NON-global head; an all-zero row marks a GLOBAL head.
+      head_is_global : Tensor (H, 1, 1) float — 1.0 for a global head, else 0.0.
+
+    Tensor (not python) form so the SAME JIT graph topology serves every domain —
+    only these input tensors' VALUES change per batch (no recompile, no data-dependent
+    python branch on domain inside the graph). T = N_GLOBAL_TYPES (the union spec),
+    so the one-hot width is constant across domains.
+    """
+    H = int(head_global_type.shape[0])
+    T = int(n_factor_types)
+    oh = np.zeros((H, T), dtype=np.float32)
+    isg = np.zeros((H, 1, 1), dtype=np.float32)
+    for h in range(H):
+        t = int(head_global_type[h])
+        if t == CELL_MP_HEAD_GLOBAL:
+            isg[h, 0, 0] = 1.0
+        else:
+            assert 0 <= t < T, f"head {h} global type {t} out of range [0,{T})"
+            oh[h, t] = 1.0
+    return (Tensor(oh, dtype=dtypes.float).contiguous(),
+            Tensor(isg, dtype=dtypes.float).contiguous())
+
+
+def build_factor_attn_bias_multitask(
+    membership: Tensor,
+    latent_type: Tensor,
+    cell_valid: Tensor,
+    head_type_oh: Tensor,
+    head_is_global: Tensor,
+    n_heads: int,
+    n_factor_types: int,
+    s_max: int,
+) -> Tensor:
+    """Multi-task per-head bias with a PER-BATCH (tensor-driven) head->type allocation.
+
+    Same boolean {0,-1e4} mask + validity masking as build_factor_attn_bias, but the
+    head->relation assignment is supplied as TENSORS (head_type_oh, head_is_global)
+    instead of being derived from the union spec's n_factor_types. This realizes the
+    head-allocation fix: a coloring batch's 15 edge-heads (vs 2) and a kenken batch's
+    5/5/5 row/col/cage heads, with the SAME shared Q/K/V weights — only the mask
+    assignment differs per batch.
+
+    JIT-SAFETY: ONE graph topology for all domains. All T global-type adjacencies are
+    built (a python loop over the fixed T, no host-data branch); the per-head selection
+    is a tensor weighted-sum over head_type_oh (absent types contribute 0 because no
+    head one-hots onto them). No data-dependent python control flow; the head count and
+    T are compile-time constants (fixed shapes).
+
+    Parameters
+    ----------
+    membership     : Tensor (B, L, s_max) float — 1 if cell j in latent l.
+    latent_type    : Tensor (B, L) int          — GLOBAL type id per latent.
+    cell_valid     : Tensor (B, s_max) float    — 1 valid / 0 pad.
+    head_type_oh   : Tensor (n_heads, T) float  — per-head one-hot over global types
+                     (all-zero row => global head).
+    head_is_global : Tensor (n_heads, 1, 1) f   — 1.0 for a global head, else 0.0.
+    n_heads        : int
+    n_factor_types : int (T = N_GLOBAL_TYPES, the union width).
+    s_max          : int
+
+    Returns
+    -------
+    Tensor (B, n_heads, s_max, s_max) with values in {0, -1e4}. Contiguous.
+    """
+    Bn = int(membership.shape[0])
+    T = int(n_factor_types)
+
+    m = membership.cast(dtypes.float)               # (B, L, s_max)
+    lt = latent_type                                 # (B, L) int
+
+    eye_np = np.eye(s_max, dtype=np.float32)
+    eye_s = Tensor(eye_np, dtype=dtypes.float).reshape(1, s_max, s_max)
+    valid_key = cell_valid.reshape(Bn, 1, s_max)    # (B, 1, s_max)
+    valid_q   = cell_valid.reshape(Bn, s_max, 1)    # (B, s_max, 1)
+
+    def _validity_mask(allow: Tensor) -> Tensor:
+        # Byte-for-byte from build_factor_attn_bias._validity_mask.
+        allow = allow * valid_key.cast(allow.dtype)
+        allow = (allow * valid_q.cast(allow.dtype)
+                 + eye_s * (1.0 - valid_q.cast(allow.dtype)))
+        allow = allow.maximum(eye_s * valid_q.cast(allow.dtype))
+        return allow
+
+    # Per-type allow for EVERY global type t in 0..T-1 (python loop over the fixed,
+    # compile-time-constant T — no host-data branch). Absent-in-this-batch types
+    # produce an all-block adjacency, but no head one-hots onto them so they are never
+    # selected; they are still built so the graph topology is identical across domains.
+    type_allows = []
+    for t in range(T):
+        sel = (lt == t).cast(dtypes.float).reshape(Bn, int(lt.shape[1]), 1)  # (B,L,1)
+        m_t = m * sel                               # (B, L, s_max) type-t members
+        adj_t = m_t.transpose(1, 2) @ m_t          # (B, s_max, s_max) co-occurrence
+        allow_t = _validity_mask(adj_t.clip(0.0, 1.0))                       # (B,S,S)
+        type_allows.append(allow_t.reshape(Bn, 1, s_max, s_max))
+    type_allow_stack = Tensor.cat(*type_allows, dim=1)   # (B, T, S, S)
+
+    # Global allow: all valid cell-pairs, then validity masking.
+    ones_s = Tensor(np.ones((Bn, s_max, s_max), dtype=np.float32), dtype=dtypes.float)
+    global_allow = _validity_mask(ones_s).reshape(Bn, 1, s_max, s_max)        # (B,1,S,S)
+
+    # Per-head selection (TENSOR-DRIVEN): allow_h = sum_t head_type_oh[h,t]*type_allow[t],
+    # then OR-in the global allow for global heads. head_type_oh: (H,T). Einsum over T.
+    #   sel_allow[b,h,i,j] = sum_t head_type_oh[h,t] * type_allow_stack[b,t,i,j]
+    # Reshape for broadcast: (1,H,T,1,1) * (B,1,T,S,S) -> sum over T.
+    H = int(n_heads)
+    oh = head_type_oh.reshape(1, H, T, 1, 1)                                  # (1,H,T,1,1)
+    ta = type_allow_stack.reshape(Bn, 1, T, s_max, s_max)                     # (B,1,T,S,S)
+    sel_allow = (oh * ta).sum(axis=2)                                         # (B,H,S,S)
+
+    # Global heads: head_is_global (H,1,1) -> (1,H,1,S,S) broadcast picks global_allow.
+    isg = head_is_global.reshape(1, H, 1, 1)                                  # (1,H,1,1)
+    glob = global_allow.reshape(Bn, 1, s_max, s_max)                          # (B,1,S,S)
+    allow = isg * glob + (1.0 - isg) * sel_allow                              # (B,H,S,S)
+
+    bias = (1.0 - allow) * (-1e4)
+    return bias.contiguous()
+
+
 def build_factor_attn_bias(
     membership: Tensor,
     latent_type: Tensor,

@@ -59,6 +59,7 @@ from tinygrad import Tensor, dtypes
 
 from mycelium.factor_masks import (
     build_factor_attn_bias,
+    build_factor_attn_bias_multitask,
     build_factor_hyperbolic_attn_bias,
     FG_HYP_MASK,
 )
@@ -317,9 +318,26 @@ def factor_breathing_forward(model: Any, batch: FactorGraphBatch,
     # FG_HYP_MASK=1           -> geometric Poincaré mask (~1e-3-identical at t=0
     #                            when anchors are frozen; requires
     #                            attach_factor_hyperbolic_params to have been called).
+    #
+    # MULTI-TASK HEAD-ALLOCATION FIX: when the batch carries a PER-BATCH head->type
+    # allocation (batch.head_type_oh / batch.head_is_global, set ONLY by the multi-task
+    # adapter), route to the tensor-driven multitask builder so each pure single-domain
+    # batch uses its NATIVE head allocation (coloring 15+1, kenken/circuit 5/5/5+1) on
+    # the SHARED 16 heads. SINGLE-DOMAIN batches never carry these attrs -> the original
+    # build_factor_attn_bias call is taken verbatim (byte-identical). The presence of
+    # these attrs is a COMPILE-TIME property of the multi-task batch (always set there,
+    # never set in single-domain), NOT a runtime domain-branch inside the JIT graph.
+    head_type_oh = getattr(batch, "head_type_oh", None)
+    head_is_global = getattr(batch, "head_is_global", None)
     if FG_HYP_MASK:
         attn_bias = build_factor_hyperbolic_attn_bias(
             model, membership, latent_type, cell_valid,
+            spec.n_heads, spec.n_factor_types, S,
+        )  # (B, n_heads, s_max, s_max)
+    elif head_type_oh is not None:
+        attn_bias = build_factor_attn_bias_multitask(
+            membership, latent_type, cell_valid,
+            head_type_oh, head_is_global,
             spec.n_heads, spec.n_factor_types, S,
         )  # (B, n_heads, s_max, s_max)
     else:
