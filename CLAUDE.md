@@ -194,8 +194,9 @@ Detailed empirics live in `memory/` + git history.
   (compile once, replay). Hyperbolic-specific: clamp `|z|²≤1−1e-5`, arccosh arg `≥1+1e-7`. See
   `memory/reference_tinygrad_am_quirks.md`.
 - **Bryce wants root-cause perf fixes**, not workarounds, when perf is the bottleneck.
-- **Process discipline:** commit/push ONLY when asked; **hold for the word before firing training
-  runs**; **offer engineering critique before rubber-stamping** (esp. enthusiastic/gut-feel relays).
+- **Process discipline:** **commit freely (no need to ask)** — local + reversible; still **ask before
+  push** (outward-facing) and **hold for the word before firing training runs** (GPU cost); **offer
+  engineering critique before rubber-stamping** (esp. enthusiastic/gut-feel relays).
 
 ---
 
