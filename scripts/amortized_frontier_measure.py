@@ -551,6 +551,102 @@ def _solve_rate_curve(per_inst_valid_flags: list, m_grid: list,
 
 
 # ===========================================================================
+# VOLUME MODE — VIEW-SUCCESS-COUNT DISTRIBUTION (diversity FRAGILITY metric)
+# ===========================================================================
+# THE QUESTION (pre vs post permutation-augmentation): does augmentation toward
+# equivariance COLLAPSE the load-bearing diversity bucket? best-of-M alone cannot
+# see this — an instance that solves on EXACTLY ONE of its M views and an instance
+# that solves on ALL M both read as "solved". The FRAGILITY is in HOW MANY views win.
+#
+# THE METRIC: for each instance, count how many of its M views VERIFIED (the per-
+# instance valid-flag count, 0..M), then bucket instances by that count:
+#   0      : HARD CORE        — no view solves (the shared core the deducer fails
+#                               regardless of relabeling; what augmentation should SHRINK)
+#   1      : FRAGILE          — EXACTLY ONE view wins (diversity is fragile here:
+#                               equivariance-collapse would lose this instance)
+#   2-4    : few views
+#   5-16   : many views
+#   17-M   : robust           — most views win (diversity is robust; safe)
+# Many "exactly-1" => fragile diversity => augmentation toward equivariance is RISKY
+# there. Many "many-views-win" => robust. Comparing the distribution pre vs post
+# augmentation SHOWS whether augmentation collapsed the B bucket.
+#
+# ZERO NEW FORWARDS: derived from the SAME per-instance mech_flags the volume mode
+# already computes. ADDITIVE: a new sub-table, the (A)/(B)/(C) tables unchanged.
+#
+# PARITY INVARIANTS (asserted in the smoke):
+#   * the buckets PARTITION the instances -> counts sum to n_inst.
+#   * fraction with success-count >= 1  ==  best-of-M solve-rate (any view wins).
+#   * success-count INCLUDES view 0 (the deterministic argmax for multistart/
+#     symmetry), so the ">=1" set CONTAINS every argmax-solved instance
+#     (p_argmax <= success>=1 fraction).
+
+# Bucket edges as (lo, hi_inclusive, label). The last bucket's hi is set to M at
+# call time. Order matters for the additive table columns.
+_VSC_BUCKET_SPEC = [
+    (0, 0, "0(hardcore)"),
+    (1, 1, "1(fragile)"),
+    (2, 4, "2-4"),
+    (5, 16, "5-16"),
+    (17, None, "17-M"),     # hi=None -> M (filled per call)
+]
+
+
+def _view_success_count_distribution(per_inst_valid_flags: list, M: int) -> dict:
+    """Distribution of instances bucketed by HOW MANY of their M views VERIFIED.
+
+    per_inst_valid_flags : list (one per instance) of (>=1,) bool arrays — the SAME
+                           flags _solve_rate_curve consumes (mech_flags[m]); the
+                           per-view valid-flags, view 0 == the deterministic argmax
+                           run for multistart/symmetry. ZERO new forwards.
+    M                    : the per-instance view budget (success-count is capped at
+                           min(M, len(flags)) per instance).
+
+    Returns:
+      n_inst        : instance count.
+      buckets       : list of (label, count) in _VSC_BUCKET_SPEC order; counts sum
+                      to n_inst (the buckets partition the instances).
+      bucket_frac   : list of (label, fraction) — count / n_inst.
+      counts        : list[int] per-instance success-count (success views in M).
+      success_ge1   : fraction with >= 1 winning view (== best-of-M solve-rate).
+      n_solved      : instances with >= 1 winning view.
+      mean_success  : mean per-instance success-count (the diversity 'volume').
+      median_success: median per-instance success-count.
+      M             : echoed budget."""
+    n_inst = len(per_inst_valid_flags)
+    # resolve bucket edges (fill the trailing None hi with M).
+    edges = [(lo, (M if hi is None else hi), label)
+             for (lo, hi, label) in _VSC_BUCKET_SPEC]
+    if n_inst == 0:
+        return {"n_inst": 0, "buckets": [(lab, 0) for (_, _, lab) in edges],
+                "bucket_frac": [(lab, 0.0) for (_, _, lab) in edges],
+                "counts": [], "success_ge1": 0.0, "n_solved": 0,
+                "mean_success": float("nan"), "median_success": float("nan"),
+                "M": M}
+    counts = []
+    for f in per_inst_valid_flags:
+        mm = min(M, len(f)) if len(f) else 0
+        counts.append(int(np.count_nonzero(np.asarray(f, dtype=bool)[:mm])) if mm > 0 else 0)
+    counts_arr = np.asarray(counts, dtype=np.int64)
+    bucket_counts = []
+    for (lo, hi, label) in edges:
+        c = int(np.count_nonzero((counts_arr >= lo) & (counts_arr <= hi)))
+        bucket_counts.append((label, c))
+    n_solved = int(np.count_nonzero(counts_arr >= 1))
+    return {
+        "n_inst": n_inst,
+        "buckets": bucket_counts,
+        "bucket_frac": [(lab, c / n_inst) for (lab, c) in bucket_counts],
+        "counts": counts,
+        "success_ge1": n_solved / n_inst,
+        "n_solved": n_solved,
+        "mean_success": float(np.mean(counts_arr)),
+        "median_success": float(np.median(counts_arr)),
+        "M": M,
+    }
+
+
+# ===========================================================================
 # VOLUME MODE — honest throughput accounting (deducer M-forward vs symbolic)
 # ===========================================================================
 
@@ -2387,6 +2483,9 @@ def _print_volume(vol_rows, bands, k, m_grid, m_max, mechanisms, args, fixed_cos
                   f"{mi:>13} {rts:>7} {mdv:>10} {drts:>9} | "
                   f"{dmed:>8.1f} {emed:>8.3f}{collapse_flag}", flush=True)
 
+    # ---- (B-views) VIEW-SUCCESS-COUNT distribution (diversity FRAGILITY) ----
+    _print_view_success_counts(vol_rows, bands, m_max, mechanisms)
+
     # ---- (C) throughput (deducer M-forward-honest vs symbolic per-core) ----
     print(f"\n  (C) THROUGHPUT — instances-SOLVED/sec (substrate stated; NEVER a single "
           f"cross-substrate number):", flush=True)
@@ -2469,6 +2568,47 @@ def _print_volume(vol_rows, bands, k, m_grid, m_max, mechanisms, args, fixed_cos
           f"{fixed_cost['warmup_ms']:.0f}ms; steady batched fwd = {batch_ms:.1f}ms/B={B} "
           f"({batch_ms/B:.2f}ms/inst, K={fixed_cost['K']}).", flush=True)
     print("", flush=True)
+
+
+def _print_view_success_counts(vol_rows, bands, m_max, mechanisms) -> None:
+    """ADDITIVE (B-views) sub-table: per band per mechanism, the DISTRIBUTION of
+    instances over success-count buckets {0, 1, 2-4, 5-16, 17-M}. Derived from the
+    SAME mech_flags the (B) table consumes (ZERO new forwards). Measures diversity
+    FRAGILITY: a heavy '1(fragile)' column means equivariance-collapse would lose
+    those instances; a heavy '17-M' column means diversity is robust there. The '0
+    (hardcore)' column is the shared core augmentation should SHRINK. The (A)/(B)/(C)
+    tables are UNCHANGED — this is purely additive."""
+    print(f"\n  (B-views) VIEW-SUCCESS-COUNT distribution — instances bucketed by HOW "
+          f"MANY of M={m_max} views VERIFIED (diversity fragility):", flush=True)
+    print(f"      buckets: 0(hardcore)=no view wins | 1(fragile)=EXACTLY one view wins "
+          f"(equivariance-collapse risk) | 2-4 | 5-16 | 17-M(robust).", flush=True)
+    print(f"      success-count INCLUDES view 0 (deterministic argmax) -> the >=1 set "
+          f"== best-of-M and CONTAINS every argmax-solved instance.", flush=True)
+    labels = [lab for (_, _, lab) in _VSC_BUCKET_SPEC]
+    for m in mechanisms:
+        print(f"\n    --- mechanism: {m} ---", flush=True)
+        hdr = (f"      {'band':>6} {'n':>5} | "
+               + " ".join(f"{lab:>12}" for lab in labels)
+               + f" | {'>=1(=bo)':>9} {'mean':>6} {'med':>5}")
+        print(hdr, flush=True)
+        for c in bands:
+            flags = vol_rows[c].get("mech_flags", {}).get(m, [])
+            vsc = _view_success_count_distribution(flags, m_max)
+            bucket_map = dict(vsc["buckets"])
+            row = (f"      {c:>6.2f} {vsc['n_inst']:>5} | "
+                   + " ".join(f"{bucket_map.get(lab, 0):>12d}" for lab in labels)
+                   + f" | {vsc['success_ge1']:>9.3f} {vsc['mean_success']:>6.2f} "
+                   f"{vsc['median_success']:>5.1f}")
+            # consistency flag: >=1 fraction must equal the (B) best-of-M solve-rate.
+            bo = vol_rows[c]["mech_curves"][m]["solve_emp"].get(m_max, float("nan"))
+            mismatch = (bo == bo and abs(vsc["success_ge1"] - bo) > 1e-9)
+            if mismatch:
+                row += "  [!= bestofM]"
+            print(row, flush=True)
+    print(f"\n      READ: shift of mass 0(hardcore)->higher buckets pre vs post "
+          f"FG_PERM_AUG = augmentation shrank the hard core (the GOAL). Shift of mass "
+          f"from many-views to 1(fragile)/0 = equivariance collapsed the load-bearing "
+          f"diversity (the TENSION) -> lower FG_PERM_AUG_FRAC.", flush=True)
 
 
 def _build_deducer_model(spec, ckpt: str, k: int, s_max: int, K: int, seed: int):
@@ -3075,6 +3215,79 @@ def _cpu_smoke() -> bool:
     _check("dart-determinism CROSS-PATH: temp keying unified (reproducible per gid)",
            _dart_key(seed_dd, 7, 0, "temp") == _dart_key(seed_dd, 7, 0, "temp")
            and _dart_key(seed_dd, 7, 0, "temp") != _dart_key(seed_dd, 8, 0, "temp"))
+
+    # --- (15) VIEW-SUCCESS-COUNT DISTRIBUTION (the diversity-fragility metric) --------
+    # Derived from the SAME mech_flags the (B) table consumes. Asserts: buckets PARTITION
+    # the instances (sum == n_inst); the >=1 fraction == best-of-M; success-count INCLUDES
+    # view 0 so >=1 contains argmax-solved; buckets land in the right columns.
+    print("\n  --- VIEW-SUCCESS-COUNT DISTRIBUTION (diversity fragility; NO GPU) ---",
+          flush=True)
+    M_vsc = 32
+    # Hand-built flags with KNOWN success-counts spanning every bucket:
+    #   inst A: 0 wins (hard core)        -> bucket 0
+    #   inst B: exactly 1 win (fragile)   -> bucket 1
+    #   inst C: 3 wins                    -> bucket 2-4
+    #   inst D: 10 wins                   -> bucket 5-16
+    #   inst E: 25 wins (robust)          -> bucket 17-M
+    def _flags_with_k_wins(kw, M):
+        f = np.zeros(M, dtype=bool)
+        f[:kw] = True
+        return f
+    vsc_flags = [
+        _flags_with_k_wins(0, M_vsc),    # A
+        _flags_with_k_wins(1, M_vsc),    # B
+        _flags_with_k_wins(3, M_vsc),    # C
+        _flags_with_k_wins(10, M_vsc),   # D
+        _flags_with_k_wins(25, M_vsc),   # E
+    ]
+    vsc = _view_success_count_distribution(vsc_flags, M_vsc)
+    bmap = dict(vsc["buckets"])
+    _check("view-count: per-instance success-counts are correct (0,1,3,10,25)",
+           vsc["counts"] == [0, 1, 3, 10, 25])
+    _check("view-count: buckets PARTITION the instances (sum == n_inst)",
+           sum(c for _, c in vsc["buckets"]) == vsc["n_inst"] == 5)
+    _check("view-count: each instance lands in the expected bucket "
+           "(0/1/2-4/5-16/17-M = 1 each)",
+           bmap["0(hardcore)"] == 1 and bmap["1(fragile)"] == 1
+           and bmap["2-4"] == 1 and bmap["5-16"] == 1 and bmap["17-M"] == 1)
+    _check("view-count: >=1 fraction = 4/5 (only the hard-core instance has 0 wins)",
+           abs(vsc["success_ge1"] - 0.8) < 1e-12 and vsc["n_solved"] == 4)
+    # >=1 fraction MUST equal best-of-M solve-rate on the SAME flags (the (B) parity).
+    bo_curve = _solve_rate_curve(vsc_flags, [M_vsc])
+    _check("view-count: >=1 fraction == best-of-M solve-rate (same flags, (B) parity)",
+           abs(vsc["success_ge1"] - bo_curve["solve_emp"][M_vsc]) < 1e-12)
+    # success-count INCLUDES view 0 -> the >=1 set CONTAINS every argmax-solved instance.
+    # argmax-solved == view-0 wins; here C/D/E have view-0 True (kw>=1 fills index 0),
+    # B has view-0 True too -> all 4 view-0-solved instances are in the >=1 set.
+    n_view0_solved = sum(int(bool(f[0])) for f in vsc_flags)
+    _check("view-count: success-count includes view 0 -> >=1 set contains argmax-solved "
+           "(p_argmax <= >=1 fraction)",
+           (n_view0_solved / len(vsc_flags)) <= vsc["success_ge1"] + 1e-12)
+    _check("view-count: mean success-count = (0+1+3+10+25)/5 = 7.8",
+           abs(vsc["mean_success"] - 7.8) < 1e-9)
+    # cap at M: a flag array longer than M counts only the first M views.
+    over = [np.ones(M_vsc + 5, dtype=bool)]
+    vsc_cap = _view_success_count_distribution(over, M_vsc)
+    _check("view-count: success-count capped at M (first-M-views only)",
+           vsc_cap["counts"] == [M_vsc] and dict(vsc_cap["buckets"])["17-M"] == 1)
+    # empty bank safe.
+    vsc_empty = _view_success_count_distribution([], M_vsc)
+    _check("view-count: empty bank -> n_inst 0, all buckets 0, no crash",
+           vsc_empty["n_inst"] == 0
+           and sum(c for _, c in vsc_empty["buckets"]) == 0)
+    # ALL-hard-core (the C bucket from the PRE-CHECK split): every instance 0 wins ->
+    # all mass in 0(hardcore), >=1 fraction 0 (== best-of-M 0).
+    hc_flags = [np.zeros(M_vsc, dtype=bool) for _ in range(20)]
+    vsc_hc = _view_success_count_distribution(hc_flags, M_vsc)
+    _check("view-count: all-hard-core -> all mass in 0(hardcore), >=1 fraction 0",
+           dict(vsc_hc["buckets"])["0(hardcore)"] == 20
+           and abs(vsc_hc["success_ge1"]) < 1e-12)
+    # ALL-robust: every instance wins all M -> all mass in 17-M, >=1 fraction 1.
+    rob_flags = [np.ones(M_vsc, dtype=bool) for _ in range(20)]
+    vsc_rob = _view_success_count_distribution(rob_flags, M_vsc)
+    _check("view-count: all-robust -> all mass in 17-M, >=1 fraction 1",
+           dict(vsc_rob["buckets"])["17-M"] == 20
+           and abs(vsc_rob["success_ge1"] - 1.0) < 1e-12)
 
     sip_ok = _static_assign_in_place_check()
     _check("JIT static: no `model.fg_position_embed = Tensor(...)` rebind in the JIT "

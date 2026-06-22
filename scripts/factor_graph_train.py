@@ -512,6 +512,139 @@ def _compile_jit_fg_step(model, opt, spec: FactorGraphSpec, task: str,
 
 
 # ---------------------------------------------------------------------------
+# PERMUTATION AUGMENTATION (FG_PERM_AUG) — data-side vertex RELABEL of each
+# instance + its gold. Engine + oracle UNTOUCHED: the engine receives an already-
+# relabeled FactorGraphBatch and builds the relabeled masks from the relabeled
+# membership with NO change.
+#
+# THE INVARIANT (why this is a valid relabel, not a corrupted problem):
+#   The engine's mask is A_t = m_t^T @ m_t over the membership CELL axis
+#   (factor_masks.build_factor_attn_bias). The residual stream is indexed by the
+#   SAME cell axis, and gold supervises that same axis. So if ONE permutation pi
+#   of an instance's REAL cells is applied CONSISTENTLY to EVERY per-cell tensor —
+#   input_cells, cell_valid, value_domain_mask, gold (all cell axis = last axis)
+#   AND membership (cell axis = axis 2 of (B,L,s_max); the latent/factor axis L and
+#   latent_type are UNCHANGED, a factor is the same factor, only its member CELL
+#   indices relabel) — the result is the SAME graph under a vertex relabeling: the
+#   permuted gold is a valid solution of the permuted graph (the verifier accepts
+#   it) and the per-head masks the engine builds are the relabeled masks.
+#
+# DIRECTION CONVENTION (ONE, applied identically everywhere): GATHER along the cell
+#   axis with `perm` — new[..., i] = old[..., perm[i]] for cell-axis tensors, and
+#   new_membership[:, :, i] = old_membership[:, :, perm[i]]. `perm` is a permutation
+#   of the REAL cell indices; pad cells (cell_valid == 0) map to themselves (identity
+#   on the pad block), so padding stays pad. The inverse pi^{-1} maps a permuted-graph
+#   prediction back to the original vertex order (round-trip == identity).
+#
+# STRENGTH KNOB (the TENSION guard): FG_PERM_AUG_FRAC in [0,1] = the fraction of
+#   instances in a batch that get a FRESH random relabel (the rest stay identity).
+#   FRAC=0 == OFF. Gentle augmentation keeps view-diversity (the load-bearing B
+#   bucket) intact; full equivariance would collapse it — the harness's view-success-
+#   count metric measures exactly this, pre vs post.
+#
+# ADDITIVITY: FG_PERM_AUG=0 (default) -> permute_factor_batch is NEVER called, the
+#   batch is byte-identical, and NO augmentation RNG is drawn (the loader / stoch-
+#   depth RNG streams are untouched) -> training is byte-identical to current.
+# ---------------------------------------------------------------------------
+
+FG_PERM_AUG = int(getenv("FG_PERM_AUG", "0")) > 0
+FG_PERM_AUG_FRAC = float(getenv("FG_PERM_AUG_FRAC", "1.0"))
+FG_PERM_AUG_SEED = int(getenv("FG_PERM_AUG_SEED", "1234"))
+
+
+def _valid_cell_indices(cell_valid_row: np.ndarray) -> np.ndarray:
+    """The REAL (non-pad) cell indices of one instance, derived from cell_valid.
+
+    The general source of truth (works for coloring's contiguous valid prefix AND
+    any domain whose valid cells are scattered): a permutation relabels ONLY the
+    valid cells among themselves; pad cells (cell_valid == 0) stay fixed."""
+    return np.nonzero(cell_valid_row > 0.5)[0]
+
+
+def permute_factor_batch(fb, rng: "np.random.RandomState", frac: float):
+    """Return a NEW batch-like object with FG_PERM_AUG applied (engine-ready).
+
+    For each instance independently, with probability `frac`, draw a random
+    permutation pi of its REAL cell indices (from cell_valid) and GATHER every
+    per-cell tensor along the cell axis by pi (new[...,i] = old[...,perm[i]]);
+    membership is gathered on its CELL axis (axis 2), with the factor axis (L) and
+    latent_type left UNCHANGED. Instances NOT selected (prob 1-frac) are copied
+    identity. Pad cells map to themselves (identity on the pad block).
+
+    Reads the tensors via .numpy() and re-wraps fresh Tensors (same shapes/dtypes
+    as the source batch), so the returned object satisfies the FactorGraphBatch
+    contract and the engine needs no change. Python-side metadata (n / n_edges /
+    band / deduction_depth) is carried through UNCHANGED (a relabel does not change
+    n, edge count, band, or DSATUR depth).
+
+    Returns a lightweight shim object exposing the same tensor attrs the engine
+    reads (input_cells, cell_valid, value_domain_mask, gold, membership,
+    latent_type, factor_inlet) plus whatever metadata attrs were present."""
+    ic = fb.input_cells.realize().numpy()                       # (B, S) int
+    cv = fb.cell_valid.realize().numpy()                        # (B, S) f
+    vdm = fb.value_domain_mask.realize().numpy()               # (B, S, N) f
+    gold = fb.gold.realize().numpy()                            # (B, S) int
+    mem = fb.membership.realize().numpy()                       # (B, L, S) f
+    Bn, S = ic.shape
+
+    # per-instance index map P (B, S): P[b] is the GATHER index along the cell axis.
+    P = np.tile(np.arange(S, dtype=np.int64), (Bn, 1))          # identity default
+    for b in range(Bn):
+        if rng.random_sample() >= frac:
+            continue                                            # identity (not augmented)
+        idx = _valid_cell_indices(cv[b])                        # real cell indices
+        if idx.size <= 1:
+            continue                                            # nothing to relabel
+        pi = rng.permutation(idx.size)                          # permute the real cells
+        # GATHER convention: new position idx[j] takes old position idx[pi[j]].
+        P[b, idx] = idx[pi]
+
+    # apply the SAME P[b] to every per-cell tensor (cell axis = last for ic/cv/gold,
+    # axis -2 for vdm (B,S,N), axis 2 for membership (B,L,S)).
+    new_ic = np.take_along_axis(ic, P, axis=1)                  # (B, S)
+    new_cv = np.take_along_axis(cv, P, axis=1)                  # (B, S) — pads unchanged
+    new_gold = np.take_along_axis(gold, P, axis=1)             # (B, S)
+    new_vdm = np.take_along_axis(vdm, P[:, :, None], axis=1)   # (B, S, N)
+    # membership cell axis is axis 2; broadcast P over the L (factor) axis.
+    new_mem = np.take_along_axis(mem, P[:, None, :], axis=2)   # (B, L, S)
+
+    class _PermBatch:
+        pass
+    out = _PermBatch()
+    out.input_cells = Tensor(new_ic.astype(np.int32),
+                             dtype=dtypes.int).contiguous().realize()
+    out.cell_valid = Tensor(new_cv.astype(np.float32),
+                            dtype=dtypes.float).contiguous().realize()
+    out.value_domain_mask = Tensor(new_vdm.astype(np.float32),
+                                   dtype=dtypes.float).contiguous().realize()
+    out.gold = Tensor(new_gold.astype(np.int32),
+                      dtype=dtypes.int).contiguous().realize()
+    out.membership = Tensor(new_mem.astype(np.float32),
+                            dtype=dtypes.float).contiguous().realize()
+    # latent_type + factor_inlet + the raw semantic ids are NOT on the cell axis —
+    # a factor is the SAME factor (its type/op/target/size unchanged), only its
+    # member CELL indices relabel (already done via membership). Pass them through.
+    out.latent_type = fb.latent_type
+    # factor_inlet (B, S, H) IS on the cell axis (KenKen's per-cell verification inlet,
+    # keyed by cell_cage_id) -> it MUST be gathered by the SAME P, else after a relabel
+    # it points at the wrong cells. coloring/circuit: factor_inlet is None -> pass through.
+    _finlet = getattr(fb, "factor_inlet", None)
+    if _finlet is not None:
+        _finlet_np = _finlet.realize().numpy()                      # (B, S, H)
+        _new_finlet = np.take_along_axis(_finlet_np, P[:, :, None], axis=1)
+        out.factor_inlet = Tensor(_new_finlet.astype(np.float32),
+                                  dtype=dtypes.float).contiguous().realize()
+    else:
+        out.factor_inlet = None
+    for attr in ("inlet_op", "inlet_target", "inlet_size",
+                 "head_type_oh", "head_is_global",
+                 "deduction_depth", "n", "n_edges", "band", "domain"):
+        if hasattr(fb, attr):
+            setattr(out, attr, getattr(fb, attr))
+    return out
+
+
+# ---------------------------------------------------------------------------
 # Task adapters — turn a domain loader's native batch into a FactorGraphBatch
 # and pull the JIT-input tuple out of it. Each task is ONE small function so the
 # train/eval loops are domain-agnostic.
@@ -1581,6 +1714,10 @@ def main():
             "label_smoothing": LABEL_SMOOTHING, "weight_decay": WEIGHT_DECAY,
             "stoch_depth_p": STOCH_DEPTH_P,
         },
+        "perm_aug": {
+            "enabled": FG_PERM_AUG, "frac": FG_PERM_AUG_FRAC,
+            "seed": FG_PERM_AUG_SEED,
+        },
         **({"train_path": FG_TRAIN, "test_path": FG_TEST} if TASK == "kenken"
            else {"multitask": True, "mix": MIX, "mix_weights": MIX_WEIGHTS,
                  "L_max": task.L_max, "n_global_factor_types": N_GLOBAL_TYPES,
@@ -1645,6 +1782,16 @@ def main():
         return Tensor(scale.astype(np.float32),
                       dtype=dtypes.float).contiguous().realize()
 
+    # ---- PERMUTATION-AUGMENTATION RNG (FG_PERM_AUG). A DEDICATED stream so it does
+    # NOT perturb the loader / stoch-depth RNG draws — when FG_PERM_AUG is OFF this
+    # object is constructed but NEVER advanced (permute_factor_batch is not called),
+    # so the batch + every other RNG stream is byte-identical to current training.
+    perm_aug_rng = np.random.RandomState(FG_PERM_AUG_SEED)
+    if FG_PERM_AUG:
+        print(f"  [FG_PERM_AUG=1] vertex-relabel augmentation ON: frac="
+              f"{FG_PERM_AUG_FRAC} seed={FG_PERM_AUG_SEED} (data-side relabel of each "
+              f"instance + gold; engine untouched).", flush=True)
+
     # ---- train loop (deferred logging: accumulate ON-GPU, one .numpy() / LOG_EVERY).
     print("\ntraining...\n")
     t0 = time.time()
@@ -1663,6 +1810,12 @@ def main():
             cur_domain = None
             native = task.train_loader.sample_batch()
             fb = task.to_factor_batch(native)
+        # FG_PERM_AUG: relabel each instance's REAL cells (+ gold) on the data side,
+        # BEFORE _jit_inputs pulls the engine inputs. Off (default) -> byte-identical
+        # (call skipped, no augmentation RNG drawn). Composes with the multitask path
+        # (the relabel is on the cell axis only; latent_type / inlet are unchanged).
+        if FG_PERM_AUG:
+            fb = permute_factor_batch(fb, perm_aug_rng, FG_PERM_AUG_FRAC)
         ins = _jit_inputs(fb, spec, task.has_inlet, hidden, _draw_stoch_keep())
         outs = step_fn(*ins)
 
