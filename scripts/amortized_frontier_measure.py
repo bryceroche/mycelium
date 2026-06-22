@@ -1793,8 +1793,13 @@ class _DartCapture:
     slot holds the FINAL-breath readout rep (B, S, H). `add_dart` appends one row's
     silhouette + metadata. `dump(path, meta)` writes the npz."""
 
-    def __init__(self, mech: str):
+    def __init__(self, mech: str, rep: str = "readout"):
         self.mech = mech
+        # rep: "readout" -> the final-breath readout-LN 1024d silhouette (the baseline
+        # probe target); "waist" -> the final-breath WAIST d-rep (B,S,d), pooled over valid
+        # cells, exposed by the engine via model.fg_waist_capture (RE-PROBE the common mode
+        # at the bottleneck the waist created). "waist" requires a waist-attached model.
+        self.rep = rep
         self.reps: list = []         # list of (H,) float32 silhouettes
         self.valid: list = []        # list of bool valid-flags
         self.inst_id: list = []      # list of int stable global ids
@@ -1805,13 +1810,26 @@ class _DartCapture:
         self._installed = False
 
     def install(self, model) -> None:
-        """Monkeypatch mycelium.breathing._layernorm to grab the readout-LN output
-        (gamma IS model.ln_f_g) into self._slot['last'] — overwriting each call so the
-        slot holds the FINAL breath after a K-breath forward. NON-INVASIVE: never edits
-        the engine; the original _layernorm is restored by uninstall()."""
+        """Install the per-forward rep grabber. For rep=='readout': monkeypatch
+        mycelium.breathing._layernorm to grab the readout-LN output (gamma IS model.ln_f_g)
+        into self._slot['last'], overwriting each call -> the FINAL breath after a K-breath
+        forward. For rep=='waist': install the engine's d-rep sink (model.fg_waist_capture =
+        a fresh list each arm()); the engine appends each breath's (B,S,d) d-rep, so the LAST
+        element is the final-breath waist d-rep. NON-INVASIVE either way — the engine is
+        git-clean (the sink is read via getattr; default-absent -> no-op); uninstall()
+        restores _layernorm and removes the sink."""
         import mycelium.breathing as breathing_mod
         from tinygrad import dtypes
         self._model = model
+        if self.rep == "waist":
+            # The engine exposes the d-rep through model.fg_waist_capture (a list); we read
+            # the LAST appended (B,S,d) tensor per forward. No _layernorm patch needed.
+            if getattr(model, "fg_waist_down", None) is None:
+                raise RuntimeError(
+                    "_DartCapture(rep='waist') needs a waist-attached model "
+                    "(model.fg_waist_down is None — run with FG_WAIST=1 + a waist ckpt).")
+            self._installed = True
+            return
         self._orig_ln = breathing_mod._layernorm
         orig = self._orig_ln
         slot = self._slot
@@ -1826,15 +1844,37 @@ class _DartCapture:
         self._installed = True
 
     def uninstall(self) -> None:
-        """Restore the original _layernorm (idempotent)."""
-        if self._installed and self._orig_ln is not None:
+        """Restore the original _layernorm + remove the waist sink (idempotent)."""
+        if not self._installed:
+            return
+        if self.rep == "waist":
+            if self._model is not None and hasattr(self._model, "fg_waist_capture"):
+                self._model.fg_waist_capture = None
+            self._installed = False
+            return
+        if self._orig_ln is not None:
             import mycelium.breathing as breathing_mod
             breathing_mod._layernorm = self._orig_ln
             self._installed = False
 
     def arm(self) -> None:
-        """Reset the slot before a forward (so a stale rep can never be misread)."""
+        """Reset the slot before a forward (so a stale rep can never be misread). For
+        rep=='waist', install a FRESH d-rep sink list on the model so the engine appends
+        this forward's per-breath d-reps into it (the last == final breath)."""
         self._slot["last"] = None
+        if self.rep == "waist" and self._model is not None:
+            self._model.fg_waist_capture = []
+
+    def _finalize_waist_slot(self) -> None:
+        """Pull the FINAL-breath waist d-rep out of the engine's sink into self._slot.
+        Called by pooled_reps for rep=='waist'. The sink holds K (B,S,d) tensors; the last
+        is the final breath."""
+        from tinygrad import dtypes
+        sink = getattr(self._model, "fg_waist_capture", None)
+        if not sink:
+            self._slot["last"] = None
+            return
+        self._slot["last"] = sink[-1].cast(dtypes.float).realize().numpy()  # (B,S,d)
 
     def pooled_reps(self, cell_valid_np: np.ndarray) -> np.ndarray:
         """Pool the captured FINAL-breath readout reps over each row's valid cells.
@@ -1842,7 +1882,10 @@ class _DartCapture:
         cell_valid_np : (B, S) float. Returns (B, H) float32 — per row, the mean over
         cell_valid>0.5 of the readout-LN hidden (the silhouette). Pooling is over a SET of
         cells, so it is permutation-invariant: a permuted (symmetry) forward's reps pool to
-        the SAME silhouette set the original would (no inverse-map needed)."""
+        the SAME silhouette set the original would (no inverse-map needed). For rep=='waist'
+        the slot is the final-breath WAIST d-rep (B,S,d) and the same pooling applies."""
+        if self.rep == "waist":
+            self._finalize_waist_slot()
         last = self._slot["last"]
         if last is None:
             raise RuntimeError(
@@ -1989,10 +2032,12 @@ def run_volume_sweep(args) -> None:
                 f"--capture-darts requested --capture-mech={cap_mech} but it is not in "
                 f"--diversity={mechanisms}. Add it (e.g. --diversity symmetry) so the "
                 f"per-dart forwards run.")
-        capture = _DartCapture(cap_mech)
+        cap_rep = getattr(args, "capture_rep", "readout")
+        capture = _DartCapture(cap_mech, rep=cap_rep)
         capture.install(model)
-        print(f"\n  [capture-darts] ENABLED: capturing per-dart final-breath readout "
-              f"silhouettes for mech='{cap_mech}' -> {args.capture_darts}", flush=True)
+        print(f"\n  [capture-darts] ENABLED: capturing per-dart final-breath "
+              f"{'WAIST d-rep' if cap_rep == 'waist' else 'readout silhouette'} "
+              f"for mech='{cap_mech}' -> {args.capture_darts}", flush=True)
 
     # ---- FORWARD-PATH SWITCH: jit (default, production path) | eager (parity reference).
     # CAPTURE FORCES EAGER: the non-invasive readout-LN hook calls .realize().numpy() on
@@ -2267,13 +2312,23 @@ def run_volume_sweep(args) -> None:
     # ---- 6. Dump per-dart silhouettes (--capture-darts) + RESTORE the hook. ------------
     if capture is not None:
         try:
+            _rep_desc = (
+                "final-breath WAIST d-rep (B,S,d), mean-pooled over valid cells "
+                "(cell_valid>0.5), one (d,) silhouette per dart — the common mode the "
+                "in-deducer waist created (re-probe target)"
+                if capture.rep == "waist" else
+                "final-breath readout-LN 1024d hidden, mean-pooled over valid cells "
+                "(cell_valid>0.5), one (H,) silhouette per dart")
+            _rep_dim = (int(model.fg_waist_down.shape[1])
+                        if capture.rep == "waist" and getattr(model, "fg_waist_down", None) is not None
+                        else int(model.ln_f_g.shape[0]))
             meta = {
                 "ckpt": args.ckpt, "domain": args.domain, "mech": capture.mech,
+                "capture_rep": capture.rep,
                 "k": k, "s_max": s_max, "K": K, "m_max": m_max,
                 "bands": [float(c) for c in bands], "per_band": per_band,
-                "seed": args.seed, "H": int(model.ln_f_g.shape[0]),
-                "rep": "final-breath readout-LN 1024d hidden, mean-pooled over valid cells "
-                       "(cell_valid>0.5), one (H,) silhouette per dart",
+                "seed": args.seed, "H": _rep_dim,
+                "rep": _rep_desc,
                 "inst_id_scheme": "int(round(c*1000))*1_000_000 + per_band_index "
                                   "(band-namespaced, distinct per (band, instance))",
                 "dart0": "identity/argmax member (the deterministic baseline run)",
@@ -2845,11 +2900,15 @@ def _build_deducer_model(spec, ckpt: str, k: int, s_max: int, K: int, seed: int)
     same path eval_coloring_bands / the gate script use — no hand-rolled model build."""
     import gc
     import scripts.search_coloring as sc
-    from tinygrad import Device
+    from tinygrad import Device, dtypes, Tensor
     from tinygrad.helpers import getenv
+    from tinygrad.nn.state import safe_load
     from mycelium import Config
     from mycelium.loader import _load_state, load_breathing
-    from mycelium.factor_graph_engine import attach_factor_graph_params, FG_HYP_MASK
+    from mycelium.factor_graph_engine import (
+        attach_factor_graph_params, attach_factor_waist_params, FG_HYP_MASK,
+        FG_WAIST_DIM, FG_WAIST_AFTER, FG_WAIST_GATE_INIT,
+    )
     from mycelium.factor_masks import attach_factor_hyperbolic_params
     from mycelium.graph_coloring_data import GraphColoringLoader
 
@@ -2861,6 +2920,22 @@ def _build_deducer_model(spec, ckpt: str, k: int, s_max: int, K: int, seed: int)
     gc.collect()
     sc.cast_layers_fp32(model)
     attach_factor_graph_params(model, hidden=cfg.hidden, spec=spec)
+
+    # IN-DEDUCER WAIST (FG_WAIST=1): attach the waist params BEFORE load_ckpt so the waist
+    # weights in the ckpt are restored. The base (no-waist) ckpt path is untouched
+    # (FG_WAIST=0 default -> no attach -> the engine's getattr-gate runs the original
+    # forward, byte-identical). sc.load_ckpt only restores the base fg keys; the waist keys
+    # are loaded separately here (avoids editing the validated search_coloring helpers).
+    fg_waist_on = int(getenv("FG_WAIST", "0")) > 0
+    if fg_waist_on:
+        d_w = int(getenv("FG_WAIST_DIM", str(FG_WAIST_DIM)))
+        after_w = int(getenv("FG_WAIST_AFTER", str(FG_WAIST_AFTER)))
+        gate_w = float(getenv("FG_WAIST_GATE_INIT", str(FG_WAIST_GATE_INIT)))
+        aux_w = getenv("FG_WAIST_AUX", "classify").strip().lower()
+        attach_factor_waist_params(model, hidden=cfg.hidden, d=d_w, after=after_w,
+                                   gate_init=gate_w, aux=aux_w)
+        print(f"  [FG_WAIST=1] waist attached for re-eval: d={d_w} after={after_w} "
+              f"aux={aux_w}", flush=True)
 
     if FG_HYP_MASK:
         print("[FG_HYP_MASK=1] building coloring anchor tables...", flush=True)
@@ -2875,6 +2950,31 @@ def _build_deducer_model(spec, ckpt: str, k: int, s_max: int, K: int, seed: int)
         del _rl, _rb
     Device[Device.DEFAULT].synchronize()
     sc.load_ckpt(model, ckpt)
+
+    # Restore the waist keys (sc.load_ckpt only knows the base fg keys). Missing keys keep
+    # init -> a base ckpt loaded with FG_WAIST=1 runs with a gate~0 (identity) waist.
+    if fg_waist_on:
+        sd_w = safe_load(ckpt)
+        _waist_keys = ["fg_waist_down", "fg_waist_down_b", "fg_waist_up", "fg_waist_up_b",
+                       "fg_waist_gate", "fg_waist_aux_w", "fg_waist_aux_b"]
+        loaded = 0
+        for nm in _waist_keys:
+            dst = getattr(model, nm, None)
+            if dst is None or nm not in sd_w:
+                continue
+            src = sd_w[nm].to(dst.device).realize()
+            if src.shape != dst.shape:
+                try:
+                    src = src.reshape(dst.shape)
+                except Exception:
+                    continue
+            if src.dtype != dst.dtype:
+                src = src.cast(dst.dtype)
+            dst.assign(src).realize()
+            loaded += 1
+        g_now = float(model.fg_waist_gate.sigmoid().mean().numpy())
+        print(f"  [FG_WAIST=1] loaded {loaded} waist keys from ckpt; "
+              f"gate=sigmoid={g_now:.4f}", flush=True)
     return model
 
 
@@ -3801,6 +3901,15 @@ def _parse_args(argv) -> argparse.Namespace:
                         "to capture silhouettes for (default symmetry — the hypothesis is "
                         "about vertex-permutation darts). temp is NOT capturable (its M "
                         "samples share one forward / one readout rep).")
+    P.add_argument("--capture-rep", default=os.environ.get("CAPTURE_REP", "readout"),
+                   choices=["readout", "waist"],
+                   help="[volume,--capture-darts] WHICH representation to capture as the "
+                        "per-dart silhouette: 'readout' = the final-breath readout-LN 1024d "
+                        "hidden (the baseline probe target, AUC 0.85 with a learned head); "
+                        "'waist' = the final-breath WAIST d-rep (B,S,d) exposed by the "
+                        "engine's fg_waist_capture sink (RE-PROBE the common mode the waist "
+                        "created; requires FG_WAIST=1 + a waist ckpt). Feed either npz to "
+                        "scripts/dart_cluster_probe.py / learned_waist_gate.py.")
     P.add_argument("--smoke", action="store_true", help="run the CPU smoke and exit")
     args = P.parse_args(argv)
     # mode-aware defaults for --bands / --min-n (reviewer fix #2).

@@ -75,6 +75,42 @@ FG_HYP_FREEZE: bool = int(os.environ.get("FG_HYP_FREEZE", "1")) > 0
 
 
 # ---------------------------------------------------------------------------
+# IN-DEDUCER WAIST (FG_WAIST) — additive, zero-init-gated convex-blend bottleneck.
+# ---------------------------------------------------------------------------
+# An OPTIONAL per-breath bottleneck inserted at a layer boundary (after transformer
+# layer FG_WAIST_AFTER, default 1 = between L1/L2, the validated v38 B-field location):
+#
+#   d     = down(x).gelu()                       # (B, S, d) — the WAIST d-rep
+#   up_x  = up(d)                                # (B, S, H)
+#   g     = sigmoid(gate_param)                  # scalar in (0,1)
+#   x     = (1 - g)*x + g*up_x                   # zero-init-gated convex blend
+#
+# gate_param is init to a LARGE NEGATIVE (FG_WAIST_GATE_INIT, default -8.0) so g ~ 0
+# at start: the blend is x = (1-g)*x + g*up_x ~ x  (warm-start byte-identical bypass).
+# Training opens g ONLY if the waist earns its keep. The convex form (NOT v38's residual
+# add) means g=0 is an EXACT pass-through regardless of the waist contents, so warm-start
+# safety does NOT depend on up() being zero-init (it is small-randn here; the gate carries
+# the bypass guarantee). Convex blend also bounds the waist's influence in [0,1].
+#
+# ADDITIVE + BYTE-IDENTICAL WHEN OFF: the waist runs ONLY when model.fg_waist_down is not
+# None (gated by a getattr). A model with NO waist params (every existing single-domain
+# ckpt, kenken, coloring, circuit, multi) runs the ORIGINAL forward verbatim — no new op,
+# no new tensor, byte-identical. mycelium/kenken.py (the ORACLE) is NEVER imported-from /
+# touched by this change.
+#
+# d-REP EXPOSURE (re-probe the common mode): when a list is present at
+# model.fg_waist_capture (set ONLY by the eager re-eval capture path), the per-breath
+# waist d-rep (the (B,S,d) tensor BEFORE up()) is appended to it. This is a NO-OP unless a
+# caller installs the list (default attribute is absent -> getattr returns None -> skip),
+# and it runs ONLY in the eager (non-JIT) capture forward — never inside the JIT graph
+# (writing a Python-list side-effect inside a TinyJit trace is the accumulator-stale-ref
+# trap; the capture forward is eager, mirroring _DartCapture's readout-LN hook).
+FG_WAIST_DIM: int = int(os.environ.get("FG_WAIST_DIM", "256"))
+FG_WAIST_AFTER: int = int(os.environ.get("FG_WAIST_AFTER", "1"))
+FG_WAIST_GATE_INIT: float = float(os.environ.get("FG_WAIST_GATE_INIT", "-8.0"))
+
+
+# ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
 
@@ -257,7 +293,8 @@ def embed_factor_cells(input_cells: Tensor, state_embed: Tensor,
 def factor_breathing_forward(model: Any, batch: FactorGraphBatch,
                               spec: FactorGraphSpec, K: int,
                               stoch_keep: "Tensor | None" = None,
-                              ) -> tuple[list[Tensor], list[Tensor]]:
+                              return_waist: bool = False,
+                              ):
     """Run K breaths of factor-graph constraint propagation.
 
     Byte-identical to kenken_breathing_forward when driven with KenKen inputs
@@ -283,11 +320,18 @@ def factor_breathing_forward(model: Any, batch: FactorGraphBatch,
     spec    : FactorGraphSpec.
     K       : number of breaths to run (<= spec.k_max).
     stoch_keep : optional (K,) Tensor of per-breath keep-scales (training only).
+    return_waist : if True AND the waist is attached, ALSO return the per-breath waist
+                   d-rep history (list of K (B, s_max, d) Tensors) as a 3rd element so the
+                   trainer can attach the validity-shaping aux objective IN-GRAPH. Default
+                   False -> the original 2-tuple signature (byte-identical callers). When
+                   the waist is NOT attached, return_waist=True yields an EMPTY list (the
+                   aux is a no-op) — so a return_waist caller works on a baseline model too.
 
     Returns
     -------
     value_logits_history : list of K Tensors, each (B, s_max, n_values) float.
     calib_history        : list of K Tensors, each (B,) float, sigmoid'd.
+    [waist_drep_history]  : (only when return_waist) list of K (B, s_max, d) Tensors.
     """
     assert hasattr(model, "fg_state_embed"), \
         "model has no factor_graph params; call attach_factor_graph_params first."
@@ -372,8 +416,25 @@ def factor_breathing_forward(model: Any, batch: FactorGraphBatch,
     inlet_h = inlet.cast(x.dtype)
     cell_valid_col = cell_valid.reshape(B, S, 1)
 
+    # (f) OPTIONAL WAIST (FG_WAIST) — getattr-gated so OFF == byte-identical. Read the
+    # params ONCE outside the loop (they are shared across breaths, like delta_gate).
+    # waist_down is None on every model without waist params -> the in-loop branch is a
+    # compile-time constant (not a per-breath python value branch), and the original
+    # forward is taken verbatim.
+    waist_down_w = getattr(model, "fg_waist_down", None)        # (H, d)
+    use_waist = waist_down_w is not None
+    if use_waist:
+        waist_down_b = model.fg_waist_down_b                    # (d,)
+        waist_up_w   = model.fg_waist_up                        # (d, H)
+        waist_up_b   = model.fg_waist_up_b                      # (H,)
+        waist_gate_p = model.fg_waist_gate                      # () scalar param
+        waist_after  = int(getattr(model, "fg_waist_after", FG_WAIST_AFTER))
+        # d-rep capture sink (eager re-eval only; absent/None by default -> no-op).
+        waist_capture = getattr(model, "fg_waist_capture", None)
+
     value_logits_history: list[Tensor] = []
     calib_history: list[Tensor] = []
+    waist_drep_history: list[Tensor] = []   # per-breath (B, S, d); filled only if use_waist
 
     for k in range(K):
         be_k = breath_embed[k].reshape(1, 1, -1).cast(x.dtype)   # (1, 1, H)
@@ -386,8 +447,23 @@ def factor_breathing_forward(model: Any, batch: FactorGraphBatch,
         # which fires when S != 49.  For the general case we call the function
         # directly — it works for any S as long as attn_bias has matching shape.
         # For the KenKen anchor (S=49) it is byte-identical to the original call.
-        for layer in layers[:4]:
+        for li, layer in enumerate(layers[:4]):
             h = kenken_layer_forward(layer, h, attn_bias)          # no Q-rotation
+            # (f) WAIST: zero-init-gated convex blend at the layer boundary li==waist_after.
+            # g ~ 0 at init (gate_param large-negative) -> blend ~ pass-through (warm-start
+            # byte-identical). Computed in h.dtype (half) to stay on the validated activation
+            # path; no dtypes.float32 literal (sigmoid/gelu/matmul preserve dtype).
+            if use_waist and li == waist_after:
+                d_rep = (h @ waist_down_w.cast(h.dtype)
+                         + waist_down_b.cast(h.dtype)).gelu()       # (B, S, d) — the WAIST d-rep
+                up_x = (d_rep @ waist_up_w.cast(h.dtype)
+                        + waist_up_b.cast(h.dtype))                 # (B, S, H)
+                g = waist_gate_p.cast(h.dtype).sigmoid().reshape(1, 1, 1)
+                h = (1.0 - g) * h + g * up_x                        # convex blend
+                waist_drep_history.append(d_rep)                    # (B, S, d)
+                # d-rep exposure (eager capture only; no-op when sink absent/None).
+                if waist_capture is not None:
+                    waist_capture.append(d_rep)
 
         gate_k = delta_gate[k].cast(h.dtype).reshape(1, 1, 1)
         delta = h - x_pre
@@ -413,6 +489,8 @@ def factor_breathing_forward(model: Any, batch: FactorGraphBatch,
         calib_k = calib_logit.reshape(-1).sigmoid()
         calib_history.append(calib_k)
 
+    if return_waist:
+        return value_logits_history, calib_history, waist_drep_history
     return value_logits_history, calib_history
 
 
@@ -493,6 +571,99 @@ def factor_graph_parameters(model: Any) -> list[Tensor]:
         model.fg_breath_embed,
         model.fg_delta_gate,
     ]
+
+
+# ---------------------------------------------------------------------------
+# Waist param attach (FG_WAIST) — additive, zero-init-gated.
+# ---------------------------------------------------------------------------
+
+def attach_factor_waist_params(model: Any, hidden: int, d: int = FG_WAIST_DIM,
+                               after: int = FG_WAIST_AFTER,
+                               gate_init: float = FG_WAIST_GATE_INIT,
+                               aux: str = "none") -> None:
+    """Allocate the in-deducer WAIST params on `model` (additive; OFF unless called).
+
+    The waist is a per-breath zero-init-gated convex-blend bottleneck inserted after
+    transformer layer `after` (see the module docstring on FG_WAIST). Calling this is what
+    turns the waist ON: factor_breathing_forward reads model.fg_waist_down via getattr and
+    skips the whole waist when it is None. So a model WITHOUT this call runs byte-identical.
+
+    Params added
+    ------------
+    fg_waist_down     (hidden, d)  — down projection (small randn 0.02; mirrors v38).
+    fg_waist_down_b   (d,)         — down bias (zeros).
+    fg_waist_up       (d, hidden)  — up projection, ZERO-INIT (mirrors v38's zero-init
+                                     proj_up). With BOTH the zero-init up AND the gate~0,
+                                     warm-start is DOUBLY safe: the waist's contribution
+                                     g*up(gelu(down(x))) is EXACTLY 0 at init regardless of
+                                     the gate (up=0), so resuming a baseline ckpt is byte-
+                                     identical to the gate-only argument; gradient still
+                                     flows (down is non-zero, gate is finite), so the waist
+                                     can OPEN if it earns its keep. (The convex blend at g~0
+                                     is the second, independent bypass guarantee.)
+    fg_waist_up_b     (hidden,)    — up bias (zeros).
+    fg_waist_gate     ()           — scalar gate logit; init gate_init (large -ve) -> g ~ 0.
+    fg_waist_after    int          — the layer-boundary index (python int; not a Tensor).
+
+    AUX HEAD (FG_WAIST_AUX): when aux in {classify, both}, also allocate a validity
+    classifier head on the POOLED waist d-rep (mean over valid cells):
+    fg_waist_aux_w    (d, 1)       — small randn 0.02.
+    fg_waist_aux_b    (1,)         — zeros.
+    The 'attract' term needs no params (it pulls toward a running valid centroid, a buffer
+    the trainer owns), so aux=='attract' allocates no head. aux=='none' allocates nothing.
+    """
+    rng_dn = np.random.RandomState(2401)
+    dn = (rng_dn.randn(hidden, d) * 0.02).astype(np.float32)
+    model.fg_waist_down = Tensor(dn, dtype=dtypes.float).contiguous()
+    model.fg_waist_down_b = Tensor.zeros((d,), dtype=dtypes.float).contiguous()
+
+    # up: ZERO-INIT (v38 proj_up pattern) -> waist contribution == 0 at init regardless of
+    # the gate (the doubly-safe warm-start bypass; gradient still flows via down + gate).
+    model.fg_waist_up = Tensor.zeros((d, hidden), dtype=dtypes.float).contiguous()
+    model.fg_waist_up_b = Tensor.zeros((hidden,), dtype=dtypes.float).contiguous()
+
+    # Gate logit -> sigmoid(gate_init) ~ 0 (byte-identical bypass at init). Shape (1,) NOT
+    # () — a 0-d optimizer param trips AdamW's moment update (shape (1,) assigned to () ->
+    # broadcast error) on this tinygrad. (1,) is reshaped to (1,1,1) in the forward, so the
+    # blend is unchanged. Build from a numpy array (NO dtypes.float32 literal as a graph const).
+    model.fg_waist_gate = Tensor(
+        np.array([gate_init], dtype=np.float32), dtype=dtypes.float).contiguous()
+    model.fg_waist_after = int(after)
+
+    if aux in ("classify", "both"):
+        rng_aux = np.random.RandomState(2403)
+        aw = (rng_aux.randn(d, 1) * 0.02).astype(np.float32)
+        model.fg_waist_aux_w = Tensor(aw, dtype=dtypes.float).contiguous()
+        model.fg_waist_aux_b = Tensor.zeros((1,), dtype=dtypes.float).contiguous()
+
+
+def factor_waist_parameters(model: Any) -> list[Tensor]:
+    """Trainable waist params (empty when the waist is not attached)."""
+    if getattr(model, "fg_waist_down", None) is None:
+        return []
+    params = [
+        model.fg_waist_down, model.fg_waist_down_b,
+        model.fg_waist_up, model.fg_waist_up_b,
+        model.fg_waist_gate,
+    ]
+    if getattr(model, "fg_waist_aux_w", None) is not None:
+        params += [model.fg_waist_aux_w, model.fg_waist_aux_b]
+    return params
+
+
+def pooled_waist_drep(d_rep: Tensor, cell_valid: Tensor) -> Tensor:
+    """Mean-pool a per-cell waist d-rep (B, S, d) over valid cells -> (B, d).
+
+    The SAME pooling the engine's calibration head uses (mean over cell_valid>0) — so the
+    pooled d-rep here is the exact 'silhouette' the dart cluster probe re-probes, just read
+    at the waist boundary instead of the final readout LN. Used by the aux objective and the
+    capture path. Pure tensor ops, dtype-preserving."""
+    B = int(d_rep.shape[0])
+    S = int(d_rep.shape[1])
+    cv = cell_valid.reshape(B, S, 1).cast(d_rep.dtype)
+    num = (d_rep * cv).sum(axis=1)                              # (B, d)
+    den = cv.sum(axis=1) + 1e-6                                 # (B, 1)
+    return num / den
 
 
 # ---------------------------------------------------------------------------

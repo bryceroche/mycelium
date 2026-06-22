@@ -125,6 +125,8 @@ from mycelium.factor_graph_engine import (
     attach_factor_graph_params, factor_graph_parameters,
     factor_breathing_forward, factor_loss, factor_accuracy,
     make_kenken_factor_batch,
+    attach_factor_waist_params, factor_waist_parameters, pooled_waist_drep,
+    FG_WAIST_DIM, FG_WAIST_AFTER, FG_WAIST_GATE_INIT,
     FG_HYP_MASK, FG_HYP_FREEZE,
 )
 from mycelium.factor_masks import (
@@ -185,6 +187,14 @@ _FG_PARAM_NAMES = [
     "fg_state_embed", "fg_position_embed", "fg_value_codebook",
     "fg_calib_head_w", "fg_calib_head_b", "fg_breath_embed", "fg_delta_gate",
 ]
+# In-deducer WAIST params (only present when FG_WAIST=1 / attach_factor_waist_params was
+# called). Saved only when attached, so a baseline (no-waist) ckpt is byte-identical (it
+# never carries these keys) and a waist ckpt round-trips them. fg_waist_aux_* are present
+# only for aux in {classify, both}; load_ckpt keeps init for absent keys.
+_FG_WAIST_NAMES = [
+    "fg_waist_down", "fg_waist_down_b", "fg_waist_up", "fg_waist_up_b",
+    "fg_waist_gate", "fg_waist_aux_w", "fg_waist_aux_b",
+]
 # kenken verification-inlet params (only present when the kenken inlet is attached).
 _KENKEN_INLET_NAMES = [
     "kenken_op_embed", "kenken_target_embed", "kenken_size_embed",
@@ -207,6 +217,11 @@ def model_state_dict_fg(model) -> dict:
             sd[f"phase{i}.{a}"] = getattr(layer, a)
     for nm in _FG_PARAM_NAMES:
         sd[nm] = getattr(model, nm)
+    # In-deducer WAIST params (saved only when attached -> baseline ckpts byte-identical).
+    for nm in _FG_WAIST_NAMES:
+        t = getattr(model, nm, None)
+        if t is not None:
+            sd[nm] = t
     # Verification-inlet params are saved only when attached (kenken task).
     for nm in _KENKEN_INLET_NAMES:
         t = getattr(model, nm, None)
@@ -258,6 +273,117 @@ def load_ckpt(model, path: str):
 
 
 # ---------------------------------------------------------------------------
+# WAIST VALIDITY-SHAPING AUX (FG_WAIST_AUX) — the research-uncertain crux.
+# ---------------------------------------------------------------------------
+# The FREE EXACT verifier (a coloring is proper iff no edge factor's two members share a
+# color; generically: no all-different factor has a repeated value) is computed IN-GRAPH
+# from membership + the predicted per-cell argmax, so it costs no extra forward and gives a
+# per-instance VALID/INVALID label for the model's OWN output. Gold is valid by definition.
+#
+# classify : a head on the POOLED waist d-rep predicts validity (class-weighted BCE).
+#            VALID exemplars = GOLD teacher-forced (input_cells=gold -> output==gold ->
+#            always valid -> its waist d-rep is a guaranteed-valid silhouette). INVALID
+#            exemplars = the ACTUAL forward's waist d-rep labeled by the in-graph verifier
+#            on its own argmax. The aux grad flows through the waist (down/up + gate),
+#            shaping the d-rep common mode to be validity-aware. DISCRIMINATIVE: makes the
+#            rep SEPARABLE; may NOT move the output distribution (the honest risk).
+# attract  : GENERATIVE shaping (the p-raising candidate). Maintain a running VALID CENTROID
+#            of gold-TF waist d-reps (an EMA buffer the trainer owns, detached). Add a term
+#            that PULLS the ACTUAL forward's pooled d-rep toward that centroid, WEIGHTED by
+#            how near-valid the output is (more pull when the output already satisfies most
+#            factors), biasing the deduction toward the good common mode. This shapes the
+#            ENERGY, not just a classifier boundary -> most likely to actually raise p.
+# both     : classify + attract.
+# none     : no aux term (pure-CE waist; the ablation).
+#
+# ALL aux terms are ZERO-able (aux=='none' -> the whole block is dead) and gate behind
+# use_waist (no waist params -> no aux). The gold-TF second forward shares the SAME weights
+# (iterative-prefill recipe) so it is a cheap extra K-breath pass; both forwards see the
+# SAME masks (same membership) so the d-reps live in one space.
+
+
+def _factor_alldiff_violation(pred_onehot: "Tensor", membership: "Tensor",
+                              latent_type: "Tensor", n_factor_types: int) -> "Tensor":
+    """Per-instance count of all-different VIOLATIONS over real (typed) factors, IN-GRAPH.
+
+    pred_onehot : (B, S, N) one-hot of the predicted value per cell (argmax; detached).
+    membership  : (B, L, S) — factor membership (real factors have >=2 ones; pad rows 0).
+    latent_type : (B, L) int — a REAL relation iff 0 <= t < n_factor_types (the global
+                  sentinel id >= n_factor_types marks padding). All current relation types
+                  (coloring edge, kenken row/col/cage) are ALL-DIFFERENT constraints, so the
+                  generic verifier is: for each real factor, count(value) <= 1 for every
+                  value. counts = membership @ pred_onehot -> (B, L, N); a violation is any
+                  count >= 2. Returns (B,) total violations -> 0 == proper/valid.
+
+    This is the EXACT free verifier (_coloring_proper_np's edge check generalized to cliques)
+    expressed as tensor ops -> no host sync, JIT-safe, no float32 literal."""
+    B = int(membership.shape[0])
+    L = int(membership.shape[1])
+    is_real = (latent_type < n_factor_types).cast(dtypes.float).reshape(B, L, 1)  # (B,L,1)
+    counts = membership.cast(dtypes.float) @ pred_onehot.cast(dtypes.float)        # (B,L,N)
+    # excess over the all-different cap of 1 per value, only on real factors.
+    excess = (counts - 1.0).maximum(0.0) * is_real                                 # (B,L,N)
+    return excess.sum(axis=(1, 2))                                                 # (B,)
+
+
+# ---------------------------------------------------------------------------
+# COLORING OUTPUT-SPACE SOFT-VIOLATION ENERGY (the differentiable verifier plug).
+# ---------------------------------------------------------------------------
+# A differentiable RELAXATION of the coloring verifier, minimized alongside CE to steer
+# the OUTPUT toward valid colorings (vs a discriminative head that only makes a rep
+# separable). It REUSES the generic all-different form (_factor_alldiff_violation): an
+# edge is a 2-member not-equal factor, so for each color c the membership@probs mass over
+# the edge's two endpoints is <=1 iff they disagree; relu(mass-1) is the soft collision
+# (positive only when both endpoints put overlapping mass on the same color). Summed over
+# real edge factors per instance -> the soft "adjacent vertices share a color" penalty.
+#
+# THE KEY (differentiability): apply it to the SOFTMAX PROBS (the caller hands
+# `final_probs = logits_history[-1].softmax(...)`), NOT an argmax one-hot. The waist aux
+# used a DETACHED argmax one-hot (a label); here the gradient must flow to the probs, so
+# there is NO .detach()/argmax in this path. membership/latent_type are inputs (no grad),
+# so grad flows only into final_probs -> the readout -> the breathing weights.
+#
+# SIGN (the load-bearing property): the energy is NON-NEGATIVE (relu) and ZERO for a valid
+# coloring (no edge has both endpoints on one color -> every per-color mass <=1 -> relu=0)
+# and POSITIVE for violations (a shared color drives an endpoint pair's mass toward 2 ->
+# relu>0). The loss ADDS constraint_weight*energy and the optimizer MINIMIZES, so reducing
+# the energy REDUCES collisions => pushes toward valid. (Verified: gold-onehot -> ~0;
+# all-same-color -> large positive.)
+#
+# GENERALITY: this lives in the trainer/domain layer (like kenken_constraint_energy), NOT
+# the engine core, and reuses the GENERIC _factor_alldiff_violation helper — no coloring-
+# only specifics leak into the core. It is a factory so T (= spec.n_factor_types, the
+# real-vs-sentinel cutoff the helper needs) is captured at task-build time; the returned
+# callable matches the caller's exact `fn(final_probs, batch) -> (B,)` contract.
+
+def make_coloring_constraint_energy(n_factor_types: int):
+    """Return a coloring soft-violation energy fn closing over T (= n_factor_types).
+
+    The returned callable has the exact constraint-energy contract the trainer's loss
+    graph calls (`fn(final_probs, batch) -> (B,)`): same signature as
+    kenken_constraint_energy. `final_probs` is the FINAL-breath SOFTMAX over values
+    (B, S, N) — already value-domain masked by the readout's value_bias — so it is
+    differentiable end-to-end. Pad cells are zeroed (their prob mass must not create a
+    spurious collision) BEFORE the all-different reduction; this is dtype-preserving and
+    JIT-safe (no host sync, no dtypes.float32 literal)."""
+    T = int(n_factor_types)
+
+    def coloring_constraint_energy(final_probs: "Tensor", batch) -> "Tensor":
+        # final_probs: (B, S, N) softmax over values (differentiable; NOT argmax'd).
+        B = int(final_probs.shape[0])
+        S = int(final_probs.shape[1])
+        # Zero pad cells so padding never contributes a spurious clash (mirrors the waist
+        # verifier's pad-mask). cell_valid is an input (no grad); this is a SELECT-by-mask
+        # multiply on the LIVE probs, so gradient still flows to the valid cells' probs.
+        cv = batch.cell_valid.reshape(B, S, 1).cast(final_probs.dtype)
+        pv = final_probs * cv                                            # (B, S, N)
+        # Reuse the GENERIC all-different soft violation on the SOFTMAX (differentiable).
+        return _factor_alldiff_violation(pv, batch.membership, batch.latent_type, T)  # (B,)
+
+    return coloring_constraint_energy
+
+
+# ---------------------------------------------------------------------------
 # JIT train step — where()-gated NaN guard (PORT from kenken_train).
 # ---------------------------------------------------------------------------
 
@@ -273,7 +399,11 @@ def _compile_jit_fg_step(model, opt, spec: FactorGraphSpec, task: str,
                          stoch_depth_p: float = 0.0,
                          constraint_energy_fn=None,
                          has_inlet: bool = False,
-                         multitask: bool = False, mix_key: str = ""):
+                         multitask: bool = False, mix_key: str = "",
+                         waist_on: bool = False, waist_aux: str = "none",
+                         waist_aux_w: float = 0.0, waist_attract_w: float = 0.0,
+                         valid_centroid: "Tensor | None" = None,
+                         centroid_momentum: float = 0.99):
     """Compile + return a TinyJit'd train step for the general factor forward.
 
     JIT cache key includes EVERY shape/runtime-determining constant AND the spec
@@ -308,6 +438,13 @@ def _compile_jit_fg_step(model, opt, spec: FactorGraphSpec, task: str,
            # JIT graph. When OFF (default) these are (False, "") — the single-domain
            # key is unchanged, so old single-task graphs stay cache-compatible.
            bool(multitask), str(mix_key),
+           # WAIST + aux flip the traced graph body (the per-breath waist blend + the aux
+           # loss terms), so they MUST be keyed — a stale graph under a flipped waist/aux is
+           # silent corruption. The valid-centroid buffer is an in-place-assigned closure
+           # object (its CONTENTS update per replay), keyed by presence (id), not value.
+           bool(waist_on), str(waist_aux), float(waist_aux_w), float(waist_attract_w),
+           float(centroid_momentum),
+           id(valid_centroid) if valid_centroid is not None else 0,
            bool(FG_HYP_MASK), bool(FG_HYP_FREEZE),
            # Rung-2 relax knobs CHANGE THE TRACED GRAPH BODY (exp_0 vs raw coord,
            # euclid vs hyp distance, soft-block vs saturated alpha), so they MUST be
@@ -327,11 +464,23 @@ def _compile_jit_fg_step(model, opt, spec: FactorGraphSpec, task: str,
     use_energy = constraint_energy_fn is not None and cw > 0.0
     N = int(spec.n_values)
     S = int(spec.s_max)
+    T = int(spec.n_factor_types)
     jit_params = opt.params
 
+    # WAIST aux gating (compile-time constants -> baked into the traced graph body).
+    aux_mode = str(waist_aux) if waist_on else "none"
+    use_classify = waist_on and aux_mode in ("classify", "both") and waist_aux_w > 0.0
+    use_attract = waist_on and aux_mode in ("attract", "both") and waist_attract_w > 0.0
+    use_waist_aux = use_classify or use_attract
+    aux_w = float(waist_aux_w)
+    attract_w = float(waist_attract_w)
+    cmom = float(centroid_momentum)
+
     print(f"[JIT] compile fg step: task={task} S={S} N={N} "
-          f"T={spec.n_factor_types} inlet={has_inlet} K={K} B={B} cw={cw} aw={aw} "
-          f"ortho={olam} clip={gc_val} ls={ls} stoch_depth_p={sd_p}...", flush=True)
+          f"T={T} inlet={has_inlet} K={K} B={B} cw={cw} aw={aw} "
+          f"ortho={olam} clip={gc_val} ls={ls} stoch_depth_p={sd_p} "
+          f"waist={waist_on} aux={aux_mode} aux_w={aux_w} attract_w={attract_w}...",
+          flush=True)
 
     @TinyJit
     def _step(input_cells: Tensor, gold: Tensor, cell_valid: Tensor,
@@ -375,10 +524,19 @@ def _compile_jit_fg_step(model, opt, spec: FactorGraphSpec, task: str,
             # Single-domain: do NOT set head_type_oh/head_is_global -> the engine takes
             # the original build_factor_attn_bias path (byte-identical).
 
-        # Forward: K constant → loop unrolls → static graph topology.
-        logits_history, calib_history = factor_breathing_forward(
-            model, batch, spec, K=K,
-            stoch_keep=(stoch_keep if use_stoch else None))
+        # Forward: K constant → loop unrolls → static graph topology. When the WAIST aux is
+        # on, ALSO collect the per-breath waist d-rep history (return_waist=True) so the aux
+        # objective can shape the d-rep in-graph. return_waist=False otherwise -> byte-
+        # identical 2-tuple, no extra graph nodes.
+        if use_waist_aux:
+            logits_history, calib_history, waist_drep_history = factor_breathing_forward(
+                model, batch, spec, K=K,
+                stoch_keep=(stoch_keep if use_stoch else None), return_waist=True)
+        else:
+            logits_history, calib_history = factor_breathing_forward(
+                model, batch, spec, K=K,
+                stoch_keep=(stoch_keep if use_stoch else None))
+            waist_drep_history = []
 
         # ---- Per-breath weighted-CE ladder (the training loss; inlined to expose
         # per-breath scalars in the JIT return). Supervise VALID & UNOBSERVED cells,
@@ -448,7 +606,88 @@ def _compile_jit_fg_step(model, opt, spec: FactorGraphSpec, task: str,
         train_cell_acc = (eq_v.sum() / n_valid).detach()
         train_puzzle_acc = eq_valid.prod(axis=-1).mean().detach()
 
-        total = cell_loss + cw * energy + aw * calib_loss
+        # ---- WAIST VALIDITY-SHAPING AUX ----------------------------------------------
+        # Computed only when use_waist_aux (compile-time constant). Off -> waist_aux reports
+        # 0.0 and `total` is the original CE+energy+calib (waist runs as a pure-CE bypass).
+        waist_aux_loss = Tensor.zeros((), dtype=dtypes.float).contiguous()
+        if use_waist_aux:
+            # (1) FREE in-graph verifier on the ACTUAL forward's argmax -> per-instance
+            # VALID label. A coloring/clique is proper iff zero all-different violations.
+            pred_oh = final_argmax.one_hot(N + 1)[:, :, 1:].cast(dtypes.float)  # (B,S,N) drop the 0 row
+            # zero out padding cells so pad never contributes a spurious clash.
+            pred_oh = (pred_oh * cell_valid.reshape(B, S, 1).cast(dtypes.float)).detach()
+            viol = _factor_alldiff_violation(pred_oh, membership, latent_type, T)  # (B,)
+            is_valid_pred = (viol < 0.5).cast(dtypes.float).detach()            # (B,) 1=proper
+
+            # ACTUAL forward's pooled waist d-rep (final breath) — the rep to shape.
+            d_actual = pooled_waist_drep(waist_drep_history[-1], cell_valid)    # (B, d)
+
+            # (2) GOLD teacher-forced forward (input_cells=gold -> output==gold -> ALWAYS
+            # valid) — its waist d-rep is the guaranteed-valid silhouette. SAME shared
+            # weights (iterative-prefill), SAME masks (same membership). Cheap extra pass.
+            class _GB:
+                pass
+            gbatch = _GB()
+            gbatch.input_cells = gold
+            gbatch.gold = gold
+            gbatch.cell_valid = cell_valid
+            gbatch.value_domain_mask = value_domain_mask
+            gbatch.membership = membership
+            gbatch.latent_type = latent_type
+            if multitask:
+                gbatch.factor_inlet = batch.factor_inlet
+                gbatch.head_type_oh = head_type_oh
+                gbatch.head_is_global = head_is_global
+            else:
+                gbatch.factor_inlet = factor_inlet if has_inlet else None
+            _gl, _gc, gold_drep_history = factor_breathing_forward(
+                model, gbatch, spec, K=K, stoch_keep=None, return_waist=True)
+            d_gold = pooled_waist_drep(gold_drep_history[-1], cell_valid)       # (B, d)
+
+            # (a) CLASSIFY: class-weighted BCE on the pooled d-rep. POSITIVES = gold-TF d-rep
+            # (label 1) + actual d-rep where the verifier says proper (label is_valid_pred);
+            # NEGATIVES = actual d-rep where improper. Pos is the minority -> upweight it.
+            if use_classify:
+                aw_w = model.fg_waist_aux_w.cast(dtypes.float)                  # (d,1)
+                ab_w = model.fg_waist_aux_b.cast(dtypes.float)                  # (1,)
+                # actual reps: label = verifier flag.
+                logit_act = (d_actual.cast(dtypes.float) @ aw_w + ab_w).reshape(B)  # (B,)
+                # gold reps: label = 1 (always valid).
+                logit_gold = (d_gold.cast(dtypes.float) @ aw_w + ab_w).reshape(B)   # (B,)
+                # class weights: positives (valid) upweighted by (1-p)/p style; use a fixed
+                # POS_W so the minority valid class isn't drowned (env-tunable upstream).
+                pos_w = 3.0
+                def _bce(logit, label, w_pos):
+                    # stable BCE-with-logits; weight positives by w_pos.
+                    sp = logit.maximum(0.0)
+                    bce = sp - logit * label + (1.0 + (-logit.abs()).exp()).log()
+                    wt = label * w_pos + (1.0 - label)
+                    return (bce * wt).sum() / (wt.sum() + 1e-6)
+                bce_act = _bce(logit_act, is_valid_pred, pos_w)
+                bce_gold = _bce(logit_gold, Tensor.ones((B,), dtype=dtypes.float), pos_w)
+                classify_loss = 0.5 * (bce_act + bce_gold)
+                waist_aux_loss = waist_aux_loss + aux_w * classify_loss
+
+            # (b) ATTRACT (generative): pull the ACTUAL d-rep toward the running VALID
+            # CENTROID, weighted by near-validity (1 - normalized violation), so the term
+            # pulls HARDEST when the output already satisfies most factors -> biases the
+            # deduction into the good common mode (energy shaping, not a classifier line).
+            if use_attract and valid_centroid is not None:
+                # near-valid weight in [0,1]: 1 when zero violations, decaying with viol.
+                near = (1.0 / (1.0 + viol)).detach().reshape(B, 1)             # (B,1)
+                centroid = valid_centroid.cast(dtypes.float).reshape(1, -1)    # (1,d) detached buffer
+                diff = d_actual.cast(dtypes.float) - centroid                  # (B,d)
+                attract_loss = ((diff * diff).sum(axis=-1) * near.reshape(B)).sum() / (
+                    near.sum() + 1e-6)
+                waist_aux_loss = waist_aux_loss + attract_w * attract_loss
+                # EMA-update the centroid from the GOLD d-rep (guaranteed valid), DETACHED.
+                # In-place assign on the closure buffer -> returned in the tuple so the JIT
+                # does not drop the assign (closure-assign-must-return quirk).
+                new_centroid = (cmom * valid_centroid.cast(dtypes.float)
+                                + (1.0 - cmom) * d_gold.cast(dtypes.float).mean(axis=0)).detach()
+                valid_centroid.assign(new_centroid)
+
+        total = cell_loss + cw * energy + aw * calib_loss + waist_aux_loss
 
         # Codebook-orthogonality penalty (rotates collinear value rows apart). OFF
         # (olam==0) => no term, `ortho` reports 0.0, total byte-identical.
@@ -492,6 +731,12 @@ def _compile_jit_fg_step(model, opt, spec: FactorGraphSpec, task: str,
 
         opt.step()
 
+        # The valid-centroid buffer is in-place-assigned above (attract mode); include it in
+        # the return so the JIT does NOT drop the assign (closure-assign-must-return quirk).
+        # It is APPENDED last so the caller's outs[8:8+K] / outs[8+K:8+2*K] slicing is
+        # unchanged; the caller reads waist_aux from outs[8+2*K] and ignores the centroid.
+        centroid_ret = (valid_centroid.realize() if (use_attract and valid_centroid is not None)
+                        else Tensor.zeros((), dtype=dtypes.float).contiguous().realize())
         return (
             total.realize(),
             healthy.realize(),
@@ -503,6 +748,8 @@ def _compile_jit_fg_step(model, opt, spec: FactorGraphSpec, task: str,
             ortho.realize(),
             *(ce.realize() for ce in per_breath_ce_losses),
             *(c.realize() for c in per_breath_calib_means),
+            waist_aux_loss.realize(),
+            centroid_ret,
         )
 
     _JIT_FG_CACHE[key] = _step
@@ -764,12 +1011,18 @@ def _build_coloring_task(K, BATCH, EVAL_BATCH, SEED, n_heads):
         # tensor attrs); pass through directly.
         return cb
 
+    # OUTPUT-SPACE SOFT-VIOLATION ENERGY (the differentiable verifier plug). Wired so a
+    # FG_CONSTRAINT_WEIGHT>0 fine-tune steers the output toward valid colorings; at the
+    # default FG_CONSTRAINT_WEIGHT=0 the loss graph's `use_energy` gate (cw>0.0) leaves it
+    # INERT (never traced) -> byte-identical to the previous constraint_energy_fn=None.
+    coloring_energy = make_coloring_constraint_energy(spec.n_factor_types)
+
     return _Task(
         spec=spec,
         train_loader=loader,
         test_loader=loader,   # same object; eval_iter uses loader.iter_eval()
         to_factor_batch=to_factor_batch,
-        constraint_energy_fn=None,
+        constraint_energy_fn=coloring_energy,
         has_inlet=False,
         eval_iter=lambda: loader.iter_eval(batch_size=EVAL_BATCH),
     )
@@ -1558,6 +1811,18 @@ def main():
     WEIGHT_DECAY = float(getenv("WEIGHT_DECAY", "0.05"))
     STOCH_DEPTH_P = float(getenv("STOCH_DEPTH_P", "0.0"))
 
+    # ---- IN-DEDUCER WAIST (FG_WAIST) knobs. Default OFF -> byte-identical training.
+    FG_WAIST = int(getenv("FG_WAIST", "0")) > 0
+    FG_WAIST_DIM_ENV = int(getenv("FG_WAIST_DIM", str(FG_WAIST_DIM)))
+    FG_WAIST_AFTER_ENV = int(getenv("FG_WAIST_AFTER", str(FG_WAIST_AFTER)))
+    FG_WAIST_GATE_INIT_ENV = float(getenv("FG_WAIST_GATE_INIT", str(FG_WAIST_GATE_INIT)))
+    FG_WAIST_AUX = getenv("FG_WAIST_AUX", "classify").strip().lower()
+    assert FG_WAIST_AUX in ("none", "classify", "attract", "both"), \
+        f"FG_WAIST_AUX must be none|classify|attract|both, got {FG_WAIST_AUX!r}"
+    FG_WAIST_AUX_W = float(getenv("FG_WAIST_AUX_W", "0.1"))         # classify weight
+    FG_WAIST_ATTRACT_W = float(getenv("FG_WAIST_ATTRACT_W", "0.01"))  # attract weight
+    FG_WAIST_CENTROID_MOM = float(getenv("FG_WAIST_CENTROID_MOM", "0.99"))
+
     # Default paths for the kenken task only. Coloring uses an in-memory generator
     # (GraphColoringLoader); FG_TRAIN / FG_TEST are not read by the coloring branch.
     FG_TRAIN = getenv("FG_TRAIN", ".cache/kenken_train.jsonl")
@@ -1623,6 +1888,21 @@ def main():
     # fg_value_codebook / fg_calib_head / fg_breath_embed / fg_delta_gate).
     attach_factor_graph_params(model, hidden=hidden, spec=spec)
 
+    # IN-DEDUCER WAIST (FG_WAIST=1): attach the zero-init-gated convex-blend waist params.
+    # OFF (default) -> NOT attached -> the engine's getattr-gate skips the waist entirely
+    # -> forward byte-identical, training byte-identical, ckpt byte-identical.
+    if FG_WAIST:
+        attach_factor_waist_params(
+            model, hidden=hidden, d=FG_WAIST_DIM_ENV, after=FG_WAIST_AFTER_ENV,
+            gate_init=FG_WAIST_GATE_INIT_ENV, aux=FG_WAIST_AUX)
+        import math as _math
+        g0 = 1.0 / (1.0 + _math.exp(-FG_WAIST_GATE_INIT_ENV))
+        print(f"  [FG_WAIST=1] waist attached: d={FG_WAIST_DIM_ENV} "
+              f"after_layer={FG_WAIST_AFTER_ENV} gate_init={FG_WAIST_GATE_INIT_ENV} "
+              f"(g0=sigmoid(gate_init)={g0:.2e} -> warm-start ~ identity blend) "
+              f"aux={FG_WAIST_AUX} aux_w={FG_WAIST_AUX_W} attract_w={FG_WAIST_ATTRACT_W}",
+              flush=True)
+
     # FG_HYP_MASK=1: build the per-type Poincaré anchor tables and attach them.
     # We need a REPRESENTATIVE membership/latent_type to determine G_t per type.
     # Use the first training batch drawn from the task's loader.
@@ -1654,6 +1934,8 @@ def main():
 
     # ---- params: backbone + fg params (+ kenken inlet tables when present).
     params = collect_backbone_params(model) + factor_graph_parameters(model)
+    # IN-DEDUCER WAIST params (down/up/gate + optional aux head). Empty when not attached.
+    params += factor_waist_parameters(model)
     # KenKen verification-inlet params (trained — they're LIVE at init, not gated).
     # In the multi-task path these are NOT attached (the generic inlet replaces them).
     for nm in _KENKEN_INLET_NAMES:
@@ -1718,6 +2000,12 @@ def main():
             "enabled": FG_PERM_AUG, "frac": FG_PERM_AUG_FRAC,
             "seed": FG_PERM_AUG_SEED,
         },
+        "waist": {
+            "enabled": FG_WAIST, "dim": FG_WAIST_DIM_ENV, "after": FG_WAIST_AFTER_ENV,
+            "gate_init": FG_WAIST_GATE_INIT_ENV, "aux": FG_WAIST_AUX,
+            "aux_w": FG_WAIST_AUX_W, "attract_w": FG_WAIST_ATTRACT_W,
+            "centroid_mom": FG_WAIST_CENTROID_MOM,
+        },
         **({"train_path": FG_TRAIN, "test_path": FG_TEST} if TASK == "kenken"
            else {"multitask": True, "mix": MIX, "mix_weights": MIX_WEIGHTS,
                  "L_max": task.L_max, "n_global_factor_types": N_GLOBAL_TYPES,
@@ -1754,6 +2042,15 @@ def main():
               flush=True)
         return
 
+    # ---- WAIST attract: the running VALID CENTROID buffer (fixed (d,), assigned in-place
+    # inside the JIT, returned in the step tuple per the assign-must-return quirk). Built
+    # only for attract/both; None otherwise (the step keys on its presence). NOT loaded from
+    # ckpt — it warms up via the in-graph EMA from gold-TF d-reps (a few steps to settle).
+    valid_centroid = None
+    if FG_WAIST and FG_WAIST_AUX in ("attract", "both"):
+        valid_centroid = Tensor(np.zeros((FG_WAIST_DIM_ENV,), dtype=np.float32),
+                                dtype=dtypes.float).contiguous().realize()
+
     # ---- JIT compile the train step.  Multi-task: keyed with (multitask, mix_key)
     # so the unified graph is cached separately from any single-domain graph.
     Tensor.training = True
@@ -1766,6 +2063,9 @@ def main():
         constraint_energy_fn=task.constraint_energy_fn,
         has_inlet=task.has_inlet,
         multitask=task.is_multitask, mix_key=mix_key,
+        waist_on=FG_WAIST, waist_aux=FG_WAIST_AUX,
+        waist_aux_w=FG_WAIST_AUX_W, waist_attract_w=FG_WAIST_ATTRACT_W,
+        valid_centroid=valid_centroid, centroid_momentum=FG_WAIST_CENTROID_MOM,
     )
 
     # ---- stochastic-depth keep-mask RNG (fed as a JIT input so the drop pattern
@@ -1837,6 +2137,9 @@ def main():
         ortho_t      = outs[7]
         pb_ce_ts     = outs[8:8 + K]
         pb_calib_ts  = outs[8 + K:8 + 2 * K]
+        # WAIST aux scalar at 8+2K (centroid follows at 8+2K+1; ignored by the host loop —
+        # it exists only so the JIT does not drop the in-place centroid assign).
+        waist_aux_t  = outs[8 + 2 * K] if len(outs) > 8 + 2 * K else None
 
         cur = total_t.reshape(1).cat(cell_ce_t.reshape(1), energy_t.reshape(1),
                                      calib_t.reshape(1), healthy_t.reshape(1),
@@ -1895,9 +2198,14 @@ def main():
                                 + " ".join(f"{v:.2f}" for v in pb_calib[-4:]))
             ortho_str = (f" ortho={float(ortho_t.numpy()):.4f}"
                          if ORTHO_LAMBDA > 0 else "")
+            waist_str = ""
+            if FG_WAIST:
+                g_now = float(model.fg_waist_gate.sigmoid().mean().numpy())
+                aux_now = (float(waist_aux_t.numpy()) if waist_aux_t is not None else 0.0)
+                waist_str = f" waist_gate={g_now:.4f} waist_aux={aux_now:.4f}"
             print(f"  per_breath_ce[B0..B{K-1}]:    {pb_ce_str}  "
                   f"(train cell_acc={float(cell_acc_t.numpy()):.3f} "
-                  f"puzzle_acc={float(puzzle_acc_t.numpy()):.3f}{ortho_str})",
+                  f"puzzle_acc={float(puzzle_acc_t.numpy()):.3f}{ortho_str}{waist_str})",
                   flush=True)
             print(f"  per_breath_calib[B0..B{K-1}]: {pb_calib_str}", flush=True)
 
