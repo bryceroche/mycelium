@@ -1312,6 +1312,13 @@ def _band_dart_seed(master_seed: int, c: float) -> int:
     return _dart_key(int(master_seed), int(round(c * 1000)), 0, "band")
 
 
+def _global_inst_id(c: float, local_gid: int) -> int:
+    """STABLE global instance id for the per-dart capture: band-namespaced so an instance
+    is distinct per (band, per-band index). band c -> int(round(c*1000)) * 1_000_000 +
+    local_gid (per-band index). Distinct across bands and instances; reproducible."""
+    return int(round(c * 1000)) * 1_000_000 + int(local_gid)
+
+
 def _draw_dart(mech: str, gid: int, dart_idx: int, *, seed: int,
                pos_embed_shape=None, noise_std: float = 0.0,
                n: int = 0, M: int = 0):
@@ -1748,6 +1755,138 @@ def run_jit_selftest(args) -> int:
     return 0 if ok else 1
 
 
+# ===========================================================================
+# NON-INVASIVE PER-DART SILHOUETTE CAPTURE (opt-in: --capture-darts)
+# ===========================================================================
+# THE HYPOTHESIS (Anna-Karenina / "good drivers are good in the same way"): in the
+# generate-and-verify volume run, the deducer throws M solution-preserving symmetry
+# darts per instance; a FREE exact verifier (_coloring_proper_np) tags each VALID or
+# INVALID. The claim: VALID darts CLUSTER (a shared common-mode silhouette) while
+# INVALID darts SCATTER. We test it by CAPTURING each dart's silhouette + valid-flag
+# and probing for cluster-separability (scripts/dart_cluster_probe.py).
+#
+# THE SILHOUETTE: the FINAL-breath readout representation pooled over valid cells —
+# i.e. mean over the dart's valid cells of the readout-LN 1024-d hidden x at the LAST
+# breath -> one (H,) vector per dart. This is EXACTLY the engine's calibration pool
+# input (factor_graph_engine: pool over cell_valid of the readout-LN x at each breath),
+# read at the final breath.
+#
+# NON-INVASIVE: we mirror scripts/probe_svd_collapse.py EXACTLY — monkeypatch
+# mycelium.breathing._layernorm (the engine imports it locally inside
+# factor_breathing_forward as `from mycelium.breathing import _layernorm`, so patching
+# mycelium.breathing._layernorm intercepts the readout call). We capture ONLY the
+# readout LN (gamma IS model.ln_f_g; every per-layer LN uses a DIFFERENT gamma object,
+# so the readout is unambiguous), keeping ONLY the LAST call's output per forward (the
+# K-th == final breath; we overwrite a single slot each call). The engine
+# (mycelium/factor_graph_engine.py) + oracle (mycelium/kenken.py) stay git-clean; the
+# hook is installed ONLY when --capture-darts is set, so default volume mode is
+# byte-identical.
+
+class _DartCapture:
+    """Accumulates per-dart silhouettes + flags + ids + bands, dumps an .npz.
+
+    Install pattern (mirrors probe_svd_collapse): the caller wraps the readout LN via
+    `install(model)` and, around EACH forward, calls `arm()` then reads the captured
+    final-breath readout reps via `pooled_reps(cell_valid)` (one (H,) per row pooled over
+    valid cells). The hook only records when gamma IS model.ln_f_g and keeps ONLY the last
+    breath's output (overwrites the slot each readout call), so after a K-breath forward the
+    slot holds the FINAL-breath readout rep (B, S, H). `add_dart` appends one row's
+    silhouette + metadata. `dump(path, meta)` writes the npz."""
+
+    def __init__(self, mech: str):
+        self.mech = mech
+        self.reps: list = []         # list of (H,) float32 silhouettes
+        self.valid: list = []        # list of bool valid-flags
+        self.inst_id: list = []      # list of int stable global ids
+        self.band: list = []         # list of float band c
+        self._orig_ln = None
+        self._model = None
+        self._slot = {"last": None}  # holds the MOST-RECENT readout-LN output (numpy)
+        self._installed = False
+
+    def install(self, model) -> None:
+        """Monkeypatch mycelium.breathing._layernorm to grab the readout-LN output
+        (gamma IS model.ln_f_g) into self._slot['last'] — overwriting each call so the
+        slot holds the FINAL breath after a K-breath forward. NON-INVASIVE: never edits
+        the engine; the original _layernorm is restored by uninstall()."""
+        import mycelium.breathing as breathing_mod
+        from tinygrad import dtypes
+        self._model = model
+        self._orig_ln = breathing_mod._layernorm
+        orig = self._orig_ln
+        slot = self._slot
+
+        def _patched_layernorm(x, gamma, beta, eps=1e-5):
+            out = orig(x, gamma, beta, eps)
+            if gamma is model.ln_f_g:
+                slot["last"] = out.cast(dtypes.float).realize().numpy()  # (B, S, H)
+            return out
+
+        breathing_mod._layernorm = _patched_layernorm
+        self._installed = True
+
+    def uninstall(self) -> None:
+        """Restore the original _layernorm (idempotent)."""
+        if self._installed and self._orig_ln is not None:
+            import mycelium.breathing as breathing_mod
+            breathing_mod._layernorm = self._orig_ln
+            self._installed = False
+
+    def arm(self) -> None:
+        """Reset the slot before a forward (so a stale rep can never be misread)."""
+        self._slot["last"] = None
+
+    def pooled_reps(self, cell_valid_np: np.ndarray) -> np.ndarray:
+        """Pool the captured FINAL-breath readout reps over each row's valid cells.
+
+        cell_valid_np : (B, S) float. Returns (B, H) float32 — per row, the mean over
+        cell_valid>0.5 of the readout-LN hidden (the silhouette). Pooling is over a SET of
+        cells, so it is permutation-invariant: a permuted (symmetry) forward's reps pool to
+        the SAME silhouette set the original would (no inverse-map needed)."""
+        last = self._slot["last"]
+        if last is None:
+            raise RuntimeError(
+                "_DartCapture.pooled_reps called but no readout-LN output was captured — "
+                "the hook is not installed or the forward did not run the readout.")
+        B, S, H = last.shape
+        out = np.zeros((B, H), dtype=np.float32)
+        for b in range(B):
+            valid = cell_valid_np[b] > 0.5
+            nv = int(valid.sum())
+            if nv == 0:
+                continue
+            out[b] = last[b][valid].mean(axis=0).astype(np.float32)
+        return out
+
+    def add_dart(self, rep_h: np.ndarray, valid_flag: bool, inst_id: int,
+                 band_c: float) -> None:
+        self.reps.append(np.asarray(rep_h, dtype=np.float32))
+        self.valid.append(bool(valid_flag))
+        self.inst_id.append(int(inst_id))
+        self.band.append(float(band_c))
+
+    def dump(self, path: str, meta: dict) -> dict:
+        """Write reps (n_darts, H) float32, valid (n_darts,) bool, inst_id (n_darts,) int,
+        band (n_darts,) float, + a meta dict (object) to `path` (.npz)."""
+        os.makedirs(os.path.dirname(os.path.abspath(path)) or ".", exist_ok=True)
+        if self.reps:
+            reps = np.stack(self.reps, axis=0).astype(np.float32)
+        else:
+            H = int(meta.get("H", 0))
+            reps = np.zeros((0, H), dtype=np.float32)
+        valid = np.asarray(self.valid, dtype=bool)
+        inst_id = np.asarray(self.inst_id, dtype=np.int64)
+        band = np.asarray(self.band, dtype=np.float64)
+        np.savez(path, reps=reps, valid=valid, inst_id=inst_id, band=band,
+                 meta=np.array(meta, dtype=object))
+        n = reps.shape[0]
+        nvalid = int(valid.sum())
+        print(f"\n  [capture-darts] wrote {path}: {n} darts "
+              f"({nvalid} VALID / {n - nvalid} INVALID), reps {reps.shape}, "
+              f"{len(set(inst_id.tolist()))} distinct instances.", flush=True)
+        return {"n_darts": n, "n_valid": nvalid, "shape": reps.shape}
+
+
 def run_volume_sweep(args) -> None:
     """VOLUME mode: on the TRAINED-distribution banks, measure (A) single-sample argmax
     proper-rate p per band, (B) best-of-N solve-rate(M) + independent-ideal + M_eff across
@@ -1837,8 +1976,35 @@ def run_volume_sweep(args) -> None:
     load_ms = (time.perf_counter() - t_load0) * 1000.0
     pos_embed_orig = model.fg_position_embed.realize().numpy().copy()   # for multistart restore
 
+    # ---- OPT-IN PER-DART SILHOUETTE CAPTURE (--capture-darts; default OFF) -------------
+    # NON-INVASIVE readout-LN hook (mirrors probe_svd_collapse). Installed ONLY when
+    # capturing, so default volume mode is byte-identical. Captures the FINAL-breath
+    # readout rep pooled over valid cells per dart, for the chosen per-dart-forward
+    # mechanism (default symmetry — the hypothesis is about vertex-permutation darts).
+    capture = None
+    if args.capture_darts:
+        cap_mech = args.capture_mech
+        if cap_mech not in mechanisms:
+            raise SystemExit(
+                f"--capture-darts requested --capture-mech={cap_mech} but it is not in "
+                f"--diversity={mechanisms}. Add it (e.g. --diversity symmetry) so the "
+                f"per-dart forwards run.")
+        capture = _DartCapture(cap_mech)
+        capture.install(model)
+        print(f"\n  [capture-darts] ENABLED: capturing per-dart final-breath readout "
+              f"silhouettes for mech='{cap_mech}' -> {args.capture_darts}", flush=True)
+
     # ---- FORWARD-PATH SWITCH: jit (default, production path) | eager (parity reference).
-    use_jit = (args.forward == "jit")
+    # CAPTURE FORCES EAGER: the non-invasive readout-LN hook calls .realize().numpy() on
+    # each readout (to grab the host-side rep), which would force a host-sync INSIDE the
+    # @TinyJit-traced _step (factor_breathing_forward runs inside the JIT). That corrupts
+    # the trace. So capture mode runs the EAGER forward (factor_breathing_forward called
+    # directly) — exactly the path scripts/probe_svd_collapse.py uses for the same hook.
+    # The eager path is numerically identical (the JIT is only a speed optimization).
+    use_jit = (args.forward == "jit") and (capture is None)
+    if capture is not None and args.forward == "jit":
+        print("  [capture-darts] forcing EAGER forward (the readout-LN hook syncs to host "
+              "per breath, incompatible with @TinyJit tracing).", flush=True)
     jit_fn = None
     if use_jit:
         # Build the JIT'd forward (compile-once / replay). The eager path stays the
@@ -1911,7 +2077,18 @@ def run_volume_sweep(args) -> None:
             gids = list(range(start, start + n_real))     # STABLE per-band instance ids
 
             # --- baseline argmax forward (also the argmax member of multistart/symmetry M=1) ---
+            if capture is not None:
+                capture.arm()
             pred_am, cv, mem, lt, final, vdm, _ = _fwd(sl)
+            # CAPTURE dart 0 (the identity/argmax member) silhouettes BEFORE any later
+            # _fwd overwrites the readout slot. (m_max, n_real, H) batch-scoped buffer;
+            # filled per-dart below, appended to the global capture in dart order.
+            cap_reps = None
+            if capture is not None:
+                pooled0 = capture.pooled_reps(cv)             # (B, H) — argmax/identity dart 0
+                H_cap = pooled0.shape[1]
+                cap_reps = np.zeros((m_max, n_real, H_cap), dtype=np.float32)
+                cap_reps[0] = pooled0[:n_real]
             for bi in range(n_real):
                 argmax_proper += int(_coloring_proper_np(
                     pred_am[bi], mem[bi], lt[bi], cv[bi], LTYPE_EDGE))
@@ -1959,6 +2136,8 @@ def run_volume_sweep(args) -> None:
                 # noise (the graph keeps the old buffer) -> all M identical -> false collapse.
                 # The noise is computed host-side (numpy orig+noise) -> wrapped once -> no
                 # float32 literal baked into the JIT graph.
+                cap_ms = (capture is not None and capture.mech == "multistart"
+                          and cap_reps is not None)
                 try:
                     for mi in range(1, m_max):
                         # dart `mi` noise from the SHARED dart generator (keyed by
@@ -1968,8 +2147,14 @@ def run_volume_sweep(args) -> None:
                                            pos_embed_shape=pos_embed_orig.shape,
                                            noise_std=args.multistart_noise)
                         _set_pos_embed(pos_embed_orig + noise)   # ASSIGN-IN-PLACE, not rebind
+                        if cap_ms:
+                            capture.arm()
                         p_m, _, _, _, _, _, _ = _fwd(sl)
                         ms_preds[mi] = p_m[:n_real]
+                        if cap_ms:
+                            # multistart runs on the ORIGINAL graph slice -> pool over cv.
+                            pooled_m = capture.pooled_reps(cv)        # (B, H)
+                            cap_reps[mi] = pooled_m[:n_real]
                 finally:
                     _restore_pos_embed()                          # restore IN-PLACE
                 for bi in range(n_real):
@@ -1982,6 +2167,12 @@ def run_volume_sweep(args) -> None:
                     dct, ent = _distinct_and_entropy(samp, valid)
                     mech_collapse["multistart"]["distinct"].append(dct)
                     mech_collapse["multistart"]["entropy"].append(ent)
+                    # CAPTURE: append one dart per (instance, dart_idx) with its valid-flag.
+                    if cap_ms:
+                        global_id = _global_inst_id(c, gids[bi])
+                        for mi in range(m_max):
+                            capture.add_dart(cap_reps[mi, bi], bool(flags[mi]),
+                                             global_id, c)
 
             # --- SYMMETRY: M vertex-permutations (relabel -> forward -> inverse-map -> verify ORIGINAL) ---
             if "symmetry" in mechanisms:
@@ -1995,6 +2186,8 @@ def run_volume_sweep(args) -> None:
                 # set_batch's in-place assigns; the compiled graph recomputes the mask
                 # from those LIVE contents on each replay (the mask builder is pure tensor
                 # ops). The inverse-map + verify run on the ORIGINAL graph (unchanged).
+                cap_sym = (capture is not None and capture.mech == "symmetry"
+                           and cap_reps is not None)
                 for mi in range(1, m_max):
                     perms = []
                     permuted = []
@@ -2006,7 +2199,16 @@ def run_volume_sweep(args) -> None:
                         perm = _draw_dart("symmetry", gids[bi], mi, seed=dart_seed, n=nn)
                         perms.append(perm)
                         permuted.append(_permute_instance(r, perm))
-                    p_m, _, _, _, _, _, _ = _fwd(permuted)
+                    if cap_sym:
+                        capture.arm()
+                    p_m, cv_p, _, _, _, _, _ = _fwd(permuted)
+                    if cap_sym:
+                        # silhouette = FINAL-breath readout pooled over the permuted graph's
+                        # valid cells. Pooling is over a SET -> permutation-invariant, so the
+                        # permuted forward pools to the SAME silhouette the original would
+                        # (no inverse-map needed for a pooled vector).
+                        pooled_m = capture.pooled_reps(cv_p)         # (B, H)
+                        cap_reps[mi] = pooled_m[:n_real]
                     # inverse-map: prediction on relabeled graph -> original vertex order.
                     for bi in range(n_real):
                         nn = int(sl[bi]["n"])
@@ -2026,6 +2228,13 @@ def run_volume_sweep(args) -> None:
                     dct, ent = _distinct_and_entropy(samp, valid)
                     mech_collapse["symmetry"]["distinct"].append(dct)
                     mech_collapse["symmetry"]["entropy"].append(ent)
+                    # CAPTURE: append one dart per (instance, dart_idx) with its valid-flag.
+                    # inst_id is BAND-NAMESPACED + per-band-stable: distinct per (band,inst).
+                    if cap_sym:
+                        global_id = _global_inst_id(c, gids[bi])
+                        for mi in range(m_max):
+                            capture.add_dart(cap_reps[mi, bi], bool(flags[mi]),
+                                             global_id, c)
 
         p_argmax = argmax_proper / n_inst
         floor = floors[c]
@@ -2054,6 +2263,24 @@ def run_volume_sweep(args) -> None:
     _print_volume(vol_rows, bands, k, m_grid, m_max, mechanisms, args,
                   fixed_cost={"load_ms": load_ms, "warmup_ms": warmup_ms,
                               "batch_ms": batch_ms, "batch": B, "K": K})
+
+    # ---- 6. Dump per-dart silhouettes (--capture-darts) + RESTORE the hook. ------------
+    if capture is not None:
+        try:
+            meta = {
+                "ckpt": args.ckpt, "domain": args.domain, "mech": capture.mech,
+                "k": k, "s_max": s_max, "K": K, "m_max": m_max,
+                "bands": [float(c) for c in bands], "per_band": per_band,
+                "seed": args.seed, "H": int(model.ln_f_g.shape[0]),
+                "rep": "final-breath readout-LN 1024d hidden, mean-pooled over valid cells "
+                       "(cell_valid>0.5), one (H,) silhouette per dart",
+                "inst_id_scheme": "int(round(c*1000))*1_000_000 + per_band_index "
+                                  "(band-namespaced, distinct per (band, instance))",
+                "dart0": "identity/argmax member (the deterministic baseline run)",
+            }
+            capture.dump(args.capture_darts, meta)
+        finally:
+            capture.uninstall()
 
 
 # ===========================================================================
@@ -3301,6 +3528,68 @@ def _cpu_smoke() -> bool:
     _check("JIT static: no dtypes.float32 literal in the file (substrate law)",
            sip_ok["no_float32_literal"])
 
+    # --- (17) PER-DART CAPTURE machinery (CPU; NO GPU, NO tinygrad hook install) -------
+    # Exercise _DartCapture pooling + dump/load contract on a fake captured slot, and the
+    # global-inst-id scheme. The readout-LN monkeypatch is GPU-path-only (validated on the
+    # main thread); here we validate the numpy pooling + npz contract are correct.
+    print("\n  --- PER-DART CAPTURE (silhouette pooling + npz contract; NO GPU) ---",
+          flush=True)
+    H_t = 8
+    capt = _DartCapture("symmetry")
+    # Fake a captured final-breath readout slot (B=2, S=4, H): row 0 has 3 valid cells,
+    # row 1 has 2 valid cells (cells 2,3 padding). Pooling = mean over valid cells.
+    fake_last = np.zeros((2, 4, H_t), dtype=np.float32)
+    fake_last[0, 0] = 1.0; fake_last[0, 1] = 2.0; fake_last[0, 2] = 3.0  # mean over 3 -> 2.0
+    fake_last[1, 0] = 4.0; fake_last[1, 1] = 6.0                          # mean over 2 -> 5.0
+    capt._slot["last"] = fake_last
+    cv_t = np.array([[1, 1, 1, 0], [1, 1, 0, 0]], dtype=np.float32)
+    pooled = capt.pooled_reps(cv_t)
+    _check("capture: pooled silhouette = mean over valid cells (row0->2.0, row1->5.0)",
+           pooled.shape == (2, H_t)
+           and np.allclose(pooled[0], 2.0) and np.allclose(pooled[1], 5.0))
+    # Permutation-invariance of the pooled silhouette (pool over a SET).
+    perm_last = fake_last[0:1, [2, 0, 1, 3], :]                  # permute row 0's cells
+    capt._slot["last"] = perm_last
+    pooled_perm = capt.pooled_reps(np.array([[1, 1, 1, 0]], dtype=np.float32))
+    _check("capture: pooled silhouette is permutation-invariant (perm cells -> same mean)",
+           np.allclose(pooled_perm[0], 2.0))
+    # add_dart + global-inst-id namespacing + dump/load round-trip.
+    gid_a = _global_inst_id(2.0, 5)
+    gid_b = _global_inst_id(2.5, 5)
+    _check("capture: global-inst-id band-namespaced (same local idx, diff band -> diff id)",
+           gid_a != gid_b and gid_a == 2000 * 1_000_000 + 5)
+    capt2 = _DartCapture("symmetry")
+    capt2.add_dart(np.ones(H_t, dtype=np.float32) * 1.0, True, gid_a, 2.0)
+    capt2.add_dart(np.ones(H_t, dtype=np.float32) * 2.0, False, gid_a, 2.0)
+    capt2.add_dart(np.ones(H_t, dtype=np.float32) * 3.0, True, gid_b, 2.5)
+    import tempfile
+    with tempfile.TemporaryDirectory() as td:
+        npz_path = os.path.join(td, "darts.npz")
+        capt2.dump(npz_path, {"H": H_t, "mech": "symmetry"})
+        z = np.load(npz_path, allow_pickle=True)
+        _check("capture: npz has reps (3,H) float32 + valid bool + inst_id int + band float",
+               z["reps"].shape == (3, H_t) and z["reps"].dtype == np.float32
+               and z["valid"].dtype == bool and z["inst_id"].dtype == np.int64
+               and z["band"].dtype == np.float64)
+        _check("capture: npz valid flags round-trip (T,F,T)",
+               z["valid"].tolist() == [True, False, True])
+        _check("capture: npz inst_id round-trips band-namespaced ids",
+               z["inst_id"].tolist() == [gid_a, gid_a, gid_b])
+        _check("capture: npz meta dict round-trips (H, mech)",
+               z["meta"].item()["H"] == H_t and z["meta"].item()["mech"] == "symmetry")
+    # arm() clears the slot -> pooled_reps must then raise (no stale rep misread).
+    capt2.arm()
+    raised = False
+    try:
+        capt2.pooled_reps(cv_t)
+    except RuntimeError:
+        raised = True
+    _check("capture: arm() clears the slot -> pooled_reps raises (no stale-rep misread)",
+           raised)
+    # uninstall() with no install is a safe no-op (idempotent).
+    capt2.uninstall()
+    _check("capture: uninstall() without install is a safe no-op", True)
+
     print(f"\n[smoke] {'ALL PASS' if ok else 'SOME FAILED'}", flush=True)
     return ok
 
@@ -3498,6 +3787,20 @@ def _parse_args(argv) -> argparse.Namespace:
     P.add_argument("--chunk", type=int, default=int(os.environ.get("CHUNK", "8")),
                    help="[early-stop] darts drawn per active instance per round before "
                         "repacking the still-unsolved active set (default 8)")
+    # NON-INVASIVE PER-DART SILHOUETTE CAPTURE (opt-in; default OFF -> volume mode is
+    # byte-identical). When set, install the readout-LN monkeypatch hook (mirroring
+    # scripts/probe_svd_collapse.py) and dump per-dart (silhouette, valid_flag, inst_id,
+    # band) to an .npz for the Anna-Karenina cluster probe (scripts/dart_cluster_probe.py).
+    P.add_argument("--capture-darts", default=os.environ.get("CAPTURE_DARTS", None),
+                   help="[volume] PATH to dump a per-dart silhouette .npz (reps, valid, "
+                        "inst_id, band, meta) — NON-INVASIVE readout-LN hook, engine/oracle "
+                        "git-clean; default OFF (byte-identical volume mode).")
+    P.add_argument("--capture-mech", default=os.environ.get("CAPTURE_MECH", "symmetry"),
+                   choices=["symmetry", "multistart"],
+                   help="[volume,--capture-darts] which per-dart-forward mechanism's darts "
+                        "to capture silhouettes for (default symmetry — the hypothesis is "
+                        "about vertex-permutation darts). temp is NOT capturable (its M "
+                        "samples share one forward / one readout rep).")
     P.add_argument("--smoke", action="store_true", help="run the CPU smoke and exit")
     args = P.parse_args(argv)
     # mode-aware defaults for --bands / --min-n (reviewer fix #2).
