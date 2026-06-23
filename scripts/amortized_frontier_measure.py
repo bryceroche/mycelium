@@ -1930,6 +1930,226 @@ class _DartCapture:
         return {"n_darts": n, "n_valid": nvalid, "shape": reps.shape}
 
 
+# ===========================================================================
+# NON-INVASIVE PER-CELL CAPTURE (opt-in: --capture-cells)
+# ===========================================================================
+# THE COMPOSITION HYPOTHESIS (Bryce, 2026-06-22). The whole-graph centroid retrieval
+# FAILED (retrieval_utility_probe: matched-minus-random = -0.048, GLOBAL_PRIOR_SUFFICES)
+# because each solution was POOLED into ONE whole-graph silhouette, DESTROYING the
+# compositional structure. On random coloring graphs the WHOLE solution is unique per
+# graph (nothing to retrieve) but the PARTS recur: a triangle needs 3 colors, a path
+# 2-colors, a degree-1 node is free. The factor graph is ALREADY factored -> the "primes"
+# are the local factors/motifs. So PART-LEVEL cross-instance matching may carry the
+# transferable signal that the WHOLE-level pool lacked.
+#
+# THIS CAPTURE: instead of pooling the final-breath readout-LN reps over ALL valid cells
+# (the whole-graph silhouette), dump them PER CELL (B, S, H) for the REAL cells, PLUS
+# enough to build per-edge / per-cell reps + labels + motif attributes OFFLINE:
+#   * per (dart, cell): the final-breath readout-LN rep (fp16) + argmax color.
+#   * per dart: dart_idx + valid_flag (whole-graph proper) + which instance it belongs to.
+#   * per INSTANCE (deduped — same across darts): membership (edge list), cell_valid,
+#     per-cell degree (from membership), band, inst_id, n.
+# The per-edge satisfied/violated flag (endpoints differ) is derived OFFLINE from the
+# per-cell argmax colors + membership (no need to store it per edge here).
+#
+# SHARES the _DartCapture readout-LN monkeypatch EXACTLY (same gamma-IS-model.ln_f_g
+# interception, same arm()/uninstall()); the ONLY difference is per_cell_reps() returns
+# the UNPOOLED (B, S, H) slot instead of pooling. The engine + oracle stay git-clean; the
+# hook installs ONLY when --capture-cells is set, so default volume mode is byte-identical.
+#
+# SIZE BUDGET (npz <= ~300-400MB). Per-cell reps are the bottleneck (n_darts x S x H). We
+# store reps as float16 and reduce scale via PER_BAND (--per-band) + M_MAX (--m-max). At
+# the documented defaults PER_BAND=50, M_MAX=8, fp16, S=49, H=1024, 4 bands:
+#   reps bytes ~= 50 inst x 4 bands x 8 darts x 49 cells x 1024 x 2B ~= 160 MB.
+# That gives >=150 cross-instance library instances (50 x 4 = 200) and 8 darts/instance so
+# most edges get BOTH satisfied AND violated observations across darts. Membership is
+# stored ONCE per instance (deduped), not per dart, so it is negligible.
+
+class _CellCapture:
+    """Accumulates PER-CELL final-breath readout-LN reps + per-dart argmax colors + flags,
+    plus per-INSTANCE membership / cell_valid / degree, and dumps an .npz for the
+    per-factor (per-edge / per-cell) retrieval probe.
+
+    Shares the _DartCapture readout-LN monkeypatch (install/uninstall/arm); the per-cell
+    grabber `per_cell_reps()` returns the UNPOOLED final-breath slot (B, S, H) instead of
+    pooling over valid cells. The engine (factor_graph_engine) + oracle (kenken) stay
+    git-clean; the hook is installed ONLY when --capture-cells is set.
+
+    Storage is dart-major: every captured dart appends one (S, H) fp16 rep block (padded
+    cells zeroed), one (S,) int8 argmax-color row, plus scalar (inst_id, dart_idx, valid).
+    Instances are deduped into a side table keyed by inst_id (membership/cell_valid/degree
+    /band/n stored ONCE) with a per-dart index back into it. The per-edge satisfied flag is
+    derived OFFLINE from argmax + membership (not stored here)."""
+
+    def __init__(self, mech: str, s_max: int):
+        self.mech = mech
+        self.s_max = int(s_max)
+        self._orig_ln = None
+        self._model = None
+        self._slot = {"last": None}          # most-recent readout-LN output (numpy, B,S,H)
+        self._installed = False
+        # dart-major accumulators.
+        self.dart_reps: list = []            # list of (S, H) float16 (padded cells zeroed)
+        self.dart_colors: list = []          # list of (S,) int16 argmax colors (1-based; 0=pad)
+        self.dart_inst_id: list = []         # list of int stable global inst ids
+        self.dart_idx: list = []             # list of int dart index (0 = argmax/identity)
+        self.dart_valid: list = []           # list of bool whole-graph proper flag
+        # instance side-table (deduped by inst_id), inserted on first sighting.
+        self._inst_seen: dict = {}           # inst_id -> row index in the inst_* lists
+        self.inst_id_tab: list = []          # list of int inst ids (dedup order)
+        self.inst_membership: list = []      # list of (L, S) float16 membership
+        self.inst_cell_valid: list = []      # list of (S,) bool cell_valid
+        self.inst_degree: list = []          # list of (S,) int16 per-cell degree
+        self.inst_band: list = []            # list of float band c
+        self.inst_n: list = []               # list of int n (real vertex count)
+
+    # -- readout-LN hook (mirrors _DartCapture exactly; only the read differs) --
+    def install(self, model) -> None:
+        import mycelium.breathing as breathing_mod
+        from tinygrad import dtypes
+        self._model = model
+        self._orig_ln = breathing_mod._layernorm
+        orig = self._orig_ln
+        slot = self._slot
+
+        def _patched_layernorm(x, gamma, beta, eps=1e-5):
+            out = orig(x, gamma, beta, eps)
+            if gamma is model.ln_f_g:
+                slot["last"] = out.cast(dtypes.float).realize().numpy()  # (B, S, H)
+            return out
+
+        breathing_mod._layernorm = _patched_layernorm
+        self._installed = True
+
+    def uninstall(self) -> None:
+        if not self._installed:
+            return
+        if self._orig_ln is not None:
+            import mycelium.breathing as breathing_mod
+            breathing_mod._layernorm = self._orig_ln
+        self._installed = False
+
+    def arm(self) -> None:
+        """Reset the slot before a forward (so a stale rep can never be misread)."""
+        self._slot["last"] = None
+
+    def per_cell_reps(self) -> np.ndarray:
+        """Return the captured FINAL-breath readout-LN reps UNPOOLED: (B, S, H) float32.
+
+        Unlike _DartCapture.pooled_reps (which means over valid cells -> the whole-graph
+        silhouette), this returns the per-cell reps so per-edge / per-cell reps can be built
+        OFFLINE. The caller masks padded cells via cell_valid."""
+        last = self._slot["last"]
+        if last is None:
+            raise RuntimeError(
+                "_CellCapture.per_cell_reps called but no readout-LN output was captured — "
+                "the hook is not installed or the forward did not run the readout.")
+        return last                                          # (B, S, H) float32
+
+    @staticmethod
+    def _degree_from_membership(mem: np.ndarray, lt: np.ndarray, edge_ltype: int,
+                                cv: np.ndarray) -> np.ndarray:
+        """Per-cell degree = number of REAL edge factor rows (latent_type==edge_ltype) that
+        include that cell. mem (L, S); lt (L,); cv (S,). Returns (S,) int16 (0 for pad)."""
+        S = mem.shape[0] if mem.ndim == 1 else mem.shape[1]
+        S = mem.shape[1]
+        edge_rows = mem[np.asarray(lt) == edge_ltype]        # (n_edges, S)
+        if edge_rows.shape[0] == 0:
+            deg = np.zeros((S,), dtype=np.int16)
+        else:
+            deg = (edge_rows > 0.5).sum(axis=0).astype(np.int16)
+        deg = np.where(cv > 0.5, deg, 0).astype(np.int16)
+        return deg
+
+    def register_instance(self, inst_id: int, mem: np.ndarray, lt: np.ndarray,
+                          cv: np.ndarray, band_c: float, n: int,
+                          edge_ltype: int) -> None:
+        """Insert an instance into the deduped side-table on first sighting (idempotent)."""
+        iid = int(inst_id)
+        if iid in self._inst_seen:
+            return
+        self._inst_seen[iid] = len(self.inst_id_tab)
+        self.inst_id_tab.append(iid)
+        self.inst_membership.append(np.asarray(mem, dtype=np.float16))
+        self.inst_cell_valid.append(np.asarray(cv, dtype=bool))
+        self.inst_degree.append(self._degree_from_membership(mem, lt, edge_ltype, cv))
+        self.inst_band.append(float(band_c))
+        self.inst_n.append(int(n))
+
+    def add_dart(self, rep_sh: np.ndarray, colors_s: np.ndarray, valid_flag: bool,
+                 inst_id: int, dart_idx: int, cv: np.ndarray) -> None:
+        """Append ONE dart: its per-cell reps (S, H) + per-cell argmax colors (S,) + the
+        whole-graph proper flag + the owning instance id + the dart index. Padded cells are
+        zeroed in reps and 0 in colors (so they are unambiguous offline). cv (S,) masks."""
+        rep = np.asarray(rep_sh, dtype=np.float16).copy()    # (S, H)
+        valid = np.asarray(cv) > 0.5
+        rep[~valid] = 0
+        col = np.asarray(colors_s, dtype=np.int16).copy()
+        col[~valid] = 0
+        self.dart_reps.append(rep)
+        self.dart_colors.append(col)
+        self.dart_inst_id.append(int(inst_id))
+        self.dart_idx.append(int(dart_idx))
+        self.dart_valid.append(bool(valid_flag))
+
+    def dump(self, path: str, meta: dict) -> dict:
+        """Write the per-cell capture npz.
+
+        Dart-major arrays:
+          dart_reps    (D, S, H) float16   per-cell final-breath readout reps (pad cells 0)
+          dart_colors  (D, S)    int16     per-cell argmax color (1-based; 0 = pad)
+          dart_inst_id (D,)      int64     owning instance id (band-namespaced)
+          dart_idx     (D,)      int32     dart index (0 = argmax/identity)
+          dart_valid   (D,)      bool      whole-graph proper flag for the dart
+        Instance side-table (deduped by inst_id):
+          inst_id      (I,)      int64     instance ids (dedup order)
+          inst_membership (I, L, S) float16  edge membership (2 ones / real edge row)
+          inst_cell_valid (I, S) bool      real-cell mask
+          inst_degree  (I, S)    int16     per-cell degree (real edge rows incident)
+          inst_band    (I,)      float64   band c
+          inst_n       (I,)      int32     real vertex count
+          meta         (object)            dict {ckpt, domain, mech, k, s_max, K, m_max, ...}
+        """
+        os.makedirs(os.path.dirname(os.path.abspath(path)) or ".", exist_ok=True)
+        H = int(meta.get("H", 0))
+        if self.dart_reps:
+            dart_reps = np.stack(self.dart_reps, axis=0).astype(np.float16)
+            dart_colors = np.stack(self.dart_colors, axis=0).astype(np.int16)
+        else:
+            dart_reps = np.zeros((0, self.s_max, H), dtype=np.float16)
+            dart_colors = np.zeros((0, self.s_max), dtype=np.int16)
+        dart_inst_id = np.asarray(self.dart_inst_id, dtype=np.int64)
+        dart_idx = np.asarray(self.dart_idx, dtype=np.int32)
+        dart_valid = np.asarray(self.dart_valid, dtype=bool)
+        if self.inst_membership:
+            inst_membership = np.stack(self.inst_membership, axis=0).astype(np.float16)
+            inst_cell_valid = np.stack(self.inst_cell_valid, axis=0).astype(bool)
+            inst_degree = np.stack(self.inst_degree, axis=0).astype(np.int16)
+        else:
+            inst_membership = np.zeros((0, 0, self.s_max), dtype=np.float16)
+            inst_cell_valid = np.zeros((0, self.s_max), dtype=bool)
+            inst_degree = np.zeros((0, self.s_max), dtype=np.int16)
+        inst_id = np.asarray(self.inst_id_tab, dtype=np.int64)
+        inst_band = np.asarray(self.inst_band, dtype=np.float64)
+        inst_n = np.asarray(self.inst_n, dtype=np.int32)
+        np.savez(path,
+                 dart_reps=dart_reps, dart_colors=dart_colors,
+                 dart_inst_id=dart_inst_id, dart_idx=dart_idx, dart_valid=dart_valid,
+                 inst_id=inst_id, inst_membership=inst_membership,
+                 inst_cell_valid=inst_cell_valid, inst_degree=inst_degree,
+                 inst_band=inst_band, inst_n=inst_n,
+                 meta=np.array(meta, dtype=object))
+        D = dart_reps.shape[0]
+        nvalid = int(dart_valid.sum())
+        I = inst_id.shape[0]
+        mb_mb = dart_reps.nbytes / (1024.0 * 1024.0)
+        print(f"\n  [capture-cells] wrote {path}: {D} darts "
+              f"({nvalid} VALID / {D - nvalid} INVALID), per-cell reps {dart_reps.shape} "
+              f"fp16 ({mb_mb:.0f}MB), {I} distinct instances.", flush=True)
+        return {"n_darts": D, "n_valid": nvalid, "n_inst": I,
+                "reps_shape": dart_reps.shape, "reps_mb": mb_mb}
+
+
 def run_volume_sweep(args) -> None:
     """VOLUME mode: on the TRAINED-distribution banks, measure (A) single-sample argmax
     proper-rate p per band, (B) best-of-N solve-rate(M) + independent-ideal + M_eff across
@@ -2039,6 +2259,31 @@ def run_volume_sweep(args) -> None:
               f"{'WAIST d-rep' if cap_rep == 'waist' else 'readout silhouette'} "
               f"for mech='{cap_mech}' -> {args.capture_darts}", flush=True)
 
+    # ---- OPT-IN PER-CELL CAPTURE (--capture-cells; default OFF) ------------------------
+    # The COMPOSITION test (Bryce, 2026-06-22): dump PER-CELL final-breath readout reps (not
+    # pooled) so per-edge / per-cell ("prime") reps + labels + motif attrs can be built
+    # OFFLINE for the per-factor retrieval probe. Shares the readout-LN hook; mutually
+    # exclusive with --capture-darts (both monkeypatch the same _layernorm). Default OFF ->
+    # byte-identical volume mode.
+    cell_capture = None
+    if args.capture_cells:
+        if capture is not None:
+            raise SystemExit(
+                "--capture-cells and --capture-darts both monkeypatch the readout LN; pass "
+                "only ONE per run (per-cell capture subsumes the whole-graph silhouette — "
+                "you can pool offline).")
+        cap_mech = args.capture_mech
+        if cap_mech not in mechanisms:
+            raise SystemExit(
+                f"--capture-cells requested --capture-mech={cap_mech} but it is not in "
+                f"--diversity={mechanisms}. Add it (e.g. --diversity symmetry) so the "
+                f"per-dart forwards run.")
+        cell_capture = _CellCapture(cap_mech, s_max)
+        cell_capture.install(model)
+        print(f"\n  [capture-cells] ENABLED: capturing PER-CELL final-breath readout reps "
+              f"(fp16) + per-dart argmax + per-instance membership/degree for "
+              f"mech='{cap_mech}' -> {args.capture_cells}", flush=True)
+
     # ---- FORWARD-PATH SWITCH: jit (default, production path) | eager (parity reference).
     # CAPTURE FORCES EAGER: the non-invasive readout-LN hook calls .realize().numpy() on
     # each readout (to grab the host-side rep), which would force a host-sync INSIDE the
@@ -2046,9 +2291,10 @@ def run_volume_sweep(args) -> None:
     # the trace. So capture mode runs the EAGER forward (factor_breathing_forward called
     # directly) — exactly the path scripts/probe_svd_collapse.py uses for the same hook.
     # The eager path is numerically identical (the JIT is only a speed optimization).
-    use_jit = (args.forward == "jit") and (capture is None)
-    if capture is not None and args.forward == "jit":
-        print("  [capture-darts] forcing EAGER forward (the readout-LN hook syncs to host "
+    use_jit = (args.forward == "jit") and (capture is None) and (cell_capture is None)
+    if (capture is not None or cell_capture is not None) and args.forward == "jit":
+        _cap_tag = "capture-cells" if cell_capture is not None else "capture-darts"
+        print(f"  [{_cap_tag}] forcing EAGER forward (the readout-LN hook syncs to host "
               "per breath, incompatible with @TinyJit tracing).", flush=True)
     jit_fn = None
     if use_jit:
@@ -2124,6 +2370,8 @@ def run_volume_sweep(args) -> None:
             # --- baseline argmax forward (also the argmax member of multistart/symmetry M=1) ---
             if capture is not None:
                 capture.arm()
+            if cell_capture is not None:
+                cell_capture.arm()
             pred_am, cv, mem, lt, final, vdm, _ = _fwd(sl)
             # CAPTURE dart 0 (the identity/argmax member) silhouettes BEFORE any later
             # _fwd overwrites the readout slot. (m_max, n_real, H) batch-scoped buffer;
@@ -2134,6 +2382,24 @@ def run_volume_sweep(args) -> None:
                 H_cap = pooled0.shape[1]
                 cap_reps = np.zeros((m_max, n_real, H_cap), dtype=np.float32)
                 cap_reps[0] = pooled0[:n_real]
+            # PER-CELL CAPTURE dart 0: a (m_max, n_real, S, H) fp16 buffer holding the
+            # UNPOOLED per-cell reps + a (m_max, n_real, S) argmax-color buffer; appended
+            # to the global per-cell capture in dart order below (with per-dart valid flags).
+            cell_reps = None
+            cell_cols = None
+            if cell_capture is not None:
+                pc0 = cell_capture.per_cell_reps()           # (B, S, H) float32
+                H_cap = pc0.shape[2]
+                cell_reps = np.zeros((m_max, n_real, s_max, H_cap), dtype=np.float16)
+                cell_cols = np.zeros((m_max, n_real, s_max), dtype=np.int16)
+                cell_reps[0] = pc0[:n_real].astype(np.float16)
+                cell_cols[0] = pred_am[:n_real].astype(np.int16)
+                # register each instance ONCE into the deduped side-table (membership/
+                # cell_valid/degree are dart-invariant — same graph, just relabeled darts).
+                for bi in range(n_real):
+                    gid_cc = _global_inst_id(c, gids[bi])
+                    cell_capture.register_instance(
+                        gid_cc, mem[bi], lt[bi], cv[bi], c, int(sl[bi]["n"]), LTYPE_EDGE)
             for bi in range(n_real):
                 argmax_proper += int(_coloring_proper_np(
                     pred_am[bi], mem[bi], lt[bi], cv[bi], LTYPE_EDGE))
@@ -2183,6 +2449,8 @@ def run_volume_sweep(args) -> None:
                 # float32 literal baked into the JIT graph.
                 cap_ms = (capture is not None and capture.mech == "multistart"
                           and cap_reps is not None)
+                cell_ms = (cell_capture is not None and cell_capture.mech == "multistart"
+                           and cell_reps is not None)
                 try:
                     for mi in range(1, m_max):
                         # dart `mi` noise from the SHARED dart generator (keyed by
@@ -2194,12 +2462,20 @@ def run_volume_sweep(args) -> None:
                         _set_pos_embed(pos_embed_orig + noise)   # ASSIGN-IN-PLACE, not rebind
                         if cap_ms:
                             capture.arm()
+                        if cell_ms:
+                            cell_capture.arm()
                         p_m, _, _, _, _, _, _ = _fwd(sl)
                         ms_preds[mi] = p_m[:n_real]
                         if cap_ms:
                             # multistart runs on the ORIGINAL graph slice -> pool over cv.
                             pooled_m = capture.pooled_reps(cv)        # (B, H)
                             cap_reps[mi] = pooled_m[:n_real]
+                        if cell_ms:
+                            # multistart runs on the ORIGINAL graph -> per-cell reps align
+                            # 1:1 with the original cells (no relabel) -> store directly.
+                            pc_m = cell_capture.per_cell_reps()       # (B, S, H)
+                            cell_reps[mi] = pc_m[:n_real].astype(np.float16)
+                            cell_cols[mi] = p_m[:n_real].astype(np.int16)
                 finally:
                     _restore_pos_embed()                          # restore IN-PLACE
                 for bi in range(n_real):
@@ -2218,6 +2494,13 @@ def run_volume_sweep(args) -> None:
                         for mi in range(m_max):
                             capture.add_dart(cap_reps[mi, bi], bool(flags[mi]),
                                              global_id, c)
+                    # PER-CELL CAPTURE: append per-cell reps + argmax colors per dart.
+                    if cell_ms:
+                        global_id = _global_inst_id(c, gids[bi])
+                        for mi in range(m_max):
+                            cell_capture.add_dart(
+                                cell_reps[mi, bi], cell_cols[mi, bi], bool(flags[mi]),
+                                global_id, mi, cv[bi])
 
             # --- SYMMETRY: M vertex-permutations (relabel -> forward -> inverse-map -> verify ORIGINAL) ---
             if "symmetry" in mechanisms:
@@ -2233,6 +2516,8 @@ def run_volume_sweep(args) -> None:
                 # ops). The inverse-map + verify run on the ORIGINAL graph (unchanged).
                 cap_sym = (capture is not None and capture.mech == "symmetry"
                            and cap_reps is not None)
+                cell_sym = (cell_capture is not None and cell_capture.mech == "symmetry"
+                            and cell_reps is not None)
                 for mi in range(1, m_max):
                     perms = []
                     permuted = []
@@ -2246,6 +2531,8 @@ def run_volume_sweep(args) -> None:
                         permuted.append(_permute_instance(r, perm))
                     if cap_sym:
                         capture.arm()
+                    if cell_sym:
+                        cell_capture.arm()
                     p_m, cv_p, _, _, _, _, _ = _fwd(permuted)
                     if cap_sym:
                         # silhouette = FINAL-breath readout pooled over the permuted graph's
@@ -2254,6 +2541,7 @@ def run_volume_sweep(args) -> None:
                         # (no inverse-map needed for a pooled vector).
                         pooled_m = capture.pooled_reps(cv_p)         # (B, H)
                         cap_reps[mi] = pooled_m[:n_real]
+                    pc_m = cell_capture.per_cell_reps() if cell_sym else None  # (B,S,H) PERMUTED order
                     # inverse-map: prediction on relabeled graph -> original vertex order.
                     for bi in range(n_real):
                         nn = int(sl[bi]["n"])
@@ -2263,6 +2551,18 @@ def run_volume_sweep(args) -> None:
                         for new in range(nn):
                             back[perm[new]] = p_m[bi, new]
                         sym_preds[bi][mi] = back
+                        # PER-CELL: unlike the pooled silhouette, per-cell reps are in the
+                        # PERMUTED vertex order -> INVERSE-MAP each cell rep back to the
+                        # ORIGINAL vertex so all darts of an instance share one cell index
+                        # space (cell c in every dart == the same original vertex). This
+                        # makes per-edge/per-cell offline construction (membership is in the
+                        # ORIGINAL order) correct.
+                        if cell_sym:
+                            rep_back = np.zeros((s_max, pc_m.shape[2]), dtype=np.float16)
+                            for new in range(nn):
+                                rep_back[perm[new]] = pc_m[bi, new].astype(np.float16)
+                            cell_reps[mi, bi] = rep_back
+                            cell_cols[mi, bi] = back.astype(np.int16)
                 for bi in range(n_real):
                     valid = cv[bi] > 0.5
                     samp = sym_preds[bi]                              # (M, S)
@@ -2280,6 +2580,14 @@ def run_volume_sweep(args) -> None:
                         for mi in range(m_max):
                             capture.add_dart(cap_reps[mi, bi], bool(flags[mi]),
                                              global_id, c)
+                    # PER-CELL CAPTURE: per-cell reps (inverse-mapped to original order) +
+                    # argmax colors per dart. cv[bi] is the ORIGINAL-order valid mask.
+                    if cell_sym:
+                        global_id = _global_inst_id(c, gids[bi])
+                        for mi in range(m_max):
+                            cell_capture.add_dart(
+                                cell_reps[mi, bi], cell_cols[mi, bi], bool(flags[mi]),
+                                global_id, mi, cv[bi])
 
         p_argmax = argmax_proper / n_inst
         floor = floors[c]
@@ -2336,6 +2644,29 @@ def run_volume_sweep(args) -> None:
             capture.dump(args.capture_darts, meta)
         finally:
             capture.uninstall()
+
+    # ---- 6b. Dump per-cell capture (--capture-cells) + RESTORE the hook. ---------------
+    if cell_capture is not None:
+        try:
+            meta = {
+                "ckpt": args.ckpt, "domain": args.domain, "mech": cell_capture.mech,
+                "capture_rep": "readout_per_cell",
+                "k": k, "s_max": s_max, "K": K, "m_max": m_max,
+                "bands": [float(c) for c in bands], "per_band": per_band,
+                "seed": args.seed, "H": int(model.ln_f_g.shape[0]),
+                "rep": "final-breath readout-LN 1024d hidden, PER CELL (NOT pooled), "
+                       "one (S,H) block per dart (padded cells zeroed); per-dart argmax "
+                       "colors (1-based); per-instance membership/cell_valid/degree dedup",
+                "inst_id_scheme": "int(round(c*1000))*1_000_000 + per_band_index "
+                                  "(band-namespaced, distinct per (band, instance))",
+                "dart0": "identity/argmax member (the deterministic baseline run)",
+                "edge_ltype": int(LTYPE_EDGE),
+                "color_pad": "0 (pad cell); colors are 1..k for real cells",
+                "sym_inverse_mapped": (cell_capture.mech == "symmetry"),
+            }
+            cell_capture.dump(args.capture_cells, meta)
+        finally:
+            cell_capture.uninstall()
 
 
 # ===========================================================================
@@ -3690,6 +4021,77 @@ def _cpu_smoke() -> bool:
     capt2.uninstall()
     _check("capture: uninstall() without install is a safe no-op", True)
 
+    # --- (18) PER-CELL CAPTURE machinery (CPU; NO GPU, NO tinygrad hook install) --------
+    # Exercise _CellCapture: per_cell_reps returns UNPOOLED (B,S,H); degree-from-membership;
+    # deduped instance registration; dart-major dump + the npz contract for the per-factor
+    # probe. The readout-LN monkeypatch is GPU-path-only (validated on the main thread).
+    print("\n  --- PER-CELL CAPTURE (unpooled reps + membership/degree + npz; NO GPU) ---",
+          flush=True)
+    from mycelium.graph_coloring_data import LTYPE_EDGE
+    H_c = 6
+    S_c = 4
+    cc = _CellCapture("symmetry", S_c)
+    # Fake a captured final-breath readout slot (B=2, S=4, H): per-cell reps are NOT pooled.
+    cc_last = np.arange(2 * S_c * H_c, dtype=np.float32).reshape(2, S_c, H_c)
+    cc._slot["last"] = cc_last
+    pc = cc.per_cell_reps()
+    _check("cell: per_cell_reps returns UNPOOLED (B,S,H) (no mean over cells)",
+           pc.shape == (2, S_c, H_c) and np.allclose(pc, cc_last))
+    # arm() clears the slot -> per_cell_reps must raise (no stale rep misread).
+    cc.arm()
+    raised_c = False
+    try:
+        cc.per_cell_reps()
+    except RuntimeError:
+        raised_c = True
+    _check("cell: arm() clears the slot -> per_cell_reps raises (no stale-rep misread)",
+           raised_c)
+    # degree-from-membership: a triangle on cells {0,1,2} + cell 3 padding. 3 edge rows.
+    mem_t = np.array([
+        [1, 1, 0, 0],   # edge (0,1)
+        [1, 0, 1, 0],   # edge (0,2)
+        [0, 1, 1, 0],   # edge (1,2)
+    ], dtype=np.float32)
+    lt_t = np.array([LTYPE_EDGE, LTYPE_EDGE, LTYPE_EDGE], dtype=np.int32)
+    cv_t3 = np.array([1, 1, 1, 0], dtype=np.float32)
+    deg = _CellCapture._degree_from_membership(mem_t, lt_t, LTYPE_EDGE, cv_t3)
+    _check("cell: degree-from-membership (triangle -> deg 2,2,2; pad cell -> 0)",
+           deg.tolist() == [2, 2, 2, 0])
+    # deduped instance registration: register the SAME inst_id twice -> ONE row.
+    cc2 = _CellCapture("symmetry", S_c)
+    gid_c = _global_inst_id(2.0, 7)
+    cc2.register_instance(gid_c, mem_t, lt_t, cv_t3, 2.0, 3, LTYPE_EDGE)
+    cc2.register_instance(gid_c, mem_t, lt_t, cv_t3, 2.0, 3, LTYPE_EDGE)  # idempotent
+    _check("cell: register_instance dedups by inst_id (2 calls -> 1 instance row)",
+           len(cc2.inst_id_tab) == 1 and cc2.inst_id_tab[0] == gid_c)
+    # add_dart: per-cell reps + argmax colors, pad cells zeroed.
+    rep_d = np.ones((S_c, H_c), dtype=np.float16) * 2.0
+    col_d = np.array([1, 2, 3, 9], dtype=np.int16)   # cell 3 is pad -> must zero to 0
+    cc2.add_dart(rep_d, col_d, True, gid_c, 0, cv_t3)
+    cc2.add_dart(rep_d * 3.0, np.array([2, 1, 2, 9], dtype=np.int16), False, gid_c, 1, cv_t3)
+    _check("cell: add_dart zeros pad cell color (cell 3 -> 0) + reps",
+           cc2.dart_colors[0].tolist() == [1, 2, 3, 0]
+           and np.allclose(cc2.dart_reps[0][3], 0.0))
+    with tempfile.TemporaryDirectory() as td:
+        cpath = os.path.join(td, "cells.npz")
+        cc2.dump(cpath, {"H": H_c, "mech": "symmetry", "s_max": S_c})
+        zc = np.load(cpath, allow_pickle=True)
+        _check("cell: npz dart_reps (2,S,H) fp16 + dart_colors int16 + flags/idx/inst_id",
+               zc["dart_reps"].shape == (2, S_c, H_c) and zc["dart_reps"].dtype == np.float16
+               and zc["dart_colors"].shape == (2, S_c) and zc["dart_colors"].dtype == np.int16
+               and zc["dart_valid"].tolist() == [True, False]
+               and zc["dart_idx"].tolist() == [0, 1]
+               and zc["dart_inst_id"].tolist() == [gid_c, gid_c])
+        _check("cell: npz instance side-table membership/cell_valid/degree round-trip",
+               zc["inst_id"].tolist() == [gid_c]
+               and zc["inst_membership"].shape == (1, 3, S_c)
+               and zc["inst_cell_valid"][0].tolist() == [True, True, True, False]
+               and zc["inst_degree"][0].tolist() == [2, 2, 2, 0])
+        _check("cell: npz meta dict round-trips (mech)",
+               zc["meta"].item()["mech"] == "symmetry")
+    cc2.uninstall()
+    _check("cell: uninstall() without install is a safe no-op", True)
+
     print(f"\n[smoke] {'ALL PASS' if ok else 'SOME FAILED'}", flush=True)
     return ok
 
@@ -3910,6 +4312,18 @@ def _parse_args(argv) -> argparse.Namespace:
                         "engine's fg_waist_capture sink (RE-PROBE the common mode the waist "
                         "created; requires FG_WAIST=1 + a waist ckpt). Feed either npz to "
                         "scripts/dart_cluster_probe.py / learned_waist_gate.py.")
+    # NON-INVASIVE PER-CELL CAPTURE (opt-in; default OFF -> byte-identical volume mode).
+    # The COMPOSITION test: dump PER-CELL final-breath readout reps (NOT pooled) + per-dart
+    # argmax colors + per-instance membership/degree so per-edge / per-cell ("prime") reps +
+    # labels + motif attributes can be built OFFLINE for scripts/per_factor_retrieval_probe.py.
+    P.add_argument("--capture-cells", default=os.environ.get("CAPTURE_CELLS", None),
+                   help="[volume] PATH to dump a PER-CELL readout-rep .npz (dart_reps "
+                        "(D,S,H) fp16, dart_colors, dart_inst_id, dart_idx, dart_valid + "
+                        "deduped per-instance membership/cell_valid/degree/band/n) for the "
+                        "per-factor (part-level) retrieval probe. NON-INVASIVE readout-LN "
+                        "hook, engine/oracle git-clean. Mutually exclusive with "
+                        "--capture-darts. Default OFF (byte-identical volume mode). Keep the "
+                        "npz <=~300-400MB via --per-band 50 --m-max 8 (fp16).")
     P.add_argument("--smoke", action="store_true", help="run the CPU smoke and exit")
     args = P.parse_args(argv)
     # mode-aware defaults for --bands / --min-n (reviewer fix #2).
