@@ -436,6 +436,13 @@ def factor_breathing_forward(model: Any, batch: FactorGraphBatch,
     calib_history: list[Tensor] = []
     waist_drep_history: list[Tensor] = []   # per-breath (B, S, d); filled only if use_waist
 
+    # Per-breath RESIDUAL capture sink (eager re-eval only; absent/None by default -> no-op).
+    # Mirrors the fg_waist_capture pattern (getattr-None gated, append on the eager path):
+    # when present (a list), the per-breath readout-point residual x (B, S, H) is appended
+    # each breath. None by default -> the append branch is skipped -> byte-identical to the
+    # validated training graph (the JIT path never sets fg_resid_capture).
+    resid_capture = getattr(model, "fg_resid_capture", None)
+
     for k in range(K):
         be_k = breath_embed[k].reshape(1, 1, -1).cast(x.dtype)   # (1, 1, H)
         x_in = x + be_k + inlet_h                                 # add inlet EVERY breath (LIVE)
@@ -473,6 +480,13 @@ def factor_breathing_forward(model: Any, batch: FactorGraphBatch,
             x = x_pre + (gate_k * keep_k) * delta
         else:
             x = x_pre + gate_k * delta
+
+        # Per-breath residual capture (eager-only; no-op when the sink is absent/None).
+        # The persistent 1024d residual x (B, S, H) at the readout point — the factor-graph
+        # belief state going into this breath's readout. Realized to fp32 eagerly inside the
+        # branch so it never enters the JIT graph (the JIT path never sets fg_resid_capture).
+        if resid_capture is not None:
+            resid_capture.append(x.cast(dtypes.float).realize().numpy())
 
         # Readout: project each cell to N-way logit; apply value-domain mask.
         x_ln = _layernorm(x, model.ln_f_g, model.ln_f_b,
