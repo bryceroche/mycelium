@@ -449,7 +449,12 @@ def _compile_jit_fg_step(model, opt, spec: FactorGraphSpec, task: str,
            # Rung-2 relax knobs CHANGE THE TRACED GRAPH BODY (exp_0 vs raw coord,
            # euclid vs hyp distance, soft-block vs saturated alpha), so they MUST be
            # keyed — a stale graph under a flipped knob is silent corruption.
-           bool(FG_HYP_RELAX), bool(FG_HYP_EUCLID))
+           bool(FG_HYP_RELAX), bool(FG_HYP_EUCLID),
+           # KENKEN in-graph verification-inlet build FLIPS the traced body (the inlet
+           # is built from kk_* cage features INSIDE the graph vs read as a constant), so
+           # it MUST be keyed. True only for single-domain kenken (has_inlet & !multitask);
+           # False for coloring/circuit/multi -> their key is unchanged (byte-identical).
+           bool(has_inlet and not multitask))
     if key in _JIT_FG_CACHE:
         return _JIT_FG_CACHE[key]
 
@@ -466,6 +471,21 @@ def _compile_jit_fg_step(model, opt, spec: FactorGraphSpec, task: str,
     S = int(spec.s_max)
     T = int(spec.n_factor_types)
     jit_params = opt.params
+
+    # KENKEN IN-GRAPH VERIFICATION INLET (the frozen-inlet fix). In SINGLE-DOMAIN kenken
+    # (has_inlet=True, NOT multitask), build the verification inlet INSIDE this JIT step
+    # from the RAW cage features (kk_cage_op/target/size + kk_cell_cage_id) so the inlet
+    # params (op/target/size embeds + W + b) are in the differentiated loss graph and get
+    # GRADIENT every step — mirroring the v98 oracle (kenken.py builds it in-graph; its
+    # docstring: the inlet "must be LIVE at init so gradient visits the inlet"). When the
+    # inlet was pre-built data-side (the regression) the params were a JIT CONSTANT and
+    # never trained. This is a COMPILE-TIME constant (baked into the traced body, NOT a
+    # runtime python branch): multitask=False + has_inlet=True is true ONLY for kenken.
+    # coloring/circuit (has_inlet=False) + multitask (generic inlet branch) never enter it,
+    # so those graphs are byte-identical.
+    build_kk_inlet = has_inlet and not multitask
+    if build_kk_inlet:
+        from mycelium.kenken import build_verification_inlet
 
     # WAIST aux gating (compile-time constants -> baked into the traced graph body).
     aux_mode = str(waist_aux) if waist_on else "none"
@@ -487,7 +507,9 @@ def _compile_jit_fg_step(model, opt, spec: FactorGraphSpec, task: str,
               value_domain_mask: Tensor, membership: Tensor, latent_type: Tensor,
               factor_inlet: Tensor, stoch_keep: Tensor,
               inlet_op: Tensor, inlet_target: Tensor, inlet_size: Tensor,
-              head_type_oh: Tensor, head_is_global: Tensor):
+              head_type_oh: Tensor, head_is_global: Tensor,
+              kk_cage_op: Tensor, kk_cage_target: Tensor, kk_cage_size: Tensor,
+              kk_cell_cage_id: Tensor):
         opt.zero_grad()
 
         # Lightweight batch shim so the engine reads per-instance tensors by attr.
@@ -519,6 +541,16 @@ def _compile_jit_fg_step(model, opt, spec: FactorGraphSpec, task: str,
             # their VALUES (which domain's allocation) vary per replay without recompile.
             batch.head_type_oh = head_type_oh
             batch.head_is_global = head_is_global
+        elif build_kk_inlet:
+            # SINGLE-DOMAIN KENKEN: build the verification inlet IN-GRAPH (the fix). The
+            # raw cage features (kk_*) are fixed-shape JIT inputs; build_verification_inlet
+            # is pure tensor ops (one_hot @ table, RMSNorm) -> the inlet params land in the
+            # loss graph and get gradient. factor_inlet (the prebuilt tensor) is now an
+            # unused zeros placeholder kept only for a stable JIT signature.
+            batch.factor_inlet = build_verification_inlet(
+                model, kk_cage_op, kk_cage_target, kk_cage_size, kk_cell_cage_id)
+            # Single-domain: do NOT set head_type_oh/head_is_global -> the engine takes
+            # the original build_factor_attn_bias path (byte-identical).
         else:
             batch.factor_inlet = factor_inlet if has_inlet else None
             # Single-domain: do NOT set head_type_oh/head_is_global -> the engine takes
@@ -638,6 +670,10 @@ def _compile_jit_fg_step(model, opt, spec: FactorGraphSpec, task: str,
                 gbatch.factor_inlet = batch.factor_inlet
                 gbatch.head_type_oh = head_type_oh
                 gbatch.head_is_global = head_is_global
+            elif build_kk_inlet:
+                # Reuse the in-graph kenken inlet (same membership/features -> same inlet)
+                # so the gold-TF pass also reads the trainable inlet.
+                gbatch.factor_inlet = batch.factor_inlet
             else:
                 gbatch.factor_inlet = factor_inlet if has_inlet else None
             _gl, _gc, gold_drep_history = factor_breathing_forward(
@@ -705,16 +741,21 @@ def _compile_jit_fg_step(model, opt, spec: FactorGraphSpec, task: str,
         # param, NO per-param isnan() loop (AM-driver safe).
         healthy_b = total.isfinite()
         healthy = healthy_b.cast(dtypes.float)
+        _nograd_shapes = []
         for p in jit_params:
             if p.grad is None:
-                # A param untouched by THIS step's graph (e.g. an inlet sub-table whose
-                # value slot no domain in the batch indexed) gets no grad; AdamW.step()
-                # requires a grad on every param. Fill with zeros (a no-op update). This
-                # is multitask-only in effect (single-domain touches all its params).
-                if multitask:
-                    p.grad = Tensor.zeros_like(p)
+                # A param untouched by THIS step's graph (e.g. a verification-inlet or
+                # other sub-table not indexed by this batch) gets no grad; AdamW.step()
+                # requires a grad on every param, so fill zeros (a no-op update). This
+                # happens for KenKen too — the assumption that single-domain touches ALL
+                # its params is false (the verification inlet has unindexed sub-tables) —
+                # so apply it for EVERY task, not just multitask.
+                _nograd_shapes.append(tuple(int(s) for s in p.shape))
+                p.grad = Tensor.zeros_like(p)
             else:
                 p.grad = healthy_b.where(p.grad, Tensor.zeros_like(p.grad))
+        if _nograd_shapes:
+            print(f"  [no-grad params zero-filled this step: {_nograd_shapes}]", flush=True)
 
         # Optional global-norm gradient clipping (single sq_sum kernel; AM-safe).
         if gc_val > 0:
@@ -888,6 +929,19 @@ def permute_factor_batch(fb, rng: "np.random.RandomState", frac: float):
                  "deduction_depth", "n", "n_edges", "band", "domain"):
         if hasattr(fb, attr):
             setattr(out, attr, getattr(fb, attr))
+    # KENKEN raw cage features (in-graph inlet build). cage_op/target/size are PER-CAGE
+    # (not on the cell axis) -> a cell relabel does not change a cage's op/target/size, so
+    # pass them through UNCHANGED. cell_cage_id IS on the cell axis (B,49) -> it MUST be
+    # gathered by the SAME P, else after a relabel the inlet scatters to the wrong cells.
+    for attr in ("kenken_cage_op", "kenken_cage_target", "kenken_cage_size"):
+        if hasattr(fb, attr):
+            setattr(out, attr, getattr(fb, attr))
+    _kcid = getattr(fb, "kenken_cell_cage_id", None)
+    if _kcid is not None:
+        _kcid_np = _kcid.realize().numpy()                          # (B, 49) int
+        _new_kcid = np.take_along_axis(_kcid_np, P, axis=1)         # (B, 49)
+        out.kenken_cell_cage_id = Tensor(_new_kcid.astype(np.int32),
+                                         dtype=dtypes.int).contiguous().realize()
     return out
 
 
@@ -959,9 +1013,18 @@ def _build_kenken_task(K, BATCH, EVAL_BATCH, SEED, hidden, n_heads, model,
                                n_cages_max=n_cages_max)
 
     def to_factor_batch(kb):
-        inlet = build_verification_inlet(
-            model, kb.cage_op, kb.cage_target, kb.cage_size, kb.cell_cage_id)
-        return make_kenken_factor_batch(kb, spec, prebuilt_inlet=inlet)
+        # DO NOT pre-build the inlet (the frozen-inlet regression): if the inlet is built
+        # here (data-side, eager) it enters the JIT as a CONSTANT and its params get NO
+        # gradient. Instead leave factor_inlet=None and carry the RAW cage features so the
+        # JIT step (_step, build_kk_inlet branch) builds the inlet IN-GRAPH -> the inlet
+        # params (op/target/size embeds + W + b) are in the loss graph and TRAIN. Mirrors
+        # the v98 oracle (kenken.py builds build_verification_inlet inside its JIT).
+        fb = make_kenken_factor_batch(kb, spec)   # factor_inlet stays None
+        fb.kenken_cage_op = kb.cage_op
+        fb.kenken_cage_target = kb.cage_target
+        fb.kenken_cage_size = kb.cage_size
+        fb.kenken_cell_cage_id = kb.cell_cage_id
+        return fb
 
     return _Task(
         spec=spec, train_loader=train_loader, test_loader=test_loader,
@@ -1605,10 +1668,30 @@ def _jit_inputs(fb: FactorGraphBatch, spec: FactorGraphSpec, has_inlet: bool,
                                 dtype=dtypes.float).contiguous().realize()
     else:
         head_is_global = fb.head_is_global
+    # KENKEN raw cage features (verification-inlet build IN-GRAPH). ALWAYS passed (zeros
+    # placeholder when absent) so the JIT signature is stable across tasks; only the
+    # single-domain kenken graph READS them (the build_kk_inlet compile-time branch).
+    # Shapes are run-fixed (C = n_cages_max pinned by the loader; cell_cage_id is (B,49)).
+    kk_cage_op = getattr(fb, "kenken_cage_op", None)
+    if kk_cage_op is not None:
+        kk_cage_target = fb.kenken_cage_target
+        kk_cage_size = fb.kenken_cage_size
+        kk_cell_cage_id = fb.kenken_cell_cage_id
+    else:
+        # Placeholder for non-kenken (never read). (B,1) cages + (B,S) cell ids; -1 cell id
+        # so build_verification_inlet (if ever traced) would zero every cell. Stable within
+        # a task: coloring/circuit/multi never carry these attrs, so the shape is constant.
+        z1 = Tensor(np.zeros((B, 1), dtype=np.int32), dtype=dtypes.int).contiguous().realize()
+        kk_cage_op = z1
+        kk_cage_target = z1
+        kk_cage_size = z1
+        kk_cell_cage_id = Tensor(np.full((B, spec.s_max), -1, dtype=np.int32),
+                                 dtype=dtypes.int).contiguous().realize()
     return (fb.input_cells, fb.gold, fb.cell_valid, fb.value_domain_mask,
             fb.membership, fb.latent_type, inlet, stoch_keep,
             inlet_op, inlet_target, inlet_size,
-            head_type_oh, head_is_global)
+            head_type_oh, head_is_global,
+            kk_cage_op, kk_cage_target, kk_cage_size, kk_cell_cage_id)
 
 
 # ---------------------------------------------------------------------------
@@ -1627,6 +1710,16 @@ def evaluate(task: _Task, K: int, max_batches: int) -> dict:
     n_batches = 0
     for native in task.eval_iter():
         fb = task.to_factor_batch(native)
+        # KENKEN eval: to_factor_batch leaves factor_inlet=None (the in-graph training
+        # build supersedes it). Build the verification inlet EAGERLY here from the carried
+        # raw cage features so eval reads the TRAINED inlet params (mirrors the multitask
+        # eval path). Other tasks carry no kenken_cage_op -> this is a kenken-only branch.
+        if spec.has_factor_inlet and getattr(fb, "kenken_cage_op", None) is not None \
+                and fb.factor_inlet is None:
+            from mycelium.kenken import build_verification_inlet
+            fb.factor_inlet = build_verification_inlet(
+                model, fb.kenken_cage_op, fb.kenken_cage_target,
+                fb.kenken_cage_size, fb.kenken_cell_cage_id).realize()
         logits_history, _ = factor_breathing_forward(model, fb, spec, K=K)
         final_logits = logits_history[-1]
 
