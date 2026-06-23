@@ -105,6 +105,7 @@ Env vars:
 """
 import gc
 import json
+import math
 import os
 import sys
 import time
@@ -384,6 +385,194 @@ def make_coloring_constraint_energy(n_factor_types: int):
 
 
 # ---------------------------------------------------------------------------
+# KENKEN CAGE-ARITHMETIC SOFT ENERGY (trainer-local; the oracle stays untouched).
+#
+# kenken_constraint_energy (mycelium/kenken.py) is row/col AllDiff ONLY — it does
+# NOT re-derive cage arithmetic (its docstring's "cage soft-AllDiff" is a no-op in
+# the code). This factory adds a DIFFERENTIABLE cage-arithmetic surrogate on the
+# SOFTMAX PROBS via per-cell EXPECTED VALUES, segment-summed per cage from
+# cell_cage_id. It lives in the trainer/domain layer (like make_coloring_*), reads
+# ONLY existing batch attributes, and NEVER touches the oracle / engine / data
+# layer. Gated by FG_ENERGY_CAGE (default 0 = OFF -> the trainer is byte-identical
+# to the current row/col-only behavior).
+#
+# TARGET RECONSTRUCTION (load-bearing): batch.kenken_cage_target carries the
+# LOG-BUCKET id (0..31 from kenken_data.target_to_bucket), NOT the raw integer
+# target. We invert the bucketing to a bucket-center magnitude
+#   t_hat = TARGET_MAX ** (bucket / (TARGET_BUCKETS-1))
+# (the inverse of b = floor(log t / log TARGET_MAX * (B-1))). This is a pure tensor
+# op on the int JIT input cast to float — no host sync, no .numpy() in the graph.
+# The reconstruction is lossy (bucket centers, not exact targets), so the cage
+# energy is a SHAPING surrogate, not an exact verifier; constraint_weight controls
+# its strength. (Constants mirror kenken_data: TARGET_BUCKETS=32, TARGET_MAX=1000.)
+#
+# SIGN: every op term is a squared error (or |.|-based), so a SATISFIED cage gives
+# ~0 and a VIOLATED cage gives POSITIVE energy; the loss ADDS constraint_weight *
+# energy and the optimizer MINIMIZES -> reducing it pushes toward arithmetic
+# feasibility. Mirrors build_kenken_data.cage_ok (the GOLD reference) relaxed via
+# E[v] per cell.
+
+# Constants (mirror mycelium/kenken_data: TARGET_BUCKETS / TARGET_MAX). Kept local
+# so the trainer never imports the data layer just for two scalars.
+_KK_TARGET_BUCKETS = 32
+_KK_TARGET_MAX = 1000.0
+
+
+def make_kenken_cage_constraint_energy(n_cages_max: int, n_values: int = 7):
+    """Return a differentiable KenKen cage-arithmetic soft-violation energy fn.
+
+    Closes over n_cages_max (pinned at task-build) and n_values (codebook size). The
+    returned callable matches the trainer's constraint-energy contract exactly:
+    `fn(final_probs, batch) -> (B,)`, same signature as kenken_constraint_energy and
+    the coloring energy. `final_probs` is the per-breath SOFTMAX over values
+    (B, S, N) (differentiable; already value-domain-masked by the readout's
+    value_bias). Reads batch.kenken_cage_op/target/size + batch.kenken_cell_cage_id.
+
+    PURE TENSOR OPS (JIT-safe: no host sync, no .numpy()/.realize(), no
+    dtypes.float32 literal). Returns (B,) cage energy ready for .mean() in the loss
+    graph (or summed alongside the row/col energy)."""
+    C = int(n_cages_max)
+    N = int(n_values)
+    eps = 1e-4
+
+    def kenken_cage_constraint_energy(final_probs: "Tensor", batch) -> "Tensor":
+        B = int(final_probs.shape[0])
+        S = int(final_probs.shape[1])
+
+        # (1) Per-cell EXPECTED VALUE E[v] = sum_v v * p(v). The value axis index n
+        # (0..N-1) decodes to digit (n+1) (codebook col 0 = digit 1). Build the digit
+        # weights from numpy (no float literal baked as a graph const).
+        digits = Tensor(np.arange(1, N + 1, dtype=np.float32).reshape(1, 1, N),
+                        dtype=dtypes.float)                                   # (1,1,N)
+        cv = batch.cell_valid.reshape(B, S, 1).cast(dtypes.float)            # (B,S,1)
+        pv = final_probs.cast(dtypes.float) * cv                            # zero pad cells
+        exp_val = (pv * digits).sum(axis=-1)                                 # (B,S) E[v], pad cells ~0
+
+        # (2) Segment membership: one-hot of cell->cage on cell_cage_id (-1 pad ->
+        # all-zero row -> contributes to no cage). (B, S, C).
+        cell_cage_id = batch.kenken_cell_cage_id                             # (B,S) int (-1 pad)
+        oh = cell_cage_id.one_hot(C).cast(dtypes.float)                      # (B,S,C)
+
+        # (3a) Per-cage SUM of expected values (add / given use this).
+        #   cage_sum[b,c] = sum_s oh[b,s,c] * exp_val[b,s]
+        cage_sum = (oh * exp_val.reshape(B, S, 1)).sum(axis=1)               # (B,C)
+
+        # (3b) Per-cage PRODUCT via exp(sum(log(E[v]+eps))) over MEMBER cells only.
+        # Non-member cells (oh=0) contribute 0 to the log-sum -> factor 1. Guard the
+        # log arg with eps (E[v] in [0, N], pad cells exp_val~0 but are non-members).
+        log_ev = (exp_val + eps).log().reshape(B, S, 1)                      # (B,S,1)
+        cage_logprod = (oh * log_ev).sum(axis=1)                             # (B,C)
+        cage_prod = cage_logprod.exp()                                       # (B,C)
+
+        # (3c) Per-cage extremes for sub/div (2-cell cages). Max member E[v] and the
+        # SECOND value (= sum - max for a 2-cell cage). Build max via a large negative
+        # bias on non-members so the row max ignores them.
+        neg = (1.0 - oh) * (-1e4)                                            # (B,S,C) -inf on non-members
+        member_ev = exp_val.reshape(B, S, 1) + neg                          # (B,S,C)
+        cage_max = member_ev.max(axis=1)                                     # (B,C) largest member E[v]
+        cage_min = cage_sum - cage_max                                       # (B,C) the OTHER cell (2-cell)
+
+        # (4) Reconstruct the integer target from the log-bucket id (bucket center).
+        bucket = batch.kenken_cage_target.cast(dtypes.float)                 # (B,C) bucket id 0..31
+        frac = bucket / float(_KK_TARGET_BUCKETS - 1)                        # (B,C) in [0,1]
+        # t_hat = TARGET_MAX ** frac = exp(frac * log TARGET_MAX) — pure tensor op on
+        # the int JIT input (no full_like constant, no host sync).
+        target = (frac * float(math.log(_KK_TARGET_MAX))).exp()              # (B,C) ~ raw target
+
+        # (5) Per-op masks from the integer op id (0=given,1=add,2=sub,3=mul,4=div).
+        m_given = (batch.kenken_cage_op == 0).cast(dtypes.float)            # (B,C)
+        m_add = (batch.kenken_cage_op == 1).cast(dtypes.float)
+        m_sub = (batch.kenken_cage_op == 2).cast(dtypes.float)
+        m_mul = (batch.kenken_cage_op == 3).cast(dtypes.float)
+        m_div = (batch.kenken_cage_op == 4).cast(dtypes.float)
+
+        # (6) RELATIVE squared arithmetic error per cage, scale-free via 1/(target+1):
+        # ((value - target)/(target+1))^2. ABSOLUTE error is unusable: at init (near-
+        # uniform probs, E[v]~mid) a mul/add cage reads hundreds-to-thousands, and the
+        # scale varies ~100x across ops/targets (a target-2 div vs a target-1000 mul),
+        # so a single cw cannot balance it and the term swamps CE + the row/col energy.
+        # Relative error puts every cage on a comparable O(1) scale. SAT->0, VIOL->+.
+        inv_t = 1.0 / (target + 1.0)                                        # (B,C) scale-free norm
+        def _rel(v):                                                        # ((v-target)*inv_t)^2
+            d = (v - target) * inv_t
+            return d * d
+        #   given/add : value = sum E[v];  mul : prod E[v];  sub (2-cell): max-min
+        r_given = _rel(cage_sum)
+        r_add = _rel(cage_sum)
+        r_mul = _rel(cage_prod)
+        r_sub = _rel(cage_max - cage_min)
+        #   div   : the KenKen div clue is a DISJUNCTION (a/b==target OR b/a==target), so
+        #   the relaxation is the MIN of the two directional rel-errors (whichever matches
+        #   drives it to 0) — NOT a sum/average, which double-penalizes the always-wrong
+        #   direction on gold. cage_max>=cage_min so ratio_hi=max/min>=1 is canonical.
+        ratio_hi = cage_max / (cage_min + eps)
+        ratio_lo = (cage_min + eps) / (cage_max + eps)
+        r_div = _rel(ratio_hi).minimum(_rel(ratio_lo))
+
+        # (7) Select the active op's rel-error per cage; BOUND each to [0,1) via r/(1+r)
+        # so no single (huge, early) cage dominates — linear ~r near SAT (clean gradient),
+        # saturating when far (stable). Mask to REAL cages (size>0).
+        r = (m_given * r_given + m_add * r_add + m_sub * r_sub
+             + m_mul * r_mul + m_div * r_div)                              # (B,C)
+        bounded = r / (1.0 + r)                                            # (B,C) in [0,1)
+        real_cage = (batch.kenken_cage_size > 0).cast(dtypes.float)        # (B,C)
+        bounded = bounded * real_cage                                      # zero padding cages
+
+        # (8) MEAN over real cages -> (B,) energy in [0,1), comparable to the row/col
+        # term's natural scale (~0 at uniform, O(few) under collisions) -> a fair cw.
+        n_real = real_cage.sum(axis=1).maximum(1.0)                        # (B,) >=1
+        return bounded.sum(axis=1) / n_real                               # (B,)
+
+    return kenken_cage_constraint_energy
+
+
+# ---------------------------------------------------------------------------
+# PER-BREATH ENERGY WAVE — the weight schedule w_k over K breaths.
+#
+# Three modes (env FG_ENERGY_WAVE, default "off"):
+#   off         : final breath only (w_{K-1}=1, else 0) -> the per-breath loop is
+#                 NEVER traced (the OFF branch is a python compile-time decision in
+#                 the loss graph), so the graph is BYTE-IDENTICAL to the current code.
+#   monotonic   : w_k = (1 + k/(K-1)) / K  -> normalized so sum_k w_k = 1 (mirrors the
+#                 CE-ladder weight; sum of (1+k/(K-1)) over k = K, divide by K).
+#   oscillating : w_k = |cos(pi*k*cycles/K)| normalized so sum_k w_k = 1 (V-cycle:
+#                 emphasize coarse k=0 + fine k=K, de-emphasize the middle).
+#
+# All three are normalized so a CONSTANT per-breath energy yields the SAME total
+# magnitude as the off control (a fair A/B). The weights are PYTHON floats computed
+# from numpy constants + the unrolled int loop index k (no Tensor branch, no float
+# literal baked as a graph const). The schedule is a JIT-keyed compile-time constant.
+# ---------------------------------------------------------------------------
+
+def _energy_wave_weights(K: int, mode: str, cycle_depth: int = 2) -> list:
+    """Return python floats [w_0..w_{K-1}], normalized so sum == 1.0.
+
+    off: final-breath only (but this helper is NOT called on the off path — the off
+    path stays the original no-loop final-breath code for byte-identical tracing).
+    Included for completeness / unit-test symmetry."""
+    K = int(K)
+    mode = str(mode).strip().lower()
+    if K <= 1:
+        return [1.0]
+    if mode == "off":
+        return [0.0] * (K - 1) + [1.0]
+    if mode == "monotonic":
+        raw = [1.0 + float(k) / float(K - 1) for k in range(K)]
+    elif mode == "oscillating":
+        cyc = int(cycle_depth)
+        raw = [abs(math.cos(math.pi * float(k) * float(cyc) / float(K)))
+               for k in range(K)]
+    else:
+        raise ValueError(f"unknown FG_ENERGY_WAVE mode {mode!r}")
+    s = sum(raw)
+    if s <= 0.0:
+        # degenerate (all-zero, e.g. an oscillating schedule that hits only zeros):
+        # fall back to final-breath only so the term is still defined + comparable.
+        return [0.0] * (K - 1) + [1.0]
+    return [w / s for w in raw]
+
+
+# ---------------------------------------------------------------------------
 # JIT train step — where()-gated NaN guard (PORT from kenken_train).
 # ---------------------------------------------------------------------------
 
@@ -454,7 +643,20 @@ def _compile_jit_fg_step(model, opt, spec: FactorGraphSpec, task: str,
            # is built from kk_* cage features INSIDE the graph vs read as a constant), so
            # it MUST be keyed. True only for single-domain kenken (has_inlet & !multitask);
            # False for coloring/circuit/multi -> their key is unchanged (byte-identical).
-           bool(has_inlet and not multitask))
+           bool(has_inlet and not multitask),
+           # PER-BREATH ENERGY WAVE knobs CHANGE THE TRACED GRAPH BODY (off = final-breath
+           # only, no loop; monotonic/oscillating = a K-step weighted accumulation), so they
+           # MUST be keyed. Default "off" -> the key is the literal "off" string, identical
+           # across existing single/multi graphs (which never set FG_ENERGY_WAVE). The cycle
+           # depth is keyed ONLY for the oscillating schedule (it is inert otherwise) to
+           # avoid spurious cache misses. FG_ENERGY_CAGE is reflected in the
+           # constraint_energy_fn IDENTITY (wired at task-build), and is keyed here as a
+           # bool too so an A/B flip can never silently replay a stale graph.
+           str(getenv("FG_ENERGY_WAVE", "off")).strip().lower(),
+           (int(getenv("FG_ENERGY_CYCLE_DEPTH", "2"))
+            if str(getenv("FG_ENERGY_WAVE", "off")).strip().lower() == "oscillating"
+            else 0),
+           bool(int(getenv("FG_ENERGY_CAGE", "0")) > 0))
     if key in _JIT_FG_CACHE:
         return _JIT_FG_CACHE[key]
 
@@ -471,6 +673,18 @@ def _compile_jit_fg_step(model, opt, spec: FactorGraphSpec, task: str,
     S = int(spec.s_max)
     T = int(spec.n_factor_types)
     jit_params = opt.params
+
+    # PER-BREATH ENERGY WAVE (compile-time constants -> baked into the traced graph
+    # body). FG_ENERGY_WAVE in {off,monotonic,oscillating}; default "off" = the
+    # current FINAL-breath-only energy (the per-breath loop is NEVER traced). The
+    # weights are precomputed python floats so the loss graph contains only constant
+    # multiplies + the existing softmax/energy ops. The mode + cycle depth are in the
+    # JIT cache key (different schedules never share a graph).
+    energy_wave_mode = str(getenv("FG_ENERGY_WAVE", "off")).strip().lower()
+    energy_cycle_depth = int(getenv("FG_ENERGY_CYCLE_DEPTH", "2"))
+    use_energy_wave = use_energy and energy_wave_mode != "off"
+    if use_energy_wave:
+        wave_w = _energy_wave_weights(K, energy_wave_mode, energy_cycle_depth)
 
     # KENKEN IN-GRAPH VERIFICATION INLET (the frozen-inlet fix). In SINGLE-DOMAIN kenken
     # (has_inlet=True, NOT multitask), build the verification inlet INSIDE this JIT step
@@ -523,6 +737,14 @@ def _compile_jit_fg_step(model, opt, spec: FactorGraphSpec, task: str,
         batch.value_domain_mask = value_domain_mask
         batch.membership = membership
         batch.latent_type = latent_type
+        # KENKEN raw cage features (also consumed by the optional FG_ENERGY_CAGE
+        # arithmetic energy). ALWAYS attached (placeholder zeros for non-kenken,
+        # never read there); the cage energy is wired only for the single-domain
+        # kenken task (build_kenken_task), so non-kenken graphs never trace it.
+        batch.kenken_cage_op = kk_cage_op
+        batch.kenken_cage_target = kk_cage_target
+        batch.kenken_cage_size = kk_cage_size
+        batch.kenken_cell_cage_id = kk_cell_cage_id
 
         # MULTI-TASK: build the GENERIC inlet IN-GRAPH from the raw per-latent semantic
         # ids (op/target/size), so the inlet params are in the loss graph and TRAIN every
@@ -611,10 +833,27 @@ def _compile_jit_fg_step(model, opt, spec: FactorGraphSpec, task: str,
         cell_loss = cell_loss_sum / float(weight_sum)
 
         # Constraint energy (domain plug or zero). KenKen passes
-        # kenken_constraint_energy; coloring passes None (CE + calib only).
+        # kenken_constraint_energy (+ optional cage energy); coloring passes None.
+        #
+        # FG_ENERGY_WAVE gates the energy schedule (compile-time constant -> baked in):
+        #   off (default): FINAL breath only — BYTE-IDENTICAL to the original code (no
+        #                  loop, no extra graph nodes; the wave branch is not traced).
+        #   monotonic/oscillating: PER-BREATH accumulation with normalized weights w_k
+        #                  (sum w_k == 1), so a constant energy matches the off-control
+        #                  magnitude (a fair A/B). The loop is unrolled at trace time (K
+        #                  constant); each breath does its own softmax + constraint call.
         if use_energy:
-            final_probs = logits_history[-1].softmax(axis=-1)
-            energy = constraint_energy_fn(final_probs, batch).mean()
+            if not use_energy_wave:
+                # CONTROL path (final-breath only) — identical to the prior code.
+                final_probs = logits_history[-1].softmax(axis=-1)
+                energy = constraint_energy_fn(final_probs, batch).mean()
+            else:
+                # WAVE path (per-breath, weighted). wave_w sums to 1.0.
+                energy = Tensor.zeros((), dtype=dtypes.float).contiguous()
+                for k, logits in enumerate(logits_history):
+                    probs_k = logits.softmax(axis=-1)                       # (B,S,N)
+                    energy_k = constraint_energy_fn(probs_k, batch).mean()  # scalar
+                    energy = energy + float(wave_w[k]) * energy_k
         else:
             energy = Tensor.zeros((), dtype=dtypes.float).contiguous()
 
@@ -1026,10 +1265,29 @@ def _build_kenken_task(K, BATCH, EVAL_BATCH, SEED, hidden, n_heads, model,
         fb.kenken_cell_cage_id = kb.cell_cage_id
         return fb
 
+    # CAGE-ARITHMETIC SOFT ENERGY (FG_ENERGY_CAGE, default 0 = OFF). When OFF the plug
+    # is the v98-compatible row/col-only kenken_constraint_energy (oracle, UNTOUCHED) ->
+    # the loss graph is BYTE-IDENTICAL to current. When ON, the plug SUMS the row/col
+    # oracle energy with the trainer-local differentiable cage-arithmetic surrogate
+    # (both receive the SAME probs). Pure trainer-local wiring — the oracle is never
+    # modified and the cage fn lives in this file.
+    use_cage = int(getenv("FG_ENERGY_CAGE", "0")) > 0
+    if use_cage:
+        cage_energy_fn = make_kenken_cage_constraint_energy(
+            n_cages_max, n_values=spec.n_values)
+        print(f"  FG_ENERGY_CAGE=1 -> cage-arithmetic energy ON "
+              f"(row/col + cage, n_cages_max={n_cages_max})")
+
+        def kenken_energy(probs, batch):
+            return kenken_constraint_energy(probs, batch) + cage_energy_fn(probs, batch)
+    else:
+        # OFF (default): row/col only -> byte-identical to the current behavior.
+        kenken_energy = kenken_constraint_energy
+
     return _Task(
         spec=spec, train_loader=train_loader, test_loader=test_loader,
         to_factor_batch=to_factor_batch,
-        constraint_energy_fn=kenken_constraint_energy,
+        constraint_energy_fn=kenken_energy,
         has_inlet=True,
         eval_iter=lambda: test_loader.iter_eval(batch_size=EVAL_BATCH),
     )
