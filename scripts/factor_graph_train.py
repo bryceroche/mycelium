@@ -127,6 +127,7 @@ from mycelium.factor_graph_engine import (
     factor_breathing_forward, factor_loss, factor_accuracy,
     make_kenken_factor_batch,
     attach_factor_waist_params, factor_waist_parameters, pooled_waist_drep,
+    attach_factor_lora_params, factor_lora_parameters,
     FG_WAIST_DIM, FG_WAIST_AFTER, FG_WAIST_GATE_INIT,
     FG_HYP_MASK, FG_HYP_FREEZE,
 )
@@ -194,6 +195,12 @@ _FG_PARAM_NAMES = [
 _FG_CONT_NAMES = [
     "fg_cont_embed_w", "fg_cont_embed_b",
 ]
+# PER-BREATH LoRA params (only present when FG_LORA_RANK>0 / attach_factor_lora_params
+# was called). Saved only when attached, so a no-LoRA ckpt is byte-identical (it never
+# carries these keys) and a LoRA ckpt round-trips them. load_ckpt keeps init for absent keys.
+_FG_LORA_NAMES = [
+    "fg_lora_A", "fg_lora_B",
+]
 # In-deducer WAIST params (only present when FG_WAIST=1 / attach_factor_waist_params was
 # called). Saved only when attached, so a baseline (no-waist) ckpt is byte-identical (it
 # never carries these keys) and a waist ckpt round-trips them. fg_waist_aux_* are present
@@ -226,6 +233,11 @@ def model_state_dict_fg(model) -> dict:
         sd[nm] = getattr(model, nm)
     # CONTINUOUS-INPUT embed params (saved only when attached -> discrete ckpts byte-identical).
     for nm in _FG_CONT_NAMES:
+        t = getattr(model, nm, None)
+        if t is not None:
+            sd[nm] = t
+    # PER-BREATH LoRA params (saved only when attached -> no-LoRA ckpts byte-identical).
+    for nm in _FG_LORA_NAMES:
         t = getattr(model, nm, None)
         if t is not None:
             sd[nm] = t
@@ -634,6 +646,15 @@ def _compile_jit_fg_step(model, opt, spec: FactorGraphSpec, task: str,
            # only for the ECC spec; False (default) for kenken/coloring/circuit/multi ->
            # their key is unchanged (byte-identical, old graphs stay cache-compatible).
            bool(getattr(spec, "continuous_input", False)),
+           # ECC FIXES (the two diagnosed one-shot-collapse fixes) FLIP THE TRACED BODY:
+           # reinject_input re-adds the channel embed every breath (extra per-breath add),
+           # lora_rank>0 inserts the K per-breath low-rank adapters. Both MUST be keyed —
+           # a stale graph under a flipped toggle is silent corruption. Default off (False,
+           # 0) -> the key is unchanged from current (byte-identical, old graphs stay
+           # cache-compatible). INDEPENDENT toggles -> all 4 (off/off, on/off, off/on,
+           # on/on) get distinct graphs.
+           bool(getattr(spec, "reinject_input", False)),
+           int(getattr(spec, "lora_rank", 0)),
            int(K), int(B),
            float(constraint_weight), float(calib_weight), float(ortho_lambda),
            float(grad_clip), float(label_smoothing), float(stoch_depth_p),
@@ -2281,6 +2302,16 @@ def main():
     FG_WAIST_ATTRACT_W = float(getenv("FG_WAIST_ATTRACT_W", "0.01"))  # attract weight
     FG_WAIST_CENTROID_MOM = float(getenv("FG_WAIST_CENTROID_MOM", "0.99"))
 
+    # ---- ECC FIXES (the two diagnosed one-shot-collapse fixes; INDEPENDENT toggles).
+    # FG_ECC_REINJECT=1  -> per-breath channel re-injection (re-add the B0 channel embed
+    #                       to the residual at the start of every breath; no new params).
+    # FG_LORA_RANK=r (0)  -> per-breath rank-r LoRA adapters (K unique low-rank residual
+    #                       transforms; zero-init B -> neutral at step 0). Default 0 = OFF.
+    # Both default OFF -> the spec fields are False/0 and the engine + trainer are
+    # byte-identical to current for ALL tasks (incl. ECC-without-flags).
+    FG_ECC_REINJECT = int(getenv("FG_ECC_REINJECT", "0")) > 0
+    FG_LORA_RANK = int(getenv("FG_LORA_RANK", "0"))
+
     # Default paths for the kenken task only. Coloring uses an in-memory generator
     # (GraphColoringLoader); FG_TRAIN / FG_TEST are not read by the coloring branch.
     FG_TRAIN = getenv("FG_TRAIN", ".cache/kenken_train.jsonl")
@@ -2344,9 +2375,30 @@ def main():
                                      model, FG_TRAIN, FG_TEST, MIX, MIX_WEIGHTS)
     spec = task.spec
 
+    # ---- ECC FIXES: stamp the two INDEPENDENT toggles onto the spec (the engine reads
+    # spec.reinject_input / spec.lora_rank as compile-time python branches; both default
+    # off -> byte-identical). These are spec fields (mirroring continuous_input) so the
+    # eval driver constructs an identical spec from the same env and reads the same ckpt.
+    spec.reinject_input = bool(FG_ECC_REINJECT)
+    spec.lora_rank = int(FG_LORA_RANK)
+    if FG_ECC_REINJECT or FG_LORA_RANK > 0:
+        print(f"  [ECC fixes] reinject_input={spec.reinject_input} "
+              f"lora_rank={spec.lora_rank}", flush=True)
+
     # The GENERAL factor-graph params (fg_state_embed / fg_position_embed /
     # fg_value_codebook / fg_calib_head / fg_breath_embed / fg_delta_gate).
     attach_factor_graph_params(model, hidden=hidden, spec=spec)
+
+    # PER-BREATH LoRA (FG_LORA_RANK>0): attach the K rank-r zero-init-B adapters. OFF
+    # (rank 0) -> NOT attached -> the engine's getattr-gate skips LoRA entirely -> forward
+    # byte-identical, training byte-identical, ckpt byte-identical.
+    if FG_LORA_RANK > 0:
+        attach_factor_lora_params(model, hidden=hidden, spec=spec, rank=FG_LORA_RANK)
+        n_lora = 2 * int(spec.k_max) * int(FG_LORA_RANK) * hidden
+        print(f"  [FG_LORA_RANK={FG_LORA_RANK}] per-breath LoRA attached: "
+              f"K={spec.k_max} r={FG_LORA_RANK} H={hidden} "
+              f"({n_lora/1e6:.2f}M params; B_k zero-init -> neutral at step 0)",
+              flush=True)
 
     # IN-DEDUCER WAIST (FG_WAIST=1): attach the zero-init-gated convex-blend waist params.
     # OFF (default) -> NOT attached -> the engine's getattr-gate skips the waist entirely
@@ -2396,6 +2448,8 @@ def main():
     params = collect_backbone_params(model) + factor_graph_parameters(model)
     # IN-DEDUCER WAIST params (down/up/gate + optional aux head). Empty when not attached.
     params += factor_waist_parameters(model)
+    # PER-BREATH LoRA params (A/B). Empty when not attached (FG_LORA_RANK=0).
+    params += factor_lora_parameters(model)
     # KenKen verification-inlet params (trained — they're LIVE at init, not gated).
     # In the multi-task path these are NOT attached (the generic inlet replaces them).
     for nm in _KENKEN_INLET_NAMES:

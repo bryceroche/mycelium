@@ -34,6 +34,7 @@ from mycelium import Config, BreathingTransformer
 from mycelium.loader import _load_state, load_breathing
 from mycelium.factor_graph_engine import (
     FactorGraphSpec, attach_factor_graph_params, factor_breathing_forward,
+    attach_factor_lora_params,
 )
 from mycelium.ecc_data import ECCLoader, values_to_bits, N_BITS
 
@@ -71,11 +72,23 @@ def main():
     else:
         model = BreathingTransformer(cfg)
     cast_layers_fp32(model)
+    # ECC FIXES: the eval spec MUST match the trained ckpt's toggles (the engine reads
+    # spec.reinject_input / spec.lora_rank). Read the SAME env flags the trainer used so
+    # Arm A (reinject only) and Arm B (reinject + lora) decode with the right forward.
+    FG_ECC_REINJECT = int(getenv("FG_ECC_REINJECT", "0")) > 0
+    FG_LORA_RANK = int(getenv("FG_LORA_RANK", "0"))
     spec = FactorGraphSpec(s_max=49, n_values=2, n_factor_types=1,
                            n_heads=cfg.n_heads, k_max=K, has_factor_inlet=False,
-                           continuous_input=True)
+                           continuous_input=True,
+                           reinject_input=bool(FG_ECC_REINJECT),
+                           lora_rank=int(FG_LORA_RANK))
     attach_factor_graph_params(model, hidden=cfg.hidden, spec=spec)
+    if FG_LORA_RANK > 0:
+        attach_factor_lora_params(model, hidden=cfg.hidden, spec=spec, rank=FG_LORA_RANK)
     load_ckpt(model, RESUME_FROM)
+    if FG_ECC_REINJECT or FG_LORA_RANK > 0:
+        print(f"  [ECC fixes] reinject_input={spec.reinject_input} "
+              f"lora_rank={spec.lora_rank}")
 
     # ---- the SAME held-out eval set the trainer uses (fixed seed -> identical).
     loader = ECCLoader(H_kind=H_KIND, batch_size=EVAL_BATCH, seed=SEED,

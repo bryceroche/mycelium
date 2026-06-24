@@ -145,6 +145,27 @@ class FactorGraphSpec:
         and maps it through a small learned linear (1 -> H) instead of the one-hot
         path.  This is the ONLY domain-gated divergence in the forward; it is a
         COMPILE-TIME python branch on this spec field, never reached when False.
+    reinject_input : bool
+        PER-BREATH CHANNEL RE-INJECTION (ECC fix #1).  False (default) => the
+        channel/cell embed is added ONLY at B0 (the current B0-only behavior;
+        byte-identical).  True => the SAME input embed (the immutable channel
+        evidence — embed_factor_cells_continuous of batch.cont_input for the
+        continuous path, embed_factor_cells for the discrete path) is RE-ADDED to
+        the residual at the START of every breath, alongside the per-breath marker
+        be_k.  This makes each breath a real BP variable-node update (channel +
+        current messages every round).  The embed is computed ONCE before the loop
+        (it does not change) and re-added each breath.  No new params (reuses the
+        B0 embed weights).  COMPILE-TIME python branch on this spec field; never
+        reached when False, so the forward is byte-identical.
+    lora_rank : int
+        PER-BREATH LoRA (ECC fix #2; un-shares the tied iterations).  0 (default)
+        => no adapters, no new params (byte-identical).  r>0 => K separate rank-r
+        low-rank residual adapters (one per breath) are applied at the START of
+        each breath: ``x = x + B_k @ (A_k @ x)`` with B_k ZERO-INIT (neutral at
+        step 0 -> byte-identical-off + warm-start safe + clean A/B).  The params
+        are allocated by attach_factor_lora_params (fg_lora_A/fg_lora_B of shape
+        (k_max, r, H) / (k_max, H, r)).  COMPILE-TIME python gate on this field +
+        the presence of the params (getattr); never reached when 0 / unattached.
     """
     s_max: int
     n_values: int
@@ -153,6 +174,8 @@ class FactorGraphSpec:
     k_max: int
     has_factor_inlet: bool = False
     continuous_input: bool = False
+    reinject_input: bool = False
+    lora_rank: int = 0
 
 
 # ---------------------------------------------------------------------------
@@ -475,6 +498,33 @@ def factor_breathing_forward(model: Any, batch: FactorGraphBatch,
         x = embed_factor_cells(input_cells, state_embed, position_embed, N)
     x = x.cast(dtypes.half) if x.dtype != dtypes.half else x
 
+    # (g) PER-BREATH CHANNEL RE-INJECTION (ECC fix #1 — spec.reinject_input).
+    # When OFF (default) -> the channel/cell embed `x` is used only at B0 (the current
+    # B0-only behavior; the whole block below is a COMPILE-TIME python branch on the
+    # spec field, never traced -> byte-identical). When ON -> the SAME input embed is the
+    # immutable channel evidence and is RE-ADDED to the residual at the START of every
+    # breath (alongside be_k), making each breath a real BP variable-node update (channel
+    # + current messages every round). The embed does NOT change across breaths, so it is
+    # computed ONCE here (== the B0 lift `x` we just built) and re-added each breath. NO
+    # new params (reuses the B0 embed weights). dtype-preserving (channel_embed shares
+    # x.dtype after the .cast(half) above; the per-breath `+ channel_embed` is the same op
+    # as the existing `+ be_k`, no dtypes.float32 literal baked).
+    reinject = bool(getattr(spec, "reinject_input", False))
+    channel_embed = x if reinject else None                      # (B, S, H) or None
+
+    # (h) PER-BREATH LoRA (ECC fix #2 — spec.lora_rank>0 + params attached). K separate
+    # rank-r low-rank residual adapters (one per breath) UN-SHARE the tied iterations:
+    # breath k applies x = x + B_k @ (A_k @ x). B_k is ZERO-INIT so the adapter outputs 0
+    # at step 0 -> x unchanged -> byte-identical-off + warm-start safe + clean A/B. Gated
+    # by BOTH the spec field AND the presence of the params (getattr) so a spec.lora_rank>0
+    # without attached params is a loud failure rather than silent fall-through, and a model
+    # with no LoRA params (every existing ckpt) takes the original forward verbatim.
+    lora_rank = int(getattr(spec, "lora_rank", 0))
+    lora_A = getattr(model, "fg_lora_A", None)                   # (k_max, r, H) or None
+    use_lora = lora_rank > 0 and lora_A is not None
+    if use_lora:
+        lora_B = model.fg_lora_B                                 # (k_max, H, r)
+
     layers = list(model.block.layers)
     assert len(layers) >= 4, f"expected >=4 transformer layers; got {len(layers)}"
     K_max = int(breath_embed.shape[0])
@@ -513,8 +563,29 @@ def factor_breathing_forward(model: Any, batch: FactorGraphBatch,
     resid_capture = getattr(model, "fg_resid_capture", None)
 
     for k in range(K):
+        # (h) PER-BREATH LoRA (applied at the START of the breath, before the marker /
+        # channel re-add). x = x + B_k @ (A_k @ x). A_k: (r, H), B_k: (H, r); per-breath
+        # slice k. B_k zero-init -> the residual `lora_delta` is exactly 0 at step 0 ->
+        # x unchanged -> byte-identical-off. Computed in x.dtype (half) — matmuls preserve
+        # dtype, no dtypes.float32 literal. This is a per-position (per-cell) low-rank
+        # residual (NOT a new attention/pointer pathway), so it bootstraps like a codebook
+        # selection. UN-SHARES the iterations: each breath gets its own small transform.
+        if use_lora:
+            A_k = lora_A[k].cast(x.dtype)                         # (r, H)
+            B_k = lora_B[k].cast(x.dtype)                         # (H, r)
+            lora_h = x @ A_k.transpose()                          # (B, S, r) = A_k @ x per cell
+            lora_delta = lora_h @ B_k.transpose()                # (B, S, H) = B_k @ (A_k @ x)
+            x = x + lora_delta
+
         be_k = breath_embed[k].reshape(1, 1, -1).cast(x.dtype)   # (1, 1, H)
         x_in = x + be_k + inlet_h                                 # add inlet EVERY breath (LIVE)
+
+        # (g) PER-BREATH CHANNEL RE-INJECTION: re-add the immutable channel evidence to
+        # the residual at the START of every breath (channel + current messages == the BP
+        # variable-node update). Same op shape as `+ be_k`; channel_embed is None when OFF
+        # (compile-time branch, never traced -> byte-identical B0-only behavior).
+        if reinject:
+            x_in = x_in + channel_embed                           # re-add channel evidence
 
         x_pre = x
         h = x_in
@@ -662,6 +733,9 @@ def factor_graph_parameters(model: Any) -> list[Tensor]:
     The continuous-input embed params (fg_cont_embed_*) are included ONLY when
     attached (ECC spec); absent for discrete-input models -> the list is identical
     to the validated set for kenken/coloring/circuit.
+
+    The per-breath LoRA params (fg_lora_A/B) are included ONLY when attached
+    (FG_LORA_RANK>0); absent otherwise -> the list is identical to the validated set.
     """
     params = [
         model.fg_state_embed,
@@ -674,7 +748,57 @@ def factor_graph_parameters(model: Any) -> list[Tensor]:
     ]
     if getattr(model, "fg_cont_embed_w", None) is not None:
         params += [model.fg_cont_embed_w, model.fg_cont_embed_b]
+    if getattr(model, "fg_lora_A", None) is not None:
+        params += [model.fg_lora_A, model.fg_lora_B]
     return params
+
+
+# ---------------------------------------------------------------------------
+# PER-BREATH LoRA param attach (ECC fix #2) — additive, ZERO-INIT-B gated.
+# ---------------------------------------------------------------------------
+
+def attach_factor_lora_params(model: Any, hidden: int, spec: FactorGraphSpec,
+                              rank: int) -> None:
+    """Allocate the K per-breath rank-r LoRA adapters on `model` (additive; OFF
+    unless called with rank>0).
+
+    K = spec.k_max separate adapters, breath k uses adapter k, so each breath gets a
+    small UNIQUE low-rank transform (un-shares the otherwise-tied iterations -> toward
+    un-tied neural-BP). Applied at the engine level (factor_breathing_forward), NOT
+    inside the oracle kenken_layer_forward (the oracle is never touched).
+
+    Params added
+    ------------
+    fg_lora_A   (k_max, rank, hidden)  — DOWN projection (A_k), small randn 0.02 so the
+                                         down-projected feature is well-scaled and the
+                                         gradient flows from step 0.
+    fg_lora_B   (k_max, hidden, rank)  — UP projection (B_k), ZERO-INIT so the adapter's
+                                         residual delta B_k @ (A_k @ x) is EXACTLY 0 at
+                                         init -> x is unchanged -> byte-identical-off +
+                                         warm-start safe + clean A/B. Gradient still flows
+                                         (A is non-zero), so the adapter OPENS if it earns
+                                         its keep.
+
+    Param count: 2 * k_max * rank * hidden ~ 2*16*8*1024 = 2.1M floats at K=16 r=8
+    (the brief's ~1M is per-direction; both directions ~2M).
+    """
+    assert int(rank) > 0, "attach_factor_lora_params called with rank<=0"
+    r = int(rank)
+    k_max = int(spec.k_max)
+    H = int(hidden)
+    # A (down): small randn 0.02 — well-scaled features, gradient flows from step 0.
+    rng_a = np.random.RandomState(2601)
+    a_np = (rng_a.randn(k_max, r, H) * 0.02).astype(np.float32)
+    model.fg_lora_A = Tensor(a_np, dtype=dtypes.float).contiguous()
+    # B (up): ZERO-INIT -> adapter delta == 0 at init (byte-identical-off + warm-start).
+    model.fg_lora_B = Tensor.zeros((k_max, H, r), dtype=dtypes.float).contiguous()
+
+
+def factor_lora_parameters(model: Any) -> list[Tensor]:
+    """Trainable per-breath LoRA params (empty when not attached)."""
+    if getattr(model, "fg_lora_A", None) is None:
+        return []
+    return [model.fg_lora_A, model.fg_lora_B]
 
 
 # ---------------------------------------------------------------------------
