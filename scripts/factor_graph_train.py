@@ -1939,10 +1939,12 @@ def _jit_inputs(fb: FactorGraphBatch, spec: FactorGraphSpec, has_inlet: bool,
         # Placeholder for non-kenken (never read). (B,1) cages + (B,S) cell ids; -1 cell id
         # so build_verification_inlet (if ever traced) would zero every cell. Stable within
         # a task: coloring/circuit/multi never carry these attrs, so the shape is constant.
-        z1 = Tensor(np.zeros((B, 1), dtype=np.int32), dtype=dtypes.int).contiguous().realize()
-        kk_cage_op = z1
-        kk_cage_target = z1
-        kk_cage_size = z1
+        # MUST be DISTINCT buffer objects: TinyJit rejects identical input buffers
+        # ("duplicate inputs to JIT"), so op/target/size each get their own zeros tensor
+        # (reusing one z1 for all three broke every non-kenken task incl. coloring + ECC).
+        kk_cage_op = Tensor(np.zeros((B, 1), dtype=np.int32), dtype=dtypes.int).contiguous().realize()
+        kk_cage_target = Tensor(np.zeros((B, 1), dtype=np.int32), dtype=dtypes.int).contiguous().realize()
+        kk_cage_size = Tensor(np.zeros((B, 1), dtype=np.int32), dtype=dtypes.int).contiguous().realize()
         kk_cell_cage_id = Tensor(np.full((B, spec.s_max), -1, dtype=np.int32),
                                  dtype=dtypes.int).contiguous().realize()
     return (fb.input_cells, fb.gold, fb.cell_valid, fb.value_domain_mask,
