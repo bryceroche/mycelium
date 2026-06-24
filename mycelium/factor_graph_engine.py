@@ -136,6 +136,15 @@ class FactorGraphSpec:
         ``batch.factor_inlet``.  False => inlet contribution is 0 everywhere.
         For KenKen this is the verification inlet; for a generic domain with no
         arithmetic to verify, pass False.
+    continuous_input : bool
+        Whether the per-cell INPUT is a CONTINUOUS scalar (e.g. the ECC channel
+        LLR) instead of a discrete value index.  False (default) => the validated
+        DISCRETE one-hot input embed (kenken/coloring/circuit one-hot the cell
+        value through the codebook-aligned state_embed) — byte-identical to the
+        current engine.  True => the engine reads ``batch.cont_input`` (B, s_max)
+        and maps it through a small learned linear (1 -> H) instead of the one-hot
+        path.  This is the ONLY domain-gated divergence in the forward; it is a
+        COMPILE-TIME python branch on this spec field, never reached when False.
     """
     s_max: int
     n_values: int
@@ -143,6 +152,7 @@ class FactorGraphSpec:
     n_heads: int
     k_max: int
     has_factor_inlet: bool = False
+    continuous_input: bool = False
 
 
 # ---------------------------------------------------------------------------
@@ -287,6 +297,48 @@ def embed_factor_cells(input_cells: Tensor, state_embed: Tensor,
 
 
 # ---------------------------------------------------------------------------
+# CONTINUOUS per-cell input embed (the ONE additive core edit for ECC / §8.1).
+# ---------------------------------------------------------------------------
+
+def embed_factor_cells_continuous(cont_input: Tensor, cont_embed_w: Tensor,
+                                   cont_embed_b: Tensor, position_embed: Tensor
+                                   ) -> Tensor:
+    """Map a per-cell CONTINUOUS scalar (B, s_max) -> (B, s_max, H) embeddings.
+
+    The continuous twin of embed_factor_cells.  Where the DISCRETE path one-hots a
+    cell-value index through the codebook-aligned state_embed, the CONTINUOUS path
+    is the ECC frontier's input: a per-cell real scalar (the channel LLR), NOT a
+    discrete value.  A small LEARNED LINEAR (1 -> H) lifts the scalar into the
+    residual stream, then the SAME learned position embedding is added (identical
+    to the discrete path's `state + pos` structure).
+
+    This is NOT a new pointer/attention pathway (the attention-bootstrap law): it is
+    a per-position scalar -> H lift (one weight vector + bias), which bootstraps from
+    the task gradient exactly like a codebook selection.  cont_embed_w is init at
+    CODEBOOK SCALE (~0.1) in attach_factor_graph_params so the lifted LLR lands at the
+    same magnitude as a discrete value embed at step 0, and the monotone sign->value
+    relationship (high-SNR LLR sign == the gold bit) is in reach of the readout from
+    the first breath.
+
+    cont_input    : (B, s_max) float — per-cell continuous scalar (e.g. LLR).
+    cont_embed_w  : (1, H)     float — learned lift weight (codebook-scale init).
+    cont_embed_b  : (H,)       float — learned lift bias (zeros init).
+    position_embed: (s_max, H) float — the SAME learned position embedding.
+
+    dtype-preserving: the matmul/add inherit position_embed.dtype after the cast
+    chain in the caller; no dtypes.float32 literal is baked here (substrate law).
+    """
+    B = int(cont_input.shape[0])
+    S = int(position_embed.shape[0])
+    # (B, S, 1) @ (1, H) -> (B, S, H), then + bias.  Cast the scalar to the embed
+    # dtype so the lifted feature shares the residual-stream dtype (no float literal).
+    x_scalar = cont_input.reshape(B, S, 1).cast(cont_embed_w.dtype)       # (B,S,1)
+    state = x_scalar @ cont_embed_w + cont_embed_b.reshape(1, 1, -1)      # (B,S,H)
+    pos = position_embed.reshape(1, S, -1).cast(state.dtype).expand(B, S, -1)
+    return state + pos
+
+
+# ---------------------------------------------------------------------------
 # Main breathing forward
 # ---------------------------------------------------------------------------
 
@@ -403,7 +455,24 @@ def factor_breathing_forward(model: Any, batch: FactorGraphBatch,
     value_bias = (1.0 - value_domain_mask) * (-1e4)  # (B, s_max, N)
 
     # (b) COUPLED: embed cells, parameterized on N and s_max.
-    x = embed_factor_cells(input_cells, state_embed, position_embed, N)
+    # CONTINUOUS-INPUT BRANCH (the ONE additive core edit; ECC / §8.1 frontier).
+    # spec.continuous_input is a COMPILE-TIME python attribute (NOT a runtime per-
+    # batch value branch): it is True ONLY for the ECC spec and False (default) for
+    # kenken/coloring/circuit/multi.  When False the ORIGINAL discrete one-hot embed
+    # is taken VERBATIM (byte-identical) — the continuous branch is never traced.  When
+    # True the engine reads batch.cont_input (a per-cell continuous scalar, e.g. the
+    # channel LLR) and lifts it through the small learned cont-embed linear instead of
+    # one-hotting a discrete value.  Guarded additionally by the presence of the
+    # cont-embed params (getattr) so a spec.continuous_input=True without attached
+    # params is a loud failure rather than silent fall-through.
+    if getattr(spec, "continuous_input", False):
+        cont_input = batch.cont_input                            # (B, s_max) float
+        cont_embed_w = model.fg_cont_embed_w                     # (1, H)
+        cont_embed_b = model.fg_cont_embed_b                     # (H,)
+        x = embed_factor_cells_continuous(cont_input, cont_embed_w,
+                                          cont_embed_b, position_embed)
+    else:
+        x = embed_factor_cells(input_cells, state_embed, position_embed, N)
     x = x.cast(dtypes.half) if x.dtype != dtypes.half else x
 
     layers = list(model.block.layers)
@@ -573,10 +642,28 @@ def attach_factor_graph_params(model: Any, hidden: int,
     # Delta gate — ones (full update; mirror kenken).
     model.fg_delta_gate = Tensor.ones((k_max,), dtype=dtypes.float).contiguous()
 
+    # CONTINUOUS-INPUT embed params (ECC / §8.1).  Allocated ONLY when the spec
+    # requests the continuous path; a discrete-input model (kenken/coloring/circuit)
+    # never carries these attrs, so factor_graph_parameters / the engine getattr-gate
+    # see nothing and the model is byte-identical.  cont_embed_w is init at CODEBOOK
+    # SCALE so the lifted scalar lands at the same magnitude as a discrete value embed
+    # at step 0 (bootstrap from the task gradient; the attention-bootstrap law for a
+    # per-position scalar->H lift).  cont_embed_b is zeros.
+    if getattr(spec, "continuous_input", False):
+        rng_ce = np.random.RandomState(1409)
+        ce_w = (rng_ce.randn(1, hidden) * 0.1).astype(np.float32)   # codebook scale
+        model.fg_cont_embed_w = Tensor(ce_w, dtype=dtypes.float).contiguous()
+        model.fg_cont_embed_b = Tensor.zeros((hidden,), dtype=dtypes.float).contiguous()
+
 
 def factor_graph_parameters(model: Any) -> list[Tensor]:
-    """Trainable factor-graph params (excludes backbone params)."""
-    return [
+    """Trainable factor-graph params (excludes backbone params).
+
+    The continuous-input embed params (fg_cont_embed_*) are included ONLY when
+    attached (ECC spec); absent for discrete-input models -> the list is identical
+    to the validated set for kenken/coloring/circuit.
+    """
+    params = [
         model.fg_state_embed,
         model.fg_position_embed,
         model.fg_value_codebook,
@@ -585,6 +672,9 @@ def factor_graph_parameters(model: Any) -> list[Tensor]:
         model.fg_breath_embed,
         model.fg_delta_gate,
     ]
+    if getattr(model, "fg_cont_embed_w", None) is not None:
+        params += [model.fg_cont_embed_w, model.fg_cont_embed_b]
+    return params
 
 
 # ---------------------------------------------------------------------------

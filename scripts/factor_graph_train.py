@@ -188,6 +188,12 @@ _FG_PARAM_NAMES = [
     "fg_state_embed", "fg_position_embed", "fg_value_codebook",
     "fg_calib_head_w", "fg_calib_head_b", "fg_breath_embed", "fg_delta_gate",
 ]
+# CONTINUOUS-INPUT embed params (only present when spec.continuous_input -> ECC). Saved
+# only when attached, so a discrete-input (kenken/coloring/circuit) ckpt is byte-identical
+# (it never carries these keys); load_ckpt keeps init for absent keys.
+_FG_CONT_NAMES = [
+    "fg_cont_embed_w", "fg_cont_embed_b",
+]
 # In-deducer WAIST params (only present when FG_WAIST=1 / attach_factor_waist_params was
 # called). Saved only when attached, so a baseline (no-waist) ckpt is byte-identical (it
 # never carries these keys) and a waist ckpt round-trips them. fg_waist_aux_* are present
@@ -218,6 +224,11 @@ def model_state_dict_fg(model) -> dict:
             sd[f"phase{i}.{a}"] = getattr(layer, a)
     for nm in _FG_PARAM_NAMES:
         sd[nm] = getattr(model, nm)
+    # CONTINUOUS-INPUT embed params (saved only when attached -> discrete ckpts byte-identical).
+    for nm in _FG_CONT_NAMES:
+        t = getattr(model, nm, None)
+        if t is not None:
+            sd[nm] = t
     # In-deducer WAIST params (saved only when attached -> baseline ckpts byte-identical).
     for nm in _FG_WAIST_NAMES:
         t = getattr(model, nm, None)
@@ -617,6 +628,12 @@ def _compile_jit_fg_step(model, opt, spec: FactorGraphSpec, task: str,
     key = (id(model), id(opt), str(task),
            int(spec.s_max), int(spec.n_values), int(spec.n_factor_types),
            bool(spec.has_factor_inlet),
+           # CONTINUOUS-INPUT (ECC / §8.1) FLIPS THE TRACED BODY (the engine takes the
+           # LLR->H continuous embed vs the discrete one-hot path), so it MUST be keyed —
+           # a stale discrete-input graph reading cont_input is silent corruption. True
+           # only for the ECC spec; False (default) for kenken/coloring/circuit/multi ->
+           # their key is unchanged (byte-identical, old graphs stay cache-compatible).
+           bool(getattr(spec, "continuous_input", False)),
            int(K), int(B),
            float(constraint_weight), float(calib_weight), float(ortho_lambda),
            float(grad_clip), float(label_smoothing), float(stoch_depth_p),
@@ -701,6 +718,13 @@ def _compile_jit_fg_step(model, opt, spec: FactorGraphSpec, task: str,
     if build_kk_inlet:
         from mycelium.kenken import build_verification_inlet
 
+    # CONTINUOUS-INPUT (ECC / §8.1) — compile-time constant baked into the traced body.
+    # True ONLY for the ECC spec; the engine then reads batch.cont_input (the per-cell
+    # LLR) and takes the LLR->H continuous embed instead of the discrete one-hot path.
+    # When False (default) the engine never touches cont_input -> the JIT input is an
+    # unused placeholder (zeros) and the graph is byte-identical to current.
+    continuous_input = bool(getattr(spec, "continuous_input", False))
+
     # WAIST aux gating (compile-time constants -> baked into the traced graph body).
     aux_mode = str(waist_aux) if waist_on else "none"
     use_classify = waist_on and aux_mode in ("classify", "both") and waist_aux_w > 0.0
@@ -723,7 +747,7 @@ def _compile_jit_fg_step(model, opt, spec: FactorGraphSpec, task: str,
               inlet_op: Tensor, inlet_target: Tensor, inlet_size: Tensor,
               head_type_oh: Tensor, head_is_global: Tensor,
               kk_cage_op: Tensor, kk_cage_target: Tensor, kk_cage_size: Tensor,
-              kk_cell_cage_id: Tensor):
+              kk_cell_cage_id: Tensor, cont_input: Tensor):
         opt.zero_grad()
 
         # Lightweight batch shim so the engine reads per-instance tensors by attr.
@@ -732,6 +756,11 @@ def _compile_jit_fg_step(model, opt, spec: FactorGraphSpec, task: str,
             pass
         batch = _B()
         batch.input_cells = input_cells
+        # CONTINUOUS INPUT (ECC): the per-cell LLR the engine reads when
+        # spec.continuous_input is True. Always attached (zeros placeholder for non-ECC
+        # so the JIT signature is stable); only the continuous-input engine branch READS
+        # it (a compile-time branch on the spec flag, not a runtime domain branch).
+        batch.cont_input = cont_input
         batch.gold = gold
         batch.cell_valid = cell_valid
         batch.value_domain_mask = value_domain_mask
@@ -905,6 +934,10 @@ def _compile_jit_fg_step(model, opt, spec: FactorGraphSpec, task: str,
             gbatch.value_domain_mask = value_domain_mask
             gbatch.membership = membership
             gbatch.latent_type = latent_type
+            # cont_input only matters under continuous_input (ECC); the WAIST aux is
+            # NOT used for ECC (FG_WAIST defaults off), so this branch is never traced
+            # there. Attach the live cont_input so the shim is well-formed if ever on.
+            gbatch.cont_input = cont_input
             if multitask:
                 gbatch.factor_inlet = batch.factor_inlet
                 gbatch.head_type_oh = head_type_oh
@@ -1446,6 +1479,67 @@ def _build_circuit_task(K, BATCH, EVAL_BATCH, SEED, n_heads):
     )
 
 
+def _build_ecc_task(K, BATCH, EVAL_BATCH, SEED, n_heads):
+    """ECC / neural-BP task (BCH(31,16); the §8.1 soft-constraint frontier).
+
+    The deducer AS A LEARNED BP DECODER: K breaths == K message-passing rounds, the
+    per-head attention masks (from membership) == the parity-check H topology, the
+    per-cell CONTINUOUS input == the channel LLR.  ECCLoader (mycelium.ecc_data —
+    IN-MEMORY generator, NOT path-based) produces FactorGraphBatch-compatible batches
+    directly (PLUS the new cont_input attr the continuous-input engine path reads).
+    The import is LAZY so a missing data module never breaks the other tasks or the
+    trainer's CPU import.
+
+    spec: s_max=49, n_values=2 (the bit codebook), n_factor_types=1 (one parity
+    relation), n_heads=16, has_factor_inlet=False (no arithmetic to verify),
+    continuous_input=True (THE flag that routes the engine to the LLR->H embed).
+
+    NO new readout / loss / inlet: the N=2 value-codebook readout (BER = argmax+1 ==
+    gold on real bit-cells), the per-breath weighted-CE ladder (== BCE on the 2-way),
+    the calibration head, and the v45 reg stack are ALL reused unchanged.  The ONE
+    new tensor in the loss graph is the continuous embed (handled in the engine).
+
+    ONE loader owns train (fresh random codewords across SNR) + a FIXED, SNR-
+    stratified held-out eval set.  The JIT topology width (n_checks_max == H rows)
+    is fixed by the parity-check shape -> static.
+    """
+    from mycelium.ecc_data import ECCLoader
+
+    H_kind = getenv("ECC_H_KIND", "min").strip().lower()
+    snr_lo = float(getenv("ECC_SNR_LO", "3.0"))
+    snr_hi = float(getenv("ECC_SNR_HI", "7.0"))
+    eval_snrs = tuple(float(s) for s in
+                      getenv("ECC_EVAL_SNRS", "3,4,5,6,7").split(",") if s.strip())
+    n_eval_per_snr = int(getenv("ECC_EVAL_PER_SNR", "200"))
+
+    spec = FactorGraphSpec(s_max=49, n_values=2, n_factor_types=1,
+                           n_heads=n_heads, k_max=K, has_factor_inlet=False,
+                           continuous_input=True)
+
+    loader = ECCLoader(H_kind=H_kind, batch_size=BATCH, seed=SEED,
+                       snr_lo=snr_lo, snr_hi=snr_hi, eval_snrs=eval_snrs,
+                       n_eval_per_snr=n_eval_per_snr)
+
+    print(f"  ecc: n_checks_max={loader.n_checks_max} n_values=2 "
+          f"continuous_input=True H_kind={H_kind} "
+          f"train_SNR=[{snr_lo},{snr_hi}]dB eval_SNRs={list(eval_snrs)}")
+
+    def to_factor_batch(eb):
+        # ECCBatch already satisfies the FactorGraphBatch contract (same tensor
+        # attrs) PLUS the cont_input attr; pass through directly.
+        return eb
+
+    return _Task(
+        spec=spec,
+        train_loader=loader,
+        test_loader=loader,   # same object; eval_iter uses loader.iter_eval()
+        to_factor_batch=to_factor_batch,
+        constraint_energy_fn=None,   # no domain energy (CE + calib only, like circuit)
+        has_inlet=False,
+        eval_iter=lambda: loader.iter_eval(batch_size=EVAL_BATCH),
+    )
+
+
 # ---------------------------------------------------------------------------
 # MULTI-TASK (GENERAL-WEIGHTS) HARNESS  — FG_MULTITASK=1 / FG_TASK=multi.
 #
@@ -1947,11 +2041,22 @@ def _jit_inputs(fb: FactorGraphBatch, spec: FactorGraphSpec, has_inlet: bool,
         kk_cage_size = Tensor(np.zeros((B, 1), dtype=np.int32), dtype=dtypes.int).contiguous().realize()
         kk_cell_cage_id = Tensor(np.full((B, spec.s_max), -1, dtype=np.int32),
                                  dtype=dtypes.int).contiguous().realize()
+    # CONTINUOUS INPUT (ECC / §8.1): the per-cell LLR the engine reads when
+    # spec.continuous_input is True. ALWAYS passed (zeros placeholder when the batch
+    # carries no cont_input, e.g. kenken/coloring/circuit) so the JIT signature is
+    # stable across tasks; only the continuous-input engine branch READS it.
+    cont_input = getattr(fb, "cont_input", None)
+    if cont_input is None:
+        cont_input = Tensor(np.zeros((B, spec.s_max), dtype=np.float32),
+                            dtype=dtypes.float).contiguous().realize()
+    else:
+        cont_input = cont_input.cast(dtypes.float)
     return (fb.input_cells, fb.gold, fb.cell_valid, fb.value_domain_mask,
             fb.membership, fb.latent_type, inlet, stoch_keep,
             inlet_op, inlet_target, inlet_size,
             head_type_oh, head_is_global,
-            kk_cage_op, kk_cage_target, kk_cage_size, kk_cell_cage_id)
+            kk_cage_op, kk_cage_target, kk_cage_size, kk_cell_cage_id,
+            cont_input)
 
 
 # ---------------------------------------------------------------------------
@@ -2120,8 +2225,8 @@ def main():
     MULTITASK = int(getenv("FG_MULTITASK", "0")) > 0 or TASK == "multi"
     if MULTITASK:
         TASK = "multi"
-    assert TASK in ("kenken", "coloring", "circuit", "multi"), \
-        f"FG_TASK must be kenken|coloring|circuit|multi, got {TASK!r}"
+    assert TASK in ("kenken", "coloring", "circuit", "ecc", "multi"), \
+        f"FG_TASK must be kenken|coloring|circuit|ecc|multi, got {TASK!r}"
     # The mix + weights (default all three, equal weight).
     MIX = [m.strip().lower() for m in getenv("FG_MIX", "coloring,circuit,kenken").split(",")
            if m.strip()]
@@ -2226,6 +2331,8 @@ def main():
         task = _build_coloring_task(K, BATCH, EVAL_BATCH, SEED, n_heads)
     elif TASK == "circuit":
         task = _build_circuit_task(K, BATCH, EVAL_BATCH, SEED, n_heads)
+    elif TASK == "ecc":
+        task = _build_ecc_task(K, BATCH, EVAL_BATCH, SEED, n_heads)
     else:   # multi (GENERAL-WEIGHTS harness)
         # The generic inlet params MUST be attached BEFORE the task is built (the
         # per-domain adapters call build_generic_factor_inlet on `model`).
@@ -2450,12 +2557,15 @@ def main():
     t0 = time.time()
     log_acc = None
     log_n = 0
+    _prof = int(getenv("FG_PROFILE", "0")) > 0   # FG_PROFILE: split CPU-prep vs GPU-step (perf audit)
+    _prof_cpu = 0.0; _prof_gpu = 0.0; _prof_n = 0
     # Per-domain loss/acc tracking (multi-task only; CPU-side floats accumulated per
     # LOG_EVERY window). Keeps the JIT step domain-agnostic — domain attribution is
     # external (each batch is pure single-domain, so its scalars belong to one domain).
     mt_dom_acc = {d: {"loss": 0.0, "cell_acc": 0.0, "n": 0} for d in (task.mix or [])}
 
     for step in range(1, STEPS + 1):
+        if _prof: _pc0 = time.perf_counter()
         if task.is_multitask:
             cur_domain = task.train_loader.sample_domain()
             fb = task.train_loader.sample_batch(domain=cur_domain)
@@ -2470,7 +2580,15 @@ def main():
         if FG_PERM_AUG:
             fb = permute_factor_batch(fb, perm_aug_rng, FG_PERM_AUG_FRAC)
         ins = _jit_inputs(fb, spec, task.has_inlet, hidden, _draw_stoch_keep())
+        if _prof: _pc1 = time.perf_counter()
         outs = step_fn(*ins)
+        if _prof:
+            outs[0].realize()                       # force the GPU step to finish (sync)
+            _pc2 = time.perf_counter()
+            if step > 1:                            # skip step 1 (JIT compile)
+                _prof_cpu += _pc1 - _pc0
+                _prof_gpu += _pc2 - _pc1
+                _prof_n += 1
 
         # RUNG-2 RIM GUARD (spec §7): under relaxation the hyperbolic anchors are TANGENT
         # params and the d_hyp backward's 1/(1-|z|^2) explodes near the ball boundary.
@@ -2523,6 +2641,12 @@ def main():
                   f"cell_ce={cell_ce_a/log_n:.4f} energy={energy_a/log_n:.4f} "
                   f"calib={calib_a/log_n:.4f}  ({dt:.1f}s, {dt/step:.2f}s/step)",
                   flush=True)
+            if _prof and _prof_n:
+                _pt = _prof_cpu + _prof_gpu
+                print(f"  [PROFILE] cpu_prep={_prof_cpu/_prof_n*1e3:.1f}ms "
+                      f"gpu_step={_prof_gpu/_prof_n*1e3:.1f}ms "
+                      f"gpu_idle_on_cpu_prep={_prof_cpu/_pt*100:.1f}%  (n={_prof_n})",
+                      flush=True)
             if task.is_multitask:
                 parts = []
                 for d in task.mix:
