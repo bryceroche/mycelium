@@ -2340,9 +2340,22 @@ def main():
     np.random.seed(SEED)
     Tensor.manual_seed(SEED)
 
-    # ---- backbone (Pythia-410M L0-L3). hidden read from cfg → no 1024 hardcode.
-    cfg = Config()
-    print(f"loading Pythia-410M -> breathing transformer (PYTHIA_INIT={PYTHIA_INIT})...")
+    # ---- backbone (Pythia L0-L3). hidden read from cfg → no 1024 hardcode.
+    # ENV-OVERRIDABLE base dims so a wider Pythia (e.g. 1.4B at h=2048) can be the
+    # base WITHOUT hardcoding 2k. HARD CONTRACT: with FG_HIDDEN/FG_HEAD_DIM/FG_FFN/
+    # FG_N_HEADS_BASE UNSET, getenv returns the int defaults below (= Config()'s
+    # 410M dims: hidden=1024, head_dim=64, ffn=4096, n_heads=16) → Config(...) is
+    # byte-identical to Config() → the 410M path (all existing runs/ckpts) is
+    # unchanged. For 1.4B set FG_HIDDEN=2048 FG_HEAD_DIM=128 FG_FFN=8192 and point
+    # PYTHIA_WEIGHTS at the 1.4B safetensors (rotary_pct=0.25 → rotary_dim=32).
+    cfg = Config(
+        hidden=int(getenv("FG_HIDDEN", 1024)),
+        head_dim=int(getenv("FG_HEAD_DIM", 64)),
+        ffn=int(getenv("FG_FFN", 4096)),
+        n_heads=int(getenv("FG_N_HEADS_BASE", 16)),
+    )
+    print(f"loading Pythia (h={cfg.hidden} head_dim={cfg.head_dim} ffn={cfg.ffn} "
+          f"n_heads={cfg.n_heads}) -> breathing transformer (PYTHIA_INIT={PYTHIA_INIT})...")
     if PYTHIA_INIT:
         sd = _load_state()
         model = load_breathing(cfg, sd=sd)
