@@ -362,6 +362,47 @@ def embed_factor_cells_continuous(cont_input: Tensor, cont_embed_w: Tensor,
 
 
 # ---------------------------------------------------------------------------
+# General S-agnostic transformer layer (the assertion-free twin of the oracle)
+# ---------------------------------------------------------------------------
+
+def factor_graph_layer_forward(layer: Any, x: Tensor, attn_bias: Tensor) -> Tensor:
+    """One BreathingLayer forward, structured attention, for ANY sequence length S.
+
+    EXACT transcription of mycelium.kenken.kenken_layer_forward MINUS (1) the hard
+    `assert S == N_CELLS` (which blocks S != 49) and (2) the always-off v109pi
+    Q-rotation block. Byte-identical to the oracle layer at S=49 with rotation off
+    (the only path the general engine ever uses) — certified by the forward-parity
+    gate in scripts/test_general_layer_parity.py. The oracle kenken.py stays the
+    untouched regression anchor; this twin lets the general engine run at S != 49
+    (e.g. s_max=98 dual-view graphs).
+    """
+    cfg = layer.cfg
+    B, S, H = x.shape
+
+    from mycelium.breathing import _layernorm
+    attn_in = _layernorm(x, layer.shared.in_ln_g, layer.shared.in_ln_b, cfg.layer_norm_eps)
+    mlp_in = _layernorm(x, layer.shared.post_ln_g, layer.shared.post_ln_b, cfg.layer_norm_eps)
+    attn_in_dt = attn_in.cast(x.dtype) if attn_in.dtype != x.dtype else attn_in
+    mlp_in_dt = mlp_in.cast(x.dtype) if mlp_in.dtype != x.dtype else mlp_in
+
+    q = (attn_in_dt @ layer.wq + layer.bq).reshape(B, S, cfg.n_heads, cfg.head_dim).transpose(1, 2)
+    k = (attn_in_dt @ layer.wk + layer.bk).reshape(B, S, cfg.n_heads, cfg.head_dim).transpose(1, 2)
+    v = (attn_in_dt @ layer.shared.wv + layer.shared.bv).reshape(B, S, cfg.n_heads, cfg.head_dim).transpose(1, 2)
+
+    scale = 1.0 / math.sqrt(cfg.head_dim)
+    scores = q @ k.transpose(-2, -1) * scale                       # (B, n_heads, S, S)
+    scores = scores + attn_bias.cast(scores.dtype)
+    attn = scores.clip(-1e4, 1e4).softmax(-1)
+    ctx = (attn @ v).transpose(1, 2).reshape(B, S, H)
+    attn_out = ctx @ layer.shared.wo + layer.shared.bo
+
+    ff = (mlp_in_dt @ layer.w_in + layer.b_in).gelu()
+    ffn_out = ff @ layer.shared.w_out + layer.shared.b_out
+
+    return x + attn_out + ffn_out
+
+
+# ---------------------------------------------------------------------------
 # Main breathing forward
 # ---------------------------------------------------------------------------
 
@@ -589,13 +630,13 @@ def factor_breathing_forward(model: Any, batch: FactorGraphBatch,
 
         x_pre = x
         h = x_in
-        # (c) COUPLED: pass s_max-length tensor through kenken_layer_forward.
-        # The only assertion inside kenken_layer_forward is `assert S==N_CELLS`
-        # which fires when S != 49.  For the general case we call the function
-        # directly — it works for any S as long as attn_bias has matching shape.
-        # For the KenKen anchor (S=49) it is byte-identical to the original call.
+        # (c) COUPLED: pass the s_max-length tensor through the S-agnostic general
+        # layer (factor_graph_layer_forward). It is the assertion-free twin of the
+        # oracle kenken_layer_forward — byte-identical at S=49 (parity-gated), but
+        # also runs at S != 49 (e.g. s_max=98 dual-view graphs), which the oracle's
+        # `assert S==N_CELLS` would block. attn_bias must match (B, n_heads, S, S).
         for li, layer in enumerate(layers[:4]):
-            h = kenken_layer_forward(layer, h, attn_bias)          # no Q-rotation
+            h = factor_graph_layer_forward(layer, h, attn_bias)   # no Q-rotation
             # (f) WAIST: zero-init-gated convex blend at the layer boundary li==waist_after.
             # g ~ 0 at init (gate_param large-negative) -> blend ~ pass-through (warm-start
             # byte-identical). Computed in h.dtype (half) to stay on the validated activation

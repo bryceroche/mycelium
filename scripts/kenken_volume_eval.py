@@ -103,9 +103,16 @@ PARITY_ABS_TOL = 0.06
 # model build/load — mirrors scripts.factor_graph_train.main()'s kenken path.
 # =============================================================================
 def build_model():
-    cfg = Config()
-    print(f"loading Pythia-410M -> breathing transformer (hidden={cfg.hidden} "
-          f"n_heads={cfg.n_heads})...", flush=True)
+    # dims env-overridable so the probe works for h=2048 (Pythia-1.4B) too;
+    # byte-identical h=1024 defaults when unset (the existing probe path).
+    cfg = Config(
+        hidden=int(os.environ.get("FG_HIDDEN", 1024)),
+        head_dim=int(os.environ.get("FG_HEAD_DIM", 64)),
+        ffn=int(os.environ.get("FG_FFN", 4096)),
+        n_heads=int(os.environ.get("FG_N_HEADS_BASE", 16)),
+    )
+    print(f"loading Pythia (hidden={cfg.hidden} head_dim={cfg.head_dim} "
+          f"ffn={cfg.ffn} n_heads={cfg.n_heads}) -> breathing transformer...", flush=True)
     sd = _load_state()
     model = load_breathing(cfg, sd=sd)
     del sd
@@ -123,8 +130,9 @@ def build_model():
     attach_factor_graph_params(model, hidden=hidden, spec=spec)
 
     Device[Device.DEFAULT].synchronize()
-    print(f"resuming from fg ckpt: {CKPT}", flush=True)
-    load_ckpt(model, CKPT)
+    ckpt = os.environ.get("KKR_CKPT", CKPT)
+    print(f"resuming from fg ckpt: {ckpt}", flush=True)
+    load_ckpt(model, ckpt)
     print("  loaded.", flush=True)
     return model, spec
 
