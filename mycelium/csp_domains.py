@@ -546,6 +546,72 @@ def problem_from_kenken(n: int, cages, clues, registry: Optional[dict] = None) -
 
 
 # ===========================================================================
+# SUDOKU — the candidate-set + recursive-search demo (rows/cols/boxes all-different)
+# ===========================================================================
+# Pure GENERALITY reuse: Sudoku's ONLY relation is n-ary all-different (over rows,
+# cols, AND the b x b boxes, b = sqrt(n)). It reuses all_diff_pred +
+# l_alldiff_propagator (the KenKen Phase-2 GAC propagator) VERBATIM — ZERO csp_core
+# edits, just one registry + one bridge (the one-trick-pony guarantee; adding a domain
+# = a few register() calls + a bridge). This is "candidate sets + recursive branch ->
+# fully solve": GAC maintains the per-cell remaining-value sets EXACTLY (the dual /
+# pencil-mark channel, done symbolically), MRV/LCV order, backtracking disposes. The
+# neural deducer would enter ONLY as ordering priors (a marginal accelerator on clean
+# Sudoku — symbolic ordering already collapses the tree; the policy never commits).
+
+LTYPE_BOX = 5     # box all-different (n-ary, specialized propagator)
+
+
+def sudoku_registry(n: int = 9) -> dict:
+    """Registry for Sudoku: ROW + COL + BOX all-different, each with the L-ALLDIFF
+    specialized GAC propagator (the SAME exact candidate-set propagation as KenKen)."""
+    reg = new_registry()
+    for ft, nm in ((LTYPE_ROW, "row_all_diff"), (LTYPE_COL, "col_all_diff"),
+                   (LTYPE_BOX, "box_all_diff")):
+        register(reg, ft, all_diff_pred, name=nm,
+                 specialized_propagator=l_alldiff_propagator, arity_hint=n,
+                 check_alphabet=tuple(range(1, n + 1)))
+    return reg
+
+
+def problem_from_sudoku(cells, n: int = 9, registry: Optional[dict] = None) -> Problem:
+    """Bridge: build a general csp_core.Problem from a Sudoku puzzle.
+
+    cells: flat row-major list of n*n entries (0 = blank, 1..n = given). Variables =
+    the n*n cells (flat id r*n+c); givens become singleton domains0. Factors: n row +
+    n col + n box all-different. Boxes are b x b with b = sqrt(n) (b=3 for n=9).
+    """
+    b = int(round(n ** 0.5))
+    assert b * b == n, f"Sudoku n={n} must be a perfect square"
+    reg = registry if registry is not None else sudoku_registry(n)
+    n_vars = n * n
+    domains0 = [({int(cells[i])} if int(cells[i]) > 0 else set(range(1, n + 1)))
+                for i in range(n_vars)]
+
+    factors = []
+    for r in range(n):
+        factors.append(Factor(ftype=LTYPE_ROW,
+                              scope=tuple(_cell_id(r, c, n) for c in range(n)),
+                              params=None))
+    for c in range(n):
+        factors.append(Factor(ftype=LTYPE_COL,
+                              scope=tuple(_cell_id(r, c, n) for r in range(n)),
+                              params=None))
+    for br in range(b):
+        for bc in range(b):
+            scope = tuple(_cell_id(br * b + dr, bc * b + dc, n)
+                          for dr in range(b) for dc in range(b))
+            factors.append(Factor(ftype=LTYPE_BOX, scope=scope, params=None))
+
+    var_factors = [[] for _ in range(n_vars)]
+    for fi, f in enumerate(factors):
+        for u in f.scope:
+            var_factors[u].append(fi)
+
+    return Problem(n_vars=n_vars, domains0=domains0, factors=factors,
+                   var_factors=var_factors, registry=reg)
+
+
+# ===========================================================================
 # CIRCUIT — DOCUMENTED STUB (Phase 4, the DAG testbed; L-ASYM)
 # ===========================================================================
 # Predicate REUSES circuit_data._eval_gate; scope is ORDERED (element 0 = output) and
