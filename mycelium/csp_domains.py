@@ -612,6 +612,58 @@ def problem_from_sudoku(cells, n: int = 9, registry: Optional[dict] = None) -> P
 
 
 # ===========================================================================
+# QCP / QWH — Quasigroup Completion (Latin-square completion) at the phase transition
+# ===========================================================================
+# THE PREY HUNT (the hard cousin of Sudoku): complete a partial Latin square — rows AND
+# cols all-different, NO boxes (so LESS constrained than Sudoku). At the phase-transition
+# hole-density, balanced QCP is a canonical HARD structured-CSP benchmark (Gomes & Shmoys):
+# all-different GAC does NOT collapse the tree (unlike over-constrained Sudoku's median-0),
+# the search branches deep, and the symbolic incumbent is GENERIC CSP ordering (dom/wdeg,
+# impact-based) — NOT a domain-bespoke crusher. That is the one seam where a learned policy
+# is not pre-empted. Pure reuse: rows/cols are n-ary all-different -> all_diff_pred +
+# l_alldiff_propagator verbatim, one registry + one bridge, ZERO csp_core edits (5th domain
+# after coloring/SAT/KenKen/Sudoku).
+
+
+def qcp_registry(n: int) -> dict:
+    """Registry for QCP/QWH: ROW + COL all-different (n-ary, L-ALLDIFF GAC). No boxes."""
+    reg = new_registry()
+    for ft, nm in ((LTYPE_ROW, "row_all_diff"), (LTYPE_COL, "col_all_diff")):
+        register(reg, ft, all_diff_pred, name=nm,
+                 specialized_propagator=l_alldiff_propagator, arity_hint=n,
+                 check_alphabet=tuple(range(1, n + 1)))
+    return reg
+
+
+def problem_from_qcp(cells, n: int, registry: Optional[dict] = None) -> Problem:
+    """Bridge: build a general csp_core.Problem from a QCP/QWH instance.
+
+    cells: flat row-major list of n*n entries (0 = hole, 1..n = given). Variables = the
+    n*n cells (flat id r*n+c); givens -> singleton domains0. Factors: n row + n col
+    all-different (no boxes). Values are 1..n (the order-n quasigroup alphabet).
+    """
+    reg = registry if registry is not None else qcp_registry(n)
+    n_vars = n * n
+    domains0 = [({int(cells[i])} if int(cells[i]) > 0 else set(range(1, n + 1)))
+                for i in range(n_vars)]
+    factors = []
+    for r in range(n):
+        factors.append(Factor(ftype=LTYPE_ROW,
+                              scope=tuple(_cell_id(r, c, n) for c in range(n)),
+                              params=None))
+    for c in range(n):
+        factors.append(Factor(ftype=LTYPE_COL,
+                              scope=tuple(_cell_id(r, c, n) for r in range(n)),
+                              params=None))
+    var_factors = [[] for _ in range(n_vars)]
+    for fi, f in enumerate(factors):
+        for u in f.scope:
+            var_factors[u].append(fi)
+    return Problem(n_vars=n_vars, domains0=domains0, factors=factors,
+                   var_factors=var_factors, registry=reg)
+
+
+# ===========================================================================
 # CIRCUIT — DOCUMENTED STUB (Phase 4, the DAG testbed; L-ASYM)
 # ===========================================================================
 # Predicate REUSES circuit_data._eval_gate; scope is ORDERED (element 0 = output) and
