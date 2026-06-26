@@ -215,32 +215,47 @@ The would-be Poincaré embedding (Tier 1) + hyperbolic mask generator (Tier 2):
 
 ---
 
-## 8. Current direction (2026-06-20)
+## 8. Current direction (2026-06-26) — the SOLVING jaw is done; build CONSTRUCTION (Phase 1)
 
-Consolidating the proven general engine, then aiming at the real frontier. Two threads:
+**The two jaws = (1) CONSTRUCTION (NL → factor graph) + (2) SOLVING (factor graph → answer)** —
+the project's two-phase architecture. As of this session the asymmetry is settled:
 
-1. **The frontier — a problem where symbolic propagation isn't enough.** Clean verifiable CSPs are
-   won by symbolic search for free; the neural deducer earns its keep only where symbolic propagation
-   is unavailable: **soft / probabilistic / learned / NL-specified constraints**. The deducer is
-   literally "learned BP on a factor graph" — its natural frontier is approximate inference where
-   exact symbolic methods are intractable. Pick a testbed that KEEPS the factor-graph abstraction
-   (so generality holds — a soft factor's "predicate" returns a continuous potential, not SAT/VIOLATED).
-2. **Minimize retraining when switching tasks (weight-side generality).** Today the engine code is
-   general but the *weights* are per-domain (`fg_coloring`, `fg_circuit`, …). The holy grail is the
-   weight-side mirror of the code-side win: a single domain-agnostic backbone (multi-task co-training),
-   constraint semantics fed as INPUT (the neural predicate-registry / verification inlet — the
-   two-channel framing), a universal masked codebook readout, optionally tiny per-domain adapters. Goal:
-   switch tasks with zero/near-zero retraining.
+- **SOLVING (Jaw 2): DONE + VALIDATED.** On clean, hard-constraint factor graphs the symbolic
+  search tier solves exactly + fast (Sudoku 5000/5000 at *median 0 decisions*); the breathing
+  deducer is the general/amortized/*differentiable* backend. **Neural-guided clean-CSP search is
+  CLOSED** — the two-death-mode law: neural value-ordering needs DEEP tree AND value-sensitivity
+  AND no symbolic incumbent *simultaneously*, and no clean exact-propagatable CSP has all three
+  (Sudoku shallow; QCP value-symmetric; SAT/TSP/coloring have CDCL/LKH/DSATUR). The deducer does
+  NOT beat symbolic at solving — proven across 5 negatives. Stop hunting clean-CSP solving wins.
+- **CONSTRUCTION (Jaw 1): NOT BUILT — the frontier.** NL → factor graph is where "symbolic isn't
+  enough" is *genuinely* true (parsing language into variables + factors is unsolved). See
+  `docs/phase1_construction_brief.md`.
+
+**The deducer's role (narrowed but coherent):** a **differentiable, general approximate-inference
+backend** — (a) *critic* (solve the proposed graph → end-to-end training signal; can't backprop
+through symbolic), (b) *format-definer* (its membership + inlet vocabulary IS the constructor's
+output target), (c) *soft-graph solver* (for the uncertain graphs NL parsing produces). It is NOT
+a better solver, and NOT the NL parser (the bare breathing transformer hit a reading-comprehension
+wall on GSM8K — the constructor needs an LLM-grade comprehension base, plausibly + the **cathedral**
+structure [notebook/waist/coarse-to-fine] rehomed from solving to incremental construction — hypothesis).
+
+**THE first design question for Phase 1:** is the NL→answer signal trained END-TO-END (then the
+differentiable deducer is the centerpiece) or STAGE-WISE (parse → harden → symbolic; deducer is a
+soft-only backend)? That gate decides the architecture.
 
 **Resist ALL domain-specific code in the engine/core.** New domains enter through the predicate +
-bridge (search) and the membership + inlet (deducer) — never the core.
+bridge (search) and the membership + inlet (deducer) — never the core. The oracle-upper-bound
+kill-gate (one-hot policy via `csp_core.policy_valorder`, pure CPU) cheaply settles "can any neural
+ordering help here?" before building a deducer — reuse it.
 
 **Key memory notes:**
+- `memory/project_neural_guided_search_clean_csp_closed.md` — the two-death-mode law; clean-CSP solving closed.
+- `memory/project_sudoku_search_tier_solve.md` — search tier 100% on Sudoku (candidate-sets + recursive branch).
+- `memory/project_dual_view_channeling_result.md` — dual-view = speed lever, same ceiling (4th sighting).
+- `memory/project_multitask_generality_works.md` — the weight-side generality grail (won at parity).
 - `memory/project_phase2_kenken_generality_proven.md` — generality proven on KenKen, zero core edits.
-- `memory/project_phase0_general_search_core.md` — the predicate-driven core + the SAT-via-bridge proof.
 - `memory/project_pathb_search_coloring_result_jun19.md` — symbolic dominates clean CSPs (the honest negative).
-- `memory/project_factor_graph_two_channels.md` — topology vs semantics; registry ≠ Poincaré ball.
-- `memory/project_distributed_deduction_scales_parallel.md` — the parallel-deduction superpower.
-- `memory/project_radial_depth_thesis_refuted.md` — the refuted deep-prize.
+- `memory/feedback_deduction_not_induction.md` — the engine propagates a given graph, doesn't induce rules.
 - `memory/feedback_offer_engineering_critique.md` — push back before rubber-stamping.
 - `memory/reference_tinygrad_am_quirks.md` — substrate laws.
+- `docs/phase1_construction_brief.md` + `docs/session_2026_06_26_solving_closed_phase1_pivot.md` — the pivot + next chapter.
