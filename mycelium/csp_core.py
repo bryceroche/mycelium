@@ -439,6 +439,31 @@ def random_valorder(seed: int) -> Callable:
     return _order
 
 
+def policy_valorder(policy, lcv_tiebreak: bool = False) -> Callable:
+    """Value-orderer driven PRIMARILY by an external POLICY — the neural deducer's
+    per-cell value distribution, used as the AlphaZero-style child prior (try the value
+    the policy thinks most likely FIRST). policy[v] is indexable by value a (e.g. a list
+    of per-value scores for variable v). Orders v's legal values by policy DESC; the
+    tie-break is LCV (least-constraining) when lcv_tiebreak else value index.
+
+    THE IRON LAW: the policy ORDERS, never COMMITS. GAC + verify_complete guarantee
+    soundness; a wrong/overconfident policy only costs extra backtracking (slower,
+    never incorrect) — which is precisely why a 78%-confident deducer is safe to use
+    here but never as a propagation commit. This is the prior-PRIMARY counterpart to
+    lcv_valorder's prior-SECONDARY tie-break; the hybrid 'second jaw' on large prey.
+    """
+    def _order(state: CSPState, v: int) -> list:
+        legal = sorted(state.domains[v])
+        pv = policy[v]
+        if lcv_tiebreak:
+            base = lcv_valorder(state, v)               # LCV order as the tie-break key
+            rank = {a: i for i, a in enumerate(base)}
+            return sorted(legal, key=lambda a: (-(pv[a]), rank.get(a, len(legal)), a))
+        return sorted(legal, key=lambda a: (-(pv[a]), a))
+
+    return _order
+
+
 # ===========================================================================
 # THE PLUGGABLE DFS SKELETON (shared by ALL strategies — fairness lives here)
 # ===========================================================================
