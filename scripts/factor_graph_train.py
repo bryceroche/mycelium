@@ -819,8 +819,18 @@ def _compile_jit_fg_step(model, opt, spec: FactorGraphSpec, task: str,
             # is pure tensor ops (one_hot @ table, RMSNorm) -> the inlet params land in the
             # loss graph and get gradient. factor_inlet (the prebuilt tensor) is now an
             # unused zeros placeholder kept only for a stable JIT signature.
-            batch.factor_inlet = build_verification_inlet(
-                model, kk_cage_op, kk_cage_target, kk_cage_size, kk_cell_cage_id)
+            inlet49 = build_verification_inlet(
+                model, kk_cage_op, kk_cage_target, kk_cage_size, kk_cell_cage_id)  # (B,49,H)
+            if S > 49:
+                # DUAL-VIEW (s_max=98): the oracle verification inlet is hard-49 and applies
+                # only to the primal cells; zero-pad the dual positions so factor_inlet is
+                # (B, S, H). S is the compile-time spec constant -> this branch is baked
+                # (the S=49 single-view path takes the else => byte-identical).
+                pad = Tensor.zeros(inlet49.shape[0], S - 49, inlet49.shape[-1],
+                                   dtype=inlet49.dtype)
+                batch.factor_inlet = inlet49.cat(pad, dim=1)
+            else:
+                batch.factor_inlet = inlet49
             # Single-domain: do NOT set head_type_oh/head_is_global -> the engine takes
             # the original build_factor_attn_bias path (byte-identical).
         else:
@@ -1342,6 +1352,69 @@ def _build_kenken_task(K, BATCH, EVAL_BATCH, SEED, hidden, n_heads, model,
         spec=spec, train_loader=train_loader, test_loader=test_loader,
         to_factor_batch=to_factor_batch,
         constraint_energy_fn=kenken_energy,
+        has_inlet=True,
+        eval_iter=lambda: test_loader.iter_eval(batch_size=EVAL_BATCH),
+    )
+
+
+def _build_dual_kenken_task(K, BATCH, EVAL_BATCH, SEED, hidden, n_heads, model,
+                            train_path, test_path):
+    """DUAL-VIEW KenKen task (Bryce's multi-view/channeling generality probe).
+
+    s_max=98 (49 primal cells + 49 dual variables), n_factor_types=6 (primal
+    row/col/cage + dual value-alldiff + dual row-alldiff + channeling). The PRIMAL
+    half reproduces _build_kenken_task's encoding exactly, so primal-cell solve is
+    directly comparable to the 0.796 single-view baseline (primal_s_max=49 makes the
+    eval report primal-only as the headline). The verification inlet is the SAME
+    oracle build (at 49), zero-padded to 98 in the JIT step. No constraint energy
+    (cw default 0). Lives entirely in the general path; oracle kenken.py untouched.
+    """
+    from mycelium.kenken import attach_kenken_params
+    from mycelium.kenken_data import load_jsonl
+    from mycelium.kenken_dual_data import KenKenDualLoader, S_DUAL
+
+    spec = FactorGraphSpec(s_max=S_DUAL, n_values=7, n_factor_types=6,
+                           n_heads=n_heads, k_max=K, has_factor_inlet=True,
+                           primal_s_max=49)
+
+    # inlet embed tables (op/target/size + projection) — same as single-view kenken.
+    attach_kenken_params(model, hidden=hidden, n_heads=n_heads, k_max=K)
+
+    # n_cages_max pinned across BOTH corpora so the membership L (=35+n_cages_max) and
+    # the per-cage tensors have a static JIT topology.
+    train_recs = load_jsonl(train_path)
+    test_recs = load_jsonl(test_path)
+    corpus_n_cages_max = max(
+        max(len(r["cages"]) for r in train_recs),
+        max(len(r["cages"]) for r in test_recs),
+    )
+    n_cages_max = int(getenv("KENKEN_N_CAGES_MAX", str(corpus_n_cages_max)))
+    assert n_cages_max >= corpus_n_cages_max, (
+        f"KENKEN_N_CAGES_MAX={n_cages_max} < corpus max {corpus_n_cages_max}")
+    print(f"  dual-kenken n_cages_max={n_cages_max} -> L={35 + n_cages_max} factors, "
+          f"s_max={S_DUAL}")
+
+    train_loader = KenKenDualLoader(train_path, batch_size=BATCH, seed=SEED,
+                                    n_cages_max=n_cages_max)
+    test_loader = KenKenDualLoader(test_path, batch_size=EVAL_BATCH, seed=SEED + 1,
+                                   n_cages_max=n_cages_max)
+
+    def to_factor_batch(db):
+        # KenKenDualBatch already satisfies the FactorGraphBatch contract (input_cells/
+        # cell_valid/value_domain_mask/gold/membership/latent_type). Add the inlet alias
+        # attrs (read by _jit_inputs + the eager eval inlet build) + a None factor_inlet
+        # (built in-graph / eagerly in eval). cell_cage_id stays (B,49) for the oracle inlet.
+        db.factor_inlet = None
+        db.kenken_cage_op = db.cage_op
+        db.kenken_cage_target = db.cage_target
+        db.kenken_cage_size = db.cage_size
+        db.kenken_cell_cage_id = db.cell_cage_id           # (B,49) primal, for the inlet
+        return db
+
+    return _Task(
+        spec=spec, train_loader=train_loader, test_loader=test_loader,
+        to_factor_batch=to_factor_batch,
+        constraint_energy_fn=None,                          # no soft energy (cw default 0)
         has_inlet=True,
         eval_iter=lambda: test_loader.iter_eval(batch_size=EVAL_BATCH),
     )
@@ -2087,10 +2160,16 @@ def _jit_inputs(fb: FactorGraphBatch, spec: FactorGraphSpec, has_inlet: bool,
 def evaluate(task: _Task, K: int, max_batches: int) -> dict:
     Tensor.training = False
     spec = task.spec
+    # PRIMAL/DUAL split: headline acc is over [0, P); dual acc over [P, s_max). For every
+    # task except dual-view KenKen, primal_s_max is None => P == s_max => acc over ALL
+    # positions (byte-identical eval). For dual-view KenKen P=49 => the 0.796 comparison.
+    P = getattr(spec, "primal_s_max", None) or spec.s_max
     cell_eq_sum = 0.0
     n_cells = 0
     puzzle_eq_sum = 0
     n_puzzles = 0
+    dual_eq_sum = 0.0
+    n_dual = 0
     pb_ce_first = None
 
     n_batches = 0
@@ -2103,9 +2182,14 @@ def evaluate(task: _Task, K: int, max_batches: int) -> dict:
         if spec.has_factor_inlet and getattr(fb, "kenken_cage_op", None) is not None \
                 and fb.factor_inlet is None:
             from mycelium.kenken import build_verification_inlet
-            fb.factor_inlet = build_verification_inlet(
+            inlet = build_verification_inlet(
                 model, fb.kenken_cage_op, fb.kenken_cage_target,
-                fb.kenken_cage_size, fb.kenken_cell_cage_id).realize()
+                fb.kenken_cage_size, fb.kenken_cell_cage_id)                 # (B,49,H)
+            if int(inlet.shape[1]) < spec.s_max:                            # dual-view pad
+                pad = Tensor.zeros(inlet.shape[0], spec.s_max - int(inlet.shape[1]),
+                                   inlet.shape[-1], dtype=inlet.dtype)
+                inlet = inlet.cat(pad, dim=1)
+            fb.factor_inlet = inlet.realize()
         logits_history, _ = factor_breathing_forward(model, fb, spec, K=K)
         final_logits = logits_history[-1]
 
@@ -2117,13 +2201,19 @@ def evaluate(task: _Task, K: int, max_batches: int) -> dict:
         Bn = int(cell_valid_np.shape[0])
         for b in range(Bn):
             valid = cell_valid_np[b] > 0.5
-            nv = int(valid.sum())
-            if nv == 0:
+            valid_p = valid.copy(); valid_p[P:] = False        # primal positions [0,P)
+            nvp = int(valid_p.sum())
+            if nvp == 0:
                 continue
-            cell_eq_sum += float(eq_np[b].sum())
-            n_cells += nv
-            puzzle_eq_sum += int(np.all(pred_np[b][valid] == gold_np[b][valid]))
+            cell_eq_sum += float(eq_np[b][:P].sum())
+            n_cells += nvp
+            # puzzle solved == ALL primal cells correct (the actual KenKen solve)
+            puzzle_eq_sum += int(np.all(pred_np[b][valid_p] == gold_np[b][valid_p]))
             n_puzzles += 1
+            if P < spec.s_max:                                  # dual positions [P, s_max)
+                valid_d = valid.copy(); valid_d[:P] = False
+                dual_eq_sum += float(eq_np[b][P:].sum())
+                n_dual += int(valid_d.sum())
 
         if pb_ce_first is None:
             # Per-breath CE on the FIRST eval batch only (eval-only; .realize()s).
@@ -2144,12 +2234,15 @@ def evaluate(task: _Task, K: int, max_batches: int) -> dict:
             break
 
     Tensor.training = True
-    return {
+    out = {
         "cell_acc": cell_eq_sum / max(n_cells, 1),
         "puzzle_acc": puzzle_eq_sum / max(n_puzzles, 1),
         "n_puzzles": n_puzzles,
         "per_breath_ce": pb_ce_first or [],
     }
+    if n_dual > 0:
+        out["dual_cell_acc"] = dual_eq_sum / n_dual    # dual-view (column) prediction acc
+    return out
 
 
 def evaluate_multitask(task: _Task, K: int, max_batches: int) -> dict:
@@ -2219,8 +2312,10 @@ def evaluate_multitask(task: _Task, K: int, max_batches: int) -> dict:
 
 
 def _print_eval_table(res: dict, K: int) -> None:
+    dual_str = (f" dual_cell_acc={res['dual_cell_acc']:.3f}"
+                if "dual_cell_acc" in res else "")
     print(f"  test: cell_acc={res['cell_acc']:.3f} "
-          f"puzzle_acc={res['puzzle_acc']:.3f} n={res['n_puzzles']}", flush=True)
+          f"puzzle_acc={res['puzzle_acc']:.3f} n={res['n_puzzles']}{dual_str}", flush=True)
     pbe = res["per_breath_ce"]
     if pbe:
         if K <= 8:
@@ -2246,8 +2341,8 @@ def main():
     MULTITASK = int(getenv("FG_MULTITASK", "0")) > 0 or TASK == "multi"
     if MULTITASK:
         TASK = "multi"
-    assert TASK in ("kenken", "coloring", "circuit", "ecc", "multi"), \
-        f"FG_TASK must be kenken|coloring|circuit|ecc|multi, got {TASK!r}"
+    assert TASK in ("kenken", "dual_kenken", "coloring", "circuit", "ecc", "multi"), \
+        f"FG_TASK must be kenken|dual_kenken|coloring|circuit|ecc|multi, got {TASK!r}"
     # The mix + weights (default all three, equal weight).
     MIX = [m.strip().lower() for m in getenv("FG_MIX", "coloring,circuit,kenken").split(",")
            if m.strip()]
@@ -2324,7 +2419,7 @@ def main():
           f"ortho_lambda={ORTHO_LAMBDA}  grad_clip={GRAD_CLIP}")
     print(f"REG: label_smoothing={LABEL_SMOOTHING}  weight_decay={WEIGHT_DECAY}  "
           f"stoch_depth_p={STOCH_DEPTH_P}")
-    if TASK == "kenken":
+    if TASK in ("kenken", "dual_kenken"):
         print(f"train_path={FG_TRAIN}  test_path={FG_TEST}")
     elif TASK == "coloring":
         print(f"coloring corpus: FG_N_INSTANCES={getenv('FG_N_INSTANCES','8000')} "
@@ -2371,6 +2466,9 @@ def main():
     if TASK == "kenken":
         task = _build_kenken_task(K, BATCH, EVAL_BATCH, SEED, hidden, n_heads,
                                   model, FG_TRAIN, FG_TEST)
+    elif TASK == "dual_kenken":
+        task = _build_dual_kenken_task(K, BATCH, EVAL_BATCH, SEED, hidden, n_heads,
+                                       model, FG_TRAIN, FG_TEST)
     elif TASK == "coloring":
         task = _build_coloring_task(K, BATCH, EVAL_BATCH, SEED, n_heads)
     elif TASK == "circuit":

@@ -176,6 +176,11 @@ class FactorGraphSpec:
     continuous_input: bool = False
     reinject_input: bool = False
     lora_rank: int = 0
+    primal_s_max: int | None = None  # eval-only: report cell/puzzle acc over positions
+    #   [0, primal_s_max) (the "primal" variables) and dual acc over [primal_s_max, s_max).
+    #   None (default) => primal_s_max == s_max => acc over ALL positions (byte-identical
+    #   eval for every existing task). Set to 49 for the dual-view KenKen (s_max=98) so the
+    #   primal-cell solve stays directly comparable to the 0.796 single-view baseline.
 
 
 # ---------------------------------------------------------------------------
