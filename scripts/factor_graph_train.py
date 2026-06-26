@@ -1373,9 +1373,12 @@ def _build_dual_kenken_task(K, BATCH, EVAL_BATCH, SEED, hidden, n_heads, model,
     from mycelium.kenken_data import load_jsonl
     from mycelium.kenken_dual_data import KenKenDualLoader, S_DUAL
 
+    channel_msg = bool(int(getenv("FG_CHANNEL_MSG", 0)))
     spec = FactorGraphSpec(s_max=S_DUAL, n_values=7, n_factor_types=6,
                            n_heads=n_heads, k_max=K, has_factor_inlet=True,
-                           primal_s_max=49)
+                           primal_s_max=49, channel_messages=channel_msg)
+    print(f"  dual-kenken channel_messages={channel_msg} "
+          f"(FG_CHANNEL_MSG; explicit bidirectional BP messages)")
 
     # inlet embed tables (op/target/size + projection) — same as single-view kenken.
     attach_kenken_params(model, hidden=hidden, n_heads=n_heads, k_max=K)

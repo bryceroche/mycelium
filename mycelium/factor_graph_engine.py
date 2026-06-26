@@ -176,6 +176,12 @@ class FactorGraphSpec:
     continuous_input: bool = False
     reinject_input: bool = False
     lora_rank: int = 0
+    channel_messages: bool = False   # DUAL-VIEW channeling (s_max=98 only): each breath,
+    #   inject EXPLICIT bidirectional cross-view BP messages computed deterministically from
+    #   the current beliefs (primal->dual: where is value v; dual->primal: what's in (r,c)),
+    #   via learned codebook-like E_col/E_val. Sidesteps the channeling-attention bootstrap
+    #   (the failure mode of the hardwired-mask dual run). False (default) => no messages,
+    #   no params, byte-identical for every other task.
     primal_s_max: int | None = None  # eval-only: report cell/puzzle acc over positions
     #   [0, primal_s_max) (the "primal" variables) and dual acc over [primal_s_max, s_max).
     #   None (default) => primal_s_max == s_max => acc over ALL positions (byte-identical
@@ -408,6 +414,43 @@ def factor_graph_layer_forward(layer: Any, x: Tensor, attn_bias: Tensor) -> Tens
 
 
 # ---------------------------------------------------------------------------
+# Explicit bidirectional channeling messages (DUAL-VIEW, s_max=98)
+# ---------------------------------------------------------------------------
+
+def _channeling_messages(prev_P: Tensor, cell_valid_col: Tensor,
+                         E_col: Tensor, E_val: Tensor) -> Tensor:
+    """Deterministic cross-view BP messages from the previous breath's beliefs.
+
+    The dual-view grid is s_max=98 = 49 primal cells (position r*7+c) + 49 dual vars
+    D[v,r] (position 49 + (v-1)*7 + r). prev_P (B,98,N) is the per-position softmax
+    belief: primal cells -> P(value=v); dual vars -> P(column=c). We compute the two
+    BP messages EXPLICITLY (no learned pointer attention -> no bootstrap):
+
+      primal->dual:  msg_d[v,r] = Σ_c P(cell(r,c)=v) · E_col[c]   (where is value v in row r)
+      dual->primal:  msg_c[r,c] = Σ_v P(D[v,r]=c)  · E_val[v]     (what value sits in (r,c))
+
+    E_col/E_val are learned (N, H) codebook-like embeddings (bootstrap from task
+    gradient, unlike a softmax pointer). Padding positions are masked out via
+    cell_valid_col. Returns (B, 98, H) to add to the residual.
+    """
+    NM = 7                                              # KenKen grid (N_MAX); 49 = 7x7
+    B = prev_P.shape[0]
+    N = prev_P.shape[2]
+    Pm = prev_P * cell_valid_col                        # zero padding positions (B,98,N)
+    Ec = E_col.cast(prev_P.dtype)                       # (N, H)
+    Ev = E_val.cast(prev_P.dtype)
+    Pp = Pm[:, :49, :].reshape(B, NM, NM, N)            # primal: (B, r, c, v)
+    Pd = Pm[:, 49:, :].reshape(B, NM, NM, N)            # dual:   (B, v_idx, r, c)
+    # primal->dual: contract over c, place at dual position (v_idx*7 + r)
+    msg_d = (Pp.permute(0, 1, 3, 2) @ Ec)              # (B, r, v, H)
+    msg_d = msg_d.permute(0, 2, 1, 3).reshape(B, 49, -1)   # (B, v_idx, r, H) -> (B,49,H)
+    # dual->primal: contract over v_idx, place at cell position (r*7 + c)
+    msg_c = (Pd.permute(0, 2, 3, 1) @ Ev)             # (B, r, c, H)
+    msg_c = msg_c.reshape(B, 49, -1)                   # (B,49,H)
+    return msg_c.cat(msg_d, dim=1)                     # (B,98,H): cells then duals
+
+
+# ---------------------------------------------------------------------------
 # Main breathing forward
 # ---------------------------------------------------------------------------
 
@@ -608,6 +651,14 @@ def factor_breathing_forward(model: Any, batch: FactorGraphBatch,
     # validated training graph (the JIT path never sets fg_resid_capture).
     resid_capture = getattr(model, "fg_resid_capture", None)
 
+    # DUAL-VIEW channeling messages (getattr-gated; absent on every other task -> the in-loop
+    # branch is a compile-time constant -> byte-identical). prev_P carries the previous
+    # breath's per-position beliefs into this breath's cross-view messages (BP 1-breath lag).
+    chan_E_col = getattr(model, "fg_channel_e_col", None)
+    use_channel_msg = bool(getattr(spec, "channel_messages", False)) and chan_E_col is not None
+    chan_E_val = model.fg_channel_e_val if use_channel_msg else None
+    prev_P = None
+
     for k in range(K):
         # (h) PER-BREATH LoRA (applied at the START of the breath, before the marker /
         # channel re-add). x = x + B_k @ (A_k @ x). A_k: (r, H), B_k: (H, r); per-breath
@@ -632,6 +683,14 @@ def factor_breathing_forward(model: Any, batch: FactorGraphBatch,
         # (compile-time branch, never traced -> byte-identical B0-only behavior).
         if reinject:
             x_in = x_in + channel_embed                           # re-add channel evidence
+
+        # (i) DUAL-VIEW channeling: inject explicit cross-view BP messages from the PREVIOUS
+        # breath's beliefs (prev_P). None at k=0 -> compile-time skip (messages start at
+        # breath 1). Deterministic message (E_col/E_val codebook features, no pointer
+        # attention) -> sidesteps the channeling-attention bootstrap wall.
+        if use_channel_msg and prev_P is not None:
+            x_in = x_in + _channeling_messages(
+                prev_P, cell_valid_col, chan_E_col, chan_E_val).cast(x.dtype)
 
         x_pre = x
         h = x_in
@@ -680,6 +739,10 @@ def factor_breathing_forward(model: Any, batch: FactorGraphBatch,
         cell_logits_k = x_ln @ value_codebook.T.cast(dtypes.float)  # (B, s_max, N)
         cell_logits_k = cell_logits_k + value_bias.cast(dtypes.float)
         value_logits_history.append(cell_logits_k)
+
+        # DUAL-VIEW: stash this breath's beliefs for next breath's channeling messages.
+        if use_channel_msg:
+            prev_P = cell_logits_k.softmax(-1)                    # (B, S, N)
 
         # Calibration: mean-pool over VALID cells only.
         pool_num = (x_ln * cell_valid_col.cast(dtypes.float)).sum(axis=1)  # (B, H)
@@ -772,6 +835,19 @@ def attach_factor_graph_params(model: Any, hidden: int,
         model.fg_cont_embed_w = Tensor(ce_w, dtype=dtypes.float).contiguous()
         model.fg_cont_embed_b = Tensor.zeros((hidden,), dtype=dtypes.float).contiguous()
 
+    # DUAL-VIEW channeling-message embeds (only when the spec requests them; absent
+    # otherwise -> getattr-gated, byte-identical for every other task). E_col indexes
+    # COLUMNS (1..N), E_val indexes VALUES (1..N); both (N, hidden). Small-randn init
+    # (0.02) so the messages start small + grow via task gradient — these are codebook-
+    # like linear features, which bootstrap from the task gradient alone (NOT pointer
+    # attention), which is exactly why the explicit message sidesteps the bootstrap wall.
+    if getattr(spec, "channel_messages", False):
+        rng_ch = np.random.RandomState(1411)
+        ecol = (rng_ch.randn(N, hidden) * 0.02).astype(np.float32)
+        eval_ = (rng_ch.randn(N, hidden) * 0.02).astype(np.float32)
+        model.fg_channel_e_col = Tensor(ecol, dtype=dtypes.float).contiguous()
+        model.fg_channel_e_val = Tensor(eval_, dtype=dtypes.float).contiguous()
+
 
 def factor_graph_parameters(model: Any) -> list[Tensor]:
     """Trainable factor-graph params (excludes backbone params).
@@ -796,6 +872,8 @@ def factor_graph_parameters(model: Any) -> list[Tensor]:
         params += [model.fg_cont_embed_w, model.fg_cont_embed_b]
     if getattr(model, "fg_lora_A", None) is not None:
         params += [model.fg_lora_A, model.fg_lora_B]
+    if getattr(model, "fg_channel_e_col", None) is not None:
+        params += [model.fg_channel_e_col, model.fg_channel_e_val]
     return params
 
 
