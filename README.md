@@ -479,9 +479,11 @@ brief (interface contracts, null hypotheses, brick ladder, kill criteria) is
 - **The interface is exactly three objects** — the two channels plus memory. ONE
   canonical **predicate registry** (semantics), ONE **Poincaré ball** (topology —
   parser-emitted differentiable masks; the §"spec-stage" relaxation caveat is the hard
-  risk), ONE **notebook** (temporal memory from the 512d waist: append-only ledger for
-  committed deductions, replace-scratch for hypotheses). Topology ≠ memory — the ball is
-  not the notebook.
+  risk), ONE **notebook** (temporal memory from the deducer's silhouette read — see
+  CLAUDE.md §8.6 for the waist-vs-tap split; the spec's 512d readout waist is unbuilt,
+  and all existing silhouette evidence comes from the final-breath readout-LN *tap*:
+  append-only ledger for committed deductions, replace-scratch for hypotheses).
+  Topology ≠ memory — the ball is not the notebook.
 - **A TCP-style handshake justifies the alternation.** SYN = parse delta; ACK = settled
   state via notebook; **NACK** = deducer contradiction routed backward so the next cycle
   re-parses the offending region (the factor-graph error-localization role reborn).
@@ -496,12 +498,20 @@ brief (interface contracts, null hypotheses, brick ladder, kill criteria) is
   emitting the unmatched residual as the NACK.
 - **Compression lives only at the waist** (layers run full-width), with a
   Matryoshka-style 512→128 nested-dim schedule — over training time (handicap) and/or
-  over cycles (coarse=narrow, fine=wide) — and a companion instrument: the ~0.85
-  valid/invalid common-mode separation measured as a function of prefix width.
+  over cycles (coarse=narrow, fine=wide) — and a companion instrument: the 0.85
+  valid/invalid common-mode separation (the *learned-nonlinear deconfounded* read;
+  PCA-linear floor 0.658 — CLAUDE.md §8.6) measured as a function of prefix width. A
+  dormant in-loop 256d bottleneck already exists in the deducer code (gate-closed,
+  never trained — parked for objective reasons, not lack of signal).
 - **Three load-bearing assumptions are unvalidated** (conditioning suffices; matched
-  filters segment; the NACK is learnable), gated by a brick ladder starting with
-  **Brick-0**: frozen latents reading an *existing* KenKen waist common mode must beat
-  the linear valid/invalid probe before anything is wired in.
+  filters segment; the *fully differentiable* NACK — though a v0 NACK assembles from
+  validated parts: calibration head as session health + symbolic per-factor VIOLATED
+  flags as parse-cycle input), gated by a brick ladder starting with **Brick-0**: frozen
+  latents reading an *existing* silhouette-tap common mode must beat both the 0.658
+  PCA-linear floor and fixed analytic matched filters before anything is wired in.
+  Brick-B (segmentation) is ungated from the alternation via composed-problem
+  supervision — run problems with known constituent factors through the trained engine
+  and recover them (linearity of superposition checked first, not assumed).
 
 ---
 

@@ -169,9 +169,15 @@ Detailed empirics live in `memory/` + git history.
 - **Dimensions:** h=1024, 16 heads × 64, FFN 4096, vocab 50304. KenKen: 49-cell grid (N_max=7),
   7-value codebook, K=16, BATCH=8. Coloring/circuit set `n_values`/`s_max` per task.
 - **Params:** ~32M trainable + ~52M token embeddings. AM K-graph limit: K=28 hangs; K=16 known-good.
-- **Checkpoints:** `.cache/fg_ckpts/` — coloring (`fg_coloring_k16`) + circuit (`fg_circuit_*`).
-  **No KenKen factor-graph deducer checkpoint exists yet** (`FG_TASK=kenken` on the existing
-  trainer would produce one — no new code).
+- **Checkpoints:** `.cache/fg_ckpts/` — coloring (`fg_coloring_k16`), circuit (`fg_circuit_*`),
+  **KenKen (`fg_kenken_k16_reg` — the HEALTHY one**: curriculum + v45 reg stack; test cell 0.80 /
+  puzzle 0.35; per-band g40 ≈0.65 → g10 ≈0.06), multi-task (`fg_multi_fair`,
+  coloring+circuit+kenken in one weight set). **Footguns (2026-07-04, both produced
+  plausible-looking WRONG evals):** `fg_kenken_k16` (no `_reg`) is the OVERFIT base (test cell
+  ~0.50); `fg_kk_2k*` are hidden=2048 experiments, incompatible with the default h=1024 build —
+  the loader silently keeps init on shape mismatch → chance-level output. Sudoku is NOT an FG
+  task: it lives in the v98 ancestor (`.cache/sudoku_ckpts/v98_prod_step4000.safetensors`,
+  K_MAX=20, `scripts/eval_v98_sudoku.py`; 24/band: easy 96/79 cell/puzzle, med 84/4, hard 80/0).
 - **Platform:** AMD 7900 XTX, tinygrad, AM driver (Secure Boot off + `vm.compact_unevictable_allowed=0`).
   Ubuntu 24.04. No ROCm/CUDA/PyTorch.
 
@@ -194,6 +200,12 @@ Detailed empirics live in `memory/` + git history.
 - **Soundness tests must cover the GENERAL regime, not just the deployed one.** Phase 2's
   all-different propagator was sound as deployed but unsound off the permutation regime, and the
   test only covered the deployed regime → false confidence. Test the general case to protect generality.
+- **Eval-only checkpoint loads must be COMPLETE — hard-error on missing/mismatched keys.** The
+  loader keeps init on shape mismatch (fine for warm-start); in eval it is a FALSE-RESULT
+  generator (2026-07-04: a silent 43-key fallback scored chance-level as if it were the model).
+- **Per-breath CE direction is a free eval sanity gate.** Flat at ln(n_values) = broken load;
+  RISING across breaths = overfit/wrong regime; DESCENDING = healthy ladder. It diagnosed both
+  bad-checkpoint evals above before any deeper digging.
 - **Substrate laws (tinygrad + AM driver):** no `dtypes.float32` literal inside the JIT step;
   `scores.clip(-1e4,1e4)`; where()-gated NaN guard (NOT multiply — NaN×0=NaN); single-kernel
   `isfinite`; knobs in the JIT cache key; assign-in-place fixed buffers for repeated JIT'd forwards
@@ -273,8 +285,10 @@ decodes the iteratively-built KV cache.
 - **ONE Poincaré ball** (TOPOLOGY channel): parser-emitted, differentiable mask
   generation, hierarchical by construction. One version. Carries no relation content.
   §7's blocked-relaxation caveat applies unchanged — this is the hard research risk.
-- **ONE notebook** (TEMPORAL MEMORY): fed from the 512d waist common mode (the
-  silhouette). Two write disciplines: an append-only **accumulate ledger** (committed
+- **ONE notebook** (TEMPORAL MEMORY): fed from the deducer's silhouette common mode —
+  see §8.6 for WHICH physical read-point ("the waist" vs "the silhouette TAP" are two
+  different objects; all existing evidence lives at the tap, and the tap — post-deduction
+  state — is likely the right notebook source). Two write disciplines: an append-only **accumulate ledger** (committed
   facts — deduced assignments, verified factors; remove at READ, never from state) and a
   **replace scratch** (provisional state, active hypotheses; overwritten each cycle).
   Deductions are monotone; hypotheses are not.
@@ -288,7 +302,8 @@ objects, not two. ("One Ball = the notebook waist" is a known drift error.)
 - **ACK** — deducer returns settled state via the notebook.
 - **NACK** — a deducer contradiction is routed *backward* as a localized signal; the next
   parse cycle **re-transmits** (re-parses) the offending region of the graph. This is the
-  factor-graph error-localization role reborn (the 97.8%-localization heritage).
+  factor-graph error-localization role reborn (the 97.8%-localization heritage). (v0 needs
+  no learned back-route: symbolic per-factor VIOLATED flags as parse-cycle input — §8.7 #3.)
 - Sequence number = breath index. **Alternation earns its cost only if the NACK path
   works** — without back-pressure, staged parse-then-solve is strictly simpler and should
   be the fallback.
@@ -329,16 +344,35 @@ component too tiny to compute the answer, so it cannot become a third gradient f
   keeping non-local chaos out of the invariant deducer trunk. **Notebook = TEMPORAL
   memory; global latents = SPATIAL broadcast.** Distinct jobs; neither subsumes the other.
 
-### 8.6 The waist schedule (Matryoshka, 512→128)
+### 8.6 The waist schedule (Matryoshka, 512→128) — and the waist-vs-tap split
 
-Compression lives ONLY at the waist — L0–L3 run full-width. One 512d waist,
-importance-ordered dims, a scheduled mask exposing a prefix (128 → 512). Two schedule
-axes, each a separate brick: over **training time** (deliberate handicap — train hard,
-race easy) and over **breath cycles** (coarse cycles narrow, fine cycles wide — the
-polarized-band idea applied to waist dims). No projection re-instantiation; evaluation at
-any prefix width is free. Companion instrument: the valid/invalid common-mode separation
-(the ~0.85 verifier-substitute read) **as a function of prefix width** — decides whether
-the Anna-Karenina signature is intrinsically low-dimensional.
+**"The waist" is TWO different objects — do not conflate them (2026-07-04):**
+- **THE WAIST (built, DORMANT):** an in-loop bottleneck in the deducer forward
+  (`factor_graph_engine.py`, `FG_WAIST`): 1024→**256**→1024 after **L1** (the v38 B-field
+  site), runs INSIDE every breath, convex gate init-closed (sigmoid(−8)≈0 = exact
+  pass-through; byte-identical off). **No checkpoint has ever trained it** — parked NOT
+  for lack of signal but because both adversarial reviewers caught the objective as a dud
+  before firing (classify = discriminative trap: the rep learns to REPORT validity,
+  argmax unchanged; attract = wrong geometry: pulls toward graph-identity in raw space).
+  See `memory/project_waist_build_objective_finding.md`. It shapes COMPUTATION — the
+  Matryoshka handicap site if revived.
+- **THE SILHOUETTE TAP (probe point — where ALL existing silhouette evidence lives):**
+  the final-breath readout-LN read (the dart captures). A passive tap on post-deduction
+  state — likely the right NOTEBOOK source (§8.2), NOT a bottleneck.
+
+The valid/invalid separation numbers, labeled correctly (coloring darts; instance-identity
+DECONFOUNDED unless noted): raw-uncentered **0.755** (CONFOUNDED — not the target);
+PCA-linear floor **0.658** (d=256); learned-nonlinear **0.85** (the Jun 22
+`learned_waist_gate` GREEN light).
+
+The SPEC (unbuilt): one 512d waist, importance-ordered dims, a scheduled mask exposing a
+prefix (128 → 512). Two schedule axes, each a separate brick: over **training time**
+(deliberate handicap — train hard, race easy) and over **breath cycles** (coarse cycles
+narrow, fine cycles wide — the polarized-band idea applied to waist dims). No projection
+re-instantiation; evaluation at any prefix width is free. Companion instrument: the 0.85
+verifier-substitute read **as a function of prefix width** — decides whether the
+Anna-Karenina signature is intrinsically low-dimensional. (The spec's 512d readout waist
+vs the built 256d mid-stack mechanism must be reconciled at build time.)
 
 ### 8.7 Unvalidated load-bearing assumptions (say them out loud)
 
@@ -346,20 +380,40 @@ the Anna-Karenina signature is intrinsically low-dimensional.
    switch bands from conditioning alone.
 2. **Matched-filter segmentation works** — learned latents factoring a superposed
    silhouette into step components is plausible, not demonstrated.
-3. **The NACK is learnable** — a differentiable route from deducer contradiction back
-   into parser input exists in no validated form.
+3. **The fully-DIFFERENTIABLE NACK is unbuilt — but a v0 NACK needs no new learning
+   machinery (downgraded 2026-07-04).** Most of a NACK already exists validated: the
+   calibration head is the ACK/session-health scalar (tracks difficulty honestly —
+   sudoku 0.76→0.42→0.29), and factor-level LOCALIZATION is free + symbolic (the search
+   tier's predicate returns VIOLATED per factor). v0 NACK = verifier flags violated
+   factors → encoded as input features to the next parse cycle; the parser learns to
+   RESPOND (ordinary supervised conditioning — the sanctioned division of labor: symbolic
+   asserts facts, neural adjusts behavior). The differentiable back-route remains
+   research, but the alternation's existence proof no longer depends on it.
 
 ### 8.8 The brick ladder (each earns the next; kill criteria BEFORE firing)
 
 - **Brick-0** (one session, ZERO new architecture): frozen Brick-1-style latents read an
-  *existing* trained KenKen waist common mode. Pass bar: beat the ~0.85 linear
-  valid/invalid probe. Fail → rework the matched-filter story before wiring anything.
+  *existing* trained silhouette-tap common mode (captures on disk are COLORING darts —
+  `.cache/dart_silhouettes_fg_coloring_k16.npz`; KenKen = re-run the capture harness on
+  `fg_kenken_k16_reg`). Pass bar: beat the 0.658 PCA-linear floor AND the stronger
+  analytic null — FIXED matched filters (projections onto single-factor prototype
+  subspaces); target the 0.85 learned-nonlinear read (§8.6 labels). Fail → rework the
+  matched-filter story before wiring anything.
 - **Brick-A**: the zero-LoRA parser ablation (upstream of everything; decides the
   parameter budget).
-- **Brick-B**: spectral segmentation on a real superposed silhouette (needs the
-  alternation running — sequenced after Brick-A for that reason).
-- **Brick-C**: NACK learnability (the differentiable back-route; the alternation's
-  existence proof).
+- **Brick-B** (UNGATED from the alternation, 2026-07-04 — the BirdNET move): spectral
+  segmentation does NOT need the alternation running. Synthesize supervision by running
+  COMPOSED problems (known constituent factors) through the trained engine — ground truth
+  is free because we control the generator. Protocol order: (1) capture UNPOOLED K×dim
+  trajectories (solo-factor + composed; the existing dart capture pools away both axes),
+  (2) LINEARITY CHECK — is a composed silhouette ≈ the sum of its constituents'? Do NOT
+  assume it (audio superposes linearly by physics; residual streams don't have to — if
+  grossly nonlinear, linear matched filters need rework), (3) train the segmenter to
+  recover constituents. Center per-instance or mix across instances, else the segmenter
+  cheats on graph identity (the 0.755-vs-0.658/0.85 confound).
+- **Brick-C** (REFRAMED smaller, 2026-07-04): v0 = does the parser USE symbolic NACK
+  features (§8.7 #3)? The differentiable back-route is the stretch goal, not the
+  alternation's existence proof.
 
 Budget lines: 7900 XTX / 24GB; K=16 known-good, K=28 hangs the AM JIT; fp32 THINK path.
 
@@ -390,5 +444,8 @@ predicate + bridge (search) and the membership + inlet (deducer) — never the c
 - `memory/project_factor_graph_two_channels.md` — topology vs semantics; registry ≠ Poincaré ball.
 - `memory/project_distributed_deduction_scales_parallel.md` — the parallel-deduction superpower.
 - `memory/project_radial_depth_thesis_refuted.md` — the refuted deep-prize.
+- `memory/project_waist_build_objective_finding.md` — the waist mechanism (built, dormant) +
+  why it was parked (objective dud, not signal absence); the 0.755/0.658/0.85 AUC labels.
+- `memory/project_kenken_generalization_fixed.md` — curriculum + v45 reg unlock; `fg_kenken_k16_reg`.
 - `memory/feedback_offer_engineering_critique.md` — push back before rubber-stamping.
 - `memory/reference_tinygrad_am_quirks.md` — substrate laws.
