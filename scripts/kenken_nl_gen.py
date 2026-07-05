@@ -359,6 +359,10 @@ def main(argv=None):
     ap.add_argument("--split-ref-prob", type=float, default=0.3)
     ap.add_argument("--distractor-prob", type=float, default=0.3)
     ap.add_argument("--no-shuffle", action="store_true")
+    ap.add_argument("--token-budget", type=int, default=0,
+                    help="reject samples whose Llama tokenization exceeds this many "
+                         "tokens (0 = off). The downstream T window is a JIT graph-shape "
+                         "parameter; over-budget samples become CORRUPTED gold there.")
     ap.add_argument("--out", default=".cache/kenken_nl.jsonl")
     args = ap.parse_args(argv)
 
@@ -367,6 +371,10 @@ def main(argv=None):
 
     recs = [json.loads(l) for l in open(args.src)][: args.n]
     rng = random.Random(args.seed)
+    tok = None
+    if args.token_budget:
+        from tokenizers import Tokenizer
+        tok = Tokenizer.from_file(".cache/llama-3.2-1b-weights/tokenizer.json")
     n_bad = 0
     with open(args.out, "w") as f:
         for i, rec in enumerate(recs):
@@ -374,6 +382,8 @@ def main(argv=None):
                                 args.split_ref_prob, args.distractor_prob,
                                 shuffle=not args.no_shuffle)
             errs = span_integrity(smp)
+            if tok is not None and len(tok.encode(smp["text"]).ids) > args.token_budget:
+                errs = errs + ["over token budget"]
             if errs or not roundtrip_solve_matches(smp, rec):
                 n_bad += 1
                 continue
