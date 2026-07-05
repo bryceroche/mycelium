@@ -285,6 +285,8 @@ decodes the iteratively-built KV cache.
 - **ONE Poincaré ball** (TOPOLOGY channel): parser-emitted, differentiable mask
   generation, hierarchical by construction. One version. Carries no relation content.
   §7's blocked-relaxation caveat applies unchanged — this is the hard research risk.
+  **v0 (2026-07-05): the parser emits membership DIRECTLY; the ball sits behind a flag
+  as a strictly-additive upgrade — alternation does not wait on unsolved geometry.**
 - **ONE notebook** (TEMPORAL MEMORY): fed from the deducer's silhouette common mode —
   see §8.6 for WHICH physical read-point ("the waist" vs "the silhouette TAP" are two
   different objects; all existing evidence lives at the tap, and the tap — post-deduction
@@ -448,6 +450,10 @@ predicate + bridge (search) and the membership + inlet (deducer) — never the c
    invariant weight set per trunk, constraint semantics fed as INPUT.
 
 **Key memory notes:**
+- `docs/phase1_skeleton_spec.md` — **the Phase-1 build plan (2026-07-05)**: frozen
+  Llama-3.2-1B L0–L3 + slot-based delta head + parse-side 512→128 waist tap;
+  KenKen-in-words templates with span↔factor gold; Brick-A/Brick-C-v0 measurables;
+  the corrected two-jaws framing; NO external API calls.
 - `docs/perceiver_poincare_design.md` — Brick-1 results (the latents breathe) + the
   Cathedral spec; ancestor of the §8.5 monitor role.
 - `docs/state_of_mycelium.md` — the brainstorm-ready stock-take (solid ground / spec /
