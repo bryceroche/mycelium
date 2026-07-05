@@ -244,8 +244,13 @@ The would-be Poincaré embedding (Tier 1) + hyperbolic mask generator (Tier 2):
 The frontier from the two threads below is now instantiated: **NL-specified problems**,
 where symbolic propagation is unavailable until the factor graph exists. The design (the
 "Alternator") interleaves parsing and solving so the graph is built *iteratively under
-deductive feedback*, not in one shot. **STATUS: SPEC-STAGE. Nothing in this section is
-built. The validated deducer is untouched and remains the regression anchor.**
+deductive feedback*, not in one shot. **STATUS (2026-07-06): the Phase-1 SKELETON IS
+BUILT** — steps 1–3 of `docs/phase1_skeleton_spec.md` (NL generator with
+round-trip-gated gold; residency; the delta head + parse-side Matryoshka waist at
+**factor-exact 0.748**, errors **100% symbolically detectable / zero silent**, blame
+delete-one = honest negative recall 0.034 → add-back sweep + neural tiers MANDATED).
+The ALTERNATION LOOP itself (notebook/NACK cycles, Bricks A/C) is NOT yet built. The
+validated deducer is untouched and remains the regression anchor.
 
 ### 8.0 The ground under this design (the 2026-06-26 settlement — still binding)
 

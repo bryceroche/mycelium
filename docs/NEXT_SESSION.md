@@ -1,66 +1,66 @@
-# NEXT SESSION — start here (handoff, 2026-06-26)
+# NEXT SESSION — start here (handoff, 2026-07-06)
 
 Cold-start entry point. Read this first; it points to everything else.
 
 ## Where we are (one paragraph)
-The **SOLVING jaw is done** — on clean factor graphs the symbolic search tier solves
-exactly + fast, and neural-guided clean-CSP search is **closed** (two-death-mode law:
-Sudoku too shallow, QCP value-symmetric; symbolic dominates). The two jaws are
-**CONSTRUCTION (NL→factor graph) + SOLVING (graph→answer)**; construction is the unbuilt
-frontier and the next chapter. The deducer's role narrowed to a **differentiable critic +
-format-definer + soft-graph backend** (its *unique, unclaimed* lane: differentiable solving
-through a **per-instance variable-topology** graph — SATNet/FourierCSP can't). And in prep we
-found **we already ran a Phase-1 attempt** (`.cache/gsm8k_factor_graphs_*.jsonl`): an
-LLM-parser → execution-verified arithmetic-DAGs, ~88% of GSM8K.
+The **Phase-1 skeleton is BUILT and measured** (2026-07-05/06, spec + build log:
+`docs/phase1_skeleton_spec.md`). Frozen Llama-3.2-1B L0–L3 + a 3.2M-param slot delta
+head + parse-side 512→128 Matryoshka waist parses KenKen-in-words at **factor-exact
+0.748** (op 0.944 / target 0.865 / member F1 0.891; 3,060-sample corpus). The
+**error taxonomy: 60/60 parse errors symbolically detectable, ZERO silent** (44 UNSAT
++ 16 malformed) — the NACK-recoverable ceiling is 100% at an operating point where
+one-shot solve is 0%. The **blame sweep honest negative**: delete-one-factor re-solve
+= precision 1.000 / recall 0.034 (single-error-regime tool; at ~5 wrong factors per
+parse symbolic localization alone fails) → the confidence-ordered **add-back sweep**
+and the deducer's **soft-solve suspicion field** are now REQUIRED by measurement, not
+taste. Matryoshka: width 128 ≈ 512 on every head — the parse signal is intrinsically
+low-dimensional. Earlier in the arc (07-04/05): the waist-vs-tap split landed in docs;
+the deduce-side silhouette look refuted silhouette-linearity (compose PROBLEMS) and
+found temporal structure lives in BELIEF space (late-JSD → wrong-cell AUC 0.687).
 
-## START HERE next session: the FRESH schema-design step
-This is the one judgment step we deliberately kept for ourselves (a wrong schema cascades).
-Three sharp, grounded questions (detail in `docs/phase1_prep_grounding.md`):
-1. **Schema: refine the prior arithmetic-DAG vs adopt MathWorld's container-relation graph?**
-   The DAG is execution-proven on GSM8K but *procedural* (forward eval); MathWorld's is
-   *declarative* (closer to a real CSP) and may generalize to algebra. Choose against the
-   **search regime**, not GSM8K.
-2. **Pin the band where solving stops being `eval()` and starts needing the engine** —
-   algebra / multiple unknowns / MATH-500. *That* is the real Phase-1 target. **GSM8K is
-   forward-arithmetic → a calculator suffices → the engine is overkill there.**
-3. **VALUE-PROBE FIRST** (the discipline that paid off all session): does
-   `parse → exact-solve` beat **LLM-direct** *anywhere* (e.g. removing the LLM's arithmetic
-   slips)? Runnable on the 186 verified test graphs. If not, the two-phase bet is in question
-   for ~free — surface it before building a parser.
+## START HERE next session (in order)
+1. **Memmap dataloader + the 40k membership push.** Trunk states for the curriculum
+   corpus won't fit RAM as npz (~84 GB fp16) — store fp16 raw `.npy` + `np.memmap`
+   batches (fp16 round-trip proven byte-safe for argmax downstream). Frozen trunk =
+   pay precompute once; do NOT switch to live forwards (couples head training to
+   trunk throughput). Target: membership exactness (present in 100% of failures).
+2. **Re-run the taxonomy at every accuracy checkpoint** (`--errors`): track
+   detectable-fraction AS A FUNCTION OF factor-exactness. The 100% has an expiration
+   condition — as membership improves, the error mix rotates toward target/op (the
+   coherent-misreading class) and a SILENT class can be BORN. Watch for it.
+3. **Brick-A** (the zero-LoRA null): notebook/NACK-conditioned re-parse through the
+   SAME frozen trunk. Then **Brick-C-v0** with the ADD-BACK sweep as localization
+   (skeleton = rows/cols/givens, SAT by construction; add cages confidence-first;
+   blame insertions that break SAT). Detection ≠ correction — Brick-C's bar is that
+   NACK-conditioned re-parse FIXES flagged regions vs the no-NACK control.
+4. **The Job-B milestone gate is due at Brick-A completion** (deferred WITH A DATE):
+   decisions-per-problem over MATH-500-style problems via the search tier — map the
+   calculator band vs the engine band. Local only, no API calls.
 
-The other gate to settle early (decides the architecture): **end-to-end** (differentiable
-deducer = centerpiece) **vs stage-wise** (parse → harden → symbolic). Hinges on supervision:
-gold structure exists only for *easy* problems; *hard* ones (GSM8K/MATH-500) are answer-only.
+## Assets in hand (don't rebuild)
+- `scripts/kenken_nl_gen.py` — NL generator; span-SET gold; round-trip = generation
+  gate (labeling bugs die at generation). 4,140/4,140 samples passed to date.
+- `scripts/phase1_delta_head.py` — precompute / train (RESUME=1) / eval (per-width) /
+  `--errors` taxonomy / `--blame` sweep / `--capture` waist silhouettes. Ckpt:
+  `.cache/phase1_delta_head.safetensors`. Corpora: `.cache/kenken_nl_{train,test}.jsonl`.
+- `scripts/phase1_residency_smoke.py` — 2.9 GB co-resident, ~21 GB headroom, trunk JIT
+  replay 0.34s/batch, no AM hazards (§5 budget line).
+- `scripts/capture_silhouette_trajectories.py` — capture-once schema; `--beliefs`
+  recompute (validated 1.0000 argmax match from fp16 residuals).
+- Deducer: `fg_kenken_k16_reg` (cell 0.80/puzzle 0.35) — the healthy KenKen ckpt;
+  `fg_kk_2k*` are hidden=2048 (incompatible); loader hard-errors on mismatch in eval.
 
-## Assets in hand (don't rebuild these)
-- **Solving jaw:** symbolic search tier (`csp_core` GAC + MRV/LCV + backtrack; `policy_valorder`
-  for neural ordering) + the breathing **deducer** (differentiable approximate backend). Domains
-  via one bridge each in `csp_domains.py` (coloring/SAT/KenKen/Sudoku/QCP), zero core edits.
-- **Prior Phase-1 data:** `.cache/gsm8k_factor_graphs_{train,val,200test_v2}.jsonl` (4432/899/186
-  execution-verified) + `gsm8k_phase1_classifier_*.jsonl` (per-variable parse annotations) +
-  `*_rejected` (the ~12% + reasons). The 4 ops map onto the existing `cage` predicate.
-- **The deducer ckpts / registry / inlet vocabulary** (the format-definer target).
-- Network works via `curl` (the `datasets` lib is NOT installed); a fresh GSM8K slice is in
-  `.cache/phase1/`.
+## Do NOT redo (measured this arc — don't re-litigate)
+- Silhouette-level linearity (REFUTED: ratio 0.72 — compose problems, not silhouettes).
+- Residual-space temporal banding (none; beliefs are the envelope, residual the carrier).
+- Delete-one blame at multi-error density (recall 0.034; single-error-regime tool).
+- Canonical-order slots (circular grid-sort; TEXT-ORDER slots + decoder canonicalization).
+- One-hop sentence counting (give the sentence-index embedding; don't ask attention to count).
 
-## The breadcrumb trail (read in this order)
-1. `docs/phase1_prep_grounding.md` — the prior schema + the forward-DAG reframe + worked example + the schema-step questions. **The most important read.**
-2. `docs/phase1_construction_brief.md` — the construction/solving frame, who-does-what, the design questions.
-3. `docs/session_2026_06_26_solving_closed_phase1_pivot.md` — why solving is done + the two-death-mode law.
-4. Memory: `project_phase1_prior_attempt_found`, `project_phase1_construction_scouting`,
-   `project_neural_guided_search_clean_csp_closed`. CLAUDE.md §8 has the current direction.
+## The honest open risks (keep in the crosshairs)
+- The 100%-detectable EXPIRATION CONDITION (above) — re-measure, don't assume.
+- Detection ≠ correction: the retransmission loop is unproven (Brick-C's whole job).
+- 1B-class comprehension under paraphrase diversity — template knobs are the instrument.
+- Job B (the engine band on real math) remains existential and dated, not dropped.
 
-## Do NOT redo (closed this session — don't re-litigate)
-- Neural-guided search beating symbolic on **clean CSPs** — closed (Sudoku/QCP/coloring/SAT).
-- **Width capacity** as a ceiling lever — speed not ceiling.
-- **Dual-view / multi-channel** on small grids — speed not ceiling (value symmetry / no new info).
-  *(Multigrid/multichannel may revive ONLY in the large/deep-graph reach-limited regime — gated,
-  with the reach-vs-capacity probe to confirm.)*
-
-## The honest open risk (keep it in the crosshairs)
-The two-phase value proposition is pinched: clean structure exists where problems are *too easy*
-(LLM-direct wins), and the factor-graph framing is *strained* where it'd matter (MATH-500 ≠ finite
-CSP). The existential question is **"is there a problem band where the engine beats LLM-direct?"**
-The value-probe (step 3 above) confronts it directly. Don't build around it — test it.
-
-— end handoff. 🐟→🏛️
+— end handoff. The parser chapter is a clean two-day arc; everything committed + pushed.
