@@ -9,7 +9,10 @@ halves are BUILT + VALIDATED: a general **DEDUCER** (the v98-lineage breathing
 transformer, now domain-general) and a general symbolic **SEARCH tier** ("the deducer
 proposes, complete search disposes"). **Generality is the holy grail — resist all
 domain-specific code in the engine/core.** A would-be geometric front-end (the Poincaré
-tiers) remains **spec-stage**. Read §0 first. Conceptual writeup: `README.md`; search-tier
+tiers) remains **spec-stage**, as does the current forward design — the two-phase
+**ALTERNATOR** (2026-07-04: iterative NL→factor-graph parsing interleaved with deduction,
+a TCP-style handshake, and a perceiver reborn as session monitor / spectral segmenter,
+§8). Read §0 first. Conceptual writeup: `README.md`; search-tier
 design: `docs/general_factor_graph_search.md`; pre-v98 vision/empirics: `docs/archive/`.
 
 ---
@@ -49,8 +52,10 @@ arithmetic as VERIFICATION, never an op-type mask channel).
 **Discipline (the over-claim guard — getting this wrong is the main failure mode):**
 - **Built/validated = the DEDUCER + the SEARCH TIER.** The Poincaré embedding + hyperbolic
   mask generator are **spec-stage** — NEVER state or imply they are built/working.
-- **The engine is the v98-lineage deducer, NOT a perceiver.** The PERCEIVER IS RETIRED (5×
-  refuted v118–v121; v300 failed flat at chance).
+- **The engine is the v98-lineage deducer, NOT a perceiver.** Perceiver-as-CORE IS RETIRED
+  (5× refuted v118–v121; v300 failed flat at chance). Brick-1 (2026-06-16) later validated
+  a small latent bank breathing against Poincaré anchors; the ONLY sanctioned perceiver
+  role is the spec-stage monitor/segmenter of §8.5 — never the core engine.
 - **On clean verifiable CSPs, SYMBOLIC search dominates** (free, smaller trees); learned
   *probabilistic* propagation was net-negative. The deducer's demonstrated value is
   **generality + parallel deduction**, NOT search value/ordering (§4).
@@ -215,47 +220,153 @@ The would-be Poincaré embedding (Tier 1) + hyperbolic mask generator (Tier 2):
 
 ---
 
-## 8. Current direction (2026-06-26) — the SOLVING jaw is done; build CONSTRUCTION (Phase 1)
+## 8. Current direction (2026-07-04) — the ALTERNATOR (spec-stage)
 
-**The two jaws = (1) CONSTRUCTION (NL → factor graph) + (2) SOLVING (factor graph → answer)** —
-the project's two-phase architecture. As of this session the asymmetry is settled:
+The frontier from the two threads below is now instantiated: **NL-specified problems**,
+where symbolic propagation is unavailable until the factor graph exists. The design (the
+"Alternator") interleaves parsing and solving so the graph is built *iteratively under
+deductive feedback*, not in one shot. **STATUS: SPEC-STAGE. Nothing in this section is
+built. The validated deducer is untouched and remains the regression anchor.**
 
-- **SOLVING (Jaw 2): DONE + VALIDATED.** On clean, hard-constraint factor graphs the symbolic
-  search tier solves exactly + fast (Sudoku 5000/5000 at *median 0 decisions*); the breathing
-  deducer is the general/amortized/*differentiable* backend. **Neural-guided clean-CSP search is
-  CLOSED** — the two-death-mode law: neural value-ordering needs DEEP tree AND value-sensitivity
-  AND no symbolic incumbent *simultaneously*, and no clean exact-propagatable CSP has all three
-  (Sudoku shallow; QCP value-symmetric; SAT/TSP/coloring have CDCL/LKH/DSATUR). The deducer does
-  NOT beat symbolic at solving — proven across 5 negatives. Stop hunting clean-CSP solving wins.
-- **CONSTRUCTION (Jaw 1): NOT BUILT — the frontier.** NL → factor graph is where "symbolic isn't
-  enough" is *genuinely* true (parsing language into variables + factors is unsolved). See
-  `docs/phase1_construction_brief.md`.
+### 8.1 The loop
 
-**The deducer's role (narrowed but coherent):** a **differentiable, general approximate-inference
-backend** — (a) *critic* (solve the proposed graph → end-to-end training signal; can't backprop
-through symbolic), (b) *format-definer* (its membership + inlet vocabulary IS the constructor's
-output target), (c) *soft-graph solver* (for the uncertain graphs NL parsing produces). It is NOT
-a better solver, and NOT the NL parser (the bare breathing transformer hit a reading-comprehension
-wall on GSM8K — the constructor needs an LLM-grade comprehension base, plausibly + the **cathedral**
-structure [notebook/waist/coarse-to-fine] rehomed from solving to incremental construction — hypothesis).
+Six breath cycles; each cycle = Phase 1 (PARSER) then Phase 2 (DEDUCER); a 7th breath
+decodes the iteratively-built KV cache.
 
-**THE first design question for Phase 1:** is the NL→answer signal trained END-TO-END (then the
-differentiable deducer is the centerpiece) or STAGE-WISE (parse → harden → symbolic; deducer is a
-soft-only backend)? That gate decides the architecture.
+- **Phase 1 — PARSER (NL → factor-graph delta).** Llama-base 2048d L0–L3,
+  weight-invariant across cycles. Consumes tokens + notebook state + NACK; emits a graph
+  *delta* expressed in the two channels (registry + ball). Never commits values.
+- **Phase 2 — DEDUCER.** The validated v98-lineage Pythia 1024d L0–L3 engine, exactly as
+  in §1–§2. Consumes only (variables + factors + membership + inlet). **Never sees NL.**
+- **TWO TRUNKS, NOT ONE.** Each trunk is weight-stable across all cycles; they are NOT a
+  single shared weight set. (A "one shared trunk" phrasing is a known drift error — do
+  not reproduce it.)
+- **Progressive resizing across cycles:** coarse (global scaffold, rough connectivity) →
+  fine (exact predicates, arithmetic inlet detail). All per-cycle variation is
+  input-conditioned (§8.4) — the trunks run the identical program at different resolution,
+  which is the anti-gradient-tug-of-war design.
 
-**Resist ALL domain-specific code in the engine/core.** New domains enter through the predicate +
-bridge (search) and the membership + inlet (deducer) — never the core. The oracle-upper-bound
-kill-gate (one-hot policy via `csp_core.policy_valorder`, pure CPU) cheaply settles "can any neural
-ordering help here?" before building a deducer — reuse it.
+### 8.2 The interface — exactly THREE objects (two channels + memory)
+
+- **ONE canonical predicate registry** (SEMANTICS channel): the relation menu + learned
+  centroids. One version, fixed meaning across all cycles. (Six per-cycle registry
+  versions were considered and rejected: the interface language must not change meaning
+  mid-conversation, or the notebook accumulates state written in six dialects.)
+- **ONE Poincaré ball** (TOPOLOGY channel): parser-emitted, differentiable mask
+  generation, hierarchical by construction. One version. Carries no relation content.
+  §7's blocked-relaxation caveat applies unchanged — this is the hard research risk.
+- **ONE notebook** (TEMPORAL MEMORY): fed from the 512d waist common mode (the
+  silhouette). Two write disciplines: an append-only **accumulate ledger** (committed
+  facts — deduced assignments, verified factors; remove at READ, never from state) and a
+  **replace scratch** (provisional state, active hypotheses; overwritten each cycle).
+  Deductions are monotone; hypotheses are not.
+
+**Do NOT conflate the ball with the notebook.** Topology ≠ memory. Three interface
+objects, not two. ("One Ball = the notebook waist" is a known drift error.)
+
+### 8.3 The TCP handshake (what justifies the alternation)
+
+- **SYN** — parser emits the cycle's graph delta.
+- **ACK** — deducer returns settled state via the notebook.
+- **NACK** — a deducer contradiction is routed *backward* as a localized signal; the next
+  parse cycle **re-transmits** (re-parses) the offending region of the graph. This is the
+  factor-graph error-localization role reborn (the 97.8%-localization heritage).
+- Sequence number = breath index. **Alternation earns its cost only if the NACK path
+  works** — without back-pressure, staged parse-then-solve is strictly simpler and should
+  be the fallback.
+
+### 8.4 The zero-LoRA null hypothesis
+
+**No LoRAs anywhere is the null.** Same weights, different conditioning (notebook + NACK)
+→ different per-cycle behavior (portable principle: explicit self-feedback is the escape
+valve). The parser's input is genuinely different every cycle — blank notebook + raw
+tokens at cycle 1; rich ledger + scratch + localized NACK at cycle 3 — so weight mutation
+may be unnecessary. Fallback ladder if the null fails:
+
+1. Small-rank (≤16) LoRA on the **PARSER only**, absorbing band differences.
+2. If the deducer ever needs per-cycle flavor: LoRA on **waist/readout projections
+   only** — the four deducer layers stay naked-shared, always (v108 lesson: breath
+   variation works through gating and masks, never trunk weights).
+
+### 8.5 The perceiver, reborn NARROW (monitor, not engine)
+
+Perceiver-as-CORE remains retired (5× refuted; the §6 attention-bootstrap law explains
+why). Brick-1 (2026-06-16, `docs/perceiver_poincare_design.md` §9) validated that a small
+latent bank *breathes* against Poincaré anchors (membership 0.785/0.883 vs 0.008
+baseline; select_norm ≫ uniform floor). The revived role is deliberately small — a
+component too tiny to compute the answer, so it cannot become a third gradient faction:
+
+- **Session monitor** (the TCP connection-state machine): persistent latents
+  cross-attending the parse output and the waist; tracks SYN/ACK/NACK, measures session
+  convergence, decides retransmission. Neither phase can be this observer — each sees
+  only its own side.
+- **Spectral segmenter**: the waist silhouette superposes ~4–5 step signatures; the
+  latents act as **learned matched filters** — a latent's attention over the silhouette
+  IS the segmentation; its cosine to registry centroids IS the classification; the
+  unmatched residual IS the NACK payload. This replaces the speculative analytic
+  machinery (impulse "ringing", band masking, Laplace/Fourier decomposition) with one
+  learned component that has a validated ancestor.
+- **Hosts the global-broadcast latents** (the spatial channel — v300's latents-28–31
+  role): within-pass broadcast between distant graph regions + toxic-noise lightning rod,
+  keeping non-local chaos out of the invariant deducer trunk. **Notebook = TEMPORAL
+  memory; global latents = SPATIAL broadcast.** Distinct jobs; neither subsumes the other.
+
+### 8.6 The waist schedule (Matryoshka, 512→128)
+
+Compression lives ONLY at the waist — L0–L3 run full-width. One 512d waist,
+importance-ordered dims, a scheduled mask exposing a prefix (128 → 512). Two schedule
+axes, each a separate brick: over **training time** (deliberate handicap — train hard,
+race easy) and over **breath cycles** (coarse cycles narrow, fine cycles wide — the
+polarized-band idea applied to waist dims). No projection re-instantiation; evaluation at
+any prefix width is free. Companion instrument: the valid/invalid common-mode separation
+(the ~0.85 verifier-substitute read) **as a function of prefix width** — decides whether
+the Anna-Karenina signature is intrinsically low-dimensional.
+
+### 8.7 Unvalidated load-bearing assumptions (say them out loud)
+
+1. **Input-conditioning suffices** — the zero-LoRA null may fail; the parser may not
+   switch bands from conditioning alone.
+2. **Matched-filter segmentation works** — learned latents factoring a superposed
+   silhouette into step components is plausible, not demonstrated.
+3. **The NACK is learnable** — a differentiable route from deducer contradiction back
+   into parser input exists in no validated form.
+
+### 8.8 The brick ladder (each earns the next; kill criteria BEFORE firing)
+
+- **Brick-0** (one session, ZERO new architecture): frozen Brick-1-style latents read an
+  *existing* trained KenKen waist common mode. Pass bar: beat the ~0.85 linear
+  valid/invalid probe. Fail → rework the matched-filter story before wiring anything.
+- **Brick-A**: the zero-LoRA parser ablation (upstream of everything; decides the
+  parameter budget).
+- **Brick-B**: spectral segmentation on a real superposed silhouette (needs the
+  alternation running — sequenced after Brick-A for that reason).
+- **Brick-C**: NACK learnability (the differentiable back-route; the alternation's
+  existence proof).
+
+Budget lines: 7900 XTX / 24GB; K=16 known-good, K=28 hangs the AM JIT; fp32 THINK path.
+
+**Resist ALL domain-specific code in the engine/core.** New domains enter through the
+predicate + bridge (search) and the membership + inlet (deducer) — never the core.
+
+### 8.9 The prior framing (2026-06-20) this instantiates
+
+1. **The frontier — a problem where symbolic propagation isn't enough:** soft /
+   probabilistic / learned / **NL-specified** constraints, keeping the factor-graph
+   abstraction. The Alternator is this thread's chosen instantiation.
+2. **Minimize retraining when switching tasks (weight-side generality):** the zero-LoRA
+   null + one-registry/one-ball decision is this thread's strongest form — a single
+   invariant weight set per trunk, constraint semantics fed as INPUT.
 
 **Key memory notes:**
-- `memory/project_neural_guided_search_clean_csp_closed.md` — the two-death-mode law; clean-CSP solving closed.
-- `memory/project_sudoku_search_tier_solve.md` — search tier 100% on Sudoku (candidate-sets + recursive branch).
-- `memory/project_dual_view_channeling_result.md` — dual-view = speed lever, same ceiling (4th sighting).
-- `memory/project_multitask_generality_works.md` — the weight-side generality grail (won at parity).
+- `docs/perceiver_poincare_design.md` — Brick-1 results (the latents breathe) + the
+  Cathedral spec; ancestor of the §8.5 monitor role.
+- `docs/state_of_mycelium.md` — the brainstorm-ready stock-take (solid ground / spec /
+  refuted / open questions).
 - `memory/project_phase2_kenken_generality_proven.md` — generality proven on KenKen, zero core edits.
+- `memory/project_phase0_general_search_core.md` — the predicate-driven core + the SAT-via-bridge proof.
 - `memory/project_pathb_search_coloring_result_jun19.md` — symbolic dominates clean CSPs (the honest negative).
-- `memory/feedback_deduction_not_induction.md` — the engine propagates a given graph, doesn't induce rules.
+- `memory/project_factor_graph_two_channels.md` — topology vs semantics; registry ≠ Poincaré ball.
+- `memory/project_distributed_deduction_scales_parallel.md` — the parallel-deduction superpower.
+- `memory/project_radial_depth_thesis_refuted.md` — the refuted deep-prize.
 - `memory/feedback_offer_engineering_critique.md` — push back before rubber-stamping.
 - `memory/reference_tinygrad_am_quirks.md` — substrate laws.
-- `docs/phase1_construction_brief.md` + `docs/session_2026_06_26_solving_closed_phase1_pivot.md` — the pivot + next chapter.

@@ -16,7 +16,8 @@ Boolean circuits, and KenKen.
 circuits · KenKen CSP)
 
 > **The authoritative current brief is [`CLAUDE.md`](CLAUDE.md)** (direction,
-> specs, editing rules). The two active design notes are the general symbolic
+> specs, editing rules) — including the current spec-stage forward design, the
+> two-phase **Alternator** (CLAUDE.md §8; summarized below). The two active design notes are the general symbolic
 > search tier
 > [`docs/general_factor_graph_search.md`](docs/general_factor_graph_search.md)
 > (Phases 0+2 built and validated) and — spec-stage only — the hyperbolic mask
@@ -441,6 +442,69 @@ userspace driver (working since 2026-05-11 — Secure Boot off +
 
 ---
 
+## The two-phase Alternator (spec-stage design — 2026-07-04)
+
+The forward frontier named in the roadmap — problems where symbolic propagation isn't
+enough because the constraints are **NL-specified** — now has a concrete design. The
+Alternator interleaves parsing and solving so the factor graph is built *iteratively
+under deductive feedback*. **Everything in this section is SPEC-STAGE — designed, not
+built. The validated deducer is untouched and remains the regression anchor.** The full
+brief (interface contracts, null hypotheses, brick ladder, kill criteria) is
+[`CLAUDE.md`](CLAUDE.md) §8.
+
+```
+     tokens ──┐
+              ▼
+┌───────────────────────────┐  SYN: graph delta (registry + ball)
+│ PHASE 1 — PARSER          │ ────────────────────────────────┐
+│ Llama-base 2048d L0–L3    │                                 ▼
+│ weight-invariant          │            ┌─────────────────────────────────┐
+└─────────────▲─────────────┘            │ PHASE 2 — DEDUCER               │
+              │                          │ Pythia 1024d L0–L3 — the        │
+   NACK: re-parse request                │ VALIDATED v98-lineage engine,   │
+   + notebook state                      │ untouched; never sees NL        │
+              │                          └───────────────┬─────────────────┘
+┌─────────────┴─────────────┐   waist common mode        │  ACK: settled state
+│ PERCEIVER (monitor —      │◄───────────────────────────┘
+│ session state · spectral  │──► NOTEBOOK (accumulate ledger + replace scratch)
+│ segmenter · global lats)  │
+└───────────────────────────┘        × 6 cycles · the 7th breath decodes the KV cache
+```
+
+- **Two trunks, both weight-invariant across all six cycles** (not one shared weight
+  set). Per-cycle variation is *input-conditioned* — notebook state + NACK — which is the
+  anti-gradient-tug-of-war design and the **zero-LoRA null hypothesis**. Progressive
+  resizing runs coarse→fine across cycles: early cycles parse global scaffold, late
+  cycles refine exact predicates.
+- **The interface is exactly three objects** — the two channels plus memory. ONE
+  canonical **predicate registry** (semantics), ONE **Poincaré ball** (topology —
+  parser-emitted differentiable masks; the §"spec-stage" relaxation caveat is the hard
+  risk), ONE **notebook** (temporal memory from the 512d waist: append-only ledger for
+  committed deductions, replace-scratch for hypotheses). Topology ≠ memory — the ball is
+  not the notebook.
+- **A TCP-style handshake justifies the alternation.** SYN = parse delta; ACK = settled
+  state via notebook; **NACK** = deducer contradiction routed backward so the next cycle
+  re-parses the offending region (the factor-graph error-localization role reborn).
+  Alternation earns its cost only if the NACK path works.
+- **The perceiver returns, narrow.** Perceiver-as-core stays retired; Brick-1
+  ([`docs/perceiver_poincare_design.md`](docs/perceiver_poincare_design.md) §9) showed a
+  small latent bank breathes against Poincaré anchors. Its new job is monitor, not
+  engine: track the handshake, host the global-broadcast latents (spatial channel,
+  distinct from the notebook's temporal channel), and act as a **learned spectral
+  segmenter** — latents as matched filters untangling the ~4–5 superposed step
+  signatures in the waist silhouette, classifying each against registry centroids,
+  emitting the unmatched residual as the NACK.
+- **Compression lives only at the waist** (layers run full-width), with a
+  Matryoshka-style 512→128 nested-dim schedule — over training time (handicap) and/or
+  over cycles (coarse=narrow, fine=wide) — and a companion instrument: the ~0.85
+  valid/invalid common-mode separation measured as a function of prefix width.
+- **Three load-bearing assumptions are unvalidated** (conditioning suffices; matched
+  filters segment; the NACK is learnable), gated by a brick ladder starting with
+  **Brick-0**: frozen latents reading an *existing* KenKen waist common mode must beat
+  the linear valid/invalid probe before anything is wired in.
+
+---
+
 ## What is spec-stage (NOT built — do not imply otherwise)
 
 - **The Poincaré (hyperbolic) embedding + the hyperbolic mask generator** (the
@@ -455,6 +519,10 @@ userspace driver (working since 2026-05-11 — Secure Boot off +
   rho ≈ 0.13). The engine is depth-PARALLEL, not depth-sequential, so it does
   not do depth-ordered radial traversal. This is not the expected payoff and
   should not be framed as one.
+- **The two-phase Alternator** (the section above + CLAUDE.md §8) — the six-cycle
+  parse/solve loop, the TCP handshake, the perceiver-as-monitor, the Matryoshka waist
+  schedule. **Spec only**; three load-bearing assumptions unvalidated; Brick-0 not yet
+  run.
 - **The neural-ordering search arm** (the deducer guiding which branch to try
   first) is spec-stage; on clean CSPs symbolic search already dominates, so this
   arm is reserved for the soft/learned-constraint frontier where symbolic
@@ -486,12 +554,15 @@ userspace driver (working since 2026-05-11 — Secure Boot off +
 
 **Left behind:**
 
-- **The perceiver — RETIRED.** Refuted 5× as an add-on (v118–v121), and the
+- **The perceiver as ENGINE — RETIRED.** Refuted 5× as an add-on (v118–v121), and the
   v300 perceiver-CORE failed flat at chance. The earlier Mycelium blueprint
   used a perceiver as the executor; we **replaced it with the validated v98
   executor**. The engine is the v98-lineage breathing deducer, **not** a
   perceiver. See `memory/project_v121_perceiver_5x_refuted.md` and
-  `memory/project_v118_ablation_perceiver_diagnosis.md`.
+  `memory/project_v118_ablation_perceiver_diagnosis.md`. (Brick-1 later
+  validated a small latent bank breathing against Poincaré anchors; the only
+  sanctioned revival is the narrow spec-stage **monitor/segmenter** role in the
+  Alternator section — never the core.)
 - Llama 1B, LoRA atoms / continuous scales, straight-through estimators, soft
   token diversity (all v1–v3).
 - Controller, Notebook, LookupTable (v1–v95 — module code preserved for import
@@ -589,7 +660,9 @@ to push, not its search value. The target is a problem class where **symbolic
 propagation isn't enough** — soft / probabilistic / learned / NL-specified
 constraints — while keeping the engine **strictly general** (no domain-specific
 core code) and **minimizing the weight retraining** needed to switch tasks.
-This is forward research, not a banked result.
+This is forward research, not a banked result. **Its chosen instantiation is the
+two-phase Alternator (spec-stage — the section above; CLAUDE.md §8), entered via
+the brick ladder starting at Brick-0.**
 
 **Still open (not closed).** Bank a *powered* Property-2 (adaptive-depth)
 verdict from a K=16 curriculum retrain, against the conservative bar above
