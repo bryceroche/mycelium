@@ -614,15 +614,18 @@ def do_error_taxonomy(width: int) -> None:
 
     cats = {"CORRECT": 0, "DETECT_malformed": 0, "DETECT_unsat": 0,
             "DETECT_multi": 0, "SILENT": 0}
-    FIELDS = ("presence", "type", "op", "target", "member")
+    FIELDS = ("phantom", "dropped", "type", "op", "target", "member")
     by_field: dict = {c: {f: 0 for f in FIELDS} for c in cats}
 
     def field_errors(o, bi, i) -> list:
         errs = set()
         for j in range(L_SLOTS):
             pg = gold["presence"][i, j] > 0.5
-            if pg != (o["pres"][bi, j] > 0.0):
-                errs.add("presence")
+            pp = o["pres"][bi, j] > 0.0
+            if pp and not pg:
+                errs.add("phantom")     # emitted a factor gold doesn't have
+            elif pg and not pp:
+                errs.add("dropped")     # failed to emit a gold factor
             if not pg:
                 continue
             if int(o["type"][bi, j].argmax()) != gold["type"][i, j]:

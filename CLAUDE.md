@@ -209,6 +209,11 @@ Detailed empirics live in `memory/` + git history.
 - **Eval-only checkpoint loads must be COMPLETE — hard-error on missing/mismatched keys.** The
   loader keeps init on shape mismatch (fine for warm-start); in eval it is a FALSE-RESULT
   generator (2026-07-04: a silent 43-key fallback scored chance-level as if it were the model).
+- **No silent fallbacks anywhere in the chain** (generalized 2026-07-06 — the same bug class
+  hit twice: the loader's keep-init AND a pipeline grep masking a stage failure from `set -e`).
+  Permissive defaults that swallow a failure signal are false-result generators: hard-error at
+  boundaries (`set -eo pipefail` in chains; truncation/budget gates at data boundaries — the
+  token-budget guard caught a 1-in-39,996 corrupted-gold case a smoke test can never see).
 - **Per-breath CE direction is a free eval sanity gate.** Flat at ln(n_values) = broken load;
   RISING across breaths = overfit/wrong regime; DESCENDING = healthy ladder. It diagnosed both
   bad-checkpoint evals above before any deeper digging.
