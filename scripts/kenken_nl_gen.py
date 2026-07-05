@@ -104,9 +104,13 @@ DISTRACTORS = [
 ]
 
 
-def _cells_nl(members_rc, rng) -> str:
-    """Render a 0-indexed cell list as 1-indexed NL ('(1,1), (1,2) and (2,1)')."""
-    form = rng.choice(CELL_FORMS)
+def _cells_nl(members_rc, rng, n: int = 0) -> str:
+    """Render a 0-indexed cell list as 1-indexed NL ('(1,1), (1,2) and (2,1)').
+
+    Big-N puzzles (n>=6) use ONLY the compact '(r,c)' form: T=512 is a JIT
+    graph-shape parameter every downstream script inherits, so the token budget is
+    protected by terser phrasing, not a bigger window (decision 2026-07-06)."""
+    form = CELL_FORMS[0] if n >= 6 else rng.choice(CELL_FORMS)
     parts = [form(r + 1, c + 1) for (r, c) in members_rc]
     if len(parts) == 1:
         return parts[0]
@@ -141,18 +145,21 @@ def render_record(rec: dict, rng: random.Random, split_ref_prob: float = 0.0,
     for ci, (cage, clue) in enumerate(zip(cages, clues)):
         op, target = clue[0], int(clue[1])
         members_rc = [(int(r), int(c)) for (r, c) in cage]
+        terse = n >= 6  # big-N: shortest forms only (the T=512 token-budget decision)
         if op == "given":
             (r, c) = members_rc[0]
-            s = rng.choice(GIVEN_FORMS).format(r=r + 1, c=c + 1, v=target)
-            units.append((s, [ci]))
+            gform = "Cell ({r},{c}) is {v}." if terse else rng.choice(GIVEN_FORMS)
+            units.append((gform.format(r=r + 1, c=c + 1, v=target), [ci]))
         elif ci == split_ci:
-            intro = rng.choice(SPLIT_INTRO).format(cells=_cells_nl(members_rc, rng))
+            intro = rng.choice(SPLIT_INTRO).format(cells=_cells_nl(members_rc, rng, n))
             phrase = rng.choice(OP_PHRASES[op]).format(t=target)
             constr = rng.choice(SPLIT_CONSTR).format(phrase=phrase)
             split_units = [(intro, [ci]), (constr, [ci])]
         else:
-            lead = rng.choice(CAGE_LEADS).format(cells=_cells_nl(members_rc, rng))
-            phrase = rng.choice(OP_PHRASES[op]).format(t=target)
+            lead = ("Cells {cells} " if terse
+                    else rng.choice(CAGE_LEADS)).format(cells=_cells_nl(members_rc, rng, n))
+            phrase = (OP_PHRASES[op][0] if terse
+                      else rng.choice(OP_PHRASES[op])).format(t=target)
             units.append((lead + phrase + ".", [ci]))
 
     distract = []
