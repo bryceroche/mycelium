@@ -202,3 +202,36 @@ token-position × waist-dim, the moment the skeleton trains.
   scale data further / targeted membership curriculum; then Brick-A (notebook/NACK
   conditioning, zero-LoRA null), Brick-C-v0 (retransmission vs the no-NACK control),
   parse-side BirdNet re-run on the captured waist silhouettes.
+- **THE EXPIRATION CONDITION on the 100% (write it before it bites):** zero-silent is
+  partly a property of the current ERROR MIX, not only of KenKen's density — membership
+  errors (100% of today's failures) are the structurally LOUD kind (a mispointed cage
+  fights the row/col lattice). As membership approaches exactness, residual failures
+  rotate toward target-digit/op errors — the plausible coherent-misreading class — and
+  a SILENT class can be BORN exactly as the parser improves. Discipline: the taxonomy
+  is cheap; RE-RUN AT EVERY ACCURACY CHECKPOINT and track detectable-fraction AS A
+  FUNCTION OF factor-exactness. Pinned at 100% while the mix rotates = a much stronger
+  claim; a silent class at 0.9+ = learned while the tier-0 confidence head can still
+  be designed to catch it.
+- **Brick-C localization v0 = the DELETE-ONE-FACTOR BLAME SWEEP:** remove each parsed
+  factor in turn, re-solve; SAT-on-removal fingers that factor as unsat-core member.
+  O(F) search-tier calls at median-zero decisions ≈ less than one deducer breath; no
+  new machinery (the taxonomy's bridge). Not minimal-core (overlapping errors smear
+  blame — measure it). The tier-0 confidence head later slots in as the sweep ORDER
+  (least-confident first): propose/dispose fractally repeated INSIDE the NACK.
+- **The guard: DETECTION IS NOT CORRECTION.** 100% is a detection ceiling; Brick-C
+  must demonstrate that a NACK-conditioned re-parse FIXES the flagged region rather
+  than re-emitting the same wrong membership. Encouraging structure (retransmission
+  is an easier problem: ledger pins the verified, attention has fewer places to go)
+  is exactly the kind of claim this project measures rather than assumes.
+- **BLAME SWEEP v0 MEASURED (2026-07-06) — an honest negative with a design lesson:**
+  delete-one-factor re-solve on the 44 UNSAT parses: precision **1.000** (when it
+  fires, it is right), recall **0.034** (it fired on 2/44 — at factor-exact 0.75 a
+  parse carries ~5 wrong factors and single deletion cannot restore SAT). So
+  delete-one is the SINGLE-ERROR-REGIME tool: its usefulness co-improves with parser
+  exactness. At realistic multi-error density, SYMBOLIC localization alone fails —
+  which MOTIVATES (by measurement, not taste) the neural NACK tiers: (a) the
+  add-back sweep (start rows/cols/givens, add cages in tier-0-confidence order,
+  blame additions that turn UNSAT), and (b) the deducer's soft-solve suspicion field
+  (per-region late-JSD on the parsed graph — the tier-3 role the Alternator assigned
+  it a priori). The propose/dispose fractal is now REQUIRED inside the NACK, not
+  merely elegant.

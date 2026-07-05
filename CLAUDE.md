@@ -377,6 +377,14 @@ DECONFOUNDED unless noted): raw-uncentered **0.755** (CONFOUNDED — not the tar
 PCA-linear floor **0.658** (d=256); learned-nonlinear **0.85** (the Jun 22
 `learned_waist_gate` GREEN light).
 
+**Parse-side Matryoshka answer (2026-07-06, measured):** the Phase-1 delta head at
+width 128 ≈ width 512 on EVERY head (factor exact 0.724 vs 0.748; op/type flat; the
+~2pt cost sits in the fine-detail target/member heads). The structure a parser extracts
+is intrinsically LOW-DIMENSIONAL, uniformly — aggressive waist scheduling needs no
+head-aware carve-outs. Two silhouettes, both measured to compress well, for different
+reasons (deduce-side: the 0.85 nonlinear read sharpens under compression; parse-side:
+uniform 128d survival).
+
 The SPEC (unbuilt): one 512d waist, importance-ordered dims, a scheduled mask exposing a
 prefix (128 → 512). Two schedule axes, each a separate brick: over **training time**
 (deliberate handicap — train hard, race easy) and over **breath cycles** (coarse cycles

@@ -658,6 +658,98 @@ def do_error_taxonomy(width: int) -> None:
 
 
 # ===========================================================================
+# BLAME SWEEP (--blame) — Brick-C localization v0, measured against gold TODAY
+# ===========================================================================
+# Delete-one-factor re-solve: for each UNSAT parse, remove each predicted cage factor
+# in turn and re-solve; turning SAT fingers that factor as an unsat-core member.
+# O(F) search-tier calls (median-zero decisions) ~= less than one deducer breath.
+# Because eval has gold, blame quality is measurable NOW: a predicted factor is
+# GOLD-WRONG iff no gold cage factor has the same (members, op, target). Report
+# precision/recall of the blamed set vs the gold-wrong set. Overlapping errors smear
+# blame (removal of ONE of several wrong factors may not restore SAT) — recall
+# quantifies exactly that smear. Confidence-ordered sweeps come later (tier-0 head).
+
+def do_blame_sweep(width: int) -> None:
+    from tinygrad import Tensor, dtypes
+    from tinygrad.nn.state import safe_load
+    from mycelium.csp_domains import problem_from_kenken
+    from mycelium.csp_core import solve_symbolic
+
+    samples, states, tokmask, gold, sent = load_split("test")
+    p = build_head_params(0)
+    sd = safe_load(CKPT_PATH)
+    for k in p:
+        p[k].assign(sd[k].to(p[k].device).cast(p[k].dtype)).realize()
+    n = states.shape[0]
+    wm = np.zeros((1, 1, H_WAIST), np.float32); wm[..., :width] = 1.0
+
+    precs, recs, n_unsat, n_restored = [], [], 0, 0
+    for s0 in range(0, n, 8):
+        sl = slice(s0, min(s0 + 8, n))
+        out = head_forward(
+            p, Tensor(states[sl].astype(np.float32), dtype=dtypes.float),
+            Tensor(tokmask[sl], dtype=dtypes.float),
+            Tensor(wm, dtype=dtypes.float),
+            Tensor(sent[sl], dtype=dtypes.int))
+        o = {k: out[k].realize().numpy() for k in ("pres", "type", "op", "dig", "mem")}
+        for bi, i in enumerate(range(s0, min(s0 + 8, n))):
+            smp = samples[i]
+            N = int(smp["N"])
+            pred = [f for f in decode_slots({k: o[k][bi] for k in o}, N)
+                    if f["ftype"] == "cage"]
+            cages, clues, ok = [], [], True
+            for f in pred:
+                rc = [[m // 7, m % 7] for m in f["members_flat"]]
+                if not rc or any(r >= N or c >= N for (r, c) in rc):
+                    ok = False
+                    break
+                cages.append(rc); clues.append([f["op"], f["target"]])
+            if not ok:
+                continue                        # malformed: caught pre-solve, no sweep
+            try:
+                res = solve_symbolic(problem_from_kenken(N, cages, clues),
+                                     budget=100_000, seed=0)
+            except Exception:
+                continue
+            if res["status"] == "solved":
+                continue                        # sweep is for UNSAT parses only
+            n_unsat += 1
+
+            gold_keys = {(tuple(sorted(f["members_flat"])), f["op"], f["target"])
+                         for f in smp["factors"] if f["ftype"] == "cage"}
+            gold_wrong = {j for j, f in enumerate(pred)
+                          if (tuple(sorted(f["members_flat"])), f["op"], f["target"])
+                          not in gold_keys}
+            blamed = set()
+            for j in range(len(pred)):
+                c2 = cages[:j] + cages[j + 1:]
+                l2 = clues[:j] + clues[j + 1:]
+                try:
+                    r2 = solve_symbolic(problem_from_kenken(N, c2, l2),
+                                        budget=100_000, seed=0)
+                except Exception:
+                    continue
+                if r2["status"] == "solved":
+                    blamed.add(j)
+            if blamed:
+                n_restored += 1
+            tp = len(blamed & gold_wrong)
+            precs.append(tp / len(blamed) if blamed else float("nan"))
+            recs.append(tp / len(gold_wrong) if gold_wrong else float("nan"))
+
+    precs_v = [x for x in precs if not math.isnan(x)]
+    recs_v = [x for x in recs if not math.isnan(x)]
+    print(f"\n[blame] width={width}  UNSAT parses swept: {n_unsat}")
+    print(f"  sweep restored SAT (>=1 factor blamed): {n_restored}/{n_unsat}")
+    if precs_v:
+        print(f"  blame precision (blamed -> gold-wrong): {np.mean(precs_v):.3f}")
+    if recs_v:
+        print(f"  blame recall    (gold-wrong -> blamed): {np.mean(recs_v):.3f}")
+    print("  (recall < 1 quantifies multi-error blame smear; "
+          "confidence-ordered sweeps are the tier-0 upgrade)")
+
+
+# ===========================================================================
 # SELFTEST (CPU) — shapes, loss flow, span-anchor sanity, decode round trip
 # ===========================================================================
 
@@ -736,6 +828,8 @@ def main(argv=None):
     ap.add_argument("--eval", action="store_true")
     ap.add_argument("--errors", action="store_true",
                     help="detectable-vs-silent parse-error taxonomy (pre-Brick-C gate)")
+    ap.add_argument("--blame", action="store_true",
+                    help="delete-one-factor blame sweep on UNSAT parses (Brick-C loc v0)")
     ap.add_argument("--capture", action="store_true")
     ap.add_argument("--width", type=int, default=H_WAIST)
     args = ap.parse_args(argv)
@@ -750,6 +844,8 @@ def main(argv=None):
                  seed=int(os.environ.get("SEED", "0")))
     elif args.errors:
         do_error_taxonomy(args.width)
+    elif args.blame:
+        do_blame_sweep(args.width)
     elif args.eval or args.capture:
         do_eval(args.width, capture=args.capture)
     else:
