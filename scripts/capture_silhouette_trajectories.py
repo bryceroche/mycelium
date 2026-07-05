@@ -393,6 +393,121 @@ def do_analyze(args) -> None:
 
 
 # ===========================================================================
+# BELIEF-SPACE analysis — recompute per-breath logits from stored residuals
+# (pure numpy + safetensors; NO GPU, no new forward passes — capture-once pays off)
+# ===========================================================================
+
+def recompute_beliefs(reps, N_arr, ln_g, ln_b, codebook, eps=1e-5):
+    """reps (n,K,S,H) fp32 (pre-readout-LN residuals) -> beliefs (n,K,S,Nv) softmax.
+    Faithful to the engine readout: LN(x; ln_f) @ codebook.T + value-domain bias."""
+    n, K, S, H = reps.shape
+    Nv = codebook.shape[0]
+    mu = reps.mean(-1, keepdims=True)
+    var = reps.var(-1, keepdims=True)
+    x_ln = (reps - mu) / np.sqrt(var + eps) * ln_g + ln_b
+    logits = x_ln @ codebook.T                                  # (n,K,S,Nv)
+    dom = np.zeros((n, 1, 1, Nv), dtype=np.float32)
+    for i in range(n):
+        dom[i, 0, 0, N_arr[i]:] = -1e4                          # values N+1..Nv illegal
+    logits = logits + dom
+    z = logits - logits.max(-1, keepdims=True)
+    e = np.exp(z)
+    return logits, e / e.sum(-1, keepdims=True)
+
+
+def belief_jsd(bel):
+    """Per-cell consecutive-breath JSD. bel (n,K,S,Nv) -> (n,K-1,S)."""
+    p, q = bel[:, :-1], bel[:, 1:]
+    m = 0.5 * (p + q)
+    def kl(a, b):
+        a = np.clip(a, 1e-9, 1.0); b = np.clip(b, 1e-9, 1.0)
+        return (a * (np.log(a) - np.log(b))).sum(-1)
+    return 0.5 * kl(p, m) + 0.5 * kl(q, m)
+
+
+def do_belief_analysis(args) -> None:
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+    from safetensors import safe_open
+
+    z = np.load(args.analyze, allow_pickle=False)
+    valid = z["cell_valid"]
+    reps = z["reps_full"].astype(np.float32)
+    n, K, S, H = reps.shape
+    with safe_open(args.ckpt, "np") as f:
+        ln_g = f.get_tensor("ln_f.g").astype(np.float32)
+        ln_b = f.get_tensor("ln_f.b").astype(np.float32)
+        codebook = f.get_tensor("fg_value_codebook").astype(np.float32)
+    logits, bel = recompute_beliefs(reps, z["N"], ln_g, ln_b, codebook)
+
+    # SANITY: recomputed final argmax must reproduce the stored GPU pred (fp16 storage
+    # -> tiny numeric drift tolerated; report the match rate).
+    pred_re = logits[:, -1].argmax(-1).astype(np.int32) + 1
+    match = float((pred_re == z["pred_full"])[valid].mean())
+    print(f"[beliefs] recomputed-final-argmax vs stored GPU pred: match={match:.4f} "
+          f"(fp16 round-trip; expect ~1.0)")
+    assert match > 0.98, "belief recompute does not reproduce the GPU readout"
+
+    jsd = belief_jsd(bel)                                       # (n,K-1,S)
+    settle = jsd.argmin(axis=1)                                 # (n,S) read_at_settle convention
+    kind = cell_kind_labels(z["cell_cage_id"], z["cage_op"], z["input_cells"], valid)
+    kind_names = {0: "given", 1: "add", 2: "sub", 3: "mul", 4: "div"}
+
+    print("\n[beliefs] settle breath (argmin consecutive-belief JSD) by cell kind:")
+    data = []
+    for kd in (0, 1, 2, 3, 4):
+        vals = settle[(kind == kd) & valid]
+        data.append(vals)
+        if len(vals):
+            print(f"  {kind_names[kd]:6s}: n={len(vals):4d} mean={vals.mean():.2f} "
+                  f"median={np.median(vals):.1f} p25={np.percentile(vals,25):.0f} "
+                  f"p75={np.percentile(vals,75):.0f}")
+    # correctness at final breath, split by kind (context for the timing read)
+    correct = (logits[:, -1].argmax(-1) + 1 == z["gold"])
+    for kd in (0, 1, 2, 3, 4):
+        m = (kind == kd) & valid
+        if m.sum():
+            print(f"  final-acc[{kind_names[kd]:6s}] = {float(correct[m].mean()):.3f}")
+
+    os.makedirs(args.render_dir, exist_ok=True)
+    fig, ax = plt.subplots(figsize=(6, 3.2))
+    ax.boxplot([d if len(d) else [0] for d in data],
+               tick_labels=[kind_names[kd] for kd in (0, 1, 2, 3, 4)])
+    ax.set_ylabel("belief settle breath"); ax.set_title("belief-JSD settle by cell kind (full)")
+    fig.tight_layout()
+    fig.savefig(os.path.join(args.render_dir, "belief_settle_by_kind.png"), dpi=120)
+    plt.close(fig)
+
+    bands = z["band"]
+    picks = []
+    for b in ("g40", "g30", "g20", "g10"):
+        idx = np.where(bands == b)[0]
+        if len(idx):
+            picks.append(int(idx[0]))
+    for i in picks:
+        cells = [s for s in range(S) if valid[i, s]]
+        cells.sort(key=lambda s: (kind[i, s], s))
+        img = np.log10(np.clip(jsd[i][:, cells], 1e-9, None))
+        fig, ax = plt.subplots(figsize=(10, 3.4))
+        im = ax.imshow(img, aspect="auto", cmap="magma")
+        bounds, labels, prev = [], [], None
+        for x, s in enumerate(cells):
+            if kind[i, s] != prev:
+                bounds.append(x); labels.append(kind_names.get(kind[i, s], "?")); prev = kind[i, s]
+        for x in bounds[1:]:
+            ax.axvline(x - 0.5, color="w", lw=0.8)
+        ax.set_xticks(bounds); ax.set_xticklabels(labels, fontsize=8)
+        ax.set_ylabel("breath k -> k+1")
+        ax.set_title(f"per-cell log10 belief-JSD (full), inst {i} ({bands[i]})")
+        fig.colorbar(im, shrink=0.85)
+        fig.tight_layout()
+        fig.savefig(os.path.join(args.render_dir, f"belief_jsd_inst{i}.png"), dpi=120)
+        plt.close(fig)
+    print(f"[beliefs] renders in {args.render_dir}/")
+
+
+# ===========================================================================
 # SELFTEST (CPU, no GPU, no npz)
 # ===========================================================================
 
@@ -435,13 +550,19 @@ def main(argv=None):
     ap.add_argument("--K", type=int, default=16)
     ap.add_argument("--out", default=".cache/silhouette_traj_kenken_reg.npz")
     ap.add_argument("--analyze", default="", help="path to a captured npz -> run analysis instead")
+    ap.add_argument("--beliefs", action="store_true",
+                    help="with --analyze: belief-space temporal analysis (recomputes "
+                         "per-breath logits from stored residuals + ckpt readout params; CPU)")
     ap.add_argument("--render-dir", default=".cache/silhouette_render")
     args = ap.parse_args(argv)
     if args.selftest:
         selftest()
         return
     if args.analyze:
-        do_analyze(args)
+        if args.beliefs:
+            do_belief_analysis(args)
+        else:
+            do_analyze(args)
         return
     do_capture(args)
 

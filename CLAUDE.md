@@ -338,7 +338,11 @@ component too tiny to compute the answer, so it cannot become a third gradient f
   IS the segmentation; its cosine to registry centroids IS the classification; the
   unmatched residual IS the NACK payload. This replaces the speculative analytic
   machinery (impulse "ringing", band masking, Laplace/Fourier decomposition) with one
-  learned component that has a validated ancestor.
+  learned component that has a validated ancestor. **SCOPE (2026-07-05):**
+  step-segmentation-vs-registry is inherently a PARSE-side task (steps live in the NL;
+  no parse-side silhouette exists yet). The DEDUCE-side silhouette's measured role is
+  session health + NACK localization: late-breath belief-JSD flags wrong cells at AUC
+  0.687, gold-free, per-cell (§8.8 Brick-B results).
 - **Hosts the global-broadcast latents** (the spatial channel — v300's latents-28–31
   role): within-pass broadcast between distant graph regions + toxic-noise lightning rod,
   keeping non-local chaos out of the invariant deducer trunk. **Notebook = TEMPORAL
@@ -411,6 +415,20 @@ vs the built 256d mid-stack mechanism must be reconciled at build time.)
   grossly nonlinear, linear matched filters need rework), (3) train the segmenter to
   recover constituents. Center per-instance or mix across instances, else the segmenter
   cheats on graph identity (the 0.755-vs-0.658/0.85 confound).
+  **RESULTS (2026-07-05, deduce-side — `scripts/capture_silhouette_trajectories.py`,
+  data `.cache/silhouette_traj_kenken_reg.npz`, capture-once schema):** steps (1)+(2)
+  DONE on the deducer silhouette. LINEARITY REFUTED (residual ratio 0.72 / cos 0.76,
+  stable across breaths → compose PROBLEMS, not silhouettes). NO temporal banding in
+  RESIDUAL space (the carrier never stops moving; delta-settle degenerates). Temporal
+  structure LIVES IN BELIEF SPACE: early ~4-breath transient, givens settle first, hard
+  cages deliberate to the last breath, and late-breath belief-JSD → wrong-cell AUC 0.687
+  (gold-free, per-cell — the deduce-side NACK-localization signal). Variant accs also a
+  finding: rowcol-only 0.52, cage-only 0.13 ≈ base 0.13 — KenKen's constraint value is
+  the row/col∩cage INTERSECTION (the nonlinearity, stated as a feature). **These are
+  DEDUCE-side verdicts, not parse-side conclusions** — the parser's axis is token
+  position, word problems are banded by narrative order, and sentences are loosely
+  coupled, so parse-side banding/linearity priors point the OTHER way; untestable until
+  a Phase-1 waist exists (Brick-A era).
 - **Brick-C** (REFRAMED smaller, 2026-07-04): v0 = does the parser USE symbolic NACK
   features (§8.7 #3)? The differentiable back-route is the stretch goal, not the
   alternation's existence proof.

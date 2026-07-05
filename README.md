@@ -511,7 +511,11 @@ brief (interface contracts, null hypotheses, brick ladder, kill criteria) is
   PCA-linear floor and fixed analytic matched filters before anything is wired in.
   Brick-B (segmentation) is ungated from the alternation via composed-problem
   supervision — run problems with known constituent factors through the trained engine
-  and recover them (linearity of superposition checked first, not assumed).
+  and recover them. The linearity check ran 2026-07-05 on the deduce-side silhouette:
+  REFUTED (compose problems, not silhouettes); temporal structure lives in belief
+  space, where late-breath belief-JSD flags wrong cells gold-free (AUC 0.687) — the
+  deduce-side NACK-localization signal. Parse-side banding/linearity remain untested
+  (priors differ; needs a Phase-1 waist).
 
 ---
 
