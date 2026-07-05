@@ -468,7 +468,7 @@ def do_eval(width: int, capture: bool = False) -> None:
     for s0 in range(0, n, 8):
         sl = slice(s0, min(s0 + 8, n))
         out = head_forward(
-            p, Tensor(states[sl].astype(np.float32), dtype=dtypes.float),
+            p, Tensor(np.asarray(states[sl], dtype=np.float32), dtype=dtypes.float),
             Tensor(tokmask[sl].astype(np.float32), dtype=dtypes.float),
             Tensor(wm, dtype=dtypes.float),
             Tensor(sent[sl].astype(np.int32), dtype=dtypes.int))
@@ -638,7 +638,7 @@ def do_error_taxonomy(width: int) -> None:
     for s0 in range(0, n, 8):
         sl = slice(s0, min(s0 + 8, n))
         out = head_forward(
-            p, Tensor(states[sl].astype(np.float32), dtype=dtypes.float),
+            p, Tensor(np.asarray(states[sl], dtype=np.float32), dtype=dtypes.float),
             Tensor(tokmask[sl].astype(np.float32), dtype=dtypes.float),
             Tensor(wm, dtype=dtypes.float),
             Tensor(sent[sl].astype(np.int32), dtype=dtypes.int))
@@ -723,7 +723,7 @@ def do_blame_sweep(width: int) -> None:
     for s0 in range(0, n, 8):
         sl = slice(s0, min(s0 + 8, n))
         out = head_forward(
-            p, Tensor(states[sl].astype(np.float32), dtype=dtypes.float),
+            p, Tensor(np.asarray(states[sl], dtype=np.float32), dtype=dtypes.float),
             Tensor(tokmask[sl].astype(np.float32), dtype=dtypes.float),
             Tensor(wm, dtype=dtypes.float),
             Tensor(sent[sl].astype(np.int32), dtype=dtypes.int))
