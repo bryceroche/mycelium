@@ -235,3 +235,14 @@ token-position × waist-dim, the moment the skeleton trains.
   (per-region late-JSD on the parsed graph — the tier-3 role the Alternator assigned
   it a priori). The propose/dispose fractal is now REQUIRED inside the NACK, not
   merely elegant.
+- **REGISTERED PREDICTION #2 (2026-07-06, ahead of the 40k curve):** the SILENT class
+  is born first in TARGET-DIGIT errors on `add` cages (most compensating-coincidence
+  room — many operand sets reach the same sum) and stays near-zero for membership as
+  long as the row/col lattice polices. Where silents appear = where the tier-0
+  confidence head's calibration matters most.
+- **Brick-A operationalization (pre-specified as a FIELD, per the instrument lesson):**
+  the zero-LoRA read is DIFFERENTIAL — same puzzle, same frozen weights, blank-notebook
+  input vs ledger+NACK input; the measure is whether the parse DELTA (attention mass +
+  emission changes) CONCENTRATES on the flagged region vs a global reshuffle. A scalar
+  accuracy delta is the summary that will degenerate; specify the localization field
+  from the start.

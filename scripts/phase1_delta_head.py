@@ -59,7 +59,7 @@ import numpy as np
 T_WINDOW = 512
 H_TRUNK = 2048
 H_WAIST = 512
-L_SLOTS = 48
+L_SLOTS = 56   # curriculum corpus: up to 40 cages + 14 row/col = 54 factors
 S_CELLS = 49
 N_TYPES = 3            # row / col / cage
 N_OPS = 5              # given add sub mul div (OP_VOCAB order)
@@ -76,7 +76,8 @@ SENT_MAX = 64          # sentence-index embedding table size (max ~45 statements
 
 NL_TRAIN = ".cache/kenken_nl_train.jsonl"
 NL_TEST = ".cache/kenken_nl_test.jsonl"
-TRUNK_NPZ = ".cache/phase1_trunk_{split}.npz"
+TRUNK_NPY = ".cache/phase1_trunk_{split}.npy"     # raw fp16, np.memmap (84GB at 40k)
+META_NPZ = ".cache/phase1_meta_{split}.npz"       # gold in compact dtypes + tokmask + sent
 CKPT_PATH = ".cache/phase1_delta_head.safetensors"
 TOKENIZER_JSON = ".cache/llama-3.2-1b-weights/tokenizer.json"
 
@@ -120,12 +121,20 @@ def build_gold(samples: list, offsets_per_sample: list) -> dict:
                 assert t < 10 ** N_DIGITS, f"target {t} exceeds {N_DIGITS} digits"
                 for d in range(N_DIGITS):          # digits MSD-first
                     g["digits"][i, j, d] = (t // 10 ** (N_DIGITS - 1 - d)) % 10
-            # span mask: token overlaps any gold char span
+            # span mask: token overlaps any gold char span (vectorized — the python
+            # double loop was O(factors x T) per sample: hours at 40k samples)
+            if i not in _off_cache:
+                arr = np.asarray(offs[:T_WINDOW], dtype=np.int64)
+                _off_cache[i] = (arr[:, 0], arr[:, 1], arr.shape[0])
+            ts_a, te_a, n_tok = _off_cache[i]
             for (cs, ce) in f["spans"]:
-                for ti, (ts, te) in enumerate(offs):
-                    if ts < ce and te > cs and ti < T_WINDOW:
-                        g["span"][i, j, ti] = 1.0
+                hit = (ts_a < ce) & (te_a > cs)
+                g["span"][i, j, :n_tok][hit] = 1.0
+        _off_cache.pop(i, None)
     return g
+
+
+_off_cache: dict = {}
 
 
 def tokenize_corpus(path: str):
@@ -167,23 +176,48 @@ def do_precompute() -> None:
     del sd
     cfg = host.llama_cfg
 
+    from numpy.lib.format import open_memmap
     for split, path in (("train", NL_TRAIN), ("test", NL_TEST)):
         samples, ids, mask, offsets = tokenize_corpus(path)
-        states = np.zeros((len(samples), T_WINDOW, H_TRUNK), np.float16)
+        n = len(samples)
+        out_npy = TRUNK_NPY.format(split=split)
+        # STREAM to a disk memmap — at 40k samples the states are ~84GB and must never
+        # exist in RAM. The frozen trunk pays this ONCE (do NOT switch to live
+        # forwards: couples head training to trunk throughput forever).
+        states = open_memmap(out_npy, mode="w+", dtype=np.float16,
+                             shape=(n, T_WINDOW, H_TRUNK))
         B = 8
-        for s0 in range(0, len(samples), B):
-            sl = slice(s0, min(s0 + B, len(samples)))
+        t0 = time.time()
+        for s0 in range(0, n, B):
+            sl = slice(s0, min(s0 + B, n))
             x = host.llama_embed[Tensor(ids[sl], dtype=dtypes.int)]
             for layer in host.llama_layers:
                 x = layer(x, host.llama_rope_cos, host.llama_rope_sin)
             x = _rms_norm(x, host.llama_layers[-1].ffn_norm, cfg.rms_norm_eps)
-            states[sl] = x.cast(dtypes.float).realize().numpy().astype(np.float16)
-        out = TRUNK_NPZ.format(split=split)
-        np.savez_compressed(out, states=states, ids=ids, tokmask=mask,
-                            offsets=np.array(json.dumps(offsets)))
-        assert np.isfinite(states.astype(np.float32)).all()
-        print(f"[precompute] {split}: {states.shape} -> {out} "
-              f"({os.path.getsize(out)/1e6:.0f} MB)", flush=True)
+            chunk = x.cast(dtypes.float).realize().numpy()
+            assert np.isfinite(chunk).all(), f"non-finite trunk states at {split}:{s0}"
+            states[sl] = chunk.astype(np.float16)
+            if s0 % 4096 == 0:
+                print(f"  [{split}] {s0}/{n} ({time.time()-t0:.0f}s)", flush=True)
+        states.flush()
+        del states
+
+        # gold in compact dtypes (span/members are large but binary; digits <= 9)
+        gold = build_gold(samples, offsets)
+        sent = np.stack([sentence_indices(s["text"], o, mask[i])
+                         for i, (s, o) in enumerate(zip(samples, offsets))])
+        np.savez_compressed(
+            META_NPZ.format(split=split),
+            tokmask=mask.astype(np.uint8), sent=sent.astype(np.int8),
+            presence=gold["presence"].astype(np.uint8),
+            is_cage=gold["is_cage"].astype(np.uint8),
+            type=gold["type"].astype(np.int8), op=gold["op"].astype(np.int8),
+            digits=gold["digits"].astype(np.int8),
+            members=gold["members"].astype(np.uint8),
+            span=gold["span"].astype(np.uint8), N=gold["N"])
+        print(f"[precompute] {split}: ({n},{T_WINDOW},{H_TRUNK}) -> {out_npy} "
+              f"({os.path.getsize(out_npy)/1e9:.1f} GB) + meta "
+              f"({os.path.getsize(META_NPZ.format(split=split))/1e6:.0f} MB)", flush=True)
 
 
 def sentence_indices(text: str, offs, tokmask_row) -> np.ndarray:
@@ -197,23 +231,25 @@ def sentence_indices(text: str, offs, tokmask_row) -> np.ndarray:
         bounds.append(i + 1)
         i = text.find(". ", i + 1)
     out = np.zeros((T_WINDOW,), np.int32)
-    for ti, (ts, _te) in enumerate(offs):
-        if ti >= T_WINDOW or tokmask_row[ti] == 0:
-            break
-        out[ti] = min(sum(1 for b in bounds if b <= ts), SENT_MAX - 1)
+    n_tok = int(np.asarray(tokmask_row).sum())
+    arr = np.asarray(offs[: min(n_tok, T_WINDOW)], dtype=np.int64)
+    if len(arr):
+        idx = np.searchsorted(np.asarray(bounds, dtype=np.int64), arr[:, 0],
+                              side="right")
+        out[: len(arr)] = np.minimum(idx, SENT_MAX - 1)
     return out
 
 
 def load_split(split: str):
-    path = TRUNK_NPZ.format(split=split)
-    z = np.load(path, allow_pickle=False)
+    """states is a READ-ONLY MEMMAP (random-access batches, ~16MB/batch off NVMe).
+    gold arrays stay in compact dtypes in RAM; callers cast per batch."""
     samples = [json.loads(l) for l in open(NL_TRAIN if split == "train" else NL_TEST)]
-    offsets = json.loads(str(z["offsets"]))
-    gold = build_gold(samples, offsets)
-    tokmask = z["tokmask"].astype(np.float32)
-    sent = np.stack([sentence_indices(s["text"], o, tokmask[i])
-                     for i, (s, o) in enumerate(zip(samples, offsets))])
-    return samples, z["states"], tokmask, gold, sent
+    states = np.load(TRUNK_NPY.format(split=split), mmap_mode="r")
+    m = np.load(META_NPZ.format(split=split))
+    gold = {"presence": m["presence"], "is_cage": m["is_cage"], "type": m["type"],
+            "op": m["op"], "digits": m["digits"], "members": m["members"],
+            "span": m["span"], "N": m["N"].astype(np.int32)}
+    return samples, states, m["tokmask"], gold, m["sent"]
 
 
 # ===========================================================================
@@ -373,13 +409,13 @@ def do_train(steps: int, lr: float, batch: int, seed: int) -> None:
         w = WIDTHS[rng.randint(len(WIDTHS))]
         wm = np.zeros((1, 1, H_WAIST), np.float32); wm[..., :w] = 1.0
         b_trunk.assign(Tensor(states[idx].astype(np.float32), dtype=dtypes.float).contiguous()).realize()
-        b_tok.assign(Tensor(tokmask[idx], dtype=dtypes.float).contiguous()).realize()
+        b_tok.assign(Tensor(tokmask[idx].astype(np.float32), dtype=dtypes.float).contiguous()).realize()
         b_wmask.assign(Tensor(wm, dtype=dtypes.float).contiguous()).realize()
-        b_sent.assign(Tensor(sent[idx], dtype=dtypes.int).contiguous()).realize()
+        b_sent.assign(Tensor(sent[idx].astype(np.int32), dtype=dtypes.int).contiguous()).realize()
         for kk in ("presence", "is_cage", "members", "span"):
-            b_gold[kk].assign(Tensor(gold[kk][idx], dtype=dtypes.float).contiguous()).realize()
+            b_gold[kk].assign(Tensor(gold[kk][idx].astype(np.float32), dtype=dtypes.float).contiguous()).realize()
         for kk in ("type", "op", "digits"):
-            b_gold[kk].assign(Tensor(gold[kk][idx], dtype=dtypes.int).contiguous()).realize()
+            b_gold[kk].assign(Tensor(gold[kk][idx].astype(np.int32), dtype=dtypes.int).contiguous()).realize()
         tot, lmem, lspan = train_step()
         if step % 25 == 0 or step == steps - 1:
             tv = float(tot.numpy())
@@ -433,9 +469,9 @@ def do_eval(width: int, capture: bool = False) -> None:
         sl = slice(s0, min(s0 + 8, n))
         out = head_forward(
             p, Tensor(states[sl].astype(np.float32), dtype=dtypes.float),
-            Tensor(tokmask[sl], dtype=dtypes.float),
+            Tensor(tokmask[sl].astype(np.float32), dtype=dtypes.float),
             Tensor(wm, dtype=dtypes.float),
-            Tensor(sent[sl], dtype=dtypes.int))
+            Tensor(sent[sl].astype(np.int32), dtype=dtypes.int))
         o = {k: out[k].realize().numpy() for k in ("pres", "type", "op", "dig", "mem")}
         if capture:
             waists.append(out["waist"].realize().numpy().astype(np.float16))
@@ -603,9 +639,9 @@ def do_error_taxonomy(width: int) -> None:
         sl = slice(s0, min(s0 + 8, n))
         out = head_forward(
             p, Tensor(states[sl].astype(np.float32), dtype=dtypes.float),
-            Tensor(tokmask[sl], dtype=dtypes.float),
+            Tensor(tokmask[sl].astype(np.float32), dtype=dtypes.float),
             Tensor(wm, dtype=dtypes.float),
-            Tensor(sent[sl], dtype=dtypes.int))
+            Tensor(sent[sl].astype(np.int32), dtype=dtypes.int))
         o = {k: out[k].realize().numpy() for k in ("pres", "type", "op", "dig", "mem")}
         for bi, i in enumerate(range(s0, min(s0 + 8, n))):
             smp = samples[i]
@@ -688,9 +724,9 @@ def do_blame_sweep(width: int) -> None:
         sl = slice(s0, min(s0 + 8, n))
         out = head_forward(
             p, Tensor(states[sl].astype(np.float32), dtype=dtypes.float),
-            Tensor(tokmask[sl], dtype=dtypes.float),
+            Tensor(tokmask[sl].astype(np.float32), dtype=dtypes.float),
             Tensor(wm, dtype=dtypes.float),
-            Tensor(sent[sl], dtype=dtypes.int))
+            Tensor(sent[sl].astype(np.int32), dtype=dtypes.int))
         o = {k: out[k].realize().numpy() for k in ("pres", "type", "op", "dig", "mem")}
         for bi, i in enumerate(range(s0, min(s0 + 8, n))):
             smp = samples[i]
