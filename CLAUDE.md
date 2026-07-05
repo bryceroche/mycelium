@@ -149,8 +149,9 @@ on hard 3-coloring LOST to symbolic search for free (AC-3 ceiling 0.95; neural p
 propagation net-negative). A CONF_THRESH sweep confirmed the mechanism: at threshold→1.0 the
 neural arm becomes byte-identical to no-propagation — sub-100% commits are pure losing bets.
 **A propagation commit must be logically FORCED, not a confident guess.** The neural signal's
-role is ordering, not committing. (Neural-ordering-as-PRIOR showed an UNVERIFIED hint on
-coloring — gated, low headroom; the real test is the non-symbolic frontier.)
+role is ordering, not committing. (Neural-ordering-as-PRIOR was subsequently CLOSED too:
+the QCP kill-gate + two-death-mode law, §8.0 — no clean exact-propagatable CSP rewards
+neural ordering. The real test is the non-symbolic frontier.)
 
 **Radial-depth deep-prize REFUTED.** On the circuit DAG testbed, ρ(per-node settle-breath,
 topological depth) = 0.13 (bar 0.30, real spread, clean shuffle-null) — the breath allocation
@@ -227,6 +228,23 @@ where symbolic propagation is unavailable until the factor graph exists. The des
 "Alternator") interleaves parsing and solving so the graph is built *iteratively under
 deductive feedback*, not in one shot. **STATUS: SPEC-STAGE. Nothing in this section is
 built. The validated deducer is untouched and remains the regression anchor.**
+
+### 8.0 The ground under this design (the 2026-06-26 settlement — still binding)
+
+**The two jaws:** CONSTRUCTION (NL → factor graph) + SOLVING (factor graph → answer).
+SOLVING is **DONE + VALIDATED** — symbolic search solves clean hard-constraint graphs exactly
+and fast (Sudoku 5000/5000 at *median 0 decisions*). **Neural-guided clean-CSP search is
+CLOSED** — the two-death-mode law: neural value-ordering needs DEEP tree AND value-sensitivity
+AND no symbolic incumbent *simultaneously*, and no clean exact-propagatable CSP has all three
+(Sudoku shallow; QCP value-symmetric; SAT/TSP/coloring have CDCL/LKH/DSATUR). Proven across 5
+negatives — stop hunting clean-CSP solving wins. The deducer's role inside the Alternator
+follows from this settlement: a **differentiable, general approximate-inference backend** —
+(a) *critic* (solve the proposed graph → end-to-end training signal; can't backprop through
+symbolic), (b) *format-definer* (its membership + inlet vocabulary IS the parser's output
+target), (c) *soft-graph solver* (for the uncertain graphs NL parsing produces) — NOT a better
+solver. The cheap oracle-upper-bound kill-gate (one-hot policy via `csp_core.policy_valorder`,
+pure CPU) settles "can any neural ordering help here?" before building anything — reuse it.
+Construction groundwork: `docs/phase1_construction_brief.md`.
 
 ### 8.1 The loop
 
@@ -362,6 +380,10 @@ predicate + bridge (search) and the membership + inlet (deducer) — never the c
   Cathedral spec; ancestor of the §8.5 monitor role.
 - `docs/state_of_mycelium.md` — the brainstorm-ready stock-take (solid ground / spec /
   refuted / open questions).
+- `memory/project_neural_guided_search_clean_csp_closed.md` — the two-death-mode law; clean-CSP solving closed.
+- `memory/project_sudoku_search_tier_solve.md` — search tier 100% on Sudoku (median 0 decisions).
+- `memory/project_multitask_generality_works.md` — the weight-side generality grail (won at parity).
+- `docs/phase1_construction_brief.md` + `docs/session_2026_06_26_solving_closed_phase1_pivot.md` — the Phase-1 pivot this design descends from.
 - `memory/project_phase2_kenken_generality_proven.md` — generality proven on KenKen, zero core edits.
 - `memory/project_phase0_general_search_core.md` — the predicate-driven core + the SAT-via-bridge proof.
 - `memory/project_pathb_search_coloring_result_jun19.md` — symbolic dominates clean CSPs (the honest negative).
