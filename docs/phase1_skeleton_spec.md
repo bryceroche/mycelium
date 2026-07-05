@@ -246,3 +246,15 @@ token-position × waist-dim, the moment the skeleton trains.
   emission changes) CONCENTRATES on the flagged region vs a global reshuffle. A scalar
   accuracy delta is the summary that will degenerate; specify the localization field
   from the start.
+- **CURVE POINTS 2-3 + THE FIRST SOLVE (2026-07-06, 40k corpus, 24k steps):**
+  factor exact 0.753 -> **0.780** (op 0.967 / target 0.907 / member F1 0.924, all
+  climbing) and **SOLVE RATE 1/60 — the first end-to-end NL -> parse -> symbolic
+  solve -> correct grid**, at BOTH Matryoshka widths (128d factor exact 0.749; the
+  solve survives narrow). Taxonomy: **third consecutive 100% detectable** (59/59;
+  zero silent) while the mix rotates (target-digit errors growing share, 28/52 UNSAT;
+  membership still in every failure; presence split: phantoms 9 vs dropped 5 — mixed,
+  mildly favoring the tier-0 presence-gate preview). Prediction #2 remains properly
+  unfalsified (trigger condition — mix clearing membership — not yet reached).
+  **BLAME CO-IMPROVEMENT MEASURED:** delete-one recall 0.034 -> **0.067** (doubled,
+  restored 5/52 vs 2/44; precision 1.0 -> 0.8) as the parser improved — the
+  single-error-tail convergence claim now has its first two points.
