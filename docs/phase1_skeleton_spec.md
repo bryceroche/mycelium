@@ -167,3 +167,38 @@ token-position × waist-dim, the moment the skeleton trains.
   shuffling — Hungarian fallback documented above.
 - The engine-band question (Job B) remains existential and open — the milestone gate
   keeps it in the crosshairs.
+
+## 8. Build log (results as they land)
+
+- **2026-07-05/06 — steps 1-3 BUILT.** Generator (`scripts/kenken_nl_gen.py`): span-SET
+  gold + split-ref family + round-trip-as-generation-gate (4,140/4,140 samples pass;
+  labeling bugs die at generation). Residency (`scripts/phase1_residency_smoke.py`):
+  2.9GB co-resident, ~21GB headroom, JIT replay 0.34s, no AM hazards, deducer
+  unperturbed (0.745). Delta head (`scripts/phase1_delta_head.py`): 3.2M params,
+  three loss-decomposition-diagnosed design iterations (TEXT-ORDER slots — canonical
+  order made slot->sentence assignment a circular grid-sort; membership pos-weight 5.0;
+  per-token SENTENCE-INDEX embedding — one attention hop matches a discrete code but
+  cannot COUNT sentences: the attention-bootstrap law's quieter cousin).
+- **Data scale is the current lever:** 300 samples -> memorization (train mem loss
+  0.002, test F1 0.76); 3,060 samples -> reading (factor exact 0.60 -> **0.748**,
+  op 0.944, target 0.865, member F1 0.891). One-shot solve rate 0/60 — on-model at
+  p^~20 compounding; NOT the Alternator's operating point (see below).
+- **Matryoshka answer (parse side, first pass): the parse signal is LOW-DIMENSIONAL.**
+  Width 128 ~= width 512 on every head (factor exact 0.724 vs 0.748; op/type flat;
+  the ~2pt cost sits in the fine-detail heads, target/member). Head-aware waist
+  scheduling not currently justified — uniform prefix suffices.
+- **ERROR TAXONOMY (2026-07-06, the pre-Brick-C gate): 60/60 parse errors are
+  SYMBOLICALLY DETECTABLE — zero SILENT.** 44 UNSAT + 16 malformed; DETECT_multi 0
+  (over-constraint dominates); every failure involves a membership error. So at
+  factor-exact 0.748, the one-shot pipeline solves 0% but the symbolic NACK has 100%
+  recall on flagged problems — the alternation-earns-its-cost story stated
+  quantitatively: staged one-shot 0%, NACK-recoverable ceiling 100%. CAVEATS: n=60;
+  detectability~=1 leans on KenKen being densely over-constrained (rows/cols
+  interlock every cage) — sparser domains will have a real SILENT class; UNSAT flags
+  the GRAPH, not the factor — Brick-C-v0 needs a localization story (unsat-core-ish
+  or per-factor blame) on top of the flag. Tier-3 late-JSD recall sits above this
+  ceiling, unmeasured.
+- **NEXT:** membership exactness is THE lever (present in 100% of failures) —
+  scale data further / targeted membership curriculum; then Brick-A (notebook/NACK
+  conditioning, zero-LoRA null), Brick-C-v0 (retransmission vs the no-NACK control),
+  parse-side BirdNet re-run on the captured waist silhouettes.

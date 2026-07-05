@@ -526,6 +526,138 @@ def _gold_grid_cache(smp: dict):
 
 
 # ===========================================================================
+# ERROR TAXONOMY (--errors) — detectable vs SILENT parse errors (pre-Brick-C gate)
+# ===========================================================================
+# The Alternator's premise: Phase 1 needn't be one-shot perfect IF errors are
+# symbolically detectable (verifier UNSAT / non-uniqueness) — the NACK loop can
+# retransmit those. SILENT errors (a plausible wrong graph solving UNIQUELY to a
+# wrong grid) are unrecoverable by any retransmission — nobody flags them. The
+# detectable fraction is the CEILING on what alternation recovers over staged
+# parsing. Non-uniqueness is a GOLD-FREE flag: KenKen is unique-by-construction,
+# so "my parse admits >=2 solutions" self-reports as under-constrained.
+#
+# HONEST SCOPE: this measures the SYMBOLIC NACK ceiling (stack tiers 1-2: exact
+# verifier + uniqueness). Tier 3 (the deduce-side late-JSD field, AUC 0.687 on soft
+# state) could in principle flag regions of even SILENT-wrong graphs as "felt hard,"
+# adding recall above this ceiling in the full Alternator — the taxonomy is the limit
+# of the exact jaws, not of the loop.
+
+def _second_solution_exists(n, cages, clues, grid, budget=50_000) -> bool:
+    """Ban each cell's found value in turn; any SAT re-solve proves multiplicity."""
+    from mycelium.csp_domains import problem_from_kenken
+    from mycelium.csp_core import solve_symbolic
+    for r in range(n):
+        for c in range(n):
+            prob = problem_from_kenken(n, cages, clues)
+            dom = prob.domains0[r * n + c]
+            dom.discard(grid[r][c])
+            if not dom:
+                continue
+            try:
+                res = solve_symbolic(prob, budget=budget, seed=0)
+            except Exception:
+                continue
+            if res["status"] == "solved":
+                return True
+    return False
+
+
+def do_error_taxonomy(width: int) -> None:
+    from tinygrad import Tensor, dtypes
+    from tinygrad.nn.state import safe_load
+    from mycelium.csp_domains import problem_from_kenken
+    from mycelium.csp_core import solve_symbolic
+
+    samples, states, tokmask, gold, sent = load_split("test")
+    p = build_head_params(0)
+    sd = safe_load(CKPT_PATH)
+    for k in p:
+        p[k].assign(sd[k].to(p[k].device).cast(p[k].dtype)).realize()
+    n = states.shape[0]
+    wm = np.zeros((1, 1, H_WAIST), np.float32); wm[..., :width] = 1.0
+
+    cats = {"CORRECT": 0, "DETECT_malformed": 0, "DETECT_unsat": 0,
+            "DETECT_multi": 0, "SILENT": 0}
+    FIELDS = ("presence", "type", "op", "target", "member")
+    by_field: dict = {c: {f: 0 for f in FIELDS} for c in cats}
+
+    def field_errors(o, bi, i) -> list:
+        errs = set()
+        for j in range(L_SLOTS):
+            pg = gold["presence"][i, j] > 0.5
+            if pg != (o["pres"][bi, j] > 0.0):
+                errs.add("presence")
+            if not pg:
+                continue
+            if int(o["type"][bi, j].argmax()) != gold["type"][i, j]:
+                errs.add("type")
+            if not bool(((o["mem"][bi, j] > 0.0) == (gold["members"][i, j] > 0.5)).all()):
+                errs.add("member")
+            if gold["is_cage"][i, j] > 0.5:
+                if int(o["op"][bi, j].argmax()) != gold["op"][i, j]:
+                    errs.add("op")
+                if not bool((o["dig"][bi, j].argmax(-1) == gold["digits"][i, j]).all()):
+                    errs.add("target")
+        return sorted(errs)
+    for s0 in range(0, n, 8):
+        sl = slice(s0, min(s0 + 8, n))
+        out = head_forward(
+            p, Tensor(states[sl].astype(np.float32), dtype=dtypes.float),
+            Tensor(tokmask[sl], dtype=dtypes.float),
+            Tensor(wm, dtype=dtypes.float),
+            Tensor(sent[sl], dtype=dtypes.int))
+        o = {k: out[k].realize().numpy() for k in ("pres", "type", "op", "dig", "mem")}
+        for bi, i in enumerate(range(s0, min(s0 + 8, n))):
+            smp = samples[i]
+            N = int(smp["N"])
+            pred = decode_slots({k: o[k][bi] for k in o}, N)
+            cages, clues, ok = [], [], True
+            for f in pred:
+                if f["ftype"] != "cage":
+                    continue
+                rc = [[m // 7, m % 7] for m in f["members_flat"]]
+                if not rc or any(r >= N or c >= N for (r, c) in rc):
+                    ok = False
+                    break
+                cages.append(rc); clues.append([f["op"], f["target"]])
+            if not ok:
+                cat = "DETECT_malformed"
+            else:
+                try:
+                    res = solve_symbolic(problem_from_kenken(N, cages, clues),
+                                         budget=100_000, seed=0)
+                except Exception:
+                    res = {"status": "error"}
+                if res["status"] != "solved":
+                    cat = "DETECT_unsat"
+                else:
+                    asg = res["assignment"]
+                    grid = [[int(asg[r * N + c]) for c in range(N)] for r in range(N)]
+                    gold_grid, _ = _gold_grid_cache(smp)
+                    if grid == gold_grid:
+                        cat = "CORRECT"
+                    elif _second_solution_exists(N, cages, clues, grid):
+                        cat = "DETECT_multi"
+                    else:
+                        cat = "SILENT"
+            cats[cat] += 1
+            for fe in field_errors(o, bi, i):
+                by_field[cat][fe] += 1
+
+    wrong = n - cats["CORRECT"]
+    detect = cats["DETECT_malformed"] + cats["DETECT_unsat"] + cats["DETECT_multi"]
+    print(f"\n[errors] width={width} n={n}")
+    print(f"  {'category':18s} {'n':>4s}  " + "  ".join(f"{f:>8s}" for f in FIELDS))
+    for k, v in cats.items():
+        row = "  ".join(f"{by_field[k][f]:8d}" for f in FIELDS)
+        print(f"  {k:18s} {v:4d}  {row}")
+    if wrong:
+        print(f"  DETECTABLE fraction of errors: {detect}/{wrong} = {detect/wrong:.2f}"
+              f"   (the SYMBOLIC-jaw NACK ceiling — tier-3 late-JSD may add recall; "
+              f"SILENT = unrecoverable by exact flags)")
+
+
+# ===========================================================================
 # SELFTEST (CPU) — shapes, loss flow, span-anchor sanity, decode round trip
 # ===========================================================================
 
@@ -602,6 +734,8 @@ def main(argv=None):
     ap.add_argument("--precompute", action="store_true")
     ap.add_argument("--train", action="store_true")
     ap.add_argument("--eval", action="store_true")
+    ap.add_argument("--errors", action="store_true",
+                    help="detectable-vs-silent parse-error taxonomy (pre-Brick-C gate)")
     ap.add_argument("--capture", action="store_true")
     ap.add_argument("--width", type=int, default=H_WAIST)
     args = ap.parse_args(argv)
@@ -614,6 +748,8 @@ def main(argv=None):
                  lr=float(os.environ.get("LR", "3e-4")),
                  batch=int(os.environ.get("BATCH", "8")),
                  seed=int(os.environ.get("SEED", "0")))
+    elif args.errors:
+        do_error_taxonomy(args.width)
     elif args.eval or args.capture:
         do_eval(args.width, capture=args.capture)
     else:
