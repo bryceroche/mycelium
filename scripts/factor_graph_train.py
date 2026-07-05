@@ -273,7 +273,7 @@ def model_state_dict_fg(model) -> dict:
     return sd
 
 
-def load_ckpt(model, path: str):
+def load_ckpt(model, path: str, strict: bool = False):
     sd = safe_load(path)
     targets = model_state_dict_fg(model)
     missing = []
@@ -292,6 +292,15 @@ def load_ckpt(model, path: str):
             src = src.cast(dst.dtype)
         dst.assign(src).realize()
     if missing:
+        # keep-init is fine for a warm-start (new params start at init on purpose), but
+        # in eval-only it is a FALSE-RESULT generator: the model scores with init weights
+        # and the number looks plausible (2026-07-04: a silent 43-key fallback on a
+        # hidden=2048 ckpt scored chance as if it were the model).
+        if strict:
+            raise RuntimeError(
+                f"eval-only ckpt load is INCOMPLETE: {len(missing)} keys kept init "
+                f"({missing[:5]}{'...' if len(missing) > 5 else ''}) — wrong ckpt for "
+                f"this model build (check hidden dims / task spec in measured_config.json)")
         print(f"  ckpt missing {len(missing)} keys (kept init): "
               f"{missing[:3]}{'...' if len(missing) > 3 else ''}")
 
@@ -2596,7 +2605,7 @@ def main():
 
     if RESUME_FROM:
         print(f"resuming from fg ckpt: {RESUME_FROM}")
-        load_ckpt(model, RESUME_FROM)
+        load_ckpt(model, RESUME_FROM, strict=EVAL_ONLY)
         print("  loaded.")
 
     opt = AdamW(params, lr=LR, weight_decay=WEIGHT_DECAY)
