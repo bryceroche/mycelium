@@ -178,6 +178,12 @@ Detailed empirics live in `memory/` + git history.
   the loader silently keeps init on shape mismatch → chance-level output. Sudoku is NOT an FG
   task: it lives in the v98 ancestor (`.cache/sudoku_ckpts/v98_prod_step4000.safetensors`,
   K_MAX=20, `scripts/eval_v98_sudoku.py`; 24/band: easy 96/79 cell/puzzle, med 84/4, hard 80/0).
+- **Phase-1 residency budget (2026-07-05, `scripts/phase1_residency_smoke.py`):** frozen
+  Llama-3.2-1B L0–L3 + 128k×2048 embed (fp32) 2.03GB + trunk JIT buffers 0.39GB + deducer
+  0.49GB ≈ **2.9GB total → ~21GB headroom** on the 7900 XTX. Trunk: real tokenized
+  KenKen-in-words, finite activations (norm ~12.9), TinyJit assign-in-place replay 0.34s
+  per (B=8, T=512) forward, compile 0.4s — NO AM-driver hazards on the new graph shape.
+  Co-resident deducer eval unchanged (cell 0.745).
 - **Platform:** AMD 7900 XTX, tinygrad, AM driver (Secure Boot off + `vm.compact_unevictable_allowed=0`).
   Ubuntu 24.04. No ROCm/CUDA/PyTorch.
 
