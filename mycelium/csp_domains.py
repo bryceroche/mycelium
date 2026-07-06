@@ -697,6 +697,102 @@ def _ast_parse_ok() -> bool:
         return False
 
 
+# ===========================================================================
+# ALGEBRA — arithmetic RELATIONS with unknowns on BOTH sides (the math expansion,
+# 2026-07-07: the registry extension the unknowns corpus needs)
+# ===========================================================================
+# The KenKen cage is op(cage_values) = CONSTANT — unknowns confined to one side.
+# Algebra lifts the result into a VARIABLE: op(a, b) = r as a 3-ary RELATION with an
+# L-ASYM ORDERED scope (a, b, r) — sub/div are order-sensitive, so scope order is the
+# role encoding (the same convention the spec's neural-format analysis must honor).
+# Constants enter as GIVEN variables (singleton domains0, the Sudoku pattern — givens
+# are never factors). INTEGER domains {0..M}: exact predicates, exact-divisibility
+# div, unique-solution checkable — the KenKen chapter's deepest property (gold +
+# equivalence FREE) transplanted whole. Added via predicate + bridge alone: ZERO
+# csp_core edits (7th domain through the same seam).
+
+LTYPE_ARITH3 = 7   # op(a,b) = r; params = op_id (OP_TO_ID's add/sub/mul/div)
+
+
+def _arith3_apply(op_id, a, b):
+    """Integer-exact op application; None = no valid result (e.g. inexact div)."""
+    if op_id == OP_TO_ID["add"]:
+        return a + b
+    if op_id == OP_TO_ID["sub"]:
+        return a - b
+    if op_id == OP_TO_ID["mul"]:
+        return a * b
+    if op_id == OP_TO_ID["div"]:
+        return a // b if (b != 0 and a % b == 0) else None
+    return None
+
+
+def arith3_pred(ftype, params, member_values):
+    """op(a, b) = r, three-valued. Holes -> UNVIOLATED (hole-monotone: filling a hole
+    can only move UNVIOLATED -> {SAT, VIOLATED})."""
+    a, b, r = member_values
+    if UNASSIGNED in (a, b, r):
+        return Consistency.UNVIOLATED
+    v = _arith3_apply(params, a, b)
+    return Consistency.SAT if (v is not None and v == r) else Consistency.VIOLATED
+
+
+def arith3_propagator(state, factor):
+    """Pairwise-support GAC for the 3-ary functional relation, O(|Da|*|Db|) — the
+    specialized fast path (generic GAC is fine at small M but blows the arity_cap as
+    M grows). SOUND: a value is pruned only when NO (a, b, r) tuple with
+    op(a, b) == r supports it. Returns a NEW state (gac_propagate copies semantics)."""
+    s = state.copy()
+    va, vb, vr = factor.scope
+    Da, Db, Dr = s.domains[va], s.domains[vb], s.domains[vr]
+    op = factor.params
+    new_a, new_b, new_r = set(), set(), set()
+    for x in Da:
+        for y in Db:
+            v = _arith3_apply(op, x, y)
+            if v is not None and v in Dr:
+                new_a.add(x)
+                new_b.add(y)
+                new_r.add(v)
+    # An empty support set IS the empty-domain prune signal — keep it empty.
+    s.domains[va] = new_a
+    s.domains[vb] = new_b
+    s.domains[vr] = new_r
+    return s
+
+
+def algebra_registry(m: int) -> dict:
+    """Registry for integer linear/arithmetic systems over {0..m}."""
+    reg = new_registry()
+    register(reg, LTYPE_ARITH3, arith3_pred, name="arith3",
+             specialized_propagator=arith3_propagator, arity_hint=3,
+             check_alphabet=tuple(range(m + 1)),
+             representative_params=OP_TO_ID["add"])
+    return reg
+
+
+def problem_from_algebra(n_vars: int, relations, givens: dict, m: int,
+                         registry=None) -> "Problem":
+    """Bridge: build a general csp_core.Problem from an algebra system.
+
+    relations : list of (op_str, a, b, r) — op(a, b) = r over variable ids, ORDERED.
+    givens    : {var_id: value} — constants as singleton domains (never factors).
+    m         : domain bound; every variable ranges over {0..m} unless given.
+    """
+    reg = registry if registry is not None else algebra_registry(m)
+    domains0 = [({int(givens[v])} if v in givens else set(range(m + 1)))
+                for v in range(n_vars)]
+    factors = [Factor(ftype=LTYPE_ARITH3, scope=(int(a), int(b), int(r)),
+                      params=OP_TO_ID[op])
+               for (op, a, b, r) in relations]
+    var_factors = [[] for _ in range(n_vars)]
+    for fi, f in enumerate(factors):
+        for u in f.scope:
+            var_factors[u].append(fi)
+    return Problem(n_vars=n_vars, domains0=domains0, factors=factors,
+                   var_factors=var_factors, registry=reg)
+
+
 if __name__ == "__main__":
     parse_ok = _ast_parse_ok()
     print(f"[ast.parse] ok={parse_ok}", flush=True)

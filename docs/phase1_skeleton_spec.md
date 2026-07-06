@@ -481,3 +481,27 @@ token-position × waist-dim, the moment the skeleton trains.
   solve, no gold at any stage, 8/57 plateau failures recovered in one round.
   Margin upgrades (named, unbuilt): uniqueness-probe flags in the sweep, a real
   tier-0 confidence head for ordering, multi-round retransmission.
+
+## 10. The math expansion (begun 2026-07-07)
+
+- **REGISTRY EXTENSION, SYMBOLIC HALF: DONE.** `arith3` — op(a,b)=r with unknowns on
+  BOTH sides, L-ASYM ordered scope (a,b,r), integer-exact (div = exact-divisibility),
+  constants as given variables (singleton domains, never factors). Predicate +
+  pairwise-support propagator + bridge, ZERO csp_core edits — the 7th domain through
+  the same seam. Smoke (hand systems, all asserted): triangular -> 0 decisions
+  (calculator band); COUPLED (x+y=5, x-y=1) -> 1 decision (**engine band by
+  construction** — AC keeps locally-supported values only joint reasoning kills);
+  4-pair chain -> 4 decisions (**the generator DIAL measured: coupling count = engine-
+  band depth**); uniqueness checkable by ban-and-resolve (gold + equivalence stay
+  FREE — the KenKen property transplanted).
+- **NEURAL-FORMAT FINDING (by analysis, ahead of any build — the answer the brick
+  existed to surface):** the delta head's emission extends to arith3 EXCEPT the
+  membership pointer: multi-hot over positions is ROLE-BLIND, and op(a,b)=r is
+  order-sensitive for sub/div — the (a,b,r) roles cannot be recovered from a set.
+  SMALLEST SURGERY, two options to decide at build time: (i) role-typed pointers
+  (args-multihot + a separate RESULT pointer head — canonicalizing sub/div into
+  add/mul form makes the two args genuinely unordered, so 2 heads suffice), or
+  (ii) three categorical pointers (a, b, r). Everything else transplants: type menu
+  extends by one entry, op vocab UNCHANGED (add/sub/mul/div already there), targets
+  unused (constants are variables now — the digit heads idle or emit given-values).
+  The typed-slot format's extensibility bill: ONE new pointer head, not surgery.
