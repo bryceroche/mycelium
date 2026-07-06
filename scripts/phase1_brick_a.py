@@ -240,6 +240,15 @@ def do_prep(prep_n: int) -> None:
             p[k].assign(sd[k].to(p[k].device).cast(p[k].dtype)).realize()
         flags = np.zeros((n, COND_DIM), np.float32)
         has_fail = np.zeros((n,), bool)
+        wrong_slots = np.zeros((n, L_SLOTS), np.uint8)
+        # the plateaued parser's own outputs — the COPY-PREVIOUS targets for the
+        # flag-DEPENDENT objective (unflagged slot -> reproduce previous; flagged ->
+        # emit the gold fix; flags become the ONLY signal distinguishing the two)
+        prev = {"pres": np.zeros((n, L_SLOTS), np.uint8),
+                "type": np.zeros((n, L_SLOTS), np.int8),
+                "op": np.zeros((n, L_SLOTS), np.int8),
+                "dig": np.zeros((n, L_SLOTS, N_DIGITS), np.int8),
+                "mem": np.zeros((n, L_SLOTS, S_CELLS), np.uint8)}
         for s0 in range(0, n, 8):
             sl = slice(s0, min(s0 + 8, n))
             out = head_forward(
@@ -250,13 +259,21 @@ def do_prep(prep_n: int) -> None:
             o = {k: out[k].realize().numpy() for k in ("pres", "type", "op", "dig", "mem")}
             for bi, i in enumerate(range(s0, min(s0 + 8, n))):
                 wrong = wrong_slot_mask(o, gold, i, bi)
+                wrong_slots[i] = wrong.astype(np.uint8)
                 has_fail[i] = wrong.any()
                 flags[i] = slots_to_sent_flags(
                     wrong, gold["span"][i].astype(np.float32), sent[i])
+                prev["pres"][i] = (o["pres"][bi] > 0.0).astype(np.uint8)
+                prev["type"][i] = o["type"][bi].argmax(-1).astype(np.int8)
+                prev["op"][i] = o["op"][bi].argmax(-1).astype(np.int8)
+                prev["dig"][i] = o["dig"][bi].argmax(-1).astype(np.int8)
+                prev["mem"][i] = (o["mem"][bi] > 0.0).astype(np.uint8)
             if s0 % 2048 == 0:
                 print(f"  [{split}] {s0}/{n}", flush=True)
         np.savez_compressed(NACK_NPZ.format(split=split),
-                            flags=flags, has_fail=has_fail, n=n)
+                            flags=flags, has_fail=has_fail, n=n,
+                            wrong_slots=wrong_slots,
+                            **{f"prev_{k}": v for k, v in prev.items()})
         print(f"[prep] {split}: {int(has_fail.sum())}/{n} organic failures -> "
               f"{NACK_NPZ.format(split=split)}", flush=True)
 
@@ -274,8 +291,11 @@ def do_train(steps: int, lr: float, batch: int, seed: int) -> None:
     samples, _states, tokmask, gold, sent = load_split("train")
     z = np.load(NACK_NPZ.format(split="train"))
     flags_all, has_fail, n = z["flags"], z["has_fail"], int(z["n"])
+    wrong_slots = z["wrong_slots"]
+    prev = {k[5:]: z[k] for k in z.files if k.startswith("prev_")}
     fail_idx = np.where(has_fail[:n])[0]
-    print(f"[train] {len(fail_idx)}/{n} organic failures available (HEAD-LEVEL arm)",
+    print(f"[train] {len(fail_idx)}/{n} organic failures (HEAD-LEVEL arm, "
+          f"FLAG-DEPENDENT objective: unflagged->copy-previous, flagged->gold-fix)",
           flush=True)
 
     p = build_head_params(seed)
@@ -341,10 +361,28 @@ def do_train(steps: int, lr: float, batch: int, seed: int) -> None:
                                 dtype=dtypes.float).contiguous()).realize()
         b_fail.assign(Tensor(cond[:, -1:].astype(np.float32),
                              dtype=dtypes.float).contiguous()).realize()
+        # FLAG-DEPENDENT TARGETS (confound #2 fix): flagged slots -> GOLD fix;
+        # unflagged slots (and all slots of blank-mix samples) -> COPY the plateaued
+        # parser's PREVIOUS output. The flags are now the only signal separating the
+        # two behaviors — conditioning is load-bearing by construction.
+        use_fix = wrong_slots[idx].astype(bool)
+        use_fix[blank] = False
+        tg = {}
+        tg["presence"] = np.where(use_fix, gold["presence"][idx] > 0.5,
+                                  prev["pres"][idx] > 0.5).astype(np.float32)
+        tg["is_cage"] = gold["is_cage"][idx].astype(np.float32)
+        tg["span"] = gold["span"][idx].astype(np.float32)
+        tg["members"] = np.where(use_fix[:, :, None], gold["members"][idx] > 0.5,
+                                 prev["mem"][idx] > 0.5).astype(np.float32)
+        tg["type"] = np.where(use_fix, gold["type"][idx],
+                              prev["type"][idx]).astype(np.int32)
+        tg["op"] = np.where(use_fix, gold["op"][idx], prev["op"][idx]).astype(np.int32)
+        tg["digits"] = np.where(use_fix[:, :, None], gold["digits"][idx],
+                                prev["dig"][idx]).astype(np.int32)
         for kk in ("presence", "is_cage", "members", "span"):
-            b_gold[kk].assign(Tensor(gold[kk][idx].astype(np.float32), dtype=dtypes.float).contiguous()).realize()
+            b_gold[kk].assign(Tensor(tg[kk], dtype=dtypes.float).contiguous()).realize()
         for kk in ("type", "op", "digits"):
-            b_gold[kk].assign(Tensor(gold[kk][idx].astype(np.int32), dtype=dtypes.int).contiguous()).realize()
+            b_gold[kk].assign(Tensor(tg[kk], dtype=dtypes.int).contiguous()).realize()
         tot, lmem = train_step()
         if step % 100 == 0 or step == steps - 1:
             tv = float(tot.numpy())
