@@ -395,6 +395,114 @@ def do_train(steps: int, lr: float, batch: int, seed: int) -> None:
 
 
 # ===========================================================================
+# CEILING PROBE (--ceiling): decodability of gold from FROZEN TRUNK STATES
+# ===========================================================================
+# The denominator for every fix rate (spec §9 post-arm registration #2): for the
+# slots the plateaued parser got WRONG ON ITS OWN TRAINING DATA, can gold be decoded
+# from the frozen (unconditioned) trunk states AT ALL, given unrestricted capacity +
+# focused optimization? Fresh head (wider FFN), trained ONLY on the organic-failure
+# TRAIN samples with gold targets, deliberately toward overfit. Measured: accuracy on
+# the originally-wrong slots (train-fit). What stays wrong even then is provably
+# beyond ANY head-level channel — the injection-point ceiling. (Trained on 7,652
+# samples, NOT the 57 test failures, where identity-memorization would make the probe
+# vacuous.) HEAD-INDEPENDENT of the Brick-A objective by construction: fresh init,
+# gold-only targets, frozen states.
+
+def do_ceiling(steps: int, batch: int = 8, ffn_mult: int = 4, seed: int = 3) -> None:
+    from tinygrad import Tensor, dtypes
+    from tinygrad.engine.jit import TinyJit
+    from tinygrad.nn.optim import AdamW
+
+    samples, states, tokmask, gold, sent = load_split("train")
+    z = np.load(NACK_NPZ.format(split="train"))
+    has_fail, wrong_slots, n = z["has_fail"], z["wrong_slots"], int(z["n"])
+    fail_idx = np.where(has_fail[:n])[0]
+    print(f"[ceiling] probing {int(wrong_slots.sum())} originally-wrong slots across "
+          f"{len(fail_idx)} train failures (fresh head, FFN x{ffn_mult})", flush=True)
+
+    p = build_head_params(seed)
+    rng0 = np.random.RandomState(seed)
+    from tinygrad import dtypes as _dt
+
+    def t(a):
+        x = Tensor(a.astype(np.float32), dtype=_dt.float,
+                   requires_grad=True).contiguous().realize()
+        x.requires_grad = True
+        return x
+    p["ffn_w1"] = t(rng0.randn(H_WAIST, ffn_mult * H_WAIST) / math.sqrt(H_WAIST))
+    p["ffn_b1"] = t(np.zeros((ffn_mult * H_WAIST,)))
+    p["ffn_w2"] = t(rng0.randn(ffn_mult * H_WAIST, H_WAIST) / math.sqrt(ffn_mult * H_WAIST))
+    p["ffn_b2"] = t(np.zeros((H_WAIST,)))
+    opt = AdamW(list(p.values()), lr=3e-4, weight_decay=0.0)   # no reg: overfit wanted
+    rng = np.random.RandomState(seed)
+
+    def fix(a, dt):
+        return Tensor(a, dtype=dt).contiguous().realize()
+    b_trunk = fix(np.zeros((batch, T_WINDOW, H_TRUNK), np.float32), dtypes.float)
+    b_tok = fix(np.zeros((batch, T_WINDOW), np.float32), dtypes.float)
+    b_sent = fix(np.zeros((batch, T_WINDOW), np.int32), dtypes.int)
+    b_wm = fix(np.ones((1, 1, H_WAIST), np.float32), dtypes.float)
+    b_gold = {k: fix(np.zeros((batch, L_SLOTS) + tail, np.float32), dtypes.float)
+              for k, tail in (("presence", ()), ("is_cage", ()),
+                              ("members", (S_CELLS,)), ("span", (T_WINDOW,)))}
+    for k, tail in (("type", ()), ("op", ()), ("digits", (N_DIGITS,))):
+        b_gold[k] = fix(np.zeros((batch, L_SLOTS) + tail, np.int32), dtypes.int)
+
+    @TinyJit
+    def step_fn():
+        Tensor.training = True
+        out = head_forward(p, b_trunk, b_tok, b_wm, b_sent)
+        total, parts = head_loss(out, b_gold)
+        opt.zero_grad()
+        total.backward()
+        opt.step()
+        return total.realize()
+
+    t0 = time.time()
+    for step in range(steps):
+        idx = rng.choice(fail_idx, batch, replace=False)
+        b_trunk.assign(Tensor(np.asarray(states[idx], dtype=np.float32),
+                              dtype=dtypes.float).contiguous()).realize()
+        b_tok.assign(Tensor(tokmask[idx].astype(np.float32), dtype=dtypes.float).contiguous()).realize()
+        b_sent.assign(Tensor(sent[idx].astype(np.int32), dtype=dtypes.int).contiguous()).realize()
+        for kk in ("presence", "is_cage", "members", "span"):
+            b_gold[kk].assign(Tensor(gold[kk][idx].astype(np.float32), dtype=dtypes.float).contiguous()).realize()
+        for kk in ("type", "op", "digits"):
+            b_gold[kk].assign(Tensor(gold[kk][idx].astype(np.int32), dtype=dtypes.int).contiguous()).realize()
+        tot = step_fn()
+        if step % 500 == 0 or step == steps - 1:
+            print(f"  step {step:5d} loss={float(tot.numpy()):.4f} "
+                  f"({(time.time()-t0)/(step+1):.2f}s/step)", flush=True)
+
+    # measure train-fit on the ORIGINALLY-WRONG slots (the probe's whole point)
+    fixed = tot_wrong = 0
+    for s0 in range(0, len(fail_idx), 8):
+        sl = fail_idx[s0:s0 + 8]
+        pad = 8 - len(sl)
+        sl_p = np.concatenate([sl, sl[:1].repeat(pad)]) if pad else sl
+        out = head_forward(
+            p, Tensor(np.asarray(states[sl_p], dtype=np.float32), dtype=dtypes.float),
+            Tensor(tokmask[sl_p].astype(np.float32), dtype=dtypes.float),
+            Tensor(np.ones((1, 1, H_WAIST), np.float32), dtype=dtypes.float),
+            Tensor(sent[sl_p].astype(np.int32), dtype=dtypes.int))
+        o = {k: out[k].realize().numpy() for k in ("pres", "type", "op", "dig", "mem")}
+        for bi, i in enumerate(sl):
+            i = int(i)
+            now_wrong = wrong_slot_mask(
+                {k: v[bi][None] for k, v in o.items()}, gold, i, 0)
+            was_wrong = wrong_slots[i].astype(bool)
+            fixed += int((~now_wrong[was_wrong]).sum())
+            tot_wrong += int(was_wrong.sum())
+    frac = fixed / max(tot_wrong, 1)
+    print(f"\n[ceiling] DECODABLE fraction of originally-wrong slots (train-fit, "
+          f"unrestricted head): {fixed}/{tot_wrong} = {frac:.3f}")
+    print(f"[ceiling] => {1-frac:.1%} of plateau errors are beyond ANY head-level "
+          f"channel (states underdetermine gold) — the injection-point ceiling.")
+    print(f"[ceiling] Fix rates now read as fraction-of-the-fixable: e.g. "
+          f"0.438 / {frac:.3f} = {0.438/max(frac,1e-9):.3f}")
+
+
+# ===========================================================================
 # THE MEASUREMENT (--eval): blank vs true-NACK vs shuffled-NACK, same graph
 # ===========================================================================
 
@@ -557,6 +665,8 @@ def main(argv=None):
     ap.add_argument("--prep-n", type=int, default=8000)
     ap.add_argument("--train", action="store_true")
     ap.add_argument("--eval", action="store_true")
+    ap.add_argument("--ceiling", action="store_true",
+                    help="decodability probe: fresh unrestricted head vs frozen states")
     args = ap.parse_args(argv)
     if args.selftest:
         selftest()
@@ -569,6 +679,8 @@ def main(argv=None):
                  seed=int(os.environ.get("SEED", "0")))
     elif args.eval:
         do_eval()
+    elif args.ceiling:
+        do_ceiling(steps=int(os.environ.get("STEPS", "6000")))
     else:
         ap.print_help()
 
