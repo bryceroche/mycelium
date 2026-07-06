@@ -205,6 +205,12 @@ Detailed empirics live in `memory/` + git history.
   the shallow reader must decode.
 - **Factor per-NODE, not per-EDGE (v112b).** Prefer per-position gating over pairwise structures
   (learned attention biases, edge tensors). Edges are already captured by the binary masks.
+- **Trained structure is RELATIONAL; post-hoc recombination of its parts inherits none of
+  it** (promoted 2026-07-07, third sighting). The perceiver add-on failures (new pathways
+  can't join a trained circuit), the codebook's pairwise geometry (value lives BETWEEN
+  codewords), and the Matryoshka prefix (85-91% dim overlap, swapped 10-15% costs the whole
+  cliff; incumbent dims have ZERO standalone value below their trained composition widths).
+  Circuits don't survive member substitution, even by near-neighbors.
 - **Attention bootstrap.** New attention/pointer pathways (~30+ positions) don't bootstrap from
   task gradient on diverse data — they need an anchor or direct supervision. Codebook selection
   (≤32-way) bootstraps from task gradient alone. *Why the perceiver failed 5×.*

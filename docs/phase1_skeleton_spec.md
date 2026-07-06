@@ -564,3 +564,18 @@ token-position × waist-dim, the moment the skeleton trains.
   the dim order by decision-Fisher before training: candidate, unregistered).
   NULL SCOPE honored: this reads "post-hoc diagonal reordering doesn't beat a
   trained incumbent," not "sensitivity ordering wrong in principle."
+- **POST-REFUTATION REGISTRATIONS (2026-07-07):** (1) composition-fragility promoted
+  to §6 (third sighting). (2) FISHER-SEEDING registered WITH mechanism: seeding cannot
+  help through ordering per se (training co-adapts whatever the mask exposes); its
+  value proposition is BETTER RAW MATERIAL (dims with standalone signal — the thing
+  finding #3 proved sensitivity tracks) for narrow sets to co-adapt from. Clean test:
+  seeded vs unseeded nested training WITH width-64 in the schedule. HONEST MODEST
+  PREDICTION: if co-adaptation dominates raw material they converge and the seed buys
+  nothing — completing the story as "the schedule is everything, the ordering is
+  nothing." (3) DESIGN RULE, forward-binding: everything that READS the silhouette
+  (perceiver monitor, Brick-0 probes, tier-3 instruments) is built against the
+  DECISION-relevant subspace, not the loss-relevant one — an order of magnitude at
+  narrow widths is not a nuance. (4) Related-work line beyond the citation: the
+  nested-trained incumbent is the ADVERSARIAL CASE for post-hoc dim selection —
+  "co-adaptation defeats post-hoc sensitivity ranking" is a boundary condition of
+  the J-lens found within 24h of its publication.
