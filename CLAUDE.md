@@ -217,6 +217,13 @@ Detailed empirics live in `memory/` + git history.
 - **Per-breath CE direction is a free eval sanity gate.** Flat at ln(n_values) = broken load;
   RISING across breaths = overfit/wrong regime; DESCENDING = healthy ladder. It diagnosed both
   bad-checkpoint evals above before any deeper digging.
+- **A registered metric must match the DECISION STRUCTURE of the mechanism** (promoted
+  2026-07-06 on the third sighting). Scalar convergence summaries degenerate (argmin-JSD,
+  delta-settle — 2×), and continuous aggregates over sub-threshold jitter degenerate the same
+  way in reverse (L1 prob-mass "concentration" read 0.5 while decision-level flips ran 200:1).
+  For discrete commitments, count FLIPS; for converging fields, read the FIELD. The
+  localization instrument going forward: flagged-vs-unflagged FLIP-RATE RATIO (pre-registered
+  ahead of the text-rendered arm).
 - **Substrate laws (tinygrad + AM driver):** no `dtypes.float32` literal inside the JIT step;
   `scores.clip(-1e4,1e4)`; where()-gated NaN guard (NOT multiply — NaN×0=NaN); single-kernel
   `isfinite`; knobs in the JIT cache key; assign-in-place fixed buffers for repeated JIT'd forwards

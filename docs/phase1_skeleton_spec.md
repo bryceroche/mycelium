@@ -395,3 +395,20 @@ token-position × waist-dim, the moment the skeleton trains.
   VERDICT: head-level conditioning DOES work when made load-bearing — confound #2 was
   the v0 story. The remaining gap to 1.0 awaits the CEILING PROBE (denominator) and
   the TEXT-RENDERED trunk arm (reading-repair on top of flag-use).
+- **POST-ARM REGISTRATIONS (2026-07-06, before the next dataset):**
+  (1) LOCALIZATION METRIC REPLACED, pre-registered: flagged-vs-unflagged FLIP-RATE
+  RATIO at the decision level (the L1 prob-mass form aggregated sub-threshold jitter;
+  promoted to CLAUDE.md §6 as the third sighting of the instrument lesson — the
+  registered functional form must match the mechanism's decision structure).
+  (2) CEILING-PROBE CAUTION: measure decodability from frozen TRUNK states
+  (head-independent — a fresh unrestricted probe head, deliberately overfit), NOT
+  from the current head's representations, which inherit the objective they were
+  trained under. The probe denominates the INJECTION POINT, not the head.
+  (3) BRICK-C'S BUDGET, handed by the decomposition: the shuffled floor (0.360) is
+  what ANY global "something's wrong" signal buys; add-back blame quality only has
+  to defend the +7.8pt LOCALIZATION increment. Imperfect blame degrades the
+  increment, not the floor — the loop is robust to sloppy localization.
+  (4) THE MARGINAL-SOLVES FRAMING: blank 0 -> true 7 is the loop's contribution OVER
+  DOING NOTHING — seven puzzles unreachable by unconditioned same-weights re-parsing,
+  solved in one SYN->NACK->retransmit round (oracle standing in for Brick-C). The
+  core Alternator transaction has now executed end-to-end.
