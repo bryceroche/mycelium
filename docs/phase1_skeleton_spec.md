@@ -446,3 +446,13 @@ token-position × waist-dim, the moment the skeleton trains.
   the text-rendering shortcut. The remaining 46.7% needs actual reading-repair —
   candidates: deeper trunk prefix, the LoRA ladder, or the Alternator's real answer
   (structured ledger re-parse). Brick-C operates within the 53.3%.
+- **POST-BRICK-A REGISTRATIONS (2026-07-07):** (1) §6 law added: positional/referential
+  structure enters AS STRUCTURE, not prose (2 sightings: sentence-counting, reference-
+  binding). (2) FRONTIER RANKING for the 46.7%: LEDGER-CONDITIONED RE-PARSE FIRST —
+  it changes the PROBLEM (parse against pinned verified context), not the injection
+  point, and may move the 0.533 denominator itself; zero-LoRA-compatible; free once
+  the loop exists. Deeper prefix second; LoRA ladder stays behind measured
+  alternatives. (3) BRICK-C KILL CRITERION, pre-registered RELATIVE: add-back blame
+  must RETAIN >= HALF the oracle's localization increment (the +7.8pt over the 0.36
+  floor) — the oracle arm is the ceiling condition; Brick-C's question is how much
+  survives the real instrument. (4) JOB-B GATE IS DUE (pegged to Brick-A completion).

@@ -196,6 +196,13 @@ Detailed empirics live in `memory/` + git history.
 - **Diversity must be structural, not learned.** Masks are geometric/structural. Every learned
   diversity mechanism (scales, soft tokens, fingerprints) collapsed to a constant within one epoch.
 - **Digit/value-spaced for arithmetic.** Single-cell values; whole-number BPE tokens force memorization.
+- **Positional/referential structure must enter AS STRUCTURE, not as prose/computation
+  (2 sightings, 2026-07-06/07 — the parse-side counterpart of "diversity must be structural").**
+  One attention hop can't COUNT sentences (fix: the sentence-index embedding, given as a
+  feature); a frozen 4-layer prefix can't BIND references ("statement 7" -> sentence 7 —
+  the text-NACK arm was perfectly content-blind: fix(true)==fix(shuffled) exactly).
+  Conditioning and positional identity enter as position-aligned features, never as text
+  the shallow reader must decode.
 - **Factor per-NODE, not per-EDGE (v112b).** Prefer per-position gating over pairwise structures
   (learned attention biases, edge tensors). Edges are already captured by the binary masks.
 - **Attention bootstrap.** New attention/pointer pathways (~30+ positions) don't bootstrap from
