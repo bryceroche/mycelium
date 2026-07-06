@@ -300,3 +300,30 @@ token-position × waist-dim, the moment the skeleton trains.
   record THAT as the finding — KenKen's lattice polices even compensating-coincidence-
   rich errors — which sets the baseline for when sparser domains DO grow a silent class.
   Either resolution is informative.
+
+## 9. Brick-A design (registered 2026-07-06, before build)
+
+1. **Conditioning enters TRUNK-LEVEL** (prefix embeddings prepended to text, flowing
+   through the frozen bidirectional Llama layers) — the honest zero-LoRA test: the
+   frozen trunk must transform conditioning into different parse behavior. Head-level
+   injection is the cheap comparison arm (if it matches trunk-level, the trunk adds no
+   conditioning value — a finding to discover, not assume). Cost accepted: the banked
+   precompute doesn't apply to prefixed passes; live trunk forwards (0.34s/batch).
+2. **The zero-LoRA boundary:** trainable params in the EMISSION head and in ONE SHARED
+   conditioning encoder are sanctioned (they are the interface); anything that varies
+   PER CYCLE is forbidden. Cycles differ only in what the notebook contains, never in
+   which parameters run.
+3. **Conditioning corpus = the plateaued parser's ORGANIC failures** on train puzzles
+   (real error distribution), supervised against gold fixes; synthetic corruptions are
+   augmentation only. **Refinement (arm separation):** Brick-A conditions on ORACLE
+   localization (gold-derived wrong-sentence flags) — it tests "can the frozen trunk
+   USE a correct NACK," separated from "can the system GENERATE one gold-free" (Brick-C,
+   where the add-back sweep + tier-0 replace the oracle). If Brick-A ran on the weak
+   deployable localization (blame recall 0.067) and failed, conditioning-vs-localization
+   would be unattributable.
+4. **The measurement (field, pre-specified):** same puzzle, same weights, blank vs
+   NACK-conditioned input THROUGH THE SAME GRAPH; read = does the parse delta
+   (emission-change mass + attention-delta mass) CONCENTRATE on flagged slots/sentences
+   vs a global reshuffle. Plus: flagged-slot FIX RATE vs a SHUFFLED-FLAGS control
+   (same flag count, innocent sentences). **KILL: fix_rate(true) ~= fix_rate(shuffled)
+   => conditioning isn't doing the work => the null fails toward the LoRA ladder.**
