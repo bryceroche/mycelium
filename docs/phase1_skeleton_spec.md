@@ -338,3 +338,21 @@ token-position × waist-dim, the moment the skeleton trains.
   banked states apply) — it measures fix-rate/concentration/kill TODAY. Trunk-level
   remains the registered honest null, PARKED behind the driver fight (smaller B/T,
   tinygrad update, or upstream fix are the candidate unlocks).
+- **BRICK-A HEAD-LEVEL ARM RESULT (2026-07-06): NULL FAILS at this arm — honest
+  negative with TWO NAMED CONFOUNDS.** fix(true)=0.102 vs fix(shuffled)=0.083
+  (barely separated), concentration 0.47/0.54 (BOTH < 1: parse delta lands AWAY
+  from flagged regions), preservation ~0.997 both, solves 7/8/6 (noise). Per the
+  registered kill: this arm's conditioning is not doing the work. CONFOUNDS:
+  (i) HEAD-LEVEL CANNOT CHANGE THE READING — trunk states are fixed; if the error
+  lives in the states (not the aggregation), only trunk-level conditioning can fix
+  it. The head-level failure is CONSISTENT WITH the trunk-level thesis, not a
+  refutation of it — and notably falsifies the "head-level trivially works" prior.
+  (ii) THE TRAINING OBJECTIVE MADE FLAGS REDUNDANT: v0 supervised ALL slots toward
+  gold regardless of flags, so the model could improve flagged slots from gold alone
+  — conditioning was never made LOAD-BEARING. A proper design forces flag-dependence
+  (e.g., reproduce-previous-output when unflagged, emit-the-fix when flagged).
+  ALSO: plateau-residual errors (survivors of 68k supervised steps) may be capacity
+  errors no same-model re-parse can fix — the NACK fix-rate ceiling for an UNCHANGED
+  model is itself an open measurement. NEXT: (a) flag-dependent training objective,
+  (b) trunk-level arm when the driver fight is won, (c) if both fail: the §8.4 LoRA
+  ladder, as specified.

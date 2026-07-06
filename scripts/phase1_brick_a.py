@@ -82,10 +82,11 @@ def build_trunk():
 def trunk_forward_prefixed(host, tok_ids, prefix):
     """tok_ids (B,T) int · prefix (B,K_PREFIX,H_TRUNK). Returns token-aligned states
     (B,T,H_TRUNK) — the prefix positions are stripped after the frozen layers."""
-    from tinygrad import Tensor, dtypes
     from mycelium.llama_loader import _rms_norm
     cfg = host.llama_cfg
-    x_tok = host.llama_embed[tok_ids].cast(dtypes.float)         # (B,T,H)
+    # NO dtype cast here: llama_embed is already fp32, and a dtypes.float literal
+    # inside the JIT'd step is the documented AM-driver hang (§6 substrate law).
+    x_tok = host.llama_embed[tok_ids]                             # (B,T,H) fp32
     x = prefix.cat(x_tok, dim=1)                                  # (B,K+T,H)
     for layer in host.llama_layers:
         x = layer(x, host.llama_rope_cos, host.llama_rope_sin)
@@ -114,7 +115,57 @@ def build_encoder_params(seed: int = 1) -> dict:
         # warm-started head starts from a consistent (if shifted-RoPE) graph.
         "enc_w2": t(np.zeros((256, K_PREFIX * H_TRUNK))),
         "enc_b2": t(np.zeros((K_PREFIX * H_TRUNK,))),
+        # HEAD-LEVEL arm (the §9.1 comparison; all-proven graph classes): a token-level
+        # SUSPECT embedding added at the waist for tokens of flagged sentences, plus a
+        # GLOBAL-FAIL embedding added everywhere when the fail bit is set. Zero-init ->
+        # blank behavior == the plateaued parser at step 0. Cycle-invariant: sanctioned.
+        "suspect_emb": t(np.zeros((H_WAIST,))),
+        "fail_emb": t(np.zeros((H_WAIST,))),
     }
+
+
+def head_forward_cond(p, enc, trunk, tokmask, wmask, sent_idx, flag_tok, fail_bit):
+    """HEAD-LEVEL conditioned variant of phase1_delta_head.head_forward (local copy —
+    the shared original stays untouched). flag_tok (B,T): 1.0 on tokens of flagged
+    sentences; fail_bit (B,1): the global-fail bit. Conditioning enters AFTER the
+    frozen trunk -> the banked unprefixed states apply, and the training graph is the
+    hours-proven delta-head class plus two adds."""
+    B = trunk.shape[0]
+    waist = (trunk @ p["waist_w"] + p["waist_b"]).gelu()
+    waist = waist + p["sent_emb"][sent_idx]
+    waist = waist + enc["suspect_emb"].reshape(1, 1, -1) * flag_tok.unsqueeze(-1)
+    waist = waist + enc["fail_emb"].reshape(1, 1, -1) * fail_bit.reshape(B, 1, 1)
+    waist = waist * wmask
+
+    q = (p["slot_q"] @ p["attn_wq"] + p["attn_wq_b"])
+    k = waist @ p["attn_wk"] + p["attn_wk_b"]
+    v = waist @ p["attn_wv"] + p["attn_wv_b"]
+    hd = H_WAIST // 8
+    qh = q.reshape(L_SLOTS, 8, hd).transpose(0, 1)
+    kh = k.reshape(B, -1, 8, hd).permute(0, 2, 1, 3)
+    vh = v.reshape(B, -1, 8, hd).permute(0, 2, 1, 3)
+    scores = (qh.unsqueeze(0) @ kh.transpose(-2, -1)) / math.sqrt(hd)
+    scores = scores.clip(-1e4, 1e4)
+    scores = scores + (1.0 - tokmask.reshape(B, 1, 1, -1)) * -1e4
+    attn = scores.softmax(-1)
+    slot = (attn @ vh).permute(0, 2, 1, 3).reshape(B, L_SLOTS, H_WAIST)
+    slot = slot @ p["attn_wo"] + p["attn_wo_b"] + p["slot_q"].unsqueeze(0)
+    slot = slot + ((slot @ p["ffn_w1"] + p["ffn_b1"]).gelu() @ p["ffn_w2"] + p["ffn_b2"])
+    return {
+        "pres": (slot @ p["h_pres"] + p["h_pres_b"]).squeeze(-1),
+        "type": slot @ p["h_type"] + p["h_type_b"],
+        "op": slot @ p["h_op"] + p["h_op_b"],
+        "dig": (slot @ p["h_dig"] + p["h_dig_b"]).reshape(B, L_SLOTS, N_DIGITS, 10),
+        "mem": slot @ p["h_mem"] + p["h_mem_b"],
+        "attn_mean": attn.mean(1),
+        "waist": waist,
+    }
+
+
+def flags_to_token_mask(flags: np.ndarray, sent: np.ndarray) -> np.ndarray:
+    """flags (B, COND_DIM) + sent (B,T) -> flag_tok (B,T) float."""
+    return np.take_along_axis(
+        flags[:, :SENT_MAX], sent.astype(np.int64), axis=1).astype(np.float32)
 
 
 def encode_cond(enc: dict, cond):
@@ -221,20 +272,21 @@ def do_train(steps: int, lr: float, batch: int, seed: int) -> None:
     from tinygrad.nn.state import safe_load, safe_save
 
     samples, _states, tokmask, gold, sent = load_split("train")
-    _s2, ids, _m2, _off = tokenize_corpus(NL_TRAIN)
     z = np.load(NACK_NPZ.format(split="train"))
     flags_all, has_fail, n = z["flags"], z["has_fail"], int(z["n"])
     fail_idx = np.where(has_fail[:n])[0]
-    print(f"[train] {len(fail_idx)}/{n} organic failures available", flush=True)
+    print(f"[train] {len(fail_idx)}/{n} organic failures available (HEAD-LEVEL arm)",
+          flush=True)
 
-    host = build_trunk()
     p = build_head_params(seed)
     sd = safe_load(CKPT_PATH)                 # warm-start the plateaued head
     for k in p:
         p[k].assign(sd[k].to(p[k].device).cast(p[k].dtype)).realize()
     enc = build_encoder_params(seed + 1)
-    params = list(p.values()) + list(enc.values())
-    opt = AdamW(params, lr=lr, weight_decay=0.01)
+    opt_head = AdamW(list(p.values()), lr=lr, weight_decay=0.01)
+    # head-level arm: only the two waist embeddings are in the graph (the prefix-MLP
+    # params are trunk-level-arm-only; optimizing ungraded params trips unwrap(None))
+    opt_enc = AdamW([enc["suspect_emb"], enc["fail_emb"]], lr=lr, weight_decay=0.01)
     rng = np.random.RandomState(seed)
 
     def fix(a, dt):
@@ -252,16 +304,27 @@ def do_train(steps: int, lr: float, batch: int, seed: int) -> None:
     for k, tail in (("type", ()), ("op", ()), ("digits", (N_DIGITS,))):
         b_gold[k] = fix(np.zeros((batch, L_SLOTS) + tail, np.int32), dtypes.int)
 
+    # HEAD-LEVEL ARM (2026-07-06: trunk-level parked behind the driver fight — every
+    # backward-through-trunk form hangs the AM driver; see spec §9 blockage note).
+    # Conditioning enters AFTER the frozen trunk (token-level suspect embedding +
+    # global-fail embedding at the waist), so the banked UNPREFIXED states apply and
+    # the training graph is the hours-proven delta-head JIT class plus two adds.
+    b_trunk = fix(np.zeros((batch, T_WINDOW, H_TRUNK), np.float32), dtypes.float)
+    b_flagtok = fix(np.zeros((batch, T_WINDOW), np.float32), dtypes.float)
+    b_fail = fix(np.zeros((batch, 1), np.float32), dtypes.float)
+    states = _states                            # the banked memmap
+
     @TinyJit
     def train_step():
         Tensor.training = True
-        prefix = encode_cond(enc, b_cond)
-        trunk = trunk_forward_prefixed(host, b_ids, prefix)
-        out = head_forward(p, trunk, b_tok, b_wm, b_sent)
+        out = head_forward_cond(p, enc, b_trunk, b_tok, b_wm, b_sent,
+                                b_flagtok, b_fail)
         total, parts = head_loss(out, b_gold)
-        opt.zero_grad()
+        opt_head.zero_grad()
+        opt_enc.zero_grad()
         total.backward()
-        opt.step()
+        opt_head.step()
+        opt_enc.step()
         return total.realize(), parts["mem"].realize()
 
     t0 = time.time()
@@ -270,10 +333,14 @@ def do_train(steps: int, lr: float, batch: int, seed: int) -> None:
         cond = flags_all[idx].copy()
         blank = rng.rand(batch) < 0.25        # 25% blank-conditioned mix
         cond[blank] = 0.0
-        b_ids.assign(Tensor(ids[idx], dtype=dtypes.int).contiguous()).realize()
+        b_trunk.assign(Tensor(np.asarray(states[idx], dtype=np.float32),
+                              dtype=dtypes.float).contiguous()).realize()
         b_tok.assign(Tensor(tokmask[idx].astype(np.float32), dtype=dtypes.float).contiguous()).realize()
         b_sent.assign(Tensor(sent[idx].astype(np.int32), dtype=dtypes.int).contiguous()).realize()
-        b_cond.assign(Tensor(cond, dtype=dtypes.float).contiguous()).realize()
+        b_flagtok.assign(Tensor(flags_to_token_mask(cond, sent[idx]),
+                                dtype=dtypes.float).contiguous()).realize()
+        b_fail.assign(Tensor(cond[:, -1:].astype(np.float32),
+                             dtype=dtypes.float).contiguous()).realize()
         for kk in ("presence", "is_cage", "members", "span"):
             b_gold[kk].assign(Tensor(gold[kk][idx].astype(np.float32), dtype=dtypes.float).contiguous()).realize()
         for kk in ("type", "op", "digits"):
@@ -297,13 +364,11 @@ def do_eval(seed: int = 0) -> None:
     from tinygrad import Tensor, dtypes
     from tinygrad.nn.state import safe_load
 
-    samples, _st, tokmask, gold, sent = load_split("test")
-    _s2, ids, _m2, _off = tokenize_corpus(NL_TEST)
+    samples, states, tokmask, gold, sent = load_split("test")
     z = np.load(NACK_NPZ.format(split="test"))
     flags_all, has_fail = z["flags"], z["has_fail"]
     n = len(samples)
 
-    host = build_trunk()
     p = build_head_params(0)
     enc = build_encoder_params(1)
     sd = safe_load(BRICK_A_CKPT)
@@ -321,14 +386,15 @@ def do_eval(seed: int = 0) -> None:
             cond_b = cond_np[s0:s0 + 8]
             if pad:
                 cond_b = np.concatenate([cond_b, cond_b[:1].repeat(pad, 0)])
-            prefix = encode_cond(enc, Tensor(cond_b, dtype=dtypes.float))
-            trunk = trunk_forward_prefixed(
-                host, Tensor(ids[sl_p], dtype=dtypes.int), prefix)
-            out = head_forward(
-                p, trunk,
+            flag_tok = flags_to_token_mask(cond_b, sent[sl_p])
+            out = head_forward_cond(
+                p, enc,
+                Tensor(np.asarray(states[sl_p], dtype=np.float32), dtype=dtypes.float),
                 Tensor(tokmask[sl_p].astype(np.float32), dtype=dtypes.float),
                 Tensor(np.ones((1, 1, H_WAIST), np.float32), dtype=dtypes.float),
-                Tensor(sent[sl_p].astype(np.int32), dtype=dtypes.int))
+                Tensor(sent[sl_p].astype(np.int32), dtype=dtypes.int),
+                Tensor(flag_tok, dtype=dtypes.float),
+                Tensor(cond_b[:, -1:].astype(np.float32), dtype=dtypes.float))
             o = {k: out[k].realize().numpy() for k in
                  ("pres", "type", "op", "dig", "mem", "attn_mean")}
             for bi, i in enumerate(sl):
