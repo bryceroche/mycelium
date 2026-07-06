@@ -592,3 +592,38 @@ token-position × waist-dim, the moment the skeleton trains.
   proved shallow layers don't bind references unaided; the result pointer gets
   name->slot binding AS STRUCTURE (§6 law applied prospectively), not as a hop to
   learn. Cheap now; expensive after a plateau gets misdiagnosed as capacity.
+
+## 11. The algebra chapter's interpretive frame (registered 2026-07-07, BEFORE the head trains)
+
+- **THE DETECTABILITY INVERSION (on schedule, not a regression):** KenKen's seven-
+  point 100%-detectable streak was a gift of constraint DENSITY. Linear systems are
+  satisfiable for almost any constants: a mis-parsed literal yields a SAT, UNIQUE,
+  cleanly-solving-but-WRONG system — UNSAT doesn't fire, the uniqueness probe doesn't
+  fire. Surviving symbolic channels are STRUCTURAL: dangling variables /
+  underdetermination (multi-solution probe) and overdetermined-inconsistency (UNSAT).
+  **Do NOT grade the first algebra loop against KenKen's 100%.**
+- **REGISTERED PREDICTION #2-ALGEBRA (the KenKen limbo resolves here):** the silent
+  class appears at SUBSTANTIAL rate, CONCENTRATED IN LITERAL-CONSTANT ERRORS, while
+  membership/structural errors stay detectable. REFINEMENT from the corpus's own
+  integer structure: coupled-pair constants are ~HALF-caught by integrality/parity
+  (x+y=11, x-y=4 -> x=7.5 -> UNSAT over Z — a wrong constant flips parity ~50% of
+  the time), while CHAIN constants go silent by default (a shifted k just shifts
+  downstream values; SAT, unique, wrong). So predicted silent-rate ordering:
+  chain-literals >> coupled-literals > structural (~0). The taxonomy tool runs
+  unchanged; the corpus's gold answers grade it.
+- **THE NACK STACK'S COMPOSITION INVERTS:** tiers 1-2 (verifier, uniqueness) carried
+  KenKen; algebra hands the load to TIER-0 (the confidence head — now with its
+  motivating error class: low-confidence literal emissions) and TIER-3 (the deducer's
+  soft-solve suspicion field — specced for exactly this soft-wrongness regime).
+  Neither is built. The algebra chapter is not "new domain, same loop" — it is the
+  domain that FORCES the two neural NACK tiers the design promised.
+- **HEAD FIELD LAYOUT (settled before build):** slots emit
+  presence | type {rel, given} | op {add, mul} (canonical; sub/div die at the
+  generator) | args = 2-hot over VARIABLE slots | RESULT = UNION TYPE: an is-literal
+  MODE BIT gating result-POINTER (categorical over variable slots) vs the digit
+  machinery (transplants verbatim) — both sides supervised from gold; given-factors
+  use var-pointer + value digits. Variable slots anchor to the text through the
+  MENTION spans (name->slot binding as structure, §6). PLUS the head nobody
+  mentioned until now: the QUERY POINTER — one global supervised pointer over
+  variable slots (gold free from the generator); without it the pipeline solves the
+  system but cannot answer the question.
