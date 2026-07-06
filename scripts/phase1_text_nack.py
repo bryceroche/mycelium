@@ -78,9 +78,14 @@ def render_note(flags: np.ndarray) -> str:
     return f"NOTE: check {body}."
 
 
-def conditioned_sample(smp: dict, flags: np.ndarray) -> dict:
-    """Prepend the note; shift every factor's char spans by the note length."""
-    note = render_note(flags)
+PLACEBO_NOTE = "NOTE: no issues flagged."
+
+
+def conditioned_sample(smp: dict, flags: np.ndarray, placebo: bool = False) -> dict:
+    """Prepend the note; shift every factor's char spans by the note length.
+    placebo=True prepends the fixed no-issues note regardless of flags — the control
+    separating FLAG INFORMATION from note-formatted-text-perturbs-all-states."""
+    note = PLACEBO_NOTE if placebo else render_note(flags)
     if not note:
         return smp
     off = len(note) + 1
@@ -163,9 +168,22 @@ def do_precompute() -> None:
     f_shuf = np.stack([shuffle_flags(f, rng) for f in f_true])
     jobs.append(("test_true", [s_te[i] for i in fail_te], f_true, fail_te))
     jobs.append(("test_shuf", [s_te[i] for i in fail_te], f_shuf, fail_te))
+    # PLACEBO arm: the fixed no-issues note on the same test failures — separates
+    # flag INFORMATION from the mere presence of note-formatted text.
+    jobs.append(("test_placebo", [s_te[i] for i in fail_te],
+                 np.zeros_like(f_true), fail_te))
 
     for name, samples, flags_rows, orig_idx in jobs:
-        ids, mask, gold, sent, keep = build_conditioned_pack(samples, flags_rows)
+        if name == "test_placebo":
+            cond = [conditioned_sample(s, f, placebo=True)
+                    for s, f in zip(samples, flags_rows)]
+            ids, mask, offsets, keep = tokenize_samples(cond)
+            gold = build_gold([cond[i] for i in keep], [offsets[i] for i in keep])
+            sent = np.stack([sentence_indices(cond[i]["text"], offsets[i], mask[i])
+                             for i in keep])
+            ids, mask = ids[keep], mask[keep]
+        else:
+            ids, mask, gold, sent, keep = build_conditioned_pack(samples, flags_rows)
         dropped = len(samples) - len(keep)
         states = _run_trunk(host, ids)
         np.savez_compressed(
@@ -319,6 +337,11 @@ def do_eval() -> None:
     blank = run(bl_states, bl_tok, bl_sent, list(range(len(samples))))
     true_p = run(t_states, t_tok, t_sent, t_orig.tolist())
     shuf = run(s_states, s_tok, s_sent, s_orig.tolist())
+    placebo = None
+    if int(os.environ.get("PLACEBO", "0")) and os.path.exists(
+            COND_NPZ.format(name="test_placebo")):
+        p_states, p_tok, _pg, p_sent, p_orig, _ = load_pack("test_placebo")
+        placebo = run(p_states, p_tok, p_sent, p_orig.tolist())
 
     def decisions(o):
         return (o["pres"] > 0, o["type"].argmax(-1), o["op"].argmax(-1),
@@ -353,6 +376,12 @@ def do_eval() -> None:
         stats["solve"][0] += _solve_rate_one({k: v[None] for k, v in blank[i].items()}, 0, smp)
         stats["solve"][1] += _solve_rate_one({k: v[None] for k, v in true_p[i].items()}, 0, smp)
         stats["solve"][2] += _solve_rate_one({k: v[None] for k, v in shuf[i].items()}, 0, smp)
+        if placebo is not None and i in placebo:
+            wrong_p = wrong_slot_mask({k: v[None] for k, v in placebo[i].items()}, bl_gold, i, 0)
+            stats.setdefault("fix_p", [0, 0])
+            stats["fix_p"][0] += int((~wrong_p[flagged]).sum()); stats["fix_p"][1] += len(flagged)
+            stats.setdefault("solve_p", [0])
+            stats["solve_p"][0] += _solve_rate_one({k: v[None] for k, v in placebo[i].items()}, 0, smp)
 
     ft, fs = stats["fix_t"], stats["fix_s"]
     ff, fu = stats["flip_flag"], stats["flip_unflag"]
@@ -367,7 +396,15 @@ def do_eval() -> None:
           f"   ratio {r_f/max(r_u,1e-9):.0f}:1")
     print(f"  SOLVES: blank {stats['solve'][0]}  true-note {stats['solve'][1]}"
           f"  shuffled-note {stats['solve'][2]}")
+    if "fix_p" in stats:
+        fp = stats["fix_p"]
+        print(f"  PLACEBO ('no issues flagged'): fix {fp[0]}/{fp[1]} = "
+              f"{fp[0]/max(fp[1],1):.3f}  solves {stats['solve_p'][0]}"
+              f"   (note-presence control: separates flag info from text perturbation)")
     print(f"  (head-level arm baselines: fix 0.438 vs 0.360; solves 7 vs 4)")
+    print(f"  CAVEAT: the text arm trained on 7,384/7,652 failures (268 over-budget"
+          f" drops = the biggest, most-flagged tail) — if it underperforms the head"
+          f" arm, compare on the training intersection before concluding.")
 
 
 # ===========================================================================
