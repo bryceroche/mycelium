@@ -627,3 +627,45 @@ token-position × waist-dim, the moment the skeleton trains.
   mentioned until now: the QUERY POINTER — one global supervised pointer over
   variable slots (gold free from the generator); without it the pipeline solves the
   system but cannot answer the question.
+
+## 12. Tier-0 confidence (designed 2026-07-07, cross-channel; v0 = the incumbent, formalized)
+
+- **THE FRAME (post-J-lens):** the entropy null is the INCUMBENT WITH A TRACK RECORD
+  (slot_confidence — presence-sigmoid x per-field top-prob product, zero params —
+  ordered the add-back sweep to 0.52 retention). A trained head's bar is not "does
+  supervised confidence work" but "does it beat a working incumbent."
+- **GRANULARITY:** per-field confidence is the primitive (a READ off the union
+  layout's separate logits, not a build); factor-level is DERIVED. Open sub-question,
+  a numpy afternoon: does per-field error correlate within-factor? Yes -> min() or a
+  learned 4-weight combination beats the product; no -> the product stands.
+- **CALIBRATION vs DISCRIMINATION, split by consumer:** the add-back sweep consumes
+  RANKING (metric: AUC — implicit in the 0.52, never read directly; MEASURE IT
+  FIRST); phantom-gating and literal-flagging consume THRESHOLDS (metric: ECE, with
+  the incumbent TEMPERATURE-SCALED first — one scalar fitted on train failures).
+  Registered structure: incumbent -> per-field AUC + post-temperature ECE on banked
+  artifacts -> a trained head must beat BOTH on the field where it claims value.
+- **THE WITHHOLDING-COST CURVE (pre-registered):** decode each banked KenKen test
+  failure; withhold the k least-confident factors; solve the remainder; sweep
+  k in 0..5. COLUMNS: (a) solve-to-GOLD rate — Code's addition: withholding a wrong
+  factor from a dense graph can recover the EXACT grid with NO retransmission, so
+  the curve doubles as the measurement of withhold-and-solve as a THIRD repair
+  channel (vs retransmit, vs oracle); (b) taxonomy composition of the withheld
+  graphs — UNSAT -> multi-solution conversions are DETECTION conversions, not just
+  solve effects. REGISTERED PREDICTION (conditional — Code's pushback): the curve is
+  non-monotone with a peak at k=1-2 on KenKen, CONDITIONAL ON incumbent per-factor
+  AUC >= ~0.7 — at AUC ~0.65, k=1 withholds a CORRECT factor ~35-40% of the time and
+  converts right-graphs to underdetermined, and the peak may never materialize. AUC
+  lands first; the curve is interpreted against it, not alone. ALGEBRA FLIP
+  (registered): sparse coupled systems starve immediately (withholding a given ->
+  underdetermined by construction) — peak at k=0-1 or absent. DENSITY DECIDES THE
+  GATING BUDGET: the cross-domain claim.
+- **THE NULL'S BLIND SPOT (the one principled edge for a trained head):** entropy
+  measures decision SHARPNESS; confidently-wrong is structurally invisible to it —
+  and plateau errors are exactly the sure-and-wrong class (the 6-7 codebook
+  confusions are the deducer-side picture). Registered alternative form: does
+  supervised correctness-prediction find errors ON THE HIGH-INCUMBENT-CONFIDENCE
+  SUBSET? Zero edge there -> the null survives everywhere it matters.
+- **PRE-REGISTERED KILL for any trained tier-0 head:** must beat the calibrated
+  incumbent's AUC on the high-confidence-error subset, or per-field ECE, by margins
+  set AFTER the incumbent's numbers land. Zero GPU for all of v0 — measurement, not
+  training.
