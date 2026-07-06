@@ -505,3 +505,25 @@ token-position × waist-dim, the moment the skeleton trains.
   extends by one entry, op vocab UNCHANGED (add/sub/mul/div already there), targets
   unused (constants are variables now — the digit heads idle or emit given-values).
   The typed-slot format's extensibility bill: ONE new pointer head, not surgery.
+- **RELATED WORK (verified 2026-07-07, published 07-06): Anthropic's "Verbalizable
+  Representations Form a Global Workspace in Language Models"** (transformer-circuits
+  + open-source J-lens). VERIFIED claims: an emergent small workspace ("a few dozen
+  concepts, <1/10 of activity") that is reportable/controllable/load-bearing for
+  deliberate reasoning; ablation kills multi-step reasoning while fluency/recall
+  survive; unspoken intermediate concepts causally mediate answers (spider->8, swap
+  ant->6); workspace monitoring surfaces hidden error/deception signals pre-output.
+  CONVERGENT MOTIFS with Mycelium (analogies, NOT evidence — the over-claim guard
+  applies): small-broadcast-channel over parallel substrate (waist/notebook/global
+  latents, built explicitly); reasoning-in-residual-never-tokens (§6 law, observed
+  in the wild); internal-state-more-honest-than-output (their safety program == our
+  tier-3 late-JSD 0.687). The double edge, registered: emergence-at-scale cuts
+  against NEEDING to build the workspace explicitly; our counter is the thesis
+  itself — at 32M-87M params every joint is separately measurable. Closest
+  neighboring result for the eventual paper's related work.
+- **BORROWED TECHNIQUE CANDIDATE — J-ORDERED MATRYOSHKA:** order waist dims by
+  JACOBIAN SENSITIVITY of downstream decisions (|d output / d dim|), not variance.
+  We already hold the measured motivation: variance ordering inherits the identity
+  confound (the 0.755-vs-0.658 trap). Both waists are differentiable on existing
+  ckpts — one backward per output per batch. The experiment: J-ordered prefix-width
+  curve vs the current ordering; if the 128d survival sharpens further (or the
+  cliff moves), sensitivity ordering wins the schedule.
