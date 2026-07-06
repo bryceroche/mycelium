@@ -421,3 +421,28 @@ token-position × waist-dim, the moment the skeleton trains.
   gold-only head (pre-Brick-A, objective-independent) + fresh wide FFN + 12k steps.
   Lesson filed: an overfit-probe must DEMONSTRATE convergence before its residual
   can be called a ceiling.
+- **TEXT-NACK ARM RESULT (2026-07-07): FAILS — content-blind, diagnostically so.**
+  fix(true) = fix(shuffled) = 0.295 EXACTLY (142/482 both): the note's CONTENT was
+  never read — only its presence registered (generic revision). Flip-rate 0.921 vs
+  0.666 (~1.4:1 — global thrash, vs the head arm's 200:1); preserve degraded 0.998
+  -> 0.92 (the note shifts every token's position + steals attention); solves 1/0/0
+  (WORSE than blank); training loss never settled (3.7-4.0 vs 3.3). The drop-bias
+  caveat does not rescue it: identical true/shuffled is content-blindness,
+  independent of training distribution. DIAGNOSIS: referential binding ("statement
+  7" -> the 7th sentence) is deep-layer work; a FROZEN 4-LAYER prefix of a 1B LLM
+  cannot compute it. The C1-A counter-prior ("telling is modest") was right and
+  then some: telling through a shallow frozen reader is ~zero. The placebo arm is
+  MOOT (content-blindness established at true-vs-shuffled; skipped, reason recorded).
+- **CEILING PROBE v2 (2026-07-07): CONVERGED, VALID — decodable = 0.533.** Warm-
+  started, 12k steps, loss 3.47 ~= plateau (converged); ceiling ABOVE the
+  constructive 0.438 (consistent, unlike v1). **46.7% of plateau errors are beyond
+  ANY head-level channel; the head arm's 0.438 = 82% OF THE FIXABLE.**
+- **BRICK-A VERDICT (the plane-ride hypothesis, measured):** the zero-LoRA null
+  PASSES — same frozen weights, different INPUT, appropriately different behavior —
+  but the interface matters decisively: conditioning works as STRUCTURED FEATURES
+  (position-aligned embeddings; 82% of fixable, 200:1 localization) and fails as
+  NATURAL LANGUAGE through the shallow frozen trunk. This VINDICATES the original
+  §8.2 interface design (notebook/NACK as feature channels, registry vocabulary) over
+  the text-rendering shortcut. The remaining 46.7% needs actual reading-repair —
+  candidates: deeper trunk prefix, the LoRA ladder, or the Alternator's real answer
+  (structured ledger re-parse). Brick-C operates within the 53.3%.
