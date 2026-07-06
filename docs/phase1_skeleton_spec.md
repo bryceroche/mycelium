@@ -685,3 +685,26 @@ token-position × waist-dim, the moment the skeleton trains.
   parsing is solved: crank paraphrase depth + template families until failures exist,
   THEN prediction #2-algebra becomes testable (2 failures is an anecdote, not a
   taxonomy). The chapter's real tests still ahead; its plumbing is proven.
+- **THE CONVERGENCE EVAL (2026-07-07 night, teeth 0.8, n=300): PREDICTION #2-ALGEBRA
+  RESOLVES BOTH WAYS.** The teeth bit: fac-exact 0.69-0.81 (v0 was ~1.0), ANSWER
+  121/300, a real failure population (179). **THE SILENT CLASS IS BORN — the
+  inversion arrived as registered:** 14 SILENT (KenKen: zero across seven points);
+  detectable fraction 0.92. **BUT THE ORDERING IS REFUTED:** silent literals are
+  roughly uniform across roles (pair_diff 4 / pair_sum 2 / chain_k 2), and wrong
+  literals overwhelmingly land DETECTABLE (unsat 195, multi 89 attributions) — far
+  more caught than predicted. THE MECHANISM OF THE REFUTATION IS THE FAMILIAR ONE:
+  the prediction was calibrated to the SINGLE-ERROR regime; at fac-exact ~0.73 parses
+  carry ~5 wrong factors, and multiple wrong literals + structure JOINTLY
+  over-constrain -> UNSAT catches what parity alone would have missed. (Delete-one
+  blame died the same death — "single-error-regime assumptions break at multi-error
+  density" is now a RECURRING prediction-failure mode; second sighting, watch for
+  the third.) DETECT_multi=43: the uniqueness probe earns its keep at scale.
+  ANSWER(121) > graph-solve(95): wrong-but-right-where-asked is now a LARGE class
+  (26), not a curiosity. FACTORIZATION UNDER LOAD, honest read: fac-exact no longer
+  flat (0.811 -> 0.685 by band 3) — but band correlates with SIZE (more pairs = more
+  factors/vars/obliques), so the axes may correlate through LENGTH, not through
+  solve-difficulty; the size-controlled read (fac-exact vs band at fixed n_vars) is
+  the open analysis before the v0 flat claim is downgraded. TRAINING NOT CONVERGED
+  (loss 5.3, falling): all numbers are floors. NET FOR THE LOOP: 92% detectable on
+  algebra's thinner jaws — the NACK story survives the inversion far better than
+  feared, and tier-0/tier-3's target class (the 14 silents + 43 multis) now exists.
