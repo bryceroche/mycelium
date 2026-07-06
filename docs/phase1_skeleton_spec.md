@@ -544,3 +544,23 @@ token-position × waist-dim, the moment the skeleton trains.
   Matryoshka training kept dims 0-127 always on — identity ordering carries the
   baked-in trained importance; Fisher matching it CONFIRMS the nested training,
   beating it below 128 is the win.
+- **J-ORDERED MATRYOSHKA RESULT (2026-07-07): PREDICTION REFUTED — the INCUMBENT
+  WINS, and the refutation is structural.** Cliffs: identity (trained prefix) 128;
+  variance/fisher_loss/fisher_decision all 256 — every post-hoc reordering moved the
+  cliff RIGHT. The registration's item 5 named the mechanism in advance: nested
+  training didn't just RANK dims, it built CO-ADAPTED FUNCTIONAL SUBSETS (dims 0-127
+  were trained to work AS A SET; a mask of the 128 most-sensitive dims scattered
+  across the index space was never a training configuration, and the head cannot
+  read it — despite 85-91% top-128 overlap with the incumbent, the 10-15%
+  disagreement costs the whole cliff). SUB-PREDICTION CONFIRMED: decision-Fisher
+  beats loss-Fisher at every width below 256 (0.120/0.139/0.255/0.627 vs
+  0.018/0.001/0.009/0.496) — the wrong-but-equivalent divergence is real in the
+  Jacobian too. BELOW THE TRAINED FLOOR (<128, never sampled in training): the
+  trained prefix DIES COMPLETELY (0.001-0.011) while variance/decision-Fisher
+  degrade gracefully (0.306/0.255 at 64) — sensitivity orderings find dims with
+  standalone signal; none is solve-capable. §8.6 CONSEQUENCE: the waist schedule's
+  aggression limit is a TRAINING-TIME choice, not a post-hoc reordering — to
+  survive at 64/32, SAMPLE those widths during nested training (optionally SEEDING
+  the dim order by decision-Fisher before training: candidate, unregistered).
+  NULL SCOPE honored: this reads "post-hoc diagonal reordering doesn't beat a
+  trained incumbent," not "sensitivity ordering wrong in principle."
