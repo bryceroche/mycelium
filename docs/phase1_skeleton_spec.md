@@ -412,3 +412,12 @@ token-position × waist-dim, the moment the skeleton trains.
   DOING NOTHING — seven puzzles unreachable by unconditioned same-weights re-parsing,
   solved in one SYN->NACK->retransmit round (oracle standing in for Brick-C). The
   core Alternator transaction has now executed end-to-end.
+- **CEILING PROBE v1 INVALIDATED BY ITS OWN BASELINE (2026-07-07):** fresh-init 6k
+  steps read decodable=0.095 — BELOW the head arm's constructive 0.438. A ceiling
+  cannot sit under a measured achievement: v1 measured OPTIMIZATION BUDGET, not
+  decodability (loss 4.3 vs plateau 3.4; the original head needed 20k+ steps + the
+  full corpus). Standing facts: decodability of test flagged slots >= 0.438
+  (constructive, from the head arm). v2 = partial warm-start from the plateaued
+  gold-only head (pre-Brick-A, objective-independent) + fresh wide FFN + 12k steps.
+  Lesson filed: an overfit-probe must DEMONSTRATE convergence before its residual
+  can be called a ceiling.

@@ -421,6 +421,18 @@ def do_ceiling(steps: int, batch: int = 8, ffn_mult: int = 4, seed: int = 3) -> 
           f"{len(fail_idx)} train failures (fresh head, FFN x{ffn_mult})", flush=True)
 
     p = build_head_params(seed)
+    # PROBE v2 (v1 invalidated by its own baseline: fresh-init 6k steps measured
+    # optimization budget, not decodability — it "ceilinged" at 0.095 below the head
+    # arm's constructive 0.438). WARM=1 (default): partial warm-start from the
+    # PLATEAUED gold-only head (pre-Brick-A — head-independent of the conditioning
+    # objective), fresh wider FFN where shapes differ, long steps, no reg.
+    if int(os.environ.get("WARM", "1")):
+        from tinygrad.nn.state import safe_load
+        sd = safe_load(CKPT_PATH)
+        for k in p:
+            if k in sd and tuple(sd[k].shape) == tuple(p[k].shape):
+                p[k].assign(sd[k].to(p[k].device).cast(p[k].dtype)).realize()
+        print("[ceiling] partial warm-start from the plateaued head", flush=True)
     rng0 = np.random.RandomState(seed)
     from tinygrad import dtypes as _dt
 
