@@ -377,3 +377,21 @@ token-position × waist-dim, the moment the skeleton trains.
   slots where gold is NOT decodable are provably beyond ANY head-level conditioning;
   that fraction converts the capacity-error caveat into a DENOMINATOR (fix rates then
   read as fraction-of-the-fixable).
+- **BRICK-A FLAG-DEPENDENT ARM RESULT (2026-07-06): FLAG-USE PROVEN; localization
+  real at the DECISION level; my registered field metric was MIS-SPECIFIED.**
+  Numbers: fix(true)=0.438 (152/347) vs fix(shuffled)=0.360 — the flag-dependent
+  objective lifted fix capability 4.3x over v0 (0.102->0.438), and the true-vs-
+  shuffled gap (~2.9 sigma) is what LOCALIZATION buys; the 0.360 shuffled floor is
+  what the shared GLOBAL-FAIL bit buys (generic revision energy). Preservation 0.998
+  both. SOLVES: blank 0 -> true-NACK 7 (12.3% of failures solved outright by ONE
+  oracle-NACK round) vs shuffled 4. Blank solves dropped to 0 BY DESIGN (blank-mix
+  trains copy-previous, errors included — fix energy activates only with the bit).
+  THE METRIC LESSON: registered concentration (L1 prob-mass) reads 0.52<1 — but it is
+  dominated by sub-threshold jitter; at the DECISION level, flagged slots flip at
+  43.8% vs unflagged at ~0.2% (~200:1). The prob-mass field was the wrong functional
+  form; reported as registered (fails the letter), decision-level re-read passes the
+  spirit. Named, not swapped silently. C1-A's modest-effect prediction for "telling"
+  holds: real, significant, not crushing.
+  VERDICT: head-level conditioning DOES work when made load-bearing — confound #2 was
+  the v0 story. The remaining gap to 1.0 awaits the CEILING PROBE (denominator) and
+  the TEXT-RENDERED trunk arm (reading-repair on top of flag-use).
