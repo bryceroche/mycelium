@@ -52,19 +52,29 @@ LETTERS = "abcdefghijklmnopqrstuvwxyz"
 # factor is always the canonical add/mul form.
 REL_TEMPLATES = {
     "add": ["{a} plus {b} equals {r}.", "The sum of {a} and {b} is {r}.",
-            "{r} is the total of {a} and {b}."],
+            "{r} is the total of {a} and {b}.", "Adding {a} to {b} gives {r}.",
+            "{a} and {b} together make {r}.", "{r} is what you get from {a} plus {b}."],
     "sub": ["{r} minus {b} equals {a}.", "{r} exceeds {b} by {a}.",
-            "The difference between {r} and {b} is {a}."],
-    "mul": ["{a} times {b} equals {r}.", "The product of {a} and {b} is {r}."],
+            "The difference between {r} and {b} is {a}.",
+            "{a} is {r} reduced by {b}.", "Taking {b} away from {r} leaves {a}."],
+    "mul": ["{a} times {b} equals {r}.", "The product of {a} and {b} is {r}.",
+            "{r} is {a} multiplied by {b}.", "Multiplying {a} by {b} yields {r}."],
 }
 GIVEN_TEMPLATES = ["{v} equals {val}.", "The value of {v} is {val}.",
-                   "{v} is {val}."]
+                   "{v} is {val}.", "It is known that {v} is {val}.",
+                   "{v} has the value {val}."]
+OBLIQUE_FORMS = ["the first number", "the second number", "the third number",
+                 "the fourth number", "the fifth number", "the sixth number"]
+DISTRACTORS = ["Numbers can be written in many ways.",
+               "Work carefully through each fact.",
+               "Some of these facts involve the same quantities."]
 QUERY_TEMPLATES = ["What is {q}?", "Find {q}.", "Determine the value of {q}."]
 PREAMBLES = ["Consider the numbers {vars}.", "Let {vars} be whole numbers.",
              "The following facts hold about {vars}."]
 
 
-def gen_system(rng: random.Random, n_pairs: int, chain_len: int, m: int):
+def gen_system(rng: random.Random, n_pairs: int, chain_len: int, m: int,
+               irrelevant: bool = False):
     """Solution-first generation. Returns (n_vars, factors, solution, query_var).
     factors: role-typed gold (canonical add/mul + givens). Coupled pairs supply the
     engine band; a triangular chain supplies calculator-band structure on top."""
@@ -85,15 +95,15 @@ def gen_system(rng: random.Random, n_pairs: int, chain_len: int, m: int):
                         "result": si, "surface": "add"})
         factors.append({"ftype": "rel", "op": "add", "args": [yi, di],
                         "result": xi, "surface": "sub"})
-        factors.append({"ftype": "given", "var": si, "value": x + y})
-        factors.append({"ftype": "given", "var": di, "value": x - y})
+        factors.append({"ftype": "given", "var": si, "value": x + y, "role": "pair_sum"})
+        factors.append({"ftype": "given", "var": di, "value": x - y, "role": "pair_diff"})
         unknowns += [xi, yi]
 
     if unknowns:
         prev = unknowns[0]
     else:
         prev = new_var(rng.randint(1, m // 4))
-        factors.append({"ftype": "given", "var": prev, "value": sol[prev]})
+        factors.append({"ftype": "given", "var": prev, "value": sol[prev], "role": "anchor"})
     for _ in range(chain_len):
         # chain: prev (op) k = nxt, k given — pure calculator band
         if rng.random() < 0.5 and sol[prev] * 2 <= m:
@@ -110,17 +120,37 @@ def gen_system(rng: random.Random, n_pairs: int, chain_len: int, m: int):
             ki = new_var(k)
             factors.append({"ftype": "rel", "op": "add", "args": [prev, ki],
                             "result": nxt, "surface": "add"})
-        factors.append({"ftype": "given", "var": ki, "value": k})
+        factors.append({"ftype": "given", "var": ki, "value": k, "role": "chain_k"})
         prev = nxt
 
     query = rng.choice(unknowns) if unknowns else prev
+
+    # IRRELEVANT EQUATIONS (a tooth): a self-contained coupled pair over FRESH
+    # variables, disjoint from the query component — real gold factors (the parser
+    # must emit them; relevance is the QUERY's job), globally unique because
+    # self-contained. Stresses component separation + phantom behavior.
+    if irrelevant:
+        y2 = rng.randint(0, m // 3)
+        x2 = y2 + rng.randint(1, m // 3)
+        xi2, yi2 = new_var(x2), new_var(y2)
+        si2, di2 = new_var(x2 + y2), new_var(x2 - y2)
+        factors.append({"ftype": "rel", "op": "add", "args": [xi2, yi2],
+                        "result": si2, "surface": "add"})
+        factors.append({"ftype": "rel", "op": "add", "args": [yi2, di2],
+                        "result": xi2, "surface": "sub"})
+        factors.append({"ftype": "given", "var": si2, "value": x2 + y2, "role": "pair_sum"})
+        factors.append({"ftype": "given", "var": di2, "value": x2 - y2, "role": "pair_diff"})
     return len(sol), factors, sol, query
 
 
 def render(rng: random.Random, n_vars: int, factors: list, query: int,
-           shuffle: bool = True):
+           shuffle: bool = True, shuffle_letters: bool = False,
+           oblique_prob: float = 0.0, distractor_prob: float = 0.0):
     """NL rendering with span-SET gold. Returns (text, factors-with-spans)."""
-    names = {i: LETTERS[i] for i in range(n_vars)}
+    letters = list(LETTERS[:max(n_vars, 1)])
+    if shuffle_letters:
+        rng.shuffle(letters)          # slot->name binding must come from MENTIONS
+    names = {i: letters[i] for i in range(n_vars)}
     units = []   # (sentence, factor_index or None)
     used = sorted({v for f in factors for v in
                    (f["args"] + [f["result"]] if f["ftype"] == "rel" else [f["var"]])})
@@ -139,6 +169,28 @@ def render(rng: random.Random, n_vars: int, factors: list, query: int,
                 s = rng.choice(REL_TEMPLATES[f["surface"]]).format(
                     a=names[a], b=names[b], r=names[r])
         units.append((s, fi))
+    # OBLIQUE references (the referential-binding tooth): replace a variable NAME
+    # with an ordinal phrase; the mention span records the PHRASE for the same id.
+    oblique_marks = []
+    if oblique_prob > 0:
+        for ui in range(len(units)):
+            sent_txt, fi = units[ui]
+            if fi is None or rng.random() >= oblique_prob:
+                continue
+            f = factors[fi]
+            vs = (f["args"] + [f["result"]]) if f["ftype"] == "rel" else [f["var"]]
+            v = rng.choice(vs)
+            if v >= len(OBLIQUE_FORMS):
+                continue
+            m2 = re.search(rf"\b{names[v]}\b", sent_txt)
+            if m2:
+                phrase = OBLIQUE_FORMS[v]
+                units[ui] = (sent_txt[:m2.start()] + phrase + sent_txt[m2.end():], fi)
+                oblique_marks.append((v, phrase))
+    n_dis = 0
+    while distractor_prob > 0 and rng.random() < distractor_prob and n_dis < 2:
+        units.append((rng.choice(DISTRACTORS), None))
+        n_dis += 1
     if shuffle:
         rng.shuffle(units)
     units = [(pre, None)] + units + [(rng.choice(QUERY_TEMPLATES).format(q=names[query]), None)]
@@ -162,6 +214,9 @@ def render(rng: random.Random, n_vars: int, factors: list, query: int,
         # Names are single letters; word-boundary search inside the sentence is exact.
         for v, nm in names.items():
             for mt in re.finditer(rf"\b{nm}\b", s):
+                mentions.setdefault(v, []).append([start + mt.start(), start + mt.end()])
+        for v, phrase in oblique_marks:
+            for mt in re.finditer(re.escape(phrase), s):
                 mentions.setdefault(v, []).append([start + mt.start(), start + mt.end()])
     for f in out_factors:
         f.pop("surface", None)
@@ -197,7 +252,7 @@ def roundtrip(n_vars: int, factors: list, m: int, solution: list):
 
 
 def generate(n: int, seed: int, out: str, m: int = 60,
-             max_pairs: int = 3, max_chain: int = 3) -> None:
+             max_pairs: int = 3, max_chain: int = 3, teeth: float = 0.0) -> None:
     rng = random.Random(seed)
     n_ok = n_rej = 0
     bands = {}
@@ -205,11 +260,16 @@ def generate(n: int, seed: int, out: str, m: int = 60,
         while n_ok < n:
             n_pairs = rng.randint(1, max_pairs)
             chain = rng.randint(0, max_chain)
-            n_vars, factors, sol, query = gen_system(rng, n_pairs, chain, m)
+            irrel = rng.random() < teeth * 0.5
+            n_vars, factors, sol, query = gen_system(rng, n_pairs, chain, m,
+                                                     irrelevant=irrel)
             if n_vars > 24:
                 n_rej += 1
                 continue
-            text, gfactors, mentions = render(rng, n_vars, factors, query)
+            text, gfactors, mentions = render(
+                rng, n_vars, factors, query,
+                shuffle_letters=(rng.random() < teeth * 0.5),
+                oblique_prob=teeth * 0.35, distractor_prob=teeth * 0.4)
             ok, decisions = roundtrip(n_vars, gfactors, m, sol)
             if not ok:
                 n_rej += 1
@@ -219,7 +279,8 @@ def generate(n: int, seed: int, out: str, m: int = 60,
                 "n_vars": n_vars, "m": m, "text": text, "factors": gfactors,
                 "mentions": mentions,
                 "query_var": query, "solution": sol, "decisions": decisions,
-                "gen": {"seed": seed, "n_pairs": n_pairs, "chain": chain},
+                "gen": {"seed": seed, "n_pairs": n_pairs, "chain": chain,
+                        "teeth": teeth, "irrelevant": irrel},
             }) + "\n")
             n_ok += 1
     print(f"[gen] wrote {n_ok} to {out} ({n_rej} rejected by round-trip/uniqueness)")
@@ -265,12 +326,15 @@ def main(argv=None):
     ap.add_argument("--n", type=int, default=200)
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--m", type=int, default=60)
+    ap.add_argument("--teeth", type=float, default=0.0,
+                    help="0..1 difficulty dial: oblique refs, letter shuffle, "
+                         "distractors, irrelevant subsystems")
     ap.add_argument("--out", default=".cache/algebra_nl.jsonl")
     args = ap.parse_args(argv)
     if args.selftest:
         selftest()
     else:
-        generate(args.n, args.seed, args.out, m=args.m)
+        generate(args.n, args.seed, args.out, m=args.m, teeth=args.teeth)
 
 
 if __name__ == "__main__":

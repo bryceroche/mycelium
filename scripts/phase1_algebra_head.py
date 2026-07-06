@@ -400,6 +400,111 @@ def do_eval():
           f" reasoning on independent axes)")
 
 
+
+
+# ===========================================================================
+# TAXONOMY (--errors): prediction #2-algebra's grader (spec §11)
+# ===========================================================================
+# Classes: CORRECT | DETECT_malformed | DETECT_unsat | DETECT_multi (ban-and-resolve
+# uniqueness probe, gold-free) | SILENT (unique-solves to the WRONG answer). Literal
+# errors attributed by the gold given's ROLE: chain_k vs pair_sum/pair_diff — the
+# registered ordering: chain-literals >> coupled-literals > structural (~0).
+
+def do_errors():
+    from tinygrad import Tensor, dtypes
+    from tinygrad.nn.state import safe_load
+    from mycelium.csp_domains import problem_from_algebra
+    from mycelium.csp_core import solve_symbolic
+
+    samples, states, tokmask, gold, sent = load_alg("test")
+    p = build_params(0)
+    sd = safe_load(ALG_CKPT)
+    for k in p:
+        p[k].assign(sd[k].to(p[k].device).cast(p[k].dtype)).realize()
+    n = len(samples)
+    cats = {"CORRECT": 0, "DETECT_malformed": 0, "DETECT_unsat": 0,
+            "DETECT_multi": 0, "SILENT": 0}
+    lit_err = {}     # class -> {role: count} for wrong-literal cases
+    for s0 in range(0, n, 8):
+        sl = np.arange(s0, min(s0 + 8, n))
+        pad = 8 - len(sl)
+        sl_p = np.concatenate([sl, sl[:1].repeat(pad)]) if pad else sl
+        out = forward(p, Tensor(states[sl_p].astype(np.float32), dtype=dtypes.float),
+                      Tensor(tokmask[sl_p].astype(np.float32), dtype=dtypes.float),
+                      Tensor(sent[sl_p].astype(np.int32), dtype=dtypes.int))
+        o = {k: out[k].realize().numpy() for k in
+             ("pres", "ftype", "op", "islit", "dig", "args", "res", "query")}
+        for bi, i in enumerate(sl):
+            i = int(i)
+            smp = samples[i]
+            facs, q_pred = decode({k: o[k][bi] for k in o})
+            # wrong-literal attribution (pred given value != gold given value, by var)
+            gold_gv = {f["var"]: (f["value"], f.get("role", "?"))
+                       for f in smp["factors"] if f["ftype"] == "given"}
+            wrong_lits = [(v, gold_gv[v][1]) for f in facs if f["ftype"] == "given"
+                          for v in [f["var"]] if v in gold_gv
+                          and f["value"] != gold_gv[v][0]]
+            rels = [(f["op"], f["args"][0], f["args"][1], f["result"])
+                    for f in facs if f["ftype"] == "rel"]
+            gv = {f["var"]: f["value"] for f in facs if f["ftype"] == "given"}
+            gold_ans = smp["solution"][smp["query_var"]]
+            cat = None
+            try:
+                nv = max([smp["n_vars"]] + [v + 1 for f in facs for v in
+                         ((list(f["args"]) + [f["result"]]) if f["ftype"] == "rel"
+                          else [f["var"]])])
+                if nv > 26:
+                    cat = "DETECT_malformed"
+                else:
+                    res = solve_symbolic(problem_from_algebra(nv, rels, gv, smp["m"]),
+                                         budget=200_000, seed=0)
+                    if res["status"] != "solved":
+                        cat = "DETECT_unsat"
+                    else:
+                        sol = [int(res["assignment"][v]) for v in range(nv)]
+                        ans_ok = q_pred < len(sol) and sol[q_pred] == gold_ans
+                        if ans_ok and not wrong_lits:
+                            cat = "CORRECT"
+                        else:
+                            # uniqueness probe on the PREDICTED graph (gold-free)
+                            multi = False
+                            for v in range(nv):
+                                if v in gv:
+                                    continue
+                                p2 = problem_from_algebra(nv, rels, gv, smp["m"])
+                                p2.domains0[v].discard(sol[v])
+                                if p2.domains0[v]:
+                                    r2 = solve_symbolic(p2, budget=100_000, seed=0)
+                                    if r2["status"] == "solved":
+                                        multi = True
+                                        break
+                            if ans_ok:
+                                cat = "CORRECT"   # right answer, benign literal drift
+                            elif multi:
+                                cat = "DETECT_multi"
+                            else:
+                                cat = "SILENT"
+            except Exception:
+                cat = "DETECT_malformed"
+            cats[cat] += 1
+            if wrong_lits and cat in ("SILENT", "DETECT_unsat", "DETECT_multi"):
+                for _v, role in wrong_lits:
+                    lit_err.setdefault(cat, {}).setdefault(role, 0)
+                    lit_err[cat][role] += 1
+
+    wrong = n - cats["CORRECT"]
+    det = cats["DETECT_malformed"] + cats["DETECT_unsat"] + cats["DETECT_multi"]
+    print(f"\n[algebra errors] n={n}")
+    for k, v in cats.items():
+        print(f"  {k:18s} {v}")
+    if wrong:
+        print(f"  DETECTABLE fraction: {det}/{wrong} = {det/wrong:.2f} "
+              f"(KenKen was 1.00 seven times — the INVERSION is the prediction)")
+    print(f"  wrong-literal attribution by role x class: {lit_err}")
+    print(f"  (registered ordering: chain_k literals >> pair literals (parity ~half-"
+          f"caught) > structural ~0)")
+
+
 # ===========================================================================
 # TRAIN
 # ===========================================================================
@@ -529,6 +634,7 @@ def main(argv=None):
     ap.add_argument("--precompute", action="store_true")
     ap.add_argument("--train", action="store_true")
     ap.add_argument("--eval", action="store_true")
+    ap.add_argument("--errors", action="store_true")
     args = ap.parse_args(argv)
     if args.selftest:
         selftest()
@@ -541,6 +647,8 @@ def main(argv=None):
                  int(os.environ.get("SEED", "0")))
     elif args.eval:
         do_eval()
+    elif args.errors:
+        do_errors()
     else:
         ap.print_help()
 
