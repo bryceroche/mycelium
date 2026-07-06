@@ -356,3 +356,24 @@ token-position × waist-dim, the moment the skeleton trains.
   model is itself an open measurement. NEXT: (a) flag-dependent training objective,
   (b) trunk-level arm when the driver fight is won, (c) if both fail: the §8.4 LoRA
   ladder, as specified.
+- **TEXT-RENDERED NACK (registered 2026-07-06 — the driver-fight dissolver):** the
+  trunk is FROZEN, so backward-through-trunk is only needed if conditioning enters as
+  LEARNED prefix params. Render the NACK as literal text instead ("NOTE: statement 7
+  may be wrong.") prepended to the problem: ordinary forward, head trains exactly as
+  today (backward stops at the head input — the 68k-step-proven graph class), zero new
+  gradient paths, zero driver exposure. This IS trunk-level conditioning (the flags
+  change how the text is READ — what confound #1 demands) and arguably the PUREST
+  plane-ride null: same weights, different INPUT, different behavior — input in the
+  most literal sense. Cost: conditioned trunk states need live forwards / a small
+  conditioned precompute (~6 min for the Brick-A corpus at 0.34s/batch). Token budget:
+  note ~15-40 tokens, max 451+40 < 512, the truncation guard stands watch.
+  COUNTER-PRIOR (register it): C1-A found TEACHING (auxiliary prediction) beat TELLING
+  (hint concatenation), and text-rendered NACK is telling — but runtime verifier flags
+  MUST enter as input somehow (no training-time auxiliary exists for an error that
+  doesn't exist until inference), so C1-A predicts a MODEST effect size, not a wrong
+  channel. Queue: flag-dependent head arm (running) -> text-rendered trunk arm ->
+  LoRA ladder only if both fail. Plus the CEILING PROBE as its own measurement:
+  deliberately overfit an unrestricted head on flagged positions from frozen states —
+  slots where gold is NOT decodable are provably beyond ANY head-level conditioning;
+  that fraction converts the capacity-error caveat into a DENOMINATOR (fix rates then
+  read as fraction-of-the-fixable).
