@@ -258,3 +258,19 @@ token-position × waist-dim, the moment the skeleton trains.
   **BLAME CO-IMPROVEMENT MEASURED:** delete-one recall 0.034 -> **0.067** (doubled,
   restored 5/52 vs 2/44; precision 1.0 -> 0.8) as the parser improved — the
   single-error-tail convergence claim now has its first two points.
+- **THE FINE-CADENCE CURVE (2026-07-06 night, 7 points, 12k->44k steps):**
+  factor exact 0.753 -> 0.780 -> 0.805 -> 0.814 -> 0.827 -> 0.825 -> 0.829 (PLATEAU
+  ~0.83 — the cheap-steps lever is exhausted; loss flat at ~3.34 with span at its
+  entropy floor); SOLVE RATE 0 -> 1 -> 1 -> 2 -> 5 -> 5 -> 5 /60 (8.3%).
+  **SEVEN consecutive 100%-detectable taxonomy points, zero silent**, while the mix
+  rotated hard toward target digits (dominant cage-field error) — prediction #2 STILL
+  unfalsified with its trigger zone now fully occupied: target errors dominate and no
+  silent has appeared. DETECT_multi births at stage 3 (dropped factors -> under-
+  constrained -> caught by the uniqueness probe — the third detection channel now
+  live). NEW CLASS OBSERVED: CORRECT-with-field-errors (up to 2/5 solves carry a
+  member mismatch) — wrong-but-EQUIVALENT parses that solve to gold: benign errors,
+  worth excluding from exactness metrics later.
+  **DECISION POINT: the 0.83 plateau means the next lever is architectural (second
+  attention hop / iterative refinement) OR the loop itself (Brick-A/C — the design's
+  actual answer to imperfect parsers). Brick-A is next per the queue, and now inherits
+  a stable, characterized parser.**
