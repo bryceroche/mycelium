@@ -456,3 +456,14 @@ token-position × waist-dim, the moment the skeleton trains.
   must RETAIN >= HALF the oracle's localization increment (the +7.8pt over the 0.36
   floor) — the oracle arm is the ceiling condition; Brick-C's question is how much
   survives the real instrument. (4) JOB-B GATE IS DUE (pegged to Brick-A completion).
+- **UNKNOWNS-CORPUS DECISION (registered 2026-07-07, product track):** GENERATED
+  ALGEBRA before any MATH-500 graph-ification — linear systems + small nonlinear
+  compositions, NL via template families. The KenKen generator's deepest property
+  transplants verbatim: the domain makes gold + equivalence checking FREE
+  (unique-solution-by-construction, exact symbolic solve, round-trip gating), and
+  decisions-per-problem becomes a GENERATOR DIAL (target the engine band directly).
+  MATH-500 stays the EVALUATION target, never the training substrate. SEQUENCING:
+  the registry extension (equals/linear relations) is the first NEURAL-side test of
+  "new domain = predicate + bridge, never core" — the delta head's typed-slot +
+  digit-spaced format meets its extensibility bill EARLY, during corpus work, not
+  after Brick-C hardens KenKen-only assumptions.
