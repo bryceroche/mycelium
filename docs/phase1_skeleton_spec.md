@@ -467,3 +467,17 @@ token-position × waist-dim, the moment the skeleton trains.
   "new domain = predicate + bridge, never core" — the delta head's typed-slot +
   digit-spaced format meets its extensibility bill EARLY, during corpus work, not
   after Brick-C hardens KenKen-only assumptions.
+- **BRICK-C MEASURED (2026-07-07): THE LOOP CLOSES GOLD-FREE.** v0 KILLED at its
+  pre-registered bar (retention 0.48 < 0.5) — the kill forced the instrument reading
+  that surfaced a bug-vs-intent (malformed cages commented as blamed, never blamed).
+  v0.1 (the labeled fix): fix oracle 0.438 | ADD-BACK 0.401 | shuffled 0.360 ->
+  **retention 0.52, LIVES** — with the margin stated honestly: 0.48/0.52 straddle
+  the bar, so the true retention sits AT ~0.5 within noise. The robust facts: the
+  gold-free instrument (confidence-ordered add-back + attention slot->sentence map)
+  recovers ~half the oracle's localization increment, and SOLVES — the end-to-end
+  metric — ran 8 vs oracle 7 vs shuffled 4 in BOTH versions: full solve parity with
+  the ceiling condition. THE ALTERNATOR LOOP HAS NOW RUN GOLD-FREE END TO END:
+  parse -> symbolic self-diagnosis -> blame -> flags -> conditioned retransmit ->
+  solve, no gold at any stage, 8/57 plateau failures recovered in one round.
+  Margin upgrades (named, unbuilt): uniqueness-probe flags in the sweep, a real
+  tier-0 confidence head for ordering, multi-round retransmission.
