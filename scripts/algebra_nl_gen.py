@@ -40,6 +40,7 @@ import argparse
 import json
 import os
 import random
+import re
 import sys
 
 _ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -144,6 +145,7 @@ def render(rng: random.Random, n_vars: int, factors: list, query: int,
 
     text_parts, pos = [], 0
     out_factors = [dict(f, spans=[]) for f in factors]
+    mentions = {v: [] for v in used}
     for i, (s, fi) in enumerate(units):
         if i > 0:
             text_parts.append(" ")
@@ -153,9 +155,17 @@ def render(rng: random.Random, n_vars: int, factors: list, query: int,
         pos += len(s)
         if fi is not None:
             out_factors[fi]["spans"].append([start, pos])
+        # VARIABLE-MENTION ANNOTATIONS (registered pre-emption of the referential-
+        # binding failure mode the text-NACK arm proved for shallow layers): the
+        # generator KNOWS every mention at render time — emit them as structure so
+        # the result pointer never has to LEARN name->slot binding from one hop.
+        # Names are single letters; word-boundary search inside the sentence is exact.
+        for v, nm in names.items():
+            for mt in re.finditer(rf"\b{nm}\b", s):
+                mentions.setdefault(v, []).append([start + mt.start(), start + mt.end()])
     for f in out_factors:
         f.pop("surface", None)
-    return "".join(text_parts), out_factors
+    return "".join(text_parts), out_factors, {int(k): v for k, v in mentions.items() if v}
 
 
 def roundtrip(n_vars: int, factors: list, m: int, solution: list):
@@ -199,7 +209,7 @@ def generate(n: int, seed: int, out: str, m: int = 60,
             if n_vars > 24:
                 n_rej += 1
                 continue
-            text, gfactors = render(rng, n_vars, factors, query)
+            text, gfactors, mentions = render(rng, n_vars, factors, query)
             ok, decisions = roundtrip(n_vars, gfactors, m, sol)
             if not ok:
                 n_rej += 1
@@ -207,6 +217,7 @@ def generate(n: int, seed: int, out: str, m: int = 60,
             bands[decisions] = bands.get(decisions, 0) + 1
             fh.write(json.dumps({
                 "n_vars": n_vars, "m": m, "text": text, "factors": gfactors,
+                "mentions": mentions,
                 "query_var": query, "solution": sol, "decisions": decisions,
                 "gen": {"seed": seed, "n_pairs": n_pairs, "chain": chain},
             }) + "\n")
@@ -222,8 +233,14 @@ def selftest() -> None:
     ok, dec = roundtrip(n_vars, factors, 60, sol)
     assert ok, "hand system fails round trip"
     assert dec > 0, f"coupled system should be engine band, got {dec}"
-    text, gf = render(rng, n_vars, factors, q)
+    text, gf, mentions = render(rng, n_vars, factors, q)
     assert all(f["spans"] for f in gf), "every factor needs spans"
+    used = {v for f in gf for v in
+            (f["args"] + [f["result"]] if f["ftype"] == "rel" else [f["var"]])}
+    assert all(v in mentions and mentions[v] for v in used), "every used var mentioned"
+    for v, spans in mentions.items():
+        for (ms, me) in spans:
+            assert text[ms:me] == LETTERS[v], (v, text[ms:me])
     for f in gf:
         for (s, e) in f["spans"]:
             assert 0 <= s < e <= len(text)

@@ -579,3 +579,16 @@ token-position × waist-dim, the moment the skeleton trains.
   nested-trained incumbent is the ADVERSARIAL CASE for post-hoc dim selection —
   "co-adaptation defeats post-hoc sensitivity ranking" is a boundary condition of
   the J-lens found within 24h of its publication.
+- **CORPUS REGISTRATIONS (2026-07-07, per-band + mentions):** (1) EVAL IS PER-BAND
+  from the first run: solve-rate and factor-exactness logged PER decisions-band
+  (a smeared solve-rate would erase the one distinction Job-B established matters);
+  curriculum-by-band available (calculator band first: parse errors are the only
+  failure mode there). (2) THE FACTORIZATION QUESTION, answered free by that logging:
+  is parse difficulty CORRELATED with solve difficulty? A flat parser error rate
+  across bands = reading hardness and reasoning hardness on independent axes — the
+  cleanest possible vindication of the two-phase design. (3) VARIABLE-MENTION
+  ANNOTATIONS added to gold (generator emits every name occurrence as char spans,
+  free): the registered pre-emption of referential binding — the text-NACK arm
+  proved shallow layers don't bind references unaided; the result pointer gets
+  name->slot binding AS STRUCTURE (§6 law applied prospectively), not as a hop to
+  learn. Cheap now; expensive after a plateau gets misdiagnosed as capacity.
