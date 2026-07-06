@@ -327,3 +327,14 @@ token-position × waist-dim, the moment the skeleton trains.
    vs a global reshuffle. Plus: flagged-slot FIX RATE vs a SHUFFLED-FLAGS control
    (same flag count, innocent sentences). **KILL: fix_rate(true) ~= fix_rate(shuffled)
    => conditioning isn't doing the work => the null fails toward the LoRA ladder.**
+- **Brick-A SUBSTRATE BLOCKAGE (2026-07-06 night, recorded honestly):** every
+  backward-through-trunk training form hangs the AM driver — fused (real), eager
+  multi-loss (real), three-JIT checkpointed VJP (real, on a RECOVERED device; jit1's
+  input-grad extension through the cross-attention is a NEW graph class, not the
+  hours-proven head step). Pre-wedge facts: trunk-bwd alone OK, JIT'd head-step OK.
+  Meta-lesson (quirks): HANGS ACCUMULATE — recover (scripts/am_gpu_recover.py,
+  self-service via caps) before trusting any bisect result. DECISION: run the
+  HEAD-LEVEL arm first (registered §9.1 comparison arm; all-proven graph classes;
+  banked states apply) — it measures fix-rate/concentration/kill TODAY. Trunk-level
+  remains the registered honest null, PARKED behind the driver fight (smaller B/T,
+  tinygrad update, or upstream fix are the candidate unlocks).
