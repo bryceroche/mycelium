@@ -162,6 +162,7 @@ def do_eval(seed: int = 0) -> None:
         N = int(samples[i]["N"])
         pred = decode_slots(o, N)
         cages, clues, conf, slot_of = [], [], [], []
+        malformed_slots = []
         pj = 0
         for j in range(L_SLOTS):
             if o["pres"][j] <= 0.0:
@@ -172,11 +173,16 @@ def do_eval(seed: int = 0) -> None:
             f = pred[pj]; pj += 1
             rc = [[m // 7, m % 7] for m in f["members_flat"]]
             if not rc or any(a >= N or b >= N for (a, b) in rc):
-                continue          # malformed: blamed unconditionally below
+                # v0.1 (v0 BUG vs intent: the comment claimed these were "blamed
+                # below" and the code never did): malformed cages are the taxonomy's
+                # DETECT_malformed class — gold-free, and the instrument's EASIEST
+                # catches. Blame them directly.
+                malformed_slots.append(j)
+                continue
             cages.append(rc); clues.append([f["op"], f["target"]])
             conf.append(slot_confidence(o, j)); slot_of.append(j)
         blamed = addback_blame(N, cages, clues, conf)
-        blamed_slots = [slot_of[k] for k in blamed]
+        blamed_slots = [slot_of[k] for k in blamed] + malformed_slots
         n_blamed_tot += len(blamed_slots)
         flags_addback[r] = slots_to_flags_via_attn(blamed_slots, o["attn_mean"], sent[i])
 
