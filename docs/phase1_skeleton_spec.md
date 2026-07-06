@@ -274,3 +274,29 @@ token-position × waist-dim, the moment the skeleton trains.
   attention hop / iterative refinement) OR the loop itself (Brick-A/C — the design's
   actual answer to imperfect parsers). Brick-A is next per the queue, and now inherits
   a stable, characterized parser.**
+- **NAMED: the packing finding is NEURAL COLLAPSE** (Papyan/Han/Donoho — terminal-phase
+  CE pulls class vectors toward a simplex equiangular tight frame; K=7 ideal cosine
+  -1/6 ~= -0.167; measured -0.048 = collapse one-third realized, penalty OFF).
+  **REGISTERED PREDICTION #3 (the mechanism test):** training with a simplex-ETF
+  codebook penalty shifts confusion mass SPECIFICALLY off the thin walls (6-7 first,
+  1-2 second — the rho=0.53 geometry-predicts-confusions link is the mechanism). If
+  accuracy rises but the confusion matrix reshuffles uniformly, the geometry story
+  was correlation, not cause. (Deducer-side; fire on a free training slot.)
+- **SEMANTIC EXACTNESS (the wrong-but-equivalent consequence):** factor-exact
+  systematically UNDERSELLS the parser — wrong-but-equivalent parses solve to gold.
+  The honest per-parse metric is SOLUTION-SET EQUIVALENCE (solve the parsed graph,
+  compare grids — the round-trip machinery computes it free). Long-term (Job B):
+  real math admits many valid formalizations; grading on syntactic match to one
+  canonical gold graph punishes legitimate readings. **The generator's unique-solution
+  guarantee is what makes equivalence CHECKABLE — preserve it as a HARD REQUIREMENT
+  when the domain widens.**
+- **LEVER ORDERING (settled by the plateau):** Brick-A next (wants the stable parser),
+  Brick-C after (55 flagged failures are its specified input; a plateaued parser with
+  perfect error visibility makes any loop gain UNCONFOUNDABLE with parser improvement),
+  the architectural lever (second attention hop) stays PARKED unless the loop's
+  ceiling proves too low. Information value over fun.
+- **Prediction #2 status note:** the trigger zone is fully occupied (target digits
+  dominant) with no silent birth through 7 points. If the window closes without one,
+  record THAT as the finding — KenKen's lattice polices even compensating-coincidence-
+  rich errors — which sets the baseline for when sparser domains DO grow a silent class.
+  Either resolution is informative.
