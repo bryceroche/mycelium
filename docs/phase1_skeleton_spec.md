@@ -669,3 +669,19 @@ token-position × waist-dim, the moment the skeleton trains.
   incumbent's AUC on the high-confidence-error subset, or per-field ECE, by margins
   set AFTER the incumbent's numbers land. Zero GPU for all of v0 — measurement, not
   training.
+- **FIRST ALGEBRA RUN (2026-07-07 evening): 58/60 ANSWER, and the FACTORIZATION
+  READ IS CLEAN.** Per-band: fac-exact 1.000/1.000/0.997/0.993 across decisions
+  bands 0/1/2/3 — FLAT. Parse difficulty and solve difficulty are on INDEPENDENT
+  AXES on first measured contact: the parser reads band-3 (4-decision) systems as
+  easily as calculator-band ones, while the solve column does genuinely different
+  work per band. The two-phase design's division of labor, vindicated by its first
+  stratified table. ANSWER 58/60 = the full pipeline (parse -> graph -> GENUINE
+  SEARCH (1-3 decisions) -> query-pointer -> answer) at near-ceiling. Noted oddity:
+  band-2 ANSWER (29) > graph-solve (28) — a wrong-somewhere graph can still be right
+  AT THE QUERY: wrong-but-right-where-asked, the equivalence class's algebra cousin.
+  HONEST DEFLATOR: v0 templates are easy (105 tokens mean, low paraphrase diversity,
+  mentions given as structure — the §6 laws compounding prospectively designed OUT
+  the failure modes). Near-ceiling here means THE CORPUS NEEDS TEETH, not that
+  parsing is solved: crank paraphrase depth + template families until failures exist,
+  THEN prediction #2-algebra becomes testable (2 failures is an anecdote, not a
+  taxonomy). The chapter's real tests still ahead; its plumbing is proven.
