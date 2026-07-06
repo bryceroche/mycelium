@@ -527,3 +527,20 @@ token-position × waist-dim, the moment the skeleton trains.
   ckpts — one backward per output per batch. The experiment: J-ordered prefix-width
   curve vs the current ordering; if the 128d survival sharpens further (or the
   cliff moves), sensitivity ordering wins the schedule.
+- **J-ORDERED MATRYOSHKA, DESIGN REFINEMENTS (registered before build):**
+  (1) THE DISCRIMINATING REGION IS BELOW 128 — the measured curve is FLAT 128~=512,
+  so both orderings read "fine" there; sweep 8/16/32/64/128/256/512 and REGISTER THE
+  PREDICTION AS "J-ordering moves the CLIFF LEFT" (survival-at-128 is unfalsifiable
+  on a saturated curve). (2) ESTIMATOR = DIAGONAL FISHER: mean of SQUARED per-instance
+  gradients (signed averaging cancels opposing sensitivities and ranks live dims
+  dead); per-sample backwards to avoid within-batch cancellation. (3) TWO TARGETS:
+  decision-side (solve-relevant logit margins — the honest one; wrong-but-equivalent
+  already proved loss and decision diverge) + loss-side as the cheap comparison arm
+  (identical rankings would itself be a finding). (4) SCOPE OF A NULL: greedy
+  diagonal ranking is not the optimal SUBSET per width (dims can be individually
+  weak, jointly load-bearing — the codebook's pairwise geometry is exactly what a
+  diagonal misses); a null reads "diagonal sensitivity doesn't beat variance," NOT
+  "sensitivity ordering wrong in principle." (5) THE INCUMBENT IS NOT A STRAWMAN:
+  Matryoshka training kept dims 0-127 always on — identity ordering carries the
+  baked-in trained importance; Fisher matching it CONFIRMS the nested training,
+  beating it below 128 is the win.
