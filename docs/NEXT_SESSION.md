@@ -1,41 +1,32 @@
-# NEXT SESSION — start here (handoff, 2026-07-06)
+# NEXT SESSION — start here (handoff, 2026-07-07 night)
 
 Cold-start entry point. Read this first; it points to everything else.
 
 ## Where we are (one paragraph)
-The **Phase-1 skeleton is BUILT and measured** (2026-07-05/06, spec + build log:
-`docs/phase1_skeleton_spec.md`). Frozen Llama-3.2-1B L0–L3 + a 3.2M-param slot delta
-head + parse-side 512→128 Matryoshka waist parses KenKen-in-words at **factor-exact
-0.748** (op 0.944 / target 0.865 / member F1 0.891; 3,060-sample corpus). The
-**error taxonomy: 60/60 parse errors symbolically detectable, ZERO silent** (44 UNSAT
-+ 16 malformed) — the NACK-recoverable ceiling is 100% at an operating point where
-one-shot solve is 0%. The **blame sweep honest negative**: delete-one-factor re-solve
-= precision 1.000 / recall 0.034 (single-error-regime tool; at ~5 wrong factors per
-parse symbolic localization alone fails) → the confidence-ordered **add-back sweep**
-and the deducer's **soft-solve suspicion field** are now REQUIRED by measurement, not
-taste. Matryoshka: width 128 ≈ 512 on every head — the parse signal is intrinsically
-low-dimensional. Earlier in the arc (07-04/05): the waist-vs-tap split landed in docs;
-the deduce-side silhouette look refuted silhouette-linearity (compose PROBLEMS) and
-found temporal structure lives in BELIEF space (late-JSD → wrong-cell AUC 0.687).
+**The Alternator loop is closed gold-free** (Brick-C: retention 0.52, 8/57 recovered)
+and **the math expansion is underway with real failures to study**. The algebra
+pipeline (arith3 registry + band-labeled generator + the §11 two-bank head) answers
+end-to-end through GENUINE search; on the teeth corpus (obliques, letter shuffle,
+distractors, irrelevant subsystems): ANSWER 121/300, **the SILENT class is born (14;
+KenKen had zero in seven points), detectable 0.92**, DETECT_multi live (43).
+Prediction #2-algebra resolved BOTH ways: inversion confirmed; the chain>>coupled
+ordering refuted by MULTI-ERROR DENSITY (2nd sighting of "single-error-regime
+predictions break at multi-error density" — watch for the 3rd). Training is
+UNCONVERGED (floors). Spec §10-§12 of docs/phase1_skeleton_spec.md hold the whole
+chapter; the build log there is the ground truth.
 
 ## START HERE next session (in order)
-1. **Memmap dataloader + the 40k membership push.** Trunk states for the curriculum
-   corpus won't fit RAM as npz (~84 GB fp16) — store fp16 raw `.npy` + `np.memmap`
-   batches (fp16 round-trip proven byte-safe for argmax downstream). Frozen trunk =
-   pay precompute once; do NOT switch to live forwards (couples head training to
-   trunk throughput). Target: membership exactness (present in 100% of failures).
-2. **Re-run the taxonomy at every accuracy checkpoint** (`--errors`): track
-   detectable-fraction AS A FUNCTION OF factor-exactness. The 100% has an expiration
-   condition — as membership improves, the error mix rotates toward target/op (the
-   coherent-misreading class) and a SILENT class can be BORN. Watch for it.
-3. **Brick-A** (the zero-LoRA null): notebook/NACK-conditioned re-parse through the
-   SAME frozen trunk. Then **Brick-C-v0** with the ADD-BACK sweep as localization
-   (skeleton = rows/cols/givens, SAT by construction; add cages confidence-first;
-   blame insertions that break SAT). Detection ≠ correction — Brick-C's bar is that
-   NACK-conditioned re-parse FIXES flagged regions vs the no-NACK control.
-4. **The Job-B milestone gate is due at Brick-A completion** (deferred WITH A DATE):
-   decisions-per-problem over MATH-500-style problems via the search tier — map the
-   calculator band vs the engine band. Local only, no API calls.
+1. **Tier-0 incumbent measurements (spec §12 — ZERO GPU):** per-field AUC + post-
+   temperature ECE of slot_confidence on the banked artifacts; THE question: does
+   the free confidence signal spot the 14 algebra silents (the high-confidence-error
+   subset is where the entropy null is blind)? Then the withholding-cost curves
+   (KenKen first — conditional prediction needs the AUC first).
+2. **More training/data on the teeth corpus** (loss 5.3 and falling at 16k — cheap
+   headroom before any architecture talk).
+3. **Size-controlled factorization read** (fac-exact vs band at FIXED n_vars) before
+   touching the v0 "independent axes" claim.
+4. Then: tier-3 transplant onto the silents; multi-round retransmission; ledger
+   re-parse (frontier rank #1).
 
 ## Assets in hand (don't rebuild)
 - `scripts/kenken_nl_gen.py` — NL generator; span-SET gold; round-trip = generation
