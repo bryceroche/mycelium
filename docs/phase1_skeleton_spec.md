@@ -999,3 +999,22 @@ token-position × waist-dim, the moment the skeleton trains.
   802 + repaired 226 = 1,028/1,500 = 68.5% of teeth-hardened algebra problems
   answered, fully deployable, through genuine search, at 3.2M trained parameters
   per head over a frozen 4-layer trunk.**
+- **POST-FINAL-ROWS REGISTRATIONS (2026-07-08):** (1) SPAN-LEVEL FLAG MACHINERY
+  RETIRED, measured-unnecessary (the best deletion: bought by clean ablation).
+  Mechanism note: the specialist repairs in the currency it emits (typed factor
+  slots) — field flags arrive pre-translated; text spans need slot-binding, the
+  operation this architecture thrice showed it does poorly through shallow layers
+  and now once showed it doesn't need. (2) EQUILIBRIUM LEDGER: two independent
+  favorable reads in one day (survivor-hardening cancels density drop; repair rate
+  RISES 24->32% on harder pools). Prior moved; the real test stays scheduled at the
+  next convergence jump. (3) THE GAP TO MATH-500 IS ENUMERABLE: relation coverage
+  (registry menu), phrasing wildness (template teeth vs prose), problem-shape
+  diversity — corpus-and-registry questions, not architecture, exactly where the
+  plane-ride design claimed the difficulty would live. (4) **THE EQUIVALENCE
+  UPGRADE, cut ahead of multi-round:** the table's rows are graded INCONSISTENTLY —
+  composed rows require FORCED answers; the one-shot 802 does not (lucky-unforced
+  uncounted-for). The fix: ONE uniform metric — answer-at-query FORCED (solution-set
+  equivalence at the query variable) — applied to every row; plus the correctness-
+  boundary taxonomy (right-where-asked-with-wrong-graph vs lucky-unforced). Zero
+  GPU-heavy; changes the baseline every future number reads against; runs BEFORE
+  multi-round so the asymptote frame starts from the true floor.
