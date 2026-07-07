@@ -234,8 +234,11 @@ Detailed empirics live in `memory/` + git history.
   (promoted 2026-07-07, third sighting: delete-one blame recall 0.034; the chain>>coupled
   silent ordering inverting; the withholding peak displacing k=1-2 -> 3). Isolated-error
   predictions are VOID above measured multi-error density (~5 errors/failure at parser
-  plateau). Pre-registration checklist item, not just a named trap: state the regime at
-  writing time.
+  plateau). Pre-registration checklist item, not just a named trap — and ENFORCEMENT IS
+  ARITHMETIC, not awareness (the 4th sighting happened with the rule already in hand,
+  hiding inside "every equation is load-bearing"): the mechanical question is "at measured
+  error density and measured ranking AUC, what does the k-th withheld/blamed/flagged
+  factor ACTUALLY hit?" Compute it; don't intuit it.
 - **A registered metric must match the DECISION STRUCTURE of the mechanism** (promoted
   2026-07-06 on the third sighting). Scalar convergence summaries degenerate (argmin-JSD,
   delta-settle — 2×), and continuous aggregates over sub-threshold jitter degenerate the same

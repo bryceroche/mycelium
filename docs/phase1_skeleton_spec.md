@@ -806,3 +806,21 @@ token-position × waist-dim, the moment the skeleton trains.
   UNSAT drains 659->127 with k as underdetermination grows — the registered drift.
   CONSEQUENCE: stage-1 of the repair stack is DOMAIN-GENERAL; the Alternator's
   cheapest move works on both dense and sparse graphs.
+- **POST-STACK REGISTRATIONS (2026-07-07 afternoon):** (1) density rule enforcement =
+  ARITHMETIC ("what does the k-th withheld factor actually hit at measured density x
+  AUC") — §6 updated; 4th sighting happened with the rule in hand. (2) WITHHOLDING'S
+  BOUNDARY PRE-DRAWN: it works where errors outnumber the ranking's mistakes AND the
+  query's component keeps support — sparse domains DECOMPOSE (starvation is local;
+  poison in other components costs nothing); the clause that bites is a query inside
+  one large coupled component. (3) THE BLANK-PASS TAX: Brick-A's copy-previous
+  training degraded unconditioned parsing (stack stage-1: 7 vs standalone 15) —
+  fix = TWO-CHECKPOINT stack (plateaued head PARSES, conditioned head RETRANSMITS);
+  the 42% has known headroom before the parser improves. (4) ALGEBRA RETRANSMIT
+  TRANSPLANT = a training run (flag-dependent objective on algebra failures; flags
+  via MENTION/FACTOR spans — char-exact, richer than KenKen's attention map); built
+  two-checkpoint from day one. (5) MULTI-ROUND'S QUANTITATIVE FRAME, registered
+  (density-regime stated: multi-error, survivor-selected): per-round recovery
+  DECLINES; the asymptote is bounded by the decodable ceiling's share (0.533) of
+  remaining errors. A round-2 recovery ABOVE that frame = retransmission moving
+  decodability itself — the ledger-conditioning hypothesis arriving early, and the
+  cheapest probe of the 46.7% frontier.
