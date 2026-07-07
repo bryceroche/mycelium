@@ -152,8 +152,24 @@ def main():
         order = np.argsort(confs, kind="mergesort")  # ascending confidence
         rank_of = {int(f): r for r, f in enumerate(order)}
         wranks = [rank_of[f] for f in wr if f in rank_of]
+        gv_detail = []
+        gold_giv = {f["var"]: f["value"] for f in samples[i]["factors"]
+                    if f["ftype"] == "given"}
+        for f_i, k in zip(wr, kinds):
+            if k != "given_value" or f_i not in rank_of or rank_of[f_i] >= 2:
+                continue
+            emitted = facs[f_i]["value"]
+            same_var_gold = gold_giv.get(facs[f_i]["var"])
+            elsewhere = any(v == emitted and vv != facs[f_i]["var"]
+                            for vv, v in gold_giv.items())
+            e1 = (same_var_gold is not None and
+                  len(str(emitted)) == len(str(same_var_gold)) and
+                  sum(a != b for a, b in
+                      zip(str(emitted), str(same_var_gold))) == 1)
+            gv_detail.append((elsewhere, e1))
         rows[status[i]].append({
             "n_wrong": len(wr), "qw": qw, "n_slots": n_slots,
+            "gv_detail": gv_detail,
             "flagged_kinds": [k for f, k in zip(wr, kinds)
                               if f in rank_of and rank_of[f] < 2],
             "min_rank": (min(wranks) if wranks else None),
@@ -223,6 +239,27 @@ def main():
     mix_lo, nlo = kind_mix(lo_s)
     print(f"  m<=2 survivors only (n={nlo}): " +
           " ".join(f"{k}:{mix_lo[k]:.2f}" for k in KINDS if mix_lo[k] > 0.01))
+
+    # ---- CUT 3 (registered 2026-07-08, discriminator — no directional
+    # prediction): what IS a flagged-but-unfixed given_value error? The pairing
+    # rule conflates two stories: VALUE-HALLUCINATION (emitted value in NO gold
+    # given — the digit heads cannot reconstruct the literal; a digit-
+    # reconstruction wall) vs VALUE-MISBINDING (emitted value belongs to a
+    # DIFFERENT gold given — right values shuffled across variables; binding
+    # resurrected one level down). edit1 = same length, exactly one digit off
+    # from the same-var gold (near-miss reconstruction).
+    print(f"\n  CUT 3: flagged given_value anatomy (elsewhere = misbinding;"
+          f" not-in-gold = hallucination)")
+    for s, nm in ((2, "survivors"), (1, "round-recovered"),
+                  (0, "stage1-recovered")):
+        det = [d for r in rows[s] for d in r["gv_detail"]]
+        if not det:
+            print(f"  {nm:17s}: none")
+            continue
+        elsew = np.mean([d[0] for d in det])
+        e1 = np.mean([d[1] for d in det])
+        print(f"  {nm:17s}: n={len(det):4d} | value-elsewhere {elsew:.3f} | "
+              f"not-in-gold {1 - elsew:.3f} | one-digit-off {e1:.3f}")
 
 
 if __name__ == "__main__":
