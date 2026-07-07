@@ -845,3 +845,33 @@ token-position × waist-dim, the moment the skeleton trains.
   doubles as the leakage bound — if field-only ~= both, the caveat is moot. QUEUE:
   parser convergence (teeth headroom) -> multi-round on honest numbers, per the
   sequencing registration.
+
+## 13. The Nazaré funnel: the silhouette library + Brick-0 + the parse-side render
+   (registered 2026-07-07 night, before build)
+
+- **THE PHYSICS, STATED HONESTLY:** the canyon adds no energy — it REFRACTS a wide
+  front into convergence. The waist cannot amplify signal absent from the trunk; it
+  FOCUSES it (Matryoshka already proved the canyon exists: the parse signal survives
+  at 128d). The focusing law is the J-lens lesson: concentrate the DECISION-relevant
+  subspace — a canyon focuses noise too.
+- **THE THREE GAPS (the ledger's unfired registered work):** Brick-0 has never run
+  (assumption #2 — matched filters segment — is the LAST unmeasured plane-ride
+  assumption); the centroid LIBRARY was never built as an artifact (the George-Hotz
+  good-drivers note: nowhere on disk is there a bank of learned silhouette signatures
+  to match against); the parse-side silhouette has capture hooks and has never been
+  rendered (the BirdNet re-run, where the priors favor the bird).
+- **BUILD (one script, banked data):** (a) PARSE-SIDE LIBRARY: per-factor-type token
+  centroids in the waist space, built on TRAIN, evaluated on TEST as per-token
+  SEGMENT-AND-CLASSIFY (cosine-to-centroid argmax vs gold span labels) at widths 512
+  AND 128 (the canyon check: does the narrow waist classify as well?); plus the
+  first token x type-similarity RENDER. (b) DEDUCE-SIDE ANALYTIC ARM of Brick-0:
+  prototype matching on the banked 4-variant trajectory capture — constituent
+  classification despite REFUTED linearity (the sharpened question: does matched
+  filtering survive nonlinear composition?). (c) THE LIBRARY ARTIFACT saved to disk
+  (.cache/silhouette_library_v0.npz) — centroids become a matchable bank, the
+  registry's learned twin.
+- **BARS:** parse-side per-token classification must beat the majority-class floor
+  by a wide margin to claim segmentation (priors favor it: gold spans exist, text is
+  banded); Brick-0's full form (learned latents vs this analytic library) follows —
+  if the analytic library already recovers constituents, assumption #2 completes
+  WITHOUT learned latents (zero-param win #5); if not, the learned arm gets its bar.
