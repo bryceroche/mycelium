@@ -122,11 +122,13 @@ def main():
         return samples[i]["solution"][samples[i]["query_var"]]
 
     stage_stats = {}
+    outcome = {}   # i -> (stage_id, correct) ; absent = abstained
 
     def accept(stage, i, ans):
         st = stage_stats.setdefault(stage, [0, 0])
         st[0] += 1
         st[1] += int(ans == gold_ans(i))
+        outcome[i] = (int(stage[0]), int(ans == gold_ans(i)))
 
     # STAGE 0: one-shot, gold-free — accept any forced answer
     c_zero = build_cond_params(9)
@@ -199,6 +201,11 @@ def main():
     print(f"\n  REGISTERED: P1 one-shot forced-wrong 100-180; P2 phantom "
           f"recoveries >0; P3 precision declines down the stack; P4 honest "
           f"end-to-end < 0.693.")
+    idx = np.array(sorted(outcome), np.int32)
+    np.savez(".cache/deploy_audit_bigtest.npz", idx=idx,
+             stage=np.array([outcome[i][0] for i in idx], np.int32),
+             correct=np.array([outcome[i][1] for i in idx], np.int32))
+    print(f"  [saved] .cache/deploy_audit_bigtest.npz (answered={len(idx)})")
 
 
 if __name__ == "__main__":

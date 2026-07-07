@@ -1365,6 +1365,23 @@ token-position × waist-dim, the moment the skeleton trains.
   answered-precision 0.823, abstention 14.9%.** The 226 committed-wrong answers
   are the measured customer for a calibrated abstention signal (the
   waist-space/OOD thread — probe queued behind this audit).
+- **WAIST PROBE REGISTERED + FIRED (2026-07-09, the autoencoder thread lands
+  as instrumentation):** relay + Code corrections adopted — the probe space is
+  **fst**, the algebra head's slot-vector bank (the one decoder-backed waist
+  space; the TAP has no decoder — category error corrected; pointer heads
+  excluded as problem-relative). HALF 1, interpolation coherence, registered
+  **50/50** (the coordinate-swap evidence does not bear on convex combination;
+  128d-lossless hints tame): same-kind cross-problem pairs, alpha=0.5, decoded
+  through the linear field heads; pinned coherent = sharpness ratio >=0.80 AND
+  midpoint-decodes-an-endpoint >=0.50. Coherent -> KL machinery buys little;
+  garbage -> measured deficiency for the per-kind-prior VAE arm (single-prior
+  KL stays parked — cousin of the attract dud). HALF 2, the paying customer:
+  per-kind fst centroids from TRAIN (deployable labels), score = worst slot
+  cosine to claimed-kind centroid, vs the audit's 226 committed-wrong / 1051
+  correct. Registered: dense AUC 0.55-0.65 (misbindings look locally normal);
+  USABLE-FLAG bar precision@top-10% >= 2x base (0.354). Classified on arrival
+  per the portfolio rule: dense ranker / rare-flag / dead. Audit script now
+  persists per-sample outcomes (`.cache/deploy_audit_bigtest.npz`).
 - **META-NOTE (the relay, 2026-07-08): REAL CAUSES HAVE JURISDICTIONS TOO.**
   Second time this week a thrice-measured REAL phenomenon turned out not to
   govern the question it was assumed to govern (binding weakness -> survivorship;
