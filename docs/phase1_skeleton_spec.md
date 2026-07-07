@@ -724,3 +724,11 @@ token-position × waist-dim, the moment the skeleton trains.
   QUERY fields, where entropy carries zero signal and input-conditional error
   patterns are the only hope. Neither clean ending; the design's completion now
   has an address.
+- **FIXED-n_vars FACTORIZATION READ (2026-07-07 morning): THE AXES-INDEPENDENCE
+  CLAIM SURVIVES UNDER LOAD.** Raw corr(fac-exact, band) = -0.126 was ENTIRELY
+  size-mediated (corr(band, n_vars)=+0.678, corr(fac-exact, n_vars)=-0.249):
+  **PARTIAL corr(fac-exact, band | n_vars) = +0.061 ~= ZERO**, and within fixed-size
+  buckets fac-exact is flat-or-RISING with band (12-15 vars: 0.665/0.676/0.732).
+  The parser feels TEXT LENGTH, not solve difficulty — reading and reasoning on
+  independent axes, now confirmed at teeth 0.8 with the confound removed. The v0
+  flat claim is UPGRADED, not asterisked.
