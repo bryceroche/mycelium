@@ -298,24 +298,37 @@ def crosscheck():
     wrongs = np.array(wrongs)
 
     def auc(scores, labels):
+        # MIDRANK ties (binary/discrete scores would otherwise get arbitrary
+        # tie-order and an artifact AUC — caught 2026-07-08)
         pos, neg = scores[labels], scores[~labels]
         if not len(pos) or not len(neg):
             return float("nan")
         allv = np.concatenate([pos, neg])
-        r = np.empty(len(allv)); r[np.argsort(allv)] = np.arange(len(allv))
+        order = np.argsort(allv, kind="mergesort")
+        r = np.empty(len(allv))
+        i = 0
+        while i < len(allv):
+            j = i
+            while j + 1 < len(allv) and allv[order[j + 1]] == allv[order[i]]:
+                j += 1
+            r[order[i:j + 1]] = (i + j) / 2.0
+            i = j + 1
         return (r[:len(pos)].mean() - (len(pos) - 1) / 2) / len(neg)
 
     a_dis = auc(disagree, wrongs)
     a_conf = auc(-confs, wrongs)
     corr = float(np.corrcoef(disagree, -confs)[0, 1])
-    combined = -confs + disagree                    # crude sum of z-ish signals
-    a_comb = auc(combined, wrongs)
+    combined = -confs + disagree                    # crude sum (mis-weighted: rare
+    a_comb = auc(combined, wrongs)                  # binary swamped by conf noise)
+    lex = disagree * 10.0 - confs                   # LEXICOGRAPHIC: disagreements
+    a_lex = auc(lex, wrongs)                        # first, confidence breaks ties
     print(f"[crosscheck] slots={len(wrongs)} wrong={int(wrongs.sum())} "
           f"disagree-rate={disagree.mean():.3f}")
     print(f"  AUC(disagreement -> wrong)      = {a_dis:.3f}")
     print(f"  AUC(low-confidence -> wrong)    = {a_conf:.3f}   (tier-0 baseline)")
     print(f"  corr(disagree, low-conf)        = {corr:+.3f}   (decorrelation check)")
-    print(f"  AUC(combined ranker)            = {a_comb:.3f}   (vs 0.613 withholding-order baseline)")
+    print(f"  AUC(crude-sum combiner)         = {a_comb:.3f}   (mis-weighted, kept for honesty)")
+    print(f"  AUC(LEXICOGRAPHIC combiner)     = {a_lex:.3f}   (vs 0.613 withholding-order baseline)")
 
 
 def main():

@@ -914,3 +914,17 @@ token-position × waist-dim, the moment the skeleton trains.
   perceiver's mandate shrinks with each (monitoring ~= calib+JSD; segmentation ~=
   analytic 0.854/0.863); its remaining candidate job is hosting the global-broadcast
   latents in the multi-cycle loop. The design gets LIGHTER as it gets more measured.
+- **ROLLING-SESSION RESULTS (2026-07-08 early):** (1) TEETH-ROBUSTNESS: the margin
+  HOLDS — hardened slice 0.835 vs floor 0.754 (8.1 points; original 8.4). Within
+  KenKen's teeth range, the centroids encode STEPS, not words; canyon holds hard
+  (0.821 @128). (2) THE CROSS-CHECK TIER, honestly sized after an instrument audit:
+  my first AUC(disagreement)=0.678 was a TIE-ORDER ARTIFACT (binary score, 96% ties,
+  unstable argsort — midrank fix applied; the decision-structure metric law's
+  cousin: DISCRETE SCORES NEED MIDRANK or the AUC is fiction). TRUE numbers:
+  disagreement standalone 0.551 as a ranker BUT a rare high-precision flag
+  (rate 3.2%, precision ~0.64 vs 0.176 base = 3.6x enrichment), decorrelated from
+  tier-0 (+0.024), and the combined ranker = **0.634 vs the 0.613 baseline** —
+  a real, modest upgrade to the stack's measured weak link at zero parameters.
+  Verdict: the library-as-cross-check is a USEFUL RARE FLAG + a +2.1-point ordering
+  gain, not a second tier-0. Both recorded; the artifact catch kept in the ledger
+  (the measurement program audited itself twice in one night).
