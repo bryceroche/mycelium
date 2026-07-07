@@ -1216,6 +1216,20 @@ token-position × waist-dim, the moment the skeleton trains.
   the transplant rerank dies too). >30% -> the deployed flag deriver was the
   constraint (fix it — cheapest win of the week). 10-30% -> partition and
   re-profile the oracle-recovered.
+- **ORACLE-CEILING RESULT (2026-07-08 night): 64/460 = 13.9% — the mixed band,
+  near the low end; THE ENCODE-SIDE WALL IS MEASURED.** Perfect gold-derived
+  per-field flags (the specialist's own training regime), re-derived each round,
+  4 rounds: 44 -> 16 -> 4 -> 0 (front-loaded AGAIN — 4th independent sighting
+  today). **396/460 = 86% of survivors — 26.4% of the corpus — are unrecoverable
+  even when told exactly which slot and which field is wrong.** Flag quality was
+  never the lever: the ceiling bounds EVERY suspicion/ranking/repair improvement
+  (tier-0 trained head, transplant, better derivers) at <=64 cases (<= +4.3 pts
+  end-to-end, and only partially capturable gold-free). The frontier is a BUILD
+  decision now — change the ENCODING (second-view re-render with position-
+  aligned suspect marks per the §6 structure law, and/or deeper prefix), options
+  + dead-ends tabled in `docs/NEXT_SESSION.md` for the relay seam. Registered
+  follow-up left open per the 10-30% rule: partition + re-profile the 64
+  oracle-recovered vs the 396 (zero GPU, profile npz on disk).
 - **META-NOTE (the relay, 2026-07-08): REAL CAUSES HAVE JURISDICTIONS TOO.**
   Second time this week a thrice-measured REAL phenomenon turned out not to
   govern the question it was assumed to govern (binding weakness -> survivorship;
