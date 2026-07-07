@@ -1,6 +1,21 @@
-# NEXT SESSION — start here (handoff, 2026-07-08 night)
+# NEXT SESSION — start here (handoff, 2026-07-09)
 
 Cold-start entry point. Read this first; it points to everything else.
+
+## HEADLINE UPDATE (2026-07-09, supersedes the numbers below)
+**The quotable number: 1051/1500 = 70.1% DEPLOYMENT-HONEST end-to-end**
+(gold-free acceptance at every stage; answered-precision 0.823, abstention
+14.9%). The gold-checked 69.3% is superseded. Arm C (replace-and-solve) FAILED
+its soundness gate (55/60 accepted-wrong — forced-unique is not a correctness
+certificate on multi-error graphs) but exposed the acceptance bug-class; the
+audit then found a second bug (rounds only ever evaluated the withheld
+variant, discarding correct repairs). Both in the spec ledger, 2026-07-09.
+70 forced-WRONG survivors are deployment-INVISIBLE (the m=1 routing-wall
+population presents as success); 226 committed-wrong answers = the measured
+customer for a calibrated ABSTENTION signal — the waist-interpolation probe
+(parse-side waist ONLY; the tap has no decoder) is queued as its first arm.
+New law (2 sightings in 2 days): acceptance criteria are mechanisms — audit
+them for imposter rate at deployed error density; never assume soundness.
 
 ## Where we are (one paragraph)
 **The survivor anatomy is COMPLETE and the wall is measured.** End-to-end on

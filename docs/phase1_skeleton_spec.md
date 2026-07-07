@@ -1343,6 +1343,28 @@ token-position × waist-dim, the moment the skeleton trains.
   arm C as first sighting): **acceptance criteria must be measured for
   imposter rate at the deployed error density** — "forced-unique" was pinned
   as sound from a clean-graph intuition and failed at m~8.
+- **DEPLOYMENT-HONEST AUDIT RESULT (2026-07-09): P4 REFUTED UPWARD — the
+  honest number is 1051/1500 = 70.1% (> the gold-checked 69.3%), and the audit
+  caught a SECOND acceptance bug on the way.** Per-stage gold-free: one-shot
+  887 accepted / 797 correct (precision 0.899; 90 forced-wrong committed — P1
+  near-miss vs 100-180); withhold 127/74 (**0.583 — the LEAKIEST stage**:
+  removal-based acceptance weakens forcing, arm C's law quantified in the
+  deployed stack); rounds 203/140, 56/38, 3/2, 1/0. Answered 1277 (abstained
+  223), answered-precision 0.823. P2 CONFIRMED: ~20 of the measured 243
+  recoveries were PHANTOM (their originals forced wrong at one-shot; deployment
+  commits them wrong and never repairs). P3: pattern yes, monotone no. WHY P4
+  INVERTED: the measured pipeline's round acceptance ONLY evaluated the
+  WITHHELD variant (solve_check always ran k_wh=2) — a fully-correct specialist
+  re-parse, minus its two least-confident (correct) factors, often un-forces
+  and was REJECTED. The audit's accept-plain-first ordering recovers ~+11 net
+  correct (round-1 140 vs measured 123). SECOND SIGHTING of the acceptance-
+  criteria law in two days: acceptance rules must be AUDITED as mechanisms, not
+  assumed — both bugs (gold-checked accepts; withheld-only round accepts) were
+  invisible to every headline number until replayed under deployment rules.
+  **THE QUOTABLE NUMBER GOING FORWARD: 70.1% deployment-honest end-to-end,
+  answered-precision 0.823, abstention 14.9%.** The 226 committed-wrong answers
+  are the measured customer for a calibrated abstention signal (the
+  waist-space/OOD thread — probe queued behind this audit).
 - **META-NOTE (the relay, 2026-07-08): REAL CAUSES HAVE JURISDICTIONS TOO.**
   Second time this week a thrice-measured REAL phenomenon turned out not to
   govern the question it was assumed to govern (binding weakness -> survivorship;
