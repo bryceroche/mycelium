@@ -151,7 +151,10 @@ def do_prep():
     from tinygrad import Tensor, dtypes
     from tinygrad.nn.state import safe_load
 
-    samples, states, tokmask, gold, sent = load_alg("train")
+    # NACK_SPLIT: the failure-mining slice (held out from BOTH parser training and
+    # the measurement set — the convergence-starvation fix). Default: train.
+    samples, states, tokmask, gold, sent = load_alg(
+        os.environ.get("NACK_SPLIT", "train"))
     p = build_params(0)
     sd = safe_load(ALG_CKPT)
     for k in p:
@@ -213,7 +216,8 @@ def do_train(steps, lr, batch, seed):
     from tinygrad.nn.optim import AdamW
     from tinygrad.nn.state import safe_load, safe_save
 
-    samples, states, tokmask, gold, sent = load_alg("train")
+    samples, states, tokmask, gold, sent = load_alg(
+        os.environ.get("NACK_SPLIT", "train"))
     z = np.load(PREP_NPZ)
     WF, has_fail = z["wrong_fields"], z["has_fail"]
     prev = {k[5:]: z[k] for k in z.files if k.startswith("prev_")}
