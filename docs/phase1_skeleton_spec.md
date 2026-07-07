@@ -1429,6 +1429,30 @@ token-position × waist-dim, the moment the skeleton trains.
   centroid library plus a distance threshold, watching accepted outputs and
   routing suspicion back into the loop. Zero parameters, eighteen months early,
   measured on arrival.** Script: `scripts/ratchet_nack.py`.
+- **RATCHET-NACK v0 RESULT (2026-07-09): KILL BAR FIRED + FIX-RATE REFUTED —
+  DETECTION AND REPAIR ARE SEPARATE CAPABILITIES.** BREAK=1 at top-20% (0 at
+  top-10%): a correct parse's flagged slot revised to a different value that
+  still forced with unflagged agreement — formally dominant, actually wrong.
+  The dominance test LEAKS; the deferred anomaly-decrease criterion is
+  LOAD-BEARING (v1 needs per-space centroids). FIX RATE 1/17 / 2/37 (~6%) vs
+  the 0.346 bar — relay prediction refuted WITH MECHANISM: the flagged stage-0
+  wrongs ARE the routing-wall invisibles — near-misses BECAUSE they are single
+  confident misbindings, the population the oracle ceiling already measured
+  86% unfixable with perfect flags. The selection argument never asked WHY the
+  parses were near-misses. **SELECTION EFFECTS HAVE JURISDICTIONS TOO** (the
+  density-law's cousin, 5th sighting of unexamined-population predictions).
+  PER-STAGE COLUMN: stage-0 AUC 0.745; stage-1 DEAD (0.532); correct parses
+  drift anomalous with stage (0.703->0.748) — per-stage calibration required
+  before v1 trusts anything beyond stage 0. Wrong-recall roughly uniform
+  across stages (~0.41-0.51); false alarms concentrate late. DIALS AS
+  MEASURED: recovery mode FLAT (+1 net, 70.1%); precision mode REAL —
+  **0.880 answered-precision at 0.615 end-to-end** (top-20%) — the instrument
+  for wrong-costs-more-than-missing deployments (not MATH-500). THE HONEST
+  ROLE: the monitor SEES (0.728) but this specialist cannot FIX what it sees;
+  the flagged population's only untried repair is the parked BEACON arm
+  (polarity-flipped prediction standing: input marks can't re-aim trained
+  pointers) — beacon failure there = the population is DETECT-AND-ABSTAIN
+  ONLY under current machinery. Script: `scripts/ratchet_nack.py`.
 - **META-NOTE (the relay, 2026-07-08): REAL CAUSES HAVE JURISDICTIONS TOO.**
   Second time this week a thrice-measured REAL phenomenon turned out not to
   govern the question it was assumed to govern (binding weakness -> survivorship;

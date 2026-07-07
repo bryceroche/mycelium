@@ -25,9 +25,21 @@ AND rare-flag bars; precision@10% 0.417, top-20% recall 0.451). The first
 instrument that consults neither the solver nor the emission heads.
 Pinned policy: blind abstention loses accuracy — the paying use is
 flag-as-NACK-on-accepted-answers (the §8.5 session-monitor role, arrived by
-measurement). PENDING: relay adjudicates the flagged-accept second-look
-policy; cheap next cut = stage-split of flagged wrongs (are they the 90
-one-shot invisibles?). Script: `scripts/waist_abstention_probe.py`.
+measurement). Script: `scripts/waist_abstention_probe.py`.
+
+**RATCHET-NACK v0 (2026-07-09, ran):** kill bar FIRED (break=1 at top-20% —
+dominance leaks; anomaly-decrease criterion is load-bearing, needs per-space
+centroids for v1). Fix rate ~6% vs 0.346 bar — refuted with mechanism: the
+flagged stage-0 wrongs ARE the routing-wall invisibles (near-misses BECAUSE
+unfixable). New lesson: selection effects have jurisdictions too. Detection
+and repair are separate capabilities: monitor sees (0.728), specialist can't
+fix what it sees. Dials: recovery mode flat (+1); precision mode real (0.880
+precision at 0.615 end-to-end, top-20%) — for wrong-costs-more deployments,
+not MATH-500. Stage-1 detector dead in-stage (0.532); correct parses drift
+anomalous with stage — per-stage calibration before any v1. NEXT DECISIONS:
+(a) beacon arm on the flagged population (flipped prediction standing —
+failure = detect-and-abstain-only verdict); (b) v1 ratchet only if per-space
+centroids + anomaly-decrease close the leak. Script: `scripts/ratchet_nack.py`.
 
 ## Where we are (one paragraph)
 **The survivor anatomy is COMPLETE and the wall is measured.** End-to-end on
