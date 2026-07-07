@@ -1018,3 +1018,12 @@ token-position × waist-dim, the moment the skeleton trains.
   boundary taxonomy (right-where-asked-with-wrong-graph vs lucky-unforced). Zero
   GPU-heavy; changes the baseline every future number reads against; runs BEFORE
   multi-round so the asymptote frame starts from the true floor.
+- **THE EQUIVALENCE GRADE (2026-07-08, the table's uniform metric):** raw 802 ->
+  lucky-unforced only **5** (the old metric was 99.4% honest) -> FORCED-CORRECT
+  **797**. THE REAL FINDING: **132 of 797 (16.6%) are right-asked-wrong-graph** —
+  a sixth of all correct answers come from graphs that DIFFER from gold factor-wise
+  yet FORCE the right answer. The equivalence class is large: graph-match metrics
+  undersell the parser heavily, and the MATH-500 grading policy question now has a
+  measured magnitude attached (16.6% of credit rides on it). CORRECTED END-TO-END
+  BASELINE: 797 + 226 = **1,023/1,500 = 68.2%** — the true floor, uniform across
+  all rows; multi-round's asymptote frame starts here.
