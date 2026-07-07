@@ -970,3 +970,17 @@ token-position × waist-dim, the moment the skeleton trains.
   slice (seed 21), prep there, retrain, re-run both arms. The field-only-vs-both
   ablation (13 vs 12) is DEGENERATE under the broken retransmitter — no conclusion
   drawn; re-read after the fix.
+- **CONVERGENCE-TABLE READS (registered 2026-07-08):** (1) THE SELF-DEFEATING
+  CURRICULUM LAW: a repair specialist's training data must come from the CURRENT
+  model's failures on FRESH data, or it trains on ghosts — the parser memorizing its
+  train split starved the retransmitter. Recurs at every capability jump; the
+  failure-mining slice is the permanent plumbing (the old generator-and-specialist-
+  co-evolve principle rediscovered by necessity). (2) THE EQUILIBRIUM CLAIM, stated
+  as one: failures get rarer AND harder in compensating proportion as the parser
+  improves, so the stack's operating regime (errors/failure, withhold peak k=3) is
+  more stable than either trend predicts. If it holds at the NEXT convergence jump,
+  the stack's constants are regime-invariant — no re-tuning per parser generation.
+  (3) COMBINATION RULES ARE REGIME-LOCAL (product-beats-min rotated); only
+  portfolio-level structure is robust — re-measure the blend at every regime shift,
+  never inherit it. Query-confidence's three-regime arc (fiction -> weak -> 0.927
+  rare flag) is the instrument ledger in miniature.
