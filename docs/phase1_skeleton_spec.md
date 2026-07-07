@@ -893,3 +893,24 @@ token-position × waist-dim, the moment the skeleton trains.
   filters segment — TRUE in analytic form (this, zero learned params: **zero-param
   win #5**). The learned-latent arm of Brick-0 is now an UPGRADE question with
   measured bars (0.863/0.843 parse, 0.854 deduce), not an existence question.
+- **POST-§13 REGISTRATIONS (2026-07-08 early, the rolling session):** (1) THE
+  DIRECTION PRINCIPLE, noted for promotion watch: two independent structures now say
+  "the signal is a DIRECTION, not a magnitude" (codebook angular separation predicts
+  confusions; silhouette directions discriminate where amplitudes don't add) —
+  second sighting; a third promotes it to §6. (2) THE 0.863 TEETH-ROBUSTNESS CHECK,
+  registered before hardening: parse-side kind classification partially rides the
+  text's own lexical banding (that WAS the prior); the discriminating check is the
+  same centroids on a HARDENED slice (max paraphrase/split-ref/distractors) — holds
+  = the centroids encode STEPS; sags = partially WORDS. (KenKen's teeth are milder
+  than algebra's — stated; the algebra-side library needs waist exposure and comes
+  next.) (3) **THE LIBRARY AS RUNTIME CROSS-CHECK, registered:** the delta head and
+  the centroid bank are two INDEPENDENT readers of the same waist; disagreement
+  (head emits cage, silhouette matches given) is a gold-free inconsistency signal at
+  PARSE time — upstream of withhold-and-solve in the cost ordering, a candidate
+  NACK tier at zero marginal cost. MEASURABLE NOW: per-slot disagreement-vs-wrong
+  AUC on banked failures; the interesting case is AUC near tier-0's while
+  DECORRELATED from it — the combined ranker then attacks the stack's measured weak
+  link (the 0.613 withholding order). (4) THE LEDGER LINE: five zero-param wins; the
+  perceiver's mandate shrinks with each (monitoring ~= calib+JSD; segmentation ~=
+  analytic 0.854/0.863); its remaining candidate job is hosting the global-broadcast
+  latents in the multi-cycle loop. The design gets LIGHTER as it gets more measured.
