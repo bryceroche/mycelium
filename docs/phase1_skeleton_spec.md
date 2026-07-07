@@ -875,3 +875,21 @@ token-position × waist-dim, the moment the skeleton trains.
   banded); Brick-0's full form (learned latents vs this analytic library) follows —
   if the analytic library already recovers constituents, assumption #2 completes
   WITHOUT learned latents (zero-param win #5); if not, the learned arm gets its bar.
+- **§13 RESULTS (2026-07-07 night): ASSUMPTION #2 COMPLETES IN EXISTENCE FORM —
+  THE LAST PLANE-RIDE ASSUMPTION, MEASURED.** (a) PARSE-SIDE SEGMENT-AND-CLASSIFY:
+  per-token kind accuracy **0.863** vs 0.779 majority floor (per-kind recall: rowcol
+  1.00, none 0.93, cage 0.86, given 0.82 — all four kinds genuinely separated, no
+  majority collapse); **the canyon holds: 0.843 at width 128** (2 points for 4x
+  narrowing). The render is legible — kinds band exactly over their gold spans (the
+  BirdNet picture, parse-side, as the priors predicted). (b) BRICK-0 ANALYTIC ARM:
+  deduce-side 4-way variant classification **0.854 vs 0.25 chance** — matched
+  filters SURVIVE nonlinear composition at the classification level (linearity
+  refuted, classification intact: the amplitudes don't add but the DIRECTIONS
+  discriminate). (c) THE LIBRARY EXISTS: .cache/silhouette_library_v0.npz —
+  parse-kind centroids at both widths + deduce-variant prototypes, the registry's
+  learned twin, matchable on disk. STATUS OF THE THREE ASSUMPTIONS (§8.7): #1
+  conditioning suffices — TRUE via structured features (Brick-A); #3 the NACK —
+  exists in measured tiers (taxonomy + 0.812 min-confidence + stacks); #2 matched
+  filters segment — TRUE in analytic form (this, zero learned params: **zero-param
+  win #5**). The learned-latent arm of Brick-0 is now an UPGRADE question with
+  measured bars (0.863/0.843 parse, 0.854 deduce), not an existence question.
