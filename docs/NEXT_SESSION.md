@@ -26,10 +26,14 @@ stack numbers).
    registered): deployable lands within 3-5 points of 24% — the clean field-level
    channel plausibly carries most of the repair signal (structure beating
    localization, again). Do NOT quote 24% anywhere without this resolved.
-2. **Re-run the stacks on the converged parser** (overnight run) — all constants
-   shift; the cross-domain SHAPE (withhold -> retransmit, same ordering) is the
-   finding that should survive; also NACK retransmitter ideally re-prepped/retrained
-   against the new parser's failure distribution.
+2. **THE OVERNIGHT RUN NEEDS A REDO WITH HYGIENE — read before trusting it.**
+   +32k steps at CONSTANT lr 3e-4 went unstable late (loss 4.17 @16k -> 7.10 @32k;
+   the SAVED ckpt is post-spike — the quick trainer has no LR decay and no
+   best-ckpt selection). Eval moved MIXED: ANSWER 587 -> 606 (+19), query up
+   strongly (0.73 -> 0.86 band 2), but graph-solve 485 -> 453 (-32). Morning fix:
+   resume-retrain with LR decay (3e-4 -> 3e-5 cosine or halving) + periodic ckpt
+   + pick-best-by-eval, THEN re-run the stacks on the honest best parser (also
+   re-prep/retrain the NACK retransmitter against its failure distribution).
 3. **Multi-round** against honest numbers (frame registered: declining per-round
    recovery, asymptote ~ decodable-ceiling share; violation = ledger-conditioning
    early = the 46.7% frontier's cheapest probe).
