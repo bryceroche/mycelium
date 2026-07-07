@@ -1096,3 +1096,26 @@ token-position × waist-dim, the moment the skeleton trains.
   deducer-side suspicion transplant instead of any re-parse. (The ledger re-parse
   is NOT killed — it is unjustified-as-designed; its premise must be re-earned.)
   Script: `scripts/characterize_survivors.py` (commit 4e19697).
+- **THE CONDITIONAL MULTIPLICITY PROBE, registered (2026-07-08, the relay's
+  sharpening):** the naive prediction ("survivors enriched for multiplicity") has
+  a TAUTOLOGY RISK — the loop fixes ~1-2 errors/round, so dense parses surviving
+  is arithmetic, not discovery. The informative cuts are CONDITIONAL: (1) S(m) —
+  survivorship as a FUNCTION of initial errors-per-parse + midrank AUC; (2) the
+  mechanical model — recover-by-round ceil(m/f), grid f: does multiplicity alone
+  reproduce 123->39->5->0? (3) the residual — within m-bins, do survivors differ
+  in FIELD MIX or teeth? THREE FUTURES, thresholds pinned BEFORE measuring:
+  (A) AUC>=0.75 AND decay reproduced (each round within ~2x) -> the loop is
+  ROUND-BUDGET-LIMITED on the dense tail; answer = more rounds + better
+  suspect-ranking, NOT re-parse or transplant. (B) AUC 0.6-0.75 or per-bin
+  residual structure -> multiplicity real but unsaturated; the residual axis is
+  the frontier. (C) AUC<0.6 -> plausibly DECODE-DEGENERATE; the deducer-side
+  suspicion transplant reranks up. Side-glance registered: the shuffled/irrelevant
+  DE-enrichment (0.92x/0.85x) predicts loud teeth produce LOW-multiplicity
+  detectable errors — checkable in the same run. Script:
+  `scripts/survivor_multiplicity.py`.
+- **META-NOTE (the relay, 2026-07-08): REAL CAUSES HAVE JURISDICTIONS TOO.**
+  Second time this week a thrice-measured REAL phenomenon turned out not to
+  govern the question it was assumed to govern (binding weakness -> survivorship;
+  before that, the density trap). The instrument lesson's causal cousin: locating
+  a real cause of X does not license it as the cause of adjacent-X. One sighting
+  from a §6 promotion.
