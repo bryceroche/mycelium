@@ -831,3 +831,17 @@ token-position × waist-dim, the moment the skeleton trains.
   with zero new training — the known headroom collected. Division of roles now
   explicit in the stack: the PARSER checkpoint parses, the RETRANSMITTER checkpoint
   repairs; one trunk, two heads, each at its trained operating point.
+- **THE ALGEBRA TRANSPLANT (2026-07-07 evening): 222/920 = 24% composed recovery.**
+  Stage-1 withhold-2: 77 (the known 8.4% floor); stage-2 retransmit(+withhold) on
+  843 survivors: **145 recovered (17% of survivors)** — the repair specialist nearly
+  TRIPLES the stack on its first run (77 -> 222). Trained pure (no blank mix; the
+  two-checkpoint architecture carried blank quality), dual-granularity flags live
+  from birth. Cross-domain: KenKen 47%, algebra 24% — consistent with the weaker
+  parser (0.72 vs 0.83) and thinner constraint surface. HONESTY CAVEAT (recorded,
+  not hidden): the eval's SPAN-level suspect flags located suspects via GOLD factor
+  spans (slot order makes this ~"the j-th statement", mildly oracle-ish); the
+  FIELD-level channel is position-free and clean. Fully-deployable variant = spans
+  from the model's own attention (the KenKen pattern); the dual-granularity ablation
+  doubles as the leakage bound — if field-only ~= both, the caveat is moot. QUEUE:
+  parser convergence (teeth headroom) -> multi-round on honest numbers, per the
+  sequencing registration.
