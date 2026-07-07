@@ -771,3 +771,20 @@ token-position × waist-dim, the moment the skeleton trains.
   n=78 is at-the-bar, not past it (CI ~±0.05); thresholding still needs calibration
   (medians 0.987/0.962); all-wrong product AUC 0.915 (the ranker stands).
   THE ZERO-LORA PHILOSOPHY'S FOURTH WIN THIS WEEK.
+- **POST-BIG-SLICE REGISTRATIONS (2026-07-07 midday):** (1) density-regime rule
+  promoted to §6 (checklist form). (2) TRAINED-HEAD RE-ARM CONDITION: the head stays
+  unbuilt at kill=0.812, RE-ARMED iff a future draw shows the pointer/query weakness
+  DEEPENING on harder obliques (the teeth dial can force that question when it
+  matters — they remain the weakest senses at real n: 0.66/0.69, weak-not-blind).
+  (3) Withhold-and-solve NAMED: Law 7 (remove at READ, not from state) at the
+  factor-graph level — parse keeps everything, solve drops suspects, the lattice
+  fills in; it beats retransmission ON A 0.613-AUC RANKING because the LATTICE does
+  the repair (neural proposes, symbolic disposes, again). (4) **THE COMPOSED REPAIR
+  STACK, registered:** confidence-order -> withhold-and-solve (k at the measured
+  peak) -> retransmit ONLY the survivors -> answer; one pass; end-to-end recovery on
+  the banked failures is THE chapter-thesis number (components: withhold 15/57,
+  retransmit 8/57, overlap unmeasured). ALGEBRA arm doubles as the registered
+  SPARSE-DOMAIN FLIP test — standing prediction: the withhold peak collapses toward
+  k=0-1 (coupled systems starve; every equation load-bearing). Note: algebra has NO
+  trained retransmission head (Brick-A was KenKen) — its stack is withhold-only,
+  stated honestly.

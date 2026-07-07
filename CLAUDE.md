@@ -230,6 +230,12 @@ Detailed empirics live in `memory/` + git history.
 - **Per-breath CE direction is a free eval sanity gate.** Flat at ln(n_values) = broken load;
   RISING across breaths = overfit/wrong regime; DESCENDING = healthy ladder. It diagnosed both
   bad-checkpoint evals above before any deeper digging.
+- **Every error-behavior prediction must state its assumed ERROR-DENSITY REGIME**
+  (promoted 2026-07-07, third sighting: delete-one blame recall 0.034; the chain>>coupled
+  silent ordering inverting; the withholding peak displacing k=1-2 -> 3). Isolated-error
+  predictions are VOID above measured multi-error density (~5 errors/failure at parser
+  plateau). Pre-registration checklist item, not just a named trap: state the regime at
+  writing time.
 - **A registered metric must match the DECISION STRUCTURE of the mechanism** (promoted
   2026-07-06 on the third sighting). Scalar convergence summaries degenerate (argmin-JSD,
   delta-settle — 2×), and continuous aggregates over sub-threshold jitter degenerate the same
