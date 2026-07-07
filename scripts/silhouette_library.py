@@ -188,6 +188,136 @@ def deduce_side_brick0():
     return protos, acc
 
 
+
+
+# ===========================================================================
+# --eval-only: saved centroids vs a (hardened) slice — the teeth-robustness check
+# ===========================================================================
+
+def eval_only():
+    from tinygrad import Tensor, dtypes
+    from tinygrad.nn.state import safe_load
+    from phase1_delta_head import (
+        build_head_params, head_forward, load_split, CKPT_PATH, H_WAIST)
+
+    lib = np.load(LIB_OUT, allow_pickle=True)
+    p = build_head_params(0)
+    sd = safe_load(CKPT_PATH)
+    for k in p:
+        p[k].assign(sd[k].to(p[k].device).cast(p[k].dtype)).realize()
+    samples, states, tokmask, gold, sent = load_split("test")
+    n = len(samples)
+    lab = token_kind_labels(samples, None, gold, sent, tokmask)
+    W = np.zeros((n, tokmask.shape[1], H_WAIST), np.float16)
+    for s0 in range(0, n, 8):
+        sl = np.arange(s0, min(s0 + 8, n))
+        pad = 8 - len(sl)
+        sl_p = np.concatenate([sl, sl[:1].repeat(pad)]) if pad else sl
+        out = head_forward(
+            p, Tensor(np.asarray(states[sl_p], dtype=np.float32), dtype=dtypes.float),
+            Tensor(tokmask[sl_p].astype(np.float32), dtype=dtypes.float),
+            Tensor(np.ones((1, 1, H_WAIST), np.float32), dtype=dtypes.float),
+            Tensor(sent[sl_p].astype(np.int32), dtype=dtypes.int))
+        W[sl] = out["waist"].realize().numpy()[:len(sl)].astype(np.float16)
+    for width in (512, 128):
+        cents = lib[f"parse_centroids_{width}"]
+        X = W[..., :width].astype(np.float32)
+        Xn = X / (np.linalg.norm(X, axis=-1, keepdims=True) + 1e-9)
+        pred = (Xn @ cents.T).argmax(-1)
+        valid = tokmask > 0
+        acc = float((pred[valid] == lab[valid]).mean())
+        maj = max(float((lab[valid] == kd).mean()) for kd in range(len(KINDS)))
+        print(f"[teeth-check] width {width}: per-token kind acc = {acc:.3f} "
+              f"(majority floor {maj:.3f}) on THIS slice", flush=True)
+
+
+# ===========================================================================
+# --crosscheck: head vs library disagreement as a gold-free suspect signal
+# ===========================================================================
+
+def crosscheck():
+    from tinygrad import Tensor, dtypes
+    from tinygrad.nn.state import safe_load
+    from phase1_delta_head import (
+        L_SLOTS, H_WAIST, build_head_params, head_forward, load_split,
+        CKPT_PATH, TYPES)
+    from phase1_brick_a import NACK_NPZ, wrong_slot_mask
+    from phase1_brick_c import slot_confidence
+
+    lib = np.load(LIB_OUT, allow_pickle=True)
+    cents = lib["parse_centroids_512"]              # (K_kinds, 512)
+    p = build_head_params(0)
+    sd = safe_load(CKPT_PATH)
+    for k in p:
+        p[k].assign(sd[k].to(p[k].device).cast(p[k].dtype)).realize()
+    samples, states, tokmask, gold, sent = load_split("test")
+    z = np.load(NACK_NPZ.format(split="test"))
+    fail_i = [i for i in range(len(samples)) if z["has_fail"][i]]
+
+    disagree, confs, wrongs = [], [], []
+    for s0 in range(0, len(fail_i), 8):
+        sl = np.array(fail_i[s0:s0 + 8])
+        pad = 8 - len(sl)
+        sl_p = np.concatenate([sl, sl[:1].repeat(pad)]) if pad else sl
+        out = head_forward(
+            p, Tensor(np.asarray(states[sl_p], dtype=np.float32), dtype=dtypes.float),
+            Tensor(tokmask[sl_p].astype(np.float32), dtype=dtypes.float),
+            Tensor(np.ones((1, 1, H_WAIST), np.float32), dtype=dtypes.float),
+            Tensor(sent[sl_p].astype(np.int32), dtype=dtypes.int))
+        o = {k: out[k].realize().numpy() for k in
+             ("pres", "type", "op", "dig", "mem", "attn_mean", "waist")}
+        for bi, i in enumerate(sl):
+            i = int(i)
+            wrong = wrong_slot_mask(
+                {k: o[k][bi][None] for k in
+                 ("pres", "type", "op", "dig", "mem")}, gold, i, 0)
+            X = o["waist"][bi].astype(np.float32)
+            Xn = X / (np.linalg.norm(X, axis=-1, keepdims=True) + 1e-9)
+            tok_kind_sim = Xn @ cents.T                        # (T, K_kinds)
+            for j in range(L_SLOTS):
+                if gold["presence"][i, j] < 0.5 or o["pres"][bi, j] <= 0:
+                    continue
+                # HEAD's kind for this slot
+                ty = int(o["type"][bi, j].argmax())
+                if ty in (0, 1):
+                    head_kind = 1                              # rowcol
+                else:
+                    head_kind = 3 if int(o["op"][bi, j].argmax()) == 0 else 2
+                # LIBRARY's kind: slot-attention-weighted token similarity
+                att = o["attn_mean"][bi, j]
+                att = att / (att.sum() + 1e-9)
+                slot_sim = att @ tok_kind_sim                  # (K_kinds,)
+                lib_kind = int(slot_sim[1:].argmax()) + 1      # exclude 'none'
+                disagree.append(float(head_kind != lib_kind))
+                confs.append(slot_confidence(
+                    {k: o[k][bi] for k in ("pres", "type", "op", "dig", "mem")}, j))
+                wrongs.append(bool(wrong[j]))
+
+    disagree = np.array(disagree)
+    confs = np.array(confs)
+    wrongs = np.array(wrongs)
+
+    def auc(scores, labels):
+        pos, neg = scores[labels], scores[~labels]
+        if not len(pos) or not len(neg):
+            return float("nan")
+        allv = np.concatenate([pos, neg])
+        r = np.empty(len(allv)); r[np.argsort(allv)] = np.arange(len(allv))
+        return (r[:len(pos)].mean() - (len(pos) - 1) / 2) / len(neg)
+
+    a_dis = auc(disagree, wrongs)
+    a_conf = auc(-confs, wrongs)
+    corr = float(np.corrcoef(disagree, -confs)[0, 1])
+    combined = -confs + disagree                    # crude sum of z-ish signals
+    a_comb = auc(combined, wrongs)
+    print(f"[crosscheck] slots={len(wrongs)} wrong={int(wrongs.sum())} "
+          f"disagree-rate={disagree.mean():.3f}")
+    print(f"  AUC(disagreement -> wrong)      = {a_dis:.3f}")
+    print(f"  AUC(low-confidence -> wrong)    = {a_conf:.3f}   (tier-0 baseline)")
+    print(f"  corr(disagree, low-conf)        = {corr:+.3f}   (decorrelation check)")
+    print(f"  AUC(combined ranker)            = {a_comb:.3f}   (vs 0.613 withholding-order baseline)")
+
+
 def main():
     cents, parse_results = parse_side_library()
     protos, ded_acc = deduce_side_brick0()
@@ -204,4 +334,14 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    import argparse
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--eval-only", action="store_true")
+    ap.add_argument("--crosscheck", action="store_true")
+    a = ap.parse_args()
+    if a.eval_only:
+        eval_only()
+    elif a.crosscheck:
+        crosscheck()
+    else:
+        main()

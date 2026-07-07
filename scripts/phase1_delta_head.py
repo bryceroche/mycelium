@@ -75,7 +75,8 @@ MEM_POS_WEIGHT = 5.0   # membership multi-hot is sparse (2-7 of 49) — counter 
 SENT_MAX = 64          # sentence-index embedding table size (max ~45 statements)
 
 NL_TRAIN = ".cache/kenken_nl_train.jsonl"
-NL_TEST = ".cache/kenken_nl_test.jsonl"
+NL_TEST = os.environ.get("KK_TEST", ".cache/kenken_nl_test.jsonl")
+KK_TEST_NAME = os.environ.get("KK_TEST_NAME", "test")
 TRUNK_NPY = ".cache/phase1_trunk_{split}.npy"     # raw fp16, np.memmap (84GB at 40k)
 META_NPZ = ".cache/phase1_meta_{split}.npz"       # gold in compact dtypes + tokmask + sent
 CKPT_PATH = ".cache/phase1_delta_head.safetensors"
@@ -177,7 +178,10 @@ def do_precompute() -> None:
     cfg = host.llama_cfg
 
     from numpy.lib.format import open_memmap
-    for split, path in (("train", NL_TRAIN), ("test", NL_TEST)):
+    jobs = [("train", NL_TRAIN), (KK_TEST_NAME, NL_TEST)]
+    if os.environ.get("PRECOMPUTE_ONLY"):
+        jobs = [(n_, p_) for n_, p_ in jobs if n_ == os.environ["PRECOMPUTE_ONLY"]]
+    for split, path in jobs:
         samples, ids, mask, offsets = tokenize_corpus(path)
         n = len(samples)
         out_npy = TRUNK_NPY.format(split=split)
@@ -243,6 +247,8 @@ def sentence_indices(text: str, offs, tokmask_row) -> np.ndarray:
 def load_split(split: str):
     """states is a READ-ONLY MEMMAP (random-access batches, ~16MB/batch off NVMe).
     gold arrays stay in compact dtypes in RAM; callers cast per batch."""
+    if split == "test":
+        split = KK_TEST_NAME
     samples = [json.loads(l) for l in open(NL_TRAIN if split == "train" else NL_TEST)]
     states = np.load(TRUNK_NPY.format(split=split), mmap_mode="r")
     m = np.load(META_NPZ.format(split=split))
