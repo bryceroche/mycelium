@@ -1183,6 +1183,39 @@ token-position × waist-dim, the moment the skeleton trains.
   for rel_args vs flagged recovered errors, bar >=1.5x -> binding-is-the-wall;
   uniform-across-kinds -> head-capacity story, escalate to a trunk-information
   probe. Script: `scripts/survivor_suspicion_rank.py`.
+- **CUTS 2/3/3b (2026-07-08): THE ANATOMY BOTTOMS OUT — THE PARTITION IS
+  ENCODE-SIDE vs DECODE-SIDE.** CUT 2: the binding prediction refuted AGAIN at
+  the relation level — rel_args **0.78x** (DE-enriched; flagged binding errors
+  are relatively fixable); the enriched kind is **given_value 1.41x** (0.56 of
+  m<=2 survivor flagged-error mass). CUT 3 anatomy: flagged given_value errors
+  are predominantly VALUE-ELSEWHERE (misbinding — right number, wrong variable)
+  in every population (survivors 0.755, round-recovered 0.900); hallucinated
+  values (not-in-gold) are the minority but **2.4x enriched** among survivors
+  (0.245 vs 0.100). CUT 3b: SWAPS pass the ratio bar (0.043 vs 0.014 = 3x >
+  1.5x) but FAIL ON MASS — 10/233 cases; the joint-decode conclusion pinned to
+  the bar does NOT fire. LEDGER LESSON: **an enrichment bar without a mass bar
+  is a trap** — register the mass the mechanism must explain, not just the
+  ratio (the §6 enforcement-is-arithmetic rule applied to one's own bars).
+  THE SYNTHESIS: dominant unfixable errors are ONE-DIRECTIONAL misbindings —
+  no coordination needed, a single-slot edit suffices — yet 4 correctly-flagged
+  rounds fail. The chain closes on the substrate: every repair round re-decodes
+  the SAME precomputed frozen trunk states; only flag features change. If the
+  binding/value was mis-committed AT ENCODING TIME, no head-side conditioning
+  recovers it. THE HARD PARTITION, NAMED: the repair stack drains DECODE-side
+  errors (front-loaded 123->39->5->0) and cannot touch ENCODE-side casualties —
+  which explains every refutation at once (uniform teeth: encoding failures
+  happen at some rate on all inputs; flat multiplicity; adequate localization;
+  flagged-but-unfixed). ORACLE-CEILING ARM registered
+  (`scripts/survivor_oracle_ceiling.py`): perfect gold-derived per-field flags
+  (= the specialist's TRAINING regime; deployed withhold-flags were doubly OOD:
+  mis-pointed + all-fields pattern) re-derived each round, 4 rounds, on the 460.
+  Upper-bounds ALL flag-quality improvements in one number. REGISTERED: <10%
+  recovery -> encode-side wall MEASURED (frontier = change the ENCODING:
+  second-view re-render with position-aligned suspect marks per the §6
+  structure law, and/or deeper prefix — NOT any suspicion/repair improvement;
+  the transplant rerank dies too). >30% -> the deployed flag deriver was the
+  constraint (fix it — cheapest win of the week). 10-30% -> partition and
+  re-profile the oracle-recovered.
 - **META-NOTE (the relay, 2026-07-08): REAL CAUSES HAVE JURISDICTIONS TOO.**
   Second time this week a thrice-measured REAL phenomenon turned out not to
   govern the question it was assumed to govern (binding weakness -> survivorship;
