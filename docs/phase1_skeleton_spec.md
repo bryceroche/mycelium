@@ -1138,6 +1138,28 @@ token-position × waist-dim, the moment the skeleton trains.
   premise re-earned in a narrower, reshaped form: omission-repair, not
   reading-repair). Script: `scripts/survivor_multiplicity.py` CUT 4; profile
   persisted to `.cache/survivor_profile_bigtest.npz` (future cuts zero-GPU).
+- **CUT 4 RESULT (2026-07-08): OMISSION-BLINDNESS REFUTED TOO.** AUC(m_add) =
+  0.525, AUC(m_corr) = 0.522 — survival tracks NEITHER decomposition. The cell
+  table actively inverts the prediction: (m_add=0, m_corr=1) — one
+  in-jurisdiction emitted-slot error, the stack's bread and butter — survives at
+  **0.914** (n=35), the HIGHEST cell; (m_add=2+, m_corr=1) survives at 0.500,
+  the lowest. m<=2 survivor error kinds are broad (rel_args 0.27, missing 0.27,
+  given_value 0.21), not missing-dominated. TWO POST-HOC SIGNATURES: (1)
+  query_wrong = 0.14 of m<=2 survivor error mass vs 0.03 population — ~5x
+  enriched; a wrong query has NO slot: unwithholdable, unflaggable. (2) The
+  (0,1)-cell inversion names SUSPECT-RANKING BLINDNESS: withhold-2 strips the
+  two LEAST-confident factors; a confidently-wrong factor escapes, the flags
+  hand the specialist the WRONG suspects, and unflagged->copy propagates the
+  true error forever — which also explains the front-loaded decay (same
+  mis-pointed flags every round). CONVERGENCE: this mechanism and the mechanical
+  Future-C rerank agree — the binding constraint is SUSPICION QUALITY, not
+  repair capacity; the deducer-side suspicion transplant is exactly a better
+  suspect-ranker. NEXT PROBE registered (`scripts/survivor_suspicion_rank.py`,
+  blank-parse-only — identity from the npz, no 4-round replay): P1
+  AUC(min wrong-slot confidence-rank -> survival) >= 0.65; P2 withhold-2
+  coverage several-fold higher among stage-1-recovered than low-m survivors;
+  P3 m<=2 survivors dominated by rank-escapes + unflaggable query errors.
+  FLAT ranks = the suspicion story dies too; decode-degeneracy stands.
 - **META-NOTE (the relay, 2026-07-08): REAL CAUSES HAVE JURISDICTIONS TOO.**
   Second time this week a thrice-measured REAL phenomenon turned out not to
   govern the question it was assumed to govern (binding weakness -> survivorship;
