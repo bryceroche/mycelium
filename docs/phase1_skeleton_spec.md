@@ -1258,6 +1258,34 @@ token-position × waist-dim, the moment the skeleton trains.
   ceiling; relay's directional prediction — recovery CONCENTRATED in
   one-directional given-misbindings (mark = "re-examine this given" at its
   location) confirms directed attention; UNIFORM recovery = generic re-rolling.
+- **DEPTH-PROBE VERDICT (2026-07-08 night): ROUTING WALL — DECISIVE.** Fresh
+  value-probe, digit-exact at gold given spans: base **L4 0.998 / L8 0.953**;
+  wrong-recovered 1.000/0.946; **the 396's wrong givens 0.996/0.942**. The gold
+  value is FULLY PRESENT in the current L4 encoding at its location, at
+  baseline fidelity, on exactly the givens the parser misbinds and cannot
+  repair. DEEPER PREFIX RETIRED with a number (L8 <= L4 everywhere — depth
+  smears local literals). HONEST CORRECTION to the partition's name:
+  "encode-side" was operationally right (no conditioning fixes it) but
+  mechanistically WRONG — the partition is decode-side vs **ROUTING-side**:
+  the trained pointer circuit deterministically reads the wrong location (§6
+  attention-bootstrap law: pointers don't move without direct supervision), and
+  this happens DESPITE span-supervised training. Option-4 re-profile came back
+  FLAT (oracle-64 vs 396: mult 0.89x, kinds ~1x, teeth ~1x) — the 64 are
+  flag-quality stragglers of the same population, one mass. THE FORK OPENED BY
+  THE VERDICT (relay to adjudicate): **(A) span-restricted structural read** —
+  the probe IS a repair head (reads only the span, 0.996 on the hard
+  population): flagged given slot -> pool states over the suspect var's
+  predicted mention span -> probe-decode value -> substitute -> re-solve. Zero
+  re-render, zero retrain; deployability = gold-free span prediction quality
+  (mention head exists, unmeasured on survivors); scope = given_value class
+  (~0.36 of survivor error mass). **(B) marker-token re-render v0** — the
+  general mechanism (now understood as attention BEACON, not re-encoding);
+  design wrinkle: deployment places the marker via the model's own routing
+  (marks where it LOOKS, not where it should look) — the train/deploy placement
+  gap needs its own registered measure. **(C) both, sequenced** — A as the
+  immediate bite, B as the Alternator build with A's recovery as the baseline
+  to beat. Probe cached: L8 states `.cache/algebra_bigtest_L8_states.npy`;
+  script `scripts/survivor_depth_probe.py`.
 - **META-NOTE (the relay, 2026-07-08): REAL CAUSES HAVE JURISDICTIONS TOO.**
   Second time this week a thrice-measured REAL phenomenon turned out not to
   govern the question it was assumed to govern (binding weakness -> survivorship;

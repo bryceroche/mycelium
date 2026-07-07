@@ -19,28 +19,35 @@ ANY flag-quality or repair improvement**. Full chain + numbers: spec ledger
 (`docs/phase1_skeleton_spec.md`, 2026-07-08 entries).
 
 ## THE PENDING DECISION (relay + Bryce — this is the seam)
-The frontier is now a BUILD choice, not a probe. Options on the table:
-1. **Change the encoding between rounds (second-view re-render).** Re-render the
-   problem text with POSITION-ALIGNED suspect marks (features, NOT prose — the §6
-   structure law; the old text-NACK arm was content-blind and this is why) and
-   recompute trunk states for round-2+ on failures only (~700/1500). Cost: per-round
-   trunk forward for failures; residency fine (2.9GB total, 21GB headroom).
-2. **Deeper prefix (L0–L7).** Richer encoding; attacks the same wall from the
-   capacity side. Cost: recompute the whole trunk-state memmap + retrain heads;
-   measure whether binding survives deeper before committing (a probe can gate this).
-3. **Capture the flag-quality dividend (small, deployable, cheap).** The deployed
-   flag deriver is doubly OOD vs the specialist's training (withhold-derived,
-   all-fields pattern vs gold per-field masks). Oracle bounds the win at ≤64 cases
-   (≤ +4.3 pts end-to-end); a gold-free per-field confidence deriver might capture
-   part. Worth doing regardless of 1/2; do not oversell — it cannot touch the 396.
-4. **Registered but unfired:** partition + re-profile the 64 oracle-recovered vs
-   the 396 (the pinned 10–30% rule's follow-up; zero GPU — profile npz exists:
-   `.cache/survivor_profile_bigtest.npz`).
+**UPDATE 2026-07-08 late night: the pre-build discriminators RAN and redirected
+the build.** The depth probe returned a decisive **ROUTING wall**: a fresh probe
+reads the gold value off the CURRENT L4 states at the gold span at **0.996**
+digit-exact ON THE 396's own misbound givens (base 0.998; L8 slightly worse
+everywhere). The information is fully present; the trained head's pointer
+circuit reads the wrong location (§6 attention-bootstrap law). Deeper prefix
+RETIRED with a number. "Encode-side" corrected to **ROUTING-side** (operationally
+the same: no conditioning fixes it; mechanistically different: the states
+contain the answer). Option-4 re-profile: flat — the oracle-64 are same-population
+flag stragglers.
 
-DEAD ENDS, measured (do not revive): ledger re-parse as reading-repair (premise
-refuted — teeth uniform); deducer-suspicion transplant as ranker (localization
-already adequate — P1 flat); joint-decode-for-swaps (3x ratio but 4% mass);
-more rounds/better ranking (oracle ceiling 13.9%).
+THE FORK TO ADJUDICATE (spec ledger has the full entry):
+- **(A) span-restricted structural read (probe-as-repair, cheapest):** flagged
+  given slot -> pool L4 states over the suspect var's predicted mention span ->
+  probe-decodes value (0.996 with gold spans) -> substitute -> re-solve. Zero
+  retrain/re-render. Unknown: gold-free span prediction quality on survivors.
+  Scope: given_value class (~0.36 of survivor error mass).
+- **(B) marker-token re-render v0 (the Alternator build, mechanism = attention
+  BEACON):** reserved vocab tokens at suspect spans, forward-only re-encode (no
+  trunk backprop — AM hazard stays dissolved). Wrinkle to measure: deployment
+  places markers via the model's own routing (marks where it LOOKS).
+- **(C) both, sequenced:** A first (immediate bite at the 396), B as the general
+  build with A's recovery as its baseline to beat.
+
+DEAD ENDS, measured (do not revive): ledger re-parse as reading-repair (teeth
+uniform); suspicion transplant as ranker (P1 flat 0.518); joint-decode-for-swaps
+(3x ratio, 4% mass); more rounds/better ranking (oracle ceiling 13.9%);
+**deeper prefix (L8 <= L4 on all groups)**. Flag-quality dividend still on the
+table (≤64 cases bounded) but cannot touch the 396.
 
 ## Ledger lessons promoted this arc
 - **An enrichment bar without a MASS bar is a trap** (CUT 3b: 3x ratio on a 4%
