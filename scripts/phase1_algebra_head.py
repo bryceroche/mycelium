@@ -52,7 +52,8 @@ N_HEADS = 8
 SENT_MAX = 32
 
 ALG_TRAIN = ".cache/algebra_nl_train.jsonl"
-ALG_TEST = ".cache/algebra_nl_test.jsonl"
+ALG_TEST = os.environ.get("ALG_TEST", ".cache/algebra_nl_test.jsonl")
+TEST_NAME = os.environ.get("ALG_TEST_NAME", "test")   # states-file key for the test slice
 STATES_NPZ = ".cache/phase1_alg_states_{split}.npz"
 ALG_CKPT = ".cache/phase1_algebra_head.safetensors"
 TOKENIZER_JSON = ".cache/llama-3.2-1b-weights/tokenizer.json"
@@ -160,7 +161,10 @@ def do_precompute():
     sd = load_llama_weights(os.path.join(_ROOT, ".cache/llama-3.2-1b-weights/model.safetensors"))
     attach_llama_layers(host, n_layers=4, sd=sd, cfg=LLAMA_3_2_1B_CFG)
     del sd
-    for split, path in (("train", ALG_TRAIN), ("test", ALG_TEST)):
+    jobs = [("train", ALG_TRAIN), (TEST_NAME, ALG_TEST)]
+    if os.environ.get("PRECOMPUTE_ONLY"):
+        jobs = [(n_, p_) for n_, p_ in jobs if n_ == os.environ["PRECOMPUTE_ONLY"]]
+    for split, path in jobs:
         samples, ids, mask, offsets = tokenize(path)
         n = len(samples)
         states = np.zeros((n, T_ALG, H_TRUNK), np.float16)
@@ -183,6 +187,8 @@ def do_precompute():
 
 
 def load_alg(split):
+    if split == "test":
+        split = TEST_NAME
     z = np.load(STATES_NPZ.format(split=split))
     samples = [json.loads(l) for l in open(ALG_TRAIN if split == "train" else ALG_TEST)]
     gold = {k[2:]: z[k] for k in z.files if k.startswith("g_")}
