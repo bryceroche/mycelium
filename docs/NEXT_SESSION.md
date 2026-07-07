@@ -19,8 +19,12 @@ chapter; the build log there is the ground truth.
 1. **Tier-0 incumbent measurements (spec §12 — ZERO GPU):** per-field AUC + post-
    temperature ECE of slot_confidence on the banked artifacts; THE question: does
    the free confidence signal spot the 14 algebra silents (the high-confidence-error
-   subset is where the entropy null is blind)? Then the withholding-cost curves
-   (KenKen first — conditional prediction needs the AUC first).
+   subset is where the entropy null is blind)? REGISTERED FORM: the number is
+   SEPARATION, not rank — silents' confidence vs the CORRECT parses' confidence
+   distribution (AUC/overlap); 14 silents scoring low means nothing if half the
+   correct emissions score low too (the identity-confound lesson, one instrument
+   later). Then the withholding-cost curves (KenKen first — the conditional
+   prediction needs the AUC first).
 2. **More training/data on the teeth corpus** (loss 5.3 and falling at 16k — cheap
    headroom before any architecture talk).
 3. **Size-controlled factorization read** (fac-exact vs band at FIXED n_vars) before
