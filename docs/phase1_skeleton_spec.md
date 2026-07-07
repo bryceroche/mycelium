@@ -1042,3 +1042,18 @@ token-position × waist-dim, the moment the skeleton trains.
   (measured tonight: 5/802 = 0.6% at this corpus's uniqueness density). (3) The
   99.4%-honest audit note: audits expected to confirm are still worth running —
   they convert "presumably fine" into load-bearing.
+- **MULTI-ROUND (2026-07-08 night): THE REGISTERED FRAME CONFIRMED.** Per-round
+  recovery: **123 -> 39 -> 5 -> 0** (19.6% -> 7.7% -> 1.1% -> 0%) — declining
+  exactly as registered, hard asymptote by round 4 with 460/703 survivors
+  unrecoverable by ANY depth of this loop. NO violation -> the ledger-conditioning
+  hypothesis does NOT arrive early; the loop cannot move its own ceiling; the 46.7%
+  frontier stays where the ranking put it (reading-repair: deeper prefix / ledger
+  re-parse). Multi-round total: 76 + 167 = **243/703 = 34.6%**; END-TO-END:
+  797 + 243 = **1,040/1,500 = 69.3%**. THE PURITY RESULT: **279/1,622 = 17.2% of
+  mined "failures" were right-asked-wrong-graph** — independently matching the
+  16.6% bigtest class rate (the equivalence class is a stable property of this
+  parser, ~1/6 of its correct readings are non-canonical). HONEST TRADE-OFF: the
+  pure specialist's round-1 recovery dipped (123 vs the impure 150) — fewer
+  training samples and/or the removed parses carried useful canonicalization
+  signal; multi-round total still exceeds the impure single round (243 vs 226).
+  Round-2+ exists: +44 answers the single-round stack left on the table.
