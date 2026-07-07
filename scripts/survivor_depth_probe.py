@@ -89,6 +89,7 @@ def train_probe(Xtr, Ytr, seed):
     """Identical probe per depth: 2048 -> 512 -> N_DIG*10, Adam, fixed steps."""
     from tinygrad import Tensor, dtypes
     from tinygrad.nn.optim import Adam
+    Tensor.training = True
     rng = np.random.RandomState(seed)
 
     def t(a):
@@ -122,6 +123,7 @@ def train_probe(Xtr, Ytr, seed):
 
 def eval_probe(fwd, X, Y):
     from tinygrad import Tensor, dtypes
+    Tensor.training = False
     if not len(X):
         return float("nan")
     preds = []
