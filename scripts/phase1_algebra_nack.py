@@ -190,6 +190,61 @@ def do_prep():
         if s0 % 512 == 0:
             print(f"  [prep] {s0}/{n}", flush=True)
     has_fail = WF.any(axis=(1, 2))
+
+    # CURRICULUM PURITY (2026-07-08): graph-match labels right-asked-wrong-graph
+    # parses as "failures" — training the specialist to fix CORRECT readings toward
+    # canonical gold. Filter: a parse whose answer is FORCED-correct is NOT a
+    # failure, whatever its graph looks like. PURITY=0 disables (for the
+    # contamination measurement).
+    if int(os.environ.get("PURITY", "1")):
+        from mycelium.csp_domains import problem_from_algebra
+        from mycelium.csp_core import solve_symbolic
+        n_pure = 0
+        for i in np.where(has_fail)[0]:
+            i = int(i)
+            smp = samples[i]
+            # rebuild the parse from prev outputs
+            facs = []
+            for j in range(L_FAC):
+                if not prev["pres"][i, j]:
+                    continue
+                if prev["ftype"][i, j] == 0:
+                    args = sorted(np.where(prev["args"][i, j] > 0)[0].tolist())[:2]
+                    if len(args) < 2:
+                        continue
+                    facs.append(("rel", "add" if prev["op"][i, j] == 0 else "mul",
+                                 args[0], args[1], int(prev["res"][i, j])))
+                else:
+                    val = int(sum(d * 10 ** (N_DIG - 1 - k)
+                                  for k, d in enumerate(prev["dig"][i, j])))
+                    facs.append(("given", int(prev["res"][i, j]), val))
+            rels = [(f[1], f[2], f[3], f[4]) for f in facs if f[0] == "rel"]
+            gv = {f[1]: f[2] for f in facs if f[0] == "given"}
+            gold_ans = smp["solution"][smp["query_var"]]
+            q = smp["query_var"]     # purity uses gold query (prep-side, oracle-ok)
+            try:
+                nv = max([smp["n_vars"]] + [v + 1 for f in facs for v in
+                         (f[2:5] if f[0] == "rel" else [f[1]])])
+                res = solve_symbolic(problem_from_algebra(nv, rels, gv, smp["m"]),
+                                     budget=100_000, seed=0)
+                if res["status"] != "solved":
+                    continue
+                sol = [int(res["assignment"][v]) for v in range(nv)]
+                if q >= len(sol) or sol[q] != gold_ans:
+                    continue
+                p2 = problem_from_algebra(nv, rels, gv, smp["m"])
+                p2.domains0[q].discard(sol[q])
+                if p2.domains0[q]:
+                    r2 = solve_symbolic(p2, budget=60_000, seed=0)
+                    if r2["status"] == "solved":
+                        continue
+                has_fail[i] = False        # forced-correct: never a failure
+                n_pure += 1
+            except Exception:
+                continue
+        print(f"[prep] PURITY filter: {n_pure} right-asked-wrong-graph parses "
+              f"removed from the failure set", flush=True)
+
     np.savez_compressed(PREP_NPZ, wrong_fields=WF, has_fail=has_fail,
                         **{f"prev_{k}": v for k, v in prev.items()})
     print(f"[prep] {int(has_fail.sum())}/{n} organic failures -> {PREP_NPZ}",
@@ -445,6 +500,7 @@ def do_eval():
     n_fail = stage1 + len(survivors)
     print(f"[alg-stack] failures {n_fail}/{n} | stage-1 withhold-{K_WH}: {stage1} recovered")
 
+    rounds = int(os.environ.get("ROUNDS", "1"))
     if survivors:
         arm = os.environ.get("ARM", "both")
         if arm == "field_only":
@@ -453,18 +509,45 @@ def do_eval():
         ftok_s = np.stack([f for f, _ in surv_flags])
         ffld_s = np.stack([f for _, f in surv_flags])
         fbit_s = np.ones((len(survivors), 1), np.float32)
-        re = run(p_re, c_re, survivors, ftok_s, fbit_s, ffld_s)
-        stage2 = 0
-        for r_i, i in enumerate(survivors):
-            o = re[i]
-            facs, q_pred = decode(o)
-            ok, _ = solve_check(facs, q_pred, samples[i], K_WH, o=o)
-            stage2 += ok
-        total = stage1 + stage2
-        print(f"[alg-stack] stage-2 retransmit(+withhold) on {len(survivors)}: "
-              f"{stage2} recovered")
-        print(f"[alg-stack] COMPOSED RECOVERY: {total}/{n_fail} = {total/n_fail:.2f}"
-              f"   (stage-1 alone was {stage1})")
+        total = stage1
+        pool = survivors
+        flags_pool = surv_flags
+        for rnd in range(1, rounds + 1):
+            if not pool:
+                break
+            ftok_s = np.stack([f for f, _ in flags_pool])
+            ffld_s = np.stack([f for _, f in flags_pool])
+            if arm == "field_only":
+                ftok_s = np.zeros_like(ftok_s)
+            fbit_s = np.ones((len(pool), 1), np.float32)
+            re = run(p_re, c_re, pool, ftok_s, fbit_s, ffld_s)
+            rec_r, nxt_pool, nxt_flags = 0, [], []
+            for i in pool:
+                o = re[int(i)]
+                facs, q_pred = decode(o)
+                ok, wh = solve_check(facs, q_pred, samples[int(i)], K_WH, o=o)
+                if ok:
+                    rec_r += 1
+                    continue
+                ftok_i = np.zeros((T_ALG,), np.float32)
+                ffld_i = np.zeros((L_FAC, N_FIELDS), np.float32)
+                fi = 0
+                for j in range(L_FAC):
+                    if o["pres"][j] <= 0:
+                        continue
+                    if fi in wh:
+                        ffld_i[j, :] = 1.0
+                        ftok_i = np.maximum(
+                            ftok_i, gold["fspan"][int(i), j].astype(np.float32))
+                    fi += 1
+                nxt_pool.append(i)
+                nxt_flags.append((ftok_i, ffld_i))
+            total += rec_r
+            print(f"[alg-stack] ROUND {rnd}: {rec_r}/{len(pool)} recovered "
+                  f"({len(nxt_pool)} survive)")
+            pool, flags_pool = nxt_pool, nxt_flags
+        print(f"[alg-stack] MULTI-ROUND RECOVERY ({rounds} rounds): "
+              f"{total}/{n_fail} = {total/n_fail:.2f}  (stage-1 alone was {stage1})")
 
 
 def main(argv=None):
