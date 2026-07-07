@@ -984,3 +984,18 @@ token-position × waist-dim, the moment the skeleton trains.
   portfolio-level structure is robust — re-measure the blend at every regime shift,
   never inherit it. Query-confidence's three-regime arc (fiction -> weak -> 0.927
   rare flag) is the instrument ledger in miniature.
+- **THE FINAL ROWS (2026-07-08): THE ASTERISK RESOLVES — FIELD-ONLY WINS.** The
+  curriculum fix worked exactly as diagnosed: prep on the fresh mining slice found
+  **1,622/3,000 failures** (vs 14/2,000 on the memorized train split); the retrained
+  specialist recovers **148/627 survivors** (was 13 when starved). COMPOSED AT
+  CONVERGENCE: **224/703 = 32%** (rate ROSE from 24% pre-convergence on a harder
+  survivor pool — the repair loop improves WITH the parser, consistent with the
+  equilibrium claim). **ARM=field_only: 226/703 — the fully-deployable arm matches
+  and slightly beats gold-located spans.** The informal 3-5-point prediction lands
+  at 0.3 points on the favorable side; the leakage bound is ZERO; the span channel
+  adds nothing — "this factor's field is suspect" carries the entire repair signal.
+  STRUCTURE BEATS LOCALIZATION, again, and the algebra number is now the same kind
+  of number as KenKen's 47%: gold-free end to end. **THE PIPELINE HEADLINE: one-shot
+  802 + repaired 226 = 1,028/1,500 = 68.5% of teeth-hardened algebra problems
+  answered, fully deployable, through genuine search, at 3.2M trained parameters
+  per head over a frozen 4-layer trunk.**
