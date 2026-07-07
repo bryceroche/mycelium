@@ -1382,6 +1382,28 @@ token-position × waist-dim, the moment the skeleton trains.
   USABLE-FLAG bar precision@top-10% >= 2x base (0.354). Classified on arrival
   per the portfolio rule: dense ranker / rare-flag / dead. Audit script now
   persists per-sample outcomes (`.cache/deploy_audit_bigtest.npz`).
+- **WAIST PROBE RESULTS (2026-07-09): BOTH HALVES LAND.** HALF 1 **COHERENT**,
+  decisively: sharpness ratio 0.940 (bar 0.80), midpoint-decodes-an-endpoint
+  0.843 (bar 0.50), n=561 same-length cross-problem pairs. The parse-side waist
+  is SMOOTH WITHIN KIND — convex combinations decode cleanly; the
+  coordinate-swap evidence indeed did not transfer to interpolation. Per the
+  pinned rule: **KL/VAE machinery buys little — parked, no deficiency**
+  (the per-kind-prior note stays parked alongside). HALF 2: dense AUC **0.728**
+  — my registered prior (0.55-0.65) REFUTED UPWARD; clears BOTH portfolio
+  bars: dense ranker (>=0.70) AND rare-flag (precision@10% 0.417 vs bar 0.354;
+  top-20% = 45% recall of committed-wrong at 0.40 precision). First instrument
+  that consults neither solver nor emission-head confidence; the two halves
+  cohere (centroid distance is meaningful BECAUSE the space is smooth).
+  POLICY NOTE pinned before use: blind abstention LOSES accuracy on
+  MATH-500-style grading (drop ~153 correct to avoid ~102 wrong at top-20%);
+  the paying use is **flag-as-NACK-on-ACCEPTED-answers** — route flagged
+  accepts through a second look instead of committing. This is the §8.5
+  session-monitor role arriving from measurement (retransmission decisions on
+  accepted traffic), not from spec. NEXT CUT (cheap, registered direction not
+  prediction): stage-split of flagged wrongs — concentration in the 90
+  one-shot invisibles would close the arc (the routing-wall population, first
+  invisible to repair, now visible to the waist monitor). Script:
+  `scripts/waist_abstention_probe.py`.
 - **META-NOTE (the relay, 2026-07-08): REAL CAUSES HAVE JURISDICTIONS TOO.**
   Second time this week a thrice-measured REAL phenomenon turned out not to
   govern the question it was assumed to govern (binding weakness -> survivorship;

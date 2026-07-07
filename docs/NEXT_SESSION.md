@@ -17,6 +17,18 @@ customer for a calibrated ABSTENTION signal — the waist-interpolation probe
 New law (2 sightings in 2 days): acceptance criteria are mechanisms — audit
 them for imposter rate at deployed error density; never assume soundness.
 
+**WAIST PROBE (2026-07-09, both halves landed):** parse-side waist is SMOOTH
+within kind (interpolation coherent: 0.940 sharpness ratio, 0.843
+endpoint-match) — KL/VAE machinery PARKED, no deficiency. The abstention
+signal WORKS: dense AUC 0.728 on the 226 committed-wrong (clears dense-ranker
+AND rare-flag bars; precision@10% 0.417, top-20% recall 0.451). The first
+instrument that consults neither the solver nor the emission heads.
+Pinned policy: blind abstention loses accuracy — the paying use is
+flag-as-NACK-on-accepted-answers (the §8.5 session-monitor role, arrived by
+measurement). PENDING: relay adjudicates the flagged-accept second-look
+policy; cheap next cut = stage-split of flagged wrongs (are they the 90
+one-shot invisibles?). Script: `scripts/waist_abstention_probe.py`.
+
 ## Where we are (one paragraph)
 **The survivor anatomy is COMPLETE and the wall is measured.** End-to-end on
 teeth-hardened algebra: **1,040/1,500 = 69.3%** gold-free forced-correct (797
