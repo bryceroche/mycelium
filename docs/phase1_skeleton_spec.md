@@ -708,3 +708,19 @@ token-position × waist-dim, the moment the skeleton trains.
   (loss 5.3, falling): all numbers are floors. NET FOR THE LOOP: 92% detectable on
   algebra's thinner jaws — the NACK story survives the inversion far better than
   feared, and tier-0/tier-3's target class (the 14 silents + 43 multis) now exists.
+- **TIER-0 MEASUREMENT 1 (2026-07-07 nightcap): THE INCUMBENT HALF-SEES THE
+  SILENTS, AND ITS BLIND SPOT IS FIELD-LOCALIZED.** Silents-vs-correct AUC (the
+  registered separation number, n=14 caveat): product 0.727, min 0.680, digits
+  0.654, fields 0.601 — but **pointer 0.479 and query 0.398: AT-OR-BELOW CHANCE.
+  Silent parses are AS-or-MORE confident in their pointers/query than correct
+  parses are** — the entropy null's predicted blind spot (confidently-wrong),
+  found alive and localized to exactly two fields. Meanwhile all-wrong-vs-correct
+  product AUC = **0.905**: the incumbent is an EXCELLENT ranker of detectable
+  errors (Brick-C's consumer is well served). Saturation note: median confidences
+  0.97-1.00 everywhere — thresholds are hopeless without recalibration; the AUCs
+  are rank-based and unaffected. VERDICT (per the §12 frame): the null SURVIVES as
+  the ordering signal and DIES as the silent-detector; the trained head's job is
+  now precisely scoped — supervised correctness-prediction on the POINTER and
+  QUERY fields, where entropy carries zero signal and input-conditional error
+  patterns are the only hope. Neither clean ending; the design's completion now
+  has an address.
