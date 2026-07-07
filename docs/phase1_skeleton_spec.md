@@ -1027,3 +1027,18 @@ token-position × waist-dim, the moment the skeleton trains.
   measured magnitude attached (16.6% of credit rides on it). CORRECTED END-TO-END
   BASELINE: 797 + 226 = **1,023/1,500 = 68.2%** — the true floor, uniform across
   all rows; multi-round's asymptote frame starts here.
+- **PRE-MULTI-ROUND REGISTRATIONS (2026-07-08):** (1) THE CURRICULUM-PURITY CHECK:
+  prep labels failures by GRAPH-match — right-asked-wrong-graph parses (16.6% of
+  correct!) may sit in the mining set as "failures," training the specialist to
+  "fix" correct readings toward canonical gold (a bias against exactly the
+  equivalence flexibility the 16.6% represents). Check the contamination, then
+  filter: MINE FAILURES BY ANSWER-FORCING, not graph-match — the honest-metric
+  principle applied one stage upstream. (2) GRADING-POLICY OPTIONS, registered while
+  nothing is at stake: STRICT-GRAPH (undersells 16.6%, immune to equivalence
+  errors); FORCED-ANSWER (tonight's metric — honest where uniqueness holds);
+  ANSWER-MATCH (MATH-500's native grading — vulnerable to luck the forcing probe
+  can't run on non-generated problems). The forced-vs-answer-match delta on
+  generated corpora = the LUCK-INFLATION estimate to carry into any benchmark claim
+  (measured tonight: 5/802 = 0.6% at this corpus's uniqueness density). (3) The
+  99.4%-honest audit note: audits expected to confirm are still worth running —
+  they convert "presumably fine" into load-bearing.
