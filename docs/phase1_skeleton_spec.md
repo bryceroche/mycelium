@@ -1286,6 +1286,37 @@ token-position × waist-dim, the moment the skeleton trains.
   immediate bite, B as the Alternator build with A's recovery as the baseline
   to beat. Probe cached: L8 states `.cache/algebra_bigtest_L8_states.npy`;
   script `scripts/survivor_depth_probe.py`.
+- **ARM C REGISTERED + FIRED (2026-07-09): REPLACE-AND-SOLVE — candidate-
+  restriction repair, the sibling of withhold-and-solve.** The relay's
+  adjudication: C is not merely cheapest-first — the routing verdict makes it
+  the MECHANISTICALLY CORRECT fix (don't steer a learned pointer; shrink its
+  candidate space — the same move as every §6 win), and it demotes marker-v0
+  from thesis-test to comparison arm. Law 7's read-side discipline applied to
+  attention itself: remove/restrict at READ, from the candidate set, never from
+  state — the state was fine all along. DESIGN SHARPENING at build time: for
+  GIVEN VALUES the right reader is not even the probe — values are digit
+  literals in the input text; the inventory lexes symbolically at 1.0
+  reliability (the probe earns its place in v1 on args/ops where lexing can't
+  reach). Moves: REPLACE (one given's value <- inventory; withhold could never
+  fix a misbound given — removal loses the constraint; replace keeps it,
+  corrected) + SWAP (the coordinated two-slot exchange a parallel marginal
+  decoder can't emit). Solver disposes; ACCEPTANCE pinned: all passing moves
+  must agree on the answer, else ambiguous-reject. Fully gold-free.
+  DEPLOYMENT-HONESTY: fires only on VISIBLE failures; forced-WRONG originals
+  (gold-only failures) counted separately — they are a grading-policy problem,
+  not a repair problem. REGISTERED: mine — 60-120/460, concentrated low-m
+  given_value, ambiguity <10% of fixable; relay (polarity-flipped) — this arm
+  takes the BULK of the convertible fraction and the beacon adds ~nothing on
+  top (pointers don't re-aim under conditioning; a beacon is conditioning via
+  input) — beacon-beats-floor would be the interesting outcome; soundness —
+  accepted-but-wrong ~0 (forced-unique acceptance admits no luck; measured).
+  RELAY PRE-READ on the mention-quality unknown: teeth-uniformity implies
+  survivors aren't adversarial text, so mention F1 should hold; degradation
+  would CONTRADICT the uniformity table and be a finding itself. §6 PROMOTION
+  QUEUED (fifth sighting, first at inference): **pointer errors are never fixed
+  by conditioning — only by candidate restriction (structure) or retraining
+  (supervision).** Two remedies, zero exceptions so far. Script:
+  `scripts/repair_replace_swap.py`.
 - **META-NOTE (the relay, 2026-07-08): REAL CAUSES HAVE JURISDICTIONS TOO.**
   Second time this week a thrice-measured REAL phenomenon turned out not to
   govern the question it was assumed to govern (binding weakness -> survivorship;
