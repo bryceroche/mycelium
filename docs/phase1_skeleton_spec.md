@@ -1317,6 +1317,32 @@ token-position × waist-dim, the moment the skeleton trains.
   by conditioning — only by candidate restriction (structure) or retraining
   (supervision).** Two remedies, zero exceptions so far. Script:
   `scripts/repair_replace_swap.py`.
+- **ARM C v0 RESULT (2026-07-09): SOUNDNESS GATE FAILED — AND THE FAILURE IS
+  THE FINDING.** 60 accepted, **55 WRONG** (luck gate predicted ~0, measured
+  0.92): FORCED-UNIQUE IS NOT A CORRECTNESS CERTIFICATE when the graph itself
+  is suspect — substitute into a multi-error parse and you can force a
+  consistent, unique, WRONG answer. Accepted set: mean m 8.12, m<=2 share 0.13
+  — imposters on high-error parses, not repairs. Honest yield +5/460; as
+  designed the stage ships 55 indistinguishable wrong answers — NOT DEPLOYABLE.
+  Both registrations refuted (mine 60-120 concentrated-low-m: off 10x with the
+  wrong shape; relay's bulk-of-convertible: the single-move convertible
+  fraction is ~5). THE DEEPER DISCOVERY: **70/460 survivors are forced-WRONG
+  originals — deployment-INVISIBLE.** A single misbound given usually keeps the
+  system fully constrained -> forces cleanly to a wrong answer -> looks like a
+  SUCCESS gold-free. The m=1 survivors at 0.93 were hiding here all along: the
+  routing-wall population mostly doesn't present as failure. THE BUG-CLASS
+  THIS EXPOSES: every acceptance test in the measured stack compared against
+  GOLD; deployment accepts any forced answer at every stage. Three
+  contaminations: forced-wrong one-shots accepted wrong (never reaching
+  repair); phantom recoveries (measured recoveries whose original was forced —
+  deployment never fires); withhold/round imposters. AUDIT REGISTERED + FIRED
+  (`scripts/deployment_honest_audit.py`): full stack replayed under gold-free
+  acceptance; P1 one-shot forced-wrong 100-180; P2 phantom recoveries >0; P3
+  per-stage precision declines down the stack; P4 deployment-honest end-to-end
+  < 0.693. NOTHING IS QUOTED WITHOUT THIS NUMBER AGAIN. Law candidate (with
+  arm C as first sighting): **acceptance criteria must be measured for
+  imposter rate at the deployed error density** — "forced-unique" was pinned
+  as sound from a clean-graph intuition and failed at m~8.
 - **META-NOTE (the relay, 2026-07-08): REAL CAUSES HAVE JURISDICTIONS TOO.**
   Second time this week a thrice-measured REAL phenomenon turned out not to
   govern the question it was assumed to govern (binding weakness -> survivorship;
