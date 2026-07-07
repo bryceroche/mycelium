@@ -732,3 +732,21 @@ token-position × waist-dim, the moment the skeleton trains.
   The parser feels TEXT LENGTH, not solve difficulty — reading and reasoning on
   independent axes, now confirmed at teeth 0.8 with the confound removed. The v0
   flat claim is UPGRADED, not asterisked.
+- **WITHHOLDING-COST CURVE (2026-07-07 morning, banked KenKen, n=57): THE THIRD
+  REPAIR CHANNEL IS REAL — AND IT BEATS RETRANSMISSION.** Precondition first, per
+  registration: incumbent per-factor AUC = **0.613 < 0.7** — the k=1-2 peak claim is
+  formally VOIDED (not refuted). The curve: solve-to-GOLD 2/8/12/**15**/11/10 for
+  k=0..5 — **non-monotone with the peak DISPLACED to k=3**, consistent with the
+  precondition's own logic (imprecise ranking x ~5 errors/parse -> withhold more to
+  cover the wrong set; peak position ~ errors-per-parse x ranking quality).
+  QUALITATIVE SHAPE CONFIRMED, quantitative form shifted exactly as the conditional
+  anticipated. THE HEADLINE: **15/57 (26%) of plateau failures solve to the EXACT
+  gold grid by deleting the 3 least-confident factors — no NACK round, no
+  retransmission — vs 8/57 for one-round retransmit.** Withhold-and-solve is the
+  loop's zero-cost FIRST move on dense domains. SAFETY: wrong-grid = 0 at EVERY k —
+  withholding never produced a silent-wrong solve; every non-gold outcome stayed
+  detectable (UNSAT -> multi drift 1->23, the registered detection conversions).
+  Dense domains keep the full safety net through withholding. (Algebra flip still
+  registered: sparse systems should starve immediately — measure, don't assume.)
+  COMPOSITION IMPLIED: withhold-and-solve -> if multi -> retransmit — the repair
+  stack now has an ordering by cost.
