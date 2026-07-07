@@ -524,6 +524,13 @@ def do_train(steps, lr, batch, seed):
     samples, states, tokmask, gold, sent = load_alg("train")
     n = states.shape[0]
     p = build_params(seed)
+    if int(os.environ.get("RESUME", "0")) and os.path.exists(ALG_CKPT):
+        from tinygrad.nn.state import safe_load as _sl
+        sd0 = _sl(ALG_CKPT)
+        assert set(sd0.keys()) == set(p.keys()), "resume key mismatch (hard error)"
+        for k in p:
+            p[k].assign(sd0[k].to(p[k].device).cast(p[k].dtype)).realize()
+        print(f"[train] RESUMED from {ALG_CKPT}", flush=True)
     opt = AdamW(list(p.values()), lr=lr, weight_decay=0.01)
     rng = np.random.RandomState(seed)
 

@@ -3,34 +3,36 @@
 Cold-start entry point. Read this first; it points to everything else.
 
 ## Where we are (one paragraph)
-**The Alternator loop is closed gold-free** (Brick-C: retention 0.52, 8/57 recovered)
-and **the math expansion is underway with real failures to study**. The algebra
-pipeline (arith3 registry + band-labeled generator + the §11 two-bank head) answers
-end-to-end through GENUINE search; on the teeth corpus (obliques, letter shuffle,
-distractors, irrelevant subsystems): ANSWER 121/300, **the SILENT class is born (14;
-KenKen had zero in seven points), detectable 0.92**, DETECT_multi live (43).
-Prediction #2-algebra resolved BOTH ways: inversion confirmed; the chain>>coupled
-ordering refuted by MULTI-ERROR DENSITY (2nd sighting of "single-error-regime
-predictions break at multi-error density" — watch for the 3rd). Training is
-UNCONVERGED (floors). Spec §10-§12 of docs/phase1_skeleton_spec.md hold the whole
-chapter; the build log there is the ground truth.
+**Both domains run measured repair loops.** KenKen composed stack (two-checkpoint,
+fully gold-free): **47%** recovery. Algebra composed stack: **24%** — BUT with an
+asterisk (below). The day resolved ~10 registered predictions: tier-0 completed at
+ZERO params (min-combination AUC 0.812 on 78 silents; trained head unbuilt, kill =
+beat 0.812, re-arm condition written); factorization survived size-controlled
+(partial corr +0.061); withholding = the domain-general third repair channel (sparse
+flip REFUTED — 4th density-regime sighting; §6 now demands the ARITHMETIC: "what
+does the k-th withheld factor actually hit at measured density x AUC"); the
+blank-pass tax was registered as headroom and collected same-day (42% -> 47%).
+Spec §10-§12 build logs are ground truth. Parser convergence run FIRED overnight
+(RESUME, teeth corpus — the multiplicative lever: every fac-exact point lifts all
+stack numbers).
 
 ## START HERE next session (in order)
-1. **Tier-0 incumbent measurements (spec §12 — ZERO GPU):** per-field AUC + post-
-   temperature ECE of slot_confidence on the banked artifacts; THE question: does
-   the free confidence signal spot the 14 algebra silents (the high-confidence-error
-   subset is where the entropy null is blind)? REGISTERED FORM: the number is
-   SEPARATION, not rank — silents' confidence vs the CORRECT parses' confidence
-   distribution (AUC/overlap); 14 silents scoring low means nothing if half the
-   correct emissions score low too (the identity-confound lesson, one instrument
-   later). Then the withholding-cost curves (KenKen first — the conditional
-   prediction needs the AUC first).
-2. **More training/data on the teeth corpus** (loss 5.3 and falling at 16k — cheap
-   headroom before any architecture talk).
-3. **Size-controlled factorization read** (fac-exact vs band at FIXED n_vars) before
-   touching the v0 "independent axes" claim.
-4. Then: tier-3 transplant onto the silents; multi-round retransmission; ledger
-   re-parse (frontier rank #1).
+1. **THE 24% ASTERISK — deployable-flags ablation, FIRST FIRE.** The algebra stack's
+   span-level suspect flags located suspects via GOLD factor spans (mildly oracle);
+   KenKen's 47% is fully gold-free — the two headlines are not yet the same kind of
+   number. Deployable path: spans from the parser's OWN mention/attention predictions
+   (machinery exists — the mention head supervises it). The dual-granularity ablation
+   (field-only vs both) doubles as the leakage bound. INFORMAL PREDICTION (relay,
+   registered): deployable lands within 3-5 points of 24% — the clean field-level
+   channel plausibly carries most of the repair signal (structure beating
+   localization, again). Do NOT quote 24% anywhere without this resolved.
+2. **Re-run the stacks on the converged parser** (overnight run) — all constants
+   shift; the cross-domain SHAPE (withhold -> retransmit, same ordering) is the
+   finding that should survive; also NACK retransmitter ideally re-prepped/retrained
+   against the new parser's failure distribution.
+3. **Multi-round** against honest numbers (frame registered: declining per-round
+   recovery, asymptote ~ decodable-ceiling share; violation = ledger-conditioning
+   early = the 46.7% frontier's cheapest probe).
 
 ## Assets in hand (don't rebuild)
 - `scripts/kenken_nl_gen.py` — NL generator; span-SET gold; round-trip = generation
