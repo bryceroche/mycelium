@@ -946,3 +946,27 @@ token-position × waist-dim, the moment the skeleton trains.
   resolution as an arm: stage-2 with FIELD-ONLY flags (position-free, fully
   deployable) vs span+field (gold-located) — the ablation and the deployable number
   in one read; the delta IS the leakage bound.
+- **STACK-AT-CONVERGENCE (2026-07-08): THE TABLE.** Hygiene worked: clean val rise
+  to 0.783 @36k, best-picked (the spike never happened). Bigtest: **ANSWER 802/1500
+  (53.5%)** vs 587 pre-convergence (+215); graph-solve 680; fac-exact 0.71-0.87 per
+  band. Taxonomy: detectable ROSE to **0.95** (silents 78 -> 34 — fewer and harder);
+  silent attribution still mixed (5/2/1 — no chain dominance at low n). REGIME
+  ROTATIONS, two: (1) **the combination rule is REGIME-DEPENDENT** — product now
+  beats min on silents (0.793 vs 0.731; at the old regime min won 0.812 vs 0.734).
+  Per-field structure keeps rotating across regimes (n=14 -> 78 -> 34): the ROBUST
+  facts are portfolio-level (product/min 0.73-0.93), the field-level claims are
+  regime-local. (2) **query-confidence became a SILENT-SPECIFIC flag: silents AUC
+  0.927 while all-wrong AUC 0.442** — a textbook portfolio-rule rare flag (classify
+  on arrival: FLAG, not ranker). Withhold curve at convergence: peak k=3 (86/703 =
+  12.2% — MORE recovery than pre-convergence 8.4%); the peak did NOT slide left —
+  the re-armed prediction is refuted-as-stated (surviving failures are the harder
+  tail; density fell but selection hardened — the two effects cancel-ish).
+- **THE COMPOSED-STACK COLLAPSE, DIAGNOSED (the good-news failure):** stage-2
+  recovered only 13/627 — because NACK re-prep found **14/2000 train failures**:
+  the converged parser nearly memorizes ITS OWN TRAIN SPLIT, so the repair
+  specialist had no training data. The better the parser, the fewer organic
+  training failures — **the repair trainer needs a failure-mining slice held out
+  from BOTH the parser's training and the measurement set.** Fix: fresh generated
+  slice (seed 21), prep there, retrain, re-run both arms. The field-only-vs-both
+  ablation (13 vs 12) is DEGENERATE under the broken retransmitter — no conclusion
+  drawn; re-read after the fix.
