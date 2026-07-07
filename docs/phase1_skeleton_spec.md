@@ -750,3 +750,24 @@ token-position × waist-dim, the moment the skeleton trains.
   registered: sparse systems should starve immediately — measure, don't assume.)
   COMPOSITION IMPLIED: withhold-and-solve -> if multi -> retransmit — the repair
   stack now has an ordering by cost.
+- **THE BIG SLICE (2026-07-07 midday, n=1500 fresh, 78 silents): THREE RESOLUTIONS.**
+  (1) **The inversion number is STABLE:** detectable 0.91 on the second draw (0.92
+  first) — ~0.9 is algebra's detectability constant at this parser quality.
+  (2) **Prediction #2-algebra's ordering: fully INVERTED at real n** — silent
+  literals: pair_sum 16 / pair_diff 13 / **chain_k 2** — chains almost never silent
+  (the registered chain>>coupled claim was exactly backwards). Mechanism: multi-error
+  co-occurrence — chain-literal errors ride along with structural breaks (304 in
+  UNSAT), while pair literals sometimes stand alone with parity's coin-flip.
+  (3) **LAST NIGHT'S BLIND SPOT WAS A SMALL-n ARTIFACT:** at n=78, pointer AUC
+  0.479 -> 0.660, query 0.398 -> 0.685 — the "at-or-below chance" fields carry
+  normal signal; flag-don't-model vindicated again (14 positives lied).
+  **THE HEADLINE: min-combination AUC = 0.812 — AT the registered completion
+  threshold.** The §12 combination-rule sub-question is answered empirically: MIN
+  beats PRODUCT on silents (0.812 vs 0.734 — within-factor errors correlate; the
+  weakest field is the signal). Per the registered read (>~0.8 = the stack completes
+  with zero new params): **tier-0 v0 = the min-combined, temperature-calibrated
+  entropy incumbent. The trained head's kill criterion is now "beat 0.812 at n=78"
+  — it is NOT BUILT unless a future domain reopens the gap.** Cautions: 0.812 at
+  n=78 is at-the-bar, not past it (CI ~±0.05); thresholding still needs calibration
+  (medians 0.987/0.962); all-wrong product AUC 0.915 (the ranker stands).
+  THE ZERO-LORA PHILOSOPHY'S FOURTH WIN THIS WEEK.
