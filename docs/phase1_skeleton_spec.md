@@ -1074,3 +1074,25 @@ token-position × waist-dim, the moment the skeleton trains.
   is the thrice-located shallow-layer weakness. UNIFORM across teeth = the
   reading-repair story needs rework BEFORE the ledger re-parse is built to serve
   it. Zero GPU; converts the boundary from a direction into a target profile.
+- **THE 460 CHARACTERIZATION (2026-07-08): PREDICTION REFUTED — SURVIVORS ARE
+  UNIFORM ACROSS TEETH.** Enrichment (survivors vs recovered, n=460 vs 243):
+  oblique **1.01x** (0.850 vs 0.840), shuffled **0.92x** (0.687 vs 0.749),
+  irrelevant **0.85x** (0.463 vs 0.547), n_vars **0.99x** (13.80 vs 13.91), band
+  **1.07x** (2.44 vs 2.29). Not one feature above 1.07x; shuffled and irrelevant
+  are slightly DE-enriched. The registered rule fires: the reading-repair story
+  REWORKS before the ledger re-parse is built. WHAT THIS SEPARATES: binding stress
+  explains the parser's ERRORS (thrice-located, real) but NOT which errors are
+  UNREPAIRABLE — the teeth dials are orthogonal to survivorship. The hard
+  partition is drawn along an axis the input-feature profile cannot see; the
+  live candidates are PARSE-SIDE properties: error MULTIPLICITY per parse (the §6
+  density-regime law predicts exactly this — at ~5 errors/failure, withhold-2 +
+  single-round fixes exhaust at low multiplicity and strand the high-multiplicity
+  tail) and wrong-FIELD mix (which heads are wrong, not which inputs are hard).
+  Next cheap probe, registered: profile survivors vs recovered on
+  errors-per-parse and per-field error distribution (gold is available; zero
+  GPU). PREDICTION: survivors are enriched for error multiplicity ≥3; if THAT
+  also comes back uniform, the remainder is plausibly decode-degenerate (belief
+  never concentrates) rather than mis-read, and the frontier reranks toward the
+  deducer-side suspicion transplant instead of any re-parse. (The ledger re-parse
+  is NOT killed — it is unjustified-as-designed; its premise must be re-earned.)
+  Script: `scripts/characterize_survivors.py` (commit 4e19697).
