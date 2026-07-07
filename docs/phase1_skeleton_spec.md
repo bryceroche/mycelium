@@ -824,3 +824,10 @@ token-position × waist-dim, the moment the skeleton trains.
   remaining errors. A round-2 recovery ABOVE that frame = retransmission moving
   decodability itself — the ledger-conditioning hypothesis arriving early, and the
   cheapest probe of the 46.7% frontier.
+- **TWO-CHECKPOINT STACK (2026-07-07 afternoon): 27/57 = 47%.** The blank-pass tax
+  eliminated exactly as registered: stage-1 recovers the full standalone 15 (the
+  plateaued head parses; copy-previous training no longer degrades the first parse),
+  stage-2 retransmits 42 survivors and recovers 12. Composed recovery 42% -> 47%
+  with zero new training — the known headroom collected. Division of roles now
+  explicit in the stack: the PARSER checkpoint parses, the RETRANSMITTER checkpoint
+  repairs; one trunk, two heads, each at its trained operating point.

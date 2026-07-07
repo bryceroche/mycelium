@@ -65,6 +65,37 @@ def run_kenken():
             d[k].assign(sd[k].to(d[k].device).cast(d[k].dtype)).realize()
     fail_i = [i for i in range(len(samples)) if has_fail[i]]
 
+    # TWO-CHECKPOINT stack (the blank-pass-tax fix, registered): the PLATEAUED head
+    # parses (its unconditioned parse is untaxed by copy-previous training); the
+    # Brick-A conditioned head only RETRANSMITS. TWO_CKPT=0 reverts to one-ckpt.
+    two_ckpt = int(os.environ.get("TWO_CKPT", "1")) > 0
+    if two_ckpt:
+        from phase1_delta_head import CKPT_PATH, head_forward
+        p_plat = build_head_params(2)
+        sd2 = safe_load(CKPT_PATH)
+        for k in p_plat:
+            p_plat[k].assign(sd2[k].to(p_plat[k].device).cast(p_plat[k].dtype)).realize()
+
+        def run_blank(idx):
+            from tinygrad import Tensor, dtypes
+            outs = {}
+            for s0 in range(0, len(idx), 8):
+                sl = np.array(idx[s0:s0 + 8])
+                pad = 8 - len(sl)
+                sl_p = np.concatenate([sl, sl[:1].repeat(pad)]) if pad else sl
+                out = head_forward(
+                    p_plat,
+                    Tensor(np.asarray(states[sl_p], dtype=np.float32), dtype=dtypes.float),
+                    Tensor(tokmask[sl_p].astype(np.float32), dtype=dtypes.float),
+                    Tensor(np.ones((1, 1, H_WAIST), np.float32), dtype=dtypes.float),
+                    Tensor(sent[sl_p].astype(np.int32), dtype=dtypes.int))
+                o = {k: out[k].realize().numpy() for k in
+                     ("pres", "type", "op", "dig", "mem", "attn_mean")}
+                for bi, i in enumerate(sl):
+                    outs[int(i)] = {k: o[k][bi] for k in o}
+            return outs
+    print(f"[stack:kenken] two_ckpt={'ON' if two_ckpt else 'OFF'}", flush=True)
+
     def run_pass(idx, cond_np):
         outs = {}
         for s0 in range(0, len(idx), 8):
@@ -125,7 +156,8 @@ def run_kenken():
         return ("gold" if grid == _gold_grid_cache(smp)[0] else "multi"), wh
 
     K_WH = 3   # the measured peak
-    blank = run_pass(fail_i, np.zeros((len(fail_i), COND_DIM), np.float32))
+    blank = (run_blank(fail_i) if two_ckpt else
+             run_pass(fail_i, np.zeros((len(fail_i), COND_DIM), np.float32)))
     stage1_rec, survivors, flags_rows = [], [], []
     for i in fail_i:
         o = blank[int(i)]
