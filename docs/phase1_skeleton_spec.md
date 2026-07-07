@@ -788,3 +788,21 @@ token-position × waist-dim, the moment the skeleton trains.
   k=0-1 (coupled systems starve; every equation load-bearing). Note: algebra has NO
   trained retransmission head (Brick-A was KenKen) — its stack is withhold-only,
   stated honestly.
+- **THE COMPOSED STACK, MEASURED (2026-07-07 midday):** KenKen: **24/57 = 42%
+  end-to-end recovery** — withhold-3 stage-1 recovers 7 free, then retransmit(+
+  withhold-again) recovers 17 of the 50 survivors. Composition beats both components
+  (withhold-alone 15, retransmit-alone 8) and nearly TRIPLES retransmission. HONEST
+  CAVEAT: stage-1's 7 vs the standalone 15 — different base parse (the stack runs
+  the Brick-A ckpt's blank pass, trained to copy-previous; the standalone curve ran
+  the plateaued head). 24/57 is the one-weight-set production number.
+- **THE SPARSE-DOMAIN FLIP: REFUTED — withhold-and-solve GENERALIZES.** Algebra
+  (n=913 failures, FORCED-answer check — no luck counted): recovery 0/60/**77**/75/
+  70/56 for k=0..5 — peak at k=2-3, NOT collapsed to k=0-1. 8.4% of failures yield
+  their answer FREE at k=2 on a SPARSE domain. The starvation intuition was
+  single-error thinking AGAIN: at ~5 errors/parse, withholding preferentially hits
+  WRONG factors (even a 0.613-AUC ranking beats chance) and the query needs only
+  ITS component forced — poison-removal beats starvation until k grows. **FOURTH
+  sighting of the density-regime trap, the same morning the rule was promoted.**
+  UNSAT drains 659->127 with k as underdetermination grows — the registered drift.
+  CONSEQUENCE: stage-1 of the repair stack is DOMAIN-GENERAL; the Alternator's
+  cheapest move works on both dense and sparse graphs.
