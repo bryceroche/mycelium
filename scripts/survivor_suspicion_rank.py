@@ -155,18 +155,27 @@ def main():
         gv_detail = []
         gold_giv = {f["var"]: f["value"] for f in samples[i]["factors"]
                     if f["ftype"] == "given"}
+        emit_giv = {}
+        for f in facs:
+            if f["ftype"] == "given" and f["var"] not in emit_giv:
+                emit_giv[f["var"]] = f["value"]
         for f_i, k in zip(wr, kinds):
             if k != "given_value" or f_i not in rank_of or rank_of[f_i] >= 2:
                 continue
             emitted = facs[f_i]["value"]
-            same_var_gold = gold_giv.get(facs[f_i]["var"])
-            elsewhere = any(v == emitted and vv != facs[f_i]["var"]
-                            for vv, v in gold_giv.items())
+            v = facs[f_i]["var"]
+            same_var_gold = gold_giv.get(v)
+            elsewhere = any(vv != v and gv == emitted
+                            for vv, gv in gold_giv.items())
             e1 = (same_var_gold is not None and
                   len(str(emitted)) == len(str(same_var_gold)) and
                   sum(a != b for a, b in
                       zip(str(emitted), str(same_var_gold))) == 1)
-            gv_detail.append((elsewhere, e1))
+            # SWAP: some other var u got THIS slot's gold while this slot got u's
+            swap = any(vv != v and gv == emitted and
+                       emit_giv.get(vv) == same_var_gold
+                       for vv, gv in gold_giv.items())
+            gv_detail.append((elsewhere, e1, swap))
         rows[status[i]].append({
             "n_wrong": len(wr), "qw": qw, "n_slots": n_slots,
             "gv_detail": gv_detail,
@@ -258,8 +267,15 @@ def main():
             continue
         elsew = np.mean([d[0] for d in det])
         e1 = np.mean([d[1] for d in det])
+        sw = np.mean([d[2] for d in det])
         print(f"  {nm:17s}: n={len(det):4d} | value-elsewhere {elsew:.3f} | "
-              f"not-in-gold {1 - elsew:.3f} | one-digit-off {e1:.3f}")
+              f"not-in-gold {1 - elsew:.3f} | one-digit-off {e1:.3f} | "
+              f"SWAP {sw:.3f}")
+    print(f"\n  CUT 3b REGISTERED: swaps (coordinated two-slot exchange) are the"
+          f" parallel-marginal-decode failure mode — joint MAP vs marginals"
+          f" inside the parser. Bar: swap share >=1.5x survivors vs"
+          f" round-recovered. Confirmed -> the frontier is JOINT decode over"
+          f" uncertain slots (the deducer's sanctioned soft-graph-solver role).")
 
 
 if __name__ == "__main__":
