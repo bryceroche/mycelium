@@ -1057,3 +1057,20 @@ token-position × waist-dim, the moment the skeleton trains.
   training samples and/or the removed parses carried useful canonicalization
   signal; multi-round total still exceeds the impure single round (243 vs 226).
   Round-2+ exists: +44 answers the single-round stack left on the table.
+- **THE DECAY-SHAPE READING (2026-07-08, registered):** 19.6% -> 7.7% -> 1.1% -> 0
+  is FASTER than geometric — a stochastic-retry world decays geometrically; this
+  cliff is a HARD PARTITION: a fixable population pumped dry in two rounds + a
+  different-in-kind remainder. Independent confirmation of the decodability
+  boundary from a new instrument: the ceiling is a boundary between populations,
+  not an average over a difficulty gradient. (2) EQUIVALENCE CLASS PROMOTED TO
+  DESIGN PARAMETER: ~17% (16.6/17.2 across independent draws, within 0.6 points) —
+  budgetable, not re-measured; every grading policy, curriculum filter, and
+  benchmark claim inherits it. (3) PURITY-DIP DISAMBIGUATION, kept answerable:
+  evicted-signal vs fewer-samples separates by a sample-matched impure retrain —
+  not run (the trade was right regardless), recorded so it stays a question, not
+  lore. (4) **THE 460 CHARACTERIZATION, registered prediction:** the reading-repair
+  hypothesis says survivors are ENRICHED for referential-binding stress (oblique
+  mentions, shuffled letters, size) relative to the recovered population — binding
+  is the thrice-located shallow-layer weakness. UNIFORM across teeth = the
+  reading-repair story needs rework BEFORE the ledger re-parse is built to serve
+  it. Zero GPU; converts the boundary from a direction into a target profile.
