@@ -1404,6 +1404,31 @@ token-position × waist-dim, the moment the skeleton trains.
   one-shot invisibles would close the arc (the routing-wall population, first
   invisible to repair, now visible to the waist monitor). Script:
   `scripts/waist_abstention_probe.py`.
+- **RATCHET-NACK REGISTERED + FIRED (2026-07-09, relay adjudication: ratchet,
+  not re-roll):** flagged accepted answers KEEP their original by default; the
+  NACK round's revision replaces only if it STRICTLY DOMINATES. The asymmetric
+  hazard: most flags land on correct answers (~0.4 precision), and the 0.998
+  unflagged-preservation number was measured on FAILURES, not re-opened
+  successes — a population the specialist was never trained to leave alone.
+  v0 SCOPE: stage-0 accepts only (the detector scores plateaued-parser space;
+  later-stage parses live in specialist space, centroids uncalibrated — the
+  per-stage score table logged this run decides v1); v0 DOMINANCE = revision
+  forced + unflagged slots factor-exact-agree (anomaly-decrease criterion
+  deferred to v1 for the same cross-space reason). REGISTERED BARS: break rate
+  0 by construction (any break = dominance leak -> tighten); fix rate on
+  flagged stage-0 wrongs > 0.346 (relay, density regime stated: committed-wrong
+  parses are NEAR-MISSES by selection — the regime where per-round repair is
+  strongest); deploy iff answered-precision rises without net answers falling
+  (floor 0.823 / 70.1%). TWO DIALS from one detector: recovery mode (ratcheted
+  replacement) and precision mode (flag->abstain on undominated). Stage-split
+  logged (direction: flagged wrongs concentrate in the 90 one-shot invisibles);
+  per-stage calibration column logged (if repaired parses skew anomalous even
+  when correct, v1 needs per-stage calibration before trusting the ratchet
+  beyond stage 0). **THE MONITOR SENTENCE (relay): the session monitor — the
+  perceiver's last unclaimed job but hosting global latents — arrived as a
+  centroid library plus a distance threshold, watching accepted outputs and
+  routing suspicion back into the loop. Zero parameters, eighteen months early,
+  measured on arrival.** Script: `scripts/ratchet_nack.py`.
 - **META-NOTE (the relay, 2026-07-08): REAL CAUSES HAVE JURISDICTIONS TOO.**
   Second time this week a thrice-measured REAL phenomenon turned out not to
   govern the question it was assumed to govern (binding weakness -> survivorship;
