@@ -442,6 +442,10 @@ def do_eval():
     print(f"[alg-stack] failures {n_fail}/{n} | stage-1 withhold-{K_WH}: {stage1} recovered")
 
     if survivors:
+        arm = os.environ.get("ARM", "both")
+        if arm == "field_only":
+            surv_flags = [(np.zeros_like(f), ff) for f, ff in surv_flags]
+            print("[alg-stack] ARM=field_only (span channel zeroed — fully deployable)")
         ftok_s = np.stack([f for f, _ in surv_flags])
         ffld_s = np.stack([f for _, f in surv_flags])
         fbit_s = np.ones((len(survivors), 1), np.float32)

@@ -563,8 +563,50 @@ def do_train(steps, lr, batch, seed):
         opt.step()
         return l.realize()
 
+    # HYGIENE (the stack-at-convergence protocol): cosine LR decay + periodic
+    # validation on the SMALL test slice (bigtest stays untouched as measurement
+    # set) + PICK-BEST-BY-VAL. The overnight constant-lr spike taught this.
+    lr_min = lr / 30.0
+    val_every = int(os.environ.get("VAL_EVERY", "4000"))
+
+    def _quick_val():
+        vs, vst, vtk, vg, vse = load_split_val
+        n_ok = n_tot = 0
+        for s0 in range(0, len(vs), 8):
+            sl = np.arange(s0, min(s0 + 8, len(vs)))
+            pad = 8 - len(sl)
+            sl_p = np.concatenate([sl, sl[:1].repeat(pad)]) if pad else sl
+            o = forward(p, Tensor(vst[sl_p].astype(np.float32), dtype=dtypes.float),
+                        Tensor(vtk[sl_p].astype(np.float32), dtype=dtypes.float),
+                        Tensor(vse[sl_p].astype(np.int32), dtype=dtypes.int))
+            onp = {k: o[k].realize().numpy() for k in
+                   ("pres", "ftype", "op", "islit", "dig", "args", "res")}
+            for bi, i in enumerate(sl):
+                i = int(i)
+                for j in range(L_FAC):
+                    if vg["presence"][i, j] < 0.5:
+                        continue
+                    n_tot += 1
+                    ok = (onp["pres"][bi, j] > 0)
+                    ok &= int(onp["ftype"][bi, j].argmax()) == vg["ftype"][i, j]
+                    ok &= int(onp["res"][bi, j].argmax()) == vg["res"][i, j]
+                    if vg["ftype"][i, j] == 0:
+                        ok &= int(onp["op"][bi, j].argmax()) == vg["op"][i, j]
+                        top2 = set(np.argsort(-onp["args"][bi, j])[:2].tolist())
+                        ok &= top2 == set(np.where(vg["args"][i, j] > .5)[0].tolist())
+                    else:
+                        ok &= bool((onp["dig"][bi, j].argmax(-1) ==
+                                    vg["digits"][i, j]).all())
+                    n_ok += ok
+        return n_ok / max(n_tot, 1)
+
+    load_split_val = load_alg("test")
+    best_val, best_snap = -1.0, None
+
     t0 = time.time()
     for s in range(steps):
+        cur_lr = lr_min + 0.5 * (lr - lr_min) * (1 + math.cos(math.pi * s / steps))
+        opt.lr.assign(Tensor([cur_lr], dtype=dtypes.float)).realize()
         idx = rng.choice(n, batch, replace=False)
         b_tr.assign(Tensor(states[idx].astype(np.float32), dtype=dtypes.float).contiguous()).realize()
         b_tk.assign(Tensor(tokmask[idx].astype(np.float32), dtype=dtypes.float).contiguous()).realize()
@@ -581,10 +623,22 @@ def do_train(steps, lr, batch, seed):
         if s % 500 == 0 or s == steps - 1:
             v = float(lv.numpy())
             assert np.isfinite(v)
-            print(f"  step {s:5d} loss={v:.4f} ({(time.time()-t0)/(s+1):.2f}s/step)",
-                  flush=True)
+            print(f"  step {s:5d} loss={v:.4f} lr={cur_lr:.1e} "
+                  f"({(time.time()-t0)/(s+1):.2f}s/step)", flush=True)
+        if (s + 1) % val_every == 0 or s == steps - 1:
+            fv = _quick_val()
+            mark = ""
+            if fv > best_val:
+                best_val = fv
+                best_snap = {k: t.detach().numpy().copy() for k, t in p.items()}
+                mark = "  <-- BEST"
+            print(f"  [val @{s+1}] fac-exact-proxy={fv:.4f}{mark}", flush=True)
+    if best_snap is not None:
+        for k in p:
+            p[k].assign(Tensor(best_snap[k], dtype=p[k].dtype)).realize()
+        print(f"[train] restored BEST ckpt (val {best_val:.4f})", flush=True)
     safe_save(p, ALG_CKPT)
-    print(f"[train] saved {ALG_CKPT}", flush=True)
+    print(f"[train] saved {ALG_CKPT} (best-by-val)", flush=True)
 
 
 # ===========================================================================
