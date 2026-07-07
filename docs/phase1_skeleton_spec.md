@@ -928,3 +928,21 @@ token-position × waist-dim, the moment the skeleton trains.
   Verdict: the library-as-cross-check is a USEFUL RARE FLAG + a +2.1-point ordering
   gain, not a second tier-0. Both recorded; the artifact catch kept in the ledger
   (the measurement program audited itself twice in one night).
+- **MORNING REGISTRATIONS (2026-07-08):** (1) §12 ADDENDUM — THE PORTFOLIO RULE:
+  NACK signals are TWO TYPES with different combination laws. DENSE RANKERS (tier-0
+  confidence, belief-JSD) blend; RARE-PRECISE FLAGS (uniqueness probe, library
+  cross-check — ~3% fire rate, 3.6x enrichment, near-chance as rankers) VETO or
+  ESCALATE. Future tiers get classified on arrival, not force-fit into the ranker
+  mold. (2) The algebra-side teeth check (hardened big slice vs saved algebra
+  centroids) is the lexical-shortcut SETTLER — queued for the next gap; requires
+  algebra waist exposure. (3) **STACK-AT-CONVERGENCE, the protocol:** the hygienic
+  redo (cosine LR decay, periodic val, PICK-BEST-BY-VAL on the small test slice —
+  bigtest stays untouched as the measurement set) is the board's highest-leverage
+  item AND re-arms half the registered predictions under NEW DENSITY conditions
+  (fewer errors/failure -> delete-one blame may start working, the withhold peak
+  slides left, the silent composition may rotate). All re-runs BATCHED as one table
+  — same measurements, same protocols, ONE variable moved (the KenKen 10x discipline
+  applied to the whole pipeline). The batched stack includes the 24%-ASTERISK
+  resolution as an arm: stage-2 with FIELD-ONLY flags (position-free, fully
+  deployable) vs span+field (gold-located) — the ablation and the deployable number
+  in one read; the delta IS the leakage bound.
