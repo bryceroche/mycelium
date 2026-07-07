@@ -360,6 +360,57 @@ def main():
           f"limited; B) 0.6-0.75 or per-bin residual -> residual axis; "
           f"C) AUC<0.6 -> decode-degenerate, transplant reranks.")
 
+    # ---- CUT 4 (registered 2026-07-08, post-refutation): ADDITIVE vs CORRECTIVE.
+    # The S(m) inversion (m=1 survives at 0.93) suggests a mechanism blind spot:
+    # a MISSING factor is invisible to the whole stack (withhold only REMOVES;
+    # the specialist's unflagged->copy objective teaches it never to ADD).
+    # m_add = missing count; m_corr = m - m_add (wrong-field/phantom/query — the
+    # stack's jurisdiction). PREDICTION: survival tracks m_add (m_add>=1 -> high,
+    # m_add=0 -> low); flat-in-both = genuine decode-degeneracy.
+    def m_add(i):
+        return fmix[i]["missing"]
+
+    print(f"\n  CUT 4: additive (missing) vs corrective errors")
+    print(f"  m_add | m_corr |   n   | survive-rate")
+    cells = {}
+    for i in pool0:
+        a = min(m_add(i), 2)
+        c = min(mult[i] - m_add(i), 3)
+        cells.setdefault((a, c), []).append(i)
+    for (a, c) in sorted(cells):
+        idx = cells[(a, c)]
+        if len(idx) < 8:
+            continue
+        sr = np.mean([i in survivors for i in idx])
+        al = "2+" if a == 2 else str(a)
+        cl = "3+" if c == 3 else str(c)
+        print(f"  {al:>4}  |  {cl:>4}  | {len(idx):5d} |   {sr:.3f}")
+    a_s = np.array([m_add(i) for i in pool0 if i in survivors], float)
+    a_r = np.array([m_add(i) for i in pool0 if i in recovered_rounds], float)
+    c_s = np.array([mult[i] - m_add(i) for i in pool0 if i in survivors], float)
+    c_r = np.array([mult[i] - m_add(i) for i in pool0
+                    if i in recovered_rounds], float)
+    print(f"  AUC(m_add -> survival) = {midrank_auc(a_s, a_r):.3f} | "
+          f"AUC(m_corr -> survival) = {midrank_auc(c_s, c_r):.3f}")
+    lo = [i for i in pool0 if i in survivors and mult[i] <= 2]
+    if lo:
+        tot = {k: sum(fmix[i][k] for i in lo) for k in FIELD_KINDS}
+        s = max(sum(tot.values()), 1)
+        print(f"  m<=2 survivor error kinds (n={len(lo)}): " +
+              " ".join(f"{k}:{tot[k] / s:.2f}" for k in FIELD_KINDS if tot[k]))
+
+    # persist the profile so future cuts are zero-GPU (no fourth replay)
+    status = np.array([0 if i in set(stage1) else (2 if i in survivors else 1)
+                       for i in (stage1 + pool0)], np.int32)
+    idx_all = np.array(stage1 + pool0, np.int32)
+    cnts = np.array([[fmix[i][k] for k in FIELD_KINDS]
+                     for i in (stage1 + pool0)], np.int32)
+    np.savez(".cache/survivor_profile_bigtest.npz", idx=idx_all, status=status,
+             mult=np.array([mult[i] for i in (stage1 + pool0)], np.int32),
+             counts=cnts, kinds=np.array(FIELD_KINDS))
+    print(f"  [saved] .cache/survivor_profile_bigtest.npz "
+          f"(status 0=stage1 1=round-rec 2=survivor)")
+
 
 if __name__ == "__main__":
     main()

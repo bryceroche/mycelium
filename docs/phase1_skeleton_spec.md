@@ -1113,6 +1113,31 @@ token-position × waist-dim, the moment the skeleton trains.
   DE-enrichment (0.92x/0.85x) predicts loud teeth produce LOW-multiplicity
   detectable errors — checkable in the same run. Script:
   `scripts/survivor_multiplicity.py`.
+- **MULTIPLICITY PROBE RESULT (2026-07-08): FUTURE C FIRES MECHANICALLY —
+  AUC(m->survival) = 0.524 < 0.6 — BUT WITH A POST-HOC SIGNATURE NONE OF THE
+  THREE FUTURES ANTICIPATED.** Multiplicity is uniform too (means 8.13 vs 7.32);
+  Future A doubly dead: NO fixes-per-round capacity reproduces the front-loaded
+  123->39->5->0 decay (all mechanical models predict flat/rising per-round
+  recovery) — iteration does not compound; third-instrument confirmation of the
+  hard partition. THE SIGNATURE: S(m) is INVERTED at the low end — m=1 failures
+  survive at **0.929** (n=42), m=2 at 0.837, vs ~0.71 for m>=4. The most
+  unrecoverable population is the parses with the FEWEST errors. Candidate
+  mechanism, named post-hoc: OMISSION BLINDNESS — `missing` is the largest error
+  kind in both populations (~29-36% of error mass), and a missing factor is
+  structurally invisible to the entire stack (withhold only REMOVES — worsening
+  an underconstrained parse; the specialist's flags attach to EMITTED slots and
+  its unflagged->copy objective actively teaches it never to ADD). Loud-teeth
+  glance confirmed the relay's read: shuffled -> MORE errors (m 8.65 vs 6.15)
+  yet DE-enriched among survivors — loud teeth make in-jurisdiction errors.
+  REGISTERED FOLLOW-UP (CUT 4, prediction pinned before measuring): decompose
+  m = m_add (missing) + m_corr (wrong-field/phantom/query). OMISSION-BLINDNESS
+  predicts survival tracks m_add and collapses at m_add=0; flat-in-both =
+  genuine decode-degeneracy and the transplant rerank stands. If omission-
+  blindness confirms, the frontier is an ADDITIVE repair mechanism — the second
+  look must be allowed to say MORE, not just different (the ledger re-parse
+  premise re-earned in a narrower, reshaped form: omission-repair, not
+  reading-repair). Script: `scripts/survivor_multiplicity.py` CUT 4; profile
+  persisted to `.cache/survivor_profile_bigtest.npz` (future cuts zero-GPU).
 - **META-NOTE (the relay, 2026-07-08): REAL CAUSES HAVE JURISDICTIONS TOO.**
   Second time this week a thrice-measured REAL phenomenon turned out not to
   govern the question it was assumed to govern (binding weakness -> survivorship;
