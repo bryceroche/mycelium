@@ -47,7 +47,7 @@ from survivor_multiplicity import midrank_auc  # noqa: E402
 
 def wrong_slots(facs, q_pred, smp):
     """Emitted-slot correctness vs gold. Returns (wrong emitted indices [in
-    emission order fi], query_wrong flag)."""
+    emission order fi], per-wrong-slot field kinds, query_wrong flag)."""
     grels, ggivs = [], Counter()
     for f in smp["factors"]:
         if f["ftype"] == "rel":
@@ -55,7 +55,8 @@ def wrong_slots(facs, q_pred, smp):
         else:
             ggivs[(f["var"], f["value"])] += 1
     grc = Counter(grels)
-    wrong = []
+    gvars = Counter(f["var"] for f in smp["factors"] if f["ftype"] == "given")
+    wrong, wrong_keys = [], []
     for fi, f in enumerate(facs):
         if f["ftype"] == "rel":
             key = (f["op"], tuple(sorted(f["args"])), f["result"])
@@ -63,13 +64,37 @@ def wrong_slots(facs, q_pred, smp):
                 grc[key] -= 1
             else:
                 wrong.append(fi)
+                wrong_keys.append(("rel", key))
         else:
             key = (f["var"], f["value"])
             if ggivs[key] > 0:
                 ggivs[key] -= 1
             else:
                 wrong.append(fi)
-    return wrong, q_pred != smp["query_var"]
+                wrong_keys.append(("given", key))
+    # field attribution: pair each wrong slot to a leftover gold factor
+    leftover = list((grc - Counter()).elements())
+    used = [False] * len(leftover)
+    kinds = []
+    for kt, key in wrong_keys:
+        if kt == "given":
+            kinds.append("given_value" if gvars[key[0]] > 0 else "phantom")
+            continue
+        best, best_n = -1, 1
+        for gi, g in enumerate(leftover):
+            if used[gi]:
+                continue
+            nm = (g[0] == key[0]) + (g[1] == key[1]) + (g[2] == key[2])
+            if nm > best_n:
+                best, best_n = gi, nm
+        if best < 0:
+            kinds.append("phantom")
+            continue
+        used[best] = True
+        g = leftover[best]
+        kinds.append("rel_op" if g[0] != key[0]
+                     else ("rel_args" if g[1] != key[1] else "rel_result"))
+    return wrong, kinds, q_pred != smp["query_var"]
 
 
 def main():
@@ -115,7 +140,7 @@ def main():
     for i in idx_all:
         o = outs[i]
         facs, q_pred = decode(o)
-        wr, qw = wrong_slots(facs, q_pred, samples[i])
+        wr, kinds, qw = wrong_slots(facs, q_pred, samples[i])
         confs = []
         fi = 0
         for j in range(L_FAC):
@@ -129,6 +154,8 @@ def main():
         wranks = [rank_of[f] for f in wr if f in rank_of]
         rows[status[i]].append({
             "n_wrong": len(wr), "qw": qw, "n_slots": n_slots,
+            "flagged_kinds": [k for f, k in zip(wr, kinds)
+                              if f in rank_of and rank_of[f] < 2],
             "min_rank": (min(wranks) if wranks else None),
             "min_rank_norm": (min(wranks) / max(n_slots - 1, 1)
                               if wranks else None),
@@ -171,6 +198,31 @@ def main():
           f"suspicion CONFIRMED (frontier = suspicion quality: transplant / "
           f"better ranker). FLAT -> suspicion story dies; decode-degeneracy "
           f"stands.")
+
+    # ---- CUT 2 (registered 2026-07-08, post-P1-flat): FLAGGED-BUT-UNFIXED
+    # field kinds. The suspicion probe found ~73% of m<=2 survivors have their
+    # error correctly IN the bottom-2 flags — repair GENERATION is the wall.
+    # PREDICTION: flagged survivor errors are ENRICHED for rel_args (binding —
+    # the frozen-prefix weakness at its correct jurisdiction) vs flagged
+    # recovered errors; bar >=1.5x. Uniform-across-kinds -> head-capacity story;
+    # escalate to a trunk-information probe.
+    KINDS = ("rel_op", "rel_args", "rel_result", "given_value", "phantom")
+    def kind_mix(rr):
+        tot = Counter(k for r in rr for k in r["flagged_kinds"])
+        s = max(sum(tot.values()), 1)
+        return {k: tot[k] / s for k in KINDS}, sum(tot.values())
+    mix_s, ns = kind_mix(rows[2])
+    mix_r, nr = kind_mix(rows[0] + rows[1])
+    print(f"\n  CUT 2: flagged (bottom-2) wrong-slot field kinds")
+    print(f"  kind        | survivors (n={ns}) | recovered (n={nr}) | enrich")
+    for k in KINDS:
+        e = mix_s[k] / max(mix_r[k], 1e-9)
+        print(f"  {k:11s} |       {mix_s[k]:.3f}       |       {mix_r[k]:.3f}"
+              f"       | {e:.2f}x")
+    lo_s = [r for r in rows[2] if (r["n_wrong"] + r["qw"]) <= 2]
+    mix_lo, nlo = kind_mix(lo_s)
+    print(f"  m<=2 survivors only (n={nlo}): " +
+          " ".join(f"{k}:{mix_lo[k]:.2f}" for k in KINDS if mix_lo[k] > 0.01))
 
 
 if __name__ == "__main__":

@@ -1160,6 +1160,29 @@ token-position × waist-dim, the moment the skeleton trains.
   coverage several-fold higher among stage-1-recovered than low-m survivors;
   P3 m<=2 survivors dominated by rank-escapes + unflaggable query errors.
   FLAT ranks = the suspicion story dies too; decode-degeneracy stands.
+- **SUSPICION-RANK RESULT (2026-07-08): THE SUSPICION STORY DIES TOO — THIRD
+  CONSECUTIVE REFUTATION, AND IT FLIPS THE FRONTIER.** P1 FLAT: AUC(min
+  wrong-slot rank -> survival) = **0.518** (bar 0.65); wrong slots sit near the
+  bottom of the confidence ranking in EVERY population (min-rank-norm
+  0.026-0.044; frac-in-bottom2 survivors 0.356 vs round-recovered 0.346).
+  Localization is NOT the bottleneck. P3 INVERTED: only 26.6% of m<=2 survivors
+  are rank-escapes/query — **~73% had their single error correctly flagged in
+  the bottom-2 and the specialist STILL failed to fix it, 4 rounds running.**
+  REPAIR GENERATION is the wall: told exactly where it is wrong, the parser
+  cannot produce the correct replacement, and being deterministic it re-emits
+  the same wrong content every round — the true explanation of the front-loaded
+  decay. STRATEGIC CONSEQUENCE: the transplant rerank LOSES its rationale at the
+  moment decode-degeneracy is confirmed — the transplant is a better RANKER and
+  ranking is already adequate. Decode-degeneracy now stands on direct evidence,
+  not elimination, and points at the frozen L0-L3 trunk: the information to
+  reconstruct these factors is plausibly not in the trunk states at those
+  positions (§6: a frozen 4-layer prefix can't BIND references) — binding
+  weakness finally connects to survivorship at its correct jurisdiction: it
+  explains WHICH CONTENT is unreconstructable, not which inputs are hard.
+  CUT 2 registered (same script): flagged-but-unfixed survivor errors ENRICHED
+  for rel_args vs flagged recovered errors, bar >=1.5x -> binding-is-the-wall;
+  uniform-across-kinds -> head-capacity story, escalate to a trunk-information
+  probe. Script: `scripts/survivor_suspicion_rank.py`.
 - **META-NOTE (the relay, 2026-07-08): REAL CAUSES HAVE JURISDICTIONS TOO.**
   Second time this week a thrice-measured REAL phenomenon turned out not to
   govern the question it was assumed to govern (binding weakness -> survivorship;
