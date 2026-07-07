@@ -178,7 +178,7 @@ def main():
     print(f"[oracle] survivors={len(pool)} | mean oracle-flagged slots "
           f"round-1 = {n_flagged0:.2f}")
 
-    recovered = 0
+    rec_idx = []
     for rnd in range(4):
         if not pool:
             break
@@ -188,7 +188,7 @@ def main():
             o = re[int(i)]
             facs, q_pred = decode(o)
             if solve_check(facs, q_pred, samples[int(i)], 2, o=o):
-                recovered += 1
+                rec_idx.append(int(i))
                 continue
             nxt_pool.append(i)
             nxt_flags.append(wf_single(o, gold, int(i)))
@@ -196,11 +196,40 @@ def main():
               f"recovered")
         pool, flags = nxt_pool, nxt_flags
 
-    rate = recovered / len(survivors)
-    print(f"\n[oracle] CEILING: {recovered}/{len(survivors)} = {rate:.3f}")
+    rate = len(rec_idx) / len(survivors)
+    print(f"\n[oracle] CEILING: {len(rec_idx)}/{len(survivors)} = {rate:.3f}")
     print(f"  REGISTERED: <10% -> ENCODE-SIDE wall confirmed (flag quality "
           f"irrelevant; frontier = change the encoding). >30% -> deployed flag "
           f"deriver was the constraint. 10-30% -> partition + re-profile.")
+    np.savez(".cache/oracle_recovered_bigtest.npz",
+             recovered=np.array(sorted(rec_idx), np.int32))
+
+    # ---- OPTION-4 RE-PROFILE (the pinned 10-30% follow-up): the oracle-64 vs
+    # the 396 — teeth, multiplicity, error-kind mix from the saved profile.
+    from characterize_survivors import sample_teeth
+    kinds_names = [str(k) for k in prof["kinds"]]
+    by_idx = {int(i): (int(m), prof["counts"][r])
+              for r, (i, m) in enumerate(zip(prof["idx"], prof["mult"]))}
+    rec_set = set(rec_idx)
+    hard = [i for i in survivors if i not in rec_set]
+
+    def prof_group(idx_list):
+        t = [sample_teeth(samples[i]) for i in idx_list]
+        out = {k: float(np.mean([x[k] for x in t]))
+               for k in ("oblique", "shuffled", "irrelevant", "n_vars", "band")}
+        out["mult"] = float(np.mean([by_idx[i][0] for i in idx_list]))
+        tot = np.sum([by_idx[i][1] for i in idx_list], axis=0).astype(float)
+        tot /= max(tot.sum(), 1.0)
+        for kn, v in zip(kinds_names, tot):
+            out[f"kind_{kn}"] = float(v)
+        return out
+
+    po, ph = prof_group(rec_idx), prof_group(hard)
+    print(f"\n  OPTION-4 RE-PROFILE: oracle-recovered (n={len(rec_idx)}) vs "
+          f"hard remainder (n={len(hard)})")
+    for k in sorted(po):
+        enr = po[k] / max(ph[k], 1e-9)
+        print(f"  {k:16s} | {po[k]:7.3f} | {ph[k]:7.3f} | {enr:.2f}x")
 
 
 if __name__ == "__main__":

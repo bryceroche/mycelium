@@ -1230,6 +1230,34 @@ token-position × waist-dim, the moment the skeleton trains.
   + dead-ends tabled in `docs/NEXT_SESSION.md` for the relay seam. Registered
   follow-up left open per the 10-30% rule: partition + re-profile the 64
   oracle-recovered vs the 396 (zero GPU, profile npz on disk).
+- **THE DECISION + PRE-BUILD DISCRIMINATORS (2026-07-08 night, relay call):**
+  OPTION 1 (second-view re-render) is the chosen frontier — the multi-cycle
+  Alternator's first empirical mandate (396 encode-side casualties = the
+  measured need for re-reading under deductive feedback; the speculative
+  component's customers arrived before the component, same as tier-0/tier-3).
+  HAZARD FLAGGED: learned mark embeddings backprop through the trunk = the
+  documented AM-driver hang. v0 = ZERO-NEW-PARAM marks: reserved vocabulary
+  tokens inserted at suspect spans (token-shift/gold realignment machinery
+  exists), forward-only re-encode; learned marks are the gated upgrade arm.
+  WHY text-NACK's death doesn't transfer: it died on REFERENTIAL binding
+  ("statement 7" -> sentence 7 through 4 shallow layers); a position-aligned
+  mark carries its information BY BEING AT THE LOCATION — nothing to bind
+  (the §6 structural-entry law at the trunk's front door). TWO DISCRIMINATORS
+  FIRST: (a) option-4 re-profile of oracle-64 vs hard-396 (zero GPU, folded
+  into the oracle script rerun); (b) THE DEPTH PROBE
+  (`scripts/survivor_depth_probe.py`) — a fresh value-probe reads gold given
+  values from mean-pooled gold-span states at L4 vs L8, evaluated on clean
+  baseline vs wrong-givens-recovered vs wrong-givens-396. THREE-WAY VERDICT,
+  bars pinned: instrument bar base-L4 > 0.70 else no verdict; ROUTING = 396
+  within 10pts of baseline at L4 (info present, head mis-routes — the §6
+  attention-bootstrap ghost; marker = attention beacon; deeper prefix retired);
+  DEPTH = >=20pt gap at L4 AND L8 closes >=50% (deeper prefix wins; re-render
+  overkill); CONTENT = >=20pt gap, L8 closes <50% (never written; re-render
+  mandated). v0 FRAME registered (density regime: multi-error encode-side-
+  selected population): ANY meaningful recovery on the 396 moves a measured
+  ceiling; relay's directional prediction — recovery CONCENTRATED in
+  one-directional given-misbindings (mark = "re-examine this given" at its
+  location) confirms directed attention; UNIFORM recovery = generic re-rolling.
 - **META-NOTE (the relay, 2026-07-08): REAL CAUSES HAVE JURISDICTIONS TOO.**
   Second time this week a thrice-measured REAL phenomenon turned out not to
   govern the question it was assumed to govern (binding weakness -> survivorship;
