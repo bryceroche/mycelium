@@ -793,6 +793,138 @@ def problem_from_algebra(n_vars: int, relations, givens: dict, m: int,
                    var_factors=var_factors, registry=reg)
 
 
+# ===========================================================================
+# ALGEBRA-2 — the registry TRANCHE (2026-07-09): MOD + SEL, per the ratified
+# charter. Predicate + bridge alone, ZERO csp_core edits (8th/9th ltype through
+# the same seam). Vieta quadratics (sum+product root pairs) COMPOSE from the
+# existing add/mul — no new op. mul(x,x) square forms are EXCLUDED v0: repeated
+# scope vars make the pairwise propagator UNSOUND (the general-regime law,
+# applied preemptively; revisit with a repeated-var-aware propagator).
+# ===========================================================================
+
+LTYPE_MOD = 8   # a mod k = r ; scope (a, r), params = k (constant modulus)
+LTYPE_SEL = 9   # x = sel(a, b) ; scope (x, a, b), params = sel_id
+
+SEL_TO_ID = {"larger": 0, "smaller": 1, "even": 2, "odd": 3}
+ID_TO_SEL = {v: k for k, v in SEL_TO_ID.items()}
+
+
+def mod_pred(ftype, params, member_values):
+    """a mod k = r, three-valued; holes UNVIOLATED (hole-monotone)."""
+    a, r = member_values
+    if UNASSIGNED in (a, r):
+        return Consistency.UNVIOLATED
+    return Consistency.SAT if a % params == r else Consistency.VIOLATED
+
+
+def mod_propagator(state, factor):
+    """Pairwise-support GAC over (Da, Dr): prune a with a%k not in Dr; prune r
+    unreachable from Da. Sound: prunes only unsupported values."""
+    s = state.copy()
+    va, vr = factor.scope
+    k = factor.params
+    Da, Dr = s.domains[va], s.domains[vr]
+    new_a = {x for x in Da if x % k in Dr}
+    new_r = {x % k for x in Da} & set(Dr)
+    s.domains[va] = new_a
+    s.domains[vr] = new_r
+    return s
+
+
+def _sel_apply(sel_id, a, b):
+    """The selected member of (a, b), or None where the selector is ILL-DEFINED
+    (ties for larger/smaller; not-exactly-one for even/odd) — ill-defined is
+    VIOLATED, so ambiguous selectors self-gate through the uniqueness probe."""
+    if sel_id in (SEL_TO_ID["larger"], SEL_TO_ID["smaller"]):
+        if a == b:
+            return None
+        return max(a, b) if sel_id == SEL_TO_ID["larger"] else min(a, b)
+    ea, eb = a % 2 == 0, b % 2 == 0
+    if ea == eb:
+        return None
+    even_one = a if ea else b
+    return even_one if sel_id == SEL_TO_ID["even"] else (b if ea else a)
+
+
+def sel_pred(ftype, params, member_values):
+    """x = sel(a, b), three-valued; holes UNVIOLATED."""
+    x, a, b = member_values
+    if UNASSIGNED in (x, a, b):
+        return Consistency.UNVIOLATED
+    v = _sel_apply(params, a, b)
+    return Consistency.SAT if (v is not None and v == x) else Consistency.VIOLATED
+
+
+def sel_propagator(state, factor):
+    """Pairwise-support GAC over Da x Db for the functional selector."""
+    s = state.copy()
+    vx, va, vb = factor.scope
+    Dx, Da, Db = s.domains[vx], s.domains[va], s.domains[vb]
+    new_x, new_a, new_b = set(), set(), set()
+    for a in Da:
+        for b in Db:
+            v = _sel_apply(factor.params, a, b)
+            if v is not None and v in Dx:
+                new_x.add(v)
+                new_a.add(a)
+                new_b.add(b)
+    s.domains[vx] = new_x
+    s.domains[va] = new_a
+    s.domains[vb] = new_b
+    return s
+
+
+def algebra2_registry(m: int) -> dict:
+    """arith3 + mod + sel over {0..m}."""
+    reg = algebra_registry(m)
+    register(reg, LTYPE_MOD, mod_pred, name="mod",
+             specialized_propagator=mod_propagator, arity_hint=2,
+             check_alphabet=tuple(range(m + 1)), representative_params=2)
+    register(reg, LTYPE_SEL, sel_pred, name="sel",
+             specialized_propagator=sel_propagator, arity_hint=3,
+             check_alphabet=tuple(range(m + 1)),
+             representative_params=SEL_TO_ID["larger"])
+    return reg
+
+
+def problem_from_algebra2(n_vars: int, factor_dicts, givens: dict, m: int,
+                          registry=None) -> "Problem":
+    """Bridge for the tranche's factor-dict format:
+      {"ftype":"rel","op":op_str,"args":[a,b],"result":r}
+      {"ftype":"mod","var":a,"k":k,"result":r}
+      {"ftype":"sel","sel":sel_str,"args":[a,b],"result":x}
+    Givens: {var: value} as singleton domains (never factors)."""
+    reg = registry if registry is not None else algebra2_registry(m)
+    domains0 = [({int(givens[v])} if v in givens else set(range(m + 1)))
+                for v in range(n_vars)]
+    factors = []
+    for f in factor_dicts:
+        if f["ftype"] == "rel":
+            factors.append(Factor(ftype=LTYPE_ARITH3,
+                                  scope=(int(f["args"][0]), int(f["args"][1]),
+                                         int(f["result"])),
+                                  params=OP_TO_ID[f["op"]]))
+        elif f["ftype"] == "mod":
+            factors.append(Factor(ftype=LTYPE_MOD,
+                                  scope=(int(f["var"]), int(f["result"])),
+                                  params=int(f["k"])))
+        elif f["ftype"] == "sel":
+            factors.append(Factor(ftype=LTYPE_SEL,
+                                  scope=(int(f["result"]), int(f["args"][0]),
+                                         int(f["args"][1])),
+                                  params=SEL_TO_ID[f["sel"]]))
+        elif f["ftype"] == "given":
+            continue   # givens are domains, never factors (house pattern)
+        else:
+            raise ValueError(f"unknown ftype {f['ftype']!r}")
+    var_factors = [[] for _ in range(n_vars)]
+    for fi, f in enumerate(factors):
+        for u in f.scope:
+            var_factors[u].append(fi)
+    return Problem(n_vars=n_vars, domains0=domains0, factors=factors,
+                   var_factors=var_factors, registry=reg)
+
+
 if __name__ == "__main__":
     parse_ok = _ast_parse_ok()
     print(f"[ast.parse] ok={parse_ok}", flush=True)
