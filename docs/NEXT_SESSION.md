@@ -170,3 +170,22 @@ table (≤64 cases bounded) but cannot touch the 396.
   `survivor_oracle_ceiling.py`. All zero-GPU-retrain; all replay-based.
 - Deferred, still answerable: algebra-side teeth check; registry expansion toward
   MATH-500 relations; equivalence-aware fac metrics; purity-dip disambiguation.
+
+## BRICK-P IS IN FLIGHT (2026-07-09 — the parser learns to breathe)
+Bryce's gut ("we're not breathing right") diagnosed + built same day: the
+parser was a ONE-SHOT parallel decoder inside a settling project. BRICK-P =
+v98 recipe transplanted to the slot banks with the relay's two amendments:
+(1) SPLIT BARS — collisions (swaps/inconsistent pairs; breathing's
+jurisdiction, should move) vs LONE misbindings (internally consistent;
+pointer law says may not move) counted SEPARATELY or the result is mush;
+(2) MASKED slot-to-slot attention (evidence-sharing topology from the
+model's own breath-0 parse: same-sentence OR shared-var; mean degree
+10.9/24) — free-form is the perceiver trap, not built. Deltas via zero-init
+W_bo + init-closed gates (breath-0 == incumbent at init). ALG_BREATH=K env;
+ckpt .cache/phase1_breath_head.safetensors; K=2, 8000 steps, warm from
+tranche head (~0.86s/step). RUNNING: train + per-band evals both domains.
+NEXT SESSION MUST: (a) write the SPLIT-BAR eval (collision-rate vs
+lone-misbinding-rate vs invisible count, breath vs tranche incumbent, both
+domains — the registered verdict); (b) if bars move: K sweep + TTA-compose
+on the breathing head; (c) still queued: NACK hygiene (3-cause confound
+registered), TTA-compose dump, monitor rebuild + drift, curriculum ablation.
