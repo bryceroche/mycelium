@@ -1824,3 +1824,24 @@ token-position × waist-dim, the moment the skeleton trains.
   never an aesthetic; the representations say whether they know the
   taxonomy, first. Naming plea adopted: "the ball" and "the atlas," never
   "the ball" ambiguously.
+- **THE COMPOSED STACK ON THE EXPANDED DOMAIN (2026-07-09): 533/800 = 66.6%
+  deployment-honest, answered-precision 0.896.** Chain debugged en route:
+  forward_cond predated the sel head (None-grad -> optimizer refused, fixed
+  with the same conditional-emit guard) + int8 overflow in the purity rebuild.
+  Specialist v2: mined 1268 organic failures from FRESH data (self-defeating-
+  curriculum law honored; 180 purity-removed), 6k steps. PER-STAGE: one-shot
+  489/477 = **0.975 precision** (vs bigtest 0.899 — the tranche head emits
+  only 12 forced-wrongs in 800 vs 90 in 1500: the invisible-wrong class
+  SHRANK by ~4x per capita on the harder corpus); withhold 58/40 (0.690);
+  rounds WEAK: 48 accepts, 16 correct (0.40 -> 0.17 -> 0) — the fresh
+  specialist underperforms its legacy sibling's round precisions
+  (0.69/0.68). KNOWN LEVERS, not yet pulled: the NACK trainer lacks
+  cosine+pick-best (loss rose 5.0 -> 6.8 late — the SAME hygiene gap that
+  bit the parser overnight once); mining pool is small (1268). QUEUED: TTA
+  COMPOSE-1 on alg2test (the vote channel printed 475 accepts @ 0.9979 but
+  per-sample outcomes weren't dumped — one flag added next session) — the
+  expected composed+vote headline sits above the stack-only 66.6%. Cosmetic:
+  the audit's saved-path print is hardcoded (the save honors AUDIT_NPZ;
+  bigtest artifact verified untouched). Audit npz:
+  `.cache/deploy_audit_alg2test.npz`; specialist:
+  `.cache/phase1_algebra2_nack.safetensors`.
