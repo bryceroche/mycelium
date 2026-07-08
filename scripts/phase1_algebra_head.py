@@ -340,6 +340,13 @@ def forward(p, trunk, tokmask, sent, slot_mask=None):
             sc2 = (bq @ bk.transpose(-2, -1)) / math.sqrt(H_W)
             sc2 = sc2.clip(-1e4, 1e4) + (1.0 - slot_mask) * -1e4
             h_slot = (sc2.softmax(-1) @ bv) @ p["W_bo"] + p["W_bo_b"]
+            # ABLATION arms (2026-07-10): zero-mult keeps every param in the
+            # graph (defined zero grads — the None-grad lesson, applied)
+            arm = os.environ.get("ALG_BREATH_ARM", "both")
+            if arm == "tok":
+                h_slot = h_slot * 0.0
+            elif arm == "slot":
+                h_tok = h_tok * 0.0
             g = p["breath_gate"][kb].sigmoid()
             cur = cur + g * (h_tok + h_slot - cur)
             breaths.append(cur)
