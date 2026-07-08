@@ -1845,3 +1845,40 @@ token-position × waist-dim, the moment the skeleton trains.
   bigtest artifact verified untouched). Audit npz:
   `.cache/deploy_audit_alg2test.npz`; specialist:
   `.cache/phase1_algebra2_nack.safetensors`.
+- **BRYCE'S GUT + THE DIAGNOSIS (2026-07-09): "we're not breathing right" —
+  CONFIRMED BY ASSEMBLY OF THE WEEK'S OWN FINDINGS. The parser does not
+  breathe: it is a ONE-SHOT PARALLEL DECODER (every slot argmaxes its
+  marginal once; no slot sees the others' decisions; nothing settles) inside
+  a project whose validated engine works BY settling. Re-read in this light:
+  SWAPS = the textbook joint-vs-marginals failure (v98's own diagnostic);
+  value-MISBINDINGS (75% of the wall) = relational errors two slots make
+  about the same region with no collision mechanism; the ROUTING WALL = a
+  pointer committed once with no second breath to contest it; the REPAIR
+  DECAY refuted re-DECODING (changed conditioning, same state) — it does NOT
+  touch breathing (evolving slot state is a different mechanism); TTA = five
+  independent inhales, no exhale between. §8.1 spec'd cycles; the skeleton
+  built steps 1-3 and the loop never came. REGISTERED PROPOSAL — BRICK-P,
+  THE PARSER'S BREATH: transplant the v98 recipe to the slot banks (K=2-4
+  passes, slot queries attend waist + previous slot states, per-breath
+  ladder CE, delta-gate, zero new mechanism kinds). BARS pinned on the
+  week's signatures at fixed budget vs the one-breath incumbent: swap rate,
+  misbinding-collision rate, invisible-wrong count — if breathing is the
+  missing thing THOSE move; fac-exact-only = capacity, dies honestly.
+  Cheap probe first: K=2 warm-started.
+- **THREE RELAY REGISTRATIONS (2026-07-09):** (1) THE PREVENTION LAW,
+  registered pending tranche-2's second sighting: **confident wrongness
+  yields to representational pressure, not to repair** — nine decode-side
+  mechanisms got single digits; two relation kinds got 4x per-capita
+  prevention as a side effect; if the invisible rate drops again as kinds
+  grow, the law has two sightings + a mechanism (sharper class boundaries
+  leave less room for decisive misbinding) and expansion becomes the ONLY
+  measured lever on the class the abstention stack exists to contain.
+  (2) SPECIALIST WEAKNESS: THREE causes pre-registered before the hygiene
+  fix claims credit — trainer hygiene (known), thin curriculum (1268), and
+  SELECTION-HARDENING (better parsers produce more survivor-like failures
+  by construction — the selection-jurisdiction law aimed at the repair
+  curriculum). Post-hygiene read: recovery to ~0.68 = trainer; partial =
+  the equilibrium claim extends to the repair stack. (3) The 0.9979 gets
+  zero-numerator discipline: "error rate bounded near a quarter percent
+  across both domains" — three consistent draws, none independent enough
+  to tighten the bound.
