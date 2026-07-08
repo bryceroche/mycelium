@@ -1608,7 +1608,47 @@ token-position × waist-dim, the moment the skeleton trains.
   after which independence does the rest. Scripts:
   `scripts/portfolio_and_threshold.py`; waist scores persisted
   (`.cache/waist_scores_bigtest.npz`).
-- **META-NOTE (the relay, 2026-07-08): REAL CAUSES HAVE JURISDICTIONS TOO.**
+- **THE DECISION LATTICE, FROZEN (2026-07-09, relay structural note): the
+  deployment stack's four rungs and their interfaces — the productized
+  Alternator, whatever the multi-cycle loop becomes.** Every rung
+  zero-parameter and gold-free:
+  1. **CERTIFY** — TTA-D K=5 unanimity of forced answers. Dial: **0.9982
+     precision @ 38.1% coverage.**
+  2. **ANSWER** — majority 3/5 vote; on vote-abstain, the deployed stack
+     (one-shot -> withhold-2 -> 4 specialist rounds), gold-free forced
+     acceptance. Composite dial: **71.5% end-to-end / 0.833 precision.**
+  3. **FLAG** — rank-sum(view-disagreement, waist-centroid distance) read at
+     the tail; downgrade or abstain per deployment mode. Dial: kept-precision
+     **0.862 @ 10% abstention.**
+  4. **ABSTAIN** — no forced answer anywhere.
+  INTERFACES: views = solution-preserving TEXT transforms (sentence
+  permutation v0; any future view generator is priced by the
+  independence-competence curve); votes = forced answers only; anomaly
+  signals = agreement + per-kind waist centroids (train split). **THE
+  EXPANSION ACCEPTANCE TEST: a new relation passes when the lattice HOLDS ITS
+  DIALS on the expanded domain — one table, all four rungs — not on fac-exact
+  alone.** A relation that lifts fac-exact but degrades a certification dial
+  fails acceptance. (The cheapest insurance against the tranche quietly
+  breaking a channel nobody re-measured.)
+- **THE TRANCHE CHARTER (inherited, one breath):** relations enter as
+  predicate + bridge, zero core edits — the generality law's next test, now
+  on the neural side too; corpora solution-first, gate-checked, band-labeled,
+  mention-spanned; every pointer born candidate-restricted and
+  span-supervised (the 396's rule as prevention); every relation ships its
+  curriculum knob chasing VIEW-ROBUSTNESS; the five-seat audience grades from
+  the first checkpoint. **DECISION PENDING (Bryce + relay, BEFORE the
+  generator is written): MULTI-ROOT ANSWERS.** Quadratics break the
+  single-forced-value frame; the policy determines gold format, forcing-probe
+  semantics, and what unanimity MEANS on a set. Options tabled: (1)
+  ANSWER-SET gold (forcing probe generalizes via ban-and-resolve enumeration;
+  every lattice rung's semantics changes; multi-value answers are only 2.0%
+  of MATH-500); (2) QUERY-CONSTRAINED single root (the NL carries a selector
+  — "the positive solution", "the larger root" — a new mention type under the
+  pointer law; forcing probe and ALL lattice semantics unchanged; matches
+  MATH's dominant convention); (3) hybrid: selector-graded with the full set
+  in gold metadata as a diagnostic column. CODE'S RECOMMENDATION: (2) as v0
+  with (3)'s metadata — quadratics enter as just-another-relation plus one
+  supervised mention type; the set-frame waits for the 2% it serves.
   Second time this week a thrice-measured REAL phenomenon turned out not to
   govern the question it was assumed to govern (binding weakness -> survivorship;
   before that, the density trap). The instrument lesson's causal cousin: locating
