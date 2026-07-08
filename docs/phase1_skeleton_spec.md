@@ -1528,6 +1528,35 @@ token-position × waist-dim, the moment the skeleton trains.
   bridge as always. Mean-level column: linear-arith 2.8, inequality 4.1
   (difficulty tracks the shopping list's tail). Script:
   `scripts/math500_band_sweep.py`.
+- **TTA + PROGRESSIVE RESIZING REGISTERED (2026-07-09, Bryce's fastai
+  transplant; TTA FIRED):** the MC-pi lens pins the design constraint — views
+  must be solution-preserving with DECORRELATED failure modes (correlated
+  darts estimate nothing). DEPLOYMENT-HONESTY FLAW NAMED BEFORE FIRING:
+  re-rendering needs GOLD factors — oracle machinery at MATH-500 time (the
+  graph is what parsing is FOR; re-rendering the parser's own graph
+  correlates with its errors). TWO ARMS, mirroring oracle-flag->deployed-flag:
+  ARM O = K=4 gold re-renders (letters/templates/surfaces/order shuffled,
+  teeth-easy — the mechanism ceiling); ARM D = K=4 sentence permutations
+  (pure text transform, graph-free, deployable; sentence-index features
+  genuinely shift). THE MC-PI GATE measured FIRST per arm: same-wrong-answer
+  rate across views on wrong-forced originals < 0.30, else voting is VOID.
+  REGISTERED: relay — ARM O voting recovers a NONZERO routing-wall slice
+  (the only mechanism class that changes what the pointer keys on;
+  sidesteps, not steers) + agreement-AUC near/above 0.728 (portfolio-
+  combinable: behavioral stability vs representation geometry); mine — O
+  decorrelates (<0.30), D weaker (0.30-0.60, misbinding plausibly local to
+  sentence content), voting net-positive in O / ~flat in D; imposter split
+  standard; vote rule majority >=3 of 5. PROGRESSIVE RESIZING (registered,
+  rides with the registry tranche — no run now): the resolution axis is
+  RENDERING COMPLEXITY (teeth + n_vars/band), not waist width (that is
+  capacity, already measured); each new relation ships a coarse->fine
+  curriculum knob + the ablation (curriculum vs all-teeth-from-birth, same
+  budget). 50/50-leaning-modest; the bet is POINTER-CIRCUIT PREVENTION
+  (candidate-restricted pointers learn binding on unambiguous mentions before
+  obliqueness arrives — prevention of the next 396 is worth more than a point
+  of fac-exact). One machinery, two clocks: TTA is the generator's symmetries
+  at inference; the curriculum is the same dials at training. Script:
+  `scripts/tta_views.py`.
 - **META-NOTE (the relay, 2026-07-08): REAL CAUSES HAVE JURISDICTIONS TOO.**
   Second time this week a thrice-measured REAL phenomenon turned out not to
   govern the question it was assumed to govern (binding weakness -> survivorship;
