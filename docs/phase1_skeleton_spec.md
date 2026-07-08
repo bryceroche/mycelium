@@ -1945,3 +1945,18 @@ token-position × waist-dim, the moment the skeleton trains.
   right in every jurisdiction — and the method (registration, kill bars,
   cheap disconfirmation, jurisdiction discipline) is what converted one into
   the other without an unexamined premise surviving the trip.
+- **REL-SIDE VERDICT (2026-07-10): NEGOTIATION REFUTED — THE THIRD
+  FORMULATION IS RE-READING.** alg2test: LONE thinned 2x more than COLL
+  (-14.3% vs -7.4%), query REGRESSED +14.3% (flagged); bigtest: COLL -3.4%,
+  LONE flat, QUERY -45%. The dominant consistent signature is in the column
+  nobody predicted: **MISSING factors dropped both domains (-5.4%/-9.6%)** —
+  the breath head FINDS rels the one-shot never emitted. That picks between
+  the pre-listed candidates: not ladder-regularizer, not slot-negotiation —
+  the h_tok pathway (text re-attention CONDITIONED ON BELIEFS) recovering
+  missed factors on a second conditioned read. THIRD FORMULATION: **the
+  parser's breath is a second look at the page, not a negotiation among the
+  readers.** Coverage, not coherence. DISCRIMINATING CUT queued (cheap, one
+  arm each): ablate h_slot vs h_tok — which term carries the gain; if h_tok
+  alone suffices, the slot-slot machinery (and its mask) simplifies away and
+  K-sweep becomes a re-read sweep. Query regression on alg2test rides the
+  ablation as a watch column. Script: `scripts/brickp_rel_bars.py`.
