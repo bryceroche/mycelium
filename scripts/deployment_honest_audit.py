@@ -112,8 +112,9 @@ def main():
                 Tensor(sent[sl_p].astype(np.int32), dtype=dtypes.int),
                 Tensor(f1, dtype=dtypes.float), Tensor(f2, dtype=dtypes.float),
                 Tensor(f3, dtype=dtypes.float))
-            o = {k: out[k].realize().numpy() for k in
-                 ("pres", "ftype", "op", "islit", "dig", "args", "res", "query")}
+            keys = ("pres", "ftype", "op", "islit", "dig", "args", "res",
+                    "query") + (("sel",) if "sel" in out else ())
+            o = {k: out[k].realize().numpy() for k in keys}
             for bi, i in enumerate(sl):
                 outs[int(i)] = {k: o[k][bi] for k in o}
         return outs
@@ -202,7 +203,8 @@ def main():
           f"recoveries >0; P3 precision declines down the stack; P4 honest "
           f"end-to-end < 0.693.")
     idx = np.array(sorted(outcome), np.int32)
-    np.savez(".cache/deploy_audit_bigtest.npz", idx=idx,
+    np.savez(os.environ.get("AUDIT_NPZ", ".cache/deploy_audit_bigtest.npz"),
+             idx=idx,
              stage=np.array([outcome[i][0] for i in idx], np.int32),
              correct=np.array([outcome[i][1] for i in idx], np.int32))
     print(f"  [saved] .cache/deploy_audit_bigtest.npz (answered={len(idx)})")

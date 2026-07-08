@@ -50,7 +50,7 @@ from phase1_algebra_head import (  # noqa: E402
 )
 
 N_FIELDS = 6          # presence, ftype, op, args, res, digits
-NACK_CKPT = ".cache/phase1_algebra_nack.safetensors"
+NACK_CKPT = os.environ.get("NACK_CKPT", ".cache/phase1_algebra_nack.safetensors")
 PREP_NPZ = ".cache/phase1_algebra_nack_prep.npz"
 
 
@@ -135,13 +135,17 @@ def wrong_fields(o, g, i, bi):
         if not pg:
             continue
         wf[j, 1] = int(o["ftype"][bi, j].argmax()) != g["ftype"][i, j]
-        is_rel = g["ftype"][i, j] == 0
-        if is_rel:
+        ft = int(g["ftype"][i, j])   # 0=rel 1=given 2=mod 3=sel (tranche-aware)
+        if ft == 0:
             wf[j, 2] = int(o["op"][bi, j].argmax()) != g["op"][i, j]
+        if ft in (0, 3):             # rel + sel carry 2-hot args
             top2 = set(np.argsort(-o["args"][bi, j])[:2].tolist())
             wf[j, 3] = top2 != set(np.where(g["args"][i, j] > 0.5)[0].tolist())
+        if ft == 2:                  # mod carries a 1-hot arg (the var)
+            wf[j, 3] = int(np.argmax(o["args"][bi, j])) != \
+                int(np.argmax(g["args"][i, j]))
         wf[j, 4] = int(o["res"][bi, j].argmax()) != g["res"][i, j]
-        if not is_rel:
+        if ft in (1, 2):             # digits: given values + moduli (NOT sel)
             wf[j, 5] = not bool(
                 (o["dig"][bi, j].argmax(-1) == g["digits"][i, j]).all())
     return wf
@@ -166,7 +170,8 @@ def do_prep():
             "op": np.zeros((n, L_FAC), np.int8),
             "args": np.zeros((n, L_FAC, K_VARS), np.uint8),
             "res": np.zeros((n, L_FAC), np.int8),
-            "dig": np.zeros((n, L_FAC, N_DIG), np.int8)}
+            "dig": np.zeros((n, L_FAC, N_DIG), np.int8),
+            "sel": np.zeros((n, L_FAC), np.int8)}
     for s0 in range(0, n, 8):
         sl = np.arange(s0, min(s0 + 8, n))
         pad = 8 - len(sl)
@@ -175,7 +180,8 @@ def do_prep():
                       Tensor(tokmask[sl_p].astype(np.float32), dtype=dtypes.float),
                       Tensor(sent[sl_p].astype(np.int32), dtype=dtypes.int))
         o = {k: out[k].realize().numpy() for k in
-             ("pres", "ftype", "op", "islit", "dig", "args", "res")}
+             ("pres", "ftype", "op", "islit", "dig", "args", "res")
+             + (("sel",) if "sel" in out else ())}
         for bi, i in enumerate(sl):
             i = int(i)
             WF[i] = wrong_fields(o, gold, i, bi)
@@ -187,6 +193,8 @@ def do_prep():
                     prev["args"][i, j, a] = 1
             prev["res"][i] = o["res"][bi].argmax(-1).astype(np.int8)
             prev["dig"][i] = o["dig"][bi].argmax(-1).astype(np.int8)
+            if "sel" in o:
+                prev["sel"][i] = o["sel"][bi].argmax(-1).astype(np.int8)
         if s0 % 512 == 0:
             print(f"  [prep] {s0}/{n}", flush=True)
     has_fail = WF.any(axis=(1, 2))
@@ -197,42 +205,61 @@ def do_prep():
     # failure, whatever its graph looks like. PURITY=0 disables (for the
     # contamination measurement).
     if int(os.environ.get("PURITY", "1")):
-        from mycelium.csp_domains import problem_from_algebra
+        from mycelium.csp_domains import problem_from_algebra2, ID_TO_SEL
         from mycelium.csp_core import solve_symbolic
         n_pure = 0
         for i in np.where(has_fail)[0]:
             i = int(i)
             smp = samples[i]
-            # rebuild the parse from prev outputs
+            # rebuild the parse from prev outputs (tranche-aware: 4 kinds)
             facs = []
             for j in range(L_FAC):
                 if not prev["pres"][i, j]:
                     continue
-                if prev["ftype"][i, j] == 0:
-                    args = sorted(np.where(prev["args"][i, j] > 0)[0].tolist())[:2]
-                    if len(args) < 2:
+                ft = int(prev["ftype"][i, j])
+                res_j = int(prev["res"][i, j])
+                val = int(sum(d * 10 ** (N_DIG - 1 - k)
+                              for k, d in enumerate(prev["dig"][i, j])))
+                args2 = sorted(np.where(prev["args"][i, j] > 0)[0].tolist())[:2]
+                if ft == 0:
+                    if len(args2) < 2:
                         continue
-                    facs.append(("rel", "add" if prev["op"][i, j] == 0 else "mul",
-                                 args[0], args[1], int(prev["res"][i, j])))
+                    facs.append({"ftype": "rel",
+                                 "op": "add" if prev["op"][i, j] == 0 else "mul",
+                                 "args": args2, "result": res_j})
+                elif ft == 1:
+                    facs.append({"ftype": "given", "var": res_j, "value": val})
+                elif ft == 2:
+                    if not args2:
+                        continue
+                    facs.append({"ftype": "mod", "var": int(args2[0]),
+                                 "k": max(val, 2), "result": res_j})
                 else:
-                    val = int(sum(d * 10 ** (N_DIG - 1 - k)
-                                  for k, d in enumerate(prev["dig"][i, j])))
-                    facs.append(("given", int(prev["res"][i, j]), val))
-            rels = [(f[1], f[2], f[3], f[4]) for f in facs if f[0] == "rel"]
-            gv = {f[1]: f[2] for f in facs if f[0] == "given"}
+                    if len(args2) < 2:
+                        continue
+                    sid = int(prev.get("sel", np.zeros_like(prev["res"]))[i, j])
+                    facs.append({"ftype": "sel", "sel": ID_TO_SEL.get(sid, "larger"),
+                                 "args": args2, "result": res_j})
+            gv = {f["var"]: f["value"] for f in facs if f["ftype"] == "given"}
             gold_ans = smp["solution"][smp["query_var"]]
             q = smp["query_var"]     # purity uses gold query (prep-side, oracle-ok)
+
+            def _fv(f):
+                if f["ftype"] in ("rel", "sel"):
+                    return list(f["args"]) + [f["result"]]
+                if f["ftype"] == "mod":
+                    return [f["var"], f["result"]]
+                return [f["var"]]
             try:
-                nv = max([smp["n_vars"]] + [v + 1 for f in facs for v in
-                         (f[2:5] if f[0] == "rel" else [f[1]])])
-                res = solve_symbolic(problem_from_algebra(nv, rels, gv, smp["m"]),
+                nv = max([smp["n_vars"]] + [v + 1 for f in facs for v in _fv(f)])
+                res = solve_symbolic(problem_from_algebra2(nv, facs, gv, smp["m"]),
                                      budget=100_000, seed=0)
                 if res["status"] != "solved":
                     continue
                 sol = [int(res["assignment"][v]) for v in range(nv)]
                 if q >= len(sol) or sol[q] != gold_ans:
                     continue
-                p2 = problem_from_algebra(nv, rels, gv, smp["m"])
+                p2 = problem_from_algebra2(nv, facs, gv, smp["m"])
                 p2.domains0[q].discard(sol[q])
                 if p2.domains0[q]:
                     r2 = solve_symbolic(p2, budget=60_000, seed=0)
@@ -306,6 +333,10 @@ def do_train(steps, lr, batch, seed):
                          ("op", (L_FAC,), dtypes.int),
                          ("res", (L_FAC,), dtypes.int),
                          ("digits", (L_FAC, N_DIG), dtypes.int),
+                         ("sel", (L_FAC,), dtypes.int),
+                         ("is_rel", (L_FAC,), dtypes.float),
+                         ("is_mod", (L_FAC,), dtypes.float),
+                         ("is_sel", (L_FAC,), dtypes.float),
                          ("query", (), dtypes.int)):
         npdt = np.float32 if dt == dtypes.float else np.int32
         bg[k] = fix(np.zeros((batch,) + shape, npdt), dt)
@@ -345,6 +376,12 @@ def do_train(steps, lr, batch, seed):
         tg["digits"] = np.where(use_fix[:, :, None], gold["digits"][idx],
                                 prev["dig"][idx]).astype(np.int32)
         tg["query"] = gold["query"][idx].astype(np.int32)
+        tg["sel"] = np.where(use_fix, gold.get("sel", np.zeros_like(gold["op"]))[idx],
+                             prev.get("sel", np.zeros_like(prev["op"]))[idx]).astype(np.int32)
+        # per-kind masks follow the TARGET ftype (blended parse, per slot)
+        tg["is_rel"] = (tg["ftype"] == 0).astype(np.float32)
+        tg["is_mod"] = (tg["ftype"] == 2).astype(np.float32)
+        tg["is_sel"] = (tg["ftype"] == 3).astype(np.float32)
         b_tr.assign(Tensor(states[idx].astype(np.float32), dtype=dtypes.float).contiguous()).realize()
         b_tk.assign(Tensor(tokmask[idx].astype(np.float32), dtype=dtypes.float).contiguous()).realize()
         b_se.assign(Tensor(sent[idx].astype(np.int32), dtype=dtypes.int).contiguous()).realize()

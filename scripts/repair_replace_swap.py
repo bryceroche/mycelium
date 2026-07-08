@@ -56,24 +56,30 @@ from phase1_algebra_head import (  # noqa: E402
 
 
 def solve_forced(facs, q_pred, smp):
-    """Gold-free: returns forced answer at q_pred, or None."""
-    from mycelium.csp_domains import problem_from_algebra
+    """Gold-free: returns forced answer at q_pred, or None. v2-aware
+    (2026-07-09): routes through problem_from_algebra2, which handles
+    rel/given identically and adds mod/sel — one seam, all callers upgraded."""
+    from mycelium.csp_domains import problem_from_algebra2
     from mycelium.csp_core import solve_symbolic
-    rels = [(f["op"], f["args"][0], f["args"][1], f["result"])
-            for f in facs if f["ftype"] == "rel"]
     gv = {f["var"]: f["value"] for f in facs if f["ftype"] == "given"}
+
+    def fv(f):
+        if f["ftype"] in ("rel", "sel"):
+            return list(f["args"]) + [f["result"]]
+        if f["ftype"] == "mod":
+            return [f["var"], f["result"]]
+        return [f["var"]]
     try:
-        nv = max([smp["n_vars"]] + [v + 1 for f in facs for v in
-                 ((list(f["args"]) + [f["result"]]) if f["ftype"] == "rel"
-                  else [f["var"]])] + [q_pred + 1])
-        res = solve_symbolic(problem_from_algebra(nv, rels, gv, smp["m"]),
+        nv = max([smp["n_vars"]] + [v + 1 for f in facs for v in fv(f)]
+                 + [q_pred + 1])
+        res = solve_symbolic(problem_from_algebra2(nv, facs, gv, smp["m"]),
                              budget=200_000, seed=0)
         if res["status"] != "solved":
             return None
         sol = [int(res["assignment"][v]) for v in range(nv)]
         if q_pred >= len(sol):
             return None
-        p2 = problem_from_algebra(nv, rels, gv, smp["m"])
+        p2 = problem_from_algebra2(nv, facs, gv, smp["m"])
         p2.domains0[q_pred].discard(sol[q_pred])
         if p2.domains0[q_pred]:
             r2 = solve_symbolic(p2, budget=100_000, seed=0)
