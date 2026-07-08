@@ -1557,6 +1557,30 @@ token-position × waist-dim, the moment the skeleton trains.
   of fac-exact). One machinery, two clocks: TTA is the generator's symmetries
   at inference; the curriculum is the same dials at training. Script:
   `scripts/tta_views.py`.
+- **TTA RESULTS (2026-07-09): THE DEPLOYABLE ARM DOMINATES THE ORACLE ARM,
+  AND COMPOSITION SETS A NEW HEADLINE — 1072/1500 = 71.5% / precision
+  0.833.** ARM D (sentence permutation, graph-free): MC-pi gate PASSED at
+  0.106 same-wrong (my 0.30-0.60 registration REFUTED upward — even pure
+  order-shuffle moves the misbindings; 20% of wrong originals' views come
+  back RIGHT); voting 763R/13W/724A = answered-precision **0.983**;
+  routing-wall recoveries **33/460 survivors + 8/90 invisibles** (more than
+  beacon+ratchet combined, deployable, zero training); agreement-AUC
+  **0.840** — the board's best anomaly signal (beats the waist monitor's
+  0.728; behavioral stability > representation geometry). ARM O (gold
+  re-renders): most decorrelated (0.031) but per-view forced collapses to
+  ~21% (always-shuffled letters are far off the parser's operating point) —
+  69 accepts (all right), agreement-AUC 0.637. **THE MC-PI SECOND CLAUSE,
+  measured: darts must be independent AND land on the board** — view design
+  trades decorrelation against per-view competence, and gold access was not
+  the binding resource; parse competence was. The oracle arm is the floor,
+  the deployable arm the ceiling — a happy inversion. COMPOSITIONS (zero-GPU
+  from persisted outcomes): COMPOSE 1 (vote->stack) **1072/1500 = 71.5%,
+  precision 0.833, answered 1287** — all three dials beat the floor
+  simultaneously; deploy-iff met; THE NEW QUOTABLE. COMPOSE 2 (stack->vote)
+  70.7%. Portfolio note: low-agreement top-128 catches 31/226 stack
+  committed-wrongs. Relay's nonzero routing-wall prediction CONFIRMED on
+  both arms. npz: `.cache/tta_arm_{O,D}_bigtest.npz`. Scripts:
+  `scripts/tta_views.py` + inline composition.
 - **META-NOTE (the relay, 2026-07-08): REAL CAUSES HAVE JURISDICTIONS TOO.**
   Second time this week a thrice-measured REAL phenomenon turned out not to
   govern the question it was assumed to govern (binding weakness -> survivorship;

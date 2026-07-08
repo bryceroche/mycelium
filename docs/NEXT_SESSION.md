@@ -2,6 +2,19 @@
 
 Cold-start entry point. Read this first; it points to everything else.
 
+## NEW HEADLINE (2026-07-09 late): TTA COMPOSITION = 71.5% / 0.833
+**COMPOSE 1 (TTA-D vote -> deployed stack): 1072/1500 = 71.5%, precision
+0.833, answered 1287 — all dials beat the 70.1%/0.823 floor; gold-free,
+deployable (sentence-permutation views + majority 3/5).** TTA-D also: 0.983
+precision channel when voting alone; 33/460 + 8/90 routing-wall recoveries
+(beats beacon+ratchet combined, zero training); agreement-AUC 0.840 = the
+board's best anomaly signal. MC-pi second clause measured: darts must be
+independent AND land on the board (oracle re-renders decorrelate best but
+parse at ~21% forced — competence, not gold access, is the binding
+resource). Progressive-resizing curriculum still registered for the registry
+tranche. Next: the registry tranche build (quadratic + modular first per the
+band-sweep), TTA voting as standing final stage.
+
 ## THE SURVIVOR CHAPTER IS CLOSED (2026-07-09 — read this first)
 **Beacon verdict: 14/460 = 3.0% — the population is DETECT-AND-ABSTAIN ONLY
 under current machinery.** Every repair arm is now measured: conditioning dead
