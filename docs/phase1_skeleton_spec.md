@@ -1718,3 +1718,14 @@ token-position × waist-dim, the moment the skeleton trains.
   a relation that lifts fac-exact but degrades a dial FAILS. Curriculum
   ablation (all-teeth-from-birth vs coarse->fine) = the one-extra-run arm,
   after the v0 baseline lands.
+- **TRANCHE ACCEPTANCE ROW 1 (2026-07-09): OLD-CORPUS REGRESSION PASSED —
+  UPWARD.** The tranche head on old bigtest: **888/1500 = 59.2% one-shot
+  ANSWER vs legacy 802/1500 = 53.5%** (+86 answers, +5.7pt), graph-solve 741,
+  query 0.98-1.00 across bands, fac 0.75-0.88. NOT mere no-forgetting: the
+  mixed-corpus warm-start IMPROVED the old domain — weight-side generality at
+  the head level (new relations helped the old ones; the multitask grail's
+  parser-side sighting). New-corpus row: 480/800 = 60% one-shot at teeth 0.8
+  with sel/mod/CRT in play. Remaining lattice rows queued in NEXT_SESSION:
+  TTA dials on alg2test, monitor centroids in the new fst space, specialist
+  retrain (composed-stack number gates on it), curriculum ablation
+  (view-robustness graded), the relay's selector silent-error column.
