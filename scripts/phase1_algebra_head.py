@@ -347,6 +347,13 @@ def forward(p, trunk, tokmask, sent, slot_mask=None):
                 h_slot = h_slot * 0.0
             elif arm == "slot":
                 h_tok = h_tok * 0.0
+            elif arm == "depth":
+                # the decider control: plain per-slot MLP second pass — same
+                # params repurposed, NO attention, no mask, no re-read
+                h_tok = h_tok * 0.0
+                h_slot = h_slot * 0.0 + ((cur @ p["W_bq"] + p["W_bq_b"])
+                                         .gelu() @ p["W_bv"] + p["W_bv_b"]) \
+                    @ p["W_bo"] + p["W_bo_b"]
             g = p["breath_gate"][kb].sigmoid()
             cur = cur + g * (h_tok + h_slot - cur)
             breaths.append(cur)
