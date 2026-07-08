@@ -1911,3 +1911,25 @@ token-position × waist-dim, the moment the skeleton trains.
   power via a bigger eval draw. Ledger lesson: BARS INHERIT THE
   JURISDICTION OF THEIR COUNTERS — a verdict frame aimed at given slots
   cannot see a rel-slot mechanism. Script: `scripts/brickp_split_bars.py`.
+- **REL-SIDE COUNTERS, REGISTERED BEFORE BUILT (2026-07-10, relay):** the
+  facts already constrain the finding. PREDICTION: if breathing's gain lives
+  relationally, the thinned rel-side errors should be disproportionately
+  COLLISION-TYPE (mutually inconsistent args/result/query claims — two slots
+  claiming the same mention; result and query pointers disagreeing on one
+  var) rather than LONE rel misbindings. Lone-thinning instead = the
+  mechanism is NOT negotiation (candidates: per-breath supervision as
+  regularizer; the settle step as implicit TTA on slot states) and the
+  thesis needs its third formulation. THE COUNTERS CARRY THE SPLIT FROM
+  BIRTH — "bars inherit the jurisdiction of their counters," applied
+  prospectively one day after minting. K-SWEEP PRIOR calibrated: the parser's
+  slot graph is shallow (factors touch 2-4 slots; chains short) — honest
+  prior is saturation at K=3-4, NOT the deducer's 16 (49-cell lattice, ~4
+  hops/breath). Monotone gains past K=4 would itself be a finding: settling
+  propagating beyond adjacency. RIDER re-measured at the sweep-selected K
+  (one settle step barely lets the movement field mean anything; the
+  deducer's 0.687 took sixteen breaths of dynamics). THE THREE-JURISDICTION
+  DIVISION, now three-ways measured: PREVENTION (representational pressure —
+  the only lever on confident wrongness), NEGOTIATION (breathing — the
+  apparent lever on relational coherence, pending the rel counters),
+  DETECTION (the abstention portfolio — for what neither prevents nor
+  negotiates away). No overlaps claimed without a counter to witness.
