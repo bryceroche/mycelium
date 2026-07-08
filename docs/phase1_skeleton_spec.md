@@ -1763,3 +1763,20 @@ token-position × waist-dim, the moment the skeleton trains.
   weight-side generality grail, now measured on the parser side with its
   plumbing honestly deducted.** Every future expansion-improves-core claim
   cites this control. Ctrl ckpt: `.cache/phase1_algebra_ctrl_head.safetensors`.
+- **LATTICE ACCEPTANCE ROW 2 (2026-07-09): CERTIFICATION SURVIVES THE
+  EXPANSION — unanimity 5/5 = 1.0000 precision (411/411) at 51.4% coverage
+  on alg2test** (legacy head on old bigtest was 0.9982 @ 38.1% — the tranche
+  head is MORE view-robust on a HARDER domain). t=3/5 = 0.9979 @ 59.4%.
+  MC-pi gate 0.104. Only 12/800 one-shot invisibles (bigtest: 90/1500) — the
+  new corpus produces fewer forced-wrongs. CAVEATS, honest: (1) per-kind
+  coverage column DEGENERATE by generator design (n_vieta = randint(0,2) or 1
+  -> every sample has a selector; no within-corpus linear/mod contrast) — the
+  per-kind baseline moves to the cross-corpus comparison / a kind-varied
+  slice; (2) the selector silent-error column as implemented catches
+  QUERY-pointer flips (4/4108 graph-agree pairs, 0.10%), not selector-PICK
+  flips (a wrong pick changes the graph hash) — signature refined: pick
+  errors live in pairs whose graphs differ ONLY at the sel factor; rare-and-
+  silent confirmed in spirit, precise enrichment queued with the refinement.
+  REMAINING ROWS: old-domain TTA regression (doubles as the per-kind linear
+  baseline), monitor rebuild + centroid drift, specialist retrain, curriculum
+  ablation. Script: `scripts/tta_alg2_dials.py`.
