@@ -2,6 +2,22 @@
 
 Cold-start entry point. Read this first; it points to everything else.
 
+## THE SURVIVOR CHAPTER IS CLOSED (2026-07-09 — read this first)
+**Beacon verdict: 14/460 = 3.0% — the population is DETECT-AND-ABSTAIN ONLY
+under current machinery.** Every repair arm is now measured: conditioning dead
+(oracle ceiling 13.9%), symbolic replace unsound (92% imposters), ratchet fix
+6%, beacon 3% with 71 wrong per 14 right. Footnote: 11 beacon recoveries were
+in the hard-396 (input perturbation occasionally moves what conditioning
+can't — existence result, not mechanism). The working instrument: the waist
+monitor (AUC 0.728, zero params — the §8.5 session-monitor role, filled).
+Quotable: **70.1% deployment-honest / 0.823 precision**, precision dial to
+0.880 at 0.615 coverage-accuracy. **NEXT CHAPTER: registry expansion toward
+MATH-500 relations** (quadratics, inequalities — band-sweep decides), with the
+week's design constraint: every new relation's pointer gets candidate
+restriction + span supervision FROM BIRTH, or it grows its own 396. Deferred
+until a flaggable-AND-fixable population exists: v1 ratchet (per-space
+centroids + anomaly-decrease dominance), score-gated beacon.
+
 ## HEADLINE UPDATE (2026-07-09, supersedes the numbers below)
 **The quotable number: 1051/1500 = 70.1% DEPLOYMENT-HONEST end-to-end**
 (gold-free acceptance at every stage; answered-precision 0.823, abstention

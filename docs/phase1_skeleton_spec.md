@@ -1479,6 +1479,29 @@ token-position × waist-dim, the moment the skeleton trains.
   (MATH-500 relations), carrying the design constraint forward — every new
   relation's pointer gets candidate restriction and span supervision FROM
   BIRTH, or it grows its own 396. Script: `scripts/beacon_closing_arm.py`.
+- **BEACON VERDICT — THE CHAPTER CLOSES (2026-07-09): 14/460 = 3.0%,** middle
+  band (bars were <=2% / >=10%), honest call: the flipped prediction is
+  CONFIRMED IN SUBSTANCE — input marks do not meaningfully re-aim trained
+  pointers; the population is **DETECT-AND-ABSTAIN ONLY under current
+  machinery**; the beacon does NOT graduate. THE FOOTNOTE, recorded: 11 of 14
+  recoveries are in the hard-396 — parses PERFECT oracle flags could not fix.
+  Input perturbation occasionally moves what head conditioning provably
+  cannot — an EXISTENCE result, not a mechanism: 71 accepted-WRONG vs 14 right
+  (precision 0.165; the marks shake the table, they don't aim the pointer).
+  Third consecutive confirmation of the acceptance law. Composability: the
+  monitor ranks marked-state accepts in the correct direction (right 0.736 <
+  wrong 0.782) — a score-gated beacon is possible in principle but is v1
+  machinery for a 3% mechanism (infrastructure-before-customer; deferred with
+  the v1 ratchet). **THE SURVIVOR ARC, FINAL LEDGER:** teeth uniform ->
+  multiplicity flat -> omission dead -> suspicion flat -> binding de-enriched
+  -> routing wall (states 99.6% correct, pointer mis-aimed) -> oracle ceiling
+  13.9% -> invisibles found (70 forced-wrong) -> acceptance bugs x2 -> honest
+  70.1%/0.823 -> monitor arrives (0.728, zero params) -> ratchet leak + fix
+  6% -> beacon 3%. Nine registered refutations, four §6-grade laws, two
+  retired builds, one working instrument, one closed population. NEXT
+  CHAPTER: the registry expansion toward MATH-500, carrying the constraint —
+  every new relation's pointer gets candidate restriction + span supervision
+  from birth, or it grows its own 396.
 - **META-NOTE (the relay, 2026-07-08): REAL CAUSES HAVE JURISDICTIONS TOO.**
   Second time this week a thrice-measured REAL phenomenon turned out not to
   govern the question it was assumed to govern (binding weakness -> survivorship;
