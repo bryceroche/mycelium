@@ -1750,3 +1750,16 @@ token-position × waist-dim, the moment the skeleton trains.
   handled); the roundtrip gate refusing symmetric pairs until taught
   multiset-match, and ill-defined selectors self-gating as VIOLATED — three
   edge policies, zero new mechanisms.
+- **DIFFERENTIAL VERDICT (2026-07-09): 820/1500 — ON the pinned bar; the
+  GENERALITY CLAUSE FIRES.** Decomposition of the +86: **+18 plumbing** (mask
+  fix + fresh cosine — real, minor, correctly priced), **+68 GENERALITY** (the
+  new relations themselves — 79% of the gain). The relay's 60/40 registration
+  confirmed in shape: real-but-smaller, (c) contributing. Mechanism hint in
+  the per-band contrast: the mixed head beats the control most on QUERY
+  pointing (0.98 vs 0.89 at band 3) — new relation kinds sharpened the
+  referential machinery the old corpus had plateaued (consistent with
+  hypothesis (b); the centroid-drift diagnostic will say more). THE SPEC
+  SENTENCE, EARNED: **expanding the registry improved the core — the
+  weight-side generality grail, now measured on the parser side with its
+  plumbing honestly deducted.** Every future expansion-improves-core claim
+  cites this control. Ctrl ckpt: `.cache/phase1_algebra_ctrl_head.safetensors`.
