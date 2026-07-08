@@ -51,11 +51,12 @@ N_DIG = 3
 N_HEADS = 8
 SENT_MAX = 32
 
-ALG_TRAIN = ".cache/algebra_nl_train.jsonl"
+ALG_TRAIN = os.environ.get("ALG_TRAIN", ".cache/algebra_nl_train.jsonl")
 ALG_TEST = os.environ.get("ALG_TEST", ".cache/algebra_nl_test.jsonl")
 TEST_NAME = os.environ.get("ALG_TEST_NAME", "test")   # states-file key for the test slice
+TRAIN_NAME = os.environ.get("ALG_TRAIN_NAME", "train")  # states-file key for the train slice
 STATES_NPZ = ".cache/phase1_alg_states_{split}.npz"
-ALG_CKPT = ".cache/phase1_algebra_head.safetensors"
+ALG_CKPT = os.environ.get("ALG_CKPT", ".cache/phase1_algebra_head.safetensors")
 TOKENIZER_JSON = ".cache/llama-3.2-1b-weights/tokenizer.json"
 
 
@@ -76,7 +77,7 @@ def build_gold(samples, offsets):
     n = len(samples)
     g = {
         "presence": np.zeros((n, L_FAC), np.float32),
-        "ftype": np.zeros((n, L_FAC), np.int32),         # 0=rel 1=given
+        "ftype": np.zeros((n, L_FAC), np.int32),         # 0=rel 1=given 2=mod 3=sel
         "op": np.zeros((n, L_FAC), np.int32),            # 0=add 1=mul
         "args": np.zeros((n, L_FAC, K_VARS), np.float32),
         "res": np.zeros((n, L_FAC), np.int32),
@@ -86,6 +87,12 @@ def build_gold(samples, offsets):
         "vspan": np.zeros((n, K_VARS, T_ALG), np.float32),
         "query": np.zeros((n,), np.int32),
         "band": np.zeros((n,), np.int32),
+        # the tranche (2026-07-09): explicit per-kind masks (rel mask was
+        # (1-is_lit) — wrong once mod/sel exist) + selector-type gold
+        "sel": np.zeros((n, L_FAC), np.int32),           # SEL_TO_ID
+        "is_rel": np.zeros((n, L_FAC), np.float32),
+        "is_mod": np.zeros((n, L_FAC), np.float32),
+        "is_sel": np.zeros((n, L_FAC), np.float32),
     }
     for i, (smp, offs) in enumerate(zip(samples, offsets)):
         facs = sorted(smp["factors"], key=lambda f: min(s for s, _ in f["spans"]))
@@ -99,11 +106,12 @@ def build_gold(samples, offsets):
             _spans_to_tokmask(f["spans"], offs, g["fspan"][i, j])
             if f["ftype"] == "rel":
                 g["ftype"][i, j] = 0
+                g["is_rel"][i, j] = 1.0
                 g["op"][i, j] = 0 if f["op"] == "add" else 1
                 for a in f["args"]:
                     g["args"][i, j, a] = 1.0
                 g["res"][i, j] = f["result"]
-            else:
+            elif f["ftype"] == "given":
                 g["ftype"][i, j] = 1
                 g["is_lit"][i, j] = 1.0
                 g["res"][i, j] = f["var"]
@@ -111,6 +119,25 @@ def build_gold(samples, offsets):
                 assert t < 10 ** N_DIG
                 for d in range(N_DIG):
                     g["digits"][i, j, d] = (t // 10 ** (N_DIG - 1 - d)) % 10
+            elif f["ftype"] == "mod":
+                g["ftype"][i, j] = 2
+                g["is_mod"][i, j] = 1.0
+                g["args"][i, j, f["var"]] = 1.0
+                g["res"][i, j] = f["result"]
+                t = int(f["k"])                # modulus via the digit head
+                assert t < 10 ** N_DIG
+                for d in range(N_DIG):
+                    g["digits"][i, j, d] = (t // 10 ** (N_DIG - 1 - d)) % 10
+            elif f["ftype"] == "sel":
+                from mycelium.csp_domains import SEL_TO_ID
+                g["ftype"][i, j] = 3
+                g["is_sel"][i, j] = 1.0
+                g["sel"][i, j] = SEL_TO_ID[f["sel"]]
+                for a in f["args"]:
+                    g["args"][i, j, a] = 1.0
+                g["res"][i, j] = f["result"]
+            else:
+                raise ValueError(f"unknown gold ftype {f['ftype']!r}")
     return g
 
 
@@ -161,7 +188,7 @@ def do_precompute():
     sd = load_llama_weights(os.path.join(_ROOT, ".cache/llama-3.2-1b-weights/model.safetensors"))
     attach_llama_layers(host, n_layers=4, sd=sd, cfg=LLAMA_3_2_1B_CFG)
     del sd
-    jobs = [("train", ALG_TRAIN), (TEST_NAME, ALG_TEST)]
+    jobs = [(TRAIN_NAME, ALG_TRAIN), (TEST_NAME, ALG_TEST)]
     if os.environ.get("PRECOMPUTE_ONLY"):
         jobs = [(n_, p_) for n_, p_ in jobs if n_ == os.environ["PRECOMPUTE_ONLY"]]
     for split, path in jobs:
@@ -187,10 +214,10 @@ def do_precompute():
 
 
 def load_alg(split):
-    if split == "test":
-        split = TEST_NAME
+    is_train = split == "train"
+    split = TRAIN_NAME if is_train else (TEST_NAME if split == "test" else split)
     z = np.load(STATES_NPZ.format(split=split))
-    samples = [json.loads(l) for l in open(ALG_TRAIN if split == "train" else ALG_TEST)]
+    samples = [json.loads(l) for l in open(ALG_TRAIN if is_train else ALG_TEST)]
     gold = {k[2:]: z[k] for k in z.files if k.startswith("g_")}
     return samples, z["states"], z["tokmask"], gold, z["sent"]
 
@@ -223,7 +250,14 @@ def build_params(seed=0):
     p["ffn_w1"], p["ffn_b1"] = lin(H_W, 2 * H_W)
     p["ffn_w2"], p["ffn_b2"] = lin(2 * H_W, H_W)
     p["h_pres"], p["h_pres_b"] = lin(H_W, 1)
-    p["h_ftype"], p["h_ftype_b"] = lin(H_W, 2)
+    # ALG2=1 -> tranche geometry (4-way ftype + selector head). Default keeps
+    # the legacy 2-way build BYTE-COMPATIBLE with deployed checkpoints — every
+    # lattice script loads the old ckpt through here.
+    if int(os.environ.get("ALG2", "0")):
+        p["h_ftype"], p["h_ftype_b"] = lin(H_W, 4)   # rel/given/mod/sel
+        p["h_sel"], p["h_sel_b"] = lin(H_W, 4)       # larger/smaller/even/odd
+    else:
+        p["h_ftype"], p["h_ftype_b"] = lin(H_W, 2)
     p["h_op"], p["h_op_b"] = lin(H_W, 2)
     p["h_islit"], p["h_islit_b"] = lin(H_W, 1)
     p["h_dig"], p["h_dig_b"] = lin(H_W, N_DIG * 10)
@@ -264,6 +298,7 @@ def forward(p, trunk, tokmask, sent):
         "pres": (fst @ p["h_pres"] + p["h_pres_b"]).squeeze(-1),
         "ftype": fst @ p["h_ftype"] + p["h_ftype_b"],
         "op": fst @ p["h_op"] + p["h_op_b"],
+        **({"sel": fst @ p["h_sel"] + p["h_sel_b"]} if "h_sel" in p else {}),
         "islit": (fst @ p["h_islit"] + p["h_islit_b"]).squeeze(-1),
         "dig": (fst @ p["h_dig"] + p["h_dig_b"]).reshape(B, L_FAC, N_DIG, 10),
         "args": ptr(p["W_args"]),
@@ -277,7 +312,12 @@ def loss_fn(o, g):
     from tinygrad import Tensor
     pres = g["presence"]
     n_p = pres.sum() + 1e-6
-    rel = pres * (1.0 - g["is_lit_f"])          # rel-factor mask
+    # explicit per-kind masks (tranche); legacy callers without them fall back
+    # to the old two-kind arithmetic (byte-identical behavior)
+    is_rel = g["is_rel"] if "is_rel" in g else (1.0 - g["is_lit_f"])
+    is_mod = g["is_mod"] if "is_mod" in g else g["is_lit_f"] * 0.0
+    is_sel = g["is_sel"] if "is_sel" in g else g["is_lit_f"] * 0.0
+    rel = pres * is_rel
     n_rel = rel.sum() + 1e-6
 
     def bce(lg, tg):
@@ -290,9 +330,15 @@ def loss_fn(o, g):
     l = l + (ce(o["ftype"], g["ftype"]) * pres).sum() / n_p
     l = l + (ce(o["op"], g["op"]) * rel).sum() / n_rel
     l = l + bce(o["islit"], g["is_lit_f"]).mean()
-    l = l + (ce(o["dig"], g["digits"]).mean(-1) * g["is_lit_f"]).sum() / (g["is_lit_f"].sum() + 1e-6)
+    dm = g["is_lit_f"] + is_mod                 # digits: given values + moduli
+    l = l + (ce(o["dig"], g["digits"]).mean(-1) * dm).sum() / (dm.sum() + 1e-6)
+    if "sel" in o and "sel" in g:               # selector-type CE (closed vocab)
+        sm = pres * is_sel
+        l = l + (ce(o["sel"], g["sel"]) * sm).sum() / (sm.sum() + 1e-6)
     args_w = 1.0 + 4.0 * g["args"]
-    l = l + ((bce(o["args"], g["args"]) * args_w).mean(-1) * rel).sum() / n_rel * 2.0
+    am = pres * (is_rel + is_sel + is_mod)
+    n_am = am.sum() + 1e-6
+    l = l + ((bce(o["args"], g["args"]) * args_w).mean(-1) * am).sum() / n_am * 2.0
     l = l + (ce(o["res"], g["res"]) * pres).sum() / n_p * 2.0
     l = l + ce(o["query"], g["query"]).mean() * 2.0
     fsn = g["fspan"] / (g["fspan"].sum(-1, keepdim=True) + 1e-6)
@@ -308,20 +354,34 @@ def loss_fn(o, g):
 # ===========================================================================
 
 def decode(o_np):
+    from mycelium.csp_domains import ID_TO_SEL
     facs = []
     for j in range(L_FAC):
         if o_np["pres"][j] <= 0:
             continue
-        is_lit = o_np["islit"][j] > 0
         res = int(o_np["res"][j].argmax())
-        if is_lit:
+        ft = int(o_np["ftype"][j].argmax()) if o_np["ftype"].shape[-1] == 4 \
+            else (1 if o_np["islit"][j] > 0 else 0)
+
+        def digval():
             digs = o_np["dig"][j].argmax(-1)
-            val = int(sum(d * 10 ** (N_DIG - 1 - i) for i, d in enumerate(digs)))
-            facs.append({"ftype": "given", "var": res, "value": val})
-        else:
+            return int(sum(d * 10 ** (N_DIG - 1 - i)
+                           for i, d in enumerate(digs)))
+        if ft == 1:
+            facs.append({"ftype": "given", "var": res, "value": digval()})
+        elif ft == 0:
             args = list(np.argsort(-o_np["args"][j])[:2])
             op = "add" if o_np["op"][j].argmax() == 0 else "mul"
             facs.append({"ftype": "rel", "op": op,
+                         "args": sorted(int(a) for a in args), "result": res})
+        elif ft == 2:
+            var = int(np.argmax(o_np["args"][j]))
+            facs.append({"ftype": "mod", "var": var, "k": max(digval(), 2),
+                         "result": res})
+        else:
+            args = list(np.argsort(-o_np["args"][j])[:2])
+            sel = ID_TO_SEL[int(o_np["sel"][j].argmax())]
+            facs.append({"ftype": "sel", "sel": sel,
                          "args": sorted(int(a) for a in args), "result": res})
     return facs, int(o_np["query"].argmax())
 
@@ -356,30 +416,34 @@ def do_eval():
                                             "solve": 0, "answer": 0, "query_ok": 0})
             st["n"] += 1
             facs, q_pred = decode({k: o[k][bi] for k in o})
-            gold_facs = []
-            for f in smp["factors"]:
+
+            def fkey(f):
                 if f["ftype"] == "rel":
-                    gold_facs.append(("rel", f["op"], tuple(sorted(f["args"])), f["result"]))
-                else:
-                    gold_facs.append(("given", f["var"], f["value"]))
-            pred_keys = []
-            for f in facs:
-                if f["ftype"] == "rel":
-                    pred_keys.append(("rel", f["op"], tuple(f["args"]), f["result"]))
-                else:
-                    pred_keys.append(("given", f["var"], f["value"]))
-            gset = set(gold_facs)
-            st["fac_ok"] += len(gset & set(pred_keys))
+                    return ("rel", f["op"], tuple(sorted(f["args"])),
+                            f["result"])
+                if f["ftype"] == "given":
+                    return ("given", f["var"], f["value"])
+                if f["ftype"] == "mod":
+                    return ("mod", f["var"], f["k"], f["result"])
+                return ("sel", f["sel"], tuple(sorted(f["args"])), f["result"])
+            gset = set(fkey(f) for f in smp["factors"])
+            st["fac_ok"] += len(gset & set(fkey(f) for f in facs))
             st["fac_tot"] += len(gset)
             st["query_ok"] += int(q_pred == smp["query_var"])
-            rels = [(f["op"], f["args"][0], f["args"][1], f["result"])
-                    for f in facs if f["ftype"] == "rel"]
             gv = {f["var"]: f["value"] for f in facs if f["ftype"] == "given"}
+
+            def fvars(f):
+                if f["ftype"] == "rel" or f["ftype"] == "sel":
+                    return list(f["args"]) + [f["result"]]
+                if f["ftype"] == "mod":
+                    return [f["var"], f["result"]]
+                return [f["var"]]
             try:
-                nv = max([smp["n_vars"]] + [v + 1 for f in facs for v in
-                         ((list(f["args"]) + [f["result"]]) if f["ftype"] == "rel"
-                          else [f["var"]])])
-                res = solve_symbolic(problem_from_algebra(nv, rels, gv, smp["m"]),
+                from mycelium.csp_domains import problem_from_algebra2
+                nv = max([smp["n_vars"]] + [v + 1 for f in facs
+                                            for v in fvars(f)])
+                res = solve_symbolic(problem_from_algebra2(nv, facs, gv,
+                                                           smp["m"]),
                                      budget=200_000, seed=0)
                 if res["status"] == "solved":
                     sol = [int(res["assignment"][v]) for v in range(nv)]
@@ -531,6 +595,22 @@ def do_train(steps, lr, batch, seed):
         for k in p:
             p[k].assign(sd0[k].to(p[k].device).cast(p[k].dtype)).realize()
         print(f"[train] RESUMED from {ALG_CKPT}", flush=True)
+    elif os.environ.get("WARM_FROM"):
+        # tranche warm-start: load every shape-matching key from a LEGACY ckpt;
+        # skips are EXPLICIT AND PRINTED (warm-start may skip loudly — eval
+        # loads must hard-error; this is the training-side allowance)
+        from tinygrad.nn.state import safe_load as _sl
+        sd0 = _sl(os.environ["WARM_FROM"])
+        n_load = 0
+        for k in p:
+            if k in sd0 and tuple(sd0[k].shape) == tuple(p[k].shape):
+                p[k].assign(sd0[k].to(p[k].device).cast(p[k].dtype)).realize()
+                n_load += 1
+            else:
+                print(f"[warm] SKIP {k} (fresh init: "
+                      f"{'missing' if k not in sd0 else 'shape'})", flush=True)
+        print(f"[train] WARM from {os.environ['WARM_FROM']}: "
+              f"{n_load}/{len(p)} keys", flush=True)
     opt = AdamW(list(p.values()), lr=lr, weight_decay=0.01)
     rng = np.random.RandomState(seed)
 
@@ -549,6 +629,10 @@ def do_train(steps, lr, batch, seed):
                          ("op", (L_FAC,), dtypes.int),
                          ("res", (L_FAC,), dtypes.int),
                          ("digits", (L_FAC, N_DIG), dtypes.int),
+                         ("sel", (L_FAC,), dtypes.int),
+                         ("is_rel", (L_FAC,), dtypes.float),
+                         ("is_mod", (L_FAC,), dtypes.float),
+                         ("is_sel", (L_FAC,), dtypes.float),
                          ("query", (), dtypes.int)):
         npdt = np.float32 if dt == dtypes.float else np.int32
         bg[k] = fix(np.zeros((batch,) + shape, npdt), dt)
@@ -615,7 +699,9 @@ def do_train(steps, lr, batch, seed):
                 "args": gold["args"][idx], "fspan": gold["fspan"][idx],
                 "vspan": gold["vspan"][idx], "ftype": gold["ftype"][idx],
                 "op": gold["op"][idx], "res": gold["res"][idx],
-                "digits": gold["digits"][idx], "query": gold["query"][idx]}
+                "digits": gold["digits"][idx], "query": gold["query"][idx],
+                "sel": gold["sel"][idx], "is_rel": gold["is_rel"][idx],
+                "is_mod": gold["is_mod"][idx], "is_sel": gold["is_sel"][idx]}
         for k, v in feed.items():
             npdt = np.float32 if bg[k].dtype == dtypes.float else np.int32
             bg[k].assign(Tensor(v.astype(npdt), dtype=bg[k].dtype).contiguous()).realize()
