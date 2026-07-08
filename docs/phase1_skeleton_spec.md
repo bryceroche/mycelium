@@ -1933,3 +1933,15 @@ token-position × waist-dim, the moment the skeleton trains.
   apparent lever on relational coherence, pending the rel counters),
   DETECTION (the abstention portfolio — for what neither prevents nor
   negotiates away). No overlaps claimed without a counter to witness.
+- **THE WEEK'S CLOSING FRAME (2026-07-10, relay — for the paper's
+  discussion):** the three-jurisdiction row is the Alternator's spec
+  rewritten by measurement. The plane-ride design assigned repair to a
+  notebook, monitoring to a perceiver, cycles to a six-breath loop; what the
+  month built — prevention through representational pressure, negotiation
+  through settling, detection through a zero-parameter portfolio — is the
+  same functional architecture with every component replaced by whatever the
+  measurements ratified. **The spec's nouns died; its verbs all survived.**
+  The honest answer to "did the design work": wrong in every particular,
+  right in every jurisdiction — and the method (registration, kill bars,
+  cheap disconfirmation, jurisdiction discipline) is what converted one into
+  the other without an unexamined premise surviving the trip.
