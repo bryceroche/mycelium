@@ -1960,3 +1960,26 @@ token-position × waist-dim, the moment the skeleton trains.
   alone suffices, the slot-slot machinery (and its mask) simplifies away and
   K-sweep becomes a re-read sweep. Query regression on alg2test rides the
   ablation as a watch column. Script: `scripts/brickp_rel_bars.py`.
+- **BRICK-R REGISTERED, NOT FIRED (2026-07-10, Bryce's packet instinct +
+  relay mapping): THE SELECTIVE-REPEAT LOOP.** Today's stack is STOP-AND-WAIT
+  ARQ (send whole parse, await verdict, retransmit whole, x4) — networking
+  retired it fifty years ago; the three upgrades map onto built machinery:
+  (1) SELECTIVE REPEAT — sequence-number-stable factor identity: VERIFIED
+  factors pinned as DELIVERED (never re-decoded, never re-risked — the
+  ratchet's zero-break criterion PER-FACTOR), rounds spent only on the
+  NACKed window; the mechanism that lets round counts grow without
+  preservation risk (the cap that held multi-round at 4). The verifier's
+  field-level flags are the ACK stream; the accumulate-ledger was always the
+  receiver's buffer. (2) SENDER-SIDE CRC — tier-0 confidence vetoing
+  phantom emissions BEFORE transmit (registered months ago, never deployed;
+  dropping a known-bad frame at the sender costs nothing vs a full
+  round-trip at the receiver). (3) CONGESTION CONTROL — per-problem adaptive
+  round budgets read from the LIVE recovery decay (the ack stream as channel
+  state; two silent rounds -> back off to abstention) — Dopri5 stepping at
+  the session level, free from numbers the audit already logs. BAR:
+  equal-or-better recovery at strictly lower round cost and ZERO
+  delivered-factor breaks. SEQUENCING: does NOT jump the queue — the
+  re-read finding reshapes what a round IS (if h_tok carries the
+  architecture, a retransmission round is a conditioned re-read and
+  selective repeat becomes "re-read only the NACKed spans," composing with
+  masked attention). Waits on the h_tok/h_slot ablation verdict.
