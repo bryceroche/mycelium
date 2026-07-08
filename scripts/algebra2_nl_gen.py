@@ -281,7 +281,8 @@ def generate2(n, seed, out, m=60, max_pairs=2, max_chain=2, teeth=0.0,
             n_vars, factors, sol, query, sym_pairs = gen_system2(
                 rng, n_pairs, chain, m, n_vieta=n_vieta, n_crt=n_crt,
                 irrelevant=irrel)
-            if n_vars > 26:
+            # the head's geometry: K_VARS = L_FAC = 24 slots
+            if n_vars > 24 or len(factors) > 24:
                 n_rej += 1
                 continue
             text, gfactors, mentions = render2(
