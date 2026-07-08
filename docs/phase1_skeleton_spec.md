@@ -1502,6 +1502,32 @@ token-position × waist-dim, the moment the skeleton trains.
   CHAPTER: the registry expansion toward MATH-500, carrying the constraint —
   every new relation's pointer gets candidate restriction + span supervision
   from birth, or it grows its own 396.
+- **THE MATH-500 BAND-SWEEP (2026-07-09 — the registry chapter's first move,
+  measurement before build):** MATH-500 acquired (`.cache/math500_test.jsonl`,
+  500 problems, subject/level/answer labels — MEASURED, never trained on).
+  Transparent regex classifier + n=20 hand-audit. EXPECTATIONS SCORED:
+  plain-integer answers **62.2%** (registered 50-60 — slightly above; +11.2%
+  fractions = rationals near-term; ~26% tail of expressions/tuples/radicals/
+  intervals); algebra+prealgebra 41.2% (reg ~40 ✓); geometry 26% (reg ~20,
+  under-called); INEQUALITY **14.0% measured with a KNOWN UPWARD BIAS** (the
+  audit caught "for n >= 1" domain qualifiers firing the tag; reasoning-core
+  share <10%) -> **ARCHITECTURE VERDICT AS REGISTERED: interval reasoning is a
+  LATER chapter; csp_core's predicate interface stays closed.** AUDIT
+  CAVEATS: "factor" inflates quadratic/poly; the linear-arith-only residual
+  (17.2%, mean level 2.8 — the easiest band) is OPTIMISTIC (radical-
+  simplification problems hide in it) — current-registry-reachable < 17%.
+  GREEDY SET-COVER LIST (marginal): geometry +52, quadratic/poly +49,
+  trig/precalc +54, modular/divis +44, inequality +41, combinatorics +41...
+  (100% at 13 categories). ENGINE-FIT ANNOTATION (for the relay's tranche
+  call): raw coverage ranks geometry/trig first, but they need different
+  FRONTS (diagrams, continuous identities — far from factor-graph CSP);
+  the CSP-NATIVE tranche is **quadratic/poly (integer polynomial roots —
+  still integer-domain, search-tier-able), modular/divis (GAC-native — the
+  search tier eats these), ratio/percent, sequence/series, base-repr,
+  abs-floor** — factor-graph-friendly relations entering through predicate +
+  bridge as always. Mean-level column: linear-arith 2.8, inequality 4.1
+  (difficulty tracks the shopping list's tail). Script:
+  `scripts/math500_band_sweep.py`.
 - **META-NOTE (the relay, 2026-07-08): REAL CAUSES HAVE JURISDICTIONS TOO.**
   Second time this week a thrice-measured REAL phenomenon turned out not to
   govern the question it was assumed to govern (binding weakness -> survivorship;
