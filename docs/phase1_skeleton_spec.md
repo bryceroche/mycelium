@@ -1799,3 +1799,28 @@ token-position × waist-dim, the moment the skeleton trains.
   registration dies happily and the generality thesis strengthens further.
   NEXT FIRE when the rhythm resumes: the SPECIALIST RETRAIN (gates the
   composed-stack headline on the expanded domain).
+- **THE ATLAS, NAMED + PARKED (2026-07-09, Bryce + relay): two hyperbolic
+  spaces, two jurisdictions, zero shared coordinates.** THE BALL (topology,
+  the original §7 object): one problem's factor-graph wiring, hierarchical by
+  construction — behind its flag awaiting the relaxation research. THE ATLAS
+  (semantics, NEW name, conditional): the problem POPULATION's subject
+  taxonomy — relation kinds + domain centroids embedded by family, distinct
+  from the ball per the two-channel spine (hanging the taxonomy on the ball
+  would be the §8.2 channel conflation). FIRST CUSTOMER: the monitor's
+  centroid library under expansion — flat libraries grade novelty
+  gracelessly ("far from everything"); a hierarchical library separates
+  "new leaf of a known family" (parse cautiously, flag for expansion
+  planning) from "genuinely OOD" (abstain hard) — a certification-relevant
+  distinction. Rhymes: radius-as-resolution (coarse cycles read families
+  near origin, fine cycles read leaves near boundary) + per-family
+  curriculum weighting (the pre-committed dividends remedy). TWO GATES,
+  both armed, NOTHING BUILT: (1) the flat library's OOD gradation actually
+  degrading under expansion (watched by the per-tranche lattice/monitor
+  rows); (2) the delta-probe — Gromov delta-hyperbolicity / cophenetic
+  correlation of the learned kind-centroid distance matrix, runnable at
+  tranche 2-3 when the tree has depth (nine near-sibling kinds today = a
+  bush). PRIOR ON RECORD: the radial-depth prize was refuted once (rho
+  0.13) — hyperbolic structure must be a measured property of the data,
+  never an aesthetic; the representations say whether they know the
+  taxonomy, first. Naming plea adopted: "the ball" and "the atlas," never
+  "the ball" ambiguously.
