@@ -406,8 +406,9 @@ def do_eval():
         out = forward(p, Tensor(states[sl_p].astype(np.float32), dtype=dtypes.float),
                       Tensor(tokmask[sl_p].astype(np.float32), dtype=dtypes.float),
                       Tensor(sent[sl_p].astype(np.int32), dtype=dtypes.int))
-        o = {k: out[k].realize().numpy() for k in
-             ("pres", "ftype", "op", "islit", "dig", "args", "res", "query")}
+        keys = ("pres", "ftype", "op", "islit", "dig", "args", "res",
+                "query") + (("sel",) if "sel" in out else ())
+        o = {k: out[k].realize().numpy() for k in keys}
         for bi, i in enumerate(sl):
             i = int(i)
             smp = samples[i]
@@ -502,8 +503,9 @@ def do_errors():
         out = forward(p, Tensor(states[sl_p].astype(np.float32), dtype=dtypes.float),
                       Tensor(tokmask[sl_p].astype(np.float32), dtype=dtypes.float),
                       Tensor(sent[sl_p].astype(np.int32), dtype=dtypes.int))
-        o = {k: out[k].realize().numpy() for k in
-             ("pres", "ftype", "op", "islit", "dig", "args", "res", "query")}
+        keys = ("pres", "ftype", "op", "islit", "dig", "args", "res",
+                "query") + (("sel",) if "sel" in out else ())
+        o = {k: out[k].realize().numpy() for k in keys}
         for bi, i in enumerate(sl):
             i = int(i)
             smp = samples[i]
