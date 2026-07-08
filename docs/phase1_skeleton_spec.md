@@ -1780,3 +1780,22 @@ token-position × waist-dim, the moment the skeleton trains.
   REMAINING ROWS: old-domain TTA regression (doubles as the per-kind linear
   baseline), monitor rebuild + centroid drift, specialist retrain, curriculum
   ablation. Script: `scripts/tta_alg2_dials.py`.
+- **ROW-2 ASTERISKS + THE DIVIDENDS REGISTRATION (2026-07-09, relay):**
+  (1) ZERO-NUMERATOR discipline: 1.0000 @ 411 certified is "no errors
+  observed, error rate upper-bounded ~0.25%" — NOT "the channel is perfect."
+  The original one-wrong-in-571 is the correct prior; this draw is consistent
+  with it, not better. (2) The selector silent-error prediction stays
+  FORMALLY OPEN until the old-domain TTA regression supplies the linear-kind
+  baseline — it resolves against its full comparison, not half of one.
+  (3) REGISTERED WHILE CHEAP — THE DIMINISHING-DIVIDENDS PREDICTION:
+  expansion-improves-everything has a natural expiration. Representational-
+  pressure gains are sublinear in class count (nine-to-fifteen buys less than
+  seven-to-nine); at some tranche the mixed-corpus dilution cost overtakes
+  the organization dividend. PREDICTION: dividends diminish; the crossover
+  shows FIRST in per-kind coverage on the OLDEST relations; the remedy when
+  it arrives is CURRICULUM WEIGHTING, not tranche reversal. The lattice
+  table is already the instrument that catches it — that is what the freeze
+  grades every tranche for. If tranche 3 still improves everything, this
+  registration dies happily and the generality thesis strengthens further.
+  NEXT FIRE when the rhythm resumes: the SPECIALIST RETRAIN (gates the
+  composed-stack headline on the expanded domain).
