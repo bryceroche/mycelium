@@ -173,6 +173,26 @@ def sent_indices(text, offs, mask_row):
     return out
 
 
+def build_slot_masks(o_np, sent_rows):
+    """Evidence-sharing slot mask (B, L, L) from the model's OWN breath-0
+    outputs (deployable): same-sentence (attention-argmax sentence) OR
+    shared-variable (top-2 args + res argmax overlap) OR self."""
+    B = o_np["fat"].shape[0]
+    masks = np.zeros((B, L_FAC, L_FAC), np.float32)
+    for bi in range(B):
+        tok_star = o_np["fat"][bi].argmax(-1)              # (L,)
+        s_id = sent_rows[bi][np.minimum(tok_star, T_ALG - 1)]
+        same = s_id[:, None] == s_id[None, :]
+        M = np.zeros((L_FAC, K_VARS), bool)
+        for j in range(L_FAC):
+            for a in np.argsort(-o_np["args"][bi, j])[:2]:
+                M[j, a] = True
+            M[j, int(o_np["res"][bi, j].argmax())] = True
+        shared = (M.astype(np.int32) @ M.astype(np.int32).T) > 0
+        masks[bi] = (same | shared | np.eye(L_FAC, dtype=bool)).astype(np.float32)
+    return masks
+
+
 # ===========================================================================
 # PRECOMPUTE (GPU once) — small corpus, plain npz
 # ===========================================================================
@@ -261,29 +281,39 @@ def build_params(seed=0):
     p["h_op"], p["h_op_b"] = lin(H_W, 2)
     p["h_islit"], p["h_islit_b"] = lin(H_W, 1)
     p["h_dig"], p["h_dig_b"] = lin(H_W, N_DIG * 10)
+    K_B = int(os.environ.get("ALG_BREATH", "1"))
+    if K_B > 1:   # BRICK-P: masked slot-to-slot breathing (2026-07-09)
+        p["W_bq"], p["W_bq_b"] = lin(H_W, H_W)
+        p["W_bk"], p["W_bk_b"] = lin(H_W, H_W)
+        p["W_bv"], p["W_bv_b"] = lin(H_W, H_W)
+        p["W_bo"] = t(np.zeros((H_W, H_W)))          # zero-init: breath deltas
+        p["W_bo_b"] = t(np.zeros(H_W))               # start silent
+        p["breath_emb"] = t(rng.randn(K_B, H_W) * 0.02)
+        p["breath_gate"] = t(np.full(K_B, -2.0))     # init-closed convex blend
     p["W_args"] = t(rng.randn(H_W, H_W) / math.sqrt(H_W))
     p["W_res"] = t(rng.randn(H_W, H_W) / math.sqrt(H_W))
     p["W_query"] = t(rng.randn(H_W, H_W) / math.sqrt(H_W))
     return p
 
 
-def forward(p, trunk, tokmask, sent):
+def forward(p, trunk, tokmask, sent, slot_mask=None):
     B = trunk.shape[0]
     waist = (trunk @ p["waist_w"] + p["waist_b"]).gelu() + p["sent_emb"][sent]
 
-    def bank(queries, nq):
-        q = queries @ p["attn_wq"] + p["attn_wq_b"]
+    def bank(queries, nq, extra=None):
+        q_in = queries.unsqueeze(0) + (extra if extra is not None else 0)
+        q = q_in @ p["attn_wq"] + p["attn_wq_b"]
         k = waist @ p["attn_wk"] + p["attn_wk_b"]
         v = waist @ p["attn_wv"] + p["attn_wv_b"]
         hd = H_W // N_HEADS
-        qh = q.reshape(nq, N_HEADS, hd).transpose(0, 1)
+        qh = q.reshape(B if extra is not None else 1, nq, N_HEADS, hd).permute(0, 2, 1, 3)
         kh = k.reshape(B, -1, N_HEADS, hd).permute(0, 2, 1, 3)
         vh = v.reshape(B, -1, N_HEADS, hd).permute(0, 2, 1, 3)
-        sc = (qh.unsqueeze(0) @ kh.transpose(-2, -1)) / math.sqrt(hd)
+        sc = (qh @ kh.transpose(-2, -1)) / math.sqrt(hd)
         sc = sc.clip(-1e4, 1e4) + (1.0 - tokmask.reshape(B, 1, 1, -1)) * -1e4
         at = sc.softmax(-1)
         st = (at @ vh).permute(0, 2, 1, 3).reshape(B, nq, H_W)
-        st = st @ p["attn_wo"] + p["attn_wo_b"] + queries.unsqueeze(0)
+        st = st @ p["attn_wo"] + p["attn_wo_b"] + q_in.reshape(-1, nq, H_W)
         st = st + ((st @ p["ffn_w1"] + p["ffn_b1"]).gelu() @ p["ffn_w2"] + p["ffn_b2"])
         return st, at.mean(1)
 
@@ -291,24 +321,64 @@ def forward(p, trunk, tokmask, sent):
     fst, fat = bank(p["fq"], L_FAC)
     qst, _qa = bank(p["qq"], 1)
 
-    def ptr(W):
-        return (fst @ W) @ vst.transpose(-2, -1)         # (B, L, K)
+    # BRICK-P breathing (2026-07-09): K-1 refinement passes. Each breath
+    # re-reads the text conditioned on current beliefs (bank-with-extra) +
+    # MASKED slot-to-slot settling — evidence-sharing topology AS STRUCTURE
+    # (the v98 escape; free-form slot attention is the perceiver trap and is
+    # not built). Deltas enter via zero-init W_bo + init-closed gates:
+    # at init the K-breath output is byte-identical to the incumbent.
+    K_B = int(os.environ.get("ALG_BREATH", "1"))
+    breaths = [fst]
+    if K_B > 1 and slot_mask is not None and "W_bo" in p:
+        cur = fst
+        for kb in range(1, K_B):
+            q_extra = cur + p["breath_emb"][kb].reshape(1, 1, -1)
+            h_tok, _ = bank(p["fq"], L_FAC, extra=q_extra)
+            bq = cur @ p["W_bq"] + p["W_bq_b"]
+            bk = cur @ p["W_bk"] + p["W_bk_b"]
+            bv = cur @ p["W_bv"] + p["W_bv_b"]
+            sc2 = (bq @ bk.transpose(-2, -1)) / math.sqrt(H_W)
+            sc2 = sc2.clip(-1e4, 1e4) + (1.0 - slot_mask) * -1e4
+            h_slot = (sc2.softmax(-1) @ bv) @ p["W_bo"] + p["W_bo_b"]
+            g = p["breath_gate"][kb].sigmoid()
+            cur = cur + g * (h_tok + h_slot - cur)
+            breaths.append(cur)
 
-    return {
-        "pres": (fst @ p["h_pres"] + p["h_pres_b"]).squeeze(-1),
-        "ftype": fst @ p["h_ftype"] + p["h_ftype_b"],
-        "op": fst @ p["h_op"] + p["h_op_b"],
-        **({"sel": fst @ p["h_sel"] + p["h_sel_b"]} if "h_sel" in p else {}),
-        "islit": (fst @ p["h_islit"] + p["h_islit_b"]).squeeze(-1),
-        "dig": (fst @ p["h_dig"] + p["h_dig_b"]).reshape(B, L_FAC, N_DIG, 10),
-        "args": ptr(p["W_args"]),
-        "res": ptr(p["W_res"]),
-        "query": ((qst @ p["W_query"]) @ vst.transpose(-2, -1)).reshape(B, K_VARS),
-        "fat": fat, "vat": vat,
-    }
+    def heads_of(s):
+        return {
+            "pres": (s @ p["h_pres"] + p["h_pres_b"]).squeeze(-1),
+            "ftype": s @ p["h_ftype"] + p["h_ftype_b"],
+            "op": s @ p["h_op"] + p["h_op_b"],
+            **({"sel": s @ p["h_sel"] + p["h_sel_b"]} if "h_sel" in p else {}),
+            "islit": (s @ p["h_islit"] + p["h_islit_b"]).squeeze(-1),
+            "dig": (s @ p["h_dig"] + p["h_dig_b"]).reshape(B, L_FAC, N_DIG, 10),
+            "args": (s @ p["W_args"]) @ vst.transpose(-2, -1),
+            "res": (s @ p["W_res"]) @ vst.transpose(-2, -1),
+        }
+    out = heads_of(breaths[-1])
+    out["query"] = ((qst @ p["W_query"]) @ vst.transpose(-2, -1)).reshape(B, K_VARS)
+    out["fat"], out["vat"] = fat, vat
+    if len(breaths) > 1:
+        out["breaths"] = [heads_of(s) for s in breaths]
+    return out
 
 
 def loss_fn(o, g):
+    """Ladder wrapper: with breaths, per-breath weighted CE (1 + k/(K-1)) —
+    the v98 ladder; the shared query/span terms ride the final breath only."""
+    if "breaths" in o:
+        K_B = len(o["breaths"])
+        tot = None
+        for kb, ob in enumerate(o["breaths"]):
+            full = dict(o, **ob)
+            w = 1.0 + kb / max(K_B - 1, 1)
+            term = _loss_single(full, g) * w
+            tot = term if tot is None else tot + term
+        return tot / K_B
+    return _loss_single(o, g)
+
+
+def _loss_single(o, g):
     from tinygrad import Tensor
     pres = g["presence"]
     n_p = pres.sum() + 1e-6
@@ -403,9 +473,15 @@ def do_eval():
         sl = np.arange(s0, min(s0 + 8, n))
         pad = 8 - len(sl)
         sl_p = np.concatenate([sl, sl[:1].repeat(pad)]) if pad else sl
-        out = forward(p, Tensor(states[sl_p].astype(np.float32), dtype=dtypes.float),
-                      Tensor(tokmask[sl_p].astype(np.float32), dtype=dtypes.float),
-                      Tensor(sent[sl_p].astype(np.int32), dtype=dtypes.int))
+        t_tr = Tensor(states[sl_p].astype(np.float32), dtype=dtypes.float)
+        t_tk = Tensor(tokmask[sl_p].astype(np.float32), dtype=dtypes.float)
+        t_se = Tensor(sent[sl_p].astype(np.int32), dtype=dtypes.int)
+        out = forward(p, t_tr, t_tk, t_se)
+        if int(os.environ.get("ALG_BREATH", "1")) > 1 and "W_bo" in p:
+            o0 = {k: out[k].realize().numpy() for k in ("fat", "args", "res")}
+            mk = build_slot_masks(o0, sent[sl_p])
+            out = forward(p, t_tr, t_tk, t_se,
+                          slot_mask=Tensor(mk, dtype=dtypes.float))
         keys = ("pres", "ftype", "op", "islit", "dig", "args", "res",
                 "query") + (("sel",) if "sel" in out else ())
         o = {k: out[k].realize().numpy() for k in keys}
@@ -616,11 +692,32 @@ def do_train(steps, lr, batch, seed):
     opt = AdamW(list(p.values()), lr=lr, weight_decay=0.01)
     rng = np.random.RandomState(seed)
 
+    K_B = int(os.environ.get("ALG_BREATH", "1"))
+    MASKS = None
+    if K_B > 1:
+        # mask-prep pass: masks from the WARM-STARTED head's own breath-0
+        # parses (deployable-from-birth; frozen for training efficiency)
+        print("[breath] mask-prep pass ...", flush=True)
+        MASKS = np.zeros((n, L_FAC, L_FAC), np.float32)
+        for s0 in range(0, n, 8):
+            sl = np.arange(s0, min(s0 + 8, n))
+            pad = 8 - len(sl)
+            sl_p = np.concatenate([sl, sl[:1].repeat(pad)]) if pad else sl
+            out0 = forward(p, Tensor(states[sl_p].astype(np.float32), dtype=dtypes.float),
+                           Tensor(tokmask[sl_p].astype(np.float32), dtype=dtypes.float),
+                           Tensor(sent[sl_p].astype(np.int32), dtype=dtypes.int))
+            o0 = {k: out0[k].realize().numpy() for k in ("fat", "args", "res")}
+            MASKS[sl] = build_slot_masks(o0, sent[sl_p])[:len(sl)]
+        print(f"[breath] masks ready (mean degree "
+              f"{MASKS.sum(-1).mean():.1f}/{L_FAC})", flush=True)
+
     def fix(a, dt):
         return Tensor(a, dtype=dt).contiguous().realize()
     b_tr = fix(np.zeros((batch, T_ALG, H_TRUNK), np.float32), dtypes.float)
     b_tk = fix(np.zeros((batch, T_ALG), np.float32), dtypes.float)
     b_se = fix(np.zeros((batch, T_ALG), np.int32), dtypes.int)
+    b_mask = fix(np.zeros((batch, L_FAC, L_FAC), np.float32), dtypes.float) \
+        if K_B > 1 else None
     bg = {}
     for k, shape, dt in (("presence", (L_FAC,), dtypes.float),
                          ("is_lit_f", (L_FAC,), dtypes.float),
@@ -642,7 +739,7 @@ def do_train(steps, lr, batch, seed):
     @TinyJit
     def step():
         Tensor.training = True
-        o = forward(p, b_tr, b_tk, b_se)
+        o = forward(p, b_tr, b_tk, b_se, slot_mask=b_mask)
         l = loss_fn(o, bg)
         opt.zero_grad()
         l.backward()
@@ -697,6 +794,8 @@ def do_train(steps, lr, batch, seed):
         b_tr.assign(Tensor(states[idx].astype(np.float32), dtype=dtypes.float).contiguous()).realize()
         b_tk.assign(Tensor(tokmask[idx].astype(np.float32), dtype=dtypes.float).contiguous()).realize()
         b_se.assign(Tensor(sent[idx].astype(np.int32), dtype=dtypes.int).contiguous()).realize()
+        if b_mask is not None:
+            b_mask.assign(Tensor(MASKS[idx], dtype=dtypes.float).contiguous()).realize()
         feed = {"presence": gold["presence"][idx], "is_lit_f": gold["is_lit"][idx],
                 "args": gold["args"][idx], "fspan": gold["fspan"][idx],
                 "vspan": gold["vspan"][idx], "ftype": gold["ftype"][idx],
