@@ -231,6 +231,24 @@ def main():
               f"gate {'PASSED' if gate else 'FAILED — voting void, '
               'agreement columns informational only'}")
 
+        # persist per-sample outcomes for composition analysis (zero-GPU cuts)
+        tag = "O" if arm.startswith("O") else "D"
+        vote_ans = np.full(n, -10**9, np.int64)
+        for i in range(n):
+            votes = [view_ans[k][i] for k in range(K_VIEWS + 1)
+                     if view_ans[k][i] is not None]
+            if votes:
+                top, cnt = Counter(votes).most_common(1)[0]
+                if cnt >= 3:
+                    vote_ans[i] = top
+        np.savez(f".cache/tta_arm_{tag}_bigtest.npz",
+                 vote_ans=vote_ans,
+                 agree=np.array([agree_score[i] for i in range(n)]),
+                 view_forced=np.array([[view_ans[k][i] is not None
+                                        for k in range(K_VIEWS + 1)]
+                                       for i in range(n)]))
+        print(f"  [saved] .cache/tta_arm_{tag}_bigtest.npz")
+
 
 if __name__ == "__main__":
     main()
