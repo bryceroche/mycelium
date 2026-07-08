@@ -1453,6 +1453,32 @@ token-position × waist-dim, the moment the skeleton trains.
   (polarity-flipped prediction standing: input marks can't re-aim trained
   pointers) — beacon failure there = the population is DETECT-AND-ABSTAIN
   ONLY under current machinery. Script: `scripts/ratchet_nack.py`.
+- **THE BEACON, FIRED AS THE CLOSING MEASUREMENT (2026-07-09, relay
+  adjudication):** the 396's story is complete except one sentence and both
+  endings close it. Population: the 460 (states 99.6% correct, pointer
+  mis-aimed, 86% unfixable under perfect flags; every conditioning repair dead
+  by measurement). The beacon is the ONLY untried arm — INPUT-level saliency,
+  mechanistically distinct from all head conditioning. v0: bracket the suspect
+  sentence (flagged slot's attention-argmax sentence — marking where the
+  pointer LOOKS) with reserved token 128002, forward-only L0-L3 re-encode,
+  UNCHANGED heads re-parse, gold-free acceptance with right/wrong split.
+  PINNED ENDINGS: <=2% recovery -> flipped prediction confirmed, pointers
+  don't re-aim under input conditioning either, the population is
+  DETECT-AND-ABSTAIN ONLY, chapter closes zero-loose-ends; >=10% -> input
+  marks move what conditioning can't (the week's most interesting result;
+  beacon graduates). COMPOSABILITY COLUMN (relay): monitor score on
+  beacon-accepted parses — drops-on-repairs = detect->beacon->re-score
+  composes into a self-contained final tier; no-movement = the monitor can't
+  certify its own fixes (ratchet lesson one level up). v1 RATCHET explicitly
+  DEFERRED (relay): building better replacement machinery for a population
+  measured 86%-unreplaceable is the infrastructure-before-customer trap; waits
+  for a population both flaggable AND fixable. §6 LINE (relay's named form,
+  third sighting): **a selection criterion's jurisdiction is which property it
+  selects on — "survived filter X" is evidence about detectability, not
+  repairability.** NEXT CHAPTER after the verdict: the registry expansion
+  (MATH-500 relations), carrying the design constraint forward — every new
+  relation's pointer gets candidate restriction and span supervision FROM
+  BIRTH, or it grows its own 396. Script: `scripts/beacon_closing_arm.py`.
 - **META-NOTE (the relay, 2026-07-08): REAL CAUSES HAVE JURISDICTIONS TOO.**
   Second time this week a thrice-measured REAL phenomenon turned out not to
   govern the question it was assumed to govern (binding weakness -> survivorship;
