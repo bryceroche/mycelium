@@ -1729,3 +1729,24 @@ token-position × waist-dim, the moment the skeleton trains.
   TTA dials on alg2test, monitor centroids in the new fst space, specialist
   retrain (composed-stack number gates on it), curriculum ablation
   (view-robustness graded), the relay's selector silent-error column.
+- **THE +5.7pt DIFFERENTIAL, REGISTERED + FIRED (2026-07-09, relay):**
+  "compound interest" is a description, not an explanation. Three candidates:
+  (a) regularization-by-variety (progressive-resizing logic arriving through
+  the data mix); (b) representational pressure (nine kinds organize the slot
+  space more cleanly than seven — neural-collapse frame; old-kind centroid
+  DRIFT during the monitor rebuild is the free mechanism diagnostic); (c)
+  PLUMBING — the loss-mask bug fix + fresh 14k cosine would lift the old
+  corpus with zero new relations. THE CONTROL: legacy corpus only, tranche
+  code path, same schedule/warm-start. BARS: ctrl >= 870 -> (c) dominates,
+  compound-interest dies honestly; <= 820 -> the generality thesis has its
+  cleanest parser-side evidence; between -> mixed, attributed proportionally.
+  Relay registration: 60/40 toward real-but-smaller generality with (c)
+  contributing (a fixed bug the same day as a surprise gain is what the
+  audit-that-confirms principle exists for). SEQUENCING adopted: the selector
+  silent-error column RIDES the TTA run (shortest shelf life — retraining
+  after the curriculum ablation would muddy whose errors got measured).
+  Design appreciation on record: discriminant-perfect-square-by-construction
+  DISSOLVED the no-real-roots policy (edge case made unrepresentable, not
+  handled); the roundtrip gate refusing symmetric pairs until taught
+  multiset-match, and ill-defined selectors self-gating as VIOLATED — three
+  edge policies, zero new mechanisms.
