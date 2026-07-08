@@ -1,5 +1,25 @@
 # NEXT SESSION — start here (handoff, 2026-07-09)
 
+## THE TRANCHE IS TRAINED (2026-07-09 late — acceptance in progress)
+Registry (MOD+SEL, zero core edits), generator (Vieta+selector+CRT,
+symmetry-aware gates), head (ALG2=1 geometry, legacy byte-compatible), and
+training (mixed 4500, warm-start, best-by-val **0.809**) are ALL DONE —
+spec ledger has the four-seam build log. New ckpt:
+`.cache/phase1_algebra2_head.safetensors` (envs: ALG2=1 ALG_CKPT=... ALG_TRAIN/
+ALG_TEST/ALG_TRAIN_NAME/ALG_TEST_NAME). **alg2test per-band: 480/800 = 60%
+one-shot ANSWER** (legacy was 53.5% on the OLD corpus); fac 0.84-0.92 through
+band 4; graph-solve conservative on v2 by design (Vieta root swaps).
+ACCEPTANCE REMAINING (the lattice table): (1) old-bigtest regression of the
+new head (fired; if fac/ANSWER hold near legacy = no forgetting); (2) TTA-D
+vote + certification dials on alg2test with the new ckpt (sentence permutation
+is corpus-agnostic; adapt tta_views envs); (3) waist-monitor centroids rebuilt
+in the NEW head's fst space; (4) specialist/NACK retrain for the new corpus
+(the deployed stack's repair rounds are legacy-trained — the composed stack
+number waits on this); (5) the curriculum ablation (one extra run:
+coarse->fine teeth anneal vs all-teeth-from-birth, graded on VIEW-ROBUSTNESS
+via the TTA harness). Selector silent-error prediction (relay, registered):
+check answer-disagreement-despite-graph-agreement on selector samples.
+
 Cold-start entry point. Read this first; it points to everything else.
 
 ## NEW HEADLINE (2026-07-09 late): TTA COMPOSITION = 71.5% / 0.833
