@@ -1882,3 +1882,14 @@ token-position × waist-dim, the moment the skeleton trains.
   zero-numerator discipline: "error rate bounded near a quarter percent
   across both domains" — three consistent draws, none independent enough
   to tighten the bound.
+- **BRICK-P FIRST LOOK (2026-07-09 night): K=2 breathing beats the one-shot
+  incumbent on BOTH domains** — val 0.8109 (incumbent 0.8091, still climbing
+  at step 8000); alg2test ANSWER **497/800 = 62.1%** (+17); old bigtest
+  **920/1500 = 61.3%** (+32; legacy started the week at 802). Fac up across
+  nearly every band both corpora; ~1M added params; 0.07s/step. HONEST
+  FRAME, as registered: this is CAPACITY-COMPATIBLE — the verdict belongs to
+  the SPLIT BARS (collision rate vs lone-misbinding rate vs invisible
+  count, breath vs incumbent) — next session's first job. Micro-signal
+  logged: alg2test query accuracy dipped at bands 2-4 while fac rose —
+  watch in the split-bar read. Ckpt:
+  `.cache/phase1_breath_head.safetensors` (ALG_BREATH=2 + ALG2=1 to load).
