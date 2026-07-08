@@ -1983,3 +1983,19 @@ token-position × waist-dim, the moment the skeleton trains.
   architecture, a retransmission round is a conditioned re-read and
   selective repeat becomes "re-read only the NACKed spans," composing with
   masked attention). Waits on the h_tok/h_slot ablation verdict.
+- **ABLATION VERDICT (2026-07-10): THE ARMS ARE REDUNDANT, NOT
+  COMPLEMENTARY.** tok-only: val 0.8155 (best), 495/924; slot-only: 0.8127,
+  501/910; both: 0.8109, 497/920; incumbent 480/888. EACH arm alone
+  reproduces the full gain; the combined head exceeds neither anywhere — NO
+  SYNERGY. If re-read and negotiation were distinct levers, both-terms
+  should win somewhere; interchangeable channels point (Occam) at what both
+  provide identically: AN EXTRA GATED, LADDER-SUPERVISED TRANSFORMATION
+  STEP. The leading explanation is now DEPTH-WITH-SUPERVISION, not either
+  named mechanism; the MISS-recovery signature may be what any second pass
+  buys. REGISTERED CONTROL (the decider, one run): the DEPTH-ONLY arm —
+  same gate, same ladder, second pass = plain per-slot FFN, no
+  cross-attention, no mask, no re-read. Matches ~920 = breathing dies
+  honestly as named depth (keep the simplest form); falls short = the
+  attention second-look is load-bearing and tok-only (best val, zero mask
+  machinery) is the keeper. Brick-R and the K-sweep wait on this verdict —
+  their nouns change with it. Ckpts: `.cache/phase1_breath_{tok,slot}.safetensors`.
