@@ -1893,3 +1893,21 @@ token-position × waist-dim, the moment the skeleton trains.
   logged: alg2test query accuracy dipped at bands 2-4 while fac rose —
   watch in the split-bar read. Ckpt:
   `.cache/phase1_breath_head.safetensors` (ALG_BREATH=2 + ALG2=1 to load).
+- **BRICK-P SPLIT-BAR VERDICT (2026-07-10): MIXED — and the fourth outcome
+  none of the three sentences anticipated: THE GAINS LIVE OUTSIDE THE COUNTED
+  POPULATION.** alg2test: all given-error classes drop (wrongG -15%, swaps
+  -28% vs lone -11% — collision-selective in proportion, weak verdict-A, but
+  n=18->13 underpowered). bigtest: given errors FLAT (565->561) yet ANSWER
+  +32 on the same corpus — the breathing gain lands in REL args/results/query
+  (uncounted by bars aimed at given slots). INVISIBLES FLAT both domains —
+  breathing does not touch confident wrongness; the PREVENTION LAW's
+  territory stays expansion-only (3rd consistent observation). RIDER:
+  belief-movement AUC 0.601/0.608 — real, weak, not a portfolio member on
+  arrival. STANDING: breathing survives (it beat the incumbent both domains,
+  gates-closed) but has NOT proven its distinctive relational mechanism at
+  K=2; the registered next cuts are (a) REL-side error counters (the bars'
+  blind spot, where the +32 apparently lives), (b) the K sweep (one settle
+  step may simply be too shallow — the deducer needed 16), (c) swap-count
+  power via a bigger eval draw. Ledger lesson: BARS INHERIT THE
+  JURISDICTION OF THEIR COUNTERS — a verdict frame aimed at given slots
+  cannot see a rel-slot mechanism. Script: `scripts/brickp_split_bars.py`.
