@@ -1999,3 +1999,22 @@ token-position × waist-dim, the moment the skeleton trains.
   attention second-look is load-bearing and tok-only (best val, zero mask
   machinery) is the keeper. Brick-R and the K-sweep wait on this verdict —
   their nouns change with it. Ckpts: `.cache/phase1_breath_{tok,slot}.safetensors`.
+- **THE DECIDER (2026-07-10): BREATHING DIES HONESTLY AS NAMED DEPTH.**
+  Depth-only (blind per-slot MLP second pass — no text, no neighbors, no
+  mask): val 0.8149, 497/800, 917/1500 — matching tok (495/924), slot
+  (501/910), both (497/920) within a ~6-answer band. ALL second-pass
+  variants are interchangeable; attention on the second pass is NOT
+  load-bearing. Brick-P's kill criterion fires in refined form: the +2pt
+  gain is real and earned (gates-closed) but the mechanism is ONE MORE
+  GATED, LADDER-SUPERVISED STEP. CONSEQUENCES: (1) production head = the
+  DEPTH form (simplest — zero mask machinery, no second bank pass; ties
+  best val); (2) the K-sweep re-prices as ordinary depth scaling (not the
+  frontier); (3) Brick-R stands ON ITS OWN — its rounds were never going to
+  be conditioned re-reads; selective repeat/CRC/congestion control are
+  protocol-level, orthogonal to head internals; (4) the parser-breathing
+  thesis is REFUTED at K=2 in all attention forms — the deducer's breathing
+  remains what it always was (validated, on graphs); any future parser-
+  settling claim now carries the burden of beating the depth control.
+  FOUR formulations in 48 hours: not-breathing -> negotiation -> re-reading
+  -> depth-with-supervision. The gut found a real +2pt; the ledger found
+  its true name. Ckpt: `.cache/phase1_breath_depth.safetensors`.
