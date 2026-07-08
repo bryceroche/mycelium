@@ -110,6 +110,7 @@ def forward_cond(p, c, trunk, tokmask, sent, flag_tok, fail_bit, field_flags):
         "pres": (fst @ p["h_pres"] + p["h_pres_b"]).squeeze(-1),
         "ftype": fst @ p["h_ftype"] + p["h_ftype_b"],
         "op": fst @ p["h_op"] + p["h_op_b"],
+        **({"sel": fst @ p["h_sel"] + p["h_sel_b"]} if "h_sel" in p else {}),
         "islit": (fst @ p["h_islit"] + p["h_islit_b"]).squeeze(-1),
         "dig": (fst @ p["h_dig"] + p["h_dig_b"]).reshape(B, L_FAC, N_DIG, 10),
         "args": ptr(p["W_args"]),
@@ -218,7 +219,7 @@ def do_prep():
                     continue
                 ft = int(prev["ftype"][i, j])
                 res_j = int(prev["res"][i, j])
-                val = int(sum(d * 10 ** (N_DIG - 1 - k)
+                val = int(sum(int(d) * 10 ** (N_DIG - 1 - k)
                               for k, d in enumerate(prev["dig"][i, j])))
                 args2 = sorted(np.where(prev["args"][i, j] > 0)[0].tolist())[:2]
                 if ft == 0:
