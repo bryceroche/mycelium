@@ -15,6 +15,16 @@ resource). Progressive-resizing curriculum still registered for the registry
 tranche. Next: the registry tranche build (quadratic + modular first per the
 band-sweep), TTA voting as standing final stage.
 
+**PORTFOLIO + THRESHOLD (2026-07-09 night):** certification channel CONFIRMED
+— unanimity 5/5 = **0.9982 precision @ 38.1% coverage** (570R/1W); 4/5 =
+0.9925 @ 44.3%. Portfolio: combo AUC bar failed (0.833 < 0.840,
+Spearman 0.464) but the combo WINS at every abstention operating point
+(kept-precision 0.862 vs 0.846 @ 10%) — AUC was the wrong instrument for a
+tail decision (§6 4th sighting, my own registration). Deployed abstention =
+rank-sum combo at the tail. K>5 sweep priced (~7 min/view), deferred.
+Curriculum metric reframed: view-robustness, graded by the TTA harness from
+each relation's first training run.
+
 ## THE SURVIVOR CHAPTER IS CLOSED (2026-07-09 — read this first)
 **Beacon verdict: 14/460 = 3.0% — the population is DETECT-AND-ABSTAIN ONLY
 under current machinery.** Every repair arm is now measured: conditioning dead

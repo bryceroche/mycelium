@@ -1581,6 +1581,33 @@ token-position × waist-dim, the moment the skeleton trains.
   committed-wrongs. Relay's nonzero routing-wall prediction CONFIRMED on
   both arms. npz: `.cache/tta_arm_{O,D}_bigtest.npz`. Scripts:
   `scripts/tta_views.py` + inline composition.
+- **PORTFOLIO + THRESHOLD RESULTS (2026-07-09 night):** READ 1 bars REFUTED
+  AS REGISTERED — Spearman(disagreement, waist) = 0.464 (bar <0.4), combo AUC
+  0.833 < agreement-alone 0.840 (bar >0.86) — BUT the tail tells the opposite
+  story: the combo WINS at every abstention operating point (top-10%:
+  flag-precision 0.528 vs 0.386, kept-precision 0.862 vs 0.846; +1.6pt).
+  MY BAR WAS MIS-REGISTERED per the existing §6 law — AUC is a whole-ranking
+  summary, abstention is a TAIL decision (4th sighting of
+  metric-must-match-decision-structure, this time in my own registration).
+  HONEST VERDICT: the portfolio PAYS where it is operated; the waist signal's
+  rare-flag character complements behavioral agreement in the tail while
+  diluting the mid-ranking. READ 2 CONFIRMED (relay): the certification
+  channel exists — **unanimity 5/5 = 0.9982 precision at 38.1% coverage
+  (570R/1W)**; t=4/5 = 0.9925 @ 44.3%; t=3/5 = 0.9832 @ 51.7%. LEDGER
+  SENTENCES adopted from the relay: (1) THE THIRD CATEGORY — nine mechanisms
+  tried to FIX THE ESTIMATOR (same input, better behavior); TTA changed what
+  the input looks like and AVERAGED — randomizing away bias instead of
+  repairing the instrument; deterministic surface-keyed failure is TTA's
+  favorite food. (2) THE INDEPENDENCE-COMPETENCE LAW (§6 candidate, both
+  clauses): darts must be independent AND drawn from the distribution the
+  board was calibrated on — decorrelation buys nothing past the point where
+  per-view competence falls faster. (3) CURRICULUM METRIC REFRAME:
+  progressive resizing chases VIEW-ROBUSTNESS (competence under re-rendering,
+  measurable per-relation from birth via the TTA harness), not raw fac-exact
+  — a voting system needs per-view competence above the vote's break-even,
+  after which independence does the rest. Scripts:
+  `scripts/portfolio_and_threshold.py`; waist scores persisted
+  (`.cache/waist_scores_bigtest.npz`).
 - **META-NOTE (the relay, 2026-07-08): REAL CAUSES HAVE JURISDICTIONS TOO.**
   Second time this week a thrice-measured REAL phenomenon turned out not to
   govern the question it was assumed to govern (binding weakness -> survivorship;
