@@ -1681,3 +1681,40 @@ token-position × waist-dim, the moment the skeleton trains.
   before that, the density trap). The instrument lesson's causal cousin: locating
   a real cause of X does not license it as the cause of adjacent-X. One sighting
   from a §6 promotion.
+- **THE TRANCHE, BUILT + FIRED (2026-07-09, Bryce's word):** four seams, each
+  committed green before the next. (1) REGISTRY: LTYPE_MOD (a mod k = r,
+  params=k) + LTYPE_SEL (x = sel(a,b), closed vocab larger/smaller/even/odd;
+  ties and not-exactly-one-even are VIOLATED — ill-defined selectors SELF-GATE
+  through uniqueness) via predicate + bridge, **zero csp_core edits** (8th/9th
+  ltype; empty git diff is the proof). mul(x,x) square forms EXCLUDED v0 —
+  repeated scope vars would make the pairwise propagator unsound (the
+  general-regime law applied preemptively). Soundness gates: exhaustive
+  predicates, 500-trial propagator support checks, hole-monotonicity, and
+  end-to-end (Vieta+sel forced; UNSELECTED pair provably symmetric; both-even
+  self-gates; CRT chains solve — two mods force a=17 through propagation).
+  (2) GENERATOR (`algebra2_nl_gen.py`): Vieta pairs (sum+product = the
+  integer-domain quadratic; discriminant always a perfect square by
+  solution-first construction) + selector factors with their own teeth
+  (oblique phrasings at teeth*0.3) and VIEW-INVARIANCE by construction
+  (whole-sentence templates) + MOD in two roles (derived = calculator band;
+  CRT with lcm > m = engine band — the lcm>m uniqueness requirement was
+  caught by the roundtrip gate on first fire). SYMMETRY-AWARE gate: Vieta
+  root pairs are symmetric BY DESIGN (the text cannot bind letters to roots);
+  the gate requires MULTISET match on pairs + exact/unique everywhere else;
+  the query pool never draws raw roots; the mod-base pool excludes roots
+  (teeth orthogonality). Corpora: 2500 train + 800 test at teeth 0.8,
+  token-budget gated; mixed train = 2000 old + 2500 new = 4500. Bands 1-8,
+  ~1.3 sel + ~1.1 mod factors/sample. (3) HEAD: 4-way ftype + h_sel behind
+  **ALG2=1** (legacy build BYTE-COMPATIBLE — every lattice script still loads
+  the old ckpt); explicit per-kind loss masks (the old rel mask (1-is_lit) is
+  wrong once mod/sel exist); mod modulus rides the digit head; sel args ride
+  the bilinear pointers (span supervision via fspan/vspan = POINTER LAW AT
+  BIRTH); WARM_FROM loader with printed skips (train-side allowance; eval
+  loads still hard-error); env-able corpus/ckpt/split names (no clobbering of
+  legacy artifacts). (4) TRAINING FIRED: warm from the legacy ckpt
+  (h_ftype/h_sel fresh), 14k steps cosine, pick-best-by-val, mixed corpus ->
+  `.cache/phase1_algebra2_head.safetensors`. ACCEPTANCE NEXT: per-band eval
+  on alg2test + the LATTICE TABLE (all four dials, old bigtest regression) —
+  a relation that lifts fac-exact but degrades a dial FAILS. Curriculum
+  ablation (all-teeth-from-birth vs coarse->fine) = the one-extra-run arm,
+  after the v0 baseline lands.
