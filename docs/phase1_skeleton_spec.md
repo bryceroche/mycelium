@@ -1649,6 +1649,33 @@ token-position × waist-dim, the moment the skeleton trains.
   in gold metadata as a diagnostic column. CODE'S RECOMMENDATION: (2) as v0
   with (3)'s metadata — quadratics enter as just-another-relation plus one
   supervised mention type; the set-frame waits for the 2% it serves.
+- **MULTI-ROOT POLICY RATIFIED (2026-07-09, relay + Code): option 2 with
+  option 3's metadata.** Option 1 failed on jurisdiction grounds the ledger
+  owns — re-defining every lattice rung a day after the freeze to serve a
+  measured 2% is the mass-bar law applied to design. THE SELECTOR SPLIT (the
+  load-bearing detail — pointer law + division of labor at the same door):
+  the parser's selector head classifies the selector TYPE from a supervised
+  mention span (positive / larger / smaller / in-range — a small CLOSED
+  vocabulary, the <=32-way codebook-selection regime that bootstraps from
+  task gradient); the SOLVER enumerates roots and applies the comparison
+  symbolically. The parser never computes a value to compare — it reads which
+  comparison was requested. GENERATOR REQUIREMENTS folded in: (1) the
+  selector gets its own TEETH (oblique phrasings — "the solution that isn't
+  negative") and its own DECORRELATION CHECK: the selector must be INVARIANT
+  under view re-rendering (permutation may move the phrase; the referent may
+  not change). (2) REGISTERED PREDICTION (relay, jurisdiction stated):
+  selector errors will be RARE but disproportionately SILENT — right graph,
+  right roots, wrong pick; undetectable by UNSAT and by uniqueness (the
+  selected root is forced GIVEN the selector) — their natural detector is
+  behavioral: view disagreement on the ANSWER despite agreement on the GRAPH,
+  logged as its own diagnostic column. If confirmed, the five-seat audience
+  becomes load-bearing for quadratics in a way it never was for linear
+  systems. (3) NO-REAL-ROOTS POLICY: gated OUT of the training corpus
+  (discriminant sign stamped into metadata; banked not built) — "the correct
+  answer is that there is no answer" is a semantically different abstention
+  than "I'm not sure," and the abstain rung doesn't take on that meaning
+  until a benchmark category demands it. THE TRANCHE HAS NO OPEN DESIGN
+  QUESTIONS — only builds, on Bryce's word.
   Second time this week a thrice-measured REAL phenomenon turned out not to
   govern the question it was assumed to govern (binding weakness -> survivorship;
   before that, the density trap). The instrument lesson's causal cousin: locating
