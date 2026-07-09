@@ -2316,3 +2316,22 @@ token-position × waist-dim, the moment the skeleton trains.
   inside the same day the manifest shipped; views join the manifest's
   coverage at the next bump. The table waited three weeks and cost one
   afternoon to read — against a system that knows what time it is.
+- **THE TABLE'S CLOSING FRAMINGS (2026-07-10, relay):** (1) PREVENTION'S
+  SPLIT IS THE LAW DISCOVERING ITS JURISDICTION — narrower and truer than
+  its registration: representational pressure suppresses confident wrongness
+  IN MATURE VOCABULARIES (class geometry sharpened over generations), while
+  DEBUT vocabularies generate fresh invisibles faster than pressure can
+  police. Not limbo — growth. The three-jurisdiction row holds at finer
+  grain: prevention owns the old kinds' confident wrongness; detection owns
+  the debut kinds'. (2) DIVIDENDS' DOUBLE CONFIRMATION is the paper's
+  §6-meets-§9 exhibit: direction and diminishment both true, the bundling
+  caveat pinned BEFORE the numbers could flatter it — a sentence that holds
+  under push from either side because both sides were registered before
+  contact. The certification channel has now survived TWO vocabulary
+  expansions and a generation protocol WITHOUT ONCE BENDING (1.0000 on 413,
+  zero-numerator discipline attached) — the artifact the paper leads with.
+  (3) The views-file catch: the manifest shipped in the morning and
+  recruited its next artifact by evening — mechanism finding its own
+  customers. STANDING: the EXTERNAL ANCHOR (§8) is the one build between
+  here and the arXiv draft; the evidence chapters are essentially written
+  in banked measurements.
