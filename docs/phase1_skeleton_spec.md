@@ -2295,3 +2295,24 @@ token-position × waist-dim, the moment the skeleton trains.
   differential-control citation covers tranche boundaries, not intra-tranche
   bumps. Bigtest series so far: 802 -> 888 (+86, T1) -> 915 (+27, T2) ->
   959 (+44, gen-4 bundled); alg2test: 480 -> 505 -> 541.
+- **THE FIVE-PREDICTION TABLE, READ (2026-07-10, against gen-4):**
+  (1) PREVENTION: **MIXED — two-sighting limbo continues.** Bigtest halved
+  again (6.0% -> 3.33% invisibles, its second drop; forced-precision 0.950)
+  but alg2test ROSE (1.5% -> 2.6%) — the law holds on the oldest domain and
+  is counter-sighted on the middle one; not promotable, honestly split.
+  alg4test debuts at 6.25% (new domains start high, as bigtest once did).
+  (2) DIVIDENDS SLOPE: **both standing claims win** — direction 4-for-4
+  (541/959 all-time highs), PURE-expansion increments shrank (+86 T1 ->
+  +27 T2; gen-4's +44 is bundled, unattributable by the pinned caveat).
+  The reviewer-proof sentence stands: expansion pays, at a declining rate,
+  crossover instrumented and not yet arrived. (3) MOD GAP: the mass lever
+  PARTIALLY works — sel+mod 0.473 -> 0.500 under tripled neighbors (gap
+  7.4 -> 6.1pt); real, unclosed; the view-family lever stays on the bench.
+  (4) FREEZE TABLE #3: **PASSED** — alg2test under gen-4: certification
+  0.516 @ 1.0000 (held from 0.514/0.9982), t=3 0.672 @ 0.9981 (improved);
+  alg4test debut dials on record (1.0000 @ 0.048). (5) ATTRIBUTION: T1
+  differential cited; bundling caveat governs. INCIDENT LOGGED: the TTA
+  views npz is a SHARED PATH overwritten between domains — artifact drift
+  inside the same day the manifest shipped; views join the manifest's
+  coverage at the next bump. The table waited three weeks and cost one
+  afternoon to read — against a system that knows what time it is.
