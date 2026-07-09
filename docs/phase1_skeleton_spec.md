@@ -2100,3 +2100,19 @@ token-position × waist-dim, the moment the skeleton trains.
   subspecies; risk bounded (generator controls difficulty; mentions are
   number-type-blind; digit heads extend as format). **Keep the jaw one more
   tranche, then retire it on purpose, with instruments watching.**
+- **DRIFT + MONITOR V2 (2026-07-10): MECHANISM (b) CONFIRMED IN DIRECTION;
+  THE GEOMETRIC MONITOR DEGRADES BY SELECTION.** Drift (same old-corpus
+  slots, per-space geometry): all three old-kind pairwise centroid cosines
+  DROPPED in the tranche space (0.172->0.126, 0.092->0.088, 0.445->0.410)
+  and within-kind coherence mostly rose (0.358->0.415, 0.401->0.454;
+  rel_mul -0.02) — tighter clusters, farther apart: the neural-collapse
+  signature; the +68's geometry, 5/6 stats in the registered direction
+  (modest magnitudes, honest label). MONITOR V2: AUC **0.543** on the
+  hygiene stack's 56 committed-wrongs (v1: 0.728 on the legacy 226) —
+  SELECTION-HARDENING EXTENDS TO DETECTION (3rd bite): a better pipeline's
+  residual errors look geometrically normal; detectors calibrated on a
+  weaker stack's wrongs degrade as the stack improves. The abstention
+  portfolio's geometric member weakens with pipeline quality — the
+  behavioral member (agreement, 0.840 on the old population) gets its test
+  on the 56 next (zero-GPU from tta_alg2_views.npz + the audit). Library
+  rebuilt in tranche space (5 kinds): `.cache/monitor_centroids_alg2.npz`.
