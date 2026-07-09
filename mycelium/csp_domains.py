@@ -925,6 +925,91 @@ def problem_from_algebra2(n_vars: int, factor_dicts, givens: dict, m: int,
                    var_factors=var_factors, registry=reg)
 
 
+# ===========================================================================
+# TRANCHE 2 (2026-07-10, integer-forced as ratified): PCT + FDIV. Sequences,
+# abs, and ratio COMPOSE from existing relations (add/mul chains + sel);
+# ordinals enter as MENTIONS, never as pointer-resolved structure. Two new
+# ltypes through the same seam — zero csp_core edits (10th/11th).
+# ===========================================================================
+
+LTYPE_PCT = 10   # a*100 == p*b ("a is p% of b"); scope (a, b), params = p
+LTYPE_FDIV = 11  # a // k == q ; scope (a, q), params = k
+
+
+def pct_pred(ftype, params, member_values):
+    a, b = member_values
+    if UNASSIGNED in (a, b):
+        return Consistency.UNVIOLATED
+    return Consistency.SAT if a * 100 == params * b else Consistency.VIOLATED
+
+
+def pct_propagator(state, factor):
+    s = state.copy()
+    va, vb = factor.scope
+    p = factor.params
+    Da, Db = s.domains[va], s.domains[vb]
+    new_a = {a for a in Da if any(a * 100 == p * b for b in Db)}
+    new_b = {b for b in Db if (p * b) % 100 == 0 and (p * b) // 100 in Da}
+    s.domains[va], s.domains[vb] = new_a, new_b
+    return s
+
+
+def fdiv_pred(ftype, params, member_values):
+    a, q = member_values
+    if UNASSIGNED in (a, q):
+        return Consistency.UNVIOLATED
+    return Consistency.SAT if a // params == q else Consistency.VIOLATED
+
+
+def fdiv_propagator(state, factor):
+    s = state.copy()
+    va, vq = factor.scope
+    k = factor.params
+    Da, Dq = s.domains[va], s.domains[vq]
+    new_a = {a for a in Da if a // k in Dq}
+    new_q = {a // k for a in Da} & set(Dq)
+    s.domains[va], s.domains[vq] = new_a, new_q
+    return s
+
+
+def algebra3_registry(m: int) -> dict:
+    reg = algebra2_registry(m)
+    register(reg, LTYPE_PCT, pct_pred, name="pct",
+             specialized_propagator=pct_propagator, arity_hint=2,
+             check_alphabet=tuple(range(m + 1)), representative_params=50)
+    register(reg, LTYPE_FDIV, fdiv_pred, name="fdiv",
+             specialized_propagator=fdiv_propagator, arity_hint=2,
+             check_alphabet=tuple(range(m + 1)), representative_params=3)
+    return reg
+
+
+def problem_from_algebra3(n_vars: int, factor_dicts, givens: dict, m: int,
+                          registry=None) -> "Problem":
+    """Tranche-2 bridge: algebra2 dicts + {"ftype":"pct","args":[a,b],
+    "p":p} + {"ftype":"fdiv","var":a,"k":k,"result":q}."""
+    reg = registry if registry is not None else algebra3_registry(m)
+    known2 = {"rel", "mod", "sel", "given"}
+    extra, base = [], []
+    for f in factor_dicts:
+        (base if f["ftype"] in known2 else extra).append(f)
+    prob = problem_from_algebra2(n_vars, base, givens, m, registry=reg)
+    for f in extra:
+        if f["ftype"] == "pct":
+            fac = Factor(ftype=LTYPE_PCT,
+                         scope=(int(f["args"][0]), int(f["args"][1])),
+                         params=int(f["p"]))
+        elif f["ftype"] == "fdiv":
+            fac = Factor(ftype=LTYPE_FDIV,
+                         scope=(int(f["var"]), int(f["result"])),
+                         params=int(f["k"]))
+        else:
+            raise ValueError(f"unknown ftype {f['ftype']!r}")
+        prob.factors.append(fac)
+        for u in fac.scope:
+            prob.var_factors[u].append(len(prob.factors) - 1)
+    return prob
+
+
 if __name__ == "__main__":
     parse_ok = _ast_parse_ok()
     print(f"[ast.parse] ok={parse_ok}", flush=True)
