@@ -352,8 +352,14 @@ def do_train(steps, lr, batch, seed):
         opt.step()
         return l.realize()
 
+    # HYGIENE (2026-07-10, transplanted from the parser trainer after the
+    # same gap bit twice): cosine decay + periodic loss-EMA pick-best.
+    lr_min = lr / 30.0
+    best_ema, best_snap, ema = float("inf"), None, None
     t0 = time.time()
     for s in range(steps):
+        cur_lr = lr_min + 0.5 * (lr - lr_min) * (1 + math.cos(math.pi * s / steps))
+        opt.lr.assign(Tensor([cur_lr], dtype=dtypes.float)).realize()
         idx = rng.choice(fail_idx, batch, replace=False)
         ftok = np.zeros((batch, T_ALG), np.float32)
         fbit = np.zeros((batch, 1), np.float32)
@@ -393,11 +399,22 @@ def do_train(steps, lr, batch, seed):
             npdt = np.float32 if bg[kk].dtype == dtypes.float else np.int32
             bg[kk].assign(Tensor(tg[kk].astype(npdt), dtype=bg[kk].dtype).contiguous()).realize()
         lv = step()
+        v = float(lv.numpy())
+        ema = v if ema is None else 0.98 * ema + 0.02 * v
+        if s > steps // 4 and ema < best_ema:
+            best_ema = ema
+            best_snap = {k: t.detach().numpy().copy()
+                         for d in (p, c) for k, t in d.items()}
         if s % 500 == 0 or s == steps - 1:
             v = float(lv.numpy())
             assert np.isfinite(v)
             print(f"  step {s:5d} loss={v:.4f} ({(time.time()-t0)/(s+1):.2f}s/step)",
                   flush=True)
+    if best_snap is not None:
+        for d in (p, c):
+            for k in d:
+                d[k].assign(Tensor(best_snap[k], dtype=d[k].dtype)).realize()
+        print(f"[train] restored best-by-loss-EMA ({best_ema:.3f})", flush=True)
     safe_save({**p, **c}, NACK_CKPT)
     print(f"[train] saved {NACK_CKPT}", flush=True)
 
