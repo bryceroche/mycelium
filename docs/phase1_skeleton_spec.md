@@ -2226,3 +2226,22 @@ token-position × waist-dim, the moment the skeleton trains.
   measure the flaw, not the tranche. MC-pi gate incidentally PASSED at
   0.025 (most decorrelated arm yet). Specialist v3 trained (1602 mined,
   purity 192); machinery all pct/fdiv-aware and banked.
+- **THE SYNC DIAGNOSIS (2026-07-10, Bryce's gut + relay walk + Code
+  concur):** "out of sync" resolved to candidates 1+4 with this week's
+  incident log as evidence — the specialist training one generation behind
+  the parser (cross-generation curriculum lag, structural; the self-
+  defeating law caught only the within-generation form) and ARTIFACT DRIFT
+  (warm-start shape mismatch, audit-npz near-clobber, per-generation gold
+  keys, env-ckpt coupling — pairwise-agreement burden growing quadratically,
+  nothing enforcing it). Candidate 3 (the deducer static through three
+  parser vocabularies — Phase 2 has never seen SEL/PCT/FDIV neurally)
+  acknowledged as the ARCHITECTURAL desync — a chapter, not a fix; the
+  Alternator's unpaid debt, December-scale. SHIPPED: generation manifest v0
+  (`scripts/generation_manifest.py`, `.cache/GENERATION.json`) — artifacts
+  pinned by hash + env + regression bars, KNOWN-STALE as a tracked field
+  (centroids in tranche-1 space; thresholds gen-1). REGISTERED v1: the
+  atomic GENERATION BUMP — one script: remine -> specialist retrain ->
+  centroid rebuild -> threshold refit -> manifest write; loaders refuse
+  cross-generation mixes unless overridden. Synchronization converted from
+  discipline (decays) to mechanism (doesn't) — the no-silent-fallbacks law
+  applied to TIME. Gen-4 = the apposition corpus fix + the first full bump.
