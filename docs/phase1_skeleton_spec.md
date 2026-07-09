@@ -2194,3 +2194,19 @@ token-position × waist-dim, the moment the skeleton trains.
   only the new rows**). Loader upgraded: prefix-shaped params copy their
   trained slice with a printed PAD-WARM. Retrain in flight, three-table
   verdict pending against bars 480/888 and the broken run's 41/98/907.
+- **TRANCHE-2 TABLES, HONEST (2026-07-10, after the one-character
+  post-mortem: decode's ftype guard read ==4, sending every 6-wide slot down
+  the legacy branch — the 'collapse' was a comparison operator; pad-warm was
+  real hygiene but not the cause; the discriminator's exoneration of the
+  4-wide path was TRUE AND INCOMPLETE — a guard that dispatches on width is
+  only exercised by the width you test):** alg2test regression **505/800**
+  (bar 480, +25); bigtest **915/1500** (bar 888, +27) — EXPANSION-DIVIDENDS'
+  THIRD INSTANCE (plumbing deduction pending; the differential precedent is
+  the citation). alg3test DEBUT: **233/800 one-shot, fac 0.80-0.86 flat
+  across bands** — reading strong, forcing sparse (the KenKen-g10 shape);
+  QUERY dropped to 0.71-0.81 and the new binding surface is ORDINAL mentions
+  (the registered suspect for the gap). Closure table row 2 confirmed
+  shipped: 2 ltypes / 3 categories. NEXT (the five-prediction table needs
+  the composed layer): specialist remine+retrain on mixed3, TTA dials +
+  per-kind certification on alg3test, invisible-per-capita (prevention 3rd
+  sighting), oldest-relation coverage (dividends), ordinal-query column.
