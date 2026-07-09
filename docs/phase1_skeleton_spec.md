@@ -2127,3 +2127,24 @@ token-position × waist-dim, the moment the skeleton trains.
   updated: geometry is the weak-stack instrument; agreement is the
   strong-stack instrument; the portfolio's composition should re-weight
   toward behavior as the pipeline improves — measured, both directions.
+- **THE GOODHART COROLLARY, REGISTERED BEFORE CONTACT (2026-07-10, relay —
+  selection-hardening's FOURTH face, its deepest: it applies to
+  INSTRUMENTS, not just populations).** WHY behavior stayed sharp: selection
+  only shapes errors against filters they actually FACE — survivors were
+  selected past tier-0, verifier, uniqueness, monitor, but never against
+  re-rendering; TTA was the HELD-OUT examiner. PREDICTION: the vote joined
+  the acceptance path in the composed headline, so agreement entered the
+  selection pressure — the NEXT generation of committed-wrongs will be
+  selected to hold their story across five retellings; agreement-AUC on
+  committed-wrongs will decline MONOTONELY across future stack generations
+  (measure at each; the instrument doesn't weaken — its population hardens
+  against it). THE DEPLOYMENT LAW: **any signal promoted to gate becomes
+  selected-against; the portfolio must always hold one examiner out of the
+  acceptance path.** Instrument rotation as design principle — today
+  behavior polices geometry's blind spot; tomorrow something must police
+  behavior's (bench candidates: the library cross-check, which never joined
+  acceptance; genuinely new view families — paraphrase re-renders when the
+  independence-competence curve prices them — unselected-against by
+  construction). A law that began as a confound registration now explains
+  why detectors AGE — a sentence the abstention literature doesn't have
+  and §7 now does.
