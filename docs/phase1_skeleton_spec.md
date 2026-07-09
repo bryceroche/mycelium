@@ -2163,3 +2163,21 @@ token-position × waist-dim, the moment the skeleton trains.
   (candidates: more mod training mass in tranche-2's mixed corpus; a
   mod-targeted view family). Ckpt kept for forensics:
   `.cache/phase1_curriculum_head.safetensors`.
+- **TWO TRANCHE-2 REGISTRATIONS (2026-07-10, relay):** (1) COMPOSITIONAL
+  CLOSURE — the tranche's first finding, before any training: new-ltypes per
+  category covered is IMPROVING (T1: 2/2 = 1:1; T2: 2/4 = 1:2, sequences/
+  abs/ratio assembled from existing parts). START THE TABLE (one line per
+  tranche); if T3's rationals cost <=1 primitive, the paper gains the claim
+  nobody else can make: the relation menu converges toward a BASIS —
+  coverage growth decouples from vocabulary growth, the strongest form of
+  the generality thesis. Atlas implication: a compositional basis is FLAT
+  by construction at the primitive level — hierarchy lives in COMPOSITIONS;
+  the delta-probe should target PROBLEM representations, not relation
+  embeddings. (2) HIDDEN VARIABLES ARE A NEW GOLD-FORMAT SPECIES (the
+  ratio's product var; sequences' enumerated terms): variables with NO
+  mention span. Pinned before the first template: empty mention-set is a
+  TYPE, not a degenerate case; pointers are NEVER asked to bind them
+  (generator-enumerated, solver-walked — the ratified division of labor);
+  the round-trip gate verifies hidden-var plumbing survives reconstruction.
+  Same class as week one's span-set contiguity catch — the gold decision
+  everything downstream inherits, cheap now, an eval anomaly later.
