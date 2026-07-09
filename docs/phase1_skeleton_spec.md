@@ -2039,3 +2039,16 @@ token-position × waist-dim, the moment the skeleton trains.
   delivered factors, spend rounds on the NACKed window, budget by the decay
   signal — stands on pure protocol economics, no architecture story
   required. Registered on its own merits; runs on them.
+- **NACK HYGIENE VERDICT (2026-07-10): 66.6% -> 70.3% / 0.909 on alg2test.**
+  Cosine + loss-EMA pick-best (save-after-restore) recovered round-1
+  precision 0.400 -> 0.648, round-2 0.167 -> 0.600; rounds now 45R/26W (was
+  16/32). THE PRE-REGISTERED 3-CAUSE SPLIT RESOLVES: recovery to 0.648 vs
+  legacy ~0.68 = the trainer was MOST of it; the ~4pt residual is
+  selection-hardening's share (the equilibrium claim extends weakly to the
+  repair stack, as registered — the confound protection worked; hygiene
+  could not steal it). The expanded-domain composed stack now EXCEEDS the
+  old domain's 70.1% pre-TTA, on the harder corpus. PAPER FLAGS both closed
+  same morning: 68.2 floor cited; census = **40.7M trained total, 9.1M in
+  the deployed algebra lattice** (5.1M parser + 4.0M specialist) on 506M
+  frozen-leveraged — the 90M title corrected 2x in our own disfavor-turned-
+  favor. Script: `scripts/param_census.py`.
