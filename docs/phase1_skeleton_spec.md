@@ -2335,3 +2335,17 @@ token-position × waist-dim, the moment the skeleton trains.
   customers. STANDING: the EXTERNAL ANCHOR (§8) is the one build between
   here and the arXiv draft; the evidence chapters are essentially written
   in banked measurements.
+- **HOUSE CLEANED (2026-07-10, Sonnet-scanned, gates-verified):** scripts:
+  53 concluded/broken scripts -> `scripts/archive/` via git mv (44 remain
+  live: 22 pipeline roots + utilities + the doc-referenced active cluster);
+  three v1XX trainers found BROKEN since the 751c56f deep-clean (imports
+  deleted modules — archived). .cache: **535GB -> 63GB (472GB freed)** —
+  deleted the two retired-era hoards (gsm8k_steps 130GB, v200_perceiver
+  118GB), the fg_v100-v121 orphan tail (~65GB), superseded kenken_ckpts,
+  regenerable trunk/text-nack/L8/stale-generation state caches, unused HF
+  downloads, and the dead breath-arm ckpts (depth + curriculum + ctrl kept
+  per spec notes). PINNED SURVIVED UNTOUCHED: fg_ckpts, sudoku_ckpts,
+  llama/pythia weights, gen-3/gen-4 artifact sets, all corpora jsonl.
+  POST-GATES: manifest --check consistent (gen 4); live-pipeline imports
+  OK; algebra2 soundness ALL PASSED; five-prediction numbers reproduced
+  identically. Git history holds everything tracked, before and after.
