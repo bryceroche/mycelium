@@ -2080,3 +2080,23 @@ token-position × waist-dim, the moment the skeleton trains.
   Queue order held: monitor rebuild (drift feeds §3's +68 mechanism story)
   -> curriculum ablation (target: the 0.473 mod gap, graded composed-level)
   -> tranche 2 (prevention law 3rd sighting + diminishing-dividends due).
+- **INTEGRALITY DECISION RATIFIED (2026-07-10, relay + Code concur):
+  INTEGER-FORCED TRANCHE 2; RATIONALS AS TRANCHE 3'S HEADLINE VARIABLE.**
+  The deciding principle: ONE VARIABLE PER MEASUREMENT — tranche 2 carries
+  two standing predictions (prevention law 3rd sighting;
+  diminishing-dividends) whose attribution dies if the jaw retires in the
+  same tranche. Tranche 2 ships ratio/percent/sequences/base-repr/abs-floor
+  over Z (solution-first makes integer-forcing natural — the perfect-square
+  move again). TRANCHE 3 = the integrality-expiration EXPERIMENT: same
+  relation kinds, rationals admitted, one variable moved, detectability
+  measured before/after — "detection power = constraint density" gets its
+  cleanest demonstration; a figure, not a regression. Calendar aligns: the
+  §8 external anchor needs rational-experienced parsing exactly then.
+  CODE'S NOTE for tranche 3's registration: bounded-denominator rationals
+  SCALE TO INTEGERS over a common denominator (LCM move) — Q-valued
+  problems can enter as scaled-Z CSPs with exact predicates and zero core
+  edits; the jaw's retirement is PARTIAL AND TUNABLE, not binary. Counter-
+  argument on record: integer-forced ratio/percent is a slightly unnatural
+  subspecies; risk bounded (generator controls difficulty; mentions are
+  number-type-blind; digit heads extend as format). **Keep the jaw one more
+  tranche, then retire it on purpose, with instruments watching.**
