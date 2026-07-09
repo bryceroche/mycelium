@@ -2279,3 +2279,19 @@ token-position × waist-dim, the moment the skeleton trains.
   prevention's verdict; oldest-kind coverage for dividends' crossover;
   the mod-gap re-read; freeze table #3; dividends attribution with the
   differential citation).
+- **TWO FRAMINGS BEFORE THE TABLE (2026-07-10, relay):** (1) THE APPOSITION
+  CURE'S MECHANISM: not capacity, not architecture — a SUPERVISION-SURFACE
+  problem. "The third term, l," gives the ordinal a letter to anchor: the
+  pointer law's oldest clause (binding enters as structure) collecting its
+  SIXTH sighting, in generator clothing, at the cheapest remedy on record —
+  a comma and a letter. The fix wasn't in the model; it was giving the text
+  something bindable. (2) THE SLOPE PRE-REGISTRATION: the dividends series
+  reads as dividends-PER-EXPANSION; diminishing-dividends predicts the
+  increment shrinks while the sign holds. If confirmed, BOTH standing claims
+  win simultaneously and the reviewer-proof sentence is "expansion pays, at
+  a declining rate, with the crossover instrumented and not yet arrived."
+  ATTRIBUTION CAVEAT pinned: gen-3->4 bundles the corpus fix with fresh
+  data — its increment (+36/+44) is NOT a pure expansion read; the
+  differential-control citation covers tranche boundaries, not intra-tranche
+  bumps. Bigtest series so far: 802 -> 888 (+86, T1) -> 915 (+27, T2) ->
+  959 (+44, gen-4 bundled); alg2test: 480 -> 505 -> 541.
