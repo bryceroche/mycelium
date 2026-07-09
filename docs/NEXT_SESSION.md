@@ -189,3 +189,22 @@ lone-misbinding-rate vs invisible count, breath vs tranche incumbent, both
 domains — the registered verdict); (b) if bars move: K sweep + TTA-compose
 on the breathing head; (c) still queued: NACK hygiene (3-cause confound
 registered), TTA-compose dump, monitor rebuild + drift, curriculum ablation.
+
+## QUEUE STATE (2026-07-10 midday)
+Monitor rebuild + drift FIRED (mechanism-b prediction: old-kind separations
+widen in tranche space; library -> .cache/monitor_centroids_alg2.npz; v2 AUC
+vs current-stack wrongs printed). NEXT TWO, designs pinned:
+(1) CURRICULUM ABLATION — coarse->fine via SAMPLE ORDERING (teeth flags in
+gen metadata: oblique/shuffled/irrelevant; first third of steps sample
+teeth-easy subset, then anneal to full mix; env CURRICULUM=1 in do_train).
+One run vs the all-teeth incumbent, same budget. GRADE at composed level:
+the 0.473 sel+mod certification gap is the named target; view-robustness
+via the TTA harness. (2) TRANCHE 2 (INTEGER-FORCED, ratified): ratio/percent
+(params-carrying 3-ary, percent as params — the mod pattern), sequences
+(add/mul chains + nth-term queries — mostly EXISTING relations), base-repr
+(new predicate), abs-floor (|a-b| via larger-smaller composition; floor-div
+as mod cousin). Predicates+bridges (zero core edits), generator w/ gates +
+curriculum knob, head extension if new ftypes needed, lattice acceptance
+table. Two standing predictions come due: prevention law 3rd sighting
+(invisible rate drops again?) + diminishing-dividends (crossover watch,
+oldest-relation per-kind coverage first).
