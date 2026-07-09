@@ -152,7 +152,7 @@ def gen_system2(rng, n_pairs, chain_len, m, n_vieta=1, n_crt=0,
 
 
 def render2(rng, n_vars, factors, query, shuffle=True, shuffle_letters=False,
-            oblique_prob=0.0, sel_oblique_prob=0.0):
+            oblique_prob=0.0, sel_oblique_prob=0.0, extra_used=()):
     """algebra_nl_gen.render extended with MOD/SEL units. Same span-SET gold,
     same mention discipline; distractor tooth deferred (header)."""
     letters = list(LETTERS[:max(n_vars, 1)])
@@ -162,7 +162,7 @@ def render2(rng, n_vars, factors, query, shuffle=True, shuffle_letters=False,
     used = sorted({v for f in factors for v in
                    (f["args"] + [f["result"]] if f["ftype"] in ("rel", "sel")
                     else ([f["var"], f["result"]] if f["ftype"] == "mod"
-                          else [f["var"]]))})
+                          else [f["var"]]))} | set(extra_used))
     pre = rng.choice(PREAMBLES).format(vars=", ".join(names[v] for v in used))
     units = []
     for fi, f in enumerate(factors):
@@ -226,7 +226,7 @@ def render2(rng, n_vars, factors, query, shuffle=True, shuffle_letters=False,
     for f in out_factors:
         f.pop("surface", None)
     return ("".join(text_parts), out_factors,
-            {int(k): v for k, v in mentions.items() if v})
+            {int(k): v for k, v in mentions.items() if v}, names)
 
 
 def roundtrip2(n_vars, factors, m, solution, sym_pairs=()):
@@ -285,7 +285,7 @@ def generate2(n, seed, out, m=60, max_pairs=2, max_chain=2, teeth=0.0,
             if n_vars > 24 or len(factors) > 24:
                 n_rej += 1
                 continue
-            text, gfactors, mentions = render2(
+            text, gfactors, mentions, _nm = render2(
                 rng, n_vars, factors, query,
                 shuffle_letters=(rng.random() < teeth * 0.5),
                 oblique_prob=teeth * 0.35, sel_oblique_prob=teeth * 0.3)
@@ -321,7 +321,7 @@ def selftest2():
                                                n_crt=1)
     ok, dec = roundtrip2(n_vars, factors, 60, sol, sym)
     assert ok, "v2 hand system fails round trip"
-    text, gf, mentions = render2(rng, n_vars, factors, q, sel_oblique_prob=1.0)
+    text, gf, mentions, _nm = render2(rng, n_vars, factors, q, sel_oblique_prob=1.0)
     assert all(f["spans"] for f in gf), "every factor needs spans"
     assert any(f["ftype"] == "sel" for f in gf)
     assert any(f["ftype"] == "mod" for f in gf)

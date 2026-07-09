@@ -28,10 +28,12 @@ from algebra_nl_gen import LETTERS  # noqa: E402
 from algebra2_nl_gen import gen_system2, render2, SEL_TEMPLATES  # noqa: E402
 
 ORDINALS = ["first", "second", "third", "fourth", "fifth", "sixth", "seventh"]
-SEQ_STEP_T = ["The {oj} term is {d} more than the {oi} term.",
-              "Each of these: the {oj} term exceeds the {oi} term by {d}."]
-SEQ_STEP_MUL_T = ["The {oj} term is the {oi} term multiplied by {d}."]
-SEQ_GIVEN_T = ["The {o} term is {val}.", "The {o} term equals {val}."]
+SEQ_STEP_T = ["The {oj} term, {lj}, is {d} more than the {oi} term, {li}.",
+              "The {oj} term, {lj}, exceeds the {oi} term, {li}, by {d}."]
+SEQ_STEP_MUL_T = ["The {oj} term, {lj}, is the {oi} term, {li}, "
+                  "multiplied by {d}."]
+SEQ_GIVEN_T = ["The {o} term, {l}, is {val}.",
+               "The {o} term, {l}, equals {val}."]
 PCT_T = ["{a} is {p} percent of {b}.", "{p} percent of {b} gives {a}.",
          "{a} equals {p} percent of {b}."]
 FDIV_T = ["When {a} is divided by {k}, the quotient is {q} and the "
@@ -113,17 +115,22 @@ def render3(rng, n_vars, factors, query, extras, **teeth_kw):
             ("pct", "fdiv") and not f.get("pair") and
             f.get("role") not in ("seq_d", "seq_anchor", "pct_base", "fdiv_a")]
     rest = [f for f in factors if f not in base]
-    text, gf_base, mentions = render2(rng, n_vars, base, query, **teeth_kw)
+    extra_used = sorted({v for f in rest for v in (
+        (f["args"] + [f["result"]]) if f["ftype"] in ("rel", "sel")
+        else ([f["var"], f["result"]] if f["ftype"] in ("mod", "fdiv")
+              else (list(f["args"]) if f["ftype"] == "pct" else [f["var"]])))})
+    text, gf_base, mentions, names = render2(rng, n_vars, base, query,
+                                             extra_used=extra_used,
+                                             **teeth_kw)
     # strip the trailing query sentence; re-add after extras
     qs = text.rfind(". ") + 2
     body, qsent = text[:qs], text[qs:]
-    letters = {}
-    for v, spans in mentions.items():
-        s, e = spans[0]
-        letters[v] = text[s:e]
+    letters = dict(names)   # FULL map (the shuffle-collision fix: term-var
+                            # fallback to LETTERS[v] could collide under
+                            # shuffle; the true map routes through now)
 
     def nm(v):
-        return letters.get(v, LETTERS[v])
+        return letters[v]
     seq_terms = {}
     for kind, pl in extras:
         if kind == "seq":
@@ -135,10 +142,12 @@ def render3(rng, n_vars, factors, query, extras, **teeth_kw):
             oi, oj = f["seq"]
             bank = SEQ_STEP_MUL_T if f["surface"] == "mul" else SEQ_STEP_T
             s = rng.choice(bank).format(oj=ORDINALS[oj], oi=ORDINALS[oi],
-                                        d=nm(f["args"][1]))
+                                        d=nm(f["args"][1]),
+                                        lj=nm(f["result"]),
+                                        li=nm(f["args"][0]))
         elif f.get("role") == "seq_anchor":
             s = rng.choice(SEQ_GIVEN_T).format(
-                o=ORDINALS[f["seq_ord"]], val=f["value"])
+                o=ORDINALS[f["seq_ord"]], val=f["value"], l=nm(f["var"]))
         elif f["ftype"] == "pct":
             s = rng.choice(PCT_T).format(a=nm(f["args"][0]), p=f["p"],
                                          b=nm(f["args"][1]))
