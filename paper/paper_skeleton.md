@@ -35,7 +35,7 @@ negatives discipline survives as the paper's whole voice.
 
 - End-to-end **71.5% / 0.833 answered-precision** (composed: one-shot → withhold →
   selective retransmission → TTA vote) on adversarially-hardened algebra word problems
-  requiring genuine search decisions; **68.5→71.5%** arc documented.
+  requiring genuine search decisions; **68.2→71.5%** arc documented (1023/1500 corrected forced-answer floor, grade_equivalence.py).
 - **Certification tier:** 5/5 TTA unanimity answers at **0.9982 precision @ 38%
   coverage** (original domain), **1.0000 @ 51.4%** (expanded domain; zero-numerator
   discipline: "bounded near a quarter percent"), dial down through 4/5 and 3/5.
