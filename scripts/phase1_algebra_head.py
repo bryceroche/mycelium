@@ -800,11 +800,28 @@ def do_train(steps, lr, batch, seed):
     load_split_val = load_alg("test")
     best_val, best_snap = -1.0, None
 
+    # CURRICULUM=1 (2026-07-10 ablation): coarse->fine by SAMPLE ORDERING.
+    # Teeth score from sample artifacts (post-hoc, deployable-blind): oblique
+    # (mention span >2 chars) + shuffled (letter != LETTERS[v]) + irrelevant.
+    # Phase 1/3: score==0 only; 2/3: score<=1; 3/3: full mix.
+    pools = None
+    if int(os.environ.get("CURRICULUM", "0")):
+        from characterize_survivors import sample_teeth
+        score = np.array([int(t["oblique"]) + int(t["shuffled"])
+                          + int(t["irrelevant"])
+                          for t in (sample_teeth(s_) for s_ in samples)])
+        pools = [np.where(score == 0)[0], np.where(score <= 1)[0],
+                 np.arange(n)]
+        print(f"[curriculum] pools: easy={len(pools[0])} "
+              f"mid={len(pools[1])} full={n}", flush=True)
+
     t0 = time.time()
     for s in range(steps):
         cur_lr = lr_min + 0.5 * (lr - lr_min) * (1 + math.cos(math.pi * s / steps))
         opt.lr.assign(Tensor([cur_lr], dtype=dtypes.float)).realize()
-        idx = rng.choice(n, batch, replace=False)
+        pool = (pools[min(3 * s // steps, 2)] if pools is not None
+                else np.arange(n))
+        idx = rng.choice(pool, batch, replace=False)
         b_tr.assign(Tensor(states[idx].astype(np.float32), dtype=dtypes.float).contiguous()).realize()
         b_tk.assign(Tensor(tokmask[idx].astype(np.float32), dtype=dtypes.float).contiguous()).realize()
         b_se.assign(Tensor(sent[idx].astype(np.int32), dtype=dtypes.int).contiguous()).realize()
