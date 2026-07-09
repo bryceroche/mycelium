@@ -2148,3 +2148,18 @@ token-position × waist-dim, the moment the skeleton trains.
   construction). A law that began as a confound registration now explains
   why detectors AGE — a sentence the abstention literature doesn't have
   and §7 now does.
+- **CURRICULUM ABLATION REFUTED (2026-07-10): coarse->fine is STRICTLY WORSE
+  at equal budget.** val 0.7698 vs 0.8091; one-shot 445 vs 480 (alg2test),
+  825 vs 888 (bigtest); unanimity coverage 0.474 vs 0.514. The 50/50-
+  leaning-modest registration resolves past modest to NEGATIVE. MECHANISM:
+  the fastai resolution analogy breaks — image resolution is the same
+  distribution at lower fidelity; TEETH ARE A DISTRIBUTION SHIFT (the easy
+  pool excludes patterns the test carries at 0.8), so 2/3 of the budget
+  trained partly off-distribution and the decayed-LR final third couldn't
+  recover. Pointer-circuit prevention never materialized. VERDICTS:
+  all-teeth-from-birth is the KEEPER; progressive resizing dies for the
+  parser (transfer condition failed: the axis must be fidelity, not
+  distribution); the 0.473 mod-certification gap needs a DIFFERENT lever
+  (candidates: more mod training mass in tranche-2's mixed corpus; a
+  mod-targeted view family). Ckpt kept for forensics:
+  `.cache/phase1_curriculum_head.safetensors`.
