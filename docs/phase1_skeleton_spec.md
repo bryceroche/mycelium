@@ -2052,3 +2052,15 @@ token-position × waist-dim, the moment the skeleton trains.
   the deployed algebra lattice** (5.1M parser + 4.0M specialist) on 506M
   frozen-leveraged — the 90M title corrected 2x in our own disfavor-turned-
   favor. Script: `scripts/param_census.py`.
+- **THE EXPANDED DOMAIN'S FULL-LATTICE HEADLINE (2026-07-10): 567/800 =
+  70.9% / 0.910 answered-precision** (COMPOSE-1: 3/5 vote -> hygiene stack)
+  — above stack-only 70.3%, above the ORIGINAL domain's 70.1%, on the harder
+  corpus, from 9.1M trained parameters. The tranche is now CARRYING the
+  dials, not holding them. PER-KIND RIDER (composed level, the curriculum's
+  pre-intervention baseline): unanimity coverage sel-only 0.547 / sel+crt
+  0.519 / **sel+mod 0.473** — modular samples certify ~7pt lower: the
+  view-robustness deficit, measured before the curriculum exists to move
+  it. Per-view answers persisted (`.cache/tta_alg2_views.npz` — any-threshold
+  re-votes now zero-GPU). QUEUE: monitor rebuild + drift, curriculum
+  ablation (target: close the mod gap), tranche 2 vs its banked list (the
+  prevention law's 3rd sighting + diminishing-dividends both come due).
