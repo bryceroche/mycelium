@@ -208,3 +208,25 @@ curriculum knob, head extension if new ftypes needed, lattice acceptance
 table. Two standing predictions come due: prevention law 3rd sighting
 (invisible rate drops again?) + diminishing-dividends (crossover watch,
 oldest-relation per-kind coverage first).
+
+## TRANCHE 2 IN PROGRESS (2026-07-10 — registry seam DONE, green, pushed)
+LTYPE_PCT=10 (a*100==p*b, params p) + LTYPE_FDIV=11 (a//k==q, params k) via
+problem_from_algebra3; soundness inline-gated; ZERO core edits (11 domains).
+DESIGN (settled): sequences = add/mul chains + ORDINAL MENTIONS ("the fifth
+term" = oblique mention phrase for an explicitly-constructed term var — the
+relay's division-of-labor note honored by construction); abs = sel+add
+composition; ratio = twin-mul composition (RATIO ltype deferred, scope note).
+REMAINING SEAMS, in order: (1) generator v3 (algebra3_nl_gen.py: seq-chain
+builder + ordinal mention forms + PCT/FDIV templates + tens-digit fdiv+mod
+compositions; solution-first integer-forced as ratified; gates via
+problem_from_algebra3 + symmetry-aware roundtrip); (2) head: ftype 4->6
+(pct=4: a via args-argmax, b via res pointer, p via digits — the MOD shape;
+fdiv=5: same shape), build_gold/decode/loss masks/eval fkey extended, ALG2
+geometry only; (3) corpora (mixed train = old + alg2 + alg3), precompute,
+train (warm from phase1_algebra2_head, 14k, all-teeth-from-birth per the
+curriculum refutation); (4) THE FIVE-PREDICTION TABLE: prevention law 3rd
+sighting (invisible per capita), diminishing-dividends (per-kind coverage on
+OLDEST relations), mod-gap lever (more mod mass in mix -> does 0.473 close),
+lattice acceptance #3 (four dials + both prior domains as regression rows),
+expansion-dividends 3rd instance (with the differential-control pattern as
+citation if old domains move).
