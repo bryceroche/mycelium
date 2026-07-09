@@ -2210,3 +2210,19 @@ token-position × waist-dim, the moment the skeleton trains.
   the composed layer): specialist remine+retrain on mixed3, TTA dials +
   per-kind certification on alg3test, invisible-per-capita (prevention 3rd
   sighting), oldest-relation coverage (dividends), ordinal-query column.
+- **COMPOSED LAYER ON ALG3TEST (2026-07-10): THE DEBUT GAP IS A FORCING GAP,
+  AND THE ORDINAL SUSPECT IS CONFIRMED WITH A GENERATOR ROOT CAUSE.** Rider:
+  ordinal-term queries one-shot-fail **0.870 vs 0.656 direct** (+21pt).
+  Audit: only 43/800 FORCE at one-shot (233 raw answers were largely
+  under-constrained); composed 83/800; certification coverage 0.033;
+  per-kind unanimity: **fdiv 0.008 / pct 0.026** vs linear 0.231. ROOT
+  CAUSE (my own render3 comment flagged it, unimplemented): TERM VARS ARE
+  LETTER-STARVED — seq sentences use ordinals only; the term's letter
+  appears twice (preamble + query sentence, both low-content) and the query
+  pointer binds on starvation rations. FIX (mechanical, next fire): seq
+  sentences carry letter+ordinal APPOSITION ("the second term, e, is ...")
+  and/or ordinal-phrase queries with recorded mentions; regenerate corpus,
+  retrain, THEN read the five-prediction table — reading it now would
+  measure the flaw, not the tranche. MC-pi gate incidentally PASSED at
+  0.025 (most decorrelated arm yet). Specialist v3 trained (1602 mined,
+  purity 192); machinery all pct/fdiv-aware and banked.
