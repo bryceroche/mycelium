@@ -734,6 +734,21 @@ def do_train(steps, lr, batch, seed):
             if k in sd0 and tuple(sd0[k].shape) == tuple(p[k].shape):
                 p[k].assign(sd0[k].to(p[k].device).cast(p[k].dtype)).realize()
                 n_load += 1
+            elif k in sd0 and len(sd0[k].shape) == len(p[k].shape) and all(
+                    o <= n_ for o, n_ in zip(sd0[k].shape, p[k].shape)):
+                # PAD-WARM (2026-07-10, the ftype-router lesson): old shape is
+                # a prefix of new — copy the trained slice, keep fresh init on
+                # the new rows. Discarding a trained ROUTER forces relearning
+                # inside a converged circuit (the bootstrap-trap family).
+                import numpy as _np
+                cur = p[k].detach().numpy()
+                old = sd0[k].to(p[k].device).cast(p[k].dtype).numpy()
+                sl = tuple(slice(0, o) for o in old.shape)
+                cur[sl] = old
+                p[k].assign(Tensor(cur, dtype=p[k].dtype)).realize()
+                n_load += 1
+                print(f"[warm] PAD-WARM {k} {tuple(old.shape)} -> "
+                      f"{tuple(cur.shape)}", flush=True)
             else:
                 print(f"[warm] SKIP {k} (fresh init: "
                       f"{'missing' if k not in sd0 else 'shape'})", flush=True)
