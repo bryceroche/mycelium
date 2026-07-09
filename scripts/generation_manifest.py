@@ -11,6 +11,27 @@ import argparse, hashlib, json, os, sys
 
 MANIFEST = ".cache/GENERATION.json"
 
+GEN4 = {
+    "gen_id": 4,
+    "date": "2026-07-10",
+    "env": {"ALG2": "1", "ALG_FTYPES": "6"},
+    "parser_ckpt": ".cache/phase1_algebra4_head.safetensors",
+    "specialist_ckpt": ".cache/phase1_algebra4_nack.safetensors",
+    "monitor_centroids": ".cache/monitor_centroids_alg2.npz",
+    "corpora": {
+        "train": ".cache/algebra_mixed4_train.jsonl",
+        "test": ".cache/algebra4_nl_test.jsonl",
+        "repair": ".cache/algebra4_repair.jsonl",
+    },
+    "regression_bars": {"alg2test_oneshot": 541, "bigtest_oneshot": 959,
+                        "alg4test_oneshot_raw": 331,
+                        "alg4test_composed": 143},
+    "known_stale": ["monitor_centroids (still tranche-1 space)",
+                    "lattice thresholds (gen-1 fit)"],
+    "notes": "gen-4 = apposition corpus + in-generation specialist; first "
+             "transactional bump (manifest-last, everything alongside gen-3).",
+}
+
 GEN3 = {
     "gen_id": 3,
     "date": "2026-07-10",
@@ -44,7 +65,7 @@ def fhash(p):
 
 
 def write():
-    m = dict(GEN3)
+    m = dict(GEN4)
     m["hashes"] = {k: fhash(v) for k, v in
                    [("parser", m["parser_ckpt"]),
                     ("specialist", m["specialist_ckpt"]),

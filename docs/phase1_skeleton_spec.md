@@ -2264,3 +2264,18 @@ token-position × waist-dim, the moment the skeleton trains.
   manifest names the debt; this names the payoff that would justify paying
   it. GEN-4 = apposition corpus fix + the first full transactional bump;
   the five-prediction table reads only after it.
+- **GEN-4 COMMITTED (2026-07-10, the first transactional bump — all stages
+  green, manifest-last):** THE APPOSITION CURE WORKED — ordinal-q fail
+  0.870 -> **0.670** (gap to direct 21pt -> 11pt); graph-solve 95 -> 194;
+  composed 83 -> **143/800**; TTA t=3 coverage 0.133 -> 0.297 @ 0.987;
+  certification 38 @ 1.0000. **DIVIDENDS' FOURTH INSTANCE, BIGGEST YET:**
+  alg2test 505 -> **541**, bigtest 915 -> **959** — four expansions, zero
+  regressions, both prior domains improved every time, best val ever
+  (0.8343). HONEST RESIDUAL: the new kinds certify at fdiv 0.030 / pct
+  0.050 — chains+params multiply the exactness forcing needs; real domain
+  difficulty now, the specialist/lattice's territory. Gen-4 manifest
+  written + checked; gen-3 untouched alongside. NEXT: the FIVE-PREDICTION
+  TABLE reads against gen-4 (invisibles per capita across generations for
+  prevention's verdict; oldest-kind coverage for dividends' crossover;
+  the mod-gap re-read; freeze table #3; dividends attribution with the
+  differential citation).
