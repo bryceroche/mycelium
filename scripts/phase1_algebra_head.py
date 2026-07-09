@@ -467,7 +467,7 @@ def decode(o_np):
         if o_np["pres"][j] <= 0:
             continue
         res = int(o_np["res"][j].argmax())
-        ft = int(o_np["ftype"][j].argmax()) if o_np["ftype"].shape[-1] == 4 \
+        ft = int(o_np["ftype"][j].argmax()) if o_np["ftype"].shape[-1] >= 4 \
             else (1 if o_np["islit"][j] > 0 else 0)
 
         def digval():
