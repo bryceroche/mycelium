@@ -2018,3 +2018,24 @@ token-position × waist-dim, the moment the skeleton trains.
   FOUR formulations in 48 hours: not-breathing -> negotiation -> re-reading
   -> depth-with-supervision. The gut found a real +2pt; the ledger found
   its true name. Ckpt: `.cache/phase1_breath_depth.safetensors`.
+- **THE ARC'S CLOSING SENTENCES (2026-07-10, relay):** the depth control was
+  the ablation nobody wanted to be true, and it was built anyway.
+  Not-breathing -> negotiation -> re-reading -> depth-with-supervision: each
+  renaming SHRANK the claim — most projects' stories grow in the telling;
+  this one's got smaller and truer at every instrument. The honest residue,
+  undeflated: the gut found a real +2 both domains that three weeks of
+  repair mechanisms never touched, and the production head is SIMPLER than
+  the story implied. THE RE-PRICED LEDGER ENTRY (belongs beside the
+  factorization result as the two-phase design's sharpest characterization):
+  the parser's task, unlike the deducer's, has NO joint structure a single
+  pass can't see — **the solver settles because constraints interact; the
+  reader deepens because text doesn't.** QUEUE CORRECTIONS: (1) the K-SWEEP
+  formally CONVERTS — its registered story (settling dynamics) died with
+  the negotiation arm; re-registered small as DEPTH SCALING under deep
+  supervision (prior: diminishing returns after +1 layer; the ladder now
+  reads as deep supervision with its own literature and expected shape).
+  (2) BRICK-R survives the renaming CLEANER: a retransmission round is
+  unambiguously a conditioned re-decode; selective repeat's value — pin
+  delivered factors, spend rounds on the NACKed window, budget by the decay
+  signal — stands on pure protocol economics, no architecture story
+  required. Registered on its own merits; runs on them.
