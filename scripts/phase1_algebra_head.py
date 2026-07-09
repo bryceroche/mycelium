@@ -93,6 +93,9 @@ def build_gold(samples, offsets):
         "is_rel": np.zeros((n, L_FAC), np.float32),
         "is_mod": np.zeros((n, L_FAC), np.float32),
         "is_sel": np.zeros((n, L_FAC), np.float32),
+        # tranche 2 (2026-07-10): pct=4, fdiv=5 — the mod head-shape
+        "is_pct": np.zeros((n, L_FAC), np.float32),
+        "is_fdiv": np.zeros((n, L_FAC), np.float32),
     }
     for i, (smp, offs) in enumerate(zip(samples, offsets)):
         facs = sorted(smp["factors"], key=lambda f: min(s for s, _ in f["spans"]))
@@ -136,6 +139,23 @@ def build_gold(samples, offsets):
                 for a in f["args"]:
                     g["args"][i, j, a] = 1.0
                 g["res"][i, j] = f["result"]
+            elif f["ftype"] == "pct":
+                g["ftype"][i, j] = 4
+                g["is_pct"][i, j] = 1.0
+                g["args"][i, j, f["args"][0]] = 1.0
+                g["res"][i, j] = f["args"][1]
+                t = int(f["p"])
+                assert t < 10 ** N_DIG
+                for d in range(N_DIG):
+                    g["digits"][i, j, d] = (t // 10 ** (N_DIG - 1 - d)) % 10
+            elif f["ftype"] == "fdiv":
+                g["ftype"][i, j] = 5
+                g["is_fdiv"][i, j] = 1.0
+                g["args"][i, j, f["var"]] = 1.0
+                g["res"][i, j] = f["result"]
+                t = int(f["k"])
+                for d in range(N_DIG):
+                    g["digits"][i, j, d] = (t // 10 ** (N_DIG - 1 - d)) % 10
             else:
                 raise ValueError(f"unknown gold ftype {f['ftype']!r}")
     return g
@@ -274,7 +294,8 @@ def build_params(seed=0):
     # the legacy 2-way build BYTE-COMPATIBLE with deployed checkpoints — every
     # lattice script loads the old ckpt through here.
     if int(os.environ.get("ALG2", "0")):
-        p["h_ftype"], p["h_ftype_b"] = lin(H_W, 4)   # rel/given/mod/sel
+        nft = int(os.environ.get("ALG_FTYPES", "4"))  # 6 = +pct/fdiv (T2)
+        p["h_ftype"], p["h_ftype_b"] = lin(H_W, nft)
         p["h_sel"], p["h_sel_b"] = lin(H_W, 4)       # larger/smaller/even/odd
     else:
         p["h_ftype"], p["h_ftype_b"] = lin(H_W, 2)
@@ -401,6 +422,8 @@ def _loss_single(o, g):
     is_rel = g["is_rel"] if "is_rel" in g else (1.0 - g["is_lit_f"])
     is_mod = g["is_mod"] if "is_mod" in g else g["is_lit_f"] * 0.0
     is_sel = g["is_sel"] if "is_sel" in g else g["is_lit_f"] * 0.0
+    is_pct = g["is_pct"] if "is_pct" in g else g["is_lit_f"] * 0.0
+    is_fdiv = g["is_fdiv"] if "is_fdiv" in g else g["is_lit_f"] * 0.0
     rel = pres * is_rel
     n_rel = rel.sum() + 1e-6
 
@@ -414,13 +437,13 @@ def _loss_single(o, g):
     l = l + (ce(o["ftype"], g["ftype"]) * pres).sum() / n_p
     l = l + (ce(o["op"], g["op"]) * rel).sum() / n_rel
     l = l + bce(o["islit"], g["is_lit_f"]).mean()
-    dm = g["is_lit_f"] + is_mod                 # digits: given values + moduli
+    dm = g["is_lit_f"] + is_mod + is_pct + is_fdiv   # digits: values + params
     l = l + (ce(o["dig"], g["digits"]).mean(-1) * dm).sum() / (dm.sum() + 1e-6)
     if "sel" in o and "sel" in g:               # selector-type CE (closed vocab)
         sm = pres * is_sel
         l = l + (ce(o["sel"], g["sel"]) * sm).sum() / (sm.sum() + 1e-6)
     args_w = 1.0 + 4.0 * g["args"]
-    am = pres * (is_rel + is_sel + is_mod)
+    am = pres * (is_rel + is_sel + is_mod + is_pct + is_fdiv)
     n_am = am.sum() + 1e-6
     l = l + ((bce(o["args"], g["args"]) * args_w).mean(-1) * am).sum() / n_am * 2.0
     l = l + (ce(o["res"], g["res"]) * pres).sum() / n_p * 2.0
@@ -462,6 +485,14 @@ def decode(o_np):
             var = int(np.argmax(o_np["args"][j]))
             facs.append({"ftype": "mod", "var": var, "k": max(digval(), 2),
                          "result": res})
+        elif ft == 4:
+            facs.append({"ftype": "pct",
+                         "args": [int(np.argmax(o_np["args"][j])), res],
+                         "p": max(digval(), 1)})
+        elif ft == 5:
+            facs.append({"ftype": "fdiv",
+                         "var": int(np.argmax(o_np["args"][j])),
+                         "k": max(digval(), 2), "result": res})
         else:
             args = list(np.argsort(-o_np["args"][j])[:2])
             sel = ID_TO_SEL[int(o_np["sel"][j].argmax())]
@@ -516,6 +547,10 @@ def do_eval():
                     return ("given", f["var"], f["value"])
                 if f["ftype"] == "mod":
                     return ("mod", f["var"], f["k"], f["result"])
+                if f["ftype"] == "pct":
+                    return ("pct", tuple(f["args"]), f["p"])
+                if f["ftype"] == "fdiv":
+                    return ("fdiv", f["var"], f["k"], f["result"])
                 return ("sel", f["sel"], tuple(sorted(f["args"])), f["result"])
             gset = set(fkey(f) for f in smp["factors"])
             st["fac_ok"] += len(gset & set(fkey(f) for f in facs))
@@ -524,16 +559,17 @@ def do_eval():
             gv = {f["var"]: f["value"] for f in facs if f["ftype"] == "given"}
 
             def fvars(f):
-                if f["ftype"] == "rel" or f["ftype"] == "sel":
-                    return list(f["args"]) + [f["result"]]
-                if f["ftype"] == "mod":
+                if f["ftype"] in ("rel", "sel", "pct"):
+                    return list(f["args"]) + ([f["result"]]
+                                              if "result" in f else [])
+                if f["ftype"] in ("mod", "fdiv"):
                     return [f["var"], f["result"]]
                 return [f["var"]]
             try:
-                from mycelium.csp_domains import problem_from_algebra2
+                from mycelium.csp_domains import problem_from_algebra3
                 nv = max([smp["n_vars"]] + [v + 1 for f in facs
                                             for v in fvars(f)])
-                res = solve_symbolic(problem_from_algebra2(nv, facs, gv,
+                res = solve_symbolic(problem_from_algebra3(nv, facs, gv,
                                                            smp["m"]),
                                      budget=200_000, seed=0)
                 if res["status"] == "solved":
@@ -746,6 +782,8 @@ def do_train(steps, lr, batch, seed):
                          ("is_rel", (L_FAC,), dtypes.float),
                          ("is_mod", (L_FAC,), dtypes.float),
                          ("is_sel", (L_FAC,), dtypes.float),
+                         ("is_pct", (L_FAC,), dtypes.float),
+                         ("is_fdiv", (L_FAC,), dtypes.float),
                          ("query", (), dtypes.int)):
         npdt = np.float32 if dt == dtypes.float else np.int32
         bg[k] = fix(np.zeros((batch,) + shape, npdt), dt)
@@ -833,7 +871,8 @@ def do_train(steps, lr, batch, seed):
                 "op": gold["op"][idx], "res": gold["res"][idx],
                 "digits": gold["digits"][idx], "query": gold["query"][idx],
                 "sel": gold["sel"][idx], "is_rel": gold["is_rel"][idx],
-                "is_mod": gold["is_mod"][idx], "is_sel": gold["is_sel"][idx]}
+                "is_mod": gold["is_mod"][idx], "is_sel": gold["is_sel"][idx],
+                "is_pct": gold["is_pct"][idx], "is_fdiv": gold["is_fdiv"][idx]}
         for k, v in feed.items():
             npdt = np.float32 if bg[k].dtype == dtypes.float else np.int32
             bg[k].assign(Tensor(v.astype(npdt), dtype=bg[k].dtype).contiguous()).realize()
