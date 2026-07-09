@@ -195,6 +195,17 @@ def main():
                 f"{cov_kind[kd] / max(n_kind[kd], 1):.3f}"
                 for kd in ("linear", "mod", "sel")))
 
+    # persist per-sample outcomes (composition + any-threshold re-votes)
+    SENT = -10**9
+    va = np.full((n, K_VIEWS + 1), SENT, np.int64)
+    for k in range(K_VIEWS + 1):
+        for i in range(n):
+            if view_a[k][i] is not None:
+                va[i, k] = int(view_a[k][i])
+    np.savez(".cache/tta_alg2_views.npz", view_ans=va,
+             gold=np.array(gold_ans, np.int64))
+    print(f"\n  [saved] .cache/tta_alg2_views.npz (per-view answers)")
+
     # selector silent-error column: ans-disagree despite graph-agree
     stats = {True: [0, 0], False: [0, 0]}   # has_sel -> [graph-agree, +ans-disagree]
     for i in range(n):
