@@ -142,11 +142,11 @@ def wrong_fields(o, g, i, bi):
         if ft in (0, 3):             # rel + sel carry 2-hot args
             top2 = set(np.argsort(-o["args"][bi, j])[:2].tolist())
             wf[j, 3] = top2 != set(np.where(g["args"][i, j] > 0.5)[0].tolist())
-        if ft == 2:                  # mod carries a 1-hot arg (the var)
+        if ft in (2, 4, 5):          # mod/pct/fdiv carry a 1-hot arg
             wf[j, 3] = int(np.argmax(o["args"][bi, j])) != \
                 int(np.argmax(g["args"][i, j]))
         wf[j, 4] = int(o["res"][bi, j].argmax()) != g["res"][i, j]
-        if ft in (1, 2):             # digits: given values + moduli (NOT sel)
+        if ft in (1, 2, 4, 5):       # digits: values + params (NOT sel)
             wf[j, 5] = not bool(
                 (o["dig"][bi, j].argmax(-1) == g["digits"][i, j]).all())
     return wf
@@ -206,7 +206,7 @@ def do_prep():
     # failure, whatever its graph looks like. PURITY=0 disables (for the
     # contamination measurement).
     if int(os.environ.get("PURITY", "1")):
-        from mycelium.csp_domains import problem_from_algebra2, ID_TO_SEL
+        from mycelium.csp_domains import problem_from_algebra3 as problem_from_algebra2, ID_TO_SEL
         from mycelium.csp_core import solve_symbolic
         n_pure = 0
         for i in np.where(has_fail)[0]:
@@ -234,6 +234,17 @@ def do_prep():
                     if not args2:
                         continue
                     facs.append({"ftype": "mod", "var": int(args2[0]),
+                                 "k": max(val, 2), "result": res_j})
+                elif ft == 4:
+                    if not args2:
+                        continue
+                    facs.append({"ftype": "pct",
+                                 "args": [int(args2[0]), res_j],
+                                 "p": max(val, 1)})
+                elif ft == 5:
+                    if not args2:
+                        continue
+                    facs.append({"ftype": "fdiv", "var": int(args2[0]),
                                  "k": max(val, 2), "result": res_j})
                 else:
                     if len(args2) < 2:

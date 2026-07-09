@@ -51,14 +51,16 @@ K_VIEWS = 4
 
 def solve2(facs, q_pred, smp):
     """Gold-free forced answer via the v2 bridge (mod/sel-aware)."""
-    from mycelium.csp_domains import problem_from_algebra2
+    from mycelium.csp_domains import problem_from_algebra3 as problem_from_algebra2
     from mycelium.csp_core import solve_symbolic
     gv = {f["var"]: f["value"] for f in facs if f["ftype"] == "given"}
 
     def fvars(f):
         if f["ftype"] in ("rel", "sel"):
             return list(f["args"]) + [f["result"]]
-        if f["ftype"] == "mod":
+        if f["ftype"] == "pct":
+            return list(f["args"])
+        if f["ftype"] in ("mod", "fdiv"):
             return [f["var"], f["result"]]
         return [f["var"]]
     try:
@@ -89,6 +91,10 @@ def gkey(f):
         return ("given", f["var"], f["value"])
     if f["ftype"] == "mod":
         return ("mod", f["var"], f["k"], f["result"])
+    if f["ftype"] == "pct":
+        return ("pct", tuple(f["args"]), f["p"])
+    if f["ftype"] == "fdiv":
+        return ("fdiv", f["var"], f["k"], f["result"])
     return ("sel", f["sel"], tuple(sorted(f["args"])), f["result"])
 
 
@@ -104,8 +110,10 @@ def main():
     kind = []
     for s in samples:
         fts = {f["ftype"] for f in s["factors"]}
-        kind.append("sel" if "sel" in fts else
-                    ("mod" if "mod" in fts else "linear"))
+        kind.append("fdiv" if "fdiv" in fts else
+                    ("pct" if "pct" in fts else
+                     ("sel" if "sel" in fts else
+                      ("mod" if "mod" in fts else "linear"))))
 
     p = build_params(0)
     sd = safe_load(ALG_CKPT)
@@ -166,6 +174,19 @@ def main():
           f"{same / max(len(wrong0) * K_VIEWS, 1):.3f} (gate <0.30, "
           f"n={len(wrong0)})")
 
+    # ORDINAL-QUERY RIDER (relay cut): failures by query type
+    def is_ordinal_q(s):
+        qs = s["mentions"].get(str(s["query_var"]), []) or \
+            s["mentions"].get(s["query_var"], [])
+        return any("term" in s["text"][a0:b0] for a0, b0 in qs)
+    for grp, pred in (("ordinal-q", True), ("direct-q", False)):
+        ids = [i for i in range(n) if is_ordinal_q(samples[i]) == pred]
+        if not ids:
+            continue
+        fails = sum(1 for i in ids if view_a[0][i] is None
+                    or view_a[0][i] != gold_ans[i])
+        print(f"  {grp}: n={len(ids)} one-shot-fail {fails / len(ids):.3f}")
+
     # vote dials + per-kind unanimity coverage
     print(f"\n  VOTE DIALS (K=5):")
     for t in (3, 4, 5):
@@ -193,7 +214,7 @@ def main():
             print(f"     unanimity coverage by kind: " + " | ".join(
                 f"{kd}: {cov_kind[kd]}/{n_kind[kd]} = "
                 f"{cov_kind[kd] / max(n_kind[kd], 1):.3f}"
-                for kd in ("linear", "mod", "sel")))
+                for kd in ("linear", "mod", "sel", "pct", "fdiv")))
 
     # persist per-sample outcomes (composition + any-threshold re-votes)
     SENT = -10**9
