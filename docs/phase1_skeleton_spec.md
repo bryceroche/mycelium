@@ -2181,3 +2181,16 @@ token-position × waist-dim, the moment the skeleton trains.
   the round-trip gate verifies hidden-var plumbing survives reconstruction.
   Same class as week one's span-set contiguity catch — the gold decision
   everything downstream inherits, cheap now, an eval anomaly later.
+- **TRANCHE-2 FIRST FIRE BROKE — DIAGNOSED IN TWO CUTS, FIXED BY PAD-WARM
+  (2026-07-10):** run 1 collapsed mod/sel domains (alg2test 480 -> 98,
+  graph-solve 0) while IMPROVING pure-rel bigtest (907) — the discriminator
+  (tranche-1 head through the current code: 480/202 EXACT) exonerated the
+  eval bridge in one run; emission inspection showed degradation-everywhere,
+  not plumbing. ROOT CAUSE: the warm-start's shape-mismatch skip DISCARDED
+  THE TRAINED 4-WAY FTYPE ROUTER (4->6 widening) — the one head gating every
+  per-kind loss mask relearned from scratch inside a converged circuit: the
+  bootstrap-trap family, self-inflicted (new §6-family sighting: **never
+  discard a trained router to widen it — pad-warm the prefix, fresh-init
+  only the new rows**). Loader upgraded: prefix-shaped params copy their
+  trained slice with a printed PAD-WARM. Retrain in flight, three-table
+  verdict pending against bars 480/888 and the broken run's 41/98/907.
