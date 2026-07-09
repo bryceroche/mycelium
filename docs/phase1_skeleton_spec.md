@@ -2245,3 +2245,22 @@ token-position × waist-dim, the moment the skeleton trains.
   cross-generation mixes unless overridden. Synchronization converted from
   discipline (decays) to mechanism (doesn't) — the no-silent-fallbacks law
   applied to TIME. Gen-4 = the apposition corpus fix + the first full bump.
+- **TWO BUMP-DESIGN REGISTRATIONS (2026-07-10, relay):** (1) THE BUMP IS A
+  TRANSACTION — atomicity has its own failure mode: five fallible stages
+  must never leave the system in an undeclared N-and-a-half. The clean form:
+  gen-N+1 builds entirely ALONGSIDE gen-N (new artifact paths throughout,
+  nothing overwritten — the house pattern already lives this way); the
+  MANIFEST WRITE is the single atomic commit point. The manifest is a
+  transaction log, not a registry — generations as sequenced, acknowledged,
+  retransmittable deliveries (the packet instinct one level up). Cheap to
+  specify now; miserable after a half-bumped generation prints a
+  plausible-looking table. (2) CANDIDATE 3'S PAYOFF SENTENCE, registered
+  with the debt: when the deducer-meets-new-kinds chapter opens, the
+  QUESTION is whether Phase 2 seeing PCT/SEL/FDIV neurally buys anything
+  the symbolic tier doesn't — and the answer-shaped thread is SOFT GRAPHS:
+  the parser's confidence outputs ARE the uncertain graph the original
+  design promised the deducer; parser emits uncertain factors, deducer
+  settles them NEURALLY, symbolic tier disposes what settles hard. The
+  manifest names the debt; this names the payoff that would justify paying
+  it. GEN-4 = apposition corpus fix + the first full transactional bump;
+  the five-prediction table reads only after it.
