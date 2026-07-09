@@ -2349,3 +2349,25 @@ token-position × waist-dim, the moment the skeleton trains.
   POST-GATES: manifest --check consistent (gen 4); live-pipeline imports
   OK; algebra2 soundness ALL PASSED; five-prediction numbers reproduced
   identically. Git history holds everything tracked, before and after.
+- **THE EXTERNAL ANCHOR (2026-07-10): HONESTY DOES NOT SURVIVE FOREIGN TEXT
+  — the month's most important refutation, and §8's real content.** P1:
+  ~as coverage predicted (answered slice small). P2 REFUTED: certified
+  precision **2/97** on integer answers, 63 certifications on non-integer
+  answers (0 possible) — the 1.0000-in-distribution channel signs foreign
+  garbage confidently. P3 REFUTED: abstention FLAT across strata (67.5% vs
+  66.1%) — the lattice does not know what it doesn't know. MECHANISM
+  (visible in the flat ~164/view forced counts): the parser mis-reads
+  foreign text STABLY; sentence permutation decorrelates template variation,
+  not distributional confusion — **unanimity certifies reading STABILITY,
+  which coincides with truth only in-distribution.** Every portfolio signal
+  (agreement included) is distribution-calibrated; OOD breaks the seal
+  silently. THE PRE-REGISTERED CUSTOMER ARRIVES: the atlas's gate-1 (flat
+  library's OOD gradation) is now OPEN — the missing organ is a TEXTUAL
+  OOD DETECTOR firing before any parse is trusted (trunk-state distance
+  from the training distribution; the "far from every family = abstain
+  hard" read). THE HONEST §8 SENTENCE: on foreign text the lattice
+  certifies stability, not correctness — the certification claim is
+  DISTRIBUTION-BOUNDED, and the anchor measured exactly where the bound
+  lies. More valuable than a soft yes: the December roadmap's true
+  starting point is OOD-awareness, not coverage. Outcomes banked:
+  `.cache/math500_anchor_outcomes.json`; script `scripts/math500_anchor.py`.
