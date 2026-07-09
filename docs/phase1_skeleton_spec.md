@@ -2116,3 +2116,14 @@ token-position × waist-dim, the moment the skeleton trains.
   behavioral member (agreement, 0.840 on the old population) gets its test
   on the 56 next (zero-GPU from tta_alg2_views.npz + the audit). Library
   rebuilt in tranche space (5 kinds): `.cache/monitor_centroids_alg2.npz`.
+- **AGREEMENT ON THE 56 (2026-07-10): AUC 0.925 — THE PORTFOLIO'S TWO
+  MEMBERS SCALE IN OPPOSITE DIRECTIONS WITH PIPELINE QUALITY.** Behavioral
+  (view disagreement): 0.840 on the legacy 226 -> **0.925** on the hygiene
+  stack's 56; geometric (waist centroids): 0.728 -> 0.543 on the same
+  populations. Mechanism: selection-hardening — a better stack's residuals
+  are selected to look representation-normal, but remain BEHAVIORALLY
+  unstable under re-rendering. THE DURABLE DETECTOR IS BEHAVIORAL, and it
+  rides free on the votes already computed. Paper's abstention story
+  updated: geometry is the weak-stack instrument; agreement is the
+  strong-stack instrument; the portfolio's composition should re-weight
+  toward behavior as the pipeline improves — measured, both directions.
