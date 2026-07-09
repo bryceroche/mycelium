@@ -2064,3 +2064,19 @@ token-position × waist-dim, the moment the skeleton trains.
   re-votes now zero-GPU). QUEUE: monitor rebuild + drift, curriculum
   ablation (target: close the mod gap), tranche 2 vs its banked list (the
   prevention law's 3rd sighting + diminishing-dividends both come due).
+- **TWO NOTES FOR THE LEDGER (2026-07-10, relay):** (1) §9 HALF-SENTENCE —
+  the "instruments arrive with their customers pre-measured" pattern, third
+  sighting (tier-0 got the silents; the ledger re-parse got its population
+  probe; the curriculum knob now gets a named 7-point gap instead of a
+  vibe): registered measurement doesn't just prevent false claims, it
+  PRE-POSITIONS every intervention with a target and a baseline — the
+  method's compounding dividend. (2) TRANCHE-2 DESIGN DECISION, flagged
+  BEFORE the generator is written: ratio/percent is the first relation kind
+  whose answers flirt with RATIONALS — the integrality-jaw expiration's
+  registered arrival condition. The generator must CHOOSE: integer-forced
+  (keep the jaw, defer the expiration) vs rationals-in (pay the
+  detectability cost early, taxonomy watching). Either defensible; chosen,
+  not inherited. DECISION PENDING (Bryce + relay) before tranche 2 fires.
+  Queue order held: monitor rebuild (drift feeds §3's +68 mechanism story)
+  -> curriculum ablation (target: the 0.473 mod gap, graded composed-level)
+  -> tranche 2 (prevention law 3rd sighting + diminishing-dividends due).
