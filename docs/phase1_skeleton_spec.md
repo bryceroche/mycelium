@@ -2478,3 +2478,23 @@ token-position × waist-dim, the moment the skeleton trains.
   as the roadmap's first official gradient datapoint. The month in one
   sentence: the dancer could always hear the second language; someone just
   needed to read to her.
+- **GEN-5 COMMITTED (2026-07-10, the first SCRIPTED transactional bump —
+  commit path + FOUR abort witnesses: archived-import, user kill, OOM, and
+  the staged injection, all holding clean at the prior generation):**
+  bilingual parser promoted; specialist v5 (1140 mined across FOUR
+  registers); 7-kind centroids; mouth recalibrated. **THE GRADIENT READ:
+  3% CLOSED — below even the mostly-local band.** The staircase is STRICTLY
+  LOCAL: generator-verbose moved essentially nothing toward MATH-500
+  (0.209 -> 0.204 over-threshold; refusal still 100%). Verdict: December's
+  books must be drawn from or imitate REAL math prose — widening the
+  generator does not walk toward the target register. **THE FIRST
+  MIXED-SIGN EXPANSION:** bars bigtest 926 (+11), alg4test 336 (+5), vtest
+  600 (new capability) — but **alg2test 541 -> 507 (-34)**: five expansions
+  paid uniformly, the sixth paid unevenly — plausibly the crossover watch's
+  FIRST SIGHTING, on the register axis, at the middle domain (where the
+  registration said to look). PROMOTION CAVEAT: the freeze's full
+  acceptance (four lattice dials on alg2test under gen-5) is the standing
+  next read — if certification held, the dip is one-shot-only and the
+  promotion stands; if a dial bent, gen-5's parser choice gets revisited
+  (gen-4 intact alongside, one manifest edit away — the transaction's whole
+  point). 8 artifacts pinned incl. mouth threshold + views paths.
