@@ -102,9 +102,13 @@ from beacon_closing_arm import recompute_states
 from tokenizers import Tokenizer
 def pooled(path):
     z = np.load(path)
-    st, tk = z["states"].astype(np.float32), z["tokmask"].astype(np.float32)
-    v = (st*tk[:,:,None]).sum(1)/np.maximum(tk.sum(1)[:,None],1)
-    return v/np.linalg.norm(v,axis=1,keepdims=True)
+    st, tk = z["states"], z["tokmask"]
+    n = st.shape[0]; out = np.zeros((n, st.shape[2]), np.float32)
+    for s0 in range(0, n, 256):
+        sl = slice(s0, min(s0+256, n))
+        a = st[sl].astype(np.float32); m = tk[sl].astype(np.float32)
+        out[sl] = (a*m[:,:,None]).sum(1)/np.maximum(m.sum(1)[:,None],1)
+    return out/np.linalg.norm(out,axis=1,keepdims=True)
 fam = pooled(".cache/phase1_alg_states_mvtrain.npz")
 rng = np.random.RandomState(0)
 bank = fam[rng.choice(len(fam), 2000, replace=False)]
