@@ -2520,3 +2520,17 @@ token-position × waist-dim, the moment the skeleton trains.
   promotion-caveat dials fire FIRST (the crossover's registered signature
   location); pre-committed remedy if sighted: curriculum weighting toward
   old kinds, never tranche reversal.
+- **THE PROMOTION-CAVEAT VERDICT (2026-07-10): DIALS HELD — GEN-5 STANDS
+  CLEAN; CROSSOVER UNSIGHTED.** alg2test under the bilingual parser:
+  certification 0.511 @ **1.0000** (gen-4: 0.516 @ 1.0000 — held); t=3
+  0.645 @ 0.9942 (softened, above bar); per-kind on the oldest relations
+  0.558/0.496/0.477 vs 0.561/0.500/0.485 — ALL within noise, no old-kind
+  bend. The registered crossover signature did not arrive: the -34 one-shot
+  dip is ABSORBED AT THE LATTICE LEVEL (the composed layer doing precisely
+  its job), banks as variance with an honest asterisk on the sixth
+  expansion, and the watch resets, still armed. The freeze's FOURTH
+  acceptance table passes; gen-5's promotion is clean, not annotated.
+  THE BOARD: the fork is Bryce's — real-prose books (critical path;
+  mouth-distance per book; sourcing question open), tranche 3 (orthogonal,
+  interleaves), the paper (§8 awaiting its final sentence from the first
+  real book).
