@@ -2460,3 +2460,21 @@ token-position × waist-dim, the moment the skeleton trains.
   `.cache/phase1_bilingual_head.safetensors`. Priors scored: relay 70(a) /
   Code 65(a) — (a) won; the discovered IR needed no translator, only
   literature.
+- **THE FORK'S HONEST NUANCE (2026-07-10, relay):** the outcome landed
+  BETWEEN the sentences: 1.000 decodability + a blind zero-shot head is
+  **(b)'s diagnostic signature**, cured by **(a)'s remedy** — the ledger
+  line is *(b)-diagnosed, (a)-cured*. The relay's tiebreak (union head vs
+  narrative structure) partially collected: the head WAS the bottleneck,
+  just one that two thousand pairs dissolved. THE PRECEDENT THAT MATTERS:
+  if real MATH-500 prose someday shows the same signature (decodable
+  states, blind head) but RESISTS paired training, that is the residual
+  (b/c) world announcing itself — and tonight names the probe to point at
+  it. DISCIPLINE: 600/600 = zero-numerator ("error rate bounded below
+  ~0.5%", not "perfect"); the diminishing-dividends clock TRANSFERS to the
+  register axis (increments-per-register expected to shrink as registers
+  accumulate — the watch is standing). NEXT MOVE: the recalibration bump
+  (verbose training moved the native family — the point; threshold refits,
+  joins the manifest) + LOG MATH-500's distance under the NEW calibration
+  as the roadmap's first official gradient datapoint. The month in one
+  sentence: the dancer could always hear the second language; someone just
+  needed to read to her.
