@@ -2396,3 +2396,22 @@ token-position × waist-dim, the moment the skeleton trains.
   now; coverage buys capability later** — the funnel gets its mouth first,
   then the mouth learns more languages (paraphrase-teeth, tranche-3
   rationals, real-text fine-tuning with the anchor as standing examiner).
+- **THE MOUTH WORKS (2026-07-10): P1 AUC 1.0000 both scores — foreign
+  refused 100.0% at 1% native false-refusal; P2 all 160/160 of the anchor's
+  false certifications REFUSED at the kNN threshold. The funnel has its
+  mouth: zero parameters, one afternoon, calibration populations already
+  banked. The lattice + mouth now signs NOTHING it cannot read — §8 closes
+  constructively: recognition bought honesty tonight; coverage buys
+  capability next. P3 HONEST READ: the gradation is FAINT (whole MATH-500
+  spread 0.236-0.273 vs native threshold 0.044 — everything is "different
+  forest"; leaf-vs-forest unanswerable at this distance) and its ordering
+  inverts intuition: Intermediate Algebra NEAREST, Prealgebra FARTHEST —
+  our dialect is terse symbol-dense fact-sentences, nearer LaTeX-heavy text
+  than natural prose. HYPOTHESIS LOGGED for the coverage roadmap: the
+  language gap is PROSE STYLE before relation vocabulary — paraphrase-teeth
+  toward natural prose may close more mouth-distance than new ltypes.
+  Artifact `.cache/recognition_mouth.npz` joins the manifest at the next
+  bump (with the TTA views file). Cosmetic: NaN-divide warning on skipped
+  overflow rows (filtered, harmless — tidy at next touch). THE FOUR
+  JURISDICTIONS COMPLETE: prevention, negotiation(->depth), detection,
+  RECOGNITION — each with a measured instrument and a bounded claim.
