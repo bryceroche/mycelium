@@ -60,7 +60,21 @@ os.environ["ALG2"]="1"; os.environ["ALG_FTYPES"]="6"
 import numpy as np
 from phase1_algebra_head import L_FAC, build_params
 from waist_abstention_probe import compute_fst
-from monitor_rebuild_drift import head_kinds
+def head_kinds(p, _hd, fst_rows, four_way):
+    g = lambda k: p[k].detach().numpy()
+    hp, hpb = g("h_pres"), g("h_pres_b")
+    hf, hfb = g("h_ftype"), g("h_ftype_b")
+    ho, hob = g("h_op"), g("h_op_b")
+    out = []
+    for v in fst_rows:
+        if v @ hp[:, 0] + hpb[0] <= 0:
+            out.append(None); continue
+        ft = int(np.argmax(v @ hf + hfb))
+        out.append(("given","rel_add","rel_mul","mod","sel","pct","fdiv")[
+            1 + int(np.argmax(v @ ho + hob)) if ft == 0 else
+            (0 if ft == 1 else (3 if ft == 2 else
+             (4 if ft == 3 else (5 if ft == 4 else 6))))])
+    return out
 from tinygrad.nn.state import safe_load
 p = build_params(0); sd = safe_load("%s")
 for k in p: p[k].assign(sd[k].to(p[k].device).cast(p[k].dtype)).realize()
