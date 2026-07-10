@@ -2498,3 +2498,25 @@ token-position × waist-dim, the moment the skeleton trains.
   promotion stands; if a dial bent, gen-5's parser choice gets revisited
   (gen-4 intact alongside, one manifest edit away — the transaction's whole
   point). 8 artifacts pinned incl. mouth threshold + views paths.
+- **THE MORNING'S LEDGER LINES (2026-07-10, relay):** (1) THE COSTUME
+  MECHANISM: generator-verbose taught the head to parse OUR SKELETONS
+  WEARING NARRATIVE CLOTHES, and the mouth correctly refused to count
+  costumes as a language — the style gap lives in distributional properties
+  (sentence rhythm, referential habits, framing conventions) no template
+  dressing imitates; the mouth's first lesson, now with a slope attached
+  (3%, noise-adjacent). December's unit of work: **mouth-distance closed
+  per book.** OPEN DESIGN QUESTION for the first book: harvest-and-annotate
+  real problems vs LLM-imitated register — the second needs an §8 honesty
+  note if used (imitated style is itself a distribution). The paired-
+  register machinery transfers whole (real prose paraphrased INTO the
+  dialect = the same free triples, authentic style on the left). (2) THE
+  PROTOCOL'S SENTENCE: four aborts from four different directions
+  (archived import, user kill, OOM, injection), four clean holds, one
+  commit — not a script that worked; A MECHANISM WITH AN EVIDENCE FILE,
+  graduated in one morning. (3) FORK REORDERED by the gradient's mandate:
+  real-prose books = the critical path to the anchor's re-examination;
+  tranche 3 orthogonal, interleaves; the paper's §8 gains its final
+  sentence when the first real book moves the mouth's needle. The
+  promotion-caveat dials fire FIRST (the crossover's registered signature
+  location); pre-committed remedy if sighted: curriculum weighting toward
+  old kinds, never tranche reversal.
