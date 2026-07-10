@@ -2441,3 +2441,22 @@ token-position × waist-dim, the moment the skeleton trains.
   per generation (joins the manifest's calibration constants at next bump).
   Even if (a) wins on generated prose, real MATH narrative re-asks the
   question at the boundary — where the mouth is standing.
+- **THE IR FORK RESOLVES: OUTCOME (a), OVERWHELMINGLY (2026-07-10).**
+  Zero-shot register gap on MATCHED GRAPHS: terse 581/600 vs verbose 10/600
+  — near-total blindness. (b)/(c) discriminator: verbose given-value
+  decodability **1.000** — (c) DEAD; four frozen layers compile narrative
+  prose perfectly; the trunk was always bilingual. Mouth column: verbose
+  read 0.093 pre-training — foreign but BETWEEN home (0.044) and MATH-500
+  (0.25), the learns-languages thesis' predicted geometry. AFTER 2000 pairs
+  + 10k steps warm from gen-4: verbose **600/600 ANSWER**, terse twin
+  589/600, val 0.9752 — AND bigtest 926 > the 915 bar: **THE FIFTH
+  DIVIDENDS INSTANCE — a new REGISTER pays like a new relation kind.**
+  The translation stage dies unbuilt (10% priors, correctly); the IR stays
+  implicit; December = MORE BOOKS, with mouth-distance-closed-per-corpus as
+  the unit of progress. Caveats pinned: vtest pairs are budget-biased small
+  (1137/3137 rejected — the size note); paired-register val runs hot; the
+  post-training mouth re-read (does verbose now read native?) is the
+  recalibration item riding the next manifest bump. Bilingual ckpt:
+  `.cache/phase1_bilingual_head.safetensors`. Priors scored: relay 70(a) /
+  Code 65(a) — (a) won; the discovered IR needed no translator, only
+  literature.
