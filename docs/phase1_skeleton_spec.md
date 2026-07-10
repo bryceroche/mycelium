@@ -2371,3 +2371,28 @@ token-position × waist-dim, the moment the skeleton trains.
   lies. More valuable than a soft yes: the December roadmap's true
   starting point is OOD-awareness, not coverage. Outcomes banked:
   `.cache/math500_anchor_outcomes.json`; script `scripts/math500_anchor.py`.
+- **THE FUNNEL (2026-07-10, Bryce's sixth instinct — arriving the same night
+  as the measurement proving which stage it was missing):** the system IS a
+  form-into-database funnel: parser = the form, registry = the schema,
+  solver = the database (GAC = referential integrity, MRV/LCV = the query
+  planner). Mycelium built every stage EXCEPT the one every production form
+  has: **input validation at the mouth.** The anchor's 2/97 is a funnel with
+  referential integrity but no schema validation on input — five hundred
+  strangers' submissions poured downstream, every check below the mouth
+  passing, because the checks validate the GRAPH's consistency, not whether
+  the form was filled in a language the reader speaks. RECOGNITION (the
+  fourth jurisdiction) is the funnel's mouth. ANCHOR MECHANISM, final form:
+  all five darts thrown by the SAME ARM — on foreign text the arm's bias is
+  systematic, not random; permutation decorrelates template-family errors,
+  not dialect-never-learned errors. The anchor was DESIGNED as the held-out
+  examiner — which is why this is the paper's most valuable measurement,
+  not a deployment incident. RECOGNITION-ORGAN DESIGN, registered: (1)
+  input-space OOD is SELECTION-SAFE (no pressure shapes errors against it
+  unless the corpus chases the detector — which the generation manifest
+  would make explicit); (2) zero-parameter first instrument: trunk-state
+  centroids over the training family, threshold calibrated so MATH-500
+  reads foreign and held-out generator text reads native — BOTH populations
+  already banked; (3) the §8 constructive close: **recognition buys honesty
+  now; coverage buys capability later** — the funnel gets its mouth first,
+  then the mouth learns more languages (paraphrase-teeth, tranche-3
+  rationals, real-text fine-tuning with the anchor as standing examiner).
