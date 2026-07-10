@@ -2415,3 +2415,29 @@ token-position × waist-dim, the moment the skeleton trains.
   overflow rows (filtered, harmless — tidy at next touch). THE FOUR
   JURISDICTIONS COMPLETE: prevention, negotiation(->depth), detection,
   RECOGNITION — each with a measured instrument and a bounded claim.
+- **THE IR QUESTION, REGISTERED (2026-07-10, Bryce's seventh instinct +
+  relay + Code):** the funnel already has THREE IRs — the registry
+  (symbolic), the mention/span structure (annotation), and THE NATIVE
+  DIALECT ITSELF (text-level: terse symbolic fact-sentences are a
+  DISCOVERED canonical IR — the generator compiles graphs into it; the
+  parser inverts it). What's missing is the compiler's FRONT HALF (verbose
+  prose -> dialect) — never built because the corpus never contained prose.
+  THE FREE LUNCH: solution-first generation renders the SAME graph in two
+  registers -> paired (prose, dialect, graph) triples, gold at every layer
+  — no designed logical form (discovered beats designed; C2's tombstone).
+  THE THREE-OUTCOME PROBE (the fork, machinery = survivor_depth_probe
+  transplanted): ship a VERBOSE teeth family; run the head + state-probe on
+  verbose renders. (a) head parses fine after mixed training -> IR stays
+  implicit, December = data; (b) states decodable, head fails -> head-side
+  fix; (c) states not decodable -> ONLY THEN the explicit prose->dialect
+  translation stage earns its build (output re-enters the funnel unchanged;
+  layered funnels get layered mouths — dialect-conformance is easier than
+  open-prose OOD; but generation machinery + a new silent-error species is
+  the real cost, pre-registered). PRIORS: relay 70/20/10, Code 65/25/10.
+  TWO PINS (Code): (1) T_ALG=256 will select verbose samples toward SMALL
+  problems — match band/size across registers or read size-controlled
+  slices (register-size confound, cheap at generation); (2) verbose
+  training MOVES the native family — the mouth's threshold recalibrates
+  per generation (joins the manifest's calibration constants at next bump).
+  Even if (a) wins on generated prose, real MATH narrative re-asks the
+  question at the boundary — where the mouth is standing.
