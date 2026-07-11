@@ -2534,3 +2534,32 @@ token-position × waist-dim, the moment the skeleton trains.
   mouth-distance per book; sourcing question open), tranche 3 (orthogonal,
   interleaves), the paper (§8 awaiting its final sentence from the first
   real book).
+- **THE EXPLICITATION FORK, REGISTERED (2026-07-10, Bryce's revisit + relay
+  + Code):** the IR fork answered STYLE (no layer needed); the reopened
+  question is EXPLICITATION — real prose withholds facts the reader must
+  MANUFACTURE ("a dozen split among her three children, keeping twice as
+  many" = producing 12, a fourth share, an unwritten multiplication before
+  anything binds). THE KEY REFRAME: the discovered IR is precisely the
+  ALL-FACTS-EXPLICIT fixed point — prose->dialect = explicitate then bind;
+  the fork cleared binding; explicitation is GENERATION-shaped, the
+  boundary where (c) could genuinely fire. CODE'S CLASS SPLIT (changes the
+  probe design): LEXICAL implicits (dozen=12, twice=x2) have evoking-phrase
+  SPANS — the existing decodability probe transplants; STRUCTURAL implicits
+  (unstated shares, conservation relations) have NO anchor — need pooled/
+  query-style reads, a different instrument. THE PROBE: ~20 hand-annotated
+  MATH-500 problems (annotation = dialect rewrites, not graphs — cheap
+  gold), implicit-fact decodability at L0-L3 vs L0-L7. JURISDICTION
+  CAUTION (relay): the old L8 refutation measured ROUTING on our dialect —
+  world-knowledge inference is a FRESH depth question. OUTCOMES: shallow ->
+  pairs cure it; deep-only -> the deeper-prefix conversation reopens with a
+  real customer; nowhere -> the explicitation stage earns its build as the
+  funnel's first GENERATIVE layer (structural-facts organ if the class
+  split holds — smaller than feared). PRIORS: relay 40/35/25; Code
+  45/25/30 with MIXED (lexical-shallow, structural-stage) as the tiebreak.
+  THE HARVEST GATE (the design's gem): real answer keys make
+  solve-to-official-answer the round-trip gate for harvested books —
+  prose -> dialect -> graph -> solve -> match key; dialect checkable TWICE
+  (mouth-v2 conformance + end-to-end) — the layered-mouths architecture
+  arriving with its validation story written. First work item of the
+  real-prose chapter; its verdict decides whether December's books teach a
+  reader or train a translator.
