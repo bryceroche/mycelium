@@ -244,12 +244,18 @@ def do_precompute():
             c = x.cast(dtypes.float).realize().numpy()
             assert np.isfinite(c).all()
             states[sl] = c.astype(np.float16)
+            if (s0 // 8) % 200 == 0:
+                print(f"[precompute] {split}: batch {s0//8}/{(n+7)//8}", flush=True)
         gold = build_gold(samples, offsets)
         sent = np.stack([sent_indices(s["text"], o, mask[i])
                          for i, (s, o) in enumerate(zip(samples, offsets))])
-        np.savez_compressed(STATES_NPZ.format(split=split), states=states,
-                            tokmask=mask.astype(np.uint8), sent=sent.astype(np.int8),
-                            **{f"g_{k}": v for k, v in gold.items()})
+        print(f"[precompute] {split}: writing npz...", flush=True)
+        # PRECOMP_FAST=1: uncompressed savez — fp16 states are high-entropy
+        # (~8% saving) and the silent minutes of zlib are a kill window.
+        savez = np.savez if os.environ.get("PRECOMP_FAST") else np.savez_compressed
+        savez(STATES_NPZ.format(split=split), states=states,
+              tokmask=mask.astype(np.uint8), sent=sent.astype(np.int8),
+              **{f"g_{k}": v for k, v in gold.items()})
         print(f"[precompute] {split}: {states.shape}", flush=True)
 
 
