@@ -2744,3 +2744,19 @@ token-position × waist-dim, the moment the skeleton trains.
   surgery reserved for the knotted cases. The gate makes the old
   self-improvement dream safe: nothing banks that doesn't carry to the
   answer key, no matter who — or what — wrote it.
+- **ROUND THREE'S FINDING (2026-07-11): THE SHAPE BOUNDARY.** Garden seed
+  rejected AGAIN in template-exact voice (votes empty across all views) —
+  reproducible, so structural: the dialect sentences are in-distribution
+  but the GRAPH SHAPE is not (unknown-first mul chain, a in three factors,
+  implicit a+2a=30) — our generator mints chains-from-knowns and Vieta
+  pairs; the parser learned those SHAPES, not free composition of its
+  relations. **Sentence-level native, graph-level foreign** — the third
+  boundary the gate has measured (after value-range and voice). Midpoint
+  (FDIV meets prose): one view forced wrong — same shape story on an
+  11-var double-fdiv chain. THE FIX IS THE STANDING LEVER: SHAPE DIVERSITY
+  in the next generation's mix (random DAG compositions, unknown-first
+  chains, reused intermediates) — a corpus change, and the dividends law
+  predicts it pays everywhere, not just at the gate. Substrate holds n=1;
+  the gate's boundary map now has three walls (values, voice, shapes), each
+  with a one-generation fix. The harvest is teaching the generator what
+  the wild actually looks like — which was always the point of books.
