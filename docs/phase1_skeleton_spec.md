@@ -2872,3 +2872,30 @@ token-position × waist-dim, the moment the skeleton trains.
   Threshold note: the calibrated native line (0.0443) is unusable here —
   the entire pool reads foreign (mean 0.254) — so the split is relative
   (carried-median), pinned now. Zero new training; one eval-cost re-run.
+- **VERDICT (2026-07-11): THE JOIN RETURNS THE HONEST NEGATIVE — AUC
+  0.535, the 72 stays UNATTRIBUTED.** Census replay exact (2/26/72;
+  deterministic seeds held). Knotted mouth distance mean 0.2560 / median
+  0.2499 vs carried 0.2491 / 0.2354 — indistinguishable. MOUTH DISTANCE
+  DOES NOT PREDICT REFUSAL: the mouth measures REGISTER (surface style,
+  corpus-level), not per-item parseability. Its odometer role survives
+  untouched (it was chartered corpus-level); its per-item attribution
+  ambition dies tonight, pre-registered. THE SENTINEL IN THE PATIENT
+  LIST: idx-21 ("sum 45, diff 3" — the problem seed-2 BANKED in dialect,
+  structure PROVEN in-reach) sits at d=0.2065 INSIDE the low-distance
+  tier as a raw-prose refusal — a certified style-only casualty at
+  near-carried distance, demonstrating the tiers mix in both directions,
+  which is exactly what AUC 0.535 says. Rule-2's list (32 items) is
+  therefore NOT a patient roster — reading it confirms the mix: quadratic
+  factoring / completing-the-square / geometric sequences (true organ
+  patients, moves outside the grammar) interleaved with in-grammar prose
+  like idx-21. Rule-3's book-1 prediction is WITHDRAWN with its premise
+  (registered falsifiable, falsified at the instrument stage). THE
+  CONSTRUCTIVE RESIDUE: the per-item attribution instrument already
+  exists and is the BOOK ITSELF — idx-21 proves the protocol (raw refuses
+  + hand dialect banks = style casualty; dialect also refuses = organ
+  patient). Every book annotation doubles as an attribution measurement;
+  the census's knotted column will be attributed item-by-item as the
+  books ship, not by any cheaper proxy. BOOKS BEFORE SURGEON stands, now
+  with its own attribution built in. Data:
+  `.cache/census_mouth_join.json` (n=100, census + mouth_d columns);
+  script `scripts/census_mouth_join.py`.
