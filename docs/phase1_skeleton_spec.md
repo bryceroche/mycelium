@@ -2849,3 +2849,26 @@ token-position × waist-dim, the moment the skeleton trains.
   Diversity guard: no narrowing signal (banked prose reads MORE foreign
   than pool — n=2, informational). The loop touched its tail tonight —
   barely, and genuinely.
+- **REGISTERED (2026-07-11, relay): THE MOUTH-DISTANCE JOIN — first
+  partial attribution of the 72.** The census's knotted column conflates
+  two walls; a refusal can be style (mouth's territory, books cure) or
+  structure (organ's territory). The join: cross every census outcome with
+  its prose's mouth kNN-distance (one deterministic census re-run capturing
+  both columns — labels weren't persisted; same pool slice, same view
+  seeds, same gen-6 ckpt). PRE-REGISTERED DECISION RULES, pinned before
+  measurement: (1) **AUC** (rank-sum) of mouth distance separating KNOTTED
+  vs PARSE-CARRIED (banked+near). AUC ≥ 0.60 → style-wall attribution
+  holds (refusals concentrate where the prose reads foreign; the relay's
+  prediction: books recover the high-distance tier). AUC ~0.5 → the 72
+  stays UNATTRIBUTED — an honest negative that also weakens the
+  books-will-recover prediction, since refusal would then be independent
+  of readability as the mouth measures it. (2) **THE PATIENT LIST**:
+  knotted items at mouth distance ≤ the carried group's MEDIAN are the
+  early knotted candidates — the organ's first genuinely visible patients,
+  named and counted tonight rather than after three books. (3) **BOOK-1
+  FALSIFIABLE PREDICTION**: knotted items ABOVE the carried median are
+  claimed style-recoverable; after the first book, their recovery rate
+  must exceed the below-median tier's or the attribution was wrong.
+  Threshold note: the calibrated native line (0.0443) is unusable here —
+  the entire pool reads foreign (mean 0.254) — so the split is relative
+  (carried-median), pinned now. Zero new training; one eval-cost re-run.
