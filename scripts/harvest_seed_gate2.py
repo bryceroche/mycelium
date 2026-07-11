@@ -39,7 +39,7 @@ SEEDS = [
 ]
 tok = Tokenizer.from_file(TOKENIZER_JSON)
 p = build_params(0)
-sd = safe_load(".cache/phase1_bilingual_head.safetensors")
+sd = safe_load(os.environ.get("GATE_CKPT", ".cache/phase1_bilingual_head.safetensors"))
 for k in p:
     p[k].assign(sd[k].to(p[k].device).cast(p[k].dtype)).realize()
 
