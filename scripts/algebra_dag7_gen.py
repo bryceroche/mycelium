@@ -22,7 +22,7 @@ sys.path.insert(0, "."); sys.path.insert(0, "scripts")
 import algebra3_nl_gen as G3
 
 
-def gen_dag7(rng, m):
+def gen_dag7(rng, m, target=None):
     sol, factors = [], []
 
     def nv(v):
@@ -68,7 +68,7 @@ def gen_dag7(rng, m):
     for _ in range(rng.randint(3, 9)):          # sampled wiring (longer)
         r = rng.random()
         if r < 0.36 and len(sol) >= 2:          # forward rel -> new var
-            if rng.random() < 0.22:             # REPEATED-ARG (receipt 2)
+            if rng.random() < 0.15:             # REPEATED-ARG (receipt 2)
                 cand = [i for i in range(len(sol))
                         if 2 <= sol[i] and sol[i] * sol[i] <= m]
                 if cand:
@@ -103,7 +103,7 @@ def gen_dag7(rng, m):
                        else min(sol[a], sol[b]))
                 factors.append({"ftype": "sel", "sel": s, "args": [a, b],
                                 "result": x})
-        elif r < 0.84:                          # mod fact
+        elif r < 0.92:                          # mod fact
             a = rng.randrange(len(sol))
             k = rng.randint(2, 9)
             factors.append({"ftype": "mod", "var": a, "k": k,
@@ -122,6 +122,12 @@ def gen_dag7(rng, m):
             kinds.add("fdiv")
     if not any(f["ftype"] != "given" for f in factors):
         return None
+    # quota early-reject BEFORE the expensive uniqueness gate
+    if target is not None:
+        have = kinds or {"plain"}
+        if (target == "plain" and have != {"plain"}) or \
+           (target != "plain" and target not in have):
+            return None
     # GIVENS BY GATE: add until forced-unique everywhere
     order = list(range(len(sol))); rng.shuffle(order)
     givens = {f["var"] for f in factors if f["ftype"] == "given"}
@@ -152,10 +158,20 @@ def main(n, seed, out, budget=250):
     rng = random.Random(seed)
     ok = rej = 0
     tally = {"ladder": 0, "coupled": 0, "sq": 0, "fdiv": 0, "plain": 0}
+    # DAG7_QUOTA: quota-balanced kinds — cycle target kinds, regenerate
+    # until the item CONTAINS the target ('plain' = none of the four).
+    # The v1 skew (fdiv in 60% of rows, ladder/coupled ~500 each) is the
+    # registered defect this mode retires.
+    quota = None
+    if os.environ.get("DAG7_QUOTA"):
+        quota = [t for spec in os.environ["DAG7_QUOTA"].split(",")
+                 for (t, c) in [spec.split(":")]
+                 for _ in range(int(c))]
+        assert len(quota) == n, f"quota {len(quota)} != n {n}"
     with open(out, "w") as fh:
         while ok < n:
             m = 300 if rng.random() < 0.4 else 60
-            g = gen_dag7(rng, m)
+            g = gen_dag7(rng, m, target=(quota[ok] if quota else None))
             if g is None:
                 rej += 1; continue
             n_vars, factors, sol, query, kinds = g

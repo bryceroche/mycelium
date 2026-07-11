@@ -3007,6 +3007,30 @@ token-position × waist-dim, the moment the skeleton trains.
   (d) Mouth bank NOT rebuilt (register unchanged; rides the next
   register-changing bump). KILL: any regression bar broken -> gen-7 is
   NOT promoted to gate ckpt; gen-6 stays, diagnose before re-fire.
+- **VERDICT (2026-07-11): GEN-7 v1 — KILL FIRES, gen-6 keeps the gate;
+  diagnosis crisp.** Bars held: dagtest6 ROSE 541->616 graph-solve,
+  alg2test 551->559, census ~unchanged as predicted (1/28/71), [46]
+  paraphrase probe BANKED, [56] ladder BANKED (5-view vote rescues a
+  0.27 single-view kind — TTA doing its job). Bars broken: bigtest 963
+  (<980), alg4test FELL 371->350, vtest 598, val 0.815; fdiv probes 0/4,
+  [85] and [72] still refuse ([72] voted a stable wrong 120 — another
+  Goodhart specimen). ATTRIBUTION (per-kind, dag7test single-view):
+  plain 0.878 (composition circuits HEALTHY — not global undertraining)
+  vs sq 0.264 / ladder 0.273 / fdiv 0.372 / coupled 0.417 — four new
+  factor SHAPES warm-started at once on a skewed diet (fdiv saturated
+  60% of rows; ladder/coupled ~500 rows each) for 16k steps of a
+  still-climbing val. Consistent with the §6 attention-bootstrap law
+  (new pointer patterns need supervision time). ENGINEERING NOTE (3
+  kills before the chain ran): precompute held a 15.7GB states array in
+  RAM beside the AM driver's pinned pages -> OOM during every write;
+  root-caused to a disk-backed memmap on BOTH write and train sides
+  (legacy npz path kept for gen<=6 artifacts). RE-FIRE REGISTERED
+  (dag7b): quota-balanced corpus (~1200 per kind incl. plain,
+  fdiv wiring de-saturated 16%->8%, sq 22%->15%), mixed7b = mixed6 +
+  dag7 + dag7b, WARM from gen-7 v1 (val still climbing), STEPS=32000.
+  REVISED BARS: per-kind single-view >=0.55 each new kind; acceptance
+  >=6/8; bigtest >=980 (refund), alg4test >=420, vtest >=598, dagtest6
+  >=590, alg2test >=530. Same kill: any bar broken -> no promotion.
 - **THE EMPLOYMENT LAW + TWO PROMOTIONS (2026-07-11, relay — registered
   before gen-7):** (1) **THE EMPLOYMENT LAW**: every organ this project
   charters gets SMALLER on contact with measurement — book 1 is the
