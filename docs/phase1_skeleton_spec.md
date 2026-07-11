@@ -2823,3 +2823,12 @@ token-position × waist-dim, the moment the skeleton trains.
   wall -> charter -> re-examination -> BANKED. Ckpt:
   `.cache/phase1_gen6_head.safetensors`. NEXT: the bootstrap re-pricing
   probe (registered) — the wall is thin; let the machine draft.
+- **THE SIXTH EXPANSION'S ATTRIBUTION CLOSES (2026-07-11, relay):** the
+  gen-5 alg2test dip (-34) was never diminishment — it was THE
+  DIAGRAM-MEMORIZATION TAX being collected (register training crowding
+  memorized shapes), refunded by gen-6 with interest (+44, past the
+  pre-dip bar). The dividends streak reads SIX-FOR-SIX with one payment a
+  generation late; the crossover watch's first candidate closes fully
+  attributed, and the watch stands armed with a cleaner prior: mixed signs
+  under frame-changes may be taxes, not crossovers — distinguish by
+  whether the NEXT frame-expansion refunds them.
