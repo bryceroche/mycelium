@@ -2716,3 +2716,15 @@ token-position × waist-dim, the moment the skeleton trains.
   DIAGRAMS** — the mouth guards the language, the vote guards invariance,
   the answer key guards the ultimate invariant; each mouth in the chain
   guards a different one. §8's framing upgraded from wound to theorem.
+- **FIRST HARVEST GOLD (2026-07-11): n=1 BANKED.** Seed[0] (MATH-train:
+  "sum 45, difference 3, lesser number") passed the lattice gate — 3 forced
+  views, unanimous 21, == the official answer key. A real problem,
+  hand-explicitated, machine-verified end to end: **the organ's training
+  substrate exists**, and its first entry is the corpus's own Vieta+selector
+  pattern found in the wild. THE BOUNDARY the rejections drew: all
+  three-digit-given seeds (900/841/289/225) parsed to nothing across all
+  views — the digit head's trained range (values <=60) is a hard wall;
+  FIX (one line): mint larger given-values into the next training mix,
+  widening the harvestable slice. Seed[1]'s in-range rejection: hand-dialect
+  still drifts from template phrasing — round 3 goes template-exact.
+  Substrate: `.cache/harvest_seed.jsonl` (gate=lattice-vote+answer-key).
