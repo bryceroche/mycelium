@@ -2597,3 +2597,26 @@ token-position × waist-dim, the moment the skeleton trains.
   verdict until that instrument reports; December's budget word (data /
   depth / organ) waits with it. Twenty problems, one afternoon, and the
   question sharpened twice — the method's economics intact.
+- **THREE REGISTRATIONS BEFORE THE SYNTHETIC RE-RUN (2026-07-10, relay):**
+  (1) THE TRANSFER FAILURE PROMOTED FROM CAVEAT TO FINDING: implicit values
+  live in a DIFFERENT ENCODING than written ones — the trunk does not
+  hallucinate the token "12" onto "dozen" in written-value geometry. The
+  strongest decodable-shallow form ("the fact is just there, same shape as
+  written") is DEAD; the surviving question is finer: different coordinate
+  system (probe-trainable — what the synthetic corpus tests) vs uncomposed
+  ingredients (stage-ward). The re-run DISCRIMINATES; it is not a do-over.
+  (2) THE PHRASE-SPLIT PIN: train and test implicits must not share evoking
+  phrases (dozen/score/fortnight train; twice-as-many/split-evenly/
+  days-of-month test) — a passing probe then reads ENCODING GEOMETRY, not
+  vocabulary trivia. Within-phrase-pass/cross-phrase-fail = the mixed
+  verdict in sharper clothes (lexical implicits are dictionary lookups the
+  head learns from pairs; the general question stays open for structural).
+  Enforced at mint time, free. (3) §9 META-NOTE — the day's cleanest
+  exhibit: a probe returned readable-looking stage-ward numbers and the
+  instrument-validity check caught the untrained examiner BEFORE the
+  verdict banked. Most projects ship "implicit facts aren't decodable";
+  the ledger shipped "our probe can't yet distinguish" — smaller, true,
+  one afternoon to fix. THE PRINCIPLE: **the verdict that flatters your
+  architecture hypothesis needs the same instrument scrutiny as the one
+  that flatters your hopes.** QUEUE: synthetic corpus (phrase-split pinned)
+  -> probe retrained -> fork verdict -> December's budget word.
