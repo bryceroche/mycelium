@@ -2580,3 +2580,20 @@ token-position × waist-dim, the moment the skeleton trains.
   answer flatters the method: she hears it = the frozen-trunk bet's
   biggest dividend; she doesn't = the fork caught it for twenty problems
   before a book was harvested against the wrong architecture.
+- **EXPLICITATION PROBE VERDICT (2026-07-10): INSTRUMENT-LIMITED,
+  DIRECTIONAL STAGE-WARD.** Lexical 0.25 (L0-3) / 0.31 (L0-7); structural
+  **0/9 both depths — the 0-2 band fired, stage question formally LIVE** —
+  but the TRANSFER CAVEAT is load-bearing: the probe reads written-digits-
+  at-spans; lexical implicits are semantic ("octagon" carries 8 unwritten).
+  WHAT IS CLEANLY ESTABLISHED: implicit values, if present, are ENCODED
+  DIFFERENTLY than written ones — the same linear map does not transfer, so
+  explicitation is not representation-free; the pairs-cure-it world, if it
+  exists, is not the trivial version. Depth gain (one fact) = noise; the
+  scripted LOO sanity was noted but NOT implemented (honest flag). THE
+  FOLLOW-UP INSTRUMENT, specified by the failure: a SYNTHETIC
+  LEXICAL-IMPLICIT corpus (the generator emitting dozen/twice/number-words
+  with gold — free by construction) to train a probe whose task matches
+  the question, then re-read MATH's lexical set. The fork holds its
+  verdict until that instrument reports; December's budget word (data /
+  depth / organ) waits with it. Twenty problems, one afternoon, and the
+  question sharpened twice — the method's economics intact.
