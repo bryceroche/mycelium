@@ -2675,3 +2675,18 @@ token-position × waist-dim, the moment the skeleton trains.
   confirmed on a second corpus. Corpus: `.cache/math_harvest_v0.jsonl`;
   states banked. NEXT: the seed annotation — dialect rewrites gated by
   solve-to-official-answer, the harvest gate live from annotation one.
+- **THE HARVEST GATE'S FIRST DAY (2026-07-10): 0/5 banked — AND THE ZERO IS
+  THE SYSTEM WORKING.** Seed dialect rewrites of real MATH-train problems,
+  gated by solve-to-official-answer: all rejected, zero false banks. The
+  rejections are diagnostic: seed[1] (sum/diff/lesser — the wild Vieta+sel)
+  parsed near-perfectly with ONE selector-arg pointer off; seed[2] exposed
+  the real lesson — MY DIALECT WAS OUT OF SHAPE (3-var 5-sentence
+  miniatures; the training distribution starts ~10 vars) and the parser's
+  bindings wobble on miniatures + far-OOD values (900/841 vs corpus m=60).
+  TWO NAMED FIXES for seed round 2: (i) annotate IN-SHAPE (corpus-sized
+  preambles/lengths, values in-range where possible); (ii) THE GATE SHOULD
+  BE THE LATTICE, not one-shot — seed[1]'s single unstable pointer is what
+  the 5-view vote exists to fix. The harvest stands: 1,743 in-reach
+  problems, odometer zeroed at 0.2488 (== the benchmark — valid proxy),
+  level-inversion replicated, seed machinery live and correctly strict.
+  Scripts: `harvest_v0.py`, `harvest_seed_gate.py`.
