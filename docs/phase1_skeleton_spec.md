@@ -2955,3 +2955,36 @@ token-position × waist-dim, the moment the skeleton trains.
   (repeated-arg mul untrained — type B), [51] uncertain (depth); book-1
   substrate growth >=10. Gate: gen-6 ckpt, solve2 n_vars=24 m=300,
   fdiv at most once per item (double-fdiv is gen-7's known wall).
+- **VERDICT (2026-07-11): BOOK 1 CLOSES — 15 entries, the style wall
+  confirmed at scale, the organ's kingdom shrunk to a named list.**
+  V1 table: tier N 1/6 (prediction >=4/6 FAILED), tier S 5/7 (prediction
+  EXACT, sentinel 5/5), tier O 4/5 banked with all four specific
+  predictions correct ([54] Vieta BANKED 3/5, [37] 5/5, [51] 4/5, [85]
+  refused). V2 (one taxonomy-faithful retry each, pre-declared): 5/6
+  recovered, all 5/5 unanimous; [72] stands. FINAL ATTRIBUTION (n=18):
+  **9 STYLE CASUALTIES** (raw knotted + faithful dialect banks — 75% of
+  the sampled knotted slice is books-recoverable; curated sample, upper
+  tier), 5 FRICTION RECOVERED, 1 ORGAN-A ([90] completing-the-square),
+  3 ORGAN-B standing: [72] novel coupled-linear wiring, [56] 19-var
+  length wall, [85] repeated-arg mul (a grammar GAP, not an organ move —
+  gen-7 one-liner). THE TIER-N INVERSION: near-miss was NOT the cheap
+  tier — its failures shared one cause, the FDIV REGISTER (0/4 in
+  hand-written composition; alg4test's weakness confirmed in the wild),
+  and v2's lexical-literal route recovered 4/4 of them. TWO LATTICE
+  SPECIMENS FOR THE GOODHART FILE: [71] raw went 5/5 UNANIMOUS-WRONG
+  (8 vs gold 9) — first observed; the recognition mouth is the organ
+  that intercepts exactly this (reads the prose foreign upstream) —
+  and [78]'s v1 dialect voted a consistent wrong 12/12/12 (a 3/5
+  ANSWER-channel error shape from the fdiv register). ONE REGISTER
+  SENSITIVITY: [46]'s deep chain refused under "a plus b equals c" and
+  banked 5/5 under "The sum of a and b is c" — same relations, surface
+  flip. GEN-7 PRICED BY THE BOOK: (1) fdiv into the DAG rotation (5
+  items waited on it), (2) repeated-arg mul (unlocks number+square),
+  (3) longer chains, (4) coupled-linear wiring, (5) surface-form
+  robustness on deep chains. SUBSTRATE: volume 15 (14 faithful + 1
+  flagged residual; idx-21 double-banked by design as sentinel
+  re-verification) — substrate n=17 unique. The book's raw prose is
+  gen-7+'s reading-training target (raw -> gold graph from the banked
+  dialect parse); the census re-prices after the ingest. Data:
+  `.cache/book1.jsonl`, `.cache/book1_attribution.json`; scripts
+  `book1_paired_gate.py`, `book1_v2_retry.py`.
