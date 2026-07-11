@@ -2760,3 +2760,30 @@ token-position × waist-dim, the moment the skeleton trains.
   the gate's boundary map now has three walls (values, voice, shapes), each
   with a one-generation fix. The harvest is teaching the generator what
   the wild actually looks like — which was always the point of books.
+- **GEN-6 CHARTER: TEACH THE MOVES, NOT MORE DIAGRAMS (2026-07-11, the
+  knots talking — banked before the word):** the parser learned to
+  recognize the specific knot diagrams the generator printed, not knot
+  theory; it memorized diagrams, not Reidemeister moves. GEN-6's objective
+  at the right abstraction: RANDOM DAG COMPOSITION — sample the WIRING, not
+  fixed architectures; no finite diagram set can be memorized, so the
+  parser is forced into compositional binding. Discovered-beats-designed
+  pointed at the corpus itself: the graph shapes were THE LAST DESIGNED
+  DECOMPOSITION hiding in the pipeline, invisible from inside because every
+  internal eval sampled the same phrasebook — found only by real text
+  refusing to fit. SHARPENED DIVIDENDS REGISTRATION (a frame-change, not a
+  content-add): prediction — dividends hold and run LARGER than the
+  register expansion's (composition is what the circuits compute; old
+  shapes become easy special cases of a general skill). FALSIFIER: if
+  capacity was sized for diagram-memorization, shape-mix COSTS old-shape
+  fac-exact while buying wild-shape generality — the lattice table catches
+  it in one read; that outcome prices "head grows before corpus does."
+  DESIGN PIN: shape diversity extends to QUERY AND MENTION STRUCTURE —
+  unknown-first chains put references BEFORE definitions (a genuinely new
+  binding pattern; the pointer law's history says the risk concentrates
+  exactly there); the generator samples query position + mention ordering
+  as part of the shape. ACCEPTANCE PROBES FOR FREE: the three rejected
+  harvest seeds — the wild sentences that named the walls bank when the
+  walls come down. The month compressed: anchor found the language
+  boundary, probes found the inference boundary, harvest found the
+  composition boundary — each wall named by real text, each fix one
+  generation of existing machinery. The phrasebook becomes a grammar.
