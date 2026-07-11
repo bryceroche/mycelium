@@ -2639,3 +2639,30 @@ token-position × waist-dim, the moment the skeleton trains.
   on harvested books). Three probes, two afternoons, twenty hand-annotated
   problems — and the architecture question that opened as a metaphor closed
   as a measured build order.
+- **THE ORGAN'S CHAPTER CHARTER (2026-07-10, relay — banked before the
+  word):** (1) THE CAVEAT AT CORRECT WIDTH: what died is LINEAR decodability
+  — "not probe-readable," not "not present"; but the operational claim
+  survives via THE CONTRAST CLASS: the same probe family read verbose
+  states at 1.000 and evoked values at 0.00 — the bilingual precedent is
+  what makes the negative meaningful. The organ builds against the
+  strongest available instrument, limits stated. (2) SCOPE RESIZED FINAL:
+  lexical implicits DON'T NEED THE ORGAN — head-side dictionary via pairs
+  (the selector-vocabulary pattern); the organ's true scope is STRUCTURAL
+  manufacturing only (the unstated share, the unwritten conservation) —
+  boundary now measured, not suspected. (3) THE CHARTER DECISION
+  everything inherits: **the organ WRITES DIALECT TEXT, not graph deltas**
+  — appended explicit sentences re-entering the funnel unchanged: costs a
+  re-encode, buys mouth-v2 conformance on the intermediate, byte-identical
+  parser/lattice below, and the harvest gate's double-check. Graph-delta
+  output = faster and unverifiable, a silent-error species upstream of
+  every jaw with no examiner between it and the solve. The funnel's first
+  WRITER is its most-audited citizen. Full birthright by standard practice:
+  pointer law for bindings, two-checkpoint if it repairs, taxonomy tier for
+  its error species, manifest citizenship from checkpoint one.
+  (4) SEQUENCING: **THE HARVEST COMES FIRST regardless** — real prose with
+  official answers is simultaneously the organ's training substrate (paired
+  triples, the n=20 annotation pattern proven), its examiner
+  (solve-to-answer-key), and the mouth's odometer corpus. December opens
+  with books whichever way the organ's details settle. Eight instincts,
+  the funnel counted twice: it named the missing mouth, then the missing
+  writer.
