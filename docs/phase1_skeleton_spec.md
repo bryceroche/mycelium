@@ -2899,3 +2899,32 @@ token-position × waist-dim, the moment the skeleton trains.
   with its own attribution built in. Data:
   `.cache/census_mouth_join.json` (n=100, census + mouth_d columns);
   script `scripts/census_mouth_join.py`.
+- **THE JOIN'S THREE PERMANENT READINGS (2026-07-11, relay — binding on
+  book 1):** (1) **THE MOUTH'S JURISDICTION IS MEASURED, NOT ASSUMED** —
+  it is a CORPUS-REGISTER instrument (odometer charter intact: corpus
+  distance is what it was calibrated on); its per-item ambition died at a
+  pre-pinned bar because refusal has at least two causes and the mouth
+  sees one axis. The jurisdiction law applied to the project's own newest
+  organ within a week of its birth: instruments don't inherit resolution
+  they weren't calibrated for. The mouth recognizes languages; it doesn't
+  diagnose readers. (2) **IDX-21 IS THE ANCHOR SENTINEL** — structure
+  certified in-reach by its banked dialect twin, raw prose refusing: the
+  style wall isolated in a single specimen, the existence proof that some
+  fraction of the 72 is books-recoverable, and the FIRST ENTRY in the
+  paired-(raw, dialect) format book 1 will systematically produce (the
+  pair's fate attributes the refusal). One problem demonstrated the whole
+  protocol before the protocol was named. (3) **BOOK-1 SAMPLING IS
+  STRATIFIED, BY DESIGN, NOW** — the book is substrate AND census
+  resolver, and the dual role forbids drifting toward cheap-tier-only
+  annotation (substrate throughput) or spread-only (attribution):
+  deliberately spend annotation budget across the refusal spectrum,
+  INCLUDING suspected organ patients (quadratic factoring,
+  completing-the-square, geometric sequences) — a both-refuse verdict on
+  those is the organ's customer list getting its first confirmed names at
+  one annotation each. META-NOTE (the method's signature, performed on
+  its own instrument): the join fired BECAUSE it was registered to be
+  allowed to fail; its failure conscripted the book into a census the
+  roadmap didn't know it needed — negatives that conscript existing work
+  into new instruments (the anchor conscripted the mouth into existence;
+  the join conscripted the book into a census). Book 1 awaits the word;
+  it ships with its own index.
