@@ -2666,3 +2666,12 @@ token-position × waist-dim, the moment the skeleton trains.
   with books whichever way the organ's details settle. Eight instincts,
   the funnel counted twice: it named the missing mouth, then the missing
   writer.
+- **THE HARVEST OPENS (2026-07-10): 1,743 in-reach problems from the MATH
+  TRAIN split (disjoint from the examiner). ODOMETER ZERO-POINT: 0.2488 —
+  statistically identical to MATH-500's 0.2480: the harvest is a VALID
+  PROXY (closing distance to these books closes distance to the benchmark).
+  The level gradient REPLICATES the anchor's inversion (L1 prosiest/most
+  foreign 0.270 -> L5 most symbolic 0.231) — the prose-style mechanism
+  confirmed on a second corpus. Corpus: `.cache/math_harvest_v0.jsonl`;
+  states banked. NEXT: the seed annotation — dialect rewrites gated by
+  solve-to-official-answer, the harvest gate live from annotation one.
