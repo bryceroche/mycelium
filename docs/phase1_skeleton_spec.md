@@ -2563,3 +2563,20 @@ token-position × waist-dim, the moment the skeleton trains.
   arriving with its validation story written. First work item of the
   real-prose chapter; its verdict decides whether December's books teach a
   reader or train a translator.
+- **EXPLICITATION PROBE READING FRAME (2026-07-10, relay, pre-print):**
+  (1) n=9 STRUCTURAL BANDS pinned: 8-9/9 = manufacturing plausibly done;
+  4-5/9 = mixed, the class split becomes the finding; 0-2/9 = stage
+  question live. Nothing subtler is readable at this n; zero-numerator
+  discipline applies BOTH directions; the probe decides the FORK, not the
+  magnitude (magnitude waits for the harvest chapter's larger set).
+  (2) POOLED-READ CONFOUND status: Code's probe targets COMPOSED VALUES
+  (digits of 96/28/360), not relation-presence — a linear probe cannot
+  multiply ingredients, so a decoded composition is evidence of
+  computed-by-trunk rather than aggregated-by-probe; the caveat softens
+  but n=9 noise dominates — bands govern. (3) Whichever lands, §8's
+  architecture paragraph gets its cost word: DATA (pairs cure), DEPTH
+  (the frozen slice's first real customer post-L8-fencing), or ORGAN
+  (the funnel's first generative layer, pre-sized structural). Either
+  answer flatters the method: she hears it = the frozen-trunk bet's
+  biggest dividend; she doesn't = the fork caught it for twenty problems
+  before a book was harvested against the wrong architecture.
