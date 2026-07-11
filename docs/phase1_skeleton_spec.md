@@ -2832,3 +2832,20 @@ token-position × waist-dim, the moment the skeleton trains.
   attributed, and the watch stands armed with a cleaner prior: mixed signs
   under frame-changes may be taxes, not crossovers — distinguish by
   whether the NEXT frame-expansion refunds them.
+- **THE BOOTSTRAP CENSUS (2026-07-11): banked 2 / near-miss 26 / knotted
+  72 (n=100, L1-3 in-range prose).** The bootstrap does NOT re-price yet —
+  and the honest read of the 72%: it CONFLATES TWO WALLS (the mouth reads
+  the whole pool as foreign at 0.254, so structural refusal may be
+  style-unreadable rather than explicitation-needed). The census bounds the
+  organ's kingdom FROM ABOVE; its true survey waits on the style wall.
+  SEQUENCING VERDICT, the funnel's original order reasserted with numbers:
+  **BOOKS BEFORE SURGEON** — the machine cannot draft what it cannot read;
+  December's real-prose corpus precedes organ economics; the census re-runs
+  after each book and its knotted column's SHRINKAGE measures what reading
+  alone recovers vs what only surgery can. THE MILESTONE IN THE SMALL
+  COLUMN: two machine-made triples banked — the first substrate entries
+  produced end-to-end without a human hand (raw prose, parsed, voted,
+  verified to the author's answer; substrate n=4: 2 hand + 2 machine).
+  Diversity guard: no narrowing signal (banked prose reads MORE foreign
+  than pool — n=2, informational). The loop touched its tail tonight —
+  barely, and genuinely.
