@@ -2988,3 +2988,29 @@ token-position × waist-dim, the moment the skeleton trains.
   dialect parse); the census re-prices after the ingest. Data:
   `.cache/book1.jsonl`, `.cache/book1_attribution.json`; scripts
   `book1_paired_gate.py`, `book1_v2_retry.py`.
+- **THE EMPLOYMENT LAW + TWO PROMOTIONS (2026-07-11, relay — registered
+  before gen-7):** (1) **THE EMPLOYMENT LAW**: every organ this project
+  charters gets SMALLER on contact with measurement — book 1 is the
+  fourth charter shrinking (organ suspects resolving as readable
+  structure wearing unreadable prose; confirmed kingdom = a named list
+  of four, one a generator line). REGISTERED KILL CRITERION: if the
+  organ's kingdom shrinks below ~5% of harvest refusals after the style
+  wall falls, the "organ" becomes a RELATION TRANCHE plus a chain-length
+  fix and the funnel never grows its generative layer. The deciding
+  measurement is free — the census, re-run after reading-training ships.
+  Nouns die; verbs survive. (2) **[71] PROMOTED — THE MOUTH IS
+  MANDATORY**: 5/5 unanimous-wrong on raw prose is the certification
+  channel's first observed false certificate — unanimity certifies
+  STABILITY, and [71] demonstrated stable wrongness in the wild at n=1.
+  Chain-of-custody, now measured end to end: MOUTH clears register ->
+  LATTICE certifies stability -> KEY confirms truth. The lattice must
+  never see raw prose the mouth hasn't cleared; every link has a named
+  specimen showing why it cannot be removed. (3) **[46] PROMOTED — THE
+  PARAPHRASE ACCEPTANCE PROBE**: the surface flip (same relations,
+  "plus...equals" refuses / "The sum of...is" banks 5/5) makes gen-7's
+  surface-robustness item a paraphrase-augmentation LINE in the
+  generator, not a research question; [46]'s v1 dialect is the
+  pre-positioned acceptance probe (must bank post-gen-7). The tier-N
+  miss stands as a debt WITH AN INVOICE: fdiv-in-composition 0/4 with a
+  stable wrong vote, atop gen-7's worklist. Gen-7's charter is written
+  by real failures for the first time; awaits the word.
