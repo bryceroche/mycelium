@@ -22,6 +22,37 @@ sys.path.insert(0, "."); sys.path.insert(0, "scripts")
 import algebra3_nl_gen as G3
 
 
+def roundtrip7(n_vars, factors, m, solution, budget=5000):
+    """roundtrip3 with a GENERATION-TIME budget clamp. Healthy training
+    items verify in ~0 decisions; an item whose ban-and-resolve needs
+    200k decisions is a solver pathology, not training data — and one
+    such attempt stalled the dag7b corpus for 30+ minutes at 100% CPU.
+    Reject anything the gate can't certify inside `budget` decisions."""
+    from mycelium.csp_domains import problem_from_algebra3
+    from mycelium.csp_core import solve_symbolic
+    givens = {f["var"]: f["value"] for f in factors if f["ftype"] == "given"}
+    prob = problem_from_algebra3(n_vars, factors, givens, m)
+    res = solve_symbolic(prob, budget=budget, seed=0)
+    if res["status"] != "solved":
+        return False, -1
+    got = [int(res["assignment"][v]) for v in range(n_vars)]
+    if got != [int(v) for v in solution]:
+        return False, -1
+    for v in range(n_vars):
+        if v in givens:
+            continue
+        p2 = problem_from_algebra3(n_vars, factors, givens, m)
+        p2.domains0[v].discard(solution[v])
+        if p2.domains0[v]:
+            r2 = solve_symbolic(p2, budget=budget, seed=0)
+            # SOUNDNESS: budget exhaustion cannot certify uniqueness —
+            # only a completed 'unsat' search may pass. 'solved' = an
+            # alternative exists; 'budget' = unknown; both reject.
+            if r2["status"] != "unsat":
+                return False, -1
+    return True, int(res.get("decisions", -1))
+
+
 def gen_dag7(rng, m, target=None):
     sol, factors = [], []
 
@@ -138,7 +169,7 @@ def gen_dag7(rng, m, target=None):
                           if not any(f.get("var") == v and
                                      f["ftype"] == "given" for f in factors)]
     for _ in range(len(sol) + 1):
-        ok, _dec = G3.roundtrip3(len(sol), facs(), m, sol, ())
+        ok, _dec = roundtrip7(len(sol), facs(), m, sol)
         if ok:
             break
         for v in order:
@@ -168,7 +199,12 @@ def main(n, seed, out, budget=250):
                  for (t, c) in [spec.split(":")]
                  for _ in range(int(c))]
         assert len(quota) == n, f"quota {len(quota)} != n {n}"
-    with open(out, "w") as fh:
+    mode = "w"
+    if os.environ.get("DAG7_RESUME") and os.path.exists(out):
+        ok = sum(1 for _ in open(out))
+        mode = "a"
+        print(f"[dag7-gen] RESUME from {ok} banked rows", flush=True)
+    with open(out, mode) as fh:
         while ok < n:
             m = 300 if rng.random() < 0.4 else 60
             g = gen_dag7(rng, m, target=(quota[ok] if quota else None))
@@ -186,9 +222,11 @@ def main(n, seed, out, budget=250):
                 rej += 1; continue
             if len(tok.encode(text).ids) > budget:
                 rej += 1; continue
-            okg, dec = G3.roundtrip3(n_vars, gf, m, sol, ())
+            okg, dec = roundtrip7(n_vars, gf, m, sol)
             if not okg:
                 rej += 1; continue
+            if ok % 200 == 0:
+                print(f"[dag7-gen] {ok}/{n} banked ({rej} rejected)", flush=True)
             for kk in (kinds or {"plain"}):
                 tally[kk] = tally.get(kk, 0) + 1
             if not kinds:
