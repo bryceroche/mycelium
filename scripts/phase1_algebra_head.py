@@ -56,6 +56,7 @@ ALG_TEST = os.environ.get("ALG_TEST", ".cache/algebra_nl_test.jsonl")
 TEST_NAME = os.environ.get("ALG_TEST_NAME", "test")   # states-file key for the test slice
 TRAIN_NAME = os.environ.get("ALG_TRAIN_NAME", "train")  # states-file key for the train slice
 STATES_NPZ = ".cache/phase1_alg_states_{split}.npz"
+STATES_NPY = ".cache/phase1_alg_states_{split}_states.npy"  # memmap sibling (gen-7+)
 ALG_CKPT = os.environ.get("ALG_CKPT", ".cache/phase1_algebra_head.safetensors")
 TOKENIZER_JSON = ".cache/llama-3.2-1b-weights/tokenizer.json"
 
@@ -234,7 +235,12 @@ def do_precompute():
     for split, path in jobs:
         samples, ids, mask, offsets = tokenize(path)
         n = len(samples)
-        states = np.zeros((n, T_ALG, H_TRUNK), np.float16)
+        # states stream straight to a disk-backed memmap — holding the full
+        # (n, T, 2048) fp16 array in RAM beside the AM driver's pinned pages
+        # OOMs at gen-7 scale (three kills, all during the giant-array write)
+        states = np.lib.format.open_memmap(
+            STATES_NPY.format(split=split), mode="w+", dtype=np.float16,
+            shape=(n, T_ALG, H_TRUNK))
         for s0 in range(0, n, 8):
             sl = slice(s0, min(s0 + 8, n))
             x = host.llama_embed[Tensor(ids[sl], dtype=dtypes.int)]
@@ -246,17 +252,16 @@ def do_precompute():
             states[sl] = c.astype(np.float16)
             if (s0 // 8) % 200 == 0:
                 print(f"[precompute] {split}: batch {s0//8}/{(n+7)//8}", flush=True)
+        states.flush()
+        shape = states.shape
+        del states
         gold = build_gold(samples, offsets)
         sent = np.stack([sent_indices(s["text"], o, mask[i])
                          for i, (s, o) in enumerate(zip(samples, offsets))])
-        print(f"[precompute] {split}: writing npz...", flush=True)
-        # PRECOMP_FAST=1: uncompressed savez — fp16 states are high-entropy
-        # (~8% saving) and the silent minutes of zlib are a kill window.
-        savez = np.savez if os.environ.get("PRECOMP_FAST") else np.savez_compressed
-        savez(STATES_NPZ.format(split=split), states=states,
-              tokmask=mask.astype(np.uint8), sent=sent.astype(np.int8),
-              **{f"g_{k}": v for k, v in gold.items()})
-        print(f"[precompute] {split}: {states.shape}", flush=True)
+        np.savez(STATES_NPZ.format(split=split),
+                 tokmask=mask.astype(np.uint8), sent=sent.astype(np.int8),
+                 **{f"g_{k}": v for k, v in gold.items()})
+        print(f"[precompute] {split}: {shape} (states -> memmap npy)", flush=True)
 
 
 def load_alg(split):
@@ -265,7 +270,11 @@ def load_alg(split):
     z = np.load(STATES_NPZ.format(split=split))
     samples = [json.loads(l) for l in open(ALG_TRAIN if is_train else ALG_TEST)]
     gold = {k[2:]: z[k] for k in z.files if k.startswith("g_")}
-    return samples, z["states"], z["tokmask"], gold, z["sent"]
+    if os.path.exists(STATES_NPY.format(split=split)):
+        states = np.load(STATES_NPY.format(split=split), mmap_mode="r")
+    else:
+        states = z["states"]   # legacy artifacts (gen<=6): states inside npz
+    return samples, states, z["tokmask"], gold, z["sent"]
 
 
 # ===========================================================================
