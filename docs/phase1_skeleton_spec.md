@@ -2787,3 +2787,22 @@ token-position × waist-dim, the moment the skeleton trains.
   boundary, probes found the inference boundary, harvest found the
   composition boundary — each wall named by real text, each fix one
   generation of existing machinery. The phrasebook becomes a grammar.
+- **GEN-6 VERDICT TREE + BOOTSTRAP RE-PRICING (2026-07-11, relay, banked
+  while the grammar lessons burn):** (1) THE INTERPRETATION HAZARD PINNED:
+  the garden banking is n=1 CLOSURE (demonstration), not the class-level
+  measurement — that lives in the wild-shape test row. Three sentences
+  ready: garden banks AND wild-shapes strong AND old shapes hold ->
+  GRAMMAR (dividends at larger-than-registers, registration confirmed);
+  garden banks but wild-shapes soft -> the wall thinned where probed
+  (phrasebook grew a page; gen-7 widens wiring variance); old shapes
+  regress -> the CAPACITY TRADE (head-growth conversation opens with a
+  measured invoice). The house pattern applied to its own celebration.
+  (2) THE BOOTSTRAP RE-PRICES the moment the wall thins, regardless of
+  verdict: post-commit probe = 20 cheapest un-annotated harvest problems
+  (registry-wearing-prose, in-range), THE HEAD PROPOSES dialect, THE GATE
+  DISPOSES. >=1/3 banked machine-proposed -> substrate accumulation goes
+  machine-priced overnight; annotation hours redirect to the knotted cases
+  — the machine drafts the isotopies, the human performs the surgeries.
+  (3) The loop named: wild text -> rejection -> named wall -> generation
+  charter -> re-examination — the oldest self-improvement design, running
+  at generation cadence with the gate as incorruptible oracle.
