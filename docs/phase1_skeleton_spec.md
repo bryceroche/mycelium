@@ -2690,3 +2690,29 @@ token-position × waist-dim, the moment the skeleton trains.
   problems, odometer zeroed at 0.2488 (== the benchmark — valid proxy),
   level-inversion replicated, seed machinery live and correctly strict.
   Scripts: `harvest_v0.py`, `harvest_seed_gate.py`.
+- **DAISY CHAINS + MATH KNOTS (2026-07-11, Bryce's ninth — two metaphors,
+  both machinery):** (1) THE CHAIN-PRECISION BUDGET, registered BEFORE the
+  organ trains: with the writer live, the pipeline is a true chain (organ
+  writes -> parser reads -> solver carries) and chain precision is a
+  PRODUCT — a silent error at link one looks native to every instrument
+  below. The organ's certified-write bar is therefore DERIVED, not chosen:
+  **organ certified-error budget = (end-to-end 0.25% bound) minus the
+  parser link's measured certified error at integration time** — pinned as
+  a FORMULA (current estimate: parser consumes ~0.15-0.2%, leaving the
+  organ ~0.05-0.1%, i.e., certified-write precision ~99.9%). The layered
+  mouths are the per-link circuit breakers (mouth-v2 on the write, lattice
+  on the parse, answer key on the solve): three examiners, three links, no
+  silence propagates — the daisy chain stays floral, not electrical.
+  (2) THE KNOT FRAMING, adopted into the certification section: **reading
+  is isotopy; manufacturing is surgery.** The 3% style test was an unknot
+  (ambient-isotopic to the dialect — pairs taught the deformation);
+  structural implicits are true knots (no smooth rearrangement yields the
+  unstated share — cut and re-glue = generation; the organ is the funnel's
+  first surgeon, hence the operating-room protocols). TTA permutations are
+  REIDEMEISTER MOVES — diagrams of the same knot — so agreement is a KNOT
+  INVARIANT, and the anchor's failure has its theorem-shaped sentence: on
+  foreign text the parser computed a diagram-dependent quantity; five
+  diagrams voted unanimously for the wrong knot. **CERTIFY INVARIANTS, NOT
+  DIAGRAMS** — the mouth guards the language, the vote guards invariance,
+  the answer key guards the ultimate invariant; each mouth in the chain
+  guards a different one. §8's framing upgraded from wound to theorem.
