@@ -2928,3 +2928,30 @@ token-position × waist-dim, the moment the skeleton trains.
   into new instruments (the anchor conscripted the mouth into existence;
   the join conscripted the book into a census). Book 1 awaits the word;
   it ships with its own index.
+- **REGISTERED (2026-07-11): BOOK 1 — the library's first volume, n=18,
+  stratified per the binding sampling law.** Paired (raw, dialect)
+  protocol: both run through the gen-6 lattice gate (5 views, vote>=3,
+  answer key disposes); the pair's fate attributes. ROSTER — TIER N
+  (near-miss, 6): idx 71, 78, 89, 72, 46, 7. TIER S (knotted,
+  style-suspect, 7): idx 21 (sentinel, entry one), 99, 16, 57, 28, 56,
+  45. TIER O (knotted, organ-suspect, 5): idx 54, 90, 51, 37, 85.
+  TAXONOMY (pinned): STYLE CASUALTY = faithful in-grammar dialect banks
+  (lexical explicitation allowed: literal facts about KNOWN quantities,
+  e.g. 4^2=16, 15th-term->14 steps; supplying an UNKNOWN's value or a
+  rewritten equation is forbidden). ORGAN PATIENT type A =
+  annotation-impossible (no faithful in-grammar dialect; move outside
+  grammar — [90] completing-the-square declared type A up front, its
+  residual runs for the record only). Type B = faithful dialect exists
+  but refuses. ANNOTATION-TIME FINDING (before any GPU): the organ-suspect
+  tier SHRANK under the pen — integer-root factoring IS the tranche-2
+  Vieta shape (sum+product+selector, in grammar: [54]); function
+  composition UNWINDS into forward relations the CSP inverts natively
+  ([51]); sign-rewrites reduce to positive-form relation sets ([37]).
+  Only [90] resisted. The organ's kingdom is narrower than the census's
+  qualitative read suggested — quadratics with integer roots were
+  annexed by tranche 2 before the organ was chartered. PREDICTIONS
+  (pinned): tier N >=4/6 bank; tier S >=5/7 bank (incl. the sentinel) —
+  style-wall existence at scale; [54] and [37] BANK, [85] REFUSES
+  (repeated-arg mul untrained — type B), [51] uncertain (depth); book-1
+  substrate growth >=10. Gate: gen-6 ckpt, solve2 n_vars=24 m=300,
+  fdiv at most once per item (double-fdiv is gen-7's known wall).
