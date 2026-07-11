@@ -2988,6 +2988,25 @@ token-position × waist-dim, the moment the skeleton trains.
   dialect parse); the census re-prices after the ingest. Data:
   `.cache/book1.jsonl`, `.cache/book1_attribution.json`; scripts
   `book1_paired_gate.py`, `book1_v2_retry.py`.
+- **REGISTERED (2026-07-11): GEN-7 — the receipts generation.** Corpus:
+  `algebra_dag7_gen.py` (fdiv/mod pairs in rotation, repeated-arg mul,
+  8-12-given ladder chains, coupled-linear k1x+y=s1 / x+k2y=s2 blocks;
+  render3 + roundtrip3; smoke 40/40, kinds all present); mixed7 =
+  mixed6 + 3500 dag7; warm from gen-6, CURRICULUM=1, 16k steps.
+  PREDICTIONS (pinned before training): (a) ACCEPTANCE PROBES — the
+  eight refused book-1 v1 dialects re-gated under gen-7: [46]v1 BANKS
+  (the paraphrase probe), fdiv v1s [71,78,7,45] >=3/4 bank, [85] BANKS
+  (sq now in grammar), [72] BANKS (coupled in rotation), [56] BANKS
+  (ladder). (b) REGRESSION BARS (lattice holds its dials): dagtest6
+  graph-solve >=520/700, bigtest ANSWER >=980/1500, alg2test >=530/800,
+  vtest 600/600 holds; alg4test RISES >=420/800 ANSWER (the fdiv
+  receipt paying); val >=0.87. (c) CENSUS under gen-7: ~UNCHANGED
+  (65-72 knotted) — gen-7 teaches MOVES in the dialect register; the
+  style wall is untouched by design, and the employment-law enforcement
+  census waits on READING-training (the next chapter), not this bump.
+  (d) Mouth bank NOT rebuilt (register unchanged; rides the next
+  register-changing bump). KILL: any regression bar broken -> gen-7 is
+  NOT promoted to gate ckpt; gen-6 stays, diagnose before re-fire.
 - **THE EMPLOYMENT LAW + TWO PROMOTIONS (2026-07-11, relay — registered
   before gen-7):** (1) **THE EMPLOYMENT LAW**: every organ this project
   charters gets SMALLER on contact with measurement — book 1 is the
