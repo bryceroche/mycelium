@@ -2620,3 +2620,22 @@ token-position × waist-dim, the moment the skeleton trains.
   architecture hypothesis needs the same instrument scrutiny as the one
   that flatters your hopes.** QUEUE: synthetic corpus (phrase-split pinned)
   -> probe retrained -> fork verdict -> December's budget word.
+- **THE EXPLICITATION FORK RESOLVES: STAGE-WARD, WITH THE DICTIONARY NUANCE
+  (2026-07-10).** Retrained examiner (phrase-split): within 1.00 (instrument
+  VALID — the negative is trustworthy), CROSS-PHRASE **0.00/0.06** at both
+  depths, MATH-lex 0.00. **There is no shared evoked-quantity geometry in
+  the frozen trunk** — "a dozen" does not light a magnitude direction that
+  "a baker's dozen" also lights; implicit values are not precomputed
+  anywhere probe-readable, shallow or deep (the deeper-prefix customer
+  never materialized — fenced L8 verdict extends to inference). Combined
+  with structural 0/9: EXPLICITATION IS REAL WORK THE TRUNK HASN'T DONE.
+  THE NUANCE (the within column's gift): lexical implicits are
+  DICTIONARY-LEARNABLE per phrase — a finite lexicon the generator
+  enumerates into pairs (the selector-vocabulary pattern); novel evokers
+  and ALL structural facts need the GENERATIVE ORGAN. **DECEMBER'S BUDGET
+  WORD: ORGAN — sized structural, with a lexicon appendix.** The funnel's
+  first generative layer earns its build honestly: prose -> explicit
+  dialect, validated twice (mouth-v2 conformance + solve-to-official-answer
+  on harvested books). Three probes, two afternoons, twenty hand-annotated
+  problems — and the architecture question that opened as a metaphor closed
+  as a measured build order.
