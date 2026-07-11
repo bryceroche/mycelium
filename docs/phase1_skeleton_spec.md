@@ -2806,3 +2806,20 @@ token-position × waist-dim, the moment the skeleton trains.
   (3) The loop named: wild text -> rejection -> named wall -> generation
   charter -> re-examination — the oldest self-improvement design, running
   at generation cadence with the gate as incorruptible oracle.
+- **GEN-6: THE GRAMMAR SENTENCE FIRES (2026-07-11).** All three verdict-tree
+  branches land on the best caption: WILD SHAPES **563/700 = 80.4%** one-shot
+  (the highest debut ever; graph-solve 77%); OLD SHAPES SURGE — bigtest
+  **1000/1500** (+74; legacy started at 802), alg2test **551** (+44 — the
+  gen-5 register dip ERASED retroactively: transient, cured by moves),
+  alg4test 371 (+35), vtest 600/600 held; val **0.8860** (prior best
+  0.8343). THE SHARPENED REGISTRATION COLLECTS IN FULL: dividends larger
+  than the register expansion (+74 vs +11) — composition IS what the
+  circuits compute; the old fixed shapes became easy special cases of a
+  general skill, as predicted. THE GARDEN BANKS — 4/4 unanimous at 200:
+  the wild sentence that named the wall walked through it one generation
+  later; substrate n=2. Midpoint honestly still out (double-FDIV chain;
+  fdiv absent from the DAG rotation — gen-7's one-line addition). The
+  loop's first full cycle is complete: wild text -> rejection -> named
+  wall -> charter -> re-examination -> BANKED. Ckpt:
+  `.cache/phase1_gen6_head.safetensors`. NEXT: the bootstrap re-pricing
+  probe (registered) — the wall is thin; let the machine draft.
