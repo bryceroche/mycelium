@@ -2728,3 +2728,19 @@ token-position × waist-dim, the moment the skeleton trains.
   widening the harvestable slice. Seed[1]'s in-range rejection: hand-dialect
   still drifts from template phrasing — round 3 goes template-exact.
   Substrate: `.cache/harvest_seed.jsonl` (gate=lattice-vote+answer-key).
+- **THREE REGISTRATIONS AT THE LIBRARY DOOR (2026-07-11, relay):** (1) THE
+  TEACHER-DEMONSTRATION FRAMING: the annotation flow is behavioral-cloning
+  substrate in the strictest sense — every banked entry is a worked example
+  of explicitation-as-surgery, machine-verified by the same gate the organ
+  will face; the surgeon trains inside an already-certified operating room
+  (no prior component got that inheritance). (2) GENERATION-INDEXED GOLD:
+  "write in the generator's voice" means THE CURRENT GENERATION'S voice —
+  the dialect's boundaries move as mixes widen, so every banked entry cites
+  the manifest generation it was written against (sync law applied to prose
+  style; a field now, a vintage-mismatch mystery prevented later).
+  (3) THE BOOTSTRAP DESIGN, contingent on round-3 economics: the bilingual
+  head's own parses of NEAR-NATIVE harvest problems can propose dialect
+  rewrites, THE GATE DISPOSES — propose/dispose eating its own tail; hand
+  surgery reserved for the knotted cases. The gate makes the old
+  self-improvement dream safe: nothing banks that doesn't carry to the
+  answer key, no matter who — or what — wrote it.
