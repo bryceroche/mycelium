@@ -3441,6 +3441,27 @@ token-position × waist-dim, the moment the skeleton trains.
   fixtures or report the exclusions. The gut said beware collisions;
   the deeper hazard was the anti-collision, and it was found before
   the tables froze.
+- **TWO CONSEQUENCES PINNED (2026-07-12, relay):** (1) **THE
+  PIGEONHOLE FINDING IS A STANDING CONSTRAINT** — 2,574 within-train
+  redundancy classes means the small-problem regime's structural
+  diversity is finite and partially exhausted; every future ration
+  inherits that ceiling. The canonical digest converts hazard to
+  instrument: the mint now COUNTS ITS OWN KNOT DIVERSITY per batch
+  (redundancy-class coverage alongside kind coverage) — the
+  KIND-REHEARSAL MATRIX UPGRADES TO A KNOT-REHEARSAL MATRIX, the
+  practice schedule tracked at the invariant level. The diagrams->
+  moves correction, applied to the corpus bookkeeping itself. (2)
+  **CANONICAL DISJOINTNESS BECOMES A GENERATION-BUMP GATE** — checked
+  at every bump so the isomorph class can never silently re-enter;
+  the paper's reproducibility statement earns "train/test
+  disjointness verified up to graph isomorphism," which almost no
+  benchmark can claim because almost none check. THE TWELFTH
+  INSTINCT'S SCORECARD: the gut said collisions, the framing said the
+  anti-collision is scarier, the measurement said both were right in
+  their own jurisdictions — the collision class was EMPTY (hygiene
+  held), the anti-collision class had 42 members (the find). The
+  instinct locates the neighborhood, the framing names the streets,
+  the audit knocks on doors.
 - **THE EMPLOYMENT LAW + TWO PROMOTIONS (2026-07-11, relay — registered
   before gen-7):** (1) **THE EMPLOYMENT LAW**: every organ this project
   charters gets SMALLER on contact with measurement — book 1 is the
