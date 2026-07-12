@@ -3143,6 +3143,30 @@ token-position × waist-dim, the moment the skeleton trains.
   (correct-but-shallow) validated at pilot scale; full column when
   per-item votes persist at census scale. Scripts:
   `erasure_share_correlation.py`; pilot inline in session log.
+- **THE LAW NAMED + THE QUADRANTS PINNED (2026-07-11, relay):**
+  (1) **CIRCUIT REHEARSAL, NOT FILE REHEARSAL** — the corpus economy's
+  law: the erasure bill is charged per UNSHARED CIRCUIT; a register
+  whose kinds live inside another register's shapes rides free (alg2
+  +4.4% at zero fresh rows). Replay design converts from mixing FILES
+  to mixing COVERAGE: gen-8's diet is specified as a KIND-REHEARSAL
+  MATRIX (which circuits each row exercises), deficit = the
+  true-zero-rehearsal kinds (pct/seq, the −14% line items). The law
+  also re-explains the dividends streak at depth: expansion paid
+  BECAUSE new shapes covertly rehearsed old circuits — constructive
+  interference through shared kinds — and broke exactly where sharing
+  hit zero. One law, both signs. (2) **CORRECT-BUT-SHALLOW = FREE
+  CURRICULUM SIGNAL**: rehearsal targets, self-identified by their own
+  temperature — fold into replay to DEEPEN basins (cheaper than any
+  new capability); epigraph + fifth-column candidate added to paper §7.
+  (3) **THE JOINT TABLE'S FOUR QUADRANTS, all pre-written** (capacity
+  probe x interference matrix): (anti-aligned, erosion-reverses-at-2x)
+  -> capacity for orthogonal subspaces; (aligned, reverses) -> PURE
+  capacity, state-counting only — remedy is the bigger head alone, no
+  LoRA, no mix surgery beyond the kind matrix; (aligned, persists) ->
+  starvation, replay cures; (anti-aligned, persists) -> genuine task
+  conflict, §8.4's LoRA ladder gets its first customer. One run, four
+  pre-written verdicts, no cell left to improvise. GPU pair
+  (`cap_probe.sh` + `interference_matrix.py`) staged, on the word.
 - **THE EMPLOYMENT LAW + TWO PROMOTIONS (2026-07-11, relay — registered
   before gen-7):** (1) **THE EMPLOYMENT LAW**: every organ this project
   charters gets SMALLER on contact with measurement — book 1 is the

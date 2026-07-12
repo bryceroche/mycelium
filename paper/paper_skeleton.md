@@ -130,7 +130,16 @@ negatives discipline survives as the paper's whole voice.
 
 ## 7. The deployment lattice (Paper B — the headline section)
 
+> *Epigraph: "Temperature is orthogonal to truth."* — vote entropy across
+> TTA views reads basin DEPTH (deep-correct H=0.000, shallow-correct
+> H=0.846, deep-wrong H=0.212, measured 2026-07-11); the mouth reads
+> landscape familiarity; the answer key reads truth. No instrument
+> substitutes for another — that is the chain-of-custody argument in one
+> sentence, and the reason the lattice needs all its links.
+
 - Four rungs: certify / answer / flag / abstain — all zero-parameter, all gold-free.
+- (Candidate fifth column, pilot-validated: CORRECT-BUT-SHALLOW — right
+  answer, vote-shy; the self-identified retraining-target class.)
 - The freeze as an interface contract; expansion acceptance = "the lattice held its
   dials" (Table: tranche-1 acceptance, both rows green and upward).
 - Certification channel: unanimity dial (5/5 → 3/5 curve), cross-domain survival,
