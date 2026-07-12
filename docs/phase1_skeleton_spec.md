@@ -3356,6 +3356,36 @@ token-position × waist-dim, the moment the skeleton trains.
   [45]'s mixed-vote specimen as motivation); (5) fdiv borderline
   (0.483/0.535) rides the retargeted ration. Gate remains gen-6;
   ckpt `.cache/phase1_gen8_head.safetensors` banked unpromoted.
+- **CORRECTION + TWO STANDING RULES (2026-07-12):** (1) **THE GEN-8
+  'MIS-TARGETED RATION' ATTRIBUTION WAS WRONG — SEED COLLISION.**
+  algebra4_nl_train was itself minted by algebra3_nl_gen (seed 81,
+  teeth 0.8); the gen-8 kind-ration re-used seed 81 -> **2500/3000
+  rows byte-identical duplicates** -> the alg4 register accidentally
+  received a 2x REHEARSAL UPWEIGHT... and moved only +13. THE RATIONED
+  REGISTER FAILED ITS OWN RATION: per the pinned frame, the junction
+  REOPENS FOR ALG4 specifically (capacity already exonerated for it
+  by the A/B at 316~319; rehearsal now exonerated by the accidental
+  2x). The per-kind diff instrument (gen-6 vs gen-8 heads over
+  alg4test, sliced by seq/pct/fdiv/crt/vieta) fires before any gen-9
+  ration decision. PROCESS GUARD MINTED: ration seeds must not
+  collide with historical corpus seeds; the mix builder must PRINT
+  DUPLICATE COUNTS (a data-boundary guard per the no-silent-fallback
+  law — this one hid inside a healthy-looking corpus for a full
+  generation). (2) **THE REPRESENTABILITY-AUDIT RULE (relay):** a
+  metric flat across MULTIPLE trainings AND a targeted data
+  intervention is not starved — it is STRUCTURALLY EXCLUDED; three
+  flat trainings trigger a representability audit BEFORE a fourth
+  fires. Applied retroactively it catches [85] two generations early.
+  (3) **DELIBERATE EXCLUSIONS CARRY EXPIRATION TAGS (relay):** the
+  repeated-arg exclusion began as a v0 soundness guard ("mul(x,x)
+  would unsound the pairwise propagator") and AGED INTO the encoding
+  bug when wild shapes arrived — scoping decisions expire the way the
+  integrality jaw did; tag them at birth. (4) Surface-ration
+  expectation clause (relay, pre-said): 4000 rows at the measured
+  +66/2500 exchange rate plausibly clears 980, but the last points of
+  recovered erosion are the hardest-starved — **975 = the ration
+  curve bending, NOT the thesis breaking**; the bar stays 980, the
+  expectation stays humble.
 - **THE EMPLOYMENT LAW + TWO PROMOTIONS (2026-07-11, relay — registered
   before gen-7):** (1) **THE EMPLOYMENT LAW**: every organ this project
   charters gets SMALLER on contact with measurement — book 1 is the
