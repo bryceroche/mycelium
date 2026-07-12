@@ -3462,6 +3462,35 @@ token-position × waist-dim, the moment the skeleton trains.
   held), the anti-collision class had 42 members (the find). The
   instinct locates the neighborhood, the framing names the streets,
   the audit knocks on doors.
+- **VERDICT (2026-07-12): GEN-9 — NO PROMOTION BY EXACTLY ONE BAR;
+  everything else is the sprint's best table.** THE WINS: **[85]
+  BANKS 5/5 UNANIMOUS** — the multiplicity fix works, the self-grading
+  probe graded itself, three generations of mystery ended by one
+  representability audit; **sq per-kind 0.319 -> 0.751** (bar 0.45,
+  shattered — the encoding fix unlocked the entire kind); **bigtest
+  1084** (bar 980; gen-6's 1000 EXCEEDED by 84 — the ration curve
+  didn't bend, it OVERSHOT: the starvation thesis fully vindicated,
+  erosion story CLOSED — rehearsal was the mechanism, the diet cures
+  it); dag7btest 422 -> **510**, dag8test 379 -> 510 (the new kinds
+  consolidated: fdiv 0.660, coupled 0.681, ladder 0.506, all bars
+  cleared); alg4test 315 holds the line (schedule probe pending);
+  alg2test 559, vtest 600/600, dagtest 669; val RECORD 0.8826;
+  shallow-basin first census: deep 1432 / SHALLOW 925 (31% of the
+  corpus!) / wrong 29 / refused 614. THE ONE MISS: **acceptance 6/8
+  (bar 7/8)** — [71] votes [9,9] and [78] votes [16]: RIGHT answers,
+  vote-shy — both were 5/5 under gen-8 and RE-SHALLOWED under gen-9's
+  diet shift. Rehearsal deepens basins; diet shifts can re-shallow
+  specific ones — the correct-but-shallow class claiming its first
+  promotion casualty, in its own vocabulary, one generation after the
+  instrument was built. NO PROMOTION, mechanically; gate remains
+  gen-6. CENSUS 1/18/81 (near shrank, knotted grew — raw-prose
+  reading untouched as always; books remain the path). REGISTERED
+  NEXT (on the word): **GEN-9B, a basin top-up, not a generation** —
+  continue from gen-9 ckpt ~8k steps with a small fdiv-tiny-chain
+  booster (the [71]/[78] shape, ~500 rows) + shallow-census-under-
+  gen-9 oversamples; re-run acceptance + battery. The two vote-shy
+  items are the acceptance probes; bars unchanged. Ckpt
+  `.cache/phase1_gen9_head.safetensors` banked unpromoted.
 - **THE EMPLOYMENT LAW + TWO PROMOTIONS (2026-07-11, relay — registered
   before gen-7):** (1) **THE EMPLOYMENT LAW**: every organ this project
   charters gets SMALLER on contact with measurement — book 1 is the
