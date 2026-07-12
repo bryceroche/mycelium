@@ -3197,6 +3197,37 @@ token-position × waist-dim, the moment the skeleton trains.
   candidate). The night's arithmetic: the matrix cost one backward
   pass per register and delivered the mechanism; the probe cost 12k
   steps and delivered a confound — the cheap instrument won.
+- **REGISTERED (2026-07-11, relay — the temperament frame + two
+  riders):** (1) **THE ATLAS'S GATE-2 INHERITS ITS DATASET** (one
+  line, no fire): the interference cosines + the kind-rehearsal matrix
+  are an empirical similarity structure over registers/kinds — if it
+  proves tree-metric as tranches accumulate (register families sharing
+  circuit-ancestry), the delta-probe opens with evidence produced as a
+  byproduct. Tripwire unchanged (watches centroid-margin shrinkage,
+  not gradient conflict). (2) **THE TEMPERAMENT DESIGN (the eleventh
+  instinct, musical keys):** registers are keys, kinds are notes, the
+  interference matrix IS the circle of fifths (alg2-inside-dag7 =
+  closely related keys; alg4 = the tritone). The 33-key head is tuned
+  in EQUAL TEMPERAMENT — every key playable, every key compromised.
+  The two remedies are the two historical tunings: grow the head =
+  more strings, same temperament; the §8.4 ladder = WELL-TEMPERED —
+  shared instrument, per-key accidentals. THE SHARPENING THE MUSIC
+  BOUGHT: accidentals ONLY where the matrix shows dissonance —
+  adapters for the anti-aligned pairs alone; the old guard's mutual
+  +0.25 means they WANT one tuning, and adapters there would waste
+  parameters fixing consonance. Sharper than per-register-everywhere,
+  derived from a metaphor, consistent with ten prior instincts. (3)
+  **THE FAIR A/B, staged with its reading frame pre-committed:** 2x
+  pad-warm, FULL 32k schedule, identical mixed7b — only width moves
+  vs gen-7b's own 32k. Honest residual asymmetry noted: gen-7b's warm
+  source was same-width; cap2x's is padded — a clean-cold A/B is the
+  escalation if this one reads ambiguous. RULE: bigtest >=960 ->
+  capacity was the wall; <930 at matched schedule -> exonerated;
+  PARTIAL (930-960, or reversal WITH anti-alignment persisting in the
+  32k head's OWN matrix — the matrix reruns on the A/B artifact) ->
+  BOTH tunings at once: more strings AND accidentals for the
+  dissonant keys, as the music predicted before the run. Per-kind
+  guard unchanged (>= gen-7b − 0.03). Awaits the word.
 - **THE EMPLOYMENT LAW + TWO PROMOTIONS (2026-07-11, relay — registered
   before gen-7):** (1) **THE EMPLOYMENT LAW**: every organ this project
   charters gets SMALLER on contact with measurement — book 1 is the
