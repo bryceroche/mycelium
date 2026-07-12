@@ -44,7 +44,7 @@ import numpy as np
 
 T_ALG = 256
 H_TRUNK = 2048
-H_W = 512
+H_W = int(os.environ.get("ALG_HW", "512"))  # capacity-probe dial (2026-07-11)
 K_VARS = 24
 L_FAC = 24
 N_DIG = 3

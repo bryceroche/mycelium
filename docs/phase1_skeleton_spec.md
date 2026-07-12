@@ -3061,6 +3061,38 @@ token-position × waist-dim, the moment the skeleton trains.
   vs absorbed registers) before spending more steps. Data: val curve +
   tables in the session log; ckpt `.cache/phase1_gen7b_head.safetensors`
   (NOT the gate; gate remains `phase1_gen6_head`).
+- **REGISTERED (2026-07-11, relay adjudication): (c) FIRST — THE
+  CAPACITY PROBE; (a)/(b) sequenced behind its verdict.** The
+  eroding-while-gaining signature (new kinds up, oldest registers
+  monotone-down across two independent rounds, gen-5 tax explicitly
+  fenced off by the second round deepening it) is the registered
+  picture of the CAPACITY CROSSOVER, first symptom on the oldest
+  relations as the diminishing-dividends registration predicted — three
+  weeks early. Data fixes (replay mix, new shapes) are the lever we
+  WANT to work (flattering-remedy principle): if the head is full, a
+  replay mix doesn't cure crowding, it chooses different victims —
+  weighting only works if there is room to weight INTO. PROBE DESIGN
+  (banked machinery only): ALG_HW dial added (512 default); pad-warm
+  gen-7b into a 2x head (1024), train on the IDENTICAL mixed7b corpus
+  (states already precomputed) for 12k steps, read ONE number at fixed
+  data mix. DECISION RULE (pinned): bigtest ANSWER >=960 AND new-kind
+  per-kind >= gen-7b levels − 0.03 -> the wall is the head; growth
+  opens with a measured invoice (head ~3.2M against a frozen
+  half-billion — 2x is a rounding error) and (a)/(b) ride the bigger
+  head. bigtest <930 -> capacity EXONERATED; crowding is a data-mix
+  problem; (b)-then-(a) fires with confidence. 930-960 -> extend +8k
+  once, re-read. PAD-WARM CAVEAT stated: the relational law says padded
+  compositions may not inherit — a null result reads through that lens
+  before exonerating capacity. RIDING REGISTRATIONS: (i) NEW SPECIMEN
+  CLASS — CORRECT-BUT-UNCERTIFIABLE ([71] votes [9,9], [7] votes [45]:
+  right answers, vote-shy across permuted views) — the mirror of raw
+  [71]'s stable-wrongness; the lattice's geometry lives between the two
+  (stability without truth / truth without stability). Parked with the
+  K-dial / view-family question; these two are its acceptance probes if
+  the class grows on wilder prose. (ii) [85]'s INVERSE SHAPES
+  (unknown-squared, inverse-fdiv) ship in gen-8's rotation WHICHEVER
+  branch wins — named generator gap, standing acceptance probe. The
+  probe awaits the word.
 - **THE EMPLOYMENT LAW + TWO PROMOTIONS (2026-07-11, relay — registered
   before gen-7):** (1) **THE EMPLOYMENT LAW**: every organ this project
   charters gets SMALLER on contact with measurement — book 1 is the
