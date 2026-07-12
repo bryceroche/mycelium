@@ -3031,6 +3031,36 @@ token-position × waist-dim, the moment the skeleton trains.
   REVISED BARS: per-kind single-view >=0.55 each new kind; acceptance
   >=6/8; bigtest >=980 (refund), alg4test >=420, vtest >=598, dagtest6
   >=590, alg2test >=530. Same kill: any bar broken -> no promotion.
+- **VERDICT (2026-07-11): GEN-7B — KILL FIRES AGAIN; gen-6 keeps the
+  gate; the diagnosis graduates from balance to CROWDING.** Val healthy
+  monotone to 0.8736 (balanced test; new best every check from 12k).
+  EVERY new kind improved substantially (ladder 0.273->0.500, fdiv
+  0.372->0.549, coupled 0.417->0.543, sq 0.264->0.342) yet ALL FOUR
+  missed the 0.55 bar (two within noise of it). Acceptance 4/8 (was
+  2/8): [46] 5/5, [78], [45], [56] BANK; [71] and [7] now produce the
+  RIGHT answer but vote-shy (votes [9,9] and [45] — parse instability
+  across permuted views, not wrongness); [85] inverse-square still 0/5
+  (training sqs are FORWARD — a known var squared; the inverse shape,
+  unknown-squared pinned only downstream, is likely absent from the
+  rotation: a GENERATOR gap, not a training-budget gap); [72] coupled
+  still refuses. Bars held: vtest RECOVERED 600/600, dagtest6 ROSE
+  again (616->661 graph-solve; 541 at gen-6), alg2test rose 559->575.
+  Bars broken: **bigtest 1000->963->901 and alg4test 371->350->319 —
+  MONOTONE EROSION across both gen-7 rounds.** This is not the gen-5
+  tax shape (a dip refunded by the next training); the next training
+  DEEPENED it. It is CROWDING: mixed7b diluted the original register
+  to 55% and pct/seq (alg4's other two thirds) to zero new rows, and
+  the oldest registers paid. The crossover watch logs its first
+  candidate that is NOT a tax. CENSUS: 1/26/73 ~unchanged, as
+  predicted. NEXT-FIRE OPTIONS (await the word — two kills in a row
+  makes this a design decision, not a mechanical re-fire): (a) REPLAY
+  MIX — mixed7c upweights the eroding registers (re-add algebra_nl +
+  alg4 slices) alongside dag7b, retrain; (b) add the INVERSE-SQUARE
+  and inverse-fdiv shapes to the rotation first (the [85] gap), then
+  (a); (c) probe whether the 33-key head is at CAPACITY (param census
+  vs absorbed registers) before spending more steps. Data: val curve +
+  tables in the session log; ckpt `.cache/phase1_gen7b_head.safetensors`
+  (NOT the gate; gate remains `phase1_gen6_head`).
 - **THE EMPLOYMENT LAW + TWO PROMOTIONS (2026-07-11, relay — registered
   before gen-7):** (1) **THE EMPLOYMENT LAW**: every organ this project
   charters gets SMALLER on contact with measurement — book 1 is the
