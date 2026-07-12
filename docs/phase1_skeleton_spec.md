@@ -3298,6 +3298,29 @@ token-position × waist-dim, the moment the skeleton trains.
   per-kind sq >=0.40, fdiv/ladder/coupled >=0.50. ALL bars hold ->
   GEN-8 PROMOTES TO THE GATE (first promotion since gen-6) and the
   census re-runs under it. Any bar broken -> no promotion, diagnose.
+- **VERDICT FRAME PINNED PRE-MEASUREMENT (2026-07-12, relay — the
+  density-regime discipline applied to the bars themselves):** the bar
+  structure has an asymmetry worth naming before it prints. bigtest
+  recovering while alg4 misses 420 = starvation CONFIRMED + the
+  alg3-ration mis-sized or mis-targeted (kind-ration ARITHMETIC, not
+  mechanism failure — diet-tuning). **The junction reopens ONLY if the
+  RATIONED registers fail to respond to their OWN rations.** A mixed
+  table reads as grocery arithmetic, not thesis-death; only
+  ration-blind erosion kills starvation. Also noted: the smoke's
+  166-vs-30 rejection rate on inverse shapes is the uniqueness gate
+  EARNING ITS KEEP (an ungiven var constrained only downstream has
+  more freedom to pin) — high mint-time rejection on inverse problems
+  is the gate working, not friction; `nogive` handles [85]'s circuit
+  the solution-first way (the edge condition made UNREPRESENTABLE,
+  as with no-real-roots). STRATEGIC RIDER — what promotion unlocks:
+  gen-8 promoting re-prices the BOOTSTRAP, not just the census — the
+  2/26/72 ran under gen-6, and the near-miss tier's shared cause
+  (fdiv-in-composition) is precisely what the kind-ration + gen-7b's
+  fdiv gains address. A banked-column jump under gen-8 brings the
+  machine-drafts-the-isotopies economics with it: book 2's annotation
+  budget splits between hand-surgery on the genuinely knotted and
+  gate-disposal of machine proposals. The practice schedule may fund
+  the apprenticeship.
 - **THE EMPLOYMENT LAW + TWO PROMOTIONS (2026-07-11, relay — registered
   before gen-7):** (1) **THE EMPLOYMENT LAW**: every organ this project
   charters gets SMALLER on contact with measurement — book 1 is the
