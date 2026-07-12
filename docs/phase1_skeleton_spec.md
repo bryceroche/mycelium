@@ -3262,6 +3262,42 @@ token-position × waist-dim, the moment the skeleton trains.
   accidentals — the old songs had simply left the practice schedule.
   Rehearsal, not tuning. Ckpt `.cache/phase1_cap2x_32k_head.safetensors`
   (A/B artifact, not a gate candidate; gate remains gen-6).
+- **PROMOTED TO THE LAW FAMILY (2026-07-12, relay): "DECORRELATION
+  WITHOUT IMPROVEMENT" is the publishable finding — gradient
+  interference is the PHOTOGRAPH of registers packing into shared
+  capacity, not the MECHANISM of forgetting; the mechanism is
+  rehearsal, and orthogonal room does not change the practice
+  schedule. The interference matrix keeps its diploma as a PACKING
+  DIAGNOSTIC; its causal ambitions retire with a receipt. OPERATIONAL
+  LAW: **when erosion appears, check the rehearsal ledger before the
+  architecture** — cheap accounting beat expensive geometry (the
+  entropy instrument called the mechanism for arithmetic on banked
+  tables; the geometry instruments cost GPU-nights to photograph
+  symptoms and clear suspects). Flattering-verdict principle collected
+  on the junction's MOST seductive hypothesis: task conflict was the
+  interesting story, LoRA the elegant remedy; the fair A/B declined
+  both with numbers. Two expensive builds shelved by one overnight run.
+- **REGISTERED (2026-07-12): GEN-8 — the practice-schedule generation.
+  Diet fully specified by three free instruments; credit clause
+  applied (no double-pay for covertly-rehearsed kinds — sel/mod/coupled
+  ride inside dag7).** THE RATIONS: (1) KIND-RATION — 3000 fresh
+  alg3-register rows (seq/pct/fdiv, the true-zero deficit, −14% line
+  item); (2) SURFACE-RATION — 2500 fresh nl-core rows (nl-core's
+  erosion was surface-unshared per the matrix: the kinds survived, the
+  PHRASINGS starved — two different starvation species, two rations);
+  (3) SHALLOW-BASIN RATION — DEFERRED to gen-9 (needs per-item TTA
+  vote-entropy at corpus scale; registered, not forgotten); (4)
+  INVERSE SHAPES — dag8 rotation adds isq (mul(a,a) with a UNGIVEN,
+  [85]'s circuit) + ifdiv (dividend pinned by quotient+remainder),
+  nogive mechanics in the givens-gate; smoke 30/30. mixed8 = mixed7b
+  + 8500 = 29,500 rows; warm from gen-7b; 32k steps. BARS (pinned):
+  **bigtest >=980 — the starvation thesis's own falsifiable claim: if
+  the replay diet does not recover bigtest, starvation is wrong too
+  and the junction reopens**; alg4test >=420; alg2test >=530; vtest
+  >=598; dagtest >=640; dag7btest >=400; [85] BANKS; acceptance >=6/8;
+  per-kind sq >=0.40, fdiv/ladder/coupled >=0.50. ALL bars hold ->
+  GEN-8 PROMOTES TO THE GATE (first promotion since gen-6) and the
+  census re-runs under it. Any bar broken -> no promotion, diagnose.
 - **THE EMPLOYMENT LAW + TWO PROMOTIONS (2026-07-11, relay — registered
   before gen-7):** (1) **THE EMPLOYMENT LAW**: every organ this project
   charters gets SMALLER on contact with measurement — book 1 is the

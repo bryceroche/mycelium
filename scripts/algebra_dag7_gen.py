@@ -60,6 +60,9 @@ def gen_dag7(rng, m, target=None):
         sol.append(int(v)); return len(sol) - 1
 
     kinds = set()
+    nogive = set()   # GEN-8 inverse shapes: vars the gate may NOT give —
+                     # pinned only through downstream constraints ([85]'s
+                     # circuit: pointers at an ungiven var)
     r0 = rng.random()
     if r0 < 0.18:                       # LADDER (receipt 3)
         k = rng.randint(8, 12)
@@ -92,6 +95,32 @@ def gen_dag7(rng, m, target=None):
                             "result": si, "surface": "add"})
             factors.append({"ftype": "given", "var": si, "value": sol[si]})
         kinds.add("coupled")
+    elif r0 < 0.45:                     # INVERSE-SQUARE (gen-8, [85]'s shape)
+        x = rng.randint(2, max(2, int(m ** 0.5)))
+        a = nv(x)
+        nogive.add(a)
+        b = nv(x * x)
+        factors.append({"ftype": "rel", "op": "mul", "args": [a, a],
+                        "result": b, "surface": "mul"})
+        for _ in range(rng.randint(0, 2)):
+            nv(rng.randint(0, min(m // 4, 60)))
+        kinds.add("isq")
+    elif r0 < 0.57:                     # INVERSE-FDIV (gen-8: a pinned by q,r)
+        k = rng.randint(2, 9)
+        x = rng.randint(k, m)
+        a = nv(x)
+        nogive.add(a)
+        q, r_ = divmod(x, k)
+        qi, ri = nv(q), nv(r_)
+        factors.append({"ftype": "fdiv", "var": a, "k": k,
+                        "result": qi, "pair": True})
+        factors.append({"ftype": "mod", "var": a, "k": k,
+                        "result": ri, "pair": True})
+        factors.append({"ftype": "given", "var": qi, "value": q})
+        factors.append({"ftype": "given", "var": ri, "value": r_})
+        for _ in range(rng.randint(0, 2)):
+            nv(rng.randint(0, min(m // 4, 60)))
+        kinds.add("ifdiv")
     else:
         for _ in range(rng.randint(2, 4)):      # seed pool
             nv(rng.randint(0, min(m // 4, 60)))
@@ -159,8 +188,10 @@ def gen_dag7(rng, m, target=None):
         if (target == "plain" and have != {"plain"}) or \
            (target != "plain" and target not in have):
             return None
-    # GIVENS BY GATE: add until forced-unique everywhere
-    order = list(range(len(sol))); rng.shuffle(order)
+    # GIVENS BY GATE: add until forced-unique everywhere (nogive vars are
+    # never candidates — inverse shapes stay inverse or the item rejects)
+    order = [v for v in range(len(sol)) if v not in nogive]
+    rng.shuffle(order)
     givens = {f["var"] for f in factors if f["ftype"] == "given"}
 
     def facs():
@@ -188,7 +219,7 @@ def main(n, seed, out, budget=250):
     tok = Tokenizer.from_file(TOKENIZER_JSON)
     rng = random.Random(seed)
     ok = rej = 0
-    tally = {"ladder": 0, "coupled": 0, "sq": 0, "fdiv": 0, "plain": 0}
+    tally = {"ladder": 0, "coupled": 0, "sq": 0, "fdiv": 0, "isq": 0, "ifdiv": 0, "plain": 0}
     # DAG7_QUOTA: quota-balanced kinds — cycle target kinds, regenerate
     # until the item CONTAINS the target ('plain' = none of the four).
     # The v1 skew (fdiv in 60% of rows, ladder/coupled ~500 each) is the
