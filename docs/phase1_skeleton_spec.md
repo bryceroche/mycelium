@@ -3228,6 +3228,40 @@ token-position × waist-dim, the moment the skeleton trains.
   BOTH tunings at once: more strings AND accidentals for the
   dissonant keys, as the music predicted before the run. Per-kind
   guard unchanged (>= gen-7b − 0.03). Awaits the word.
+- **VERDICT (2026-07-12, the fair A/B — overnight): CAPACITY
+  EXONERATED, CLEANLY; the quadrant resolves to STARVATION; the
+  kind-rehearsal law called it.** The one number: bigtest **888** —
+  below the 930 exoneration line at the MATCHED 32k schedule, and
+  statistically the same model as the 1x everywhere: alg4 316~319,
+  alg2 554~575, dagtest 677~670, vtest 599~600, dag7btest 419~420,
+  per-kind all within the ±0.03 guard (sq 0.329, ladder 0.500, fdiv
+  0.521, coupled 0.551), val 0.8646 vs 0.8736. WIDTH BOUGHT NOTHING.
+  (The 12k probe's disruption transient fully washed out by 32k —
+  that diagnosis confirmed in passing.) THE DEEPER RESULT, from the
+  A/B artifact's own interference matrix: **decorrelation without
+  improvement** — at 2x the anti-alignment softened everywhere (dag7
+  vs nl-core −0.171->−0.099, vs alg2 −0.255->−0.113, vs alg4
+  −0.263->**+0.076**, sign-flipped) AND the old guard's mutual
+  alignment dissolved (+0.25 family -> ~0.1/negative): the wider head
+  spread registers into orthogonal subspaces exactly as geometry
+  allows — and behavior did not move. GRADIENT INTERFERENCE IS A
+  SYMPTOM OF SHARED-CAPACITY PACKING, NOT THE CAUSE OF FORGETTING:
+  given orthogonal room, the gradients decorrelate and the erosion
+  stays, because nothing about width changes WHAT IS REHEARSED.
+  QUADRANT: (interference relieved, erosion persists) = STARVATION —
+  REPLAY CURES. Among the physics triad, the entropy/rehearsal
+  instrument called the mechanism; the interference instrument
+  photographed a symptom; the capacity probe (run fairly) exonerated
+  the suspect. CONSEQUENCES: head growth SHELVED (receipt: 888 at
+  32k) and the §8.4 LoRA ladder's customer WITHDRAWN (receipt:
+  conflict-as-mechanism falsified) — both with evidence, neither by
+  taste. GEN-8 = (b)-then-(a) exactly as sequenced: inverse shapes
+  ([85]'s standing probe) + the KIND-REHEARSAL replay mix (rehearse
+  KINDS, not files; deficit = pct/seq, the true-zero line items). The
+  music's final read: the instrument needed neither more strings nor
+  accidentals — the old songs had simply left the practice schedule.
+  Rehearsal, not tuning. Ckpt `.cache/phase1_cap2x_32k_head.safetensors`
+  (A/B artifact, not a gate candidate; gate remains gen-6).
 - **THE EMPLOYMENT LAW + TWO PROMOTIONS (2026-07-11, relay — registered
   before gen-7):** (1) **THE EMPLOYMENT LAW**: every organ this project
   charters gets SMALLER on contact with measurement — book 1 is the
