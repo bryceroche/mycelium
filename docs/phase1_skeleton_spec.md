@@ -3321,6 +3321,41 @@ token-position × waist-dim, the moment the skeleton trains.
   budget splits between hand-surgery on the genuinely knotted and
   gate-disposal of machine proposals. The practice schedule may fund
   the apprenticeship.
+- **VERDICT (2026-07-12): GEN-8 — NO PROMOTION (two named bars miss),
+  STARVATION CONFIRMED BY ITS OWN RATION, and the [85] mystery solved
+  at the ENCODING layer.** The table: bigtest **967** (bar 980 — but
+  +66 from 901, recovering two-thirds of the erosion under its
+  surface-ration: THE RATIONED REGISTER RESPONDED; per the pinned
+  frame this is diet-tuning, ration undersized, thesis ALIVE);
+  alg4test **332** (bar 420, +13 only — the kind-ration MIS-TARGETED:
+  3000 alg3-register rows barely moved the alg4 register; the alg4
+  generator was archived in the house-cleaning and its register
+  differs from alg3's — gen-9 needs a register analysis or the
+  generator recovered); alg2test 565 ✓, vtest 600 ✓, dagtest 664 ✓,
+  dag7btest 422 ✓ — NO NEW EROSION at 29.5k rows: the diet did not
+  crowd. ACCEPTANCE 6/8 ✓ with the qualitative headline: **[71], [7],
+  [72] all jumped to 5/5 UNANIMOUS** — two correct-but-shallow
+  specimens DEEPENED TO CERTIFIED and the coupled system banked;
+  rehearsal deepens basins, measured. [45] now votes [168,154,168,110]
+  — a NEW specimen (mixed-vote: right answer present, wrong votes
+  competing) for the vote-entropy column. **THE [85] DISCOVERY
+  (verified at source, decode line 495 + gold encoding):** the args
+  pointer decodes as top-2 DISTINCT slots and the gold multi-hot
+  cannot express multiplicity — args=[a,a] is UNREPRESENTABLE
+  end-to-end. Three trainings flat at ~0.33 sq because the target was
+  never learnable AS ENCODED; 600 isq rows changed nothing because
+  they COULDN'T. The third "unrepresentable, not unlearned" finding
+  (family: positional-structure-as-structure, no-real-roots). Gen-9
+  fix is small: an arg-multiplicity bit (ftype-conditional), gold
+  field, decode branch. CENSUS 1/23/76 — no bootstrap jump (raw prose
+  untouched by dialect-side training, as predicted every time).
+  GEN-9 REGISTERED ITEMS: (1) args-multiplicity mechanism
+  (architecture, small); (2) alg4-register analysis -> correctly
+  TARGETED kind-ration; (3) surface-ration upsized (~2500->4000);
+  (4) the shallow-basin instrument (deferred from gen-8, now with
+  [45]'s mixed-vote specimen as motivation); (5) fdiv borderline
+  (0.483/0.535) rides the retargeted ration. Gate remains gen-6;
+  ckpt `.cache/phase1_gen8_head.safetensors` banked unpromoted.
 - **THE EMPLOYMENT LAW + TWO PROMOTIONS (2026-07-11, relay — registered
   before gen-7):** (1) **THE EMPLOYMENT LAW**: every organ this project
   charters gets SMALLER on contact with measurement — book 1 is the
