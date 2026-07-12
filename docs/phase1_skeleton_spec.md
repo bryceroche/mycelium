@@ -3386,6 +3386,32 @@ token-position × waist-dim, the moment the skeleton trains.
   recovered erosion are the hardest-starved — **975 = the ration
   curve bending, NOT the thesis breaking**; the bar stays 980, the
   expectation stays humble.
+- **ALG4 DIFF VERDICT + GEN-9 FINAL SCOPE (2026-07-12, registered
+  before firing):** the per-kind diff (gen-6 vs gen-8, alg4test)
+  shows **UNIFORM decline across every kind** (vieta −0.075, seq
+  −0.069, pct −0.060, fdiv −0.056, crt −0.047 — no single victim).
+  KIND-STARVATION REFUTED FOR ALG4: the register declines AS A WHOLE
+  while unresponsive to 2x rehearsal (the accidental dup-upweight),
+  2x width (the A/B: 316~319), and decorrelation. THE ONE UNTESTED
+  SUSPECT: **THE SCHEDULE** — curriculum orders coarse->fine by teeth
+  score; alg4's high-teeth rows enter only in the final training
+  phase, which cosine decay runs at annealed LR, and that phase's
+  composition shifted as the mix grew. REGISTERED PROBE (own track,
+  on the word, post-gen-9): a 12k CURRICULUM=0 arm on mixed8, reading
+  alg4test — schedule starvation vs register mystery. GEN-9 SCOPE
+  (kind-ration DROPPED with evidence): (1) ALG_DUP multiplicity
+  mechanism (built; selftest green; env-gated, legacy byte-compat);
+  (2) surface-ration 4000 nl-core rows, FRESH seed 99,
+  collision-checked; (3) mixed9 DEDUPES mixed8 (removes the 2500
+  seed-collision duplicates; the mix builder prints dup counts — the
+  guard, operational); (4) the SHALLOW-BASIN INSTRUMENT fires
+  (3000-row sample, 5-view vote entropy under gen-8; correct-but-
+  shallow rows oversampled x2 — rehearsal deepens basins, measured on
+  [71]/[7]/[72]). BARS: [85] BANKS (self-grading); sq per-kind
+  >=0.45; bigtest >=980 (humble clause stands); alg4test >=310
+  HOLD-THE-LINE (recovery rides the schedule probe, not this diet);
+  acceptance >=7/8; alg2 >=530, vtest >=598, dagtest >=640, dag7b
+  >=400. All bars hold -> PROMOTE (census rides).
 - **THE EMPLOYMENT LAW + TWO PROMOTIONS (2026-07-11, relay — registered
   before gen-7):** (1) **THE EMPLOYMENT LAW**: every organ this project
   charters gets SMALLER on contact with measurement — book 1 is the

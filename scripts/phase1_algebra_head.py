@@ -97,6 +97,10 @@ def build_gold(samples, offsets):
         # tranche 2 (2026-07-10): pct=4, fdiv=5 — the mod head-shape
         "is_pct": np.zeros((n, L_FAC), np.float32),
         "is_fdiv": np.zeros((n, L_FAC), np.float32),
+        # gen-9 (2026-07-12): arg multiplicity — args=[a,a] was
+        # UNREPRESENTABLE (multi-hot gold + top-2-distinct decode); the
+        # [85] fix. 1.0 on rel factors whose two args are the same var.
+        "arg_dup": np.zeros((n, L_FAC), np.float32),
     }
     for i, (smp, offs) in enumerate(zip(samples, offsets)):
         facs = sorted(smp["factors"], key=lambda f: min(s for s, _ in f["spans"]))
@@ -114,6 +118,8 @@ def build_gold(samples, offsets):
                 g["op"][i, j] = 0 if f["op"] == "add" else 1
                 for a in f["args"]:
                     g["args"][i, j, a] = 1.0
+                if f["args"][0] == f["args"][1]:
+                    g["arg_dup"][i, j] = 1.0
                 g["res"][i, j] = f["result"]
             elif f["ftype"] == "given":
                 g["ftype"][i, j] = 1
@@ -315,6 +321,8 @@ def build_params(seed=0):
     else:
         p["h_ftype"], p["h_ftype_b"] = lin(H_W, 2)
     p["h_op"], p["h_op_b"] = lin(H_W, 2)
+    if int(os.environ.get("ALG_DUP", "0")):   # gen-9: arg-multiplicity bit
+        p["h_dup"], p["h_dup_b"] = lin(H_W, 1)
     p["h_islit"], p["h_islit_b"] = lin(H_W, 1)
     p["h_dig"], p["h_dig_b"] = lin(H_W, N_DIG * 10)
     K_B = int(os.environ.get("ALG_BREATH", "1"))
@@ -400,6 +408,8 @@ def forward(p, trunk, tokmask, sent, slot_mask=None):
             "ftype": s @ p["h_ftype"] + p["h_ftype_b"],
             "op": s @ p["h_op"] + p["h_op_b"],
             **({"sel": s @ p["h_sel"] + p["h_sel_b"]} if "h_sel" in p else {}),
+            **({"dup": (s @ p["h_dup"] + p["h_dup_b"]).squeeze(-1)}
+               if "h_dup" in p else {}),
             "islit": (s @ p["h_islit"] + p["h_islit_b"]).squeeze(-1),
             "dig": (s @ p["h_dig"] + p["h_dig_b"]).reshape(B, L_FAC, N_DIG, 10),
             "args": (s @ p["W_args"]) @ vst.transpose(-2, -1),
@@ -457,6 +467,8 @@ def _loss_single(o, g):
     if "sel" in o and "sel" in g:               # selector-type CE (closed vocab)
         sm = pres * is_sel
         l = l + (ce(o["sel"], g["sel"]) * sm).sum() / (sm.sum() + 1e-6)
+    if "dup" in o and "arg_dup" in g:           # gen-9: arg-multiplicity BCE
+        l = l + (bce(o["dup"], g["arg_dup"]) * rel).sum() / n_rel
     args_w = 1.0 + 4.0 * g["args"]
     am = pres * (is_rel + is_sel + is_mod + is_pct + is_fdiv)
     n_am = am.sum() + 1e-6
@@ -492,10 +504,15 @@ def decode(o_np):
         if ft == 1:
             facs.append({"ftype": "given", "var": res, "value": digval()})
         elif ft == 0:
-            args = list(np.argsort(-o_np["args"][j])[:2])
             op = "add" if o_np["op"][j].argmax() == 0 else "mul"
+            if "dup" in o_np and o_np["dup"][j] > 0:
+                a0 = int(np.argmax(o_np["args"][j]))   # gen-9: args=[a,a]
+                args = [a0, a0]
+            else:
+                args = sorted(int(a) for a in
+                              np.argsort(-o_np["args"][j])[:2])
             facs.append({"ftype": "rel", "op": op,
-                         "args": sorted(int(a) for a in args), "result": res})
+                         "args": args, "result": res})
         elif ft == 2:
             var = int(np.argmax(o_np["args"][j]))
             facs.append({"ftype": "mod", "var": var, "k": max(digval(), 2),
@@ -543,7 +560,7 @@ def do_eval():
             out = forward(p, t_tr, t_tk, t_se,
                           slot_mask=Tensor(mk, dtype=dtypes.float))
         keys = ("pres", "ftype", "op", "islit", "dig", "args", "res",
-                "query") + (("sel",) if "sel" in out else ())
+                "query") + (("sel",) if "sel" in out else ()) + (("dup",) if "dup" in out else ())
         o = {k: out[k].realize().numpy() for k in keys}
         for bi, i in enumerate(sl):
             i = int(i)
@@ -645,7 +662,7 @@ def do_errors():
                       Tensor(tokmask[sl_p].astype(np.float32), dtype=dtypes.float),
                       Tensor(sent[sl_p].astype(np.int32), dtype=dtypes.int))
         keys = ("pres", "ftype", "op", "islit", "dig", "args", "res",
-                "query") + (("sel",) if "sel" in out else ())
+                "query") + (("sel",) if "sel" in out else ()) + (("dup",) if "dup" in out else ())
         o = {k: out[k].realize().numpy() for k in keys}
         for bi, i in enumerate(sl):
             i = int(i)
@@ -814,6 +831,7 @@ def do_train(steps, lr, batch, seed):
                          ("is_sel", (L_FAC,), dtypes.float),
                          ("is_pct", (L_FAC,), dtypes.float),
                          ("is_fdiv", (L_FAC,), dtypes.float),
+                         ("arg_dup", (L_FAC,), dtypes.float),
                          ("query", (), dtypes.int)):
         npdt = np.float32 if dt == dtypes.float else np.int32
         bg[k] = fix(np.zeros((batch,) + shape, npdt), dt)
@@ -845,7 +863,7 @@ def do_train(steps, lr, batch, seed):
                         Tensor(vtk[sl_p].astype(np.float32), dtype=dtypes.float),
                         Tensor(vse[sl_p].astype(np.int32), dtype=dtypes.int))
             onp = {k: o[k].realize().numpy() for k in
-                   ("pres", "ftype", "op", "islit", "dig", "args", "res")}
+                   (("pres", "ftype", "op", "islit", "dig", "args", "res") + (("dup",) if "h_dup" in p else ()))}
             for bi, i in enumerate(sl):
                 i = int(i)
                 for j in range(L_FAC):
@@ -857,8 +875,14 @@ def do_train(steps, lr, batch, seed):
                     ok &= int(onp["res"][bi, j].argmax()) == vg["res"][i, j]
                     if vg["ftype"][i, j] == 0:
                         ok &= int(onp["op"][bi, j].argmax()) == vg["op"][i, j]
-                        top2 = set(np.argsort(-onp["args"][bi, j])[:2].tolist())
-                        ok &= top2 == set(np.where(vg["args"][i, j] > .5)[0].tolist())
+                        gset = set(np.where(vg["args"][i, j] > .5)[0].tolist())
+                        if len(gset) == 1 and "dup" in onp:
+                            # gen-9: repeated-arg rel — dup bit + top-1 match
+                            ok &= bool(onp["dup"][bi, j] > 0)
+                            ok &= int(np.argmax(onp["args"][bi, j])) in gset
+                        else:
+                            top2 = set(np.argsort(-onp["args"][bi, j])[:2].tolist())
+                            ok &= top2 == gset
                     else:
                         ok &= bool((onp["dig"][bi, j].argmax(-1) ==
                                     vg["digits"][i, j]).all())
@@ -902,7 +926,9 @@ def do_train(steps, lr, batch, seed):
                 "digits": gold["digits"][idx], "query": gold["query"][idx],
                 "sel": gold["sel"][idx], "is_rel": gold["is_rel"][idx],
                 "is_mod": gold["is_mod"][idx], "is_sel": gold["is_sel"][idx],
-                "is_pct": gold["is_pct"][idx], "is_fdiv": gold["is_fdiv"][idx]}
+                "is_pct": gold["is_pct"][idx], "is_fdiv": gold["is_fdiv"][idx],
+                "arg_dup": (gold["arg_dup"][idx] if "arg_dup" in gold
+                            else np.zeros_like(gold["is_rel"][idx]))}
         for k, v in feed.items():
             npdt = np.float32 if bg[k].dtype == dtypes.float else np.int32
             bg[k].assign(Tensor(v.astype(npdt), dtype=bg[k].dtype).contiguous()).realize()

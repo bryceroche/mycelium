@@ -67,7 +67,7 @@ def parse_all(ckpt):
                           Tensor(msk[b0:b0+8].astype(np.float32), dtype=dtypes.float),
                           Tensor(snt[b0:b0+8].astype(np.int32), dtype=dtypes.int))
             keys = ("pres","ftype","op","islit","dig","args","res","query") + \
-                (("sel",) if "sel" in out else ())
+                (("sel",) if "sel" in out else ()) + (("dup",) if "dup" in out else ())
             o = {k: out[k].realize().numpy() for k in keys}
             for bi in range(8):
                 gi = s0 + b0 + bi
