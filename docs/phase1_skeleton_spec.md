@@ -3093,6 +3093,56 @@ token-position × waist-dim, the moment the skeleton trains.
   (unknown-squared, inverse-fdiv) ship in gen-8's rotation WHICHEVER
   branch wins — named generator gap, standing acceptance probe. The
   probe awaits the word.
+- **REGISTERED (2026-07-11, Bryce's gut + relay: THE PHYSICS TRIAD) —
+  three instruments for the phase boundary; statistical mechanics of a
+  fixed-capacity head under growing load.** (1) **INTERFERENCE MATRIX
+  (GPU, rides the capacity probe):** crowding = destructive gradient
+  interference in shared weights. Per-register gradient cosine matrix
+  on the gen-7b ckpt (one batch per register, one backward each,
+  pairwise cosines). Joint verdict table with the capacity probe:
+  anti-aligned + erosion-reverses-at-2x = capacity wall (orthogonal
+  subspaces need room); aligned + erosion = data starvation (replay
+  cures); anti-aligned PERSISTING at 2x = genuine task conflict -> the
+  §8.4 LoRA fallback ladder gets its first customer (per-register
+  adapters). (2) **ERASURE-VS-SHARE CORRELATION (zero-GPU, fires now):**
+  Landauer transferred honestly — erasure is never free; when task
+  entropy exceeds head capacity the mix decides who pays. PREDICTION
+  (pinned): per-register erosion gen-6 -> gen-7b tracks INVERSE
+  mix-share of fresh rehearsal (alg4/pct/seq got zero new rows -> pays
+  most; original nl diluted to ~55% -> pays next; dag-fresh registers
+  gain). Holds -> the crossover gets its conservation law: at capacity,
+  expansion pays dividends MINUS erasure. (3) **VOTE-ENTROPY COLUMN
+  (zero-GPU pilot on banked book-1 votes):** the two specimen classes
+  unify as BASIN DEPTH — view permutation is the thermal kick; vote
+  entropy across views is a per-item effective temperature. Fourth
+  lattice column chartered: CORRECT-BUT-SHALLOW (the retraining-target
+  class — rehearsal deepens basins rather than teaching). Pilot on the
+  persisted book-1/acceptance votes; full column when TTA outcomes
+  persist per-item at census scale. GPU items ((1) + capacity probe)
+  hold for the word; (2)+(3) fire on banked data now.
+- **VERDICTS (2026-07-11, the zero-GPU pair):** (2) **LANDAUER CHECK —
+  DIRECTION CONFIRMED, LAW REFINED.** Composition recovered exactly
+  (dag7 register 45.2% of mixed7b; nl-core 9.5%; tranches ~12% each).
+  rho(fresh-rehearsal share, erosion) = +0.50, n=5 — right direction,
+  short of the pinned "strongly positive," and the DEVIATION is the
+  finding: alg2 IMPROVED (+4.4%) with zero fresh file-share because
+  dag7 rows REHEARSE its kinds covertly (sel/mod/coupled live inside
+  dag7 wiring), while alg4's pct/seq kinds appear NOWHERE in dag7 (true
+  zero rehearsal -> worst erosion, −14%), nl-core's older surface forms
+  partially shared (−9.9%), verbose flat (same relations, held). THE
+  CONSERVATION LAW REFINES: erasure is ordered by UNSHARED-CIRCUIT
+  rehearsal share, not corpus-file share — kind-level, not file-level.
+  Actionable for any replay mix: rehearse KINDS, not files. (3)
+  **VOTE-ENTROPY PILOT — the basin-depth read separates exactly as the
+  physics said:** deep-correct H=0.000, shallow-correct H=0.846,
+  deep-wrong H=0.212, refused H=0.116 (banked book-1 gates, n=36).
+  Entropy cleanly separates SHALLOW from DEEP (0.85 vs ~0.1-0.2) and
+  CANNOT separate deep-correct from deep-wrong — which is the
+  quantitative restatement of why the chain needs the mouth AND the
+  key: temperature is orthogonal to truth. Fourth column
+  (correct-but-shallow) validated at pilot scale; full column when
+  per-item votes persist at census scale. Scripts:
+  `erasure_share_correlation.py`; pilot inline in session log.
 - **THE EMPLOYMENT LAW + TWO PROMOTIONS (2026-07-11, relay — registered
   before gen-7):** (1) **THE EMPLOYMENT LAW**: every organ this project
   charters gets SMALLER on contact with measurement — book 1 is the
