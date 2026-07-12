@@ -3412,6 +3412,35 @@ token-position × waist-dim, the moment the skeleton trains.
   HOLD-THE-LINE (recovery rides the schedule probe, not this diet);
   acceptance >=7/8; alg2 >=530, vtest >=598, dagtest >=640, dag7b
   >=400. All bars hold -> PROMOTE (census rides).
+- **THE HASH AUDIT (2026-07-12, Bryce's gut + relay — three-way,
+  zero-GPU): THE ANTI-COLLISION CLASS IS REAL — 42 VERIFIED
+  CROSS-BOUNDARY ISOMORPHS.** (a) GREP CENSUS: the codebase is nearly
+  hash-free — manifest pins are SHA-256/64-bit (safe by orders of
+  magnitude at ~15 artifacts); all dedup is exact-text in Python sets
+  (identity-with-equality, safe by construction); ONE catch:
+  test_kenken_parity used salted built-in hash() as an RNG seed
+  (fixtures non-reproducible across sessions; parity itself unharmed
+  — both arms share the seed) -> FIXED to crc32 (stable). (b) No
+  persisted built-in hash() anywhere. (c) **THE LOAD-BEARING COUNT:
+  canonical WL form (values included, commutative roles sorted,
+  exact-verify by backtracking before counting) over train (mixed8,
+  29,500 rows -> 26,920 classes; 2,574 multi-member = within-train
+  redundancy, the small-problem pigeonhole) x the 7-test battery:
+  exact-text overlap 0 everywhere (the string dedup held) but
+  **bigtest 27/1500 (1.8%), vtest 13/600 (2.2%), alg4test 1,
+  dag7btest 1 — same knot, different diagram, across the boundary.**
+  Cause: pigeonhole density in the small-problem regime, not a seed
+  bug. FOOTNOTE ON ALL STANDING BARS: bigtest numbers carry <=1.8%
+  isomorph inflation, vtest <=2.2% (deltas across generations
+  unaffected — same fixture both sides). Exclusion list persisted
+  (.cache/iso_contamination.json); REGISTERED: (i) clean-subset
+  re-read of the battery rides the next eval pass; (ii) the canonical
+  digest becomes the MINT-TIME dedup + test-fixture exclusion going
+  forward (knot invariant, not diagram fingerprint — the knots law
+  applied to our own bookkeeping); (iii) paper tables freeze on CLEAN
+  fixtures or report the exclusions. The gut said beware collisions;
+  the deeper hazard was the anti-collision, and it was found before
+  the tables froze.
 - **THE EMPLOYMENT LAW + TWO PROMOTIONS (2026-07-11, relay — registered
   before gen-7):** (1) **THE EMPLOYMENT LAW**: every organ this project
   charters gets SMALLER on contact with measurement — book 1 is the

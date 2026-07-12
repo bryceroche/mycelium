@@ -398,7 +398,7 @@ def _selftest() -> bool:
             for arity in arities:
                 if not assert_hole_monotone(LTYPE_CAGE, (OP_TO_ID[op], tgt), cage_pred,
                                             tuple(range(1, 8)), arity, samples=300,
-                                            seed=hash((op, tgt, arity)) % 9973):
+                                            seed=__import__("zlib").crc32(repr((op, tgt, arity)).encode()) % 9973):
                     mono_ok = False
     _check("L-MONO: cage_pred hole-monotone (all ops x targets x valid arities)", mono_ok)
     # wrong-arity sub/div degrade to VIOLATED + stay monotone (no crash on the sampler)
