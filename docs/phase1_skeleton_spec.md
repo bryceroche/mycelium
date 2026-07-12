@@ -3167,6 +3167,36 @@ token-position × waist-dim, the moment the skeleton trains.
   conflict, §8.4's LoRA ladder gets its first customer. One run, four
   pre-written verdicts, no cell left to improvise. GPU pair
   (`cap_probe.sh` + `interference_matrix.py`) staged, on the word.
+- **VERDICT (2026-07-11, the GPU pair): THE MATRIX IS CLEAN AND NAMES
+  THE MECHANISM; THE PROBE'S CAPACITY AXIS IS CONFOUNDED BY ITS OWN
+  WARM-START.** (1) **INTERFERENCE MATRIX (uncontaminated — measured
+  directly on gen-7b):** the old guard is mutually ALIGNED (nl-core /
+  alg2 / alg4 pairwise +0.22..+0.26 — shared circuits, the dividends
+  streak photographed) and **dag7 is ANTI-ALIGNED with exactly the
+  eroding registers** (nl-core −0.171, alg2 −0.255, alg4 −0.263);
+  verbose/dag6 orthogonal (verbose grad norm 0.10 — fully learned,
+  cosines are noise). THE TWO-FORCE MECHANISM, both instruments
+  agreeing: destructive gradient pressure from the dominant register,
+  OFFSET by covert kind rehearsal where present — alg2 (anti-aligned
+  BUT kind-shared) nets positive; nl-core (anti-aligned, surface
+  differs) nets negative; alg4 (most anti-aligned + zero kind share)
+  pays worst. Interference axis: ANTI-ALIGNED, definitively. (2)
+  **CAPACITY PROBE — mechanically sub-930 (bigtest 809) but the
+  pre-registered pad-warm caveat FIRES:** the 2x head at 12k is worse
+  than its own warm source EVERYWHERE (val 0.8234 vs 0.8736; all
+  per-kind down; alg4 208 — disruption again hitting the
+  least-rehearsed register hardest) and still climbing at cutoff —
+  the probe measured DISRUPTION RECOVERY, not capacity (the relational
+  law's exact prediction for padded compositions). The capacity axis
+  is UNREAD. QUADRANT: provisionally (anti-aligned, persists) — task
+  conflict, the LoRA ladder's customer — but the clean capacity
+  instrument is now registered for the word: **the fair A/B** — 2x
+  head, SAME 32k schedule, SAME mixed7b, only width differs; erosion
+  reversal at matched schedule reads capacity cleanly. Ckpt:
+  `.cache/phase1_cap2x_head.safetensors` (probe artifact, not a gate
+  candidate). The night's arithmetic: the matrix cost one backward
+  pass per register and delivered the mechanism; the probe cost 12k
+  steps and delivered a confound — the cheap instrument won.
 - **THE EMPLOYMENT LAW + TWO PROMOTIONS (2026-07-11, relay — registered
   before gen-7):** (1) **THE EMPLOYMENT LAW**: every organ this project
   charters gets SMALLER on contact with measurement — book 1 is the
