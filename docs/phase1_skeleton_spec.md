@@ -3719,6 +3719,30 @@ token-position × waist-dim, the moment the skeleton trains.
   read on DISJOINT rows — both lessons inherited at the price of one
   discarded checkpoint; the arm was always a mechanism check, and
   the mechanism checks out.
+- **VERDICT (2026-07-13): MOUTH RECALIBRATED — the retroactive read
+  is the AUDIT-THAT-CONFIRMS: the gen-5 lens error was IMMATERIAL.**
+  New bank drawn from m9btrain (the current family); native threshold
+  TIGHTENED 0.0443 -> 0.0347 (the grown family is more compact — the
+  mouth got sharper, not looser). Retroactive pair-reads: harvest
+  odometer 0.2488 -> 0.2431 (~2%), census pool 0.2558 -> 0.2500,
+  book-1 raw 0.1983 -> 0.1917, read-foreign 100% under both lenses.
+  ALL BANKED MOUTH NUMBERS STAND; the calibration ambiguity resolves
+  as never-material; the sync find's value was the PROTOCOL hole, not
+  a corrupted history. Manifest updated (mouth = gen-9b artifact,
+  waiver retired, hash pinned). RECORD CORRECTION carried from the
+  critique: the census never consults the mouth — the knotted trend
+  was always real parse behavior; the stale lens touched deployment
+  gating, the odometer, and diversity guards only. PROCESS NOTE: the
+  recal unit took five launches — the working-directory omission was
+  repeated FOUR times consecutively before switching to a form where
+  the mistake is unrepresentable (WorkingDirectory= property +
+  absolute paths) — the unrepresentability lesson applies to one's
+  own tooling habits too. CRITIQUE AMENDMENTS BANKED: prose doses
+  re-phrased as oversample multiples of the 14 uniques (x5/x15/x40;
+  "2% of diet" would be x49 = v0's poison in a percentage); the
+  sweep's deliverable = safe-dose slope PER UNIQUE ROW (December's
+  books-planning number). Sequencing stands: entourage (mouth DONE;
+  specialist remine + centroids next, on the word) -> bars -> gen-11.
 - **THE EMPLOYMENT LAW + TWO PROMOTIONS (2026-07-11, relay — registered
   before gen-7):** (1) **THE EMPLOYMENT LAW**: every organ this project
   charters gets SMALLER on contact with measurement — book 1 is the
