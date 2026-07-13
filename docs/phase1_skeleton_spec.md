@@ -3821,6 +3821,26 @@ token-position × waist-dim, the moment the skeleton trains.
   held-out examiner from inside the house). Priority: (3) afternoon,
   (1) rides gen-11's mint, (2) books-era. Fourteen instincts, all
   machinery.
+- **REGISTERED + FIRED (2026-07-13): THE LATTICE PROBE — cross-model
+  x view certification.** PANEL (decorrelation axes, from the
+  checkpoint bench): gen-9b (gate), sched_probe_armB (LINEAGE axis:
+  gen-7b ancestry, flat regime), cap2x_32k (WIDTH axis: 1024d).
+  CERT-V2 RULE (pinned): gate 5/5 unanimous AND both siblings'
+  5-view majorities agree with the gate's answer. READS (pinned
+  before any vote): (a) bigtest precision/coverage, cert-v2 vs
+  gate-only 5/5 — prediction: precision rises at meaningfully lower
+  coverage; the coverage GAP is the new lineage-disagreement
+  instrument; (b) THE DISAGREEMENT AUTOPSY (decides how the panel
+  GROWS): on gate false-certificates, which sibling dissents — armB
+  breaking more -> lineage is the load-bearing diversity axis; cap2x
+  more -> width earns permanent employment; (c) THE DEEP-WRONG READ
+  ([71]'s class, the only error family with no detector since the
+  anchor): gate stable-wrongs on bigtest + census pool — cross-
+  examination breaking >=1/3 of them = the FIFTH JURISDICTION lands
+  (prevention, depth, detection, recognition, CROSS-EXAMINATION).
+  BENCH NOTE (relay): diagnostic runs leave lineage-decorrelated
+  siblings — the manifest tags them PANEL-ELIGIBLE instead of
+  archiving; every future fair A/B grows the ensemble for free.
 - **THE EMPLOYMENT LAW + TWO PROMOTIONS (2026-07-11, relay — registered
   before gen-7):** (1) **THE EMPLOYMENT LAW**: every organ this project
   charters gets SMALLER on contact with measurement — book 1 is the
