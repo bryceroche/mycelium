@@ -3538,7 +3538,16 @@ token-position × waist-dim, the moment the skeleton trains.
   under 8k steps of LOW-LR, NO-CURRICULUM, full-mix training — more
   than three full generations moved it — consistent with
   curriculum x cosine starving high-teeth rows of usable-LR steps;
-  the registered CURRICULUM=0 probe gains a prior. CENSUS TREND
+  the registered CURRICULUM=0 probe gains a prior. **THE
+  TRAINING-REGIME LAW (relay, registered before it generalizes):**
+  the displacement answer's precise scope is the REGIME, not just the
+  diet — gen-9's re-shallowing happened under a full retrain with a
+  shifted diet; gen-9b's consolidation-without-displacement under
+  gentle continuation (8k, low LR, near convergence). **Hard restarts
+  jostle basins; gentle continuation deepens without displacement.**
+  The generation protocol may evolve toward fewer full retrains and
+  more staged continuations; the transaction manifest tracks
+  checkpoint LINEAGE from here. CENSUS TREND
   (three points, directional, informational): 76 -> 81 -> 89 knotted
   as basins deepen — the head's consolidation on its own register
   REDUCES accidental raw-prose carries; the style wall hardens as the
@@ -3551,6 +3560,23 @@ token-position × waist-dim, the moment the skeleton trains.
   asterisks. Next chapter: the schedule probe (registered), gen-10's
   knot-matrix diet, and BOOKS — the style wall is now the tallest
   thing standing.
+- **REGISTERED (2026-07-12): THE SCHEDULE PROBE — the coldest-optimizer
+  pair.** Mechanism claim: cosine schedules spend their usable LR on
+  the curriculum's early (easy) phase; high-teeth rows arrive when LR
+  has decayed past learning — THE HARDEST DATA GETS THE COLDEST
+  OPTIMIZER. Design (isolates CURRICULUM alone): two 12k arms, both
+  warm from gen-7b on mixed8 at LR 3e-4 (gen-8's exact condition;
+  m8train states banked; no ALG_DUP — replicates the original
+  regime): ARM A CURRICULUM=1 (control), ARM B CURRICULUM=0. PRIMARY
+  READ: alg4test(B) − alg4test(A); prediction B > A by >=15 answers.
+  GUARD: bigtest(B) must not trail bigtest(A) by >20 (if B lifts
+  alg4 but craters elsewhere, the fix is per-band LR accounting, not
+  curriculum removal). Confirmation -> gen-10 trains flat-mix (or
+  staged LR); refutation (B ~ A) -> the top-up's +29 attributes to
+  low-LR continuation, strengthening the regime law instead. Either
+  way one pair of short runs converts a scatter of "hard register
+  learns slowly" mysteries into a single attributed mechanism or
+  clears the curriculum with a receipt.
 - **THE EMPLOYMENT LAW + TWO PROMOTIONS (2026-07-11, relay — registered
   before gen-7):** (1) **THE EMPLOYMENT LAW**: every organ this project
   charters gets SMALLER on contact with measurement — book 1 is the
