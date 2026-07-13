@@ -24,10 +24,15 @@ n = len(gold)
 gate5 = cert2 = gate5_ok = cert2_ok = 0
 fc_total = fc_armb_breaks = fc_c2x_breaks = fc_both = 0
 sw_total = sw_broken = 0
+dis_armb = dis_c2x = 0                      # PIN 1: raw disagreement rates
+app_armb = [0, 0]                           # PIN 2: dissenter-correct counts
+app_c2x = [0, 0]                            #        [correct, total-breaks]
 for i in range(n):
     gt, gc = maj(gate["bigtest"][i])
     at, _ = maj(armb["bigtest"][i])
     ct, _ = maj(c2x["bigtest"][i])
+    dis_armb += (at != gt)
+    dis_c2x += (ct != gt)
     is5 = (gc == 5)
     if is5:
         gate5 += 1
@@ -43,6 +48,12 @@ for i in range(n):
             fc_armb_breaks += ab
             fc_c2x_breaks += cb
             fc_both += (ab and cb)
+            if ab:                              # PIN 2: veto or appeal
+                app_armb[1] += 1
+                app_armb[0] += (at == gold[i])
+            if cb:
+                app_c2x[1] += 1
+                app_c2x[0] += (ct == gold[i])
     if gc >= 3 and gt != gold[i]:               # stable-wrong (deep-wrong class)
         sw_total += 1
         sw_broken += ((at != gt) or (ct != gt))
@@ -58,6 +69,12 @@ print(f"    broken by armB (lineage axis): {fc_armb_breaks}")
 print(f"    broken by cap2x (width axis):  {fc_c2x_breaks}")
 print(f"    broken by both:                {fc_both}")
 print(f"    survived cert-v2 (uncaught):   {cert2 - cert2_ok}")
+print(f"\n  NORMALIZER (pin 1) — raw disagreement rate vs gate, all items:")
+print(f"    armB {dis_armb/n:.1%}  |  cap2x {dis_c2x/n:.1%}  "
+      f"(unequal -> axis question stays open; recruit by behavioral distance)")
+print(f"  VETO-OR-APPEAL (pin 2) — dissenter correct on breaks:")
+print(f"    armB {app_armb[0]}/{app_armb[1]}  |  cap2x {app_c2x[0]}/{app_c2x[1]}"
+      f"  (high -> jurisdiction five is APPEAL, a repair channel)")
 print(f"\n  DEEP-WRONG READ — gate stable-wrongs (>=3 consistent, wrong): {sw_total}")
 print(f"    broken by cross-examination: {sw_broken} "
       f"({sw_broken/max(sw_total,1):.0%}; fifth-jurisdiction bar: >=1/3)")
