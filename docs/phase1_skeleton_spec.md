@@ -3946,6 +3946,38 @@ token-position × waist-dim, the moment the skeleton trains.
   gen-11's unit frees the GPU. Every future eval process (including
   gen-11's own stage E lattice and dose arms, which spawn fresh
   processes) inherits the cache immediately.
+- **VERDICT (2026-07-13): GEN-11 — KILL, two bars; the manifest law's
+  FIRST ENFORCEMENT worked exactly as written (kill printed, JSON
+  untouched, no word without the write).** THE TABLE: records nearly
+  everywhere — bigtest **1137**, alg2test 592, dagtest 681, dag7btest
+  548, dag8test 534, fdiv 0.713, sq 0.781; **CERT-V2 1.0000 at 862
+  coverage — the fifth dial HOLDS its first enforcement**; deep-wrong
+  still exactly 1; wild-watcher column: 16/19 dissents (84%, from
+  90%). THE TWO MISSES: alg4test 370 (bar 380; highest since gen-6's
+  371) and acceptance 7/8 — [45] again, the CHRONIC specimen, votes
+  [154,154,168] (the mixed-vote class's poster child across three
+  generations). STAGED-HEAT REFUTED FROM THIS LINEAGE: the probe's
+  hot phase on pure alg4train reached only 362 (<380) — the branch
+  rule correctly fell back to plain flat, and the finding is sharp:
+  **the alg4 debt is not heat-reachable from the gen-9b/10 lineage**
+  (armB's 384 came from gen-7b ancestry; the debt lives IN the
+  lineage, below the schedule). GREEDY MINT: 2000/2000 distinct
+  knots, ZERO dups — prediction met at 1.00; value diversity makes
+  classes nearly free at booster scale; the peek stays as cheap
+  insurance. **THE DOSE PILOT (December's number, honest): ~ZERO
+  movement per unique row at n=14** — no arm banked disjoint-census
+  gains (<=1); x15's near-column bump (15) is the only weak positive;
+  ALL THREE ARMS FIRED THE DISPLACEMENT GUARD (−47/−24/−19,
+  non-monotonic — the arms are under-averaged at 2k steps). The
+  pilot's verdict: the constraint is UNIQUE ROWS, not repetitions —
+  December's annotation budget must grow n; no oversample multiple
+  substitutes for a book. GOVERNANCE OBSERVATION SURFACED (not
+  relitigated): two consecutive unpromoted heads now beat the gate on
+  most dials; the alg4 380 bar has never been reached by ANY head of
+  the current lineage; [45] is a chronic single-item acceptance
+  gater. The bars held their line — whether the LINE is right is the
+  relay's and Bryce's call, with the lineage-debt finding as the new
+  fact on the table.
 - **THE EMPLOYMENT LAW + TWO PROMOTIONS (2026-07-11, relay — registered
   before gen-7):** (1) **THE EMPLOYMENT LAW**: every organ this project
   charters gets SMALLER on contact with measurement — book 1 is the
