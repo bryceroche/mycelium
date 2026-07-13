@@ -3691,6 +3691,34 @@ token-position × waist-dim, the moment the skeleton trains.
   applied), 4 (three heads tonight — resolved by the manifest naming
   the gate) all closed. Discipline -> mechanism, the house
   conversion, one more time.
+- **THE LAW + THE QUEUE (2026-07-13, relay — session close):** (1)
+  **NEW LAW-FAMILY ENTRY: PROSE PROMOTIONS DON'T MOVE MACHINES.** The
+  manifest sat at gen-5 for four generations not by negligence but
+  because promotions were LEDGER EVENTS (sentences) while the
+  manifest was a separate artifact no workflow touched — narrative
+  truth and machine-readable truth drifted silently. OPERATIONAL
+  FORM: any state the system depends on must be updated by the SAME
+  TRANSACTION that creates the dependency, or the check must fail
+  loudly — the promotion battery ends by WRITING THE MANIFEST or
+  refusing to print "PROMOTED"; the word and the JSON become one
+  atomic act. Second member of the sync family minted by the same
+  pattern: discipline drifts, gut fires, mechanism ships. (2) **THE
+  ENTOURAGE REBUILD QUEUE (sequenced): MOUTH FIRST** — recalibrate
+  against the gen-9b native family BEFORE any new census claims bank
+  (every mouth reading since gen-6 was gen-5-native; the knotted
+  trend 76->81->89->79 carries an unknown zero-point error), then
+  the FREE RETROACTIVE READ: banked prose vectors against the fresh
+  calibration re-scores the whole hardening history from artifacts
+  on disk — the odometer re-zeroed AND the history corrected. Then:
+  specialist remine (gen-9b errors), monitor centroids (gen-9b slot
+  space), co-generation --check, stage-boundary asserts. (3) GEN-11
+  DESIGN NOTE (the heat-vs-jostle answer, hypothesized): STAGED —
+  a brief hot phase on the debt register alone, then cold
+  consolidation on the full mix; the top-up pattern with a targeted
+  preamble. (4) PROSE-V1 DESIGN: prose mixed INTO the diet, census
+  read on DISJOINT rows — both lessons inherited at the price of one
+  discarded checkpoint; the arm was always a mechanism check, and
+  the mechanism checks out.
 - **THE EMPLOYMENT LAW + TWO PROMOTIONS (2026-07-11, relay — registered
   before gen-7):** (1) **THE EMPLOYMENT LAW**: every organ this project
   charters gets SMALLER on contact with measurement — book 1 is the

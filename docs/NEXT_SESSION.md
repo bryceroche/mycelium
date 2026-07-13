@@ -1,4 +1,48 @@
-# NEXT SESSION — start here (handoff, 2026-07-09)
+# NEXT SESSION — start here (handoff, 2026-07-13)
+
+## COLD START (2026-07-13): the gate is GEN-9B, papers finally in order
+**Gate:** `.cache/phase1_gen9b_head.safetensors` (envs ALG2=1 ALG_FTYPES=6
+ALG_DUP=1) — promoted 2026-07-12 on an asterisk-free table (acceptance 8/8
+unanimous, bigtest 1090). GENERATION.json now tells the TRUTH (gen-9b parser
++ EXPLICITLY WAIVERED gen-5 specialist/centroids/mouth — the sync audit's
+find: promotions gen-6..9b were ledger-only; law minted: PROSE PROMOTIONS
+DON'T MOVE MACHINES — the battery must write the manifest or refuse to say
+PROMOTED).
+
+**FIRST MOVES (queued, sequenced):**
+1. **MOUTH RECALIBRATION FIRST** — against the gen-9b native family, BEFORE
+   any census claims bank (all mouth readings since gen-6 were gen-5-native;
+   knotted trend 76→81→89→79 has unknown zero-point error). Then the FREE
+   retroactive read: banked prose vectors vs fresh calibration re-scores the
+   hardening history from disk.
+2. Entourage rest: specialist remine (gen-9b errors), monitor centroids
+   (gen-9b slot space), co-generation --check, stage-boundary asserts.
+3. **GEN-11**: the alg4 debt (357; bar 380) is LINEAGE debt — staged heat
+   hypothesized (brief hot phase on the debt register, then cold full-mix
+   consolidation). Flat mix always (curriculum is DEAD at scale: the
+   schedule probe, +88/+116 for flat — ~2/3 of every past budget was burned).
+   Continuation regime otherwise (restarts jostle; continuation deepens).
+4. **PROSE-V1**: mix prose INTO the diet (naive fine-tune = poison, guard
+   fired −243); census on DISJOINT rows only (v0's banked-15 was
+   training-recall). v0 proved the machinery: span-less gold binds.
+
+**Sprint laws minted (2026-07-11..13):** circuit-not-file rehearsal;
+knot-not-diagram bookkeeping (42 cross-boundary isomorphs found; canonical
+digest = mint ID + bump disjointness gate); representability audit after 3
+flat trainings ([85]: args=[a,a] was UNREPRESENTABLE — fix took one bit,
+0.32→0.75); scope decay (ablation verdicts expire with regime); texture rule
+(2 unexplained curve shapes = probe); temperature ⊥ truth (vote entropy =
+basin depth; 4th lattice column correct-but-shallow); displacement: not
+zero-sum under gentle continuation. Big engineering: memmap precompute
+(3 OOM kills root-caused); systemd-run detachment for long GPU work (task
+reaper survives); 5000-decision gate budget.
+
+Ledger: docs/phase1_skeleton_spec.md (chronological, everything registered).
+
+
+---
+# PRIOR HANDOFF (2026-07-09) BELOW
+
 
 ## THE TRANCHE IS TRAINED (2026-07-09 late — acceptance in progress)
 Registry (MOD+SEL, zero core edits), generator (Vieta+selector+CRT,
