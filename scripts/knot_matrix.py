@@ -4,12 +4,12 @@ DAG kind across the current training mix's dag rows; emits a dag10
 booster quota targeting the THINNEST kinds (knot diversity, not row
 count — the pigeonhole constraint made operational).
 """
-import json, sys
+import json, sys, os
 sys.path.insert(0, "."); sys.path.insert(0, "scripts")
 from collections import defaultdict
 from hash_audit_iso import canon
 
-MIX = ".cache/algebra_mixed9b_train.jsonl"
+MIX = os.environ.get("KM_MIX", ".cache/algebra_mixed9b_train.jsonl")
 BOOST_TOTAL = 2000
 
 def kind_of(r):

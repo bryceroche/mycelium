@@ -235,6 +235,14 @@ def main(n, seed, out, budget=250):
         ok = sum(1 for _ in open(out))
         mode = "a"
         print(f"[dag7-gen] RESUME from {ok} banked rows", flush=True)
+    # GEN-11 GREEDY KNOT PEEK: canonical-class dedup against the existing
+    # mix and the booster itself — mint toward THIN classes, never re-mint
+    # a knot already rehearsed (the matrix as closed-loop controller, v1).
+    knot_seen, knot_dups = None, 0
+    if os.environ.get("DAG7_KNOT_DEDUP"):
+        from hash_audit_iso import canon as _canon
+        knot_seen = set(l.strip() for l in open(os.environ["DAG7_KNOT_DEDUP"]))
+        print(f"[dag7-gen] knot-dedup armed: {len(knot_seen)} existing classes")
     with open(out, mode) as fh:
         while ok < n:
             m = 300 if rng.random() < 0.4 else 60
@@ -256,6 +264,12 @@ def main(n, seed, out, budget=250):
             okg, dec = roundtrip7(n_vars, gf, m, sol)
             if not okg:
                 rej += 1; continue
+            if knot_seen is not None:
+                dg = _canon({"n_vars": n_vars, "factors": gf,
+                             "query_var": query})[0]
+                if dg in knot_seen:
+                    knot_dups += 1; continue
+                knot_seen.add(dg)
             if ok % 200 == 0:
                 print(f"[dag7-gen] {ok}/{n} banked ({rej} rejected)", flush=True)
             for kk in (kinds or {"plain"}):
@@ -267,7 +281,8 @@ def main(n, seed, out, budget=250):
                 "solution": sol, "decisions": dec,
                 "gen": {"seed": seed, "shape": "dag7", "generation": 7}}) + "\n")
             ok += 1
-    print(f"[dag7-gen] {ok} to {out} ({rej} rejected) | kinds {tally}")
+    print(f"[dag7-gen] {ok} to {out} ({rej} rejected, {knot_dups} knot-dups)"
+          f" | kinds {tally}")
 
 
 if __name__ == "__main__":
