@@ -111,6 +111,8 @@ def forward_cond(p, c, trunk, tokmask, sent, flag_tok, fail_bit, field_flags):
         "ftype": fst @ p["h_ftype"] + p["h_ftype_b"],
         "op": fst @ p["h_op"] + p["h_op_b"],
         **({"sel": fst @ p["h_sel"] + p["h_sel_b"]} if "h_sel" in p else {}),
+        **({"dup": (fst @ p["h_dup"] + p["h_dup_b"]).squeeze(-1)}
+           if "h_dup" in p else {}),   # gen-9: same None-grad family as sel
         "islit": (fst @ p["h_islit"] + p["h_islit_b"]).squeeze(-1),
         "dig": (fst @ p["h_dig"] + p["h_dig_b"]).reshape(B, L_FAC, N_DIG, 10),
         "args": ptr(p["W_args"]),
