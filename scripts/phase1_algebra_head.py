@@ -103,7 +103,11 @@ def build_gold(samples, offsets):
         "arg_dup": np.zeros((n, L_FAC), np.float32),
     }
     for i, (smp, offs) in enumerate(zip(samples, offsets)):
-        facs = sorted(smp["factors"], key=lambda f: min(s for s, _ in f["spans"]))
+        # gen-10 prose rows: factors may carry NO spans (raw prose has no
+        # letter anchors) — sort them last; span losses auto-mask on zeros
+        facs = sorted(smp["factors"],
+                      key=lambda f: (min(s for s, _ in f["spans"])
+                                     if f.get("spans") else 10 ** 9))
         assert len(facs) <= L_FAC and smp["n_vars"] <= K_VARS
         g["query"][i] = smp["query_var"]
         g["band"][i] = smp["decisions"]
@@ -111,7 +115,7 @@ def build_gold(samples, offsets):
             _spans_to_tokmask(spans, offs, g["vspan"][i, int(v_str)])
         for j, f in enumerate(facs):
             g["presence"][i, j] = 1.0
-            _spans_to_tokmask(f["spans"], offs, g["fspan"][i, j])
+            _spans_to_tokmask(f.get("spans") or [], offs, g["fspan"][i, j])
             if f["ftype"] == "rel":
                 g["ftype"][i, j] = 0
                 g["is_rel"][i, j] = 1.0

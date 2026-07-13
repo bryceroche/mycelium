@@ -3599,6 +3599,59 @@ token-position × waist-dim, the moment the skeleton trains.
   dividend (≈3x effective budget) comes free. Ckpts: sched_probe_armA/
   armB (probe artifacts). Gate remains gen-9b (promoted on its bars;
   gen-10 collects the dividend).
+- **THREE REGISTRATIONS (2026-07-12, relay — before gen-10):** (1)
+  **SCOPE DECAY, a new species for the §6 family:** ablation verdicts
+  expire with their regime — the curriculum won HONESTLY (2026-07-10,
+  single-register era, sound measurement) and inverted at
+  mixed-register scale. Not audit-that-confirms, not
+  flattering-verdict: a verdict aging out as the system changed under
+  it. OPERATIONAL FORM: every ablation verdict carries a regime tag
+  (register count, mix scale, schedule era); any verdict older than a
+  structural shift re-audits before it is load-bearing again. (2)
+  **THE REGIME CENSUS** (verdicts predating the mixed-register era,
+  by re-audit priority): [HIGH] the LOSS-TERM WEIGHTS (2.0 on
+  args/res/query, 4.0 args_w — set in the single-register era,
+  load-bearing in every run since); [MED] LR=3e-4/BATCH=8 (old, but
+  implicitly re-validated by every healthy val curve — flat-mix
+  changes the regime again, so a small LR sweep rides a future
+  cheap slot); [MED] the 5-view/vote-3 TTA dials (gen-5 era; but
+  exercised daily by acceptance probes — living verification);
+  [LOW] T_ALG=256, N_DIG=3, H_W=512 (H_W freshly re-validated by the
+  capacity A/B; the others are data-bounded, not regime-bounded).
+  None urgent; all now tagged. (3) **THE TEXTURE RULE** (this
+  channel's self-audit): recurring unexplained texture in training
+  curves is an ANOMALY, not scenery — two sightings of the same
+  unexplained curve shape trigger a mechanism probe (the [85]
+  three-flat-trainings rule, generalized to curves). The mid-training
+  val dips and "still climbing at cutoff" were logged repeatedly as
+  texture; the probe they pointed to was worth 2/3 of every training
+  day and fired a week late. (4) BOOKS ECONOMICS NOTE: at 3x
+  effective budget, December's reading-training runs just tripled in
+  affordability — gen-10 carries the FIRST REAL-PROSE INGEST (v0,
+  n=14 book pairs, informational arm) alongside its diet rather than
+  after it. The wall is tallest; the ladder got longer.
+- **REGISTERED (2026-07-12): GEN-10 — flat-mix lineage continuation +
+  the knot-matrix diet + the prose-v0 arm.** DESIGN: (1) the
+  knot-rehearsal matrix's first dietary act — coverage report
+  (distinct canonical classes per dag kind over the current mix), and
+  a 2000-row dag10 booster quota'd INVERSELY to knot count (thin
+  kinds fed first); (2) mixed10 = mixed9b + dag10; (3) training in
+  the CONTINUATION REGIME: warm from gen-9b (lineage), CURRICULUM=0
+  (the probe's dividend), 16k steps, LR 1e-4; (4) THE PROSE-V0 ARM
+  (informational, n=14): book-1 dialects parsed under the new head,
+  verified to banked answers, gold graphs attached to the RAW PROSE
+  (factors span-less; span losses auto-mask — the build_gold patch);
+  a 600-step LR 5e-5 micro-continuation, then census + raw-prose
+  acceptance BEFORE/AFTER. No bar — the arm builds and measures the
+  reading-training machinery honestly at n=14 (Brick discipline);
+  DISPLACEMENT GUARD: bigtest under the prose ckpt may not trail
+  gen-10's by >15 or the arm's ckpt is discarded (the main gen-10
+  ckpt is unaffected either way). PROMOTION BARS (all hold ->
+  gen-10 takes the gate): bigtest >=1090 (hold the record), alg4test
+  >=380 (the flat dividend must show at continuation), acceptance
+  8/8, per-kind sq >=0.70 / fdiv >=0.62 / coupled >=0.65 / ladder
+  >=0.50, alg2test >=560, vtest >=598, dagtest >=660, dag7btest
+  >=500, dag8test >=500.
 - **THE EMPLOYMENT LAW + TWO PROMOTIONS (2026-07-11, relay — registered
   before gen-7):** (1) **THE EMPLOYMENT LAW**: every organ this project
   charters gets SMALLER on contact with measurement — book 1 is the
