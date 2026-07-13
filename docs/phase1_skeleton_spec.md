@@ -3577,6 +3577,28 @@ token-position × waist-dim, the moment the skeleton trains.
   way one pair of short runs converts a scatter of "hard register
   learns slowly" mysteries into a single attributed mechanism or
   clears the curriculum with a receipt.
+- **VERDICT (2026-07-12): THE SCHEDULE PROBE — CONFIRMED, 6x PAST THE
+  BAR, AND THE CURRICULUM IS NET-NEGATIVE AT SCALE.** Arm A
+  (CURRICULUM=1): alg4test 296, bigtest 916, dagtest 652, val 0.8388.
+  Arm B (CURRICULUM=0): alg4test **384 (+88; bar was +15)**, bigtest
+  **1032 (+116)**, dagtest 678 (+26), val 0.8618 (+0.023). The guard
+  didn't just hold — B LEADS EVERYWHERE: the curriculum is hurting
+  every register at the 30k-mix scale, not just the high-teeth ones.
+  THE COLDEST-OPTIMIZER MECHANISM CONFIRMED with a sharper corollary:
+  arm B at 12k nearly matches gen-9's 32k bigtest (1032 vs 1084) —
+  **the curriculum was burning roughly two-thirds of every training
+  budget** (the easy-pool phase consumes the hot LR on data the head
+  already knows; the full mix arrives to a cold optimizer). It also
+  retroactively explains the mid-training val dips (the 0.5 -> 0.8
+  jumps at pool transitions) and every "still climbing at cutoff."
+  JURISDICTION LESSON, again: the curriculum won its ablation on
+  2026-07-10 in the single-register era; at mixed-register scale the
+  verdict INVERTED — **ablation verdicts expire with their regime**,
+  the way deliberate exclusions do; scope tags on both from here.
+  GEN-10 CONSEQUENCE: flat mix from step one, and the schedule
+  dividend (≈3x effective budget) comes free. Ckpts: sched_probe_armA/
+  armB (probe artifacts). Gate remains gen-9b (promoted on its bars;
+  gen-10 collects the dividend).
 - **THE EMPLOYMENT LAW + TWO PROMOTIONS (2026-07-11, relay — registered
   before gen-7):** (1) **THE EMPLOYMENT LAW**: every organ this project
   charters gets SMALLER on contact with measurement — book 1 is the
