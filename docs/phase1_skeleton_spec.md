@@ -3863,6 +3863,30 @@ token-position × waist-dim, the moment the skeleton trains.
   misses, the panel banks as an honest negative WITH its autopsy;
   the bench note survives either verdict (panel-eligibility is
   free and the next junction mints wider-gapped members).
+- **VERDICT (2026-07-13): THE LATTICE PROBE — the gate is CLEANER
+  than its blind-spot narrative, and the panel's real jurisdiction
+  is the WILD register.** bigtest: gate-only 5/5 = 866 coverage
+  (57.7%) at precision **1.0000** — ZERO false certificates in 1500;
+  the [71]-class has nearly vanished from the dialect fixture under
+  gen-9b (ONE stable-wrong in 1500 — and cross-examination broke it,
+  1/1). CERT-V2: 839 coverage (−27, 3.1% cost) at 1.0000. THE FIFTH
+  DIAL: mechanically LANDS per the pre-commitment (100% >= 1/3 at
+  modest cost) — ADOPTED WITH THE n=1 CAVEAT stated: on in-register
+  text the class it hunts is nearly extinct; its load-bearing
+  jurisdiction is WILD register, where the census read is emphatic —
+  of 10 gate stable-vote raw-prose parses, the panel DISSENTS ON 9.
+  Cross-examination is a second wall behind the mouth: even prose
+  that slips the doorman meets a jury that refuses 90%. VETO-OR-
+  APPEAL: 0/0, undecidable this round (nothing to appeal — the right
+  kind of failure). THE NORMALIZER'S SURPRISE: cap2x disagrees MORE
+  per-item (24.7%) than armB (17.5%) despite the A/B's aggregate
+  equivalence — AGGREGATE EQUALITY MASKED ITEM-LEVEL DIVERSITY (the
+  fair A/B measured means, not overlaps); the axis question stays
+  open and panels recruit by measured behavioral distance. Coverage
+  gap = 27 (the lineage-disagreement instrument's zero-point).
+  Probe cost: 2h05m CPU, zero training. The corpses voted; the gate
+  walked free; the jury found its real beat on the wild side of the
+  wall.
 - **THE EMPLOYMENT LAW + TWO PROMOTIONS (2026-07-11, relay — registered
   before gen-7):** (1) **THE EMPLOYMENT LAW**: every organ this project
   charters gets SMALLER on contact with measurement — book 1 is the
