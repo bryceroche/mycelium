@@ -3761,6 +3761,20 @@ token-position × waist-dim, the moment the skeleton trains.
   family in gen-9b fst space. Manifest updated at the end: specialist
   + centroids waivers retired, hashes pinned — entourage complete,
   THEN bars, THEN gen-11.
+- **VERDICT (2026-07-13): THE ENTOURAGE IS COMPLETE.** Remine chain
+  (3rd launch; two None-grad fixes en route — h_dup joins the family
+  with the two-terminal lesson: EMISSION AND GOLD FEED both, or the
+  branch is dead): 3,800 repair rows incl. the dag register the gen-5
+  specialist never saw; purity filter -208; **1,338 organic gen-9b
+  failures** -> phase1_gen9b_nack (best-by-EMA 4.968); centroids
+  rebuilt, all 7 kinds, gen-9b fst space; manifest retired the last
+  waivers ITSELF as the chain's closing act. The composed stack
+  speaks ONE GENERATION for the first time since 2026-07-10. The
+  sync find is fully closed: hole found, history verified clean,
+  mechanism shipped, entourage rebuilt. NEXT: bars (re-pin with the
+  composed stack readable), then GEN-11 — staged-heat probe, dosed
+  prose arm (oversample-multiple units), and the first battery that
+  writes its own manifest or refuses the word.
 - **THE EMPLOYMENT LAW + TWO PROMOTIONS (2026-07-11, relay — registered
   before gen-7):** (1) **THE EMPLOYMENT LAW**: every organ this project
   charters gets SMALLER on contact with measurement — book 1 is the
