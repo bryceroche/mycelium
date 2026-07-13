@@ -351,6 +351,7 @@ def do_train(steps, lr, batch, seed):
                          ("is_rel", (L_FAC,), dtypes.float),
                          ("is_mod", (L_FAC,), dtypes.float),
                          ("is_sel", (L_FAC,), dtypes.float),
+                         ("arg_dup", (L_FAC,), dtypes.float),
                          ("query", (), dtypes.int)):
         npdt = np.float32 if dt == dtypes.float else np.int32
         bg[k] = fix(np.zeros((batch,) + shape, npdt), dt)
@@ -402,6 +403,8 @@ def do_train(steps, lr, batch, seed):
         tg["is_rel"] = (tg["ftype"] == 0).astype(np.float32)
         tg["is_mod"] = (tg["ftype"] == 2).astype(np.float32)
         tg["is_sel"] = (tg["ftype"] == 3).astype(np.float32)
+        tg["arg_dup"] = gold.get("arg_dup",
+                                 np.zeros_like(gold["presence"]))[idx].astype(np.float32)
         b_tr.assign(Tensor(states[idx].astype(np.float32), dtype=dtypes.float).contiguous()).realize()
         b_tk.assign(Tensor(tokmask[idx].astype(np.float32), dtype=dtypes.float).contiguous()).realize()
         b_se.assign(Tensor(sent[idx].astype(np.int32), dtype=dtypes.int).contiguous()).realize()
