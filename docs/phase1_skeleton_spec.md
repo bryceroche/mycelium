@@ -3518,6 +3518,39 @@ token-position × waist-dim, the moment the skeleton trains.
   LR=1e-4 (cosine), CURRICULUM=0 (a top-up trains near the converged
   regime; re-running the coarse phase at high LR is the known
   disruption shape). Bars unchanged from gen-9; all hold -> PROMOTE.
+- **VERDICT (2026-07-12): GEN-9B — ALL BARS HOLD; **PROMOTED TO THE
+  GATE** (first promotion since gen-6; the gate ckpt is now
+  `.cache/phase1_gen9b_head.safetensors`).** THE TABLE: acceptance
+  **8/8, EVERY probe banked at 5/5 or 4/5** ([71] and [78] back to
+  unanimous; [85], [72], [56], [45], [7], [46] all held — no new
+  casualties anywhere); bigtest **1090** (a second record); alg4test
+  **344** (+29 over gen-9 — see below); alg2test 571, vtest 600/600,
+  dagtest 671, dag7btest 523; per-kind sq 0.751 / coupled 0.697 /
+  fdiv 0.677 / ladder 0.529; val record 0.8890; booster minted 500/500
+  distinct knots, 0 test-isomorphs admitted (the disjointness gate's
+  first live tour, clean). **THE DISPLACEMENT ANSWER: (b) — DEPTH IS
+  NOT ZERO-SUM IN THIS REGIME.** The top-up deepened [71]/[78] to 5/5
+  while every other basin held or deepened; the budget worry dies
+  with its receipt, pre-registered. The correct reading of gen-9's
+  re-shallowing: diet SHIFTS jostle specific basins transiently;
+  gentle continued training consolidates without displacement.
+  **BONUS EVIDENCE FOR THE SCHEDULE HYPOTHESIS:** alg4test rose +29
+  under 8k steps of LOW-LR, NO-CURRICULUM, full-mix training — more
+  than three full generations moved it — consistent with
+  curriculum x cosine starving high-teeth rows of usable-LR steps;
+  the registered CURRICULUM=0 probe gains a prior. CENSUS TREND
+  (three points, directional, informational): 76 -> 81 -> 89 knotted
+  as basins deepen — the head's consolidation on its own register
+  REDUCES accidental raw-prose carries; the style wall hardens as the
+  dialect sharpens; the bootstrap's raw-prose economics await books,
+  as every census has said. THE ARC CLOSES: the junction opened with
+  two kills and three physics instruments; it closes with rehearsal
+  confirmed as the mechanism (both directions), capacity and conflict
+  exonerated with receipts, [85] representable and banked, the
+  bookkeeping counting knots, and the gate moving on a table with no
+  asterisks. Next chapter: the schedule probe (registered), gen-10's
+  knot-matrix diet, and BOOKS — the style wall is now the tallest
+  thing standing.
 - **THE EMPLOYMENT LAW + TWO PROMOTIONS (2026-07-11, relay — registered
   before gen-7):** (1) **THE EMPLOYMENT LAW**: every organ this project
   charters gets SMALLER on contact with measurement — book 1 is the
