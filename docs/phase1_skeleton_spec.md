@@ -3887,6 +3887,47 @@ token-position × waist-dim, the moment the skeleton trains.
   Probe cost: 2h05m CPU, zero training. The corpses voted; the gate
   walked free; the jury found its real beat on the wild side of the
   wall.
+- **REGISTERED (2026-07-13, relay + critique): MEANS-VS-OVERLAPS
+  (scope-decay's cousin)** — verdicts about MEANS don't govern claims
+  about OVERLAPS: cap2x was "statistically the same model" by every
+  aggregate and disagreed on 24.7% of items. Behavioral distance is
+  a different measurement than benchmark distance; diagnostic
+  checkpoints get graded on per-item disagreement at archive time
+  (bench protocol). Zero-numerator note carried: 1.0000 on 866 reads
+  as bounded-near-a-tenth-percent; the STRUCTURE is the claim.
+  **THE WILD WATCHER (pre-registered column):** cert-v2's census-side
+  dissent rate (9/10 at gen-9b) logs per generation — NOT a bar (the
+  wild isn't gated) but the instrument watching prose-v1: reading-
+  training working -> dissent falls as both members learn the
+  register; dissent falling toward unanimity WITHOUT the key
+  confirming -> the Goodhart signature, exactly where the rotation
+  law predicts. One column, two watchers.
+- **REGISTERED + FIRED (2026-07-13): GEN-11 — the five-dial
+  generation.** CHAIN: (A) THE STAGED-HEAT MICRO-PROBE first (3k hot
+  LR 3e-4 on alg4train from gen-9b -> read; 4k cold LR 1e-4 on
+  mixed10 -> read). BRANCH RULE (pinned): hot alg4test >=380 AND cold
+  holds alg4 >=370 with bigtest >=1080 -> gen-11 adopts the staged
+  recipe (hot alg4 preamble, then cold flat mixed11); else plain flat
+  continuation. (B) DIET: mixed11 = mixed10 + dag11 booster 2000
+  minted with the GREEDY KNOT PEEK (canonical-class dedup against
+  the mix + itself; prediction: booster knot-classes/row >=0.95 and
+  >= 2x dag10's class rate). (C) TRAIN per the branch; battery;
+  per-kind; acceptance. (D) FIFTH DIAL, first enforcement: 3-member
+  lattice (gen-11 + armB + cap2x) on bigtest — cert-v2 precision
+  >=0.998 REQUIRED; census dissent column logged. (E) PROSE DOSE
+  ARMS (x5/x15/x40 of the 14 uniques, each mixed into a 2000-row
+  slice, 2k-step micro-continuations from gen-11): reads = DISJOINT
+  census (the 86 untrained pool items) + bigtest displacement guard
+  (>= gen-11 − 15) per arm; deliverable = the safe-dose slope per
+  unique row (December's number). (F) THE BATTERY WRITES THE
+  MANIFEST: a verdict script checks every bar mechanically and
+  either writes GENERATION.json (with an EXPLICIT one-generation
+  specialist waiver — remine rides the next entourage pass) and
+  prints PROMOTED, or prints the kill — the word and the JSON one
+  act, the law's first enforcement. BARS: bigtest >=1130, alg4test
+  >=380 (THE bar), acceptance 8/8, alg2 >=560, vtest >=598, dagtest
+  >=660, dag7b >=500, dag8 >=500, sq >=0.70, fdiv >=0.62, coupled
+  >=0.65, ladder >=0.50, cert-v2 precision >=0.998.
 - **THE EMPLOYMENT LAW + TWO PROMOTIONS (2026-07-11, relay — registered
   before gen-7):** (1) **THE EMPLOYMENT LAW**: every organ this project
   charters gets SMALLER on contact with measurement — book 1 is the
