@@ -3775,6 +3775,52 @@ token-position × waist-dim, the moment the skeleton trains.
   composed stack readable), then GEN-11 — staged-heat probe, dosed
   prose arm (oversample-multiple units), and the first battery that
   writes its own manifest or refuses the word.
+- **REGISTERED (2026-07-13, Bryce's triple import + relay + critique:
+  KAGGLE/ALPHAZERO/MUZERO):** (1) **MCTS-IN-THE-MINT (strategic; the
+  pigeonhole closed-loop).** Not solver-side (refuted v3-v4 territory;
+  GAC/MRV/LCV IS principled lookahead) — MINT-side: state = partial
+  DAG, actions = add-relation/given/close, value = knot-novelty x
+  gate-survival, the knot-rehearsal matrix as REWARD — the matrix
+  upgrades from reporting instrument to closed-loop curriculum
+  controller; the mint searches toward thin redundancy classes.
+  V1 = GREEDY one-step (canonical-digest peek before the expensive
+  gate; the mint already early-rejects on kind — extend to
+  knot-class population). CRITIQUE AMENDMENTS: (a) novelty alone can
+  mint pathological diversity — the value blends novelty +
+  gate-survival + kind-rehearsal targets; (b) prediction RE-PINNED:
+  knot-classes-per-1000 minted >=2x (the real win); gate-survival
+  gain MODEST (most residual rejections are global-uniqueness
+  failures one-step lookahead cannot foresee). Self-play's deep
+  lesson kept: mint at the frontier of competence — toward the
+  census's temperature gradient. (2) **MUZERO -> TRIAGE, not world
+  model.** The registry IS the world model (owned, exact); latent
+  dynamics in the solve path would trade the zero-leakage bottleneck
+  for drift — anti-thesis. The one licensed address: a small head
+  predicting WHERE THE REPRESENTATION FAILS (P(knotted) for raw
+  prose) — annotation-budget routing, books priced before purchase,
+  mouth-adjacent (selection-safe, zero solve-path contact). DESIGN
+  CONSTRAINT from the banked negative: the mouth-distance join's AUC
+  0.535 says INPUT-SPACE features do not predict knottedness — the
+  triage head needs PARSE-SIDE features (vote entropy, factor
+  counts, calibration). Waits for census outcomes at books scale;
+  registered, not fired. (3) **CROSS-MODEL x VIEW LATTICE (the
+  afternoon; fire-ready).** Single-model TTA certifies invariance
+  across DIAGRAMS; cross-model consensus certifies invariance across
+  LANDSCAPES — the strictly stronger invariant, aimed at the
+  certification channel's named blind spot ([71] 5/5-unanimous-wrong;
+  the anchor's correlated blindness). CRITIQUE AMENDMENT — member
+  choice by DECORRELATION, not strength: gen-9b/gen-10 share lineage
+  (partial decorrelation only); the banked panel offers true
+  diversity for free — sched_probe_armB (flat regime, gen-7b
+  lineage) and cap2x_32k (2x WIDTH — architectural decorrelation).
+  Panel = gate + one cross-lineage + one cross-width member; 2-3x
+  inference on the CERTIFICATION TIER only; zero training.
+  PREDICTIONS PINNED: cross-model unanimity precision > single-model
+  at meaningfully lower coverage; the coverage GAP = a new
+  instrument (lineage disagreement — the Goodhart rotation's
+  held-out examiner from inside the house). Priority: (3) afternoon,
+  (1) rides gen-11's mint, (2) books-era. Fourteen instincts, all
+  machinery.
 - **THE EMPLOYMENT LAW + TWO PROMOTIONS (2026-07-11, relay — registered
   before gen-7):** (1) **THE EMPLOYMENT LAW**: every organ this project
   charters gets SMALLER on contact with measurement — book 1 is the
