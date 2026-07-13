@@ -3652,6 +3652,45 @@ token-position × waist-dim, the moment the skeleton trains.
   8/8, per-kind sq >=0.70 / fdiv >=0.62 / coupled >=0.65 / ladder
   >=0.50, alg2test >=560, vtest >=598, dagtest >=660, dag7btest
   >=500, dag8test >=500.
+- **TRIPLE VERDICT (2026-07-13):** (1) **GEN-10 — NO PROMOTION, one
+  bar: alg4test 357 < 380.** Everything else: records nearly across
+  the board — bigtest **1130** (third record), alg2test 585 (record),
+  dagtest 678, dag7btest 537, dag8test 532, sq 0.781, fdiv 0.702,
+  coupled 0.707, acceptance 8/8 unanimous, census softened 89 -> 79
+  (the knot-diverse booster + flat continuation REVERSED some
+  register hardening). The alg4 reading: gentle continuation (+13)
+  cannot pay a debt the curriculum-era LINEAGE carries — arm B's 384
+  came from 12k HOT flat steps; the heat-vs-jostle tension is gen-11's
+  design question (hot flat retrain from a clean ancestor vs medium-
+  heat continuation). Gate REMAINS gen-9b. (2) **PROSE-V0 — the
+  displacement guard fired at −243** (bigtest 887 vs 1130): 600 steps
+  x batch 8 on n=14 = ~340 epochs of pure prose = catastrophic
+  interference; ckpt DISCARDED from candidacy (kept as a displacement
+  specimen). The census under it read banked 15 — **CONTAMINATED BY
+  CONSTRUCTION**: the 14 prose rows ARE census-pool members;
+  training-set recall, not reading (the disjointness law's third
+  bite, now prose-side: future prose censuses EXCLUDE trained items).
+  HONEST V0 YIELD: the machinery works end-to-end (14/14 pairs built,
+  span-less gold binds, gradients flow, trained rows parse) — raw
+  prose is LEARNABLE-IN-PRINCIPLE through this path; v1 mixes prose
+  INTO the diet (never a naive fine-tune) and reads a disjoint
+  census. (3) **THE SYNC AUDIT — CANDIDATE 1 CONFIRMED** (Bryce's
+  gut, thirteen-for-thirteen): the manifest sat at GEN-5 all sprint;
+  promotions gen-6..9b were PARSER-ONLY; the composed stack pairs a
+  gen-9b parser with a gen-5 specialist, gen-5 monitor centroids, and
+  a gen-5 mouth — every mouth distance since gen-6 was a gen-5-native
+  reading (the knotted-column hardening may be partly
+  mouth-calibration lag). FIXED TONIGHT: GENERATION.json rewritten to
+  the TRUE stack (gen-9b parser, stale members EXPLICITLY WAIVERED,
+  non-candidates named); REGISTERED: the entourage rebuild (specialist
+  remine on gen-9b errors, monitor centroids in gen-9b slot space,
+  mouth recalibration on the consolidated family) + co-generation
+  assertion in --check + stage-boundary row-count/size asserts.
+  Candidates 2 (artifacts verified exact), 3 (denominators
+  consistent — full fixtures everywhere, exclusion list never
+  applied), 4 (three heads tonight — resolved by the manifest naming
+  the gate) all closed. Discipline -> mechanism, the house
+  conversion, one more time.
 - **THE EMPLOYMENT LAW + TWO PROMOTIONS (2026-07-11, relay — registered
   before gen-7):** (1) **THE EMPLOYMENT LAW**: every organ this project
   charters gets SMALLER on contact with measurement — book 1 is the
