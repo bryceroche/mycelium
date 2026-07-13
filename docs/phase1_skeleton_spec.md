@@ -3743,6 +3743,24 @@ token-position × waist-dim, the moment the skeleton trains.
   sweep's deliverable = safe-dose slope PER UNIQUE ROW (December's
   books-planning number). Sequencing stands: entourage (mouth DONE;
   specialist remine + centroids next, on the word) -> bars -> gen-11.
+- **THE DOSE LAW GENERALIZED (2026-07-13, relay):** percentages
+  smuggle repetition when the unique pool is small — every diet
+  specification carries BOTH numbers from here: SHARE OF MIX (governs
+  interference) and REPETITIONS PER UNIQUE ROW (governs memorization);
+  they decouple violently at small n. The prose sweep's deliverable,
+  priced: safe-dose slope per annotated row converts December's books
+  question into arithmetic — target census movement / (movement per
+  row x safe multiple) = annotation budget. The books campaign priced
+  by its own pilot.
+- **REGISTERED + FIRED (2026-07-13): THE SPECIALIST REMINE (entourage
+  step 2) + MONITOR CENTROIDS (step 3).** Recipe = the gen-5 bump's
+  stages 1-4 adapted: fresh repair corpora (nl/alg2/alg3/verbose + the
+  DAG register the gen-5 repair mix never had; seeds 211-215,
+  collision-free), precompute, nack --prep/--train against the GEN-9B
+  parser's errors (6k steps), centroids rebuilt from the m9btrain
+  family in gen-9b fst space. Manifest updated at the end: specialist
+  + centroids waivers retired, hashes pinned — entourage complete,
+  THEN bars, THEN gen-11.
 - **THE EMPLOYMENT LAW + TWO PROMOTIONS (2026-07-11, relay — registered
   before gen-7):** (1) **THE EMPLOYMENT LAW**: every organ this project
   charters gets SMALLER on contact with measurement — book 1 is the
