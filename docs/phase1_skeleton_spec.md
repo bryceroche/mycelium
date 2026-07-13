@@ -3928,6 +3928,24 @@ token-position × waist-dim, the moment the skeleton trains.
   >=380 (THE bar), acceptance 8/8, alg2 >=560, vtest >=598, dagtest
   >=660, dag7b >=500, dag8 >=500, sq >=0.70, fdiv >=0.62, coupled
   >=0.65, ladder >=0.50, cert-v2 precision >=0.998.
+- **PERF AUDIT (2026-07-13, Bryce's question — 'are the easy gains in
+  place?'):** TRAINING yes (TinyJit step + assign-in-place fixed
+  buffers, 0.06s/step — the substrate pattern, long since in place);
+  PRECOMPUTE yes (batched, memmap). THE EVAL STACK NO — found and
+  fixed the big hole: **recompute_states reloaded the 2.4GB Llama
+  weights ON EVERY CALL** (one reload per problem across every
+  census/acceptance/lattice/book gate since Phase-1 began — the
+  llama_loader spam in every log was the bill). Host now CACHED per
+  process; parity BYTE-EXACT vs the pre-edit reference. The trunk
+  TinyJit was attempted and honestly reverted: zero-arg capture
+  RECAPTURES per call with this layer code (13s/batch vs eager,
+  measured under GPU contention) — DEFERRED with the residency
+  smoke's assign-in-place buffer pattern as the known-good recipe
+  (0.34s replay, validated 2026-07-05); the head-forward JIT rides
+  the same deferred item (trunk dominates). Clean benchmarks after
+  gen-11's unit frees the GPU. Every future eval process (including
+  gen-11's own stage E lattice and dose arms, which spawn fresh
+  processes) inherits the cache immediately.
 - **THE EMPLOYMENT LAW + TWO PROMOTIONS (2026-07-11, relay — registered
   before gen-7):** (1) **THE EMPLOYMENT LAW**: every organ this project
   charters gets SMALLER on contact with measurement — book 1 is the

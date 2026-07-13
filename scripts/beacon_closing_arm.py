@@ -59,19 +59,38 @@ from repair_replace_swap import solve_forced  # noqa: E402
 MARK_ID = 128002   # <|reserved_special_token_0|>
 
 
-def recompute_states(ids_batch):
-    """L0-L3 trunk forward on marked token ids (forward-only)."""
-    from tinygrad import Tensor, dtypes
-    from mycelium.llama_loader import (
-        attach_llama_layers, load_llama_weights, LLAMA_3_2_1B_CFG, _rms_norm)
+_TRUNK_HOST = None       # 2026-07-13 perf: load the 2.4GB weights ONCE per
+_TRUNK_JIT = None        # process (was: reload per CALL — thousands of
+_TRUNK_BUF = None        # redundant loads across every eval/census/lattice)
 
-    class _H:
-        pass
-    host = _H()
-    sd = load_llama_weights(os.path.join(
-        _ROOT, ".cache/llama-3.2-1b-weights/model.safetensors"))
-    attach_llama_layers(host, n_layers=4, sd=sd, cfg=LLAMA_3_2_1B_CFG)
-    del sd
+
+def _trunk_host():
+    global _TRUNK_HOST
+    if _TRUNK_HOST is None:
+        from mycelium.llama_loader import (
+            attach_llama_layers, load_llama_weights, LLAMA_3_2_1B_CFG)
+
+        class _H:
+            pass
+        host = _H()
+        sd = load_llama_weights(os.path.join(
+            _ROOT, ".cache/llama-3.2-1b-weights/model.safetensors"))
+        attach_llama_layers(host, n_layers=4, sd=sd, cfg=LLAMA_3_2_1B_CFG)
+        del sd
+        _TRUNK_HOST = host
+    return _TRUNK_HOST
+
+
+def recompute_states(ids_batch):
+    """L0-L3 trunk forward on marked token ids (forward-only), with the
+    host CACHED per process (2026-07-13: was reloading the 2.4GB weights
+    on every call — thousands of redundant loads across eval/census/
+    lattice paths). Eager forward kept: a zero-arg TinyJit here RECAPTURES
+    per call with this layer code (13s/batch vs ~0.5s eager, measured) —
+    the jitted trunk needs the residency smoke's buffer pattern, deferred."""
+    from tinygrad import Tensor, dtypes
+    from mycelium.llama_loader import _rms_norm
+    host = _trunk_host()
     n = len(ids_batch)
     states = np.zeros((n, T_ALG, H_TRUNK), np.float16)
     for s0 in range(0, n, 8):
