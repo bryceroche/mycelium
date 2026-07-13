@@ -131,35 +131,40 @@ def verify_iso(ra, rb):
     return match(0, set())
 
 
-train_rows = [json.loads(l) for l in open(TRAIN)]
-train_by_digest = defaultdict(list)
-train_texts = set()
-for r in train_rows:
-    train_by_digest[canon(r)[0]].append(r)
-    train_texts.add(r["text"])
-n_classes = len(train_by_digest)
-n_multi = sum(1 for v in train_by_digest.values() if len(v) > 1)
-print(f"[iso] train {len(train_rows)} rows -> {n_classes} canonical classes "
-      f"({n_multi} classes with >1 member — within-train redundancy)")
+def main():
+    train_rows = [json.loads(l) for l in open(TRAIN)]
+    train_by_digest = defaultdict(list)
+    train_texts = set()
+    for r in train_rows:
+        train_by_digest[canon(r)[0]].append(r)
+        train_texts.add(r["text"])
+    n_classes = len(train_by_digest)
+    n_multi = sum(1 for v in train_by_digest.values() if len(v) > 1)
+    print(f"[iso] train {len(train_rows)} rows -> {n_classes} canonical classes "
+          f"({n_multi} classes with >1 member — within-train redundancy)")
 
-total_iso = total_txt = 0
-contaminated = []
-for name, path in TESTS.items():
-    rows = [json.loads(l) for l in open(path)]
-    txt = sum(1 for r in rows if r["text"] in train_texts)
-    iso = 0
-    for ri, r in enumerate(rows):
-        dg = canon(r)[0]
-        if dg in train_by_digest and \
-                any(verify_iso(r, m) for m in train_by_digest[dg]):
-            iso += 1
-            contaminated.append({"corpus": name, "row": ri, "digest": dg})
-    total_iso += iso; total_txt += txt
-    flag = "  <-- CONTAMINATION" if iso else ""
-    print(f"  {name:10s}: n={len(rows):4d} | exact-text overlap {txt:3d} | "
-          f"VERIFIED isomorphs in train {iso:3d}{flag}")
-print(f"\n[iso] TOTAL cross-boundary: exact-text {total_txt}, "
-      f"verified isomorphs {total_iso}")
-json.dump(contaminated, open(".cache/iso_contamination.json", "w"))
-print("[iso] exclusion list saved -> .cache/iso_contamination.json")
-print("[iso] canonical digest = the knot-invariant problem ID going forward")
+    total_iso = total_txt = 0
+    contaminated = []
+    for name, path in TESTS.items():
+        rows = [json.loads(l) for l in open(path)]
+        txt = sum(1 for r in rows if r["text"] in train_texts)
+        iso = 0
+        for ri, r in enumerate(rows):
+            dg = canon(r)[0]
+            if dg in train_by_digest and \
+                    any(verify_iso(r, m) for m in train_by_digest[dg]):
+                iso += 1
+                contaminated.append({"corpus": name, "row": ri, "digest": dg})
+        total_iso += iso; total_txt += txt
+        flag = "  <-- CONTAMINATION" if iso else ""
+        print(f"  {name:10s}: n={len(rows):4d} | exact-text overlap {txt:3d} | "
+              f"VERIFIED isomorphs in train {iso:3d}{flag}")
+    print(f"\n[iso] TOTAL cross-boundary: exact-text {total_txt}, "
+          f"verified isomorphs {total_iso}")
+    json.dump(contaminated, open(".cache/iso_contamination.json", "w"))
+    print("[iso] exclusion list saved -> .cache/iso_contamination.json")
+    print("[iso] canonical digest = the knot-invariant problem ID going forward")
+
+
+if __name__ == "__main__":
+    main()

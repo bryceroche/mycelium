@@ -3491,6 +3491,33 @@ token-position × waist-dim, the moment the skeleton trains.
   gen-9 oversamples; re-run acceptance + battery. The two vote-shy
   items are the acceptance probes; bars unchanged. Ckpt
   `.cache/phase1_gen9_head.safetensors` banked unpromoted.
+- **REGISTERED (2026-07-12, relay — GEN-9B with the displacement
+  question riding):** (1) **THE BASIN-DISPLACEMENT CONSERVATION
+  QUESTION** — [71]/[78] were 5/5 under gen-8; gen-9's diet (which
+  oversampled shallow basins TO DEEPEN THEM) re-shallowed exactly
+  those two. The uncomfortable reading, carried before the top-up can
+  flatter it away: at fixed capacity, BASIN DEPTH MAY BEHAVE LIKE A
+  BUDGET — rehearsal deepens practiced basins partly by drawing from
+  unpracticed neighbors; the diet ALLOCATES consolidation rather than
+  creating it. The Landauer law one level down: erasure-by-rehearsal
+  was about ACCURACY; this is the same law about CERTAINTY.
+  PRE-REGISTERED READ (rides gen-9b free): the top-up deepens the
+  [71]/[78] shape while KEEPING gen-9's shallow-oversamples — (a)
+  those two at 5/5 but two DIFFERENT probes gone vote-shy ->
+  displacement CONSERVED; the diet question changes from
+  what-to-add to WHAT EQUILIBRIUM TO SEEK; (b) >=7/8 with no new
+  casualties -> depth NOT zero-sum in this regime; the budget worry
+  dies with a receipt and the top-up was just a top-up. (2) **BOOSTER
+  MINTED AT KNOT LEVEL** (the knot-rehearsal matrix's first day on
+  the job): the [71]/[78] fix is specified as N=500 DISTINCT
+  CANONICAL REDUNDANCY CLASSES of the fdiv-tiny-chain shape (counted
+  by the canonical digest at mint; pigeonhole-dense regime — training
+  the diagram again is the named risk), each checked canonically
+  DISJOINT from every test corpus (the bump gate's first live use).
+  (3) TOP-UP TRAINING DESIGN: continue from gen-9 ckpt, 8k steps,
+  LR=1e-4 (cosine), CURRICULUM=0 (a top-up trains near the converged
+  regime; re-running the coarse phase at high LR is the known
+  disruption shape). Bars unchanged from gen-9; all hold -> PROMOTE.
 - **THE EMPLOYMENT LAW + TWO PROMOTIONS (2026-07-11, relay — registered
   before gen-7):** (1) **THE EMPLOYMENT LAW**: every organ this project
   charters gets SMALLER on contact with measurement — book 1 is the
