@@ -3841,6 +3841,28 @@ token-position × waist-dim, the moment the skeleton trains.
   BENCH NOTE (relay): diagnostic runs leave lineage-decorrelated
   siblings — the manifest tags them PANEL-ELIGIBLE instead of
   archiving; every future fair A/B grows the ensemble for free.
+- **THREE PRE-JOIN PINS (2026-07-13, relay — registered while the
+  jury deliberates, BEFORE the join prints):** (1) **THE NORMALIZER:**
+  cap2x is behaviorally near-identical to the 1x by the fair A/B's
+  own verdict — sparse dissent from cap2x may mean "width axis loses"
+  OR "member never diverse enough to test width." The autopsy reads
+  through the RAW DISAGREEMENT RATE on ALL items per member: equal
+  rates -> axis comparison fair; unequal -> the axis question stays
+  open and panels recruit by MEASURED BEHAVIORAL DISTANCE, not axis
+  theory. (2) **VETO OR APPEAL:** on gate false-certificates broken
+  by a dissent, check the dissenter against the KEY — dissenter
+  disproportionately correct -> the panel is a REPAIR channel (the
+  first mechanism with purchase on committed-wrongs since the
+  survivor arc; jurisdiction five becomes APPEAL); dissents mostly
+  both-wrong-differently -> pure abstention machinery (veto). (3)
+  **GEN-11'S FIFTH DIAL, PRE-COMMITTED NOW so it cannot look fitted:
+  IF cert-v2 lands (>=1/3 stable-wrongs broken at modest coverage
+  cost), the freeze gains the dial and every future battery must
+  hold cert-v2 precision >= 0.998 at whatever coverage it buys,
+  measured per generation alongside the other dials.** If the probe
+  misses, the panel banks as an honest negative WITH its autopsy;
+  the bench note survives either verdict (panel-eligibility is
+  free and the next junction mints wider-gapped members).
 - **THE EMPLOYMENT LAW + TWO PROMOTIONS (2026-07-11, relay — registered
   before gen-7):** (1) **THE EMPLOYMENT LAW**: every organ this project
   charters gets SMALLER on contact with measurement — book 1 is the
