@@ -4518,3 +4518,10 @@ token-position × waist-dim, the moment the skeleton trains.
   second product — a field manual for how measurement systems age,
   warp, and lie, every entry bought with a real near-miss and fixed
   before it billed.
+- **THE VINTAGE NOTE (2026-07-14, relay — never-mix-generations,
+  estimator edition):** every mouth number now has a warped-era or
+  straight-era vintage; the battery's odometer compares
+  STRAIGHT-TO-STRAIGHT only — the before leg re-computes vectors
+  under the correction, never reads archival distances. One
+  assertion in the battery script makes vintage confusion
+  structurally impossible.
