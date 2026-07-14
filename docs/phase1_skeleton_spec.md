@@ -4433,3 +4433,24 @@ token-position × waist-dim, the moment the skeleton trains.
   reading didn't anticipate could be won this decisively. Tranche 6
   samples the remaining RATE-FAMILY stock maximally before the count
   freezes (the census's most consequential line item).
+- **VERDICT (2026-07-14): BOOK 2, TRANCHE 6 — 10/11 banked (all at
+  5/5); book 2 = 83 entries, registry +5 (counted 33 + the 75
+  value-range).** **[344]'s TRIPLE-FDIV REFUSED UNDER CONSECUTIVE
+  LETTERS — the fdiv wall is REAL**: not letters, not the retry
+  class — CHAINED FDIV is the first genuine mechanism contour to
+  survive the entire recipe book (single fdiv composes freely;
+  chains do not). The frontier census gains its first
+  parser-side structural line item beyond the rate family; the
+  routing-autopsy protocol has its next customer. ALSO BANKED:
+  **[294] — book 1's last ORGAN-B holdout, the burger system —
+  banked 5/5 rescaled in-band** (the coupled wall fully retired);
+  the faithful five-term sequence ([181], middle-term by shared-d,
+  no identity gift); [36]'s double-isq-on-givens (296, the identity
+  target); the vertex-as-mean, the |m−n| via sel+closure, Jordan's
+  rate chain. BOOK 2 CLOSES THE SESSION AT 83/100 — one micro-
+  tranche (~17) tops it off next session BEFORE the battery; the
+  read order and all verdicts stand pre-written. The waiting room
+  at the freeze: the rate family ([45],[7] with certificates),
+  chained-fdiv (new, mechanism-named), and the counted solver-side
+  families. The kingdom-dissolved verdict is live but not yet
+  spoken — the hearing waits for the count.
