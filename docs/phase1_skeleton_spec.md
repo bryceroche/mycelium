@@ -4405,3 +4405,18 @@ token-position × waist-dim, the moment the skeleton trains.
   the battery's rows have always read in sequence. Tranche 5's
   product is measured in CONTOUR LINES, not entries: every refusal
   surviving the full recipe book is a genuine frontier specimen.
+- **VERDICT (2026-07-14): BOOK 2, TRANCHE 5 — 11/12 banked (all 11
+  at 5/5); book 2 = 73 entries, registry +4 (counted 23 + the 75
+  value-range).** **[22] CLOSES THE DOUBLE-X QUESTION COMPLETELY:
+  the sum-of-squares system (two repeated-arg muls, coupled) banked
+  5/5 under consecutive letters** — the emission-collision
+  hypothesis is dead twice over; the pair was never the problem; the
+  letters were. The residue tranche's one contour line: [24] refused
+  at m=999 (the out-of-band solver lane's second confirmation —
+  already flagged, now twice-measured; in-band annotations only).
+  Also banked from the L3 residue: the quadratic-inequality-as-Vieta
+  ([10]), four frame-stripped-flagged entries ([12],[16],[25],[27]
+  — teacher strips identity/factoring/selection frames, residual
+  structure honest and gated), and the parallel-slope frame ([19]).
+  ONE TRANCHE TO n=100; the read order is pinned; the bars are on
+  the wall.
