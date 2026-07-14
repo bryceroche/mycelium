@@ -4337,3 +4337,23 @@ token-position × waist-dim, the moment the skeleton trains.
   no identity gift), the full 19-var odd-sum ladder ([225]), the
   21-var ladder+fdiv ([200]), sel on real prose ([262]). Running
   rate: 48 entries in 3 tranches; n=100 within ~3 more.
+- **THE DOUBLE-X AUTOPSY (2026-07-14, pre-registered hypothesis ->
+  refuted same hour):** the shared-decode-collision hypothesis
+  (capacity-per-instance, representability's suspected 4th member)
+  DIES on first contact: [238]'s slot-level decode shows BOTH isq
+  factors bound perfectly (mul(a,a)=p dup +16.2; mul(b,b)=q dup
+  +6.3) and the sub-relation correctly rewired — the failure is TWO
+  ORDINARY POINTER ERRORS (the given 'r is 12' attached to q; one
+  arg aimed at an unbound var) on a dense 7-var/7-factor short
+  system. DOUBLE-ISQ IS NOT A MECHANISM WALL — it is pointer noise
+  at high var-density, i.e., the [4]/[9] retry class, not the [85]
+  representability class. The 'double-X family' DEMOTES from
+  mechanism-pattern to coincidence-of-two pending double-fdiv's own
+  autopsy (its mechanism may differ — audit before family). The
+  audit-before-diet rule collected immediately: no gen-12 line
+  claimed; a v2 rephrase queued instead. ALSO BANKED (relay): the
+  battery's TWO verdicts (dose-slope + frontier census = the organ's
+  final employment hearing); the SELECTION-DRIFT flag pre-said —
+  closing tranches bank LOWER as the L3 residue concentrates, and
+  the falling rate is the coastline emerging, not regression
+  (tranche 5's 9/16 shall be read as the map getting honest).
