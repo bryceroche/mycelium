@@ -4185,3 +4185,37 @@ token-position × waist-dim, the moment the skeleton trains.
   miss stands as a debt WITH AN INVOICE: fdiv-in-composition 0/4 with a
   stable wrong vote, atop gen-7's worklist. Gen-7's charter is written
   by real failures for the first time; awaits the word.
+- **REGISTERED (2026-07-14, relay + critique): THE BOOKS CAMPAIGN
+  CHARTER — the only chapter, chartered the house way.** SIZING:
+  dose pilot says ~zero movement/row at n=14; census demand side says
+  76-89 knotted with ~75% style-recoverable; bilingual precedent
+  (2,000 paired rows taught the verbose register) gives the PRIOR of
+  hundreds-to-low-thousands — CRITIQUE PIN: that precedent had
+  generated gold and perfect pairing; it transfers as prior, not
+  plan. MILESTONE: **BOOK 2 = n=100 with the dose re-read riding** —
+  measurable disjoint-census movement -> the slope exists and
+  extrapolates; none -> the READING-TRAINING REGIME redesigns before
+  more annotation spends. Measure the slope before buying the
+  mountain. THREE LANES (priced by the census's own tiers): L1
+  machine-banked (bootstrap under the current gate — free, 1-2%,
+  rises with every promotion, runs as background); L2 machine-
+  proposed human-repaired (the near-miss 23-26% — repair at ~1/3
+  rewrite cost triples throughput; FIRST TOOLING ITEM: the repair
+  bench — dump per-item 5-view parses + votes + solver results for
+  near-miss rows); L3 hand surgery (knotted tier, ~8-10/hr practiced
+  — n=100 is a day or two, affordable before tooling).
+  STRATIFICATION (dual role): ~70% style-recoverable middle
+  (substrate), ~20% suspected organ patients incl. the rate family
+  (the registry grows), ~10% cert-v2 wild dissents (the panel's
+  refusal specimens characterized). EVERY entry generation-stamped +
+  canonically knot-stamped. **CRITIQUE PIN (the census stays
+  clean): book 2 draws ONLY from the harvest OUTSIDE the standing
+  100-pool** — book 1 already trained 14 pool items (the disjoint
+  read exists because of it); the pool is a measurement fixture from
+  here, never again a substrate source. INSTRUMENTS FROM ROW ONE:
+  mouth odometer per book (headline: distance closed/book), disjoint
+  census (slope), diversity guard, panel wild-dissent rate (the
+  Goodhart watcher), miner re-run at each book boundary (P2's real
+  test arrives when harvest classes mine at n=100+). Books as
+  generational units: minted, gated, stamped, measured; each book's
+  verdict sizes the next. Awaits the word.
