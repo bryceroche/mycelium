@@ -1,4 +1,41 @@
-# NEXT SESSION — start here (handoff, 2026-07-13 late)
+# NEXT SESSION — start here (handoff, 2026-07-14 late)
+
+## COLD START: BOOK 2 AT 83/100 — one micro-tranche (~17) then THE BATTERY
+Gate = gen-9b (manifest truthful, entourage complete). Book 2 =
+.cache/book2.jsonl (83 entries, 6 tranches, gate=5-view vote + key,
+GATE_CKPT=gen-9b, envs ALG2=1 ALG_FTYPES=6 ALG_DUP=1). Annotation rules
+(hard-won): CONSECUTIVE LETTERS ALWAYS; all values incl. answers <=300;
+one fdiv max; no scattered letters; frame-stripped entries flagged.
+Tranche scripts: book2_tranche{1..6}.py (clone pattern); candidates in
+.cache/book2_lanes.json (seen-idx set in the tranche scripts).
+
+**THE SEQUENCE:** (1) micro-tranche 7 (~17 entries) -> n=100; (2) THE
+BATTERY in PINNED ORDER: odometer -> disjoint-census slope (bars: >=8
+slope-exists / <=2 null / 3-7 extend once) -> frontier census (three
+verdicts pre-written; kingdom-dissolved FAVORED) -> miner conceptual
+column (P2's real test). Training regime for the slope read: prose pairs
+mixed into full diet, both dose numbers declared, gentle continuation,
+displacement guard bigtest >= warm-15.
+(3) THE CHAINED-FDIV AUTOPSY (staged hypothesis: derived-value digit
+path, [85]'s cousin) — [344] is the specimen, single-fdiv siblings are
+controls. (4) Gen-12 docket frozen: bar restructure ([45]/[7] excluded
+per certificates), radius-weighted fdiv ration, prefix-sum shapes,
+greedy knot mint, manifest-writing battery (gen11_verdict.py pattern —
+the battery WRITES the manifest or refuses the word).
+
+**THE WEEK'S LAWS** (all in the ledger): binding theorem (concepts are
+bindings); critical path = n (quadruple-confirmed); certificate
+re-audition per promotion (grammar-version stamps); audit-before-diet;
+consecutive-letters (pointer law's 4th remedy); dose law (share + reps,
+both); read order pinned; curriculum DEAD at scale (flat mix, ~3x
+budget); continuation regime (restarts jostle); systemd-run for long GPU
+(task reaper); trunk host CACHED (was reloading 2.4GB/call).
+
+Ledger: docs/phase1_skeleton_spec.md (chronological, everything).
+
+---
+# PRIOR HANDOFFS BELOW
+
 
 ## COLD START: gate = GEN-9B; two kills since (gen-10, gen-11) — both heads
 beat the gate broadly but missed bars (alg4 lineage debt + chronic [45]).

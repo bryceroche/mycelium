@@ -4454,3 +4454,18 @@ token-position × waist-dim, the moment the skeleton trains.
   chained-fdiv (new, mechanism-named), and the counted solver-side
   families. The kingdom-dissolved verdict is live but not yet
   spoken — the hearing waits for the count.
+- **STAGED (2026-07-14, relay — the chained-fdiv autopsy hypothesis,
+  pre-registered before the read):** chained fdiv = a DERIVED QUOTIENT
+  feeding another fdiv's DIVIDEND, and the fdiv head reads dividends
+  through DIGIT ENCODING — the suspect is not the pointer (the isq
+  door proved derived values bind) but **the digit path for derived
+  intermediates**: [85]'s encoding-family cousin, one representability
+  question from either a small mechanism (derived-value digit
+  plumbing) or a genuine depth limit. AUTOPSY FIRST, per the rule
+  that saved a gen-12 line this week. THE HEARING'S POSTURE UPDATED:
+  kingdom-dissolved is now FAVORED, not merely staged — the
+  parser-side structural frontier is two named items ([45]/[7]
+  binding-layer + chained-fdiv), one possibly an encoding fix; if the
+  micro-tranche adds no third, December's architecture question
+  narrows to a point: frame-disentanglement for one family,
+  population known, z-scores attached.
