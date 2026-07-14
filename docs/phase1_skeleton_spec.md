@@ -4285,3 +4285,20 @@ token-position × waist-dim, the moment the skeleton trains.
   scope note, was drawn almost exactly where the harvest's natural
   distribution lives (96% in-domain) — the cheap early decision was
   also the right one, recorded as the ledger's occasional pleasure.
+- **VERDICT (2026-07-14): BOOK 2, TRANCHE 2 — 16/16 BANKED (13 at
+  5/5); book 2 = 37 entries.** ALL FIVE v2 RETRIES BANKED — the
+  retry discipline works at one cheap pass each ([49] one-fdiv
+  rework, [67]/[2] all-forward rewiring, [4]/[9] surface rephrase);
+  refusal mechanisms filed yesterday became recipes today. THE
+  MULTIPLICITY MECHANISM EARNS ITS KEEP ON REAL PROSE: [120] b*b on
+  a DERIVED quotient banked 5/5, and [124] — the inverse-square on
+  a derived sum: **the distance formula's core (d*d = 225+64)
+  solved IN GRAMMAR, 5/5** — the "distance-formula-sqrt" registry
+  family SHRINKS on contact (integer-hypotenuse cases are
+  annotatable; [0]/[3] return from the registry to the annotation
+  queue — the employment law collecting again, this time FROM the
+  registry). [190] midpoint banked via one-fdiv + mul-inverse (the
+  double-fdiv wall routed around). Registry +1 ([126]
+  piecewise-negative). Book-2 running totals: 37 entries (4 lane-1
+  + 33 gated), registry 10 counted certificates + the 75 value-range
+  family. Tranches continue toward n=100; the bars are on the wall.
