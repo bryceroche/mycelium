@@ -4128,6 +4128,37 @@ token-position × waist-dim, the moment the skeleton trains.
   N: the schema library joins the census, the dose slope, and the
   organ in waiting on books. Deliverable banked:
   .cache/schema_mine_top50.json (ranked, never admitted).
+- **THE BINDING THEOREM + THE CRITICAL PATH (2026-07-14, relay —
+  formal statements):** (1) **THE BINDING THEOREM (the two-channel
+  spine's third and final vindication):** C2 proved operation-type is
+  not classifiable from surface features (LANGUAGE WITHOUT STRUCTURE
+  fails); Brick-M proved schema-type is not recoverable from wiring
+  (STRUCTURE WITHOUT LANGUAGE fails); therefore CONCEPTS ARE
+  IRREDUCIBLY BINDINGS — which is why the parser (the binding organ)
+  hosts schema retrieval, why the silhouette library was always its
+  right home, and why [45] is chronic: its pathology lives IN THE
+  BINDING LAYER, the one place neither a graph fix nor a language
+  fix alone can reach. The architecture's deepest design decision
+  has its completeness proof. (2) **THE CRITICAL PATH, in exactly
+  these words: FOUR UNRELATED MEASUREMENTS — the census, the dose
+  slope, the organ's patient registry, the schema library — ALL
+  BOTTLENECK ON n. When four independent instruments triangulate one
+  coordinate, that coordinate is the critical path by definition.
+  THE BOOKS ARE NOT DECEMBER'S CHAPTER; THEY ARE THE ONLY CHAPTER,
+  quadruple-confirmed.** (3) **THE LIBRARY'S TWO-ADDRESS CHARTER
+  (named before existence, against the attic-C2 ghost):** floor two
+  has two addresses — MECHANICAL MACROS live graph-side (typed
+  subgraph templates, deterministic expansion, solver sees
+  primitives); CONCEPTUAL SCHEMAS live parse-side (recognition
+  objects over prose, retrieval not deduction). Confusing the
+  addresses re-imports C2 through the attic. (4) **REGISTERED
+  PROPOSAL (rank-gate honored): CHAIN(k) + PREFIX-SUM as the first
+  macro-factor candidates** — receipts: the harvest-only classes
+  ([46]'s wiring, zero generator coverage), the ladder/length walls
+  as standing symptoms; expansion deterministic, pointer supervision
+  inherits ladder machinery. Admission = a design decision at gen-12
+  registry review. FIRED NOW (diet, not registry): the PREFIX-SUM
+  SHAPE joins the DAG rotation — the measured hole gets minted.
 - **THE EMPLOYMENT LAW + TWO PROMOTIONS (2026-07-11, relay — registered
   before gen-7):** (1) **THE EMPLOYMENT LAW**: every organ this project
   charters gets SMALLER on contact with measurement — book 1 is the
