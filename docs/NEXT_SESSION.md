@@ -1,4 +1,51 @@
-# NEXT SESSION — start here (handoff, 2026-07-13)
+# NEXT SESSION — start here (handoff, 2026-07-13 late)
+
+## COLD START: gate = GEN-9B; two kills since (gen-10, gen-11) — both heads
+beat the gate broadly but missed bars (alg4 lineage debt + chronic [45]).
+Manifest is TRUTHFUL (entourage complete, all gen-9b, no waivers except
+none). The manifest-writing verdict (gen11_verdict.py) enforced the
+prose-promotions law cleanly on its first run: KILL printed, JSON untouched.
+
+**THE STANDING QUESTIONS FOR THE RELAY/BRYCE:**
+1. GOVERNANCE: alg4's 380 bar has never been reached from the current
+   lineage (staged-heat refuted: hot-only = 362; the debt is IN the
+   lineage — armB's 384 came from gen-7b stock). Options: full flat
+   retrain from clean ancestry, or re-pin the bar with the lineage-debt
+   finding on the table.
+2. [45]/[7] are BENCHED WITH CERTIFICATES (chronic = trunk frame distance,
+   z=−2.05; the rate family). Gen-12 bars exclude them per the fourth
+   charter revision: the organ GROWS into frame-disentanglement — its
+   first patient list written in z-scores.
+3. THE DISCRIMINATING TEST (rotation vs selection-hardening): re-anchor
+   the waist monitor and re-measure its AUC — the original harness is
+   likely in scripts/archive/ (house-cleaning); locate or reconstruct.
+
+**LATENT AUDIT VERDICTS (2026-07-13):** drift = pure rotation (aligned
+0.988 — never mix generations' head coordinates); stratification =
+gen-7b compression scar (~40%) + radius = consolidation clock (fdiv
+chronically lowest = under-consolidated; gen-12 mint weights it);
+[45] chronic = trunk frame divergence.
+
+**DOSE PILOT (December's number):** ~ZERO census movement per unique row
+at n=14; all arms fired displacement guards. BOOKS MUST GROW N — no
+oversample multiple substitutes for annotation.
+
+**PERF:** trunk host now CACHED (was reloading 2.4GB per call in every
+eval path); trunk TinyJit deferred (residency-smoke buffer pattern is
+the recipe). Long GPU work runs as systemd units (task-reaper immunity).
+
+**FIVE DIALS:** cert-v2 held 1.0000 at first enforcement; wild-watcher
+column: dissent 16/19 (84%). Panel: gate + armB (lineage) + cap2x
+(width); recruit by measured behavioral distance (means-vs-overlaps law).
+
+Ledger: docs/phase1_skeleton_spec.md. Gen-11 artifacts: phase1_gen11_head
+(unpromoted, bigtest 1137), gen11_dose{5,15,40} (guard-fired, kept as
+specimens).
+
+
+---
+# PRIOR HANDOFF (2026-07-13 morning) BELOW
+
 
 ## COLD START (2026-07-13): the gate is GEN-9B, papers finally in order
 **Gate:** `.cache/phase1_gen9b_head.safetensors` (envs ALG2=1 ALG_FTYPES=6
