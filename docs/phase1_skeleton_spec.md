@@ -4396,3 +4396,12 @@ token-position × waist-dim, the moment the skeleton trains.
   REGISTER — reading-training's real target confirmed as the prose
   column, not the dialect column). Both informative; neither yet
   known. Two tranches to the bars.
+- **THE n=100 READ ORDER, PINNED (2026-07-14, relay):** odometer
+  first (the register question), disjoint-census slope second (the
+  continuation logic), frontier census third (the employment
+  hearing, honest denominator), miner's conceptual column last (P2's
+  real test at volume). Fixed order because later reads tempt
+  peeking and earlier reads decide the later ones' interpretation —
+  the battery's rows have always read in sequence. Tranche 5's
+  product is measured in CONTOUR LINES, not entries: every refusal
+  surviving the full recipe book is a genuine frontier specimen.
