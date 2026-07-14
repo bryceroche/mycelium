@@ -4302,3 +4302,23 @@ token-position × waist-dim, the moment the skeleton trains.
   piecewise-negative). Book-2 running totals: 37 entries (4 lane-1
   + 33 gated), registry 10 counted certificates + the 75 value-range
   family. Tranches continue toward n=100; the bars are on the wall.
+- **TWO STANDING DISCIPLINES (2026-07-14, relay):** (1) **CERTIFICATE
+  RE-AUDITION** — a certificate is a verdict about a GRAMMAR-VERSION,
+  and scope-decay says verdicts expire with their regime: the
+  registry carries grammar-version stamps the way gold carries
+  generation stamps, and EVERY PROMOTION RE-RUNS THE CERTIFICATE PILE
+  against the new gate (cheap: the pile is small, the gate is
+  automatic). Prevents the waiting room hoarding patients the dancer
+  already learned to treat — the employment law's NEW direction:
+  registries shrink not because jobs were smaller but because the
+  existing grammar turned out LARGER ([124]'s isq composing with
+  derived values reclaimed the distance-formula family). (2) **THE
+  CAMPAIGN'S REAL THROUGHPUT NUMBER is walls-per-tranche converted
+  to recipes** — the refusal->mechanism->recipe cycle at one-day
+  latency is the annotation desk doing at human speed what gen-6 did
+  at generation speed. THE STRATEGIC SCISSORS, watched: certificates
+  deflating (two families shrunk already) while the banked column
+  inflates at gate-perfect rates — if it holds to n=100, the organ's
+  kingdom may reduce to the rate family alone, and December's
+  architecture question narrows to "solve frame-entanglement for a
+  known population with z-scores attached."
