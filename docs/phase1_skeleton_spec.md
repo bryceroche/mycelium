@@ -4039,6 +4039,42 @@ token-position × waist-dim, the moment the skeleton trains.
   frame distance ([45] leaves the diet conversation and becomes the
   deeper-prefix question's second customer, with [7] as its sibling
   watch). Gut #15: all three drawers had something in them.
+- **THREE RETROACTIVE SETTLEMENTS + THE FOURTH CHARTER REVISION
+  (2026-07-13, relay):** (1) **THE WAIST MONITOR IS EXONERATED** —
+  its AUC decay was filed under selection-hardening (errors evolving
+  to look normal); pure rotation says it aged because NOBODY TOLD IT
+  THE SKY HAD TURNED. The two laws now have a DISCRIMINATING TEST
+  (registered): re-anchor and re-measure — recovered AUC = rotation
+  was the whole story; still-degraded = hardening is real ON TOP.
+  Bench amendment: cross-lineage panel members disagree partly BY
+  COORDINATE FRAME; cert-v2 is immune (votes are answers, not
+  geometry) but any future GEOMETRIC ensemble read needs Procrustes
+  first. (2) **RADIUS IS A CONSOLIDATION CLOCK** — the gen-7b
+  compression scar (~40%, still re-inflating four generations later)
+  records ARCHITECTURAL HISTORY, and within-generation per-kind norm
+  is a free consolidation gauge readable at every checkpoint,
+  predicting ration needs BEFORE the battery: fdiv's chronic low
+  radius says its borderline per-kind era (0.483/0.535) was
+  under-consolidation all along — gen-12's mint weights it
+  accordingly. Two-channel read (angle=identity, radius=
+  consolidation) joins the standing kit. (3) **THE CHRONIC CLASS HAS
+  A BIRTH CERTIFICATE and the taxonomy splits clean**: transient =
+  shallow basin (diet cures, measured on [51]/[54]); chronic = trunk
+  frame distance (measured, z=−2.05). The rate family's clustering
+  is the mechanistic tell: rate problems are where surface narrative
+  and structural content are most ENTANGLED IN NATURAL PROSE — the
+  trunk read a trillion tokens where "fare" and "multiply" co-occur
+  in frames that never separate. **THE FOURTH CHARTER REVISION — the
+  first that GROWS the organ**: before the deeper-prefix surgery,
+  the cheaper candidate is a DISAMBIGUATION REWRITE ("the taxi
+  charges 3 per mile" -> "f = 3 x m" — frame-separation the
+  annotation gate already performs by hand). The organ's true
+  kingdom may be FRAME-DISENTANGLEMENT, not structural-facts-only —
+  the thrice-shrunk surgeon finally gets a patient list written in
+  z-scores. BENCHED WITH CERTIFICATES: [45] and [7] (chronic,
+  trunk-frame class); gen-12's acceptance bars exclude them per this
+  restructure (their cure is the organ's or the prefix's, not the
+  diet's); the organ's eventual training data includes their family.
 - **THE EMPLOYMENT LAW + TWO PROMOTIONS (2026-07-11, relay — registered
   before gen-7):** (1) **THE EMPLOYMENT LAW**: every organ this project
   charters gets SMALLER on contact with measurement — book 1 is the
