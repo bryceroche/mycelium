@@ -4262,3 +4262,26 @@ token-position × waist-dim, the moment the skeleton trains.
   WORK schema was frame-stripping at the annotation desk, never
   graph machinery; the organ's patients need frames stripped, not
   new math, and six certificate families now name which frames.
+- **THE n=100 BATTERY BARS, PINNED MID-TRANCHE (2026-07-14, relay +
+  critique — pinned while no one knows the answer):** REGIME STATED:
+  book-2 prose pairs (raw + verified gold graphs) mixed into the FULL
+  diet (share-of-mix AND reps-per-unique both declared at train time,
+  per the dose law), gentle continuation from the gate lineage. BARS:
+  (1) THE SLOPE (disjoint-86 census, same-head pre/post): banked+near
+  improves by **>=8 items = slope exists, extrapolate the budget**;
+  **<=2 = the null holds — the READING-TRAINING REGIME redesigns
+  before another row is annotated**; 3-7 = ambiguous, extend once to
+  n=150. (2) THE ODOMETER (headline): harvest-1668 mean kNN vs the
+  post-book rebuilt native bank drops >=1% relative (the relay's
+  prior: low-single-digit percent — measurable-but-modest). (3)
+  DISPLACEMENT GUARD: bigtest under the book-trained head >= warm
+  source − 15. Verdict rules written before tranche 3 closes; the
+  campaign's continuation logic hangs on (1). ALSO RECORDED: the
+  OPERATING-REGIME SHIFT — architecture questions increasingly
+  answered by READS of banked data instead of experiments (the
+  domain-cap question: one sweep, no fork, declined by the price) —
+  the compounding return on three weeks of instruments; and the
+  ANCHOR-ERA VINDICATION: the 300 cap, set as a propagator-cost
+  scope note, was drawn almost exactly where the harvest's natural
+  distribution lives (96% in-domain) — the cheap early decision was
+  also the right one, recorded as the ledger's occasional pleasure.
