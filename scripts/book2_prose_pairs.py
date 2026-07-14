@@ -54,7 +54,7 @@ for e in entries:
     a = solve2(facs, q, {"n_vars": 24, "m": 300})
     if a != e["answer"]:
         skipped += 1
-        print(f"  [skip] idx {e['idx']}: dialect parse solves to {a} != {e['answer']}")
+        print(f"  [skip] idx {e['lane_idx']}: dialect parse solves to {a} != {e['answer']}")
         continue
     rows.append({"n_vars": 24, "m": 300, "text": e["raw"],
                  "factors": [dict(f, spans=[]) for f in facs],
