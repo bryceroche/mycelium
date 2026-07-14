@@ -3978,6 +3978,37 @@ token-position × waist-dim, the moment the skeleton trains.
   gater. The bars held their line — whether the LINE is right is the
   relay's and Bryce's call, with the lineage-debt finding as the new
   fact on the table.
+- **REGISTERED + FIRED (2026-07-13, Bryce's gut #15 + relay: THE
+  LATENT-SPACE AUDIT.** Root named: every geometric instrument was
+  calibrated in SOME generation's latent space; six generations of
+  consolidation rotate/scale/stratify the coordinates under them —
+  the sync-audit's geometry twin (files were the artifact version;
+  this is the coordinates themselves). CRITIQUE CORRECTION carried:
+  the MOUTH IS IMMUNE BY CONSTRUCTION — it reads frozen-trunk space
+  (weights untouched since Phase-1); its threshold tightening can
+  only be corpus membership, never norm growth. Stratification is a
+  HEAD-SIDE (fst) hazard exclusively — the at-risk watchers are the
+  centroid/library family. THE THREE PROBES (no training, banked
+  checkpoints): (A) DRIFT — orthogonal Procrustes between the gen-5
+  and gen-9b centroid constellations + per-kind alignment: small
+  residual = translation (re-anchoring suffices, standing recal
+  joins the bump); large = reorganization (geometric reads since
+  last validation get footnotes). (B) STRATIFICATION — per-kind fst
+  NORM longitudinal across the bench (gen-6..11 heads, fixed
+  m9btrain sample): prediction = norm correlates with cumulative
+  rehearsal (old-guard high, gen-8+ kinds low); if real, the fix is
+  TWO-CHANNEL reads (angle + radius as separate columns — the
+  density-regime discipline applied to geometry), not abandoning
+  cosine. (C) SEPARATION (the [45] mechanism hypothesis) — per book
+  pair, pooled-trunk cosine between RAW prose and its DIALECT twin;
+  [45] + mixed-vote siblings vs the banked controls: anomalous
+  raw<->dialect geometry for the chronic family = the chronic case
+  is a FROZEN-TRUNK separation limit (not unlearnable — UNSEPARATED
+  AT THE SOURCE; representability's geometric cousin), and the
+  remedy leaves the diet entirely (deeper-prefix question's second
+  customer). META: instruments are trained-adjacent objects — they
+  age with the system they watch; RECALIBRATE-THE-WATCHERS becomes
+  a standing generational duty beside remine-the-specialist.
 - **THE EMPLOYMENT LAW + TWO PROMOTIONS (2026-07-11, relay — registered
   before gen-7):** (1) **THE EMPLOYMENT LAW**: every organ this project
   charters gets SMALLER on contact with measurement — book 1 is the
