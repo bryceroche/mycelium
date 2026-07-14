@@ -4649,3 +4649,26 @@ token-position × waist-dim, the moment the skeleton trains.
   (gen-12, parser=reader_v1) and prints PROMOTED; any break -> the
   kill prints and the JSON stays untouched. No word without the
   write.
+- **VERDICT (2026-07-15): READER_V1'S GATE BATTERY — KILL BY ONE BAR,
+  BY TWO ANSWERS: alg4test 378 (bar 380).** Everything else passed,
+  mostly at records: bigtest 1149, alg2test 606 (record), dagtest
+  676, dag7btest 557, dag8test 544, ladder 0.563 / fdiv 0.725 / sq
+  0.784 / coupled 0.739 (all records), vtest 598, cert-v2 1.0000 at
+  866 with gate-only coverage RISING to 906 (60.4%). The restructure
+  worked as pinned: acceptance 7/8 with only [45] missing — and
+  [45]'s votes ([154,168,168]) now carry the right answer at
+  plurality, one vote short. THE LINEAGE DEBT'S ASYMPTOTE: 370 ->
+  378 across two heads that beat the gate everywhere else; the bar
+  sits at 380 because armB hit 384 FROM GEN-7B ANCESTRY. The
+  manifest is untouched; the gate remains gen-9b; the word was not
+  spoken because the write was not earned — the law working exactly
+  as minted, twice now. **THE GOVERNANCE QUESTION PRINTS AT MAXIMAL
+  SHARPNESS (Bryce + relay to adjudicate):** (a) full flat retrain
+  from clean ancestry (pay the lineage debt at its root — the
+  schedule dividend makes this ~1/3 its old cost), (b) re-pin the
+  alg4 bar with two asymptotic approaches and the ancestry evidence
+  on the table, or (c) hold the bar and let gen-13's diet find the
+  two answers. The reader stays banked (its reading gains are real
+  and its ckpt feeds the next continuation regardless); the books
+  campaign's verdicts are UNTOUCHED by this kill — books scale
+  either way.
