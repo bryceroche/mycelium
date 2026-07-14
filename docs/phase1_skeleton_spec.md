@@ -4322,3 +4322,18 @@ token-position × waist-dim, the moment the skeleton trains.
   kingdom may reduce to the rate family alone, and December's
   architecture question narrows to "solve frame-entanglement for a
   known population with z-scores attached."
+- **VERDICT (2026-07-14): BOOK 2, TRANCHE 3 — 11/12 banked (9 at
+  5/5); book 2 = 48 entries, registry +5 (counted pile: 15 + the 75
+  value-range family).** THE RECLAMATION CONFIRMED: [0] and [3] —
+  the distance-formula patients — banked 5/5 through the isq door;
+  the certificate re-audition discipline collected its first two
+  patients on its first day. ONE NEW WALL, cleanly named: [238]
+  (a^2−b^2 without the factoring gift) refused — DOUBLE-ISQ in a
+  coupled system joins double-fdiv in the double-X wall family
+  (single isq composes with derived values; two in one system do
+  not — the mechanism's composition boundary found by annotation,
+  one day after the mechanism shipped). Also banked: the faithful
+  arithmetic-sequence encoding ([207]: shared-difference relations,
+  no identity gift), the full 19-var odd-sum ladder ([225]), the
+  21-var ladder+fdiv ([200]), sel on real prose ([262]). Running
+  rate: 48 entries in 3 tranches; n=100 within ~3 more.
