@@ -4609,3 +4609,29 @@ token-position × waist-dim, the moment the skeleton trains.
   miner's list. The dose pilot said zero at n=14; the book said +8
   at n=100 — THE UNIQUE-ROWS LAW CONFIRMED AT SCALE. Measurement
   day was pure collection, exactly as designed.
+- **THE CAMPAIGN CLOSES (2026-07-15, relay — self-grade + epitaph):**
+  (1) REGISTRATION GRADED: the odometer prior said low-single-digit;
+  it printed +31.1% — wrong by an order of magnitude in the happy
+  direction, mechanism banked: the book was priced as DATA (rows
+  teaching content) but acted as REGIME (3% share x 10 reps
+  regularizing the whole register). THE DOSE-RESPONSE CURVE NOW HAS
+  BOTH ENDS: pure prose at 340 epochs = poison (−243); prose at 3%
+  = gift (+record); a tunable maximum lives between — the campaign
+  tunes toward it instead of guessing. The guard-became-gift is the
+  battery's deepest finding: reading-training SHARPENS the dialect,
+  a sentence nobody dared stage. (2) SLOPE HONESTY: +8 exactly at
+  the bar carries wide error bars at n=86; the register-fall
+  campaign prices at ~700-900 more rows IF linear (it won't be);
+  book 3's real job is the second point on the curve. The
+  pre-screen stays REGISTERED-UNBUILT — the battery made that call
+  as delegated (slope printed ~100-scale). (3) NEXT-SESSION
+  SEQUENCE: reader_v1's manifest-writing gate battery -> the
+  chained-fdiv autopsy (may empty half the waiting room) ->
+  OPERATION-APPLY admission review (the recursion's first rung,
+  full birthright) -> book 3's charter (sized by the slope, dieted
+  by the 13 gaps, sampled toward the 96-class column). (4) THE
+  EPITAPH: four instruments triangulated n as the critical path; a
+  hundred strangers were read, gated, and stamped; and the battery
+  — bars pinned mid-book, estimator straightened two reads early,
+  every sentence pre-written — printed BOOKS SCALE with a record
+  riding shotgun. December is arithmetic.
