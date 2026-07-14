@@ -4009,6 +4009,36 @@ token-position × waist-dim, the moment the skeleton trains.
   customer). META: instruments are trained-adjacent objects — they
   age with the system they watch; RECALIBRATE-THE-WATCHERS becomes
   a standing generational duty beside remine-the-specialist.
+- **VERDICT (2026-07-13): THE LATENT-SPACE AUDIT — all three probes
+  land.** (A) **DRIFT = PURE ROTATION**: raw centroid cosines ~0.59
+  (the constellations look unrelated in raw coordinates) but
+  Procrustes-aligned **0.988 mean, residual 0.155** — the
+  constellation SHAPE is intact; the space rotated. Re-anchoring
+  suffices (the entourage's rebuild was the right fix); the waist
+  monitor's historical AUC decay now has its mechanism (it was
+  reading rotated coordinates); LAW: never mix generations'
+  head-space coordinates — align or re-anchor. (B) **STRATIFICATION
+  REAL, unexpected shape**: not old-high/new-low but LONGITUDINAL
+  COMPRESSION-THEN-RECOVERY — the whole fst space contracted ~40%
+  at gen-7b (the frame-change generation) and slowly re-inflates
+  (gen-6 ~11-13.6 -> gen-8/9b bottom ~6.4-7.8 -> gen-11 ~6.8-8.6).
+  WITHIN generations the prediction's direction holds: fdiv is the
+  lowest-norm kind on every row since gen-7b AND the weakest
+  per-kind performer — RADIUS TRACKS CONSOLIDATION; the two-channel
+  read (angle + radius) is justified and joins the instrument kit.
+  Cross-generation cosine is doubly unsafe (rotation + scale). (C)
+  **THE CHRONIC CASE HAS ITS MECHANISM**: [45] has the LOWEST
+  raw<->dialect trunk cosine of all 14 book pairs (0.639, z=−2.05)
+  — its taxi surface and rate structure are maximally divergent AT
+  THE FROZEN TRUNK; no head diet can fix a read the trunk refuses
+  to align ([7], the faucet rate problem, is second-lowest — the
+  RATE-PROBLEM FAMILY clusters at the bottom). The mixed-history
+  items [51]/[54] sit HIGH — their past instability was basin-side
+  and rehearsal cured it. THE DISTINCTION IS GEOMETRIC: transient
+  mixed-votes = shallow basins (diet cures); chronic = trunk-level
+  frame distance ([45] leaves the diet conversation and becomes the
+  deeper-prefix question's second customer, with [7] as its sibling
+  watch). Gut #15: all three drawers had something in them.
 - **THE EMPLOYMENT LAW + TWO PROMOTIONS (2026-07-11, relay — registered
   before gen-7):** (1) **THE EMPLOYMENT LAW**: every organ this project
   charters gets SMALLER on contact with measurement — book 1 is the
