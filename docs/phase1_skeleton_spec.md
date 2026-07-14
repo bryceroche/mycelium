@@ -4525,3 +4525,20 @@ token-position × waist-dim, the moment the skeleton trains.
   under the correction, never reads archival distances. One
   assertion in the battery script makes vintage confusion
   structurally impossible.
+- **BOOK 2 CLOSES AT n=100 (2026-07-14, tranche 8: 11/11, ALL 5/5).**
+  THE VOLUME: 100 entries (4 machine-banked lane-1 + 96 gated hand
+  dialects across 8 tranches), every entry generation-stamped and
+  key-verified; the counted registry at 39 certificates across
+  ~14 families + the 75-strong value-range family; the census pool
+  untouched as a fixture throughout; the annotation rulebook
+  (consecutive letters, in-band values, one-fdiv, frame-strip flags)
+  written by the book's own refusals. Closing-tranche pages: the
+  triangle area, both absolute-value shapes (banked positive-form),
+  the midpoint-product, p^2+q^2 via isq, and the hundredth page —
+  [263]'s fractional sequence rescaled to thirds. THE CAMPAIGN'S
+  FIRST FALSIFIABLE MOMENT IS NEXT: the battery in pinned order
+  (length-controlled odometer straight-to-straight -> disjoint-86
+  slope [>=8 / <=2 / extend] -> frontier census [three verdicts
+  staged, kingdom-dissolved favored] -> miner conceptual column),
+  every bar pre-pinned, every estimator pre-audited, every sentence
+  pre-written. Measurement day is pure collection.
