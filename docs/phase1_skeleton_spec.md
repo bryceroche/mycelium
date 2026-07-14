@@ -4075,6 +4075,32 @@ token-position × waist-dim, the moment the skeleton trains.
   trunk-frame class); gen-12's acceptance bars exclude them per this
   restructure (their cure is the organ's or the prefix's, not the
   diet's); the organ's eventual training data includes their family.
+- **REGISTERED + FIRED (2026-07-13/14): BRICK-M — THE SCHEMA MINER
+  (the hierarchical library's measurement-first entry; the
+  layers-of-abstraction instinct split down the C2 line: surface
+  frames [taxi/snow] stay OUT — disguises the mouth/organ handle;
+  structural schemas [RATE/WORK/MIXTURE] are shapes the library may
+  store as TYPED MACRO-FACTORS — compile-time sugar whose expansion
+  the solver sees as primitives: expressiveness without surrendering
+  auditability; embedding-space crossing lives at RECOGNITION
+  [schema retrieval; analogy = shared-schema detection], never at
+  deduction).** THE MINER: banked gold graphs (train corpora tagged
+  by source + the harvest column = book-pair graphs), rooted
+  upstream-closed subgraphs of 2-6 factors, WL-canonical with VALUES
+  ABSTRACTED (RATE is a shape, not a number; ftype/op/sel retained),
+  ranked by frequency x source spread; train and harvest mined
+  SEPARATELY then joined (frequent-in-train-absent-in-harvest =
+  generator habit; the reverse = coverage gap — the knot matrix
+  lifted to schema level). PINNED: (P1) <15 classes cover >60% of
+  occurrences (shallow hierarchy; hundreds = macro-factors die
+  before design); (P2) top classes human-nameable (a top-10 of
+  unnameable wiring accidents = generator artifact — the honest
+  falsifier); (P3) [45] and [7] share a class — the miner doubles as
+  the organ's patient registry. THE GATE: the miner RANKS, never
+  ADMITS — registry admission keeps full birthright; C2's ghost is
+  stopped between mining and minting. Lineage: the musical-keys
+  era's composition catalog — the nouns died, the verb survives,
+  bottom-up, ten months later.
 - **THE EMPLOYMENT LAW + TWO PROMOTIONS (2026-07-11, relay — registered
   before gen-7):** (1) **THE EMPLOYMENT LAW**: every organ this project
   charters gets SMALLER on contact with measurement — book 1 is the
