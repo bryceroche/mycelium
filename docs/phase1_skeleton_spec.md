@@ -4542,3 +4542,37 @@ token-position × waist-dim, the moment the skeleton trains.
   staged, kingdom-dissolved favored] -> miner conceptual column),
   every bar pre-pinned, every estimator pre-audited, every sentence
   pre-written. Measurement day is pure collection.
+- **PRE-PLAY + THE RECURSION CHARTER (2026-07-14/15, Bryce + relay):**
+  (1) PRE-PLAY INVENTORY: Mycelium already pre-plays at three clocks
+  — TRAINING (shallow-basin rehearsal rations, the knot matrix
+  feeding thin classes before they fail), ANNOTATION (the GATE
+  PRE-SCREEN: registered NOT built — a small classifier on
+  parse-side features predicting bank-or-refuse before the 5-view
+  round; customer = books 3+ throughput; the battery's slope verdict
+  sizes book 3 and thereby decides: 300+ entries -> build first;
+  ~100 -> the rulebook suffices), and INFERENCE (the soft-graph
+  ensemble, December-scale, behind the books). The one clock that
+  deliberately REFUSES pre-play is the solve — certainty doesn't
+  need imagination (March lookahead refuted). (2) **THE RECURSION
+  CHARTER — books built in layers of abstraction:** the correction
+  first — book 2 inherited book 1's RECIPES, not operations
+  (knowledge recursion; same flat dialect). The real ladder: book N
+  teaches primitives -> the miner finds recurring subgraph classes
+  -> classes PROPOSED as macro-factors (rank-never-admit) ->
+  admitted macros enter the registry with deterministic expansion ->
+  **book N+1 annotates AT THE MACRO LEVEL** — and since the chain-
+  length/coupled walls are FACTOR-COUNT walls, macro annotation
+  brings problems book N couldn't express inside book N+1's reach.
+  Each book raises the next one's floor. TWO GUARD RAILS, both
+  load-bearing: (a) **abstraction lives in ANNOTATION, never
+  verification** — macros expand before the solver sees anything;
+  the key grades every book at every layer in primitives; the
+  ground floor never moves (what keeps recursive books from
+  recursive drift); (b) **the self-reference tax** — machine-banked
+  volume inherits the system's own fluency; the diversity guard's
+  hand-quota stays constitutional because recursion amplifies
+  whatever the loop prefers. SEQUENCING: the first rung is already
+  scheduled — the battery's miner read at n=100 volume IS book 3's
+  macro shortlist; CHAIN(k)/PREFIX-SUM admission would make book 3
+  the first volume partially written one floor up. Books that teach
+  the system to read books that couldn't be written yet.
