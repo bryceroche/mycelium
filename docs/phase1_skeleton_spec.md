@@ -4420,3 +4420,16 @@ token-position × waist-dim, the moment the skeleton trains.
   structure honest and gated), and the parallel-slope frame ([19]).
   ONE TRANCHE TO n=100; the read order is pinned; the bars are on
   the wall.
+- **THE THIRD VERDICT, STAGED (2026-07-14, relay — one tranche before
+  the hearing):** the frontier census opens with all three sentences
+  pre-written: KINGDOM-AS-CHARTERED (structural patients at volume),
+  KINGDOM-SHRUNK (a small named list), and the verdict nobody staged
+  until the residue tranche banked 11/12 — **KINGDOM-DISSOLVED: the
+  organ's kingdom was annotation conventions and mechanism doors all
+  along**, the waiting room empty but for solver-side counted
+  families and the rate family's frame-entanglement core. The recipe
+  book OUTRAN the coastline — the refusal->mechanism->recipe cycle
+  compounded faster than the residue hardened, a race the pre-said
+  reading didn't anticipate could be won this decisively. Tranche 6
+  samples the remaining RATE-FAMILY stock maximally before the count
+  freezes (the census's most consequential line item).
