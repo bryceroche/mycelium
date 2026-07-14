@@ -4219,3 +4219,25 @@ token-position × waist-dim, the moment the skeleton trains.
   test arrives when harvest classes mine at n=100+). Books as
   generational units: minted, gated, stamped, measured; each book's
   verdict sizes the next. Awaits the word.
+- **VERDICT (2026-07-14): BOOK 2, TRANCHE 1 — 17/25 dialects banked
+  (14 at 5/5), book 2 = 21 entries (4 lane-1 free + 17 gated),
+  organ registry +9 certificates across six families.** Lane census
+  on 400 non-pool candidates: L1 4 (1%) / L2 66 (16.5%) / L3 330
+  (82.5%) — tracks the pool. THE REFUSALS TEACH: (i) [32]/[220] were
+  MY annotation errors — their ANSWERS (680, 500) exceed the trained
+  0-300 domain; the in-reach filter capped problem-text numbers but
+  not answers — RECLASSIFIED as registry certificates (value-range
+  family) and the annotation rule updated: ALL values incl. answers
+  <=300; (ii) [294] refused at m=999 — the out-of-band solver lane
+  is unreliable; annotations stay strictly in-band; (iii) [49]
+  double-fdiv wall confirmed again (annotation must use one fdiv +
+  mul-inverse); (iv) [4]/[9] RIGHT-but-vote-shy (correct-but-shallow
+  on fresh wiring: shared-result rels parse unstably — a new
+  register note); (v) [67]/[2] complex chains refused — v2 rework
+  queue. WORK-RATE BANKED IN GRAMMAR: [223] (4 people, 6 hours)
+  solved as person-hours mul wiring 5/5 — the WORK schema is
+  plumbing once the frame strips: the binding theorem in practice.
+  Substrate: book2 tranches continue by charter (v2 retries + next
+  tranches -> n=100, then the instrument battery + dose re-read).
+  Data: .cache/book2.jsonl, book2_lanes.json, book2_organ_registry
+  .json; scripts book2_lanes.py, book2_tranche1.py.
