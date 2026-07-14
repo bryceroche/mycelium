@@ -4497,3 +4497,24 @@ token-position × waist-dim, the moment the skeleton trains.
   token length (fit on native), or compare at matched-length
   strata; the >=1% bar applies to the length-controlled read.**
   Sixteen instincts; the drawer this time held the estimator itself.
+- **CLOSE OF 2026-07-14: TRANCHE 7 (6/6, all 5/5 — book 2 = 89) +
+  THE RULER STRAIGHTENED.** The 1/len correction KILLS the warp:
+  native r goes −0.825 -> **−0.024** after control; the
+  length-controlled threshold is 0.0072; the harvest zero-point
+  re-reads at **0.1871** (was 0.2431 raw) with read-foreign still
+  **100%** — the register wall is REAL, now confirmed on a straight
+  ruler. The diversity guard, straightened: book-2 raws 0.1904 vs
+  harvest 0.1871 — essentially equal, NO NARROWING: hand selection
+  is not cherry-picking easy-register items (the guard's cleanest
+  read ever, and its first on an unbiased estimator). LAW ENTRY:
+  **estimator variance masquerades as distance** — any instrument
+  pooling variable-length evidence into fixed geometry inherits a
+  sample-size coordinate; "is this distance or is this n?" joins
+  the standing audit kit. Correction artifact:
+  .cache/mouth_length_correction.npz (fit + threshold; all future
+  odometer reads apply it). BOOK 2 AT 89/100: ~11 entries ride the
+  next session's opening, then the battery in pinned order. The
+  instruments-auditing-instruments layer is the project's quiet
+  second product — a field manual for how measurement systems age,
+  warp, and lie, every entry bought with a real near-miss and fixed
+  before it billed.

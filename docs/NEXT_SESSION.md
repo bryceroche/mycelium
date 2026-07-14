@@ -1,6 +1,6 @@
 # NEXT SESSION — start here (handoff, 2026-07-14 late)
 
-## COLD START: BOOK 2 AT 83/100 — one micro-tranche (~17) then THE BATTERY
+## COLD START: BOOK 2 AT 89/100 — ~11 entries then THE BATTERY (length-controlled odometer: apply .cache/mouth_length_correction.npz to ALL mouth reads; thresholds recalibrated 0.0072; law: estimator variance masquerades as distance)
 Gate = gen-9b (manifest truthful, entourage complete). Book 2 =
 .cache/book2.jsonl (83 entries, 6 tranches, gate=5-view vote + key,
 GATE_CKPT=gen-9b, envs ALG2=1 ALG_FTYPES=6 ALG_DUP=1). Annotation rules
