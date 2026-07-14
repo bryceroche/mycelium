@@ -4357,3 +4357,19 @@ token-position × waist-dim, the moment the skeleton trains.
   closing tranches bank LOWER as the L3 residue concentrates, and
   the falling rate is the coastline emerging, not regression
   (tranche 5's 9/16 shall be read as the map getting honest).
+- **VERDICT (2026-07-14): BOOK 2, TRANCHE 4 — 14/14 BANKED, ALL AT
+  5/5 (the first perfect-unanimous tranche); book 2 = 62 entries,
+  registry +4 (counted pile 19 + the 75 value-range).** THE
+  CONSECUTIVE-LETTERS RULE VALIDATED ON ITS PROBE: [238] v2 banked
+  5/5 — the 'double-X wall' is now FULLY dissolved (scattered
+  letters -> high var slots under-rehearsed -> pointer noise; cured
+  by one annotation rule; the autopsy's diagnosis confirmed by its
+  own prescription same-day). ALSO THROUGH THE GATE: the COMPOSED
+  fdiv->isq chain ([298] max-area), the discriminant via scaled isq
+  ([316]), Vieta+sel on live prose ([304],[284]), the equal-pair
+  symmetric route ([333]), the 3-4-5 triangle perimeter ([285] —
+  distance formula twice + doubling, 8 vars), and two more distance
+  formulas. The isq door is now a THOROUGHFARE: seven former
+  'impossible' shapes through it in two days. 38 entries to the
+  bars; the selection-drift flag stands for the L3-heavy residue
+  ahead.
