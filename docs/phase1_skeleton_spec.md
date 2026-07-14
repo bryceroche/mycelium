@@ -4635,3 +4635,17 @@ token-position × waist-dim, the moment the skeleton trains.
   — bars pinned mid-book, estimator straightened two reads early,
   every sentence pre-written — printed BOOKS SCALE with a record
   riding shotgun. December is arithmetic.
+- **REGISTERED + FIRED (2026-07-15): READER_V1'S GATE BATTERY — the
+  manifest-writing kind.** Bars inherited from gen-11 with the
+  REGISTERED RESTRUCTURE applied (pinned before the run): acceptance
+  >=7/8 where the ONLY permissible miss is [45] (its cure is the
+  organ's or the prefix's, not the diet's — certificate on file);
+  all other bars unchanged: bigtest >=1130, alg4test >=380 (the
+  lineage-debt bar stands unsoftened — if it alone fails, the
+  governance question prints again with reading-regime data),
+  alg2 >=560, vtest >=598, dagtest >=660, dag7b >=500, dag8 >=500,
+  sq >=0.70, fdiv >=0.62, coupled >=0.65, ladder >=0.50, cert-v2
+  >=0.998. ALL hold -> the verdict script writes GENERATION.json
+  (gen-12, parser=reader_v1) and prints PROMOTED; any break -> the
+  kill prints and the JSON stays untouched. No word without the
+  write.
