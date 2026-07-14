@@ -4373,3 +4373,26 @@ token-position × waist-dim, the moment the skeleton trains.
   'impossible' shapes through it in two days. 38 entries to the
   bars; the selection-drift flag stands for the L3-heavy residue
   ahead.
+- **THREE CLOSINGS (2026-07-14, relay):** (1) **THE POINTER LAW'S
+  FOURTH REMEDY** — binding entered as structure via masked
+  attention, span supervision, a comma-and-a-letter, and now
+  ALPHABETICAL DISCIPLINE: four fixes across four orders of magnitude
+  of cost, one law. THE GENERATOR AUDIT, answered from code: render2
+  draws letters from LETTERS[:n_vars] and shuffles WITHIN the prefix
+  — the mint packs consecutively BY CONSTRUCTION; scattered-beyond-
+  prefix never occurs in training (which is exactly why [238]'s
+  p..t dialect starved: a pattern the head had literally never
+  seen). The rule is harvest-annotation-specific; no gen-12 mint fix
+  needed. (2) **THE FRONTIER CENSUS'S METHODOLOGICAL NOTE,
+  pre-written**: certificates issued before a mechanism ships are
+  HYPOTHESES, not diagnoses; the re-audition discipline converts
+  them; the n=100 census counts only patients who refused AFTER
+  every standing door was tried — the honest denominator for the
+  organ's employment hearing, shrinking by the tranche (seven shapes
+  reclaimed through the isq door in two days). (3) **THE ODOMETER
+  QUESTION, both sentences pre-written**: at n=100 the mouth either
+  registers the book (dialect volume moves the register needle) or
+  stays silent (the book teaches the PARSER without moving the
+  REGISTER — reading-training's real target confirmed as the prose
+  column, not the dialect column). Both informative; neither yet
+  known. Two tranches to the bars.
