@@ -4469,3 +4469,31 @@ token-position × waist-dim, the moment the skeleton trains.
   micro-tranche adds no third, December's architecture question
   narrows to a point: frame-disentanglement for one family,
   population known, z-scores attached.
+- **GUT #16 + THE MASK-AND-POOL AUDIT (2026-07-14): the fear named
+  the neighborhood; the resident was one street over — and REAL.**
+  (1) THE POINCARE-EUCLIDEAN MARRIAGE CLAUSE, registered against the
+  day the flag lifts: hyperbolic quantities NEVER enter a softmax
+  without a log-map (tangent-space readout at origin, or
+  Mobius/gyroplane scoring); ball distances become logits only
+  through a calibrated monotone map; same clause pre-registered for
+  the atlas (the mouth and library are cosine machines and cosine is
+  WRONG in the ball). No deployed code marries the geometries today
+  (the ball is flagged off; the head has no slot-slot attention).
+  (2) AUDIT VERDICTS: pad handling CLEAN everywhere (all pooled
+  reads divide by mask sum); truncation CLEAN (zero fixture items at
+  the 256 ceiling); causal-pooling noted as a design line. (3) **THE
+  LENGTH TERM, CONFIRMED AND STRONG**: corr(mouth distance, token
+  length) = −0.555 on the census pool — and the NATIVE control is
+  decisive: r = **−0.825 within dag8test alone** (same register,
+  34-250 tokens). The pooling ESTIMATOR is length-biased: short
+  pools land far from the bank regardless of content. RETROACTIVE
+  RE-READS: the level-inversion (L5 nearer than L1) and book-1's
+  diversity guard (short banked raws reading farther) both carry
+  length components — register conclusions that survived opposing
+  length gradients (verbose: longer AND nearer) stand; magnitude
+  claims get footnotes. **METHOD AMENDMENT TO THE n=100 ODOMETER BAR
+  (pre-measurement, so the pin survives honestly): all odometer
+  reads are LENGTH-CONTROLLED from here — residualize distance on
+  token length (fit on native), or compare at matched-length
+  strata; the >=1% bar applies to the length-controlled read.**
+  Sixteen instincts; the drawer this time held the estimator itself.
