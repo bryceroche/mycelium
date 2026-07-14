@@ -4101,6 +4101,33 @@ token-position × waist-dim, the moment the skeleton trains.
   stopped between mining and minting. Lineage: the musical-keys
   era's composition catalog — the nouns died, the verb survives,
   bottom-up, ten months later.
+- **VERDICT (2026-07-14): BRICK-M — P1 passes at the wire, P2 splits
+  the concept, P3 passes, and the deepest finding is WHERE SCHEMAS
+  LIVE.** Numbers: 20k train rows -> 265,174 subgraph occurrences in
+  10,232 classes; **top-15 cover 60.5%** (bar 60% — shallow hierarchy
+  confirmed, barely). P2 HONEST READ: the top-20 are nameable but
+  GENERIC — add-chain scaffolding, mod+given, fdiv+given, pct+given:
+  arithmetic PLUMBING, not conceptual schemas. Cause is structural:
+  generated corpora are built FROM primitives, so their statistics
+  return primitives (circular); the conceptual column (harvest) is
+  n=14 — too thin to mine. THE JOIN WORKED AS A DIET INSTRUMENT: 4
+  harvest-only classes, ALL the sum-of-prefix-terms wiring from [46]
+  (the ladder quota never covered running-prefix-sums — a named
+  train-side gap). P3: [45] and [7] share BOTH their classes — but
+  not exclusively, which is the night's insight: **value-abstracted
+  rate graphs are indistinguishable from generic mul/fdiv plumbing —
+  RATE-ness does not exist at the graph level; it lives in the
+  LANGUAGE-GRAPH BINDING.** The C2 split is thereby vindicated
+  stronger than designed: the graph layer literally cannot see
+  taxi-vs-faucet, so the library's second floor splits into TWO
+  objects — (i) MECHANICAL MACROS on the graph side (CHAIN(k)/
+  PREFIX-SUM — real candidates, attack the measured ladder/length
+  walls, proposable from THIS mine), and (ii) CONCEPTUAL SCHEMAS as
+  PARSE-SIDE RECOGNITION objects (schema retrieval from prose —
+  minable only when the harvest column grows). EVERY ROAD LEADS TO
+  N: the schema library joins the census, the dose slope, and the
+  organ in waiting on books. Deliverable banked:
+  .cache/schema_mine_top50.json (ranked, never admitted).
 - **THE EMPLOYMENT LAW + TWO PROMOTIONS (2026-07-11, relay — registered
   before gen-7):** (1) **THE EMPLOYMENT LAW**: every organ this project
   charters gets SMALLER on contact with measurement — book 1 is the
