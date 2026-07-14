@@ -152,56 +152,61 @@ def mine(rows, tag):
     return classes
 
 
-train_rows = []
-for src, path in TRAIN_SOURCES.items():
-    try:
-        rows = [json.loads(l) for l in open(path)][:CAP]
-    except FileNotFoundError:
-        print(f"  [warn] missing {path}")
-        continue
-    train_rows += [(src, r) for r in rows]
-print(f"[miner] train rows: {len(train_rows)} (cap {CAP}/source — logged, not silent)")
-T = mine(train_rows, "train")
+def main():
+    train_rows = []
+    for src, path in TRAIN_SOURCES.items():
+        try:
+            rows = [json.loads(l) for l in open(path)][:CAP]
+        except FileNotFoundError:
+            print(f"  [warn] missing {path}")
+            continue
+        train_rows += [(src, r) for r in rows]
+    print(f"[miner] train rows: {len(train_rows)} (cap {CAP}/source — logged, not silent)")
+    T = mine(train_rows, "train")
 
-hrows = [("book", json.loads(l)) for l in open(HARVEST)]
-H = mine(hrows, "harvest")
-print(f"[miner] harvest rows: {len(hrows)} | train classes: {len(T)} | harvest classes: {len(H)}")
+    hrows = [("book", json.loads(l)) for l in open(HARVEST)]
+    H = mine(hrows, "harvest")
+    print(f"[miner] harvest rows: {len(hrows)} | train classes: {len(T)} | harvest classes: {len(H)}")
 
-tot = sum(c["n"] for c in T.values())
-ranked = sorted(T.items(), key=lambda kv: -kv[1]["n"])
-print(f"\n=== P1: COVERAGE CURVE (train; {tot} subgraph occurrences, {len(T)} classes) ===")
-cum = 0
-for i, (dg, c) in enumerate(ranked[:20]):
-    cum += c["n"]
-    print(f"  #{i+1:2d} [{dg}] size {c['size']} n={c['n']:6d} srcs={len(c['srcs'])} "
-          f"cum={cum/tot:.1%} | ex({c['ex'][0]}): {c['ex'][1]}")
-top15 = sum(c["n"] for _, c in ranked[:15]) / tot
-print(f"  P1 READ: top-15 cover {top15:.1%} (bar: >60%)")
+    tot = sum(c["n"] for c in T.values())
+    ranked = sorted(T.items(), key=lambda kv: -kv[1]["n"])
+    print(f"\n=== P1: COVERAGE CURVE (train; {tot} subgraph occurrences, {len(T)} classes) ===")
+    cum = 0
+    for i, (dg, c) in enumerate(ranked[:20]):
+        cum += c["n"]
+        print(f"  #{i+1:2d} [{dg}] size {c['size']} n={c['n']:6d} srcs={len(c['srcs'])} "
+              f"cum={cum/tot:.1%} | ex({c['ex'][0]}): {c['ex'][1]}")
+    top15 = sum(c["n"] for _, c in ranked[:15]) / tot
+    print(f"  P1 READ: top-15 cover {top15:.1%} (bar: >60%)")
 
-print(f"\n=== JOIN: harvest-vs-train (the diet instrument) ===")
-h_only = [(dg, c) for dg, c in sorted(H.items(), key=lambda kv: -kv[1]["n"])
-          if dg not in T][:8]
-print(f"  harvest classes ABSENT from train (coverage gaps): {len([d for d in H if d not in T])}")
-for dg, c in h_only:
-    print(f"    [{dg}] n={c['n']} size {c['size']} | ex: {c['ex'][1]} | {c['ex'][2]!r}")
+    print(f"\n=== JOIN: harvest-vs-train (the diet instrument) ===")
+    h_only = [(dg, c) for dg, c in sorted(H.items(), key=lambda kv: -kv[1]["n"])
+              if dg not in T][:8]
+    print(f"  harvest classes ABSENT from train (coverage gaps): {len([d for d in H if d not in T])}")
+    for dg, c in h_only:
+        print(f"    [{dg}] n={c['n']} size {c['size']} | ex: {c['ex'][1]} | {c['ex'][2]!r}")
 
-print(f"\n=== P3: THE CHRONIC FAMILY ===")
-by_item = {}
-for src, r in hrows:
-    idx = r["gen"]["src_idx"]
-    by_item[idx] = {dg for dg, k, _ in mine_graph(r["factors"])}
-if 45 in by_item and 7 in by_item:
-    shared = by_item[45] & by_item[7]
-    others = set()
-    for i, s in by_item.items():
-        if i not in (45, 7):
-            others |= s
-    distinctive = shared - others
-    print(f"  [45] classes: {len(by_item[45])} | [7]: {len(by_item[7])} | "
-          f"SHARED: {len(shared)} | shared-and-EXCLUSIVE to the pair: {len(distinctive)}")
-    print(f"  P3 READ: {'SHARED CLASS EXISTS' if shared else 'no shared class'}"
-          f"{' (and exclusive — the rate schema signature)' if distinctive else ''}")
-json.dump({dg: {"n": c["n"], "size": c["size"], "srcs": sorted(c["srcs"])}
-           for dg, c in ranked[:50]},
-          open(".cache/schema_mine_top50.json", "w"))
-print("\n[miner] top-50 classes -> .cache/schema_mine_top50.json (ranked, never admitted)")
+    print(f"\n=== P3: THE CHRONIC FAMILY ===")
+    by_item = {}
+    for src, r in hrows:
+        idx = r["gen"]["src_idx"]
+        by_item[idx] = {dg for dg, k, _ in mine_graph(r["factors"])}
+    if 45 in by_item and 7 in by_item:
+        shared = by_item[45] & by_item[7]
+        others = set()
+        for i, s in by_item.items():
+            if i not in (45, 7):
+                others |= s
+        distinctive = shared - others
+        print(f"  [45] classes: {len(by_item[45])} | [7]: {len(by_item[7])} | "
+              f"SHARED: {len(shared)} | shared-and-EXCLUSIVE to the pair: {len(distinctive)}")
+        print(f"  P3 READ: {'SHARED CLASS EXISTS' if shared else 'no shared class'}"
+              f"{' (and exclusive — the rate schema signature)' if distinctive else ''}")
+    json.dump({dg: {"n": c["n"], "size": c["size"], "srcs": sorted(c["srcs"])}
+               for dg, c in ranked[:50]},
+              open(".cache/schema_mine_top50.json", "w"))
+    print("\n[miner] top-50 classes -> .cache/schema_mine_top50.json (ranked, never admitted)")
+
+
+if __name__ == "__main__":
+    main()

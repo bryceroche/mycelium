@@ -121,6 +121,25 @@ def gen_dag7(rng, m, target=None):
         for _ in range(rng.randint(0, 2)):
             nv(rng.randint(0, min(m // 4, 60)))
         kinds.add("ifdiv")
+    elif r0 < 0.67:                     # PREFIX-SUM (gen-12; Brick-M's
+        k = rng.randint(3, 5)           # receipt — the [46] wiring: terms
+        t0 = rng.randint(1, max(1, m // (3 * k)))   # by common difference,
+        d = rng.randint(1, max(1, m // (2 * k * k)))  # RUNNING prefix sums
+        dv = nv(d)
+        terms = [nv(t0)]
+        for i in range(k - 1):
+            nt = nv(sol[terms[-1]] + d)
+            factors.append({"ftype": "rel", "op": "add",
+                            "args": [terms[-1], dv], "result": nt,
+                            "surface": "add"})
+            terms.append(nt)
+        s = terms[0]
+        for t in terms[1:]:
+            ns = nv(sol[s] + sol[t])
+            factors.append({"ftype": "rel", "op": "add", "args": [s, t],
+                            "result": ns, "surface": "add"})
+            s = ns
+        kinds.add("prefix")
     else:
         for _ in range(rng.randint(2, 4)):      # seed pool
             nv(rng.randint(0, min(m // 4, 60)))
@@ -219,7 +238,7 @@ def main(n, seed, out, budget=250):
     tok = Tokenizer.from_file(TOKENIZER_JSON)
     rng = random.Random(seed)
     ok = rej = 0
-    tally = {"ladder": 0, "coupled": 0, "sq": 0, "fdiv": 0, "isq": 0, "ifdiv": 0, "plain": 0}
+    tally = {"ladder": 0, "coupled": 0, "sq": 0, "fdiv": 0, "isq": 0, "ifdiv": 0, "prefix": 0, "plain": 0}
     # DAG7_QUOTA: quota-balanced kinds — cycle target kinds, regenerate
     # until the item CONTAINS the target ('plain' = none of the four).
     # The v1 skew (fdiv in 60% of rows, ladder/coupled ~500 each) is the
