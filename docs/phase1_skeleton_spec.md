@@ -4241,3 +4241,24 @@ token-position × waist-dim, the moment the skeleton trains.
   tranches -> n=100, then the instrument battery + dose re-read).
   Data: .cache/book2.jsonl, book2_lanes.json, book2_organ_registry
   .json; scripts book2_lanes.py, book2_tranche1.py.
+- **THE ANSWER-DOMAIN CENSUS + THREE NOTES (2026-07-14, relay + one
+  sweep):** the filter lesson swept in full: of 1,743 harvested
+  problems, **1,668 (96%) have answers in 0-300; 75 (4%) sit in
+  301-999; zero above 999; zero negative.** The true in-reach pool is
+  1,668; the value-range certificate family has its full census (75)
+  in one pass; and THE DOMAIN-CAP DEMAND CURVE says raising the cap
+  to 999 buys only 4% more harvest — the solver-cost conversation
+  arrives with a small customer count, so the 300 cap STANDS and the
+  75 join the registry, not the roadmap. NOTES BANKED: (1) lane rates
+  stable across samples (1/16.5/82.5 wild vs pool) -> n=100
+  completion cost is forecastable; v2-retry discipline is the
+  throughput lever (L3 surgery is the rate limiter). (2) THE
+  REGISTRY IS A COASTLINE, not a wall — six families in one tranche;
+  tranche-3+ shopping ranks families by harvest frequency (the
+  band-sweep method, registry edition); books and registry converge:
+  books find missing relations, relations unlock books. (3) THE LAWN
+  MOWER GOES IN THE PAPER: [223] banking 5/5 as person-hours
+  mul-plumbing is the binding theorem's practical corollary — the
+  WORK schema was frame-stripping at the annotation desk, never
+  graph machinery; the organ's patients need frames stripped, not
+  new math, and six certificate families now name which frames.
