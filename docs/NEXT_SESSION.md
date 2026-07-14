@@ -1,6 +1,6 @@
 # NEXT SESSION — start here (handoff, 2026-07-14 late)
 
-## COLD START: **BOOK 2 IS COMPLETE AT n=100** — THE BATTERY IS THE SESSION (length-controlled odometer: apply .cache/mouth_length_correction.npz to ALL mouth reads; thresholds recalibrated 0.0072; law: estimator variance masquerades as distance)
+## COLD START: **THE BATTERY IS COLLECTED — BOOKS SCALE** (odometer +31.1%, slope +8 AT the bar, bigtest RECORD 1149, kingdom-dissolved confirmed). NEXT: reader_v1 promotion battery (gate candidate, val 0.8989); book 3 sized by the slope (pre-screen builds first); macro admission review (miner's 13 gaps + OPERATION-APPLY) (length-controlled odometer: apply .cache/mouth_length_correction.npz to ALL mouth reads; thresholds recalibrated 0.0072; law: estimator variance masquerades as distance)
 Gate = gen-9b (manifest truthful, entourage complete). Book 2 =
 .cache/book2.jsonl (83 entries, 6 tranches, gate=5-view vote + key,
 GATE_CKPT=gen-9b, envs ALG2=1 ALG_FTYPES=6 ALG_DUP=1). Annotation rules

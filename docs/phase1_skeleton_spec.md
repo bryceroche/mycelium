@@ -4576,3 +4576,36 @@ token-position × waist-dim, the moment the skeleton trains.
   macro shortlist; CHAIN(k)/PREFIX-SUM admission would make book 3
   the first volume partially written one floor up. Books that teach
   the system to read books that couldn't be written yet.
+- **MEASUREMENT DAY (2026-07-15): THE n=100 BATTERY — ALL FOUR READS
+  COLLECTED; THE CAMPAIGN VERDICT IS: BOOKS SCALE.** (READ 1, the
+  odometer): **+31.1% relative** (0.1871 -> 0.1288,
+  straight-to-straight, bar was >=1%) — one hundred annotated
+  strangers moved the register needle a third of the way home; the
+  prior said low-single-digit and the books said thirty-one. (READ
+  2, the slope): pre 16 carried (0 banked + 16 near) -> post 24
+  (1 + 23), **delta +8 AT THE BAR: the slope exists — extrapolate
+  the budget.** December's arithmetic is now real: ~8 census items
+  per ~100 annotated rows at this regime. Knotted 70 -> 62. THE
+  GUARD DIDN'T JUST HOLD — **bigtest 1149, A NEW RECORD**: at 2.9%
+  share x 10 reps the prose gradient REGULARIZES rather than
+  displaces (the dose law's first success point); val record 0.8989.
+  (READ 3, the frontier census): the counted registry stands (39
+  certificates across ~14 families + 75 value-range); the
+  parser-side structural frontier = the rate family + chained-fdiv;
+  **P3 AT VOLUME SEALS THE BINDING THEOREM: [45] and [7] share NO
+  graph class at n=94 — their kinship was never in the wiring; it
+  is frame-level, exactly where the theorem put it. The
+  KINGDOM-DISSOLVED verdict is effectively confirmed**: the organ's
+  waiting room holds one frame family and one suspected encoding
+  fix. (READ 4, the miner at volume): harvest classes 25 -> 96;
+  **13 named coverage gaps** (midpoint fdiv+add, consecutive-product
+  chains, the 3a+5b operation-apply shape, lollipop prefix-chains,
+  coupled mul systems) = BOOK 3'S DIET LIST, and the macro shortlist
+  gains OPERATION-APPLY beside CHAIN/PREFIX-SUM. DISPOSITIONS:
+  phase1_reader_v1 (val 0.8989, bigtest 1149) is a GATE CANDIDATE —
+  full promotion battery next session; book 3 sized by the slope
+  (bigger; the pre-screen builds first per its registration); the
+  recursion's first admission review (the macro gate) follows the
+  miner's list. The dose pilot said zero at n=14; the book said +8
+  at n=100 — THE UNIQUE-ROWS LAW CONFIRMED AT SCALE. Measurement
+  day was pure collection, exactly as designed.
