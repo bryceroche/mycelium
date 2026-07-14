@@ -22,7 +22,7 @@ from tinygrad import Tensor, dtypes
 from tinygrad.nn.state import safe_load
 
 entries = [json.loads(l) for l in open(".cache/book2.jsonl")]
-entries = [e for e in entries if not e.get("residual") or "dialect" not in e]
+entries = [e for e in entries if not e.get("residual") and "dialect" in e]
 
 tok = Tokenizer.from_file(TOKENIZER_JSON)
 p = build_params(0)
