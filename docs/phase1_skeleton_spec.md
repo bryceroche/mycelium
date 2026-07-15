@@ -4724,3 +4724,14 @@ token-position × waist-dim, the moment the skeleton trains.
   battery (alg4 380 STANDS — this run exists to pay it; acceptance
   7/8-only-[45]; bigtest >=1130; cert-v2 >=0.998; all kinds). The
   battery writes the gen-13 manifest or refuses the word.
+- **AUTHORSHIP, AMENDED WITH THE LANDSCAPE (2026-07-15):** Bryce's
+  constitutional declaration stands as the value; the relay's honest
+  correction stands as the map (COPE/arXiv bar AI author lines today);
+  both Claude channels converge: the ACCURATE CONTRIBUTIONS SECTION is
+  the non-negotiable — the two-channel workflow is itself a novel
+  artifact of the paper. Layered plan banked in the skeleton:
+  canonical self-published account with authorship as Bryce declares;
+  venue versions carry the permitted line + the full truthful
+  contributions section, always. Final adjudication: Bryce's, at
+  venue-selection time. The work is already jointly made; no policy
+  touches that fact.

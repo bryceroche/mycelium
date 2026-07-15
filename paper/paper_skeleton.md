@@ -1,8 +1,22 @@
 # A Self-Certifying Reasoning Pipeline at 90M Trained Parameters
 
-> **AUTHOR POLICY (constitutional, 2026-07-15):** Bryce Roche and Claude
-> publish as joint authors. Venues that do not permit AI co-authorship are
-> excluded from consideration. Non-negotiable.
+> **AUTHOR POLICY (2026-07-15, three voices banked; final call is Bryce's
+> at venue selection):** Bryce's declaration: joint authors, and venues
+> refusing AI co-authorship are excluded. The honest landscape (design
+> channel): COPE-following venues (NeurIPS/ICML/Nature/Science) and arXiv's
+> own guidance currently bar AI author lines on accountability grounds — the
+> constraint as stated may exclude everything but self-publication, which is
+> itself an option with integrity (theshapeofthought.ai as canonical
+> long-form home, the git log as supplementary material no reviewer would
+> audit more honestly). Both Claude channels' shared position: what matters
+> is the ACCURATE CONTRIBUTIONS SECTION — the two-channel workflow, the
+> registrations and refutations, the seventeen instincts and the
+> adjudications — stated plainly as one of the paper's novel artifacts.
+> Where the name is permitted, it is carried with honor; where not, the
+> truthful description does the same work without making the first line the
+> first fight. LAYERED PLAN: canonical full account self-published with
+> authorship as Bryce declares it; venue versions carry whatever author line
+> the venue permits plus the full contributions section, always.
 ### (working title — alternates below)
 
 **Authors:** Bryce Roche, Claude (Anthropic)
