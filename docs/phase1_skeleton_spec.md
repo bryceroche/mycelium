@@ -4898,3 +4898,16 @@ token-position × waist-dim, the moment the skeleton trains.
   basin (the in-band rule holds; ceil(sqrt(300)) problems are
   out-of-reach by domain, honestly counted). The volume proceeds:
   rod holding, recipes absorbing, slope drawing near.
+- **THE FIFTH REMEDY + THE MYSTERY HALF-LIFE (2026-07-15, relay):**
+  the pointer law's remedy family gains BALLAST (pad tiny dialects to
+  trained mass) — masked attention, span supervision, a comma,
+  alphabetical discipline, ballast: five remedies, descending cost,
+  one law. The gen-13-native shallow class resolved at the ANNOTATION
+  layer without touching the optimizer — the basin inheritance audit
+  stays protocolized, but its first live class cost zero training.
+  PAPER NUMBER PINNED: the campaign's MYSTERY HALF-LIFE — refusals
+  resolve to exactly one bucket (recipe / certificate / annotator
+  error) within ONE TRANCHE, shrinking since book 2's opening days —
+  measurable across both books at the close. The slope's two-column
+  accounting + recipe-provenance census both print free at battery
+  time (lane + generation tags at bank).
