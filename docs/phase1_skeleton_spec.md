@@ -5491,3 +5491,28 @@ token-position × waist-dim, the moment the skeleton trains.
   plan and a standing bet is, to our knowledge, new'). [cite] slots
   resolve at assembly. THE HOUSE IS WHOLE; remaining = F-8a/b +
   the assembly/tag-check pass.
+- **F-8a/b + THE ASSEMBLY PASS (2026-07-15): the paper stands as one
+  document.** FIGURES: F-8b (length warp) reproduces the recal's
+  native fit FROM BANKED ARTIFACTS ONLY (dag8test pooled states +
+  gen-9b bank, numpy kNN, zero GPU) and ASSERTS the ledger's numbers
+  at render — printed raw r=-0.825, residual r=-0.024, thr=0.0072 to
+  the digit; two panels, warped and straightened, 'is this distance,
+  or is this n?' on the plot. F-8a (register map): one ruler, three
+  real populations — native fixture histogram (banked states, n=700),
+  the census pool's 100 PER-ITEM banked dots, MATH-500's banked band
+  — with the wall and the 160/160 refusal annotated; raw vintage
+  stated on the axis, corrected reads pointed at F-8b. S8 prose now
+  cites both. ASSEMBLY (paper/assemble.py -> paper1_assembled.md,
+  1,130 lines): 11 sections in final order; RENUMBERED per the
+  decision (7->6, 8->7, 9->8, 10->9, 11->10) on headers and every
+  paragraph ref; figures mapped to sequential Figure 1-9 (chain=1 as
+  branded); Table 1 census / Table 2 laws; working-note comments
+  stripped; assembler ASSERTS no unmapped ref survives. One seam
+  caught in the read: S3.1's '(S4 gives both proofs)' promised what
+  S4 doesn't deliver — softened to the isomorph-audit pointer + the
+  ledger. TAG-CHECK: 57 headline tokens swept; 14 flags, ALL
+  placement-only (figure-vs-prose), ZERO not-in-ledger — every number
+  in the document traces. REMAINING (the relay's highest-stakes
+  item): [cite] verification by web lookup, minimal bibliography,
+  each reference read before cited; then the fresh top-to-bottom
+  stranger read, both channels; then theshapeofthought.ai.

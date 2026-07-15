@@ -12,8 +12,10 @@ from their wiring. From the structure side: problems with *identical*
 canonical graphs — one digest, one knot — wear surfaces so different
 that no lexical method recognizes them as related. We call this the
 **binding theorem**: the concept is the binding between a linguistic
-frame and a structural role, and it lives in neither side alone (§4
-gives both proofs; Fig. 3-a shows the four specimens).
+frame and a structural role, and it lives in neither side alone.
+Fig. 3-a shows the four specimens; the structure-side sweep that found
+graph-twins across fixture boundaries is §4's isomorph audit, and both
+directions' full measurement records are in the ledger.
 
 The two-jaws design is this theorem applied. If concepts are bindings,
 then recognition and abstraction must live where the binding is made —

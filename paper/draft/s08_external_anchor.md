@@ -57,15 +57,17 @@ a kNN read with a calibrated threshold, no trained component anywhere
 against a gate that no gradient flows through). Measured on the banked
 populations: AUC 1.0000 on both scores; **foreign text refused 100.0%
 at 1% native false-refusal; and all 160 of the anchor's false
-certificates refused at the threshold**. The lattice behind the gate
-now signs nothing it cannot read.
+certificates refused at the threshold**. Fig. 8-a maps every population
+against the gate's ruler. The lattice behind the gate now signs nothing
+it cannot read.
 
 The gate then earned its own §11 entry, which we report as part of the
 result. Its distance estimator pooled variable-length evidence and
 thereby inherited a sample-size coordinate — within-register distances
 correlated with text length at r = −0.825, an instrument warp found by
 a registered audit four days after deployment. The correction (a 1/length
-residualization, fit on native text) took the confound to −0.024, and
+residualization, fit on native text) took the confound to −0.024
+(Fig. 8-b, both panels from the banked per-item reads), and
 the recalibrated read *confirmed the wall on a straight ruler*: the
 foreign refusal held at 100% length-controlled, and the harvest
 zero-point re-read at 0.1871 (from a warped 0.243). Every mouth reading
