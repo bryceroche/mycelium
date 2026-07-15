@@ -4874,3 +4874,18 @@ token-position × waist-dim, the moment the skeleton trains.
   four generations of jostle AND four generations of incidental
   rehearsal. v2 retries queue for tranche 3 (pad the graph); the
   correct-but-shallow class gains its first gen-13-native members.
+- **THE LINEAGE LAW COMPLETED (2026-07-15, relay):** *lineage carries
+  both DEBTS and DIVIDENDS* — gen-9b's ancestry carried the alg4 debt
+  AND the incidental-rehearsal dividend; gen-13 paid the debt by
+  renouncing the ancestry and the price was the dividend (two tiny
+  dialects, page 33). Neither ancestry dominates; different
+  portfolios. PROTOCOL AMENDMENT: fresh-stock promotions owe a
+  **BASIN INHERITANCE AUDIT** — acceptance panel + vote-entropy
+  census under the new head, DIFFED against the old gate; shallowed
+  items enter the rehearsal ration (the [71]/[78] pattern,
+  protocolized so gen-17's fresh retrain inherits the audit instead
+  of rediscovering the corollary). The cheap-kind note: this shallow
+  class is recoverable at TOP-UP cost (both remedies measured in the
+  junction arc). And [115]'s four-door unanimous composition is the
+  counter-evidence: clean ancestry traded memorized depth for
+  STRUCTURAL REACH — the trade the debt-payment run existed to make.
