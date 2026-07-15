@@ -5053,3 +5053,37 @@ token-position × waist-dim, the moment the skeleton trains.
   ancestry, all three books (~188 uniques) in corpus, temperature
   dial armed on the displacement watch, three slope sentences
   staged. Awaits the word.
+- **GUT #19: THE CONDUCTIVITY AUDIT (2026-07-15/16, Bryce + relay).**
+  The residual stream is the defect-free lattice BY DESIGN (additive
+  gradient flow + deep supervision = current injected at every
+  floor); the impurities are the MULTIPLICATIVE elements — gates,
+  LayerNorms, saturated softmaxes. THREE READS: (1) gate saturation +
+  LN-gain longitudinal (free, tonight); (2) **THE MEISSNER PROBE —
+  the pointer law's WHY, staged**: a saturated softmax EXPELS
+  gradient from non-selected keys (the error becomes superconducting
+  in the wrong channel, insulated against correction); conditioning
+  routes through the saturation and is expelled; span supervision
+  drills through and injects at the key — the mechanism-level account
+  of six sightings of 'pointers move only by structure or
+  supervision.' Probe: gradient magnitude at the correct key via
+  CE-through-saturated-softmax vs direct span supervision, on a
+  banked wrong-pointer specimen; predicted orders-of-magnitude gap.
+  (3) THE GRADIENT LOGGER rides gen-14's train loop (per-module
+  norm mean+variance every 500 steps — the project's first
+  dissipation map; customers: the [99]/[96] upper-band question,
+  fdiv's consolidation lag, the early transient). Summary for the
+  ledger: the lattice was built superconducting on purpose; the wall
+  that defined a month may have been a MEISSNER PHASE — errors so
+  cold they expelled every field aimed at them.
+- **CONDUCTIVITY READS 1a/1b (2026-07-16): EMPTY BY ARCHITECTURE —
+  the strongest possible print.** The deployed head has NO gates and
+  NO LayerNorms (the breathing block never shipped in the 35-key
+  production head; all LNs are frozen-trunk = fixed impedance,
+  immune by the mouth's own construction). The head is a pure
+  additive/bilinear circuit — the lattice is cleaner than the
+  metaphor feared, and the ENTIRE resistor budget concentrates on
+  the SOFTMAX family (pointers + CE heads). Gut #19 sharpens to one
+  suspect: the MEISSNER PROBE is now the audit's whole remaining
+  body, riding gen-14 with the gradient logger. If saturation-
+  expulsion prints, the pointer law's six sightings get one
+  mechanism and the month's defining wall was a Meissner phase.
