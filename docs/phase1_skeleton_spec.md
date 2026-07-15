@@ -5261,3 +5261,26 @@ token-position × waist-dim, the moment the skeleton trains.
   arrows carry the thesis — separates shallow-from-deep, cannot
   separate wrong-from-correct). Remaining inventory (skeleton §12):
   twelve figures staged, each needs its banked artifact located.
+- **CONTRIBUTIONS SECTION DRAFTED (2026-07-15): the paper's handshake,
+  written as a claim registry.** paper/draft/contributions.md. Five
+  claims in the relay's descending-takeaway order, each with evidence
+  pointer AND its own limit inline (the S11 cross-references made
+  load-bearing, not decorative): (1) the lattice with its
+  minimality-by-named-specimen argument; (2) the method as artifact —
+  atomic promotion/manifest, nine tombstones, the ledger AS
+  supplementary material ('offered for audit, not trust'), S7.4's
+  standing bet as live exhibit; (3) the reading campaign — the
+  incorruptible gate, triple-confirmed mechanism, measured completion;
+  (4) the binding theorem proved both directions with the two-jaws
+  design as constructive consequence, reach-beyond-register honestly
+  conjectured; (5) the instrument-aging field manual — rotation-not-
+  decay, length-as-distance, selection-against-gates, 'the laws'
+  forms travel, the constants do not.' AUTHOR BLOCK in three
+  paragraphs: Bryce (direction, adjudication, twenty registered
+  instincts all finding something real, annotation surgery, the
+  policy itself); Claude (design channel + execution channel,
+  checking each other); and THE MACHINERY (neither author) — 'the
+  results belong to a discipline, not to a hand' as the paper's
+  strongest authorship statement. Counts verified against the ledger
+  before writing: 20 instincts (gut #20 = mirror), 9 tombstones,
+  ~188 uniques, ~82% surgery lane.
