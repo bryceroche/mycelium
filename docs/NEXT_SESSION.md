@@ -1,3 +1,22 @@
+# NEXT SESSION — start here (handoff, 2026-07-15 late)
+
+## COLD START: GATE = GEN-13 (all bars swept, debt paid, manifest true,
+entourage COMPLETE). BOOK 3 IS OPEN: lanes classified under gen-13
+(.cache/book3_lanes.json: L1 9 / L2 140 / L3 251 — the bootstrap more than
+doubled; rod pinned <=50% machine). Census under gen-13: knotted 58 (from
+81). THE PAPER: freeze = book 3's second slope point (gen-13's verdict
+condition MET). Annotate book 3 by the rulebook (consecutive letters,
+in-band, one-fdiv); L2-first (140 repair candidates at 1/3 cost); diet
+toward the 13 coverage gaps; diversity guard per tranche. Then: slope
+re-read -> tag -> freeze -> publish (byline policy in paper skeleton).
+Standing: chained-fdiv autopsy; OPERATION-APPLY admission; drafting
+parallelizes (§11 first). Envs: ALG2=1 ALG_FTYPES=6 ALG_DUP=1;
+GATE_CKPT=.cache/phase1_gen13_head.safetensors.
+
+
+---
+# PRIOR HANDOFF BELOW
+
 # NEXT SESSION — start here (handoff, 2026-07-14 late)
 
 ## COLD START: **THE BATTERY IS COLLECTED — BOOKS SCALE** (odometer +31.1%, slope +8 AT the bar, bigtest RECORD 1149, kingdom-dissolved confirmed). READER BATTERY RAN: KILL by 2 answers (alg4 378 vs 380; all else records). GEN-13 PROMOTED (debt paid: alg4 385; acceptance 8/8 incl [45]; bigtest 1195; cert-v2 1.0000@913; GATE=gen-13, manifest written). Entourage duty owed. Then: chained-fdiv autopsy, OPERATION-APPLY admission, book 3 charter (its second slope point + gen-13's verdict = THE PUBLICATION FREEZE; drafting parallelizes now — §11 first, figures from banked measurements); book 3 sized by the slope (pre-screen builds first); macro admission review (miner's 13 gaps + OPERATION-APPLY) (length-controlled odometer: apply .cache/mouth_length_correction.npz to ALL mouth reads; thresholds recalibrated 0.0072; law: estimator variance masquerades as distance)

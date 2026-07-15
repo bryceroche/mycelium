@@ -4797,3 +4797,23 @@ token-position × waist-dim, the moment the skeleton trains.
   k re-priced under the new gate). Book 3 charter: rod <=50% machine,
   diversity guard per tranche, diet = the 13 coverage gaps + the
   96-class column.
+- **ENTOURAGE-13 COMPLETE + BOOK 3 OPENS (2026-07-15):** entourage
+  discharged in full (specialist remined on gen-13's failures,
+  centroids in gen-13 fst space, mouth rebuilt on the prose-inclusive
+  family with length refit thr 0.0077, manifest waiver-free). THE TWO
+  HEADLINE NUMBERS: (1) **THE CENSUS UNDER GEN-13: 16/26/58** —
+  knotted falls to **58** (from 76-89 in the gen-9b/11 era; honest
+  note: this was the FULL-pool read, and up to 14 of the 16 banked
+  are book-1-trained items — the disjoint banked is ~2+, but the
+  KNOTTED collapse from 81 to 58 stands regardless: the reading
+  regime reads raw prose materially better). (2) **THE BOOTSTRAP
+  RE-PRICED, dramatically: L1 machine-banked 9/400 (2.25%, was 1%);
+  L2 repair 140/400 (35%, was 16.5%); L3 surgery 251 (63%, was
+  82.5%).** The lanes MORE THAN DOUBLED under the new gate — the
+  bootstrap's k rose exactly as the criticality frame predicted for
+  a compounding loop, and the rod (<=50% machine per book) is
+  already inserted at its pinned depth. Book 3's economics: over a
+  third of the pool is now repair-lane (1/3 cost), the machine lane
+  triples book 2's, and the surgery residue concentrates toward the
+  true frontier. BOOK 3 IS OPEN under the reactor-safe charter; its
+  second slope point is the paper's last condition.
