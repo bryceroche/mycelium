@@ -4918,3 +4918,18 @@ token-position × waist-dim, the moment the skeleton trains.
   Gauss-family average (10-var, one fdiv), and sign-strip entries all
   clean. Past the volume's halfway mark; the slope point ~3 tranches
   out; rod and rhythm holding.
+- **[7]'S ARC FRAMED + THE THIRD SIGNATURE (2026-07-15, relay):**
+  [7]'s full arc is the project in one specimen: chronic case with a
+  trunk-space birth certificate -> organ waiting room -> sibling
+  banked under the clean retrain -> routine plumbing at 5/5 under the
+  strongest gate. Confirmed-structural population reads ZERO pending
+  the volume-close census. THE EMPLOYMENT LAW'S TERMINAL FORM, staged
+  for §11: *the surgeon's kingdom, measured to completion, was empty —
+  the patients were all annotation conventions, mechanism doors, and
+  lineage artifacts wearing structural disguises.* THREE SLOPE
+  SIGNATURES now staged: falling-yield-healthy, flat-yield-strong,
+  and RECIPE-PROVENANCE-ACCELERATING (frontier items falling
+  disproportionately to recipes the volume itself minted = books
+  minting the tools that read the next books — the recursion's thesis
+  one floor below the macro ladder). Whichever prints, the sentence
+  exists.
