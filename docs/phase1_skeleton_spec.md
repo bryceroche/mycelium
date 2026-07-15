@@ -5087,3 +5087,35 @@ token-position × waist-dim, the moment the skeleton trains.
   body, riding gen-14 with the gradient logger. If saturation-
   expulsion prints, the pointer law's six sightings get one
   mechanism and the month's defining wall was a Meissner phase.
+- **GUT #20: THE MIRROR AUDIT (2026-07-16, Bryce + relay).** THE
+  SYMMETRY FILE, formally named (five sightings, one law): [85]'s
+  identity palindrome (args=[a,a]), Vieta's symmetric root pairs,
+  ill-defined selectors self-gating, [22]'s sum/difference twins,
+  and the mixed-vote twin-key signature — **binding requires
+  distinguishability; every symmetric structure must either break
+  the symmetry or grade as a multiset — never bind through it.**
+  THREE READS: (1) EFFECTIVE-VIEW-COUNT on banked certificates
+  (fires now): sentence permutation manufactures dart independence
+  from permutable ASYMMETRY — symmetric problems collapse five views
+  toward fewer effective darts, and unanimity gets easier exactly
+  where evidence is thinnest; the quarter-percent bound gains a
+  per-item effective-K clause before the tables freeze. (Solver side
+  immune: the uniqueness gate can't bank interchangeable variables —
+  the wave can't stand where the gate won't let it form.) (2)
+  TWIN-KEY POINTER ENTROPY (rides the KV machinery): mirrored
+  mention pairs make near-identical keys; fresh heads may hold
+  thinner twin-key margins — minted symmetric specimens vs matched
+  controls, gen-13 vs gen-9b. (3) 1001 itself is out of band (cap
+  300) — the literal palindrome is unrepresentable by domain; it
+  enters only as the digit heads' twin-key stress case if the cap
+  conversation ever reopens.
+- **MIRROR AUDIT, READ 1 (2026-07-16): the standing wave is real,
+  measured, and SMALL.** Effective-K census on bigtest under gen-13's
+  votes: 1,477/1,500 items at full effK=5; **23 items (1.5%) at
+  effK=3-4 — all unanimous-CORRECT, zero unanimous-wrong.** The
+  certification table gains its per-item effective-K column as an
+  honest fine-print clause; the quarter-percent arithmetic stands
+  (reduced-dart certificates exist but none misfired). Found by the
+  gut days before the freeze instead of by a reviewer after — the
+  audit-that-confirms, with a clause as its fee. Read 2 (twin-key
+  entropy) rides the gen-14 window with the KV machinery.
