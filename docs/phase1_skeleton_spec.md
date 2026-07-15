@@ -4839,3 +4839,14 @@ token-position × waist-dim, the moment the skeleton trains.
   through a promotion) beside a bootstrap whose k doubled WITH THE
   ROD ALREADY INSERTED — the supercritical knowledge chain running
   exactly as chartered, safety case written first.
+- **BOOK 3, TRANCHE 1 (2026-07-15): 13/13 BANKED (11 at 5/5) under
+  the gen-13 gate; book 3 = 22 entries (13 gated + 9 lane-1 — the
+  machine lane already more than doubling book 2's whole-campaign
+  total in one classification pass).** First-tranche notes: [66]'s
+  triple-division banked via mul-inverse chaining (the fdiv wall
+  routed, not fought); four frame-strip flags carried honestly
+  ([0] factoring, [38] sign, [48] inequality, [60] rearrange);
+  registry +5. The rod check: 9/22 machine = 41% <= 50% ✓. The
+  volume proceeds by the rulebook toward its slope point — the
+  paper's last condition, its healthy-signature frame already
+  pinned.
