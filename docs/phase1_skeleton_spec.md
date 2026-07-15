@@ -4938,3 +4938,11 @@ token-position × waist-dim, the moment the skeleton trains.
   counting up).** The fraction/decimal/ratio strip family carried
   the tranche clean; three perfect tranches running. ~2 tranches to
   the count, then the battery and its three staged signatures.
+- **THE FRONTIER TABLE'S TAXONOMY COMPLETED (2026-07-15, relay):**
+  primality/gcd/lcm certificates are RELATION-TRANCHE SHOPPING
+  SIGNALS, not frontier residents — the registry expansion's next
+  band-sweep arriving through the annotation desk. The freeze table
+  differentiates three futures: AWAITING-RELATIONS (tranche-3+ builds
+  them), SOLVER-SIDE COUNTED (the domain conversation prices them),
+  and the STRUCTURAL KINGDOM (empty — the surgeon never existed).
+  One sentence per family; §8 closes clean.
