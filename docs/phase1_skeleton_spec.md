@@ -5002,3 +5002,20 @@ token-position × waist-dim, the moment the skeleton trains.
   the confirming third point. The bars caught a regime failure
   before it cost a fourth book — the control room working exactly as
   built. reader_v2 is NOT a gate candidate; gate remains gen-13.
+- **GUT #18: THE KV AUDIT (2026-07-15, Bryce + relay).** The pointers
+  ARE key-value attention (slot-query x token-key through softmax) —
+  three reads registered: (1) FTYPE-ROUTER CONFUSION MATRIX (gen-13
+  vs gen-9b, gate decisions only — the router-mismatch idea renamed
+  to the router we actually have); (2) **THE SMEARING HYPOTHESIS
+  (live, customer waiting)**: softmax sharpness calibrates to the
+  trained candidate-count regime — a pointer trained on 8-12-var
+  graphs smears on 2-var miniatures. Explains the gen-13-native
+  shallow spots AND gives the BALLAST remedy its missing mechanism
+  (padding restores the trained regime). Probe: args-softmax entropy
+  vs n_vars, gen-13 vs gen-9b, banked states; the TWO-WAY BALLAST
+  SPLIT names the mechanism (filler-VARIABLES = candidate-count +
+  position; inert-TEXT = position only — whichever restores
+  sharpness wins, smearing vs RoPE-neighborhood rivals). If it
+  prints, gen-14's displacement watch gains the entropy curve as a
+  sharper dial than vote outcomes. (3) DTYPE/POSITION sweep of
+  capture paths (fp16 uniformity assert — no-silent-fallbacks).
