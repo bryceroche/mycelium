@@ -5384,3 +5384,32 @@ token-position × waist-dim, the moment the skeleton trains.
   length warp before/after. The S5/S6 MERGE DECISION banked from the
   relay: one section, 'The repair stack and its boundary,' arc
   outcome as boundary, S9.2 owns the narrative.
+- **S4 + S5/S6-MERGED DRAFTED (2026-07-15): the body closes; only the
+  front door remains.** S4 (paper/draft/s04_corpus_discipline.md),
+  four movements per the brief: (4.1) solution-first + gates, with
+  the three specimens under one principle — perfect-square
+  discriminant dissolving no-real-roots, self-gating selectors,
+  nogive — 'three edge policies, zero new mechanisms; the generator's
+  grammar simply cannot say the broken thing.' (4.2) teeth/bands as
+  measured axes + the curriculum tombstone in one honest
+  regime-tagged sentence. (4.3) grading policy audited as an
+  instrument: 802 -> 5 lucky-unforced (0.6% luck bound) -> 797
+  forced; the 16.6% right-asked-wrong-graph class as a DESIGN
+  PARAMETER (stable 16.6/17.2 across draws) — why answers grade
+  through the solver and parse-accuracy is never conflated with
+  answer-accuracy. (4.4) the closer: disjointness UP TO ISOMORPHISM
+  (WL digests, the 42 found and excluded, bump gate) — 'the
+  difference between we-deduplicated and we-know-no-knot-is-on-both-
+  sides-of-the-wall.' S5/S6 MERGED (s05_repair_stack.md) per the
+  banked decision, thesis stated up front ('measured to its boundary,
+  and the boundary is a population, not a mystery'): portfolio
+  (dense-ranker agreement 0.840 / rare-flag centroid, combo wins the
+  tail), withhold-and-solve (26% free, zero silent-wrong), selective
+  retransmission (field-flags beat gold localization, leakage zero,
+  148/627), the half-life (19.6->7.7->1.1->0), then the boundary in
+  one paragraph with S9.2 owning the narrative — closer: 'the
+  boundary did not end the repair story; it relocated it upstream.'
+  FRONT-DOOR PRE-REGISTRATION BANKED (relay): abstract gets ONE
+  number per claim (912@1.0000-zero-numerator / fourteen-generations
+  / saturation / 2%-then-refused / 8.0M-on-506M), no number not in a
+  drafted section's own text.
