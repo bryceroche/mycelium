@@ -4911,3 +4911,10 @@ token-position × waist-dim, the moment the skeleton trains.
   measurable across both books at the close. The slope's two-column
   accounting + recipe-provenance census both print free at battery
   time (lane + generation tags at bank).
+- **BOOK 3, TRANCHE 4 (2026-07-15): 11/11 ALL-UNANIMOUS; book 3 = 53;
+  registry +2.** [7]'s double-isq coupled system (the [238] class)
+  banked 5/5 as routine plumbing — the shape that once threatened a
+  gen-12 design line is now ordinary annotation. Mean-chains, the
+  Gauss-family average (10-var, one fdiv), and sign-strip entries all
+  clean. Past the volume's halfway mark; the slope point ~3 tranches
+  out; rod and rhythm holding.
