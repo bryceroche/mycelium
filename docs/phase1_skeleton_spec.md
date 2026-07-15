@@ -5174,3 +5174,22 @@ token-position × waist-dim, the moment the skeleton trains.
   measurements, the contributions section plain: two channels, one
   ledger, twenty-for-twenty, every claim gated by machinery that
   couldn't be flattered.
+- **S11 EDITORIAL PASS (2026-07-15, relay critique -> ledger-checked
+  fixes):** six edits applied to paper/draft/s11_honest_limitations.md.
+  (1) Denominator clash fixed: the 75-member value-range family is
+  HARVEST-WIDE (75 of 1,743, the answer-domain census) and now stated
+  separately from the 58-item fixture residue. (2) The 2% foreign-prose
+  figure rephrased to name its instrument (anchor answer-accuracy that
+  motivated the mouth), 'banked' removed. (3) Vintage pinned: 1195/1500
+  verified as gen-14's own battery row (ties gen-13's record); 'at
+  freeze' made explicit; the 58-vs-61 census reads disclosed as within
+  vote noise. (4) Chained-fdiv sentence updated to post-book-3 truth:
+  founding specimen [66] resolved by mul-inverse rewrite, [344]'s
+  triple-fdiv is the single surviving refusal, mechanism-vs-notation
+  question stated open (the demotion watch, honestly carried). (5)
+  Dialect swept from S11: darts->views, banked->verified phrasing.
+  (6) Two limitations ADDED: every generation comparison is an n=1
+  training run (no seed variance, mitigations named); the annotator is
+  the system's author (answer key verifies correctness not
+  representativeness; 'gold' = author-written + answer-verified).
+  S11 now 10 paragraphs; the closing line unchanged.

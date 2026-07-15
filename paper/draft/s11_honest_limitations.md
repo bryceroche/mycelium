@@ -5,24 +5,31 @@ lead with what it cannot claim.)*
 
 **Scope of register.** Every capability this paper certifies lives in one
 language family: algebra-in-words over integer-valued factor graphs with
-values in 0–300. The system reads that register at 1195/1500 one-shot on
-its widest fixture and certifies at measured 1.0000 precision — and reads
-*foreign* mathematical prose at roughly 2% banked. The recognition mouth
-exists precisely because this boundary is sharp: the system refuses what
-it cannot read, and the refusal is the product. MATH-500 competence is
-explicitly not claimed here; it is the subject of the successor campaign
-(Paper II), and this paper's certification results are independent of it.
+values in 0–300. At freeze, the deployed generation's own battery reads
+that register at 1195/1500 one-shot on its widest fixture and certifies
+at measured 1.0000 precision — and answered roughly 2% of *foreign*
+benchmark prose correctly (the measurement that motivated the recognition
+gate). The recognition mouth exists precisely because this boundary is
+sharp: the system refuses what it cannot read, and the refusal is the
+product. MATH-500 competence is explicitly not claimed here; it is the
+subject of the successor campaign (Paper II), and this paper's
+certification results are independent of it.
 
 **The frontier is counted, not conquered.** After three annotated books
 and fourteen model generations, 58 of the 86-problem disjoint census
-fixture remain unread. This residue is not mysterious: it is
-family-sorted and priced — a 75-member value-range family (answers
-outside the solver's 0–300 domain; raising the cap was evaluated and
-declined at 4% demand), relation families awaiting registry expansion
-(primality, gcd/lcm, logarithms, exponent laws — each a counted
-certificate pile), negative and fractional domains, and exactly one
-suspected structural item (chained floor-division, autopsy staged). The
-one chronic frame-entanglement family measured at the frozen trunk
+fixture remain unread (the freeze generation's own read is 61; the
+difference of 3 is within vote noise). This residue is not mysterious:
+it is family-sorted and priced. Within the fixture: relation families
+awaiting registry expansion (primality, gcd/lcm, logarithms, exponent
+laws — each a counted certificate pile), negative and fractional
+domains, and one suspected structural mechanism — chained
+floor-division, whose founding specimen was later resolved by an
+annotation rewrite, leaving a single surviving refusal and an open
+question of whether the boundary is mechanistic or notational. Separately
+and harvest-wide, a counted value-range family bounds the domain: 75 of
+1,743 harvested problems (4%) have answers above the solver's 0–300 cap;
+raising the cap was evaluated and declined at that demand. The one
+chronic frame-entanglement family measured at the frozen trunk
 (z = −2.05) partially dissolved under a clean-ancestry retrain; its
 residual expression is bounded but its mechanism (surface/structure
 entanglement in the pretrained representation) is a real limit of the
@@ -37,6 +44,20 @@ registers, and post-registry-expansion problems are different
 distributions with unmeasured curves. The curve saturated; the library
 did not close.
 
+**The annotator is the system's author.** The books' gold annotations
+were hand-written by the system's builders, not by independent
+annotators. Two design choices bound what this could corrupt: every
+annotated item is graded by the symbolic solver against the dataset's
+own answer key before it enters training (an oracle the annotator cannot
+flatter — a wrong or leading annotation that changes the answer is
+rejected mechanically), and a hand-quota rule caps machine-assisted
+entries at half of any book. But the answer key verifies *correctness*,
+not *representativeness*: the annotation style, the vocabulary of
+explicitation, and the choice of which refusals to repair all carry the
+authors' hands. "Gold" in this paper means author-written and
+answer-verified, and a reader should weight the generalization claims
+accordingly.
+
 **Statistical honesty on the headline.** Certification precision of
 1.0000 on 912 items is a zero-numerator result: it bounds the error rate
 near a tenth of a percent; it does not demonstrate zero. The structural
@@ -45,7 +66,18 @@ an input-register gate, produces a channel whose failures are rare and
 mechanistically characterized — is the claim. Additionally, 23 of 1,500
 fixture items (1.5%) yield fewer than five distinct permutation views
 (the effective-K fine print); all certified correctly, but their
-certificates rest on 3–4 effective darts rather than five.
+certificates rest on 3–4 effective views rather than five.
+
+**Every generation comparison is a single training run.** No
+generation was trained twice under different seeds; every
+gen-N-versus-gen-N+1 delta in this paper is an n=1 comparison with no
+error bar. The discipline mitigates without curing: pass bars were
+pinned before each measurement, verdicts read multiple independent
+fixtures, and every mechanism claim required confirmation by at least
+two independent instruments before it was recorded. But seed variance
+was never measured, and a reader should treat individual deltas as
+observations under a registered protocol, not as estimates with known
+variance.
 
 **Instruments age, including ours.** Every geometric instrument in this
 system was calibrated in some generation's latent space, and the audit
