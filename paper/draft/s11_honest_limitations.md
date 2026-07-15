@@ -50,8 +50,9 @@ annotators. Two design choices bound what this could corrupt: every
 annotated item is graded by the symbolic solver against the dataset's
 own answer key before it enters training (an oracle the annotator cannot
 flatter — a wrong or leading annotation that changes the answer is
-rejected mechanically), and a hand-quota rule caps machine-assisted
-entries at half of any book. But the answer key verifies *correctness*,
+rejected mechanically), and a hand-quota rule separately bounds the
+machine lane's self-preference at half of any book. But the answer key
+verifies *correctness*,
 not *representativeness*: the annotation style, the vocabulary of
 explicitation, and the choice of which refusals to repair all carry the
 authors' hands. "Gold" in this paper means author-written and

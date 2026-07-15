@@ -5193,3 +5193,25 @@ token-position × waist-dim, the moment the skeleton trains.
   the system's author (answer key verifies correctness not
   representativeness; 'gold' = author-written + answer-verified).
   S11 now 10 paragraphs; the closing line unchanged.
+- **S7 DRAFTED (2026-07-15): the headline artifact, four movements per
+  the relay's brief.** paper/draft/s07_certification_lattice.md
+  (~1,250 words + figure block). 7.1 the lattice as decision structure
+  (four rungs zero-parameter/gold-free; chain of custody as four
+  invariances register/rendering/lineage/truth; the epigraph carried
+  by the entropy quadruple 0.000/0.846/0.212/0.116 at n=36, scope
+  stated). 7.2 dials at freeze (1195/1500 one-shot; cert-v2 912 at
+  1.0000; the frontier's trajectory 0.9982@38.1% -> 1.0000@60.8%;
+  zero-numerator language CROSS-REFERENCED to S11 not repeated; the
+  570R/1W broken certificate stated as the channel's own
+  counterexample). 7.3 specimens load-bearing ([71] 5/5
+  unanimous-wrong -> mouth's mandate; panel wild dissent 9/10 and
+  16/19 -> second wall; [78] 3/5 stable-wrong -> answer-vs-certify
+  dial split). 7.4 instrument aging by mechanism (rotation finding
+  0.59->0.988 Procrustes, 'nobody told it the sky had turned',
+  monitor exonerated; the rotation law in full with the monotone-
+  decline prediction RE-REGISTERED in the paper's own text; held-out-
+  examiner portfolio discipline). Figure block pinned in-file: F-7a
+  frontier, F-7b entropy basins, F-7c chain-of-custody diagram
+  (drawn; candidate Figure 1). ALSO: the S11 half-nit applied —
+  hand-quota mitigation re-aimed at the machine lane's
+  self-preference (same commit).
