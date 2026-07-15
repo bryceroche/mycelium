@@ -1,17 +1,30 @@
 # NEXT SESSION — start here (handoff, 2026-07-16)
 
-## **PAPER-1-FREEZE IS TAGGED.** Gate = GEN-14 (all records: alg4 388,
-bigtest 1195, cert-v2 1.0000@912, acceptance 8/8; manifest true). The
-campaign COMPLETE with measured saturation (81->58 for ~114 uniques,
-~0 marginal at same distribution; mechanism triple-confirmed: register +
-regularizer + positional rehearsal, entropy 0.212->0.010). Frontier
-counted and family-sorted.
+## **THE PAPER'S HOUSE IS BUILT.** Gate = GEN-14 (manifest true); tag
+paper-1-freeze in the tree. DRAFTED (paper/draft/): the front door
+(s00: title proposal 'Certify, Answer, Flag, Abstain: A Chain of
+Custody for Machine-Read Mathematics' + ~200-word abstract + 5-movement
+intro), s03 architecture (FRESH CENSUS: parser 4,000,813 — docs' ~3.2M
+was stale; 8.0M trained / 506M frozen / solver adds zero), s04 corpus,
+s05 repair-stack+boundary (5/6 MERGED), s07 lattice, s08 anchor, s09
+method (13-law table), s10 reading campaign, s11 limitations,
+contributions. FIGURES BANKED (paper/figures/, all under figstyle.py's
+self-citing contract): F-3a binding specimens, F-5a rotation 3-panel
+(assert-reproduces 0.593/0.988/0.155), F-7a frontier, F-7b entropy,
+F-7c chain-of-custody (candidate Fig 1), F-9a saturation, F-9b
+survivor cascade.
 
-**THE SESSION IS DRAFTING:** §11 first (paper/paper_skeleton.md has the
-skeleton + author policy); twelve figures from banked measurements
-(matplotlib); contributions section (two channels, one ledger, 20/20
-instincts). Fixture pins = the tag + isomorph exclusions. Publish on
-theshapeofthought.ai first, byline per the policy note.
+**REMAINING BEFORE ASSEMBLY:** (1) S2 related work (selective
+prediction + calibration mandatory; workspace / propose-dispose /
+neural-collapse / ARQ as the intro's framing demands); (2) F-8a/b
+(mouth separation; length-warp before/after — data banked:
+recognition_mouth.npz, mouth_length_correction.npz,
+math500_anchor_outcomes.json); (3) optional inventory figures
+(tombstone table rows, portfolio tail, withhold curve); (4) assembly:
+renumber (s05 merged 5+6), resolve cross-refs, tag-check pass (every
+number against the freeze tag); (5) CLAUDE.md census correction
+(~3.2M -> 4.0M parser). Publish theshapeofthought.ai first, byline per
+policy.
 
 **Post-paper queue:** entourage-14 duty; book 4 charter (DIFFERENT
 distributions: harder strata / AMC register / post-relation coverage —
