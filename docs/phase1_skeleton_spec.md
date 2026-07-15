@@ -4863,3 +4863,14 @@ token-position × waist-dim, the moment the skeleton trains.
   distinguishable (lane tags already on every entry) — the second
   point states BOTH gross items-per-hundred (campaign economics) and
   frontier-items-per-hundred (the paper's claim).
+- **BOOK 3, TRANCHE 2 (2026-07-15): 11/13 banked (book 3 = 33;
+  registry +5).** Banked: [115]'s composed Pythagorean-area (strip ->
+  isq -> mul -> fdiv, one graph), [11]'s 11-var double-composition,
+  the rest unanimous. THE SPECIMEN IN THE REFUSALS: [90]/[113] —
+  minimal 2-var isq-inverse dialects, a shape that banked 5/5 under
+  gen-9b, went VOTE-SHY under gen-13 ([90] right-once). **Fresh
+  heads have DIFFERENT shallow spots, not fewer** — the regime law's
+  corollary measured on page 33: the clean-ancestry head skipped
+  four generations of jostle AND four generations of incidental
+  rehearsal. v2 retries queue for tranche 3 (pad the graph); the
+  correct-but-shallow class gains its first gen-13-native members.
