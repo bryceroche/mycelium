@@ -4889,3 +4889,12 @@ token-position × waist-dim, the moment the skeleton trains.
   junction arc). And [115]'s four-door unanimous composition is the
   counter-evidence: clean ancestry traded memorized depth for
   STRUCTURAL REACH — the trade the debt-payment run existed to make.
+- **BOOK 3, TRANCHE 3 (2026-07-15): 9/10 all-unanimous; book 3 = 42;
+  registry +4 (+1 reclass).** [90]'s PADDED RETRY BANKED 5/5 — graph
+  mass restores what the fresh landscape shallowed; the basin recipe
+  confirmed for gen-13-native shallow spots. [113]'s persistence
+  unmasked as MY annotation error: its given (324) exceeds the 300
+  domain — value-range certificate, third catch of the class, not a
+  basin (the in-band rule holds; ceil(sqrt(300)) problems are
+  out-of-reach by domain, honestly counted). The volume proceeds:
+  rod holding, recipes absorbing, slope drawing near.
