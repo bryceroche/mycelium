@@ -5284,3 +5284,26 @@ token-position × waist-dim, the moment the skeleton trains.
   strongest authorship statement. Counts verified against the ledger
   before writing: 20 instincts (gut #20 = mirror), 9 tombstones,
   ~188 uniques, ~82% surgery lane.
+- **THE THREE CLAIM-FLAGSHIP FIGURES (2026-07-15): the registry's
+  re-prioritization executed.** All under the contract, all
+  self-citing. (1) F-9a SATURATION CURVE (claim 3): 81 -> 58 -> 61
+  vs cumulative uniques (0/114/188), the Delta+3 disclosed as vote
+  noise ON the plot, marginal-yield~0 named, and the S11 scope drawn
+  as a hatched unmeasured region ('the curve saturated; the library
+  did not close') — the screenshot-without-caption attack is
+  pre-empted in the pixels; the excluded stacked-continuation read
+  disclosed in a footnote. (2) F-5a ROTATION-NOT-DECAY (claim 5),
+  three panels per the relay's stronger form, computed from the REAL
+  gen-5/gen-9b centroid npz files with the audit's exact SVD — the
+  script ASSERTS reproduction (raw 0.593 / aligned 0.988 / residual
+  0.155 printed at render) and panel C shows per-kind residue
+  honestly: sel (0.965) and rel_add (0.976) are the least-aligned
+  kinds, a detail the mean hid. (3) F-3a BINDING THEOREM (claim 4),
+  specimens-as-rows per the relay's design note, zero schematic
+  spaces: [45] taxi + [7] faucet prose verbatim from book1.jsonl
+  (same RATE frame, z=-2.05; visibly different knots: 3-var chain vs
+  5-var double-mul junction, no shared class at n=94) against
+  bigtest[1187] + vtest[116] — the hash audit's ONE cross-fixture
+  isomorph pair (digest 468be959), terse vs verbose register, drawn
+  with identical knot layouts. Caption = the theorem. Figure count:
+  6 banked (F-3a, F-5a, F-7a/b/c, F-9a).
