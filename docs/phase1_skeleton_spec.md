@@ -4850,3 +4850,16 @@ token-position × waist-dim, the moment the skeleton trains.
   volume proceeds by the rulebook toward its slope point — the
   paper's last condition, its healthy-signature frame already
   pinned.
+- **TWO NOTES FOR BOOK 3'S ACCOUNTING (2026-07-15, relay):** (1) THE
+  [66] DEMOTION WATCH: the chained-fdiv wall's founding specimen
+  banked by mul-inverse rewrite under gen-13 — if remaining
+  chained-fdiv items route the same way, the wall demotes from
+  mechanism boundary to ANNOTATION RECIPE, the autopsy loses its
+  customer before firing, and the freeze's frontier table may hold
+  only counted solver-side families + [45]'s half-dissolved frame
+  thread. Census line owed at volume close: how many of the 58 fell
+  to recipes that PRE-DATED book 3 vs recipes it minted. (2) THE
+  TWO-COLUMN SLOPE: repair-lane banks vs surgery banks stay
+  distinguishable (lane tags already on every entry) — the second
+  point states BOTH gross items-per-hundred (campaign economics) and
+  frontier-items-per-hundred (the paper's claim).
