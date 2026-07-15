@@ -5155,3 +5155,22 @@ token-position × waist-dim, the moment the skeleton trains.
   paper than an open linear slope: the campaign measured its own
   completion. **THE PUBLICATION BAR'S CONDITIONS ARE MET: tag,
   freeze, publish.**
+- **THE FREEZE'S FINAL GRADING (2026-07-16, relay):** the entropy
+  registration graded — 'between the lineages' predicted, 0.010
+  printed: wrong in the happy direction; 188 naturally-varying prose
+  uniques were nearly COMPLETE calibration payment. The books didn't
+  just teach reading — THEY RE-TEMPERED THE POINTERS. **THREE
+  MECHANISMS UNDER ONE CLAIM: prose as register (the mouth's needle),
+  prose as regularizer (the gift point), prose as positional
+  rehearsal (the temperature dial).** No single-mechanism story
+  survives the table. **THE SATURATION SENTENCE, both halves for
+  §8:** +23-then-~0 measures the completion of THIS DISTRIBUTION'S
+  teachable content — what saturation does NOT claim is that books
+  are done: harder strata, new registers (AMC prose), post-tranche-3
+  relation coverage are DIFFERENT distributions — book 4's charter,
+  paper two's territory, the examiner rotation already scheduled.
+  The curve saturated; the library didn't close. DRAFTING BEGINS:
+  §11 first (honesty is the spine), twelve figures from banked
+  measurements, the contributions section plain: two channels, one
+  ledger, twenty-for-twenty, every claim gated by machinery that
+  couldn't be flattered.

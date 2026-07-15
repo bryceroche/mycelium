@@ -1,3 +1,29 @@
+# NEXT SESSION — start here (handoff, 2026-07-16)
+
+## **PAPER-1-FREEZE IS TAGGED.** Gate = GEN-14 (all records: alg4 388,
+bigtest 1195, cert-v2 1.0000@912, acceptance 8/8; manifest true). The
+campaign COMPLETE with measured saturation (81->58 for ~114 uniques,
+~0 marginal at same distribution; mechanism triple-confirmed: register +
+regularizer + positional rehearsal, entropy 0.212->0.010). Frontier
+counted and family-sorted.
+
+**THE SESSION IS DRAFTING:** §11 first (paper/paper_skeleton.md has the
+skeleton + author policy); twelve figures from banked measurements
+(matplotlib); contributions section (two channels, one ledger, 20/20
+instincts). Fixture pins = the tag + isomorph exclusions. Publish on
+theshapeofthought.ai first, byline per the policy note.
+
+**Post-paper queue:** entourage-14 duty; book 4 charter (DIFFERENT
+distributions: harder strata / AMC register / post-relation coverage —
+the curve saturated, the library didn't close); Meissner probe +
+twin-key read (banked machinery); [130]/[99] retries; chained-fdiv
+autopsy; OPERATION-APPLY admission; tranche-3 relations.
+Envs: ALG2=1 ALG_FTYPES=6 ALG_DUP=1; GATE=.cache/phase1_gen14_head.
+
+
+---
+# PRIOR HANDOFF BELOW
+
 # NEXT SESSION — start here (handoff, 2026-07-15 late)
 
 ## COLD START: THE SECOND SLOPE POINT PRINTED NEGATIVE (−10 disjoint;
