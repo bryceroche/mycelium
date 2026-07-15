@@ -4775,3 +4775,25 @@ token-position × waist-dim, the moment the skeleton trains.
   the verdict print says 'gen-11' — text-only, manifest correct).
   **THE FREEZE'S FIRST CONDITION IS MET.** Remaining: book 3's
   second slope point. Then: tag, freeze, publish.
+- **THE RECIPE SENTENCE + TWO FINDINGS (2026-07-15, relay):** gen-13's
+  sweep was four banked verdicts cashed in one run — clean ancestry
+  (interference matrix), full heat (schedule probe), flat mix
+  (curriculum tombstone), reading-inclusive corpus (dose law's gift
+  point). Nothing was luck; the control room prescribed and the run
+  obeyed. (1) **[45]'s expression was partly LINEAGE-MEDIATED**: the
+  trunk distance is real but a head grown without four generations of
+  jostle reads through it — the waiting room may hold ONE autopsy
+  candidate (chained-fdiv) and ZERO confirmed structural patients;
+  census line owed before the frontier table freezes. (2) **THE
+  REGIME LAW BOUNDED**: hard restarts jostle ESTABLISHED heads; a
+  fresh head has no basins to displace — it only builds (the
+  displacement dial never twitched at full heat). The pre-staged
+  merge verdict dies unused — staging cost a sentence, not needing it
+  cost nothing; that asymmetry is the method. FIRED: entourage under
+  gen-13 (specialist remine on fresh 5-register corpora, centroids in
+  gen-13 fst space, mouth rebuilt from mixed12 + length refit,
+  post-gen-13 census with the straight ruler, manifest updates), THEN
+  book 3's lane classifier (fresh harvest candidates — the bootstrap
+  k re-priced under the new gate). Book 3 charter: rod <=50% machine,
+  diversity guard per tranche, diet = the 13 coverage gaps + the
+  96-class column.
