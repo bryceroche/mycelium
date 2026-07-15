@@ -5119,3 +5119,15 @@ token-position × waist-dim, the moment the skeleton trains.
   gut days before the freeze instead of by a reviewer after — the
   audit-that-confirms, with a clause as its fee. Read 2 (twin-key
   entropy) rides the gen-14 window with the KV machinery.
+- **GEN-14 FIRED (2026-07-16, Bryce's word): the freeze's last
+  experiment.** The proven recipe at full strength: hot flat 32k
+  from gen-7b clean ancestry on mixed13 (all THREE books x10 in
+  corpus, ~188 prose uniques, states banked). Bars = gen-13's,
+  unchanged. THE CONVOY READS AT CLOSE: battery + manifest-writing
+  verdict; the ENTROPY PRE-READ (small-n curve between gen-13's
+  0.212 and gen-9b's 0.003 = prose as positional rehearsal, the
+  books-scale claim's third mechanism); the DISJOINT CENSUS as the
+  THIRD SLOPE POINT at the recipe that works (pre: gen-13 carried
+  28/knotted 58); Meissner + twin-key next session. Gradient logger
+  DEFERRED (the JIT consumes grads; surgery not worth blocking the
+  run). Three slope sentences staged; the tag waits on the verdict.
