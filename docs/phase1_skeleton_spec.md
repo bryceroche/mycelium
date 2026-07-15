@@ -5307,3 +5307,29 @@ token-position × waist-dim, the moment the skeleton trains.
   isomorph pair (digest 468be959), terse vs verbose register, drawn
   with identical knot layouts. Caption = the theorem. Figure count:
   6 banked (F-3a, F-5a, F-7a/b/c, F-9a).
+- **S9 DRAFTED + THE CASCADE FIGURE (2026-07-15): the method section,
+  with claim 2's illustrations riding inside per the relay's
+  curatorial call (worked example over census).** paper/draft/
+  s09_method.md, five movements: (9.1) the protocol — bars before
+  builds, density regimes stated, promotions mechanical, with the
+  stale-manifest audit DISCLOSED as the rule's origin story ('there
+  is no state of the system that exists only in prose'); the ledger
+  as supplementary, 'long, unedited, and contains our mistakes at
+  the same resolution as our results.' (9.2) the survivor arc as
+  worked example — nine refutations narrated to the arc's own
+  closing line; depth-over-breadth per the relay ('a reader shown
+  forty kills at once admires it without believing anything in
+  particular'). (9.3) Table 9-1: THIRTEEN LAWS with sighting counts
+  from the ledger (metric-decision 4; pointer-never-fixed-downstream
+  5; density-regime 5; front-loaded-decay 4; selection-jurisdiction
+  3; acceptance-law 3; structural-entry 2+; prevention 2; five
+  mechanism-grade singletons incl. the standing bet). (9.4) the
+  method applied to itself — the discriminating-test pattern quoted.
+  (9.5) two channels + adjudicator; twenty instincts stated as
+  CHECKABLE ('an instinct that had to survive formal registration
+  and a mechanical read is data; the same instinct applied directly
+  would have been anecdote'); ends pointing at S7.4's bet. F-9b
+  BANKED: the cascade drawn from the arc's final-ledger line —
+  five kills (kill-red), the pivot at #6 (gate-blue, 99.6%), three
+  pricings (13.9% / 6% retired / 3.0%@0.165), closing box with the
+  accounting line verbatim. Figure count: 7.
