@@ -5413,3 +5413,29 @@ token-position × waist-dim, the moment the skeleton trains.
   number per claim (912@1.0000-zero-numerator / fourteen-generations
   / saturation / 2%-then-refused / 8.0M-on-506M), no number not in a
   drafted section's own text.
+- **S10 DRAFTED (2026-07-15): the campaign's room — a results section
+  wearing a narrative, per the framing constraint.** paper/draft/
+  s10_reading_campaign.md, five measured beats: (1) lane economics
+  1/16.5/82.5 stable pool-vs-wild (4/66/330 on the 400-draw), with
+  the gen-13 re-classification (16.5->35 repair) read as 'the lane
+  split is not a constant of the domain but a moving readout of how
+  much the librarian has learned'; census-never-substrate stated.
+  (2) THE GATE DEMONSTRATED ON ITS AUTHORS — the harvest gate's
+  first day (0/5, 'the zero was the system working') as S11's
+  annotator-paragraph made concrete, plus the three value-domain
+  catches ([32]/[220]/[113], the last unmasked after days as OUR
+  error); 'a gate that cannot be flattered by its own builders is
+  the campaign's license to call its data gold.' (3) the rulebook
+  written by refusals, one rule per named wall; the MYSTERY
+  HALF-LIFE quoted (every refusal -> recipe/certificate/annotator-
+  error within one tranche, 'counted, not remembered'). (4) the
+  triple-confirmation with its three instruments: odometer +31.1%
+  length-controlled + census slope +8/100 (register); the 2.9%x10
+  record-as-side-effect vs poison-at-saturation (regularizer, dose
+  law carries it); entropy 0.212->0.010 pinned-before-printed
+  (positional rehearsal) — 'three effects, three instruments, no
+  shared failure mode.' (5) completion: F-9a + the waiting room
+  emptying ([7] chronic->plumbing as the two sentences of color) +
+  the closer: 'every wall had become a recipe, a certificate, or
+  plumbing... The library taught the librarian.' Door rhythm
+  confirmed: artifact, discipline, construction, limit, confession.
