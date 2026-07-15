@@ -4753,3 +4753,25 @@ token-position × waist-dim, the moment the skeleton trains.
   two tags a later ring. Publish on our own ground first, byline as
   declared, venues after. SEQUENCE: gen-13's word -> book 3's second
   point -> tag -> freeze -> publish.
+- **GEN-13 PROMOTED (2026-07-15): THE LINEAGE DEBT IS PAID — every
+  bar passed, the manifest written, the word earned.** THE TABLE:
+  **alg4test 385 (bar 380 — the debt paid at its root: clean gen-7b
+  ancestry + full heat + the reading-inclusive corpus beat armB's
+  384 from a complete stack)**; **acceptance 8/8 — [45] ITSELF
+  BANKED**: the chronic taxi came home under the clean-ancestry
+  retrain (the only-[45]-may-miss clause wasn't even needed; the
+  frame-entanglement certificate stands for RAW prose, but its
+  dialect now parses stably); bigtest **1195** (record, +46 over the
+  reader); alg2test 635, dagtest 689, dag7btest 579, dag8test 559,
+  vtest 600 (all records); per-kind sq 0.814 / fdiv 0.739 / coupled
+  0.745 / ladder 0.586 (all records); val 0.9059 (record); **cert-v2
+  1.0000 at 913 coverage (60.9%)** — precision perfect at the
+  highest coverage ever. THE PROMPT-CRITICAL RUN HELD EVERY BASIN:
+  the hard restart from clean ancestry displaced nothing the panel
+  watches — heat + flat mix + the prose regime is the recipe the
+  whole junction arc was searching for. GATE = GEN-13
+  (phase1_gen13_head; manifest gen_id 13; entourage duty owed per
+  protocol: specialist remine + centroids next pass; cosmetic:
+  the verdict print says 'gen-11' — text-only, manifest correct).
+  **THE FREEZE'S FIRST CONDITION IS MET.** Remaining: book 3's
+  second slope point. Then: tag, freeze, publish.
