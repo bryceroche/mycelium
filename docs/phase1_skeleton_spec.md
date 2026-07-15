@@ -4933,3 +4933,8 @@ token-position × waist-dim, the moment the skeleton trains.
   minting the tools that read the next books — the recursion's thesis
   one floor below the macro ladder). Whichever prints, the sentence
   exists.
+- **BOOK 3, TRANCHE 5 (2026-07-15): 9/9 ALL-UNANIMOUS; book 3 = 62;
+  registry +4 (primality x2, gcd, lcm — the number-theory families
+  counting up).** The fraction/decimal/ratio strip family carried
+  the tranche clean; three perfect tranches running. ~2 tranches to
+  the count, then the battery and its three staged signatures.
