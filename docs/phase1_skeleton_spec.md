@@ -5036,3 +5036,20 @@ token-position × waist-dim, the moment the skeleton trains.
   law deeper: binding enters as structure, and STRUCTURE INCLUDES
   POSITION. Eighteen for eighteen — the drawer held the thermometer
   of the one attention system we built ourselves.
+- **THE REMEDY LAW + GEN-14'S PRE-READ (2026-07-15, relay):** the
+  pointer-law remedy family reaches terminal form — masked attention
+  -> span supervision -> a comma -> alphabetical discipline ->
+  WHITESPACE: five fixes, six orders of magnitude of cost, one law,
+  the cheapest newest. **The employment law for remedies: they too
+  get smaller on contact with mechanism.** GEN-14 PRE-REGISTERED
+  (pinned before the run): its diet naturally exercises a wider
+  positional band (three books of variable-length prose pairs) —
+  expectation: gen-14's small-n entropy curve sits BETWEEN gen-13's
+  (0.212) and gen-9b's (0.003) — the books accidentally paying the
+  calibration debt the clean ancestry incurred. Prints -> the
+  books-scale claim gains a third mechanism (PROSE AS POSITIONAL
+  REHEARSAL); doesn't -> ballast stands at zero cost. GEN-14 = the
+  freeze's last experiment: full hot flat retrain from clean
+  ancestry, all three books (~188 uniques) in corpus, temperature
+  dial armed on the displacement watch, three slope sentences
+  staged. Awaits the word.
