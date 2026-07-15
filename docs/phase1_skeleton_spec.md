@@ -5439,3 +5439,24 @@ token-position × waist-dim, the moment the skeleton trains.
   the closer: 'every wall had become a recipe, a certificate, or
   plumbing... The library taught the librarian.' Door rhythm
   confirmed: artifact, discipline, construction, limit, confession.
+- **THE FRONT DOOR DRAFTED (2026-07-15): title, abstract, intro — the
+  house is whole, asterisk pending S2.** paper/draft/s00_front_door.md.
+  TITLE PROPOSED (Bryce's veto at venue selection): 'Certify, Answer,
+  Flag, Abstain: A Chain of Custody for Machine-Read Mathematics' —
+  the four words lead per the lattice-is-the-brand vote; the subtitle
+  names the mechanism. ABSTRACT ~200 words under the pinned rules:
+  opens on the decision claim ('output should not be an answer; it
+  should be a decision'); one number per claim from the pinned set
+  (912@1.0000-zero-numerator / 8.0M-on-506M / 2%-then-refused-100% /
+  saturation / fourteen generations); the boundary stated PROUDLY
+  in-abstract; closes on ledger-as-supplementary + the standing bet.
+  Every abstract number verified present in a drafted section. INTRO
+  in the five-movement rhythm (artifact, discipline, construction,
+  limit, confession): thesis lands in paragraph one ('a depth gauge
+  called a compass'); Fig. 1 cited in paragraph two; the ledger
+  sentence quoted whole; the campaign in three sentences with the
+  0/5 incident; the limit at full strength with S11 recommended as
+  the skeptical reader's first stop; reader's map closes. Assembly
+  notes pinned in-file (renumbering, S2's literature list). REMAINING
+  before assembly: S2 related work; the S8 figure pair (F-8a/b);
+  optional inventory figures; tag-check pass.
