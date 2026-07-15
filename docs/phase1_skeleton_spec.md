@@ -5357,3 +5357,30 @@ token-position × waist-dim, the moment the skeleton trains.
   arc naming unified (contributions), five remedies (Table 9-1),
   channels frame unified ('two machine channels and a human
   adjudicator').
+- **S8 DRAFTED (2026-07-15): the wound-and-cure section, framed per
+  the relay's credibility note.** paper/draft/s08_external_anchor.md,
+  four movements: (8.1) THE CREDIBILITY SENTENCE LEADS — the anchor
+  is the only measurement whose INPUTS carry no author fingerprint
+  (all other fixtures generated or author-annotated); 'the examiner
+  rather than the exam,' verdict reported first and at full strength.
+  (8.2) the wound as registered: 2/97, the 63 impossible
+  certificates, flat abstention 67.5/66.1 ('the system did not know
+  what it did not know'); the mechanism as the section's theorem —
+  all five renderings thrown by the same arm; 'unanimity certifies
+  reading stability, and stability coincides with truth only
+  in-distribution'; the ledger's honest sentence quoted verbatim
+  (distribution-bounded certification). (8.3) the funnel frame + the
+  cure: zero-parameter gate, selection-safe by construction, AUC
+  1.0000, foreign refused 100.0% at 1% native false-refusal, 160/160
+  anchor false-certs refused — THEN the gate's own S11 entry reported
+  as part of the result: the length warp (r -0.825 -> -0.024), wall
+  confirmed at 100% on the straightened ruler, zero-point 0.1871,
+  vintage asserted by the battery. (8.4) the gradient at its true
+  faintness (0.236-0.273 vs 0.044; symbol-dense nearest — prose-style-
+  before-vocabulary hypothesis logged open); demand census (62.2%
+  plain-integer); close = 'recognition buys honesty now; coverage
+  buys capability later,' anchor left seated as S7.4's examiner.
+  Figure candidates pinned in-file: F-8a mouth separation, F-8b the
+  length warp before/after. The S5/S6 MERGE DECISION banked from the
+  relay: one section, 'The repair stack and its boundary,' arc
+  outcome as boundary, S9.2 owns the narrative.
