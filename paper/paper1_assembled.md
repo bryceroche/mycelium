@@ -57,6 +57,8 @@ channel covers 60.8% of the widest fixture at measured 1.0000
 precision, with the zero-numerator arithmetic stated where the number
 is (§6.2, §10).
 
+![**Figure 1.** The chain of custody: four gates, four invariances (register, rendering, lineage, truth), five real trajectories — every gate annotated with the failure it provably catches.](figures/out/f7c_chain_of_custody.png)
+
 The paper's second product is the **method**. Every substantive claim
 began as a registered prediction with kill bars pinned before
 measurement; promotions are performed by battery scripts that either
@@ -227,6 +229,8 @@ frame and a structural role, and it lives in neither side alone.
 Figure 3 shows the four specimens; the structure-side sweep that found
 graph-twins across fixture boundaries is §4's isomorph audit, and both
 directions' full measurement records are in the ledger.
+
+![**Figure 3.** The binding theorem by specimen: same frame, different knots (top); same knot, different surfaces (bottom). All four items and both graphs are real, from the banked fixtures.](figures/out/f3a_binding_theorem.png)
 
 The two-jaws design is this theorem applied. If concepts are bindings,
 then recognition and abstraction must live where the binding is made —
@@ -516,6 +520,8 @@ structural reason the lattice ends at an external key rather than at
 any internal temperature: no amount of introspective calibration
 substitutes for an invariance the system cannot fake.
 
+![**Figure 2.** Vote entropy by outcome class (n = 36 pilot): entropy separates shallow from deep and cannot separate deep-wrong from deep-correct — temperature is orthogonal to truth.](figures/out/f7b_entropy_basins.png)
+
 ### 6.2 The dials at freeze
 
 At the frozen generation, the widest fixture (1,500 held-out problems)
@@ -532,6 +538,8 @@ frontier's history across generations shows the certification channel
 widening — from 0.9982 at 38.1% coverage in its first measurement to
 1.0000 at 60.8% at freeze — as the reading campaign (§9) taught the
 parser the register rather than teaching it the test.
+
+![**Figure 4.** The precision–coverage frontier: the vote-threshold ladder at first measurement, and the certification channel widening across generations to the freeze point (912/1500 at measured 1.0000).](figures/out/f7a_precision_coverage.png)
 
 The statistical fine print is inherited from §10 and not repeated here:
 1.0000 on 912 is a zero-numerator bound, not a demonstration of zero,
@@ -593,6 +601,8 @@ structural, not statistical: geometric instruments are re-anchored
 every generation as a standing duty, and cross-generation geometric
 comparisons are made only after alignment. (The panel is immune by
 construction — its votes are answers, not coordinates.)
+
+![**Figure 8.** Drift is rotation, not decay: raw constellations (mean cos 0.59), Procrustes-aligned (0.988), and the per-kind residuals reported honestly. Computed from the actual gen-5 and gen-9b centroids; the script asserts reproduction.](figures/out/f5a_rotation_not_decay.png)
 
 The deeper principle is selective. **Any signal promoted to a gate
 becomes selected against**: once a signal joins the acceptance path,
@@ -681,6 +691,8 @@ certificates refused at the threshold**. Figure 5 maps every population
 against the gate's ruler. The lattice behind the gate now signs nothing
 it cannot read.
 
+![**Figure 5.** The register map: the native fixture, the census pool's hundred per-item reads, and the foreign benchmark's banked band on one ruler (raw vintage; corrected reads in Figure 6).](figures/out/f8a_register_map.png)
+
 The gate then earned its own §10 entry, which we report as part of the
 result. Its distance estimator pooled variable-length evidence and
 thereby inherited a sample-size coordinate — within-register distances
@@ -693,6 +705,8 @@ foreign refusal held at 100% length-controlled, and the harvest
 zero-point re-read at 0.1871 (from a warped 0.243). Every mouth reading
 in this paper is the corrected vintage; the battery asserts the
 correction's presence rather than trusting anyone to remember it.
+
+![**Figure 6.** The length warp, before and after: raw distance correlates with length at r = −0.825; the 1/length correction takes it to −0.024, and the foreign refusal holds at 100% on the straightened ruler.](figures/out/f8b_length_warp.png)
 
 ### 7.4 The gradient, honestly, and the constructive close
 
@@ -769,6 +783,8 @@ self-repair ratchet leaked, was fixed, and bought 6%; input-mark
 beacons bought 3.0% at precision 0.165. The arc's closing accounting is
 the method in one line: **nine registered refutations, four laws, two
 retired builds, one working instrument, one closed population.**
+
+![**Figure 7.** The survivor cascade: nine registered refutations — five kills, the mechanism named at step six, three repairs priced and declined — ending in a priced population, not a mystery.](figures/out/f9b_survivor_cascade.png)
 
 The verdict — this population is detect-and-abstain under current
 machinery — is a measurement, not a surrender, and it did the work a
@@ -925,6 +941,8 @@ certificate, or plumbing, and the one candidate that may remain is
 named in §10. The books did not just teach the parser to read; they
 re-tempered its pointers, regularized its dialect, and wrote their own
 rulebook. The library taught the librarian.
+
+![**Figure 9.** The saturation curve, with its scope drawn on the plot: the campaign measured its own completion for this distribution; the library did not close.](figures/out/f9a_saturation_curve.png)
 
 
 ## 10. Honest Limitations

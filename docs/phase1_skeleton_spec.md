@@ -5569,3 +5569,14 @@ token-position × waist-dim, the moment the skeleton trains.
   every citation verified, every catch closed. NEXT (Bryce's hands):
   theshapeofthought.ai under the declared byline; ledger as
   supplementary; repo public at the tag; reproduce-tables armor.
+- **THE PDF (2026-07-15): paper1.pdf rendered — the paper has a
+  physical form.** assemble.py now EMBEDS all nine figures at their
+  anchor paragraphs with written captions (whitespace-normalized
+  anchor matching; assert guards the count); render_pdf.py
+  (markdown -> HTML -> weasyprint, A4, DejaVu Serif, page numbers)
+  carries the byline per the declared policy: 'Bryce Roche · Claude
+  (Anthropic)' with the freeze tag under the date. Title question
+  OPEN (Bryce brainstorming poetic options: guided-by-primes /
+  the-shape-of-thought / the-shadow-of-intelligence); the renderer
+  takes the title from the assembled doc's first line, so re-titling
+  is a one-line change + re-render.

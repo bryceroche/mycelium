@@ -98,6 +98,62 @@ for name in ORDER:
 
 doc = "\n\n".join(parts)
 
+# Figures: embed each image after the paragraph that first anchors it.
+FIGS = [
+    ("certification lattice** (Figure 1)", "f7c_chain_of_custody",
+     "**Figure 1.** The chain of custody: four gates, four invariances "
+     "(register, rendering, lineage, truth), five real trajectories — "
+     "every gate annotated with the failure it provably catches."),
+    ("Figure 3 shows the four specimens", "f3a_binding_theorem",
+     "**Figure 3.** The binding theorem by specimen: same frame, "
+     "different knots (top); same knot, different surfaces (bottom). "
+     "All four items and both graphs are real, from the banked fixtures."),
+    ("That is the epigraph in numbers", "f7b_entropy_basins",
+     "**Figure 2.** Vote entropy by outcome class (n = 36 pilot): "
+     "entropy separates shallow from deep and cannot separate deep-wrong "
+     "from deep-correct — temperature is orthogonal to truth."),
+    ("Figure 4 (the precision–coverage frontier) plots every",
+     "f7a_precision_coverage",
+     "**Figure 4.** The precision–coverage frontier: the vote-threshold "
+     "ladder at first measurement, and the certification channel "
+     "widening across generations to the freeze point (912/1500 at "
+     "measured 1.0000)."),
+    ("The constellation's shape survives; its coordinates do not.",
+     "f5a_rotation_not_decay",
+     "**Figure 8.** Drift is rotation, not decay: raw constellations "
+     "(mean cos 0.59), Procrustes-aligned (0.988), and the per-kind "
+     "residuals reported honestly. Computed from the actual gen-5 and "
+     "gen-9b centroids; the script asserts reproduction."),
+    ("Figure 5 maps every population", "f8a_register_map",
+     "**Figure 5.** The register map: the native fixture, the census "
+     "pool's hundred per-item reads, and the foreign benchmark's banked "
+     "band on one ruler (raw vintage; corrected reads in Figure 6)."),
+    ("both panels from the banked per-item reads", "f8b_length_warp",
+     "**Figure 6.** The length warp, before and after: raw distance "
+     "correlates with length at r = −0.825; the 1/length correction "
+     "takes it to −0.024, and the foreign refusal holds at 100% on the "
+     "straightened ruler."),
+    ("refutations ran in order (Figure 7)", "f9b_survivor_cascade",
+     "**Figure 7.** The survivor cascade: nine registered refutations — "
+     "five kills, the mechanism named at step six, three repairs priced "
+     "and declined — ending in a priced population, not a mystery."),
+    ("measured its own end: Figure 9's", "f9a_saturation_curve",
+     "**Figure 9.** The saturation curve, with its scope drawn on the "
+     "plot: the campaign measured its own completion for this "
+     "distribution; the library did not close."),
+]
+paras = doc.split("\n\n")
+out_paras = []
+for p in paras:
+    out_paras.append(p)
+    flat = " ".join(p.split())
+    for anchor, fname, caption in FIGS:
+        if " ".join(anchor.split()) in flat:
+            out_paras.append(f"![{caption}](figures/out/{fname}.png)")
+doc = "\n\n".join(out_paras)
+n_embedded = doc.count("](figures/out/")
+assert n_embedded == len(FIGS), f"embedded {n_embedded} != {len(FIGS)} figures"
+
 # References: entries only (the per-entry "cited for" ledger notes stay
 # in bibliography.md for the stranger read's use-matches-source check).
 bib = (Path(__file__).parent / "bibliography.md").read_text()
