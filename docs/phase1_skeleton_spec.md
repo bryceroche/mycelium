@@ -4672,3 +4672,34 @@ token-position × waist-dim, the moment the skeleton trains.
   and its ckpt feeds the next continuation regardless); the books
   campaign's verdicts are UNTOUCHED by this kill — books scale
   either way.
+- **GUT #17: THE CRITICALITY FRAME (2026-07-15, Bryce + relay) — the
+  reactor audit.** Mycelium runs OPPOSITE criticality regimes in one
+  reactor: knowledge chains SUPERCRITICAL by design (refusal->recipes
+  k>1; instinct->instruments; book->cheaper-book — why December
+  became arithmetic), error chains RODDED. THE LOOP TABLE:
+  | loop | k (measured) | moderator | rod |
+  | DAG error fan-out | k=out-degree | constraint density (=neutron
+    absorption; invisible-wrongs were escaped neutrons) | integrality
+    jaw (expiring), the lattice as containment |
+  | training displacement | hard restart k>1 (gen-9 jostle cascade);
+    gentle continuation k<1 (measured) | LEARNING RATE | regime law |
+  | prose dose | 340-epoch k>1 (−243); 3%-share k<1 (+record) |
+    share x reps (both declared) | displacement guard |
+  | repair recovery | SUBCRITICAL (19.6->7.7->1.1->0) | — | rounds cap |
+  | **THE BOOTSTRAP (the live concern — k GROWS with every
+    success)** | book-2 k~0 (4/100 machine); book-3 chartered
+    heavier; the recursion stacks a second amplifier | the answer
+    key absorbs WRONGNESS but passes NARROWNESS untouched —
+    self-preference compounds through verified-correct links | the
+    diversity guard (thermometer) + THE HAND QUOTA (control rod) |
+  **THE ROD DEPTH, PINNED BEFORE BOOK 3 (hard number, adjustable
+  only by pre-fire adjudication): machine-banked entries <=50% of
+  any book's volume; hand-gated (L2 repair + L3 surgery) >=50%;
+  the diversity guard's distance-distribution comparison runs at
+  every tranche boundary in machine-heavy books, not just at
+  close.** GEN-13 NOTE: a clean-ancestry retrain is the
+  PROMPT-CRITICAL condition (hard restart) — the acceptance-panel
+  displacement watch is its instrumentation, now with the frame
+  explaining why that bar outranks its neighbors. Not a bomb, not a
+  dead pile: a reactor — knowledge supercritical, error rodded,
+  instruments as the control room. Seventeen for seventeen.
