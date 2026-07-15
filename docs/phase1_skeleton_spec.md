@@ -4962,3 +4962,14 @@ token-position × waist-dim, the moment the skeleton trains.
   distribution thins near 300 — starvation wearing a number range)?
   The kind-rehearsal matrix's value histogram answers it; the two
   causes have different remedies — one is physics, one is a ration.
+- **BOOK 3 CLOSES AT n=84 (2026-07-15; tranche 7: 11/12).** 75
+  hand-gated dialects + 9 machine-banked across 7 tranches; rod at
+  10.7% machine (well under depth); registry grew ~30 certificates
+  across the differentiated taxonomy; the mystery half-life held
+  under one tranche throughout. [130] (13-var deviation chain)
+  right-but-shy — retry material. THE BATTERY FIRES: book-3 prose
+  pairs -> pre-reads under gen-13 -> mixed13 (dose declared) ->
+  reading continuation -> the four reads with three signatures
+  staged, two slope columns, the provenance census, and the
+  noise-floor physics-vs-ration check. The paper's last number is
+  in the pipeline.
