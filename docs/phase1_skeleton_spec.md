@@ -5215,3 +5215,23 @@ token-position × waist-dim, the moment the skeleton trains.
   (drawn; candidate Figure 1). ALSO: the S11 half-nit applied —
   hand-quota mitigation re-aimed at the machine lane's
   self-preference (same commit).
+- **THE FIGURE CONTRACT + F-7c DRAWN (2026-07-15): the paper has a
+  face.** (1) paper/figures/figstyle.py — the style contract every
+  figure imports: one palette (Okabe-Ito, roles named ok/kill/wild/
+  alt/gate), one rcParams block, and the SELF-CITING STAMP: every
+  saved figure carries freeze tag + gen id + parser hash in a visible
+  footer AND embedded in PDF/PNG metadata (Subject/Keywords = the
+  manifest's full hash block + fixtures read) — a figure detached
+  from the paper still names its evidence; retrofitting-fourteen-
+  figures day is now unrepresentable. (2) paper/figures/
+  f7c_chain_of_custody.py -> out/f7c PDF+PNG — candidate Figure 1,
+  drawn per the relay's masterstroke note: the SPECIMENS LIVE IN THE
+  CHAIN. Five trajectories against the four gates (register/
+  rendering/lineage/truth): the in-register item runs the chain to
+  CERTIFIED; [71] dies at the mouth with its ghost dashed through
+  the vote ('would vote 5/5 — unanimous, wrong'); wild stable votes
+  die at the panel ('dissents 9/10, the second wall'); [78] splits
+  off at the vote to ANSWERED-NOT-CERTIFIED (0.833); the one broken
+  certificate (570R/1W) runs everything and dies at the key. The key
+  drawn dashed: measurement only — grades the machinery, never
+  deploys. Stamp reads paper-1-freeze-4-g085296d.
