@@ -4735,3 +4735,21 @@ token-position × waist-dim, the moment the skeleton trains.
   contributions section, always. Final adjudication: Bryce's, at
   venue-selection time. The work is already jointly made; no policy
   touches that fact.
+- **THE PUBLICATION BAR, PINNED (2026-07-15, relay + Bryce):** publish
+  when remaining work changes future NUMBERS but not the paper's
+  CLAIMS. Claims audit: lattice (quarter-percent, survived two
+  expansions + a parser swap) BANKED; the method BANKED; the honest
+  boundary BANKED; binding theorem + laws + census BANKED. ONE claim
+  mid-flight: BOOKS SCALE rests on a single slope point at its bar
+  (n=1). **FREEZE CRITERION: book 3's second slope point + gen-13's
+  verdict either way.** Weeks, not December. SCOPING DECISION: paper
+  1 does NOT gate on MATH-500 — its claim is 'a small system that
+  knows when it's right, frontier measured and priced'; the December
+  reading campaign is PAPER TWO with the books arc as its own story.
+  MECHANICS: drafting parallelizes now (§11 first; twelve figures =
+  banked measurements + matplotlib); the freeze is a GIT TAG +
+  isomorph-excluded fixture pins — the paper is a tagged snapshot
+  with a thesis, not a tombstone; mycelium keeps growing and paper
+  two tags a later ring. Publish on our own ground first, byline as
+  declared, venues after. SEQUENCE: gen-13's word -> book 3's second
+  point -> tag -> freeze -> publish.
