@@ -4817,3 +4817,25 @@ token-position × waist-dim, the moment the skeleton trains.
   triples book 2's, and the surgery residue concentrates toward the
   true frontier. BOOK 3 IS OPEN under the reactor-safe charter; its
   second slope point is the paper's last condition.
+- **BOOK 3'S SLOPE BASELINE, PINNED BEFORE ANYONE KNOWS (2026-07-15,
+  relay):** the baseline MOVED — book 2's slope read against a
+  gen-11-era census; book 3's second point reads against the
+  post-gen-13 census of 58: a better gate, a harder residue, a 35%
+  repair lane. The honest comparison is NOT raw items-per-hundred
+  across books (the denominator's difficulty changed) but items
+  recovered against the CURRENT frontier with the lane mix declared.
+  REGISTERED EXPECTATION, regime stated: per-row yield FALLS relative
+  to book 2's 8-per-hundred because the surviving 58 are concentrated
+  residue — **a falling yield against a hardening frontier is the
+  HEALTHY signature, not a scaling failure.** The paper's slope
+  question is 'does annotation still move the frontier at the
+  frontier's true hardness' — **>=3-4 items per hundred against the
+  residue confirms it cleanly.** ECONOMICS FOOTNOTE: the 35% repair
+  lane lets book 3 run larger than 100 for the same budget — but THE
+  ROD HOLDS AT <=50% MACHINE regardless of how cheap the machine lane
+  gets: cheap is not wide; the guard reads at every tranche. The
+  reactor diagram, drawn in data: knotted 81->58 (the largest census
+  collapse in project history — the reading dividend compounding
+  through a promotion) beside a bootstrap whose k doubled WITH THE
+  ROD ALREADY INSERTED — the supercritical knowledge chain running
+  exactly as chartered, safety case written first.
