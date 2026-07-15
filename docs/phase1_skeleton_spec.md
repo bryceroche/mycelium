@@ -5580,3 +5580,22 @@ token-position × waist-dim, the moment the skeleton trains.
   the-shape-of-thought / the-shadow-of-intelligence); the renderer
   takes the title from the assembled doc's first line, so re-titling
   is a one-line change + re-render.
+- **THE TITLE RULING + THE GLITCH INSPECTION (2026-07-15): four
+  words, one title, everywhere.** THE COLLISION CHECK CONFIRMED the
+  relay's memory: 'The Shape of Thought: How Mental Adaptations
+  Evolve' (H. Clark Barrett, Oxford University Press, 2015) — a
+  cognition book, exactly the adjacent field; adopting the name would
+  cost discoverability and invite the derivative jab. RULING per the
+  relay's cast vote: the paper is 'Certify, Answer, Flag, Abstain: A
+  Chain of Custody for Machine-Read Mathematics' in every voice;
+  brand unity achieved by HOSTING (title = contribution, address =
+  brand); 'Guided by Primes' banked for Paper II; 'The Shadow of
+  Intelligence' to the essay, owned in prose. THE GLITCH INSPECTION:
+  neither reported artifact reproduces in the rendered PDF — page 9's
+  rung list carries its numerals and the References their bullets
+  (verified visually, pages 9/24/25) — the orphaned-marker symptoms
+  match text-extraction artifacts on the reading side, not the
+  typesetting. THE INSPECTION'S REAL CATCH: page 9 read 'cross-model
+  panel' where Figure 1 and S6.2 say cross-lineage — the
+  one-name-per-organ rule applied, both occurrences unified,
+  re-rendered. paper1.pdf, 25 pages, is the publication artifact.

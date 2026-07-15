@@ -34,7 +34,7 @@ different question. The **recognition gate** asks *is this input the
 kind of text the system was calibrated on?* — an input-space check,
 before any parse. The **vote** asks *is the parse invariant to how the
 problem is rendered?* — five retellings must produce the same answer.
-The **cross-model panel** asks *is the answer invariant to which
+The **cross-lineage panel** asks *is the answer invariant to which
 training lineage produced the model?* — independently trained siblings
 must agree. The **answer key** asks *is it true?* Register, rendering,
 lineage, truth: four invariances, in that order, and the sections below
@@ -96,7 +96,7 @@ it reads the input's register upstream of any parse, and it reads
 that intercepts the case the vote provably cannot.
 
 **The second wall.** For prose that slips past the gate, the
-cross-model panel provides an independent check: on the census
+cross-lineage panel provides an independent check: on the census
 fixture's raw-prose items where the gate model produced stable
 unanimous votes, the panel *dissented on 9 of 10* (a later generation:
 16 of 19). In-register, the panel is nearly idle — the single
