@@ -5,7 +5,9 @@
 Every substantive claim in this paper began as a *registered
 prediction*: an expected outcome, its kill bars, and the frame for
 reading a mixed result, all pinned in a chronological ledger before the
-measurement ran. Three rules give the registration teeth. First,
+measurement ran — preregistration and registered reports (Chambers,
+2013; Nosek et al., 2018), adapted from the empirical sciences to an
+engineering campaign. Three rules give the registration teeth. First,
 **bars before builds** — a mechanism is not evaluated by whether it
 seems to help but by whether it clears a number chosen when we did not
 yet know the answer; a result between the bars is read by the

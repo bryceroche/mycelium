@@ -58,7 +58,8 @@ the pinned bar. As regularizer: at 2.9% share and ten repetitions per
 unique, the prose gradient *regularized* the dialect fixture — a record
 on the generated benchmark arrived as a side effect — while the same
 prose at saturation dose was poison (−243), so the dose law, not the
-data, carries the effect. As positional rehearsal: naturally varying
+data, carries the effect. As positional rehearsal (in the interference-mitigation sense:
+McCloskey & Cohen, 1989; French, 1999): naturally varying
 prose paid a calibration debt no generator had — small-graph vote
 entropy closed from 0.212 to 0.010, a prediction pinned before the
 training run that printed it. Three effects, three instruments, no

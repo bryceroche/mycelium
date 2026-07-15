@@ -107,12 +107,12 @@ paper.
 
 ## 2. Related Work
 
-*(Citation keys resolve at assembly; [cite] marks the slots. Literatures
-are engaged in the order the introduction's framing demands them.)*
+*(Every citation verified against its source; the bibliography carries
+per-entry "cited for" notes.)*
 
 **Selective prediction and abstention.** The reject option is as old as
-pattern recognition [cite: Chow], and selective classification's
-risk–coverage framing [cite: Geifman & El-Yaniv and successors] is the
+pattern recognition (Chow, 1957; 1970), and selective classification's
+risk–coverage framing (Geifman & El-Yaniv, 2017, and successors) is the
 natural coordinate system for our Figure 4. Two things distinguish
 the lattice from this line. First, the decision machinery itself is
 zero-parameter: nothing is trained on the accept/reject decision, so
@@ -125,8 +125,8 @@ the boundary itself measured, gated, and reported as a headline result
 (§7) rather than as a threat to validity.
 
 **Calibration and internal confidence.** Post-hoc calibration
-[cite: temperature scaling] and verbalized or entropy-based uncertainty
-in language models [cite] all improve the *readability* of an internal
+(Guo et al., 2017) and language models' verbalized or self-evaluated
+confidence (Kadavath et al., 2022) all improve the *readability* of an internal
 signal. Our measurement problem with this entire family is §6.1's:
 vote entropy — the strongest internal signal we found — cleanly
 separates fragile from settled parses and cannot separate
@@ -137,12 +137,16 @@ lattice's last two links are *external* (a differently-trained sibling
 and an answer key) rather than better-calibrated internals.
 
 **Self-consistency, met head-on.** The closest relative of our vote is
-self-consistency decoding [cite: Wang et al.]: sample multiple
+self-consistency decoding (Wang et al., 2023): sample multiple
 reasoning paths, take the majority. The mechanism differs in three
 load-bearing ways. Our five views are deterministic, solution-preserving
 *re-renderings of the input* (sentence permutations), not temperature
-samples — so agreement measures invariance of the *reading*, not
-stability of a sampler. Unanimity is used as a certification tier with
+samples — test-time augmentation in lineage (Krizhevsky et al., 2012;
+Shanmugam et al., 2021), repurposed from accuracy averaging to
+certification; notably, the dedicated study of TTA aggregation found
+naive averaging imperfect, and unanimity is not averaging. Agreement
+here measures invariance of the *reading*, not stability of a
+sampler. Unanimity is used as a certification tier with
 measured precision (1.0000 on 912, zero-numerator bound stated), not as
 an accuracy booster. And we report where the signal provably breaks:
 on out-of-register input all views are read by the same miscalibrated
@@ -151,7 +155,8 @@ arm, agreement decouples from truth entirely (2% certified precision,
 that failure silently. Self-consistency work generally reports the
 in-distribution win; §7 is the out-of-distribution invoice.
 
-**Conformal prediction.** Conformal methods [cite] offer
+**Conformal prediction.** Conformal methods (Vovk et al., 2005;
+Shafer & Vovk, 2008; Angelopoulos & Bates, 2021) offer
 distribution-free coverage guarantees, which is more than our
 zero-numerator bound provides — *under exchangeability between
 calibration and test data*. That precondition is precisely what our
@@ -165,10 +170,14 @@ calibrated in-register would also have signed.
 
 **Propose/dispose architectures.** The two-jaws design belongs to the
 family in which a learned proposer is checked by a sound verifier:
-semantic parsing of math word problems to executable forms [cite],
-solver-in-the-loop LLM systems [cite], trained verifiers over sampled
-solutions [cite: GSM8K verifiers], and — in spirit — speculative
-decoding's draft-then-verify asymmetry [cite]. The lattice differs
+semantic parsing of math word problems to equation forms (Zhang et
+al., 2020), autoformalization into proof assistants whose downstream
+proofs are machine-checkable (Wu et al., 2022), trained verifiers over
+sampled solutions (Cobbe et al., 2021; process-supervised in Lightman
+et al., 2023), and — in spirit — speculative decoding's
+draft-then-verify asymmetry, where a cheap proposer's output is
+accepted only by an exact check that preserves the target distribution
+(Leviathan et al., 2023; Chen et al., 2023). The lattice differs
 where §3.2's census row does: our verification path contains zero
 trained parameters end to end (trained verifiers move the corruptible
 component rather than removing it), and abstraction is confined to
@@ -177,7 +186,7 @@ the solver sees anything, so the checker's soundness is never
 delegated.
 
 **Retransmission.** §5's repair stack is, deliberately, an ARQ system
-[cite: automatic repeat request lineage]: error detection (the
+(Lin, Costello & Miller, 1984): error detection (the
 portfolio), negative acknowledgment (the flag), selective
 retransmission of flagged fields (the specialist), and a measured
 per-round recovery decay that motivates shallow retry budgets. We
@@ -185,9 +194,11 @@ import the vocabulary because the communications literature solved the
 bookkeeping of *when to stop re-asking* long ago; our contribution
 there is the boundary measurement (§5, §8.2), not the loop.
 
-**Instrument aging.** Dataset shift and model monitoring [cite],
-concept drift [cite], and Goodhart-style specification gaming [cite]
-all describe detectors degrading in deployment. What we have not found
+**Instrument aging.** Distribution shift, deployment monitoring, and
+Goodhart-style dynamics — "any observed statistical regularity will
+tend to collapse once pressure is placed upon it for control purposes"
+(Goodhart, 1975; taxonomy in Manheim & Garrabrant, 2018) — all
+describe measures and detectors degrading in deployment. What we have not found
 articulated in the abstention or monitoring literatures is the
 selection mechanism of §6.4 — *any signal promoted to a gate becomes
 selected against, because the surviving error population is by
@@ -224,7 +235,9 @@ then recognition and abstraction must live where the binding is made —
 on the *parse side*, in the trained components that read language into
 structure. The factor graph they emit is deliberately **frame-free**:
 it records variables, relations, and quantities, and forgets that the
-problem was about taxis. And verification inherits *neither* side: the
+problem was about taxis. The factor-graph representation itself is standard (Kschischang,
+Frey & Loeliger, 2001); what the theorem forces is where its content
+may come from. And verification inherits *neither* side: the
 symbolic solver receives only the graph, searches it exactly, and is
 graded by the dataset's answer key. When higher-level abstractions
 enter (macro-relations proposed from recurring subgraphs), they expand
@@ -377,9 +390,12 @@ interchangeably in this paper.
 The audit-swarm's first question — does the test set leak into
 training? — is answered here at a stricter standard than string
 deduplication. Every problem is identified by a canonical
-Weisfeiler-Leman digest of its factor graph: two problems with
-different letters, different surface text, and different generators
-that share a knot share a digest. Sweeping every fixture against every
+Weisfeiler-Leman digest of its factor graph (Weisfeiler & Leman, 1968;
+Shervashidze et al., 2011): two problems with different letters,
+different surface text, and different generators that share a knot
+share a digest. WL-equivalence is coarser than exact isomorphism, so
+treating digest-equal items as identical is *conservative* for this
+purpose — the exclusion removes at least every true isomorph. Sweeping every fixture against every
 training corpus at this standard found **42 cross-boundary isomorphs**
 — items sharing a graph with something across a train/test boundary
 despite sharing no text (Figure 3's bottom block shows one such pair).
@@ -606,8 +622,10 @@ rather than surprised by it.
 
 ### 7.1 The one number with no author fingerprint
 
-The anchor is a fixed slice of a public competition benchmark
-(MATH-500), acquired labeled, measured, and never trained on. It is the
+The anchor is a fixed slice of a public competition benchmark — the
+MATH dataset (Hendrycks et al., 2021), via the 500-problem test subset
+introduced by Lightman et al. (2023) and commonly called MATH-500 —
+acquired labeled, measured, and never trained on. It is the
 only measurement in this paper whose *inputs* carry no author influence
 of any kind: every other fixture is either machine-generated by our
 generators or hand-annotated by us, gated however incorruptibly. The
@@ -710,7 +728,9 @@ next generation with the same indifference it showed this one.
 Every substantive claim in this paper began as a *registered
 prediction*: an expected outcome, its kill bars, and the frame for
 reading a mixed result, all pinned in a chronological ledger before the
-measurement ran. Three rules give the registration teeth. First,
+measurement ran — preregistration and registered reports (Chambers,
+2013; Nosek et al., 2018), adapted from the empirical sciences to an
+engineering campaign. Three rules give the registration teeth. First,
 **bars before builds** — a mechanism is not evaluated by whether it
 seems to help but by whether it clears a number chosen when we did not
 yet know the answer; a result between the bars is read by the
@@ -887,7 +907,8 @@ the pinned bar. As regularizer: at 2.9% share and ten repetitions per
 unique, the prose gradient *regularized* the dialect fixture — a record
 on the generated benchmark arrived as a side effect — while the same
 prose at saturation dose was poison (−243), so the dose law, not the
-data, carries the effect. As positional rehearsal: naturally varying
+data, carries the effect. As positional rehearsal (in the interference-mitigation sense:
+McCloskey & Cohen, 1989; French, 1999): naturally varying
 prose paid a calibration debt no generator had — small-graph vote
 entropy closed from 0.212 to 0.010, a prediction pinned before the
 training run that printed it. Three effects, three instruments, no
@@ -1128,3 +1149,38 @@ Neither author could flatter a number past the battery; several times
 refusals are in the ledger unedited. We consider this the paper's
 strongest authorship statement: the results belong to a discipline,
 not to a hand.
+
+
+## References
+
+*(Every entry verified against its source; per-entry "cited for" notes in bibliography.md.)*
+
+- Angelopoulos, A. N., & Bates, S. (2021). A Gentle Introduction to Conformal Prediction and Distribution-Free Uncertainty Quantification. arXiv:2107.07511.
+- Chambers, C. D. (2013). Registered Reports: A new publishing initiative at Cortex. Cortex, 49(3), 609–610. doi:10.1016/j.cortex.2012.12.016. [Editorial.]
+- Chen, C., Borgeaud, S., Irving, G., Lespiau, J.-B., Sifre, L., & Jumper, J. (2023). Accelerating Large Language Model Decoding with Speculative Sampling. arXiv:2302.01318.
+- Chow, C. K. (1957). An Optimum Character Recognition System Using Decision Functions. IRE Transactions on Electronic Computers, EC-6(4), 247–254.
+- Chow, C. K. (1970). On Optimum Recognition Error and Reject Tradeoff. IEEE Transactions on Information Theory, IT-16(1), 41–46. doi:10.1109/TIT.1970.1054406.
+- Cobbe, K., Kosaraju, V., Bavarian, M., et al. (2021). Training Verifiers to Solve Math Word Problems. arXiv:2110.14168.
+- French, R. M. (1999). Catastrophic forgetting in connectionist networks. Trends in Cognitive Sciences, 3(4), 128–135. doi:10.1016/S1364-6613(99)01294-2.
+- Geifman, Y., & El-Yaniv, R. (2017). Selective Classification for Deep Neural Networks. NeurIPS 2017, 4878–4887. arXiv:1705.08500.
+- Goodhart, C. A. E. (1975). Problems of Monetary Management: The UK Experience. In Papers in Monetary Economics, Vol. I, Reserve Bank of Australia. Reprinted in Goodhart, Monetary Theory and Practice, Macmillan, 1984.
+- Guo, C., Pleiss, G., Sun, Y., & Weinberger, K. Q. (2017). On Calibration of Modern Neural Networks. ICML 2017, PMLR 70, 1321–1330. arXiv:1706.04599.
+- Hendrycks, D., Burns, C., Kadavath, S., Arora, A., Basart, S., Tang, E., Song, D., & Steinhardt, J. (2021). Measuring Mathematical Problem Solving With the MATH Dataset. NeurIPS 2021 Datasets and Benchmarks. arXiv:2103.03874.
+- Hendrycks, D., & Gimpel, K. (2017). A Baseline for Detecting Misclassified and Out-of-Distribution Examples in Neural Networks. ICLR 2017. arXiv:1610.02136.
+- Kadavath, S., Conerly, T., Askell, A., et al. (2022). Language Models (Mostly) Know What They Know. arXiv:2207.05221.
+- Krizhevsky, A., Sutskever, I., & Hinton, G. E. (2012). ImageNet Classification with Deep Convolutional Neural Networks. NeurIPS 2012, 1097–1105. doi:10.1145/3065386 (CACM reprint).
+- Kschischang, F. R., Frey, B. J., & Loeliger, H.-A. (2001). Factor Graphs and the Sum-Product Algorithm. IEEE Transactions on Information Theory, 47(2), 498–519. doi:10.1109/18.910572.
+- Leviathan, Y., Kalman, M., & Matias, Y. (2023). Fast Inference from Transformers via Speculative Decoding. ICML 2023, PMLR 202. arXiv:2211.17192.
+- Lightman, H., Kosaraju, V., Burda, Y., et al. (2023). Let's Verify Step by Step. ICLR 2024. arXiv:2305.20050.
+- Lin, S., Costello, D. J., Jr., & Miller, M. J. (1984). Automatic-repeat-request error-control schemes. IEEE Communications Magazine, 22(12), 5–17.
+- Manheim, D., & Garrabrant, S. (2018). Categorizing Variants of Goodhart's Law. arXiv:1803.04585. [Unrefereed.]
+- McCloskey, M., & Cohen, N. J. (1989). Catastrophic Interference in Connectionist Networks: The Sequential Learning Problem. Psychology of Learning and Motivation, 24, 109–165. doi:10.1016/S0079-7421(08)60536-8.
+- Nosek, B. A., Ebersole, C. R., DeHaven, A. C., & Mellor, D. T. (2018). The preregistration revolution. PNAS, 115(11), 2600–2606. doi:10.1073/pnas.1708274114.
+- Shafer, G., & Vovk, V. (2008). A Tutorial on Conformal Prediction. Journal of Machine Learning Research, 9, 371–421. arXiv:0706.3188.
+- Shanmugam, D., Blalock, D., Balakrishnan, G., & Guttag, J. (2021). Better Aggregation in Test-Time Augmentation. ICCV 2021. arXiv:2011.11156.
+- Shervashidze, N., Schweitzer, P., van Leeuwen, E. J., Mehlhorn, K., & Borgwardt, K. M. (2011). Weisfeiler-Lehman Graph Kernels. Journal of Machine Learning Research, 12, 2539–2561.
+- Vovk, V., Gammerman, A., & Shafer, G. (2005). Algorithmic Learning in a Random World. Springer.
+- Wang, X., Wei, J., Schuurmans, D., Le, Q. V., Chi, E. H., Narang, S., Chowdhery, A., & Zhou, D. (2023). Self-Consistency Improves Chain of Thought Reasoning in Language Models. ICLR 2023. arXiv:2203.11171.
+- Weisfeiler, B., & Leman, A. A. (1968). A reduction of a graph to a canonical form and an algebra arising during this reduction. Nauchno-Technicheskaya Informatsiya, Ser. 2, 9, 12–16. [English translation available.]
+- Wu, Y., Jiang, A. Q., Li, W., Rabe, M. N., Staats, C., Jamnik, M., & Szegedy, C. (2022). Autoformalization with Large Language Models. NeurIPS 2022, 32353–32368.
+- Zhang, D., Wang, L., Zhang, L., Dai, B. T., & Shen, H. T. (2020). The Gap of Semantic Parsing: A Survey on Automatic Math Word Problem Solvers. IEEE TPAMI, 42(9), 2287–2305. doi:10.1109/TPAMI.2019.2914054.

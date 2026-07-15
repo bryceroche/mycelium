@@ -22,7 +22,9 @@ then recognition and abstraction must live where the binding is made —
 on the *parse side*, in the trained components that read language into
 structure. The factor graph they emit is deliberately **frame-free**:
 it records variables, relations, and quantities, and forgets that the
-problem was about taxis. And verification inherits *neither* side: the
+problem was about taxis. The factor-graph representation itself is standard (Kschischang,
+Frey & Loeliger, 2001); what the theorem forces is where its content
+may come from. And verification inherits *neither* side: the
 symbolic solver receives only the graph, searches it exactly, and is
 graded by the dataset's answer key. When higher-level abstractions
 enter (macro-relations proposed from recurring subgraphs), they expand

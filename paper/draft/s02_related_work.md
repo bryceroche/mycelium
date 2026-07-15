@@ -1,11 +1,11 @@
 ## 2. Related Work
 
-*(Citation keys resolve at assembly; [cite] marks the slots. Literatures
-are engaged in the order the introduction's framing demands them.)*
+*(Every citation verified against its source; the bibliography carries
+per-entry "cited for" notes.)*
 
 **Selective prediction and abstention.** The reject option is as old as
-pattern recognition [cite: Chow], and selective classification's
-risk–coverage framing [cite: Geifman & El-Yaniv and successors] is the
+pattern recognition (Chow, 1957; 1970), and selective classification's
+risk–coverage framing (Geifman & El-Yaniv, 2017, and successors) is the
 natural coordinate system for our Figure 7-a. Two things distinguish
 the lattice from this line. First, the decision machinery itself is
 zero-parameter: nothing is trained on the accept/reject decision, so
@@ -18,8 +18,8 @@ the boundary itself measured, gated, and reported as a headline result
 (§8) rather than as a threat to validity.
 
 **Calibration and internal confidence.** Post-hoc calibration
-[cite: temperature scaling] and verbalized or entropy-based uncertainty
-in language models [cite] all improve the *readability* of an internal
+(Guo et al., 2017) and language models' verbalized or self-evaluated
+confidence (Kadavath et al., 2022) all improve the *readability* of an internal
 signal. Our measurement problem with this entire family is §7.1's:
 vote entropy — the strongest internal signal we found — cleanly
 separates fragile from settled parses and cannot separate
@@ -30,12 +30,16 @@ lattice's last two links are *external* (a differently-trained sibling
 and an answer key) rather than better-calibrated internals.
 
 **Self-consistency, met head-on.** The closest relative of our vote is
-self-consistency decoding [cite: Wang et al.]: sample multiple
+self-consistency decoding (Wang et al., 2023): sample multiple
 reasoning paths, take the majority. The mechanism differs in three
 load-bearing ways. Our five views are deterministic, solution-preserving
 *re-renderings of the input* (sentence permutations), not temperature
-samples — so agreement measures invariance of the *reading*, not
-stability of a sampler. Unanimity is used as a certification tier with
+samples — test-time augmentation in lineage (Krizhevsky et al., 2012;
+Shanmugam et al., 2021), repurposed from accuracy averaging to
+certification; notably, the dedicated study of TTA aggregation found
+naive averaging imperfect, and unanimity is not averaging. Agreement
+here measures invariance of the *reading*, not stability of a
+sampler. Unanimity is used as a certification tier with
 measured precision (1.0000 on 912, zero-numerator bound stated), not as
 an accuracy booster. And we report where the signal provably breaks:
 on out-of-register input all views are read by the same miscalibrated
@@ -44,7 +48,8 @@ arm, agreement decouples from truth entirely (2% certified precision,
 that failure silently. Self-consistency work generally reports the
 in-distribution win; §8 is the out-of-distribution invoice.
 
-**Conformal prediction.** Conformal methods [cite] offer
+**Conformal prediction.** Conformal methods (Vovk et al., 2005;
+Shafer & Vovk, 2008; Angelopoulos & Bates, 2021) offer
 distribution-free coverage guarantees, which is more than our
 zero-numerator bound provides — *under exchangeability between
 calibration and test data*. That precondition is precisely what our
@@ -58,10 +63,14 @@ calibrated in-register would also have signed.
 
 **Propose/dispose architectures.** The two-jaws design belongs to the
 family in which a learned proposer is checked by a sound verifier:
-semantic parsing of math word problems to executable forms [cite],
-solver-in-the-loop LLM systems [cite], trained verifiers over sampled
-solutions [cite: GSM8K verifiers], and — in spirit — speculative
-decoding's draft-then-verify asymmetry [cite]. The lattice differs
+semantic parsing of math word problems to equation forms (Zhang et
+al., 2020), autoformalization into proof assistants whose downstream
+proofs are machine-checkable (Wu et al., 2022), trained verifiers over
+sampled solutions (Cobbe et al., 2021; process-supervised in Lightman
+et al., 2023), and — in spirit — speculative decoding's
+draft-then-verify asymmetry, where a cheap proposer's output is
+accepted only by an exact check that preserves the target distribution
+(Leviathan et al., 2023; Chen et al., 2023). The lattice differs
 where §3.2's census row does: our verification path contains zero
 trained parameters end to end (trained verifiers move the corruptible
 component rather than removing it), and abstraction is confined to
@@ -70,7 +79,7 @@ the solver sees anything, so the checker's soundness is never
 delegated.
 
 **Retransmission.** §5's repair stack is, deliberately, an ARQ system
-[cite: automatic repeat request lineage]: error detection (the
+(Lin, Costello & Miller, 1984): error detection (the
 portfolio), negative acknowledgment (the flag), selective
 retransmission of flagged fields (the specialist), and a measured
 per-round recovery decay that motivates shallow retry budgets. We
@@ -78,9 +87,11 @@ import the vocabulary because the communications literature solved the
 bookkeeping of *when to stop re-asking* long ago; our contribution
 there is the boundary measurement (§5, §9.2), not the loop.
 
-**Instrument aging.** Dataset shift and model monitoring [cite],
-concept drift [cite], and Goodhart-style specification gaming [cite]
-all describe detectors degrading in deployment. What we have not found
+**Instrument aging.** Distribution shift, deployment monitoring, and
+Goodhart-style dynamics — "any observed statistical regularity will
+tend to collapse once pressure is placed upon it for control purposes"
+(Goodhart, 1975; taxonomy in Manheim & Garrabrant, 2018) — all
+describe measures and detectors degrading in deployment. What we have not found
 articulated in the abstention or monitoring literatures is the
 selection mechanism of §7.4 — *any signal promoted to a gate becomes
 selected against, because the surviving error population is by

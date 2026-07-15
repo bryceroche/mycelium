@@ -62,9 +62,12 @@ interchangeably in this paper.
 The audit-swarm's first question — does the test set leak into
 training? — is answered here at a stricter standard than string
 deduplication. Every problem is identified by a canonical
-Weisfeiler-Leman digest of its factor graph: two problems with
-different letters, different surface text, and different generators
-that share a knot share a digest. Sweeping every fixture against every
+Weisfeiler-Leman digest of its factor graph (Weisfeiler & Leman, 1968;
+Shervashidze et al., 2011): two problems with different letters,
+different surface text, and different generators that share a knot
+share a digest. WL-equivalence is coarser than exact isomorphism, so
+treating digest-equal items as identical is *conservative* for this
+purpose — the exclusion removes at least every true isomorph. Sweeping every fixture against every
 training corpus at this standard found **42 cross-boundary isomorphs**
 — items sharing a graph with something across a train/test boundary
 despite sharing no text (Fig. 3-a's bottom block shows one such pair).

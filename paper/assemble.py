@@ -97,6 +97,15 @@ for name in ORDER:
     parts.append(t.strip() + "\n")
 
 doc = "\n\n".join(parts)
+
+# References: entries only (the per-entry "cited for" ledger notes stay
+# in bibliography.md for the stranger read's use-matches-source check).
+bib = (Path(__file__).parent / "bibliography.md").read_text()
+cited_block = bib.split("## Cited\n", 1)[1].split("## Verified, held", 1)[0]
+entries = [ln for ln in cited_block.splitlines() if ln.startswith("- ")]
+doc += ("\n\n## References\n\n*(Every entry verified against its source; "
+        "per-entry \"cited for\" notes in bibliography.md.)*\n\n"
+        + "\n".join(entries) + "\n")
 # label the census table where it is introduced
 doc = doc.replace(
     "The parameter census, re-run at the freeze tag against the deployed\n"

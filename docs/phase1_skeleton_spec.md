@@ -5516,3 +5516,35 @@ token-position × waist-dim, the moment the skeleton trains.
   item): [cite] verification by web lookup, minimal bibliography,
   each reference read before cited; then the fresh top-to-bottom
   stranger read, both channels; then theshapeofthought.ai.
+- **THE CITATION PASS (2026-07-15): 22/22 VERIFIED, ZERO CUTS — the
+  last wall built to code.** Four parallel verification agents ran
+  the pinned twenty against actual sources (title/authors/venue/year/
+  identifier confirmed by lookup, abstract read before any
+  characterization); two additions (Guo et al. 2017 temperature
+  scaling; Kadavath et al. 2022 self-evaluated confidence) were
+  caught OUTSIDE the pinned list by the integration sweep and
+  verified inline — the protocol admitted no exceptions, including
+  its own list. THE PASS'S CATCHES, each a trap avoided: (1) MATH-500
+  PROVENANCE — the 500-subset originates in Lightman et al. 2023
+  ('Let's Verify Step by Step'); the NAME is post-hoc (HF dataset
+  card); S7's anchor now cites Hendrycks et al. 2021 for the dataset
+  + Lightman for the subset. (2) WL-INDISTINGUISHABILITY — 1-WL is
+  complete for almost-all, not all, graphs; S4's disjointness claim
+  STRENGTHENED: digest-equality is coarser than isomorphism, so the
+  exclusion is conservative — removes at least every true isomorph.
+  (3) GOODHART'S ACTUAL WORDS — the famous 'measure becomes a target'
+  is Strathern's paraphrase; S2 now quotes the 1975 original
+  ('any observed statistical regularity will tend to collapse...').
+  (4) Autoformalization softened (formal checking is downstream of
+  translation). (5) Shanmugam's naive-averaging-imperfect thesis
+  cited AS SUPPORT for unanimity-not-averaging. (6) Chow double-cited
+  (1957 for age, 1970 for the rule); rehearsal attributed to the
+  review literature, not McCloskey-Cohen's abstract; Zhang survey
+  corrected to TPAMI 2020. ARTIFACTS: paper/bibliography.md (29 cited
+  entries each with a cited-for note — the citation tag-check — plus
+  3 verified-in-reserve: Baars, Dehaene-Changeux, Papyan); s02 fully
+  keyed (assembler asserts no [cite] survives); body citations
+  inserted (Kschischang S3, WL pair S4, MATH provenance S7,
+  preregistration pair S8, rehearsal pair S9); References section
+  appended at assembly (1,186 lines). REMAINING: the stranger read,
+  both channels, then the door opens.
