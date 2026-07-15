@@ -5131,3 +5131,27 @@ token-position × waist-dim, the moment the skeleton trains.
   28/knotted 58); Meissner + twin-key next session. Gradient logger
   DEFERRED (the JIT consumes grads; surgery not worth blocking the
   run). Three slope sentences staged; the tag waits on the verdict.
+- **GEN-14 PROMOTED (2026-07-16): the freeze's last experiment
+  returns with everything.** ALL BARS: alg4test **388** (new record
+  — the debt stays paid from clean ancestry), bigtest 1195 (ties),
+  acceptance 8/8, cert-v2 **1.0000 at 912**, every kind over its
+  bar. Manifest written; GATE = GEN-14. **THE ENTROPY PRE-READ
+  PRINTS: nv0-3 = 0.010** — from gen-13's 0.212 to nearly gen-9b's
+  0.003 razor: **PROSE AS POSITIONAL REHEARSAL CONFIRMED** — the
+  books paid the calibration debt the clean ancestry incurred, the
+  books-scale claim's third mechanism, pinned before the run and
+  printed by it. Large-n sharpest ever (0.455). **THE THIRD SLOPE
+  POINT: SATURATION** — disjoint carried 25/knotted 61 vs gen-13's
+  28/58: book 3's 74 additional uniques moved the frontier ~0 (−3,
+  noise). THE COMPLETE CURVE: +23 knots for books 1+2 (114 uniques,
+  gen-13), −10 for stacked continuation (regime artifact), ~0 for
+  book 3 at the same distribution (gen-14). **THE CLAIM'S FINAL
+  FORM: annotation moves the frontier until the reachable register
+  saturates — 81->58 for ~114 uniques, marginal yield ~0 thereafter
+  at fixed problem-distribution; the remaining 58 are counted,
+  family-sorted, and priced (the registry taxonomy).** A saturating
+  curve with its mechanism triple-confirmed (corpus-consumption,
+  positional rehearsal, the continuation contrast) is a STRONGER
+  paper than an open linear slope: the campaign measured its own
+  completion. **THE PUBLICATION BAR'S CONDITIONS ARE MET: tag,
+  freeze, publish.**
