@@ -1,9 +1,5 @@
 # Certify, Answer, Flag, Abstain: A Chain of Custody for Machine-Read Mathematics
 
-*(Title per the lattice-is-the-brand decision; subtitle proposal —
-"chain of custody" names the mechanism the four words decide through.
-Final call at venue selection.)*
-
 ## Abstract
 
 A deployed reasoning system's output should not be an answer; it
@@ -107,8 +103,10 @@ paper.
 
 ## 2. Related Work
 
-*(Every citation verified against its source; the bibliography carries
-per-entry "cited for" notes.)*
+Every citation below was verified against its actual source before it
+was characterized, and the bibliography carries a per-entry note on
+what each work is cited for — the same use-matches-source standard the
+rest of the paper applies to its own numbers.
 
 **Selective prediction and abstention.** The reject option is as old as
 pattern recognition (Chow, 1957; 1970), and selective classification's

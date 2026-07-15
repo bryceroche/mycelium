@@ -14,7 +14,17 @@ self-citing contract): F-3a binding specimens, F-5a rotation 3-panel
 F-7c chain-of-custody (candidate Fig 1), F-9a saturation, F-9b
 survivor cascade.
 
-**REMAINING BEFORE ASSEMBLY:** (1) S2 related work (selective
+**THE PAPER IS DONE (2026-07-15): paper/paper1_assembled.md, 1,184
+lines — 11 sections + References (29 entries, every one verified by
+web lookup with cited-for notes in paper/bibliography.md), 10 figures
+under figstyle.py's self-citing contract, stranger read passed both
+channels.** Rebuild: paper/assemble.py (reads draft/ + bibliography).
+NEXT = PUBLICATION (Bryce's hands): theshapeofthought.ai under the
+declared joint byline; ledger as supplementary material; repo public
+at the tag; make reproduce-tables armor. Then the post-paper queue
+below.
+
+**SUPERSEDED (all complete):** (1) S2 related work (selective
 prediction + calibration mandatory; workspace / propose-dispose /
 neural-collapse / ARQ as the intro's framing demands); (2) F-8a/b
 (mouth separation; length-warp before/after — data banked:

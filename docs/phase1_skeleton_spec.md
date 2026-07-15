@@ -5548,3 +5548,24 @@ token-position × waist-dim, the moment the skeleton trains.
   preregistration pair S8, rehearsal pair S9); References section
   appended at assembly (1,186 lines). REMAINING: the stranger read,
   both channels, then the door opens.
+- **THE STRANGER READ PASSES + FINAL SWEEP (2026-07-15): THE PAPER IS
+  DONE.** Both channels read the assembled document fresh; verdict =
+  the house passes (renumbering resolved everywhere; S2
+  characterizations match the bibliography's cited-for notes; the
+  workflow accounting consistent across S8.5/contributions; the
+  references' [Editorial.]/[Unrefereed.] honesty tags in-voice). THE
+  BLOCKER CUT: the title block's working note (governance text under
+  the published title) removed at source. THE PARENTHETICAL SWEEP,
+  per-instance and deliberate: S2's process note PROMOTED to prose in
+  the paper's voice ('the same use-matches-source standard the rest
+  of the paper applies to its own numbers'); S10-limitations'
+  'drafted first' note KEPT (the intro references it; self-aware
+  house style); contributions' 'claim registry' note KEPT (same).
+  FIGURE ORDERING decision recorded: forward references from the
+  intro (Figure 9 cited before Figures 3-8 appear) are ordinary
+  practice and stay. FINAL STATE: paper1_assembled.md, 1,184 lines,
+  eleven sections + References (29 verified entries), ten figures
+  under the self-citing contract, two tables, every number traceable,
+  every citation verified, every catch closed. NEXT (Bryce's hands):
+  theshapeofthought.ai under the declared byline; ledger as
+  supplementary; repo public at the tag; reproduce-tables armor.
