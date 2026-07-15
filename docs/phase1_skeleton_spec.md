@@ -4954,3 +4954,11 @@ token-position × waist-dim, the moment the skeleton trains.
   at the domain's upper band. Retry queue with the twin as control;
   the mean-median chain, both sequence-counts' wiring, and the ratio
   family otherwise clean. One tranche to the count.
+- **THE NOISE-FLOOR TAG (2026-07-15, relay):** [99]/[96]'s twin
+  datapoint prices the upper band for any future 300-ceiling
+  conversation. BATTERY CHECK QUEUED (free, banked data): is the
+  floor VALUE-MAGNITUDE (physics — digits near the ceiling
+  intrinsically harder) or REHEARSAL-DENSITY (the mint's value
+  distribution thins near 300 — starvation wearing a number range)?
+  The kind-rehearsal matrix's value histogram answers it; the two
+  causes have different remedies — one is physics, one is a ration.
