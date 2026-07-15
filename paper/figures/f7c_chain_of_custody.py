@@ -22,7 +22,7 @@ ax.axis("off")
 # ---- the four gates -------------------------------------------------------
 GATES = [
     # (x-center, name, invariance, question, dial, dashed)
-    (3.0, "MOUTH", "REGISTER",
+    (3.0, "RECOGNITION\nGATE", "REGISTER",
      "the calibrated register?",
      "input-space check,\nupstream of any parse", False),
     (5.6, "5-VIEW\nVOTE", "RENDERING",
@@ -100,7 +100,7 @@ die(10.7, y, "caught by the key —\nfed back into the design")
 # ---- 3. wild-register prose: slips the mouth, dies at the panel ------------
 y = 2.5
 lane(y, C["wild"], x_end=8.2, arrow=False)
-name_lane(y, "wild-register prose that slips the mouth, votes stably",
+name_lane(y, "wild-register prose that slips the gate, votes stably",
           C["wild"])
 die(8.2, y, "panel dissents 9 / 10\n(the second wall)")
 

@@ -5235,3 +5235,29 @@ token-position × waist-dim, the moment the skeleton trains.
   certificate (570R/1W) runs everything and dies at the key. The key
   drawn dashed: measurement only — grades the machinery, never
   deploys. Stamp reads paper-1-freeze-4-g085296d.
+- **S7 EDITORIAL PASS + THE PLOTTED PAIR (2026-07-15): three catches
+  applied, two figures banked.** (1) THE LOAD-BEARING CATCH: 'every
+  rung zero-parameter' collided with rung 2's own specialist — S7.1
+  rewritten to the true claim: the DECISION MACHINERY is
+  zero-parameter (vote counting, unanimity, rank-sum, distance
+  threshold); trained components produce candidate answers, never
+  verdicts; 'decision-path purity, not an absence of learned parts,
+  is what the certification claims rest on.' Honest and stronger.
+  (2) Panel independence de-overstated: 'three models of distinct
+  training histories (one lineage, one width), per-item behavioral
+  disagreement measured rather than independence assumed.' (3) The
+  dangling examiner named from the ledger: at freeze the out-of-path
+  seat belongs to THE EXTERNAL ANCHOR (designed as held-out examiner,
+  never in any training/acceptance path); re-rendering held the seat
+  until the vote was promoted; staged next chairs = library
+  cross-check + paraphrase views. Style: one name per organ —
+  'recognition gate' formal, one 'doorman' as color, second one
+  removed; F-7c's gate box relabeled RECOGNITION GATE to match.
+  FIGURES BANKED under the contract: F-7a precision-coverage frontier
+  (ladder 3/5 0.9832@51.7 / 4/5 0.9925@44.3 / 5/5 0.9982@38.1 +
+  channel trajectory gen-9b 866 gate, 839 panel -> gen-11 862 ->
+  freeze 912@60.8 at 1.0000; zero-numerator note on the plot) and
+  F-7b entropy basins (0.846 shallow vs 0.212/0.116/0.000; both
+  arrows carry the thesis — separates shallow-from-deep, cannot
+  separate wrong-from-correct). Remaining inventory (skeleton §12):
+  twelve figures staged, each needs its banked artifact located.

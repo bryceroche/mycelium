@@ -5,11 +5,16 @@
 ### 7.1 The lattice as a decision structure
 
 The system's output is not an answer; it is one of four decisions —
-**certify**, **answer**, **flag**, or **abstain** — and every rung of
-that lattice is zero-parameter and gold-free at inference time. Nothing
-in the decision path is trained on the decision it makes, and nothing
+**certify**, **answer**, **flag**, or **abstain** — and the decision
+machinery itself is zero-parameter: vote counting, unanimity checks, a
+rank-sum read, an input-space distance threshold. The trained
+components — the parser and its repair specialist — produce *candidate
+answers*; they never produce verdicts. No parameter anywhere is trained
+on the certify/answer/flag decision, and nothing in the decision path
 consults the answer key: the key appears only afterward, as the grader
-of the machinery, never as a component of it.
+of the machinery, never as a component of it. It is this decision-path
+purity, not an absence of learned parts, that the certification claims
+rest on.
 
 The four rungs, with their dials as first measured:
 
@@ -53,9 +58,11 @@ substitutes for an invariance the system cannot fake.
 At the frozen generation, the widest fixture (1,500 held-out problems)
 reads: 1195 answered correctly one-shot (79.7%); five-view unanimity
 certifying at measured 1.0000 precision; and the full cross-lineage
-panel — unanimity across five renderings *and* three independently
-trained models — certifying **912 of 1,500 (60.8%) at measured 1.0000
-precision**. Figure N (the precision–coverage frontier) plots every
+panel — unanimity across five renderings *and* three models of distinct
+training histories (one differing in lineage, one in architecture
+width, with per-item behavioral disagreement measured rather than
+independence assumed) — certifying **912 of 1,500 (60.8%) at measured
+1.0000 precision**. Figure N (the precision–coverage frontier) plots every
 rung: relaxing unanimity to 4-of-5 and 3-of-5 buys coverage at measured
 precision cost (0.9925 and 0.9832 at first measurement), and the
 frontier's history across generations shows the certification channel
@@ -96,7 +103,7 @@ unanimous votes, the panel *dissented on 9 of 10* (a later generation:
 stable-wrong item in the 1,500-problem fixture at the generation the
 panel was adopted was broken by cross-examination, 1 for 1. Its
 load-bearing jurisdiction is exactly the wild register: even text that
-fools the doorman meets a jury drawn from a different training history.
+slips the gate meets a jury drawn from a different training history.
 Renderings share a model's blind spots; lineages do not.
 
 **The quiet failure shape.** Problem [78]'s dialect voted a consistent
@@ -135,11 +142,15 @@ detection of committed-wrong parses will decline monotonically across
 future generations — not because the instrument weakens but because its
 population hardens. The design consequence is a rotation discipline:
 **the portfolio must always hold one examiner out of the acceptance
-path.** Today the held-out examiner polices the geometry's blind spot;
-when it is promoted, something unselected-against must replace it. We
-believe this is why anomaly detectors age in deployed systems
-generally, and the lattice is designed around the expectation rather
-than surprised by it.
+path.** Re-rendering held that seat until the vote was promoted; at
+freeze the seat belongs to the external anchor — a held-out fixture of
+foreign benchmark prose, graded only by the answer key and never part
+of any training or acceptance decision — with unselected-against
+candidates staged for the next rotation (a library cross-check that has
+never joined acceptance; genuinely new view families such as paraphrase
+re-renders). We believe this is why anomaly detectors age in deployed
+systems generally, and the lattice is designed around the expectation
+rather than surprised by it.
 
 <!-- FIGURES riding §7 (all measurements banked):
   F-7a precision–coverage frontier: rungs 5/5, 4/5, 3/5 + cert-v2 panel,
