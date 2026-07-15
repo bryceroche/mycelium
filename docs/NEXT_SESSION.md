@@ -1,5 +1,24 @@
 # NEXT SESSION — start here (handoff, 2026-07-15 late)
 
+## COLD START: THE SECOND SLOPE POINT PRINTED NEGATIVE (−10 disjoint;
+regime-redesign bar FIRED as pinned). THE REFINED CLAIM: books scale
+THROUGH GENERATIONS (gen-13's full retrain with prose = census 81->58),
+not stacked continuations (reader_v2 re-dosed trained uniques -> −10).
+GATE remains GEN-13. ADJUDICATION FIRST: paper freezes on the refined
+claim (gen-13 as evidence + contrast as mechanism) OR waits for gen-14
+(full retrain, all 3 books, ~188 uniques, hot flat from clean ancestry —
+the recipe that works). Books 1-3 banked: 100 + 84 entries + registries.
+Standing: odometer/miner/provenance reads on banked artifacts; [130]
+retry; chained-fdiv autopsy; OPERATION-APPLY admission; drafting (§11).
+Envs: ALG2=1 ALG_FTYPES=6 ALG_DUP=1; GATE=.cache/phase1_gen13_head.
+Ledger: docs/phase1_skeleton_spec.md.
+
+
+---
+# PRIOR HANDOFF BELOW
+
+# NEXT SESSION — start here (handoff, 2026-07-15 late)
+
 ## COLD START: GATE = GEN-13 (all bars swept, debt paid, manifest true,
 entourage COMPLETE). BOOK 3 IS OPEN: lanes classified under gen-13
 (.cache/book3_lanes.json: L1 9 / L2 140 / L3 251 — the bootstrap more than

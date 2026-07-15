@@ -4973,3 +4973,32 @@ token-position × waist-dim, the moment the skeleton trains.
   staged, two slope columns, the provenance census, and the
   noise-floor physics-vs-ration check. The paper's last number is
   in the pipeline.
+- **THE SECOND SLOPE POINT (2026-07-15): NEGATIVE — the regime
+  redesign bar FIRES, exactly as pinned.** PRE (gen-13): disjoint-86
+  carried 28 (2+26), knotted 58. POST (reader_v2, book-3 prose x10
+  continuation): carried 18 (1+17), knotted 68 — **−10**, below
+  every staged signature and below book-2's <=2 null bar: THE
+  READING-TRAINING REGIME REDESIGNS BEFORE MORE ANNOTATION SPENDS.
+  Guard held (bigtest 1186, −9, within −15); val peaked 0.9072 then
+  declined — overfit signature. THE MECHANISM HYPOTHESIS (registered,
+  not concluded): DOSE STACKING — mixed13 carries books 1+2 x10
+  (inside mixed12) PLUS book 3 x10 -> cumulative prose ~4.8%, past
+  the gift point; AND continuation-on-continuation re-doses already-
+  trained uniques (memorization pressure displacing raw-prose
+  generalization). THE DECISIVE CONTRAST already in the ledger:
+  gen-13's FULL HOT RETRAIN with prose-in-corpus delivered the 81->58
+  census collapse (the campaign's real books-scale evidence, n=114
+  consumed); reader_v1's first continuation delivered +8; reader_v2's
+  stacked continuation delivered −10. **THE REFINED CLAIM: books
+  scale THROUGH GENERATIONS (full-mix retrains), not through stacked
+  continuations** — prose pays when consumed as corpus, poisons when
+  re-dosed as topping. REGIME REDESIGN (proposed, for adjudication):
+  books accumulate into the NEXT generation's full retrain (the
+  gen-13 pattern, which works); continuations never re-dose prose.
+  FREEZE IMPLICATION (Bryce + relay to adjudicate): the paper's
+  slope table either states the refined claim with gen-13's collapse
+  as its evidence + the continuation contrast as its mechanism, or
+  waits for a gen-14 full retrain (all three books, ~188 uniques) as
+  the confirming third point. The bars caught a regime failure
+  before it cost a fourth book — the control room working exactly as
+  built. reader_v2 is NOT a gate candidate; gate remains gen-13.
