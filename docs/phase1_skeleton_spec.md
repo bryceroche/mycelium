@@ -5460,3 +5460,34 @@ token-position × waist-dim, the moment the skeleton trains.
   notes pinned in-file (renumbering, S2's literature list). REMAINING
   before assembly: S2 related work; the S8 figure pair (F-8a/b);
   optional inventory figures; tag-check pass.
+- **FIVE CROSS-READ CATCHES + S2 DRAFTED (2026-07-15): the last room.**
+  CATCHES: (1) S7.2 campaign pointer S9->S10. (2) The designed-
+  logical-form tombstone re-homed: one sentence added to S10's
+  rulebook beat (top-down attempt died in a registered kill; dialect
+  written bottom-up) and S3.4's citation repointed S6->S10. (3)
+  NUMBERING DECIDED: renumber at assembly (s07->6 etc.), recorded in
+  s00's assembly notes with the reader's-map/cross-ref/figure-name
+  update riding the tag-check pass. (4) 'Figure N' placeholder on the
+  checklist. (5) THE SUBSTANTIVE ONE, verified against the manifest
+  not memory: ALG_FTYPES=6 IS current at freeze — the fix was the
+  missing relationship sentence, added to S3.2: 'the six factor types
+  are the parse-side surface, not the relation inventory: registry
+  relations enter as solver-side predicates bridged onto these types
+  — which is how double-digit relation kinds ride on a six-way head
+  output.' S2 (s02_related_work.md) against the delivered brief,
+  seven paragraphs: selective prediction (zero-parameter decision
+  machinery + boundary-as-headline vs threat-to-validity);
+  calibration ('it calibrates the wrong axis for certification');
+  SELF-CONSISTENCY HEAD-ON (three load-bearing differences:
+  deterministic input re-renderings not samples; unanimity as
+  certification tier; 'S8 is the out-of-distribution invoice');
+  CONFORMAL its own paragraph (the mouth as an explicit
+  exchangeability check; complementary, honestly credited as offering
+  MORE than our bound under its precondition); propose/dispose
+  (trained verifiers 'move the corruptible component rather than
+  removing it'); ARQ ('our contribution is the boundary measurement,
+  not the loop'); AGING-NOVELTY CLAIMED CAREFULLY ('the ingredients
+  are old; the articulation as a deployment law with a succession
+  plan and a standing bet is, to our knowledge, new'). [cite] slots
+  resolve at assembly. THE HOUSE IS WHOLE; remaining = F-8a/b +
+  the assembly/tag-check pass.

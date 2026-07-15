@@ -105,9 +105,12 @@ the honest limitations; contributions and author accounting close the
 paper.
 
 <!-- Assembly notes:
-  - Section numbering: s05 merged the skeleton's 5+6; final assembly
-    renumbers (s07 -> 6 etc.) or keeps a deliberate gap. Cross-refs
-    resolve at assembly.
+  - Section numbering: RENUMBER (decided 2026-07-15) — s05 merged the
+    skeleton's 5+6, so s07->6, s08->7, s09->8, s10->9, s11->10; the
+    reader's map, all cross-refs, and figure names update in the same
+    assembly pass as the tag-check.
+  - §7.2's "Figure N" placeholder resolves to the frontier figure at
+    assembly (checklist item).
   - S2 (related work) drafts after this door per the relay's ordering:
     selective prediction + calibration mandatory; workspace/propose-
     dispose/neural-collapse/ARQ paragraphs as the framing demands.

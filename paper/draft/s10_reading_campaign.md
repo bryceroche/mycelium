@@ -34,8 +34,11 @@ the last having stood for days as a suspected model failure before the
 audit unmasked it as our error). A gate that cannot be flattered by
 its own builders is the campaign's license to call its data gold.
 
-**The rulebook, written by refusals.** Every rule in the annotation
-rulebook is a named wall the parser refused at: scattered variable
+**The rulebook, written by refusals.** The campaign's one attempt to
+*design* its intermediate language top-down died in a registered kill
+early in the project; the dialect that works was written bottom-up,
+one refusal at a time. Every rule in the annotation rulebook is a
+named wall the parser refused at: scattered variable
 letters produced the consecutive-letters rule; out-of-domain values
 produced the in-band rule; chained floor-division produced the
 one-fdiv rule and the multiplicative-inverse routing recipe;

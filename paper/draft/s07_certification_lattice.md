@@ -67,7 +67,7 @@ rung: relaxing unanimity to 4-of-5 and 3-of-5 buys coverage at measured
 precision cost (0.9925 and 0.9832 at first measurement), and the
 frontier's history across generations shows the certification channel
 widening — from 0.9982 at 38.1% coverage in its first measurement to
-1.0000 at 60.8% at freeze — as the reading campaign (§9) taught the
+1.0000 at 60.8% at freeze — as the reading campaign (§10) taught the
 parser the register rather than teaching it the test.
 
 The statistical fine print is inherited from §11 and not repeated here:

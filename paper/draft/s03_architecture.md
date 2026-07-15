@@ -39,6 +39,10 @@ factor graph through two slot banks — 24 variable slots bound to
 letters positionally, 24 factor slots — with bilinear pointers from
 factor arguments to variables, a six-way factor typing plus an argument
 multiplicity bit, and most-significant-digit-first quantity decoding.
+(The six factor types are the parse-side surface, not the relation
+inventory: registry relations enter as solver-side predicates bridged
+onto these types — §3.3 — which is how double-digit relation kinds ride
+on a six-way head output.)
 The **repair specialist** is a second head of the same architecture,
 retrained each generation on the gate model's organic failures and
 consulted only when the vote abstains. Around them sits the
@@ -96,7 +100,7 @@ books converged on — consecutive letters, explicit knowns, one
 declarative relation per sentence — was never designed; it was written
 by the parser's refusals, one rule per refusal, and it now functions as
 the system's intermediate representation. The one *designed* logical
-form the project attempted is a tombstone (§6); the dialect that works
+form the project attempted is a tombstone (§10); the dialect that works
 was discovered under selection. Third, the **two-channel spine**: the
 strict separation of frame (parse-side) from structure (graph-side) was
 an early architectural guess that the binding theorem later proved
