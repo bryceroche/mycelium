@@ -26,8 +26,8 @@ this paper was a prediction pinned before its measurement, with kill
 bars that wrote the verdict mechanically — a promotion and its manifest
 entry are one atomic act, and a kill touches nothing. Across fourteen
 model generations this discipline converted every refutation into a
-law, an instrument, or a retired build (the estimator-repair cascade
-alone banked nine tombstones), and it caught three defects in our own
+law, an instrument, or a retired build (the survivor arc alone banked
+nine tombstones, §9.2), and it caught three defects in our own
 instruments before a reviewer could (§11). The complete chronological
 ledger — every registration, bar, verdict, and law — ships as
 supplementary material: the record is offered for audit, not trust.
@@ -84,8 +84,9 @@ constants do not.
 
 ### Author contributions
 
-This paper had two authors and three working channels, and the
-accounting below is the byline's justification.
+This paper had two authors, working as two machine channels and a
+human adjudicator (§9.5); the accounting below is the byline's
+justification.
 
 **Bryce Roche (human).** Direction and adjudication: every training run
 fired on his word, every promotion and kill was his to accept, and the

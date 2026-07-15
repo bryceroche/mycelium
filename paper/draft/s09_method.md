@@ -74,7 +74,7 @@ forms travel; the constants do not (§11).
 | Repair recovery is front-loaded; round 4 ≈ 0 | 4 | independent sightings across domains |
 | A selection criterion's jurisdiction is the property it selects on | 3 | "survived filter X" ≠ repairable |
 | Acceptance criteria must be measured, not assumed | 3 | third confirmation closed the beacon |
-| Binding enters as structure (masks, spans, letters), never as prose | 2+ | the pointer law's four remedies |
+| Binding enters as structure (masks, spans, letters), never as prose | 2+ | the pointer law's five remedies, descending cost |
 | Prevention beats repair for confident wrongness | 2 | representational pressure, not decode-side fixes |
 | Prose promotions don't move machines | 1 + audit | the stale-manifest finding; rule mechanized |
 | Estimator variance masquerades as distance | 1 + mechanism | length correction r = −0.825 → −0.024 |

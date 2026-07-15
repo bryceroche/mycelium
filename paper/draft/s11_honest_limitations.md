@@ -93,7 +93,9 @@ central artifact is the audit discipline, and a reader should expect
 undiscovered members of the same families.
 
 **Scale.** All results were produced on a single consumer GPU with a
-~3.2M-parameter trained head over a frozen 4-layer trunk slice. We make
+4.0M-parameter trained head (8.0M with its repair specialist) over a
+frozen ~506M-parameter, 4-layer trunk slice (the census re-run at the
+freeze tag; §3). We make
 no claim that the certification architecture transfers unchanged to
 larger models, longer contexts, or richer mathematics; we claim that at
 this scale, with these instruments, every number above was gated by

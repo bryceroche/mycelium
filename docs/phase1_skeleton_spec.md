@@ -5333,3 +5333,27 @@ token-position × waist-dim, the moment the skeleton trains.
   five kills (kill-red), the pivot at #6 (gate-blue, 99.6%), three
   pricings (13.9% / 6% retired / 3.0%@0.165), closing box with the
   accounting line verbatim. Figure count: 7.
+- **S3 DRAFTED + THE FRESH CENSUS + THREE CROSS-READ CATCHES
+  (2026-07-15): the vehicle gets its chassis, and the census re-run
+  catches a stale headline number.** THE CENSUS FINDING: the relay's
+  re-run-at-the-tag instinct was right — parser gen-14 = 4,000,813
+  params (docs quoted ~3.2M; the multiplicity bit + reader-era growth
+  postdated the last count); specialist = 4,004,909; frozen trunk
+  slice (embed + L0-L3, counted from the safetensors header) =
+  505,954,304; jury = armB 4,000,300 + cap2x 13,767,724. S11's scale
+  paragraph corrected to 4.0M/8.0M/~506M. CLAUDE.md still says ~3.2M
+  (correction owed at next doc pass). THE CENSUS TABLE'S PUNCHLINE:
+  row 2 (both jaws) EQUALS row 1 (parser+specialist) — the solver
+  adds zero trainable parameters, 'nothing on the verification path
+  for training pressure to corrupt'; leverage 63x frozen per trained.
+  S3 four movements: (3.1) theorem->design derivation ('the rare
+  architecture section that argues necessity'); (3.2) components +
+  census; (3.3) as-built-vs-as-designed — Poincare tier and notebook
+  replaced by hard membership and the repair signal, 'a designed
+  OBJECT replaced by a measured ACTION. The nouns died; the verbs
+  survived.'; (3.4) laws as constraints — pointer law five remedies
+  at birth, the DISCOVERED DIALECT as the IR nobody designed, the
+  two-channel spine proved load-bearing. CATCHES APPLIED: survivor-
+  arc naming unified (contributions), five remedies (Table 9-1),
+  channels frame unified ('two machine channels and a human
+  adjudicator').
