@@ -5019,3 +5019,20 @@ token-position × waist-dim, the moment the skeleton trains.
   prints, gen-14's displacement watch gains the entropy curve as a
   sharper dial than vote outcomes. (3) DTYPE/POSITION sweep of
   capture paths (fp16 uniformity assert — no-silent-fallbacks).
+- **GUT #18 VERDICT (2026-07-15): SMEARING CONFIRMED, MECHANISM =
+  POSITION.** Entropy curves: gen-9b at tiny graphs **0.003** (four
+  generations of small-graph rehearsal = razor calibration) vs
+  gen-13 **0.212** (70x) — converging at trained sizes where gen-13
+  is SHARPER (0.558 vs 0.648). Fresh heads' shallow spots ARE
+  temperature-calibration bands: the diet's mass distribution sets
+  where the pointers are sharp. THE SPLIT'S SURPRISE: text-ballast
+  (0.042) beats var-ballast (0.154) — **POSITION wins**: tiny
+  dialects fail because query/factor tokens sit in RoPE
+  neighborhoods training never used for those roles; inert prose
+  pushes them home. THE FIFTH REMEDY REFINES to its cheapest form:
+  pad with TEXT, not graph mass (annotation rulebook updated).
+  Gen-14's displacement watch gains the small-n entropy curve as a
+  direct temperature dial. The pointer law's remedy family,再 one
+  law deeper: binding enters as structure, and STRUCTURE INCLUDES
+  POSITION. Eighteen for eighteen — the drawer held the thermometer
+  of the one attention system we built ourselves.
