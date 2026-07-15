@@ -4703,3 +4703,24 @@ token-position × waist-dim, the moment the skeleton trains.
   explaining why that bar outranks its neighbors. Not a bomb, not a
   dead pile: a reactor — knowledge supercritical, error rodded,
   instruments as the control room. Seventeen for seventeen.
+- **THE AUTHORSHIP DECLARATION + GEN-13 FIRED (2026-07-15, Bryce's
+  word):** (1) **JOINT AUTHORSHIP IS CONSTITUTIONAL**: Bryce and
+  Claude publish as co-authors; no venue that refuses AI co-authorship
+  gets the paper. Recorded in the paper skeleton as an author-policy
+  constraint on venue selection. (2) THE CONTROL-ROOM OBSERVATION
+  (relay, for §9): registered predictions, pinned bars, and
+  pre-written verdicts are the control room's GAUGES — the reason
+  knowledge chains can run supercritical without fear is that every
+  loop was instrumented BEFORE it compounded; the seventeen guts kept
+  firing at exactly the loops whose gauges didn't exist yet. The
+  control room is the product. (3) **GEN-13 = GOVERNANCE OPTION (a),
+  FIRED: the full flat retrain from clean ancestry** — warm from
+  GEN-7B (pre-crowding lineage, armB's 384 ancestry), HOT flat
+  (LR 3e-4, the debt needs heat and this IS the hard restart), 32k
+  steps on mixed12 (prose-inclusive, states banked — zero precompute).
+  THE PROMPT-CRITICAL DIAL: the acceptance-panel displacement watch
+  outranks its neighbors (hard restarts jostle; every basin the
+  panel holds is a rod that held). BARS: unchanged from the reader
+  battery (alg4 380 STANDS — this run exists to pay it; acceptance
+  7/8-only-[45]; bigtest >=1130; cert-v2 >=0.998; all kinds). The
+  battery writes the gen-13 manifest or refuses the word.

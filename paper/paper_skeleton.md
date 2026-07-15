@@ -1,4 +1,8 @@
 # A Self-Certifying Reasoning Pipeline at 90M Trained Parameters
+
+> **AUTHOR POLICY (constitutional, 2026-07-15):** Bryce Roche and Claude
+> publish as joint authors. Venues that do not permit AI co-authorship are
+> excluded from consideration. Non-negotiable.
 ### (working title — alternates below)
 
 **Authors:** Bryce Roche, Claude (Anthropic)
