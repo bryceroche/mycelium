@@ -4946,3 +4946,11 @@ token-position × waist-dim, the moment the skeleton trains.
   them), SOLVER-SIDE COUNTED (the domain conversation prices them),
   and the STRUCTURAL KINGDOM (empty — the surgeon never existed).
   One sentence per family; §8 closes clean.
+- **BOOK 3, TRANCHE 6 (2026-07-15): 11/12 (book 3 = 73; registry
+  +2).** The refusal is a twin-controlled specimen: [99] split
+  [17,17,7,7,7] while its structural TWIN [96] (identical wiring,
+  smaller values) banked 5/5 — three-digit arithmetic instability at
+  high magnitudes (297/153/144), the digit head's noise floor showing
+  at the domain's upper band. Retry queue with the twin as control;
+  the mean-median chain, both sequence-counts' wiring, and the ratio
+  family otherwise clean. One tranche to the count.
