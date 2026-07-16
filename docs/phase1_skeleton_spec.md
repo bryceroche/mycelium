@@ -5736,3 +5736,86 @@ token-position × waist-dim, the moment the skeleton trains.
   bank but whose MACRO form fits — one such bank in book 4 = the
   factor-count wall falling, the recursion's first measured dividend.
   The library of primes has its first word one floor up.
+- **GUT #21: THE FLUX AUDIT (2026-07-16, Bryce + relay + Code, registered
+  in the amended form — both channels countersigned).** The instinct:
+  energy flux maps onto the training economy. THE CANDIDATE LAW, corrected
+  in review from scalar flux to **FLUX DENSITY**: training harm and gift
+  separate on ENERGY PER UNIQUE KNOT per unit time — never on energy or
+  rate alone. The correction is the mechanism: share x reps x LR units
+  cannot distinguish the n=14 dose pilot (zero) from the n=100 book (+8)
+  — the knot denominator separates them cleanly; concentrated energy on
+  few circuits burns, the same energy spread across many anneals
+  (material damage is power per area, never watts). PRE-POSITIONED
+  INSTRUMENTS COLLECT AGAIN: the knot-rehearsal matrix (built for
+  contamination accounting in the hash audit) IS the area term; the
+  gradient logger riding gen-14 is the power term (units note, pinned:
+  SGD energy-per-step is LR x grad-norm SQUARED — the logger's
+  mean+variance makes it derivable). Two audits, one variable, neither
+  knew. THREE READS, house form: **(a) THE CONTINUITY AUDIT (zero-GPU,
+  fires first — upstream armor for the paper's public tables):** every
+  fixture item exits through EXACTLY ONE of certify/answer/flag/abstain;
+  sum the surfaces, demand intake = outflow, zero double-counts, zero
+  vanishings; pressure points pre-named: effK<5 certificates, the retry
+  lane's exit count, refused-at-mouth vs abstained-below. Also rehearses
+  the conservation bookkeeping (c) will need. **(b) THE RETROSPECTIVE
+  CONSISTENCY READ (kill-only, honestly sized):** the banked events
+  (prose-v0 -243; book-2 gift; dose pilot zero; gen-9 re-shallowing vs
+  9b deepening; the staged-heat/schedule-probe dividend) re-read in
+  PROXY flux-density units (share x reps x LR x steps / unique knots —
+  proxy stated: no retro grad norms exist; the logger is gen-14+). Five
+  or six events against two free parameters is a FIT: the read can KILL
+  the law (one event on the wrong side), never confirm it. Teeth live
+  in (c). **(c) THE CONCENTRATION A/B (rides book-4's first training
+  run, bars pinned before the fire):** same total steps, same mix, same
+  dose rows — delivered CONCENTRATED (contiguous block) vs SPREAD
+  (uniform interleave). Quench vs anneal inside one matched budget; zero
+  new machinery. REGISTERED READ: the concentrated arm shows MORE
+  displacement on the dose rows' NEIGHBORS at equal final exposure —
+  and per the population law, NEIGHBOR IS PINNED NOW: shared-knot-class
+  per the WL matrix, never surface adjacency (a displacement claim
+  inherits the jurisdiction of its neighbor definition; the choice is
+  made before the print so it cannot flatter one). PROSE LAW BANKED
+  (the third landing, no machinery): **mouths guard sources, keys guard
+  sinks** — the funnel is dissipative everywhere except at generative
+  components (mint, chartered repair-lane writer); source terms are
+  where new error species enter, so every source gets a mouth
+  immediately downstream — the layered-mouths law derived, not
+  asserted; fitting instructions for any future generative organ
+  (cross-link: the ladder constitution's writer pre-registration). If
+  (b) survives and (c) prints, the ledger's scattered damage findings
+  collapse into one law with units and a denominator: the rations get
+  their theory, the reactor gets its dial (instinct #17's missing
+  control variable), and the mint's dose arithmetic becomes design
+  rather than folklore. Twenty-one: an audit with a number waiting.
+- **GUT #21, READ (a) VERDICT (2026-07-16): THE CONTINUITY AUDIT — THE
+  BOOKS BALANCE.** Independent walker (scripts/flux_continuity_audit.py)
+  over the banked gen-14 lattice votes, all 1,500 fixture items assigned
+  exactly one exit: **certify 912 (precision 1.0000, recomputed 912/912)
+  + vote-abstain->repair 320 + answer(majority) 212 (0.9953) +
+  answer(panel-dissent) 56 = 1,500. ZERO leaks, ZERO double-counts.**
+  The paper's headline dial (912/1,500 at 1.0000) REPRODUCES from raw
+  member votes by code that shares nothing with lattice_join.py; the
+  ledger's 913 is gen-13's number, the paper's 912 is gen-14's — a
+  generation difference, not a bookkeeping error (both true, each in
+  its regime). FOUR FINDINGS AT THE PRESSURE POINTS: (1) **the ±1
+  seam**: gen-14's battery printed bigtest 1195 one-shot; the lattice
+  artifact's identity view reads 1194 (267 None / 39 wrong) — two
+  honest runs of the same ckpt differ by one marginal item (solve
+  budget or numeric margin); disposition: per-item outcome banking
+  joins entourage-14's rebuild so ±1 seams become joinable instead of
+  mysterious. (2) **the effK fine print RE-CONFIRMS at freeze**: 23
+  fixture items at effK<5 (byte-consistent with the mirror audit's
+  census), 22 of them CERTIFIED (15 at effK=4, 7 at effK=3), ALL
+  correct — the quarter-percent clause stands on gen-14's certified
+  column. (3) **the panel's price surfaced**: 56 items gate-unanimous
+  but panel-dissented — all 56 were in fact correct at gen-14; the
+  coverage gap is real money paid for decorrelation insurance, and the
+  56-item list is the lineage-disagreement instrument's standing
+  corpus. (4) **the repair lane's intake enumerated**: 320 vote-abstain
+  items (banked list) — handed to entourage-14's specialist remine as
+  its conservation check: every one must exit the specialist's ledger
+  exactly once. The audit-that-confirms, with two instruments as its
+  fee: the freeze tables are leak-free, and (c)'s displacement
+  accounting inherits a rehearsed bookkeeping. Reads (b) retrospective
+  and (c) concentration A/B remain registered, (c) holding for book-4's
+  first fire.
