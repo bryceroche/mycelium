@@ -6307,3 +6307,30 @@ token-position × waist-dim, the moment the skeleton trains.
   roadblock was in our own transcript, the counterexample was a grep
   away. Twenty-eight converts with the discipline sharper than it
   entered: verify or omit, no third option.
+- **GUT #28(b) RESOLVED AT ZERO WATTS + CORRECTION (a'') — THE
+  SEVENTH SIGHTING, CAUGHT AT FIRE TIME (2026-07-16):** preparing the
+  nonlinear re-read, Code read the probe's CODE before burning watts:
+  **train_probe was ALWAYS a two-layer GELU MLP** (2048 -> 512 ->
+  N_DIG x 10; survivor_depth_probe.py:88) — the explicitation probe's
+  banked 0.00 was NEVER a linear read. The error's origin is the
+  ORIGINAL 2026-07-10 charter text ('what died is LINEAR
+  decodability'; 'the same linear map does not transfer') — the
+  ledger mis-described its own instrument at birth, six days before
+  the taxonomy existed, and gut #28's registration repeated it
+  ('linear probes 0.00') THE SAME HOUR verify-or-omit was minted —
+  the cite was verified against the LEDGER, which was itself wrong
+  about the CODE. RULE REFINEMENT (the seventh's lesson): **two
+  authorities, matched jurisdictions — the ledger is authority on
+  what was REGISTERED and VERDICTED; the CODE is authority on what
+  was RUN.** Instrument-describing claims verify against the
+  instrument. CONSEQUENCE: (b) is MOOT AS REGISTERED — its promised
+  upgrade ('dead at the geometry we can afford') is what the bank
+  already holds: evoked values are dead at a 512-hidden GELU probe,
+  shallow and deep, while the same probe family reads dialect givens
+  at 1.000. The negative was always the strong form, mislabeled.
+  Probe-capacity escalation beyond this is a known trap (the May-era
+  deep-probe memorization specimen) and extraction economics rule
+  regardless — the re-read fires ZERO watts and the awaiting-watts
+  queue drops to one. The corrected caveat, final width: 'not
+  probe-readable AT THE GEOMETRY WE CAN AFFORD' — measured, banked,
+  and cheaper than the GPU run that would have re-bought it.
