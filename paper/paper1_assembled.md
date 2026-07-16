@@ -248,6 +248,22 @@ in primitives. The slogan form: **neural proposes, symbolic disposes** —
 abstraction may live in annotation and recognition, never in
 verification.
 
+This gives the pipeline a cleaner algebra. The predicate registry is a
+table of the solver's atoms — each relation kind an irreducible pattern
+it understands natively, a *prime*. A parsed problem is then a
+factorization: the parser's task is to express a composite stated in
+words as a product of registry primes, and the frame-free graph is that
+factorization written down. Macro-relations are composites admitted for
+compression, but they expand to primes before the solver sees them,
+because the answer key grades only in primes. The canonical digests of
+§4 are the same idea made rigorous — a canonical factorization of the
+graph — which is why disjointness *up to isomorphism* is disjointness of
+prime structure, not of surface text. Two problems share a knot when
+they share a factorization; strangers in words can be identical in
+primes, and kin in words can be coprime. The registry's counted
+frontier (§9) is, in this language, a list of primes not yet
+discovered.
+
 ### 3.2 The components at freeze, census-verified
 
 The construction jaw is a small trained head over a large frozen eye.
