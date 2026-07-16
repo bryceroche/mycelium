@@ -6334,3 +6334,35 @@ token-position × waist-dim, the moment the skeleton trains.
   queue drops to one. The corrected caveat, final width: 'not
   probe-readable AT THE GEOMETRY WE CAN AFFORD' — measured, banked,
   and cheaper than the GPU run that would have re-bought it.
+- **GUT #26(a) VERDICT (2026-07-16): THE VOICE TAKES THE SHIFT — width
+  where depth died, by a mile.** The sampled-retry probe
+  (scripts/sampled_retry_probe.py, transient unit, gen-14 gate, the
+  320-item vote-abstain fixture, K=8, one round, gold grading never
+  gating): deterministic T=0 straight-parse control **70/320
+  (21.9%)**; sampled deployable (solver-consistent plurality, fully
+  gold-free) **T=0.3: 102 -> T=0.7: 124 -> T=1.0: 136/320 (42.5%)**;
+  oracle-any at T=1.0 **151/320 (47.2%)**. Delta +66 on the pinned
+  bar of +16 — the deterministic parser's re-emission was leaving
+  HALF the recoverable answers on the table, and the escape mechanism
+  prints in the abstain column: no-consistent-sample FALLS as T rises
+  (158 -> 108 -> 102) — the deterministic content is exactly what is
+  broken; heat escapes it (the repair-generation wall confirmed
+  GENERATIVELY). MONOTONE IN T with no peak visible at the grid's
+  edge; T>1.0 cells stay unrun (unpinned — a follow-up registration,
+  not a free extension). HONEST DEVIATIONS + FOLLOW-UPS, stated
+  before any deployment claim: (1) control was the T=0 STRAIGHT PARSE
+  (pin iii named the deterministic specialist — its per-item recovery
+  on this fixture is unbanked; the NACK-incumbent read is owed before
+  the repair lane switches voices); (2) the 5-view sub-majority
+  plurality reads 193/320 against gold on these items but is NOT
+  gold-free-actionable as banked — the vote-vs-sampling composition
+  (permutation-views x temperature-samples, one lattice) is the
+  natural next instrument and touches the certification tier NOWHERE
+  (this entire read lives in the answer channel; the cert chain is
+  untouched). (3) THE WRITER'S NULL MODEL IS NOW PRICED: any learned
+  replacement-generator must beat T=1.0 K=8 noise-plus-the-gate
+  (+66) to earn parameters — the chair's first shift is held by the
+  cheapest voice in the universe, exactly as the bar was written.
+  Twenty-six closes fully converted: the dial was on the back of the
+  epigraph's word, and turning it nearly doubled recovery on the
+  hardest population in the house.
