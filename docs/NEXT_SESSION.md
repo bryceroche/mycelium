@@ -43,6 +43,16 @@ twin-key read (banked machinery); [130]/[99] retries; chained-fdiv
 autopsy; OPERATION-APPLY admission; tranche-3 relations.
 Envs: ALG2=1 ALG_FTYPES=6 ALG_DUP=1; GATE=.cache/phase1_gen14_head.
 
+**BANKED 2026-07-16: THE LADDER CONSTITUTION** ((c)-world amendment,
+ledger has full form): explicit prose->dialect writer, if ever built,
+routes through the REPAIR LANE only (flagged items; free per-item
+control group; competence claim bounded to the flagged population);
+RESIST-SIGNATURE BAR pinned (decodability >=0.9 AND proven dose
+~2k pairs/10k steps moves acceptance <+10/100 on an IN-REGISTER
+disjoint census AND displacement guard holds — all three or no build);
+CURRICULUM FENCE (mouth-distance gradient = acquisition order ACROSS
+books, never sampling order within runs — flat-mix law untouched).
+
 
 ---
 # PRIOR HANDOFF BELOW

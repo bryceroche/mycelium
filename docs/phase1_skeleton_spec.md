@@ -5630,3 +5630,58 @@ token-position × waist-dim, the moment the skeleton trains.
   paper's venue-version byline call, essay 'The Shadow of
   Intelligence', Paper II 'Guided by Primes'). The byline is the
   byline.
+- **REGISTERED (2026-07-16, Bryce's word + relay + Code, countersigned
+  both ways: THE LADDER CONSTITUTION — the (c)-world amendment
+  banks.** Occasion: the layers-of-abstraction instinct's THIRD visit
+  (the 'guided by primes' campaign opening). Findings restated for the
+  record: the IR ladder EXISTS and was discovered, not designed — wild
+  prose -> frame-stripped prose -> the dialect -> the macro dialect ->
+  typed factor graph -> primes, every rung minted by refusals (the
+  annotation rulebook IS the wild->dialect compiler, hand-executed);
+  traversal is INTERNALIZED by default (one book per rung, pairs free
+  by construction — same graph, two renderings, gold at every layer);
+  breathing-through-IR-layers INSIDE the head stays dead (Brick-P: the
+  reader deepens because text doesn't); the staged image is licensed
+  only at the PIPELINE level of the (c) world, which remains unbuilt.
+  THREE AMENDMENTS to the explicit prose->dialect pre-registration
+  (2026-07-10, the fork entry): (1) **REPAIR-LANE ROUTING** — if the
+  writer is ever built, it fires ONLY on lattice-flagged items, never
+  mainline. Bounds the new silent-error species to the surgery-bound
+  population, keeps the mainline funnel two-point (mouth in, key out),
+  and ships a FREE CONTROL GROUP: every firing is a paired read (same
+  item, raw vs rewritten, through the same gate) — refusal->certified
+  conversions counted per item from day one; the writer's worth is
+  measurable without an A/B by construction. Constitutional geometry
+  intact: the writer is propose-side machinery; its output is TEXT
+  (never graph deltas) re-entering the funnel unchanged to face the
+  same disposal; the decision path stays zero-parameter. JURISDICTION
+  NOTE (the selection law): the flagged population is
+  survivor-selected — the writer's competence claim is bounded to
+  items the lattice flags; repair-lane success is NOT mainline
+  readiness, and the registration says so before anyone reads it
+  otherwise. (2) **THE RESIST-SIGNATURE BAR, PINNED** (numbers chosen
+  now, while no rung is close — exactly when bars are honest). A rung
+  is RESISTANT — and the explicit stage earns its build — only if ALL
+  THREE hold: (i) decodability >=0.9 on the rung's flagged content
+  (the trunk reads it; the head is blind); (ii) the PROVEN DOSE
+  (~2,000 pairs, 10k steps, warm from the gate lineage) moves
+  zero-shot acceptance by LESS THAN +10 per 100 on a DISJOINT census
+  drawn FROM THE RESISTING REGISTER ITSELF, density regime stated
+  (resistance measured on the wrong population is the estimator
+  mistake wearing new clothes); (iii) the displacement guard holds
+  (bigtest may not trail the gate by >15 — otherwise the arm shows
+  interference, not resistance). Rationale pinned: the bilingual
+  precedent moved ~+98 at the same dose (10/600 -> 600/600); <+10 is
+  a different REGIME, not a slow rung. The explicit stage is now
+  un-talkable-into-existence. (3) **THE CURRICULUM FENCE** (up before
+  the traversal sentence is quotable): the mouth-distance gradient
+  governs ACQUISITION ORDER ACROSS BOOKS — which register to annotate
+  next, nearest unclosed register first (the fork logged verbose at
+  0.093 between home 0.044 and MATH-500 0.25; the geometry already
+  orders the ladder) — and NEVER sampling order within a run
+  (flat-mix won outright; curriculum is dead at scale). Different
+  jurisdictions, both verdicts stand. THE CONSTITUTION IN ONE LINE:
+  rungs discovered by refusal, ordering measured by the mouth,
+  traversal internalized by pairs — and the explicit stage fully
+  drawn, costed, routed to the repair lane, and barred against
+  motivated reasoning while it waits.
