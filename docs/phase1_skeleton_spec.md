@@ -6198,3 +6198,58 @@ token-position × waist-dim, the moment the skeleton trains.
   converts: one dial never turned (the parser's T), one gauge never
   installed (now installed), one instrument owned in four pieces
   (now one table).
+- **GUT #27: THE COSINE-LAW AUDIT (2026-07-16, Bryce + relay + Code,
+  registered as amended and FIRED — with a same-hour kill).** The
+  formula is real (Euclidean distance = the two channels + the cross
+  term; gradient superposition likewise), the weld to twenty-one is
+  the find, and the jurisdiction catch reframed the whole audit: THE
+  TORN TERM WAS TORN ON PURPOSE in half the fleet (the mouth
+  normalizes BY DESIGN — restoring norms would re-inject the
+  sixteenth's length-warp confound; the fifteenth's two channels are
+  SEPARATE deliberately — one Euclidean number would divorce an old
+  fdiv from a young fdiv when they are kin at different ages). A
+  metric is a JURISDICTION question, not a correctness question —
+  twenty-six's table doing its job one session after charter, on its
+  own author's next idea. **(a) THE MATCHED-METRIC CENSUS (fired, by
+  code inspection):** mouth kNN = 1−cos on unit-norm pooled vectors /
+  question: register membership / MATCHED (norm deleted by design,
+  length handled by the warp correction); monitor centroids +
+  silhouette filters = cosine-to-centroid / kind identity / MATCHED
+  (angle=identity per the two-channel law; radius read separately as
+  the consolidation clock); Procrustes drift = aligned cosine /
+  constellation shape / MATCHED (rotation removed deliberately);
+  votes, panel, WL digests = no geometry, immune. **ZERO FLIPS among
+  instruments — the zero-flips lean held.** The census's ONE mismatch
+  is not an instrument but an ACCOUNTING: twenty-one's flux units
+  carry neither theta nor norms (share-based) — which is exactly read
+  (b). THE CONVERSION IDENTITY banks as the metric column's footer in
+  twenty-six's jurisdiction table: ||u−v||² = r_u² + r_v² −
+  2·r_u·r_v·cosθ — angle-only and norm-aware readings interconvert;
+  mixing them unlabeled is the conflation species in geometric
+  clothes. **(b) THE FLUX-SUPERPOSITION READ — THE KILL FIRES, same
+  hour, banked data only:** with dag7 the dominant partner, the
+  one-term corrected flux (share_dag7 × cosθ_i) predicts net
+  outcomes nl-core (−0.171) > alg2 (−0.255) > alg4 (−0.263); the
+  banked triad table reads **alg2 POSITIVE > nl-core NEGATIVE > alg4
+  worst — one inversion, kill by the pinned bar.** The inversion sits
+  exactly where the triad's two-force mechanism put it: alg2 is
+  anti-aligned BUT kind-shared (covert rehearsal inside dag7's
+  problems); nl-core is anti-aligned with no kind share. VERDICT: the
+  superposition term is real physics but INSUFFICIENT ALONE — any
+  effective-flux law must carry BOTH terms (destructive interference
+  + covert kind rehearsal), i.e., the cross term lives at CIRCUIT
+  grain, not register grain (the circuit-rehearsal law reasserting
+  itself in flux units). The triad's qualitative two-force account
+  STANDS as the only surviving form; the fresh-matrix-per-entourage
+  cost is charged only if a two-term quantitative law is ever
+  pursued. The prediction died by its own bar within the hour —
+  the pinned-kill discipline working at full speed. **(c)** the
+  hyperbolic cosine law parks behind the atlas's two gates beside
+  the marriage clause it extends. TAXONOMY LINE (the anti-specimen's
+  sibling, in the relay's favor): the near-duplication of a banked
+  mechanism was caught and converted to honest lineage — the triad
+  as datapoint one, the quantitative form as the contribution; the
+  grep now guards originality as well as provenance. Twenty-seven
+  converts: instruments carry jurisdictions, vintages, and METRICS —
+  and the first law proposed under the new column died honestly on
+  contact with banked data, which is the column proving it works.
