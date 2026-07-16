@@ -6053,3 +6053,24 @@ token-position × waist-dim, the moment the skeleton trains.
   the per-floor re-run is standing on the book-4 docket. The meter's
   one-line legacy: neural proposes, symbolic disposes — and on
   minimal graphs, only the text proposes.
+- **GUT #24 ADDENDUM (2026-07-16, relay countersign — the meter pays
+  twice):** (1) **THE INVERSION IS A REGISTER FINGERPRINT AT THE
+  STRUCTURAL LEVEL**: real authors state exactly what's needed and
+  nothing more (books 0.000); the mint, built for uniqueness under a
+  budget, OVER-DETERMINES (bigtest 0.667) — a structural
+  off-registerness no style axis measures. DOCKET LINE FOR THE MINT
+  (zero urgency, one line): a REDUNDANCY DIAL — minimal-mode rendering
+  so generated problems rehearse the sparseness the wild actually
+  wears; the meter is its acceptance instrument, corpus and
+  architecture gate in one. (2) WITHHOLD-AND-SOLVE RETIRES FROM THE
+  REAL-PROSE LANE BY ITS OWN TERMS: its 26% was always priced as
+  'deduction is only as available as the graph is redundant'; the
+  meter measured that availability at zero on the population that
+  matters — no relitigation, the fine print executed itself. Day's
+  close: four guts converted (flux, OOD, diffusion, alternation), one
+  admission, one constitution, the bias law at four specimens with the
+  cure in persistent memory; every read pre-pinned, every verdict
+  mechanical, zero GPU. Book 4 holds the converging docket: shopping
+  list (22), training regime (23), per-floor redundancy read (24),
+  head extension + macro annotation on the word. Everything waits on
+  pages.
