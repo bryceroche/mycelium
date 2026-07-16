@@ -44,7 +44,9 @@ its training regime is REGISTERED per gut #23: three arms, prime-only
 / macro-only / floor-paired flat-mix, leans pinned on paired);
 Meissner probe + twin-key read (banked machinery); [130]/[99] retries;
 chained-fdiv autopsy; ~~OPERATION-APPLY admission~~ **DONE 2026-07-16**;
-tranche-3 relations.
+tranche-3 relations; **sampled-retry probe (gut #26a: T-wide retry on
+the 320 vote-abstain fixture, five pins in ledger — GPU-minor, awaits
+the word)**.
 Envs: ALG2=1 ALG_FTYPES=6 ALG_DUP=1; GATE=.cache/phase1_gen14_head.
 
 **DONE 2026-07-16: THE FIRST ADMISSION — OP_APPLY (grammar mg1).**
