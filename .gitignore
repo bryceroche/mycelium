@@ -97,3 +97,5 @@ lambda/*/package/
 
 # Claude Code local memory
 .claude/
+node_modules/
+

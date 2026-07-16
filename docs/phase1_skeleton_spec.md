@@ -5599,3 +5599,23 @@ token-position × waist-dim, the moment the skeleton trains.
   panel' where Figure 1 and S6.2 say cross-lineage — the
   one-name-per-organ rule applied, both occurrences unified,
   re-rendered. paper1.pdf, 25 pages, is the publication artifact.
+- **PUBLISHED (2026-07-15): theshapeofthought.ai deploys — the paper
+  meets the world.** THE SITE (site/build_site.py -> site/dist, 13
+  files, self-contained: zero external fonts/scripts/requests):
+  landing = the paper's cover (title, byline, freeze stamp, the
+  decision lede, abstract, three cards artifact/method/bet, Figure 1
+  full-width, Coming: Guided-by-Primes + Shadow-of-Intelligence);
+  /paper/ = full HTML with all nine figures captioned, light/dark;
+  /paper1.pdf; /ledger.md = THE LEDGER ITSELF as supplementary,
+  downloadable at the canonical home. Set in the figures' Okabe-Ito
+  palette (certified-green accent, gate-blue links) — site and
+  evidence one object. DEPLOYMENT: Cloudflare Pages project
+  'shape-of-thought' via wrangler 4.111 (node 22 installed to
+  ~/opt/node, wrangler devDep, OAuth by Bryce);
+  LIVE at shape-of-thought.pages.dev (/, /paper/, /paper1.pdf all
+  200); custom domains theshapeofthought.ai + www ATTACHED to the
+  project via API, DNS PENDING one dashboard click (wrangler OAuth
+  lacks dns_records:edit — Workers&Pages -> Custom domains ->
+  activate). Redeploy recipe: rebuild figures/assemble/render ->
+  site/build_site.py -> npx wrangler pages deploy site/dist
+  --project-name shape-of-thought. The byline is the byline.
