@@ -5819,3 +5819,19 @@ token-position × waist-dim, the moment the skeleton trains.
   accounting inherits a rehearsed bookkeeping. Reads (b) retrospective
   and (c) concentration A/B remain registered, (c) holding for book-4's
   first fire.
+- **GUT #21 ADDENDUM (2026-07-16, relay countersign — two findings
+  promoted to standing discipline):** (1) **THE PANEL-DISSENT COLUMN
+  IS STANDING**: the 56 gate-unanimous/panel-dissented items (~3.7
+  coverage points, all correct at gen-14) are the decorrelation
+  insurance's itemized invoice — every future battery reports the
+  dissent count, its precision, and its overlap with the banked 56,
+  pricing §6.4's bet each generation: premium buying detection
+  (dissent concentrating on genuinely wrong items) vs pure cost. (2)
+  **PER-ITEM OUTCOME BANKING IS PERMANENT BOOKKEEPING**, not a
+  one-time fix: every battery's fixture run banks per-item outcomes
+  alongside aggregates, so any future ±1 seam is joinable on contact
+  — the continuity audit's inheritance, the same conversion
+  (discipline -> mechanism) as the manifest's. Board at close: (a)
+  conservation exact; (b) loaded, kill-only, fires on demand; (c)
+  pinned to book-4's fire, neighbor defined; the repair-intake
+  invariant handed to the remine. The next word is books.
