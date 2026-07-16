@@ -44,11 +44,13 @@ its training regime is REGISTERED per gut #23: three arms, prime-only
 / macro-only / floor-paired flat-mix, leans pinned on paired);
 Meissner probe + twin-key read (banked machinery); [130]/[99] retries;
 chained-fdiv autopsy; ~~OPERATION-APPLY admission~~ **DONE 2026-07-16**;
-tranche-3 relations; **sampled-retry probe (gut #26a: T-wide retry on
-the 320 vote-abstain fixture, five pins in ledger — GPU-minor, awaits
-the word)**; **nonlinear evoked-value re-read (gut #28b: two-layer probe
-on banked explicitation states, bar = linear 0.00, kill-only —
-GPU-minutes, awaits the word)**.
+tranche-3 relations; ~~sampled-retry probe~~ **FIRED 2026-07-16: THE
+VOICE TAKES THE SHIFT (+66 vs bar +16; T=1.0 deployable 136/320 vs
+control 70; writer's null model priced)** — follow-ups pre-named:
+NACK-incumbent read on the same 320, vote-x-sample lattice (both
+zero-to-minor watts); ~~nonlinear evoked-value re-read~~ **MOOT at
+zero watts (the banked 0.00 was always two-layer; two-authorities
+rule minted)**. Awaiting-watts queue: EMPTY.
 Envs: ALG2=1 ALG_FTYPES=6 ALG_DUP=1; GATE=.cache/phase1_gen14_head.
 
 **DONE 2026-07-16: THE FIRST ADMISSION — OP_APPLY (grammar mg1).**
