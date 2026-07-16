@@ -5685,3 +5685,54 @@ token-position × waist-dim, the moment the skeleton trains.
   traversal internalized by pairs — and the explicit stage fully
   drawn, costed, routed to the repair lane, and barred against
   motivated reasoning while it waits.
+- **THE FIRST ADMISSION (2026-07-16, Bryce's word 'lets begin' + Code):
+  OPERATION-APPLY enters the registry — the recursion's first rung is
+  CLIMBED.** EVIDENCE (scripts/macro_admission_review.py -> .cache/
+  macro_admission_review.json; harvest = ALL THREE BOOKS' gold pairs,
+  n=182, today's full volume; train = 20k rows capped/logged): the
+  OP-APPLY-2 crown (r = k1*x +/- k2*y; {given,mul,given,mul,op}) sits
+  in **4.9% of harvest items vs 0.26% of train items — ~19x
+  over-represented in real prose**, dominant crown digest
+  916f019f77831ce0 (9-in-182 vs 37-in-20,000); the miner's gap call
+  confirmed at volume. Specimens name the family: custom-operator
+  problems ('a S b = 3a+5b'), coupled linear systems (pens-and-pencils,
+  legs-and-heads, 9s+5t). The AFFINE form (x +/- k*y, crown
+  e927582d8270a86c) reads 13.7% harvest vs 11.4% train — MATCHED, not
+  a gap: it enters as the SAME macro's k=1 leg, not a second entry.
+  Savings priced: 4 primitives absorbed per crown; 86 factors across
+  the 182-item harvest. INSTRUMENT HONESTY: the review's first run
+  root-marked crowns at sorted-position-0 and printed phantom
+  'zero-coverage orientations'; true-root marking dissolved them
+  before anything pinned — a WL digest is only comparable under ONE
+  root convention (the estimator family's newest member, caught
+  in-house). DISPOSITIONS: CHAIN(k>=4) reads 3.3% harvest vs 11.2%
+  train and PREFIX-SUM 9.9% vs 36% — train OVER-covers both relative
+  to real prose; RANKED, NOT ADMITTED (the gate holds; frequency
+  proposes and these didn't). THE ADMISSION: mycelium/macros.py,
+  grammar **mg1** — OP_APPLY(op in {add,sub}, k1,x, k2,y -> r),
+  deterministic expansion, k=1 legs drop their given+mul; semantics
+  FROZEN under mg1 (any change = new version; banked macro rows must
+  re-expand byte-identically forever); expand_graph() hard-asserts no
+  macro survives to solver-facing output. ADMISSION EXAM
+  (scripts/test_macro_expansion.py, 4/4): (1) LEVEL-INVARIANCE — the
+  banked 3a+5b specimen's hand-primitive gold and the macro's
+  expansion both grade 31 through the same core (certification is
+  level-invariant, demonstrated not asserted); (2) CROWN IDENTITY —
+  the expansion's detected crown reproduces the pinned mined digest
+  byte-exact, AND the k=1 leg reproduces the affine mined class
+  e927582d8270a86c: one entry, both harvested classes (the registry
+  entry IS the harvested shape); (3) byte-determinism; (4) sub + affine
+  variants solve correctly. BIRTHRIGHT RIDERS (registered, not fired):
+  (i) MANIFEST CITIZENSHIP — macros.py hash + grammar version + crown
+  digests join GENERATION.json at the next promotion's atomic write;
+  (ii) THE HEAD EXTENSION (7th ftype: op bit, two digit banks, two
+  pointers — structural entry per the pointer law) is book-4-era GPU
+  work, awaits the word; (iii) ERROR SPECIES: macro mis-annotation
+  (wrong k, wrong op) — caught by the key at expansion; taxonomy tier
+  opens with book 4's lanes. REGISTERED PREDICTION (pinned before
+  book 4 exists): macro-level annotation prices the linear-combination
+  family at 4 fewer factors per crown; the charter's wall test fires
+  on the first stranger whose PRIMITIVE form exceeds the 24-factor
+  bank but whose MACRO form fits — one such bank in book 4 = the
+  factor-count wall falling, the recursion's first measured dividend.
+  The library of primes has its first word one floor up.

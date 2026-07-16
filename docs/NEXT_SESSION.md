@@ -38,10 +38,22 @@ policy.
 
 **Post-paper queue:** entourage-14 duty; book 4 charter (DIFFERENT
 distributions: harder strata / AMC register / post-relation coverage —
-the curve saturated, the library didn't close); Meissner probe +
-twin-key read (banked machinery); [130]/[99] retries; chained-fdiv
-autopsy; OPERATION-APPLY admission; tranche-3 relations.
+the curve saturated, the library didn't close; now also MACRO-LEVEL
+annotation — OP_APPLY admitted, head extension awaits the word);
+Meissner probe + twin-key read (banked machinery); [130]/[99] retries;
+chained-fdiv autopsy; ~~OPERATION-APPLY admission~~ **DONE 2026-07-16**;
+tranche-3 relations.
 Envs: ALG2=1 ALG_FTYPES=6 ALG_DUP=1; GATE=.cache/phase1_gen14_head.
+
+**DONE 2026-07-16: THE FIRST ADMISSION — OP_APPLY (grammar mg1).**
+mycelium/macros.py (deterministic expansion, solver never imports it);
+evidence scripts/macro_admission_review.py (harvest n=182: OP-APPLY-2
+crown ~19x over-represented vs train; crown 916f019f77831ce0, affine
+e927582d8270a86c); exam scripts/test_macro_expansion.py 4/4
+(level-invariance on the banked 3a+5b specimen, crown identity to BOTH
+mined digests, determinism, variants). CHAIN/PREFIX-SUM ranked, NOT
+admitted (train over-covers both). Riders: manifest citizenship at next
+promotion; head extension (7th ftype) with book 4. Ledger has full form.
 
 **BANKED 2026-07-16: THE LADDER CONSTITUTION** ((c)-world amendment,
 ledger has full form): explicit prose->dialect writer, if ever built,
