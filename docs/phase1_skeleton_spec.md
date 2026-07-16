@@ -6143,3 +6143,58 @@ token-position × waist-dim, the moment the skeleton trains.
   consistent with the meter's 2.2% >=half-redundant tail; the
   deducer's chair stays empty at prime level, now for a TOPOLOGICAL
   reason stated in one word: strangers don't write crossings.
+- **GUT #26: THE TEMPERATURE AUDIT (2026-07-16, Bryce + relay + Code,
+  registered as amended; (b)+(c) FIRED, (a) HOLDS FOR THE WORD).**
+  The epigraph's word, turned over, had a dial on the back.
+  VERIFICATION: six-for-six — including the ANTI-SPECIMEN, banked
+  beside the bias law: gen-13's positional entropy 0.212 and
+  deep-wrong H=0.212 are TWO REAL NUMBERS from two real instruments,
+  a genuine coincidence the grep CERTIFIED CLEAN — provenance
+  checking also exonerates; the discipline is a measurement, not a
+  suspicion. (The coincidence is landing three's argument made flesh.)
+  **(a) THE SAMPLED-RETRY PROBE (registered, GPU-minor, THE FIRE IS
+  BRYCE'S):** the parser runs at T=0, and determinism is the
+  re-emission mechanism twenty-four measured. Sentence one: WIDTH,
+  NOT DEPTH — the anatomy killed four-rounds-deep (same voice,
+  44->16->4->0); one-round-WIDE (K distinct utterances, disposal
+  picks) is the orthogonal axis it never touched, entering clean
+  under the chair's own charter. FIVE PINS: (i) gold GRADES, never
+  GATES (disposal = solver consistency + re-vote, the standing
+  machinery); (ii) population = the 320 banked vote-abstain items
+  (the continuity audit's fixture — instruments compounding); (iii)
+  control = the deterministic specialist on the same 320; (iv) grid
+  T in {0.3, 0.7, 1.0}, K=8, ONE round; (v) bars: recovery <=
+  control+1pt -> the wall is CONTENT-DEEP, the writer's charter
+  inherits a measured floor; >= +5pt -> the cheapest voice in the
+  universe takes the chair's first shift. Both verdicts pay; it is
+  the writer's null model either way (no generation organ builds
+  before noise-plus-the-gate is priced). **(b) THE COOLING GAUGE —
+  ZERO POINT BANKED (scripts/cooling_gauge.py):** the standing bet
+  gets its thermometer. GEN-14 portrait (nats, H over 5 views, None
+  its own outcome): certified 968 at H=0.000 (by construction);
+  answered-correct 211 mean 0.625; vote-abstain 320 mean 0.591;
+  **surviving-error n=1 at H=0.95 — the one answered-wrong at gen-14
+  is HOT, not cold** (n=1, logged not claimed; the bet fears cold
+  errors — the gauge now watches). SCOPE HONESTY: two vintages do
+  not make a curve — the series starts here, accrues per promotion;
+  the temperature-band regression column joins the standing battery
+  beside the panel-dissent column. **ARM D STRUCK, and the strike is
+  the entry's second lesson: the provenance law caught CODE this
+  time** — tta_arm_D's view_forced is BOOLEAN (forced-correctly
+  flags), not per-view answers; the first decode manufactured 634
+  phantom surviving errors before the audit-of-the-artifact caught
+  it; the early point is UNAVAILABLE-WITH-REASON (agree fraction
+  under-determines the distribution). The discipline is symmetric in
+  both senses now: it exonerates the innocent and it binds both
+  channels. **(c) THE JURISDICTION TABLE (prose):** four thermometers,
+  one instrument — VOTE ENTROPY (susceptibility to re-rendering;
+  basin depth; NOT generation-indexed), FST NORM (consolidation; the
+  radius clock; ROTATES — generation-indexed), SOFTMAX-T (positional
+  calibration; 0.212->0.010 by the books; generation-indexed),
+  TRAINING HEAT (the input dial the other three respond to). THE
+  CONJUGATE-PAIR CLAUSE: twenty-one meters what is poured in, this
+  audit reads what the basins hold — dose law and temperature law
+  are conjugate columns of one thermodynamic ledger. Twenty-six
+  converts: one dial never turned (the parser's T), one gauge never
+  installed (now installed), one instrument owned in four pieces
+  (now one table).
