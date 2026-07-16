@@ -5835,3 +5835,56 @@ token-position × waist-dim, the moment the skeleton trains.
   conservation exact; (b) loaded, kill-only, fires on demand; (c)
   pinned to book-4's fire, neighbor defined; the repair-intake
   invariant handed to the remine. The next word is books.
+- **GUT #22: THE OOD DECOMPOSITION AUDIT — REGISTERED AS AMENDED AND
+  FIRED SAME-SESSION (2026-07-16, Bryce + relay + Code).** The claim:
+  'out of distribution' is a VECTOR the mouth collapses to a scalar —
+  four species, four debts, four owners: STYLE (mouth/books), STRUCTURE
+  (mint/annotation), PRIME (registry), DOMAIN (solver caps). Amendments
+  carried from review: joint tables not marginals (populations
+  regime-tagged per the selection law); the gray-zone read is
+  CALIBRATION not ROC (no labels exist mid-band by definition); the 56
+  panel-dissent items are the in-register seat's NULL MODEL (all
+  correct), counter-class = the banked unanimous-wrongs; outcome labels
+  state their machinery vintage (third appearance of the vintage
+  clause). READS (scripts/ood_decomposition_audit.py, bars pinned in
+  the header before any print): **(A) the dissent-structure prediction:
+  SCATTER — honest negative at the bar's edge.** Rank AUC
+  (dissent-vs-certified structure rarity) 0.599 vs pinned >=0.60; the
+  pre-pinned frame rules and 0.599 is scatter. The texture note banked
+  with it: channel MEDIANS are identical (5251 across all four) while
+  25th percentiles split (certified 2544 vs everyone else 535) — a
+  thin-structure TAIL shared by all non-certified channels, not a
+  dissent-specific mechanism (means-vs-overlaps, tail edition);
+  instrument-v0 caveat: min-subgraph-frequency at size<=4 is a first
+  rarity proxy on generated text. **(B) THE GRAY-ZONE CALIBRATION —
+  THE AUDIT'S REAL FIND, twofold:** (1) **the ruler is FLAT within
+  the register**: AUC(corrected distance -> census in-reach) 0.515
+  (bar b2 FLAT), monotonicity BREAKS (farthest quartile P(in-reach)
+  0.32 > mid bands' 0.24/0.20); (2) **false-refusal on in-reach census
+  items at the current threshold: 100.0%** — every bankable census
+  item sits ABOVE the corrected thr (nearest band starts +0.019 vs
+  thr +0.008): THE CAMPAIGN HAS BEEN LIVING PAST THE WALL ALL ALONG.
+  The mouth's jurisdiction ends at the register boundary (its extreme
+  reads stand: foreign 100% refused at 1% native cost); WITHIN the
+  foreign band it cannot rank bankability — the binding theorem's
+  prediction (wiring unrecoverable from surface) now measured as an
+  AUC, and the third independent confirmation of the input-space
+  triage negative (0.535 knotted-join, 0.515 here). The farthest-band
+  uptick has the ledger's own mechanism: distance tracks PROSINESS
+  (L1 prosiest/farthest), bankability tracks STRUCTURE — the two
+  axes MEASURABLY DECOUPLE on real prose, which is the vector thesis
+  CONFIRMED by calibration even as (A) scattered. CONSEQUENCE, one
+  sentence: any December plan that triages strangers BY MOUTH would
+  refuse everything it should read — frontier triage is PARSE-SIDE
+  (vote entropy, factor counts, knot class: the MuZero triage head's
+  registered wish, now three-times-confirmed as the only candidate).
+  (C) prose banked: the selection inversion — the next broken
+  certificate has ALREADY passed every OOD instrument by definition;
+  the in-register anomaly seat trains on the 56-correct null model vs
+  the banked-wrong counter-class, growing with the standing dissent
+  column. Artifacts: .cache/ood_decomposition_audit.json,
+  .cache/train_class_counts.json (10,232 train classes, first full
+  count). Twenty-two: the word the paper is named for, decomposed —
+  one prediction scattered honestly, one instrument caught flat
+  exactly where December walks, and the triage organ's charter
+  written by the negative space.
