@@ -5973,3 +5973,83 @@ token-position × waist-dim, the moment the skeleton trains.
   Twenty-three's contribution named honestly: it asked the
   training-regime question the head extension forgot to ask — and the
   answer was sitting in the expansion operator all along.
+- **GUT #24: THE ALTERNATION AUDIT (2026-07-16, Bryce + relay + Code,
+  registered as amended).** THE VERIFICATION FIRST, because it refined
+  a law: four citations held (withhold 15/57; suspicion transplant FLAT
+  at AUC 0.518 'the suspicion story dies too'; reader_v2 kill −10;
+  16.6% equivalence class) — but the two central ones were the FOURTH
+  reconstruction sighting, and a NEW SPECIES: COMPRESSION ERROR. No
+  'contradiction-surface law' exists anywhere in docs (a real
+  KenKen-era observation fused with a law-shaped name it never
+  earned); 'candidate 3' was a real deferral wearing a DIFFERENT
+  audit's docket numbering. BIAS LAW REFINED (four specimens = a
+  measured tendency): the relay's fabrications arrive DRESSED IN THE
+  HOUSE'S OWN IDIOM — named laws, numbered candidates — more plausible
+  than honest vagueness; the taxonomy now has three species: omission,
+  fabrication/inversion, compression-with-borrowed-registry. THE
+  HEADLINE CORRECTION: **the Alternator has alternated** — the ledger
+  2026-07-07: 'THE ALTERNATOR LOOP HAS NOW RUN GOLD-FREE END TO END'
+  (parse -> symbolic self-diagnosis -> blame -> flags -> conditioned
+  retransmit -> solve, 8/57), and the deployed stack alternates once
+  per vote-abstain (the NACK specialist IS a retransmission round).
+  What is missing is not a schedule — it is A VOICE THAT CAN SAY
+  SOMETHING NEW: the anatomy's sharpest fact (73% of stubborn
+  survivors had their single error CORRECTLY FLAGGED in the bottom-2
+  and the deterministic parser re-emitted the same wrong content four
+  rounds running; localization measured not-the-bottleneck at 0.518).
+  THE READS: **(a) THE CONSTRAINT-DENSITY METER (fires now, zero-GPU):**
+  per-factor withhold-recoverability distribution on the 182 banked
+  book golds + a bigtest sample (scripts/constraint_density_meter.py);
+  the meter gates every settling-loop economics question; the MACRO
+  PREDICTION enters HONESTLY EMPIRICAL, direction open (Code's
+  hand-check on the 3a+5b specimen: absorbing a crown moves numerator
+  and denominator both — the earlier 'by construction' was unearned).
+  Per-floor comparison waits for floor-paired corpora. **(b)
+  MASKS-AT-BIRTH (gated design prose):** solver arc-consistency
+  entering the parse as a PRE-COMMITMENT mask — structure never
+  conditioning, zero-parameter, prevention-side (untouched by the
+  repair-generation wall, which is post-hoc); sentence one: masks see
+  only INCONSISTENCY, the 16.6% equivalence class is mask-silent;
+  builds only when the meter crosses a pinned bar. **(c) THE CHAIR
+  RE-CHARTERED (prose):** if the deducer's seat ever fills, the
+  occupant is a CONSTRAINED REPLACEMENT-GENERATOR — never a
+  suspect-ranker (thrice refuted), never a multi-round retransmitter
+  (front-loaded decay 44->16->4->0) — and it is THE SAME ORGAN as the
+  ladder constitution's repair-lane writer: two independently
+  chartered seats, one job (say something new to a bounded population,
+  under the gate); CROSS-REFERENCED so it is built ONCE. Nouns die
+  (the deducer-as-imagined), verbs survive (generate-under-constraint).
+  **(d) THE REGIME-RHYTHM RETROSPECTIVE (registered, kill-only,
+  zero-GPU):** classify gen-6..14 hot/cold x work-type against banked
+  verdicts; the candidate law 'work must match heat' dies on one
+  misassigned success. Twenty-four's finding, named: the schedule was
+  never missing — the voice was.
+- **GUT #24, READ (a) VERDICT (2026-07-16): THE METER PRINTS AN
+  INVERSION — REAL PROSE IS MINIMAL, THE GENERATOR IS REDUNDANT.**
+  Per-factor withhold-recoverability (scripts/constraint_density_meter.py,
+  all graphs uniquely solvable, zero skips): **BOOKS (182 real-prose
+  golds): median recoverable fraction 0.000, mean 0.043, 85.7% of
+  graphs have ZERO redundancy** — every factor load-bearing; the
+  contradiction surface on the campaign's actual diet is essentially
+  nonexistent. **BIGTEST (200 generated): median 0.667, 91.5% of
+  graphs >= half-redundant.** PINNED CAVEAT: the cross-corpus delta
+  carries a domain-size coordinate (books m=300, bigtest m=60 — the
+  estimator family's standing lesson), so the DELIVERABLE is the
+  within-corpus reads, and the books read alone settles the economics:
+  **the settling loop has NO CUSTOMER at prime level on real prose**
+  — with zero redundancy there is nothing for constraint propagation
+  to force; masks-at-birth's gate is UNMET and it stays prose;
+  the deducer's chair stays empty on measurement, not taste. THE
+  STRUCTURAL DIVIDEND: minimality gives the repair-generation wall its
+  mechanism — a wrong factor in a minimal graph CANNOT be recovered
+  from the others (nothing forces it); the replacement must come from
+  RE-READING THE TEXT, never from deduction — which is exactly the
+  chair's re-charter (constrained replacement-generator = the
+  repair-lane writer) derived now from graph geometry as well as from
+  the survivor anatomy. Two independent walls, one occupant. AND THE
+  MACRO PREDICTION GAINS STAKES: if floor-up graphs raise the
+  redundancy read (empirical, direction open), the economics flip —
+  the fidelity axis is now the settling loop's ONLY possible road in;
+  the per-floor re-run is standing on the book-4 docket. The meter's
+  one-line legacy: neural proposes, symbolic disposes — and on
+  minimal graphs, only the text proposes.
