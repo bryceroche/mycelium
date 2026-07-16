@@ -5888,3 +5888,31 @@ token-position × waist-dim, the moment the skeleton trains.
   one prediction scattered honestly, one instrument caught flat
   exactly where December walks, and the triage organ's charter
   written by the negative space.
+- **GUT #22 ADDENDUM (2026-07-16, relay countersign — the precise
+  reading banked):** (1) **THE MOUTH WAS MIS-CAST, NOT BROKEN.** The
+  gray-zone calibration revealed there was never a gray zone: the
+  register boundary is a CLIFF, not a gradient — the entire
+  harvest->books pipeline has operated past it since the odometer
+  zeroed, safely, because the answer key outranks every distance. The
+  mouth's two TRUE jurisdictions now carry measured edges: DOORMAN
+  (foreign 100% refused at 1% native cost — extreme bands, deployment
+  claim intact) and ODOMETER (register-closure per book — the campaign
+  job it always had). The third role — TRIAGE — nobody ever measured
+  it for, and it is dead: the binding theorem invoiced one more time
+  (a surface instrument cannot rank a structural property; distance
+  reads prosiness, bankability reads structure). The vector thesis
+  lands STRONGER than READ A's scatter: confirmed by axes decoupling
+  on real prose, not by taxonomy cells. (2) **THE TRIAGE HEAD RIDER,
+  PINNED AT ITS CHARTER** (inherits READ B's own lesson): the head is
+  GRADED PER-AXIS against the joint table's cells — style / structure
+  / prime / domain columns separately — NEVER against a scalar
+  'bankable' label, or the collapsed vector is rebuilt one floor up.
+  Build sequence assembles from held artifacts when chartered: the
+  10,232-class knot ledger (rarity features), parse-side states
+  (input), census outcomes (labels), three banked negatives (the
+  null space it must beat: 0.535, 0.515, flat abstention). Board
+  after twenty-two: mouth demoted to its two true jobs and stronger
+  for it; triage's charter finished by elimination; deployment claims
+  untouched; one negative banked at full price. The next word:
+  books — with the mouth watching the odometer and no longer voting
+  on the shopping.
