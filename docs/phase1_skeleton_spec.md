@@ -5619,3 +5619,14 @@ token-position × waist-dim, the moment the skeleton trains.
   activate). Redeploy recipe: rebuild figures/assemble/render ->
   site/build_site.py -> npx wrangler pages deploy site/dist
   --project-name shape-of-thought. The byline is the byline.
+- **LIVE (2026-07-16 00:17 UTC): theshapeofthought.ai IS SERVING THE
+  PAPER.** Bryce added the two CNAMEs (apex @ + www -> shape-of-thought
+  .pages.dev, proxied); Cloudflare activated + issued the Google-CA
+  cert; the background poller caught the flip (apex/www active,
+  serving True) at 17:17:35 local. Verified independently: apex
+  HTTP/2 200 title 'The Shape of Thought', /paper/ 200, /paper1.pdf
+  200 (2,559,429 bytes), www 200. THE CHAIN OF CUSTODY HAS A PUBLIC
+  ADDRESS. Post-launch queue untouched (entourage-14, book 4, the
+  paper's venue-version byline call, essay 'The Shadow of
+  Intelligence', Paper II 'Guided by Primes'). The byline is the
+  byline.
