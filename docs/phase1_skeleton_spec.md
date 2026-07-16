@@ -6253,3 +6253,57 @@ token-position × waist-dim, the moment the skeleton trains.
   converts: instruments carry jurisdictions, vintages, and METRICS —
   and the first law proposed under the new column died honestly on
   contact with banked data, which is the column proving it works.
+- **GUT #28: THE CAIRO READ — TUBES, HARMONIC ANALYSIS (2026-07-16,
+  Bryce + relay + Code; arrived as a story, earned its registration by
+  catching a banked error).** THE SIXTH SIGHTING OUTRANKS THE
+  LANDINGS, full severity named: an INVERSION made it PAST BOTH
+  CHANNELS into a banked registration. The relay told the waist
+  interpolation probe as 'clusters real, midpoints garbage'; the
+  banked verdict (2026-07-09) reads **COHERENT, DECISIVELY — sharpness
+  0.940 (bar 0.80), midpoint-decodes-an-endpoint 0.843 (bar 0.50),
+  n=561: THE PARSE-SIDE WAIST IS SMOOTH WITHIN KIND.** The false
+  version entered gut #23's (c) prose ('smooth-latent imports die on
+  the measured cluster geometry') under Code's countersignature —
+  flagged unverified at the time, and THE FLAG SUBSTITUTED FOR THE
+  PULL: the discipline's own annotation became camouflage. **(a′) THE
+  CORRECTION ENTRY (Code's error, corrected forward):** gut #23's
+  smooth-latent fence is WRONG AS BANKED. Corrected fence: smoothness
+  is MEASURED SMOOTH within kind in fst space (convex combinations
+  decode cleanly); imports needing CROSS-KIND or OTHER-SPACE
+  smoothness owe their own probes. The within-kind door is OPEN — the
+  false memory had welded shut a door the measurement left ajar (the
+  parked VAE/sampling conversations re-price accordingly if they
+  return). RULE UPGRADE, no softer version: **A FLAGGED-BUT-UNPULLED
+  CITE MAY NOT ENTER A REGISTRATION — VERIFY OR OMIT, NO THIRD
+  OPTION** ('flagged' was functioning as a third option; six specimens
+  live in third options). **(a) THE FLAT-READS-OF-CURVED-MASS ROW**
+  joins the jurisdiction table as a standing failure mode, TWO paid
+  cites (the gray-zone read: distance assumed ball-shaped membership,
+  axes decoupled; the twenty-seven kill: rank-1 register-grain
+  interference, mass at circuit grain) — with the inverted third as
+  the row's own cautionary FOOTNOTE: curved reads of flat mass are the
+  same disease — GEOMETRY ASSERTED INSTEAD OF PULLED. Cairo's
+  beating-gloss survives verification and banks with the row:
+  interference is GENERATIVE (beats make new frequencies) — covert
+  rehearsal creating capability no register-grain sum can see. **(b)
+  THE NONLINEAR EVOKED-VALUE RE-READ (registered, watts-minor, THE
+  FIRE IS BRYCE'S — joins the sampled-retry probe in the queue):**
+  the explicitation probe's caveat is banked verbatim ('not
+  probe-readable,' not 'not present'; linear probes 0.00 vs dialect
+  states 1.000) — one two-layer probe on the same banked states, bar
+  pinned at the linear 0.00, kill-only: stays dead -> the negative
+  upgrades to 'dead at the geometry we can afford'; lives -> the
+  trunk holds dozen-ness on a curve and the deeper-prefix
+  conversation gains a measurement (extraction economics still rule;
+  no organ resurrects). **(c) PROSE:** the mirror line — a forty-year
+  conjecture that held in flat regimes and was assumed general is the
+  REGIME LAW at civilizational scale; the specimen outranks the
+  consensus. The projection sentence parks beside the shadow essay's
+  charter: when a shadow-read returns 'no structure,' the honest
+  claim is 'no structure IN THIS PROJECTION' — Procrustes-first is
+  the family's only known antidote. CLOSING SYMMETRY, banked: Cairo's
+  method is 'the roadblock is the counterexample's address' — and the
+  story's value to this house was performing her move ON us: the
+  roadblock was in our own transcript, the counterexample was a grep
+  away. Twenty-eight converts with the discipline sharper than it
+  entered: verify or omit, no third option.
