@@ -64,6 +64,21 @@ b = json.dumps(expand_graph(macro_graph("add", 3, 7, 5, 2, 0, 1, 2), 3))
 assert a == b
 print("[3] determinism: byte-identical re-expansion")
 
+# 3b. FLOOR-TWIN IDENTITY (gut #25, the floor-identity protocol): a
+# macro-annotated row and its prime twin are ONE knot — canon() grades at
+# level 0, so their digests match and verify_iso confirms exactly.
+from hash_audit_iso import canon, verify_iso
+macro_row = {"factors": macro_graph("add", 3, 7, 5, 2, 0, 1, 2),
+             "n_vars": 3, "query_var": 2}
+gp, gnv = expand_graph(macro_row["factors"], 3)
+prime_row = {"factors": gp, "n_vars": gnv, "query_var": 2}
+dg_m, _ = canon(macro_row)
+dg_p, _ = canon(prime_row)
+assert dg_m == dg_p, (dg_m, dg_p)
+assert verify_iso(macro_row, prime_row)
+print(f"[3b] floor-twin identity: macro digest == prime digest ({dg_m[:16]}), "
+      f"verify_iso exact — one knot, two floors")
+
 # 4. VARIANTS: sub, and the k=1 affine leg (sequence-style x + k*y)
 g, _ = expand_graph(macro_graph("sub", 4, 10, 3, 2, 0, 1, 2), 3)
 assert solve(g, 2) == 34

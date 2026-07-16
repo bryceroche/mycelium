@@ -58,9 +58,24 @@ def fdesc(f):
     raise ValueError(ft)
 
 
+def level0(row):
+    """THE FLOOR-IDENTITY PROTOCOL (gut #25, 2026-07-16): knot identity is
+    graded at LEVEL 0 — macro factors expand fully before canonicalization,
+    so a macro-annotated row and its prime twin are ONE knot (floor-twins
+    share a digest by construction). Every knot-keyed instrument — mint
+    dedup, bump gate, rehearsal matrix — inherits this by importing canon;
+    the flux-density denominator (energy per unique knot) counts paired
+    floors once because of this clause."""
+    facs, nv = row["factors"], row["n_vars"]
+    if any(f.get("ftype") == "macro" for f in facs):
+        from mycelium.macros import expand_graph   # lazy — macro rows are book-4+
+        facs, nv = expand_graph(facs, nv)
+    return facs, nv
+
+
 def canon(row):
-    facs = [fdesc(f) for f in row["factors"]]
-    nv = row["n_vars"]
+    facs_l0, nv = level0(row)
+    facs = [fdesc(f) for f in facs_l0]
     q = row["query_var"]
     col = {v: ("Q" if v == q else ".") for v in range(nv)}
     for _ in range(6):
@@ -88,9 +103,16 @@ def canon(row):
 
 
 def verify_iso(ra, rb):
-    """Exact isomorphism check by backtracking (small graphs)."""
-    fa, fb = [fdesc(f) for f in ra["factors"]], [fdesc(f) for f in rb["factors"]]
-    if ra["n_vars"] != rb["n_vars"] or len(fa) != len(fb):
+    """Exact isomorphism check by backtracking (small graphs).
+    Graded at level 0 per the floor-identity protocol."""
+    (fra, nva), (frb, nvb) = level0(ra), level0(rb)
+    fa, fb = [fdesc(f) for f in fra], [fdesc(f) for f in frb]
+    # used-var count, not n_vars: unused slots are diagram, not knot (and
+    # expansion allocates temps above the fixed bank, so n_vars may differ
+    # between floor-twins while the knot is identical)
+    ua = {m for _, mem in fa for _, m in mem}
+    ub = {m for _, mem in fb for _, m in mem}
+    if len(ua) != len(ub) or len(fa) != len(fb):
         return False
     if sorted(k for k, _ in fa) != sorted(k for k, _ in fb):
         return False

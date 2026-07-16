@@ -6074,3 +6074,72 @@ token-position × waist-dim, the moment the skeleton trains.
   list (22), training regime (23), per-floor redundancy read (24),
   head extension + macro annotation on the word. Everything waits on
   pages.
+- **GUT #25: THE KNOT ACCOUNTING AUDIT (2026-07-16, Bryce + relay +
+  Code, registered as amended and FIRED).** The ninth built the knot
+  ledger, the twelfth armored it; twenty-five asks it to stay ONE
+  ledger as the tower goes up. VERIFICATION: 2,574 within-train
+  redundancy classes ✓; the rehearsal-matrix upgrade ✓; Schubert 1949
+  ✓ real mathematics (unique prime factorization of knots — the
+  theorem that blesses the title); and THE FIFTH BIAS SIGHTING, new
+  sub-species CONFLATION: '10,232 whole-graph knots' fused two true
+  ledgers — 10,232 = the miner's VALUE-ABSTRACTED SUBGRAPH classes;
+  the whole-graph census is 26,920 classes VALUES-IN (29,500 rows).
+  TAXONOMY COMPLETE, escalation named: omission -> fabrication ->
+  inversion -> compression -> conflation — each species built from
+  MORE truth than the last; grep-before-trust upgrades to PROVENANCE,
+  not existence (a number must be attached to the instrument claimed).
+  The conflation was itself a knot error — two strands crossed — and
+  it surfaced the design fact that makes the census rigorous: THE
+  HOUSE OWNS TWO CANONICAL ALGEBRAS — whole-knot identity (values in,
+  the contamination instrument) and sub-knot shape (values out, the
+  recurrence instrument); the decomposition census is the map between
+  them. **(a) THE FLOOR-IDENTITY PROTOCOL — IMPLEMENTED, the rare
+  catch fixed in code before the failure exists:** knot identity is
+  graded at LEVEL 0; hash_audit_iso gains level0() (macros expand
+  before canonicalization); canon() and verify_iso() grade expanded
+  (verify_iso's n_vars check corrected to USED-var count — unused
+  slots are diagram, not knot; expansion temps above the fixed bank
+  no longer break twin identity); all three consumers (mint dedup,
+  bump gate via gen9b_booster lineage, knot_matrix) inherit by
+  import. THE MECHANICAL ASSERT joins the admission exam
+  (test_macro_expansion 5/5): macro row and prime twin — ONE digest,
+  verify_iso exact. Consequence stated: the flux denominator counts
+  floor-twins once; twenty-one, twenty-three, and the ninth now share
+  one accounting rule, sealed before the book-4 fire that needed it.
+  **(b) THE DECOMPOSITION CENSUS (fired):** two views pinned with
+  jurisdictions — the COVER (maximal non-overlapping factorization,
+  greedy size-desc/digest-lex, tie-break PINNED so the cover is
+  canonical) owns diversity/novelty; the PROFILE (full downward-closed
+  multiset) owns the triage FEATURE BANK (a bank wants everything at
+  every scale, not a lossy cover). Deliverable 2 (the 58's novelty
+  split) REGISTERED-NOT-FIRED: knotted census items have no banked
+  parses — the census parse bank rides the next census run, artifact
+  named. **(c) THE CYCLE READ (fired, kill-only):** twenty-four's
+  meter re-read as topology — books vs bigtest cyclomatic
+  distribution; if books ~0 while bigtest carries mass, 'redundancy'
+  was cycle count wearing units and the mint's minimal-mode dial is a
+  CYCLE dial. Verdicts follow in the results entry.
+- **GUT #25, VERDICTS (2026-07-16): COMPOSITION IS A REAL FRONTIER,
+  AND THE CYCLE READ CONFIRMS — REAL PROSE IS UNKNOTTED.** READ (b),
+  the decomposition census (train 20k): **19,965 whole-knot classes
+  (values in) map onto 7,406 distinct cover-multisets (values out) —
+  2.7 knots per composition.** The pigeonhole one level down is REAL
+  but not crushing: composition is rich, so the mint should hunt
+  COMBINATIONS, not just classes. THE BOOKS READ IS THE FINDING:
+  **87 distinct covers among the 182 golds, 38 of them (44%) ABSENT
+  from train's 7,406** — real prose composes known primes in unseen
+  combinations; the strangers' structural novelty is largely
+  COMPOSITIONAL (structure-OOD measured for the first time, exactly
+  the axis twenty-two's whole-graph rarity couldn't see at 0.599).
+  The triage feature bank's first stock is banked (covers + full
+  profiles, books + bigtest). READ (c), kill-only — THE KILL DOES NOT
+  FIRE: **books cyclomatic median 0 (61.5% zero-cycle, mean 0.64);
+  bigtest median 2, ZERO percent zero-cycle.** Twenty-four's
+  'redundancy' was CYCLE COUNT wearing units: authors write trees;
+  the generator always ties at least one cycle. The mint's
+  minimal-mode dial IS a cycle dial (acceptance instrument: the
+  cyclomatic distribution, target = the books'). The settling loop's
+  only real-prose customers are the 38.5% of books with >=1 cycle —
+  consistent with the meter's 2.2% >=half-redundant tail; the
+  deducer's chair stays empty at prime level, now for a TOPOLOGICAL
+  reason stated in one word: strangers don't write crossings.
