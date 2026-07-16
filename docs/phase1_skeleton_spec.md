@@ -6366,3 +6366,16 @@ token-position × waist-dim, the moment the skeleton trains.
   Twenty-six closes fully converted: the dial was on the back of the
   epigraph's word, and turning it nearly doubled recovery on the
   hardest population in the house.
+- **TAXONOMY ADDENDUM (2026-07-16, relay countersign on the seventh):**
+  specimens one through six were failures of RECALL across seams; the
+  seventh is a failure of INSCRIPTION — the record preserved, with
+  perfect fidelity, a label that was wrong at birth; no grep could
+  catch it because the grep returns the mislabel faithfully. The
+  two-authorities rule completes the epistemics: it is the paper's own
+  use-matches-source citation standard turned inward on our
+  transcripts. And the day's symmetry, banked: twenty-six was the
+  campaign's first watts spent on an instinct in eight conversions —
+  and the probe that spent them was assembled entirely from prior
+  audits' products (twenty-one's fixture, the standing lattice's
+  disposal, twenty-four's wall as its bars): the compounding thesis
+  cashing its first GPU check, and the check cleared at 4x its bar.
