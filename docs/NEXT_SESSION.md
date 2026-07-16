@@ -39,7 +39,9 @@ policy.
 **Post-paper queue:** entourage-14 duty; book 4 charter (DIFFERENT
 distributions: harder strata / AMC register / post-relation coverage —
 the curve saturated, the library didn't close; now also MACRO-LEVEL
-annotation — OP_APPLY admitted, head extension awaits the word);
+annotation — OP_APPLY admitted, head extension awaits the word, and
+its training regime is REGISTERED per gut #23: three arms, prime-only
+/ macro-only / floor-paired flat-mix, leans pinned on paired);
 Meissner probe + twin-key read (banked machinery); [130]/[99] retries;
 chained-fdiv autopsy; ~~OPERATION-APPLY admission~~ **DONE 2026-07-16**;
 tranche-3 relations.

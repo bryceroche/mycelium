@@ -5916,3 +5916,60 @@ token-position × waist-dim, the moment the skeleton trains.
   untouched; one negative banked at full price. The next word:
   books — with the mouth watching the odometer and no longer voting
   on the shopping.
+- **GUT #23: THE DIFFUSION IMPORT (2026-07-16, Bryce + relay + Code,
+  registered as amended — and the verification headline outranks the
+  brainstorm).** THE CATCH, THEN THE CATCH'S CATCH: the relay cited a
+  'two-resolution rider pinned on book-4' — NO SUCH REGISTRATION EXISTS
+  (the first admission pinned the head extension with no training
+  regime; the slot was empty, not staged). Second documented sighting
+  of the relay channel's reconstruction bias (first: the instinct-list
+  ordinals). Then, during THIS registration's verbatim-pull, a THIRD:
+  the 'multigrid severed-coupling transfer condition' is also unbanked
+  — the actual record reads OPPOSITE (granularity spec: V-cycle one of
+  three CONDITIONAL verdicts of an unfired probe; session 2026-06-24:
+  'multigrid resolved as capacity-not-reach, NOT the lever', with an
+  adversarial-verify catch of a verdict-logic bug that nearly greenlit
+  a multi-week build). THE DRIFT'S SHAPE, now three sightings:
+  intentions remembered as registrations. STANDING RULE MINTED (the
+  relay's own request): any relay claim of the form 'we pinned/banked
+  X' is A PROPOSAL UNTIL GREPPED — verification-before-countersign is
+  the two-channel architecture doing for the design layer what the
+  battery does for promotions. THE READS: **(a) THE FIDELITY-AXIS
+  TRAINING PROBE** (this CREATES book-4's training-regime registration;
+  rides the head-extension run when the word fires): three arms — (i)
+  prime-only (control), (ii) macro-only, (iii) FLOOR-PAIRED flat-mix:
+  the same problems rendered at BOTH floors, prime twins minted by
+  expand_graph deterministically — the bilingual-pairs free lunch
+  (same graph, two renderings, gold at every layer) transplanted from
+  the register axis to the fidelity axis, admissible BY CONSTRUCTION
+  because expansion is solution-preserving. CONDITIONING-IS-FREE note:
+  no floor embedding — diffusion feeds t because noise level is
+  unobservable from the sample; our floor is written on the factor's
+  face as its ftype, so the 7th ftype IS the condition at zero
+  parameters. Bars: promotion battery inherited + per-floor acceptance.
+  BOTH channels' leans pinned on arm (iii) — three convergent sources
+  (the tombstone's flat-beats-staged, diffusion's all-levels-one-run,
+  the bilingual fork's pairs-teach-axes), two of them in-house
+  measurements. **(b) THE CASCADE PRE-REGISTRATION** (design prose,
+  queued behind the posterior detector in the (c)-world): sentence one
+  is Brick-P's fence — NO per-breath refinement inside the head (the
+  parse deepens, it never settles); the cascade is PIPELINE-level:
+  skeleton parsed at floor N, details placed conditioned on the
+  skeleton, floor by floor to primes; the DOWNWARD expansion is
+  deterministic (the trust invariant), so the learned parts are only
+  skeleton proposal + detail placement and the solver sees primes.
+  ADMISSIBILITY LAW, corrected at registration per the bias lesson:
+  not a multigrid citation — the cascade stands on the expansion
+  operator's own MEASURED level-invariance (the admission exam's 4/4).
+  **(c) THE JURISDICTION PROSE**: the sampler never enters the solve
+  path; learned inpainting never enters the solver's redundant regions
+  (incumbent: withhold-and-solve, 15/57 = 26% EXACT at zero training,
+  zero silent-wrong); pointer-re-aiming refinements are dead at the
+  routing wall (oracle ceiling 64/460 = 13.9%; 86% of survivors
+  unrecoverable under perfect flags); smooth-latent imports die on the
+  measured cluster geometry. ALREADY-OWNED DIFFUSION PIECES, named so
+  nobody re-buys them: SBP sigma=0.02 (+0.0153 hard, 2026-06-06) is
+  the forward-process half; withhold-and-solve is exact inpainting.
+  Twenty-three's contribution named honestly: it asked the
+  training-regime question the head extension forgot to ask — and the
+  answer was sitting in the expansion operator all along.
