@@ -6615,3 +6615,35 @@ token-position × waist-dim, the moment the skeleton trains.
   book4_lanes.json (L1 5 / L2 53 / L3 142 of 200). The dancer read
   one floor up today, and the gate never noticed the difference —
   which was the entire design.
+- **BOOK 4 ADDENDUM (2026-07-17, relay countersign — the fidelity-probe
+  indexing pin, registered at n=2):** arm-(iii)'s training probe fires
+  on CROWN COUNT, never tranche count — the paired corpus reaches the
+  mass the regime registration pins, or the probe waits; a small-crown
+  fire would be the dose pilot's n=14 lesson repeated on the fidelity
+  axis. P2's watch is the meter; the book tells us its own rate. Also
+  banked: the two-days-early pattern happened TWICE in one tranche
+  (floor-identity + admission machinery, both built ahead of need) —
+  the compounding thesis is not luck; the instruments arrive before
+  their customers because the gut keeps knocking one session early.
+- **BOOK 4, TRANCHE 2 BANKED (2026-07-17): THE RETRY BENCH CONVERTS
+  CLEAN.** 10 pages banked (11 rows, 1 macro pair) + 8 certificates.
+  **ALL THREE v2 RETRIES CONVERTED, each by its diagnosed mechanism**:
+  [26] 5/5 at 4 (mul-inverse replaced the fdiv digit path the autopsy
+  specimen exposed — the fix validates the diagnosis), [57] 5/5 at 51
+  (same cure), [10] 3/3 at 205 (both remainder chains shed). **THE
+  AFFINE CROWN BANKED**: [28]'s b + 3·a = 10 (the k=1 leg's first
+  production page, one knot 9d9e11aa2a7d, 5/5 at 2) — the macro
+  vocabulary now spans both mined classes IN THE CORPUS. [29] banked
+  5/5 at 19 — the coupled-mul products-sum shape, the miner's named
+  gap, rehearsed on a real stranger. THREE NEW MISSES, all at the
+  LENGTH FRONTIER: [33] (12 vars, solved on ZERO views), [100] (15
+  vars, votes scattered), [22] (2/5 correct — one vote short, light
+  rework candidate). P3 jurisdiction note: these are PARSE-DEPTH
+  walls (12-15 vars), not the >24-slot wall the test watches — the
+  practical frontier sits below the structural one, which is itself
+  a datum for the wall test's eventual reading. BOOK 4 RUNNING
+  TOTALS: 22 pages, 25 rows, 3 macro pairs (both crown classes),
+  20 certificates, 3 length-frontier items on the bench. The book
+  is teaching two lessons at once: the register lesson (harder
+  strata read easier than expected) and the depth lesson (the parse
+  wall arrives before the slot wall).
