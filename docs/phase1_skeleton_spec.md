@@ -6780,3 +6780,44 @@ token-position × waist-dim, the moment the skeleton trains.
   cross-reference. Thirty-two converts as consolidation: the chord
   written down, one note played by machinery resting in June's
   drawer.
+- **GUTS #29+#30, READS (b1)+(b2) VERDICTS (2026-07-17): THE AUTOPSY
+  OPENS WITH ITS MECHANISM QUANTIFIED, AND THE PANAMA HAT SITS FOR
+  ITS PORTRAIT.** **(b1) THE EMISSION DIGIT CURVE — PREDICTION HOLDS
+  (scripts/digit_curve_and_scope_mine.py; fixture note: bigtest is
+  GIVEN-ONLY — clean baseline 0.972 flat; the param path lives in
+  alg4test, rerun banked):** given path holds 0.945+ at all
+  magnitudes with MSD ~1.000; **the PARAM path erodes with magnitude
+  — mag-1 0.977, mag-2 0.903, mag-3 0.837 — with the deficit
+  concentrated OFF the LSD** (mid 0.915 at mag-2; MSD 0.901 at
+  mag-3): [26]'s fingerprint (27 -> 7, tens dropped, ones kept)
+  generalized to population scale. THE CHAINED-FDIV AUTOPSY'S
+  OPENING FINDING: param-path high-order digit erosion, 9.7% slot
+  error at 2 digits, 16.3% at 3 — and the tranche-2 cure now has its
+  WHY: mul-inverse rephrasing is a PATH SWAP (the constant re-enters
+  through the given path, which holds at all magnitudes). Autopsy
+  status: mechanism quantified, cure validated, remedy priced (diet:
+  more multi-digit param mass; or rulebook: prefer mul-inverse for
+  2-3 digit constants — the annotation desk already does the latter
+  as of tranche 2). **(b2) THE SCOPE-PAIR MINE — 0 DISCRIMINATED, 5
+  COLLAPSED, 5 MIXED, 0 REGISTER-WALL, and the collapse has a FACE:
+  the head reads BOTH scope phrasings as a+b** ((7,4)->11, (9,5)->14,
+  (12,7)->19 — squares dropped, scope dropped, the shallow binary
+  over the mentioned vars emitted STABLY across views, >=3/5). The
+  honest jurisdiction: the phrasings are outside the trained dialect,
+  so this measures the REGISTER WALL's shape, not in-register
+  ambiguity — and the shape is the finding: at the boundary the
+  reader does not refuse, it answers a SIMPLER question confidently.
+  TWO DIVIDENDS BANKED: (1) the dialect's one-relation-per-sentence
+  design is VALIDATED as the anti-panama-hat device (in-dialect
+  scope is unambiguous — the banked pages prove it); 'difference of
+  squares' phrasing is a BOOKS CURRICULUM ITEM (a future register
+  rung, priced); (2) **scope compounds are a MANUFACTURABLE
+  UNANIMOUS-WRONG FAMILY** — style-native, structure-invisible,
+  view-stable on the wrong parse: the certification channel's named
+  blind-spot species, producible on demand. REGISTERED FOLLOW-UP
+  (zero-new-machinery, rides any lattice run): feed the scope pairs
+  through cert-v2 — if armB/cap2x share the a+b collapse (lineage-
+  shared blindness), the panel's decorrelation fails exactly where
+  [71]'s species predicted, and the mouth/panel design conversation
+  gains its sharpest specimen set. The watts queue is EMPTY; guts
+  29+30 close fully converted.
