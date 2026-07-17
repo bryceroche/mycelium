@@ -6414,3 +6414,33 @@ token-position × waist-dim, the moment the skeleton trains.
   beyond the union's 175? (ii) per-view-deterministic vs
   per-view-sampled decomposition. Cost: 1,280 trunk forwards + ~6,400
   solves — minor watts under the standing word.
+- **GUT #26 FOLLOW-UP 2 VERDICT (2026-07-17): THE VOTE-x-SAMPLE
+  LATTICE — VIEW-DIVERSITY IS THE THIRD AXIS, AND IT DWARFS THE FIRST
+  TWO.** Five views x four samples at T=1.0, solver-consistent
+  plurality over <=20 candidates, standing view seeds, disposal
+  gold-free (scripts/vote_sample_lattice.py, per-item banked):
+  **lattice deployable 229/320 (71.6%)** vs sample-only 136 vs
+  incumbent 151 vs their union 175. **TRIPLE UNION: 255/320 (79.7%)
+  — the lattice alone adds 80 items neither prior voice reached.**
+  THE MECHANISM, stated plainly: the five permutation views were
+  always the house's power source — but on the abstain population
+  their DETERMINISTIC parses disagree by definition; sampling inside
+  each view plus the consistency filter lets the views agree on
+  content their T=0 selves could not emit. Width x diagram-diversity
+  = the two invariance axes COMPOSED — the certification channel's
+  own geometry, turned from a gate into a generator, on the exact
+  population the gate refused. THE OWED DECOMPOSITION before any
+  deployment claim (registered, not fired): the 91 non-recovered
+  split into emitted-wrong vs abstained — the repair lane's PRECISION
+  is the deployment bar (the answer channel currently runs 0.9953 at
+  the majority tier; a 229-right lane is only adoptable at its
+  measured precision, and plurality-of-20 luck must be priced). Also
+  owed: regression bars + the certification-tier non-contact
+  assertion re-stated mechanically at adoption time. THE RESIDUE:
+  65/320 (20.3%) resist all three voices — the writer's charter now
+  inherits its THIRD floor, and the null model is a lattice, not a
+  dial. The day's arithmetic: the vote-abstain population — 21.9%
+  recoverable by the deterministic voice yesterday morning — reads
+  79.7% recoverable by composed voices tonight, zero training, zero
+  new parameters, certification untouched. The chain of custody
+  taught its own repair lane to speak.
