@@ -6683,3 +6683,55 @@ token-position × waist-dim, the moment the skeleton trains.
   (owned by the trunk, measured: numbers <=999 enter whole) and the
   emission's (where the specimen bled); the dialect strips wild
   compounds, the gate crowns earned ones.
+- **GUT #31: THE RING-DOWN AUDIT (2026-07-17, Bryce + relay + Code,
+  registered as amended and FIRED — the rare instinct that arrives
+  POST-CONFIRMED).** The headline closure, banked as (c)'s first
+  citation: THE WEEK ALREADY RAN THE EXPERIMENT THE FRAME PREDICTS —
+  the decay-shape reading's mechanism (same flags every round,
+  front-loaded collapse, 19.6->7.7->1.1->0) WAS overdamping-by-
+  determinism; twenty-six's dial WAS a re-excitation device; the
+  lattice's doubling WAS the frame's central prediction confirmed
+  before the frame existed. **(c) THE TWO-JAWS DAMPING LAW (prose,
+  both signatures MEASURED): the disposer is overdamped by
+  construction — monotonicity is soundness, a solver that rang would
+  be a solver that guessed; the proposer is excitable by nature —
+  re-excitation is recovery. First citation: the adoption commit.**
+  The coarse-to-fine envelope parks with the cascade prose (schedule
+  from physics, Brick-P's fence untouched: ring-down lives across
+  generations and floors, never within a forward pass). **(a1) THE
+  PROSE MINE (fired; SELECTED sample, existence-and-mechanism claims
+  only — famous wobblers are the worst sample for a rate):** zero
+  crossings EXIST — [71] (unanimous-wrong era -> correct-but-
+  uncertifiable [9,9] -> acceptance-stable) and [78] (consistent-wrong
+  12/12/12 -> right [16] -> banks) each cross the boundary once and
+  settle; [45]/[7] HOVER at the boundary (sub-threshold oscillation,
+  the chronic frame family); [51]/[54] are CURED wobblers (basin-side
+  instability, rehearsal settled them — gut #15's banked verdict).
+  RE-EXCITATIONS TAG TO REGIME SHIFTS as pinned: gen-9's diet shift
+  re-shallowed specific basins (the wobble era); gen-9b and the books
+  settle them (prose-as-regularizer). Envelope: monotone settling
+  post-gen-9b for every named wobbler — ring-down consistent, rates
+  deferred to the unbiased column. **(a2) THE RING GAUGE INSTALLED:**
+  a DERIVED column on the per-item outcome law's mandated banking
+  (sign-flips since last battery, per item) — zero new measurement
+  cost, rates accrue unselected per promotion. THE SENTINEL ROW GROWS
+  TO FOUR: panel-dissent (lineage), temperature-band (cooling),
+  repair-tier precision (the watch), RING GAUGE (dynamics). **(b) THE
+  DAMPING-RATIO RETROSPECTIVE (fired; subsumes #24(d)): SEVEN SEAT
+  CLEANLY, ONE RESISTS — TAXONOMY-NOT-MECHANISM, as pre-named.**
+  gen-9 (hot, shifted diet -> gains + re-shallowed basins) =
+  UNDERDAMPED; gen-10 and reader_v1 (gentle continuations, alg4 debt
+  unpaid, killed at the bar) = OVERDAMPED; gen-9b (kick-then-settle)
+  = well-damped; gen-13/gen-14 (hot flat retrains, clean ancestry,
+  debt paid + records + acceptance holding) = NEAR-CRITICAL;
+  reader_v2 RESISTS as pre-named (-10 REGRESSION from stacked gentle
+  continuation — overdamped systems under-deliver, they do not go
+  backwards; overfit/fatigue is a DIFFERENT PHYSICS the oscillator
+  has no term for; gen-11 ambiguous, noted). SURVIVING FORM: 'damping
+  must match displacement' as a CLASSIFIER with a named boundary —
+  gen-15's scheduling tool, not a mechanism; the third axis
+  (repetition-fatigue) is named as missing physics and left for the
+  instinct that comes for it. Thirty-one converts: the campaign's
+  instruments now measure DYNAMICS as well as state — flux in,
+  temperature held, ring-down between — and the bell's first striker
+  was us, knowingly, last Tuesday, with a temperature dial.
