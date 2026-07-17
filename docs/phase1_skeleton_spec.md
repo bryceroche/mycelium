@@ -6874,3 +6874,32 @@ token-position × waist-dim, the moment the skeleton trains.
   accumulating (value-range x3, unit-fraction x2, vieta x2,
   piecewise x2, radical x2, exponent x2) — the admission docket
   pricing itself tranche by tranche, exactly as chartered.
+- **BOOK 4, TRANCHE 5 BANKED (2026-07-17): THE PERFECT TRANCHE, AND
+  THE WALL PROBE SPEAKS.** 13/13 banked (15 rows, 2 macro pairs),
+  ZERO misses, every page 5/5 unanimous. **THE HEADLINE: [85] — 20
+  VARIABLES, 19 FACTORS, ZERO FDIVS — BANKED 5/5 UNANIMOUS.** The
+  controlled read prints loud: **the practical wall is FDIV-MASS,
+  not raw count** — a 20-var pure add/mul system parses unanimously
+  while 10-var chains with three fdivs go silent ([73]) and 12-var
+  chains with two ([100]). THE SYNTHESIS, stated precisely: raw
+  count erodes CERTIFICATION gradually (bigtest's 0.623 on a
+  fdiv-thin mix — vote unanimity gets harder with more slots);
+  fdiv-mass causes outright PARSE COLLAPSE (the silent misses). Two
+  failure modes, two mechanisms, one shared discount (the mul-inverse
+  path swap) — and the crown-recovery rider's customer profile
+  sharpens again: the tower's first dividend customers are the
+  FDIV-DENSE, not merely the large. THE CROWNS: [82] banked the
+  [51]-identity's SECOND instance (the golden-ratio equation wearing
+  the same crown — A REPEAT CROWN FAMILY: two strangers, one
+  identity, exactly the frequency signal the admission economics
+  wanted); [105] banked at 241 — a THREE-DIGIT crown answer emitted
+  clean 5/5 (result-path digits hold at magnitude where param-path
+  digits erode — the digit curve's path split confirmed from the
+  emission's healthy side). Fresh coverage: Newton's-identity
+  skeleton ([87] at 90), the four-point distance sum ([96], 15 vars,
+  5/5), the recycling cascade ([104]), ceil-interval ([106]), plus
+  the rate family's THIRD certificate ([107] harmonic — the frame
+  family's docket grows). **BOOK 4 RUNNING TOTALS: 49 pages / 56
+  rows / 7 MACRO PAIRS (the identity crown x2 — the first repeat
+  crown family) / 52 certificates.** Five tranches in one day; the
+  gate never blinked once.
