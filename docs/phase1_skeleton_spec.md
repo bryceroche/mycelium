@@ -6444,3 +6444,42 @@ token-position × waist-dim, the moment the skeleton trains.
   79.7% recoverable by composed voices tonight, zero training, zero
   new parameters, certification untouched. The chain of custody
   taught its own repair lane to speak.
+- **GUT #26 FOLLOW-UP 3 VERDICTS (2026-07-17): PRECISION, THE
+  FRONTIER'S GIFT, AND THE SPLIT PORTRAIT.** One instrument
+  (scripts/residue_portrait.py; lattice re-derived byte-identical,
+  per-item assert on all 320). **(1) THE NAIVE LANE FAILS THE BAR,
+  AS FEARED:** emitted 296 (right 229, WRONG 67), abstained 24 —
+  lane precision 0.7736 vs the 0.9953 incumbent standard. Recovery
+  tables seduce; the fence held. **(2) THE FRONTIER'S GIFT —
+  PLURALITY-COUNT IS THE DIAL, NOT SHARE:** thresholding on absolute
+  agreement mass finds the lane's high-precision core: **count>=5:
+  113/115 = 0.9826; count>=8: 36/36 = 1.0000 (measured)** — while
+  share-thresholds top out at 0.90 (share=1.0 on tiny candidate sets
+  = 2-of-2 flukes at 0.868). The effective-K lesson in sample
+  clothes: darts must be MANY and agreeing — absolute mass, never
+  ratio. A TWO-TIER REPAIR LANE is now drawn and priced from banked
+  data: count>=8 at measured 1.0000 (+36 answers) and count>=5 at
+  0.983 (+113) on a population that today yields ZERO — adoption
+  holds for regression bars + the mechanical cert-non-contact assert
+  + Bryce's word (it would move the composite's published precision
+  and must be re-stated, not slipped). **(3) THE PORTRAIT: SPLIT —
+  and the surviving axis is the important one.** Prediction (i)
+  FAILS with a jurisdiction lesson: residue withhold-recoverability
+  0.688 / zero-frac 1.5% vs recovered 0.697/1.6% — INDISTINGUISHABLE,
+  because generated bigtest is redundant EVERYWHERE (the meter's
+  inversion foretold it: minimality is a BOOKS property; the
+  prediction imported a real-prose axis onto generated text —
+  cross-population prediction, honestly dead). Prediction (ii) HOLDS
+  strongly: **residue det-vote H 0.435 vs recovered 0.631 — the
+  residue is COLD: stable cross-view misreadings**, every view
+  quietly agreeing on wrong readings that neither width nor
+  diagram-diversity can dislodge. THE JOIN WITH THE COOLING GAUGE,
+  named: the cold-error species the standing bet fears EXISTS and
+  lives in the abstain channel's residue — 65 specimens, enumerated,
+  per-item banked. The writer's customer portrait, corrected to what
+  survived: the STABLE-MISREADING survivor — re-read, not re-emit;
+  the 'only the text proposes' charter stands on twenty-four's
+  evidence and now on temperature, with the minimality clause
+  confined to the books lane where it was measured. Board: the
+  two-tier lane awaits the word; the residue awaits the writer;
+  book 4 awaits pages.
