@@ -1,3 +1,22 @@
+# NEXT SESSION — start here (handoff, 2026-07-17)
+
+## **THE REPAIR LANE IS TIERED (adopted 2026-07-17).** Vote-abstain ->
+vote-x-sample lattice (5 views x 4 samples, T=1.0) -> emit iff
+plurality-count >= 8 (EMIT_MIN in scripts/vote_sample_lattice.py;
+measured 36/36, error bounded below ~2.8%). Answered channel 1179 ->
+1215/1500 (81.0%) at composite 0.99918 (bar 0.99915, one-wrong-thin).
+**BATTERY DUTY ADDED — THE SENTINEL ROW**: every future battery reports
+(1) panel-dissent count/precision/overlap-with-56, (2) temperature-band
+portraits (cooling gauge), (3) REPAIR-TIER PRECISION (the >=8 tier's
+watch). Manifest citizenship rides the next promotion. Doors priced in
+.cache/adoption_read.json: count>=5 shut for paper-1's regime;
+benchmark-max lane (91.3% @ 0.9723) = labeled venue instrument only.
+Incumbent specialist anatomy on the books: 0.7067 emission precision —
+never bar-eligible. The 65 cold residue specimens (stable cross-view
+misreadings, H 0.435) await the writer organ. Then: book 4.
+
+# PRIOR HANDOFF BELOW
+
 # NEXT SESSION — start here (handoff, 2026-07-16)
 
 ## **THE PAPER'S HOUSE IS BUILT.** Gate = GEN-14 (manifest true); tag

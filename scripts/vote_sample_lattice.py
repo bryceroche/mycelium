@@ -142,7 +142,17 @@ for v in range(1, N_VIEWS):
     view_outs.append(head_out(sts, msk, snt, fixture))
     print(f"[lattice] view {v} states + head outputs done")
 
-lat = plur = 0
+# ADOPTED TIER (2026-07-17, the adoption read's word): the deployable
+# repair lane emits ONLY at plurality-count >= EMIT_MIN (default 8 — the
+# bar-passing certify-analog: 36/36 measured, error bounded below ~2.8%,
+# composite precision preserved at 0.99918 vs bar 0.99915, one-wrong-thin
+# -> the standing battery carries its precision as a WATCH column).
+# CERT NON-CONTACT, asserted structurally: this lane consumes ONLY items
+# from the vote-abstain fixture; certified/majority channels never route
+# here. EMIT_MIN=0 reproduces the report-all research read.
+EMIT_MIN = int(os.environ.get("EMIT_MIN", "8"))
+
+lat = emitted = 0
 per_item = {}
 for i in fixture:
     answers = []
@@ -153,7 +163,12 @@ for i in fixture:
             a = solve2(facs, q, {"n_vars": 24, "m": rows[i].get("m", 60)})
             if a is not None:
                 answers.append(a)
-    ok = bool(answers) and Counter(answers).most_common(1)[0][0] == gold[i]
+    pick, cnt = Counter(answers).most_common(1)[0] if answers else (None, 0)
+    if EMIT_MIN and cnt < EMIT_MIN:
+        per_item[i] = "abstain(tier)"
+        continue
+    emitted += 1
+    ok = pick == gold[i]
     lat += ok
     per_item[i] = "recovered" if ok else "unrecovered"
 

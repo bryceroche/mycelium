@@ -6516,3 +6516,35 @@ token-position × waist-dim, the moment the skeleton trains.
   policy frontier to 91.3% — zero training, zero parameters, the
   certification tier untouched at every step, every number pinned
   before it printed.
+- **THE ADOPTION (2026-07-17, Bryce's word via 'fire when ready' on the
+  recommendation + relay countersign): THE COUNT>=8 TIER ENTERS THE
+  REPAIR LANE — machine first, prose second, per the law.** THE
+  MACHINE: scripts/vote_sample_lattice.py now carries EMIT_MIN
+  (default 8 — the adopted certify-analog; EMIT_MIN=0 reproduces the
+  research read, and the banked research artifacts were produced at
+  0). Cert non-contact is structural and commented at the knob: the
+  lane consumes only vote-abstain items. THE PROSE: the repair lane's
+  spec is now TIERED — vote-abstain -> vote-x-sample lattice ->
+  emit iff plurality-count >= 8 (measured 36/36; the sentence wears
+  its width: ERROR BOUNDED BELOW ~2.8%, a bound thirty times looser
+  than the 912-certificate tier's — the zero-numerator law scales
+  with n); else abstain. Manifest citizenship rides the next
+  promotion's atomic write (the manifest law). **THE SENTINEL ROW,
+  named and chartered (relay):** the standing battery now carries
+  three columns that each watch a different feared species —
+  PANEL-DISSENT (lineage disagreement), TEMPERATURE-BAND (basin
+  cooling), and now REPAIR-TIER PRECISION (the one-wrong-thin
+  margin's watch) — instruments-police-successors made standing
+  furniture. **THE DOORS, dispositioned (relay counsel, adopted):**
+  count>=5 (+77 at −0.0015 published precision) STAYS SHUT for
+  paper-1's regime — the frozen table does not amend; it re-prices
+  honestly in Paper II's regime if that campaign opens it. The
+  benchmark-max lane (91.3% at 0.9723) parks as a VENUE INSTRUMENT —
+  legal only when explicitly labeled as the recall-max policy, never
+  the deployed default; the label is the honesty story. THE WEEK'S
+  CLOSING ARITHMETIC: the answered channel rises 1179 -> 1215 of
+  1,500 (78.6% -> 81.0%) at composite precision 0.99918 >= the bar
+  0.99915 — the first capability adoption in campaign history with
+  ZERO training, ZERO new parameters, and the certification tier
+  untouched, purchased entirely by reading the machinery we already
+  owned at the temperature it was always capable of.
