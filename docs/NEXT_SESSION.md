@@ -26,10 +26,11 @@ vote-x-sample lattice (5 views x 4 samples, T=1.0) -> emit iff
 plurality-count >= 8 (EMIT_MIN in scripts/vote_sample_lattice.py;
 measured 36/36, error bounded below ~2.8%). Answered channel 1179 ->
 1215/1500 (81.0%) at composite 0.99918 (bar 0.99915, one-wrong-thin).
-**BATTERY DUTY ADDED — THE SENTINEL ROW**: every future battery reports
-(1) panel-dissent count/precision/overlap-with-56, (2) temperature-band
-portraits (cooling gauge), (3) REPAIR-TIER PRECISION (the >=8 tier's
-watch). Manifest citizenship rides the next promotion. Doors priced in
+**BATTERY DUTY ADDED — THE SENTINEL ROW (four columns as of gut #31)**:
+every future battery reports (1) panel-dissent count/precision/overlap-
+with-56, (2) temperature-band portraits (cooling gauge), (3) REPAIR-TIER
+PRECISION (the >=8 tier's watch), (4) RING GAUGE (per-item sign-flips
+since last battery — derived from the per-item banking, zero new cost). Manifest citizenship rides the next promotion. Doors priced in
 .cache/adoption_read.json: count>=5 shut for paper-1's regime;
 benchmark-max lane (91.3% @ 0.9723) = labeled venue instrument only.
 Incumbent specialist anatomy on the books: 0.7067 emission precision —
