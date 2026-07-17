@@ -1,4 +1,27 @@
-# NEXT SESSION — start here (handoff, 2026-07-17 late)
+# NEXT SESSION — start here (handoff, 2026-07-17 seal)
+
+## **BOOK 4 IS FIVE TRANCHES DEEP: 49 pages / 56 rows / 7 CROWNS / 52
+certificates — and THE WALL IS NAMED.** Tranche 5 was PERFECT (13/13,
+all 5/5) and its last page was the instrument: [85] at 20 vars/19
+factors/ZERO fdivs banked unanimous → **the wall is FDIV-MASS, not raw
+count** (count erodes certification gradually; fdiv-mass collapses
+parse outright; markers [100]/[73] stand at the wall; mul-inverse path
+swap = the standing discount, mechanism = param-path digit erosion
+measured 0.977→0.903→0.837 by magnitude). **First REPEAT CROWN FAMILY**:
+[82]+[51] share the (x−y)²=(x+y)²−4xy crown — frequency arriving at
+crown level; crown shortlist re-prices toward FDIV-ABSORBING macros.
+~110 classified candidates wait (.cache/book4_lanes.json). NEXT WORDS:
+(1) more tranches toward the training registration's crown-mass pin;
+(2) THE BOOK-4 TRAINING RUN (head extension 7th ftype + gut#23 three
+arms + gut#21c concentration A/B + gut#24a per-floor redundancy — the
+big fire, awaits the word); (3) entourage-14 duty STILL OWED (specialist
+remine, centroids, mouth recal — manifest waiver standing); (4) cert-v2
+scope test rides any lattice run (the blind-spot factory's panel exam).
+Day's other products: guts 26-32 all converted+fired; repair lane
+tiered+adopted; autopsy opened w/ mechanism+cure; bias law at 8
+specimens; sentinel row at 4 columns.
+
+# PRIOR HANDOFF BELOW
 
 ## **BOOK 4 IS TWO TRANCHES DEEP — THE TOWER'S FIRST STONES ARE BANKED.**
 22 pages / 25 rows / **3 macro pairs (both crown classes + the affine
