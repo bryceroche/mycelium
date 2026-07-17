@@ -6849,3 +6849,28 @@ token-position × waist-dim, the moment the skeleton trains.
   counter at 4 and the certificate families beginning to repeat,
   which is the registry's admission economics turning over exactly
   on schedule.
+- **BOOK 4, TRANCHE 4 BANKED (2026-07-17): THE FIFTH CROWN, AND THE
+  WALL GETS ITS SECOND MARKER.** 7 pages banked (8 rows, 1 macro
+  pair), every one 5/5 UNANIMOUS. **THE IDENTITY CROWN: [51]'s
+  (x−y)² = (x+y)² − 4xy banked as the k1=1 sub-crown (one knot
+  4f98a8f46bcf, 5/5 at 5)** — a textbook algebraic identity wearing
+  the macro whole: the strongest evidence yet that the crown
+  vocabulary matches how mathematics actually compresses. Fresh
+  pages: partial fractions ([74]), Vieta's discriminant ([65], 148),
+  the reciprocal-sum identity ([69]), quadratic-composition ([63]),
+  double-root ([55]), consecutive-evens ([79]) — the harder strata's
+  identity-and-technique families entering the corpus at volume.
+  **[73] MISSES SILENT (votes empty, 10 vars, THREE fdivs) — joining
+  [100] at the wall: two specimens now mark the same band — MULTI-
+  FDIV CHAINS PARSE NOWHERE AT 10+ VARS.** The count wall's profile
+  sharpens: it is not just var count but fdiv DENSITY (each fdiv
+  spends two vars and a param digit path — the wall is
+  count-x-fdiv-mass, a refinement guts 29+30's join could not see at
+  bigtest's fdiv-thin mix). ONE CAP CASUALTY certificated honestly:
+  [68]'s 27a+10b=600 crown dies at the value cap — a beautiful crown
+  lost to domain, logged not forced. **BOOK 4 RUNNING TOTALS: 36
+  pages / 41 rows / 5 MACRO PAIRS ([3],[20],[28],[36],[51] — 3 sub,
+  1 add, 1 affine) / 45 certificates** with repeat families
+  accumulating (value-range x3, unit-fraction x2, vieta x2,
+  piecewise x2, radical x2, exponent x2) — the admission docket
+  pricing itself tranche by tranche, exactly as chartered.
