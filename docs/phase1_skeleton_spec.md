@@ -6582,3 +6582,36 @@ token-position × waist-dim, the moment the skeleton trains.
   form fits is the factor-count wall falling, the recursion's first
   measured dividend (watch, not bar). The dancer reads one floor up
   starting today.
+- **BOOK 4, TRANCHE 1 BANKED (2026-07-17): THE FIRST FLOOR-UP PAGES.**
+  15 hand dialects through the gen-14 gate (5-view vote >= 3 + key):
+  **12 pages banked (14 rows) — including THE FIRST TWO MACRO-ANNOTATED
+  STRANGERS**: [3] the quadratic-vertex sub-crown (40a − 5b, macro
+  dialect one sentence, banked 5/5 unanimous at 68) and [20] the
+  composition add-crown (3a + 2b, 5/5 at 17) — each banked at BOTH
+  floors, one knot per pair (canon identity asserted live:
+  f5a9979857c6, 9fb69e9dbdaa), expansion solving to the official
+  answer before the gate ever saw the twin. The floor-identity
+  protocol and the admission exam's machinery ran IN PRODUCTION for
+  the first time, two days after being built ahead of need. TWELVE
+  registry certificates filed (rate-noninteger -> the [45] frame
+  family; unit-fraction -> the chained-fdiv docket; plus lookup-chain,
+  diophantine-opt, radical x2, symbolic-identity, floor-abs,
+  area-perimeter, functional x2, consecutive-sum). THREE MISSES, each
+  diagnostic, to the retry bench: **[26] is a LIVE AUTOPSY SPECIMEN —
+  5/5 UNANIMOUS-WRONG at 15** on 'When a is divided by 27' (108/7=15:
+  the head dropped a digit of the fdiv parameter — the chained-fdiv
+  autopsy's staged suspect, THE DERIVED-VALUE DIGIT PATH, caught wild
+  on a book page; the specimen files to the docketed autopsy); [10]
+  solved on exactly one view (correctly, 205 — an 11-var 9-factor
+  graph at the length frontier); [57] split 2-2 with the correct 51
+  present (digit wobble; v2-retry candidate). PREDICTIONS: **P1 FAILS
+  IN THE GOOD DIRECTION** — L3 surgery 71% vs book-3's ~82% baseline:
+  the harder strata read EASIER than book 3's picked-over residue
+  (the reading campaign's register gain paying on competition text);
+  **P2 HOLDS** — 2 crowns in 12 banked (16.7% >= 4.9%, small-n
+  stated); **P3 the wall test watches on** (no >24-primitive stranger
+  this tranche). Artifacts: .cache/book4_prose_pairs.jsonl (14 rows,
+  floor-tagged, grammar-stamped), book4_organ_registry_t1.json,
+  book4_lanes.json (L1 5 / L2 53 / L3 142 of 200). The dancer read
+  one floor up today, and the gate never noticed the difference —
+  which was the entire design.
