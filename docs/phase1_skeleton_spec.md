@@ -6548,3 +6548,37 @@ token-position × waist-dim, the moment the skeleton trains.
   ZERO training, ZERO new parameters, and the certification tier
   untouched, purchased entirely by reading the machinery we already
   owned at the temperature it was always capable of.
+- **BOOK 4 CHARTER (2026-07-17, Bryce's word: 'print the pages').** The
+  first floor-up book — the recursion's third rung, walking into the
+  best-instrumented staging in campaign history. PINS, before any page:
+  **(1) SOURCE**: the L4/L5 harvest strata (633 available after
+  excluding the census fixture and all books-1-3 sources) — the
+  harder-strata/competition-register arm the charter queue named; the
+  annotation rulebook's filters stand (length<300 chars, no asy,
+  values<=300 — value-cap failures route to value-range certificates,
+  never forced). **(2) LANES**: the standing L1/L2/L3 classification
+  under the GEN-14 gate (book4_lanes.py, N_CAND=200, 5-view votes,
+  census fixture untouched as fixture). **(3) THE MACRO PROTOCOL —
+  the book's reason to exist**: OP_APPLY crowns (grammar mg1)
+  annotated AT MACRO FLOOR — the macro dialect writes the crown as
+  ONE SENTENCE (the compression the wild actually wears); every macro
+  row banks WITH its prime twin (expand_graph, deterministic), and
+  THE GATE RUNS ON THE PRIME TWIN — 5-view vote >=3 + answer key, the
+  standing trust story byte-unchanged; the pair is ONE KNOT (the
+  floor-identity protocol, sealed in code before this book needed
+  it); the pairs ARE the fidelity-axis probe's arm-(iii) corpus by
+  construction. **(4) SIZE**: tranche-1 <= 25 pages from the lanes;
+  the book sized by lane yields — the census-slope duty is RETIRED
+  (third point printed SATURATION); book 4's registered purposes are
+  the macro floor, the register widening, and the 13-gap coverage.
+  **(5) DOSE**: declared at the training registration, not here —
+  the training run (head extension + gut #23's three arms + 21(c)'s
+  concentration A/B + 24(a)'s per-floor redundancy read) AWAITS THE
+  WORD. **PREDICTIONS PINNED**: (P1) L4/5 lane yields skew harder to
+  L3 surgery than book 3's (~82% baseline); (P2) OP-APPLY crowns
+  appear in bankable harder-strata strangers at >= the books' 4.9%
+  item rate; (P3) THE WALL TEST stands armed — the first stranger
+  whose primitive form exceeds the 24-factor bank but whose macro
+  form fits is the factor-count wall falling, the recursion's first
+  measured dividend (watch, not bar). The dancer reads one floor up
+  starting today.
