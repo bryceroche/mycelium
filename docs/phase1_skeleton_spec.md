@@ -6483,3 +6483,36 @@ token-position × waist-dim, the moment the skeleton trains.
   confined to the books lane where it was measured. Board: the
   two-tier lane awaits the word; the residue awaits the writer;
   book 4 awaits pages.
+- **GUT #26 FOLLOW-UP 4 (2026-07-17): THE ADOPTION READ — THE DECISION
+  TABLE PRINTS, WITH A SURPRISE IN THE INCUMBENT'S ROW.** Pinned bar:
+  composite precision >= 1179/1180 = 0.99915 (the current answered
+  channels, banked). **(A) THE INCUMBENT'S OWN PRECISION, decomposed
+  for the first time: 208 emissions, 147 right, 61 WRONG — 0.7067**
+  — the specialist stack, read at deployment semantics
+  (emit-when-solvable), is LESS precise than the naive lattice
+  (0.7736); its composite lands 0.95533, a catastrophic bar fail.
+  (Follow-up 1's 151 was recovery-max; emission semantics differ by
+  stage-order — a stage-0 wrong emission blocks a later recovery.)
+  The 0.833-precision composite the paper reports for the answer rung
+  is the historical measurement of exactly this species of lane.
+  **(B) THE DECISION TABLE (banked, .cache/adoption_read.json):**
+  count>=8: +36 emit, 36 right -> 1215/1500 (81.0%) at 0.99918 PASS;
+  count>=10: +10 -> 0.99916 PASS; count>=5: +115/113 -> 86.1% at
+  0.99768 fail-by-0.0015; incumbent: fail; lattice>=5-then-incumbent
+  (the benchmark-max lane): **1369/1500 = 91.3% at 0.9723** fail.
+  RECOMMENDATION GIVEN (Code): adopt **count>=8 now** — strictly
+  bar-passing, +36 answers at zero published-precision cost — with
+  TWO honesty clauses: (i) zero-numerator discipline: 36/36 reads
+  'error bounded below ~2.8%', never 'perfect'; (ii) the bar margin
+  is ONE-WRONG-THIN (0.99918 vs 0.99915) — the tier adopts WITH A
+  WATCH: its precision column joins the standing battery beside the
+  panel-dissent and temperature-band columns. The count>=5 and
+  benchmark-max doors stay open at their printed prices — the
+  91.3%-at-0.9723 lane is a VENUE POLICY question (benchmark scoring
+  has no wrong-answer penalty), and that word is Bryce's with the
+  price sheet in hand. THE WEEK'S REPAIR-LANE LEDGER, closed: one
+  deterministic voice (21.9%) -> a priced, tiered, bar-disciplined
+  lattice with a certify-analog (+36 at preserved precision) and a
+  policy frontier to 91.3% — zero training, zero parameters, the
+  certification tier untouched at every step, every number pinned
+  before it printed.
