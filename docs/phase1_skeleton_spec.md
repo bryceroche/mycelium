@@ -6379,3 +6379,38 @@ token-position × waist-dim, the moment the skeleton trains.
   audits' products (twenty-one's fixture, the standing lattice's
   disposal, twenty-four's wall as its bars): the compounding thesis
   cashing its first GPU check, and the check cleared at 4x its bar.
+- **GUT #26 FOLLOW-UP 1 (2026-07-17): THE NACK-INCUMBENT READ — THE
+  SHIFT IS SHARED, AND THE UNION BREAKS 50%.** Head-to-head on the 320
+  (scripts/nack_incumbent_read.py, per-item outcomes BANKED per the
+  law; one grading frame, disposal gold-free): **INCUMBENT (composed
+  stack, ARM=field_only = fully deployable): 151/320 (47.2%)** —
+  stage0 straight-parse 71, withhold-2 +60, gen-13 specialist +20
+  (one-generation waiver worn). **CHALLENGER (sampled T=1.0): 136/320
+  (42.5%). UNION: 175/320 (54.7%)** — incumbent-only 39, sampled-only
+  24, overlap 112. THE PRECISE SEAT ASSIGNMENT yesterday's verdict
+  owed: the voice does not TAKE the shift — the stack beats it
+  head-to-head by 15 — **it JOINS it**: sampling adds +24 on the
+  stack's own survivors (+7.5pt the incumbent cannot reach), and the
+  two mechanisms are measurably COMPLEMENTARY (the specialist repairs
+  what flags localize; the sampler escapes what determinism re-emits).
+  THREE TEXTURE FINDINGS: (1) **the sampler outperforms the trained
+  specialist ON THE TAIL** — specialist +20/189 survivors (10.6%) vs
+  sampler +24/169 incumbent-unrecovered (14.2%): noise-plus-the-gate
+  beats trained repair precisely where flags stop helping (the
+  repair-generation wall's population); (2) **the span channel buys
+  +3 only** (ceiling arm 154 vs 151) — field flags carry nearly the
+  whole specialist, the deployable arm is nearly the ceiling; (3) the
+  ±1 seam reappears (stage0 71 vs yesterday's banked-vote control 70,
+  same definition, different solve path) — now JOINABLE per-item as
+  the law intended. WRITER'S NULL MODEL, RE-PRICED: a learned
+  replacement-generator must now beat the UNION lane (175) — its
+  marginal customer is the 145-item residue where BOTH voices fail.
+  **FOLLOW-UP 2 REGISTERED + FIRED (pins pinned here): THE
+  VOTE-x-SAMPLE LATTICE** — permutation views (the standing seeds,
+  40000+10i+k, view-matched to the banked lattice) x temperature
+  samples (T=1.0, K=4 per view, 20 candidates/item) on the full 320;
+  disposal unchanged (solver-consistent plurality, gold grades never
+  gates); READS: (i) does view-diversity add a third recovery axis
+  beyond the union's 175? (ii) per-view-deterministic vs
+  per-view-sampled decomposition. Cost: 1,280 trunk forwards + ~6,400
+  solves — minor watts under the standing word.
