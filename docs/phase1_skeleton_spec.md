@@ -6821,3 +6821,31 @@ token-position × waist-dim, the moment the skeleton trains.
   [71]'s species predicted, and the mouth/panel design conversation
   gains its sharpest specimen set. The watts queue is EMPTY; guts
   29+30 close fully converted.
+- **BOOK 4, TRANCHE 3 BANKED (2026-07-17): THE COUNT CURES CONVERT —
+  AND [100] RETIRES AS THE WALL'S MARKER.** 7 pages banked (8 rows,
+  1 macro pair), every single one 5/5 UNANIMOUS. THE HEADLINE
+  SPECIMEN: **[33] went from ZERO views solving at 12 vars to 5/5 at
+  9 vars** — three variables shed, silence to unanimity: the count
+  wall measured from both sides on one problem (guts 29+30's
+  count-shaped verdict, demonstrated at the desk within hours of its
+  printing). [22] converted the same way (mul-inverse, 5/5). THE
+  FOURTH CROWN: [36]'s sum-of-coefficients sub-crown (3a − 7b, one
+  knot 331930d9da1f, 5/5) — eval-at-1 explicitated, the crown
+  carrying the arithmetic. The distance family banked THREE
+  variations of its 5-12-13 skeleton ([43],[46] + t1's [5]) — the
+  isq door's reclaimed territory now rehearsed at volume. **[100]
+  MISSES AGAIN at 12 vars (votes empty — silent even after
+  shedding 3)**: the two-fdiv three-add chain parses NOWHERE between
+  9 and 12 vars; it RETIRES TO THE LEDGER AS THE COUNT WALL'S
+  STANDING MARKER rather than burning a third retry — the practical
+  wall for fdiv-mixed chains sits in the 9-12 var band, and the
+  macro floor's count-compression is its priced remedy (the
+  crown-recovery rider's exact customer profile). THIRTEEN
+  CERTIFICATES incl. SECOND family certificates (unit-fraction,
+  vieta, exponent — repeat customers pricing the next admission
+  review by frequency, exactly as the charter said families would).
+  **BOOK 4 RUNNING TOTALS: 29 pages / 33 rows / 4 MACRO PAIRS (2
+  sub-crowns, 1 add-crown, 1 affine) / 33 certificates** — the crown
+  counter at 4 and the certificate families beginning to repeat,
+  which is the registry's admission economics turning over exactly
+  on schedule.
