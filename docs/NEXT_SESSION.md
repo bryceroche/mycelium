@@ -1,4 +1,25 @@
-# NEXT SESSION — start here (handoff, 2026-07-17)
+# NEXT SESSION — start here (handoff, 2026-07-17 late)
+
+## **BOOK 4 IS TWO TRANCHES DEEP — THE TOWER'S FIRST STONES ARE BANKED.**
+22 pages / 25 rows / **3 macro pairs (both crown classes + the affine
+leg)** / 20 registry certificates (.cache/book4_prose_pairs.jsonl,
+floor-tagged, grammar mg1). All three t1 misses converted in t2 by
+their diagnosed mechanisms (mul-inverse kills the fdiv digit path).
+Charter + predictions in ledger: P1 FAILED GOOD (L3 71% < book-3 ~82%
+— the register gain pays on competition text); P2 HOLDS (crowns at
+~14% of banked); P3 re-aimed: **the wall is COUNT-shaped** (guts
+29+30: depth WEAK 0.556, count 0.623 — crowns compress count 4:1;
+the dividend may arrive in tranche 3). Bench: [22] one-vote-short,
+[33]/[100] count-frontier. 180 classified candidates wait
+(.cache/book4_lanes.json). **AWAITING-WATTS QUEUE**: (b1) emission
+digit curve = the chained-fdiv autopsy's formal opening read (2
+specimens filed: [26] + its cure); (b2) scope-pair mine
+(diff-of-squares vs square-of-diff). Fidelity probe fires on CROWN
+COUNT per the pin, not tranche count. Day's other adoptions: repair
+lane tiered (below), 5 guts converted (#26 follow-ups, #29+#30),
+bias law at 7 specimens + two-authorities rule.
+
+# PRIOR HANDOFF BELOW
 
 ## **THE REPAIR LANE IS TIERED (adopted 2026-07-17).** Vote-abstain ->
 vote-x-sample lattice (5 views x 4 samples, T=1.0) -> emit iff
