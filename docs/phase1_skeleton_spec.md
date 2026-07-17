@@ -6735,3 +6735,48 @@ token-position × waist-dim, the moment the skeleton trains.
   instruments now measure DYNAMICS as well as state — flux in,
   temperature held, ring-down between — and the bell's first striker
   was us, knowingly, last Tuesday, with a temperature dial.
+- **GUT #32: THE SMALL-STEPS CONSOLIDATION (2026-07-17, Bryce + relay
+  + Code, registered as amended and FIRED).** The instinct arrived as
+  an imperative and decoded as a CHORD — five jurisdictions already
+  humming the note, the fifth the most literal: **the gut was speaking
+  the June engine's own vocabulary back to us.** THE FIVE-JURISDICTION
+  MAP (banked so no session re-derives it): (1) training — flux
+  density + the concentration A/B riding book-4 (spread-vs-
+  concentrated IS small-vs-large at matched energy; the gut votes
+  spread); (2) generation — the regime law with thirty-one's damping
+  physics; (3) architecture — the cascade envelope (coarse floors
+  take the big semantic steps); (4) field — diffusion's many-small-
+  denoisings; (5) **ENGINE — delta_gate (BUILT, RESTING, VALIDATED):
+  the deducer's learnable convex residual blend IS the step-size
+  dial, per-breath weighted-CE IS monotone refinement enforced, v98's
+  hole-monotonicity IS little-by-little as architecture** — the
+  instinct recognizing its own prior implementation across a month
+  and two architectural eras. THE EIGHTH SIGHTING, new wrinkle for
+  the taxonomy: 'Dopri5 stepping won its ablation' — the record says
+  Dopri5-STYLE everywhere (framing, hook, analogy) and the May-era
+  ablations found adaptive controller decisions DECORATIVE on
+  converged models; **the suffix '-style' is a provenance marker and
+  the relay channel strips it** — an analogy's clothing mistaken for
+  a measurement's body; enters as prior ART, correctly labeled.
+  **(a) THE DISPLACEMENT-VS-GAIN RETROSPECTIVE (fired at aggregate-
+  proxy grain — retroactive item-grain flips do not exist; the
+  cooling gauge's lesson applied BEFORE the mistake): ORDERING
+  CONSISTENT at every seat walked.** Low-displacement gens leave
+  debts standing (gen-10 alg4 357, reader_v1 378 — records elsewhere,
+  the bar unpaid); stacked-low REGRESSES (reader_v2 −10 — fatigue,
+  not damping); high-displacement-on-shifted-diet prints mixed signs
+  (gen-9's re-shallowing); high-displacement-from-clean-ancestry
+  crowns (gen-13: debt PAID at 385 + records; gen-14: records +
+  acceptance holding). Eight points, ordinal, kill-only — NO
+  contradiction found; the inverted-U is CONSISTENT-BUT-COARSE, and
+  the true item-grain curve accrues from the RING GAUGE installed one
+  gut ago (instruments-before-customers now running at ONE-SESSION
+  lead). **(b) THE CONDITIONAL STEP LAW (prose, counterexamples in
+  the law's own text): small steps by default; ONE CLEAN QUENCH FROM
+  CLEAN ANCESTRY when debt is owed (reader_v1's kill and gen-13's
+  payment are the same lesson from both sides); STACKED DRIPS ARE
+  NEITHER — they are fatigue (reader_v2, the resistor, seated at
+  last as the law's own boundary marker).** (c) the map above IS the
+  cross-reference. Thirty-two converts as consolidation: the chord
+  written down, one note played by machinery resting in June's
+  drawer.
