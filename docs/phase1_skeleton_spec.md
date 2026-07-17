@@ -6647,3 +6647,39 @@ token-position × waist-dim, the moment the skeleton trains.
   is teaching two lessons at once: the register lesson (harder
   strata read easier than expected) and the depth lesson (the parse
   wall arrives before the slot wall).
+- **GUTS #29+#30: THE DEPTH-AND-COMPOUNDS AUDIT (2026-07-17, Bryce +
+  relay + Code, registered as amended; (a) FIRED).** Two guts, one
+  intersection — and TWO mechanism corrections at review: (1) the
+  panama-hat specimen [26] bled at the EMISSION digit banks, not
+  tokenization — Llama-3 carries '27' as ONE token; the compound broke
+  at the mouth, not the ear — relocating the wound from frozen
+  territory (tokenizer) to trained territory (digit banks, healed
+  every generation); (2) the bands column's jurisdiction is solver
+  decisions, not derivation depth — the join computes depth fresh
+  from gold DAGs (the metric-question mismatch twenty-seven's census
+  exists to catch, caught). **(a) THE CHAIN-DEPTH JOIN VERDICT: WEAK
+  — AND THE WALL IS COUNT-SHAPED, NOT DEPTH-SHAPED.** Pooled
+  within-stratum AUC(depth -> not-certified) = 0.556 (bar 0.60);
+  uncontrolled: depth 0.587 vs FACTOR-COUNT 0.623 — SIZE dominates.
+  The constitution confirmed from a new angle: the head never RUNS
+  the chain (the solver does), so chain depth barely hurts — the
+  binding burden scales with HOW MANY bindings, not how long their
+  chain. JURISDICTION: verdict scoped to depth 3-5 (the generated
+  fixture's compressed range — the mint's cycles flatten depth
+  variance; beyond-5 unmeasured, stated). THE RIDER STRENGTHENS BY
+  THE MISS: crowns compress COUNT (4 primitives per crown), and
+  count is the measured wall driver — the tower's dividend path is
+  COUNT-RECOVERY, P3's practical wall confirmed count-shaped; the
+  crown-recovery rider re-aims accordingly and fires at crown mass.
+  **(b1) THE EMISSION DIGIT CURVE** — the chained-fdiv autopsy's
+  FORMAL OPENING READ, specimens one and two filed ([26] wild-caught
+  + its validated mul-inverse cure); GPU-minor, holds for the word.
+  **(b2) THE SCOPE-PAIR MINE** — difference-of-squares vs
+  square-of-the-difference, minted minimal pairs, the tranche's
+  fresh family as anchor; GPU-minor, holds for the word. **(c) PROSE
+  LAW BANKED**: serial computation belongs to the jaws; the head's
+  depth is spent on binding, and its wall is COUNT; the tower makes
+  big graphs small; panama hats live at two skins — the input's
+  (owned by the trunk, measured: numbers <=999 enter whole) and the
+  emission's (where the specimen bled); the dialect strips wild
+  compounds, the gate crowns earned ones.
