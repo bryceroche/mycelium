@@ -7232,3 +7232,46 @@ token-position × waist-dim, the moment the skeleton trains.
   LR 1e-4, flat, SEED 15), every ckpt built ALONGSIDE gen-14. The
   battery and gen15_verdict speak when the burn completes — the bars
   were pinned before the corpora existed.
+- **THE FIRE'S FIRST TABLE (2026-07-20): ALL FOUR ARMS CLEAR THE
+  FLOOR; THE HEAD READS ITS OWN VOCABULARY; THE WALL KEEPS ITS
+  MARKERS — every sentence pre-written, every one printed honestly.**
+  The burn: nine stages, 2h10m, 64k steps, four ckpts alongside
+  gen-14 (0.06s/step — the substrate's machinery at its designed
+  pace). Two pre-burn catches (the index-24 species twice; the
+  two-terminal law's fixed-buffer den) — every failure a LOADING
+  failure caught by a lesson's installed assert; the fire could only
+  fail loudly. **THE TABLE (bigtest floor 1149):** A (prime control)
+  **1204** — the book-4 gift replicates on harder-strata pages, a
+  NEW RECORD over gen-14's 1195; B (macro-only) 1189; C1 (paired
+  spread) **1197**; C2 (paired concentrated) 1195. ALL FOUR CLEAR.
+  READS AGAINST THE PINNED FRAMES: (1) **MACRO ACCEPTANCE: the head
+  READS CROWNS — B 6/9 wild crowns, C1/C2 4/9, A 0/9** (0 = the
+  design's own control: no macro training, no macro reading — the
+  7th ftype is learned, not free). First measured sentence of its
+  kind in the campaign: A HEAD TRAINED ON MINTED MACRO PAIRS PARSES
+  WILD MACRO-ANNOTATED STRANGERS at 5-view unanimity — the tower's
+  second floor is READABLE. (2) **#23's LEAN, graded**: C1 (paired)
+  1197 > B (macro-only) 1189 on the shared register — pairs beat
+  macro-alone as all three sources predicted; but B leads crown
+  acceptance 6/9 vs 4/9 — a mass effect (B's macro share undiluted
+  by prime twins), the fidelity axis showing its first internal
+  structure: pairing protects the register, concentration of the
+  new floor's mass teaches it faster. (3) **#21(c) at this grain**:
+  C1 1197 vs C2 1195 — spread >= concentrated, direction consistent
+  with the pinned lean, margin thin; the neighbor-displacement read
+  (the real instrument) awaits the per-item join. (4) **THE
+  DIVIDEND: HONEST MISS, mechanism confirmed** — [73]/[100] macro
+  forms still fail under every arm; the crown sheds mul-add vars but
+  the FDIVS STAND, and the fdiv-mass wall stands with them —
+  confirming the wall's name from a third direction and RE-PRICING
+  THE SHORTLIST exactly as tranche-4 predicted: the next admission
+  must be FDIV-ABSORBING (the chained-fdiv family — autopsy already
+  open, mechanism already quantified, cure already validated). THE
+  STRATEGIC READ, one line: the recursion CLIMBS (the floor is
+  readable) but pays no dividend until the vocabulary reaches the
+  wall's own kind — the library's next word chooses itself.
+  DISPOSITIONS: full promotion battery + verdict machinery on the
+  candidate arms next session (A holds the record; C1 holds the
+  paired lean; the gen-15 gate question is theirs); the sentinel
+  walk + adversarial fixture ride that battery; per-kind guards,
+  acceptance, cert-v2 owed before any manifest word.
