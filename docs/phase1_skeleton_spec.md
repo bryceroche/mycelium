@@ -7027,3 +7027,22 @@ token-position × waist-dim, the moment the skeleton trains.
   precision WATCH extending to the joint tier on the standing battery.
   The Wood fence held to the end: the witness never judged — it
   CONFIRMS, and only the plurality it confirms gets emitted.
+- **THE ADOPTION (2026-07-20): THE THREE-VOICE REPAIR LANE — machine
+  validated first, prose second, per the law.** scripts/repair_lane_v3.py
+  (standalone deployable organ; --validate) reproduced the banked
+  numbers EXACT on the 320 fixture: **tier 1 (count>=8): 36/36; tier 2
+  (5-7 + fingerpost-confirms): 31/31; composite 1246/1247 = 0.99920 >=
+  bar 0.99915 — PASS.** The lane: vote-abstain -> lattice (5 views x 4
+  samples, standing seeds) -> consistent plurality c -> emit at c>=8;
+  at 5<=c<=7 emit ONLY if the frozen trunk prefers the plurality's
+  canonical restatement over the runner-up's (the witness CONFIRMS,
+  never judges); else abstain. Gold-free end to end; certification
+  untouched; every voice zero-parameter. THE WATCH EXTENDS: the
+  sentinel row's repair-tier precision column now covers BOTH tiers
+  (tier 2 at ~3.2% zero-numerator width — thinner than tier 1's, watch
+  accordingly). THE ANSWERED CHANNEL AT ADOPTION: 1246/1500 (83.1%)
+  at composite 0.99920 — from 1179 (78.6%) ten days ago, +67 answers,
+  zero training, zero parameters, the precision RISING as coverage
+  grew. The novel's epistemology is production machinery: plurality
+  and paraphrase-preference each blind where the other sees, emitting
+  only where they agree, the key above them both.
