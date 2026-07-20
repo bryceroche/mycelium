@@ -7161,3 +7161,48 @@ token-position × waist-dim, the moment the skeleton trains.
   arms, #21(c)'s concentration A/B, #24(a)'s per-floor redundancy
   read — with a clean house behind it, 9 crowns in corpus, and five
   sentinel columns waiting to grade the result.
+- **THE TRAINING FIRE CHARTER (2026-07-20, registered — GPU HOLDS FOR
+  BRYCE'S EXPLICIT WORD; build and smoke may proceed).** The gen-15
+  candidate: the head learns to read crowns. **THE CROWN-MASS CATCH,
+  caught by its own pin**: the corpus holds 9 wild crowns (9 distinct
+  signatures) — below any honest supervision mass (the n=14 lesson,
+  the attention-bootstrap law). RESOLUTION, the house's oldest
+  pattern: **THE MINT** — OP_APPLY is admitted vocabulary, so the
+  generator mints macro-annotated synthetics at volume
+  (solution-first, uniqueness-gated, knot-deduped at level 0,
+  floor-paired FREE via expand_graph). TRAINING mass = ~2,000
+  synthetic macro pairs (the bilingual-cure dose) + the 9 wild
+  crowns; MEASUREMENT mass (P2, the wall test) stays indexed to WILD
+  crowns per the standing pin — training and measurement separated,
+  each under its own law. **THE FOUR ARMS** (composing #23 + #21(c)
+  without explosion): A = PRIME-ONLY control (mixed13 + book-4 prime
+  rows at the book-2 gift recipe); B = MACRO-ONLY; C1 = FLOOR-PAIRED
+  SPREAD (the tombstone/diffusion/bilingual lean, pinned by both
+  channels); C2 = FLOOR-PAIRED CONCENTRATED (#21(c)'s quench arm —
+  same pairs, contiguous block; C1-vs-C2 IS the concentration A/B at
+  matched everything; NEIGHBOR = shared-knot-class, standing).
+  **DOSES DECLARED** (the dose law's both-numbers form): book-4
+  prose 60 uniques x 10 reps (~3.5% share — the gift recipe);
+  synthetic macro pairs ~2,000 uniques x 1-2 reps; flat mix always.
+  **THE BUILD LIST** (pre-word): (a) the macro mint (crown wrapper
+  over standing generators, gates unchanged); (b) THE HEAD EXTENSION
+  — ftype 6->7 (OP_APPLY), a SECOND digit bank h_dig2 for k2 (fresh,
+  gold-fed from birth per the two-terminal law), args/result/op
+  reuse; build_gold/decode/loss-masks/eval extended under
+  ALG_FTYPES=7; (c) four-arm corpora assembly; (d) 50-step smokes.
+  **BARS** (pinned at charter): no regression vs gen-14's printed
+  battery (bigtest >=1149 floor, all standing per-kind guards,
+  acceptance 7/8 with only-[45] clause, cert-v2 >=0.998) + THE
+  SENTINEL ROW ENTIRE (panel-dissent, temperature-band, repair-tier
+  precision, ring gauge FIRST REAL INTERVAL, adversarial fixture
+  walk) + MACRO ACCEPTANCE (the extended head parses the 9 wild
+  crowns' macro dialects, 5-view vote) + **THE DIVIDEND READ**:
+  [100] and [73] — the fdiv wall's named customers — re-attempted at
+  macro floor under the trained head (the recursion's first measured
+  dividend or its honest miss) + the per-floor redundancy meter
+  (#24(a)) on the paired corpus (the deducer's gate, read at last).
+  VERDICT MACHINERY: gen15_verdict.py writes the manifest or refuses
+  the word — the arms graded by the pre-pinned frame (#23's leans on
+  C1; #21(c)'s displacement-on-neighbors predicts C2 > C1). The most
+  instrumented fire ever staged here, chartered with a clean house
+  behind it — holding for the word.
