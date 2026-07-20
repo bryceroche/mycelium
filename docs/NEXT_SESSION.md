@@ -1,3 +1,22 @@
+# NEXT SESSION — start here (handoff, 2026-07-20 late seal)
+
+## **THE DAY: hole found, guard built, book at 60 pages.** (1) THE PANEL
+EXAM: cert-v2 certifies WRONG on 2/20 manufactured scope specimens;
+shared blindness 18/20 (register-shared, not lineage); mouth refuses
+0/20 — the chain's measured hole, species named. (2) THE PANAMA GUARD
+ADOPTED (scripts/panama_guard.py): taught-construction lexicon (4,479
+n-grams), specimens 20/20 flagged, price = ONE certificate in 912
+(0.11% coverage, zero precision); wiring rides the next promotion;
+ADVERSARIAL FIXTURE PERMANENT (.cache/adversarial_scope_fixture.jsonl)
+— sentinel row at FIVE. (3) BOOK 4 at **60 pages / 69 rows / 9 CROWNS /
+61 certificates** (tranches 5+6 PERFECT, zero misses); crown counter
+near probe mass — the training registration pins the number. NEXT:
+pages or THE TRAINING FIRE (head extension + 4 riders); entourage-14
+owed (guard wiring + manifest citizenship ride it); ~90 candidates
+classified and waiting.
+
+# PRIOR HANDOFF BELOW
+
 # NEXT SESSION — start here (handoff, 2026-07-20 seal)
 
 ## **THE THREE-VOICE REPAIR LANE IS ADOPTED (machine-validated).**
