@@ -6950,3 +6950,28 @@ token-position × waist-dim, the moment the skeleton trains.
   and deducer multi-views (different orderings, different propagation
   schedules — different witnesses to one deduction) behind the
   redundancy gate where all deducer-shaped things lawfully wait.
+- **GUT #33, v0 VERDICT (2026-07-20): POPULATION-STARVED — the probe's
+  real finding is demographic, not epistemic.** Gradable two-answer
+  splits on bigtest: **n=2** (1/2 preference-for-truth = a coin flip
+  at a sample size where no bar can speak; the mechanical 'DIES' line
+  is OVERRULED by starvation — the kill bars presupposed a population
+  the fixture does not hold). THE FINDING: the gen-14 gate's votes on
+  generated text either CONVERGE (968 unanimous) or SCATTER (the
+  abstains' sub-2 pluralities and many-answer sprays) — clean 2-way
+  contests, the fingerpost's natural customer, are nearly absent from
+  deterministic votes on this fixture. WHERE THE CONTESTS ACTUALLY
+  LIVE, and v0.1's re-registration (population change = design change
+  = through the countersign, per discipline): **the sampled lattice's
+  candidate distributions** — the 320 fixture's temperature samples
+  produce rich top-2 contests per item (plurality vs runner-up among
+  solver-consistent candidates), hundreds of adjudications from
+  machinery already banked, and the population the fingerpost was
+  always FOR (the repair lane's ambiguity, not the deterministic
+  vote's rare indecision). v0.1 SPEC: same writer, same trunk
+  adjudication, same fences and bars — population = the lattice's
+  top-2 consistent candidates per abstain item; the locus rider
+  inherits. AWAITING THE COUNTERSIGN. The tiny census's one free
+  crumb: the n=2 loci were given-value and rel disagreements — too
+  thin to read, banked for the v0.1 join. Bacon's machine is built
+  and constitutional; it was pointed at the one crossroads in town
+  where nobody argues.
