@@ -1,3 +1,24 @@
+# NEXT SESSION — start here (handoff, 2026-07-20 seal)
+
+## **THE THREE-VOICE REPAIR LANE IS ADOPTED (machine-validated).**
+scripts/repair_lane_v3.py: vote-abstain -> lattice -> emit at count>=8
+(36/36) OR at 5-7 with FINGERPOST confirmation (31/31 — the trunk
+prefers the plurality's canonical restatement; witness confirms, never
+judges). Composite 1246/1247 = 0.99920 >= bar. **Answered channel
+78.6% -> 83.1% in ten days, precision RISING, zero training.** GUT #33
+(the fingerpost) fully converted: v0 population-starved (deterministic
+votes converge or scatter — n=2 splits), v0.1 POINTS at the argument
+factory (0.701, n=147), joint tier passes where each voice alone
+failed. Locus census banked (rel 669/given 651, repair-lane regime).
+Drawer: the ACTIVE fingerpost (mint targeted disambiguation), deducer
+multi-views + the pi-wave (behind the redundancy gate — trigger chain:
+per-floor meter read -> deducer service -> depth-cap+forgetting).
+Sentinel watch covers both repair tiers. NEXT: pages toward crown mass
+(~110 candidates); the training fire; entourage-14 (STILL OWED); the
+panel exam (scope pairs through armB/cap2x).
+
+# PRIOR HANDOFF BELOW
+
 # NEXT SESSION — start here (handoff, 2026-07-17 seal)
 
 ## **BOOK 4 IS FIVE TRANCHES DEEP: 49 pages / 56 rows / 7 CROWNS / 52
