@@ -7115,3 +7115,24 @@ token-position × waist-dim, the moment the skeleton trains.
   per generation (--build) as the register grows — the guard's
   vocabulary tracks the books. The species has a name, a factory,
   a guard, and a watch.
+- **BOOK 4, TRANCHE 6 BANKED (2026-07-20): THE SECOND PERFECT TRANCHE.**
+  11/11 (13 rows, 2 macro pairs), zero misses, every page 5/5
+  unanimous. THE CROWNS: [124] Vieta's sum-of-squares (e1²−2e2 =
+  169−8 = 161, the k1=1 sub-crown's third instance and the identity
+  family's cousin) and [128]'s composition add-crown (2·15+3·39 =
+  147 — the SECOND three-digit crown answer emitted clean, the
+  result-path's health confirmed again). Fresh coverage: the
+  eval-at-1 family's second instance ([117], 36), Newton's second
+  ([118]), floor-interval beside ceil-interval ([121]/[106] — the
+  pair family complete), plus the widget-rate identity ([126], the
+  rate-adjacent family's first BANKED page). Registry: the FIRST
+  infinite-series certificate (new family) + repeats deepening
+  (radical-form x4, radical-rationalize x3, symmetric-identity x2,
+  lattice-counting x2). **BOOK 4 RUNNING TOTALS: 60 pages / 69 rows /
+  9 MACRO PAIRS / 61 certificates** — crown signatures now spanning
+  (sub: 40-5, 3-7, 1-4, 1-2; add: 3-2, 1-3, 5-1, 1-4, 2-3), the
+  k1=1 leg at four instances: the affine door the admission opened
+  is the one the wild walks through most. The crown counter
+  approaches probe-worthy mass — the training registration's pin
+  will name the number, and the book is within a tranche or two of
+  whatever it pins.
