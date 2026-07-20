@@ -7086,3 +7086,32 @@ token-position × waist-dim, the moment the skeleton trains.
   everything except text that speaks the house style about things
   the house never taught — and now that species has a name, a
   factory, and a guard on the docket.
+- **THE ADOPTION (2026-07-20): THE PANAMA-HAT WATCHLIST GUARD — built,
+  validated, priced, machine first.** scripts/panama_guard.py: the
+  TAUGHT-CONSTRUCTION LEXICON (4,479 abstracted n-grams from 24,556
+  register rows — the dialect's closed vocabulary made explicit) +
+  the pinned flag rule (>=1 novel abstracted trigram+). VALIDATION,
+  all pinned predictions holding: **specimens 20/20 FLAGGED** (novel
+  constructions = exactly the scope compounds: 'the difference of',
+  'of the squares'); **bigtest 12/1500 (0.80%)** flagged — and the
+  exact price: **ONE certificate in 912 (0.11% certify coverage,
+  ZERO precision)**, the other 11 already answer/abstain items with
+  rare-mint phrasings at the lexicon's edge; **book-4 dialects 0/56**
+  (in-lexicon by construction). JURISDICTION: the mouth asks
+  style-familiarity (continuous); the guard asks construction-
+  coverage (discrete) — the OOD decomposition's split instrumented
+  at the input skin; a flag BARS CERTIFY and routes to answer/abstain
+  — coverage cost only, never precision. WIRING: guard() is the
+  deployable read; decision-path integration (certify-eligibility
+  pre-filter) rides the next promotion's atomic battery+manifest
+  write, per the law. **THE ADVERSARIAL FIXTURE IS PERMANENT**
+  (.cache/adversarial_scope_fixture.jsonl, 20 specimens with
+  provenance): the sentinel row grows to FIVE — panel-dissent,
+  temperature-band, repair-tier precision, ring gauge, and now THE
+  ADVERSARIAL RE-EXAM (the manufactured species walked through the
+  full chain each promotion, the hole's size TRACKED per generation
+  rather than rediscovered — mandatory, because the register
+  campaign's success expands the species). The lexicon regenerates
+  per generation (--build) as the register grows — the guard's
+  vocabulary tracks the books. The species has a name, a factory,
+  a guard, and a watch.
