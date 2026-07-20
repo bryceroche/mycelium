@@ -6903,3 +6903,50 @@ token-position × waist-dim, the moment the skeleton trains.
   rows / 7 MACRO PAIRS (the identity crown x2 — the first repeat
   crown family) / 52 certificates.** Five tranches in one day; the
   gate never blinked once.
+- **GUT #33: THE FINGERPOST (2026-07-20, Bryce + relay + Code — the
+  instinct that knocked for thirty years).** Iain Pears' four-narrator
+  epistemology mapped onto the house and found already-built walls
+  plus ONE open door. THE NARRATOR TAXONOMY (prose, banked): the
+  agenda-narrator = reward hacking (why the key sits outside every
+  acceptance path); the SELF-DECEIVED narrator = the cold error, H~0,
+  sincerely stable and wrong ([71] is Prestcott walking); the
+  cryptographer Wallis = instrument bias (the hammer that sees nails
+  — the length-warped mouth reading sample size as distance); Wood
+  the antiquarian wins by PROVENANCE DISCIPLINE — the two-authorities
+  rule in 1660s Oxford: truth is the residue after every account is
+  taxed by its provenance. THE CITE, corrected to its stronger form:
+  the fingerpost is the principled shape of the SECOND-VIEW RE-RENDER
+  — the 'change the ENCODING' build option tabled at the
+  oracle-ceiling frontier 2026-07-08, waiting eleven days for this
+  spec. **(a) THE FINGERPOST VIEW, registered + v0 FIRED:** on
+  vote-split items (answer channel only; certification untouched),
+  render each leading parse P1/P2 to canonical dialect via a
+  DETERMINISTIC writer (templated; not the chartered repair-writer —
+  it can only say what the parse already says), and THE FROZEN TRUNK
+  ADJUDICATES: pooled-state similarity of the original text to each
+  restatement — the reading whose canonical form is the closer
+  paraphrase of what was actually written gets the point. Style
+  confound cancels BY CONSTRUCTION (both restatements wear the same
+  dialect — differences are pure content). FENCES: (i) evidence into
+  the vote, NEVER an override (the Wood-seduction fence — the fourth
+  narrator feels authoritative because he speaks last; the
+  adjudication will feel like a verdict because it arrives dressed in
+  trunk similarity — it is a witness, not a judge); (ii) length-law
+  applies, lengths logged (near-cancelling: restatements differ by
+  ~1-2 factors); (iii) v0 kill bars pinned: preference-for-truth
+  >=60% = the fingerpost points; <=55% = dies for the price of a
+  probe, the re-render table gets its honest negative. **THE
+  DISAGREEMENT-LOCUS RIDER (gift two, zero marginal cost):** every
+  adjudication logs WHERE the witnesses diverge (the factor-kind
+  diff) — a contested-binding census harvested from production
+  splits, the reader's confusion matrix for free. **(b)** the
+  witness-independence read = the standing cert-v2 scope exam (the
+  Bacon question: do the narrators read the same newspaper?). **(c)
+  PARKED IN THE DRAWER**: the ACTIVE fingerpost (Bacon's second
+  clause — the crucis is SOUGHT, not awaited: mint the minimal text
+  variation whose reading must differ under P1/P2 — the first
+  machinery ever sketched here that asks a question rather than
+  answering one; the scope factory proves targeted minting works);
+  and deducer multi-views (different orderings, different propagation
+  schedules — different witnesses to one deduction) behind the
+  redundancy gate where all deducer-shaped things lawfully wait.
