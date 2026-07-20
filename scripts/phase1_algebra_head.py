@@ -878,6 +878,12 @@ def do_train(steps, lr, batch, seed):
                          ("is_pct", (L_FAC,), dtypes.float),
                          ("is_fdiv", (L_FAC,), dtypes.float),
                          ("arg_dup", (L_FAC,), dtypes.float),
+                         # gen-15: OP_APPLY gold buffers (two-terminal law —
+                         # without these, h_dig2/W_y leave the graph: None grads)
+                         *((("is_macro", (L_FAC,), dtypes.float),
+                            ("digits2", (L_FAC, N_DIG), dtypes.int),
+                            ("y", (L_FAC,), dtypes.int))
+                           if int(os.environ.get("ALG_FTYPES", "4")) >= 7 else ()),
                          ("query", (), dtypes.int)):
         npdt = np.float32 if dt == dtypes.float else np.int32
         bg[k] = fix(np.zeros((batch,) + shape, npdt), dt)
@@ -974,7 +980,10 @@ def do_train(steps, lr, batch, seed):
                 "is_mod": gold["is_mod"][idx], "is_sel": gold["is_sel"][idx],
                 "is_pct": gold["is_pct"][idx], "is_fdiv": gold["is_fdiv"][idx],
                 "arg_dup": (gold["arg_dup"][idx] if "arg_dup" in gold
-                            else np.zeros_like(gold["is_rel"][idx]))}
+                            else np.zeros_like(gold["is_rel"][idx])),
+                **({"is_macro": gold["is_macro"][idx],
+                    "digits2": gold["digits2"][idx],
+                    "y": gold["y"][idx]} if "is_macro" in bg else {})}
         for k, v in feed.items():
             npdt = np.float32 if bg[k].dtype == dtypes.float else np.int32
             bg[k].assign(Tensor(v.astype(npdt), dtype=bg[k].dtype).contiguous()).realize()
