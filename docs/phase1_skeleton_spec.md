@@ -6975,3 +6975,27 @@ token-position × waist-dim, the moment the skeleton trains.
   thin to read, banked for the v0.1 join. Bacon's machine is built
   and constitutional; it was pointed at the one crossroads in town
   where nobody argues.
+- **GUT #33, v0.1 VERDICT (2026-07-20): THE FINGERPOST POINTS —
+  0.701 at n=147.** At the argument factory (the sampled lattice's
+  top-2 contests, 147 gradable of 320; 173 skipped: <2 candidates or
+  gold absent — stated), the frozen trunk prefers the TRUE reading's
+  canonical restatement **103/147 = 70.1%** against a 50% coin and
+  the pinned 60% bar (binomial half-width ~7.4% — the bar is cleared
+  with room). BACON'S MACHINE WORKS: a zero-parameter,
+  selection-safe, deterministic-writer + frozen-trunk instrument can
+  discriminate contested readings by paraphrase fidelity — the
+  four-hundred-year-old spec, running on softmax and a solver. THE
+  LOCUS CENSUS (regime: repair-lane-sampled): contested bindings
+  split nearly even — rel 669 / given 651 — the reader's ambiguity
+  under temperature contests relations and values in equal measure
+  (a fact about the argument distribution nobody had). STANDING, per
+  the Wood fence: the fingerpost is a WITNESS — its deployment form
+  (evidence weighted into the lattice's plurality on close contests)
+  awaits its own precision-coverage read before any lane consults
+  it, same door the count-tier walked through: measured, tabled,
+  adopted by re-statement. REGISTERED FOLLOW-UP: the
+  fingerpost-weighted lattice read (does trunk-preference evidence
+  convert contested-tail losses at acceptable precision?) — rides
+  the next repair-lane session. Thirty-three converts fully: the
+  book Bryce never read, the spec it carried, the machine built and
+  measured pointing — in one weekend homecoming.
