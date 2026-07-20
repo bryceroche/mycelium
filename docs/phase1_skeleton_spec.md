@@ -7136,3 +7136,28 @@ token-position × waist-dim, the moment the skeleton trains.
   approaches probe-worthy mass — the training registration's pin
   will name the number, and the book is within a tranche or two of
   whatever it pins.
+- **ENTOURAGE-14 PAID (2026-07-20, scripts/entourage14.py — and the
+  inline-chain era CLOSES: the entourage is a COMMITTED SCRIPT from
+  this generation forward, discipline -> mechanism one more time).**
+  All seven stages clean: (1-2) fresh 5-register repair corpora
+  (E14 seeds) + states; (3) **specialist REMINED vs the gen-14
+  parser's own organic failures** (phase1_gen14_nack — the
+  one-generation waiver's debt, paid); (4) monitor centroids
+  re-anchored in gen-14 fst space, all 7 kinds (the rotation law's
+  standing rent); (5) **mouth rebuilt on the m13train family, length
+  refit: thr 0.0122** (vs gen-13's 0.0077 — the threshold moved with
+  the family, per-generation as the law requires); (6) census under
+  the fresh mouth: 14/25/61 (full-pool, comparable to e13's 16/26/58
+  — consistent with the disjoint saturation read, the banked-14
+  being book-1's trained items per the recall law); (7) THE MANIFEST
+  MEMBER REFRESH as one same-generation transaction: specialist/
+  centroids/mouth -> gen-14 artifacts, **the waiver RETIRED**, and
+  the panama guard + adversarial fixture SEATED AS WATCHER MEMBERS
+  (wiring note carried: decision-path integration rides the next
+  promotion's battery). The composed stack speaks ONE GENERATION
+  again — and for the first time, its entourage has a script instead
+  of a memory. THE BOARD CONVERGES: every thread now feeds THE
+  TRAINING FIRE — the head extension (7th ftype), gut #23's three
+  arms, #21(c)'s concentration A/B, #24(a)'s per-floor redundancy
+  read — with a clean house behind it, 9 crowns in corpus, and five
+  sentinel columns waiting to grade the result.
