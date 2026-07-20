@@ -28,12 +28,35 @@ def row(text, factors, q, dec=1):
             "solution": [0] * 24}
 
 
+def compact(factors, q):
+    """Book-4 crown prime twins carry expansion temps >=24 (banked
+    pre-renumbering) — same relabel cure as the mint's (solution-
+    preserving; caught twice by the same IndexError, fixed at both dens)."""
+    used = sorted({v for f in factors for v in
+                   (list(f.get("args", [])) + [f[k] for k in ("result", "var")
+                    if k in f])})
+    if not used or max(used) < 24:
+        return factors, q
+    remap = {v: i for i, v in enumerate(used)}
+    out = []
+    for f in factors:
+        f = dict(f)
+        if "args" in f:
+            f["args"] = [remap[v] for v in f["args"]]
+        for k in ("result", "var", "x", "y"):
+            if k in f:
+                f[k] = remap[f[k]]
+        out.append(f)
+    return out, remap[q]
+
+
 def dialect_rows(pop, floor):
     out = []
     for r in pop:
         if r["gen"]["floor"] != floor:
             continue
-        out.append(row(r["gen"]["dialect"], r["factors"], r["query_var"]))
+        facs, q = compact(r["factors"], r["query_var"])
+        out.append(row(r["gen"]["dialect"], facs, q))
     return out
 
 
