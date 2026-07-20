@@ -7275,3 +7275,36 @@ token-position × waist-dim, the moment the skeleton trains.
   paired lean; the gen-15 gate question is theirs); the sentinel
   walk + adversarial fixture ride that battery; per-kind guards,
   acceptance, cert-v2 owed before any manifest word.
+- **GUT #34: THE NOTEBOOK (2026-07-20, Bryce + relay + Code, registered
+  as amended).** The gut knocked on a tombstone (§3.3 buried the
+  parse-side notebook by name; the ratchet bought ~6% and leaked) — but
+  the VERB survives where the noun died: cross-cycle state persistence
+  with small deltas lives in the June engine (the accumulate notebook,
+  §3.4 validated-live; the specific +0.022 did NOT pull at grep —
+  proposal, not cite, per the taxonomy). THE STRUCTURAL CATCH
+  (countersign): **the repair lane has no rounds** — repair_lane_v3 is
+  one invocation; the old four-round artifacts are gen-7-regime
+  (deterministic specialist) and INADMISSIBLE as pricing (scope decay;
+  the census as first proposed had no valid population). THE LAWFUL
+  TRANSLATION: in the sampling era a round IS a batch of samples — the
+  notebook's production form is **SLOT-LEVEL CONSENSUS PINNING: pin
+  the slots every solver-consistent candidate agrees on; spend
+  temperature only on the contested loci** (targeted re-sampling —
+  delta_gate's little-by-little at symbolic grain, within one lane
+  invocation; Brick-P untouched, the decay law untouched, the chair's
+  clause untouched — same budget, aimed better). CAUTIONARY PRIOR
+  from banked data: the locus rider reads ~9 contested bindings per
+  top-2 contest (1,320/147) — consensus may be weaker than the
+  pinning story hopes; genuinely open. **(a)** the slot-consensus
+  census + matched-budget targeted-vs-blind read — GPU-minor, rides
+  NEXT SESSION beside the owed promotion battery (the battery speaks
+  first). **(b)** the pinned-sampling spec as gated prose: monotone
+  commits by the standing gates only; Brick-R's bar inherited
+  verbatim (equal-or-better recovery, strictly lower cost, ZERO
+  pinned-slot breaks). **(c)** the cross-floor notebook parked beside
+  the cascade prose: skeleton parses -> PINS -> detail floors fill
+  conditioned on pinned structure — delivered-factors one floor up,
+  waiting where everything cascade-shaped waits. The gut heard the
+  June engine's heartbeat and asked why the lane lacks one; the
+  answer: it is owed one — at slot grain, in sample time, behind a
+  census.
