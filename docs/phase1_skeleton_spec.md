@@ -7046,3 +7046,43 @@ token-position × waist-dim, the moment the skeleton trains.
   grew. The novel's epistemology is production machinery: plurality
   and paraphrase-preference each blind where the other sees, emitting
   only where they agree, the key above them both.
+- **THE PANEL EXAM VERDICT (2026-07-20): THE CHAIN OF CUSTODY HAS A
+  MEASURED HOLE — end-to-end, manufactured in-house.** The scope
+  factory's 20 specimens through all three panel members
+  (scripts/scope_panel_member.py; armB at its DUP=0 birth certificate
+  after the hard-error load caught the vintage mismatch — the
+  no-silent-fallback law working) + the gen-13 mouth: **(Q1) SHARED
+  BLINDNESS 18/20** — gate, cross-lineage armB, AND cross-width cap2x
+  all collapse to the SAME a+b (the deception is REGISTER-SHARED, not
+  lineage-specific: every narrator read the same newspaper, and width
+  doesn't change the subscription); **(Q2) CERT-V2 CERTIFIES WRONG on
+  2/20** — (9,5)dsq certified 14 vs gold 56, (10,3)dsq certified 13
+  vs gold 91: full unanimity, three models, five views each, ZERO
+  saved by panel dissent; **(Q3, the mouth exam,
+  scripts/scope_mouth_exam.py): REFUSED 0/20** — corrected distances
+  −0.0068..−0.0053 vs thr +0.0077: the specimens read MORE NATIVE
+  than the census pool ever did (dialect-templated with one wild
+  sentence — style-native by construction). THE SPECIES [71]
+  PREDICTED NOW HAS: a factory, twenty specimens, two full false
+  certificates, and a measured pass through EVERY link. REGIME
+  HONESTY: the paper's 1.0000 claims are regime-tagged to native
+  fixtures and STAND — this measures the claim's BOUNDARY, and §6.4's
+  standing bet gains its strongest-ever evidence on the failing side,
+  found by our own instruments before any reviewer or deployment.
+  THE SHARPEST FRAMING, banked: **the register campaign's success
+  EXPANDS this hole** — every book that closes mouth-distance makes
+  more wild text style-native, so the doorman's blind species GROWS
+  with the campaign's victories; the guard becomes more necessary as
+  the mouth gets better. DISPOSITIONS: (a) **THE PANAMA-HAT WATCHLIST
+  registered as the containment candidate** — a constructional-
+  novelty guard beside the mouth (compound constructions absent from
+  the trained register -> flag/abstain; zero-parameter, input-side;
+  design: construction-n-gram novelty vs the trained corpus); (b) the
+  BOOKS CURE stands as the register rung already priced (scope
+  compounds taught by pairs); (c) THE FINGERPOST CANNOT HELP HERE,
+  stated so nobody reaches for it: it adjudicates between produced
+  candidates, and when every candidate is the same collapse there is
+  no contest. The exam's one-line legacy: the walls hold against
+  everything except text that speaks the house style about things
+  the house never taught — and now that species has a name, a
+  factory, and a guard on the docket.
