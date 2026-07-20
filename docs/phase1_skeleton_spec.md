@@ -6999,3 +6999,31 @@ token-position × waist-dim, the moment the skeleton trains.
   the next repair-lane session. Thirty-three converts fully: the
   book Bryce never read, the spec it carried, the machine built and
   measured pointing — in one weekend homecoming.
+- **GUT #33 FOLLOW-UP: THE FINGERPOST-WEIGHTED LATTICE READ (2026-07-20,
+  zero-GPU on banked ledgers — the witness's seat exam).** SOLO READ:
+  the fingerpost alone TESTIFIES but earns no seat — margin-gated
+  precision climbs 0.70 -> 0.88 (delta 0.005, 25 emissions) on the
+  abstain tail, but bar-passing coverage is one item: the witness is
+  informative and insufficient. **THE JOINT READ IS THE FIND:
+  plurality 5-7 AND fingerpost-CONFIRMS-the-plurality = 31/31
+  emissions right, composite 1246/1247 = 0.99920 >= bar (PASS)** —
+  the count>=5 band that failed alone by 0.0015 (113 @ 0.9826)
+  crosses the bar when the trunk's paraphrase-preference must AGREE
+  with the sample plurality: confirmation filters exactly the wrong
+  emissions. HONESTY CLAUSES, all load-bearing: (i) zero-numerator
+  language — 31/31 reads 'error bounded below ~3.2%', a bound ~30x
+  looser than the 912-tier's; (ii) MULTIPLE-COMPARISONS: a grid was
+  scanned — the chosen cell is defended as the SIMPLEST UNTUNED rule
+  (cmin=5 inherited from the count-tier's own prior candidate; delta=0
+  = no fitted parameter; the tuned cells stay as frontier data, not
+  picks); (iii) the tier adds REAL INFERENCE COST (2 restatement
+  forwards per contested abstain — trivial beside the 20-sample
+  lattice, but nonzero, stated). **ADOPTION DRAWN, NOT DECLARED — the
+  machine-first law governs**: the three-voice lane (count>=8 solo;
+  5-7 with fingerpost confirmation; else abstain) at projected +67
+  answers total (1246/1500 = 83.1%) awaits its INTEGRATED lane script
+  — no 'adopted' word until the code carries the rule; integration is
+  the next session's first mechanical task, with the repair-tier
+  precision WATCH extending to the joint tier on the standing battery.
+  The Wood fence held to the end: the witness never judged — it
+  CONFIRMS, and only the plurality it confirms gets emitted.
