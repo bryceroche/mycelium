@@ -101,6 +101,12 @@ def build_gold(samples, offsets):
         # UNREPRESENTABLE (multi-hot gold + top-2-distinct decode); the
         # [85] fix. 1.0 on rel factors whose two args are the same var.
         "arg_dup": np.zeros((n, L_FAC), np.float32),
+        # gen-15 (2026-07-20): OP_APPLY macro floor (ALG_FTYPES=7) — second
+        # digit bank (k2) + ordered second operand pointer (y). Structural
+        # entry per the pointer law; gold-fed from birth (two-terminal law).
+        "digits2": np.zeros((n, L_FAC, N_DIG), np.int32),
+        "is_macro": np.zeros((n, L_FAC), np.float32),
+        "y": np.zeros((n, L_FAC), np.int32),
     }
     for i, (smp, offs) in enumerate(zip(samples, offsets)):
         # gen-10 prose rows: factors may carry NO spans (raw prose has no
@@ -167,6 +173,19 @@ def build_gold(samples, offsets):
                 t = int(f["k"])
                 for d in range(N_DIG):
                     g["digits"][i, j, d] = (t // 10 ** (N_DIG - 1 - d)) % 10
+            elif f["ftype"] == "macro":
+                assert f.get("name") == "OP_APPLY"
+                g["ftype"][i, j] = 6
+                g["is_macro"][i, j] = 1.0
+                g["op"][i, j] = 0 if f["op"] == "add" else 1   # add/sub on macro slots
+                g["args"][i, j, f["x"]] = 1.0                  # x via args argmax
+                g["y"][i, j] = f["y"]                          # y via the fresh pointer
+                g["res"][i, j] = f["result"]
+                for t_, key, arr in ((int(f["k1"]), "k1", "digits"),
+                                     (int(f["k2"]), "k2", "digits2")):
+                    assert t_ < 10 ** N_DIG
+                    for d in range(N_DIG):
+                        g[arr][i, j, d] = (t_ // 10 ** (N_DIG - 1 - d)) % 10
             else:
                 raise ValueError(f"unknown gold ftype {f['ftype']!r}")
     return g
@@ -329,6 +348,10 @@ def build_params(seed=0):
         p["h_dup"], p["h_dup_b"] = lin(H_W, 1)
     p["h_islit"], p["h_islit_b"] = lin(H_W, 1)
     p["h_dig"], p["h_dig_b"] = lin(H_W, N_DIG * 10)
+    if int(os.environ.get("ALG2", "0")) and \
+            int(os.environ.get("ALG_FTYPES", "4")) >= 7:   # gen-15: OP_APPLY
+        p["h_dig2"], p["h_dig2_b"] = lin(H_W, N_DIG * 10)
+        p["W_y"] = t(rng.randn(H_W, H_W) / math.sqrt(H_W))
     K_B = int(os.environ.get("ALG_BREATH", "1"))
     if K_B > 1:   # BRICK-P: masked slot-to-slot breathing (2026-07-09)
         p["W_bq"], p["W_bq_b"] = lin(H_W, H_W)
@@ -418,6 +441,10 @@ def forward(p, trunk, tokmask, sent, slot_mask=None):
             "dig": (s @ p["h_dig"] + p["h_dig_b"]).reshape(B, L_FAC, N_DIG, 10),
             "args": (s @ p["W_args"]) @ vst.transpose(-2, -1),
             "res": (s @ p["W_res"]) @ vst.transpose(-2, -1),
+            **({"dig2": (s @ p["h_dig2"] + p["h_dig2_b"])
+                .reshape(B, L_FAC, N_DIG, 10),
+                "y": (s @ p["W_y"]) @ vst.transpose(-2, -1)}
+               if "h_dig2" in p else {}),
         }
     out = heads_of(breaths[-1])
     out["query"] = ((qst @ p["W_query"]) @ vst.transpose(-2, -1)).reshape(B, K_VARS)
@@ -466,15 +493,22 @@ def _loss_single(o, g):
     l = l + (ce(o["ftype"], g["ftype"]) * pres).sum() / n_p
     l = l + (ce(o["op"], g["op"]) * rel).sum() / n_rel
     l = l + bce(o["islit"], g["is_lit_f"]).mean()
-    dm = g["is_lit_f"] + is_mod + is_pct + is_fdiv   # digits: values + params
+    is_macro = g["is_macro"] if "is_macro" in g else is_mod * 0.0
+    dm = g["is_lit_f"] + is_mod + is_pct + is_fdiv + is_macro   # digits: values + params (+k1)
     l = l + (ce(o["dig"], g["digits"]).mean(-1) * dm).sum() / (dm.sum() + 1e-6)
     if "sel" in o and "sel" in g:               # selector-type CE (closed vocab)
         sm = pres * is_sel
         l = l + (ce(o["sel"], g["sel"]) * sm).sum() / (sm.sum() + 1e-6)
     if "dup" in o and "arg_dup" in g:           # gen-9: arg-multiplicity BCE
         l = l + (bce(o["dup"], g["arg_dup"]) * rel).sum() / n_rel
+    if "dig2" in o and "is_macro" in g:        # gen-15: OP_APPLY terms
+        mac = pres * g["is_macro"]
+        n_mac = mac.sum() + 1e-6
+        l = l + (ce(o["op"], g["op"]) * mac).sum() / n_mac
+        l = l + (ce(o["dig2"], g["digits2"]).mean(-1) * mac).sum() / n_mac
+        l = l + (ce(o["y"], g["y"]) * mac).sum() / n_mac * 2.0
     args_w = 1.0 + 4.0 * g["args"]
-    am = pres * (is_rel + is_sel + is_mod + is_pct + is_fdiv)
+    am = pres * (is_rel + is_sel + is_mod + is_pct + is_fdiv + is_macro)
     n_am = am.sum() + 1e-6
     l = l + ((bce(o["args"], g["args"]) * args_w).mean(-1) * am).sum() / n_am * 2.0
     l = l + (ce(o["res"], g["res"]) * pres).sum() / n_p * 2.0
@@ -529,6 +563,14 @@ def decode(o_np):
             facs.append({"ftype": "fdiv",
                          "var": int(np.argmax(o_np["args"][j])),
                          "k": max(digval(), 2), "result": res})
+        elif ft == 6 and "dig2" in o_np:
+            k2 = int(sum(d * 10 ** (N_DIG - 1 - i2) for i2, d in
+                         enumerate(o_np["dig2"][j].argmax(-1))))
+            facs.append({"ftype": "macro", "name": "OP_APPLY",
+                         "op": "add" if o_np["op"][j].argmax() == 0 else "sub",
+                         "k1": max(digval(), 1), "x": int(np.argmax(o_np["args"][j])),
+                         "k2": max(k2, 1), "y": int(np.argmax(o_np["y"][j])),
+                         "result": res})
         else:
             args = list(np.argsort(-o_np["args"][j])[:2])
             sel = ID_TO_SEL[int(o_np["sel"][j].argmax())]

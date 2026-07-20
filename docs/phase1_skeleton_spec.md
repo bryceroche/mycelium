@@ -7206,3 +7206,29 @@ token-position × waist-dim, the moment the skeleton trains.
   C1; #21(c)'s displacement-on-neighbors predicts C2 > C1). The most
   instrumented fire ever staged here, chartered with a clean house
   behind it — holding for the word.
+- **THE FIRE IS LIT (2026-07-20, Bryce's word: 'light the fire — all
+  four arms').** THE BUILD, all pre-burn checks passing: (1) THE MINT —
+  2,000 unique floor-paired crowns (signatures spread across sub/add x
+  full/affine; sub-affine thin at 55, noted), knot-deduped at level 0,
+  floor-identity asserted through a COMPACT RENUMBERING fix the 50-row
+  gold smoke caught before any watts (expansion temps land above the
+  24-slot bank — legal for hashing, unrepresentable for training;
+  relabel is solution-preserving). (2) THE HEAD EXTENSION under
+  ALG_FTYPES=7, six surgical env-gated edits: ftype class 6 =
+  OP_APPLY; h_dig2 (k2's digit bank, fresh, gold-fed from birth); W_y
+  (the ordered second-operand pointer — args carries x, W_y carries y:
+  ordered legs, sub is not commutative); op-bit overload documented
+  (add/sub on macro slots); build_gold/loss/decode extended;
+  ALG_FTYPES=6 byte-identical. (3) THE DOORSTEP: solve2 expands macros
+  AT ENTRY — every consumer inherits the constitutional boundary in
+  one edit; the solver only ever sees primes. (4) CORPORA, doses
+  declared both-numbers: A=38,820 (book dose 60x10 = 1.55% — the gift
+  recipe's REPS preserved, share halved by the larger base, declared
+  not inflated); B=40,820; C1=42,820 (mint 9.34%); C2 = A's corpus 12k
+  + phase-2 (mint 37.4% over 4k, VISIT-MATCHED to C1). (5) PAD-WARM
+  from gen-14 (the ftype-router machinery built 2026-07-10, running
+  its designed use). THE CHAIN (scripts/fire_gen15.sh, one transient
+  unit, journal-logged): 4 precomputes + 4 trains (16k/16k/16k/12k+4k,
+  LR 1e-4, flat, SEED 15), every ckpt built ALONGSIDE gen-14. The
+  battery and gen15_verdict speak when the burn completes — the bars
+  were pinned before the corpora existed.

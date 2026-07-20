@@ -50,9 +50,15 @@ K_VIEWS = 4
 
 
 def solve2(facs, q_pred, smp):
-    """Gold-free forced answer via the v2 bridge (mod/sel-aware)."""
+    """Gold-free forced answer via the v2 bridge (mod/sel-aware).
+    gen-15: macros expand HERE — the solver's doorstep, so every consumer
+    (gates, evals, lattice, lanes) inherits the constitutional boundary:
+    the solver only ever sees primes."""
     from mycelium.csp_domains import problem_from_algebra3 as problem_from_algebra2
     from mycelium.csp_core import solve_symbolic
+    if any(f.get("ftype") == "macro" for f in facs):
+        from mycelium.macros import expand_graph
+        facs, _ = expand_graph(facs, smp.get("n_vars", 24))
     gv = {f["var"]: f["value"] for f in facs if f["ftype"] == "given"}
 
     def fvars(f):
