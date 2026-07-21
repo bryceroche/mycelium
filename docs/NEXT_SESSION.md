@@ -1,3 +1,31 @@
+# NEXT SESSION — start here (handoff, 2026-07-20 final seal)
+
+## **THE FIRE BURNED — ALL FOUR ARMS BANKED; THE FLOOR IS READABLE.**
+fire_gen15.sh: 9 stages, 2h10m, ckpts .cache/fire_arm{A,B,C1,C2}
+.safetensors alongside gen-14. FIRST TABLE (.cache/fire_battery.json):
+**A (prime control) 1204 = NEW RECORD** / C1 (paired-spread) 1197 /
+C2 1195 / B (macro-only) 1189 — all clear the 1149 floor. **THE HEAD
+READS CROWNS**: B 6/9 wild, C1/C2 4/9, A 0/9 (control) — the tower's
+second floor is READABLE. #23's lean holds (paired > macro-only on
+register; macro-mass teaches the floor faster). DIVIDEND = honest miss
+w/ mechanism: crowns shed mul-add, FDIVS STAND — **next admission must
+be FDIV-ABSORBING** (chained-fdiv autopsy already open: mechanism
+quantified, cure validated) + the lantern census doubled the mandate
+(composition coverage = a measured unguarded sliver, 44% wild covers
+absent). **NEXT SESSION'S ONE WORD: THE PROMOTION BATTERY** on A + C1
+— full bars, per-kind guards, acceptance, cert-v2, THE SENTINEL WALK
+(5 columns incl. adversarial fixture's first exam + ring gauge's first
+interval), guard decision-path wiring, manifest-live load assert,
+notebook slot-consensus census riding beside; gen15_verdict.py writes
+the manifest or refuses (note: eval env is ALG_FTYPES=7 for arm ckpts;
+gen-14 loads stay =6). Head extension is LIVE in phase1_algebra_head
+(ftype 6=OP_APPLY, h_dig2, W_y; solve2 expands macros at doorstep).
+Guts 34-36 registered (notebook->slot-pinning census; mortality law +
+255GB buried; lantern law + sliver map). Bias taxonomy at 9 specimens
+incl. the relapse. Crown corpus: 9 wild + 2,000 minted pairs.
+
+# PRIOR HANDOFF BELOW
+
 # NEXT SESSION — start here (handoff, 2026-07-20 late seal)
 
 ## **THE DAY: hole found, guard built, book at 60 pages.** (1) THE PANEL
