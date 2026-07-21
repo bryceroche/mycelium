@@ -7896,3 +7896,22 @@ token-position × waist-dim, the moment the skeleton trains.
   reader's measured competence via the entourage, never leads it).
   One sentence: widen the reader; let the gate trail; never let
   either pretend the other's progress.
+- **THE FLUENCY RUN'S BARS (2026-07-21): THE BAR STANDS, THE TRAJECTORY
+  IS REAL, AND THE KEYS ARE EVEN.** Pooled acceptance **55% (FAIL vs
+  70%)** — but +20 points over the crown fire's 35%, and the per-key
+  read is the entry's finding: **52-57% across ALL FIVE voices,
+  MIN-KEY PASSES** — no key gap; the diversity worked and fluency is
+  UNIFORMLY partial, not key-bound (the #42 rider's question answered:
+  the crown's remaining distance is depth, not breadth). CANYON
+  STRENGTHENED: crown 100% vs chain 70%. Displacement PASS at 1196
+  (floor 1194 — the heavier dose cost a little register, within
+  guard). THE DIVIDEND: [73] votes [19, 37, 74, 0, 0] — the crack
+  STABLE (gold on one view, both fires) with the silent views now
+  talkative-wrong: more fluent, not yet right on the hardest
+  composition. HONEST TRAJECTORY NOTE: macro-reading acquisition is
+  SLOWER than the register cure's curve (the bilingual 600/600 at
+  2k-pairs/10k-steps has no macro analog yet) — new structural
+  vocabulary is harder than new surface, a scaling note for the next
+  continuation, not a wall. crown_reader_v2 banks PANEL-ELIGIBLE
+  (canyon-perfect, key-even, the strongest crown reader on the
+  bench).
