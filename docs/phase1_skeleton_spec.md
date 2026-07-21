@@ -7443,3 +7443,36 @@ token-position × waist-dim, the moment the skeleton trains.
   gauges for machines already running — one watches the loops for
   rim-drift, one prices the ambiguities the text itself refuses to
   absorb.
+- **GUT #38: THE PHOTO BOOTH (2026-07-20, Bryce + relay + Code,
+  registered as amended; the probe FIRED AND DIED CHEAP — by its own
+  bar, informatively).** The decode's opening truth: the panel exam
+  already proved distortion-robustness is not truth-robustness (the
+  widest basins in the house are [71]'s species), so the booth
+  pointed at INSTRUMENTS, never verdicts. The house's three standing
+  booths inventoried (SBP sigma=0.02 = embedding perturbation, banked
+  +0.0153; the five views = input distortion; temperature = emission
+  jitter). **THE PROBE**: the 37 reflective contests re-adjudicated
+  under the original text's five permutation retellings — does the
+  near-zero margin SCATTER (a fold in the trunk's projection,
+  re-readable) or stay FLAT (the text refuses)? **VERDICT: 0/37
+  scatter — the bar (>=20%) FAILS; the projection subclass is EMPTY.
+  The reflective class is ambiguity-by-text, entire**: margins flat
+  under every retelling, re-point 22/37 = 0.59 ~ coin exactly as the
+  text-refusal hypothesis predicted. TWO DIVIDENDS FROM THE DEATH:
+  (1) the reflection shopping list HARDENS — all 37 are desk
+  customers; no re-read machinery, present or future, recovers
+  bindings the prose never carried; the matching-section cure is the
+  ONLY cure, now by measurement; (2) the trunk's projection is CLEAN
+  where tested — no folds at these contests; near-zero fingerpost
+  margin may be read as 'the text refuses,' full stop (a
+  jurisdiction upgrade for the margin meter: it measures the TEXT,
+  not the shadow). **(b) THE FENCE, constitutional prose: no
+  perturbation enters any acceptance path** — views are
+  solution-preserving by construction; arbitrary jitter is a witness
+  species with no gate history; the booth reads curvature, never
+  moves it. **(c)** the SBP-targeting rider parks on book-5's mix
+  (supervised noise at reflective constructions — wide!=correct
+  disarmed there by gold pinning which basin widens). Thirty-eight:
+  the gut liked the app because distortion reveals what is stable
+  underneath — and the answer came back that at every tested
+  contest, what is stable underneath is the ambiguity itself.
