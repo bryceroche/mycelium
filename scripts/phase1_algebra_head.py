@@ -106,6 +106,7 @@ def build_gold(samples, offsets):
         # entry per the pointer law; gold-fed from birth (two-terminal law).
         "digits2": np.zeros((n, L_FAC, N_DIG), np.int32),
         "is_macro": np.zeros((n, L_FAC), np.float32),
+        "is_frac": np.zeros((n, L_FAC), np.float32),   # mg2: FRAC_OF (ftype 7)
         "y": np.zeros((n, L_FAC), np.int32),
     }
     for i, (smp, offs) in enumerate(zip(samples, offsets)):
@@ -173,6 +174,15 @@ def build_gold(samples, offsets):
                 t = int(f["k"])
                 for d in range(N_DIG):
                     g["digits"][i, j, d] = (t // 10 ** (N_DIG - 1 - d)) % 10
+            elif f["ftype"] == "macro" and f.get("name") == "FRAC_OF":
+                g["ftype"][i, j] = 7
+                g["is_frac"][i, j] = 1.0
+                g["args"][i, j, f["x"]] = 1.0
+                g["res"][i, j] = f["result"]
+                for t_, arr in ((int(f["a"]), "digits"), (int(f["k"]), "digits2")):
+                    assert t_ < 10 ** N_DIG
+                    for d in range(N_DIG):
+                        g[arr][i, j, d] = (t_ // 10 ** (N_DIG - 1 - d)) % 10
             elif f["ftype"] == "macro":
                 assert f.get("name") == "OP_APPLY"
                 g["ftype"][i, j] = 6
@@ -494,7 +504,8 @@ def _loss_single(o, g):
     l = l + (ce(o["op"], g["op"]) * rel).sum() / n_rel
     l = l + bce(o["islit"], g["is_lit_f"]).mean()
     is_macro = g["is_macro"] if "is_macro" in g else is_mod * 0.0
-    dm = g["is_lit_f"] + is_mod + is_pct + is_fdiv + is_macro   # digits: values + params (+k1)
+    is_frac = g["is_frac"] if "is_frac" in g else is_mod * 0.0
+    dm = g["is_lit_f"] + is_mod + is_pct + is_fdiv + is_macro + is_frac
     l = l + (ce(o["dig"], g["digits"]).mean(-1) * dm).sum() / (dm.sum() + 1e-6)
     if "sel" in o and "sel" in g:               # selector-type CE (closed vocab)
         sm = pres * is_sel
@@ -502,13 +513,16 @@ def _loss_single(o, g):
     if "dup" in o and "arg_dup" in g:           # gen-9: arg-multiplicity BCE
         l = l + (bce(o["dup"], g["arg_dup"]) * rel).sum() / n_rel
     if "dig2" in o and "is_macro" in g:        # gen-15: OP_APPLY terms
+        if "is_frac" in g:                     # mg2: frac k rides the dig2 CE
+            mac2 = pres * (g["is_macro"] + g["is_frac"])
+            l = l + (ce(o["dig2"], g["digits2"]) .mean(-1) * mac2).sum() / (mac2.sum() + 1e-6)
         mac = pres * g["is_macro"]
         n_mac = mac.sum() + 1e-6
         l = l + (ce(o["op"], g["op"]) * mac).sum() / n_mac
         l = l + (ce(o["dig2"], g["digits2"]).mean(-1) * mac).sum() / n_mac
         l = l + (ce(o["y"], g["y"]) * mac).sum() / n_mac * 2.0
     args_w = 1.0 + 4.0 * g["args"]
-    am = pres * (is_rel + is_sel + is_mod + is_pct + is_fdiv + is_macro)
+    am = pres * (is_rel + is_sel + is_mod + is_pct + is_fdiv + is_macro + is_frac)
     n_am = am.sum() + 1e-6
     l = l + ((bce(o["args"], g["args"]) * args_w).mean(-1) * am).sum() / n_am * 2.0
     l = l + (ce(o["res"], g["res"]) * pres).sum() / n_p * 2.0
@@ -563,6 +577,12 @@ def decode(o_np):
             facs.append({"ftype": "fdiv",
                          "var": int(np.argmax(o_np["args"][j])),
                          "k": max(digval(), 2), "result": res})
+        elif ft == 7 and "dig2" in o_np:
+            k_ = int(sum(d * 10 ** (N_DIG - 1 - i2) for i2, d in
+                         enumerate(o_np["dig2"][j].argmax(-1))))
+            facs.append({"ftype": "macro", "name": "FRAC_OF",
+                         "a": max(digval(), 1), "k": max(k_, 2),
+                         "x": int(np.argmax(o_np["args"][j])), "result": res})
         elif ft == 6 and "dig2" in o_np:
             k2 = int(sum(d * 10 ** (N_DIG - 1 - i2) for i2, d in
                          enumerate(o_np["dig2"][j].argmax(-1))))
@@ -884,6 +904,8 @@ def do_train(steps, lr, batch, seed):
                             ("digits2", (L_FAC, N_DIG), dtypes.int),
                             ("y", (L_FAC,), dtypes.int))
                            if int(os.environ.get("ALG_FTYPES", "4")) >= 7 else ()),
+                         *((("is_frac", (L_FAC,), dtypes.float),)
+                           if int(os.environ.get("ALG_FTYPES", "4")) >= 8 else ()),
                          ("query", (), dtypes.int)):
         npdt = np.float32 if dt == dtypes.float else np.int32
         bg[k] = fix(np.zeros((batch,) + shape, npdt), dt)
@@ -983,7 +1005,8 @@ def do_train(steps, lr, batch, seed):
                             else np.zeros_like(gold["is_rel"][idx])),
                 **({"is_macro": gold["is_macro"][idx],
                     "digits2": gold["digits2"][idx],
-                    "y": gold["y"][idx]} if "is_macro" in bg else {})}
+                    "y": gold["y"][idx]} if "is_macro" in bg else {}),
+                **({"is_frac": gold["is_frac"][idx]} if "is_frac" in bg else {})}
         for k, v in feed.items():
             npdt = np.float32 if bg[k].dtype == dtypes.float else np.int32
             bg[k].assign(Tensor(v.astype(npdt), dtype=bg[k].dtype).contiguous()).realize()
