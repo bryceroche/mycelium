@@ -16,7 +16,7 @@ absent). **NEXT SESSION'S ONE WORD: THE PROMOTION BATTERY** on A + C1
 — full bars, per-kind guards, acceptance, cert-v2, THE SENTINEL WALK
 (5 columns incl. adversarial fixture's first exam + ring gauge's first
 interval), guard decision-path wiring, manifest-live load assert,
-notebook slot-consensus census riding beside; gen15_verdict.py writes
+notebook slot-consensus census riding beside (+ gut #37's products: POLE-DRIFT column accrues from per-item banking; the 37-item REFLECTION shopping list prices the desk's next annotations; margin floor = the joint tier's parked second-order guard); gen15_verdict.py writes
 the manifest or refuses (note: eval env is ALG_FTYPES=7 for arm ckpts;
 gen-14 loads stay =6). Head extension is LIVE in phase1_algebra_head
 (ftype 6=OP_APPLY, h_dig2, W_y; solve2 expands macros at doorstep).
