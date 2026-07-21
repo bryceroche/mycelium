@@ -7654,3 +7654,36 @@ token-position × waist-dim, the moment the skeleton trains.
   and today the noun's production form died too, cleanly, leaving
   the verb where it always lived: in the deducer's drawer, behind
   the redundancy gate.
+- **GUT #41: THE NOTEBOOK NEEDS SEARCH (2026-07-21, Bryce + relay +
+  Code, registered as amended).** The three words decode as a marriage
+  license with exactly ONE altar: THE MINT — everywhere else a party
+  is dead or fenced (solver: two-death-mode law; repair lane:
+  yesterday's census — structural disagreement gives a tree's early
+  commitments exactly the wrong things to freeze; the lattice's blind
+  width stands matched to that geometry). **THE TENTH SIGHTING at the
+  door (inversion): the relay swapped #14's pinned predictions** —
+  the banked form is knot-classes-per-1000 >=2x (THE REAL WIN) with
+  gate-survival gain MODEST (residual rejections are global-uniqueness
+  failures one-step lookahead cannot foresee); graded backwards, a
+  successful greedy fire would have read as failure. Filed; the frame
+  restored from the ledger. **(a) THE MINT-SEARCH SPEC (design
+  prose):** state = partial DAG, actions = add-relation/close (#14's
+  form); TRANSPOSITION TABLE = the WL canonical digest at level 0
+  (the floor-identity protocol as search memory — the tree never
+  re-prices an isomorph); VALUE NOTEBOOK = the three standing
+  censuses (knot-rehearsal matrix: over-population; decomposition
+  census: the 44% absent-composition sliver; dislocation watch:
+  kind-pair separation); REWARD = #39's tiling metric
+  (area-per-perimeter) with the admission's clause targets. GREEDY
+  FIRST per #14's own registration; tree upgrade gated on measured
+  greedy plateau. The reflexive truth banked: the search needed the
+  notebook, and the house had already written it as three censuses.
+  **(b) SEQUENCED BEHIND THE ADMISSION (correction at countersign):
+  the crown corpus cannot be minted before the crown exists** — the
+  four-clause review designs and admits the fdiv macro first; the
+  mint-search greedy fire is the ADMITTED crown's corpus engine,
+  graded against #14's restored frame (classes >=2x; survival
+  modest) with baselines banked in the dag7 generator logs. **(c)
+  THE FENCE:** search stays out of the solve path (standing law) and
+  the repair lane (fresh census) — proposing wiring is its only
+  jurisdiction, and the gates dispose of everything it proposes.
