@@ -7349,3 +7349,15 @@ token-position × waist-dim, the moment the skeleton trains.
   confirms. The gut asked for a graveyard with a fence, brother — the
   census found half a terabyte of unburied dead, and the fence is one
   assert from structural.
+- **THE BURIAL (2026-07-20, Bryce's word: 'bury the dead — reclaim the
+  disk').** The settled estates interred: the m6–m12 train-state
+  caches (npz + memmaps, seven dead generations' precomputed trunk
+  states — regenerable from corpora + frozen trunk at any time).
+  **255 GB reclaimed** (575 -> 320 GB used; the disk at 18%).
+  Survivors, correctly: m13train (entourage-14-referenced), mvtrain
+  (bump-referenced), all test fixtures, all current-generation fire
+  states. The mortality law's first enforcement act: the graveyard
+  emptied of settled estates, the census banked as the record of what
+  was buried and why, and the manifest-live load assert standing
+  ready to make the next stale-load impossible rather than unlikely.
+  Death rites practiced, not just preached.
