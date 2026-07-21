@@ -89,3 +89,48 @@ assert v == "OP-APPLY-1"
 print(f"[4] variants: sub -> 34, affine k1=1 -> 14 (crown {dg1})")
 
 print(f"\nADMISSION EXAM PASSED — OP_APPLY under grammar {MACRO_GRAMMAR_VERSION}")
+
+# ============ THE FRAC_OF ADMISSION EXAM (mg2, 2026-07-21) ============
+# [38]'s banked graph carries the bend: 6*8 // 2 = 24 (book-4 t1, 5/5).
+spec38 = None
+for line in open(".cache/book4_prose_pairs.jsonl"):
+    r = json.loads(line)
+    if r["gen"].get("src_idx") is not None and "area enclosed" in r["text"]:
+        spec38 = r
+        break
+mf = [{"ftype": "given", "var": 0, "value": 8, "spans": []},
+      {"ftype": "macro", "name": "FRAC_OF", "a": 6, "k": 2, "x": 0, "result": 1}]
+pf, nv2 = expand_graph(mf, 24)
+a_m = solve(pf, 1)
+assert a_m == 24, a_m
+print(f"[F1] level-invariance: FRAC_OF(6,/2)(8) expands and solves to {a_m} "
+      f"(= [38]'s banked bend answer)")
+if spec38 is not None:
+    a_b = solve(spec38["factors"], spec38["query_var"], spec38["m"])
+    print(f"[F1b] the banked specimen itself grades {a_b} through the same key")
+dg_m, _ = canon({"factors": mf, "n_vars": 24, "query_var": 1})
+dg_p, _ = canon({"factors": pf, "n_vars": nv2, "query_var": 1})
+assert dg_m == dg_p
+print(f"[F2] floor-twin identity: one knot {dg_m[:16]}")
+x1 = json.dumps(expand_graph(mf, 24))
+x2 = json.dumps(expand_graph(mf, 24))
+assert x1 == x2
+print("[F3] determinism: byte-identical re-expansion")
+# a=1 edge: pure fdiv absorbs as the crown's own leg
+mf1 = [{"ftype": "given", "var": 0, "value": 25, "spans": []},
+       {"ftype": "macro", "name": "FRAC_OF", "a": 1, "k": 9, "x": 0, "result": 1}]
+pf1, _ = expand_graph(mf1, 24)
+assert solve(pf1, 1) == 2 and len(pf1) == 2
+# composition: FRAC_OF feeding OP_APPLY ([73]'s skeleton: 3/7 of 56 + 1/4 of 56, halved)
+mf73 = [{"ftype": "given", "var": 0, "value": 56, "spans": []},
+        {"ftype": "macro", "name": "FRAC_OF", "a": 3, "k": 7, "x": 0, "result": 1},
+        {"ftype": "macro", "name": "FRAC_OF", "a": 1, "k": 4, "x": 0, "result": 2},
+        {"ftype": "rel", "op": "add", "args": [1, 2], "result": 3, "spans": []},
+        {"ftype": "macro", "name": "FRAC_OF", "a": 1, "k": 2, "x": 3, "result": 4}]
+pf73, _ = expand_graph(mf73, 24)
+a73 = solve(pf73, 4)
+assert a73 == 19, a73
+print(f"[F4] variants + composition: a=1 leg -> pure fdiv; [73]'s WALL-MARKER "
+      f"skeleton composes to {a73} in 5 macro-floor factors "
+      f"(vs 10-var/3-fdiv prime form that parses NOWHERE — the crown's customer, priced)")
+print(f"\nFRAC_OF ADMISSION EXAM PASSED — grammar {MACRO_GRAMMAR_VERSION}")

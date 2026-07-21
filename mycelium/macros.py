@@ -27,7 +27,7 @@ Admitted entries:
     entry).
 """
 
-MACRO_GRAMMAR_VERSION = "mg1"
+MACRO_GRAMMAR_VERSION = "mg2"   # mg1 entries FROZEN; mg2 adds FRAC_OF
 
 # Crown digests pinned by the admission review (root-marked WL canon of
 # {given k1, mul, given k2, mul, root-op}, values abstracted).
@@ -67,7 +67,37 @@ def expand_op_apply(f, next_var):
     return out, next_var
 
 
-EXPANDERS = {"OP_APPLY": expand_op_apply}
+def expand_frac_of(f, next_var):
+    """Expand one FRAC_OF macro: r = (a * x) // k  — THE FRACTION-OF BEND
+    (mg2, admitted 2026-07-21 under the four-clause mandate: fdiv-absorbing,
+    sliver-bounding, hexagonal, canyon-damping).
+
+    f = {"ftype": "macro", "name": "FRAC_OF", "a": int>=1, "k": int>=2,
+         "x": var, "result": var}
+    a == 1 contributes the bare operand (no given, no mul) — pure fdiv
+    absorbs as the crown's own edge case, mirroring OP_APPLY's k=1 leg.
+    Deterministic; solution-preserving; the solver sees primes only.
+    """
+    assert f["ftype"] == "macro" and f["name"] == "FRAC_OF"
+    a, k = f["a"], f["k"]
+    assert isinstance(a, int) and a >= 1 and isinstance(k, int) and k >= 2
+    out = []
+    if a == 1:
+        src_var = f["x"]
+    else:
+        av = next_var
+        out.append({"ftype": "given", "var": av, "value": a, "spans": []})
+        mv = next_var + 1
+        next_var += 2
+        out.append({"ftype": "rel", "op": "mul", "args": [av, f["x"]],
+                    "result": mv, "spans": []})
+        src_var = mv
+    out.append({"ftype": "fdiv", "var": src_var, "k": k,
+                "result": f["result"], "spans": []})
+    return out, next_var
+
+
+EXPANDERS = {"OP_APPLY": expand_op_apply, "FRAC_OF": expand_frac_of}
 
 
 def expand_graph(factors, n_vars):

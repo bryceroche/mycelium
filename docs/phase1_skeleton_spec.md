@@ -7687,3 +7687,37 @@ token-position × waist-dim, the moment the skeleton trains.
   THE FENCE:** search stays out of the solve path (standing law) and
   the repair lane (fresh census) — proposing wiring is its only
   jurisdiction, and the gates dispose of everything it proposes.
+- **THE SECOND ADMISSION (2026-07-21, Bryce's word): FRAC_OF ENTERS THE
+  REGISTRY UNDER GRAMMAR MG2 — the four-clause crown, examined and
+  seated.** THE DESIGN, chosen by the clauses: **FRAC_OF(a, k)(x) =
+  (a·x) // k — the fraction-of bend** (three-sevenths of 56, a quarter
+  of 9): fdiv-ABSORBING (the mul->fdiv composition collapses to one
+  slot), HEXAGONAL (fraction/percent/scaling — the wild's most
+  recurring quantitative move, not a patch), CANYON-DAMPING (both
+  params ride ONE slot's two digit banks — the head geometry the
+  extension already built; decode sites collapse), SLIVER-BOUNDING
+  (its compositions span the absent-cover space). EVIDENCE AT HONEST
+  SIZE: 21% of wild fdiv usage wears the bend vs 10% in train (2x)
+  — WITH THE SURVIVOR BIAS STATED: the bend's densest carriers
+  ([73],[100]) never banked because the wall IS the bend; frequency
+  proposes modestly, the four audits demand structurally. GRAMMAR
+  LAW: mg1 entries FROZEN (OP_APPLY untouched, mg1 rows re-expand
+  byte-identically forever); mg2 is additive. THE EXAM (F1-F4, all
+  pass): level-invariance on [38]'s banked bend (6·8//2 = 24, macro
+  and banked specimen grading identically through one key);
+  floor-twin identity (one knot, macro = expansion); determinism;
+  the a=1 leg absorbing pure fdiv as the crown's own edge — and
+  **F4, the jewel: [73]'s WALL-MARKER SKELETON — 3/7 of 56 + 1/4 of
+  56, halved — composes to its gold 19 in FIVE macro-floor factors
+  (three FRAC_OF crowns + one add + the halving crown), where the
+  10-var/3-fdiv prime form parses NOWHERE.** The factor-count wall's
+  first customer now has a macro form that FITS — P3's wall test
+  armed with live ammunition: when a head learns to read FRAC_OF,
+  [73] and [100] come back in reach, and the recursion's first
+  dividend has its exact address. RIDERS: the canyon-damping
+  mechanism bar (param errors dropping with decode-site count) is
+  the TRAINING era's exam, pinned at #40, not the admission's; the
+  mint-search engine (#41) now has its admitted customer — the crown
+  corpus fires next; manifest citizenship (mg2 stamp) rides the next
+  promotion. The library's second word one floor up — chosen by four
+  instruments, examined by five checks, seated in one session.
