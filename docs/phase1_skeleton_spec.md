@@ -7751,3 +7751,29 @@ token-position × waist-dim, the moment the skeleton trains.
   upgrade path, re-addressed a sliver, and delivered the corpus
   anyway — the mint-search's first fire paid in mechanism what it
   missed in ratio.
+- **THE CROWN FIRE CHARTER (2026-07-21, registered before watts — the
+  crown era's first training).** CANDIDATE: warm continuation from
+  fire_armC1 (the crown-literate bench member, 4/9 wild) — NOT the
+  gate; this head trains as a PANEL-ELIGIBLE crown reader, and gate
+  candidacy is a separate future question under the standing battery.
+  THE EXTENSION: FRAC_OF = ftype 7 under ALG_FTYPES=8 (dig=a, dig2=k,
+  args=x — one slot, both params in the two digit banks, exactly the
+  canyon-damping geometry; W_y zero-masked on frac slots); pad-warm
+  7->8 on the router per the ftype-router law. CORPUS: fire_armC1's
+  mix + crown_corpus_blind BOTH floors x2 + book-4 macro pairs x10
+  (doses declared). REGIME: 8k flat continuation, LR 1e-4 (new
+  vocabulary under direct gold supervision from birth — the
+  attention-bootstrap law's condition met by construction). BARS,
+  pinned now: (1) FRAC_OF ACCEPTANCE — held-out minted macro dialects
+  parse at 5-view >=3 on >=70% (the vocabulary is READ, not
+  memorized); (2) **THE DIVIDEND READ** — [73] and [100]'s macro-floor
+  annotations through the trained head, 5 views: ANY bank = the
+  factor-count wall FALLS for a named wall-marker (the recursion's
+  first measured dividend); both miss = the honest sentence with
+  mechanism captured; (3) **THE CANYON BAR (#40's, now due)**:
+  param-digit accuracy on crown forms vs equivalent chain forms —
+  errors must DROP with decode-site count or the damping claim dies;
+  (4) NO-DISPLACEMENT floor: bigtest under the continued head >=
+  C1's own 1197 − 15 (the standing displacement guard, bench-member
+  grade). Verdicts by the pre-pinned frames; the ckpt banks beside
+  the panel either way.
