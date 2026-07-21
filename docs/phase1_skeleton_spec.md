@@ -7549,3 +7549,43 @@ token-position × waist-dim, the moment the skeleton trains.
   Thirty-nine: the bee minimized mortar four hundred million years
   before Hales proved her optimal — and the head, unasked, packed
   its seven kinds at the same optimum to within four thousandths.
+- **GUT #40: NAZARÉ RETURNS (2026-07-20, Bryce + relay + Code,
+  registered as amended; the census FIRED).** THE PROVENANCE,
+  stronger than claimed: Nazaré is §13 OF THE LEDGER ITSELF
+  (chartered 2026-07-07), and its founding physics already carried
+  the dark face in one clause — 'the canyon adds no energy — it
+  REFRACTS a wide front into convergence... A CANYON FOCUSES NOISE
+  TOO' — written thirteen days before [26] demonstrated it wild.
+  Forty's contribution: the clause gets its specimen, mechanism, and
+  bar. **(a) THE ERROR CANYON, unified and pinned:** the fdiv chain
+  amplifies digit-phase errors the way the canyon amplifies swell —
+  a dropped tens digit at the param path propagates to a CONFIDENT,
+  STABLE, EXACTLY-COMPUTABLE wrong answer (108/7=15, 5/5) — which is
+  the fdiv-mass wall, the digit-curve erosion, and the cold-error
+  species AS ONE MECHANISM: the deeper the chain, the taller the
+  wrong wave, which is why fdiv-dense problems fail COLDLY.
+  REGISTERED PREDICTION, pinned while no macro exists: the fdiv
+  crown reduces decode sites, so crown-parsed fdiv problems show
+  param-path digit errors dropping roughly with decode-site count —
+  a mechanism bar the candidate macro faces before its corpus is
+  minted (the admission's mandate now carries FOUR clauses:
+  absorbing, sliver-bounding, hexagonal, and canyon-damping). **(b)
+  THE FRAGMENTATION CENSUS — FIRED on banked distributions:**
+  45/296 emitted contests held >=8 consistent samples yet split
+  below plurality-8 — phase noise's measured cost to the
+  certify-analog; and the DIGIT-NEAR read lands the mechanism at
+  contest grain — 13/147 top-2 contests are digit-near pairs and
+  **GOLD IS PRESENT IN ALL THIRTEEN: the near-miss is never two
+  random wrongs; it is the correct wave and its phase-shifted
+  twin.** THE FENCE, sentence one: instrument only — near-
+  equivalence may NEVER merge for acceptance (merging a wrong answer
+  into a plurality is the one sin the lane cannot commit); the
+  census measures decoherence, it never repairs it. The lawful
+  repair route is upstream: the crown removes the phase-error SOURCE
+  (fewer decode sites), never the vote's honesty. **(c) THE
+  TAPER/CANYON PROSE**, cross-referenced to #37's port law: we
+  build TAPERS AT THE SHORE (books as matching sections — the
+  annotation ladder is the taper's geometry) and CANYONS IN THE
+  SOLVER (sharp focusing where computation must converge); §13's
+  provenance noted — the gut surfed its oldest wave home and found
+  the wall's mechanism riding it.
