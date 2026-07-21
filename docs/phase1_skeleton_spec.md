@@ -7626,3 +7626,31 @@ token-position × waist-dim, the moment the skeleton trains.
   transaction; the composed stack speaks GEN-15 ENTIRE — parser,
   specialist, centroids, mouth, watchers, all one generation, zero
   waivers beyond the standing panel note.
+- **GUT #34, READ (a) VERDICT (2026-07-21): THE NOTEBOOK DIES AT ITS
+  CENSUS — by its own bars, and the cautionary prior called it.** The
+  slot-consensus census (n=182 multi-candidate items): shared-slot
+  fraction median 0.30 (IQR 0.14–0.48), contested loci median 14
+  (IQR 8–20) — against bars of >=0.5 shared and <=4 contested. The
+  abstain population's witnesses do NOT share a pinnable bulk with a
+  narrow contested residue; they disagree about most of the graph
+  (~9-per-contest was the top-2 read; across ALL candidates the
+  contested set is ~14 of a ~20-slot union). THE MECHANISM, read
+  honestly: temperature at T=1.0 on hard items produces candidates
+  that differ STRUCTURALLY, not marginally — the samples explore
+  different readings, not one reading with local wobble — so
+  slot-pinning would freeze a third of the graph while the real
+  disagreement lives everywhere else, buying bookkeeping and a
+  wrongly-narrowed search. THE DEATH'S DIVIDENDS: (1) the pinned-
+  sampling spec (#34b) is STRUCK — never built, killed for the price
+  of one census, exactly as gated; (2) the lattice's blind width is
+  VINDICATED — on this population, broad exploration is the correct
+  regime because consensus does not exist to exploit; (3) the
+  cross-floor notebook (#34c, skeleton-pins in the cascade) is
+  UNTOUCHED — its pinning is by construction (the macro skeleton is
+  gated before details fill), not by sample consensus; the drawer
+  keeps it. The June engine's heartbeat stays lawful within its own
+  life; the repair lane, measured twice now, wants width over
+  memory. The verb survived the noun's death in #34's registration —
+  and today the noun's production form died too, cleanly, leaving
+  the verb where it always lived: in the deducer's drawer, behind
+  the redundancy gate.
