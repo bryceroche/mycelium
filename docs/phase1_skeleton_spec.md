@@ -7843,3 +7843,18 @@ token-position × waist-dim, the moment the skeleton trains.
   must state its key coverage. Forty-two: the knot is the song, the
   key is the singer — and the reader, measured today at existence
   grade, already knows at least some songs in any voice.
+- **THE FLUENCY RUN CHARTER (2026-07-21, registered before watts).**
+  The crown era's second fire: warm continuation from crown_reader,
+  the two inherited requirements as design: (1) RICHER DOSE — fresh
+  key-diverse crown pairs x2 + the wild crowns x10 over the standing
+  base; 12k steps LR 1e-4 flat. (2) **KEY DIVERSITY (#42's rider):
+  the mint gains a FIVE-KEY render bank** for the fraction-of bend
+  (quotient-voice, of-voice, per-voice, split-voice, scaled-voice) —
+  each pair rendered in a sampled key; held-out mints (fresh seed,
+  key-stratified) for the bar. BARS, pinned: (1) acceptance POOLED
+  >=70% AND MINIMUM-KEY >=50% (the key coverage stated in the
+  verdict's own sentence per #42); (2) THE DIVIDEND READ re-fires —
+  [73] any-bank = the wall falls; (3) the canyon re-check holds
+  (crown >= chain); (4) displacement floor: bigtest >= 1194
+  (crown_reader's own 1209 − 15). The ckpt banks panel-eligible
+  either way; gate candidacy stays a separate question.
