@@ -7810,3 +7810,36 @@ token-position × waist-dim, the moment the skeleton trains.
   mechanism worked, the register improved, and the vocabulary needs
   only practice. The recursion's first dividend is one fluency run
   from its address.
+- **GUT #42: KNOTS AND KEYS (2026-07-21, Bryce + relay + Code,
+  registered; (a) FIRED).** The chord: #9 and #11 sounded together
+  mint THE (KNOT, KEY) LAW — **structure is the knot (invariant under
+  rendering deformation — paraphrase is the Reidemeister move of
+  prose); the key is the frame (moved by MODULATION — taxi -> faucet
+  -> interest, one wiring, three voices); a problem is a (knot, key)
+  pair, and the reader's whole job is KEY-INDEPENDENT KNOT
+  RECOVERY.** The bridge clause: the house's two proof systems were
+  always testing different group actions — views certify deformation
+  (within-key); the panel and mouth patrol keys (across-frame). The
+  specimen square, complete: [45]/[7] = one key refusing to share a
+  knot; the 42 isomorphs = one knot refusing to share a key; the
+  panel exam manufactured same-key-different-knot; **(a) THE
+  TRANSPOSITION READ (fired, zero-GPU) mined same-knot-different-key:
+  knot-twins seen-in-train-under-another-key answer 27/27 = 100% vs
+  95% size-matched controls — the frame-leak defect list is EMPTY at
+  n=27.** Existence-grade (small, small-problem-skewed population,
+  stated), but the existence is the load-bearing one: READING
+  TRANSFERS ACROSS KEYS — C2's ghost does not haunt the reader at
+  this grain. Texture logged not claimed: twins certify slightly
+  less than controls (67% vs 75%) while answering perfectly. **(b)
+  THE BOOK-ECONOMICS COROLLARY:** a book teaches KEYS (new frames
+  for known knots — cheap, the matching sections) or KNOTS (new
+  wirings — dear, the registry's admissions); the lane split is the
+  standing key/knot ratio meter. **(c) THE KEY-MARGINALIZATION
+  RIDER, retroactive to the crown bars:** the 35% acceptance was
+  measured IN THE MINTED KEY ONLY (the mint renders one signature) —
+  the crown's wild keys (discounts, recipes, rates-of-work) are
+  unmeasured, so THE FLUENCY RUN inherits a second requirement:
+  KEY-DIVERSE crown renderings, and the dividend's eventual sentence
+  must state its key coverage. Forty-two: the knot is the song, the
+  key is the singer — and the reader, measured today at existence
+  grade, already knows at least some songs in any voice.
