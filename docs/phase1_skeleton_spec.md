@@ -7915,3 +7915,23 @@ token-position × waist-dim, the moment the skeleton trains.
   continuation, not a wall. crown_reader_v2 banks PANEL-ELIGIBLE
   (canyon-perfect, key-even, the strongest crown reader on the
   bench).
+- **GUT #43's FIRE VERDICT (2026-07-21): THE BOTTLENECK LIVES IN THE
+  HEAD — THE INVERSION PRINTS, both halves of the pinned prediction.**
+  At the TRUNK: d(same-knot, diff-key) 0.0558 vs d(same-key,
+  diff-knot) 0.0317 — **frames rule the pretrained prior** (~1.8x:
+  the trillion-token eye binds voices, not wirings — [45]'s birth
+  certificate generalized). At the HEAD's binding layer:
+  d(same-knot) 0.0138 vs d(same-key) 0.0615 — **KNOTS RULE, 4.5x the
+  other way: the trained compressor performs the quotient.** The
+  same knot sung in two voices collapses to 0.014 while different
+  knots in one voice stand apart at 0.062 — the (knot, key)
+  factorization is GEOMETRY, measured; the 27/27 behavioral transfer
+  now has its mechanism (representational collapse, located); and
+  the founding objective holds its street address: THE BOTTLENECK IS
+  THE HEAD, the trunk is the wide-open ear, and the compression
+  happens in 3.2M parameters between them. The COLLAPSE RATIO
+  (head same-knot/same-key = 0.22 at this vintage) stands as the
+  registered sentinel-column candidate — does each generation deepen
+  the quotient? The IB named its gauge and the gauge printed true on
+  its first read: the dancer compresses exactly where the
+  architecture said she would, and the gallery measured her doing it.
