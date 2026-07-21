@@ -7308,3 +7308,44 @@ token-position × waist-dim, the moment the skeleton trains.
   June engine's heartbeat and asked why the lane lacks one; the
   answer: it is owed one — at slot grain, in sample time, behind a
   census.
+- **GUT #35: LIFE AND DEATH (2026-07-20, Bryce + relay + Code,
+  registered as amended; the census FIRED).** The decode's first
+  honesty: the house already practices death well at generation grain
+  (fresh heads, rotation law, entourage as estate settlement, manifest
+  as will, gen-13's clean-ancestry funeral rite — and reader_v2, the
+  lineage that refused to die, is the one that went backwards: the
+  quench clause was always the death law in schedule clothes). TWO
+  TAXONOMY EVENTS AT THE DOOR: (1) **THE FIRST RELAPSE** — the relay
+  re-cited "+0.022 banked" ONE GUT after #34 demoted it to
+  proposal-not-cite: a corrected number resurrecting next-session; the
+  taxonomy gains its ninth entry and its most ironic (an undead
+  number, in the gut about undeath); the cure is re-reading the prior
+  registration before citing its subjects. (2) Precision correction:
+  the incident class is real but reads BITTEN ONCE (stale manifest,
+  four generations) + NEARLY once (audit-npz near-clobber, caught) —
+  not twice-bitten. **(a) THE MORTALITY LAW (prose, minted):**
+  SURVIVAL IS EARNED, NEVER DEFAULT — state crosses a life boundary
+  only through a gated channel (artifacts via manifest, knowledge via
+  gated corpus, parse state via pinned factors, promotions via
+  battery); everything else dies at the boundary by default; every
+  component names its DEATH RITE at design review. Jurisdiction
+  fence: within a life, persistence is measured-good (delta_gate
+  meters it; Brick-P stands) — the law governs crossings. **(b) THE
+  UNDEAD CENSUS — FIRED** (.cache/undead_census.json): 519 files,
+  525 GB; manifest-live 8; script-referenced 187; **UNDEAD 324 files
+  / 458 GB** — with the classifier caveat stated (env-constructed
+  paths are grep-invisible: the fire's own states are false-positive
+  undead, ~128 GB current-generation). THE TRUE DEAD: prior-
+  generation train-state memmaps (m7b..m12, ~234 GB) — regenerable
+  pure cache from buried lineages. **DELETION IS BRYCE'S WORD; the
+  list is banked.** THE PERMANENT INSTRUMENT registered: the
+  MANIFEST-LIVE LOAD ASSERT — battery-time loads must resolve inside
+  the manifest-live + declared-fixture set (converts the stale-load
+  incident class from caught-by-paranoia to structurally impossible);
+  wiring rides the next promotion's battery beside the guard's.
+  **(c)** pin-and-purge rides #34's spec as one operation: after
+  disposal, losing candidates DIE — no stale hypothesis crosses
+  convocations; expected true-by-construction in the lane, one assert
+  confirms. The gut asked for a graveyard with a fence, brother — the
+  census found half a terabyte of unburied dead, and the fence is one
+  assert from structural.
