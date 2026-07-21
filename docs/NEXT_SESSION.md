@@ -1,3 +1,23 @@
+# NEXT SESSION — start here (handoff, 2026-07-20 PROMOTION seal)
+
+## **GEN-15 IS PROMOTED — arm A takes the gate; the manifest is written.**
+Both candidates passed EVERY bar. A: bigtest **1207** (record), alg4test
+**392** (THE HISTORIC KILLER CLEARED, both arms — the quench clause's
+second promotion-grade confirmation), alg2 643, vtest 600/600, dag
+689/571/572; acceptance 19 banks; cert-v2 **907 @ 1.0000**. Sentinel
+row's first full promotion walk: ring gauge 118/1500 flips (first real
+interval), cooling H(ans) 0.480, panel-dissent 56, adversarial 12/20
+wrong-unanimous with **GUARD FLAGS 20/20 — wiring ACTIVE per manifest**.
+DEVIATION STATED: macro acceptance measured (A 0/9, C1 4/9, B 6/9) not
+barred — the gate runs on prime twins by charter; **crown-readers
+fire_armC1/B bank as PANEL-ELIGIBLE members**. GATE ENV: ALG_FTYPES=7,
+GATE=.cache/fire_armA.safetensors. OWED: **entourage-15** (edit
+entourage14.py — committed chain), notebook census, dissent-overlap
+read, then THE FDIV-ABSORBING ADMISSION (doubled mandate) + book 5
+(the desk's 37-item proven shopping list + ~90 candidates waiting).
+
+# PRIOR HANDOFF BELOW
+
 # NEXT SESSION — start here (handoff, 2026-07-20 final seal)
 
 ## **THE FIRE BURNED — ALL FOUR ARMS BANKED; THE FLOOR IS READABLE.**
