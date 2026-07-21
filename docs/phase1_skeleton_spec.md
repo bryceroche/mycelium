@@ -7589,3 +7589,11 @@ token-position × waist-dim, the moment the skeleton trains.
   SOLVER (sharp focusing where computation must converge); §13's
   provenance noted — the gut surfed its oldest wave home and found
   the wall's mechanism riding it.
+- **GUT #40 ADDENDUM (2026-07-20, relay countersign):** the digit-twin
+  finding re-prices the fingerpost's jurisdiction — twin contests are
+  exactly where a paraphrase-preference witness SHOULD excel (the two
+  restatements differ by one value the text states plainly: '27' is
+  written, '7' is not); one line joins the joint tier's watch notes as
+  the canyon-damping era opens: fingerpost accuracy ON DIGIT-TWIN
+  CONTESTS is the witness's easiest examinable subclass, and a miss
+  there is a wiring bug, never ambiguity.
