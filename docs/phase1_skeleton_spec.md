@@ -7721,3 +7721,33 @@ token-position × waist-dim, the moment the skeleton trains.
   corpus fires next; manifest citizenship (mg2 stamp) rides the next
   promotion. The library's second word one floor up — chosen by four
   instruments, examined by five checks, seated in one session.
+- **GUT #41(b) VERDICT (2026-07-21): THE STEERING IS NOT THE LEVER —
+  THE GRAMMAR IS.** The greedy fire, graded against the restored
+  frame: covers ratio **1.00x (the >=2x win MISSES)** — and the
+  mechanism is the verdict's whole value. Both arms found the SAME 30
+  distinct covers because **the proposal grammar only GENERATES ~30**
+  (6 patterns x small param buckets): blind banked 1,000 value-variant
+  knots across them in 1,389 attempts; greedy — refusing covers past
+  3-deep — STARVED at 90 banked (3 x 30 = its own ceiling) and burned
+  58,000 attempts re-proposing structures whose compositions were
+  saturated. The value notebook steered PERFECTLY toward a ceiling
+  the ACTION SPACE imposed: search over a poor grammar optimizes to
+  the grammar's boundary. THREE CONSEQUENCES: (1) **#14's tree
+  upgrade RE-GATES** — the 'greedy plateau' arrived instantly and
+  named itself: the plateau IS the action space; the lawful upgrade
+  is a RICHER PROPOSAL GRAMMAR (deeper compositions, more patterns),
+  never a deeper search over the same actions. (2) **The sliver's
+  cure re-addresses**: the 44% absent-cover gap was never a steering
+  problem — the wild composes in shapes the generators do not
+  propose (the books' own 44%-novel covers said so); composition
+  coverage grows by grammar width, and the mint-search marriage
+  holds with its roles corrected — the notebook MEASURES the
+  boundary, the grammar MOVES it. (3) **THE CROWN CORPUS EXISTS**:
+  the blind arm banked 1,000 floor-paired FRAC_OF-centered rows
+  (value-diverse across 30 compositions, 23 containing train-absent
+  primes) — .cache/crown_corpus_blind.jsonl, the training era's
+  substrate, minted and gated; the greedy arm's 90 add no new
+  compositions and are set aside. An honest 1.00x that re-priced an
+  upgrade path, re-addressed a sliver, and delivered the corpus
+  anyway — the mint-search's first fire paid in mechanism what it
+  missed in ratio.
