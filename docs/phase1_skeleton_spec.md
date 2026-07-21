@@ -7407,3 +7407,39 @@ token-position × waist-dim, the moment the skeleton trains.
   BOUNDS, not discovery.** The vase was never about the tiles
   fitting; it is about which properties survive the mortar — and the
   house now holds its divergence-risk map, one page, six rows.
+- **GUT #37: LAPLACE AND SMITH (2026-07-20, Bryce + relay + Code,
+  registered as amended; (b) FIRED).** One physics, two instruments:
+  transfer functions — what a loop does to signals under iteration
+  (Laplace) and what a boundary does to arriving waves (Smith). **(a)
+  THE POLE VOCABULARY + COLUMN CHARTER (reduced honestly at
+  countersign — no retrospective fire: fitting poles to the 4-point
+  decay and 8 generation aggregates would re-walk #31/#32's seats in
+  new clothes):** the dialect unifies banked verdicts — the repair
+  decay = a deep real pole (why shallow rounds were always right);
+  reader_v2 = a pole drifting outside under iteration (the lantern's
+  divergence in dynamics clothes); the damping taxonomy IS pole
+  classification; delta_gate's convex blend = learnable pole placement
+  with the little-by-little law as 'near +1 but inside.' LTI FENCE in
+  sentence one: local linearization, diagnostic language, never a
+  stability proof. CHARTERED: POLE DRIFT as the ring gauge's
+  quantitative column — accrues per promotion from the standing
+  per-item banking; the instrument arrives WITH data, not before it.
+  **(b) THE REFLECTION LEDGER — FIRED on banked margins (147
+  contests): MONOTONE CONFIRMATION** — fingerpost accuracy by margin
+  quartile: reflective 0.568 (coin-flip: the text does not
+  discriminate at these bindings) / mid 0.685 / absorbable 0.865.
+  The Smith reading measured: high margin = well-matched port; low
+  margin = REFLECTIVE ambiguity the register cannot absorb. **37
+  reflective items banked** (.cache/reflection_ledger.json) — the
+  annotation desk's priced shopping list; the construction-level
+  locus join rides the next lattice rerun. Deployment note, free: the
+  joint tier's fingerpost-confirmation is trustworthy EXACTLY where
+  margins are healthy — a margin floor is the tier's natural
+  second-order guard if the watch column ever wobbles. **(c) THE
+  PORT LAW (prose):** every interface is a port; mismatch reflects;
+  the BOOKS ARE MATCHING NETWORKS and the odometer was always a
+  reflection meter; the lattice's width was impedance-matching by
+  offering the port more modes. Thirty-seven: two frequency-domain
+  gauges for machines already running — one watches the loops for
+  rim-drift, one prices the ambiguities the text itself refuses to
+  absorb.
