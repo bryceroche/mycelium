@@ -7512,3 +7512,40 @@ token-position × waist-dim, the moment the skeleton trains.
   bank). The tower's first trained floor is PROMOTED, brother — the
   gate speaks seven ftypes, the guard stands at the door, and every
   sentinel column reported at the exam.
+- **GUT #39: THE HONEYCOMB (2026-07-20, Bryce + relay + Code,
+  registered as amended; (a) FIRED).** Three interpretations, one
+  theorem: the optimality proof (Hales 1999 — hexagons tile with
+  least perimeter), the symmetry mechanism, and THE LANTERN'S
+  KEYSTONE (the anti-sliver cure stated positively). PRECISION
+  CORRECTION at countersign, redirecting (a) before it re-bought a
+  banked frame: 'hexagonal packing' in 512d is not a 2D-projection
+  story — seven near-equidistant points form a SIMPLEX ETF, the
+  ledger's own standing question (the fine-cadence entry) — so
+  interp-2's lawful form is the ETF read at the CURRENT vintage.
+  **(a) THE PACKING READ — FIRED on gen-14's banked centroids:
+  NEAR-ETF, strikingly** — centered pairwise cosine mean −0.163 vs
+  the K=7 ideal −0.167 (FOUR THOUSANDTHS off the perfect simplex),
+  std 0.113: the kinds pack at the honeycomb's high-D optimum ON
+  AVERAGE with a real DEFECT STRUCTURE riding on it — rel_add–sel
+  adjacent (+0.109: additions and selectors share circuitry),
+  mod–pct maximally separated (−0.301). The interference matrix
+  upgrades from similarity table to LATTICE-WITH-DISLOCATIONS; the
+  defect pairs are the mix designer's watch list, and the read joins
+  the atlas's gate ledger (the constellation knows its optimum;
+  whether it knows a TREE stays the atlas's own question). **(b) THE
+  TILING METRIC (prose, the admission review's second axis):**
+  rank candidate macros by AREA-PER-PERIMETER — coverage breadth
+  over boundary cost — beside frequency; retrodiction: the affine
+  leg's dominance (four of nine wild crowns) was a hexagon the
+  metric would have predicted; FIRST LIVE CUSTOMER: the fdiv
+  admission's doubled mandate becomes TRIPLED — fdiv-absorbing,
+  composition-sliver-bounding, and HEXAGONAL (broad coverage of the
+  fdiv bend, never a one-shape patch). **(c) THE KEYSTONE, banked
+  into #36's law:** the anti-lantern cure is bounded-aspect tiling
+  and the honeycomb is its optimum — REFINE TOWARD HEXAGONS, NOT
+  SLIVERS; the mint's registered target for the composition sliver
+  inherits the objective (the MCTS-in-the-mint instinct gets its
+  reward function: area-per-perimeter, not novelty alone).
+  Thirty-nine: the bee minimized mortar four hundred million years
+  before Hales proved her optimal — and the head, unasked, packed
+  its seven kinds at the same optimum to within four thousandths.
