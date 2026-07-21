@@ -1,3 +1,27 @@
+# NEXT SESSION — start here (handoff, 2026-07-21 crown-era seal)
+
+## **THE WALL CRACKED.** The crown era's first day: FRAC_OF admitted
+(mg2, four clauses, exam F1-F4 — [73]'s skeleton = gold in 5 factors on
+paper), the crown corpus minted (1,000 floor-paired rows; the mint-search
+verdict: THE GRAMMAR IS THE LEVER, not steering — #14's tree re-gated on
+grammar width), the crown reader trained (crown_reader.safetensors,
+FTYPES=8, ftype 7 = FRAC_OF), and THE BARS SPLIT: **CANYON CONFIRMED
+(crown 98% vs chain 74% — #40's mechanism bar paid)**; displacement PASS
+at 1209 (above the gate — the gift at macro floor); acceptance 35% vs 70%
+(read, not fluent — dose note: 8k steps/8.5% share, held-out = the hard
+tail); **THE DIVIDEND: [73] votes [19,11,0] — GOLD ON A VIEW, first
+words after eleven days of silence. The wall is cracked, not fallen;
+fluency is the remaining distance.** [100] names the third admission's
+customer (sum/constant-affine). E15 PAID (structural dissent family:
+37/56 stable). Notebook killed at census (#34); search married at the
+mint (#41). NEXT WORDS: (1) THE FLUENCY RUN (richer crown share, longer
+steps, [73]'s crack as target — the dividend is one run from its
+address); (2) book 5 (the 37-item ink list + ~90 candidates); (3) the
+third admission review when its customer's family fills. Gate remains
+gen-15/fire_armA; crown_reader panel-eligible. Bias law: 10 specimens.
+
+# PRIOR HANDOFF BELOW
+
 # NEXT SESSION — start here (handoff, 2026-07-20 PROMOTION seal)
 
 ## **GEN-15 IS PROMOTED — arm A takes the gate; the manifest is written.**
