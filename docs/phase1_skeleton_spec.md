@@ -7858,3 +7858,41 @@ token-position × waist-dim, the moment the skeleton trains.
   (crown >= chain); (4) displacement floor: bigtest >= 1194
   (crown_reader's own 1209 − 15). The ckpt banks panel-eligible
   either way; gate candidacy stays a separate question.
+- **GUT #43: THE INFORMATION BOTTLENECK NAMED (2026-07-21, Bryce +
+  relay + Code — the founding objective gets its own gauge).** THE
+  LAW, one breath: the campaign IS an iterated information bottleneck
+  — minimize I(prose; Z), preserve I(Z; knot) — the dialect is the IB
+  made textual (what prose sounds like at the bottleneck, which is
+  why it emerged under selection), the frame-free graph is the IB
+  made structural, the crowns are the IB climbing its own ladder
+  (each floor a coarser sufficient statistic, the closure invariant
+  as the losslessness receipt), and #42's quotient completes it:
+  surface variation = deformation + modulation, THE KNOT IS THE
+  QUOTIENT. The scars' clause, added to the textbook: destroy
+  variation in the REPRESENTATION, consume it as FUEL in the
+  certification (the views need surface to vary), and KNOW THE
+  BOUNDARY OF YOUR OWN SUFFICIENCY (the guard patrols where the
+  compressor sheds structure it mistook for noise) — the four-verdict
+  channel is the bottleneck's calibrated confession. THREE TAKEAWAYS,
+  statused: **(1) MULTI-KEY MINING = confirmed law** (bilingual fork,
+  dividends law, the fluency corpus in flight) with the sharpening
+  pinned: THE PAIRING is the active ingredient — same knot, many
+  voices localizes the noise axis; KEYS-PER-KNOT joins the mint's
+  quality dials beside the tiling metric. **(2) THE COLLAPSE-
+  CROSSOVER PROBE (registered — gut #43's fire, queued behind the
+  burning fluency run):** same-knot-different-key pairs vs
+  same-key-different-knot controls ([45]/[7]'s family), pooled
+  distance at trunk depth vs fst depth — THE LAYER WHERE KNOT-
+  DISTANCE DROPS BELOW KEY-DISTANCE IS WHERE THE BOTTLENECK LIVES,
+  measured. PINNED PREDICTION, kill-only: trunk reads key < knot
+  (the pretrained prior binds frames); head reads knot < key (the
+  trained compressor inverts it); no inversion = the 27/27 transfer
+  runs on something other than representational collapse — its own
+  finding. Standing-column candidate: COLLAPSE RATIO per generation.
+  **(3) THE FRONT-FILTER SPLIT (the fence):** widen the READER with
+  books (the standing campaign — re-estimating the sufficient
+  statistic on wider X); the GATE is never trained toward acceptance
+  (zero-parameter by constitution — its calibration TRAILS the
+  reader's measured competence via the entourage, never leads it).
+  One sentence: widen the reader; let the gate trail; never let
+  either pretend the other's progress.
