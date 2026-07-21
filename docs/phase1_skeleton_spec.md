@@ -7361,3 +7361,49 @@ token-position × waist-dim, the moment the skeleton trains.
   was buried and why, and the manifest-live load assert standing
   ready to make the next stale-load impossible rather than unlikely.
   Death rites practiced, not just preached.
+- **GUT #36: THE VASE AND THE LANTERN (2026-07-20, Bryce + relay +
+  Code, registered and the census WALKED).** The triple: integral
+  (primes are flat tiles, problems curved surfaces, the parse a
+  tiling, crowns pre-molded tiles for recurring bends), derivative
+  (every autopsy is a zoom to the tile where curvature died), and —
+  the load-bearing third — **THE SCHWARZ LANTERN (1880): refine a
+  cylinder's triangulation badly and every vertex converges while
+  the surface area diverges to infinity. POINTWISE CONVERGENCE NEVER
+  IMPLIES PROPERTY CONVERGENCE; the divergent axis is chosen by how
+  you refine; the cure is a SHAPE BOUND ON THE TILES.** (a) THE
+  LANTERN LAW, minted with three banked sightings: the 16.6%
+  equivalence class (answers converge, structure diverges); the
+  register hole (mouth-distance converges per book, certification-
+  blindness area GROWS — the exam's own dynamic); reader_v2 (finer
+  steps, net backwards). The house's gates ARE aspect-ratio bounds —
+  each bounds a sliver direction; the law's demand: every refinement
+  process NAMES the properties its gates bound, because divergence
+  lives on the unguarded axes. (b) **THE SLIVER CENSUS (walked,
+  zero-GPU) — six refinement processes, guarded vs unguarded:**
+  BOOKS->register: guarded (key, vote, displacement bars, per-kind
+  floors, panel; the blindness area now guard-patched + fixture-
+  tracked as of yesterday); UNGUARDED: real-paraphrase invariance
+  (views are same-witness retellings; paraphrase views registered,
+  unbuilt — the §7.4 gap wearing lantern clothes). MINT->corpus:
+  guarded (uniqueness, level-0 dedup, caps, round-trip); UNGUARDED:
+  COMPOSITION COVERAGE (the decomposition census measured it: 44% of
+  wild covers absent from train — the mint converges on kinds while
+  diverging on compositions, a measured-unbounded sliver) + cycle
+  structure (books are trees, the mint always ties cycles; the cycle
+  dial docketed, unbuilt). TRANCHES->docket: UNGUARDED: family
+  canonicalization (hand-named families, no identity test — minor,
+  noted). GENERATIONS->basins: guarded (bars, floors, five sentinel
+  columns); UNGUARDED: REPETITION-FATIGUE (#31's named missing
+  physics — reader_v2's axis, watched by no gauge). LANE->coverage:
+  guarded (composite bar, tier watches); UNGUARDED: sample
+  correlation under consolidation (plurality assumes independent
+  darts; effective-K's cousin at sample grain — watch-shaped, minor).
+  TOWER->floors: guarded (solution by construction, knot identity);
+  UNGUARDED: per-floor redundancy/cycle (docketed — (c)'s rider,
+  now with the lantern naming WHY it matters beyond the deducer's
+  gate). **THE LEAN CONFIRMED: the unguarded column is short but not
+  empty, and its two capital entries — composition coverage and
+  repetition-fatigue — are both already-measured quantities awaiting
+  BOUNDS, not discovery.** The vase was never about the tiles
+  fitting; it is about which properties survive the mortar — and the
+  house now holds its divergence-risk map, one page, six rows.
