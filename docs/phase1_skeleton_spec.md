@@ -7777,3 +7777,36 @@ token-position × waist-dim, the moment the skeleton trains.
   C1's own 1197 − 15 (the standing displacement guard, bench-member
   grade). Verdicts by the pre-pinned frames; the ckpt banks beside
   the panel either way.
+- **THE CROWN FIRE'S BARS (2026-07-21): TWO PASS, TWO MISS — and the
+  misses carry the era's map.** **(BAR 3, THE CANYON — #40's mechanism
+  bar CONFIRMED SPECTACULARLY): crown-form 98% vs matched chain-form
+  74%** — +24 points from collapsing decode sites on identical
+  computations; the canyon is DAMPED by the crown exactly as pinned
+  before the corpus existed; the fraction-of bend now has a measured
+  mechanism dividend. **(BAR 4, displacement: PASS at 1209** — ABOVE
+  C1's 1197 and above the gate's own 1207: the crown corpus
+  REGULARIZES the register (the book-2 gift pattern reappearing at
+  macro floor — third sighting of reading-training sharpening the
+  dialect). **(BAR 1, acceptance: FAIL — 35% vs 70%** on held-out
+  mints, with the selection note stated: the held-out set is the
+  greedy arm's coverage-steered tail — structurally the HARDEST
+  compositions by construction; the vocabulary is READ but not yet
+  FLUENT at 8k steps and ~8.5% crown share (the dose note for the
+  next continuation). **(BAR 2, THE DIVIDEND: MISSES BY THE FRAME —
+  AND THE WALL CRACKED.** [73]'s five-factor crown form votes
+  **[19, 11, 0] — THE GOLD ANSWER, PRESENT, ON A VIEW** — the
+  wall-marker SPOKE for the first time in campaign history (every
+  prime form parsed NOWHERE; eleven days of silence broken by one
+  view reading the crown form to 19). Not banked (the frame demands
+  >=3), not nothing: the wall is CRACKED, not fallen — fluency, not
+  vocabulary, is now the distance. [100] silent as predicted — its
+  fdivs are irreducible at current vocabulary, and its honest
+  sentence names the THIRD admission's customer (a sum/constant-
+  affine shape). DISPOSITIONS: crown_reader banks as the
+  crown-literate bench member (panel-eligible); the next continuation
+  inherits the dose note (richer crown share, longer steps) with
+  [73]'s crack as its dividend target; the canyon confirmation and
+  the 1209 enter the record as the fire's paid dividends — the
+  mechanism worked, the register improved, and the vocabulary needs
+  only practice. The recursion's first dividend is one fluency run
+  from its address.
