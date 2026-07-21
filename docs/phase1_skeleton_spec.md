@@ -7597,3 +7597,32 @@ token-position × waist-dim, the moment the skeleton trains.
   the canyon-damping era opens: fingerpost accuracy ON DIGIT-TWIN
   CONTESTS is the witness's easiest examinable subclass, and a miss
   there is a wiring bug, never ambiguity.
+- **ENTOURAGE-15 PAID (2026-07-21, entourage15.py — the committed
+  chain's first edit, as the conversion promised).** THE SAGA, honest:
+  the two-terminal species' THIRD den had TWO chambers — the NACK
+  trainer's own fixed-buffer list, then forward_cond's own hardcoded
+  readout (whose comment already named the family: 'gen-9: same
+  None-grad family as sel' — the dup head walked this door a month
+  ago). Four sites now cured across the extension (parser buffers,
+  parser feed, NACK buffers, NACK readout), every one caught by the
+  optimizer's hard assert at zero training cost — the law's full
+  census, closed. THE STAGES: specialist remined vs GEN-15'S OWN
+  organic failures (1,059 of 3,800 after the purity filter);
+  centroids rebuilt in gen-15 fst space — SEVEN kinds, the macro
+  centroid honestly ABSENT (the prime-control gate never emits macro
+  on its own family; the eighth centroid awaits the crown-reading
+  era); mouth rebuilt on the fireA family (thr 0.0125 — moved with
+  the family per the law); census consistent (15/24/61). **THE
+  DISSENT-OVERLAP READ — the owed column prints its first verdict:
+  gen-14 dissent 56, gen-15 dissent 56, OVERLAP 37 (66%) — A STABLE
+  DISSENT FAMILY.** The panel's premium is NOT re-buying a rotating
+  population: two-thirds of the dissent set persists across a full
+  hot retrain from clean ancestry — those 37 items are STRUCTURALLY
+  panel-contested (lineage disagreement living in the items, not the
+  vintage), and §6.4's bet gains its sharpest datapoint yet: the
+  premium purchases a stable watch-population whose members can now
+  be studied AS A FAMILY (the overlap list banked,
+  .cache/dissent_overlap_15.json). Manifest refreshed in one
+  transaction; the composed stack speaks GEN-15 ENTIRE — parser,
+  specialist, centroids, mouth, watchers, all one generation, zero
+  waivers beyond the standing panel note.
