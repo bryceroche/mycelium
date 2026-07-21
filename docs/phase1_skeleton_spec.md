@@ -7935,3 +7935,15 @@ token-position × waist-dim, the moment the skeleton trains.
   the quotient? The IB named its gauge and the gauge printed true on
   its first read: the dancer compresses exactly where the
   architecture said she would, and the gallery measured her doing it.
+- **CROWN CONTINUATION v3 CHARTER (2026-07-21, registered before
+  watts).** The scaling note's lever chosen by the unique-rows law:
+  FRESH UNIQUES over re-epochs — a second key-diverse mint (seed
+  5300, 2,000 new knots, same five-voice stratification) joins the
+  corpus (total unique crowns ~4,000 both floors); 16k steps warm
+  from crown_reader_v2, LR 1e-4 flat. NOT the reader_v2 regime (that
+  fatigue was 14 uniques x 340 epochs; this is 4k uniques x few —
+  the dose law's safe side, stated). BARS unchanged from the fluency
+  charter: pooled >=70% AND min-key >=50%; the dividend re-fires;
+  canyon holds; displacement floor 1181 (v2's 1196 − 15). The
+  acquisition curve's third point prints either way — 35 -> 55 -> ?
+  — and three points make the curve the campaign can extrapolate.
