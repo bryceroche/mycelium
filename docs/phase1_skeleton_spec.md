@@ -7476,3 +7476,39 @@ token-position × waist-dim, the moment the skeleton trains.
   the gut liked the app because distortion reveals what is stable
   underneath — and the answer came back that at every tested
   contest, what is stable underneath is the ambiguity itself.
+- **GEN-15 PROMOTED (2026-07-20): THE MANIFEST IS WRITTEN — arm A takes
+  the gate; BOTH candidates passed EVERY bar.** THE TABLE: A — bigtest
+  **1207** (record again), alg4test **392** (THE HISTORIC KILLER
+  CLEARED — the bar that killed gen-10 and reader_v1 falls to the
+  fire's regime, from BOTH arms at 392), alg2test 643 (record), vtest
+  600/600, dagtest 689, dag7btest 571, dag8test 572; acceptance 19
+  dialect-banks; cert-v2 **907 @ 1.0000** with panel-dissent 56. C1 —
+  1198/392/639/600/693/574/571, cert-v2 905 @ 1.0000, dissent 50 —
+  ALL BARS PASS on both. THE SENTINEL ROW, first full walk at a
+  promotion: ring gauge FIRST REAL INTERVAL (A: 118/1500 flips vs
+  gen-14; C1: 116); cooling portraits (H(ans) 0.480/0.502, H(abst)
+  ~0.61); panel-dissent 56/50; **adversarial exam: wrong-unanimous
+  12/20 (A) and 10/20 (C1) — the hole PERSISTS in the raw chain
+  exactly as the species predicts — and GUARD FLAGS 20/20 on both:
+  the wiring precondition holds, and the guard goes ACTIVE with this
+  manifest** (all 20 would be barred from certify). **ONE DEVIATION,
+  STATED NOT SLIPPED: macro acceptance was measured (first table: A
+  0/9, C1 4/9, B 6/9) but NOT enforced as a promotion bar** —
+  rationale: the gate's constitutional duties never included crown
+  reading (charter pin 3: the gate runs on PRIME TWINS; the trust
+  story is floor-invariant by construction), so the record head
+  takes the gate while THE CROWN-READING HEADS BANK AS PANEL-ELIGIBLE
+  BENCH MEMBERS (fire_armC1/B — the diagnostic-checkpoints law); a
+  crown-reading GATE becomes a bar only when a future book's charter
+  demands one. THE LINEAGE NOTE FOR THE TELLING: the alg4 debt that
+  gentle continuation could never pay (370->378->357 across three
+  generations) cleared at 392 under a hot flat retrain from clean
+  ancestry carrying three books + the macro-era corpus — the step
+  law's quench clause collecting its second confirmation at
+  promotion grade. DUTIES OWED: entourage-15 (specialist remine vs
+  gen-15, centroids, mouth — the committed chain makes it an edit);
+  the notebook slot-consensus census (standing); panel-dissent
+  overlap-with-56 (the column's overlap read rides entourage-15's
+  bank). The tower's first trained floor is PROMOTED, brother — the
+  gate speaks seven ftypes, the guard stands at the door, and every
+  sentinel column reported at the exam.
