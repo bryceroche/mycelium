@@ -8092,3 +8092,40 @@ token-position × waist-dim, the moment the skeleton trains.
   than stumbled-toward. **(c) THE PROSE LAW:** the crowns are the
   plans — the house has been building forethought as VOCABULARY all
   along; a plan the gate admitted is a plan the key can grade.
+- **GUT #46: SLOW IS FAST (2026-07-22, Bryce + relay + Code, registered
+  as amended).** THE TWELFTH SIGHTING at the door: '~99% of loss in
+  epoch one' — a specific statistic with no banked source (the
+  epoch-grinding grave is real via the dose law, reader_v2, and four
+  fresh-uniques confirmations; the number itself enters as proposal).
+  THE THREE JURISDICTIONS, banked as the schedule prose: **mint slow
+  (uniques over epochs — the flux denominator is unique knots), bind
+  slow (plans over greed — the cascade's economics, gated in the
+  drawer; slow means FEWER BETTER COMMITMENTS, never re-chewing:
+  Brick-P stands), promote slow (gate and register — the
+  constitution itself)** — all three measured, none aspirational.
+  **(a) THE VELOCITY LEDGER, registered for Paper II with its honest
+  split:** the SOFT half (counterfactual costs of uncaught errors)
+  is estimate-or-omit — the romantic version killed at countersign;
+  the HARD half is countable, and its first table fires now from
+  banked entries. **THE KILL LEDGER (honest kills at probe price,
+  zero at build price):** the notebook (died at its census — one
+  lattice re-run); the photo-booth fold class (one probe, and the
+  death CERTIFIED a meter); the flux cross-term (same-hour kill on
+  banked data); the depth wall (one join — and the miss re-aimed the
+  crown rider to count); the greedy's covers ratio (one fire — and
+  the miss named the grammar as the lever); the pole retrospective
+  (reduced at countersign — zero cost, re-buy prevented). SIX
+  MACHINES NEVER BUILT, total price ~six probes. **THE REUSE GRAPH
+  (the dividend side, counted):** the 320 fixture served SEVEN
+  instruments (continuity, retry, incumbent, lattice, portrait,
+  adoption, notebook-census); the banked lattice votes served EIGHT
+  reads; the fingerpost margins served three; the decomposition
+  census served four (sliver, tiling, plan-first, the crown's
+  evidence) — instruments-before-customers converted from anecdote
+  to arithmetic: THE DISCIPLINE'S COST IS DOMINATED BY CHEAP HONEST
+  KILLS; ITS DIVIDENDS BY COMPOUNDING REUSE — the lean confirmed on
+  the hard half alone. **(c) THE FENCES:** slow never means
+  iterative re-chewing (Brick-P); gating never means training the
+  doorman toward patience (the mouth's fence). Forty-six: the gut
+  said three words the ledger spent three months spelling — and the
+  price tag, on its countable half, proves them.
