@@ -8007,3 +8007,24 @@ token-position × waist-dim, the moment the skeleton trains.
   column: if the curve saturates while low-width crowns clear the
   bar, the width tax is confirmed at acceptance grain and
   macro-of-macro's docket opens with two instruments' evidence.
+- **CROWN v4'S BARS (2026-07-21): THE CURVE COMPLETES — 35 -> 55 -> 64
+  -> 68, SATURATING AT THE BAR'S EDGE.** Increments +20/+9/+4: the
+  fresh-uniques lever is SPENT — the fifth point would buy ~+2, and
+  the honest read declares it: **the acquisition curve saturates at
+  ~70, exactly the bar's height**, with the remainder priced by the
+  width gradient (top-tertile refusals 51%) and the hard-composition
+  tail. Per-key: of 78, scaled 70 (second voice above bar), quotient
+  68, split 62, per 60 — min-key climbing every fire (50->52->57->60).
+  CANYON: perfect FOURTH consecutive exam (100/74). THE DIVIDEND:
+  [73] gold on EXACTLY ONE VIEW across all four fires — the most
+  precisely stable centimeter in the campaign. **AND THE SECOND
+  CONSECUTIVE RECORD: bigtest 1221** — the crown diet's register
+  gift compounds (1196 -> 1220 -> 1221; the bench member now leads
+  the gate by 14). MACRO-OF-MACRO'S DOCKET NOW HOLDS THREE
+  INSTRUMENTS (the width gradient, the curve's saturation, [73]'s
+  stable crack) — the tower's next floor is priced without being
+  forced. THE ERA'S FORK, stated for the board: cash the record
+  (v4's full promotion battery — the bench may be the campaign's
+  best head entire) or buy more room (the third admission /
+  macro-of-macro, three instruments waiting). Both words ripe; the
+  curve is measured; the harmony holds.
