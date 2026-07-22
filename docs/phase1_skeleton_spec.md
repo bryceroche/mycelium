@@ -8173,3 +8173,33 @@ token-position × waist-dim, the moment the skeleton trains.
   LOCATED (collapse crossover), the compression CERTIFIED (the IB
   gauge), the topology PHOTOGRAPHED (routing fidelity) — three
   instruments, zero training runs, each arriving with its data.
+- **GUT #48: FLIPPED (2026-07-22, Bryce + relay + Code, registered; the
+  probe FIRED AND DIED at its bar).** The gallery's second novel
+  completes the witness epistemology: Pears taught that many same-side
+  witnesses can share one deception; Van Draanen's alternating
+  narrators proposed the cure — a witness from the other side. THE
+  MAPPING banked as prose (the two narrators ARE the binding
+  theorem's channels: the key tells what was said, the knot tells
+  what could be meant; the sycamore chapter is compositional holism
+  as fiction, and the crown era is that line as machinery). **THE
+  FLIP PROBE'S VERDICT: DIES CHEAP** — flip-cells enrich
+  fingerpost-errors at 1.6x (38% vs 24%: real, below the pinned 2x)
+  and the core prediction FAILS with the finding in the failure:
+  **the cold residue does not concentrate in flip-cells (8% vs 6%) —
+  the 65 are invisible to BOTH narrators.** The deception is deeper
+  than stream disagreement: consistent with the panel exam's
+  register-shared blindness — the cold errors are not key-vs-knot
+  arguments; they are readings both registers endorse, which is what
+  makes them cold. INSTRUMENT HONESTY: the knot narrator tested was
+  the weakest available voice (whole-graph frequency prior — the
+  grain that scattered at #22's 0.599); a stronger structural
+  witness would need its own registration, and by the kill-only
+  frame THIS form stays dead. Joint precision 76% (modest, no tier).
+  THE KILL LEDGER grows to SEVEN machines never built (the
+  dual-adjudicator joins at one probe's price). The pairing's
+  surviving law: the cure for shared deception is not more
+  witnesses NOR other-side witnesses at this grain — it is the
+  GUARD (constructional novelty at the door) and the BOOKS (teach
+  the register what it cannot yet distinguish) — the two organs the
+  exam already seated. The fence held: photographed, never
+  adjudicated.
