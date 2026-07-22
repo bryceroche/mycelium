@@ -8203,3 +8203,35 @@ token-position × waist-dim, the moment the skeleton trains.
   the register what it cannot yet distinguish) — the two organs the
   exam already seated. The fence held: photographed, never
   adjudicated.
+- **GUT #49: THE ADMISSION COST LADDER (2026-07-22, Bryce + relay +
+  Code, registered; the audit WALKED).** The gut states the tower's
+  founding economics, and the house measured it before naming it: the
+  basis table (T1 primitives-per-category 1:1, T2 1:2 — 'coverage
+  growth decouples from vocabulary growth') and the affine fold
+  (restraint repaid by four of nine wild crowns). **THE LADDER, five
+  rungs with banked prices: FOLD (free — the affine leg, FRAC_OF's
+  a=1) < BRIDGE (a seam edit — eleven domains, zero core) < MACRO
+  (an exam + a corpus + a fire) < NEW FTYPE (head surgery + the
+  fire) < NEW PRIMITIVE (the full apparatus).** THE AUDIT'S VERDICT,
+  walked from banked history: **CLEAN RECORD in the phase-1 campaign
+  — no rung overpaid.** The receipts: sequences rode chains, abs
+  rode the selector, ratio's twin-mul composition carried it (the
+  RATIO ltype 'deferred, scope note' — THE POSITIVE SPECIMEN: the
+  ladder operating before it had a name); pct/fdiv correctly paid
+  the ftype rung because TEXT-READ PARAMETERS need a digit path
+  composition cannot carry — the rung test in one clause: does the
+  capability require a NEW EMISSION, or only a new arrangement of
+  standing ones? THE LAW with its two fences: **cheapest rung first
+  — a capability enters at the lowest rung that carries it;
+  vocabulary extends trajectories (pad-warm), debts demand deaths
+  (the quench clause, two-generation body count); and NO RUNG
+  REACHES BELOW THE SUBSTRATE'S FLOOR** ([45]'s z=−2.05 standing:
+  when the frozen eye cannot separate the voices, no vocabulary at
+  any price cures it — the deeper-prefix question's jurisdiction,
+  named so the ladder never overclaims). **THE CHECKLIST RIDER
+  pinned to the third admission**: [100]'s family and macro-of-macro
+  enter by walking the ladder from the bottom — fold first, bridge
+  second, and the review's opening question is the rung test.
+  Forty-nine: the tower's economics priced, its record audited
+  clean, and its future admissions handed the checklist the past
+  obeyed by instinct.
