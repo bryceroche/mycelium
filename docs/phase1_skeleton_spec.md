@@ -8378,3 +8378,24 @@ token-position × waist-dim, the moment the skeleton trains.
   40 rows / 5 crown pairs / 22 certificates; radical-form at x6.
   The desk's rhythm holds: cures convert, specimens file themselves,
   and the rulebook writes its own amendments one refusal at a time.
+- **BOOK 5, TRANCHE 4 BANKED (2026-07-22): THE PERFECT TRANCHE — 12/12,
+  and every storyline converts.** **THE DESK RULE'S FIRST PAGE BANKS:
+  [176] 5/5 at the TRUE 12** — two-digit divisor voiced as
+  mul-inverse, the rule minted by yesterday's refusal validated by
+  today's exam — and with it **THE RATE FAMILY READS TWO BANKED
+  MEMBERS IN TWO DAYS** ([157] + [176]): the campaign's oldest
+  chronic frame, the one no head diet could cure at the binding
+  layer, yielding at the desk under the cured path — the substrate-
+  floor fence's second good news. [185]'s rework banks 5/5 at 49.
+  The fresh primes sweep (tangent circles, the 3-4-5 segment,
+  polynomial degrees, the radical product at 144). **[192]'s
+  factoring-max crown banks both floors at 217 — THE FIRST REPEAT
+  CROWN FAMILY ACROSS BOOKS** ([105] book-4 + [192] book-5, the same
+  3a+1 shape on independent strangers — frequency arriving at crown
+  level across BOOK boundaries, the admission economics' strongest
+  possible signal). BOOK 5 TOTALS: **47 pages / 53 rows / 6 crown
+  pairs / 28 certificates** — four tranches, two perfect, every miss
+  converted or benched with its mechanism, the rulebook one rule
+  richer, and the docket pricing on (radical-rationalize x4,
+  factoring-diophantine x2). The desk needs nothing but pages, and
+  the pages keep teaching.
