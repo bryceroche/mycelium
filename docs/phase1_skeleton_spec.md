@@ -8411,3 +8411,24 @@ token-position × waist-dim, the moment the skeleton trains.
   re-classification under a crown-reading gate (fresh 200 from the
   harvest, all consumed candidates excluded; re-pricing watch vs
   book-4-era 71% L3).
+- **BOOK 5, TRANCHE 5 BANKED (2026-07-22): 9/12 on the fresh stock —
+  and the key catches the ANNOTATOR.** Eight primes swept 5/5 (the
+  crown-gate bench's first pages: the 3-4-5 vertex distance, the
+  rectangle extremes pair, intercept-area, the composed radical);
+  **[3]'s FRAC_OF banks 5/5 — THE PREEMPTIVE CURE CONVERTS** (the
+  desk rule applied from birth, k voiced safe by design). THE
+  TRANCHE'S BEST PRINT: **[11] voted 5/5 unanimous at 60 — because
+  the ANNOTATOR'S dialect was wrong** (the cubic identity's
+  correction written as a where it is 3a; the gate parsed the flawed
+  page PERFECTLY and the answer key threw it out): the two-terminal
+  trust story protecting the corpus FROM THE DESK ITSELF — the key
+  disposes, even of its own annotator, which is the entire
+  constitution in one specimen. THE OTHER MISSES, both mag-3: [15]
+  correct at 275 on 2/5 (one vote short — 3-digit addition wobble);
+  [13]'s twin scattered on 3-digit operands (265/215 — the
+  digit-curve's mag-3 erosion at the desk, 0.837 confirmed in the
+  field): 3-DIGIT OPERANDS join two-digit divisors on the desk's
+  watch list — decompose or voice small where the page allows.
+  BOOK 5 TOTALS: **56 pages / 63 rows / 7 crown pairs / 34
+  certificates** — five tranches, the fresh stock opened, the desk's
+  quality control proven against every party including its own hand.
