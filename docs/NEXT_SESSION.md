@@ -1,3 +1,24 @@
+# NEXT SESSION — start here (handoff, 2026-07-21 final — the curve seal)
+
+## **THE ACQUISITION CURVE IS MEASURED: 35 → 55 → 64 → 68, saturating at
+the bar's edge** (+20/+9/+4 — the fresh-uniques lever spent; the
+remainder = the width tax (51% top-tertile refusal) + the hard tail).
+**SECOND CONSECUTIVE RECORD: bigtest 1221 under crown_reader_v4** — the
+bench leads the gate by 14. Canyon perfect x4. [73] gold on exactly ONE
+view across all four fires. Min-key climbs every fire (50→52→57→60; of
+78%, scaled 70% above bar). **THE ERA'S FORK — next session's word:**
+(A) CASH THE RECORD — v4's full promotion battery (fixtures, acceptance,
+cert-v2, sentinel walk incl. adversarial + guard; gen16_verdict holds
+the pen; the bench may be the best head entire); or (B) BUY MORE ROOM —
+the third admission (customer named by [100]: sum/constant-affine) /
+macro-of-macro (docket holds THREE instruments: width gradient, curve
+saturation, [73]'s crack). Also standing: book 5 (ink list + ~90
+candidates). Guts at 44 (width-over-depth's fifth unanimous trial;
+drawer upgraded: schedule-specialized settlers). Collapse ratio 0.22
+banked as sentinel candidate. Bias law: 10 specimens.
+
+# PRIOR HANDOFF BELOW
+
 # NEXT SESSION — start here (handoff, 2026-07-21 late — the record seal)
 
 ## **BIGTEST 1220 — CAMPAIGN RECORD, from the crown-era bench.**
