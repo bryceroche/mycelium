@@ -1,3 +1,23 @@
+# NEXT SESSION — start here (handoff, 2026-07-22 final — BOOK 5 AT FOUR TRANCHES)
+
+## **BOOK 5: 47 pages / 53 rows / 6 crown pairs / 28 certificates —
+four tranches, two PERFECT, under the crowned gate.** Storylines
+converted: THE FIRST WILD FRAC_OF banked ([141]); the RATE FAMILY at
+two banked members in two days ([157]+[176] — the oldest chronic frame
+yielding at the desk via the cured path); THE CANYON FAMILY at three
+wild specimens (27->7, 13->3, 10->clamp) with the DESK RULE minted and
+same-week validated (two-digit divisors voice as mul-inverse); the
+FIRST CROSS-BOOK repeat crown family ([105]+[192], 3a+1). ~20
+candidates remain in the lanes (idx>199); then a fresh lane pass under
+gen-16 opens the next stock. STANDING: the third admission (rung test;
+radical-form x6, symmetric-identity x3 pricing); the crown-mass counter
+(toward the next fire's pin + band-restart arm); macro-of-macro (3
+instruments); the dashboard accrues at entourage-17. Gate: gen-16 =
+crown_reader_v4 (FTYPES=8), stack entire, zero waivers. Guts at 50;
+bias law 12 specimens; kill ledger 7.
+
+# PRIOR HANDOFF BELOW
+
 # NEXT SESSION — start here (handoff, 2026-07-22 late — E16 PAID, ONE WORD STANDS)
 
 ## **ENTOURAGE-16 PAID; the composed stack = gen-16 entire, zero
