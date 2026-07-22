@@ -8028,3 +8028,28 @@ token-position × waist-dim, the moment the skeleton trains.
   best head entire) or buy more room (the third admission /
   macro-of-macro, three instruments waiting). Both words ripe; the
   curve is measured; the harmony holds.
+- **GEN-16 PROMOTED (2026-07-22): THE RECORD CASHED — THE FIRST GATE
+  THAT READS THE TOWER'S OWN VOCABULARY.** The battery, records down
+  the column: **bigtest 1223** (third consecutive record: 1220 ->
+  1221 -> 1223); **alg4test 402 — ABOVE 400 FOR THE FIRST TIME IN
+  CAMPAIGN HISTORY** (the killer bar now cleared by +22); alg2test
+  663 (record); vtest 599/600; dagtest 691; dag7btest 575 / dag8test
+  580 (records); acceptance 19 banks; **cert-v2 927 @ 1.0000 — the
+  WIDEST certification channel ever measured (61.8% coverage at
+  perfect precision)**; panel-dissent 59. THE SENTINEL WALK: ring
+  gauge 130/1500 vs gen-14; cooling portraits nominal; **adversarial
+  wrong-unanimous DOWN to 9/20 (gen-15 read 12/20) — the crown diet
+  SHRINKS the blind spot** — guard flags 20/20, wiring carried. ALL
+  BARS PASS; the manifest is written: gen-16 = crown_reader_v4,
+  ALG_FTYPES=8, grammar mg2 a manifest citizen, the macro column at
+  its honest saturation vintage (68%, curve attached). THE ARC IN
+  ONE SENTENCE: a vocabulary chosen by four instruments, taught in
+  five voices to saturation, whose diet made the whole head better —
+  the bench member became the gate, and the gate now speaks eight
+  words including two the wild taught it to compress. One seam
+  logged: the battery/pen naming mismatch (gen15_ artifacts vs
+  gen16_ reads) caught by FileNotFoundError and aliased — the
+  committed chain gains the parameterized-prefix note for gen-17.
+  DUTIES OWED: entourage-16 (the chain is an edit); the dissent
+  overlap under the new gate; book 5 under the strongest reader in
+  campaign history.
