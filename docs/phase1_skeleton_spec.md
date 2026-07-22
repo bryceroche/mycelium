@@ -8611,3 +8611,32 @@ token-position × waist-dim, the moment the skeleton trains.
   still insufficient; the gate opens on trajectory, not one point).
   Either way the atlas's gate-2 instrument installs with its first
   data point, re-runnable per entourage as floors accrue.
+- **THE DELTA-PROBE VERDICT (2026-07-22, same seal — FLAT-ISH AS
+  PINNED; the instrument installs with its baseline).** Fired on
+  monitor_centroids_gen16 (9 kinds, 512d, single vintage): (i)
+  Gromov delta/diam = 0.221 — NOTE HONESTLY: under the pinned
+  flat-ish lean's letter (>~0.25), a mild tree-lean the joint
+  verdict does not follow, because (ii) cophenetic corr 0.098 at
+  permutation percentile 76.0 — far under the 95 surprise bar; the
+  constellation's distances do NOT correlate with the sapling
+  beyond label-shuffle chance. (iii) Parenthood ranks split: frac's
+  NEAREST neighbor is fdiv (rank 1 — one true expansion edge
+  visible in the metric; the crown sits closest to its floor-div
+  leg, consistent with shared circuitry), but rel_mul ranks 5 and
+  macro's rel_add ranks 3 — the sapling does not know its parents
+  as a family, it knows one leg. (iv) The radius footnote is
+  STRUCTURALLY EMPTY: the bank is unit-normalized (all norms
+  1.000) — interp 6's center-to-rim read has no channel in this
+  artifact and would need un-normalized states; banked as a scope
+  note, not a negative. VERDICT: flat-ish as registered — no gate
+  motion, no surprise declaration (percentile and ranks both
+  under bar). THE PRIZE IS THE INSTRUMENT: delta_probe.py joins
+  the entourage duty roster beside the packing read — re-run per
+  generation as floors accrue, so the tree-or-bush question owns
+  a TRAJECTORY (gen-16 baseline: 0.221 / 0.098 / pct 76) instead
+  of a guess. The frac-fdiv adjacency files on the texture watch
+  (one shape, one plausible mechanism — not yet the texture
+  rule's two). The atlas stays parked behind its two gates, the
+  ball behind its flag, the fence intact: the geometry enters by
+  measurement or not at all — and as of tonight the measurement
+  has a standing meter.
