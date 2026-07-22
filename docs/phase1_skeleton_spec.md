@@ -8235,3 +8235,35 @@ token-position × waist-dim, the moment the skeleton trains.
   Forty-nine: the tower's economics priced, its record audited
   clean, and its future admissions handed the checklist the past
   obeyed by instinct.
+- **GUT #50: THE WAVE FACE (2026-07-22, Bryce + relay + Code,
+  registered; the dashboard FIRED).** The fiftieth knock finds the
+  gallery's oldest truth: **the wave supplies the power; the head
+  supplies the angle** — the 63x leverage (8.0M trained over 506M
+  frozen) as sport: the trunk is a breaking wave of someone else's
+  language, and the whole architecture is angle-not-power (the
+  collapse probe photographed the takeoff: frames rule the face,
+  the binding layer is where the board bites). THE THREE READINGS:
+  (1) TAKEOFF GEOMETRY — the quench clause as steepness (too shallow
+  = reader_v1's stall; too steep = gen-9's pearl); the alg4 schedule
+  finding and the 3x flat dividend were ANGLE corrections; the
+  band-restart rider registers LEAN on the next fire (flat vs
+  flat-with-band-synchronized-restarts — the pump down the line;
+  lean modest, the flat 3x captured most of the angle; NOT the dead
+  curriculum: ordering stays flat, the SCHEDULE re-warms). (2) PEEL
+  DISCIPLINE — the campaign's velocity law as geometry: ahead of
+  the peel = building before instruments (the kill ledger's seven
+  stalls avoided); behind it = debts compounding (alg4's four
+  generations); the board's lawful-order rhythm IS pocket-riding,
+  and the velocity table retroactively explained. (3) **THE POCKET
+  DASHBOARD — FIRED (.cache/pocket_dashboard.json, first print,
+  gen-16):** the four standing gauges composed into the head's
+  operating point — collapse ratio 0.22 (vintage v2; v4 re-read
+  owed at entourage-16), routing fidelity 0.830/0.506, canyon
+  100/74 x4, min-key 60% — with the lantern's caption permanent:
+  NO LONE DIAL DEFINES THE POCKET; the dashboard exists to be read
+  WHOLE. The sharpening banked: the pocket is not the crown — the
+  pocket is WHERE THE CROWN SITS: the operating point where
+  compression pressure is maximal and still rideable (shed too
+  little = the shoulder, frame leaking; too much = the lip, the
+  guard's species). Fifty: we never added energy to anything — we
+  learned where to stand.
