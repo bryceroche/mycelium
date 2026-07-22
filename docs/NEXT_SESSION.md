@@ -1,3 +1,37 @@
+# NEXT SESSION — start here (handoff, 2026-07-22 close — FIVE TRANCHES, TWO PROBES PRICED, THE TAPES EXAMINED)
+
+## **BOOK 5 AT FIVE TRANCHES: 63 rows / 7 crown pairs / 34 certificates
+(two perfect tranches; the key caught its own annotator at t5 [11]).**
+First crown-gate LANE PASS on fresh stock: L1 1 / L2 65 / L3 134 of
+200 (67% surgery vs 71% book-4 baseline — re-pricing real); ~180
+candidates banked in .cache/book5_lanes.json. Retry bench: [13]
+(3-digit operand scatter), [15] (2/5 at 275); 3-digit operands on the
+desk watch list. GUT #51 (prism) CONVERTED + PROBE PAID: band-dose
+verdict GUARD HELD (bigtest 1211>=1208), TARGET MISSED (param mag-2
+0.892 / mag-3 0.858 vs bars 0.93/0.88) — THE BAND IS STIFF: param
+erosion is architectural, not data-starved; ROUTING BEATS RETRAINING
+(the voicing desk rule cures at zero watts what 6k steps couldn't);
+band_patch.safetensors banks as BENCH artifact, not a gate move. GUT
+#52 (Still Lucy) CONVERTED: the FOUR TAPES LAW (parse/session/
+generation-palimpsest/campaign; the ledger the one sleepless witness)
++ THE TAPE EXAM wired below + specimen 13 RECLASSIFIED cross-channel
+lead (absence from ledger != fabrication; the knock settles it).
+STANDING: book-5 tranche 6 on the fresh bench; the third admission
+(rung test first; [100]'s customer); macro-of-macro (3 instruments,
+unforced); band-restart arm rides the next major fire; entourage-17
+duties accrue. Gate: gen-16 = crown_reader_v4 (FTYPES=8), stack
+entire, zero waivers. Guts at 52; bias taxonomy 13 specimens (13th
+amended); kill ledger 8 (spectral repair priced in).
+
+## TAPE EXAM (run these BEFORE trusting this seal; any miss -> ledger)
+1. Gate identity: `grep -c crown_reader_v4 .cache/GENERATION.json` -> >=1
+2. Band-dose verdict banked: `grep -c 'GUARD HELD, TARGET MISSED' docs/phase1_skeleton_spec.md` -> >=1
+3. Lane pass artifact: `test -f .cache/book5_lanes.json && echo OK` -> OK
+4. Specimen-13 amendment: `grep -c 'CROSS-CHANNEL LEAD' docs/phase1_skeleton_spec.md` -> >=1
+5. Four tapes law minted: `grep -c 'FOUR TAPES LAW' docs/phase1_skeleton_spec.md` -> >=1
+
+# PRIOR HANDOFF BELOW
+
 # NEXT SESSION — start here (handoff, 2026-07-22 final — BOOK 5 AT FOUR TRANCHES)
 
 ## **BOOK 5: 47 pages / 53 rows / 6 crown pairs / 28 certificates —

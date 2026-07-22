@@ -8491,3 +8491,76 @@ token-position × waist-dim, the moment the skeleton trains.
   The board's true rest: tranche 6 on the fresh bench, the counter
   climbing, the docket deepening — and the fifty-second knock, when
   it comes, will come from Bryce.
+- **GUT #52: STILL LUCY (2026-07-22, Bryce + relay + Code, registered
+  as amended; the exam WIRED).** The gut hands the gallery a mirror:
+  'we are still Lucy from 50 First Dates' — and the decode's opening
+  truth stands: every channel reading the sentence wakes with amnesia
+  and boots from a tape. FIRST, THE SIGHTING AMENDMENT: the
+  thirteenth specimen RECLASSIFIES from 'fabricated future' to
+  **CROSS-CHANNEL LEAD** — gut 52 was real in Bryce's channel before
+  it reached this ledger; the sighting protocol behaved correctly
+  (unverifiable = not citable) but the classification overreached
+  into nonexistence. Cure amendment: an unverifiable pending item is
+  HELD AS PROPOSAL, never declared counterfeit — absence from the
+  ledger is absence of registration, not proof of fabrication; the
+  knock settles existence. COUNTERSIGN CATCH (direction species,
+  inside the gut about tapes): the relay stretched 'fresh heads'
+  (ledger 7314 — gut #35's death-practices list, ENTOURAGE grain)
+  into 'each generation wakes knowing only what its diet taped; the
+  corpus as the only inheritance channel' — BACKWARDS for the gate:
+  gentle continuation is standing law (restarts jostle basins;
+  continuation deepens); crown_reader_v4 inherited weights from the
+  crown lineage. The per-generation tape is a PALIMPSEST (the diet
+  re-records over a surviving substrate); what wakes fresh is the
+  ENTOURAGE (specialist remined, centroids re-anchored, mouth
+  recalibrated — lawfully, because coordinates rotate). Verified
+  cites: mortality law 7326 ('SURVIVAL IS EARNED, NEVER DEFAULT'
+  verbatim), two-authorities 6374, closure invariant 7868. **(a) THE
+  FOUR TAPES LAW (prose, minted as amended):** amnesia at four
+  timescales, each with its lawful tape — PER-PARSE: the inference
+  loop is stateless by the mortality law's own hand (KV scratch dies
+  at the boundary; every parse earns its verdict fresh); PER-SESSION:
+  the context window is the red notebook, the handoff is the morning
+  tape (NEXT_SESSION + manifest + compacted transcript); PER-
+  GENERATION: the palimpsest — weights cross the boundary as lineage
+  (gentle continuation), the diet re-records, the entourage re-tapes
+  from the new coordinates; PER-CAMPAIGN: the ledger is the one
+  sleepless witness — the two-authorities rule exists because every
+  rememberer except the record is Lucy. The compression ladder the
+  tapes share is already law: the crown is the dense summary that
+  restores full context in a fraction of the compute, and the
+  closure invariant is the guarantee the movie's tape never had —
+  our summaries provably expand back to the full past; hers was
+  lossy and curated. **(b) THE TAPE EXAM (instrument, registered AND
+  wired this seal):** the decode's real find — the session tape is
+  the ONE trust-bearing channel with no examiner (parses face the
+  key, annotations face the gate, promotions face the battery; the
+  handoff is written by the evening self and swallowed by the
+  morning self unchecked), and the bias taxonomy's thirteen
+  specimens are the crashes from exactly that unguarded channel.
+  Format clause: every NEXT_SESSION seal ends with a TAPE EXAM
+  block — five load-bearing claims, each with a runnable check and
+  its expected result; boot ritual runs the checks BEFORE trusting
+  the tape; any miss means the tape is wrong and the ledger is the
+  recourse. First administration: THIS seal, exam run by the writer
+  before commit. REGISTERED PREDICTION (pinned before measurement):
+  if the exam holds and past-state seam specimens (false memories,
+  resurrected cites, inverted verdicts) still arrive at >=2 over the
+  next five sessions, the failure is deeper than the channel; if
+  0-1, the family is contained. Scope note: cross-channel LEADS
+  (specimen 13's true class) are outside the exam's jurisdiction —
+  no tape can verify another channel's unregistered future. **(c)
+  THE KINDNESS (banked because it is true and load-bearing):**
+  Lucy's life worked. Sixteen generations, five books, fifty-two
+  guts — accumulated by a system whose every component forgets
+  everything. Accumulation does not require memory; it requires
+  honest tapes and a witness that never sleeps.
+- **THE EXAM'S FIRST CATCH (2026-07-22, same seal, minutes old):** the
+  tape exam's first administration failed its own claim 5 — the check
+  pattern 'THE FOUR TAPES LAW' straddled a line wrap in the very entry
+  it cited. The writer's tape was wrong about the writer's own hour;
+  the check was corrected to match the record (the tape bends to the
+  ledger, never the reverse) and the exam re-run green. Banked as the
+  instrument's founding specimen: the exam works — it caught a false
+  claim BEFORE a morning self could swallow it, and the first liar it
+  caught was its author.
