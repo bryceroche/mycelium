@@ -8459,3 +8459,25 @@ token-position × waist-dim, the moment the skeleton trains.
   than generations); COUPLED = the coupling coefficient banks as
   law (train the whole spectrum or don't bother). Either verdict
   prices interp 4 permanently.
+- **THE BAND-DOSE VERDICT (2026-07-22): GUARD HELD, TARGET MISSED —
+  THE BAND IS STIFF, AND THE VOICING WINS THE ECONOMICS.** The
+  photometers: param mag-1 0.995 (+0.018 — the easy line moved),
+  mag-2 0.892 (−0.011, within noise at n=390), mag-3 0.858 (+0.021
+  at n=141, under the 0.88 bar); GUARD: bigtest 1211 >= 1208 (a −12
+  drift inside the record's shadow — the spectrum held). THE HONEST
+  READ: a 3x-rep canyon dose over 6k steps moved the target band
+  within noise only — **the param-path erosion is STIFF: architectural
+  more than data-starved** (three digit positions through softmax at
+  magnitude — the MSD's low salience is structure, not starvation),
+  and interp 4 prices accordingly: SPECTRAL REPAIR UNPROVEN AT THIS
+  DOSE, with the coupling benign (the guard held). THE VERDICT'S
+  DIVIDEND — the economics close in the desk's favor: **the voicing
+  detour (the desk rule, the crown's path swap) cures at ZERO WATTS
+  what 6k steps could not move past noise** — the floor amendment
+  generalizing one band down: what the band can't cheaply learn, the
+  path can cheaply avoid. Routing beats retraining for the canyon,
+  by measurement from both sides now. The band_patch ckpt banks as a
+  bench artifact (not a gate move — 1211 < 1223); the kill ledger's
+  economics table gains its sharpest row: one 6k probe priced a
+  whole maintenance strategy against a free rule that was already
+  winning.
