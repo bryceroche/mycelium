@@ -8053,3 +8053,11 @@ token-position × waist-dim, the moment the skeleton trains.
   DUTIES OWED: entourage-16 (the chain is an edit); the dissent
   overlap under the new gate; book 5 under the strongest reader in
   campaign history.
+- **GEN-16 ADDENDUM (2026-07-22, relay countersign — the hardening
+  hypothesis pinned):** the blind spot's shrinkage (12/20 -> 9/20)
+  elevates to a MECHANISM HYPOTHESIS for the sentinel row to grade:
+  macro-floor training teaches structural reading that PARTIALLY
+  IMMUNIZES against the style-native-structure-invisible collapse —
+  the species has a factory, the diet has a countermeasure, both are
+  measured furniture; the adversarial column now tracks the count
+  per promotion as the hypothesis's standing test.
