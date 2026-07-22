@@ -8267,3 +8267,30 @@ token-position × waist-dim, the moment the skeleton trains.
   little = the shoulder, frame leaking; too much = the lip, the
   guard's species). Fifty: we never added energy to anything — we
   learned where to stand.
+- **ENTOURAGE-16 PAID (2026-07-22, entourage16.py — the chain's second
+  edit; driver's seat: Code, on Bryce's word).** All nine stages
+  clean, three findings riding: **(1) THE MONITOR SPEAKS THE FULL
+  VOCABULARY — NINE CENTROIDS**, frac and macro seated for the first
+  time (the crowned gate emits them on its own family; the monitor's
+  kinds now match the gate's words — the absence recorded honestly at
+  e15 filled lawfully at e16). Mouth on the crownv4 family (thr
+  0.0146, moving with the family); census consistent (15/23/62).
+  **(2) THE DISSENT FAMILY CONFIRMS ACROSS A SECOND BOUNDARY:
+  overlap 40/56 = 68%** (gen-15's 56 -> gen-16's 59) — 66% then 68%:
+  the stability is itself stable; the structural family is a
+  standing population, not a vintage artifact. **(3) THE COLLAPSE
+  RE-READ (the dashboard's first accrual): the inversion holds under
+  v4** — same-knot 0.0127 (TIGHTER than v2's 0.0138: the twins
+  collapse deeper) vs same-key 0.0537 (also tighter than 0.0615:
+  the whole space contracted — the consolidation-compression
+  signature, the radius law's echo); **ratio ~flat (0.22 -> 0.24,
+  within noise at n=80)**. First-accrual verdict, honestly sized:
+  two crown fires deepened the ABSOLUTE collapse while compressing
+  the whole space proportionally — the quotient holds steady by
+  ratio; the quotient-deepening question now has its baseline pair
+  and accrues per generation. Manifest refreshed in one transaction;
+  the composed stack speaks GEN-16 ENTIRE, zero waivers. THE BOARD
+  AT REST: one word stands — **BOOK 5**, under the crowned gate,
+  with the ink list, the matching sections (twice-certified as the
+  cold residue's only cure), ~90 candidates, and a desk whose gate
+  reads the vocabulary being written.
