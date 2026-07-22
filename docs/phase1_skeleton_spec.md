@@ -8294,3 +8294,21 @@ token-position × waist-dim, the moment the skeleton trains.
   with the ink list, the matching sections (twice-certified as the
   cold residue's only cure), ~90 candidates, and a desk whose gate
   reads the vocabulary being written.
+- **BOOK 5 CHARTER (2026-07-22, Bryce's word — the first desk whose
+  examiner speaks the annotator's language).** PINS: (1) GATE =
+  crown_reader_v4 under ALG_FTYPES=8 — the trust story unchanged
+  (5-view vote >= 3 + key; macro pages gate ON PRIME TWINS per the
+  standing constitution), with the crowned gate's native macro read
+  as a bonus check, never the gate. (2) SOURCE = the book-4 lanes
+  remainder (~90 classified candidates, idx > 128) — the census
+  fixture and all prior books excluded as ever. (3) THE MACRO
+  PROTOCOL EXTENDS TO MG2: FRAC_OF crowns are legal at the desk —
+  the first WILD FRAC_OF pages in campaign history; every crown
+  banks floor-paired, one knot. (4) PURPOSES: the register rungs the
+  reflection list priced, wild-crown mass for the fluency curve's
+  key coverage, and span-carrying pages toward the routing
+  photograph's (iii). (5) Certificates carry mg2-era family names;
+  repeat families keep pricing the third admission's docket.
+  PREDICTIONS: (P1) lane yields under the crowned gate improve on
+  book-4's (the register gain compounds); (P2) wild FRAC_OF bends
+  appear at or above the mul->fdiv census rate (21% of fdiv usage).
