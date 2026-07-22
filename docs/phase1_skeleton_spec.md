@@ -7947,3 +7947,26 @@ token-position × waist-dim, the moment the skeleton trains.
   canyon holds; displacement floor 1181 (v2's 1196 − 15). The
   acquisition curve's third point prints either way — 35 -> 55 -> ?
   — and three points make the curve the campaign can extrapolate.
+- **CROWN v3'S BARS (2026-07-21): THE CURVE'S THIRD POINT — 35 -> 55 ->
+  64 — climbing, decelerating, and carrying A CAMPAIGN RECORD
+  underneath.** Pooled acceptance 64% (FAIL vs 70%, closing);
+  per-key: **of-voice 75% — the first voice ABOVE the pooled bar** —
+  quotient 68, per 62, scaled 60, split 57 (min-key PASS); the
+  acquisition curve now has its shape: +20 then +9 per doubling —
+  classic decelerating acquisition, the bar reachable in one to two
+  more continuations OR saturating just below it (the fourth point
+  decides). CANYON: perfect again (100% vs 72% — third consecutive
+  exam). THE DIVIDEND: [73]'s crack HOLDS at exactly one view across
+  all three fires (votes [19,49,32,49] — a wrong plurality now rides
+  beside the stable gold view; the crack neither widens nor closes).
+  **THE HEADLINE UNDERNEATH: bigtest 1220 — THE HIGHEST IN CAMPAIGN
+  HISTORY** (gen-15's gate printed 1207) — from a BENCH member on a
+  displacement check: the crown diet is the strongest register
+  regularizer the house has found (1196 -> 1220 across one
+  continuation; the gift pattern's fourth sighting and first record).
+  DISPOSITION: crown_reader_v3 banks panel-eligible AND **the
+  gate-candidacy question formally opens** — a full promotion battery
+  (all fixtures, acceptance, cert-v2, sentinel walk) is the next
+  session's standing offer; the crown era's reader may be the
+  campaign's best head at everything, not just crowns. The curve, the
+  crack, and the record: the era's state in three numbers.
