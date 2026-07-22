@@ -1,3 +1,24 @@
+# NEXT SESSION — start here (handoff, 2026-07-22 late — E16 PAID, ONE WORD STANDS)
+
+## **ENTOURAGE-16 PAID; the composed stack = gen-16 entire, zero
+waivers.** Nine stages: THE MONITOR SPEAKS THE FULL VOCABULARY (9
+centroids incl. frac+macro — first time); mouth on crownv4 (thr 0.0146);
+dissent family confirmed across a SECOND boundary (overlap 68% — a
+standing structural population); THE COLLAPSE RE-READ under v4:
+inversion holds, twins deeper (0.0127), space contracted (consolidation
+signature), ratio ~flat 0.22→0.24 — the dashboard's baseline pair
+banked. Guts at 50 (the wave face — pocket dashboard first-printed;
+band-restart rider lean on the next fire; kill ledger at 7; bias law
+12 specimens). **ONE WORD STANDS: BOOK 5** — under the crowned gate
+(reads crowns natively), the 37-item reflection ink list (matching
+sections = the cold residue's ONLY cure, twice-certified), ~90
+classified candidates (.cache/book4_lanes.json remainder), span-carrying
+crown pages feeding the routing photograph's (iii). Behind it: the
+third admission (rung test first), macro-of-macro (3 instruments),
+v4-era continuations (band-restart arm).
+
+# PRIOR HANDOFF BELOW
+
 # NEXT SESSION — start here (handoff, 2026-07-22 — GEN-16 WEARS THE CROWN)
 
 ## **GEN-16 PROMOTED = crown_reader_v4 — the first gate that reads the
