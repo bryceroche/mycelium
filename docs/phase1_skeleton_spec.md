@@ -8312,3 +8312,23 @@ token-position × waist-dim, the moment the skeleton trains.
   PREDICTIONS: (P1) lane yields under the crowned gate improve on
   book-4's (the register gain compounds); (P2) wild FRAC_OF bends
   appear at or above the mul->fdiv census rate (21% of fdiv usage).
+- **BOOK 5, TRANCHE 1 BANKED (2026-07-22): THE PERFECT OPENING — 13/13,
+  zero misses, under the first gate that reads the annotator's
+  language.** 16 rows (3 macro pairs, grammar mg2), 7 certificates.
+  **THE FIRST WILD FRAC_OF PAGE: [141]'s inverse proportion (135/5 via
+  the a=1 leg) — 5/5 unanimous at 27, one knot 6bdd4a0c7631** — the
+  mg2 vocabulary meets its first stranger and banks clean. Beside it:
+  [140]'s affine crown on a wild composition (18) and [138]'s
+  sub-crown emitting a THREE-DIGIT answer (109) — the crown families
+  all productive at the new desk. The prime pages swept: the vertex
+  family, the circle-completion twins ([137]; [142] its literal
+  duplicate in the harvest — one banked), perpendicular slope,
+  midpoint-bisector, the digit-sum list, the divisor counts —
+  competition families entering the corpus at 5/5 across the board.
+  **P1 CONFIRMS INSTANTLY: 13/13 vs book-4-t1's 12/15 — the register
+  gain compounds under the crowned gate.** Registry: continued-
+  fraction (NEW family), radical-form x5, nested-radical x2 — the
+  third admission's docket pricing on. Artifacts:
+  .cache/book5_prose_pairs.jsonl, book5_organ_registry_t1.json. The
+  desk is open, the examiner fluent, and the wild is teaching the
+  vocabulary back.
