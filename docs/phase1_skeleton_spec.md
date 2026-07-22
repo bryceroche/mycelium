@@ -8564,3 +8564,50 @@ token-position × waist-dim, the moment the skeleton trains.
   instrument's founding specimen: the exam works — it caught a false
   claim BEFORE a morning self could swallow it, and the first liar it
   caught was its author.
+- **GUT #53: THE BALL AND THE ATLAS RETURN (2026-07-22, Bryce + relay
+  + Code, registered; the delta-probe FIRES at two-floor vintage).**
+  The gut points at the gallery's oldest parked machinery, and the
+  greps seat the relay's history whole: the two-object fence (ball =
+  one problem's topology; atlas = the population's taxonomy; zero
+  shared coordinates — 1802), the two gates verbatim (gate-1 flat-
+  library degradation, NOT fired — the gen-14 ETF read found the
+  kinds packed FOUR THOUSANDTHS off the perfect simplex, no crowding;
+  gate-2 = the delta-probe, registered 'runnable when the tree has
+  depth — nine near-sibling kinds today = a bush'), the refuted-once
+  prior ('hyperbolic structure must be a measured property of the
+  data, never an aesthetic' — radial-depth rho 0.13), and the gate-2-
+  inherits-its-dataset rider (3201). WHAT CHANGED since the parking:
+  THE TOWER EXISTS. At registration the hierarchy was hypothetical;
+  tonight the library is two floors tall (primes -> crowns, mg2) with
+  a third chartered — and entourage-16's monitor speaks both floors
+  (9 centroids incl. frac + macro, gen-16 fst space). The probe's
+  substrate finally exists, produced as a byproduct exactly as the
+  rider predicted. Interp-2's near-conflation fenced again (no
+  taxonomy on the ball); interps 3/5 bank as prose: the house IS an
+  atlas of flat charts already — each kind's local geometry Euclidean
+  and ETF-packed, the rotation law's Procrustes alignments literally
+  transition functions between generations' charts — so the question
+  was never 'curved or flat' but 'when must the book that binds the
+  charts curve', and that stays behind the gates. **THE PROBE, BARS
+  PINNED BEFORE MEASUREMENT (kill-only; the instrument is the prize,
+  not the verdict):** substrate = monitor_centroids_gen16.npz (9
+  kinds, 512d, single vintage — no cross-generation coordinates per
+  the rotation law). Ground-truth sapling from the expansion edges:
+  frac -> {rel_mul, fdiv}; macro -> {rel_add}; given/sel/mod/pct
+  primes off the root. Reads: (i) Gromov delta / diameter on centered-
+  cosine distances (all 126 quadruples); (ii) cophenetic correlation
+  vs the sapling's path-length matrix, nulled by label permutation
+  (percentile reported); (iii) the parenthood rank read — do frac's
+  expansion children rank top-2 in frac's own distance list, and
+  rel_add top-1 in macro's; (iv) the radius footnote (interp 6):
+  crown centroid norms vs prime norms, REPORTED ONLY (radius is a
+  consolidation clock; no depth claim from one vintage). REGISTERED
+  LEAN: FLAT-ISH — two floors and nine points is a sapling below
+  delta's discrimination depth; expected cophenetic percentile <95,
+  delta/diam >~0.25. PRE-PINNED SURPRISE FRAME (so a positive can't
+  be romanced post-hoc): cophenetic percentile >=95 AND both
+  parenthood ranks hitting = 'the sapling knows its parents' — a
+  flagged accrual on the gate ledger, NOT a gate opening (depth
+  still insufficient; the gate opens on trajectory, not one point).
+  Either way the atlas's gate-2 instrument installs with its first
+  data point, re-runnable per entourage as floors accrue.
