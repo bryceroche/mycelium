@@ -52,7 +52,7 @@ V /= np.linalg.norm(V, axis=1, keepdims=True)
 
 # depth 2: pooled fst under crown_reader_v2
 p = build_params(0)
-sd = safe_load(".cache/crown_reader_v2.safetensors")
+sd = safe_load(os.environ.get("COLLAPSE_CKPT", ".cache/crown_reader_v2.safetensors"))
 for k in p:
     p[k].assign(sd[k].to(p[k].device).cast(p[k].dtype)).realize()
 fst = compute_fst(p, st, msk.astype(np.uint8), snt, list(range(len(texts))))
