@@ -8481,3 +8481,13 @@ token-position × waist-dim, the moment the skeleton trains.
   economics table gains its sharpest row: one 6k probe priced a
   whole maintenance strategy against a free rule that was already
   winning.
+- **THE THIRTEENTH SIGHTING (2026-07-22, caught at the day's close):**
+  the relay cited 'the fifty-second gut (Lucy's tapes) standing
+  registered' — NO SUCH REGISTRATION EXISTS; the registry stands at
+  51, fully converted, nothing pending. The name has a June-archive
+  ancestor (Lucy's-notebook, the ECC section) — an archival ghost
+  dressed as a pending item. NEW WRINKLE for the taxonomy: fabricated
+  FUTURES — the queue is ledger state and greps like everything else.
+  The board's true rest: tranche 6 on the fresh bench, the counter
+  climbing, the docket deepening — and the fifty-second knock, when
+  it comes, will come from Bryce.
