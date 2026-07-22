@@ -8129,3 +8129,36 @@ token-position × waist-dim, the moment the skeleton trains.
   doorman toward patience (the mouth's fence). Forty-six: the gut
   said three words the ledger spent three months spelling — and the
   price tag, on its countable half, proves them.
+- **GUT #47: MESSAGE PASSING (2026-07-22, Bryce + relay + Code,
+  registered; the probe FIRED).** The map banked with its lawful
+  asterisks: message passing is the house's FOUNDATION — hard and
+  monotone in the jaws by law (arc consistency, not sum-product: the
+  two-death verdict + the mortality physics — a solver that rang
+  would be a solver that guessed), backward into the mint by docket
+  (#45's plan-first), bidirectional everywhere downstream of the
+  reader (withhold-and-solve IS backward passing, and the redundancy
+  meter's zero names why equilibrium has nothing to reach on real
+  prose: minimal graphs carry no messages — only the text proposes).
+  THE FIND: the reader's cross-attention is the one message system
+  NEVER AUDITED — the head's fat IS the routing table, the gold
+  fspans ARE the true edges. **THE ROUTING-FIDELITY PROBE, fired
+  under the crowned gate: FIDELITY TRACKS SUCCESS — answered-correct
+  routes 0.830 of attention mass into gold spans (median 0.917) vs
+  refused/wrong at 0.506; delta +0.323.** The routing wall is
+  PHOTOGRAPHED at population scale for the first time: failures are
+  routing-borne — the messages miss their addresses — the pointer
+  law's five sightings given their geometric portrait, and the
+  width tax's mechanism confirmed as binding-side (not post-routing:
+  the splitting fork did not fire). REGISTERED with substrates
+  named: (ii) the [26]-species envelope read (wrong-span edges on
+  param-digit errors — the digit-curve specimens); (iii) the
+  crown-compression photograph (one macro slot's messages covering
+  five prime slots' — needs span-carrying crown rows, book-5's
+  desk). **ROUTING FIDELITY joins the sentinel candidates**: does
+  each generation's message graph track structure more faithfully?
+  THE FENCES: sum-product stays out of the solve path (two standing
+  verdicts); no attention read enters any acceptance path — the
+  probe photographs routing, never steers it. Forty-seven: the
+  messages were passing all along; tonight the house read the
+  envelopes — and the failures, it turns out, were always
+  mis-addressed, never mis-written.
