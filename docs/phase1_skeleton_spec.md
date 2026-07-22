@@ -8432,3 +8432,30 @@ token-position × waist-dim, the moment the skeleton trains.
   BOOK 5 TOTALS: **56 pages / 63 rows / 7 crown pairs / 34
   certificates** — five tranches, the fresh stock opened, the desk's
   quality control proven against every party including its own hand.
+- **GUT #51: THE PRISM (2026-07-22, Bryce + relay + Code, registered;
+  the band-dose probe CHARTERED AND FIRED).** **(a) THE PRISM LAW:**
+  the parse is a spectrometer — white prose in, spectral lines out
+  (router = the low band/structure; pointers = mid/bindings; digit
+  banks = high/values), the collapse probe as the dispersion proof;
+  the autopsy suite was always PER-BAND PHOTOMETRY (digit curve =
+  high, routing fidelity = mid, acceptance = low), now read as one
+  spectrum analyzer; THE TOWER IS A RE-DISPERSION DEVICE (crowns
+  shift problem mass from the high band to the low — the canyon
+  damping in optics). **(c) THE FENCES:** no head-to-band assignment
+  by design (C2's ghost); the bands share weights so COUPLING IS
+  PHYSICS, not failure — the gift pattern is off-band coupling with
+  a positive sign (four sightings); the probe measures SELECTIVITY,
+  never demands isolation. **(b) THE BAND-DOSE PROBE — charter:**
+  substrate = canyon-shape rows minted to volume through the
+  standing gates (2-digit divisors across the range, the clamp
+  floor, mag-3 operands — the three wild specimens' shapes as
+  seeds); corpus = the crown_v4 base + canyon rows band-weighted;
+  6k continuation from gen-16. BARS PINNED: TARGET — param-path
+  digit accuracy mag-2 >=0.93 (baseline 0.903) OR mag-3 >=0.88
+  (baseline 0.837), read by the standing digit curve; GUARD —
+  bigtest >= 1208 (the record's own floor, 1223−15). SELECTIVE =
+  target moves with the guard held -> the house gains SPECTRAL
+  REPAIR (targeted continuations as standing maintenance, cheaper
+  than generations); COUPLED = the coupling coefficient banks as
+  law (train the whole spectrum or don't bother). Either verdict
+  prices interp 4 permanently.
