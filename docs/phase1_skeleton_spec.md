@@ -8332,3 +8332,26 @@ token-position × waist-dim, the moment the skeleton trains.
   .cache/book5_prose_pairs.jsonl, book5_organ_registry_t1.json. The
   desk is open, the examiner fluent, and the wild is teaching the
   vocabulary back.
+- **BOOK 5, TRANCHE 2 BANKED (2026-07-22): 11/12 — every prime page
+  5/5, two crowns banked, and the miss is A PRIZE SPECIMEN.** The
+  primes swept (the arithmetic-geometric chain [156] at 52, complete-
+  the-square [158] at 91, the fencing rectangle, the pi-interval
+  count, exponent systems — all unanimous); [160]'s identity
+  sub-crown and [166]'s eval crown banked both floors. **[157] — the
+  second wild FRAC_OF attempt, on a RATE-family stranger — missed
+  5/5-UNANIMOUS at 17: THE CANYON'S FINGERPRINT, WILD-CAUGHT A
+  SECOND TIME.** The mechanism to the digit: k=13 read as k=3 (tens
+  dropped, ones kept — [26]'s exact signature, '27'->7 now '13'->3),
+  52//3 = 17, cold across every view. The chronic rate family
+  defends itself with the canyon mechanism itself — the specimen
+  files to the autopsy docket beside [26], and the v2 retry inherits
+  the validated cure (mul-inverse path swap) for tranche 3. THE
+  DIAGNOSTIC NOTE: the param-path digit erosion persists at
+  TWO-digit k under the crowned gate (the digit-curve's 0.903
+  mag-2 read confirmed at the desk) — the canyon bar held on
+  crown-form answers (result-path) while the fdiv-form param path
+  still erodes: the crown's damping is real AND the uncrowned fdiv
+  path keeps its canyon, exactly as the mechanism predicts. BOOK 5
+  TOTALS: 24 pages / 29 rows / 5 crown pairs (2 wild FRAC_OF
+  attempts, 1 banked) / 15 certificates; partial-fractions,
+  region-counting, symmetric-identity families deepening the docket.
