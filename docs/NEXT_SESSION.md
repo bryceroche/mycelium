@@ -1,3 +1,25 @@
+# NEXT SESSION — start here (handoff, 2026-07-22 — GEN-16 WEARS THE CROWN)
+
+## **GEN-16 PROMOTED = crown_reader_v4 — the first gate that reads the
+tower's vocabulary.** Records down the column: **bigtest 1223** (3rd
+consecutive), **alg4test 402 (first >400 ever)**, alg2 663, cert-v2
+**927 @ 1.0000** (widest channel ever, 61.8%), vtest 599/600, dag
+691/575/580; adversarial blind spot SHRANK (9/20 vs gen-15's 12/20),
+guard 20/20 carried. GATE ENV: ALG_FTYPES=8,
+GATE=.cache/crown_reader_v4.safetensors; mg2 a manifest citizen; macro
+column at saturation vintage (68%, curve 35/55/64/68 attached). OWED:
+**entourage-16** (edit entourage15.py: parser=v4, FTYPES=8, family=
+crown_v4 corpus, E16 seeds; note the battery/pen prefix seam — parameterize
+gen-N in battery/verdict for gen-17); dissent overlap under the new gate.
+THEN: **book 5** under the strongest reader in history (ink list + ~90
+candidates + the crown vocabulary live at the desk); the third admission
+([100]'s customer) / macro-of-macro (3 instruments) as the room-buying
+tine. Guts at 44; bias law 10 specimens; collapse ratio 0.22 sentinel
+candidate (re-read under gen-16 = the quotient-deepening question's
+first datapoint).
+
+# PRIOR HANDOFF BELOW
+
 # NEXT SESSION — start here (handoff, 2026-07-21 final — the curve seal)
 
 ## **THE ACQUISITION CURVE IS MEASURED: 35 → 55 → 64 → 68, saturating at
