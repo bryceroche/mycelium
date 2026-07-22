@@ -8399,3 +8399,15 @@ token-position × waist-dim, the moment the skeleton trains.
   richer, and the docket pricing on (radical-rationalize x4,
   factoring-diophantine x2). The desk needs nothing but pages, and
   the pages keep teaching.
+- **THE FLOOR AMENDMENT (2026-07-22, relay countersign, banked with the
+  lane pass):** the rate family's two desk banks amend the ladder's
+  floor fence — **the substrate floor bounds what the head can LEARN,
+  not what the path can AVOID**: routing around a fused representation
+  (the mul-inverse voicing, the crown's path swap) is a rung the fence
+  never priced because no one had walked it; [45]'s entanglement
+  stands as the limit on binding-layer cures, and the desk's voicing
+  stands as the lawful detour. *What the substrate can't separate,
+  the voicing can route around.* THE LANE PASS FIRED: the first
+  re-classification under a crown-reading gate (fresh 200 from the
+  harvest, all consumed candidates excluded; re-pricing watch vs
+  book-4-era 71% L3).
