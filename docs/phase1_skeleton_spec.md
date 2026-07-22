@@ -7997,3 +7997,13 @@ token-position × waist-dim, the moment the skeleton trains.
   the solver's free serial steps alone. Forty-four: the stack's own
   harmony, heard and measured — [73]'s last four views are waiting
   for practice, with room as the co-payer.
+- **CROWN CONTINUATION v4 CHARTER (2026-07-21, registered before
+  watts).** The curve's FOURTH POINT — 35 -> 55 -> 64 -> ? — decides
+  bar-vs-saturation. Same levers per law: fresh uniques (seed 5500,
+  2,000 new five-voice knots; total ~6k unique crowns), 16k warm from
+  v3, LR 1e-4 flat. BARS: pooled >=70% AND min-key >=50%; the
+  dividend re-fires; canyon holds; displacement floor **1205** (the
+  record's own guard). The width gradient rides as the read's second
+  column: if the curve saturates while low-width crowns clear the
+  bar, the width tax is confirmed at acceptance grain and
+  macro-of-macro's docket opens with two instruments' evidence.
