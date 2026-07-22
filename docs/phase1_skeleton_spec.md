@@ -8162,3 +8162,14 @@ token-position × waist-dim, the moment the skeleton trains.
   messages were passing all along; tonight the house read the
   envelopes — and the failures, it turns out, were always
   mis-addressed, never mis-written.
+- **GUT #47 ADDENDUM (2026-07-22, relay countersign — the canyon
+  re-read through the photograph):** the splitting fork's silence
+  EXONERATES the digit banks and deepens #40's mechanism — the
+  crown's canyon-damping was never about cleaner writing; it was
+  about FEWER ENVELOPES TO ADDRESS: a macro slot collapsing five
+  bindings collapses five addressing risks with them. Every future
+  repair aims at one mechanism — the addressing — and the reader's
+  complete anatomy now stands from banked states alone: the quotient
+  LOCATED (collapse crossover), the compression CERTIFIED (the IB
+  gauge), the topology PHOTOGRAPHED (routing fidelity) — three
+  instruments, zero training runs, each arriving with its data.
