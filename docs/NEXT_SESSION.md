@@ -1,3 +1,26 @@
+# NEXT SESSION — start here (handoff, 2026-07-21 late — the record seal)
+
+## **BIGTEST 1220 — CAMPAIGN RECORD, from the crown-era bench.**
+crown_reader_v3 (.cache, FTYPES=8) printed 1220 on a displacement check
+— above gen-15's gate (1207). **THE GATE-CANDIDACY QUESTION IS OPEN**:
+full promotion battery on v3 = next session's standing offer (fixtures,
+acceptance, cert-v2, the five-column sentinel walk + adversarial exam;
+gen16_verdict holds the pen). THE ACQUISITION CURVE: 35 -> 55 -> 64
+(decelerating; of-voice 75% first above bar; the FOURTH point decides
+bar-vs-saturation — one more continuation, fresh uniques per the law).
+[73]'s crack HOLDS at exactly one view across three fires. Canyon
+perfect x3 (100/72). THE COLLAPSE PROBE PRINTED: the bottleneck lives
+in the HEAD (trunk frames-rule 1.8x; head knots-rule 4.5x inverted;
+ratio 0.22 = sentinel candidate). Guts 41-43 converted (search married
+at the mint — grammar is the lever; knots+keys — the (knot,key) law,
+27/27 transposition; the IB named — iterated bottleneck, the scars'
+clause). E15 paid (dissent family structural 37/56). FRAC_OF admitted
+mg2 (four clauses, F4: [73]=gold in 5 factors on paper). Queue: (1)
+v3's promotion battery OR the fourth curve point; (2) book 5 (ink list
++ ~90 candidates); (3) third admission (customer named by [100]).
+
+# PRIOR HANDOFF BELOW
+
 # NEXT SESSION — start here (handoff, 2026-07-21 crown-era seal)
 
 ## **THE WALL CRACKED.** The crown era's first day: FRAC_OF admitted
