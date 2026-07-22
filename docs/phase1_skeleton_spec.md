@@ -8355,3 +8355,26 @@ token-position × waist-dim, the moment the skeleton trains.
   TOTALS: 24 pages / 29 rows / 5 crown pairs (2 wild FRAC_OF
   attempts, 1 banked) / 15 certificates; partial-fractions,
   region-counting, symmetric-identity families deepening the docket.
+- **BOOK 5, TRANCHE 3 BANKED (2026-07-22): 11/13 — THE CURE'S THIRD
+  APPLICATION CONVERTS THE SPECIMEN, and the misses mint a desk
+  rule.** **[157]'s retry BANKS 5/5 at the true 4** (k=13 through the
+  given path — the mul-inverse cure now three-for-three across two
+  books) — the rate-family stranger that defended itself with the
+  canyon yesterday reads clean today. All eleven primes swept
+  (ceil-sum 112, the four-variable system 99, the perfect-square 225,
+  nested radical 30 at 3/5 — the harder strata unanimous nearly
+  throughout). THE MISSES, both diagnostic: **[176] = THE THIRD WILD
+  CANYON SPECIMEN — 'divided by 10' collapsed k to the clamp floor
+  (120//2 = 60, 5/5 cold): the family's signature now reads
+  '27'->7, '13'->3, '10'->0(->clamp)** — TWO-DIGIT DIVISORS ARE
+  SYSTEMATICALLY CANYON-PRONE at the raw fdiv path, three
+  independent strangers deep. **THE DESK RULE MINTED (the rulebook
+  growing by refusal, as it always has): TWO-DIGIT DIVISORS VOICE AS
+  MUL-INVERSE** — the prime twin's dialect is the annotator's to
+  write, and the expansion stays fdiv while the voicing takes the
+  path that holds at all magnitudes; [176]'s v2 inherits it. [185]
+  missed by ONE VOTE with the CORRECT answer twice ([49,49] — a
+  near-miss, not cold; the retry bench). BOOK 5 TOTALS: 35 pages /
+  40 rows / 5 crown pairs / 22 certificates; radical-form at x6.
+  The desk's rhythm holds: cures convert, specimens file themselves,
+  and the rulebook writes its own amendments one refusal at a time.
