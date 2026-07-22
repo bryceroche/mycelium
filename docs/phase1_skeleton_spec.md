@@ -8061,3 +8061,34 @@ token-position × waist-dim, the moment the skeleton trains.
   the species has a factory, the diet has a countermeasure, both are
   measured furniture; the adversarial column now tracks the count
   per promotion as the hypothesis's standing test.
+- **GUT #45: PLANNING (2026-07-22, Bryce + relay + Code, registered as
+  amended).** THE ELEVENTH SIGHTING at the door (fabrication):
+  'hi-moe's four-tier hierarchy' — zero hits in docs or archive; the
+  GRAVE is real (the v-era GSM8K plateaus, the buried notebook,
+  Brick-P) but the named specimen is INVENTED — a christened
+  architecture that never existed; filed, graves re-cited to their
+  real citizens. THE CONSTITUTIONAL MAP: forethought lives in the
+  SOLVER by construction (GAC is constraint lookahead; MRV/LCV order
+  by foresight — the two-death-mode law closed neural planning
+  because the symbolic planner was already optimal), in the CORPUS
+  by inversion (solution-first generation is planning run backwards),
+  and in the CAMPAIGN by registration (bars-before-builds). Plans
+  enter the READING path only as ADMITTED FLOORS, never invented
+  goals. **(a) THE CASCADE'S TRUE NAME:** the drawer entry upgrades —
+  the skeleton-first cascade IS the house's planning architecture
+  (the macro skeleton is the plan node: few factors, cheap to
+  enumerate, gated at admission; expansion is the execution; closure
+  keeps every plan auditable) — and the WIDTH TAX (51% top-tertile
+  refusals) registers as its accruing trigger evidence: when a graph
+  is too wide to bind flat, parse the plan first, then the rooms.
+  Beam-over-plans, not beam-over-tokens — the lattice already IS
+  one-level beam search (20 candidates, solver-consistency pruning,
+  plurality+fingerpost scoring); the tree grows only at floor
+  boundaries. **(b) PLAN-FIRST MINTING** amends the grammar-width
+  docket: when the mint's grammar widens, sample the target
+  COMPOSITION first (covers, width, key — from the notebook's
+  absent-list), then realize it — solution-first generation extended
+  one level up, making the 44% sliver directly targetable rather
+  than stumbled-toward. **(c) THE PROSE LAW:** the crowns are the
+  plans — the house has been building forethought as VOCABULARY all
+  along; a plan the gate admitted is a plan the key can grade.
