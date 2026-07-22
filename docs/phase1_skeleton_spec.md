@@ -7970,3 +7970,30 @@ token-position × waist-dim, the moment the skeleton trains.
   session's standing offer; the crown era's reader may be the
   campaign's best head at everything, not just crowns. The curve, the
   crack, and the record: the era's state in three numbers.
+- **GUT #44: WIDTH OVER DEPTH (2026-07-21, Bryce + relay + Code,
+  registered; (a) FIRED).** The house's most-litigated axis, and every
+  banked trial votes with the gut: Brick-P (depth recurrence dead in
+  the parse), the repair anatomy (44->16->4->0 — depth re-asks the
+  same voice), the lattice arc (width was the cure, 21.9->79.7), the
+  count wall (the head pays for simultaneous bindings, never chain
+  length — the solver runs serial steps free). The deployed
+  certification geometry IS the gut's design: witnesses in parallel,
+  disposal at leisure. **(a) THE WIDTH-VS-DOSE JOIN — DOSE STANDS by
+  the pinned conjunction** (refused median width 6 vs accepted 5 —
+  no cliff), **with the gradient logged loudly: top-width tertile
+  refuses at 51% vs bottom 22% (2.3x)** — width is a CO-FACTOR of
+  the crown's remaining refusals, not the cap; the fourth
+  continuation proceeds as charted, and MACRO-OF-MACRO's case
+  accrues (the tower compressing width again — the second dividend
+  mechanism, named, unforced). **(b) THE DRAWER UPGRADE:** the
+  deducer's parked pre-registration gains the gut's design —
+  W parallel settlers SPECIALIZED BY PROPAGATION SCHEDULE (orderings,
+  floor-priorities, constraint-first vs value-first): decorrelated
+  witnesses BY CONSTRUCTION, where identical settlers with different
+  seeds are one witness stuttering; gated as ever behind the
+  redundancy meter. **(c) THE PROSE LAW: width is the house's answer
+  in every jaw** — the reader binds wide, the witnesses convene
+  wide, the solver may someday settle wide — and depth belongs to
+  the solver's free serial steps alone. Forty-four: the stack's own
+  harmony, heard and measured — [73]'s last four views are waiting
+  for practice, with room as the co-payer.
