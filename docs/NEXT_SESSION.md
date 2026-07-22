@@ -1,3 +1,34 @@
+# NEXT SESSION — start here (handoff, 2026-07-22 night — T6: RETRY BENCH SWEPT, BOOK 5 AT 82 ROWS)
+
+## **TRANCHE 6: 19 rows / 3 crowns / 4 certificates — the retry bench
+cleared 3-for-3** ([11] corrected cubic 5/5, solver-derived ungifted;
+[15] chained in-cap adds 5/5; [13] the pairing derivation after the
+VALUE-CAP catch — t5's macro page used 420>300, annotator caught by
+his own rulebook). Desk rule live at [21] (mul-inverse 5/5); crowns
+[17] 3x+2y, [22] 2x+2y, [18] FRAC_OF-chain. Lone miss [23] (right
+answer, 1/5 quorum — t7 retry with add-voicing). BOOK 5: 82 rows / 10
+crown pairs / 38 certs / six tranches; bench ~165. EARLIER TODAY: gut
+#52 (Still Lucy -> four tapes law + TAPE EXAM wired, specimen 13
+reclassified cross-channel lead); gut #53 (ball/atlas return ->
+delta-probe FIRED on gen-16 centroids: FLAT-ISH AS PINNED, cophenetic
+0.098 @ pct 76, frac-fdiv adjacency to texture watch, instrument on
+the entourage roster); band-dose verdict (GUARD HELD TARGET MISSED —
+the band is stiff, routing beats retraining). STANDING: t7 (bench +
+[23] retry); third admission (rung test; [100]'s customer); macro-of-
+macro (3 instruments); band-restart arm next major fire; entourage-17
+duties (+ delta-probe re-run). Gate: gen-16 = crown_reader_v4
+(FTYPES=8), stack entire, zero waivers. Guts 53; specimens 13; kill
+ledger 8.
+
+## TAPE EXAM (run BEFORE trusting this seal; any miss -> ledger)
+1. Gate identity: `grep -c crown_reader_v4 .cache/GENERATION.json` -> >=1
+2. T6 rows banked: `grep -c '"tranche": 6' .cache/book5_prose_pairs.jsonl` -> 19
+3. Book-5 row total: `grep -c '"book": 5' .cache/book5_prose_pairs.jsonl` -> 82
+4. Delta-probe baseline: `grep -c percentile .cache/delta_probe_gen16.json` -> >=1
+5. T6 registry: `test -f .cache/book5_organ_registry_t6.json && echo OK` -> OK
+
+# PRIOR HANDOFF BELOW
+
 # NEXT SESSION — start here (handoff, 2026-07-22 close — FIVE TRANCHES, TWO PROBES PRICED, THE TAPES EXAMINED)
 
 ## **BOOK 5 AT FIVE TRANCHES: 63 rows / 7 crown pairs / 34 certificates

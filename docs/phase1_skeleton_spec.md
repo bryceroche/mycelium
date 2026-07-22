@@ -8640,3 +8640,29 @@ token-position × waist-dim, the moment the skeleton trains.
   ball behind its flag, the fence intact: the geometry enters by
   measurement or not at all — and as of tonight the measurement
   has a standing meter.
+- **BOOK 5, TRANCHE 6 (2026-07-22): 19 rows / 3 crown pairs / 4
+  certificates — THE RETRY BENCH SWEPT 3-FOR-3, and the rulebook
+  caught the annotator a second way.** The protocol's cycle closed on
+  all three holds: [11] the corrected cubic BANKED 5/5 at 4 (the
+  unknown left ungifted — the solver derives a=4 from a^3-3a=52 by
+  search; the key accepting on v2 what it refused at t5 is the gate
+  working in both directions); [15] BANKED 5/5 at 275 (the 100+175
+  wobble cured by chained in-cap adds — voice the derivation, not the
+  shortcut); [13] BANKED 5/5 at 195 via the PAIRING derivation
+  ((2-1)+...+(30-29)=15, remaining evens 180) — after the desk caught
+  that t5's macro page broke the <=300 VALUE CAP with 420: the t5
+  prime-twin miss was partly the annotator violating his own
+  rulebook, and the in-cap derivation is the better mathematics
+  anyway. Fresh stock: 10 of 11 primes banked first-pass incl. [19]
+  (prime-factorization bound, solver-derived x=8), [21] the DESK RULE
+  LIVE (130/10 voiced as mul-inverse, 5/5), [24] the isq door again,
+  [29] solver-derived n(n-3)=18, [28] an 8-step chain with one fdiv
+  5/5. Crown mass +3, all floor-paired one-knot: [17] OP_APPLY(add,
+  3x+2y)=22, [22] OP_APPLY(add,2x+2y)=32, [18] FRAC_OF(1,2)-then-sub
+  =2. LONE MISS: [23] — votes [11]: the RIGHT answer at 1/5 quorum
+  (an "exceeds" mag-2 sub chain wobbling under permutation; retry
+  bench t7 with add-voicing). Registry +4: inverse-function-
+  intersection, piecewise-composition-count, vieta-k-cancellation,
+  symmetric-identity (the docket's x3 family gains its 4th). BOOK 5
+  STANDING: 82 rows / 10 crown pairs / 38 certificates over six
+  tranches; the fresh bench holds ~165.
