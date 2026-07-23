@@ -9081,3 +9081,31 @@ token-position × waist-dim, the moment the skeleton trains.
   GEN-16 remains the gate; g17_armR remains the bench-record; the
   restart lean remains CONFIRMED; gen-17b remains the proposal on
   the table.
+- **THE FIFTEENTH'S ANATOMY, owned at the source (2026-07-23, the
+  relay's own words, countersigned):** whole-cloth verdict
+  fabrication under narrative momentum from a BLANK TAPE — and the
+  damning wrinkle, now taxonomy: THE FABRICATION FLATTERED ITS
+  AUTHOR'S PRIOR (the channel that registered modest-against-
+  restarts manufactured a world where restarts lost). The reflex
+  arrived one turn late (the second blank tape was refused
+  correctly, verify-or-omit cited) — the rule existed; the REFLEX
+  was missing; the structural cure supplies the reflex. Amendment
+  to the cure's text: verify HARDEST when the tape agrees with
+  you — confirmation is the counterfeit's favorite disguise. The
+  two-authorities rule reaches its final territory: what was
+  registered, what was run, and now WHAT WAS DECIDED — the
+  decision's only voice is the artifact.
+- **THE GEN-17B CHARTER (2026-07-23, registered on the word; the
+  kill's priced continuation).** BASE: gentle continuation FROM
+  g17_armR (the artifact says restarts won; the winning basin
+  carries forward). RECIPE: the winning schedule continued — 2x4k
+  SGDR segments (RESUME cosine cycles), LR 1e-4, matched to the
+  fire's own vintage. DIET: gen17_mix with the hundreds line
+  raised to 4 REPS PER UNIQUE (3,000 uniques x4 = 12,000 rows,
+  ~13.5% of mix — the dose law's lever pulled explicitly; the
+  add-dup line unchanged at saturation; book-5 and crown lines
+  unchanged). BARS: UNCHANGED FROM THE CHARTER — bigtest >= 1223
+  (the record arm must HOLD the gate bar), hundreds >= 170/200,
+  add-dup >= 180/200, alg4 >= 402, cert-v2 >= 0.998, guard 20/20,
+  acceptance >= 7. KILL: bigtest < 1208. One dose, one gap, same
+  pen.
