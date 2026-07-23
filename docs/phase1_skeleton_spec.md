@@ -9205,3 +9205,36 @@ token-position × waist-dim, the moment the skeleton trains.
   instrument works: one read, the charter's premise graded, the
   residue sized, the sentence written before the battery could be
   narrated by anyone.
+- **THE GEN-17B VERDICT (2026-07-23): KILL — bigtest 1206 under the
+  1208 floor; the manifest stays GEN-16 — AND THE KILL BUYS THE
+  CAMPAIGN'S CLEANEST DOSE-RESPONSE CURVE.** The dose did EXACTLY
+  what the zone read predicted and then some: h3held 198/200 = 0.99
+  (0.00 -> 0.805 -> 0.99 across two fires; penumbra converted AND
+  the dark mass converted — the line was dose and vocabulary at
+  once, both medicines landed); adupheld held at 198. THE PRICE:
+  bigtest 1232 -> 1206 (−26) and alg4 400 -> 396 — the 13.6% x
+  4-reps dose bought its target OUT OF THE GENERAL REGISTER. The
+  percentages-smuggle-repetition law measured live, two clean
+  points on the curve: (1 rep: h=161, big=1232) and (4 reps @+8k:
+  h=198, big=1206) — displacement ~9 bigtest answers per rep-step,
+  acquisition ~12 h-rows per rep-step. Cert-v2 1.0000 (929 — the
+  certified core UNTOUCHED by the displacement: the register loss
+  is penumbra-mass, not umbra — the two-silhouette law's first
+  cross-read). ALSO NOW VISIBLE: alg4 fails its 402 bar at EVERY
+  measured point of the gen-17 family (400/400/396) — the gen-17
+  mix itself costs ~2 alg4 answers; the binding constraint is no
+  longer the hundreds line. THE FORK, priced for the word: (A)
+  17c-interpolation — 2 reps from armR, ~8k: the curve predicts
+  h~175, big~1224 — BOTH bars knife-edge, alg4 likely still under
+  by ~2; (B) 17c-fresh-uniques — the house's own validated lever
+  (fresh uniques over re-epochs, the crown-continuation law): mint
+  6,000 NEW unique hundreds rows (not reps), 1 rep each, continue
+  from armR — historically regularizes instead of crowding, and
+  the alg4 question gets its own autopsy before any bar bends.
+  RECOMMENDATION: (B), with an alg4 slot-autopsy (which 6 answers
+  did the gen-17 family lose vs gen-16, zero-GPU from banked logs)
+  BEFORE the fire — the binding constraint deserves its mechanism
+  before another dose is priced. g17b banks as bench artifact
+  beside armR. Two kills, two fires, and the ledger holds: a
+  record, a saturated line, a displacement coefficient, and a
+  named binding constraint — the era's economics in four numbers.

@@ -1,3 +1,30 @@
+# NEXT SESSION — start here (handoff, 2026-07-23 night — 17B KILLED CLEAN; DOSE-RESPONSE CURVE BANKED)
+
+## **17B KILL: bigtest 1206 < 1208 floor; manifest stays GEN-16.** But
+the science is whole: h3held SATURATED 198/200 (0->0.805->0.99, zone
+read's penumbra prediction fulfilled, dark converted too); dose
+displaced the register (1232->1206, alg4 400->396) — the
+dose-response curve has two clean points (~9 bigtest lost / ~12
+h-rows gained per rep-step); cert-v2 1.0000 (929) — displacement is
+penumbra-mass, umbra untouched (two-silhouette cross-read). BINDING
+CONSTRAINT NOW: alg4 under its 402 bar at every gen-17 point
+(400/400/396). FORK AWAITING THE WORD: (A) 2-rep interpolation
+(knife-edge) vs (B) RECOMMENDED: fresh-uniques 17c (6k new hundreds
+uniques, 1 rep, from armR) + alg4 slot-autopsy FIRST (which 6
+answers lost vs gen-16 — zero-GPU from banked logs). Bench artifacts:
+g17_armR (1232 record), g17b (h-saturated). Board otherwise: book 5
+~95 bench; zone column now standing; routing-canvas gated on this
+family's conclusion; guts 57; specimens 16.
+
+## TAPE EXAM (run BEFORE trusting this seal; any miss -> ledger)
+1. Gate: `python3 -c "import json; print(json.load(open('.cache/GENERATION.json'))['gen_id'])"` -> 16
+2. 17b banked: `test -f .cache/g17b.safetensors && echo OK` -> OK
+3. Kill in log: `grep -c 'KILL: both arms bigtest' .cache/battery_gen17b.log` -> 1
+4. Zone read banked: `grep -c PENUMBRA .cache/zone_read_hundreds_armR.json` -> >=1
+5. Curve in ledger: `grep -c 'dose-response' docs/phase1_skeleton_spec.md` -> >=1
+
+# PRIOR HANDOFF BELOW
+
 # NEXT SESSION — start here (handoff, 2026-07-23 late — GEN-17 FIRE: NO PROMOTION, RICH KILL)
 
 ## **THE PEN REFUSED BOTH ARMS (bars pre-pinned, no bending); manifest
