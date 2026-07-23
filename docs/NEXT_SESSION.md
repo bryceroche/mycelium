@@ -1,3 +1,32 @@
+# NEXT SESSION — start here (handoff, 2026-07-23 — FIRST WIDE TRANCHE: BOOK 5 AT 125 ROWS, CROWN MASS 23/25)
+
+## **T8 (WIDE, width law's maiden voyage): 30 rows / 2 crowns / 5
+certs; annotator floor HELD 0.86.** [45] crown banked DECOMPOSED (the
+diet-wall rule validated on its own minting specimen); [93] m-dial
+isq 5/5; in-diet mag-3 givens (100/270) unanimous as the probe
+predicted. NEW TEXTURE PAIR: [66]+[69] voted EMPTY on 'a plus a' —
+ADD-DUP UNTRAINED suspected (mint dup coverage probe registered;
+interim: voice doubling as mul). [36] chronic (2 misses, different
+wrongs) -> slot autopsy owed. EARLIER: zero-hinge probe -> THE DIET
+WALL (hundreds<=2 reads 20/20, >=3 reads 0/60 — the mint's <=300 cap
+IS the wall; givens>=300 decompose; diet line priced for next fire);
+width law registered (floor 0.75); rung test (0 admissions, m-dial);
+discharge ledger live. STANDING: **CROWN MASS 23/25 — two knots from
+the zener's major-fire registration review**; t9 bench (retries [36
+autopsy first], [60], [66], [69], [75]); bench ~130 fresh; mint
+dup-coverage probe (zero-GPU grep); macro-of-macro 3/5. Gate: gen-16
+= crown_reader_v4 (FTYPES=8), stack entire, zero waivers. Guts 54;
+specimens 13; kill ledger 8.
+
+## TAPE EXAM (run BEFORE trusting this seal; any miss -> ledger)
+1. Gate identity: `grep -c crown_reader_v4 .cache/GENERATION.json` -> >=1
+2. T8 rows: `grep -c '"tranche": 8' .cache/book5_prose_pairs.jsonl` -> 30
+3. Book-5 total: `grep -c '"book": 5' .cache/book5_prose_pairs.jsonl` -> 125
+4. Diet wall banked: `grep -c 'THE DIET WALL' docs/phase1_skeleton_spec.md` -> >=1
+5. Crown mass: `python3 -c "import json; print(json.load(open('.cache/discharge_ledger.json'))['wild_crown_mass'])"` -> 23
+
+# PRIOR HANDOFF BELOW
+
 # NEXT SESSION — start here (handoff, 2026-07-22 late night — T7 + THE 420 TRANSPOSITION)
 
 ## **TRANCHE 7: 13 rows / 2 crowns / 7 certs; BOOK 5 AT 95 ROWS / 12

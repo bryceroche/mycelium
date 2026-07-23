@@ -8868,3 +8868,29 @@ token-position × waist-dim, the moment the skeleton trains.
   shape. The texture rule's economics again: two specimens, one
   probe, one wall named, one rule re-scoped, one diet line priced
   — 62 seconds of reader time.
+- **BOOK 5, TRANCHE 8 (2026-07-22): THE FIRST WIDE TRANCHE — 30 rows
+  / 2 crown pairs / 5 certificates at width 31+2; ANNOTATOR FLOOR
+  HELD (fresh first-pass 25/29 = 0.86 vs 0.75).** The width law's
+  maiden voyage banked more rows than any tranche in campaign
+  history. THE RULES EARNED THEIR KEEP IN THE WILD: [45]'s crown
+  RETRIED DECOMPOSED (42x10 -> 420 derived, givens in-diet) banked
+  4/5 at 108 — the diet-wall rule validated on the specimen that
+  minted it; [93] the m-dial isq (400 intermediate, m=500) 5/5;
+  [67] and [85] carried IN-DIET mag-3 givens (100, 270 — hundreds
+  <=2) unanimous, the probe's clean-class prediction confirmed in
+  the wild. [58] the full two-equation penny system solver-derived
+  4/5 at 17. [73] FRAC_OF crown 5/5. MISSES (5), BATCHED BY
+  MECHANISM per the width law: **(m1) ADD-DUP UNTRAINED — [66] and
+  [69] both voted EMPTY on 'a plus a': the doubling phrase parses
+  to nothing across all ten views. TWO SPECIMENS, ONE MECHANISM —
+  the TEXTURE RULE FIRES AGAIN: ALG_DUP was minted for mul
+  self-pairs ('a times a' banks all day); the mint plausibly never
+  produced additive dups. Probe candidate registered (grep the
+  mint's dup coverage by op); INTERIM CURE: voice doubling as mul
+  ('b is 2. a times b').** (m2) [36] CHRONIC (2nd miss, different
+  wrong — 8 now, 9 before): the mid-chain exceeds+squares
+  composition needs a slot autopsy, not another voicing guess.
+  (m3) [60]/[75] quorum wobbles (2/5 correct both) — standard
+  retry cures assigned (add-voicing / fdiv-voicing). BOOK 5: 125
+  rows / 14 crown pairs / 50 certificates over eight tranches;
+  CROWN MASS 23/25 — two from the zener's pinned fire.
