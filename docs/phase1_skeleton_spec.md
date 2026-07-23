@@ -9346,3 +9346,26 @@ token-position × waist-dim, the moment the skeleton trains.
   three lawful kills, the gate holding gen-16 with zero waivers —
   and the era's question sharpened to one word: is the register's
   toll NOISE or DRIFT?
+- **THE WOBBLE CENSUS VERDICT (2026-07-23): NOISE AND DRIFT, both —
+  the campaign's first trajectory photograph decomposes the era's
+  question.** Eight snapshots, two fixtures: RAW bands enormous
+  (bigtest 121: 1098-1219; alg4 53: 336-389) but REGIME-TAGGED —
+  the hot mid-cosine phase dominates; the ANNEALED TAIL
+  (s3000/3500/4000) reads bigtest 1219/1209/1214 (**+-10 noise
+  floor at convergence**) and alg4 380/380/386 (+-6). DECOMPOSED:
+  (1) ALG4'S DEFICIT IS REAL DRIFT — 16-22 under its 402 bar,
+  exceeding its +-6 band; the gen-17 mix family genuinely erodes
+  alg4 under continuation. (2) BIGTEST IS MARGINAL-REAL — tail
+  13-23 under armR's 1232, at the edge of its +-10 band. (3) THE
+  DOSE-CURVE SLOPES (~9/rep-step) ARE THE SAME ORDER AS THE NOISE
+  — the displacement coefficients gain honest error bars; single-
+  point dose readings are hereafter suspect. (4) THE BAR-NOISE LAW
+  GAINS ITS FIRST MEASURED FLOOR: bigtest +-10, alg4 +-6 at
+  annealed grain — future bars carry margins >= the floor, or
+  batteries eval snapshot-averages. (5) **GUT #57'S LEAN REFUTED
+  BY ITS OWN CENSUS** — 'modest wobble, lever marginal' dies at
+  +-10 measured; THE EMA FLYWHEEL UN-PARKS, its probe chartered
+  by the census's own registration structure: average the three
+  annealed snapshots, eval once — PASS bar pinned before firing:
+  avg bigtest >= 1219 (the best constituent) = smoothing recovers
+  noise; under = basins disagree, re-park with a measured no.
