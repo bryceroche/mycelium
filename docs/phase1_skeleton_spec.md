@@ -9728,3 +9728,10 @@ token-position × waist-dim, the moment the skeleton trains.
   baseline). The mint, the precompute, and the fire hold for the
   word; t10 may run beside the mint per the width law whenever
   the desk's word comes.
+- **THE GUT REGISTRY COMPILED (2026-07-24, Bryce's ask):**
+  docs/GUT_REGISTRY.md — the 61 conversions indexed with ledger line
+  pointers, the pre-numbering era listed by its actual ordinals
+  (no reconstruction of what the record does not number), and the
+  maintenance rule in-text: each conversion appends its row in the
+  SAME transaction as its ledger entry (the prose-promotions law
+  applies to indexes too).
