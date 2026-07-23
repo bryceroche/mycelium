@@ -224,7 +224,15 @@ for ln in open(".cache/crown_v4.jsonl"):
 for rows in (h_train, d_train, c_train):
     for r in rows:
         mix.append(json.dumps(r))
-b5 = [ln.rstrip("\n") for ln in open(".cache/book5_prose_pairs.jsonl")]
+b5 = []
+for ln in open(".cache/book5_prose_pairs.jsonl"):
+    r = json.loads(ln)
+    # desk-row schema -> trainer schema: band wants an int, mentions a dict
+    if isinstance(r.get("decisions"), list):
+        r["decisions"] = 1
+    if isinstance(r.get("mentions"), list):
+        r["mentions"] = {}
+    b5.append(json.dumps(r))
 for _ in range(10):
     mix.extend(b5)
 rng.shuffle(mix)
