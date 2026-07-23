@@ -9439,3 +9439,50 @@ token-position × waist-dim, the moment the skeleton trains.
   a registered prediction on the next fire. The composed fork's
   (i) and (iii) are delivered; t10 and the gen-18 charter hold
   for the word.
+- **GUT #59: IT'S THERE, YOU JUST DON'T SEE IT (2026-07-24, Bryce +
+  relay + Code, registered; the audit WALKED in-entry).** The knock
+  is epistemology, not instrument — and the proof-cases pull clean
+  from the ledger's own history, sorted by failure species: SPECIES
+  ONE, no instrument yet (the bilingual fork: 1.000 decodability
+  beside a blind zero-shot head, 2447/2464 — content present,
+  extractor absent, two thousand pairs developed it; the routing
+  photograph: five sightings of inference before one camera);
+  SPECIES TWO, wrong projection (the length-warp; the rotation law:
+  raw 0.593 -> aligned 0.988, 5298 — 'the shape was intact; the
+  space had turned', the most literal case on the books; the ETF
+  2D-story redirect); SPECIES THREE, differential required (#58's
+  baseline law, banked). AND THE CONVERSE'S FENCE-CASES: evoked
+  values dead at linear AND at a 512-hidden GELU (6328 — deeper
+  than the relay cited; the survey is more exhausted than
+  remembered), [45] fused at the source per the representability
+  audit's own bar. **(a) THE LATENT-IMAGE LAW (prose, both edges
+  in-text):** presence precedes visibility — development is
+  instrument-work, not creation; AND the converse stands: some
+  films never resolved the image, and the survey that proves it is
+  finite and walkable. Absence of evidence is a statement about
+  the instrument exactly until the survey is exhausted. **(b) THE
+  DEVELOPMENT PROTOCOL (the negative-banking checklist, standing
+  from tonight):** before any null banks, four questions — (1)
+  extractor matched to content? (linear/nonlinear/TRAINED-HEAD —
+  the bilingual chemistry is the deepest rung); (2) projection
+  aligned? (Procrustes, length-control, metric jurisdiction); (3)
+  differential taken? (single-aperture null != dual-aperture
+  null); (4) substrate grain sufficient? (aggregates cannot answer
+  per-item questions — the seventeenth's cure). TWO SENTENCE
+  STRENGTHS, distinguished typographically in all future banking:
+  **NOT PRESENT AT AFFORDABLE GEOMETRY** (survey exhausted) vs
+  *not visible to this instrument* (survey open). **(c) THE
+  RETROACTIVE AUDIT, walked:** the standing negatives largely
+  already carry their lawful strengths — [45] and the band-dose
+  kill pass on the representability audit's stronger machinery
+  (flat across trainings + targeted intervention); the delta-probe
+  and zone dark-masses were banked instrument-relative by design;
+  the Flipped kill carried its own differential; the cold
+  residue's strong sentence lawfully WAITS on the queued
+  differential read (Q3 pending by design). ONE DEVELOPABLE
+  NEGATIVE found: the evoked-value null — dead at linear and GELU
+  but the trained-head-with-pairs chemistry (the very rung that
+  developed the bilingual image) was never applied; priced
+  GPU-minor, UNFORCED, parked on the docket with its rung named.
+  The protocol formalizes what the house's best negatives already
+  practiced — now the worst ones must practice it too.
