@@ -1,3 +1,33 @@
+# NEXT SESSION — start here (handoff, 2026-07-24 — THREE KILLS, THE NOISE FLOOR MEASURED, THE GATE UNMOVED)
+
+## **THE GEN-17 ERA CLOSES AT THREE LAWFUL KILLS; GEN-16 HOLDS, zero
+waivers.** The kills' estate: restart law CONFIRMED (armR 1232
+fixture record, cold-pan mechanism); dose-response curve at three
+points WITH ERROR BARS (slopes ~ same order as noise); hundreds line
+saturable by every medicine (161->198/196; both from-zero bars
+crushable at will); add-dup closed (0.99); **ALG4 DRIFT REAL** (402
+-> 386-tail, past its +-6 band — MECHANISM OPEN, the next charter's
+first question); noise floors MEASURED (bigtest +-10 / alg4 +-6
+annealed — the bar-noise law's floor; batteries henceforth report
+snapshot bands); flywheel re-parked (beats means not maxes); umbra
+untouched through three displacements (cert-v2 1.0000 x3). BENCH:
+armR (1232), g17b, g17c, flywheel avg, 8 snapshots. QUEUED
+instruments: differential read (hammerhead), routing canvas, zone
+column standing. AWAITING THE WORD: gen-18 direction — (i) the alg4
+drift mechanism hunt (why does continuation on this mix erode it?),
+(ii) return to book 5 (~95 bench) while the charter question ripens,
+(iii) bar review under the bar-noise law (prospective margins).
+Guts 58; specimens 17; kill ledger 12.
+
+## TAPE EXAM (run BEFORE trusting this seal; any miss -> ledger)
+1. Gate: `python3 -c "import json; print(json.load(open('.cache/GENERATION.json'))['gen_id'])"` -> 16
+2. Census banked: `python3 -c "import json; d=json.load(open('.cache/wobble_census.json')); print(len(d))"` -> 8
+3. Flywheel no: `grep -c 'RE-PARKED' docs/phase1_skeleton_spec.md` -> >=1
+4. Three kills: `grep -c 'THE GEN-17C VERDICT\|THE GEN-17B VERDICT\|THE GEN-17 VERDICT' docs/phase1_skeleton_spec.md` -> 3
+5. Snapshots: `ls .cache/g17c_s*.safetensors | wc -l` -> 8
+
+# PRIOR HANDOFF BELOW
+
 # NEXT SESSION — start here (handoff, 2026-07-23 night — 17B KILLED CLEAN; DOSE-RESPONSE CURVE BANKED)
 
 ## **17B KILL: bigtest 1206 < 1208 floor; manifest stays GEN-16.** But

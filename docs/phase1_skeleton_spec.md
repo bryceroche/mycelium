@@ -9369,3 +9369,30 @@ token-position × waist-dim, the moment the skeleton trains.
   annealed snapshots, eval once — PASS bar pinned before firing:
   avg bigtest >= 1219 (the best constituent) = smoothing recovers
   noise; under = basins disagree, re-park with a measured no.
+- **THE FLYWHEEL VERDICT (2026-07-23): NO AT ITS PINNED BAR —
+  RE-PARKED with a measured no, texture banked.** First, the
+  instrument errata: the probe's subprocess evals returned -1
+  (the parent held the AM device while averaging; children could
+  not open it — the AM single-process law's newest specimen; the
+  probe script's averaging moves to CPU for the record). TRUE
+  NUMBERS, run directly: avg-of-3-annealed bigtest 1217 (vs
+  constituents 1219/1209/1214 — BEATS the mean +3 and two of
+  three, misses the pinned >=1219 by 2), alg4 387 (BEATS ALL
+  THREE constituents), h3held 196 (held). READ: parameter
+  averaging is mildly real — it tracks the trajectory mean
+  upward — but buys no free maximum; within the noise floor of
+  everything it touched. THE BAR IS THE BAR: re-parked. THE
+  OPERATIONAL RESIDUE for gen-18's charter: batteries eval 2-3
+  annealed snapshots and REPORT THE BAND beside the headline
+  (bar-noise honesty at near-zero cost) — measurement discipline,
+  not parameter surgery. THE ERA'S CLOSING LEDGER, one line per
+  instrument: three exams three kills (bars pinned, never bent);
+  restart law confirmed (cold-pan, +17); dose curve three points
+  with error bars; hundreds line saturable by every medicine
+  tried; add-dup closed; alg4 drift REAL (16-22 past its +-6
+  band, mechanism OPEN — the next charter's first question);
+  noise floors measured (+-10/+-6); umbra untouched through
+  three displacements; flywheel no; zone meter, differential
+  read, and routing canvas standing ready. The gate: GEN-16,
+  zero waivers, its record intact — guarded this week by its own
+  bars against three of its children.

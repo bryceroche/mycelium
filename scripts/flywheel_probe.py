@@ -7,6 +7,7 @@ disagree), the flywheel re-parks with a measured no."""
 import json, sys, os, re, subprocess
 sys.path.insert(0, "."); sys.path.insert(0, "scripts")
 import numpy as np
+os.environ["DEV"] = "CPU"  # average on CPU: the AM device is single-process; children eval on GPU
 from tinygrad.nn.state import safe_load, safe_save
 from tinygrad import Tensor, dtypes
 
