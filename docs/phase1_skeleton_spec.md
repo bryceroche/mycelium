@@ -9526,3 +9526,37 @@ token-position × waist-dim, the moment the skeleton trains.
   somewhere, visible before any bar convicts it; the exit-cost
   gauge the law says was missing, riding the standing zone column
   at zero added cost.
+- **GUT #61: MAP REDUCE (2026-07-24, Bryce + relay + Code,
+  registered as amended; the census RUN same-hour, the line parked
+  with a measured no).** The sort confirms five seats without
+  extension: map = the width law's jurisdiction (views, samples,
+  lineages — embarrassingly parallel by design), shuffle = the
+  routing photograph's subject (#47's message passing), reduce =
+  the lattice's disposal stack (solver-filter, plurality,
+  fingerpost, unanimity, the key above all). The cartilage sentence
+  applies. THE DATACENTER'S TWO LAWS: **(a) THE BARRIER CLAUSE
+  (prose, minted general):** no aggregation before the stage
+  completes — the vote counts all views, the battery walks all
+  fixtures before the pen, and THE CHANNELS OBEY THE SAME BARRIER:
+  the fifteenth specimen was a reduce launched before its shuffle
+  arrived (a verdict narrated before the artifacts landed); the
+  barrier law is the cure's general form, in machines and channels
+  alike. **(b) THE STRAGGLER CENSUS — RUN, and the banked history
+  honored first:** the gen-13 mirror audit already measured this
+  population (23 items at effK 3-4, ALL unanimous-correct, zero
+  misfires — the exposure measured EMPTY at that vintage, a
+  precision note on the relay's 'carry certification exposure':
+  in-principle yes, measured no). RE-RUN AT GEN-16 VINTAGE
+  (text-side effK recomputed + joined against the banked V4 vote
+  tables, zero-GPU true this time): **25/1500 at effK<5 (22 at
+  4, 3 at 3) — ALL BENIGN, zero unanimous-wrong misfires.** Two
+  vintages, two clean reads: the reduced-dart certificates exist
+  and none has ever misfired. **(c) THE SPECULATIVE-VIEW LINE
+  PARKS WITH A MEASURED NO** — the campaign's cheapest kill:
+  quorum-preserving re-dispatch has no customers at two vintages;
+  the line stays on the books with its trigger named (a first
+  effK-shortfall misfire re-prices it instantly — the census is
+  one join, re-runnable per generation beside the zone column),
+  and the fence preserved in-text: speculation would replace
+  stalled RENDERINGS, never stalled VERDICTS — the pen waits for
+  every stage, always.
