@@ -8813,3 +8813,32 @@ token-position × waist-dim, the moment the skeleton trains.
   the reader; the m-dial's own law covers its exam's blind spot).
   [45] retries at t8 decomposed. BOOK 5: 95 rows / 12 crown pairs /
   45 certificates over seven tranches.
+- **THE WIDTH LAW (2026-07-22, Bryce + relay + Code, registered):
+  tranche width follows the bench's supply — the zener fence ended
+  the vigilance-sized tranche.** The case: small tranches existed so
+  nothing charged unnoticed between seals; the texture watch fires
+  at 2 regardless of width, the discharge checker meters family
+  charge, the tape exam audits the seal, the retry protocol benches
+  misses with cures assigned. TWO FENCES RIDE: (1) THE ANNOTATOR'S
+  FLOOR — the one rail the zeners don't watch is the annotator's
+  error rate; PINNED: first-pass page rate >= 0.75 per tranche
+  (banked first-attempt pages / attempted, retries scored to their
+  own bench); a floor breach NARROWS the next tranche and convenes
+  the fatigue autopsy (recent record: t6 0.94, t7 0.86). (2) CURES
+  BATCH BY MECHANISM FAMILY, not by page (t7's three autopsies =
+  three named mechanisms = the pattern). Width target: 25-30 while
+  the bench holds.
+- **THE ZERO-HINGE PROBE, BARS PINNED BEFORE MEASUREMENT
+  (2026-07-22; the texture rule's mechanism probe for the 420
+  transposition).** Design: matched mag-3 given pairs — 8
+  zero-containing (420 among them) vs 8 zero-free, matched digit
+  positions — through the banked reader on echo pages (given x 1 =
+  query), 5 views each, m=1000. READ: per-class given-read accuracy
+  + transposition census on the wrongs. VERDICTS, pre-written:
+  ZERO-HINGE CONFIRMED if zero-class accuracy trails zero-free by
+  >= 0.25 (the decompose rule keeps its scope: zero-containing
+  mag-3 only); MAG-3 BROADLY if both classes trail (decompose rule
+  WIDENS to all mag-3 givens; the m-dial exam's 3/3 re-read as
+  lucky draws); SPECIMEN-ISOLATED if both classes clear 0.85 (420's
+  wobble is narrower than its class — the '42' digit-pair hinge
+  hypothesis opens, rule scope narrows to the convicted numbers).
