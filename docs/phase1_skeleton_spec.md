@@ -9259,3 +9259,19 @@ token-position × waist-dim, the moment the skeleton trains.
   NEVER reads bar fixtures (Goodhart's fence: the val slice picks,
   the bars judge). 17c proceeds as chartered: fresh hundreds
   uniques, no alg4 line, the snapshot census riding.
+- **THE GEN-17C CHARTER (2026-07-23, registered under the standing
+  word; the autopsy's sequencing honored).** BASE: continuation from
+  g17_armR (unchanged — the record basin). DIET: gen17_mix + 6,000
+  FRESH hundreds uniques (not reps — the fresh-uniques law; deduped
+  against all existing hundreds knots; total 9,000 uniques at 1
+  rep/unique, ~9.5% share, the dose curve's displacement lever
+  avoided). RECIPE: 2x4k SGDR, LR 1e-4; SNAP_EVERY=500 on the final
+  segment — the snapshot rider LIVE (wobble census substrate; val
+  picks, bars judge, snapshots never read bar fixtures). BARS:
+  unchanged from the gen-17 charter, with the bar-noise law noted
+  prospective-only (alg4's 402 stands as pinned; the churn band is
+  reported beside it, not instead of it). KILL: bigtest < 1208.
+  The prediction, registered: fresh uniques buy hundreds
+  acquisition WITHOUT the register toll (the crown-continuation
+  curve's own history), landing h3held >= 170 with bigtest held
+  >= 1223.

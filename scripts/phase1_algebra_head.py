@@ -1024,6 +1024,14 @@ def do_train(steps, lr, batch, seed):
                 best_snap = {k: t.detach().numpy().copy() for k, t in p.items()}
                 mark = "  <-- BEST"
             print(f"  [val @{s+1}] fac-exact-proxy={fv:.4f}{mark}", flush=True)
+        # SNAP_EVERY (gut #57's snapshot rider): periodic trajectory ckpts for
+        # the wobble census. Snapshots NEVER read bar fixtures (val picks,
+        # bars judge); they exist so checkpoint variance can be measured.
+        snap_every = int(os.environ.get("SNAP_EVERY", "0"))
+        if snap_every and (s + 1) % snap_every == 0:
+            sp = ALG_CKPT.replace(".safetensors", f"_s{s+1}.safetensors")
+            safe_save(p, sp)
+            print(f"  [snap @{s+1}] -> {sp}", flush=True)
     if best_snap is not None:
         for k in p:
             p[k].assign(Tensor(best_snap[k], dtype=p[k].dtype)).realize()
