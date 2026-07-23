@@ -1,3 +1,32 @@
+# NEXT SESSION — start here (handoff, 2026-07-24 — THE DRIVER'S TURN: DIFFERENTIAL LIT, CANVAS KILLED, QUEUE EMPTY)
+
+## **THE INSTRUMENT QUEUE IS EMPTY — everything registered has fired,
+killed, or parked with its trigger named.** The driver's turn:
+differential read built + fired twice — VACUOUS on certification
+channel (cold class EMPTY: 0 unanimous-wrong in 1500, unanimity
+precision 1.0 at fixture grain) then LIGHTS on the true quarry (the
+65 = triple-voice residue, abstain channel: |zA-zB| 2.181 vs bar
+2.143 — MIS-ADDRESSED-BUT-WELL-FORMED, fid z -1.67 / collapse z
++0.48). Canvas dose KILLED at both bars (fid +0.005 vs +0.05; guard
+broke 1201<1208) -> **the ADDRESSING WALL is the architecture
+ledger's second wall** (with the canyon softmax); the 65's treatment
+is detour+guard+books, final. Premise correction banked: the fat-CE
+canvas existed since birth (line 531); gen-17 mint lines carried
+empty spans (gen-18 diet note: minted lines emit spans). BOARD:
+t10 + gen-18 charter on the word (SEVEN measured inputs + the spans
+note); book 5 at 164 rows, ~95 bench; crown mass re-armed; guts 61;
+specimens 18; kill ledger 14. Gate: gen-16, zero waivers, its bars
+three-refusals deep.
+
+## TAPE EXAM (run BEFORE trusting this seal; any miss -> ledger)
+1. Gate: `python3 -c "import json; print(json.load(open('.cache/GENERATION.json'))['gen_id'])"` -> 16
+2. Differential: `python3 -c "import json; print(json.load(open('.cache/differential_read.json'))['lights'])"` -> True
+3. Canvas kill: `grep -c 'CANVAS DOSE VERDICT' docs/phase1_skeleton_spec.md` -> 1
+4. The 65 banked: `python3 -c "import json; print(len(json.load(open('.cache/residue_portrait.json'))['residue_items']))"` -> 65
+5. Empty cold class: `grep -c 'cold class is EMPTY\|COLD POPULATION IS EMPTY' docs/phase1_skeleton_spec.md` -> >=1
+
+# PRIOR HANDOFF BELOW
+
 # NEXT SESSION — start here (handoff, 2026-07-24 — THREE KILLS, THE NOISE FLOOR MEASURED, THE GATE UNMOVED)
 
 ## **THE GEN-17 ERA CLOSES AT THREE LAWFUL KILLS; GEN-16 HOLDS, zero

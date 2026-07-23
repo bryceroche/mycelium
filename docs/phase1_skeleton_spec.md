@@ -9667,3 +9667,28 @@ token-position × waist-dim, the moment the skeleton trains.
   fid_refused >= 2x the bigtest displacement fraction AND >= +0.05
   absolute; GUARD bigtest >= 1208; the band-dose kill stands
   sentinel over the architecture case.
+- **THE CANVAS DOSE VERDICT (2026-07-24): KILL AT BOTH BARS — AND
+  THE ADDRESSING WALL IS NAMED ARCHITECTURAL.** FAT_W=4, 6k from
+  crown_v4 on the span-carrying base: refused-class fid 0.506 ->
+  0.511 (+0.005 vs the +0.05 bar — noise), THE 65: 0.412 -> 0.414
+  (+0.002 — nothing), full-population fid 0.830 -> 0.840, and the
+  GUARD BROKE: bigtest 1201 < 1208 (−22 displaced). The band-dose
+  pattern verbatim: 4x the supervision weight cannot move what the
+  architecture has already decided — **the binding-layer addressing
+  joins the param-path digit softmax as the ARCHITECTURE LEDGER's
+  second wall.** Structure doesn't take medicine by the spoonful;
+  now measured twice, on two different organs. THE TREATMENT
+  ROUTING, complete and final for the 65: the DIFFERENTIAL detects
+  them (LIGHTS, banked), the GUARD abstains on them, the BOOKS
+  re-voice them — detection by instrument, treatment by detour,
+  never by retraining. #55's probe closes with a structural answer;
+  FAT_W stays in the code as a measured-no lever (the canvas was
+  always there; the wall was always behind it). canvas_dose banks
+  as bench artifact. THE DRIVER'S TURN COMPLETE: the differential
+  built, fired twice, LIT on its true quarry; the cold class
+  measured EMPTY on the certification channel; the 65's anatomy
+  finished (mis-addressed-but-well-formed, architectural,
+  detour-treatable); the canvas question asked and answered at
+  6k-step price. The queue behind the pen is EMPTY for the first
+  time this era — everything registered has fired, killed, or
+  parked with its trigger named.
