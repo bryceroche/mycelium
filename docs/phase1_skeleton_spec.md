@@ -8666,3 +8666,62 @@ token-position × waist-dim, the moment the skeleton trains.
   symmetric-identity (the docket's x3 family gains its 4th). BOOK 5
   STANDING: 82 rows / 10 crown pairs / 38 certificates over six
   tranches; the fresh bench holds ~165.
+- **GUT #54: THE CAPACITOR (2026-07-22, Bryce + relay + Code,
+  registered as amended; the discharge ledger BUILT and its first
+  walk FIRED).** The gut reaches into the electronics drawer and the
+  greps seat the filter side whole: the house runs filtered rails
+  wherever training current flows — BALLAST (4902/5013: inert-prose
+  decoupling, the two-way mechanism), SBP sigma=0.02 (5971, banked
+  hard), displacement floors (spike protection on the register), the
+  step law's little-by-little, and the regime law's biography as the
+  unfiltered-spike specimen (gen-9's diet shift re-shallowing basins,
+  3481-3535). JURISDICTION TAG at countersign: delta_gate is the JUNE
+  ENGINE's component (6749: BUILT, RESTING) — it names the pattern's
+  deepest instance, not a live parser rail; the relay listed it
+  unfenced. Interp 7 banks as the era's physics: THE CROWN IS A
+  CHARGED COMPONENT — five factors' structure packed into one
+  binding, discharge = deterministic expansion at the moment of
+  solve, and the CLOSURE INVARIANT IS THE CONSERVATION LAW (what you
+  store is what you get back; no crown leaks). KV is the same media
+  at parse grain, lawfully drained at the boundary (mortality law).
+  COUNTERSIGN CORRECTION to the relay's sweep ('thresholds without
+  accumulators' everywhere): walked counter-by-counter, MOST are
+  already circuited — the retry bench discharges per-tranche by
+  protocol, the texture watch fires at 2 by the texture rule, the
+  dashboard/dissent/delta-probe ride the entourage roster. THREE are
+  genuinely unzenered, and one was vague in the ledger's own words
+  ('fires at crown mass', 6673 — a rider with no rated breakdown
+  voltage): the crown-mass counter, the admission docket, and
+  macro-of-macro. **(a) THE DISCHARGE LEDGER (instrument, BUILT:
+  scripts/discharge_check.py -> .cache/discharge_ledger.json; rides
+  the entourage roster).** Zeners pinned: wild_crown_mass >=25
+  unique banked knots -> the next major-fire registration review
+  opens (band-restart arm rides it); admission family >=6
+  certificates -> the rung test convenes for that family;
+  macro-of-macro >=5 instruments -> the charter review convenes.
+  THE FENCE, constitutional: discharge actions OPEN REVIEWS — they
+  never fire watts, write manifests, or hold a pen (a counter that
+  could light fires would be Goodhart's own doorbell). **(b) THE
+  FIRST WALK'S VERDICT — THREE BREACHES, and the largest was never
+  once named:** aggregated across ALL registry artifacts:
+  VALUE-RANGE x9 (the docket's biggest charge — absent from every
+  admission conversation, which discussed radical-form while the
+  actual peak sat unnamed), radical-form-answer x8, negative-roots
+  x6; crown mass 19/25 accruing; macro-of-macro 3/5 accruing.
+  Next-in-line: exponent-laws x5, logarithms x5. THE THIRD
+  ADMISSION REVIEW IS HEREBY OPENED by discharge (its first act =
+  the rung test, gut #49's checklist, on the three breaching
+  families; the review holds the pen on which family — if any —
+  goes to the docket; [100]'s sum/constant-affine customer remains
+  a candidate on its own instruments). ERRATA, same day, own entry:
+  t6's line 'symmetric-identity gains its 4th' — the ARTIFACT
+  counts x3 total including t6's; the artifact is the authority.
+  NAMING-DRIFT FLAG for the review: radical-form vs
+  radical-form-answer vs radical-rationalize are three labels the
+  rung test must adjudicate as one family or several before
+  counting charge. **(c) THE TWO-SIDED LAW (prose):** the house
+  filters every rail and charges every counter — accumulation
+  without a pinned threshold is vigilance debt; every counter names
+  its zener at design review, joining the mortality law's
+  death-rite clause as the symmetric obligation (state that
+  persists names its discharge as state that dies names its rite).
