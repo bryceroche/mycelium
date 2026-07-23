@@ -9149,3 +9149,41 @@ token-position × waist-dim, the moment the skeleton trains.
   consolidation trajectory the basin census read once and never
   again.** After the fifteenth, the instrument's character is the
   point: one more way the artifacts speak before anyone narrates.
+- **GUT #57: CAST IRON (2026-07-23, Bryce + relay + Code, registered
+  as amended; two code reads answered same-hour, one lever priced at
+  census).** The anti-re-buy check passed aloud: interps 5-7 walk
+  banked law (step law, ballast, #54's filters); the seat is earned
+  by the TWO-DIAL SPLIT — thermal mass (inertia: what any change
+  costs — batch, momentum, mix volume, low-LR continuation) and
+  thermal conductivity (coupling: how fast a local spike reaches
+  neighbors — the band-dose selectivity read, the dividend's
+  beneficial coupling) are SEPARATE MATERIAL CONSTANTS the house
+  measured piecemeal without naming. SIXTEENTH SPECIMEN (mild,
+  renamed-law species): the relay cited 'the gift pattern, four
+  sightings' — the banked name is THE DIVIDEND (expansion-dividends,
+  THIRD instance banked); 'gift' in this ledger means the
+  annotation rulebook's identity-gifts. Names bind to their ledger
+  forms; counts carry sources. **(a) THE MATERIAL-CONSTANTS LAW
+  (prose):** mass and conductivity are separate dials — the step
+  law governs the first, the selectivity/coupling coefficient the
+  second; regime history re-read as shock accounting (gen-9's
+  re-shallowing = a shock through a too-conductive moment; gen-13's
+  clean quench = re-casting, not shocking a live lattice; high mass
+  + low conductivity is shock-proof by construction). **(b) THE
+  MOMENTS ANSWER (code read, line 855): RESUME restores PARAMS
+  ONLY — AdamW constructs fresh per segment. Arm R's four cycles
+  were COLD-PAN SHOCKS (LR reset AND moments reset) and won +17
+  anyway** — the restart verdict's mechanism note, banked before
+  the verdict is cited anywhere: the win is stronger than its
+  design; whether moment-PERSISTENT restarts pay more is a free
+  design question for a future arm. **(c) THE CHECKPOINT-VARIANCE
+  CENSUS — SUBSTRATE ABSENT, honestly: no periodic snapshots exist
+  anywhere in the campaign (no SAVE_EVERY; every gate is a
+  point-in-time snapshot). THE SNAPSHOT RIDER registers on the
+  next fire: save ckpts each 500 steps over the final 2k, eval the
+  wobble, and the EMA FLYWHEEL lean (promote the trajectory's
+  average self, the field's oldest stabilizer, never tried here)
+  stays PARKED behind the census — lean honestly split: the vote
+  machinery already absorbs much of what EMA smooths; modest
+  wobble, lever marginal. The house has been cooking on cast iron
+  all along — what's new is the spec sheet.
