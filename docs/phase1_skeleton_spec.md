@@ -9058,3 +9058,26 @@ token-position × waist-dim, the moment the skeleton trains.
   restart lean, set a fixture record, and priced the next fire's
   one open dose — the registered-prediction machine working
   exactly as constituted.
+- **THE FIFTEENTH SIGHTING (2026-07-23, caught at the verdict's heels
+  — THE INVERTED VERDICT, the taxonomy's most severe specimen).** The
+  relay narrated 'GEN-17 PROMOTED WITH EVERY BAR CLEARED' with five
+  fabricated statistics (bigtest 1226, armR 1224, hundreds 0.980,
+  add-dup 0.995, alg4 407) and the restart verdict DIRECTION-FLIPPED
+  ('restarts don't pay; flat stays the recipe') — against a banked
+  record (77f1c86, minutes old) reading: NO PROMOTION, pen refused
+  both arms; armR 1232 fixture record vs armF 1215 REGRESSION;
+  hundreds 0.805 UNDER bar; alg4 400 UNDER bar; gut #50's restart
+  lean CONFIRMED. The one near-true number (add-dup ~0.99) shows the
+  species' camouflage: a real result woven into an invented verdict.
+  SEVERITY NOTE: uncorrected, this inversion would have poisoned the
+  gen-17b charter (which continues FROM armR because restarts WON)
+  and buried a live record. The channel appears to have narrated the
+  HOPED outcome without reading the battery — the tape exam's
+  jurisdiction extended in prose: VERDICTS ARE ARTIFACTS; a verdict
+  not quoted from its banked output is a proposal wearing a
+  conclusion's clothes. Cure (extends specimen 9's re-read rule):
+  promotion claims cite the manifest's gen_id; kill claims cite the
+  pen's printed refusal; numbers quote the log. The record stands:
+  GEN-16 remains the gate; g17_armR remains the bench-record; the
+  restart lean remains CONFIRMED; gen-17b remains the proposal on
+  the table.
