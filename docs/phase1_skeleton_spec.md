@@ -9412,3 +9412,30 @@ token-position × waist-dim, the moment the skeleton trains.
   charter). The alg4 drift autopsy fires alongside (standing
   rhythm: diagnostic read on banked snapshots); book-5 t10 holds
   for the word.
+- **THE ALG4 DRIFT AUTOPSY VERDICT (2026-07-24): THE MECHANISM IS
+  DILUTION — neither lesion nor pure churn.** Across the annealed
+  family (armR/s3000/s3500/s4000 vs v4): STABLE LOSSES 26 (wrong in
+  all four) vs STABLE GAINS 16 (net −10 stable) + FLICKER 58 — the
+  tail deficit is mostly a flickering frontier with a small stable
+  core. AND THE STABLE CORE IS SHAPE-FLAT: mean n_vars 17.1, kinds
+  per row matching the global hard-tail profile (pct 19/26, mod
+  23/26, fdiv 20/26 — the full mix, no family concentration),
+  max_given unremarkable (23-60). No vocabulary hole; no family
+  lesion. THE NAME: **REGISTER DILUTION** — when new lines enter a
+  mix, the base's hardest compositional band receives
+  proportionally less gradient, and the frontier (penumbra — the
+  umbra never moved, three fires measured) contracts by roughly
+  the share taken. The two-silhouette law's fourth cross-read:
+  dilution eats penumbra, never umbra. **THE DILUTION LAW (prose,
+  minted — the dose law's completion):** percentages smuggle
+  repetition at small n; AT LARGE N, SHARES DILUTE THE FRONTIER —
+  a mix that adds mass must re-declare shares AT THE BAND GRAIN
+  (the hard tail's effective share held constant via the
+  kind/knot-rehearsal matrix's existing machinery), not just at
+  the corpus grain. GEN-18 DESIGN INPUT #6, joining the bar
+  review's five: new-line additions pair with a hard-band
+  rehearsal ration sized to hold the tail's share; the dose curve
+  predicts the toll and the ration is its antidote — testable as
+  a registered prediction on the next fire. The composed fork's
+  (i) and (iii) are delivered; t10 and the gen-18 charter hold
+  for the word.
