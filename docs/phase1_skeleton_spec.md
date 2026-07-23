@@ -8738,3 +8738,48 @@ token-position × waist-dim, the moment the skeleton trains.
   mag-2 at 0.942; mag-3 given is unmeasured). Either verdict is
   information: pass = the dial decouples solver range from reader
   range; fail on page 3 only = the canyon's given-path edge located.
+- **THE RUNG TEST'S VERDICT (2026-07-22, the third admission review's
+  first act complete — THREE FAMILIES EXAMINED, ZERO ADMISSIONS, ONE
+  DIAL DISCOVERED; the exam 3/3 unanimous).** NAMING ADJUDICATION
+  FIRST (the drift flag honored): 'radical-form' (the ledger's prose
+  label, x0 in artifacts) was drift for radical-form-answer;
+  radical-form-answer x8 + radical-rationalize x4 adjudicate as ONE
+  family for rung purposes — RADICAL-COEFFICIENT-REPORT x12, one
+  mechanism (surd arithmetic -> integer coefficients -> reported
+  sum). **(1) VALUE-RANGE x9 — FOLD + DIAL, no admission; the
+  M-DIAL EXAM 3/3 UNANIMOUS 5/5.** The certificates' mechanism read:
+  the wall is INTERMEDIATES exceeding the cap, and derived values
+  never touch the digit reader — only givens need emission. The
+  exam: sqrt-product (m=500, intermediate 400), star-op (m=1500,
+  intermediates 1176/1200), diff-squares (m=7000, MAG-3 GIVENS
+  235/221) — all unanimous at the key, including the mag-3 given
+  probe reading perfectly (n=3, small-n stated; the given path
+  holds at magnitude where the param path eroded — the canyon
+  asymmetry confirmed from the clean side). THE DIAL WAS ALWAYS IN
+  THE DESK'S HANDS: m is a per-page parameter; the mint cap <=300
+  governs TRAINING diet, not the solver's jurisdiction. DESK RULE
+  MINTED: intermediates are free — voice the givens small (<=999),
+  raise m per page, fold the derivation (pairing/difference-of-
+  squares). The >999-GIVEN tail stays registry (out of the reader's
+  jurisdiction). Three certificates converted to evidence rows in
+  the exam itself. **(2) RADICAL-COEFFICIENT-REPORT x12 — stays at
+  FOLD** (hand-derived coefficients, integer pages verify — [32]'s
+  banked pattern); the BRIDGE is PRICED and parked: a surd domain
+  (p+q*sqrt(r) triples) as a solver-side seam edit, zero core —
+  bought only if the family RECHARGES to 6 new certificates
+  post-adjudication (hand-quota constitutional; the answer is
+  always integer arithmetic the vocabulary already carries).
+  **(3) NEGATIVE-ROOTS x6 — FOLD** via the abs/selector composition
+  (#49's own receipt: 'abs rode the selector') + signed sums
+  hand-derived as unsigned differences; ALL SIX answers are
+  non-negative — the negatives are intermediates only; the
+  genuinely-signed subspecies (negative ANSWER) has zero charge,
+  zener set at 3 -> bridge review (sign channel). **THE CAPACITOR
+  IDIOM COMPLETES: adjudication SPENDS the charge, the zener
+  re-arms** — discharge_check.py now carries the SPENT table and
+  meters live recharge (post-adjudication walk: all quiet;
+  next-in-line exponent-laws x5, logarithms x5). The ladder's
+  record extends: still no rung overpaid — the campaign's largest
+  accumulated charge dissolved at the ladder's two cheapest rungs,
+  and the review's standing candidate ([100]'s sum/constant-affine
+  customer) keeps its own instruments, unforced.

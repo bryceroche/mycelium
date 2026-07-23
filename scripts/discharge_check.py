@@ -22,6 +22,11 @@ from collections import Counter
 THRESHOLDS = {"wild_crown_mass": 25, "admission_family": 6, "macro_of_macro": 5}
 MACRO_OF_MACRO_INSTRUMENTS = 3  # width gradient 51%, curve saturation, [73]'s crack
 
+# Adjudication SPENDS charge; the zener re-arms and watches RECHARGE.
+# family -> certificate count at adjudication (rung test 2026-07-22).
+SPENT = {"value-range": 9, "radical-form-answer": 8,
+         "radical-rationalize": 4, "negative-roots": 6}
+
 
 def main():
     fams = Counter()
@@ -45,11 +50,14 @@ def main():
 
     K = THRESHOLDS["admission_family"]
     for fam, n in fams.most_common():
-        if n >= K:
-            print(f"[discharge] admission_family {fam}: {n} / {K} ** BREACH -> rung test convenes **")
+        charge = n - SPENT.get(fam, 0)
+        if charge >= K:
+            print(f"[discharge] admission_family {fam}: {charge} / {K} (raw {n},"
+                  f" spent {SPENT.get(fam, 0)}) ** BREACH -> rung test convenes **")
             breaches.append(f"admission_family:{fam}")
-    nxt = [(f, n) for f, n in fams.most_common() if n < K][:3]
-    print(f"[discharge] admission next-in-line: {nxt}")
+    nxt = sorted(((f, n - SPENT.get(f, 0)) for f, n in fams.items()
+                  if n - SPENT.get(f, 0) < K), key=lambda t: -t[1])[:3]
+    print(f"[discharge] admission next-in-line (live charge): {nxt}")
 
     m = MACRO_OF_MACRO_INSTRUMENTS
     print(f"[discharge] macro_of_macro: {m} / {THRESHOLDS['macro_of_macro']}"
