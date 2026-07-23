@@ -41,6 +41,16 @@ def sh(cmd, extra=None, tail=2, logf=None):
     return out
 
 
+# one-time state precompute for the two NEW held fixtures (standing
+# fixtures' states are banked under their standing names)
+for name, path in [("h3held", ".cache/gen17_hundreds_held.jsonl"),
+                   ("adupheld", ".cache/gen17_adup_held.jsonl")]:
+    if not os.path.exists(f".cache/phase1_alg_states_{name}.npz"):
+        print(f"=== precompute held fixture {name} ===", flush=True)
+        sh(".venv/bin/python3 scripts/phase1_algebra_head.py --precompute",
+           {"ALG_TRAIN": path, "ALG_TRAIN_NAME": name, "PRECOMPUTE_ONLY": name},
+           tail=1)
+
 for cand, ckpt in CANDS.items():
     log = f".cache/gen{GEN}_{cand}.log"
     open(log, "w").write(f"=== GEN-{GEN} BATTERY: candidate {cand} = {ckpt} ===\n")
@@ -48,7 +58,7 @@ for cand, ckpt in CANDS.items():
         print(f"=== [{cand}] eval {name} ===", flush=True)
         open(log, "a").write(f"--- {name} ---\n")
         sh(".venv/bin/python3 scripts/phase1_algebra_head.py --eval",
-           {"ALG_CKPT": ckpt, "ALG_TEST": path, "ALG_TEST_NAME": f"g{GEN}{cand}{name}"},
+           {"ALG_CKPT": ckpt, "ALG_TEST": path, "ALG_TEST_NAME": name},
            tail=1, logf=log)
     print(f"=== [{cand}] member votes (bigtest, standing seeds) ===", flush=True)
     sh(".venv/bin/python3 scripts/lattice_member_votes.py",
