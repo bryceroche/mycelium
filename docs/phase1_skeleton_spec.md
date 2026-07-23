@@ -8973,3 +8973,49 @@ token-position × waist-dim, the moment the skeleton trains.
   wild-only per the standing pin. The charter stands registered
   with every line traceable to a named audit — the fire, the mint,
   and the precompute await the word.
+- **GUT #55: THE DANCER AND THE CANVAS (2026-07-23, Bryce + relay +
+  Code, registered as amended; the probe registered watts-priced and
+  GATED).** The gut asks the campaign's oldest image a question in
+  optics, and the greps seat the physics: a shadow is sharp when the
+  object sits near the canvas; distance turns an extended source's
+  rays into disagreement — the penumbra is CONSENSUS LOST, not blur
+  added. The translation is exact and already measured: THE FIVE
+  VIEWS ARE THE EXTENDED LIGHT SOURCE, vote entropy is penumbra
+  width (deep-correct H=0.000 umbra; shallow-correct H=0.846 — the
+  quadruple 0.000/0.846/0.212/0.116 at 3137/5201), and the cold
+  errors are the optics' darkest case — A SHARP SHADOW OF THE WRONG
+  OBJECT (unanimity proves the dancer stood close to SOME canvas,
+  never the right one; temperature-perp-truth restated as lens
+  physics). FOURTEENTH SPECIMEN at countersign (stats drift, the
+  mild species): the relay cited routing fidelity '0.90 vs 0.50' —
+  the ledger holds 0.830/0.506 with median 0.917 (8146): the median
+  wearing the mean's seat; numbers carry their moments. Verified
+  receipts for the law: C1-A's teaching-beats-telling (370: aux
+  prediction beat hint-input), the two-terminal law (gold fed from
+  birth, 3766), per-breath ladder supervision (the June engine),
+  and the crown as CANVAS RELOCATION (the macro floor moves the
+  parse target to the prose's own granularity). **(a) THE PENUMBRA
+  LAW (prose, minted):** supervision distance is penumbra width —
+  constraints adjacent to execution cast umbra; constraints
+  downstream of many transforms cast fuzz; the campaign's
+  supervision wins (ladder CE, auxiliary heads, birth-fed banks,
+  macro floors) were all canvas moves — WITH THE CAVEAT IN THE
+  LAW'S OWN TEXT: proximity buys sharpness, never truth; the key
+  alone knows which canvas was right. **(b) THE ROUTING-CANVAS
+  PROBE (registered, WATTS-PRICED, GATED behind the gen-17 fire's
+  verdict):** the photograph says failures are mis-addressed,
+  never mis-written — and the routing act has no adjacent canvas
+  (attention distributions graded only downstream at the emission
+  surface). The probe: auxiliary span-supervision ON THE ATTENTION
+  MASS at the binding layer (the C1-A telegraph transplanted).
+  BARS PINNED NOW: refused-class routing fidelity (0.506 baseline)
+  must rise >= 2x any displacement of standing floors; the
+  band-dose lesson stands guard (if mis-addressing is
+  architecture, the canvas move buys noise and the kill banks
+  cheap) — but the photograph's own distinction funds the hope:
+  fidelity TRACKS success (0.830 vs 0.506), the signature of a
+  trained skill with variance, not a wall with a floor. **(c) THE
+  FENCE:** no inference-time canvas — the decision path stays
+  zero-parameter; canvases are training furniture only. The gut
+  watched the dancer's shadow soften, brother, and the physics
+  answered: she was never blurry — the canvas was far.
