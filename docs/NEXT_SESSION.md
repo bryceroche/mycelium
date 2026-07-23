@@ -1,3 +1,32 @@
+# NEXT SESSION — start here (handoff, 2026-07-22 late night — T7 + THE 420 TRANSPOSITION)
+
+## **TRANCHE 7: 13 rows / 2 crowns / 7 certs; BOOK 5 AT 95 ROWS / 12
+CROWN PAIRS / 45 CERTS.** [23] retry 5/5 (add-voicing, third
+confirmation); k1=1 crown dialect parses at quorum ([35], 3/5 —
+watch); [56] 3x+4y 4/5; negative-fold live ([51]). THE FIND: [45]
+unanimous-WRONG 63 = the reader took 420 as 240 — MSD TRANSPOSITION
+on a ZERO-CONTAINING mag-3 given; 420 convicted twice in the record
+(t5 [13] same number, same wobble). TEXTURE RULE FIRED: mechanism
+probe registered (zero-hinge hypothesis); m-dial exam's 3/3 stands
+but its givens were zero-free (blind spot named). INTERIM DESK RULE:
+zero-containing mag-3 givens decompose (derived values never touch
+the reader). EARLIER TODAY: rung test (3 families, 0 admissions,
+m-dial discovered); discharge ledger built (3 breaches spent, zeners
+re-armed); guts #52-54 converted. STANDING: t8 (bench + retries
+[36] shortened, [40] de-twinned, [45] decomposed); mechanism probe
+(zero-hinge) awaits design; crown mass 21/25; macro-of-macro 3/5;
+[100]'s customer unforced. Gate: gen-16 = crown_reader_v4 (FTYPES=8),
+stack entire, zero waivers. Guts 54; specimens 13; kill ledger 8.
+
+## TAPE EXAM (run BEFORE trusting this seal; any miss -> ledger)
+1. Gate identity: `grep -c crown_reader_v4 .cache/GENERATION.json` -> >=1
+2. T7 rows: `grep -c '"tranche": 7' .cache/book5_prose_pairs.jsonl` -> 13
+3. Book-5 total: `grep -c '"book": 5' .cache/book5_prose_pairs.jsonl` -> 95
+4. Discharge ledger: `grep -c '"breaches": \[\]' .cache/discharge_ledger.json` -> 1
+5. T7 registry: `test -f .cache/book5_organ_registry_t7.json && echo OK` -> OK
+
+# PRIOR HANDOFF BELOW
+
 # NEXT SESSION — start here (handoff, 2026-07-22 night — T6: RETRY BENCH SWEPT, BOOK 5 AT 82 ROWS)
 
 ## **TRANCHE 6: 19 rows / 3 crowns / 4 certificates — the retry bench

@@ -8783,3 +8783,33 @@ token-position × waist-dim, the moment the skeleton trains.
   accumulated charge dissolved at the ladder's two cheapest rungs,
   and the review's standing candidate ([100]'s sum/constant-affine
   customer) keeps its own instruments, unforced.
+- **BOOK 5, TRANCHE 7 (2026-07-22): 13 rows / 2 crown pairs / 7
+  certificates — the retry cleared, the k1=1 dialect probe passed at
+  quorum, and the misses minted a TEXTURE-RULE FIRE.** [23]'s
+  add-voicing retry BANKED 5/5 at 11 (the same cure, third
+  confirmation: sub wobbles under permutation, add holds). Fresh
+  primes 9 of 11 first-pass: [51] the negative-fold rule live
+  (signed sum voiced unsigned, 5/5 at 12), [57] the solver-derived
+  system (c+3c=4, 5/5 at 3), [43] cross-constraint derivation
+  (3c=4(c-1), 5/5). Crowns: [35] the OP_APPLY k1=1 DIALECT PROBE
+  ('a plus 2 times b') banked at exactly quorum (3/5, votes 9-9-9 —
+  the phrasing parses, marginally; watch, don't celebrate); [56]
+  3x+4y banked 4/5. THE AUTOPSIES (audit before diet): [36] 2/5 at
+  9 — the 9-variable chain's WRONG-9 is d (the f(2) intermediate):
+  late-query erosion on a long chain, retry shortened; [40] 2/2
+  correct votes — DUPLICATE-VALUE GIVENS ('a is 13. b is 13') make
+  near-identical mention keys (the ledger's own wobble, 5106),
+  retry re-derived without twins; **[45] THE FIND: unanimous 5/5 at
+  63 = 252/4 — the reader took '420' as 240, an MSD TRANSPOSITION
+  on a ZERO-CONTAINING mag-3 given — and the record convicts 420
+  twice (t5 [13]'s page carried 420 and misread 265/215; t6 cured
+  it by AVOIDING 420 via the pairing). TWO SHAPES, ONE SUSPECT: the
+  TEXTURE RULE FIRES — mechanism probe registered: zero-containing
+  mag-3 givens on the digit path (is the 0 the transposition's
+  hinge?). The m-dial exam's clean 3/3 stands but its givens
+  (235/221) were zero-free — the exam's blind spot named.** DESK
+  RULE (interim, until the probe rules): zero-containing mag-3
+  givens DECOMPOSE (voice 420 as 42x10 — derived values never touch
+  the reader; the m-dial's own law covers its exam's blind spot).
+  [45] retries at t8 decomposed. BOOK 5: 95 rows / 12 crown pairs /
+  45 certificates over seven tranches.
