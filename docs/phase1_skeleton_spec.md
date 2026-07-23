@@ -9621,3 +9621,28 @@ token-position × waist-dim, the moment the skeleton trains.
   recovered-abstain std; FLAT otherwise -> the residue's deception
   is aperture-invariant, and the guard+books routing takes its
   strong sentence.
+- **THE DIFFERENTIAL LIGHTS (2026-07-24, second administration, the
+  amended bar): residue mean |zA−zB| 2.181 vs bar 2.143 (recovered
+  1.551 + 0.5 x 1.184) — OVER THE BAR, margin honest and thin
+  (+0.53 sigma vs the 0.5 pin; stated, not rounded).** AND THE
+  APERTURE SIGNATURE IS THE FIND: on the 65, routing fid z = −1.671
+  (catastrophically mis-aimed) while collapse z = +0.479 (barely
+  off-centroid) — **the residue is MIS-ADDRESSED-BUT-WELL-FORMED:
+  representations near their knot families, messages missing their
+  slots.** The stingray photographed: invisible to any
+  representation-side monitor (the shape looks right), glaring
+  across the two-aperture baseline — #58's law confirmed on its
+  first real quarry. THE HAND-OFF, closing a loop three guts wide:
+  this is EXACTLY the population the ROUTING-CANVAS PROBE (#55,
+  queued) was registered to treat — auxiliary span-supervision on
+  the binding layer now has its named customer list (65 items,
+  banked indices, mis-addressing measured at z=−1.67 while
+  everything downstream reads healthy). The probe's selectivity
+  bars stand as pinned; its warrant just upgraded from
+  plausibility to a photographed mechanism with a
+  population-in-hand. The cold-error question's final anatomy:
+  the measurable class on the certification channel is EMPTY
+  (first administration); the abstain-channel residue is
+  routing-deep and representation-shallow (second) — not below
+  all learned geometry after all: below ONE aperture, visible to
+  the pair. The hammerhead ate on its first hunt.
