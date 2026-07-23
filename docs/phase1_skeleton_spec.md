@@ -9238,3 +9238,24 @@ token-position × waist-dim, the moment the skeleton trains.
   beside armR. Two kills, two fires, and the ledger holds: a
   record, a saturated line, a displacement coefficient, and a
   named binding constraint — the era's economics in four numbers.
+- **THE ALG4 AUTOPSY (2026-07-23): CHURN, NOT LESION — the binding
+  constraint dissolves into a noise-floor question.** Per-row diff
+  v4 (402) vs armR (400): 49 LOST, 47 GAINED — and the two sets are
+  SHAPE-IDENTICAL (mean n_vars 17.0 vs 17.1; kinds-per-row within
+  noise on every kind — pct 0.73/0.81, mod 1.69/1.55, sel
+  0.31/0.30). No family lost its vocabulary; the frontier churned
+  +-48 hard multi-var rows and settled 2 lower — penumbra exchange
+  at the boundary, the two-silhouette law's second cross-read in
+  one night. IMPLICATIONS, banked: (1) NO MIX EDIT for alg4 — there
+  is nothing to cure; (2) the alg4 bar (402) sits INSIDE the churn
+  band — a +-2 net on ~48-row churn is trajectory noise, so the
+  SNAPSHOT RIDER (#57) upgrades to LOAD-BEARING: 17c saves periodic
+  ckpts and the wobble census runs on real substrate; (3) THE
+  BAR-NOISE LAW (prose, prospective only): bars pinned within a
+  fixture's measured churn band cannot cleanly convict or acquit —
+  FUTURE bars carry margins >= the noise floor once measured;
+  standing bars stay as pinned (no post-hoc bending — the law
+  governs the NEXT charter, not this one), and checkpoint selection
+  NEVER reads bar fixtures (Goodhart's fence: the val slice picks,
+  the bars judge). 17c proceeds as chartered: fresh hundreds
+  uniques, no alg4 line, the snapshot census riding.
