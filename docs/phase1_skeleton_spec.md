@@ -9486,3 +9486,43 @@ token-position × waist-dim, the moment the skeleton trains.
   GPU-minor, UNFORCED, parked on the docket with its rung named.
   The protocol formalizes what the house's best negatives already
   practiced — now the worst ones must practice it too.
+- **GUT #60: CHILDREN RESIST CHANGE (2026-07-24, Bryce + relay +
+  Code, registered as amended; the discriminator READ from banked
+  census same-hour).** The bathtub is the find — resistance on BOTH
+  crossings means the cost lives in the BOUNDARY, not the states:
+  hysteresis in textbook form. Anti-re-buy sort: interps 3-7 are
+  banked physics confirmed (activation energy = the quench clause;
+  basin-with-mass = the ring gauge's vocabulary; momentum's literal
+  answer = #57's cold pan). EIGHTEENTH SPECIMEN at countersign
+  (stale-board species, mild, 2nd sighting pattern): the relay
+  built the discriminator into 'the standing alg4 question' — the
+  autopsy DELIVERED yesterday (dilution, 93ef001); verdicts and
+  queues are ledger state; re-read before building. THE
+  DISCRIMINATOR SURVIVES ITS OWN SPECIMEN: dilution named the
+  share arithmetic but never tested cycle-synchronization — and
+  the banked census answers at one-boundary grain: **THE BOUNDARY
+  TOLL, read same-hour: the restart's hot phase craters both
+  fixtures (bigtest ->1098, alg4 ->336 by s1000) and annealing
+  refunds MOST BUT NOT ALL (1214/386 at segment end)** — the
+  unrefunded residue is the per-cycle toll, charged at the
+  boundary, landing heaviest on the least-rehearsed register.
+  Scope: n=1 boundary; the full multi-boundary test rides the next
+  SGDR fire (SNAP_EVERY across ALL segments — rider registered).
+  H1 AND H2 COEXIST: dilution sets what the hot phase re-deepens
+  first; the boundary charges the toll. **(a) THE HYSTERESIS LAW
+  (prose, both edges):** every consolidation deepens the current
+  basin AND raises the walls around it — entry costs are visible
+  at acquisition, exit costs accrue silently until the next
+  transition invoices them; a campaign that only meters entry
+  will keep being surprised by exits. Nobody resists states —
+  everybody resists doors, and the toll booth charges both ways.
+  **(b) GEN-18 DESIGN INPUT #7 (the ration line's second
+  clause):** the hard-band rehearsal ration carries MASS
+  (share-preserving, dilution's antidote) AND PLACEMENT (riding
+  the hot phase of each cycle, where the toll charges — not
+  appended after annealing). **(c) THE UMBRA-TREND COLUMN
+  chartered on the zone meter:** per-family umbra mass across
+  generations — a family whose umbra shrinks is paying exit costs
+  somewhere, visible before any bar convicts it; the exit-cost
+  gauge the law says was missing, riding the standing zone column
+  at zero added cost.
