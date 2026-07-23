@@ -9560,3 +9560,22 @@ token-position × waist-dim, the moment the skeleton trains.
   and the fence preserved in-text: speculation would replace
   stalled RENDERINGS, never stalled VERDICTS — the pen waits for
   every stage, always.
+- **THE DIFFERENTIAL READ'S QUANTITATIVE BAR (2026-07-24, pinned
+  before measurement; the driver's-seat fire, #58's read ungated by
+  17c's verdict).** Substrate: aperture A = the banked per-item
+  routing fid (1500, crown_v4 on bigtest); aperture B = per-item
+  mean centered-cosine distance of slot fst vectors to their own
+  kind centroids (gen-16 bank, computed fresh — one forward pass).
+  Populations from the banked V4 votes: COLD = unanimous-wrong;
+  CORRECT = majority-correct. Both apertures z-scored on the full
+  fixture; the differential = |zA − zB| per item. PRE-WRITTEN
+  VERDICTS: **LIGHTS** if the cold population's mean differential
+  exceeds the correct population's by >= 0.5 of the correct
+  population's own std — the deep deceptions fool the apertures
+  DIFFERENTLY, and the differential becomes the cold-error
+  detector no single aperture could be; **FLAT** otherwise — both
+  apertures deceived identically, the deepest confirmation that
+  the cold errors live below all learned geometry, ROUTING THEM
+  PERMANENTLY to the guard and the books (the only organs sensing
+  off the learned baseline), and the cold-error question CLOSES
+  with a structural answer.
