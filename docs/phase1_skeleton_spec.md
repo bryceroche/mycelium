@@ -8725,3 +8725,16 @@ token-position × waist-dim, the moment the skeleton trains.
   its zener at design review, joining the mortality law's
   death-rite clause as the symmetric obligation (state that
   persists names its discharge as state that dies names its rite).
+- **THE RUNG TEST CONVENES (2026-07-22, Bryce's word; the third
+  admission review's first act — three families examined, one exam
+  fired).** BARS FOR THE M-DIAL EXAM, pinned before any parse: three
+  value-range certificates re-annotated as desk pages with the
+  solver domain raised per-page (m=500/1500/7000), GIVENS kept
+  in-digit-range (<=999), intermediates free. PASS per page =
+  vote >=3/5 at the official key; THESIS HOLDS if >=2/3 pass (the
+  m-dial + fold carries value-range's in-999-given mass without any
+  admission). Page 3 carries mag-3 GIVENS (235/221) — a deliberate
+  probe of the given path at magnitude (band-bars measured given
+  mag-2 at 0.942; mag-3 given is unmeasured). Either verdict is
+  information: pass = the dial decouples solver range from reader
+  range; fail on page 3 only = the canyon's given-path edge located.
