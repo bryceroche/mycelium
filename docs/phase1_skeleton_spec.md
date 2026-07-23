@@ -9608,3 +9608,16 @@ token-position × waist-dim, the moment the skeleton trains.
   already the assigned organs. The crown era may have quietly
   dissolved the measurable cold class — the provenance archaeology
   (zero-GPU) decides whether that sentence gets its strong form.
+- **THE DIFFERENTIAL'S TRUE TARGET FOUND + AMENDED BAR (2026-07-24,
+  pinned before the second administration).** Archaeology: the 65 =
+  residue_portrait.json's triple-voice-resistant items (bigtest
+  indices, ABSTAIN channel — 'cold' was compression drift in the
+  naming chain; they are dark/penumbra-zone repair-resisters, not
+  unanimous-wrongs, and aperture A has FULL jurisdiction: minted
+  text, gold spans). MATCHED CONTROL: the recovered abstains (same
+  channel, repair succeeded — the honest baseline; correct-items
+  would confound channel with resistance). AMENDED BAR, pinned:
+  LIGHTS if residue mean |zA−zB| >= recovered-abstain mean + 0.5 x
+  recovered-abstain std; FLAT otherwise -> the residue's deception
+  is aperture-invariant, and the guard+books routing takes its
+  strong sentence.
