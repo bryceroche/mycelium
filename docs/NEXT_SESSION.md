@@ -23,7 +23,7 @@ three-refusals deep.
 2. Differential: `python3 -c "import json; print(json.load(open('.cache/differential_read.json'))['lights'])"` -> True
 3. Canvas kill: `grep -c 'CANVAS DOSE VERDICT' docs/phase1_skeleton_spec.md` -> 1
 4. The 65 banked: `python3 -c "import json; print(len(json.load(open('.cache/residue_portrait.json'))['residue_items']))"` -> 65
-5. Empty cold class: `grep -c 'cold class is EMPTY\|COLD POPULATION IS EMPTY' docs/phase1_skeleton_spec.md` -> >=1
+5. Empty cold class: `grep -c 'certification channel is EMPTY' docs/phase1_skeleton_spec.md` -> >=1
 
 # PRIOR HANDOFF BELOW
 
