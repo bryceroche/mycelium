@@ -9646,3 +9646,24 @@ token-position × waist-dim, the moment the skeleton trains.
   routing-deep and representation-shallow (second) — not below
   all learned geometry after all: below ONE aperture, visible to
   the pair. The hammerhead ate on its first hunt.
+- **THE ROUTING-CANVAS PROBE, AMENDED BY CODE READ + FIRED (2026-07-24,
+  Bryce's word).** THE CORRECTION FIRST, filed against #55's banked
+  premise (a joint miss, relay-decoded and countersigned into the
+  ledger): the canvas EXISTS — line 531 is a direct CE of the fat
+  attention mass against normalized gold fspans, weight 1, standing
+  in the loss since the head's birth. 'Unsupervised shadows' was
+  false against the code; the truth is sharper: THE CANVAS IS
+  PRESENT AND THE 65 ARE MIS-ADDRESSED ANYWAY — so the probe
+  re-forms as a DOSE PROBE on the existing canvas (FAT_W env minted:
+  lambda-weight the standing term; the probe doses, never adds).
+  FOUND IN PASSING: the gen-17 mint lines all carry EMPTY spans —
+  they never fed the canvas (a diet note for gen-18: minted lines
+  should emit spans; the renderer knows exactly where its values
+  land). DESIGN: FAT_W=4, 6k continuation from crown_reader_v4 on
+  the crownv4 states (span-carrying base — pure dose, no confound);
+  MEASURE: routing fidelity re-photographed under the dosed head
+  (full fixture + refused-class + THE 65 specifically) + bigtest
+  guard. BARS (#55's, operationalized): PASS if delta
+  fid_refused >= 2x the bigtest displacement fraction AND >= +0.05
+  absolute; GUARD bigtest >= 1208; the band-dose kill stands
+  sentinel over the architecture case.

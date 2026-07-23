@@ -26,7 +26,7 @@ def maj(v):
     return Counter(vs).most_common(1)[0] if vs else (None,0)
 
 p = build_params(0)
-sd = safe_load(".cache/crown_reader_v4.safetensors")
+sd = safe_load(os.environ.get("FID_CKPT", ".cache/crown_reader_v4.safetensors"))
 for k in p:
     p[k].assign(sd[k].to(p[k].device).cast(p[k].dtype)).realize()
 
@@ -62,5 +62,5 @@ verdict = ("FIDELITY TRACKS SUCCESS — routing degrades on failures" if d > 0.0
 print(f"  delta {d:+.3f} -> {verdict}")
 json.dump({"acc_mean": float(fa.mean()), "ref_mean": float(fr.mean()),
            "delta": float(d), "verdict": verdict,
-           "fid": fid.tolist()}, open(".cache/routing_fidelity.json","w"))
+           "fid": fid.tolist()}, open(os.environ.get("FID_OUT", ".cache/routing_fidelity.json"),"w"))
 print("[routing] banked")

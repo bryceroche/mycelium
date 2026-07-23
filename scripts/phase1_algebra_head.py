@@ -528,7 +528,10 @@ def _loss_single(o, g):
     l = l + (ce(o["res"], g["res"]) * pres).sum() / n_p * 2.0
     l = l + ce(o["query"], g["query"]).mean() * 2.0
     fsn = g["fspan"] / (g["fspan"].sum(-1, keepdim=True) + 1e-6)
-    l = l + ((-(o["fat"] + 1e-9).log() * fsn).sum(-1) * pres).sum() / n_p
+    # FAT_W (routing-canvas dose probe, gut #55 amended): the fat-CE canvas
+    # has hung here at weight 1 all along; the probe doses it, never adds it.
+    fat_w = float(os.environ.get("FAT_W", "1"))
+    l = l + fat_w * ((-(o["fat"] + 1e-9).log() * fsn).sum(-1) * pres).sum() / n_p
     vsn = g["vspan"] / (g["vspan"].sum(-1, keepdim=True) + 1e-6)
     vmask = (g["vspan"].sum(-1) > 0).float()
     l = l + ((-(o["vat"] + 1e-9).log() * vsn).sum(-1) * vmask).sum() / (vmask.sum() + 1e-6)
