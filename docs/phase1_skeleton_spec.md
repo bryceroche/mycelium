@@ -9579,3 +9579,32 @@ token-position × waist-dim, the moment the skeleton trains.
   PERMANENTLY to the guard and the books (the only organs sensing
   off the learned baseline), and the cold-error question CLOSES
   with a structural answer.
+- **THE DIFFERENTIAL READ, FIRST ADMINISTRATION (2026-07-24, the
+  driver's-seat fire): VACUOUS ON ITS PLANNED FIXTURE — AND THE
+  VACUOUSNESS IS THE DIVIDEND.** The instrument built and ran clean
+  (both apertures per-item on bigtest: banked routing fid + fresh
+  fst-to-centroid distances, 1500/1500 scored) — and the COLD
+  POPULATION IS EMPTY: **zero unanimous-wrong items in 1500 under
+  gen-16's banked lattice votes** — unanimity precision 1.0 on the
+  measurement fixture, independently consistent with cert-v2's
+  1.0000 and now measured at the full-fixture grain. NEITHER
+  pre-written verdict applies: with n=0 the read is VACUOUS, not
+  FLAT (the code's else-branch printed FLAT; corrected here — a
+  verdict must never outrun its population; the two-sentence
+  discipline extended: vacuous is a third strength, weaker than
+  both). THE QUARRY MOVED: the 65 were defined in the FLIP-PROBE's
+  population (8188 — a different vintage and voting machinery than
+  the V4 bigtest lattice); their provenance needs its own
+  archaeology before the differential can hunt them (which
+  fixture, which gate, do they persist under gen-16 at all?) — and
+  if they live on WILD text, aperture A's jurisdiction ends (gold
+  spans do not exist off the minted register; the routing aperture
+  is annotation-side by construction — an honest structural limit,
+  stated). THE STANDING RESULT: the differential instrument is
+  validated on substrate and waits armed; the cold-error question
+  gains its sharpest reframing yet — at gen-16 on the measurement
+  fixture, THERE ARE NO COLD ERRORS LEFT TO FIND; whatever remains
+  of the 65 lives off-register, where the guard and the books were
+  already the assigned organs. The crown era may have quietly
+  dissolved the measurable cold class — the provenance archaeology
+  (zero-GPU) decides whether that sentence gets its strong form.
