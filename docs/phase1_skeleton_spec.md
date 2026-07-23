@@ -8894,3 +8894,20 @@ token-position × waist-dim, the moment the skeleton trains.
   retry cures assigned (add-voicing / fdiv-voicing). BOOK 5: 125
   rows / 14 crown pairs / 50 certificates over eight tranches;
   CROWN MASS 23/25 — two from the zener's pinned fire.
+- **THE DUP-COVERAGE GREP VERDICT (2026-07-23, zero watts): the
+  suspicion confirmed at census precision — 81,931 dup-arg factors
+  across 54 banked corpora, EVERY ONE mul; additive dups ZERO.** The
+  mint never once produced 'a plus a' — [66]/[69]'s ten empty views
+  are a training-distribution hole wearing a parse-failure costume,
+  the args=[a,a] law's diet-side cousin: the EMISSION exists (the
+  ALG_DUP bit and the add op are both trained, separately), but the
+  JOINT pattern add+dup has zero training mass — a coverage sliver
+  at the pattern grain, caught by two specimens and one grep. CURE
+  IS ONE MINT LINE: additive dups into the next fire's mix — JOINS
+  THE MAJOR-FIRE AGENDA beside the hundreds-digit diet line (the
+  zener's review accumulates its docket before it convenes: band-
+  restart arm, hundreds coverage, add-dup coverage). Interim
+  mul-voicing stands at the desk. The texture rule's ledger: three
+  fires this week, three mechanisms named (canyon->voicing,
+  diet-wall->decompose, add-dup->mint line), total instrument cost
+  two probes and a grep.
