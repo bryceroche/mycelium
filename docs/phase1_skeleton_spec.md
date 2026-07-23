@@ -9275,3 +9275,45 @@ token-position × waist-dim, the moment the skeleton trains.
   acquisition WITHOUT the register toll (the crown-continuation
   curve's own history), landing h3held >= 170 with bigtest held
   >= 1223.
+- **GUT #58: THE HAMMERHEAD (2026-07-23, Bryce + relay + Code,
+  registered as amended; the read priced and QUEUED).** The honest
+  sort first: interps 2-7 are banked law re-skinned — the wide
+  aperture is the parser's cross-attention (the routing photograph
+  its portrait), cross-attention-as-potentials is #47's foundation
+  verbatim, parallel propagation is the width law (#44), the
+  buried-signal manifold is the collapse quotient. CONFIRMED SEATS;
+  the metaphor confirms, it doesn't extend — the hammerhead's body
+  is the two-jaws architecture drawn in cartilage. THE FIND is
+  interp 8: the shark reads a DIFFERENTIAL ACROSS A WIDE BASELINE —
+  the left-right difference triangulates what no single pore
+  senses. Held against the panel exam's wound (witnesses sharing a
+  baseline, unanimity triangulating nothing), it names the one
+  operation the house doesn't do. SEVENTEENTH SPECIMEN at
+  countersign (mild, the substrate-overclaim species, second
+  sighting): 'zero-GPU on banked states... post-entourage-17' —
+  entourage-17 has not run (e16 is the last), and the collapse
+  artifact holds AGGREGATES ONLY (two mean-distance pairs; no
+  per-item table exists anywhere) — the join is unpriceable from
+  disk. CURE, now standing: SUBSTRATES ARE ARTIFACTS TOO — a read
+  is zero-GPU only if its per-item tables are already banked;
+  check the artifact's GRAIN, not just its existence. **(a) THE
+  BASELINE LAW (prose, minted):** decorrelation is APERTURE
+  SEPARATION, not sensor count — the panel failed on the scope
+  specimens because its witnesses shared a baseline; the cure is
+  instruments whose DIFFERENCE carries what neither reading holds.
+  **(b) THE DIFFERENTIAL READ (registered, GPU-MINOR joint pass —
+  one fixture, both apertures per item: routing fidelity vs
+  representation-to-centroid distance; QUEUED behind gen-17c's
+  verdict).** Pinned prediction, kill-only: the cold-error residue
+  (the 65 — register-shared, curriculum-deep, invisible to both
+  narrators per the Flipped kill) should LIGHT THE DIFFERENTIAL
+  where no single aperture flagged it (a deep deception may fool
+  each aperture consistently but DIFFERENTLY); if the differential
+  reads flat — both apertures deceived identically — that is the
+  deepest confirmation yet that the cold errors live below all
+  learned geometry, routing them PERMANENTLY to the guard and the
+  books, the only organs that don't sense from the learned
+  baseline. Either verdict pays. **(c) THE FENCE:** the
+  differential is diagnostic only — it photographs disagreement,
+  it never adjudicates; a structural aperture entering any
+  acceptance path is the Goodhart door the constitution welds.
