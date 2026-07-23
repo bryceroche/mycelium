@@ -9396,3 +9396,19 @@ token-position × waist-dim, the moment the skeleton trains.
   read, and routing canvas standing ready. The gate: GEN-16,
   zero waivers, its record intact — guarded this week by its own
   bars against three of its children.
+- **THE BAR REVIEW UNDER THE BAR-NOISE LAW (2026-07-24, prose lane
+  of the composed fork; prospective per the law's own text).**
+  GEN-18 CHARTER DESIGN INPUTS, written once with the measured
+  floors: (1) bigtest bars carry margin >= 10 (the annealed floor)
+  — a promotion bar of 'record + margin' or a snapshot-band
+  requirement, never a bare point; (2) alg4 bars carry margin >= 6;
+  (3) BATTERIES REPORT THE BAND: every future battery evals 2-3
+  annealed snapshots per candidate and prints min/max beside the
+  headline (the flywheel verdict's operational residue); (4)
+  dose-curve readings are multi-snapshot or carry the noise floor
+  as their error bar; (5) val picks, bars judge — restated in the
+  charter template itself. STANDING BARS UNTOUCHED (gen-16's
+  manifest floors stand as pinned; the law governs the NEXT
+  charter). The alg4 drift autopsy fires alongside (standing
+  rhythm: diagnostic read on banked snapshots); book-5 t10 holds
+  for the word.
