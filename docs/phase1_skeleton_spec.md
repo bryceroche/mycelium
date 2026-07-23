@@ -9109,3 +9109,43 @@ token-position × waist-dim, the moment the skeleton trains.
   add-dup >= 180/200, alg4 >= 402, cert-v2 >= 0.998, guard 20/20,
   acceptance >= 7. KILL: bigtest < 1208. One dose, one gap, same
   pen.
+- **GUT #56: TWO SILHOUETTES (2026-07-23, Bryce + relay + Code,
+  registered as amended; the read QUEUED behind the burning fire).**
+  The gut hands the penumbra law its missing meter: if sharpness has
+  two zones, no report should print one number. Greps seat the
+  half-built claim: the lattice IS the instrument at decision grain
+  (certified = umbra, answered-plurality = penumbra, abstain = dark
+  — never blended), and the shallow-basin census (3478: deep 1432 /
+  shallow 925 at gen-8 vintage) was the corpus-grain read — banked
+  once, never made a standing accrual, exactly as charged. TWO
+  COUNTERSIGN CATCHES: (1) 'zero watts' is wrong by one machine —
+  the hundreds fixture has NO banked votes (the battery's eval is
+  single-view; votes exist only for bigtest), so the zone read
+  needs a 5-view pass: GPU-MINOR, and the GPU is currently BURNING
+  gen-17b — the read QUEUES behind the fire (one process, one card;
+  contention is a crash risk under the AM driver, not a slowdown).
+  It grades the mechanism bet AHEAD OF THE PEN, not ahead of the
+  light — one turn later than the relay's framing, stated honestly.
+  (2) The read's subject is g17_armR (the 17b base), so its verdict
+  binds the CHARTER'S PREMISE, not the new ckpt. **(a) THE
+  TWO-SILHOUETTE LAW (prose, minted):** never blend the zones —
+  umbra is crystallized (needs nothing), penumbra is frontier
+  (takes DOSE: reps, rehearsal, continuation), dark is absence
+  (takes VOCABULARY: mint lines, books, crowns, dials — no dose
+  cures what casts no shadow); the umbra column always reads
+  against the key (false umbra = the cold errors, #55's caveat
+  standing). Mean accuracy blends the zones into one useless
+  average — bars may keep single numbers as FLOORS, but diagnosis
+  reads zones. **(b) THE PRE-PEN READ, bars pinned NOW: split the
+  hundreds fixture's ~39 missing rows (armR 161/200) into
+  PENUMBRA (gold present among 5 views, vote split) vs DARK
+  (no view finds gold). PENUMBRA-SHAPED (>=60% of misses) = the
+  dose bet validated, 17b's mechanism confirmed before its
+  battery; DARK-SHAPED (>=60% no-gold) = reps buy nothing, the
+  charter re-prices at the verdict regardless of the fire's sunk
+  watts.** Fires the moment the GPU frees. **(c) THE STANDING
+  COLUMN chartered: umbra/penumbra/dark masses per fixture, per
+  battery, accruing beside the sentinel row per promotion — the
+  consolidation trajectory the basin census read once and never
+  again.** After the fifteenth, the instrument's character is the
+  point: one more way the artifacts speak before anyone narrates.
