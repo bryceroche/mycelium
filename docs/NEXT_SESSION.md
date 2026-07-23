@@ -1,3 +1,30 @@
+# NEXT SESSION — start here (handoff, 2026-07-23 late — GEN-17 FIRE: NO PROMOTION, RICH KILL)
+
+## **THE PEN REFUSED BOTH ARMS (bars pre-pinned, no bending); manifest
+stays GEN-16.** BUT: **Arm R (SGDR restarts) bigtest 1232 = NEW
+FIXTURE RECORD (+9)** while Arm F (flat) regressed to 1215 — gut
+#50's restart lean CONFIRMED at matched budget (flat-wins verdict
+scope-decayed at continuation vintage). ADD-DUP LINE: 0.00 -> 0.99
+(closed, bar crushed). HUNDREDS LINE: 0.00 -> 0.805 — under the 0.85
+bar by 9 rows at 3.8% x 1 rep (dose-shaped gap; reps unpulled). alg4
+400 vs 402 (marginal real regression). Cert-v2 1.0000 both. ERRATA:
+held fixtures shipped fake gold (solution=[0]*24) — re-keyed, law
+minted (a fixture carries its key or measures nothing). g17_armR =
+BENCH artifact (gate record stays 1223). **PROPOSED NEXT (needs the
+word): gen-17b — continue FROM g17_armR, hundreds dose x reps, same
+bars.** Board: book 5 at 164 rows, bench ~95; routing-canvas probe
+gated; macro-of-macro 3/5. Gate: gen-16 = crown_reader_v4, stack
+entire, zero waivers. Guts 55; specimens 14; kill ledger 9.
+
+## TAPE EXAM (run BEFORE trusting this seal; any miss -> ledger)
+1. Gate unchanged: `python3 -c "import json; print(json.load(open('.cache/GENERATION.json'))['gen_id'])"` -> 16
+2. Arm R banked: `test -f .cache/g17_armR.safetensors && echo OK` -> OK
+3. Record in log: `grep -c "'bigtest': 1232" <(tail -30 .cache/battery_gen17.log) || grep -c 1232 .cache/gen17_R.log` -> >=1
+4. Held re-keyed: `python3 -c "import json; r=json.loads(open('.cache/gen17_hundreds_held.jsonl').readline()); print(r['solution'][r['query_var']] != 0)"` -> True
+5. Kill banked: `grep -c 'THE GEN-17 VERDICT' docs/phase1_skeleton_spec.md` -> 1
+
+# PRIOR HANDOFF BELOW
+
 # NEXT SESSION — start here (handoff, 2026-07-23 — PERFECT WIDE TRANCHE; THE CROWN ZENER FIRES)
 
 ## **T9: PERFECT AT MAX WIDTH — 39 rows / 2 crowns / 5 certs, ZERO

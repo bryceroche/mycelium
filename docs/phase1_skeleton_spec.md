@@ -9019,3 +9019,42 @@ token-position × waist-dim, the moment the skeleton trains.
   zero-parameter; canvases are training furniture only. The gut
   watched the dancer's shadow soften, brother, and the physics
   answered: she was never blurry — the canvas was far.
+- **THE GEN-17 VERDICT (2026-07-23): NO PROMOTION — the pen refused
+  both arms on charter bars, AND THE KILL IS RICH.** First, the
+  instrument errata (filed before the numbers): the held fixtures
+  shipped with solution=[0]*24 (the mint's canyon-pattern fake gold
+  — fine for training, which reads factors; fatal for eval, which
+  reads keys) — both bars read an absurd 0/200, the absurdity itself
+  flagged the instrument, fixtures re-keyed with real solutions via
+  the solver, re-evaled. THE LAW: a fixture carries its key or it
+  measures nothing. THE REAL NUMBERS, graded by pre-pinned frames:
+  **(1) THE RESTART VERDICT — GUT #50's LEAN CONFIRMED AT MATCHED
+  BUDGET: Arm R (4x4k SGDR) bigtest 1232, A NEW FIXTURE RECORD
+  (+9 over gen-16's 1223) while Arm F (flat 16k incumbent) REGRESSED
+  to 1215 (−8).** Restarts didn't just earn the jostle — flat lost
+  ground on the same mix while restarts set the record; the
+  schedule-probe's flat-wins verdict scope-decays exactly as the
+  regime law predicts (that verdict was cold-start-era; at
+  deep-continuation vintage the basin needs the shake). **(2) THE
+  ADD-DUP LINE: 0.00 -> 0.99 (198/200 both arms)** — the census
+  hole closed by one mint line; bar 0.90 crushed. **(3) THE
+  HUNDREDS LINE: 0.00 -> 0.805 (R: 161/200; F: 163/200)** — the
+  cliff became a graded read (the charter's own target phrase) but
+  sits UNDER the 0.85 bar by 9 rows; the dose was 3.8% x 1
+  rep/unique — the dose law's known lever (reps) unpulled. **(4)
+  alg4 400 both arms vs bar 402** — a real marginal regression.
+  Cert-v2 both arms 1.0000 precision (923/920); guard 20/20 both;
+  acceptance 19 banks. THE BARS ARE THE BARS: no post-measurement
+  bending; the manifest stays GEN-16; g17_armR banks as a BENCH
+  artifact holding the fixture record (the GATE record remains 1223
+  — a record set by an unpromoted arm is a measurement, not a
+  gate). THE LAWFUL PATH FORWARD (needs the word): a gen-17b
+  continuation charter — gentle continuation FROM g17_armR (the
+  lineage law: continuation deepens), hundreds dose raised by REPS
+  per the dose law (the 9-row gap is dose-shaped, not
+  wall-shaped: 0->0.805 in one fire is a line that takes
+  medicine), same bars unchanged. The zener's first convened fire
+  ends in a refusal that validated two diet lines, confirmed the
+  restart lean, set a fixture record, and priced the next fire's
+  one open dose — the registered-prediction machine working
+  exactly as constituted.
