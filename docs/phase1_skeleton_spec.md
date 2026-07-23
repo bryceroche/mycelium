@@ -8938,3 +8938,38 @@ token-position × waist-dim, the moment the skeleton trains.
   protocol (the gen-15 recipe). THE FENCE HOLDS: the review is
   OPEN; the fire waits on Bryce's word. BOOK 5: 164 rows / 16
   crown pairs / 55 certificates over nine tranches.
+- **THE GEN-17 FIRE CHARTER (2026-07-23, registered at the zener's
+  convening — GPU HOLDS FOR BRYCE'S EXPLICIT WORD; corpus build may
+  proceed on the word).** The candidate: the head learns the walls
+  its audits named. BASE: gentle continuation from crown_reader_v4
+  (the lineage law; no restart of the trunk-side recipe). DIET (dose
+  law honored — share-of-mix AND reps-per-unique declared at build):
+  the gen-16 mix refreshed PLUS four audited lines: (1) HUNDREDS
+  COVERAGE — minted givens spanning hundreds {3..9} (the wall
+  probe's cure; target: the 0/60 cliff becomes a graded read);
+  (2) ADD-DUP — additive self-pairs at volume (the census hole's
+  cure; currently zero mass in 54 corpora); (3) CROWN SYNTHETICS
+  refreshed under mg2 INCLUDING a>1 FRAC_OF legs ([126]'s wild
+  validation says the leg is real); (4) BOOK-5 ROWS — 164 organic
+  rows incl. 16 crown pairs (prose share tuned per the book-2
+  regularization law: ~3% x 10 reps, never epochs-deep). THE TWO
+  ARMS (gut #50's registered lean, matched budget): ARM F = flat
+  continuation (the incumbent recipe); ARM R = flat with
+  BAND-SYNCHRONIZED RESTARTS (the surf lean: same mix, same total
+  steps, restarts at band boundaries). PRE-PINNED BARS (the battery
+  checks mechanically; prefix PARAMETERIZED per the gen-16 seam
+  note): PROMOTE requires bigtest >= 1223 (the record; no
+  backsliding into the crown) AND hundreds-given read >= 0.85 on a
+  held {3..9} fixture (from 0.00) AND add-dup parse >= 0.90 on held
+  synthetics (from 0.00) AND alg4 >= 402 AND cert-v2 re-audition
+  clean. KILL: both arms bigtest < 1208 -> keep gen-16, bank the
+  negative, the diet lines return to the docket with their doses
+  re-priced. ARM CHOICE: higher bigtest wins ties to F (incumbent
+  bias — restarts must EARN the jostle). ENTOURAGE-17 RIDES
+  PROMOTION (specialist remine, centroids re-anchor, mouth recal,
+  delta-probe re-run at three floors of vintage, dissent overlap,
+  collapse re-read, discharge walk with crown zener re-armed at a
+  review-pinned N). P2 measurement mass: the 25 wild knots, indexed
+  wild-only per the standing pin. The charter stands registered
+  with every line traceable to a named audit — the fire, the mint,
+  and the precompute await the word.
