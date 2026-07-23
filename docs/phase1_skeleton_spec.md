@@ -8842,3 +8842,29 @@ token-position × waist-dim, the moment the skeleton trains.
   lucky draws); SPECIMEN-ISOLATED if both classes clear 0.85 (420's
   wobble is narrower than its class — the '42' digit-pair hinge
   hypothesis opens, rule scope narrows to the convicted numbers).
+- **THE ZERO-HINGE PROBE VERDICT (2026-07-22): pre-pinned frame says
+  MAG-3 BROADLY (gap +0.000, both classes 0.250) — and the wrongs
+  table names the true mechanism POST-HOC, flagged as such: PERFECT
+  SEPARATION at the hundreds digit.** Every clean read (205, 130,
+  235, 137 — 20/20 views) has hundreds <= 2; every number with
+  hundreds >= 3 failed 0/60 (420->240, 530->130/30, 704->194,
+  810->90, 902->192, 425->245, 537->137, 815->95, 924->194 — the
+  reader collapses the out-of-range hundreds toward the trained
+  {1,2} or drops it). **THE DIET WALL, named: the digit head's
+  hundreds position was only ever fed {0,1,2} — the mint's <=300
+  cap IS the wall.** Not a canyon (erosion), a CLIFF (0/60). The
+  zero was never the hinge; 420's two convictions were both
+  out-of-diet reads. The m-dial exam's 3/3 re-reads: in-diet draws
+  (235/221, hundreds=2), its jurisdiction now exact. DESK RULE
+  RE-SCOPED (sharper than the pre-written widening): givens >= 300
+  DECOMPOSE (voice 420 as 42x10); in-diet mag-3 givens (<300) are
+  FREE — the probe measured them perfect. DIET LINE REGISTERED for
+  the next major fire (the crown-mass zener's customer): mint
+  hundreds-digit coverage {3..9} into the mix — upgrading the
+  2026-07-11 one-line fix ('mint larger given-values', named at
+  first-harvest-gold and never fired) from note to priced line.
+  Transposition census: 15/60 wrongs are digit-anagrams — the
+  'transposition' reading was the mechanism's shadow, not its
+  shape. The texture rule's economics again: two specimens, one
+  probe, one wall named, one rule re-scoped, one diet line priced
+  — 62 seconds of reader time.
