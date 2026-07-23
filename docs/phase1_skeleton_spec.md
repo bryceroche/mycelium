@@ -8911,3 +8911,30 @@ token-position × waist-dim, the moment the skeleton trains.
   fires this week, three mechanisms named (canyon->voicing,
   diet-wall->decompose, add-dup->mint line), total instrument cost
   two probes and a grep.
+- **BOOK 5, TRANCHE 9 (2026-07-23): PERFECT AT MAXIMUM WIDTH — 39
+  rows / 2 crown pairs / 5 certificates, ZERO MISSES, annotator
+  floor 1.00 (30/30 fresh first-pass) — AND THE CROWN-MASS ZENER
+  FIRES.** The widest tranche in campaign history banked whole. THE
+  RETRY BENCH SWEPT 5-FOR-5 on mechanism-certain cures: [36] v3
+  BANKED at 7 (mul-voiced doubling — the add-dup autopsy's cure
+  working where two voicing guesses failed; the chronic case closed
+  as the family's 4th specimen), [66]/[69] mul-voiced 5/5 each,
+  [60] add-voiced, [75] fdiv-voiced. THE FIRST WILD a>1 FRAC_OF:
+  [126] ('When 3 times a is divided by 5') BANKED UNANIMOUS both
+  floors — the crown grammar's general leg meets the wild and
+  holds. [109] FRAC_OF over a derived product 5/5. The m-dial ran
+  five pages deep (max m=4000, [102] banking THE CAP ITSELF: answer
+  300 through a 3900 intermediate). The rulebook's prediction rate
+  this tranche: 37/37 pages written under the rules banked
+  first-pass. **THE DISCHARGE: wild_crown_mass 25/25 — the zener's
+  first pinned fire. THE MAJOR-FIRE REGISTRATION REVIEW IS HEREBY
+  OPENED by discharge** (the instrument's designed first act,
+  landing 20 hours after the threshold was pinned). THE REVIEW'S
+  SEATED DOCKET, accumulated by its own laws: (1) the band-restart
+  arm (gut #50's registered lean); (2) the hundreds-digit diet line
+  (the wall probe's cure: mint given hundreds {3..9}); (3) the
+  add-dup mint line (the census hole's cure); (4) 25 unique wild
+  crown knots as measurement mass + the macro-annotated synthetic
+  protocol (the gen-15 recipe). THE FENCE HOLDS: the review is
+  OPEN; the fire waits on Bryce's word. BOOK 5: 164 rows / 16
+  crown pairs / 55 certificates over nine tranches.

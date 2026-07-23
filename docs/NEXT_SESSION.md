@@ -1,3 +1,29 @@
+# NEXT SESSION — start here (handoff, 2026-07-23 — PERFECT WIDE TRANCHE; THE CROWN ZENER FIRES)
+
+## **T9: PERFECT AT MAX WIDTH — 39 rows / 2 crowns / 5 certs, ZERO
+misses, floor 1.00 — and WILD_CROWN_MASS 25/25: THE ZENER'S FIRST
+PINNED FIRE.** Retry bench swept 5/5 on mechanism-certain cures
+([36] closed as add-dup specimen 4); [126] FIRST WILD a>1 FRAC_OF
+unanimous; [102] banked the cap itself (300 via 3900 intermediate,
+m-dial). **THE MAJOR-FIRE REGISTRATION REVIEW IS OPEN** (by
+discharge, as designed). SEATED DOCKET: band-restart arm (#50),
+hundreds-digit diet line (wall probe), add-dup mint line (census),
+25 wild crown knots + synthetic protocol. THE FIRE WAITS ON BRYCE'S
+WORD. Book 5: 164 rows / 16 crown pairs / 55 certs / nine tranches;
+bench ~95 fresh. Other counters: admission families quiet (max
+live charge 5), macro-of-macro 3/5. Gate: gen-16 = crown_reader_v4
+(FTYPES=8), stack entire, zero waivers. Guts 54; specimens 13; kill
+ledger 8.
+
+## TAPE EXAM (run BEFORE trusting this seal; any miss -> ledger)
+1. Gate identity: `grep -c crown_reader_v4 .cache/GENERATION.json` -> >=1
+2. T9 rows: `grep -c '"tranche": 9' .cache/book5_prose_pairs.jsonl` -> 39
+3. Book-5 total: `grep -c '"book": 5' .cache/book5_prose_pairs.jsonl` -> 164
+4. The breach: `python3 -c "import json; print(json.load(open('.cache/discharge_ledger.json'))['breaches'])"` -> ['wild_crown_mass']
+5. Crown mass: `python3 -c "import json; print(json.load(open('.cache/discharge_ledger.json'))['wild_crown_mass'])"` -> 25
+
+# PRIOR HANDOFF BELOW
+
 # NEXT SESSION — start here (handoff, 2026-07-23 — FIRST WIDE TRANCHE: BOOK 5 AT 125 ROWS, CROWN MASS 23/25)
 
 ## **T8 (WIDE, width law's maiden voyage): 30 rows / 2 crowns / 5
