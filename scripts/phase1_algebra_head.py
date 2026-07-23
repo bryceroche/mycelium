@@ -984,13 +984,27 @@ def do_train(steps, lr, batch, seed):
         print(f"[curriculum] pools: easy={len(pools[0])} "
               f"mid={len(pools[1])} full={n}", flush=True)
 
+    # RATION (gen-18 charter, inputs #4/#5): hot-phase upweighting of a
+    # marked row set — the dilution law's antidote carries mass AND
+    # placement (the boundary toll charges in the hot phase).
+    ration_w = None
+    if os.environ.get("RATION_FILE"):
+        r_idx = json.load(open(os.environ["RATION_FILE"]))
+        ration_w = np.ones(n, np.float64)
+        ration_w[np.array(r_idx, int)] = float(os.environ.get("RATION_W", "1.5"))
+        print(f"[ration] {len(r_idx)} rows upweighted x{os.environ.get('RATION_W', '1.5')} in hot phase", flush=True)
+
     t0 = time.time()
     for s in range(steps):
         cur_lr = lr_min + 0.5 * (lr - lr_min) * (1 + math.cos(math.pi * s / steps))
         opt.lr.assign(Tensor([cur_lr], dtype=dtypes.float)).realize()
         pool = (pools[min(3 * s // steps, 2)] if pools is not None
                 else np.arange(n))
-        idx = rng.choice(pool, batch, replace=False)
+        if ration_w is not None and cur_lr > 0.5 * (lr + lr_min):
+            pw = ration_w[pool] / ration_w[pool].sum()
+            idx = rng.choice(pool, batch, replace=False, p=pw)
+        else:
+            idx = rng.choice(pool, batch, replace=False)
         b_tr.assign(Tensor(states[idx].astype(np.float32), dtype=dtypes.float).contiguous()).realize()
         b_tk.assign(Tensor(tokmask[idx].astype(np.float32), dtype=dtypes.float).contiguous()).realize()
         b_se.assign(Tensor(sent[idx].astype(np.int32), dtype=dtypes.int).contiguous()).realize()
