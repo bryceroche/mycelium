@@ -9692,3 +9692,39 @@ token-position × waist-dim, the moment the skeleton trains.
   6k-step price. The queue behind the pen is EMPTY for the first
   time this era — everything registered has fired, killed, or
   parked with its trigger named.
+- **THE GEN-18 FIRE CHARTER (2026-07-24, registered — GPU AND MINT
+  HOLD FOR BRYCE'S WORD; the first charter in campaign history where
+  every clause cites a measurement).** THE CANDIDATE: the head
+  learns its audited diet without paying the dilution toll. BASE:
+  gentle continuation from crown_reader_v4 (the gate's clean
+  lineage; the gen-17 bench artifacts stand as measurements, not
+  parents). THE EIGHT INPUTS, each with its artifact: (1) BARS
+  CARRY THE NOISE FLOORS — promote requires bigtest >= 1223 AND
+  annealed-snapshot-band min >= 1213 (record minus the measured
+  +-10); alg4 >= 402 with band min >= 396 (+-6); batteries eval 3
+  annealed snapshots and print the band beside every headline. (2)
+  DOSE DECISIONS CITE THE CURVE (three points, error bars = the
+  noise floor). (3) SCHEDULE: SGDR 4x4k (the restart law's winner)
+  with SNAP_EVERY=500 on ALL segments — the multi-boundary toll
+  read rides free. (4) THE RATION ARMS — the charter's one
+  question, the dilution law's registered prediction tested
+  directly: ARM A = the audited mix WITHOUT ration (control); ARM
+  B = WITH the hard-band rehearsal ration (share-preserving at
+  band grain, sized from the dilution verdict). (5) RATION
+  PLACEMENT: arm B's ration mass concentrates in each cycle's hot
+  phase (the boundary toll's clause). (6) THE ZONE COLUMN rides
+  the battery: umbra/penumbra/dark per fixture + the umbra-trend
+  column's first cross-generation row. (7) MAINTENANCE DOSES: the
+  saturated lines (hundreds, add-dup) at fresh-unique 1-rep
+  minimal mass — held, not re-bought. (8) SPANS FROM BIRTH: every
+  minted line emits gold spans (the renderer knows where its
+  values land; the canvas feeds from the whole diet — the two-
+  terminal law's territory, the canvas kill's surviving yield).
+  MIX: crown_v4 base + the audited lines + book-5 organic (164+,
+  10 reps) + [arm B: ration]. BARS also: h3held >= 170, adupheld
+  >= 180, cert-v2 >= 0.998, guard 20/20, acceptance >= 7. KILL:
+  both arms bigtest < 1208. ENTOURAGE-18 rides promotion (full
+  roster + delta-probe third point + discharge walk + zone
+  baseline). The mint, the precompute, and the fire hold for the
+  word; t10 may run beside the mint per the width law whenever
+  the desk's word comes.
