@@ -9187,3 +9187,21 @@ token-position × waist-dim, the moment the skeleton trains.
   machinery already absorbs much of what EMA smooths; modest
   wobble, lever marginal. The house has been cooking on cast iron
   all along — what's new is the spec sheet.
+- **THE ZONE READ'S FIRST ADMINISTRATION (2026-07-23): PENUMBRA-
+  SHAPED — the 17b dose bet VALIDATED at the pinned 60% bar.** On
+  armR x hundreds-held, 5 views: full fixture umbra 28 / penumbra
+  134 / dark 38; the vote-miss set (101) splits penumbra 63 (62%)
+  vs dark 38 (38%). The mechanism confirmed BEFORE the pen: most of
+  the gap is rows the rays already touch — reps reach them. THE
+  HONEST BOUND banked with it: the dark mass (38 rows, no view
+  finds gold) caps single-view at ~162 vs the 170 bar UNLESS the
+  dose also converts dark — lawful here because the hundreds line
+  is this family's dose AND its vocabulary (same rows, the
+  treatment table's two medicines in one line); the zone is a
+  state of the current weights, not a destiny. Also read: the
+  vote-grain fixture is harsher than single-view (99 vote-correct
+  vs 161 single-view — single-view rides lucky rays), a
+  grain-mismatch note for all future zone-vs-bar arithmetic. The
+  instrument works: one read, the charter's premise graded, the
+  residue sized, the sentence written before the battery could be
+  narrated by anyone.
