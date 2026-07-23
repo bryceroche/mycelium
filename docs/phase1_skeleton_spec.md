@@ -9735,3 +9735,15 @@ token-position × waist-dim, the moment the skeleton trains.
   maintenance rule in-text: each conversion appends its row in the
   SAME transaction as its ledger entry (the prose-promotions law
   applies to indexes too).
+- **THE RATION BAND CORRECTED MID-BURN (2026-07-24, caught at the
+  dose table, fixed before arm B reads it):** the mint's band at
+  n_vars>=14 covered 70.9% of the mix — NOT a band; n_vars is
+  nominal in most rows (52% declare the padded 24, every minted row
+  among them). The true contour is FACTOR COUNT: index rewritten at
+  n_fac>=14 = 16,868 rows (22.5%), matching the drift autopsy's
+  lost-row profile (n_fac 10-22, mean ~17). Zero cost: arm A never
+  reads the index; arm B's first segment sits ~2h downstream; the
+  mix and precompute are untouched. The lesson, one line: A BAND
+  THAT COVERS THE CORPUS TESTS NOTHING — check the discriminator's
+  distribution before the fire, not after (the mint prints the
+  band share for exactly this reason, and the print did its job).
