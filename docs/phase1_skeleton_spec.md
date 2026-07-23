@@ -9317,3 +9317,32 @@ token-position × waist-dim, the moment the skeleton trains.
   differential is diagnostic only — it photographs disagreement,
   it never adjudicates; a structural aperture entering any
   acceptance path is the Goodhart door the constitution welds.
+- **THE GEN-17C VERDICT (2026-07-23): THIRD KILL — bigtest 1214 /
+  alg4 386; the manifest stays GEN-16 — AND THE REGISTERED
+  PREDICTION FAILED HONESTLY ON BOTH COUNTS.** Fresh uniques
+  saturated the line AGAIN (h3held 196/200, adup 199/200 — every
+  form of this medicine teaches its target) but the register tolled
+  anyway: −18 vs armR (milder than reps' −26, refuting the
+  no-toll prediction), and **ALG4 SLIDES MONOTONICALLY — 402 -> 400
+  -> 396 -> 386 across the family** — no longer the autopsy's +-2
+  churn: a systematic erosion scaling with continuation steps,
+  which AMENDS the churn verdict (churn was true at +-2 grain
+  between v4 and armR; the SLIDE emerges under further
+  continuation — scope decay of my own verdict, one day old,
+  banked as such). The dose curve gains its third point: (1rep/16k:
+  h=161, big=1232) / (4reps/+8k: h=198, big=1206) / (fresh/+8k:
+  h=196, big=1214). Cert-v2 1.0000 again (924 — the umbra
+  untouched through THREE displacements; the two-silhouette law's
+  third consecutive cross-read). THE OPEN MECHANISM: why does
+  continuation on this mix erode bigtest/alg4 while cert-mass
+  holds? Candidates: trajectory wobble (the swings within noise),
+  val-slice selection bias (pick-best-by-val favoring new-line
+  checkpoints), or real slow drift. **THE WOBBLE CENSUS FIRES AS
+  THE KILL'S AUTOPSY — substrate banked (8 snapshots at 500-step
+  spacing), chartered by #57's rider: eval the trajectory on
+  bigtest + alg4; tight readings = real drift (mechanism hunt
+  opens); wide readings = the bars sit inside trajectory noise and
+  the bar-noise law gets its first measured floor.** Three exams,
+  three lawful kills, the gate holding gen-16 with zero waivers —
+  and the era's question sharpened to one word: is the register's
+  toll NOISE or DRIFT?
