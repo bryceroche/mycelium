@@ -10168,3 +10168,25 @@ token-position × waist-dim, the moment the skeleton trains.
   budget measured, the cut acquitted — every strategic question
   the campaign holds now rests on measurements, and the next word
   is Bryce's.
+- **THE GEN-20 FIRE CHARTER (2026-07-24, registered — GPU HOLDS FOR
+  THE WORD; the first candidate carrying every proven input).** THE
+  THESIS, stated honestly against the conservation law: the dose
+  curve's own interpolation says NO ration setting clears all bars
+  at the measured 1778 — so gen-20 tests whether the era's UNFIRED
+  science shifts the budget itself: (1) SPANS FROM BIRTH across the
+  whole diet (the canvas fed by every minted row — routing quality
+  as budget efficiency, the one lever never in any refused fire);
+  (2) BOOK 5 COMPLETE (224 organic rows x10 at the regularization
+  share, up from 164). MIX: crown_v4 base + the spans-minted lines
+  (hundreds 3,000 teaching + adup 500 + crowns 500 knots) + book5
+  x10 (~78k rows). RECIPE: SGDR 4x4k from crown_reader_v4,
+  RATION_W=1.75 (the see-saw's interpolated middle), hot-phase,
+  n_fac>=14, SNAP_EVERY=500 all segments. BARS UNCHANGED (incl.
+  band-mins). VERDICTS PRE-WRITTEN: sum > 1790 -> the budget MOVES
+  and the spans thesis banks (routing efficiency was frontier
+  capacity); sum ~1778 with bars traded -> THE ARBITRATION
+  CONVENES ON FINAL EVIDENCE ('the budget provably doesn't
+  stretch, under the best allocation the era's laws could write');
+  all bars clear -> the first promotion since gen-16, carrying
+  five books and seven refusals' worth of laws. Book 6's harvest
+  queues behind the verdict at the tempo's prescription.
