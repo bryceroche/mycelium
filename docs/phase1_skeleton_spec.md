@@ -9949,3 +9949,25 @@ token-position × waist-dim, the moment the skeleton trains.
   within-segment pairs; bars as pinned: boundary-move >= 2x
   within-move -> targeted scatter opens; frozen -> scatter-proof
   walls, the architecture ledger's deepest entry).
+- **THE BOUNDARY-CROSSING VERDICT (2026-07-24): SCATTER-PROOF at the
+  pinned bar — and the texture rewrites 'frozen' into its truer
+  word: CHURNING.** Stagnant population (118 = dark 96 + residue 65,
+  overlap 43) vs matched control across arm A's trajectory:
+  boundary move-rate 0.251 vs within 0.206 (1.2x — far under the 2x
+  bar) — but BOTH rates high: the stagnant items are not rigid;
+  they wander constantly among wrong answers, at boundaries and
+  mid-anneal alike, and NO scatter points them home — **movement
+  without convergence: the wrong-answer basin is a COMPLEX the item
+  circulates within, and there is no gradient toward gold for the
+  mis-addressed** (the addressing wall's dynamics finally filmed).
+  The control population prints the boundary toll at item grain as
+  a free dividend: correct items move 2.7x more at boundaries than
+  mid-anneal (0.085 vs 0.031) at low absolute rates — the toll is
+  real, the umbra absorbs it. THE CLOSURES: the targeted-scatter
+  registration DIES UNOPENED (census price — the kill ledger's
+  cheapest possible entry beside the straggler's); the architecture
+  ledger writes its closing line — **STAGNATION SURVIVES CONTROLLED
+  EXPLOSION because stagnation was never stillness: the walls'
+  population churns unreachably, and the detour (differential
+  detects, guard abstains, books re-voice) is FINAL for it.** #62's
+  read complete; the capacity fire burns behind it.
