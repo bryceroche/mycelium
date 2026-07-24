@@ -9982,3 +9982,24 @@ token-position × waist-dim, the moment the skeleton trains.
   cosine — the proven schedule), epoch-parity restored; the
   battery holds until the burn is whole. No bars consulted at
   midpoint — a verdict must never outrun its burn.
+- **THE CAPACITY FIRE'S ERRATA + THE LAWFUL RITE (2026-07-24): I
+  CHOSE THE WRONG FUNERAL.** The cold burn completed its 64k
+  (epoch-parity honored): val 0.7527, still climbing, decelerating
+  — and two confessions in the trajectory: (1) the hot RESUME at
+  3e-4 RE-MELTED the first half (val 0.6576 -> 0.4351 at +4k
+  before re-climbing: the boundary toll at full heat, the step
+  law's warning played back at 2x width); (2) the deeper error —
+  a cold head at ANY width competes against SIXTEEN GENERATIONS of
+  lineage, not against width; the comparison was never
+  width-vs-width. THE STANDING LAW I FAILED TO APPLY: 'warm-start
+  = pad-warm (never discard a trained router)' — the regime's own
+  clause for router/width growth; the quench clause governs basin
+  restarts, NOT dimension changes. THE CORRECTION FIRES: pad-warm
+  — crown_reader_v4's 512 weights ZERO-EMBEDDED into the 1024
+  shapes (old function preserved at init; new units revived by
+  gradient), then GENTLE continuation (16k, LR 1e-4, the lineage
+  law) on the audited mix with ration and snapshots. The cold burn
+  banks as the COLD-CONTROL ARM (not waste: the epochs law + the
+  full-heat-resume toll were its tuition, and the pad-warm
+  comparison now has its baseline). The battery holds for the
+  pad-warm head.
