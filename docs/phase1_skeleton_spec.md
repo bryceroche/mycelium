@@ -10064,3 +10064,34 @@ token-position × waist-dim, the moment the skeleton trains.
   the campaign could otherwise light. THE BOARD RESTS: t10 and the
   diagnostic on the word; the desk's flywheel under the best
   instrumentation it has ever had.
+- **GUT #64: BREATH-CYCLE LOAD BALANCING (2026-07-24, Bryce + relay
+  + Code, registered as amended; the census RUN as arithmetic).**
+  The map-reduce gut's respiratory twin: interps 2/3/5/6/7/12
+  confirm the training loop's anatomy, the barrier clause (#61),
+  the mortality law's scratch-death, and the batch-economics fork —
+  confirmed seats, cartilage sentence applies. NINETEENTH SPECIMEN
+  (true-scars-invented-numbers species): 'K=12 hang', 'batch 16
+  tuned', '84GB memmap' — none in the record (fires run BATCH=8;
+  the real scars are CLAUDE.md section-5's actual laws: three OOM
+  kills -> the memmap discipline; reapers kill watchers -> the
+  systemd-unit law; the JIT quirks file). The incident CLASSES are
+  real; the decimals were decoration. Numbers quote artifacts —
+  fourth reiteration, now with an operational-lore wing. **(a) THE
+  RESPIRATORY LAW (prose):** the campaign breathes at three grains
+  — the STEP (batch-gather/flush), the FIRE (burn/rest alternation:
+  GPU burns interleaved with CPU-side reads, censuses, and desk
+  work — this week's seven fires never contended because the rests
+  are CPU by design), and the ERA (fire-campaigns alternating with
+  book-campaigns — the fork just chose an exhale). The barrier
+  clause governs every phase boundary; the sentinel stack is the
+  respiratory nerve. **(b) THE INFLOW CENSUS (run inline, the
+  era's tempo stated):** the regularization law's prose share (~3%
+  x 10 reps) on a ~77k mix = ~231 organic uniques per fire; book 5
+  holds 164 -> **~67 rows short = TWO WIDE TRANCHES at the desk's
+  measured width (30-39 rows/tranche, floor 0.75)**. THE TEMPO:
+  two wide tranches per fire-cycle sustains the pipeline —
+  pages currently wait on nothing; the next book-fed charter waits
+  on pages. **(c) THE FENCE:** the schedule serves the science —
+  no fire waits for a round number of pages, no tranche rushes for
+  a fire date; breathing is how the house RESTS, never how it
+  decides.
