@@ -9747,3 +9747,33 @@ token-position × waist-dim, the moment the skeleton trains.
   THAT COVERS THE CORPUS TESTS NOTHING — check the discriminator's
   distribution before the fire, not after (the mint prints the
   band share for exactly this reason, and the print did its job).
+- **THE GEN-18 VERDICT (2026-07-24): FOURTH REFUSAL — the manifest
+  stays GEN-16 — AND THE CHARTER'S ONE QUESTION IS ANSWERED:
+  **THE RATION WORKS.** Head-to-head at matched budget: ARM B
+  (hot-phase ration, n_fac>=14 band x1.5) alg4 = 408 — ABOVE the
+  402 bar, above gen-16 itself, the FIRST gen-17-family recipe to
+  clear alg4 — vs ARM A (no ration) 397. **+11 alg4 from placement
+  and share alone: the dilution law's registered prediction
+  CONFIRMED by direct experiment.** AND THE RATION STABILIZED THE
+  TRAJECTORY: B's bigtest band spread 5 (1214/1213/1209) vs A's 18
+  (1224/1206/1220). THE BAR-NOISE LAW EARNED ITS KEEP ON ITS FIRST
+  EXAM: arm A's headline 1224 CLEARED the old bare-point bar — and
+  the band-min bar caught it as a lucky point on a wobbling
+  trajectory (s3000 = 1206). Under the old bars, A would have been
+  promotion-eligible on a wobble; the noise-floor bars refused it
+  for the right reason. THE REFUSAL'S CAUSE, a charter design
+  error owned: **h3held COLLAPSED both arms (124/121 vs 170)** —
+  input #7's 'maintenance dose' (1,000 uniques) assumed saturation
+  carries via lineage, but the CLEAN GATE LINEAGE never learned
+  hundreds (its baseline is 0.00); maintenance maintains what the
+  PARENT knows — LINEAGE-NEW LINES NEED TEACHING DOSES (the dose
+  curve says 3,000 uniques buys ~0.80; 1,000 bought 0.62,
+  curve-consistent). Add-dup held at 197 both (500 sufficed — its
+  wall teaches at tiny dose). Cert-v2 1.0000 BOTH (fifth
+  consecutive; the umbra has never moved in five fires). ZONE
+  COLUMN's first row: umbra 999 / penumbra ~408 / dark ~92. THE
+  PRICED FOLLOW-UP (holds for the word): GEN-18B — arm B's recipe
+  verbatim (the ration confirmed) + hundreds at the TEACHING dose
+  (3,000 fresh uniques), one arm, bars unchanged: the recipe that
+  cleared alg4 meeting the dose that clears hundreds, each proven
+  separately tonight, composed.
