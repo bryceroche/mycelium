@@ -10252,3 +10252,15 @@ token-position × waist-dim, the moment the skeleton trains.
   consolidating) is the hope's honest form. THE SEQUENCE LIT:
   continuation seg5-6 (2x4k SGDR RESUME from g20, snapshots all),
   book-6 candidate prep CPU-side in parallel per the ruling.
+- **THE FLOOR VERDICT (2026-07-24): THE SHIFT IS REAL AT TRAJECTORY
+  GRAIN.** Post-continuation tail: 1781 / 1790 / 1798 (vs
+  pre-continuation 1768 / 1782 / 1790) — the MINIMUM rose 13 to sit
+  exactly at the old band's ceiling, the trend monotone +8-9 per
+  segment, two consecutive segments confirming. 'The budget moved'
+  RE-UPGRADES with the ruling's own evidence standard met: not a
+  peak draw — a slow real conversion, the spans lever compounding
+  under gentle continuation exactly as the penumbra law predicted.
+  THE STATE: sum 1798 (+20 over the old constant), bigtest 1216
+  (7 short), alg4 401 (ONE short), h3held 181, cert-v2 untested
+  this hour. NO PLATEAU -> the ruling's order says continue:
+  segments 7-8 fire.
