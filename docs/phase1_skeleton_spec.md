@@ -10040,3 +10040,27 @@ token-position × waist-dim, the moment the skeleton trains.
   refusals, seven sciences, one conserved quantity now suspected
   to live in the frozen substrate — and a gate that outscored
   every challenger thrown at it, at half their width.
+- **THE ROAD ADOPTED + THE TRUNK-CEILING DIAGNOSTIC REGISTERED
+  (2026-07-24, the fork's resolution):** Fork (i) — THE BOOKS — is
+  the road, by the campaign's own strategy: the register gap remains
+  the measured frontier, the books are the only organ that ever
+  moved it, and the next book-fed generation inherits the era's
+  entire science (spans from birth, the ration clause + scaling
+  law, the zone meter, noise-floored bars, teaching-dose
+  arithmetic). Forks (ii)/(iii) stand behind their gates:
+  arbitration is last-resort; trunk depth is PREMATURE BY THE
+  DEVELOPMENT PROTOCOL'S OWN QUESTION — the suspect is named, not
+  measured. **THE DIAGNOSTIC (registered, holds for the word): is
+  the conserved budget's missing information ABSENT FROM THE TRUNK
+  or PRESENT AND UNREAD at affordable geometry?** The deeper-prefix
+  probe pattern (its jurisdiction named at #49): precompute L0-L8
+  states on a contested-register sample, probe whether the deeper
+  prefixes decode what the L0-L3 head-space misses (the bilingual
+  chemistry at trunk grain — the latent-image law's biggest
+  possible administration). Absent -> the ceiling is real and
+  trunk-depth/arbitration price honestly; present-unread -> the
+  budget was never a ceiling, and the head's READ of the trunk is
+  the final frontier. Zero-to-minor watts against the largest fire
+  the campaign could otherwise light. THE BOARD RESTS: t10 and the
+  diagnostic on the word; the desk's flywheel under the best
+  instrumentation it has ever had.
