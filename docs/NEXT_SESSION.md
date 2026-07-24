@@ -1,3 +1,28 @@
+# NEXT SESSION — start here (handoff, 2026-07-24 — EIGHTH REFUSAL: THE BUDGET MOVED; THE ARBITRATION CONVENES)
+
+## **GEN-20: THE BUDGET MOVED (+12 to 1790 — seven fires held it to
++-3) and BOTH contested bars cleared simultaneously (alg4 406
+band-clear, h3held 173) — a combination provably infeasible on the
+old budget. The mechanism: SPANS FROM BIRTH (the unfired lever).
+THE GAP: bigtest 1211, 12 under the record bar.** Eighth refusal;
+gen-16 holds; cert-v2 1.0000 x9. THE CONSTITUTIONAL CHOICE AWAITS:
+(a) continuation from g20 (does gentle continuation buy the 12?);
+(b) the arbitration on final evidence (is the incumbent's record
+the right bar vs +4 alg4 / +173 hundreds?); (c) book 6 first (the
+tempo's next inhale, more organic mass for either path). Bench:
+g20 (premier), armR (1232), the era's snapshots. Gate: gen-16,
+zero waivers, bars EIGHT refusals deep. Guts 64; specimens 19;
+kill ledger 20; book 5 COMPLETE (224).
+
+## TAPE EXAM (run BEFORE trusting this seal; any miss -> ledger)
+1. Gate: `python3 -c "import json; print(json.load(open('.cache/GENERATION.json'))['gen_id'])"` -> 16
+2. Budget moved: `grep -c 'Sum = 1790' docs/phase1_skeleton_spec.md` -> 1
+3. g20 banked: `test -f .cache/g20.safetensors && echo OK` -> OK
+4. Eight exams: `grep -cE 'GEN-(1[789]|20)[BC]? VERDICT' docs/phase1_skeleton_spec.md` -> 8
+5. Book 5: `grep -c '"book": 5' .cache/book5_prose_pairs.jsonl` -> 224
+
+# PRIOR HANDOFF BELOW
+
 # NEXT SESSION — start here (handoff, 2026-07-24 — BOOK 5 COMPLETE: 224 ROWS, ELEVEN TRANCHES, THE SHELF DONE)
 
 ## **BOOK 5 IS COMPLETE — the full lane pass: 224 rows / 22 crown

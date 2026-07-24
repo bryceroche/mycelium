@@ -10190,3 +10190,30 @@ token-position × waist-dim, the moment the skeleton trains.
   all bars clear -> the first promotion since gen-16, carrying
   five books and seven refusals' worth of laws. Book 6's harvest
   queues behind the verdict at the tempo's prescription.
+- **THE GEN-20 VERDICT (2026-07-24): EIGHTH REFUSAL — AND THE BUDGET
+  MOVED.** The numbers: bigtest 1211 [1211/1206/1215] / alg4 406
+  [406/399/399 — band CLEAR] / h3held 173 / adup 197 / cert-v2
+  1.0000 (NINTH consecutive). **ALG4 AND HUNDREDS CLEARED
+  SIMULTANEOUSLY FOR THE FIRST TIME — a combination PROVABLY
+  INFEASIBLE on the old budget** (402+170 leaves <=1206 of 1778,
+  under the 1208 kill floor): the conservation law is broken as an
+  impossibility bound. Sum = 1790, +12 over the constant seven
+  fires held to +-3 — MARGINAL AGAINST THE PINNED STRICT BAR
+  (>1790 not exceeded; =1790 exactly; stated, not rounded) but
+  REAL against the knob-invariance, and the mechanism is the one
+  lever no refused fire carried: SPANS FROM BIRTH — routing
+  quality as frontier capacity, the canvas-fed diet buying what
+  no ration arithmetic could. THE REMAINING GAP IS ONE BAR:
+  bigtest 12 under the incumbent's own record (band-min 7 under).
+  **THE ARBITRATION CONVENES ON FINAL EVIDENCE, in its sharpest
+  possible form**: a candidate stronger than the gate on alg4
+  (+4) and on hundreds (+173 from zero), weaker by 12 on the
+  record fixture — the constitutional question is no longer
+  'does the budget stretch' (it moved) but 'is the incumbent's
+  own record the right promotion bar when the challenger trades
+  12 record-answers for two capability bars the gate cannot
+  hold at all.' That choice is Bryce's, with every input
+  measured: the bars never bent through eight exams, and the
+  ninth — whether continuation from g20 buys the 12, or the
+  constitution weighs the trade — awaits the word. g20 banks as
+  the era's premier bench artifact.
