@@ -9924,3 +9924,28 @@ token-position × waist-dim, the moment the skeleton trains.
   arbitration — accept the budget and choose which bars the gate
   must hold (a constitutional conversation, not a fire). Six
   refusals, six sciences, one conserved quantity.
+- **THE CAPACITY FIRE CHARTER (2026-07-24, registered on the word —
+  the campaign's largest fire; the quench clause's lawful rite).**
+  WARRANT: the atlas tripwire's registered signature (head
+  saturating across kinds, states decodable) measured as a
+  CONSERVED QUANTITY by six controlled refusals. DESIGN: ALG_HW=1024
+  (2x waist), **COLD START from clean ancestry** (width breaks warm
+  shapes — the mortality law's territory: a re-casting, not a
+  shock), the gen-14 rite at full strength: 32k steps hot flat
+  (cosine), BATCH 8, on the COMPLETE audited mix (gen18b_mix —
+  teaching-dose hundreds, adup, crowns, book-5, spans from birth),
+  RATION per the proven clause (W=1.5 — at doubled budget the 8.1%
+  offset re-prices low), SNAP_EVERY=2000 (16 trajectory points).
+  STATES REUSED (the waist is head-side; trunk states are
+  H_W-invariant — zero precompute). **ALL BARS UNCHANGED — the same
+  gauntlet, no sympathy for the bigger head.** The epistemics
+  pre-armed: 1024 clears -> the capacity thesis banks with six
+  refusals as its control arm; 1024 also trades -> the budget was
+  not width-bound and bar arbitration reopens on the deepest
+  evidence. Either sentence pays; the bars never bend. THE
+  BOUNDARY-CROSSING READ (#62) FIRES FIRST on the free GPU
+  (subset eval: the stagnant population — dark zone + the 65 — vs
+  matched control, 12 arm-A checkpoints, boundary pairs vs
+  within-segment pairs; bars as pinned: boundary-move >= 2x
+  within-move -> targeted scatter opens; frozen -> scatter-proof
+  walls, the architecture ledger's deepest entry).
