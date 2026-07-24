@@ -10325,3 +10325,22 @@ token-position × waist-dim, the moment the skeleton trains.
   discharge walk, dissent overlap, collapse re-read. Eight
   refusals taught the recipe; two rulings fenced the judgment;
   the ninth exam promoted what survived both. THE GATE IS GEN-20.
+- **THE THIRD RULING (2026-07-24, Bryce's own voice):** (1) THE
+  MANNER IS THE RESULT — a lucky-snapshot promotion would have been
+  a liability wearing a crown; this sheet is trustworthy because the
+  headline survives its own band and alg4's band sits above its
+  headline. (2) PAPER-II LINE banked: **probe -> census -> mint line
+  -> permanent capability is a demonstrated REPEATABLE loop, twice**
+  (hundreds 0->188, add-dup 0->198) — the 'guided by primes'
+  mechanism as a loop, not a one-off. (3) **1824 INHERITS THE 1790
+  LESSON**: the new sum is a point under a band, not yet a constant
+  — the old +-3 knob-invariance belonged to the old budget; the
+  FIRST FIRE UNDER GEN-20 re-establishes the band before any delta
+  reads against 1824. Cheap to do, expensive to skip. (4) THE
+  ORDER: DUTIES BEFORE BOOK 6 — the entourage debts are the
+  instruments that make the gate's readings INTERPRETABLE (the
+  specialist and centroids define what judgments mean; the
+  delta-probe's third point attributes book-6 surprises to the book
+  rather than the gate; the zone baseline is the null under which
+  'richer reading' is even a claim). Pay the waivers, then read the
+  book, and every surprise is attributable.
