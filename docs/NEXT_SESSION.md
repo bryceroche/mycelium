@@ -20,7 +20,7 @@ Guts 63; specimens 18; kill ledger 19.
 
 ## TAPE EXAM (run BEFORE trusting this seal; any miss -> ledger)
 1. Gate: `python3 -c "import json; print(json.load(open('.cache/GENERATION.json'))['gen_id'])"` -> 16
-2. Width refuted: `grep -c 'WIDTH IS NOT THE WALL' docs/phase1_skeleton_spec.md` -> >=1
+2. Width refuted: `grep -c 'sum 1729' docs/phase1_skeleton_spec.md` -> >=1
 3. Wide head banked: `test -f .cache/g19_pw1024.safetensors && echo OK` -> OK
 4. Seven kills: `grep -cE 'GEN-1[789][BC]? VERDICT' docs/phase1_skeleton_spec.md` -> 7
 5. Registry: `grep -c '63 converted' docs/GUT_REGISTRY.md` -> >=1
