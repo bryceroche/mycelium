@@ -9863,3 +9863,28 @@ token-position × waist-dim, the moment the skeleton trains.
   enters the solve path; latents never replace the graph; the
   shoal's second visit tunes an organ instead of proposing one —
   what mature metaphors do on return.
+- **THE GEN-18B VERDICT (2026-07-24): FIFTH REFUSAL — THE CLOSEST
+  EXAM YET, AND THE SEE-SAW NAMED.** The composition's ledger:
+  **bigtest 1224, band [1224/1222/1220] — the FIRST candidate to
+  clear the record bar WITH band-min intact** (spread 4: the
+  ration's stabilization confirmed again); h3held 167/200 = 0.835
+  (curve-consistent: 3k uniques bought what 3k buys — THREE ROWS
+  under the bar); adup 197; cert-v2 1.0000 (SIXTH consecutive).
+  THE MISS: alg4 387 [387/386/384] — the ration that recovered
+  +11 against 5.5% new mass could not hold against 8.1%: **THE
+  SEE-SAW — the hundreds line and the alg4 register compete for
+  the same finite frontier**, and at RATION_W=1.5 the teaching
+  dose's extra mass re-tolled what the ration had recovered. The
+  dilution law extends: THE RATION'S STRENGTH MUST SCALE WITH THE
+  NEW MASS IT OFFSETS (1.5x covered 5.5%; 8.1% needs more). TWO
+  READINGS, both banked: (i) the DOSE reading — g18c at
+  RATION_W=2.0 on the SAME mix (no mint, no precompute — one env
+  knob, ~25 min) tests whether stronger rationing holds alg4
+  while hundreds keeps its 167; if yes, the remaining 3 hundreds
+  rows price at ~+200 uniques; (ii) the CAPACITY reading, stated
+  honestly after five refusals — the head is ~3.2M params and the
+  simultaneous demand (record bigtest + alg4 + hundreds + crowns)
+  may exceed its frontier at H_W=512; the ALG_HW dial exists and
+  a capacity arm is the deeper question if the see-saw survives
+  stronger rationing. The fifth exam refused three rows and
+  fifteen answers, and priced both of its own next moves.
