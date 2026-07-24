@@ -10142,3 +10142,29 @@ token-position × waist-dim, the moment the skeleton trains.
   innocent; the budget is head/architecture-bound at the read, and
   bar arbitration prices honestly with the deepest suspect
   eliminated. Kill-only; either verdict shapes gen-20's charter.
+- **THE TRUNK-CEILING VERDICT (2026-07-24, first administration):
+  THE CUT IS INNOCENT — AND GENEROUS.** Decodability-by-depth on the
+  contested content (hundreds MSD, 200 rows, linear probe, 50-row
+  test): L0-L1 0.800 / L0-L3 0.800 / L0-L5 0.720 / L0-L7 0.760 —
+  gain −0.04 vs the +0.10 bar, and the DIRECTION is the finding:
+  deeper prefixes hold LESS linearly-readable surface content; the
+  trunk abstracts with depth (the collapse probe's frames-rule
+  confirmed at trunk grain — Llama's middle layers trade digits for
+  frames, exactly as the head-side inversion predicted). The
+  standing L0-L3 cut loses nothing of the budget's traded content;
+  L0-L1 would suffice for this species. SCOPE, stated: one content
+  type, linear geometry, n=200 — the first administration per the
+  development protocol (deeper chemistry available if ever
+  warranted); at this grain the PREFIX SUSPECT DIES. THE
+  CONSEQUENCE FOR GEN-20: no prefix arm; the frontier constraint
+  lives in the READ (head/architecture at the cut), where six
+  refusals already measured the budget and the seventh proved it
+  isn't width — so the charter's honest question is now
+  ALLOCATION: which bars the gate must hold at the measured budget
+  (the arbitration conversation, at last with every suspect
+  eliminated), or a gen-20 aimed at the bars the mix can hold with
+  the ration's proven arithmetic. The board is fully surveyed:
+  book 5 complete, the tempo written, the walls detoured, the
+  budget measured, the cut acquitted — every strategic question
+  the campaign holds now rests on measurements, and the next word
+  is Bryce's.
