@@ -10108,3 +10108,21 @@ token-position × waist-dim, the moment the skeleton trains.
   live: t11 (~33 rows) completes the fire's ~231-unique prose share
   EXACTLY at the stated tempo. CROWN ZENER RE-ARMED at 40 (the
   25-review convened, its fires ran and refused; charge spent).
+- **BOOK 5, TRANCHE 11 (2026-07-24): 26 rows / 2 crown pairs / 4
+  certificates, floor 0.95 — AND THE SHELF COMPLETES: all 200 lane
+  candidates processed across ELEVEN TRANCHES.** [152]'s decomposed
+  retry banked 5/5; [183]'s FRAC_OF(3,2) and [190]'s half-square
+  crowned unanimous; the isq door twice more at m=3000. THE EDGE
+  TEST PAID: [198]'s 300-valued given read 1/5 — the diet wall
+  begins AT the cap's own boundary (300 as an ANSWER banked at
+  [102]; 300 as a GIVEN is past the readable edge) — the wall's
+  contour now exact. **BOOK 5 FINAL, the lane pass complete: 224
+  rows / 22 crown pairs / 64 certificates / eleven tranches, two
+  perfect, floors 0.75-1.00 all HELD, the key catching its own
+  annotator twice, three texture fires, one desk rule per week.**
+  The census's prose share (~231) filled to 224 uniques (2.9% x 10
+  reps — inside the regularization band; the tempo's two-tranche
+  prediction landed one page proud). THE BOARD: the next book-fed
+  charter CAN NOW MINT (holds for the word); the trunk diagnostic
+  queues at the phase boundary; residue: [198] alone (the edge, by
+  design).

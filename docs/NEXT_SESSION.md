@@ -1,3 +1,30 @@
+# NEXT SESSION — start here (handoff, 2026-07-24 — BOOK 5 COMPLETE: 224 ROWS, ELEVEN TRANCHES, THE SHELF DONE)
+
+## **BOOK 5 IS COMPLETE — the full lane pass: 224 rows / 22 crown
+pairs / 64 certificates across eleven tranches** (two perfect, all
+floors held, the key catching its annotator twice, the first wild
+a>1 AND a=2 FRAC_OF crowns, the edge test placing the diet wall AT
+the 300 boundary exactly). The tempo's census landed one page proud
+(224 vs ~231 — inside the regularization band). THE DRIVER'S TURN:
+t10+t11 fired at width (floors 0.97/0.95), the crown zener re-armed
+at 40, the shelf exhausted. AWAITING THE WORD: (i) the next
+BOOK-FED CHARTER (gen-20 candidate: the era's full science — spans,
+ration+scaling, noise-floored bars, zone column, teaching doses —
+with book 5's 224 organic rows); (ii) the TRUNK-CEILING DIAGNOSTIC
+(absent-vs-unread at deeper prefixes — before any larger fire);
+(iii) book 6 (a fresh harvest lane pass under gen-16). Gate:
+gen-16, zero waivers, bars seven refusals deep; umbra 1.0000 x8.
+Guts 64; specimens 19; kill ledger 19.
+
+## TAPE EXAM (run BEFORE trusting this seal; any miss -> ledger)
+1. Gate: `python3 -c "import json; print(json.load(open('.cache/GENERATION.json'))['gen_id'])"` -> 16
+2. Book-5 rows: `grep -c '"book": 5' .cache/book5_prose_pairs.jsonl` -> 224
+3. Eleven tranches: `grep -c '"tranche": 11' .cache/book5_prose_pairs.jsonl` -> 26
+4. Shelf done: `grep -c 'THE SHELF COMPLETES' docs/phase1_skeleton_spec.md` -> 1
+5. Registry: `grep -c '64 converted' docs/GUT_REGISTRY.md` -> >=1
+
+# PRIOR HANDOFF BELOW
+
 # NEXT SESSION — start here (handoff, 2026-07-24 — SEVEN REFUSALS; WIDTH REFUTED; THE ROAD RETURNS TO THE BOOKS)
 
 ## **THE CAPACITY CAMPAIGN CLOSES: SEVEN LAWFUL REFUSALS, GEN-16
