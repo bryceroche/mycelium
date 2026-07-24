@@ -10011,3 +10011,32 @@ token-position × waist-dim, the moment the skeleton trains.
   mid-recovery by every curve. Segment 2 fires (RESUME 16k gentle);
   the battery holds until the curves flatten. A verdict must never
   outrun its burn — second application same day.
+- **THE GEN-19 VERDICT (2026-07-24): SEVENTH REFUSAL — AND THE
+  CAPACITY THESIS IS REFUTED AT ITS OWN EXAM: WIDTH IS NOT THE
+  WALL.** Arm W (H_W=1024 pad-warm, 48k gentle, converged val
+  0.909): bigtest 1145 / alg4 397 / h3held 187 / adup 198 —
+  **three-register sum 1729, BELOW the 512 budget's conserved
+  1778.** Doubling the waist did not grow the frontier; it
+  reallocated harder (h3held 187 = the BEST hundreds of any
+  candidate ever — the wide head learned the new lines superbly)
+  and never recovered the old register (bigtest −78 despite
+  carrying the exact 1223 function at init). Cert-v2 1.0000
+  (EIGHTH consecutive — even the wide head's umbra held). THE
+  READINGS, ranked: (1) THE TRUNK-BUDGET HYPOTHESIS, now the
+  standing suspect — the conserved quantity may be the FROZEN
+  TRUNK's information ceiling for this fixture family (the
+  substrate floor law's largest jurisdiction claim: 'no rung
+  reaches below the substrate's floor' — and no HEAD of any size
+  rises above the trunk's information); (2) the wake-up disruption
+  may not heal at any gentle dose (30 dark matrices vs
+  consolidated circuits — but this cannot explain the SUM falling
+  below a smaller head's). THE CLOSURES: the capacity axis CLOSES
+  at this scale (width refuted with six refusals as control and
+  the cold arm as floor); the ARBITRATION conversation stands as
+  the lawful response to a trunk-bound budget — OR the deeper
+  truth the campaign has held all along: **the road to MATH-500
+  was never through head size; it runs through the BOOKS and the
+  recursion charter** — the organ, the crowns, the harvest. Seven
+  refusals, seven sciences, one conserved quantity now suspected
+  to live in the frozen substrate — and a gate that outscored
+  every challenger thrown at it, at half their width.

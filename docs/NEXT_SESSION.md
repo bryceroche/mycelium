@@ -1,3 +1,32 @@
+# NEXT SESSION — start here (handoff, 2026-07-24 — SEVEN REFUSALS; WIDTH REFUTED; THE ROAD RETURNS TO THE BOOKS)
+
+## **THE CAPACITY CAMPAIGN CLOSES: SEVEN LAWFUL REFUSALS, GEN-16
+UNBEATEN.** The chain's final science: the H_W=512 frontier budget is
+CONSERVED (1778, knob-invariant) and **WIDTH IS NOT THE WALL** — the
+1024 pad-warm head at converged val summed 1729 (BELOW the budget;
+best-ever hundreds 187, bigtest collapsed to 1145). Standing suspect:
+THE TRUNK-BUDGET HYPOTHESIS (the frozen L0-L3's information ceiling —
+the substrate floor's largest claim). Umbra 1.0000 through EIGHT
+consecutive fires. The era's laws: restart, dilution, ration (+11
+confirmed), see-saw, conservation, epochs-not-steps, teaching-vs-
+maintenance, pad-warm-vs-quench, boundary toll, scatter-proof churn.
+AWAITING THE WORD: (i) RETURN TO THE BOOKS (t10, ~95 bench; the
+organ/recursion road to MATH-500 — the critical path); (ii) bar
+arbitration under a trunk-bound budget (constitutional); (iii) trunk
+depth (L0-L5 — a NEW substrate, the largest possible change). Bench
+artifacts: armR 1232, g18b (1224-banded), g18c, g19 cold + pad-warm,
+~100 snapshots. Gate: gen-16, zero waivers, bars SEVEN refusals deep.
+Guts 63; specimens 18; kill ledger 19.
+
+## TAPE EXAM (run BEFORE trusting this seal; any miss -> ledger)
+1. Gate: `python3 -c "import json; print(json.load(open('.cache/GENERATION.json'))['gen_id'])"` -> 16
+2. Width refuted: `grep -c 'WIDTH IS NOT THE WALL' docs/phase1_skeleton_spec.md` -> >=1
+3. Wide head banked: `test -f .cache/g19_pw1024.safetensors && echo OK` -> OK
+4. Seven kills: `grep -cE 'GEN-1[789][BC]? VERDICT' docs/phase1_skeleton_spec.md` -> 7
+5. Registry: `grep -c '63 converted' docs/GUT_REGISTRY.md` -> >=1
+
+# PRIOR HANDOFF BELOW
+
 # NEXT SESSION — start here (handoff, 2026-07-24 — SIX REFUSALS, ONE CONSERVED QUANTITY, THE CAPACITY QUESTION)
 
 ## **THE GEN-17/18 CAMPAIGN: SIX LAWFUL REFUSALS; GEN-16 HOLDS.** The
