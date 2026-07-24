@@ -10217,3 +10217,25 @@ token-position × waist-dim, the moment the skeleton trains.
   ninth — whether continuation from g20 buys the 12, or the
   constitution weighs the trade — awaits the word. g20 banks as
   the era's premier bench artifact.
+- **THE RULING (2026-07-24, Bryce's own voice — constitutional):**
+  (1) THE FLOOR-OR-PEAK CHECK before 'the budget moved' becomes an
+  era fact: =1790 vs a strict >1790 pin is one seed; the knob sweep
+  at g20's state must confirm 1790 is a floor, not a peak — the
+  n=1 concern applied to the era's own favorite number. (2) THE
+  ORDER IS FORCED: continuation first — the only option that
+  resolves without touching the bar; twelve answers is ~1%, and if
+  spans convert routing into capacity, gentle continuation is where
+  it shows. The unbent-bars record is THE ASSET; you don't spend it
+  while a cheap empirical test stands. (3) ARBITRATION ONLY ON
+  PLATEAU, and only as a PROSPECTIVE SYMMETRIC AMENDMENT: decide
+  what an unreadable register is worth, write it into the bar
+  prospectively, RE-SCORE THE INCUMBENT under the same rubric —
+  if the incumbent still wins, the refusal was correct; if the
+  challenger wins symmetrically, the promotion is legitimate.
+  **'The bar changed because the measurement theory improved, not
+  because a particular candidate needed it to'** — the
+  annotator-is-author failure mode named in judicial robes and
+  fenced. (4) Book 6 prep CPU-side in parallel (the GPU belongs to
+  the blocking question). The eighth refusal earned the right to
+  be the last decided under the old constitution; the ninth, if
+  there is one, is decided under whatever is written next.
