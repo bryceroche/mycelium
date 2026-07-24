@@ -1,3 +1,30 @@
+# NEXT SESSION — start here (handoff, 2026-07-24 — SIX REFUSALS, ONE CONSERVED QUANTITY, THE CAPACITY QUESTION)
+
+## **THE GEN-17/18 CAMPAIGN: SIX LAWFUL REFUSALS; GEN-16 HOLDS.** The
+era's chain: restart law (armR 1232) -> dilution law -> ration
+CONFIRMED (+11 alg4) -> bar-noise law catches lucky headline ->
+teaching-dose amendment -> THE SEE-SAW -> **THE CONSERVATION
+MEASUREMENT: at H_W=512 the three-register sum is a constant (1778
+vs 1775, knob-invariant) — the frontier budget is measured and
+FULL.** Umbra untouched SEVEN consecutive fires (constitutional
+fact). Dose curve predicts its own misses (3k->167, curve-exact).
+AWAITING THE WORD, the fork: (A) THE CAPACITY FIRE — H_W=1024 cold
+start (quench clause; gen-14 recipe; largest fire of campaign;
+atlas-tripwire warrant) vs (B) BAR ARBITRATION (constitutional:
+choose which bars the 512-budget gate must hold). Also standing:
+boundary-crossing read (#62, queued, GPU now free); t10 (~95
+bench); book 5 at 164 rows. Guts 63; specimens 18; kill ledger 17.
+Gate: gen-16, zero waivers, bars six refusals deep.
+
+## TAPE EXAM (run BEFORE trusting this seal; any miss -> ledger)
+1. Gate: `python3 -c "import json; print(json.load(open('.cache/GENERATION.json'))['gen_id'])"` -> 16
+2. Conservation: `grep -c 'CONSERVED WITHIN NOISE' docs/phase1_skeleton_spec.md` -> 1
+3. g18c banked: `test -f .cache/g18c.safetensors && echo OK` -> OK
+4. Six kills: `grep -cE 'GEN-1[78][BC]? VERDICT' docs/phase1_skeleton_spec.md` -> 6
+5. Registry current: `grep -c '63 converted' docs/GUT_REGISTRY.md` -> >=1
+
+# PRIOR HANDOFF BELOW
+
 # NEXT SESSION — start here (handoff, 2026-07-24 — THE DRIVER'S TURN: DIFFERENTIAL LIT, CANVAS KILLED, QUEUE EMPTY)
 
 ## **THE INSTRUMENT QUEUE IS EMPTY — everything registered has fired,

@@ -9895,3 +9895,32 @@ token-position × waist-dim, the moment the skeleton trains.
   last three rows price at ~200 uniques; the see-saw survives ->
   the frontier is finite at H_W=512 and the CAPACITY ARM charters
   with the atlas tripwire's signature as warrant. Bars unchanged.
+- **THE GEN-18C VERDICT (2026-07-24): SIXTH REFUSAL — AND THE
+  PRE-WRITTEN FORK FIRES: THE SEE-SAW SURVIVES STRONGER RATIONING;
+  THE FRONTIER IS FINITE AT H_W=512.** RATION_W=2.0 recovered alg4
+  to 402 with band intact [402/399/398 >= 396] — and bigtest paid
+  wholesale: 1224 -> 1208, both its bars broken [1208/1204/1205].
+  hundreds 165 (dose-stable), adup 197, cert-v2 1.0000 (SEVENTH
+  consecutive — the umbra now a constitutional fact). **THE
+  CONSERVATION MEASUREMENT, the kill's crown: g18b vs g18c — same
+  mix, same states, only the ration knob — three-register sum
+  1778 vs 1775, CONSERVED WITHIN NOISE. The knob rotates
+  allocation; the sum is fixed. The frontier budget at H_W=512 is
+  a measured constant, and no diet arithmetic reallocates past
+  it.** The knob series in full: (1k,W1.5): 1214/408/121; (3k,
+  W1.5): 1224/387/167; (3k,W2.0): 1208/402/165 — every
+  configuration trades bars because the bars now demand more than
+  the budget holds. **THE CAPACITY CHARTER (proposed, holds for
+  the word — the era's deepest fire):** H_W=1024 (the ALG_HW dial,
+  standing since the capacity-probe registration) — a width change
+  breaks most warm-start shapes, so this is the QUENCH CLAUSE's
+  lawful territory: cold start at full strength on the complete
+  audited mix (the gen-14 recipe: hot flat from clean ancestry),
+  ration per the proven clause, spans from birth, ALL standing
+  bars unchanged — the atlas tripwire's signature (head saturating
+  across kinds while states stay decodable) fires in diet clothes
+  as the warrant. PRICE: the campaign's largest single fire
+  (~2x params, 24-32k steps, cold). THE ALTERNATIVE, honest: bar
+  arbitration — accept the budget and choose which bars the gate
+  must hold (a constitutional conversation, not a fire). Six
+  refusals, six sciences, one conserved quantity.
