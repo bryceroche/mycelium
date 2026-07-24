@@ -9791,3 +9791,44 @@ token-position × waist-dim, the moment the skeleton trains.
   SNAP_EVERY=500 all segments. BARS UNCHANGED (incl. band-mins).
   KILL: bigtest < 1208. The fifth exam meets the first candidate
   carrying every measured input the era bought.
+- **GUT #62: THE HERRING SHOAL (2026-07-24, Bryce + relay + Code,
+  registered as amended; the read QUEUED behind the burning 18b).**
+  Twelve interps, decisive sort: local-sensing-to-global-consensus
+  (1-3, 5-6, 9) is the parser's architecture CONFIRMED (cross-
+  attention is exactly leaderless local sensing) — but interp 9's
+  guarantee is FALSE IN THIS HOUSE BY MEASUREMENT, and the falseness
+  is load-bearing: shoals converge because ANY agreement is a valid
+  shoal (alignment objectives), while math has one answer — the
+  two-death-mode law (7660) killed loopy local propagation, and the
+  withhold curve (26% ceiling; 'minimal graphs carry no messages —
+  only the text proposes', 8141) measured why: real prose is
+  redundancy-minimal. **(a) THE SHOAL LAW (prose):** local sensing
+  without a coordinator is the front jaw's confirmed geometry;
+  local consensus guarantees AGREEMENT, not CORRECTNESS — the
+  boundary the solver's global exactness exists to cross; the
+  shoal names the boundary and does not cross it. **(b) THE
+  FLASH-EXPANSION UNIFICATION (the find, banked):** interp 12's
+  threshold-triggered scatter IS the restart law at optimizer
+  grain — periodic controlled explosion out of stagnation, already
+  MEASURED PAYING (#57's cold pan, +17; SBP as the continuous
+  gentle form) — and the photo-booth fence stands untouched
+  (perturbation-for-TRUTH at inference is the banked grave; flash
+  expansion is training-time anti-stagnation, a different organ).
+  POPULATION CORRECTION at countersign: 'confident-wrong basins'
+  overstates — the umbra-wrong class is EMPTY at gen-16 (the
+  differential's first administration); the stagnant population =
+  the DARK zone (~90 items) + the 65 residue. **(c) THE
+  BOUNDARY-CROSSING READ (registered, bars pinned, QUEUED behind
+  the 18b burn — GPU busy; substrate = gen-18's 64 banked
+  snapshots, per-item correctness across segment boundaries):**
+  do the stagnant items move at restart boundaries? VERDICT A:
+  boundary-flip rate >= 2x the within-segment flip rate for the
+  stagnant population -> the TARGETED-SCATTER registration opens
+  (a scatter aimed by the zone meter, watts-priced, behind the
+  standing queue). VERDICT B: frozen through all boundaries -> the
+  architecture ledger gains its deepest entry — STAGNATION THAT
+  SURVIVES CONTROLLED EXPLOSION; the detour is truly the only
+  road, and the walls close their last open question. Kill-only;
+  either verdict pays. The shoal handed back the house's own
+  architecture with the one part it lacked: a way to leave a
+  state that has become a trap.
