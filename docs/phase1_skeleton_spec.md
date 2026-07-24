@@ -9777,3 +9777,17 @@ token-position × waist-dim, the moment the skeleton trains.
   (3,000 fresh uniques), one arm, bars unchanged: the recipe that
   cleared alg4 meeting the dose that clears hundreds, each proven
   separately tonight, composed.
+- **THE GEN-18B CHARTER (2026-07-24, registered on the word; the
+  composition of tonight's two proofs).** THE AMENDMENT FIRST, filed
+  with the mortality law's family (where inheritance rules live):
+  **SATURATION IS LINEAGE-SCOPED** — maintenance doses maintain the
+  parent's knowledge; lines new to a lineage take teaching doses,
+  priced by the dose curve. THE CANDIDATE: arm B's recipe VERBATIM
+  (hot-phase ration, n_fac>=14 x1.5 — the confirmed lever) +
+  hundreds at the TEACHING dose (3,000 fresh uniques total: the
+  1,000 banked + 2,000 newly minted, spans from birth, deduped
+  against all prior knots). ONE ARM (the ration question is
+  answered; no control needed), 4x4k SGDR from crown_reader_v4,
+  SNAP_EVERY=500 all segments. BARS UNCHANGED (incl. band-mins).
+  KILL: bigtest < 1208. The fifth exam meets the first candidate
+  carrying every measured input the era bought.
