@@ -10126,3 +10126,19 @@ token-position × waist-dim, the moment the skeleton trains.
   charter CAN NOW MINT (holds for the word); the trunk diagnostic
   queues at the phase boundary; residue: [198] alone (the edge, by
   design).
+- **THE TRUNK-CEILING DIAGNOSTIC, FIRST ADMINISTRATION — BARS PINNED
+  (2026-07-24, before measurement; the counsel's order honored:
+  diagnostic before charter).** The tractable form: DECODABILITY BY
+  DEPTH — pooled trunk states at prefix depths L2/L4/L6/L8 on the
+  hundreds-held rows (the budget's traded content; values 300-999),
+  linear-probed for the value's HUNDREDS DIGIT (7-way), 150
+  train / 50 test. PRE-WRITTEN VERDICTS: **DEEPER-BETTER** (acc at
+  L6-or-L8 exceeds L4 by >= +0.10) -> the L0-L3 CUT loses
+  information the frozen trunk holds — present-unread AT THE CUT;
+  the lawful lever is a DEEPER PREFIX (same frozen substrate,
+  bigger states, no new trunk — the cheapest possible ceiling
+  raise), and the book-fed charter gains a prefix arm.
+  **FLAT-BY-L4** (within +-0.05 across depths) -> the cut is
+  innocent; the budget is head/architecture-bound at the read, and
+  bar arbitration prices honestly with the deepest suspect
+  eliminated. Kill-only; either verdict shapes gen-20's charter.
