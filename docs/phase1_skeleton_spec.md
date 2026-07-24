@@ -9971,3 +9971,14 @@ token-position × waist-dim, the moment the skeleton trains.
   population churns unreachably, and the detour (differential
   detects, guard abstains, books re-voice) is FINAL for it.** #62's
   read complete; the capacity fire burns behind it.
+- **THE CAPACITY FIRE, MIDPOINT READ (2026-07-24): HALF-BURNED, NOT
+  FAILED — the rite re-priced by epochs.** 32k cold at H_W=1024:
+  val 0.6576 STILL CLIMBING (+0.05/4k at cut), bigtest 604/1500.
+  The arithmetic caught in the design: gen-14's 32k rite ran on a
+  38k-row corpus (~6.7 epochs); the audited mix is 77k rows — 32k
+  steps = ~3.3 epochs, HALF the rite's true dose. The quench
+  clause's price is epochs, not steps (a law-precision the wide
+  head just taught). THE CONTINUATION FIRES: RESUME +32k (fresh
+  cosine — the proven schedule), epoch-parity restored; the
+  battery holds until the burn is whole. No bars consulted at
+  midpoint — a verdict must never outrun its burn.
