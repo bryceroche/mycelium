@@ -10003,3 +10003,11 @@ token-position × waist-dim, the moment the skeleton trains.
   full-heat-resume toll were its tuition, and the pad-warm
   comparison now has its baseline). The battery holds for the
   pad-warm head.
+- **PAD-WARM MIDPOINT (2026-07-24): the wake-up disruption filmed.**
+  16k gentle from the zero-embedded init: val 0.839 -> 0.887
+  (climbing), bigtest 1104 / alg4 374 / h3held 133 — the carried
+  lineage DISRUPTED by 30 waking matrices (init was the exact 1223
+  function; training through dark units drags before it lifts),
+  mid-recovery by every curve. Segment 2 fires (RESUME 16k gentle);
+  the battery holds until the curves flatten. A verdict must never
+  outrun its burn — second application same day.
