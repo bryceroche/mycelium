@@ -10291,3 +10291,13 @@ token-position × waist-dim, the moment the skeleton trains.
   rule adjudicates. The downgrade chain (1790 peak -> floor zero-
   margin) is the constitution working under load: each summary
   caught by the next instrument down.
+- **THE POINT CLEARS (2026-07-24): all four contested bars at the
+  PRE-REGISTERED checkpoint** — segment 8's final head, selected
+  best-by-held-val per the second ruling (never best-on-bars):
+  bigtest 1227 (+4 over the record bar) / alg4 409 (+7) / h3held
+  188 / adup 198 — sum 1824, +46 over the old constant, the fourth
+  consecutive sum rise (1790/1798/…/1824). The see-saw closed at
+  ONE point chosen by a rule written before the point existed. THE
+  NINTH EXAM FIRES — the full gauntlet (member votes, cert-v2,
+  acceptance, adversarial, band-min bars on the candidate's own
+  segment tail, zone column), the pen unchanged.
