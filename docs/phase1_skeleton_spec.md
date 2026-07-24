@@ -10264,3 +10264,30 @@ token-position × waist-dim, the moment the skeleton trains.
   (7 short), alg4 401 (ONE short), h3held 181, cert-v2 untested
   this hour. NO PLATEAU -> the ruling's order says continue:
   segments 7-8 fire.
+- **THE SECOND RULING (2026-07-24, Bryce's own voice, banked BEFORE
+  segments 7-8 land — rules decided before results or they are not
+  rules):** (1) **THE SNAPSHOT-SELECTION RULE for the ninth exam:**
+  the candidate is the FINAL snapshot of its segment (or
+  best-on-held-val — NEVER best-on-the-bars): it must clear the
+  trio AT THAT POINT, not somewhere in its wake. 'Whichever
+  snapshot happens to clear' would be peak-picking one level up —
+  the same noise that made 1790 a peak can make one lucky snapshot
+  a simultaneous-clearer. If no single point holds all three, that
+  is information about the candidate, not an inconvenience to
+  route around. (2) **THE STOPPING RULE, pinned:** if by the end
+  of SEGMENT 10 no pre-registered point clears the trio
+  simultaneously, THAT IS THE PLATEAU and the arbitration convenes
+  on that evidence — the number chosen before the result, because
+  a threshold that recedes at +8/segment is not a threshold.
+  (3) **FLOORS CARRY MARGINS:** verify-or-omit applies to floors —
+  the record banks the numbers and the n, not the sentence.
+  APPLIED RETROACTIVELY, the flag bites: the fresh tail's floor is
+  min 1781 of n=3 — **margin over the old ceiling (1781): ZERO.**
+  The floor ROSE 13 to TOUCH the old band's edge, not clear it;
+  only the mid (1790) and final (1798) points exceed. 'The shift
+  is real' outran its floor one level down — amended: the shift
+  is real AT THE MID-AND-FINAL GRAIN (n=2 points, +9/+17 over the
+  ceiling), UNPROVEN at floor grain (margin 0), and the stopping
+  rule adjudicates. The downgrade chain (1790 peak -> floor zero-
+  margin) is the constitution working under load: each summary
+  caught by the next instrument down.
