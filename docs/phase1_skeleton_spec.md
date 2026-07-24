@@ -10239,3 +10239,16 @@ token-position × waist-dim, the moment the skeleton trains.
   the blocking question). The eighth refusal earned the right to
   be the last decided under the old constitution; the ninth, if
   there is one, is decided under whatever is written next.
+- **THE FLOOR-OR-PEAK VERDICT (2026-07-24): PEAK — the ruling's
+  check caught the era's favorite number.** Snapshot-complete sums:
+  s3000 = 1768 (BELOW the old band) / s3500 = 1782 / final = 1790 —
+  a 22-point trajectory band swamping the +12. **'The budget moved'
+  DOWNGRADES to 'the headline moved; the floor did not'** — the
+  simultaneous-clearance fact stands (alg4+hundreds at the final
+  point, still infeasible under the old sum AT that point), but the
+  era-fact waits on the continuation: a real shift holds the sum's
+  FLOOR above 1781 across segments; a peak draw oscillates in the
+  old band. The tail's monotone climb (1768->1782->1790, still
+  consolidating) is the hope's honest form. THE SEQUENCE LIT:
+  continuation seg5-6 (2x4k SGDR RESUME from g20, snapshots all),
+  book-6 candidate prep CPU-side in parallel per the ruling.
