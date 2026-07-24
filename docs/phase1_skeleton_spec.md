@@ -9888,3 +9888,10 @@ token-position × waist-dim, the moment the skeleton trains.
   a capacity arm is the deeper question if the see-saw survives
   stronger rationing. The fifth exam refused three rows and
   fifteen answers, and priced both of its own next moves.
+- **THE GEN-18C FIRE (2026-07-24, on the word): RATION_W=2.0 on the
+  IDENTICAL 18b mix and states — the see-saw's cleanest question,
+  one knob.** Verdicts pre-written: alg4 holds >= 402 with hundreds
+  ~167 -> rationing scales with mass, the diet arithmetic wins, the
+  last three rows price at ~200 uniques; the see-saw survives ->
+  the frontier is finite at H_W=512 and the CAPACITY ARM charters
+  with the atlas tripwire's signature as warrant. Bars unchanged.
