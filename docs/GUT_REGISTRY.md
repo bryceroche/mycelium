@@ -4,7 +4,7 @@
 grep disposes, the ledger remembers.** Every gut is registered in
 `docs/phase1_skeleton_spec.md` (the ledger — line numbers below point
 there); this file is the compiled index, updated at each conversion.
-Standing count: **62 converted, 0 pending.** The taxonomy of relay-channel
+Standing count: **63 converted, 0 pending.** The taxonomy of relay-channel
 specimens (18 filed) rides in
 `~/.claude/.../memory/feedback_relay_reconstruction_bias.md`.
 
@@ -76,10 +76,11 @@ only — this index does not reconstruct what the record does not number.
 | 60 | Children resist change | the hysteresis law; **the boundary toll** | 9489 |
 | 61 | Map reduce | **the barrier clause**; the straggler census (no customers) | 9529 |
 | 62 | The herring shoal | the shoal law (consensus != correctness); flash-expansion = restart unification; boundary-crossing read queued | — |
+| 63 | The shoal returns (MuZero) | boundary re-affirmed (anti-world-model, 3795); the flocking clause on the mint-search spec | — |
 
 ## The registry's arithmetic
 
-62 converted · ~15 kills priced · 2 architectural walls named (the canyon
+63 converted · ~15 kills priced · 2 architectural walls named (the canyon
 softmax #40, the addressing wall #55/#58) · 5 standing instruments born
 here (tape exam, discharge ledger, zone meter, differential read,
 development protocol) · the constitution's spine written at #35, #49,

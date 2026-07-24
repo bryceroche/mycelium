@@ -9832,3 +9832,34 @@ token-position × waist-dim, the moment the skeleton trains.
   either verdict pays. The shoal handed back the house's own
   architecture with the one part it lacked: a way to leave a
   state that has become a trap.
+- **GUT #63: THE SHOAL RETURNS WITH MUZERO (2026-07-24, Bryce +
+  relay + Code, registered lean — a boundary-confirmation with one
+  amendment).** The knock's own interp 2 does the sorting (cohesion
+  vs one valid direction — #62's rejection stands), and the mapping
+  corrects at its joints: policy-proposes holds (interp 5 — neural
+  proposes on both sides); MCTS-vs-GAC are OPPOSITE species (interp
+  6 — sampled-anytime search for oracle-less spaces vs
+  complete-exact search where the key exists; solver-side MCTS is
+  refuted v3-v4 territory per the entry at 3779); and the latent
+  world model is the ANTI-THESIS, already adjudicated verbatim
+  (3795: 'the registry IS the world model — owned, exact; latent
+  dynamics in the solve path would trade the zero-leakage
+  bottleneck for drift'). **(a)** The boundary RE-AFFIRMED at its
+  banked form: policy pairs with sampled search where no oracle
+  exists; the parser pairs with exact search because one does; the
+  factor graph's symbolic auditability is the trust story. MuZero's
+  one lawful import remains the TRIAGE HEAD (registered 3804,
+  parse-side features, waiting on census volume — unchanged).
+  **(b) THE FLOCKING CLAUSE, amended onto the mint-search spec
+  (#41, ledger 7669; files on the grammar-width docket at its
+  existing trigger):** when the grammar widens, the mint's search
+  should FLOCK — coherent sweeps through composition space rather
+  than independent draws: dedup/knot-diversity as REPULSION
+  (built), the absent-cover list as ATTRACTION (coverage cohesion
+  — successive mints staying near underpopulated frontier regions)
+  — because the lantern's sliver lesson says coverage fills by
+  sweeping, not by darts. Zero new machinery; one clause; the
+  trigger unchanged. **(c)** The fence, standing: search never
+  enters the solve path; latents never replace the graph; the
+  shoal's second visit tunes an organ instead of proposing one —
+  what mature metaphors do on return.
