@@ -19,7 +19,9 @@ Pinned zeners (gut #54, 2026-07-22):
 import glob, json
 from collections import Counter
 
-THRESHOLDS = {"wild_crown_mass": 25, "admission_family": 6, "macro_of_macro": 5}
+THRESHOLDS = {"wild_crown_mass": 40, "admission_family": 6, "macro_of_macro": 5}
+# crown zener re-armed at 40 (2026-07-24): the 25-review convened, its fires
+# ran and refused; the charge is spent, the counter watches the next span.
 MACRO_OF_MACRO_INSTRUMENTS = 3  # width gradient 51%, curve saturation, [73]'s crack
 
 # Adjudication SPENDS charge; the zener re-arms and watches RECHARGE.

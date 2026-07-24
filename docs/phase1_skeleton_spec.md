@@ -10095,3 +10095,16 @@ token-position × waist-dim, the moment the skeleton trains.
   no fire waits for a round number of pages, no tranche rushes for
   a fire date; breathing is how the house RESTS, never how it
   decides.
+- **BOOK 5, TRANCHE 10 (2026-07-24, the tempo era's first inhale): 34
+  rows / 2 crown pairs / 5 certificates, floor 0.97.** THE FIRST WILD
+  a=2 FRAC_OF ([170], 'When 2 times a is divided by 3' — unanimous
+  both floors: the general leg's second wild species); [134]'s
+  interior-angle quotient crowned; the isq door three more times
+  ([163]/[166]/[167]/[169] — the m-dial routine now, max m=3000);
+  the prealgebra shelf's counting folds all first-pass. LONE MISS:
+  [152] (right answer, 2/5 — the 290/240 in-diet pair wobbling under
+  permutation; t11 retry with decomposition). BOOK 5: 198 ROWS / 18
+  crown pairs / 60 certificates — the census's arithmetic confirmed
+  live: t11 (~33 rows) completes the fire's ~231-unique prose share
+  EXACTLY at the stated tempo. CROWN ZENER RE-ARMED at 40 (the
+  25-review convened, its fires ran and refused; charge spent).
