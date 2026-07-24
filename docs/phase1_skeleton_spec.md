@@ -10301,3 +10301,27 @@ token-position × waist-dim, the moment the skeleton trains.
   NINTH EXAM FIRES — the full gauntlet (member votes, cert-v2,
   acceptance, adversarial, band-min bars on the candidate's own
   segment tail, zone column), the pen unchanged.
+- **THE PROMOTION (2026-07-24): GEN-20 = g20 — THE FIRST PROMOTION
+  SINCE GEN-16, under bars never bent through NINE exams.** The
+  full sheet: bigtest 1227, band [1227/1225/1224] — spread 3,
+  band-min +11 over its bar (the bar-noise law's model citizen at
+  last); alg4 409, band [409/412/412] — THE BAND ABOVE THE
+  HEADLINE; h3held 188 (from 0.00 at era's open); adup 198 (from
+  0.00); every standing fixture green; acceptance 21; adversarial
+  0/20 wrong-unanimous, guard 20/20; **cert-v2 926 @ 1.0000 — the
+  TENTH consecutive perfect precision**; zone umbra 998. Sum 1824
+  — +46 over the constant six fires obeyed. THE MECHANISM CHAIN,
+  every link measured: spans-from-birth (the canvas fed by the
+  whole diet) + the hot-phase ration (dilution's antidote at the
+  boundary toll's address) + the teaching doses (the curve's own
+  prices) + book 5 complete (the regularization share) + gentle
+  continuation compounding the spans conversion (+8-9/segment,
+  four consecutive sum rises) — promoted at the PRE-REGISTERED
+  point under the second ruling's selection rule. NOTES-FIELD
+  ERRATA fixed same-transaction (transform residue in the prose;
+  the machine channel was always true). ENTOURAGE-20 DUTIES OWED
+  per the manifest's waivers: specialist remine, centroids
+  re-anchor, mouth recal, delta-probe third point, zone baseline,
+  discharge walk, dissent overlap, collapse re-read. Eight
+  refusals taught the recipe; two rulings fenced the judgment;
+  the ninth exam promoted what survived both. THE GATE IS GEN-20.

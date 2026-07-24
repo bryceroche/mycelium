@@ -1,3 +1,29 @@
+# NEXT SESSION — start here (handoff, 2026-07-24 — **GEN-20 PROMOTED**: THE NINTH EXAM, BARS UNBENT)
+
+## **THE GATE IS GEN-20** — the first promotion since gen-16, at the
+pre-registered point, under the second ruling's selection rule, bars
+unbent through nine exams. Sheet: bigtest 1227 [1227/1225/1224],
+alg4 409 [409/412/412 — band above headline], h3held 188/0.00, adup
+198/0.00, cert-v2 926@1.0000 (TENTH consecutive), sum 1824 (+46 over
+the old constant). Mechanism chain all-measured: spans-from-birth +
+hot-phase ration (W=1.75) + teaching doses + book 5 complete +
+compounding continuation. **ENTOURAGE-20 OWED** (the standing
+duties: specialist remine, centroids, mouth recal, delta-probe 3rd
+point, zone baseline, discharge walk, dissent overlap, collapse
+re-read — waivers in manifest until paid). THEN: book 6 lane pass
+(200 candidates banked, .cache/book6_candidates.json) under the NEW
+gate; the tempo (two wide tranches per fire) resumes. Guts 64;
+specimens 19; kill ledger 20; books 5 complete + book 6 staged.
+
+## TAPE EXAM (run BEFORE trusting this seal; any miss -> ledger)
+1. THE GATE: `python3 -c "import json; print(json.load(open('.cache/GENERATION.json'))['gen_id'])"` -> 20
+2. Ckpt: `python3 -c "import json; print(json.load(open('.cache/GENERATION.json'))['parser_ckpt'])"` -> .cache/g20.safetensors
+3. Promotion banked: `grep -c 'THE GATE IS GEN-20' docs/phase1_skeleton_spec.md` -> >=1
+4. Nine exams: `grep -c 'ALL BARS: PASS' .cache/battery_gen20_9th.log` -> 1
+5. Book 6 staged: `python3 -c "import json; print(len(json.load(open('.cache/book6_candidates.json'))))"` -> 200
+
+# PRIOR HANDOFF BELOW
+
 # NEXT SESSION — start here (handoff, 2026-07-24 — EIGHTH REFUSAL: THE BUDGET MOVED; THE ARBITRATION CONVENES)
 
 ## **GEN-20: THE BUDGET MOVED (+12 to 1790 — seven fires held it to
