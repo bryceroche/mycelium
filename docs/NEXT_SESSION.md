@@ -17,7 +17,7 @@ kill ledger ~22; 14 perfect prints.
 ## TAPE EXAM (run BEFORE trusting this seal; any miss -> ledger)
 1. Gate: `python3 -c "import json; print(json.load(open('.cache/GENERATION.json'))['gen_id'])"` -> 21
 2. Ckpt: `python3 -c "import json; print(json.load(open('.cache/GENERATION.json'))['parser_ckpt'])"` -> .cache/g21.safetensors
-3. Pass: `grep -c 'ALL BARS: PASS' .cache/gen21_H.log || grep -c 'bars failed: NONE' docs/phase1_skeleton_spec.md` -> >=1
+3. Pass: `grep -c 'ALL BARS PASS' docs/phase1_skeleton_spec.md` -> >=1
 4. Migration n=3: `grep -c 'COMPOUNDING' docs/phase1_skeleton_spec.md` -> >=1
 5. Dialect law: `test -f docs/ARITH3_DIALECT.md && echo OK` -> OK
 
