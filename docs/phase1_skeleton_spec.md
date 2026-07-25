@@ -10790,3 +10790,28 @@ token-position × waist-dim, the moment the skeleton trains.
   it promotes under bars whose band was measured first; kill ->
   the science arrives pre-calibrated. Either way the tenth sheet
   is the ERA'S SECOND REFERENCE SHEET.
+- **THE GEN-21 VERDICT (2026-07-24): REFUSAL — AND THE ZONE-SHIFT IS
+  THE ERA'S NEXT FINDING.** Read per the pre-banked discipline: (1)
+  **ZONE DELTA +16/−10/−6 vs the promotion's near-zero null — THE
+  BOOKS TEACH WHAT THE TRAINING LEVER DID NOT**: organic prose
+  MIGRATES problems across zones (16 into the umbra, 6 out of the
+  dark) where spans only deepened within them — the two levers'
+  mechanisms now distinguished by instrument (Paper-II material:
+  synthetic levers deepen, books move). (2) THE FIRST POINT OF THE
+  NEW CONSTANT: sum 1820 (NOT a delta against 1824 — no band yet);
+  the new bands print WIDE on alg4 ([409/386/404] — spread 23) and
+  tight on bigtest ([1219/1218/1224] — spread 6). (3) THE REFUSAL:
+  bigtest 1219 vs the 1227 bar (band-max 1224 — the miss is real at
+  band grain, small at noise grain); alg4 band-min 386 < 396.
+  Cert-v2 937 @ 1.0000 — eleventh consecutive. **(4) A SEAM CAUGHT
+  IN THE READING: the verdict still joins against lattice_armB +
+  lattice_cap2x — THE RETIRED PANEL. The refresh reached the
+  manifest but not the battery code (panel-dissent 77 = the old
+  members still blocking; the 44's recovery has not reached the
+  pen). FIX OWED before any next battery: the verdict reads its
+  members from the manifest — the prose-promotions law's exact
+  species (state the system depends on must update in the
+  transaction that creates the dependency; it didn't, and the
+  check caught it one battery late).** g21 banks as bench artifact;
+  continuation (the compounding pattern: 2 more segments) awaits
+  the word beside the kill's alternatives.
