@@ -10815,3 +10815,21 @@ token-position × waist-dim, the moment the skeleton trains.
   check caught it one battery late).** g21 banks as bench artifact;
   continuation (the compounding pattern: 2 more segments) awaits
   the word beside the kill's alternatives.
+- **THE SEAM FIXED + THE GAP AUDIT (2026-07-25, first in the word's
+  order):** the pen now reads its members FROM THE MANIFEST with the
+  ASSERT-ON-READ FENCE (panel-in-code == panel-in-manifest, asserted
+  before any verdict line — the prose-promotions species' missing
+  half: same-transaction OR assert-on-read, and this seam proved
+  the assert is the half that catches drift). THE GAP: exactly one
+  battery ran under the mismatched panel (the tenth). RESTATED
+  under the true panel: **cert 937 -> 1014 @ 1.0000, dissent 77 ->
+  ZERO** — every point of the printed dissent was stale friction;
+  the modern panel co-signs the entire umbra (certified mass ==
+  zone umbra exactly, the protection fully dormant per the
+  vacuous-by-success discipline — blocked-wrong still prints each
+  battery). The 44 under g21: 37 co-signed, 7 moved with the head.
+  Precision survived the apparatus seam at 1.0000 on both readings
+  — the twelfth consecutive perfect print, one of them under the
+  wrong panel. THE CONTINUATION FIRES: two segments from the
+  refused point, snapshot rule standing, bands self-established,
+  the zone read riding to confirm or demote the migration law.

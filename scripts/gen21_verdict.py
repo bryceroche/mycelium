@@ -25,8 +25,14 @@ BAND_MIN = {"bigtest": 1217, "alg4test": 396}   # bar-noise law: gen-20 record -
 KILL_FLOOR = 1217
 rows = [json.loads(l) for l in open(".cache/algebra_nl_bigtest.jsonl")]
 gold = [r["solution"][r["query_var"]] for r in rows]
-armb = json.load(open(".cache/lattice_armB.json"))["bigtest"]
-c2x = json.load(open(".cache/lattice_cap2x.json"))["bigtest"]
+_m = json.load(open(".cache/GENERATION.json"))
+_lat = _m["panel"]["lattices"]
+assert set(_lat.keys()) == set(_m["panel"]["members"].keys()), \
+    "APPARATUS INVARIANT VIOLATED: panel-in-code != panel-in-manifest"
+_lf = sorted(_lat.values())
+print(f"[panel] members from manifest: {sorted(_lat.keys())} -> {_lf}")
+armb = json.load(open(_lf[0]))["bigtest"]
+c2x = json.load(open(_lf[1]))["bigtest"]
 g16 = json.load(open(".cache/lattice_gen16_V4.json"))["bigtest"]
 
 
