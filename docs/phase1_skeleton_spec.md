@@ -10774,3 +10774,19 @@ token-position × waist-dim, the moment the skeleton trains.
   gate's solve calls). META-LINE, banked: sixty-six guts built
   enough structure that the sixty-seventh mostly rediscovered it —
   the instinct and the constitution converging on the same house.
+- **THE TENTH EXAM'S READOUT DISCIPLINE (2026-07-24, Bryce's own
+  voice, banked BEFORE the sentinel lands):** the exam stacks four
+  firsts (first fire under gen-20, first two-book diet, first fire
+  since the budget broke, the band's re-establisher) — and the
+  hazard is that the band and the delta come from ONE event. THE
+  RULE: the recalibration sheet establishes the new band from this
+  fire's own snapshots BEFORE any delta sentence is written, and
+  **whatever sum this fire prints is the FIRST POINT of the new
+  constant — not a delta against 1824 at all.** 1824 was one
+  fire's number under an untested band; 1830 or 1815 is neither
+  rise nor fall until the band says what +-N means under the new
+  gate. The zone delta likewise: read against 998/410/92 with the
+  promotion's own near-zero disturbance as the null. Promotion ->
+  it promotes under bars whose band was measured first; kill ->
+  the science arrives pre-calibrated. Either way the tenth sheet
+  is the ERA'S SECOND REFERENCE SHEET.
