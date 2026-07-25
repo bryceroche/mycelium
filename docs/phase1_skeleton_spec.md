@@ -10507,3 +10507,14 @@ token-position × waist-dim, the moment the skeleton trains.
   incident. (c) Ordering per the queue: schedule test now
   (CPU, estate untouched); data-zone activates with the waivers'
   retirement; the paraphrase meter designs before door 2 opens.
+- **THE SCHEDULE CENSUS VERDICT (2026-07-24): HELD, PERFECTLY — the
+  invariance census's first conservation law.** 300 gold graphs x 3
+  tie-break seeds: answer-flips 0, status-flips 0, the budget-cliff
+  population EMPTY at sample grain (no verdict within
+  schedule-noise of the 5,000 boundary). The solver's verdicts are
+  properties of the GRAPH, not the WALK — the chain of custody's
+  quietest assumption converted to a measured law with its band
+  (0/300; re-runnable per generation beside the zone column). The
+  census's ledger opens: SCHEDULE: HELD (band 0/300). Next
+  entries arrive with the estate (data-zone) and door 2's design
+  (paraphrase).
