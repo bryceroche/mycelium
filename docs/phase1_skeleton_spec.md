@@ -11102,3 +11102,19 @@ token-position × waist-dim, the moment the skeleton trains.
   canonicalization interleaved with propagation — a rhyme, not a
   mapping. Filed beside #68's panel correction: the analogy earns
   its keep only where its joints match.
+- **THE CENSUS'S SAMPLING LAW + SEQUENCING (2026-07-25, Bryce's
+  design notes, banked before the prep can bake in convenience):**
+  (1) **THE FIFTY DRAW STRATIFIED, never convenient** — across
+  zone (the migration law's own topology), failure-species cluster
+  (fst-space if it holds them), and FIRE VINTAGE (gen-16-era vs
+  gen-20-era failures — the reader changed; the altitude may have
+  moved with it). A one-stratum sample answers 'where do THESE
+  failures live'; the schema-dialect decision deserves 'where does
+  the MASS live.' Fifty stratified beats two hundred convenient.
+  Claude Code cuts the strata mechanically when the estate frees
+  the pass; Bryce's hands take it from there. (2) **THE LAW BEFORE
+  THE TRIALS**: the TIGHTEN pass lands before the annotations —
+  the census reads graphs against the TIGHTENED law, not the
+  draft, or the altitude judgments blur at exactly the joints the
+  spec left loose (k=1 among them). Pen order: spec, then
+  specimens.
