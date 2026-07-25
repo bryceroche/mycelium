@@ -30,6 +30,21 @@ material by design.
 
 - **Restart law**: SGDR beats flat at continuation vintage; the cold pan (moments reset) won anyway (+17). · **Dilution law**: shares dilute the frontier at band grain; rations are the antidote — mass *and* placement (hot-phase, where the boundary toll charges). · **See-saw**: registers compete for a finite frontier; ration strength scales with offset mass. · **Conservation → its break**: the H_W=512 sum held 1778±3 through six fires; width refuted (1729 at 2×); the cut acquitted (decodability falls with depth); **spans-from-birth moved it** (+46 at the promoted point — routing quality is frontier capacity). · **Bar-noise law**: bars carry margins ≥ measured floors (±10/±6); batteries print snapshot bands; val picks, bars judge. · **Epochs-not-steps**: the quench rite's price is epochs. · **Saturation is lineage-scoped**: maintenance maintains the parent's knowledge; lineage-new lines take teaching doses. · **Hysteresis**: the toll booth charges both ways; exit costs accrue silently (#60). · **The two-silhouette law**: umbra/penumbra/dark take different medicine; the umbra never moved once in ten batteries. · **The architecture ledger**: the canyon softmax and the addressing wall — structure doesn't take medicine by the spoonful; the detour (differential detects, guard abstains, books re-voice) is final.
 
+## The Invariance Census (gut #66 — held→law-with-band, broken→lever-named)
+
+| Invariance | Status | Band / lever | Date |
+|---|---|---|---|
+| SCHEDULE (solver tie-breaks) | **HELD** | 0 answer-flips, 0 status-flips / 300×3 seeds; budget-cliff population empty at sample grain | 2026-07-24 |
+| ZONE (under the gen-20 promotion) | **HELD** | masses 998/410/92 vs 999/405/96 — four registers moved, topology didn't; spans deepens within zones | 2026-07-24 |
+| KNOB (the old budget) | held then **BROKEN** | 1778±3 across six fires; broken by spans-from-birth (+46) — the lever named | 2026-07-23/24 |
+| DISSENT POPULATION | **CONSERVED** | 44/72 across three generations — invariant under every diet fed; characterization owed | 2026-07-24 |
+| PARAPHRASE | pending | the monoculture fence's meter — designs before door 2 | — |
+| SEED (generation deltas) | pending | the n=1 concern, named | — |
+
+Rule: a nonzero cliff population gets its own verdict category —
+**budget-abstain, schedule-sensitive** — never silent classification as
+unsolvable.
+
 ## Standing instruments born of the above
 
 Tape exam · discharge ledger (zeners; thresholds convene, humans fire) ·

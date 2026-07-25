@@ -10534,3 +10534,26 @@ token-position × waist-dim, the moment the skeleton trains.
   change itself: the deepest two-silhouette read yet), discharge
   all quiet (crown 29/40). THE GATE IS GEN-20, ATTRIBUTABLE, ZERO
   WAIVERS beyond the standing panel note. Book 6 may open.
+- **THE SIXTH RULING + #66'S RECORD COMPLETED (2026-07-24, Bryce's
+  own voice):** the solver-jurisdiction correction banked into #66
+  (loopy-BP reached for, exact GAC found — the budget cliff is the
+  better test: same graph, same truth, different outcome on an
+  arbitrary tie-break is the chain-of-custody concern in its
+  sharpest form); the cliff number lands in the constitution WITH
+  ITS MARGIN (0/300x3 — a law with a band), and the standing rule:
+  any future nonzero cliff population gets its own verdict category
+  ('budget-abstain, schedule-sensitive'), never silent
+  classification as unsolvable. THE TWO SETTLEMENT READINGS, banked
+  as census entries: (1) **ZONE-INVARIANCE OF THE PROMOTION** —
+  four registers moved, masses didn't (998/410/92 vs 999/405/96):
+  spans-from-birth DEEPENS WITHIN ZONES rather than migrating
+  problems across them — the lever characterized; book 6's
+  expectation set (zone disturbance from the book = the book doing
+  what the training lever wasn't). (2) **THE 44 AS A CONSERVED
+  POPULATION** — invariant under every diet across three
+  generations: the strongest selection signal on the board;
+  characterization owed (read-only, no cure): shape stats, zone
+  membership, routing-fid signature, overlap with the 65. THE
+  WORD: book 6's lane pass OPENS; sum-band recalibration rides the
+  first fire; the 44's census runs CPU-side parallel; the proxy
+  holds queue.
