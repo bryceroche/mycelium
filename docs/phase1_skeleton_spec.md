@@ -11255,3 +11255,15 @@ token-position × waist-dim, the moment the skeleton trains.
   specimens cross the wheel in batches of ~10 (fatigue calibration
   + batch boundaries as category-health checks — accumulating
   binary-resisters testify that two altitudes aren't enough).
+- **THE CUT'S CONTAMINATION CAUGHT AT THE WHEEL (2026-07-25, before
+  a single annotation):** batch 1's printing exposed six of ten
+  specimens with GATE == GOLD — the cut's failure test conflated
+  QUORUM-SHY-CORRECT (c<3, right answer) with WRONG — the
+  two-silhouette law's own distinction, violated by the census's
+  own instrument. RE-CUT to true lies only (plurality != gold);
+  the earlier 'species degenerate / one tail twice found' reading
+  is VOIDED pending the clean cut's own species profile — a
+  conclusion drawn from a contaminated population dies with the
+  population. The twenty-first specimen (the driver's, second
+  today): populations are defined by their test, and the test is
+  part of the apparatus.
