@@ -41,9 +41,15 @@ material by design.
 | PARAPHRASE | pending | the monoculture fence's meter — designs before door 2 | — |
 | SEED (generation deltas) | pending | the n=1 concern, named | — |
 
-Rule: a nonzero cliff population gets its own verdict category —
+Rules: a nonzero cliff population gets its own verdict category —
 **budget-abstain, schedule-sensitive** — never silent classification as
-unsolvable.
+unsolvable. **The apparatus hypothesis** (7th ruling): when a quantity is
+conserved across generations, an unchanged part of the measuring
+apparatus is always on the suspect list — "the thing that doesn't change
+is always a candidate author of the thing that doesn't change."
+**The vacuous-by-success discipline**: unexercised protections re-verify
+each battery (blocked-wrong noted every time); their first real test is
+flagged in advance (book 6 for the refreshed panel).
 
 ## Standing instruments born of the above
 

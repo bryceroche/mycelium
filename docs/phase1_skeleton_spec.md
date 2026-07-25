@@ -10641,3 +10641,24 @@ token-position × waist-dim, the moment the skeleton trains.
   waiver line CLEARED — zero waivers, none deferred. The
   constitution's census row closes: DISSENT POPULATION — RESOLVED
   (the lever was panel vintage; the cure is paid).
+- **THE SEVENTH RULING (2026-07-24, Bryce's own voice — the 44's
+  epitaph):** (1) **THE APPARATUS HYPOTHESIS, added to #66's
+  standing list**: when a quantity is conserved across generations,
+  one hypothesis that must always be on the list is AN UNCHANGED
+  PART OF THE MEASURING APPARATUS — 'the thing that doesn't change
+  is always a candidate author of the thing that doesn't change.'
+  The gates changed, the diets changed, the panel didn't. Blocking
+  two-to-five good certificates per error caught isn't dissent;
+  it's friction wearing dissent's seat. (2) ZERO WAIVERS is the
+  sheet's biggest quiet line: every gate reading attributable AND
+  every instrument current — a state that has never existed in the
+  campaign and won't last, but book 6 gets read from it: the
+  cleanest provenance of any book. (3) **THE VACUOUS-BY-SUCCESS
+  CAVEAT STANDS, un-resolved, with two disciplines**: blocked-wrong
+  RE-VERIFIES each battery (noted every time, so the first nonzero
+  is loud rather than buried), and THE PANEL'S REAL TEST IS
+  FLAGGED IN ADVANCE: BOOK 6 ITSELF — 200 fresh candidates, the
+  nearest approach to a wild distribution the panel will face.
+  Cold class empty through the book -> the gate's unanimity is
+  trustworthy off-fixture; nonzero -> the premium was worth
+  paying. Either way the book answers what the fixture cannot.
