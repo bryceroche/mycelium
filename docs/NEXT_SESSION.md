@@ -1,3 +1,31 @@
+# NEXT SESSION — start here (handoff, 2026-07-25 — GEN-21 ATTRIBUTABLE; THE PENS HOLD THE QUEUE)
+
+## **THE GATE IS GEN-21, estate settled 12/12, zero waivers.** The
+day's chain: the twelfth exam's stale-band catch (apparatus x3 ->
+THE EIGHTH RULING: apparatus symmetry, freshness asserts in the pen)
+-> **GEN-21 PROMOTED** (bands above headline; migration law
+COMPOUNDS at n=3; rubric retired unused; cert 1018@1.0000 x14) ->
+guts 68-70 (the dialect written as law + verifier built [double-zero:
+all failures well-formed lies]; canonicalizer bars pinned; THE
+ERROR-ALTITUDE CENSUS gates the schema dialect; THE ALTITUDE-
+CROSSOVER PROBE gates the lowering relitigation; state-borne clause;
+frame-tenant line). QUEUE (law-fixed order): canonicalizer (CPU) ->
+BRYCE'S TIGHTEN PASS (3 riders: loc, k=1, pct) -> strata cut ->
+BRYCE'S FIFTY (stratified: zone x species x vintage) -> crossover
+probe (June engine's own fixtures) -> census verdicts gate schema
+dialect + doors 5-8. Book 7's 42 zero-answer candidates staged.
+Guts 70; rulings 8; specimens 19; 14 perfect prints; two books in
+the gate.
+
+## TAPE EXAM (run BEFORE trusting this seal; any miss -> ledger)
+1. Gate: `python3 -c "import json; print(json.load(open('.cache/GENERATION.json'))['gen_id'])"` -> 21
+2. Estate: `grep -c 'ENTOURAGE-21 SETTLED' docs/phase1_skeleton_spec.md` -> 1
+3. Registry: `grep -c '70 converted' docs/GUT_REGISTRY.md` -> >=1
+4. Dialect: `grep -c 'state-borne' docs/ARITH3_DIALECT.md` -> >=1
+5. Eighth ruling: `grep -c 'apparatus symmetry' docs/CONSTITUTION.md` -> >=1
+
+# PRIOR HANDOFF BELOW
+
 # NEXT SESSION — start here (handoff, 2026-07-25 — **GEN-21 PROMOTED**: THE TWELFTH SHEET, THE RUBRIC UNUSED)
 
 ## **THE GATE IS GEN-21** — the era's second promotion, at the stopping

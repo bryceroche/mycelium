@@ -11158,3 +11158,19 @@ token-position × waist-dim, the moment the skeleton trains.
   probe is the rent: crossover -> the tenancy is lawful; none ->
   the frame keeps its compiler-side territory and the loop stays
   a solver breathing toward a fixed point.
+- **ENTOURAGE-21 SETTLED (2026-07-25, 12/12):** specialist remined
+  (waiver retired), centroids re-anchored (9 kinds, g21 fst), mouth
+  rebuilt, census run, dissent overlap continued, collapse re-read,
+  manifest refreshed. THE STANDING INSTRUMENTS' ROWS: delta-probe
+  FOURTH point — flat-ish as pinned, and **frac-fdiv rank-1 now
+  stable across FOUR vintages** (the texture watch's steadiest
+  fact; the tree question stays open, the instrument accrues);
+  ZONE baseline row 3: 1020/395/85 (the gate's own topology under
+  the promotion, the migration law's third point re-confirmed at
+  estate grain); DISCHARGE quiet (crown 33/40, families under
+  bar, macro-of-macro 3/5). THE GATE IS GEN-21, ATTRIBUTABLE,
+  waiver-free. The board now waits on: the canonicalizer (CPU
+  gap), Bryce's TIGHTEN pass, the strata cut + fifty annotations,
+  the crossover probe — every open question fronted by its
+  instrument, most of them waiting on the pen rather than the
+  card.
