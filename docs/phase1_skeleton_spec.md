@@ -10468,3 +10468,42 @@ token-position × waist-dim, the moment the skeleton trains.
   artifacts, already banked) — known-bad graphs are exactly where
   shape-dissent should fire, and using them makes the
   selective-vs-random distinction powered on one read.
+- **GUT #66: NOETHER (2026-07-24, Bryce direct — the decode arriving
+  as its own countersign).** The theorem's working direction is the
+  CONVERSE INFERENCE (observe a conserved quantity -> hunt the
+  symmetry; watch it break -> the lever is named), with the honesty
+  note in-text: the campaign's invariances are discrete, so the
+  mapping is analogical — but 'invariance and conservation are two
+  faces of one fact' survives translation. THE RETROSPECTIVE: the
+  era ran a full Noether cycle unnamed — 1778's conservation was
+  the see-saw's signature (registers trading under a conserved
+  total), seven fires sharing the symmetry (supervision distance
+  invariant across their diets), and spans-from-birth breaking it
+  to 1824: **the lever that breaks the conservation law is the
+  thing the symmetry was protecting against.** Discovered by
+  accident, by exam; #66 proposes discovering the next one on
+  purpose. **(a) THE INVARIANCE CENSUS (standing instrument class,
+  chartered):** the candidate invariances enumerated — SCHEDULE,
+  KNOB (already ritual, now named), DATA-ZONE (the zone/delta
+  instruments arriving with the estate — book 6's question is
+  'was the change zone-invariant?', the delta not the level),
+  PARAPHRASE (the monoculture fence's METER: the gate should be
+  invariant under meaning-preserving transformation — the
+  annotator-is-author risk converted from worry to number), SEED
+  (the n=1 concern named as untested seed-invariance). Each test
+  bins HELD (a conservation law with its band — a budget future
+  fires obey) or BROKEN (the lever named — always the discovery).
+  **(b) THE SCHEDULE TEST, SHARPENED TO THE ACTUAL JAW:** the
+  solver is exact GAC/MRV/LCV, not loopy BP — AC closure is
+  order-independent BY THEOREM and the uniqueness gate pins
+  answers; the live sensitivity is THE BUDGET CLIFF: tie-break
+  seeds change the walk, and walks near 5,000 decisions can
+  exhaust on one schedule and solve on another — a
+  schedule-dependent VERDICT at the boundary, a verdict with an
+  unstated author. BARS PINNED BEFORE THE RUN: on gold graphs
+  (solver jurisdiction, parser-free), 3 seeds x sample: HELD if
+  answer-flips = 0 AND status-flips <= 1% (the cliff population
+  sized and reported); any answer-flip is a constitutional
+  incident. (c) Ordering per the queue: schedule test now
+  (CPU, estate untouched); data-zone activates with the waivers'
+  retirement; the paraphrase meter designs before door 2 opens.
