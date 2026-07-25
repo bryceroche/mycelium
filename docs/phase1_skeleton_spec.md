@@ -11063,3 +11063,42 @@ token-position × waist-dim, the moment the skeleton trains.
   doesn't read book 7's null-census); the mv-glob hard-error
   wrapper before any segment chain; the SPEC-TIGHTEN specimens
   surfaced to Bryce's pen.
+- **GUT #69: PREMATURE LOWERING / LATTNER III (2026-07-25, Bryce
+  direct — NOT a confirmation: two builds, one deep census, one
+  honest no).** (1) **LOC INTO THE SPEC** (interp 3): provenance
+  tracking is spans-from-birth wearing compiler clothes — the
+  dialect gains a required `loc` attribute (every arith3 node names
+  its source span), converting error localization from inference to
+  lookup; RIDES BRYCE'S TIGHTEN PASS. (2) **THE CANONICALIZER**
+  (interp 2, the buildable yield): deterministic normalization
+  after the parser — canonical ordering, legal constant folds,
+  trivial-equivalence collapse — form-only, train==inference; its
+  real payment: PARAPHRASE-INVARIANCE MEASURABLE AT THE IR LEVEL
+  (do paraphrases compile to identical canonical graphs? — the
+  monoculture fence's finest-grain instrument; centroids/mouth/
+  census tighten as side effects). BARS PINNED BLIND: on banked
+  paraphrase/permutation pairs, collapse-rate reported with
+  FALSE-MERGE-RATE == 0 required (a canonicalizer that merges
+  semantically distinct graphs is corruption, not tidiness); any
+  false-merge names its pass and demotes it. Build in the next CPU
+  gap. (3) **THE ERROR-ALTITUDE CENSUS** (interps 1+4, the deep
+  question): the pipeline is a SINGLE LOWERING and the double-zero
+  proved every failure semantic — premature lowering predicts
+  exactly this signature. The cure-candidate (an intermediate
+  SCHEMA dialect: entities/quantities/relations/question — two
+  small lies easier to catch than one big one) is a rearchitecture
+  against December, so it enters by measurement: ~50 well-formed-
+  lie specimens annotated BY BRYCE'S HAND for failure altitude —
+  schema-level (extraction) vs arith3-level (assembly). Mass at
+  schema altitude -> the intermediate dialect pays; at assembly ->
+  the single lowering stands. The silhouette-schema classifier is
+  this ghost's existing name. THE CENSUS GATES THE DIALECT
+  QUESTION; docketed until it speaks. (4) **INTERP 5: NO, banked
+  with its reason** — breaths are fixed-point iteration WITHIN one
+  representation (constant altitude, convergence phenomena:
+  torsion collapse, commit/propagate); lowering is translation
+  BETWEEN altitudes; the conflation would misread the trajectory
+  diagnostics. Salvaged kernel: waist commits ~ within-level
+  canonicalization interleaved with propagation — a rhyme, not a
+  mapping. Filed beside #68's panel correction: the analogy earns
+  its keep only where its joints match.

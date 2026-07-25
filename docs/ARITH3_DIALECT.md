@@ -19,6 +19,11 @@ here is a change there, same transaction.
 | `pct` | args, p | p carried; **no result field in any banked pct** (SPEC-TIGHTEN: is that the law or a habit?) |
 | `macro` | name + per-name | FRAC_OF: a ∈ [1,9], k ∈ [2,12], x, result; OP_APPLY: op ∈ {add,sub}, k1,k2 ≥ 1, x, y, result |
 
+## TIGHTEN-pass riders (awaiting Bryce)
+- `loc` as a REQUIRED attribute on every node (source span provenance — #69).
+- k=1 legality (empty specimen set — pure intent).
+- pct's result-less form: law or habit?
+
 ## Graph laws
 - Non-empty (≥1 factor). All var indices ∈ [0, 24). Values digit-representable (≤ 3 digits).
 - Macros expand before the solver (mg2; the key grades in primitives — constitutional, not verifier-enforced).
