@@ -10686,3 +10686,18 @@ token-position × waist-dim, the moment the skeleton trains.
   DISCIPLINE's first row: blocked-wrong stays ZERO (nothing to
   block — all banks keyed). BOOK 6: 36 rows / 2 crown pairs / 2
   certificates; bench 30 repairs + 41 surgeries remain.
+- **THE DIVERGENT PAGE'S DIAGNOSTIC + THE ZERO CENSUS STOCKED
+  (2026-07-24):** (1) [30]'s three re-reads under g20: 2/5, 3/5,
+  2/5 — the page hovers AT the quorum boundary (per-view ~46%,
+  crossing stochastically; one trial banked). VERDICT: **FLICKER,
+  not displacement** — the promotion's first suspected debit
+  dissolves to half a vote of margin at one page; the complete
+  ledger stays gain-only at measured grain, and the benched
+  mul-inverse cure re-labels margin-repair. (2) THE ZERO-ANSWER
+  CLASS: the wild specimen ([36], five votes of nothing, correctly)
+  proved the chain of custody survives the null case — and the
+  harvest holds **42 zero-answer candidates**: book 7's draw
+  converts one specimen into a census (banked:
+  the zero-hunt list in the b7 planning notes). The certification
+  channel has no silent bias against degenerate answers — a class
+  untestable until the wild delivered it.
