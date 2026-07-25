@@ -10662,3 +10662,13 @@ token-position × waist-dim, the moment the skeleton trains.
   Cold class empty through the book -> the gate's unanimity is
   trustworthy off-fixture; nonzero -> the premium was worth
   paying. Either way the book answers what the fixture cannot.
+- **BOOK 6 T1: PROVENANCE ERROR CAUGHT AND QUARANTINED (2026-07-24):**
+  the first run's 37 rows were read by the OLD gate (the transform
+  missed the CKPT default — it lived in the runner half of the
+  split) while their metadata claimed generation-20. The KEY passed
+  every answer (the graphs are true) but the vote records are
+  v4-vintage wearing g20's label — exactly the class the
+  verdicts-are-artifacts law exists for. QUARANTINED
+  (book6_t1_QUARANTINED_v4gate.jsonl), the default fixed, the
+  tranche RE-READS under g20. The generation field is provenance,
+  not decoration.
