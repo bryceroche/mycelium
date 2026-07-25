@@ -10452,3 +10452,19 @@ token-position × waist-dim, the moment the skeleton trains.
   right per the fourth ruling's gating. (4) The sequence behind
   the estate: book 6 under an attributable gate, sum-band
   recalibration on the first fire, the proxy at its price.
+- **THE CONSTITUTION CONSOLIDATED + THE PROXY'S POWER DESIGN
+  (2026-07-24, Bryce's housekeeping notes executed):** (1)
+  docs/CONSTITUTION.md — the five rulings with dates, commits, and
+  incidents; the fabrication-proofing stack; the era laws; the
+  standing instruments — consolidated before consolidation became
+  archaeology; maintenance rule in-text (new rulings append
+  same-transaction). (2) **THE PROXY EXPERIMENT'S POWER DESIGN,
+  pinned before the design exists:** 'three outcomes, all
+  informative' holds only if both calibration sets are readable —
+  the panel-later-proved-wrong set will be thin (the panel is
+  good), so PRE-COMMITTED: the dissent-pattern read requires N >=
+  50 known-bad graphs, and the organic error set AUGMENTS with the
+  purity filter's 204 right-asked-wrong-graph parses (stage-3
+  artifacts, already banked) — known-bad graphs are exactly where
+  shape-dissent should fire, and using them makes the
+  selective-vs-random distinction powered on one read.
