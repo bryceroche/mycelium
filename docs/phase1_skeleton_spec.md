@@ -10833,3 +10833,29 @@ token-position × waist-dim, the moment the skeleton trains.
   wrong panel. THE CONTINUATION FIRES: two segments from the
   refused point, snapshot rule standing, bands self-established,
   the zone read riding to confirm or demote the migration law.
+- **THE GEN-21B VERDICT (2026-07-25): REFUSAL — AND THE MIGRATION
+  LAW GETS ITS CONFIRMING FIRE.** (1) **ZONE DELTA, second point:
+  +14/+2/−16 vs the baseline (first point +16/−10/−6) — umbra +14
+  in the SAME direction at the SAME magnitude, dark now −16
+  (deepening: more book-training shrinks the dark harder). TWO
+  FIRES, ONE DIRECTION: per the standing n=1 rule's own bar, THE
+  MIGRATION LAW PROMOTES TO LOAD-BEARING — synthetic levers deepen
+  within zones; books migrate across them. The diet chapter's
+  spine is now measured twice.** (2) THE FENCE PRINTED LIVE:
+  '[panel] members from manifest' — the assert-on-read's first
+  battery; panel-dissent 2 (real, modern, tiny), cert 1010 @
+  1.0000 — THIRTEENTH consecutive perfect print. (3) THE PLATEAU
+  SIGNAL: bigtest 1219 -> 1222 (+3, inside noise; band-max 1224
+  twice — 1227 out of reach at this recipe); alg4 band wide again
+  ([399/386/404], spread 18 — the BAND-LIMITED line prints as
+  ruled: alg4's judgments at this vintage carry noise triple
+  their margins). Sum's second point: 1812 (reference band
+  forming: 1820/1812). (4) Adversarial wrong-unanimous 2/20
+  (uptick from 0-1; on watch). THE READING: two continuation
+  segments bought +3 — the compounding pattern is NOT closing the
+  8; the plateau the second ruling's stopping-logic anticipates
+  is arriving, and the arbitration's final-evidence condition
+  approaches with the migration law banked either way. g21 stands
+  as bench artifact; the word decides: segments 7-8 (the last
+  lawful burn by the stopping rule's shape) or the arbitration on
+  final evidence, with the prospective-symmetric rule standing.
