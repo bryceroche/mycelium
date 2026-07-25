@@ -11238,3 +11238,20 @@ token-position × waist-dim, the moment the skeleton trains.
   two real bugs the zero-bar caught exactly as designed — a
   false-merge bar of zero is the only reason six-eighths and
   one-eighth are still different numbers in this house.
+- **THE CENSUS'S JURISDICTION RIVET + THE FIXTURE QUESTION
+  (2026-07-25, Bryce's word, pinned before any annotation):** the
+  one-tail-twice-discovered fact is ambiguous between 'the compiler
+  only fails on add/mul-pure structures' and 'the FIXTURE only
+  exercises the compiler where such failures can occur' — the
+  seventh ruling's apparatus hypothesis at full force: the fixture
+  is now the house's oldest unchanged apparatus. THE RIVET:
+  **whatever altitude the 44 testify to, the finding is scoped to
+  the add/mul-pure tail of the fixture's distribution, and the
+  schema-dialect decision it gates inherits that scope** — with
+  the REOPEN CONDITION pre-registered: the first wild-distribution
+  failure census (book-sourced or MATH-500-adjacent) showing a
+  different species mix re-poses the question. THE FIXTURE REFRESH
+  moves up the docket: no longer ambient. Annotation protocol:
+  specimens cross the wheel in batches of ~10 (fatigue calibration
+  + batch boundaries as category-health checks — accumulating
+  binary-resisters testify that two altitudes aren't enough).
