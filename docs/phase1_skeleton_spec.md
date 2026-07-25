@@ -10378,3 +10378,28 @@ token-position × waist-dim, the moment the skeleton trains.
   REGISTERED; the decode and the word are Bryce's — the deducer
   re-enters by measurement or not at all, like everything else in
   this house.
+- **THE FOURTH RULING (2026-07-24, Bryce's own voice — the doors
+  adjudicated):** (1) DOOR 1 OPENS with its calibration design
+  pinned: the dissent column earns its seat only by INFORMATIVE
+  disagreement — on panel-unanimous-verified-correct cases the
+  coherence signal must agree; random dissent is noise wearing a
+  different substrate; selective dissent where the panel later
+  proves wrong is the cheapest instrument the house ever acquired.
+  One read answers it. (2) DOOR 2 SLOWED BY A NAMED RISK: **the
+  register monoculture** — the annotator-is-author failure
+  relocated into the model; when the deducer drafts what the gate
+  reads, the corpus converges on the drafter's register and the
+  99.9% certification is measured against a distribution the
+  drafting engine shaped. Gate+key protect CORRECTNESS, not
+  REGISTER DIVERSITY — 'a certified-true corpus can still be
+  stylistically monocultural.' THE FENCE, required BEFORE the door
+  opens: a register-drift instrument (deducer-drafted vs
+  mint-drafted pages, distributional distance at the gate's read
+  layer) + a MIXING FLOOR (a fraction of the proposing side the
+  deducer never touches — the standing control arm). (3) Door 3
+  stays docketed. (4) DOOR 1 IS DIAGNOSTIC FOR DOOR 2: the read
+  tells whether the resting checkpoint's propagation sense
+  survived a year of drift; stale -> retraining before fencing,
+  and the cost calculus changes. (5) All queued behind
+  entourage-20 — an unattributable gate must not measure the
+  deducer's return.
