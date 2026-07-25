@@ -10725,3 +10725,23 @@ token-position × waist-dim, the moment the skeleton trains.
   never parameters) — the baseline IS the pre-fire reading, and
   the true intervention point is the fire itself, where the
   pre/post zone delta reads against 998/410/92.
+- **THE GEN-21 FIRE CHARTER (2026-07-24, registered on the word; the
+  two-book fire).** THESIS: the organic pool doubles (book5 224 +
+  book6 73 = 297 uniques at 10 reps) — the books' scaling law under
+  the proven recipe. MIX: gen20_mix + book6 x10 (~78.4k rows;
+  minimal delta — one lever, the new book). RECIPE: SGDR 4x4k
+  gentle continuation FROM g20 (the promoted lineage), RATION_W=1.75,
+  SNAP_EVERY=500 all segments. **READOUT ORDER (the recalibration
+  rule): the sum-band re-establishment prints FIRST on its own
+  sheet** — three annealed points on the trio before any delta
+  against 1824 is read. BARS (bar-noise law, gen-20's sheet as the
+  record): bigtest >= 1227 with band-min >= 1217; alg4 >= 402,
+  band-min >= 396; h3held >= 170; adup >= 180; cert-v2 >= 0.998
+  (the refreshed panel's first battery — blocked-wrong printed);
+  guard 20/20; acceptance >= 7. KILL: bigtest < 1217. **THE ZONE
+  DELTA reads on its own line against 998/410/92** — book 6's
+  question answered at the only intervention point the meter can
+  feel: zone-invariant = the books deepen like spans did;
+  zone-shifted = the books teach what the training lever didn't.
+  T3's two retries fold in before the mint (the bench cleared at
+  the tempo).
