@@ -37,7 +37,7 @@ material by design.
 | SCHEDULE (solver tie-breaks) | **HELD** | 0 answer-flips, 0 status-flips / 300×3 seeds; budget-cliff population empty at sample grain | 2026-07-24 |
 | ZONE (under the gen-20 promotion) | **HELD** | masses 998/410/92 vs 999/405/96 — four registers moved, topology didn't; spans deepens within zones | 2026-07-24 |
 | KNOB (the old budget) | held then **BROKEN** | 1778±3 across six fires; broken by spans-from-birth (+46) — the lever named | 2026-07-23/24 |
-| DISSENT POPULATION | **CONSERVED** | 44/72 across three generations — invariant under every diet fed; characterization owed | 2026-07-24 |
+| DISSENT POPULATION | **CONSERVED — LEVER NAMED** | 44/72 across three generations = PANEL VINTAGE (all 44 umbra-correct; pure add-chains the stale members can't co-sign; ~44 certs/battery lost); cure: panel refresh review | 2026-07-24 |
 | PARAPHRASE | pending | the monoculture fence's meter — designs before door 2 | — |
 | SEED (generation deltas) | pending | the n=1 concern, named | — |
 

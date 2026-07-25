@@ -10557,3 +10557,30 @@ token-position × waist-dim, the moment the skeleton trains.
   WORD: book 6's lane pass OPENS; sum-band recalibration rides the
   first fire; the 44's census runs CPU-side parallel; the proxy
   holds queue.
+- **THE 44'S CENSUS VERDICT (2026-07-24): THE CONSERVED POPULATION
+  IS PANEL DEBT, NOT PROBLEM DIFFICULTY.** Read-only census from
+  banked artifacts: **all 44 are UMBRA under gen-20 — unanimous-
+  correct, 44/44 at the key** — pure additive chains (6.1 adds/row,
+  0.43 mul, ZERO mod/sel/pct/fdiv), mid-length (n_fac 13.1),
+  routing fid normal (0.812 vs 0.805), overlap with the 65: ZERO.
+  The dissent set's definition convicts the finding: dissent =
+  gate-unanimous items the PANEL (armB/cap2x) fails to confirm —
+  and those members have sat in the waiver line UNCHANGED through
+  four promotions. **The conservation law re-labels: the population
+  is conserved because the panel never changed while every gate
+  did** — three generations of 'structural dissent family' was the
+  panel's vintage, measured three times. THE COST, now visible:
+  ~44 correct certificates lost per battery to panel staleness
+  (the cert-v2 923-926 counts exclude them). THE IMPLICATION (holds
+  for the word): PANEL REFRESH — re-audition per the standing
+  entourage duty that the waiver deferred; candidates from the
+  bench per the means-vs-overlaps law (recruit by measured
+  behavioral distance — g18_armR and g18b are panel-eligible
+  diagnostic checkpoints) — WITH the diversity-budget ruling
+  applied: members chosen for distance, their correlation to the
+  gate's lineage priced in the manifest. The invariance census's
+  fourth row amends: DISSENT POPULATION — CONSERVED, lever now
+  NAMED (panel vintage), cure priced (refresh review). The 66th
+  gut's frame paid again: the conserved quantity hunted its
+  symmetry and found it — nothing in four fires ever varied the
+  panel.
