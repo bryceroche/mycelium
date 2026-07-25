@@ -34,7 +34,7 @@ material by design.
 
 | Invariance | Status | Band / lever | Date |
 |---|---|---|---|
-| SCHEDULE (solver tie-breaks) | **HELD** | 0 answer-flips, 0 status-flips / 300×3 seeds; budget-cliff population empty at sample grain | 2026-07-24 |
+| SCHEDULE (solver tie-breaks) | **HELD** | 0 answer-flips, 0 status-flips / 300 gold graphs × 3 tie-break seeds, budget 5,000; cliff empty at sample grain. Jurisdiction: current graph species, within budget (the cost-curve tripwire guards the frontier) | 2026-07-24 |
 | ZONE (under the gen-20 promotion) | **HELD** | masses 998/410/92 vs 999/405/96 — four registers moved, topology didn't; spans deepens within zones | 2026-07-24 |
 | KNOB (the old budget) | held then **BROKEN** | 1778±3 across six fires; broken by spans-from-birth (+46) — the lever named | 2026-07-23/24 |
 | DISSENT POPULATION | **RESOLVED** | lever = panel vintage; refresh paid (armB/cap2x retired at ratios 0.44/0.22; g18B+g19W seated by the axis rule; cert 926→998 @ 1.0000; the 44 co-signed 44/44) | 2026-07-24 |

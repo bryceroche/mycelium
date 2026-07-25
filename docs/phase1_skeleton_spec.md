@@ -10907,3 +10907,44 @@ token-position × waist-dim, the moment the skeleton trains.
   ARBITRATION ONLY if the twelfth sheet refuses; if it clears, the
   rubric goes in the drawer unused — 'the best outcome for a
   document is sometimes to be unnecessary.'
+- **GUT #68: THE NEURAL COMPILER / LATTNER (2026-07-25, Bryce
+  direct — second consecutive confirmation-yield gut, arriving with
+  the compiler literature's mature discipline as its gift).** The
+  dedupe: interps 2/3/7/8/9/13 are #67's thesis in Lattner's
+  vocabulary — frontend/backend errors = the two-death populations;
+  interp 9 = the purity filter's job description. **PAPER-II
+  POSITIONING banked (interps 3+13, near-verbatim): 'everyone else
+  is building a brain that thinks in math; this builds a compiler
+  that emits typed intermediate graphs for a symbolic execution
+  target' — and the field's mistake is asking the neural frontend
+  to also be the backend.** THE 0/300 LANDS IN THE CONSTITUTION
+  with its exact conditions (interp 5's obligation): 300 gold
+  graphs x 3 tie-break seeds, answer-flips 0, status-flips 0,
+  budget-cliff empty at sample grain — and interp 6's rivet:
+  what it proves is verdicts-are-graph-properties WITHIN the
+  tested budget region on the current graph species; the
+  cost-curve tripwire exists because harder books may bend it.
+  **INTERP 10 -> THE STRUCTURAL VERIFIER (the night's live
+  yield):** MLIR's discipline — every dialect carries a strict,
+  deterministic well-formedness verifier, separate from semantic
+  faithfulness — exists here only implicitly; the experiment:
+  an arith3 well-formedness check (typed nodes, arity, dangling
+  refs, value domains) replayed against the failure-parse
+  population. SUBSTRATE RE-SCOPED by the grain check: the 204's
+  identities are unmarked, but nack_prep holds ALL 3,800 failure
+  parses at slot grain — the replay runs on the full population
+  (a better census); catch-rate prices the verifier's seat.
+  Deterministic species, no learning, no new fences. **INTERP 12
+  CORRECTED: the panel is NOT an AST verifier** — verifiers are
+  deterministic and catch malformed IR; panels are statistical
+  and catch WELL-FORMED LIES; the house needs both layers
+  SEPARATE (a verifier in front of the panel spends votes only on
+  the hard class); merging them in frame invites merging in code.
+  **THE DISANALOGY BANKED for related-work: Lattner's compilers
+  never needed a panel because C has a standard — here the source
+  spec is human intent, and the campaign is WRITING THE LANGUAGE
+  SPECIFICATION WHILE COMPILING THE LANGUAGE** — the
+  certification apparatus, paraphrase meter, and monoculture
+  fence are what a compiler needs when the spec is discovered,
+  not given. Queue: the verifier replay rides the next CPU gap;
+  nothing reorders; segments 7-8 burn.
