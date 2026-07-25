@@ -11190,3 +11190,16 @@ token-position × waist-dim, the moment the skeleton trains.
   E12-provenance, the organ as first future emitter). Spec and
   verifier updated in one transaction per the dialect's own law.
   Remaining on the pens: the strata cut, then the fifty.
+- **THE STRATA CUT + CANONICALIZER v0 (2026-07-25, the word's two
+  CPU items):** (1) THE FIFTY CUT TO 44 — and the shortfall is a
+  reading: **the species stratum is DEGENERATE on the fixture** —
+  every plurality-wrong row under both vintages is add/mul-pure;
+  the failures live entirely in the long additive tail (where the
+  panel-debt 44 lived — one population, twice found). 44 specimens
+  across 5 strata (zone x vintage) -> .cache/altitude_census_fifty
+  .json in the annotation schema; BRYCE'S PENS HOLD IT. (2)
+  CANONICALIZER v0 (ordering only; folds await their provenance
+  contract): order-invariance 0 failures / 3,800, false-merge 0 vs
+  WL-distinct — BOTH PINNED BARS PASS; v0 seats as the paraphrase
+  meter's substrate, folds enter later under the contract already
+  written.
