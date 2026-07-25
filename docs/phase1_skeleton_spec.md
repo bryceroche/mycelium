@@ -10880,3 +10880,30 @@ token-position × waist-dim, the moment the skeleton trains.
   rule followed in both directions — 'the rule was written to be
   followed in both directions'); the rubric drafts blind during
   the burn.
+- **THE ARBITRATION RUBRIC (2026-07-25, drafted BLIND during
+  segments 7-8's burn — no twelfth number exists; the clean version
+  of prospective).** THE AMENDMENT'S WARRANT, stated first: the old
+  promotion bar scores a POINT RECORD (bigtest 1227) — but the
+  era's own measurement theory has since established that points
+  lie (the bar-noise law), that bands judge (band-min), that the
+  gate's product is CERTIFIED MASS under a true panel (the refresh:
+  926->1014 at unchanged precision), and that zone topology is
+  capability (the migration law). The rubric re-derives the bar
+  from these instruments — the bar changes because the measurement
+  theory improved. THE RUBRIC, applied symmetrically to BOTH
+  candidates: **PROMOTE THE CANDIDATE WITH GREATER CERTIFIED MASS
+  (cert-v2 under the manifest's true panel, precision >= 0.998)**,
+  PROVIDED: (a) its bigtest band OVERLAPS-OR-EXCEEDS the other's
+  band within the measured noise floor (+-10) — bands overlapping
+  at band-max = TIE on the record dimension, no points either way;
+  (b) all constitutional capability bars hold at headline grain
+  (alg4 >= 402, h3held >= 170, adupheld >= 180) with bands
+  REPORTED (and the alg4 band-limited note carried where spread
+  exceeds margin); (c) guard 20/20 and the adversarial
+  wrong-unanimous count reported with its guard+panel disposition
+  (the 2/20 census's form). TIE ON CERTIFIED MASS (within +-8, the
+  zone baseline's own wobble): the incumbent holds — challengers
+  must earn the change. SCOPE: this rubric governs THE PENDING
+  ARBITRATION ONLY if the twelfth sheet refuses; if it clears, the
+  rubric goes in the drawer unused — 'the best outcome for a
+  document is sometimes to be unnecessary.'

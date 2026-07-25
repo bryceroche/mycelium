@@ -58,5 +58,13 @@ zone meter (+ umbra-trend column) · differential read (the hammerhead) ·
 development protocol · wobble census (SNAP_EVERY) · the respiratory law's
 tempo (two wide tranches per fire).
 
+**The Arbitration Rubric** (2026-07-25, drafted blind during seg 7-8):
+promote the candidate with greater certified mass under the true panel at
+precision ≥0.998, provided bigtest bands overlap-or-exceed within ±10
+(band-overlap = tie), constitutional capability bars hold at headline,
+and the adversarial disposition reports guard+panel. Tie within ±8 → the
+incumbent holds. Warrant: the bar changes because the measurement theory
+improved — points lie, bands judge, certified mass is the product.
+
 *Maintenance rule: new rulings append here in the same transaction as
 their ledger entry.*
