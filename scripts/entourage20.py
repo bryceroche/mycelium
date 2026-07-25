@@ -149,14 +149,14 @@ def dissent_set(gate_votes):
         if gc == 5 and not (at == gt and ct == gt):
             out.add(i)
     return out
-d14 = dissent_set(json.load(open(".cache/lattice_gen16b_A.json"))["bigtest"])
-d15 = dissent_set(json.load(open(".cache/lattice_gen20_V4.json"))["bigtest"])
+d14 = dissent_set(json.load(open(".cache/lattice_gen16_V4.json"))["bigtest"])
+d15 = dissent_set(json.load(open(".cache/lattice_gen20_G.json"))["bigtest"])
 ov = d14 & d15
 print(f"[dissent-overlap] gen-16: {len(d14)} | gen-20: {len(d15)} | "
       f"OVERLAP {len(ov)} ({len(ov)/max(len(d15),1):.0%} of gen-16's) — "
       f"{'a STABLE dissent family (structural)' if len(ov) >= 0.5*len(d15) else 'dissent ROTATES (population-driven)'}")
 json.dump({"d14": sorted(d14), "d15": sorted(d15), "overlap": sorted(ov)},
-          open(".cache/dissent_overlap_16.json", "w"))
+          open(".cache/dissent_overlap_20.json", "w"))
 '''
 open(".cache/_e16_s7.py", "w").write(S7)
 sh(".venv/bin/python3 .cache/_e16_s7.py", tail=1)

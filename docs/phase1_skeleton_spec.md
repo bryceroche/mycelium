@@ -10518,3 +10518,19 @@ token-position × waist-dim, the moment the skeleton trains.
   census's ledger opens: SCHEDULE: HELD (band 0/300). Next
   entries arrive with the estate (data-zone) and door 2's design
   (paraphrase).
+- **ENTOURAGE-20 SETTLED (2026-07-24, 12/12; two seam fixes en
+  route — the rename species, filenames are artifacts too):** the
+  specialist remined on the new gate's 1,047 organic failures
+  (purity-filtered; waiver RETIRED), centroids re-anchored (9 kinds,
+  g20 fst), mouth rebuilt (thr 0.0136), disjoint census 12 banked /
+  41 near / 47 knotted, **dissent overlap 44/72 = 61% — the
+  structural family CONFIRMED AT A THIRD BOUNDARY**, collapse
+  inversion HOLDS under g20 (0.0124 / 0.0566 — the head still binds
+  knots tighter than keys), delta-probe THIRD POINT flat-ish as
+  pinned (frac-fdiv rank-1 persists — the texture watch's shape
+  stable across three vintages), **zone trend row 2: 998/410/92 vs
+  gen-16's 999/405/96 — the promotion moved the registers without
+  disturbing the zone masses** (the umbra stable through the gate
+  change itself: the deepest two-silhouette read yet), discharge
+  all quiet (crown 29/40). THE GATE IS GEN-20, ATTRIBUTABLE, ZERO
+  WAIVERS beyond the standing panel note. Book 6 may open.
