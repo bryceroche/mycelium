@@ -24,6 +24,10 @@ here is a change there, same transaction.
 - k=1 legality (empty specimen set — pure intent).
 - pct's result-less form: law or habit?
 
+## Loop law (the state-borne clause, #70)
+Breath specialization, where it exists, is state-borne, never
+weight-borne; per-breath adapters are a fence-gated last resort.
+
 ## Graph laws
 - Non-empty (≥1 factor). All var indices ∈ [0, 24). Values digit-representable (≤ 3 digits).
 - Macros expand before the solver (mg2; the key grades in primitives — constitutional, not verifier-enforced).

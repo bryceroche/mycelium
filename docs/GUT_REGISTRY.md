@@ -4,7 +4,7 @@
 grep disposes, the ledger remembers.** Every gut is registered in
 `docs/phase1_skeleton_spec.md` (the ledger — line numbers below point
 there); this file is the compiled index, updated at each conversion.
-Standing count: **69 converted, 0 pending.** The taxonomy of relay-channel
+Standing count: **70 converted, 0 pending.** The taxonomy of relay-channel
 specimens (19 filed) rides in
 `~/.claude/.../memory/feedback_relay_reconstruction_bias.md`.
 
@@ -83,10 +83,11 @@ only — this index does not reconstruct what the record does not number.
 | 67 | Building the graph is the hard part | the thesis sentence (compiler/CPU/certificate) banked with its band; doors convergent; the cost-curve tripwire pinned | — |
 | 68 | The neural compiler (Lattner) | the dialect written as law + verifier built; replay DOUBLE-ZERO: decode is a verifier by construction, all failures are well-formed lies; seat re-aimed at the organ door | — |
 | 69 | Premature lowering (Lattner III) | loc into the spec; the canonicalizer (bars pinned); THE ERROR-ALTITUDE CENSUS gates the schema dialect; breaths != lowerings (the no banked) | — |
+| 70 | Breaths as lowering (relitigation) | THE ALTITUDE-CROSSOVER PROBE (signatures blind: crossover=lowering, parallel=convergence); state-borne clause; doors 5-8 held; the frame-tenant line | — |
 
 ## The registry's arithmetic
 
-69 converted · ~22 kills priced · 2 architectural walls named (the canyon
+70 converted · ~22 kills priced · 2 architectural walls named (the canyon
 softmax #40, the addressing wall #55/#58) · 5 standing instruments born
 here (tape exam, discharge ledger, zone meter, differential read,
 development protocol) · the constitution's spine written at #35, #49,

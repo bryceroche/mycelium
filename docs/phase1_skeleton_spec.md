@@ -11118,3 +11118,43 @@ token-position × waist-dim, the moment the skeleton trains.
   draft, or the altitude judgments blur at exactly the joints the
   spec left loose (k=1 among them). Pen order: spec, then
   specimens.
+- **GUT #70: BREATHS AS PROGRESSIVE LOWERING (2026-07-25, Bryce
+  direct — a RELITIGATION OF #69's NO, lawfully filed: the no was
+  an inference from geometry-shaped diagnostics; nobody ever
+  measured whether ABSTRACTION changes across breaths. The gut is
+  entitled to the reading.)** **(a) THE ALTITUDE-CROSSOVER PROBE,
+  signatures pre-registered blind:** freeze the loop, run banked
+  problems, probe latents at each breath index against three
+  altitude families — SURFACE (token identity/position), SCHEMA
+  (quantities present, relation/constraint types), SOLUTION
+  (intermediate values, answer digits). **LOWERING predicts the
+  CROSSOVER**: early breaths decode schema best, late breaths
+  solution best, surface fading — a rank ordering in time.
+  **CONVERGENCE predicts parallel sharpening**: all families
+  improving together, no crossover. The crossover is the
+  discriminant. Substrate note (the grain law): the probe targets
+  the June engine's loop on ITS domains — per-breath latents are
+  not banked; the read needs one forward pass of the resting
+  engine on its own fixtures (GPU-minor, queued behind the
+  estate). Crossover -> #69's no is REVISED, interp 3 becomes the
+  loop's theory, Paper-II first-rank finding; no crossover -> the
+  no stands ON A MEASUREMENT, where every no should eventually
+  stand. **(b) THE STATE-BORNE CLAUSE (interp 4, converts
+  regardless):** the loop is weight-tied — breath specialization,
+  where it exists, is STATE-BORNE, never weight-borne;
+  per-breath adapters are a fence-gated last resort because they
+  spend the parameter-sharing that makes the loop a loop. Into
+  the spec. **(c) INTERPS 5-8 HELD AT THE DOOR** (jurisdiction:
+  a per-breath learned verifier inside the hot path is a FIFTH
+  door — neither deterministic-cheap nor statistical-priced, for
+  a model that cannot read the space, with a buffer being
+  engineered for a component nobody agreed to build). The probe
+  gates: no lowering -> doors 5-8 dissolve unbuilt; lowering ->
+  the proposal enters priced, fenced, against the deterministic
+  alternative's first claim. **(d) THE FRAME-TENANT LINE (meta,
+  banked):** third consecutive Lattner gut, first to CONTEST
+  settled law — 'a frame that starts demanding territory instead
+  of revealing it has crossed from instrument to tenant.' The
+  probe is the rent: crossover -> the tenancy is lawful; none ->
+  the frame keeps its compiler-side territory and the loop stays
+  a solver breathing toward a fixed point.
