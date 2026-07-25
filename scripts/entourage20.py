@@ -77,8 +77,8 @@ def head_kinds(p, fst_rows):
     return out
 p = build_params(0); sd = safe_load(".cache/g20.safetensors")
 for k in p: p[k].assign(sd[k].to(p[k].device).cast(p[k].dtype)).realize()
-z = np.load(".cache/phase1_alg_states_g20fam.npz")
-st = np.load(".cache/phase1_alg_states_g20fam_states.npy", mmap_mode="r")
+z = np.load(".cache/phase1_alg_states_g20.npz")
+st = np.load(".cache/phase1_alg_states_g20_states.npy", mmap_mode="r")
 idx = list(range(0, st.shape[0], max(1, st.shape[0]//3000)))[:3000]
 fst = compute_fst(p, st, z["tokmask"], z["sent"], idx)
 by = {}
@@ -108,8 +108,8 @@ def pooled_npz(path, npy=None, cap=None):
         a = np.asarray(st[sl]).astype(np.float32); m = tk[sl].astype(np.float32)
         out[sl] = (a*m[:,:,None]).sum(1)/np.maximum(m.sum(1)[:,None],1)
     return out/np.linalg.norm(out,axis=1,keepdims=True), tk[:n].sum(1)
-fam, _ = pooled_npz(".cache/phase1_alg_states_g20fam.npz",
-                    ".cache/phase1_alg_states_g20fam_states.npy", cap=12000)
+fam, _ = pooled_npz(".cache/phase1_alg_states_g20.npz",
+                    ".cache/phase1_alg_states_g20_states.npy", cap=12000)
 rng = np.random.RandomState(16)
 bank = fam[rng.choice(len(fam), 2000, replace=False)]
 nat, natL = [], []
