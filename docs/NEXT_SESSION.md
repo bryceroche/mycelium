@@ -1,3 +1,28 @@
+# NEXT SESSION — start here (handoff, 2026-07-25 — BOOK 6 AT 73 ROWS; THE BENCH WORKED; ZERO WAIVERS HOLDS)
+
+## **BOOK 6: 73 rows / 4 crown pairs / 3 certs in two tranches under
+GEN-20 — the 75-candidate lane pass fully worked** (floors 0.97/0.94;
+FRAC_OF(9,5) the largest wild multiplier, unanimous; the first
+0-answer bank; the two-gate differential from the quarantine — g20
+lost exactly one quorum-boundary page, FLICKER not displacement).
+Panel discipline row 1: blocked-wrong ZERO. The 42 zero-answer
+harvest candidates stocked for book 7. STANDING: t3 retries ([54],
+[71]); the next fire's prose pool = 297 uniques (b5+b6); sum-band
+recalibration owed on that fire; the proxy experiment (powered, N>=50
++ the 204) next in queue; harvest-refresh docketed (in-reach pool
+thinning). Gate: GEN-20, zero waivers, panel g18B+g19W (fresh),
+cert 998@1.0000. Guts 66; rulings 7; specimens 19; books: 5 complete,
+6 nearly worked.
+
+## TAPE EXAM (run BEFORE trusting this seal; any miss -> ledger)
+1. Gate: `python3 -c "import json; print(json.load(open('.cache/GENERATION.json'))['gen_id'])"` -> 20
+2. Book-6 rows: `grep -c '"book": 6' .cache/book6_prose_pairs.jsonl` -> 73
+3. Panel: `python3 -c "import json; print(sorted(json.load(open('.cache/GENERATION.json'))['panel']['members']))"` -> ['g18_armB', 'g19_w1024']
+4. Zero-answer bank: `grep -c '"text": "Consider the numbers a, b, c. a is 1. b is 1. b plus c equals a' .cache/book6_prose_pairs.jsonl` -> >=1
+5. Registry: `grep -c '66 converted' docs/GUT_REGISTRY.md` -> >=1
+
+# PRIOR HANDOFF BELOW
+
 # NEXT SESSION — start here (handoff, 2026-07-24 night — GEN-20 ATTRIBUTABLE, BOOK 6 OPEN, TWO LEVERS NAMED)
 
 ## **THE GATE IS GEN-20, ESTATE SETTLED (12/12), BOOK 6 OPEN.** The

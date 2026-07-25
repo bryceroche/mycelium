@@ -10701,3 +10701,15 @@ token-position × waist-dim, the moment the skeleton trains.
   the zero-hunt list in the b7 planning notes). The certification
   channel has no silent bias against degenerate answers — a class
   untestable until the wild delivered it.
+- **BOOK 6, TRANCHE 2 (2026-07-24): 37 rows / 2 crown pairs / 1
+  certificate, floor 0.94 — THE BENCH IS WORKED.** [30]'s
+  mul-inverse retry banked ([the quorum-boundary page cured by
+  margin]); both crowns unanimous ([38] and [55], FRAC_OF over
+  derived products, [55] at m=500); the combinatorics shelf folded
+  clean (handshakes, diagonals, round-robins — the C(n,2) family
+  all first-pass). Misses: [54] (the cycle-position fold) and [71]
+  (mul-inverse at 210) — t3's retry bench with cures. **BOOK 6: 73
+  rows / 4 crown pairs / 3 certificates in two tranches — the
+  75-candidate lane pass fully worked** (69 banked, 3 registry, 3
+  benched). The next fire's fresh-prose pool: book5 224 + book6 73
+  = 297 uniques.
