@@ -10595,3 +10595,24 @@ token-position × waist-dim, the moment the skeleton trains.
   gate deepened within zones; the book's lanes feel it as repair
   reach). Bench: 30 repairs + 44 surgeries -> the tempo's tranches;
   1 free entry banked.
+- **THE PANEL-REFRESH REVIEW — BARS PINNED (2026-07-24, the
+  driver's-seat choice; zero-GPU, all substrate banked).** THE
+  DESIGN, by the standing laws: means-vs-overlaps (recruit by
+  MEASURED behavioral distance; diagnostic checkpoints are
+  panel-eligible), the diversity budget (members' correlation to
+  the gate's lineage priced in the manifest), the lattice's two
+  axes preserved (a lineage-distant member + a width/geometry-
+  distant member). METHOD: pairwise disagreement matrix over the
+  NINE banked member lattices + the incumbents (armB, cap2x) on
+  bigtest majority answers — select two members maximizing
+  distance from g20 AND from each other, subject to member
+  competence (own bigtest strength reported). BARS, pinned before
+  any join: (1) cert-v2 precision under the refreshed panel >=
+  0.998 (the standing bar — ideally the 1.0000 the stale panel
+  held); (2) certified mass should RISE (the 44's recovery is the
+  review's warrant — their co-sign rate reported by name); (3) if
+  precision falls below bar, THE REFRESH IS REJECTED and the
+  stale panel stays with its debt priced — a weaker panel that
+  certifies more is not a refresh, it's a leak. The incumbents
+  compete on equal terms (the prospective-symmetric rule: the
+  review re-scores everyone under one rubric).
