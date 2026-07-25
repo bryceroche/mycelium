@@ -10969,3 +10969,29 @@ token-position × waist-dim, the moment the skeleton trains.
   seat only.** The spec document is yield regardless — the build
   cannot fail entirely, because the IR's law gets written either
   way.
+- **THE VERIFIER REPLAY VERDICT (2026-07-25): DOUBLE-ZERO — AND THE
+  ZERO IS THE FINDING.** False alarms 0/3,800 (the extracted law
+  matches the banked habit exactly); catches 0/3,800 — **every
+  failure parse is structurally legal arith3.** Per the
+  pre-registered bars: catch 0% < 15% -> DIAGNOSTIC SEAT ONLY. THE
+  FINDING UNDERNEATH: **the decode layer is a structural verifier
+  by construction** — argmax over a fixed ftype menu cannot emit an
+  unknown type; top-2-distinct pointers cannot break arity;
+  three-digit banks cannot leave the value domain. The pointer
+  law's structural entry ('binding enters as structure') closed
+  the form long ago — the parser CANNOT emit malformed IR, and
+  100% of compilation failure mass is WELL-FORMED LIES, the class
+  the dialect spec itself assigns to panels and keys, never
+  verifiers. THE SEAT RE-AIMED AT ITS TRUE CUSTOMER: the verifier
+  guards the SYSTEM BOUNDARY where non-parser emitters will live —
+  **door 2's drafting engine (the organ) is the first emitter
+  whose form is NOT closed by construction, and the verifier
+  seats at ITS output** — plus two standing invariant asserts the
+  decode could in principle emit (k=0, empty graph), free at any
+  gate. THE YIELD REGARDLESS, as pinned: docs/ARITH3_DIALECT.md —
+  the IR's law written for the first time, with SPEC-TIGHTEN flags
+  awaiting Bryce's pass (k=1 legality; pct's missing result
+  field). Paper II gains its citable definition of 'typed
+  intermediate graphs' and the measured sentence: the frontend's
+  emission architecture makes malformed IR unrepresentable — the
+  compiler's builders, learned.

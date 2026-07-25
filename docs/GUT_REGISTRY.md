@@ -81,7 +81,7 @@ only — this index does not reconstruct what the record does not number.
 | 65 | The deducer wants back in | three lawful doors mapped (witness / organ / mint); solve path stays closed | — |
 | 66 | Noether | the invariance census chartered; 1778->1824 named as a Noether cycle; SCHEDULE: HELD (0/300) | — |
 | 67 | Building the graph is the hard part | the thesis sentence (compiler/CPU/certificate) banked with its band; doors convergent; the cost-curve tripwire pinned | — |
-| 68 | The neural compiler (Lattner) | Paper-II positioning; the STRUCTURAL VERIFIER experiment (3,800-parse replay); verifier != panel (malformed IR vs well-formed lies); the spec-discovery disanalogy | — |
+| 68 | The neural compiler (Lattner) | the dialect written as law + verifier built; replay DOUBLE-ZERO: decode is a verifier by construction, all failures are well-formed lies; seat re-aimed at the organ door | — |
 
 ## The registry's arithmetic
 
