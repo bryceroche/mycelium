@@ -11174,3 +11174,19 @@ token-position × waist-dim, the moment the skeleton trains.
   the crossover probe — every open question fronted by its
   instrument, most of them waiting on the pen rather than the
   card.
+- **THE TIGHTEN PASS SEALED (2026-07-25, Bryce's four rulings +
+  the flip-check's two readings):** k=1 ILLEGAL (vacuous-factor
+  rationale; zero retroactive cost by total census); k=0 ILLEGAL
+  (the divide-by-zero panic class RELOCATED from runtime to compile
+  time — a whole error class deleted by a type rule); pct SEALED as
+  a pure relation, result-less by design — **the flip-check ran
+  under the condition AS PINNED (asked-for orphans): ZERO of eight;
+  Ruling 2 seals** — with the stricter probe's texture filed as a
+  lint candidate, not law (5/8 carry pct-only-bound non-query
+  intermediates); loc REQUIRED with derived(parents) non-empty and
+  transitive grounding (E12), the canonicalizer's provenance
+  contract written before its first line. THE VERIFIER: zero seated
+  checks -> THREE with named customers (E06-kdegenerate,
+  E12-provenance, the organ as first future emitter). Spec and
+  verifier updated in one transaction per the dialect's own law.
+  Remaining on the pens: the strata cut, then the fifty.

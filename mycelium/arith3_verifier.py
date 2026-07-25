@@ -42,8 +42,8 @@ def verify(factors):
                     errs.append(("A3.E04-varrange", j, f"ref={a}")); break
         elif t in ("mod", "fdiv"):
             k = f.get("k")
-            if not (isinstance(k, int) and k >= 1):
-                errs.append(("A3.E06-kzero", j, f"k={k}"))
+            if not (isinstance(k, int) and k >= 2):
+                errs.append(("A3.E06-kdegenerate", j, f"k={k}"))
             for a in (f.get("var"), f.get("result")):
                 if not _var_ok(a):
                     errs.append(("A3.E04-varrange", j, f"ref={a}")); break
@@ -69,4 +69,9 @@ def verify(factors):
                    not (isinstance(f.get("k1"), int) and f["k1"] >= 1 and
                         isinstance(f.get("k2"), int) and f["k2"] >= 1):
                     errs.append(("A3.E08-macro", j, "op/k1/k2"))
+        if "loc" in f:
+            lc = f["loc"]
+            if isinstance(lc, dict) and lc.get("derived") is not None \
+               and not lc.get("parents"):
+                errs.append(("A3.E12-provenance", j, "derived with empty parents"))
     return errs

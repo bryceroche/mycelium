@@ -19,10 +19,31 @@ here is a change there, same transaction.
 | `pct` | args, p | p carried; **no result field in any banked pct** (SPEC-TIGHTEN: is that the law or a habit?) |
 | `macro` | name + per-name | FRAC_OF: a ∈ [1,9], k ∈ [2,12], x, result; OP_APPLY: op ∈ {add,sub}, k1,k2 ≥ 1, x, y, result |
 
-## TIGHTEN-pass riders (awaiting Bryce)
-- `loc` as a REQUIRED attribute on every node (source span provenance — #69).
-- k=1 legality (empty specimen set — pure intent).
-- pct's result-less form: law or habit?
+## THE TIGHTENED LAW (Bryce's pass, 2026-07-25 — rulings 1/1a/2/3)
+- **k=1 is illegal** in mod/fdiv: *a multiplicative identity in a mod/fdiv
+  factor carries no constraint — a factor that constrains nothing is not a
+  degenerate relation but the absence of one, and the dialect does not
+  permit vacuous factors.* (Census: 0/1.7M banked, 0/3,800 failures —
+  zero retroactive cost; guards future emitters, the organ first.)
+- **k=0 is illegal** likewise and more so: the divide-by-zero panic class
+  relocates entirely from runtime to compile time (one wild specimen ever
+  — E06's lone customer; the solver can no longer reach the panic from
+  legal IR).
+- **pct is a pure relation, result-less BY DESIGN** (affirmative): *pct
+  constrains extant variables and produces no value; any "result" of a
+  percentage computation is one of its args, bound elsewhere.* Flip-check
+  ran against the eight: zero asked-for orphans — SEALED. (Texture note,
+  not law: 5/8 specimens carry pct-only-bound non-query intermediates —
+  lint candidate.)
+- **loc is required on every node** (phase-in: mandatory for all NEW
+  emitters; the parser's spans-from-birth satisfies it). Derived nodes
+  carry `loc: derived(parents…)` with a NON-EMPTY parent set — *every
+  node's provenance chain grounds out in source spans, transitively; a
+  node that traces to nothing compiled from nothing.* (Verifier check
+  E12-provenance.)
+- **The canonicalizer's provenance contract** (written before its first
+  line): constant-folding MERGES loc sets, never drops them — implied by
+  false-merge-zero, now stated as law the builder inherits.
 
 ## Loop law (the state-borne clause, #70)
 Breath specialization, where it exists, is state-borne, never
