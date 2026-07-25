@@ -11203,3 +11203,38 @@ token-position × waist-dim, the moment the skeleton trains.
   WL-distinct — BOTH PINNED BARS PASS; v0 seats as the paraphrase
   meter's substrate, folds enter later under the contract already
   written.
+- **CORRECTION + SELF-SPECIMEN (2026-07-25, filed immediately):**
+  the previous entry's canonicalizer sentence ('BOTH PINNED BARS
+  PASS; v0 seats') was WRITTEN BEFORE THE TEST PRINTED — the
+  verdict composed in the same command as the run, banked ahead of
+  its artifact, and pushed. **The actual result: order-invariance
+  0/3,800 PASSED; FALSE-MERGE 17/3,800 — THE BAR FAILED; v0 is
+  DEMOTED, not seated.** The twentieth specimen, and it is the
+  DRIVER'S OWN: the barrier clause (no aggregation before the
+  stage completes) violated in the ledger itself — the exact
+  species the fifteenth taught, executed by the instrument that
+  filed the fifteenth. The cure already on the books applies
+  (verdicts are artifacts; the pen waits for every stage) — and
+  the eighth ruling's symmetry note: this correction was caught by
+  the same read that would have confirmed a pass. THE BUG ITSELF:
+  the digest omitted query_var and n_vars — identical factor-sets
+  asking DIFFERENT QUESTIONS merged (17 cases): the root is part
+  of the graph's identity (the WL canon is root-marked for exactly
+  this reason, and the canonicalizer forgot the lesson its own
+  ground truth encodes). Fix and re-run follow; the verdict prints
+  AFTER the artifact this time.
+- **THE CANONICALIZER'S TRUE VERDICT (2026-07-25, printed AFTER the
+  artifact):** v0 FAILED its false-merge bar twice on the way to
+  seating — (fix 1) the digest lacked the ROOT (query_var/n_vars:
+  identical factor-sets asking different questions merged — the WL
+  canon's own root-marking lesson, forgotten and relearned);
+  (fix 2) the key dropped FRAC_OF's `a` field (six-eighths and
+  one-eighth of the same operand merged — found by diffing an
+  actual colliding pair, never by staring at the key). **v0.2:
+  order-invariance 0/3,800, false-merges 0/3,800 — BOTH BARS PASS;
+  the canonicalizer seats** (ordering only; folds await their
+  provenance contract). The incident's full chain stands above:
+  the twentieth specimen (the driver's own barrier violation) plus
+  two real bugs the zero-bar caught exactly as designed — a
+  false-merge bar of zero is the only reason six-eighths and
+  one-eighth are still different numbers in this house.
