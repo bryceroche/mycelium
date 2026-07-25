@@ -30,6 +30,13 @@ _lat = _m["panel"]["lattices"]
 assert set(_lat.keys()) == set(_m["panel"]["members"].keys()), \
     "APPARATUS INVARIANT VIOLATED: panel-in-code != panel-in-manifest"
 _lf = sorted(_lat.values())
+# EIGHTH RULING: freshness assert on exam inputs — the wake >= the head
+import os as _os
+_ck = _os.path.getmtime(".cache/g21.safetensors")
+for _st in ("3000", "3500"):
+    _sp = f".cache/g21_s{_st}.safetensors"
+    assert _os.path.getmtime(_sp) >= _ck - 7200, \
+        f"APPARATUS: stale band snapshot {_sp} (older than the candidate)"
 print(f"[panel] members from manifest: {sorted(_lat.keys())} -> {_lf}")
 armb = json.load(open(_lf[0]))["bigtest"]
 c2x = json.load(open(_lf[1]))["bigtest"]

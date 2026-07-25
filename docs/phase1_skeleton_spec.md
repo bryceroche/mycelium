@@ -11040,3 +11040,26 @@ token-position × waist-dim, the moment the skeleton trains.
   (waiver declared in-manifest). Standing fix noted: the mv-glob
   seam (snapshot renames fail silently in the continuation units)
   gets a hard-error wrapper before any future segment chain.
+- **THE EIGHTH RULING (2026-07-25, Bryce's own voice — seated):
+  APPARATUS CHECKS PRECEDE VERDICTS, SYMMETRICALLY.** The hazard
+  named while the instance is clean: refuse -> investigate ->
+  apparatus fault -> flip is every motivated-reasoning failure's
+  costume, and the third apparatus sighting guarantees recurrence.
+  THE RULE: **a fault found after a displeasing verdict must be one
+  the same audit would have caught after a pleasing one** —
+  apparatus audits run unconditionally. IMPLEMENTATION: the
+  assert-on-read fence generalizes to EXAM INPUTS — every sheet
+  asserts its band snapshots' FRESHNESS before any verdict prints
+  (mechanical tell: band-member identity across sheets = frozen
+  artifact; mtime of the wake >= mtime of the head). Retroactive
+  test on gen-21's catch: PASSES — the 386/404 cross-sheet identity
+  was a verdict-blind mechanical tell. The rule ensures the next
+  one has to be. **THE MIGRATION LAW'S ENDPOINT, pre-registered:**
+  dark shrinks every fire (−6/−16/−7) — the law consumes its own
+  substrate; when dark approaches its floor and the signature
+  changes shape, the reading is SUBSTRATE EXHAUSTED, not law
+  broken — the law's predicted completion written before any sheet
+  can mourn it. ORDER: entourage-21 first (an unattributable gate
+  doesn't read book 7's null-census); the mv-glob hard-error
+  wrapper before any segment chain; the SPEC-TIGHTEN specimens
+  surfaced to Bryce's pen.

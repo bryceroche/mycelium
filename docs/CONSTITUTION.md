@@ -58,6 +58,14 @@ zone meter (+ umbra-trend column) · differential read (the hammerhead) ·
 development protocol · wobble census (SNAP_EVERY) · the respiratory law's
 tempo (two wide tranches per fire).
 
+**8th ruling — apparatus symmetry** (2026-07-25): apparatus checks
+precede verdicts, run unconditionally; a fault found after a displeasing
+verdict must be one the same audit would catch after a pleasing one.
+Exam inputs assert freshness (band-identity across sheets = the frozen
+tell) before any verdict prints. **The migration law's endpoint,
+pre-registered**: dark's shrinkage consumes its own substrate — a changed
+signature at the floor reads "substrate exhausted," never "law broken."
+
 **The Arbitration Rubric** (2026-07-25, drafted blind during seg 7-8):
 promote the candidate with greater certified mass under the true panel at
 precision ≥0.998, provided bigtest bands overlap-or-exceed within ±10
