@@ -18,7 +18,7 @@ cert 998@1.0000. Guts 66; rulings 7; specimens 19; books: 5 complete,
 1. Gate: `python3 -c "import json; print(json.load(open('.cache/GENERATION.json'))['gen_id'])"` -> 20
 2. Book-6 rows: `grep -c '"book": 6' .cache/book6_prose_pairs.jsonl` -> 73
 3. Panel: `python3 -c "import json; print(sorted(json.load(open('.cache/GENERATION.json'))['panel']['members']))"` -> ['g18_armB', 'g19_w1024']
-4. Zero-answer bank: `grep -c '"text": "Consider the numbers a, b, c. a is 1. b is 1. b plus c equals a' .cache/book6_prose_pairs.jsonl` -> >=1
+4. Zero-answer bank: `grep -c 'overline{9}' .cache/book6_prose_pairs.jsonl` -> >=1
 5. Registry: `grep -c '66 converted' docs/GUT_REGISTRY.md` -> >=1
 
 # PRIOR HANDOFF BELOW
