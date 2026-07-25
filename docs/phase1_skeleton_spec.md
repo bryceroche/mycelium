@@ -10859,3 +10859,24 @@ token-position × waist-dim, the moment the skeleton trains.
   as bench artifact; the word decides: segments 7-8 (the last
   lawful burn by the stopping rule's shape) or the arbitration on
   final evidence, with the prospective-symmetric rule standing.
+- **THE 2/20 CENSUS (2026-07-25, before the burn per the word): THE
+  INSURANCE PAYS — BOTH CASES BLOCKED, AND THE AXIS RULE COLLECTS
+  ITS FIRST PAYOUT.** The cases named: adversarial 7 and 15 — BOTH
+  the scope-pair species ('the square of the difference' read as the
+  bare square: 121=11-squared, 225=15-squared, the difference
+  dropped — the panel exam's original demon on its home fixture).
+  Dispositions: (1) the GUARD flagged both (the layered mouth's
+  channel, already paying); (2) THE PANEL BLOCKS BOTH — g18B
+  (lineage-adjacent) fails WITH the gate (plurality 121/225 — the
+  correlation cost the manifest priced, made flesh), but **g19W
+  (geometry-distant) fails DIFFERENTLY (66, 120) — and
+  different-wrong is all a blocker needs: neither case certifies.**
+  The vacuous-by-success caveat RESOLVES on its first real payout
+  condition: the gate's unanimity CAN be wrong off-fixture, and
+  when it is, the guard catches it at the register and the panel
+  at the join — the premium was worth paying, and it was the
+  WIDTH seat (the diversity-budget's axis choice) that paid.
+  SEGMENTS 7-8 BURN under the standing snapshot rule (the stopping
+  rule followed in both directions — 'the rule was written to be
+  followed in both directions'); the rubric drafts blind during
+  the burn.
