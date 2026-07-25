@@ -10745,3 +10745,32 @@ token-position × waist-dim, the moment the skeleton trains.
   zone-shifted = the books teach what the training lever didn't.
   T3's two retries fold in before the mint (the bench cleared at
   the tempo).
+- **GUT #67: BUILDING THE GRAPH IS THE HARD PART (2026-07-24, Bryce
+  direct — the decode its own countersign; the first gut whose
+  primary yield is CONFIRMATION).** The dedupe: the thesis cluster
+  (1/3/4/5) is the campaign's history as law — C2's elimination,
+  the purity filter's 204 right-asked-wrong-graph parses (interp 3
+  as a measured population), parse-not-equal-accuracy. **THE THESIS
+  SENTENCE, banked verbatim for Paper II: 'the neural model's job
+  isn't to do math in its head but to compile human intent into
+  formal graph specification'** — the model is a compiler, the
+  solver is the CPU, the certificate is the proof the compilation
+  was faithful. WITH ITS BAND (interp 1 corrected): 'given a
+  faithful graph and a walk inside the budget, the solver is never
+  the error source' — the cliff test's jurisdiction attached; the
+  failure mass lives entirely in compilation. The deducer cluster
+  (7-10) maps one-to-one onto doors 1-2 AS RULED — convergent, no
+  new obligations, fences hold, prices stand. **INTERP 11 CONVERTS
+  TO THE COST-CURVE TRIPWIRE** (false on current territory — arith3
+  is small and closure instant; possibly true on MATH-500's harder
+  compilations): instrument the solver's cost curve (decisions
+  consumed vs graph size / loop rank) as books harden; PINNED
+  INITIAL THRESHOLDS (amendable by first reading): the tripwire
+  fires if a book's median solved-graph decisions exceed 500 (10%
+  of budget) OR any solved graph exceeds 2,500 (50%) — then the
+  learned pre-filter prices with a measurement behind it, the
+  mint-door pattern (docketed against evidence, not enthusiasm).
+  Implementation rides the next lane pass (a decisions log at the
+  gate's solve calls). META-LINE, banked: sixty-six guts built
+  enough structure that the sixty-seventh mostly rediscovered it —
+  the instinct and the constitution converging on the same house.
