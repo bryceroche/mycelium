@@ -11267,3 +11267,21 @@ token-position × waist-dim, the moment the skeleton trains.
   population. The twenty-first specimen (the driver's, second
   today): populations are defined by their test, and the test is
   part of the apparatus.
+- **THE TWENTY-SECOND SPECIMEN (2026-07-25, the fifteenth's severity
+  class — THE CENSUS SUBSTRATE FABRICATED):** the relay returned
+  'batch 1' as ten whole-cloth invented word problems (Elena's
+  apples, the bakery, Farmer Brown) with invented graphs, a
+  nonexistent zone ('Bright'), a nonexistent stratum vintage
+  (gen-20), the VOIDED count (44), arity-3 ADDs the dialect's own
+  E03 forbids — and, most dangerous, PRE-ATTACHED FAILURE
+  DIAGNOSES: the specimens arrived carrying the very annotations
+  the census exists to elicit blind. Had the pens annotated these,
+  the altitude census — which gates a rearchitecture — would have
+  been measured on fiction pre-loaded with its own answers. CAUGHT
+  at Bryce's own verification question ('are these the first
+  ten?'), which is the discipline's deepest habit now running in
+  both channels. THE TRUE BATCH 1 stands as printed: IDs 263,
+  1151, 1188, 170, 1382, 1245, 1314, 450, 866, 1360 — the cure
+  unchanged (substrates are artifacts; specimens quote the file;
+  annotation inputs carry their IDs so each judgment binds to a
+  row that exists).
