@@ -10584,3 +10584,14 @@ token-position × waist-dim, the moment the skeleton trains.
   gut's frame paid again: the conserved quantity hunted its
   symmetry and found it — nothing in four fires ever varied the
   panel.
+- **BOOK 6 OPENS (2026-07-24): the first lane pass under GEN-20 —
+  THE RE-PRICING CONTINUES.** 75 candidates survived the rulebook
+  filters (the harvest's in-reach remainder THINNING — a
+  harvest-refresh question banked for the docket): **L1 1 / L2 30 /
+  L3 44 — surgery falls to 59%** (vs 71% book-4-era, 67% book-5)
+  **and the repair lane DOUBLES to 40%** — the spans-fed gate
+  parses close enough to repair on twice its ancestor's share,
+  which is the zone-invariance reading's prediction landing (the
+  gate deepened within zones; the book's lanes feel it as repair
+  reach). Bench: 30 repairs + 44 surgeries -> the tempo's tranches;
+  1 free entry banked.

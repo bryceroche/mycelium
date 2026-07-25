@@ -1,3 +1,30 @@
+# NEXT SESSION — start here (handoff, 2026-07-24 night — GEN-20 ATTRIBUTABLE, BOOK 6 OPEN, TWO LEVERS NAMED)
+
+## **THE GATE IS GEN-20, ESTATE SETTLED (12/12), BOOK 6 OPEN.** The
+day's chain: promotion (ninth exam, bars unbent) -> entourage-20
+paid (dissent structural x3, collapse holds, delta-probe 3rd point,
+zone row 2) -> #66 NOETHER (invariance census chartered; SCHEDULE
+HELD 0/300; zone-invariance of the promotion read) -> **THE 44
+RE-LABELED: PANEL DEBT** (all umbra-correct; the conserved dissent =
+the panel's vintage through four promotions; ~44 certs/battery lost;
+PANEL REFRESH review implied, holds for the word) -> book 6's lane
+pass: 75 cands (harvest THINNING — refresh question docketed), L3
+59% (re-pricing again), **L2 repair DOUBLES to 40%**. QUEUE: b6
+tranches at the tempo; sum-band recalibration on the first fire;
+panel-refresh review (the word); proxy experiment (powered, N>=50 +
+the 204); paraphrase meter designs before door 2. Constitution live
+(6 rulings + invariance census table). Guts 66; specimens 19; books:
+5 complete, 6 open.
+
+## TAPE EXAM (run BEFORE trusting this seal; any miss -> ledger)
+1. Gate: `python3 -c "import json; print(json.load(open('.cache/GENERATION.json'))['gen_id'])"` -> 20
+2. Estate: `grep -c 'ENTOURAGE-20 SETTLED' docs/phase1_skeleton_spec.md` -> 1
+3. The 44: `python3 -c "import json; print(json.load(open('.cache/the44_census.json'))['zone'])"` -> {'umbra': 44}
+4. Book 6: `python3 -c "import json; print(len(json.load(open('.cache/book6_lanes.json'))))"` -> 75
+5. Census table: `grep -c 'LEVER NAMED' docs/CONSTITUTION.md` -> >=1
+
+# PRIOR HANDOFF BELOW
+
 # NEXT SESSION — start here (handoff, 2026-07-24 — **GEN-20 PROMOTED**: THE NINTH EXAM, BARS UNBENT)
 
 ## **THE GATE IS GEN-20** — the first promotion since gen-16, at the
