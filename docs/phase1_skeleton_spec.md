@@ -10344,3 +10344,37 @@ token-position × waist-dim, the moment the skeleton trains.
   rather than the gate; the zone baseline is the null under which
   'richer reading' is even a claim). Pay the waivers, then read the
   book, and every surprise is attributable.
+- **GUT #65: THE DEDUCER WANTS BACK IN THE GAME (2026-07-24, Bryce
+  direct — no relay; Code countersigns from the record).** The
+  history stated true: the two jaws were DESIGNED as deducer+solver
+  in sync (the Alternator architecture, ledger's opening pages);
+  what shipped was the exact jaw alone (two-death-mode: on clean
+  CSPs symbolic search dominates), and the deducer rested VALIDATED,
+  NOT REFUTED — its Alternator roles (critic / format-definer /
+  soft-graph solver) spec-stage, never killed. THE FENCES, standing:
+  the solve path is closed (two-death-mode; the key grades in
+  primitives; zero-leakage), and latents never replace the graph.
+  **THE THREE LAWFUL DOORS, mapped from banked law:** (1) **THE
+  WITNESS DOOR (the baseline law's own ask):** the panel's members
+  (armB, cap2x) share the gate's substrate — the deducer is a
+  PYTHIA-LINEAGE organ, the widest aperture separation the house
+  could field; its role: a GRAPH-GRAIN dissent source (does learned
+  propagation find the parsed graph coherent?) feeding the panel
+  channel, never the verdict — #58's decorrelation thesis at
+  cross-substrate scale. (2) **THE ORGAN DOOR (the critical path's
+  open seat):** the recursion charter's writer needs certified-write
+  ~99.9% (2698) and the 65's detour cure needs RE-VOICING AT VOLUME
+  — the deducer's format-definer role is literally 'defines the
+  target format'; as the organ's DRAFTING engine (propose
+  re-voicings; the gate + key dispose) it enters the propose/dispose
+  loop on the proposing side, where learning is constitutional.
+  (3) **THE MINT DOOR (the MuZero adjudication's own jurisdiction):**
+  propagation-guided solution-first generation at recursion floors
+  2+ — the mint-search's value function or the flocking sweep's
+  engine. THE HONEST ORDER: door 2 is the campaign's critical path
+  (the organ IS the books' scaling law); door 1 is the cheapest
+  first read (a graph-coherence dissent column from the resting
+  ckpt, zero training); door 3 waits on the grammar-width docket.
+  REGISTERED; the decode and the word are Bryce's — the deducer
+  re-enters by measurement or not at all, like everything else in
+  this house.
