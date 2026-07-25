@@ -10616,3 +10616,28 @@ token-position × waist-dim, the moment the skeleton trains.
   certifies more is not a refresh, it's a leak. The incumbents
   compete on equal terms (the prospective-symmetric rule: the
   review re-scores everyone under one rubric).
+- **THE PANEL-REFRESH VERDICT (2026-07-24, the driver's fire): THE
+  INCUMBENTS RETIRE AFTER FOUR GATES; g18B + g19W SEATED — cert
+  mass 926 -> 998 @ 1.0000, THE 44 CO-SIGNED 44/44.** The evidence
+  chain: informative-dissent ratios armB 0.44 / cap2x 0.22 (two-to-
+  five correct certificates blocked per wrong caught; cap2x blocked
+  317 plurality-right answers) vs moderns at 2.0-2.4; the re-join
+  on gate-unanimous items: EVERY candidate pair >= 997 @ 1.0000,
+  blocked-wrong ZERO across the board — **the gate's unanimity is
+  never wrong on the fixture (the empty cold class confirmed from
+  the panel side), so every incumbent block was pure debt: 72
+  correct certificates per battery.** SELECTION by the diversity-
+  budget's axis rule among the 998-ties: g18B (the ration arm —
+  diet axis; 7.5% gate-disagreement, lineage-adjacent, PRICED in
+  the manifest) + g19W (H_W=1024 — geometry axis; 9.7%; mutual
+  distance 150, the pair's maximum) over the sibling pair
+  (g17F+g17R, same-fire correlated). THE HONEST CAVEAT, in-text:
+  with zero unanimous-wrongs on the fixture, the panel's protective
+  function is currently VACUOUS-BY-SUCCESS — its worth is insurance
+  against future and wild distributions, and the refresh converts
+  the premium from 72 certs/battery to ~0-1 while keeping both
+  axes. Bars: precision 1.0000 (held), mass +72 (the warrant paid),
+  the 44 recovered by name. Manifest updated same-transaction; the
+  waiver line CLEARED — zero waivers, none deferred. The
+  constitution's census row closes: DISSENT POPULATION — RESOLVED
+  (the lever was panel vintage; the cure is paid).
