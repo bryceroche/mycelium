@@ -10424,3 +10424,31 @@ token-position × waist-dim, the moment the skeleton trains.
   (informative dissent) stands unchanged above whichever substrate
   path is chosen. The door is open in law, priced in fact, and
   waits on the word — behind entourage-20, which still burns.
+- **THE FIFTH RULING (2026-07-24, Bryce's own voice — the deducer's
+  door adjudicated):** (1) THE TWO PATHS ARE DIFFERENT INSTRUMENTS,
+  not one instrument at two prices: the structural proxy measures
+  GRAPH-SHAPE dissent (parser-side, content abstracted away — and
+  residue abstraction can mint FALSE COHERENCE: unsatisfiable over
+  the integers, satisfiable mod k — systematically optimistic
+  exactly where dissent matters; the false-coherence rate must be
+  characterized before any vote means anything); the adapter fire
+  measures the actual domain BUT SPENDS THE CHIEF ASSET — an
+  adapted deducer is a better reader and a WORSE OUTSIDER. (2)
+  **THE DIVERSITY-BUDGET FENCE (constitutional): the panel's
+  diversity is a BUDGET, and training spends it** — the
+  decorrelation cost of any adaptation is written into the
+  manifest as a known price BEFORE the fire; fences before doors,
+  the constitution's pattern, the monoculture fence from the other
+  side. (3) THE ORDER: the structural proxy runs FIRST as a
+  MAPPING-FIDELITY EXPERIMENT, not a seated column — one read,
+  three-way outcome, all three informative: CALIBRATED (agrees on
+  panel-unanimous-verified, dissents selectively where the panel
+  later proves wrong) -> a cheap shape-dissent column with its
+  blind spot NAMED (content — covered by the cert channel from
+  the other side); MISCALIBRATED-BY-LEAK -> the mapping is
+  unfaithful at one read's price, and the adapter becomes the only
+  door with its decorrelation cost stated; RANDOM -> the
+  staleness question answers itself and door 2's timeline moves
+  right per the fourth ruling's gating. (4) The sequence behind
+  the estate: book 6 under an attributable gate, sum-band
+  recalibration on the first fire, the proxy at its price.
