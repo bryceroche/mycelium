@@ -10713,3 +10713,15 @@ token-position × waist-dim, the moment the skeleton trains.
   75-candidate lane pass fully worked** (69 banked, 3 registry, 3
   benched). The next fire's fresh-prose pool: book5 224 + book6 73
   = 297 uniques.
+- **THE READ-BACK (2026-07-24, Bryce's three open items adjudicated
+  against the record):** (1) the divergent page's diagnostic was
+  BANKED BEFORE the cure fired (d8c78ab: flicker, quorum-boundary
+  hover, margin stated) — the read-before-touching order held. (2)
+  THE READOUT-ORDER RULE banked: at the next fire, the sum-band
+  re-establishment prints FIRST on its own sheet; no delta against
+  1824 reads before it. (3) The zone-mass pre-surgical read is
+  SATISFIED BY CONSTRUCTION: zone masses are gate properties; no
+  weight has changed since the baseline (the desk touches pages,
+  never parameters) — the baseline IS the pre-fire reading, and
+  the true intervention point is the fire itself, where the
+  pre/post zone delta reads against 998/410/92.
