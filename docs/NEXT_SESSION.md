@@ -1,3 +1,28 @@
+# NEXT SESSION — start here (handoff, 2026-07-25 — **GEN-21 PROMOTED**: THE TWELFTH SHEET, THE RUBRIC UNUSED)
+
+## **THE GATE IS GEN-21** — the era's second promotion, at the stopping
+rule's last lawful segment: bigtest 1228 [1228/1235/1230 — band-min AT
+the record bar], alg4 411 [411/412/409], h3held 194, adup 197, cert-v2
+1018 @ 1.0000 (x14, true panel), sum 1833. **THE MIGRATION LAW
+COMPOUNDS at n=3** (umbra +16/+14/+22 — books keep moving mass). The
+pen's only refusal was a STALE BAND ARTIFACT (seg-4 snapshots through
+three exams — the apparatus species x3; fixed, re-read on the true
+wake). The rubric retired UNUSED. OWED: entourage-21 (waiver in
+manifest); the mv-glob hard-error wrapper; Bryce's SPEC-TIGHTEN pass
+(k=1, pct result); then book 6 t-continuation / book 7 (42 zero-answer
+candidates staged) at the tempo. The verifier sits at the organ door
+(built before the door); dialect law written. Guts 68; rulings 7;
+kill ledger ~22; 14 perfect prints.
+
+## TAPE EXAM (run BEFORE trusting this seal; any miss -> ledger)
+1. Gate: `python3 -c "import json; print(json.load(open('.cache/GENERATION.json'))['gen_id'])"` -> 21
+2. Ckpt: `python3 -c "import json; print(json.load(open('.cache/GENERATION.json'))['parser_ckpt'])"` -> .cache/g21.safetensors
+3. Pass: `grep -c 'ALL BARS: PASS' .cache/gen21_H.log || grep -c 'bars failed: NONE' docs/phase1_skeleton_spec.md` -> >=1
+4. Migration n=3: `grep -c 'COMPOUNDING' docs/phase1_skeleton_spec.md` -> >=1
+5. Dialect law: `test -f docs/ARITH3_DIALECT.md && echo OK` -> OK
+
+# PRIOR HANDOFF BELOW
+
 # NEXT SESSION — start here (handoff, 2026-07-25 — BOOK 6 AT 73 ROWS; THE BENCH WORKED; ZERO WAIVERS HOLDS)
 
 ## **BOOK 6: 73 rows / 4 crown pairs / 3 certs in two tranches under

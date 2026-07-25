@@ -11016,3 +11016,27 @@ token-position × waist-dim, the moment the skeleton trains.
   k=1 legality + pct's missing result await Bryce's pass AFTER
   the sheet lands — tightening never shares attention with a
   verdict.
+- **THE PROMOTION (2026-07-25): GEN-21 = g21 — THE ERA'S SECOND, at
+  the stopping rule's final lawful segment, after the pen's only
+  refusal was traced to a STALE ARTIFACT and re-read on the
+  candidate's own wake.** The seam first (the apparatus species'
+  third sighting): the battery's band path pointed at SEGMENT 4's
+  frozen snapshots through three exams (identical 386/404 across
+  sheets was the tell), and the continuation's silent mv-glob
+  failures left the true wake in the bare files — the band bars
+  judged three candidates by a three-continuation-old trajectory.
+  Fixed, re-read: **the true wake EXCEEDS the headline — bigtest
+  [1228/1235/1230] (band-min = the record bar itself), alg4
+  [411/412/409]** — ALL BARS PASS with no bar bent and no rubric
+  needed: **the arbitration rubric retires to its drawer UNUSED —
+  the best outcome for a document.** The sheet: bigtest 1228 /
+  alg4 411 / h3held 194 / adup 197 / cert-v2 1018 @ 1.0000
+  (FOURTEENTH consecutive, true panel, dissent 2) / sum 1833
+  (second reference: 1820/1812/1833) / adversarial 0/20. **THE
+  MIGRATION LAW'S THIRD POINT: COMPOUNDING** — umbra +16/+14/+22,
+  dark −6/−16/−7: the books keep moving mass, no saturation at
+  three fires. THE GATE IS GEN-21 — two books deep, freshly
+  paneled, its bands above its own headline. Entourage-21 owed
+  (waiver declared in-manifest). Standing fix noted: the mv-glob
+  seam (snapshot renames fail silently in the continuation units)
+  gets a hard-error wrapper before any future segment chain.

@@ -73,7 +73,7 @@ for cand, ckpt in CANDS.items():
 # BAND EVALS (bar-noise law): 2 annealed snapshots per arm on bigtest+alg4
 for cand in CANDS:
     for st in ("3000", "3500"):
-        snap = f".cache/g21_seg4_s{st}.safetensors"
+        snap = f".cache/g21_s{st}.safetensors"
         log = f".cache/gen{GEN}_{cand}.log"
         for name, path in [("bigtest", ".cache/algebra_nl_bigtest.jsonl"),
                            ("alg4test", ".cache/algebra4_nl_test.jsonl")]:
