@@ -11285,3 +11285,38 @@ token-position × waist-dim, the moment the skeleton trains.
   unchanged (substrates are artifacts; specimens quote the file;
   annotation inputs carry their IDs so each judgment binds to a
   row that exists).
+- **THE ERROR-ALTITUDE CENSUS COMPLETES (2026-07-25, all fifty
+  annotated; verdict scoped by the jurisdiction rivet to the
+  add/mul-pure tail, reopen on first wild census):** batch 1
+  annotated by the relay and VERIFIED evidence-line-by-line before
+  adoption — nine of ten faithful; specimen 03 (id 1188) cited a
+  NONEXISTENT given ('32') in its construction; corrected by
+  re-derivation from real givens (11=(35-13)/2, foreign sum crossed
+  with the query pair's own sum), altitude call coincidentally
+  survives. Specimens 11-50 annotated by exact forensics: every
+  system solved (sympy joint elimination — pure propagation cannot
+  crack sum/difference pairs), every lie searched for echo /
+  wrong-pair-solve / pair-formula-with-substituted-ingredient
+  constructions. THE TALLY — forced all-50: 38 schema / 12
+  assembly; legible-only (the load-bearing count): 24 schema / 12
+  assembly of 36; 14/50 RESISTERS (28%) unreadable. THE FINDING:
+  all 36 legible lies are BINDING failures in three species —
+  given-echo 19 (query pair's own slot 12, foreign given 7),
+  ingredient-misbinding 12 (correct two-equation solve, one wrong
+  ingredient: right-sum-wrong-diff and duals), wrong-member/
+  wrong-pair-solve 5 (arithmetic PERFECT, question grounded onto
+  wrong node). ZERO arithmetic errors; ZERO wrong-operation or
+  wrong-topology errors in fifty specimens. The schema/assembly
+  binary is really measuring WHERE the misbinding lands, not
+  whether binding is the failure — the failure mass sits at
+  question-grounding and name-value binding, the layer an
+  intermediate schema dialect would pin explicitly. THIRD-CATEGORY
+  SIGNAL: 10/50 lies are 0 (7 with no zero anywhere in the
+  system) — the 'ungrounded' class (answer traces to no node) earns
+  a seat in any future census schema. VINTAGE SHIFT: gen21's
+  surviving dark-zone lies are LESS legible than gen16's
+  (resisters 9/25 vs 5/25; legible mix shifts echo->misbinding
+  9s/7a vs 15s/5a) — training laundered the legible echoes first;
+  what survives is opaquer. Annotations in
+  .cache/altitude_census_fifty.json with annotator field
+  (bryce-relay-verified / claude-forensic).
