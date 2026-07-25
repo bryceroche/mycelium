@@ -10948,3 +10948,24 @@ token-position × waist-dim, the moment the skeleton trains.
   fence are what a compiler needs when the spec is discovered,
   not given. Queue: the verifier replay rides the next CPU gap;
   nothing reorders; segments 7-8 burn.
+- **THE ARITH3 DIALECT + STRUCTURAL VERIFIER — SCOPE + BARS PINNED
+  (2026-07-25, on the word, before any matrix exists):** SCOPE: the
+  MLIR DISCIPLINE not the MLIR machinery — the dialect spec as one
+  file that is the law (extracted de-facto from banked graphs, then
+  hand-tightened by Bryce — where habit and intent disagree is
+  itself a finding), a deterministic verifier (~400 lines, every
+  rejection carries CODE + LOCATION, no semantic imports — it says
+  'not legal arith3', never 'doesn't match the problem'), and the
+  replay harness over the 3,800 failure parses PLUS an equal
+  banked-good sample (catch-rate prices the seat; false-alarm rate
+  decides live-path vs diagnostic). PLACEMENT, decided now: parser
+  -> verifier -> solver, rejections a NEW VERDICT CLASS
+  (malformed-graph, with code) — the two-death taxonomy gains a
+  third, earlier death. **ACCEPTANCE BARS, pre-registered: the
+  verifier SEATS IN THE LIVE PATH at catch-rate >= 15% of failure
+  parses WITH false-alarms == 0 on the good sample (n=3,800);
+  false-alarms > 0 -> the offending passes are named and demoted
+  before any seat; catch < 15% at zero false alarms -> diagnostic
+  seat only.** The spec document is yield regardless — the build
+  cannot fail entirely, because the IR's law gets written either
+  way.
