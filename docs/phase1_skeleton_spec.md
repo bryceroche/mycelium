@@ -10403,3 +10403,24 @@ token-position × waist-dim, the moment the skeleton trains.
   and the cost calculus changes. (5) All queued behind
   entourage-20 — an unattributable gate must not measure the
   deducer's return.
+- **DOOR 1 RE-PRICED BY THE COMPATIBILITY READ (2026-07-24; the
+  grain lesson applied to organs — check the INTERFACE, not just
+  the existence):** the engine's contract is general
+  (FactorGraphBatch: arbitrary membership + latent types), but the
+  RESTING WEIGHTS are not — the trained value space is
+  small-categorical (KenKen cells / colors / wire states; algebra's
+  0-300 domain explodes n_values) and the trained factor codebook
+  holds none of add/mul/mod/sel/pct/fdiv. 'Zero training, one read'
+  was optimistic: THE CHECKPOINT CANNOT INGEST ARITH3 NATIVELY.
+  TWO PRICED PATHS, both needing the word: (a) THE STRUCTURAL
+  PROXY — coherence over structure with values abstracted into a
+  small residue domain (mod-k) and factor types mapped to the
+  nearest trained species: a design-review object (cheap if the
+  mapping is faithful, worthless if it isn't — the mapping IS the
+  question); (b) THE ADAPTER FIRE — light retraining of the type
+  codebook + value embedding on minted algebra graphs (a small
+  fire; and per the fourth ruling's own diagnostic logic, this
+  doubles as the staleness answer). Door 1's calibration design
+  (informative dissent) stands unchanged above whichever substrate
+  path is chosen. The door is open in law, priced in fact, and
+  waits on the word — behind entourage-20, which still burns.
