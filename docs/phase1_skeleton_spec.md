@@ -10995,3 +10995,24 @@ token-position × waist-dim, the moment the skeleton trains.
   intermediate graphs' and the measured sentence: the frontend's
   emission architecture makes malformed IR unrepresentable — the
   compiler's builders, learned.
+- **THE DOUBLE-ZERO'S SENTENCE, WRITTEN CAREFULLY (2026-07-25,
+  Bryce's clarity question answered):** the zeros are exactly the
+  first reading — catches 0/3,800 on the failure population AND
+  false-alarms 0/3,800 on the good sample: **the malformed-IR
+  class is EMPTY on the campaign's actual failure distribution;
+  all failures are well-formed lies.** THE HONESTY RIVET on the
+  evidence: the replay ALONE cannot distinguish 'failures are
+  well-formed' from 'the reconstruction forces well-formedness'
+  (the slot tensors route through legal menus) — but the finding
+  does not rest on the replay: **the decode ARCHITECTURE proves it
+  directly** — argmax over a fixed ftype menu, top-2-distinct
+  pointers, and bounded digit banks make malformed emission
+  UNREPRESENTABLE at the source; the replay is consistent
+  evidence, the architecture is the proof. Bryce's three bankings
+  stand as written: diagnostic bench per the pre-registered bar;
+  the panel and certification apparatus were always guarding the
+  only door failures walk through; the dialect spec is the
+  build's load-bearing product. SPEC-TIGHTEN queue confirmed:
+  k=1 legality + pct's missing result await Bryce's pass AFTER
+  the sheet lands — tightening never shares attention with a
+  verdict.
