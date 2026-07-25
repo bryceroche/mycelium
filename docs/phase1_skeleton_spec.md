@@ -10672,3 +10672,17 @@ token-position × waist-dim, the moment the skeleton trains.
   (book6_t1_QUARANTINED_v4gate.jsonl), the default fixed, the
   tranche RE-READS under g20. The generation field is provenance,
   not decoration.
+- **BOOK 6, TRANCHE 1 (2026-07-24, under GEN-20, provenance clean):
+  36 rows / 2 crown pairs / 2 certificates, floor 0.97.** Both
+  crowns unanimous — **[8]'s FRAC_OF(9,5): the largest multiplier
+  ever attempted wild, 5/5 both floors** — plus the first 0-answer
+  bank ([36], 1 − 0.9-bar = 0, unanimous), the isq door twice, the
+  m-dial to 1500, every decompose rule live. LONE MISS: [30]
+  (backward square 'b times b equals a') — AND THE QUARANTINE PAID
+  A DIVIDEND: the v4-read of the identical pages (37/37) makes a
+  free two-gate differential — g20 lost exactly ONE page the old
+  gate held (the backward-square voicing): a page-grain see-saw
+  specimen, benched with the mul-inverse cure for t2. THE PANEL
+  DISCIPLINE's first row: blocked-wrong stays ZERO (nothing to
+  block — all banks keyed). BOOK 6: 36 rows / 2 crown pairs / 2
+  certificates; bench 30 repairs + 41 surgeries remain.
