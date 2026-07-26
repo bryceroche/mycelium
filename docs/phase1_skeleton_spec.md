@@ -12575,3 +12575,21 @@ token-position × waist-dim, the moment the skeleton trains.
   chance everywhere -> THE PARSER BINDS BUT DOES NOT DEDUCE —
   #72's division of labor confirmed from the parser's side (the
   honest alternative, pre-named); (iii) fourth bin standing.
+- **THE RESIDENT'S DERIVED-VALUE LEG PRINTS: CHANCE EVERYWHERE
+  (2026-07-26, bars at d2df314):** parity best 0.562 (bar 0.60),
+  last-digit best 0.150 (bar 0.20) — no layer, no ruler, no
+  derived-value content anywhere in the stack, while binding
+  completed at L0 at 1.000 on the same fixture. **THE PARSER
+  BINDS BUT DOES NOT DEDUCE** — bar (ii) as pre-named. #72's
+  DIVISION OF LABOR CONFIRMED FROM THE PARSER'S SIDE: the
+  feed-forward stack is a BINDER (bindings complete in one layer,
+  carried to the exit, self-map riding along); everything
+  DEDUCTIVE belongs to the LOOP (one-pass solvability audit,
+  clocked value ladder); everything EXACT belongs to the SOLVER.
+  The two-jaws boundary is now measured INSIDE the neural side:
+  bind in the stack, deduce in the loop, verify in the key. The
+  fdiv-specific autopsy (harvest rows) stays docketed; the
+  fine-binding hierarchy reads (which-var/which-slot) inherit
+  their pinned prediction. THE WEEK CLOSES: every claim in #72
+  now measured — terrain deep, self modest, binding one-layer,
+  deduction loop-borne, division of labor confirmed at both ends.
