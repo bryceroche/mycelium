@@ -11353,3 +11353,44 @@ token-position × waist-dim, the moment the skeleton trains.
   crosses the wall — the frontier census predicted the leak. The
   ruling's three stages await Bryce's re-word against corrected
   premises; nothing fired on the voided framing.
+- **THE RE-RULING ON CORRECTED PREMISES (2026-07-25, Bryce's voice;
+  the census stands re-scoped as the frontier's portrait, its
+  predictive hit — collapse-to-zero named dominant unreadable
+  species before item 228 surfaced wearing that face — noted as
+  validation an instrument can't buy):** (1) STAGE TWO INVERTS TO
+  FIRST AND SEATS — item 228 is the first measured lie-REGRESSION
+  in campaign history (gen16 sub-quorum on the truth, gen21 quorum
+  on the void), and it is exactly the case the quorum wall
+  structurally cannot guard: correlated collapse reaching quorum.
+  The attestation check is the fence for the one door the wall
+  doesn't guard; TIGHTEN already built its machinery (loc/derived
+  provenance to span-anchored givens). Seated under Ruling 7's
+  discipline: prints its catch-count at every battery, expected
+  zero-or-one on fixtures; jurisdiction stated as the wild
+  registers where walls haven't been measured. (2) STAGE ONE
+  DEMOTES BUT SURVIVES — schema dialect spec as census
+  infrastructure + Paper II vocabulary, Bryce's pen at low tempo,
+  blocking nothing. (3) STAGE THREE FOLDS — the binding pilot
+  becomes a differential read riding the next natural fire:
+  schema-annotated mint rows vs ordinary rows, read on the
+  frontier's three species; no dedicated GPU. Paper sentence
+  upgraded: voided framing was safety evidence, corrected framing
+  is chain-of-custody VALIDATION evidence (the vote wall converts
+  the dark/penumbra mass into abstentions landing where the repair
+  lattice was built to receive them; one lie in three thousand
+  reads; the frontier census predicted its species).
+- **REGISTERED PREDICTION — THE ATTESTATION BAR (pinned BLIND
+  before any decode fires, 2026-07-25):** the check: a view's
+  emitted answer is ATTESTED iff re-solving its compiled graph
+  with ONLY text-attested givens (given value appears among the
+  source text's numeric literals) still forces the same answer for
+  the bound query var; the quorum answer flags ABSTAIN-UNGROUNDED
+  iff NO winning view attests it. BARS: (i) false flags on
+  banked-correct rows (quorum-right under gen21_H on bigtest,
+  n=1227): ZERO — a legitimate derived answer always traces; any
+  flag on a correct row is itself a provenance-gap bug the check
+  just found. (ii) catch-count on the fixture: expected exactly 1
+  (item 228); zero-or-one is the vacuous-by-success expectation,
+  >1 means the lie census and the check disagree and BOTH go under
+  audit before either is trusted. Verdict script prints both
+  numbers; seat-in-battery gates on bar (i).
