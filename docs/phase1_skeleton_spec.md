@@ -11548,3 +11548,21 @@ token-position × waist-dim, the moment the skeleton trains.
   dynamics side — a compiler whose passes all run at once and
   finish in altitude order. Queue unchanged: probe holds its GPU
   slot BEHIND the v2 pass; this amendment is the pen-work.
+- **THE CROSSOVER PROBE'S OPERATIONAL ADDENDA (2026-07-25, pinned
+  blind before the probe is cut — instrument spec, the builder's
+  pen):** (1) **t95 operationalization of signature C's
+  discriminant**: t95(family) = first breath index at which the
+  family's per-breath decode curve reaches 95% of its own final
+  accuracy. C reads mechanically as t95(surface) <= t95(schema) <
+  t95(solution), STRICT at the last inequality, all families
+  monotone-improving; no ordering judged by eye. (2) **RIDER 2 —
+  the family-selective perturbation sweep** (same forward
+  machinery, one extra pass): perturb the residual SBP-style
+  (sigma=0.02, the banked booth's own dial) at chosen breath index
+  k, read per-family decode damage. Fixed-point convergence (B)
+  predicts damage growing with k roughly UNIFORMLY across
+  families; parallel lowering (C) predicts family-SELECTIVE
+  damage — late-k perturbation leaves coarse families near-intact
+  (deep in asymptote) while damaging the still-crystallizing
+  solution family. An intervention discriminant, not a
+  correlation — the texture rule's preference.
