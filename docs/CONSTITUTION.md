@@ -86,3 +86,13 @@ suppress it), Goodhart arrives on schedule — self-loops vanish, the
 binding failure stays, the load signature launders itself invisible. The
 signal's value IS its unintendedness: a tell the mouth doesn't know it's
 giving. Diagnostic forever; objective never.
+
+## The fresh-apparatus corollary (2026-07-25, three ruler faults in one night)
+The apparatus hypothesis says unchanged apparatus authors unchanging
+results; the corollary: FRESH apparatus authors its own class of
+artifacts. t95 degenerate at ceiling, degenerate at floor, and an
+argument-order fault guaranteeing AUC 0.5 — all in measuring code, none
+in the engine. Probe-side code inherits solver-side discipline:
+KNOWN-SIGNAL FIXTURES (a synthetic label a correct AUC must score 1.0; a
+planted-rise curve a correct t95 must locate) run and pass BEFORE any
+real read banks. The ruler gets audited as hard as the ruled.

@@ -11826,3 +11826,25 @@ token-position × waist-dim, the moment the skeleton trains.
   while staying inside solution's 5, C's ordering is certified on
   a curve with rise; if all depths arrive together with solution,
   B. Docket: depth-graded read -> K-sweep -> torsion.
+- **THE DEPTH-GRADED READ'S PRE-REGISTRATION (2026-07-25, Bryce's
+  word; pins landed BEFORE the meter fixtures or the read fire):**
+  (1) TWO READINGS PINNED BLIND: the ORDERING BAR — t95(depth-d
+  schema) climbs with d while staying strictly inside solution's 5
+  -> SEALS C; all depths arriving with solution -> B. The
+  LINEARITY READ — t95(d) ~ d (slope ~1, fit + residuals banked)
+  is a SEPARATE finding: seals nothing, breaks nothing, but is
+  the BP-correspondence made exact — coarse-to-fine with the
+  'frequency' axis literally deduction depth; the fdiv-mass
+  resonance noted (the wall's true name was depth density; if t95
+  tracks depth, wall and breath ladder are one phenomenon in two
+  units). (2) MIN-SUPPORT PIN: a depth family banks a t95 only
+  with >=100 positive cells in the read split; below, it reports
+  INSUFFICIENT-SUPPORT, never a noisy t95 (the range criterion
+  guards one edge; this guards the other). (3) THE 0.87-FROM-
+  BREATH-1 SAVOR, for the record: the engine holds depth-1
+  implications LINEARLY READABLE after exactly one breath — the
+  loop behaving like a BP round at the REPRESENTATIONAL level,
+  materializing its messages where a BP implementation would; the
+  strongest mechanistic evidence yet that differentiable-solver
+  is the true framing, whatever B-vs-C resolves to. (4) METER
+  FIXTURES FIRST: known-signal tests pass before the read banks.
