@@ -12593,3 +12593,22 @@ token-position × waist-dim, the moment the skeleton trains.
   their pinned prediction. THE WEEK CLOSES: every claim in #72
   now measured — terrain deep, self modest, binding one-layer,
   deduction loop-borne, division of labor confirmed at both ends.
+- **THE ROUND-TRIP QUESTION OPENED (2026-07-26, Bryce: 'we need a
+  back and forth between the parser and solver, right?' — the
+  division-of-labor print's architectural consequence, countersigned):**
+  YES, in the lawful form: the loop closes THROUGH THE INPUT SPACE
+  — parse -> solve/attest (exact) -> re-parse INFORMED -> re-solve.
+  What flows backward is FACTS AS TEXT (solver's propagated
+  consequences; the attestation fence's strip-list diagnosis),
+  surfaced as explicit annotations per the rulebook's lexical
+  explicitation, machine-performed. Neural proposes, symbolic
+  disposes, neural RE-PROPOSES INFORMED — the boundary law gains
+  a clause without bending. Specimen note: misbound graphs can be
+  self-consistent (228), so the FENCE's flag, not just solver
+  status, is the trigger; the NACK/repair lane is the natural
+  seat, upgraded from re-parse-blind to re-parse-with-diagnosis.
+  STRATEGIC ROLE: the symbolic round-trip is the DETERMINISTIC
+  BASELINE the v200 bet must beat on the misbinding species
+  (doors 5-8 rule: learned mechanisms price against the
+  deterministic alternative's first claim) — zero training, exact
+  deduction, existing jaws. Design offered; the word rules.
