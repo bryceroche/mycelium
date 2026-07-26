@@ -12815,3 +12815,17 @@ token-position × waist-dim, the moment the skeleton trains.
   compare like-for-like. (4) K<=8 asserted by the forward against
   the breath table. Bars stand as pinned; conviction index and
   meter fixtures checked before the read banks.
+- **BUILD CARD CORRECTED BY THE ARTIFACT (2026-07-26, same hour):**
+  v200_run_final's keys are fg_v200_W_compress / W_expand /
+  cross_wq / cross_wk / cross_wo + trained llama_layer keys —
+  THIS IS THE PERCEIVER v200 (cross-attention core,
+  compress/expand latents), NOT a kenken_llama artifact; the
+  kenken_ rename map clause is VOID. The forward module that
+  created these params must be located by grepping fg_v200_ param
+  creation (the deep-clean deleted the 118GB step hoard, kept the
+  final; the code's home is the open question the next window
+  answers FIRST). kenken_llama.py remains the v200/v300 STACK's
+  Llama-layer machinery — possibly the successor design whose
+  ckpt was never fired. The scout's rule paid a second time in
+  one hour: artifacts before design, or the capture would have
+  loaded 51 params into the wrong architecture.
