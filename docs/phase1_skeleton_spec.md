@@ -12231,3 +12231,26 @@ token-position × waist-dim, the moment the skeleton trains.
   deg; rider PRINTS iff Spearman rho(s_i, settle_i) >= 0.2 at
   p < 0.01 across the 240 (the trajectory straightens as content
   crystallizes, per problem); else FAILS; fourth bin standing.
+- **THE TORSION RIDER FAILS AS PINNED (2026-07-26) — AND THE
+  FAILURE IS A FINDING:** the correlation is UNDEFINED, not zero —
+  every instance's straightening breath is 0 (constant array).
+  The pooled trajectories are NEAR-BALLISTIC FROM THE FIRST
+  DELTA: mean turn angle 11.3 deg early, decaying to 2.7 deg late.
+  NO zigzag-then-commit phase exists at this grain. The June-era
+  tau 110-178 deg figures (flagged relay-cited-unverified at
+  registration — the flag pays) do not describe this engine's
+  pooled dynamics. FOURTH-BIN FILING: smooth monotone-curvature
+  refinement — the diffusion frame's 'early steps wander, late
+  steps commit' joint is REFUSED at the pooled grain; the frame
+  keeps only the territory the depth-ladder evidence bought
+  (parallel depth-ordered resolution, clocked) and loses the
+  sampling-path analogy. Settle meter note: median settle 15
+  (nearly all instances settle at the last breath by the
+  calibration meter) — uninformative as a per-problem resolution
+  time; the depth-stratified engine t95s remain the lawful
+  resolution clocks. Per-cell-grain torsion (unpooled) is the
+  one remaining place the zigzag could live — docketed low, not
+  owed. THE FIXTURE'S RIDER QUEUE IS EMPTY: capture -> probes ->
+  sweeps -> riders, all read; next instruments are PARSER-SIDE
+  (#72's layer-axis probe + chained-fdiv resident) with the
+  pre-breath capture owed on next GPU touch.
