@@ -12711,3 +12711,29 @@ token-position × waist-dim, the moment the skeleton trains.
   against them — the syllogism's hold-both-at-once given its
   mechanism name; v200's per-breath soft slot refinement IS it.
   The capture's question gains its mechanism vocabulary.
+- **#73's TWO RIVETS (2026-07-26, Bryce; pinned into the
+  registration before any v200 artifact exists):** (1) THE
+  REVISION SIGNATURE, probe-checkable and pinned blind: if
+  bindings are genuinely soft-under-propagation, v200's
+  binding-content readout must show early-breath reads UNCERTAIN
+  or WRONG-THEN-CORRECTED across breaths, with correction events
+  CONCENTRATED where constraint pressure is highest (the
+  misbinding-prone slots). A loop whose bindings read at ceiling
+  from breath 1 and never move is A STACK WEARING RECURRENCE —
+  flexible in name only, and the 1% stays unbought. The week's
+  probe families distinguish being-the-mechanism from
+  containing-its-slots at first capture. (2) THE COST LINE:
+  mechanism and clock are IN TENSION, not separate line items —
+  the engine pays ~3.5 breaths/layer WITH BINDINGS GIVEN;
+  binding-under-revision plausibly costs more, and K=8 was thin
+  at two layers. The capture's first read measures them JOINTLY:
+  what does a breath buy when it must both bind and deduce? If
+  revision is cheap (bindings settle fast, breaths flow to
+  deduction), K=8 may purchase enough; if expensive, the
+  trichotomy's third arm — determination-guided ADAPTIVE DEPTH,
+  the breath-0 competence map spent as scheduler — stops being an
+  option and BECOMES THE DESIGN. THE CAPTURE NOW CARRIES FOUR
+  QUESTIONS WITH ONE FIXTURE: clock rate, K-purchase, revision
+  signature, recovery on the 257. Every question barred before
+  any artifact exists — the registration inherits the week
+  whole.
