@@ -13018,3 +13018,30 @@ token-position × waist-dim, the moment the skeleton trains.
   spec as the normalized-geometry ancestor; the principle-name
   itself relay-cited). Interps 2/4/9 into the training plan as
   fenced hypotheses, per both channels.
+- **THE v200 CHEAP READS PRINT (2026-07-26; undertrained-artifact
+  scope + cannot-license register govern every number):** version
+  skew resolved by era-matching (run-era module 181b5a9; all 51
+  ckpt keys consumed; 11 post-run extras at init, named in the
+  bank). READS: (a) per-breath acc EXACTLY 0.410 x8 — flat; (b)
+  flips 0/1536 var-cells; (c) calib-vs-correct AUC RISES 0.073 ->
+  0.505 across breaths. THE APPARATUS CHECK RULED THE FLATNESS
+  REAL: the ckpt's own gates — delta_gate 0.4996..0.5000 (0.5
+  init, unmoved), waist_gate 0.0003 (zero-init, unmoved) — THE
+  LOOP RUNS BUT NEVER LEARNED TO BREATHE: states blend 50/50 and
+  drift (calib moves) while the readout never revises a single
+  cell. The artifact is, parametrically, A STACK WEARING
+  RECURRENCE — the exact phrase pre-registered as the revision
+  signature's failure mode, printed by the inventory's only
+  trained Perceiver. INSTRUMENT VERDICTS: clock machinery
+  produces curves (flat is a curve; the calib channel shows
+  dynamics ARE read when present); flip-detector VALIDATED with
+  positive control (planted trajectory: w2r 2/2, r2w 1/1); probe
+  families ported to H=2048 without meter faults. FREE-STRUCTURE
+  note: even this untrained artifact's calib head grows
+  correctness-correlation across breaths (0.07 -> 0.51) — weak,
+  below the 0.6 bar, but the one direction training clearly
+  moves first. GATE PREREQUISITE (a) IS BANKED: instrument
+  validation complete; the reads say NOTHING about the
+  architecture (register stands); prerequisites (b) training
+  plan and (c) carry-forward inventory remain before the gate's
+  word.
