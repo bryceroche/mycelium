@@ -12892,3 +12892,32 @@ token-position × waist-dim, the moment the skeleton trains.
   calibration stepping, SBP, staircase) were proven on the ENGINE
   lineage and enter the plan as ASSUMPTIONS-TO-BE-TESTED, not
   assets-in-hand: unexamined inventory is where revenants breed.
+- **GUT #74: LATENT EXAGGERATION (2026-07-26, Bryce direct, nine
+  interps countersigned against artifacts):** interps 1-5 have
+  MAY-ERA BANKED PRECEDENT (CFG alpha=3.0 +10.8% first-digit —
+  contrastive amplification IS interp 4's satire structure; the
+  unified-waist filing; the DC component load-bearing to remove)
+  — old lineage, scope-decay law applies: assumptions-to-be-
+  tested. Interp 7 FENCED by temperature-perp-truth (sharpness
+  and correctness independent by law; bars read accuracy, never
+  confidence). INTERP 9 — THE PAYLOAD — collides productively
+  with this week's own findings: #73's rivet (bindings soft
+  EXACTLY as long as propagation runs — premature hardening IS
+  the misbinding species; force-commit at breath 2 manufactures
+  228s) and the banked SBP-noise-HELPS win (blur as basin
+  escape). RESOLUTION IS A SCHEDULE: noise early, sharpening
+  late — alpha(k) rising across breaths, the photon-mode echo
+  arriving through a humor gut. PRIZE QUANTIFIED BY THE CLOCK:
+  ~3.5 breaths/layer; late-breath sharpening that compresses it
+  without raising wrong-commits = the trichotomy's second arm
+  (improve the rate) given its first concrete mechanism. THE
+  SHARPENING PROBE, registered with three outcomes blind: (a)
+  CLOCK COMPRESSES (per-depth t95 drops, wrong-commits flat) —
+  the mechanism pays; (b) 228s MANUFACTURED (wrong-commits rise
+  with alpha, concentrated deep) — #73 was the whole truth,
+  sharpening is the disease; (c) VACUOUS (nothing moves) — the
+  consolidation law's reading: the engine already commits early,
+  the gut's arrow pointed at the ruler. Shares rider-2's harness
+  (amplify/perturb = one harness, opposite signs); STRONG ENGINE
+  ONLY (the weak v200 licenses nothing); queue behind the v200
+  cheap reads per board order.
