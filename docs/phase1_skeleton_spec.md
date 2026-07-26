@@ -12506,3 +12506,24 @@ token-position × waist-dim, the moment the skeleton trains.
   strengthens: existence at breath 1, values laddering 2/7/11);
   (iii) between -> fourth bin, gradation noted. Meter fixtures
   standing; min-support inherited.
+- **THE PRE-BREATH RIVET PRINTS: IN-ONE-PASS (2026-07-26, bars at
+  37db5ff; zero-GPU — the embedding recomputed from ckpt params
+  alone):** TRUE pre-breath determination AUC = **0.506 — CHANCE**
+  vs reps[0]'s 0.922; drop +0.416, four times the 0.10 bar. THE
+  VERDICT AT FULL STRENGTH: the competence map is NOT in how the
+  problem lands — the embedding (given placements + positions)
+  carries NOTHING of it — ONE soft propagation pass writes
+  existence-grade conclusions across ALL depths (0.506 -> 0.922
+  in a single breath) while value-grade conclusions ladder out at
+  2/7/11. THE TWO-TRACK DYNAMICS CLAIM STANDS AT ITS STRONGEST
+  FORM: existence runs ahead of construction by the whole
+  computation. AND THE DOUBLE DUTY PAYS: this IS the engine's
+  difficulty-control, and it PASSES — the map is unreadable from
+  input surface at cell grain; it is COMPUTED, not read off the
+  terrain. The engine's self-knowledge now carries the same
+  fingerprint shape as the parser's competence component — absent
+  at input, present after processing — at maximal contrast. The
+  week's symmetry RESOLVES: engine self-knowledge measured AND
+  input-controlled; parser self-knowledge measured, modest,
+  provisional-real. Both computed. Both humble-polarity. Both
+  fenced.
