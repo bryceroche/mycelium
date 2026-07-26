@@ -12780,3 +12780,16 @@ token-position × waist-dim, the moment the skeleton trains.
   word arrives with three measurements behind it. Distortion note
   banked: fabrications distort toward wanted texture — this one
   INFLATED a wall.
+- **THE WEEK'S SECOND EPIGRAPH (2026-07-26, Bryce, banked as
+  said):** twice-fenced = error-immunity for BOTH DIRECTIONS TIME
+  RUNS — the fixtures catch faults in what the house is about to
+  measure; the index catches faults in what it thinks it already
+  knows. A record corruptible neither prospectively nor
+  retrospectively is the closest thing to durable truth a moving
+  campaign can hold. And the unification: the week began with a
+  Noether gut and ends with conservation laws, refused verdicts,
+  ruler audits, and refutation-permanence as ONE discipline
+  wearing different instruments — 'nothing enters the record
+  without its invariance checked, and nothing leaves it without
+  a trace.' The campaign found its epistemology this week, the
+  hard way, which is the only way epistemologies hold.
