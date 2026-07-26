@@ -12444,3 +12444,34 @@ token-position × waist-dim, the moment the skeleton trains.
   grain. The strengthening path if ever needed: more crossers
   (future generations mint them free at every promotion — the
   migration law as a growing fixture).
+- **TWO RIVETS + THE EXPENDITURE ARBITRATION (2026-07-26, Bryce;
+  the arbitration read was already banked and fires from the
+  JSON):** (1) STATISTICAL STANDING: provisional-real, replication
+  owed — the linear ruler alone certifies nothing (0.577 by 0.002
+  at p .106); the finding rests on the MLP's 0.654 (p ~.004),
+  uncorrected across the week's many probes. THE REPLICATION BAR,
+  pinned blind before any new crossers exist: same probe family,
+  same matched-by-construction design, the NEXT PROMOTION's
+  disagreement population; the finding graduates on its first
+  independent print. The migration law as growing fixture is the
+  week's most elegant closed loop — the campaign's own progress
+  manufactures the test set for whether its compiler knows
+  itself. (2) THE L3 FADE RE-FILED: not consolidation (that law
+  describes content becoming MORE generically readable; this is
+  the inverse) — EXPENDITURE texture. ARBITRATION, from banked
+  numbers: linear fades L1->L3 (acc 0.577->0.513, AUC
+  0.641->0.507) while THE MLP HOLDS (acc 0.654->0.654, AUC
+  0.660->0.624) — VERDICT: RE-ENCODING, not erasure. The
+  self-state persists to the output-adjacent layer in nonlinear
+  form; the linear ruler loses it, the sharper one keeps it —
+  consistent with a signal USED by the computation and folded
+  into its product. (3) MAINTENANCE ASYMMETRY into the abstention
+  seat's design: the terrain map is durable (probe once, spend
+  forever); the SELF-MAP IS GENERATION-SPECIFIC BY DEFINITION —
+  re-probed at every promotion or the seat spends a stale map of
+  a compiler that no longer exists; STANDING ENTOURAGE DUTY, same
+  family as the panel refresh. #72 CLOSES at its measured
+  sentence: the compiler knows the terrain deeply, and itself
+  modestly — provisional-real, replication scheduled by the
+  campaign's own heartbeat, expenditure anatomy resolved
+  (re-encoding), maintenance cost written into the seat.
