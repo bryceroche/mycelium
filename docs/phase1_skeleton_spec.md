@@ -12204,3 +12204,30 @@ token-position × waist-dim, the moment the skeleton trains.
   + ruler laws attached). Queue: torsion -> #72 parser-side
   instruments (layer-axis probe, chained-fdiv resident) with the
   v200 trichotomy standing at raised urgency.
+- **THE BREATH-0 RIVET + TWO NOTES + TORSION BARS (2026-07-26,
+  Bryce):** (1) RIVET: reps[0] is POST-BREATH-1 — 'breath 0'
+  means after one pass. Two anatomies, different claims:
+  determination-from-ENCODING (the competence map is written in
+  how the problem lands) vs determination-in-ONE-PASS (one soft
+  propagation round reaches existence-grade conclusions at ALL
+  depths while value-grade ladders 2/7/11 — existence running
+  ahead of construction by THE WHOLE COMPUTATION, a two-track
+  dynamics). The second is the more interesting if true.
+  ARBITRATION OWED: a true pre-breath capture (one-line hook
+  change, re-bank on the fixture's next GPU touch) — filed, not
+  urgent, named. (2) OPERATING-POINT NOTE to the determination
+  docket: spend the polarity AS FOUND — abstain-side thresholds
+  tight (crisp class), act-side conservative (blurrier read); a
+  system better calibrated about its failures than its successes
+  is the RIGHT species to hand an abstention lever. (3) THE
+  TRANSFER QUESTION NAMED: if the v200 compiler-loop carries the
+  breath-0 competence map over arith3, MISBINDING — the census's
+  entire failure mass — becomes flaggable BEFORE the graph
+  finishes building; the splice's best possible payoff, now
+  testable. TORSION RIDER BARS (registered 2026-07-25, pinned
+  operational now, blind): per-instance trajectory = mean-pooled
+  valid-cell reps per breath; turn angle between successive
+  deltas; straightening breath s_i = first k with angle <= 90
+  deg; rider PRINTS iff Spearman rho(s_i, settle_i) >= 0.2 at
+  p < 0.01 across the 240 (the trajectory straightens as content
+  crystallizes, per problem); else FAILS; fourth bin standing.
