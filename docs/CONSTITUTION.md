@@ -103,3 +103,13 @@ would have buried: the mixture artifact, the floor artifact, the second
 clock. The bars aren't just guarding against error; they are where the
 discoveries are coming from. A house that notices this keeps writing
 hard bars.
+
+## The revenant fence (2026-07-26)
+A convicted fabrication re-entered the record through ambient memory and
+was banked by BOTH channels without a grep — the conviction lived in one
+entry while the claim lived in campaign familiarity. Law: convictions
+must be as durable as the claims they convict. The CONVICTION INDEX
+(docs/CONVICTION_INDEX.md) is greppable and checked assert-on-read
+before banking any claim that feels established. The scout's rule —
+ARTIFACTS BEFORE DESIGN — is the relay's own known-signal check, carved
+beside the meter fixtures.

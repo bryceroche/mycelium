@@ -12763,3 +12763,20 @@ token-position × waist-dim, the moment the skeleton trains.
   RECOVERY-ON-THE-257 is gated on an arith3 training fire — a
   separate word, honestly scoped. Build rides the next window;
   the corrected premises ride this commit.
+- **THE REVENANT SPECIES NAMED + THE CONVICTION INDEX BUILT
+  (2026-07-26, Bryce's ruling executed same-transaction):** the
+  new species: not fresh invention — a CONVICTED claim walking
+  back in wearing the authority of familiarity; both channels
+  failed identically (neither grepped for what felt established).
+  docs/CONVICTION_INDEX.md now stands (8 seed convictions incl.
+  the K=12 revenant, the tau figures, the fabricated batch, the
+  voided fifty) with the law: convictions as durable as claims;
+  assert-on-read; refutations need their fence. Constitution
+  gains the revenant fence + the scout's rule (artifacts before
+  design) carved beside the meter fixtures. CAPTURE ORDER RULED:
+  the three home-domain questions FIRST; the arith3 fire's word
+  GATED on their results — revision signature absent -> the gate
+  saved a training campaign; present with workable clock -> the
+  word arrives with three measurements behind it. Distortion note
+  banked: fabrications distort toward wanted texture — this one
+  INFLATED a wall.
