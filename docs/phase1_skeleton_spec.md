@@ -12921,3 +12921,43 @@ token-position × waist-dim, the moment the skeleton trains.
   (amplify/perturb = one harness, opposite signs); STRONG ENGINE
   ONLY (the weak v200 licenses nothing); queue behind the v200
   cheap reads per board order.
+- **GUT #74 RE-RULED BY BRYCE (2026-07-26; supersedes the first
+  registration — his text banks whole; numbering note: his
+  message says #73, the registry seat is 74, flexible-bindings
+  holding 73):** INTERP 9 REFUSED AS LEVER on two standing laws,
+  with the naming that decides it: sharpening early-breath
+  bindings is A SOFT VERSION OF CUTTING K — the K-sweep priced
+  deep strata at 8x for lost breaths; the value ladder is not
+  sluggishness awaiting a vector, it is the loop holding values
+  soft precisely while propagation runs; premature commitment is
+  THE PARSER'S DISEASE, and the vector would install the stack's
+  pathology into the loop (flexibility-by-revision degraded
+  toward flexibility-by-nothing). Second law: SBP noise HELPED —
+  sharpening is anti-noise, plausibly removing the escape
+  valves. 'Exaggeration in comedy works because the audience
+  knows the true proportion; exaggeration in a solver that
+  hasn't finished solving is confident error arriving early.'
+  THE REFUSAL-TEST REGISTERED (June engine, cheap, bars blind):
+  modest early-breath sharpening -> PREDICTION: shallow strata
+  tolerate, deep strata degrade (the K-sweep signature by
+  INTERVENTION) -> clock certified as the price of correctness,
+  door closes on a measurement, and the third arm gains its
+  complement (the lawful spend of determination was never
+  hastening but SCHEDULING — adaptive depth). Prediction FAILS
+  (helps everywhere) -> the clock has slack, the rate constant
+  was partly waste, second arm re-prices — the gut was right and
+  the record will say so. INTERP 4 STANDS APART: contrastive
+  decoding at READOUT (never touching the soft-binding
+  dynamics), natural pairs banked (g21-vs-g16 views,
+  expert-vs-early ckpts, deployed-head-vs-fresh-probe);
+  docket-grade. INTERPS 5-6: preprocessing form; probe pipeline
+  CONFIRMED mean-centering (mu-subtraction standard in every
+  probe this week). INTERPS 1-3: steering HELD AT THE
+  CAUSAL-PROBE DOOR — a load-bearing-direction instrument, never
+  a performance lever — with the Goodhart fence (an amplified
+  signal stops being a tell) and the ruler-relative law (probe
+  directions are what rulers read, not what engines compute
+  along) attached. META-NOTE: the first gut whose PRIMARY yield
+  is a refusal-with-a-test — pre-shaped for the refused-verdicts
+  law; if the test refuses the refusal, the registry's own
+  column will carry the reversal.
