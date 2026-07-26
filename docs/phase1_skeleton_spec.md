@@ -11785,3 +11785,20 @@ token-position × waist-dim, the moment the skeleton trains.
   classified not-A. Sequence: balanced re-read -> (MLP if range
   fails) -> K-sweep (anti-A stands regardless; speedup doesn't
   wait) -> torsion.
+- **THE BALANCED RE-READ PRINTS: LEG OPEN (2026-07-25, under the
+  pinned range criterion):** naked_single AUC 0.500 flat all 16
+  breaths; cand_size macro-recall 0.361 -> ~0.27 (above 1/7
+  baseline throughout but rise +0.000 — DECLINES from breath 0).
+  Both RANGE-FAILED -> contribute no t95 -> B-vs-C stays UNSEALED;
+  MLP follow-on pre-authorized per the registration. APPARATUS
+  FLAG before either curve is trusted: AUC exactly 0.500 sixteen
+  consecutive times while the plain-accuracy curve VARIED
+  (0.702-0.736) is suspicious — the auc_mann_whitney call
+  signature is UNVERIFIED in my script (suspected argument-order
+  fault); verify against dart_cluster_probe's usage and re-run
+  BEFORE the MLP, or the MLP inherits a broken meter. The
+  cand_size decline-from-breath-0, if it survives the meter
+  audit, is fourth-bin adjacent (derived content most readable
+  EARLY, fading as solution crystallizes — no registered
+  signature predicted it). Docket order: meter audit -> balanced
+  re-run -> MLP if still range-failed -> K-sweep -> torsion.
