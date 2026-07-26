@@ -12961,3 +12961,34 @@ token-position × waist-dim, the moment the skeleton trains.
   is a refusal-with-a-test — pre-shaped for the refused-verdicts
   law; if the test refuses the refusal, the registry's own
   column will carry the reversal.
+- **GUT #75: THE DUAL-TRACK SYNTHESIS (2026-07-26, Bryce direct —
+  the answer to #74's refusal, countersigned):** THE HEADLINE: the
+  cake already exists — interps 5/6/7 name the engine's MEASURED
+  anatomy (soft residual memory narrowing on the 2/7/11 clock +
+  per-breath sharp readout via cell_logits_history; the two-clock
+  law IS the soft-state/sharp-view distinction measured: task-
+  usable precedes generically-consolidated by ~3 breaths). The
+  gut re-derived the architecture from first principles —
+  recognition, not proposal, and strong evidence for the
+  principles. GENUINELY NEW: (a) interp 8 — the sharp view made
+  CONTRASTIVE, giving #74's readout-contrast docket its consumer:
+  the in-loop deducer/verifier reads a contrast-sharpened
+  proposal per breath; (b) interp 4 — SPHERICAL SHARPENING:
+  direction-only commitment, energy bounded, contradiction can
+  still ROTATE to a new slot — sharpening geometrically incapable
+  of destroying revisability; old-lineage ally: May ablations
+  found ROTATION the only load-bearing component; (c) interp 9 =
+  delta_gate named (elastic recall exists). SCOPE-RIVET WORN:
+  deducer back-and-forth blessed at BREATH grain (v200's design),
+  refused at SYSTEM grain (0.011) — the sharp view feeds an
+  in-loop deducer or the attestation machinery, never text to a
+  frozen binder. CONVERSIONS: the #74 refusal-test gains its
+  THIRD ARM — one harness, three interventions: perturb (rider
+  2), sharpen-STATE (refused lever; prediction deep-degrade),
+  sharpen-VIEW (readout contrast, state untouched — safe by
+  construction; measures whether the sharp view improves
+  readout/calibration at fixed dynamics; needs a logits-banking
+  re-pass, argmax alone insufficient). SPHERICAL NORMALIZATION
+  enters the gate's prerequisite-(b) training plan as a candidate
+  design clause — assumption-to-be-tested, #74's fences
+  inherited, temperature-perp-truth governing all bars.
