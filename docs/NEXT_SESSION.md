@@ -1,3 +1,30 @@
+## SEAL 2026-07-26d — THE GATE IS OPEN; FIRE 0 AUTHORIZED, patches owed (apply-with-file-read, not memory)
+
+**THE WORD GIVEN:** gate opens; Fire 0 authorized under the countersigned
+plan (docs/V200_TRAINING_PLAN.md sections 1-6 are LAW: domain cap
+constitutional, early-kill at 25% budget, 257-bar binomial with refused
+band, revision-signature quantitative form, SBP arm Fire 1, calib =
+false-friend). Premise flag banked: Fire 0 runs on v200's own
+factor-graph pipeline (its validated instrumented ground).
+**STATE:** trainer resurrected CLEAN at scripts/v200_perceiver_train.py
+(f1efb32; +mycelium/provenance.py resurrected). Envs needed: V200_TASK=1
+V200_STAGE2A_WAIST=1 (waist attached-unused otherwise -> None-grad
+assert — the two-terminal law's signature, REPRODUCED at first smoke).
+**FOUR PATCHES OWED (apply by READING the file, not from memory — the
+first attempt failed on text mismatch):** (1) improvement pressure:
+collect ce_k list in the ladder loop; add V200_IMPROVE_W *
+sum_k relu(ce_k - ce_{k-1} + margin)/K-1 to total_ce; (2) GATES
+dashboard at PB_EVERY: delta_gate excursion max|g-0.5|, waist_gate,
+breath_spread(ce0-ceK-1), calib-false-friend note; (3) EARLY-KILL: step
+>= 0.25*STEPS and excursion<0.02 and |spread|<0.01 -> save _KILLED ckpt,
+SystemExit(3); (4) two-terminal: at first opt.step(), exclude None-grad
+params LOUDLY BY NAME (model-attr name map) — exclusion list must match
+known attached-unused extras or HARD-ERROR.
+**SMOKE THEN FIRE:** STEPS=20 smoke (gates line must print) -> Fire 0:
+V200_TASK=1 V200_STAGE2A_WAIST=1 V200_IMPROVE_W=0.5 STEPS=500
+CKPT_LABEL=fire0 as systemd unit + sentinel. Dashboard is the verdict:
+gates move or the kill fires — either print is a finding.
+
 ## SEAL 2026-07-26c — v200 RESURRECTED AND RUNNING (weak ckpt); cheap reads NEXT FIRE (mechanical)
 
 **Machine state:** the Perceiver loop RUNS (four-strata resurrection + SmolLM2-1.7B
