@@ -1,3 +1,22 @@
+## SEAL 2026-07-26c — v200 RESURRECTED AND RUNNING (weak ckpt); cheap reads NEXT FIRE (mechanical)
+
+**Machine state:** the Perceiver loop RUNS (four-strata resurrection + SmolLM2-1.7B
+base re-downloaded). v200_run_final is NEAR-FLOOR on its own domain (0.089 train /
+~0 val) — NO strong trained Perceiver exists; scope double-carved at 0ac231b
+(undertrained-artifact + cannot-license register).
+**Next fire (mechanical):** the instrument-validation reads — copy the diag's build
+block (scripts/diag_v200_eval_path.py lines 51-87: V200Model + attach_llama_layers
+n_layers=4 SMOLLM2 cfg + attach_fg_params_v200 + ckpt load), use EAGER
+fg_breathing_forward_v200 for PER-BREATH history (check compile_jit_eval_v200's
+return first — may carry history), loaders ready (factor_graph_train/test.jsonl).
+READS: (a) per-breath belief argmax curve (does clock machinery produce curves);
+(b) flip stats (wrong->right / right->wrong — does the flip-detector fire);
+(c) calib-vs-correctness AUC per breath (any free structure at near-floor —
+what the architecture gives before training). Meter fixtures + conviction index
+checked before banking. THEN: the gate's three prerequisites (reads banked;
+training plan w/ kill-bars incl. 257-recovery > 0.011; carry-forward inventory
+as assumptions-to-be-tested).
+
 ## SEAL 2026-07-26b — twice-fenced; v200 capture NEXT FIRE (scouted to entry points)
 
 **Next fire, first act:** the v200 capture — mycelium/kenken_llama.py:
