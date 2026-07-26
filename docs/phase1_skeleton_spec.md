@@ -12490,3 +12490,19 @@ token-position × waist-dim, the moment the skeleton trains.
   engine's derived floor — enters a house that has done this
   before. Its first question stands written: what is v200's clock
   rate, and what depth does K=8 purchase.
+- **THE PRE-BREATH RIVET'S BARS (2026-07-26, pinned blind before
+  the capture; the rivet arbitrates determination-from-ENCODING
+  vs determination-IN-ONE-PASS and doubles as the engine's
+  difficulty-vs-knowledge control):** capture the TRUE pre-breath
+  state (embed_factor_cells output, before breath 1) on the same
+  seed-0 240; probe forced-vs-never-forced with the banked
+  protocol (linear ruler, same split; reps[0] reference = 0.922
+  AUC). BARS: (i) pre-breath AUC within 0.03 of 0.922 ->
+  FROM-ENCODING (the map is in how the problem lands; the
+  difficulty-confound question OPENS on the engine per the
+  corollary — cell-grain surface features become the suspect);
+  (ii) drop >= 0.10 -> IN-ONE-PASS (one soft propagation round
+  writes the existence map; the two-track dynamics claim
+  strengthens: existence at breath 1, values laddering 2/7/11);
+  (iii) between -> fourth bin, gradation noted. Meter fixtures
+  standing; min-support inherited.
