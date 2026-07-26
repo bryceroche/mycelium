@@ -12009,3 +12009,28 @@ token-position × waist-dim, the moment the skeleton trains.
   d3plus + d3-schema is now THE single instrument both open
   questions share. Fourth-bin note: d3plus non-monotone noise
   (+/-0.05) no signature predicted.
+- **THE RATE CONSTANT + THE MLP READ'S REGISTRATION (2026-07-26,
+  Bryce; pinned before the MLP exists):** d2 t95=7 BREAKS the
+  strict BP-round line t95(d)~d — replaced by the RATE CONSTANT
+  conjecture: ~3.5 breaths per deduction layer (d1 at 2, d2 at 7);
+  the loop derives in depth order but INEFFICIENTLY relative to
+  exact propagation — each implication layer costs several
+  refinement passes to crystallize, exactly what a soft continuous
+  deducer should cost versus a discrete one. The soft-deducer
+  clause of #72 given a RATE. PREDICTION: d3 resolves near breath
+  10-12 — INSIDE the window (bears on whether longer-K capture is
+  needed at all). THE MLP READ'S THREE REGISTERED OUTCOMES: (1)
+  co-resolving-late-and-ordered -> DEPTH AXIS SEALS; (2)
+  unreadable -> transient-computation anatomy (pre-registered);
+  (3) ordered-AT-THE-PREDICTED-RATE (rise centered ~10-12) -> THE
+  RATE CONSTANT CERTIFIES, the loop HAS A CLOCK, and the K-sweep
+  inherits a QUANTITATIVE prediction: cutting K below a stratum's
+  resolution breath kills exactly that stratum's problems first —
+  the fdiv-mass wall derived from first principles. APPARATUS LAW
+  SCALED WITH THE METER: a sharper ruler has more capacity to
+  hallucinate signal — MLP variants of the known-signal fixtures
+  REQUIRED before the read banks, including the NULL FIXTURE
+  (shuffled labels must print chance — matters more for an
+  expressive probe); min-support guard carried (MLP on thin
+  support overfits to false rises exactly where linear showed
+  false floors).
