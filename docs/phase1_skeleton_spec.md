@@ -11586,3 +11586,40 @@ token-position × waist-dim, the moment the skeleton trains.
   in their intersection, which is why two independent arrivals
   carry evidential weight a single frame's advocacy would not. If
   C prints, the intersection IS the finding.
+- **THE v2 VERDICT + THE 92 AUTOPSY + FENCE v3 REGISTERED
+  (2026-07-25):** v2's formal sheet: bar (i) FAIL (one false flag,
+  item 92), bar (ii) PASS (228 caught, all three winning views
+  refused), bar (iii) FAIL (92's flip) — v2 DOES NOT SEAT; the
+  overfit hazard Bryce named at pinning materialized on first
+  population contact and the blind bars caught it. THE VERIFIER
+  CENSUS SUPERSEDES THE DOUBLE-ZERO: 758 of 7,500 wild view graphs
+  carry E13 self-loops (600 abstaining / 77 wrong / 81 RIGHT
+  views) — 'every failure is a well-formed lie' was a three-check
+  sentence; under four checks the wild population is 10.1%
+  malformed, and 81 right-answering views carry warts. THE 92
+  AUTOPSY (banked graphs, zero-GPU): every winning view carries
+  mul(v13,v15)->v15 with given v13=1 — a TAUTOLOGY (1*x=x,
+  constrains nothing); the answer 15 never rests on it. THE WART
+  FAMILY SPLITS: add-self-loops FORCE ZEROS (constants in
+  disguise; 228's killers); unit-mul-self-loops are TAUTOLOGIES
+  (harmless). Both ill-form (E13 stands in the dialect: gold
+  emits neither, 0/80,200) — but a FENCE must distinguish carrying
+  a wart from RESTING on it. v2's error, named: it condemned the
+  witness instead of striking the testimony's unlawful parts.
+  FENCE v3, the unification — ONE principle, no view
+  condemnation: the answer must be forced by the LAWFUL CORE.
+  Strip set = unattested givens + E13 self-loop factors + the
+  entire value-class of multiplicity-excess givens; attest iff
+  the stripped graph still forces the same answer (solve2's
+  uniqueness gate). Measured OFFLINE on the banked graphs — the
+  graph-banking design's first full payoff: fence iteration at
+  zero GPU.
+- **REGISTERED PREDICTION — THE v3 BARS (pinned before the replay;
+  HONESTY CAVEAT: blindness is partial — v3 was assembled after
+  v2's sheet, with TWO customers looked at (228, 92); the bars are
+  unchanged and the population untouched, which is the available
+  rigor):** (i) ZERO false flags on the 1227 quorum-right rows;
+  (ii) item 228 refused by all three winning views -> quorum
+  unattested; (iii) ZERO disposition flips beyond 228 (92 must
+  CLEAR). Any failure -> v3 does not seat; iteration continues on
+  the banked graphs with each design change ledgered.
