@@ -12163,3 +12163,23 @@ token-position × waist-dim, the moment the skeleton trains.
   Queue: determination probe (both clocks) -> torsion -> #72
   parser-side instruments, v200 trichotomy standing at raised
   urgency.
+- **THE DETERMINATION PROBE'S BARS (2026-07-26, pinned blind;
+  Bryce's forward note seats the SECOND HALF — underdetermination
+  as a readable state, same pass, free labels):** population:
+  valid non-given cells, forced-within-4-rounds (fr>=1) vs
+  NEVER-forced (fr==0; horizon-honest label: underdetermined
+  within the propagator's 4-round reach). BARS: (i) LEADING
+  INDICATOR — linear AUC >= 0.75 by breath <= 3 (probe clock;
+  engine-usable earlier by the ruler-relative law); (ii) THE
+  VERDICT VOCABULARY — at the earliest bar-passing breath,
+  per-class recall at the balanced operating point BOTH >= 0.65
+  -> the loop holds determined AND underdetermined as readable
+  states (the boundary of its own competence — the sentence
+  Paper 1 has been reaching for); positive-only >= 0.65 ->
+  ASYMMETRY finding (recognizes success early, failure never),
+  its own consequences for how abstention is spent; (iii) both
+  rulers read (linear + MLP) to bracket the engine clock; (iv)
+  min-support >=100 read cells per class; fourth bin standing.
+  PORTABILITY NOTE banked with it: the ruler-relative law is not
+  a KenKen fact — it is a fact about probing iterative systems;
+  Paper II methods, beside bank-don't-read.
