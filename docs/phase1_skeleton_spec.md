@@ -12551,3 +12551,27 @@ token-position × waist-dim, the moment the skeleton trains.
   families — WHICH var, WHICH slot — remain the fixture's open
   reads, the chained-fdiv resident among them). The week ends
   ruler-complete on its deepest claim and one prediction richer.
+- **THE FINE-BINDING PREDICTION + THE RESIDENT READ'S BARS
+  (2026-07-26, pinned blind):** (1) Bryce's hierarchy prediction,
+  pinned before any fine-binding read: if the parser's binding
+  hierarchy mirrors its FAILURE hierarchy, the coarse family reads
+  at ceiling (it did), and accuracy FALLS as families sharpen
+  toward the species that actually fail (which-var, which-slot),
+  with the interesting number being WHERE in the stack fine
+  bindings resolve — and whether misbinding-prone cases resolve
+  late or never (the frontier's three species as the parser's own
+  late-resolving content; the probe campaign and the census
+  connected by one read). (2) THE RESIDENT'S DERIVED-VALUE LEG,
+  jurisdiction stated: the banked parser fixture is add/mul
+  bigtest — the fdiv-specific autopsy proper needs harvest rows
+  (docketed); THIS read asks the resident's underlying question
+  on the banked fixture: does the STACK carry DERIVED values
+  (answer content requiring deduction) the way the engine's
+  breaths carry deepening values? Targets: answer LAST DIGIT
+  (10-class) and answer PARITY (2-class, robust at n=80 read).
+  BARS: (i) derived content PRESENT — parity acc >= 0.60 or
+  digit acc >= 0.20 at any layer (support noted); the layer
+  position then reads against binding's L0 completion; (ii)
+  chance everywhere -> THE PARSER BINDS BUT DOES NOT DEDUCE —
+  #72's division of labor confirmed from the parser's side (the
+  honest alternative, pre-named); (iii) fourth bin standing.
