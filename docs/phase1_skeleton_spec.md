@@ -12304,3 +12304,29 @@ token-position × waist-dim, the moment the skeleton trains.
   abstention-friendly shape. Gold-free construction noted as the
   registration's design center: instrument and eventual seat
   share a design from birth.
+- **THE PARSER-SIDE READ PRINTS: THE BAR PASSES WITH TWO FLAGS
+  (2026-07-26):** competence-map (right-vs-abstain, gold-free from
+  the g21 lattice) — linear AUC embed 0.897 / L0 0.939 / L1 0.942
+  / L3 0.945; MLP to 0.971. BAR (competence at L0-L1 >= 0.75)
+  PASSES DECISIVELY — the map is largely present AT EMBEDDING TIME
+  and sharpens through L0: 'arrives knowing' in the strongest
+  stack-sense form (scope line governs: analog, not loop
+  mechanism). HUMBLE POLARITY TRANSFERS: abstain-recall 0.846/
+  0.897 > right-recall 0.829/0.878, both rulers — the same
+  abstention-friendly shape the engine showed. TWO FLAGS, banked
+  before any seal: (1) THE LENGTH CONFOUND — the read mean-pools
+  variable-length sequences, and the house's own law (estimator
+  variance masquerades as distance; the mouth is LENGTH-CORRECTED
+  for exactly this) applies verbatim: abstention correlates with
+  problem length/depth, so a LENGTH-CONTROLLED re-read is OWED
+  before the seal (zero-GPU, banked fixture). (2) THE DARK-ZONE
+  DIRECTIONAL PREDICTION IS UNMEASURABLE AS POSED — zone and
+  outcome are definitionally entangled (dark = zero right votes,
+  so the dark stratum is single-class); the prediction needs a
+  different label (within-penumbra gradation) — apparatus note,
+  not a failure. Support noted: 41/39 read items (n=80; CI
+  ~+/-0.06). STATUS: the transfer question's core printed —
+  flaggability-before-emission has parser-side evidence, scoped,
+  with the length-controlled re-read as the seal's price. The
+  chained-fdiv resident and the binding family remain the
+  fixture's unread reads; v200 owns the loop question.
