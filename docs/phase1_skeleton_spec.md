@@ -12829,3 +12829,22 @@ token-position × waist-dim, the moment the skeleton trains.
   ckpt was never fired. The scout's rule paid a second time in
   one hour: artifacts before design, or the capture would have
   loaded 51 params into the wrong architecture.
+- **THE PERCEIVER FORWARD RESURRECTED (2026-07-26, Bryce's word;
+  one git archaeology pass):** git log -S found the code's last
+  home at snapshot f1efb32 (pre-deep-clean, 2026-06-16);
+  RESURRECTED: mycelium/factor_graph_v200.py (attach_fg_params_v200
+  line 269; fg_breathing_forward_v200 line 836; requires
+  V200_STAGE2A_WAIST=1 for the compress/expand waist) +
+  factor_graph_v200_legacy.py + the dependency
+  mycelium/llama_base.py. REUNION VERIFIED: import clean; ALL 15
+  fg_v200_* ckpt keys named in the resurrected code, zero
+  missing (the remaining 36 llama_layer_* keys are the trained
+  Llama layers, llama_base's load). The orphan is an orphan no
+  longer: the trained Perceiver v200 CAN RUN AGAIN, and the
+  capture build proceeds against the TRUE architecture next
+  window — build card's remaining steps: wire attach+load with
+  hard-error key check, locate its domain fixtures, then the
+  three questions under their standing bars. The deep-clean's
+  deletion law gains its corollary: ckpts kept without their
+  code are half-kept; the conviction index's cousin is a
+  CODE-ARTIFACT REUNION CHECK at every future clean.
