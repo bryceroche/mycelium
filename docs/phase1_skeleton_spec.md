@@ -12737,3 +12737,29 @@ token-position × waist-dim, the moment the skeleton trains.
   signature, recovery on the 257. Every question barred before
   any artifact exists — the registration inherits the week
   whole.
+- **THE ARCHIVE AUDIT'S FIRST PAYMENT + THE v200 SCOUT
+  (2026-07-26, caught by the pre-capture scout — the audit's
+  urgency vindicated before it formally ran):** the trichotomy's
+  binding premise ('v200's K=8 ceiling; K=12 hung the AMD
+  large-JIT') carried a CONVICTED FABRICATION back into the
+  record — the ledger's own nineteenth-specimen entry (line
+  ~10073) had already ruled 'K=12 hang' invented decoration, yet
+  it re-entered via relay and was banked into three entries this
+  week, unverified by both channels. THE SURGICAL CORRECTION,
+  ruled by artifacts: (a) K=8 IS REAL — witnessed by
+  fg_v200_breath_embed (8, 2048) in v200_run_final: the ckpt was
+  TRAINED at K=8; (b) the K=12-hang INCIDENT stays struck; (c)
+  the code's KENKEN_K_MAX defaults to 20 — the ceiling is a
+  TRAINING CHOICE, not an engineering wall; breaking it means
+  retraining with a larger breath table, not fixing a hang that
+  never happened. The trichotomy's first arm re-prices
+  accordingly (cheaper than feared). THE v200 IDENTITY, scouted:
+  the Llama-LAYER loop (mycelium/kenken_llama.py; H=2048, 51
+  params, KenKen domain; the 118GB perceiver-era hoard was
+  deleted in the deep-clean — v200_run_final + smokes survive).
+  THE CAPTURE, scoped by the scout: three of the four questions
+  (clock rate, K-purchase, revision signature) read on v200's
+  HOME domain with the standard bank-don't-read protocol;
+  RECOVERY-ON-THE-257 is gated on an arith3 training fire — a
+  separate word, honestly scoped. Build rides the next window;
+  the corrected premises ride this commit.
