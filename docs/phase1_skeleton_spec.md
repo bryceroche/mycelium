@@ -12527,3 +12527,27 @@ token-position × waist-dim, the moment the skeleton trains.
   input-controlled; parser self-knowledge measured, modest,
   provisional-real. Both computed. Both humble-polarity. Both
   fenced.
+- **THE OWED CHECK + THE MECHANISM CLAIM + THE BINDING FAMILY
+  (2026-07-26):** (1) MLP ruler at true pre-breath: **0.506 —
+  chance to the third decimal on BOTH rulers**; the arbitration is
+  TOTAL and the maximal-contrast sentence SEALS lawfully
+  (computed, not encoded — now ruler-complete). (2) THE ONE-PASS
+  AUDIT CLAIM banked (Bryce): one application of the loop cannot
+  have executed ten-breath deduction chains — it performs
+  something like a WHOLE-GRAPH SOLVABILITY AUDIT, reading global
+  constraint structure that settles determination without
+  settling values; the value ladder then spends ten breaths
+  constructing what the audit promised. PREDICTION registered for
+  the fixture: the one-pass determination read should degrade on
+  puzzles whose determination requires deep case analysis rather
+  than local constraint density, if such a stratum exists in the
+  240. (3) THE BINDING FAMILY READS: given-vs-rel span tokens
+  (21,994 tokens) — embed 0.914 -> L0 1.000 -> L3 0.999; drop
+  0.000 against the 0.05 bar. Binding content is COMPLETED BY THE
+  TRUNK'S FIRST LAYER (the increment 0.914->1.000 is the trunk's
+  contribution) and retained without erasure to the exit — the
+  parallel-deepening analog HOLDS on the parser stack (ceiling
+  caveat noted: the binary saturates at L0; finer binding
+  families — WHICH var, WHICH slot — remain the fixture's open
+  reads, the chained-fdiv resident among them). The week ends
+  ruler-complete on its deepest claim and one prediction richer.
