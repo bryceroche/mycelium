@@ -12362,3 +12362,27 @@ token-position × waist-dim, the moment the skeleton trains.
   discriminant prints. The humble polarity survives every
   outcome (a difficulty map with sharp failure-recall is still
   the right species for an abstention lever).
+- **THE THREE DISCRIMINANT READS PRINT (2026-07-26):** (0)
+  disagreement count across the 240: **17 — below the 30 bar; the
+  decisive read is INSUFFICIENT-SUPPORT on this fixture**. (2)
+  SURFACE BASELINE: 0.859 AUC from four trivial features
+  (length/n_vars/digits/sentences) — the floor is HIGH; most of
+  the 0.94 was difficulty-visible-from-surface. (1)
+  SURFACE-RESIDUALIZED L1: 0.883 — clears the absolute 0.75 bar,
+  FAILS the floor+0.05 clearance (0.909). VERDICT AS BARRED: the
+  competence claim DOES NOT CERTIFY — the latent carries real
+  signal beyond linear surface projection (0.883 after
+  residualization) but not enough to distinguish 'the parser
+  knows itself' from 'the terrain is legible'; the alarm read was
+  right. THE HEADLINE STAYS WAITED. THE PATH NAMED: a
+  DISAGREEMENT-ENRICHED capture — the full bigtest disagreement
+  population (g16-vs-g21 boundary-crossers, both lattices banked,
+  computable offline) captured specifically, plus matched
+  controls; small GPU pass, rides the next touch with the
+  pre-breath rivet. Until it prints, the parser holds a
+  DIFFICULTY MAP with sharp failure-recall — spendable for
+  abstention economics, humbler than self-knowledge, and the
+  record holds the asymmetry: engine breath-0 = measured
+  self-knowledge (cell-grain); parser embedding-time = unresolved
+  confound. #72's sentence stays 'born knowing what is hard'
+  pending the boundary-crossers' verdict.
