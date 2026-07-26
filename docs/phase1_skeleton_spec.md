@@ -12848,3 +12848,23 @@ token-position × waist-dim, the moment the skeleton trains.
   deletion law gains its corollary: ckpts kept without their
   code are half-kept; the conviction index's cousin is a
   CODE-ARTIFACT REUNION CHECK at every future clean.
+- **THE v200 LOOP RUNS AGAIN (2026-07-26, the resurrection
+  complete end-to-end):** SmolLM2-1.7B base re-downloaded, four
+  resurrection levels deep (core + loaders + the full
+  factor_graph family + the eval driver), the forward EXECUTES —
+  the first v200 breath since June. THE HONEST FIRST READ:
+  v200_run_final is WEAK on its own domain — train-via-eval cell
+  acc 0.089/0.025, val 0.00-0.06 (the diag's own frame: train ~
+  val ~ low). The trained Perceiver inventory is REAL BUT
+  NEAR-FLOOR: an early cold-start artifact from the era the
+  campaign pivoted to v98/KenKen, not a competent model awaiting
+  transfer. CONSEQUENCE FOR THE TRICHOTOMY, stated plainly: there
+  is NO strong trained Perceiver — the arith3 gate's fire is not
+  'retrain on a new domain' but 'train the architecture properly
+  for the first time,' a different and larger word. THE CAPTURE
+  QUESTION goes to Bryce: the three reads CAN run on the weak
+  ckpt (near-free, validates the revision-signature machinery,
+  scoped as characterizing an undertrained artifact) or the
+  board holds everything for the training word. Machinery status:
+  code+weights+fixture+ckpt reunited — all four; the reunion
+  checklist law gains its full form.
