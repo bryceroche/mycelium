@@ -90,3 +90,41 @@ def attest_quorum_v2(view_parses, quorum_answer, text, m, solve_fn):
     n_att = sum(1 for f, q in winners
                 if attest_view_v2(f, q, quorum_answer, text, m, solve_fn))
     return n_att > 0, len(winners), n_att
+
+
+# --- fence v3 (2026-07-25, after the 92 autopsy): strip the wart, not the
+# witness. ONE principle: the answer must be forced by the LAWFUL CORE.
+# v2's error was condemning a view for carrying a wart (758/7500 wild
+# graphs carry E13 self-loops; 81 of them answer RIGHT — a tautological
+# unit-mul wart doesn't invalidate testimony that never rests on it).
+
+def lawful_core(facs, text):
+    """Strip (a) unattested givens, (b) E13 self-loop factors, (c) the
+    entire value-class of multiplicity-excess givens (conservative: if
+    givens carrying value X outnumber the text's statements of X, ALL
+    X-givens go — the fence cannot know which copy is the misbinding)."""
+    from collections import Counter
+    from mycelium.arith3_verifier import verify
+    lits = text_literals(text)
+    loops = {j for c, j, _ in verify(facs) if c == "A3.E13-selfloop"}
+    gv = Counter(f["value"] for f in facs if f.get("ftype") == "given")
+    tv = Counter(int(x) for x in re.findall(r"\d+", text))
+    excess = {v for v in gv if gv[v] > tv.get(v, 0)}
+    return [f for j, f in enumerate(facs)
+            if j not in loops
+            and not (f.get("ftype") == "given"
+                     and (f["value"] not in lits or f["value"] in excess))]
+
+
+def attest_view_v3(facs, q, answer, text, m, solve_fn):
+    core = lawful_core(facs, text)
+    if len(core) == len(facs):
+        return True  # already lawful; the emitted solve is the proof
+    return solve_fn(core, q, {"n_vars": 24, "m": m}) == answer
+
+
+def attest_quorum_v3(view_parses, quorum_answer, text, m, solve_fn):
+    winners = [(f, q) for f, q, a in view_parses if a == quorum_answer]
+    n_att = sum(1 for f, q in winners
+                if attest_view_v3(f, q, quorum_answer, text, m, solve_fn))
+    return n_att > 0, len(winners), n_att

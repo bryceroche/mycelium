@@ -11623,3 +11623,25 @@ token-position × waist-dim, the moment the skeleton trains.
   unattested; (iii) ZERO disposition flips beyond 228 (92 must
   CLEAR). Any failure -> v3 does not seat; iteration continues on
   the banked graphs with each design change ledgered.
+- **FENCE v3 SEATS (2026-07-25, the offline replay against the
+  banked graphs — zero GPU, the graph-banking design's full
+  payoff):** BAR (i) PASS — zero false flags on all 1227
+  quorum-right rows (item 92 CLEARS: the tautological wart
+  stripped, the testimony stands). BAR (ii) PASS — item 228
+  refused by all three winning views (n_att 0): the misbinding
+  view dies with its excess value-class stripped, the two
+  structural-zero views die with their self-loops stripped; the
+  lie converts to ABSTAIN-UNGROUNDED, repair-lattice territory.
+  BAR (iii) PASS — zero disposition flips beyond 228. VERDICT: v3
+  SEATS. THE DEPLOYED CHAIN NOW READS: mouth (register) -> vote
+  (diagram-invariance) -> panel (landscape-invariance) ->
+  ATTESTATION (the answer is forced by the lawful core) -> key
+  (truth) — and GEN-21 STANDS AT ZERO LIES ON THE FIXTURE with
+  every link measured. The seated principle, one sentence: STRIP
+  THE WART, NOT THE WITNESS — a fence judges what testimony RESTS
+  ON, never what it carries. Battery duty standing: the fence's
+  catch-count prints at every battery (expected zero on fixtures;
+  jurisdiction the wild road). Artifacts:
+  .cache/attestation_v3_read_gen21.json, attest_graphs_gen21.jsonl
+  (the permanent fixture), mycelium/attestation.py (v3 =
+  lawful_core + attest_view_v3/attest_quorum_v3).
