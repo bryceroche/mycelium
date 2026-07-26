@@ -12254,3 +12254,32 @@ token-position × waist-dim, the moment the skeleton trains.
   sweeps -> riders, all read; next instruments are PARSER-SIDE
   (#72's layer-axis probe + chained-fdiv resident) with the
   pre-breath capture owed on next GPU touch.
+- **THE WEEK CLOSES INTO THE PARSER SIDE (2026-07-26, Bryce's
+  word):** (1) THE ARCHIVE AUDIT docketed (CPU, not urgent): grep
+  the ledger for numbers whose provenance chain ends at a CITATION
+  rather than an artifact; mark with the relay-cited-unverified
+  flag — the nineteenth specimen scaled to the campaign's own
+  memory; the tau refusal proved it pays retroactively. (2) FRAME
+  RETIREMENT: what the diffusion frame keeps (parallel,
+  depth-ordered, clocked, breath-0 competence map) no longer needs
+  the frame's name — measured characterization on ten barred
+  verdicts; 'diffusion-like' retires to etymology; the
+  frame-tenant discipline completed its first full cycle (both
+  frames paid rent, both got smaller, the measurements own the
+  remainder). (3) THE METHODS ANCHOR: one GPU hour, ten verdicts,
+  every one barred — bank-don't-read's closing argument. (4) THE
+  PARSER-SIDE REGISTRATION (bars before any capture): the
+  LAYER-AXIS PROBE reads the g21 trunk's per-layer states (L0-L3;
+  NOT banked per-layer — capture pass required, which also
+  settles the pre-breath rivet's pattern) on a zone-stratified
+  bigtest subset, three families: SURFACE (token identity),
+  BINDING (var-letter assignment, ftype — the census's failure
+  altitude), and THE COMPETENCE MAP (per-item outcome class:
+  quorum-right / abstain / lie under the banked g21 lattice —
+  determination's arith3 analog, gold-free at runtime). THE
+  TRANSFER BARS, pinned blind: (i) competence-map AUC >= 0.75 at
+  L0-L1 -> the parser ARRIVES KNOWING, misbinding flaggable
+  before the graph exists — #72's splice earns its best evidence;
+  (ii) binding content resolving layer-ordered with no erasure ->
+  parallel-deepening transfers; (iii) fourth bin standing; meter
+  fixtures + ruler-relative law inherited; both-ruler bracket.
