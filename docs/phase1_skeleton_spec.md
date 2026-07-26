@@ -12612,3 +12612,31 @@ token-position × waist-dim, the moment the skeleton trains.
   (doors 5-8 rule: learned mechanisms price against the
   deterministic alternative's first claim) — zero training, exact
   deduction, existing jaws. Design offered; the word rules.
+- **THE ROUND-TRIP'S THREE RULINGS (2026-07-26, Bryce; pinned
+  BEFORE the build):** (1) THE OSCILLATION FENCE: budget ONE
+  round-trip (two only by future re-registration), exit conditions
+  pre-named — attested answer (success) / same-graph-re-emitted
+  (parser insensitive to diagnosis; further rounds free-ride) /
+  new-graph-new-flags (the diagnosis MOVED the failure — a species
+  worth a census column). Unbounded repair is the budget cliff in
+  repair's clothes. (2) THE CROSS-VERSION PROVENANCE FENCE (the
+  constitutional one, written before the loop closes): injected
+  facts carry provenance to the graph-version that derived them;
+  attestation REFUSES any chain grounding in a FLAGGED ancestor's
+  derivations — ONLY consequences derived from the SURVIVING
+  LAWFUL CORE may inject. The laundering trap named before its
+  first specimen: misbound graph -> wrong consequence -> injected
+  as fact -> faithfully bound -> attests clean. Implementation
+  law: inject ONLY facts forced by the STRIPPED lawful-core graph
+  — sound by construction. (3) THE BASELINE'S BARS: both arms
+  (round-trip vs v200) measured on the same population — the four
+  misbinding species (census three + structural zeros), recovery
+  per species, solver-calls vs breaths cost. THE FLOOR READ
+  (zero-GPU, fired now): blind re-parse recovery ceiling among
+  g21's 272 deployed abstentions — 187 hold >=1 correct view
+  = **0.688 blind-recovery ceiling**; the round-trip's lift must
+  be attributed ABOVE what a mere second attempt buys. BUILD
+  BARS, pinned blind: (i) ZERO new lies on gold-known rows (every
+  emitted answer attested AND correct); (ii) recovery lift over
+  the blind floor attributable to the diagnosis; (iii) budget
+  held at one round.
