@@ -13045,3 +13045,24 @@ token-position × waist-dim, the moment the skeleton trains.
   architecture (register stands); prerequisites (b) training
   plan and (c) carry-forward inventory remain before the gate's
   word.
+- **FIRE 0 LIT + THE IGNITION SENTENCE + THE TRAJECTORY FRAME
+  (2026-07-26, banked while the burn is young):** the smoke's
+  finding, in its precise sentence: **THE PATHOLOGY WAS NEVER IN
+  THE PARAMETERS; IT WAS IN THE OBJECTIVE.** Twenty steps under
+  the improvement-pressure ask moved the gates further than the
+  entire cold-start run — nothing broken, nothing hard, nothing
+  ever ASKED. Specimen-to-law-to-cure executed in one smoke test:
+  the epistemology stopped being scaffolding and became
+  machinery. THE READING FRAME PINNED BEFORE THE SHEET: early
+  gate MOTION and sustained gate FUNCTION are different facts —
+  the sheet reads the excursion TRAJECTORY, not the peak. The
+  one-level-up failure mode, named in advance: GATES THAT TWITCH
+  AND SETTLE (spike by step 50, drift back as the optimizer
+  finds cheaper paths — the calib channel remains the path of
+  least resistance, false-friend-marked for exactly this).
+  Opening that holds or grows through 500 = mechanism durable;
+  spike-then-fade = the specimen's subtler cousin, INFORMING
+  Fire 1's schedule (annealing/reinforcement of the ask), not
+  authorizing it. BREATH-SPREAD is the confirming witness: gates
+  open AND breaths differentiating = learning to breathe; gates
+  alone = rattling valves. Fire 1 authorizes only on the pair.
