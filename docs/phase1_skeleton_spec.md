@@ -11645,3 +11645,17 @@ token-position × waist-dim, the moment the skeleton trains.
   .cache/attestation_v3_read_gen21.json, attest_graphs_gen21.jsonl
   (the permanent fixture), mycelium/attestation.py (v3 =
   lawful_core + attest_view_v3/attest_quorum_v3).
+- **THE 758 CLUSTERING SCAN (2026-07-25, zero-GPU on the banked
+  graphs, Bryce's docket item fired):** self-loops are FLAT across
+  view seeds (105/116/115/133/133 — no seed clustering) but
+  MASSIVELY stratified by zone: umbra 19/5100 = 0.4%, penumbra
+  381/1975 = 19.3%, dark 202/425 = 47.5%. Nearly half of
+  dark-zone views emit self-loops: the wart is a LOAD SIGNATURE —
+  the structural side of the frontier-opacity finding (the mouth
+  degrades into malformation, not just into wrongness).
+  BASELINE BANKED for drift detection: wild malformation 10.1%
+  overall with the zone gradient above; gen-22's number gets
+  compared. FREE-INSTRUMENT NOTE (docketed, unbuilt): the
+  per-item self-loop count is readable at answer time WITHOUT
+  gold — a deterministic difficulty/register signal a future
+  mouth could wear.
