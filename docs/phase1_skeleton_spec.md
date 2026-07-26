@@ -11736,3 +11736,22 @@ token-position × waist-dim, the moment the skeleton trains.
   candidate propagator, label naked-singles/candidate-set-size,
   probe per breath); (2) K-sweep retro-read; (3) torsion rider.
   All against the permanent fixture; v200 undiscussed until then.
+- **THE OFF-CEILING READ (2026-07-25, verdict-critical; sidecar
+  recovered via seed-0 determinism, depth-1 candidate propagator
+  built, derived-schema families probed on the permanent
+  fixture):** naked_single curve 0.725 -> peak 0.736 (breath 2) ->
+  0.702 (breath 15); cand_size 0.414 -> peak 0.429 (breath 1) ->
+  0.413. Both t95=0, strictly inside solution's 5 — THE PINNED
+  SEAL RULE PRINTS C. TWO APPARATUS NOTES CARRIED WITH THE SEAL,
+  same audit a displeasing print gets: (1) naked_single FADES
+  -0.034 from peak — above the monotone tolerance (.02), below
+  the A-crossover threshold (.05): a WEAK erasure signal the
+  pinned thresholds classify as not-A, flagged for the
+  strengthening reads; (2) naked_single decode 0.725 sits BELOW
+  the majority-class baseline (0.795 not-single) — plain-accuracy
+  ridge is the wrong meter for an imbalanced binary; a
+  balanced-readout re-read (AUC / class-weighted, zero-GPU) is
+  OWED before the seal is called final. STATUS: anti-A final;
+  B-vs-C = C SEALS PROVISIONALLY per the pinned rule, final on
+  the balanced re-read. The offline docket: balanced readout,
+  K-sweep retro-read, torsion rider.
