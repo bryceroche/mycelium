@@ -12404,3 +12404,16 @@ token-position × waist-dim, the moment the skeleton trains.
   control leaves ambiguity). The capture rides the next GPU touch
   with the pre-breath rivet. #72 stands at 'born knowing what is
   hard' — one read from either sentence. THE WHEEL RESTS.
+- **THE WEEK'S EPIGRAPH (2026-07-26, Bryce's closing observation,
+  banked as said):** the yield was not the sealed verdicts, though
+  there were ten — it was the INSTRUMENTS: meter fixtures that
+  make three fault classes impossible, a consolidation law every
+  future probe inherits, matched-control capture design,
+  bank-don't-read proven at one GPU hour for ten verdicts, and a
+  meta-law that the bars themselves are where discoveries come
+  from. The campaign entered the week with questions and left
+  with a MEASUREMENT CULTURE that answers questions as a side
+  effect. That is the asset MATH-500 will actually be climbed
+  with: the fixtures are reusable, the discipline is compounding,
+  and the next hard question arrives at a house that already
+  knows how to refuse itself.
