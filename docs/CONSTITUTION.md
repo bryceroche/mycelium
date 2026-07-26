@@ -96,3 +96,10 @@ in the engine. Probe-side code inherits solver-side discipline:
 KNOWN-SIGNAL FIXTURES (a synthetic label a correct AUC must score 1.0; a
 planted-rise curve a correct t95 must locate) run and pass BEFORE any
 real read banks. The ruler gets audited as hard as the ruled.
+
+## Refused verdicts as finding-generators (2026-07-26)
+Three refusals in three days — each produced a finding the wanted verdict
+would have buried: the mixture artifact, the floor artifact, the second
+clock. The bars aren't just guarding against error; they are where the
+discoveries are coming from. A house that notices this keeps writing
+hard bars.

@@ -12125,3 +12125,25 @@ token-position × waist-dim, the moment the skeleton trains.
   could drop to ~10-12 at minor deep-cell cost, not to 6.
   DETERMINATION-PROBE and torsion queued; then #72's parser-side
   instruments with the v200 trichotomy standing.
+- **THE TWO-CLOCK SHARPENING + THE GAP RETRO-READ REGISTERED
+  (2026-07-26, Bryce):** two anatomies, distinct consequences:
+  (a) engine-reads-early vs (b) TASK-USABLE VS RULER-VISIBLE —
+  content crystallizes in a form the trained head reads natively
+  while fresh probes need extra consolidation breaths before
+  generic linear access. Operational law survives either way (the
+  deployed readout is the lawful clock for K decisions). TESTABLE
+  EDGE, bars pinned blind: if consolidation, the gap SHRINKS with
+  probe capacity — MLP t95(d2-solution) < linear's 7 by >=2
+  breaths (toward the engine's 3) prints CONSOLIDATION; within
+  +/-1 of 7 prints RULER-INDEPENDENT (the trained-head-form
+  anatomy); d1 as control. ALL probe-derived breaths in the
+  ledger now carry the offset suspicion — the determination
+  signal may be ENGINE-usable at breath 1-2 (cheaper than filed);
+  its docket amends to BANK BOTH CLOCKS. TRICHOTOMY URGENCY
+  RAISED: v200's K=8 ceiling sits BELOW the home engine's own
+  floor (~10-12 on the deployed clock); the v200 capture's first
+  sheet decides which arm the campaign funds; the K=12 large-JIT
+  hang earns ONE fresh attempt on current tinygrad before it is
+  accepted as law. Savor line, one line by the word: the
+  conjecture was right, the first ruler was wrong, the bar
+  refused, and the right ruler vindicated it anyway.
