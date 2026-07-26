@@ -12640,3 +12640,25 @@ token-position × waist-dim, the moment the skeleton trains.
   emitted answer attested AND correct); (ii) recovery lift over
   the blind floor attributable to the diagnosis; (iii) budget
   held at one round.
+- **THE ROUND-TRIP VERDICT (2026-07-26, budget 1, all 272
+  abstentions):** BAR (i) PASS — ZERO new lies; the provenance
+  fence held (no laundered specimen exists). THE VALUE HALF:
+  **recovered 3/272 = 0.011** against the 0.688 blind ceiling.
+  ANATOMY: only 12 items were diagnosis-empty — 260 received
+  injected core-forced facts and 257 STILL abstained: the
+  dominant species is DIAGNOSIS-IGNORED-OR-UNHELPFUL — failing
+  views' lawful cores are mostly underdetermined (that is WHY
+  they abstained), so they force few novel facts; and a new
+  'It is known that x is v' line adds a given without repairing
+  the misbound pair structure that caused the failure. THE
+  ARCHITECTURAL READING, stated at full weight: POST-HOC FACT
+  INJECTION THROUGH THE INPUT SPACE DOES NOT RESCUE BINDING
+  FAILURES — the deduction must participate IN binding, not
+  arrive after as annotation. The deterministic baseline is
+  MEASURED AND WEAK (1.1%), which sharpens #72's splice into its
+  strongest form yet: the doors 5-8 pricing now has its number —
+  the deterministic alternative buys 0.011, and everything above
+  it is the learned loop's headroom. v200's question inherits
+  this floor. The round-trip stays seated as SAFETY
+  infrastructure (zero-lie repair attempt, cheap) with its value
+  claim honestly retired at budget 1.
