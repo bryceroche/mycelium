@@ -12183,3 +12183,24 @@ token-position × waist-dim, the moment the skeleton trains.
   PORTABILITY NOTE banked with it: the ruler-relative law is not
   a KenKen fact — it is a fact about probing iterative systems;
   Paper II methods, beside bank-don't-read.
+- **THE DETERMINATION PROBE PRINTS: BOTH-READABLE FROM BREATH 0
+  (2026-07-26, bars at 72b226a; support 964/1247):** linear AUC
+  0.922 at the FIRST captured breath (0.940 by 12); MLP 0.909 ->
+  0.949 — bar (i) passes at breath 0 on both rulers, and by the
+  ruler-relative law the signal is engine-usable at least that
+  early. Bar (ii): recalls at the balanced point — never-forced
+  0.892/0.869, forced 0.804/0.786 — BOTH >= 0.65, BOTH RULERS:
+  the loop holds DETERMINED and UNDERDETERMINED as crisply
+  readable states before it holds a single value. THE SENTENCE
+  PRINTS: the loop knows the boundary of its own competence —
+  certify-answer-flag-abstain is not just Paper 1's architecture
+  around the engine, it is an emergent property inside it,
+  existence-grade verdicts at breath 0, values at 2/7/11 by
+  depth. TEXTURE, unregistered and filed: never-forced is the
+  MORE readable class (0.89 vs 0.80) — the asymmetry runs the
+  humble direction; the loop knows its failures slightly better
+  than its successes. The abstention leading-indicator is
+  measured, two-sided, breath-0-cheap, and born fenced (Goodhart
+  + ruler laws attached). Queue: torsion -> #72 parser-side
+  instruments (layer-axis probe, chained-fdiv resident) with the
+  v200 trichotomy standing at raised urgency.
