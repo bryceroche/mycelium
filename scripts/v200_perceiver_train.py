@@ -644,6 +644,31 @@ def main() -> None:
         n_max=N_MAX, f_max=F_MAX, k_max=K, n_heads=16, seed=SEED + 2,
     )
 
+    # FIRE-0 two-terminal probe (2026-07-26, read-before-patch law): one eager
+    # fwd/bwd; attached-unused params (None grad) are excluded LOUDLY BY NAME
+    # and the optimizer is REBUILT over live params (no buffer desync).
+    from mycelium.factor_graph_v200 import fg_breathing_forward_v200 as _fwd_probe
+    Tensor.training = True
+    _pb = dual_loader.sample_batch(step=0)
+    opt.zero_grad()
+    _h, _c = _fwd_probe(model, _pb["domain_init"], _pb["node_kinds"], K=K,
+                        n_max=N_MAX, f_max=F_MAX, n_var_lat=N_VAR_LAT,
+                        n_digits=N_DIGITS, training=True,
+                        stage2a_waist=V200_STAGE2A_WAIST)
+    (_h[-1].float().sum() + _c[-1].float().sum()).backward()
+    _name_of = {}
+    for _an in dir(model):
+        _t = getattr(model, _an, None)
+        if _t is not None and hasattr(_t, "grad") and hasattr(_t, "shape"):
+            _name_of[id(_t)] = _an
+    _dead = [p for p in params if p.grad is None]
+    if _dead:
+        _dn = sorted(_name_of.get(id(p), f"shape{tuple(p.shape)}") for p in _dead)
+        log(f"[two-terminal] EXCLUDING attached-unused params ({len(_dead)}): {_dn}")
+        params = [p for p in params if p.grad is not None]
+        opt = Adam(params, lr=LR, b1=0.9, b2=0.95, eps=1e-8)
+    opt.zero_grad()
+
     # ---- JIT step ----
     Tensor.training = True
     step_fn = _compile_jit_fg_step_v200(
