@@ -11802,3 +11802,27 @@ token-position × waist-dim, the moment the skeleton trains.
   EARLY, fading as solution crystallizes — no registered
   signature predicted it). Docket order: meter audit -> balanced
   re-run -> MLP if still range-failed -> K-sweep -> torsion.
+- **THE METER AUDIT + THE TRUE BALANCED READ (2026-07-25):** fault
+  CONFIRMED as flagged — auc_mann_whitney takes (scores, labels);
+  the call passed (pos, neg) scores, coercing negatives to
+  all-True labels -> empty negative class -> unconditional 0.5.
+  One-line fix; re-run. THE TRUE CURVES: naked_single AUC 0.871 ->
+  peak 0.876 (breath 1) -> 0.852; cand_size unchanged. THE
+  REGISTERED FLAT-HIGH EDGE PRINTS: derived depth-1 content IS
+  linearly present (0.87 AUC — the MLP's absence-anatomy is moot)
+  and present from the FIRST captured breath — reps[0] is
+  post-breath-1, and depth-1 implications need exactly one
+  propagation pass: the engine computes them in breath 1, as a BP
+  round would. The ruler has no pre-breath-0 sample, so
+  resolution-inside-breath-1 cannot certify rise; per the pinned
+  criterion the leg stays OPEN. Both derived families show
+  early-peak-then-FADE (-0.024 AUC, -0.09 mrec) — whisper
+  amplitude, below every pinned threshold, now on a valid meter:
+  banked as the fourth-bin-adjacent texture fact. THE INSTRUMENT
+  THAT CAN CLOSE THE LEG, named: DEEPER schema families —
+  depth-2/depth-3 implication labels (propagator extension,
+  zero-GPU) — content requiring MORE breaths, whose rise falls
+  INSIDE the captured window; if depth-d schema t95 climbs with d
+  while staying inside solution's 5, C's ordering is certified on
+  a curve with rise; if all depths arrive together with solution,
+  B. Docket: depth-graded read -> K-sweep -> torsion.

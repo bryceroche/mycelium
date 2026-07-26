@@ -26,7 +26,7 @@ for k in range(K):
     w = np.linalg.solve(Xf.T @ Xf + 100.0*np.eye(H, dtype=np.float32),
                         Xf.T @ (2.0*yf - 1.0).astype(np.float32))
     s = Xr @ w
-    auc_curve.append(float(auc_mann_whitney(s[yr == 1], s[yr == 0])))
+    auc_curve.append(float(auc_mann_whitney(s, yr == 1)))
 print("[naked_single AUC] " + " ".join(f"{a:.3f}" for a in auc_curve))
 
 mr_curve = []
