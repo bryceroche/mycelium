@@ -72,3 +72,31 @@ any claim banks. Bank-don't-read for every capture. The cannot-license
 register retires only when a TRAINED model replaces the artifact.
 Two-clock law governs all probe-vs-readout comparisons. Entourage
 duty: the self-map re-probe seats at every promotion.
+
+## 6. COUNTERSIGNED ADJUSTMENTS (Bryce, 2026-07-26 — inked; the plan is LAW)
+- **Domain cap CONSTITUTIONAL:** KenKen-first capped at ONE fire; flip
+  condition: Fire 1 passes -> no further KenKen fires under any
+  rationale. PREMISE FLAG (reported at inking): v200's own validated
+  instrumented ground as of today is its FACTOR-GRAPH domain (the
+  cheap reads, flip detector, calib meter all ran there this
+  afternoon); v200 has never had KenKen plumbing. Fire 0 therefore
+  runs on v200's existing pipeline — the fastest diagnosable ground —
+  with the KenKen-vs-factor-graph question for Fire 1 put to Bryce
+  with this flag.
+- **257-recovery bar, support arithmetic stated:** >= 0.10 = ~26/257
+  vs the floor's 3/272; the read is BINOMIAL against p=0.011 (26/257
+  gives p < 1e-20; even 10/257 gives p ~ 1e-6) — the bar is the
+  MECHANISM claim (0.10), not bare significance. THE BAND PINNED:
+  a print in (0.011, 0.10) is a REFUSED PROMOTION WITH ITS SCIENCE
+  BANKED — above-floor-below-bar is a finding, never a negotiation.
+- **Revision-signature-present, quantitative form (pinned before Fire
+  1 exists):** flip-cells >= 2% of var-cells AND w2r/r2w >= 2.0 AND
+  w2r events concentrated in the deepest tercile (rate ratio deep/
+  shallow >= 1.5). Below any leg -> NOT PRESENT. Rotation-geometry
+  rides, gates nothing.
+- **SBP arm PROMOTED to Fire 1** (escape-valve may be load-bearing
+  for gate-opening itself; the plan learns this before the decisive
+  fire).
+- **CALIB MARKED FALSE-FRIEND on the dashboard:** rising calib with
+  flat gates is the SPECIMEN'S SIGNATURE — the early-kill's leading
+  indicator, never progress evidence.
