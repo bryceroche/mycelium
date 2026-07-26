@@ -11416,3 +11416,44 @@ token-position × waist-dim, the moment the skeleton trains.
   ALG_FTYPES=6 and 7 loudly is the mv-glob lesson's descendant — a
   silent 6-load would have produced a plausible attestation read
   on the wrong gate.
+- **THE ATTESTATION VERDICT + THE 228 AUTOPSY (2026-07-25, read by
+  the pre-pinned frame):** BAR (i) PASS — zero false flags on all
+  1227 banked-correct rows, zero vote drift vs the banked lattice;
+  the fence v1 SEATS per its pinned gate (battery duty docketed:
+  catch-count prints each battery). EXPECTATION (ii) MISSED — zero
+  catches: all three winning views ATTEST the 0. The autopsy
+  (winning graphs dumped) finds TWO anatomies, NEITHER
+  hallucination: view 1 is the census's misbinding species (c
+  bound to 18 instead of 58 -> a+b=18 & a-b=18 force b=0; every
+  literal attested, 18 worn TWICE while the text states it once);
+  views 2 and 3 are STRUCTURAL ZEROS — both compiled
+  add(v0,v1)->v0, a SELF-LOOP relation forcing b=0 from pure form
+  with no givens needed: a vacuous factor in the TIGHTEN sense, a
+  constant assignment wearing a relation's clothes (the k=1/k=0
+  family's additive cousin). v1's measured jurisdiction:
+  hallucinated values only. THE EMPTY-SET SCANS (zero-GPU): (a)
+  SELF-LOOPS: 0 in the ENTIRE gold universe — bigtest 1500 + test
+  300 + gen21_mix 78,400 — the same empty-set signature that made
+  k=1 law; E13 (rel/sel result must not appear in args) proposed
+  for the dialect, Bryce's pen per TIGHTEN precedent. (b)
+  MULTIPLICITY (givens carrying value X may not outnumber the
+  text's statements of X): 0/1800 on the formal fixtures but
+  3,580/78,400 on the mix — ALL prose-book rows whose knowns are
+  legitimately implied (the rulebook's lexical explicitation:
+  handshake 16=4x4, squirrel 60 min/hr) — so the clause is
+  FORMAL-REGISTER LAW ONLY; prose's lawful form is the loc/derived
+  provenance mark, and only 70/3580 book rows carry one (the books
+  predate TIGHTEN's contract; they carry spans instead — a bridge,
+  not a gap; back-annotation docketed). PROPOSAL HELD FOR THE
+  WORD: fence v2 = v1 + multiplicity clause (formal register) +
+  E13 — the autopsy shows it flags ALL THREE winning views of 228
+  (multiplicity takes view 1, E13 takes views 2 and 3) -> quorum
+  answer unattested -> abstain-ungrounded -> gen-21 at ZERO LIES
+  on the fixture. Measurement requires one graph-BANKING decode
+  pass (~1h GPU; graphs banked so every future fence iteration is
+  a zero-GPU replay); v2 bars to be pinned blind before it fires.
+  GUT-70 CORROBORATION NOTED: the verifier ladder is now measured
+  at every level that exists — form 0/3800, value-attestation
+  0-catch — and the residual lie lives at binding altitude, the
+  level with no dialect; both v2 clauses are schema-level facts
+  expressed in arith3 clothing (the bolt-on tell).
