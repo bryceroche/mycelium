@@ -11926,3 +11926,58 @@ token-position × waist-dim, the moment the skeleton trains.
   dissolves after. Queue position: behind the depth-stratified
   solution read (which sharpens (ii)'s premise) per the banked
   price order; registration is pen-work, fired now.
+- **GUT #72 UNBUNDLED (2026-07-26, Bryce — five claims, five
+  standings, five instruments; the campaign's first ARCHITECTURE
+  BET filed with its full measurement schedule, the only way a bet
+  this size enters this house):** (1) SOFT DEDUCER — MEASURED
+  (depth-1 readable at breath 1; breath-0 readability monotone in
+  depth; deep content resolving at 15): the loop holds and refines
+  deductions in parallel, continuously, in latents — operational
+  definition met on the KenKen engine. (2) PARALLEL LOWERING —
+  LEADING PRINT, unsealed (anti-A final, B-vs-C open); if the
+  depth-stratified read prints depth-as-axis, the verb relabels to
+  DEEPENING IN PARALLEL — the bet survives the reframe, the
+  vocabulary relabels its axis. (3) DIFFUSION COMPILER — frame
+  with rent stated (diffusion-LIKE, no noise schedule/objective),
+  scope-riveted. (4) THE SPLICE FLAGGED: soft-deducer evidence is
+  the SOLVER loop (receives graphs); hard-part evidence is the
+  PARSER (builds them) — different pipeline stages. The bet's
+  center is the CONJECTURE splicing them: a loop that deduces
+  while it binds can notice a binding forcing a contradiction,
+  which a feed-forward parser structurally cannot — THIS IS
+  v200's ARCHITECTURE DESCRIBED MECHANISTICALLY (Perceiver core,
+  latents as computation state, tokens as static reference), the
+  bet gives v200 its mechanism story; zero direct evidence yet;
+  named test = v200 capture pass + THE MISBINDING DIFFERENTIAL
+  (does misbinding fall when the compiler deduces, measured on
+  the frontier census's three species) — the stage-three pilot's
+  question in its true clothes. (5) PYTHIA RETIREMENT — HALF
+  RIGHT: the PROPAGATION role internalizes (two-death-mode had
+  welded that door anyway); the WITNESS role is NOT a corollary —
+  internal latents are maximally correlated with the mouth BY
+  CONSTRUCTION (they ARE the mouth; a soft deducer inside the
+  loop can never dissent from the loop), and Pythia is the only
+  non-Llama substrate in the house (#58 decorrelation law; the
+  diversity budget prices this purchase). LAWFUL FORM: solver
+  role retires to latents; witness seat stays priced, decided by
+  the queued proxy experiment. THE BET RESTATED AS THE HOUSE
+  HOLDS IT: the v200 Perceiver loop is conjectured to be a
+  diffusion-like parallel deducer whose latent dynamics make it
+  a better graph-compiler than any feed-forward parse, with the
+  exact GAC jaw unchanged downstream, propagation internalized,
+  witness separately priced. If it pays, the thesis gains its
+  mechanism: THE COMPILER DOESN'T JUST EMIT TYPED GRAPHS — IT
+  DEDUCES ITS WAY INTO THEM.
+- **REGISTERED PREDICTION — THE DEPTH-STRATIFIED SOLUTION READ'S
+  BARS (pinned before the read fires; meter fixtures standing):**
+  solution family (gold at non-given cells) stratified by
+  forced-round depth (d=1, d=2, d>=3 pooled if support demands);
+  balanced meter (macro-recall, balanced-subsample fit); range
+  criterion + min-support (>=100 read cells per stratum) inherited.
+  THE CONFOUND TEST: deep stratum LATE-RISE = c[15]-c[5] >= 0.03
+  on the balanced metric -> the inversion DISSOLVES (deep solution
+  co-resolves with deep schema) and the DEPTH-AXIS hypothesis
+  prints (resolution tracks depth regardless of family);
+  |c[15]-c[5]| < 0.03 with deep stratum asymptoted by ~5 -> the
+  INVERSION STANDS as the strange fact. Shallow stratum expected
+  t95 <= 5 (the mean's majority). Fourth bin standing for mess.
