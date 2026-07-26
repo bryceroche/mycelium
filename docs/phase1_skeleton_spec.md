@@ -11871,3 +11871,29 @@ token-position × waist-dim, the moment the skeleton trains.
   beyond the window). Status unchanged and honest: anti-A FINAL;
   B-vs-C OPEN — the fixture keeps yielding texture, the seal
   keeps its price, and the bars have not bent once tonight.
+- **THE DEPTH-AXIS HYPOTHESIS + SESSION CLOSE (2026-07-25, Bryce's
+  harder look, banked before the pens rest):** texture fact (2) is
+  not just unpredicted, it is INVERTED — no lowering story of any
+  topology predicts justification finishing after the verdict it
+  justifies. THE CONFOUND NAMED BEFORE THE STRANGENESS BANKS: the
+  solution family's breath-5 asymptote is a MEAN over cells, and
+  79.5% of deducible cells are depth-0/1-forced — the shallow
+  majority may saturate the average while the deep-cell minority
+  still climbs, invisible inside the mean. THE OWED READ (first
+  in queue, zero-GPU, same fixture, same propagator labels):
+  DEPTH-STRATIFY THE SOLUTION FAMILY as schema was graded. If
+  deep-cell solution rises at breath 15 alongside depth-3 schema,
+  the anomaly dissolves and something better prints: RESOLUTION
+  ORDER TRACKS DEDUCTION DEPTH REGARDLESS OF FAMILY — schema and
+  solution at the same depth co-resolve; ALTITUDE WAS NEVER THE
+  SPECTRAL AXIS, DEPTH WAS. That recasts B-vs-C ('does content
+  finish in depth order'), unifies the fdiv-mass wall + breath
+  ladder + resolution order as one phenomenon in three units, and
+  is already supported from the initial state by the breath-0
+  readability gradient (0.877->0.566 monotone in depth) — ordering
+  evidence no signature registered because every signature assumed
+  altitude-families were the units. THE FOURTH BIN MAY BE HOLDING
+  THE TRUE AXIS. PRICE ORDER: depth-stratified solution read ->
+  MLP on d3 -> longer-K capture (only GPU item, only if d3's
+  asymptote truly lives outside breath 16) -> K-sweep -> torsion.
+  PENS RESTED on Bryce's word; the fixture keeps.

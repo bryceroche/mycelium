@@ -1,3 +1,25 @@
+## SEAL 2026-07-25 — attestation chain sealed at five links; crossover probe: anti-A final, B-vs-C open; DEPTH-AXIS hypothesis registered
+
+**Board:** gen-21 gate, ZERO quorum lies on bigtest with fence v3 seated
+(strip the wart, not the witness). Census re-scoped to abstention
+frontier. Crossover probe (KenKen engine, scope-riveted): anti-A FINAL;
+B-vs-C OPEN — depth-3 missed the pinned rise margin by 0.006, bar held.
+**Queue (price order):** 1. depth-stratified SOLUTION read (zero-GPU;
+confound: solution's breath-5 asymptote is a mean; 79.5% shallow cells
+may mask deep-cell climb; if deep solution co-rises with d3 schema ->
+DEPTH not altitude is the spectral axis — reframes B-vs-C, unifies
+fdiv-wall/breath-ladder/resolution-order). 2. MLP on d3. 3. longer-K
+capture (GPU, conditional). 4. K-sweep retro-read (3x speedup question).
+5. torsion rider. Meter fixtures (scripts/meter_fixtures.py) MUST pass
+before any new read banks.
+
+**TAPE EXAM (run before trusting this seal):**
+1. `.venv/bin/python3 scripts/meter_fixtures.py | tail -1` -> `METER FIXTURES: ALL PASS`
+2. `python3 -c "import json; print(json.load(open('.cache/crossover_probe_read.json'))['t95'])"` -> `{'surface': 0, 'schema': 0, 'solution': 5}`
+3. `python3 -c "import json; print(round(json.load(open('.cache/crossover_depth_graded_read.json'))['d3']['rise'],3))"` -> `0.044` (< pinned 0.05; bar held)
+4. `python3 -c "import json; d=json.load(open('.cache/attestation_v3_read_gen21.json')); print(len(d['false_flags']), len(d['catches']))"` -> `0 1`
+5. `grep -c "DEPTH-AXIS HYPOTHESIS" docs/phase1_skeleton_spec.md` -> `1`
+
 # NEXT SESSION — start here (handoff, 2026-07-25 — GEN-21 ATTRIBUTABLE; THE PENS HOLD THE QUEUE)
 
 ## **THE GATE IS GEN-21, estate settled 12/12, zero waivers.** The
