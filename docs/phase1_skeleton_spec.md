@@ -12066,3 +12066,41 @@ token-position × waist-dim, the moment the skeleton trains.
   as the rate predicted). #72's soft-deducer clause: MEASURED,
   ORDERED, AND CLOCKED. Queue: K-sweep (quantitative) -> torsion
   -> #72 parser-side instruments.
+- **THREE PINS ON THE CLOCK (2026-07-26, Bryce):** (1) THE
+  UNIFICATION PARAGRAAPH: determination-before-value is EXISTENCE
+  BEFORE CONSTRUCTION — deciding THAT a cell is forced (a property
+  of the constraint set) is strictly easier than computing WHAT
+  forces it (executing the derivation), and the loop discovered
+  the separation on its own, holding the two facts eight breaths
+  apart. Paper 1's certify-answer-flag-abstain chain found INSIDE
+  the engine as an emergent property of latent dynamics —
+  existence-certificates at breath 3, construction to 11. If it
+  survives parser-side transfer, THE DEEPEST UNIFICATION THE
+  CAMPAIGN HAS. (2) THE DETERMINATION PROBE docketed (behind
+  K-sweep, low): a per-cell gold-free leading indicator of
+  abstention, readable 8 breaths before the answer exists; BORN
+  with two laws attached — the Goodhart fence verbatim
+  (instrument, never objective) and the ruler discipline
+  (calibration on held-out strata, fixtures first); Dopri5
+  precedent says adaptive signals can be spent lawfully. (3) THE
+  v200 K=8 CEILING vs THE CLOCK — #72's binding constraint: at
+  ~4.5 breaths/layer, K=8 buys ~TWO layers of deduction;
+  MATH-500's chains run far deeper (the fdiv wall's axis). The
+  v200 capture pass is now LOAD-BEARING, its first question:
+  WHAT IS v200's CLOCK RATE AND WHAT DEPTH DOES K=8 PURCHASE
+  (transfer owed by measurement). THE TRICHOTOMY pinned: if
+  v200's rate is comparable to 4.5, #72 needs (a) the K ceiling
+  broken (engineering), (b) the clock rate improved
+  (architecture), or (c) determination-guided ADAPTIVE DEPTH
+  (the instrument in pin 2, spent as compute allocation).
+- **REGISTERED PREDICTION — THE K-SWEEP BARS (pinned before the
+  read; apparatus note owed honestly: per-breath VALUE
+  predictions were not banked in the capture — reps only — so the
+  exact form needs one small re-pass banking argmax history; the
+  engine's per-breath readout at breath k IS the K=k answer):**
+  per-depth-stratum engine accuracy vs breath: (i) strata reach
+  95% of their own final engine-accuracy in LADDER ORDER, at
+  breaths within +/-2 of the probe ladder (2/7/11); (ii) the
+  quantitative kill: truncating to K=8 costs depth-3 cells the
+  most and depth-1 the least, monotone in depth; (iii) fourth
+  bin standing for shapes no bar names.
