@@ -1,3 +1,18 @@
+## SEAL 2026-07-26b — twice-fenced; v200 capture NEXT FIRE (scouted to entry points)
+
+**Next fire, first act:** the v200 capture — mycelium/kenken_llama.py:
+kenken_llama_forward(model, batch, K=8) + attach_kenken_llama_params;
+ckpt .cache/fg_v200_ckpts/v200_run_final.safetensors (51 params, K=8
+witnessed by fg_v200_breath_embed (8,2048)). CHECK FIRST: per-breath
+capture sink in the forward (fg_resid_capture analog) else hook pattern.
+Batches: kenken curriculum + stack_records pattern. THREE QUESTIONS,
+bars pinned (ledger 2026-07-26): clock rate, K-purchase, REVISION
+SIGNATURE (wrong-then-corrected, pressure-concentrated — else 'a stack
+wearing recurrence'). The arith3 fire's word is GATED on these three.
+The 257 wait in .cache/roundtrip_enriched.jsonl. GREP THE CONVICTION
+INDEX (docs/CONVICTION_INDEX.md) before banking anything that feels
+established. Meter fixtures before any new read banks.
+
 ## SEAL 2026-07-26 — the fixture week: ten barred verdicts on the engine, competence-vs-difficulty OPEN on the parser, 78 boundary-crossers counted
 
 **Board:** engine = self-knowledge MEASURED (breath-0 verdict vocabulary,
