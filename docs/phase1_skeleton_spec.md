@@ -12104,3 +12104,24 @@ token-position × waist-dim, the moment the skeleton trains.
   quantitative kill: truncating to K=8 costs depth-3 cells the
   most and depth-1 the least, monotone in depth; (iii) fourth
   bin standing for shapes no bar names.
+- **THE K-SWEEP READS (2026-07-26, engine's own per-breath readout
+  banked via argmax re-pass):** engine accuracy ladders: d1
+  0.884->0.969 t95=1; d2 0.672->0.918 t95=3; d3plus 0.513->0.794
+  t95=8, still gaining at breath 15. BAR (ii) PASS — the
+  quantitative kill: K=8 truncation costs +0.005/+0.006/+0.042 by
+  depth — MONOTONE, depth-3 pays 8x depth-1; the wall derived,
+  with numbers. BAR (i) FAIL AS PINNED (no bending): the ladder
+  ORDER is strict (1<=3<=8) but the anchors miss the probe
+  ladder's +/-2 window (3 vs 7; 8 vs 11). THE ANATOMY, named
+  honestly: THE ENGINE READS ITS OWN LATENTS EARLIER THAN OUR
+  PROBES CAN — probe t95s (2/7/11) LAG engine t95s (1/3/8) by
+  ~0/4/3 breaths; an external ruler needs the content more
+  crystallized than the trained readout head does. TWO-CLOCK LAW:
+  probe-clock ~4.5 breaths/layer, ENGINE-clock ~3.5 breaths/layer
+  — Bryce's ORIGINAL conjectured constant, printed by the
+  engine's own readout; the engine's clock is the lawful one for
+  K decisions (it IS the deployed readout). SPEEDUP REVISED:
+  K=16 is not 3x oversized — d3plus uses the whole window; K
+  could drop to ~10-12 at minor deep-cell cost, not to 6.
+  DETERMINATION-PROBE and torsion queued; then #72's parser-side
+  instruments with the v200 trichotomy standing.
