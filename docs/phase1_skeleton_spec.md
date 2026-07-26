@@ -12793,3 +12793,25 @@ token-position × waist-dim, the moment the skeleton trains.
   without its invariance checked, and nothing leaves it without
   a trace.' The campaign found its epistemology this week, the
   hard way, which is the only way epistemologies hold.
+- **THE v200 CAPTURE BUILD CARD (2026-07-26, the driver's scout
+  complete — next window's fire is mechanical):** (1) NO SINK
+  NEEDED: kenken_llama_forward RETURNS cell_logits_history for
+  all K breaths — the argmax history IS the instrument, and under
+  the two-clock law the engine's own readout is the lawful clock
+  for all three questions (clock rate = per-depth t95 ladder;
+  K-purchase = per-stratum accuracy at k; REVISION SIGNATURE =
+  per-cell argmax flip events, wrong-then-corrected, tested for
+  concentration at high-pressure/deep cells). (2) MODEL BUILD:
+  the forward uses ALL of model.llama_layers — the trained config
+  is N=2 shared Llama-2048 layers, so the host is the trunk host
+  with llama_layers TRUNCATED TO THE FIRST 2; then
+  attach_kenken_llama_params(hidden=2048, n_heads=32, k_max=8);
+  then load the 51-param ckpt with the KEY RENAME MAP (ckpt keys
+  are fg_v200_-prefixed; model attrs are kenken_-prefixed) —
+  verify the map key-by-key, hard-error on mismatch per the
+  eval-load law. (3) BATCHES: kenken_test_curriculum seed-0 240
+  via stack_records — THE SAME records as the Pythia engine
+  fixture, so fr depth labels are ALREADY BANKED and the clocks
+  compare like-for-like. (4) K<=8 asserted by the forward against
+  the breath table. Bars stand as pinned; conviction index and
+  meter fixtures checked before the read banks.
