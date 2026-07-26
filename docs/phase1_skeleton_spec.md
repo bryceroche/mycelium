@@ -11848,3 +11848,26 @@ token-position × waist-dim, the moment the skeleton trains.
   strongest mechanistic evidence yet that differentiable-solver
   is the true framing, whatever B-vs-C resolves to. (4) METER
   FIXTURES FIRST: known-signal tests pass before the read banks.
+- **THE DEPTH-GRADED READ PRINTS (2026-07-25; meter fixtures ALL
+  PASS first — 5/5, would have caught all three ruler faults):**
+  support: d1 431+, d2 434+, d3 275+, d4 107+ (all clear the
+  min-support pin). CURVES: d1 0.877 flat-high fade -0.02; d2
+  0.719 -> peak 0.726 (breath 1) -> 0.690 plateau; d3 0.590 ->
+  0.623 -> slow CONTINUING climb to 0.634 AT BREATH 15 (rise
+  +0.044 — misses the pinned 0.05 margin by 0.006; THE BAR HOLDS,
+  no bending post-measurement); d4 0.566 non-monotone dip-recover
+  0.559. NO t95 BANKS; THE LEG STAYS OPEN. THREE TEXTURE FACTS
+  REGISTERED (fourth-bin data, no signature operationalized
+  them): (1) breath-0 readability DECLINES monotonically with
+  depth (0.877/0.719/0.590/0.566) — a spectral gradient in the
+  INITIAL state: ordering evidence in first-breath readability,
+  not in t95; (2) d3 still RISING at breath 15 while solution
+  asymptoted at 5 — deeper schema content resolving AFTER
+  solution, territory no registered signature predicted; (3) d2
+  shows the early-peak-fade shape (naked-single's whisper,
+  now at depth grain). NEXT INSTRUMENTS NAMED: sharper readout
+  (MLP, pre-authorized lineage) for d3's sub-margin rise; a
+  longer-K capture if d3's climb is real (its asymptote lies
+  beyond the window). Status unchanged and honest: anti-A FINAL;
+  B-vs-C OPEN — the fixture keeps yielding texture, the seal
+  keeps its price, and the bars have not bent once tonight.
