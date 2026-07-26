@@ -12034,3 +12034,35 @@ token-position × waist-dim, the moment the skeleton trains.
   expressive probe); min-support guard carried (MLP on thin
   support overfits to false rises exactly where linear showed
   false floors).
+- **THE MLP READ PRINTS: THE DEPTH AXIS SEALS AND THE RATE
+  CONSTANT CERTIFIES (2026-07-26; MLP fixtures 3/3 PASS first —
+  XOR 0.987/linear-blind 0.515, null 0.501, linear 0.998):**
+  d3plus-SOLUTION: 0.415 -> 0.787 (peak breath 12), rise +0.372
+  RANGE-CERTIFIED, **t95 = 11 — inside the registered 10-12
+  window**. The linear ruler's 0.48 plateau was the FLOOR CASE
+  confirmed: deep content was there, curved past a linear read.
+  THE CERTIFIED LADDER: solution t95 by depth = 2 / 7 / 11 —
+  linear fit slope ~4.5 breaths per deduction layer, intercept
+  -2.3, residuals +/-0.3 (conjectured ~3.5; window HIT).
+  REGISTERED OUTCOMES (1) AND (3) CO-PRINT: content finishes in
+  depth order on THREE certified curves -> THE DEPTH AXIS SEALS
+  (B-vs-C resolved in its recast form: the spectral axis is
+  DEDUCTION DEPTH, not altitude-family); and the rise centered at
+  the predicted breath -> THE RATE CONSTANT CERTIFIES — the loop
+  derives soft, continuous, and CLOCKED. THE INVERSION FULLY
+  DISSOLVES: deep solution resolves at 11, not with the mean's
+  fictional 5; the -0.050 'late-rise' was the floor artifact the
+  apparatus law predicted. NEW TEXTURE, fourth-bin filed:
+  d3-SCHEMA (the fact THAT a cell is depth-3-forced) certifies at
+  t95=3 while its VALUE certifies at 11 — DETERMINATION-DETECTION
+  PRECEDES VALUE-CRYSTALLIZATION by ~8 breaths: the loop knows
+  WHICH cells are forced long before it knows WHAT they are
+  forced to. No registered signature predicted that split; it is
+  the soft-deducer's most distinctive fingerprint yet. K-SWEEP
+  INHERITS THE QUANTITATIVE FORM: cutting K below 11 kills
+  depth-3 problems first, below 7 depth-2 — the fdiv-mass wall
+  derived from first principles, now with numbers. LONGER-K
+  CAPTURE: NOT NEEDED (d3's asymptote lives inside the window,
+  as the rate predicted). #72's soft-deducer clause: MEASURED,
+  ORDERED, AND CLOCKED. Queue: K-sweep (quantitative) -> torsion
+  -> #72 parser-side instruments.
