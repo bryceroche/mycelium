@@ -11320,3 +11320,36 @@ token-position × waist-dim, the moment the skeleton trains.
   what survives is opaquer. Annotations in
   .cache/altitude_census_fifty.json with annotator field
   (bryce-relay-verified / claude-forensic).
+- **THE TWENTY-THIRD SPECIMEN (2026-07-25, mine — THE CENSUS CUT
+  LACKED THE QUORUM COLUMN) + THE REAL LIE CENSUS (the corrected
+  read):** stage-two implementation began with root-cause on the
+  zero-lie species and found the vote plumbing innocent (solve2
+  returns None on any failure, never a default) — then found the
+  cut guilty: the fifty 'true lies' were selected by quorum-FREE
+  plurality over non-None votes, and ALL FIFTY are sub-quorum
+  (typically 1-of-5 stray votes among abstentions). The deployed
+  chain (majority >=3) ABSTAINS on every census specimen; the gate
+  never emitted a single one of those answers. Same root-cause
+  family as the twenty-first (the cut definition, not the
+  measurement). THE CORRECTED READ, banked in
+  .cache/quorum_lie_census.json: at the deployed quorum on bigtest
+  n=1500 — gen16: 1217 right / 223 sub-quorum-abstain / 60
+  all-abstain / ZERO LIES. gen21: 1227 right / 218 / 54 / ONE LIE
+  (item 228: emitted 0, gold 20, quorum exactly 3/5). VERDICT
+  RE-SCOPES, MANNER-IS-RESULT: the altitude census's findings
+  stand as a portrait of the ABSTENTION FRONTIER's parse-failure
+  texture (binding-dominant, three species, zero
+  arithmetic/topology errors) — the frontier the books migrate —
+  NOT as emitted lies; every headline sentence reading 'the gate
+  lied' is corrected to 'a failing view parsed'. ITEM 228 AUTOPSY:
+  the one true lie is the collapse-to-zero species with an
+  UNATTESTED answer — 0 appears nowhere in the text's digits
+  {7,18,58} and nowhere in the gold system; gen16 sat sub-quorum
+  2/5-RIGHT on the same item, so gen-21 crossed the vote boundary
+  the wrong way (a boundary-toll casualty caught by the lie
+  census). THE CONVERGENCE, for the ruling's re-word: the
+  abstention zone's dominant unreadable species (collapse-to-zero,
+  unattested) is EXACTLY the species of the single lie that
+  crosses the wall — the frontier census predicted the leak. The
+  ruling's three stages await Bryce's re-word against corrected
+  premises; nothing fired on the voided framing.
