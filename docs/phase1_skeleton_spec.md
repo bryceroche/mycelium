@@ -11492,3 +11492,59 @@ token-position × waist-dim, the moment the skeleton trains.
   trusted. The abstention 228 becomes lands in repair-lattice
   territory; the lattice's recovery rate on this species is now a
   measurable question with exactly one specimen feeding it.
+- **GUT #71: PARALLEL LOWERING / DIFFUSION COMPILER (2026-07-25,
+  Bryce direct — two wonderings registered as ONE hypothesis seen
+  from two sides, and THE THIRD SIGNATURE pinned into the
+  crossover probe BLIND, at the last moment a signature can be:
+  the probe has not run):** #69's no rejected SEQUENTIAL lowering
+  (a pipeline in time); the registered alternative was flat
+  convergence. PARALLEL LOWERING is a third thing: the loop holds
+  ALL altitudes simultaneously and refines them together, but they
+  RESOLVE at different rates — coarse structure early, fine values
+  late, no altitude ever handed off because nothing is exclusively
+  at one altitude. That is what a diffusion process does:
+  denoising refines the whole object every step, yet low-frequency
+  content resolves first as a SPECTRAL fact about the dynamics,
+  not a scheduled pipeline. THE AMENDED PRE-REGISTRATION
+  (signatures A/B/C, pinned before any latent is read): A =
+  sequential lowering — RANK CROSSOVER in time (schema probes peak
+  early then yield to solution probes). B = flat convergence — all
+  families rise together, NO ordering in when they reach
+  asymptote. C = parallel lowering / diffusion-like — all families
+  rise from breath one, NO rank crossover, but TIME-TO-ASYMPTOTE
+  is strictly ordered by altitude (surface/schema early, solution
+  late), every family improving throughout. B-vs-C discriminant =
+  asymptote ordering -> READOUT SPEC AMENDMENT (lands before the
+  run, by law): the probe BANKS PER-BREATH DECODE CURVES PER
+  FAMILY, not just final accuracies. RIDER (falsifiable, from
+  artifacts the probe already holds): if diffusion-like, torsion
+  collapse and solution-probe resolution are CORRELATED IN TIME
+  per problem — the trajectory straightens as fine content
+  crystallizes. THE FRAME'S RENT, stated with the registration:
+  no noise schedule (sigma constant), deterministic fixed-point
+  target, no training-time noising — the frame earns
+  'diffusion-like dynamics,' never 'diffusion model.' MEASURED
+  JOINTS carried in: SBP sigma=0.02 VERIFIED (+0.0153 hard,
+  2026-06-06, banked booth — a fixed-point iterator that noise
+  HELPS is behaving like a denoiser, noise load-bearing for basin
+  escape); commit/propagate waist alternation VERIFIED as named
+  phenomenon (reads as alternating projection / guidance
+  structure); torsion-collapse VERIFIED as named phenomenon, but
+  the numeric range Bryce cites (tau ~110-178 deg zigzag ->
+  directed) is NOT in the current docs tree — carried as
+  relay-cited, UNVERIFIED, per the nineteenth specimen's law;
+  verify against June transcripts before any verdict leans on the
+  numbers. THE RETRO-READ PREDICTION (written before C can print):
+  if C, the breath ladder works for a SPECTRAL reason — more
+  breaths buy finer-content resolution, predicting harder problems
+  (deeper chains, the fdiv-mass wall) degrade FIRST when breaths
+  are cut; the ablation-staircase and K-sweep archives may already
+  hold this correlation unread, and that retro-read is the first
+  act of a C-print. VERDICT ROUTES: B prints -> both wonderings
+  die on a measurement and #69's no stands TWICE-tested. C prints
+  -> #70 was wrong the way good guts are wrong (right phenomenon,
+  wrong topology: lowering real, sequence not), and Lattner-frame
+  and diffusion-frame name the same engine from compile side and
+  dynamics side — a compiler whose passes all run at once and
+  finish in altitude order. Queue unchanged: probe holds its GPU
+  slot BEHIND the v2 pass; this amendment is the pen-work.

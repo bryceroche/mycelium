@@ -88,6 +88,7 @@ only — this index does not reconstruct what the record does not number.
 | 68 | "we're building a neural compiler and Chris Lattner is the King of compilers" | The neural compiler (Lattner) | the dialect written as law + verifier built; replay DOUBLE-ZERO: decode is a verifier by construction, all failures are well-formed lies; seat re-aimed at the organ door | — |
 | 69 | "Lattner: 'premature lowering is the root of all compiler evil'" | Premature lowering (Lattner III) | loc into the spec; the canonicalizer (bars pinned); THE ERROR-ALTITUDE CENSUS gates the schema dialect; breaths != lowerings (the no banked) | — |
 | 70 | "breath cycles act as progressive lowering passes" | Breaths as lowering (relitigation) | THE ALTITUDE-CROSSOVER PROBE (signatures blind: crossover=lowering, parallel=convergence); state-borne clause; doors 5-8 held; the frame-tenant line | — |
+| 71 | "i'm starting to wonder if gut 69 is correct with the progressive lowering in parallel (instead of sequential) i also wonder if we're running a diffusion compiler (that is a transformer under the hood)" | Parallel lowering / diffusion compiler | SIGNATURE C amended into the crossover probe (blind, before any latent read): asymptote-ordering discriminant + per-breath curve readout spec + torsion-resolution rider + the K-sweep retro-read prediction | — |
 
 ## The registry's arithmetic
 
