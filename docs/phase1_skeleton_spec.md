@@ -12692,3 +12692,22 @@ token-position × waist-dim, the moment the skeleton trains.
   problems where binding fails EVEN WITH deductive help visible
   in text. BANKED AS A NAMED FIXTURE (roundtrip_enriched) by the
   CPU pass, before it dissolves into the pool.
+- **GUT #73: FLEXIBLE BINDINGS (2026-07-26, Bryce — the 1%
+  print's mechanism name):** YES, with the pair made explicit:
+  the parser's bindings are FROZEN AT EMISSION (hard argmax, no
+  revision machinery) — the flexibility half. But the house
+  already owns weak flexibility and it prices the distinction:
+  TTA resampling (five independent re-bindings) buys the ENTIRE
+  abstention wall (0.688 of failures hold a right view somewhere)
+  and ZERO recovery — RESAMPLING CERTIFIES; REVISION RECOVERS.
+  The engine shows true flexible binding from inside:
+  existence-commitments at breath 0, values held SOFT and
+  narrowing for 2/7/11 breaths — candidates hardening only as
+  propagation forces them. THE CRITIQUE HALF: flexibility without
+  in-loop deduction is softness with nothing pushing (noise);
+  deduction without flexibility is the round-trip (0.011,
+  pressure with nothing soft to push on). ONE MECHANISM: bindings
+  that stay soft exactly as long as propagation still runs
+  against them — the syllogism's hold-both-at-once given its
+  mechanism name; v200's per-breath soft slot refinement IS it.
+  The capture's question gains its mechanism vocabulary.
