@@ -11566,3 +11566,23 @@ token-position × waist-dim, the moment the skeleton trains.
   (deep in asymptote) while damaging the still-crystallizing
   solution family. An intervention discriminant, not a
   correlation — the texture rule's preference.
+- **THE FOURTH BIN (2026-07-25, Bryce's epistemic rivet, pinned
+  while everything is still blind):** A/B/C partition the CLEAN
+  outcomes; probes read messy (two families order and one doesn't;
+  crossover on some strata and not others; non-monotone curves no
+  signature predicted). The reading-time hazard is force-fitting —
+  with three named tenants waiting, a messy print gets read as
+  'closest to C' or 'B with noise' unless the fourth bin exists in
+  advance. THE LAW, one sentence: a print matching no registered
+  signature banks as UNCLASSIFIED, yields NO verdict for ANY
+  tenant, and its anomaly becomes the next probe's design input.
+  (The census's binary-resister lesson applied one level up: the
+  specimens that resist the categories are data ABOUT the
+  categories — a class the ledger already seated at 10-of-50, then
+  named 'ungrounded.') FOR THE RECORD, the intersection credit:
+  asymptote-ordering-without-crossover is a prediction NEITHER
+  frame was built to make — Lattner has no native parallel
+  resolution, diffusion no native dialect altitude; it lives only
+  in their intersection, which is why two independent arrivals
+  carry evidential weight a single frame's advocacy would not. If
+  C prints, the intersection IS the finding.
