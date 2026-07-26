@@ -11897,3 +11897,32 @@ token-position × waist-dim, the moment the skeleton trains.
   MLP on d3 -> longer-K capture (only GPU item, only if d3's
   asymptote truly lives outside breath 16) -> K-sweep -> torsion.
   PENS RESTED on Bryce's word; the fixture keeps.
+- **GUT #72: THE SOFT DEDUCER BET (2026-07-26, Bryce direct — the
+  architecture bet stated whole):** the neural loop is a diffusion
+  compiler (transformer under the hood), progressive lowering IN
+  PARALLEL, internal latents acting as a PARALLEL CONTINUOUS
+  DEDUCER — removing the need for the v98 Pythia deducer; the soft
+  deducer BUILDS the factor graph (the hard part), the graph hands
+  to GAC for exact solving. COUNTERSIGN AGAINST THE RECORD: three
+  clauses underwritten — construction-is-the-hard-part is MEASURED
+  (the census: all failure mass at binding, zero at computation);
+  graph-to-GAC is standing law; latents-deduce has its first
+  specimen (0.87-from-breath-1, deduction materialized in latent
+  space) with the depth-axis read queued to sharpen it. ONE clause
+  rides the rivet: the C print was measured on the PYTHIA ENGINE —
+  the very deducer the bet retires — and the parser loop is
+  single-pass (its lowering axis would be LAYERS, never probed);
+  B-vs-C itself still open. THE CONVERSION, three measurable
+  claims: (i) PARSER-SIDE LAYER-AXIS LOWERING PROBE — the
+  crossover probe family with axis=layers on the banked trunk
+  states (near-zero cost; meter fixtures stand in front of it);
+  (ii) DERIVED-VALUE READABILITY IN PARSER LATENTS — the
+  chained-fdiv registry resident is the born fixture (the
+  derived-value digit path IS construction-requires-deduction);
+  if derived values read linearly before emission, the soft-
+  deducer clause earns parser-side evidence; (iii) DEDUCER
+  RETIREMENT is a QUEUE RULING gated on (i)+(ii) printing — the
+  proxy experiment (deducer witness door) stands until then,
+  dissolves after. Queue position: behind the depth-stratified
+  solution read (which sharpens (ii)'s premise) per the banked
+  price order; registration is pen-work, fired now.
