@@ -11981,3 +11981,31 @@ token-position × waist-dim, the moment the skeleton trains.
   |c[15]-c[5]| < 0.03 with deep stratum asymptoted by ~5 -> the
   INVERSION STANDS as the strange fact. Shallow stratum expected
   t95 <= 5 (the mean's majority). Fourth bin standing for mess.
+- **THE DEPTH-STRATIFIED SOLUTION READ PRINTS (2026-07-26, bars
+  pinned at 95c4f94):** d1 (431 read cells): 0.801 -> 0.907 by
+  breath 2 -> ~0.92; rise +0.126 RANGE-CERTIFIED, t95=2, late-rise
+  +0.021. d2 (434): 0.530 -> ~0.82; rise +0.303 RANGE-CERTIFIED,
+  t95=7, late-rise +0.044 (ABOVE the 0.03 bar). d3plus (382):
+  0.371 -> noisy plateau ~0.48, late-rise -0.050, non-monotone —
+  the pinned verdict keys on this stratum: **INVERSION STANDS as
+  pinned; the bar does not bend.** BUT THE SHEET'S LARGER YIELD,
+  banked with it: (1) THE FIRST RANGE-CERTIFIED t95s OF THE ENTIRE
+  PROBE CAMPAIGN — d1 t95=2 and d2 t95=7, curves with certified
+  rise on a certified meter — AND THEY ORDER BY DEPTH (2 < 7),
+  within one family. (2) THE SOLUTION MEAN'S BREATH-5 ASYMPTOTE
+  WAS A MIXTURE ARTIFACT, exactly as the confound suspected: d1
+  finishes at 2, d2 at 7 — 'solution finished at 5' was never a
+  fact about any stratum; the inversion's premise dissolves even
+  though its pinned test (keyed to d3plus) stands. (3) d3plus is
+  FLOOR-SUSPECT: 0.48 macro-recall noisy plateau — the linear
+  ruler may not read deep content at all (the apparatus law's
+  floor case, third appearance); its -0.050 'late-rise' is
+  uninterpretable until the MLP reads it. STATUS: the depth-axis
+  hypothesis now holds TWO certified points (solution content
+  finishes in depth order, 2 then 7) and awaits the deep stratum
+  on a sharper ruler; B-vs-C reframed per the registered recast —
+  'does content finish in depth order' — with the first certified
+  evidence saying YES for the strata the ruler can read. MLP on
+  d3plus + d3-schema is now THE single instrument both open
+  questions share. Fourth-bin note: d3plus non-monotone noise
+  (+/-0.05) no signature predicted.
