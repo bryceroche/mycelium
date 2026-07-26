@@ -11457,3 +11457,38 @@ token-position × waist-dim, the moment the skeleton trains.
   0-catch — and the residual lie lives at binding altitude, the
   level with no dialect; both v2 clauses are schema-level facts
   expressed in arith3 clothing (the bolt-on tell).
+- **THE WORD: E13 ENTERS + THE v2 PASS (2026-07-25), with the
+  TAXONOMIC CORRECTION banked first:** E13 is NOT a schema-level
+  fact in arith3 clothing — result-in-own-args is condemnable from
+  the graph alone (pure form, no text, no binding knowledge): it
+  joins the k=1/k=0 family by jurisdiction, the verifier's fourth
+  seated check, NATIVE. The bolt-on family's count is ONE (the
+  multiplicity clause, which genuinely requires text-side
+  knowledge arith3 has erased) — and the correction matters
+  because the house-wants-the-floor argument's strength IS the
+  count; when the family grows, it grows honestly. SEATED THIS
+  TRANSACTION: E13 in mycelium/arith3_verifier.py (rel+sel;
+  sanity: gold universe still 0 errors; the self-loop specimen
+  condemned) + the self-loop law and the REGISTER-CONDITIONAL
+  section (multiplicity formal-only; the scoping rule: register
+  flag provenance-carried, never inferred at check time) in
+  docs/ARITH3_DIALECT.md — same transaction, per the law.
+  SUBSTRATE CORRECTION owed on the stale-zero re-read: the 0/3800
+  replay's graphs were NEVER banked (verifier_replay.json is a
+  91-byte summary); the zero-GPU replay Bryce assumed does not
+  exist yet. The re-read therefore rides the v2 pass, which decodes
+  and BANKS all 7,500 view graphs (attest_graphs_gen21.jsonl) and
+  runs the FULL verifier census over the complete view population
+  — stated as its own population, not the 3800's.
+- **REGISTERED PREDICTION — THE v2 BARS (Bryce's word, pinned
+  BLIND before the pass fires; overfit hazard named — v2 was
+  assembled looking at its one customer):** (i) ZERO false flags
+  across all 1227 banked-correct rows, same severity as v1; (ii)
+  item 228 flags on ALL THREE winning views (n_att_v2 == 0) ->
+  quorum unattested -> abstain-ungrounded -> gen-21 stands at ZERO
+  LIES on the fixture; (iii) NO other quorum item changes
+  disposition vs the v1 read — any additional flip sends the
+  empty-set scan and the fence BOTH under audit before either is
+  trusted. The abstention 228 becomes lands in repair-lattice
+  territory; the lattice's recovery rate on this species is now a
+  measurable question with exactly one specimen feeding it.

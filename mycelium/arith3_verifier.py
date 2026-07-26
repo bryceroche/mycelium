@@ -40,6 +40,9 @@ def verify(factors):
             for a in list(args) + [f.get("result")]:
                 if not _var_ok(a):
                     errs.append(("A3.E04-varrange", j, f"ref={a}")); break
+            if f.get("result") in list(args):
+                errs.append(("A3.E13-selfloop", j,
+                             f"result={f.get('result')} in args"))
         elif t in ("mod", "fdiv"):
             k = f.get("k")
             if not (isinstance(k, int) and k >= 2):
@@ -53,6 +56,9 @@ def verify(factors):
             for a in list(f.get("args", [])) + [f.get("result")]:
                 if not _var_ok(a):
                     errs.append(("A3.E04-varrange", j, f"ref={a}")); break
+            if f.get("result") in list(f.get("args", [])):
+                errs.append(("A3.E13-selfloop", j,
+                             f"result={f.get('result')} in args"))
         elif t == "pct":
             if "args" not in f or "p" not in f:
                 errs.append(("A3.E10-fields", j, "pct missing args/p"))

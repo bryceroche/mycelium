@@ -57,3 +57,36 @@ def attest_quorum(view_parses, quorum_answer, text, m, solve_fn):
     n_att = sum(1 for f, q in winners
                 if attest_view(f, q, quorum_answer, text, m, solve_fn))
     return n_att > 0, len(winners), n_att
+
+
+# --- fence v2 (2026-07-25, the word after the 228 autopsy) -----------------
+
+def multiplicity_ok(facs, text):
+    """FORMAL REGISTER ONLY (the dialect's first register-conditional law;
+    the register flag is provenance-carried, never inferred here — the
+    caller owns the scoping). Givens carrying value X may not outnumber
+    the text's statements of X."""
+    from collections import Counter
+    gv = Counter(f["value"] for f in facs if f.get("ftype") == "given")
+    tv = Counter(int(x) for x in re.findall(r"\d+", text))
+    return all(gv[v] <= tv.get(v, 0) for v in gv)
+
+
+def attest_view_v2(facs, q, answer, text, m, solve_fn):
+    """v2 = form law (E13 via the seated verifier) + multiplicity clause
+    (formal register) + v1 strip-and-reforce. A view condemned by form
+    cannot attest anything; a view wearing a literal more times than the
+    text states it cannot attest; otherwise v1 applies."""
+    from mycelium.arith3_verifier import verify
+    if any(c == "A3.E13-selfloop" for c, _, _ in verify(facs)):
+        return False
+    if not multiplicity_ok(facs, text):
+        return False
+    return attest_view(facs, q, answer, text, m, solve_fn)
+
+
+def attest_quorum_v2(view_parses, quorum_answer, text, m, solve_fn):
+    winners = [(f, q) for f, q, a in view_parses if a == quorum_answer]
+    n_att = sum(1 for f, q in winners
+                if attest_view_v2(f, q, quorum_answer, text, m, solve_fn))
+    return n_att > 0, len(winners), n_att

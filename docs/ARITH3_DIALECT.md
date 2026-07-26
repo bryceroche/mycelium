@@ -44,6 +44,31 @@ here is a change there, same transaction.
 - **The canonicalizer's provenance contract** (written before its first
   line): constant-folding MERGES loc sets, never drops them — implied by
   false-merge-zero, now stated as law the builder inherits.
+- **The self-loop law (E13, 2026-07-25 — Bryce's word on the 228
+  autopsy):** a rel/sel result must not appear in its own args.
+  `add(a,b)->a` is a constant assignment (b=0) wearing a relation's
+  clothes — the vacuous-factor family's additive cousin, condemnable
+  from the graph alone (pure form; no text, no binding knowledge).
+  Empty-set evidence: 0 self-loops in the entire gold universe
+  (bigtest 1500 + test 300 + gen21_mix 78,400); occurs in the wild
+  view population (item 228 views 2–3, the structural zeros).
+  Verifier check E13-selfloop, the fourth seated check — native,
+  no smuggling.
+
+## Register-conditional law (the first; the flag is load-bearing)
+- **The multiplicity clause (formal register ONLY):** givens carrying
+  value X may not outnumber the source text's statements of X. On the
+  formal register this is law by construction (0/1,800 fixtures). On
+  PROSE it is false by design — the rulebook's lexical-explicitation
+  allowance legitimately implies knowns (16=4×4 handshakes; 60 min/hr):
+  3,580/78,400 mix rows. Prose's lawful form is the loc/derived
+  provenance mark (E12), not multiplicity.
+- **The scoping rule (stated here, not in any fence's implementation):
+  the register flag is provenance-carried, never inferred at check
+  time.** A prose row misfiled as formal gets falsely flagged; formal
+  misfiled as prose escapes the clause. Back-annotation of the book
+  rows (70/3,580 currently carry marks; spans are the bridge) is on
+  multiplicity's critical path for any future prose jurisdiction.
 
 ## Loop law (the state-borne clause, #70)
 Breath specialization, where it exists, is state-borne, never
