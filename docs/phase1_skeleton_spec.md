@@ -12417,3 +12417,30 @@ token-position × waist-dim, the moment the skeleton trains.
   with: the fixtures are reusable, the discipline is compounding,
   and the next hard question arrives at a house that already
   knows how to refuse itself.
+- **THE DISCRIMINANT PRINTS (2026-07-26, on the enriched fixture —
+  matching quality 0.021 z-units, surface silenced by
+  construction):** crosser-side accuracy tracking g21: linear
+  embed 0.513 / L0 0.551 / L1 0.577 / L3 0.513; MLP embed 0.603 /
+  L1 0.654. THE BAR (acc >= 0.575 at L0-L1): LETTER-PASSED by
+  linear L1 at 0.577 — by 0.002, binomial p 0.106 alone, FLAGGED
+  as knife-edge; CORROBORATED by the MLP at 0.654 (p ~0.004) and
+  by AUC 0.641/0.660 at L1. THE SHAPE IS THE FINDING: on the
+  crossers, EMBEDDING reads near-chance (linear 0.513 — the
+  matching worked; surface is mute) and the signal RISES WITH
+  PROCESSING to L1 on both rulers — each ruler clearing its own
+  input-floor by ~0.05-0.06 at L1 (linear +0.064, MLP +0.051;
+  the MLP's embed 0.603 is its honest nonlinear-surface floor and
+  is cleared). That is the shape self-knowledge must have and
+  difficulty cannot: absent at input, present after computation,
+  peaked mid-stack, GONE by L3 on the linear ruler (0.513 — the
+  head reads what L1 held; consolidation-law texture). VERDICT,
+  stated at its earned strength: THE PARSER CARRIES A MEASURED,
+  GENERATION-SPECIFIC COMPETENCE COMPONENT — modest (AUC ~0.64-
+  0.66), L1-centered, processing-borne — ATOP A DOMINANT
+  DIFFICULTY MAP (surface floor 0.859). #72's sentence upgrades
+  precisely: the compiler knows the terrain deeply and ITSELF
+  MODESTLY — self-knowledge exists parser-side, small but real,
+  and the abstention seat has two spendable signals of different
+  grain. The strengthening path if ever needed: more crossers
+  (future generations mint them free at every promotion — the
+  migration law as a growing fixture).
