@@ -12330,3 +12330,35 @@ token-position × waist-dim, the moment the skeleton trains.
   with the length-controlled re-read as the seal's price. The
   chained-fdiv resident and the binding family remain the
   fixture's unread reads; v200 owns the loop question.
+- **THE DIFFICULTY-VS-COMPETENCE DISCRIMINANT (2026-07-26, Bryce —
+  the 0.897-at-embedding read as ALARM, not foundation):** the
+  embedding is the INPUT — 0.897 there means right-vs-abstain is
+  largely predictable from surface statistics alone; the rival
+  reading (HARD PROBLEMS LOOK HARD) is statistically
+  indistinguishable from layers-sharpen at n=80 (0.897 vs 0.942
+  inside CI). Competence and difficulty are DIFFERENT CLAIMS and
+  only one is self-knowledge: difficulty = 'this problem is hard'
+  (readable from input, true for any system); competence = 'THIS
+  system fails HERE' — separable only on the DISAGREEMENT
+  POPULATION (items whose disposition changed across generations,
+  the migration law's own traffic). THE SEAL'S PRICE RISES TO
+  THREE READS, bars pinned: (1) LENGTH-CONTROLLED re-read —
+  competence claim needs length-controlled L1 AUC >= 0.75. (2)
+  SURFACE-BASELINE CONTROL — probe on trivial features (length,
+  n_vars, digit count, sentence count) sets the FLOOR; latent
+  reads must clear it by >= 0.05 to claim anything beyond
+  difficulty (meter-fixture discipline applied to confounds). (3)
+  CROSS-GENERATION DISCRIMINANT — train on g21 outcomes, read the
+  disagreement items (g16 vs g21 dispositions differ, both
+  lattices banked): COMPETENCE prints iff the probe tracks g21's
+  side by accuracy margin >= 0.15 over its g16-tracking on those
+  items, n >= 30; below 30 -> INSUFFICIENT-SUPPORT, widen the
+  capture first (check the count BEFORE reading). ENGINE
+  COROLLARY: the pre-breath rivet gains a line — cell-grain
+  reduces but does not remove the confound; the true-pre-breath
+  read doubles as the engine's difficulty-vs-knowledge control.
+  HEADLINE WAITS: the week's symmetry is one measured
+  self-knowledge result and ONE UNRESOLVED CONFOUND until the
+  discriminant prints. The humble polarity survives every
+  outcome (a difficulty map with sharp failure-recall is still
+  the right species for an abstention lever).
