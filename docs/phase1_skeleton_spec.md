@@ -11678,3 +11678,34 @@ token-position × waist-dim, the moment the skeleton trains.
   single GPU hour bought a permanent offline fixture (the graph
   bank, the latent bank). Paper II's methods section owns the
   pattern explicitly.
+- **THE CROSSOVER PROBE PRINTS: C (2026-07-25, the offline read on
+  the banked fixture; scope rivet binding — the verdict is the
+  KENKEN ENGINE's):** curves (linear ridge probes, by-instance
+  160/80 split): SURFACE 1.000 flat all 16 breaths; SCHEMA 1.000
+  flat all 16; SOLUTION 0.552 -> 0.752 monotone, t95 = breath 5.
+  Mechanical read per the pinned operationalization: no rank
+  crossover; all monotone (tol .02); t95 0 <= 0 < 5 — C's
+  criteria met. THE APPARATUS CAVEAT, same audit a displeasing
+  print would get: surface/schema sit at PROBE CEILING from breath
+  0 — 'resolved early' and 'trivially present' are not
+  discriminated, so the surface<=schema leg is DEGENERATE. What
+  the ceiling DOES deliver is the strongest anti-A evidence
+  available: schema information is NEVER ERASED at any breath — no
+  handoff, no yielding, which sequential lowering requires; and
+  the B-vs-C leg stands on solid ground (schema t95=0 vs solution
+  t95=5, strictly ordered). VERDICT AS BANKED: C prints with the
+  ceiling caveat ledgered — #69's no REVISED for this engine
+  (lowering real, sequence not: all altitudes held simultaneously,
+  resolution ordered by altitude), #70 wrong the way good guts are
+  wrong, the diffusion frame earns its FIRST territory (KenKen
+  engine only; v200 by measurement, never analogy).
+  STRENGTHENING READS QUEUED (zero-GPU, the fixture is permanent):
+  (a) harder schema targets (cage_size, op-x-size joint) or
+  reduced-capacity probes to lift schema off ceiling and read its
+  true resolution time; (b) RIDER 1: torsion-resolution
+  correlation from the banked reps; (c) RIDER 2: the perturbation
+  sweep (one more GPU pass when queued); (d) the K-sweep
+  RETRO-READ (C printed -> first act: harder problems should
+  degrade first when breaths are cut). Artifacts:
+  .cache/crossover_capture_k16.npz (permanent),
+  crossover_probe_read.json, scripts/crossover_probe_read.py.
