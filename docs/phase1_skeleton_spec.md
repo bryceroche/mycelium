@@ -11394,3 +11394,25 @@ token-position × waist-dim, the moment the skeleton trains.
   >1 means the lie census and the check disagree and BOTH go under
   audit before either is trusted. Verdict script prints both
   numbers; seat-in-battery gates on bar (i).
+- **THE ATTESTATION READING FRAME (2026-07-25, Bryce's counsel,
+  pinned BEFORE the sentinel fires — framework not reaction):** the
+  criterion is stricter than node-membership — attestation requires
+  the givens-stripped graph to FORCE the answer through uniqueness,
+  so the check can flag a correct answer whose compiled graph
+  under-determines it (right answer reached by luck or unattested
+  structure). Consequence pre-pinned: a nonzero false-flag count
+  has TWO anatomies routing to DIFFERENT owners — (a) a genuine
+  hole in the loc/derived chain -> TIGHTEN's provenance contract;
+  (b) an under-determination row (graph weaker than the answer it
+  banked) -> the mint lines. AUTOPSY BEFORE ATTRIBUTION. At the
+  pinned expectation (zero false flags, exactly one catch): gen-21
+  stands at zero lies on the fixture with the fence seated, the
+  chain is certify-answer-flag-abstain with every link measured,
+  and the check retires into Ruling 7's discipline (count printed
+  per battery; insurance for the wild road). More than one catch:
+  census and check disagree about the lie population — BOTH under
+  audit; the twenty-third specimen's family may have another
+  member. Also noted: the eval-load hard-error refusing
+  ALG_FTYPES=6 and 7 loudly is the mv-glob lesson's descendant — a
+  silent 6-load would have produced a plausible attestation read
+  on the wrong gate.
