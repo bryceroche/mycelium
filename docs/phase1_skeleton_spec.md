@@ -12147,3 +12147,19 @@ token-position × waist-dim, the moment the skeleton trains.
   accepted as law. Savor line, one line by the word: the
   conjecture was right, the first ruler was wrong, the bar
   refused, and the right ruler vindicated it anyway.
+- **THE GAP RETRO-READ PRINTS: CONSOLIDATION (2026-07-26, bars at
+  5b2283f):** MLP t95(d2-solution) = 4 — a 3-breath shrink from
+  linear's 7 (bar: >=2), beside the engine's 3. d1 control: MLP 3
+  vs linear 2 vs engine 1 (+/-1, noise-level; noted honestly as a
+  1-breath counter-motion). VERDICT: the two-clock gap is
+  REPRESENTATIONAL CONSOLIDATION — content is task-usable early
+  and becomes GENERICALLY visible as it consolidates; stronger
+  rulers see it sooner, and the ladder converges toward the
+  engine's clock as capacity rises (engine 1/3/8 <- MLP 3/4/11 <-
+  linear 2/7/11). LAW: every probe-derived breath in the ledger
+  is a RULER-RELATIVE UPPER BOUND on engine-usable time — the
+  determination signal is likely engine-usable at breath 1-2, as
+  the suspicion filed; its docket reads on the deployed clock.
+  Queue: determination probe (both clocks) -> torsion -> #72
+  parser-side instruments, v200 trichotomy standing at raised
+  urgency.
