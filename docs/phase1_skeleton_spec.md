@@ -12868,3 +12868,27 @@ token-position × waist-dim, the moment the skeleton trains.
   board holds everything for the training word. Machinery status:
   code+weights+fixture+ckpt reunited — all four; the reunion
   checklist law gains its full form.
+- **THE CHEAP READS' DOUBLE-CARVED SCOPE + THE GATE'S THREE
+  PREREQUISITES (2026-07-26, Bryce's word):** the reads RUN,
+  scoped twice: (1) they characterize an UNDERTRAINED ARTIFACT
+  and validate INSTRUMENTATION — they say NOTHING about the
+  architecture; (2) CANNOT-LICENSE REGISTER (conviction-index-
+  adjacent, pre-written): no future entry may cite 'v200's clock
+  read at X' or any capture number from this ckpt without the
+  undertrained qualifier attached — the numbers license
+  instrument verdicts only. YIELDS SOUGHT: does the flip-detector
+  fire; does clock-read machinery produce curves at this depth;
+  do probe families port to H=2048 without meter faults; and the
+  one informative read — ANY above-chance structure at near-floor
+  (calib/competence analog) = what the architecture gives FOR
+  FREE vs what training must buy (the pre-breath rivet's
+  distinction drawn at the training axis). THE GATE'S WORD HELD
+  until three stand: (a) instrument-validation banked; (b) a
+  WRITTEN TRAINING PLAN with scope pinned before enthusiasm —
+  domain (arith3-from-birth vs KenKen-first), budget in fires,
+  kill-bars (recovery on the 257 above 0.011; revision signature
+  as mechanism check); (c) CARRY-FORWARD INVENTORY RECONCILED —
+  v110-era validated components (alternating waist, Q rotation,
+  calibration stepping, SBP, staircase) were proven on the ENGINE
+  lineage and enter the plan as ASSUMPTIONS-TO-BE-TESTED, not
+  assets-in-hand: unexamined inventory is where revenants breed.
