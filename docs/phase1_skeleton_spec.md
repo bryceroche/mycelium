@@ -12475,3 +12475,18 @@ token-position × waist-dim, the moment the skeleton trains.
   modestly — provisional-real, replication scheduled by the
   campaign's own heartbeat, expenditure anatomy resolved
   (re-encoding), maintenance cost written into the seat.
+- **THE CLOSING NOTES (2026-07-26, Bryce; the wheel rests):** (1)
+  THE DEPLOYMENT CEILING RAISED: re-encoding means the self-map
+  RIDES TO THE EXIT — the output-adjacent layer carries the
+  self-assessment in nonlinear form, woven into the representation
+  the graph is emitted from; a deployed abstention reader taps L3
+  with the sharper key, no mid-trunk tap needed. (2) THE
+  PROCEDURE PRECEDENT: the house now holds a demonstrated
+  procedure for ARCHITECTURE BETS AS SUCH — bundle unbundled,
+  claims ranked by standing, each clause assigned an instrument,
+  verdicts scoped to fixtures, wanted sentences trimmed (six this
+  week), final form owned by measurements. The v200 trichotomy —
+  the board's gravest open item, its K-ceiling below the home
+  engine's derived floor — enters a house that has done this
+  before. Its first question stands written: what is v200's clock
+  rate, and what depth does K=8 purchase.
