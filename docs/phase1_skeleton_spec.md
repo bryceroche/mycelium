@@ -11709,3 +11709,30 @@ token-position × waist-dim, the moment the skeleton trains.
   degrade first when breaths are cut). Artifacts:
   .cache/crossover_capture_k16.npz (permanent),
   crossover_probe_read.json, scripts/crossover_probe_read.py.
+- **THE RECALIBRATION (2026-07-25, Bryce — the ceiling caveat is
+  LOAD-BEARING, not a strengthening):** B-vs-C turns entirely on
+  asymptote ordering, and schema-t95=0 is an artifact of the ruler
+  if the targets are input-visible — cage ops/sizes are STATIC
+  REFERENCE CONTENT the tokens carry from breath 0; decoding them
+  at breath 0 is 'the probe read the input,' not 'schema resolved
+  early.' The discriminating family is DERIVED structural content
+  — candidate eliminations, forced-cell identifications,
+  constraint-implication facts that exist nowhere in the input.
+  STATUS LINE, banked so the record remembers the leg: **ANTI-A
+  FINAL (no erasure survives any ceiling); B-vs-C PROVISIONAL
+  pending the off-ceiling read** — C is the leading print; the
+  verdict seals when a non-trivial schema family shows its t95
+  strictly inside solution's (a harder target resolving at ~3
+  seals C; at ~5 flips to B). SECOND FINDING the sheet stepped
+  past: solution asymptotes at breath 5, the engine runs 16 —
+  eleven plateau breaths = either invisible late work (nonlinear
+  consolidation) or a 3x oversized breath budget; the K-sweep
+  retro-read arbitrates BOTH the spectral prediction and a
+  possible 3x inference speedup in one pass. OFFLINE ORDER
+  SHARPENED: (1) off-ceiling schema targets — VERDICT-CRITICAL
+  (apparatus note: cage_target/cell_cage_id not in the bank but
+  recoverable zero-GPU — the sample was seed-0 deterministic, the
+  sidecar rebuilds from kenken_test_curriculum.jsonl; build the
+  candidate propagator, label naked-singles/candidate-set-size,
+  probe per breath); (2) K-sweep retro-read; (3) torsion rider.
+  All against the permanent fixture; v200 undiscussed until then.
