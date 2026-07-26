@@ -13066,3 +13066,31 @@ token-position × waist-dim, the moment the skeleton trains.
   authorizing it. BREATH-SPREAD is the confirming witness: gates
   open AND breaths differentiating = learning to breathe; gates
   alone = rattling valves. Fire 1 authorizes only on the pair.
+- **FIRE 0 REPORTS (2026-07-26, read by the pre-pinned trajectory
+  frame):** the two-terminal probe fired correctly — 26
+  attached-unused params excluded LOUDLY BY NAME (the f1efb32-era
+  LoRA banks, cm_gate, waist_odd_scale — exactly the predicted
+  post-run extras; the instrument works). THE PAIR'S FIRST HALF
+  PASSES: gate excursion GROWS monotonically 2.5018 -> 2.5392
+  across the burn, waist gate deepening in lockstep — NOT
+  twitch-and-settle; the mechanism's pressure is durable through
+  500 steps. THE SECOND HALF FAILS: breath-spread OSCILLATES
+  around zero (+0.09 to -0.04, sign-flipping at late reads) and
+  the trainer's own era-bar C4 puts the number on it: ladder
+  slope -0.0037 against the -0.05 criterion — AN ORDER OF
+  MAGNITUDE short of real differentiation. C2 agrees from the
+  latent side: trajectories barely depart the frozen reference.
+  GATES OPEN, BREATHS NOT DIFFERENTIATING — the pre-named phrase
+  lands exactly: VALVES RATTLING, not lungs working. **PER THE
+  PINNED RULE: THE PAIR DOES NOT STAND — FIRE 1 IS NOT
+  AUTHORIZED.** The print INFORMS the schedule as the frame
+  provided: the ask (V200_IMPROVE_W=0.5, margin 0.01) creates
+  gate pressure but not differentiation at 500 steps — Fire 1's
+  design space: stronger/annealed ask, longer budget, and the
+  v98 spine's fuller form (per-breath supervision with markers)
+  rather than margin-pressure alone. Era-bars C1 (loss falls)
+  and C3 (waist alive, up_proj 5.52) passed; the fire completed
+  without the early-kill (gates moved — the kill's condition
+  never met, correctly). EITHER-PRINT-IS-A-FINDING honored: Fire
+  0's yield is the mechanism's anatomy — pressure reaches gates
+  in 20 steps, differentiation needs more than pressure.
