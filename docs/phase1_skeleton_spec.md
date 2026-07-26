@@ -12386,3 +12386,21 @@ token-position × waist-dim, the moment the skeleton trains.
   self-knowledge (cell-grain); parser embedding-time = unresolved
   confound. #72's sentence stays 'born knowing what is hard'
   pending the boundary-crossers' verdict.
+- **SESSION CLOSE + THE ENRICHED CAPTURE'S DESIGN PINS
+  (2026-07-26, Bryce):** the fifth refused verdict joins the
+  meta-law's ledger (five wanted verdicts stopped by pre-pinned
+  bars, five findings extracted) — and the carve for the stretch:
+  the campaign held its bars through VICTORIES, the rarer feat.
+  The residualized 0.883's standing: something beyond linear
+  surface projection IS read; the ATTRIBUTION fails (nonlinear
+  terrain vs self-state) — only the boundary-crossers decide.
+  DESIGN PINS for the disagreement-enriched capture: (1) exact
+  population computed offline: **78 boundary-crossers in the
+  full 1500** (>= 60 -> take ALL plus controls in one pass, no
+  minting); (2) MATCHED CONTROLS BY CONSTRUCTION — each crosser
+  paired on the four floor features (length/n_vars/digits/
+  sentences) so surface difficulty is silenced at capture time,
+  not regressed after (residualization already showed post-hoc
+  control leaves ambiguity). The capture rides the next GPU touch
+  with the pre-breath rivet. #72 stands at 'born knowing what is
+  hard' — one read from either sentence. THE WHEEL RESTS.

@@ -1,3 +1,21 @@
+## SEAL 2026-07-26 — the fixture week: ten barred verdicts on the engine, competence-vs-difficulty OPEN on the parser, 78 boundary-crossers counted
+
+**Board:** engine = self-knowledge MEASURED (breath-0 verdict vocabulary,
+both classes, humble polarity; depth ladder 2/7/11 probe / 1/3/8 engine;
+two-clock consolidation law; wall derived: K=8 costs depth-3 8x). Parser
+= difficulty map certified (surface floor 0.859), competence UNDECIDED
+(residualized 0.883 fails floor+0.05); decisive read = DISAGREEMENT-
+ENRICHED CAPTURE: 78 boundary-crossers (all + matched-on-four-floor-
+features controls, one GPU pass, rides with the pre-breath rivet).
+**Queue:** enriched capture -> discriminant read -> binding family +
+chained-fdiv resident -> archive audit (docketed) -> v200 trichotomy
+(raised urgency; K=12 hang owed one fresh attempt).
+**TAPE EXAM:** 1. `grep -c "REFUSED\|refused verdict" docs/CONSTITUTION.md` >= 1;
+2. `python3 -c "import json; print(json.load(open('.cache/discriminant_reads.json'))['surface_auc'])"` -> 0.859...;
+3. `python3 -c "import json; print(json.load(open('.cache/determination_probe_read.json'))['linear']['auc'][0])"` -> 0.922...;
+4. `.venv/bin/python3 scripts/meter_fixtures.py | tail -1` -> ALL PASS;
+5. boundary-crossers: re-run the count above -> 78.
+
 ## SEAL 2026-07-25 — attestation chain sealed at five links; crossover probe: anti-A final, B-vs-C open; DEPTH-AXIS hypothesis registered
 
 **Board:** gen-21 gate, ZERO quorum lies on bigtest with fence v3 seated
