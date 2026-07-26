@@ -12662,3 +12662,33 @@ token-position × waist-dim, the moment the skeleton trains.
   this floor. The round-trip stays seated as SAFETY
   infrastructure (zero-lie repair attempt, cheap) with its value
   claim honestly retired at budget 1.
+- **THE SYLLOGISM + THREE NOTES + A CONFESSION (2026-07-26,
+  Bryce's countersign banked):** THE COMPLETE MEASURED SYLLOGISM
+  (written for #72's successor file): the stack binds without
+  deducing (probe: chance everywhere); post-hoc deduction does
+  not retrofit binding (round-trip: 0.011); the engine deduces
+  without binding (its fixture design). THEREFORE
+  deduction-during-binding has no existing home — the component
+  must hold both at once. The back-and-forth SURVIVES AT THE
+  BREATH GRAIN ONLY: bind-propagate-revise inside one loop, where
+  bindings are still soft — v200's design stated as the only
+  grain the measurements permit; the bet entered the week a
+  conjecture and exits THE ONLY UNFALSIFIED CANDIDATE. (1)
+  SCOPE-RIVET on 0.011: it prices budget-one, facts-as-text,
+  POST-HOC injection — not all deterministic schemes (interleaved
+  clause-grain parse-solve, constraint-guided decoding remain
+  unpriced; each drifts toward a soft loop by another name, which
+  is the point). The floor is the baseline AS BUILT. (2)
+  CONFESSION, the week's smallest specimen: the round-trip script
+  banked COUNTS, not specimens — the 3 recoveries' and 12
+  no-facts' identities were dropped (bank-don't-read violated in
+  miniature). The no-facts ids and the enriched texts are
+  CPU-recomputable from banked graphs; the 3 recoveries' autopsy
+  (did injected facts REPLACE the misbound slot rather than add
+  alongside?) needs the re-run banked WITH specimens — owed on
+  the fixture-bank pass. (3) THE HARD-FAIR POPULATION: the 257
+  still-abstain items with enriched inputs (text + true forced
+  facts, known-failed re-parses) are v200's hardest fair test —
+  problems where binding fails EVEN WITH deductive help visible
+  in text. BANKED AS A NAMED FIXTURE (roundtrip_enriched) by the
+  CPU pass, before it dissolves into the pool.
