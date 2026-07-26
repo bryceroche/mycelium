@@ -12283,3 +12283,24 @@ token-position × waist-dim, the moment the skeleton trains.
   (ii) binding content resolving layer-ordered with no erasure ->
   parallel-deepening transfers; (iii) fourth bin standing; meter
   fixtures + ruler-relative law inherited; both-ruler bracket.
+- **THE SCOPE LINE + TWO DIRECTIONAL PREDICTIONS (2026-07-26,
+  Bryce, into the parser-probe registration BEFORE capture):**
+  (1) SCOPE: the parser's LAYER axis (four different functions —
+  representational hierarchy) and the engine's BREATH axis (one
+  weight-tied loop — dynamics) are NOT the same kind of object; a
+  pass prints an ANALOG ('arrives knowing' in the stack sense),
+  not the same property. Flaggability-before-emission survives
+  either reading; MECHANISM attribution (a loop deducing its way
+  into the graph) waits for v200's own capture, where breaths are
+  breaths. THIS PROBE MEASURES THE FEED-FORWARD PARSER'S
+  COMPETENCE GEOGRAPHY; the loop-transfer question remains
+  v200's. (2) DIRECTIONAL PREDICTION (from banked numbers):
+  dark-zone AUC should be the STRONGEST stratum (the self-loop
+  load signature concentrates there, 0.4/19.3/47.5) —
+  competence-readability INCREASING toward the frontier is what
+  genuine self-knowledge looks like; flat-or-decreasing suggests
+  a difficulty-proxy read. (3) HUMBLE-POLARITY CHECK transfers:
+  never-resolvable reading sharper than resolvable = the
+  abstention-friendly shape. Gold-free construction noted as the
+  registration's design center: instrument and eventual seat
+  share a design from birth.
