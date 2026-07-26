@@ -12992,3 +12992,29 @@ token-position × waist-dim, the moment the skeleton trains.
   enters the gate's prerequisite-(b) training plan as a candidate
   design clause — assumption-to-be-tested, #74's fences
   inherited, temperature-perp-truth governing all bars.
+- **THE RELAY'S COUNTERSIGN ON #75 CONVERGES + THREE ADDITIONS
+  BANKED (2026-07-26; numbering note: the relay runs one behind
+  the registry — its #73/#74 are seats 74/75; rows stand):** both
+  channels independently reached the same headline (the cake is
+  the engine's measured anatomy; recognition, not proposal) — the
+  convergence itself is evidence. ADDITIONS: (1) THE JOINT LAW
+  CARVED, one sentence closing two guts: **SHARPENING BELONGS AT
+  THE READOUT AND INTERFACE, NEVER IN THE STATE** — #74 refused
+  in-state sharpening on two measurements; #75 locates where it
+  lawfully lives; zero contradiction; the v200 training plan
+  inherits it with a measurement behind it. (2) INTERP 10's SCOPE
+  SHARPENED: in v200 there IS no separate deducer — the handoff
+  is breath-to-breath internal readout; and at the EXTERNAL seam
+  the sharpest view already exists (the emitted graph): the
+  round-trip's 0.011 failure was never a blurry solver-view — it
+  was STATE HARDENED BEFORE THE SOLVER COULD OBJECT. 'Softness in
+  the state was always the missing half, not sharpness at the
+  interface.' (3) THE ROTATION-GEOMETRY SUB-READ attached at
+  birth to the pinned revision-signature probe: if the trained
+  loop shows flip events, their geometry — ROTATION ON THE SPHERE
+  vs MAGNITUDE COLLAPSE — is readable from the same banked
+  states; interp 4's spherical hypothesis files with its
+  measurement attached (per-breath LN verified in the archived
+  spec as the normalized-geometry ancestor; the principle-name
+  itself relay-cited). Interps 2/4/9 into the training plan as
+  fenced hypotheses, per both channels.
