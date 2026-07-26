@@ -11755,3 +11755,33 @@ token-position × waist-dim, the moment the skeleton trains.
   B-vs-C = C SEALS PROVISIONALLY per the pinned rule, final on
   the balanced re-read. The offline docket: balanced readout,
   K-sweep retro-read, torsion rider.
+- **THE SEAL VOIDED + THE RANGE CRITERION PINNED (2026-07-25,
+  Bryce):** 0.725 on a 79.5/20.5 binary decodes WORSE than a
+  constant classifier — not a caveated measurement, a probe that
+  failed to find the content; and a flat-bad curve makes t95=0
+  VACUOUSLY. APPARATUS LAW, demonstrated from both ends tonight:
+  **t95 is degenerate at ceiling and at floor alike** — same
+  statistic, same value, opposite meanings; the seal rule silently
+  assumed curves with certified rise. STATUS STRICTER THAN BANKED:
+  anti-A final; B-vs-C UNSEALED — the derived-schema leg is
+  UNMEASURED, not weakly measured. THE VALIDITY CRITERION, pinned
+  blind before the balanced re-read: a family's t95 counts ONLY if
+  its balanced-metric curve shows certified dynamic range — rise
+  from breath 0 to peak >= 0.05 (AUC for binary naked_single;
+  macro-recall for cand_size) AND above baseline (0.5 AUC / 1/7
+  macro-recall) throughout the counted region. Curves failing the
+  range test contribute NO t95; the leg stays open. EDGE
+  REGISTERED: a flat-HIGH balanced curve (derived content present
+  from reps[0], which is post-breath-1) fails the rise test as
+  pinned — if it prints, the leg stays open with the finding
+  noted, fourth-bin adjacent. THIRD OUTCOME registered live:
+  derived schema may NEVER decode linearly — two anatomies pinned
+  in advance: (a) non-linear encoding (MLP probe PRE-AUTHORIZED as
+  immediate follow-on before any conclusion); (b) the engine
+  computes depth-1 implications transiently/implicitly without
+  linearly-readable storage — a real strange fact bearing on B/C
+  in ways no registered signature anticipated. The naked-single
+  fade inherits the void: flagged-pending-valid-meter, NOT
+  classified not-A. Sequence: balanced re-read -> (MLP if range
+  fails) -> K-sweep (anti-A stands regardless; speedup doesn't
+  wait) -> torsion.
