@@ -11659,3 +11659,22 @@ token-position × waist-dim, the moment the skeleton trains.
   per-item self-loop count is readable at answer time WITHOUT
   gold — a deterministic difficulty/register signal a future
   mouth could wear.
+- **THREE PINS BEFORE THE PROBE SPEAKS (2026-07-25, Bryce, all
+  landing while the capture unit turns):** (1) THE GOODHART FENCE
+  into the constitution: the self-loop load gauge is INSTRUMENT,
+  NEVER OBJECTIVE — its value is its unintendedness; train
+  against it and the signature launders itself invisible while
+  the binding failure stays. (2) THE PROBE'S SCOPE RIVET, pinned
+  blind: whatever prints — A, B, C, or the bin — the verdict
+  binds THE KENKEN ENGINE's breath dynamics (the signatures'
+  home territory; the trajectory diagnostics that motivated them
+  came from that family). Transfer to the v200 loop is a
+  SEPARATE MEASURABLE QUESTION, not an inheritance: a C-print
+  earns the diffusion frame its first territory and makes the
+  v200 capture pass the obvious next fixture; it does not earn
+  v200 by analogy. Same discipline that scoped the census to its
+  tail. (3) THE HOUSE METHOD NAMED: capture passes BANK; readings
+  happen OFFLINE; fixtures are PERMANENT — twice in one week a
+  single GPU hour bought a permanent offline fixture (the graph
+  bank, the latent bank). Paper II's methods section owns the
+  pattern explicitly.

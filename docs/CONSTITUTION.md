@@ -76,3 +76,13 @@ improved — points lie, bands judge, certified mass is the product.
 
 *Maintenance rule: new rulings append here in the same transaction as
 their ledger entry.*
+
+## Instrument, never objective (2026-07-25, the self-loop gauge's fence)
+The mouth's malformation rate (per-item self-loop count; zone cliff
+0.4%/19.3%/47.5%) is a load gauge — deterministic, gold-free, readable at
+answer time. It stays honest exactly as long as nothing trains against
+it: the moment a mouth wears it (modulates on it, or is supervised to
+suppress it), Goodhart arrives on schedule — self-loops vanish, the
+binding failure stays, the load signature launders itself invisible. The
+signal's value IS its unintendedness: a tell the mouth doesn't know it's
+giving. Diagnostic forever; objective never.
