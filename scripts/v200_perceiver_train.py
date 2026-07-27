@@ -507,6 +507,90 @@ def _eager_grad_norm_step(
 # Main
 # ---------------------------------------------------------------------------
 
+def _build_think_mask(batch, n_latents, n_var_lat):
+    """FIRE-2 organ 1: (B,1,L,L) additive bias. Var-latents i,j (< n_var_lat)
+    may attend iff they share a factor (or self); free latents unrestricted.
+    Soft penalty -tau (V200_THINK_TAU, default 4.0); V200_THINK_MASK=0 -> zeros."""
+    import os as _os
+    import numpy as _np
+    from tinygrad import Tensor as _T, dtypes as _dt
+    om = batch["observed_mask"]
+    B = (om.numpy() if hasattr(om, "numpy") else _np.asarray(om)).shape[0]
+    m = _np.zeros((B, 1, n_latents, n_latents), dtype=_np.float32)
+    if int(_os.environ.get("V200_THINK_MASK", "0")) <= 0:
+        return _T(m, dtype=_dt.float).contiguous().realize()
+    tau = float(_os.environ.get("V200_THINK_TAU", "4.0"))
+    fa = batch["factor_args"]
+    fa_np = fa.numpy() if hasattr(fa, "numpy") else _np.asarray(fa)
+    for b in range(B):
+        adj = _np.eye(n_var_lat, dtype=bool)
+        for row in fa_np[b]:
+            vs = [int(x) for x in row if 0 <= int(x) < n_var_lat]
+            for i in vs:
+                for j in vs:
+                    adj[i, j] = True
+        block = _np.full((n_latents, n_latents), 0.0, dtype=_np.float32)
+        block[:n_var_lat, :n_var_lat] = _np.where(adj, 0.0, -tau)
+        m[b, 0] = block
+    return _T(m, dtype=_dt.float).contiguous().realize()
+
+
+def _aligned_init_and_basis(model, dual_loader, n_latents):
+    """FIRE-2 organ 2: re-init latents INSIDE the fg-token embedding manifold
+    (mean + top-PCA combinations of a probe batch's actual fg_tokens, scale
+    matched to the QR init's 0.1 regime). Returns (mean, basis) for the
+    per-breath manifold-cosine signature. V200_ALIGN_INIT=0 -> basis only."""
+    import os as _os
+    import numpy as _np
+    from tinygrad import Tensor as _T, dtypes as _dt
+    from mycelium.factor_graph_v200 import _embed_fg_tokens_v200, V200_N_MAX, V200_F_MAX
+    b = dual_loader.sample_batch(step=0)
+    fg = _embed_fg_tokens_v200(model, b["domain_init"], b["node_kinds"], V200_N_MAX, V200_F_MAX)
+    X = fg.cast("float").realize().numpy().reshape(-1, fg.shape[-1])
+    X = X[_np.abs(X).sum(axis=1) > 1e-6]
+    mu = X.mean(0)
+    Xc = X - mu
+    U, S, Vt = _np.linalg.svd(Xc[: min(len(Xc), 512)], full_matrices=False)
+    basis = Vt[:16]                                  # (16, H) top manifold directions
+    if int(_os.environ.get("V200_ALIGN_INIT", "0")) > 0:
+        rng = _np.random.RandomState(7)
+        coef = rng.randn(n_latents, 16).astype(_np.float32)
+        Z = mu[None, :] + coef @ basis * (S[:16].mean() / 4.0)
+        Z = Z / (_np.linalg.norm(Z, axis=1, keepdims=True) + 1e-8) * 0.1 * _np.sqrt(Z.shape[1])
+        model.fg_v200_latents.assign(_T(Z.astype(_np.float32), dtype=_dt.float)).realize()
+        print(f"[FIRE-2 organ 2] latents RE-INIT in-manifold (|mu|={_np.linalg.norm(mu):.3f})", flush=True)
+    return mu.astype(_np.float32), basis.astype(_np.float32)
+
+
+def _manifold_cosine_per_breath(model, batch, K, mu, basis, think_mask):
+    """FIRE-2 signature 2 (PER-BREATH): cosine of each breath's latent state to
+    the fg-embedding manifold (projection onto mu+basis subspace)."""
+    import numpy as _np
+    from mycelium.factor_graph_v200 import fg_breathing_forward_v200, V200_N_MAX, V200_F_MAX, V200_N_VAR_LAT, V200_N_DIGITS
+    from mycelium.factor_graph_v200 import fg_v200_empty_taps
+    taps = fg_v200_empty_taps()
+    fg_breathing_forward_v200(model, batch["domain_init"], batch["node_kinds"], K=K,
+        n_max=V200_N_MAX, f_max=V200_F_MAX, n_var_lat=V200_N_VAR_LAT,
+        n_digits=V200_N_DIGITS, training=False, stage2a_waist=True,
+        think_mask=think_mask, taps=taps)
+    A = _np.concatenate([basis, mu[None, :] / (_np.linalg.norm(mu) + 1e-8)], 0)  # (17, H)
+    Q, _ = _np.linalg.qr(A.T)                                                    # (H, 17)
+    cos, spars = [], []
+    for k in range(len(taps["wb_post_norm"])):
+        Z = taps["wb_post_norm"][k].numpy().reshape(-1, Q.shape[0])
+        P = Z @ Q
+        c = _np.linalg.norm(P, axis=1) / (_np.linalg.norm(Z, axis=1) + 1e-8)
+        cos.append(float(c.mean()))
+    for k in range(len(taps["sa_weights"])):
+        w = taps["sa_weights"][k][0].numpy()      # layer-0 attn (B, nh, L, L)
+        tm = think_mask.numpy()[:, 0]             # (B, L, L)
+        forbidden = (tm < 0)
+        if forbidden.any():
+            mass = (w * forbidden[:, None, :, :]).sum() / (w.sum() + 1e-8)
+            spars.append(float(mass))
+    return cos, spars
+
+
 def _build_depth_vis(batch, K, n_eval):
     """FIRE-1 (2026-07-27) depth-scheduled per-breath visibility (B,K,n_eval).
     d(k)=1+k//2; final two breaths see all depths. V200_DEPTH_SCHED=0 -> ones."""
@@ -701,6 +785,9 @@ def main() -> None:
         opt = Adam(params, lr=LR, b1=0.9, b2=0.95, eps=1e-8)
     opt.zero_grad()
 
+    # FIRE-2 organ 2: aligned init + manifold basis (before JIT compile)
+    _mani_mu, _mani_basis = _aligned_init_and_basis(model, dual_loader, N_LATENTS)
+
     # ---- JIT step ----
     Tensor.training = True
     step_fn = _compile_jit_fg_step_v200(
@@ -780,7 +867,8 @@ def main() -> None:
         # ---- JIT training step ----
         Tensor.training = True
         depth_vis_t = _build_depth_vis(batch, K, min(N_VAR_LAT, N_MAX))
-        outs = step_fn(domain_init, node_kinds, gold_digits_t, obs_mask, n_vars_mask_t, depth_vis_t)
+        think_mask_t = _build_think_mask(batch, N_LATENTS, N_VAR_LAT)
+        outs = step_fn(domain_init, node_kinds, gold_digits_t, obs_mask, n_vars_mask_t, depth_vis_t, think_mask_t)
         total_t, healthy_t = outs[0], outs[1]
         ce_t, calib_t      = outs[2], outs[3]
         cell_acc_t         = outs[4]
@@ -823,6 +911,12 @@ def main() -> None:
             _wg = float(model.fg_v200_waist_gate.detach().numpy().flatten()[0]) if hasattr(model, "fg_v200_waist_gate") else float("nan")
             _spread = pb_ce[0] - pb_ce[-1]
             log(f"  [GATES] excursion={_exc:.4f} waist_gate={_wg:.4f} breath_spread={_spread:.4f}  (calib line is a FALSE FRIEND when gates sit)")
+            try:
+                _cos, _spars = _manifold_cosine_per_breath(model, batch, K, _mani_mu, _mani_basis, think_mask_t)
+                log("  [FIRE2-SIG] manifold_cos/breath: " + " ".join(f"{c:.3f}" for c in _cos) +
+                    ("  | masked-mass L0: " + " ".join(f"{s:.4f}" for s in _spars[:1]) if _spars else "  | mask off"))
+            except Exception as _e:
+                log(f"  [FIRE2-SIG] signature probe failed: {_e}")
             _ka = int(float(os.environ.get("V200_KILL_FRAC", "0.25")) * STEPS)
             if step >= _ka and _exc < 0.02 and abs(_spread) < 0.01:
                 log(f"  [EARLY-KILL] step {step}>={_ka}: excursion<0.02 AND |spread|<0.01 — THE FIRE STOPS (second stack-wearing-recurrence refused).")

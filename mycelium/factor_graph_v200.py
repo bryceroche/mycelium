@@ -844,6 +844,7 @@ def fg_breathing_forward_v200(
     n_digits: int = V200_N_DIGITS,
     training: bool = True,
     stage2a_waist: bool = V200_STAGE2A_WAIST,
+    think_mask: "Tensor | None" = None,   # FIRE-2 organ 1: (B,1,L,L) additive bias for THINK self-attn
     taps: "dict | None" = None,
     carrier_dim_mask: "Tensor | None" = None,
     carrier_mask_site: str = "boundary",
@@ -1169,13 +1170,13 @@ def fg_breathing_forward_v200(
             sa_k = []
             for _li, layer in enumerate(llama_layers[:4]):
                 _ld = lora_dicts[_li] if lora_dicts is not None else None
-                h, sa_w = layer.forward_return_weights(h, rope_cos, rope_sin, attn_mask=None, lora=_ld)
+                h, sa_w = layer.forward_return_weights(h, rope_cos, rope_sin, attn_mask=think_mask, lora=_ld)
                 sa_k.append(sa_w.cast(dtypes.float).realize())
             taps["sa_weights"].append(sa_k)
         else:
             for _li, layer in enumerate(llama_layers[:4]):
                 _ld = lora_dicts[_li] if lora_dicts is not None else None
-                h = layer(h, rope_cos, rope_sin, attn_mask=None, lora=_ld)
+                h = layer(h, rope_cos, rope_sin, attn_mask=think_mask, lora=_ld)
         latents = h   # fp32 inter-breath chain (#237.5) — no half cast, no underflow cliff
 
         if carrier_dim_mask is not None and carrier_mask_site in ("post_think", "both"):
@@ -1825,6 +1826,7 @@ def _compile_jit_fg_step_v200(
         obs_mask: Tensor,       # (B, N_MAX) int
         n_vars_mask: Tensor,    # (B, n_eval) float — 1.0 for real vars, 0 for padding (Jun 8 fix)
         depth_vis: Tensor,      # (B, K, n_eval) float — FIRE-1 depth-scheduled per-breath visibility (all-ones = disabled)
+        think_mask: Tensor,     # (B, 1, n_latents, n_latents) float — FIRE-2 organ 1 (zeros = disabled)
     ):
         # opt.zero_grad() first, then backward, then opt.step() — v108 pattern
         opt.zero_grad()
@@ -1835,6 +1837,7 @@ def _compile_jit_fg_step_v200(
             n_var_lat=n_var_lat, n_digits=n_digits,
             training=True,
             stage2a_waist=stage2a_waist,
+            think_mask=think_mask,
             estimator_cm=estimator_cm,
             estimator_readback=estimator_readback,
             expand_compress_lora=expand_compress_lora,
