@@ -1,3 +1,20 @@
+## SEAL 2026-07-27b — FIRE 2: organs 1+2 LIVE with fingerprints; organ 3 owed; NO FIRE until whole
+
+**State:** mask (sig: masked-mass 0.0078) + aligned init (sig: per-breath
+manifold cosine) transplanted and smoking clean in the COMPILED path.
+**THE DRIFT IS REAL:** cosine 1.000 -> 0.814 across 8 breaths (~2.5%/breath)
+— Bryce's amendment predicted it; the watch caught it at step 3. Organ 3
+(residual-primary restructure) must answer BOTH the dead-dynamics diagnosis
+AND this measured drift (a residual path that keeps state ON the token
+manifold — or a re-projection seam per breath, cf. kenken_llama's readout
+norm pattern). **Build card:** new forward variant over fg-token stream
+(state on T positions, structured mask over tokens, tree-codebook readout
+at var positions; kenken_llama.py is the pattern); signature 3 = residual-
+path gradient-norm group nonzero from step 1. Envs so far: V200_TASK=1
+V200_STAGE2A_WAIST=1 V200_DEPTH_SCHED=1 V200_IMPROVE_W=0.5
+V200_THINK_MASK=1 V200_ALIGN_INIT=1. C4 -0.05 third-final; three-strikes
+constitutional; word-to-light = ALL THREE sigs live at smoke.
+
 ## SEAL 2026-07-26d — THE GATE IS OPEN; FIRE 0 AUTHORIZED, patches owed (apply-with-file-read, not memory)
 
 **THE WORD GIVEN:** gate opens; Fire 0 authorized under the countersigned
