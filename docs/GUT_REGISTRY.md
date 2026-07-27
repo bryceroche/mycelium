@@ -105,3 +105,59 @@ development protocol) · the constitution's spine written at #35, #49,
 *Maintenance rule: each new conversion appends one row here in the same
 transaction as its ledger entry (the prose-promotions law applies to
 indexes too).*
+
+---
+
+# PART II — INTERPRETATION BLOCKS (est. 2026-07-27)
+
+**Schema:** the index table above is the spine; each gut carrying
+interpretations gains a block here: the gut verbatim, then EVERY interp
+verbatim with its own disposition — CONVERTED (instrument/law it became),
+REFUSED (the law that refused it), FENCED (door it waits at), HELD
+(no verdict yet) — and the ledger/artifact line. **Maintenance rule
+(amended):** a new conversion appends its index row AND its block with
+all interps dispositioned, same transaction. **Backfill docket:** guts
+#1–#69's interps live in ledger entries; a CPU archaeology pass
+(grep-per-gut) backfills them — docketed, not urgent; blocks below
+cover the interp-rich recent guts from live session content.
+
+## Gut #71 — Parallel lowering / diffusion compiler
+**Gut:** "i'm starting to wonder if gut 69 is correct with the progressive lowering in parallel (instead of sequential) i also wonder if we're running a diffusion compiler (that is a transformer under the hood)"
+- (two wonderings, one hypothesis) → CONVERTED: signature C amended into the crossover probe blind; C printed then RECAST — the depth axis sealed (2/7/11 ladder); the diffusion frame later retired to etymology (kept parallel-depth-ordered-clocked, lost the sampling-path joint at the torsion rider).
+
+## Gut #72 — The soft deducer bet (five claims, unbundled by Bryce)
+**Gut:** "a diffusion compiler running a transformer under the hood, doing progressive lowering in parallel and whos internal latents act as a parallel continuous deducer. removing the need for the old pythia deducer from the v98 era. This neural loop is a soft deducer that builds the factor graph which is the hard part. the graph is then handed to the GAC solver for exact solving"
+- soft deducer → MEASURED (breath-1 implications, depth ladder, clocked).
+- parallel lowering → SEALED in recast form (depth order, not altitude).
+- diffusion compiler → frame retired with rent paid.
+- the splice (deduces-while-binding beats feed-forward parse) → THE ONLY UNFALSIFIED CANDIDATE; Fires 0-2 are its examination.
+- Pythia retirement → HALF: propagation internalizes; witness seat stays priced (#58 decorrelation law).
+
+## Gut #73 — Flexible bindings
+**Gut:** "we need flexible bindings, right? to address the 1% recovery"
+- CONVERTED as half-the-unit: resampling certifies (0.688 wall), revision recovers; bindings soft exactly as long as propagation runs; v200 per-breath slot refinement named the mechanism.
+
+## Gut #74 — Latent exaggeration (nine interps; refused-with-a-test)
+**Gut:** "humor can exaggerate something to make it funnier"
+- i1 sharpen latents for actionability → HELD at causal-probe door (Goodhart + ruler-relative fences).
+- i2 scale vectors in latent space → HELD (same door).
+- i3 force strong commitment → REFUSED (premature hardening IS the misbinding species).
+- i4 contrastive decoding (sharp minus blurry) → CONVERTED to docket: readout-layer contrast; natural pairs banked (g21-vs-g16, expert-vs-early, head-vs-probe).
+- i5 subtract DC → banked May-era precedent (CFG +10.8%; DC load-bearing to remove); assumption-to-be-tested.
+- i6 subtract mushy path / sharpen boundary → preprocessing form; mean-centering confirmed standard meter craft.
+- i7 cold sharpening vs temperature → FENCED (temperature-perp-truth: bars read accuracy, never confidence).
+- i8 soft slot contrast amplification → folded into #75's contrastive view.
+- i9 sharpen early bindings for faster resolution → REFUSED AS LEVER ('a soft version of cutting K') with the REFUSAL-TEST registered blind (shallow-tolerate/deep-degrade by intervention; queue behind v200 reads).
+
+## Gut #75 — The dual-track synthesis (ten interps)
+**Gut:** "is there a way we can have our cake and eat it too? can we both sharpen early thoughts while maintaining the right to change them via the back and forth with the deducer?"
+- i1 sharpen contrast keeping momentum → subsumed by the joint law (sharpen readout/interface, never state).
+- i2 spherical normalized sharpening → INTO THE TRAINING PLAN as fenced hypothesis.
+- i3 top hypothesis clearer, energy bounded → same clause as i2.
+- i4 sphere lets contradiction rotate to new slot → HYPOTHESIS WITH MEASUREMENT ATTACHED (rotation-geometry sub-read on the revision-signature probe; per-breath LN verified as ancestor).
+- i5 dual-track latents (soft slots + sharp views) → RECOGNITION: the engine's measured anatomy (two-clock law is the certificate).
+- i6 separate working state from readout state → same recognition.
+- i7 soft memory accepting revisions every breath → same; #73's mechanism.
+- i8 sharp view via local contrastive projection → CONVERTED: the #74-docket's consumer named (in-loop deducer reads the contrast-sharpened view).
+- i9 momentum with elastic recall → delta_gate named (exists; Fire 0 proved it moves under the ask).
+- i10 sharp proposal to deducer, parser retains freedom → SCOPE-RIVETED: breath grain blessed (v200's design), system grain refused (0.011); '0.011 was hardened state, not blurry view.'
