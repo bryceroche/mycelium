@@ -100,3 +100,13 @@ duty: the self-map re-probe seats at every promotion.
 - **CALIB MARKED FALSE-FRIEND on the dashboard:** rising calib with
   flat gates is the SPECIMEN'S SIGNATURE — the early-kill's leading
   indicator, never progress evidence.
+
+## 7. Fenced hypothesis from #76 (2026-07-27): breath-graded topological THINK mask
+Fire-2+ ablation space ONLY (Fire 1's attribution is protected). Form:
+soft temperature-masked attention over var-latents, dense early ->
+annealed toward the EMERGING soft graph's topology late (never the gold
+graph at training — the compiler circularity; never hard top-k early —
+attention-bootstrap law). Measurement pre-attached: with-vs-without mask
+on the clock read — a real topology mask prints a CHEAPER CLOCK (fewer
+breaths per implication layer). Grep-verdict lineage: v98 masks-are-
+topology (engine); v200 THINK-block untried (READ-side (32,24) only).
