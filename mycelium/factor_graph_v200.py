@@ -1778,6 +1778,58 @@ def compute_latent_jsd_from_snapshots(snapshots: list) -> list:
 # Training step (JIT-compilable)
 # ---------------------------------------------------------------------------
 
+
+
+def fg_breathing_forward_v200r(
+    model, domain_init, node_kinds, K: int,
+    n_max: int = V200_N_MAX, f_max: int = V200_F_MAX,
+    n_var_lat: int = V200_N_VAR_LAT, n_digits: int = V200_N_DIGITS,
+    training: bool = True, breath_masks=None, taps=None,
+    stage2a_waist: bool = False, think_mask=None,
+    estimator_cm: bool = False, estimator_readback: bool = False,
+    expand_compress_lora: bool = False, expand_compress_cycle: bool = False,
+    latent_noise_sigma: float = 0.0, carrier_dim_mask=None,
+):
+    """FIRE-2 ORGAN 3 (2026-07-27): RESIDUAL-PRIMARY restructure.
+    State lives ON the fg-token stream (T = n_max+f_max positions, vars
+    first) — natively in the embedding manifold (the drift cured by
+    anatomy). Per breath: breath marker + masked THINK over tokens
+    (breath_masks = (B,K,T,T) additive, e.g. the loader's staging masks =
+    topology AND depth staging in token space) + delta-gate blend +
+    tree-codebook readout at var positions. Reuses the trained param
+    families: breath_embed, delta_gate, blend_norm, tree_codebook, calib.
+    kenken_llama is the pattern; the engine's anatomy is the ancestor."""
+    H = int(model.fg_v200_breath_embed.shape[-1])
+    rms_eps = float(model.llama_cfg.rms_norm_eps)
+    rope_cos, rope_sin = model.llama_rope_cos, model.llama_rope_sin
+    fg_tokens = _embed_fg_tokens_v200(model, domain_init, node_kinds, n_max, f_max).cast(dtypes.float)
+    B = int(fg_tokens.shape[0]); T = int(fg_tokens.shape[1])
+    x = fg_tokens                                              # residual-primary state
+    breath_embed = model.fg_v200_breath_embed
+    delta_gate   = model.fg_v200_delta_gate
+    blend_norm_w = model.fg_v200_blend_norm_w
+    tree_cb_flat = model.fg_v200_tree_codebook.reshape(n_digits * 10, H)
+    calib_w, calib_b = model.fg_v200_calib_w, model.fg_v200_calib_b
+    tree_logits_history, calib_history = [], []
+    for k in range(K):
+        x_pre = x
+        h = x + breath_embed[k].reshape(1, 1, H).cast(x.dtype)
+        mk = breath_masks[:, k].reshape(B, 1, T, T).cast(dtypes.float) if breath_masks is not None else None
+        for layer in model.llama_layers[:4]:
+            h = layer(h, rope_cos, rope_sin, attn_mask=mk)
+        h = _rms_norm_detached(h, blend_norm_w, rms_eps).cast(x.dtype)
+        gate_k = delta_gate[k].cast(x.dtype).reshape(1, 1, 1)
+        x = x_pre + gate_k * (h - x_pre)
+        if taps is not None:
+            taps.setdefault("r_state", []).append(x.cast(dtypes.float).realize())
+        x_ln = _rms_norm(x, blend_norm_w, rms_eps).cast(dtypes.float)
+        var_tok = x_ln[:, :n_var_lat, :]
+        tree_logits_history.append((var_tok @ tree_cb_flat.T).reshape(B, n_var_lat, n_digits, 10))
+        pool = x_ln.mean(axis=1)
+        calib_history.append(((pool @ calib_w.cast(dtypes.float)) + calib_b.cast(dtypes.float)).reshape(-1).sigmoid())
+    return tree_logits_history, calib_history
+
+
 def _compile_jit_fg_step_v200(
     model: Any,
     opt: Any,
@@ -1831,7 +1883,15 @@ def _compile_jit_fg_step_v200(
         # opt.zero_grad() first, then backward, then opt.step() — v108 pattern
         opt.zero_grad()
 
-        tree_logits_history, calib_history = fg_breathing_forward_v200(
+        _residual = int(os.environ.get("V200_RESIDUAL", "0")) > 0
+        if _residual:
+            tree_logits_history, calib_history = fg_breathing_forward_v200r(
+                model, domain_init, node_kinds, K=K, n_max=n_max, f_max=f_max,
+                n_var_lat=n_var_lat, n_digits=n_digits, training=True,
+                breath_masks=think_mask,   # r-mode: (B,K,T,T) staging masks ride the slot
+            )
+        else:
+            tree_logits_history, calib_history = fg_breathing_forward_v200(
             model, domain_init, node_kinds,
             K=K, n_max=n_max, f_max=f_max,
             n_var_lat=n_var_lat, n_digits=n_digits,
@@ -1842,7 +1902,7 @@ def _compile_jit_fg_step_v200(
             estimator_readback=estimator_readback,
             expand_compress_lora=expand_compress_lora,
             expand_compress_cycle=expand_compress_cycle,
-        )
+            )
 
         # ---- Per-breath weighted CE ladder ----
         # PADDING BUG FIX (Jun 8): The data loader pads positions beyond

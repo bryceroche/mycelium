@@ -195,3 +195,14 @@ cover the interp-rich recent guts from live session content.
 - i8 alternating WITHIN layers per breath → no ancestor; spec-stage if ever; does not enter.
 - i9 global-early local-late annealing → convergent with #76's breath-graded mask; noted.
 **Disposition:** FIRE 2 UNTOUCHED (sealed; three organs; adding a fourth = reopening a countersigned document to enthusiasm). Registered as CONTINGENT HYPOTHESIS, trigger pre-pinned: Fire 2 passes C4 AND the cosine line shows monotone drift -> alternating-mask is the FIRST post-pass ablation after the attribution pair, prediction pre-registered: the COSINE SAWTOOTH (drift on local breaths, re-anchor on global). Fire 2 fails -> dies unfired, registry says so, no strike spent. Meta: the instinct now proposes along the constitution's own grain — downstream of the record.
+
+**FORK ADDENDUM (2026-07-27, Bryce — the rulings crossed in flight):**
+the sawtooth was written against the DRIFTING architecture (organ 2
+alone). Organ 3 chose NATIVE-manifold state, under which the cosine line
+relabels as an INVARIANT (expected ~1.0 structurally). Three paths
+pre-written: (a) Fire 2 passes with native state -> interp 5 loses its
+patient (cured by anatomy); the DIFFUSION clause (i2-4) arms instead,
+metered by the CLOCK instruments (cheaper rate constant); (b) native
+state shows residual drift -> the SAWTOOTH clause revives with the
+invariant check as trigger; (c) Fire 2 fails -> dies unfired. Zero
+ambiguity at reading time.

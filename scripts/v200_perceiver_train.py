@@ -569,7 +569,17 @@ def _manifold_cosine_per_breath(model, batch, K, mu, basis, think_mask):
     from mycelium.factor_graph_v200 import fg_breathing_forward_v200, V200_N_MAX, V200_F_MAX, V200_N_VAR_LAT, V200_N_DIGITS
     from mycelium.factor_graph_v200 import fg_v200_empty_taps
     taps = fg_v200_empty_taps()
-    fg_breathing_forward_v200(model, batch["domain_init"], batch["node_kinds"], K=K,
+    import os as _os2
+    if int(_os2.environ.get("V200_RESIDUAL", "0")) > 0:
+        from mycelium.factor_graph_v200 import fg_breathing_forward_v200r as _fwdr
+        _fwdr(model, batch["domain_init"], batch["node_kinds"], K=K,
+              n_max=V200_N_MAX, f_max=V200_F_MAX, n_var_lat=V200_N_VAR_LAT,
+              n_digits=V200_N_DIGITS, training=False,
+              breath_masks=think_mask, taps=taps)
+        taps["wb_post_norm"] = taps.get("r_state", [])
+        taps["sa_weights"] = []
+    else:
+        fg_breathing_forward_v200(model, batch["domain_init"], batch["node_kinds"], K=K,
         n_max=V200_N_MAX, f_max=V200_F_MAX, n_var_lat=V200_N_VAR_LAT,
         n_digits=V200_N_DIGITS, training=False, stage2a_waist=True,
         think_mask=think_mask, taps=taps)
@@ -767,7 +777,14 @@ def main() -> None:
     Tensor.training = True
     _pb = dual_loader.sample_batch(step=0)
     opt.zero_grad()
-    _h, _c = _fwd_probe(model, _pb["domain_init"], _pb["node_kinds"], K=K,
+    if int(os.environ.get("V200_RESIDUAL", "0")) > 0:
+        from mycelium.factor_graph_v200 import fg_breathing_forward_v200r as _fwd_probe_r
+        _h, _c = _fwd_probe_r(model, _pb["domain_init"], _pb["node_kinds"], K=K,
+                              n_max=N_MAX, f_max=F_MAX, n_var_lat=N_VAR_LAT,
+                              n_digits=N_DIGITS, training=True,
+                              breath_masks=_pb["staging_mask"])
+    else:
+        _h, _c = _fwd_probe(model, _pb["domain_init"], _pb["node_kinds"], K=K,
                         n_max=N_MAX, f_max=F_MAX, n_var_lat=N_VAR_LAT,
                         n_digits=N_DIGITS, training=True,
                         stage2a_waist=V200_STAGE2A_WAIST)
@@ -867,7 +884,10 @@ def main() -> None:
         # ---- JIT training step ----
         Tensor.training = True
         depth_vis_t = _build_depth_vis(batch, K, min(N_VAR_LAT, N_MAX))
-        think_mask_t = _build_think_mask(batch, N_LATENTS, N_VAR_LAT)
+        if int(os.environ.get("V200_RESIDUAL", "0")) > 0:
+            think_mask_t = batch["staging_mask"]   # (B,K,T,T) — token topology+depth staging (organ 1+depth in token space)
+        else:
+            think_mask_t = _build_think_mask(batch, N_LATENTS, N_VAR_LAT)
         outs = step_fn(domain_init, node_kinds, gold_digits_t, obs_mask, n_vars_mask_t, depth_vis_t, think_mask_t)
         total_t, healthy_t = outs[0], outs[1]
         ce_t, calib_t      = outs[2], outs[3]

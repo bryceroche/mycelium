@@ -13200,3 +13200,22 @@ token-position × waist-dim, the moment the skeleton trains.
   staying open is the finding. Countersign stands; the word to
   light arrives when the smoke shows all three signatures (one
   now per-breath) live in the compiled path.
+- **ORGAN 3 BUILT; FIRST SMOKE HITS A DEVICE HANG (2026-07-27):**
+  fg_breathing_forward_v200r written whole — state ON the token
+  stream (native manifold; drift cured by anatomy), staging masks
+  (B,K,T,T) as topology+depth in token space (the loader already
+  builds them), delta-gate blend, tree readout at var positions;
+  compile-time V200_RESIDUAL switch; two-terminal and manifold
+  probes r-aware; parses clean, trains briefly — then **AM DEVICE
+  HANG** (known quirk family: the reference file's SS-JIT+aux
+  pattern — eager signature probes interleaved with live JIT
+  graphs; 'check BEFORE adding new JIT graph paths' was the
+  standing warning and the r-switch IS a new graph path). DEBUG
+  OWED next window: candidates — probe outside JIT lifetime /
+  probe cadence / the quirks file's patterns; also noted: r-mode
+  two-terminal exclusion is LARGE (cross+waist+latents unused),
+  Adam rebuild precedes JIT compile (ordering correct); cosmetic
+  nan (waist_gate unused in r-mode) and the manifold probe's
+  r-basis need re-derivation for token-state geometry. #77's
+  three-path fork banked in the registry per the ruling. NO FIRE:
+  signature 3 not yet live; the gate holds.
