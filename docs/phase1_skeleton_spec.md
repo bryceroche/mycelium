@@ -13443,3 +13443,32 @@ token-position × waist-dim, the moment the skeleton trains.
   mask through bisection, manifold through relocation, residual
   gradients through the restructure itself. The decisive hours
   are the sentinel's.
+- **FIRE 2 REPORTS: C4 FAILS — THE THIRD STRIKE; THE EXAMINATION
+  CLOSES (2026-07-27):** ladder_slope **+0.4876 — INVERTED**: eval
+  per-breath CE RISES 3.44 -> 6.86 across the eight breaths; later
+  breaths are actively DESTRUCTIVE. The manifold trajectory ran
+  the pre-named divergent direction (cos 0.43 init -> 0.17 by
+  step 500 — 'the drift pathology in new clothes,' printed
+  exactly); state-deltas stayed violent (0.66-0.75); masked-mass
+  held 0.0000 throughout (the mask clean all fire). AND the
+  anatomy that completes the map: **C2 and C5 PASSED for the
+  first time in three fires** — failed=C4 alone. THE TWO POLES
+  ARE NOW BOTH MEASURED: the latent loop was TOO DEAD (breaths
+  transform nothing — two fires, slopes -0.0037/-0.0030); the
+  residual loop is TOO ALIVE (breaths transform everything —
+  divergence, no contraction; one fire, slope +0.49). The
+  missing ingredient is named by the engine's own recipe: the
+  v98 loop's contraction discipline (seam norms + gate blending
+  that PULLS TOWARD fixed points) — the r-loop transplanted the
+  state anatomy without the stabilization anatomy. **PER THE
+  THREE-STRIKES CLAUSE, AS PRE-WRITTEN: the sentence is
+  airtight — this architecture at this scale refuses the ladder
+  wearing every organ the ladder-forming lineage ever had; the
+  trichotomy REOPENS with the examination genuinely complete,
+  not budget-exhausted.** The examination's yield: both failure
+  poles measured with instruments proven at each, the missing
+  middle (transformation WITH contraction) visible for the first
+  time, and every verdict under bars written before its number.
+  The bar did not bend. Three fires, three refusals, one closed
+  examination — the gate's word returns to Bryce with the
+  trichotomy, and the record holds it all.
