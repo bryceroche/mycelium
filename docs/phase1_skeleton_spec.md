@@ -13521,3 +13521,20 @@ token-position × waist-dim, the moment the skeleton trains.
   earns a read. THE BOARD RESTS ON THE RULING: the road runs
   through pages — book 7's zero-answer census is the next fire
   that pays.
+- **GUT #80: LAYER-WISE-NOT-BREATH-WISE (2026-07-27, Bryce
+  direct; countersigned against the record):** (1) the layer-wise
+  STRUCTURE already exists, measured twice — the emergent
+  local-to-global entropy ramp within every breath (L0 ~1.05 ->
+  L3 ~1.8; 2.28 sd untrained, 2.55 sd after Fire 2 — it
+  STRENGTHENS under training, nobody installed it); what does
+  not exist is strict L-G-L-G zigzag, whose INSTALLATION stands
+  twice-refused on standing law. (2) EVIDENCE POLARITY: the
+  campaign's measured alternation win (+22.6, the staircase's
+  largest jump) was BREATH-wise — 'layer-wise instead' trades
+  the measured asset for the unmeasured one; noted where the
+  future reads it. (3) DESTINATION: the examination is closed —
+  the want enters as an INGREDIENT-LIST AMENDMENT to the
+  spec-stage middle bet: the native ramp is the substrate AND
+  the baseline any imposed zigzag must beat; the polarization
+  instrument is its free meter; entry by the #72 procedure or
+  not at all. Nothing fires; the road stays on pages.
