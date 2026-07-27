@@ -13422,3 +13422,24 @@ token-position × waist-dim, the moment the skeleton trains.
   + aligned-init/markers + residual-primary; depth-ask + rider;
   early-kill armed; C4 -0.05 third and final; both endings
   pre-written; pass-attribution ablations pinned).
+- **THE MID-FIRE RULING (2026-07-27, Bryce, banked while Fire 2
+  burns):** sig-2's init verdict HOLDS AS BANKED — OUT at 0.43,
+  no re-rule tonight. The definitional gap is real (blended
+  residual state at breath 0 is not a pure layer-image and never
+  was going to read as one), but **INSTRUMENTS DON'T GET
+  REDEFINED WHILE THEIR NEEDLE IS MOVING** — the instrument's
+  job now is the TREND: convergence toward the cloud as training
+  teaches the layers to expect blended inputs tells the story
+  regardless of init; divergence further out is the drift
+  pathology in new clothes. The refinement (does breath-0
+  blended state deserve its own reference population) queues
+  AFTER the sheet, ruled on evidence about which direction the
+  trajectory ran. Taxonomy note: the bisection completes the
+  inert-patch family with its most instructive member — THE
+  INSTRUMENT WAS WRONG ABOUT THE INSTRUMENT (machine acquitted,
+  formula convicted; the honest definition only gets written
+  after a fixture forces it — which is why the fixtures exist).
+  Three signatures live, each having survived its own trial:
+  mask through bisection, manifold through relocation, residual
+  gradients through the restructure itself. The decisive hours
+  are the sentinel's.
