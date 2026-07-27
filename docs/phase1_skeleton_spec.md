@@ -13340,3 +13340,23 @@ token-position × waist-dim, the moment the skeleton trains.
   refused pending the signature-1 bisection. Fire 2's gate
   unchanged. The registry's arc completes its fifth step: the
   instinct arrived CITING THE ARCHIVE, and the archive ANSWERED.
+- **THE PRIOR'S UPGRADE + THE NOTARY MORAL (2026-07-27, Bryce,
+  banked as ruled):** (1) the polarization read UPGRADES: it now
+  carries a measured dwell structure from a different architecture
+  and era as comparison point — the telegraph outcome sharpens
+  from 'does regime-switching exist' to 'DOES THE R-LOOP'S
+  OSCILLATION MATCH THE LINEAGE'S' (dwell times comparable or
+  shifted; K=2 preserved or broken by the restructure). THE
+  ARTIFACT'S OWN CAVEAT RIDES AS LAW: the old read was
+  entropy-based, flagged NOT-JSD by its own author — the new read
+  banks BOTH meters and the stated caveat governs which
+  comparisons are lawful. A prior with its limitations pre-stated
+  by its own creator is the rarest kind; honored exactly. (2) THE
+  NOTARY MORAL, for the registry's arc: the citation was wrong in
+  its details and right in its substance — WITHOUT the grep the
+  row enters unverified (payload lost) or as-stated (revenant
+  seeded); WITH it, the telegraph enters measured and the
+  decoration enters convicted, both correctly. **THE FENCE IS NOT
+  THE GUT'S OPPONENT; IT IS THE GUT'S NOTARY.** Board unchanged:
+  bisection -> reference rebuild from the fire's true input
+  population -> three signatures -> the word.
