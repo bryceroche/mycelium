@@ -206,3 +206,8 @@ metered by the CLOCK instruments (cheaper rate constant); (b) native
 state shows residual drift -> the SAWTOOTH clause revives with the
 invariant check as trigger; (c) Fire 2 fails -> dies unfired. Zero
 ambiguity at reading time.
+
+*(Quirks-file discipline note, 2026-07-27: the seq-24 kernel entry is the
+file's second artifact-backed row — found by five-cut subtraction after
+its first entry's lore was exonerated for this hang. The file's authority
+compounds only through reproductions.)*

@@ -888,6 +888,17 @@ def main() -> None:
             think_mask_t = batch["staging_mask"]   # (B,K,T,T) — token topology+depth staging (organ 1+depth in token space)
             from mycelium.factor_graph_v200 import _embed_fg_tokens_v200 as _efg
             domain_init = _efg(model, domain_init, node_kinds, N_MAX, F_MAX).cast("float").realize()  # EMBED-OUTSIDE FIX
+            if int(os.environ.get("V200_R_PAD32", "0")) > 0:   # bisection card cut 3: seq-32 pad test
+                import numpy as _np
+                from tinygrad import Tensor as _T, dtypes as _dt
+                _d = domain_init.numpy(); _m = think_mask_t.numpy() if hasattr(think_mask_t, "numpy") else _np.asarray(think_mask_t)
+                _B, _T0, _H = _d.shape
+                _dp = _np.zeros((_B, 32, _H), _np.float32); _dp[:, :_T0] = _d
+                _mp = _np.full((_B, _m.shape[1], 32, 32), -1e4, _np.float32)
+                _mp[:, :, :_T0, :_T0] = _m
+                _mp[:, :, _np.arange(_T0, 32), _np.arange(_T0, 32)] = 0.0   # pad tokens self-attend (no all-masked rows)
+                domain_init = _T(_dp, dtype=_dt.float).contiguous().realize()
+                think_mask_t = _T(_mp, dtype=_dt.float).contiguous().realize()
         else:
             think_mask_t = _build_think_mask(batch, N_LATENTS, N_VAR_LAT)
         outs = step_fn(domain_init, node_kinds, gold_digits_t, obs_mask, n_vars_mask_t, depth_vis_t, think_mask_t)

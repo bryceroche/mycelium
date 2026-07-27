@@ -13267,3 +13267,21 @@ token-position × waist-dim, the moment the skeleton trains.
   span-of-fg-tokens projection). The gate holds — no fire
   without three live signatures; the examination waits on a
   kernel, not on courage.
+- **THE LESION FOUND: THE SEQ-24 KERNEL (2026-07-27, bisection
+  cut 3 decisive):** T=32 pad test RUNS CLEAN — 8 JIT steps, no
+  hang, the first r-mode training in campaign history. The
+  archaeology note WAS the diagnosis: llama-loader layers under
+  TinyJit had only ever run at seq=32; seq=24 compiles a kernel
+  the AM driver hangs on. QUIRKS ENTRY (second artifact-backed,
+  WITH reproduction, per the ruling): 'LlamaLayer under TinyJit
+  at seq!=32 (measured: 24) hangs AM at capture/replay
+  (~steps 2-4). REPRO: V200_RESIDUAL=1 without V200_R_PAD32.
+  DODGE: pad tokens+masks to 32 (pad rows self-attend to avoid
+  all-masked softmax); V200_R_PAD32=1. Five-cut subtraction tree
+  banked at ccbd5a5/2370fd2.' Debug-by-subtraction vindicated
+  END-TO-END: four false suspects exonerated by removal before
+  the true lesion printed by addition. REMAINING BEFORE THE
+  THREE-SIGNATURE SMOKE: manifold invariant re-derived for r-mode
+  (exact per-batch span-of-fg-tokens projection, replacing the
+  stale-basis 0.103 read) — then organs 1+2+3 print together and
+  the word-to-light condition can be met.
