@@ -13501,3 +13501,23 @@ token-position × waist-dim, the moment the skeleton trains.
   the bet's fate). Three fires, three refusals, zero bent bars,
   a two-pole map, and one sentence keeping the record honest
   about what was and wasn't tested. THE ROAD RUNS THROUGH PAGES.
+- **THE POST-FIRE TELEGRAPH RE-READ (2026-07-27, the docket's
+  sanctioned run; scope: PARTIAL LOAD — 76 params loaded, 8
+  llama wk/wv shape-skipped (ckpt saved (2048,512) vs attach
+  (2048,2048) — a state-dict bookkeeping wrinkle FLAGGED, not
+  chased):** verdict on the trained-diverging loop: **NO
+  TELEGRAPH EMERGED** — lag-1 autocorr +0.081 (down from init's
+  +0.283, never negative); the dwell runs of 2 are the SPATIAL
+  signature in sequence clothing (low-low-high-high per breath =
+  the L0/L1-vs-L2/L3 polarization read k-major), not temporal
+  switching. STATIC POLARIZATION PERSISTS AND STRENGTHENS (2.28
+  -> 2.55 sd). The rhythm-authorship discriminant never arms (no
+  rhythm to attribute); the lineage comparison closes its first
+  chapter: the iaf_v3 K=2 telegraph remains unique to its
+  lineage — 500 steps of divergence do not manufacture temporal
+  structure, a failure-pole datum in its own right (divergence
+  is not rhythm). The instrument, its prior, and its
+  discriminant all stand banked for whatever trained loop next
+  earns a read. THE BOARD RESTS ON THE RULING: the road runs
+  through pages — book 7's zero-answer census is the next fire
+  that pays.

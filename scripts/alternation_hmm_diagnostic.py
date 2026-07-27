@@ -22,6 +22,18 @@ model = M()
 attach_llama_layers(model, n_layers=4, sd=load_llama_weights(), cfg=SMOLLM2_1_7B_CFG, layer_offset=0)
 attach_fg_params_v200(model, n_latents=V200_N_LATENTS, n_var_lat=V200_N_VAR_LAT, k_max=K,
     n_digits=V200_N_DIGITS, n_max=V200_N_MAX, f_max=V200_F_MAX, stage2a_waist=True, waist_dim=V200_WAIST_DIM)
+_ck = os.environ.get("V200_DIAG_CKPT", "")
+if _ck:
+    from tinygrad.nn.state import safe_load
+    from mycelium.factor_graph_v200 import fg_v200_state_dict
+    _sd = safe_load(_ck); _tg = fg_v200_state_dict(model); _n = 0
+    for _k, _d in _tg.items():
+        if _k in _sd and tuple(_sd[_k].shape) == tuple(_d.shape):
+            _s = _sd[_k].to(_d.device).realize()
+            _d.assign(_s.cast(_d.dtype) if _s.dtype != _d.dtype else _s).realize(); _n += 1
+        elif _k in _sd:
+            print(f"[diag] SKIP shape-mismatch {_k}: ckpt {tuple(_sd[_k].shape)} vs model {tuple(_d.shape)}")
+    print(f"[diag] loaded {_n} params from {_ck}")
 loader = FactorGraphLoaderV107(".cache/factor_graph_test.jsonl", batch_size=8,
     n_max=V200_N_MAX, f_max=V200_F_MAX, k_max=K, n_heads=16, seed=0)
 
