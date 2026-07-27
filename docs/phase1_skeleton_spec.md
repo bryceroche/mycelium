@@ -13360,3 +13360,28 @@ token-position × waist-dim, the moment the skeleton trains.
   THE GUT'S OPPONENT; IT IS THE GUT'S NOTARY.** Board unchanged:
   bisection -> reference rebuild from the fire's true input
   population -> three signatures -> the word.
+- **THE ALTERNATION/HMM DIAGNOSTIC PRINTS: STATIC POLARIZATION
+  (2026-07-27, pre-Fire-2 as ordered; scope = the r-loop's
+  STARTING anatomy, untrained gates):** the entropy grid shows
+  the structure #78's imposed design wanted — ALREADY THERE,
+  EMERGENT: within every breath, attention entropy rises
+  monotonically through the four THINK layers (L0 ~1.05 sharp/
+  local -> L3 ~1.7-1.9 broad/global) — each breath IS a
+  local-to-global sweep, repeated all eight breaths; layer
+  separation 2.28 sd. THE BLIND BINS RULE: STATIC POLARIZATION
+  (lag-1 autocorr +0.283 — positive, NOT alternating; the
+  TELEGRAPH does not print at init; dwell runs unpatterned).
+  JSD meter banked alongside (layer-0 carries the largest
+  breath-to-breath change ~0.1, settling) per the artifact's
+  caveat law. VERDICTS PER THE REGISTRATIONS: #78's E/B
+  intuition CONFIRMED AS EMERGENT (the record says so; the
+  imposed version needed no installing — the pretrained stack
+  already polarizes local->global within breath); #79's
+  telegraph NOT PRESENT at starting anatomy — the
+  lineage-comparison moment is the POST-FIRE-2 re-read (same
+  instrument, now banked: does training install the temporal
+  alternation the lineage measured, K=2 dwell vs iaf_v3's
+  prior). Fire 2's gate unchanged: bisection + reference
+  rebuild + three signatures, then the word. Instrument:
+  scripts/alternation_hmm_diagnostic.py; artifact:
+  .cache/alternation_hmm_diag.json.
