@@ -13190,3 +13190,13 @@ token-position × waist-dim, the moment the skeleton trains.
   pinned blind: ablation pair (mask-off, anonymous-init) as the
   first post-pass act — mechanism assigned, conjunction never
   celebrated. Both endings pre-written.
+- **FIRE 2 AMENDMENT (2026-07-27, Bryce): the interaction risk
+  pre-named** — aligned init cures at breath 0 by construction,
+  but residual accumulation may drift latents off-manifold at
+  depth (the pathology returning mid-loop, invisible to a
+  breath-0 check). The aligned-init signature prints PER-BREATH
+  (manifold cosine every breath, on the dashboard) — twitch-and-
+  settle transposed from gates to geometry: opening is cheap,
+  staying open is the finding. Countersign stands; the word to
+  light arrives when the smoke shows all three signatures (one
+  now per-breath) live in the compiled path.

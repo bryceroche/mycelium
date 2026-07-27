@@ -55,3 +55,16 @@ never required attribution; the record does.
   THE LADDER EVEN WITH THE COMPLETE PROVEN ANATOMY; the trichotomy
   reopens with the examination genuinely complete, not
   budget-exhausted.
+
+## Amendment (2026-07-27, Bryce — the interaction risk named in advance)
+The three organs INTERACT: aligned init places latents in-manifold at
+breath 0 BY CONSTRUCTION, but the residual path's accumulation may
+drift them OFF the embedding manifold by breath ~3 — the near-identity
+pathology returning AT DEPTH, invisible to a breath-0 check. Therefore
+the aligned-init signature prints **PER-BREATH**: latent-to-embedding-
+manifold cosine at EVERY breath on the dashboard — if the cure decays
+across the loop, the fire says so at step 50, not the autopsy at 500.
+(The twitch-and-settle lesson transposed from gates to geometry:
+opening is cheap; STAYING OPEN is the finding.) One dashboard line.
+The word to light arrives when the smoke shows ALL signatures live in
+the compiled path — and not before.
