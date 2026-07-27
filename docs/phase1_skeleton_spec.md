@@ -13594,3 +13594,26 @@ token-position × waist-dim, the moment the skeleton trains.
   bent clause. **THE FLOOR BELONGS TO BOOK 7** — the zero-answer
   census under gen-21 (42 candidates staged), the road's own
   next page.
+- **THE MIDDLE BET REGISTERS (2026-07-27, Bryce's word — by the
+  #72 procedure, NOT Fire 3):** NEW BET: 'transformation with
+  contraction' — the r-loop (living dynamics, three orders
+  measured) + the PAIRED v98 physiology: (a) SEAM: breath-start
+  detached RMSNorm on state (the latent path's own Seam-1,
+  'bounds inter-breath residual accumulation' — the exact organ
+  whose absence let Fire 2 diverge; param fg_v200_breath_norm_w
+  EXISTS, identity-init, zero new params); (b) BLEND: delta_gate
+  convex pull (present). BUDGET: ONE fire, 500 steps. BARS
+  (pinned blind, inherited unbent): C4 <= -0.05 third-era
+  reading; early-kill at 25%; DIVERGENCE-KILL added (eval ladder
+  INVERTED at any dashboard read -> stop, the Fire-2 pole
+  refused); manifold trend watched per the standing ruling;
+  masked-mass 0.0000 expected clean. PASS -> the bet lives,
+  attribution ablations first, then the 257. FAIL -> the middle
+  is measured empty at this scale and the docket's spec-stage row
+  closes with three-pole honesty. BOOK 7 IN PARALLEL: annotation
+  drafting DELEGATED to a subagent under the rulebook — LAWFUL
+  because the ANSWER KEY gates all training data (the certifier
+  was never the annotator's identity; parse-vote-key decides
+  what banks; hand-quota constitutional clauses untouched —
+  drafts are drafts until the key speaks). Pen and GPU no longer
+  compete: the road through pages, the bet in the gaps.
