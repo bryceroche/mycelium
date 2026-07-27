@@ -13117,3 +13117,27 @@ token-position × waist-dim, the moment the skeleton trains.
   patch law gains its sharpest clause: READ THE CALL GRAPH, not
   just the file — a patch that compiles and prints is not a patch
   that trains.
+- **FIRE 1 REPORTS: C4 FAILS AGAIN — THE TRAINABILITY CLAUSE ARMS
+  (2026-07-27):** with the depth-scheduled ask VERIFIABLY in the
+  compiled loss (smoke showed the masks load-bearing), the eval
+  ladder printed 0.9214 -> 0.8976 — monotone but shallow, slope
+  **-0.0030 vs the -0.05 bar** — statistically indistinguishable
+  from Fire 0's plain-objective -0.0037. TWO DIFFERENT OBJECTIVES,
+  SAME FLAT LADDER: improvement-pressure (diffuse) and
+  differ-by-construction (targeted) both fail to buy per-breath
+  differentiation at this scale/config in 500 steps. Honest
+  calibration of 'impatience': the v98 engine's ladder FORMED BY
+  STEP 200 — 500 steps twice over is evidence, not haste. C2
+  (latent departure) and C5 fail alongside; gates keep drifting
+  (excursion 2.53); train-time spread oscillates wildly late
+  (+0.19/-0.27). **PER THE PINNED CLAUSE: no longer a schedule
+  question — EVIDENCE ABOUT THE ARCHITECTURE'S TRAINABILITY AT
+  THIS SCALE. FIRE 2 IS NOT AUTHORIZED; the gate's word returns
+  to Bryce for the rethink.** Rethink surface (named, not
+  ruled): budget scale (v98's fast ladder argues config, not
+  patience), THINK-stack config (4 dense Llama layers vs the
+  engine's masked structure — #76's topological hypothesis
+  waits exactly here), latent-primary vs residual-primary
+  (the engine's ladder lives in a residual loop), and the
+  trichotomy's honest third possibility. Two fires, two refused
+  authorizations, every number banked.
