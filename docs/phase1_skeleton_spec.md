@@ -13324,3 +13324,19 @@ token-position × waist-dim, the moment the skeleton trains.
   latent organs; expected set). THE GATE HOLDS — signature 1
   untrusted means not live; no fire. The examination stands one
   probe-bisection and one reference-refinement from its smoke.
+- **GUT #79 REGISTERED WITH ITS GREP (2026-07-27):** the
+  conviction-index alarm fired on a citation-terminated founding
+  clause — and the grep returned the fence's BEST outcome: the
+  HMM-telegraph artifact EXISTS (104 traces, BIC-modal K=2 in
+  93, stability 0.97, dwell structure, entropy-not-JSD caveat
+  written for the v200 memo). Premise VERIFIED WITH ARTIFACT;
+  'llama 7b' flagged as decoration (nowhere in record;
+  iaf_v3-era) — substance real, detail invented, both channels
+  now personally instructed by the discipline. The telegraph
+  hypothesis seats as the SECOND named signature on the #78
+  polarization read (dynamic vs static vs null, blind, with the
+  old artifact's dwell structure as prior); i4 convergent with
+  the invariant relocation (independent arrival, one day); i5
+  refused pending the signature-1 bisection. Fire 2's gate
+  unchanged. The registry's arc completes its fifth step: the
+  instinct arrived CITING THE ARCHIVE, and the archive ANSWERED.
