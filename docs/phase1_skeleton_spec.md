@@ -13538,3 +13538,31 @@ token-position × waist-dim, the moment the skeleton trains.
   the baseline any imposed zigzag must beat; the polarization
   instrument is its free meter; entry by the #72 procedure or
   not at all. Nothing fires; the road stays on pages.
+- **THE EASE-THE-MODEL PROPOSALS COUNTERSIGNED (2026-07-27,
+  Bryce's question + relay design; three mechanisms, three
+  fates; ALL destinations are the spec-stage middle bet — nothing
+  fires, the road stays on pages):** (1) PER-LAYER RESIDUAL GAINS
+  (gamma_l seam norms) — INGREDIENT-GRADE, already family: this
+  IS the contraction-discipline anatomy the closed examination
+  named (v98 stabilization; magnitude-mismatch craft banked);
+  enters the middle bet's ingredient list as its strongest row —
+  learnable, identity-init. (2) ROPE FREQUENCY BANDING BY LAYER
+  — REFUSED AS STATED on the diagnostic's own print: the
+  emergent ramp was measured UNDER UNIFORM ROPE; re-banding
+  changes the geometry the pretrained heads learned — surgery on
+  working anatomy (recognition is not prescription, the #78
+  arc-close verbatim). Old-lineage ancestor noted (v22/v23
+  per-head pitch, rotation load-bearing) — future RoPE-shaping
+  enters through it as assumption-to-be-tested, new registration
+  only. (3) PER-LAYER TEMPERATURE tau_l — the HAND-SET form
+  refused by carved law (#74's lever per-layer; the joint law:
+  never sharpen in the state; #73: premature hardening IS the
+  misbinding species); the registrable residue: LEARNABLE tau_l
+  init exactly 1.0 (the model gets the knob, nothing installs a
+  setting), temperature-perp-truth fence attached (learned
+  sharpness never read as progress). The middle bet's ingredient
+  list now holds: contraction seams + gamma_l gains + learnable
+  tau_l + the native ramp as baseline + breath-vs-layer
+  alternation evidence side by side — a bet that, if it ever
+  earns its word, will be the best-provisioned registration this
+  house has ever written.
