@@ -507,6 +507,38 @@ def _eager_grad_norm_step(
 # Main
 # ---------------------------------------------------------------------------
 
+def _build_depth_vis(batch, K, n_eval):
+    """FIRE-1 (2026-07-27) depth-scheduled per-breath visibility (B,K,n_eval).
+    d(k)=1+k//2; final two breaths see all depths. V200_DEPTH_SCHED=0 -> ones."""
+    import os as _os
+    import numpy as _np
+    from tinygrad import Tensor as _T, dtypes as _dt
+    om = batch["observed_mask"]
+    om_np = om.numpy() if hasattr(om, "numpy") else _np.asarray(om)
+    B = om_np.shape[0]
+    vis = _np.ones((B, K, n_eval), dtype=_np.float32)
+    if int(_os.environ.get("V200_DEPTH_SCHED", "0")) <= 0:
+        return _T(vis, dtype=_dt.float).contiguous().realize()
+    from mycelium.factor_graph_data_v100 import compute_var_depth as _cvd
+    fa = batch["factor_args"]
+    fa_np = fa.numpy() if hasattr(fa, "numpy") else _np.asarray(fa)
+    nv = _np.asarray(batch["n_vars_total"])
+    for b in range(B):
+        n = int(nv[b])
+        args_b = [list(map(int, row)) for row in fa_np[b] if max(int(x) for x in row) >= 0]
+        try:
+            dmap = _cvd(list(map(int, om_np[b][:n])), args_b, n)
+        except Exception:
+            continue
+        depth = _np.zeros(n_eval, dtype=_np.int32)
+        for v, d in dmap.items():
+            if v < n_eval:
+                depth[v] = d
+        for k in range(K - 2):
+            vis[b, k, :] = (depth <= (1 + k // 2)).astype(_np.float32)
+    return _T(vis, dtype=_dt.float).contiguous().realize()
+
+
 def main() -> None:
     assert int(os.environ.get("V200_TASK", "0")) > 0, "V200_TASK=1 must be set"
 
@@ -747,7 +779,8 @@ def main() -> None:
 
         # ---- JIT training step ----
         Tensor.training = True
-        outs = step_fn(domain_init, node_kinds, gold_digits_t, obs_mask, n_vars_mask_t)
+        depth_vis_t = _build_depth_vis(batch, K, min(N_VAR_LAT, N_MAX))
+        outs = step_fn(domain_init, node_kinds, gold_digits_t, obs_mask, n_vars_mask_t, depth_vis_t)
         total_t, healthy_t = outs[0], outs[1]
         ce_t, calib_t      = outs[2], outs[3]
         cell_acc_t         = outs[4]

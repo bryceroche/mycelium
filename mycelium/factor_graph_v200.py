@@ -1824,6 +1824,7 @@ def _compile_jit_fg_step_v200(
         gold_digits: Tensor,    # (B, N_MAX, n_digits) int MSD-first
         obs_mask: Tensor,       # (B, N_MAX) int
         n_vars_mask: Tensor,    # (B, n_eval) float — 1.0 for real vars, 0 for padding (Jun 8 fix)
+        depth_vis: Tensor,      # (B, K, n_eval) float — FIRE-1 depth-scheduled per-breath visibility (all-ones = disabled)
     ):
         # opt.zero_grad() first, then backward, then opt.step() — v108 pattern
         opt.zero_grad()
@@ -1869,13 +1870,26 @@ def _compile_jit_fg_step_v200(
             nll_flat  = -(log_p * gold_oh).sum(axis=-1)                 # (N,)
             # Reshape to (B, n_eval, n_digits) and average over digits
             nll_per_pos = nll_flat.reshape(B, n_eval, n_digits).mean(axis=-1)  # (B, n_eval)
-            ce_k = (nll_per_pos * unobs_mask).sum() / unobs_sum
+            # FIRE-1 (2026-07-27): depth-scheduled visibility — breath k owns
+            # targets by derivation depth (differ-by-construction). All-ones
+            # depth_vis reproduces the original loss exactly.
+            mask_k  = unobs_mask * depth_vis[:, k_idx].cast(dtypes.float)
+            ce_k = (nll_per_pos * mask_k).sum() / (mask_k.sum() + 1e-8)
             per_breath_ce_list.append(ce_k)
             var_loss_sum = var_loss_sum + ce_k * ladder_weights[k_idx]
             var_weight_sum += ladder_weights[k_idx]
 
         # Normalize CE loss by weight sum to keep scale comparable across K
         total_ce = var_loss_sum / float(var_weight_sum)
+        # FIRE-1: improvement pressure IN THE REAL LOSS (env read at compile;
+        # the inert-patch specimen's cure — this is the training path).
+        _iw = float(os.environ.get("V200_IMPROVE_W", "0.0"))
+        if _iw > 0.0:
+            _m = float(os.environ.get("V200_IMPROVE_MARGIN", "0.01"))
+            _imp = Tensor.zeros((), dtype=dtypes.float).contiguous()
+            for _k in range(1, K):
+                _imp = _imp + (per_breath_ce_list[_k] - per_breath_ce_list[_k - 1] + _m).relu()
+            total_ce = total_ce + _iw * _imp / float(K - 1)
 
         # ---- Calibration head BCE ----
         # Target: whether last-breath prediction is correct on unobserved cells
