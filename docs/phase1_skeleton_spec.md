@@ -13285,3 +13285,19 @@ token-position × waist-dim, the moment the skeleton trains.
   (exact per-batch span-of-fg-tokens projection, replacing the
   stale-basis 0.103 read) — then organs 1+2+3 print together and
   the word-to-light condition can be met.
+- **SMOKE 4 STATUS + AN HONEST GEOMETRY FINDING (2026-07-27):**
+  probe pad-aware, runs without hang. TWO ITEMS BEFORE THE
+  THREE-SIGNATURE CONDITION IS MET: (1) masked-mass (signature 1)
+  does not print in r-mode — the r-forward exposes no attention
+  weights yet; small capture patch owed. (2) THE FINDING, banked
+  not tuned away: r-state cosine to the fg-token span is ~0.07
+  FROM BREATH 0 — the llama layers' outputs dominate the blend
+  immediately; the 'native manifold' anatomy holds only for the
+  INPUT, not the evolving state. The invariant's DEFINITION now
+  needs a ruling (span of tokens? token-plus-layer-image? or is
+  low-cos the honest geometry of residual state?) — flagged for
+  Bryce, not resolved by the builder. GUT #78 registered
+  same-transaction (row + block): within-breath schedule
+  re-refused with two ancestors; the photon is SIMULTANEITY
+  (supports signature C); the yield is the PER-LAYER POLARIZATION
+  READ, docketed zero-GPU. The gate holds.

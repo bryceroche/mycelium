@@ -578,13 +578,24 @@ def _manifold_cosine_per_breath(model, batch, K, mu, basis, think_mask):
               breath_masks=think_mask, taps=taps)
         taps["wb_post_norm"] = taps.get("r_state", [])
         taps["sa_weights"] = []
+        # r-mode INVARIANT (exact, per-batch): span of THIS batch's fg tokens
+        from mycelium.factor_graph_v200 import _embed_fg_tokens_v200 as _efg2
+        _di = batch["domain_init"]
+        _fg = _di if int(_di.shape[-1]) == 2048 else _efg2(model, _di, batch["node_kinds"], V200_N_MAX, V200_F_MAX)
+        _X = _fg.cast("float").realize().numpy().reshape(-1, _fg.shape[-1])
+        _X = _X[_np.abs(_X).sum(axis=1) > 1e-6] if (_np := __import__("numpy")) is not None else _X
+        _Qb, _ = _np.linalg.qr(_X.T[:, :min(_X.shape[0], 192)])
+        Q = _Qb
     else:
         fg_breathing_forward_v200(model, batch["domain_init"], batch["node_kinds"], K=K,
         n_max=V200_N_MAX, f_max=V200_F_MAX, n_var_lat=V200_N_VAR_LAT,
         n_digits=V200_N_DIGITS, training=False, stage2a_waist=True,
         think_mask=think_mask, taps=taps)
+    Q = None
     A = _np.concatenate([basis, mu[None, :] / (_np.linalg.norm(mu) + 1e-8)], 0)  # (17, H)
-    Q, _ = _np.linalg.qr(A.T)                                                    # (H, 17)
+    _Qs, _ = _np.linalg.qr(A.T)                                                  # (H, 17)
+    if Q is None:
+        Q = _Qs
     cos, spars = [], []
     for k in range(len(taps["wb_post_norm"])):
         Z = taps["wb_post_norm"][k].numpy().reshape(-1, Q.shape[0])
@@ -947,7 +958,8 @@ def main() -> None:
             _spread = pb_ce[0] - pb_ce[-1]
             log(f"  [GATES] excursion={_exc:.4f} waist_gate={_wg:.4f} breath_spread={_spread:.4f}  (calib line is a FALSE FRIEND when gates sit)")
             try:
-                _cos, _spars = _manifold_cosine_per_breath(model, batch, K, _mani_mu, _mani_basis, think_mask_t)
+                _pbatch = dict(batch); _pbatch["domain_init"] = domain_init  # r-mode: padded/pre-embedded tokens ride the probe too
+                _cos, _spars = _manifold_cosine_per_breath(model, _pbatch, K, _mani_mu, _mani_basis, think_mask_t)
                 log("  [FIRE2-SIG] manifold_cos/breath: " + " ".join(f"{c:.3f}" for c in _cos) +
                     ("  | masked-mass L0: " + " ".join(f"{s:.4f}" for s in _spars[:1]) if _spars else "  | mask off"))
             except Exception as _e:
