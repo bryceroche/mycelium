@@ -13168,3 +13168,25 @@ token-position × waist-dim, the moment the skeleton trains.
   fails C4, the trichotomy reopens with the examination
   complete. Diagnosis before surgery, as ruled — the menu is
   now a diagnosis.
+- **FIRE 2 RULED: THE FULL TRANSPLANT (2026-07-27, Bryce; draft
+  cut same transaction — docs/V200_FIRE2_DESIGN.md):** cheap
+  riders REFUSED BY THE MECHANISM ITSELF (scaling a near-identity
+  map buys amplitude, not transformation; the blend reports the
+  disease, doesn't cause it). THE AUDIT THAT RESHAPED THE FIRE:
+  the carry-forward's strongest row was never fully transplanted
+  — supervision rode, MARKERS AND ALIGNED INIT did not; the
+  near-identity pathology (OOD anonymous latents into
+  token-trained layers) and the missing aligned-init row are
+  plausibly ONE FACT — 'the examination almost closed on an
+  architecture that never received its own lineage's full
+  medicine.' Fire 2 = all three organs at once (mask + aligned
+  init/markers + residual-primary), depth-ask retained, C4
+  unbent, third and final; full-transplant over staged BECAUSE
+  of three-strikes: the last fire must close CLEAN in both
+  directions — no 'the restructure might have worked' haunting
+  the trichotomy. THREE SIGNATURES specified (sparsity /
+  breath-0 cosine / residual grad-norms) — no patch trusted
+  without its fingerprint in the compiled path. PASS-ATTRIBUTION
+  pinned blind: ablation pair (mask-off, anonymous-init) as the
+  first post-pass act — mechanism assigned, conjunction never
+  celebrated. Both endings pre-written.
