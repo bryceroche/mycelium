@@ -13385,3 +13385,21 @@ token-position × waist-dim, the moment the skeleton trains.
   rebuild + three signatures, then the word. Instrument:
   scripts/alternation_hmm_diagnostic.py; artifact:
   .cache/alternation_hmm_diag.json.
+- **THE RHYTHM-AUTHORSHIP DISCRIMINANT (2026-07-27, Bryce, pinned
+  blind BEFORE the post-Fire-2 telegraph re-read exists):** if the
+  trained loop develops two-state switching, the depth-scheduled
+  ask is a candidate AUTHOR — the visibility masks widen on a
+  schedule, and a supervision schedule with temporal structure can
+  write temporal structure into the entropy sequence directly (the
+  lineage's telegraph, whatever produced it, was NOT produced by
+  this ask). THE DISCRIMINANT: a telegraph that TRACKS the
+  depth-schedule's widening pattern is ASK-INSTALLED (real, but an
+  artifact of this training's shape); a telegraph with dwell
+  structure INDEPENDENT of the mask schedule — persisting in the
+  constant-visibility breaths (k >= K-2, where masks are full) or
+  matching the lineage's dwell statistics rather than the
+  schedule's — is the CLASS PROPERTY the question actually asks
+  about. Stated tonight; untanglable never, if unstated. #78's
+  arc-close line banked in the registry (detected / refused /
+  confirmed-both). The gate stands on its two owed items; the fire
+  enters better-characterized than any run in campaign history.

@@ -235,3 +235,9 @@ compounds only through reproductions.)*
 - i6 probe entropy across depth+breaths → THE ALREADY-DOCKETED #78 read, now carrying TWO named hypotheses + null, all pinned blind: STATIC polarization (stable per-layer entropy separation) vs TELEGRAPH (alternating regime-switching, dwell times, autocorrelation structure) vs NULL (flat/unpatterned). The read was free; it now has its best question and an archival prior.
 - i8 deductive reasoning wave → poetic summary; converts nothing.
 **Fire 2:** untouched; the gate holds on its own conditions (bisection, reference rebuild, three signatures, the word).
+
+*(#78 arc-close, 2026-07-27: THE GUT DETECTED, THE COUNTERSIGN REFUSED
+THE INSTALLATION, THE DIAGNOSTIC CONFIRMED BOTH — the E/B structure was
+already in the untrained stack (L0->L3 entropy sweep, 2.28 sd); the
+instinct saw structure that exists and mistook recognition for
+prescription — the best way to be wrong.)*
