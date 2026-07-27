@@ -1814,7 +1814,8 @@ def fg_breathing_forward_v200r(
     for k in range(K):
         x_pre = x
         h = x + breath_embed[k].reshape(1, 1, H).cast(x.dtype)
-        mk = breath_masks[:, k].reshape(B, 1, T, T).cast(dtypes.float) if breath_masks is not None else None
+        _nomask = int(os.environ.get("V200_R_NOMASK", "0")) > 0
+        mk = None if (_nomask or breath_masks is None) else breath_masks[:, k].reshape(B, 1, T, T).cast(dtypes.float)
         for layer in model.llama_layers[:4]:
             h = layer(h, rope_cos, rope_sin, attn_mask=mk)
         h = _rms_norm_detached(h, blend_norm_w, rms_eps).cast(x.dtype)

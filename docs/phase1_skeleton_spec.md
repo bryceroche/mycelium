@@ -13219,3 +13219,28 @@ token-position × waist-dim, the moment the skeleton trains.
   r-basis need re-derivation for token-state geometry. #77's
   three-path fork banked in the registry per the ruling. NO FIRE:
   signature 3 not yet live; the gate holds.
+- **THE HANG DEBUG BY SUBTRACTION (2026-07-27, ruled method,
+  three cuts banked):** (1) probes stripped -> STILL HANGS (the
+  quirks-file lore EXONERATED for this hang — patching by lore
+  would have shipped a false fix; quirks-as-hypothesis
+  vindicated). (2) device health: trivial op runs — NOT wedged.
+  (3) masks stripped (V200_R_NOMASK) -> STILL HANGS — the v108
+  slicing pattern was validated ground and is exonerated; **the
+  lesion is the BARE r-graph under JIT** (token-stream state, 4
+  layers x 8 breaths, gate blend, per-breath readout; hangs at
+  the capture/replay boundary ~steps 2-4). PRIME REMAINING
+  SUSPECT, named with its law: in r-mode the 32-layer-deep chain
+  ROOTS AT AN INPUT-DEPENDENT EMBEDDING GATHER (fg_tokens from
+  input ids inside the JIT), where the latent path's deep chain
+  rooted at param latents — and the house's own PRECOMPUTE-STATES
+  LAW (STATES_NPY; three OOM kills bought it) names the fix:
+  EMBED OUTSIDE THE JIT, feed the step a plain tensor. Next
+  window: that patch -> eager-vs-JIT check -> whichever fix lands
+  goes in the quirks file WITH ITS REPRODUCTION (the file's
+  authority compounds only that way). Also owed pre-smoke: the
+  manifold basis re-derived for token-state geometry (the cosine
+  line is an INVARIANT now; invariant-vs-stale-basis is the ruler
+  law's next specimen if shipped), and the waist-gate nan
+  verified TRULY DISCONNECTED at graph level or zeroed
+  defensively (nan propagates through everything it touches).
+  The gate holds: no fire until three live signatures.
