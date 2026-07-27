@@ -110,3 +110,12 @@ attention-bootstrap law). Measurement pre-attached: with-vs-without mask
 on the clock read — a real topology mask prints a CHEAPER CLOCK (fewer
 breaths per implication layer). Grep-verdict lineage: v98 masks-are-
 topology (engine); v200 THINK-block untried (READ-side (32,24) only).
+
+## 8. Post-forensics amendment (2026-07-27, ruled)
+Diagnosis: DISEASE ONE (dynamics dead; latent JSD 4e-4 -> 9e-5).
+Fire 2 (draft for countersign): topological THINK mask AND a dynamics
+fix (gate init/schedule, THINK scaling, or residual-primary restructure)
+— the mask alone is pre-registered insufficient under this diagnosis.
+C4 stands at -0.05, third attempt, unrenegotiated. **THREE-STRIKES
+BUDGET (constitutional): if Fire 2 fails C4, no Fire 3 — the
+trichotomy reopens with the bet's examination complete.**

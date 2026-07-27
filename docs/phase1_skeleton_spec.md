@@ -13141,3 +13141,30 @@ token-position × waist-dim, the moment the skeleton trains.
   (the engine's ladder lives in a residual loop), and the
   trichotomy's honest third possibility. Two fires, two refused
   authorizations, every number banked.
+- **THE FORENSICS PRINT: DISEASE ONE — DYNAMICS DEAD (2026-07-27,
+  zero-GPU, from Fire 1's own banked log):** latent JSD across
+  breaths: 0.00042 -> 0.00009 — state motion MICROSCOPIC and
+  DECAYING; the breaths transform the latents by less than a part
+  in a thousand, shrinking toward zero by breath 7. Waist
+  alternation deltas ~0.01; waist grad norms ~1e-3 (starvation
+  visible in the banked grad_norms.npz). The mechanism sketch the
+  numbers suggest: delta_gate blends 50/50 but h ~= x_pre — the
+  dense pretrained THINK layers act near-identity on 32 anonymous
+  latents, so the blend preserves a frozen state. NO supervision
+  schedule can ladder a loop whose iterations don't transform —
+  the two flat ladders (-0.0037, -0.0030) were downstream of
+  this, not of the asks. **PER THE PRE-REGISTRATION: the
+  topological mask is LIKELY INSUFFICIENT ALONE; the
+  latent-primary-vs-residual question PROMOTES TO CO-EQUAL**
+  (every measured ladder in campaign history formed in a
+  RESIDUAL loop with structured masks — both differences now
+  live suspects). FIRE 2's DRAFT (for countersign) therefore
+  carries BOTH surgeries: masked THINK (per #76, buildable at
+  breath 0 on this domain) AND a dynamics fix — candidates:
+  gate init/schedule freeing state motion, THINK-contribution
+  scaling, or the residual-primary restructure (the larger
+  surgery, the engine's own anatomy). THREE-STRIKES BUDGET
+  written into the plan per the ruling: if the combined fire
+  fails C4, the trichotomy reopens with the examination
+  complete. Diagnosis before surgery, as ruled — the menu is
+  now a diagnosis.
