@@ -886,6 +886,8 @@ def main() -> None:
         depth_vis_t = _build_depth_vis(batch, K, min(N_VAR_LAT, N_MAX))
         if int(os.environ.get("V200_RESIDUAL", "0")) > 0:
             think_mask_t = batch["staging_mask"]   # (B,K,T,T) — token topology+depth staging (organ 1+depth in token space)
+            from mycelium.factor_graph_v200 import _embed_fg_tokens_v200 as _efg
+            domain_init = _efg(model, domain_init, node_kinds, N_MAX, F_MAX).cast("float").realize()  # EMBED-OUTSIDE FIX
         else:
             think_mask_t = _build_think_mask(batch, N_LATENTS, N_VAR_LAT)
         outs = step_fn(domain_init, node_kinds, gold_digits_t, obs_mask, n_vars_mask_t, depth_vis_t, think_mask_t)
@@ -929,6 +931,8 @@ def main() -> None:
             _dg = model.fg_v200_delta_gate.detach().numpy()
             _exc = float(np.abs(_dg - 0.5).max())
             _wg = float(model.fg_v200_waist_gate.detach().numpy().flatten()[0]) if hasattr(model, "fg_v200_waist_gate") else float("nan")
+            import math as _math
+            if not _math.isfinite(_wg): _wg = -999.0   # nan-guard: unused-in-r-mode sentinel, never propagates
             _spread = pb_ce[0] - pb_ce[-1]
             log(f"  [GATES] excursion={_exc:.4f} waist_gate={_wg:.4f} breath_spread={_spread:.4f}  (calib line is a FALSE FRIEND when gates sit)")
             try:

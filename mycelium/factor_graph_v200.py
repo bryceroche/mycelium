@@ -1802,7 +1802,12 @@ def fg_breathing_forward_v200r(
     H = int(model.fg_v200_breath_embed.shape[-1])
     rms_eps = float(model.llama_cfg.rms_norm_eps)
     rope_cos, rope_sin = model.llama_rope_cos, model.llama_rope_sin
-    fg_tokens = _embed_fg_tokens_v200(model, domain_init, node_kinds, n_max, f_max).cast(dtypes.float)
+    # EMBED-OUTSIDE FIX (2026-07-27, the precompute-states law): domain_init may
+    # BE the precomputed fg_tokens (B,T,H) — detected by trailing dim == H.
+    if int(domain_init.shape[-1]) == H:
+        fg_tokens = domain_init.cast(dtypes.float)
+    else:
+        fg_tokens = _embed_fg_tokens_v200(model, domain_init, node_kinds, n_max, f_max).cast(dtypes.float)
     B = int(fg_tokens.shape[0]); T = int(fg_tokens.shape[1])
     x = fg_tokens                                              # residual-primary state
     breath_embed = model.fg_v200_breath_embed

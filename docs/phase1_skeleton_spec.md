@@ -13244,3 +13244,26 @@ token-position × waist-dim, the moment the skeleton trains.
   verified TRULY DISCONNECTED at graph level or zeroed
   defensively (nan propagates through everything it touches).
   The gate holds: no fire until three live signatures.
+- **THE EMBED-OUTSIDE FIX APPLIED — AND EXONERATED (2026-07-27):**
+  the precompute-law fix landed (r-forward accepts precomputed
+  (B,T,H) tokens, detected by trailing dim; trainer embeds eagerly
+  per batch; retained as standing hygiene) — STILL HANGS. The
+  subtraction tree now stands at FOUR exonerations: probes, device,
+  masks, input-rooted embed. THE HONEST FRONTIER: the bare r-loop
+  (fg-token state, 4 shared layers x 8 breaths, gate blend,
+  per-breath readout) hangs under JIT at T=24 — and the
+  archaeology note that reframes suspicion: THE LLAMA-LOADER
+  LAYERS HAVE NEVER RUN UNDER JIT AT SEQ != 32 in this repo's
+  history (the latent path was always L=32; kenken_llama was
+  never fired). THE BISECTION CARD (next window, decisive
+  order): (1) r-forward EAGER, no TinyJit — eager-clean splits
+  JIT-capture-bug from kernel-bug; (2) if JIT-side: bisect K=1
+  then layers=1 to isolate the captured kernel; (3) T=32 pad
+  test (pad tokens to 32 — if clean, the seq-24 kernel is the
+  lesion and padding is the lawful dodge); (4) whichever lands,
+  the quirks file gains the entry WITH REPRODUCTION. nan-guard
+  seated (dashboard sentinel -999, never propagates); manifold
+  invariant re-derivation still owed (exact per-batch
+  span-of-fg-tokens projection). The gate holds — no fire
+  without three live signatures; the examination waits on a
+  kernel, not on courage.
