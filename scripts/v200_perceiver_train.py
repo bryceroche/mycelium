@@ -824,13 +824,19 @@ def main() -> None:
         from tinygrad import dtypes as _dtR
         _pbR = dual_loader.sample_batch(step=1)
         _fgR = _efgR(model, _pbR["domain_init"], _pbR["node_kinds"], N_MAX, F_MAX).cast(_dtR.float)
+        if int(os.environ.get("V200_R_PAD32", "0")) > 0:   # the fire's true input population
+            _dR = _fgR.realize().numpy(); _BR, _TR, _HR = _dR.shape
+            _dpR = np.zeros((_BR, 32, _HR), np.float32); _dpR[:, :_TR] = _dR
+            from tinygrad import Tensor as _TT
+            _fgR = _TT(_dpR, dtype=_dtR.float)
         _hR = _fgR
         for _ly in model.llama_layers[:4]:
             _hR = _ly(_hR, model.llama_rope_cos, model.llama_rope_sin, attn_mask=None)
         _XR = _hR.realize().numpy().reshape(-1, _hR.shape[-1])
+        _XR = _XR[np.abs(_XR).sum(axis=1) > 1e-6]          # drop pad rows
         _muR = _XR.mean(0); _XcR = _XR - _muR
-        _UR, _SR, _VtR = np.linalg.qr(_XcR.T[:, :256])[0], None, None
-        _QR = _UR[:, :24]
+        _u, _s, _vt = np.linalg.svd(_XcR[:512], full_matrices=False)   # PROPER PCA (ruling: principal axes)
+        _QR = _vt[:24].T.astype(np.float32)
         _projR = np.linalg.norm((_XcR @ _QR), axis=1) / (np.linalg.norm(_XcR, axis=1) + 1e-8)
         _bandR = float(np.percentile(_projR, 5))
         _layer_ref = (_muR.astype(np.float32), _QR.astype(np.float32), _bandR)
@@ -999,7 +1005,9 @@ def main() -> None:
                         _w0 = _saw[0].numpy()
                         _tm = think_mask_t.numpy()[:, 0][:, None, :, :]
                         _forb = (_tm < -1.0)
-                        _mm.append(float((_w0 * _forb).sum() / (_w0.sum() + 1e-8)))
+                        _has_allowed = (~_forb).any(axis=-1, keepdims=True)   # rows with >=1 allowed col (bisection 2026-07-27: all-forbidden rows fall back to uniform and are NOT violations)
+                        _wv = _w0 * _has_allowed
+                        _mm.append(float((_wv * _forb).sum() / (_wv.sum() + 1e-8)))
                     log("  [FIRE2-SIG] layer-image cos/breath: " + " ".join(f"{c:.3f}" for c in _cs) +
                         f"  | band>={_bandR:.3f} " + ("IN" if all(c >= _bandR for c in _cs) else "OUT"))
                     log("  [FIRE2-SIG] state-delta/breath (Fire1 JSD analog 4e-4->9e-5): " + " ".join(f"{d:.4f}" for d in _dyn) +

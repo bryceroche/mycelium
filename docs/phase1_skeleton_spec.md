@@ -13403,3 +13403,22 @@ token-position × waist-dim, the moment the skeleton trains.
   arc-close line banked in the registry (detected / refused /
   confirmed-both). The gate stands on its two owed items; the fire
   enters better-characterized than any run in campaign history.
+- **THE OWED ITEMS CLOSE; FIRE 2 LIGHTS (2026-07-27):** the
+  bisection resolved the contradiction WITHOUT a guilty machine:
+  breath-0 staging forbids 97.7% of pairs, leaving deep tokens
+  ALL-FORBIDDEN rows whose softmax falls back to uniform — the
+  0.5156 was fallback rows counted as violations; individual
+  forbidden pairs read attention 0.00e+00 exactly. Signature 1's
+  honest form (rows with >=1 allowed column): **0.0000 — LIVE and
+  clean.** The reference rebuilt as ruled (true pad32 population,
+  proper SVD PCA, band blind at 0.885): sig 2 prints per-breath,
+  verdict OUT at init (0.43) — BANKED as the starting geometry,
+  the training trend is the watch (blended residual state vs
+  pure layer-image is a definitional gap Bryce may re-rule;
+  the instrument detects relative drift regardless). Dynamics
+  0.57-0.67 (three orders above Fire 1). Grad path proven by the
+  probe's backward + moving loss. THREE FINGERPRINTS LIVE — the
+  word's condition met: **FIRE 2 LIGHTS** (full transplant: mask
+  + aligned-init/markers + residual-primary; depth-ask + rider;
+  early-kill armed; C4 -0.05 third and final; both endings
+  pre-written; pass-attribution ablations pinned).
