@@ -13094,3 +13094,26 @@ token-position × waist-dim, the moment the skeleton trains.
   never met, correctly). EITHER-PRINT-IS-A-FINDING honored: Fire
   0's yield is the mechanism's anatomy — pressure reaches gates
   in 20 steps, differentiation needs more than pressure.
+- **THE INERT-PATCH SPECIMEN + FIRE 0's ATTRIBUTION VOIDED
+  (2026-07-27, caught by read-before-patch during Fire 1's build):**
+  the improvement-pressure term was patched into
+  _eager_grad_norm_step — the DIAGNOSTIC probe that 'does NOT
+  advance the optimizer' — while the real training loss lives in
+  the module's _compile_jit_fg_step_v200, which never read
+  V200_IMPROVE_W. **FIRE 0 TRAINED ON THE PLAIN COLD-START
+  OBJECTIVE; THE ASK WAS NEVER DELIVERED; THE IGNITION SENTENCE
+  ('the pathology was in the objective') IS VOIDED** — apparatus
+  symmetry applied to the week's most pleasing line. WHAT
+  SURVIVES: gates CAN move (they did, monotonically, under the
+  plain objective at Fire 0's settings) — so the original run's
+  frozen gates are now UNEXPLAINED, with candidates (LR 3e-4
+  constant vs original schedule; 500 fresh Adam steps; init era)
+  unattributed. The C4 differentiation failure STANDS (measured
+  at eval, objective-independent): still no ladder, whoever was
+  asking. CONSEQUENCE FOR FIRE 1: the depth-scheduled ask MUST be
+  implemented in the module's JIT loss — the real training path —
+  with the patch site read first; the trainer-side term is
+  removed or clearly marked diagnostic-only. The read-before-
+  patch law gains its sharpest clause: READ THE CALL GRAPH, not
+  just the file — a patch that compiles and prints is not a patch
+  that trains.
