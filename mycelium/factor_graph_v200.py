@@ -1821,8 +1821,15 @@ def fg_breathing_forward_v200r(
         h = x + breath_embed[k].reshape(1, 1, H).cast(x.dtype)
         _nomask = int(os.environ.get("V200_R_NOMASK", "0")) > 0
         mk = None if (_nomask or breath_masks is None) else breath_masks[:, k].reshape(B, 1, T, T).cast(dtypes.float)
-        for layer in model.llama_layers[:4]:
-            h = layer(h, rope_cos, rope_sin, attn_mask=mk)
+        if taps is not None:
+            _saw = []
+            for layer in model.llama_layers[:4]:
+                h, _w = layer.forward_return_weights(h, rope_cos, rope_sin, attn_mask=mk)
+                _saw.append(_w.cast(dtypes.float).realize())
+            taps.setdefault("r_sa_weights", []).append(_saw)
+        else:
+            for layer in model.llama_layers[:4]:
+                h = layer(h, rope_cos, rope_sin, attn_mask=mk)
         h = _rms_norm_detached(h, blend_norm_w, rms_eps).cast(x.dtype)
         gate_k = delta_gate[k].cast(x.dtype).reshape(1, 1, 1)
         x = x_pre + gate_k * (h - x_pre)

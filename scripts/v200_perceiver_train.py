@@ -815,6 +815,26 @@ def main() -> None:
 
     # FIRE-2 organ 2: aligned init + manifold basis (before JIT compile)
     _mani_mu, _mani_basis = _aligned_init_and_basis(model, dual_loader, N_LATENTS)
+    _layer_ref = None
+    if int(os.environ.get("V200_RESIDUAL", "0")) > 0:
+        # LAYER-IMAGE REFERENCE (ruling 2026-07-27): the manifold that matters is
+        # the distribution the layers produce on genuine token input. One plain
+        # feed-forward pass; band pinned BLIND from the reference's own spread.
+        from mycelium.factor_graph_v200 import _embed_fg_tokens_v200 as _efgR
+        from tinygrad import dtypes as _dtR
+        _pbR = dual_loader.sample_batch(step=1)
+        _fgR = _efgR(model, _pbR["domain_init"], _pbR["node_kinds"], N_MAX, F_MAX).cast(_dtR.float)
+        _hR = _fgR
+        for _ly in model.llama_layers[:4]:
+            _hR = _ly(_hR, model.llama_rope_cos, model.llama_rope_sin, attn_mask=None)
+        _XR = _hR.realize().numpy().reshape(-1, _hR.shape[-1])
+        _muR = _XR.mean(0); _XcR = _XR - _muR
+        _UR, _SR, _VtR = np.linalg.qr(_XcR.T[:, :256])[0], None, None
+        _QR = _UR[:, :24]
+        _projR = np.linalg.norm((_XcR @ _QR), axis=1) / (np.linalg.norm(_XcR, axis=1) + 1e-8)
+        _bandR = float(np.percentile(_projR, 5))
+        _layer_ref = (_muR.astype(np.float32), _QR.astype(np.float32), _bandR)
+        log(f"[FIRE-2 sig2] layer-image reference built: band (5th pct of self-proj) = {_bandR:.3f}")
 
     # ---- JIT step ----
     Tensor.training = True
@@ -958,10 +978,36 @@ def main() -> None:
             _spread = pb_ce[0] - pb_ce[-1]
             log(f"  [GATES] excursion={_exc:.4f} waist_gate={_wg:.4f} breath_spread={_spread:.4f}  (calib line is a FALSE FRIEND when gates sit)")
             try:
-                _pbatch = dict(batch); _pbatch["domain_init"] = domain_init  # r-mode: padded/pre-embedded tokens ride the probe too
-                _cos, _spars = _manifold_cosine_per_breath(model, _pbatch, K, _mani_mu, _mani_basis, think_mask_t)
-                log("  [FIRE2-SIG] manifold_cos/breath: " + " ".join(f"{c:.3f}" for c in _cos) +
-                    ("  | masked-mass L0: " + " ".join(f"{s:.4f}" for s in _spars[:1]) if _spars else "  | mask off"))
+                _pbatch = dict(batch); _pbatch["domain_init"] = domain_init
+                if int(os.environ.get("V200_RESIDUAL", "0")) > 0 and _layer_ref is not None:
+                    from mycelium.factor_graph_v200 import fg_breathing_forward_v200r as _fwdr2, fg_v200_empty_taps as _mt
+                    _tp = _mt()
+                    _fwdr2(model, domain_init, batch["node_kinds"], K=K, n_max=N_MAX, f_max=F_MAX,
+                           n_var_lat=N_VAR_LAT, n_digits=N_DIGITS, training=False,
+                           breath_masks=think_mask_t, taps=_tp)
+                    _muR, _QR, _bandR = _layer_ref
+                    _cs, _dyn, _mm = [], [], []
+                    _prev = None
+                    for _k, _st in enumerate(_tp["r_state"]):
+                        _Z = _st.numpy().reshape(-1, _QR.shape[0]) - _muR
+                        _cs.append(float((np.linalg.norm(_Z @ _QR, axis=1) / (np.linalg.norm(_Z, axis=1) + 1e-8)).mean()))
+                        _Zn = _st.numpy()
+                        if _prev is not None:
+                            _dyn.append(float(np.abs(_Zn - _prev).mean() / (np.abs(_Zn).mean() + 1e-8)))
+                        _prev = _Zn
+                    for _saw in _tp.get("r_sa_weights", [])[:1]:
+                        _w0 = _saw[0].numpy()
+                        _tm = think_mask_t.numpy()[:, 0][:, None, :, :]
+                        _forb = (_tm < -1.0)
+                        _mm.append(float((_w0 * _forb).sum() / (_w0.sum() + 1e-8)))
+                    log("  [FIRE2-SIG] layer-image cos/breath: " + " ".join(f"{c:.3f}" for c in _cs) +
+                        f"  | band>={_bandR:.3f} " + ("IN" if all(c >= _bandR for c in _cs) else "OUT"))
+                    log("  [FIRE2-SIG] state-delta/breath (Fire1 JSD analog 4e-4->9e-5): " + " ".join(f"{d:.4f}" for d in _dyn) +
+                        ("  | masked-mass L0: " + " ".join(f"{m:.4f}" for m in _mm) if _mm else "  | mask sig MISSING"))
+                else:
+                    _cos, _spars = _manifold_cosine_per_breath(model, _pbatch, K, _mani_mu, _mani_basis, think_mask_t)
+                    log("  [FIRE2-SIG] manifold_cos/breath: " + " ".join(f"{c:.3f}" for c in _cos) +
+                        ("  | masked-mass L0: " + " ".join(f"{s:.4f}" for s in _spars[:1]) if _spars else "  | mask off"))
             except Exception as _e:
                 log(f"  [FIRE2-SIG] signature probe failed: {_e}")
             _ka = int(float(os.environ.get("V200_KILL_FRAC", "0.25")) * STEPS)

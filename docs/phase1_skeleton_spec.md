@@ -13301,3 +13301,26 @@ token-position × waist-dim, the moment the skeleton trains.
   re-refused with two ancestors; the photon is SIMULTANEITY
   (supports signature C); the yield is the PER-LAYER POLARIZATION
   READ, docketed zero-GPU. The gate holds.
+- **SMOKE 5: THE SHEET LIVES, ONE SIGNATURE IN CONTRADICTION
+  (2026-07-27):** all three channels print. **THE DYNAMICS LINE
+  CONFIRMS THE RESTRUCTURE'S CORE CLAIM**: state-delta/breath
+  0.57-0.67 — THREE-PLUS ORDERS above Fire 1's 4e-4->9e-5;
+  disease one is STRUCTURALLY CURED and C4 becomes the sharp
+  question (do LIVING dynamics ladder). Layer-image reference
+  built, band pinned blind (5th pct self-proj = 0.462);
+  state prints 0.37 — OUT of band (honestly banked; reference
+  construction noted crude — QR-of-samples, not true PCA;
+  refinement owed with the band re-pinned before it gates
+  anything). **SIGNATURE 1 IN CONTRADICTION**: masked-mass reads
+  0.5156 — impossible under an applied -1e4 mask — while the
+  KNOWN-SIGNAL FIXTURE on the exact call path prints forbidden
+  mass 0.0 (the mask path is PERFECT). The discrepancy is
+  isolated between a clean fixture and a dirty probe: the
+  probe's r-forward call somehow ran maskless OR the mass
+  formula misreads. NEXT WINDOW's first cut: one direct
+  r-forward-with-taps mask test on a real staging batch —
+  bisects probe-call vs formula in one run. Also banked:
+  r-mode two-terminal exclusion = 42 params, all named (the
+  latent organs; expected set). THE GATE HOLDS — signature 1
+  untrusted means not live; no fire. The examination stands one
+  probe-bisection and one reference-refinement from its smoke.
