@@ -13472,3 +13472,32 @@ token-position × waist-dim, the moment the skeleton trains.
   The bar did not bend. Three fires, three refusals, one closed
   examination — the gate's word returns to Bryce with the
   trichotomy, and the record holds it all.
+- **THE FIRE ORDER HELD AGAINST ITS OWN CLAUSE + THE REOPENED
+  TRICHOTOMY RULED (2026-07-27, Bryce; the contradiction surfaced
+  per the countersign duty):** the message's header ordered
+  'add contraction discipline and rerun'; its body ruled 'no Fire
+  3, no exception... a word I'm not giving today.' THE BODY
+  GOVERNS — the fire is HELD; the clause refused its own author's
+  opening line, which is the discipline working at its final
+  boundary. BANKED AS RULED: (1) THE HONEST QUALIFICATION carried
+  into the trichotomy: 'wearing every organ' was true of the
+  ORGANS and false of the PHYSIOLOGY — the stabilization anatomy
+  (seam norms, blending toward fixed points, v98's contraction
+  machinery) was never transplanted. The middle (transformation
+  WITH contraction) is NAMED, UNEXPLORED, REGISTRABLE territory —
+  not refuted. It registers SPEC-STAGE with its ingredient list;
+  if it ever earns a word it enters by the #72 procedure. (2) THE
+  RULING: **THE GPU RETURNS TO THE ROAD THAT PAYS** — the books
+  campaign IS the campaign (migration law at n=3, two promotions
+  under unbent bars); the compile-side failure mass stays
+  CONTAINED (vote wall 68.8%, attestation zero lies, repair
+  lattice), the 257 banked as the permanent fixture any future
+  candidate must face, 0.011 the floor it must beat. (3) DOCKET
+  ORDER: book 7 zero-answer census under gen-21, fine-binding
+  hierarchy w/ pinned prediction, fdiv autopsy, archive audit
+  formal pass, replication on the next promotion's crossers, and
+  the POST-FIRE TELEGRAPH RE-READ (runs now, cheap — a diverging
+  loop's temporal signature is failure-pole data regardless of
+  the bet's fate). Three fires, three refusals, zero bent bars,
+  a two-pole map, and one sentence keeping the record honest
+  about what was and wasn't tested. THE ROAD RUNS THROUGH PAGES.
