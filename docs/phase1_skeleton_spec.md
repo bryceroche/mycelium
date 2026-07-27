@@ -13566,3 +13566,31 @@ token-position × waist-dim, the moment the skeleton trains.
   alternation evidence side by side — a bet that, if it ever
   earns its word, will be the best-provisioned registration this
   house has ever written.
+- **THE SPEC-STAGE MIDDLE-BET REGISTRATION BANKS, COUNTERSIGNED
+  WITH TWO TIGHTENINGS (2026-07-27, Bryce):** INGREDIENT LIST —
+  (a) seam norms / learnable residual gains (v98 lineage;
+  contraction discipline, fixed-point pull against exploding
+  state-deltas); (b) **blending discipline / fixed-point pull
+  (v98 lineage, PAIRED with seam norms — the two are ONE
+  MECHANISM)** — the tightening's reason banked verbatim: seam
+  norms alone entering the list risks the future plan inheriting
+  half the contraction anatomy and calling it whole — precisely
+  how Fire 2 inherited the body without the physiology. Plus
+  (from 958de2a): gamma_l identity-init gains; learnable tau_l
+  from 1.0 w/ temperature fence; native ramp as baseline;
+  breath-vs-layer evidence side by side; the 257 as fixture;
+  0.011 as floor; the #72 procedure as the only door. REFUSED
+  APPENDIX, each refusal WITH ITS ARTIFACT (refusals need
+  provenance as much as findings — the conviction-index lesson
+  applied to the docket's own filing): RoPE frequency banding —
+  REFUSED, cites the polarization diagnostic (ledger 43f3fb0;
+  .cache/alternation_hmm_diag.json: L0 ~1.05 -> L3 ~1.7-1.9,
+  2.28 sd, UNTRAINED stack, STANDARD RoPE, fixed 1/sqrt(dk);
+  strengthened 2.55 sd trained, ledger 1205c5f) — altering RoPE
+  distorts the positional geometry the measured ramp lives in.
+  Layer-wise hand-set softmax temperature — REFUSED, same
+  artifact (local focus at L0 native and unstruggled-for) + the
+  joint law (#74/#75) and #73. No fires, no diverted GPU, no
+  bent clause. **THE FLOOR BELONGS TO BOOK 7** — the zero-answer
+  census under gen-21 (42 candidates staged), the road's own
+  next page.
