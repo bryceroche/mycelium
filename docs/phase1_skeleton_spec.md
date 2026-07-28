@@ -13776,3 +13776,24 @@ token-position × waist-dim, the moment the skeleton trains.
   iaf_v3 author's 'entropy NOT JSD' flag has now done precisely
   the job it was raised for, two eras and two architectures
   later.
+- **BOOK 7 CERTIFICATION SHEET (2026-07-27):** of 23 read (1 held
+  [1470]): **1 CERTIFIED** — the chain's first machine-drafted
+  certified row in campaign history — 17 abstain (all-None
+  parses), 5 QUORUM-WRONG (incl. a unanimous 5/5 reading 2 vs
+  gold 0). THE CALIBRATING COMPARISON: book 6's lane pass ran
+  L1=1/L2=30/L3=44 of 75 — the machine-banked lane is ALWAYS
+  tiny (~1-4%); book 7's 1/23 free-lane rate is HISTORICALLY
+  NORMAL. The delegation produced a normal book's raw material:
+  the 17 abstains are the repair bench, the 5 wrongs the surgery
+  list — the standard lanes, now with a NEW ambiguity the
+  zero-answer class sharpens: a unanimous wrong on a draft may
+  be GATE ERROR (zero-dialect gap: zero-heavy givens) or DRAFT
+  INFIDELITY (the text describes a different graph than the one
+  the solver preverified — the annotator's graph solved to 0,
+  but the key never checked that the TEXT says what the graph
+  says). Per-item autopsy belongs to the lane pass; the
+  gate-vs-draft question is EXACTLY what the repair lane exists
+  to adjudicate. The certified row enters the registry's waiting
+  room with full provenance (drafted-by-delegation, certified by
+  vote+key+attestation). Lanes to Bryce's wheel with [1470]'s
+  faithfulness ruling.
