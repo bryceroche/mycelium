@@ -14666,3 +14666,17 @@ token-position × waist-dim, the moment the skeleton trains.
   jurisprudence grain. TALLY: 4 rendered-HIGH / 1 skip.
   **THIRTEEN LAWS, five worked examples.** Book 8 census-standing:
   114 after [636]'s withdrawal. THE WORD: tranche 5 fires.
+
+- **TRANCHE 5 FIRES (2026-07-28):** census with 36 registered
+  skips + [636]'s withdrawal held out — 390 eligible remain,
+  tranche 5 = 40 from src 685 (L1 6 / L2 17 / L3 17), banked to
+  book8_candidates_t5.json (tranche1 restored, standing
+  discipline). The brief carries the THIRTEEN-LAW jurisprudence
+  entire — including the accommodation law with the gate's four
+  known weaknesses named for marking (not avoidance-in-silence),
+  the routing-fact law with gen.routing_fact flags for the
+  ladder's docket, the sharpened invariance clause with [636] as
+  its cautionary specimen — plus five worked examples, the
+  technique list grown by scale-and-sign and Vieta systems, the
+  counterfactual pre-write test, and the discrete-exponent
+  cluster warning for this harvest region.

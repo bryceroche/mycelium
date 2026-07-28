@@ -67,7 +67,12 @@ TRANCHE2_SKIPS = {371, 378, 380, 404, 412, 419, 431, 473}
 # bench-WITHDRAWN post-certification (coincidental correctness — the
 # ordering lives over a domain the dialect cannot hold).
 TRANCHE3_SKIPS = {489, 499, 504, 539, 544, 549, 553, 577, 525}
-TRANCHE1_SKIPS |= TRANCHE2_SKIPS | TRANCHE3_SKIPS
+# Tranche 4 skips (2026-07-28): discrete-exponent family x4, counting
+# primitives x2. Plus [636], bench-WITHDRAWN post-certification
+# (coincidental correctness in canonicality's clothes — the q=1
+# remainder constraint has no in-graph witness).
+TRANCHE4_SKIPS = {589, 621, 625, 643, 652, 672, 636}
+TRANCHE1_SKIPS |= TRANCHE2_SKIPS | TRANCHE3_SKIPS | TRANCHE4_SKIPS
 
 cands = []
 for i in filt_idx:
