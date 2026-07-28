@@ -14227,3 +14227,47 @@ token-position × waist-dim, the moment the skeleton trains.
   (it parsed sel-smaller INTO [239]'s misparse). The ratification
   question before the bench is therefore the clean form: adopt the
   mint's own sentence forms as book-lawful, no new grammar.
+
+- **THE BENCH RULES ON FOUR OF SIX (2026-07-28) — and carves the
+  UNIVERSAL-CONSTANT LAW:** [351]/[221] did not cross the wheel
+  (resent; the sample's faithfulness rate banks only when whole).
+  **[350] v2 CONFORMS HIGH** (fraction-clearing is 443-license
+  rearrangement; every literal source-anchored; half→4/8 is
+  lexical explicitation; the cure = express the constraint the
+  dialect CAN express). **[239] v2 CONFORMS HIGH + worked-example
+  promotion CONFIRMED** — enters book 9's instruction set beside
+  443/1708 with caption: *when the natural operation is division,
+  render the source's invariant as multiplication and let the
+  solver invert.* **[198] DOES NOT CONFORM** — the control
+  convicted by its own disclosure: 60 min/hr alone is a lawful
+  universal constant, but 3 = min-per-5-pages CONSUMES the source
+  rate 100 plus an arbitrary block size; the decisive tell:
+  source literals 100 and 50 appear NOWHERE in the graph while
+  computed values stand in their place — specimen-[6] asymmetry
+  wearing a unit-conversion disguise. THE LAW CARVED: *a
+  universal constant is a known; any value computed by combining
+  that constant with a source given is a solved intermediate and
+  must derive in-graph. Mechanical tell: a source literal missing
+  from the graph while a non-source number stands in its place.*
+  **SEL/PCT RATIFIED WITH A WATCH:** mint templates verbatim, no
+  free variation until variation earns its own ratification; the
+  first tranche carrying ratified sel/pct rows gets its cert
+  sheet read with those rows called out — view-splits clustering
+  there = the diet lever's next customer at specimen grain.
+- **[198] V2 BUILT UNDER THE LAW — AND THE FAITHFUL FORM ABSTAINS
+  (2026-07-28):** v2 per the bench's prescription: all source
+  quantities in-graph (100, 50, 225) + constant 60 + block size 5
+  DECLARED as a given; invariants anchored at cap-legal 60×5=300
+  (direct 100·m=13500 barred by the value cap); 100·g=300→g=3
+  and 50·h=300→h=6 by solver inversion — the 3 and 6 now DERIVE
+  in-graph. solve2 verifies → 135 exactly. THE GATE'S VERDICT:
+  ABSTAIN [None,0,0,135,135] — no quorum. THE FINDING BANKED
+  PLAINLY: the law-conformant rendering (three parallel
+  mul-inversions sharing one anchor — a pattern the mint rarely
+  mints) is HARDER for the gate than the gifted v1 that certified
+  — **faithfulness has a measurable certification cost, and [198]
+  is its first specimen.** Not a reason to bend the law: the row
+  holds at the repair bench (provenance substituted-pending-bench)
+  and the three-inversion pattern joins two-digit-k as diet-lever
+  customer evidence. Tranche stands **23 certified / 6 abstain /
+  0 wrong**.
