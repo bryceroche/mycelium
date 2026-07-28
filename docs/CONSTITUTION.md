@@ -122,3 +122,13 @@ lines, gates, signatures) AND one deliberately-injected non-finite value
 the NaN-guard must catch and report, proving the kill can fire on the
 dashboard it watches. The meter fixtures guarded the rulers; this guards
 the witnesses.
+
+## No cosmetic non-finites (2026-07-27, the telemetry law's sibling)
+Two fires running, the cosmetics bin held a live symptom twice (the
+unused waist gate's nan; the smoke's TypeError that was the NaN's first
+face). Law: IN A NUMERICAL SYSTEM THERE ARE NO COSMETIC NON-FINITES —
+any nan/inf/type-anomaly in any tensor, used or unused, is a finding
+requiring disposition (traced to source, proven disconnected at graph
+level, or fixed) before any fire lights. The cosmetics bin keeps its
+name for aesthetics; numbers that aren't numbers never qualify. One law
+guards the witnesses; this one refuses the bin where symptoms hide.
