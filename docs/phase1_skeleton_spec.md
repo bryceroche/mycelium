@@ -14454,3 +14454,28 @@ token-position × waist-dim, the moment the skeleton trains.
   edge), [537] (the pct-avoidance trade). Residue flags for the
   bench's convenience: [533], [528], [521], [542]. Awaiting the
   bench.
+
+- **GUT #86 REGISTERED WITH BRYCE'S FULL COUNTERSIGN (2026-07-28
+  — flow vs cycle, three costumes):** jet/piston, parabronchi/
+  tidal, escalator/elevator = ONE distinction: continuous flow
+  through stations vs reciprocating cycles in one chamber. Banked
+  as ruled: (1) the campaign already runs both engines and the
+  record says which works — the two-jaws pipeline IS the
+  escalator (proven, binds 1.000), the neural loop IS the piston
+  (three-pole refused); honest narrow form: weight-tied
+  recurrence ladders on KenKen, refused on the compiler at this
+  scale. (2) THE YIELD: the three-pole map is LOOP-INTERNAL — a
+  family mapped, not a space; the complement (staged flow, untied
+  stations, differentiation structural-by-construction) is
+  unrefuted and enters ONLY by the #72 procedure. (3) THE #70
+  STATE-BORNE FENCE DATED, not lifted: written pre-evidence;
+  Fire 1 measured differentiation refusing to emerge across tied
+  weights under explicit gradient demand — the annotation enters
+  the ingredient list; any staged-flow bet reopens the clause by
+  measurement. (4) FREE RENAME carried into the texture fact:
+  the routing-freeze (JSD→0 by breath 5-6, state-deltas 0.66) is
+  DEAD SPACE — breaths 6-8 re-breathe stale routes; the tidal
+  frame names the pathology better than the filing. (5) Sibling
+  watch: #84 (exchange geometry) + #86 (exchange scheduling) may
+  be one gut about exchange — joint registration candidate;
+  BOTH interps owed. No fire, no word, no GPU — the pages hold it.
