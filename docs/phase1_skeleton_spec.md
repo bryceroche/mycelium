@@ -14081,3 +14081,27 @@ token-position × waist-dim, the moment the skeleton trains.
   training, which is the strongest proof yet that the ramp was
   load-bearing anatomy, not decoration. The road holds at
   delegation tempo; the docket advances.
+
+- **2026-07-28 — GUT #85 (BAU) registered + countersigned: the gut
+  vindicated by the sheet that landed beside it.** "Business as usual
+  is more efficient... space out the workload... we want BAU." The
+  countersign's honest sort: MOST CLAUSES CONVERGENT with standing law
+  (space-out = the migration law's mechanism + diversity budget;
+  load-balance = teaching-vs-maintenance + dilution + stage batching;
+  gentle continuation = measured doctrine) — the road that pays IS
+  BAU, and the ruling that sent the GPU back to the pages was BAU
+  avant la lettre. THE ONE NEW YIELD is a mechanism claim the
+  three-pole map doesn't state: a COMMON CAUSE upstream of all three
+  poles — cold-start shock on a narrow objective destroys pretrained
+  assets before they can be recruited (catastrophic interference),
+  and the ramp's measured destruction (2.28σ→0.78σ) is its casualty.
+  CONVERSION: the BAU-SHAPED TRAINING PRESCRIPTION enters the
+  future-bet ingredient list (V200_CARRY_FORWARD.md) — interleaved
+  diet not single-objective hammering, inheritance-respecting LR,
+  active ramp leash (KL-or-cosine anchor as ablation arm) beside the
+  passive ramp-preservation kill already banked. The kill says stop
+  a loop that eats its ramp; BAU adds don't cook it so ramp-eating
+  is the path of least resistance. No lever fires (budget spent,
+  fence absolute); the registry's least dramatic conversion: keep
+  doing the thing that works, and write down why the other thing
+  didn't. The #84 bowls seed stands unconverted, interps awaited.
