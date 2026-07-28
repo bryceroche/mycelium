@@ -49,13 +49,14 @@ for i, r in enumerate(rows):
         res["held_1470"].append(i); continue
     gold = r["solution"][r["query_var"]]
     m = r.get("m", 300)
-    texts = [r["text"]] + [permuted_view(r["text"], 90000 + 10*i + k) for k in range(1, 5)]
+    dialect = r["gen"]["dialect"]   # SCHEMA CORRECTION (2026-07-27): text=SOURCE, gen.dialect=the annotation — book5's own convention; the first pass parsed raw LaTeX
+    texts = [dialect] + [permuted_view(dialect, 90000 + 10*i + k) for k in range(1, 5)]
     views = [(f, q, solve2(f, q, {"n_vars": 24, "m": m})) for f, q in parse_batch(texts)]
     votes = [a for _, _, a in views]
     nn = [a for a in votes if a is not None]
     c = Counter(nn).most_common(1); plur, cnt = c[0] if c else (None, 0)
     if cnt >= 3 and plur == gold:
-        att, _, _ = attest_quorum_v3(views, plur, r["text"], m, solve2)
+        att, _, _ = attest_quorum_v3(views, plur, dialect, m, solve2)
         res["certified" if att else "abstain"].append({"i": i, "votes": votes})
     elif cnt >= 3:
         res["wrong"].append({"i": i, "plur": plur, "gold": gold, "votes": votes})

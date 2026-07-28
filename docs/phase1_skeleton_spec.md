@@ -13813,3 +13813,20 @@ token-position × waist-dim, the moment the skeleton trains.
   delegated drafts; quorum vindicated). [1470] drew the line
   from one side; this specimen tests it from the other; both
   cross the wheel together with text+graph+gold.
+- **THE CERTIFICATION SHEET VOIDED — MY APPARATUS ERROR, CONFESSED
+  AND CORRECTED (2026-07-27):** the wheel-crossing extraction
+  exposed it: book5's OWN schema stores text=SOURCE and
+  gen.dialect=THE ANNOTATION — Sonnet matched the schema
+  correctly; MY certify harness parsed r['text'] and ran the
+  entire pass on RAW HARVEST LATEX. The sheet (1/17/5) is VOID:
+  the 17 all-None were the gate correctly abstaining on
+  un-annotated source; the 'cold-class specimen' DISSOLVES — the
+  unanimity was the gate reading raw LaTeX, no poisoned gold, no
+  wild cold-class second appearance (the ledger entry at b89c02b
+  and the adjudication entry at 62a6981 are superseded on that
+  point; Bryce's faithfulness-first priority was nonetheless
+  VINDICATED one level up — 'read the text against the graph
+  first' is exactly what caught this: the text WASN'T the
+  annotation at all). The corrected pass (gen.dialect) re-fired
+  as book7-certify2; verdict on sentinel. Read-before-patch's
+  final form: READ THE SCHEMA, not just the field names.
