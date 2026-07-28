@@ -14056,3 +14056,28 @@ token-position × waist-dim, the moment the skeleton trains.
   fdiv autopsy, archive audit, replication. GUT #84 (bowls)
   registered as SEED — interps awaited; the attractor-basin
   reading noted as landing directly on the third pole.
+- **THE POST-FIRE TELEGRAPH RE-READ (2026-07-28, on the
+  re-light's trained states — the registered question meets its
+  loop):** VERDICT: NULL/UNCLASSIFIED — no telegraph (lag-1
+  +0.508, dwell unpatterned), and the reason is the sheet's real
+  cargo: **THE SPATIAL POLARIZATION COLLAPSED UNDER TRAINING** —
+  layer separation 2.28 sd (init) -> 0.78 sd (trained); the
+  entropy grid reads ~1.8 UNIFORM across all layers and all
+  breaths. The wrong-attractor training HOMOGENIZED the stack:
+  the native local-to-global ramp (#78's emergent anatomy) was
+  EATEN — the loop converged to maximal-entropy routing,
+  attention diffusion in its literal form. FAILURE MAP FINAL
+  ENTRY: the third pole's attractor is now characterized — a
+  uniformly-diffuse routing state whose readout worsens per
+  breath. TWO YIELDS: (1) the telegraph question STAYS OPEN per
+  its pre-registration (silence in failure keeps it for the next
+  architecture); (2) NEW TOOLKIT LINE for any future bet: the
+  polarization is a SPENDABLE PRETRAINED ASSET — training at
+  this scale destroyed it — so a RAMP-PRESERVATION metric
+  (layer-separation, live) joins the dashboard family; a future
+  loop that eats its own ramp should be killed for it. #78's
+  arc gains its coda: detected, refused installation, confirmed
+  emergent — and now measured DESTROYED by wrong-attractor
+  training, which is the strongest proof yet that the ramp was
+  load-bearing anatomy, not decoration. The road holds at
+  delegation tempo; the docket advances.
