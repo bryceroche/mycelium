@@ -58,6 +58,11 @@ for f in sorted(glob.glob(".cache/book*_prose_pairs*.jsonl")):
 # exponent-law magnitudes over the cap, discriminant-sign, inequality
 # counting, inexact roots. Held out of later tranches; a skip is a verdict.
 TRANCHE1_SKIPS = {189, 206, 230, 233, 234, 237, 254, 256, 277, 324, 358}
+# Tranche 2 skips (2026-07-28, book8_t2_draft_report.md): discrete-log,
+# fractional exponents, interval bracketing, primality reasoning,
+# comparison counting, exponent bookkeeping over the cap.
+TRANCHE2_SKIPS = {371, 378, 380, 404, 412, 419, 431, 473}
+TRANCHE1_SKIPS |= TRANCHE2_SKIPS
 
 cands = []
 for i in filt_idx:

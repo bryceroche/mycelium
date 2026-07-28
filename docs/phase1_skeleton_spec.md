@@ -14409,3 +14409,19 @@ token-position × waist-dim, the moment the skeleton trains.
   examples, the ordering clause, the auditor — a jurisprudence no
   first-draft pen could have written. Standing: 50 certified / 11
   bench / 510 eligible / three diet customers queued.
+
+- **TRANCHE 3 FIRES (2026-07-28):** census with BOTH tranches'
+  skips registered (19 held out; a skip is a verdict) — 470
+  eligible remain, tranche 3 = 40 from src 489 (L1 12 / L2 12 /
+  L3 16), banked to book8_candidates_t3.json (tranche1 record
+  restored post-regeneration, same discipline as t2). The brief
+  carries the FULL JURISPRUDENCE: six laws (universal-constant,
+  co-test, deduction-vs-assembly, rearrangement, theorem-
+  application two-part, ordering), four worked examples (443,
+  1708, 239-v2, 436), the predecessor's apparatus MANDATED
+  (text-from-candidates + the sentence-vs-graph auditor), sel
+  under the ordering law, pct with its measured pointer-scatter
+  disclosed, and the standing guidance: faithful abstain beats
+  gifted certification. The pen is asked to flag every row where
+  it argued degree under laws 3/4/5 — the bench samples those
+  deliberately.
