@@ -14501,3 +14501,42 @@ token-position × waist-dim, the moment the skeleton trains.
   more than two adjacent rows). The t3 sample re-crosses the
   wheel; the bench takes them under the six laws and whatever
   they sharpen next.
+
+- **THE T3 SITTING: THREE LAWS, A CLAUSE, A FIFTH EXAMPLE, A NEW
+  TAXONOMY ENTRY — the most any sample has produced (2026-07-28):**
+  **[570] RENDERED HIGH + THE INVARIANCE CLAUSE:** *an arbitrary
+  construction choice is lawful when the answer is invariant under
+  the choice AND the chosen construction is built in-graph;
+  unlawful when the choice determines off-graph values* ([198]'s
+  block-size contrast). Bonus banked: the construction
+  SELF-VERIFIES (b·f=e has integer solutions only if b divides D —
+  the solver checks the denominator's legality as part of solving;
+  a construction that proves its own legality in-graph is the
+  strongest form of rendered). **[538] RENDERED MEDIUM + THE
+  BOOKKEEPING CLAUSE:** *theorem-application licenses the theorem,
+  not the arithmetic that reaches its inputs — any expressible
+  operation computing the transform's arguments must be rendered
+  in-graph.* The origin-vertex was luck, not craft; demerit on
+  off-graph adjacency selection. **[496] RENDERED HIGH — FIFTH
+  WORKED EXAMPLE,** captioned: *the theorem hands the graph a
+  system, not an answer.* **[525] DOES NOT CONFORM — COINCIDENTAL
+  CORRECTNESS enters the failure taxonomy** via THE COUNTERFACTUAL
+  CLAUSE: *if changing the source's question would leave the
+  dialect unchanged, the dialect has not rendered the question*
+  ("largest" did no work; the integer domain silently eliminated
+  1/8; right by coincidence). No retry — the ordering lives over a
+  domain the dialect cannot hold: WITHDRAWN TO HONEST SKIP, the
+  default doing what it was written for. **[537] RENDERED HIGH +
+  THE PARAMETER-PROVENANCE LAW:** *a parameterized primitive is
+  lawful for a row only if its parameter is a source literal or an
+  in-graph derivation the primitive's own slots can hold; if the
+  parameter is reachable only by off-graph computation, render the
+  relation another way* — one sentence retiring the hazard class
+  the bench met piecemeal at [239], [350], [537]. RESIDUE: [521]
+  watch-marked "pointer-collision" (one given, three roles — the
+  [411] scatter's worst configuration; next certification's
+  called-out reading); [542] makes the certification-cost pair a
+  TRIO — next sample reports the cost as a RATE. TALLY: 4/5
+  rendered, holding tranche 2's rate. THE JURISPRUDENCE: **nine
+  laws, five worked examples, one taxonomy entry richer.** The
+  word: tranche 4 when ready.
