@@ -13849,3 +13849,20 @@ token-position × waist-dim, the moment the skeleton trains.
   rows: the zero-hunt census the wild specimen [36] asked for,
   delivered. Lanes + [1470] to Bryce's wheel; the quirk cut has
   the GPU.
+- **TWO RIVETS ON THE BOOK ECONOMICS + COMPILER PRIORITIZED
+  (2026-07-27, Bryce):** (1) SCOPE STAMP: 91%-vs-1-4% compares
+  different populations — the historical lane ran RAW candidates
+  cold; these 23 were SOLVER-PREVERIFIED (upstream selection).
+  Honest sentence: delegation + preverification certifies ~91%
+  where raw ran 1-4; the lift belongs to the PIPELINE; December
+  models the preverification's own yield rate before tempo
+  replans. (2) THE FAITHFULNESS SAMPLE, load-bearing before the
+  21 train: the chain certified GRAPH-ANSWERS, never
+  text-faithfulness — for delegated drafts the gap is at
+  population scale (the gold descends from the draft's own
+  graph). LAW: five of the 21, stratified, join [1470] at the
+  wheel — SIX ACROSS; all-conform -> tranche enters with a
+  measured faithfulness rate and sampling becomes book 8's
+  standing gate; any drift -> caught before training, the only
+  time faithfulness is cheap. COMPILER PRIORITIZED: _STD cut ->
+  harness -> re-light under the once-only fence.
