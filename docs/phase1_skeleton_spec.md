@@ -13749,3 +13749,30 @@ token-position × waist-dim, the moment the skeleton trains.
   is the JSD track's own baseline; the lineage comparison stays
   entropy-side per the iaf_v3 caveat. Artifacts:
   .cache/jsd_meter_fixture.json, jsd_telegraph_init.json.
+- **THE ROUTING-STALENESS HYPOTHESIS PINNED INTO THE MIDDLE-BET
+  REGISTRATION (2026-07-27, Bryce — the texture fact's real
+  payment):** the candidate anatomy for Fire 2's divergence,
+  assembled from three banked reads: routing FREEZES by breath
+  5-6 (JSD -> 0) while content flows (deltas 0.66) while the
+  state leaves the layer-image cloud (0.43 -> 0.17) while later
+  breaths turn destructive (eval CE climbing) — **a loop that
+  commits its routing in five breaths and then pushes
+  ever-larger content through frozen pathways has no mechanism
+  to re-route around its own drift: divergence as STALE ROUTING
+  AMPLIFYING DISPLACED CONTENT**, not merely unbounded
+  magnitude. SEAM-1's MECHANISM RE-FRAMED: re-normalization at
+  breath starts doesn't only bound norms — it keeps the state
+  RECOGNIZABLE to the frozen routes, so routing computed early
+  stays approximately valid late. BLIND PREDICTION for the
+  re-light's JSD line: under Seam-1, EITHER routing stays
+  plastic longer (JSD decaying slower than init's breath-5-6
+  freeze) OR the frozen routes remain SUFFICIENT (content
+  laddering through static attention because the seam keeps
+  state in-distribution). The trained re-read's registered
+  question goes THREE-WAY: ladder-through-frozen-routes /
+  unfreeze-routing / seam-sustained-routing. The re-light now
+  carries a mechanism story it can confirm or kill, not just a
+  crash to avoid. And the note across eras stands honored: the
+  iaf_v3 author's 'entropy NOT JSD' flag has now done precisely
+  the job it was raised for, two eras and two architectures
+  later.
