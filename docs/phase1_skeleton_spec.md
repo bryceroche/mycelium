@@ -14479,3 +14479,25 @@ token-position × waist-dim, the moment the skeleton trains.
   watch: #84 (exchange geometry) + #86 (exchange scheduling) may
   be one gut about exchange — joint registration candidate;
   BOTH interps owed. No fire, no word, no GPU — the pages hold it.
+
+- **CLOSING COUNTERSIGN ON #86 + THE DAY (2026-07-28, Bryce):**
+  three carvings banked: (1) the four ingredient rows are a
+  FUTURE-BET CONSTITUTION assembled by nobody's design — what to
+  build / how to feed it / what kills it / which fence it must
+  re-measure; the ingredient list now does for refusals-in-
+  -composition what the conviction index does for refutations:
+  makes hard-won knowledge available to a reader who wasn't here.
+  If a staged-flow bet ever earns a word, its plan is half-written
+  by the things that failed. (2) DATED-NOT-LIFTED carved as the
+  harder discipline: evidence-against-premise is not license; a
+  fence movable only by the same procedure that would have kept
+  it stays honest across sessions. (3) Book 8's arc re-read as a
+  QUALITY result, not a speed result: the jurisprudence now
+  reaches the pen before the gate has to teach it — the
+  delegation economics matured from book 7's throughput claim to
+  book 8's first-pass-certification claim. Seeds #84/#86 still
+  owed their interps; joint conversion preferred if they are one
+  gut about exchange (a single surface-for-throughput law worth
+  more than two adjacent rows). The t3 sample re-crosses the
+  wheel; the bench takes them under the six laws and whatever
+  they sharpen next.
