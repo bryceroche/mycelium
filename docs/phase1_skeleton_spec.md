@@ -14540,3 +14540,18 @@ token-position × waist-dim, the moment the skeleton trains.
   rendered, holding tranche 2's rate. THE JURISPRUDENCE: **nine
   laws, five worked examples, one taxonomy entry richer.** The
   word: tranche 4 when ready.
+
+- **TRANCHE 4 FIRES (2026-07-28):** census with all three
+  tranches' skips + [525]'s bench-withdrawal registered (28+1
+  held out) — 430 eligible remain, tranche 4 = 40 from src 589
+  (L1 10 / L2 14 / L3 16), banked to book8_candidates_t4.json
+  (tranche1 record restored, standing discipline). The brief
+  carries the NINE-LAW jurisprudence + the counterfactual test
+  as a standing pre-write check (variant question → dialect must
+  change, else coincidental correctness; unrepresentable variant
+  → honest skip) + five worked examples (496 joins as E:
+  systems) + the pointer-collision watch mark ([521]'s
+  configuration flagged proactively at draft time) + the
+  certification-cost-as-rate instruction (pen risk flags are now
+  data). The apparatus inheritance is mandated: text-from-
+  candidates, sentence-vs-graph auditor.

@@ -62,7 +62,12 @@ TRANCHE1_SKIPS = {189, 206, 230, 233, 234, 237, 254, 256, 277, 324, 358}
 # fractional exponents, interval bracketing, primality reasoning,
 # comparison counting, exponent bookkeeping over the cap.
 TRANCHE2_SKIPS = {371, 378, 380, 404, 412, 419, 431, 473}
-TRANCHE1_SKIPS |= TRANCHE2_SKIPS
+# Tranche 3 skips (2026-07-28): decimal clearing over cap, inequality/
+# bracket-search, unknown exponents, combinatorial argmax. Plus [525],
+# bench-WITHDRAWN post-certification (coincidental correctness — the
+# ordering lives over a domain the dialect cannot hold).
+TRANCHE3_SKIPS = {489, 499, 504, 539, 544, 549, 553, 577, 525}
+TRANCHE1_SKIPS |= TRANCHE2_SKIPS | TRANCHE3_SKIPS
 
 cands = []
 for i in filt_idx:
