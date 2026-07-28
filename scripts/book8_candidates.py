@@ -75,7 +75,12 @@ TRANCHE3_SKIPS = {489, 499, 504, 539, 544, 549, 553, 577, 525}
 # (coincidental correctness in canonicality's clothes — the q=1
 # remainder constraint has no in-graph witness).
 TRANCHE4_SKIPS = {589, 621, 625, 643, 652, 672, 636}
-TRANCHE1_SKIPS |= TRANCHE2_SKIPS | TRANCHE3_SKIPS | TRANCHE4_SKIPS
+# Tranche 5 skips (2026-07-28): degree-reasoning, bare-echo Vieta,
+# unique-integer inequality, discrete-exponent x3 (recurrence 8),
+# floor/sqrt family x2, and [746] complex numbers — DOMAIN-BOUNDARY
+# (see category note above).
+TRANCHE5_SKIPS = {702, 707, 712, 715, 716, 725, 739, 746, 774}
+TRANCHE1_SKIPS |= TRANCHE2_SKIPS | TRANCHE3_SKIPS | TRANCHE4_SKIPS | TRANCHE5_SKIPS
 
 cands = []
 for i in filt_idx:
