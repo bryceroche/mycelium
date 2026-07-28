@@ -13906,3 +13906,31 @@ token-position × waist-dim, the moment the skeleton trains.
   telemetry pre-flight harness (consecutive-skip kill + injected
   non-finite + printing proof), then THE RE-LIGHT — scalar-Seam-1,
   the one remaining attempt under the absolute fence.
+- **THE BENCH RULES ON THE SIX (2026-07-27, Bryce — two axes,
+  opposite verdicts):** AXIS ONE (text-graph custody): 6/6 CLEAN
+  — every dialect says what its graph computes; the chain's
+  certification means what it claims. AXIS TWO (source
+  fidelity): 40% rendered / 60% substituted-or-stand-in — and
+  the substitution is a POLICY: facing inexpressible operations,
+  the delegation pre-computes them into gifted knowns instead of
+  skipping (2/6 and 5/6 FAITHFUL-HIGH — the model specimens:
+  algebraic rearrangement and the magnitude-fold done right; 1/6
+  UNFAITHFUL by asymmetry (same midpoint op in-graph on x,
+  gifted on y); 3/6 UNFAITHFUL (ceil/floor semantics wholly
+  outside the dialect — the honest-skip case, substituted
+  instead); 4/6 UNFAITHFUL-LOW (the quotient rule across 56
+  exponents gifted); [1470] LAWFUL-AS-DECLARED, category ruling:
+  stand-ins enter as DIALECT-NATIVE problems with stand-in
+  provenance, never as translation). THE CENSUS HAZARD NAMED:
+  substituted zeros are trivial cancellation wearing borrowed
+  skeletons — they LAUNDER the zero-class's mechanism-diversity
+  into uniformity; EXCLUDED from the zero-census coverage claim.
+  THE PATTERN (second consecutive): deep checks keep catching
+  drifts they weren't aimed at. DISPOSITION: full-tranche
+  PROVENANCE PASS (each of 21 marked rendered/substituted by the
+  explicable-family standard), rendered rows = certified
+  zero-specimens; substituted = stand-in-marked, trainable as
+  cancellation practice, never census coverage. BOOK 8's gate
+  goes TWO-AXIS with the strengthened instruction (inexpressible
+  core -> skip or declared stand-in, NEVER gift the result) +
+  specimens 2/5 as worked examples.
