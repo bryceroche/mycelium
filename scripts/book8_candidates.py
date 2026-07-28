@@ -53,9 +53,15 @@ for f in sorted(glob.glob(".cache/book*_prose_pairs*.jsonl")):
         if "text" in r:
             used_texts.add(r["text"].strip())
 
+# Registered honest skips from tranche 1 (2026-07-28, book8_draft_report.md):
+# inexpressible cores — floor(), prime factorization, table lookup,
+# exponent-law magnitudes over the cap, discriminant-sign, inequality
+# counting, inexact roots. Held out of later tranches; a skip is a verdict.
+TRANCHE1_SKIPS = {189, 206, 230, 233, 234, 237, 254, 256, 277, 324, 358}
+
 cands = []
 for i in filt_idx:
-    if i in fixture or h[i]["problem"].strip() in used_texts:
+    if i in fixture or i in TRANCHE1_SKIPS or h[i]["problem"].strip() in used_texts:
         continue
     a = int_answer(h[i]["answer"])
     if a is None or not (0 <= a <= 300):

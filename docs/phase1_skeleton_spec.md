@@ -14311,3 +14311,25 @@ token-position × waist-dim, the moment the skeleton trains.
   with watch, simplest-faithful-rendering guidance from the
   certification-cost specimen); bench adjourned until the next
   sample or the repair bench's seven convene.
+
+- **TRANCHE 2 FIRES UNDER THE UPDATED INSTRUCTION (2026-07-28):**
+  census regenerated with tranche-1's 11 registered skips HELD OUT
+  (a skip is a verdict; `TRANCHE1_SKIPS` pinned in
+  book8_candidates.py) — 550 eligible, tranche 2 = 40 (L1 8 /
+  L2 16 / L3 16, from src 371), banked to
+  book8_candidates_t2.json. RESTORATION NOTE: the regeneration had
+  overwritten book8_candidates.json's tranche1 key (the certify
+  harness's gold source) — caught and restored from
+  drafted-srcs + skip-list before anything read it; the t2 census
+  lives in its own file precisely so tranche records never share a
+  key. THE DELEGATION'S BRIEF carries the full bench inheritance:
+  both new laws + the reconstruction co-test + the rearrangement-
+  mapping clause + canonical-vs-arbitrary decomposition flagging;
+  three worked examples (443 rearrangement, 1708 magnitude-fold,
+  239-v2 multiplicative inversion w/ the bench's caption);
+  sel/pct RATIFIED as verbatim mint templates with gen.watch
+  marks for called-out certification reading; single-digit fdiv k
+  pinned (the starved register); and the certification-cost
+  guidance: among faithful renderings prefer the simplest — never
+  trade faithfulness for certifiability; a faithful abstain beats
+  a gifted certification, every time.
