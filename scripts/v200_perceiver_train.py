@@ -923,6 +923,7 @@ def main() -> None:
         depth_vis_t = _build_depth_vis(batch, K, min(N_VAR_LAT, N_MAX))
         if int(os.environ.get("V200_RESIDUAL", "0")) > 0:
             think_mask_t = batch["staging_mask"]   # (B,K,T,T) — token topology+depth staging (organ 1+depth in token space)
+        
             from mycelium.factor_graph_v200 import _embed_fg_tokens_v200 as _efg
             domain_init = _efg(model, domain_init, node_kinds, N_MAX, F_MAX).cast("float").realize()  # EMBED-OUTSIDE FIX
             if int(os.environ.get("V200_R_PAD32", "0")) > 0:   # bisection card cut 3: seq-32 pad test
@@ -938,6 +939,12 @@ def main() -> None:
                 think_mask_t = _T(_mp, dtype=_dt.float).contiguous().realize()
         else:
             think_mask_t = _build_think_mask(batch, N_LATENTS, N_VAR_LAT)
+        if step == int(os.environ.get("V200_INJECT_NAN_AT_STEP", "-1")):
+            import numpy as _npI
+            from tinygrad import Tensor as _TI, dtypes as _dtI
+            _bad = domain_init.numpy().copy(); _bad.flat[0] = _npI.nan
+            domain_init = _TI(_bad, dtype=_dtI.float).contiguous().realize()
+            log(f"[HARNESS] non-finite INJECTED into the LIVE step input at step {step} — the guard must catch", also_print=True)
         outs = step_fn(domain_init, node_kinds, gold_digits_t, obs_mask, n_vars_mask_t, depth_vis_t, think_mask_t)
         total_t, healthy_t = outs[0], outs[1]
         ce_t, calib_t      = outs[2], outs[3]
@@ -949,8 +956,15 @@ def main() -> None:
         healthy  = float(healthy_t.numpy())
 
         if healthy < 0.5:
-            log(f"[NaN-skip] step {step}", also_print=True)
+            _nskips = globals().setdefault("_CONSEC_SKIPS", 0) + 1
+            globals()["_CONSEC_SKIPS"] = _nskips
+            log(f"[NaN-skip] step {step} (consecutive: {_nskips})", also_print=True)
+            if _nskips >= int(os.environ.get("V200_SKIP_KILL", "10")):
+                log(f"[SKIP-KILL] {_nskips} consecutive NaN-skips — a fire that cannot compute is a fire that stops (telemetry-law amendment). STOPPING.", also_print=True)
+                safe_save(fg_v200_state_dict(model), os.path.join(CKPT_DIR, f"{CKPT_LABEL}_SKIPKILL_step{step}.safetensors"))
+                raise SystemExit(4)
             continue
+        globals()["_CONSEC_SKIPS"] = 0
 
         all_losses.append(loss_val)
         if start_loss is None:

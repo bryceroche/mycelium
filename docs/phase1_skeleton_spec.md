@@ -13983,3 +13983,24 @@ token-position × waist-dim, the moment the skeleton trains.
   rhythm-authorship discriminant. The re-light stands untouched:
   telemetry harness, then scalar-Seam-1, one attempt, absolute
   fence. The frame can watch the fire like everyone else.
+- **GUT #83 (the worry) + THE HARNESS PROOF + THE RE-LIGHT
+  (2026-07-27):** #83 registered with the countersign's
+  four-altitude alternation inventory and the thermal-mass gap
+  converted: THE THERMOMETER (effective-alpha, per-breath
+  ‖Δh‖/‖h‖) confirmed already-built as the state-delta SIG line
+  — it rides the re-light beside gates and manifold; if the fire
+  fails, the failure arrives with its temperature attached. THE
+  HARNESS PROOF PASSED COMPLETE: (a) injector first MISWIRED
+  (poisoned the dict after the embed consumed it — step 3 ran
+  finite; the proof caught its own instrument, the
+  two-terminal lesson again) then REWIRED TO THE LIVE INPUT; (b)
+  steps provably print; (c) the injected non-finite CAUGHT and
+  reported ([NaN-skip] consecutive: 1); (d) counter resets on
+  recovery; (e) consecutive-skip kill armed (default 10). THE
+  TELEMETRY LAW IS SATISFIED — **THE RE-LIGHT FIRES: scalar-
+  Seam-1, 500 steps, the ONE remaining attempt under the
+  absolute fence**, carrying: C4 <= -0.05 (fourth-era reading,
+  unbent), divergence-kill, early-kill, skip-kill, the
+  thermometer, the manifold trend, masked-mass, and the
+  routing-staleness hypothesis's blind JSD prediction. Both
+  endings pre-written since the transplant.
