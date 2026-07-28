@@ -14555,3 +14555,39 @@ token-position × waist-dim, the moment the skeleton trains.
   certification-cost-as-rate instruction (pen risk flags are now
   data). The apparatus inheritance is mandated: text-from-
   candidates, sentence-vs-graph auditor.
+
+- **TRANCHE 4 FULL REVOLUTION: 34/6/0 DRAFTS → WRONG AUTOPSY →
+  ADD-DUP CONVICTION → V2 → 34/0/0, THE SECOND PERFECT SHEET
+  (2026-07-28):** the pen delivered 34 drafted / 6 honest skips /
+  0 stand-ins with ZERO first-pass solver fails (a first) and
+  counterfactual-test items argued explicitly in notes.
+  CERTIFICATION PASS 1: 33/0/1 — [655] WRONG at quorum
+  209-vs-gold-204, and the autopsy convicts A NEW STARVED
+  REGISTER WITH THE DEEPEST PEDIGREE YET: the dup bit binds
+  "a times a" (mul-dup) perfectly in all five views but
+  "b plus b" (ADD-dup) misbinds to args [0,1] in EVERY view —
+  the mint renders doubling as 2·b and has likely never minted
+  an X-plus-X sentence. **Add-dup is the unfinished half of the
+  args=[a,a] representability saga** (whose mul half fixed three
+  generations of mystery with one bit) — diet-lever customer
+  FIVE. Also logged: a confused view reached for sel-smaller
+  again — the gate's CONFUSION-ATTRACTOR frame, second
+  appearance. The 4/5-confident wrong quorum is the custody
+  correction's cleanest catch yet (the pen's own artifact would
+  have graded it right). V2 CURE: mint-native doubling via
+  structural literal 2 (the count of equal terms, 1708
+  convention) — re-cert: [655] 204 at quorum, **TRANCHE 4 FINAL
+  34/0/0. BOOK 8: 116 CERTIFIED ACROSS FOUR TRANCHES (115
+  census-standing after [525]).** SKIP-CLUSTER FLAG banked: four
+  discrete-exponent skips in one slice ([589],[621],[643],[672])
+  — if the density recurs, it argues an exponent primitive onto
+  the admission-cost ladder (#49's rung test applies).
+  CERT-COST RATE (per the bench's trio order): risk-flagged rows
+  across tranches 2-4: 3 flagged, 1 abstained — 33% at n=3,
+  reported as a rate henceforth. THE T4 WHEEL SAMPLE prepared:
+  [636] (radical-extraction identity, laws 5/6/8, pen's
+  counterfactual disclosure), [669] (inequality via
+  tight-boundary equality — a NEW construction class), [607]
+  (scale-by-7 elimination of a fractional/negative system),
+  [655]-v2 (the structural-2 question), [678] w/ twin [631]
+  (root-magnitude comparison pair). Awaiting the bench.
