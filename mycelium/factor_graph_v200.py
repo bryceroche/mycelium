@@ -1848,6 +1848,18 @@ def fg_breathing_forward_v200r(
         h = _rms_norm_detached(h, blend_norm_w, rms_eps).cast(x.dtype)
         gate_k = delta_gate[k].cast(x.dtype).reshape(1, 1, 1)
         x = x_pre + gate_k * (h - x_pre)
+        # QUIRK CUT 2 (2026-07-27): V200_R_SEAM1_END — the SAME contraction
+        # (one state norm per breath) at END-of-breath position instead of
+        # loop-top: both norm FORMS died at loop-top under JIT while the
+        # no-seam graph computed; position, not op, is the suspect.
+        if int(os.environ.get("V200_R_SEAM1_END", "0")) > 0 and breath_norm_w is not None:
+            x = _rms_norm_detached(x, breath_norm_w, rms_eps).cast(dtypes.float)
+        # QUIRK CUT 3 (2026-07-27): SCALAR-RMS — whole-tensor (per-item) rsqrt on
+        # the chain: discriminates per-token-reduction-over-reused-buffer from
+        # any-reduction-at-all.
+        if int(os.environ.get("V200_R_SEAM1_SCALAR", "0")) > 0:
+            _rms_s = (x.float().pow(2).mean(axis=(1, 2), keepdim=True) + rms_eps).sqrt().detach()
+            x = (x.float() / _rms_s).cast(dtypes.float)
         if taps is not None:
             taps.setdefault("r_state", []).append(x.cast(dtypes.float).realize())
         x_ln = _rms_norm(x, blend_norm_w, rms_eps).cast(dtypes.float)

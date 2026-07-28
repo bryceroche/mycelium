@@ -13887,3 +13887,22 @@ token-position × waist-dim, the moment the skeleton trains.
   telemetry amendment). THE SIX FOR THE WHEEL prepared:
   .cache/book7_wheel_six.json (5 stratified + [1470],
   source+dialect+graph+gold each).
+- **THE QUIRK CONVICTED — SCALAR-RMS COMPILES (2026-07-27, cut
+  4):** four steps, finite losses, ZERO NaN-skips. THE QUIRKS
+  FILE'S THIRD ARTIFACT-BACKED ENTRY: 'PER-TOKEN RMSNorm
+  (axis=-1 reduction) on a K-fold-reused recurrent state buffer
+  under TinyJit produces non-finite from step 1 (any form,
+  either position); the SAME chain accepts a PER-ITEM SCALAR
+  reduction (axis=(1,2)) cleanly, and accepts per-token norms on
+  FRESH tensors (layer outputs) and LEAVES (readout). REPRO:
+  V200_R_SEAM1=1 vs V200_R_SEAM1_SCALAR=1, 4 steps.' THE
+  CONSEQUENCE: the middle bet's contraction IS IMPLEMENTABLE in
+  ops this JIT compiles — scalar-RMS Seam-1 bounds state
+  magnitude per-item (coarser grain than per-token; the
+  physics-relevant bound per the eager acquittal). Bryce's
+  buffer-lifetime diagnosis ('uninitialized/aliased memory
+  wearing a tensor's shape — non-finite at step one, not
+  divergence over steps') fits the conviction exactly. NEXT: the
+  telemetry pre-flight harness (consecutive-skip kill + injected
+  non-finite + printing proof), then THE RE-LIGHT — scalar-Seam-1,
+  the one remaining attempt under the absolute fence.
