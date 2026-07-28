@@ -47,10 +47,14 @@ def parse_batch(texts):
             if s0+bi < n: out_r.append(decode({k: o[k][bi] for k in o}))
     return out_r
 
-cands = json.load(open(".cache/book8_candidates.json"))
-harvest_gold = {int(c["src_idx"]): int(c["answer"]) for c in cands["tranche1"]}
+CANDS = os.environ.get("B8_CANDS", ".cache/book8_candidates.json")
+TKEY = os.environ.get("B8_TKEY", "tranche1")
+DRAFT = os.environ.get("B8_DRAFT", ".cache/book8_prose_pairs_draft.jsonl")
+OUT = os.environ.get("B8_OUT", ".cache/book8_certification.json")
+cands = json.load(open(CANDS))
+harvest_gold = {int(c["src_idx"]): int(c["answer"]) for c in cands[TKEY]}
 
-rows = [json.loads(l) for l in open(".cache/book8_prose_pairs_draft.jsonl")]
+rows = [json.loads(l) for l in open(DRAFT)]
 res = {"certified": [], "abstain": [], "wrong": []}
 for i, r in enumerate(rows):
     src = int(r["gen"]["src_idx"])
@@ -71,6 +75,7 @@ for i, r in enumerate(rows):
         res["wrong"].append({"i": i, "src_idx": src, "plur": plur, "gold": gold, "votes": votes})
     else:
         res["abstain"].append({"i": i, "src_idx": src, "votes": votes})
-    print(f"  [{i+1}/{len(rows)}] src {src} votes {votes} gold {gold} -> {'CERT' if cnt>=3 and plur==gold else ('WRONG' if cnt>=3 else 'abstain')}", flush=True)
-print(f"\n=== BOOK 8 T1 CERTIFICATION: certified {len(res['certified'])} | abstain {len(res['abstain'])} | wrong {len(res['wrong'])} ===")
-json.dump(res, open(".cache/book8_certification.json", "w"), indent=1, default=int)
+    watch = r["gen"].get("watch")
+    print(f"  [{i+1}/{len(rows)}] src {src}{' WATCH:'+watch if watch else ''} votes {votes} gold {gold} -> {'CERT' if cnt>=3 and plur==gold else ('WRONG' if cnt>=3 else 'abstain')}", flush=True)
+print(f"\n=== BOOK 8 {TKEY.upper()} CERTIFICATION: certified {len(res['certified'])} | abstain {len(res['abstain'])} | wrong {len(res['wrong'])} ===")
+json.dump(res, open(OUT, "w"), indent=1, default=int)

@@ -14333,3 +14333,41 @@ token-position × waist-dim, the moment the skeleton trains.
   guidance: among faithful renderings prefer the simplest — never
   trade faithfulness for certifiability; a faithful abstain beats
   a gifted certification, every time.
+
+- **TRANCHE 2 RETURNS AND CERTIFIES: 27/5/0 — ZERO WRONGS, AND THE
+  WATCH FIRES ON ITS FIRST OUTING (2026-07-28):** the pen (Sonnet)
+  delivered 32 drafted / 8 honest skips / 0 stand-ins under the
+  full bench inheritance — and improved the apparatus itself:
+  it BUILT A SENTENCE-VS-GRAPH AUDITOR (scripts/book8_t2_audit.py,
+  the [350] axis-1 fault class now mechanically screened PEN-SIDE),
+  which caught [382]'s letter-transcription slip (a class solve2
+  is structurally blind to — graph right, prose wrong); solve2
+  caught [460]'s sub-args inversion; and 3 rows' hand-transcribed
+  text had silently collapsed LaTeX newlines vs source — cured by
+  pulling `text` straight from the candidates file, CLOSING THE
+  BUG CLASS (and protecting the custody-gold text-identity key).
+  CERTIFICATION: **27 certified / 5 abstain / 0 wrong** (book 8
+  standing total: 50 certified; 11 at the repair bench). THE
+  WATCH'S FIRST FINDING, autopsied at slot grain: [411] (pct
+  debut, gen.watch) abstained ALL-FIVE-NONE — and the anatomy is
+  sharper than starvation: the gate RECOGNIZES the pct TYPE in
+  book register (every view emits both pct factors with correct
+  p=55/56) but the ARGUMENT POINTERS scatter (intended [1,0]/[4,3];
+  views emit [2,5],[5,1],[1,5]...; one view mis-bound the literal
+  55 as a given). MINT-REGISTER PCT TRANSFERS ITS TYPE, NOT ITS
+  POINTERS — the binding-layer pathology's signature (the rate
+  family's neighborhood), consistent with the attention-bootstrap
+  principle (pointer attention needs direct supervision). pct-in-
+  book-register joins the diet-lever customer list as its third
+  member (two-digit-k, parallel-inversions, pct pointers) — the
+  road teaching the mint, third lesson in one day. [454] (18-var
+  cube-root chain) abstained AS THE PEN PREDICTED (flagged
+  high-cert-risk, drafted faithful-over-certifiable — the
+  guidance working as written); [436] (the other 18-var, which
+  DECLINED a telescoping shortcut to avoid asserting an unchecked
+  identity) CERTIFIED — the certification-cost guidance's
+  counter-specimen: faithful complexity CAN certify. THE T2 WHEEL
+  SAMPLE prepared (.cache/book8_t2_wheel_sample.json): [403] (the
+  pen's own flag — its sharpest rearrangement-law call), [436],
+  [382] (the auditor's catch, post-fix), [373]/[390] stratified
+  plains. Awaiting the bench.
