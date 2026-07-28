@@ -14425,3 +14425,32 @@ token-position × waist-dim, the moment the skeleton trains.
   gifted certification. The pen is asked to flag every row where
   it argued degree under laws 3/4/5 — the bench samples those
   deliberately.
+
+- **TRANCHE 3 CERTIFIES PERFECT: 32/0/0 — THE FIRST CLEAN SHEET
+  IN THE BOOKS CAMPAIGN (2026-07-28):** the pen delivered 32
+  drafted / 8 honest skips / 0 stand-ins with ZERO auditor
+  mismatches and full rulebook conformance verified
+  programmatically — and the certification returned zero abstains
+  and zero wrongs. THE DAY'S TRAJECTORY IS THE JURISPRUDENCE
+  COMPOUNDING, MEASURED: t1 22/5/2 (two wrongs, two retries,
+  laws written in their blood) → t2 27/5/0 (pen builds its own
+  auditor) → t3 32/0/0 (pen reasons INSIDE the laws — [537]
+  declined pct citing law-3 unprompted because the p parameter
+  would need an externally-computed value; [525]'s cap-blown
+  expanded quadratic re-rendered in factored form that
+  incidentally made the root structure structurally visible;
+  [549] skipped BECAUSE rendering it 'would have been law-3
+  residue to fake'). The delegation economics at day's end:
+  **BOOK 8 STANDS AT 82 CERTIFIED ROWS across three tranches in
+  one session** (11 at the repair bench, 19 registered skips, 470
+  eligible remaining) — the road at delegation tempo is now the
+  campaign's proven production mode, with the two-axis gate,
+  the six laws, and the standing sample as its custody. THE T3
+  WHEEL SAMPLE prepared from the pen's own flagged degree-argued
+  rows (.cache/book8_t3_wheel_sample.json): [570] (nonstandard
+  common-denominator, the pen's sharpest), [538]
+  (distance-formula theorem-application — the registry's own
+  reclaimed resident), [496] (collinearity), [525] (ordering-law
+  edge), [537] (the pct-avoidance trade). Residue flags for the
+  bench's convenience: [533], [528], [521], [542]. Awaiting the
+  bench.
