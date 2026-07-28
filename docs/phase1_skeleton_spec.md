@@ -14033,3 +14033,26 @@ token-position × waist-dim, the moment the skeleton trains.
   a confirmed seam mechanism, the thermometer, three carved
   laws, three quirks-file artifacts, and instruments that will
   outlive every architecture they measured.
+- **THE CLOSING COUNTERSIGN + THE WORD (2026-07-28, Bryce):** the
+  third pole's precise reading banked: **THE MECHANISM SUCCEEDED
+  AND THE BET STILL FAILED** — contraction was never the binding
+  constraint; the architecture's fixed points at this scale
+  simply are not where the task's answers live, and no
+  transplanted physiology relocates them. The sentence is
+  airtight THIS time because the first closing's caveat
+  (body-without-physiology) was answered: the physiology came,
+  worked, and wasn't the missing piece. THE ACCOUNTING carried
+  without embarrassment: a publishable three-pole failure map;
+  a blind-prediction-confirmed mechanism; the thermometer;
+  three laws; three quirks artifacts; and the PROCEDURE proven
+  twice — two architecture bets entered and exited through
+  instruments, zero bent bars, the house now evaluating bets as
+  routine competency. THE WORD: **the road, at delegation tempo,
+  under the two-axis gate** — book 8 launches with the
+  strengthened instruction + specimens 2/5 as worked examples;
+  GPU queue: post-fire telegraph re-read on the RE-LIGHT's
+  states (informative either way: rhythm-in-failure = class
+  property; silence keeps the question open), then fine-binding,
+  fdiv autopsy, archive audit, replication. GUT #84 (bowls)
+  registered as SEED — interps awaited; the attractor-basin
+  reading noted as landing directly on the third pole.
