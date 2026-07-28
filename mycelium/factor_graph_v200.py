@@ -1824,7 +1824,14 @@ def fg_breathing_forward_v200r(
         # organ; its absence let Fire 2 diverge). Paired with the delta_gate
         # blend below: the two are ONE mechanism (the registration's law).
         if _seam1 and breath_norm_w is not None:
-            x = _rms_norm_detached(x, breath_norm_w, rms_eps).cast(dtypes.float)
+            # QUIRK CUT (2026-07-27): V200_R_SEAM1_STD=1 uses STANDARD (non-detached)
+            # RMSNorm — the op-level bisection arm: if finite under JIT where the
+            # detached form NaN'd, the detach-at-loop-top IS the quirk (and the
+            # standard form is arguably the v98-faithful anatomy anyway).
+            if int(os.environ.get("V200_R_SEAM1_STD", "0")) > 0:
+                x = _rms_norm(x, breath_norm_w, rms_eps).cast(dtypes.float)
+            else:
+                x = _rms_norm_detached(x, breath_norm_w, rms_eps).cast(dtypes.float)
         x_pre = x
         h = x + breath_embed[k].reshape(1, 1, H).cast(x.dtype)
         _nomask = int(os.environ.get("V200_R_NOMASK", "0")) > 0
