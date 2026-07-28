@@ -14004,3 +14004,32 @@ token-position × waist-dim, the moment the skeleton trains.
   thermometer, the manifold trend, masked-mass, and the
   routing-staleness hypothesis's blind JSD prediction. Both
   endings pre-written since the transplant.
+- **THE RE-LIGHT REPORTS: C4 FAILS (+0.7039) — THE BUDGET IS
+  SPENT; THE MIDDLE BET'S EXAMINATION CLOSES (2026-07-27):** this
+  was a VALID exam — every witness spoke (500 steps computed, no
+  skips, all dashboards printing) — and the instruments tell a
+  precise story: **THE CONTRACTION WORKED.** The thermometer
+  printed geometric cooling (state-delta 0.42 -> 0.02 across
+  breaths, ~0.6x per breath — vs Fire 2's flat-violent 0.66);
+  the manifold trend FLIPPED POSITIVE (cos 0.22 -> 0.26 RISING —
+  vs Fire 2's 0.43 -> 0.17 decay) — **the routing-staleness
+  hypothesis's seam-prediction CONFIRMED: Seam-1 keeps the state
+  recognizable and drifting TOWARD the cloud.** Masked-mass
+  0.0000 clean throughout. AND THE LADDER INVERTED HARDER
+  (+0.70 vs Fire 2's +0.49): with contraction working, the
+  state CONVERGES — to a fixed point whose readout is WORSE
+  each breath. **THE THIRD POLE, named: CONVERGENT TO A WRONG
+  ATTRACTOR** — dead (latent, no transformation), violent
+  (residual, no contraction), and now contracted-but-wrong
+  (the pull works; the destination doesn't ladder). THE
+  EXAMINATION'S FINAL MAP: three anatomies, every organ of the
+  ladder-forming lineage, two asks — the ladder refused in all
+  three. PER THE REGISTRATION'S OWN ENDING: **the middle is
+  measured empty at this scale; the spec-stage row closes with
+  three-pole honesty.** The trichotomy's answer stands where
+  Bryce already ruled it: THE ROAD RUNS THROUGH PAGES — and the
+  books, as of tonight, run at delegation scale under full
+  custody. The yield the bet leaves: a three-pole failure map,
+  a confirmed seam mechanism, the thermometer, three carved
+  laws, three quirks-file artifacts, and instruments that will
+  outlive every architecture they measured.
