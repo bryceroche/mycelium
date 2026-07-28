@@ -13688,3 +13688,20 @@ token-position × waist-dim, the moment the skeleton trains.
   smoke's losses were already nan, the instrument-blind fire was
   lit on a misread smoke, and the telemetry law's necessity was
   proven twice in one afternoon.
+- **THE SEAM-1 DEBUG'S FIRST CUT: THE ORGAN'S PHYSICS ACQUITTED
+  (2026-07-27):** eager forward with Seam-1: FINITE at all eight
+  breaths, state RMS BOUNDED ~3.2 — the contraction demonstrably
+  contracts (Fire 2's unbounded growth is gone; the paired
+  mechanism works in forward mathematics). THE SUBTRACTION
+  NARROWS: the NaN lives in the COMPILED STEP or its GRADIENT
+  path (Seam-1's detach at a new graph position under TinyJit —
+  the quirks file's family ground). DEBUG CARD (next window):
+  (1) JIT 2-step loss-finiteness cut (isolates compile-vs-grad);
+  (2) THE TELEMETRY PRE-FLIGHT HARNESS built per the new law
+  (steps provably print + one injected non-finite the guard must
+  catch — REQUIRED before any re-light); (3) re-light under the
+  fence: one no-contest spent the moment it lights — any second
+  apparatus death SPENDS the budget, an organ refused by its own
+  physics. Book 7's certification pass holds the floor
+  meanwhile. The middle bet's state, honestly: physics sound,
+  compilation suspect, one lawful attempt remaining.
