@@ -13642,3 +13642,27 @@ token-position × waist-dim, the moment the skeleton trains.
   key on the 24) queues behind the middle-bet fire's GPU. The
   delegation model works: the pen drafts, the flags surface, the
   key and the hand keep their jurisdictions.
+- **THE MIDDLE BET'S FIRE DIES BY NaN (2026-07-27):** eval
+  per-breath CE all-nan; ladder slope nan; latent JSD all-nan —
+  the run completed 500 steps mechanically (persistence saved,
+  end report ran) but produced NO readable number anywhere. TWO
+  APPARATUS FACTS BANKED: (1) the two-terminal exclusion list
+  moved 42 -> 41 — breath_norm_w LEFT the excluded set: Seam-1
+  is wired and live in the graph (the organ transplanted
+  correctly); (2) STEP TELEMETRY MISSING — no [step]/[GATES]
+  lines recoverable in either log (the trainer's own log file
+  truncated at 13KB; a logging-path gap flagged — the fire ran
+  blind, so the divergence-kill and early-kill NEVER GOT A
+  NUMBER TO READ, which is itself the run's deepest apparatus
+  lesson: kills cannot fire on unprinted dashboards). NaN
+  SUSPECT: Seam-1's detached RMSNorm inside the compiled r-graph
+  (the only delta from Fire 2's numerically-stable 500 steps);
+  the quirks file's NaN-guard family is the debug ground. THE
+  BUDGET QUESTION, put to Bryce explicitly and not presumed: the
+  registration budgeted ONE fire — a NaN death with zero
+  readable telemetry is apparatus-invalid (the bars never
+  received a number; C4 neither passed nor failed). Whether an
+  apparatus-invalid run SPENDS the one-fire budget is a ruling,
+  not a default — precedent cuts both ways (apparatus checks
+  precede verdicts; but budgets exist to refuse re-rolls). HELD
+  for the word. Book 7's certification pass now has the GPU.
