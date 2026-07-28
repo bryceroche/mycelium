@@ -14132,3 +14132,57 @@ token-position × waist-dim, the moment the skeleton trains.
   solver preverification (solve2 → exact gold) mandatory per row;
   gate stamped PENDING:5view-vote+key in every row — the pen
   drafts, the trained gate judges, the key rules.
+
+- **BOOK 8 TRANCHE 1: DRAFTED, AUTOPSIED, RETRIED, CERTIFIED
+  (2026-07-28) — the two-axis gate's first full revolution:**
+  DELEGATION RETURNS: 29 drafted / 11 honest skips / **0 stand-ins**
+  (the strengthened instruction held — skip reasons all named:
+  table-lookup, prime factorization, exponent-law magnitudes over
+  the cap, floor(), discriminant-sign, inequality counting; the
+  floor() skip cites book 7's own flagged failure as precedent).
+  Two techniques new-in-deliberateness: search-based root
+  extraction (x*x=target, solver inverts; book4-precedented) and
+  direct system encoding (the source's own equations handed to
+  the solver unsolved). PEN'S FLAGS: (a) `sel`/`pct` have NO
+  dialect-sentence precedent in books 1-7 — treated unavailable;
+  ratification is a wheel decision; (b) SOLUTION-FIELD FINDING,
+  bigger than the pen knew: books 1-7 prose_pairs carry all-zero
+  solution vectors (574/574) while `attestation_check.py`,
+  `band_bars.py`, `chain_depth_join.py` read solution[query_var]
+  AS GOLD — a latent hazard if ever pointed at prose_pairs; book
+  8 populates real vectors (correct semantics). CERTIFICATION
+  (scripts/book8_certify.py; custody correction over book 7: gold
+  from the HARVEST answer keyed by src_idx, never the draft's own
+  solution — the pen must not grade itself): first pass 22 CERT /
+  5 abstain / **2 WRONG** — and the wrongs got their slot-level
+  autopsies BEFORE any disposition (audit-before-diet):
+  **[239] GATE-SIDE STARVATION:** dialect lawful ("divided by
+  50"); the generator samples fdiv k from randint(2,9) — one
+  k=19 row in all banked books — so two-digit k is a starved
+  slot; the gate substituted a CONFIDENT sel-smaller frame in 4/5
+  views (a would-be lie, caught only because the certifier's gold
+  is independent — the custody correction paid for itself on its
+  first outing). Starved, not excluded (the k=19 row parses):
+  a diet lever candidate for the wheel (mint k range).
+  **[350] PEN-SIDE AXIS-1 FAULT:** dialect said "divided by c"
+  (a derived VARIABLE) while the graph encoded literal k=3 —
+  fdiv has no variable form, so the gate hallucinated k=7 from
+  the nearest literal. The pen's preverification (graph-vs-gold)
+  CANNOT catch this class; only the 5-view gate (text-vs-graph)
+  can — the two links measure different things, specimen banked.
+  V2-RETRY BEFORE FRESH SURGERY, both rows: [239] rendered as
+  multiplicative inversion (50*e=300 — worker-days constancy,
+  the source's OWN physics, more faithful than fdiv); [350]
+  rendered as c*g=f (mul with derived args is fully expressible).
+  RE-CERTIFICATION: **24 CERT / 5 abstain / 0 WRONG** — both v2s
+  quorum-certified. THE WHEEL SAMPLE prepared
+  (.cache/book8_wheel_sample.json, 5 rows stratified BY
+  TECHNIQUE, not randomly — the sample exists to adjudicate
+  axis-2 on the new territory): [351] coordinate substitution
+  (does off-graph constant-folding fit the 443 rearrangement
+  license?), [221] root extraction (decomposition literals not
+  source literals — adjacent tier?), [350]+[239] the two v2s,
+  [198] plain control. The 5 abstains hold at the repair bench.
+  Artifacts: book8_prose_pairs_draft.jsonl (29, gate-stamped),
+  book8_certification.json, book8_certify{,2}.log,
+  book8_draft_report.md, book8_wheel_sample.json.
