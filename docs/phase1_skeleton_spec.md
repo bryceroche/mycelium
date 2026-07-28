@@ -14680,3 +14680,35 @@ token-position × waist-dim, the moment the skeleton trains.
   technique list grown by scale-and-sign and Vieta systems, the
   counterfactual pre-write test, and the discrete-exponent
   cluster warning for this harvest region.
+
+- **TRANCHE 5 FULL REVOLUTION: 31/9/0 DRAFTS → 29/2/0 CERT —
+  AND THE SUB-TYPE GETS ITS FIRST MEASUREMENT (2026-07-28):**
+  the pen delivered 31 drafted / 9 honest skips / 0 stand-ins,
+  auditor clean, with the MARKING SYSTEM in first full use:
+  gen.accommodation on [691] (2·X for X+X, add-dup dodged AND
+  named — the law working as written), gen.routing_fact on [696],
+  gen.watch on four rows the pen argued form a POINTER-COLLISION
+  SUB-TYPE (a small operator constant reused across 3+
+  repeated-iteration factors — distinct from t4's scattered-role
+  version). THE CALLED-OUT READING MEASURES IT: [687] ABSTAINED
+  scattered (None/None/64/0/None) while [690]/[694]/[742]
+  certified ([694] unanimous) — the sub-type is REAL but MILDER
+  than [411]'s all-five-None: 1-in-4 scatter vs full scatter.
+  Separate tracking granted by the data. [772] (the pen's
+  explicit invariance-clause-passing specimen) abstained at two
+  votes — faithfulness-cost count n=4. TWO NEW SKIP FAMILIES:
+  floor/sqrt ([716]/[725]) and COMPLEX NUMBERS ([746] — the
+  dialect's first contact with a number system it cannot hold at
+  all). Discrete-exponent cluster CONTINUES ([715]/[739]/[774] —
+  recurrence now 8 across three tranches; the ladder argument
+  strengthens). BUILD-TIME CATCH: [736]'s first render passed a
+  VARIABLE INDEX as fdiv's k — law 9's own shape caught at the
+  pen by solve2. NEW TECHNIQUE proposed: step-count-matching
+  ([685]/[762] — equal index gaps avoid fractional common
+  differences). **BOOK 8: 145 CERTIFIED / 143 census-standing /
+  13 at the repair bench / 350 eligible remain.** THE T5 WHEEL
+  SAMPLE prepared: [742] (law-8 cleaner-than-[636] argument),
+  [772] (the abstaining faithful specimen), [685]
+  (step-count-matching debut), [691] (accommodation in proper
+  use), [696] (routing_fact — derivable or genuinely external?).
+  Awaiting the bench.
