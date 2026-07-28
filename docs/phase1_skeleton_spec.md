@@ -14712,3 +14712,42 @@ token-position × waist-dim, the moment the skeleton trains.
   (step-count-matching debut), [691] (accommodation in proper
   use), [696] (routing_fact — derivable or genuinely external?).
   Awaiting the bench.
+
+- **THE T5 SITTING EXECUTED + [696]-V2 UNANIMOUS — SEL TRANSFERS,
+  AND THE ATTRACTOR EXPLAINS ITSELF (2026-07-28):** rulings
+  applied as carved: **[742] rendered-HIGH + THE WITNESS TEST**
+  (*a reconstruction discharges the invariance clause when the
+  graph would be UNSATISFIABLE if the reconstruction were false*;
+  [742]/[636] promoted as the CONTRAST PAIR into the worked
+  examples — same territory, opposite verdicts, one mechanical
+  test between); **[772] rendered-HIGH**, faithfulness-cost n=4
+  with THE PATTERN IN THE PATTERN named (cost lands on
+  underdetermined systems and unusual inversions) —
+  **two-free-variable systems = SIXTH diet customer** (the gate
+  can't read the dialect's most honest form); **[685]
+  rendered-MEDIUM**, index-gap matching admitted w/ conditions;
+  **[691] rendered-HIGH**, difference-and-product admitted as
+  the cap-evasion technique, accommodation law producing exactly
+  what it was written for; **[696] DOES NOT CONFORM (v1) + THE
+  SELECTION-RENDERING LAW (fourteenth):** *when a source asks
+  for a selection over quantities the dialect can represent, the
+  candidates must enter the graph and the selection must be
+  rendered; a selection resolved off-graph over representable
+  candidates is coincidental correctness regardless of whether a
+  MAX primitive exists.* THE V2 (all three squared lengths
+  in-graph, ratified-sel larger-chain, root by search) —
+  **CERTIFIES UNANIMOUS 5/5/5/5/5, the first ratified-sel use in
+  book register.** THE FINDING: sel's pointers TRANSFER where
+  pct's didn't — and the modal attractor is the same fact from
+  the other side: the gate reaches for sel-smaller when confused
+  because sel is OVERLEARNED, not starved. The diet queue
+  refines: pct pointers starved (feed), sel overlearned (its
+  attractor pull is the hazard, not its absence). MAX/compare
+  onto the ladder docket on its own merits. SKIP-REGISTRY
+  CATEGORY SPLIT as ordered: [746] complex numbers re-marked
+  DOMAIN-BOUNDARY (a number system is not an operation; no
+  ladder argument may mistake it for a rung). TALLY: 5 rendered
+  (one MEDIUM) after retry / 0 substituted standing. **FOURTEEN
+  LAWS, five worked examples + one contrast pair, technique list
+  +2. BOOK 8 FINAL: t5 = 29/2/0; 145 certified / 143
+  census-standing / 13 repair bench / 350 eligible.**
