@@ -14371,3 +14371,41 @@ token-position × waist-dim, the moment the skeleton trains.
   pen's own flag — its sharpest rearrangement-law call), [436],
   [382] (the auditor's catch, post-fix), [373]/[390] stratified
   plains. Awaiting the bench.
+
+- **THE T2 SAMPLE BANKS: 4 RENDERED (ONE LOW) / 1 SUBSTITUTED —
+  TWO LAWS AND A FOURTH WORKED EXAMPLE (2026-07-28):**
+  **[403] DOES NOT CONFORM** — the co-test passes mechanically
+  (60=5·12) but the graph's entire content is final assembly of
+  the answer from its factors, all deductive substance off-graph.
+  LAW CARVED (the co-test's second question): *the co-test screens
+  literal provenance; a second question always follows — does the
+  graph perform deduction, or assemble a result? A graph whose
+  only operation produces the queried value from constants is
+  presumptively residue.* THE RETRY RETURNED A FINDING: the
+  prescribed cleared-form pattern is BARRED BY THE VALUE CAP at
+  every route (multiply-through needs 720; cross-mul needs 420 —
+  verified mechanically); the only in-cap form leaves the
+  equal-numerators inference off-graph = still assembly. [403]
+  undraftable-as-rendered at m=300 — holds substituted-marked as
+  cancellation practice per book-7's substituted-row precedent,
+  excluded from census coverage. **[373] rendered LOW —
+  THEOREM-APPLICATION is a third category** with its two-part
+  test: *lawful only when the theorem is named in the pen's note
+  AND its application transforms the problem rather than solving
+  it — the graph must still perform the transformed problem's
+  arithmetic.* Enters the instruction set; the pen argues degree
+  per-specimen. **[436] CONFORMS HIGH, PROMOTED** — fourth worked
+  example, captioned: *when a shortcut requires asserting an
+  unverified identity, render the long way — faithful complexity
+  can certify.* With [454]'s predicted abstain, the certification-
+  cost law's first measured pair: the trade is survivable.
+  **[382] CONFORMS HIGH + the ORDERING LAW:** *when ordering is
+  derivable from in-graph facts, derive it; sel is for orderings
+  the source asserts but the graph cannot prove* (and [411] just
+  showed what newly-ratified transfer looks like at the pointer
+  layer). **[390] CONFORMS HIGH** — the constant's own
+  self-combination stays on-graph; the [198] contrast completes.
+  THE INSTRUCTION SET NOW CARRIES: six laws, four worked
+  examples, the ordering clause, the auditor — a jurisprudence no
+  first-draft pen could have written. Standing: 50 certified / 11
+  bench / 510 eligible / three diet customers queued.
