@@ -14591,3 +14591,44 @@ token-position × waist-dim, the moment the skeleton trains.
   (scale-by-7 elimination of a fractional/negative system),
   [655]-v2 (the structural-2 question), [678] w/ twin [631]
   (root-magnitude comparison pair). Awaiting the bench.
+
+- **THE T4 SITTING, PART ONE (2026-07-28 — three laws, one ruled,
+  three held for artifacts):** the bench's honesty note honored:
+  descriptions set law, they don't certify rows; three rulings
+  conditional pending dialect artifacts (sent same transaction).
+  **[655]-v2 LAWFUL + THE STRUCTURAL-LITERAL CLAUSE:** *a literal
+  transcribing the FORM of a source expression (count of equal
+  terms, number of factors) is lawful; a literal requiring
+  arithmetic over source values is not.* AND THE DAY'S MOST
+  CONSEQUENTIAL ITEM — **THE ACCOMMODATION LAW:** the v2 is
+  gate-accommodation, and accommodation COMPOUNDS INTO BLINDNESS
+  (books routing around what the gate can't read → the book never
+  teaches it → the starvation never resolves). *Any row whose
+  form was chosen to avoid a known gate weakness is marked
+  `gen.accommodation` with the weakness named; accommodated
+  constructions become mint-diet customers, NEVER permanent
+  avoidances.* [655] retro-marked. **ADD-DUP TO THE TOP OF THE
+  MINT QUEUE** — the only diet customer with a self-perpetuating
+  failure mode. **[669] RENDERED-MEDIUM + THE BOUNDARY CLAUSE**
+  (a NEW DECLARED CLASS — feasibility-boundary rendering opens
+  the optimization-under-constraints region MATH-500 holds and
+  the books never touched): *an inequality system may render as
+  its binding equality when (a) the pen names the binding
+  constraint and argues why it binds, (b) non-binding constraints
+  are externally verified with the verification stated, (c) the
+  counterfactual holds — a different objective yields a different
+  dialect.* Demerit: (b) is external ([538] species).
+  **INVARIANCE CLAUSE SHARPENED at [636]:** *canonicality
+  shelters a choice only when the canonicalizing constraint is
+  representable in-graph or reconstructible from standing
+  literals* ([570] self-verified; [636]'s 0≤r<n has no in-graph
+  witness — presumptive honest skip pending the artifact).
+  STANDING NOTES: the SEL-SMALLER CONFUSION-ATTRACTOR named (two
+  appearances; a gate reaching for the same wrong primitive when
+  confused has a MODAL ATTRACTOR, cousin to modal collapse among
+  the portable twelve; third appearance triggers a diet read,
+  not an anecdote). CERT-COST demoted to a COUNT until n≥10
+  (a rate quoted from three rows is the revenant's favorite
+  doorway). Jurisprudence: **twelve laws, five worked examples,
+  one new declared class.** [607]/[636]/[678]+[631] artifacts
+  sent across the wheel.
