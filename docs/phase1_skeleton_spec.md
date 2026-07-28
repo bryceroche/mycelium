@@ -14105,3 +14105,30 @@ token-position × waist-dim, the moment the skeleton trains.
   fence absolute); the registry's least dramatic conversion: keep
   doing the thing that works, and write down why the other thing
   didn't. The #84 bowls seed stands unconverted, interps awaited.
+
+- **BOOK 8 LAUNCHES (2026-07-28, per THE WORD — the road at
+  delegation tempo, under the two-axis gate):** stage 0 census
+  (`scripts/book8_candidates.py`): in-reach L1-3 = 903; fixture
+  100 excluded; consumed texts across books 1-7 = 537; integer-
+  answer-in-[0,300] law applied → **590 eligible; tranche 1 = 40**
+  (L1 6 / L2 16 / L3 18), banked to `.cache/book8_candidates.json`.
+  A CATCH BEFORE IT BIT: **src_idx is NOT one index space** —
+  candidate-relative in book 2 (src 13 = its own candidate list's
+  [13], not harvest[13]), a third space in book 3, harvest-global
+  only from book 4 on. An exclusion built on src_idx would have
+  RE-ANNOTATED 147 already-consumed rows. The invariant key is
+  SOURCE TEXT (every prose_pairs row's `text` field is the source
+  verbatim) — consumption is now tracked by text identity, the
+  cross-book cousin of the WL-digest-as-problem-ID principle:
+  identity lives in content, never in a file's local coordinates
+  (the never-mix-generations'-coordinates law, third appearance,
+  now in the bookkeeping). DELEGATION FIRED: Sonnet drafts
+  tranche 1 under the strengthened two-axis instruction —
+  inexpressible core → HONEST SKIP (default) or DECLARED STAND-IN
+  (gen.provenance marked), NEVER gift the result; asymmetry named
+  as the subtle form; specimens 443 (rearrangement rendered
+  in-graph) and 1708 (magnitude-fold) embedded as worked
+  examples; the bench's three negatives embedded as anti-patterns;
+  solver preverification (solve2 → exact gold) mandatory per row;
+  gate stamped PENDING:5view-vote+key in every row — the pen
+  drafts, the trained gate judges, the key rules.
