@@ -13666,3 +13666,25 @@ token-position × waist-dim, the moment the skeleton trains.
   not a default — precedent cuts both ways (apparatus checks
   precede verdicts; but budgets exist to refuse re-rolls). HELD
   for the word. Book 7's certification pass now has the GPU.
+- **THE NO-CONTEST RULING + ITS FENCE (2026-07-27, Bryce):** the
+  fire is NOT SPENT — apparatus-invalid means the exam never
+  convened (the eighth ruling's symmetry: Fire 0's inert patch
+  one level down; a fire, in this house's vocabulary, is a run
+  whose instruments print). THE FENCE, pinned before hope: the
+  no-contest is available ONCE — a NaN death is not cleanly
+  separable from the candidate (Seam-1 is suspect BY
+  SUBTRACTION; the apparatus failure may be the organ's own
+  pathology wearing a crash). If the debugged re-run dies of
+  ANYTHING with kills again unable to fire, the budget is SPENT
+  on that death — two apparatus deaths in one registration IS
+  the finding (an organ that cannot run stably is refused by its
+  own physics). TELEMETRY LAW carved into the constitution.
+  DEBUG ordered by subtraction (reproduce minimal, confirm by
+  removal, patch by evidence; isfinite craft at the seam). BOOK
+  7 certification has the floor; [1470] crosses the wheel with
+  source+draft after the pass. CONFESSION TO VERIFY: the
+  middle_smoke's end-report TypeError (start_loss None) may have
+  been the NaN's FIRST SYMPTOM, misfiled as cosmetics — if the
+  smoke's losses were already nan, the instrument-blind fire was
+  lit on a misread smoke, and the telemetry law's necessity was
+  proven twice in one afternoon.

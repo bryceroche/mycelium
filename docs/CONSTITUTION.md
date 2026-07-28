@@ -113,3 +113,12 @@ must be as durable as the claims they convict. The CONVICTION INDEX
 before banking any claim that feels established. The scout's rule —
 ARTIFACTS BEFORE DESIGN — is the relay's own known-signal check, carved
 beside the meter fixtures.
+
+## The telemetry law (2026-07-27, the middle bet's NaN death)
+Kills cannot fire on unprinted dashboards. NO INSTRUMENT-BLIND FIRE EVER
+LIGHTS AGAIN: every fire's telemetry path is proven pre-flight under the
+known-signal discipline — a smoke whose steps demonstrably print (step
+lines, gates, signatures) AND one deliberately-injected non-finite value
+the NaN-guard must catch and report, proving the kill can fire on the
+dashboard it watches. The meter fixtures guarded the rulers; this guards
+the witnesses.
