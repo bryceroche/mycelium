@@ -132,3 +132,13 @@ requiring disposition (traced to source, proven disconnected at graph
 level, or fixed) before any fire lights. The cosmetics bin keeps its
 name for aesthetics; numbers that aren't numbers never qualify. One law
 guards the witnesses; this one refuses the bin where symptoms hide.
+
+## The future reader (2026-07-27, the campaign's epistemology compressed)
+The iaf_v3 flag worked across two eras because it was attached to the
+artifact, not to anyone's memory. Every discipline here is that move at
+scale: the conviction index is limits written on claims; the meter
+fixtures are limits written on rulers; pre-registered bars are limits
+written on hopes; refused appendices are limits written on designs.
+THE FUTURE READER IS THE ONLY READER THAT MATTERS, AND THEY ARRIVE
+KNOWING NOTHING BUT WHAT THE ARTIFACT SAYS. Write your limits down;
+the future will need them.
