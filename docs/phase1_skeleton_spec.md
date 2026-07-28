@@ -14271,3 +14271,43 @@ token-position × waist-dim, the moment the skeleton trains.
   and the three-inversion pattern joins two-digit-k as diet-lever
   customer evidence. Tranche stands **23 certified / 6 abstain /
   0 wrong**.
+
+- **THE SAMPLE BANKS WHOLE (2026-07-28, the bench's two owed
+  rulings + the close):** **[351] CONFORMS/rendered — rearrangement,
+  not substitution.** 443's license covers folding constants DURING
+  rearrangement because that is what rearrangement IS: the vanished
+  3 and 7 vanish into the equations' own algebra, not into an
+  off-graph solve — [198] failed because its replacements encoded
+  SOLVED INTERMEDIATES (the answer's ingredients pre-chewed);
+  [351]'s 6 and 10 encode THE CONSTRAINTS THEMSELVES and the
+  solver does all solving. The mechanical tell is the SCREEN,
+  never the verdict (the provenance pass's own lesson, now law-
+  grade). Demerit: the g=0 equality encoding is opaque provenance.
+  LAW CARVED: *rearrangement may fold constants, but the folded
+  form must remain a recognizable restatement of a named source
+  equation; nontrivial mappings stated in the pen's note.*
+  **[221] RENDERED HIGH — and the tell gains its CO-TEST.** The
+  direction of the vanishing decides: literals split into workable
+  pieces (4·2=8, 25·2=50 — all pieces present, all arithmetic
+  in-graph, product RECONSTRUCTS the source literal) = rendered;
+  literals consumed into computed replacements (no reconstruction
+  path) = substituted. CO-TEST LAW: *when source literals are
+  missing, check whether standing values decompose them
+  (reconstruction path exists → rendered) or replace them
+  (none → substituted).* Perfect-square factorization lawful
+  BECAUSE canonical; arbitrary decomposition choices must be
+  flagged ([198]'s block-size-5 lesson generalized). The ALG_DUP
+  search-based radical (b·b=a) enters the technique list beside
+  multiplicative inversion. **THE SAMPLE'S RATE: 4/5 rendered on
+  ruled rows** (351, 221, 350-v2, 239-v2; [198] substituted-
+  pending), footnoted honestly: one rendering costs certification
+  the bench refused to buy back with a gift. [198]'s sentence
+  carries the direction of instruction: the gate's diet is now
+  being written by the book's own faithfulness demands — THE ROAD
+  TEACHES THE MINT. Provenance marks written into the draft rows
+  and the wheel-sample artifact. THE WORD: tranche 2's remaining
+  eligible proceed under the updated instruction set (two new laws
+  + co-test, three worked examples, sel/pct verbatim templates
+  with watch, simplest-faithful-rendering guidance from the
+  certification-cost specimen); bench adjourned until the next
+  sample or the repair bench's seven convene.
