@@ -13866,3 +13866,24 @@ token-position × waist-dim, the moment the skeleton trains.
   standing gate; any drift -> caught before training, the only
   time faithfulness is cheap. COMPILER PRIORITIZED: _STD cut ->
   harness -> re-light under the once-only fence.
+- **THE SEAM-1 BISECTION AT THREE CUTS (2026-07-27):** detach
+  ACQUITTED (_STD also NaN-skips all steps); position ACQUITTED
+  (end-of-breath also dies). THE SHARPENED CHARACTERIZATION:
+  under TinyJit, an RMSNorm ON THE ACCUMULATED STATE x — any
+  form, any position — produces non-finite from step 1, while
+  Fire 2's norm on the FRESH LAYER OUTPUT h (feeding the same
+  chain through the blend) compiled finite, and the READOUT norm
+  on x as a LEAF also compiled finite. The suspect species:
+  data-dependent rsqrt on the K-fold-reused state buffer
+  (JIT-input descendant) re-entering the chain. NEXT CUTS
+  (sealed): (a) scalar-RMS variant (whole-tensor rsqrt — scalar
+  on the chain vs per-token); (b) tinygrad-level first-step
+  probe (where the non-finite enters the compiled graph); (c)
+  the pragmatic contraction alternatives if norms are simply
+  unavailable on this chain (gate-schedule contraction; fixed-
+  target scaling). The once-only fence UNTOUCHED — no re-light
+  attempted; these are cuts, not fires (instruments-blind runs
+  of 4 steps under the NaN-guard's own printing, per the
+  telemetry amendment). THE SIX FOR THE WHEEL prepared:
+  .cache/book7_wheel_six.json (5 stratified + [1470],
+  source+dialect+graph+gold each).
