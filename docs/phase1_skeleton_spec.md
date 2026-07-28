@@ -13727,3 +13727,25 @@ token-position × waist-dim, the moment the skeleton trains.
   harness (now with the consecutive-skip kill), then the
   re-light under the once-only fence. Book 7 certification
   holds the floor.
+- **GUT #81 EXECUTES: THE JSD TELEGRAPH RE-READ (2026-07-27;
+  fixture-first per the ruler law — the fixture PASSED and
+  demonstrated the blindness hypothesis inside itself: planted
+  support-shifted telegraph has entropy-spread 0.0139 (~0,
+  entropy-BLIND) while JSD detects exactly its 7 switch points
+  over a null-calibrated floor):** THE INIT READ, floor from
+  cross-batch 95th pct (0.0080): every layer shows ONE early
+  spike (breath 0->1; L0 0.0417) then MONOTONE DECAY TO LITERAL
+  ZERO by breath 5-6; lag-1 +0.55..+0.92 (smooth settling, not
+  switching). **BLIND-BIN VERDICT: the init silence is
+  RULER-ROBUST — no telegraph in level OR displacement; the
+  trained-vs-init comparison now stands on TWO meters.** THE NEW
+  TEXTURE JSD BOUGHT (entropy could not see it): **ROUTING
+  SETTLES WHILE CONTENT FLOWS** — attention displacement hits
+  0.0000 by breath 5-6 while state-deltas stay 0.66+: after
+  breath ~5 the loop moves VALUES through FROZEN routes. A
+  routing-vs-content split at init, filed for the trained
+  re-read (does training keep routes frozen and ladder the
+  content, or unfreeze routing?). Two-track law honored: this
+  is the JSD track's own baseline; the lineage comparison stays
+  entropy-side per the iaf_v3 caveat. Artifacts:
+  .cache/jsd_meter_fixture.json, jsd_telegraph_init.json.
