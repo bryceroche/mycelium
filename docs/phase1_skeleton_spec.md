@@ -13830,3 +13830,22 @@ token-position × waist-dim, the moment the skeleton trains.
   annotation at all). The corrected pass (gen.dialect) re-fired
   as book7-certify2; verdict on sentinel. Read-before-patch's
   final form: READ THE SCHEMA, not just the field names.
+- **THE CORRECTED CERTIFICATION SHEET: 21/23 CERTIFIED, 0 WRONG
+  (2026-07-27):** on the actual dialect rewrites (gen.dialect),
+  the Sonnet delegation's true grade: **21 certified through the
+  full chain** (five views, quorum >=3, answer key, v3
+  attestation), 2 abstains (the repair bench — tiny), **ZERO
+  quorum-wrongs** — no lies, no faithfulness escapes at quorum.
+  The earlier 'first certified machine row' milestone corrects
+  upward: twenty-one rows entered the waiting room wearing
+  drafted-by-delegation provenance in one pass. THE ECONOMICS
+  NOTE, banked plainly: solver-preverified + rulebook-aware
+  drafting certifies at 91% where the historical free-lane rate
+  was 1-4% — because the delegation drafts INTO the dialect the
+  gate reads, not into prose needing surgery. The hand's role
+  reshapes: 2 repairs, [1470]'s ruling, and spot-audit — the
+  books can now run at delegation speed WITH the key's full
+  custody. Book 7 tranche 1 stands at 21 certified zero-answer
+  rows: the zero-hunt census the wild specimen [36] asked for,
+  delivered. Lanes + [1470] to Bryce's wheel; the quirk cut has
+  the GPU.
