@@ -13934,3 +13934,23 @@ token-position × waist-dim, the moment the skeleton trains.
   goes TWO-AXIS with the strengthened instruction (inexpressible
   core -> skip or declared stand-in, NEVER gift the result) +
   specimens 2/5 as worked examples.
+- **THE PROVENANCE PASS RUNS (2026-07-27):** mechanical marks on
+  the 21: **10 rendered / 6 explicable-adjacent / 5 substituted**
+  — with bench overrides applied: src 6 (ruled UNFAITHFUL by
+  asymmetry) had been machine-marked rendered because its gifted
+  value COINCIDES with a source literal — **the screen's blind
+  spot, demonstrated by the bench's own specimen**: a gifted
+  computation whose result happens to equal some source number
+  passes the literal check. FINAL MARKS (bench-overridden): **9
+  rendered / 6 adjacent / 6 substituted-or-ruled**. THE LIMIT
+  STATED: the mechanical pass is a SCREEN, not a verdict —
+  'rendered' means passed-the-literal-check, not
+  certified-faithful; sampling continues as book 8's standing
+  gate exactly because coincidence hides. DISPOSITION EXECUTED
+  per the bench: 9 rendered rows = certified zero-specimens with
+  census standing; 6 adjacent = flagged for promotion/demotion
+  at the wheel's convenience (each one known needing one-op
+  derivation review); 6 substituted = stand-in-marked, trainable
+  as cancellation practice, EXCLUDED from zero-census coverage.
+  Artifacts: .cache/book7_provenance_pass.json. The tranche
+  enters on its true terms.
