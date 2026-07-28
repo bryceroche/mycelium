@@ -13797,3 +13797,19 @@ token-position × waist-dim, the moment the skeleton trains.
   room with full provenance (drafted-by-delegation, certified by
   vote+key+attestation). Lanes to Bryce's wheel with [1470]'s
   faithfulness ruling.
+- **THE ADJUDICATION PRIORITY PINNED (2026-07-27, Bryce):** the
+  unanimous 5/5-reading-2 is the WRONG-UNANIMOUS COLD CLASS —
+  second wild appearance in campaign history (first: the 2/20
+  adversarial tick, panel-blocked) — and its delegated-draft
+  provenance INVERTS the scary hypothesis: if the text drifted
+  from the preverified graph, the GOLD ITSELF IS POISONED and the
+  unanimity may be five views READING TRULY. The chain's one
+  structural blindness, named at the delegation's registration:
+  the key checks the graph's answer, never text-graph
+  faithfulness. **PRIORITY: FAITHFULNESS FIRST, GATE SECOND** —
+  text vs preverified graph BEFORE gate vs gold. Text-says-2 ->
+  the delegation's first faithfulness escape (different finding,
+  different fix: faithfulness check goes SYSTEMATIC on all
+  delegated drafts; quorum vindicated). [1470] drew the line
+  from one side; this specimen tests it from the other; both
+  cross the wheel together with text+graph+gold.
