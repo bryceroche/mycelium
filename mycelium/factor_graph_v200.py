@@ -1816,7 +1816,15 @@ def fg_breathing_forward_v200r(
     tree_cb_flat = model.fg_v200_tree_codebook.reshape(n_digits * 10, H)
     calib_w, calib_b = model.fg_v200_calib_w, model.fg_v200_calib_b
     tree_logits_history, calib_history = [], []
+    _seam1 = int(os.environ.get("V200_R_SEAM1", "0")) > 0
+    breath_norm_w = getattr(model, "fg_v200_breath_norm_w", None)
     for k in range(K):
+        # MIDDLE BET (2026-07-27): Seam-1 breath-start detached RMSNorm —
+        # 'bounds inter-breath residual accumulation' (the latent path's own
+        # organ; its absence let Fire 2 diverge). Paired with the delta_gate
+        # blend below: the two are ONE mechanism (the registration's law).
+        if _seam1 and breath_norm_w is not None:
+            x = _rms_norm_detached(x, breath_norm_w, rms_eps).cast(dtypes.float)
         x_pre = x
         h = x + breath_embed[k].reshape(1, 1, H).cast(x.dtype)
         _nomask = int(os.environ.get("V200_R_NOMASK", "0")) > 0
