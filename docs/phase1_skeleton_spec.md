@@ -13617,3 +13617,28 @@ token-position × waist-dim, the moment the skeleton trains.
   what banks; hand-quota constitutional clauses untouched —
   drafts are drafts until the key speaks). Pen and GPU no longer
   compete: the road through pages, the bet in the gaps.
+- **BOOK 7 DRAFTS DELIVERED (2026-07-27, the Sonnet delegation's
+  first pass):** COUNT CORRECTION banked: the ledger's '42
+  zero-answer candidates' was answer==0 across ALL levels; under
+  the books' own L1-3 filter it is **26** — the discrepancy
+  honestly flagged by the annotator itself. 24 DRAFTED (schema
+  exactly book5/6; every factor graph pre-verified by the
+  SYMBOLIC SOLVER to solve to exactly 0; gate field stamped
+  'PENDING:5view-vote+key' so no draft can masquerade as
+  certified), 3 HONEST SKIPS with reasons ([122] needs a
+  min-selection primitive out of scope; [1673] definitional, no
+  numeric structure — forcing a graph would fabricate content;
+  +1 below). **THE FAITHFULNESS FLAG, held for Bryce's pen:
+  [1470]** (sum of cubes ± 1..100) was drafted with a BOUNDED
+  STAND-IN magnitude (250 for the true 25,502,500) — the
+  argument's SHAPE preserved (S + (-S) = 0) but the quantities
+  replaced: that is translation of MATHEMATICS, not register,
+  and the key cannot catch it (the graph solves to 0 either
+  way — the key certifies solvability, not source-faithfulness,
+  which is exactly the rulebook's jurisdiction and the hand's).
+  [1470] does NOT enter certification without Bryce's ruling;
+  [6]'s magnitude-derivation noted as the defensible cousin
+  (real problem numbers used). CERTIFICATION PASS (5-view vote +
+  key on the 24) queues behind the middle-bet fire's GPU. The
+  delegation model works: the pen drafts, the flags surface, the
+  key and the hand keep their jurisdictions.
