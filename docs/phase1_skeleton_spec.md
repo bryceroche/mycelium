@@ -13705,3 +13705,25 @@ token-position × waist-dim, the moment the skeleton trains.
   physics. Book 7's certification pass holds the floor
   meanwhile. The middle bet's state, honestly: physics sound,
   compilation suspect, one lawful attempt remaining.
+- **THE JIT CUT COMPLETES THE DIAGNOSIS (2026-07-27):** the
+  middle-bet fire's log holds **[NaN-skip] x 500 — the guard
+  fired on EVERY step**; its `continue` skips the [step]/[GATES]
+  prints, so the dashboard the kills watch was bypassed by the
+  guard itself. THE TELEMETRY MYSTERY SOLVED: not a logging
+  fault — a DESIGN GAP now named: **the NaN-guard's skip path is
+  silent to the kills, and consecutive skips are uncounted** —
+  500 no-op steps ran as a 'fire.' TELEMETRY-LAW AMENDMENT
+  (carved into the pre-flight harness spec): the guard's catch
+  is ITSELF a dashboard line, and N consecutive NaN-skips (N=10)
+  IS A KILL — a fire that cannot compute is a fire that stops.
+  THE COMPILE CUT: eager forward FINITE (banked) vs compiled
+  total NON-FINITE FROM STEP 1 — the NaN arises in the JIT-
+  compiled loss/graph, not the mathematics; Seam-1's
+  detach+float inside the jitted graph at LOOP-TOP position is
+  the localized suspect (the same seam function at the BLEND
+  position ran finite in Fire 2 — position, not function, is
+  the delta). Quirks candidates: the file's cast/detach-in-JIT
+  family; next cut is op-level localization, then the pre-flight
+  harness (now with the consecutive-skip kill), then the
+  re-light under the once-only fence. Book 7 certification
+  holds the floor.
