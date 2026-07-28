@@ -17,6 +17,7 @@ os.environ["ALG_TEST_NAME"] = "alg4test"
 from phase1_algebra_head import build_params, forward, decode, load_alg
 from mycelium.csp_domains import problem_from_algebra3
 from mycelium.csp_core import solve_symbolic
+from mycelium.custody_gold import row_gold   # solution is pen-side scratch, never custody-side gold (law 2026-07-28)
 from tinygrad import Tensor, dtypes
 from tinygrad.nn.state import safe_load
 
@@ -65,7 +66,7 @@ def eval_ckpt(ckpt):
                                      budget=200_000, seed=0)
                 if res["status"] == "solved":
                     sol = [int(res["assignment"][v]) for v in range(nv)]
-                    ga = smp["solution"][smp["query_var"]]
+                    ga = row_gold(smp)
                     if q < len(sol) and sol[q] == ga:
                         ok[ri] = True
             except Exception:

@@ -14186,3 +14186,44 @@ token-position × waist-dim, the moment the skeleton trains.
   Artifacts: book8_prose_pairs_draft.jsonl (29, gate-stamped),
   book8_certification.json, book8_certify{,2}.log,
   book8_draft_report.md, book8_wheel_sample.json.
+
+- **THE CUSTODY-GOLD LAW EXECUTED (2026-07-28, Bryce's urgency-one
+  ruling — before any book-8 row flows):** the three named scripts
+  (`attestation_check.py`, `band_bars.py`, `chain_depth_join.py`)
+  PLUS two same-pattern siblings found in the audit
+  (`alg4_perkind_diff.py`, `alg4_drift_autopsy.py`) now read gold
+  through `mycelium.custody_gold.row_gold` — mint rows (no
+  gen.src_idx) read solution[query_var] as before; pen rows (any
+  gen.src_idx) resolve the HARVEST answer by source-text identity,
+  hard-error on any miss, no silent fallback. PATH AUDIT: all five
+  serve measurement fixtures on MINT rows today (bigtest/alg4test)
+  — none sits in the training-mass path; the hazard was
+  future-pointing and is now closed. VERIFICATION: mint parity
+  1500/1500 bigtest golds byte-identical; pen routing 29/29 book-8
+  rows resolve to harvest gold; hard-error proof passed (unknown
+  pen text refused loudly). THE HAZARD MEASURED: 543/550 banked
+  book-1–6 rows carry all-zero solution fields ≠ harvest gold —
+  the loaded gun is now quantified and disarmed. The law's text
+  lives in docs/ARITH3_DIALECT.md (custody-gold section): solution
+  vectors are pen-side scratch, never custody-side gold.
+- **MINT K-RANGE APPROVED AS DIET LEVER, STAGED (2026-07-28,
+  Bryce):** widen fdiv k sampling to cover two-digit divisors at a
+  measured fraction; enters through the standard mint-line process
+  with its own before/after read on the starved register — [239]'s
+  species (two-digit-k dialect, currently sel-substituted at
+  quorum) is the pinned probe for whether the feeding took.
+  DOCKETED, not fired (hold-for-the-word on training).
+- **[239]-v2 FLAGGED AS BOOK-9 WORKED EXAMPLE (2026-07-28,
+  Bryce):** multiplicative-inversion rendering (50×e=300,
+  worker-days constancy — the source's own physics, more faithful
+  than the fdiv it replaced) joins the instruction set's specimen
+  file for the next tranche.
+- **SEL/PCT RATIFICATION REFRAMED BY GREP (2026-07-28):** the
+  pen's flag said no precedent ANYWHERE — true for books, false
+  for the corpus: the MINT has trained sentence forms for both
+  (`algebra2_nl_gen.py`: "{x} is the smaller of {a} and {b}" /
+  "Of {a} and {b}, the smaller one is {x}"; `algebra3_nl_gen.py`:
+  "{a} is {p} percent of {b}"). The gate demonstrably parses sel
+  (it parsed sel-smaller INTO [239]'s misparse). The ratification
+  question before the bench is therefore the clean form: adopt the
+  mint's own sentence forms as book-lawful, no new grammar.

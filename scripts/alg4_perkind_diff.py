@@ -16,6 +16,7 @@ os.environ.setdefault("ALG2", "1"); os.environ.setdefault("ALG_FTYPES", "6")
 from phase1_algebra_head import T_ALG, build_params, forward, decode, sent_indices, TOKENIZER_JSON
 from beacon_closing_arm import recompute_states
 from tta_alg2_dials import solve2
+from mycelium.custody_gold import row_gold   # solution is pen-side scratch, never custody-side gold (law 2026-07-28)
 from tokenizers import Tokenizer
 from tinygrad import Tensor, dtypes
 from tinygrad.nn.state import safe_load
@@ -75,7 +76,7 @@ def parse_all(ckpt):
                     r = chunk[b0 + bi]
                     facs, q = decode({k: o[k][bi] for k in o})
                     a = solve2(facs, q, {"n_vars": 24, "m": r.get("m", 60)})
-                    hits.append(a == r["solution"][r["query_var"]])
+                    hits.append(a == row_gold(r))
     return hits
 
 h6 = parse_all(".cache/phase1_gen6_head.safetensors")

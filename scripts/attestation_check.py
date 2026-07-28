@@ -65,8 +65,9 @@ def parse_batch(texts):
                 res.append(decode({k: o[k][bi] for k in o}))
     return res
 
+from mycelium.custody_gold import row_gold   # solution is pen-side scratch, never custody-side gold (law 2026-07-28)
 rows = [json.loads(l) for l in open(".cache/algebra_nl_bigtest.jsonl")]
-gold = [r["solution"][r["query_var"]] for r in rows]
+gold = [row_gold(r) for r in rows]
 banked = json.load(open(LATTICE))["bigtest"]
 if LIMIT:
     rows = rows[:LIMIT]

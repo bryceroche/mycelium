@@ -9,6 +9,7 @@ os.environ.setdefault("ALG2", "1"); os.environ["ALG_FTYPES"] = "8"
 os.environ.setdefault("ALG_DUP", "1")
 from phase1_algebra_head import build_params, forward, decode, N_DIG, L_FAC
 from tta_alg2_dials import solve2
+from mycelium.custody_gold import row_gold   # solution is pen-side scratch, never custody-side gold (law 2026-07-28)
 from tinygrad import Tensor, dtypes
 from tinygrad.nn.state import safe_load
 
@@ -72,7 +73,7 @@ for s0 in range(0, 1500, 8):
         i = int(i)
         facs, q = decode({k: o[k][bi] for k in o})
         a_ = solve2(facs, q, {"n_vars": 24, "m": rows[i].get("m", 60)})
-        n_ans += (a_ == rows[i]["solution"][rows[i]["query_var"]])
+        n_ans += (a_ == row_gold(rows[i]))
 guard = n_ans >= 1208
 print(f"[band] GUARD bigtest: {n_ans} ({'HELD' if guard else 'BROKEN'} vs 1208)")
 verdict = ("SPECTRAL REPAIR — the band takes its medicine without waking the neighbors"

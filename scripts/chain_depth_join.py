@@ -17,10 +17,12 @@ import numpy as np
 from collections import Counter, defaultdict
 
 sys.path.insert(0, "scripts")
+sys.path.insert(0, ".")
 from schema_miner import producer_of, inputs_of
+from mycelium.custody_gold import row_gold   # solution is pen-side scratch, never custody-side gold (law 2026-07-28)
 
 rows = [json.loads(l) for l in open(".cache/algebra_nl_bigtest.jsonl")]
-gold = [r["solution"][r["query_var"]] for r in rows]
+gold = [row_gold(r) for r in rows]
 gate = json.load(open(".cache/lattice_gate.json"))["bigtest"]
 armb = json.load(open(".cache/lattice_armB.json"))["bigtest"]
 c2x = json.load(open(".cache/lattice_cap2x.json"))["bigtest"]

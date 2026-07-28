@@ -82,3 +82,17 @@ weight-borne; per-breath adapters are a fence-gated last resort.
 ## Verdict class
 A verifier rejection is **malformed-graph** (+ code + slot) — the third
 death, earlier and cheaper than solver-unsat or budget-abstain.
+
+## The custody-gold law (2026-07-28, ruled after book 8's certification)
+**Solution vectors are pen-side scratch, never custody-side gold.** A
+delegated book row's `solution` field descends from the pen's own graph;
+grading against it lets the pen grade itself (book-8 specimen [239]: the
+pen's artifact would have certified a confident gate misparse at quorum
+75 — only the independent harvest gold caught it). Mint rows (generator-
+written, solution-first under the uniqueness gate) carry lawful solution
+vectors. The one lawful read is `mycelium.custody_gold.row_gold`:
+mint → solution[query_var]; pen (any row whose `gen` carries `src_idx`)
+→ the harvest answer by SOURCE-TEXT identity (src_idx is book-local
+across books 1–3; text is the cross-book key), hard-error on any miss.
+Measured hazard at ruling time: 543/550 banked book-1–6 rows carried
+all-zero solution fields ≠ their harvest gold.
