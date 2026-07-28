@@ -14632,3 +14632,37 @@ token-position × waist-dim, the moment the skeleton trains.
   doorway). Jurisprudence: **twelve laws, five worked examples,
   one new declared class.** [607]/[636]/[678]+[631] artifacts
   sent across the wheel.
+
+- **THE T4 SITTING, PART TWO — the conditionals complete; the
+  twins carve the THIRTEENTH LAW (2026-07-28):** **[607] RENDERED
+  HIGH, not a stand-in** — the source asks for 7b and the query
+  returns it; the 7 is the query's own coefficient, a source
+  literal in the strictest sense; scale-and-sign fraction-clearing
+  (350-v2 generalized) ENTERS THE TECHNIQUE LIST. **[636] HONEST
+  SKIP confirmed** — coincidental correctness in canonicality's
+  clothes (q=1 has no in-graph witness; 2^9 would emit an invalid
+  remainder with the same confidence; a reconstruction that
+  exists conceptually but never forms in-graph is not a
+  reconstruction). Joins the discrete-exponent cluster: 4+1
+  recurrences = the #49 recurrence test met — **THE EXPONENT
+  PRIMITIVE GOES ONTO THE ADMISSION LADDER'S DOCKET.**
+  **[678]/[631] BOTH RENDERED HIGH + THE ROUTING-FACT LAW:**
+  constants and coefficients collected in-graph, Vieta's
+  symmetric functions handed to the solver as genuine systems —
+  but the sign-structure fact ROUTES which arithmetic the
+  difference takes (opposite→magnitude-sum; same→magnitude-
+  difference) and that routing is external while its evidence
+  (the product's sign) sits in-graph. LAW: *when an external fact
+  determines which arithmetic the dialect uses, and that fact is
+  derivable from quantities the graph already holds, the pen must
+  state the derivation in its note and flag the row for
+  primitive-admission review — a routing fact that recurs is a
+  missing primitive's signature.* Sign-of-product routes twice in
+  one tranche: onto the ladder docket beside the exponent
+  primitive. LEDGER LINE OF ITS OWN, as ordered: **the twins were
+  a pen-DESIGNED controlled comparison — the delegation doing
+  bench-preparation work, proposing the experiment that finds the
+  missing law.** The recursion charter's spirit at the
+  jurisprudence grain. TALLY: 4 rendered-HIGH / 1 skip.
+  **THIRTEEN LAWS, five worked examples.** Book 8 census-standing:
+  114 after [636]'s withdrawal. THE WORD: tranche 5 fires.
