@@ -13954,3 +13954,32 @@ token-position × waist-dim, the moment the skeleton trains.
   as cancellation practice, EXCLUDED from zero-census coverage.
   Artifacts: .cache/book7_provenance_pass.json. The tranche
   enters on its true terms.
+- **GUT #82 REGISTERED WITH BRYCE'S FULL COUNTERSIGN (2026-07-27
+  — the E-B frame's third visit, + thermal mass):** dispositions
+  banked as ruled: (1) PHYSICS CORRECTED, second time on the
+  same joint: vacuum-wave E and B are spatially orthogonal but
+  TEMPORALLY IN PHASE — the photon is simultaneity, not
+  turn-taking; a frame whose founding image is misremembered
+  turn-taking cannot license a turn-taking architecture; the
+  true part (coupling) already owns its measured name
+  (commit/propagate, +22.6). (2) 'high Local at k MUST induce
+  high Global at k+1' REFUSED — third citation of the
+  imposed-rhythm clause (#73: learned or measured, never
+  installed); refused-appendix gains its third ancestor. (3) THE
+  REAL PIECES CREDITED AND ALREADY VAULTED: convex delta-gate
+  blending = the norm-free fallback REGISTERED in the
+  bisection's own sealed sequence; 'thermal mass' C=1/alpha =
+  EMA; 'flywheel' = momentum; 'thermostat' = Seam-1's job
+  description — the organs are real, the wedding already
+  happened, the costume adds no mechanism. ORTHOGONALITY CLAIM
+  STRUCK from any future registration: a convex combination
+  interpolates; it orthogonalizes nothing. (4) TIMELINE
+  CORRECTION: the memo sells a cure for a bug already convicted
+  AND cured (scalar-RMS compiles; re-light staged) — the
+  once-only fence refused the morning-after enrichment exactly
+  as designed. (5) 'Are we doing enough of the telegram?' — YES,
+  exactly enough: silence ruler-robust on two calibrated meters;
+  the does-training-install-it read scheduled with the
+  rhythm-authorship discriminant. The re-light stands untouched:
+  telemetry harness, then scalar-Seam-1, one attempt, absolute
+  fence. The frame can watch the fire like everyone else.
