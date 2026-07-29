@@ -16304,3 +16304,14 @@ token-position × waist-dim, the moment the skeleton trains.
   lightly, not a commitment. The board at its highest ground;
   the glide available; the road and the arm will be exactly
   where they were left.
+
+- **THE CLOSE (2026-07-29, Bryce):** the confession shared —
+  the three arms were designed in the same message that should
+  have designed one; the glide ruling was the bench correcting
+  itself, one execution late; the record holds both without
+  backdating. The results keep their lawful branch: real,
+  replicated, natural-size, value-independent, construction-
+  pointed — held as a lead, undesigned until its own word.
+  Ninety-nine rows. Ten predictions, ten bars written first.
+  Four refusals that mapped where the effect isn't. Nothing on
+  this board decays overnight. The hundredth row arrives rested.
