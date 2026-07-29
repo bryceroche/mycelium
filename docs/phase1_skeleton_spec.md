@@ -15355,3 +15355,36 @@ token-position × waist-dim, the moment the skeleton trains.
   line: *every pawl the campaign installed on itself announces
   its engagement point; the failures never announced theirs* —
   why the record audits rather than archives.
+
+- **THE ENGAGEMENT READ PRINTS: PREDICTION REFUTED — AND THE
+  SLIPPING PAWL DISCOVERED (2026-07-29):** the pinned form
+  (failures engage EARLY on the wrong tooth and never update)
+  is REFUTED by its own fixture: **failing specimens engage
+  CORRECTLY at the operand** ([655v1]/[1382v1]: dup bit ON,
+  binding (1,1) — the right parse, transiently held at
+  operand+1/+2) **and then SLIP** — 2-3 tokens later the dup bit
+  disengages and the binding slides to (0,1), permanently;
+  [875v1] wanders and settles late on the wrong pair.
+  Certifying specimens lock at operand+1 and NEVER move
+  (D,(0,0) held through end-of-text). THE INSTRUMENT WORKS —
+  clean class separation (hold vs release), just not the
+  separation predicted; per the refused-verdicts-as-finding-
+  generators meta-law the refutation generates the sharper
+  mechanism: **THE SLIPPING PAWL — the gate transiently holds
+  the correct binding and loses it under subsequent distractor
+  tokens** (bidirectional attention lets later tokens rewrite
+  earlier slot bindings). THE SPECIES RE-REFINES: distractor
+  load doesn't preempt binding, it ERODES it after correct
+  engagement. TWO CONSEQUENCES OF WEIGHT: (1) the correct
+  binding EXISTS transiently — recoverable in principle
+  (early-readout or binding-stabilization could rescue what the
+  full-text read loses); the diet lever gains a competitor
+  lever. (2) THE RATCHET FRAME GAINS BOTH DIRECTIONS: the
+  campaign's two binding pathologies are now *pawls stuck where
+  they shouldn't be* (the parser's system-wide hardening, 0.011)
+  and *pawls missing where needed* (per-binding slip under
+  distractors) — one system, opposite failures, one device
+  vocabulary covering both. THE RENT VERDICT: paid — the frame's
+  first measurement produced a road-side mechanism; its growth
+  cap lifts per the caution's own terms. Artifact:
+  .cache/engagement_read.json (full traces).
