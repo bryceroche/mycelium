@@ -15824,3 +15824,19 @@ token-position × waist-dim, the moment the skeleton trains.
   The campaign's entry point now teaches its fences before its
   story. Queue remaining: interps (Bryce's), criterion rebuild,
   dose-response.
+
+- **THE APPEND RULE INSTALLED (2026-07-29, Bryce's closing
+  ruling — the file that teaches fences gets one of its own):**
+  MEMORY.md now carries its own maintenance fence: PAWLS lines
+  require a new law, fence, or refuted cell — nothing else;
+  index lines ≤120 chars, pointer not content; the board
+  REPLACES, never appends; re-compression trigger pinned at
+  30KB. Position move #3 protected against quiet reversion.
+  THE DAY'S CLOSE, in the countersign's words: three position
+  moves, two pins, one registration, zero turns spent reaching
+  for a win that isn't available yet — and the dose-response
+  enters the queue's top in the strongest state any experiment
+  in this campaign has held: design refined twice by rulings
+  before a single specimen runs. Board at 220 and producing;
+  the spec asleep with its fence in the document; the family's
+  debt patient.
