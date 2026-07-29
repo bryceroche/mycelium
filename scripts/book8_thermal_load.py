@@ -23,7 +23,7 @@ TRANCHE_FILES = {
 }
 # skip counts per tranche from the registered skip sets (book8_candidates.py
 # is the registry; mirrored here as data)
-SKIPS = {1: 11, 2: 8, 3: 9, 4: 7, 5: 9, 6: 8}
+SKIPS = {1: 11, 2: 8, 3: 9, 4: 7, 5: 9, 6: 8, 7: 9}
 
 CERT_FILES = {
     1: ".cache/book8_certification.json",

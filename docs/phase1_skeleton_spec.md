@@ -15057,3 +15057,30 @@ token-position × waist-dim, the moment the skeleton trains.
   product+difference-of-roots derivation reaches FOUR instances
   (established pattern); [934]'s over-cap intermediate caught at
   build (subtract-first reorder); certification running.
+
+- **TRANCHE 7 FULL REVOLUTION: 31/9/0 → [875] WRONG → THE
+  SUBTRAHEND-POINTER CONVICTION → V2 UNANIMOUS → 26/5/0
+  (2026-07-28):** the autopsy pinned a PURE POINTER MISBINDING —
+  "g exceeds h by i" scattered on its SUBTRAHEND: 3/5 views
+  grabbed the distractor literal 7 (var d) instead of 9 (var h),
+  one took e=31, and the one correct view rendered the
+  equivalent ADD-form (9+i=g). Anatomy: late-alphabet crowding
+  (g,h,i adjacent) + two plausible small-constant subtrahends.
+  **THE FINE-BINDING DOCKET'S FIRST LIVE BOOK SPECIMEN** — the
+  which-var species the docketed hierarchy read was built to
+  measure now has its motivating case from the road itself. V2:
+  the add-form the correct view demonstrated, accommodation-
+  marked under the newly-convicted weakness (law 11 applied to a
+  same-day conviction) — CERTIFIES UNANIMOUS 146×5. The
+  subtrahend-pointer-under-distractors weakness joins the mint
+  customers (fine-binding species). Watch rows all held (897/
+  925/929 mild constant-reuse certified, consistent with the
+  2-3-use range). GOLD SKEPTICISM: clean 40/40 (gauge 1/~280 =
+  0.36%, filter holding). THERMAL METER t7: honest 9 / deferred
+  2 — both lines within band. **BOOK 8: 202 CERTIFIED across
+  seven tranches / 19 repair bench / 270 eligible.** T7 wheel
+  sample: [875]-v2 (the conviction + cure), [929] (the
+  mirror-image lesson), [943] (product+difference at four
+  instances — formal admission question), [897] (bookkeeping
+  check), [939] (the aggressive pct-avoidance that ABSTAINED —
+  accommodation cost specimen). Awaiting the bench.
