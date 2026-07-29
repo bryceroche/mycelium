@@ -16919,3 +16919,25 @@ token-position × waist-dim, the moment the skeleton trains.
   rides certification as the dead mechanism's lawful ghost —
   rows with first-use distance past the passing p90 (157)
   flagged on the sheet for scrutiny, never judged by the flag.
+
+- **THE FACTORY PANEL BASELINES BANK — THE DIET MEASUREMENT'S
+  NEW GROUND (2026-07-29):** minted, solver-verified,
+  reproducible fixtures; training-data fraction ZERO. **pct:
+  4/6 plain, 4/6 spanned (67%)** — against the book register's
+  all-None: THE TEACHING IS THE GRADIENT — pct's pointer
+  weakness is CONTEXT-GRADED, not absolute (minimal
+  mint-verbatim templates parse at 67%; rich contexts scatter
+  completely) — the first reproducible measurement of the
+  weakness's shape. **sub-distract: 6/6 + 6/6** (consistent
+  with t9's clean natives). **two-free-var: 6/6 + 6/6** after
+  the CONSTRUCTOR LESSON: run 1 produced ZERO probes — the
+  symmetric sum/product system is never unique on either
+  unknown (the swap); the naturals were unique because
+  asymmetric; the cure was IN-GRAPH ORDERING VIA RATIFIED SEL
+  (law 6's own logic), which incidentally banked twelve more
+  unanimous sel parses. Design note carried: *symmetric systems
+  need an in-graph ordering to be well-posed — a uniqueness
+  fact, not a style choice.* These three cells are now THE
+  STANDING FIXTURE BASELINES every future mint generation
+  measures against (.cache/factory_panel_baseline.json). The
+  distance screen and the t10 certification wait on the pen.
