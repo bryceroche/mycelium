@@ -43,11 +43,21 @@ The discriminator is measured, not aesthetic:
 
 The depth budget is the binding constraint, harder than the cycle fork:
 
-- The measured clock: ~3.5 breaths per implication layer (engine-clock,
-  deployed ruler). A fixed station count fixes deduction depth: four
-  stations buy ~one implication layer. The frontier census says the
-  compiler's failures are exactly the bindings needing implications.
-  **The pure jet is refuted before it is built.**
+- **THE CLOCK IS CARRY-FORWARD, NOT A CONSTANT (flag 1, 2026-07-28):**
+  ~3.5 breaths per implication layer was measured on the TIED-WEIGHT
+  KenKen engine with its deployed readout. Untied stations plausibly
+  clock differently in either direction (specialization may resolve a
+  layer in fewer iterations; losing weight-sharing may cost repetitions
+  the tied loop got free). The rate enters §6 as an assumption with its
+  cheapest refuting test: **measure the clock on the new architecture
+  at init, before sizing the station budget.** The arithmetic below is
+  CONDITIONAL on the inherited rate.
+- Conditional on that clock: a fixed station count fixes deduction
+  depth — four stations buy ~one implication layer, and the frontier
+  census says the compiler's failures are exactly the bindings needing
+  implications. **The pure jet is refuted before it is built** (at any
+  clock in the plausible range; the conditional weakens the number,
+  not the refutation).
 - **The resolution is the compressor's own anatomy:** multiple untied
   stages, each doing bounded work, flow passing through all; each stage
   internally has rotor and stator doing distinct things. Therefore:
@@ -63,6 +73,37 @@ The depth budget is the binding constraint, harder than the cycle fork:
   violent / contracted-wrong were all measured inside GLOBALLY tied
   recurrence. Station-local loops with untied station weights is
   unmapped territory. This bet enters it by the front door.
+
+**THE INIT SCHEME (flag 2 — kill-bar 2's readability depends on it):**
+stations init from DISTINCT pretrained layers (station k ← pretrained
+layer-group k), never from one shared copy — same-copy init makes
+stations identical at step zero and fails the differentiation bar for a
+non-architectural reason. Under distinct-layer init,
+differentiation-at-init IS the pretrained polarization ramp measured
+across stations — which is kill-bar 1's own quantity at t=0. The two
+bars are therefore ONE two-phase bar on one quantity:
+**phase A (existence): the cross-station ramp exists at init** (the
+architecture inherits differentiation) — refutable before a training
+step; **phase B (survival): the ramp holds above the pre-pinned
+fraction during training** (the early kill). One meter, two phases, no
+unreadable bar.
+
+**THE SHARED-STATE SUBSTRATE (flag 3 — the choice that killed Fire 2,
+named now, not at fire-registration).** Three options:
+1. Token-position native state (state lives on the token stream, where
+   pretrained attention is native — organ 3 of the Fire-2 restructure).
+2. Separate latent bank (v200's original — measured going OFF-MANIFOLD
+   at 2.5%/breath; the too-dead pole's home).
+3. Residual stream shared across stations (the r-variant — the
+   too-alive pole's home, but also where the seam mechanism was
+   CONFIRMED).
+**Decision criterion, pinned:** manifold residency measured at init
+(layer-image cosine band, the Fire-2 instrument) + the seam physiology
+requirement (scalar-RMS contraction must compile on the chosen
+substrate — the quirks file's third entry constrains the JIT). Default
+posture: option 1 (token-native) with Seam-1, because the re-light's
+diagnosis was cured by anatomy on exactly that substrate; options 2/3
+enter as ablation arms only if option 1's manifold read fails at init.
 
 ## 3. The gut sort (the plan's discipline)
 
@@ -119,7 +160,11 @@ else in this spec is scaffolding for that clause.
 4. **Depth reach:** implication depth ≥ 2 demonstrable. Depth ≤ 1 makes
    the bet moot against the census.
 5. **The decisive bar, unchanged:** 257-recovery above the 0.011 floor
-   with ZERO new lies through the attestation-v3 fence.
+   with ZERO new lies through the attestation-v3 fence. **MEASUREMENT
+   GRAIN PINNED (flag 5): QUORUM grain** — the 0.011 floor was a
+   quorum-grain number from the round-trip; the comparison is
+   like-for-like or the bar is uninterpretable. View-grain reads may be
+   printed as diagnostics but never judge the bar.
 
 **Budget:** staged, early kills doing real work; the three-strikes
 clause written before the first strike. Telemetry law + skip-kill
@@ -128,6 +173,10 @@ fire ever lights.
 
 ## 6. Carry-forward: assumptions, not assets (the lesson cost three fires)
 
+- **The deduction clock (~3.5 breaths/layer): ASSUMPTION** (flag 1).
+  Lineage: tied-weight KenKen engine, deployed ruler. Cheapest refuting
+  test: measure the clock on the new architecture at init, before
+  sizing the station budget. §2's arithmetic is conditional on it.
 - Seam-1 scalar contraction: enters CONFIRMED (blind-prediction
   certificate — one of the few organs with one).
 - BAU-shaped diet (#85): prescription with its measured negative
@@ -146,10 +195,42 @@ fire ever lights.
   and rides the instrumental bin (silence in failure kept it for the
   next architecture — this one).
 
-## 7. Entry conditions (the #72 procedure, verbatim discipline)
+## 7. Downstream sovereignty (flag 4 — stated so no future reader assumes)
+
+**Engine 2 is proposer-side only.** The GAC jaw is untouched; the
+two-death-mode law holds (neural-guided clean-CSP search stays CLOSED);
+the solve path stays welded shut; the five-view vote, the panel, the
+attestation-v3 fence, and the answer key remain sovereign and
+unmodified. The chain of custody — mouth → vote → panel → attestation →
+key — does not change by one link. Abstraction may live in annotation
+and recognition, never in verification; this bet proposes a better
+proposer and nothing else.
+
+## 8. The diet convergence (flag 5b — the fire-word's strongest argument)
+
+The arith3 training corpus this bet requires is what books 7 and 8 are
+producing NOW: 145 certified rows deep under fourteen laws at the time
+of this spec, growing at delegation tempo under the two-axis gate. The
+road and the bet converge on the same artifact — the books are
+simultaneously December's substrate and Engine 2's diet, which is the
+strongest argument the fire-word will ever have, and the reason this
+spec can wait on the shelf without decaying.
+
+## 9. Citation duty (flag 6 — the spec is itself subject to the archive audit)
+
+This document assembles numbers from at least five eras (2.28σ, 0.011,
+~3.5, 2/7/11, 0.506→0.922, 0.89/0.80, masked-mass 0.0000, 2.5%/breath)
+— precisely the assembly pattern that bred both convicted revenants.
+**Before fire-registration, every number in this spec walks the
+conviction index and gains its commit citation inline.** The document
+that justifies spending a fire must be the most heavily cited artifact
+in the repository. Until that pass runs, every number here carries an
+implicit [UNCITED — verify against ledger before load-bearing use].
+
+## 10. Entry conditions (the #72 procedure, verbatim discipline)
 
 Reads banked before plan-freeze; plan with kill-bars pinned cold;
 carry-forward as assumptions-to-test; registration BEFORE measurement;
-bars never bend after. The 257 is its fixture, 0.011 its floor,
-ramp-preservation on its dashboard, BAU-shaped its diet. The fire needs
-a word this document does not contain.
+bars never bend after. The 257 is its fixture, 0.011 its floor
+(quorum grain), ramp-preservation on its dashboard, BAU-shaped its
+diet. The fire needs a word this document does not contain.

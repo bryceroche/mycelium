@@ -14827,3 +14827,39 @@ token-position × waist-dim, the moment the skeleton trains.
   BET. The ingredient list absorbs its spec; the fire needs a
   word this document does not contain; the GPU stays on the
   pages. Registry row 87.
+
+- **THE SIX FLAGS EXECUTED INTO ENGINE2_SPEC + GUT #88 SEEDED
+  (2026-07-28):** all six amendments applied before the spec
+  hardened, ranked as ruled by cost-if-discovered-late:
+  (1) THE CLOCK DEMOTED TO CARRY-FORWARD — ~3.5 breaths/layer
+  re-labeled assumption (tied-weight lineage), cheapest test
+  named (measure at init before sizing stations), §2 arithmetic
+  conditional (the refutation survives at any plausible clock;
+  the number doesn't). (2) INIT SCHEME SPECIFIED — distinct
+  pretrained layers per station, never one shared copy; and the
+  insight lands: differentiation-at-init IS the polarization
+  ramp at t=0 — kill-bars 1 and 2 MERGE into one two-phase bar
+  on one quantity (phase A existence at init, phase B survival
+  during training; one meter, no unreadable bar). (3) THE
+  SUBSTRATE NAMED — three options with the decision criterion
+  pinned (manifold residency at init + seam-physiology-compiles);
+  default token-native with Seam-1 (where the re-light's cure
+  lived); latent bank and residual stream as ablation arms only.
+  (4) DOWNSTREAM SOVEREIGNTY §7 — proposer-side only, two-death-
+  mode holds, solve path welded, chain of custody unmodified by
+  one link. (5) THE DECISIVE BAR'S GRAIN PINNED — quorum grain,
+  like-for-like with the 0.011 floor; view-grain diagnostic only.
+  Plus §8 THE DIET CONVERGENCE banked: the books are
+  simultaneously December's substrate and Engine 2's diet — the
+  fire-word's strongest argument. (6) CITATION DUTY §9 — the
+  spec names its own five-era assembly pattern as revenant
+  breeding ground; every number walks the conviction index with
+  inline commit citations before fire-registration; until then
+  all numbers carry implicit UNCITED tags. **GUT #88 ("PRESSURE
+  COOKER") registered as SEED** — interps awaited; candidate
+  readings held: closed-vessel resonance (Seam-1 as pressure
+  regulator), relief-valve (escape-valve lineage), faster-
+  cooking-under-pressure (a testable clock claim), and the
+  exchange-family sibling watch (#84 geometry / #86 scheduling /
+  #88 pressure — possibly one thermodynamic gut arriving in
+  installments).
