@@ -16641,3 +16641,28 @@ token-position × waist-dim, the moment the skeleton trains.
   fenced; three species counted; the hundredth row's finding
   inside the oldest sentence. What didn't move is exactly
   where morning will find it.
+
+- **THE DAY'S SHAPE NAMED + MORNING'S ORDERING (2026-07-29,
+  Bryce's close):** the crown came from THE THREAD NOBODY WAS
+  FUNDING — three planned threads (engine, seam, road) produced
+  a good day; what made it the record's best was the channel
+  that lets an unfunded instinct arrive at 11 p.m. and get
+  audited seriously enough to print 0.953→0.016 by midnight.
+  **The registry is not a notebook; it is the campaign's
+  exploration budget — and it paid for its own hundred rows in
+  one sitting.** The seam investigation dug two days in the
+  right neighborhood at the wrong depth; the hundredth row dug
+  one layer up. MORNING'S ORDERING: (1) the scaled intervention
+  is the highest-value word and nearly free (rungs from the
+  histogram, design specified, confound stated, pilot ordered)
+  — the one read between correlational and causal, with the
+  diet's recipe and the lever's legitimacy both waiting on it;
+  (2) THE DIALECT LEVER IS THE WATCH ITEM, NOT THE PULL: if
+  distance proves causal, distance-minimizing drafting becomes
+  the most efficient accommodation available and therefore the
+  most dangerous — sheets printing cured while curing nothing;
+  the fence is registered, which makes it a watch rather than a
+  hazard, and it is the item where discipline will cost the
+  most. Board at rest: engine shelved with estate itemized;
+  road at 267; six interps with a family that has watched its
+  sibling pay four times.
