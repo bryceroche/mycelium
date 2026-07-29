@@ -16152,3 +16152,26 @@ token-position × waist-dim, the moment the skeleton trains.
   intermediate at the factory's first grain (one-sided, under-
   powered, conservative-leaning) — the map says where the next
   turn digs. Artifact: .cache/burden_pair_probe.json.
+
+- **THE GRADED-DEGREE RUN REGISTERED — THE THREE NOTES IN,
+  BARS PINNED (2026-07-29):** (1) SATURATION DESIGNED-AGAINST,
+  prospectively: the TOP rung pilots FIRST (degree 5, n=12) —
+  full run proceeds only if the pilot lands in [0.2, 0.8];
+  saturated → the run STOPS and the ladder shift is a fresh
+  registration, not an improvisation. (2) THE BAR IS
+  MONOTONICITY, not endpoint difference: fail(2) ≤ fail(3) ≤
+  fail(4) ≤ fail(5) with total rise ≥ 0.20 AND ≥2 adjacent
+  separations ≥ 0.08 = **CROSSES-ON-DOSE** (a mechanism, not
+  two endpoints re-printed); total |rise| < 0.10 = the +0.21
+  was the residuals talking; non-monotone = texture. (3) SIZE
+  DIRECTION PRE-STATED from the build, not discovered at
+  readout: the chassis holds 5 rels with fixed op-mix across
+  all rungs; hub substitution REMOVES a fresh given per degree
+  step, so n_factors FALLS 11→8 and n_vars falls with degree —
+  size decreases as burden rises, biasing AGAINST the
+  prediction (the conservative direction, same as the pair
+  probe). Degree and size cannot be fully decoupled in this
+  chassis — STATED AS A STRUCTURAL LIMIT of the design.
+  Engagement counts across rungs: 2/3/4/5 (given + arg-uses).
+  n=24 per rung after the pilot; standard 5-view quorum; probes
+  solver-verified.
