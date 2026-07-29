@@ -15148,3 +15148,37 @@ token-position × waist-dim, the moment the skeleton trains.
   index corrected, redraw took [958]/[1085]. Census:
   book8_candidates_t8.json with the design pre-registered in
   the artifact itself.
+
+- **GUT #93: THE EXCHANGE UNIFICATION PROPOSED, AUDITED TO
+  PARTIAL — AND THE COUNTER-FRAME ARRIVES WITH ITS RENT NAMED
+  (2026-07-28, the linger):** the memo's credit paid first (two
+  instruments + the better renaming), then THE CONVICTION
+  INDEX'S FIRST PROSPECTIVE CATCH: **"200M params"/"50M→200M"
+  CONVICTED** — 51 parameter TENSORS misread as 51M weights,
+  quadrupled into an architecture spec; K=12 species caught
+  FORMING (conviction 9); the pole-three era-mixing box and the
+  α→0 retrofit filed as conviction 10 (flag grade — mixings,
+  not fabrications; numbers carry their era and their ruler).
+  COVERAGE VERDICT: PARTIAL — the thermal family fits; #66/#67/
+  #68/#91 do NOT, and the campaign's two largest findings
+  (misbinds-not-miscomputes; binds-without-deducing) came from
+  the non-thermal half. FRAME-TENANT APPLIED: a vocabulary that
+  fits anything with a rate, a budget, and two failure extremes
+  constrains nothing; instruments yes, theory not yet (Seam-1's
+  confirmed prediction descended from the JSD texture, not
+  thermal reasoning). **THE COUNTER-FRAME: COMMITMENT TIMING AND
+  REVERSIBILITY** — every measured failure shares its shape
+  (0.011 = bindings hardening before deduction can object;
+  premature lowering; #73's refusal; the routing freeze;
+  unmarked-accommodation permanence) and the epistemology rows
+  fit unstretch: pre-registered bars ARE deferred commitment,
+  the conviction index IS durable refutation, blind pinning
+  exists because criteria-after-data have already committed.
+  ITS RENT: **THE REVISABILITY METER** enters ENGINE2_SPEC's
+  instrumental bin — per-station, live, distinct from the
+  thermometer; registered prediction: a failing full-flow bet
+  fails because something became irrevocable before
+  recirculation reached it. The first dashboard instrument the
+  exchange family didn't generate; prints-nothing → the frame
+  shrinks honestly. BOTH FRAMES now stand before the five-seed
+  unification — interps decide, measurement rules.
