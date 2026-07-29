@@ -16075,3 +16075,31 @@ token-position × waist-dim, the moment the skeleton trains.
   the same transaction: re-engagement stability = an untested
   assumption for trained stations, engagement meter tests at
   first smoke — no longer silent.
+
+- **THE SEAM READ: RAW 0.656 → STRATIFIED 0.485 — BURDEN WAS
+  SIZE IN DISGUISE; THE LAW IS BOUNDED TO THE GATE (2026-07-29,
+  per the pinned bar):** the raw read printed above the crossing
+  bar (0.656; failing rows' mean burden 14.1 vs 11.8) — and the
+  size-confound control, run BEFORE any ledger claim per the
+  depth-join strata discipline, collapsed it to 0.485 pooled
+  within factor-count strata (chance in every stratum). **The
+  campaign's oldest sentence came one banking step from gaining
+  a false mechanism** — re-engagement burden in mint graphs is
+  nearly a function of graph size, and size predicts failure
+  for its own reasons (the estimator's size-coordinate law, its
+  third appearance, this time caught prospectively). VERDICT AS
+  PINNED: <0.55 = BOUNDED — the binding-competition law is a
+  measured GATE property (five probe cells, 12/12 separations)
+  with NO evidence it governs the parser's failure mass at this
+  read's grain. THE FIXTURE-POWER CAVEAT stated alongside, not
+  as reinterpretation: within-stratum burden variance in the
+  mint fixture is near zero (most strata print exactly 0.500 =
+  no discrimination possible) — bigtest CANNOT test the
+  hypothesis at fixed size; the read is lawful and LOW-POWER.
+  THE FOLLOW-UP DOCKETED (fresh registration owed): factory
+  probes with VARIED burden at FIXED size, parser-side — the
+  discriminating test the mint fixture cannot supply, which the
+  specimen factory can. The spec's re-engagement assumption
+  line stands regardless (the engine question is about trained
+  stations, not the parser). Artifacts:
+  .cache/seam_count_read{,_stratified}.json.
