@@ -253,6 +253,16 @@ satisfies it by construction or dies trying.
   pinned prediction). The erosion constraint is the requirement it
   serves: soft to deduction, hard to distraction.
 
+**THE RE-ENGAGEMENT ASSUMPTION (2026-07-29 — the binding-competition
+law crosses the seam):** recirculation IS re-engagement — every station
+that rewrites an operand's binding is a second pawl on the same slot,
+and the law says the second engagement fights the first EVEN WHEN THE
+SECOND IS CORRECT. Trained stations may not inherit the pathology
+(the point of a conditioned medium) — but that is an ASSUMPTION, now
+stated: **re-engagement stability is untested for trained stations;
+the engagement meter tests it at first smoke.** Silent assumptions are
+how three fires died; this one is no longer silent.
+
 **The two honest costs, stated before enthusiasm:**
 1. **Differentiation is EARNED, not endowed.** Phase A's gift (the
    inherited 2.28σ ramp) died with the frozen trunk. Kill-bar 1

@@ -16053,3 +16053,25 @@ token-position × waist-dim, the moment the skeleton trains.
   strength-accumulation probe docketed. The frame that
   generated stands at four payments, its loss condition still
   standing for the next print.
+
+- **THE PARSER-SIDE COUNT READ REGISTERED — DOES THE LAW CROSS
+  THE SEAM? (2026-07-29, bar pinned blind):** the binding-
+  competition law is a claim about pointer binding in a
+  pretrained transformer — the parser is one, and the census's
+  failure mass was misbinding. THE READ (zero-GPU, banked
+  artifacts): per bigtest row, RE-ENGAGEMENT BURDEN computed
+  from the GOLD graph (engagement events per var = factors
+  referencing it; burden = count of vars with ≥2 engagements +
+  max count), sorted against the deployed gate's quorum outcome
+  (lattice votes). PREDICTION PINNED: failing rows carry higher
+  burden — rank AUC(burden → quorum-failure) ≥ 0.60 = THE LAW
+  CROSSES (the campaign's oldest sentence gains its mechanism:
+  "the gate never miscomputes, it misbinds" becomes "the gate
+  cannot bind an operand twice"); 0.50-0.60 = weak; < 0.55
+  effectively = the law BOUNDS TO THE GATE (a probe-register
+  curiosity, not the central mechanism). NULL pre-declared; the
+  AUC helper's argument order double-checked against conviction
+  6's fault class before the read opens. THE SPEC LINE went in
+  the same transaction: re-engagement stability = an untested
+  assumption for trained stations, engagement meter tests at
+  first smoke — no longer silent.
