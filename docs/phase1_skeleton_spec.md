@@ -15738,3 +15738,30 @@ token-position × waist-dim, the moment the skeleton trains.
   wet, absorbs, computes) simultaneously. Small untied trained
   stations satisfy it by construction; §2's redesign starts
   from this ground.
+
+- **§2-R DRAFTED — THE REPLACEMENT ON MEASURED GROUND
+  (2026-07-29, Bryce's redesign executed verbatim):** old §2
+  retitled REFUTED-AS-DESIGNED and kept as record. THE
+  REPLACEMENT: parser front-end unchanged (binding competence
+  stays where it is proven; the engine consumes PARSER OUTPUT,
+  never raw text — the competence question answered by
+  architecture, with drift-toward-text named as re-opening
+  refuted territory) + small untied TRAINED stations behind it,
+  one shared soft state both feed, pawl gate riding it. TWO
+  HONEST COSTS stated before enthusiasm: differentiation EARNED
+  (kill-bar 1 rewrites as early-kill; phase A's gift died with
+  the trunk) and no linguistic competence in the stations by
+  design. KILL-BARS: decisive/depth/thermometer unchanged;
+  manifold criterion's OBJECT changes to STATE-STABILITY-UNDER-
+  RECIRCULATION for the engine side (no borrowed cloud to
+  reside in) while ramp-preservation narrows to the parser
+  front-end (the one pretrained asset left to protect). Open
+  questions carried honestly: station sizing waits for the
+  deduction clock on THIS architecture (no arithmetic against
+  conjecture — the lesson paid twice); the seam's state format
+  is the fine-binding docket's territory; the driver owes its
+  eager math. Entry conditions unchanged: cold measurement
+  before any word. §1, five instruments, the laws, the pawl
+  gate, and the refuted-cell map carry forward — the estate
+  composing into its successor within one day of the class's
+  death.

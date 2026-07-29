@@ -39,7 +39,12 @@ The discriminator is measured, not aesthetic:
   prediction printing TRUE) — recirculation is survivable with the
   physiology the re-light proved.
 
-## 2. The architecture: stations that are themselves loops
+## 2. [REFUTED AS DESIGNED — 2026-07-29; kept as record with its measurements] The original architecture: frozen-trunk stations
+
+*(The class — frozen-pretrained-layer recirculation — was examined to
+completion and refuted at init in five configurations and two
+correction families; see the exam entries and §2-R below. The text is
+retained because its flags and measurements are load-bearing history.)*
 
 The depth budget is the binding constraint, harder than the cycle fork:
 
@@ -220,6 +225,71 @@ substrate — the quirks file's third entry constrains the JIT). Default
 posture: option 1 (token-native) with Seam-1, because the re-light's
 diagnosis was cured by anatomy on exactly that substrate; options 2/3
 enter as ablation arms only if option 1's manifold read fails at init.
+
+## 2-R. THE REPLACEMENT (2026-07-29, drafted on measured ground): trained stations behind the parser
+
+**The foundation is the mechanism sentence:** *a recirculating medium
+must be conditioned on what recirculates through it.* Everything below
+satisfies it by construction or dies trying.
+
+**The architecture:**
+- **Front-end: the deployed parser, unchanged.** Binding competence
+  lives in pretrained weights and is measured (binds 1.000 after one
+  layer, computes nothing derived). The engine's job is
+  deduction-during-binding, NOT binding from raw tokens — so the
+  engine consumes the parser's output (slot states / soft bindings),
+  never raw text. Pretrained competence stays where it is proven;
+  trained recirculation goes where the mechanism demands it.
+- **Behind it: small, untied, TRAINED stations** — small transformer
+  blocks trained from scratch (or distilled), each untied from the
+  others (differentiation by construction), each looping internally a
+  bounded number of times (depth), all reading and writing ONE shared
+  soft state that the parser also feeds (full-flow recirculation).
+  The June engine is the existence proof of the class (trained tied
+  recurrence ladders); this cell unties the stations.
+- **The pawl gate rides the shared state** — form measured (binary),
+  verifier named (engagement detection; discrete events under binary),
+  driver still fenced (readiness candidate owing eager math + its
+  pinned prediction). The erosion constraint is the requirement it
+  serves: soft to deduction, hard to distraction.
+
+**The two honest costs, stated before enthusiasm:**
+1. **Differentiation is EARNED, not endowed.** Phase A's gift (the
+   inherited 2.28σ ramp) died with the frozen trunk. Kill-bar 1
+   rewrites: stations must differentiate DURING EARLY TRAINING — an
+   early-kill, no longer a free pre-training refutation.
+2. **No linguistic competence in the stations — by design.** The
+   front-end split is the answer, and it must hold: any drift toward
+   feeding the engine raw text re-opens the competence question and
+   the refuted class's territory.
+
+**Kill-bars (rewritten where the measurements demand):**
+1. EARNED DIFFERENTIATION (early-kill): cross-station differentiation
+   emerges by a pre-pinned early step; numerics pin blind at
+   fire-registration.
+2. THERMOMETER BAND: unchanged, per-station.
+3. DEPTH REACH ≥ 2: unchanged — the census demands implications.
+4. **STATE-STABILITY UNDER RECIRCULATION** (replaces manifold
+   residency — the criterion's OBJECT changes: for trained stations
+   there is no borrowed cloud to reside in): the shared state neither
+   diverges nor collapses across rounds; ramp-preservation applies to
+   the PARSER front-end only (its pretrained asset is the one being
+   protected). The rebuilt full-depth criterion governs the parser
+   side; the engine side is judged on its own dynamics.
+5. THE DECISIVE BAR, unchanged: 257-recovery above the 0.011 floor at
+   QUORUM grain, ZERO new lies through attestation-v3.
+Plus: BAU-shaped diet (the parser front-end carries pretrained
+inheritance — the ramp leash protects it); three-strikes written
+before the first strike; telemetry law + skip-kill + no-cosmetic-
+non-finites bind every run; cold measurement before any word (the
+entry conditions hold for THIS design exactly as for its predecessor).
+
+**Open questions the redesign carries honestly:** station size /
+count / local-loop budget (sized only after the deduction clock reads
+on THIS architecture at first smoke — no arithmetic against
+conjecture); the state's format at the parser-engine seam (slot-grain
+vs token-grain — the fine-binding docket's territory); the pawl
+driver (fenced, owing its eager math).
 
 ## 3. The gut sort (the plan's discipline)
 
