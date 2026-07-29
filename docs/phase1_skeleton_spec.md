@@ -16376,3 +16376,28 @@ token-position × waist-dim, the moment the skeleton trains.
   .cache/roster_ablation.json. The hundredth row's rent: paid
   on registration day, with a finding bigger than its gut
   proposed.
+
+- **THE SEPARATION CUTS RANKED + THE DISTANCE HYPOTHESIS
+  REGISTERED (2026-07-29, Bryce):** CUT ORDER: (1) DUMMY
+  PREAMBLE first (matched length/shape, NO letters — holds the
+  slot convention, removes address table AND priming; the
+  cheapest decisive cut: it can collapse three hypotheses to
+  one). BARS: dummy-pass ≥0.85 = CONVENTION-ONLY (the roster's
+  content is irrelevant); ≤0.15 = CONTENT (the address table is
+  the function); else mixed/texture. (2) shuffled-letters after,
+  (3) position read on whichever survives. **THE DISTANCE
+  HYPOTHESIS registered two-sided:** if the roster is an address
+  table, roster LENGTH and roster-to-first-use DISTANCE become
+  load-bearing — ADDRESS-TABLE DECAY OVER DISTANCE as a second
+  candidate mechanism for the seam failures (upstream of
+  engagement competition entirely). READ: banked bigtest rows,
+  roster length + max roster-to-first-use distance vs quorum
+  outcome, STRATA CONTROL (n_factors) FROM THE START (the
+  lesson is one day old), compared against the engagement-count
+  axis — two mechanisms, one comparison, variance-explained
+  decides the diet target. PRE-DECLARED NULL: roster length and
+  distance are plausibly ≈ f(size) in mint rows exactly as
+  burden was — if within-stratum variance is nil, the verdict
+  is INSTRUMENT-NULL (bigtest cannot test this either) and the
+  probe-side version becomes the design material; no
+  reinterpretation.
