@@ -109,7 +109,14 @@ distraction*:
 
 - **Mechanism:** per-position, per-station update gating —
   `x_next[i] = x[i] + g[i]·(h[i] − x[i])`, where `h` is the station's
-  proposal and `g[i] ∈ [0,1]` is the pawl. The defining clause is what
+  proposal and `g[i]` is the pawl. **MEASUREMENT AMENDMENT
+  (2026-07-29, the cold sweep): g is BINARY — g[i] ∈ {0,1}, hard
+  freeze or full advance, never a soft blend.** The init sweep showed
+  the pretrained manifold is NOT blend-closed across depth (damping
+  arms monotonically worse than full steps: α=0.25 landed at
+  0.16-0.22 cos vs α=1.0's 0.26-0.47) — a convex mix of
+  layer-appropriate states is on neither image. A pawl was never a
+  damper; the ratchet is discrete by nature and now by measurement. The defining clause is what
   DRIVES g: **g[i] opens under CONSTRAINT PRESSURE — a measured
   mismatch signal at position i (the station's proposal disagreeing
   with the current state in a direction the shared constraints

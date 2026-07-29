@@ -15451,3 +15451,51 @@ token-position × waist-dim, the moment the skeleton trains.
   Board at close: 220 certified / queue honest / spec sharper
   than morning / three interps owed to a registry that has
   learned exactly what a frame has to pay. No ruling pending.
+
+- **THE ENGINE IS BUILT AND MEASURED COLD — AND IT REFUTES ITS
+  OWN DEFAULT CONFIGURATION AT INIT (2026-07-29, the word: build
+  yes, fire no — executed):** scripts/engine2_init_reads.py —
+  4 untied stations ← Llama-3.2-1B L0-L3 (THE WIRING CORRECTION
+  BANKED FIRST: v200's actual trunk was Llama-3.2-1B all along;
+  SmolLM2 was a fallback that never fired — the 2.28σ ramp and
+  the Fire-2 band sit on the 1B layers, which are also the
+  parser's own trunk: the compiler's natural inheritance),
+  token-native substrate, L=2 local loops, R=4 rounds, Seam-1
+  between rounds, eager math only. **THE READS: (1) MANIFOLD
+  (condition 2) BANKED — OUT OF BAND in ALL THREE ARMS:** plain
+  recirculation (α=1.0) leaves the image at the FIRST local
+  re-entry (0.80 vs 0.885) and decays to 0.26-0.47 by round 4;
+  the damping arms are MONOTONICALLY WORSE (α=0.5: 0.24-0.46;
+  α=0.25: 0.16-0.22). **THE CONVEXITY FINDING: the pretrained
+  manifold is not blend-closed across depth** — a convex mix of
+  layer-appropriate states is on neither image; the manifold is
+  a trajectory, not a ball. CONSEQUENCE FOR THE ORGAN, measured
+  not argued: **the pawl gate's lawful form on this substrate is
+  BINARY per position (hard freeze / full advance), never a soft
+  blend** — a pawl was never a damper; the ratchet is discrete
+  by nature and now by measurement. Its init test staged
+  (binary-mask arm with per-position-appropriate references).
+  **(2) ENGAGEMENT: the ungated engine has ZERO pawls,
+  measured** — all 759 live positions still moving at pass 16;
+  uniformly soft, exactly what the erosion constraint predicted
+  would fail. **(3) PROPAGATION CLOCK (condition 1,
+  init-measurable form) BANKED: t95 = 9 station-passes (~2.25
+  rounds) ungated, 5 damped;** scope stated — the DEDUCTION
+  clock definitionally cannot exist at init (no deduction
+  occurs); it completes at first training smoke on the banked
+  capture (engine2_init_capture_a*.npz). **DISPOSITION per the
+  spec's own pre-committed procedure:** option 1 as-wired is
+  refuted at init → substrate arms 2/3 OPEN at
+  fire-registration, alongside the binary-pawl arm on option 1
+  — three candidate configurations, one decided exam. THE
+  SCOREBOARD ON THE FIRE-WORD'S FOUR CONDITIONS: citations
+  COMPLETE; organ NAMED and measurement-sharpened (binary);
+  manifold read BANKED (verdict: refutes the default —
+  activating the decision procedure it was built to feed);
+  clock BANKED in its init form with the deduction form
+  explicitly at-smoke. The conditions are discharged as stated
+  — and their CONTENT says the design owes one more decision
+  round (substrate/binary-pawl exam) before a lawful fire.
+  The cold engine did exactly what build-to-measurement exists
+  to do: the version that would have burned was refuted for
+  the price of eight minutes of eager GPU.
