@@ -16349,3 +16349,30 @@ token-position × waist-dim, the moment the skeleton trains.
   findings generation-scoped. Filed in the commitment family
   (engagement preparation = the pawl's upstream). The milestone
   pattern named: the registry now audits its own conventions.
+
+- **THE ROSTER ABLATION PRINTS: LOAD-BEARING AT MAXIMAL SIZE —
+  AND THE COLLAPSE'S TOTALITY OPENS THE MECHANISM QUESTION
+  (2026-07-29):** on 64 currently-passing rows: WITH preamble
+  0.953, WITHOUT 0.016 — drop +0.938. The verdict per the
+  pinned bar: LOAD-BEARING, decisively — the convention every
+  book carried is close to THE ENTIRE FUNCTION. **THE HONEST
+  MECHANISM CAVEAT, named before "priming" hardens:** a graded
+  priming effect would not produce near-zero; the ablation
+  removed THREE things in one cut — (a) the ADDRESS TABLE (the
+  head binds letters↔var-indices positionally, and the roster
+  is plausibly what grounds the mapping), (b) the SENTENCE-SLOT
+  convention (training always saw the preamble at sentence 0;
+  stripping it shifts every content sentence into slots that
+  never carried its role), (c) priming proper (#100's named
+  mechanism). The near-total collapse points at (a)/(b)
+  structural conventions with (c) unmeasured underneath. THE
+  SECOND RUNG'S DESIGN MATERIAL (designed at its own
+  registration, per glide): separation cuts — a same-shape
+  preamble with WRONG/shuffled letters (slot structure intact,
+  roster content varied) isolates address-grounding from slot
+  convention; roster-position-vs-stability rides the same
+  probes. FENCES STANDING: enrichment = marked accommodation;
+  generation-scoped (this is a gen-21 fact). Artifact:
+  .cache/roster_ablation.json. The hundredth row's rent: paid
+  on registration day, with a finding bigger than its gut
+  proposed.
