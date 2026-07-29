@@ -15084,3 +15084,33 @@ token-position × waist-dim, the moment the skeleton trains.
   instances — formal admission question), [897] (bookkeeping
   check), [939] (the aggressive pct-avoidance that ABSTAINED —
   accommodation cost specimen). Awaiting the bench.
+
+- **GUTS #91 (FINGERPOST) + #92 (COARSE-TO-FINE) REGISTERED,
+  #92'S TWO PAYMENTS CASHED SAME-DAY (2026-07-28):**
+  **#91 convergent** — the record's best instruments are already
+  discriminants (crossover signatures, rhythm-authorship,
+  counterfactual, co-test, the [742]/[636] contrast pair — a
+  fingerpost in Bacon's strict sense); the one yield SHARPENED
+  against #58 before entry: *multi-route agreement counts as
+  custody only when the routes are methodologically decorrelated,
+  not merely different in form* — two renderings from the same
+  pen are correlated angles, and the gold re-derivation duty is
+  already the good version (different METHOD). **#92 pays
+  twice** (scripts/book8_structural_index.py): (1) THE
+  DRAFTABILITY SCREEN over the live pool (319): 51 flagged
+  skip-risk on features distilled from the skip registry's own
+  reasons (primality 17, inequality 10, decimals 9,
+  exponent-search 8, radical 6...), ALL ROUTED to the
+  needs-primitive queue, NONE excluded — the fence is in the
+  artifact's own header (a screen that deletes hard candidates
+  narrows the diet to monoculture against the migration law).
+  (2) THE MARINARA — the diet queue becomes a DRAWING ORDER:
+  per starved construction, the eligible candidates that would
+  exercise it (add-dup 6, pct 8, two-free-var 4, subtrahend-
+  distractor 12, repeated-chain 1; parallel-inversion 0 — that
+  customer's evidence was already weakening and its retrieval
+  is empty: consistent). THE CONSEQUENCE FOR TRANCHE 8: the
+  draw can deliberately interleave diet-customer candidates —
+  the road feeding the gate's starvation from its own remaining
+  pool, no mint generation required. NOT exchange-family:
+  a search-and-resolution pair on its own line.
