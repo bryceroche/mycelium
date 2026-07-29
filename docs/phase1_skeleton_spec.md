@@ -15777,3 +15777,20 @@ token-position × waist-dim, the moment the skeleton trains.
   document. Numbering corrected at filing (#97; the
   countersign's #96 was held). THE FIRST MOVE EXECUTES: the
   graph-shaped drawing order (t9's gate).
+
+- **POSITION MOVE #1 EXECUTED: THE GRAPH-SHAPED DRAWING ORDER —
+  T9'S GATE IS OPEN (2026-07-29):** scripts/book9_drawing_order.py
+  — construction signatures learned from THE DRAFTED GRAPHS' OWN
+  SOURCES (246 labeled rows; no hand regexes anywhere): dup-add
+  4 exemplars, pct 4, sel 1 (low-demand watch), two-free-var 75,
+  sub-distract 86. ONE DEFECT CAUGHT AND CURED IN-SESSION:
+  centroid scoring diluted broad constructions into a generic
+  algebra vector (two-free-var and sub-distract printed
+  IDENTICAL tops) — replaced with NEAREST-EXEMPLAR scoring
+  (max-similarity to any construction-bearing source), tops now
+  discriminate. The routes-never-excludes fence carried in the
+  artifact. t9's diet draw can now retrieve by demonstrated
+  construction demand rather than keyword mention — the t8
+  retrieval-null's cure, delivered before t9 draws. Remaining
+  queue per #97: interps (Bryce's), MEMORY.md compression,
+  criterion rebuild, dose-response.
