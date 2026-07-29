@@ -14751,3 +14751,44 @@ token-position × waist-dim, the moment the skeleton trains.
   LAWS, five worked examples + one contrast pair, technique list
   +2. BOOK 8 FINAL: t5 = 29/2/0; 145 certified / 143
   census-standing / 13 repair bench / 350 eligible.**
+
+- **THE MECHANISM INVERTED + THE GRAVITY HYPOTHESIS REGISTERED
+  (2026-07-28, Bryce):** the modal attractor's diagnosis is
+  formally inverted: not starvation-adjacent confusion-reaching
+  but **GRAVITY — an overlearned primitive is a basin the gate
+  falls into when its binding is uncertain.** Treatment differs
+  in kind: overlearning cannot be fed away; dilute in the mint's
+  distribution or watch parse-side. Filed parse-side; the
+  anecdote-accumulating entry since [239] RETIRES. **REGISTERED
+  PREDICTION (pinned while cheap — the 2×2, pct as control):**
+  if overlearning-as-gravity is real, any primitive with HEAVY
+  mint representation shows the pair signature (clean pointer
+  transfer + confusion-attractor pull), and any primitive with
+  THIN representation shows [411]'s signature (type transfers,
+  pointers scatter, no pull). THE TEST RIDES THE NEXT MINT
+  GENERATION: feed pct to parity — if pct develops attractor
+  behavior AS its pointers cure, the mechanism is confirmed and
+  the campaign learns what mint density buys AND costs. A
+  resolved puzzle converted to a predictive claim. STRUCTURAL
+  LINE BANKED: the jurisprudence holds because its laws arrive
+  from MEASUREMENT, not principle — selection-rendering from a
+  specimen that certified wrongly-rightly, the witness test from
+  a contrast pair, accommodation from a cure that would have
+  hidden its own disease. A jurisprudence built from cases is
+  the kind that holds. SEED NOTE: #84's bowls may want to arrive
+  soon — surface-to-volume is the natural frame for the question
+  the diet queue now circles: how much mint SURFACE a primitive
+  needs before its pointers bind, and what the INTERIOR costs
+  when it gets too much. THE WORD: tranche 6 fires.
+
+- **TRANCHE 6 FIRES (2026-07-28):** 350 eligible, 40 drawn from
+  src 776 (L1 6 / L2 16 / L3 18), banked to
+  book8_candidates_t6.json (tranche1 restored; t5's nine skips
+  registered pre-census incl. the domain-boundary category's
+  first member). The brief carries: fourteen laws with the
+  witness test and the [742]/[636] contrast pair; the SEL UPDATE
+  from measurement (transfers cleanly — use wherever law 14
+  requires, watch marks retained); pct still law-9-limited; six
+  techniques; the gate's SIX named weaknesses for accommodation
+  marking (two-free-variable systems newest); skip reasons now
+  categorized operation-shaped vs domain-boundary at the pen.
