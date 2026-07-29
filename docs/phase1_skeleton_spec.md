@@ -16023,3 +16023,33 @@ token-position × waist-dim, the moment the skeleton trains.
   every holding specimen explained (count-0 operands); (3) the
   C5/C6 interaction probe joins the docket with fresh bars owed.
   Artifact: .cache/four_axis_read.json.
+
+- **THREE RULINGS BEFORE THE DIET RECIPE MOVES (2026-07-29,
+  Bryce):** (1) THE UNIFORMITY READ AS DATUM: the instrument is
+  sound (cells DISAGREE with each other — the one thing a broken
+  meter cannot produce; contrast run-1's uniform-everywhere) but
+  12/12 saturation everywhere means the EFFECT SIZE is
+  unmeasurable — within-cell probes share a template and are
+  less independent than the design assumed; *a mint dose-response
+  on engagement count requires non-saturating cells.* Banked as
+  the line between "real and large" and "measured." (2) THE
+  C6/C5 CANDIDATE READING PINNED before the probe designs
+  itself: **engagement STRENGTH accumulates with use** — wander
+  = weak/weak (no attractor dominates), slip = weak/strong (a
+  competing attractor wins), hold = strong/none — making the
+  spectrum ORDINAL in a specific testable way: vary USE-count at
+  fixed ENGAGEMENT-count; NULL pinned alongside (the two shapes
+  unrelated). The probe carries both, bars fresh at its own
+  registration. (3) THE MINT RECIPE'S ADDITION: the varied
+  fraction spans ENGAGEMENT COUNTS (0 through 3, in proportion),
+  not just surface forms — a diet of count-2 specimens teaches
+  count-2, and the gate would learn one rung of a ladder whose
+  other rungs then fail in new ways. The factory fence + the
+  count-span rule together are the diet's full constitution.
+  THE DAY'S CLOSE: five predictions, three refutations, one
+  flat, one crowning confirmation — the species entered as an
+  anecdote and leaves as a BINDING-COMPETITION LAW with a
+  factory, a fence, a count-spanning recipe, and a
+  strength-accumulation probe docketed. The frame that
+  generated stands at four payments, its loss condition still
+  standing for the next print.
