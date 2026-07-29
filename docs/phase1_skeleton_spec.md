@@ -15557,3 +15557,39 @@ token-position × waist-dim, the moment the skeleton trains.
   engagement a DISCRETE EVENT with a timestamp — arm A prints
   pawl-set counts per station per pass; the design requirement
   becomes mechanically checkable, not statistically inferred.
+
+- **THE EXAM PRINTS: ALL THREE ARMS REFUSED — AND ONE TEXTURE
+  DEMANDS ITS PROBE (2026-07-29):** arm A (binary pawl, random
+  50% duty) 0.255 OUT — the histogram convicts the arm's own
+  design: no position stayed frozen and stations were SKIPPED
+  per-position, so layers applied OUT OF DEPTH ORDER to lagging
+  states (the random pawl is refuted as a form; a lawful pawl
+  cannot be random, and per-position depth-references do not
+  cure out-of-order application). Arm B (32-latent subsample)
+  0.19-0.30 OUT, the worst. Arm C (anchored residual) 0.27-0.48
+  OUT — indistinguishable from the ungated default; the anchor
+  bought nothing once Seam-1 normalized r. **PER THE EXAM'S OWN
+  TERMS: NO FIRE-WORD FOLLOWS.** THE TEXTURE (the rule's
+  trigger — one curve shape, uniform across all four
+  configurations): in EVERY arm, cos rises with station index
+  (L0 worst → L3 best, monotone, always). The recirculated
+  state is closest to the DEEPEST reference — consistent with
+  the state traveling ALONG the trajectory PAST L3, not
+  sideways off it: **THE DEPTH-OVERSHOOT HYPOTHESIS** —
+  recirculation through L0-L3 may approximate the DEEPER stack,
+  and the criterion may have been a 4-LAYER RULER ON A 16-LAYER
+  ROAD (the trunk has 16 layers; the band was pinned on a
+  4-layer regime — scope-decay question, NOT a re-ruling: the
+  criterion stands as pinned and the arms are refused under it).
+  THE PROPOSED READ, pre-registerable and cheap: load L4-L7,
+  compare the recirculated states against DEEPER images;
+  PREDICTION TO PIN IF AUTHORIZED: cos vs L4-L7 rises where cos
+  vs L0-L3 fell (round-r state peaking against layer ~4+r
+  images). If it prints, recirculation IS continued depth
+  on-manifold in the deeper sense, the substrate question
+  reopens with the right ruler, and the full-flow premise gains
+  its cleanest possible evidence; if it doesn't, the class
+  (recirculation through frozen pretrained layers) is refuted
+  at init and the engine needs a different relationship to its
+  trunk. THE DECISION — rule the criterion regime-bound vs rule
+  the class refused — is the bench's, not the meter's.
