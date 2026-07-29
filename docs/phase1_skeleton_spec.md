@@ -15219,3 +15219,48 @@ token-position × waist-dim, the moment the skeleton trains.
   sample: [1173] (the surprise), [1382] (the new slip anatomy),
   [1212] (the confirmation), [1013] (the origin question),
   [972]. Awaiting the bench.
+
+- **THE ADD-DUP COMPARISON + [1382] AUTOPSY: THE QUEUE'S TOP
+  ENTRY RESHAPES INTO ONE SPECIES (2026-07-29, zero-cost reads
+  as ordered):** THE COMPARISON REFUTES derived-args and finds
+  the sharper split: [1173]/[1271]'s certifying dups sit in the
+  OPENING SENTENCE on the leading free variable with an EMPTY
+  binding field; [655]/[1382]'s failing dups sit MID-GRAPH on
+  derived letters amid established bindings. THE [1382] AUTOPSY
+  completes it: the "factor-3 arithmetic signature" DISSOLVES —
+  views 0/4 read dup args [1,1] as [0,1] (grabbed the nearby
+  given 25: a+b=30, then 5·30=150); three views scattered
+  self-referential. **NO ARITHMETIC ERROR EXISTS — the census's
+  headline sentence (the gate never miscomputes, it misbinds)
+  survives its closest call and gains its strongest
+  confirmation: a wrong-value signature that LOOKED
+  arithmetic-shaped decomposed into a pointer slip under
+  autopsy.** THE UNIFICATION: [655] (dup→[0,1], derived operand,
+  mid-graph), [1382] (identical form), [875] (subtrahend→
+  distractor), and plausibly pct's scatter are ONE SPECIES:
+  **POINTER BINDING UNDER DISTRACTOR LOAD** — construction type
+  is the surface; binding-field crowding is the mechanism. The
+  mint queue's top entry reshapes from "add-dup" to the species,
+  with dup/subtrahend/pct as its forms; THE DIET LEVER SHARPENS:
+  mint sentences varying distractor density around pointer-heavy
+  constructions (a dose-response design, not a form-frequency
+  design). This also names why [1173]/[1271] were the surprise:
+  the baseline tranche accidentally ran the distractor-load
+  contrast and printed it in one sheet.
+- **THREE ORDERS BANKED (2026-07-29):** (1) THE DUALITY
+  SHARPENED pre-registration: correlation is weak evidence
+  (both meters track "the loop is doing something") — the
+  discriminating form is DIFFERENTIAL: find or construct a
+  station-condition where the frames DISSENT (revisability
+  falling while state-motion stays high = commitment without
+  cost; motion collapsing while revisability holds = cost
+  without commitment); if neither condition can be produced,
+  the duality is UNFALSIFIABLE at this instrument grain and its
+  registration must say so. (2) THE RETRIEVAL CURE staged as a
+  pre-t9 gate: the drawing order indexes on GRAPH-SHAPED
+  features (does a lawful rendering REQUIRE the construction),
+  never keywords — no diet draw until it lands. (3) [1058]'S
+  OWN LINE, as ordered: the counterfactual test killed a
+  plausible render MID-DRAFT, before the solver saw it — bench
+  law → pen practice → caught upstream of preverification; THE
+  ESCALATOR RUNNING EXACTLY ONE STATION FURTHER THAN LAST WEEK.
