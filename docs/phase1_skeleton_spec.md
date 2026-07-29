@@ -16175,3 +16175,30 @@ token-position × waist-dim, the moment the skeleton trains.
   Engagement counts across rungs: 2/3/4/5 (given + arg-uses).
   n=24 per rung after the pilot; standard 5-view quorum; probes
   solver-verified.
+
+- **THE GRADED RUN'S PILOT PRINTS 0.00 — THE RUN STOPS PER ITS
+  OWN PROTOCOL, AND THE STOP IS A DATUM (2026-07-29):** degree-5
+  hubs in the graded chassis fail 0/12 — out of band LOW; the
+  full ladder never ran; the ladder shift is a fresh
+  registration, not tonight's improvisation. WHAT THE PILOT
+  TEACHES, held to naming not reinterpretation: **engagement
+  count alone does not produce failure** — the pair probe's HIGH
+  arm (reuse-5) failed 21% while this chassis's degree-5 fails
+  0%, and the differences between them are now the suspect list:
+  (a) the graded chassis fixes the hub at a=2 — DOUBLING, the
+  mint's densest pattern (the gravity hypothesis's shadow: an
+  overlearned value may be immune to re-engagement instability);
+  (b) the pair probe's hub ops were CONSECUTIVE (c*a, d+a, e*a
+  chained) vs the graded chassis's interleaved fresh operands;
+  (c) factor-count structure (7 dense vs 8-11 spread).
+  RETRO-ILLUMINATION: the pair probe's +0.21 INTERMEDIATE now
+  looks construction-specific rather than count-driven —
+  consistent with the texture verdict it already carried; the
+  bar that refused to call it a crossing is vindicated by the
+  first follow-up. THE FRESH REGISTRATION OWED: a chassis-
+  diagnostic ladder (vary hub VALUE off the overlearned 2;
+  vary op-consecutiveness at fixed count) — bars at its own
+  registration. The seam question's honest state: three reads,
+  three instruments, no mechanism yet earned at natural size —
+  and every refusal on a pre-pinned bar. Artifact:
+  .cache/graded_degree_run.json (pilot + stop).
