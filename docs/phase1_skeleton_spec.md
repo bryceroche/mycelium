@@ -14863,3 +14863,34 @@ token-position × waist-dim, the moment the skeleton trains.
   exchange-family sibling watch (#84 geometry / #86 scheduling /
   #88 pressure — possibly one thermodynamic gut arriving in
   installments).
+
+- **TRANCHE 6 FULL REVOLUTION: 32/8/0 DRAFTS → 31/1/0 CERT —
+  AND THE PEN CHALLENGES THE HARVEST ITSELF (2026-07-28):**
+  32 drafted / 8 honest skips (reasons pre-categorized at the
+  pen per the split) / 0 fails; the auditor caught a NEW FAULT
+  DIRECTION ([849]: graph right, sentence MISSING — solve2
+  structurally blind to it, the auditor's third distinct catch
+  class); [818] skipped BY THE WITNESS TEST APPLIED PRE-WRITE
+  (the newest law reaching the pen in one tranche). **THE [807]
+  FINDING, INDEPENDENTLY VERIFIED:** the harvest's stated gold
+  for 'Evaluate log_2(4^2)' is 2; the mathematics says 4 —
+  A HARVEST EXTRACTION ERROR, the first pen challenge to the
+  key's raw material, verified on my own read before banking
+  (assert-on-read; two channels agree). CONSEQUENCE: a THIRD
+  skip category — DATA-QUALITY — beside operation-shaped and
+  domain-boundary; and the question to the wheel: the integer-
+  parse filter cannot catch semantically wrong golds — does a
+  harvest gold audit join the docket? The hazard is upstream of
+  the entire chain of custody: a draftable item with a wrong
+  gold would force the pen to draft wrong mathematics to match
+  a wrong key. CERTIFICATION: 31/1/0 — the one abstain [815] is
+  the DEEPEST repeated-constant chain (4 applications vs the
+  certified 2-3): a depth-dependence hint for the sub-type's
+  scatter mechanism. [856] carried the named parallel-inversion
+  weakness and CERTIFIED at exact quorum (faithful-over-
+  certifiable paying out). **BOOK 8: 176 CERTIFIED across six
+  tranches / 14 repair bench / 310 eligible.** T6 wheel sample:
+  [813] (N-pair telescoping), [862] (even/odd decomposition —
+  the aggressive cap-avoidance), [867] (piecewise routing_fact
+  under the new law's scrutiny), [856], [776]. Awaiting the
+  bench.

@@ -80,6 +80,15 @@ TRANCHE4_SKIPS = {589, 621, 625, 643, 652, 672, 636}
 # floor/sqrt family x2, and [746] complex numbers — DOMAIN-BOUNDARY
 # (see category note above).
 TRANCHE5_SKIPS = {702, 707, 712, 715, 716, 725, 739, 746, 774}
+# Tranche 6 skips (2026-07-28): discrete-exponent x3 (incl [818],
+# skipped BY the witness test pre-write), structural/no-arithmetic,
+# compound inequality, floor/ceil + decimal domain-boundary,
+# inequality-integer-search x2. [807] is DATA-QUALITY (third category):
+# harvest gold 2 vs true answer 4 for log_2(4^2) — extraction error,
+# verified two channels; semantically wrong golds pass the integer
+# filter, so this category can only be caught at draft time.
+TRANCHE6_SKIPS = {779, 782, 788, 802, 807, 814, 818, 838}
+TRANCHE5_SKIPS |= TRANCHE6_SKIPS
 TRANCHE1_SKIPS |= TRANCHE2_SKIPS | TRANCHE3_SKIPS | TRANCHE4_SKIPS | TRANCHE5_SKIPS
 
 cands = []
