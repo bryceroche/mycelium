@@ -15114,3 +15114,37 @@ token-position × waist-dim, the moment the skeleton trains.
   the road feeding the gate's starvation from its own remaining
   pool, no mint generation required. NOT exchange-family:
   a search-and-resolution pair on its own line.
+
+- **TRANCHE 8 FIRES AS THE CAMPAIGN'S FIRST INTERLEAVED BASELINE
+  TRANCHE (2026-07-28, the word with three constraints, all
+  pre-registered BEFORE the draw):** (1) STRATIFIED NOT SWAPPED —
+  10/40 diet (add-dup 3, pct 3, two-free-var 2, subtrahend 2) +
+  30 normal; the certification sheet reports the two populations
+  SEPARATELY, preserving t1-t7 comparability for the split meter.
+  (2) BASELINE FRAMING BANKED BEFORE ANY SHEET PRINTS: tranche
+  8's diet rows are the BASELINE, not the treatment — one
+  specimen each ([655]/[411]/[772]) was never a baseline; t9+
+  measures deltas against t8's per-customer rates; the first
+  favorable number is a first measurement, not an improvement.
+  (3) THE PEN CONFOUND CLOSED in the brief: diet rows EXERCISE
+  the target construction natively (add-dup rows write "X plus
+  X"; pct rows use the primitive; subtrahend rows keep the
+  exceeds-form even in distractor-rich contexts — [875]-v2's
+  cure explicitly NOT applied, because here the raw form IS the
+  measurement); accommodation only when genuinely unrenderable,
+  mark stating which — a marked accommodation on a diet row is
+  itself a finding. **PARALLEL-INVERSION RETIRED** from the diet
+  queue on the double-null (weakening bench evidence + zero
+  source-side demand — two decorrelated signals, #91's
+  sharpening applied to a diet decision); RETIREMENT MECHANISM
+  BANKED AS REUSABLE: *a diet customer with no source-side
+  demand isn't a customer, it's an artifact of the mint's own
+  distribution* — the no-demand test ran over the whole queue
+  (repeated-constant chains: 1 candidate, LOW-DEMAND WATCH;
+  the four drawn customers retain). A CATCH MID-DRAW: the
+  index's pool predated t7's skip registration — [877]/[888]
+  (registered skips) leaked into the subtrahend retrieval and
+  were drawn; caught before banking (a skip is a verdict),
+  index corrected, redraw took [958]/[1085]. Census:
+  book8_candidates_t8.json with the design pre-registered in
+  the artifact itself.
