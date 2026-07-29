@@ -16202,3 +16202,31 @@ token-position × waist-dim, the moment the skeleton trains.
   three instruments, no mechanism yet earned at natural size —
   and every refusal on a pre-pinned bar. Artifact:
   .cache/graded_degree_run.json (pilot + stop).
+
+- **THE CLOSING RULINGS ON THE SEAM QUESTION (2026-07-29,
+  Bryce):** (1) THE PLAIN SCOPE SENTENCE, banked explicit:
+  *the binding-competition law is a probe-register finding that
+  has not transferred to any natural-size fixture across three
+  instruments.* Not a demotion — 12/12 with a clean fingerpost
+  is real — but "measured gate property" read broader than
+  three failed transfers warrant; this sentence is the honest
+  width. (2) GRAVITY RANKED FIRST on the suspect list, for the
+  reason that matters: it makes a TWO-SIDED prediction the
+  others don't — the effect should RETURN at hub values the
+  mint rarely sees, and be STRONGEST in pct's neighborhood
+  where pointer weakness is already measured; three prior
+  appearances (sel's overlearning, pct's starvation, the modal
+  attractor's resolution) and it would unify them.
+  Op-consecutiveness stays second (construction property, no
+  independent evidence). Both enter the diagnostic ladder's
+  registration material. (3) **THE TERMINAL CONDITION, PINNED
+  WHILE THE LADDER IS STILL OWED:** if the chassis-diagnostic
+  ladder finds NO construction that carries the effect at
+  natural size, the law RETIRES to probe-register scope and
+  **the diet recipe is WITHDRAWN** — a law with three failed
+  transfers and no fourth explanation does not keep a mint
+  customer alive; the effect would be a curiosity about the
+  factory, not a lever on the road. DAY'S CLOSE: eight bars,
+  eight verdicts, none bent; two near-misses caught before
+  banking; a stop protocol that fired on first arming. The
+  bell siphon waits with the family; the queue is honest.
