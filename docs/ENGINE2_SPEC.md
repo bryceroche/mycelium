@@ -169,6 +169,30 @@ distraction*:
   are two views of one quantity, which is what the ratchet design law
   asks of a lawful pawl.
 
+**THE PATH RULING (2026-07-29, after the class refutation — path (b)
+chosen, (a) refused, (c) held):** (a) train-from-pretrained-init is
+v200's own shape; three poles live there — refused as re-measuring
+mapped territory. (c) abandonment is premature before the one surgery
+addressing the DIAGNOSIS is priced. **(b) THE INTER-ROUND PROJECTION**
+— the diagnosis names the form: the trunk isn't the problem, the
+recirculated states are OUT-OF-DISTRIBUTION for it; a small learned
+map returning the state to the trunk's input distribution before
+re-entry is the direct cure for isotropy, cheap in parameters, and it
+is exactly the surgery the dated #70 fence governs (the bet re-measures
+the fence by the mechanism the dating specified). ENTERS AS SPEC
+REVISION WITH AN INIT-TIME TEST, not a fire — v0 = the closed-form
+diagonal moment-matcher (the projection's degenerate form, as
+uniform-α was the gate's); BAR PINNED BEFORE THE TEST RUNS:
+round-4/round-1 cos ratio vs the L3 image ≥ 0.9 (decay ARRESTED — the
+unprojected measurement was 0.59), AND thermometer > 0.01 (state not
+frozen), AND cos(state, x0) < 0.95 (not a reset). Fails → the class
+falls to (c) with its examination complete and §2 redesigns on
+measured ground. PORTABLE PRINCIPLE banked beside the blend-inversion:
+*recirculation through frozen pretrained layers doesn't compute
+deeper — it blurs.* THE CRITERION REBUILD: full sixteen layers,
+per-layer bands — a four-layer cloud has failed twice in two
+directions.
+
 **THE SHARED-STATE SUBSTRATE (flag 3 — the choice that killed Fire 2,
 named now, not at fire-registration).** Three options:
 1. Token-position native state (state lives on the token stream, where
