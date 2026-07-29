@@ -16577,3 +16577,24 @@ token-position × waist-dim, the moment the skeleton trains.
   rising MONOTONICALLY across the three rungs, total rise
   ≥0.20; top rung piloted for saturation [0.2, 0.8] first,
   stop-don't-improvise standing.
+
+- **THE INTERVENTION'S PILOT PRINTS 0.00 — THE RUN STOPS, AND
+  THE STOP DIAGNOSES ITSELF (2026-07-29):** max-distance
+  position-4 probes fail 0/12 straight-view; out of band LOW;
+  the rung shift is a fresh registration per protocol. THE
+  DIAGNOSIS IN THE STOP: the chassis's maximum distance (~80
+  chars — four short sentences) sits FAR BELOW the range where
+  the correlational signal lives (the book's failing rows carry
+  within-stratum distance sd of 44-62 around means in the
+  hundreds) — the intervention probed the flat foot of a curve
+  whose slope was measured elsewhere. THE COMPOUND LESSON,
+  banked as design law material: **two pilot-stops in two days,
+  both chassis-range mismatches — pilot ranges must be sized
+  from the MEASURED distribution of the phenomenon (the failing
+  rows' actual distances), not from construction convenience.**
+  The fresh registration owed: a chassis whose rungs span the
+  book's measured failing regime (~100-300 chars — bigger
+  sentence multisets), same moved-definition design, same
+  declared confound. Causality stands OPEN; the candidate holds
+  as candidate; nothing banks beyond the stop. The stop
+  protocol is now 2-for-2 on preventing uninformative ladders.
