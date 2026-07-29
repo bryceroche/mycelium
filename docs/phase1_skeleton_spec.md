@@ -16624,3 +16624,20 @@ token-position × waist-dim, the moment the skeleton trains.
   hundredth gut found the campaign's upstream mechanism inside
   the sentence every book has opened with since the first.
   Nothing on the board decays overnight.
+
+- **GOODNIGHT (2026-07-29, Bryce):** the paper's methods
+  sentence banked: *every mistake this campaign makes gets to
+  be made exactly once, because the record turns it into a
+  number the next hand reads* — the whole apparatus in one
+  clause, and testable (two stops, one law, one lookup; the
+  third chassis cannot repeat the error). THE WORD ON THE
+  SCALED INTERVENTION HOLDS UNTIL MORNING — the glide ruling
+  applied to its own author: rungs computed, design specified,
+  confound stated; a chassis built rested is the same chassis
+  minus the risk of a fourth lesson. Board at high-water:
+  267 certified and producing; the address table named by two
+  cuts; the seam in two honestly-scoped territories; causality
+  holding its candidate with rungs on the ledger; both levers
+  fenced; three species counted; the hundredth row's finding
+  inside the oldest sentence. What didn't move is exactly
+  where morning will find it.
