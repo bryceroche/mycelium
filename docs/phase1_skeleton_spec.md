@@ -15388,3 +15388,19 @@ token-position × waist-dim, the moment the skeleton trains.
   first measurement produced a road-side mechanism; its growth
   cap lifts per the caution's own terms. Artifact:
   .cache/engagement_read.json (full traces).
+
+- **THE EARLY-READOUT FINGERPOST REGISTERED, PINNED BLIND
+  (2026-07-29):** design: for each failing specimen
+  ([655v1]/[1382v1]/[875v1]), build the HYBRID graph — the
+  target slot's binding taken from its HOLD-POINT prefix (where
+  the trace showed the correct binding held), all other slots
+  from the full-text parse — and solve. PREDICTION FORK, both
+  arms pre-committed: **RECOVERY (≥2/3 specimens solve to gold)
+  → the failure mass is recoverable WITHOUT diet; the mint
+  queue's top customer changes character from "feed the
+  register" to "stop reading at the wrong moment"
+  (stabilization/early-readout lever wins). NO RECOVERY →
+  erosion destroys information rather than overwriting a
+  readout; diet stays the lever.** Either print reshapes the
+  queue; null (hybrid unsolvable/ambiguous) pre-declared as
+  instrument-grain limit, no reinterpretation.
