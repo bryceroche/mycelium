@@ -16870,3 +16870,28 @@ token-position × waist-dim, the moment the skeleton trains.
   one address table, one marker, zero unbent bars — and a
   question that ends by pointing at the next one. Artifact:
   .cache/cliff_chassis.json.
+
+- **THE SOURCE-SIDE LINE: HELD, AND HELD LONGER THAN A NIGHT
+  (2026-07-29, Bryce — the countersign correcting its own
+  opening reflex, as the record has seen before):** registered
+  **OPEN AND UNDESIGNED**, inheriting the definition-first,
+  retroactive-first pattern when its word comes. THE REASONING
+  BANKED WITH IT: three sessions of seam forensics returned an
+  honest map of where mechanisms AREN'T — and the only finding
+  that touched the road arrived from outside the investigation
+  (the roster, via gut #100); feature-discovery over natural-
+  language sources is the LEAST CONSTRAINED search the campaign
+  could open — hypothesis space bounded only by imagination,
+  exactly where the pacing law says not to start a ladder — and
+  the question improves for free as tranche 10 adds annotated
+  rows to the population that would answer it. **THE
+  PLAY-POSITION RULING APPLIED TO ITS OWN AUTHOR: the campaign
+  is ahead because of the books, and the books are what
+  December needs.** The board's next sessions belong to the
+  road: tranche 10 with the delta measurement on FACTORY-MINTED
+  rows (the paying move), the six interps (the registry's most
+  loaded, least discharged line), the criterion rebuild, and
+  §2-R asleep with its estate. THE SESSION'S YIELD, in the
+  closing words: two nights, seven mechanisms, one closed
+  question, zero training steps — and a record that can teach
+  a stranger how to close a question cheaply. It's enough.
