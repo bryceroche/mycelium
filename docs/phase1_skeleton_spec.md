@@ -15404,3 +15404,22 @@ token-position × waist-dim, the moment the skeleton trains.
   readout; diet stays the lever.** Either print reshapes the
   queue; null (hybrid unsolvable/ambiguous) pre-declared as
   instrument-grain limit, no reinterpretation.
+
+- **THE FINGERPOST PRINTS 1/3 — DIET STAYS THE LEVER; THE
+  SPECIES SPLITS INTO THREE SUB-ANATOMIES (2026-07-29):** below
+  the pre-pinned ≥2/3 bar; the verdict stands as registered. The
+  anatomy underneath, banked without bar-bending: **(a)
+  ENGAGE-SLIP, SINGLE-SLOT ([1382v1]): RECOVERED CLEAN** — one
+  binding repaired from its hold point, hybrid solves to gold;
+  the pure case is rescuable. **(b) MULTI-SLOT EROSION
+  ([655v1]):** the target slot's correct binding restored but
+  the hybrid solved to 18 — erosion hit multiple slots;
+  single-slot repair cannot rescue a multi-slot casualty. **(c)
+  WANDERING-NEVER-LOCKED ([875v1]):** the trace never held the
+  correct pair at any prefix — nothing to harvest; a distinct
+  sub-anatomy from engage-then-slip. DISPOSITION: diet remains
+  the primary lever; stabilization/early-readout demoted to
+  PARTIAL-RESCUE CANDIDATE for sub-class (a) only — its
+  population share unknown until the sub-anatomies are counted
+  at scale (a docket-grade census question, not tonight's).
+  Artifact: .cache/early_readout_fingerpost.json.

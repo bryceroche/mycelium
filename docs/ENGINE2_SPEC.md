@@ -88,6 +88,20 @@ step; **phase B (survival): the ramp holds above the pre-pinned
 fraction during training** (the early kill). One meter, two phases, no
 unreadable bar.
 
+**THE EROSION CONSTRAINT (2026-07-29 — imposed by the slipping-pawl
+finding):** the parse-side engagement read showed bindings that engage
+correctly and then erode under continued reading (and a fingerpost
+showed the erosion is often multi-slot or never-locked — diet remains
+the parser's lever). For THIS architecture the finding imposes a design
+constraint on the shared state: **soft to deduction, hard to
+distraction — selective stabilization.** A recirculating architecture
+that keeps everything uniformly soft would erode the same way, only
+more; revisability must be GATED BY CONSTRAINT PRESSURE (deduction may
+revise) and not by mere positional recency (later tokens/stations may
+not overwrite unforced). This is exactly what the engagement-detection
+meter verifies: pawls engaging at their stated points, releasing only
+under constraint pressure, never under drift.
+
 **THE SHARED-STATE SUBSTRATE (flag 3 — the choice that killed Fire 2,
 named now, not at fire-registration).** Three options:
 1. Token-position native state (state lives on the token stream, where
