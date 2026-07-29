@@ -15593,3 +15593,26 @@ token-position × waist-dim, the moment the skeleton trains.
   at init and the engine needs a different relationship to its
   trunk. THE DECISION — rule the criterion regime-bound vs rule
   the class refused — is the bench's, not the meter's.
+
+- **THE RULING: REGIME-BOUND, ARMS UNDECIDED, THE DIAGONAL BAR
+  PINNED (2026-07-29, Bryce — the eighth ruling's symmetry test
+  applied and passed):** the monotone rise is present in ALL
+  FOUR configurations including arms already failed for
+  unrelated reasons — a property of the apparatus, not a rescue
+  narrative (the t95-degenerate-at-ceiling precedent: a ruler
+  whose range is definitionally exceeded by its subject).
+  **Regime-bound means the criterion doesn't apply — NOT that
+  the arms passed: the three arms are UNDECIDED, and the class
+  stands or falls on the deeper read.** THE BAR, PINNED BEFORE
+  L4-L7 LOADS: the discriminating claim is the ORDERED PEAK —
+  a diagonal in the round × layer matrix (round r peaking near
+  layer ~4+r; monotone peak-index in round with ≥2 distinct
+  peaks in the predicted direction). Flat-but-elevated cos
+  across deeper layers is NOT depth continuation (a generically
+  looser region — different, weaker finding). THE NULL, PINNED:
+  peak at L3 for every round = recirculation travels nowhere =
+  the class refuted at init. **THE CRITERION REBUILD OWED
+  REGARDLESS:** a criterion re-scoped once gets rebuilt to its
+  true domain (full-depth reference cloud, per-layer bands),
+  never patched at its edge. GUT #96 (CHAOS) registered as
+  seed, interps awaited. The read runs.
