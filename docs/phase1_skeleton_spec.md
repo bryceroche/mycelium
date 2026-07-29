@@ -15294,3 +15294,36 @@ token-position × waist-dim, the moment the skeleton trains.
   (revisability + engagement), one design law, and one
   differential test against its sibling frame — the most
   complete theoretical object the registry has produced.
+
+- **THE DOUBLE SITTING: TEN CONFIRMED, ZERO SUBSTITUTIONS — THE
+  FIRST CLEAN SAMPLE SHEET (2026-07-29):** the species
+  unification ruled the sitting's headline before any specimen;
+  the census sentence's survival of its apparent counterexample
+  NOTED as tested-and-held. T7: **[875] the accommodation law's
+  model instance** + technique noted (the surviving view's
+  rendering is the natural v2 candidate); **[929] HIGH** (law 9
+  unprompted); **[943] TECHNIQUE ADMITTED — derive-don't-echo**
+  (fourth instance; caption: an echoed given is residue wearing
+  a literal's clothes); **[897] PROMOTED** — the bookkeeping
+  clause's worked example; [6]/[897] join [636]/[742] as the
+  jurisprudence's second CONTRAST PAIR; **[939] THE SITTING'S
+  IMPORTANT RULING:** the trade was right and it OUTRANKS [411]
+  as the pct diet's argument — [411]/[1212] establish the
+  failure, [939] establishes THE TAX (a pen with law-9-lawful
+  literals declining the primitive anyway and paying a faithful
+  abstain: the weakness distorting drafting where it isn't even
+  triggered; the BTU law's cleanest specimen). T8: **[1173]
+  context-dependence RATIFIED** with the confound caveat banked
+  (mint templates also favor opening-position dups — the
+  dose-response design must vary crowding AT FIXED POSITION);
+  **[1382] species filing CONFIRMED** + the autopsy warning:
+  *a wrong value is not evidence of wrong computation until the
+  pointer trace is walked*; **[1212] the solid customer, n=2**;
+  **[1013] NEW MARK: cap-forced-reuse** (external constraint vs
+  pen preference; fourth cap-forced construction) + THE DOCKET
+  LINE: the cap is shaping construction at a measurable rate —
+  an argument for the CAP'S OWN REVIEW at the next dialect
+  generation; **[972] clean.** TALLY: 10 confirmed / 1 technique
+  / 1 new mark / 1 contrast pair / 1 diet argument reranked /
+  0 substitutions — **the first sitting with none: the
+  jurisprudence reaching the pen before the bench has to.**
