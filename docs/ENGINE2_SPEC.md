@@ -143,6 +143,16 @@ distraction*:
   respected: g's driver uses per-position magnitudes of the FRESH
   proposal h (lawful per-token norms on fresh tensors, per quirks
   entry 3), never per-token reductions on the reused chain.
+- **Candidate driver (gut #95, CANDIDATE GRADE — not structural):**
+  absorptive readiness as a state property — a per-slot readiness
+  scalar updated by revision PROVENANCE (constraint-pressure arrivals
+  wet the slot; positional-recency arrivals do not), gating how much
+  subsequent updates absorb. Two fences before it may enter the
+  structural bin: (1) a REWETTING path with its engagement point
+  stated (else wet-stays-wet/dry-stays-unreachable = the parser's
+  disease at slot grain); (2) eager-math proof + pinned prediction
+  first (Seam-1's discipline). Until both: candidate beside
+  alternatives, nothing more.
 - **Engagement-detection is its verifier by construction:** the pawl
   gate's g trace IS the engagement record — where g falls to ~0, the
   design's stated engagement point; the meter checks that g closes

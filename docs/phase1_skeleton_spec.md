@@ -15499,3 +15499,22 @@ token-position × waist-dim, the moment the skeleton trains.
   The cold engine did exactly what build-to-measurement exists
   to do: the version that would have burned was refuted for
   the price of eight minutes of eager GPU.
+
+- **GUT #95 (DRY SPONGE) REGISTERED — the exchange family's
+  sixth, and the first to arrive carrying a design proposal
+  (2026-07-29):** absorptive readiness: capacity and RATE
+  decouple; absorption requires wetting. MAPS TO MEASURED
+  HISTORY: Fire 0's near-identity diagnosis WAS runoff (aligned
+  init = pre-wetting); the ramp destruction = hard rain on
+  unabsorbent soil; BAU = the flood-control half with this gut
+  the why underneath. LIVE YIELD on the day's open blocker:
+  READINESS AS A STATE PROPERTY — candidate DRIVER for the
+  binary pawl gate (per-slot readiness scalar updated by
+  revision provenance: constraint arrivals wet, recency arrivals
+  don't; wetted slots absorb deduction readily, dry slots resist
+  rewriting). SHELVED AT CANDIDATE GRADE in the spec with both
+  fences attached: rewetting path + stated engagement point
+  (#94's law — else the parser's disease reinvented at slot
+  grain), and eager-math-first (frames name mechanisms, they
+  don't install them). Exchange family at SIX seeds, interps
+  owed; one member now holds a proposal, not a metaphor.
