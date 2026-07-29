@@ -14968,3 +14968,35 @@ token-position × waist-dim, the moment the skeleton trains.
   is a data-quality flag with the discrepancy shown, never
   drafted-toward, never silently skipped) and the
   depth-dependence refinement on repeated-constant chains.
+
+- **GUTS #89 (BTU) + #90 (INTAKE) REGISTERED AND CONVERTED SAME
+  TRANSACTION (2026-07-28 — the exchange family reaches five):**
+  **#89 → THE THERMAL-LOAD METER** (scripts/book8_thermal_load.py,
+  the accommodation law's economics): accommodation marks + MEDIUM
+  grades + skips per tranche as one load figure; reading
+  discipline banked — load UP while cert clean = buying
+  certification with deferred work, a trade to SEE not infer.
+  FIRST READING (t1-t6): load 11/8/10/9/12/10 — roughly FLAT
+  while certification improved 23→34→31, so the deferred-work
+  signature is ABSENT at book 8's close; the load is dominated
+  by the skip floor (~8-9/tranche, the harvest's inherent
+  inexpressibility rate at this dialect generation).
+  MEASUREMENT-ONSET CAVEAT stated per the regime-tag law: the
+  accommodation/MEDIUM components only existed as marks from the
+  t4 sitting onward — their apparent rise (0→0→1→2→3→2) is
+  instrument onset, not load growth; the trend reads honestly
+  only from t4. **#90 → THE INTAKE SHARPENING:** the gold-
+  skepticism duty is the filter AT THE INTAKE; the gut adds the
+  differential-pressure gauge and THE THRESHOLD PINS NOW, before
+  any reading: **≥2 data-quality mismatches in any single
+  tranche OR cumulative rate ≥1% of examined candidates → the
+  pool gets a SYSTEMATIC audit** (the finding becomes "the pool
+  is dirty" — an eligible-population question, not a per-row
+  workflow). Current gauge: 1/~240 (0.4%) — filter holding.
+  THE SIBLING WATCH AT FIVE: #84 geometry / #86 scheduling /
+  #88 pressure / #89 thermal load / #90 intake — five
+  installments circling one idea; the candidate unification
+  banked in Bryce's words: *every system in this campaign trades
+  surface for throughput, and the trade must be metered at both
+  ends.* Interps owed on three; a five-row joint conversion
+  would be the registry's first.
