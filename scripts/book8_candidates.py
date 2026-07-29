@@ -88,6 +88,13 @@ TRANCHE5_SKIPS = {702, 707, 712, 715, 716, 725, 739, 746, 774}
 # verified two channels; semantically wrong golds pass the integer
 # filter, so this category can only be caught at draft time.
 TRANCHE6_SKIPS = {779, 782, 788, 802, 807, 814, 818, 838}
+# Post-bench withdrawals from t6's drafted set (2026-07-28): [867]
+# piecewise branch comparisons — sel-rendering verified impossible
+# (boundary application 4<=4 hits sel's tie semantics, ill-defined by
+# design); honest skip per the [867] ruling's else-branch. [862] holds
+# IN the file as substituted/cancellation-practice (cap-barred retry),
+# not a skip.
+TRANCHE6_SKIPS |= {867}
 TRANCHE5_SKIPS |= TRANCHE6_SKIPS
 TRANCHE1_SKIPS |= TRANCHE2_SKIPS | TRANCHE3_SKIPS | TRANCHE4_SKIPS | TRANCHE5_SKIPS
 

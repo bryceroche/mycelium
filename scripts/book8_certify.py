@@ -59,8 +59,24 @@ res = {"certified": [], "abstain": [], "wrong": []}
 for i, r in enumerate(rows):
     src = int(r["gen"]["src_idx"])
     gold = harvest_gold[src]                       # THE KEY: harvest answer, not the draft's artifact
-    assert r["solution"][r["query_var"]] == gold, \
-        f"draft [{src}] solution disagrees with harvest gold — pen/key divergence, audit before certifying"
+    if r["solution"][r["query_var"]] != gold:
+        # GOLD-AUDIT DUTY (bench 2026-07-28): a pen/harvest divergence HALTS
+        # the row for the wheel — never resolved silently in either direction
+        # (the pen may be wrong, or the harvest may be dirty: [807]).
+        # Mismatches accumulate into the harvest-quality record (the intake
+        # filter's differential-pressure gauge; thresholds pinned in the
+        # ledger: >=2/tranche or >=1% cumulative -> systematic pool audit).
+        rec_path = ".cache/harvest_quality_record.json"
+        rec = json.load(open(rec_path)) if os.path.exists(rec_path) else []
+        rec.append({"src_idx": src, "harvest_gold": gold,
+                    "pen_derived": r["solution"][r["query_var"]],
+                    "tranche": r["gen"].get("tranche"), "book": r["gen"].get("book")})
+        json.dump(rec, open(rec_path, "w"), indent=1)
+        res.setdefault("held_for_wheel", []).append(
+            {"i": i, "src_idx": src, "harvest_gold": gold,
+             "pen_derived": r["solution"][r["query_var"]]})
+        print(f"  [{i+1}/{len(rows)}] src {src} HELD FOR WHEEL: pen {r['solution'][r['query_var']]} vs harvest {gold}", flush=True)
+        continue
     m = r.get("m", 300)
     dialect = r["gen"]["dialect"]   # schema law: text=SOURCE, gen.dialect=the annotation
     texts = [dialect] + [permuted_view(dialect, 91000 + 10*i + k) for k in range(1, 5)]

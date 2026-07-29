@@ -15014,3 +15014,46 @@ token-position × waist-dim, the moment the skeleton trains.
   0/0/1/2/3/2 (reads from t4 per the onset caveat). Both trends
   legible; the ruler-relative law in bookkeeping clothes, as
   countersigned.
+
+- **THE T6 RULINGS CROSS THE CHANNEL AND EXECUTE (2026-07-28 —
+  resent verbatim after the paste-loss flag; the bench's text,
+  not its echo):** **GOLD AUDIT JOINS THE DOCKET at draft grain
+  as a DUTY:** explicit derivation, harness comparison, mismatch
+  HALTS the row for the wheel (never silently resolved either
+  direction — the pen may be wrong or the harvest dirty);
+  implemented in book8_certify.py (held_for_wheel bin +
+  .cache/harvest_quality_record.json, the differential-pressure
+  gauge with its pinned thresholds); no full-pass — audit as
+  drafted; [807]'s category confirmed. **[813] RENDERED-MEDIUM**
+  + flag carved: *structural literals are lawful at inspection
+  scale; beyond a handful, state the check* (per-pair check now
+  stated in its note). **[862] DOES NOT CONFORM** ([403] with
+  better paperwork — the identity SOLVES; what keeps [373]/[496]
+  lawful is their transforms left a SYSTEM); ruled retry
+  CAP-BARRED (f(±5) needs 625 at its first term, verified) —
+  holds as cancellation practice per [403] precedent, finding
+  returned. **[867] DOES NOT CONFORM under law 14** — and the
+  ruled retry produced the sitting's sharpest finding: sel-
+  rendering VERIFIED IMPOSSIBLE at the boundary application
+  (4≤4) because **sel ties are ILL-DEFINED BY DESIGN**
+  (_sel_apply: a==b → VIOLATED, the ambiguity self-gate) — the
+  dialect cannot witness boundary-inclusive comparison; per the
+  ruling's else-branch: HONEST SKIP, withdrawn, registered.
+  **PIECEWISE/CONDITIONAL onto the ladder docket** (law 14's
+  second customer) with the sharpened requirement: the primitive
+  needs ≥/≤ semantics, not strict order. **[856] RENDERED-HIGH**
+  (cost data point: parallel-inversion's second favorable —
+  mint-queue evidence WEAKENS as count grows). **[776]
+  RENDERED-HIGH** + pattern named: *the value cap is now a
+  recurring DESIGNER of construction choice* (third instance,
+  lawful in all three) — watch, not fix. TALLY: 3 rendered (one
+  MEDIUM) / 2 substituted (one cap-held, one withdrawn-to-skip).
+- **TRANCHE 7 RETURNS: 31/9/0 DRAFTS, GOLD SKEPTICISM CLEAN
+  (2026-07-28):** all 40 candidates' computed answers matched
+  harvest gold (the gauge holds at 1/~280 = 0.36%); two NEW
+  representability sub-families named (extraneous-root exclusion;
+  Diophantine-decomposition argmax) + [935] independently
+  reconfirms [818]'s derived-exponent sub-case; the
+  product+difference-of-roots derivation reaches FOUR instances
+  (established pattern); [934]'s over-cap intermediate caught at
+  build (subtract-first reorder); certification running.
