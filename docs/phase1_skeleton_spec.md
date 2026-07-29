@@ -15925,3 +15925,24 @@ token-position × waist-dim, the moment the skeleton trains.
   configuration-resolved mechanism with a reproduction recipe.
   The retired hypothesis retired honestly: the crowding-erodes
   story was wrong in its DIRECTION, and its author said so.
+
+- **THE CLOSING PRE-COMMITMENT, PINNED WHILE THE FRAME IS
+  WINNING (2026-07-29, Bryce):** if the fourth-axis contrast
+  prints for STATIC CONFIGURATION, pawl-on-pawl FAILS and the
+  ratchet frame does not reinterpret — the mechanism is a
+  property of the FIELD, not of engagement history; the frame
+  eats the loss the way it ate the engagement read's. Pinned
+  now because pinning against a winning frame is cheaper than
+  pinning after. THE STAKES stated: if the axis prints FOR
+  interference, the frame will have PREDICTED a mechanism it
+  wasn't built to describe (a second-order consequence of
+  taking the vocabulary seriously — two pawls competing for one
+  operand) — the difference between a frame that redescribes
+  and a frame that generates; no frame in this campaign has
+  managed it. Either way the registry learns which. THE WEEK'S
+  CLOSING LINE, banked for the stranger it was written for:
+  *not that the campaign was right, but that it could be wrong
+  out loud and keep moving faster for it.* Board at rest: the
+  road holds and produces (220); the gate open with its pins;
+  the spec asleep with its fences; the factory budgeted before
+  it has a customer; the seeds keeping their counsel.
