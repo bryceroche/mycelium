@@ -16806,3 +16806,32 @@ token-position × waist-dim, the moment the skeleton trains.
   distance is a shadow of something outside the factor graph
   entirely). HELD FOR THE WORD — a new registration, and the
   glide law owns the night.
+
+- **THE CLIFF CHASSIS REGISTERED (2026-07-29, the word — built
+  to TEST the cliff, not find it):** RUNGS AT MEASURED-DISTANCE
+  WINDOWS 100/150/200/280 (±tolerance) — **the two lower rungs
+  are the control arm the series never had inside one chassis**
+  (expected clean, replicating the 0/36 history as part of the
+  same experiment); the constructor BUILDS-TO-MEASURE (fillers
+  appended until the def's measured distance lands in-window —
+  the corollary satisfied structurally, no estimates anywhere;
+  per-rung measured distances reported). SHAPE BARS: **CLIFF** =
+  rungs 100/150 ≤ 0.08 AND rung 280 ≥ 0.25 AND rise(150→280) ≥
+  0.20 (rung 200 reported as the threshold locator, free to
+  fall either side); **SLOPE** = graded rise beginning at or
+  below 150; **FLAT** = all rungs < 0.10 → THE QUESTION LEAVES
+  THE FACTOR GRAPH — distance in natural rows co-varies with
+  something in the SOURCE TEXT the synthetic chassis doesn't
+  reproduce; the seam closes with the deflationary answer, the
+  line redirects to source-side features, and NO FOURTH CHASSIS
+  fires at a fifth range (pre-stated so the flat print cannot
+  spawn what the pacing law was carved against). PILOT: top
+  rung n=12 — ≥0.8 proceeds (cliff-consistent; the lower rungs
+  decide shape); in-band proceeds; **0-fail routes to a
+  confirmation extension (n=24) and, if still ~0, prints the
+  FLAT branch directly** (top-flat + the 0/36 history = flat
+  everywhere; the lower rungs were predicted-clean controls) —
+  every path terminal. Epistemic position stated honestly: the
+  cliff stands because everything else fell — elimination
+  support, not own-evidence support — which is exactly why the
+  chassis tests rather than finds.
