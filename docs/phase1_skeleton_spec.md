@@ -16683,3 +16683,32 @@ token-position × waist-dim, the moment the skeleton trains.
   texture. Conditional line pre-stated: if causal, whether
   consecutiveness is even needed re-reads against distance
   before its arm designs.
+
+- **THE SCALED INTERVENTION'S PILOT: 0.00 AT A MEASURED 153
+  CHARS — STOPPED, WITH A CONFESSION AND A META-PATTERN
+  (2026-07-29):** THE CONFESSION FIRST: the chassis was
+  registered at ~250 chars and DELIVERED 153 — the filler
+  lengths were estimated, not measured; the design law's
+  corollary now carved by its third violation in the same
+  family: **measure the built artifact, don't estimate it —
+  build one probe, measure its distance, THEN pilot.** THE
+  META-PATTERN, which is the real cargo: three clean-chassis
+  pilots at 80 and 153 chars — 0/36 cumulative failures — at
+  distances where the book's natural failures are DENSE (the
+  failing IQR is 70-173). **Distance alone, moved
+  interventionally in a clean chassis, does not produce failure
+  even inside the observed failing range.** No verdict banks
+  (stops are stops; "not causal" requires the registered flat
+  print, not pilot arithmetic) — but the suspect list reorders:
+  the declared confound flips from nuisance to CANDIDATE
+  MECHANISM — it is not how FAR the content sits but WHAT KIND
+  of content intervenes (the chassis's fillers are an
+  independent chain; natural rows' intervening content is
+  ENTANGLED with the target's graph neighborhood). THE FRESH
+  REGISTRATIONS OWED, both named, neither designed (glide):
+  (a) the longer-range chassis (>250 MEASURED, built-then-
+  measured); (b) THE ENTANGLEMENT CONTRAST — same measured
+  distance, intervening content independent vs entangled with
+  the target's neighborhood — which is now the sharper
+  question. Causality stands OPEN; the candidate holds; the
+  stop protocol goes 3-for-3.
