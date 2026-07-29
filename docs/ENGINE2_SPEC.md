@@ -102,6 +102,47 @@ not overwrite unforced). This is exactly what the engagement-detection
 meter verifies: pawls engaging at their stated points, releasing only
 under constraint pressure, never under drift.
 
+**THE PAWL GATE (2026-07-29 — the selective-stabilization organ, named
+with its mechanism argued; the erosion constraint's answer).**
+The organ that makes the shared state *soft to deduction, hard to
+distraction*:
+
+- **Mechanism:** per-position, per-station update gating —
+  `x_next[i] = x[i] + g[i]·(h[i] − x[i])`, where `h` is the station's
+  proposal and `g[i] ∈ [0,1]` is the pawl. The defining clause is what
+  DRIVES g: **g[i] opens under CONSTRAINT PRESSURE — a measured
+  mismatch signal at position i (the station's proposal disagreeing
+  with the current state in a direction the shared constraints
+  support) — and NEVER under mere recency.** At g[i]=0 the position is
+  frozen exactly (identity — hard to distraction); g[i]>0 only when
+  deduction pushes (soft to deduction). This is the parser's missing
+  pawl installed as anatomy: the slipping-pawl finding showed bindings
+  eroding under positional recency precisely because nothing gates
+  revision by evidence.
+- **Lineage:** the delta-gate (engine lineage, convex blend — proven
+  organ) made PER-POSITION and DRIVEN rather than free. Not a new
+  species of machinery; a proven organ given a lawful driver. The
+  driver signal's simplest form: per-position proposal-vs-state
+  disagreement magnitude normalized by the station's own scale
+  (measurable, no learned free parameters at v0; learned refinement is
+  an ablation arm, not the base).
+- **Eager-math properties (the Seam-1 discipline):** (i) convexity —
+  x_next is a convex combination of x and h per position, so any bound
+  Seam-1 maintains on both is maintained on the blend; (ii) exact
+  freeze — g=0 is identity, trivially stable, no drift; (iii)
+  composability — the pawl gate commutes with the per-item scalar
+  Seam-1 (both per-position-linear in state), so the quirks-file JIT
+  constraint (scalar reductions only on the reused chain) is
+  respected: g's driver uses per-position magnitudes of the FRESH
+  proposal h (lawful per-token norms on fresh tensors, per quirks
+  entry 3), never per-token reductions on the reused chain.
+- **Engagement-detection is its verifier by construction:** the pawl
+  gate's g trace IS the engagement record — where g falls to ~0, the
+  design's stated engagement point; the meter checks that g closes
+  where designed and opens only under pressure. Organ and instrument
+  are two views of one quantity, which is what the ratchet design law
+  asks of a lawful pawl.
+
 **THE SHARED-STATE SUBSTRATE (flag 3 — the choice that killed Fire 2,
 named now, not at fire-registration).** Three options:
 1. Token-position native state (state lives on the token stream, where
@@ -278,17 +319,17 @@ in the repository.
 | ~3.5 breaths/layer | ENGINE-clock conjecture (engine t95s 1/3/8 lag probe 2/7/11) | ledger ~L12015/L12117 — CONJECTURE grade, never certified | CITED AS CONJECTURE (this is why §2 is conditional) |
 | 2.28σ | init polarization ramp (L0→L3 entropy separation, untrained) | ledger ~L13371; collapse-to-0.78σ at commit a72f098 | CITED |
 | 0.42→0.02 | thermometer cooling under re-light (contraction confirmed) | re-light verdict, commit 94454d6 | CITED |
-| 0.506→0.922 | pre-breath rivet (map computed in one pass) | probe-campaign ledger region | UNCITED — pin exact commit before fire-registration |
-| 0.89/0.80 | determination humble polarity (never-forced > forced) | determination-probe ledger region | UNCITED — pin exact commit |
-| masked-mass 0.0000 | #76 topology mask mechanically perfect | re-light SIG line + ledger three-signature entry ~L13290 | PARTIAL — pin the capture commit |
-| 2.5%/breath | v200 latent off-manifold drift (too-dead pole) | Fire-1 diagnostics region | UNCITED — pin exact commit |
+| 0.506→0.922 | pre-breath rivet (map computed in one pass, 4× the bar) | commit 688d09f; ledger ~L12188/L12499 | CITED |
+| 0.89/0.80 | determination humble polarity (never-forced 0.89 > forced 0.80, both rulers) | commit 9d2f29d; ledger ~L12192 | CITED |
+| masked-mass 0.0000 | #76 topology mask mechanically perfect (capture); Fire-2 THINK-mask printed 0.0078 live (5c5c18b) | artifact .cache/crossover_capture_k16.npz (permanent fixture) + re-light SIG line | CITED (artifact-grade) |
+| 2.5%/breath | v200 latent off-manifold drift (1.000→0.814 across breaths, caught at step 3) | commit 5c5c18b | CITED |
 | 543/550 | book solution-field hazard census | commit 0f965ee | CITED |
 
-Three numbers remain UNCITED and one PARTIAL: the fire-registration
-gate includes completing this table. The most consequential upgrade
-from this pass: **~3.5 is not merely carry-forward, it is
-CONJECTURE-grade in its own ledger entry** — §2's conditionality is
-not caution, it is the number's actual epistemic status.
+**TABLE COMPLETE (2026-07-29): 10/10 cited.** The citation condition of
+the fire-word's closing terms is DISCHARGED. The most consequential
+finding of the pass stands: **~3.5 is CONJECTURE-grade in its own
+ledger entry** — §2's conditionality is the number's actual epistemic
+status; the clock read (condition 1) retires or replaces it.
 
 ## 10. Prerequisite reads — status (the strike-heat's destination, 2026-07-28)
 
