@@ -15946,3 +15946,38 @@ token-position × waist-dim, the moment the skeleton trains.
   road holds and produces (220); the gate open with its pins;
   the spec asleep with its fences; the factory budgeted before
   it has a customer; the seeds keeping their counsel.
+
+- **THE FOUR-AXIS EXPERIMENT REGISTERED — FULL CROSSING, TWO
+  FINGERPOSTS, FIXTURES LEADING (2026-07-29):** axes: operand
+  IDENTITY (literal/derived) × PRIOR ARG-USE (operand used as an
+  argument in an earlier rel: yes/no — the engagement-count
+  operationalization of axis 4, since every usable operand is
+  result-bound once by definition) × POSITION (early/mid) ×
+  CROWDING (minimal/crowded field at engagement). THE FACTORY
+  PRODUCES THE UNNATURAL CELLS nature won't (prior-bound operand
+  in a near-opening minimal field; literal mid-graph crowded);
+  cells the factory CANNOT produce are stated as structural gaps
+  (derived-at-absolute-sentence-1 is one: definition needs a
+  prior sentence). PREDICTIONS PER HYPOTHESIS, pinned before any
+  cell runs: **CONFIGURATION** — slip driven by position+
+  crowding; at fixed position/crowding, engagement count adds
+  nothing; the fingerpost-1 cell (literal operand, one prior
+  engagement, near-opening, minimal field) HOLDS.
+  **PAWL-ON-PAWL** — prior engagement drives slip independent of
+  field; fingerpost-1 SLIPS; and slip probability RISES with
+  engagement count at fixed position/crowding. THE SECOND
+  FINGERPOST: identity split at matched count/position/field
+  (literal-once-engaged vs derived-once-engaged, both minimal-
+  early) — if these differ, IDENTITY matters beyond count and
+  both simple hypotheses are incomplete (texture). VERDICT RULE:
+  fingerposts agreeing → that hypothesis; split → mixed/texture,
+  mechanism probe, NO reinterpretation. THE LOSS CONDITION
+  STANDS AS PINNED: configuration-print = pawl-on-pawl dies, the
+  frame eats it. READOUT: the four-class sub-anatomy spectrum
+  per cell, never pass/fail. **FIXTURES FIRST (the run-1
+  lesson):** F-HOLD ([1173]-replica: never-engaged unknown
+  operand, sentence 1) must print HOLD-majority and F-SLIP (last
+  night's D0 shape) must print SLIP-majority before ANY real
+  cell banks — instrument fault otherwise, nothing banks.
+  12 variants per cell, solver-verified, transient-window
+  apparatus (the corrected reader).
