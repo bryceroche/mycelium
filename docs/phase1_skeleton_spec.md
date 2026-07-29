@@ -16401,3 +16401,29 @@ token-position × waist-dim, the moment the skeleton trains.
   is INSTRUMENT-NULL (bigtest cannot test this either) and the
   probe-side version becomes the design material; no
   reinterpretation.
+
+- **TRANCHE 9 DRAFTS (attempt 4 after three 529s): 26/14/0,
+  GOLD CLEAN — AND THE RETRIEVAL'S SECOND LESSON (2026-07-29):**
+  normal 19/30 (11 operation-shaped skips); diet 7/10 drafted
+  BUT **only 3/10 exercise their construction natively** (1720
+  dup-add, 1698/1437 sub-distract): 4 genuinely mismatched
+  (1327, 1469, both two-free-var draws — their "second unknown"
+  a source-stated literal, structurally weaker than [1133]),
+  3 skipped on independent blockers. TRIPLE t8's mismatch rate:
+  **graph-shaped lexical similarity still retrieves
+  construction-ADJACENT sources, not construction DEMAND** —
+  retrieval-quality lesson #2; the thin-exemplar DIRECTIONAL
+  caveat vindicated and extended to the broad customers. The
+  delta measurement narrows to n=3 native rows (engagement
+  counts 1/1/2, honestly null on mismatches — the pen refused
+  to fabricate zeros). PEN FINDS: a new technique flagged
+  (negative-intermediate avoidance via query-substitution,
+  [1170]); a mismatch-second-look precedent (1720/1437 initially
+  misread as mismatches — alternate legitimate techniques
+  existed); one deliberate brief deviation argued and
+  documented (native/mismatch split carried in notes rather
+  than a flat watch tag). Gold skepticism: 40/40 clean, and the
+  pen's checker caught two faults IN ITSELF before blaming the
+  harvest — the discipline propagating one level deeper.
+  Certification queues behind the dummy/distance unit (serial
+  GPU).
