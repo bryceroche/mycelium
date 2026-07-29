@@ -15423,3 +15423,31 @@ token-position × waist-dim, the moment the skeleton trains.
   population share unknown until the sub-anatomies are counted
   at scale (a docket-grade census question, not tonight's).
   Artifact: .cache/early_readout_fingerpost.json.
+
+- **THE CLOSING COUNTERSIGN: THE SPECTRUM READING + THE
+  DOSE-RESPONSE AMENDMENT (2026-07-29, Bryce):** the three
+  sub-anatomies re-read as an ENGAGEMENT-QUALITY SPECTRUM, not
+  three diseases — a pawl that never catches / catches and
+  releases once / catches and releases repeatedly: one
+  mechanism, three severities. THE TESTABLE PREDICTION IT
+  CARRIES: if distractor density drives engagement quality, the
+  sub-anatomy DISTRIBUTION should SHIFT with crowding rather
+  than the population splitting into fixed types. **DESIGN
+  AMENDMENT BANKED before the diet lever fires: the
+  dose-response experiment bins its results BY SUB-ANATOMY, not
+  pass/fail** — same run, sharper output; a lever that moves
+  specimens wandering→slipping→holding is a lever whose
+  MECHANISM is confirmed, while one that just moves the pass
+  rate is a lever we'd have to trust. The day's rate named:
+  three registered predictions, two refuted, every refutation
+  paying more than its confirmation would have — *that rate
+  isn't luck; it's what happens when predictions are pinned
+  sharply enough to fail.* And the sentence the spec may be
+  remembered for, banked in the countersign's own words: *soft
+  to deduction, hard to distraction* — the missing half of
+  full-flow's founding premise, delivered by a refuted
+  fingerpost about a parser the spec doesn't even describe; the
+  road paying the bet's debts for the second time this week.
+  Board at close: 220 certified / queue honest / spec sharper
+  than morning / three interps owed to a registry that has
+  learned exactly what a frame has to pay. No ruling pending.
