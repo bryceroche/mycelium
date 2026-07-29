@@ -16285,3 +16285,22 @@ token-position × waist-dim, the moment the skeleton trains.
   effect is real, replicated, construction-carried, value-
   independent — narrower and sharper than any prior night left
   it. Artifact: .cache/diagnostic_ladder.json.
+
+- **GUT #99 (GLIDE) REGISTERED — THE PACING LAW + A PROCESS
+  CONFESSION (2026-07-29):** third pacing gut in a short window
+  (#85/#97/#99 — the recurrence itself the signal). LAW CARVED:
+  *don't build the ladder before the first rung reports* —
+  advance-registered multi-arm designs function as commitment,
+  making continuation the default rather than a decision. THE
+  CONFESSION, named not excused: the ruling crossed after the
+  ladder's conditional script had already run both stages —
+  the branch logic was honored (replication could terminate
+  everything; gravity ran only on the lawful branch) but the
+  read-the-water discipline was not: arm 2 was designed before
+  rung 1 printed. The results stand (they were on the lawful
+  branch); the process variance is banked so the next ladder
+  doesn't inherit it. FORWARD: the consecutiveness arm stays
+  UNDESIGNED until its own registration moment — a lead held
+  lightly, not a commitment. The board at its highest ground;
+  the glide available; the road and the arm will be exactly
+  where they were left.
