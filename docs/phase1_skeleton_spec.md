@@ -15537,3 +15537,23 @@ token-position × waist-dim, the moment the skeleton trains.
   appearing where the design says is engagement detection's
   first real test. (3) the clock's two-form split stands;
   §2 conditional; no station budget hardens before first smoke.
+
+- **THE PAWL GATE'S HONEST STATUS LINE + THE DRIVER'S OWN
+  PREDICTION (2026-07-29, Bryce):** the convergence named
+  precisely — frame, form, and driver from three separate guts
+  on three separate days, NONE arriving by argument (rent by
+  refutation; form by inversion; driver accepting two fences on
+  arrival) — and the caution attached at the exact joint:
+  two legs measured, the third a CANDIDATE. **STATUS LINE
+  banked into the spec: form MEASURED, verifier NAMED, driver
+  UNPROVEN.** The driver's eager-math pass now carries its own
+  pinned prediction (in the spec, before it runs): *under
+  readiness gating, a constraint-touched slot accepts subsequent
+  constraint-driven revision at a measurably higher rate than an
+  untouched slot, and NEITHER accepts positional rewriting* —
+  no separation = elegant and empty, alternatives stand
+  (engagement-count, constraint-provenance flags, per-slot age).
+  EXAM AMENDMENT executed while cheap: the binary pawl makes
+  engagement a DISCRETE EVENT with a timestamp — arm A prints
+  pawl-set counts per station per pass; the design requirement
+  becomes mechanically checkable, not statistically inferred.

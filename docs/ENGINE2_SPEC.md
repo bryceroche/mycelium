@@ -143,6 +143,15 @@ distraction*:
   respected: g's driver uses per-position magnitudes of the FRESH
   proposal h (lawful per-token norms on fresh tensors, per quirks
   entry 3), never per-token reductions on the reused chain.
+- **STATUS LINE (bench 2026-07-29): form MEASURED (binary, the cold
+  sweep), verifier NAMED (engagement detection), driver UNPROVEN.**
+  The driver's eager-math pass carries its own PINNED PREDICTION
+  before it runs: *under readiness gating, a slot touched by
+  constraint pressure accepts subsequent constraint-driven revision at
+  a measurably higher rate than an untouched slot, and NEITHER accepts
+  positional rewriting.* If the eager math cannot produce that
+  separation, the driver is elegant and empty — alternatives stand
+  (engagement-count, constraint-provenance flags, per-slot age).
 - **Candidate driver (gut #95, CANDIDATE GRADE — not structural):**
   absorptive readiness as a state property — a per-slot readiness
   scalar updated by revision PROVENANCE (constraint-pressure arrivals
