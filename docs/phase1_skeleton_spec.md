@@ -16260,3 +16260,28 @@ token-position × waist-dim, the moment the skeleton trains.
   constant, values vary (the named residual). Stop protocol
   standing; saturation pilots inherited; terminal condition
   armed. Every branch ends in a verdict, none spawns a ladder.
+
+- **THE LADDER DECIDES BOTH STAGES (2026-07-29): REPLICATION
+  HOLDS, GRAVITY REFUSES:** (1) THE REPLICATION CELL: 6/24 at a
+  new seed (the pair probe printed 5/24) — **the effect is REAL
+  and reproducible at ~21-25%**; the terminal condition does not
+  fire; the law and the diet recipe survive their sunset test.
+  (2) THE GRAVITY ARM: measured corpus tiers (a=2: 524
+  occurrences / a=3: 351 / a=5: 301) print 6/24, 5/24, 7/24 —
+  rise +0.04, FLAT per the two-sided bar. **Hub-value frequency
+  is not the discriminator; gravity refuses on the seam
+  question** (its three prior appearances stand where they were
+  measured — sel, pct, the attractor — but it does not unify
+  the re-engagement effect). THE CROSS-CHASSIS INFERENCE, named
+  from the two prints without a new registration: a=2 fails at
+  25% in the CONSECUTIVE-hub chassis and 0% in the INTERLEAVED
+  chassis — same value, same engagement count, two
+  constructions, opposite outcomes: **the discriminator is
+  construction, and OP-CONSECUTIVENESS is now the lead suspect
+  with strong indirect evidence.** Per the registered branch
+  order, the one-sided suspects get their arms in a LATER
+  registration — the inference is named tonight, tested when
+  its bars are pinned fresh. THE SEAM QUESTION'S STATE: the
+  effect is real, replicated, construction-carried, value-
+  independent — narrower and sharper than any prior night left
+  it. Artifact: .cache/diagnostic_ladder.json.
