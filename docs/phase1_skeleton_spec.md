@@ -16545,3 +16545,35 @@ token-position × waist-dim, the moment the skeleton trains.
   gut about group photos → the address table → the seam crossed
   → the investigation resolved — four registrations, four
   pre-pinned bars, one afternoon.
+
+- **THE DIET RULING + THE FENCED LEVER + THE INTERVENTION
+  REGISTERED (2026-07-29, Bryce's two words):** (1) DIET: the
+  re-engagement recipe RETIRES to probe scope per its own
+  terminal logic (contingent on a natural-size mechanism that
+  turned out to be distance); **distance spans become the mint
+  queue's top entry AS A CANDIDATE** — no recipe until the
+  intervention says causal (a diet built on a correlate is the
+  cured-register-that-cures-nothing the factory fence was
+  written against); if graded prints, the two-rule constitution
+  transfers to the new axis. (2) THE DIALECT-DESIGN LEVER
+  REGISTERED AS FENCED: shorter rosters / earlier first-use /
+  mid-row roster restatement are pen-side moves available
+  IMMEDIATELY and they are ACCOMMODATION AT SCALE — drafting to
+  minimize distance teaches short-distance rows and starves the
+  gate's real weakness; the option enters the board marked,
+  measured, and fed, never discovered as a temptation. (3) THE
+  INTERVENTIONAL READ REGISTERED: fixed graph, fixed roster,
+  fixed size, fixed engagement count — distance varied by
+  MOVING the target's defining sentence within the same
+  sentence multiset (positions 1/2/4 of 5, use always last; no
+  forward references — that's a different distribution, stated).
+  CONFOUND DECLARED BY CONSTRUCTION: at fixed size, distance
+  and intervening-content-before-first-use are INSEPARABLE
+  (identical multiset, position moves) — arguably one variable
+  (the address decays BECAUSE content intervenes); declared,
+  not assumed away. OUTCOME: straight-view parse-to-gold (the
+  permuted quorum would itself shuffle distances — single-view
+  is the clean interventional read; stated). BAR: failure
+  rising MONOTONICALLY across the three rungs, total rise
+  ≥0.20; top rung piloted for saturation [0.2, 0.8] first,
+  stop-don't-improvise standing.
