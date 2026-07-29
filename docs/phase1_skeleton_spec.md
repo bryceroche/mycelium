@@ -15715,3 +15715,26 @@ token-position × waist-dim, the moment the skeleton trains.
   220 certified; t9 gated on its cure; six interps owed by a
   family that has watched its sibling pay rent three times.
   The engine sleeps cold, having taught more than it cost.
+
+- **THE CREDITS STAMPED WITH GRADES (2026-07-29, Bryce — how a
+  prediction counts matters more than that it counted):**
+  **#95 (SPONGE): PREDICTIVE** — arrived before the exam, named
+  the mechanism, now covers two independent failures (Fire 0
+  retroactively; the isotropy print + projection crash
+  prospectively — degradation-from-wetting-wrong is the exact
+  anatomy); rent paid forward and backward in one night; the
+  exchange family's FIRST REAL PAYMENT, from the member that
+  arrived holding a proposal. **#96 (CHAOS): DIAGNOSTIC
+  NAMING** — arrived alongside the print; correct word for a
+  system with no steering; counts as naming, not forecast —
+  the predicted/described distinction stated at filing time,
+  never blurred later (the conviction index's discipline
+  applied to successes). **THE JOINT YIELD, upgrading §2's
+  constraint from rule to MECHANISM (into the spec):** *a
+  recirculating medium must be conditioned on what recirculates
+  through it* — one sentence covering the refutation (frozen
+  giants: never conditioned, at any α, under any projection)
+  and the existence proof (the June engine: trained medium,
+  wet, absorbs, computes) simultaneously. Small untied trained
+  stations satisfy it by construction; §2's redesign starts
+  from this ground.

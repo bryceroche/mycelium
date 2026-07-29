@@ -169,6 +169,17 @@ distraction*:
   are two views of one quantity, which is what the ratchet design law
   asks of a lawful pawl.
 
+**THE MECHANISM SENTENCE (2026-07-29 — the #95/#96 joint yield,
+upgrading the redesign constraint from empirical rule to mechanism):**
+*a recirculating medium must be conditioned on what recirculates
+through it.* The June engine ladders because its recirculating weights
+are trained — the medium is wet, it absorbs, iteration computes.
+Frozen giants blur because nothing about them was ever conditioned on
+the states they receive — at any α, under any projection. Small untied
+trained stations satisfy the mechanism BY CONSTRUCTION; this sentence
+covers the refutation and the existence proof simultaneously and is
+the ground §2's redesign starts from.
+
 **THE PATH RULING (2026-07-29, after the class refutation — path (b)
 chosen, (a) refused, (c) held):** (a) train-from-pretrained-init is
 v200's own shape; three poles live there — refused as re-measuring
