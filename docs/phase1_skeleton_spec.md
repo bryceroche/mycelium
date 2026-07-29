@@ -15981,3 +15981,45 @@ token-position × waist-dim, the moment the skeleton trains.
   cell banks — instrument fault otherwise, nothing banks.
   12 variants per cell, solver-verified, transient-window
   apparatus (the corrected reader).
+
+- **THE FOUR-AXIS EXPERIMENT PRINTS: PAWL-ON-PAWL — THE FRAME
+  GENERATES (2026-07-29):** FIXTURES FIRST AND BOTH PASSED
+  (F-HOLD 12/12 HOLD; F-SLIP 12/12 SLIP — instrument validated,
+  cells bank). **THE FINGERPOST: C1 (literal operand, ONE prior
+  engagement, near-opening, minimal field) SLIPS 12/12** where
+  configuration predicted HOLD — against F-HOLD's 12/12 HOLD at
+  nearly identical position and field with a NEVER-engaged
+  operand. ONE single prior engagement flips hold→slip
+  completely at matched field: pawl-on-pawl's core claim in its
+  purest printable form. THE SECOND FINGERPOST AGREES: identity
+  collapses — literal-once-engaged (C1) and derived-once-
+  engaged (F-SLIP's cell) both SLIP; derivedness was a PROXY
+  for engagement count all along; the species re-sorts on
+  ENGAGEMENT HISTORY. **THE SPECTRUM RULING VINDICATED IN THE
+  SAME PRINT:** the count contrast is INVISIBLE in pass/fail
+  (slip-delta +0) and DECISIVE in sub-anatomy — C1 (count-1)
+  slips, C3 (count-2) WANDERS 12/12: more prior engagements
+  move specimens ALONG the spectrum (slip→wander), the exact
+  lever-confirming signature the readout amendment was written
+  to catch. FIELD STILL ACTS: C5 (count-1, mid, crowded)
+  wanders where C1 slips — position/crowding shift the spectrum
+  too. AND ONE TEXTURE, flagged per the rule: C6 (derived,
+  count-2+, mid, crowded) SLIPS where C5 wanders — a
+  non-monotone interaction (a heavily-USED derived operand
+  retains transient engagement where a lightly-used literal
+  loses it) — two unexplained shapes = MECHANISM PROBE
+  docketed, no reinterpretation. **PER THE STANDING
+  PRE-COMMITMENT, THE MILESTONE PRINTS: the ratchet frame
+  predicted a mechanism it was not built to describe —
+  interference between engagement events — THE CAMPAIGN'S FIRST
+  FRAME THAT GENERATES RATHER THAN REDESCRIBES.** THE LAW THE
+  GRID CARVES (first-order): *first engagement is stable;
+  re-engagement of an already-bound operand is unstable — the
+  second pawl fights the first* (binding competition in the
+  pointer space: the operand's defining slot already holds an
+  attractor). CONSEQUENCES: (1) the mint recipe sharpens to
+  RE-ENGAGEMENT training (operands engaged twice+ — the factory
+  fence applies, fraction-never-bulk, axes varied); (2) [1173]/
+  every holding specimen explained (count-0 operands); (3) the
+  C5/C6 interaction probe joins the docket with fresh bars owed.
+  Artifact: .cache/four_axis_read.json.
