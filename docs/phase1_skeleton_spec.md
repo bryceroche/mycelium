@@ -16427,3 +16427,32 @@ token-position × waist-dim, the moment the skeleton trains.
   harvest — the discipline propagating one level deeper.
   Certification queues behind the dummy/distance unit (serial
   GPU).
+
+- **THE DOUBLE PRINT: THE ROSTER IS THE ADDRESS TABLE, AND
+  DISTANCE CROSSES THE SEAM AT FIXED SIZE (2026-07-29):**
+  **(A) THE DUMMY CUT: 0.016 — identical to no preamble.** The
+  slot convention alone does NOTHING; content is the function;
+  priming and convention both eliminated in one cut (three
+  hypotheses to one, as designed). THE ROSTER IS THE ADDRESS
+  TABLE. **(B) THE DISTANCE READ: pooled within-strata AUC
+  0.733** — with the pre-declared instrument-null printing
+  exactly where predicted (roster-length within-stratum sd
+  0.000 = f(size), untestable) and distance carrying real
+  within-stratum variance (sd 44-62 chars): the fixture CAN
+  test it and IT CROSSES, strata control from the start,
+  against engagement-count's 0.485 on the same fixture.
+  **ADDRESS-TABLE DECAY OVER DISTANCE is the first mechanism
+  to predict the natural-size failure mass at fixed size — the
+  seam question that refused three instruments crosses on the
+  fourth, and the answer was upstream the whole time.** THE
+  COHERENCE CHECK, noted for the bench: distance plausibly
+  subsumes the probe findings ([1173]'s count-0 operand is
+  also minimum-distance; mid-graph dups are far-from-roster) —
+  whether count survives as an independent factor once
+  distance is controlled is the natural next read. CAVEATS
+  STATED: correlational (the interventional confirmation is
+  factory-grade: same size, varied first-use distance — a
+  clean target at last); distance-at-fixed-size may still
+  proxy residual structure (chains vs stars at matched factor
+  count) — named, not assumed away. Artifacts:
+  .cache/dummy_distance_reads.json, roster_ablation.json.
