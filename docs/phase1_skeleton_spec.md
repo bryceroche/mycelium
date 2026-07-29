@@ -15840,3 +15840,31 @@ token-position × waist-dim, the moment the skeleton trains.
   before a single specimen runs. Board at 220 and producing;
   the spec asleep with its fence in the document; the family's
   debt patient.
+
+- **THE DOSE-RESPONSE REGISTERED — BARS PINNED BLIND BEFORE ANY
+  PROBE PARSES (2026-07-29, the word: fire when ready):**
+  DESIGN, honoring both banked amendments + the slipping-pawl
+  mechanism: synthetic dialect probes (solver-verified lawful
+  graphs; instrument reads, not training data), dup-add target
+  ("X plus X" on a DERIVED operand — the failing configuration)
+  at ABSOLUTELY FIXED position (identical pre-target prefix
+  across all doses — the [1173] position confound eliminated by
+  construction); DOSE = POST-TARGET distractor load (0/1/2/3
+  subsequent small-constant givens) — the axis the slipping
+  pawl names: erosion arrives with SUBSEQUENT tokens, so the
+  dose rides the eroding side; 12 seeded variants per dose.
+  TRACE per probe: binding read at target-sentence end (T0),
+  after each subsequent sentence, and at full text; SUB-ANATOMY
+  CLASSIFICATION per the spectrum amendment: HOLD (right at T0,
+  right at end) / SLIP (right at T0, wrong at end) / WANDER
+  (wrong at T0, wrong at end) / LATE-LOCK (wrong at T0, right
+  at end). BARS: (i) DOSE-RESPONSE PRESENT = slip-fraction
+  among-engaged rises monotonically with dose AND slip@D3 −
+  slip@D0 ≥ 0.25 → the eroder is confirmed as distractor load
+  and the mechanism is WATCHED WORKING (specimens moving along
+  the spectrum); (ii) FLAT = |slip@D3 − slip@D0| < 0.10 →
+  post-target load is NOT the eroder, species re-diagnosis
+  owed; (iii) non-monotone/intermediate = texture, mechanism
+  probe, NO reinterpretation. The full four-class distribution
+  reports per dose regardless (the spectrum claim is about the
+  distribution, not the pass rate).
