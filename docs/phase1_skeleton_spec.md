@@ -15616,3 +15616,39 @@ token-position × waist-dim, the moment the skeleton trains.
   true domain (full-depth reference cloud, per-layer bands),
   never patched at its edge. GUT #96 (CHAOS) registered as
   seed, interps awaited. The read runs.
+
+- **THE DEEPER READ PRINTS THE NULL: PEAK AT L3 EVERY ROUND —
+  THE CLASS IS REFUTED AT INIT (2026-07-29):** [3,3,3,3]; no
+  diagonal, no continuation, not even partial ordering. The
+  depth-overshoot hypothesis is REFUTED TOTALLY — proposed by
+  this meter, eaten by this meter, per the bar it wrote. THE
+  FULL MATRIX TEACHES TWO THINGS THE 4-LAYER READ COULDN'T:
+  (1) the monotone rise was a PEAK-EDGE ARTIFACT — the 4-layer
+  ruler's edge sat exactly at the peak (L3), making the left
+  half of a peak look like a rise toward depth; the texture is
+  fully explained and the regime-bound ruling VINDICATED in the
+  same print that refutes the hypothesis it carried (the ruler
+  WAS too short; the longer ruler just doesn't say what the
+  hypothesis hoped). (2) EVERY column decays round-over-round
+  at similar rates (L3: 0.797→0.671→0.557→0.468) — the
+  recirculating state is not traveling along the trajectory OR
+  sideways to somewhere; it is leaving the ENTIRE reference
+  cloud isotropically while remaining nearest its last-applied
+  layer. Recirculation through frozen pretrained layers
+  DIFFUSES. **CONSEQUENCE FOR THE SPEC:** §2's init premise
+  keeps differentiation-inheritance (phase A stands) but LOSES
+  recirculation-lawfulness at init — a fire on frozen-layer
+  recirculation would begin off-manifold by round 1 and the
+  bet's own erosion constraint predicts what follows. The
+  lawful paths forward, for the bench: (a) stations that TRAIN
+  from their pretrained init (the fire creates its own
+  recirculation manifold — the init manifold gate dies for this
+  criterion, other bars stand; the honest cost: this was v200's
+  own shape and three poles live there); (b) a different trunk
+  relationship (adapters/projection between rounds — surgery
+  the #70-dated fence governs); (c) the class abandoned and the
+  spec's §2 redesigned. THE CRITERION REBUILD stands owed
+  (full-depth cloud, per-layer bands) and tonight's 8-layer
+  matrix is its first data. The engine stays cold; four
+  deferrals and one refuted class, all bought before any fire
+  burned a step.
