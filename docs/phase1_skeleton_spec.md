@@ -15264,3 +15264,33 @@ token-position × waist-dim, the moment the skeleton trains.
   plausible render MID-DRAFT, before the solver saw it — bench
   law → pen practice → caught upstream of preverification; THE
   ESCALATOR RUNNING EXACTLY ONE STATION FURTHER THAN LAST WEEK.
+
+- **GUT #94 (RATCHET) REGISTERED — THE COMMITMENT FRAME GAINS
+  ITS MECHANISM (2026-07-29):** commitment made physical: a pawl
+  that permits advance and forbids return. THE MAP WALKED BOTH
+  DIRECTIONS: every measured failure is a ratchet placed wrong
+  (the parser's pawl that won't release = 0.011; premature
+  lowering = the device at altitude; the routing freeze = a
+  ratchet NOBODY DESIGNED, engaged silently at breath 5; pole
+  three = a ratchet working perfectly toward the wrong stop) —
+  and every constitutional discipline is a ratchet placed right
+  (pre-registered bars, the conviction index, append-only
+  provenance, the skip registry, never-de-certify, three-strikes
+  counting up: pawls the campaign installed ON ITSELF, the
+  reason the record carries a stranger). **THE DESIGN LAW:
+  ratchets are lawful when their engagement is MEASURED,
+  pathological when it is EMERGENT** — every constitutional
+  ratchet has an explicit engagement point; every failure
+  ratchet engaged silently. **THE RENT: ENGAGEMENT DETECTION**
+  enters ENGINE2_SPEC beside the revisability meter (HOW MUCH vs
+  WHEN — and whether the moment was designed or discovered),
+  imposing a design requirement on §2: every station carries a
+  STATED engagement point, and the meter must find engagement
+  where the design put it; engagement-earlier-than-designed
+  caught LIVE. Honest limit banked: same partial coverage as
+  its family — a frame that stays in its lane earns more than
+  one that annexes. The commitment family now holds: the frame
+  (#93's counter-frame), the mechanism (#94), two instruments
+  (revisability + engagement), one design law, and one
+  differential test against its sibling frame — the most
+  complete theoretical object the registry has produced.
