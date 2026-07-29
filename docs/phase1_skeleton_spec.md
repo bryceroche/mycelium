@@ -15000,3 +15000,17 @@ token-position × waist-dim, the moment the skeleton trains.
   surface for throughput, and the trade must be metered at both
   ends.* Interps owed on three; a five-row joint conversion
   would be the registry's first.
+
+- **THE THERMAL METER SPLITS ITS LINES (2026-07-28, bench
+  refinement):** honest cost (skip floor — a POOL property, lever
+  = the primitive ladder, each admitted rung lowers it
+  permanently) and deferred cost (accommodation + MEDIUM — a
+  PIPELINE debt, lever = the mint diet) now report separately;
+  the blended figure would eventually have hidden exactly the
+  signal the meter exists to catch (floor dropping under admitted
+  primitives while accommodations rise = flat total masking a
+  deferred-work purchase). Split reading t1-t6: HONEST
+  11/8/9/7/9/8 (steady — the harvest's rate), DEFERRED
+  0/0/1/2/3/2 (reads from t4 per the onset caveat). Both trends
+  legible; the ruler-relative law in bookkeeping clothes, as
+  countersigned.

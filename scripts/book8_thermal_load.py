@@ -35,9 +35,19 @@ CERT_FILES = {
     7: ".cache/book8_t7_certification.json",
 }
 
+# TWO LINES, NOT ONE (bench refinement 2026-07-28): the skip floor is
+# HONEST COST — work the dialect genuinely cannot hold, paid openly;
+# its only lever is the primitive ladder (each admitted rung lowers it
+# permanently). Accommodation + MEDIUM are DEFERRED COST — work the
+# dialect CAN hold but this row routed around or entered with a
+# demerit; the lever is the mint diet. One blended number would
+# eventually hide the exact signal the meter was built to catch: skip
+# floor dropping as primitives admit while accommodations rise keeps
+# the total flat while the pipeline quietly buys certification with
+# deferred work. Split, both trends stay legible.
 out = {}
-print(f"{'tranche':>7} {'drafted':>7} {'accomm':>6} {'MEDIUM':>6} {'skips':>5} "
-      f"{'LOAD':>5}  {'cert':>4} {'abst':>4} {'wrong':>5}")
+print(f"{'tranche':>7} {'drafted':>7} {'HONEST(skips)':>13} "
+      f"{'DEFERRED(acc+MED)':>17}  {'cert':>4} {'abst':>4} {'wrong':>5}")
 for t, path in sorted(TRANCHE_FILES.items()):
     if not os.path.exists(path):
         continue
@@ -46,7 +56,7 @@ for t, path in sorted(TRANCHE_FILES.items()):
     med = sum(1 for r in rows
               if "MEDIUM" in str(r.get("gen", {}).get("provenance", "")))
     skp = SKIPS.get(t, 0)
-    load = acc + med + skp
+    deferred = acc + med
     cert = abst = wrong = "-"
     cf = CERT_FILES.get(t)
     if cf and os.path.exists(cf):
@@ -54,12 +64,16 @@ for t, path in sorted(TRANCHE_FILES.items()):
         cert, abst, wrong = (len(c.get("certified", [])),
                              len(c.get("abstain", [])),
                              len(c.get("wrong", [])))
-    out[t] = {"drafted": len(rows), "accommodation": acc, "medium": med,
-              "skips": skp, "load": load,
+    out[t] = {"drafted": len(rows),
+              "honest_cost_skips": skp,
+              "deferred_cost": deferred,
+              "deferred_detail": {"accommodation": acc, "medium": med},
               "certified": cert, "abstain": abst, "wrong": wrong}
-    print(f"{t:>7} {len(rows):>7} {acc:>6} {med:>6} {skp:>5} {load:>5}  "
+    print(f"{t:>7} {len(rows):>7} {skp:>13} {deferred:>17}  "
           f"{cert:>4} {abst:>4} {wrong:>5}")
 
 json.dump(out, open(".cache/book8_thermal_load.json", "w"), indent=1)
 print("\n[thermal] wrote .cache/book8_thermal_load.json")
-print("[thermal] reading discipline: load UP + cert clean = deferred-work purchase")
+print("[thermal] HONEST lever = primitive ladder; DEFERRED lever = mint diet.")
+print("[thermal] deferred-marks note: acc/MEDIUM marks exist only from the t4 "
+      "sitting — deferred trend reads honestly from t4 (regime-tag law).")
