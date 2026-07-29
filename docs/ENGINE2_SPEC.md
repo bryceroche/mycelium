@@ -224,8 +224,27 @@ This document assembles numbers from at least five eras (2.28σ, 0.011,
 **Before fire-registration, every number in this spec walks the
 conviction index and gains its commit citation inline.** The document
 that justifies spending a fire must be the most heavily cited artifact
-in the repository. Until that pass runs, every number here carries an
-implicit [UNCITED — verify against ledger before load-bearing use].
+in the repository.
+
+**FIRST CITATION PASS (deep clean, 2026-07-28):**
+| Number | Claim | Citation | Status |
+|---|---|---|---|
+| 0.011 | round-trip recovery floor (quorum grain, 3/272 vs 0.688 blind ceiling) | commit 0a8b447; scope-rivet 7f240b3 | CITED |
+| 2/7/11 | certified probe-clock depth ladder (t95, MLP fixtures 3/3) | commit 1e46993 (d3 seal), 623c101 (d1/d2) | CITED |
+| ~3.5 breaths/layer | ENGINE-clock conjecture (engine t95s 1/3/8 lag probe 2/7/11) | ledger ~L12015/L12117 — CONJECTURE grade, never certified | CITED AS CONJECTURE (this is why §2 is conditional) |
+| 2.28σ | init polarization ramp (L0→L3 entropy separation, untrained) | ledger ~L13371; collapse-to-0.78σ at commit a72f098 | CITED |
+| 0.42→0.02 | thermometer cooling under re-light (contraction confirmed) | re-light verdict, commit 94454d6 | CITED |
+| 0.506→0.922 | pre-breath rivet (map computed in one pass) | probe-campaign ledger region | UNCITED — pin exact commit before fire-registration |
+| 0.89/0.80 | determination humble polarity (never-forced > forced) | determination-probe ledger region | UNCITED — pin exact commit |
+| masked-mass 0.0000 | #76 topology mask mechanically perfect | re-light SIG line + ledger three-signature entry ~L13290 | PARTIAL — pin the capture commit |
+| 2.5%/breath | v200 latent off-manifold drift (too-dead pole) | Fire-1 diagnostics region | UNCITED — pin exact commit |
+| 543/550 | book solution-field hazard census | commit 0f965ee | CITED |
+
+Three numbers remain UNCITED and one PARTIAL: the fire-registration
+gate includes completing this table. The most consequential upgrade
+from this pass: **~3.5 is not merely carry-forward, it is
+CONJECTURE-grade in its own ledger entry** — §2's conditionality is
+not caution, it is the number's actual epistemic status.
 
 ## 10. Entry conditions (the #72 procedure, verbatim discipline)
 

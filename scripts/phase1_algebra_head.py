@@ -308,6 +308,28 @@ def load_alg(split):
     split = TRAIN_NAME if is_train else (TEST_NAME if split == "test" else split)
     z = np.load(STATES_NPZ.format(split=split))
     samples = [json.loads(l) for l in open(ALG_TRAIN if is_train else ALG_TEST)]
+    # CUSTODY-GOLD GUARD (deep clean 2026-07-28): load_alg is the single door
+    # every battery consumer's gold flows through, and ALG_TRAIN/ALG_TEST env
+    # is the only redirection mechanism. Pen rows (delegated book annotations,
+    # gen.src_idx present) carry solution vectors that are pen-side scratch —
+    # NEVER custody-side gold (543/550 banked book rows hold all-zero vectors
+    # that disagree with harvest gold). Downstream code reads
+    # sample["solution"][query_var] as gold in ~60 places; rather than patch
+    # sixty readers, refuse the poison at the door.
+    # Train side: pen rows are LAWFUL diet members (prose dose; supervision
+    # comes from the states-file gold arrays, not the solution field) — warn
+    # loudly so the count is visible. Test side: solution-as-gold judges
+    # verdicts downstream, so pen rows REFUSE at the door.
+    n_pen = sum(1 for s in samples if "src_idx" in s.get("gen", {}))
+    if n_pen and is_train:
+        print(f"[load_alg] WARNING: {n_pen} pen rows in ALG_TRAIN — lawful as "
+              f"diet, but their solution fields are NOT gold (custody-gold law)")
+    elif n_pen:
+        raise RuntimeError(
+            f"load_alg: {n_pen} PEN rows (gen.src_idx present) in ALG_TEST — "
+            f"pen solution fields are not gold; route through "
+            f"mycelium.custody_gold.row_gold or use a mint fixture "
+            f"(docs/ARITH3_DIALECT.md, custody-gold law)")
     gold = {k[2:]: z[k] for k in z.files if k.startswith("g_")}
     if os.path.exists(STATES_NPY.format(split=split)):
         states = np.load(STATES_NPY.format(split=split), mmap_mode="r")

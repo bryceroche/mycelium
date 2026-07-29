@@ -14894,3 +14894,30 @@ token-position × waist-dim, the moment the skeleton trains.
   the aggressive cap-avoidance), [867] (piecewise routing_fact
   under the new law's scrutiny), [856], [776]. Awaiting the
   bench.
+
+- **THE DEEP CLEAN RUNS (2026-07-28, word given — solution-field
+  audit first):** report banked (.cache/deep_clean_report.md).
+  (1) SOLUTION-FIELD, LED: status correction — the urgent flag WAS
+  executed at 0f965ee (custody_gold + five scripts, verified four
+  ways); tonight's deeper pass found the TRUE SCALE: **63 readers
+  repo-wide**, classified (frozen-era verdicts stay as records;
+  generators are lawful writers) — and the ONE REAL DOOR:
+  `load_alg`, the single loader every battery consumer's gold
+  flows through, ALG_TEST env its only redirection. ROOT-CAUSE
+  FIX: custody-gold guard IN load_alg — test side REFUSES pen
+  rows at the door; train side warns (pen rows are lawful diet;
+  supervision flows from states-file arrays). Verified both
+  directions (0/1500 mint flagged; 29/29 pen detected). One
+  choke point instead of sixty patches. (2) CITATION PASS on
+  ENGINE2_SPEC: 6 CITED / 3 UNCITED / 1 PARTIAL, table in §9;
+  MATERIAL FINDING: **~3.5 breaths/layer is CONJECTURE-grade in
+  its own ledger entry (L12015)** — §2's conditionality is the
+  number's epistemic status, not caution. Completing the table
+  joins the fire-registration gate. (3) KEY HYGIENE: t1 record
+  intact; t2-t6 own files own keys; zero pairwise overlap across
+  240 candidates; the two restoration events left no residue.
+  (4) HONESTLY REMAINING: full archive-audit pass (spec pass was
+  its first tranche), three UNCITED numbers, MEMORY.md over
+  budget. GUTS #88 (held as seeded) and STRIKE-WHILE-HOT (ruled:
+  heat into prerequisites, not fire — the three init-grade reads
+  are the #72 procedure's own step (a)) banked as ruled.
