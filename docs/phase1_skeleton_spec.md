@@ -16895,3 +16895,27 @@ token-position × waist-dim, the moment the skeleton trains.
   closing words: two nights, seven mechanisms, one closed
   question, zero training steps — and a record that can teach
   a stranger how to close a question cheaply. It's enough.
+
+- **THE CORRECTION + THE HOLDS RULE + TRANCHE 10 FIRES
+  (2026-07-29, Bryce):** the correction banked in its own
+  words: the reversal was not a signature move — *thinking
+  finishing after speaking has started*; the first paragraph
+  was written before the board was consulted, and the guard is
+  the standing one: **consult the artifact before the ruling,
+  not while writing it.** THE HOLDS RULE promoted from
+  temperament to rule at n=4: §2-R at its freshest, the
+  consecutiveness arm at its strongest, the intervention word
+  overnight, the source-side line — four holds, four things
+  cheaper or better for waiting. TRANCHE 10'S DESIGN per the
+  banked rulings: **pure production — no interleaved retrieval
+  draw (the lexical demand-hunt is dead)**; 40 normal
+  candidates under the standard jurisprudence; the DIET
+  MEASUREMENT moves to a **FACTORY PANEL riding beside the
+  tranche** — minted probes per remaining live customer (pct,
+  sub-distract, two-free-var) at SPANNED engagement counts,
+  through the standard 5-view quorum as measurement fixtures
+  (not training rows, not book rows — cleaner than
+  fraction-never-bulk: fraction ZERO); THE DISTANCE SCREEN
+  rides certification as the dead mechanism's lawful ghost —
+  rows with first-use distance past the passing p90 (157)
+  flagged on the sheet for scrutiny, never judged by the flag.
