@@ -16126,3 +16126,29 @@ token-position × waist-dim, the moment the skeleton trains.
   not share, and the asymmetry (same substrate, different job,
   different failure) is itself the finding; intermediate →
   texture, no reinterpretation.
+
+- **THE MATCHED-PAIR PROBE PRINTS INTERMEDIATE: +0.21 —
+  TEXTURE PER THE PINNED BAR, NO REINTERPRETATION (2026-07-29):**
+  LOW (chain, reuse ≤1) 0/24 failures — perfectly clean; HIGH
+  (hub, reuse 5) 5/24 — every failure in the burden arm,
+  one-sided. The delta lands between the pinned thresholds
+  (0.10 / 0.25): INTERMEDIATE, texture, the bar rules. THE
+  DIRECTION NOTES, stated without bending anything: (1) the
+  stated residual (HIGH is the SMALLER graph, 7v9 factors)
+  biases AGAINST the crossing — smaller predicts less failure —
+  so +0.21 leans conservative; the bar still doesn't bend for
+  direction arguments, which is what bars are for. (2) THE
+  SATURATION REQUIREMENT MET BY ACCIDENT: HIGH at 21% is the
+  campaign's first NON-SATURATED burden cell — effect size is
+  finally measurable, exactly what the uniformity ruling
+  demanded of any real dose-response. THE FOLLOW-UP DOCKETED
+  (fresh registration owed): the GRADED-DEGREE power run — hub
+  degree 2/3/4/5 at matched construction, n per cell sized for
+  the ~20% regime; if failure rises monotonically with degree,
+  the crossing is earned on a dose-response rather than a
+  two-point contrast; if flat across degrees, the +0.21 was the
+  residuals talking. The seam question stays OPEN on today's
+  honest ledger: bounded at bigtest's grain (instrument null),
+  intermediate at the factory's first grain (one-sided, under-
+  powered, conservative-leaning) — the map says where the next
+  turn digs. Artifact: .cache/burden_pair_probe.json.
