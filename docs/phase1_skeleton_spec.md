@@ -15794,3 +15794,17 @@ token-position × waist-dim, the moment the skeleton trains.
   retrieval-null's cure, delivered before t9 draws. Remaining
   queue per #97: interps (Bryce's), MEMORY.md compression,
   criterion rebuild, dose-response.
+
+- **RETRIEVAL CRAFT + THE T9 THIN-EXEMPLAR PINS (2026-07-29,
+  Bryce):** the general note carved: *when the classes differ in
+  internal spread, a centroid measures the spread, not the
+  class* (the panel's stale-incumbents lesson, mirror-imaged
+  into retrieval). THE SELECTION EFFECT NAMED before t9 draws:
+  dup-add/pct signatures are fitted on the four rows the pen
+  found RENDERABLE — they may encode "easy to draft," not the
+  construction; a bias the retrieval cannot see from inside.
+  PINNED FOR T9: thin customers draw at t8's fraction, report
+  as a SEPARATE line, and their signal is DIRECTIONAL until the
+  exemplar count doubles. MEMORY.md framing ruled: the target
+  is *what a stranger must know to avoid doing harm* — the
+  pawls, not the history.
