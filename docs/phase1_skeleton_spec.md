@@ -15518,3 +15518,22 @@ token-position × waist-dim, the moment the skeleton trains.
   grain), and eager-math-first (frames name mechanisms, they
   don't install them). Exchange family at SIX seeds, interps
   owed; one member now holds a proposal, not a metaphor.
+
+- **THE EXAM AUTHORIZED + THREE RULINGS (2026-07-29, Bryce):**
+  one exam, three arms, manifold criterion, MEASUREMENT NOT
+  FIRE; if an arm lands in band the fire-word follows on that
+  arm's evidence. RULINGS: (1) BINARY-PAWL COUNTERSIGNED and the
+  convexity finding enters THE PORTABLE PRINCIPLES: *the
+  pretrained manifold is a trajectory, not a ball — blending
+  toward a point on a curved path lands off the path* — a
+  general fact about recirculating through pretrained stacks;
+  RETROACTIVE READING BANKED: Fire 2's delta-gate blend was
+  doing exactly this every breath — its manifold decay was this
+  physics, filed at the time as merely violent. (2) THE
+  ZERO-PAWLS PRINT is the erosion constraint's
+  confirmation-before-fact (road finding and cold engine
+  agreeing from opposite directions on the same missing organ);
+  759/759 is the exam's BASELINE, read PER-STATION — pawls
+  appearing where the design says is engagement detection's
+  first real test. (3) the clock's two-form split stands;
+  §2 conditional; no station budget hardens before first smoke.
