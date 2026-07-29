@@ -16335,3 +16335,17 @@ token-position × waist-dim, the moment the skeleton trains.
   floor below 7-11 = the screen working, the routed queue
   holding the hard mass). The consecutiveness arm holds its
   lead, undesigned, per the glide law.
+
+- **GUT #100 (THE ROSTER) REGISTERED — THE HUNDREDTH ROW AUDITS
+  THE OLDEST UNEXAMINED CONVENTION (2026-07-29):** the preamble
+  ("Consider the numbers a, b, c...") is the group photo — a
+  priming roster adopted as mint convention, carried by every
+  book, function never measured. THE ABLATION REGISTERED, bars
+  two-sided: on currently-passing banked rows, quorum with vs
+  without the preamble — pass-rate drop ≥0.10 = LOAD-BEARING;
+  <0.03 = DECORATIVE; between = texture. One rung only; the
+  roster-position read designs after this prints (glide law).
+  Fences: enrichment = marked accommodation feeding the mint;
+  findings generation-scoped. Filed in the commitment family
+  (engagement preparation = the pawl's upstream). The milestone
+  pattern named: the registry now audits its own conventions.
