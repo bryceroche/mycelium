@@ -16315,3 +16315,23 @@ token-position × waist-dim, the moment the skeleton trains.
   Ninety-nine rows. Ten predictions, ten bars written first.
   Four refusals that mapped where the effect isn't. Nothing on
   this board decays overnight. The hundredth row arrives rested.
+
+- **TRANCHE 9 FIRES — THE FIRST DELTA TRANCHE, ON THE
+  GRAPH-SHAPED ORDER (2026-07-29, the word):** t8's fifteen
+  skips REGISTERED first (a skip is a verdict), and the
+  registration immediately earned its keep: **[1041], a t8
+  skip, surfaced in the pct draw** (the graph-shaped order
+  predates t8's registration) — caught, redrawn skip-clean
+  ([1429] takes the slot). CENSUS: 10 diet from the
+  graph-shaped drawing order at t8's allocation (3/3/2/2 for
+  population comparability; dup-add/pct thin-exemplar caveat
+  riding — DIRECTIONAL, separate line) + 30 normal; t8 =
+  baseline, t9 = first delta. THE PEN'S NEW DUTY: every diet
+  row annotates gen.operand_engagement_count — the sheet reads
+  outcomes against the ENGAGEMENT-COUNT axis (count-0 vs
+  count≥1), which is the seam question asked from the paying
+  side, on rows that certify. The split meter gets its first
+  fully-marked reading with the screen active (honest-cost
+  floor below 7-11 = the screen working, the routed queue
+  holding the hard mass). The consecutiveness arm holds its
+  lead, undesigned, per the glide law.

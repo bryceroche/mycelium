@@ -95,6 +95,11 @@ TRANCHE6_SKIPS = {779, 782, 788, 802, 807, 814, 818, 838}
 # IN the file as substituted/cancellation-practice (cap-barred retry),
 # not a skip.
 TRANCHE6_SKIPS |= {867}
+# Tranche 8 skips (2026-07-29, book8_t8_draft_report.md): GCD/factorization
+# cluster, argmax/inequality-count family, diet mismatches ([1286] theorem-
+# constant pseudo-freedom; [958]/[1085] keyword-without-demand).
+TRANCHE8_SKIPS = {1058, 1286, 1103, 1009, 1041, 1011, 958, 1045, 1073, 1106, 1086, 1114, 988, 1085, 990}
+TRANCHE6_SKIPS |= TRANCHE8_SKIPS
 TRANCHE5_SKIPS |= TRANCHE6_SKIPS
 TRANCHE1_SKIPS |= TRANCHE2_SKIPS | TRANCHE3_SKIPS | TRANCHE4_SKIPS | TRANCHE5_SKIPS
 
