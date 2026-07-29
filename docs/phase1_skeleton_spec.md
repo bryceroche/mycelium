@@ -15765,3 +15765,15 @@ token-position × waist-dim, the moment the skeleton trains.
   gate, and the refuted-cell map carry forward — the estate
   composing into its successor within one day of the class's
   death.
+
+- **GUT #97 (POSITION OVER THE WIN) REGISTERED — §2-R SITS; THE
+  POSITION QUEUE HAS THE WORD (2026-07-29):** the positional
+  read banked (ahead on every axis that matters; the engine
+  treadmill named as attention-cost, not GPU-cost); the
+  position-improving moves ordered: t9 retrieval cure → owed
+  interps → MEMORY.md compression → criterion rebuild →
+  dose-response. The raw-text fence flagged as the spec's
+  strongest and most erodible clause, correctly placed in the
+  document. Numbering corrected at filing (#97; the
+  countersign's #96 was held). THE FIRST MOVE EXECUTES: the
+  graph-shaped drawing order (t9's gate).
