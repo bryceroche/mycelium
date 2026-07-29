@@ -16780,3 +16780,29 @@ token-position × waist-dim, the moment the skeleton trains.
   again; both high = two mechanisms; both low or collinear =
   eliminated or powerless, printed as such. Chassis built for
   winners only.
+
+- **THE CYCLE PRINTS: ALL THREE ELIMINATED — DISTANCE SURVIVES
+  ITS FIFTH CONTROL, AND THE QUARTILES NAME THE LAST HYPOTHESIS
+  (2026-07-29):** letter-density 0.451, degree 0.458,
+  query-criticality 0.470 conditional (all ~chance); distance
+  0.718/0.673/0.674 conditioned on each; no collinearity
+  (|corr| 0.4-0.6 — full power throughout). **FIVE carriers now
+  eliminated in two nights** (count, entanglement, letter-
+  density, degree, query-criticality) — every one by a CPU pass,
+  zero chassis built for losers. THE SYNTHESIS THE ELIMINATIONS
+  FORCE, read off the banked histogram: the discriminating mass
+  sits ABOVE 157 chars (failing p75=173/p90=274 vs passing
+  p75=123/p90=157) — and NO chassis has ever reached it (80,
+  153). **THE CLIFF HYPOTHESIS: distance is causal with a
+  THRESHOLD near ~160-180 chars — a step, not a slope.** It
+  reconciles everything at once: 0/36 below the cliff, robust
+  correlation driven by the above-cliff tail, five clean
+  eliminations because the carriers were never carrying. THE
+  LAST STANDING INTERVENTION: the longer-range chassis —
+  BUILT-THEN-MEASURED past 200 chars per the corollary — with
+  the step-vs-slope form as its natural bar (failure appearing
+  only above the threshold = the cliff; graded from low
+  distances = the original slope reading; flat everywhere =
+  distance is a shadow of something outside the factor graph
+  entirely). HELD FOR THE WORD — a new registration, and the
+  glide law owns the night.
