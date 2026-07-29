@@ -15327,3 +15327,31 @@ token-position × waist-dim, the moment the skeleton trains.
   / 1 new mark / 1 contrast pair / 1 diet argument reranked /
   0 substitutions — **the first sitting with none: the
   jurisprudence reaching the pen before the bench has to.**
+
+- **THE PARSE-SIDE ENGAGEMENT READ REGISTERED — PREDICTION
+  PINNED BLIND BEFORE THE FIXTURE OPENS (2026-07-29):** the
+  ratchet frame's first payment, ordered before it may
+  accumulate a fifth instrument (the frame-tenant caution: two
+  frames retired for growing faster than their measurements).
+  DESIGN: prefix-parse the five species specimens (the v1
+  dialects of [655]/[1382]/[875] = failing; [1173]/[1271] =
+  certifying) at increasing token prefixes; for the target
+  construction's factor slot, read the arg-pointer argmax per
+  prefix; ENGAGEMENT POINT = the last prefix index at which the
+  argmax changes (the pawl's click). THE PREDICTION, PINNED:
+  in failing specimens the pointer ENGAGES EARLY — argmax
+  settles on the distractor var BEFORE the intended operand's
+  token is revealed and never updates when it arrives; in
+  certifying specimens it settles AT OR AFTER the operand's
+  token. If it prints: the commitment frame owns a measured
+  mechanism on the ROAD side (where the failure mass lives) and
+  distractor-load converts from autopsy category to live
+  pre-certification signal. If it doesn't: the frame's rent
+  stays unpaid and its growth freezes at four instruments.
+  NULL/AMBIGUOUS pre-declared: settle indices indistinguishable
+  between classes, or prefix parses too degenerate to read =
+  the instrument doesn't resolve at this grain; no
+  reinterpretation. The asymmetry sentence banked as the week's
+  line: *every pawl the campaign installed on itself announces
+  its engagement point; the failures never announced theirs* —
+  why the record audits rather than archives.
