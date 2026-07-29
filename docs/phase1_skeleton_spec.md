@@ -16489,3 +16489,31 @@ token-position × waist-dim, the moment the skeleton trains.
   failed row carries a computable roster-to-first-use
   distance) — a bench-grade read waiting on its own
   registration.
+
+- **THE RETROACTIVE DISTANCE ANNOTATION REGISTERED (2026-07-29,
+  the word — three specifications, bars pinned):** POPULATION:
+  every book-8 drafted row t1-t9 with its certification outcome
+  (certified = the control arm; the largest single-mechanism
+  population the campaign has sorted). STRATA DISCIPLINE IN
+  FORCE from the start (distance ~ roster length ~ size — the
+  0.656 lesson applies at full force on the most-cited
+  population). BARS: pooled within-strata AUC(distance→fail) ≥
+  0.60 = the crossing GENERALIZES from bigtest to the book;
+  <0.55 = bigtest-specific. HEAD-TO-HEAD: engagement count's
+  CONDITIONAL AUC within distance-tertiles — ≥0.60 = two
+  independent mechanisms (diet addresses both); ≤0.55 =
+  DISTANCE SUBSUMES COUNT and the seam investigation resolves
+  honestly (probe law stands where measured; the road's failure
+  mass belongs to distance). THIRD SPECIES SEPARATE COLUMN:
+  wrong rows whose plurality answer is consistent with a
+  digit-permutation/substitution of a given (mechanically
+  checkable) counted apart and EXCLUDED from the
+  distance/count analysis — numeral-internal failures pollute
+  both axes. TWO FORWARD NOTES BANKED: (1) the retrieval
+  conclusion in plain words — construction demand is not a
+  surface property; no third similarity design; **the diet
+  experiment's delta measurement moves to FACTORY-MINTED rows
+  with harvest rows as control**; (2) the pen tracing its own
+  checker's faults before blaming the harvest = gold skepticism
+  propagating one level deeper than written — a delegation that
+  audits its own instruments is a different kind of asset.
