@@ -15182,3 +15182,40 @@ token-position × waist-dim, the moment the skeleton trains.
   exchange family didn't generate; prints-nothing → the frame
   shrinks honestly. BOTH FRAMES now stand before the five-seed
   unification — interps decide, measurement rules.
+
+- **THE BASELINE TRANCHE CERTIFIES — THE SPLIT SHEET PRINTS THE
+  FIRST PER-CUSTOMER BASELINES (2026-07-28):** t8: 25 drafted
+  (18 normal + 7 diet) / 15 skips / 0 wrong; gold clean 40/40
+  (hand-verified outside the CSP — the gauge holds).
+  **NORMAL: 14/18 certified. DIET (the baselines t9+ measures
+  against): add-dup 2/3, pct 1/3, two-free-var 1/1.** THE
+  READINGS, held to the baseline framing (first measurements,
+  not verdicts): (a) add-dup's 2/3 is the SURPRISE — [1173] and
+  [1271] certified natively-written "X plus X" where [655]
+  misbound 5/5; the register is not uniformly starved —
+  context-dependence or variance, bench eyes on [1173];
+  [1382]'s abstain shows wrong-VALUE votes (150 vs gold 50, a
+  factor-3 slip) — different anatomy than [655]'s frame
+  substitution. (b) pct's 1/3 with [1212] ALL-FIVE-NONE
+  replicates [411]'s signature exactly at second exposure — the
+  pointer baseline CONFIRMED. (c) two-free-var 1/1 (single
+  instance; no claim). (d) subtrahend: NO DATA — the retrieval
+  null banked as a RETRIEVAL-QUALITY finding: the marinara's
+  keyword regexes retrieve MENTIONS, not construction demand
+  ([958]/[1085] had exceeds-language but no numeric-subtraction
+  content; [1286]'s 'second free variable' was a theorem
+  constant) — the drawing order needs structural features, not
+  keywords, before t9 draws. PEN FINDS: [1058]'s counterfactual
+  test caught a false render MID-DRAFT (a median computation
+  secretly using only the COUNT of exclusions — rejected before
+  the solver saw it); two cap-catches; first mixed-sign Vieta
+  ([972]); and a NEW accommodation-origin distinction flagged
+  for the bench ([1013]: seven-fold constant reuse that is
+  CAP-AVOIDANCE-FORCED, not convenience — does forced origin
+  deserve a different mark?). Normal-population skips ran
+  discrete-math-heavy (GCD/factorization cluster ×4) — the
+  screen's primality flag predicted this region. **BOOK 8: 220
+  CERTIFIED across eight tranches / 26 repair bench.** T8
+  sample: [1173] (the surprise), [1382] (the new slip anatomy),
+  [1212] (the confirmation), [1013] (the origin question),
+  [972]. Awaiting the bench.
