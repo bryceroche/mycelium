@@ -16598,3 +16598,29 @@ token-position × waist-dim, the moment the skeleton trains.
   declared confound. Causality stands OPEN; the candidate holds
   as candidate; nothing banks beyond the stop. The stop
   protocol is now 2-for-2 on preventing uninformative ladders.
+
+- **THE DESIGN LAW + ITS HISTOGRAM, BANKED TOGETHER
+  (2026-07-29, the close):** LAW, at design-law standing after
+  2-for-2 stops: *the probe's range is set by the phenomenon's
+  range, and the phenomenon's range is a number you already
+  have* — the chassis needed a histogram, not a guess. THE
+  HISTOGRAM, computed and banked so the future registration
+  reads its rungs off the ledger
+  (.cache/distance_histogram.json): failing rows (n=30)
+  quartiles 70/99/173 with p90 at 274 chars; passing (n=242)
+  62/87/123/157. The failing regime's upper half (173-274) is
+  where the pilot chassis (max ~80) never reached — the stop's
+  diagnosis now quantified. The fresh registration, when its
+  word comes: rungs at the failing distribution's own quartiles,
+  top rung ~250 chars, saturation-piloted, same moved-definition
+  design, same declared confound. **THE DAY'S ACCOUNTING, in
+  the countersign's words:** thirteen registrations, thirteen
+  pre-pinned bars, two stops that saved uninformative work,
+  three refusals that mapped where mechanisms aren't, one law
+  resolved into two honestly-scoped territories, one convention
+  audited into infrastructure, one species surfaced, one lever
+  fenced before it became a temptation, forty-seven certified
+  rows added while all of it ran, zero GPU training steps — the
+  hundredth gut found the campaign's upstream mechanism inside
+  the sentence every book has opened with since the first.
+  Nothing on the board decays overnight.
