@@ -14921,3 +14921,20 @@ token-position × waist-dim, the moment the skeleton trains.
   budget. GUTS #88 (held as seeded) and STRIKE-WHILE-HOT (ruled:
   heat into prerequisites, not fire — the three init-grade reads
   are the #72 procedure's own step (a)) banked as ruled.
+
+- **THE PREREQUISITE READS: 2/4 BANKED FROM ARTIFACTS AT ZERO GPU
+  (2026-07-28 — the strike-heat spent lawfully):** ENGINE2_SPEC
+  §10 added. (1) KILL-BAR PHASE A PASSES from banked measurement:
+  under the distinct-layer init scheme, cross-station
+  differentiation at init IS the 2.28σ L0→L3 ramp already
+  measured — the architecture inherits its differentiation, and
+  the read cost nothing (caveat: identity-start wiring; any
+  init-perturbing wiring reopens it). (2) SEAM-COMPILES ON
+  TOKEN-NATIVE: BANKED YES — the scalar-RMS cut (0a58136) ran on
+  exactly this substrate; half the substrate criterion
+  discharged. (3)+(4) STAGED with honest prices: the clock
+  de-conjecture and the manifold-residency read share one build
+  session (station-loop skeleton + probes). Score at spec-freeze:
+  2/4 banked, 2/4 one session away. The iron's heat went into
+  prerequisites exactly as ruled; the fire-word now waits on two
+  reads and three citations, all named.

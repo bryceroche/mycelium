@@ -246,7 +246,38 @@ from this pass: **~3.5 is not merely carry-forward, it is
 CONJECTURE-grade in its own ledger entry** — §2's conditionality is
 not caution, it is the number's actual epistemic status.
 
-## 10. Entry conditions (the #72 procedure, verbatim discipline)
+## 10. Prerequisite reads — status (the strike-heat's destination, 2026-07-28)
+
+The #72 procedure's step (a): reads banked before plan-freeze. Four
+reads convert this spec's assumptions to measurements; two are
+answerable from banked artifacts tonight, two are staged with prices:
+
+1. **Kill-bar phase A (cross-station ramp exists at init): PASSES FROM
+   BANKED MEASUREMENT.** Under §2's init scheme (stations ← distinct
+   pretrained layers), cross-station differentiation at init IS the
+   measured L0→L3 entropy ramp — 2.28σ, banked (ledger ~L13371, the
+   alternation diagnostic's init read). Caveat stated: valid insofar as
+   station wiring at init preserves per-layer attention behavior
+   (identity start); any wiring that perturbs the layers at init
+   re-opens the read.
+2. **Seam-physiology-compiles on the token-native substrate: BANKED
+   YES.** The scalar-RMS cut (commit 0a58136, quirks entry 3) ran the
+   contraction on exactly this substrate's K-fold-reused chain under
+   TinyJit — four steps finite, zero NaN-skips. Half the substrate
+   criterion is already discharged.
+3. **The clock at init: STAGED.** Requires the station-loop forward
+   pass built (the architecture skeleton + crossover-style probes on
+   arith3). Not minutes — the harness is new code. Price: one build
+   session + one eval-grade read. This is the read that de-conjectures
+   ~3.5.
+4. **Manifold-residency at init (E2 wiring): STAGED.** The Fire-2
+   layer-image instrument ports, but the read is on the NEW wiring —
+   fresh eval-grade run, same session as read 3.
+
+**Score at spec-freeze: 2/4 banked, 2/4 staged with one build session
+between them and the table's completion.**
+
+## 11. Entry conditions (the #72 procedure, verbatim discipline)
 
 Reads banked before plan-freeze; plan with kill-bars pinned cold;
 carry-forward as assumptions-to-test; registration BEFORE measurement;
