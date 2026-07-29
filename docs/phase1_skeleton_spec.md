@@ -14792,3 +14792,38 @@ token-position × waist-dim, the moment the skeleton trains.
   techniques; the gate's SIX named weaknesses for accommodation
   marking (two-free-variable systems newest); skip reasons now
   categorized operation-shaped vs domain-boundary at the pen.
+
+- **GUT #87 REGISTERED + ENGINE 2 SPEC WRITTEN (2026-07-28 — the
+  composite gut converts to the campaign's first FULLY-SPECIFIED
+  UNBUILT BET):** "jet engine inspired... brayton or full flow...
+  all the gut instincts... diffusion compiler whose latents act as
+  a parallel continuous deducer." Countersign executed verbatim
+  into docs/ENGINE2_SPEC.md, #72-gated, no word contained: (1) the
+  CYCLE RULING — full-flow over Brayton by measurement (the
+  deployed parser IS the open cycle, binding 1.000 without
+  deducing; the 0.011 round-trip is why deduction must reach
+  binding while soft; closed cycle is the only such topology;
+  Fire 2's violence acknowledged, Seam-1's confirmed contraction
+  the survival physiology); (2) the DEPTH RESOLUTION — pure jet
+  refuted before built (~3.5 breaths/layer × 4 stations ≈ 1
+  layer vs a census demanding implications) → STATIONS-THAT-ARE-
+  LOOPS (the compressor's own anatomy: untied stations for
+  differentiation-by-construction, station-local loops for depth,
+  shared soft state for recirculation — the three-pole map's
+  complement entered by the front door); (3) the GUT SORT as
+  discipline — structural/instrumental/refused-as-installation,
+  with #76's masks rehabilitated (mechanically perfect;
+  strategically insufficient ONLY inside tied loops) and imposed
+  alternation held to ablation-arm status (three refusals stand);
+  (4) the THESIS — the deducer-transfer question the trichotomy
+  never got answered, with the breath-0 competence map over
+  arith3 as the payoff clause (misbinding flagged before the
+  graph finishes building = the census's failure mass meeting a
+  fence); (5) FIVE KILL-BAR FORMS pinned cold (numerics pin
+  blind at fire-registration; ramp early-kill; differentiation-
+  at-init as a PRE-TRAINING refutation gate; three-strikes
+  written before the first strike); (6) carry-forward as
+  assumptions — the #70 fence's dated re-measurement is THIS
+  BET. The ingredient list absorbs its spec; the fire needs a
+  word this document does not contain; the GPU stays on the
+  pages. Registry row 87.
