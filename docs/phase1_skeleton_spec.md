@@ -16941,3 +16941,31 @@ token-position × waist-dim, the moment the skeleton trains.
   STANDING FIXTURE BASELINES every future mint generation
   measures against (.cache/factory_panel_baseline.json). The
   distance screen and the t10 certification wait on the pen.
+
+- **TRANCHE 10 COMPLETE: 24/4/0 AFTER THE UNANIMOUS-LIE
+  CONVICTION — BOOK 8 AT 291 (2026-07-29):** [1293]'s autopsy
+  delivered three findings in one specimen: (1) **the ancient
+  chained-fdiv docket item found its species** — fdiv on a
+  DERIVED var collapses into the sel-smaller basin ([1193]'s
+  fdiv-on-a-given had parsed perfectly; the derived/given split
+  is the trigger); (2) **the modal attractor's third appearance
+  FIRED its pre-registered trigger** — the diet read is owed,
+  with the trigger condition now measured (fdiv-on-derived);
+  (3) **the certification tier's first measured breach**: a 5/5
+  UNANIMOUS wrong — the vote defends against view-DEPENDENT
+  errors; basin errors are view-INVARIANT (permutation cannot
+  shake an attractor); the KEY caught it, and the wild-register
+  question goes to the bench: do the cross-model panel's
+  landscapes share the basin? (cert-v2's whole premise, now
+  with its first live test case). V2 (worked-example C's cure,
+  mul-inversion, accommodation-marked with the newly-convicted
+  weakness) CERTIFIES UNANIMOUS 2×5 — the same basin parsing
+  its cure perfectly. THE DISTANCE SCREEN'S FIRST RIDE: t10
+  rows past 157 chars flagged on the sheet (screen, never
+  judge). PEN'S FLAGS to the next sitting: [1302] (the
+  sharpest Law-3/Law-5 boundary case yet, degree argument
+  pre-written), the Law-8 exponent family at three attested
+  instances, [1300]'s six-factor record collision (abstained
+  all-None — the sub-type at extreme reuse), sign-cancellation
+  routing-facts as a new Law-13 sub-use. **BOOK 8: 291
+  CERTIFIED across ten tranches.**
