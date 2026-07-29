@@ -15689,3 +15689,29 @@ token-position × waist-dim, the moment the skeleton trains.
   examination complete; one ruler caught, explained, and
   scheduled for rebuild; three portable principles; one organ
   with measured form and fenced driver; zero training steps.
+
+- **THE CLOSING COUNTERSIGN: THE DEEPEST CARVE + THE SURVIVING
+  CELL'S HONEST COST (2026-07-29, Bryce):** the third portable
+  principle carved deepest, with its three specimens named
+  (blend inversion, moment-match crash, isotropic decay —
+  *moment statistics are not the manifold; operations that only
+  fix moments crash what they meant to restore*). THE
+  ONE-SENTENCE DESIGN CONSTRAINT, bought for zero training
+  steps: **the lawful ingredient the June engine had that §2
+  lacked is training the weights that recirculate.** The option
+  space collapses to the single unexplored cell — #86's
+  complement with small, untied, TRAINED stations — and the
+  redesign inherits three assets (the untouched task-level
+  thesis; five porting instruments; a four-dead-configuration
+  exclusion map) plus ONE HONEST COST, stated before enthusiasm
+  reaches it: **small trained-from-scratch stations forfeit the
+  pretrained inheritance entirely — no 2.28σ ramp, no phase-A
+  gift; differentiation must be EARNED, not endowed — and the
+  kill-bars rewrite knowing it.** THE NIGHT'S ARITHMETIC,
+  stated once plainly: three fires and a re-light spent GPU to
+  learn pieces of a map that one cold engine and eight minutes
+  of eager measurement completed. The deferrals bought that.
+  Board at close: estate shelved; §2's redesign the bench's;
+  220 certified; t9 gated on its cure; six interps owed by a
+  family that has watched its sibling pay rent three times.
+  The engine sleeps cold, having taught more than it cost.
