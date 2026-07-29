@@ -16456,3 +16456,36 @@ token-position × waist-dim, the moment the skeleton trains.
   proxy residual structure (chains vs stars at matched factor
   count) — named, not assumed away. Artifacts:
   .cache/dummy_distance_reads.json, roster_ablation.json.
+
+- **TRANCHE 9 CERTIFIES 22/3/1 — THE THIRD SPECIES SURFACES,
+  AND SUB-DISTRACT'S FIRST NATIVE BASELINE PRINTS CLEAN
+  (2026-07-29):** THE [1193] AUTOPSY: every view parsed the
+  STRUCTURE perfectly (given + fdiv k=5, pointers and query
+  correct) and misread the DIGITS of 250 — 520 in three views
+  (position transposition), 220 in two (digit substitution),
+  ZERO of five correct. **DIGIT-POSITION MISBINDING on 3-digit
+  numerals: a third species, distinct from slot pointers — and
+  the oldest sentence holds again (104 = correct division of a
+  misbound numeral; the digits mis-bind to positions inside the
+  MSD-first head).** Old evidence coheres: the band-dose era's
+  mag-3 weakness (0.837 baseline, the stiff band) was this
+  species' first sighting. NO LAWFUL V2 EXISTS: 250 is
+  source-required; the row is faithful and the gate cannot read
+  it — [1193] stands as the species' clean specimen, held from
+  the diet per audit-before-diet; 3-digit numerals join the
+  mint-customer list with the band-era evidence attached. THE
+  SPLIT SHEET: normal 17/19 (1235 abstained on cap-forced
+  reuse, milder [1013] pattern; 1193 the wrong); **diet-native
+  2/3 — [1720] dup-add abstained (the baseline scatter
+  REPRODUCING on the paying side) and BOTH sub-distract natives
+  CERTIFIED ([1698]/[1437] — sub-distract's first baseline
+  data: 2/2 clean, engagement counts 1 and 2)**; diet-mismatch
+  3/4. Deltas vs t8 remain n-starved (dup-add 0/1 vs t8's 2/3;
+  two-free-var no natives drawn) — the retrieval lesson's cost
+  made explicit. THERMAL: t9 honest 14 / deferred in band.
+  BOOK 8: **267 certified across nine tranches.** The
+  distance axis now annotatable retroactively across the whole
+  book (the crossing's first application: every certified and
+  failed row carries a computable roster-to-first-use
+  distance) — a bench-grade read waiting on its own
+  registration.
