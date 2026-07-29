@@ -16762,3 +16762,21 @@ token-position × waist-dim, the moment the skeleton trains.
   operational definition → retroactive head-to-head on the 272
   → chassis only for a winner. HELD FOR THE WORD per glide —
   the suspects rank at the bench, not at midnight.
+
+- **THE THREE-SUSPECT CYCLE REGISTERED AND FIRED (2026-07-29,
+  the word):** all three remaining suspects, definition-first,
+  retroactive on the 272, symmetric conditionals vs distance,
+  one pass. DEFINITIONS: (a) LETTER-DENSITY LD(v*) = distinct
+  letters appearing before v*'s first use (crowding without
+  graph-sharing) — COLLINEARITY WITH DISTANCE PRE-DECLARED
+  LIKELY (more chars ≈ more letters; the check decides its
+  power); (b) DEGREE deg(v*) = factors containing v* (the
+  hub property the chassis's target lacked); (c)
+  QUERY-CRITICALITY QC(v*) = variable-sharing-graph hops from
+  v* to the query var (0 if v* is the query). BARS per suspect,
+  as the pattern's now-standard form: suspect-conditional ≥0.60
+  with distance-conditional ≤0.55 = SUBSUMES (that suspect's
+  chassis becomes worth building); reverse = distance survives
+  again; both high = two mechanisms; both low or collinear =
+  eliminated or powerless, printed as such. Chassis built for
+  winners only.
