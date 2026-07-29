@@ -16666,3 +16666,20 @@ token-position × waist-dim, the moment the skeleton trains.
   most. Board at rest: engine shelved with estate itemized;
   road at 267; six interps with a family that has watched its
   sibling pay four times.
+
+- **THE SCALED INTERVENTION REGISTERED AND FIRED (2026-07-29,
+  the word — Salute):** rungs read off the banked histogram per
+  the design law: target-definition position early/mid/late in
+  a 12-filler chassis, measured distances reported per rung
+  (aimed at ~87 / ~150 / ~250 chars — the passing median
+  through the failing p90). Same multiset, same graph, only the
+  defining sentence moves; confound declared
+  inseparable-by-construction; straight-view outcome; PILOT at
+  the top rung (n=12, proceed iff [0.2, 0.8]); BAR: monotone
+  failure rise across three rungs, total ≥ 0.20 = CAUSAL (the
+  diet recipe writes itself; the lever watch turns acute);
+  |rise| < 0.10 = NOT CAUSAL at this grain (the 0.707 rides
+  residual structure — chains-vs-stars re-registers); else
+  texture. Conditional line pre-stated: if causal, whether
+  consecutiveness is even needed re-reads against distance
+  before its arm designs.
