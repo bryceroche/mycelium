@@ -15898,3 +15898,30 @@ token-position × waist-dim, the moment the skeleton trains.
   matters is the binding field's state when the pawl engages,
   not the load after. Artifact: .cache/dose_response_read.json
   (full traces, both runs' faults documented).
+
+- **THE FACTORY FENCE + THE FOURTH AXIS (2026-07-29, Bryce —
+  both pinned before anything uses them):** (1) THE SPECIMEN
+  FACTORY'S FENCE, stated before the first diet fire: a
+  generatable 48/48 reproduction of one failing configuration
+  is a MONOCULTURE GENERATOR if used as bulk — *factory-minted
+  specimens enter as a FRACTION of a diet tranche, never its
+  bulk, and the configuration axes vary across the fraction* —
+  else the gate learns the probe rather than the construction:
+  a very efficient way to overfit a fix. The diversity budget
+  applies to synthetic reproductions exactly as to panel seats
+  and renderings. (2) THE FOURTH AXIS joins the next
+  experiment's design: beyond operand identity / position /
+  derivedness — **whether the operand was itself the target of
+  a PRIOR binding.** A derived operand is one the pawl already
+  engaged once; if prior engagement destabilizes the second,
+  the mechanism is ENGAGEMENT INTERFERENCE rather than
+  configuration per se — distinguishable by contrasting
+  derived-but-never-bound against derived-and-previously-bound
+  operands, which the three named axes would confound. THE
+  WEEK'S ARITHMETIC banked in the countersign's words: four
+  registered predictions, three refuted, one flat, every one
+  paying more than its confirmation would have — the species
+  entered the week as "add-dup is starved" and leaves it as a
+  configuration-resolved mechanism with a reproduction recipe.
+  The retired hypothesis retired honestly: the crowding-erodes
+  story was wrong in its DIRECTION, and its author said so.
