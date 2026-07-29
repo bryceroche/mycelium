@@ -16835,3 +16835,38 @@ token-position × waist-dim, the moment the skeleton trains.
   cliff stands because everything else fell — elimination
   support, not own-evidence support — which is exactly why the
   chassis tests rather than finds.
+
+- **THE CLIFF CHASSIS PRINTS FLAT — THE SEAM INVESTIGATION
+  CLOSES ON ITS PRE-STATED TERMINAL BRANCH (2026-07-29):**
+  0.00/0.04/0.04/0.04 at measured 92/142/188/263 chars —
+  build-to-measure delivered every rung in-window (the corollary
+  honored structurally), the control rungs printed clean as
+  predicted, and the upper rungs — spanning past the failing
+  p75 and near its p90 — produced nothing. **The cliff is
+  refuted. The slope is refuted. Distance in the DIALECT, moved
+  interventionally, does not cause failure at any range the
+  natural distribution occupies.** PER THE PRE-STATED
+  CONSEQUENCE: the question LEAVES the factor graph — the 0.707
+  co-varies with something in the SOURCE TEXT that synthetic
+  chassis do not reproduce; the seam closes with the
+  deflationary answer; NO fourth chassis. THE INVESTIGATION'S
+  FINAL LEDGER, complete and honest: (1) the binding-competition
+  law — REAL, scoped to the probe register (12/12,
+  fingerposted); (2) the roster — the ADDRESS TABLE (two cuts,
+  the campaign's largest effect); (3) distance — a REAL and
+  ROBUST natural-row MARKER (0.707 pooled, survives five
+  controls) that is NOT a dialect-side cause: it survives as a
+  SCREEN (high-distance rows flagged for scrutiny — a marker
+  needs no causality to screen, per the provenance-screen
+  precedent), never as a lever; (4) THE DIET CANDIDATE
+  (distance spans) IS WITHDRAWN by the same logic that withdrew
+  re-engagement — no diet on a correlate; (5) THE DIALECT LEVER
+  LOSES ITS PREMISE — distance-minimizing drafting would cure
+  nothing, and the fence's watch item evaporates with the
+  temptation; (6) the NEW LINE, held for a word: SOURCE-SIDE
+  FEATURES — what property of the source text co-varies with
+  late-first-use dialect and carries the failure. SIX
+  eliminations, three chassis, three stops, two refutations,
+  one address table, one marker, zero unbent bars — and a
+  question that ends by pointing at the next one. Artifact:
+  .cache/cliff_chassis.json.
