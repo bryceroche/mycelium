@@ -16230,3 +16230,33 @@ token-position × waist-dim, the moment the skeleton trains.
   eight verdicts, none bent; two near-misses caught before
   banking; a stop protocol that fired on first arming. The
   bell siphon waits with the family; the queue is honest.
+
+- **THE CHASSIS-DIAGNOSTIC LADDER REGISTERED — REPLICATION
+  FIRST, EVERY BRANCH TERMINATES (2026-07-29):** ORDER AS
+  RULED: (1) THE REPLICATION CELL — the pair probe's exact
+  reuse-5 hub generator, NEW seed (a replication re-draws, it
+  does not byte-reproduce), n=24. BARS PINNED: REPLICATES at
+  ≥3/24 failures; FAILS at ≤1/24 → **THE TERMINAL CONDITION
+  FIRES IMMEDIATELY** (the law retires to probe-register scope,
+  the diet recipe is withdrawn, the diagnostic arms are never
+  built — the investigation resolves as a factory curiosity);
+  exactly 2/24 = pre-stated single extension to n=48, no other
+  amendment. (2) THE GRAVITY ARM, only if replication holds:
+  hub value varied at fixed construction and fixed engagement
+  count — and the frequency axis MEASURED, not assumed: mint
+  value-frequency taken from the corpus proxy (bigtest given
+  distribution), hub values drawn at high/mid/low measured
+  frequency within the chassis cap (A ≤ 5 — the compounding
+  breaks 300 above it; STATED as the chassis's reach limit).
+  RESIDUAL PRE-STATED: value magnitude co-varies with frequency
+  among eligible values — digit-length matched where possible,
+  the remainder named at readout. GRAVITY'S TWO-SIDED BAR:
+  failure RISES as measured frequency falls (monotone across
+  three frequency tiers, total rise ≥ 0.20) = gravity confirmed
+  and three prior appearances unified; flat = gravity refuses
+  and the one-sided suspects (consecutiveness, density) get
+  their arms in a later registration. (3) SIZE DIRECTIONS:
+  replication = identical chassis (none); gravity = size
+  constant, values vary (the named residual). Stop protocol
+  standing; saturation pilots inherited; terminal condition
+  armed. Every branch ends in a verdict, none spawns a ladder.
