@@ -16712,3 +16712,27 @@ token-position × waist-dim, the moment the skeleton trains.
   the target's neighborhood — which is now the sharper
   question. Causality stands OPEN; the candidate holds; the
   stop protocol goes 3-for-3.
+
+- **THE ENTANGLEMENT HEAD-TO-HEAD REGISTERED (2026-07-29, the
+  word — definition first, book before chassis):** OPERATIONAL
+  DEFINITION, computable on both populations: for the row's
+  argmax-distance variable v* (the same object the distance
+  metric reads), **E(v*) = the number of factors stated fully
+  before v*'s first body use that share ≥1 variable with any
+  factor containing v*** — entangled preceding content, by
+  mechanics not judgment. (The three stopped chassis all had
+  E=0 by construction — the hypothesis's story in one number.)
+  THE READ: within n_factors strata on the annotated 271, AUC(E)
+  and AUC(distance) plus BOTH conditional directions (E within
+  distance-tertiles; distance within E-tertiles — the
+  count-subsumption move, symmetric this time). BARS: E-cond
+  ≥0.60 with dist-cond ≤0.55 = **ENTANGLEMENT SUBSUMES
+  DISTANCE** → the chassis is worth building (contrast arms:
+  distance matched-and-MEASURED, entanglement varied); the
+  reverse = distance survives; both ≥0.60 = two mechanisms;
+  both ≤0.55 = neither independent at this grain.
+  PRE-DECLARED INSTRUMENT-NULL: if within-stratum corr(E, dist)
+  is near-collinear (reported as the power check), the
+  conditional read is powerless and prints as such — no
+  reinterpretation. The longer-range chassis stays UNDESIGNED
+  and may never be needed.
