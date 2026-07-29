@@ -15868,3 +15868,33 @@ token-position × waist-dim, the moment the skeleton trains.
   probe, NO reinterpretation. The full four-class distribution
   reports per dose regardless (the spectrum claim is about the
   distribution, not the pass rate).
+
+- **THE DOSE-RESPONSE PRINTS FLAT — THE DOSE AXIS IS REFUTED AND
+  THE SPECIES OWES A RE-DIAGNOSIS (2026-07-29):** run 1 was an
+  instrument reading caught by its own zero variance (48/48
+  WANDER — hardcoded slot read the wrong sentence; sentence-end
+  T0 already past the transient; the fresh-apparatus corollary
+  enforced one run late, both faults documented in the script).
+  THE CORRECTED RUN: **48/48 SLIP at every dose — engagement
+  detected in the transient window on every probe, then slip,
+  identically at dose ZERO and dose three.** Per the pinned bar:
+  FLAT (|Δ| = 0.00 < 0.10) — post-target distractor load is NOT
+  the eroder. WHAT THE FLAT LINE TEACHES (named, not
+  reinterpreted — the next registration's material): (1) the
+  binding's fate appears determined by the PRE-target
+  configuration (mid-graph derived-operand dup) — consistent
+  with every specimen to date: [1173]/[1271] (opening-sentence,
+  empty field) HOLD; [655]/[1382] and now 48 probes (mid-graph,
+  derived operand) SLIP under ANY continuation; (2) the slip is
+  not dose-graded erosion but appears INEVITABLE for this
+  configuration once any content follows — the transient is
+  real, the full-context read always rewrites it; (3) the probe
+  family is a RELIABLE SPECIMEN FACTORY for the failing species
+  (48/48 reproduction — mint-diet fodder shapes, banked free).
+  THE RE-DIAGNOSIS DIRECTION (for the next registration, bars
+  to be pinned fresh): the discriminating experiment contrasts
+  PRE-target configurations (operand identity / position /
+  derivedness) at fixed continuation — the crowding that
+  matters is the binding field's state when the pawl engages,
+  not the load after. Artifact: .cache/dose_response_read.json
+  (full traces, both runs' faults documented).
