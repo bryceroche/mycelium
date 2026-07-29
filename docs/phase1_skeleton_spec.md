@@ -15808,3 +15808,19 @@ token-position × waist-dim, the moment the skeleton trains.
   exemplar count doubles. MEMORY.md framing ruled: the target
   is *what a stranger must know to avoid doing harm* — the
   pawls, not the history.
+
+- **POSITION MOVE #3 EXECUTED: MEMORY.md COMPRESSED TO THE PAWLS
+  (2026-07-29):** 76.3KB → 22.8KB (limit 24.4), zero pointers
+  lost. THE STRUCTURE, per the framing ruled: the file now
+  OPENS with what a stranger must know to avoid doing harm —
+  the pawls section (key-gates-everything, hold-for-the-word,
+  bars-never-bend, the conviction index's existence and query
+  discipline, the custody-gold law, the refuted-cell map with
+  the raw-text fence, where the laws live, the engineering
+  survival notes) — then the current board, then the index:
+  73 full one-liners (feedback/reference/June-July era) + the
+  96-entry May arc grouped as bare links under its consolidated
+  synthesis pointer (history retrievable, rails un-missable).
+  The campaign's entry point now teaches its fences before its
+  story. Queue remaining: interps (Bryce's), criterion rebuild,
+  dose-response.
