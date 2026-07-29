@@ -16517,3 +16517,31 @@ token-position × waist-dim, the moment the skeleton trains.
   checker's faults before blaming the harvest = gold skepticism
   propagating one level deeper than written — a delegation that
   audits its own instruments is a different kind of asset.
+
+- **THE ANNOTATION PRINTS — THE SEAM INVESTIGATION RESOLVES ON
+  ITS OWN BARS (2026-07-29):** 271 book rows with outcomes, 29
+  non-certified, strata in force. **DISTANCE GENERALIZES:
+  pooled within-strata AUC 0.707 — every stratum above 0.60
+  (0.674 / 0.632 / 0.884 / 0.722)**; the bigtest crossing holds
+  on the book's own population, certified control arm included.
+  **DISTANCE SUBSUMES COUNT: engagement count's conditional AUC
+  0.434 within distance-tertiles** — count adds nothing once
+  distance is controlled; per the pinned bar the two-day seam
+  investigation resolves honestly: **the binding-competition
+  law stands exactly where it was measured (the probe
+  register), and the road's failure mass belongs to
+  ADDRESS-TABLE DECAY OVER DISTANCE.** Third-species column:
+  n=1 ([1193]; flagged conservatively — only the unambiguous
+  anatomy; the mechanical digit-permutation screen stays with
+  the artifact for future wrongs). THE DIET IMPLICATION, put to
+  the bench rather than assumed: the mint's natural-size target
+  updates from re-engagement recipes to DISTANCE — long
+  roster-to-first-use spans at controlled size — with the
+  re-engagement recipe's standing (probe-scoped per its own
+  terminal logic) the bench's call; and the interventional
+  confirmation (factory: same size, varied distance) is the one
+  read between this correlation and a mechanism-grade claim.
+  Artifact: .cache/distance_annotation.json. THE DAY: a naming
+  gut about group photos → the address table → the seam crossed
+  → the investigation resolved — four registrations, four
+  pre-pinned bars, one afternoon.
