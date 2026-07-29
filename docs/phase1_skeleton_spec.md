@@ -16103,3 +16103,26 @@ token-position × waist-dim, the moment the skeleton trains.
   line stands regardless (the engine question is about trained
   stations, not the parser). Artifacts:
   .cache/seam_count_read{,_stratified}.json.
+
+- **THE FACTORY'S PARSER-SIDE PROBE REGISTERED — VARIED BURDEN
+  AT FIXED SIZE, MATCHED PAIRS, BAR PINNED (2026-07-29):**
+  bigtest's silence carried as an INSTRUMENT null, not evidence
+  (per the ruling). DESIGN: 24 matched pairs at FIXED n_factors
+  (the coordinate the strata control proved is the confound),
+  same op mix, solver-verified, values lawful: LOW-burden arm =
+  linear chains, every var count ≤2 (define + one use — the
+  floor for connected computation); HIGH-burden arm = hub
+  construction, one var engaged 4-5 times, SAME factor count.
+  KNOWN CONFOUNDS STATED, not assumed away: the arms differ in
+  n_vars/letter-count and sentence-form density (hub sentences
+  reuse letters) — residuals the pair construction cannot
+  eliminate at fixed size; named here so the verdict carries
+  them. OUTCOME: the standard 5-view quorum chain per probe
+  (the battle-tested certify read). BAR, DISCRIMINATING FORM:
+  quorum-failure(HIGH) − quorum-failure(LOW) ≥ 0.25 → **THE LAW
+  CROSSES** (the natural-mass mechanism rewrite properly
+  earned); |Δ| < 0.10 → **FLAT** — re-engagement is a
+  gate-probe-register pathology the natural-size register does
+  not share, and the asymmetry (same substrate, different job,
+  different failure) is itself the finding; intermediate →
+  texture, no reinterpretation.
