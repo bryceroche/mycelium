@@ -322,8 +322,20 @@ def load_alg(split):
     # verdicts downstream, so pen rows REFUSE at the door.
     n_pen = sum(1 for s in samples if "src_idx" in s.get("gen", {}))
     if n_pen and is_train:
-        print(f"[load_alg] WARNING: {n_pen} pen rows in ALG_TRAIN — lawful as "
-              f"diet, but their solution fields are NOT gold (custody-gold law)")
+        # WARN-SIDE FENCE (bench 2026-07-28): an ambient warning becomes the
+        # new silent hazard in six weeks. Pen rows on the train side are an
+        # ERROR unless the launch explicitly acknowledges the diet via
+        # ALG_ALLOW_PEN_TRAIN=1 (set by diet-aware trainer launches only).
+        if os.environ.get("ALG_ALLOW_PEN_TRAIN") == "1":
+            print(f"[load_alg] diet acknowledged: {n_pen} pen rows in "
+                  f"ALG_TRAIN (solution fields are NOT gold — custody law)")
+        else:
+            raise RuntimeError(
+                f"load_alg: {n_pen} PEN rows in ALG_TRAIN without "
+                f"ALG_ALLOW_PEN_TRAIN=1 — if this is a deliberate diet mix, "
+                f"set the env in the launch script; otherwise this path is "
+                f"battery-adjacent and pen rows are an error (custody-gold "
+                f"law, warn-side fence)")
     elif n_pen:
         raise RuntimeError(
             f"load_alg: {n_pen} PEN rows (gen.src_idx present) in ALG_TEST — "

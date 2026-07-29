@@ -265,11 +265,14 @@ answerable from banked artifacts tonight, two are staged with prices:
    contraction on exactly this substrate's K-fold-reused chain under
    TinyJit — four steps finite, zero NaN-skips. Half the substrate
    criterion is already discharged.
-3. **The clock at init: STAGED.** Requires the station-loop forward
-   pass built (the architecture skeleton + crossover-style probes on
-   arith3). Not minutes — the harness is new code. Price: one build
-   session + one eval-grade read. This is the read that de-conjectures
-   ~3.5.
+3. **The clock at init: STAGED — and PROMOTED to THE prerequisite
+   (bench 2026-07-28).** ~3.5 is CONJECTURE-grade in its own ledger
+   entry and has been quoted across sittings as measured (the
+   τ-figures species caught before hardening). No station budget is
+   sized against a conjecture: this read gates every quantitative
+   clause in §2. Requires the station-loop forward pass built
+   (architecture skeleton + crossover-style probes on arith3). Price:
+   one build session + one eval-grade read.
 4. **Manifold-residency at init (E2 wiring): STAGED.** The Fire-2
    layer-image instrument ports, but the read is on the NEW wiring —
    fresh eval-grade run, same session as read 3.

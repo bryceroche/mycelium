@@ -14938,3 +14938,33 @@ token-position × waist-dim, the moment the skeleton trains.
   2/4 banked, 2/4 one session away. The iron's heat went into
   prerequisites exactly as ruled; the fire-word now waits on two
   reads and three citations, all named.
+
+- **THREE RULINGS EXECUTED + TRANCHE 7 FIRES (2026-07-28):**
+  (1) THE WARN-SIDE FENCE: load_alg's train-side warning
+  converted to ERROR-unless-acknowledged — pen rows in ALG_TRAIN
+  now hard-error without ALG_ALLOW_PEN_TRAIN=1 (set only by
+  diet-aware trainer launches); the ambient warning that would
+  have become the new silent hazard in six weeks is now an
+  explicit opt-in with the count printed. (2) THE ~3.5
+  PROPAGATION: the clock read PROMOTED to THE prerequisite in
+  ENGINE2_SPEC §10.3 (no station budget sized against a
+  conjecture); THE RETRO-TAG, stated here per the
+  prose-promotions law rather than by rewriting history: every
+  prior ledger entry quoting ~3.5 breaths/layer as a measured
+  rate constant (the depth-budget argument, the trichotomy
+  framing, the two-clock law's engine-side number) carries the
+  same CONJECTURE tag its own source entry (L12015) always had —
+  the τ-figures species caught prospectively; if the number
+  survives measurement it graduates, if not §2 rewrites and the
+  pure-jet refutation stands. (3) MEMORY.md COMPRESSION
+  docketed as its own line: the future-reader law makes the
+  memory file the campaign's front door and it is 3x over
+  budget — the pass separates what a fresh session MUST have
+  (laws, fences, the conviction index's existence, current
+  board) from what it can retrieve. THE WORD: **tranche 7
+  fires** — census 310 eligible, 40 from src 869 (L1 12 / L2 11
+  / L3 17); the brief adds GOLD SKEPTICISM as a standing pen
+  duty ([807]'s lesson: an independent-solution/gold discrepancy
+  is a data-quality flag with the discrepancy shown, never
+  drafted-toward, never silently skipped) and the
+  depth-dependence refinement on repeated-constant chains.
