@@ -15652,3 +15652,40 @@ token-position × waist-dim, the moment the skeleton trains.
   matrix is its first data. The engine stays cold; four
   deferrals and one refuted class, all bought before any fire
   burned a step.
+
+- **THE PROJECTION TEST FAILS — THE CLASS FALLS TO (c),
+  EXAMINATION COMPLETE (2026-07-29):** ratio 0.198 vs the 0.9
+  bar (and vs 0.59 UNPROJECTED — the moment-matcher was WORSE
+  than nothing: one application crashed cos-vs-L3 from 0.797 to
+  0.111). THE ANATOMY: per-feature rescaling destroys the
+  directional structure the layers produce — the portable
+  family's THIRD member: *the trajectory manifold's structure
+  lives in feature directions/covariance, not marginal moments;
+  naive statistical corrections (blending, diagonal rescale)
+  break it.* Per the pre-committed disposition: **§2 redesigns
+  on measured ground; any learned-projection revival enters
+  only by a new #72 registration.** WHAT THE EXAMINATION
+  LEAVES, stated precisely: (i) the REFUTED cell is
+  frozen-pretrained-layer recirculation — at init, in four
+  state configurations, with two correction families; (ii)
+  recirculation PER SE stands proven elsewhere — the June
+  engine (v98, TRAINED tied recurrence) ladders on KenKen: the
+  existence proof of lawful recirculation is training the
+  recirculating weights; (iii) v200 mapped trained-big-trunk
+  perceiver territory (three poles); (iv) the unexplored lawful
+  cell is the #86 complement with TRAINED stations — small,
+  untied, trained from scratch or distillation, never frozen
+  giants recirculated. §1's closed-cycle THESIS survives as a
+  task-level requirement (deduction must reach binding while
+  soft); its frozen-trunk implementation is dead. THE SPEC'S
+  SURVIVING ESTATE: all five instruments, fourteen+two laws,
+  the kill-bar forms, the pawl gate (form measured, driver
+  fenced), the erosion constraint, three portable principles,
+  and a refuted-cell map no fire had to burn for. The
+  ingredient list absorbs the estate; §2's redesign is the
+  bench's, on ground now measured four ways. THE NIGHT'S FULL
+  ITEMIZATION: one engine built; five configurations and two
+  correction families measured cold; one class refuted with
+  examination complete; one ruler caught, explained, and
+  scheduled for rebuild; three portable principles; one organ
+  with measured form and fenced driver; zero training steps.
