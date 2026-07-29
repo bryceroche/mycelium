@@ -16736,3 +16736,29 @@ token-position × waist-dim, the moment the skeleton trains.
   conditional read is powerless and prints as such — no
   reinterpretation. The longer-range chassis stays UNDESIGNED
   and may never be needed.
+
+- **THE HEAD-TO-HEAD PRINTS: DISTANCE SURVIVES, ENTANGLEMENT
+  REFUTED AT FULL POWER (2026-07-29):** E pooled 0.470 (chance),
+  conditional 0.432; distance 0.685 conditional on E — and the
+  pre-declared collinearity null did NOT fire (within-stratum
+  corr 0.01-0.09: the metrics are independent, the read had
+  full power; the refutation is clean). **The chassis does not
+  build — its premise lost before a probe existed**, the
+  retroactive-first pattern paying for the second time in two
+  nights. THE STATE OF THE MECHANISM QUESTION, now unusually
+  sharp: distance predicts natural-row failure robustly (0.707
+  pooled; survives count AND entanglement controls) yet no
+  clean-chassis intervention reproduces it at matched distance
+  (0/36), and TWO candidate carriers are eliminated (engagement
+  count; graph-entangled prior content). REMAINING SUSPECTS,
+  named for the next definition-first cycle: (a) SURFACE
+  LETTER-DENSITY (distinct letters between roster and v*'s
+  first use — crowding without graph-sharing; the chassis's
+  fillers were letter-dense too, weakening this one); (b) v*'s
+  OWN DEGREE (its factor participation count — the chassis's
+  target fed one mul; natural far-position vars are often hubs);
+  (c) QUERY-CRITICALITY (v*'s distance to the query var in the
+  graph). Each gets the same treatment that just worked twice:
+  operational definition → retroactive head-to-head on the 272
+  → chassis only for a winner. HELD FOR THE WORD per glide —
+  the suspects rank at the bench, not at midnight.
