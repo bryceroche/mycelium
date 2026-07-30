@@ -17161,3 +17161,26 @@ token-position × waist-dim, the moment the skeleton trains.
   lie rate among quorums (zero = the chain holds wild at L4)
   and the quorum rate (the competence frontier's honest
   location). Fires now.
+
+- **THE WILD-REGISTER REHEARSAL PRINTS — THE HONEST MATH-500
+  NUMBER (2026-07-29):** 40 raw L4 problems, deployment mode:
+  **abstain 23, tripwire 3 (working wild, as designed),
+  attestation-blocked 10 — and certified 4, of which correct 0:
+  ALL FOUR CERTIFICATIONS ARE LIES.** The reading, held
+  precisely: (a) the abstention machinery is EXCELLENT — 36/40
+  refused in some layer, 90% honest refusal at a frontier the
+  gate was never trained for; (b) **the certification tier at
+  wild-L4 is INVERTED** — the survivors of every fence are
+  adversarially-selected confident misparses (the [1293] lesson
+  at population scale: what passes all view-invariant and
+  lexical checks on hard problems is precisely the systematic
+  error); (c) the four lies are the WILD-LIE TAXONOMY'S first
+  specimens — autopsies owed. THE MATH-500 ANSWER THE NUMBER
+  GIVES: not yet, and now measurably why — the gap is not
+  coverage (abstention covers), it is wild-frontier CERTIFICATION
+  PRECISION (currently 0/4), and the road that moves it is the
+  one already chosen: books at L4 (the +280 expansion axis),
+  teaching the register the rehearsal just measured — with this
+  exact 40-problem slice as the standing before/after fixture.
+  December's question is now a number on a ledger instead of a
+  feeling.
