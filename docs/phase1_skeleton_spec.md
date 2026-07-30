@@ -17662,3 +17662,23 @@ token-position × waist-dim, the moment the skeleton trains.
   as entourage-22 stage 10, under the manifest-driven mouth — and
   whatever it prints is the new zero-point, not a delta against the
   stale forty.
+
+- **GUT #107 REGISTERED — PLANNING (2026-07-30, commitment family;
+  the honest first move: the planner-watcher already exists and it's
+  the bench-and-relay — guts propose, the countersign rules, the pen
+  executes, the ledger holds state):** THE TWO SITES WHERE THE
+  PATTERN IS ACTUALLY MISSING: (1) INSIDE THE CHAIN — the TRIAGE
+  HEAD, MuZero-docketed, priced-and-waiting, its admission contingent
+  on census volume WHICH NOW EXISTS (263 net certified, three
+  misbinding species, the distance screen, the seven-marker trace
+  layer — the head's inputs are measured objects now). RE-PRICING
+  docketed, fences unchanged (two-death-mode; latents never replace
+  the graph). (2) INSIDE THE OPERATION — state tracking was prose
+  across many entries; **docs/BOARD.md built same-day** (the cheap
+  yield): open items / owner / blocking condition / last touched,
+  with standing duties and fallow items separated. THE PACING FENCE
+  ATTACHED, constitutional in the board file's own header: the file
+  surfaces blocking conditions, it NEVER computes next moves — the
+  campaign's failure mode was never lack of planning but the ladder
+  built before the rung reported; orchestration must not become
+  automation of judgment. The deciding stays with the word.
