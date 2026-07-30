@@ -17519,3 +17519,29 @@ token-position × waist-dim, the moment the skeleton trains.
   unattributable gate reads nothing; the standing rehearsal rides
   the entourage as its outside-air check — both tiers, every
   generation.
+
+- **GUT #104 REGISTERED — SET BEFORE ACTING (2026-07-30, "eggs in
+  pan — don't touch them until they set"; commitment family,
+  retrospective-confirmatory):** THE CONTENT IS THE ASYMMETRY: heat
+  creates and agitation destroys — two forces with different signs,
+  not opposite ends of one dial; dosing one does not manage the
+  other. Early intervention doesn't SLOW formation, it CHANGES WHAT
+  FORMS (curds, permanently — not a delayed omelette). THE TWO
+  MEASURED INSTANCES CITED: the ramp destruction (2.28σ native
+  structure → 0.78σ uniform diffusion under five hundred steps of
+  narrow hard training — structure destroyed, not slowed; BAU's
+  catastrophic-interference finding is this physics) and the erosion
+  finding at parse grain (bindings form correctly at operand+1 and
+  are broken by continued reading; the sub-anatomies are curd
+  sizes). THE FALLOW OBSERVATION, banked with it: not every open
+  item is a debt — some are things setting. The six un-interpreted
+  exchange seeds and the unconsolidated jurisprudence may be
+  correct rather than delinquent; the campaign's high-agitation
+  cadence has been productive where refutations are cheap, but
+  almost no process gets undisturbed time. **THE FENCE, standing:
+  NO MID-FIRE ADJUSTMENT — a fire completes or a kill fires, never
+  gets stirred.** The deep clean's catch was lawful because it came
+  BEFORE ignition; adjusting a burning fire on early dashboard
+  lines is the agitation the law forbids. No rent owed —
+  confirmatory of two banked findings; the prospective claim is a
+  discipline, not an experiment.
