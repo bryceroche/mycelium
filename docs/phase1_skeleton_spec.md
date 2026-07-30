@@ -16969,3 +16969,29 @@ token-position × waist-dim, the moment the skeleton trains.
   all-None — the sub-type at extreme reuse), sign-cancellation
   routing-facts as a new Law-13 sub-use. **BOOK 8: 291
   CERTIFIED across ten tranches.**
+
+- **THE PANEL SHARES THE BASIN — THE PRE-REGISTERED ALARMING
+  BRANCH PRINTS (2026-07-29):** [1293]'s v1 through both
+  manifest seats: g18_armB votes [3,12,3,3,3], g19_w1024
+  [12,12,3,12,3] — and the fdiv slot parses SEL in ALL TEN
+  panel views. With the gate's five: **fifteen views, three
+  models, two panel axes — zero correct parses. The sel-smaller
+  basin is SUBSTRATE-INVARIANT across the entire certification
+  stack.** PER THE PRE-REGISTERED CONSEQUENCE, now in force:
+  (1) the certification tier's guarantee narrows to *"correct
+  unless a shared basin captures it"*; (2) **the independent-
+  gold check is promoted from quality measure to LOAD-BEARING
+  CUSTODY LINK**; (3) **fdiv-on-derived rows are FENCED from
+  training without gold verification** — a fence, not a diet.
+  THE IMMEDIATE MITIGATION, mechanical and text-side: the
+  basin's signature is detectable — *the dialect says "divided
+  by" but the winning parse contains no division factor* — a
+  LEXICAL-VS-PARSE CONSISTENCY TRIPWIRE, implementable in the
+  certify harness today: any quorum whose dialect contains
+  division language while its winning parse lacks fdiv/mod
+  moves to held_for_wheel, never certifies silently. The wild
+  register's exposure (chained-fdiv frequency in gold-less
+  problems) is the bench's sizing question. The chain of
+  custody holds exactly as designed — the KEY caught what
+  every neural layer missed — and the finding says which link
+  was always load-bearing.

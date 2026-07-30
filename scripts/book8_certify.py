@@ -85,6 +85,19 @@ for i, r in enumerate(rows):
     nn = [a for a in votes if a is not None]
     c = Counter(nn).most_common(1); plur, cnt = c[0] if c else (None, 0)
     if cnt >= 3 and plur == gold:
+        # BASIN TRIPWIRE (2026-07-29, the [1293] panel finding): the
+        # sel-basin's signature is text-side detectable — dialect contains
+        # division language but the WINNING parses contain no division
+        # factor. Substrate-invariant basins are view-invariant AND
+        # panel-invariant; this lexical-vs-parse check is the mechanical
+        # fence. Flagged quorums hold for the wheel, never certify silently.
+        div_lang = (" divided by " in dialect) or ("quotient" in dialect)
+        win_parses = [f_ for (f_, q_, a_) in views if a_ == plur]
+        has_div = any(fa.get("ftype") in ("fdiv", "mod") for f_ in win_parses for fa in f_)
+        if div_lang and not has_div:
+            res.setdefault("held_basin_tripwire", []).append({"i": i, "src_idx": src, "votes": votes})
+            print(f"  [{i+1}/{len(rows)}] src {src} BASIN TRIPWIRE: division language, no division factor in winning parse — HELD", flush=True)
+            continue
         att, _, _ = attest_quorum_v3(views, plur, dialect, m, solve2)
         res["certified" if att else "abstain"].append({"i": i, "src_idx": src, "votes": votes})
     elif cnt >= 3:
