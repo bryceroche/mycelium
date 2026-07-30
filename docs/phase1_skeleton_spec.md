@@ -17044,3 +17044,26 @@ token-position × waist-dim, the moment the skeleton trains.
   fence template installed and extended → the root cause found
   in the mint's own distribution → the diet order written by
   measurement. The chain knows itself, and now it knows why.
+
+- **THE TWO RIDERS EXECUTED + THE MINT DIET ORDER RECEIVED
+  (2026-07-29, Bryce):** (1) **THE TRIPWIRE IS PERMANENT
+  INFRASTRUCTURE** — the diet is measured as REDUCING TRIPS,
+  never as justifying removal (the blocked-wrong discipline
+  applied to the fence; carved as law). (2) THE MANIFEST'S
+  SCOPE NOTE: the seven-marker 100% is DOMAIN-SCOPED — measured
+  where gold exists, which is precisely where the hole doesn't
+  live; wild-register coverage is inferred from marker logic
+  and UNVERIFIABLE BY CONSTRUCTION; the manifest says so.
+  (3) THE DIET ORDER'S THREE SPECIFICATIONS banked before any
+  row mints: **provenance-depth spanned** (fdiv on given as
+  control / one-step derived / two-step derived — a diet at one
+  depth teaches one rung); **the bar blind-pinned** (current
+  baseline: zero across fifteen views and three models — bar =
+  measured NONZERO at minimal fixture richness, then the
+  context-richness ladder locates degradation); **the attractor
+  measured, not just the pass rate** (basin-exit vs
+  correct-parse spectrum — a diet that moves specimens out of
+  the basin without landing the right parse is a partial cure
+  worth knowing). (4) The wild-register sizing rides ALONGSIDE
+  the diet — both numbers in the same entry (the cure and how
+  much the fence was carrying).
