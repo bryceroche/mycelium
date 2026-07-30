@@ -17639,3 +17639,26 @@ token-position × waist-dim, the moment the skeleton trains.
   adaptation: g22-aligned state pair (e21 mixed a g21 npz with g20
   states and survived by prefix accident), manifest-driven panel
   lattices in the dissent read.
+
+- **THE PROMOTION'S MANNER — THREE LINES CARVED AT THE SEAM
+  (2026-07-30, Bryce's countersign on the gen-22 sheet):**
+  (1) **THE TWO-LEVER LAW AT THREE POINTS: mint diets deepen,
+  organic prose migrates.** Gen-20's spans deepened in-zone; gen-21's
+  books moved 16 into the umbra; gen-22's surgical mint diet printed
+  +3/−2/−1 — near-zero migration exactly as the in-register theory
+  predicted, and this was the law's cleanest test because the
+  intervention was narrow enough that a violation would have been
+  visible. (2) **THE CUSTODY LINE, plainly: gen-22 is the first
+  generation in FIVE whose manifest is verified rather than
+  decorative** — the atomic-hash law's first live exercise landed on
+  the promotion immediately after its repair, proven on a real
+  promotion rather than a test. (3) **THE MOUTH REFRAME, honestly
+  re-scoped:** every prior DEPLOYED-tier reading — including the
+  40/40 refusals that corrected the December sentence — was measured
+  through the STALE gen9b mouth, not the deployed gate's artifact.
+  The reframe stands DIRECTIONALLY (the mouth refuses at the wild
+  frontier); its specific numbers belong to an instrument that was
+  not the one deployed. The first TRUE deployed-tier reading arrives
+  as entourage-22 stage 10, under the manifest-driven mouth — and
+  whatever it prints is the new zero-point, not a delta against the
+  stale forty.
