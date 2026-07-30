@@ -12,11 +12,7 @@ this is the index of its open edges.
 
 ## In flight
 
-| Item | Owner | Blocking condition | Last touched |
-|---|---|---|---|
-| Entourage-22 (10 stages; standing rehearsal as stage 10) | unit `entourage-g22` | running — the gate reads nothing until settled | 2026-07-30 |
-| First TRUE deployed-tier wild reading (manifest mouth) | entourage stage 10 | entourage completion; prints as a ZERO-POINT, not a delta | 2026-07-30 |
-| Two-home state sweep (#108 scope: duplicated STATE, read-side cure) | delegated auditor | running — CPU-only, beside the entourage | 2026-07-30 |
+*(nothing — the estate is settled; the gate may read)*
 
 ## Owed — Bryce's word required to fire
 
@@ -66,10 +62,14 @@ this is the index of its open edges.
 ## Recently closed (this chapter)
 
 Gen-22 PROMOTED (diet fire; d1 cure 1/8→7/8, basin GONE; first verified
-manifest in five gens) · Deep clean ×6 findings (gut #102) · Trace layer
-unified (mycelium/trace_layer.py) · Graph-register refuted all grains
-(antagonism law; wild side closed both directions) · Wild rehearsal +
-four autopsies (value-fabrication template) · Tranches 9-10 (book 8 at
-10 tranches / 263 net certified after withdrawals) · Roster = address
-table · Distance = screen not lever · [1293] tripwire → permanent
-infrastructure.
+manifest in five gens) · Entourage-22 SETTLED (10 stages; TRUE zero-point:
+DEPLOYED 40/40 refused under the real gen-22 mouth; dissent rotates n=2) ·
+Two-home sweep first pass (17 pairs; 4 live bypasses → 4 doors; ALG_HW
+gained its authority; gate_fixtures.py = roster authority; certifier
+manifest-driven + withdrawal-preserving) · Deep clean ×6 findings (gut
+#102) · Trace layer unified (mycelium/trace_layer.py) · Graph-register
+refuted all grains (antagonism law; wild side closed both directions) ·
+Wild rehearsal + four autopsies (value-fabrication template) · Tranches
+9-10 (book 8 at 10 tranches / 263 net certified after withdrawals) ·
+Roster = address table · Distance = screen not lever · [1293] tripwire →
+permanent infrastructure.
