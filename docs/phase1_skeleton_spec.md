@@ -17377,3 +17377,28 @@ token-position × waist-dim, the moment the skeleton trains.
   RNG-identical to the before instrument, two-tier accounting
   exclusive+complete, ration indices, snapshot naming,
   WARM/RESUME semantics, SEED consumption. The gut is 17-for-17.
+
+- **THE GEN-22 DIET FIRE: BURNED, AND THE CURE PRINTED (2026-07-30):**
+  full chain clean end-to-end after the deep-clean repair — mix 82,400
+  (dose as declared: 400×10, 4.85%), precompute, states verification
+  6/6 (worst rel dev 0.00000), four SGDR segments warm-from-g21
+  (~5 min each; the resume guard silent = every ckpt present).
+  THE AFTER-SHEET, on the before-baseline's exact probes and seeds:
+  **d1 quorum 1/8 → 7/8; sel-basin attractor 0.53 → 0.00** — the
+  attractor is GONE, not thinned, which is what the registered bar
+  demanded (attractor measured, not pass-rate). Flanks held: d0 7/8
+  unchanged, d2 8/8 unchanged. The fdiv-on-derived template hole —
+  [1293]'s species, mint-blind at 0/1500 while 14.7% of book rows
+  need it — is CLOSED at the fixture by 4,000 diet row-visits.
+  THE STANDING REHEARSAL'S FIRST SCHEDULED READING (the rider):
+  DEPLOYED **40/40 mouth-refused, unchanged** — the diet did not
+  accidentally widen the mouth. STRESS: abstain 27 (was 23),
+  tripped 10 (was 14), attest-block 2, certified 1 lie (idx 34 —
+  the coordinate-geometry register case, not this diet's disease,
+  mouth-caught in deployment), 0 correct. Four items moved from
+  tripped INTO abstention — fewer confident misparses reach quorum
+  at all; no new lies, no new certifications. The narrowed claim
+  held exactly: the diet cured a template hole and touched nothing
+  else. **g22 is a CANDIDATE on the bench; g21 remains the gate.**
+  The battery + gen-22 verdict (regression bars per the manifest,
+  entourage duty, hash recompute now mechanical) fire on the word.
