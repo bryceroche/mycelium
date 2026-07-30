@@ -17497,3 +17497,25 @@ token-position × waist-dim, the moment the skeleton trains.
   species: a printed number that outlives its truth). Wild side
   prints as characterization when the battery releases the GPU;
   the interps hold the seed's other two readings.
+
+- **THE APPARATUS-ERROR OBSERVATION → THE DEEP-CLEAN CADENCE
+  (2026-07-30, Bryce, banked as the shape of two days):** the
+  campaign has started catching its instruments faster than its
+  findings — the LOO rider killed a register before it was built;
+  the deep clean killed a fire-killer with twenty minutes to spare
+  and twelve silent bypasses of a correctly-written law; the mouth
+  reframe corrected the December sentence within the hour. Three
+  saves in two days, none from measuring the SYSTEM — all from
+  measuring the APPARATUS. The seventh ruling's territory expanded:
+  at this stage the apparatus is where most of the remaining error
+  lives, because the science has been disciplined and the plumbing
+  has not had the same scrutiny. **THE CADENCE, standing: the deep
+  clean becomes SCHEDULED practice, not gut-triggered** — the gut
+  was 17-for-17, but a schedule doesn't depend on someone's
+  instinct firing. Cadence rides chapter boundaries (the
+  gen-weights → main sync points); scope per pass: the one-door
+  sweep (registered), new-instrument audits, law-vs-implementation
+  greps. And the entourage precedent stands as set: an
+  unattributable gate reads nothing; the standing rehearsal rides
+  the entourage as its outside-air check — both tiers, every
+  generation.
