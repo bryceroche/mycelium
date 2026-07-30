@@ -17206,3 +17206,36 @@ token-position × waist-dim, the moment the skeleton trains.
   makes is decided before December, at the bench. The four lie
   autopsies queued (template-shared → the diet's coordinates
   widen; distinct → the register road's true length).
+
+- **THE COMPLETED TRACE LAYER + THE FOUR AUTOPSIES (2026-07-30):**
+  the re-ranked build executed. THE AUTOPSY VERDICT: the four wild
+  lies do NOT share [1293]/[239]'s fdiv-on-derived template — three
+  share a NEW template, **value fabrication** (the winning parse
+  asserts a `given` whose value appears nowhere in the text: 32
+  conjured from `-16t^2+64t+31`, 6 from `16^{16}`, 1 from
+  consecutive-integers; all three LaTeX/exponent register), and the
+  fourth (coordinate geometry) is a pure register case. So the diet's
+  coordinates do NOT widen for these — the defense is trace-side and
+  mouth-side, not diet-side. THE INSTALL: value consistency — every
+  numeric literal the winning parse asserts (given values, fdiv/mod
+  k) must appear in the text (digits or number-words) — added to the
+  certify harness beside the seven markers. Install bar pinned before
+  the read and met: **0 false trips on all 266 gold-certified book-8
+  rows** (3,680 value fields + 233 k fields checked). THE FIXTURE
+  MOVED: wild forty, 7-marker layer 4 certified / 4 lies → completed
+  layer **1 certified / 1 lie** — three-quarters of the wild
+  certification lies eliminated by a CPU check on an axis the vote
+  cannot rig, confirming the orthogonality law with numbers.
+  THE MOUTH READ (the reframe): 40/40 wild L4 flagged foreign at the
+  length-corrected threshold, including all four lies — idx 34's
+  residual +0.1154 vs thr 0.0072. **The rehearsal measured the chain
+  with its first link bypassed.** The deployed chain, mouth engaged,
+  certifies NOTHING at wild L4 — the abstention product is total
+  there, and the four lies exist only past the mouth's perimeter.
+  Honest restatement of the December line: today the system is a
+  perfect abstainer at the wild frontier, not a lying certifier; the
+  lie exposure begins the day the mouth's frontier widens (which the
+  books campaign is explicitly working toward), and the trace layer
+  is the fence built BEFORE that day — fences precede the frontier
+  they guard. Artifacts: .cache/trace_layer_L4.json,
+  .cache/trace_layer_audit.json; layer live in book8_certify.py.

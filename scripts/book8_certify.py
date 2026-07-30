@@ -108,7 +108,29 @@ for i, r in enumerate(rows):
              _wf(lambda fa: fa.get("ftype") == "rel" and fa.get("op") == "add")),
             ("remainder", "remainder" in dialect, _wf(lambda fa: fa.get("ftype") == "mod")),
         ]
+        # VALUE CONSISTENCY (2026-07-30, the wild-rehearsal autopsies): every
+        # numeric literal the winning parse asserts (given values, fdiv/mod k)
+        # must appear in the text (digits or number-words). Three of the four
+        # wild-L4 certification lies were VALUE FABRICATIONS — the parse
+        # invented a given absent from the problem. Install bar met: 0 false
+        # trips on all 266 gold-certified book-8 rows (3,680 value fields +
+        # 233 k fields; .cache/trace_layer_audit.json). Same axis as the
+        # markers: lexical trace vs parse, orthogonal to the vote.
+        _WORDNUM = {w: i for i, w in enumerate(
+            "zero one two three four five six seven eight nine ten eleven "
+            "twelve thirteen fourteen fifteen sixteen seventeen eighteen "
+            "nineteen twenty".split())}
+        _WORDNUM.update(thirty=30, forty=40, fifty=50, sixty=60, seventy=70,
+                        eighty=80, ninety=90, hundred=100)
+        import re as _re
+        _tn = {int(n) for n in _re.findall(r"\d+", dialect)}
+        _dl = dialect.lower()
+        _tn |= {v for w, v in _WORDNUM.items() if _re.search(r"\b" + w + r"\b", _dl)}
+        value_fabs = sorted({(key, int(fa[key])) for f_ in win_parses for fa in f_
+                             for key in ("value", "k") if key in fa
+                             and int(fa[key]) not in _tn})
         tripped = [name for name, lang, present in TRIPS if lang and not present]
+        tripped += [f"value-fab:{k}={v}" for k, v in value_fabs]
         if tripped:
             res.setdefault("held_basin_tripwire", []).append({"i": i, "src_idx": src, "votes": votes, "tripped": tripped})
             print(f"  [{i+1}/{len(rows)}] src {src} BASIN TRIPWIRE ({','.join(tripped)}): marker language, no matching factor in winning parse — HELD", flush=True)
