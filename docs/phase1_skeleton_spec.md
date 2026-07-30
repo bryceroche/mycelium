@@ -17545,3 +17545,31 @@ token-position × waist-dim, the moment the skeleton trains.
   lines is the agitation the law forbids. No rent owed —
   confirmatory of two banked findings; the prospective claim is a
   discipline, not an experiment.
+
+- **GUT #105 REGISTERED — "IT'S THERE, WE JUST CAN'T SEE IT"
+  (2026-07-30, seed; commitment family; two-directional history
+  stated at registration):** WHEN RIGHT, the thing hid in the
+  UNMEASURED, never the unbuilt — the roster (largest effect in the
+  record, invisible because nobody tests a convention), the twelve
+  uniqueness bypasses (law written correctly once, other doors
+  unchecked), the fdiv-on-derived hole (mint distribution never read
+  against harvest demand). The productive form: the answer lives in
+  an unexamined assumption; the move is an AUDIT, not a search.
+  WHEN WRONG, it was the frame refusing a null — the seam ran seven
+  mechanisms deep on this exact feeling and resolved deflationary
+  (marker, no carrier). The feeling does not discriminate; the
+  conversion is the question **"what is currently being looked
+  THROUGH?"** CANDIDATES the record supports: (1) the harvest's own
+  composition (eligibility criteria never audited against what
+  MATH-500 contains); (2) THE MINT-VS-HARVEST COVERAGE SWEEP — the
+  LEAD: the read that found the last hole, run once by accident via
+  one specimen's autopsy, never systematically across ALL
+  constructions; a CPU pass that either finds the next hole or
+  establishes fdiv-on-derived was the only one (the second answer
+  worth having too); (3) the certification chain's remaining shared
+  premises (two planes, both assuming the parse is the object to
+  check); (4) the dialect's other unmeasured conventions (the
+  roster was one; sentence ordering, letter assignment, the
+  "Consider the numbers" phrasing itself — none tested). No word
+  tonight; the battery grinds; the seed holds for the interps or
+  the morning.
