@@ -17274,3 +17274,39 @@ token-position × waist-dim, the moment the skeleton trains.
   fixture joins the per-promotion battery. Outside air on a
   schedule, not by occasion. g21 baseline banked:
   .cache/wild_frontier_fixture.json.
+
+- **THE GEN-22 DIET FIRE CHARTER (2026-07-30, the word given):**
+  ONE LEVER: the fdiv-on-derived diet (corpus v3, solver-verified,
+  quotas 100 control / 150 d1 / 150 d2, axes spanned, the failing
+  template ×17). DOSE, both numbers per the dose law: **400 uniques
+  × 10 reps = 4,000 rows; share 4,000/82,400 = 4.85%** (the
+  book-dose BAU shape). RECIPE: fire_gen21.sh verbatim — SGDR 4×4k
+  gentle continuation FROM g21 (the promoted lineage), LR 1e-4,
+  RATION_W=1.75 on gen-21's unchanged ration indices (base order
+  preserved by construction, verified max-idx 78399 < 78400).
+  ALG_ALLOW_PEN_TRAIN=1 declared in the launch (gen21_mix carries
+  4,810 pen rows — lawful diet members; supervision from states-file
+  gold, never solution fields; the warn-side fence acknowledged, not
+  bypassed). PRE-FLIGHT PER THE WORD: config read against the gen-21
+  recipe before writing; states memmap verified against a live trunk
+  forward on 6 rows (base head/mid/tail + diet head/mid/tail,
+  cos > 0.9999 asserted) BEFORE any segment burns. BARS: as pinned
+  2026-07-29 (blind-pinned before the substrate existed) — the
+  attractor measured not the pass rate, the before-baseline banked
+  (d0 7/8 basin 0.00, d1 1/8 basin 0.53, d2 8/8 basin 0.00), the
+  after-read on the SAME probes and seeds (diet_after_read.py);
+  regression judged by the gen-21 bars at battery time; **g21
+  remains the gate until a verdict script prints PROMOTED.**
+  THE RIDER, installed: the standing rehearsal runs in BOTH tiers
+  as part of the fire's readout — DEPLOYED expected to stay 40/40
+  mouth-refused (a diet that accidentally widens the mouth shows
+  there first), STRESS gives the trace layer its second wild
+  reading. THE CLAIM, narrowed per the principal's correction: this
+  fire cures a TEMPLATE HOLE ([1293]'s in-register species), not
+  the frontier — the wild lies belong to the trace layer and the
+  mouth (two problems, two fences, cleanly separated by four
+  autopsies). The principal's restatement of the December line is
+  RATIFIED as the record's reading: the certification tier is not
+  EXPOSED at the frontier (the mouth refuses everything before it);
+  risk arrives exactly as fast as the mouth widens, which is the
+  campaign's own deliberate program. g22's line opens here.
