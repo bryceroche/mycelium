@@ -17135,3 +17135,29 @@ token-position × waist-dim, the moment the skeleton trains.
   minted rows) — a generation-level operation that deserves a
   fresh context and a rested hand, per the same logic that
   built the morning's chassis. g22's line opens with it.
+
+- **THE FOUR QUESTIONS ANSWERED WITH NUMBERS (2026-07-29, the
+  other Claude's countersign verified and executed):**
+  (1) COMPOSABILITY: registered as an OPEN QUESTION, not a
+  property — rows compose at the training-pattern grain
+  (measured: migration law, register expansion); the STRONG
+  claim (gate trained on A and B handles A∘B) is untested and
+  is the MATH-500-relevant one. (2) SILHOUETTE-WAIST TRIAGE:
+  spec-first ruling — the funnel region exists in the ledger
+  (§13); after the roster lesson, no convention gates anything
+  before its spec is written and one retroactive read runs.
+  (3) THE POOL: ~300 eligible remain under the current filter
+  (ceiling ~469 certified); THE WALL IS A LEVEL WALL — L4
+  in-reach offers +280 and L5 +252 (length +17, literal-cap +49
+  are noise); bulk automation is real (0-wrong sheets, process
+  not experiment) and its ceiling question is harvest expansion
+  INTO L4/5, which also serves MATH-500 directly.
+  (4) MATH-500: no date offered; the WILD-REGISTER REHEARSAL
+  registered instead — 40 raw L4 in-reach problems through the
+  deployed chain in DEPLOYMENT MODE (parse+vote+attestation+
+  tripwire, no gold gating, gold revealed only for scoring).
+  EXPECTATION REGISTERED: abstention-dominant (abstention IS
+  success at this frontier). THE TWO NUMBERS THAT MATTER:
+  lie rate among quorums (zero = the chain holds wild at L4)
+  and the quorum rate (the competence frontier's honest
+  location). Fires now.
