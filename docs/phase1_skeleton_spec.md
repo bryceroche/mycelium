@@ -17089,3 +17089,28 @@ token-position × waist-dim, the moment the skeleton trains.
   18% overall (16-23% by level, flat across difficulty) vs the
   14.7% rendered-need rate — the exposure is level-independent
   and systematic.
+
+- **THE DISCRIMINATORS COLLAPSE THE SPECIES TO A TEMPLATE HOLE
+  (2026-07-29):** mul-c 2/8 (basin 0.55) and add-c 2/8 (0.52) —
+  PROVENANCE-OP ELIMINATED; mul-e 8/8 and mul-c-late 8/8 (basin
+  0.03) — LETTER-ALONE ELIMINATED (c passes when moved late);
+  depth-2's clean adjacency already eliminated ADJACENCY. What
+  uniquely fails: **the positional template — the fdiv sentence
+  at ordinal 4 binding c→d** (result-letter and ordinal are
+  structurally COUPLED in a positional-letter dialect: at that
+  ordinal the result is always d — one variable, not two). THE
+  RECORD CHECK: [1293] and [239] both match the failing template
+  EXACTLY — the species that opened as "chained-fdiv," widened
+  to "fdiv-on-derived," may be ONE TEMPLATE HOLE in the mint
+  distribution. CONSEQUENCES: (a) the re-mint is now
+  MEASUREMENT-DRIVEN — the corpus spans operand letters,
+  ordinals, adjacency, and ops (randomized prefix givens shift
+  the whole template frame); the confounded 400 are replaced;
+  (b) the exposure RE-SIZES by template (the 44 book rows
+  re-classify: how many are the c→d-ordinal-4 shape?) — the
+  wild hole may be far smaller than 14.7%, and the diet far
+  cheaper than feared; (c) the tripwire's value RISES either
+  way (a template hole is exactly what a lexical-vs-parse check
+  catches regardless of which template). The day's method
+  compounding: basin → root cause → template — three
+  narrowings, each by a cheaper read than the last.
