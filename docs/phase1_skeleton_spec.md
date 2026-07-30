@@ -17573,3 +17573,29 @@ token-position × waist-dim, the moment the skeleton trains.
   "Consider the numbers" phrasing itself — none tested). No word
   tonight; the battery grinds; the seed holds for the interps or
   the morning.
+
+- **GUT #106 REGISTERED — EFFICIENCY GAINS BY POOLING (2026-07-30,
+  exchange family, seventh seed; arrived with measurements on both
+  sides of its own ledger):** WHERE POOLING PAYS, measured: the
+  five-view vote (volatile parses → predictable quorum; the 68.8%
+  abstention wall is variance reduction stated as a number), tranche
+  structure (per-row luck → stable certification line), the split
+  load meter. i1/i2 confirmed with numbers. THE CONTAGION CLAUSE,
+  with the week's central finding as specimen: [1293] — fifteen
+  views, three models, one basin, zero dissent. **Pooling buys
+  variance reduction proportional to INDEPENDENCE, and the
+  campaign's pools are less independent than they look** — the
+  diversity budget's actuarial statement; substrate diversity is
+  not landscape diversity; why the trace layer (a different axis)
+  outperformed adding views. THE SPECIALIZATION CLAUSE, live
+  customer flagged: the delegation pools drafting judgment into one
+  pen under one jurisprudence — efficient (0-wrong sheets) and
+  monoculture by construction; #91's multi-route custody addressed
+  it and nothing has built it; every book row carries one pen's
+  fingerprint. THE YIELD — THE BUDGETING RULE, connecting #106's
+  actuarial economics to #101's orthogonality law: **when a pool's
+  members share failure modes, spend the next unit on an orthogonal
+  instrument, not another member.** The marginal seat is worth less
+  than the marginal axis (measured: 3/4 wild lies to a CPU check on
+  a new axis; zero to ten additional views on the old one). The
+  exchange family stands at SEVEN seeds, interps owed.
