@@ -17682,3 +17682,30 @@ token-position × waist-dim, the moment the skeleton trains.
   campaign's failure mode was never lack of planning but the ladder
   built before the rung reported; orchestration must not become
   automation of judgment. The deciding stays with the word.
+
+- **GUT #108 REGISTERED — THE MISSING COMMUNICATION (2026-07-30;
+  four instances in ten days make it a named pattern, not a
+  hypothesis):** the panel refresh reached the manifest but not the
+  battery code; the budget law lived in one file while twelve
+  consumers drifted; the hashes stopped recomputing at gen-17 and
+  rode orphaned through five promotions; the fixture read a gen9b
+  mouth while the manifest carried another. All one species: **a
+  state change in one place, never signalled to its dependents** —
+  the prose-promotions family at code grain. THE SHARPENING, pinned:
+  all four share a DIRECTION — the authority updated, the consumer
+  stale, never the reverse. The cure belongs READ-SIDE: **state with
+  two homes needs one authority and zero copies; where a copy is
+  unavoidable, it asserts against the authority at read** (load_alg
+  for custody gold and the fixture's manifest-mouth are the
+  precedents). THE CONVERSION: the one-door sweep's scope is now
+  DEFINED by this gut — enumerate the DUPLICATED STATE, not the
+  duplicated law: manifest artifacts vs hardcoded paths; the skip
+  registry vs candidate consumers; provenance marks vs tranche
+  records; the conviction index vs cited numbers; gate identity vs
+  weight-loading scripts. Each pair has a door, an assert, or a
+  silent bypass — and the silent bypasses are the next four bugs,
+  already written and waiting. Honest note carried: the epistemic
+  discipline outran the plumbing discipline because bars were built
+  deliberately while code accreted; the cadence law set the
+  schedule, this sets the target. The sweep is the deep clean's
+  STANDING AGENDA ITEM.
