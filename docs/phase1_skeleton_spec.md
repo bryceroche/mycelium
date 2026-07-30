@@ -17892,3 +17892,36 @@ token-position × waist-dim, the moment the skeleton trains.
   GPU pass, not a re-cut (corrected same-minute; the original line
   claimed both sides free). The interps decide which reading the
   instinct holds.
+
+- **THE WILD LEDGER READS (2026-07-31; n=1404, gate g22, mouth thr
+  0.0154; artifact .cache/wild_ledger_v1.jsonl — every number below
+  re-cuttable):** THE PINNED-BAR VERDICT ON THE CURVE: **MIXED** —
+  the T1-analog quartiles are non-monotone (ALL: 0.60/0.70/0.60/
+  0.57; DISJOINT: 0.66/0.69/0.66/0.59; spread ~1.5 SE at n≈30/bin)
+  → by the pre-pinned rule, NO tier structure is inferred; the
+  fixture holds. THE SHARPER FINDING BEHIND THE VERDICT: **mouth
+  residual does not grade precision among the answered** — the
+  dial's proposed axis is refuted in the measured range. And its
+  companion: **quorum saturates** — 123/124 answered items are 5/5
+  unanimous at 0.626 precision (temperature⊥truth at census scale;
+  the certification signal grades nothing wild). NO measured signal
+  currently grades precision among the answered; the honest tier
+  structure is BINARY: the inner chain at ~0.63, or abstention.
+  THE CENSUS NUMBERS: mouth refuses 1382/1404 (98.4%) — the
+  certified tier has ~no wild customers (native-answered: 3 items
+  total). Inner chain (mouth-bypassed): 790 reach quorum (56%);
+  the fences hold 666 of them (trace 601, attest 65); 124 answer
+  at 0.629. Counterfactual, no fences: 790 answer at 0.525. THE
+  FENCES' MEASURED VALUE: +0.10 precision for 6.4× coverage — they
+  hold 329 lies at the cost of 337 correct answers. THE
+  DOMAIN-SCOPING NUMBER: value-fab, in-register a 0-false-trip
+  fence, is a COIN FLIP on wild text (568 held, lie-rate 0.48 —
+  wild numbers legitimately transform: halves, LaTeX, derived
+  constants); division marker 0.56. The tripwire-scope note's
+  caveat now has its measurement. LEVEL grades where residual
+  doesn't: 0.78 (L1) → 0.47 (L5) among answered. THE DECEMBER MENU,
+  MEASURED (disjoint ≈ same; consumption-undercount caveat rides):
+  T0+abstain answers ~nothing wild; the inner-chain tier gives
+  ~9% coverage @ 0.63; unfenced 56% @ 0.53. The road must widen
+  coverage AND raise precision — and the actuarial fixture now
+  exists to price every future proposal against.
