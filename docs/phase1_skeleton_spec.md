@@ -17865,3 +17865,27 @@ token-position × waist-dim, the moment the skeleton trains.
   wrong direction (consumption undercount), labeled as such
   wherever quoted; trigger for the consumption-ledger pass = any
   decision turning on the disjoint/all gap.
+
+- **GUT #109 REGISTERED — "ROTATION IS KEY" (2026-07-31, seed;
+  three readings with standings stated):** (1) LIVE COLUMN —
+  dissent rotation: gen-21:2 / gen-22:2 / overlap 0, n=2 caveat
+  filed; the hard-won prior is the 44-item family that looked
+  structural and was four generations of stale incumbents — a
+  chair nobody dusted; rotation is the HEALTHY signature. THE PIN:
+  rotation is meaningful evidence only if the panel itself is
+  fresh each generation — otherwise rotating dissent could be a
+  rotating population against a fixed instrument (the apparatus
+  law's shape again). The column accrues; needs generations, not
+  analysis. (2) MEASURED LEVER — per-breath Q rotation (uniform
+  phase, not RoPE) was a validated carry-forward component (+4.4
+  on the ablation staircase, 29.3→33.7); convergent with banked
+  material. (3) SPECULATIVE BUILD WITH AN EXISTING FENCE —
+  rotation as decorrelation: rotate a per-view surface (roster
+  order, letter assignment) to make the five views less correlated
+  BY CONSTRUCTION (the roster-as-address-table finding gives it a
+  concrete target); #91's fence applies — routes count as custody
+  only when METHODOLOGICALLY decorrelated, and rotating a surface
+  feature of one model may not clear the bar. First read is free
+  when proposed: the banked wild ledger re-cuts for view-agreement
+  under permuted addresses. The interps decide which reading the
+  instinct holds.
