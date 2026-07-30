@@ -17841,3 +17841,27 @@ token-position × waist-dim, the moment the skeleton trains.
   gold by default** (a tier admitted at measured-imperfect
   precision feeding the corpus is the poisoned-gold path wearing a
   policy). Artifact: .cache/wild_ledger_v1.jsonl + the curve print.
+
+- **THE CURVE'S SHAPE BAR, PINNED BEFORE THE TABLE PRINTS
+  (2026-07-31, ~1000/1404 through the chain — the readout rules
+  fixed while the answer is still unknown):** the T1-analog
+  quartile table reads by these definitions and no others:
+  **SMOOTH** = precision monotone non-increasing across the four
+  residual quartiles AND no single-quartile drop exceeding 50% of
+  the total top-to-bottom range → the dial has a real curve; a
+  graded T1 tier is structurally supported. **CLIFF** = any single
+  quartile drop > 50% of the total range → the honest structure is
+  binary; T1 narrows to the near-band at most. **NEITHER** (a
+  non-monotone or mixed shape) → verdict is MIXED; no tier
+  structure gets inferred from this read alone — the fixture holds
+  and the question waits for more wild gold, not for a friendlier
+  reading. SUPPORT RULE: any quartile bin with **n < 25 is
+  directional-only** (the diet-baseline rule inherited) — a dial
+  is never calibrated against a bin below support. The
+  bar is in the SHAPE, not the endpoints; the seduction this
+  prevents is reading the middle case through whichever tier
+  structure feels attractive when the numbers arrive. The
+  disjoint-read caveat rides the readout: conservative in the
+  wrong direction (consumption undercount), labeled as such
+  wherever quoted; trigger for the consumption-ledger pass = any
+  decision turning on the disjoint/all gap.
