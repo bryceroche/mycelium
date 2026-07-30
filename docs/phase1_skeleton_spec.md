@@ -17402,3 +17402,27 @@ token-position × waist-dim, the moment the skeleton trains.
   else. **g22 is a CANDIDATE on the bench; g21 remains the gate.**
   The battery + gen-22 verdict (regression bars per the manifest,
   entourage duty, hash recompute now mechanical) fire on the word.
+
+- **THE ONE-DOOR LAW (2026-07-30, Bryce — assert-on-read extended one
+  level; the deep clean's generalization):** *a law implemented in one
+  file is a law with one enforcement point and N silent bypasses.*
+  Third instance banked: budget-exhaustion-rejects lived correctly in
+  algebra_dag7_gen alone while eleven other doors passed 'budget' as
+  proof; the panel refresh reached the manifest but not the battery
+  code; the schema law's text field drifted per-consumer. The cure
+  with precedent: a SHARED DOOR (load_alg for custody gold, one
+  trace_layer for the fence, one uniqueness guard). REGISTERED — THE
+  ONE-DOOR SWEEP: for every constitutional law with a code
+  expression, is there exactly one door or N implementations? A CPU
+  sweep; the deep clean's own generalization, queued as standing
+  duty.
+- **THE CUSTODY-GAP LINE, STATED PLAINLY (2026-07-30, per the
+  conviction index's discipline):** every promotion sheet from gen-17
+  through gen-21 carried orphaned manifest hashes — **manifest hash
+  verification was DECORATIVE for that span.** Not a lie in the
+  results (artifacts verified present; the deployed bytes were what
+  the batteries measured), but a gap in the custody record: for five
+  generations the field that exists to prove which bytes were
+  deployed proved nothing. Repaired 2026-07-30 (stale values
+  preserved in the manifest's repair note); PROMOTED and a true
+  manifest are one atomic act again from gen-22 forward.
