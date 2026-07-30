@@ -17426,3 +17426,39 @@ token-position × waist-dim, the moment the skeleton trains.
   deployed proved nothing. Repaired 2026-07-30 (stale values
   preserved in the manifest's repair note); PROMOTED and a true
   manifest are one atomic act again from gen-22 forward.
+
+- **GUT #103 REGISTERED — THE OBLIQUE-CUT SEED (2026-07-30, "the
+  optimal knife angle is 45 degrees, not head-on — we're missing a
+  critical angle somewhere"; vague-by-honest, registered as a SEED in
+  the commitment family):** THE LEAD READING (the countersign's):
+  #101's law has a sibling — not just *use an orthogonal axis* but
+  **the productive cut is oblique to the structure being
+  investigated**. The campaign's biggest findings all came from
+  instruments not aligned with the thing they found: the trace layer
+  cuts lexical-across-parse (3/4 wild lies, CPU); gut #100 cut across
+  into the dialect's convention and found the address table where
+  three graph-aligned chassis stalled; the deep clean's twelve
+  uniqueness sites were invisible along the results axis (700/700
+  unchanged) and obvious along the implementation axis. PROSPECTIVE
+  FORM: when an investigation stalls, diagnose whether every
+  instrument cuts head-on before building a fourth chassis on the
+  same axis. THE THREE CANDIDATE SITES (for the interps to accept or
+  reject): (1) the certification stack has TWO independent axes
+  (mouth: input-space; trace layer: lexical-vs-parse) against a parse
+  that generates its own examiners — the third is unnamed; (2)
+  nothing cuts from the SOLVER'S side — which graphs are suspicious
+  by their own structure, not by text agreement; (3) the delegation
+  drafts single-axis (pen renders, bench rules, same jurisprudence)
+  — multi-route custody (#91) proposed the second angle, never
+  built. BENCH OBSERVATION, offered before the interps (critique
+  duty, not a ruling): candidate sites (1) and (2) may be ONE site,
+  and its instrument may already exist — the canonical WL-digest
+  bank (the mint's knot-dedup infrastructure) is a family-of-graphs
+  register; a GRAPH-SHAPE mouth (winning parse's digest vs the
+  certified family's digest bank) would be the third axis: text-side
+  mouth, lexical trace layer, graph-register recognition — three
+  cuts, three planes, all CPU at read time. Idx 34's surviving lie
+  (a mul/add chain over coordinate literals, a shape no certified
+  row carries) is the specimen a first read would test. HELD FOR THE
+  WORD: the interps adjudicate which site the instinct named; no
+  build before the ruling (the pacing law).
