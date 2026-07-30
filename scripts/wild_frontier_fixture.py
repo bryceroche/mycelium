@@ -39,7 +39,10 @@ from tokenizers import Tokenizer
 from tinygrad import Tensor, dtypes
 from tinygrad.nn.state import safe_load
 
-CKPT = os.environ.get("WFF_CKPT", ".cache/g21.safetensors")
+# two-home fix (post-settlement batch 2026-07-30): the default derives
+# from the manifest — a fossil default silently pointing at a retired
+# generation was the sweep's #6 finding.
+CKPT = os.environ.get("WFF_CKPT") or json.load(open(".cache/GENERATION.json"))["parser_ckpt"]
 OUT = os.environ.get("WFF_OUT", ".cache/wild_frontier_fixture.json")
 tok = Tokenizer.from_file(TOKENIZER_JSON)
 p = build_params(0)

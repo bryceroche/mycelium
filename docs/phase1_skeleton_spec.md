@@ -17742,3 +17742,26 @@ token-position × waist-dim, the moment the skeleton trains.
   DIET_CKPT fossil defaults go manifest-driven post-settlement
   (stage 10 calls the fixture; nothing edits a file a running unit
   will execute). The sweep is STANDING; this was its first pass.
+
+- **ENTOURAGE-22 SETTLED — THE GATE MAY READ (2026-07-30):** all ten
+  stages clean. Specialist remined vs g22; centroids rebuilt in g22
+  fst space (all nine kinds, fdiv among them); mouth rebuilt on the
+  g22 family (length-controlled thr 0.0154, fit fresh — vintages
+  never mix); disjoint census 16 banked / 36 near / 48 knotted;
+  dissent-overlap gen-21:2 vs gen-22:2, overlap 0 — dissent ROTATES
+  (population-driven; n=2 caveat carried, the column accrues);
+  manifest members refreshed WITH RE-HASH (the atomic law's
+  entourage edition, second live exercise today). **STAGE 10 — THE
+  TRUE ZERO-POINT: DEPLOYED 40/40 mouth-refused under the REAL
+  manifest mouth** (gen-22 family). The stale-mouth caveat resolves:
+  the directional claim now has its true number and it held — total
+  refusal at the wild frontier under the deployed chain, gate and
+  mouth both gen-22. STRESS: abstain 27 / tripped 10 / attest-block
+  2 / 1 lie (idx 34, the register case) / 0 correct — the inner-
+  fence picture unchanged from the post-fire read. POST-SETTLEMENT
+  BATCH APPLIED: manifest env gains ALG_HW=512 (finding #3's
+  no-authority state now has a home); WFF_CKPT and DIET_CKPT fossil
+  defaults now derive from the manifest (findings #6/#7). The
+  two-home sweep's live findings are now ALL closed: four bypasses
+  → four doors, one no-authority → one authority, same day as the
+  gut that named the species.

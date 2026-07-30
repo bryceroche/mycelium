@@ -21,7 +21,8 @@ from tokenizers import Tokenizer
 from tinygrad import Tensor, dtypes
 from tinygrad.nn.state import safe_load
 
-CKPT = os.environ.get("DIET_CKPT", ".cache/g22.safetensors")
+# two-home fix (post-settlement batch 2026-07-30): default from the manifest
+CKPT = os.environ.get("DIET_CKPT") or json.load(open(".cache/GENERATION.json"))["parser_ckpt"]
 tok = Tokenizer.from_file(TOKENIZER_JSON)
 p = build_params(0)
 sd = safe_load(CKPT)
