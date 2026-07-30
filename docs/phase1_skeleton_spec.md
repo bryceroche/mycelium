@@ -17114,3 +17114,24 @@ token-position × waist-dim, the moment the skeleton trains.
   catches regardless of which template). The day's method
   compounding: basin → root cause → template — three
   narrowings, each by a cheaper read than the last.
+
+- **THE DIET SUBSTRATE IS READY — PREPARATION COMPLETE, THE
+  TRAINING FIRE STAGED (2026-07-29):** corpus v3 banked
+  (.cache/diet_fdiv_derived_corpus.jsonl): 400 solver-verified
+  rows, per-depth quotas enforced (100 control / 150 d1 / 150
+  d2), operand letters a-h, both ops, adjacency split, prefix-
+  shifted ordinals — and the exact failing template
+  (d1/adjacent/operand-c) present at 17 rows. THE STANDING
+  INSTRUMENTS: the before-baseline (d1 quorum 1-2/8, basin
+  ~0.53; d0/d2 clean), the discriminator cells, the factory
+  panel, the extended tripwire, the blind-pinned bar (nonzero
+  from zero at minimal richness, then the context ladder, the
+  attractor measured not the pass rate). WHAT REMAINS IS THE
+  FIRE ITSELF: gentle continuation from g21 with the diet at a
+  declared dose (BAU-shaped: share-of-mix AND reps-per-unique
+  declared, per the dose law) — staged with its first step
+  named: config verification against the gen-21 recipe
+  (fire_gen21.sh read-before-fire; states precompute for the
+  minted rows) — a generation-level operation that deserves a
+  fresh context and a rested hand, per the same logic that
+  built the morning's chassis. g22's line opens with it.
