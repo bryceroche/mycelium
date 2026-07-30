@@ -16,15 +16,8 @@ sys.path.insert(0, "."); sys.path.insert(0, "scripts")
 GEN = "22"
 ENV = {"DEV": "AMD", "ALG2": "1", "ALG_FTYPES": "8", "ALG_DUP": "1"}
 CANDS = {"H": ".cache/g22.safetensors"}
-FIXTURES = [("bigtest", ".cache/algebra_nl_bigtest.jsonl"),
-            ("alg4test", ".cache/algebra4_nl_test.jsonl"),
-            ("alg2test", ".cache/algebra2_nl_test.jsonl"),
-            ("vtest", ".cache/algv_test_verbose.jsonl"),
-            ("dagtest", ".cache/dag_test.jsonl"),
-            ("dag7btest", ".cache/dag7b_test.jsonl"),
-            ("dag8test", ".cache/dag8_test.jsonl"),
-            ("h3held", ".cache/gen17_hundreds_held.jsonl"),
-            ("adupheld", ".cache/gen17_adup_held.jsonl")]
+# two-home fix 2026-07-30: the roster's one authority
+from gate_fixtures import FIXTURES
 
 
 def sh(cmd, extra=None, tail=2, logf=None):

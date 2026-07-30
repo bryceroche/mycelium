@@ -17709,3 +17709,36 @@ token-position × waist-dim, the moment the skeleton trains.
   deliberately while code accreted; the cadence law set the
   schedule, this sets the target. The sweep is the deep clean's
   STANDING AGENDA ITEM.
+
+- **THE TWO-HOME SWEEP: 17 PAIRS, FOUR LIVE SILENT BYPASSES — THE
+  NEXT FOUR BUGS FOUND WRITTEN AND WAITING (2026-07-30, #108's
+  standing agenda, first execution):** (1) **book8_certify.py
+  hardcoded g21 — ALREADY STALE-LIVE at read time** (gen-22 took the
+  gate two hours before the sweep; a rerun would have certified
+  training rows with the retired parser, no assertion anywhere).
+  FIXED: parser derives from the manifest (B8_CKPT explicit
+  override only). (2) **A certify rerun would RESURRECT the
+  withdrawn rows** — the harness overwrote cert records wholesale;
+  TRANCHE_SKIPS only guards future drafting, not recertification.
+  FIXED: withdrawals carry forward from the existing record and a
+  withdrawn src_idx can never re-enter certified. (3) **ALG_HW has
+  NO AUTHORITY AT ALL** — 19 scattered setdefault('512') copies,
+  manifest env silent (gen-19 once recorded it, then the field was
+  dropped): the rare mirror form, state with copies and no home.
+  Fix queued post-settlement (manifest env gains ALG_HW; the
+  entourage is mid-burn and writes the manifest at stage 9 — the
+  no-mid-fire fence holds for apparatus too). (4) **The PROMOTE/KILL
+  fixture path lived as two uncoordinated literals** in the battery
+  and the verdict — the gate could have silently graded against a
+  different corpus than it scored. FIXED: scripts/gate_fixtures.py
+  is the roster's one authority; both consumers import it (kills
+  the eight-generation FIXTURES copy/paste line too). Honorable
+  mentions fixed: CLAUDE.md's stale ALG_FTYPES=6 prose corrected.
+  VERIFIED DOORS, cited as the pattern: trace_layer (both consumers
+  one import), the fixture's manifest mouth, the skip registry's
+  forward direction, entourage-22's manifest-driven lattices.
+  Dead-era bypasses (entourage<=21, lattice_join, old mouth
+  scripts) noted, not inflated. Deferred with reasons: WFF_CKPT/
+  DIET_CKPT fossil defaults go manifest-driven post-settlement
+  (stage 10 calls the fixture; nothing edits a file a running unit
+  will execute). The sweep is STANDING; this was its first pass.

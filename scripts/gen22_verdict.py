@@ -24,7 +24,8 @@ BARS = [("bigtest", 1223), ("alg4test", 380), ("alg2test", 560),
         ("dag8test", 500), ("h3held", 170), ("adupheld", 180)]
 BAND_MIN = {"bigtest": 1213, "alg4test": 374}
 KILL_FLOOR = 1213
-rows = [json.loads(l) for l in open(".cache/algebra_nl_bigtest.jsonl")]
+from gate_fixtures import BIGTEST   # two-home fix: same authority as the battery
+rows = [json.loads(l) for l in open(BIGTEST)]
 gold = [r["solution"][r["query_var"]] for r in rows]
 _m = json.load(open(".cache/GENERATION.json"))
 _lat = _m["panel"]["lattices"]

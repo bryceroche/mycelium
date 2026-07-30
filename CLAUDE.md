@@ -28,7 +28,7 @@ recognition, **never in verification**.
 | Component | What | Where |
 |---|---|---|
 | **Trunk** | frozen Llama-3.2-1B L0–L3 + embed; input-space only; NEVER trained | `mycelium/llama_loader.py`; host CACHED per process |
-| **Parser head** | ~3.2M: two slot banks (24 vars ↔ letters positionally, 24 factors) over a 512d waist; bilinear pointers; 6-way ftype (rel/given/mod/sel/pct/fdiv) + `ALG_DUP` arg-multiplicity bit; digits MSD-first ≤999 | `scripts/phase1_algebra_head.py` (envs `ALG2=1 ALG_FTYPES=6 ALG_DUP=1`) |
+| **Parser head** | ~3.2M: two slot banks (24 vars ↔ letters positionally, 24 factors) over a 512d waist; bilinear pointers; 8-way ftype (rel/given/mod/sel/pct/fdiv/macro/frac) + `ALG_DUP` arg-multiplicity bit; digits MSD-first ≤999 | `scripts/phase1_algebra_head.py` (envs `ALG2=1 ALG_FTYPES=8 ALG_DUP=1`; deployed envs = the manifest's) |
 | **Gate ckpt** | see manifest; gen-9b era = `phase1_gen9b_head`; reader_v1 (val 0.8989, bigtest 1149) in battery | `.cache/*.safetensors` |
 | **TTA vote** | 5 sentence-permutation views, majority ≥3; unanimity 5/5 = certification tier (measured 1.0000 on 866/1500) | `scripts/tta_views.py`, `tta_alg2_dials.py` |
 | **Cert-v2** | cross-model×view lattice: gate + armB (lineage axis) + cap2x (width axis); unanimity across LANDSCAPES; wild-register dissent ~85-90% = second wall behind the mouth | `scripts/lattice_member_votes.py`, `lattice_join.py` |

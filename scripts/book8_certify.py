@@ -24,7 +24,13 @@ from tinygrad.nn.state import safe_load
 
 tok = Tokenizer.from_file(TOKENIZER_JSON)
 p = build_params(0)
-sd = safe_load(".cache/g21.safetensors")
+# TWO-HOME FIX (2026-07-30, the sweep's #1 finding): the certifier
+# previously hardcoded g21 — a silent bypass that went stale the moment
+# gen-22 took the gate. The parser now derives from the manifest (the
+# authority), with B8_CKPT as an explicit override for bench work.
+CERT_CKPT = os.environ.get("B8_CKPT") or json.load(open(".cache/GENERATION.json"))["parser_ckpt"]
+print(f"[certify] gate from manifest: {CERT_CKPT}")
+sd = safe_load(CERT_CKPT)
 assert set(sd.keys()) == set(p.keys())
 for k in p: p[k].assign(sd[k].to(p[k].device).cast(p[k].dtype)).realize()
 
@@ -138,5 +144,20 @@ for i, r in enumerate(rows):
         res["abstain"].append({"i": i, "src_idx": src, "votes": votes})
     watch = r["gen"].get("watch")
     print(f"  [{i+1}/{len(rows)}] src {src}{' WATCH:'+watch if watch else ''} votes {votes} gold {gold} -> {'CERT' if cnt>=3 and plur==gold else ('WRONG' if cnt>=3 else 'abstain')}", flush=True)
+# WITHDRAWAL PRESERVATION (2026-07-30, the sweep's #2 finding): a rerun
+# previously overwrote the cert record wholesale, silently resurrecting
+# ledger-withdrawn rows ([525]/[636]/[867]) into "certified". Withdrawals
+# carry forward from the existing record, and a withdrawn src_idx can
+# never re-enter the certified list.
+if os.path.exists(OUT):
+    prev = json.load(open(OUT))
+    wd = prev.get("withdrawn_coincidental", [])
+    if wd:
+        res["withdrawn_coincidental"] = wd
+        wd_src = {int(e["src_idx"]) for e in wd}
+        res["certified"] = [e for e in res["certified"]
+                            if int(e["src_idx"]) not in wd_src]
+        print(f"[certify] withdrawals carried forward: {sorted(wd_src)} "
+              f"(barred from re-certification)")
 print(f"\n=== BOOK 8 {TKEY.upper()} CERTIFICATION: certified {len(res['certified'])} | abstain {len(res['abstain'])} | wrong {len(res['wrong'])} ===")
 json.dump(res, open(OUT, "w"), indent=1, default=int)
