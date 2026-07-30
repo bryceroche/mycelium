@@ -17792,3 +17792,28 @@ token-position × waist-dim, the moment the skeleton trains.
   completion, six bugs found, four doors built, an attractor gone,
   a gate promoted under the first verified manifest in five
   generations, and the plumbing held to the science's standard.
+
+- **THE NIGHT BRAINSTORM BANKED (2026-07-30, rest-hours; zero fires;
+  docs/seed_widening_composition_exchange.md):** (1) the widening
+  dial designed as a TIER LADDER (T0 certified / T1 attested-answer
+  at measured precision / T2 witnessed-parse / T3 refused) with the
+  mouth-residual band as the adjustable control — and its missing
+  instrument named: THE WILD LEDGER, the census-scale deployment
+  read that turns the December decision into a menu read off a
+  measured precision curve. (2) The composability probe designed:
+  the COMPOSITION MATRIX (ordered construction pairs, co-occurred
+  vs NOVEL cells — the discriminator between "learned an algebra"
+  and "learned a phrasebook"); the diet's d2 8/8 re-read as
+  existing evidence that in-register DEPTH composes. (3) THE
+  CONVERGENCE: soft-distance in silhouette space over the certified
+  library is ONE build with two customers — the matrix's
+  failure-localizer and the third-axis candidate; LOO discipline
+  inherited from the antagonism precedent. (4) The exchange
+  family's candidate unification sentence drafted (surface buys
+  adaptation, throughput buys depth, the rate set by interface
+  INDEPENDENCE — [1293] and the two-lever law as its measured
+  instances) WITH its honesty test: it must make a prospective call
+  the instruments don't (candidate: surface-first at the frontier,
+  throughput-first in-register — a real decision rule for the
+  L4/L5 wall). Morning menu ranked: wild ledger, composition
+  matrix, the one spec, the interps. All held for the word.
