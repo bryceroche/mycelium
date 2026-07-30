@@ -91,12 +91,27 @@ for i, r in enumerate(rows):
         # factor. Substrate-invariant basins are view-invariant AND
         # panel-invariant; this lexical-vs-parse check is the mechanical
         # fence. Flagged quorums hold for the wheel, never certify silently.
-        div_lang = (" divided by " in dialect) or ("quotient" in dialect)
+        # EXTENDED to the full lexical-trace inventory (2026-07-29): all seven
+        # markers measured 100% gold-consistent on 644 marker-rows — the fence
+        # template's coverage map, applied. Marker in dialect => factor type
+        # in the winning parse, else hold.
         win_parses = [f_ for (f_, q_, a_) in views if a_ == plur]
-        has_div = any(fa.get("ftype") in ("fdiv", "mod") for f_ in win_parses for fa in f_)
-        if div_lang and not has_div:
-            res.setdefault("held_basin_tripwire", []).append({"i": i, "src_idx": src, "votes": votes})
-            print(f"  [{i+1}/{len(rows)}] src {src} BASIN TRIPWIRE: division language, no division factor in winning parse — HELD", flush=True)
+        def _wf(pred): return any(pred(fa) for f_ in win_parses for fa in f_)
+        TRIPS = [
+            ("division", (" divided by " in dialect) or ("quotient" in dialect),
+             _wf(lambda fa: fa.get("ftype") in ("fdiv", "mod"))),
+            ("percent", " percent" in dialect, _wf(lambda fa: fa.get("ftype") == "pct")),
+            ("selection", (" the larger of " in dialect) or (" the smaller of " in dialect),
+             _wf(lambda fa: fa.get("ftype") == "sel")),
+            ("times", " times " in dialect, _wf(lambda fa: fa.get("ftype") == "rel" and fa.get("op") == "mul")),
+            ("plus", (" plus " in dialect) or ("The sum of" in dialect),
+             _wf(lambda fa: fa.get("ftype") == "rel" and fa.get("op") == "add")),
+            ("remainder", "remainder" in dialect, _wf(lambda fa: fa.get("ftype") == "mod")),
+        ]
+        tripped = [name for name, lang, present in TRIPS if lang and not present]
+        if tripped:
+            res.setdefault("held_basin_tripwire", []).append({"i": i, "src_idx": src, "votes": votes, "tripped": tripped})
+            print(f"  [{i+1}/{len(rows)}] src {src} BASIN TRIPWIRE ({','.join(tripped)}): marker language, no matching factor in winning parse — HELD", flush=True)
             continue
         att, _, _ = attest_quorum_v3(views, plur, dialect, m, solve2)
         res["certified" if att else "abstain"].append({"i": i, "src_idx": src, "votes": votes})

@@ -16995,3 +16995,52 @@ token-position × waist-dim, the moment the skeleton trains.
   custody holds exactly as designed — the KEY caught what
   every neural layer missed — and the finding says which link
   was always load-bearing.
+
+- **THE THREE RULINGS ON THE BASIN FINDING (2026-07-29,
+  Bryce):** (1) THE FENCE-TEMPLATE CLASS stated as such:
+  lexical-vs-parse consistency is a CLASS of fence, not a patch
+  — any basin leaving a lexical trace is catchable by the same
+  form; the next basin won't be division. (2) THE DECORRELATION
+  CEILING, measured not hedged, destined for Paper 1's
+  chain-of-custody limitations: **substrate diversity is not
+  landscape diversity when the substrates share their world** —
+  fifteen views across three models agreeing on one wrong parse
+  says the correlation runs deeper than substrate (shared
+  training distributions, tokenization, pretraining corpora);
+  the panel is not retired, its protection has a measured
+  ceiling, and the diversity budget prices that ceiling from
+  now on. (3) THE PANEL'S STATUS LINE: vacuous-by-success is
+  FALSIFIED, not pending — the panel had its first real
+  customer and did not catch it; the caveat's disposition
+  changes from "insurance whose payout hasn't occurred" to
+  "insurance measured not to cover this class," written where
+  the next reader meets it (the manifest's panel block gains
+  the note). QUEUE RANKED: wild-register exposure sizing
+  (urgent-adjacent — the number that says how big the hole is),
+  the lexical-trace inventory (the fence template's coverage
+  map, a CPU pass), then the sitting's jurisprudence flags.
+
+- **THE SIZING AND THE INVENTORY PRINT TOGETHER — AND THE
+  SIZING FINDS THE ROOT CAUSE (2026-07-29):** (1) EXPOSURE:
+  **fdiv-on-derived is SYSTEMATIC — 44/300 book rows (14.7%)**
+  need the construction; the wild hole is real and large. AND
+  THE ROOT CAUSE IN THE SAME READ: **the mint has NEVER minted
+  it — 0/1500 in bigtest.** The generator grounds every fdiv on
+  given values; the gate has literally never seen the
+  construction that one in seven natural rows requires. The
+  basin is PURE STARVATION with a mint-level cause — the most
+  precisely-targeted diet order the campaign has held: mint
+  fdiv-on-derived rows (the fixture panel stands ready to
+  measure the cure). (2) THE INVENTORY: all seven markers
+  **100% gold-consistent** across 644 marker-rows — zero
+  ambiguity anywhere; THE TRIPWIRE EXTENDS to the full map
+  (division/percent/selection/times/plus/remainder — marker in
+  dialect ⇒ factor in winning parse, else held), installed in
+  the harness in the same transaction. (3) The manifest's panel
+  block carries the falsified-caveat note (append-only; no
+  machine-read keys touched). THE SAFETY ARC'S CLOSE, one day
+  end to end: a unanimous lie caught by the key → the basin
+  found substrate-invariant → the guarantee re-scoped → the
+  fence template installed and extended → the root cause found
+  in the mint's own distribution → the diet order written by
+  measurement. The chain knows itself, and now it knows why.
