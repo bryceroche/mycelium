@@ -17184,3 +17184,25 @@ token-position × waist-dim, the moment the skeleton trains.
   exact 40-problem slice as the standing before/after fixture.
   December's question is now a number on a ledger instead of a
   feeling.
+
+- **THE REHEARSAL'S RULINGS (2026-07-30, Bryce):** THE
+  STRUCTURAL FACT carved: the fences are correlated on the same
+  weakness — views permute one landscape, the panel shares its
+  world, attestation checks the graph against text-attested
+  givens, and a confident misparse satisfies all three because
+  it is well-formed, attested, and unanimous. **You cannot
+  catch a lie with instruments that share the misreading's own
+  premise.** The only wild-L4 catch was the tripwire — the one
+  fence on a DIFFERENT AXIS than the parse. THE RE-RANK: the
+  systematic lexical-vs-parse layer goes ABOVE the diet fire —
+  the only demonstrated wild-frontier defense, currently seven
+  accidental markers; the completed map is a CPU build with the
+  rehearsal's forty as its fixture, and its effectiveness does
+  not depend on curing the gate. THE DECEMBER LINE, banked for
+  the decision it forces: **the abstention tier is
+  deployment-ready; the certification tier is not measured safe
+  at the frontier** — abstain-90%-lie-on-certify is shippable
+  only where abstention is the answer; which claim the campaign
+  makes is decided before December, at the bench. The four lie
+  autopsies queued (template-shared → the diet's coordinates
+  widen; distinct → the register road's true length).
