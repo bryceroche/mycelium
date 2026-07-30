@@ -16,6 +16,7 @@ this is the index of its open edges.
 |---|---|---|---|
 | Entourage-22 (10 stages; standing rehearsal as stage 10) | unit `entourage-g22` | running — the gate reads nothing until settled | 2026-07-30 |
 | First TRUE deployed-tier wild reading (manifest mouth) | entourage stage 10 | entourage completion; prints as a ZERO-POINT, not a delta | 2026-07-30 |
+| Two-home state sweep (#108 scope: duplicated STATE, read-side cure) | delegated auditor | running — CPU-only, beside the entourage | 2026-07-30 |
 
 ## Owed — Bryce's word required to fire
 
