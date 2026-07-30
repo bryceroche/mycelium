@@ -104,8 +104,8 @@ for gname, fn in GRAINS.items():
     grade = "FENCE-grade" if rate <= 0.05 else ("MOUTH-grade" if rate <= 0.30 else "REFUTED at this grain")
     results[gname] = {"family_digests": digs, "uniques": len(cnt),
                       "loo_false_foreign": loo_foreign, "loo_rate": rate, "grade": grade}
-    print(f"[{gname}] family uniques {len(cnt)}/266 | LOO false-foreign "
-          f"{loo_foreign}/266 = {rate:.1%} -> {grade}")
+    print(f"[{gname}] family uniques {len(cnt)}/{len(digs)} | LOO false-foreign "
+          f"{loo_foreign}/{len(digs)} = {rate:.1%} -> {grade}")
 
 # ---- wild side: the forty's winning STRESS parses under g21 (GPU; waits) ----
 print("[wild] waiting for battery-g22 to release the GPU...", flush=True)

@@ -17462,3 +17462,38 @@ token-position × waist-dim, the moment the skeleton trains.
   row carries) is the specimen a first read would test. HELD FOR THE
   WORD: the interps adjudicate which site the instinct named; no
   build before the ruling (the pacing law).
+
+- **THE GRAPH-REGISTER FIRST READ: REFUTED AT ALL THREE GRAINS — AND
+  THE RIDER PAID ON ITS FIRST OUTING (2026-07-30):** family = 263
+  certified graphs (the three withdrawn rows fell out mechanically —
+  the deep clean's withdrawal enforcement working on its first
+  consumer). LOO false-foreign: G1-native 98.5%, G2-shape 77.9%,
+  G3-profile 35.7% — all past the pre-pinned refutation line.
+  **THE ANTAGONISM LAW, carved:** a bank curated to contain no
+  duplicate knots cannot serve as a family register at the grain of
+  its own curation — the dedup invariant guarantees nothing looks
+  like anything else; a register needs exactly the opposite property.
+  DEFINITIONAL, not statistical: no corpus growth fixes G1 (the mint
+  dedups at that grain forever). Growth MIGHT help G2/G3 — the kill
+  states three conditions, not a flat no: larger family, coarser
+  grain, or soft distance. THE COUNTERFACTUAL, plainly: without the
+  LOO rider, a register calling 98.5% of everything foreign would
+  have "caught" every lie and looked like a triumph — the mouth's
+  40/40 lesson in a new hat; an instrument that refuses everything
+  has perfect recall and no information. Seventh mechanism killed by
+  a retroactive CPU pass. THE PRACTICE, now standing: **repointed
+  instruments get their false-positive rate measured on the
+  population they'll see, before their catch rate is celebrated.**
+  WHAT SURVIVES, kept separate: (a) the SOFT-DISTANCE FORM
+  (distance-to-nearest-member / density in digest space) registered
+  as a DISTINCT candidate, not a rescue — different instrument,
+  different failure modes, the form diversity helps rather than
+  defeats; its own bar and LOO discipline apply BEFORE any catch
+  rate is read, same rider first; (b) THE THIRD-AXIS NEED — the
+  stack still has two planes against a parse that generates its own
+  examiners, and idx 34 still beats both; the oblique cut is real,
+  the nearest instrument just can't make it. The /266-vs-263
+  denominator cosmetic FIXED in the script same-day (the revenant
+  species: a printed number that outlives its truth). Wild side
+  prints as characterization when the battery releases the GPU;
+  the interps hold the seed's other two readings.
