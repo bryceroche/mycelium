@@ -17817,3 +17817,27 @@ token-position × waist-dim, the moment the skeleton trains.
   throughput-first in-register — a real decision rule for the
   L4/L5 wall). Morning menu ranked: wild ledger, composition
   matrix, the one spec, the interps. All held for the word.
+
+- **THE WILD LEDGER REGISTERED AND FIRED (2026-07-31, the word given
+  on the morning menu):** the census-scale deployment read — the
+  FULL gold-bearing harvest population (standard eligibility filter,
+  ALL levels) through the deployed chain (manifest gate g22 +
+  manifest mouth) in deployment mode. PER-ITEM BANKING, not
+  aggregate (the bank-don't-read pattern): mouth residual (raw, so
+  any band edge can be cut at analysis without re-running), quorum
+  count, plurality answer, trace trips, attest verdict, gold,
+  correct flag, consumption flag (book-source items marked; curves
+  reported ALL and DISJOINT). PINNED BEFORE READING: this is a
+  SURVEY, not a bar experiment — the numbers are descriptive and
+  become the actuarial fixture behind any future tier dial; the
+  expectation is mouth-refusal dominant at L4/L5 with unknown
+  admission at L1-L3, and the T1-analog precision among answered
+  items is THE number being measured. SCOPE STATED HONESTLY: the
+  curve is measured where gold exists; extrapolation to gold-less
+  territory is inference, not measurement (the seven-marker map's
+  own caveat, inherited). THE LANGUAGE FENCE, banked as policy:
+  T1 never inherits certification's language — different verb,
+  different sheet column, and **T1 rows are ineligible for training
+  gold by default** (a tier admitted at measured-imperfect
+  precision feeding the corpus is the poisoned-gold path wearing a
+  policy). Artifact: .cache/wild_ledger_v1.jsonl + the curve print.
