@@ -17765,3 +17765,30 @@ token-position × waist-dim, the moment the skeleton trains.
   two-home sweep's live findings are now ALL closed: four bypasses
   → four doors, one no-authority → one authority, same day as the
   gut that named the species.
+
+- **THE THIRD FAILURE MODE — COPIES WITH NO HOME (2026-07-30, Bryce,
+  carved at day's close):** the two-home law as stated ("one
+  authority, zero copies") assumes an authority EXISTS. ALG_HW's
+  nineteen copies had nothing to derive from and nothing to assert
+  against — the manifest silent because gen-19 recorded the field
+  once and it was dropped. Three failure modes now named:
+  STALE-CONSUMER (authority updated, consumer not), SILENT-BYPASS
+  (consumer carries a copy, never checks), and NO-HOME (copies with
+  no authority at all). **THE SWEEP'S STANDING FORM ASKS TWO
+  QUESTIONS PER STATE: does it have an authority, and do consumers
+  derive from it — and the first question is the one nobody thought
+  to ask.** The withdrawal-resurrection finding banked as the law's
+  most instructive instance: the registry guarded drafting, nothing
+  guarded the overwrite; the authority said withdrawn while the
+  consumer said certified. Now the consumer derives.
+  THE TRIAGE RE-PRICING, sharpened before it is written: the true
+  zero-point (40/40 refused under the real mouth) means the head's
+  case is about WIDENING, not guarding — a different proposal than
+  the one queued this morning. To be written with that clear, with
+  a rested hand. THE HOLD: everything held tonight on the word —
+  the board clear, the gate attributed, the estate settled; the
+  coverage sweep, the interps, and the re-pricing all improve by
+  morning. Day's close: four guts registered, two swept to
+  completion, six bugs found, four doors built, an attractor gone,
+  a gate promoted under the first verified manifest in five
+  generations, and the plumbing held to the science's standard.
