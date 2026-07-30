@@ -17067,3 +17067,25 @@ token-position × waist-dim, the moment the skeleton trains.
   worth knowing). (4) The wild-register sizing rides ALONGSIDE
   the diet — both numbers in the same entry (the cure and how
   much the fence was carrying).
+
+- **THE DIET PREP PRINTS — WITH A NON-MONOTONE TEXTURE AND A
+  CORPUS CATCH (2026-07-29):** BEFORE-FIXTURE: depth-0 control
+  7/8 clean (basin 0.00); **depth-1: 1/8, basin fraction 0.53**
+  (the [1293] anatomy reproduced on demand); **depth-2: 8/8
+  PERFECT, basin 0.00** — the DEEPER derivation parses clean.
+  NON-MONOTONE IN DEPTH = the texture rule fires: candidate
+  discriminators named, no reinterpretation — (a) LETTER
+  IDENTITY (the failing cells are all "When C is divided by":
+  [1293], [239], depth-1 here; the clean cells use a/e);
+  (b) PROVENANCE OP (mul-result vs add-result operand);
+  (c) SENTENCE ORDINAL. THE CORPUS CATCH, the factory fence
+  working on its own factory: the minted 400 CONFOUNDS depth
+  with letter/op/ordinal (each depth = one template) — a diet
+  on it would teach "fdiv-on-c-after-mul," one rung of a ladder
+  whose shape we just learned is not even monotone. THE CORPUS
+  HOLDS (not fed); discriminator cells run first; the re-mint
+  varies the axes per the constitution. WILD SIZING banked
+  alongside per the ordering rule: division-structure language
+  18% overall (16-23% by level, flat across difficulty) vs the
+  14.7% rendered-need rate — the exposure is level-independent
+  and systematic.
