@@ -78,9 +78,22 @@ def parse_batch(texts):
     return out_r
 
 # --- the mouth (deployed tier's first link) ---
-zc = np.load(".cache/mouth_length_correction.npz")
-coef, mthr = zc["coef"], float(zc["thr"])
-bank = np.load(".cache/recognition_mouth_gen9b.npz")["bank"]
+# DEEP-CLEAN FIX (2026-07-30, entourage-22): the fixture previously
+# hardcoded the gen9b bank + the old length-correction file — a STALE
+# mouth, not the deployed one. The DEPLOYED tier must read the chain as
+# shipped: the manifest's mouth artifact (bank + coef + thr_knn inside,
+# the entourage format). The 2026-07-30 g21/g22 baselines carry a scope
+# note in the ledger (measured under the stale mouth).
+_mf = json.load(open(".cache/GENERATION.json"))["mouth"]
+zc = np.load(_mf)
+if "coef" in zc.files:          # entourage format: bank + coef + thr_knn
+    coef, mthr = zc["coef"].astype(np.float64), float(zc["thr_knn"])
+    bank = zc["bank"]
+else:                            # legacy: separate correction file
+    bank = zc["bank"]
+    zl = np.load(".cache/mouth_length_correction.npz")
+    coef, mthr = zl["coef"], float(zl["thr"])
+print(f"[mouth] deployed artifact: {_mf} (thr {mthr:.4f})")
 texts = [x["problem"] for x in cands]
 V, Ls = [], []
 for s0 in range(0, len(texts), 8):

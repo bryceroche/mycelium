@@ -17599,3 +17599,43 @@ token-position × waist-dim, the moment the skeleton trains.
   than the marginal axis (measured: 3/4 wild lies to a CPU check on
   a new axis; zero to ten additional views on the old one). The
   exchange family stands at SEVEN seeds, interps owed.
+
+- **GEN-22 PROMOTED (2026-07-30) — THE DIET FIRE TAKES THE GATE; THE
+  FIRST ATOMIC-HASH PROMOTION:** bigtest 1226 (bar 1223; band
+  [1226, 1218, 1228] all >= 1213), alg4 398 (380; band >= 374), alg2
+  659, vtest 600, dagtest 684, dag7b 579, dag8 575, h3held 194/200,
+  adup 199/200; acceptance 19 banks; cert-v2 **999 @ 1.0000**,
+  panel-dissent 2; adversarial 0/20 wrong-unanimous, guard 20/20;
+  ZONE 1001/408/91 — delta +3/−2/−1 vs the gen-20 baseline, the
+  near-zero disturbance the in-register diet predicted (mint diets
+  do not migrate zones; organic prose does — the two-lever
+  distinction holds at its third datapoint). Ring-gauge flips vs
+  gen-16: 116/1500. The manifest is written WITH RECOMPUTED HASHES
+  (the deep-clean repair's first live exercise). The cure and the
+  gate in one generation: d1 7/8 basin 0.00 AND bigtest +3 over the
+  bar. ENTOURAGE-22 FIRES NEXT — the gate reads nothing until paid.
+- **THE GRAPH-REGISTER WILD SIDE (characterization, closing the
+  file):** 17/40 wild items reached quorum under g21. G1-native:
+  16/17 outside the family (vacuous — refuses nearly everything);
+  G2-shape: 13/17 outside, all four lies outside (uninformative at
+  77.9% LOO); G3-profile: 8/17 outside and **three of the four lies
+  INSIDE the family** ([8],[22],[34] — idx 34 included). The
+  exact-match register fails in BOTH directions: strict grains
+  refuse everything, the coarse grain admits the lies. The
+  refutation is complete from both sides; the soft-distance
+  candidate inherits a sharpened prior.
+- **TWO APPARATUS CATCHES AT THE PROMOTION SEAM (the cadence paying
+  same-day):** (1) my battery monitor watched journalctl while the
+  unit's output went to a log file — the sentinel printed to an
+  empty stream's watcher; caught on the next read, monitor re-armed
+  on the artifact (the watcher is apparatus too). (2) the wild
+  fixture's DEPLOYED tier read a STALE mouth (hardcoded gen9b bank +
+  old length correction, not the manifest's gen-21 artifact) — the
+  2026-07-30 g21/g22 baselines carry this scope note: DEPLOYED tier
+  measured under the gen9b-era mouth. FIXED: the fixture now reads
+  the mouth FROM THE MANIFEST (the chain as shipped, mechanically);
+  entourage-22 stage 10 re-baselines both tiers under the new gate
+  and new mouth. Entourage-21 fossils also fixed in the e22
+  adaptation: g22-aligned state pair (e21 mixed a g21 npz with g20
+  states and survived by prefix accident), manifest-driven panel
+  lattices in the dissent read.
