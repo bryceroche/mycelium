@@ -52,6 +52,13 @@ TKEY = os.environ.get("B8_TKEY", "tranche1")
 DRAFT = os.environ.get("B8_DRAFT", ".cache/book8_prose_pairs_draft.jsonl")
 OUT = os.environ.get("B8_OUT", ".cache/book8_certification.json")
 cands = json.load(open(CANDS))
+# deep clean 2026-07-30: no silent casts on the gold path — answers must be
+# clean ints (custody discipline; a string-formatted "$12" would int() to a
+# crash here, but a float-ish 12.0 would silently truncate).
+for c in cands[TKEY]:
+    assert isinstance(c["answer"], int) or (isinstance(c["answer"], str)
+        and c["answer"].strip().lstrip("-").isdigit()), \
+        f"non-integer gold for src {c['src_idx']}: {c['answer']!r}"
 harvest_gold = {int(c["src_idx"]): int(c["answer"]) for c in cands[TKEY]}
 
 rows = [json.loads(l) for l in open(DRAFT)]
@@ -77,7 +84,7 @@ for i, r in enumerate(rows):
              "pen_derived": r["solution"][r["query_var"]]})
         print(f"  [{i+1}/{len(rows)}] src {src} HELD FOR WHEEL: pen {r['solution'][r['query_var']]} vs harvest {gold}", flush=True)
         continue
-    m = r.get("m", 300)
+    m = r["m"]   # deep clean 2026-07-30: hard KeyError over silent 300 default
     dialect = r["gen"]["dialect"]   # schema law: text=SOURCE, gen.dialect=the annotation
     texts = [dialect] + [permuted_view(dialect, 91000 + 10*i + k) for k in range(1, 5)]
     views = [(f, q, solve2(f, q, {"n_vars": 24, "m": m})) for f, q in parse_batch(texts)]
@@ -108,29 +115,17 @@ for i, r in enumerate(rows):
              _wf(lambda fa: fa.get("ftype") == "rel" and fa.get("op") == "add")),
             ("remainder", "remainder" in dialect, _wf(lambda fa: fa.get("ftype") == "mod")),
         ]
-        # VALUE CONSISTENCY (2026-07-30, the wild-rehearsal autopsies): every
-        # numeric literal the winning parse asserts (given values, fdiv/mod k)
-        # must appear in the text (digits or number-words). Three of the four
-        # wild-L4 certification lies were VALUE FABRICATIONS — the parse
-        # invented a given absent from the problem. Install bar met: 0 false
-        # trips on all 266 gold-certified book-8 rows (3,680 value fields +
-        # 233 k fields; .cache/trace_layer_audit.json). Same axis as the
-        # markers: lexical trace vs parse, orthogonal to the vote.
-        _WORDNUM = {w: i for i, w in enumerate(
-            "zero one two three four five six seven eight nine ten eleven "
-            "twelve thirteen fourteen fifteen sixteen seventeen eighteen "
-            "nineteen twenty".split())}
-        _WORDNUM.update(thirty=30, forty=40, fifty=50, sixty=60, seventy=70,
-                        eighty=80, ninety=90, hundred=100)
-        import re as _re
-        _tn = {int(n) for n in _re.findall(r"\d+", dialect)}
-        _dl = dialect.lower()
-        _tn |= {v for w, v in _WORDNUM.items() if _re.search(r"\b" + w + r"\b", _dl)}
-        value_fabs = sorted({(key, int(fa[key])) for f_ in win_parses for fa in f_
-                             for key in ("value", "k") if key in fa
-                             and int(fa[key]) not in _tn})
-        tripped = [name for name, lang, present in TRIPS if lang and not present]
-        tripped += [f"value-fab:{k}={v}" for k, v in value_fabs]
+        # THE ONE TRACE LAYER (2026-07-30, deep-clean unification): markers +
+        # value consistency now live in mycelium/trace_layer.py — the single
+        # fence both this certifier and the wild frontier fixture import.
+        # (The deep clean found this file's division marker narrower than the
+        # fixture's: no \frac/\div, literal ' divided by ' only. Two fences
+        # with the same name must be the same fence.) The local TRIPS list
+        # above is superseded; shared trips are authoritative.
+        from mycelium.trace_layer import trace_trips
+        tripped = sorted(set(
+            [name for name, lang, present in TRIPS if lang and not present]
+            + trace_trips(dialect, win_parses)))
         if tripped:
             res.setdefault("held_basin_tripwire", []).append({"i": i, "src_idx": src, "votes": votes, "tripped": tripped})
             print(f"  [{i+1}/{len(rows)}] src {src} BASIN TRIPWIRE ({','.join(tripped)}): marker language, no matching factor in winning parse — HELD", flush=True)

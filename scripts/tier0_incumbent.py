@@ -154,7 +154,7 @@ def main():
                             p2.domains0[v].discard(sol[v])
                             if p2.domains0[v]:
                                 r2 = solve_symbolic(p2, budget=100_000, seed=0)
-                                if r2["status"] == "solved":
+                                if r2["status"] != "unsat":  # deep clean 2026-07-30: budget is not a uniqueness certificate
                                     multi = True
                                     break
                         cat = "DETECT" if multi else "SILENT"

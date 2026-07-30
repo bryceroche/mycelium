@@ -97,33 +97,8 @@ V /= np.linalg.norm(V, axis=1, keepdims=True)
 mouth_res = np.sort(1.0 - V @ bank.T, axis=1)[:, :8].mean(1) - (coef[0] + coef[1] / Ls)
 mouth_foreign = mouth_res > mthr
 
-# --- the trace layer (same law as book8_certify's install) ---
-WORDNUM = {w: i for i, w in enumerate(
-    "zero one two three four five six seven eight nine ten eleven twelve "
-    "thirteen fourteen fifteen sixteen seventeen eighteen nineteen twenty".split())}
-WORDNUM.update(thirty=30, forty=40, fifty=50, sixty=60, seventy=70,
-               eighty=80, ninety=90, hundred=100)
-def trace_trips(text, win_parses):
-    tn = {int(n) for n in re.findall(r"\d+", text)}
-    tl = text.lower()
-    tn |= {v for w, v in WORDNUM.items() if re.search(r"\b" + w + r"\b", tl)}
-    def wf(pred): return any(pred(fa) for f_ in win_parses for fa in f_)
-    trips = []
-    if (("divided" in text) or ("quotient" in text) or ("\\frac" in text) or ("\\div" in text)) \
-            and not wf(lambda fa: fa.get("ftype") in ("fdiv", "mod")): trips.append("division")
-    if " percent" in text and not wf(lambda fa: fa.get("ftype") == "pct"): trips.append("percent")
-    if (" the larger of " in text or " the smaller of " in text) \
-            and not wf(lambda fa: fa.get("ftype") == "sel"): trips.append("selection")
-    if " times " in text and not wf(lambda fa: fa.get("ftype") == "rel" and fa.get("op") == "mul"): trips.append("times")
-    if (" plus " in text or "The sum of" in text) \
-            and not wf(lambda fa: fa.get("ftype") == "rel" and fa.get("op") == "add"): trips.append("plus")
-    if "remainder" in text and not wf(lambda fa: fa.get("ftype") == "mod"): trips.append("remainder")
-    for f_ in win_parses:
-        for fa in f_:
-            for key in ("value", "k"):
-                if key in fa and int(fa[key]) not in tn:
-                    trips.append(f"value-fab:{key}={int(fa[key])}")
-    return trips
+# --- the trace layer: the ONE shared fence (deep-clean unification) ---
+from mycelium.trace_layer import trace_trips
 
 def inner_chain(j, text, gold):
     """vote -> trace -> attest on raw text; returns (decision, is_lie)."""

@@ -83,7 +83,12 @@ def solve2(facs, q_pred, smp):
         p2.domains0[q_pred].discard(sol[q_pred])
         if p2.domains0[q_pred]:
             r2 = solve_symbolic(p2, budget=100_000, seed=0)
-            if r2["status"] == "solved":
+            # UNIQUENESS GUARD (deep clean 2026-07-30): only status=='unsat'
+            # certifies uniqueness. 'budget' means the search was cut short —
+            # treating it as unsat silently certified would-be-ambiguous
+            # graphs as forced (budget exhaustion REJECTS at every door;
+            # csp_core documents 'budget' as never-a-false-certificate).
+            if r2["status"] != "unsat":
                 return None
         return sol[q_pred]
     except Exception:

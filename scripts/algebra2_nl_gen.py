@@ -256,7 +256,7 @@ def roundtrip2(n_vars, factors, m, solution, sym_pairs=()):
         p2.domains0[v].discard(solution[v])
         if p2.domains0[v]:
             r2 = solve_symbolic(p2, budget=200_000, seed=0)
-            if r2["status"] == "solved":
+            if r2["status"] != "unsat":  # deep clean 2026-07-30: budget is not a uniqueness certificate
                 return False, -1
     return True, int(res.get("decisions", -1))
 

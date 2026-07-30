@@ -85,7 +85,7 @@ def main():
                 forced = True
                 if p2.domains0[q_pred]:
                     r2 = solve_symbolic(p2, budget=100_000, seed=0)
-                    forced = r2["status"] != "solved"
+                    forced = r2["status"] == "unsat"  # deep clean 2026-07-30: budget is not a uniqueness certificate
                 if not forced:
                     lucky += 1
                     continue

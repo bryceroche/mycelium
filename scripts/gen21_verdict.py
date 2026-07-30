@@ -158,6 +158,19 @@ m["notes"] = (f"2026-07-23 GEN-18 PROMOTED: g18b "
               f"{v['vals']['h3held']}/200 from 0; add-dup-held "
               f"{v['vals']['adupheld']}/200 from 0; the diet-wall and census "
               f"holes closed by audited mint lines; zener-convened fire).")
+# HASH RECOMPUTE (deep clean 2026-07-30): the gen-17/18-era verdict scripts
+# dropped the recompute that gen-11/13/14 performed, so stale hashes rode
+# every promotion since — the manifest lied about which bytes were deployed.
+# The word PROMOTED and a TRUE manifest are one atomic act: recompute here,
+# mechanically, for every artifact the manifest names. Any verdict script
+# derived from this file inherits the fix.
+import hashlib
+def _h16(path): return hashlib.sha256(open(path, "rb").read()).hexdigest()[:16]
+m["hashes"] = {"parser": _h16(m["parser_ckpt"]),
+               "specialist": _h16(m["specialist_ckpt"]),
+               "centroids": _h16(m["monitor_centroids"]),
+               "mouth": _h16(m["mouth"]),
+               "train": _h16(m["corpora"]["train"])}
 json.dump(m, open(".cache/GENERATION.json", "w"), indent=1)
 print(f"\n*** PROMOTED: GEN-17 = g17_arm{win} "
       f"(bigtest {v['vals']['bigtest']}, h3held {v['vals']['h3held']}/200, "

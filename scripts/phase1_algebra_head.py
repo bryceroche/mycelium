@@ -345,6 +345,16 @@ def load_alg(split):
     gold = {k[2:]: z[k] for k in z.files if k.startswith("g_")}
     if os.path.exists(STATES_NPY.format(split=split)):
         states = np.load(STATES_NPY.format(split=split), mmap_mode="r")
+        # SAMPLES-STATES DESYNC GUARD (deep clean 2026-07-30): samples come
+        # from ALG_TRAIN/ALG_TEST while states come from ALG_TRAIN_NAME's
+        # files — two env vars with no cross-check. A forgotten
+        # ALG_TRAIN_NAME would silently pair states[i] with samples[i] from
+        # two unrelated corpora. Fail loudly instead.
+        if len(states) != len(samples):
+            raise RuntimeError(
+                f"load_alg({split}): states file has {len(states)} rows but "
+                f"the samples jsonl has {len(samples)} — ALG_TRAIN_NAME and "
+                f"ALG_TRAIN point at different corpora (desync guard)")
     else:
         states = z["states"]   # legacy artifacts (gen<=6): states inside npz
     return samples, states, z["tokmask"], gold, z["sent"]
@@ -808,7 +818,7 @@ def do_errors():
                                 p2.domains0[v].discard(sol[v])
                                 if p2.domains0[v]:
                                     r2 = solve_symbolic(p2, budget=100_000, seed=0)
-                                    if r2["status"] == "solved":
+                                    if r2["status"] != "unsat":  # deep clean 2026-07-30: budget is not a uniqueness certificate
                                         multi = True
                                         break
                             if ans_ok:
@@ -851,6 +861,12 @@ def do_train(steps, lr, batch, seed):
     samples, states, tokmask, gold, sent = load_alg("train")
     n = states.shape[0]
     p = build_params(seed)
+    if int(os.environ.get("RESUME", "0")) and not os.path.exists(ALG_CKPT):
+        # RESUME GUARD (deep clean 2026-07-30): a missing ckpt under RESUME=1
+        # previously fell through to FRESH RANDOM INIT silently — a
+        # silently-wrong segment is far costlier than a loud stop.
+        raise RuntimeError(f"RESUME=1 but {ALG_CKPT} does not exist — "
+                           f"refusing to cold-start silently (resume guard)")
     if int(os.environ.get("RESUME", "0")) and os.path.exists(ALG_CKPT):
         from tinygrad.nn.state import safe_load as _sl
         sd0 = _sl(ALG_CKPT)

@@ -112,7 +112,7 @@ def test_end_to_end():
     p2 = problem_from_algebra2(5, facs, {2: 10, 3: 21}, 30)
     p2.domains0[4].discard(7)
     r2 = solve_symbolic(p2, budget=100_000, seed=0)
-    assert r2["status"] != "solved", "selected root must be forced"
+    assert r2["status"] == "unsat", "selected root must be forced (unsat certificate, not budget)"
     # WITHOUT the selector the pair is symmetric: root var not forced
     p3 = problem_from_algebra2(4, facs[:2], {2: 10, 3: 21}, 30)
     r3 = solve_symbolic(p3, budget=100_000, seed=0)

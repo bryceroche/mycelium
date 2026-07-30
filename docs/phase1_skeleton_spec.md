@@ -17310,3 +17310,70 @@ token-position × waist-dim, the moment the skeleton trains.
   EXPOSED at the frontier (the mouth refuses everything before it);
   risk arrives exactly as fast as the mouth widens, which is the
   campaign's own deliberate program. g22's line opens here.
+
+- **THE DEEP CLEAN — GUT #102 CONFIRMED, SIX FINDINGS, ALL FIXED AT
+  ROOT (2026-07-30, four Sonnet auditors in parallel on the word
+  "we have a bug or bugs in the repo"):**
+  (1) **CRITICAL, fire-killing:** the diet corpus carried
+  `decisions: []` / `mentions: []` where build_gold requires int
+  band label / dict — the burning fire would have crashed at mix
+  row 78400 AFTER the full GPU precompute. Unit stopped mid-
+  precompute; corpus repaired at root (decisions = the solver's
+  MEASURED count via the v2 bridge, bands 14-22; mentions = {};
+  solution vectors = real solver assignments replacing the [0]*24
+  custody hazard); 400/400 re-verified.
+  (2) **CRITICAL, systemic:** budget exhaustion accepted as a
+  uniqueness certificate (`r2.status == "solved"` rejects, so
+  'budget' passed as forced) at TWELVE sites — solve2 itself, the
+  mint roundtrips (algebra/2/3_nl_gen), math500_anchor, the NACK
+  remine ×2, phase1_algebra_head eval, tier0/survivor×2/repair/
+  grade_equivalence, the soundness test's own assert. Only
+  algebra_dag7_gen had the correct form. All swept to
+  `!= "unsat"`; phase1_delta_head EXEMPTED (delete-one blame —
+  'solved' is the correct positive-evidence test there). EXPOSURE
+  READ: 300/300 book-8 graphs + 400/400 diet rows unchanged under
+  the corrected guard — the bug was LATENT on everything banked
+  (small graphs never exhaust 100k), live only at the frontier
+  where graphs harden. The law's own sentence held everywhere but
+  the code: budget exhaustion REJECTS at every door.
+  (3) **CRITICAL:** pct's `p` field was the one parse-asserted
+  numeric NO fence checked (TRIPS checks presence, value-check
+  omitted the key, attestation covers givens only) — a parse
+  asserting p=40 against a "60 percent" text passed everything.
+  `p` joined the value check in the shared layer.
+  (4) **CRITICAL:** all five manifest hash fields STALE — the
+  gen-17/18-era verdict scripts dropped the recompute that
+  gen-11/13/14 performed, so orphaned hashes rode every promotion
+  since; the machine-readable truth lied about which bytes are
+  deployed. Repaired in place (stale values preserved in the
+  repair note), gen21_verdict.py patched so the next promotion
+  recomputes mechanically.
+  (5) **MAJOR, the drift specimen:** book8_certify's division
+  marker was NARROWER than the fixture's copy (no \frac/\div — 222
+  of 345 wild L4 fraction-notation problems were invisible to the
+  certifier's fence; ' divided by ' literal missed 'divided
+  evenly by'). Root cause: two fences shared a name but not a
+  body. UNIFIED: mycelium/trace_layer.py is now the ONE fence both
+  consumers import; widened semantics verified safe on all 300
+  book-8 dialects (0 divided-without-by, 0 fraction notation);
+  4/4 regression checks incl. the frac case the old fence missed.
+  (6) **MAJOR:** [525]/[636]/[867] — withdrawn by the ledger for
+  coincidental correctness — still sat in certification JSONs as
+  certified 5/5 (skips only gate FUTURE selection). The withdrawal
+  is now mechanical: moved to withdrawn_coincidental in all three
+  records (t3 31, t4 33, t6 30). Prose promotions don't move
+  machines — the law's own specimen, in our own artifacts.
+  GUARDS INSTALLED: samples-states desync (len assert in
+  load_alg), RESUME-without-ckpt hard error (was silent cold
+  start), gold-path int validation, m hard-KeyError.
+  REGISTERED AS OWED (not rushed mid-fire): set-vs-count value
+  accounting (binding-swap blind spot, 26% of rows have repeated
+  digits — needs its own false-trip audit before install);
+  permuted_view ≤3-sentence collapse (landmine, not live: min
+  observed 4); k<=0 predicate guards. CLEAN BILLS: csp_core
+  internals (honest budget signal throughout), fdiv=floor by
+  design with mint always pairing mod, custody keying (0 src_idx
+  collisions), mouth recipe fidelity, diet_after_read
+  RNG-identical to the before instrument, two-tier accounting
+  exclusive+complete, ration indices, snapshot naming,
+  WARM/RESUME semantics, SEED consumption. The gut is 17-for-17.

@@ -51,7 +51,7 @@ def solve_forced_m(facs, q_pred, m):
         p2.domains0[q_pred].discard(sol[q_pred])
         if p2.domains0[q_pred]:
             r2 = solve_symbolic(p2, budget=10_000, seed=0)
-            if r2["status"] == "solved": return None
+            if r2["status"] != "unsat": return None  # deep clean 2026-07-30: budget is not a uniqueness certificate
         return sol[q_pred]
     except Exception:
         return None

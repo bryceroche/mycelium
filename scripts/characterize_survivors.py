@@ -124,7 +124,7 @@ def main():
             p2.domains0[q_pred].discard(sol[q_pred])
             if p2.domains0[q_pred]:
                 r2 = solve_symbolic(p2, budget=100_000, seed=0)
-                if r2["status"] == "solved":
+                if r2["status"] != "unsat":  # deep clean 2026-07-30: budget is not a uniqueness certificate
                     return False, wh
             return True, wh
         except Exception:

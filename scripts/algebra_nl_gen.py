@@ -246,7 +246,10 @@ def roundtrip(n_vars: int, factors: list, m: int, solution: list):
         p2.domains0[v].discard(solution[v])
         if p2.domains0[v]:
             r2 = solve_symbolic(p2, budget=200_000, seed=0)
-            if r2["status"] == "solved":
+            # deep clean 2026-07-30: only 'unsat' certifies uniqueness;
+            # 'budget' is a cut-short search, not a certificate (same guard
+            # as solve2 — budget exhaustion REJECTS at every door).
+            if r2["status"] != "unsat":
                 return False, -1
     return True, int(res.get("decisions", -1))
 
