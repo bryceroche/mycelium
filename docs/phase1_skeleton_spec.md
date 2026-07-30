@@ -17885,7 +17885,10 @@ token-position × waist-dim, the moment the skeleton trains.
   BY CONSTRUCTION (the roster-as-address-table finding gives it a
   concrete target); #91's fence applies — routes count as custody
   only when METHODOLOGICALLY decorrelated, and rotating a surface
-  feature of one model may not clear the bar. First read is free
-  when proposed: the banked wild ledger re-cuts for view-agreement
-  under permuted addresses. The interps decide which reading the
+  feature of one model may not clear the bar. First read
+  when proposed: the banked wild ledger provides the BASELINE
+  view-agreement (quorum-count distribution, standard roster) as a
+  free re-cut; the rotated-roster arm itself needs FRESH parses — a
+  GPU pass, not a re-cut (corrected same-minute; the original line
+  claimed both sides free). The interps decide which reading the
   instinct holds.
