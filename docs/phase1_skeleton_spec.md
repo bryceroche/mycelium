@@ -19423,3 +19423,28 @@ token-position × waist-dim, the moment the skeleton trains.
   augmentation moves from sharpest-lever to PREREQUISITE.
   Tonight's 24% stands as augmentation's before-fixture either
   way; its three gating words are the board's top item.
+
+- **THE NEIGHBOR READS: NO DISPLACEMENT ANYWHERE — THE BAND STORY
+  DIES AS PRE-COMMITTED (2026-07-31):** bigtest per arm: dry
+  1240/1244/**1251**, wet 1231/1233/1233 (g22's own: 1226); alg4:
+  403-**420** (g22: 398). **Every arm beats the gate on both
+  neighbors, and the 12% arms top their columns** — the corpus-
+  packing prediction is REFUTED within the tested range: species
+  concentration to 12% helped the neighbors (generic
+  regularization on a starved axis), harmed nothing. THE
+  AMENDMENT'S PRECISE ACCOUNTING: the cure-peak prong was
+  VOID-BY-CONFOUND (template-local target); the displacement prong
+  GOT ITS TEST AND FAILED. Per the pre-commitment ("if 12% doesn't
+  cost bigtest/alg4, the band story dies entirely"): **#112's
+  non-monotone amendment is STRUCK within the measured range —
+  refuted to 12%, unmeasured beyond; the exchange law keeps its
+  granted core, its wetting clause (unfired), and its honest
+  ledger.** The thrive-band gut's contradiction is now three axes
+  deep (dose-cure, threshold, dose-neighbors). FLAGGED FOR THE
+  WORD, not ruled: dry_d12 at bigtest 1251 (+25 over the gate)
+  and wet_d12 at alg4 420 (+22) are battery-candidate numbers ON
+  NEIGHBOR-GAIN GROUNDS ALONE — any promotion case carries the
+  surface-local scope line as its first sentence. THE FIRE'S
+  RECORD CLOSES: six arms, surface-local cure, generic neighbor
+  gains, two calls void, one call refuted, one apparatus law
+  gained, one thesis (surface-bands) measured at diet grain.
