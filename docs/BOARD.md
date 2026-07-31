@@ -27,7 +27,7 @@ inner chain 9% coverage @ 0.63; unfenced 56% @ 0.53.
 
 | Item | Owner | Blocking condition | Last touched |
 |---|---|---|---|
-| **SURFACE AUGMENTATION — PREREQUISITE (the surface-band law: five instruments, one law)** — before-fixtures: dup 24% held-out, fdiv 0/8 varied, flip 53%; bars pinned blind | Bryce | THE BOARD'S FIRST ITEM — the word ×3: source (diversity-priced), TEXT-SIDE check design, dose | 2026-07-31 |
+| **SURFACE AUGMENTATION — PREREQUISITE; words 1+2 answered, word 3 (dose) waits on THE TABLE** — check spec done (licensed table, recursion guard); census done (denominator SYMBOLIC-dominant; mint word-share 5-30%); NEXT: table authoring (word-families + symbolic class, pen tranches through the 50/50 gate) → coverage measurement → dose arms | Bryce | the table-build word (fresh hand) | 2026-07-31 |
 | ~~RUNGS 1+2+2b~~ DONE 2026-07-31: READINESS IS SETTLING — generalized (pct 0.834, dup-args 0.997; evidence-quantum grain); frontier UNTESTABLE-BY-INSTRUMENT (decision point stands); settle = the wetting call's mechanism instrument + diet after-read grain; 53% dup misbinding under load (diet pathology at population grade) | — | rung 3 awaits its word if ever | 2026-07-31 |
 | Wetting-clause blind call (pinned): dup-args diet ordering vs book-8 mix inclusion — the exchange law's live experiment | rides the dup-args word | pinned before wording; factory panel cell grain | 2026-07-31 |
 | ~~STRUCTURAL-RATE AUDIT~~ DONE 2026-07-31: 0.4% — [428] is a singleton; kind-exact 261/262; corpus structurally TIGHT; scope line = footnote with its number | — | — | 2026-07-31 |
