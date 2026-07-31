@@ -18258,3 +18258,48 @@ token-position × waist-dim, the moment the skeleton trains.
   localizer's first look, no verdict attached). Coordinates law
   honored: all silhouettes in g22's OWN fst space, one generation,
   no mixing.
+
+- **THE SILHOUETTE READ: FAIL — THE CHEAP AXES ARE FULLY EXHAUSTED;
+  THE DECISION POINT ARRIVES (2026-07-31; artifact
+  .cache/silhouette_distance.json):** AUC 0.497 — chance exactly;
+  the quartile table flat (0.613/0.645/0.645/0.613). The interior's
+  soft distance does not grade the frontier's answers. FOUR AXES
+  NOW MEASURED AND NULL on the answered population: mouth residual,
+  quorum, input-invariance, interior distance. THE DECISION POINT,
+  formally arrived: **grading signals now cost training** — a
+  trained verifier/triage head, priced against the wild-ledger
+  fixture like everything else, or the campaign ships binary
+  (answer at 0.63 / abstain) at the frontier. Context note: wild
+  distances (median 0.63) sit far outside the family's LOO spread
+  (median 0.20) — the interior CONFIRMS the register gap; it just
+  cannot rank within it. SECONDARY, report-only and NOT bar-tested:
+  present-slot counts differ (family 6.9, wild-correct 5.1,
+  wild-wrong 3.8) — wrong answers come from SPARSER parses
+  (under-parsing as a failure mode candidate); if any future signal
+  read is proposed, this is the named candidate and it gets its own
+  pinned pricing first (the standing rule applies; a report-only
+  number never becomes a dial by drift).
+
+- **GUT #111 REGISTERED — THREE-POINT OR FIVE-POINT TURN
+  (2026-07-31, commitment family, eleventh seed; confirmatory, no
+  rent):** THE RATIO READING: turn count = steering lock against
+  road width — **the number of refinement passes is set by how much
+  one pass can change the state against how far the state must
+  move.** Measured instances cited: the breath clock (~3.5 passes
+  per implication layer deployed, ~4.5 on probes — the K=8
+  ceiling's own arithmetic) and, freshly, composed-pct (more
+  anchors = fewer maneuvers to land the same commitment; wide
+  road, three points). THE NEW CARGO — NO REVERSE GEAR: a
+  five-point turn is possible because each maneuver ENDS IN A STOP
+  (a commit point, position re-established) and a wrong maneuver
+  is RECOVERABLE. Tonight's invariance verdict says the binder's
+  commitments do not revise under changed evidence — **a vehicle
+  with no reverse gear**: harmless in wide space, fatal in tight
+  space, and the wild frontier is the tight space. THE BENCH'S
+  DESIGN CONSTRAINT, three independent arrivals now noted:
+  whatever the binding bench builds must have a REVERSE — a
+  commitment undoable by later evidence, with explicit re-anchor
+  between maneuvers (§2-R's pawl gate; the erosion finding's
+  soft-to-deduction/hard-to-distraction; this gut's driving-school
+  mechanism). Eleven seeds; the interps' sitting argues for itself
+  louder.
