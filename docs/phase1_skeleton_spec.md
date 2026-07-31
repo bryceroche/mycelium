@@ -19293,3 +19293,22 @@ token-position × waist-dim, the moment the skeleton trains.
   one side, an unmeasured slope on the other — the entire December
   question). THE ADMISSION-CURVE RE-CUT fired same-message
   (zero-GPU, banked residuals, the wild ledger's own purpose).
+
+- **THE ADMISSION CURVE READS: A STEP, NOT A BAND (2026-07-31):**
+  precision 1.00 inside the tiny native sliver (3/3 at 0.2%
+  coverage), then ONE step down to ~0.65 by thr 0.03 — and **FLAT
+  at 0.63-0.67 from 14% admission to fully open** (coverage 2.3% →
+  8.8% with precision unmoved). No slope, no shoulder, no operating
+  point to tune: residual doesn't grade (already known), so the
+  threshold buys nothing between barely-open and wide-open. THE
+  DECEMBER SIMPLIFICATION, banked: **the mouth choice is BINARY —
+  closed (answer ~nothing at 1.00) or open (8.8% coverage at 0.63);
+  the middle offers nothing the extremes don't.** The delicate-
+  operating-point framing dies; the tier question was already
+  binary, and now the admission question is too. THE
+  TEMPERATURE-BAND GUT'S CLOSURE: contradicted on BOTH candidate
+  axes same-night — the dose band is WIDE (six zeros across 6×) and
+  the threshold band is a STEP (flat past it). Filed closed as
+  #112's restatement with two honest nulls attached; the thrive
+  clause survives only where #112's own dose arm may yet find it
+  (the neighbor reads, pending).
