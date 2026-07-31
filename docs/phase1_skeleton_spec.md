@@ -17925,3 +17925,27 @@ token-position × waist-dim, the moment the skeleton trains.
   ~9% coverage @ 0.63; unfenced 56% @ 0.53. The road must widen
   coverage AND raise precision — and the actuarial fixture now
   exists to price every future proposal against.
+
+- **THE LEDGER'S THREE BOARD-RESHAPING READINGS (2026-07-31, Bryce's
+  countersign, carved):** (1) **THE MOUTH IS A REGISTER INSTRUMENT,
+  NOT A DIFFICULTY INSTRUMENT** — 98.4% refusal including L1 (9/203
+  native). Widening is not a frontier strategy; it is THE ENTIRE
+  STRATEGY, and the books' job is now stated with a number: **they
+  exist to make the mouth's native set overlap the harvest** (three
+  wild customers today out of 1,404). (2) **THE FENCES' PRICE IS
+  ONE-FOR-ONE AT THE FRONTIER** — 329 lies held, 337 corrects held
+  with them: near-random with respect to truth on wild text (the
+  value-fab coin flip confirms it directly). This does NOT argue
+  loosening (a lie in training gold costs far more than a lost
+  correct row); it says the trace layer IS AT HOME AND NOT AT THE
+  FRONTIER — measured, not caveated. (3) **LEVEL IS THE ONLY
+  GRADING SIGNAL** (0.78 L1 → 0.47 L5) — the one real gradient is
+  difficulty, the axis the books already climb: quiet vindication
+  of the road. THE STANDING RULE FROM THE VERDICT: every future
+  graded-tier proposal must NAME ITS SIGNAL FIRST and price it
+  against the wild-ledger table (free re-cut) before any build —
+  the dial died because its axis was named and measured; hopes
+  without axes don't get builds. The bar's work named for the
+  record: 0.60/0.70/0.60/0.57 is exactly the shape that becomes
+  "roughly declining with a noisy second bin" if you want a dial
+  badly enough. It didn't, because the rule was pinned first.
