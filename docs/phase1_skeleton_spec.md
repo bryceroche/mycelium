@@ -19245,3 +19245,27 @@ token-position × waist-dim, the moment the skeleton trains.
   that survives this is worth far more than one never questioned;
   one that fails converts the fire's headline from cure to
   apparatus-lesson before anyone quotes it.
+
+- **GUT #109 CLOSES — ROTATION'S DISORIENTATION CLAUSE, WITH THE
+  RE-ANCHORING RULE (2026-07-31):** the upside was already
+  three-way banked (dissent rotation, Q-rotation, manufactured
+  independence); the second clause is the new content: **every
+  coordinate change is a chance to lose the reference frame.**
+  TWO DISORIENTATION SPECIMENS: the never-mix-coordinates law's
+  founding cases plus TONIGHT'S dynamics cousin (settle's 5.7×
+  cross-population divergence — sound within, nonsense across,
+  caught before a threshold was set); and the m-bound's three
+  conventions (same input, different frame, different VERDICT —
+  the disease at judgment grain). ONE CORRECT-USE SPECIMEN,
+  running live: the held-out control is deliberate rotation
+  (every convention inverted) with its re-anchor BUILT IN — the
+  2×2's g22-on-pool cell is the fixed reference making the other
+  three readable; a rotated probe without its anchor cell would
+  be exactly the warned disorientation. **THE RULE, standing:
+  any rotation names its re-anchor, or it manufactures
+  disorientation instead of independence.** (The dissent column's
+  re-anchor is the per-generation re-audition; settle's is the
+  z-score-per-fixture law; the m-bound's absence of one is why it
+  broke.) #109 CLOSED: essential + costly + the rule + three
+  specimens. #91's fence on rotated ROUTES as custody stands
+  unchanged and separate.
