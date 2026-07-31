@@ -18707,3 +18707,26 @@ token-position × waist-dim, the moment the skeleton trains.
   read, precedent: the mouth's P-registrations). The December
   number this produces: the addressable slice's size, which
   bounds any accuracy claim before precision even enters.
+
+- **THE MATH-500 COMPOSITION AUDIT READS: 39.4% ADDRESSABLE — THE
+  DECEMBER CEILING BEFORE PRECISION ENTERS (2026-07-31; artifact
+  .cache/m500_composition_audit.json):** 197/500 pass the standard
+  eligibility filter vs the harvest's 80.6% (1404/1743). THE
+  EXCLUSION LEDGER: **non-integer answers 147 (29.4% — the single
+  biggest wall, and it is ANSWER-REPRESENTATION, not parsing: the
+  0-300 integer answer space cannot EXPRESS a fraction/radical/
+  expression answer regardless of how well the text is read)**;
+  length ≥300 chars 80; answer out of range 50; values >300 21;
+  asy figures 5. BY LEVEL, roughly uniform (~37-51% per level —
+  the filter is not difficulty-shaped). BY SUBJECT, sharply
+  shaped: Algebra 64/124, Number Theory 33/62, Intermediate
+  Algebra 37/97, Prealgebra 31/82, Geometry 15/41, C&P 10/38,
+  Precalculus 7/56. THE DECEMBER ARITHMETIC, stated: any MATH-500
+  accuracy claim = 39.4% ceiling × coverage × precision under the
+  current answer space; with today's inner chain (harvest-proxy 9%
+  @ 0.63) the composite is single digits. THE STRUCTURAL READING:
+  the answer-space wall (29.4%) is a REPRESENTATION decision, not
+  a capability gap — extending the answer space (fractions,
+  simple radicals) is a different kind of work than widening the
+  register, and it moves the ceiling more than any diet can. Both
+  walls now have numbers; December's framing inherits them.
