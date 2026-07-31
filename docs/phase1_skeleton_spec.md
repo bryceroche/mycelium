@@ -18144,3 +18144,32 @@ token-position × waist-dim, the moment the skeleton trains.
   value-matched and the read re-runs. HELD as ruled: the dup-args
   diet and the held-out-pairing read (the latter's design waits on
   this read's outcome).
+
+- **GUT #110 REGISTERED — THE PHOTO BOOTH RETURNS WITH A DIFFERENT
+  QUESTION (2026-07-31, high conviction; ancestor #38's kill STANDS
+  and is restated at registration):** the killed form asked "does
+  the answer survive distortion" — agreement-as-confidence, refuted
+  at #38 and re-refuted tonight by the ledger (quorum saturated at
+  0.626; stability grades nothing). THE LIVE FORM asks what the
+  campaign has never asked: does distortion on the INPUT AXIS —
+  the one axis every existing signal is downstream of — change what
+  the model binds? **Invariance-under-semantic-preserving-transform
+  as a BINDING test**: a parse that survives variable renaming is
+  bound to the problem; one that flips is bound to the addresses
+  (the roster finding's own probe, generalized). THE TWO FENCES:
+  (1) the discriminator is stated at registration — if the
+  instrument degenerates into counting agreements, it is the killed
+  #38 wearing a costume and dies by inheritance; (2) priced against
+  the wild ledger BEFORE any build, per the standing rule — the
+  124 answered items with gold are the fixture. THE PRICING READ,
+  fired (queued behind the pct read for the device): each answered
+  item re-rendered under semantic-preserving transforms (variable
+  renaming where variables exist; phrase-swap lexicon otherwise;
+  untransformable items excluded and counted), re-parsed through
+  the same 5-view quorum, plur-vs-plur compared. PINNED BARS:
+  SUCCESS = invariant-subset precision ≥ 0.75 AND flipped-subset
+  ≤ 0.40 with support ≥ 20 each → the campaign's first grading
+  signal; the tier ladder revives. FAIL = gap < 15 points → #38's
+  kill EXTENDS to the input axis, banked as the finding that the
+  model's errors are invariant (deep, and worth having). MIXED
+  between → per-transform map only, no signal claim.
