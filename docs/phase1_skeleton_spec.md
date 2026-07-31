@@ -19595,3 +19595,20 @@ token-position × waist-dim, the moment the skeleton trains.
   struck, two calls voided, one confound self-caught, zero bars
   bent, and a gate that did not move for reasons the record can
   state exactly.
+
+- **WORD THREE HELD — THE DENOMINATOR RULING (2026-07-31, Bryce):**
+  the dose has no readable meaning yet: the after-read is
+  held-out-of-table renderings, and nobody knows the table's size
+  or its coverage. **2% and 12% of an unknown denominator are not
+  doses.** The design law applies in its own words — the range
+  comes from the phenomenon — except here the phenomenon's range
+  is NOT yet a number anyone has. THE ORDERING RULED: build the
+  licensed table first, measure its coverage against the HARVEST'S
+  ACTUAL PHRASING DISTRIBUTION, and let that measurement set the
+  dose arms. Spec-and-CPU, not a fire. THE CENSUS fired
+  same-message (the denominator's measurement half): the harvest's
+  per-construction surface-form inventory vs the mint's current
+  forms — what the table must cover, stated as a distribution
+  rather than a hope. Table authoring (pen tranches of template
+  entries through the 50/50 gate) is delegation work for a fresh
+  hand.
