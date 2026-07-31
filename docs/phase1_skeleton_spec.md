@@ -19395,3 +19395,31 @@ token-position × waist-dim, the moment the skeleton trains.
   survives under surfaces it never saw at 24%.** Gut #114's
   suspicious question, answered in full: there WAS a false alarm,
   and it was the celebration.
+
+- **THREE RULINGS ON THE SURFACE-LOCAL FINDING (2026-07-31,
+  Bryce):** (1) **THE DOSE AND WETTING CALLS ARE VOID-BY-CONFOUND,
+  NOT NULL** — pinned against a target that proved template-local,
+  neither the amendment nor the wetting clause got a real test;
+  both return to the board UNFIRED. The distinction matters for
+  the exchange law's standing: a frame that failed a test vs a
+  frame that never got one. (The mouth-curve null against the
+  thrive band stands on its own axis.) (2) **THE ROTATION LAW'S
+  SECOND HALF, carved:** #109's re-anchor clause covers
+  orientation; this covers confounding — **a rotation intended as
+  a control must not rotate the variable under test.** The
+  held-out mint inverted three conventions and one was the causal
+  candidate; the isolation rung existed only to undo that. One
+  law, two clauses: name your re-anchor, and never rotate the
+  test variable. (3) **THE DIET-HISTORY SCOPE QUESTION, fired
+  (queued behind the neighbor reads):** every prior diet's success
+  now carries a surface-locality question — including gen-22's
+  fdiv cure, measured on the factory panel's own fixtures. THE
+  CHECK: d1 fdiv-on-derived probes with SURFACE varied and
+  configuration retained (per clause two), read at 5-view quorum
+  under g21 (pre-cure anchor) and g22 — the 2×2 with its anchor
+  cells recomputed in-session. Survives = the fdiv corpus's
+  spanned axes bought real generality (v3 was axes-randomized —
+  plausible); fails = the diet history gains a scope line and
+  augmentation moves from sharpest-lever to PREREQUISITE.
+  Tonight's 24% stands as augmentation's before-fixture either
+  way; its three gating words are the board's top item.
