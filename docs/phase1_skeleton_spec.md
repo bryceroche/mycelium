@@ -19327,3 +19327,17 @@ token-position × waist-dim, the moment the skeleton trains.
   kill the band, #112 took its amendment Tuesday and loses it
   Thursday — the discipline working at speed, with the wetting
   clause, the granted core, and the honest ledger intact.
+
+- **THE FOURTH READING, banked before the control prints
+  (2026-07-31, Bryce — so a partial doesn't round to an attractive
+  neighbor):** if the print is PARTIAL SEPARATION — g22 at an
+  intermediate held-out rate, the arm improved but not zero — it
+  reads as **THE CURE GENERALIZES WITH ATTENUATION**, and the
+  attenuation size is the number that says how much of the six
+  zeros was species and how much was template. The likeliest print
+  honestly (the held-out inverts three conventions at once), and
+  the language is ready before the number exists. The other three
+  branches stand as pinned: clean = the record's strongest diet
+  result; branch-four = a rescoped fire ("the pool's template was
+  hard and the diet fixed it" — the smaller claim, worth having
+  before anyone quotes the larger); both-fail = template-local.
