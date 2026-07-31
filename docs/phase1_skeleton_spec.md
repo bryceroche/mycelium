@@ -18421,3 +18421,25 @@ token-position × waist-dim, the moment the skeleton trains.
   order) is doing what frames are for — the diffusion frame never
   managed it; this is the exchange family's strongest single moment,
   arrived in the sitting that closed it.
+
+- **THE BINDING BENCH BRIEF FIRED (2026-07-31, the word given;
+  docs/BINDING_BENCH_BRIEF.md):** the sitting's conversion written to
+  spec grade — the sentence it convenes under (the enemy is in the
+  binding, measured twice), the seven-row measured anatomy any
+  mechanism must explain in FULL, the three requirements with
+  provenance (R1 per-slot readiness — the front-runner whose
+  predictions were measured before the mechanism was proposed; R2
+  reversible commitments — three arrivals, one measured absence; R3
+  the oblique cut inward — four nulls converging on the binder's own
+  state), the front-runner sketch (readiness scalar, constraint-
+  provenance wetting, commit-gate as the pawl's driver, reverse by
+  evidence never noise, re-anchor at commit points — parse-side
+  only, the graph stays frame-free), SIX constitutional fences
+  carried, the evaluation battery pre-named (pct cells, dup-args
+  cells, THE REVERSE-GEAR METRIC — success is asymmetric flips, not
+  fewer; under-parse counts; the wild-ledger re-price), the wetting
+  prediction embedded, and the rungs laid glide-lawful: **rung 1 is
+  CPU eager-math on banked traces — does a readiness-like quantity
+  already exist in the trained gate?** If yes, R1 is a readout
+  problem before it is a training problem. The brief SITS at §2-R
+  position; each rung fires on its own word.
