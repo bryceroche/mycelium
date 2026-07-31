@@ -24,7 +24,7 @@ from tinygrad import Tensor, dtypes
 from tinygrad.nn.state import safe_load
 
 MAN = json.load(open(".cache/GENERATION.json"))
-CKPT = MAN["parser_ckpt"]
+CKPT = os.environ.get("R2B_CKPT") or MAN["parser_ckpt"]
 tok = Tokenizer.from_file(TOKENIZER_JSON)
 p = build_params(0)
 sd = safe_load(CKPT)
