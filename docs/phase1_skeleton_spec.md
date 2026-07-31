@@ -18900,3 +18900,30 @@ token-position × waist-dim, the moment the skeleton trains.
   domain: sentence-grain, dialect population, the dup-args
   binding-competition family — the in-register generalization
   question stands regardless of the frontier's unreadability.
+
+- **RUNG 2b READS: SETTLE GENERALIZES AT 0.997 — A BINDING PROPERTY,
+  NOT A PCT ARTIFACT (2026-07-31; artifact .cache/bench_rung2b.json):**
+  91 scored on the dup-args binding-competition family under
+  distractor load, balanced classes (43 correct-bound / 48
+  misbound), settle medians 7.08 vs 9.08 — **near-deterministic
+  separation in settle's valid domain.** THE TWO-POPULATION STATE:
+  pct 0.834, dup-args 0.997, both sentence-grain, both pre-declared
+  direction, zero fitting anywhere. The driver formula
+  (post-evidence-quantum stability) is now a MEASURED GENERAL
+  property of binding correctness in-register. THE BONUS NUMBER:
+  the mint itself produced 53% misbinding under distractor load —
+  the dup-args starvation is real at population grade (the diet
+  docket item's pathology, now with a direct rate; books demand
+  51.7%, mix carries 12.3%, and the gate misbinds half of what the
+  load throws at it). SETTLE-AS-INSTRUMENT, filed with the pricing
+  duty attached: in-register, gold already reigns — settle is NOT
+  a certification shortcut; its named use cases are (a) the
+  dup-args DIET AFTER-READ at mechanism grain (did the diet teach
+  settling or memorize the template?) and (b) **the wetting blind
+  call's own instrument** — wetted-then-fed slots should settle
+  faster than fed-dry, giving the exchange law's live experiment a
+  mechanism-grade readout instead of a pass-rate one. Both uses
+  ride their existing words; nothing new fires. THE BENCH'S STATE
+  AT THE RUNGS' CLOSE: R1's driver validated across two species;
+  the frontier untestable-by-instrument (decision point stands);
+  rung 3 — if ever worded — starts from a formula measured twice.
