@@ -18730,3 +18730,23 @@ token-position × waist-dim, the moment the skeleton trains.
   simple radicals) is a different kind of work than widening the
   register, and it moves the ceiling more than any diet can. Both
   walls now have numbers; December's framing inherits them.
+
+- **BENCH RUNG 1 READS: ABSENT — AND INVERTED (2026-07-31; artifact
+  .cache/bench_rung1.json):** 135 specimens scored (70 correct-bound,
+  65 misbound). AUC 0.413 against the pinned direction — and flipped
+  it is 0.587, still below the 0.60 bar: **ABSENT either way. The
+  trained gate does not carry a readout-grade readiness signal in
+  fst prefix deltas; the driver must ADD the signal — R1 is a
+  construction problem, and rung 2's design now knows it.** THE
+  INVERSION, banked as texture (not promoted): misbound slots show
+  HIGHER evidence-lock (median 2.74) than correct-bound (1.65) —
+  the misbound slot LURCHES when its evidence arrives; the
+  correct-bound slot moves less, as if partially positioned by
+  context before the sentence lands. Directionally consistent with
+  the wetting frame (a prepared slot absorbs smoothly; a dry slot
+  lurches and lands wrong) but at 0.587 it is texture, not signal
+  — one unexplained shape, filed under the texture rule's watch,
+  informing rung 2's driver math without licensing anything. THE
+  RUNG'S VALUE: one GPU-light pass converted "maybe it's already
+  there" into "it must be built," which is exactly what the rung
+  existed to decide before any parameter was proposed.
