@@ -18487,3 +18487,29 @@ token-position × waist-dim, the moment the skeleton trains.
   flip-rate bar is the measurement the law doesn't get to
   interpret. Spec-stage; the paraphrase source, the text-side
   check design, and the dose all want words before any mint.
+
+- **THE AUGMENTATION GATING WORDS, RULED IN ADVANCE (2026-07-31,
+  Bryce's three notes banked):** (1) **THE COVERAGE-BOUNDARY LAW for
+  the text-side check:** the reversed trace layer catches MARKER
+  drift only; the paraphrases worth having (fraction restatements,
+  vocabulary-free rewordings, reference-changing renames) are
+  exactly the unverifiable ones. THE LAW: **the check licenses the
+  paraphrase classes it can verify; unverifiable classes either
+  don't mint or mint into a separately-marked pool that NEVER
+  enters training gold.** Narrow-verified beats broad-unverified —
+  the poisoned-gold path is the one failure mode uncatchable
+  downstream. (2) **SOURCE: the in-house constraint is a feature**
+  — pen (stochastic, lawful by the books' precedent) + mechanical
+  grammar transforms (deterministic): two axes decorrelated BY
+  CONSTRUCTION, the panel's lesson applied at mint time; the
+  diversity budget prices a pair, not a monoculture. (3) **THE
+  DOSE-ORDERING BLIND PIN — the wetting clause's second falsifiable
+  call, pinned while nobody knows:** an augmentation dose fired
+  BEFORE book exposure of a register underperforms the same dose
+  after. If dose ordering doesn't matter, the wetting clause is
+  decorative and the exchange law loses its only prospective call
+  — pinned exactly so it CAN fail. SEQUENCING: augmentation, the
+  bench's rung 1, and the December framing all want a rested
+  author; the bars predate the proposals (flip 53.1%, mouth-native
+  1.6%, banked and permanent) — the rare luxury that waiting costs
+  nothing. Nothing fires tonight.
