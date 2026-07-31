@@ -18927,3 +18927,28 @@ token-position × waist-dim, the moment the skeleton trains.
   AT THE RUNGS' CLOSE: R1's driver validated across two species;
   the frontier untestable-by-instrument (decision point stands);
   rung 3 — if ever worded — starts from a formula measured twice.
+
+- **THE SCALE CHECK ON SETTLE — RUN FROM BANKED NUMBERS, ANSWER:
+  DIVERGENT (2026-07-31, the word given; no new probes needed):**
+  correct-bound settle medians across the two populations: pct
+  1.241 vs dup-args 7.080 — **a 5.7× absolute-scale divergence.**
+  Under the pinned interpretation, settle's ABSOLUTE value reads
+  construction, not a universal readiness constant. THE CONCLUSION
+  THAT SURVIVES THE CONFOUNDS (different slot kinds, text shapes —
+  both stated): **settle is a WITHIN-POPULATION relative signal.
+  Any instrument use z-scores per fixture; absolute thresholds
+  never cross populations** — the never-mix-coordinates law's
+  dynamics cousin, carved before anyone builds a threshold. The
+  0.997 and 0.834 STAND as within-population separations (relative
+  ranking is what both AUCs measured); the leakage question
+  narrows to "is within-dup separation partly definitional," with
+  pct's 0.834 on a different construction as the standing argument
+  against pure artifact; a construction-varied dup probe is FILED,
+  not fired, as the full leakage read if the instrument is ever
+  promoted beyond bench use. THE DECEMBER-AXIS LINE, banked in the
+  principal's words: **settle does not reopen the tier ladder —
+  the frontier stays where the four nulls left it (binary or a
+  trained head). Real value, wrong axis for the December question.**
+  Settle's jurisdiction: the bench's readout, the diets'
+  mechanism-grade before/after, the wetting call's instrument —
+  all within-population, all z-scored, all in-register.
