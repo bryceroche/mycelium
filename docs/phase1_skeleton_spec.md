@@ -17996,3 +17996,25 @@ token-position × waist-dim, the moment the skeleton trains.
   in mint). The MATRIX COLUMN survives with the same correction:
   novel-to-training pairs re-derive at semantic level in the
   matrix spec. Artifact: .cache/coverage_sweep.json.
+
+- **THE FOURTH FAILURE MODE — SYNONYMOUS HOMES (2026-07-31, Bryce,
+  carved into the two-home family):** two dialects rendering ONE
+  meaning — nothing stale, nothing bypassing, yet the comparison is
+  meaningless. Joins stale-consumer, silent-bypass, and no-home; it
+  is the one that produces CONFIDENT WRONG NUMBERS rather than
+  silent failures (the sweep's nine false holes were its work). The
+  standing sweep's questions now number three: does an authority
+  exist, do consumers derive from it, and **are there synonymous
+  renderings that must canonicalize before any comparison?**
+  #105'S SECOND ANSWER, its own line: **the mint's coverage is
+  essentially whole at the semantic level; fdiv-on-derived was the
+  one true hole; the cure held.** Read as the good news it is: the
+  frontier gap is NOT mint-distribution-shaped — the 98.4% mouth
+  refusal is not starvation — which retires a class of proposed
+  work and narrows what widening can mean. THE DIET DOCKET ORDERED:
+  dup-args FIRST when the word comes (measured pathology attached —
+  [655]/[1382]/[875], the engage-slip family, the 12/12
+  binding-competition probe — so its after-read is cell-grain
+  sharp); rel-mul chains WAIT for their own read (no attached
+  pathology; audit-before-diet: do compound-product rows actually
+  fail?).
