@@ -18558,3 +18558,31 @@ token-position × waist-dim, the moment the skeleton trains.
   ships, nothing to price. The audit-before-install pattern paid
   again: a rule that would have held good rows was refused for the
   price of one GPU pass.
+
+- **THE SCOPE LINE ON "CERTIFIED," WRITTEN WHERE THE NEXT READER
+  MEETS IT (2026-07-31, Bryce — [428] elevated from curiosity to
+  load-bearing):** **certification guarantees ANSWER-FORCEDNESS
+  under attested givens; structural faithfulness is BENCH-VERIFIED
+  BY SAMPLING, not chain-verified per row.** The chain certifies
+  that the answer is forced by text-attested givens through a graph
+  the solver accepts; it has never certified that the graph is a
+  faithful compilation of the source — and the campaign's
+  positioning sentence (a compiler emitting typed intermediate
+  graphs) leans on the second claim while the machinery verifies
+  the first. The bench was the faithfulness check all along (wheel
+  sittings, rendered-vs-substituted rulings, the witness test —
+  all exist BECAUSE no automated link checks faithfulness); its
+  five-per-tranche sampling found conformance in the 4-of-5 range,
+  which is the real faithfulness measurement and a SAMPLING
+  ESTIMATE. Saying so plainly costs nothing and prevents the paper
+  from claiming more than the machinery does. **THE RATE AUDIT,
+  docketed and RANKED FIRST for the next word** (above the fence
+  redesign — the redesign fences a hazard of unknown size; the
+  audit sizes it): re-parse the certified corpus, apply a broad
+  surplus-structure definition (surplus factors, unlicensed
+  assertions, structure outside attestation's given-scope), turn
+  the ≥1/263 floor into a RATE. Rate ~1% → the scope line is a
+  footnote; rate ~15% → the training corpus carries systematic
+  structural noise the gate is learning from, with consequences
+  downstream. Four proposals dead cheap this week, all before they
+  burned.
