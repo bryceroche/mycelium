@@ -19119,3 +19119,19 @@ token-position × waist-dim, the moment the skeleton trains.
   for all rung-3 proposals; composed-pct (0.08→0.32, binder
   untouched) stands as the existence proof — a redirect that
   already happened, measured, before anyone proposed building one.
+
+- **THE UNIFYING-GUT QUALIFICATION, carved at the registry's high-
+  water mark (2026-07-31, Bryce; guts at 113):** instincts arriving
+  after their evidence are the pattern's strength AND its watch
+  item — cheap to validate, nearly impossible to falsify on
+  arrival; **their credit comes later, from the calls they enable.**
+  #112 lives by its dose arm; #113 by its middle-band gate. **A gut
+  that unifies and proposes nothing testable is a summary wearing
+  an instinct's clothes** — the registry hasn't produced one
+  lately, and the RENT DISCIPLINE is the standard keeping it so.
+  Standing rule restated for the registry's next hundred: unifying
+  registrations carry their falsifiable call or they carry the
+  label. Session closes: board at rest, nothing aging, three fires
+  staged with calls pinned; the dup-args diet the sharpest thing
+  ever queued — three blind calls, straddled arms, crossed
+  readout, one training run.
