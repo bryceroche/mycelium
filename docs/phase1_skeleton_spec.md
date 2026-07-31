@@ -19186,3 +19186,20 @@ token-position × waist-dim, the moment the skeleton trains.
   verification — the gen-22 fence makes assembly lawful and saves
   ~3h of duplicate trunk work; gold arrays rebuilt per-mix by
   build_gold (CPU, the real function, no shortcut).
+
+- **THE FIRST IGNITION DIED AT PREP — ENOSPC, THE DISK LAW CARVED
+  (2026-07-31):** the assembly design was disk-naive — six resident
+  state copies ≈ 550GB against 424GB free (each arm ~86-97GB; the
+  capacity arithmetic existed and was not run — the design law's
+  disk corollary: **the phenomenon's size is a number you already
+  have**). Nothing trained, nothing corrupted; the partial arms
+  deleted; the session tmpfs ALSO filled (task capture dead at
+  0MB — flying blind for four commands until file-redirect
+  diagnosis). THE RESTRUCTURE: per-arm assembly INSIDE the fire
+  loop — assemble → sentinel-verify → train → after-reads → DELETE
+  the arm's states (mix jsonl + ckpt + sheets kept) — one arm
+  resident at a time, peak +97GB. Prep now stops at the small
+  blocks (pool + WET, the only fresh trunk work). The no-mid-fire
+  fence note: this was a KILL (the fire could not have completed),
+  not a stir — the lawful exit taken at the earliest possible
+  point, before a single training step.

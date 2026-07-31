@@ -16,6 +16,8 @@ for ARM in dry_d02 dry_d05 dry_d12 wet_d02 wet_d05 wet_d12; do
   SEED=$((SEED+1))
   MIX=.cache/dupfire_${ARM}_mix.jsonl
   CKPT=.cache/g23_${ARM}.safetensors
+  echo "=== DUP 2/3 [$ARM]: assemble (one arm resident — the disk law) ==="
+  $PY scripts/dup_arm_assemble.py $ARM
   echo "=== DUP 2/3 [$ARM]: fire (4x4k from g22, seed base ${SEED}) ==="
   for seg in 1 2 3 4; do
     if [ $seg -eq 1 ]; then W="WARM_FROM=.cache/g22.safetensors"; else W="RESUME=1"; fi
@@ -27,5 +29,7 @@ for ARM in dry_d02 dry_d05 dry_d12 wet_d02 wet_d05 wet_d12; do
   env ALG_CKPT=$CKPT ALG_TEST=.cache/algebra_nl_bigtest.jsonl ALG_TEST_NAME=bigtest $PY scripts/phase1_algebra_head.py --eval 2>&1 | tail -1
   env ALG_CKPT=$CKPT ALG_TEST=.cache/algebra4_nl_test.jsonl ALG_TEST_NAME=alg4test $PY scripts/phase1_algebra_head.py --eval 2>&1 | tail -1
   WFF_CKPT=$CKPT WFF_OUT=.cache/dupfire_${ARM}_wff.json $PY scripts/wild_frontier_fixture.py 2>&1 | tail -3
+  rm -f .cache/phase1_alg_states_g23${ARM}_states.npy .cache/phase1_alg_states_g23${ARM}.npz
+  echo "=== [$ARM] states cleaned (mix + ckpt + sheets kept) ==="
 done
 echo "=== THE CROSS IS BURNED — six arms banked; the verdict reads next (g22 REMAINS THE GATE) ==="
