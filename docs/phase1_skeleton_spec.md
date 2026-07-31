@@ -19475,3 +19475,24 @@ token-position × waist-dim, the moment the skeleton trains.
   text-side check design, dose) are now the board's FIRST item by
   necessity, with tonight's two fixtures (dup 24%, fdiv 0/8
   varied) as its standing before-numbers.
+
+- **SUBSPACE SPANNING — THE FAILURE MODE CARVED (2026-07-31, Bryce;
+  no prior instance in the record):** not a fence missing, not a law
+  bypassed — **a deliberate diversity effort measuring the wrong
+  dimensions.** The factory's spans-varied clause varied every axis
+  the mint knew how to generate (letters, ordinals, ops, adjacency)
+  and the axis carrying transfer (PHRASING) was not on the list
+  because nobody had identified it as an axis. THE RULE: **any
+  spanning clause justifies its axis list against MEASUREMENT, not
+  against what is convenient to generate.** Recurs by nature —
+  carved so the next spanning effort asks "spanned in which
+  subspace?" before claiming diversity. THE BATTERY CANDIDATES
+  HELD (Bryce): +25 bigtest is real but unexplained by the fire's
+  own theory — a promotion whose mechanism is unknown banks a
+  mystery; THE NEIGHBOR-GAIN READ fired first (device free): are
+  dry_d12's gained bigtest rows concentrated in dup-adjacent
+  phrasings (in-band transfer — sensible) or spread evenly
+  (something else happened)? AUGMENTATION: THE WORD GIVEN, gating
+  words answered IN ORDER — check design first (the
+  coverage-boundary law shapes source), source second (two-axis),
+  dose last (ordering call pinned blind).
