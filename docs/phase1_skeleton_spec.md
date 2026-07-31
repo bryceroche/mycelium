@@ -18048,3 +18048,21 @@ token-position × waist-dim, the moment the skeleton trains.
   both means, reported separately). Artifact:
   .cache/composition_matrix_v1.json — a permanent fixture beside
   the wild ledger.
+
+- **MATRIX AMENDMENT, PINNED MID-BASELINE BEFORE ANY PAIR CELL
+  PRINTS (2026-07-31; baselines so far add 1.00 / mul 1.00 / fdiv
+  0.83 / mod 0.92 / pct 0.08):** the pct single-construction floor
+  (0.08 in this minimal chassis; the factory panel's context-graded
+  finding revisited) will confound the pinned raw-mean
+  discriminator: pct pairs are ~all NOVEL cells, so the novel mean
+  inherits a single-construction deficit that is NOT a composition
+  signal. THE PINNED PRIMARY STANDS UNCHANGED (bars never bend) and
+  will be reported as registered. THE SECONDARY ANALYSIS, DECLARED
+  NOW before its data exists: the CLEAN-SUBSET read — cells where
+  BOTH constructions' baselines ≥ 0.8 (add/mul/fdiv/mod pending
+  sel) recompute the same discriminator with the same
+  ALGEBRA/PHRASEBOOK/MIXED thresholds; this is the
+  composition-isolated read. The pct row/column reports separately
+  as "single-construction-limited — composition unreadable at this
+  register." Whichever way the primary and secondary agree or
+  split, both print.
