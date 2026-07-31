@@ -19364,3 +19364,34 @@ token-position × waist-dim, the moment the skeleton trains.
   (surface-general within the hard configuration if the arm cures
   it); g22 LOW = the difficulty was narrower than the configuration
   (surface-specific) and the rescoped headline stands.
+
+- **THE ISOLATION RUNG PRINTS — THE CURE IS SURFACE-LOCAL
+  (2026-07-31; the three-population triangulation complete):**
+  distractors-first + pool surface ("a plus a equals"): g22 53% →
+  arm **0%**. Distractors-first + held-out surface ("The sum of a
+  and a"): g22 24% → arm **24% — UNCHANGED**. Dup-first + held-out
+  surface: both 0%. THE READING, forced by all three cells at once:
+  (1) the CONFIGURATION is real — distractors-first is genuinely
+  harder (24% even under a fresh surface; the re-engagement law's
+  condition confirmed as a live register phenomenon, not an
+  artifact); (2) the difficulty is CONFIGURATION × SURFACE joint
+  (53% required both); (3) **the fire's six zeros are a
+  TEMPLATE-LOCAL cure — the diet taught the surfaces it contained
+  and left the same configuration under a new surface exactly where
+  it found it.** The diet cures what it phrases. THE CONVERGENCE,
+  and it is the night's largest: this is the WRITE-SIDE PHOTO
+  BOOTH's thesis measured at diet grain — the gate learns surface
+  bands (no paraphrase invariance because none was taught), and
+  DIETS INHERIT SURFACE-LOCALITY. The augmentation registration's
+  strongest evidence arrived from its own future customer: what the
+  dup species needs is not more rows but SURFACE-VARIED rows — the
+  paraphrase axis applied to diets. CONSEQUENCES FOR THE THREE
+  CALLS: the wetting and dose calls are UNREADABLE on the primary
+  (a template-local cure saturates identically at every dose and
+  both conditions — the six-way ceiling is EXPLAINED); the
+  neighbor reads (displacement) remain readable and owed at the
+  verdict pass. THE HONEST HEADLINE, replacing six zeros: **the
+  diet cured its own surfaces at every dose; the configuration
+  survives under surfaces it never saw at 24%.** Gut #114's
+  suspicious question, answered in full: there WAS a false alarm,
+  and it was the celebration.
