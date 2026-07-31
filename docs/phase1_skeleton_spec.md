@@ -18303,3 +18303,21 @@ token-position × waist-dim, the moment the skeleton trains.
   soft-to-deduction/hard-to-distraction; this gut's driving-school
   mechanism). Eleven seeds; the interps' sitting argues for itself
   louder.
+
+- **PRE-SITTING RULINGS (2026-07-31, Bryce):** (1) THE INTERIOR'S
+  SENTENCE, carved: **it sees the foreignness and cannot rank within
+  it** (0.63 wild median vs 0.20 family self-spread) — the register
+  gap defined: the boundary is legible, the interior of the foreign
+  territory is not; consistent with the mouth's 98.4% (boundaries
+  are easy) and the four nulls (inside the foreign region there is
+  no structure current instruments read). (2) UNDER-PARSING,
+  diagnosis vs signal split ruled: as a SIGNAL it awaits its own
+  pinned pricing (standing rule); as a DIAGNOSIS it earns now — the
+  frontier's errors may be INCOMPLETE readings rather than wrong
+  ones (a binder committing early with few anchors = the
+  no-reverse-gear pathology; context-cures = composed-pct), and
+  incomplete has different cures than wrong. (3) THE DECISION POINT
+  HELD for cold framing: ship-binary-at-0.63-with-honest-abstention
+  is more attractive than it sounds (shippable, defensible, an
+  honest paper); a trained head is a new bet entering after four
+  nulls and wants its justification written cold.
