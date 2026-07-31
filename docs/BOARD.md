@@ -30,8 +30,7 @@ inner chain 9% coverage @ 0.63; unfenced 56% @ 0.53.
 | Interps ×7 (exchange family, incl. #106 pooling) | Bryce | fallow-lawful per #104 — setting, not delinquent | 2026-07-30 |
 | December claim decision (abstention product vs MATH-500 accuracy) | Bryce | before December; true zero-point (stage 10) informs it | 2026-07-30 |
 | Diet docket: dup-args near-hole (51.7% demand vs 12.3% mix; measured pathology attached) | bench | the word (mul-chains CLOSED harmless by the matrix — 1.00 at n=12) | 2026-07-31 |
-| Chained-fdiv RE-AUDITION MOTION (resident read 0.92 vs predicted failure — gen-22 cured past target) | Bryce | the word (registry release per families-shrink-on-contact) | 2026-07-31 |
-| pct register-marginal investigation (0.08 alone / 0.32 composed — context helps 4×; boundary not skill) | bench | the word; own read before any diet presumption | 2026-07-31 |
+| pct read (H1 rendering / H2 binding / H3 value-skew; dominant class decides treatment) | unit `pct-read` | RUNNING — chained-fdiv RELEASED (registry residents: rate family alone) | 2026-07-31 |
 | Held-out-pairing composability read (train-without, test-with — the decisive form) | bench | expensive; docketed, not fired; the in-lexicon question is undecidable | 2026-07-31 |
 | Triage head RE-PRICING (MuZero-docketed; census volume now exists) | bench | the word; fences unchanged (two-death-mode, latents-never-replace-graph) | 2026-07-30 |
 | Soft-distance graph register (distinct candidate, not a rescue) | bench | the word; own bar + LOO rider BEFORE catch rate | 2026-07-30 |
