@@ -18875,3 +18875,28 @@ token-position × waist-dim, the moment the skeleton trains.
   0.626 baseline. The dose-response precedent applies: zero
   variance was an instrument reading then; 15% coverage is an
   instrument reading now.
+
+- **SETTLE AT THE FRONTIER: UNTESTABLE-BY-INSTRUMENT (2026-07-31;
+  the KenKen Property-2 precedent applied; artifact
+  .cache/wild_settle_v2.json):** LEG 1 calibration FAILED — token-
+  grain settle scores 0.400 on the same pct population where
+  sentence-grain scored 0.834. **The settle signal is
+  GRAIN-DEPENDENT: it lives at the grain of EVIDENCE QUANTA**
+  (sentences, in the dialect) — mid-stream cuts slice unsettled
+  states for everyone and drown it. Mechanistically sensible and
+  it REFINES the driver formula: readiness ≈ post-evidence-QUANTUM
+  stability. LEG 2 at token grain: 0.401 on the wild 124 (99%
+  coverage) — NULL at token grain, and by the calibration failure
+  it says nothing about settle proper. THE HONEST CLOSE: sentence
+  grain cannot cover wild text (1-2 sentences, 15% coverage);
+  token grain does not carry the signal — **the fifth axis is
+  UNTESTABLE at the frontier with current reveal instruments, not
+  null and not signal. The decision point STANDS.** The 0.834
+  stands in-register where sentences exist. FILED, not fired: a
+  clause-grain reveal (commas, conjunctions) as a v3 candidate —
+  noted with the instrument-fitting caution attached (chasing
+  grains until the frontier becomes readable is fitting the
+  instrument to the wish). RUNG 2b proceeds in settle's VALID
+  domain: sentence-grain, dialect population, the dup-args
+  binding-competition family — the in-register generalization
+  question stands regardless of the frontier's unreadability.
