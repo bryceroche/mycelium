@@ -18823,3 +18823,36 @@ token-position × waist-dim, the moment the skeleton trains.
   the decision point reopens without training. Both follow-ons
   await words per the glide law: this rung reported; the next
   fires on its own word.
+
+- **THE SIGNAL LEDGER'S SCOPE CORRECTED BEFORE THE READ RUNS
+  (2026-07-31, per the word):** the four-nulls verdict covered
+  **four external-and-static axes** (residual, quorum,
+  input-invariance, interior distance). **Interior DYNAMICS was
+  never swept** — nobody had a dynamics feature until rung 2. One
+  internal-dynamic axis is now CANDIDATE, written before the read
+  so a hit doesn't read as the ledger being wrong and a miss
+  doesn't read as more of the same.
+- **THE WILD SETTLE PRICING + RUNG 2b REGISTERED AND FIRED
+  (2026-07-31, both words given; wild FIRST — decision-relevant):**
+  THE WILD READ: the ledger's 124 answered items; per present slot,
+  LATE WANDER = mean fst delta over the trajectory's final third;
+  item score = mean over present slots. **DIRECTION PRE-DECLARED:
+  lower late-wander → correct; a REVERSED separation is a NULL,
+  not a discovery** (a 0.834 in one population plus an inverted
+  separation in another would be evidence settle is
+  population-specific, which is itself the dial answer). BARS:
+  AUC vs the same-124 baseline (flat 0.626 that four axes could
+  not beat); quartile table with n printed, n≥20 per bin or
+  directional-only. THE SCOPE NOTE ON THE SHEET: the 124 are
+  MOUTH-BYPASSED — a hit is a SIGNAL, not a shipped product; the
+  dial's operating point still lives behind a mouth that admits
+  1.6%, and deployment still owes the mouth question. RUNG 2b
+  (alongside): a dup-args population minted with distractor load
+  (the [655]/[1382]/[875] family's construction); settle for the
+  rel slot, evidence = the plus-sentence; same bars, direction
+  pre-declared. THE SUBSUMPTION LOGIC, per the word: a wild hit
+  subsumes 2b's question (every construction spans); a wild miss
+  with a 2b hit = settle is register-bound. THE POSTURE LINE
+  carried: a frame that keeps being corrected by its own
+  instruments is the one worth keeping — D1's retirement is why
+  0.834 is trustworthy.
