@@ -27,7 +27,8 @@ inner chain 9% coverage @ 0.63; unfenced 56% @ 0.53.
 
 | Item | Owner | Blocking condition | Last touched |
 |---|---|---|---|
-| THE BINDING BENCH design brief (per-slot readiness / reversible commitments / oblique-inward — the sitting's conversion) | Bryce | the word; design direction, not build order; fences carried | 2026-07-31 |
+| BENCH RUNG 1: eager-math on banked traces — does readiness already exist in the trained gate? (brief FIRED: docs/BINDING_BENCH_BRIEF.md) | bench | the word; CPU, no training; shapes rung 2 either way | 2026-07-31 |
+| Wetting-clause blind call (pinned): dup-args diet ordering vs book-8 mix inclusion — the exchange law's live experiment | rides the dup-args word | pinned before wording; factory panel cell grain | 2026-07-31 |
 | Harvest-vs-MATH-500 composition audit (#105's live remainder; feeds December) | bench | the word; cheap CPU | 2026-07-31 |
 | December claim decision (abstention product vs MATH-500 accuracy) | Bryce | before December; true zero-point (stage 10) informs it | 2026-07-30 |
 | Diet docket: dup-args near-hole (51.7% demand vs 12.3% mix; measured pathology attached) | bench | the word (mul-chains CLOSED harmless by the matrix — 1.00 at n=12) | 2026-07-31 |
