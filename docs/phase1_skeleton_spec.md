@@ -18750,3 +18750,48 @@ token-position × waist-dim, the moment the skeleton trains.
   RUNG'S VALUE: one GPU-light pass converted "maybe it's already
   there" into "it must be built," which is exactly what the rung
   existed to decide before any parameter was proposed.
+
+- **THE ANSWER-SPACE PINS (2026-07-31, Bryce — before anyone reaches
+  for the lever):** (1) **THE CHANGE IS NOT LOCAL**: the answer
+  space touches the solver's domain, the mint's generators, the
+  value cap that shaped four construction rulings ([525]/[691]/
+  [776]/[1013]), the dialect's laws, every banked-gold fixture, and
+  the chain's gold comparison — extending to fractions/radicals is
+  a DIALECT GENERATION, not a parameter. The law applies: spec
+  first, retroactive read second, build only for winners. THE
+  RETROACTIVE READ, defined now: how many of the 147 become
+  addressable under EACH candidate extension (rationals-only /
+  rationals+simple-radicals / decimals) — the ceiling gain is not
+  uniform across choices and neither is the cost. (2) **CEILING,
+  NOT NUMBER**: 39.4% × coverage × precision is the honest form —
+  the representation lever raises term one while terms two and
+  three (where the current work lives) stay put. (3) **THE SUBJECT
+  SHAPE IS THE FIRST EXTERNAL VALIDATION OF THE ROAD**: Algebra
+  64/124 vs Precalculus 7/56, measured on a population the
+  campaign did not construct — the books' subject lean is correct,
+  not accidental. The exchange law's posture note carried: three
+  consistent observations, two blind calls pending, never once
+  allowed to interpret its own evidence.
+
+- **BENCH RUNG 2 REGISTERED AND FIRED (2026-07-31, the word given —
+  the driver math, still zero training):** rung 1 says the signal
+  must be BUILT; rung 2 asks what the driver COMPUTES FROM, tested
+  as math on the same banked specimens (135 pct rows, same seeds).
+  THE CANDIDATES, pre-declared with the primary named: **D1
+  ANTICIPATION (primary, per the inversion's own logic)** —
+  cos(slot vector at the pre-evidence step, final vector): was the
+  slot already positioned before its sentence arrived? Predicts
+  correct-bound HIGHER. **D2 LURCH (baseline)** — rung 1's metric,
+  known 0.587. **D3 SETTLE** — post-evidence mean delta: does the
+  slot keep wandering after its evidence? Predicts misbound
+  HIGHER. **THE COMBINATION RULE, pre-declared, no fitting**:
+  z-mean of (D1, −D3). D4 (args-pointer stability) EXCLUDED — it
+  requires replicating the pointer machinery beyond fst, a
+  replication-risk the rung doesn't need. PINNED BARS (rung 1's
+  own): any candidate or the pre-declared combination at AUC ≥
+  0.70 → THE DRIVER HAS ITS FORMULA (readiness is computable from
+  waist trajectories; rung 3's proposal writes itself around it);
+  all < 0.60 → the signal requires information NOT IN the waist
+  trajectories — the training case gains specificity (the driver
+  must INJECT provenance, not read it); between → MIXED, band
+  unclaimed (the reading note honored).
