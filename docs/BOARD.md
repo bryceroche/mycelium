@@ -47,7 +47,7 @@ inner chain 9% coverage @ 0.63; unfenced 56% @ 0.53.
 
 | Item | Owner | Blocking condition | Last touched |
 |---|---|---|---|
-| One-door LAW sweep (duplicated-law counterpart of the state sweep) | delegated auditor | RUNNING — 7 laws enumerated, consolidation ranking due | 2026-07-31 |
+| ~~One-door LAW sweep~~ DONE 2026-07-31: 7 laws enumerated; DOORS BUILT (mycelium/doors.py — certify_unique/quorum/deployed_env/row_m/seed registry); silent-60 dead; TRIPS remnant deleted; migration policy standing. Docketed: budget-spread policy, seed-join residual, era-stratified "certified" label | — | — | 2026-07-31 |
 | ~~k<=0 predicate guards~~ DONE 2026-07-31 (predicates reject, propagators empty-domain; sanity-checked) | — | — | 2026-07-31 |
 | ~~Set-vs-count value accounting~~ REFUSED at bar (1/263 false trip; specimen [428] = answer-equivalent-loose parse) — redesign paths filed, not pursued | — | — | 2026-07-31 |
 | permuted_view <=3-sentence collapse (landmine, not live; min observed 4) | bench | fix rides the next vote-semantics window — never mid-campaign silently | 2026-07-30 |
