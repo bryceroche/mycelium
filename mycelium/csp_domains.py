@@ -810,7 +810,12 @@ ID_TO_SEL = {v: k for k, v in SEL_TO_ID.items()}
 
 
 def mod_pred(ftype, params, member_values):
-    """a mod k = r, three-valued; holes UNVIOLATED (hole-monotone)."""
+    """a mod k = r, three-valued; holes UNVIOLATED (hole-monotone).
+    k<=0 guard (deep clean 2026-07-31): a malformed k rejects (VIOLATED),
+    never raises — an uncaught ZeroDivisionError would crash the run
+    instead of refusing the candidate."""
+    if params <= 0:
+        return Consistency.VIOLATED
     a, r = member_values
     if UNASSIGNED in (a, r):
         return Consistency.UNVIOLATED
@@ -823,6 +828,9 @@ def mod_propagator(state, factor):
     s = state.copy()
     va, vr = factor.scope
     k = factor.params
+    if k <= 0:                     # deep clean 2026-07-31: empty-domain reject
+        s.domains[va] = set(); s.domains[vr] = set()
+        return s
     Da, Dr = s.domains[va], s.domains[vr]
     new_a = {x for x in Da if x % k in Dr}
     new_r = {x % k for x in Da} & set(Dr)
@@ -955,6 +963,9 @@ def pct_propagator(state, factor):
 
 
 def fdiv_pred(ftype, params, member_values):
+    # k<=0 guard (deep clean 2026-07-31): malformed k rejects, never raises
+    if params <= 0:
+        return Consistency.VIOLATED
     a, q = member_values
     if UNASSIGNED in (a, q):
         return Consistency.UNVIOLATED
@@ -965,6 +976,9 @@ def fdiv_propagator(state, factor):
     s = state.copy()
     va, vq = factor.scope
     k = factor.params
+    if k <= 0:                     # deep clean 2026-07-31: empty-domain reject
+        s.domains[va] = set(); s.domains[vq] = set()
+        return s
     Da, Dq = s.domains[va], s.domains[vq]
     new_a = {a for a in Da if a // k in Dq}
     new_q = {a // k for a in Da} & set(Dq)
