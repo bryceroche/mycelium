@@ -18622,3 +18622,25 @@ token-position × waist-dim, the moment the skeleton trains.
   ~1% → the scope line is a footnote; ~15% → the training corpus
   carries systematic structural noise the gate learns from,
   consequences downstream.
+
+- **THE STRUCTURAL-RATE AUDIT READS: 0.4% — [428] IS A SINGLETON,
+  NOT A SPECIES (2026-07-31; artifact
+  .cache/structural_rate_audit.json):** METRIC 1, the headline:
+  numeric surplus **1/263 = 0.4%** — the one row is [428] itself;
+  the audit found no siblings. Pre-stated interpretation applies:
+  FOOTNOTE TERRITORY — the scope line stands as written and the
+  training corpus does NOT carry systematic structural noise.
+  THE CHARACTERIZATION EXCEEDS THE QUESTION: kind-multiset
+  agreement between winning parses and annotations (synonymy
+  folded) is **exact in 261/262**, known-synonymy 1, OTHER 0;
+  factor-count delta 0 in 261/262. The certified corpus is
+  structurally TIGHT at kind grain (~99.6%) — the bench's
+  4-of-5-per-tranche sampling estimate now has a chain-wide
+  corroboration, and the compiler claim's gap between
+  answer-forcedness and faithfulness, while real in principle and
+  named in the scope line, is EMPIRICALLY THIN in the banked
+  corpus. The fence redesign's justification drops to near-zero
+  (a fence for a 0.4% singleton already caught once); the
+  scope-line footnote inherits the number it needed. Five
+  proposals now dead cheap this week — the rate audit killed the
+  15%-world for one GPU pass.
