@@ -19496,3 +19496,21 @@ token-position × waist-dim, the moment the skeleton trains.
   words answered IN ORDER — check design first (the
   coverage-boundary law shapes source), source second (two-axis),
   dose last (ordering call pinned blind).
+
+- **GATING WORD 1 ANSWERED — THE AUGMENTATION CHECK SPEC
+  (2026-07-31; docs/AUGMENTATION_CHECK_SPEC.md):** the design
+  inverts the flow so nothing free-form ever touches a row:
+  **all surface variety enters through a LICENSED TABLE of
+  template renderings, every entry solver-verified 50/50 at
+  table-build; row-level verification reduces to exact
+  membership.** Four licensed classes v1 (order / phrasing-table /
+  number-rendering / roster-relabel), each with its named
+  verifier. THE PEN'S LAWFUL ROLE: it proposes TABLE ENTRIES, not
+  row paraphrases — creativity extends the lexicon, the lexicon
+  renders the rows; the two-axis source is built into the check.
+  The unlicensed pool quarantined gold-ineligible by field. THE
+  RECURSION GUARD, pinned: **the eval templates never enter the
+  table** — held-out-of-table renderings are the after-read
+  (dup 24% and fdiv 0/8 as the standing before-numbers), else the
+  augmentation would be graded by its own diet. Words 2 (source
+  split + pricing) and 3 (dose + the pinned ordering call) remain.
