@@ -19612,3 +19612,24 @@ token-position × waist-dim, the moment the skeleton trains.
   rather than a hope. Table authoring (pen tranches of template
   entries through the 50/50 gate) is delegation work for a fresh
   hand.
+
+- **THE PHRASING CENSUS: THE DENOMINATOR IS SYMBOLIC-DOMINANT
+  (2026-07-31; artifact .cache/harvest_phrasing_census.json):** the
+  harvest's leading form in EVERY family is NOTATION, not words —
+  add: symbolic 33.3% vs "sum of" 9.9%; sub: symbolic 39.8%; div:
+  \frac 16.7% vs "divided by" 0.9%; mul: symbolic 7.3%. Mint-form
+  share of family hits: div 5%, sub 6%, add 20%, pct 25%, mul 30%
+  — sel the lone covered family at 80%. THE TABLE'S BUILD LIST,
+  measured: (1) the word-form families are FINITE AND SMALL (the
+  census enumerates them — "total/combined/more than",
+  "half/third/per/split", "less than/fewer", "twice/double",
+  "% symbol", "max/min"); (2) **the dominant class is SYMBOLIC
+  RENDERING** ("a + b = c", "\frac{c}{6}" as licensed renderings
+  of rel-add/fdiv) — a fifth licensed class, same 50/50 gate,
+  and the single largest coverage purchase available. Consistent
+  with everything: the wild lies were LaTeX-register, the mouth's
+  wall is notation-shaped. THE DENOMINATOR NOW HAS NUMBERS: the
+  dose arms wait on the table covering this measured distribution,
+  per the ruling — and the table's authoring (word-families +
+  symbolic class, pen tranches through the gate) is the fresh
+  hand's first work.
