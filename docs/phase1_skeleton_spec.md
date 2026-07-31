@@ -18223,3 +18223,38 @@ token-position × waist-dim, the moment the skeleton trains.
   not proposed). Per-transform detail banked: var-rename 0.62/0.52
   (10 pts, sub-bar), phrase-swap 0.73/0.75 (nothing); 28
   untransformable, counted not absorbed.
+
+- **THE SCOPE LINE ON THE SIGNAL LEDGER, carried per the principal
+  (2026-07-31):** "three-axes-exhausted" is scoped precisely — the
+  exhaustion is of CHEAP axes, measured on the wild ANSWERED set
+  (gold-bearing, mouth-bypassed). That is the right population for
+  the question and it is NOT the deployed configuration. After the
+  silhouette read, grading signals cost training — a DECISION
+  POINT, not a dead end. Board ordering noted for the word: the
+  binding bench outranks the dup-args diet (two named species +
+  tonight's convergent evidence; the rate family's history argues
+  against data-first); the silhouette is its natural companion;
+  the triage case simplifies to a coverage question; the interps
+  at ten seeds argue for a SITTING, not another deferral.
+
+- **THE SILHOUETTE SOFT-DISTANCE READ REGISTERED AND FIRED
+  (2026-07-31, the word given — the last cheap axis; the interior):**
+  THE INSTRUMENT: per-item silhouette = the gate's own fst rows
+  (compute_fst; the waist's factor-slot representation), present
+  slots pooled to an item vector; FAMILY = the 263 certified book
+  rows' silhouettes (the book of primes, read at the waist); SOFT
+  DISTANCE = kNN-8 cosine to the family bank (the antagonism law's
+  surviving form — never set membership). LOO CALIBRATION FIRST:
+  the family's self-distance distribution defines "near" before
+  any wild item is read. THE PRICING: the ledger's 124 answered
+  items ranked by distance; quartile table (n per bin) + AUC
+  (correct vs wrong by distance). PINNED BARS: **SIGNAL** = AUC
+  ≥ 0.70 (the tier ladder revives on the interior axis);
+  **FAIL** = AUC < 0.60 (the cheap axes are FULLY exhausted;
+  grading costs training — the decision point arrives); MIXED
+  between (directional only; a richer interior read may be priced,
+  not presumed). Secondary, report-only: per-slot kind-conditional
+  distances (the segment-and-classify grain — the composability
+  localizer's first look, no verdict attached). Coordinates law
+  honored: all silhouettes in g22's OWN fst space, one generation,
+  no mixing.
