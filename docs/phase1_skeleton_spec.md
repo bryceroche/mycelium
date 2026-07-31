@@ -18535,3 +18535,26 @@ token-position × waist-dim, the moment the skeleton trains.
   **the wild pricing read RIDES ALONG rather than waits** — the
   trace layer's last domain surprise came after it shipped; this
   one's comes before.
+
+- **THE COUNT RULE REFUSED AT ITS OWN BAR (2026-07-31; artifact
+  .cache/count_value_audit.json):** 1 false trip on 263 against a
+  pinned bar of zero — refused as designed, never installed. THE
+  SPECIMEN, banked: [428] (t2) — the winning parse asserts the
+  numeral 14 in TWO factors against ONE text occurrence, yet
+  certified lawfully: the answer matches gold and the surplus
+  assertion sits OUTSIDE attestation's given-scope (k/p are
+  uncounted there). The parse is ANSWER-EQUIVALENT BUT STRUCTURALLY
+  LOOSE — and the count rule cannot distinguish loose-but-true from
+  fabricated, which is exactly what a certification fence must do.
+  THE FINDING UNDERNEATH (worth more than the rule): answer-
+  equivalent-loose parses EXIST inside the certified corpus at
+  measurable rate (≥1/263) — the key grades answers, not structure,
+  and structure can wander within answer-equivalence. This is the
+  compilation-faithfulness question (gut #67's band) at specimen
+  grade. REDESIGN PATHS noted, not pursued: count only k/p (the
+  attestation gap) with hold-for-wheel rather than refuse; or fold
+  into a structural-faithfulness read at the bench. The wild
+  pricing that was to ride along dies with the install — nothing
+  ships, nothing to price. The audit-before-install pattern paid
+  again: a rule that would have held good rows was refused for the
+  price of one GPU pass.
