@@ -109,29 +109,10 @@ for i, r in enumerate(rows):
         # template's coverage map, applied. Marker in dialect => factor type
         # in the winning parse, else hold.
         win_parses = [f_ for (f_, q_, a_) in views if a_ == plur]
-        def _wf(pred): return any(pred(fa) for f_ in win_parses for fa in f_)
-        TRIPS = [
-            ("division", (" divided by " in dialect) or ("quotient" in dialect),
-             _wf(lambda fa: fa.get("ftype") in ("fdiv", "mod"))),
-            ("percent", " percent" in dialect, _wf(lambda fa: fa.get("ftype") == "pct")),
-            ("selection", (" the larger of " in dialect) or (" the smaller of " in dialect),
-             _wf(lambda fa: fa.get("ftype") == "sel")),
-            ("times", " times " in dialect, _wf(lambda fa: fa.get("ftype") == "rel" and fa.get("op") == "mul")),
-            ("plus", (" plus " in dialect) or ("The sum of" in dialect),
-             _wf(lambda fa: fa.get("ftype") == "rel" and fa.get("op") == "add")),
-            ("remainder", "remainder" in dialect, _wf(lambda fa: fa.get("ftype") == "mod")),
-        ]
-        # THE ONE TRACE LAYER (2026-07-30, deep-clean unification): markers +
-        # value consistency now live in mycelium/trace_layer.py — the single
-        # fence both this certifier and the wild frontier fixture import.
-        # (The deep clean found this file's division marker narrower than the
-        # fixture's: no \frac/\div, literal ' divided by ' only. Two fences
-        # with the same name must be the same fence.) The local TRIPS list
-        # above is superseded; shared trips are authoritative.
         from mycelium.trace_layer import trace_trips
-        tripped = sorted(set(
-            [name for name, lang, present in TRIPS if lang and not present]
-            + trace_trips(dialect, win_parses)))
+        # one-door 2026-07-31: the local TRIPS remnant deleted — the shared
+        # layer is the whole fence (the sweep's half-migration finding)
+        tripped = sorted(set(trace_trips(dialect, win_parses)))
         if tripped:
             res.setdefault("held_basin_tripwire", []).append({"i": i, "src_idx": src, "votes": votes, "tripped": tripped})
             print(f"  [{i+1}/{len(rows)}] src {src} BASIN TRIPWIRE ({','.join(tripped)}): marker language, no matching factor in winning parse — HELD", flush=True)

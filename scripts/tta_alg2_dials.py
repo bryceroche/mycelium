@@ -79,17 +79,12 @@ def solve2(facs, q_pred, smp):
         sol = [int(res["assignment"][v]) for v in range(nv)]
         if q_pred >= len(sol):
             return None
+        # one-door 2026-07-31: the uniqueness certificate lives in
+        # mycelium/doors.py (budget explicit; value unchanged)
+        from mycelium.doors import certify_unique
         p2 = problem_from_algebra2(nv, facs, gv, smp["m"])
-        p2.domains0[q_pred].discard(sol[q_pred])
-        if p2.domains0[q_pred]:
-            r2 = solve_symbolic(p2, budget=100_000, seed=0)
-            # UNIQUENESS GUARD (deep clean 2026-07-30): only status=='unsat'
-            # certifies uniqueness. 'budget' means the search was cut short —
-            # treating it as unsat silently certified would-be-ambiguous
-            # graphs as forced (budget exhaustion REJECTS at every door;
-            # csp_core documents 'budget' as never-a-false-certificate).
-            if r2["status"] != "unsat":
-                return None
+        if not certify_unique(p2, q_pred, sol[q_pred], budget=100_000):
+            return None
         return sol[q_pred]
     except Exception:
         return None

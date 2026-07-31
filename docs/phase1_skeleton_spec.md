@@ -18952,3 +18952,46 @@ token-position × waist-dim, the moment the skeleton trains.
   Settle's jurisdiction: the bench's readout, the diets'
   mechanism-grade before/after, the wetting call's instrument —
   all within-population, all z-scored, all in-register.
+
+- **THE ONE-DOOR LAW SWEEP REPORTS AND THE DOORS ARE BUILT
+  (2026-07-31, the standing word executed same-hour;
+  mycelium/doors.py):** THE SWEEP'S FINDINGS: (1) the vote verdict
+  inline at ~90 files, kernel uniform (convergent copy-paste, no
+  drift — but the next threshold change would be 90 hand edits);
+  plumbing genuinely one-door already (permuted_view 79 importers,
+  solve2 ~116). (2) The uniqueness check at 16 live sites with an
+  **800× re-solve budget spread** (200k → 250) — and 12 identical
+  hand-pasted comments from the deep clean's synchronized edit,
+  the N-bypass shape self-documented. (3) Mint constitution mixed:
+  solver-verify and knot-dedup one-door (canon: 39 importers);
+  value-cap hand-rolled ~10 sites incl. the LAWFUL 999
+  hundreds-regime difference; letter-consecutive correctly left
+  alone (domain-entangled — a forced door would be wrong).
+  (4) NO seed registry existed; 18 bases invented per-script;
+  collisions 88000/91000 confirmed DORMANT (one residual gap:
+  downstream-join audit not exhaustive). (5) WORDNUM clean —
+  except book8_certify's half-finished migration (local TRIPS
+  unioned with the door). (6) Env setdefaults at 125 files/225
+  lines with a LIVE 62-vs-44 ALG_FTYPES split — era scripts
+  lawfully stale (era ckpts need era envs), standing instruments
+  the real customers. (7) arith3_canonicalizer ORPHANED (zero
+  consumers; the trap of a same-purpose module).
+  THE DOORS BUILT (mycelium/doors.py): **certify_unique** (budget
+  an explicit argument; NO site's value changed — the 800× spread
+  is exposed policy, not silently harmonized), **quorum** (the
+  verdict line only; harness free), **deployed_env** (manifest env
+  as authority, current-gen instruments only), **row_m**
+  (row-authoritative, then named-context table, KeyError by
+  design — the silent 60 is DEAD at its two live sites),
+  **VIEW_SEED_BASES** (the registry, claim-before-use, collisions
+  frozen). REWIRED SAME-HOUR: solve2's uniqueness leg (=~116
+  consumers through the door in one edit), the three mint
+  roundtrips, both silent-60 m-sites, book8_certify's TRIPS
+  remnant DELETED (the fence is now the shared layer alone), the
+  orphan marked superseded. MIGRATION POLICY, standing: no new
+  inline copies; existing correct copies migrate on next touch.
+  DOCKETED, not fired: the budget-spread policy question (what
+  SHOULD the re-solve budgets be — now one named argument per
+  site); the seed downstream-join residual gap; the era-stratified
+  meaning of "certified" (book2 vote+gold vs book8 full-fence —
+  a vintage label question for the corpus merge, flagged).

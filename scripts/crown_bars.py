@@ -7,7 +7,8 @@
     forms — errors must drop with decode-site count.
 (4) Displacement floor: bigtest >= 1182 (C1's 1197 − 15).
 """
-import json, sys, os
+import json
+from mycelium.doors import row_m, sys, os
 sys.path.insert(0, "."); sys.path.insert(0, "scripts")
 import numpy as np
 from collections import Counter
@@ -139,7 +140,7 @@ for s0 in range(0, len(rows), 8):
     for bi, i in enumerate(sl):
         i = int(i)
         facs, q = decode({k: o[k][bi] for k in o})
-        a_ = solve2(facs, q, {"n_vars": 24, "m": rows[i].get("m", 60)})
+        a_ = solve2(facs, q, {"n_vars": 24, "m": row_m(rows[i])})
         n_ans += (a_ == rows[i]["solution"][rows[i]["query_var"]])
 print(f"[BAR 4] displacement: bigtest {n_ans}/1500 "
       f"({'PASS' if n_ans >= 1182 else 'FAIL'} vs floor 1182)")

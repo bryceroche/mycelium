@@ -243,14 +243,10 @@ def roundtrip(n_vars: int, factors: list, m: int, solution: list):
         if v in givens:
             continue
         p2 = problem_from_algebra(n_vars, relations, givens, m)
-        p2.domains0[v].discard(solution[v])
-        if p2.domains0[v]:
-            r2 = solve_symbolic(p2, budget=200_000, seed=0)
-            # deep clean 2026-07-30: only 'unsat' certifies uniqueness;
-            # 'budget' is a cut-short search, not a certificate (same guard
-            # as solve2 — budget exhaustion REJECTS at every door).
-            if r2["status"] != "unsat":
-                return False, -1
+        # one-door 2026-07-31: mycelium/doors.certify_unique (value unchanged)
+        from mycelium.doors import certify_unique
+        if not certify_unique(p2, v, solution[v], budget=200_000):
+            return False, -1
     return True, int(res.get("decisions", -1))
 
 

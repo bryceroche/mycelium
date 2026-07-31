@@ -1,4 +1,8 @@
-"""arith3_canonicalizer.py — deterministic graph normalization (gut #69).
+"""arith3_canonicalizer.py — SUPERSEDED (one-door sweep 2026-07-31):
+zero external consumers; the knot-ID door is scripts/hash_audit_iso.py::canon
+(39 importers, WL + exact verify, level-0). Kept for history; do not adopt.
+
+Original header: — deterministic graph normalization (gut #69).
 
 v0: canonical factor ordering only (no folds yet — folds arrive with
 their provenance contract per the tightened law: fold MERGES loc sets).

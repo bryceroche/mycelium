@@ -7,6 +7,7 @@ View seeds are SHARED across members (view-matched panel).
 import json, sys, os
 sys.path.insert(0, "."); sys.path.insert(0, "scripts")
 import numpy as np
+from mycelium.doors import row_m
 os.environ.setdefault("ALG2", "1"); os.environ.setdefault("ALG_FTYPES", "6")
 os.environ["ALG_HW"] = os.environ.get("MEMBER_HW", "512")
 os.environ["ALG_DUP"] = os.environ.get("MEMBER_DUP", "0")
@@ -64,7 +65,7 @@ def votes_for(text, gold_m, seed0):
 out = {"ckpt": CKPT, "bigtest": [], "census": []}
 rows = [json.loads(l) for l in open(".cache/algebra_nl_bigtest.jsonl")]
 for i, r in enumerate(rows):
-    out["bigtest"].append(votes_for(r["text"], r.get("m", 60), 40000 + 10 * i))
+    out["bigtest"].append(votes_for(r["text"], row_m(r), 40000 + 10 * i))
     if (i + 1) % 300 == 0:
         print(f"  bigtest {i+1}/{len(rows)}", flush=True)
 
