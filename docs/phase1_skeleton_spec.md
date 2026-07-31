@@ -18066,3 +18066,40 @@ token-position × waist-dim, the moment the skeleton trains.
   as "single-construction-limited — composition unreadable at this
   register." Whichever way the primary and secondary agree or
   split, both print.
+
+- **THE COMPOSITION MATRIX READS (2026-07-31; artifact
+  .cache/composition_matrix_v1.json, permanent fixture):**
+  THE PINNED PRIMARY, reported as registered: PHRASEBOOK, gap +71
+  (co-occurred 0.96 over 24 cells vs novel 0.25 over 11). THE
+  AMENDMENT'S CONVICTION, pinned before any pair cell printed and
+  confirmed exactly: ALL ELEVEN novel cells are pct cells — the
+  novel mean IS the pct mean; the primary verdict is 100%
+  confounded with a single-construction deficit and is NOT a
+  composition finding. THE CLEAN-SUBSET SECONDARY (pinned): the
+  novel set is EMPTY — every pair of well-learned constructions
+  {add,mul,fdiv,mod,sel} CO-OCCURS in the mix at n>=20. The
+  discriminator is undefined-by-completeness, and that is the
+  finding: **the mix already teaches every pairing of its learned
+  lexicon — in-register compositional coverage is COMPLETE, and
+  every one of the 24 clean cells reads at construction ceiling**
+  (mean 0.96; sel row perfect incl. sel→fdiv 1.00 — the [1293]
+  neighborhood; mod row at ceiling; the fdiv producer row the
+  cleanest on the board three days after being the deepest hole).
+  THE HONEST COMPOSABILITY VERDICT: algebra-vs-phrasebook is
+  UNDECIDED and UNDECIDABLE inside this lexicon (nothing novel
+  remains to test); the question moves to where it always lived —
+  the frontier register, where the wild ledger already measures
+  composite failure. A future decisive read requires a held-out
+  pairing (train-without, test-with) — docketed as expensive,
+  not fired. THE ADJUDICATIONS: (1) mul→mul near-hole HARMLESS
+  (1.00 at n=12) — the mul-chains diet candidate CLOSED without a
+  fire (audit-before-diet's third payment this week); (2) the
+  CHAINED-FDIV registry resident read 0.92 against a prediction of
+  failure — the gen-22 diet cured past its target (fdiv-on-quotient
+  included); RE-AUDITION MOTION filed for the resident's release
+  (families shrink on contact — the registry's law; the word
+  decides); (3) PCT is REGISTER-MARGINAL, single-construction:
+  0.08 alone, 0.32 composed (context HELPS — 4× — the factory
+  panel's context-graded finding confirmed and extended; high
+  variance 0.00-0.75 = a register boundary, not a skill boundary);
+  docketed as its own investigation, not presumed a diet.
