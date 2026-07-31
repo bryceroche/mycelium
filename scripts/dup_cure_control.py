@@ -119,8 +119,16 @@ for name, ckpt in (("g22_baseline", ".cache/g22.safetensors"),
     print(f"[{name}] HELD-OUT misbound {hm}/{ht} = {hm/max(ht,1):.0%}   "
           f"book-8 misbound {bm}/{bt} = {bm/max(bt,1):.0%}", flush=True)
 
+# THE 2x2 (the rider): pool cells from the banked record — g22-on-pool
+# 48/91 = 53% (bench_rung2b, the registered baseline; the artifact was
+# overwritten per-arm during the fire, the number is ledger-banked),
+# arm-on-pool 0/120 (dupfire_dry_d02_2b.json). Held-out cells fresh.
 g22h = results["g22_baseline"]["heldout_misbound"] / max(results["g22_baseline"]["heldout_n"], 1)
 armh = results["arm_dry_d02"]["heldout_misbound"] / max(results["arm_dry_d02"]["heldout_n"], 1)
+print("\n[THE 2x2]  (misbinding rate)")
+print("                 POOL template    HELD-OUT template")
+print(f"  g22 baseline   53% (48/91)      {g22h:.0%} ({results['g22_baseline']['heldout_misbound']}/{results['g22_baseline']['heldout_n']})")
+print(f"  arm dry_d02     0% (0/120)      {armh:.0%} ({results['arm_dry_d02']['heldout_misbound']}/{results['arm_dry_d02']['heldout_n']})")
 if g22h < 0.10:
     verdict = ("CONTROL UNINFORMATIVE — g22 already binds the held-out template "
                f"({g22h:.0%}); the 53% baseline was the POOL template's own difficulty; "
