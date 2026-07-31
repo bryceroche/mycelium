@@ -18995,3 +18995,28 @@ token-position × waist-dim, the moment the skeleton trains.
   site); the seed downstream-join residual gap; the era-stratified
   meaning of "certified" (book2 vote+gold vs book8 full-fence —
   a vintage label question for the corpus merge, flagged).
+
+- **THE CLOSING CARVINGS + VINTAGE LABELS STAMPED (2026-07-31,
+  Bryce):** (1) **THE TWELVE-COMMENT FINDING, carved deepest: the
+  disease's signature appeared in the REPAIR** — the deep clean's
+  synchronized fix left twelve copies of its own explanation, the
+  fossil record proving a law applied by hand at N sites is a law
+  with N future drift points. The strongest argument for doors over
+  sweeps, written by the sweep itself. (2) THE TWO JUDGMENT CREDITS:
+  budget-explicit-with-no-value-changed (visible divergent policy
+  beats ninety silent decisions in one commit) and era-scripts-
+  lawfully-stale (**"stale" and "wrong" are different states** —
+  the distinction most cleanup passes miss). (3) **VINTAGE LABELS
+  STAMPED SAME-HOUR** (docket #3 ranked highest, executed while
+  cheap): every certification record now carries a `vintage` field
+  — book-7 era = vote5+gold; book-8 era = the full fence, with the
+  intra-era note that pre-2026-07-30 tranches ran the 7-marker
+  tripwire without value-consistency. Any corpus merge reads the
+  field; the word "certified" no longer has two homes in the
+  semantics. (4) THE FIRES RANKED for the next word: **dup-args
+  first** — 53% live baseline, settle as mechanism-grade
+  after-read, the wetting blind call riding its ordering; the
+  sharpest-instrumented fire ever staged, one training run.
+  Augmentation waits on its three words; December keeps its cold
+  session; both will want dup-args' evidence. NOTHING IN FLIGHT —
+  the stopping place chosen, the starting place banked.
