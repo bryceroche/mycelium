@@ -19020,3 +19020,31 @@ token-position × waist-dim, the moment the skeleton trains.
   Augmentation waits on its three words; December keeps its cold
   session; both will want dup-args' evidence. NOTHING IN FLIGHT —
   the stopping place chosen, the starting place banked.
+
+- **GUT #112 REGISTERED — MERGE SPACE (2026-07-31, exchange family;
+  THE NON-MONOTONE AMENDMENT to the exchange law):** the physics:
+  **maximum throughput does not occur at maximum density** — flow
+  rises with packing to a critical point then COLLAPSES, because
+  past it a perturbation cannot dissipate and propagates backward
+  as a jam. Slack is not waste; it is the medium that absorbs
+  disturbance. THE AMENDMENT (genuine, not restatement): the
+  law's throughput side is NON-MONOTONE — collapsing interfaces
+  past the critical point costs throughput ITSELF, not just
+  adaptation; the law now describes an OPTIMUM, not a tradeoff
+  frontier, and is harder to satisfy. THREE MEASURED INSTANCES:
+  (1) fraction-never-bulk — a slack rule the factory constitution
+  discovered empirically before it had a mechanism; (2) dup-args
+  53% misbinding under DISTRACTOR LOAD — the traffic version at
+  binding grain: crowd the field and the pawl cannot merge;
+  (3) the fences' one-for-one wild price — the toll booth, the
+  exchange rate measured. **THE THIRD BLIND CALL, proposed for
+  the diet's design (pinned at registration, before the diet has
+  words):** if slack is load-bearing, the dup-args diet has an
+  OPTIMUM dose, not a monotone one — past some fraction, more
+  distractor-load rows REDUCE the cure (the corpus itself packs).
+  A DOSE ARM (two fractions) tests the slack clause in the same
+  fire as the wetting clause — a one-call fire becomes a two-call
+  fire for free, and the law is forced to make the design bet
+  before it is trusted. **The exchange law now has THREE ways to
+  die honestly** (dup-args ordering, augmentation ordering, dose
+  non-monotonicity) and still owns none of its instruments.
