@@ -28,7 +28,7 @@ inner chain 9% coverage @ 0.63; unfenced 56% @ 0.53.
 | Item | Owner | Blocking condition | Last touched |
 |---|---|---|---|
 | SURFACE AUGMENTATION (the photo booth's write-side; spec-stage) — paraphrase mint toward wild, graph fixed; bar pinned blind (flip <40%/<27%, mouth-native >1.6%, in-register unmoved) | bench | the word ×3: paraphrase source (diversity-priced), TEXT-SIDE semantics check design, dose | 2026-07-31 |
-| BENCH RUNG 1: eager-math on banked traces — does readiness already exist in the trained gate? (brief FIRED: docs/BINDING_BENCH_BRIEF.md) | bench | the word; CPU, no training; shapes rung 2 either way | 2026-07-31 |
+| ~~BENCH RUNG 1~~ DONE 2026-07-31: ABSENT (AUC 0.413/0.587 — the signal must be BUILT); inversion texture banked (misbound slots lurch at evidence) → RUNG 2 (driver math, no training) | bench | the word for rung 2 | 2026-07-31 |
 | Wetting-clause blind call (pinned): dup-args diet ordering vs book-8 mix inclusion — the exchange law's live experiment | rides the dup-args word | pinned before wording; factory panel cell grain | 2026-07-31 |
 | ~~STRUCTURAL-RATE AUDIT~~ DONE 2026-07-31: 0.4% — [428] is a singleton; kind-exact 261/262; corpus structurally TIGHT; scope line = footnote with its number | — | — | 2026-07-31 |
 | ~~Harvest-vs-MATH-500 composition audit~~ DONE 2026-07-31: 39.4% addressable ceiling; biggest wall = answer representation (29.4% non-integer — a representation decision); December inherits the arithmetic | — | — | 2026-07-31 |
