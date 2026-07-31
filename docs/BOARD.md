@@ -27,6 +27,7 @@ inner chain 9% coverage @ 0.63; unfenced 56% @ 0.53.
 
 | Item | Owner | Blocking condition | Last touched |
 |---|---|---|---|
+| SURFACE AUGMENTATION (the photo booth's write-side; spec-stage) — paraphrase mint toward wild, graph fixed; bar pinned blind (flip <40%/<27%, mouth-native >1.6%, in-register unmoved) | bench | the word ×3: paraphrase source (diversity-priced), TEXT-SIDE semantics check design, dose | 2026-07-31 |
 | BENCH RUNG 1: eager-math on banked traces — does readiness already exist in the trained gate? (brief FIRED: docs/BINDING_BENCH_BRIEF.md) | bench | the word; CPU, no training; shapes rung 2 either way | 2026-07-31 |
 | Wetting-clause blind call (pinned): dup-args diet ordering vs book-8 mix inclusion — the exchange law's live experiment | rides the dup-args word | pinned before wording; factory panel cell grain | 2026-07-31 |
 | Harvest-vs-MATH-500 composition audit (#105's live remainder; feeds December) | bench | the word; cheap CPU | 2026-07-31 |
