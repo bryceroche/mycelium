@@ -48,7 +48,7 @@ inner chain 9% coverage @ 0.63; unfenced 56% @ 0.53.
 |---|---|---|---|
 | One-door LAW sweep (duplicated-law counterpart of the state sweep) | delegated auditor | RUNNING — 7 laws enumerated, consolidation ranking due | 2026-07-31 |
 | ~~k<=0 predicate guards~~ DONE 2026-07-31 (predicates reject, propagators empty-domain; sanity-checked) | — | — | 2026-07-31 |
-| Set-vs-count value accounting | unit `count-audit` | RUNNING — audit-before-install, bar = 0 false trips on 263 | 2026-07-31 |
+| ~~Set-vs-count value accounting~~ REFUSED at bar (1/263 false trip; specimen [428] = answer-equivalent-loose parse) — redesign paths filed, not pursued | — | — | 2026-07-31 |
 | permuted_view <=3-sentence collapse (landmine, not live; min observed 4) | bench | fix rides the next vote-semantics window — never mid-campaign silently | 2026-07-30 |
 | ~~Wild-exposure re-sizing by template~~ CLOSED OBE 2026-07-31: the failing template is CURED (d1 7/8, basin gone) and chained-fdiv RELEASED — the sizing question is moot | — | — | 2026-07-31 |
 | Silhouette-triage spec (spec-first ruling; funnel region ledger §13) | bench | spec unwritten; no convention gates before spec + retro read | 2026-07-29 |
