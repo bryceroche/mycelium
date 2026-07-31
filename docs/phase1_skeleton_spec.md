@@ -19573,3 +19573,25 @@ token-position × waist-dim, the moment the skeleton trains.
   building for dup — adupheld and dag8 were there all along. The
   arms' adupheld read fired (the sighted number the battery hold
   deserves).
+
+- **THE SIGHTED READ CLOSES THE FIRE ARC (2026-07-31):** adupheld —
+  dry_d12 198/200, dry_d02 197/200, g22's anchor 199/200. **The
+  arms hold the bar and gain nothing: the standing dup fixture was
+  already ceilinged** (gen-18's adup diet cured its construction
+  long ago — "199/200 from 0" on that era's own sheet). The full
+  triangulation, final: the 2b pool's 53% was a NEW corner
+  (distractor-load configuration × pool surface) outside every
+  standing fixture's sight; the diet cured exactly that corner;
+  the blind neighbors churned; the sighted fixture was full before
+  the fire lit. THE BATTERY HOLD CLOSES AS REFUSAL-FOR-NOW: six
+  arms that hold every bar and buy nothing measurable beyond their
+  own template do not promote — g22 REMAINS THE GATE, the arms
+  bank as the surface-band law's evidence, and the next promotion
+  case on this axis runs through augmentation (the prerequisite)
+  with held-out-of-table evals. THE FIRE ARC'S FULL ACCOUNT: one
+  six-arm cross, two controls, one isolation rung, four laws
+  touched (surface-band carved; subspace-spanning carved twice;
+  rotation completed; fixture-selection carved), one amendment
+  struck, two calls voided, one confound self-caught, zero bars
+  bent, and a gate that did not move for reasons the record can
+  state exactly.
