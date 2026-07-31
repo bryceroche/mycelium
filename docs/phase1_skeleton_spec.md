@@ -19160,3 +19160,29 @@ token-position × waist-dim, the moment the skeleton trains.
   40% = the bench inherits the species, the rate-family precedent).
   g22 holds the gate throughout; no arm reads until entourage if
   one promotes. Everything after the word is execution.
+
+- **THE DUP FIRE: THE WORD GIVEN — FULL SIX-ARM CROSS (2026-07-31):**
+  the economy design refused for the right reason: the wetting
+  clause's entire premise is that preparation changes absorption —
+  the calls are claimed NON-SEPARABLE, so measuring them in
+  isolation assumes the law false to test it. Three hours buys the
+  cheapest interaction study the campaign will run. THE RIDERS,
+  pinned before ignition: (1) **THE 12%-ARM DISCRIMINATOR** — the
+  slack clause predicts the DUP CURE peaks and declines; CORPUS
+  DISPLACEMENT predicts the NEIGHBORS degrade while dup keeps
+  improving. Cell grain reads the target; bigtest/alg4 + the
+  standing rehearsal read the neighbors. Same run, two hypotheses
+  separated at design time. (2) **THE NO-MID-FIRE FENCE BINDS ALL
+  SIX ARMS** — completion or pre-registered kill; nothing stirred
+  for a wobbly loss print. EXECUTION NOTES banked: doses NESTED
+  (2% ⊂ 5% ⊂ 12% of one deduped pool — monotone-superset
+  comparability); WET arms carry book-8's certified rows with
+  **op:sub factors REWRITTEN to the canonical rearranged-add**
+  (c=a−b ≡ a=c+b — the semantic fold; sub is unrepresentable in
+  the op head and training it as raw add would mis-supervise; the
+  fold trains the rendering the gate actually emits); state
+  ASSEMBLY from banked verified blocks (base g22 states + two
+  small fresh blocks) with per-arm live-forward sentinel
+  verification — the gen-22 fence makes assembly lawful and saves
+  ~3h of duplicate trunk work; gold arrays rebuilt per-mix by
+  build_gold (CPU, the real function, no shortcut).
