@@ -18586,3 +18586,39 @@ token-position × waist-dim, the moment the skeleton trains.
   structural noise the gate is learning from, with consequences
   downstream. Four proposals dead cheap this week, all before they
   burned.
+
+- **THE M-BOUND RULINGS (2026-07-31, Bryce, banked ahead of the
+  sweep's full report):** (1) **the silent-60 diagnosis, carved: a
+  silent default is a NO-HOME state pretending to have an
+  authority** — chosen once, somewhere, for some context, inherited
+  by every consumer without a decision; worse than ALG_HW's
+  scattered copies because a plausible value looks correct at every
+  site. (2) **The door's design, pre-ruled: the m-bound's authority
+  is a PER-CONTEXT LOOKUP, not a constant** — mint, book, wild, and
+  probe contexts may legitimately differ; one module owns the
+  context→bound mapping, every consumer names its context, no call
+  site may supply a bare literal, and a missing context is a
+  KeyError BY DESIGN (of the three conventions, hard-fail is the
+  correct one: it forces the decision where it belongs). (3) THE
+  RETROACTIVE QUESTION docketed: which banked verdicts were
+  computed under which convention (crown_bars ran two in one file —
+  some sheet may carry a mixed determination); conviction-index
+  discipline says find out before a number computed under a bound
+  nobody chose gets quoted.
+
+- **THE STRUCTURAL-RATE AUDIT REGISTERED AND FIRED (2026-07-31, the
+  word given; turning [428]'s floor into a rate):** POPULATION: the
+  263 certified rows, winning parses recomputed (certify seeds).
+  METRIC 1 — THE HEADLINE RATE: numeric surplus (the [428] class —
+  any asserted value/k/p exceeding its text license, count-based),
+  text-anchored and convention-free; a row flags if any winning
+  view carries surplus. METRICS 2-3 — CHARACTERIZATION ONLY (the
+  synonymy lesson applied at design time): winning-parse kind
+  multiset vs the annotation's (sub folded to add BEFORE comparing;
+  divergences split KNOWN-SYNONYMY vs OTHER) and factor-count
+  deltas — descriptive, no verdict attached, because the pen's
+  rendering conventions differ lawfully from the gate's output
+  space. THE PRE-STATED INTERPRETATION (Bryce's): headline rate
+  ~1% → the scope line is a footnote; ~15% → the training corpus
+  carries systematic structural noise the gate learns from,
+  consequences downstream.
