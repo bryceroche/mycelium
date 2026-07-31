@@ -16,7 +16,8 @@ from tinygrad.nn.state import safe_load
 
 rows = [json.loads(l) for l in open(".cache/algebra_nl_bigtest.jsonl")]
 z = np.load(".cache/phase1_alg_states_bigtest.npz")
-st = np.load(".cache/phase1_alg_states_bigtest_states.npy", mmap_mode="r")
+st = (z["states"] if "states" in z.files
+      else np.load(".cache/phase1_alg_states_bigtest_states.npy", mmap_mode="r"))
 tokmask, sent = z["tokmask"], z["sent"]
 n = len(rows)
 print(f"[gain] bigtest n={n}")
