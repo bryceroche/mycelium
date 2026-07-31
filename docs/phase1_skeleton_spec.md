@@ -19448,3 +19448,30 @@ token-position × waist-dim, the moment the skeleton trains.
   RECORD CLOSES: six arms, surface-local cure, generic neighbor
   gains, two calls void, one call refuted, one apparatus law
   gained, one thesis (surface-bands) measured at diet grain.
+
+- **THE FDIV CHECK FAILS — AND THE SURFACE-BAND LAW IS CARVED
+  (2026-07-31; artifact .cache/fdiv_surface_check.json):** the 2×2:
+  g21 original 2/8, g22 original 7/8 (the banked cure), **varied
+  surface 0/8 UNDER BOTH** — the fdiv cure never left its
+  phrasings either, and corpus v3's spanned axes (letters,
+  ordinals, ops, adjacency) did not include the one that mattered:
+  PHRASING. THE LAW, now measured at every grain the campaign has
+  touched: **the gate learns phrasing-banded circuits; training
+  buys competence inside the band and nothing outside it.** The
+  instances, unified: the mouth is a register instrument (98.4% —
+  the band's outer wall); the wild flip rate 53% (no paraphrase
+  invariance — the band measured per-item); pct's context-cure
+  (in-band surface effects); the dup cure (surface-local, 24%
+  outside); the fdiv cure (surface-local, 0/8 outside). Five
+  instruments, one law. **AUGMENTATION IS PREREQUISITE** — not the
+  sharpest lever but the LOAD-BEARING one: every future diet, the
+  books' wetting operation, the widening program, and the MATH-500
+  road all pass through surface variety or they buy band-local
+  wins. THE SCOPE LINES OWED AND WRITTEN: gen-22's d1 cure claim
+  reads "7/8 AT THE TRAINED SURFACES" (its promotion bars —
+  bigtest, cert-v2, zone — were band-internal measurements and
+  stand unaffected); the dup fire's six zeros likewise. The
+  augmentation registration's three gating words (source,
+  text-side check design, dose) are now the board's FIRST item by
+  necessity, with tonight's two fixtures (dup 24%, fdiv 0/8
+  varied) as its standing before-numbers.
