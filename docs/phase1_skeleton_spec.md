@@ -19269,3 +19269,12 @@ token-position × waist-dim, the moment the skeleton trains.
   broke.) #109 CLOSED: essential + costly + the rule + three
   specimens. #91's fence on rotated ROUTES as custody stands
   unchanged and separate.
+
+- **THE CALIBRATED-INTUITION PATTERN, one line at #109's close
+  (2026-07-31, Bryce):** all three specimens predated the clause
+  that organizes them, and the correct-use case was running on the
+  same instrument in the same hour — the pattern now produces RULES
+  rather than hypotheses. **A rule that explains existing law
+  rather than adding to it is the cheapest kind to carry**: three
+  re-anchors discovered independently for three rotations, the
+  clause naming what they share, nothing re-legislated.
