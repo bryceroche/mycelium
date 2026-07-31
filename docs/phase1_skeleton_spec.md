@@ -19101,3 +19101,21 @@ token-position × waist-dim, the moment the skeleton trains.
   uncorrelated = a true redirect. The diversity budget applied to
   ARCHITECTURE — the one question separating this from every
   ensemble idea the record has priced.
+
+- **THE CORRELATION FENCE'S OPERATIONAL FORM, PINNED BEFORE THE TEST
+  IS DESIGNED (2026-07-31, Bryce — #113's teeth given their
+  population):** correlated-vs-uncorrelated is measured on the
+  MIDDLE BAND, never the full population — two components that both
+  succeed on easy rows look correlated by CEILING, two that both
+  fail on the hardest look correlated by FLOOR; the diagnostic rows
+  are those where one component succeeds and the other's behavior
+  is informative. THE POPULATIONS, named now and already banked:
+  the 124 wild answered (78/46 split), the dup-args misbinding half
+  (48 of 91), the pct variance spread (0.00-0.75 across cells).
+  The same measurement on the wrong population would clear a
+  parallel beam or convict a real redirect — the population is
+  pinned before the test exists, per the standing discipline. The
+  modulated-vs-shared distinction carried as the sorting question
+  for all rung-3 proposals; composed-pct (0.08→0.32, binder
+  untouched) stands as the existence proof — a redirect that
+  already happened, measured, before anyone proposed building one.
