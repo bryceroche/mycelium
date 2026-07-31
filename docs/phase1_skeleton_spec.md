@@ -18644,3 +18644,23 @@ token-position × waist-dim, the moment the skeleton trains.
   scope-line footnote inherits the number it needed. Five
   proposals now dead cheap this week — the rate audit killed the
   15%-world for one GPU pass.
+
+- **THE TWO-AXES COMPOSITE SENTENCE, banked before either number is
+  quoted alone (2026-07-31, Bryce's caution on the 99.6%):**
+  **parse-to-annotation agreement is 99.6% chain-wide;
+  annotation-to-source faithfulness is bench-sampled at roughly
+  4-of-5. Two numbers, two axes, neither substituting for the
+  other.** The 99.6% measures the gate against the pen — a row
+  where the pen rendered the source loosely and the gate parsed the
+  rendering faithfully prints as perfect agreement. The
+  annotation-to-source axis is exactly what the bench rulings cover
+  (rendered-vs-substituted, the universal-constant law, the witness
+  test), and the two measurements point the same way without being
+  the same measurement. The composite is the quotable form; either
+  number alone overclaims. The fence redesign FILED at
+  near-zero justification (a fence for a 0.4% singleton already
+  caught once costs more than it holds) — filed, not built, per
+  audit-before-install. STANDING WORD RECEIVED: the one-door
+  consolidations FIRE when the sweep reports, per its ranking,
+  under the pre-ruled designs (quorum-verdict door; m-bound
+  per-context lookup with KeyError-by-design).
