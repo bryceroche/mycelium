@@ -12,7 +12,16 @@ this is the index of its open edges.
 
 ## In flight
 
-*(nothing — the estate is settled; the gate may read)*
+*(nothing — the estate is settled; the wild ledger is banked)*
+
+## The actuarial fixture (2026-07-31 — price proposals here first)
+
+`.cache/wild_ledger_v1.jsonl` — n=1404, full deployed chain, per-item.
+Standing rule: graded-tier proposals NAME THEIR SIGNAL first and price it
+against this table (free re-cut). Known: residual doesn't grade; quorum
+saturates (0.626 @ 5/5); LEVEL grades (0.78→0.47); mouth = register
+instrument (98.4% refusal, all levels); fences one-for-one at frontier;
+inner chain 9% coverage @ 0.63; unfenced 56% @ 0.53.
 
 ## Owed — Bryce's word required to fire
 
