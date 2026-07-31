@@ -19220,3 +19220,28 @@ token-position × waist-dim, the moment the skeleton trains.
   ~86GB per generation and are cache, not record — the entourage
   or the deep-clean cadence should sweep pre-previous-gen states
   routinely (the disk law's maintenance clause).
+
+- **GUT #114 REGISTERED — THE FALSE ALARM (2026-07-31; the control
+  fired before the verdict banks):** READING ONE (fence
+  false-positives) is measured-and-accepted: value-fab 0.48 wild
+  lie-rate, the one-for-one toll — banked, deliberate, revisitable.
+  READING TWO is the live suspect: **the 0/120×6 cure is emphatic
+  enough to deserve a suspicious question — the 2b probe and the
+  diet pool share a GENERATOR LINEAGE** (the pool's mint descends
+  from the probe's mint; same construction conventions), so the fix
+  could have taught the PROBE'S TEMPLATE rather than the SPECIES.
+  THE TWO-SIDED CONTROL, pinned before the verdict pass: (a) the
+  BOOK-8 dup-carrying certified rows (natural prose, different
+  generator, same species) — binding-grain read under g22 vs a diet
+  arm; may ceiling both (in-register rows bound fine pre-diet per
+  the structural audit) — reported either way; (b) **THE HELD-OUT
+  TEMPLATE mint** — dup rows from template families the diet pool
+  NEVER contained (different phrasing: "The sum of a and a", higher
+  distractor counts, shifted letter ranges), read under g22 AND the
+  arm. PINNED BARS: CURE-REAL = the arm's held-out misbinding ≤
+  half of g22's on the same rows; TEMPLATE-MEMORIZED = arm within
+  10 points of g22 (the diet taught the fixture, not the register);
+  between = MIXED, the verdict pass carries the caveat. A 0/120
+  that survives this is worth far more than one never questioned;
+  one that fails converts the fire's headline from cure to
+  apparatus-lesson before anyone quotes it.
