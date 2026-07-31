@@ -19552,3 +19552,24 @@ token-position × waist-dim, the moment the skeleton trains.
   dup, and nothing forced the choice of a fixture that could."
   The arms' adupheld read added to the audit pass (the battery-hold
   question deserves the sighted fixture's number).
+
+- **THE FIXTURE AUDIT — A SELF-CAUGHT CONFOUND AND THE REAL FINDING
+  (2026-07-31; artifact .cache/fixture_coverage_audit.json):** the
+  ten printed gaps are ALL rel-sub vocabulary — **synonymous-homes,
+  third instance, committed by the law's own author an hour after
+  carving it** (the audit compared at factor-vocabulary level; the
+  pen writes sub, mints render rearranged-add). Folded semantically,
+  the gaps dissolve. THE REAL FINDING, surviving the fold:
+  **coverage is CONCENTRATED — the roster as a whole sees
+  everything, but the HEADLINE fixture sees almost nothing deep.**
+  bigtest: dup 0%, fdiv-on-derived 0%, depth-3+ 0%. The sighted
+  members: adupheld (dup 100%), dag8 (dup 55%, fdiv-on-derived
+  31%, depth-4 8%), dag7b (similar). The promotion NARRATIVE reads
+  bigtest — the shallowest member — while the sighted fixtures sit
+  in the same roster. THE FIXTURE-SELECTION RULE, standing: **
+  neighbor and effect reads select fixtures BY THE AUDIT TABLE
+  (sighted for the axis under test), never by prestige.** Tonight's
+  neighbor read violated it before it existed; no new fixture needs
+  building for dup — adupheld and dag8 were there all along. The
+  arms' adupheld read fired (the sighted number the battery hold
+  deserves).
