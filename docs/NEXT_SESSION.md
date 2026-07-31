@@ -1,3 +1,38 @@
+## SEAL 2026-07-31 — GEN-22 IS THE GATE; the measuring chapters; READINESS IS SETTLING; the board is the docket
+
+**THE GATE:** g22 (diet fire: fdiv-on-derived cured, d1 1/8→7/8 basin
+GONE; bigtest 1226, cert-v2 999@1.0000, zone +3/−2/−1 — two-lever law
+at 3 points). First VERIFIED manifest in five gens (atomic re-hash law);
+entourage-22 settled; all consumers manifest-driven (two-home sweeps).
+**THE DOCKET LIVES AT docs/BOARD.md** (gut #107) — read it before this
+file's older seals; deciding stays with the word. **THE FIXTURES (never
+age, price everything):** wild ledger (.cache/wild_ledger_v1.jsonl,
+n=1404: mouth=REGISTER instrument 98.4% refusal; inner chain 9%@0.63;
+NO cheap signal grades the frontier — 4 static axes null + settle
+untestable-by-instrument there); composition matrix (in-register pair
+coverage COMPLETE at ceiling); m500 composition (39.4% addressable —
+biggest wall = ANSWER REPRESENTATION 29.4%, a design decision).
+**THE BENCH:** docs/BINDING_BENCH_BRIEF.md fired; rungs 1-2b done with
+ZERO training: **READINESS IS SETTLING** (post-evidence-QUANTUM
+stability; pct 0.834 / dup-args 0.997, within-population relative
+signal, z-score per fixture, thresholds never cross). 53% dup
+misbinding under distractor load = the dup-args diet's live baseline.
+**THE EXCHANGE LAW** (11-seed sitting): surface buys adaptation,
+throughput buys depth, rate = interface independence; books WET, diets
+FILL; two blind calls pending (dup-args ordering ×2) with settle as
+their mechanism instrument. **LAWS THIS CHAPTER:** verdict-not-
+exception; one-door (one authority for the verdict, freedom in the
+harness); two-home's four failure modes (stale/bypass/no-home/
+synonymous); scope line on "certified" (answer-forcedness chain-
+verified; faithfulness bench-sampled; parse-to-annotation 99.6% —
+two axes, quote the composite). **IN FLIGHT:** the one-door law sweep
+(doors pre-authorized on its ranking; m-bound = per-context lookup,
+KeyError-by-design). **DECEMBER:** ceiling 39.4% × coverage × precision
+— framing session starts from arithmetic; abstention product honest
+today; graded tier has NO signal (binary or trained head).
+Guts at 111 (18-for-18). Ledger tail from "GEN-22 PROMOTED" onward is
+this chapter's record.
+
 ## SEAL 2026-07-27b — FIRE 2: organs 1+2 LIVE with fingerprints; organ 3 owed; NO FIRE until whole
 
 **State:** mask (sig: masked-mass 0.0078) + aligned init (sig: per-breath
