@@ -19514,3 +19514,23 @@ token-position × waist-dim, the moment the skeleton trains.
   (dup 24% and fdiv 0/8 as the standing before-numbers), else the
   augmentation would be graded by its own diet. Words 2 (source
   split + pricing) and 3 (dose + the pinned ordering call) remain.
+
+- **THE NEIGHBOR-GAIN READ: SPREAD — AND THE FIXTURE IS BLIND
+  (2026-07-31; artifact .cache/neighbor_gain_read.json):** dry_d12
+  vs g22 on bigtest single-view: +26 net (60 gained, 34 lost), and
+  **not one gained row is dup-adjacent — because bigtest contains
+  ZERO dup rows** (population share 0%). Two findings in one
+  print: (1) the +25/+26 is UNEXPLAINED churn — 94 rows changed
+  hands for a net gain with no dup shape; generic basin drift
+  within band, not the cure transferring; **the battery hold
+  stands harder** (a promotion whose gain is 60-gained-34-lost
+  churn banks noise as progress). (2) **THE FIXTURE GAP: the
+  standing regression fixture cannot see the axis both diets
+  targeted** — bigtest carries no dup constructions, so every
+  dup-diet's neighbor read was structurally incapable of
+  detecting in-band transfer, and the standing bars have never
+  once tested the dup axis. The subspace-spanning law's second
+  instance in one night: the EVAL's axis list also needs
+  justifying against measurement. Docketed: the fixture-coverage
+  audit (which constructions can bigtest/alg4 actually see?) —
+  cheap CPU on banked jsonl, the eval-side coverage sweep.
