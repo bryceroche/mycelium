@@ -18513,3 +18513,25 @@ token-position × waist-dim, the moment the skeleton trains.
   author; the bars predate the proposals (flip 53.1%, mouth-native
   1.6%, banked and permanent) — the rare luxury that waiting costs
   nothing. Nothing fires tonight.
+
+- **THREE RULINGS ON THE ROLLING BENCH WORK (2026-07-31, Bryce):**
+  (1) **THE VERDICT-NOT-EXCEPTION PATTERN, carved at its second
+  instance** (E06's divide-by-zero relocation was the first; the
+  k<=0 guards the second): **malformed input should reach a
+  VERDICT, not an exception — the chain of custody can hold a
+  refusal; it cannot hold a stack trace**, and a crash in a batch
+  is an un-scored row that silently doesn't exist. Standing
+  pattern for all predicate/gate code. (2) **THE ONE-DOOR SWEEP'S
+  RANKING GUIDANCE:** consolidate the QUORUM DECISION — where a
+  plurality becomes a verdict — not the parse-batch plumbing
+  around it. The law is the verdict; the batching is harness. A
+  shared door awkward enough that future scripts route around it
+  is how bypasses get born: **one authority for the verdict,
+  freedom in the harness.** (3) **THE COUNT RULE'S DOMAIN SCOPE,
+  stated before its audit prints:** in-register zero-false-trip
+  means nothing about wild behavior (the value check's own
+  history: 0 false trips at home, coin flip at 0.48 wild). If the
+  count rule installs, it installs domain-scoped from birth AND
+  **the wild pricing read RIDES ALONG rather than waits** — the
+  trace layer's last domain surprise came after it shipped; this
+  one's comes before.
