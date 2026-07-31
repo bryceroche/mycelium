@@ -19203,3 +19203,20 @@ token-position × waist-dim, the moment the skeleton trains.
   fence note: this was a KILL (the fire could not have completed),
   not a stir — the lawful exit taken at the earliest possible
   point, before a single training step.
+
+- **THE DISK CLEARED — 913GB OF HISTORICAL STATE DERIVATIVES DELETED
+  (2026-07-31, on the principal's report of a full disk):** sixteen
+  pre-g21 training-state memmaps (g17/b/c, g18/b, g20, banddose,
+  crownv3/4, crownfire, fluencyfire, fireA/B/C1/C2p2, m13train —
+  ~913GB) deleted. LAWFUL under the two-home law: states are
+  DETERMINISTIC DERIVATIVES of banked mixes (consumers, not
+  authorities — the mixes remain banked; the precompute path
+  recomputes any of them; the sentinel discipline verifies).
+  KEPT: g22 (the gate's states, live in the burning fire's
+  assembly), g21 (one generation of buffer), the running arm, the
+  small blocks, and all eval-fixture states. Disk: 81% → 26%
+  (1.3TB free). The fire never stalled — arm one was mid-assembly
+  throughout. STANDING NOTE for the estate: state files accrue
+  ~86GB per generation and are cache, not record — the entourage
+  or the deep-clean cadence should sweep pre-previous-gen states
+  routinely (the disk law's maintenance clause).
