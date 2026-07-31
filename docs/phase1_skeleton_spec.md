@@ -18018,3 +18018,33 @@ token-position × waist-dim, the moment the skeleton trains.
   sharp); rel-mul chains WAIT for their own read (no attached
   pathology; audit-before-diet: do compound-product rows actually
   fail?).
+
+- **THE COMPOSITION MATRIX REGISTERED (2026-07-31, the word given;
+  spec with canonicalization baked in at design time):** THE
+  QUESTION: does a gate trained on constructions A and B handle
+  A∘B — "learned an algebra" vs "learned a phrasebook"; the claim
+  MATH-500 rides on. THE LEXICON (semantic level, the sweep's
+  lesson applied): {add, mul, fdiv, mod, pct, sel} — sub EXCLUDED
+  (renders as rearranged add, same semantic class); macro excluded
+  (separate axis). THE CELLS: all 36 ordered pairs (A produces
+  derived d; B consumes d) + 6 single-construction baselines,
+  N=12 rows per cell, minted in-register per the rulebook
+  (consecutive letters, values ≤300, one lever: the composition
+  axis — register held fixed). Solution-first, solver-verified
+  under the CORRECTED uniqueness guard. CO-OCCURRENCE COLUMN from
+  the banked sweep at semantic level (sub-vocabulary folded;
+  approximation noted). PINNED BEFORE READING: (a) co-occurred
+  cells (mix pair n≥20) read near their construction baselines;
+  (b) THE DISCRIMINATOR: mean quorum-correct over NOVEL cells vs
+  mean over CO-OCCURRED cells — ALGEBRA verdict if the gap ≤15
+  points absolute (composition transfers), PHRASEBOOK verdict if
+  the gap >30 points (compositions must be taught; the road's
+  arithmetic changes — composed rows become a corpus axis), MIXED
+  between (the per-cell map stands; no aggregate claim); (c)
+  SUPPORT RULE: cells minting <8 feasible rows are
+  directional-only; (d) fdiv→fdiv is the CHAINED-FDIV registry
+  resident — predicted to fail, flagged as the known species, not
+  evidence for the aggregate verdict either way (excluded from
+  both means, reported separately). Artifact:
+  .cache/composition_matrix_v1.json — a permanent fixture beside
+  the wild ledger.
