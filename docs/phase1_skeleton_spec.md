@@ -19135,3 +19135,28 @@ token-position × waist-dim, the moment the skeleton trains.
   staged with calls pinned; the dup-args diet the sharpest thing
   ever queued — three blind calls, straddled arms, crossed
   readout, one training run.
+
+- **THE DUP-ARGS DIET STAGED FIRE-READY + THE SEED-JOIN GAP CLOSED
+  (2026-07-31; docs/DUP_DIET_DESIGN.md):** the sweep's one residual
+  gap is closed by grep — NO script joins by view seed; the
+  88000/91000 collisions are confirmed dormant end-to-end, the
+  registry stands as the fence. THE DESIGN, staged cold per the
+  gen-22 pattern: dose arms **2% / 5% / 12%** straddling the
+  record's one MEASURED full-cure dose (gen-22's 4.85%, consulted
+  from the artifact; the predicted break named — degradation past
+  ~2× the working band as species concentration packs the corpus);
+  wetting arms WET (book-8 rows in, ×10 book-dose convention) vs
+  DRY (the gen-22 mix as-is); **Option A full cross (6 arms) vs
+  Option B economy (4) — the word chooses; the readout structure
+  is fixed either way (within-condition, no marginal reads).**
+  After-reads all banked instruments: the 2b population re-run vs
+  the 53% baseline (cell grain), SETTLE z-scored within-fixture
+  (mechanism grain — teach-settling vs memorize-template), the
+  standing rehearsal, the regression floor. VERDICT STRUCTURE
+  PINNED: the wetting call (directional at anchor, both grains),
+  the dose call (peak at 5% within condition = the amendment earns
+  its peak; monotone = it dies as registered), and the diet's own
+  bar (below 25% misbinding = promotion candidate; no arm below
+  40% = the bench inherits the species, the rate-family precedent).
+  g22 holds the gate throughout; no arm reads until entourage if
+  one promotes. Everything after the word is execution.
