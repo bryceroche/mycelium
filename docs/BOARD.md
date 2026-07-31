@@ -29,7 +29,7 @@ inner chain 9% coverage @ 0.63; unfenced 56% @ 0.53.
 |---|---|---|---|
 | Interps ×7 (exchange family, incl. #106 pooling) | Bryce | fallow-lawful per #104 — setting, not delinquent | 2026-07-30 |
 | December claim decision (abstention product vs MATH-500 accuracy) | Bryce | before December; true zero-point (stage 10) informs it | 2026-07-30 |
-| Mint-vs-harvest coverage sweep (#105's lead candidate) | bench | the word; CPU-only, fire-immediately-eligible | 2026-07-30 |
+| Diet docket: dup-args near-hole (51.7% demand vs 12.3% mix) + rel-mul→rel-mul chains (34.6% vs 3.7%) | bench | the word (sweep residue; representable, likely starved) | 2026-07-31 |
 | Triage head RE-PRICING (MuZero-docketed; census volume now exists) | bench | the word; fences unchanged (two-death-mode, latents-never-replace-graph) | 2026-07-30 |
 | Soft-distance graph register (distinct candidate, not a rescue) | bench | the word; own bar + LOO rider BEFORE catch rate | 2026-07-30 |
 | Multi-route custody (#91; single-pen monoculture flagged by #106) | bench | the word; design unwritten | 2026-07-30 |
