@@ -18404,3 +18404,20 @@ token-position × waist-dim, the moment the skeleton trains.
   by their own instruments. THE FAMILY LEDGER CLOSES: eleven
   seeds, zero deferrals remaining; the instruments all stand;
   the law has a name.
+
+- **THE WETTING CLAUSE'S FIRST BLIND CALL, PINNED BEFORE ANY DIET IS
+  WORDED (2026-07-31, the rider on the sitting):** the exchange law
+  predicts diet efficacy is CONDITIONAL on prior book exposure of
+  the same axis (books wet, diets fill). The registrable prediction,
+  on file before the dup-args diet has words: **a dup-args diet
+  fired WITHOUT book-8's dup-args rows in the training mix will
+  show a WEAKER cure signature (attractor shift short of the fdiv
+  diet's full-cure profile) than one fired with them.** Whichever
+  order is later worded, the prediction stands blind; the factory
+  panel's cell grain is the instrument; the law's second honesty
+  test is now a live experiment instead of a retrodiction. The
+  frame-quality note carried: a frame that retro-derives an
+  independently measured result (books-before-diets = the two-lever
+  order) is doing what frames are for — the diffusion frame never
+  managed it; this is the exchange family's strongest single moment,
+  arrived in the sitting that closed it.
