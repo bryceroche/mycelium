@@ -31,7 +31,8 @@ inner chain 9% coverage @ 0.63; unfenced 56% @ 0.53.
 | December claim decision (abstention product vs MATH-500 accuracy) | Bryce | before December; true zero-point (stage 10) informs it | 2026-07-30 |
 | Diet docket: dup-args near-hole (51.7% demand vs 12.3% mix; measured pathology attached) | bench | the word (mul-chains CLOSED harmless by the matrix — 1.00 at n=12) | 2026-07-31 |
 | Binding-family docket: pct part/base species (args_wrong 57% floor; detected+p-right+wrong-vars; context = anchors) | binding bench | the word; NOT a diet, NOT rendering (both refuted); joins rate-family jurisdiction | 2026-07-31 |
-| Gut #110 pricing read (input-axis invariance vs the ledger's 124 answered) | unit `binding-inv` | RUNNING — bars pinned (>=0.75/<=0.40 = first grading signal; gap<15 = kill extends) | 2026-07-31 |
+| THE DECISION POINT: grading signals cost training (4 cheap axes null: residual/quorum/invariance/interior) — trained verifier vs ship-binary is the choice | Bryce | the word; any trained head prices against the wild-ledger fixture; sparse-parse candidate (3.8 vs 5.1 slots) noted-not-promoted | 2026-07-31 |
+| Binding bench design constraint (3 arrivals): commitments need a REVERSE + re-anchor between maneuvers | binding bench | convenes with the bench | 2026-07-31 |
 | Held-out-pairing composability read (train-without, test-with — the decisive form) | bench | expensive; docketed, not fired; the in-lexicon question is undecidable | 2026-07-31 |
 | Triage head RE-PRICING (MuZero-docketed; census volume now exists) | bench | the word; fences unchanged (two-death-mode, latents-never-replace-graph) | 2026-07-30 |
 | Soft-distance graph register (distinct candidate, not a rescue) | bench | the word; own bar + LOO rider BEFORE catch rate | 2026-07-30 |
