@@ -18103,3 +18103,44 @@ token-position × waist-dim, the moment the skeleton trains.
   panel's context-graded finding confirmed and extended; high
   variance 0.00-0.75 = a register boundary, not a skill boundary);
   docketed as its own investigation, not presumed a diet.
+
+- **CHAINED-FDIV RELEASED FROM THE REGISTRY (2026-07-31, the word
+  given):** the resident read 0.92 (11/12) at the matrix against a
+  standing prediction of failure — the gen-22 diet overshot its
+  coordinates in the useful direction, curing fdiv-on-quotient
+  along with fdiv-on-derived. The family shrank to nothing on
+  contact (the registry's own law; the isq-door and consecutive-
+  letters precedents joined by a third). The staged autopsy is
+  cancelled unfired. **The division tripwire STANDS regardless** —
+  the fence was never contingent on the register staying broken;
+  fences outlive their founding specimens. Registry standing
+  residents now: the rate family ([45],[7]) alone.
+
+- **THE PCT READ REGISTERED (2026-07-31, the word given — read
+  before any diet; the question: what distinguishes the 0.75 cells
+  from the 0.00 ones, and why does context help 4×?):** the shape
+  is strange in a specific way — isolated pct fails (0.08) while
+  embedded pct half-works (0.32), INVERTING the usual direction.
+  HYPOTHESES PINNED BEFORE THE READ: **H1 RENDERING** — the mint's
+  minimal "b is P percent of a" surface form mismatches the
+  training register's pct phrasings; failure signature = pct factor
+  ABSENT or malformed in the parse (the trace layer's own
+  percent-marker signature, measured from inside); predicts the
+  mix's pct phrasing census differs from the mint's form. **H2
+  BINDING** — pct factor present, args/p wrong (a binding
+  pathology like the rate family's). **H3 VALUE-SKEW** — the
+  0.75-vs-0.00 cell gap traces to feasibility-skewed value
+  distributions per cell (pct→fdiv demands divisible outputs),
+  not to the consumer's identity. THE READ: (a) CPU census of pct
+  surface forms in the mix (the register's actual phrasing
+  distribution); (b) re-parse of the matrix's pct cells (same
+  seeds = same rows) with full per-view parse capture; failures
+  classified pct-absent / p-wrong / args-wrong / other; split by
+  cell and by isolated-vs-embedded. VERDICT RULE, pinned: the
+  dominant failure class by count decides the treatment — H1
+  dominant → a RENDERING law (mint the training register's forms),
+  not a diet; H2 dominant → binding-family docket (joins the rate
+  family's jurisdiction); H3 dominant → the cells re-mint
+  value-matched and the read re-runs. HELD as ruled: the dup-args
+  diet and the held-out-pairing read (the latter's design waits on
+  this read's outcome).
