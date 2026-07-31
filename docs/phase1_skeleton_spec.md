@@ -19072,3 +19072,32 @@ token-position × waist-dim, the moment the skeleton trains.
   what converts a good story about banked numbers into a claim
   with a fresh test — predictive credit is only minted at the
   fire.
+
+- **GUT #113 REGISTERED — THE LOAD REDIRECT (2026-07-31, commitment
+  family; no build order):** the load-bearing component is THE
+  BINDER, and what it cannot redirect is measured four ways:
+  errors invariant under surface change, direction dropped at the
+  binding layer (pct args_wrong), misbound slots never settling,
+  and deduction-after-commitment unable to revise (the round-trip's
+  0.011). A beam carrying the whole structure with no member taking
+  moment off it. TWO EXISTING REDIRECTS NOTICED BEFORE PROPOSING A
+  THIRD: the trace layer (certification load moved off the parse's
+  own axis — 3/4 wild lies where fifteen views killed none) and
+  composed-pct (graph structure constraining what the surface
+  couldn't — the redirect INSIDE the binder). THE DISTINCTION THAT
+  MATTERS: a redirect is an orthogonal axis; **a parallel beam is a
+  panel seat, and the decorrelation ceiling is measured
+  insufficient.** THE PROSPECTIVE POINT — RUNG 3'S SHAPE: the
+  readiness driver as conceived MODULATES the binder (a property of
+  the same component); the gut asks for a different member taking
+  part of the moment — binding constraints supplied from a source
+  the binder doesn't generate (the emerging graph's structure, the
+  solver's partial propagation, the text's syntactic scaffolding),
+  commitment SHARED rather than modulated. The full-flow thesis as
+  statics — the THIRD independent arrival (pawl gate, erosion
+  constraint, this). THE FENCE, carried at registration: **does the
+  complement's failure mode correlate with the binder's?**
+  Correlated = a second copy of the beam (priced, insufficient);
+  uncorrelated = a true redirect. The diversity budget applied to
+  ARCHITECTURE — the one question separating this from every
+  ensemble idea the record has priced.
