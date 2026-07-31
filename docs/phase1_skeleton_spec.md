@@ -19341,3 +19341,26 @@ token-position × waist-dim, the moment the skeleton trains.
   result; branch-four = a rescoped fire ("the pool's template was
   hard and the diet fixed it" — the smaller claim, worth having
   before anyone quotes the larger); both-fail = template-local.
+
+- **THE CONTROL PRINTS BRANCH FOUR — AND EXPOSES ITS OWN CONFLATION
+  (2026-07-31; artifact .cache/dup_cure_control.json):** THE 2×2:
+  g22 on pool 53%, on held-out **0/100**; book-8 dup rows 2/86; the
+  arm 0 everywhere. Pinned verdict prints: the 53% was the POOL
+  TEMPLATE'S difficulty, not the species'. THE SHARPER READING the
+  print forces: the held-out inverted three conventions INCLUDING
+  THE CAUSAL CANDIDATE — the pool's distractors-BEFORE-dup ordering
+  is the re-engagement law's own unstable configuration
+  (competition pre-loads the pointer space before the dup sentence;
+  "the second pawl fights the first"); the held-out's dup-var-first
+  REMOVED the mechanism along with the surface. So the control
+  cannot yet distinguish "template artifact" from "the diet cured
+  the unstable CONFIGURATION — a real register phenomenon the law
+  already described." THE ISOLATION RUNG, fired same-message
+  (the GPU is free; the verdict pass waits one more read): a second
+  held-out keeping DISTRACTORS-FIRST (the causal condition) while
+  changing ONLY surface — "The sum of X and X" phrasing, 5-6
+  distractors, same ordering. PINNED: g22 misbinding HIGH on it =
+  the configuration is the species and the fire's cure is REAL
+  (surface-general within the hard configuration if the arm cures
+  it); g22 LOW = the difficulty was narrower than the configuration
+  (surface-specific) and the rescoped headline stands.
