@@ -18678,3 +18678,32 @@ token-position × waist-dim, the moment the skeleton trains.
   Uniqueness/mint expected cleaner (the twelve-site sweep
   established the form); a thirteenth site would be the sweep
   paying again.
+
+- **BENCH RUNG 1 REGISTERED AND FIRED (2026-07-31, the word given;
+  the brief's first rung — does readiness already exist in the
+  trained gate?):** THE EAGER MATH: per-slot fst trajectories across
+  SENTENCE PREFIXES (the text revealed cumulatively, the waist read
+  at each step); for each pct row from the matrix's cells (the
+  misbinding-rich population, same seeds) plus clean-cell contrast:
+  locate the pct factor's slot in the final parse, measure its
+  EVIDENCE-LOCK — the slot's fst delta at the percent-sentence step
+  against its mean delta elsewhere. PINNED HYPOTHESIS: correctly-
+  bound pct factors show evidence-locked jumps (the binding moved
+  when its sentence arrived); misbound factors drift (deltas
+  uncorrelated with evidence). PINNED BARS: AUC(evidence-lock,
+  correct-bound vs misbound) ≥ 0.70 → **the readiness signal EXISTS
+  in the trained gate — R1 is a readout problem before it is a
+  training problem**; < 0.60 → the signal is absent and the driver
+  must add it (the eager math then specifies what); between →
+  MIXED, per-population map only. Zero training; GPU-light
+  (prefix forwards).
+- **THE MATH-500 COMPOSITION AUDIT REGISTERED AND FIRED (2026-07-31,
+  the word given; #105's live remainder, December-facing):** the
+  measured question: what fraction of MATH-500 is even ADDRESSABLE
+  by the current system's register — the standard eligibility
+  filter (length, notation, integer-answer, value bounds) applied
+  to the 500, by level and subject, against the harvest pool's own
+  pass rate. MATH-500 remains measured-never-trained (this is a
+  read, precedent: the mouth's P-registrations). The December
+  number this produces: the addressable slice's size, which
+  bounds any accuracy claim before precision even enters.
