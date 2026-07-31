@@ -19312,3 +19312,18 @@ token-position × waist-dim, the moment the skeleton trains.
   #112's restatement with two honest nulls attached; the thrive
   clause survives only where #112's own dose arm may yet find it
   (the neighbor reads, pending).
+
+- **THE DECEMBER LINE, in its exact form (2026-07-31, Bryce — banked
+  so "we could tune the threshold" cannot survive as an ambient
+  option):** **closed at 1.00 answering almost nothing, or open at
+  8.8% coverage and 0.63 — those are the two real configurations,
+  and December's claim is a choice between them plus whatever the
+  books move in the meantime.** The framing session inherits a
+  four-leaf decision tree (admission × tier, both binary), not a
+  two-dimensional optimization over an unmapped surface. Two nulls
+  agreeing from opposite ends of one fact (residual doesn't grade;
+  the threshold can't buy intermediates) — the strongest form a
+  null takes. The frame-tenant note carried: if the neighbor reads
+  kill the band, #112 took its amendment Tuesday and loses it
+  Thursday — the discipline working at speed, with the wetting
+  clause, the granted core, and the honest ledger intact.
