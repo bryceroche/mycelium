@@ -17949,3 +17949,21 @@ token-position × waist-dim, the moment the skeleton trains.
   record: 0.60/0.70/0.60/0.57 is exactly the shape that becomes
   "roughly declining with a noisy second bin" if you want a dial
   badly enough. It didn't, because the rule was pinned first.
+
+- **THE COVERAGE SWEEP REGISTERED AND FIRED (2026-07-31, #105's lead
+  candidate — the read that found the last hole, run systematically;
+  audit-not-search):** POPULATIONS: the deployed training register
+  (gen22_mix, 82,400 rows — what the gate has seen) vs the certified
+  book rows (263 — the harvest's demand expressed in-register).
+  FEATURES: ftype shares; OPERAND PROVENANCE per ftype (consumes
+  given vs derived — the fdiv-hole's own axis, swept across every
+  construction); ordered construction pairs (A-feeds-B); chain depth;
+  arg multiplicity. PINNED BEFORE READING: (a) fdiv-on-derived reads
+  COVERED (the diet's 4,000 rows are in the mix) — if it doesn't,
+  the sweep is broken, not the diet; (b) HOLE = demand-share >= 2%
+  AND mix-share < 1/10th of demand-share; reported with both
+  numbers; (c) the ordered-pair co-occurrence table doubles as the
+  COMPOSITION MATRIX's training-side column (which cells co-occurred
+  in training vs are novel) — one read, two customers. The sweep
+  either finds the next hole or certifies mint coverage whole; the
+  second answer is valued at price (the week's lesson).
