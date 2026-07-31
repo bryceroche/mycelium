@@ -19278,3 +19278,18 @@ token-position × waist-dim, the moment the skeleton trains.
   rather than adding to it is the cheapest kind to carry**: three
   re-anchors discovered independently for three rotations, the
   clause naming what they share, nothing re-legislated.
+
+- **THE TEMPERATURE-BAND GUT FILED AS #112's SCALE-RESTATEMENT
+  (2026-07-31; not new territory, and the record says so):** same
+  shape as the non-monotone amendment — optimum, not frontier. THE
+  ADDITIVE CONTENT: (1) the NARROWNESS claim — stronger, more
+  falsifiable, and **pinned as CONTRADICTED-SO-FAR on the dose
+  axis**: six arms across a 6× range ceilinged at zero — a WIDE
+  band on the cure metric; if the neighbor reads also show no
+  degradation at 12%, both the amendment and the thrive clause
+  take a real hit (stated before the verdict pass, not after).
+  (2) THE ACTIONABLE POINTER: the campaign's one measured narrow
+  band is the MOUTH'S THRESHOLD (0.0154; admits 1.6%; a cliff on
+  one side, an unmeasured slope on the other — the entire December
+  question). THE ADMISSION-CURVE RE-CUT fired same-message
+  (zero-GPU, banked residuals, the wild ledger's own purpose).
