@@ -18173,3 +18173,29 @@ token-position × waist-dim, the moment the skeleton trains.
   kill EXTENDS to the input axis, banked as the finding that the
   model's errors are invariant (deep, and worth having). MIXED
   between → per-transform map only, no signal claim.
+
+- **THE PCT READ VERDICT: H2 BINDING DOMINANT (2026-07-31; the
+  pinned rule applied; artifact .cache/pct_read.json):** failure
+  classes across all pct cells (110 failures): **args_wrong 57%**,
+  other_factor 25%, p_wrong 12%, pct_absent 5%. The pct factor is
+  DETECTED (95% presence) with the RIGHT percentage (88%) and bound
+  to the WRONG VARIABLES. H1 RENDERING refuted as dominant: the
+  census shows the mint's exact form in the mix (144 rows; 2,222
+  pct rows total at 2.7% share, several synonymous templates) and
+  absence is 5%. H3 VALUE-SKEW refuted as dominant: the failure
+  classes are structural, not distributional. CLASSIFIER CAVEAT,
+  stated: the args comparison is order-insensitive, so PART/BASE
+  ORDER SWAPS hide inside other_factor — the binding-error share is
+  a FLOOR at 57%, plausibly reaching ~82%. THE TREATMENT PER THE
+  PINNED RULE: pct joins the BINDING-FAMILY DOCKET — the rate
+  family's jurisdiction, as a DISTINCT species: part/base argument
+  binding under the pct frame (the pct factor is directional, like
+  sub — but unlike sub it cannot be rendered commutatively away;
+  the direction IS the meaning). NOT a diet (the rate family's own
+  history: binding pathologies at [45]/[7] did not yield to data),
+  NOT a rendering law (the forms are trained). The dose question
+  (2.7% share) rides as a secondary note only. The context-helps-4×
+  observation now has a mechanism candidate: embedded pct gives the
+  binder MORE ANCHORS (the composed graph constrains which variable
+  can be the base) — consistent with structural entry, the pointer
+  law's family. The species awaits the binding bench.
