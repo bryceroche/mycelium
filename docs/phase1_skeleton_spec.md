@@ -18443,3 +18443,47 @@ token-position × waist-dim, the moment the skeleton trains.
   already exist in the trained gate?** If yes, R1 is a readout
   problem before it is a training problem. The brief SITS at §2-R
   position; each rung fires on its own word.
+
+- **THE PHOTO BOOTH'S WRITE-SIDE READING REGISTERED (2026-07-31,
+  Bryce's correction — "we missed something big"; spec-stage, no
+  fire):** THE SCOPING, stated so no future reader thinks a fence
+  was crossed: **#38 and #110 are READ-side kills** — perturbation-
+  as-confidence at inference (#38) and input-invariance as a
+  grading signal (#110). Neither touches distortion in TRAINING.
+  THE CLAIM, with its number: 51/96 transformed answers flipped,
+  correct at ~the same rate as wrong — filed as basin shallowness,
+  but read write-side it says **the model has no paraphrase
+  invariance because nobody ever taught it any**: the mint renders
+  each semantics in a narrow surface band; the gate learned the
+  band; the mouth's native set IS the mint's surface distribution
+  — which is why refusal is 98.4% at every difficulty. THE REGISTER
+  GAP IS SURFACE. THE LAWFUL DIRECTION, one-way: wild text can
+  never become training data (no graph; the key can't verify one),
+  but mint rows CAN be paraphrased toward wild surface style with
+  the graph held fixed — gold preserved by construction,
+  solver-verified as always, only the rendering varying. The books
+  are the slow form of this operation (the wetting clause);
+  augmentation is the same operation at volume. THE BAR, PINNED
+  BLIND against the banked fixture (no new instrument needed):
+  augment → retrain → re-run the invariance read on the wild
+  ledger's transformed set — **PRIMARY: flip rate < 40% (from
+  53.1%) with bigtest in band and cert-v2 ≥ 0.998 on the
+  in-register fixtures; STRONG: flip rate < 27% (halved);
+  SECONDARY READOUT: mouth-native share on the 1404 rises above
+  1.6%** (the register-overlap needle — the books' job measured
+  moving). A null is as informative as a hit. THREE FENCES BEFORE
+  ANYTHING MINTS: (1) correlated augmentation is monoculture with
+  extra steps — paraphrase-source diversity prices like panel
+  seats (the budgeting rule); (2) **semantics preservation is
+  verified TEXT-SIDE, never assumed** — a paraphrase that shifts a
+  quantity or relation makes correct-looking gold over wrong text,
+  the poisoned-gold path custody cannot see (the graph is fixed);
+  the check is designed BEFORE it is needed; (3) augmentation is
+  accommodation's cousin — if it teaches surface tricks over
+  semantics, sheets improve while the binding doesn't: the binding
+  metrics (pct args_wrong, under-parse counts) ride the battery as
+  guards. THE CAUTION, carried verbatim: this is the first thing
+  the exchange law endorses — law working or law shopping; the
+  flip-rate bar is the measurement the law doesn't get to
+  interpret. Spec-stage; the paraphrase source, the text-side
+  check design, and the dose all want words before any mint.
