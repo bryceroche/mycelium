@@ -19534,3 +19534,21 @@ token-position × waist-dim, the moment the skeleton trains.
   justifying against measurement. Docketed: the fixture-coverage
   audit (which constructions can bigtest/alg4 actually see?) —
   cheap CPU on banked jsonl, the eval-side coverage sweep.
+
+- **RULINGS + A CORRECTION BEFORE THE AUDIT PRINTS (2026-07-31):**
+  Bryce's rulings banked: the fixture-coverage audit is the board's
+  most urgent cheap item, with the added question — which
+  constructions do the BOOKS teach that NO fixture tests; gating
+  word 2 (source) CLOSED by word 1's design (lexicon-proposal ×
+  rendering, decorrelated by construction); dose WAITS on the audit
+  (ordering: audit → dose → fire). THE CORRECTION, banked before
+  the numbers: the standing battery is NOT fully dup-blind —
+  **adupheld exists** (the add-dup-held fixture, bar ≥180, gen-22
+  at 199/200). The blindness was the NEIGHBOR READ'S FIXTURE
+  CHOICE: bigtest+alg4 (both dup-blind) were selected when a
+  sighted fixture sat in the roster — an uninformed choice the
+  audit exists to make impossible. The claim narrows from "the
+  bars never tested dup" to "tonight's neighbor read could not see
+  dup, and nothing forced the choice of a fixture that could."
+  The arms' adupheld read added to the audit pass (the battery-hold
+  question deserves the sighted fixture's number).
