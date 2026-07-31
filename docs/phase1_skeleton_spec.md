@@ -18856,3 +18856,22 @@ token-position × waist-dim, the moment the skeleton trains.
   carried: a frame that keeps being corrected by its own
   instruments is the one worth keeping — D1's retirement is why
   0.834 is trustworthy.
+
+- **THE WILD SETTLE READ: VOID-BY-COVERAGE — AN APPARATUS FAULT, NOT
+  A VERDICT (2026-07-31):** 105/124 items SKIPPED (<3 sentences —
+  wild problems are mostly 1-2 sentences; the sentence-grain prefix
+  chassis assumed dialect-shaped text); 19 scored with n_wrong=4,
+  below every support rule. The printed NULL is STRUCK — the
+  instrument could not read the population (15% coverage), the
+  measure-the-built-artifact corollary's cleanest instance yet.
+  THE AMENDMENT, registered before the re-run: **TOKEN-GRAIN
+  REVEAL** (fixed fractional cuts of the token stream — works at
+  any text length) with a CALIBRATION LEG: the pct population
+  re-measured at token grain FIRST — if token-grain reproduces
+  ~0.83 in-register, the grains are equivalent and the wild read
+  interprets cleanly; if it does not, the grain difference is
+  itself a finding and the wild read's scope narrows to
+  token-grain settle. Same bars, same pre-declared direction, same
+  0.626 baseline. The dose-response precedent applies: zero
+  variance was an instrument reading then; 15% coverage is an
+  instrument reading now.
