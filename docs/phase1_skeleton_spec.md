@@ -18664,3 +18664,17 @@ token-position × waist-dim, the moment the skeleton trains.
   consolidations FIRE when the sweep reports, per its ranking,
   under the pre-ruled designs (quorum-verdict door; m-bound
   per-context lookup with KeyError-by-design).
+
+- **THE SWEEP-READING NOTE (2026-07-31, Bryce — pinned before the
+  report lands):** of the two sub-audits in flight, SEED/ENV is the
+  one most likely to reach BACKWARD: seeds are how reproducibility
+  is claimed (graph-bank replays, probe fixtures, sidecar recovery
+  via seed-0 determinism, fresh-seed replications). If seed handling
+  has multiple conventions, "reproduced at a fresh seed" means
+  different things in different scripts, and this week's
+  replications would need their scope checked — the m-bound's
+  retroactive question's class: a silently-varying convention makes
+  past claims mean slightly different things than they read.
+  Uniqueness/mint expected cleaner (the twelve-site sweep
+  established the form); a thirteenth site would be the sweep
+  paying again.
