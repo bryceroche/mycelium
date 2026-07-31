@@ -18795,3 +18795,31 @@ token-position × waist-dim, the moment the skeleton trains.
   trajectories — the training case gains specificity (the driver
   must INJECT provenance, not read it); between → MIXED, band
   unclaimed (the reading note honored).
+
+- **BENCH RUNG 2 READS: THE DRIVER HAS ITS FORMULA — READINESS IS
+  SETTLING (2026-07-31; artifact .cache/bench_rung2.json):**
+  **D3 SETTLE at AUC 0.834** — comfortably above the 0.70 bar, on a
+  pre-declared single feature with a pre-declared direction, no
+  fitting anywhere. The signal: **misbound slots never settle** —
+  post-evidence wander median 1.99 vs the correct-bound 1.24; a
+  slot that has absorbed its evidence STOPS MOVING, a slot that
+  misbound keeps wandering. D1 anticipation FAILED (0.455 — the
+  inversion's "already positioned" story was wrong and is retired);
+  D2 lurch stayed at its known 0.587; the pre-declared combo
+  (0.726) is worse than D3 alone — D1 drags it, D3 carries it.
+  THE CONVERGENCE, noted with the frame's posture intact: settling
+  is what #104 named (don't touch until SET), what R2 requires
+  (each maneuver ends in a STOP), and what the erosion finding
+  measured — three independent arrivals now joined by a
+  READOUT-GRADE number from the gate's own dynamics. THE SCOPE,
+  stated before anyone runs with it: measured on ONE population
+  (the pct cells, n=135) — generalization to other misbinding
+  species (dup-args, the rate family) is UNMEASURED, and the
+  obvious follow-ons are named, not fired: (a) RUNG 2b — validate
+  settle on a second misbinding population; (b) THE FIFTH CHEAP
+  AXIS — settle was never priced on the wild ledger's answered
+  set; the four-nulls verdict covered external axes and interior
+  DISTANCE, not interior DYNAMICS. If settle grades the frontier,
+  the decision point reopens without training. Both follow-ons
+  await words per the glide law: this rung reported; the next
+  fires on its own word.
