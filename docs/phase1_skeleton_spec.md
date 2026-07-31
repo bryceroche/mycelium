@@ -19048,3 +19048,27 @@ token-position × waist-dim, the moment the skeleton trains.
   before it is trusted. **The exchange law now has THREE ways to
   die honestly** (dup-args ordering, augmentation ordering, dose
   non-monotonicity) and still owns none of its instruments.
+
+- **THE DOSE ARM'S DESIGN DEMANDS, PINNED BEFORE THE DIET HAS WORDS
+  (2026-07-31, Bryce — the amendment's one chance at predictive
+  standing):** (1) **THE ARMS MUST STRADDLE A PRE-STATED OPTIMUM
+  GUESS, not bracket "more vs less"** — two arms both below the
+  peak read as refutation-without-test. The anchor is the factory
+  constitution's own fraction (fraction-never-bulk was carved from
+  refusals and presumably sits near a working point); the
+  registration at diet-design time NAMES the predicted break point
+  and why, with the numeric anchor consulted from the
+  constitution's banked value (consult-the-artifact, not memory).
+  Three arms if budget allows: below / at / above the
+  constitution's fraction. Per the design law, the reachable range
+  comes from the PHENOMENON — the mint's own distribution says
+  what fractions exist to test. (2) **THE READOUT STRUCTURE PINNED
+  NOW: dose and wetting INTERACT** — a null on either call could
+  be the other's shadow if read marginally. The dose curve reads
+  WITHIN each wetting condition (or the arms cross explicitly);
+  stated cheap tonight, untangled expensive later. (3) The honest
+  currency note carried: the amendment's three instances buy
+  EXPLANATORY coherence (the weaker currency); the dose arm is
+  what converts a good story about banked numbers into a claim
+  with a fresh test — predictive credit is only minted at the
+  fire.
