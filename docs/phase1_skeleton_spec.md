@@ -18321,3 +18321,86 @@ token-position × waist-dim, the moment the skeleton trains.
   is more attractive than it sounds (shippable, defensible, an
   honest paper); a trained head is a new bet entering after four
   nulls and wants its justification written cold.
+
+- **THE INTERPS SITTING — ALL ELEVEN SEEDS CONVENED (2026-07-31,
+  the word given; the family's debt paid in one session):**
+
+  **THE CENTRAL QUESTION RULED FIRST — THE UNIFICATION IS GRANTED.**
+  The exchange family's seven seeds are ONE LAW arriving in
+  installments, now named THE EXCHANGE LAW: *a system buys
+  throughput by collapsing interfaces and buys adaptation by
+  multiplying them; the exchange rate is set by interface
+  INDEPENDENCE; and absorption at any interface requires
+  preparation.* The seeds fold as clauses, each with its measured
+  instance: **#84 BOWLS** = the geometry clause (exchange happens
+  at the rim; the interior read gave it numbers — family
+  self-spread 0.20 is the bowl's inside, wild 0.63 is beyond the
+  rim, and the four nulls are the discovery that beyond the rim
+  there is no gradient: boundaries are legible, foreign interiors
+  are not — the mouth's 98.4% is rim-detection working). **#86
+  SCHEDULING** = the time clause (flow-through-stations vs
+  cycles-in-one-chamber; measured verdict already banked — the
+  piston failed because tied weights are CORRELATED interfaces;
+  the ramp destruction was interfaces collapsing into one; the
+  escalator won because its stations are independent). **#88
+  PRESSURE** = the intensity clause (sealing vents raises
+  throughput and risk TOGETHER; [1293] was pressure building in a
+  sealed vessel with a correlated interior; the trace layer was
+  the retrofitted relief valve; the fences' one-for-one frontier
+  price is this coupling measured). **#89 THERMAL** = the
+  conservation clause (what throughput doesn't pay at the
+  interface accumulates as load; the meter is the audit; flat
+  load under rising certification = real efficiency, not deferred
+  debt). **#90 INTAKE** = the boundary clause (the first
+  interface faces the outside world; the differential-pressure
+  gauge — pen-vs-harvest disagreement — is its instrument; [807]
+  its founding specimen). **#95 SPONGE** = the preparation clause
+  (capacity and rate decouple; absorption requires WETTING) — and
+  the sitting's LARGEST CONVERSION, below. **#106 POOLING** = the
+  rate term itself (variance reduction proportional to
+  independence; the budgeting rule its operational form).
+  THE HONESTY TEST, passed twice: the law makes calls no
+  instrument makes — (1) surface-first at the frontier,
+  throughput-first in-register (banked); (2) NEW, from tonight:
+  **the books are a WETTING operation** — surface contact that
+  prepares absorption — predicting books-before-diets at the
+  frontier and diets-after-books in-register, which is the
+  two-lever law's measured order derived from first principles.
+  The family's entry closes as the registry's largest.
+
+  **THE SITTING'S LARGEST CONVERSION — #95 + #111 + #103 → THE
+  BINDING BENCH'S DESIGN BRIEF.** Three seeds converge with
+  tonight's measured anatomy into one brief: the bench builds
+  toward (a) **per-slot readiness** (#95's shelved driver,
+  promoted to front-runner: constraint arrivals wet, recency
+  arrivals don't; dry slots resist rewriting) — the under-parse
+  diagnosis (3.8 slots on wrong answers) is DRY SLOTS REFUSING
+  UPTAKE, and the composed-pct context-cure (4×) is WETTING BY
+  ANCHORS, both measured before the mechanism was proposed;
+  (b) **reversible commitments with commit points and re-anchoring
+  between maneuvers** (#111's no-reverse-gear, third arrival
+  beside the pawl gate and the erosion finding — the invariance
+  verdict is the measurement of the missing reverse);
+  (c) **the oblique cut turned INWARD** (#103's residue): the
+  third axis was sought as another external reader and died at
+  the graph register; the four nulls say the axis was never
+  outside — it is the binder's own state, which only the bench
+  can instrument. All fences carried forward: #95's rewetting
+  path + engagement point, eager-math-first, §2-R's
+  position-over-the-win. The brief is a DESIGN DIRECTION, not a
+  build order — the word fires it.
+
+  **THE REMAINING ADJUDICATIONS:** #109 ROTATION holds as ruled
+  (the dissent column accrues with the fresh-panel pin; the
+  decorrelation reading gains a frame — under the exchange law,
+  rotation is how a pool MANUFACTURES independence — and waits
+  behind #91's methodological fence with its pricing read
+  docketed). #105's LIVE REMAINDER: the harvest-vs-MATH-500
+  composition audit (candidate 1, unswept, cheap, feeds the
+  December claim directly) — docketed; candidate 4 (the
+  dialect's other conventions) filed behind it. #104 confirmed
+  as law at registration (no interp owed). #110 closed by
+  measurement. #101/#102/#107/#108 were adjudicated in-session
+  by their own instruments. THE FAMILY LEDGER CLOSES: eleven
+  seeds, zero deferrals remaining; the instruments all stand;
+  the law has a name.
