@@ -18199,3 +18199,27 @@ token-position × waist-dim, the moment the skeleton trains.
   binder MORE ANCHORS (the composed graph constrains which variable
   can be the base) — consistent with structural entry, the pointer
   law's family. The species awaits the binding bench.
+
+- **GUT #110 CLOSED — THE KILL EXTENDS, AND THE FINDING IS THE DEEP
+  ONE (2026-07-31; artifact .cache/binding_invariance.json):**
+  invariant-subset precision 0.644 vs flipped 0.627 — **gap +2
+  points**, verdict FAIL by the pinned bar. Input-axis invariance
+  grades nothing: #38's kill now covers the input axis too. THE
+  FINDING UNDERNEATH, stated with its full weight: **the model's
+  errors are invariant** — they are not surface-reading accidents
+  that a different rendering would shake loose; they live in the
+  binding itself (convergent, same-day, with the pct read's
+  args-wrong anatomy — two instruments, one conclusion). AND THE
+  UNEXPECTED COMPANION: 51 of 96 transformed items FLIP — the
+  frontier's answers are brittle under perturbation REGARDLESS of
+  truth (correct answers flip at ~the same rate as wrong ones);
+  the wild frontier is all shallow basins, and correctness there is
+  partly basin luck. THE SIGNAL LEDGER, now three axes measured:
+  mouth residual FLAT, quorum SATURATED (0.626 @ 5/5),
+  input-invariance SYMMETRIC (+2). The cheap axes are exhausted;
+  what remains for a grading signal: the INTERIOR (the
+  silhouette/waist soft-distance candidate — already on the board
+  with its LOO discipline pinned) or a trained verifier (priced,
+  not proposed). Per-transform detail banked: var-rename 0.62/0.52
+  (10 pts, sub-bar), phrase-swap 0.73/0.75 (nothing); 28
+  untransformable, counted not absorbed.
