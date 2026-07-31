@@ -17967,3 +17967,32 @@ token-position × waist-dim, the moment the skeleton trains.
   in training vs are novel) — one read, two customers. The sweep
   either finds the next hole or certifies mint coverage whole; the
   second answer is valued at price (the week's lesson).
+
+- **THE COVERAGE SWEEP READS — NINE HOLES PRINTED, ONE CONFOUND
+  DISSOLVED THEM, TWO REAL NEAR-HOLES REMAIN (2026-07-31;
+  audit-before-diet PAID in twenty minutes):** the pin held
+  (fdiv-on-derived COVERED: book 13.3% vs mix 30.2%). The
+  nine-hole cluster (all rel-sub-adjacent, headline 62% demand vs
+  2.25% mix) collapsed under autopsy: **op:"sub" is PEN VOCABULARY,
+  not gate capability** — the rel factor is structurally
+  commutative (sorted args, add/mul head), general subtraction
+  renders as REARRANGED ADD (c=a−b ≡ rel-add(args=[c,b],
+  result=a)) which the solver propagates bidirectionally; the
+  books' 115 sub-factor rows are exactly their 115 "exceeds" rows
+  (the rulebook's rendering), all CERTIFIED — the gate reads the
+  semantics fine. TEXT-SIDE (the fair axis): mix carries
+  subtraction language at 27.8% (minus 11.6%, exceeds 13.7%,
+  difference 9.4%) vs books 43.7% — covered; "exceeds"
+  specifically 13.7% vs 43.7% = ratio 0.31, borderline near-hole
+  at worst. THE INSTRUMENT LESSON, carved: **coverage compares at
+  the SEMANTIC-EQUIVALENCE level (text + solver-equivalent class),
+  never at factor-vocabulary level** — two annotation dialects for
+  one semantics is itself a two-home instance, and the sweep's v1
+  fell in it; v2 canonicalizes before comparing. THE REAL RESIDUE
+  (docketed, not fired — diets need the word): dup-args near-hole
+  (book demand 51.7% vs mix 12.3% — the args=[a,a] axis,
+  representable since gen-9 but possibly starved) and
+  rel-mul→rel-mul chains (34.6% vs 3.7% — compound products rare
+  in mint). The MATRIX COLUMN survives with the same correction:
+  novel-to-training pairs re-derive at semantic level in the
+  matrix spec. Artifact: .cache/coverage_sweep.json.
