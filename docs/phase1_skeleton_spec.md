@@ -20037,3 +20037,23 @@ token-position × waist-dim, the moment the skeleton trains.
   forward path is now: word → fire → after-reads → the band's first
   cure attempt measured — with every prediction blind and every
   dimension named before any number exists.
+
+- **TWO DOORS CAUGHT TWO NEAR-MISSES AT THE AUG FIRE (2026-08-01,
+  Bryce's carving before the print):** (1) **the recursion guard's
+  lesson: a held-out set held out at design time is not held out
+  after the corpus grows** — the before-fixtures' phrasings entered
+  the table in tranches 2-3 ("The sum of a and a", "Dividing c by
+  K" became licensed training forms); reading the cure on them
+  would have graded the diet on its own diet, in the fire designed
+  to avoid exactly that. Caught by a LIVE ASSERTION at read time —
+  the only way it could be, since the contamination postdated the
+  guard's writing by three tranches. **The guard is a CHECK, not a
+  CHOICE, and every future eval fixture inherits the assertion.**
+  (2) the truncation fence: three rows at 258 vs the 256 window —
+  a hard error instead of silently-corrupted rows training forever
+  (the legible-state law applied to length). Both doors existed
+  because earlier failures built them. THE READING STRUCTURE,
+  restated for the print: **arm-vs-g22 answers "does augmentation
+  work"; arm-vs-arm answers "does variance matter beyond twenty
+  phrasings"** — both on novel forms, assertion live, the mul
+  prediction blind beside them.
