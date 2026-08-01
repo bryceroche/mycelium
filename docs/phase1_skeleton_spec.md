@@ -20154,3 +20154,18 @@ token-position × waist-dim, the moment the skeleton trains.
   stays sheathed; neither drops → the corollary FIRES; V-FULL
   beats V-LOW → variance scales and table growth is the lever.
   The mul prediction rides the session, blind.
+
+- **THE MIDDLE-BAND LANGUAGE, ready before the print (2026-08-02,
+  Bryce):** a drop clearing 0.75×B but missing 0.5×B is the HONEST
+  MIDDLE — augmentation works partially at this dose and table
+  size, and the consequence is neither scale-it nor abandon-it but
+  a specific question: **is the residual flip concentrated in the
+  classes the table doesn't cover** (mul's 68%, the
+  implicit-operator forms phase A surfaced)? Concentrated =
+  coverage problem (grow the table); spread = mechanism ceiling
+  (the lever isn't surface). INSTRUMENT NOTE, stated now: the
+  running pass banks aggregates only — if the middle prints, the
+  concentration re-cut needs one more pass banking PER-ITEM flip
+  records with family tags (cheap, same session's machinery; the
+  bank-don't-read lesson arriving one pass late, named rather than
+  hidden).
