@@ -19883,3 +19883,30 @@ token-position × waist-dim, the moment the skeleton trains.
   that retire with their remainder stated do not return in new
   phrasings. Rung 3 stands unworded with its three customers; the
   table stands as the prerequisite in front of it.
+
+- **GUT #118 REGISTERED — THE STAGED-I/O PATTERN (2026-08-01,
+  exchange family; the kitchen algorithm sorted by the bench):**
+  NOT MapReduce (one worker, no partition) — **amortized
+  per-transaction cost + phase separation + double buffering**,
+  with the countersign's non-obvious half carved as the content:
+  **the staging area is a COMMIT POINT** — everything near the
+  fridge is decided-but-not-written, revisable until the door
+  opens; batching buys throughput, STAGING BUYS REVISABILITY (the
+  no-mid-fire law's kitchen form: assemble fully, stage, commit
+  atomically). THREE MEASURED INSTANCES: bank-don't-read (one
+  capture pass, ten verdicts), the atomic manifest (PROMOTED and
+  the true manifest as one flush), and the ENOSPC restructure —
+  the pattern's own LIMIT CLAUSE measured live: **batch until the
+  working set exceeds the buffer, then batch at the level below**
+  (six resident fetches at 550GB vs 424GB free; the fix was
+  fetch-compute-flush per arm). THE PROSPECTIVE CALL: the table
+  build follows it — and v1 already did (census one read, all
+  licensing local, one atomic table write); tranche 2 inherits the
+  shape. THE RENT, first hit paid at registration:
+  **book8_certify.py:83 does per-item read-modify-write on
+  harvest_quality_record.json** (load+dump per mismatch inside the
+  row loop — avoidable cost AND a torn-write window). The full
+  per-item-verify-then-write sweep rides the deep-clean cadence's
+  standing agenda (greppable; the machinery exists). Registered
+  with the pattern, the limit, three instances, one paid grep, and
+  a live customer already conforming.
