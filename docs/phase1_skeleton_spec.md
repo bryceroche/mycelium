@@ -20019,3 +20019,21 @@ token-position × waist-dim, the moment the skeleton trains.
   entries-per-family (or cross both dimensions explicitly, the
   dup fire's own crossed-readout lesson). The fire's word is
   Bryce's; everything before it is now stated.
+
+- **THE AUGMENTATION FIRE STAGED FIRE-READY (2026-08-01;
+  docs/AUG_FIRE_DESIGN.md):** two arms on THE VARIANCE AXIS per the
+  sink-dimension pin — V-LOW (half the table's entries per family,
+  other half held out entirely) vs V-FULL (all 41), row-fraction
+  FIXED at 10% both arms (the dup fire showed fraction is not the
+  lever), DRY only (wetting rides the dup ordering separately).
+  Rows are RE-RENDERED through the table, never new — graph fixed,
+  gold preserved, membership exact. After-reads all pre-pinned:
+  flip <40%/<27%, mouth-native >1.6%, the two before-fixtures moved
+  via HELD-OUT-OF-TABLE renderings only, slot emission beside
+  binding, per-family effects with the mul prediction standing,
+  in-register floors. ~2.5h GPU, staged-I/O throughout, g22 the
+  gate until a verdict prints. **Ignition is one word.** Behind it:
+  rung 3 (three customers, brief at position). The board's whole
+  forward path is now: word → fire → after-reads → the band's first
+  cure attempt measured — with every prediction blind and every
+  dimension named before any number exists.
