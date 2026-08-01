@@ -19939,3 +19939,22 @@ token-position × waist-dim, the moment the skeleton trains.
   that CANNOT be torn and one nobody has torn yet. Nothing needs a
   ruling tonight; tranche 2 carries its riders, the sweep rides the
   cadence, rung 3 waits where three threads converge.
+
+- **TABLE TRANCHE 2 LICENSED: 33/33 — THE SYMBOLIC CLASS CLEARS THE
+  GATE (2026-08-01; .cache/aug_table_v1.json v2):** all ten
+  symbolic entries licensed (a/k slash-division both orders, +/*
+  equations both orders, symbolic given, %-form pct, symbolic dup
+  both ops) — zero refusals; the dialect carries ASCII notation
+  without an edge at the gate's grain. THE COVERAGE JUMP vs the
+  census (word + symbolic rendered): **mul 68%, add 87%, div 78%,
+  pct 96%, sel 80%** — from 30/20/5/25/80 at v1. The remaining
+  uncovered mass: LaTeX-native forms (\frac, \cdot — a tranche-3
+  candidate needing tokenizer verification), the skipped
+  word-families (twice/double, half/third/per, less-than as
+  rearranged-add renderings), and sub-symbolic's rearranged-add
+  mapping (needs its own schema clause). THE DENOMINATOR
+  APPROACHES READABLE: coverage now measured per family against
+  the harvest's distribution — the dose arms' prerequisite is
+  within one tranche of the bar. The staged shape held throughout:
+  whole tranche verified offline, one atomic table write, coverage
+  re-measured — no torn intermediate anywhere.
