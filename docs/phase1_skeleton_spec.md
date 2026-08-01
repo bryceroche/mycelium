@@ -20138,3 +20138,19 @@ token-position × waist-dim, the moment the skeleton trains.
   mixed. (4) The standing principle restated at the close: **an
   untested claim keeps its standing; a falsely-scored one
   doesn't** — unread over wrong, every time.
+
+- **THE CORRECTED FLIP INSTRUMENT REGISTERED AND FIRED (2026-08-02,
+  the word given; the riders pinned before any number):** per ckpt
+  (g22 / V-LOW / V-FULL): quorum the 124 wild originals UNDER THAT
+  CKPT, transform (the fixed post-rename-fix set, one vintage),
+  re-quorum under the same ckpt — flip = own-vs-own. **THE BARS
+  RESTATED RELATIVE, pinned before g22's re-base prints:** with B =
+  g22's re-based flip rate, PRIMARY = arm ≤ 0.75×B, STRONG = arm ≤
+  0.5×B (the old 40/53 and 27/53 proportions carried; no absolute
+  threshold survives the frame change). **THE COMPARISON MAP, named
+  per line:** arm-vs-g22 = the AUGMENTATION question; arm-vs-arm =
+  the SINK question. Three outcomes pre-read: both drop and tie →
+  augmentation works, twenty phrasings saturate, the corollary
+  stays sheathed; neither drops → the corollary FIRES; V-FULL
+  beats V-LOW → variance scales and table growth is the lever.
+  The mul prediction rides the session, blind.
