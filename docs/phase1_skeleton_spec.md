@@ -19929,3 +19929,13 @@ token-position × waist-dim, the moment the skeleton trains.
   Tranche 2 stands as ruled: symbolic first (div's forms first
   within it), the gate's refusals EXPECTED AND BANKED as a finding
   about what the dialect can carry.
+
+- **THE LEGIBLE-STATE LAW, unified at the session's close
+  (2026-08-01, Bryce):** verdict-not-exception and
+  a-record-holds-a-state-never-a-partial are one instinct, read-side
+  and write-side: **every intermediate must be a legible state,
+  never an indeterminate one.** Filesystem atomicity doing the work
+  beats application-level care — the difference between a record
+  that CANNOT be torn and one nobody has torn yet. Nothing needs a
+  ruling tonight; tranche 2 carries its riders, the sweep rides the
+  cadence, rung 3 waits where three threads converge.
