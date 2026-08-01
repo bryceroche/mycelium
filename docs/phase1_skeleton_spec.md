@@ -20080,3 +20080,27 @@ token-position × waist-dim, the moment the skeleton trains.
   the binder easy fields teaches easy fields; it would need
   marking and measuring like every accommodation. The interps
   decide; the fire may answer reading two first.
+
+- **AUG PHASE A PRINTS: FLAT ZEROS — WITH THE EVAL'S OWN AUTOPSY
+  (2026-08-01):** g22, V-LOW, V-FULL all identical: 60/60 misbind
+  on Doubling/Squaring, 0/8 on split-into-parts. THE HONEST
+  READING, two parts: (1) the augmentation did not reach these
+  forms — but (2) **the eval overshot phrasing-novelty into
+  IMPLICIT-OPERATOR novelty**: the guard's successive rejections
+  (each correct) pushed the eval verbs into semantic compressions
+  — "Doubling a" presents ONE operand for two-operand dup
+  semantics, "split into K parts" implies division without
+  division language — the same class as "twice", which the table
+  itself excluded as needing a schema clause. g22's own zero
+  baseline on them confirms: these forms were NEVER readable —
+  construction-adjacent, not phrasing-adjacent. THE
+  INSTRUMENT-HARDNESS LESSON, carved: **successive guard
+  rejections escalate eval novelty; the third-try eval measured a
+  harder class than the fire targeted.** What phase A honestly
+  says: surface augmentation at this dose does not unlock
+  implicit-operator forms (unsurprising — the table contains
+  none). THE PHRASING-GRADE QUESTION — the fire's actual claim —
+  remains OPEN and phase B decides it: the flip rate on the wild
+  ledger's mechanical transforms (var-rename/phrase-swap, the
+  banked 53.1% baseline) per arm. The undersized-sink reading
+  stays holstered until that prints.

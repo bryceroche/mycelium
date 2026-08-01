@@ -30,7 +30,7 @@ from tinygrad import Tensor, dtypes
 from tinygrad.nn.state import safe_load
 
 MAN = json.load(open(".cache/GENERATION.json"))
-CKPT = MAN["parser_ckpt"]
+CKPT = os.environ.get("BI_CKPT") or MAN["parser_ckpt"]
 tok = Tokenizer.from_file(TOKENIZER_JSON)
 p = build_params(0)
 sd = safe_load(CKPT)
@@ -128,5 +128,5 @@ print(f"=== gap {gap:+.0f} pts, min-support {support} -> VERDICT (pinned): {verd
 json.dump({"results": results, "skipped": dict(skipped),
            "prec_invariant": prec(inv), "prec_flipped": prec(flp),
            "gap_pts": gap, "verdict": verdict},
-          open(".cache/binding_invariance.json", "w"), indent=1)
+          open(os.environ.get("BI_OUT",".cache/binding_invariance.json"), "w"), indent=1)
 print("[saved] .cache/binding_invariance.json")
