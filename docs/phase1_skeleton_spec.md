@@ -19910,3 +19910,22 @@ token-position × waist-dim, the moment the skeleton trains.
   standing agenda (greppable; the machinery exists). Registered
   with the pattern, the limit, three instances, one paid grep, and
   a live customer already conforming.
+
+- **THE #118 RENT'S FIX APPLIED + THE METHOD GENERALIZATION
+  (2026-08-01, the word given):** book8_certify's quality record now
+  STAGES in memory and commits ONCE at loop exit via tmp+os.replace
+  — atomic on the filesystem, no torn-write window (the finding was
+  two problems in one line: avoidable I/O and **one home in an
+  indeterminate state** if the loop died mid-tranche — the two-home
+  disease's cousin). The sweep's shape registered for the cadence:
+  any read-modify-write inside a row loop is a candidate. THE
+  GENERALIZATION, carved in Bryce's words: **staging is the
+  campaign's METHOD with a physical analogue attached** — bars
+  pinned before data, verdicts written before numbers, four branch
+  languages before a control prints: all staging areas, decisions
+  assembled on the counter and committed atomically when the
+  measurement lands. Per-item commit is walking to the fridge with
+  one egg: it costs throughput AND the ability to change your mind.
+  Tranche 2 stands as ruled: symbolic first (div's forms first
+  within it), the gate's refusals EXPECTED AND BANKED as a finding
+  about what the dialect can carry.

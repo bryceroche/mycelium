@@ -69,6 +69,7 @@ harvest_gold = {int(c["src_idx"]): int(c["answer"]) for c in cands[TKEY]}
 
 rows = [json.loads(l) for l in open(DRAFT)]
 res = {"certified": [], "abstain": [], "wrong": []}
+_quality_staged = []   # staged mismatches; committed once at loop exit
 for i, r in enumerate(rows):
     src = int(r["gen"]["src_idx"])
     gold = harvest_gold[src]                       # THE KEY: harvest answer, not the draft's artifact
@@ -79,12 +80,13 @@ for i, r in enumerate(rows):
         # Mismatches accumulate into the harvest-quality record (the intake
         # filter's differential-pressure gauge; thresholds pinned in the
         # ledger: >=2/tranche or >=1% cumulative -> systematic pool audit).
-        rec_path = ".cache/harvest_quality_record.json"
-        rec = json.load(open(rec_path)) if os.path.exists(rec_path) else []
-        rec.append({"src_idx": src, "harvest_gold": gold,
+        # staged-I/O (gut #118, 2026-08-01): accumulate in memory, one
+        # atomic write at loop exit — the per-item read-modify-write paid
+        # avoidable cost AND held a torn-write window (one home in an
+        # indeterminate state if the loop died mid-tranche)
+        _quality_staged.append({"src_idx": src, "harvest_gold": gold,
                     "pen_derived": r["solution"][r["query_var"]],
                     "tranche": r["gen"].get("tranche"), "book": r["gen"].get("book")})
-        json.dump(rec, open(rec_path, "w"), indent=1)
         res.setdefault("held_for_wheel", []).append(
             {"i": i, "src_idx": src, "harvest_gold": gold,
              "pen_derived": r["solution"][r["query_var"]]})
@@ -125,6 +127,16 @@ for i, r in enumerate(rows):
         res["abstain"].append({"i": i, "src_idx": src, "votes": votes})
     watch = r["gen"].get("watch")
     print(f"  [{i+1}/{len(rows)}] src {src}{' WATCH:'+watch if watch else ''} votes {votes} gold {gold} -> {'CERT' if cnt>=3 and plur==gold else ('WRONG' if cnt>=3 else 'abstain')}", flush=True)
+# staged-I/O commit: the quality record written ONCE, atomically
+if _quality_staged:
+    rec_path = ".cache/harvest_quality_record.json"
+    rec = json.load(open(rec_path)) if os.path.exists(rec_path) else []
+    rec.extend(_quality_staged)
+    tmp = rec_path + ".tmp"
+    json.dump(rec, open(tmp, "w"), indent=1)
+    os.replace(tmp, rec_path)
+    print(f"[quality] {len(_quality_staged)} mismatch(es) committed atomically")
+
 # WITHDRAWAL PRESERVATION (2026-07-30, the sweep's #2 finding): a rerun
 # previously overwrote the cert record wholesale, silently resurrecting
 # ledger-withdrawn rows ([525]/[636]/[867]) into "certified". Withdrawals
