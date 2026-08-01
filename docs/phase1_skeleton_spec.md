@@ -19725,3 +19725,42 @@ token-position × waist-dim, the moment the skeleton trains.
   53%-vs-0% pool cells carry the denominator note wherever quoted.
   WET-block decisions=1 hardcode noted (band-eval bucketing only,
   no law impact). Two auditors still in the field.
+
+- **DEEP CLEAN 2, REPORTS TWO AND FOUR (2026-08-01) — ONE VERDICT
+  REOPENED, ONE FIXTURE CORRECTED, THE SETTLE NUMBERS STAND:**
+  THE SETTLE CHAIN: 0.834 and 0.997 SURVIVE (every found issue is
+  conservative-direction: order-insensitive pct labels dilute the
+  correct class, slot-pick noise injects noise not bias, rung2b's
+  window mixed lurch into settle — all understate, none
+  manufacture; order-exact robustness re-run docketed). **THE
+  TAINT: the 0.400 token-grain calibration was WINDOW
+  MISALIGNMENT, not grain-dependence** — the fixed-fraction window
+  put the evidence BEFORE the window in all six pct-producer cells
+  (evidence at 55-61% of tokens, window at 70-100%) and INSIDE it
+  for the consumers — the audit measured it cell by cell. The
+  "untestable-at-frontier" close REOPENS in corrected form:
+  **LEG 1 re-fired evidence-anchored** (cuts placed at the percent
+  phrase's own token position); the WILD leg is VOID-BY-CONFOUND
+  permanently as designed (wild items have no known evidence
+  anchor — the honest frontier statement becomes "settle needs an
+  anchor wild text doesn't offer; candidate anchors are interior,
+  rung-3 territory"). THE FIXTURES: (1) **the wild ledger's
+  consumption glob missed nine per-tranche files — 66 consumed vs
+  the true 426**; re-cut on the banked jsonl: DISJOINT n=978,
+  answered 104, **precision 0.75** (the corrected disjoint runs
+  HIGHER than the all-population 0.63 — consumed-source items
+  dragged it down; every prior DISJOINT quote carries this
+  correction). (2) coverage_sweep was pct-producer-blind (pct has
+  no result key; args[0] is the product) — pct→X pairs were
+  structurally unmeasurable; fixed; the matrix's six pct→X
+  co-occurrence labels were DEFAULTED not measured (headline
+  unaffected — that verdict was already amendment-convicted).
+  (3) the census's sub-symbolic 39.8% was ~49% false positives
+  (hyphens, asy blocks); corrected detector: **binary-minus 28%
+  full / 30% addressable** — symbolic still leads the sub family,
+  honestly sized. CLEARED: the pct arg-order convention (solver
+  and mint agree; the 0.08 register-boundary finding STANDS);
+  the ledger's mouth vintage (ran after entourage-22 — correct
+  artifact); the eligibility-filter consistency (1404 exact both
+  instruments). The gut's audit calls are now two-for-two on
+  finding law-relevant defects.
