@@ -36,6 +36,17 @@ SEED_ENTRIES = [
     ("dup",   "plus-self", "{a} plus {a} equals {c}."),
     ("dup",   "sum-self",  "The sum of {a} and {a} is {c}."),
     ("dup",   "times-self","{a} times {a} equals {c}."),
+    # ---- tranche 2 (2026-08-01): THE SYMBOLIC CLASS (div first) ----
+    ("fdiv",  "sym-slash", "{a} / {k} = {b}."),
+    ("fdiv",  "sym-eq",    "{b} = {a} / {k}."),
+    ("add",   "sym-plus",  "{a} + {b} = {c}."),
+    ("add",   "sym-eq",    "{c} = {a} + {b}."),
+    ("mul",   "sym-star",  "{a} * {b} = {c}."),
+    ("mul",   "sym-eq",    "{c} = {a} * {b}."),
+    ("given", "sym-eq",    "{x} = {v}."),
+    ("pct",   "sym-pct",   "{p2} is {p}% of {b2}."),
+    ("dup",   "sym-plus",  "{a} + {a} = {c}."),
+    ("dup",   "sym-star",  "{a} * {a} = {c}."),
 ]
 
 
@@ -59,7 +70,7 @@ def verify_entry(construction, fmt, rng, n=50):
             txt = render(fmt, {"x": L[0], "v": v})
             need = [v]
         elif construction in ("add", "mul", "dup"):
-            op = "mul" if "times" in fmt or "product" in fmt or "Multiply" in fmt else "add"
+            op = "mul" if any(t in fmt for t in ("times", "product", "Multiply", "*")) else "add"
             if construction == "dup":
                 x = int(rng.randint(2, 12))
                 a = b = 0
