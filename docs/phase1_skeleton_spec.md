@@ -19633,3 +19633,24 @@ token-position × waist-dim, the moment the skeleton trains.
   per the ruling — and the table's authoring (word-families +
   symbolic class, pen tranches through the gate) is the fresh
   hand's first work.
+
+- **GUT #115 REGISTERED — SINK TO ABSORB NOISE (2026-08-01, exchange
+  family; absorption and slack are one clause from two sides):** a
+  sink is an unbounded absorber OFF THE WORKING PATH — somewhere
+  for disturbance to go. THE MEASURED SPLIT: the campaign's working
+  sinks are all ABSTENTION-SHAPED (the mouth's 98.4%, the vote
+  wall, the repair bench, the honest skip — each takes disturbance
+  out of the chain rather than forcing a verdict; the wild ledger
+  priced the toll at one-for-one). THE ABSENT SINK is
+  training-side, and the surface-band law named it: corpus phrasing
+  variance has nowhere to go, so it BECOMES the model's band
+  boundary — "nobody paid for invariance" as thermodynamics.
+  THE LIVE PIN, attached to the coverage measurement's bar before
+  it runs: **the licensed table is the augmentation's sink, and a
+  sink undersized for its load relocates the boundary instead of
+  absorbing it** — coverage measures against the HARVEST'S
+  phrasing distribution, never against the table's own diversity
+  (which would be the recursion guard's failure one level up).
+  A 60%-coverage table produces a band with different walls, not
+  no walls. The bar: the table's coverage of the census
+  distribution, per family, stated before any entry counts itself.
