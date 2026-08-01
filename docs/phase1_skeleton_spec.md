@@ -19977,3 +19977,25 @@ token-position × waist-dim, the moment the skeleton trains.
   encoded stream) BEFORE any license. One tranche and one bar
   from the augmentation fire's word; the denominator becomes a
   number.
+
+- **TRANCHES 3+4: 41/41 LICENSED — THE TOKENIZER PIN PASSED LIVE AND
+  THE TABLE REACHES THE BAR (2026-08-01):** tranche 3 clean
+  including **both LaTeX forms UNDER the token-stream assertion**
+  (the Llama tokenizer presents \frac's digits linearly — the
+  plausible edge did not materialize; the dialect's notation wall,
+  where it exists, is beyond LaTeX basics); half/third licensed via
+  the gate's new constrained-k machinery; the SUBADD clause live
+  (less-than and symbolic minus render as the rearranged add the
+  head emits — sub-symbolic, the largest uncovered mass at 426
+  binary-minus hits, now covered). COVERAGE AT v4, per family vs
+  the census: div ~88%, add ~89%, mul 68%, pct 96%, sel 80%, sub
+  word+symbolic covered via subadd — **the denominator is a
+  NUMBER: the table renders the substantial majority of the
+  harvest's phrasing mass in every family.** THE REMAINING
+  judged-below-bar mass: mul's bare juxtaposition (2a-style,
+  unresolvable without notation-parsing work) and long-tail
+  word-forms — named, not blocking. THE DOSE ARMS ARE NOW
+  WORDABLE: the coverage bar has its measurement, the after-read
+  its two products (binding + slot emission), the recursion guard
+  its held-out families, the blind ordering call its pin. The
+  augmentation fire is one word from staged.

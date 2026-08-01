@@ -58,6 +58,7 @@ TRANCHE3 = [
     ("subadd","less-than",  "{c} is {b} less than {a}.", None, False),
     ("add",   "more-than",  "{c} is {a} more than {b}.", None, False),
     ("add",   "combined",   "{a} and {b} combined give {c}.", None, False),
+    ("subadd","sym-minus",  "{c} = {a} - {b}.", None, False),
 ]
 
 
