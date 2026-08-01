@@ -32,7 +32,7 @@ from tinygrad.nn.state import safe_load
 tok = Tokenizer.from_file(TOKENIZER_JSON)
 L = "abcdefghij"
 TABLE = json.load(open('.cache/aug_table_v1.json'))["licensed"]
-for probe in ("Adding {a} to itself", "split into"):
+for probe in ("Doubling", "Squaring", "split into"):
     assert not any(probe.split("{")[0].strip() in e["fmt"] for e in TABLE), probe
 print("[guard] eval templates verified ABSENT from the licensed table")
 
@@ -60,7 +60,7 @@ def dup_novel(n, seed):
         gold=x+x if op=="add" else x*x
         if gold>300: continue
         dv=nd; res=nd+1
-        w = "Adding {a} to itself gives {c}." if op=="add" else "Multiplying {a} by itself gives {c}."
+        w = "Doubling {a} gives {c}." if op=="add" else "Squaring {a} gives {c}."
         order=list(range(nd)); rng.shuffle(order)
         sents=[f"{L[i]} is {gv[i]}." for i in order]+[f"{L[dv]} is {x}.", w.format(a=L[dv],c=L[res])]
         facs=[{"ftype":"given","var":i,"value":gv[i]} for i in range(nd)]+[{"ftype":"given","var":dv,"value":x},{"ftype":"rel","op":op,"args":[dv,dv],"result":res}]
