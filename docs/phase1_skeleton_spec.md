@@ -20057,3 +20057,26 @@ token-position × waist-dim, the moment the skeleton trains.
   work"; arm-vs-arm answers "does variance matter beyond twenty
   phrasings"** — both on novel forms, assertion live, the mul
   prediction blind beside them.
+
+- **GUT #119 REGISTERED — CONTEXT MATTERS (2026-08-01, three
+  readings, one printing now):** (1) THE MEASURED: context is the
+  campaign's most reliable free cure — composed pct 0.08→0.32 (4×,
+  zero parameters), engagement-count (opening-sentence operands
+  hold where mid-graph slips), the matrix's 0.96 across clean cells:
+  three instruments, one direction — **the binder does better when
+  surrounding structure constrains it** (the redirect's
+  proof-of-principle as general fact). (2) THE LIVE: surface
+  variance IS context variance — the fire's after-read is the gut's
+  number arriving without a registration (V-FULL>V-LOW = more
+  context helps; tie = twenty phrasings saturate). (3) THE
+  UNEXPLOITED, pointed at the interps: nothing in the campaign
+  supplies context DELIBERATELY — the roster, composition, and
+  surface variety are all accidental or tested context; no
+  component's job is to construct favorable context (sentence
+  ordering into empty binding fields, lone constructions embedded
+  in constraining company). A pen-side lever, cheap, unmeasured.
+  THE FENCE, attached at registration: deliberate favorable
+  context is ACCOMMODATION under the law — a book drafted to give
+  the binder easy fields teaches easy fields; it would need
+  marking and measuring like every accommodation. The interps
+  decide; the fire may answer reading two first.
