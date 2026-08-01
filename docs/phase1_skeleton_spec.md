@@ -20195,3 +20195,26 @@ token-position × waist-dim, the moment the skeleton trains.
   session's pass (per-item banking). g22 the gate throughout;
   nothing promoted; nothing overclaimed; every verdict on
   pre-written language.
+
+- **THE TWO WORDS RULED AT THE FIRE'S CLOSE (2026-08-02, Bryce):**
+  the re-base line carved first: **a five-point drop from 68.8
+  compared against 53.1 would have printed as fifteen points of
+  improvement — the relative bars, written an hour before the
+  number existed, are the only reason this verdict is trustworthy
+  in either direction.** (1) **THE SURFACE ROAD: NOT BOUGHT YET** —
+  the fire nulled the variance AXIS (20≈41), so the 10× table
+  would be bought on a corollary's prediction, not a measured
+  slope. THE CHEAPER PROBE, ruled: one arm at ~120 entries, same
+  rows, same dose — one pen tranche. Ties → the mechanism ceiling
+  is the answer and the money stays unspent; bends → the 10× table
+  is measured, not predicted. (2) **RUNG 3: HOLDS FOR THE DECEMBER
+  FRAMING FIRST** — four customers is a strong case, but the
+  framing session (arithmetic complete: 39.4% ceiling, the
+  binary-binary tree, 0.75 disjoint) decides WHAT CLAIM the
+  campaign makes, which decides whether rung 3 is the critical
+  path or a research thread beside a shipped abstention product.
+  Cold session, then rung 3's word with the target known. THE
+  ORDER, standing: December framing → rung 3's word → (parallel)
+  the 120-entry slope probe on its own word. The arc from "gut
+  says photo booth" closed measured end to end: thesis, law, cure
+  attempt, honest negative, resources redirected with precision.
