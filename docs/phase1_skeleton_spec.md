@@ -19999,3 +19999,23 @@ token-position × waist-dim, the moment the skeleton trains.
   its two products (binding + slot emission), the recursion guard
   its held-out families, the blind ordering call its pin. The
   augmentation fire is one word from staged.
+
+- **THREE PINS BEFORE THE FIRE'S WORD (2026-08-01, Bryce — cheaper
+  stated now than argued at fire time):** (1) **the band is narrower
+  than the carrying capacity** — zero refusals across 41 entries
+  incl. LaTeX means the dialect carries far more than the model
+  learned; weight shifts toward DOSE and away from
+  coverage-as-limiter (the encouraging branch). (2) **THE MUL
+  PREDICTION, pinned blind:** mul's 68% coverage predicts a SMALLER
+  per-family effect in the after-read; if mul improves as much as
+  pct (96%), coverage is not the mechanism and something else does
+  the work — a real finding about what surface variety buys, either
+  way, pinned before the fire. (3) **THE SINK-DIMENSION PIN: the
+  dose arms must vary TABLE VARIANCE, not (only) row-fraction** —
+  the sink bar is whether the table's variance absorbs the
+  harvest's, and a 10% dose from 41 entries teaches 41 phrasings
+  regardless of the 10% (the undersized-sink corollary: boundary
+  relocated, not dissolved). The arms design against
+  entries-per-family (or cross both dimensions explicitly, the
+  dup fire's own crossed-readout lesson). The fire's word is
+  Bryce's; everything before it is now stated.
