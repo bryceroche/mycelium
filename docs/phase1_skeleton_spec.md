@@ -19810,3 +19810,25 @@ token-position × waist-dim, the moment the skeleton trains.
   a softer, truer sentence. DEEP CLEAN 2 CLOSES: four reports,
   eleven findings + this resolution, every law-grade number
   verified/corrected/reopened-and-resolved, the gut two-for-two.
+
+- **THE CLEAN'S CLOSE + THE TABLE'S STANDING WORD (2026-08-01,
+  Bryce):** THE CADENCE ARGUMENT, banked: two cleans, both finding
+  real defects, neither felling a law — the science is more robust
+  than the plumbing, and **the gap between instruments-built-
+  Thursday and laws-carved-Friday is where the cleans keep paying**;
+  the cadence tightens rather than loosens (audit rides WITH the
+  instrument sprint, not after it). THE TABLE'S WORD, standing:
+  build the licensed table, measure coverage against the census
+  per family, let the measurement set the dose arms — nothing else
+  blocks it; staged for a fresh hand per the generation-operation
+  precedent (the harness + mechanical seed entries are the opening
+  work; pen tranches follow). **THE RIDER, banked into the
+  after-read before the table exists: SLOT EMISSION is measured
+  alongside binding correctness.** The dup fire quietly bought a
+  partial slot-emission cure (120/120 vs 91/120 scorable); if
+  surface variety is what teaches the model to EMIT A SLOT AT ALL
+  on unfamiliar phrasings, that is a second product — and the
+  under-parse diagnosis (wrong answers are sparser parses) says it
+  may matter MORE at the frontier than binding accuracy. The
+  augmentation after-read reports both products separately from
+  birth. Two cleans, two days, twelve corrections, zero laws lost.
