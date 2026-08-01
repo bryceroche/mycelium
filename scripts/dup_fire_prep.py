@@ -14,7 +14,6 @@ os.environ.setdefault("ALG2", "1"); os.environ.setdefault("ALG_FTYPES", "8")
 os.environ.setdefault("ALG_HW", "512"); os.environ.setdefault("ALG_DUP", "1")
 import numpy as np
 from collections import Counter
-from mycelium.doors import certify_unique
 from mycelium.csp_domains import problem_from_algebra3
 from mycelium.csp_core import solve_symbolic
 from tta_alg2_dials import solve2

@@ -132,6 +132,11 @@ for i, r in enumerate(rows):
 # never re-enter the certified list.
 if os.path.exists(OUT):
     prev = json.load(open(OUT))
+    # vintage stamps carry forward (deep clean 2026-08-01: the stamps died
+    # on rerun — the two-home pattern inside the preservation block itself)
+    for vk in ("vintage", "vintage_note"):
+        if vk in prev:
+            res[vk] = prev[vk]
     wd = prev.get("withdrawn_coincidental", [])
     if wd:
         res["withdrawn_coincidental"] = wd

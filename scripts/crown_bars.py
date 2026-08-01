@@ -8,7 +8,8 @@
 (4) Displacement floor: bigtest >= 1182 (C1's 1197 − 15).
 """
 import json
-from mycelium.doors import row_m, sys, os
+import sys, os
+from mycelium.doors import row_m
 sys.path.insert(0, "."); sys.path.insert(0, "scripts")
 import numpy as np
 from collections import Counter
