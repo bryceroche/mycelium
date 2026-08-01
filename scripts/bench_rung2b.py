@@ -93,7 +93,14 @@ for r in rows:
     for j in range(L_FAC):
         if pres[j] and int(np.argmax(final[j] @ hf + hfb)) == 0:   # rel
             rel_slot = j; break
-    if rel_slot is None: continue
+    if rel_slot is None:
+        # deep clean 2026-08-01: a parse with NO detectable rel slot is a
+        # FAILURE, not a skip — dropping these silently excluded the
+        # model's worst rows from its own baseline denominator (g22 scored
+        # 91/120 while arms scored 120/120; the 53% understated)
+        scores.append(float("nan")); labels.append(False)
+        n_done += 1
+        continue
     # binding correctness via standard decode
     ids = np.zeros((8, T_ALG), np.int32); msk = np.zeros((8, T_ALG), np.float32); snt = np.zeros((8, T_ALG), np.int32)
     e = tok.encode(text); Ln = min(len(e.ids), T_ALG)
@@ -115,7 +122,11 @@ for r in rows:
     if n_done % 25 == 0: print(f"  [{n_done}]", flush=True)
 
 scores = np.array(scores); labels = np.array(labels)
-pos = scores[labels]; neg = scores[~labels]
+n_noslot = int(np.isnan(scores).sum())
+if n_noslot:
+    print(f"[rung2b] no-rel-slot rows counted as misbound: {n_noslot}")
+valid = ~np.isnan(scores)
+pos = scores[valid & labels]; neg = scores[valid & ~labels]
 print(f"\n[rung2b] scored {len(scores)} (correct-bound {len(pos)}, misbound {len(neg)})")
 if len(pos) and len(neg):
     auc = float(np.mean([(1.0 if a < b else 0.5 if a == b else 0.0)

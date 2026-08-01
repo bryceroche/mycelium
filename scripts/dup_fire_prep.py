@@ -53,6 +53,13 @@ def mint_pool(n_target, seed):
         r = solve_symbolic(prob, budget=200_000, seed=0)
         assert r["status"] == "solved"
         sol = [int(r["assignment"][v]) for v in range(24)]
+        # deep clean 2026-08-01: the door is now actually CALLED (the first
+        # mint claimed door-verified without calling it — structurally
+        # unique here, but a dead safety door is a false claim)
+        from mycelium.doors import certify_unique
+        p2 = problem_from_algebra3(24, facs, gv_map, 300)
+        if not certify_unique(p2, res, sol[res], budget=100_000):
+            continue
         row["decisions"] = int(r.get("decisions", 0))
         row["mentions"] = {}
         row["solution"] = sol

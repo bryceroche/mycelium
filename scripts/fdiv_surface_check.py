@@ -3,9 +3,9 @@ registered). Does gen-22's fdiv cure survive a surface it never saw?
 Per the rotation law's second clause: SURFACE varied, CONFIGURATION
 retained (fdiv on a 1-step-derived operand — the cured d1 cell).
 The 2×2 with in-session anchors: {g21 pre-cure, g22 cured} ×
-{original surface, varied surface}. Banked before-numbers for the
-anchor cells: d1 original under g21 1/8, under g22 7/8 (recomputed
-here in-session for exactness). VARIED SURFACE: "The product of a and
+{original surface, varied surface}. Anchor cells recomputed in-session
+(draw order now matches the reference instrument; the first run used a
+swapped order — fairly sampled, not bit-identical). VARIED SURFACE: "The product of a and
 b is c. Dividing c by K gives d." — phrasings absent from diet corpus
 v3. SURVIVES = varied-under-g22 within 2 probes of original-under-g22;
 FAILS = varied-under-g22 at or near the g21 anchor. Queues behind the
@@ -31,8 +31,12 @@ from tinygrad.nn.state import safe_load
 tok = Tokenizer.from_file(TOKENIZER_JSON)
 
 def make_d1(rng, varied):
-    A = int(rng.randint(2, 12)); B = int(rng.randint(2, 12))
+    # deep clean 2026-08-01: K drawn FIRST (the reference instrument's own
+    # order — diet_after_read.make_row); the original A,B,K order consumed
+    # the stream differently, so "exact reproduction" was false (the
+    # internal 2x2 was still apples-to-apples; the keystone stands).
     K = int(rng.choice([2, 3, 4, 5, 6, 7]))
+    A = int(rng.randint(2, 12)); B = int(rng.randint(2, 12))
     C = A * B
     if C % K or C > 300: return None
     if varied:

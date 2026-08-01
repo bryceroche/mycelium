@@ -19695,3 +19695,33 @@ token-position × waist-dim, the moment the skeleton trains.
   misbindings, that is the test, and the prediction is that settle
   fails to discriminate there. Any bench build on the driver
   carries this bound from birth.
+
+- **DEEP CLEAN 2, REPORTS ONE AND THREE (2026-08-01): THE KEYSTONES
+  STAND; five defects fixed at root:** the dup-fire auditor
+  verified BOTH law numbers survive — the isolation rung's 24%/24%
+  (its instrument methodologically clean, no pre-filtering, fresh
+  fixed population both ckpts) and the fdiv 0/8 (internal 2×2
+  apples-to-apples; the wet fold verified algebraically correct on
+  all 163 real sub factors, zero degenerates; share math exact to
+  rounding on all six emitted mixes; state/row lockstep structurally
+  safe). THE FIXES: (1) crown_bars ImportError (my sed swept sys/os
+  into the doors import — the m-bound fix broke the file it fixed);
+  (2) **vintage stamps died on certifier rerun** — the preservation
+  block built against clobbering didn't preserve the field stamped
+  an hour later (the two-home pattern INSIDE the preservation
+  mechanism); now carried forward; (3) fdiv_surface_check's RNG
+  draw order swapped vs the reference instrument — "exact
+  reproduction" was false (fairly-sampled, not bit-identical; the
+  g21 2/8-vs-banked-1/8 explained as an ORDER BUG, not seed noise);
+  K-first order restored, claim honest; (4) dup_fire_prep claimed
+  "door-verified" without calling the door — structurally unique
+  in this mint so no bad rows, but a dead safety door with a false
+  claim; the door now actually fires per row; (5) bench_rung2b
+  dropped no-rel-slot rows from its own denominator — **g22's
+  baseline silently excluded g22's worst failures (91/120 scored
+  vs the arms' 120/120); the 53% UNDERSTATED (counting drops:
+  ~64%)** — no-slot rows now count as misbound; direction of every
+  finding unchanged, magnitudes honest going forward; the
+  53%-vs-0% pool cells carry the denominator note wherever quoted.
+  WET-block decisions=1 hardcode noted (band-eval bucketing only,
+  no law impact). Two auditors still in the field.
