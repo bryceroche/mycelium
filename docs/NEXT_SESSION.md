@@ -1,3 +1,18 @@
+## SEAL 2026-08-01b — AUG FIRE burned; verdicts: phase A scoped, phase B UNREAD (instrument invalid); THE CORRECTED FLIP READ is the fresh hand's first work
+
+**FIRST WORK: the arm-vs-arm flip instrument** (ledger entry "PHASE B
+INSTRUMENT-INVALID"): per ckpt (g22/g24_vlow/g24_vfull), quorum the 124
+wild-answered ORIGINALS under that ckpt, then the FIXED transform set
+(post-rename-fix vintage), flip = same-ckpt original-vs-transformed;
+one instrument one vintage. Bars stand: <40%/<27% from a re-based
+baseline. THEN: 2b slot-emission per arm; the mul prediction; the
+undersized-sink verdict (holstered). THE FIRE'S STATE: both arms
+banked (g24_vlow/vfull, same 6540 rows re-rendered, variance the only
+axis); phase A = implicit-operator forms unreached (eval overshot —
+the guard-escalation lesson); g22 THE GATE. The table: 41 licensed
+(.cache/aug_table_v1.json v4). Guts at 119. Everything else per the
+prior seal.
+
 ## SEAL 2026-08-01 — deep clean 2 closed (12 corrections, 0 laws lost); THE TABLE is the fresh hand's first work
 
 **OPEN WITH:** docs/BOARD.md (the docket) → the ledger tail from "THE
