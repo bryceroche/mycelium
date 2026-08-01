@@ -19832,3 +19832,25 @@ token-position × waist-dim, the moment the skeleton trains.
   may matter MORE at the frontier than binding accuracy. The
   augmentation after-read reports both products separately from
   birth. Two cleans, two days, twelve corrections, zero laws lost.
+
+- **GUT #117 REGISTERED — THE E&B FRAME'S FOURTH ARRIVAL
+  (2026-08-01; the standing refusals restated FIRST):** #78, #82,
+  and the Maxwell memo all proposed installing alternation into
+  dynamics measured doing something else; all three refused; **a
+  fourth visit does not get in through a new phrasing.** Taken at
+  its word ("component," not "rhythm"): the frame's ONE unused
+  clause is INDUCTION — action at a distance through a shared
+  medium, coupling without contact — the closest physical analogue
+  to #113's redirect ideal (load taken off the beam without
+  sharing its inputs). STATED PLAINLY: it has NO REFERENT — every
+  architecture this campaign can build has wires; induction's
+  whole content is coupling without one. A frame whose remaining
+  feature has no mapping has given what it has. THE ALTERNATIVE
+  READING, filed as the likelier source: **the missing component
+  is not the frame's — it is the board's. Rung 3 now has THREE
+  customers (the redirect question, the evidence anchor, the
+  frontier gate) and no word** — the one unbuilt thing everything
+  recent points at; the instinct may be feeling its shape and
+  reaching for the nearest physics. If the interps map induction
+  onto something buildable, worth hearing; if they point at the
+  binder's interior, the frame was a pointer, not a proposal.
