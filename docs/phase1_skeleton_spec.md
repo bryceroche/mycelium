@@ -20169,3 +20169,29 @@ token-position × waist-dim, the moment the skeleton trains.
   records with family tags (cheap, same session's machinery; the
   bank-don't-read lesson arriving one pass late, named rather than
   hidden).
+
+- **THE CORRECTED FLIP PRINTS — THE UNDERSIZED-SINK COROLLARY FIRES
+  (2026-08-02; artifact .cache/flip_corrected.json):** re-based
+  baseline B = 68.8% (the old 53.1% was a different vintage — the
+  re-base rider vindicated); V-LOW 63.4%, V-FULL 64.1% — **no bar
+  met** (needed ≤51.6%); SINK delta +0.7% — **the arms tie;
+  variance 20-vs-41 is indistinguishable.** Per the pre-read map:
+  the corollary UNHOLSTERS — **41 phrasings at 10% dose relocated
+  the boundary, not dissolved it.** The honest shadings: the
+  ~5-point drops are directional-sub-bar (consistent with a sink an
+  order of magnitude undersized against the harvest's phrasing
+  space — the census said the harvest speaks mostly SYMBOLIC and
+  the wild transforms roam a space the 41-entry dialect table
+  barely touches); AND an externality: uncounted rose 0→14/18 —
+  the re-render cost some wild original-quorum stability, banked
+  not buried. THE FIRE'S COMPLETE VERDICT: the surface-band law
+  SURVIVES its first cure attempt — phase A (implicit forms
+  unreached), phase B corrected (out-of-table flips barely moved),
+  the sink undersized by measurement. THE STRATEGIC CASCADE, as
+  pre-committed: **weight shifts to RUNG 3's interior work**; the
+  surface road's honest price is now a number — a table 10×+
+  larger (pen tranches at scale) or the mechanism ceiling stands.
+  The mul prediction and slot-emission reads close with the next
+  session's pass (per-item banking). g22 the gate throughout;
+  nothing promoted; nothing overclaimed; every verdict on
+  pre-written language.
