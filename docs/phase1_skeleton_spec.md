@@ -20125,3 +20125,16 @@ token-position × waist-dim, the moment the skeleton trains.
   claimed), phase B awaiting its valid instrument, the
   undersized-sink reading holstered, g22 the gate, nothing
   overclaimed anywhere.
+
+- **THE CLOSING CARVINGS (2026-08-01, Bryce):** (1) **a check that
+  rejects its own author, twice, is a check that will hold against
+  a stranger** — the recursion guard's credential. (2) Phase A's
+  zeros are a THIRD CATEGORY — not a null on augmentation, not a
+  hit: a measurement of a class outside the table's coverage
+  (implicit-operator forms), named so no reader rounds it toward
+  either. (3) The phase-B confound is never-mix-coordinates'
+  FOURTH appearance (frames, dynamics, verdicts, now flip-rates);
+  the fix is always the same: one frame, one anchor, no vintages
+  mixed. (4) The standing principle restated at the close: **an
+  untested claim keeps its standing; a falsely-scored one
+  doesn't** — unread over wrong, every time.
