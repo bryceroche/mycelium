@@ -19764,3 +19764,27 @@ token-position × waist-dim, the moment the skeleton trains.
   artifact); the eligibility-filter consistency (1404 exact both
   instruments). The gut's audit calls are now two-for-two on
   finding law-relevant defects.
+
+- **THREE SENTENCES SET RIGHT (2026-08-01, Bryce):** (1) **THE
+  PARSEABILITY CAVEAT on 53→64:** the arms scored 120/120 where g22
+  scored 91/120 — the diet bought SLOT-EMISSION as well as correct
+  binding, and those are different purchases: "cured 64% misbinding"
+  vs "cured 53% plus taught the model to emit a slot at all" are
+  different claims, the second arguably more interesting; the
+  fire's record carries both. (2) **THE DISJOINT SECOND LOOK,
+  docketed before celebration:** trained-on sources scoring WORSE
+  than unseen ones (0.63 consumed-dragged vs 0.75 disjoint) is
+  either a real memorization-interference finding or a
+  consumption-selection artifact (the books drew easier candidates
+  early — the consumed set may be structurally different). The
+  December precision term moved FAVORABLY, which is exactly when a
+  number gets its second look, not its celebration. The
+  discriminating read: compare the consumed set's difficulty
+  profile (level/length/construction) against the disjoint set's —
+  CPU on banked artifacts, docketed. (3) **THE FRONTIER'S LEDGER
+  STATE, cleaned in one transaction:** "untestable by physics"
+  comes OFF; the standing state is **not closed by physics — gated
+  on an evidence anchor that doesn't exist yet, candidate anchors
+  interior (pointer-attention peaks), rung-3 territory.** A dead
+  end converted to a dependency; rung 3 now has TWO customers
+  (the redirect question and the frontier anchor).
