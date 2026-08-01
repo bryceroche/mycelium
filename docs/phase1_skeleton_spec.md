@@ -19654,3 +19654,25 @@ token-position × waist-dim, the moment the skeleton trains.
   A 60%-coverage table produces a band with different walls, not
   no walls. The bar: the table's coverage of the census
   distribution, per family, stated before any entry counts itself.
+
+- **GUT #116 REGISTERED — THE BATHTUB (2026-08-01, commitment
+  family, filed alongside #60 — hysteresis, both signs of one
+  law):** #60's cold basins were the bad tub (H≈0 heads no dose
+  could move); this names the same physics with the sign flipped —
+  the barrier is symmetric, and hard-to-leave is what you want in
+  the RIGHT state. BOTH SIDES MEASURED: bad — the sel-smaller
+  basin (fifteen views, three models, one tub), the re-engagement
+  configuration at 24% under any surface, cold errors surviving
+  perturbation; good — **settle IS the bathtub property read as a
+  signal**: correctly-bound slots stop and stay stopped (0.834/
+  0.997). THE IDENTITY, carved: **the surface-band law and the
+  bathtub law are one statement — the band's walls are the tub's
+  walls, and diets that don't clear them redecorate the interior.**
+  The dup fire cured within-tub (its own phrasings); fdiv the
+  same (0/8 outside). THE AUGMENTATION STAKE, named: the claim is
+  not "add variety" (interior decoration at scale) — it is that a
+  table sized against the harvest census supplies enough energy to
+  CLEAR THE WALL; the undersized-sink corollary now has its
+  mechanism (a new tub, not a wider room). No rent — measured
+  physics named; the prospective claim already fenced by the
+  coverage bar.
