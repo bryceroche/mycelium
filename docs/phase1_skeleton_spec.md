@@ -19676,3 +19676,22 @@ token-position × waist-dim, the moment the skeleton trains.
   mechanism (a new tub, not a wider room). No rent — measured
   physics named; the prospective claim already fenced by the
   coverage bar.
+
+- **SETTLE IS RESIDENCY, NOT CORRECTNESS — THE JURISDICTION PIN
+  (2026-08-01, Bryce):** the 0.997 measured BASIN RESIDENCY;
+  correctness is what residency amounts to when the basin is the
+  right one — the driver formula isn't a proxy for good binding,
+  it IS the quantity. THE CONSEQUENCE, pinned while cheap: **a
+  slot landing confidently in a WRONG basin — deep, stable,
+  [1293]-shaped — should settle exactly like a correct one.** The
+  dup and pct separations were clean because those misbindings
+  were SHALLOW. THE PREDICTION ON RECORD: settle grades shallow
+  misbindings and is BLIND to deep ones — the driver's
+  jurisdiction is "in-register AND shallow-misbinding
+  populations," tighter than the register bound alone. The deep
+  case cannot currently be tested (the known deep-wrong population
+  is wild, where settle is untestable-by-instrument for quantum
+  reasons) — but if a future population supplies deep IN-REGISTER
+  misbindings, that is the test, and the prediction is that settle
+  fails to discriminate there. Any bench build on the driver
+  carries this bound from birth.
