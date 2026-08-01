@@ -49,12 +49,32 @@ SEED_ENTRIES = [
     ("dup",   "sym-star",  "{a} * {a} = {c}."),
 ]
 
+# tranche 3 (2026-08-01): (construction, id, fmt, constraint, latex)
+TRANCHE3 = [
+    ("fdiv",  "latex-frac", "$\\frac{{{a}}}{{{k}}} = {b}$.", None, True),
+    ("mul",   "latex-cdot", "{a} $\\cdot$ {b} = {c}.", None, True),
+    ("fdiv",  "half-of",    "Half of {a} is {b}.", {"k": 2}, False),
+    ("fdiv",  "third-of",   "A third of {a} is {b}.", {"k": 3}, False),
+    ("subadd","less-than",  "{c} is {b} less than {a}.", None, False),
+    ("add",   "more-than",  "{c} is {a} more than {b}.", None, False),
+    ("add",   "combined",   "{a} and {b} combined give {c}.", None, False),
+]
+
 
 def render(entry_fmt, fields):
     return entry_fmt.format(**fields)
 
 
-def verify_entry(construction, fmt, rng, n=50):
+def tokens_present(txt, needed_ints, tok):
+    """THE TOKENIZER PIN (2026-08-01): verify at the TOKENIZER, not the
+    string — a \frac may read as text yet tokenize into pieces that
+    never present the digits as the model sees them."""
+    enc = tok.encode(txt)
+    stream = "".join(tok.decode([t]) for t in enc.ids)
+    return all(str(v) in stream for v in needed_ints)
+
+
+def verify_entry(construction, fmt, rng, n=50, constraint=None, latex=False):
     """50/50: well-formed + numbers-in-text exact + solver-unique.
     Returns (licensed: bool, failures: list)."""
     import sys
@@ -63,7 +83,20 @@ def verify_entry(construction, fmt, rng, n=50):
     L = "abcdefgh"
     fails = []
     for t in range(n):
-        if construction == "given":
+        constraint = constraint or {}
+        if construction == "subadd":
+            # sub's rearranged-add clause: "c is b less than a" => c=a-b,
+            # trained as rel-add(args=[b,c], result=a) — the canonical fold
+            X, Y = int(rng.randint(20, 200)), int(rng.randint(2, 19))
+            gold = X - Y
+            facs = [{"ftype": "given", "var": 0, "value": X},
+                    {"ftype": "given", "var": 1, "value": Y},
+                    {"ftype": "rel", "op": "add", "args": [1, 2], "result": 0}]
+            q = 2
+            txt = (f"{L[0]} is {X}. {L[1]} is {Y}. "
+                   + render(fmt, {"a": L[0], "b": L[1], "c": L[2]}))
+            need = [X, Y]
+        elif construction == "given":
             v = int(rng.randint(2, 290))
             facs = [{"ftype": "given", "var": 0, "value": v}]
             q, gold = 0, v
@@ -92,7 +125,7 @@ def verify_entry(construction, fmt, rng, n=50):
                 need = [x, y]
             if gold > 300: continue
         elif construction in ("fdiv", "mod"):
-            k = int(rng.choice([2, 3, 4, 5, 6, 7]))
+            k = int(constraint.get("k", rng.choice([2, 3, 4, 5, 6, 7])))
             if construction == "fdiv":
                 qv = int(rng.randint(2, 40)); a = k * qv; gold = qv
             else:
@@ -103,7 +136,7 @@ def verify_entry(construction, fmt, rng, n=50):
                     {"ftype": construction, "var": 0, "k": k, "result": 1}]
             q = 1
             txt = f"{L[0]} is {a}. " + render(fmt, {"a": L[0], "k": k, "b": L[1]})
-            need = [a, k]
+            need = [a] if "k" in constraint else [a, k]
         elif construction == "pct":
             p = int(rng.choice([10, 20, 25, 50, 75]))
             base = int(rng.choice([20, 40, 80, 120, 200]))
@@ -131,6 +164,14 @@ def verify_entry(construction, fmt, rng, n=50):
         tc = Counter(int(m) for m in re.findall(r"\d+", txt))
         if any(tc[v] < 1 for v in need):
             fails.append(("numbers", t)); continue
+        if latex:
+            from phase1_algebra_head import TOKENIZER_JSON
+            from tokenizers import Tokenizer
+            global _TOK
+            try: _TOK
+            except NameError: _TOK = Tokenizer.from_file(TOKENIZER_JSON)
+            if not tokens_present(txt, need, _TOK):
+                fails.append(("tokenizer", t)); continue
         # (a)+(c) solver-unique through the standard path
         if solve2(facs, q, {"n_vars": 24, "m": 300}) != gold:
             fails.append(("solve", t)); continue
