@@ -19854,3 +19854,32 @@ token-position × waist-dim, the moment the skeleton trains.
   reaching for the nearest physics. If the interps map induction
   onto something buildable, worth hearing; if they point at the
   binder's interior, the frame was a pointer, not a proposal.
+
+- **THE TABLE'S WORD EXECUTED — v1 HARNESS + MECHANICAL SEEDS
+  LICENSED (2026-08-01; mycelium/aug_table.py +
+  .cache/aug_table_v1.json):** the discrepancy flagged and ruled by
+  the body (the header said rung 3; the body ruled twice that rung
+  3 stays unworded and the table is the work — the considered
+  ruling governs). THE BUILD: verification by construction live —
+  23/23 mechanical seed templates LICENSED through the 50/50 gate
+  (solver-unique via the door + numbers-in-text exact + rendered
+  well-formed), spanning given/add/mul/fdiv/mod/pct/sel/dup with
+  the census-directed word families. COVERAGE VS THE CENSUS
+  (the sink bar, per family against harvest mass): mul 30%, add
+  20%, div 5%, pct 25%, sel 80% word-share rendered — **the
+  SYMBOLIC class is the dominant uncovered mass in every family**
+  (add 581, frac 291, mul 128 census hits), confirming it as the
+  next tranche's largest purchase. THE FRESH HAND'S QUEUE, in
+  coverage order: symbolic-class entries, then the enumerated
+  word-families the seeds skipped (twice/double, half/third/per,
+  less-than/more-than, total/combined), all through the same gate;
+  pen tranches propose, the gate licenses, the recursion guard
+  holds the eval templates out. Both riders live in the record:
+  census-before-sizing (done — the sizing IS the census), and
+  slot-emission beside binding in the after-read. THE FRAME
+  RETIREMENT ROLL, banked per the countersign: diffusion (shrank
+  to the torsion rider), Lattner (kept compiler-side, gave up the
+  loop), E&B (closed with induction named and no wire) — frames
+  that retire with their remainder stated do not return in new
+  phrasings. Rung 3 stands unworded with its three customers; the
+  table stands as the prerequisite in front of it.
