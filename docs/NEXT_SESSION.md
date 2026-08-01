@@ -1,3 +1,31 @@
+## SEAL 2026-08-01 — deep clean 2 closed (12 corrections, 0 laws lost); THE TABLE is the fresh hand's first work
+
+**OPEN WITH:** docs/BOARD.md (the docket) → the ledger tail from "THE
+PHOTO BOOTH'S WRITE-SIDE" onward. **THE FIRST WORK: the licensed
+table** (docs/AUGMENTATION_CHECK_SPEC.md is law): build the 50/50
+verification harness + mechanical seed entries (word-families from
+.cache/harvest_phrasing_census.json — corrected sub=28-30% binary-minus
+— + the SYMBOLIC class, the largest purchase), measure coverage per
+family against the census, and only then set dose arms. AFTER-READ
+measures BOTH products: binding correctness AND SLOT EMISSION (the
+parseability split — the dup fire bought slot-emission partially;
+under-parse says it matters most at the frontier). Eval templates
+NEVER enter the table (the recursion guard). Before-fixtures standing:
+dup held-out-config 24%, fdiv varied 0/8, flip 53%.
+**THE WEEK'S LAWS (all adversarially verified by deep clean 2):**
+surface-band (diets cure what they phrase; the band's walls are the
+tub's walls); subspace-spanning (axis lists justify against
+measurement — twice: mint and eval); rotation (name your re-anchor;
+never rotate the test variable); fixture-selection (choose by the
+audit table, not prestige); settle = basin residency (0.834/0.997
+in-register sentence-grain; 0.620 anchored-token; jurisdiction:
+in-register + shallow; frontier GATED-ON-ANCHOR — rung 3's second
+customer). CORRECTED NUMBERS: dup baseline ~64% (parseability split);
+DISJOINT precision 0.75 (n=978, favorable — second-look docketed);
+census sub 28-30%. g22 the gate; g23 arms banked unpromoted
+(surface-local, refusal-for-now). Guts at 116, three-for-three on
+audit calls.
+
 ## SEAL 2026-07-31 — GEN-22 IS THE GATE; the measuring chapters; READINESS IS SETTLING; the board is the docket
 
 **THE GATE:** g22 (diet fire: fdiv-on-derived cured, d1 1/8→7/8 basin
