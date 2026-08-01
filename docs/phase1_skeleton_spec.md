@@ -20104,3 +20104,24 @@ token-position × waist-dim, the moment the skeleton trains.
   ledger's mechanical transforms (var-rename/phrase-swap, the
   banked 53.1% baseline) per arm. The undersized-sink reading
   stays holstered until that prints.
+
+- **AUG PHASE B: INSTRUMENT-INVALID AS RUN — THE FIRE'S
+  PHRASING-GRADE VERDICT IS UNREAD, NOT NULL (2026-08-01):** the
+  invariance machinery compares transformed answers against the
+  LEDGER'S banked pluralities (g22's) — under arm checkpoints that
+  is a CROSS-MODEL comparison, not the arm's own stability; and the
+  whole-text rename fix changed the transform set after the 53.1%
+  baseline banked (comparability broken twice). The printed
+  69/96-and-68/96 "flips" are NOT flip rates. Directional glimmer
+  noted, not promoted: invariant-subset precision 0.75-0.78 under
+  the arms vs g22's 0.644 — cross-model confounded. **THE CORRECT
+  INSTRUMENT, staged for the fresh hand:** per arm, re-quorum the
+  124 originals under the ARM (its own pluralities), then transform
+  and re-quorum under the ARM, flip = arm-vs-arm; all three ckpts
+  incl. g22 re-based on the FIXED transform set (one instrument,
+  one vintage — the never-mix law's flip-rate form). The fire's
+  state at session close: burned clean, phase A scoped
+  (implicit-operator forms unreached — a harder class than
+  claimed), phase B awaiting its valid instrument, the
+  undersized-sink reading holstered, g22 the gate, nothing
+  overclaimed anywhere.
