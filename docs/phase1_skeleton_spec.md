@@ -19958,3 +19958,22 @@ token-position × waist-dim, the moment the skeleton trains.
   within one tranche of the bar. The staged shape held throughout:
   whole tranche verified offline, one atomic table write, coverage
   re-measured — no torn intermediate anywhere.
+
+- **THE ZERO-REFUSAL FINDING + THE TOKENIZER PIN (2026-08-01,
+  Bryce):** BANKED AS A FINDING: **the dialect carries ASCII
+  symbolic notation with no edge at the gate's grain** — the
+  refusals-as-findings expectation met none; the carrying capacity
+  is wider than the seeds suggested, and the plausible edge moves
+  to tranche 3's LaTeX-native forms, where a refusal would be the
+  dialect's map speaking. **THE TOKENIZER PIN, ruled before
+  tranche 3 authors: verify at the TOKENIZER, not at the string.**
+  A \frac{3}{4} that reads correctly as text may tokenize into
+  pieces that never present the digits as the model sees them —
+  the gate's numbers-in-text check lives in the string's home
+  while the model lives in the token stream's (the two-home shape
+  in miniature); a template passing one and failing the other
+  licenses rows that teach nothing. LaTeX entries get an explicit
+  tokenizer-level assertion (the digits' tokens present in the
+  encoded stream) BEFORE any license. One tranche and one bar
+  from the augmentation fire's word; the denominator becomes a
+  number.
