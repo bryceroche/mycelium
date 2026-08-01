@@ -76,6 +76,38 @@ def auc_lower_correct(scores, labels):
                        for x, y in product(pos, neg)]))
     return a, len(pos), len(neg)
 
+def late_wander_anchored(text, ev_phrase="percent", slot_pick=4):
+    """deep clean 2026-08-01 (the audit's finding): cuts ANCHORED to the
+    evidence phrase's token position — the fixed-fraction window put the
+    evidence outside/inside the window depending on cell, confounding the
+    0.400. Cuts: [just-before-ev, ev-end, then thirds of the remainder]."""
+    e = tok.encode(text)
+    L = min(len(e.ids), T_ALG)
+    if L < 12: return None, None
+    ci = text.find(ev_phrase)
+    if ci < 0: return None, None
+    ev_tok = next((i for i, (a, b) in enumerate(e.offsets[:L]) if b > ci), None)
+    if ev_tok is None or ev_tok < 4: return None, None
+    ev_end = min(L, ev_tok + 6)
+    rem = L - ev_end
+    if rem < 3: return None, None
+    cuts = sorted({max(4, ev_tok - 2), ev_end,
+                   ev_end + rem // 3, ev_end + 2 * rem // 3, L})
+    if len(cuts) < 4: return None, None
+    F = fst_of_prefix_ids(e.ids, list(e.offsets), text, cuts)
+    final = F[-1]
+    pres = final @ hp[:, 0] + hpb[0] > 0
+    pk = None
+    for j in range(L_FAC):
+        if pres[j] and int(np.argmax(final[j] @ hf + hfb)) == slot_pick:
+            pk = j; break
+    if pk is None: return None, None
+    traj = F[:, pk, :].astype(np.float32)
+    deltas = np.linalg.norm(np.diff(traj, axis=0), axis=1)
+    # deltas[0] = into ev-end; POST-EVIDENCE = deltas[1:] (after ev absorbed)
+    if len(deltas) < 2: return None, None
+    return float(deltas[1:].mean()), F
+
 # ---- LEG 1: calibration on the pct population (token grain) ----
 cells = [(A, None) for A in KINDS] + [(A, B) for A in KINDS for B in KINDS]
 targets = [(ci, A, B) for ci, (A, B) in enumerate(cells) if (A == "pct" or B == "pct")]
@@ -84,7 +116,7 @@ for ci, A, B in targets:
     for r in mint_cell(A, B, 12, 31000 + ci):
         text = r["text"]
         gold_pct = next(f for f in r["facs"] if f["ftype"] == "pct")
-        lw, F = late_wander_item(text, slot_pick=4)   # pct ftype index
+        lw, F = late_wander_anchored(text)            # EVIDENCE-ANCHORED (v3)
         if lw is None: continue
         # binding correctness via standard decode
         ids = np.zeros((8, T_ALG), np.int32); msk = np.zeros((8, T_ALG), np.float32); snt = np.zeros((8, T_ALG), np.int32)
@@ -130,6 +162,7 @@ for qi in range(4):
     sl = order[qi*qn: (qi+1)*qn if qi < 3 else len(ws)]
     tag = "" if len(sl) >= 20 else "  (n<20: directional-only)"
     print(f"  Q{qi+1} [{ws[sl].min():.2f},{ws[sl].max():.2f}]  n={len(sl)}  precision {wl[sl].mean():.3f}{tag}")
+print("[LEG 2 NOTE] the wild leg is VOID-BY-CONFOUND regardless of AUC — wild items have no known evidence anchor; anchor-free windows are the confound the audit demonstrated")
 verdict = ("SIGNAL — interior dynamics grades the frontier; the decision point REOPENS" if a_w >= 0.70 and calibrated
            else "NULL at token grain — the axis closes as measured" if a_w < 0.60
            else "MIXED — band unclaimed")

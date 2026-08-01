@@ -56,9 +56,12 @@ def transform(text):
             set(re.findall(r"\$([a-z])[\^_ =+\-]", text))
     vars_ = {v for v in vars_ if v in VMAP}
     if vars_:
+        # deep clean 2026-08-01: rename across the WHOLE text (display-math
+        # blocks leaked the old name in ~6.5% of specimens — internally
+        # inconsistent transforms)
         out = text
         for v in sorted(vars_):
-            out = re.sub(rf"(?<=\$){v}(?=[\$\^_ =+\-])", VMAP[v], out)
+            out = re.sub(rf"(?<![A-Za-z\\]){v}(?![A-Za-z])", VMAP[v], out)
         if out != text:
             return out, "var-rename"
     for a, b in PHRASES:

@@ -61,7 +61,7 @@ print(f"[ledger] population: {len(pop)} gold-bearing items "
 # consumption flag: text-identity against every book-candidate record on disk
 consumed = set()
 import glob
-for f in glob.glob(".cache/book*_candidates.json"):
+for f in glob.glob(".cache/book*_candidates*.json")  # deep clean 2026-08-01: the old glob missed per-tranche files (66 vs 426 consumed):
     try:
         d = json.load(open(f))
     except Exception:

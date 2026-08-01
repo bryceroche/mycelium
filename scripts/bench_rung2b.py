@@ -116,8 +116,9 @@ for r in rows:
     ok = any(f.get("args") == [r["dv"], r["dv"]] and f.get("op") == r["op"]
              for f in rels)
     deltas = np.linalg.norm(np.diff(F[:, rel_slot, :].astype(np.float32), axis=0), axis=1)
-    third = max(1, len(deltas) // 3)
-    scores.append(float(deltas[-third:].mean())); labels.append(bool(ok))
+    # deep clean 2026-08-01: ev-anchored (rung2's D3 proper), not last-third
+    post = deltas[ev:] if ev < len(deltas) else deltas[-1:]
+    scores.append(float(post.mean())); labels.append(bool(ok))
     n_done += 1
     if n_done % 25 == 0: print(f"  [{n_done}]", flush=True)
 

@@ -15,7 +15,10 @@ from collections import Counter, defaultdict
 def feats(row):
     """Feature set for one factor graph."""
     facs = row["factors"]; q = row["query_var"]
+    # deep clean 2026-08-01: pct produces args[0] (no "result" key) — the
+    # old code made pct->X pairs structurally unmeasurable
     derived = {f.get("result") for f in facs if "result" in f}
+    derived |= {f["args"][0] for f in facs if f.get("ftype") == "pct"}
     derived.discard(None)
     out = Counter()
     kinds = []
@@ -31,6 +34,8 @@ def feats(row):
             out[f"{k}:on-{'derived' if on_derived else 'given'}"] += 1
         if "result" in f:
             producer[f["result"]] = k
+        elif f.get("ftype") == "pct":
+            producer[f["args"][0]] = k
         if "args" in f and len(f["args"]) == 2 and f["args"][0] == f["args"][1]:
             out["dup-args"] += 1
     # ordered pairs: producer kind -> consumer kind
