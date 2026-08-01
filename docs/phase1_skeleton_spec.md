@@ -19788,3 +19788,25 @@ token-position × waist-dim, the moment the skeleton trains.
   interior (pointer-attention peaks), rung-3 territory.** A dead
   end converted to a dependency; rung 3 now has TWO customers
   (the redirect question and the frontier anchor).
+
+- **THE ANCHORED CALIBRATION PRINTS: 0.620 — THE TAINT WAS REAL, THE
+  GRAIN EFFECT SURVIVES ATTENUATED (2026-08-01):** evidence-anchored
+  token-grain settle on pct: AUC 0.620 (from the mis-windowed 0.400;
+  sentence-grain 0.834). THE READING: window misalignment explained
+  roughly half the calibration deficit — the audit's taint
+  confirmed by measurement — and the remainder is a real grain
+  attenuation: **the signal is STRONGEST at evidence-quantum
+  (sentence) grain, carries a weakened directional trace at
+  anchored token grain (0.620, sub-bar), and is VOID unanchored.**
+  Support caveat stated: the anchored variant scores a different
+  sub-population (72 rows, 26/46 split vs the sentence
+  instrument's 135) — directional, not paired. THE STANDING STATE,
+  final form: sentence grain is the instrument of record
+  in-register; the frontier remains GATED-ON-ANCHOR (unchanged by
+  this print — wild has no anchor at any grain); rung 3's two
+  customers stand. The grain-refinement's ledger line revises from
+  "lives at evidence-quantum grain" to "strongest at
+  evidence-quantum grain; attenuated at anchored token grain" —
+  a softer, truer sentence. DEEP CLEAN 2 CLOSES: four reports,
+  eleven findings + this resolution, every law-grade number
+  verified/corrected/reopened-and-resolved, the gut two-for-two.
