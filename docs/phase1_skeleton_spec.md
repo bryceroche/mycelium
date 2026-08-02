@@ -20338,3 +20338,39 @@ token-position × waist-dim, the moment the skeleton trains.
   by another name — docketed, priced, waiting on the December
   claim; this registration doesn't unword it. Registered in the
   exchange family as #118's transfer clause.
+
+- **THE TRANSFER FALSIFIER PINNED — THE FIXTURE NAMED BEFORE THE
+  BOOKS DELIVER (2026-08-02, Bryce's refinement):** the transfer
+  clause and the books charter make OPPOSITE predictions about the
+  same number, and the books road already running is the
+  experiment. THE PIN, made now so the middle case can't be argued
+  later: **the discriminating quantity is mouth-native coverage on
+  the HARVEST — the wild ledger's 1.6% — never on the books' own
+  rows.** Books trivially raise native coverage of themselves
+  (they're minted into the register); the transfer question is
+  whether the native set expands to admit text NOBODY WROTE FOR
+  IT. Same fixture, re-cut per generation, already banked
+  (.cache/wild_ledger_v1.jsonl protocol). THE TWO BRANCHES, both
+  reading that number: mouth-native harvest coverage moves off
+  1.6% as L4/L5 land → the constraint was dose-limited, the
+  structural branch DIES, the books charter prints. Coverage flat
+  while downstream competence grows → the transfer clause PRINTS
+  and weight shifts to the answer space. With the fixture pinned,
+  neither branch can claim the other's evidence.
+
+- **WHY THE VOTE WORKS AT ALL — THE COUNTERFEIT SPECIMEN
+  (2026-08-02, Bryce's countersign, its own line beyond the
+  register entry):** quorum's whole warrant is that the five views
+  are INDEPENDENT EVIDENCE — five sentence-permutations of the
+  same diagram, agreeing because the binding is stable under
+  permutation, not because agreement was ever asked for. A
+  paraphrase-consistency loss would train views to agree, and
+  views agreeing because trained-to-agree rot the certification
+  tier from inside WHILE EVERY DASHBOARD IMPROVES: flip rate
+  falls, unanimity rises, cert-v2 tightens — all counterfeit. This
+  is the concealment failure at its most dangerous: not a BLINDED
+  instrument but a COUNTERFEITED one, and what it counterfeits is
+  the certification chain's founding assumption. The 1.0000
+  certification tier is only worth its measurement because
+  agreement is emergent, never optimized — flip_rate's loss-never
+  entry in the diagnostic register is the fence that keeps it so.
