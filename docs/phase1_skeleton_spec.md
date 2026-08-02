@@ -20477,3 +20477,40 @@ token-position × waist-dim, the moment the skeleton trains.
   dialect generation — the board's most expensive item, which is
   exactly why it deserves the cold session rather than a tired
   yes.
+
+- **THE PER-ITEM CLOSEOUT PRINTS — BOTH OPEN READS CLOSE (2026-08-02;
+  artifact .cache/flip_peritem.json; scripts/flip_peritem.py):**
+  REPRODUCTION CHECK OK on all three ckpts (flip/stable/uncounted
+  exact vs .cache/flip_corrected.json — the instrument is the banked
+  instrument; the reads are live). **(1) SLOT EMISSION (the
+  parseability rider) closes as AN EXCHANGE, NOT A PURCHASE:**
+  per-view non-None fraction — g22 orig 1.000 / transformed 0.552;
+  vlow 0.854 / 0.646; vfull 0.812 / 0.590. The arms GAINED emission
+  on transformed wild text (+9.4 / +3.8 pts) and LOST it on wild
+  originals (−14.6 / −18.8 pts — the uncounted-rose externality now
+  quantified at view grain). The undersized-sink signature at the
+  emission grain: the diet relocated the parseability boundary too,
+  it didn't widen it. **(2) THE MUL PREDICTION closes
+  UNREADABLE-AT-SUPPORT, per its pre-pinned floor:** mul n=17 but
+  **pct n=0** — the wild transformable set contains NO
+  census-taggable pct items at all; the comparison target doesn't
+  exist in the fixture. The blind prediction is CLOSED (bar fired,
+  printed insufficient support), not void — the distinction the word
+  named. TEXTURE BANKED, sub-bar, no claims: per-family effects at
+  real support — sub +15.2/+13.5 (n=44/41, the table's tranche-3
+  subadd entries are the freshest diet), add +3.6/+3.0 (n≈55), mul
+  NEGATIVE −1.2/−14.5 (n=15, directionally consistent with
+  lowest-coverage-weakest-cure but below any claim grain). The
+  concentration map came free with the per-item bank, as designed.
+  Scope line standing: family tags are census-grain word substrings,
+  punctuation-blind by construction. HYGIENE, found by the pass:
+  importing `transform` from binding_invariance_read RE-RAN the
+  whole module (ckpt load + full read + overwrote
+  .cache/binding_invariance.json on every import — deterministic
+  re-print, no verdict touched, but a live artifact-overwrite
+  bypass). Import-guarded (`__name__ == "__main__"` on both
+  executable blocks); import now side-effect-free, standalone
+  behavior unchanged; the stale-consumer sweep family gains its
+  import-side sibling. THE AUG FIRE'S LEDGER IS NOW FULLY CLOSED:
+  every pinned read fired, every blind prediction read or closed at
+  its floor, nothing void.
