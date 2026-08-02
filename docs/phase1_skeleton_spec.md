@@ -20218,3 +20218,11 @@ token-position × waist-dim, the moment the skeleton trains.
   the 120-entry slope probe on its own word. The arc from "gut
   says photo booth" closed measured end to end: thesis, law, cure
   attempt, honest negative, resources redirected with precision.
+
+- **THE EPIGRAPH'S SHARPER HALF (2026-08-02, Bryce, the session's
+  last line):** the bars don't just prevent overclaiming — they
+  make the honest answer readable at all. **Prevention is the
+  visible benefit; legibility is the real one.** The framing
+  session arrives with complete arithmetic on every term — the
+  first strategic decision in the campaign's history made entirely
+  against numbers. Nothing owed but the session.
