@@ -20418,3 +20418,30 @@ token-position × waist-dim, the moment the skeleton trains.
   carried the transfer; the census may span word families while
   punctuation carries a relation axis) — a candidate, not a claim;
   docketed for the interps, not urgent.
+
+- **THE COUNTERSIGN ON THE CLOSE CALL + THE ALPHABET-EXCLUSION
+  CLAUSE + THE PROBE DESIGN PIN (2026-08-02, Bryce):** `less-than`
+  countersigned unambiguous with the mechanism stated precisely —
+  the disambiguator isn't the measure-phrase alone but that {b}
+  renders as a BARE NUMERAL in subject-complement position: "c is
+  5 less than a" has no reading where 5 is a degree modifier; the
+  flip REQUIRES the comma, and the comma isn't in the template.
+  Generalized into the clause that makes future audits mechanical:
+  **a template is safe when the ambiguous variant requires a
+  character the template cannot emit** — punctuation ambiguity
+  becomes checkable by alphabet exclusion, not parse-reading (the
+  tokenizer pin's move: judgment → assertion). Banked to the check
+  spec; the interpretive read remains for attachment cases the
+  alphabet can't decide. THE FINDING THAT OUTRANKS THE AUDIT,
+  scoped: the census's coverage numbers (div 88 / add 89 / pct 96)
+  measured WORD-FAMILY coverage against a fixture blind to a
+  relation axis — not invalidated, SCOPED. THE LIVE HYPOTHESIS,
+  pinned BEFORE the probe authors: if punctuation carries
+  relations the census can't see, 120 entries spanning word
+  families might still span in a subspace and the probe would
+  print a TIE for the same reason the arms tied at 41 — so **the
+  probe's design spans punctuation forms deliberately rather than
+  inheriting the census's blind spot.** Both design pins now on
+  the probe's board line (BOARD.md updated: the stale tranche-2
+  line replaced by the slope probe's current state). Fourth
+  subspace-spanning instance docketed, not claimed.

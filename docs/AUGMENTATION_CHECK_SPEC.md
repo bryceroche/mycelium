@@ -82,3 +82,17 @@ v4's 41 audited 2026-08-02: ZERO ambiguous (ledger entry has the
 scrutinized cases). The audit rides the licensing of every future
 tranche — including the 120-entry slope probe's pen tranche.
 Ambiguity is a licensing question no solver check can answer.
+
+**The alphabet-exclusion clause (2026-08-02, Bryce's countersign —
+the mechanical form):** a template is safe when the ambiguous variant
+REQUIRES A CHARACTER THE TEMPLATE CANNOT EMIT. Punctuation-forced
+ambiguity is then checkable by asking what the template's alphabet
+excludes, not by reading for parses — the same move the tokenizer pin
+made: turn a judgment into an assertion. (`less-than` passes because
+"c is 5 less than a" has no degree-modifier reading of a bare numeral
+in that position — the flip requires a comma the template never
+emits; `when-div` passes because its comma is fixed and load-bearing;
+notation admits one reading.) The interpretive read stays for
+attachment cases the alphabet can't decide (rem-of's semantic
+incompleteness); the clause converts the punctuation class to
+mechanical.
