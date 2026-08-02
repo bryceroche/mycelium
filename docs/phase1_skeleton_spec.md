@@ -20226,3 +20226,20 @@ token-position × waist-dim, the moment the skeleton trains.
   session arrives with complete arithmetic on every term — the
   first strategic decision in the campaign's history made entirely
   against numbers. Nothing owed but the session.
+
+- **THE FRAMING SHEET BUILT (2026-08-02, the word given;
+  docs/DECEMBER_FRAMING.md):** one page — the ceiling (39.4%, the
+  answer-space wall named as the biggest lever), coverage×precision
+  (9%@0.63, disjoint 0.75), both structural binaries, five roads
+  each with measured state, and THE FOUR LEAVES with their
+  arithmetic: A = the abstention product (shippable TODAY, ~0.2% @
+  1.00, "never lies"); B = open+binary (~2% of the 500 today, every
+  road multiplies it); C = the trained tier (unpriced); D = defer
+  and re-frame after the roads move the terms. The session decides
+  the claim, then rung 3's word with the target known, then the
+  answer-space word; the slope probe runs regardless. **The
+  one-line summary banked: today the campaign can truthfully ship
+  "a system that never lies" — every bigger December sentence runs
+  through the books, the answer space, and rung 3 or the slope
+  probe. All four leaves rest on measured numbers; none require
+  hope.** The cold session has its page.
