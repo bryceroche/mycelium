@@ -69,3 +69,16 @@ Gating word 2 (SOURCE): the initial table's authorship split
 (mechanical seed set + pen tranche sizes) and the diversity pricing.
 Gating word 3 (DOSE): share-of-mix + reps, with the dose-ordering
 blind call (books-then-augment vs augment-first) already pinned.
+
+## The unique-reading audit (2026-08-02, the punctuation registration's rent)
+
+The solver's 50/50 verifies the template's GRAPH, never its ENGLISH —
+a template whose punctuation admits a second parse would license
+cleanly and teach a wrong reading with perfect gold behind it (the
+poisoned-gold path through the authoring door). The audit: every
+entry's rendering is read for a second parse under a reasonable
+reading (attachment + punctuation), by eyes, at licensing time.
+v4's 41 audited 2026-08-02: ZERO ambiguous (ledger entry has the
+scrutinized cases). The audit rides the licensing of every future
+tranche — including the 120-entry slope probe's pen tranche.
+Ambiguity is a licensing question no solver check can answer.

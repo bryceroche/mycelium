@@ -20374,3 +20374,47 @@ token-position × waist-dim, the moment the skeleton trains.
   certification tier is only worth its measurement because
   agreement is emergent, never optimized — flip_rate's loss-never
   entry in the diagnostic register is the fence that keeps it so.
+
+- **THE PUNCTUATION REGISTRATION + THE UNIQUE-READING AUDIT
+  (2026-08-02, Bryce's gut: punctuation changes meaning):** the
+  direct hit is a HOLE in machinery that just shipped — the
+  licensed table's verification is numbers-in-text-exact plus the
+  tokenizer digit pin; both check that QUANTITIES survive
+  rendering, neither that RELATIONS do, and punctuation is where
+  relations live ("the sum of a and b, less c" vs "...b less c" =
+  different graphs, identical digits). The solver's 50/50 verifies
+  the template's GRAPH, never its ENGLISH — an ambiguous template
+  would license cleanly and teach 41 rows of a wrong reading with
+  perfect gold behind it: **the poisoned-gold path the
+  augmentation program named as its one uncatchable failure mode,
+  arriving through the authoring door nobody watched.** THE RENT
+  PAID — the audit over all 41 v4 renderings (zero-GPU, fired on
+  registration): the scrutinized cases — (a) `less-than` "{c} is
+  {b} less than {a}": the numeral measure-phrase before "less
+  than" forces the subtractive reading; the comma variant that
+  would flip it ("c is b, less than a") is not in the rendering;
+  (b) `more-than` symmetric, same defense; (c) `rem-of` "The
+  remainder of a divided by k is b": "remainder of a" alone is
+  semantically incomplete (remainder demands a divisor), so the
+  attachment is forced; (d) `total` "{a} and {b} total {c}":
+  verb reading is the only complete parse; (e) `when-div`/
+  `when-rem`: the comma is present and load-bearing, and its
+  removal happens to preserve the graph; (f) all 12 symbolic/
+  LaTeX forms unambiguous by notation; every template ends with a
+  period — SENTENCE-FENCED, no cross-sentence attachment into
+  neighboring row text. **VERDICT: 41/41 unique-reading — the
+  risk is real-in-principle, empty-in-fact, the [428] singleton's
+  disposition; the table stands.** THE CLAUSE, banked to the check
+  spec as protocol (not triggered, standing): the unique-reading
+  audit rides the licensing of every future tranche — the slope
+  probe's ~80 pen entries get it at authoring — because ambiguity
+  is a licensing question NO SOLVER CHECK CAN ANSWER. THE CENSUS-
+  GRAIN FLAG, read while the file was open: the harvest phrasing
+  census's families are word-substring grains ("sum of", "total",
+  "more than") — NO punctuation dimension exists in the fixture;
+  punctuation-bearing forms are indistinguishable at the census's
+  grain. Flagged as subspace-spanning's FOURTH INSTANCE IF IT
+  HOLDS (the mint spanned letters-and-ordinals while phrasing
+  carried the transfer; the census may span word families while
+  punctuation carries a relation axis) — a candidate, not a claim;
+  docketed for the interps, not urgent.
