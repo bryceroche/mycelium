@@ -20243,3 +20243,33 @@ token-position × waist-dim, the moment the skeleton trains.
   through the books, the answer space, and rung 3 or the slope
   probe. All four leaves rest on measured numbers; none require
   hope.** The cold session has its page.
+
+- **THE GOODHART REGISTRATION + THE DIAGNOSTIC REGISTER (2026-08-02,
+  Bryce's gut, general form granted):** *monitoring signals must
+  remain decoupled from supervision* — the commitment family's
+  general law arriving over its three existing instances (self-loop
+  count, determination-at-breath-0, settle — all fenced "instrument,
+  never objective" at their docket entries). THE SHARPENING the
+  instances didn't state: supervising a diagnostic doesn't merely
+  break the metric — it teaches CONCEALMENT of the metric's referent,
+  strictly worse than no metric, because the pathology reads as cured
+  while it goes underground (the self-loop specimen: cleaner graphs
+  at identical binding accuracy; the one gold-free difficulty gauge
+  goes dark — not lost, LYING). THE LAW AS CARVED: any signal whose
+  informativeness depends on the model not optimizing for it is
+  structurally excluded from the training path, and the exclusion is
+  a FENCE IN CODE, not a convention in memory — conventions in memory
+  are precisely what the two-home sweeps keep finding broken. THE
+  RENT PAID: `mycelium/diagnostic_register.py` — five entries
+  (self_loop_count, determination_breath0, settle: never-tier;
+  vote_entropy, mouth_distance: loss-never with declared-selection
+  clause), each carrying its why; `assert_not_supervised()` for
+  training scripts, same assert-at-the-door pattern as doors.py;
+  smoke-tested (never-tier absolute, the selection flag cannot bypass
+  it). THE BOUNDARY, so the fence doesn't overreach: training on
+  OUTCOMES a diagnostic predicts is lawful (curing misbinding: yes;
+  a settle loss term: never; books wetting the register through real
+  data: the lawful outcome-path — the meter is never the target).
+  THE AUDIT QUESTION joins the deep-clean checklist: does any loss
+  term, reward, or selection criterion read a quantity named in
+  DIAGNOSTICS?
