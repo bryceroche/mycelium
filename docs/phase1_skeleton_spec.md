@@ -20445,3 +20445,35 @@ token-position × waist-dim, the moment the skeleton trains.
   the probe's board line (BOARD.md updated: the stale tranche-2
   line replaced by the slope probe's current state). Fourth
   subspace-spanning instance docketed, not claimed.
+
+- **TWO WORDS ON THE SMALL ITEMS (2026-08-02, Bryce; the sheet's
+  structural note banked beside them):** (1) **THE PER-ITEM
+  CLOSEOUT FIRES TONIGHT** — the mul prediction was pinned blind
+  before the burn, and an unread blind prediction is a bar that
+  never got to fire; leaving it unread indefinitely is how a
+  pinned call quietly becomes a void one. Instrument:
+  scripts/flip_peritem.py — same seeds as the corrected flip
+  (REPRODUCTION CHECK pinned: per-ckpt flip/stable/uncounted must
+  match .cache/flip_corrected.json exactly or no read fires),
+  SUPPORT FLOOR pinned (mul-vs-pct reads only at n>=15 both
+  cells; below floor the prediction closes UNREADABLE-AT-SUPPORT
+  — closed, not void), family tags at the census's word-substring
+  grain with the punctuation-blindness scope line riding the
+  verdict. Banks per-item records (family tags + slot emission
+  per view) — the concentration re-cut comes free. (2) **THE
+  AXIS-TAG RIDER RULED YES** — the AUG fire paid this lesson once
+  (phase B banked aggregates; the concentration re-cut needed a
+  second pass); slope-probe entries tagged by axis at authoring
+  so a bend decomposes for free instead of costing an arm.
+  Board line updated (design pin 3). (3) THE SHEET'S STRUCTURAL
+  NOTE, banked for the cold session: **leaf D isn't a leaf — A/B/C
+  are claims, D is a schedule.** The real decision is two
+  questions: what claim is true today and shippable (A is the only
+  honest answer), and which road gets the next resources. Framing
+  as four leaves invites choosing between a claim and a plan —
+  different objects. And the answer-space word is the one to think
+  hardest about: 147 problems outweighs every other road combined,
+  it alone changes what the transfer can CARRY, and it is a
+  dialect generation — the board's most expensive item, which is
+  exactly why it deserves the cold session rather than a tired
+  yes.
