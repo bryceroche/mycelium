@@ -34,7 +34,11 @@ n=978 — second look docketed). Unfenced: 56% @ 0.53.
    entries, one pen tranche) — ties = mechanism ceiling, money
    unspent; bends = the 10× table is measured. NOT bought yet.
 3. **Answer-space extension**: moves the ceiling more than any diet
-   (147 problems); spec-first + retroactive read; unworded.
+   (147 problems); spec-first + retroactive read; unworded. **The
+   transfer clause (2026-08-02): the mouth is the campaign's
+   intermodal point (step curve = a transfer at capacity), and this
+   is the only road that changes what the transfer can CARRY rather
+   than improving what queues on either side — weight accordingly.**
 4. **Rung 3 (interior)**: four customers, brief at position, formula
    measured twice, horizon unknown. Word follows THIS session.
 5. **Trained grading head**: a training bet after four nulls; prices

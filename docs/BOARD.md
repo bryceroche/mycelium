@@ -59,7 +59,7 @@ inner chain 9% coverage @ 0.63; unfenced 56% @ 0.53.
 
 | Duty | Cadence |
 |---|---|
-| Deep clean (apparatus audit; one-door sweep in scope) | chapter boundaries (gen-weights → main syncs) |
+| Deep clean (apparatus audit; one-door sweep in scope; GOODHART AUDIT: any loss/reward/selection reading DIAGNOSTICS? + register COMPLETENESS: any diagnostic born since last clean unregistered?) | chapter boundaries (gen-weights → main syncs) |
 | Standing rehearsal, both tiers | every generation + every diet (rides entourage) |
 | Entourage (specialist/centroids/mouth/panel + re-hash) | every promotion, before the gate reads |
 | Registry re-audition (certificate pile) | every promotion |

@@ -83,6 +83,69 @@ DIAGNOSTICS = {
             "instrument maintenance, not supervision."
         ),
     },
+    # --- registered 2026-08-02, the completeness pass (Bryce named all
+    # five; whys quote their ledger definition entries) ---
+    "engagement_point": {
+        "coupling": "never",
+        "why": (
+            "The parse-side engagement read (the pawl's click): the "
+            "last prefix index at which the arg-pointer argmax "
+            "changes. Its value is that early engagement is a TELL — "
+            "the pointer settling on a distractor before the operand's "
+            "token arrives. A loss pushing engagement later would "
+            "produce deliberate-LOOKING pointers at identical binding "
+            "accuracy; distractor-load's live pre-certification signal "
+            "goes dark. (Rung 2's reversible-commitment work changes "
+            "the ARCHITECTURE the meter reads — lawful; the meter as "
+            "target — never.)"
+        ),
+    },
+    "ramp_preservation": {
+        "coupling": "never",
+        "why": (
+            "Layer-separation, live — a KILL criterion: polarization "
+            "is a spendable pretrained asset, and a loop that eats "
+            "its own ramp should be killed for it. As a loss term it "
+            "would buy surface layer-separation with no guarantee the "
+            "anatomy underneath still functions — a kill-switch that "
+            "can no longer fire is worse than none."
+        ),
+    },
+    "thermometer": {
+        "coupling": "never",
+        "why": (
+            "Effective-alpha, per-breath state-delta magnitude — the "
+            "telemetry law's temperature channel; failure arrives "
+            "with its temperature attached. Supervising toward a "
+            "target update magnitude masks instability instead of "
+            "curing it, and the fire's black box goes silent exactly "
+            "when it's needed."
+        ),
+    },
+    "flip_rate": {
+        "coupling": "loss-never",
+        "why": (
+            "The band-width meter (binding invariance across phrasing "
+            "transforms). A paraphrase-consistency loss would optimize "
+            "the read directly — views agreeing because trained-to-"
+            "agree, which poisons BOTH the flip instrument and the "
+            "5-view vote whose quorum assumes views are independent "
+            "evidence. Lawful outcome-path: augmentation diets through "
+            "real data (the AUG fire); lawful selection: choosing "
+            "which families need diet from measured flips (declared)."
+        ),
+    },
+    "distance_screen": {
+        "coupling": "never",
+        "why": (
+            "First-use distance past the passing p90 — chartered as "
+            "'flagged on the sheet for scrutiny, NEVER judged by the "
+            "flag' (the dead mechanism's lawful ghost). Training or "
+            "selecting against it makes first-use distances look "
+            "small — camouflage — and quietly promotes the flag from "
+            "scrutiny-router to judge, which its own charter forbids."
+        ),
+    },
 }
 
 

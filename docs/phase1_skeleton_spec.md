@@ -20273,3 +20273,68 @@ token-position × waist-dim, the moment the skeleton trains.
   THE AUDIT QUESTION joins the deep-clean checklist: does any loss
   term, reward, or selection criterion read a quantity named in
   DIAGNOSTICS?
+
+- **THE REGISTER'S COMPLETENESS PASS + THE TWO-TIER PRINCIPLE
+  CARVED (2026-08-02, Bryce's countersign):** the design principle
+  the countersign named, banked as the fence family's own law: **a
+  fence that forbids lawful uses gets routed around rather than
+  obeyed** — an absolute ban would have been WRONG for vote_entropy
+  (temperature⊥truth sanctions rehearsal-targeting) and
+  mouth_distance (books wetting the register is the lawful
+  outcome-path); the allow_selection declaration doesn't prevent
+  the use, it makes the use STATED — the same principle as
+  certify_unique's explicit budget argument: **visible divergent
+  policy beats silent uniformity.** And the loud AssertionError
+  carrying the full why is what survives a stranger — a bare
+  assertion inconveniences the reasonable-looking hand; one that
+  explains stops it. THE COMPLETENESS PASS EXECUTED (Bryce named
+  all five; whys quote their ledger definitions): engagement_point
+  (the pawl's click — early engagement is the tell; never),
+  ramp_preservation (a kill-switch that can't fire is worse than
+  none; never), thermometer (supervise toward a target magnitude
+  and the black box goes silent when needed; never),
+  distance_screen (chartered flagged-never-judged; training
+  against it promotes the flag to judge; never), flip_rate (a
+  paraphrase-consistency loss poisons BOTH the flip instrument AND
+  the 5-view vote whose quorum assumes independent evidence;
+  loss-never, diets lawful). **The register stands at 10 —
+  7 never-tier, 3 loss-never — all fence edges smoke-tested.**
+  THE STANDING DUTY: the deep-clean checklist gains both questions
+  (BOARD.md) — the GOODHART AUDIT (any loss/reward/selection
+  reading DIAGNOSTICS?) and register COMPLETENESS (any diagnostic
+  born since last clean unregistered?) — because the campaign
+  generates diagnostics faster than fences, and the register's own
+  coverage is now a thing that can drift.
+
+- **THE TRANSFER CLAUSE — #118'S FAILURE SURFACE NAMED (2026-08-02,
+  Bryce's gut: park-and-ride):** staged-I/O's third arrival in a
+  week (peripheral lot = staging buffer; the bus amortizes the
+  expensive last-mile transaction; the door opens twice, not 2N
+  times — #118 carries that). THE REGISTRATION'S REAL CONTENT is
+  the feature transit has that the kitchen didn't: **the
+  intermodal transfer point is where the mode changes, and it is
+  the system's only real failure surface** — no single mode is
+  good at both ends (cars scale at distance, buses at the venue),
+  and when throughput dies it dies AT THE TRANSFER: the whole
+  chain's capacity is the transfer's capacity regardless of lot
+  size or bus count. THE MEASURED INSTANCE the campaign never
+  named as a transfer problem: **the mouth is the campaign's
+  intermodal point** — wild text arrives in one mode (natural
+  language, unbounded surface), the chain runs in another (arith3,
+  licensed constructions), and the transfer refuses 98.4%/admits
+  1.6% on a STEP curve — a transfer at capacity: upstream fine,
+  downstream fine, system throughput = transfer throughput. The
+  December coverage term IS this number. THE PREDICTION the roads
+  don't state: **you don't fix a saturated transfer by improving
+  either mode** — books better the downstream, augmentation makes
+  the upstream more legible, neither widens the transfer if its
+  constraint is structural (the step shape is what a hard transfer
+  constraint looks like: closed or open, no intermediate rate).
+  THE IMPLICATION, flagged for the framing session: the
+  ANSWER-SPACE road is the only listed road that changes what the
+  transfer can CARRY rather than improving what queues on either
+  side — a reason to weight it above the sheet's ordering. THE
+  FENCE: an "intermodal terminal" component would be a triage head
+  by another name — docketed, priced, waiting on the December
+  claim; this registration doesn't unword it. Registered in the
+  exchange family as #118's transfer clause.
