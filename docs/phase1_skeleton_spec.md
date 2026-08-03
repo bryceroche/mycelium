@@ -21495,3 +21495,20 @@ token-position × waist-dim, the moment the skeleton trains.
   the wrong. The mouth remains what the ledger says it is: a
   REGISTER instrument — it knows what's foreign, not how foreign
   wrongness will be.
+
+- **LANDMINE #3 — BUDGET COUNTS DECISIONS, NOT WORK (2026-08-03,
+  the second stuck bars read):** parse_solve hung on decoded
+  graphs: a half-trained head emits GARBAGE parses, and under
+  signed ±10⁶ domains each search decision's propagation is
+  expensive — 5000 cheap decisions became 5000 slow ones; the
+  budget never fired because the budget counts DECISIONS and wide
+  domains repriced the decision. GUARD (instrument-side): per-row
+  wall-clock cap (10s, SIGALRM) in the bars read; **timeout counts
+  WRONG** — an answer the chain cannot produce in bounded time is
+  not an answer. THE CORE QUESTION DOCKETED, not changed unworded:
+  should solve budgets carry a work dimension (decisions × domain
+  width) — a jaw-semantics question for the bench, beside the
+  sentinel and the work cap as wide-domain landmine #3. The trio's
+  shape: the domain extension crossed one sentinel and two
+  complexity assumptions, all invisible at m=300, all found by
+  instruments. Bars relit (r3).
