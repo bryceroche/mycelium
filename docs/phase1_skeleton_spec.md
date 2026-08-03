@@ -21712,3 +21712,20 @@ token-position × waist-dim, the moment the skeleton trains.
   terminals, and tokenizer windows; it is NOT an argument against
   composite diets (the two-lever law stands untouched). Filed in
   the exchange family: load balancing over time is scheduling.
+
+- **THE FIRST HONEST DISJOINT CENSUS SINCE GEN-13 (2026-08-03,
+  entourage-23 stage 6, the no-op fixed at its ruled venue):**
+  SKIP_IDX derived mechanically (census-pool ∩ trained-verbatim
+  via sha∩gen23_mix; filter verified identical to gen11's own
+  pool): **n=86 (skipped 14): banked 2 / near 36 / knotted 48.**
+  The comparison that matters: the mislabeled full-pool read said
+  "banked 16" — **14 of those 16 were trained-verbatim items; the
+  honestly-disjoint banked count is 2.** The corrected-key story
+  arrives at the census grain: what looked like organ-banked
+  competence on the measurement fixture was overwhelmingly
+  memorized text. Every past entourage's "disjoint census" line
+  inherits this scope (the audit's scope lines already cover
+  13-22; this is the first clean read of the series and the new
+  baseline for the books road's census claims). Entourage stage 7
+  gains the waived member-votes as a pre-step (lattice_gen23_H
+  minted in-line).
