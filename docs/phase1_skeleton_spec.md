@@ -21321,3 +21321,16 @@ token-position × waist-dim, the moment the skeleton trains.
   dose declaration in hand** — the standing word carried the chain
   through the smokes; a training fire gets its own word, per the
   law that has never bent.
+
+- **THE DOSE LAW'S PER-TERMINAL EXTENSION (2026-08-03, Bryce's
+  rider for the gen-23 declaration):** the sign and wide-digit
+  pathways are NEW TERMINALS WITH NO TRAINED HISTORY — the
+  attention-bootstrap principle's exact condition. Therefore the
+  dose declaration is not just share-of-mix + reps: it is
+  **share-of-mix PER NEW TERMINAL** — rows exercising the sign
+  head and rows exercising digits 4-7 counted separately. A dose
+  satisfying the aggregate while starving one terminal produces a
+  head that emits sign confidently and wide digits never, or the
+  reverse; the two-terminal law says both feeds or the grad is
+  None where it matters. Binding on the gen-23 declaration and
+  every terminal-adding generation after.
