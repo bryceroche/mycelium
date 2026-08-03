@@ -20814,3 +20814,31 @@ token-position × waist-dim, the moment the skeleton trains.
   Standing build order noted: the canonicalizer (#69, bars pinned,
   false-merge = 0) remains the next-CPU-gap build — within-level
   canonicalization is tower work that no sequencing blocks.
+
+- **THE CONSUMER AUDIT LANDS — BOOKS SCALE SAFE; A SECOND BUG FOUND
+  (2026-08-02; report: docs/CONSUMER_AUDIT_2026_08_02.md; the
+  framing-session gate is now OPEN):** the highest-stakes answer
+  first: **the BOOKS SCALE verdict does NOT inherit the bad key** —
+  the disjoint-86 census family runs on gen11_census.py's SKIP_IDX,
+  confirmed correctly populated ("n=86 skipped 14") in all four run
+  logs; the paper's citations stand untouched. THE NEW BUG: **the
+  entourage CENSUS_DISJOINT no-op** — entourage14→22 pass an env var
+  gen11_census.py never reads; every entourage "disjoint census"
+  print since gen-13 was a silent full-100-pool read (logs confirm
+  "skipped 0" seven times). The discipline regression is the finding
+  inside the finding: entourage-13/14 banked honest full-pool
+  caveats; entourage-16 dropped the caveat; 20/21/22 state the
+  number flatly. Filed in the stale-key family. SCOPE LINES: the
+  cold-start doc corrected in place + the 08-02 seal prepended; the
+  audit report carries the per-entry scope lines for the three
+  ledger locations (~17896: MIXED verdict STANDS, DISJOINT column
+  void; ~19747: superseded — widened the glob, kept the wrong
+  concept; ~10525/~17750: mislabeled full-pool). WHAT STANDS
+  UNCORRECTED, deliberately: the pooled 0.63 (sound number, struck
+  interpretation), the lanes' candidate-exclusion logic (its own
+  question, sound), every tier-only consumer. DOCKETS: the
+  consumption sidecar (pattern live in census_altitude_prep.py);
+  entourage census semantics decided at the NEXT entourage, never
+  mid-campaign silently. **The resequenced path advances: the audit
+  gate is cleared; Bryce's hand is next, twice — the tighten pass,
+  then the fifty.**

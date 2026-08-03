@@ -1,3 +1,39 @@
+## SEAL 2026-08-02 — THE CORRECTED CUT rewrote December; the census is the CRITICAL PATH; Bryce's hand owed twice
+
+**THE NIGHT'S FINDING (three scrutiny layers deep):** the wild ledger's
+`consumed` flag keyed the WAITING ROOM (candidates glob, book7/8-era
+files), never the training record. THE TRUE KEY = sha ∩ gen22_mix text
+(mix rows carry SOURCE PROSE VERBATIM). Corrected: answered 124 =
+**TRAINED-VERBATIM 81 @ 0.951 + NEVER-TRAINED 43 @ 0.023** (0/27
+in-reach; 457/1404 of the fixture is training text). **LEAF B STRUCK**
+(ruled) — open admission ships ~all lies; leaf A untouched (the mouth's
+wall). 0.023 second-look done: keeps predictor status (scope: algebra-
+slice, n=43); 0.951 = prose-PLUS-GRAPH memorization (books 5-6 + gen-10
+prose lane; book7/8 NOT in deployed mix — next book deployment IS the
+generalization measurement).
+
+**THE STANDING ORDER (resequenced):** ~~consumer audit~~ DONE (report:
+docs/CONSUMER_AUDIT_2026_08_02.md — BOOKS SCALE SAFE via SKIP_IDX;
+scope lines applied; NEW BUG: entourage CENSUS_DISJOINT is a NO-OP
+since gen-13, all entourage 'disjoint census' prints were full-pool
+reads) → **Bryce's TIGHTEN PASS** (spec before specimens, #69's law) →
+**THE FIFTY VERDICTS** (docs/ALTITUDE_CENSUS_SHEET.md — 46 wild lies
+cut with graphs attached; 42/46 never-trained; schema|assembly per
+specimen) → **THE FRAMING SESSION READS THE CENSUS** (mass at schema →
+the tower's 3rd floor is the road, #123 measured; at assembly → rung 3
+interior). Sheet: docs/DECEMBER_FRAMING.md (corrected).
+
+**ALSO TONIGHT:** the diagnostic register built (#120 Goodhart,
+mycelium/diagnostic_register.py, 10 entries, 2 tiers); #121 transfer
+clause (falsifier: mouth-native coverage ON THE HARVEST, composition-
+checked); #122 punctuation (41/41 unique-reading; alphabet-exclusion
+clause; probe pins ×3 incl. axis tags); #123 SEVEN-FLOOR TOWER
+registered (breathing→rung 3 R2; seven=prior/prediction); AUG fire
+ledger closed complete (emission=EXCHANGE not purchase; mul prediction
+closed UNREADABLE-AT-SUPPORT, pct n=0); import-write sweep (7 live
+bypasses named, guard fix docketed); five-Lucys carving; canonicalizer
+(#69, bars pinned) = standing next-CPU-gap build. Guts at 123.
+
 ## SEAL 2026-08-01b — AUG FIRE burned; verdicts: phase A scoped, phase B UNREAD (instrument invalid); THE CORRECTED FLIP READ is the fresh hand's first work
 
 **FIRST WORK: the arm-vs-arm flip instrument** (ledger entry "PHASE B
@@ -36,7 +72,10 @@ audit table, not prestige); settle = basin residency (0.834/0.997
 in-register sentence-grain; 0.620 anchored-token; jurisdiction:
 in-register + shallow; frontier GATED-ON-ANCHOR — rung 3's second
 customer). CORRECTED NUMBERS: dup baseline ~64% (parseability split);
-DISJOINT precision 0.75 (n=978, favorable — second-look docketed);
+DISJOINT precision 0.75 — **DEAD (2026-08-02): keyed on the
+candidates waiting-room glob, not the deployed mix; corrected cut:
+81/124 answered TRAINED-VERBATIM @ 0.951, 43 NEVER-TRAINED @ 0.023
+(sha ∩ gen22_mix) — see the 08-02 seal above**;
 census sub 28-30%. g22 the gate; g23 arms banked unpromoted
 (surface-local, refusal-for-now). Guts at 116, three-for-three on
 audit calls.
