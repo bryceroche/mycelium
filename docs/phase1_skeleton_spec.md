@@ -21388,3 +21388,19 @@ token-position × waist-dim, the moment the skeleton trains.
   verdict script prints PROMOTED and writes the manifest in one
   atomic act** — the law that has never bent, not bending tonight
   either.
+
+- **THE RELIGHT ×2 — TWO LAWS ENFORCED THEMSELVES, THEN THE BURN
+  (2026-08-03):** relight 1: the padwarm assert caught **h_dig2**
+  (the gen-15 OP_APPLY second digit bank needs the same MSD-aligned
+  map — the eval-load hard-error discipline paying at build time);
+  prep made idempotent (the 86GB copy + sentinels survive
+  relights). Relight 2: **the two-terminal law enforced itself at
+  the optimizer** — h_sgn left the training graph (the do_train
+  gold-buffer spec lacked "sign"; the loss's guard silently skipped
+  the term) and tinygrad's unwrap-on-None-grad REFUSED the step —
+  the exact failure mode the gen-15 comment in that very function
+  warns about, now with its E1 sibling added beside it. Both fixes
+  one-screen; both caught by asserts that were already law.
+  **GEN-23 BURNS (unit gen23-fire-r3): warm 40/40, step-0 loss
+  4.02, 4×4k at LR 1e-4.** The battery/entourage/verdict follow
+  the burn; g22 the gate throughout.
