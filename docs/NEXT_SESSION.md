@@ -6,9 +6,10 @@ manifest: **wide_not_claimed=true** (E3 trained, 0/40, the
 compounding-digit wall — per-digit ~90% compounds over 7 positions;
 May's per-number-not-per-digit law vindicated). CLAIMED: E1 sign —
 96.7% vs old 94.2% fresh held-out; bigtest 1238 (above g22's 1226);
-all 7 standing fixtures green. **ENTOURAGE-23 waiver explicit until it
-settles** (unit lit 08-03; specialist/centroids/mouth/panel are
-gen-22's meanwhile — CHECK ITS LOG FIRST: .cache/entourage23.log).
+all 7 standing fixtures green. **ENTOURAGE-23 SETTLED** (08-03: all 10 stages; waiver CLEARED —
+specialist/centroids/mouth/panel are gen-23's; honest census banked
+2/86; dissent stable n=2; DEPLOYED wild forty mouth_refused 40/40 —
+the zero-point holds under the new gate).
 December ceiling 197→215 PENDING the m500 re-cut under the new scope
 (first zero-GPU read owed). THE ROADS: copy-not-generate at the bench
 (wide's cure; the trace layer already verifies literals-in-text);

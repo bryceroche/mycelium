@@ -21729,3 +21729,25 @@ token-position × waist-dim, the moment the skeleton trains.
   baseline for the books road's census claims). Entourage stage 7
   gains the waived member-votes as a pre-step (lattice_gen23_H
   minted in-line).
+
+- **ENTOURAGE-23 SETTLED — THE ESTATE COMPLETE, THE WAIVER CLEARS
+  (2026-08-03; six relights across fire+bars+entourage, every one a
+  named lesson):** the ten stages' yields: specialist remined
+  (1,062 organic failures, purity-filtered) · centroids re-anchored
+  in g23 fst space (all 9 kinds) · mouth rebuilt (thr 0.0154) ·
+  **the first honest disjoint census since gen-13 (banked 2/86)** ·
+  member votes minted (lattice_gen23_H) · **dissent overlap gen-21:
+  2, gen-22: 2, overlap 1 — the STABLE structural dissent family,
+  the standing n=2 pattern holding across a THIRD generation** ·
+  collapse re-read: THE INVERSION PRINTS AGAIN (knots bind tighter
+  than keys in the head; the bottleneck lives in the head —
+  dashboard accrual consistent) · manifest refreshed + re-hashed
+  atomically (specialist/centroids/mouth now gen-23's; the
+  entourage waiver CLEARED) · **THE STANDING REHEARSAL (outside
+  air): DEPLOYED mouth_refused 40/40 — the December zero-point
+  HOLDS under the new gate**; stress tier abstain 23 / blocked 2 /
+  tripped 14 / certified_lie 1 (idx 5, the g22-era level — no
+  regression outside). **GEN-23 STANDS FULLY ATTRIBUTED: the gate,
+  its specialist, its centroids, its mouth, its panel lattice, its
+  scope field, its hashes — one generation, one manifest, zero
+  loose ends.** CHAPTER BOUNDARY: gen-weights syncs to main.
