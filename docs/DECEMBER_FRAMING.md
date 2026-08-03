@@ -16,8 +16,13 @@ local; its retroactive read is defined (addressability per candidate).
 
 **COVERAGE × PRECISION** (wild ledger, n=1404 harvest-proxy):
 mouth-native 1.6% → deployed answers ~nothing at 1.00. Inner chain
-(mouth-bypassed): 9% coverage @ 0.63 (disjoint corrected: 0.75,
-n=978 — second look docketed). Unfenced: 56% @ 0.53.
+(mouth-bypassed): 9% coverage @ 0.63 — **which decomposes (second
+look, 2026-08-02): 0.75 on text books never touched, 0.00 on
+consumed text (0/20, custody-checked).** Autopsy docketed
+(selection vs familiarity-without-competence); if the latter,
+widening admission toward the trained register imports the
+worst-precision class first — read beside the transfer clause.
+Unfenced: 56% @ 0.53.
 
 **TWO STRUCTURAL BINARIES** (both measured, not assumed):
 - TIER: no signal grades the answered — 4 cheap axes null; settle

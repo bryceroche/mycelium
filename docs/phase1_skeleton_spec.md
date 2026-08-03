@@ -20544,3 +20544,48 @@ token-position × waist-dim, the moment the skeleton trains.
   un-worded surgery at midnight. The mul-prediction re-host note
   filed: the factory panel's pct fixtures are the natural fixture
   if the prediction ever deserves its re-read.
+
+- **THE MTIME CARVING (2026-08-02, Bryce):** the import-write harm
+  even when bytes are identical — **the artifact's timestamp lies**:
+  it says "last computed when the importer ran," not "computed when
+  the instrument was registered." Provenance reconstructed from
+  mtime dates the artifact wrong; imports quietly rewrite the
+  record's chronology. Filed with the sweep family; a named bypass
+  on a deep-clean line is safe, an unnamed one is the next revenant.
+
+- **THE DISJOINT SECOND LOOK FIRES — PINNED VERDICT + AN UNPINNED
+  FINDING THAT OUTRANKS IT (2026-08-02; frames pinned before the
+  number):** the docketed question (is disjoint 0.75 vs pooled 0.63
+  composition?) closes **UNREADABLE-AT-SUPPORT at the level-stratum
+  grain** — no stratum holds n>=10 both cells (consumed answered are
+  all L1-3; L4/L5 consumed n=0). Level mix and length medians banked
+  (disjoint 119ch vs consumed 78ch). **THE UNPINNED FINDING, stated
+  as fact and held apart from any mechanism claim: consumed answered
+  items are 0 FOR 20.** Not low — zero, including 0/6 at Level 1
+  where disjoint runs 0.962. Binomial note: at pooled 0.63 true
+  precision, P(0/20) ~ 2e-9 — the aggregate is not noise even though
+  every stratum is below claim floor. CUSTODY CHECKED FIRST (the
+  gold-join defect would fake exactly this): 3/3 eyeballed consumed
+  items' ledger gold MATCHES harvest answers exactly — the join is
+  clean; the finding is real. The decomposition, factual: **the
+  inner chain's 0.63 pooled precision = 0.75 on text books never
+  touched + 0.00 on text they consumed.** TWO HYPOTHESES REGISTERED,
+  neither claimed: (a) ADVERSE SELECTION — consumption correlates
+  with selected-for-annotation properties (the eyeballed 3 are
+  quadratics/factoring — math beyond arith3's dialect); (b)
+  FAMILIARITY WITHOUT COMPETENCE — book training on rewritten
+  cousins taught the gate to parse-and-answer surfaces resembling
+  the originals whose actual math is out-of-dialect: consumption
+  manufactures confident wrong answers on its own source text. THE
+  AUTOPSY DOCKETED with its discriminator pinned: cross the 20
+  text_shas against book lane records (which books, which lanes,
+  what the annotated rewrites look like vs the originals); (b)
+  predicts the wild originals parse into WRONG-but-solvable graphs
+  whose surfaces echo book rows. DECEMBER RELEVANCE, conditional
+  and flagged for the framing session: IF (b) holds, widening the
+  mouth toward the trained register imports the worst-precision
+  class FIRST (the first-admitted items are book-cousins — the
+  0/20 class), which bears directly on leaf B's pricing and rides
+  the transfer-clause experiment's same fixture. The deployed
+  chain is NOT emitting these today — all 20 are mouth-foreign,
+  behind the wall; this is actuarial, not an emergency.

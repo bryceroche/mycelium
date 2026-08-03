@@ -53,6 +53,7 @@ inner chain 9% coverage @ 0.63; unfenced 56% @ 0.53.
 | permuted_view <=3-sentence collapse (landmine, not live; min observed 4) | bench | fix rides the next vote-semantics window — never mid-campaign silently | 2026-07-30 |
 | ~~Wild-exposure re-sizing by template~~ CLOSED OBE 2026-07-31: the failing template is CURED (d1 7/8, basin gone) and chained-fdiv RELEASED — the sizing question is moot | — | — | 2026-07-31 |
 | Silhouette-triage spec (spec-first ruling; funnel region ledger §13) | bench | spec unwritten; no convention gates before spec + retro read | 2026-07-29 |
+| **THE 0/20 AUTOPSY** (disjoint second look 2026-08-02): consumed answered = 0/20 (custody-checked); cross the 20 text_shas vs book lanes; discriminate adverse-selection vs familiarity-without-competence; December-relevant if (b) | bench | zero-GPU cross-reference; frames pinned in ledger | 2026-08-02 |
 | Criterion rebuild | bench | queued | 2026-07-29 |
 
 ## Standing duties (recur, never close)
