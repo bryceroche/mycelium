@@ -20,6 +20,13 @@ level — the December-relevant population. 42/46 never-trained.
 Mass at schema → the missing floor (NL → schema → arith3) pays.
 Mass at assembly → the single lowering stands; the binder is the work.
 
+**Rider for the reading (2026-08-03, the canonicalizer's finding):**
+paraphrase-invariance exists PERFECTLY at the IR level (cross-register
+knot-twins merge exactly; bar-passed 0 false merges on 35,876) and
+fails at the parse level — the invariance the campaign wants is
+already a property of the representation; what's missing is a parser
+that reaches it. Read the fifty with that localization in hand.
+
 | # | strata | level |
 |---|---|---|
 | 00 | never-trained | Level 5 |

@@ -20998,3 +20998,34 @@ token-position × waist-dim, the moment the skeleton trains.
   identically?) rides the next GPU window. CAMBIUM's ring-tidying
   is BUILT and BARRED; the monoculture fence's finest-grain
   instrument exists.
+
+- **THE LOCALIZATION ARGUMENT + THE FUNNEL NAMED + TWO COMPANIONS
+  (2026-08-03, Bryce's countersign on the canonicalizer):** THE
+  ARGUMENT, banked to ride into the census's reading: the
+  cross-register knot-twin merges prove **paraphrase-invariance
+  exists PERFECTLY at the IR level and fails at the parse level —
+  the invariance the campaign wants is already a property of the
+  representation; what's missing is a parser that reaches it.**
+  The surface problem is thereby LOCALIZED in the canonicalizer's
+  own output: the graph doesn't care about surface (polygon-140° ≡
+  a=36÷4, identity exact); the gate does (the band). An argument
+  for the schema floor stated by an instrument, not a conviction —
+  it rides the census sheet. THE FUNNEL, stated in Tishby's terms
+  (v38-IB lineage acknowledged): the chain is an
+  information-bottleneck CASCADE — surface → trunk → 512d waist →
+  graph → canonical knot (the minimal sufficient statistic). The
+  canonicalizer certified the funnel's BOTTOM exact; the
+  surface-band law and the 0.02 say the LEARNED middle keeps too
+  much surface mutual information (memorization = a surface code
+  surviving compression). The two jaws are the grouper's:
+  oral jaws capture (construction), PHARYNGEAL jaws crush
+  (solving, primitives only), the canonicalizer at the throat.
+  COMPANION SWEEP QUESTION carved (the one-door lesson's
+  prospective form, paid twice with receipts): **before building
+  an instrument — does one exist whose job this already is?** The
+  pre-build authority check joins standing practice. ORPHAN
+  PRIORITY: parser_layer_read FIRST (its registration = the
+  layer-axis probe, feeding composability — adjacent to the
+  census on the critical path); burial is a legitimate outcome
+  for any orphan whose artifact can't be interpreted after the
+  fact.
