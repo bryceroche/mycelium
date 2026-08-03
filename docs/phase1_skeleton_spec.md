@@ -20729,3 +20729,34 @@ token-position × waist-dim, the moment the skeleton trains.
   reconstruction-bias rule requires the grep, and this time the
   grep found the ledger AHEAD of the conversation). Sequencing
   unchanged: consumer audit → framing session → these.
+
+- **REGISTRY HOUSEKEEPING + GUT #123 REGISTERED — THE SEVEN-FLOOR
+  TOWER (2026-08-02):** housekeeping first: tonight's three earlier
+  guts take their numbers — **#120 Goodhart** (monitoring⊥
+  supervision; the diagnostic register built), **#121 park-and-ride**
+  (the transfer clause; mouth as intermodal point), **#122
+  punctuation** (the unique-reading audit; alphabet-exclusion
+  clause) — all fully registered by content above, numbered here.
+  **GUT #123, verbatim: "100% convinced we need breathing loops not
+  a single pass... we need ~7 steps for TRUE MLIR."** DISPOSITION,
+  two halves handled differently: (1) the BREATHING half is the
+  commitment family's FOURTH arrival on the parse side — recorded
+  at full conviction intensity; its lawful home stays rung 3's R2
+  (reversible commitments; the engagement-point pawl is the
+  measured case), where the brief already holds a formula; no new
+  item. (2) the SEVEN half is a PRIOR, not a measurement — banked
+  as the gut's PREDICTION: the tower's eventual measured depth is
+  ~7 floors (vs today's 2 and the census-gated 3rd). The floors
+  enter ONE AT A TIME by measurement (the error-altitude census
+  gates floor one; the recursion charter's cadence gates the rest
+  — one floor per book, each paying rent). The prediction is
+  checkable wherever the tower stops growing: if it stops at 3-4,
+  the gut overcalled; if the census keeps finding mass one floor
+  down, seven becomes the record's number, not the gut's. Two-
+  silhouette clarification banked with it: the WAIST is the
+  silhouette of the DANCE (monitor centroids, fst space, kind
+  recognition — rotates per gen, re-anchored); the TRUNK is the
+  silhouette of the DANCER AT THE DOOR (mouth, frozen input space
+  — admission must precede the parse it fences). Both real,
+  different organs; the July silhouette findings and the mouth
+  design were never in conflict.
