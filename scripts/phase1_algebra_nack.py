@@ -115,6 +115,8 @@ def forward_cond(p, c, trunk, tokmask, sent, flag_tok, fail_bit, field_flags):
            if "h_dup" in p else {}),   # gen-9: same None-grad family as sel
         "islit": (fst @ p["h_islit"] + p["h_islit_b"]).squeeze(-1),
         "dig": (fst @ p["h_dig"] + p["h_dig_b"]).reshape(B, L_FAC, N_DIG, 10),
+        **({"sgn": (fst @ p["h_sgn"] + p["h_sgn_b"]).squeeze(-1)}
+           if "h_sgn" in p else {}),   # E1: same None-grad family, FIFTH den
         **({"dig2": (fst @ p["h_dig2"] + p["h_dig2_b"])
             .reshape(B, L_FAC, N_DIG, 10),
             "y": ptr(p["W_y"])}
