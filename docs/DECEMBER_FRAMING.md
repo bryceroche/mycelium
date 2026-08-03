@@ -111,6 +111,10 @@ constituency the in-register pathologies + the CAMBIUM notebook.
   4. **Knowledge/macros** — 39% of lies are domain identities (Vieta,
      degree rules, logs): the recursion charter's macro road, priced
      honestly as the longest.
-Slope probe: unchanged, its own word. Scope lines: census reads lie
-composition (not refusal composition); pen-judged, per-specimen
-reasons banked for countersign.
+Slope probe: unchanged, its own word. **SCOPE LINE, LOUD (Bryce's
+countersign): the census read LIE composition only — the 46 are what
+got through and was wrong. The schema floor's full constituency
+includes everything the mouth refused (98.4% of the harvest),
+UNMEASURED on this axis; if the floor's value depends on converting
+refusals to answers, that number is not in evidence.** Pen-judged,
+per-specimen reasons banked; COUNTERSIGNED 2026-08-03.

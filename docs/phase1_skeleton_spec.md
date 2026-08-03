@@ -21095,3 +21095,43 @@ token-position × waist-dim, the moment the skeleton trains.
   refusals); tighten-pass deviation carried; pen-judged under the
   word. The critical path's two acts are DONE; what remains owed to
   Bryce: the COUNTERSIGN on the fifty and the ANSWER-SPACE WORD.
+
+- **THE COUNTERSIGN ON THE CENSUS + THE ANSWER-SPACE WORD GIVEN
+  (2026-08-03, Bryce):** the fifty COUNTERSIGNED — [42] confirmed
+  as the schema floor's poster ("extraction failing on a graph the
+  system could have represented perfectly"); [33]'s RARITY
+  confirmed as the finding (one query-binding slip in forty-six —
+  the binder's frontier constituency measured nearly empty; rung-3-
+  as-research vindicated); the four-category amendment credited
+  (the original binary would have produced a confident wrong
+  reading — paid for itself on first contact). THE SCOPE LINE
+  ORDERED LOUDER, and it is now stamped wherever the floor's word
+  will come: **the census read LIE composition; the 46 are what got
+  through and was wrong; the schema floor's full constituency
+  includes everything the mouth refused — 98.4% of the harvest,
+  UNMEASURED on this axis. "Schema pays for 83% of in-dialect lies"
+  is true and it is a statement about a small population; if the
+  floor's value depends on converting refusals to answers, that
+  number is not in evidence yet.** THE ANSWER-SPACE WORD: **GIVEN**
+  — with spec-first discipline made explicit: negatives/non-
+  integers/non-unique each touch the solver's domain, the mint's
+  generators, the ≤300 cap (four construction choices deep), and
+  every banked gold; therefore **THE RETROACTIVE READ RUNS FIRST**
+  (addressability per candidate extension, ceiling gain measured
+  per option BEFORE any dialect generation). A-now-plus-D stands
+  countersigned: the campaign has its December answer, from
+  numbers.
+
+- **THE RETROACTIVE READ'S PINS (2026-08-03, before the read
+  prints):** baseline must REPRODUCE 197/500 from the standing
+  filters (integer answer in [0,300]; len<300; no asy; literals
+  ≤300) or no read fires. CANDIDATE EXTENSIONS, pinned: **E1 NEG**
+  = integer answers in [−300,300]; **E2 RAT** = rational answers
+  p/q, |p|,q ≤ 300 (incl. terminating decimals); **E3 BIG** =
+  integers |a| ≤ 10^6 + text literals ≤ 10^6 (digit-width
+  generation); **E4 RAD** = simple radical answers (a√b family);
+  **E5 LEN** = length cap 300→600 chars (a TRUNK/T_ALG lever, not
+  dialect — priced separately, never bundled). Read: per-extension
+  and stacked (E1 → E1+E2 → E1+E2+E3 → +E4), each with its M500
+  ceiling; asy always excluded. The read prices OPTIONS; the spec
+  chooses; the mint generates — in that order.
