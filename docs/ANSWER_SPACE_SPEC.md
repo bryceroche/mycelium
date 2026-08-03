@@ -30,11 +30,23 @@ arithmetic in the core; that is why E2 is its own generation.)
   −7+2=−5 natively) but **GAC does not prune signed domains — the
   registry/propagator layer enumerates [0,m] only**, so ban-and-
   resolve dies at budget and the uniqueness gate correctly REFUSES
-  to certify. E1's true price is sign-aware pruning in the
-  propagator layer (bounds/arithmetic path, not semantics — the
-  crush rule is intact; what needs work is the pruning table's
-  reach). This is the next build item; no signed row mints until
-  uniqueness certifies.
+  to certify. E1's true price RELOCATED TWICE and
+  landed (2026-08-03, same session): not tables, not pruning logic —
+  **THE SENTINEL COLLISION**: UNASSIGNED was the integer −1, a
+  legitimate value under signed domains; arith3_pred read it as a
+  hole, so phantom support kept −1 alive through every GAC pass and
+  ban-and-resolve churned to budget. THE FIX: the sentinel moved out
+  of band (−2³¹ — outside every domain in every regime); numeric
+  identity changed, nothing else. THE BOUNDARY NOTE, as ordered:
+  this touched csp_core — THE JAW — and the change is to the data
+  model's sentinel identity, never to crush semantics; the one
+  `v < 0` site audited (a var-index guard, csp_core:584);
+  equivalence verified — 200 sampled gold rows behave IDENTICALLY
+  under both sentinels (189/200 both, same 11 harness-reconstruction
+  artifacts). BATTERY GREEN: signed uniqueness certifies in 0.01s;
+  wide+signed (987654−999999=−12345 @ m=10⁶) certifies in 0.14s;
+  **the collision value itself certifies (1−2=−1, unique)**. THE
+  GATE IS OPEN: signed rows can mint.
 - **mod/fdiv semantics fence:** constructions keep operands
   NON-NEGATIVE at mint (generator constraint), and predicates GUARD
   (reject negative operands into mod/fdiv — the k≤0-guard precedent

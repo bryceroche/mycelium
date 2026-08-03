@@ -54,7 +54,14 @@ from collections import deque
 from dataclasses import dataclass, field
 from typing import Any, Callable, Optional
 
-UNASSIGNED = -1
+# ANSWER_SPACE_SPEC E1 (2026-08-03): the sentinel moved OUT OF BAND.
+# -1 collided with legitimate negative values under signed domains (the
+# phantom-support specimen: GAC kept -1 alive because arith3_pred read
+# it as a hole). -2**31 lies outside every domain in every regime
+# (|m| <= 1e6), so the sentinel's numeric identity changes and NOTHING
+# else does; all `== UNASSIGNED` and index-guard `< 0` sites verified
+# (the only `v < 0` compares a VAR INDEX, csp_core:584).
+UNASSIGNED = -(2**31)
 
 
 # ===========================================================================

@@ -21241,3 +21241,31 @@ token-position × waist-dim, the moment the skeleton trains.
   wide-m already has a non-enumerative path — the likely template).
   The smoke did its job: two prices measured before a corpus
   existed.
+
+- **THE SIGNED PRUNING PATH — BUILT BY DELETION: THE SENTINEL
+  COLLISION (2026-08-03, the word given; the pre-build authority
+  check paid a fourth time):** the authority check found the
+  propagator ALREADY ARITHMETIC (pairwise-support GAC over
+  _arith3_apply — sign-correct natively; no tables to extend), which
+  relocated E1's price a second time, and the trace found the true
+  root: **UNASSIGNED = −1 — the hole sentinel was a legitimate
+  signed value.** The phantom-support specimen: no-ban GAC left c's
+  domain as {−5, −1} — the true value and the sentinel, which
+  arith3_pred reads as a hole (UNVIOLATED) so it survives every
+  support pass; under ban-and-resolve the phantom kept search alive
+  to budget. THE FIX IS ONE CONSTANT: UNASSIGNED → −2³¹ (out of
+  band in every regime); the `< 0` audit found one site, a
+  var-index guard, safe. THE BOUNDARY NOTE (Bryce's rider, honored):
+  csp_core WAS touched — the jaw's data model, not its crush; the
+  change alters the sentinel's numeric identity and nothing
+  semantic; EQUIVALENCE VERIFIED: 200 sampled gold rows identical
+  under both sentinels (189/200 both — the 11 are quick-harness
+  reconstruction artifacts, same set both runs, all
+  solved-to-different; not solver behavior). BATTERY: signed
+  uniqueness 0.01s ✓; wide+signed at m=10⁶ 0.14s ✓; **value −1
+  itself solves and certifies (1−2=−1)** ✓. THE GATE OPENS: signed
+  rows can mint. The build item dissolved into a deletion — the
+  best kind: the jaw needed nothing added, only a name moved out of
+  the space it had silently annexed. Remaining rollout: renderer +
+  surface forms → sign-terminal smoke (own smoke) → B1 margin pins
+  → corpus under dose law → gen-23 on the standing word.
