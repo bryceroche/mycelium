@@ -82,12 +82,32 @@ def parse_solve(rows):
             try:
                 signal.signal(signal.SIGALRM, _to)
                 signal.alarm(10)
-                giv = {f["var"]: f["value"] for f in facs
+                # LANDMINE #4 FIX: compact to USED vars — n_vars=24 at
+                # signed 1e6 builds ~21 two-million-element domains per
+                # row (domain CONSTRUCTION ate the whole 10s alarm; both
+                # arms zeroed). Solve in the small used-var space.
+                used = sorted({v for f in facs for v in
+                               ([f.get("var")] if f.get("var") is not None else [])
+                               + list(f.get("args", []))
+                               + ([f.get("result")] if f.get("result") is not None else [])
+                               if isinstance(v, int)} |
+                              ({q} if isinstance(q, int) else set()))
+                cmp_ = {v: i for i, v in enumerate(used)}
+                def _rm(f):
+                    f = dict(f)
+                    for kk in ("var", "result"):
+                        if isinstance(f.get(kk), int): f[kk] = cmp_[f[kk]]
+                    if isinstance(f.get("args"), list):
+                        f["args"] = [cmp_[a] for a in f["args"]]
+                    return f
+                cfacs = [_rm(f) for f in facs]
+                giv = {f["var"]: f["value"] for f in cfacs
                        if f["ftype"] == "given"}
-                pr = problem_from_algebra3(24, facs, giv, 10**6, signed=True)
+                pr = problem_from_algebra3(len(used), cfacs, giv, 10**6,
+                                           signed=True)
                 res = solve_symbolic(pr, budget=5000, seed=0)
-                if res["status"] == "solved" and q is not None and \
-                        int(res["assignment"][q]) == r["sol"][r["query"]]:
+                if res["status"] == "solved" and isinstance(q, int) and \
+                        int(res["assignment"][cmp_[q]]) == r["sol"][r["query"]]:
                     ok += 1
             except (Exception, TimeoutError):
                 pass
@@ -98,10 +118,17 @@ def parse_solve(rows):
 old_ok = parse_solve(old_arm)
 new_ok = parse_solve(new_arm)
 r_old, r_new = old_ok / len(old_arm), new_ok / len(new_arm)
-b1 = r_new >= r_old - 0.05
-print(f"[B1] old-range {old_ok}/{len(old_arm)} = {r_old:.1%}  "
-      f"new-range {new_ok}/{len(new_arm)} = {r_new:.1%}  "
-      f"-> {'PASS' if b1 else 'FAIL'} (bar: new >= old - 5pts)")
+# VALIDITY FLOOR (pinned after the vacuous-zero print): a relative bar
+# needs a healthy baseline — old-arm < 60% = INSTRUMENT-INVALID, no verdict.
+if r_old < 0.60:
+    print(f"[B1] INSTRUMENT-INVALID: old-range {old_ok}/{len(old_arm)} = "
+          f"{r_old:.1%} below the 60% validity floor — NO VERDICT", flush=True)
+    b1 = None
+else:
+    b1 = r_new >= r_old - 0.05
+    print(f"[B1] old-range {old_ok}/{len(old_arm)} = {r_old:.1%}  "
+          f"new-range {new_ok}/{len(new_arm)} = {r_new:.1%}  "
+          f"-> {'PASS' if b1 else 'FAIL'} (bar: new >= old - 5pts)", flush=True)
 
 # ---- B2: bigtest under g23 ----
 env = dict(os.environ)
@@ -111,9 +138,13 @@ env.update({"ALG_CKPT": ".cache/g23.safetensors",
 r = subprocess.run([".venv/bin/python3", "scripts/phase1_algebra_head.py",
                     "--eval"], env=env, capture_output=True, text=True)
 tail = r.stdout.strip().splitlines()[-6:]
-print("[B2] bigtest eval tail:")
+print("[B2] bigtest eval tail:", flush=True)
 for l in tail:
     print("   ", l)
+if not tail or r.returncode != 0:
+    print("[B2] STDERR tail (rc=%d):" % r.returncode, flush=True)
+    for l in r.stderr.strip().splitlines()[-8:]:
+        print("   ", l)
 json.dump({"b1": {"old": old_ok, "new": new_ok, "pass": bool(b1)},
            "b2_tail": tail},
           open(".cache/gen23_bars.json", "w"), indent=1)
