@@ -11,8 +11,12 @@ Exclusions: non-integer answers **147 (29.4% — the answer-space wall,
 a DESIGN decision not a capability gap)**; length 80; answer range 50;
 values>300 21; asy 5. Subject-shaped (Algebra 64/124, Precalc 7/56);
 level-uniform. **The single biggest ceiling lever is answer-space
-extension** (rationals/simple radicals) — a dialect generation, not
-local; its retroactive read is defined (addressability per candidate).
+extension** — and the retroactive read PRINTED (2026-08-03): today
+197 → +NEG 215 → +RAT 251 → +BIG 303 → +RAD 317 (63.4%); length
+300→600 adds +35 at every rung (full stack 352 = 70.4%). THE
+SURPRISE: digit-width (≤300 → 1e6) is the largest single lever
+(+51), bigger than rationals. Spec recommendation: E1+E3 first
+(integer-preserving: sign + width). Ceiling ≠ competence.
 
 **COVERAGE × PRECISION** (wild ledger, n=1404 harvest-proxy;
 CORRECTED 2026-08-02 — the consumption key was wrong, re-cut

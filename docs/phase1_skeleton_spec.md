@@ -21135,3 +21135,36 @@ token-position × waist-dim, the moment the skeleton trains.
   and stacked (E1 → E1+E2 → E1+E2+E3 → +E4), each with its M500
   ceiling; asy always excluded. The read prices OPTIONS; the spec
   chooses; the mint generates — in that order.
+
+- **THE RETROACTIVE READ PRINTS — THE CEILING MENU, PRICED
+  (2026-08-03; scripts/answer_space_retro_read.py; artifact
+  .cache/answer_space_retro_read.json; baseline REPRODUCED 197/500
+  exactly — the read fires):** THE LADDER (stacked, len<300):
+  today 197 → **+E1 NEG 215 (+18) → +E2 RAT 251 (+36) → +E3 BIG
+  303 (+52) → +E4 RAD 317 (+14)** = 63.4% of MATH-500. **E5 LEN
+  (300→600 chars), priced separately as ordered: +34-35 at every
+  rung — full stack @ len<600 = 352/500 = 70.4%.** THE SURPRISE:
+  **E3 (digit-width to 1e6, answers+literals) is the LARGEST
+  single lever (+51 alone) — bigger than rationals (+36) and
+  negatives (+18): the ≤300 cap costs MATH-500 more than the
+  integers-only restriction does.** Answer-kind census of the 500:
+  int 258 / other 112 / rational 55 / big-int 37 / radical 19 /
+  neg-int 19 (the 112 'other' — expressions, π, tuples — is the
+  true representation frontier, out of scope for all pinned
+  extensions). ENGINEERING PRICES, noted for the spec (the read
+  prices ceilings; the spec weighs both columns): E3 = digit-width
+  (mint + dig-heads MSD-first + domains stay INTEGER — the
+  shallowest change); E1 = sign (solver domains + mint, moderate);
+  E2 = rational domains (the CSP core's arithmetic — deepest of
+  the three); E4 = radical field (deepest, smallest gain); E5 =
+  T_ALG/trunk-window (states memory ×2 — a platform price, not a
+  dialect price). CUSTODY LINE: extensions change NOTHING banked —
+  a new dialect is a new GENERATION (never-mix; every banked gold
+  stays in its vintage). CEILING ≠ COMPETENCE, stated loud: the
+  ladder prices what can be ATTEMPTED; every rung still has to be
+  learned, minted, and certified. NEXT PEN WORK: the spec chooses
+  from the priced menu — the read recommends **E1+E3 first**
+  (integer-preserving pair: sign + width; solver stays integer
+  CSP; 197→~265 est. combined) with E2 as its own later
+  generation. The word's discipline held: read → spec → mint, in
+  that order.
