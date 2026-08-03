@@ -21552,3 +21552,33 @@ token-position × waist-dim, the moment the skeleton trains.
   that survived four landmines is permanent apparatus; the E1+E3
   dialect itself is proven mintable-certifiable end to end. The
   fail is in the training budget, not the design.
+
+- **THE GEN-23 BATTERY COMPLETE — THE VERDICT AND ITS MECHANISM
+  (2026-08-03; gen23_bars.json + gen23_split.json + battery2 log):**
+  **B2 PASSES ABOVE ITS BASELINE: bigtest 1238/1500 ≥ pinned 1214 —
+  and above g22's own 1226.** The old register not only survived
+  the wide head, it improved (+12); fac flat across bands, query
+  1.00. **B1 FAILS, and the per-arm rider tells the whole story:
+  sign 40/40 = 100% · wide 0/40 = 0% · both 5/40 = 12.5%.** The
+  sign terminal took PERFECTLY at first dose; the aggregate 37.5%
+  was two opposite terminals averaged — exactly the mask the rider
+  was pinned to remove. THE MECHANISM, read from emitted digits
+  (8 wide rows inspected): NOT an anchor lock — the new positions
+  emit real digits, often near-exact (404348 EXACT; 469130 vs
+  469930 one digit off) — **per-digit ~90% COMPOUNDS across 6-7
+  positions × 2-3 literals/row to near-zero row exactness. The
+  compounding-digit wall — and the May 31 law returns from the
+  archive with its name on it: PER-NUMBER, NOT PER-DIGIT.** THE
+  VERDICT: **NO PROMOTION — B1's kill stands; g22 REMAINS THE
+  GATE; g23 banks as a diagnostic checkpoint (panel-eligible),**
+  its manifest untouched. WHAT THE NEGATIVE BOUGHT, priced: sign
+  is a SOLVED terminal (100% at 6.8%×16k — E1's head cost is
+  fully paid); wide is a measured wall with a mechanism and two
+  priced roads — (a) deeper dose/steps (the learning curve's
+  second point), (b) the per-number emission rethink (the May
+  law's road — a head-design question for the bench, adjacent to
+  rung 3). B2's pass means a sign-only E1 generation is
+  potentially PROMOTABLE AS-IS if re-barred without wide — a
+  scoping word for Bryce. Four landmines, one import-guard clause,
+  one validity floor, and a two-terminal split — the apparatus
+  that survives this battery is permanent.
