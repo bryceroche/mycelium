@@ -21439,3 +21439,23 @@ token-position × waist-dim, the moment the skeleton trains.
   The running bars unit prints the aggregate; the split rides an
   immediate follow-up on the same held-out seeds (104100/104200/
   104300 — deterministic, exact).
+
+- **THE WIDE-DOMAIN WORK CAP — A HUNG BARS READ FINDS THE SECOND
+  LANDMINE (2026-08-03):** the bars unit hung 98 minutes at fixture
+  mint; diagnosis: **arith3_propagator's pairwise support is
+  O(|Da|×|Db|), and two uncollapsed ±10⁶ domains = 4×10¹²
+  iterations** — a factor ordered before its upstream collapse
+  (render2's shuffle) hits the quadratic. THE CORPUS MINT SURVIVED
+  ON SHUFFLE-LUCK — the 600 banked rows are fine (certified, just
+  lucky in factor order); the bars draw was unlucky and honest
+  about it. THE FIX, the arity-cap's own contract one level down:
+  **skip pruning when |Da|×|Db| > 4e6 — a skip is ALWAYS SOUND**
+  (no prune ≠ wrong prune; forward-check + verify still guard; the
+  queue requeues on upstream collapse). Old regime identical BY
+  THRESHOLD (301×301 = 90601 ≪ cap). VERIFIED: the exact hang
+  ordering solves 1.23s + certifies 0.76s; the signed battery
+  holds. Filed beside the sentinel collision as wide-domain
+  landmine #2 — both invisible under m=300, both found by
+  instruments not reasoning, and the sweep lesson repeats: **a
+  domain extension audits every complexity bound it crosses, not
+  just every sentinel.** The bars RELIGHT.

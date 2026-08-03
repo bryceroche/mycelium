@@ -745,6 +745,17 @@ def arith3_propagator(state, factor):
     s = state.copy()
     va, vb, vr = factor.scope
     Da, Db, Dr = s.domains[va], s.domains[vb], s.domains[vr]
+    # THE WIDE-DOMAIN WORK CAP (2026-08-03, found by a hung bars read):
+    # pairwise support is O(|Da|*|Db|) — two uncollapsed wide domains
+    # (±1e6 under ALG_WIDE/signed) is 4e12 iterations. SKIP pruning when
+    # the pair product exceeds the cap: a skip is ALWAYS SOUND (no prune,
+    # never a wrong prune; forward-check + verify still guard) — the
+    # generic arity_cap's own contract, one level down. The queue
+    # requeues this factor when upstream collapse shrinks the pair.
+    # Old regime (m<=300: 301*301=90601) is far below the cap —
+    # behavior there is IDENTICAL by threshold.
+    if len(Da) * len(Db) > 4_000_000:
+        return s
     op = factor.params
     new_a, new_b, new_r = set(), set(), set()
     for x in Da:
