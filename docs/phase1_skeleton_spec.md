@@ -20784,3 +20784,33 @@ token-position × waist-dim, the moment the skeleton trains.
   + the tighten pass (spec before specimens); the fifty are CUT,
   not judged. The consumer audit runs delegated in parallel (its
   report banks on landing).
+
+- **THE RESEQUENCING RULING — THE CENSUS IS THE CRITICAL PATH
+  (2026-08-02, Bryce's drive toward #123):** the strata print (42/46
+  lies = never-trained text) means **the altitude census is no
+  longer a side investigation — it is the autopsy of the 0.02**,
+  and the 0.02 is what struck leaf B and governs December. The
+  census got promoted by the correction without anyone moving it.
+  THE NEW STANDING ORDER: **consumer audit lands → the tighten pass
+  (Bryce's hand on the spec; law before trials) → the fifty
+  verdicts (Bryce's hand on the sheet) → THE FRAMING SESSION READS
+  THE CENSUS'S ANSWER rather than deciding without it.** The
+  claim-question is nearly forced (B struck, A untouched); the live
+  question is WHICH ROAD MOVES THE NEVER-TRAINED TERM, and the
+  census answers it directly: mass at schema → the tower's third
+  floor is the road and #123 becomes the measured next build; mass
+  at assembly → the tower doesn't grow downward and weight goes to
+  rung 3's interior work. THE FIVE-LUCYS CARVING, banked beside it:
+  the gate resets PER PROBLEM, and the 5-view vote is five
+  amnesiacs reading the same page independently — quorum is not a
+  conversation but five strangers agreeing because they share a
+  disposition. TWO-SIDED, deliberately: independence is WHY the
+  vote certifies (the counterfeit specimen — agreement must be
+  emergent) AND why it cannot catch shared-disposition lies
+  ([1293]'s substrate-invariant basin; specimen [00]'s 5/5) — which
+  is what the panel's LINEAGE diversity exists to catch, and what
+  the resting v24c notebook (working memory across breaths — one
+  Lucy revising instead of five agreeing) would address at rung 3.
+  Standing build order noted: the canonicalizer (#69, bars pinned,
+  false-merge = 0) remains the next-CPU-gap build — within-level
+  canonicalization is tower work that no sequencing blocks.
