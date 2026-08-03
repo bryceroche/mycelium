@@ -21,7 +21,7 @@ Standing rule: graded-tier proposals NAME THEIR SIGNAL first and price it
 against this table (free re-cut). Known: residual doesn't grade; quorum
 saturates (0.626 @ 5/5); LEVEL grades (0.78→0.47); mouth = register
 instrument (98.4% refusal, all levels); fences one-for-one at frontier;
-inner chain 9% coverage @ 0.63; unfenced 56% @ 0.53.
+inner chain 9% coverage @ 0.63 — CORRECTED 2026-08-02: decomposes to trained-verbatim 0.95 / NEVER-TRAINED 0.02 (the December-relevant row; 457/1404 of fixture is training text; consumption key = sha ∩ deployed mix, never the candidates glob); unfenced 56% @ 0.53.
 
 ## Owed — Bryce's word required to fire
 
@@ -53,7 +53,7 @@ inner chain 9% coverage @ 0.63; unfenced 56% @ 0.53.
 | permuted_view <=3-sentence collapse (landmine, not live; min observed 4) | bench | fix rides the next vote-semantics window — never mid-campaign silently | 2026-07-30 |
 | ~~Wild-exposure re-sizing by template~~ CLOSED OBE 2026-07-31: the failing template is CURED (d1 7/8, basin gone) and chained-fdiv RELEASED — the sizing question is moot | — | — | 2026-07-31 |
 | Silhouette-triage spec (spec-first ruling; funnel region ledger §13) | bench | spec unwritten; no convention gates before spec + retro read | 2026-07-29 |
-| **THE 0/20 AUTOPSY** (disjoint second look 2026-08-02): consumed answered = 0/20 (custody-checked); cross the 20 text_shas vs book lanes; discriminate adverse-selection vs familiarity-without-competence (SHARPENED: (b) needs a TRACEABLE echo to a particular book row; generic wrongness = (a) survives); December-relevant if (b) — mouth failure mode (register proximity vs competence come apart on consumed text) | bench | zero-GPU cross-reference; frames pinned in ledger | 2026-08-02 |
+| ~~THE 0/20 AUTOPSY~~ DISSOLVED 2026-08-02 by the corrected cut: the consumption KEY was wrong (candidates glob = book8-era waiting room; true record = deployed mix text). CORRECTED: trained-verbatim 81 @ 0.95, NEVER-TRAINED 43 @ 0.02; disjoint-0.75 dead; leaf B collapsed. NEW DOCKETS: (1) CONSUMER AUDIT — every banked verdict reading consumed/disjoint framing audited for its key (incl. disjoint-census book reads); (2) wild-ledger consumption SIDECAR (sha ∩ mix) on next re-cut, never in-place | bench | (1) zero-GPU sweep; (2) rides next re-cut | 2026-08-02 |
 | Criterion rebuild | bench | queued | 2026-07-29 |
 
 ## Standing duties (recur, never close)

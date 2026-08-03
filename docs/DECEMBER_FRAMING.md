@@ -14,15 +14,19 @@ level-uniform. **The single biggest ceiling lever is answer-space
 extension** (rationals/simple radicals) — a dialect generation, not
 local; its retroactive read is defined (addressability per candidate).
 
-**COVERAGE × PRECISION** (wild ledger, n=1404 harvest-proxy):
-mouth-native 1.6% → deployed answers ~nothing at 1.00. Inner chain
-(mouth-bypassed): 9% coverage @ 0.63 — **which decomposes (second
-look, 2026-08-02): 0.75 on text books never touched, 0.00 on
-consumed text (0/20, custody-checked).** Autopsy docketed
-(selection vs familiarity-without-competence); if the latter,
-widening admission toward the trained register imports the
-worst-precision class first — read beside the transfer clause.
-Unfenced: 56% @ 0.53.
+**COVERAGE × PRECISION** (wild ledger, n=1404 harvest-proxy;
+CORRECTED 2026-08-02 — the consumption key was wrong, re-cut
+against the deployed mix, the one true record): mouth-native 1.6%
+→ deployed answers ~nothing at 1.00. Inner chain (mouth-bypassed)
+9% @ 0.63 DECOMPOSES: **trained-verbatim text n=81 @ 0.95;
+never-trained text n=43 @ 0.02** (0/27 on never-trained in-reach;
+flat zero across L1–L4). A third of the fixture (457/1404) is
+training text. MATH-500 is never trained on — **the never-trained
+row is the December predictor: open-admission answers on unseen
+text are ~2% precision. Leaf B's arithmetic collapses.** Leaf A is
+untouched (the mouth's wall stands in front of all of this).
+Coverage motion off 1.6% is checked for trained-verbatim
+composition mechanically (sha ∩ mix). Unfenced: 56% @ 0.53.
 
 **TWO STRUCTURAL BINARIES** (both measured, not assumed):
 - TIER: no signal grades the answered — 4 cheap axes null; settle
@@ -58,7 +62,7 @@ Unfenced: 56% @ 0.53.
 | Leaf | Configuration | December claim | Arithmetic |
 |---|---|---|---|
 | A | CLOSED + certified | **The abstention product**: "never lies; certifies ~perfectly where it speaks; abstains elsewhere" | answers ~0.2% of addressable @ 1.00 — shippable TODAY, defensible, honest |
-| B | OPEN + binary answer | "Low single digits on MATH-500 with honest abstention" | 197 addressable × ~9% chain coverage × 0.63 ≈ **~2% of the 500** today; every road multiplies this |
+| B | OPEN + binary answer | "Low single digits on MATH-500 with honest abstention" | **COLLAPSED by the corrected cut (2026-08-02): the 0.63 was memorization-inflated; never-trained precision is 0.02 — open admission today ships ~all lies.** B requires a road to move the never-trained term first |
 | C | OPEN + trained tier | graded answers at chosen precision | UNPRICED — requires the training bet |
 | D | Defer the claim | roads first (books + slope probe + answer-space), re-frame at a later gate | the ceiling and coverage terms both move before the claim is fixed |
 

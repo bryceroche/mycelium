@@ -20619,3 +20619,51 @@ token-position × waist-dim, the moment the skeleton trains.
   stays in front: all 20 mouth-foreign, nothing emits today —
   a pricing fact about a road, and the first evidence the road's
   own product carries a hazard.
+
+- **THE CONSUMPTION KEY WAS WRONG — THE CORRECTED CUT REWRITES THE
+  COVERAGE TERM (2026-08-02, the night's true finding; two
+  instrument defects found and named on the way):** the 0/20's
+  autopsy cross-reference exposed that the wild ledger's `consumed`
+  flag keys on **`.cache/book*_candidates*.json` — the WAITING
+  ROOM, which exists on disk only for the book7/book8 era** — while
+  the true consumption record is the DEPLOYED MIX itself
+  (gen22_mix rows carry the SOURCE PROSE VERBATIM as training
+  text; verified by inspection — book rows' `text` is the harvest
+  problem, `gen.dialect` the rewrite). DEFECT 2, found en route:
+  wild_ledger.py was SYNTAX-BROKEN on disk (the deep-clean comment
+  ate the for-loop colon — the banked artifact predates the edit;
+  one-character fix applied). **THE CORRECTED CUT, keyed by sha ∩
+  deployed-mix text (the one true record):** of 124 answered wild
+  items — **TRAINED-VERBATIM n=81 @ 0.951; NEVER-TRAINED n=43 @
+  0.023** (1/43; the sole hit an L5; never-trained in-reach: 0/27;
+  by level 0/6, 0/9, 0/12, 0/9, 1/7 — flat zero across ALL
+  levels). And the fixture itself: **457/1404 of the wild ledger
+  is trained-verbatim text** — a third of the harvest-proxy is the
+  training set. WHAT DIES: (1) DISJOINT 0.75 — an artifact of the
+  bad key (its "disjoint" set was two-thirds trained text); (2)
+  last night's 0/20 AND its two hypotheses — the 20 were merely
+  the book8-era-visible sliver of consumption; the autopsy as
+  posed DISSOLVES (the custody check verified gold, which was and
+  remains clean — it could not check the key). The
+  favorable-number scrutiny instinct was right TWICE: the docketed
+  second look found the first artifact, and the autopsy of that
+  artifact found the real one. **WHAT THE HONEST NUMBERS NOW SAY
+  (survey-grade, answered tier, mouth-bypassed, harvest-proxy):
+  the inner chain's precision on text it trained on is 0.95; on
+  text it has never seen, 0.02.** True wild coverage×precision:
+  43/947 never-trained answered ≈ 4.5% @ 0.023. MATH-500 is never
+  trained on — the never-trained row IS the December predictor at
+  the answered tier: **leaf B's arithmetic (~2% of 500 @ 0.63)
+  COLLAPSES; open-admission answers on unseen text are ~2%
+  precision, i.e., almost all lies.** Leaf A (abstention product)
+  is UNTOUCHED — the mouth's wall stands in front of all of this —
+  and becomes still more clearly the only claim shippable today.
+  The transfer-clause composition rider is VINDICATED with teeth:
+  the mouth-native coverage number's composition is now checkable
+  MECHANICALLY (sha ∩ mix). THE CONSUMER AUDIT DOCKETED (the
+  stale-key family): every banked verdict that read `consumed`/
+  "disjoint" framing must be audited for which key it used —
+  including the disjoint-census reads in the books verdicts.
+  Fixture hygiene: wild_ledger_v1 stays UNTOUCHED as banked; the
+  corrected consumption column ships as a sidecar on the next
+  re-cut, never an in-place rewrite.
