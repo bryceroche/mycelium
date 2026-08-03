@@ -20842,3 +20842,29 @@ token-position × waist-dim, the moment the skeleton trains.
   mid-campaign silently. **The resequenced path advances: the audit
   gate is cleared; Bryce's hand is next, twice — the tighten pass,
   then the fifty.**
+
+- **CAVEAT DECAY — THE TWO-HOME FAMILY'S NEW SPECIES, NAMED
+  (2026-08-02, Bryce's carving off the entourage no-op):** the
+  diagnostic sequence, not the bug, is the finding: entourage-13/14
+  banked honest full-pool caveats the same day; entourage-16
+  dropped the caveat; 20/21/22 stated the number flatly —
+  **the caveat decayed while the number stayed.** Nobody lied; a
+  qualifier fell off across generations of copy-paste, and by the
+  third generation the label was load-bearing. THE SPECIES: the
+  number and its scope live in DIFFERENT PLACES — the number
+  propagates through templates, the scope doesn't. Same disease as
+  the wild ledger's key and the vintage stamps dying on rerun; this
+  instance is the clearest because **the honest version existed
+  first and eroded.** THE FENCE, mechanical: **a number's scope
+  travels in the same field as the number, never in adjacent
+  prose** — had the census print emitted `disjoint=false` as a
+  FIELD, no amount of template copying could have dropped it. THE
+  SWEEP QUESTION, greppable, joins the deep-clean checklist: which
+  printed numbers carry their scope as DATA and which as
+  COMMENTARY? (Every recurring sheet printing a number with a
+  prose-adjacent qualifier is a caveat-decay candidate.) Filed
+  beside the countersign's second half: the deliberate
+  non-corrections (the sound-number/erroneous-interpretation 0.63;
+  the standing MIXED verdict) named as the guard against
+  over-correction — the record stays trustworthy in both
+  directions.
