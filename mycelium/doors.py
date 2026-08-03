@@ -88,6 +88,9 @@ VIEW_SEED_BASES = {
     96000: "binding_invariance_read",
     97000: "wild_ledger",
     99000: "composition_matrix views",
+    101000: "flip_corrected/flip_peritem originals",
+    102000: "flip_corrected/flip_peritem transforms",
+    103000: "census_altitude_prep (gut #69/#123 — the 46 wild-lie specimens)",
 }
 
 

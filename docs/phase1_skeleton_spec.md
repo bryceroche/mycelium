@@ -20760,3 +20760,27 @@ token-position × waist-dim, the moment the skeleton trains.
   — admission must precede the parse it fences). Both real,
   different organs; the July silhouette findings and the mouth
   design were never in conflict.
+
+- **THE STRATA CUT DELIVERED — THE ALTITUDE CENSUS SHEET READY FOR
+  THE HAND (2026-08-02, driving toward #123 via #69's assigned
+  split):** scripts/census_altitude_prep.py (seed base 103000
+  claimed; 101000/102000 retro-claimed for the flip instruments) →
+  .cache/census_altitude_specimens.jsonl + docs/ALTITUDE_CENSUS_
+  SHEET.md. THE POOL: the 46 wild lies (answered ∧ wrong, g22, one
+  vintage), each with text / strata / per-view answers / quorum /
+  gold / THE CHAIN'S DECODED GRAPH — everything the altitude
+  judgment needs on one page per specimen. THE STRATA THEMSELVES
+  ALREADY SPEAK: **42/46 lies are never-trained text** (6/9/12/9/6
+  across L1-L5), 4 are memorization failures — the lie population
+  IS the never-trained population, as the corrected cut predicted.
+  POOL AMENDMENT NOTED FOR ACCEPTANCE: one vintage × (trained ×
+  level) strata replaces #69's zone/species/vintage (which predate
+  the corrected cut); Bryce accepts or re-strata. SPECIMEN [00]
+  banked as the sheet's own advertisement: a piecewise-continuity
+  problem parsed as a=3,b=1,a*b→c — answered 5/5 UNANIMOUS, wrong
+  (quorum 3, gold 10): a confident tiny wrong graph built from
+  surface numerals; temperature⊥truth in the flesh; prima facie
+  schema-altitude. THE LAW HOLDS: annotation waits on Bryce's hand
+  + the tighten pass (spec before specimens); the fifty are CUT,
+  not judged. The consumer audit runs delegated in parallel (its
+  report banks on landing).
