@@ -21582,3 +21582,23 @@ token-position × waist-dim, the moment the skeleton trains.
   scoping word for Bryce. Four landmines, one import-guard clause,
   one validity floor, and a two-terminal split — the apparatus
   that survives this battery is permanent.
+
+- **THE WORD: (c) FIRST — THE SIGN-ONLY RE-BAR, PINNED BEFORE ITS
+  NUMBERS (2026-08-03, Bryce's ordering c/b/a with (a) held):** the
+  ordering's reason banked: **the budget required for wide is set
+  by an EXPONENT, not a linear gap** (90%→95% per digit moves row
+  exactness ~0.5→0.7 on 7 digits; reliable rows need high-99s per
+  digit — a different ask than "more food"); (b) is the road (the
+  May law says emission design is the wall, not diet — and its
+  concrete shape is COPY-NOT-GENERATE: point at the literal's span,
+  the trace layer already proves it's there; the CAMBIUM notebook
+  is the REVISION half, rung 3's road); (a) held (a second point on
+  a curve whose design may be replaced). **THE RE-BAR, PINNED
+  FRESH: B1′ = sign-arm ≥ old-arm − 5pts, BOTH on FRESH held-out
+  seeds (105000 old / 105100 sign, n=120/arm — never re-reading
+  the fixtures that scored 100%), validity floor old ≥ 60%; B2
+  stands PASSED (1238). ON PASS: the promotion rite runs with the
+  manifest carrying an explicit WIDE-NOT-CLAIMED declaration** — no
+  future reader may infer wide competence from a promotion that
+  didn't test it (the caveat-decay fence applied prospectively:
+  the scope travels IN the manifest, as data).
