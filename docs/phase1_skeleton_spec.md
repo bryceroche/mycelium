@@ -21512,3 +21512,22 @@ token-position × waist-dim, the moment the skeleton trains.
   shape: the domain extension crossed one sentinel and two
   complexity assumptions, all invisible at m=300, all found by
   instruments. Bars relit (r3).
+
+- **LANDMINE #4 + THE VALIDITY FLOOR (2026-08-03, the vacuous-zero
+  print):** bars r3 printed 0/120 on BOTH arms and called it PASS —
+  a relative bar satisfied by a dead instrument. THE FAULT: the
+  parse-solve built problems at n_vars=24 under signed ±10⁶ — ~21
+  UNGIVEN vars × 2-million-element domain CONSTRUCTION per row ate
+  the entire 10s alarm before solving began (the mint never hit
+  this: mint rows carry their own small n_vars; the head's
+  24-slot space met wide domains only at eval). FIX: used-var
+  compaction before the solve (the fixture graphs live in ≤7
+  vars). **THE VALIDITY FLOOR, pinned from the specimen: a
+  relative bar carries a baseline-health gate — old-arm < 60% =
+  INSTRUMENT-INVALID, NO VERDICT** (a vacuous pass is worse than a
+  fail; the means-vs-overlaps family gains an eval-side sibling).
+  B2's silent empty tail gains stderr capture. Four landmines now
+  filed from one domain extension — sentinel, propagator
+  quadratic, budget-counts-decisions, domain-BUILD cost — all
+  invisible at m=300; the E2/E4 sweep line inherits all four
+  shapes. Bars r4 lit.
