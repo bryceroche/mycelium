@@ -21617,3 +21617,25 @@ token-position × waist-dim, the moment the skeleton trains.
   entourage-23 waiver (specialist/centroids/mouth/panel remain
   gen-22's until the settlement, owed immediately) — or prints the
   kill and touches nothing.
+
+- **GEN-23 PROMOTED — THE ANSWER-SPACE GENERATION TAKES THE GATE,
+  SIGN-ONLY SCOPE (2026-08-03; the manifest write and PROMOTED one
+  atomic act):** THE FULL BOARD GREEN: bigtest 1238 (floor 1214;
+  above g22's 1226) · alg4test 406/380 · alg2test 674/560 · vtest
+  600/598 · dagtest 696/660 · dag7btest 576/500 · dag8test 577/500
+  · B1′ sign 96.7% vs old 94.2% (fresh held-out). THE MANIFEST
+  CARRIES THE SCOPE AS DATA: wide_not_claimed=true with the
+  measured 0/40, the compounding-digit wall, and "no reader may
+  infer wide competence" IN THE FIELD; entourage-23 an explicit
+  waiver, owed immediately and LIT (unit entourage23; specialist/
+  centroids/mouth/panel are gen-22's until it settles). One
+  instrument note for the record: the verdict's first run CRASHED
+  on its own notes formatting AFTER printing all-green and BEFORE
+  the write — the atomic pattern held exactly as designed (nothing
+  touched; the fix was one string; the re-run promoted). DECEMBER
+  MOVES: E1's +18 is banked into the deployed dialect — the
+  addressable ceiling rises 197→215 pending the m500 re-cut under
+  the new scope. The day's arc complete: named (CAMBIUM) → read
+  (census) → resolved (framing) → worded → priced → specced →
+  smoked → fired → failed honestly → decomposed → re-barred →
+  PROMOTED, with four landmines and every law holding its door.
