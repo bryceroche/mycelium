@@ -20514,3 +20514,33 @@ token-position × waist-dim, the moment the skeleton trains.
   import-side sibling. THE AUG FIRE'S LEDGER IS NOW FULLY CLOSED:
   every pinned read fired, every blind prediction read or closed at
   its floor, nothing void.
+
+- **THE COUNTERSIGN'S THREE CARVINGS + THE IMPORT-WRITE SWEEP'S
+  FIRST PASS (2026-08-02, Bryce):** (1) **THE COROLLARY IS NOW A
+  MECHANISM** — when a corollary predicts a signature and an
+  unrelated measurement reproduces it (flip read and emission read:
+  two instruments, two grains, one shape — boundary relocated
+  toward the diet's own phrasings), the corollary stops being an
+  interpretation. The undersized-sink corollary graduates. (2)
+  **THE EXTERNALITY ENTERS THE PRICE BOOK**: −14.6/−18.8 points of
+  original-surface emission is a real cost — re-rendering rows
+  doesn't ADD phrasings, it TRADES them; every future augmentation
+  pricing carries this term. (3) **THE SWEEP FAMILY'S NEWEST
+  MEMBER**: a write happening as a side effect of a read is a new
+  shape for the two-home family; standing question added to the
+  deep-clean checklist — does any module write at import time?
+  THE FIRST PASS, run on carving (zero-GPU grep × import graph):
+  276 zero-indent write sites, 194 unguarded writer modules, **7
+  LIVE** (imported somewhere): composition_matrix (imported by
+  bench_rung1/rung2, pct_read, wild_settle_v2 — every import
+  re-ran the MATRIX and overwrote its artifact), vote_sample_
+  lattice (5 importers), crossover_offceiling_read + crossover_
+  depth_graded_read (chained), fingerpost_v01, nack_incumbent_
+  read, roundtrip_read. All deterministic re-runs (same shape as
+  tonight's binding_invariance case — verdicts untouched), but
+  seven live artifact-overwrite bypasses now NAMED. The guard fix
+  is mechanical (tonight's pattern); docketed for the next deep
+  clean or an earlier word — seven banked instruments don't get
+  un-worded surgery at midnight. The mul-prediction re-host note
+  filed: the factory panel's pct fixtures are the natural fixture
+  if the prediction ever deserves its re-read.
