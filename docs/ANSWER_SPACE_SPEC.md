@@ -1,6 +1,9 @@
 # THE ANSWER-SPACE SPEC — E1+E3, the integer-preserving pair (2026-08-03)
 
-*(Drafted on the word; the retroactive read ran first and priced the
+*(GUT #126 STAMP (2026-08-03): E2, E4, and E5 are each their OWN
+generation — machinery changes INTERACT (gen-23: four changes, five
+landmines, all interactions); never bundle domain, terminal, and
+window changes. Drafted on the word; the retroactive read ran first and priced the
 menu — .cache/answer_space_retro_read.json. This generation: E1 NEG
 (sign) + E3 BIG (width to 10⁶). E2 RAT and E4 RAD are LATER
 generations, each with its own spec. E5 LEN is a SEPARATE TRACK

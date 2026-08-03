@@ -21689,3 +21689,26 @@ token-position × waist-dim, the moment the skeleton trains.
   buffer-spec door must derive BOTH from the head's terminal set
   (one authority; the fifth trainer AND the fifth forward inherit).
   Entourage-23 r3 lit.
+
+- **GUT #126 REGISTERED — LOAD-BALANCED CHANGE (2026-08-03, the
+  day's own diagnosis):** the measured instance is TONIGHT:
+  **gen-23 changed four things at once — domain sign, domain
+  width, a new terminal, four digit positions — and paid five
+  landmines, EVERY ONE an interaction**: sentinel×sign,
+  propagator×width, budget×width, domain-build×(24 slots×width),
+  terminal×(every hand-copied forward). None dangerous alone; all
+  failures between. THE MEASURED FORM: **interaction surface
+  scales with simultaneous changes, and instruments catch
+  interactions LATE** (optimizer crash, eval hang, vacuous pass) —
+  fences guard components; interactions live between them. The
+  promotion's shape is the counterfactual proof: sign-only shipped
+  = what spacing would have produced anyway. THE PROSPECTIVE CALL,
+  stamped into the spec: **E2, E4, and E5 are each their OWN
+  generation — never bundled** (rationals+radicals+length in one
+  fire = four landmines of interaction with no
+  independently-promotable component to salvage). THE SCOPE LINE,
+  stated not smoothed: **corpus changes COMPOSE; machinery changes
+  INTERACT** — this registration binds solver domains, head
+  terminals, and tokenizer windows; it is NOT an argument against
+  composite diets (the two-lever law stands untouched). Filed in
+  the exchange family: load balancing over time is scheduling.
