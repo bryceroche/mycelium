@@ -21483,3 +21483,15 @@ token-position × waist-dim, the moment the skeleton trains.
   Spearman rho of mouth_residual vs |quorum_answer − gold|;
   direction pinned POSITIVE; p<0.05 → the frame's claim PRINTS;
   else NULL banked and the frame stays unpaid. Survey grade, n=46.
+
+- **#125's RENT PRINTS NULL (2026-08-03, same hour as the pin):**
+  n=46, Spearman rho=+0.236, p=0.11 — directionally positive,
+  MISSES the pinned p<0.05; **the bar does not bend: NULL banked,
+  the frame stays unpaid.** Texture noted without claim: the sign
+  is the predicted one at an underpowered n; if the frame ever
+  re-reads it does so on a larger lie fixture, new registration.
+  The mouth-signal family's count updates: four cheap axes null on
+  grading correctness, and now residual-vs-magnitude null among
+  the wrong. The mouth remains what the ledger says it is: a
+  REGISTER instrument — it knows what's foreign, not how foreign
+  wrongness will be.
