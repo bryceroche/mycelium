@@ -173,6 +173,12 @@ sh(".venv/bin/python3 scripts/gen11_census.py",
    {"GATE_CKPT": PARSER, "SKIP_IDX": _skip}, tail=2)
 
 print("=== E23 7/10: DISSENT-OVERLAP READ (manifest panel) ===", flush=True)
+# the waived member-votes stage produces the new gate's lattice here
+if not os.path.exists(".cache/lattice_gen23_H.json"):
+    print("    [pre] member votes for g23 (the waived battery stage)", flush=True)
+    sh(".venv/bin/python3 scripts/lattice_member_votes.py",
+       {"MEMBER_CKPT": ".cache/g23.safetensors", "MEMBER_HW": "512",
+        "MEMBER_DUP": "1", "OUT": ".cache/lattice_gen23_H.json"}, tail=1)
 S7 = r'''
 import json
 from collections import Counter
