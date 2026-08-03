@@ -21168,3 +21168,30 @@ token-position × waist-dim, the moment the skeleton trains.
   CSP; 197→~265 est. combined) with E2 as its own later
   generation. The word's discipline held: read → spec → mint, in
   that order.
+
+- **THE ANSWER-SPACE SPEC DRAFTED (2026-08-03, on the word;
+  docs/ANSWER_SPACE_SPEC.md):** E1+E3, the integer-preserving pair —
+  and the design principle carved as Bryce stated it: **the
+  pharyngeal jaw stays untouched** — sign and width change what the
+  jaws GRIP, never how they CRUSH; the solver is the one component
+  whose correctness the whole chain inherits, and this generation
+  never touches its arithmetic (E2 rationals = its own later
+  generation for exactly that reason). SPEC CONTENTS: solver
+  domains ±10⁶ with the mod/fdiv non-negativity fence (the
+  k≤0-guard precedent extends; negative-operand semantics
+  deliberately NOT decided); N_DIG 3→7 + sign channel behind
+  ALG_WIDE (gen-23 era, pad-warm from g22, two-terminal check at
+  build); mint sign-entry structural (subadd a−b<0 + explicit
+  negative givens; "minus 7" REFUSED by the alphabet-exclusion
+  clause — collides with subtraction phrasing); tokenizer pin
+  extends to sign; custody absolute (nothing banked moves; full
+  entourage at promotion). **THE CAP-AUDIT RIDER banked in the
+  spec** (citations grep-verified): [525]/[691]/[776]/[1013]'s
+  cap-forced rulings become HISTORICAL not governing under 10⁶ —
+  stated before anyone needs it. **E5 = its own track** (§7): +35
+  at every rung, T_ALG 256→512, prices to measure (disk law
+  first), does NOT wait behind the dialect. BARS pre-registered
+  in kind (B1 parity / B2 no-regression / B3 NO conversion bar —
+  ceiling ≠ competence); numbers pin at fire registration.
+  Rollout: spec → mint smoke (zero-GPU) → head → corpus → gen-23
+  ON THE WORD. Nothing in the spec authorizes a training run.
