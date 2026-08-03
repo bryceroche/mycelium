@@ -47,7 +47,10 @@ H_TRUNK = 2048
 H_W = int(os.environ.get("ALG_HW", "512"))  # capacity-probe dial (2026-07-11)
 K_VARS = 24
 L_FAC = 24
-N_DIG = 3
+# ANSWER_SPACE_SPEC E1+E3 (2026-08-03): ALG_WIDE=1 widens the digit bank
+# to 7 (values to 1e6, MSD-first as always) and adds the sign head.
+ALG_WIDE = int(os.environ.get("ALG_WIDE", "0"))
+N_DIG = 7 if ALG_WIDE else 3
 N_HEADS = 8
 SENT_MAX = 32
 
@@ -84,6 +87,7 @@ def build_gold(samples, offsets):
         "res": np.zeros((n, L_FAC), np.int32),
         "is_lit": np.zeros((n, L_FAC), np.float32),
         "digits": np.zeros((n, L_FAC, N_DIG), np.int32),
+        "sign": np.zeros((n, L_FAC), np.float32),        # E1: 1.0 = negative literal
         "fspan": np.zeros((n, L_FAC, T_ALG), np.float32),
         "vspan": np.zeros((n, K_VARS, T_ALG), np.float32),
         "query": np.zeros((n,), np.int32),
@@ -137,6 +141,10 @@ def build_gold(samples, offsets):
                 g["is_lit"][i, j] = 1.0
                 g["res"][i, j] = f["var"]
                 t = int(f["value"])
+                if t < 0:                    # E1: sign gold; digits carry |t|
+                    assert ALG_WIDE, "negative literal outside ALG_WIDE"
+                    g["sign"][i, j] = 1.0
+                    t = -t
                 assert t < 10 ** N_DIG
                 for d in range(N_DIG):
                     g["digits"][i, j, d] = (t // 10 ** (N_DIG - 1 - d)) % 10
@@ -402,6 +410,8 @@ def build_params(seed=0):
         p["h_dup"], p["h_dup_b"] = lin(H_W, 1)
     p["h_islit"], p["h_islit_b"] = lin(H_W, 1)
     p["h_dig"], p["h_dig_b"] = lin(H_W, N_DIG * 10)
+    if ALG_WIDE:                              # E1: the sign terminal
+        p["h_sgn"], p["h_sgn_b"] = lin(H_W, 1)
     if int(os.environ.get("ALG2", "0")) and \
             int(os.environ.get("ALG_FTYPES", "4")) >= 7:   # gen-15: OP_APPLY
         p["h_dig2"], p["h_dig2_b"] = lin(H_W, N_DIG * 10)
@@ -493,6 +503,8 @@ def forward(p, trunk, tokmask, sent, slot_mask=None):
                if "h_dup" in p else {}),
             "islit": (s @ p["h_islit"] + p["h_islit_b"]).squeeze(-1),
             "dig": (s @ p["h_dig"] + p["h_dig_b"]).reshape(B, L_FAC, N_DIG, 10),
+            **({"sgn": (s @ p["h_sgn"] + p["h_sgn_b"]).squeeze(-1)}
+               if "h_sgn" in p else {}),
             "args": (s @ p["W_args"]) @ vst.transpose(-2, -1),
             "res": (s @ p["W_res"]) @ vst.transpose(-2, -1),
             **({"dig2": (s @ p["h_dig2"] + p["h_dig2_b"])
@@ -551,6 +563,8 @@ def _loss_single(o, g):
     is_frac = g["is_frac"] if "is_frac" in g else is_mod * 0.0
     dm = g["is_lit_f"] + is_mod + is_pct + is_fdiv + is_macro + is_frac
     l = l + (ce(o["dig"], g["digits"]).mean(-1) * dm).sum() / (dm.sum() + 1e-6)
+    if "sgn" in o and "sign" in g:              # E1: sign BCE on value slots
+        l = l + (bce(o["sgn"], g["sign"]) * dm).sum() / (dm.sum() + 1e-6)
     if "sel" in o and "sel" in g:               # selector-type CE (closed vocab)
         sm = pres * is_sel
         l = l + (ce(o["sel"], g["sel"]) * sm).sum() / (sm.sum() + 1e-6)
@@ -601,7 +615,10 @@ def decode(o_np):
             return int(sum(d * 10 ** (N_DIG - 1 - i)
                            for i, d in enumerate(digs)))
         if ft == 1:
-            facs.append({"ftype": "given", "var": res, "value": digval()})
+            v = digval()
+            if "sgn" in o_np and o_np["sgn"][j] > 0:   # E1: negative literal
+                v = -v
+            facs.append({"ftype": "given", "var": res, "value": v})
         elif ft == 0:
             op = "add" if o_np["op"][j].argmax() == 0 else "mul"
             if "dup" in o_np and o_np["dup"][j] > 0:

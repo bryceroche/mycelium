@@ -21269,3 +21269,55 @@ token-position × waist-dim, the moment the skeleton trains.
   the space it had silently annexed. Remaining rollout: renderer +
   surface forms → sign-terminal smoke (own smoke) → B1 margin pins
   → corpus under dose law → gen-23 on the standing word.
+
+- **SENTINEL COLLISION — THE FAMILY'S NEW SPECIES, NAMED
+  (2026-08-03, Bryce):** two-home is state with two authorities;
+  caveat decay is scope drifting from its number; **sentinel
+  collision is an out-of-band marker that stops being out-of-band
+  when the band grows.** Perfectly safe for its whole life under
+  the old domain; the moment the domain moved, the hole marker
+  became a legitimate value and nothing was wrong — THE DOMAIN
+  MOVED. THE GENERAL FORM: *any sentinel is a claim about the
+  domain's boundary, and domain extensions must audit every
+  sentinel they pass.* THE SWEEP LINE (joins deep-clean +
+  MANDATORY in every extension spec from E2 on): enumerate the
+  sentinels, state each one's assumed boundary, check against
+  every planned extension — magic values in the head, padding
+  indices, "no answer" codes, all of them (E2 rationals and E4
+  radicals re-grow the band; any sentinel surviving THIS pass by
+  luck is the same bug waiting). Three relocations in one session,
+  each cheaper, none found by reasoning — all by walking to the
+  artifact.
+
+- **THE RENDERER SMOKE + THE HEAD BUILT + THE SIGN-TERMINAL SMOKE
+  PASSES + B1's MARGIN PINS (2026-08-03, the word executed end to
+  end):** RENDERER: the symbolic path is FREE — str(value) flows
+  through the given templates' {val} interpolation; 20/20
+  signed/wide renderings tokenize with sign and digits intact,
+  "minus" absent everywhere (the lexical "negative N" variant is
+  mint-tranche work, licensed, not yet templated). THE HEAD
+  (scripts/phase1_algebra_head.py, six edits, ALL behind ALG_WIDE):
+  N_DIG env-driven 3→7; "sign" gold (1.0 = negative literal, digits
+  carry |t|, non-WIDE negative literal HARD-ASSERTS); h_sgn
+  terminal in params; "sgn" emission in forward; sign BCE masked by
+  the value-slot mask in the loss; decode negates on sgn. **THE
+  SIGN-TERMINAL SMOKE: PASS** (scripts/sign_terminal_smoke.py) —
+  the Fire-0 inert-patch shape checked by exercise, not assertion:
+  one deliberately-signed row (a=−7, b=987654) through
+  forward/loss/backward, **|h_sgn.grad|max = 9.2e-2 NONZERO**,
+  7-wide digit grads flowing, decode roundtrips given var=d
+  value=−7. REGRESSION GATE: default path N_DIG=3, no h_sgn, **g22
+  key-set EXACT match, loads clean** — the deployed generation
+  untouched by construction. **B1's MARGIN PINS NOW, at
+  mint-smoke pass per the rider: parity margin = 5 points
+  absolute** — new-range fixtures (wide-digit + negative
+  givens/rel/subadd) parse at ≥ matched old-range fixture rate
+  minus 5 points, matched shapes and dose, read at the gen-23
+  battery; pinned before any corpus number exists. ROLLOUT STATE:
+  solver ✓ (wide+signed solve AND certify), renderer ✓ (symbolic),
+  head ✓ (terminal live), smokes ✓, margin pinned ✓. REMAINING:
+  the lexical-variant templates + corpus mint with DOSE DECLARED
+  (share + reps) → **gen-23 fires on an explicit word with the
+  dose declaration in hand** — the standing word carried the chain
+  through the smokes; a training fire gets its own word, per the
+  law that has never bent.
