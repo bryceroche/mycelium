@@ -21404,3 +21404,15 @@ token-position × waist-dim, the moment the skeleton trains.
   **GEN-23 BURNS (unit gen23-fire-r3): warm 40/40, step-0 loss
   4.02, 4×4k at LR 1e-4.** The battery/entourage/verdict follow
   the burn; g22 the gate throughout.
+
+- **GEN-23 BURNED + B2's NUMERIC PIN (2026-08-03, before any bar
+  number exists):** the burn: 4×4k complete, best-by-val
+  fac-exact-proxy 0.9433, g23.safetensors banked (unit success).
+  **B2 PINNED NOW, before bigtest runs:** bigtest(g23, ALG_WIDE
+  decode) ≥ **1214** (= gen-22's promoted 1226 − 1%; the spec's
+  "within band" made numeric before measurement — the same
+  discipline as B1's −5). B1 as pinned: new-range fixture arm ≥
+  old-range arm − 5pts, both under g23, matched shapes and dose,
+  held-out seed 104000, n=120/arm, metric = parse→solve answer ==
+  gold per row. B3: no conversion bar exists. The battery reads
+  mechanically; the verdict script follows the numbers.
