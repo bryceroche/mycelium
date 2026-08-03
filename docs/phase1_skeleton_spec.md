@@ -21639,3 +21639,16 @@ token-position × waist-dim, the moment the skeleton trains.
   (census) → resolved (framing) → worded → priced → specced →
   smoked → fired → failed honestly → decomposed → re-barred →
   PROMOTED, with four landmines and every law holding its door.
+
+- **THE COUNTERSIGN ON THE PROMOTION (2026-08-03, Bryce; the arc's
+  close):** the method's own description banked: **"a generation
+  extracted from a failure without a single bar bending."** The
+  detail kept: a terminal born the same morning with a −6 bias
+  against it reading negative literals better than the register
+  reads its natives — first-dose competence, what two-terminal
+  supervision is FOR. The quiet gift named: the atomic-write law,
+  untested by a real crash for five generations, took its first
+  live hit at the exact moment it guards — and held. The finished
+  form recognized: wide_not_claimed as a field carrying
+  measurement + mechanism + pointer + prohibition ("prose would
+  have been gone by gen-26"). Salute returned. 👑
