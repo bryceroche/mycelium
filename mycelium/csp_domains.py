@@ -896,14 +896,19 @@ def algebra2_registry(m: int) -> dict:
 
 
 def problem_from_algebra2(n_vars: int, factor_dicts, givens: dict, m: int,
-                          registry=None) -> "Problem":
+                          registry=None, signed: bool = False) -> "Problem":
     """Bridge for the tranche's factor-dict format:
       {"ftype":"rel","op":op_str,"args":[a,b],"result":r}
       {"ftype":"mod","var":a,"k":k,"result":r}
       {"ftype":"sel","sel":sel_str,"args":[a,b],"result":x}
     Givens: {var: value} as singleton domains (never factors)."""
     reg = registry if registry is not None else algebra2_registry(m)
-    domains0 = [({int(givens[v])} if v in givens else set(range(m + 1)))
+    # ANSWER_SPACE_SPEC E1 (2026-08-03): signed=True widens UNGIVEN
+    # domains to [-m, m] — the ONLY change negatives need (propagator
+    # arithmetic handles them natively; smoke-verified -7+2=-5). The
+    # default stays unsigned: every existing caller unchanged.
+    lo = -m if signed else 0
+    domains0 = [({int(givens[v])} if v in givens else set(range(lo, m + 1)))
                 for v in range(n_vars)]
     factors = []
     for f in factor_dicts:
@@ -998,7 +1003,7 @@ def algebra3_registry(m: int) -> dict:
 
 
 def problem_from_algebra3(n_vars: int, factor_dicts, givens: dict, m: int,
-                          registry=None) -> "Problem":
+                          registry=None, signed: bool = False) -> "Problem":
     """Tranche-2 bridge: algebra2 dicts + {"ftype":"pct","args":[a,b],
     "p":p} + {"ftype":"fdiv","var":a,"k":k,"result":q}."""
     reg = registry if registry is not None else algebra3_registry(m)
@@ -1006,7 +1011,8 @@ def problem_from_algebra3(n_vars: int, factor_dicts, givens: dict, m: int,
     extra, base = [], []
     for f in factor_dicts:
         (base if f["ftype"] in known2 else extra).append(f)
-    prob = problem_from_algebra2(n_vars, base, givens, m, registry=reg)
+    prob = problem_from_algebra2(n_vars, base, givens, m, registry=reg,
+                                 signed=signed)
     for f in extra:
         if f["ftype"] == "pct":
             fac = Factor(ftype=LTYPE_PCT,

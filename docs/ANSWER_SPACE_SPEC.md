@@ -21,7 +21,20 @@ arithmetic in the core; that is why E2 is its own generation.)
 
 ## 2. Solver (domains only; arithmetic unchanged)
 
-- Domains extend to integers in **[−10⁶, 10⁶]**.
+- Domains extend to integers in **[−10⁶, 10⁶]** (`signed=True` on the
+  algebra2/3 bridges — built, default-off, callers unchanged).
+- **SMOKE FINDING (2026-08-03, part 1): "domains only" was optimistic
+  for E1.** Wide (E3) is FULL GREEN: m=10⁶ solves + uniqueness
+  certifies in 0.29s — the propagator path handles wide unsigned
+  natively. Signed (E1): SOLVING works (search+check computes
+  −7+2=−5 natively) but **GAC does not prune signed domains — the
+  registry/propagator layer enumerates [0,m] only**, so ban-and-
+  resolve dies at budget and the uniqueness gate correctly REFUSES
+  to certify. E1's true price is sign-aware pruning in the
+  propagator layer (bounds/arithmetic path, not semantics — the
+  crush rule is intact; what needs work is the pruning table's
+  reach). This is the next build item; no signed row mints until
+  uniqueness certifies.
 - **mod/fdiv semantics fence:** constructions keep operands
   NON-NEGATIVE at mint (generator constraint), and predicates GUARD
   (reject negative operands into mod/fdiv — the k≤0-guard precedent

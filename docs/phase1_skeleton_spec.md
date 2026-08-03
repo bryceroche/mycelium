@@ -21216,3 +21216,28 @@ token-position × waist-dim, the moment the skeleton trains.
   prospectively: an undecided question with a guard is safer than
   a decided one nobody chose); "minus 7" = the third fence-catch
   at design time this week.
+
+- **MINT SMOKE PART 1 PRINTS — E3 FULL GREEN, E1'S TRUE PRICE FOUND
+  (2026-08-03, the word given, the rollout chain begun):** THE WIDE
+  RESULT: **m=10⁶ builds 0.18s, solves 0.07s, UNIQUENESS CERTIFIES
+  0.29s, answers exact** — the feared domain wall is empirically
+  absent; E3 has no solver price at all. THE SIGNED RESULT, in
+  three prints: (1) negative ARITHMETIC is native — −7+2=−5 solves
+  with zero changes (search+check); (2) the negative-RESULT domain
+  wall confirmed and fixed with the spec's one line (`signed=True`
+  on the bridges, default-off, smoke-verified callers unchanged;
+  regression fdiv 36//4=9 green); (3) **THE REAL FINDING:
+  uniqueness DIES AT BUDGET under signed** — ban-and-resolve
+  cannot prove unsat because **GAC does not prune signed domains:
+  the registry/propagator layer enumerates [0,m] only.** The
+  budget-rejects law fired exactly as designed (the gate refuses
+  what it cannot prove — the twelve-site lesson holding the door).
+  E1's true price relocates from "one line of domain init" to
+  "sign-aware pruning in the propagator layer" — still not
+  arithmetic semantics (the crush rule intact), but real
+  engineering, and NO SIGNED ROW MINTS until uniqueness certifies.
+  Spec §2 amended with the finding. NEXT BUILD ITEM: the signed
+  pruning path (read the registry/propagator implementation fresh;
+  wide-m already has a non-enumerative path — the likely template).
+  The smoke did its job: two prices measured before a corpus
+  existed.
