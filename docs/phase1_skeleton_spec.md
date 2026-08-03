@@ -20943,3 +20943,58 @@ token-position × waist-dim, the moment the skeleton trains.
   internally (k8_cost = final − curve[K=8], reproduced from the
   banked curves). The board notes CAMBIUM as the vision page;
   sequencing untouched: tighten → fifty → framing session.
+
+- **THE ORPHANED-VERDICT FENCE + THE SWEEP'S FIRST PASS
+  (2026-08-03, Bryce's carving off the K-sweep find):** THE FENCE:
+  **an artifact banked without its verdict entering the ledger is a
+  measurement that didn't happen** — the inverse of caveat decay: a
+  verdict that never reached the record its prediction lives in.
+  THE GUARD: every registered prediction names the artifact that
+  will answer it; the deep-clean sweep asks WHICH REGISTERED
+  PREDICTIONS HAVE BANKED ARTIFACTS AND NO LEDGER VERDICT. FIRST
+  PASS (crude grep, artifact-name ∩ record): 511 unmentioned
+  artifacts, 279 recent — most are intermediates whose verdicts
+  ledgered under summary names (filename-absence ≠
+  verdict-absence; the refined sweep needs the prediction→artifact
+  pointers the guard now requires). TRUE ORPHAN CANDIDATES FOUND:
+  **parser_layer_read.json + parser_layer_capture.npz (07-26,
+  ZERO topical ledger presence — per-layer AUCs 0.90-0.94 on the
+  parser lineage, unread-in-record)**; **resident_derived_read.json
+  (07-26, zero presence — parity/last-digit probes at chance)**;
+  torsion_rider_read.json (rho=NaN — the queued rider may have
+  died on an apparatus fault; its NaN status needs its
+  registration's context). All three docketed for recovery-or-
+  formal-burial at the next bench sitting — recovering an orphan's
+  MEANING needs its registration context, not a 4am guess.
+
+- **THE CANONICALIZER BUILT, DEMOTED, REWIRED, AND PASSED — #69'S
+  STANDING ORDER EXECUTED (2026-08-03; mycelium/canonicalizer.py +
+  scripts/canonicalizer_bar.py; artifact .cache/canonicalizer_bar
+  .json = the registration's answer pointer per the orphan guard):**
+  THE ARC, honest end to end: (1) v0 hand-rolled canonical variable
+  relabeling (P3) — **THE PINNED BAR CAUGHT IT**: 4 false merges +
+  303/1000 invariance failures (order-dependent labeling under
+  symmetry is not a canonical form); P3 DEMOTED by its own bar,
+  same hour. (2) THE ONE-DOOR LESSON FROM THE CORRECTNESS SIDE: the
+  authority already existed — hash_audit_iso.py::canon (the knot-ID
+  door: WL + level-0 + values-semantic + query-distinguished, 39
+  importers) with verify_iso as the exact second stage; the
+  canonicalizer became an ADAPTER routing identity through the door
+  (a prior hand-rolled attempt, arith3_canonicalizer.py, was
+  already superseded 07-31 for the same reason — the second time
+  this exact lesson was paid, now with a bar receipt). (3) FIXTURE
+  CUSTODY: 7 apparent merges decoded as PLACEHOLDER-GOLD artifacts
+  — prose/book rows carry all-zeros solution vectors; excluded from
+  gold service (and their content was the canonicalizer WORKING:
+  prose annotations landing on their mint knot-twins — polygon-140°
+  ≡ the a=36÷4 knot — cross-register knot identity, #69's
+  paraphrase-invariance payment arriving early at the gold grain).
+  (4) **THE BAR PASSES: 35,876 solver-gold rows, FALSE-MERGE RATE
+  0.000000 (verify_iso confirmation stage; WL collisions 0 at this
+  fixture), invariance 1000/1000, collapse 0.0047** (169 true iso
+  duplicates at text grain in the accumulated mix — a mint-dedup
+  cross-generation side-fact, noted). PENDING per its own pointer:
+  the paraphrase-collapse read (do 5-view PARSES canonicalize
+  identically?) rides the next GPU window. CAMBIUM's ring-tidying
+  is BUILT and BARRED; the monoculture fence's finest-grain
+  instrument exists.

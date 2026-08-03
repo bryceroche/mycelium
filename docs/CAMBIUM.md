@@ -50,8 +50,7 @@ grows on the mycelium's network.)*
    design (R2 reversible commitments = the rings).
 3. Frame territory beyond KenKen: by measurement on the parser
    lineage, never by analogy (the #71 rent clause).
-4. The canonicalizer (#69, bars pinned) — within-level ring-tidying,
-   buildable in any CPU gap.
+4. ~~The canonicalizer~~ BUILT+PASSED 2026-08-03 (mycelium/canonicalizer.py routes identity through the knot-ID door; false-merge 0.000000 on 35,876 gold rows, invariance 1000/1000; paraphrase-collapse read PENDING-GPU).
 
 **Fences carried:** waist snapshots are notebook SUBSTRATE, never the
 admission signal (the mouth reads frozen trunk space — rotation law +
