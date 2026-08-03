@@ -33,27 +33,42 @@ def sh(cmd, extra=None, tail=2):
         raise RuntimeError(f"stage failed: {cmd[:90]}")
 
 
+import os as _os
+def _lines(f):
+    try: return sum(1 for _ in open(f))
+    except Exception: return -1
 print("=== E23 1/10: fresh repair corpora ===", flush=True)
-sh(".venv/bin/python3 scripts/algebra_nl_gen.py --n 800 --seed 231 --out .cache/g23r_v1.jsonl --teeth 0.8", tail=1)
-sh(".venv/bin/python3 scripts/algebra2_nl_gen.py --n 800 --seed 232 --out .cache/g23r_v2.jsonl --teeth 0.8 --token-budget 250", tail=1)
-sh(".venv/bin/python3 scripts/algebra3_nl_gen.py --n 800 --seed 233 --out .cache/g23r_v3.jsonl --teeth 0.8 --token-budget 250", tail=1)
-sh(".venv/bin/python3 scripts/algebra_verbose_gen.py 600 234 .cache/g23r_vb", tail=1)
-sh(".venv/bin/python3 scripts/algebra_dag7_gen.py 800 235 .cache/g23r_dag.jsonl", tail=1)
-sh("cat .cache/g23r_v1.jsonl .cache/g23r_v2.jsonl .cache/g23r_v3.jsonl "
+if _lines(".cache/gen23_repair.jsonl") == 3800:
+    print("    [skip] repair corpora banked", flush=True)
+else:
+    sh(".venv/bin/python3 scripts/algebra_nl_gen.py --n 800 --seed 231 --out .cache/g23r_v1.jsonl --teeth 0.8", tail=1)
+    sh(".venv/bin/python3 scripts/algebra2_nl_gen.py --n 800 --seed 232 --out .cache/g23r_v2.jsonl --teeth 0.8 --token-budget 250", tail=1)
+    sh(".venv/bin/python3 scripts/algebra3_nl_gen.py --n 800 --seed 233 --out .cache/g23r_v3.jsonl --teeth 0.8 --token-budget 250", tail=1)
+    sh(".venv/bin/python3 scripts/algebra_verbose_gen.py 600 234 .cache/g23r_vb", tail=1)
+    sh(".venv/bin/python3 scripts/algebra_dag7_gen.py 800 235 .cache/g23r_dag.jsonl", tail=1)
+    sh("cat .cache/g23r_v1.jsonl .cache/g23r_v2.jsonl .cache/g23r_v3.jsonl "
    ".cache/g23r_vb_verbose.jsonl .cache/g23r_dag.jsonl > .cache/gen23_repair.jsonl "
    "&& wc -l .cache/gen23_repair.jsonl", tail=1)
 
 print("=== E23 2/10: precompute repair states ===", flush=True)
-sh(".venv/bin/python3 scripts/phase1_algebra_head.py --precompute",
-   {"ALG_TRAIN": ".cache/gen23_repair.jsonl", "ALG_TRAIN_NAME": "gen23repair",
-    "PRECOMPUTE_ONLY": "gen23repair"}, tail=1)
+if _os.path.exists(".cache/phase1_alg_states_gen23repair.npz"):
+    print("    [skip] repair states banked", flush=True)
+else:
+    sh(".venv/bin/python3 scripts/phase1_algebra_head.py --precompute",
+       {"ALG_TRAIN": ".cache/gen23_repair.jsonl", "ALG_TRAIN_NAME": "gen23repair",
+        "PRECOMPUTE_ONLY": "gen23repair"}, tail=1)
 
 print("=== E23 3/10: specialist remine vs g22 ===", flush=True)
-e = {"ALG_TRAIN": ".cache/gen23_repair.jsonl", "ALG_TRAIN_NAME": "gen23repair",
+if _os.path.exists(".cache/phase1_gen23_nack.safetensors"):
+    print("    [skip] specialist banked", flush=True)
+    e = None
+else:
+    e = {"ALG_TRAIN": ".cache/gen23_repair.jsonl", "ALG_TRAIN_NAME": "gen23repair",
      "ALG_CKPT": PARSER, "NACK_CKPT": NEW_NACK, "NACK_SPLIT": "train"}
-sh(".venv/bin/python3 scripts/phase1_algebra_nack.py --prep", e, tail=2)
-e2 = dict(e); e2.update({"STEPS": "4000", "LR": "1e-4", "BATCH": "8", "SEED": "22"})
-sh(".venv/bin/python3 scripts/phase1_algebra_nack.py --train", e2, tail=2)
+if e is not None:
+    sh(".venv/bin/python3 scripts/phase1_algebra_nack.py --prep", e, tail=2)
+    e2 = dict(e); e2.update({"STEPS": "4000", "LR": "1e-4", "BATCH": "8", "SEED": "22"})
+    sh(".venv/bin/python3 scripts/phase1_algebra_nack.py --train", e2, tail=2)
 
 print("=== E23 4/10: monitor centroids (g22 fst space, g22 family) ===", flush=True)
 S4 = r'''
@@ -82,7 +97,7 @@ p = build_params(0); sd = safe_load(".cache/g23.safetensors")
 for k in p: p[k].assign(sd[k].to(p[k].device).cast(p[k].dtype)).realize()
 z = np.load(".cache/phase1_alg_states_gen23.npz")
 st = np.load(".cache/phase1_alg_states_gen23_states.npy", mmap_mode="r")
-assert st.shape[0] == z["tokmask"].shape[0] == 82400   # ALIGNED pair (fossil fixed)
+assert st.shape[0] == z["tokmask"].shape[0] == 88400   # ALIGNED pair (fossil fixed)
 idx = list(range(0, st.shape[0], max(1, st.shape[0]//3000)))[:3000]
 fst = compute_fst(p, st, z["tokmask"], z["sent"], idx)
 by = {}
