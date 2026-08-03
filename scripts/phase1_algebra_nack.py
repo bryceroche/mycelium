@@ -364,6 +364,9 @@ def do_train(steps, lr, batch, seed):
                             ("is_pct", (L_FAC,), dtypes.float),
                             ("is_fdiv", (L_FAC,), dtypes.float))
                            if int(os.environ.get("ALG_FTYPES", "4")) >= 7 else ()),
+                         # E1 (2026-08-03): the two-terminal law's FOURTH den
+                         *((("sign", (L_FAC,), dtypes.float),)
+                           if int(os.environ.get("ALG_WIDE", "0")) else ()),
                          ("query", (), dtypes.int)):
         npdt = np.float32 if dt == dtypes.float else np.int32
         bg[k] = fix(np.zeros((batch,) + shape, npdt), dt)
@@ -417,6 +420,9 @@ def do_train(steps, lr, batch, seed):
         tg["is_sel"] = (tg["ftype"] == 3).astype(np.float32)
         tg["arg_dup"] = gold.get("arg_dup",
                                  np.zeros_like(gold["presence"]))[idx].astype(np.float32)
+        if "sign" in bg:      # E1: sign target follows gold (repair rows: 0)
+            tg["sign"] = gold.get("sign",
+                                  np.zeros_like(gold["presence"]))[idx].astype(np.float32)
         if "is_macro" in bg:   # gen-15: macro targets follow the target ftype
             tg["is_macro"] = (tg["ftype"] == 6).astype(np.float32)
             tg["is_pct"] = (tg["ftype"] == 4).astype(np.float32)
