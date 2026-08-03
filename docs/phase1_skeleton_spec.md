@@ -21602,3 +21602,18 @@ token-position × waist-dim, the moment the skeleton trains.
   future reader may infer wide competence from a promotion that
   didn't test it (the caveat-decay fence applied prospectively:
   the scope travels IN the manifest, as data).
+
+- **B1′ PASSES — SIGN BEATS THE OLD RANGE (2026-08-03;
+  gen23_rebar.json):** fresh held-out fixtures (seeds 105000/105100,
+  n=120/arm): **old 113/120 = 94.2%, sign 116/120 = 96.7% — PASS**
+  (bar ≥89.2%; validity floor cleared). The sign terminal doesn't
+  just reach parity, it EXCEEDS the old register on unseen
+  fixtures. THE FINAL CHAIN LIT: the full standing-fixture battery
+  (all seven, vs the manifest's own regression_bars as pre-pinned
+  floors — nothing skipped silently) → gen23_verdict.py, which
+  writes the manifest + prints PROMOTED in ONE act carrying
+  **wide_not_claimed as a manifest FIELD** (the caveat-decay fence
+  prospective: scope as data, not prose) and an EXPLICIT
+  entourage-23 waiver (specialist/centroids/mouth/panel remain
+  gen-22's until the settlement, owed immediately) — or prints the
+  kill and touches nothing.
