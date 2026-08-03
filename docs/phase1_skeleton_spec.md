@@ -20702,3 +20702,30 @@ token-position × waist-dim, the moment the skeleton trains.
   certified are still waiting-room) — the books road's next
   deployment is also its next measurement of whether
   prose-supervision generalizes one inch off its own rows.
+
+- **GUT #69'S FOURTH ARRIVAL (2026-08-02, the Lattner sitting):**
+  the small-steps/true-MLIR instinct re-arrives carrying new
+  evidence it didn't have in July: **the 0.02 never-trained
+  precision is the premature-lowering signature at fixture scale**
+  — the single NL→arith3 lowering doesn't generalize off memorized
+  prose, which is what #69's error-altitude census was registered
+  to adjudicate (mass at schema altitude → the missing floor pays;
+  at assembly → the single lowering stands; ~50 stratified
+  specimens by Bryce's hand; the census GATES the dialect, still).
+  Two questions asked and answered by standing law this sitting:
+  (1) silhouette-from-the-waist REFUSED — the mouth reads pooled
+  FROZEN-TRUNK space by design; waist capture would break the
+  rotation law (re-anchor every generation, vintages incomparable)
+  and the Goodhart fence (a trained space under the admission
+  instrument = diets move the admission geometry; the mouth must
+  measure where training cannot reach). (2) breaths-as-lowerings
+  already refused at #69 interp 5 (fixed-point iteration at
+  constant altitude vs translation between altitudes — a rhyme,
+  not a mapping); the breathing-want's lawful home is rung 3's R2
+  (reversible commitments — the engagement-point pawl that clicks
+  early and never releases is the one-pass parser's measured
+  case for revision cycles). The relay's citations VERIFIED
+  against the ledger (all check out — noted because the
+  reconstruction-bias rule requires the grep, and this time the
+  grep found the ledger AHEAD of the conversation). Sequencing
+  unchanged: consumer audit → framing session → these.
