@@ -33,7 +33,11 @@ Unfenced: 56% @ 0.53.
 **THE ROADS** (each with its measured state):
 1. **Books/harvest expansion** (L4 +280, L5 +252): the only gradient
    that grades (0.78 L1 → 0.47 L5); books wet the register (their job
-   = make the native set overlap the harvest).
+   = make the native set overlap the harvest). **Composition rider
+   (2026-08-02, the 0/20): coverage the books buy must be checked for
+   consumed-cousin status when it arrives — cousin-admission is a
+   different purchase than register expansion, and if hypothesis (b)
+   holds it is the mouth's own failure mode.**
 2. **Surface augmentation**: the band survives its first cure (41
    entries @10%: no bar, arms tie). Next: THE SLOPE PROBE (120
    entries, one pen tranche) — ties = mechanism ceiling, money

@@ -20589,3 +20589,33 @@ token-position × waist-dim, the moment the skeleton trains.
   the transfer-clause experiment's same fixture. The deployed
   chain is NOT emitting these today — all 20 are mouth-foreign,
   behind the wall; this is actuarial, not an emergency.
+
+- **THE COUNTERSIGN ON THE 0/20 — THREE CARVINGS (2026-08-02,
+  Bryce):** (1) **HYPOTHESIS (b) RESTATED AS A MOUTH FAILURE MODE,
+  worse than the sheet stated:** the mouth refuses by measuring
+  distance from the trained register, on the founding assumption
+  that REGISTER PROXIMITY TRACKS READABILITY. If book training on
+  rewritten cousins pulls the ORIGINALS toward native while their
+  mathematics stays out-of-dialect, the mouth's distance measure
+  and the chain's competence measure come apart precisely on
+  consumed text — the gate looks increasingly at-home on problems
+  it increasingly cannot solve, and the failure lands on exactly
+  the population the books are designed to produce. (The Level-1
+  detail carries the weight: 0/6 where disjoint runs 0.962 —
+  Level 1 is where difficulty explanations run out, so adverse
+  selection is hard to sustain ALONE.) (2) **THE TRANSFER-CLAUSE
+  EXPERIMENT'S REGISTRATION AMENDED, now, before books deliver:**
+  when mouth-native harvest coverage moves off 1.6%, the
+  newly-admitted items are CHECKED FOR CONSUMED-COUSIN STATUS —
+  coverage gained by admitting book-cousins is a different
+  purchase than coverage gained by genuine register expansion;
+  the fixture's number has a COMPOSITION as well as a size, and
+  both branches read it. (3) **THE AUTOPSY DISCRIMINATOR
+  SHARPENED:** under (b) the echo must be SPECIFIC — the wrong
+  graph resembles a PARTICULAR book row's structure, traceable;
+  generic arith3-shaped wrongness is consistent with (a) and
+  confirms nothing. Traceable echo = confirmation; generic
+  wrongness = the selection story survives. The actuarial frame
+  stays in front: all 20 mouth-foreign, nothing emits today —
+  a pricing fact about a road, and the first evidence the road's
+  own product carries a hazard.
