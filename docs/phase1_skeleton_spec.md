@@ -21652,3 +21652,24 @@ token-position × waist-dim, the moment the skeleton trains.
   form recognized: wide_not_claimed as a field carrying
   measurement + mechanism + pointer + prohibition ("prose would
   have been gone by gen-26"). Salute returned. 👑
+
+- **THE BUFFER-SPEC DOOR DOCKETED + THE CEILING RE-CUT BANKS
+  (2026-08-03, Bryce's countersign):** THE DOCKET (deep-clean line;
+  not tonight — the entourage is mid-flight and no-mid-fire covers
+  apparatus): **the gold-buffer spec is the same law implemented N
+  times** — four dens in twelve hours across three files, each
+  trainer hand-listing its buffers, each remembering sign only
+  after crashing. The doors pattern's fix: ONE authority — the
+  buffer spec DERIVED from the head's own terminal set — so a
+  fifth trainer inherits instead of discovering; and the fence
+  upgraded to fire at BUILD rather than first step (the crash IS
+  the fence working; it could work earlier). The honest note
+  carried: not a defect — a reliable fence with a better firing
+  position available. **THE M500 RE-CUT BANKS WITHOUT A NEW READ:**
+  the retroactive ladder already holds E1-alone = **215/500 =
+  43.0%** — under gen-23's claimed scope (sign yes, wide
+  not-claimed), the December addressable ceiling is 215, formally
+  banked (artifact: answer_space_retro_read.json, the "+E1 NEG"
+  rung; the audit's 197 carries a scope line: superseded by the
+  gen-23 promotion for ceiling purposes). The framing sheet's
+  ceiling term updates when the entourage settles.
