@@ -21459,3 +21459,27 @@ token-position × waist-dim, the moment the skeleton trains.
   instruments not reasoning, and the sweep lesson repeats: **a
   domain extension audits every complexity bound it crosses, not
   just every sentinel.** The bars RELIGHT.
+
+- **GUT #125 REGISTERED — FREE ENERGY (2026-08-03, two interps
+  sorted):** FRISTON (the real referent): the mouth IS a surprise
+  threshold — refusing 98.4% because wild text is high-surprise
+  under the trained generative model; the corrected cut is the
+  sentence with teeth (0.951 where a generative model exists, 0.023
+  where it doesn't — register proximity IS low surprise, same
+  quantity by different names). THE INTERESTING HALF the campaign
+  lacks: active inference's second move — an agent that can't
+  reduce surprise by updating beliefs reduces it by ACTING (look
+  again, resample). The gate can't; parse-once-commit = the
+  no-reverse-gear finding's FOURTH arrival (pawl, erosion, R2) —
+  and free energy adds the one thing the others didn't: **an
+  objective function for WHEN to revise — revise while prediction
+  error exceeds the cost of revising.** GIBBS: filed
+  convergent-spent (the exchange family holds the thermodynamic
+  ground; ΔG's barrier ≈ the bathtub law). **THE RENT, PINNED
+  BEFORE THE READ:** if mouth distance is surprise, residual should
+  grade ERROR MAGNITUDE among the wrong (the four-null verdict
+  asked correctness, never how-wrong). Fixture: the 46 lies
+  (census specimens ⋈ wild ledger by harvest_idx); metric:
+  Spearman rho of mouth_residual vs |quorum_answer − gold|;
+  direction pinned POSITIVE; p<0.05 → the frame's claim PRINTS;
+  else NULL banked and the frame stays unpaid. Survey grade, n=46.
