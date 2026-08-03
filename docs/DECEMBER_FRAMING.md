@@ -62,7 +62,7 @@ composition mechanically (sha ∩ mix). Unfenced: 56% @ 0.53.
 | Leaf | Configuration | December claim | Arithmetic |
 |---|---|---|---|
 | A | CLOSED + certified | **The abstention product**: "never lies; certifies ~perfectly where it speaks; abstains elsewhere" | answers ~0.2% of addressable @ 1.00 — shippable TODAY, defensible, honest |
-| B | OPEN + binary answer | "Low single digits on MATH-500 with honest abstention" | **COLLAPSED by the corrected cut (2026-08-02): the 0.63 was memorization-inflated; never-trained precision is 0.02 — open admission today ships ~all lies.** B requires a road to move the never-trained term first |
+| B | OPEN + binary answer | "Low single digits on MATH-500 with honest abstention" | **STRUCK (ruled 2026-08-02): the 0.63 was memorization-inflated; never-trained precision is 0.02 (scope: algebra-slice proxy, n=43) — open admission today ships ~all lies.** Re-enters only if a road moves the never-trained term, measured |
 | C | OPEN + trained tier | graded answers at chosen precision | UNPRICED — requires the training bet |
 | D | Defer the claim | roads first (books + slope probe + answer-space), re-frame at a later gate | the ceiling and coverage terms both move before the claim is fixed |
 

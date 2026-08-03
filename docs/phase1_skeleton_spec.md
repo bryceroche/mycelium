@@ -20667,3 +20667,38 @@ token-position × waist-dim, the moment the skeleton trains.
   Fixture hygiene: wild_ledger_v1 stays UNTOUCHED as banked; the
   corrected consumption column ships as a sidecar on the next
   re-cut, never an in-place rewrite.
+
+- **THE COUNTERSIGN ON THE CORRECTED CUT + THE 0.023 SECOND LOOK
+  (2026-08-02, Bryce's rulings + the same rule applied to the new
+  number):** the rulings banked: **LEAF B IS STRUCK, not repriced**
+  (open admission today ships almost all lies; it was two sessions
+  from being a decision); the scrutiny-rider chain credited (three
+  layers, each triggered by the last, rooted in
+  favorable-numbers-get-the-lens — "that rule just paid for every
+  session it ever cost"); the record's precise statement: **the
+  disjoint framing was wrong FROM BIRTH** — the key measured
+  waiting-room membership for two book eras, never training
+  membership; every verdict that read disjoint/consumed inherits
+  the defect; **THE CONSUMER AUDIT MOVES AHEAD OF THE FRAMING
+  SESSION** (any banked law resting on a disjoint number gets its
+  scope line before the session sits). THE 0.023 SECOND LOOK,
+  fired by the same rule (unfavorable but load-bearing; frames
+  pinned before numbers): **Q1 (representativeness):** the
+  never-trained answered population spans levels near-uniformly
+  (6/9/12/9/7 across L1–L5) and is subject-scoped to
+  algebra 33 + prealgebra 10 — the harvest's own scope, not an
+  adverse books-residual (books select by surface filter; the 27
+  never-trained in-reach are simply not-yet-annotated waiting-room
+  stock). VERDICT: 0.023 keeps its December-predictor status WITH
+  scope lines — algebra-slice proxy, n=43 survey-grade,
+  answered-tier conditioning. **Q2 (what 0.951 measures):** ALL
+  81 trained matches carry full factor annotations — provenance
+  book 5 (26) + book 6 (3) @ 0.897 and the gen-10 PROSE LANE
+  (prose-v0, 52 rows) @ 0.981. So 0.951 is memorization of
+  PROSE-PLUS-GRAPH (supervised parses on that exact prose), not
+  mere register familiarity — the sharper label the countersign
+  asked for. SIDE FINDING: book 7/8 rows are ABSENT from the
+  deployed mix (gen22 = gen21 + fdiv diet only; book8's 266
+  certified are still waiting-room) — the books road's next
+  deployment is also its next measurement of whether
+  prose-supervision generalizes one inch off its own rows.
