@@ -71,10 +71,10 @@ m = {
                "mix": h(".cache/gen23_mix.jsonl")},
     "notes": ("2026-08-03 GEN-23 PROMOTED (SIGN-ONLY SCOPE, word (c)): the "
               "answer-space generation E1+E3 behind ALG_WIDE; padwarm from "
-              "g22; 600x10 @ 6.787%; bigtest %d (above g22's 1226); B1' "
-              "sign 96.7%% vs old 94.2%% fresh held-out; WIDE TRAINED NOT "
-              "CLAIMED (see scope). Prior manifest notes preserved below. | "
-              % nums["bigtest"]) + old_m.get("notes", ""),
+              "g22; 600x10 @ 6.787 pct; bigtest " + str(nums["bigtest"]) +
+              " (above g22's 1226); B1' sign 96.7 vs old 94.2 fresh "
+              "held-out; WIDE TRAINED NOT CLAIMED (see scope). Prior "
+              "manifest notes preserved below. | ") + old_m.get("notes", ""),
 }
 tmp = ".cache/GENERATION.json.tmp"
 json.dump(m, open(tmp, "w"), indent=1)
