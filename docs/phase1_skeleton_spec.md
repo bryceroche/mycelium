@@ -21416,3 +21416,26 @@ token-position × waist-dim, the moment the skeleton trains.
   held-out seed 104000, n=120/arm, metric = parse→solve answer ==
   gold per row. B3: no conversion bar exists. The battery reads
   mechanically; the verdict script follows the numbers.
+
+- **THE COUNTERSIGN ON THE RELIGHTS + THE PER-ARM READING RIDER
+  (2026-08-03, Bryce):** relight 2's full statement banked: **the
+  sign-terminal smoke proved the terminal COULD be fed; the
+  optimizer crash proved the trainer WASN'T feeding it** — one
+  tested the pathway, the other the plumbing to it; only both
+  cover the inert-patch shape. The gen-15 comment warning a future
+  hand in the exact function where the future hand erred = the
+  future-reader law working. THE PROPERTY NOTED: tinygrad's
+  unwrap-on-None-grad is a crash path that behaves as a REFUSAL
+  path — the sign head could not have trained-at-zero for four
+  segments and printed a plausible generation; loud at the
+  optimizer, never silent in the loss (the k≤0-guard property,
+  arriving free from the framework). Idempotent prep = staged-I/O
+  paying at its most concrete (relights cost minutes, not the
+  assembly). **THE PER-ARM RIDER: B1's three sub-arms (sign/wide/
+  both) report SEPARATELY even though the bar is aggregate** — a
+  generation that learned wide-not-sign (or the reverse) would
+  satisfy an aggregate bar while carrying a starved terminal into
+  promotion; the split is the number that says both pathways TOOK.
+  The running bars unit prints the aggregate; the split rides an
+  immediate follow-up on the same held-out seeds (104100/104200/
+  104300 — deterministic, exact).
