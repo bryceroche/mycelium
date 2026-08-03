@@ -20868,3 +20868,46 @@ token-position × waist-dim, the moment the skeleton trains.
   the standing MIXED verdict) named as the guard against
   over-correction — the record stays trustworthy in both
   directions.
+
+- **GUT #124 REGISTERED — THE DIFFUSION COMPILER RETURNS CARRYING
+  THE NOTEBOOK (2026-08-03, Bryce: "neural diffusion compiler...
+  everything in parallel... waist snapshot is the notebook, both
+  accumulate and replace per breath... 7 layers of MLIR in parallel
+  across breath cycles... i really do think it might be in parallel
+  pls listen"):** THE GREP BEFORE THE VERDICT, and it lands in the
+  gut's favor: this is **#71'S RETURN, and #71 ALREADY WON** — the
+  crossover probe printed SIGNATURE C (2026-07-25 registration,
+  blind; verdict banked with the ceiling caveat): all altitudes
+  held simultaneously, NO handoff, schema NEVER ERASED (anti-A),
+  t95 strictly ordered by altitude (schema 0 < solution 5) —
+  "#69's no REVISED for this engine: lowering real, sequence not."
+  The relay's correction ("levels sequential by definition")
+  OVERSTATED without its scope; the true reconciliation: **soft
+  co-resolution is MEASURED-PARALLEL (C, the engine's dynamics);
+  the EXPLICIT tower — committed IR artifacts a next level
+  consumes, the key grading primitives — is sequential by
+  construction. Two regimes, not a contradiction.** THE SYNTHESIS,
+  and it is the registration's real yield: **the dual notebook IS
+  the reconciliation mechanism.** REPLACE-notebook = the working
+  state, refining at all altitudes in parallel (C's measured
+  dynamics; today's loop overwrites, which is why bindings erode);
+  ACCUMULATE-notebook = the committed record, where the pawl
+  clicks — hard, ordered, crossable-out by a later constraint
+  (rung 3's R2, the ratchet law's designed engagement point,
+  the verification side's readable substrate). Both per breath =
+  the tower and the loop SEPARATED ONTO THEIR OWN AXES by a
+  memory-architecture split rather than conflated on one. THE
+  WAIST-SNAPSHOT scoped lawful: notebook SUBSTRATE (per-breath
+  512d snapshots accumulating across breaths — the v24c dual
+  notebook's direct descendant, one Lucy with notes), NEVER the
+  admission signal (the mouth fence stands: admission cannot read
+  the parser's own product). FRAME RENT re-affirmed from #71:
+  'diffusion-like dynamics' earned, 'diffusion model' never
+  (sigma constant, no noise schedule); C's territory is the KenKen
+  engine ONLY — the parser inherits it BY MEASUREMENT, never
+  analogy. SEVEN stays #123's prior; the census still gates
+  whether the EXPLICIT tower grows at all; #71's queued
+  strengthening reads (K-sweep retro-read first) remain the cheap
+  next evidence if the frame is to expand territory. Filed: #124 =
+  #71 + #94 (ratchet) + rung 3 R2, unified by the notebook —
+  three registered threads discovering they were one design.
