@@ -21061,3 +21061,37 @@ token-position × waist-dim, the moment the skeleton trains.
   same-knot items separable in WAIST space? — zero-GPU if states
   banked for both populations; measurement would convert "the
   waist is leaky" from inference to reading.
+
+- **THE CENSUS PRINTS + THE FRAMING SESSION RESOLVED (2026-08-03, on
+  Bryce's word, the pen's hand; per-specimen reasons banked in
+  .cache/census_altitude_specimens.jsonl and the sheet — the
+  countersign can overturn any specimen):** THE TALLY: **schema 10 /
+  assembly 1 / joint-dependent 1 / OUT-OF-DIALECT 34 of 46 (74% —
+  knowledge 18, values 16).** THE PINNED RULE READS: in-dialect lies
+  12, schema 10/12 = 83% > 60% → **THE SCHEMA FLOOR PAYS for the
+  reachable class — #69's gate, opened by measurement.** THE LARGER
+  PRINT the frame's third category caught: the wild frontier's
+  dominant walls are EXPRESSIVENESS, not extraction — values
+  (negatives/non-integers/non-unique: 35%) and knowledge (domain
+  identities: 39%). **ASSEMBLY = 1/46 — the binder is NOT the wild
+  frontier's bottleneck** (its constituency stays in-register: dup
+  53%, the bench). Poster specimens: [42] a FULLY IN-DIALECT chained
+  linear system (the dialect's own shape) garbled to 20*5=100 at 5/5
+  unanimous — the schema floor's constituency in one item; [33] the
+  lone assembly — system extracted RIGHT, answered x when asked y
+  (query-binding). Trained-verbatim lies split 1 schema / 2 knowledge
+  / 1 values. THE FRAMING RESOLUTION (DECEMBER_FRAMING.md §RESOLVED):
+  **A-NOW-PLUS-D** — the abstention product is the December claim
+  (true today); roads run beside it RE-RANKED BY MEASURED LIE MASS:
+  answer-space FIRST (35% of lies + 29.4% of M500 exclusions — one
+  road, two fixtures; the word recommended next, spec-first), books
+  second (composition checks armed), schema floor third (measured
+  constituency, CAMBIUM's explicit tower grows downward on #69's own
+  terms), knowledge/macros fourth (priced longest). RUNG 3 = parallel
+  research per the pre-ruling (A-claim ⇒ research thread; the census
+  demotes binder work at the frontier and CAMBIUM's notebook keeps
+  it). SCOPE LINES: lie composition only (refusal composition
+  unmeasured — the schema floor's full constituency includes
+  refusals); tighten-pass deviation carried; pen-judged under the
+  word. The critical path's two acts are DONE; what remains owed to
+  Bryce: the COUNTERSIGN on the fifty and the ANSWER-SPACE WORD.

@@ -80,3 +80,37 @@ Today the campaign can truthfully ship "a system that never lies"
 (coverage), the answer space (ceiling), and — if either B or C is the
 claim — rung 3 or the slope probe (precision/robustness). All four
 leaves rest on measured numbers; none require hope.
+
+## RESOLVED (2026-08-03, on Bryce's word; every term measured)
+
+**THE CLAIM: A-now-plus-D.** Leaf A ships as the December claim — "a
+system that never lies: certifies where it speaks, abstains elsewhere"
+— true today on measured numbers (mouth-native @ 1.00; never-trained
+open admission would be ~0.02 and is REFUSED by the wall). D runs
+beside it: the roads move both terms, re-frame at a later gate if they
+deliver.
+
+**THE CENSUS'S ANSWER (46 wild lies, four-category frame, pinned bar):**
+schema 10 / assembly 1 / joint 1 / **out-of-dialect 34 (74%: knowledge
+18, values 16)**. Verdicts: (1) **the schema floor PAYS for the
+reachable class** (83% of in-dialect lies, bar 60% cleared) — #69's
+gate opens; the floor enters as CAMBIUM/bench work. (2) **the binder is
+not the frontier's bottleneck** (assembly 1/46) — rung 3 = parallel
+research (per the pre-ruling: A-claim ⇒ research thread), its
+constituency the in-register pathologies + the CAMBIUM notebook.
+(3) **THE ROADS RE-RANKED BY MEASURED LIE MASS:**
+  1. **Answer-space/dialect extension** — the values wall is 35% of
+     wild lies AND 29.4% of MATH-500 exclusions: one road, two
+     fixtures agreeing. THE WORD IS RECOMMENDED NEXT (spec-first,
+     negatives + non-integers + non-unique handling).
+  2. **Books/L4-L5** — coverage; the prediction contest runs with
+     composition checks armed.
+  3. **The schema floor** — measured constituency, behind the
+     answer-space word; unlocks the reachable-class lies ([42]'s
+     garbled in-dialect chain is its poster specimen).
+  4. **Knowledge/macros** — 39% of lies are domain identities (Vieta,
+     degree rules, logs): the recursion charter's macro road, priced
+     honestly as the longest.
+Slope probe: unchanged, its own word. Scope lines: census reads lie
+composition (not refusal composition); pen-judged, per-specimen
+reasons banked for countersign.
