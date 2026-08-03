@@ -21368,3 +21368,23 @@ token-position × waist-dim, the moment the skeleton trains.
   new-range). BARS STANDING: B1 parity −5pts (pinned), B2
   no-regression relative, B3 no conversion bar. **THE FIRE WAITS
   ON ITS OWN WORD with this declaration in hand.**
+
+- **GEN-23 IGNITION (2026-08-03, the word given — the answer-space
+  generation fires):** THE CORPUS: 600/600 minted, ZERO rejects at
+  all five gates; per-terminal FINAL: rows 200 sign / 200 wide /
+  200 both; literals 696 sign-head, 708 digits-4-7 — the dose
+  declaration's terms delivered as declared (share 6.787%, ×10
+  reps, base order preserved). THE FIRE: systemd unit `gen23-fire`
+  lit — prep chain (mix + token fence → base-copy + 6,000-row
+  append with 6 sentinels at cos>0.9999 → ALG_WIDE gold both
+  splits, vintage test npz untouched → padwarm g22→g23 with
+  MSD-aligned digit map, leading-position digit-0 bias +6, sign
+  bias −6: **gen-23 at init is functionally g22 on old-range
+  input**) → 4×4k from padwarm, LR 1e-4, seeds 2301-4, snaps 2k
+  (the aug-fire shape; fire log .cache/gen23_fire.log). STANDING
+  AT IGNITION: bars B1 (−5 pinned at smoke pass) / B2 (relative,
+  own-vintage) / B3 (NO conversion bar); the battery + entourage +
+  verdict script follow the burn; **g22 REMAINS THE GATE until a
+  verdict script prints PROMOTED and writes the manifest in one
+  atomic act** — the law that has never bent, not bending tonight
+  either.
