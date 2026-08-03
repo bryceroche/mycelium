@@ -20911,3 +20911,35 @@ token-position × waist-dim, the moment the skeleton trains.
   next evidence if the frame is to expand territory. Filed: #124 =
   #71 + #94 (ratchet) + rung 3 R2, unified by the notebook —
   three registered threads discovering they were one design.
+
+- **THE VISION NAMED: CAMBIUM (2026-08-03, docs/CAMBIUM.md) + THE
+  VINTAGE RIVET + THE K-SWEEP RETRO-READ FOUND UNLEDGERED AND
+  BANKED:** the name, in the campaign's organic register: the
+  CAMBIUM is the living sheet where the whole tree grows AT ONCE
+  (replace-notebook, signature C's parallel refinement); what it
+  lays down is RINGS (accumulate-notebook — the committed, ordered,
+  crossable-out record where the pawl clicks); the tree grows on
+  the mycelium. One organ, two regimes; the vision page carries the
+  measured/conjecture split with vintages attached. THE RIVET
+  (Bryce's scope note, banked): signature C is a fact about the
+  JUNE ENGINE — the v200 capture never ran on a trained model, so
+  'the dynamics are parallel' is measured there and CONJECTURE
+  everywhere else; the parser inherits by measurement only
+  (never-mix-coordinates' frame-transfer form). THE CUSTODY FIND:
+  the K-sweep retro-read — C's registered FIRST ACT — ran 2026-07-26
+  (.cache/ksweep_read.json + ksweep_argmax.npz banked) and its
+  verdict NEVER ENTERED THE LEDGER (no 'ksweep' in the record; the
+  probe arc's session apparently ended first — an unledgered-read
+  specimen for the legible-state family). BANKED NOW against the
+  pre-pinned prediction (spec ~11538, written before C printed):
+  **solve-accuracy t95 by depth = 1/3/8, strictly depth-ordered;
+  cost of cutting breaths to K=8 = 0.5% (d1) / 0.6% (d2) / 4.2%
+  (d3plus) — harder problems degrade FIRST when breaths are cut,
+  by 8×.** The prediction PRINTS: the breath ladder works for a
+  spectral reason; C's mechanism is confirmed at the SOLVE grain
+  (the probe read it at the representation grain). Territory
+  unchanged: the June engine — this strengthens C at home, buys
+  the parser nothing (the rivet). Artifact semantics verified
+  internally (k8_cost = final − curve[K=8], reproduced from the
+  banked curves). The board notes CAMBIUM as the vision page;
+  sequencing untouched: tighten → fifty → framing session.

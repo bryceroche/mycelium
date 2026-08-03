@@ -66,6 +66,15 @@ inner chain 9% coverage @ 0.63 — CORRECTED 2026-08-02: decomposes to trained-v
 | Registry re-audition (certificate pile) | every promotion |
 | Board file touch | open/close + chapter boundaries |
 
+## The vision page
+
+**CAMBIUM** (docs/CAMBIUM.md, 2026-08-03): the named design — cambium
+(parallel working state, signature C) + rings (committed record, rung 3
+R2) + the explicit tower (census-gated). Measured/conjecture split with
+vintages. K-sweep retro-read banked 2026-08-03 (t95 1/3/8; K8 cost
+0.5/0.6/4.2% — deeper degrades first): C confirmed at solve grain,
+June-engine territory only.
+
 ## Asleep / open questions (setting, per #104 — not delinquent)
 
 | Item | State |
