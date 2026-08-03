@@ -21029,3 +21029,35 @@ token-position × waist-dim, the moment the skeleton trains.
   census on the critical path); burial is a legitimate outcome
   for any orphan whose artifact can't be interpreted after the
   fact.
+
+- **THE CENSUS READING FRAME — PINNED BEFORE ANY SPECIMEN IS JUDGED
+  (2026-08-03, on Bryce's word: "resolve the fifty, framing session,
+  and reading census" — the pen takes the fifty under the word; the
+  tighten-pass deviation NOTED: judgments read against the CURRENT
+  dialect law; any specimen whose altitude hinges on a loose joint
+  flags JOINT-DEPENDENT rather than forced):** FOUR CATEGORIES,
+  defined before reading: **SCHEMA** = extraction misread the prose
+  (wrong entities/quantities/question pulled) WHILE a faithful
+  arith3 graph exists — the parser failed to reach a reachable
+  target. **ASSEMBLY** = extraction right (the graph's quantities/
+  question match the prose), wiring wrong — relations/bindings
+  misbuilt from good pieces. **OUT-OF-DIALECT** = NO faithful
+  arith3 graph exists (the mathematics is beyond the dialect:
+  quadratics, geometry formulas, non-integer intermediates) — not
+  an extraction failure but an EXPRESSIVENESS wall; this mass
+  belongs to the ANSWER-SPACE/dialect-extension road, NOT the
+  schema floor (#69's binary presumed representable problems; the
+  wild pool doesn't). **OTHER/JOINT-DEPENDENT** = neither fits or
+  the judgment hinges on a loose spec joint. THE DECISION RULE,
+  pinned: among IN-DIALECT lies (schema+assembly+other), schema
+  mass > 60% → the schema floor is the road; assembly > 60% → the
+  single lowering stands and rung 3's binder takes the weight;
+  neither → split verdict, both roads priced. OUT-OF-DIALECT mass
+  reads SEPARATELY as the answer-space road's constituency (it can
+  neither confirm nor refute the schema floor). Per-specimen
+  reasoning banked with each verdict; the localization rider in
+  view as the sheet instructs. THE WAIST-SEPARABILITY PROBE
+  docketed beside the census (Bryce's IB rent): trained-vs-unseen
+  same-knot items separable in WAIST space? — zero-GPU if states
+  banked for both populations; measurement would convert "the
+  waist is leaky" from inference to reading.
