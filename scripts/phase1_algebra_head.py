@@ -976,6 +976,11 @@ def do_train(steps, lr, batch, seed):
                            if int(os.environ.get("ALG_FTYPES", "4")) >= 7 else ()),
                          *((("is_frac", (L_FAC,), dtypes.float),)
                            if int(os.environ.get("ALG_FTYPES", "4")) >= 8 else ()),
+                         # E1 (2026-08-03): sign gold buffer — two-terminal
+                         # law, the same lesson as the gen-15 comment above
+                         # (without it h_sgn leaves the graph: None grad)
+                         *((("sign", (L_FAC,), dtypes.float),)
+                           if ALG_WIDE else ()),
                          ("query", (), dtypes.int)):
         npdt = np.float32 if dt == dtypes.float else np.int32
         bg[k] = fix(np.zeros((batch,) + shape, npdt), dt)
@@ -1090,7 +1095,8 @@ def do_train(steps, lr, batch, seed):
                 **({"is_macro": gold["is_macro"][idx],
                     "digits2": gold["digits2"][idx],
                     "y": gold["y"][idx]} if "is_macro" in bg else {}),
-                **({"is_frac": gold["is_frac"][idx]} if "is_frac" in bg else {})}
+                **({"is_frac": gold["is_frac"][idx]} if "is_frac" in bg else {}),
+                **({"sign": gold["sign"][idx]} if "sign" in bg else {})}
         for k, v in feed.items():
             npdt = np.float32 if bg[k].dtype == dtypes.float else np.int32
             bg[k].assign(Tensor(v.astype(npdt), dtype=bg[k].dtype).contiguous()).realize()
