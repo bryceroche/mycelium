@@ -30,7 +30,8 @@ MIX = ".cache/gen23_mix.jsonl"
 NPY = ".cache/phase1_alg_states_gen23_states.npy"
 NPZ = ".cache/phase1_alg_states_gen23.npz"
 
-# ---- 1. the mix ----
+# ---- 1. the mix (idempotent: relight skips completed stages) ----
+_done_mix = os.path.exists(MIX) and sum(1 for _ in open(MIX)) == 88400
 base = open(".cache/gen22_mix.jsonl").read().splitlines()
 diet = [json.loads(l) for l in open(".cache/answer_space_corpus_v0.jsonl")]
 assert len(base) == 82400 and len(diet) == 600, (len(base), len(diet))
@@ -40,34 +41,40 @@ assert not too_long, f"token-length fence: rows {too_long[:5]} exceed T_ALG"
 rng = random.Random(2300)
 block = [json.dumps(r) for r in diet for _ in range(10)]
 rng.shuffle(block)
-with open(MIX, "w") as f:
-    f.write("\n".join(base + block) + "\n")
+if not _done_mix:
+    with open(MIX, "w") as f:
+        f.write("\n".join(base + block) + "\n")
 n_total = len(base) + len(block)
 print(f"[mix] gen23: {len(base)} base (order preserved) + {len(block)} diet "
       f"= {n_total} rows; share {len(block)/n_total:.3%}", flush=True)
 
 # ---- 2. states ----
 from beacon_closing_arm import recompute_states
+_done_states = os.path.exists(NPY) and \
+    np.load(NPY, mmap_mode="r").shape[0] == n_total
 src = np.load(".cache/phase1_alg_states_g22_states.npy", mmap_mode="r")
 assert src.shape[0] == 82400
-out = np.lib.format.open_memmap(NPY, mode="w+", dtype=np.float16,
+if _done_states:
+    print("[states] already assembled — skipping to sentinels", flush=True)
+out = None if _done_states else np.lib.format.open_memmap(NPY, mode="w+", dtype=np.float16,
                                 shape=(n_total, T_ALG, 2048))
-CH = 4096
-for s0 in range(0, src.shape[0], CH):
-    out[s0:min(s0 + CH, src.shape[0])] = src[s0:min(s0 + CH, src.shape[0])]
-print("[states] base copied", flush=True)
-new_rows = [json.loads(l) for l in block]
-for s0 in range(0, len(new_rows), 8):
-    ids = np.zeros((8, T_ALG), np.int32)
-    for i, r in enumerate(new_rows[s0:s0 + 8]):
-        e = tok.encode(r["text"]); Ln = min(len(e.ids), T_ALG)
-        ids[i, :Ln] = e.ids[:Ln]
-    st = recompute_states(ids).astype(np.float16)
-    for i in range(min(8, len(new_rows) - s0)):
-        out[82400 + s0 + i] = st[i]
-    if (s0 // 8) % 100 == 0:
-        print(f"  [append {s0}/{len(new_rows)}]", flush=True)
-out.flush(); del out
+if not _done_states:
+    CH = 4096
+    for s0 in range(0, src.shape[0], CH):
+        out[s0:min(s0 + CH, src.shape[0])] = src[s0:min(s0 + CH, src.shape[0])]
+    print("[states] base copied", flush=True)
+    new_rows = [json.loads(l) for l in block]
+    for s0 in range(0, len(new_rows), 8):
+        ids = np.zeros((8, T_ALG), np.int32)
+        for i, r in enumerate(new_rows[s0:s0 + 8]):
+            e = tok.encode(r["text"]); Ln = min(len(e.ids), T_ALG)
+            ids[i, :Ln] = e.ids[:Ln]
+        st = recompute_states(ids).astype(np.float16)
+        for i in range(min(8, len(new_rows) - s0)):
+            out[82400 + s0 + i] = st[i]
+        if (s0 // 8) % 100 == 0:
+            print(f"  [append {s0}/{len(new_rows)}]", flush=True)
+    out.flush(); del out
 # sentinels
 rows_all = base + block
 st = np.load(NPY, mmap_mode="r")
@@ -86,14 +93,19 @@ for i, ridx in enumerate(picks):
 print("[states] sentinels 6/6 — assembly TRUSTED", flush=True)
 
 # ---- 3. train npz (ALG_WIDE gold) ----
-samples, ids2, mask, offsets = PH.tokenize(MIX)
-gold = build_gold(samples, offsets)
-assert gold["digits"].shape[-1] == 7 and "sign" in gold
-sent = np.stack([sent_indices(s["text"], o, mask[i])
-                 for i, (s, o) in enumerate(zip(samples, offsets))])
-np.savez(NPZ, tokmask=mask.astype(np.uint8), sent=sent.astype(np.int8),
-         **{f"g_{k}": v for k, v in gold.items()})
-print(f"[npz] gen23 train gold banked (7-wide + sign)", flush=True)
+_done_npz = os.path.exists(NPZ) and "g_sign" in np.load(NPZ).files
+if _done_npz:
+    print("[npz] gen23 train gold already banked — skipping", flush=True)
+samples, ids2, mask, offsets = (None, None, None, None) if _done_npz \
+    else PH.tokenize(MIX)
+if samples is not None:
+    gold = build_gold(samples, offsets)
+    assert gold["digits"].shape[-1] == 7 and "sign" in gold
+    sent = np.stack([sent_indices(s["text"], o, mask[i])
+                     for i, (s, o) in enumerate(zip(samples, offsets))])
+    np.savez(NPZ, tokmask=mask.astype(np.uint8), sent=sent.astype(np.int8),
+             **{f"g_{k}": v for k, v in gold.items()})
+    print(f"[npz] gen23 train gold banked (7-wide + sign)", flush=True)
 
 # ---- 4. test npz 'test23' ----
 z = np.load(".cache/phase1_alg_states_test.npz")
@@ -113,12 +125,12 @@ sd = safe_load(".cache/g22.safetensors")
 out_p = {}
 for k, wt in wide.items():
     tgt = tuple(wt.shape)
-    if k == "h_dig":
-        old = sd[k].numpy()                      # (H_W, 30)
-        buf = np.zeros(tgt, np.float32)          # (H_W, 70)
+    if k in ("h_dig", "h_dig2"):                 # BOTH digit banks (h_dig2 =
+        old = sd[k].numpy()                      # gen-15 OP_APPLY; the relight
+        buf = np.zeros(tgt, np.float32)          # lesson: same map, every bank)
         buf[:, 40:70] = old                      # old d0..d2 -> d4..d6
         out_p[k] = Tensor(buf, dtype=dtypes.float)
-    elif k == "h_dig_b":
+    elif k in ("h_dig_b", "h_dig2_b"):
         old = sd[k].numpy()
         buf = np.zeros(tgt, np.float32)
         buf[40:70] = old
