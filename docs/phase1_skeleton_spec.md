@@ -21334,3 +21334,37 @@ token-position × waist-dim, the moment the skeleton trains.
   reverse; the two-terminal law says both feeds or the grad is
   None where it matters. Binding on the gen-23 declaration and
   every terminal-adding generation after.
+
+- **THE E1+E3 MINT BUILT AND SMOKED END-TO-END (2026-08-03;
+  scripts/answer_space_mint.py, seed base 103900):** solution-first
+  signed/wide chains through the STANDING render machinery
+  (render2 — spans/mentions correct by construction), five gates in
+  the chain: tokenizer pin (sign+digits per literal) → signed
+  solver roundtrip (m=10⁶) → certify_unique (budget 5000,
+  exhaustion rejects) → canon knot dedup → 24-slot geometry.
+  **SMOKE: 48/48 minted, ZERO rejects at every gate**; per-terminal
+  counters per the dose extension: rows 16 sign / 16 wide / 16
+  both; literals 53 sign-head, 56 digits-4-7. THE LAST GATE — the
+  ALG_WIDE gold builder consumed the corpus: **48/48 rows, every
+  literal's SIGNED value reconstructs exactly from digit+sign gold**
+  (multiset check; one harness indexing slip caught and corrected —
+  build_gold orders slots its own way; the pipeline was never
+  wrong). THE ROLLOUT IS BUILT COMPLETE: solver ✓ renderer ✓ head ✓
+  smokes ✓ margin ✓ mint ✓ gold ✓.
+
+- **THE GEN-23 DOSE DECLARATION — DRAFT, AWAITING THE WORD
+  (2026-08-03; every number a proposal until the word):** CORPUS:
+  600 uniques (200 sign / 200 wide / 200 both, class round-robin as
+  smoked) × **10 reps** = 6,000 rows appended to gen22_mix (82,400)
+  → **share 6.8%** (the book-dose BAU shape; fdiv-diet precedent
+  4.85%). PER-TERMINAL (the extension's requirement): sign head fed
+  by sign+both = 400 uniques (~880 negative literals ×10); digits
+  4-7 fed by wide+both = 400 uniques (~700 wide literals ×10) —
+  both terminals at comparable share, neither starved. BASE ORDER
+  PRESERVED (gen21/22 pattern; block appended, shuffled within).
+  STILL TO BUILD AT FIRE: the pad-warm map (g22 h_dig 3-digit →
+  positions 4-6 of 7, MSD-aligned; h_sgn zero-init; all else
+  copied) and the B1 fixture pair (matched shapes, old-range vs
+  new-range). BARS STANDING: B1 parity −5pts (pinned), B2
+  no-regression relative, B3 no conversion bar. **THE FIRE WAITS
+  ON ITS OWN WORD with this declaration in hand.**
