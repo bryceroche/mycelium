@@ -21195,3 +21195,24 @@ token-position × waist-dim, the moment the skeleton trains.
   ceiling ≠ competence); numbers pin at fire registration.
   Rollout: spec → mint smoke (zero-GPU) → head → corpus → gen-23
   ON THE WORD. Nothing in the spec authorizes a training run.
+
+- **THREE RIDERS ON THE SPEC, BANKED AND TWO EXECUTED (2026-08-03,
+  Bryce):** (1) **THE SIGN-TERMINAL SMOKE** — its own smoke, never
+  riding the build check: the sign head is Fire-0's inert-patch
+  shape (a pathway whose gradient can be structurally absent while
+  everything compiles); one deliberately-signed row, gradient
+  asserted nonzero at the sign terminal, BEFORE any corpus mints.
+  Spec §3 amended. (2) **B1's margin pins when the mint smoke
+  passes, at the latest** — registration and ignition drift apart
+  by hours; the margin's protection is that it predates the number.
+  Spec §6 amended. (3) **E5's DISK ARITHMETIC RUN NOW** (the law
+  with a receipt — the dup fire's ENOSPC): states memmap 86GB →
+  **173GB per resident copy at T_ALG 512**; 1.4T free; one resident
+  copy lawful, the six-copy shape that killed the dup fire = 1.04TB
+  FORBIDDEN by the standing rule. Spec §7 carries the numbers.
+  The countersign's credit line banked with them: the spec's
+  hardest decision was REFUSING one (negative mod/fdiv semantics
+  undecided-with-guard — the silent-60 lesson applied
+  prospectively: an undecided question with a guard is safer than
+  a decided one nobody chose); "minus 7" = the third fence-catch
+  at design time this week.

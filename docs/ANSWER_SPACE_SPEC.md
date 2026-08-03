@@ -40,6 +40,13 @@ arithmetic in the core; that is why E2 is its own generation.)
   need direct supervision, and the mint supplies it).
 - Two-terminal check at build: sign/wide-digit emission AND gold feed
   both wired, or the grad is None (the representability audit's law).
+- **THE SIGN-TERMINAL SMOKE (Bryce's rider — its own smoke, never
+  riding the build check):** the sign head is Fire-0's inert-patch
+  shape — a new pathway whose gradient can be structurally absent
+  while everything compiles and prints. Before ANY corpus mints: one
+  deliberately-signed row through the training step, **gradient
+  asserted nonzero at the sign terminal.** The check is named; the
+  smoke exercises it.
 
 ## 4. Mint generators
 
@@ -78,7 +85,9 @@ arithmetic in the core; that is why E2 is its own generation.)
 
 - **B1 parity:** new-range mint fixtures (wide-digit and negative
   givens/rel/subadd) parse at ≥ old-range parity minus a pinned
-  margin (margin set at fire registration, before measurement).
+  margin. **Margin pins WHEN THE MINT SMOKE PASSES, at the latest**
+  (Bryce's rider: registration and ignition drift apart by hours;
+  the margin's whole protection is that it predates the number).
 - **B2 no-regression:** bigtest and the standing fixtures hold
   within band under relative bars (own-vintage comparisons only).
 - **B3 honesty:** NO M500 conversion bar — the ceiling moved from
@@ -89,11 +98,17 @@ arithmetic in the core; that is why E2 is its own generation.)
 
 Length 300→600 chars is a tokenizer-and-window question (T_ALG
 256 → ~512), orthogonal to the dialect: +34/35 at EVERY rung of the
-ladder. Prices to measure before its word: states memmap ×2 (disk
-law: capacity arithmetic before assembly), trunk recompute time,
-train step time at T_ALG 512. **It does not wait behind the dialect
-generation** — it can ride any generation or none; its read is
-banked and its word is its own.
+ladder. **THE DISK ARITHMETIC, RUN 2026-08-03 (the law's receipt —
+the dup fire's ENOSPC — honored before assembly):** states memmap
+86GB (T_ALG 256) → **173GB per resident copy at T_ALG 512**; disk
+now 1.4T free — ONE resident copy lawful under
+assemble→train→delete; two resident copies (e.g., an A/B arm pair)
+= 346GB, still lawful but named; the six-copy shape that killed the
+dup fire would be 1.04TB and is FORBIDDEN by the standing rule.
+Remaining prices to measure: trunk recompute time, step time at
+T_ALG 512. **It does not wait behind the dialect generation** — it
+can ride any generation or none; its read is banked and its word is
+its own.
 
 ## 8. Rollout order
 
