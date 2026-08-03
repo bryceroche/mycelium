@@ -21673,3 +21673,19 @@ token-position × waist-dim, the moment the skeleton trains.
   rung; the audit's 197 carries a scope line: superseded by the
   gen-23 promotion for ceiling purposes). The framing sheet's
   ceiling term updates when the entourage settles.
+
+- **THE FIFTH DEN + A PROCESS CONFESSION (2026-08-03):** the fourth
+  den's fix didn't cure the entourage because a FIFTH existed in
+  the same file: **forward_cond — nack's LOCAL forward variant —
+  never emitted sgn**, and its own dict carries the family's
+  comment TWICE already ("same None-grad family": sel at gen-9,
+  dig2 at gen-15). The confession, banked because the record is
+  for the future hand: **the fourth fix was relit WITHOUT
+  re-running the reproduction** — the relight burned ten minutes
+  of stages to rediscover what a 30-second verification would have
+  shown; the fifth fix was VERIFIED BY EXECUTION before its
+  relight (3 steps clean). THE DOOR'S CASE STRENGTHENS: emissions
+  AND buffers are both hand-listed per trainer per variant — the
+  buffer-spec door must derive BOTH from the head's terminal set
+  (one authority; the fifth trainer AND the fifth forward inherit).
+  Entourage-23 r3 lit.
