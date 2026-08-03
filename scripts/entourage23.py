@@ -149,8 +149,28 @@ open(".cache/_e22_s5.py", "w").write(S5)
 sh(".venv/bin/python3 .cache/_e22_s5.py", tail=1)
 
 print("=== E23 6/10: disjoint census under the fresh mouth ===", flush=True)
+# THE CENSUS_DISJOINT NO-OP FIX (consumer audit 2026-08-02: the env var was
+# never read; every entourage 'disjoint census' since gen-13 was full-pool.
+# Ruled: 'fix rides the next entourage' — this is that entourage). SKIP_IDX
+# derived MECHANICALLY: census-pool items trained-verbatim in the deployed
+# mix (sha ∩ mix — the corrected consumption key).
+_skip = subprocess.run(
+    [".venv/bin/python3", "-c", """
+import json, hashlib, re
+h=[json.loads(l) for l in open('.cache/math_harvest_v0.jsonl')]
+filt=[i for i,x in enumerate(h) if x['level'] in ('Level 1','Level 2','Level 3')
+      and len(x['problem'])<300 and 'asy]' not in x['problem']
+      and all(int(n)<=300 for n in re.findall(r'\\d+',x['problem']))]
+pool=filt[:100]
+mix={hashlib.sha256(json.loads(l)['text'].encode()).hexdigest()
+     for l in open('.cache/gen23_mix.jsonl')}
+skip=[str(k) for k,i in enumerate(pool)
+      if hashlib.sha256(h[i]['problem'].encode()).hexdigest() in mix]
+print(','.join(skip))
+"""], capture_output=True, text=True).stdout.strip()
+print(f"    [skip-idx] {len(_skip.split(',')) if _skip else 0} census items trained-verbatim (sha∩mix)", flush=True)
 sh(".venv/bin/python3 scripts/gen11_census.py",
-   {"GATE_CKPT": PARSER, "CENSUS_DISJOINT": "1"}, tail=2)
+   {"GATE_CKPT": PARSER, "SKIP_IDX": _skip}, tail=2)
 
 print("=== E23 7/10: DISSENT-OVERLAP READ (manifest panel) ===", flush=True)
 S7 = r'''
