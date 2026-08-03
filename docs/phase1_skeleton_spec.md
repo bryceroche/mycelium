@@ -21531,3 +21531,24 @@ token-position × waist-dim, the moment the skeleton trains.
   quadratic, budget-counts-decisions, domain-BUILD cost — all
   invisible at m=300; the E2/E4 sweep line inherits all four
   shapes. Bars r4 lit.
+
+- **B1 PRINTS: FAIL — THE HONEST NEGATIVE, BANKED BEFORE B2
+  COMPLETES (2026-08-03; .cache/gen23_bars.json):** the instrument
+  came alive (validity floor cleared) and the bar spoke:
+  **old-range 105/120 = 87.5%, new-range 45/120 = 37.5% — FAIL by
+  45 points** (bar: ≥82.5%). One 16k-step fire at 6.8% dose bought
+  the new ranges 37.5%, not parity — the new terminals took
+  PARTIALLY (which one, the split read now running says). B2 was
+  UNREAD in the same run — device contention (the eval subprocess
+  couldn't open AMD:0 while the parent held it; the AM driver is
+  single-device) — battery2 runs the split + bigtest SEQUENTIALLY.
+  **THE VERDICT'S SHAPE IS ALREADY DETERMINED: B1's fail means NO
+  PROMOTION — g23 banks as a diagnostic checkpoint
+  (panel-eligible, per the means-vs-overlaps law), g22 REMAINS THE
+  GATE, and the honest negative enters the record with its
+  numbers.** What the negative buys: the first measured point on
+  the new-terminal learning curve (37.5% at dose 6.8%×16k — the
+  next dose/steps word prices against it); the instrument stack
+  that survived four landmines is permanent apparatus; the E1+E3
+  dialect itself is proven mintable-certifiable end to end. The
+  fail is in the training budget, not the design.
