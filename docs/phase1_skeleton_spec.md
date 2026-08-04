@@ -22280,3 +22280,26 @@ token-position × waist-dim, the moment the skeleton trains.
   answer agreement: same answer from different graphs = the
   answer-coincidence class, measured here for the first time)?
   No bars — first light on a new instrument; numbers descriptive.
+
+- **THE PARAPHRASE-COLLAPSE READ PRINTS — FIRST LIGHT ON THE IR
+  GRAIN (2026-08-04; .cache/paraphrase_collapse.json):** full
+  collapse (5/5 canonically identical) **129/200 = 64.5%**; modal
+  mean 3.98/5. THE SEPARATION: **correct rows modal 4.49, wrong
+  rows modal 1.25** — wrong parses aren't just wrong, they are
+  STRUCTURALLY INCOHERENT across views (nearly every view builds a
+  DIFFERENT wrong graph); canonical unanimity is a strong
+  graph-grain correctness correlate, temperature⊥truth's
+  complement measured at the IR. **THE DISCOVERY — THE
+  ANSWER-COINCIDENCE CLASS EXISTS AND IS LARGE: 36/200 (18%) of
+  rows agree on ANSWERS beyond their graph identity** — different
+  graphs, same answer; the quorum counts these as agreement, the
+  canonicalizer sees through them. IMPLICATION, docketed not
+  changed: **the DIGEST VOTE** — quorum over canonical digests is
+  strictly harsher than quorum over answers, costs nothing at
+  inference (canonicalize the five parses), and could raise
+  certification precision by exactly the luck-class's size. RIDES
+  THE VOTE-SEMANTICS WINDOW (the standing rule: never mid-campaign
+  silently; the permuted_view landmine shares the window). The
+  canonicalizer's PENDING-GPU field is CLEARED — #69's promised
+  instrument delivered its first survey, and its first act was
+  finding a class the vote cannot see.
