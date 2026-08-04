@@ -22346,3 +22346,20 @@ token-position × waist-dim, the moment the skeleton trains.
   commit gold, deeper rings dose) are priced questions now, not
   hopes. Six-for-six on free signals; one-for-one on trained; the
   map of the frontier's blindness is complete on current axes.
+
+- **THE COUNTERSIGN ON THE WILD PRICING (2026-08-04, Bryce; the
+  close):** THE DISTINCTION CARVED: **0.650 is a PULSE, not a
+  signal — a pulse names a mechanism worth strengthening; a signal
+  invites deployment.** The distinction is load-bearing and rides
+  every future citation of the number. The map's completion named:
+  six axes, six nulls — the two-country structure is no longer a
+  gap in the instrument set but **a measured property of the
+  boundary**. The decomposition's kill counted: third time this
+  week a favorable proposal died to a split ordered before its
+  number (the digest vote's ratio WORSE than the fences'). The
+  strengthening roads, stated as the yield: frontier-inclusive
+  commit gold FIRST ("the head learned in-register and transferred
+  weakly — the shape that says TRAIN WHERE YOU WANT IT TO WORK");
+  deeper rings dose second (gen-23's exponent question, again).
+  Nothing owed; every word Bryce's. Registry at 135; the frontier
+  has a pulse.
