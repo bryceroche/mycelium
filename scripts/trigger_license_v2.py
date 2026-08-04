@@ -82,6 +82,13 @@ for s0 in range(0,n,8):
 single=[x for x in rows if x["found"] and not x["has_rivals"]]
 r=[x for x in rows if x["found"] and x["has_rivals"] and x["gold_mis"] is not None]
 print(f"[license-v2] single-literal (no rivals — EXCLUDED, reported): n={len(single)}")
+print(f"[diag] rows total={len(rows)} found={sum(1 for x in rows if x['found'])} "
+      f"has_rivals={sum(1 for x in rows if x.get('has_rivals'))} "
+      f"gold_mis_known={sum(1 for x in rows if x['gold_mis'] is not None)}")
+if not r:
+    print("VERDICT: INSTRUMENT-INVALID on this fixture (empty multi-literal read set) — no license verdict")
+    import json as _j; _j.dump({"n":0,"verdict":"INSTRUMENT-INVALID"},open(".cache/trigger_license_v2.json","w"))
+    raise SystemExit(0)
 pc=np.array([x["proxy"] for x in r]); yc=np.array([x["correct"] for x in r])
 gm=np.array([x["gold_mis"] for x in r])
 thr=float(os.environ.get("THR","0.5"))
