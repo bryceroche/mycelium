@@ -22837,3 +22837,20 @@ token-position × waist-dim, the moment the skeleton trains.
   report movers both directions). THE FENCE: never-mix-coordinates
   — each generation's chain is its own frame; "the same item scored
   differently" states its frames or it measures instrument drift.
+
+- **THE COUNTERSIGN ON #139 (2026-08-04, Bryce):** the carving:
+  **"a promotion is a net, and nets hide their components."** Three
+  generations promoted under bars that measure only the net — the
+  bars CORRECT for what they gate, and structurally blind to an
+  item that certified under g22 and fails under g23 inside an
+  aggregate that improved. **There is an unmeasured backward
+  population and nobody knows its size.** Not an alarm; a named
+  blind spot with a cheap instrument now attached. THE EMPHASIS
+  FLIPPED on the docket: backward movers are the read's PRIMARY
+  product, not a side output — and the standing prediction to
+  meet it: **if the backward count is nonzero and STABLE across
+  promotions, that is a fact about what diets cost that the
+  two-lever law does not currently carry.** The sibling clause
+  paired: the campaign can't track swimmers because it
+  deliberately has none (Lucy by design); the item-across-vintages
+  is the one persisting identity, frames stated or it's drift.
