@@ -22458,3 +22458,24 @@ token-position × waist-dim, the moment the skeleton trains.
   UNLICENSED, the trigger needs its own head (a priced road);
   agreement weak = the proxy measures something else (named,
   banked, not deployed).
+
+- **THE LICENSE READ PRINTS: UNLICENSED-FP — AND THE AUTOPSY NAMES
+  AN INSTRUMENT SCALE ERROR (2026-08-04):** FP 100.000% — the proxy
+  flags EVERY slot, correct ones included. THE AUTOPSY, immediate:
+  **a threshold calibrated at SPAN scale applied at TOKEN scale.**
+  The anchor read's 0.911 was mass inside the gold FACTOR SPAN (a
+  whole sentence); the claimed VALUE's digits are 1-2 tokens of
+  that sentence — attention spread over a correct span puts far
+  less than 0.5 on the digits alone, for everyone, always. The 0.5
+  bar was borrowed from the wrong grain. THE BAR DOES NOT BEND:
+  UNLICENSED stands as printed; the trigger does not gate. THE
+  RE-REGISTRATION, lawful per the fdiv-RNG precedent (instrument
+  fault → fix → re-pin → re-run, a NEW registration): the proxy
+  goes RELATIVE — mass on claimed-value tokens versus mass on the
+  OTHER numbers' tokens (the competing literals are the natural
+  yardstick at token grain; a correct read should prefer its own
+  value's location over rivals') — per-row banked this time (the
+  aggregates-only miss made its THIRD appearance and is hereby a
+  named recurring fault of this pen: the fix is a standing habit,
+  not another apology). Organ 2 remains unblocked in design;
+  its trigger waits on the re-registered read.
