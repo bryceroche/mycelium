@@ -23143,3 +23143,23 @@ token-position × waist-dim, the moment the skeleton trains.
   minority-targeting is a WORK-ALLOCATION rule, never an evidence
   rule — a 1-row cell stays a 1-row cell no matter how
   interesting it looks.
+
+- **THE CORRECTNESS CENSUS PRINTS — WILD SUCCESS IS MEMBERSHIP
+  (2026-08-04):** the minority characterized in one line: **CORRECT
+  = 77/78 trained-verbatim (99%); WRONG = 4/46 (9%).** What right
+  wild answers have in common is that they were in the training
+  set — full stop, plus one reader (the 0.984 row, still an
+  anecdote, now the census's sole exception). THE COLUMNS BESIDE
+  IT, each confirming an older law at census grain: quorum p50 = 5
+  for BOTH classes — memorized answers and lies vote equally
+  unanimously (five Lucys, the same mistake, confirmed);
+  residual 0.070 vs 0.080 — the mouth grades nothing among the
+  answered (again); anchor-proxy 0.131 vs 0.244 — recall doesn't
+  read, and the mild inversion matches the banked 0.413. THE
+  DECEMBER RESTATEMENT, sharpest form yet: **wild correctness ≈
+  training-set membership — so coverage growth through books IS
+  membership growth unless the reading class grows**, which is the
+  transfer contest's stakes said at census grain, and why the
+  never-trained 0.02 remains the only number that measures the
+  thing December needs. #143's rent paid: the minority was
+  cheaper to characterize than the lies and said more.
