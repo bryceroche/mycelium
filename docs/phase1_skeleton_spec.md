@@ -22697,3 +22697,14 @@ token-position × waist-dim, the moment the skeleton trains.
   on correct (78) vs wrong (46); NO BAR (the license is
   in-register; this prices, it does not gate); n survey-grade
   stated.
+
+- **THE PER-KIND ANCHOR SPLIT PRINTS (2026-08-04; zero-GPU, banked
+  artifacts):** rel n=9,588 p50 0.908 · given n=9,588 p50 0.908 —
+  **anchor quality is UNIFORM across relation and literal slots**;
+  the address book does not degrade by kind (surface (d) answered
+  for the fixture's population; mod/sel/pct kinds absent from
+  bigtest's slot mix — scoped unread, not assumed). The rel result
+  matters for organ 2's reach: cross-out's re-read targets are as
+  well-addressed for WIRING slots as for value slots — the gear's
+  jurisdiction is not literal-only even though its current
+  TRIGGER is.
