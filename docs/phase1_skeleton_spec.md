@@ -22815,3 +22815,25 @@ token-position × waist-dim, the moment the skeleton trains.
   only because the surfaces were already there. Registry at 138;
   the deepest sentence of the run — ONE SIDE READS, ONE SIDE
   REMEMBERS — banked where the framing session will find it.
+
+- **GUT #139 REGISTERED — THE LIFEGUARD (2026-08-04; commitment
+  family, state across observations):** SEGMENT and CLASSIFY marked
+  convergent — four built cuts (mouth/register, gate/verdict,
+  commit-head/correctness 0.941, anchors/mechanism 0.911-vs-0.127).
+  **TRACK is absent by ARCHITECTURE, not by omission: there is no
+  swimmer** — every problem cold-starts; tracking presumes identity
+  persisting across observations and the chain has none (Lucy; the
+  five amnesiacs). THE LAWFUL CHEAP FORM: population-level —
+  **item-level trajectory ACROSS GENERATIONS**: which of the wild
+  1404 changed disposition as gates promoted, and — the lifeguard's
+  own discipline — **which moved BACKWARD** (a steady swimmer needs
+  less watching than one who WAS fine and now isn't; aggregate bars
+  that hold make per-item regression INVISIBLE; nothing currently
+  looks). Boundary-crossers proved the pattern once (the 78, done
+  by hand, two generations, one purpose). THE RENT: the per-item
+  regression read — **ATTACHED TO THE STANDING WILD-LEDGER RE-CUT
+  DOCKET** (the consumption sidecar's same pass: re-run the 1404
+  under the g23 chain, join per-item vs the banked g22 records,
+  report movers both directions). THE FENCE: never-mix-coordinates
+  — each generation's chain is its own frame; "the same item scored
+  differently" states its frames or it measures instrument drift.
