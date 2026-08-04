@@ -21905,3 +21905,25 @@ token-position × waist-dim, the moment the skeleton trains.
   of the work because the work built the surfaces it lands on.**
   Nothing owed. One door earned by four instances. A sweep sized
   before its audit.
+
+- **GUT #129 REGISTERED — ORGANIZED STATE, LESS FRICTION (2026-08-03;
+  a UNIFICATION, dispositioned as one — no rent owed, the instances
+  predate it):** the week's four, one way: the canonicalizer
+  (organized state makes surface irrelevant; false-merge 0.000000) ·
+  the doors (friction measured in relights removed) · staged-I/O
+  (friction as transaction cost) · the constant sweep (128 literals
+  storing what they should ask). **Every fix this week made the NEXT
+  task cheaper, not the current one better.** THE SHARPENING, the
+  registration's content: organized state doesn't reduce effort — it
+  **relocates decisions upstream to where they're cheap, visible,
+  and correctable** (row_m's KeyError at the call site; the
+  buffer-spec door at build not at the optimizer; scope traveling
+  with its number). THE HONEST LIMIT, the exchange law's own
+  non-monotone clause: perfect normalization killed the graph
+  register — the organizing operation destroyed the property the
+  instrument needed; a maximally-organized corpus is a monoculture.
+  **THE SCOPING CLAUSE: organize the MACHINERY, not the MATERIAL** —
+  doors, authorities, derived constants take maximal organization;
+  corpora, panels, and probe families keep their diversity budget
+  defended against exactly this instinct. Filed in the exchange
+  family; the deep-clean line already carries its work.
