@@ -23211,3 +23211,28 @@ token-position × waist-dim, the moment the skeleton trains.
   **"every recursion-guard violation the campaign has caught was
   caught because the guard predated the temptation"** — why the
   fourth-job line is written now, while it's hypothetical.
+
+- **GUT #145 REGISTERED — THE NOZZLE (2026-08-04; commitment family;
+  the jet mined thrice, the bar cleared on distinct physics):**
+  convergent-divergent geometry — the nozzle converts PRESSURE into
+  DIRECTED VELOCITY, and wrong geometry for the pressure ratio
+  loses the thrust regardless of how good the pressure was. **The
+  exit is where accumulated internal state becomes directed output,
+  and its shape determines whether the accumulation was worth
+  anything.** THE ENTRY'S CONTRIBUTION: **the emission head named
+  as an ORGAN** — mouth/waist/jaws/rings/anchors all named, the
+  exit never; it was "the digit banks," mechanics without physics.
+  THE MEASURED INSTANCE: the wide arm — internal state FINE
+  (per-digit ~90%, near-exact digits) and the exit geometry
+  destroyed it (seven independent softmaxes compounding to zero):
+  **good pressure, wrong nozzle.** Copy-not-generate = the
+  geometry fix (direct existing flow; don't regenerate at the
+  exit). THE NOZZLE LAW: **exit geometry must not multiply
+  independent decisions where a directed one is available.** THE
+  SECOND SYMPTOM connected: the commit head's frontier compression
+  (p50 0.9991 — output range saturated, the informative
+  differential squeezed into a tail) is also exit geometry — and
+  the strengthening road may be a PRESSURE fix where a GEOMETRY
+  fix is cheaper (noted for the road's registration, not ruled).
+  No new road; an organ three existing roads already point at,
+  now with a name and a law.
