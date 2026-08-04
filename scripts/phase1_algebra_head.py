@@ -82,6 +82,8 @@ TERMINALS = {
     "dig2":   {"params": ["h_dig2", "h_dig2_b"],   "emit": "dig2",  "gold": ["digits2", "is_macro"], "when": lambda: int(os.environ.get("ALG2", "0")) and _ft() >= 7},
     "y":      {"params": ["W_y"],                  "emit": "y",     "gold": ["y"],        "when": lambda: int(os.environ.get("ALG2", "0")) and _ft() >= 7},
     "sgn":    {"params": ["h_sgn", "h_sgn_b"],     "emit": "sgn",   "gold": ["sign"],     "when": lambda: ALG_WIDE},
+    "cmt":    {"params": ["W_cmt", "W_cmt_b"],     "emit": "cmt",   "gold": ["ftype", "res"],
+               "when": lambda: int(os.environ.get("ALG_RINGS", "0")) and int(os.environ.get("ALG_BREATH", "1")) > 1},
 }
 
 
@@ -483,6 +485,9 @@ def build_params(seed=0):
         p["W_bo_b"] = t(np.zeros(H_W))               # start silent
         p["breath_emb"] = t(rng.randn(K_B, H_W) * 0.02)
         p["breath_gate"] = t(np.full(K_B, -2.0))     # init-closed convex blend
+        if int(os.environ.get("ALG_RINGS", "0")):    # RUNG-3 v1: the soft pawl
+            p["W_cmt"] = t(np.zeros((H_W, 1)))       # zero-init commit head
+            p["W_cmt_b"] = t(np.full(1, -4.0))       # init: commit ~nothing
     p["W_args"] = t(rng.randn(H_W, H_W) / math.sqrt(H_W))
     p["W_res"] = t(rng.randn(H_W, H_W) / math.sqrt(H_W))
     p["W_query"] = t(rng.randn(H_W, H_W) / math.sqrt(H_W))
@@ -522,6 +527,11 @@ def forward(p, trunk, tokmask, sent, slot_mask=None):
     # at init the K-breath output is byte-identical to the incumbent.
     K_B = int(os.environ.get("ALG_BREATH", "1"))
     breaths = [fst]
+    RINGS = int(os.environ.get("ALG_RINGS", "0")) and "W_cmt" in p
+    if RINGS:
+        m_c = (fst * 0.0).sum(-1, keepdim=True)      # (B,L_FAC,1) zeros
+        anchor = fst
+        cmt_logits = []
     if K_B > 1 and slot_mask is not None and "W_bo" in p:
         cur = fst
         for kb in range(1, K_B):
@@ -548,7 +558,16 @@ def forward(p, trunk, tokmask, sent, slot_mask=None):
                                          .gelu() @ p["W_bv"] + p["W_bv_b"]) \
                     @ p["W_bo"] + p["W_bo_b"]
             g = p["breath_gate"][kb].sigmoid()
-            cur = cur + g * (h_tok + h_slot - cur)
+            cur_new = cur + g * (h_tok + h_slot - cur)
+            if RINGS:  # the soft pawl: monotone commitment mass + anchor
+                cl = (cur_new @ p["W_cmt"] + p["W_cmt_b"])     # (B,L_FAC,1)
+                cmt_logits.append(cl.squeeze(-1))
+                dm = (1.0 - m_c) * cl.sigmoid()
+                anchor = (m_c * anchor + dm * cur_new) / (m_c + dm + 1e-6)
+                m_c = m_c + dm
+                cur = m_c * anchor + (1.0 - m_c) * cur_new
+            else:
+                cur = cur_new
             breaths.append(cur)
 
     def heads_of(s):
@@ -571,6 +590,10 @@ def forward(p, trunk, tokmask, sent, slot_mask=None):
                if "h_dig2" in p else {}),
         }
     out = heads_of(breaths[-1])
+    if RINGS and K_B > 1 and slot_mask is not None and "W_bo" in p:
+        out["cmt"] = cmt_logits[0].stack(*cmt_logits[1:], dim=1) if len(cmt_logits) > 1 \
+            else cmt_logits[0].unsqueeze(1)               # (B, K_B-1, L_FAC)
+        out["cmt_m"] = m_c.squeeze(-1)                  # final mass (B, L_FAC)
     out["query"] = ((qst @ p["W_query"]) @ vst.transpose(-2, -1)).reshape(B, K_VARS)
     out["fat"], out["vat"] = fat, vat
     if len(breaths) > 1:
@@ -623,6 +646,14 @@ def _loss_single(o, g):
     l = l + (ce(o["dig"], g["digits"]).mean(-1) * dm).sum() / (dm.sum() + 1e-6)
     if "sgn" in o and "sign" in g:              # E1: sign BCE on value slots
         l = l + (bce(o["sgn"], g["sign"]) * dm).sum() / (dm.sum() + 1e-6)
+    if "cmt" in o:      # RUNG-3: commit-when-correct (self-labeled, DETACHED
+                        # targets from gold-match — settle appears nowhere)
+        ok_ft = (o["ftype"].argmax(-1) == g["ftype"]).float()
+        ok_res = (o["res"].argmax(-1) == g["res"]).float()
+        correct = (ok_ft * ok_res * pres).detach()      # (B, L_FAC)
+        ck = o["cmt"]                                    # (B, KB-1, L_FAC)
+        l = l + (bce(ck, correct.unsqueeze(1).expand(*ck.shape)) *
+                 pres.unsqueeze(1)).sum() / (pres.sum() * ck.shape[1] + 1e-6)
     if "sel" in o and "sel" in g:               # selector-type CE (closed vocab)
         sm = pres * is_sel
         l = l + (ce(o["sel"], g["sel"]) * sm).sum() / (sm.sum() + 1e-6)
