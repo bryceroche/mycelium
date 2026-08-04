@@ -21951,3 +21951,26 @@ token-position × waist-dim, the moment the skeleton trains.
   open and CAMBIUM's tower holds its place. FENCES: spec-stage
   behind the wide word; #126 inherited (machinery, own generation,
   never bundled).
+
+- **THE STAGED-I/O DECISION CLAUSE — #118 AMENDED (2026-08-03; the
+  traffic-light gut dispositioned as a clause, not a new number;
+  relay's "#121" corrected to #118 by grep — the fridge is #118,
+  park-and-ride #121):** the gut is measurably TRUE in one
+  direction and FALSE in two, all three banked: (1) TRUE — batch
+  the transactions: bank-don't-read, the atomic manifest, the
+  tranche structure; amortized transaction cost, the door opens
+  twice not 2N times. (2) FALSE at the buffer: the dup fire's
+  ENOSPC — six resident copies was the maximal bulk-wait design and
+  it exceeded the disk; the fix was ten small waits
+  (assemble→train→delete). **THE BUFFER LIMIT: batch until the
+  working set exceeds the buffer, then batch one level down.**
+  (3) FALSE at decisions, for a different reason: the stop
+  protocol is DELIBERATELY intermittent — pilot, stop, read,
+  decide; three-for-three preventing uninformative ladders;
+  bulk-waiting through a full ladder builds twenty-four probes
+  that print flat. **THE CLAUSE, one line: batch what COSTS,
+  never batch what DECIDES.** Fridge trips, disk writes, GPU
+  passes = pure-cost interruptions, batch them. Pilots, bars,
+  verdicts = each stop is where work can be redirected or ended,
+  keep them intermittent. Confusing the two is how a campaign
+  either thrashes or overcommits.
