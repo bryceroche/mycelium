@@ -22363,3 +22363,15 @@ token-position × waist-dim, the moment the skeleton trains.
   deeper rings dose second (gen-23's exponent question, again).
   Nothing owed; every word Bryce's. Registry at 135; the frontier
   has a pulse.
+
+- **THE PULSE EXPLORED — THE FRONTIER'S FIRST COVERAGE/PRECISION
+  DIAL (2026-08-04; zero-GPU re-cut of the banked per-row records;
+  survey-grade n=124, answered-only, mouth-bypassed — scope
+  standing):** mass thresholds convert the 0.650 pulse into
+  OPERATING POINTS where the frontier has never had any: pooled
+  0.629 → **p50 threshold: 50% coverage @ 0.742 → p90: 10.5% @
+  0.846.** Every prior axis was FLAT out there; this one bends.
+  Still a pulse (n small, margins in the fourth decimal, the
+  compressed-distribution caveat standing) — but leaf C's
+  arithmetic now has a measured CURVE instead of a bet, and the
+  strengthening roads act on a dial that demonstrably turns.
