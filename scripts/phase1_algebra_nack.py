@@ -44,6 +44,7 @@ sys.path.insert(0, os.path.join(_ROOT, "scripts"))
 
 import numpy as np
 
+from phase1_algebra_head import assert_terminals  # the buffer-spec door
 from phase1_algebra_head import (  # noqa: E402
     T_ALG, H_TRUNK, H_W, K_VARS, L_FAC, N_DIG,
     build_params, forward, loss_fn, load_alg, decode, ALG_CKPT,
@@ -372,6 +373,10 @@ def do_train(steps, lr, batch, seed):
                          ("query", (), dtypes.int)):
         npdt = np.float32 if dt == dtypes.float else np.int32
         bg[k] = fix(np.zeros((batch,) + shape, npdt), dt)
+    assert_terminals(p=p, gold_keys=set(bg.keys()), site="nack buffers")
+    # emission probe (un-jitted, once): the fifth-den fence at build
+    _o = forward_cond(p, c, b_tr, b_tk, b_se, b_ft, b_fb, b_ff)
+    assert_terminals(emitted=set(_o.keys()), site="nack forward_cond")
 
     @TinyJit
     def step():

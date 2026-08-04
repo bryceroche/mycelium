@@ -21999,3 +21999,36 @@ token-position × waist-dim, the moment the skeleton trains.
   *build discriminating tests*; the doorframe says *when you can't
   discriminate, arrange to be steered by the failure.* Same
   instinct, different visibility conditions.
+
+- **THE COUNTERSIGN ON #131 (2026-08-04):** the qualification
+  carried: the registration is a specimen ONLY because the
+  machinery existed to glance off — "the wedge needs a doorframe";
+  and the technique's whole content in one line: **"a wedge
+  assembled after the impact is just an explanation"** — the rider
+  ordered before the number is what made B1's collision steer.
+  The naming makes the second regime CHOOSABLE rather than
+  instinctive: fingerpost when you can discriminate, doorframe
+  when you can't.
+
+- **THE BUFFER-SPEC DOOR BUILT — v1, THE ASSERT ARM (2026-08-04,
+  the march; earned by five dens in one day):** **TERMINALS — one
+  authority in phase1_algebra_head describing every trainable
+  terminal** (params, emission key, gold keys, env gate) +
+  `assert_terminals(p, emitted, gold_keys, site)` raising with the
+  two-terminal law's own words. v1 SCOPE, deliberate: the ASSERT
+  arm of derive-or-assert (#128) — the deployed gate's wiring is
+  NOT refactored the week it promoted; hand-written forward/loss/
+  buffers stay, but every trainer now ASSERTS its buffer set and
+  the nack's forward_cond gets an un-jitted emission probe at
+  setup (the fifth den's exact site). The DERIVE arm waits for a
+  proper refactor window. **VERIFIED BY EXECUTION, both
+  directions:** positive — both trainers (head, nack) run through
+  the door clean (2-step scratch-ckpt runs; the promoted gate
+  never touched; en route the custody fence fired on a missing
+  pen-train env — correctly); **negative — all three den-shapes
+  FIRE with named messages** (missing gold = fourth-den, missing
+  emission = fifth-den, missing param = registry-vs-build). A
+  sixth terminal added without the table now fails AT BUILD with
+  the law quoted, never at the optimizer. The notebook build's
+  named prerequisite is PAID; the constant sweep's full audit
+  remains the deep-clean visit's second half.

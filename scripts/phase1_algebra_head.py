@@ -54,6 +54,64 @@ N_DIG = 7 if ALG_WIDE else 3
 N_HEADS = 8
 SENT_MAX = 32
 
+
+# ===========================================================================
+# THE TERMINAL REGISTRY — the buffer-spec door, v1 (2026-08-04; earned by
+# five dens in one day). ONE authority describing every trainable terminal:
+# its params, its emission key, its gold keys, and the env gate that brings
+# it into existence. v1 is the ASSERT arm of derive-or-assert (#128): the
+# wiring below stays hand-written (the deployed gate's code is not
+# refactored the week it promoted); every trainer ASSERTS its buffer set
+# and every build can assert its emission set against THIS table. The
+# DERIVE arm (generating forward/loss/buffers from the table) waits for a
+# proper refactor window. A sixth terminal added without updating this
+# table fails LOUDLY at build, not at the optimizer.
+# ===========================================================================
+def _ft(): return int(os.environ.get("ALG_FTYPES", "4"))
+TERMINALS = {
+    "pres":   {"params": ["h_pres", "h_pres_b"],   "emit": "pres",  "gold": ["presence"], "when": lambda: True},
+    "ftype":  {"params": ["h_ftype", "h_ftype_b"], "emit": "ftype", "gold": ["ftype"],    "when": lambda: True},
+    "op":     {"params": ["h_op", "h_op_b"],       "emit": "op",    "gold": ["op"],       "when": lambda: True},
+    "islit":  {"params": ["h_islit", "h_islit_b"], "emit": "islit", "gold": ["is_lit_f"], "when": lambda: True},
+    "dig":    {"params": ["h_dig", "h_dig_b"],     "emit": "dig",   "gold": ["digits"],   "when": lambda: True},
+    "args":   {"params": ["W_args"],               "emit": "args",  "gold": ["args"],     "when": lambda: True},
+    "res":    {"params": ["W_res"],                "emit": "res",   "gold": ["res"],      "when": lambda: True},
+    "query":  {"params": ["W_query"],              "emit": "query", "gold": ["query"],    "when": lambda: True},
+    "sel":    {"params": ["h_sel", "h_sel_b"],     "emit": "sel",   "gold": ["sel"],      "when": lambda: _ft() >= 5},
+    "dup":    {"params": ["h_dup", "h_dup_b"],     "emit": "dup",   "gold": ["arg_dup"],  "when": lambda: int(os.environ.get("ALG_DUP", "0")) > 0},
+    "dig2":   {"params": ["h_dig2", "h_dig2_b"],   "emit": "dig2",  "gold": ["digits2", "is_macro"], "when": lambda: int(os.environ.get("ALG2", "0")) and _ft() >= 7},
+    "y":      {"params": ["W_y"],                  "emit": "y",     "gold": ["y"],        "when": lambda: int(os.environ.get("ALG2", "0")) and _ft() >= 7},
+    "sgn":    {"params": ["h_sgn", "h_sgn_b"],     "emit": "sgn",   "gold": ["sign"],     "when": lambda: ALG_WIDE},
+}
+
+
+def assert_terminals(p=None, emitted=None, gold_keys=None, site="build"):
+    """THE DOOR'S ASSERT: every active terminal has (a) its params built,
+    (b) its emission present (when `emitted` given), (c) its gold buffers
+    present (when `gold_keys` given). Raises with the two-terminal law's
+    own words; a missing entry fails at BUILD, never at the optimizer."""
+    for name, t in TERMINALS.items():
+        if not t["when"]():
+            continue
+        if p is not None:
+            missing = [k for k in t["params"] if k not in p]
+            assert not missing, (
+                f"TERMINAL '{name}' params missing at {site}: {missing} "
+                f"(the two-terminal law — the registry says this terminal "
+                f"exists under the current env)")
+        if emitted is not None:
+            assert t["emit"] in emitted, (
+                f"TERMINAL '{name}' NOT EMITTED at {site} — a forward "
+                f"variant left it out (the fifth-den shape); grad will be "
+                f"None at the optimizer unless every emission ships")
+        if gold_keys is not None:
+            missing = [g for g in t["gold"] if g not in gold_keys]
+            assert not missing, (
+                f"TERMINAL '{name}' gold buffers missing at {site}: "
+                f"{missing} (the fourth-den shape — without these the "
+                f"terminal leaves the graph: None grads)")
+
+
 ALG_TRAIN = os.environ.get("ALG_TRAIN", ".cache/algebra_nl_train.jsonl")
 ALG_TEST = os.environ.get("ALG_TEST", ".cache/algebra_nl_test.jsonl")
 TEST_NAME = os.environ.get("ALG_TEST_NAME", "test")   # states-file key for the test slice
@@ -984,6 +1042,7 @@ def do_train(steps, lr, batch, seed):
                          ("query", (), dtypes.int)):
         npdt = np.float32 if dt == dtypes.float else np.int32
         bg[k] = fix(np.zeros((batch,) + shape, npdt), dt)
+    assert_terminals(p=p, gold_keys=set(bg.keys()), site="do_train buffers")
 
     @TinyJit
     def step():
