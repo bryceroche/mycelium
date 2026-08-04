@@ -21844,3 +21844,25 @@ token-position × waist-dim, the moment the skeleton trains.
   meter if the diffusion frame seeks territory. The
   orphaned-verdict docket is CLEAR; the sweep question remains
   standing on the deep-clean line.
+
+- **GUT #128 REGISTERED — THE OOD LITERAL (2026-08-03, the
+  commitment family; the week's four specimens unified):** the
+  measured pair from tonight: the 82400 assert (CORRECT when
+  written; the context slid out from under it) and UNASSIGNED=−1
+  (out-of-band for a decade until the band grew) — **neither was
+  wrong; both stopped being right.** THE FAMILY, four deep and
+  named: caveat decay · sentinel collision · the frozen-constant
+  guard · the manifest field-drop — different surfaces, one
+  disease: **a statement whose truth depends on context, stored
+  where the context isn't.** THE GENERAL LAW, the family's
+  unifying statement: **a literal is a claim about its context;
+  when the context can change, the literal must be DERIVED from it
+  or ASSERTED against it — derive or assert, never store.** Every
+  cure the campaign built took this shape already (row_m's
+  per-context lookup, the buffer-spec door, scope-as-data,
+  load_alg's single gold path). THE RENT: the constant sweep —
+  enumerate every hardcoded constant encoding a fact about ANOTHER
+  artifact (row counts, dims, copied thresholds, fixture lengths,
+  vintage caps); each is derivable (fix) or fixed (assert).
+  First pass fires now; the full audit joins the deep-clean line
+  beside the buffer-spec door.
