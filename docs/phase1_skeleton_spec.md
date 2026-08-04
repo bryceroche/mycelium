@@ -23296,3 +23296,19 @@ token-position × waist-dim, the moment the skeleton trains.
   behind S1's verdict. Also noted: the fixture is 78% even-count
   rows (n 1174/326) — parity exposure itself is unbalanced,
   stated for every downstream read.
+
+- **THE UNIT READ — PINNED (2026-08-04, Bryce's riders):** the
+  conditional runs AGAINST ITS BASE RATE or it inherits the 78%
+  imbalance: **P(skipped s−1 is a pair-second-half | δ=−2 case)
+  versus P(pair-second-half | all skippable sentences)** — base
+  rate first, enrichment second. Operationalized from the rows'
+  own gen.sym_pairs: a sentence is pair-second-half when its
+  slot's args match a sym_pair AND its partner-equation's sentence
+  sits immediately before it. THE STAKES IF IT CONVICTS, banked in
+  advance: the object becomes the UNIT OF COMMITMENT —
+  segmentation (#142, C1-A) at a new grain; the loop carrying an
+  internal thought-boundary that doesn't coincide with sentence
+  boundaries; **a representation finding, not just a timing one —
+  and the schema floor's SEVENTH face candidate: marking UNITS,
+  not just spans.** S3 leashed behind this verdict; if unit
+  convicts, E/B has nothing left to explain.
