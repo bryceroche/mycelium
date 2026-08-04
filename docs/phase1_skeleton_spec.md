@@ -22670,3 +22670,19 @@ token-position × waist-dim, the moment the skeleton trains.
   THE REUSE NOTE kept: the elastic arm is what makes the notebook
   SELF-COLD-STARTING across problems — Lucy's amnesia as a
   feature, cheaper than any explicit reset.
+
+- **THE COUNTERSIGN ON #137 (2026-08-04, Bryce):** the pair in one
+  line, kept: **"the clutch found that the release has dynamics;
+  the bottle found the dynamics could come from the material
+  instead of the operator"** — the second gut legible as a third
+  arm only because the first carved the axis. THE PRE-CALIBRATED
+  DIAGNOSTIC carved: the elastic arm's failure mode and the
+  campaign's central pathology are the SAME PHYSICS — if elastic
+  decay takes a permanent set, settle says so, **and the campaign
+  knows exactly what that looks like because it has measured it
+  four times.** The arm arrives with its alarm already calibrated
+  on its own enemy. THE REUSE NOTE held visible: Lucy's amnesia is
+  currently enforced by the pipeline; under the elastic arm it
+  becomes a property of the material — mattering the moment
+  problems run in sequence, a shape not yet needed and probably
+  coming.
