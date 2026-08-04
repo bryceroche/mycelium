@@ -39,8 +39,9 @@ while moving, cherish once arrived).)*
   fires (see §3 — NOT settle). Committed rings stop receiving
   replace-side updates; the pawl clicks at a DESIGNED point.
 - **THE RELEASE FORK (#136, 2026-08-04):** cross-out is NOT a switch —
-  the transition has dynamics. Two arms at build: DUMP-TO-ZERO vs
-  GRADED RELEASE (reduce mass, re-settle against the anchor); the
+  the transition has dynamics. THREE arms at build (#137): DUMP-TO-ZERO vs
+  GRADED RELEASE vs ELASTIC DECAY (leak toward rest; self-resetting;
+  most machinery — the mass has no restoring force by construction) (reduce mass, re-settle against the anchor); the
   re-bind improve-vs-degrade rate measured UNDER EACH (it is
   plausibly a function of the release profile). #127's risk on the
   soft arm stated: a release without a barrier may never re-settle —

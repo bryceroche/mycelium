@@ -22647,3 +22647,26 @@ token-position × waist-dim, the moment the skeleton trains.
   the obligation looked like a rate to DISCOVER and was a rate the
   design SETS — found before organ 2's first line, the cheapest
   moment it could have been found.
+
+- **GUT #137 REGISTERED — SHAPE MEMORY (2026-08-04; commitment
+  family beside #136; the release fork's THIRD arm):** THE
+  MECHANISM: elastic recovery is RESTORING FORCE from the material,
+  not an operator — the bottle springs back because energy is
+  stored in the deformation; nobody re-inflates it. THE THIRD ARM:
+  **elastic decay** — commitment mass leaks toward a rest value
+  unless evidence holds it; cross-out doesn't specify a release
+  profile, it just STOPS PRESSING. Different failure signature,
+  already the campaign's named pathology: a bottle that doesn't
+  spring back has taken a PERMANENT SET (the ratchet that never
+  releases; [1293]'s basin). THE HONEST LIMIT, stated before
+  anyone falls in love: **a trained head's mass has no restoring
+  force by construction** — the elastic arm is a claim that the
+  architecture should carry a rest state + a leak term; natural
+  (it's what a decay constant IS) but MACHINERY, #126 attached.
+  THE FORK, now three arms ordered by cost: dump-to-zero (free,
+  discards) → graded release (one pinned rate, carries) → elastic
+  decay (rest state + leak, self-resetting, most machinery).
+  Shared diagnostic across all three: settle, never-tier intact.
+  THE REUSE NOTE kept: the elastic arm is what makes the notebook
+  SELF-COLD-STARTING across problems — Lucy's amnesia as a
+  feature, cheaper than any explicit reset.
