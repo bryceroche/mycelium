@@ -38,6 +38,12 @@ while moving, cherish once arrived).)*
 - **Commit:** a binding moves replace→rings when its commit signal
   fires (see §3 — NOT settle). Committed rings stop receiving
   replace-side updates; the pawl clicks at a DESIGNED point.
+- **THE RELEASE FORK (#136, 2026-08-04):** cross-out is NOT a switch —
+  the transition has dynamics. Two arms at build: DUMP-TO-ZERO vs
+  GRADED RELEASE (reduce mass, re-settle against the anchor); the
+  re-bind improve-vs-degrade rate measured UNDER EACH (it is
+  plausibly a function of the release profile). #127's risk on the
+  soft arm stated: a release without a barrier may never re-settle.
 - **Cross-out (the reverse gear):** a ring is revocable by a LATER
   constraint: solver-side contradiction (unsat on the partial graph),
   trace-layer literal mismatch (the value isn't in the text), or

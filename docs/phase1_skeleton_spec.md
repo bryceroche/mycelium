@@ -22605,3 +22605,28 @@ token-position × waist-dim, the moment the skeleton trains.
   trade); (j) THE FRAMING SESSION itself (resolved on paper,
   never yet sat cold). The registry's surfaces are dense; the
   guts have land to strike.
+
+- **GUT #136 REGISTERED — THE CLUTCH (2026-08-04; commitment family,
+  engagement dynamics; organ 2's transition made explicit before
+  it's built):** THE MECHANISM: engagement between components at
+  different speeds requires a SLIP PHASE — clamp instantly and you
+  shock the driveline; slip forever and you burn the disk; the
+  friction surface exists to absorb the DIFFERENCE controllably.
+  THE CAMPAIGN'S TWO MEASURED EXTREMES, already banked: instant
+  clamp = the parser's pawl at operand+1 (0.011, no revision);
+  perpetual slip = the ungated engine's zero pawls (759/759 still
+  moving, erosion). **The reverse gear sits between two measured
+  failures and its transition dynamics were UNSPECIFIED — organ 2
+  as drafted is a switch; the clutch says the engineering lives
+  between the positions.** THE FORK, now part of organ 2's
+  registration: cross-out as DUMP-TO-ZERO (discard and re-bind
+  from scratch) versus GRADED RELEASE (reduce commitment mass, let
+  the next breath re-settle AGAINST THE ANCHOR — carrying the
+  first read's useful part through the transition). **The re-bind
+  improve-vs-degrade rate is plausibly a function of the release
+  profile, not a constant** — the obligation becomes a two-arm
+  measurement (build both, rate under each). #127's warning
+  carried: a soft release may not re-settle at all (barriers make
+  bindings stable) — that IS the second arm's risk, stated. The
+  accumulate/replace pair was already shaped for the graded form;
+  the clutch names why.
