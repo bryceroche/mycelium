@@ -23177,3 +23177,25 @@ token-position × waist-dim, the moment the skeleton trains.
   "a census that only produces headlines is usually overfitting."
   Three sorting laws standing: separate the minority (#138),
   target by count (#143), keep the second bowl readable.
+
+- **GUT #144 REGISTERED — CAPACITY FLEX (2026-08-04; exchange
+  family beside #104/#118):** the mechanism: pooled capacity beats
+  private capacity ONLY under decorrelated peaks — when both cans
+  fill the same Tuesday, pooling buys nothing (the rate term with a
+  scheduling clause). LAWFUL AND PRACTICED: GPU/disk/wall-clock —
+  the ENOSPC restructure, staged-I/O, zero-GPU reads riding beside
+  burning fires: resources with genuinely uncorrelated demand.
+  REFUSED, the entry's content: **panels, corpora, probe families,
+  fixtures — every measured sharing cost decorrelation** (fifteen
+  views one basin; the register dead by its own digest; rotation's
+  re-anchor clause). THE LAW: **POOL THE RESOURCES, NEVER THE
+  INSTRUMENTS — capacity is fungible; independence is not** — and
+  the campaign's failures have nearly all been at the second
+  boundary while its wins were at the first. Three specimens of
+  the instrument-borrowing failure named (eval templates → table;
+  before-fixture phrasings; h3held's forced swap). THE LIVE EDGE
+  watched: the wild ledger now carries THREE jobs (re-cut, sidecar,
+  trajectory) — lawful flex on a read, but **if a fourth job ever
+  PICKS its subset from an earlier job's findings, the neighbor's
+  can becomes the neighbor's evidence** — the line is drawn before
+  anyone approaches it.
