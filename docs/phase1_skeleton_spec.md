@@ -22264,3 +22264,19 @@ token-position × waist-dim, the moment the skeleton trains.
   ledger's per-item records are where a threshold prices against
   coverage. Sequence unchanged and stated whole: GRADUATED →
   wild pricing (both riders) → leaf C has numbers.
+
+- **THE PARAPHRASE-COLLAPSE READ — PINNED BEFORE IT RUNS
+  (2026-08-04, the march; the canonicalizer's owed PENDING-GPU
+  read; answer artifact .cache/paraphrase_collapse.json):** 200
+  bigtest rows × 5 permutation views under the DEPLOYED gate (g23,
+  deployed env, standard view seeds); each view's decoded graph →
+  canonical digest (the knot door). METRICS, descriptive by
+  registration (a survey, #69's promised instrument — the
+  monoculture fence's finest grain): (a) all-5-identical rate
+  (FULL COLLAPSE); (b) modal-agreement rate (largest identical
+  cluster size mean); (c) split by row answer-correctness — does
+  canonical unanimity track correctness, and how does it relate to
+  the VOTE's answer-agreement (canonical identity is STRICTER than
+  answer agreement: same answer from different graphs = the
+  answer-coincidence class, measured here for the first time)?
+  No bars — first light on a new instrument; numbers descriptive.
