@@ -22032,3 +22032,32 @@ token-position × waist-dim, the moment the skeleton trains.
   the law quoted, never at the optimizer. The notebook build's
   named prerequisite is PAID; the constant sweep's full audit
   remains the deep-clean visit's second half.
+
+- **THE RUNG-3 FIRE REGISTRATION — RINGS v1, PINNED BEFORE THE BUILD
+  COMPLETES (2026-08-04, the word given):** THE DESIGN, v1: the
+  soft pawl on the EXISTING breath loop (BRICK-P, ALG_BREATH — the
+  loop already exists, init-closed, byte-identical at init: #127's
+  property built-in). Behind ALG_RINGS=1: per-slot commit head
+  (W_cmt) reads the breath state; commitment mass accumulates
+  MONOTONICALLY (dm = (1−m)·σ(c) — the pawl never releases within a
+  parse; cross-out is bench-read-side in v1, not in-graph); slot
+  state = m·anchor + (1−m)·working (accumulate + replace — the two
+  notebooks in one line). SUPERVISION (the register clause honored):
+  commit-when-correct — BCE(commit_k, final-slot-correctness
+  DETACHED), correctness from gold ftype/res match: **its own
+  trained signal from solver-verified gold; settle appears nowhere
+  in the machine.** TERMINALS entry "cmt" (gold keys already
+  present — the door will assert it). THE FIRE, two arms
+  (cont-control law): CONTROL = ALG_BREATH=3 alone; RINGS =
+  ALG_BREATH=3 + ALG_RINGS=1; both warm-from-g23, 4k steps, same
+  data order; g23-static reported as the third line. **BARS,
+  PINNED NOW: PRIMARY — adupheld ANSWER (rings) ≥ control + 2% of
+  fixture; SECONDARY — bigtest(rings) ≥ 1214. EXIT LANGUAGES,
+  pre-written: rings>control+2% = RINGS PAY; |Δ|≤2% = TIE
+  (breathing alone suffices at this dose — an honest negative);
+  rings<control−2% = ANCHORING HARMS (the freeze is premature —
+  the pawl clicked too early, the engagement instrument reads
+  where).** Commit-terminal smoke (wire pulled) before the fire;
+  #126 honored (machinery alone — no dialect, no dose change,
+  rides gen23_mix as-is); nothing promotes from this fire — it is
+  a BENCH fire; the gate is untouched.
