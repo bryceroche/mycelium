@@ -23420,3 +23420,19 @@ token-position × waist-dim, the moment the skeleton trains.
   The grep's payoff stated: cited unchecked, "we measured
   alternation" would have entered S3's sitting as support from a
   different axis on a different model.
+
+- **THE COUNTERSIGN ON THE AXIS CLAUSE (2026-08-04, Bryce; S3's
+  pins sealed):** the keeper carved for every future probe:
+  **"'we measured this already' is the most dangerous sentence
+  available to a probe with three suspects down, because it
+  arrives sounding like diligence."** The double-contamination
+  noted: either defect ALONE (axis or substrate) makes the
+  citation unlawful; together they'd have defeated the leash via
+  an artifact everyone would have accepted as relevant. The
+  surviving line drawn exactly: **a motivating prior makes the
+  read WORTH RUNNING; it can never make it UNNECESSARY.** The
+  telegraph correction ridden home (regime-switching died; static
+  survived; the stickier word carried the refuted claim). S3's
+  price, final: fresh untrained read, frozen Llama trunk, position
+  axis, period-2 in weights that never saw the mint, phase-locked.
+  **Three locks, no borrowed keys.**
