@@ -23312,3 +23312,24 @@ token-position × waist-dim, the moment the skeleton trains.
   and the schema floor's SEVENTH face candidate: marking UNITS,
   not just spans.** S3 leashed behind this verdict; if unit
   convicts, E/B has nothing left to explain.
+
+- **THE UNIT READ PRINTS: THE PAIR-FORM DIES ON ITS OWN FIXTURE
+  (2026-08-04):** bigtest carries **0/1500 rows with sym_pairs** —
+  the fixture is gen-1 mint, one sentence per factor, no
+  two-sentence units exist anywhere in it — **and the oscillation
+  lives on bigtest.** The unit hypothesis's pair-form is not
+  untested; it is REFUTED-ON-FIXTURE: its mechanism ingredient is
+  absent where the phenomenon is. (The base-rate arithmetic never
+  ran; 0/0 was the diagnosis, caught before any conditional could
+  flatter.) THE PROBE'S STATE, honestly: S2 leans clean (smooth
+  decay), S1-length null, S1-unit dead — **the confound space is
+  thinning and the oscillation stands MORE mysterious than it
+  started.** S1's remaining variant noted: gen-1 total = factors
+  + 2, so row parity IS factor-count parity — what does an odd
+  vs even FACTOR COUNT change structurally in a chain-mint row
+  (query position? chain shape? the last factor's kind)? — the
+  next zero-GPU cut, docketed. S3's leashed sitting RISES in
+  priority as confounds fall — the phase-lock discipline
+  unchanged: the E/B arm still needs its predicted period AND
+  phase from the untrained sweep, and elimination still isn't
+  evidence, even as elimination accumulates.
