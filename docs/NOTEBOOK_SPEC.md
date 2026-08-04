@@ -5,8 +5,9 @@
 ORGAN ORDER, set by the frontier's own compression (a finding, not a
 preference): (1) ~~loc anchors~~ ALIVE 08-04 (AUC 0.928, trust 0.908; misbinding
 IS mislocated attention — wrong slots 0.063 in-span; artifact banked);
-(2) THE REVERSE GEAR — unblocked, trigger = anchor-literal consistency
-(inference-time, no gold); (3) the clock. Each its own fire (#126).**
+(2) THE REVERSE GEAR — trigger LICENSED 08-04
+(0.000% FP / 99.9% agreement held-out at blind thr 0.3648; build
+awaits its word; re-bind improve-vs-degrade = first obligation); (3) the clock. Each its own fire (#126).**
 
 *(Rung 3's candidate design, drafted so the word lands on a design
 rather than a direction. Spec-first; nothing here authorizes a build

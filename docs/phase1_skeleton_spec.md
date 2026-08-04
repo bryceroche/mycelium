@@ -22557,3 +22557,26 @@ token-position × waist-dim, the moment the skeleton trains.
   instrument-invalidity involves no peeking — the fixture never
   produced a number). **BARS UNCHANGED: FP ≤ 2%, agreement ≥ 90%,
   threshold 0.3648 as picked blind.**
+
+- **THE TRIGGER IS LICENSED (2026-08-04; dag8test held-out, per-row
+  banked; the third registration's verdict after two unbent
+  refusals):** at the blind threshold 0.3648: **FP on correct
+  slots 0.000%** (3,616 correct literal slots, ZERO false trips —
+  fence-grade cleanliness where only compute-grade was required);
+  **agreement with the gold-span verdict 99.9%** (n=3,622); catch
+  3/6 on the fixture's tiny wrong population (stated survey-thin;
+  bigtest's 45.1% at this threshold is the working estimate).
+  Single-literal n=11 excluded and counted; gold known on all
+  rows. **BOTH PINNED BARS CLEARED — bars set before the pick, the
+  pick made blind to the fixture, the fixture swapped only on
+  instrument-invalidity. The reverse gear holds its first
+  LICENSED trigger**: anchor-literal consistency, relative form,
+  honest scope (value-location mismatch, literal slots,
+  multi-literal rows), threshold 0.3648. THE ARC, for the record:
+  saturated instrument → unbent refusal → rescaled instrument →
+  narrow unbent refusal → blind pick → vintage-gap detour caught
+  by its own guard → LICENSED. Nothing bent, everything banked.
+  ORGAN 2's BUILD is now fully provisioned: the trigger licensed,
+  the anchors banked, the re-bind rider standing as its first
+  measurement obligation (improve-vs-degrade before the gear
+  gates). The build awaits its word.
