@@ -21974,3 +21974,28 @@ token-position × waist-dim, the moment the skeleton trains.
   verdicts = each stop is where work can be redirected or ended,
   keep them intermittent. Confusing the two is how a campaign
   either thrashes or overcommits.
+
+- **GUT #131 REGISTERED — THE DOORFRAME (2026-08-04; the commitment
+  family, filed beside the fingerpost #91):** the epistemic content
+  under the physical image: groping the void = searching for the
+  answer DIRECTLY (no feedback until found); the wedge = **arranging
+  to be informatively wrong** — deliberate contact with the thing
+  you're NOT looking for, geometry converting the error into
+  position. **You never locate the opening; you locate the edges,
+  and the opening is the residue.** THE CAMPAIGN RUNS ON THIS
+  UNNAMED: the mouth doesn't find answerable problems (the
+  answerable set is the residue of refusals); the census found the
+  failure altitude by cataloguing the inexpressible; six dead
+  mechanisms localized distance; five null axes stated the mouth's
+  nature — **the map is almost entirely walls hit at an angle.**
+  THE GEOMETRY IS THE PRECISION: head-on says "there is a wall" and
+  STOPS you; glancing says "which side you're on" and STEERS — B1
+  at 37.5% was a wall; B1 split sign-100/wide-0 was the glancing
+  blow that steered into a promotion. The per-arm rider was the
+  wedge. THE SHARPENING: **design experiments to hit something
+  informative, not to find the answer** — a pinned bar with four
+  exit languages is a wedge; a single yes/no hypothesis is a hand
+  in the void. The pairing with #91, carved: the fingerpost says
+  *build discriminating tests*; the doorframe says *when you can't
+  discriminate, arrange to be steered by the failure.* Same
+  instinct, different visibility conditions.
