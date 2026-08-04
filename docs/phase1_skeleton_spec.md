@@ -21772,3 +21772,28 @@ token-position × waist-dim, the moment the skeleton trains.
   would have made it dishonest.** Five landmines, six relights,
   two instrument species, one field-drop — all loud, all named,
   all filed. Nothing owed. The record can carry a stranger.
+
+- **GUT #127 REGISTERED — TOPOLOGY: MINIMIZE THE HILL CLIMB
+  (2026-08-03; the exchange family, #84's landscape territory):**
+  THE MEASURED INSTANCE is the promotion arc itself: pad-warm IS
+  barrier-minimization practiced unnamed — gen-23 initialized
+  functionally identical to g22 (MSD-aligned digits, digit-0 bias,
+  sign-positive bias), starting INSIDE the old neighborhood:
+  **"the hill wasn't climbed; the starting point was moved to the
+  far side of it"** — and sign hit 96.7% at first dose. THE
+  SHARPEST FORM, now stated: **don't minimize the barrier —
+  minimize the distance traversed, by initializing inside the
+  target neighborhood.** Three named things, one mechanism:
+  pad-warm, BAU's interference prescription, the wetting clause.
+  THE TENSION CARVED, not smoothed: the bathtub law says barriers
+  make GOOD states stable (settle 0.834/0.997 measures exactly
+  barrier height) — **barrier-minimization is lawful for TRAINING
+  TRANSITIONS and pathological for INFERENCE STATES; the
+  distinction is moving versus arrived.** THE PROSPECTIVE PIN,
+  stamped on the wide road: **copy-not-generate is a new emission
+  mechanism, not a warm-startable widening — it CANNOT pad-warm
+  the way sign did; the wide road's transition cost is
+  structurally higher than E1's, and gen-23's clean arc DOES NOT
+  TRANSFER.** Anyone reading the pad-warm success as "head changes
+  are cheap" inherits the wrong lesson; the pin exists so they
+  can't.
