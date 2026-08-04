@@ -22082,3 +22082,27 @@ token-position × waist-dim, the moment the skeleton trains.
   first build where the plasticity schedule must be DESIGNED
   rather than inherited. Filed in the exchange family (allocation
   over time).
+
+- **GUT #133 REGISTERED — THE CLOCK (2026-08-04; commitment family:
+  when-to-stop is engagement timing):** THE CLOCK EXISTS AND IS
+  MEASURED TWICE: the depth ladder (t95 1/3/8, ~3.5 breaths per
+  implication layer; K-sweep at solve grain: truncation costs
+  0.5/0.6/4.2% by depth) — a quantity that advances predictably, by
+  which events can be timed. THE GAP: **the system doesn't read
+  it** — K fixed, every problem the same allotment; depth-1 idles
+  six breaths while depth-3 truncates (the K-sweep says this is
+  exactly wrong). THE CANDIDATE self-orienting signal is settle —
+  AND THE FENCE BITES HARDER THAN THE REGISTRATION STATES: settle
+  is NEVER-tier, and the notebook spec's register clause extends to
+  stopping — a loop that acts on settle and is EVER trained
+  end-to-end flows gradient through the read (settle-gated depth is
+  lawful only FROZEN-LOOP, full stop). **THE CONVERGENCE, and it
+  may already be burning: the register-clean clock EXISTS — the
+  commit head.** Rings' commitment mass m is a TRAINED when-signal
+  (commit-when-correct, its own gold) — adaptive K reading ring
+  mass ("stop when total commitment crosses θ") is Goodhart-clean
+  BY CONSTRUCTION, the same move the notebook spec made for
+  commits, now for depth. #133 joins rung 3's constituency; the
+  rings fire's cmt_m read is its first evidence; adaptive depth =
+  its own generation (#126). The trichotomy's third arm and the
+  Dopri5 precedent noted as ancestors.
