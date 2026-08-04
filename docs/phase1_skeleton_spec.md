@@ -22479,3 +22479,16 @@ token-position × waist-dim, the moment the skeleton trains.
   named recurring fault of this pen: the fix is a standing habit,
   not another apology). Organ 2 remains unblocked in design;
   its trigger waits on the re-registered read.
+
+- **THE RELATIVE PROXY — RE-REGISTERED AND PINNED (2026-08-04, the
+  word):** proxy_rel = own-value token mass / (own + RIVAL number
+  tokens' mass); flag = reads rivals more than own (ratio < 0.5) —
+  the question the 0.911/0.063 separation actually answered.
+  RIDERS IN PINS: **single-literal rows have no rivals — counted
+  and reported SEPARATELY, never inside the license number** (the
+  free-pass class named before it could flatter); per-row banking
+  is the DEFAULT henceforth (any read script banks rows unless a
+  stated reason — the recurring fault answered by arrangement, not
+  vigilance). LICENSE BARS unchanged: FP ≤ 2% on correct
+  multi-literal slots; agreement with gold-span mislocation = the
+  licensing number; same three exits.
