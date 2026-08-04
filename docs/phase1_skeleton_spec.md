@@ -23074,3 +23074,28 @@ token-position × waist-dim, the moment the skeleton trains.
   stratum in every cut; the −1 lag with its depth tail stands;
   only the oscillation's CAUSE is open, and it is now a real
   question about the world rather than a shadow of the ruler.
+
+- **THE ANTICIPATION HONORED — THE E&B THREAD JOINS THE PARITY
+  PROBE (2026-08-04, Bryce: "the gut anticipated oscillation"):**
+  the connection banked: #78's detection — E/B-like ALTERNATING
+  structure in the untrained stack (L0-L3 entropy sweep, 2.28σ) —
+  was refused four times AS PRESCRIPTION and affirmed as ANATOMY
+  ("saw structure that exists; mistook recognition for
+  prescription"). Tonight's parity oscillation is the first
+  candidate BEHAVIORAL REFERENT for that anatomy: **if the stack
+  carries period-2 alternating structure, sentence-position parity
+  rides it, and homes at odd vs even distances are differently
+  reachable — the mislocation offset would inherit the
+  alternation.** THE PARITY PROBE GAINS ITS THIRD SUSPECT: the
+  emergent E/B alternation as carrier (beside mint composition and
+  sent_emb aliasing) — and the suspect ranking note: this one is
+  HAMMERHEAD-GRADE if real (nothing trains toward the parity; an
+  involuntary emission of the architecture itself — the
+  oscillation as a WINDOW INTO the stack's alternating structure,
+  not just a confound). THE ARC'S POSSIBLE CLOSE, held as
+  possibility not verdict: #78 was banked as "the best way to be
+  wrong" — four refusals correct, the installation never lawful —
+  and it may yet prove **the best way to be right**: detection
+  vindicated by a pathology wearing the anatomy's own period. The
+  probe's design inherits all three suspects with discriminators
+  owed at its registration.
