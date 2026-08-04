@@ -23099,3 +23099,19 @@ token-position × waist-dim, the moment the skeleton trains.
   vindicated by a pathology wearing the anatomy's own period. The
   probe's design inherits all three suspects with discriminators
   owed at its registration.
+
+- **THE PARITY PROBE'S E/B RIDER (2026-08-04, Bryce; pinned into
+  the registration before the probe exists):** **the E/B suspect
+  needs a null that isn't "the other two convicted."** If
+  composition and aliasing come back clean, that is ELIMINATION,
+  not evidence — and elimination-of-alternatives is exactly how a
+  plausible mechanism inherits a field it didn't earn (the cliff
+  hypothesis's own lesson, cited). THE POSITIVE DISCRIMINATOR
+  REQUIRED: the untrained stack's banked sweep provides a
+  PREDICTED PERIOD AND PHASE — **the oscillation must MATCH, not
+  merely coexist: phase agreement is evidence; period-2-ness alone
+  is a coincidence two suspects could produce.** A favorable E/B
+  print would be the most seductive number in the campaign's
+  history; this rider is its leash, written before the number can
+  exist. #78 waits for an ending it may finally get — by
+  measurement, phase-locked, or not at all.
