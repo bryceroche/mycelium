@@ -22210,3 +22210,19 @@ token-position × waist-dim, the moment the skeleton trains.
   underfed at 4k, and **a working when-signal that may reprice
   leaf C** — the framing session's decision space just gained a
   measured option it priced as a bet.
+
+- **THE ANSWER-GRAIN GRADUATION READ — PINNED BEFORE IT RUNS
+  (2026-08-04, the word given; countersign banked with it: the
+  standing rule binds — answer-grain first, wild-ledger pricing
+  second, THEN leaf C has arithmetic; narrow-margin thresholds ride
+  the pricing as their own object):** THE READ: bigtest under the
+  rings ckpt; per row — decode, solve (used-var compaction, m=300),
+  ANSWER correctness as the row label; per-row commitment
+  aggregates over present slots. **PRIMARY AGGREGATOR, pinned: MIN
+  mass** (a chain is as committed as its least ring); mean as
+  secondary. **BARS, pinned: AUC(min-mass → row-correct) ≥ 0.75 =
+  GRADUATES (a usable row-grade signal); 0.60–0.75 = WEAK (slot
+  separation does not survive aggregation cleanly); < 0.60 = FAILS
+  TO GRADUATE (0.941 stays a slot-grain fact).** Exit languages
+  pre-written; nothing reprices until this and the wild-ledger
+  pricing both read.
