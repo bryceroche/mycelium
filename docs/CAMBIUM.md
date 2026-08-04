@@ -44,8 +44,12 @@ grows on the mycelium's network.)*
 
 ## The road (in the standing order)
 
-1. Bryce's tighten pass → the fifty altitude verdicts → the framing
-   session reads the census (does the explicit tower grow downward?).
+1. ~~census~~ READ (schema floor PAYS for the reachable class). **The
+   floor has TWO faces (#130): span-marking on the input side (mark
+   constraint-bearing spans, vent narrative water — the tarpon's
+   vacuum inhale) feeding copy-not-generate's pointer targets on the
+   emission side. One floor, two arrivals; spec-stage behind the
+   wide word; #126: own generation.**
 2. Rung 3's word: the dual-notebook mechanism is the bench's candidate
    design (R2 reversible commitments = the rings).
 3. Frame territory beyond KenKen: by measurement on the parser

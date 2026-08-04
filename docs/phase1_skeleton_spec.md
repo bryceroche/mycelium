@@ -21927,3 +21927,27 @@ token-position × waist-dim, the moment the skeleton trains.
   corpora, panels, and probe families keep their diversity budget
   defended against exactly this instinct. Filed in the exchange
   family; the deep-clean line already carries its work.
+
+- **GUT #130 REGISTERED — THE TARPON (2026-08-03; one catch, two
+  decorations, one loud correction):** DECORATIONS FILED: the gular
+  plate (nice image, no mechanism) and the villiform teeth — the
+  latter with the correction stated LOUDLY because it would reverse
+  the central diagnosis: **the 512d waist is NOT where invariance
+  lives; the waist is the LEAKY stage** (0.951/0.023 — the surface
+  code surviving compression); invariance is exact at the KNOT,
+  downstream (canonicalizer, false-merge 0.000000). THE CATCH — the
+  vacuum inhale: **the mouth is a WHOLE-ITEM gate; no component
+  admits PART of a problem** — nothing ingests a volume and vents
+  the narrative water while keeping constraint-bearing spans; one
+  inexpressible clause condemns an otherwise-reachable problem
+  (the census measured the stakes: 34/46 OOD, many mixed-content).
+  THE CONNECTION, the registration's best line: span-marking before
+  graph-building is **the schema floor's input-side face** — today
+  span selection and graph construction commit in ONE leap (the
+  premature-lowering shape), and copy-not-generate needs exactly
+  those marked spans as pointer targets. **One floor, two arrivals
+  (the census from the failure side, the tarpon from the input
+  side); no new component proposed** — the floor's gate is already
+  open and CAMBIUM's tower holds its place. FENCES: spec-stage
+  behind the wide word; #126 inherited (machinery, own generation,
+  never bundled).
