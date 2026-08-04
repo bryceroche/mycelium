@@ -32,6 +32,15 @@ untouched (the mouth's wall stands in front of all of this).
 Coverage motion off 1.6% is checked for trained-verbatim
 composition mechanically (sha ∩ mix). Unfenced: 56% @ 0.53.
 
+**THE MARGIN SENTENCE (2026-08-04, #134): the chain is compliant at
+its bottom and rigid at its mouth, and the December arithmetic is that
+sentence's consequence.** 98.4% refusal is what a rigid gate does to a
+wild distribution; false-merge 0.000000 is what a compliant
+representation does with the same variety. The coverage term lives in
+the gap between those two facts; the schema floor (FOUR independent
+arrivals) is the compliant stage that closes it — the finger in front
+of the spatula, never instead of it.
+
 **TWO STRUCTURAL BINARIES** (both measured, not assumed):
 - TIER: no signal grades the answered — 4 cheap axes null; settle
   untestable at frontier (gated-on-anchor). Binary: answer or abstain.

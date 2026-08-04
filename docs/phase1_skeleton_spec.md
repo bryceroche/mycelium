@@ -22128,3 +22128,14 @@ token-position × waist-dim, the moment the skeleton trains.
   copy-not-generate / compliance — failure side, input side,
   emission side, contact side). No new road. Filed in the exchange
   family beside #132; the jaw stays rigid by charter.
+
+- **THE COUNTERSIGN ON #134 (2026-08-04, Bryce):** the evidentiary
+  principle carved: **"convergence that wasn't designed is the
+  strongest evidence a design can carry before it exists"** — four
+  arrivals, four faces, none prompted by the others. The fence's
+  best form kept: the finger IN FRONT OF the spatula — the
+  campaign's standing move whenever an instrument's virtue is also
+  its limit (add a stage, never soften a proven organ). THE MARGIN
+  SENTENCE placed on the framing sheet VERBATIM per the word, with
+  its two anchoring numbers (98.4% / 0.000000) and the four-arrival
+  floor named as the gap-closer.
