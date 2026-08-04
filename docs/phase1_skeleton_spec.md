@@ -22991,3 +22991,31 @@ token-position × waist-dim, the moment the skeleton trains.
   lost attention, not misdirected attention); mixed → both modes
   exist, proportions banked. Well-anchored slots' cross-sentence
   12.5% read as the baseline for lawful visiting.
+
+- **THE DESTINATION TRILOGY PRINTS — MISBINDING IS PREMATURE
+  SPATIAL COMMITMENT (2026-08-04; three zero-GPU reads, one hour,
+  banked artifacts):** (1) DESTINATION: mislocated attention lives
+  in RIVAL HOMES 99.8% — drift essentially absent (5/2827) —
+  scoped: mint text is span-dense, tiling partly forces rival.
+  (2) WHICH RIVAL: **kind-blind — same-kind 45.8% vs chance 45.9%,
+  exactly at chance** (rel→given as often as given→given): the
+  wrong home carries NO content structure — semantic-confusion
+  stories predict kind-attraction and there is none. (3)
+  ADJACENCY, the decisive cut: **99.8% of mislocations go BACKWARD
+  — 82.5% to exactly the PREVIOUS sentence (δ=−1: 2330; δ=−2:
+  465; forward: 2 of 2,827).** THE SYNTHESIS the three force:
+  mislocated attention is content-indifferent, home-seeking, and
+  ONE SENTENCE EARLY — **the engage-early pathology expressed
+  spatially. The pointer that commits before the operand arrives
+  (the pawl's premature click, the engagement-point family's
+  registered prediction) IS the attention parked in the sentence
+  BEFORE the binding's home. The commitment family and the binding
+  family merge on this number: premature engagement and
+  mislocation-backward are one phenomenon.** The routing suspect
+  refined for the probe: not random assignment — a systematic
+  backward offset consistent with committing before the target
+  sentence arrives; the cure family already aimed here (the
+  reverse gear's whole purpose; #141's rest; R2's re-anchor).
+  Chain complete at four grains: wrong graph → wrong span → wrong
+  sentence → THE PREVIOUS SENTENCE. Survey-grade, three
+  instruments, pre-pinned lattices throughout.
