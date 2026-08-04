@@ -22915,3 +22915,23 @@ token-position × waist-dim, the moment the skeleton trains.
   after one underperforms. Six guts tonight, none proposing
   machinery, all landing measured — the surfaces earning their
   keep.
+
+- **GUT #142 REGISTERED — THE BLUR (2026-08-04; commitment family,
+  engagement geometry):** coarticulation: at speed adjacent units
+  bleed and the boundary stops being a real place — the listener's
+  problem is where one thing ENDS. THE MEASURED INSTANCE: C1-A
+  boundary prediction at F1 0.741 — a quarter of boundaries wrong
+  or missed, never revisited since. THE LIVE CONNECTION:
+  misbinding is mislocated attention (0.911/0.063) — a blurred
+  boundary draws the span wrong and attention lands where the
+  span says. **A quarter-wrong segmenter is a candidate UPSTREAM
+  CAUSE of the spatial pathology.** THE RENT, pinned and fired
+  same hour (zero-GPU from banked artifacts): the
+  boundary-crossing join — for correct vs wrong-anchored slots,
+  does attended mass sit in the gold span's OWN sentence or bleed
+  into neighbors? Prediction: wrong slots cross more. If it holds,
+  the schema floor gains its SIXTH face (boundary sharpening) and
+  the address book's error has an address of its own. THE FENCE
+  attached: C1-A's own law — TEACHING BEATS TELLING (auxiliary
+  supervision lawful; boundary markers injected into text =
+  the refuted form).
