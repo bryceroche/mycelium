@@ -23124,3 +23124,22 @@ token-position × waist-dim, the moment the skeleton trains.
   merged on one number; the gear provisioned; the floor at six
   faces; the probe pinned and leashed; #78 waiting phase-locked or
   not at all. Nothing owed. The record carries a stranger.
+
+- **GUT #143 REGISTERED — LETTUCE SORTING (2026-08-04; exchange
+  family beside #138, the sorting rule to the berries' separation
+  rule):** **move whichever population is SMALLER** — the work
+  scales with the minority class, and the exception-label follows
+  the count, not the moral valence. THE MEASURED INVERSION: the
+  campaign's benches assume minority=failure (correct in-register:
+  24/4/0), but at the frontier the ratio flips — **the minority
+  class out there is SUCCESS (9% coverage), and every instrument
+  still enumerates failures** (1404 banked, lie composition read,
+  46 lies autopsied; nobody has enumerated the answered as THE
+  EXCEPTION WORTH CHARACTERIZING — the 0.984 anecdote was noticed
+  only in passing because the frame faced failures). THE RENT,
+  fired same hour: THE CORRECTNESS CENSUS — the wild 124 answered
+  profiled on banked columns (mechanism proxy, trained/never,
+  level, residual, quorum), descriptive, n stated. THE FENCE:
+  minority-targeting is a WORK-ALLOCATION rule, never an evidence
+  rule — a 1-row cell stays a 1-row cell no matter how
+  interesting it looks.
