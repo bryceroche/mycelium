@@ -22854,3 +22854,31 @@ token-position × waist-dim, the moment the skeleton trains.
   paired: the campaign can't track swimmers because it
   deliberately has none (Lucy by design); the item-across-vintages
   is the one persisting identity, frames stated or it's drift.
+
+- **GUT #140 REGISTERED — THE HAMMERHEAD (2026-08-04; the milestone
+  row, and true to the hundredth-row pattern: the registry auditing
+  its own conventions):** THE MECHANISM, specific: the ampullae
+  detect a field the buried ray CANNOT SUPPRESS — it hides its
+  shape, it cannot stop its heart. Two sensors, different physics,
+  **one of which the target cannot fake.** THE CAMPAIGN'S
+  AMPULLAE, discovered last night: anchor mass — a memorized
+  answer CANNOT fabricate attention to a span it didn't visit;
+  0.911/0.127 separates mechanisms on an involuntary emission
+  (self-loops were the species' first sighting; anchors are its
+  sharp case). **THE REGISTER RECAST: from Goodhart precaution to
+  SENSOR CHARTER** — the never-tier is not a list of
+  don't-train-against; it is the ampullae, and they work BECAUSE
+  nothing trains toward them. THE HYPOTHESIS, carved with its
+  evidence: **voluntary signals grade poorly; involuntary
+  emissions grade well** — six nulls (residual, quorum, agreement,
+  modal... all things the model PRODUCES as output) vs two hits
+  (commit mass with own gold; anchors as footprint) — consistent,
+  not proven, stated. THE LIVE CUSTOMER: the mouth is the EYES
+  (surface, what the problem looks like — null at every job but
+  its own); anchors are the AMPULLAE (behavior, where attention
+  went) — **six axes asked the eyes to do the ampullae's job; the
+  frontier's blindness may be a sensor-MODALITY fact.** THE
+  PROSPECTIVE SCREEN, applied immediately as standing practice:
+  **signal candidates state their VOLUNTARINESS at registration,
+  before build** — an emission the model controls enters with the
+  six nulls' prior against it.

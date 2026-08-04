@@ -18,7 +18,9 @@ this is the index of its open edges.
 
 `.cache/wild_ledger_v1.jsonl` — n=1404, full deployed chain, per-item.
 Standing rule: graded-tier proposals NAME THEIR SIGNAL first and price it
-against this table (free re-cut). Known: residual doesn't grade; quorum
+against this table (free re-cut) — AND STATE ITS VOLUNTARINESS (#140:
+voluntary signals carry the six-null prior; involuntary emissions are
+the ampullae). Known: residual doesn't grade; quorum
 saturates (0.626 @ 5/5); LEVEL grades (0.78→0.47); mouth = register
 instrument (98.4% refusal, all levels); fences one-for-one at frontier;
 inner chain 9% coverage @ 0.63 — CORRECTED 2026-08-02: decomposes to trained-verbatim 0.95 / NEVER-TRAINED 0.02 (the December-relevant row; 457/1404 of fixture is training text; consumption key = sha ∩ deployed mix, never the candidates glob); unfenced 56% @ 0.53.
