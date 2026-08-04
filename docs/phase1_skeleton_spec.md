@@ -22533,3 +22533,17 @@ token-position × waist-dim, the moment the skeleton trains.
   clears them** (the relative-bars structure across the fixture
   change; what makes held-out actually held out). Ready on the
   word: one threshold pick + one h3held read.
+
+- **THE RE-BIND RIDER + THE BLIND PICK (2026-08-04, the word):**
+  THE RIDER, banked for the cost-derivation registration: **a false
+  cross-out is not just a wasted re-read — it is a re-read that may
+  COMMIT DIFFERENTLY**; if the re-bind is worse than the original,
+  a false trip converts a correct answer into a wrong one — an
+  FN-shaped cost inside the FP term, governed by the
+  improve-vs-degrade rate of re-reads, WHICH IS NOT YET MEASURED:
+  the derivation must say so and pin conservatively (recovery is
+  not free until measured). THE PICK, blind to h3held by
+  construction: threshold = max catch on bigtest subject to
+  bigtest-FP ≤ 2%, chosen from the banked v2 rows; h3held then
+  reads at that threshold against the PRE-PINNED bars (FP ≤ 2%,
+  agreement ≥ 90%).
