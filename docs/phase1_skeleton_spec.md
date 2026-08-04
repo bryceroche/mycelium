@@ -23054,3 +23054,23 @@ token-position × waist-dim, the moment the skeleton trains.
   deltas; the same artifact, re-cut). Two unexplained curve
   shapes = a mechanism probe by law — this is one of them, and
   it is docketed, not read.
+
+- **THE INSTRUMENT AUDIT PRINTS: EXONERATED — THE PARITY STRUCTURE
+  IS REAL (2026-08-04):** the oscillation survives BOTH re-cuts —
+  slot-grain MODE (no median anywhere) and TOKEN-GRAIN with no
+  aggregation at all: odd sentence-counts 84-100% δ=−1, even
+  42-62%, alternating across seventeen strata. **The read did not
+  make this shape; the world did.** PER THE TEXTURE RULE it
+  graduates from quarantine to a REGISTERED MECHANISM PROBE — THE
+  PARITY PROBE — with first suspects named: (1) MINT COMPOSITION —
+  row sentence structure (preamble + givens + rels + query) makes
+  total count parity correlate with what KIND of sentence sits at
+  δ=−1; checkable zero-GPU from the fixture jsonl (what occupies
+  the previous-sentence position in odd vs even rows); (2)
+  sent_emb ALIASING — SENT_MAX=32, the sentence-index embedding
+  table may carry parity structure the router inherits. NOT READ
+  TONIGHT — registered, suspects named, the probe its own sitting.
+  THE STANDING RESULTS UNTOUCHED: backward remains 100% at every
+  stratum in every cut; the −1 lag with its depth tail stands;
+  only the oscillation's CAUSE is open, and it is now a real
+  question about the world rather than a shadow of the ruler.
