@@ -23382,3 +23382,22 @@ token-position × waist-dim, the moment the skeleton trains.
   phase-locked sitting, now facing a phenomenon that has survived
   FOUR cuts and gotten stranger at each — the trajectory prior
   earning its keep.
+
+- **S3's SITTING — THE PINS COMPLETED (2026-08-04, Bryce's
+  countersign):** THE CAUTION, banked at the moment of maximum
+  temptation: **"a geometry-without-meaning finding meeting a
+  geometry-without-meaning hypothesis is a RESONANCE, not a
+  proof"** — four deaths made S3 more attractive without producing
+  one piece of positive evidence for it; that is default-
+  inheritance by name. THE ADDITION, pinned as the sitting's
+  STRONGEST discriminator, above phase-agreement: **the alternation
+  must be PRESENT IN THE UNTRAINED STACK** — measurable on the
+  banked sweep, in weights that never saw the mint — because no
+  mint story can produce a pattern in weights that never met the
+  mint. Untrained shows the period AND the trained pathology rides
+  it → POSITIVE evidence, the first S3 could ever have. Untrained
+  flat → **S3 DIES regardless of how well the trained phases line
+  up.** The admission price, final form: untrained presence +
+  period + phase, matched — or the mystery stays a mystery,
+  honestly. The night sealed: three mechanisms killed at zero GPU,
+  one synthesis in a sentence, every death beside every discovery.
