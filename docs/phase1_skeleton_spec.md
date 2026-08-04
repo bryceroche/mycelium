@@ -21883,3 +21883,25 @@ token-position × waist-dim, the moment the skeleton trains.
   assert-or-leave (frozen lawfully); false positives struck by
   eye. The two doors are siblings and should be built together:
   **derive-or-assert is one sweep, one pattern, one visit.**
+
+- **THE COUNTERSIGN ON #128's SWEEP (2026-08-03, Bryce; the day's
+  true close):** the specimen's whole argument in one line: **"not
+  one authority with eighty-eight consumers — eighty-eight
+  independent assertions, each true today, each a future entourage
+  crash the day the fixture changes size. And it WILL change size;
+  the harvest expansion road is on the board."** The precision
+  credit: a sweep that flagged the era floors as defects would
+  have proposed breaking correct code — stale ≠ wrong, the
+  deployed_env door's own line, now guidance the audit inherits.
+  The sibling door in one sentence: **a value that encodes a fact
+  about another artifact should ASK that artifact rather than
+  REMEMBER it.** AND THE CALIBRATION NOTE, banked beside the
+  credit because the record should be honest about itself: nine
+  guts converted in four days **because the campaign is dense, not
+  because the instincts are hotter** — most landed on machinery
+  built the same week, fixtures already banked, laws already
+  carved to sort against. A gut arriving into an empty campaign
+  would take a month to convert. **The registry runs at the speed
+  of the work because the work built the surfaces it lands on.**
+  Nothing owed. One door earned by four instances. A sweep sized
+  before its audit.
