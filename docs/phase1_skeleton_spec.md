@@ -22061,3 +22061,24 @@ token-position × waist-dim, the moment the skeleton trains.
   #126 honored (machinery alone — no dialect, no dose change,
   rides gen23_mix as-is); nothing promotes from this fire — it is
   a BENCH fire; the gate is untouched.
+
+- **GUT #132 REGISTERED — STABILITY VS PLASTICITY (2026-08-04; the
+  direct reading REFUSED on three measurements, the scheduling form
+  KEPT):** refused: the ramp destruction (2.28σ→0.78σ — a
+  maximally-plastic model losing its inheritance), the bathtub law
+  (settle 0.834/0.997 measures stability AS the correctness signal
+  — a more pliable model settles less, and settling less is what
+  misbinding looks like), #127's tension (cherish barriers once
+  arrived). THE LAWFUL FORM — CRITICAL PERIODS: **plasticity is a
+  resource scheduled PER-COMPONENT, never a global setting** — the
+  question is never more-or-less pliable but WHICH terminal is in
+  its critical period and what is held rigid while it is. The
+  campaign already practices it: pad-warm = one window open,
+  everything else consolidated — gen-23's sign head maximally
+  plastic at first dose (96.7%) while the register held rigid
+  enough to IMPROVE (1238). #126 stated in developmental biology.
+  THE FIRST CUSTOMER, stamped on the wide road: copy-not-generate
+  cannot pad-warm — no rigid inheritance to protect — so it is the
+  first build where the plasticity schedule must be DESIGNED
+  rather than inherited. Filed in the exchange family (allocation
+  over time).
