@@ -23361,3 +23361,24 @@ token-position × waist-dim, the moment the skeleton trains.
   the parity via chain-interleaving structure (how far back args
   sit alternates with composition). LOW → the lag story stands and
   parity stays open. Well-anchored slots' rate rides as baseline.
+
+- **THE INGREDIENT HYPOTHESIS DIES AT BASELINE (2026-08-04; 9.4%
+  vs 9.7% — no enrichment whatsoever):** mislocated attention does
+  NOT sit on the slot's own arguments' definition sentences —
+  dependency-blind, exactly as it was kind-blind. THE SYNTHESIS
+  the deaths complete: **every semantic hypothesis has now died on
+  the same blade** — the destination carries NO relation to the
+  slot's own content (kind at chance, dependencies at baseline,
+  rivals indifferent) — **the mislocation is PURE GEOMETRY: one
+  position back, and the parity modulates only the DISTANCE (−1
+  vs −2), never the direction and never the meaning.** The
+  premature-commitment story sharpens to its starkest form: the
+  pawl clicks at a POSITION, blind to what occupies it. S1's
+  FINAL variant docketed (the last confound standing): the
+  KIND-AT-s−1 cut — in even vs odd rows, what kind of sentence
+  (given/rel) sits immediately before mis-anchored homes, i.e.,
+  does the mint's factor-ORDER layout alternate with count parity?
+  Zero-GPU, the identity rider inherited. Behind it: S3's
+  phase-locked sitting, now facing a phenomenon that has survived
+  FOUR cuts and gotten stranger at each — the trajectory prior
+  earning its keep.
