@@ -23163,3 +23163,17 @@ token-position × waist-dim, the moment the skeleton trains.
   never-trained 0.02 remains the only number that measures the
   thing December needs. #143's rent paid: the minority was
   cheaper to characterize than the lies and said more.
+
+- **THE COUNTERSIGN ON THE CENSUS (2026-08-04, Bryce):** the
+  December sentence marked brutal and clear: coverage bought by
+  membership buys nothing December can use — **when L4/L5 land,
+  the composition check is not a nicety; it is the entire
+  question.** THE READER'S PROMOTION carved: from stray
+  observation to FORMAL SOLE OUTLIER — his solitude is the
+  finding, not his existence; one row weighed as one row while
+  the census makes his isolation meaningful (the fence working
+  exactly). The re-confirmations credited as the census's
+  integrity check: nothing surprised, everything tightened —
+  "a census that only produces headlines is usually overfitting."
+  Three sorting laws standing: separate the minority (#138),
+  target by count (#143), keep the second bowl readable.
