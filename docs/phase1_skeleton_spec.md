@@ -22106,3 +22106,25 @@ token-position × waist-dim, the moment the skeleton trains.
   rings fire's cmt_m read is its first evidence; adaptive depth =
   its own generation (#126). The trichotomy's third arm and the
   Dopri5 precedent noted as ancestors.
+
+- **GUT #134 REGISTERED — COMPLIANCE (2026-08-04; #132's complement,
+  the pair being the law):** THE DISTINCTION: plasticity is
+  LEARNING (change over time, scheduled per component); compliance
+  is CONTACT (conforming at the interface without changing what you
+  are — a finger spreads oil without becoming oil). **Be rigid in
+  what you COMMIT to, compliant in what you CONTACT.** THE MEASURED
+  INSTANCE: the mouth is the metal spatula (98.4%, step curve, no
+  shoulder — contact determined by one rigid criterion; L1 at
+  9/203 gets nothing); the KNOT is the compliant surface (any
+  prose, one identity, false-merge 0.000000). **The chain is
+  compliant at its bottom and rigid at its mouth; the December
+  arithmetic is that sentence's consequence.** THE FENCE, the
+  graph register's own corpse: compliance costs discrimination — a
+  surface conforming to everything can't say what it touched; the
+  mouth's rigidity IS its instrument-trustworthiness (five nulls
+  say it knows exactly one thing perfectly). THE LAWFUL FORM:
+  never soften the mouth — **add a compliant stage, keep the rigid
+  one** = the schema floor's FOURTH ARRIVAL (census / tarpon /
+  copy-not-generate / compliance — failure side, input side,
+  emission side, contact side). No new road. Filed in the exchange
+  family beside #132; the jaw stays rigid by charter.
