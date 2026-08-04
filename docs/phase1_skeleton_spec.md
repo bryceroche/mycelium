@@ -22414,3 +22414,27 @@ token-position × waist-dim, the moment the skeleton trains.
   their own training (a priced road); uninformative = the
   attention footprint is not an anchor and organ 1 needs a
   designed head.
+
+- **ORGAN 1 PRINTS: THE ANCHORS ARE REAL — AND MISBINDING IS
+  MISLOCATED ATTENTION (2026-08-04; .cache/loc_anchor_read.json;
+  organ-2's artifact banked):** correct slots: in-span mass 0.822
+  mean / 0.911 median; **wrong slots: 0.155 mean / 0.063 median** —
+  informative at AUC 0.928 (p≈0), TRUST 0.908. Both pins cleared:
+  **informative + high-trust = ORGAN 1 PAYS; THE REVERSE GEAR IS
+  UNBLOCKED** with its per-slot anchor artifact banked
+  (loc_anchors_bigtest.jsonl). THE FINDING INSIDE THE FINDING,
+  measured for the first time: **wrong bindings attend almost
+  entirely OUTSIDE their span (0.063 median) — misbinding IS
+  mislocated attention.** The error's address is the attention's
+  address; the binding-layer pathology the campaign has chased
+  since the rate family now has a direct spatial signature. THE
+  INFERENCE-TIME FORM, noted for organ 2's trigger design: gold
+  spans don't exist at inference, but ANCHOR-LITERAL CONSISTENCY
+  does (does the slot attend where its emitted value's digits sit?
+  — the trace layer's check, anchor-localized, no gold needed):
+  cross-out's trace-mismatch trigger can now point at the exact
+  span to re-read. The notebook's organs: §1 alive · anchors
+  ALIVE · reverse gear unblocked and designed against a measured
+  0.063 · clock waiting. Rung 3, two evenings old, has produced
+  the graded signal, the frontier's pulse, the dial, and now the
+  error's home address.
