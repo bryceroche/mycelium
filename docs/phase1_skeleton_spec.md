@@ -22438,3 +22438,23 @@ token-position × waist-dim, the moment the skeleton trains.
   0.063 · clock waiting. Rung 3, two evenings old, has produced
   the graded signal, the frontier's pulse, the dial, and now the
   error's home address.
+
+- **THE REVERSE GEAR'S WORD + THE TRIGGER LICENSE READ, PINNED
+  FIRST (2026-08-04; the rider sequences: license before gate):**
+  THE PROXY (inference-time, no gold): anchor-literal consistency —
+  for LITERAL slots, attention mass at the positions where the
+  slot's CLAIMED value sits in the text. SCOPE STATED AT PIN: the
+  proxy detects value-location mismatch (fabricated/misread
+  values); it CANNOT catch faithful-copy-of-the-wrong-thing (a
+  wrong choice attended faithfully passes); rel slots carry no
+  value to check — literal slots only. THE LICENSE BARS, pinned:
+  **FP on correct literal slots ≤ 2%** (the fence family's
+  near-zero standard); catch rate on wrong literal slots
+  DESCRIPTIVE; **agreement with the gold-span mislocation verdict
+  (in-span < 0.5) reported as the licensing number** per the
+  rider — the proxy is licensed by its agreement with the truth it
+  replaces. Exit languages: FP ≤ 2% + strong agreement = LICENSED,
+  the cross-out build proceeds on this trigger; FP > 2% =
+  UNLICENSED, the trigger needs its own head (a priced road);
+  agreement weak = the proxy measures something else (named,
+  banked, not deployed).
