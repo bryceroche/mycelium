@@ -22732,3 +22732,20 @@ token-position × waist-dim, the moment the skeleton trains.
   the gear does not gate at the frontier on this instrument,
   full stop. Seven boundary data now stand; the two countries
   differ not just in competence but possibly in MECHANISM.
+
+- **THE RECALL-VS-READ JOIN — PINNED WITH ITS RIDERS BEFORE IT RUNS
+  (2026-08-04, Bryce's countersign):** the hypothesis's stakes
+  stated: it would EXPLAIN 0.95/0.02 rather than re-measure it —
+  "the model doesn't read memorized text at all; it retrieves" —
+  reframing the wall from competence gradient to MECHANISM
+  BOUNDARY, making 0.02 the only number that measures reading.
+  PINS: (1) the decisive cell (wild ∧ correct ∧ never-trained) is
+  **n≈1 — declared UNMEASURABLE-AT-FIXTURE now**, before the join,
+  so one specimen reads as anecdote, never evidence; (2) the
+  POPULATED comparison carries the strong prediction:
+  trained-verbatim wild-correct anchoring (~0.13 predicted) vs
+  in-register correct (0.911) — same "correct," different
+  mechanism, support on both sides; (3) BIGTEST'S OWN
+  trained-verbatim check rides along (if in-register-correct is a
+  recall/read mixture, 0.911 understates clean reading) — sha ∩
+  mix, a re-cut not a pass.
