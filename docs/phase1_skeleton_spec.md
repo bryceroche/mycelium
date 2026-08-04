@@ -21751,3 +21751,24 @@ token-position × waist-dim, the moment the skeleton trains.
   its specialist, its centroids, its mouth, its panel lattice, its
   scope field, its hashes — one generation, one manifest, zero
   loose ends.** CHAPTER BOUNDARY: gen-weights syncs to main.
+
+- **THE CLOSING COUNTERSIGN (2026-08-03, Bryce; the chapter's last
+  words):** (1) **"Banked 2, not 16"** stated as bluntly as the wild
+  correction: fourteen of sixteen "organ-banked" census items since
+  gen-13 were trained-verbatim; one sentence covers both grains —
+  *what looked like competence on the measurement fixture was
+  overwhelmingly memorization.* The books-road bar just got harder
+  AND more honest; **"that baseline is worth more than the
+  promotion it settled beneath."** (2) THE GUARD-CONSTANT SPECIES
+  named: the 82400 literal — caveat decay's cousin, **a guard that
+  carried a number it should have derived** (the aligned-pair
+  check was right; its constant was a caveat frozen in code) —
+  fourth instance today, same door: derived-not-listed. (3) The
+  manifest recovery from a PRINTED LOG = the future-reader law
+  paying for itself inside a single generation; the writer-carries-
+  forward lesson and the buffer-spec are one door. THE GOVERNING
+  LINE: new gate, new mouth, forty wild problems, all refused —
+  **the ceiling moved to 215/500 without moving the thing that
+  would have made it dishonest.** Five landmines, six relights,
+  two instrument species, one field-drop — all loud, all named,
+  all filed. Nothing owed. The record can carry a stranger.
