@@ -22492,3 +22492,22 @@ token-position × waist-dim, the moment the skeleton trains.
   vigilance). LICENSE BARS unchanged: FP ≤ 2% on correct
   multi-literal slots; agreement with gold-span mislocation = the
   licensing number; same three exits.
+
+- **THE RELATIVE PROXY PRINTS: UNLICENSED-FP — NARROWLY, WITH THE
+  INSTRUMENT NOW PROVEN HONEST (2026-08-04; per-row banked;
+  single-literal n=22 excluded and counted):** FP on correct
+  multi-literal slots **3.248%** vs the 2% bar — MISSED by 1.25
+  points; the bar does not bend. But the shape validates the
+  design: **agreement with the gold-span verdict 90.7%** (the
+  proxy measures the right thing — the licensing number itself
+  clears), catch 52.1% on wrong literals. The v1→v2 arc: a
+  saturated 100% became a near-miss 3.2% — the relative form was
+  the right fix. THE LAWFUL PATH, written before any tuning
+  temptation: threshold curves from the banked rows are
+  DESCRIPTIVE only (tuning on the same fixture = bar-bending);
+  **a re-pin at a stricter threshold LICENSES ONLY on a SECOND
+  fixture** (h3held / dag8test are the natural candidates — pick
+  on bigtest, validate held-out, per the doorframe's own
+  discipline). Organ 2's trigger stands UNLICENSED-but-close with
+  its road priced: one threshold re-pin + one held-out validation
+  from a license. The reverse gear's design holds; nothing gates.
