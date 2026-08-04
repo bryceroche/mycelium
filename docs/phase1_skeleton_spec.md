@@ -23401,3 +23401,22 @@ token-position × waist-dim, the moment the skeleton trains.
   period + phase, matched — or the mystery stays a mystery,
   honestly. The night sealed: three mechanisms killed at zero GPU,
   one synthesis in a sentence, every death beside every discovery.
+
+- **THE AXIS-AND-SUBSTRATE CLAUSE — S3's PINS FINISHED BY GREP
+  (2026-08-04, Bryce's recall checked against the record):** the
+  memory verified and PRECISIFIED: the telegraph hypothesis LOST —
+  the banked finding is **STATIC layer polarization** (2.28σ
+  untrained → 2.55σ post-Fire-2), measured across DEPTH (L0-L3),
+  on the ENGINE's substrate (SmolLM2-1.7B, the r-loop anatomy).
+  **Neither the axis nor the substrate matches the parity
+  oscillation** (sentence POSITION, on the parser's frozen
+  Llama-3.2-1B trunk). THE CLAUSE: S3's untrained evidence must be
+  measured on THE MATCHING AXIS (position-period-2) and THE
+  MATCHING SUBSTRATE (the Llama trunk) — **the banked 2.28σ is a
+  PRIOR that alternating structure exists in stacks of this
+  family; it is not, and cannot be cited as, evidence for this
+  oscillation** (borrowing across the test variable's axis = the
+  rotation law's cousin, named before anyone reached for it).
+  The grep's payoff stated: cited unchecked, "we measured
+  alternation" would have entered S3's sitting as support from a
+  different axis on a different model.
