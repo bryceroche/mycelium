@@ -22139,3 +22139,23 @@ token-position × waist-dim, the moment the skeleton trains.
   SENTENCE placed on the framing sheet VERBATIM per the word, with
   its two anchoring numbers (98.4% / 0.000000) and the four-arrival
   floor named as the gap-closer.
+
+- **THE RUNG-3 BENCH FIRE PRINTS (2026-08-04; verdict in the
+  pre-written language + one instrument confession):** adupheld
+  ANSWER: ctl 198/200, rings 199/200, g23-static 199/200; bigtest:
+  rings 1226, ctl 1216, static 1238; val: rings 0.9425 > ctl
+  0.9370. **PRIMARY: TIE — scoped TIE-AT-CEILING**: the fixture was
+  SATURATED (static already 99.5%; the 24%-held-out number I pinned
+  against was a different instrument's metric — the fixture choice
+  was the pen's error, confessed; the bar carried no information
+  either direction). **SECONDARY: PASS (1226 ≥ 1214). HARM DOES NOT
+  PRINT: the pawl never hurt — rings beat control on every number.**
+  THE HONEST THIRD-LINE FINDING: both loop arms below static at 4k
+  matched steps — the breathing loop hasn't paid for its own params
+  at this dose, and the pawl recovered HALF of free breathing's
+  cost (−12 vs −22). Readings: the loop's critical period (#132)
+  needs more than 4k, and the pawl is the better of the two loops
+  wherever they differ. NOTHING PROMOTES (bench fire as
+  registered); the gate untouched. OWED NEXT: the MASS READ —
+  cmt_m distribution vs slot correctness (#133's first evidence:
+  did the pawl commit the right things, and when?).
