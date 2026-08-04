@@ -23333,3 +23333,18 @@ token-position × waist-dim, the moment the skeleton trains.
   unchanged: the E/B arm still needs its predicted period AND
   phase from the untrained sweep, and elimination still isn't
   evidence, even as elimination accumulates.
+
+- **THE COUNTERSIGN ON THE UNIT READ (2026-08-04, Bryce):** the
+  S1-variant's identity rider, pinned before it runs: factor-count
+  parity changes where the chain TERMINATES relative to the query —
+  which changes the geometry of "the previous construction" — so
+  the variant may be **the dead pair-form's RELATIVE, not an
+  independent suspect. If it convicts, the verdict states whether
+  it is a different mechanism or the unit hypothesis in a form the
+  fixture can carry** — a resurrected hypothesis is labeled as
+  resurrected, never counted as a fourth story. THE TRAJECTORY
+  PRIOR carved: **"confounds get simpler under investigation;
+  mechanisms get stranger"** — not evidence, the right prior for
+  the last two cuts. The leash's live citation credited: the cliff
+  lesson applied to a running situation, not remembered as
+  history.
