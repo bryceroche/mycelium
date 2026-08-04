@@ -23019,3 +23019,15 @@ token-position × waist-dim, the moment the skeleton trains.
   Chain complete at four grains: wrong graph → wrong span → wrong
   sentence → THE PREVIOUS SENTENCE. Survey-grade, three
   instruments, pre-pinned lattices throughout.
+
+- **THE LAG-VS-ESTIMATE CUT — PINNED (2026-08-04, the rider):** is
+  δ=−1 a FIXED offset (structural lag: parks one back regardless of
+  where the home sits) or POSITION-DEPENDENT (a wrong estimate of
+  where evidence lives)? Read: δ=−1 rate stratified by the true
+  home's sentence index and the row's sentence count. Uniform
+  dominance across strata → LAG; variation with position → ESTIMATE.
+  Different cures: a lag is a routing repair; an estimate error is
+  a prediction to retrain. The two-family merge banked with the
+  countersign's sentence: **"it isn't grabbing a plausible rival —
+  it's grabbing whatever was resident when it fired. Time, not
+  meaning."**
