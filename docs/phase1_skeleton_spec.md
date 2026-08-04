@@ -22580,3 +22580,28 @@ token-position × waist-dim, the moment the skeleton trains.
   the anchors banked, the re-bind rider standing as its first
   measurement obligation (improve-vs-degrade before the gear
   gates). The build awaits its word.
+
+- **THE DIGEST + THE BRAINSTORM TABLE SET (2026-08-04, Bryce's
+  countersign banked whole):** the license's epistemics carved:
+  **"a number that clean would be suspicious without that road;
+  with it, it's just true."** The two scope notes riding into organ
+  2's word: (1) the trigger is **LICENSED on its FP behavior and
+  ESTIMATED on its catch** — different evidentiary weights, one
+  good trigger, not two good numbers; (2) **"small × unknown is
+  still unknown"** — the re-bind obligation discharges by
+  measurement, never by the FP number's comfort. THE TABLE SET for
+  the gut sitting — the campaign's live surfaces, each with its
+  measured edge: (a) the RE-BIND RATE (improve-vs-degrade,
+  unmeasured, gear-gating); (b) the CATCH GAP (the
+  faithful-wrong-copy class — what sees a faithful copy of the
+  wrong thing? args-side anchors unread); (c) the FRONTIER
+  COMPRESSION (commit-everything at 0.9991 — and the anchor
+  signal's wild transfer UNREAD); (d) REL-SLOT ANCHORS (the
+  license covers literals; relations' anchor story unmeasured);
+  (e) the WIDE ROAD (copy-not-generate + a designed plasticity
+  schedule); (f) the SCHEMA FLOOR (five faces, unbuilt); (g) E5
+  (the cheapest +35, unworded); (h) the CLOCK (adaptive K on ring
+  mass, 4.2% waiting); (i) the DIGEST-VOTE WINDOW (a priced
+  trade); (j) THE FRAMING SESSION itself (resolved on paper,
+  never yet sat cold). The registry's surfaces are dense; the
+  guts have land to strike.
