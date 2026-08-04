@@ -22904,3 +22904,14 @@ token-position × waist-dim, the moment the skeleton trains.
   gentle-phase-then-dose schedule is a distinct untested shape —
   stated as a candidate for some future fire's registration, cost
   one LR schedule.
+
+- **THE COUNTERSIGN ON #141 (2026-08-04, Bryce):** the durable
+  clause carved: two laws identical from outside, different physics
+  underneath — and **different TERMINATION CONDITIONS: formation
+  ends when the structure has SET; equalization ends when the
+  gradient is FLAT.** Confusing them means waiting the wrong length
+  for the wrong reason. The candidate's resting place confirmed:
+  in the record BEFORE a fire wants it, never discovered as regret
+  after one underperforms. Six guts tonight, none proposing
+  machinery, all landing measured — the surfaces earning their
+  keep.
