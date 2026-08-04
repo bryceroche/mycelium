@@ -22183,3 +22183,30 @@ token-position × waist-dim, the moment the skeleton trains.
   mechanisms; this says why they matter. Five arrivals: census /
   tarpon / copy-not-generate / compliance / lionfish. No rent
   beyond what the floor carries.
+
+- **THE MASS READ PRINTS — THE FIRST WORKING GRADED SIGNAL THE
+  CAMPAIGN HAS EVER MEASURED (2026-08-04; bigtest, held-out;
+  .cache/rings_mass_read.json; en route: the read's own script
+  hardcoded its fixture and ignored env — #128's specimen at age
+  one hour, caught before a mislabeled print):** adupheld first:
+  the pawl FULLY ENGAGED (init 0.036 → mass 1.0000 on correct
+  slots; commit-when-correct trained to saturation at 4k). THEN
+  BIGTEST, where errors exist: **correct slots n=18,463 mean
+  0.9984; wrong slots n=713 mean 0.9592; SEPARATION AUC = 0.941,
+  p≈0.** THE MEANING, stated against the board's own history: rung
+  2's four cheap axes were NULL — no free signal grades
+  correctness; THE DECISION POINT priced a trained verifier as an
+  unpriced bet. **The commit head is that trained signal, arrived
+  almost free: one 4k bench fire, slot-grain, held-out, 0.941.**
+  SCOPE LINES, immediately: in-register fixture (bigtest — the
+  wild frontier is a separate question and the 0.02 governs
+  there); SLOT grain not ANSWER grain (the answer-grain
+  graduation read — does per-row mass grade row correctness? —
+  is the OWED NEXT read, one pass, banked per-row); calibration
+  coarse (wrong slots still carry 0.96 — the separation lives in
+  the tail; threshold work is real). Register-clean BY
+  CONSTRUCTION: trained head, own gold, settle nowhere. RUNG 3's
+  first fire thus yields: a pawl that never harmed, a loop
+  underfed at 4k, and **a working when-signal that may reprice
+  leaf C** — the framing session's decision space just gained a
+  measured option it priced as a bet.
