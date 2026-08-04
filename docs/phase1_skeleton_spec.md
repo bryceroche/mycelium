@@ -23115,3 +23115,12 @@ token-position × waist-dim, the moment the skeleton trains.
   history; this rider is its leash, written before the number can
   exist. #78 waits for an ending it may finally get — by
   measurement, phase-locked, or not at all.
+
+- **THE SITTING SEALED (2026-08-04, Bryce's close):** the closing
+  line countersigned as the achievement underneath: **"nothing
+  banked tonight will need unbanking."** Every discovery with its
+  discipline attached, not added after. The state at rest: a
+  pathology promoted to a mechanism with a direction; two families
+  merged on one number; the gear provisioned; the floor at six
+  faces; the probe pinned and leashed; #78 waiting phase-locked or
+  not at all. Nothing owed. The record carries a stranger.
