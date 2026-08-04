@@ -22935,3 +22935,26 @@ token-position × waist-dim, the moment the skeleton trains.
   attached: C1-A's own law — TEACHING BEATS TELLING (auxiliary
   supervision lawful; boundary markers injected into text =
   the refuted form).
+
+- **THE BLUR CONFIRMS AT 0.999 — MISBINDING IS SENTENCE-LEVEL
+  MISLOCATION (2026-08-04; the rent printed the same hour it was
+  pinned):** well-anchored slots cross sentence boundaries at 12.5%
+  (p50 0.125); **mis-anchored slots at p50 1.000, mean 0.928 —
+  their attention lives almost ENTIRELY in a different sentence
+  than the binding's home.** AUC 0.999, p≈0. THE NON-CIRCULARITY
+  stated: mis-anchored slots COULD have been near-misses —
+  out-of-span but in-sentence — and they are not; the mislocation
+  is not scatter within a neighborhood, it is residence in the
+  wrong sentence, near-categorically. THE PATHOLOGY'S SHAPE at
+  three descending grains, now one story: wrong graph (census) →
+  wrong span (anchors 0.063) → **WRONG SENTENCE (0.928)** — "the
+  wrong place" has a name, and it is the wrong sentence. THE
+  SUSPECT ORGAN, noted for the bench: sentence ROUTING — the waist
+  carries sent_emb; slots route by sentence structure; misbinding
+  may be a sentence-assignment error upstream of everything the
+  binding family has measured (far more structured than pointer
+  scatter; a designed probe candidate, its own registration). THE
+  SIXTH FACE WARRANTED: boundary sharpening joins the schema
+  floor's arrivals with a 0.999 behind it — and C1-A's 0.741
+  segmenter, dormant for months, is suddenly the most interesting
+  old number on the books. Teaching-not-telling fence carried.
