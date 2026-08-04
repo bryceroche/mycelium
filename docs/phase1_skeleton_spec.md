@@ -23271,3 +23271,28 @@ token-position × waist-dim, the moment the skeleton trains.
   architecture fact, its own follow-up); both clean → S3's sitting
   proceeds under the leash; both convict → the oscillation may be
   overdetermined and the shares get measured.
+
+- **S1/S2 PRINT — ONE SUSPECT LEANS CLEAN, THE OTHER REFINES
+  (2026-08-04):** **S2 (sent_emb geometry): LEANS CLEAN** —
+  adjacent cos 0.364 > skip-2 0.217: smooth decay with distance,
+  the OPPOSITE of period-2 (which needs skip >> adjacent); norms
+  near-flat (2.15/2.21). The embedding table is not the carrier on
+  this read. **S1 (composition): the LENGTH cut is null** —
+  sentence lengths uniform at 7.5 tokens everywhere, both
+  parities — **but the cut surfaced S1's real form: THE UNIT
+  HYPOTHESIS.** Mint bodies are built partly from TWO-SENTENCE
+  UNITS (coupled pairs, sym_pairs) among singles; row-count parity
+  then correlates with pair-density — and if the loop parks at
+  the previous UNIT rather than the previous SENTENCE, unit size
+  maps parity → δ=−1 vs δ=−2 exactly as observed. TESTABLE
+  ZERO-GPU: for δ=−2 cases, is the skipped s−1 the second half of
+  a paired unit (partner at s−2, per the rows' own gen.sym_pairs
+  metadata)? DOCKETED as S1's discriminating read. If the unit
+  hypothesis convicts: the oscillation is NEITHER confound NOR
+  E/B — it's a THIRD thing and a finding: **the loop's spatial
+  unit is the CONSTRUCTION, not the sentence** — premature
+  commitment parks at the previous construction, and δ counts
+  sentences while the mechanism counts units. S3 stays leashed
+  behind S1's verdict. Also noted: the fixture is 78% even-count
+  rows (n 1174/326) — parity exposure itself is unbalanced,
+  stated for every downstream read.
