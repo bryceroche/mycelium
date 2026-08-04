@@ -23254,3 +23254,20 @@ token-position × waist-dim, the moment the skeleton trains.
   the pulse's weakness is elsewhere and pressure gets its turn.
   The anatomy chart complete, intake to exhaust: **mouth · waist ·
   jaws · rings · anchors · nozzle.**
+
+- **THE PARITY PROBE REGISTERED — DISCRIMINATORS PINNED, CONFOUNDS
+  FIRST (2026-08-04, the march):** ORDER: confound suspects before
+  the instrument suspect — S3 (E/B) reads ONLY under its
+  phase-lock leash and only after S1/S2 print. **S1 — MINT
+  COMPOSITION:** does the sentence at δ=−1 differ structurally by
+  row parity (length, kind at position; does even-parity push
+  attention past a δ=−1 sentence that is somehow unattendable)?
+  Zero-GPU from fixture jsonl + npz. **S2 — SENT_EMB GEOMETRY:**
+  does the sentence-embedding table itself carry period-2
+  structure — adjacent-vs-skip cosine alternation across indices
+  (cos(i,i+1) vs cos(i,i+2)) in the deployed g23 table? Zero-GPU
+  from the ckpt. LATTICE: S1 convicts → composition confound
+  (mint-side, scoped); S2 convicts → representation aliasing (an
+  architecture fact, its own follow-up); both clean → S3's sitting
+  proceeds under the leash; both convict → the oscillation may be
+  overdetermined and the shares get measured.
