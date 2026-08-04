@@ -21866,3 +21866,20 @@ token-position × waist-dim, the moment the skeleton trains.
   vintage caps); each is derivable (fix) or fixed (assert).
   First pass fires now; the full audit joins the deep-clean line
   beside the buffer-spec door.
+
+- **#128's RENT — THE CONSTANT SWEEP'S FIRST PASS (2026-08-03,
+  zero-GPU, same hour):** **128 suspect literals across 8
+  classes.** The headline class: **bigtest's row count hardcoded
+  at 88 sites** (every instrument that ever sliced the fixture);
+  census-pool `[:100]` at 17; gen-mix row counts at 11 across the
+  fire/dup/diet preps; era verdict-scripts' bar floors at 8
+  (LAWFULLY frozen — era scripts keep era values per the
+  deployed_env door's own clause; those want ASSERT-grade at most,
+  never derivation); 2 known false positives (1404 in the KenKen
+  engine is a coincidental constant — the sweep's precision limit,
+  noted). CLASSIFICATION GUIDANCE for the full audit (deep-clean
+  line, beside the buffer-spec door): LIVE consumers derive (the
+  fixture's own length, the manifest's own counts); ERA scripts
+  assert-or-leave (frozen lawfully); false positives struck by
+  eye. The two doors are siblings and should be built together:
+  **derive-or-assert is one sweep, one pattern, one visit.**
