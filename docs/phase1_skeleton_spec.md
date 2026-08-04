@@ -22321,3 +22321,28 @@ token-position × waist-dim, the moment the skeleton trains.
   FRONTIER (the first ever, if it prints); 0.60–0.70 = WEAK;
   < 0.60 = NULL (joins the five). Wild n=124 (78/46) — small,
   survey-grade, stated.
+
+- **THE WILD PRICING PRINTS — THREE VERDICTS IN PRE-WRITTEN
+  LANGUAGE (2026-08-04; .cache/wild_signal_pricing.json, per-row
+  banked):** (1) **THE DECOMPOSITION: 29 of the 36 coincidence rows
+  are CORRECT.** The rider's question answered against the
+  optimistic sentence: the digest vote is NOT free tightening — it
+  would refuse ~29 good answers to remove ~7 lies on this fixture:
+  **a precision-for-coverage trade in the fences' one-for-one
+  family**, priced honestly before anyone proposed it as a free
+  lunch. The window docket carries the price. (2) **THE SIXTH AXIS:
+  NULL — modal agreement AUC 0.494 (p=0.78) at the frontier.**
+  Structural unanimity does not grade wild correctness; six axes,
+  six nulls; the frontier stays blind to free signals. (3) **THE
+  TRAINED SIGNAL: WEAK — AUC 0.650 (p=0.0027), the FIRST NON-NULL
+  FRONTIER SIGNAL IN CAMPAIGN HISTORY** — below the 0.70 signal
+  bar, above chance with significance, and the applicability gate
+  read FIRST as pinned: the wild mass distribution is COMPRESSED
+  (mean 0.9924, p50 0.9991 — the commit head commits nearly
+  everything out there; the rider's fear half-realized: narrow
+  margins narrower still). LEAF C's ARITHMETIC, honest: a weak
+  first term exists where nothing existed; not usable at this
+  strength; the roads that would strengthen it (frontier-inclusive
+  commit gold, deeper rings dose) are priced questions now, not
+  hopes. Six-for-six on free signals; one-for-one on trained; the
+  map of the frontier's blindness is complete on current axes.
