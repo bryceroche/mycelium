@@ -22394,3 +22394,23 @@ token-position × waist-dim, the moment the skeleton trains.
   (K-sweep's 4.2% banked as justification).** Each its own fire
   (#126); each with a measured reason; the order written by the
   pulse's own weakness.
+
+- **THE LOC-ANCHOR FIRE — PINNED BEFORE IT RUNS (2026-08-04, the
+  word given; organ 1 of the notebook):** THE SCOUT'S FINDING: the
+  anchor needs NO new emission — `fat` (per-slot token attention,
+  B×L_FAC×T) already ships in every forward, and gold `fspan` is in
+  every npz; organ 1 = the VALIDATION INSTRUMENT + the BANKING
+  organ 2 consumes. THE READ: bigtest under the rings ckpt, per
+  present slot: **anchor mass = attention mass inside the gold
+  factor span** (final breath). PINNED: (a) primary claim —
+  correct slots carry MORE in-span mass than wrong slots
+  (directional, p<0.05): anchors are informative or they are not;
+  (b) descriptive: mean in-span mass (the anchor-trust number that
+  decides whether re-read-the-span is viable for cross-out); (c)
+  DELIVERABLE: per-slot top-k anchor tokens banked per row
+  (bigtest + the wild 124) — the artifact the reverse gear will
+  read. Exit languages: informative + high-trust = organ 1 PAYS
+  and organ 2 is unblocked; informative + low-trust = anchors need
+  their own training (a priced road); uninformative = the
+  attention footprint is not an anchor and organ 1 needs a
+  designed head.
