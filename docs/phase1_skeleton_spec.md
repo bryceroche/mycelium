@@ -23454,3 +23454,26 @@ token-position × waist-dim, the moment the skeleton trains.
   (δ=−1 vs −2, banked per-slot) aligns with the trunk's local
   phase beyond chance. ALL THREE or S3 dies; the leash's language
   final.
+
+- **S3 DIES AT LOCK 1 — THE PARITY PROBE CLOSES ALL-SUSPECTS-DEAD
+  (2026-08-04; the endgame complete):** the frozen trunk's sentence
+  geometry is FLAT — alternation amplitude 0.0016 (p=0.101),
+  per-index adjacent-cos smooth at ~0.756, no period-2 anywhere.
+  **Lock 1 refused; per the pre-pinned price, S3 dies regardless
+  of anything downstream — the leash held to the end.** #78's
+  verdict: THIS WAS NOT THE REFERENT — the four refusals stay
+  refusals, the layer-polarization anatomy stays real and
+  layer-axis, and the gut's ending remains unwritten, honestly.
+  THE PROBE'S FINAL STATE: S1 exhausted in four forms · S2 clean ·
+  S3 dead at the first lock — **the oscillation stands REAL,
+  INSTRUMENT-EXONERATED, and UNEXPLAINED BY EVERY NAMED SUSPECT.**
+  The residual inconsistency banked with it: the behavioral
+  home-parity phase is real but small (13.8% vs 19.3%) — far too
+  small to compose the row-level 97-vs-50 swing — so the carrier
+  is a ROW-GLOBAL variable not yet named. **REGISTERED AS THE
+  OPEN MYSTERY**: a strong, real, count-parity modulation of
+  mislocation distance with no known carrier — the record's
+  cleanest open question, held open by five honest deaths rather
+  than closed by one seductive conviction. The premature-
+  commitment mechanism (backward, positional, content-blind)
+  stands untouched by the mystery's openness.
