@@ -21797,3 +21797,26 @@ token-position × waist-dim, the moment the skeleton trains.
   TRANSFER.** Anyone reading the pad-warm success as "head changes
   are cheap" inherits the wrong lesson; the pin exists so they
   can't.
+
+- **THE NOTEBOOK SPEC DRAFTED — CAMBIUM'S RINGS MADE CONCRETE
+  (2026-08-03, the march; docs/NOTEBOOK_SPEC.md; spec-first,
+  nothing fires):** rung 3's candidate design now EXISTS as a
+  design: two notebooks per breath (replace = the cambium's
+  parallel working state; accumulate = rings carrying binding +
+  EVIDENCE ANCHOR + STATED ENGAGEMENT POINT); cross-out only on
+  NAMED contradictions (solver unsat / trace mismatch / view
+  disagreement — never on confidence: temperature⊥truth holds);
+  #125's clause as the WHEN. **THE REGISTER CLAUSE is the spec's
+  hardest yield, and it is NEW: settle is REFUSED as the commit
+  trigger** — the obvious choice would wire a never-tier
+  diagnostic into the machine, and end-to-end training would then
+  flow gradient through the campaign's best mechanism signal (the
+  Goodhart fence's exact scenario). The commit trigger is its own
+  trained head with its own solver-verified gold; settle stays
+  audit-side, measuring whether commits land in basins. Four
+  customers mapped; measurement plan with bar SHAPES pinned
+  (numbers at fire registration); costs honest (×K inference; a
+  new terminal = the two-terminal law at build, and **the
+  buffer-spec door should exist BEFORE this build adds a sixth
+  den**); #126 stamped (machinery — its own generation). The word
+  lands on a design now, not a direction.

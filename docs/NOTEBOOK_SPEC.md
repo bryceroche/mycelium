@@ -1,0 +1,105 @@
+# THE NOTEBOOK SPEC — CAMBIUM's rings, made concrete (2026-08-03)
+
+*(Rung 3's candidate design, drafted so the word lands on a design
+rather than a direction. Spec-first; nothing here authorizes a build
+or a fire. Ancestors: v24c dual notebook (May, validated, resting) ·
+R2 reversible commitments (BINDING_BENCH_BRIEF, three arrivals) · the
+ratchet law (#94: engagement MEASURED, never emergent) · #124 (the
+diffusion compiler carrying the notebook) · #125's active-inference
+clause (an objective for WHEN to revise) · #127 (barriers: flatten
+while moving, cherish once arrived).)*
+
+## 1. The two notebooks (per problem, per breath)
+
+- **REPLACE (the cambium):** the working state — per-breath 512d
+  waist/fst refinement at all altitudes simultaneously (signature C's
+  measured dynamics, June engine; the parser inherits BY MEASUREMENT
+  only). Overwritten every breath. This is what exists today,
+  implicitly and destructively — why bindings erode.
+- **ACCUMULATE (the rings):** the committed record. A ring =
+  one committed binding: (slot j, ftype, args/var pointers, value) +
+  **its evidence anchor** (the source span it was read from — #69's
+  loc attribute, rung 3's second customer) + **its engagement point
+  STATED** (the breath index at which it committed — the ratchet
+  law's designed-engagement requirement, checkable live by the
+  engagement-detection instrument).
+
+## 2. Commit and cross-out
+
+- **Commit:** a binding moves replace→rings when its commit signal
+  fires (see §3 — NOT settle). Committed rings stop receiving
+  replace-side updates; the pawl clicks at a DESIGNED point.
+- **Cross-out (the reverse gear):** a ring is revocable by a LATER
+  constraint: solver-side contradiction (unsat on the partial graph),
+  trace-layer literal mismatch (the value isn't in the text), or
+  cross-view disagreement. Revocation re-opens the slot WITH ITS
+  ANCHOR PRESERVED — the re-read targets the span, not the whole
+  text (the copy-not-generate affinity: revision is re-reading).
+- **The WHEN (#125's clause):** revise while residual prediction
+  error exceeds the cost of revising — operationally: cross-out
+  fires only on a named contradiction, never on low confidence
+  (temperature⊥truth: entropy never triggers revision).
+
+## 3. THE REGISTER CLAUSE (the spec's hardest constraint, new)
+
+The obvious commit trigger is settle — and **settle is never-tier in
+the diagnostic register.** If the loop commits on settle and the loop
+is ever trained end-to-end, gradient flows through the commit gate
+and the campaign's best mechanism-grade signal becomes a training
+target — the Goodhart fence's exact scenario. THE RULE: **the commit
+trigger is its own trained head with its own gold** (commit-correct
+supervision from solver-verified bindings: gold = "this binding, at
+this breath, was final"), OR the loop is never trained through the
+trigger (frozen-gate training only). The spec REFUSES settle as a
+component; settle remains the instrument that MEASURES whether
+commits are landing in basins (audit-side, register-protected).
+
+## 4. What this is NOT
+
+- Not the tower: breaths are fixed-point iteration at constant
+  altitude (#69 interp 5, twice-tested); the rings do not lower.
+- Not the mouth's business: admission stays trunk-space, pre-parse.
+- Not deployed until barred: the key grades primitives; TTA/quorum
+  semantics untouched until a vote-semantics window opens
+  (permuted_view landmine rides that same window).
+
+## 5. The four customers, mapped
+
+1. **Redirect (#113):** load leaves the beam via rings — committed
+   bindings stop competing for waist capacity.
+2. **Evidence anchor:** rings carry loc; every commitment is
+   auditable to a span (the trace layer gains a per-binding check).
+3. **Frontier gate:** anchored-settle at the frontier reads ring
+   stability (gated-on-anchor, the rung-2b finding) — measurement,
+   not mechanism.
+4. **Surface ceiling:** re-reading anchored spans under paraphrase
+   is the revision path the surface-band law says one-pass lacks.
+
+## 6. Measurement plan (bars pinned at fire registration, per the
+   B1-margin lesson — numbers at smoke-pass, shapes now)
+
+- **Fixtures:** dup-misbinding-under-load (53% population, the bench's
+  standing pathology) · pct part/base species (args_wrong 57% floor) ·
+  [33]-shape query-binding slips · [42]-shape in-dialect garbles
+  (the census's poster) · engagement-point sweeps (does the pawl now
+  click AT the operand's arrival instead of before it?).
+- **Bar shapes:** (i) misbind-under-load improves at matched dose vs
+  a no-notebook control (cont-control protocol: gentle-continuation
+  baseline, never restart-vs-notebook); (ii) engagement points land
+  at designed positions (engagement-earlier-than-designed = the
+  failure the topology exists to prevent, caught live); (iii) B2-
+  style no-regression on the standing fixtures; (iv) NO conversion
+  bar (ceiling ≠ competence, standing).
+- **Instruments owed at build:** the revisability meter (#93's rent)
+  and engagement detection (#94's rent) — both pre-registered, both
+  audit-side, both in the diagnostic register at birth (never-tier).
+
+## 7. Costs, honestly
+
+K breaths multiply parse-side inference cost ×K (K=2..4 initially);
+JIT recapture on loop structure (the zero-arg capture lesson);
+the commit head is a NEW TERMINAL — the two-terminal law applies at
+build (its own smoke, per the sign-terminal precedent), and the
+buffer-spec door should exist BEFORE this build adds a sixth den.
+#126 stamp: the notebook is a MACHINERY change — it takes its own
+generation; it does not ride E2, E4, E5, or any diet.
