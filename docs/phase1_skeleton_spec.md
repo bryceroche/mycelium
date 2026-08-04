@@ -22375,3 +22375,22 @@ token-position × waist-dim, the moment the skeleton trains.
   compressed-distribution caveat standing) — but leaf C's
   arithmetic now has a measured CURVE instead of a bet, and the
   strengthening roads act on a dial that demonstrably turns.
+
+- **THE COUNTERSIGN ON THE DIAL + THE ORGAN ORDER AS A FINDING
+  (2026-08-04, Bryce):** THE HONEST FORM, carved for every future
+  citation: **"the dial turns ON THIS FIXTURE"** — 0.846 at 10.5%
+  is ~thirteen items; a tail cut, not a distribution separated;
+  the second-fixture question is the owed next; the
+  favorable-numbers rule applies here harder than anywhere
+  tonight. **THE ORGAN ORDER IS A FINDING, NOT A PREFERENCE:** the
+  wild compression (a head that commits everything) diagnoses the
+  REVERSE GEAR as the live organ — frontier gold teaches when to
+  commit; cross-out handles what was WRONGLY committed; the
+  compression says the second failure is the live one. SEQUENCE
+  SET BY THE FRONTIER ITSELF: **loc anchors FIRST (the
+  prerequisite — cross-out targeted, re-read the span not the
+  problem; #69's attribute rides in front), the reverse gear
+  SECOND (the cure the compression names), the clock third
+  (K-sweep's 4.2% banked as justification).** Each its own fire
+  (#126); each with a measured reason; the order written by the
+  pulse's own weakness.

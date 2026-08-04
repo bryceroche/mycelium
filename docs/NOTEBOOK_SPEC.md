@@ -1,5 +1,12 @@
 # THE NOTEBOOK SPEC — CAMBIUM's rings, made concrete (2026-08-03)
 
+**STATUS 2026-08-04: BEGUN — §1 is ALIVE (rings v1 fired, graduated
+0.941 in-register, pulsing 0.650/dial-bends at the frontier). THE
+ORGAN ORDER, set by the frontier's own compression (a finding, not a
+preference): (1) loc anchors — prerequisite; (2) THE REVERSE GEAR —
+the cure the compression names; (3) the clock (K-sweep 4.2%
+justification). Each its own fire (#126).**
+
 *(Rung 3's candidate design, drafted so the word lands on a design
 rather than a direction. Spec-first; nothing here authorizes a build
 or a fire. Ancestors: v24c dual notebook (May, validated, resting) ·
