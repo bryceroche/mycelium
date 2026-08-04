@@ -23199,3 +23199,15 @@ token-position × waist-dim, the moment the skeleton trains.
   PICKS its subset from an earlier job's findings, the neighbor's
   can becomes the neighbor's evidence** — the line is drawn before
   anyone approaches it.
+
+- **THE COUNTERSIGN ON #144 (2026-08-04, Bryce):** the evidentiary
+  form credited: **"a pattern the frame FOUND, not imposed — the
+  instances were banked before the axis was named."** The sharper
+  half carved: pooling's gain scales with demand INDEPENDENCE, not
+  pool size — **"adding a member to a pool whose members share
+  failure modes buys the pool's capacity and none of its
+  coverage"** — the sixth-Lucy arithmetic, one line of algebra the
+  campaign paid [1293] to learn. The guard principle stated whole:
+  **"every recursion-guard violation the campaign has caught was
+  caught because the guard predated the temptation"** — why the
+  fourth-job line is written now, while it's hypothetical.
