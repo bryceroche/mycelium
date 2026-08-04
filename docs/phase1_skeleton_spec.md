@@ -22511,3 +22511,25 @@ token-position × waist-dim, the moment the skeleton trains.
   discipline). Organ 2's trigger stands UNLICENSED-but-close with
   its road priced: one threshold re-pin + one held-out validation
   from a license. The reverse gear's design holds; nothing gates.
+
+- **"IS 2% TOO STRICT?" — ANSWERED, WITH THE HELD-OUT BARS PINNED
+  PER THE RIDER (2026-08-04):** THE ANSWER: 2% is the fence
+  family's standard, and fences BLOCK OUTPUT — their false
+  positives are suppressed truths, so near-zero is right. **The
+  cross-out trigger does not block output; it spends COMPUTE** — a
+  false cross-out costs a re-read that can recover the binding; a
+  missed lie survives into the answer. Different failure
+  economics: FP = wasted breaths, FN = a lie. So the honest
+  position: **the 2% bar was BORROWED from output-blocking fences,
+  and it stands UNBENT for the two verdicts already printed** —
+  but the next registration may lawfully pin a COST-DERIVED bar
+  (FP × re-read cost vs FN × lie cost, derivation shown BEFORE any
+  number), which at the measured 3.2%/52% may already be
+  favorable. Rationalization guard: the derivation must be written
+  blind to whether it licenses the current numbers. **THE RIDER,
+  EXECUTED NOW: the held-out bars pin BEFORE the threshold pick —
+  h3held validation: FP ≤ 2% AND agreement ≥ 90%, pinned here;
+  the bigtest threshold will be chosen WITHOUT knowing whether it
+  clears them** (the relative-bars structure across the fixture
+  change; what makes held-out actually held out). Ready on the
+  word: one threshold pick + one h3held read.
