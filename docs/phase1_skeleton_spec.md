@@ -22246,3 +22246,21 @@ token-position × waist-dim, the moment the skeleton trains.
   first evening closes: pawl live, mass calibrated, signal
   GRADUATED — the bench fire that tied at a ceiling produced the
   campaign's first graded signal at both grains.
+
+- **THE COUNTERSIGN ON THE GRADUATION + TWO RIDERS FOR THE WILD
+  PRICING (2026-08-04, Bryce):** the structural note kept:
+  min-mass losslessness means **the commit head's uncertainty is
+  concentrated where the error is** — the weakest slot carries the
+  row's verdict correctly; a fact about the signal, not a
+  convenient choice. THE RIDERS, pinned now for the wild word:
+  (1) **APPLICABILITY BEFORE SEPARATION** — the commit head
+  trained on in-register gold; on the mouth-bypassed wild set its
+  outputs may be uncalibrated the way settle's absolutes were
+  across populations. Report whether the wild mass DISTRIBUTION
+  resembles the in-register one BEFORE reading separation — a
+  signal reading garbage confidently is the failure mode. (2)
+  **THE THRESHOLD PRICING RIDES THE SAME PASS** — wrong slots at
+  0.96 = every operating point is a tail threshold; the wild
+  ledger's per-item records are where a threshold prices against
+  coverage. Sequence unchanged and stated whole: GRADUATED →
+  wild pricing (both riders) → leaf C has numbers.
