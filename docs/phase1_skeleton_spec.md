@@ -22882,3 +22882,25 @@ token-position × waist-dim, the moment the skeleton trains.
   **signal candidates state their VOLUNTARINESS at registration,
   before build** — an emission the model controls enters with the
   six nulls' prior against it.
+
+- **GUT #141 REGISTERED — THE REST (2026-08-04; exchange family,
+  equalization time):** THE MECHANISM, sharper than "wait": the
+  microwave heats UNEVENLY AND FAST; the two-minute rest is
+  conduction equalizing the gradient — **rest is not delay; it is
+  redistribution.** THE MEASURED INSTANCE: the K-sweep — t95 by
+  depth 1/3/8; **the loop's late breaths ARE the two-minute rest,
+  and truncation is eating a microwave dinner with a frozen center**
+  (depth-3 pays 4.2% for the cut, depth-1 pays 0.5%); why the
+  adaptive-K arm reads ring mass, never a timer — the rest is over
+  when the gradient is flat. THE PAIRING with the eggs law (#96),
+  the entry's content: both say DON'T INTERVENE for different
+  reasons — eggs protects FORMATION from agitation (the no-mid-fire
+  law); rest lets an existing gradient RESOLVE (obeyed by accident
+  in the breath budget, unnamed until now). THE CANDIDATE, noted
+  not proposed: **the warm-start rest phase** — gen-23's sign head
+  and frozen register shared a loss from step 0; nothing asks
+  whether inherited structure has equalized with new terminals
+  before the deep dose. It worked (#132 explains why), but a
+  gentle-phase-then-dose schedule is a distinct untested shape —
+  stated as a candidate for some future fire's registration, cost
+  one LR schedule.
