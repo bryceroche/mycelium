@@ -23348,3 +23348,16 @@ token-position × waist-dim, the moment the skeleton trains.
   the last two cuts. The leash's live citation credited: the cliff
   lesson applied to a running situation, not remembered as
   history.
+
+- **THE INGREDIENT HYPOTHESIS — PINNED (2026-08-04, the resumed
+  march; a THIRD mechanism, distinct from lag and pair-unit,
+  identity stated per the rider):** in chain mint, a rel slot's
+  args are DEFINED in earlier sentences. THE CUT: for mis-anchored
+  slots, is the attention's destination sentence one of the slot's
+  OWN ARGUMENTS' definition sentences (gold-derived)? HIGH rate →
+  mislocation is OPERAND-READING — attention on the ingredients'
+  homes rather than the relation's own line — which would recast
+  "premature commitment" as DEPENDENCY-VISITING and could carry
+  the parity via chain-interleaving structure (how far back args
+  sit alternates with composition). LOW → the lag story stands and
+  parity stays open. Well-anchored slots' rate rides as baseline.
