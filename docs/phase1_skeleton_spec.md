@@ -23436,3 +23436,21 @@ token-position × waist-dim, the moment the skeleton trains.
   price, final: fresh untrained read, frozen Llama trunk, position
   axis, period-2 in weights that never saw the mint, phase-locked.
   **Three locks, no borrowed keys.**
+
+- **THE ENDGAME PINNED (2026-08-04, the word given):** MOVE 1 —
+  the kind-at-s−1 cut (last confound): (a) does the mint's
+  kind-layout (given/rel by sentence index) differ by count
+  parity; (b) is mislocation DISTANCE kind-sensitive (δ=−2
+  conditional on s−1's kind) even though destination is
+  kind-blind? Identity rider inherited. MOVE 2 — S3's sitting,
+  three locks operationalized ON BANKED DATA (the bigtest states
+  ARE the frozen Llama trunk's outputs; its weights never saw the
+  mint — lock-1's substrate and provenance satisfied by
+  construction): **L1 PRESENCE** — per-sentence pooled trunk-state
+  structure shows position-period-2 (adjacent-sentence similarity
+  alternating by index parity, amplitude vs a no-period null);
+  **L2 PERIOD** — the alternation is period-2 specifically, not
+  broadband; **L3 PHASE** — per-row, the mislocation distance
+  (δ=−1 vs −2, banked per-slot) aligns with the trunk's local
+  phase beyond chance. ALL THREE or S3 dies; the leash's language
+  final.
