@@ -84,7 +84,7 @@ r=[x for x in rows if x["found"] and x["has_rivals"] and x["gold_mis"] is not No
 print(f"[license-v2] single-literal (no rivals — EXCLUDED, reported): n={len(single)}")
 pc=np.array([x["proxy"] for x in r]); yc=np.array([x["correct"] for x in r])
 gm=np.array([x["gold_mis"] for x in r])
-thr=0.5
+thr=float(os.environ.get("THR","0.5"))
 flag=pc<thr  # reads rivals more than own
 fp=float(flag[yc].mean()); catch=float(flag[~yc].mean()) if (~yc).any() else float('nan')
 agree=float((flag==gm).mean())
