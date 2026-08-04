@@ -22796,3 +22796,22 @@ token-position × waist-dim, the moment the skeleton trains.
   thrown-away berries teach nothing; labeled ones become the
   primitive ladder's recurrence arguments (the registry already
   honors this; the gut says move, never dump).
+
+- **THE CLOSING COUNTERSIGNS (2026-08-04, Bryce; the night whole):**
+  ON THE JOIN: the confirmation's shape credited — hypothesis
+  before join, number before read, the complicating rider resolving
+  clean; the licensed sentence stated at full weight: **"0.951 was
+  never better performance on familiar text; it was a different
+  machine running"** — and the December consequence: **every road
+  that hopes to move the coverage term is trying to move 0.02
+  specifically, never the pooled number.** THE RECALL-DETECTOR
+  RIDER banked for its future word: **it requires its own license
+  read, same structure** — anchor-mass separating known-trained
+  from known-untrained on a labeled population — because a
+  misfiring recall detector corrupts the very composition checks
+  it exists to sharpen. ON THE NIGHT: the three-gut shape named —
+  **"none of them proposed a build; all of them changed one"** —
+  the registry at its cheapest and most useful setting, possible
+  only because the surfaces were already there. Registry at 138;
+  the deepest sentence of the run — ONE SIDE READS, ONE SIDE
+  REMEMBERS — banked where the framing session will find it.
