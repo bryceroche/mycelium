@@ -22708,3 +22708,27 @@ token-position × waist-dim, the moment the skeleton trains.
   well-addressed for WIRING slots as for value slots — the gear's
   jurisdiction is not literal-only even though its current
   TRIGGER is.
+
+- **THE TRIGGER DOES NOT TRAVEL — AND THE COLLAPSE MAY BE MEASURING
+  MEMORY ITSELF (2026-08-04; trigger_wild_pricing.json, per-row):**
+  the licensed trigger at the frontier: **FP 68.9% on correct wild
+  rows; AUC 0.413 — INVERTED** (wrong rows score "better" than
+  correct; p=0.94 in the pinned direction). The applicability rider
+  fully vindicated in its sharpest form: a zero-FP in-register
+  instrument reads garbage confidently at the border — **the
+  license's in-register scope was load-bearing, not cautious.**
+  THE FINDING INSIDE: correct wild rows' worst-proxy p50 = 0.131 —
+  **even CORRECT wild answers don't attend their claimed values'
+  locations.** THE HYPOTHESIS REGISTERED (survey-grade, not
+  claimed): wild "correct" is overwhelmingly trained-verbatim
+  (the corrected cut's 0.95) — and **recall doesn't read.** A
+  memorized answer needn't visit its value's span; the in-register
+  0.911 was measured on reads. If so, THE ANCHORS DISTINGUISH
+  READING FROM RECALLING — a mechanism-grade interpretive
+  candidate with a cheap discriminating join docketed: wild proxy
+  ⋈ trained-verbatim flags (both banked per-row; the 1
+  never-trained-correct row is the thin cell, stated). ORGAN 2's
+  SCOPE HARDENED IN THE SPEC: the trigger is IN-REGISTER ONLY —
+  the gear does not gate at the frontier on this instrument,
+  full stop. Seven boundary data now stand; the two countries
+  differ not just in competence but possibly in MECHANISM.
