@@ -21820,3 +21820,27 @@ token-position × waist-dim, the moment the skeleton trains.
   buffer-spec door should exist BEFORE this build adds a sixth
   den**); #126 stamped (machinery — its own generation). The word
   lands on a design now, not a direction.
+
+- **THE ORPHAN DISPOSITION — TWO BURIALS, ONE CLOSE
+  (2026-08-03; the orphaned-verdict fence's docket cleared;
+  artifacts PRESERVED, never deleted):** (1) **parser_layer_read
+  (+ its 1GB capture): BURIED.** Zero ledger presence — no
+  registration, no pinned frames, no bars. Its numbers (per-layer
+  AUCs 0.90-0.94) are legible but a verdict banked post-hoc
+  against unpinned frames would be exactly what the
+  bars-before-measurement law exists to prevent. If the layer-axis
+  question returns (composability-adjacent), it re-registers fresh
+  and may cite the artifact as pilot texture only. (2)
+  **resident_derived_read: BURIED**, same grounds — parity/
+  last-digit probes at chance, zero registration context;
+  texture-only citation permitted. (3) **torsion_rider_read:
+  CLOSED as INSTRUMENT-DEGENERATE** — this one HAS its
+  registration (#71 rider 1: torsion-resolution correlation) so it
+  closes rather than buries: rho=NaN (the correlation could not
+  compute — degenerate variance), and the texture banks as
+  fourth-bin: mean angle 11.3° early → 2.7° late, the trajectory
+  STRAIGHTENING with breath, consistent with (never confirming)
+  the torsion-collapse phenomenon. Re-registerable with a fixed
+  meter if the diffusion frame seeks territory. The
+  orphaned-verdict docket is CLEAR; the sweep question remains
+  standing on the deep-clean line.
