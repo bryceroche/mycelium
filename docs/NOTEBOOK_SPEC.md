@@ -43,7 +43,11 @@ while moving, cherish once arrived).)*
   GRADED RELEASE (reduce mass, re-settle against the anchor); the
   re-bind improve-vs-degrade rate measured UNDER EACH (it is
   plausibly a function of the release profile). #127's risk on the
-  soft arm stated: a release without a barrier may never re-settle.
+  soft arm stated: a release without a barrier may never re-settle —
+  AND IT IS INSTRUMENTED: settle reads re-settling directly
+  (audit-side, never-tier). Release RATES are PINNED PARAMETERS
+  (2-3, scaled to the clock's ~3.5 breaths/layer — slower than a
+  layer's resolution is unactionable), never chosen by feel.
 - **Cross-out (the reverse gear):** a ring is revocable by a LATER
   constraint: solver-side contradiction (unsat on the partial graph),
   trace-layer literal mismatch (the value isn't in the text), or

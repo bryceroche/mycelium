@@ -22630,3 +22630,20 @@ token-position × waist-dim, the moment the skeleton trains.
   bindings stable) — that IS the second arm's risk, stated. The
   accumulate/replace pair was already shaped for the graded form;
   the clutch names why.
+
+- **THE COUNTERSIGN ON #136 — TWO DESIGN NOTES INTO THE FORK
+  (2026-08-04, Bryce):** (1) **the graded arm's release RATE is a
+  PINNED PARAMETER, never chosen by feel** — 2-3 rates, pinned from
+  something measured, and the measured scale exists: **the clock's
+  ~3.5 breaths per implication layer** (a release slower than a
+  layer's resolution time is a release the loop cannot act on);
+  otherwise a null on the graded arm cannot distinguish
+  "graded doesn't help" from "this rate doesn't help." (2) #127's
+  soft-arm risk is ALREADY INSTRUMENTED: **if a graded release
+  never re-settles, settle says so directly** (0.834/0.997
+  measures stopped-moving) — audit-side, no new read, the
+  never-tier holding exactly as the register requires: read it,
+  never train against it. The under-specification lesson carved:
+  the obligation looked like a rate to DISCOVER and was a rate the
+  design SETS — found before organ 2's first line, the cheapest
+  moment it could have been found.
