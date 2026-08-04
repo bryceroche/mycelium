@@ -22772,3 +22772,27 @@ token-position × waist-dim, the moment the skeleton trains.
   cannot reach; its own registration when wanted. Texture banked:
   wild-wrong splits trained 0.022 / never-trained 0.251 — n
   survey-thin, filed.
+
+- **GUT #138 REGISTERED — THE MOLDY BERRIES (2026-08-04; exchange
+  family, composition drift over a depleting population):** THE
+  MECHANISM, sharper than clean-as-you-go: picking around a fixed
+  bad population makes the RATE rise while the COUNT holds — five
+  moldy in a hundred is 5%; eat the ninety-five good and the same
+  five are 100%. **Nothing got worse; the denominator left.** THE
+  CORRECT INSTANCE, already standing: the skip registry (skips
+  moved out WITH REASONS, never re-litigated — the second bowl,
+  labeled). THE LIVE HAZARD: the harvest pool depletes per tranche
+  (590→350) while the draftability screen ROUTES its 51 rather
+  than removing (routes-never-excludes held ✓) — so the remaining
+  pool's difficulty composition shifts every draw and cert rates
+  are read against it as if stable: **tranche 10's 24/4/0 and
+  tranche 3's 32/0/0 are not measured on comparable bowls.** THE
+  LAW: **any rate computed over a depleting pool reports its
+  denominator's COMPOSITION, not just its size** — the
+  estimator-variance law's sibling ("is this distance or is this
+  n?" → "is this rate or is this composition?"); binds tranche
+  verdicts and every remaining-candidates statistic. THE FENCE
+  against over-application: the second bowl stays READABLE —
+  thrown-away berries teach nothing; labeled ones become the
+  primitive ladder's recurrence arguments (the registry already
+  honors this; the gut says move, never dump).
