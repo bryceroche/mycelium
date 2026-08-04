@@ -22686,3 +22686,14 @@ token-position × waist-dim, the moment the skeleton trains.
   becomes a property of the material — mattering the moment
   problems run in sequence, a shape not yet needed and probably
   coming.
+
+- **TWO PRICING READS PINNED (2026-08-04, the march):** (1)
+  PER-KIND ANCHOR SPLIT (zero-GPU re-cut of banked anchors ⋈ npz
+  gold): anchor quality by slot kind — the 0.928 was all-kind
+  pooled; rel/mod/literal may differ (surface (d)); descriptive.
+  (2) THE LICENSED TRIGGER AT THE FRONTIER (survey, standing
+  pricing rule): the v2 proxy at thr 0.3648 on the wild 124 —
+  DISTRIBUTION FIRST per the applicability rider, then flag rate
+  on correct (78) vs wrong (46); NO BAR (the license is
+  in-register; this prices, it does not gate); n survey-grade
+  stated.
