@@ -22977,3 +22977,17 @@ token-position × waist-dim, the moment the skeleton trains.
   dormant number on the books because of WHERE it sits, not just
   what it says. The prescription lands lawful (teaching beats
   telling, measured not argued); the floor's siege stands at six.
+
+- **THE DESTINATION READ — PINNED (2026-08-04, the march; the
+  routing probe's stage one, zero-GPU from banked artifacts):** the
+  separating question's first cut: mislocated attention lives
+  SOMEWHERE — **inside a RIVAL slot's gold span (a wrong-but-valid
+  home: structured routing) or in BACKGROUND text (preamble/query/
+  no-span: drift).** Prediction lattice, pre-written: rival-home
+  dominant → the error is a routing CHOICE among valid homes
+  (consistent with routing-as-cause, and it names the confusion
+  structure: which homes attract); background dominant → drift,
+  not choice (weakens routing-as-cause; the failure looks like
+  lost attention, not misdirected attention); mixed → both modes
+  exist, proportions banked. Well-anchored slots' cross-sentence
+  12.5% read as the baseline for lawful visiting.
