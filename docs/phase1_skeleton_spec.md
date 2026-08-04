@@ -22749,3 +22749,26 @@ token-position × waist-dim, the moment the skeleton trains.
   trained-verbatim check rides along (if in-register-correct is a
   recall/read mixture, 0.911 understates clean reading) — sha ∩
   mix, a re-cut not a pass.
+
+- **THE JOIN PRINTS — RECALL DOESN'T READ, AT SURVEY STRENGTH
+  (2026-08-04):** (1) THE STRONG PREDICTION HIT ALMOST EXACTLY:
+  wild trained-correct n=73, anchor p50 **0.127** (predicted
+  ~0.13) against in-register reading's 0.911 — same "correct,"
+  mechanisms apart. (2) THE BASELINE IS CLEAN: bigtest ∩ mix =
+  **0/1500** — the 0.911 is pure never-trained text; the reading
+  number needed no correction (the mixture rider resolved in the
+  strong direction). (3) THE THIN CELL, as pinned, stays
+  anecdote: n=1 — and the lone never-trained wild-correct row
+  anchors at **0.984**, exactly where reading lives; stated as
+  anecdote, weighed as nothing, impossible not to notice. STATUS:
+  the hypothesis stands survey-strong — **reading anchors ~0.91
+  everywhere it's been measured; memorized-correct anchors ~0.13;
+  the wall between the two countries is a MECHANISM boundary, and
+  0.02 is the campaign's only measurement of reading in the
+  wild.** THE INSTRUMENT CANDIDATE noted, not built: anchor-mass
+  as a per-row RECALL DETECTOR — unlike sha ∩ mix it would catch
+  NEAR-DUPLICATE recall (memorization beyond verbatim), serving
+  the books road's composition checks at a grain text-identity
+  cannot reach; its own registration when wanted. Texture banked:
+  wild-wrong splits trained 0.022 / never-trained 0.251 — n
+  survey-thin, filed.
