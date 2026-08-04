@@ -22159,3 +22159,27 @@ token-position × waist-dim, the moment the skeleton trains.
   registered); the gate untouched. OWED NEXT: the MASS READ —
   cmt_m distribution vs slot correctness (#133's first evidence:
   did the pawl commit the right things, and when?).
+
+- **GUT #135 REGISTERED — THE LIONFISH (2026-08-04; exchange family,
+  boundary geometry; the schema floor's FIFTH arrival):** the same
+  phenomenon with two signs, both measured: **OOD-as-armor** — the
+  mouth's 98.4% is WHY leaf A is honest (the system never lies
+  because it doesn't recognize enough to lie about; the wall in
+  front of the 0.02); **OOD-as-unreachability** — 0.023 is the same
+  fact sign-flipped (outside the distribution isn't safe, it's
+  unreachable); and the third face — the census's 34/46: lionfish
+  that got EATEN (through the wall, unrecognized, answered anyway).
+  THE SHARP FORM, about boundary SHAPE not boundary existence: the
+  mouth knows foreign-from-native reliably (five nulls) but cannot
+  distinguish **foreign-and-safely-refused from
+  foreign-but-partially-reachable — every lionfish looks alike from
+  outside, and the second class is where December's ceiling
+  actually lives.** THE FLOOR'S JOB, stated sharpest yet: **make
+  partially-reachable problems look different from truly-foreign
+  ones** (span-marking = vent the water, keep the constraint
+  spans; what's left compiles or doesn't — today the mouth can't
+  tell a lionfish from a rock). HONEST LIMIT carried: a naming,
+  not a mechanism — tarpon and copy-not-generate are the
+  mechanisms; this says why they matter. Five arrivals: census /
+  tarpon / copy-not-generate / compliance / lionfish. No rent
+  beyond what the floor carries.

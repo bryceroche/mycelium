@@ -48,8 +48,10 @@ grows on the mycelium's network.)*
    floor has TWO faces (#130): span-marking on the input side (mark
    constraint-bearing spans, vent narrative water — the tarpon's
    vacuum inhale) feeding copy-not-generate's pointer targets on the
-   emission side. One floor, two arrivals; spec-stage behind the
-   wide word; #126: own generation.**
+   emission side. FIVE arrivals (census/tarpon/copy-not-generate/
+   compliance/lionfish) — the floor's job at its sharpest (#135):
+   make partially-reachable look different from truly-foreign.
+   Spec-stage behind the wide word; #126: own generation.**
 2. Rung 3's word: the dual-notebook mechanism is the bench's candidate
    design (R2 reversible commitments = the rings).
 3. Frame territory beyond KenKen: by measurement on the parser
