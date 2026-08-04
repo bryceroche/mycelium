@@ -23236,3 +23236,21 @@ token-position × waist-dim, the moment the skeleton trains.
   fix is cheaper (noted for the road's registration, not ruled).
   No new road; an organ three existing roads already point at,
   now with a name and a law.
+
+- **THE COUNTERSIGN ON #145 — THE PRESSURE/GEOMETRY FORK PINNED
+  (2026-08-04, Bryce):** the exponent argument's mechanism named:
+  **"you can't pressure your way past a diverging section shaped
+  wrong"** — the compounding wall multiplies error BY CONSTRUCTION;
+  no corpus size changes what the exit does to the flow. THE FORK,
+  pinned for the strengthening road's registration (the release
+  fork's shape, again before the build): **PRESSURE arm
+  (frontier-inclusive commit gold — teaches when) versus GEOMETRY
+  arm (an output parameterization that doesn't ceiling — mass at
+  0.9991 leaves the head almost nowhere to express uncertainty;
+  better gold inside a saturated range buys a sharper pile at the
+  same ceiling).** THE DIAGNOSTIC PRE-WRITTEN: geometry
+  decompresses the distribution AND separation improves → geometry
+  was the constraint; decompresses and separation holds at 0.650 →
+  the pulse's weakness is elsewhere and pressure gets its turn.
+  The anatomy chart complete, intake to exhaust: **mouth · waist ·
+  jaws · rings · anchors · nozzle.**
