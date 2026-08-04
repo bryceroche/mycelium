@@ -22958,3 +22958,22 @@ token-position × waist-dim, the moment the skeleton trains.
   floor's arrivals with a 0.999 behind it — and C1-A's 0.741
   segmenter, dormant for months, is suddenly the most interesting
   old number on the books. Teaching-not-telling fence carried.
+
+- **THE COUNTERSIGN ON #142 (2026-08-04, Bryce; the suspect
+  charged, not convicted):** the chain-sentence for the record:
+  **wrong graph (census) → wrong span (0.063) → wrong sentence
+  (0.999)** — three descending resolutions, three independent
+  instruments, one pathology; "misbinding" has a mechanism with a
+  street address. THE CAUTION, banked at full weight: wrong-
+  sentence residence is WHERE attention is, not WHY it went — a
+  slot that misbinds for ANY upstream reason will mechanically
+  attend elsewhere, **and "elsewhere" in a multi-sentence problem
+  is almost always another sentence.** The 0.999 is consistent
+  with routing-as-cause AND routing-as-faithful-messenger of a
+  prior failure. THE PROBE'S DESIGN QUESTION, pinned for its
+  registration: **does sentence assignment itself carry error, or
+  does it faithfully route a decision made before it?** C1-A's
+  0.741 sits at exactly that junction — the most interesting
+  dormant number on the books because of WHERE it sits, not just
+  what it says. The prescription lands lawful (teaching beats
+  telling, measured not argued); the floor's siege stands at six.
