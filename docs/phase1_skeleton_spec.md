@@ -22226,3 +22226,23 @@ token-position × waist-dim, the moment the skeleton trains.
   TO GRADUATE (0.941 stays a slot-grain fact).** Exit languages
   pre-written; nothing reprices until this and the wild-ledger
   pricing both read.
+
+- **THE GRADUATION READ PRINTS: GRADUATES (2026-08-04;
+  .cache/rings_answergrain.json):** bigtest, true answer grain,
+  n=1500 (1226 correct / 274 wrong — the read's own solve path
+  reproduces the eval's 1226 EXACTLY: internal consistency
+  demonstrated, not assumed). **AUC(min-mass) = 0.941 PRIMARY;
+  AUC(mean-mass) = 0.945. The slot separation survives aggregation
+  UNDIMINISHED — 0.941 at slot grain, 0.941 at row grain.** The
+  chain-as-weak-as-its-least-ring aggregator holds. THE CAMPAIGN
+  NOW HOLDS: a row-grade correctness signal at answer grain,
+  held-out, in-register, register-clean by construction, from one
+  4k bench fire. THE STANDING RULE'S REMAINING STEP before leaf C
+  has arithmetic: **the wild-ledger pricing** (the frontier is
+  where 0.02 governs and every prior signal died; in-register
+  graduation says nothing there until measured — the boundary the
+  countersign drew stays drawn). Calibration note carried: the
+  margins are narrow (thresholds are their own work). Rung 3's
+  first evening closes: pawl live, mass calibrated, signal
+  GRADUATED — the bench fire that tied at a ceiling produced the
+  campaign's first graded signal at both grains.
