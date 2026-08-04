@@ -22547,3 +22547,13 @@ token-position × waist-dim, the moment the skeleton trains.
   bigtest-FP ≤ 2%, chosen from the banked v2 rows; h3held then
   reads at that threshold against the PRE-PINNED bars (FP ≤ 2%,
   agreement ≥ 90%).
+
+- **H3HELD: INSTRUMENT-INVALID — A VINTAGE GAP, NOT A VERDICT
+  (2026-08-04):** the diagnostics named it in one line: gold_mis_
+  known=0 — h3held's gen-17-era npz carries NO factor-span gold;
+  the agreement bar cannot compute there. The guard worked (no
+  crash-as-verdict, no silent zero). **The validation MOVES to
+  dag8test** (named in the original candidates entry; switching on
+  instrument-invalidity involves no peeking — the fixture never
+  produced a number). **BARS UNCHANGED: FP ≤ 2%, agreement ≥ 90%,
+  threshold 0.3648 as picked blind.**
