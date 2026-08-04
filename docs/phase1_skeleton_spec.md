@@ -22303,3 +22303,21 @@ token-position × waist-dim, the moment the skeleton trains.
   canonicalizer's PENDING-GPU field is CLEARED — #69's promised
   instrument delivered its first survey, and its first act was
   finding a class the vote cannot see.
+
+- **THE WILD PRICING + DECOMPOSITION — PINNED BEFORE THE PASS
+  (2026-08-04, the word given; the collapse read's aggregates-only
+  miss confessed — per-row banks this time):** ONE UNIT, three
+  reads: (1) DECOMPOSITION of the answer-coincidence 36: correctness
+  split (mostly-correct = the digest vote costs coverage;
+  mostly-wrong = nearly-free tightening — the number that decides
+  which sentence is honest). (2) THE FREE SIGNAL at the frontier:
+  modal canonical agreement on the wild ledger's 124 answered,
+  under the GATE (g23) — the sixth axis, structural, no training.
+  (3) THE TRAINED SIGNAL at the frontier: min-mass on the same 124
+  under the rings ckpt — **APPLICABILITY GATE FIRST per the rider
+  (wild mass distribution reported against in-register's shape
+  BEFORE any separation is read; grossly-foreign = scoped)**.
+  BARS, pinned for both frontier axes: AUC ≥ 0.70 = SIGNAL AT THE
+  FRONTIER (the first ever, if it prints); 0.60–0.70 = WEAK;
+  < 0.60 = NULL (joins the five). Wild n=124 (78/46) — small,
+  survey-grade, stated.
