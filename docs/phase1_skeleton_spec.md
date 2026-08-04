@@ -23031,3 +23031,26 @@ token-position × waist-dim, the moment the skeleton trains.
   countersign's sentence: **"it isn't grabbing a plausible rival —
   it's grabbing whatever was resident when it fired. Time, not
   meaning."**
+
+- **THE LAG-VS-ESTIMATE CUT PRINTS — PARTIAL VERDICT, ONE SHAPE
+  QUARANTINED (2026-08-04):** (1) **BACKWARD IS UNIVERSAL: 100% at
+  every home-depth stratum** — the direction is absolute,
+  position-independent. (2) THE ANSWER IS NOT A PURE LAG: δ=−1
+  dominance DECAYS with home depth (s3: 100% → s20: 45%) and mean
+  δ drifts −1.00 → −1.4/−1.6 — **a −1 lag with a depth-growing
+  tail: deeper homes park FARTHER back.** Consistent with
+  prematurity that grows with how long the home makes commitment
+  wait — later sentences suffer more early clicks — but the
+  estimate-flavored tail means the cure question stays OPEN
+  between repair-the-lag and retrain-the-estimate. (3)
+  **QUARANTINED, per the texture rule: a strong ODD-EVEN
+  oscillation by row sentence-count** (odd counts ≈97-100% δ=−1;
+  even ≈45-66%, mean −1.4) — unexplained, strong, and
+  APPARATUS-SUSPECT before it is anything else: the read's
+  median-of-token-sentences can alias when destinations straddle
+  two sentences (int truncation), and the mint's row structure
+  may carry parity of its own. **NO INTERPRETATION until the
+  instrument audit runs** (mode instead of median; per-token
+  deltas; the same artifact, re-cut). Two unexplained curve
+  shapes = a mechanism probe by law — this is one of them, and
+  it is docketed, not read.
