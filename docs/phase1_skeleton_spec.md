@@ -23653,3 +23653,30 @@ token-position × waist-dim, the moment the skeleton trains.
   proper read ranked soonest — support is what turns the anecdote
   into evidence, and if it holds, the second species shrinks to
   crowding alone.
+
+- **GUT #149 REGISTERED — "SOFT OR INDIRECT LIGHT" (2026-08-05;
+  exchange family; the level-versus-difference screen is the
+  content):** the physics maps precisely — **raking light reveals
+  relief that flat-on light erases**: direct illumination maximizes
+  total signal and minimizes DIFFERENTIAL signal; a low angle turns
+  small deviations into long shadows. You are not looking for the
+  object, you are looking for the GRADIENT. THE EVIDENCE, already
+  measured across the signal ledger: every null was direct light
+  (residual = distance-to-register head-on; quorum = agreement
+  head-on; interior distance = foreignness head-on — six axes, six
+  nulls); every hit was raking (anchors = attention RELATIVE to
+  where the value sits, 0.911/0.063; commit head = mass RELATIVE
+  to its own gold; filler finding = index RELATIVE to true
+  position). **The signals that worked were relational; the ones
+  that failed were absolute.** STATED AS A COMPETING SCREEN to
+  #140's voluntariness, not a companion — the separating case:
+  modal canonical agreement was involuntary AND absolute, and it
+  printed 0.494 at the frontier; voluntariness didn't predict that
+  null, the raking frame does. The screen's question: *is this
+  signal a level or a difference?* THE PROSPECTIVE BITE, on the
+  strengthening roads: the commit head's frontier compression
+  (p50 0.9991) is a LEVEL SATURATING — a saturated level carries
+  no differential, so the fix is not more pressure or wider range
+  but CONTRAST: mass relative to the row's own distribution or to
+  rival slots. THE CHEAPEST RENT: the relative-mass re-cut — a
+  re-parameterization of a banked artifact, not a new fire.
