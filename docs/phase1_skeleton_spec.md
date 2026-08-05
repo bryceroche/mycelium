@@ -24094,3 +24094,22 @@ token-position × waist-dim, the moment the skeleton trains.
   behind it, filler-row failure site in front of it. One texture
   for its spec: graded/elastic re-bind SAFELY in clean rows
   (new-wrong 0.000, n=39/43) — small support, direction only.
+
+- **THE FIRE'S COUNTERSIGN + THE NAMING-FAILURE LAW (2026-08-05,
+  Bryce):** the verdict ratified with the ranking stated — the
+  FILLER INVERSION ranks above the revolving door itself: removing
+  mass doesn't move attention; the slot returns to the address it
+  was given, and in filler rows that address is wrong BY
+  CONSTRUCTION. The successor's design sentence: don't release and
+  re-read — release and re-read FROM THE ANCHOR'S SPAN. THE LAW
+  CARVED, third instance in hand: **a cure aimed at the wrong grain
+  fails in a way that names the right one** — the dup diet cured
+  its phrasings and named the surface band; gen-23's wide arm
+  failed on emission and named copy-not-generate; cross-out
+  revolves and names anchor-gating. Failures that specify their
+  successors are the campaign's most productive shape. Organ 2's
+  first fire, final ledger: a mechanism law (the revolving door), a
+  training-cost finding (−18 for nothing on re-bind), and a
+  successor justified from both sides. Nothing adopted, nothing
+  bent, nothing needing unbanking. The anchor-gated re-read holds
+  for its word.
