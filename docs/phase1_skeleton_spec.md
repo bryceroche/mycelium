@@ -24691,3 +24691,25 @@ token-position × waist-dim, the moment the skeleton trains.
   limit: a reframe like the muffler — its value is the spec-time
   question (*what stays still?*), cheaper asked than discovered;
   organ 2's arc is the receipt.
+
+- **GUT #162 REGISTERED — "FOLLOW THE MANGO'S CONTOUR" (2026-08-05;
+  commitment family, beside #131 as its sign-flipped sibling):**
+  the blade tracks a surface it cannot see by CONTINUOUS CONTACT —
+  no planned trajectory; feel resistance, keep the margin thin. THE
+  PAIR: the doorframe steers by discrete collision; the mango by
+  continuous tracking — both navigation without vision, and the
+  campaign's instances are lopsided: **the campaign is almost
+  entirely a discrete-contact operation** (bars, thresholds,
+  verdicts, gates — collisions by design); the one continuous
+  instrument is the scatter field, DISCOVERED not designed. Not a
+  criticism (discrete bars are why nothing unbanks) but a real
+  asymmetry, and it connects: **the cures keep failing at LANDING
+  PRECISION, not selection** — three gates eliminated, δ-matched
+  refuted, uniform +1 the ceiling: discrete corrections against a
+  pathology that may vary continuously — a straight cut at fixed
+  margin against a contour. THE UNEVIDENCED CANDIDATE, sited where
+  it belongs: if the offset is neither a running count nor uniform,
+  it may be LOCALLY CONSISTENT — trackable from the previous
+  slot's outcome rather than computable from text geometry;
+  contour-following, a different instrument class than anything
+  tried; no evidence yet, stated as such.
