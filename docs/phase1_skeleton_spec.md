@@ -24197,3 +24197,25 @@ token-position × waist-dim, the moment the skeleton trains.
   tags + the phrasing census are already its instruments. Held as
   note, not proposal: a cure for a one-night-old diagnosis;
   nothing has measured that rotation widens the band.
+
+- **GUT #155 REGISTERED — "SWIMMER'S CORE" (2026-08-05; commitment
+  family; coupling-versus-generation is the content):** the arms
+  grip water, the torso generates power — the visible organ isn't
+  the working one; limbs TRANSMIT. THE MEASURED INSTANCE, an
+  instrument imbalance: every recent finding reads WHERE ATTENTION
+  WENT (anchors, mislocation, 0.911/0.063, the revolving door) —
+  attention is the ARM; what GENERATES the commitment sits in the
+  waist and head state, where the campaign has almost no
+  instruments. The commit head is the exception, and its frontier
+  saturation (p50 0.9991, no contrast headroom) is exactly what an
+  unmeasured power source looks like from the coupling surface.
+  THE SHARPENING OF TONIGHT: release changed the grip and the
+  stroke came back identical BECAUSE THE TORSO NEVER ROTATED —
+  mass removal at the coupling surface can't change what the core
+  is doing; #153's transverse steering with a SOURCE attached.
+  THE RIDER, carved into §8: the anchor-gated read's second fork
+  pre-written — success = "the arm can be steered"; failure the
+  way cross-out failed = **the diagnosis moves UPSTREAM: the
+  shifted index lives in the position machinery, not attention —
+  steering the grip can't fix a stroke generated wrong.** A second
+  revolving door must NOT read as "anchors don't work."

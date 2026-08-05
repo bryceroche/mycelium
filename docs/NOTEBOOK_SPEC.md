@@ -172,3 +172,13 @@ once: the index stays shifted for the whole row (the filler
 finding), so a one-shot re-target drifts back. Bars at its own
 registration; the ctl-forced baseline (0.911 same-wrong) and the
 filler-row failure site are its inherited fixture and bar.
+**THE UPSTREAM FORK (#155), pre-written before the stage-1 read:**
+PASS = the arm can be steered (attention is where the decision is
+made, at least at re-read). FAIL in the revolving-door shape
+(filler new-right still collapsed despite persistent anchor
+pressure) = the diagnosis moves UPSTREAM — the shifted index lives
+in the position machinery (sent_emb's consumption of shifted
+indices), not in attention; steering the grip cannot fix a stroke
+generated wrong, and the next instrument points at the waist/head
+state, not a stronger anchor term. A second revolving door is a
+LOCALIZATION finding, never "anchors don't work."
