@@ -23562,3 +23562,24 @@ token-position × waist-dim, the moment the skeleton trains.
   where nobody writes rows to spec.** Five honest deaths, a sixth
   instrument, a mystery that named itself; every verdict with its
   genealogy stated.
+
+- **GUT #147 REGISTERED — "WHITE NOISE MACHINE" (2026-08-05; exchange
+  family; the masking-versus-subtraction distinction is the content):**
+  the machine's real mechanism is MASKING, not subtraction — it raises
+  the floor until disturbance stops being distinguishable; subtraction
+  removes an offset and preserves structure, masking adds a constant
+  and destroys localization. INTERP 1 (DC subtraction) marked
+  CONVERGENT with banked craft: mean-centering meter practice; the
+  residualization that killed the parser competence claim (0.656→0.485
+  under strata control); the split load meter — and the known failure
+  mode stands (subtract a component measured on the wrong population
+  and you remove signal, not offset). THE YIELD, with a live customer:
+  **fillers are OFFSET, not noise.** Noise degrades gracefully; offset
+  breaks categorically — which is exactly why the filler pathology is
+  deterministic (zero fillers, zero mis-anchoring), and why the cure
+  is index-correction, never denoising. THE FORK this hands the
+  docketed filler read: if the wild register carries fillers (prose
+  does — narrative setup, restatement), the deployed system meets
+  offset it cannot remove, and the cure must be INDEX-ROBUSTNESS
+  (architecture fix), not filler-avoidance (mint fix). The read now
+  runs with its framing pinned before measurement.
