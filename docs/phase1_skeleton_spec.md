@@ -24049,3 +24049,21 @@ token-position × waist-dim, the moment the skeleton trains.
   step ratified as the launch's most careful piece: the register
   clause holds THROUGH TRAINING — the Goodhart fence survives first
   contact with a mechanism that could plausibly have wanted it.
+
+- **THE XOUT FIRE IS BURNED — FIRST BAR READ, HONEST (2026-08-05):**
+  all four arms trained and evaled. VAL: ctl 0.9455 / dump 0.9425 /
+  elastic 0.9427 / graded 0.9406. BIGTEST: ctl 1142 graph-solve
+  1233 ANSWER / dump 1124 gs 1225 A / graded 1124 gs 1229 A /
+  elastic 1119 gs 1216 A. **BAR (iii) NO-REGRESSION (graph-solve
+  within −5 of ctl): ALL THREE XOUT ARMS FAIL** — dump −18, graded
+  −18, elastic −23 (ANSWER grain: −8/−4/−17; graded is within −5
+  at ANSWER but the bar was pinned at graph-solve and does not bend
+  after measurement). Instrument note, banked: dump/graded evals
+  ran init-closed (revoke=None = bit-exact rings); elastic's eval
+  carries its standing leak — that −23 is the arm's honest deployed
+  form, not a confound. THE CENTER STILL OWES ITS READ: the
+  three-way re-bind classification (filler split first) is the
+  fire's actual question and no verdict language attaches until it
+  prints — per the reading notes, the bars name what the arms COST;
+  the three-way read names what release DOES. Verdict held open
+  pending the center.
