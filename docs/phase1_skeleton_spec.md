@@ -24433,3 +24433,18 @@ token-position × waist-dim, the moment the skeleton trains.
   refinement before the December-arithmetic question (is the
   reachable fraction worth the pipeline build) closes the arc
   either way. Nothing adopted; every rung priced.
+
+- **THE GATE-LADDER COUNTERSIGN + δ-MATCHED PREDICTION PINNED
+  (2026-08-05, Bryce):** three rungs, three selection principles,
+  one ratio — the cleanest possible elimination of a branch: the
+  ladder climbed the wrong wall. The constraint localized TWICE in
+  one arc (transverse axis, then landing precision) — a uniform +1
+  is one setting applied to a DISTRIBUTION of offsets; the tail is
+  what it can't reach. THE PREDICTION, pinned before δ-matched
+  steering exists: per-slot shift from the measured offset moves
+  the ratio where selection couldn't; **if it ALSO lands at 0.62,
+  the offset measurement itself is the limit and the mechanism's
+  ceiling is FOUND** — either outcome closes cleanly into the
+  December-arithmetic question. The authority door's first outing
+  named: same instrument, different provenance, one session apart
+  — measured where the re-derivation couldn't.
