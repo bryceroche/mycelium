@@ -24549,3 +24549,20 @@ token-position × waist-dim, the moment the skeleton trains.
   passes**). The read completes when the re-cut fires; the
   denominator it will feed: 1,280 wild items currently invisible
   to the yield accounting.
+
+- **THE DISCARD READ'S RIDERS ORDERED (2026-08-05, Bryce; absorbed
+  into the wild re-cut's stack):** the read fired and was BLOCKED
+  BY SCHEMA (entry above) — the riders now govern the re-cut that
+  unblocks it, in sequence: (1) **the consumed-field discrepancy
+  resolves FIRST** (104 vs 43 changes which rows are never-trained;
+  a discard trace on the wrong split traces the wrong population —
+  cheap sequencing prevents a redo); (2) every stage banks its
+  drops (would-be answer + gold verdict per link); (3) **the trace
+  distinguishes discards CORRECT TO MAKE from yield loss** — the
+  fences holding 329 lies is the fence WORKING; holding 337
+  correct is the leak; counting all drops equally would read the
+  chain's virtue as its leak. The useful output named: the
+  CORRECT-ANSWER ATTRITION PATH — how many right answers entered,
+  where each was lost, by which link — the December term that says
+  WHICH LINK TO ARGUE WITH instead of leaving "coverage is small"
+  undifferentiated.
