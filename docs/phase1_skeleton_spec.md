@@ -24308,3 +24308,28 @@ token-position × waist-dim, the moment the skeleton trains.
   answer key?) — the pipeline's revoke plumbing is its build cost.
   Nothing adopted; the derivation banked; the two remaining rungs
   named with their costs.
+
+- **ARM D PINNED BEFORE FIRING (2026-08-05; my call on the wheel):
+  MASS-ARBITRATED SLOT-GRADE STEERING** — the gate is the pawl:
+  accept the steered decode per slot only where the steered pass
+  commits HARDER (cmt_m2 > cmt_m1); zero gold, zero new machinery,
+  the commit head arbitrating between its own two reads. BAR:
+  within filler revoked slots, the ACCEPTED set prints new-right ≥
+  2× new-wrong (the bar row-grade failed at 0.330/0.535); coverage
+  reported honestly; rejected set keeps pass-1 (no harm added).
+  KILL: accepted-set ratio ≤ row-grade's = mass cannot arbitrate
+  (consistent with its saturated-level finding) — banked as such.
+
+- **ARM D VERDICT (2026-08-05; .cache/xout_armD.json):** coverage
+  80/678 (11.8%); accepted set: same-wrong 0.113 / **new-right
+  0.412 / new-wrong 0.475 — BAR FAILED (0.412 < 2×0.475) but the
+  KILL does NOT fire**: the accepted ratio (0.87) beats row-grade's
+  (0.62), so mass arbitrates WEAKLY — direction real, magnitude
+  insufficient, at 12% coverage. Exactly what a saturated level
+  with residual gradient should print (the raking negative's
+  arithmetic holding at a new site). NOT adopted. THE STANDING
+  PICTURE after three gates: ungated cures-and-harms; row-gated
+  removes harm, aim 0.62; mass-gated sharpens aim to 0.87 at 12%
+  coverage. The remaining candidate gate is the TRIGGER (literal-
+  value proxy, licensed 0-FP in-register) — its read is the next
+  rung and the last cheap one before the adoption-grade build.
