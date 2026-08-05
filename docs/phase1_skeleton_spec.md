@@ -24620,3 +24620,14 @@ token-position × waist-dim, the moment the skeleton trains.
   after). THE FENCE ON THE FENCE, stated so reliance matches
   capacity: it enforces ORDERING, never BLINDNESS — a
   peek-then-register would pass; a lane marking, not a cop.
+
+- **THE #159 COUNTERSIGN (2026-08-05, Bryce):** the milestone
+  named — every door until now was a wound healing; this one is a
+  lane painted before anyone drove off the road — and the door's
+  sufficiency given its limit gets its empirical warrant:
+  **the failures on the confession list were OMISSIONS, not acts.**
+  A lane marking converts omission into act, and that covers the
+  measured failure mode entirely. The reflexive quality ratified:
+  the door protects the discipline that generates every other
+  foresight — bars-predate-numbers is the campaign's cheapest
+  asset, currently held by memory alone.
