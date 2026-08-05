@@ -23680,3 +23680,21 @@ token-position × waist-dim, the moment the skeleton trains.
   but CONTRAST: mass relative to the row's own distribution or to
   rival slots. THE CHEAPEST RENT: the relative-mass re-cut — a
   re-parameterization of a banked artifact, not a new fire.
+
+- **THE RELATIVE-MASS RE-CUT — BARS PINNED BEFORE MEASUREMENT
+  (2026-08-05; word given; the screen's first and only prospective
+  outing):** the raking screen (#149) makes its call: rival-relative
+  or row-normalized commit mass separates correct from wrong at the
+  wild frontier where ABSOLUTE mass saturated (p50 0.9991, pulse
+  0.650). BARS, in the frontier's standard form: **AUC ≥0.70 primary,
+  ≥0.60 weak, on the same wild fixture where six axes died** —
+  comparable to the boundary map, not a standalone number. THE
+  SIZE-ARTIFACT PIN: rival-relative mass could separate merely
+  because bigger rows have more rivals (the confound that killed the
+  0.656 parser claim); the read reports the size correlation and
+  within-size strata BEFORE the separation is credited — beats the
+  level only across sizes = a size finding wearing the screen's
+  clothes. SCOPE PINNED: one signal — a pass makes the screen a
+  CANDIDATE instrument; standing apparatus takes a second
+  independent call (as voluntariness earned its line). Fail flat =
+  the six-null/three-hit sort reverts to description.
