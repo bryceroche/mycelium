@@ -24741,3 +24741,40 @@ token-position × waist-dim, the moment the skeleton trains.
   all); ratio > 0.62 materially = the class lives and the
   DEPLOYABLE estimator becomes the named next problem. Covers
   δ∈{−1,−2} (76% of pairs); coverage reported.
+
+- **THE BLADE'S VERDICT — THE CLASS DIES AT ITS UPPER BOUND
+  (2026-08-05; .cache/xout_blade_oracle.json):** oracle contour
+  (TRUE previous-slot δ selecting the pass) prints **ratio 0.24 —
+  identical to the text-geometric estimator, far below uniform's
+  0.62.** The fork's first branch fires: contour-following is
+  REFUTED AT ORACLE GRADE — even perfect offset knowledge doesn't
+  help, so the failure was NEVER the estimator. THE LAW THIS
+  CARVES, #161 closing the case: **ANY per-slot frame variation
+  un-fixes the fixed point** — the oracle blade still moved the
+  reference per slot; uniform +1 wins because it holds ONE frame
+  for the whole row. 0.62 IS the mechanism's ceiling, now proven
+  from above twice (estimator and oracle). The steering arc's
+  closure is CONFIRMED, the contour candidate retired with its
+  surface mapped and its blade killed at the cheapest possible
+  grade. The December arithmetic stands unchanged.
+
+- **GUT #163 REGISTERED — "DEEPMIND: INVARIANCE OR MCTS"
+  (2026-08-05):** MCTS: CONVERGENT-AND-SETTLED (#63: policy pairs
+  with sampled search where no oracle exists; exact search has
+  one here; two-death-mode closed the solve path; the one lawful
+  import — mint-search #41 — already docketed). THE LIVE EDGE:
+  structural invariance — the campaign's measured version is
+  sharper than the canonical framing: **invariance is EXACT at
+  the knot (canonicalizer false-merge 0.000000) and ABSENT at the
+  parse (0.951 memorized / 0.023 read)** — the IR has the
+  symmetry, the encoder doesn't respect it. THE UNTRIED ROUTE
+  NAMED: not augmentation (arms tied) but **the canonicalizer as
+  a verified invariance ORACLE** — two paraphrases compiling to
+  the same knot are known-equivalent at zero false-merge: a
+  ground-truth supervision signal that constrains two encodings
+  of one knot to AGREE IN THE WAIST — make the violation
+  unrepresentable rather than out-trained. FENCES: the
+  canonicalizer is an external oracle like the key (not a
+  diagnostic emission — the register clause is safe); #126 binds
+  (machinery: its own generation, never bundled); status: a
+  PROPOSAL with one measured fact behind it, stated as such.
