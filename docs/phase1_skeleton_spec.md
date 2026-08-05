@@ -24448,3 +24448,36 @@ token-position × waist-dim, the moment the skeleton trains.
   December-arithmetic question. The authority door's first outing
   named: same instrument, different provenance, one session apart
   — measured where the re-derivation couldn't.
+
+- **δ-MATCHED STEERING PINNED (2026-08-05; word given; design
+  declared before firing):** per-slot δ̂ estimated DETERMINISTICALLY
+  from text — filler sentences identified as digit-less,
+  single-letter-less sentences (idx>0); a revoked slot's shift =
+  count of fillers at-or-before its attended sentence (k=0 keep /
+  k=1 take the +1 pass / k≥2 take the +2 pass): the accumulated
+  index-shift model applied slot-wise, no confidence anywhere in
+  the loop (the relative-discriminator law honored by using NO
+  discriminator — the selection is text-geometric). Bars stand as
+  pinned: ratio ≥2.0 = landing confirmed as the constraint;
+  ~0.62 again = THE MECHANISM'S CEILING FOUND at the offset
+  estimate itself.
+
+- **δ-MATCHED STEERING — THE ESTIMATOR REFUTED, THE ARC CLOSES
+  (2026-08-05; .cache/xout_dmatch.json):** ratio 0.24 (new-right
+  0.167 / new-wrong 0.686) — WORSE than uniform +1's 0.62: neither
+  pinned branch printed; the third outcome is that the
+  text-geometric accumulated-offset model (δ̂ = fillers before the
+  attended home) does not describe the pathology — the offset is
+  not a simple running count, and/or the +2 frame shift destroys
+  more than it corrects. **The uniform +1 stands as the best known
+  corrective, and the mechanism's practical grain-ceiling is the
+  row-gated form: new-right 0.330 among revoked filler slots at
+  zero clean harm, aim 0.62.** THE ARC CLOSES into the
+  December-arithmetic question as pre-written: the reachable
+  fraction is now a measured number — row-gated steering converts
+  ~1/3 of revoked filler-row wrong bindings at no cost elsewhere;
+  whether that fraction justifies the adoption-grade pipeline
+  build is arithmetic against the wild ledger's filler exposure,
+  not mechanism. Every rung of the steering arc priced; three
+  refutations, one door opened, two constraint localizations, one
+  ceiling; nothing adopted, nothing bent.
