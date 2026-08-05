@@ -24333,3 +24333,35 @@ token-position × waist-dim, the moment the skeleton trains.
   coverage. The remaining candidate gate is the TRIGGER (literal-
   value proxy, licensed 0-FP in-register) — its read is the next
   rung and the last cheap one before the adoption-grade build.
+
+- **THE LEVEL PROPERTY CARVED + TRIGGER GATE PINNED (2026-08-05):**
+  twice-measured, now general: **the commit head's mass carries
+  direction but not magnitude wherever it's asked to discriminate**
+  (0.650 frontier, 0.87 arm D — both real, both under bar); the
+  nozzle question has two customers and re-parameterization is a
+  killed route. TRIGGER GATE READ, pinned before firing: gate =
+  the licensed trigger's family proxy, re-derived for this read
+  and declared: mean digit-softmax probability of the slot's OWN
+  claimed digits at pass-1; flag if <0.5 (low mass at own claim);
+  literal slots only (the trigger's scope — rel slots pass through
+  unsteered, coverage reported). Steer = accept pass-2 decode on
+  flagged revoked slots in filler rows. BAR: flagged-set new-right
+  ≥ 2× new-wrong; PROJECTION pinned per the ceiling rider: ~45%
+  catch → cure on roughly half the flagged population at zero harm
+  elsewhere; if that prints, the question becomes December
+  arithmetic (is half the filler species worth a pipeline build),
+  not mechanism.
+
+- **TRIGGER GATE READ — INSTRUMENT-INVALID AT THE RE-DERIVED PROXY
+  (2026-08-05; verify-instrument-before-verdict honored):** flagged
+  1 of 338 literal revoked slots (337 unflagged, 341 non-literal
+  pass-through) — the re-derived proxy (mean digit-softmax prob of
+  own claim <0.5) flags NOTHING because **the digit head is
+  confident in its wrong claims too** — the saturation property's
+  THIRD sighting (frontier 0.650, arm D 0.87, now the digit head's
+  own-claim confidence), and the reason the licensed trigger used a
+  RELATIVE proxy in the first place (the v1 span-scale lesson,
+  re-learned at a new head). NO VERDICT on the trigger gate — the
+  flagged set (n=1) is unmeasurable; the read re-fires with
+  trigger_license_v2's EXACT licensed form next session. The bar
+  and projection stand pinned, untouched by this null.
