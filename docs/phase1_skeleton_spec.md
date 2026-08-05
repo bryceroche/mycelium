@@ -24631,3 +24631,25 @@ token-position × waist-dim, the moment the skeleton trains.
   the door protects the discipline that generates every other
   foresight — bars-predate-numbers is the campaign's cheapest
   asset, currently held by memory alone.
+
+- **GUT #160 REGISTERED — "XL SALAD BOWL" (2026-08-05; exchange
+  family, beside the sink corollary; containment-versus-mixing is
+  the content):** mixing requires HEADROOM, and the headroom is
+  workspace, not capacity — a bowl sized to hold cannot toss; the
+  combining volume exceeds the containing volume. THE MEASURED
+  INSTANCE: the 41-entry licensed table met coverage bars per
+  family (88/89/96%) — it CONTAINED the phrasing census — and the
+  arms tied at +0.7%: **a bowl sized to hold, not to toss.** The
+  sharpening over the sink: the sink said the size was short; the
+  bowl says WHY — coverage-to-census is a CONTAINMENT measure, and
+  mixing needs more than coverage. THE PREDICTION PINNED on the
+  slope probe before it fires: the 120-entry arm is sized by the
+  same coverage logic, so **if the corollary is right for the
+  bowl reason, 120 ties too** — what breaks the tie is a table
+  deliberately over-provisioned relative to the census, not finer
+  coverage of it. THE OPERATIONAL CANDIDATE, stated so the
+  metaphor doesn't carry the load: displacement room ≈ REDUNDANCY
+  PER SEMANTIC SLOT (many phrasings per construction, not one per
+  family) — measurable, and different from coverage. Honest limit:
+  the translation is looser than the sink's; the candidate is
+  offered, not assumed.
