@@ -23874,3 +23874,24 @@ token-position × waist-dim, the moment the skeleton trains.
   mechanism, not a speedup one (still worth 4.2% at depth by the
   sweep's arithmetic). Stated now so its acceptance read measures
   reallocation, not the impossible speedup.
+
+- **THE ARC'S COUNTERSIGN + THE FORK'S DIFFERENTIAL PREDICTIONS
+  (2026-08-05, Bryce; pinned before either cure arm exists):** the
+  map's close ratified — the bench's disposition the cleanest of the
+  three (by construction, not inference); the referent map = the
+  caveat-decay cure applied to a CONCEPT: the next reader inherits
+  the split, not the merge. THE CARVE, registered-prediction grade
+  for the cure fork's eventual acceptance reads: **mint-side filler
+  removal should suppress BOTH flips and field (it deletes the
+  disturbance source); roster-relative indexing should kill the
+  FLIPS while possibly leaving the SMEAR — it fixes the index, not
+  the disturbance.** Two instruments (categorical mis-anchor /
+  graded scatter), two questions, distinguishable outcomes stated
+  before either arm fires — if roster-indexing lands and the field
+  persists, that is the prediction confirming, not a partial
+  failure. The arc entire, one line, banked as the chapter's
+  epitaph: a quarantined oscillation → five honest deaths → an
+  instrument careful enough to trip over the truth → a categorical
+  trigger → a species split → a complete referent map → a graded
+  field found past the whisper's ask. A word retired with its
+  heirs named.
