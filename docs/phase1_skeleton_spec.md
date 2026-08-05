@@ -24412,3 +24412,24 @@ token-position × waist-dim, the moment the skeleton trains.
   ledger as a gate verdict) — the floor caught the unmistakable;
   the authority file prevents the plausible. Consumers look up,
   never re-derive.
+
+- **TRIGGER GATE, LICENSED FORM — BAR FAILED, THE CONSTRAINT
+  LOCALIZED (2026-08-05; .cache/xout_trigger_gate2.json):** the
+  exact licensed proxy (own-vs-rival attention mass, read from the
+  script through the authority door) is MEASURABLE this time:
+  flagged 119/337 literal revoked slots (35%, near the ~45%
+  estimate). Flagged set: same-wrong 0.168 / new-right 0.319 /
+  new-wrong 0.513 — ratio 0.62, THE SAME as ungated-within-filler:
+  **the trigger selects real mis-anchors but the steered outcome on
+  them is no better than unselected — selection is NOT the binding
+  constraint; the LANDING is.** The gate ladder's full verdict:
+  row-gate 0.62, mass-gate 0.87 (12% coverage), trigger-gate 0.62
+  (35% coverage) — no gate reaches the 2.0 bar because every gate
+  feeds the SAME crude corrective (+1 global shift), and the
+  residual new-wrong lives in where steered slots LAND (δ=−2
+  cases, rival homes) not in which slots were steered. THE NAMED
+  NEXT, if the road continues: δ-MATCHED steering (per-slot shift
+  from the measured offset, not a uniform +1) — the last mechanism
+  refinement before the December-arithmetic question (is the
+  reachable fraction worth the pipeline build) closes the arc
+  either way. Nothing adopted; every rung priced.
