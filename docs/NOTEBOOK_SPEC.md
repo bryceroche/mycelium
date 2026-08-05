@@ -68,12 +68,20 @@ while moving, cherish once arrived).)*
   **THE TRANSPORT REQUIREMENT (#152, 2026-08-05):** per-slot rings
   are a PARTITION, and cross-out is TRANSPORT — a later constraint
   objecting to an earlier commitment must have a path between
-  partitions. At build, name the transport channel (candidates: the
-  solver's contradiction is inherently cross-slot; the slot-mask
-  evidence graph; the trace layer) — fully slot-independent rings
-  give cross-out nothing to propagate through, and full sharing
-  degrades settle as a per-slot signal. The design states WHERE on
-  that axis it sits and WHY, before the fire.
+  partitions. Fully slot-independent rings give cross-out nothing
+  to propagate through; full sharing degrades settle as a per-slot
+  signal. The design states WHERE on that axis it sits and WHY,
+  before the fire. **LEADING CANDIDATE (word 2026-08-05): the
+  solver as transport** — the symbolic side was never partitioned;
+  unsat on the partial graph is cross-slot by construction, so the
+  objection arrives through the jaw that sees everything while
+  rings stay independent and settle keeps its signal. Zero new
+  channel, zero diversity cost. THE HONEST CAVEAT: leading on
+  ARCHITECTURE, not evidence — whether contradictions arrive often
+  enough and specifically enough to drive cross-out is UNMEASURED,
+  and the solver is blind exactly where the graph is well-formed
+  and WRONG ([1293]'s species) — trace mismatch and view
+  disagreement stay in the design for the solver-blind cases.
 - **The WHEN (#125's clause):** revise while residual prediction
   error exceeds the cost of revising — operationally: cross-out
   fires only on a named contradiction, never on low confidence

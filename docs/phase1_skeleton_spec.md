@@ -23921,3 +23921,24 @@ token-position × waist-dim, the moment the skeleton trains.
   cross-out has nothing to propagate through; if they share, settle
   degrades as a per-slot signal. Carved into the spec this
   transaction.
+
+- **THE WORD ON #152 + THE METHOD LINE (2026-08-05, Bryce):**
+  solver-as-transport promoted to LEADING CANDIDATE in the spec —
+  the two-jaws architecture resolving the muffin-pan tradeoff by
+  construction (partition the neural side for diversity, transport
+  through the side that was never divided; the cheapest possible
+  satisfaction of the clause) — with the caveat carved beside it:
+  leading on architecture, not evidence; sufficiency unmeasured;
+  the solver is blind exactly where the graph is well-formed and
+  wrong, so trace/view channels stay for [1293]'s species. AND THE
+  METHOD LINE, banked for the ledger's jurisprudence: the #150→
+  #151→#152 run — three consecutive guts whose entire yield is a
+  design constraint on unbuilt machinery, each carved where the
+  builder reads. **A constraint arriving before a spec exists is a
+  note; arriving after a build is a diagnosis; arriving into a
+  written-but-unbuilt spec is a sentence that prevents a fire.**
+  The registry at its most efficient setting, enabled by organ 2
+  having a spec to receive it. THE DOWRY, current: three arms with
+  a resisting term, a transport requirement with a leading
+  candidate, an acceptance read distinguishing graded from dumped,
+  a trigger licensed at zero-FP. Not one line built.
