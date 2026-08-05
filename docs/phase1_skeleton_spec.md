@@ -24133,3 +24133,29 @@ token-position × waist-dim, the moment the skeleton trains.
   for the WHOLE row, so a one-shot correction drifts back. Anchor
   pressure applies EVERY breath after revocation. Carved into the
   spec this transaction.
+
+- **THE ANCHOR-GATED RE-READ — REGISTERED (2026-08-05; word given;
+  assembly from the fire's inheritance):** THE MECHANISM: on
+  revocation, a TRANSVERSE anchor term — the revoked slot's token
+  attention biased toward its stored anchor span (the commit-time
+  evidence anchor; slot-grain, position-independent, banked) —
+  applied EVERY breath post-revocation (#153's persistence clause;
+  one-shot decays back into the still-shifted frame). Bias strength
+  PINNED like the release rates, never tuned by feel — which makes
+  the mechanism PARAMETER-FREE. **THEREFORE STAGE 1 IS EVAL-ONLY:**
+  the three-way read re-run on the EXISTING g24 rings ckpt with
+  anchor-gated re-read at inference — no training, no new regime,
+  no −18 exposure; the training fire exists only if stage 1 shows
+  life (the naming-failure law applied to cost: the two-pass regime
+  bought nothing, so nothing rides it until steering proves real).
+  BARS, pinned now from inherited numbers: (i) PRIMARY, filler rows
+  (the target fixture): new-right ≥ 0.10 (≥2× the best plain arm's
+  collapsed 0.048) AND new-right ≥ 2× new-wrong; (ii) THE DOOR:
+  filler-row same-wrong < 0.80 (vs 0.89–0.95 measured — the door
+  must visibly open); (iii) PERSISTENCE TESTED: a one-shot ablation
+  arm rides the same read — persistent must beat one-shot on (i) or
+  #153's clause is refuted at this grain; (iv) clean rows report
+  alongside (no-harm: clean new-wrong stays ~0). KILL: anchor-gated
+  filler new-right ≤ plain re-read's = the transverse axis refuted
+  at this grain, banked as such. The build (inference-path code +
+  the stage-1 read) holds for its word.
