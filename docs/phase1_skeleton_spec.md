@@ -24365,3 +24365,18 @@ token-position × waist-dim, the moment the skeleton trains.
   flagged set (n=1) is unmeasurable; the read re-fires with
   trigger_license_v2's EXACT licensed form next session. The bar
   and projection stand pinned, untouched by this null.
+
+- **THE RELATIVE-DISCRIMINATOR LAW + THE RE-DERIVATION FAULT
+  (2026-08-05, Bryce's countersign):** carved as design law, three
+  sites, three independent measurements, one shape: **any
+  discriminator built on this architecture's absolute confidence
+  will saturate; discriminators must be RELATIVE — mass against
+  rivals, claim against alternatives, position against position.**
+  Prospective: every proposed instrument screens level-vs-contrast
+  BEFORE build — the raking screen's honest remainder, surviving
+  its own frame's demotion. THE FAULT NAMED PLAINLY: re-deriving
+  family resemblance instead of reading the licensed script — same
+  species as citing memory instead of grepping; the cure is the
+  same: READ THE ARTIFACT. trigger_license_v2 exists, licensed,
+  exact; the approximation produced an unmeasurable set. Next
+  session reads the script, then the gate read re-fires.
