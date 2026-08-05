@@ -23497,3 +23497,20 @@ token-position × waist-dim, the moment the skeleton trains.
   banked graphs. Identity rider attached (genealogy vs the
   S1-count variant stated at any conviction). Rent fired same
   hour.
+
+- **THE DAISY RENT — BLOCKED BY INSTRUMENT, BANKED HONESTLY
+  (2026-08-05):** the depth-vs-count discriminator could not run
+  tonight: first cut used present-slots (WRONG — bigtest carries
+  span-less present slots; all-even artifact), second cut's depth
+  computation returned 0 on rows visibly containing rel chains
+  (unresolved — a third instrument defect in one read). EN ROUTE,
+  two clean kills: **the merged-sentence resurrection died at
+  0.00** (no multi-factor sentences exist in bigtest, either
+  parity), and the span-less-slot fact is NEW fixture knowledge
+  (present ≠ rendered on this fixture — recorded). THE STATE: the
+  daisy chain stands as the open mystery's live suspect with its
+  rent OWED, not paid — the discriminator pinned and waiting on a
+  correct depth instrument (a careful sitting, not end-of-context
+  debugging; the confession precedent: verify the instrument
+  before the verdict, not after). Nothing concluded; the identity
+  rider and the discriminator stand.
