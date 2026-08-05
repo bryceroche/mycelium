@@ -24566,3 +24566,16 @@ token-position × waist-dim, the moment the skeleton trains.
   where each was lost, by which link — the December term that says
   WHICH LINK TO ARGUE WITH instead of leaving "coverage is small"
   undifferentiated.
+
+- **THE REFUSAL-EVIDENCE PRINCIPLE CARVED (2026-08-05, Bryce's
+  countersign):** **a gate that refuses should bank what it
+  refused.** Every fence in the chain was built to prevent output
+  and none to preserve evidence — correct for safety, blind for
+  accounting; each refusal is a decision with a discarded candidate
+  behind it, and the candidate is FREE TO KEEP. Applies
+  prospectively to every gate the campaign builds (mouth, quorum,
+  fences, attest, and organ 2's trigger when it deploys); applied
+  retroactively by the wild re-cut's rider two. The interim funnel
+  stands as the honest visible end of an unrecorded middle: 78
+  correct survive, 46 lies pass, on the only population carrying
+  verdicts.
