@@ -23543,3 +23543,22 @@ token-position × waist-dim, the moment the skeleton trains.
   attention park ON the filler; why one-vs-two fillers flips δ
   geometry; the deployed gate's filler sensitivity as its own
   read; the bench's under-load story re-cut by filler count.
+
+- **THE COUNTERSIGN ON THE FILLER FINDING (2026-08-05, Bryce):**
+  the mechanism's one-line closure carved: **"the pawl clicks at a
+  position because the INDEX it was given points there"** — every
+  prior grain explained at once (backward always, content-blind,
+  positional, one home early). THE CHILDREN RANKED, the widest
+  first: **the under-load re-cut by filler count** — the
+  distractor-load family (dup 53%, engage-slip, pointer scatter)
+  operationalized "load" as competing givens; if those rows also
+  carried fillers, **a species the campaign has been feeding diets
+  to may collapse into the filler mechanism.** First among the
+  finding's children. THE CAUTION carried into the celebration:
+  zero-in-1,030 is a CONDITIONAL — filler-free rows on BIGTEST;
+  the frontier anchors differently (0.127, recall-not-reading) and
+  the deployed gate's wild filler exposure is UNMEASURED —
+  **"avoidable" is a claim about the mint, not yet about the wild,
+  where nobody writes rows to spec.** Five honest deaths, a sixth
+  instrument, a mystery that named itself; every verdict with its
+  genealogy stated.
