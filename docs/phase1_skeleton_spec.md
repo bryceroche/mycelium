@@ -24182,3 +24182,18 @@ token-position × waist-dim, the moment the skeleton trains.
   bench must catch, and the bench is the bottleneck. CARVED AS:
   **the reason the surface road keeps needing artificial widening**
   — the diagnosis banked; the cure's precondition priced honestly.
+
+- **THE #154 COUNTERSIGN — PARTIAL ROTATION KEPT VISIBLE
+  (2026-08-05, Bryce):** the what/where/why layering ratified — the
+  surface-band law is a COMPLETE OBJECT for the first time (what:
+  competence inside the band; where: the filler arc's walls; why:
+  the unrotated pen), three arcs, none investigating the others
+  when it found its piece. THE NOTE KEPT VISIBLE: **partial
+  rotation** — the same pen deliberately alternating registers
+  across tranches: the V's mechanism (the costly position
+  circulating) without the precondition (fourteen laws twice).
+  Whether one pen can genuinely rotate its own distribution or
+  just believes it has is EMPIRICAL — the licensed table's axis
+  tags + the phrasing census are already its instruments. Held as
+  note, not proposal: a cure for a one-night-old diagnosis;
+  nothing has measured that rotation widens the band.
