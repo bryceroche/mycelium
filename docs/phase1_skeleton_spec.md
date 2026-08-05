@@ -24285,3 +24285,26 @@ token-position × waist-dim, the moment the skeleton trains.
   cost both measured. Registration is assembly. The arc's epitaph:
   **braking does nothing; steering moves it — both directions
   confirmed by intervention.**
+
+- **CONDITIONAL STEERING, ROW GRADE — VERDICT BY DERIVATION
+  (2026-08-05; word given; zero-GPU, from banked stage-1a data):**
+  THE GATE: the row-level filler detector (nsent−factors ≥3 —
+  deployable: text + own parse, no gold). ITS LICENSE IS THE
+  KEYSTONE ITSELF: mis-anchored slots exist ONLY in filler rows
+  (0 of 1,030 clean), so gating the steer by row has **zero false
+  positives on clean rows BY CONSTRUCTION** — the composite sheet
+  derives without new measurement: clean rows untouched (new-wrong
+  1.000 → 0.000, bar iv now PASSES by construction); filler rows
+  keep stage-1a's numbers (door 0.134, new-right 0.330, new-wrong
+  0.535). REMAINING FAILURE, stated plainly: primary bar (i) still
+  fails WITHIN filler rows (0.330 < 2×0.535) — the row gate
+  removes the harm to the unshifted but cannot aim within the row:
+  **slot-grade gating (the licensed trigger / mis-anchor proxy) is
+  the remaining build**, expected to cut the 0.535 by steering only
+  flagged slots; the ceiling rider re-aims there (trigger ~45%
+  catch bounds slot-grade reach). ADOPTION-GRADE READ NAMED, holds
+  for its word: end-to-end bigtest ANSWER with row-gated steering
+  live in the eval pipeline (does the door opening reach the
+  answer key?) — the pipeline's revoke plumbing is its build cost.
+  Nothing adopted; the derivation banked; the two remaining rungs
+  named with their costs.
