@@ -23942,3 +23942,35 @@ token-position × waist-dim, the moment the skeleton trains.
   a resisting term, a transport requirement with a leading
   candidate, an acceptance read distinguishing graded from dumped,
   a trigger licensed at zero-FP. Not one line built.
+
+- **ORGAN 2 BUILT AT DYNAMICS GRADE — THE REVERSE GEAR'S FIRST CODE
+  (2026-08-05; the march to Cambium resumed on the wheel-word; code
+  + smoke only, the training fire holds for its word):** ALG_XOUT=1
+  on rings v1: release dynamics in the breath loop, three arms
+  (dump / graded / elastic), rates PINNED in code (0.5 graded =
+  2-3-breath release, 0.15 elastic standing leak — never env-tuned),
+  released-mass ledger emitted as xrel (the revisability meter's raw
+  feed, audit-side). THE ARCHITECTURE HONORS EVERY DOWRY CLAUSE BY
+  CONSTRUCTION: revoke is an INPUT PORT — the head implements
+  dynamics, the objection arrives from outside the neural partition
+  (#152's transport, solver-side leading candidate, structurally
+  enforced); no new params → no new terminal; the register clause
+  holds (no settle, no entropy — revoke is a named contradiction or
+  nothing); release precedes the pawl each breath so the same-breath
+  commit pressure IS the graded arm's resisting term (#150's named
+  requirement). THE SMOKE, five checks first pull
+  (commit_xout_smoke.py): init-closed BIT-EXACT (revoke=None ==
+  rings v1); dump releases cleanly (no leak to unrevoked slots);
+  **#150's acceptance at smoke grade: graded final 0.933 vs
+  rate-matched dumping 0.493 — the resisting term is REAL, the fork
+  is three arms not two**; elastic leaks without a trigger
+  (self-resetting, p50 0.970 < rings 0.986); W_cmt gradient live
+  through the release path (two-terminal law). ONE HONEST TEXTURE
+  banked for the fire's design: under full commit pressure the dump
+  arm RE-COMMITS within the same breath (released 0.881, final
+  0.881) — release without changed evidence is a revolving door;
+  the re-bind measurement must pair revocation with the re-read,
+  not with mere mass removal. Spec status updated same-transaction.
+  Next on the organ: the training fire's registration (revoke gold
+  from solver-verified wrong bindings; re-bind improve-vs-degrade
+  under each arm; sufficiency read on day one) — holds for the word.

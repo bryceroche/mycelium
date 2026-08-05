@@ -8,8 +8,14 @@ IS mislocated attention — wrong slots 0.063 in-span; artifact banked);
 (2) THE REVERSE GEAR — trigger LICENSED 08-04 IN-REGISTER ONLY
 (frontier: FP 68.9%, AUC inverted — does NOT travel; recall-vs-read
 hypothesis registered)
-(0.000% FP / 99.9% agreement held-out at blind thr 0.3648; build
-awaits its word; re-bind improve-vs-degrade = first obligation); (3) the clock. Each its own fire (#126).**
+(0.000% FP / 99.9% agreement held-out at blind thr 0.3648;
+**DYNAMICS BUILT 08-05: ALG_XOUT=1, three arms, revoke as input port
+(solver-side transport by construction), pinned rates 0.5/0.15,
+xrel ledger emitted; smoke PASS ×5 incl. #150's acceptance —
+graded 0.933 vs rate-matched 0.493, the fork is three real arms;
+init-closed bit-exact; W_cmt live through the release path. The
+TRAINING fire (revoke gold from wrong bindings + re-bind
+improve-vs-degrade under each arm) awaits its word**); (3) the clock. Each its own fire (#126).**
 
 *(Rung 3's candidate design, drafted so the word lands on a design
 rather than a direction. Spec-first; nothing here authorizes a build

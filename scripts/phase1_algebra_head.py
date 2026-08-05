@@ -494,7 +494,7 @@ def build_params(seed=0):
     return p
 
 
-def forward(p, trunk, tokmask, sent, slot_mask=None):
+def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None):
     B = trunk.shape[0]
     waist = (trunk @ p["waist_w"] + p["waist_b"]).gelu() + p["sent_emb"][sent]
 
@@ -528,10 +528,20 @@ def forward(p, trunk, tokmask, sent, slot_mask=None):
     K_B = int(os.environ.get("ALG_BREATH", "1"))
     breaths = [fst]
     RINGS = int(os.environ.get("ALG_RINGS", "0")) and "W_cmt" in p
+    # ORGAN-2: the reverse gear (spec §2). Release DYNAMICS only — the
+    # revoke signal is an INPUT PORT: transport arrives solver-side, from
+    # outside the neural partition (#152's leading candidate). Rates are
+    # PINNED (2-3 breath release scale; #136), never tuned by feel. No
+    # new params: no new terminal; the register clause holds (no settle,
+    # no entropy — revoke is a named contradiction or nothing).
+    XOUT = RINGS and int(os.environ.get("ALG_XOUT", "0"))
+    XARM = os.environ.get("ALG_XARM", "dump")        # dump|graded|elastic
+    XR_GRADED, XR_ELASTIC = 0.5, 0.15                # pinned, breath-scale
     if RINGS:
         m_c = (fst * 0.0).sum(-1, keepdim=True)      # (B,L_FAC,1) zeros
         anchor = fst
         cmt_logits = []
+        x_rel = m_c                                   # released-mass ledger
     if K_B > 1 and slot_mask is not None and "W_bo" in p:
         cur = fst
         for kb in range(1, K_B):
@@ -562,6 +572,20 @@ def forward(p, trunk, tokmask, sent, slot_mask=None):
             if RINGS:  # the soft pawl: monotone commitment mass + anchor
                 cl = (cur_new @ p["W_cmt"] + p["W_cmt_b"])     # (B,L_FAC,1)
                 cmt_logits.append(cl.squeeze(-1))
+                if XOUT:  # release BEFORE the pawl: the same-breath commit
+                    # pressure is the graded arm's RESISTING term (#150)
+                    rel = m_c * 0.0
+                    if XARM == "elastic":            # standing leak toward
+                        rel = rel + XR_ELASTIC * m_c  # rest; self-resetting
+                    if revoke is not None:
+                        rv = revoke.reshape(B, L_FAC, 1)
+                        if XARM == "dump":
+                            rel = rel + m_c * rv      # instant
+                        else:                         # graded|elastic
+                            rel = rel + XR_GRADED * m_c * rv
+                    rel = rel.minimum(m_c)            # never below zero mass
+                    m_c = m_c - rel
+                    x_rel = x_rel + rel
                 dm = (1.0 - m_c) * cl.sigmoid()
                 anchor = (m_c * anchor + dm * cur_new) / (m_c + dm + 1e-6)
                 m_c = m_c + dm
@@ -594,6 +618,10 @@ def forward(p, trunk, tokmask, sent, slot_mask=None):
         out["cmt"] = cmt_logits[0].stack(*cmt_logits[1:], dim=1) if len(cmt_logits) > 1 \
             else cmt_logits[0].unsqueeze(1)               # (B, K_B-1, L_FAC)
         out["cmt_m"] = m_c.squeeze(-1)                  # final mass (B, L_FAC)
+        if XOUT:
+            out["xrel"] = x_rel.squeeze(-1)             # released-mass ledger
+                                                        # (revisability meter's
+                                                        # raw feed; audit-side)
     out["query"] = ((qst @ p["W_query"]) @ vst.transpose(-2, -1)).reshape(B, K_VARS)
     out["fat"], out["vat"] = fat, vat
     if len(breaths) > 1:
