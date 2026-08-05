@@ -23974,3 +23974,42 @@ token-position × waist-dim, the moment the skeleton trains.
   Next on the organ: the training fire's registration (revoke gold
   from solver-verified wrong bindings; re-bind improve-vs-degrade
   under each arm; sufficiency read on day one) — holds for the word.
+
+- **THE REVERSE GEAR'S TRAINING FIRE — REGISTERED (2026-08-05; word
+  given for the registration; the FIRE holds for its own word):**
+  THE DESIGN: gentle continuation from the g24 rings lineage (never
+  restart), ALG_XOUT=1, arm-per-fire assembly (#118's buffer law):
+  three arms (dump/graded/elastic) + a no-notebook continuation
+  control at matched dose (cont-control protocol). REVOKE GOLD:
+  solver-verified wrong bindings — a committed slot whose value the
+  key refutes is revocable; teaching-not-telling holds (train-time
+  gold teaches the DYNAMICS; inference revoke arrives solver-side
+  through the port). Mix unchanged — the notebook is MACHINERY
+  (#126): it rides no diet. GOODHART: xrel and settle never enter
+  the loss; assert_not_supervised at the training door. **THE
+  PINNED CENTER — Bryce's delta question: WHAT CHANGES BETWEEN
+  RELEASE AND RE-COMMIT?** The build's honest answer: only the
+  working state's evolution across breaths — and the smoke already
+  showed that can be nothing (the revolving door: released 0.881,
+  final 0.881). So the fire MEASURES the question instead of
+  assuming an answer: re-bind outcomes classified THREE WAYS per
+  revoked-wrong slot — SAME-WRONG (revolving) / NEW-RIGHT
+  (improve) / NEW-WRONG (degrade). THE ELASTIC SHARPENING banked:
+  a self-resetting notebook without changed evidence re-settles to
+  the same place — the elastic arm's prediction is HIGH same-wrong
+  unless the delta exists. BARS, pinned now: (i) PRIMARY per arm:
+  new-right ≥ 2× new-wrong among revoked-wrong slots; KILL any arm
+  where degrade ≥ improve. (ii) REVOLVING-DOOR VERDICT: if ALL
+  three arms print same-wrong >80%, the fire's answer is "nothing
+  changes" — verdict banked as such, and THE ANCHOR-GATED RE-READ
+  (release, then re-read FROM THE ANCHOR'S SPAN — the candidate
+  delta, connecting organ 2 to the filler finding: mis-anchored
+  slots are exactly those whose re-read lands somewhere new)
+  becomes the NEXT BUILD, never a mid-fire rescue (#104). (iii)
+  no-regression: bigtest graph-solve within −5 of the continuation
+  control; commit-mass answer-grain AUC ≥0.90 (from 0.941). (iv)
+  NO conversion bar (ceiling ≠ competence, standing). DAY-ONE
+  RIDER: the sufficiency read (trigger-flag ∩ solver-objection
+  overlap on committed rows) prices #152's leading candidate in
+  the same fire. Instruments at birth: revisability meter (xrel)
+  and engagement detection, both register-protected, never-tier.
