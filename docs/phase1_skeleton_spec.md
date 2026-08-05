@@ -23514,3 +23514,32 @@ token-position × waist-dim, the moment the skeleton trains.
   debugging; the confession precedent: verify the instrument
   before the verdict, not after). Nothing concluded; the identity
   rider and the discriminator stand.
+
+- **THE OPEN MYSTERY CLOSES — THE FILLER FINDING (2026-08-05; the
+  depth instrument's road led here; every number banked en route):**
+  THE KEYSTONE: nsent − factors ∈ {2,3,4} = the count of FILLER
+  SENTENCES (teeth: "Some of these facts involve the same
+  quantities." — factor-free surface-robustness sentences). THE
+  RESOLUTION CHAIN, complete: **the "count parity" oscillation was
+  FILLER COUNT aliased through parity** (one filler → nsent parity
+  flips → "odd rows"; d1 94.3%; two fillers → "even"; d1 53.5%) —
+  and the deepest line: **rows with ZERO fillers produce ZERO
+  mis-anchored rows (1,030 clean rows, none).** THE FILLER IS THE
+  TRIGGER: mis-anchoring occurs only in filler-bearing rows, and
+  filler count modulates the mislocation's distance. IDENTITY
+  STATEMENTS per the riders: this CONVICTS #142's BLUR in specific
+  form — a non-factor sentence shifts every subsequent sentence
+  index and disrupts the model's sentence-position machinery
+  (sent_emb consumes these indices); C1-A's segmentation junction
+  vindicated. The daisy chain does NOT convict (its 85-vs-79 depth
+  lean was the gap confound wearing depth's clothes); E/B stayed
+  dead rightly; the wave-depth instrument (unit+pair rules,
+  validated, banked) remains real apparatus. THE MECHANISM
+  SCOPED, not overclaimed: backward premature commitment STANDS
+  (measured everywhere); its OCCURRENCE concentrates at fillers —
+  "misbinding under load": load may partly BE fillers. THE
+  PRACTICAL YIELD, December-grade: **a named, avoidable, mint-
+  controllable trigger of misbinding.** DOCKETED NEXT: does
+  attention park ON the filler; why one-vs-two fillers flips δ
+  geometry; the deployed gate's filler sensitivity as its own
+  read; the bench's under-load story re-cut by filler count.
