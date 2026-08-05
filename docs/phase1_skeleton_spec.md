@@ -24653,3 +24653,19 @@ token-position × waist-dim, the moment the skeleton trains.
   family) — measurable, and different from coverage. Honest limit:
   the translation is looser than the sink's; the candidate is
   offered, not assumed.
+
+- **THE SLOPE PROBE'S WORD RECEIVED — EXECUTION ORDER BANKED
+  (2026-08-05):** design confirmed from its ruling: one arm at
+  ~120 entries, same rows, same dose, one pen tranche. THE HONEST
+  SEQUENCING: the fire's substrate is ~80 new licensed entries
+  drafted under the full jurisprudence (axis tags, grammar stamps,
+  the rulebook) — pen work whose quality IS the probe's validity,
+  landing next session at full context rather than rushed at this
+  one's floor. THE READ ARRIVES PRE-ARMED, richer than when the
+  probe was ruled: #160's prediction pinned (coverage-sized 120
+  TIES if the bowl reason holds; the tie now BUYS the
+  redundancy-per-slot sizing rule instead of a mystery), the
+  naming-failure law running prospectively for the first time.
+  NEXT SESSION'S DUTIES, in order: the pen tranche → the probe
+  fires on its standing design → the read against both the
+  original bars AND #160's pin.
