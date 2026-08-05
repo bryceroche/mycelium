@@ -23895,3 +23895,29 @@ token-position × waist-dim, the moment the skeleton trains.
   trigger → a species split → a complete referent map → a graded
   field found past the whisper's ask. A word retired with its
   heirs named.
+
+- **GUT #152 REGISTERED — "MUFFIN PAN VS CAKE PAN" (2026-08-05;
+  exchange family, #84's PARTITION CLAUSE; family check done first —
+  the bar was a mechanism the bowls didn't carry, and it clears):**
+  the bowls clause was a single vessel's SHAPE; the muffin pan says
+  **surface can be bought by SUBDIVISION without changing the
+  material — and the price is internal transport**: twelve muffins
+  are twelve independent bakes; a cake is one. THE MEASURED
+  INSTANCE, sign already known: **the five Lucys are the muffin
+  pan** — five views, independent bakes, no sharing; [1293] is the
+  bill (fifteen views, one basin — independence-without-
+  communication buys surface, no coverage). Lawful subdivisions
+  beside it: the tranche structure (independent units, no sharing
+  needed); arm-per-fire assembly (#118's buffer constraint). THE
+  CLAUSE: **subdivision buys exchange surface and forfeits internal
+  transport** — #144's fungible-vs-independent boundary from the
+  other side: pooling shares and loses independence; partitioning
+  isolates and loses sharing; the campaign has failures at BOTH
+  ends. THE LIVE CUSTOMER, organ 2's unfrained partition decision:
+  per-slot commitment mass = each slot bakes alone, but the reverse
+  gear depends on a LATER constraint objecting to an EARLIER
+  commitment — **cross-out requires transport, and transport is
+  what subdivision forfeits**; if rings are fully slot-independent,
+  cross-out has nothing to propagate through; if they share, settle
+  degrades as a per-slot signal. Carved into the spec this
+  transaction.

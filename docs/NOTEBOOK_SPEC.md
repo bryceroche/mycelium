@@ -65,6 +65,15 @@ while moving, cherish once arrived).)*
   cross-view disagreement. Revocation re-opens the slot WITH ITS
   ANCHOR PRESERVED — the re-read targets the span, not the whole
   text (the copy-not-generate affinity: revision is re-reading).
+  **THE TRANSPORT REQUIREMENT (#152, 2026-08-05):** per-slot rings
+  are a PARTITION, and cross-out is TRANSPORT — a later constraint
+  objecting to an earlier commitment must have a path between
+  partitions. At build, name the transport channel (candidates: the
+  solver's contradiction is inherently cross-slot; the slot-mask
+  evidence graph; the trace layer) — fully slot-independent rings
+  give cross-out nothing to propagate through, and full sharing
+  degrades settle as a per-slot signal. The design states WHERE on
+  that axis it sits and WHY, before the fire.
 - **The WHEN (#125's clause):** revise while residual prediction
   error exceeds the cost of revising — operationally: cross-out
   fires only on a named contradiction, never on low confidence
