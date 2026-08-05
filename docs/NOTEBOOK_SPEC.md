@@ -51,6 +51,14 @@ while moving, cherish once arrived).)*
   (audit-side, never-tier). Release RATES are PINNED PARAMETERS
   (2-3, scaled to the clock's ~3.5 breaths/layer — slower than a
   layer's resolution is unactionable), never chosen by feel.
+  **THE GRADED-ARM PREREQUISITE (#150, 2026-08-05):** the graded arm
+  requires a RESISTING TERM (something that opposes the release —
+  e.g. the anchor's pull, a re-commit pressure, a floor) or it
+  collapses into dump-to-zero at a slower rate: a frictionless
+  release goes to zero regardless of rate. At build, the graded arm
+  must NAME its resisting term before the fire; the acceptance read
+  checks the arm's trajectory is distinguishable from rate-matched
+  dumping, else the fork is really two arms, not three.
 - **Cross-out (the reverse gear):** a ring is revocable by a LATER
   constraint: solver-side contradiction (unsat on the partial graph),
   trace-layer literal mismatch (the value isn't in the text), or
