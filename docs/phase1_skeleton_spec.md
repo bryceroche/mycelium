@@ -24598,3 +24598,25 @@ token-position × waist-dim, the moment the skeleton trains.
   merely a missing field. Honest limit stated: a reframe of a
   finding banked an hour prior; no new rent — the exhaust-port
   rider carries the work.
+
+- **GUT #159 REGISTERED — "TRAFFIC COP" (2026-08-05; the
+  enforcement inventory is the content):** WHAT'S POLICED at the
+  code grain, each door born from a caught violation: certify_
+  unique, row_m, deployed_env, gate_fixtures, seed registry,
+  detector_authority, the never-tier, assert_terminals, trace/
+  attest/quorum/key. WHERE THE COP IS ABSENT: **the laws that
+  live only in prose** — pre-registration, the identity rider, the
+  texture rule — enforced by the pen remembering, which is why the
+  confession list exists (aggregates ×3, re-derivation, relighting).
+  Per-row banking became a lane; instrument-before-verdict is half
+  a lane (validity floor); the costliest prose law is still
+  unpoliced: **a bar pinned after seeing data is unrecoverable and
+  nothing in the repo can refuse it.** THE YIELD: **the
+  pre-registration door** — a registration writes its bars to a
+  file with commit hash BEFORE the read runs; the read refuses to
+  print a verdict unless a registration predates its artifact's
+  mtime (row_m's shape on the most load-bearing discipline; the
+  FIRST fence candidate built before a violation instead of
+  after). THE FENCE ON THE FENCE, stated so reliance matches
+  capacity: it enforces ORDERING, never BLINDNESS — a
+  peek-then-register would pass; a lane marking, not a cop.
