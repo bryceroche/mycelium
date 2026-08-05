@@ -24731,3 +24731,13 @@ token-position × waist-dim, the moment the skeleton trains.
   distinct sub-population: possibly a second mis-anchoring mode
   (park-at-start) hiding inside the backward family. Texture-rule
   note: one unexplained shape, not yet two — logged, not probed.
+
+- **THE BLADE, STAGE 1 PINNED — ORACLE CONTOUR (2026-08-05; word
+  given; declared before firing):** slot j+1's shift pass selected
+  by slot j's TRUE δ (gold fspan sentence — ORACLE by declaration,
+  never deployable): δ_prev=−1 → +1 pass, δ_prev=−2 → +2 pass,
+  else keep. THE FORK: ratio ≤ uniform's 0.62 = the contour CLASS
+  dies at its upper bound (0.62 is the mechanism's ceiling after
+  all); ratio > 0.62 materially = the class lives and the
+  DEPLOYABLE estimator becomes the named next problem. Covers
+  δ∈{−1,−2} (76% of pairs); coverage reported.
