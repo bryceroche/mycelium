@@ -24380,3 +24380,21 @@ token-position × waist-dim, the moment the skeleton trains.
   same: READ THE ARTIFACT. trigger_license_v2 exists, licensed,
   exact; the approximation produced an unmeasurable set. Next
   session reads the script, then the gate read re-fires.
+
+- **GUT #156 REGISTERED — "TWO KEYS FOR ONE SLOT?" (2026-08-05;
+  three readings, the instrument-authority reading leads):**
+  (1) CONVERGENT: two mechanisms competing for one binding — the
+  index vs the anchor; measured tonight, cure in flight
+  (conditional steering). (2) THE LEAD, with tonight's specimen:
+  **two instruments claiming the same jurisdiction** — the licensed
+  trigger, the inspan proxy, and the anchor artifact all answer
+  "is this slot mis-anchored," built at different times for
+  different reads; tonight's instrument-invalid (re-derived family
+  resemblance) is exactly the cost of a slot with two keys and no
+  declared authority. The two-home law INSIDE THE INSTRUMENT SET;
+  same cure: **one authority, consumers derive.** DOCKETED for the
+  deep-clean visit: enumerate the mis-anchor detectors, name the
+  authority, mark the rest derived-or-deprecated. (3) CONVERGENT:
+  literal two-bindings-one-slot = the dup family, settled at gen-9
+  (ALG_DUP). Ranking offered, not imposed — the gut arrived
+  without interps; Bryce's ranking overrides if he meant another.
