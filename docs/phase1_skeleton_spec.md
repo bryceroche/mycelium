@@ -24266,3 +24266,22 @@ token-position × waist-dim, the moment the skeleton trains.
   aim must become selective. Not adopted as-is; proof of life
   banked; A/B (anchor-bias arms) still owed for the persistence
   question when the surgery lands.
+
+- **THE STAGE-1a COUNTERSIGN + THE CEILING RIDER (2026-08-05,
+  Bryce):** the result's trust anchored in its cost — 1.000
+  new-wrong on clean rows is CONFIRMATION the mechanism is LOCAL
+  (a global shift helping everywhere would have meant something
+  diffuse; curing the shifted and breaking the unshifted is exactly
+  what a real index offset predicts), and it names the cure's
+  shape in the same print: gate where the gate already exists.
+  THE RIDER, pinned for conditional steering's registration:
+  **the gate's own false-negative rate is the ceiling on the cure**
+  — the trigger catches ~45% of wrong literals, so only a fraction
+  of the 0.330 new-right survives gating; the EXPECTED REACH pins
+  before the read so a partial cure is not misread as a weak
+  mechanism. Conditional steering's inheritance complete: licensed
+  trigger (0-FP), inspan proxy, filler fixture, three-way
+  instrument, ctl-forced baseline, proof-of-life AND the ungated
+  cost both measured. Registration is assembly. The arc's epitaph:
+  **braking does nothing; steering moves it — both directions
+  confirmed by intervention.**
