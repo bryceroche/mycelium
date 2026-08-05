@@ -24013,3 +24013,23 @@ token-position × waist-dim, the moment the skeleton trains.
   overlap on committed rows) prices #152's leading candidate in
   the same fire. Instruments at birth: revisability meter (xrel)
   and engagement detection, both register-protected, never-tier.
+
+- **THE XOUT FIRE IS LIT (2026-08-05; word given; gen25-xout burning
+  as a transient unit):** four arms — ctl (rings continuation, the
+  cont-control) / dump / graded / elastic — each 4k gentle
+  continuation from g24_rings_rings, same seed/data order, mix
+  unchanged; the only delta is the release arm. TRAINER PLUMBING
+  BUILT THIS TRANSACTION: two-pass jitted step under ALG_XOUT —
+  first read finds wrong bindings (revoke gold self-labeled from
+  gold exactly as the commit loss does, DETACHED), second pass
+  trains under live release dynamics. Ckpts g25_xout_*.safetensors;
+  bigtest eval per arm (no-regression bar within −5 of ctl). THE
+  RIDER BANKED IN THE FIRE SCRIPT'S HEADER: the three-way re-bind
+  read (same-wrong / new-right / new-wrong) reports SPLIT BY
+  FILLER-BEARING VS CLEAN rows — if new-right concentrates in
+  filler-bearing rows, the anchor-gated re-read's justification is
+  measured in this fire, and the convergence (reverse-gear delta ≡
+  filler cure) becomes evidence instead of argument. Post-fire
+  obligations, in order: three-way read → sufficiency read
+  (trigger-flag ∩ solver-objection) → verdict against the pinned
+  bars. Nothing promotes; the gate is untouched.

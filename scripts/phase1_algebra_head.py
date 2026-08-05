@@ -1103,10 +1103,24 @@ def do_train(steps, lr, batch, seed):
         bg[k] = fix(np.zeros((batch,) + shape, npdt), dt)
     assert_terminals(p=p, gold_keys=set(bg.keys()), site="do_train buffers")
 
+    XOUT_TR = int(os.environ.get("ALG_XOUT", "0")) and \
+        int(os.environ.get("ALG_RINGS", "0"))
+
     @TinyJit
     def step():
         Tensor.training = True
-        o = forward(p, b_tr, b_tk, b_se, slot_mask=b_mask)
+        if XOUT_TR:
+            # ORGAN-2 fire (registered 2026-08-05): two-pass — the first
+            # read finds wrong bindings (revoke gold = solver-refuted
+            # commits, self-labeled from gold like the commit loss,
+            # DETACHED); the second trains under live release dynamics.
+            o0 = forward(p, b_tr, b_tk, b_se, slot_mask=b_mask)
+            ok = ((o0["ftype"].argmax(-1) == bg["ftype"]).float()
+                  * (o0["res"].argmax(-1) == bg["res"]).float())
+            rv = (bg["presence"] * (1.0 - ok)).detach()
+            o = forward(p, b_tr, b_tk, b_se, slot_mask=b_mask, revoke=rv)
+        else:
+            o = forward(p, b_tr, b_tk, b_se, slot_mask=b_mask)
         l = loss_fn(o, bg)
         opt.zero_grad()
         l.backward()
