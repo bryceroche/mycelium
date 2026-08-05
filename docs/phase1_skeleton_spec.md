@@ -24506,3 +24506,27 @@ token-position × waist-dim, the moment the skeleton trains.
   end: mechanism proven, gates eliminated, estimator refuted,
   ceiling measured, arithmetic run — a complete investigation, one
   day, nothing adopted, everything priced.
+
+- **GUT #157 REGISTERED — "INSULATION AND ENTROPY" (2026-08-05;
+  the leak/entropy distinction is the content):** THE MIS-FIT
+  NAMED FIRST: the frontier's 98.4% refusal is NOT a leak — a leak
+  implies work done and lost; the mouth's energy NEVER ENTERS
+  (work never started). WHERE THE FRAME IS REAL: work done and
+  discarded downstream, three measured instances never before
+  framed as one class — the fences hold 337 correct with 329 lies
+  (one-for-one dissipation at the gate); the digest vote would
+  refuse 29 correct to remove 7; tonight's steering converts a
+  third of revoked bindings worth <1 answer behind the mouth.
+  **THE CLASS CARVED: YIELD LOSS AT THE BOUNDARIES BETWEEN STAGES**
+  — five honest links, each discarding some of what the previous
+  produced; the cumulative discard NEVER MEASURED. THE RENT: the
+  cumulative-discard read — one pass over the wild ledger's
+  per-item records: how much correct work enters the chain, how
+  much survives to certification, and WHERE each loss occurs —
+  giving the December arithmetic the term it lacks (not coverage ×
+  precision but where the coverage WENT). THE ENTROPY CORRECTION:
+  entropy is unavailability, not leakage — the saturation property
+  (0.9991, three sites) is signal PRESENT AND UNAVAILABLE, a
+  genuinely entropic condition; you don't patch entropy, you
+  change the geometry that made it unavailable (the nozzle's
+  standing question, correctly excluded from the leak class).
