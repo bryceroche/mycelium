@@ -23792,3 +23792,28 @@ token-position × waist-dim, the moment the skeleton trains.
   unresolved column shrinks to the bench story alone. CONFOUND PIN:
   fillers add tokens — report scatter's correlation with row token
   length before crediting; strata control from the start.
+
+- **THE WHISPER'S PROPER READ — PRIMARY PASS: POINTER SCATTER IS
+  FILLER-BORNE (2026-08-05; n=1500; per-row banked
+  .cache/pointer_scatter_read.json):** sanity first — the inspan<0.5
+  proxy reproduces the keystone categorically (gap=2 rows with
+  mis-anchored slots: 0 of 1,030; gap≥3: 414 of 470). THE READ, on
+  non-mis-anchored slots ONLY: **scatter (std of top-8 anchor
+  positions) separates gap≥3 from gap=2 at AUC 0.705, p=3e-37;
+  row-length confound CLEAN (rho −0.024 ns); direction consistent
+  across ALL TEN n_factors strata** (0.51–0.85, zero reversals) —
+  the pinned primary bar met in full. The secondary (1−inspan leak)
+  prints 0.716 but is length-confounded (rho +0.734, one stratum
+  reversal) — reported, NOT credited, per the pin. THE VERDICT:
+  pointer scatter joins the FILLER SPECIES at evidence grade; with
+  engage-slip already assigned by the family merge, **the referent
+  map's unresolved column shrinks to the bench's under-load story
+  alone**, and the crowding species holds only dup. THE NEW
+  MECHANISTIC GRAIN, beyond the whisper's ask: fillers degrade
+  attention GRADEDLY, not just categorically — even slots that land
+  correctly smear wider in filler-bearing rows. The index offset is
+  not a clean flip of some slots; it is a disturbance field with a
+  categorical tail. The filler species now owns a graded instrument
+  (scatter) beside its categorical one (mis-anchor), which is what
+  a dose-response read needs if the mint fix ever wants a
+  before/after finer than zero-or-not.
