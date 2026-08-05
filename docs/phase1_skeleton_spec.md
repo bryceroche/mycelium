@@ -24778,3 +24778,14 @@ token-position × waist-dim, the moment the skeleton trains.
   diagnostic emission — the register clause is safe); #126 binds
   (machinery: its own generation, never bundled); status: a
   PROPOSAL with one measured fact behind it, stated as such.
+
+- **THE BLADE COUNTERSIGN — A MEASURED SURFACE NO INSTRUMENT MAY
+  USE (2026-08-05, Bryce):** carved so the future hand that finds
+  ρ=0.458 in the artifact doesn't reach for it: **the contour is
+  REAL and UNFOLLOWABLE** — following it requires per-slot frame
+  motion, and per-slot frame motion is what breaks (#161, proven
+  at oracle grade). A rare shape: the surface stands as a fact
+  about the pathology; the blade class is dead at its upper bound;
+  any resurrection owes an identity rider naming what the oracle
+  read killed. #161's screen convicted a candidate generated
+  AFTER the screen was written — the first prospective conviction.
