@@ -23477,3 +23477,23 @@ token-position × waist-dim, the moment the skeleton trains.
   than closed by one seductive conviction. The premature-
   commitment mechanism (backward, positional, content-blind)
   stands untouched by the mystery's openness.
+
+- **GUT #146 REGISTERED — THE DAISY CHAIN (2026-08-05; commitment
+  family; the open mystery's first post-probe suspect, arriving
+  with a POSITIVE discriminator):** the two effects separated at
+  registration: cumulative lag (monotone, already measured as the
+  depth tail) vs **DISCRETIZATION AGAINST A SAMPLED CLOCK — the
+  oscillation comes from the interaction of two rates, not the lag
+  itself** (whether the chain's settling lands before or after a
+  sample boundary depends on chain-length parity vs the
+  step-to-sample ratio). FITS THE BANKED CONSTRAINTS: row-global
+  by construction (the chain has the parity; no position does —
+  why home-phase measured small); content-blind by nature (why
+  every semantic suspect died); quantitative hook available (the
+  clock at ~3.5 breaths/layer, K=3 readout). **THE DISCRIMINATOR:
+  the swing should track DEPENDENCY-CHAIN DEPTH parity, not
+  FACTOR-COUNT parity** — coincident in pure chains, divergent
+  under branching; measured where they diverge, one new column on
+  banked graphs. Identity rider attached (genealogy vs the
+  S1-count variant stated at any conviction). Rent fired same
+  hour.
