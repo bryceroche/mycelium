@@ -23583,3 +23583,50 @@ token-position × waist-dim, the moment the skeleton trains.
   offset it cannot remove, and the cure must be INDEX-ROBUSTNESS
   (architecture fix), not filler-avoidance (mint fix). The read now
   runs with its framing pinned before measurement.
+
+- **THE UNDER-LOAD RE-CUT — THE SPECIES SPLITS (2026-08-05; word
+  given; zero-GPU; riders honored — distribution first, and it
+  decided alone):** measured with the model's own instrument
+  (sent_indices' ". " boundaries): **dup_pool gap=2 on ALL 1,200
+  rows; gen17_adup_held gap=2 on ALL 200 — the load fixtures are
+  FILLER-FREE BY CONSTRUCTION**, and dup misbinding ran 53% anyway.
+  Fillers cannot trigger a failure that occurs in their absence:
+  **crowding is its own pathology; the species does NOT collapse.**
+  Crowding was genuinely varied (3/4/5 givens pool, 2 held-out) —
+  the fixtures measured what they claimed. The head-to-head join is
+  IMPOSSIBLE on these fixtures (degenerate filler column) and
+  unneeded — the categorical answered. RETROACTIVE VERDICT: the
+  six-arm DUP FIRE's honest negative does NOT gain the filler
+  mechanism (its rows carried zero fillers); the surface-band
+  explanation and the 53%=template-difficulty control both STAND
+  unrevised. SCOPE SHARPENED on the filler finding itself:
+  zero-fillers→zero-MIS-ANCHORING (attention mislocation) does not
+  extend to output-level misbinding — two distinct failure species
+  now separated where "load" was one word. THE WHISPER (n=5,
+  direction not verdict): engagement anatomies × bigtest gap — both
+  CERTs gap=2, all three FAILs gap=3/4; the BIGTEST-side load
+  phenomena (engage-slip, pointer scatter) are filler CANDIDATES;
+  a proper read docketed. Per #147's pinned frame: this is the
+  noise-alongside-offset branch — both pathologies real, cures on
+  separate axes.
+
+- **GUT #148 REGISTERED — "MISSING INDEX OR GPS" (2026-08-05;
+  commitment family; the offset-not-absence distinction is the
+  content):** the filler mechanism restated as navigation — not a
+  MISSING index (fails loudly) but a SHIFTED one (succeeds silently
+  at the wrong address); **GPS with constant offset is worse than
+  no signal, because no-signal announces itself.** Family membership
+  stated: the never-mix-coordinates law's newest member — same
+  species as the sentinel collision, the stale 82400, caveat decay:
+  **a coordinate that stayed while its frame moved** — and the
+  first member INSIDE the model rather than inside the code. THE
+  YIELD, the three-cure taxonomy: (1) correct the reference —
+  remove fillers at mint (cheap; works only where the campaign
+  writes the text); (2) carry a landmark — the anchor artifact's
+  attention footprint is position-independent ground truth (why
+  0.911/0.063 separated); (3) DEAD-RECKON FROM A FIXED ORIGIN —
+  index from the roster, not sentence order: **the roster is
+  invariant to filler insertion by construction** — the first
+  ARCHITECTURAL cure the finding has suggested, beside the mint fix
+  not against it. The re-cut's split feeds the fork: dup/crowding
+  needs neither cure; the filler axis keeps both live.
