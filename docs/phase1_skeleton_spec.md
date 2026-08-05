@@ -24530,3 +24530,22 @@ token-position × waist-dim, the moment the skeleton trains.
   genuinely entropic condition; you don't patch entropy, you
   change the geometry that made it unavailable (the nozzle's
   standing question, correctly excluded from the leak class).
+
+- **THE CUMULATIVE-DISCARD READ — BLOCKED BY THE LEDGER'S OWN
+  SCHEMA, AND THE BLOCK IS THE FINDING (2026-08-05):** the wild
+  ledger (1,404 rows) stores a correctness verdict ONLY where an
+  answer emerged: answered 124 (78 correct — the surviving yield);
+  tripped 601, no_quorum 614, attest_block 65 carry NO would-be
+  answer and NO verdict. The knowable funnel: 78 correct survive,
+  46 lies pass; the upstream discard — including the banked
+  337-correct-held-by-fences figure from the fence-pricing read —
+  is NOT joinable from this artifact because **the chain discards
+  work without recording what it discarded.** THE FINDING, #157's
+  rent paid in schema: the yield-loss class can't be measured
+  end-to-end until each stage banks its drops — THE RIDER FOR THE
+  WILD RE-CUT (its third): the re-run banks would-be answer +
+  gold-verdict AT EVERY STAGE (per-row banking law extended to the
+  chain: **each link records what it drops, not just what it
+  passes**). The read completes when the re-cut fires; the
+  denominator it will feed: 1,280 wild items currently invisible
+  to the yield accounting.
