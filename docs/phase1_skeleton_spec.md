@@ -23770,3 +23770,25 @@ token-position × waist-dim, the moment the skeleton trains.
   DYNAMICS and pathological in its PLUMBING — doors, authorities,
   derived constants stay frictionless (every sweep was friction
   removal); the state's dynamics are where resistance belongs.
+
+- **THE WHISPER'S PROPER READ — PINS BEFORE THE JOIN (2026-08-05;
+  word given):** THE PHENOMENA RESOLVED TO THEIR INSTRUMENTS first:
+  (a) ENGAGE-SLIP's spatial expression already MERGED with
+  mis-anchoring on the δ=−1 number (the banked family merge) — its
+  column assignment follows from the merge + the keystone: FILLER
+  SPECIES BY IDENTITY, no new measurement owed; the trace-grade
+  anatomy (settle-vs-operand timing) at support would need a GPU
+  instrument not yet built — noted, not fired. (b) POINTER SCATTER
+  at scale = the anchor artifact's dispersion, zero-GPU. DEFINITION
+  DECLARED BEFORE READING: scatter_slot = std of the top-8 anchor
+  positions; row scatter = mean over slots; secondary = 1−inspan
+  (graded leak). RESTRICTION: non-mis-anchored slots ONLY — else
+  the read is the keystone re-worn. PREDICTION (whisper direction):
+  scatter is filler-borne — gap≥3 rows smear more than gap=2 even
+  where attention lands correctly. BARS: PRIMARY = gap≥3 vs gap=2
+  separation p<0.01 AND direction consistent within n_factors
+  strata; WEAK = significant, strata-inconsistent; NULL = flat →
+  pointer scatter leaves the filler-candidate column and the
+  unresolved column shrinks to the bench story alone. CONFOUND PIN:
+  fillers add tokens — report scatter's correlation with row token
+  length before crediting; strata control from the start.
