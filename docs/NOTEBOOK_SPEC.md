@@ -156,3 +156,19 @@ build (its own smoke, per the sign-terminal precedent), and the
 buffer-spec door should exist BEFORE this build adds a sixth den.
 #126 stamp: the notebook is a MACHINERY change — it takes its own
 generation; it does not ride E2, E4, E5, or any diet.
+
+## 8. THE ANCHOR-GATED RE-READ (the named successor, 2026-08-05)
+
+Justified from both sides by the XOUT fire: the revolving door
+(same-wrong 0.89–0.95, all arms + untrained ctl — release without
+changed evidence returns to where it was) and the filler inversion
+(new-right collapses exactly where mis-anchoring lives: the re-read
+lands at the same shifted address). DESIGN SENTENCE: don't release
+and re-read — release and re-read FROM THE ANCHOR'S SPAN.
+**THE PERSISTENCE CLAUSE (#153):** anchor pressure is TRANSVERSE
+(steering, not braking — mass ops alone are longitudinal and proved
+insufficient) and must apply EVERY breath after revocation, not
+once: the index stays shifted for the whole row (the filler
+finding), so a one-shot re-target drifts back. Bars at its own
+registration; the ctl-forced baseline (0.911 same-wrong) and the
+filler-row failure site are its inherited fixture and bar.

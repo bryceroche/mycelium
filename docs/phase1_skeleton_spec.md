@@ -24113,3 +24113,23 @@ token-position × waist-dim, the moment the skeleton trains.
   successor justified from both sides. Nothing adopted, nothing
   bent, nothing needing unbanking. The anchor-gated re-read holds
   for its word.
+
+- **GUT #153 REGISTERED — "TOPSPIN TRAJECTORY" (2026-08-05;
+  commitment family; longitudinal-versus-transverse is the
+  content):** the Magnus effect — spin bends the trajectory WITHOUT
+  changing launch velocity or angle: a property orthogonal to the
+  path acts on it CONTINUOUSLY. THE MEASURED INSTANCE, tonight's
+  own negative: cross-out changes MASS (deceleration) and the
+  trajectory doesn't bend — same-wrong 0.89–0.95, the slot returns
+  to the same address. **The revolving door is a ball thrown
+  identically twice: releasing mass is braking, not steering.**
+  THE DISTINCTION: mass operations are LONGITUDINAL; anchor
+  operations are TRANSVERSE (the anchor knows where the span is,
+  independent of where attention parked — applying it is spin).
+  #150's resistance-versus-rate at a different site; the gear built
+  tonight had ONE AXIS. THE YIELD, a prediction the anchor-gated
+  build carries: **persistent, not one-shot** — a single re-target
+  is a deflection; the filler finding says the index stays shifted
+  for the WHOLE row, so a one-shot correction drifts back. Anchor
+  pressure applies EVERY breath after revocation. Carved into the
+  spec this transaction.
