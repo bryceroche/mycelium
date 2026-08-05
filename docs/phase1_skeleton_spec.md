@@ -24245,3 +24245,24 @@ token-position × waist-dim, the moment the skeleton trains.
   it was the measured offset; if ALL revolve, the upstream fork
   (#155) fires as pre-written. Implementation next session; no
   measurement has run.
+
+- **STAGE-1a ARM C — THE DOOR OPENS (2026-08-05; g24 ckpt, banked
+  .cache/xout_stage1c.json):** filler rows: **same-wrong 0.134 (from
+  0.89–0.95 — the revolving door is GONE under steering), new-right
+  0.330 (bar ≥0.10 passed 3×)**, new-wrong 0.535; clean rows:
+  new-wrong 1.000 (n=35). VERDICT AGAINST PINNED BARS: door bar (ii)
+  PASSED decisively; primary (i) half-passed (new-right ≥0.10 ✓,
+  ≥2× new-wrong ✗); no-harm (iv) FAILED — the global shift steers
+  EVERY re-read including slots whose index was never shifted: it
+  cures the shifted and breaks the unshifted (clean rows' indices
+  were right; shifting them is pure harm). **THE LOCALIZATION: the
+  UPSTREAM FORK DOES NOT FIRE — the arm CAN be steered.** Attention
+  is where the decision is made at re-read; the revolving door was
+  a missing transverse term, and one sentence of frame shift
+  un-froze 87% of previously-identical re-reads with a third
+  landing RIGHT. THE NAMED NEXT: **conditional steering** — the
+  shift gated per-slot by mis-anchor detection (inspan proxy /
+  licensed trigger) instead of globally: the axis is proven, the
+  aim must become selective. Not adopted as-is; proof of life
+  banked; A/B (anchor-bias arms) still owed for the persistence
+  question when the surgery lands.
