@@ -23698,3 +23698,28 @@ token-position × waist-dim, the moment the skeleton trains.
   CANDIDATE instrument; standing apparatus takes a second
   independent call (as voluntariness earned its line). Fail flat =
   the six-null/three-hit sort reverts to description.
+
+- **THE RELATIVE-MASS RE-CUT — THE SCREEN LOSES ITS OUTING
+  (2026-08-05; bars pinned prior; instrument check exact: absolute
+  min-mass reproduces 0.6504):** the read (g24 rings ckpt, wild 124,
+  per-SLOT masses banked — the aggregation-grain offense fixed in
+  .cache/relative_mass_recut.json): **C1 row-normalized AUC 0.6494
+  vs level 0.6504 — nothing. C3 rival-relative 0.6872 on its 72-row
+  coverage subset — by bar letter PASS-WEAK, but the like-for-like
+  control (owed before crediting, same discipline as the size pin)
+  shows the level scores 0.6748 on that same subset: delta +0.0124,
+  noise-grade.** Exploratory contrasts identical (0.649/0.652). The
+  size-artifact control came back CLEAN both ways (rho −0.13/−0.15
+  ns; within-strata AUCs hold ≈ overall) — the separation is real
+  but it was ALREADY THE LEVEL'S; every contrast merely re-expresses
+  it. THE PINNED FAIL CONDITION TRIGGERS: "fails cleanly if the
+  differential is as flat as the level" — it is. **VERDICT: the
+  raking screen (#149) loses its first and only prospective outing;
+  the six-null/three-hit sort REVERTS TO DESCRIPTION** per the
+  registered consequence — the hits' relational form was not what
+  made them work, or at least this signal cannot show it. Honest
+  negative banked; the level-vs-difference question returns to the
+  parked hypotheses with an identity rider owed if it resurrects.
+  REAL YIELD regardless: slot-grain masses on the wild 124 now
+  banked (organ-grade artifact); the commit head's wild pulse
+  confirmed level-carried at 0.650 with clean size behavior.
