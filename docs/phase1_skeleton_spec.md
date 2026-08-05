@@ -24579,3 +24579,22 @@ token-position × waist-dim, the moment the skeleton trains.
   stands as the honest visible end of an unrecorded middle: 78
   correct survive, 46 lies pass, on the only population carrying
   verdicts.
+
+- **GUT #158 REGISTERED — "MUFFLER" (2026-08-05; exchange family;
+  the over-muffling inversion is the content):** the mechanism
+  stated precisely first — a muffler CANCELS by routed interference
+  (not damping) and costs backpressure; race cars run open pipes.
+  READINGS: cancellation-by-routing — no customer (nothing periodic
+  to phase-invert); the backpressure clause — CONVERGENT (every
+  fence is a priced muffler: one-for-one at the frontier, 29-for-7,
+  6.4× for +0.10). THE LIVE THIRD: **a muffler makes noise
+  tolerable without fixing the combustion — and the chain is
+  OVER-MUFFLED**: 1,280 rows dropping cleanly and silently, the
+  silence mistaken for absence because the drops were never banked.
+  The prescription INVERTS: not more dampening — **an exhaust
+  port** (rider two, already carried). THE NAMING, the entry's
+  value: **silence isn't absence, it's an unrecorded exhaust** —
+  the sentence that keeps the schema gap from being remembered as
+  merely a missing field. Honest limit stated: a reframe of a
+  finding banked an hour prior; no new rent — the exhaust-port
+  rider carries the work.
