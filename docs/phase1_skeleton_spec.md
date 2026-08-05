@@ -23830,3 +23830,24 @@ token-position × waist-dim, the moment the skeleton trains.
   SPECIES by construction and the unresolved column EMPTIES; any
   row gap≠2 → the structural claim fails and a full per-row join is
   owed before any assignment.
+
+- **THE BENCH RE-CUT VERDICT — THE REFERENT MAP COMPLETES
+  (2026-08-05):** re-derived seed-41000 mint, same ". " instrument:
+  **gap=2 on ALL 120 rows; distractor load genuinely varied
+  (2/3/4: 47/48/25).** The bench's "misbinding under load" story is
+  **CROWDING SPECIES BY CONSTRUCTION** — its misbinding occurred in
+  filler-free air, joining dup where it always belonged (same
+  family, same template lineage). **THE UNRESOLVED COLUMN EMPTIES.
+  THE LOAD REFERENT MAP IS COMPLETE:** FILLER SPECIES = mis-anchoring
+  + engage-slip (by merge) + pointer scatter (by measurement);
+  CROWDING SPECIES = dup + the bench story (by construction);
+  unresolved = ∅. Every historical "under load" statement now has a
+  species; the retired word stays retired. AND #147 PARTIALLY
+  REVISED per the countersign, at the graded finding's demand:
+  **"fillers are offset, not noise" becomes "fillers are OFFSET
+  WITH A NOISE FIELD AROUND IT"** — shift-plus-noise, not pure
+  offset: the categorical tail (mis-anchor flips) rides on a graded
+  disturbance (scatter 0.705 on correctly-landed slots). The cure
+  read inherits the structure: a cure can suppress flips without
+  shrinking the field, and the two instruments (categorical
+  mis-anchor + graded scatter) now measure each independently.
