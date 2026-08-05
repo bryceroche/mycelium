@@ -23743,3 +23743,30 @@ token-position × waist-dim, the moment the skeleton trains.
   cured — per-row-at-finest-grain the standing default; the n=5
   stratum 0.906 held noted-and-unclaimed under the two-shape
   threshold — the texture rule doing exactly its job.
+
+- **GUT #150 REGISTERED — "FRICTION OVERCOMES INERTIA" (2026-08-05;
+  commitment family; the coupling correction is the content):** the
+  physics corrected before mapping — **friction doesn't overcome
+  inertia; it is the only thing that COUPLES force to motion.** A
+  wheel on ice has maximum freedom and zero traction: no
+  acceleration AND no braking. The campaign holds this measured from
+  both directions: the bathtub law (barriers make correct bindings
+  hold; settle 0.834/0.997 = stability as the correctness signal)
+  and #127's tension (flatten while moving, cherish once arrived) —
+  **friction resists change and enables control, and those are the
+  same property.** THE LIVE INSTANCE OF ICE: the commit head's
+  frontier saturation (p50 0.9991, no contrast headroom — tonight's
+  negative proved it upstream-real): a gate that commits everything
+  is a gate with NO TRACTION — it can't distinguish because it
+  can't resist. THE NEW CLAUSE, a design constraint on an unbuilt
+  organ: **friction is what makes graded release possible at all** —
+  #136's middle arm (graded release) silently assumes something
+  RESISTS the release, or it isn't graded, it's slower dumping; a
+  frictionless release goes to zero regardless of rate. Stated now:
+  **the graded arm requires a resisting term or it collapses into
+  the binary arm** — caught at spec-stage instead of as "the graded
+  arm behaved like dump-to-zero" after a fire. THE FENCE (inherited
+  from #129's boundary): friction is lawful in the machinery's
+  DYNAMICS and pathological in its PLUMBING — doors, authorities,
+  derived constants stay frictionless (every sweep was friction
+  removal); the state's dynamics are where resistance belongs.
