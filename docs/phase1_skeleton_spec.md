@@ -24067,3 +24067,30 @@ token-position × waist-dim, the moment the skeleton trains.
   prints — per the reading notes, the bars name what the arms COST;
   the three-way read names what release DOES. Verdict held open
   pending the center.
+
+- **THE THREE-WAY READ — THE REVOLVING DOOR CONFIRMED AS MECHANISM
+  PROPERTY (2026-08-05; per-arm banked .cache/xout_threeway.json;
+  verdict in the pre-written language, NOT "cross-out didn't
+  work"):** same-wrong across every arm AND the untrained ctl
+  baseline: ctl 0.911 / dump 0.895 / graded 0.946 / elastic 0.944
+  (filler rows) — **all >80%: release without changed evidence
+  returns to where it was, a property of the mechanism** (the
+  smoke's dump-grade observation generalized to all three arms and
+  to an untrained head). THE BASELINE RIDER BITES: no arm
+  meaningfully beats ctl-forced — the training regime bought
+  nothing on re-bind while costing −18 graph-solve; the arms are
+  NOT adopted; the training-regime cost stands as its own finding.
+  **THE FILLER SPLIT, READ FIRST, INVERTS THE CONVERGENCE
+  PREDICTION AND SHARPENS THE CURE:** new-right concentrates in
+  CLEAN rows (dump 0.089/graded 0.077/elastic 0.070) and collapses
+  in FILLER rows (0.048/0.025/0.032), where same-wrong peaks —
+  **plain re-reading fails WORST exactly where mis-anchoring
+  lives: the mis-parked attention re-reads the same wrong home,
+  because the index is still shifted.** The convergence is measured
+  in the negative direction that names the mechanism: the delta
+  that exists (working-state evolution) suffices only where
+  anchoring was never broken; **THE ANCHOR-GATED RE-READ is now the
+  next build with measurement on BOTH sides** — revolving door
+  behind it, filler-row failure site in front of it. One texture
+  for its spec: graded/elastic re-bind SAFELY in clean rows
+  (new-wrong 0.000, n=39/43) — small support, direction only.
