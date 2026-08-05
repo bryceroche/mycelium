@@ -24713,3 +24713,21 @@ token-position × waist-dim, the moment the skeleton trains.
   slot's outcome rather than computable from text geometry;
   contour-following, a different instrument class than anything
   tried; no evidence yet, stated as such.
+
+- **THE CONTOUR-EXISTENCE JOIN (2026-08-05; zero-GPU on banked
+  anchors; #162's implied first test fired same hour):** rows with
+  ≥2 mis-anchored slots n=369; within-row δ CONSTANT only 17.9% —
+  the offset is NOT flat per row (row-level δ estimation dies with
+  the text-geometric estimator). But consecutive slots: same-δ
+  51.2%, **Spearman(δ_j, δ_j+1) = +0.458, p=2e-125 — THE CONTOUR
+  EXISTS**: locally consistent, far from deterministic; a
+  contour-follower has real signal on a rough surface. The
+  candidate promotes from unevidenced to MEASURED-SURFACE;
+  the blade is unbuilt and holds for a word. NEW TEXTURE banked
+  from the same join: the δ distribution is broader than the
+  δ=−1 story (64% at −1 here, method: fspan-mean sentence) with a
+  LONG DEEP-BACKWARD TAIL (−5..−14 cluster, ~400 pairs) —
+  consistent with attention PARKED AT THE PREAMBLE/ROSTER for a
+  distinct sub-population: possibly a second mis-anchoring mode
+  (park-at-start) hiding inside the backward family. Texture-rule
+  note: one unexplained shape, not yet two — logged, not probed.
