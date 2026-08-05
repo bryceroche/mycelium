@@ -24669,3 +24669,25 @@ token-position × waist-dim, the moment the skeleton trains.
   NEXT SESSION'S DUTIES, in order: the pen tranche → the probe
   fires on its standing design → the read against both the
   original bars AND #160's pin.
+
+- **GUT #161 REGISTERED — "HOLD THE NUT STATIONARY" (2026-08-05;
+  commitment family, beside #150; counter-torque is the content):**
+  torque produces advancement only if one side RESISTS — turn both
+  and the assembly rotates as a unit: full force, zero progress,
+  and the failure is SILENT (it feels like tightening). THE
+  MEASURED SPECIMEN: the revolving door — mass removed, slot
+  returns, 0.89–0.95: the whole assembly spun; #150's resisting
+  term stated from the fastening side, sharper because it names
+  WHAT must be held: **a fixed reference the work turns against.**
+  The anchor re-read: the anchor isn't a force — IT'S THE NUT (the
+  one thing that doesn't move when the index shifts, derived from
+  where the value IS); steering held it and turned the slot
+  against it; braking torqued a free assembly. THE SCREEN CARVED:
+  **every corrective needs a stationary reference — ask of each
+  proposed one: WHAT'S BEING HELD?** Cross-out held nothing;
+  anchor-steering holds the anchor; adaptive-K holds the clock;
+  copy-not-generate holds the source span. The ones that work
+  have a fixed point; the one that revolved had none. Honest
+  limit: a reframe like the muffler — its value is the spec-time
+  question (*what stays still?*), cheaper asked than discovered;
+  organ 2's arc is the receipt.
