@@ -23723,3 +23723,23 @@ token-position × waist-dim, the moment the skeleton trains.
   REAL YIELD regardless: slot-grain masses on the wild 124 now
   banked (organ-grade artifact); the commit head's wild pulse
   confirmed level-carried at 0.650 with clean size behavior.
+
+- **THE COUNTERSIGN ON THE RE-CUT (2026-08-05, Bryce):** the manner
+  of the loss is the value — **a +0.012 delta reported as a pass
+  would have been a screen graduating on a coverage artifact**; the
+  like-for-like control wasn't in the pins and ran because the
+  discipline demanded it: the difference between a taxonomy becoming
+  an instrument and a taxonomy becoming a mistake. The reversion is
+  clean because the fail fired on its exact registered wording — the
+  revenant clause applied to the proposer's own frame, same fence
+  that governs the daisy chain's genealogy. THE LOUD READ, the more
+  consequential yield: **the commit head's pulse is level-carried
+  with no contrast headroom — the nozzle question (pressure/better
+  gold vs geometry/unsaturated output) cannot be dodged by
+  re-parameterization.** The cheap third option is eliminated
+  BEFORE it was tried: 0.650 is what the head HAS, not what the
+  readout is hiding; the fix, if any, is upstream. Bookkeeping:
+  the aggregates fault's FOURTH appearance (slot grain), caught and
+  cured — per-row-at-finest-grain the standing default; the n=5
+  stratum 0.906 held noted-and-unclaimed under the two-shape
+  threshold — the texture rule doing exactly its job.
