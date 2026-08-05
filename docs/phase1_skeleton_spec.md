@@ -24481,3 +24481,28 @@ token-position × waist-dim, the moment the skeleton trains.
   not mechanism. Every rung of the steering arc priced; three
   refutations, one door opened, two constraint localizations, one
   ceiling; nothing adopted, nothing bent.
+
+- **THE DECEMBER ARITHMETIC — THE ARC'S CLOSING NUMBER (2026-08-05;
+  zero-GPU; road framing per the rider):** filler-bearing rows are
+  **21 of 124 answered wild rows (16.9%)**, and wrong-and-filler-
+  bearing ≈ 2 rows — at 0.330 binding-grain conversion (row-grain
+  ≤ binding-grain), row-gated steering is worth **under one wild
+  answer at current mouth admission.** VERDICT: the adoption-grade
+  pipeline build is **DEFERRED, not killed** — road arithmetic
+  exactly as framed: the cure's value scales with mouth widening
+  (98.4% refused today) and rides the wild's real filler exposure;
+  REVISIT TRIGGER: any mouth-widening word re-runs this join first.
+  THE OPEN MECHANISM carved per the countersign: the offset is
+  backward, positional, content-blind, filler-triggered, and NOT a
+  running count — uniform +1 beating the measured accumulation
+  means the modal case is a SINGLE frame slip regardless of filler
+  count; the index-shift story did not survive its estimator and
+  the mechanism's true shape is an OPEN QUESTION, stated as such.
+  HONEST FLAG, unresolved: the ledger's consumed field gives 104
+  never-trained vs the corrected key's banked 43 — field semantics
+  vs text-identity matching; flagged for the wild re-cut, not
+  resolved here (the 16.9% exposure and ≈2-row reach are
+  training-split-independent). THE STEERING ARC IS CLOSED end to
+  end: mechanism proven, gates eliminated, estimator refuted,
+  ceiling measured, arithmetic run — a complete investigation, one
+  day, nothing adopted, everything priced.
