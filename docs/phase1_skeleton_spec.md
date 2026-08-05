@@ -23817,3 +23817,16 @@ token-position × waist-dim, the moment the skeleton trains.
   (scatter) beside its categorical one (mis-anchor), which is what
   a dose-response read needs if the mint fix ever wants a
   before/after finer than zero-or-not.
+
+- **THE BENCH'S UNDER-LOAD RE-CUT — PIN BEFORE THE READ
+  (2026-08-05; word given; the referent map's last occupant):** the
+  bench's "misbinding under load" story = rung 2b's minted dup-args
+  population (seed 41000, deterministic; distractor load 2-4 extra
+  givens; misbinding measured at 33/120-era support). STRUCTURAL
+  CLAIM, to be verified not assumed: the mint's template is preamble
+  + factor sentences + question — no filler can occur; expected
+  gap=2 on all 120 re-derived rows by the same ". " instrument.
+  BAR (categorical): all-120 gap=2 → the bench story is CROWDING
+  SPECIES by construction and the unresolved column EMPTIES; any
+  row gap≠2 → the structural claim fails and a full per-row join is
+  owed before any assignment.
