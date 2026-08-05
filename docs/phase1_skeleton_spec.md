@@ -24398,3 +24398,17 @@ token-position × waist-dim, the moment the skeleton trains.
   literal two-bindings-one-slot = the dup family, settled at gen-9
   (ALG_DUP). Ranking offered, not imposed — the gut arrived
   without interps; Bryce's ranking overrides if he meant another.
+
+- **THE DETECTOR-AUTHORITY SWEEP EXECUTED (2026-08-05; word given;
+  mycelium/detector_authority.py):** the row_m pattern applied to
+  the instrument set — one authority per context, KeyError on
+  unnamed: MEASUREMENT = the anchor artifact (gold-span,
+  ground-truth-grade, structurally offline-only — gold spans don't
+  exist at inference); DEPLOYED = the licensed trigger (relative,
+  thr 0.3648, in-register only); DERIVED = the inspan proxy (the
+  anchor's shadow, never authoritative). The invoice note carved:
+  tonight's cheap bill (n=1, caught by the validity floor) vs the
+  expensive version (a plausible forty-slot flag entering the
+  ledger as a gate verdict) — the floor caught the unmistakable;
+  the authority file prevents the plausible. Consumers look up,
+  never re-derive.
