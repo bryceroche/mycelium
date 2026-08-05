@@ -23630,3 +23630,26 @@ token-position × waist-dim, the moment the skeleton trains.
   ARCHITECTURAL cure the finding has suggested, beside the mint fix
   not against it. The re-cut's split feeds the fork: dup/crowding
   needs neither cure; the filler axis keeps both live.
+
+- **THE COUNTERSIGN + THE LOAD REFERENT MAP (2026-08-05, Bryce; the
+  rider executed in the same transaction):** the check found something
+  better than what it watched for — the flagged confound (narrow
+  distribution) arrived as an EMPTY distribution, and the emptiness
+  was the answer. The named hazard: **caveat-decay in reverse** — a
+  word that covered two things now covers one, with old usages still
+  in the record. THE MAP, so no reader inherits the merged sense —
+  every historical "under load" statement's referent, by species:
+  **CROWDING species** (filler-free fixtures, output-level
+  misbinding): the dup 53% pool baseline; the six-arm DUP FIRE and
+  all its arms; the held-out-config 24%→24%; the isolation rung;
+  the crowding diets. **FILLER species** (bigtest-measured,
+  attention mislocation): the mis-anchoring family (δ=−1, backward,
+  0.999 AUC); the parity oscillation and its whole suspect line.
+  **UNRESOLVED — filler-candidate pending the docketed read** (n=5
+  whisper: CERTs clean, FAILs filler-bearing): the engage-slip
+  anatomies; the pointer scatter; the bench's "misbinding under
+  load" story. New statements must name their species; "under load"
+  unqualified is RETIRED from the working vocabulary. The whisper's
+  proper read ranked soonest — support is what turns the anecdote
+  into evidence, and if it holds, the second species shrinks to
+  crowding alone.
