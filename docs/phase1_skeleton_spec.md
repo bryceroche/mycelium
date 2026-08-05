@@ -24033,3 +24033,19 @@ token-position × waist-dim, the moment the skeleton trains.
   obligations, in order: three-way read → sufficiency read
   (trigger-flag ∩ solver-objection) → verdict against the pinned
   bars. Nothing promotes; the gate is untouched.
+
+- **THE FIRE'S READING NOTES (2026-08-05, Bryce; pinned before the
+  sheet lands):** (1) the revolving-door verdict is the branch that
+  LOOKS like a failed fire and isn't — if same-wrong >80% prints
+  across all arms, the finding is "release without changed evidence
+  returns to where it was" CONFIRMED AS A PROPERTY OF THE MECHANISM
+  (the smoke's dump-grade observation generalized), and it banks in
+  that language, never as "cross-out didn't work"; the anchor-gated
+  re-read becomes the next build WITH measurement behind it. (2) THE
+  FILLER SPLIT READS FIRST regardless of branch: even under a
+  revolving door, ANY new-right concentration in filler-bearing rows
+  is the convergence measured — **a small signal in the right place
+  is worth more than a large one spread flat.** (3) The two-pass
+  step ratified as the launch's most careful piece: the register
+  clause holds THROUGH TRAINING — the Goodhart fence survives first
+  contact with a mechanism that could plausibly have wanted it.
