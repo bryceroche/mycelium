@@ -24159,3 +24159,26 @@ token-position × waist-dim, the moment the skeleton trains.
   filler new-right ≤ plain re-read's = the transverse axis refuted
   at this grain, banked as such. The build (inference-path code +
   the stage-1 read) holds for its word.
+
+- **GUT #154 REGISTERED — "GEESE FLYING FORMATION" (2026-08-05;
+  exchange family; family check done — the shoal came thrice, the
+  bar was a mechanism it didn't carry, and the V clears it):**
+  ROTATION OF THE COSTLY POSITION. The upwash is real but the point
+  bird gets none of it; the formation is SUSTAINABLE (not merely
+  efficient) because the lead ROTATES — the benefit is positional,
+  so the burden must circulate. THE UNROTATED POINT BIRD IN PLAIN
+  VIEW: the panel re-auditions and dissent rotates; diet customers
+  rotate; **the pen never rotates** — one delegation drafts every
+  row under one accumulating jurisprudence (#106's monoculture flag;
+  #91's correlated-angles ruling). THE COST, now measured where #91
+  could only file: the surface-band law — diets cure what they
+  phrase, and a single pen's phrasing distribution IS the band's
+  shape; the 41-entry licensed table is surface augmentation as a
+  SUBSTITUTE for rotation — it relocated the boundary; a rotated
+  drafting position would widen the distribution at its source.
+  THE FENCE, why this stays a diagnosis not a proposal: rotation
+  requires multiple qualified drafters and the jurisprudence is the
+  pen's competence — an unqualified second pen produces rows the
+  bench must catch, and the bench is the bottleneck. CARVED AS:
+  **the reason the surface road keeps needing artificial widening**
+  — the diagnosis banked; the cure's precondition priced honestly.
