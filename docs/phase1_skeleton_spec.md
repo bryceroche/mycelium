@@ -24219,3 +24219,29 @@ token-position × waist-dim, the moment the skeleton trains.
   shifted index lives in the position machinery, not attention —
   steering the grip can't fix a stroke generated wrong.** A second
   revolving door must NOT read as "anchors don't work."
+
+- **STAGE-1 WORD RECEIVED + A BUILD-TIME DISCOVERY THAT RESTRUCTURES
+  THE ARMS (2026-08-05; banked BEFORE implementation, arms declared
+  BEFORE measurement):** the instrument-distribution law carved
+  first, per the countersign: **the campaign's instrument
+  distribution is a map of what was easy to measure, not of where
+  the mechanism lives** — the subspace-spanning law's third domain
+  (mint axes, eval fixtures, instrument coverage). THE DISCOVERY,
+  found at design-for-build: the registered mechanism ("bias the
+  revoked slot toward its STORED anchor span") has a self-defeating
+  case — **for a MIS-ANCHORED slot, the stored anchor IS the
+  shifted address**: anchor-bias steering re-reads the same wrong
+  home harder; it cannot cure what anchor mis-storage caused. The
+  available transverse signal with measured aim: THE GEOMETRY
+  ITSELF — δ=−1 (backward 99.8%, one home early), so the corrective
+  is a +1-SENTENCE INDEX SHIFT on revoked slots. ARMS DECLARED for
+  the stage-1 read (bars unchanged, per-arm): (A) anchor-bias
+  persistent (the registered mechanism, run honestly — its
+  prediction now REINFORCEMENT in filler rows); (B) anchor-bias
+  one-shot (the persistence ablation); (C) **delta-corrective
+  persistent** (+1 sentence frame shift on revoked slots — the
+  filler geometry aimed back at itself). If C opens the door where
+  A reinforces, the steering signal was never the stored anchor —
+  it was the measured offset; if ALL revolve, the upstream fork
+  (#155) fires as pre-written. Implementation next session; no
+  measurement has run.
