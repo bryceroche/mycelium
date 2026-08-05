@@ -23851,3 +23851,26 @@ token-position × waist-dim, the moment the skeleton trains.
   read inherits the structure: a cure can suppress flips without
   shrinking the field, and the two instruments (categorical
   mis-anchor + graded scatter) now measure each independently.
+
+- **GUT #151 REGISTERED — "NINE WOMEN, NINE MONTHS" (2026-08-05;
+  exchange family; allocation against an irreducible constraint):**
+  Brooks' law's ancestor made precise by the campaign's own numbers:
+  some work has irreducible SEQUENTIAL DEPTH — parallelism buys
+  throughput on WIDTH and does nothing to the CRITICAL PATH. THE
+  MEASURED INSTANCE: the depth ladder (t95 at 1/3/8, ~3.5 breaths
+  per implication layer) IS the gestation constant; the K-sweep
+  priced the attempt to cheat it — truncate and depth-3 pays 4.2%
+  while depth-1 pays 0.5%. **You cannot parallelize past deduction
+  depth, and the campaign has the number.** THE CLARIFICATION ON
+  #71's SIGNATURE C, banked before the stickier phrase gets quoted
+  past its meaning: C's "parallel lowering" (every altitude
+  improving from breath one, families finishing in altitude order)
+  is parallel in WIDTH, sequential in DEPTH — "finish in altitude
+  order" was already saying so; now the reason is attached. THE
+  PROSPECTIVE BITE, on adaptive-K (#133) before its arm is built:
+  the floor isn't negotiable — no schedule brings depth-3 in under
+  its layers; **adaptive-K's honest promise is releasing SHALLOW
+  problems early, never accelerating deep ones** — a REALLOCATION
+  mechanism, not a speedup one (still worth 4.2% at depth by the
+  sweep's arithmetic). Stated now so its acceptance read measures
+  reallocation, not the impossible speedup.
