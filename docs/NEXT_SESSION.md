@@ -1,24 +1,26 @@
-## SEAL 2026-08-03 — GEN-23 IS THE GATE (sign-only scope); CAMBIUM named; the census resolved December
+# NEXT SESSION — cold start (updated 2026-08-05, end of the steering-arc session)
 
-**THE GATE CHANGED: GEN-23 PROMOTED** (manifest atomic; env now carries
-ALG_WIDE=1; parser .cache/g23.safetensors). Scope AS DATA in the
-manifest: **wide_not_claimed=true** (E3 trained, 0/40, the
-compounding-digit wall — per-digit ~90% compounds over 7 positions;
-May's per-number-not-per-digit law vindicated). CLAIMED: E1 sign —
-96.7% vs old 94.2% fresh held-out; bigtest 1238 (above g22's 1226);
-all 7 standing fixtures green. **ENTOURAGE-23 SETTLED** (08-03: all 10 stages; waiver CLEARED —
-specialist/centroids/mouth/panel are gen-23's; honest census banked
-2/86; dissent stable n=2; DEPLOYED wild forty mouth_refused 40/40 —
-the zero-point holds under the new gate).
-December ceiling 197→215 PENDING the m500 re-cut under the new scope
-(first zero-GPU read owed). THE ROADS: copy-not-generate at the bench
-(wide's cure; the trace layer already verifies literals-in-text);
-notebook at rung 3 (revision half; CAMBIUM's rings). FOUR LANDMINES
-from the domain extension (sentinel −1, propagator quadratic,
-budget-counts-decisions, domain-BUILD cost) — the E2/E4 sweep line
-binds all four + the sentinel audit. Day's other yields: CAMBIUM
-(docs/CAMBIUM.md), the census read (34/46 OOD; schema floor pays for
-reachable class), framing RESOLVED (A-now-plus-D; leaf B struck),
-canonicalizer PASSED, K-sweep retro-read recovered, #120-125
-registered. Everything per the prior seals below.
+**FIRST DUTIES, in order (words already given):**
+1. **The pen tranche** — ~80 new licensed entries (full jurisprudence:
+   axis tags, grammar stamps, rulebook) to bring the table to ~120.
+   The tranche's quality IS the probe's control.
+2. **The slope probe fires** — one arm, 120 entries, same rows/dose
+   (design at its ruling in the ledger).
+3. **The read** — against the original bars AND #160's pinned
+   prediction (coverage-sized 120 TIES if the bowl reason holds;
+   tie buys the redundancy-per-slot sizing rule).
 
+**Holding for words:** the wild re-cut (3 riders: consumed-field
+first / every stage banks drops / correct-attrition only), the
+pre-registration door (#159, row_m shape), arms A/B (anchor-bias,
+bank surgery), the schema floor, the cold framing session
+(docs/DECEMBER_FRAMING.md), the clock (organ 3).
+
+**This session's yield (ledger has full forms):** the steering arc
+closed end-to-end (revolving door → door opens 0.89→0.13 → gates
+eliminated → estimator refuted → ceiling 0.330@zero-harm → December
+arithmetic: <1 answer now, DEFERRED, revisit on mouth widening);
+load referent map COMPLETE; organ 2 full first cycle; laws carved:
+relative-discriminators-only, refusal-evidence (gates bank drops),
+naming-failure (3rd instance); detector_authority.py built;
+registry at 160 (eleven straight rule-producing entries).
