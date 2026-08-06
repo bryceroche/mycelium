@@ -24810,3 +24810,28 @@ token-position × waist-dim, the moment the skeleton trains.
   don't show; stated now so it's not discovered by adding one.
   Fence on the fence: a reframe like the muffler, and says so —
   the prediction is the value.
+
+- **THE WILD RE-CUT'S WORD RECEIVED — FOUR-LENS PLAN BANKED
+  (2026-08-05; execution next session at full context):** THE
+  INSTRUMENT, final form: one chain re-run over the full 1,404
+  wild harvest with EXHAUST PORTS at every link (mouth, quorum,
+  fences, attest each bank would-be answer + gold verdict — the
+  refusal-evidence principle applied retroactively), read through
+  FOUR LENSES on one pass: (1) population correctness under the
+  RESOLVED consumption split — the consumed-field discrepancy
+  (104 vs 43) resolves FIRST, zero-GPU, before anything traces;
+  (2) yield loss (the correct-answer attrition path); (3)
+  virtue-vs-leak attribution (lies held = fence working); (4) THE
+  ENRICHMENT GRADIENT — the reduction law's direct test: invisible
+  modes' share rising link-by-link confirms #164 and prices
+  fence-adding; flat composition sends three cautions back to
+  three observations. THE PROPORTION RIDER pinned (Bryce): stage-
+  wise denominators stated explicitly — constant-count-while-
+  others-drop is enrichment; rising count is a different
+  phenomenon; separable at read time, impossible after. PRICING
+  FRAMING kept in the entry's words: this does not argue against
+  fences — their virtue ledger is complete and paid. SEQUENCING:
+  next session the chain fire burns in background while the pen
+  drafts the tranche — the re-cut's plumbing first, then both
+  fires in parallel, the probe and the four-lens read landing in
+  either order as they complete.
