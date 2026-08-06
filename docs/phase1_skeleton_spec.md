@@ -24889,3 +24889,28 @@ token-position × waist-dim, the moment the skeleton trains.
   ruling; the field gets renamed or annotated at that write so no
   future reader mistakes it. The trace now runs on the right
   population. NEXT: exhaust-port plumbing, then the chain fire.
+
+- **THE WILD RE-CUT'S FOUR-LENS READ (2026-08-06; wild_ledger_v2,
+  838 rows with banked would-be answers — the ports live):**
+  **L1** mechanism boundary re-confirmed a third time on a fresh
+  chain run: trained 78/80 (0.975), never-trained 3/48 (0.063).
+  **L2 THE ATTRITION NUMBER: 419 correct would-be answers ENTER
+  the chain; 81 survive to certification — 80.7% of correct work
+  is discarded.** **L3 virtue-vs-leak by gate: the trace layer is
+  the dominant discard point — 632 dropped rows, 313 correct held
+  vs 319 lies held (the one-for-one trade CONFIRMED AT SCALE);
+  attest 25/41; no-quorum-with-answer 0/12 (pure virtue).**
+  **L4 THE ENRICHMENT GRADIENT — #164 CONFIRMED DIRECTLY:**
+  correct-share 0.500→0.507→0.546→0.633 and trained-share
+  0.499→0.506→0.546→0.625, monotone AND IN LOCKSTEP — the
+  certified population is progressively enriched in MEMBERSHIP
+  (the mode no gate can see), correct count falling (419→106→81)
+  while share rises = true reduction, the proportion rider's
+  exact distinction. Three cautions are now ONE MEASURED
+  MECHANISM. THE DECEMBER TERM DELIVERED: "which link to argue
+  with" has an answer — **the trace layer holds the single
+  largest recoverable pool in the system (313 correct), priced
+  one-for-one against its 319 lies**; any argument with it is an
+  argument about that trade, now with exact numbers. Half of all
+  raw pluralities are RIGHT (0.500 at stage 0) — the chain's
+  conservatism, priced end to end for the first time.
