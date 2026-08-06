@@ -24914,3 +24914,25 @@ token-position × waist-dim, the moment the skeleton trains.
   argument about that trade, now with exact numbers. Half of all
   raw pluralities are RIGHT (0.500 at stage 0) — the chain's
   conservatism, priced end to end for the first time.
+
+- **THE RECOVERY CURVE — ONE-FOR-ONE IS THE AGGREGATE, NOT THE
+  MARGIN (2026-08-06; zero-GPU on banked trips; the rider
+  vindicated same-hour):** per-marker marginal release (rows held
+  by ONLY that marker): the margins differ WILDLY — high-virtue
+  markers: value-fab:value=5 (8:24), value=3 (4:12), value=20
+  (1:6); high-leak markers: **value-fab:k=4 (5:0), k=2 (3:0),
+  value=25/13 (2:0 each), value=15/49 (4:1), value=9 (10:5),
+  division (18:13)**. A curated relaxation of the favorable
+  markers releases ROUGHLY 35-45 correct at ~10 lies — far better
+  than one-for-one — while 341 multi-marker rows (165 correct)
+  are unreachable by any single-marker move. MEANS-VS-OVERLAPS
+  law at the fence: the 313:319 aggregate masked a bimodal marker
+  population. **THE FENCE-FITTING HAZARD NAMED BEFORE ANYONE
+  MOVES: choosing which markers to relax FROM THIS TABLE fits the
+  fence to the fixture that measured it** — any marker re-tuning
+  is a registered change requiring held-out validation (a fresh
+  harvest slice never used for tuning); the curve is measured, the
+  move is NOT licensed by the measurement. The December trade
+  re-priced: the trace layer's recoverable pool is not 313-at-319
+  — it is a CURVE, and its favorable end starts near
+  thirty-correct-for-ten-lies, pending held-out confirmation.
