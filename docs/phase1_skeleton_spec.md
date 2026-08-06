@@ -25423,3 +25423,24 @@ token-position × waist-dim, the moment the skeleton trains.
   conclusion needs revisiting; if it holds while valves move, both
   findings confirm each other). The fire holds for its word; the
   registration is the deliverable.
+
+- **GUT #172 REGISTERED — "PHANTOM TRAFFIC WAVE" (2026-08-06; the
+  signature-versus-mechanism sort is the content):** a phantom jam
+  outlives its cause and propagates backward — the signature is
+  causeless local slowing with persistent backward direction, and
+  mis-anchoring shares an uncanny surface (backward 100%,
+  positional, content-blind, δ varying within rows, ρ=0.458
+  between neighbors). THE REFUTATION, already banked: a wave
+  requires slot-to-slot CAUSATION, and the oracle blade tested
+  exactly that — perfect upstream-offset knowledge applied
+  downstream printed 0.24 vs uniform's 0.62; **if the disturbance
+  propagated, the blade would have won; it lost. The contour is
+  correlated without being causal in the direction a wave
+  requires** — 0.458 is a SHARED CAUSE, not a transmission. THE
+  LIVE RESIDUE: the deep-backward tail (−5..−14, roster-parking
+  suspect, one unexplained shape — the texture rule holds) is the
+  one shape a phantom wave would predict; **the wave frame's
+  pre-registered claim, waiting on a second shape: the tail should
+  show backward propagation structure the δ=−1 population
+  doesn't.** Registered with the refutation cited — a frame
+  arriving after its own test was run, sorted honestly against it.
