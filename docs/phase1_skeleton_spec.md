@@ -25343,3 +25343,24 @@ token-position × waist-dim, the moment the skeleton trains.
   population definition changes**; the relaxation was only the
   first customer (invariance work, future marker work,
   calibrations all inherit it).
+
+- **GUT #170 REGISTERED — "SHAPE OVER MASS" (2026-08-06;
+  commitment family, beside #145; the load-path distinction is the
+  content):** bending stiffness scales with the CUBE of depth;
+  folding buys depth without a gram — the accordion doesn't resist
+  more, it ROUTES force into axial paths where the material is
+  strong. THE PAIRED INSTANCE, one fire: gen-23's sign terminal
+  (96.7% first dose, no new capacity — the fold cost nothing) vs
+  the wide arm's flat sheet (per-digit ~90% compounding to
+  near-zero — seven independent softmaxes bend transversely);
+  copy-not-generate IS the fold. #145's mechanism named: **you
+  cannot pressure your way past a wrong load path** — the exponent
+  argument in statics. THE SCREEN, cheap and now standing:
+  before any dose word, ask **is this a mass problem or a shape
+  problem?** Three constructions already answered case-by-case
+  without the question stated: fdiv = SHAPE (17 phrasings made a
+  construction visible, anchors certified reading); dup = NEITHER
+  (binding-side wall, 19 reached nothing); wide = SHAPE (dose
+  held, copy-not-generate the successor). The screen joins
+  what's-held-stationary and level-vs-contrast as the third
+  spec-time question.
