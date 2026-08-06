@@ -25039,3 +25039,15 @@ token-position × waist-dim, the moment the skeleton trains.
   bias toward the move, contingent on the held-out validation the
   registration already requires. Reframe status stated; screens
   are cheap.
+
+- **THE PROBE COUNTERSIGN (2026-08-06, Bryce):** the shape carved
+  for the registry's jurisprudence: **the frame died and its yield
+  survived — the honest form of a partially-right instinct.** The
+  bowl's reasoning (must exceed census) refuted by the break; the
+  bowl's operative variable (redundancy per slot) vindicated by
+  the same numbers — per-construction thresholds mean the sizing
+  question was never table-total. The pin's refutation ratified
+  as discipline holding where bending was cheapest; the recursion
+  guard's FOURTH protected site noted (a comparison, not a
+  measurement). No promotion claimed; the slope stands measured:
+  0/8→8/8 between 8 and 17 phrasings, per-construction.
