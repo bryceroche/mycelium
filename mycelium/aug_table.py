@@ -177,3 +177,80 @@ def verify_entry(construction, fmt, rng, n=50, constraint=None, latex=False):
         if solve2(facs, q, {"n_vars": 24, "m": 300}) != gold:
             fails.append(("solve", t)); continue
     return len(fails) == 0, fails
+
+# tranche 4 (2026-08-06, the slope probe's pen tranche — word given;
+# axis variety by design: passive, inverted, conditional, result-first,
+# colloquial, formal, arithmetic-verb, comparative; the bench
+# (verify_entry) licenses each; the pen only proposes):
+TRANCHE4 = [
+    # given — new axes: assignment, apposition, measurement, inverted
+    ("given", "has-value",   "{x} has the value {v}.", None, False),
+    ("given", "let-be",      "Let {x} be {v}.", None, False),
+    ("given", "we-know",     "We know that {x} is {v}.", None, False),
+    ("given", "takes",       "{x} takes the value {v}.", None, False),
+    ("given", "suppose",     "Suppose {x} is {v}.", None, False),
+    ("given", "given-that",  "Given that {x} equals {v}.", None, False),
+    ("given", "v-first",     "{v} is the value of {x}.", None, False),
+    ("given", "set-to",      "{x} is set to {v}.", None, False),
+    ("given", "stands-at",   "{x} stands at {v}.", None, False),
+    # add — result-first, conditional, verb-variety, passive
+    ("add", "gives-when",    "Adding {a} to {b} yields {c}.", None, False),
+    ("add", "c-first-sum",   "{c} is the sum of {a} and {b}.", None, False),
+    ("add", "if-add",        "If you add {a} and {b}, you get {c}.", None, False),
+    ("add", "together",      "Together, {a} and {b} make {c}.", None, False),
+    ("add", "increased",     "{a} increased by {b} is {c}.", None, False),
+    ("add", "result-add",    "The result of adding {a} and {b} is {c}.", None, False),
+    ("add", "obtain-add",    "One obtains {c} by adding {a} and {b}.", None, False),
+    ("add", "exceeds-by",    "{c} exceeds {b} by {a}.", None, False),
+    ("add", "added-to",      "{a} added to {b} gives {c}.", None, False),
+    ("add", "combine",       "Combining {a} with {b} produces {c}.", None, False),
+    # mul — same axes
+    ("mul", "c-first-prod",  "{c} is the product of {a} and {b}.", None, False),
+    ("mul", "if-mul",        "If you multiply {a} by {b}, you get {c}.", None, False),
+    ("mul", "result-mul",    "The result of multiplying {a} and {b} is {c}.", None, False),
+    ("mul", "obtain-mul",    "One obtains {c} by multiplying {a} and {b}.", None, False),
+    ("mul", "mult-by",       "{a} multiplied by {b} is {c}.", None, False),
+    ("mul", "groups-of",     "{a} groups of {b} make {c}.", None, False),
+    ("mul", "sym-x",         "{a} x {b} = {c}.", None, False),
+    # fdiv — passive, result-first, conditional, unit-fraction
+    ("fdiv", "c-first-quot", "The quotient of {a} and {k} is {b}.", None, False),
+    ("fdiv", "if-div",       "If you divide {a} by {k}, you get {b}.", None, False),
+    ("fdiv", "split-into",   "{a} split into {k} equal parts gives {b}.", None, False),
+    ("fdiv", "shared",       "{a} shared equally among {k} is {b}.", None, False),
+    ("fdiv", "goes-into",    "{k} goes into {a} exactly {b} times.", None, False),
+    ("fdiv", "result-div",   "The result of dividing {a} by {k} is {b}.", None, False),
+    ("fdiv", "quarter-of",   "A quarter of {a} is {b}.", {"k": 4}, False),
+    ("fdiv", "fifth-of",     "A fifth of {a} is {b}.", {"k": 5}, False),
+    ("fdiv", "b-first-div",  "{b} is {a} divided by {k}.", None, False),
+    # mod — variety on remainder phrasing
+    ("mod", "leaves-rem",    "{a} divided by {k} leaves a remainder of {b}.", None, False),
+    ("mod", "rem-is",        "{a} modulo {k} is {b}.", None, False),
+    ("mod", "rem-b-first",   "{b} is the remainder when {a} is divided by {k}.", None, False),
+    ("mod", "leaves-over",   "Dividing {a} by {k} leaves {b} left over.", None, False),
+    # pct — order and register variety
+    ("pct", "pct-sym-of",    "{p}% of {b2} is {p2}.", None, False),
+    ("pct", "equals-pct",    "{p2} equals {p} percent of {b2}.", None, False),
+    ("pct", "taking-pct",    "Taking {p} percent of {b2} gives {p2}.", None, False),
+    ("pct", "pct-comes-to",  "{p} percent of {b2} comes to {p2}.", None, False),
+    # sel — superlative and comparative variety
+    ("sel", "larger-of",     "The larger of {a} and {b} is {c}.", None, False),
+    ("sel", "smaller-of",    "The smaller of {a} and {b} is {c}.", None, False),
+    ("sel", "whichever",     "{c} is whichever of {a} and {b} is larger.", None, False),
+    ("sel", "max-of",        "The maximum of {a} and {b} is {c}.", None, False),
+    ("sel", "min-of",        "The minimum of {a} and {b} is {c}.", None, False),
+    # dup — doubling/squaring register
+    ("dup", "twice",         "Twice {a} is {c}.", None, False),
+    ("dup", "double",        "Double {a} gives {c}.", None, False),
+    ("dup", "square-of",     "The square of {a} is {c}.", None, False),
+    ("dup", "self-sum",      "{a} added to itself gives {c}.", None, False),
+    ("dup", "self-prod",     "{a} multiplied by itself is {c}.", None, False),
+    ("dup", "c-first-twice", "{c} is twice {a}.", None, False),
+    # subadd — difference register
+    ("subadd", "difference", "The difference between {a} and {b} is {c}.", None, False),
+    ("subadd", "minus",      "{a} minus {b} equals {c}.", None, False),
+    ("subadd", "subtract",   "Subtracting {b} from {a} gives {c}.", None, False),
+    ("subadd", "decreased",  "{a} decreased by {b} is {c}.", None, False),
+    ("subadd", "fewer",      "{c} is {b} fewer than {a}.", None, False),
+    ("subadd", "take-away",  "Taking {b} away from {a} leaves {c}.", None, False),
+    ("subadd", "remains",    "When {b} is removed from {a}, {c} remains.", None, False),
+]

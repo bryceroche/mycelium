@@ -24951,3 +24951,20 @@ token-position × waist-dim, the moment the skeleton trains.
   one, and must be argued as such — scope-tagged like every
   verdict, with the class it was aimed at named before the
   marker is judged never to have found it.
+
+- **THE PEN TRANCHE DELIVERED — TABLE v2 AT 102 ENTRIES
+  (2026-08-06; word given; the pen proposed, verify_entry
+  licensed):** TRANCHE4 drafted — 66 candidates with AXIS VARIETY
+  BY DESIGN (passive, result-first, conditional, colloquial,
+  formal, arithmetic-verb, comparative, unit-fraction; new
+  registers per construction, not synonyms of old entries) —
+  **audition 102/102 LICENSED, zero refused**
+  (.cache/aug_table_v2.json, version v5-tranche4-slope-probe).
+  Honest notes: (1) 102 sits at 2.5× the 41-entry table vs the
+  ruling's "~120" — within the ruling's spirit; declared. (2) the
+  mechanical gate passed everything — verify_entry checks
+  mint-solvability and format mechanics; the PROBE FIRE is the
+  real test, and #160's pin rides it (coverage-sized expansion
+  TIES if the bowl reason holds). NEXT: mix assembly + the 4k
+  probe fire on its standing word (already given), same rows,
+  same dose, one arm.
