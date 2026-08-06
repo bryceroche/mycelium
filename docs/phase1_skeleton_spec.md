@@ -25133,3 +25133,16 @@ token-position × waist-dim, the moment the skeleton trains.
   now instrument RESOLUTION). Nazaré's own image noted where it
   already lives: a medium that CONCENTRATES what flows through it
   is #164's enrichment gradient — the canyon is the chain.
+
+- **THE NAZARÉ COUNTERSIGN — THE LENS'S BOUNDARY (2026-08-06,
+  Bryce):** the ocean side names the CAUSE the mechanism version
+  only described: **it isn't that gates fail — a narrowing channel
+  amplifies whatever it doesn't attenuate** (carved onto #164).
+  The resolution lens bounded so it can't overreach: it applies
+  where a QUANTITY is being corrected, never where a DECISION is
+  — bars, gates, and verdicts stay quantized (that is why nothing
+  needs unbanking); the lens belongs to the corrective
+  instruments, not the judicial ones. #129's
+  organize-machinery-not-material boundary at a new site. The
+  standing question ratified at zero cost: *did the instrument's
+  resolution set this number, or the mechanism's ceiling?*
