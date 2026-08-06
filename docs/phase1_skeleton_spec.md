@@ -25113,3 +25113,23 @@ token-position × waist-dim, the moment the skeleton trains.
   Friston, Laplace) find less purchase than kitchen and workshop
   — **physical guts land because they describe processes with
   parts; the campaign's objects are mostly that.**
+
+- **#168 AMENDED — THE NAZARÉ CLAUSE (2026-08-06; the unease given
+  its honest home):** the worry sorted in three: (1) "no waveform"
+  is a FACT ABOUT THE OBJECTS, not a gap — graphs, bindings,
+  knots, verdicts are discrete structures, and the thesis REQUIRES
+  the symbolic half discrete or certification collapses; (2) where
+  time genuinely lives (per-breath sequences) the looking was
+  thorough — two calibrated meters, ruler-robust silence, measured
+  twice; (3) THE SHARP RESIDUE, registered with its receipt:
+  **"the toolkit is quantized, and the pathologies may not be"** —
+  the campaign's instruments are almost entirely discrete (#162's
+  asymmetry), the one continuous instrument was discovered not
+  designed, and three cures in one week failed at LANDING
+  PRECISION — a continuous quantity measured with discrete tools;
+  uniform +1 beat every graded alternative partly because nothing
+  in the kit measures gradient well. The subspace-spanning law's
+  FOURTH domain (mint axes, eval fixtures, instrument coverage,
+  now instrument RESOLUTION). Nazaré's own image noted where it
+  already lives: a medium that CONCENTRATES what flows through it
+  is #164's enrichment gradient — the canyon is the chain.
