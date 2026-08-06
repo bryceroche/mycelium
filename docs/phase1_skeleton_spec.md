@@ -24936,3 +24936,18 @@ token-position × waist-dim, the moment the skeleton trains.
   re-priced: the trace layer's recoverable pool is not 313-at-319
   — it is a CURVE, and its favorable end starts near
   thirty-correct-for-ten-lies, pending held-out confirmation.
+
+- **THE RECOVERY COUNTERSIGN — THE ZERO-LIE RIDER (2026-08-06,
+  Bryce):** means-vs-overlaps' third domain (metrics, panels, now
+  the fence) ratified; the 341-row bound keeps the finding
+  honest (recoverable ≈35-45 at this grain, not 313 — an order
+  smaller and still the largest clean recovery on the board).
+  THE RIDER pinned for the relaxation's registration: **a marker
+  that caught zero lies on 1,404 rows is either useless or aimed
+  at a class this fixture doesn't contain** — the trace layer's
+  own history says the second is real (value-consistency: zero
+  false trips in-register, coin-flip at the frontier). Relaxing
+  a zero-lie marker is a DOMAIN-SCOPE decision, not a performance
+  one, and must be argued as such — scope-tagged like every
+  verdict, with the class it was aimed at named before the
+  marker is judged never to have found it.
