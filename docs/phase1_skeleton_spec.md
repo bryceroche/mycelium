@@ -25093,3 +25093,23 @@ token-position × waist-dim, the moment the skeleton trains.
   threshold unlocated — **December's surface term is now "how
   many phrasings per slot, per construction": a question with a
   method behind it rather than a hope.**
+
+- **GUT #168 REGISTERED — "LAPLACE THE TOKEN FLOW" (2026-08-06;
+  filed as A FRAME WITHOUT AN OBJECT, not refused):** the blunt
+  sort: Laplace requires LINEAR TIME-INVARIANT machinery
+  (convolution→multiplication; impulse response; transfer
+  function) and attention is neither linear nor time-invariant —
+  the machinery doesn't attach. "Temporal arrow of token flow"
+  names no banked object: δ=−1 is a discrete offset, the clock a
+  resolution rate, the breath ladder a depth — none a waveform.
+  THE STEELMAN, thin and stated: per-breath scalar sequences
+  exist (mass trajectories, settle curves) and spectral methods
+  are their tool IF anything oscillates — asked already, two
+  calibrated meters, **ruler-robust silence**; the transform
+  would decompose a measured-null signal. CONVERSION BAR: interps
+  naming a specific banked sequence + a question a direct read
+  can't answer converts it; else it stays a metaphor. THE
+  TEXTURE NOTE, third instance: mathematical frames (E/B,
+  Friston, Laplace) find less purchase than kitchen and workshop
+  — **physical guts land because they describe processes with
+  parts; the campaign's objects are mostly that.**
