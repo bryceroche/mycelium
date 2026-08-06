@@ -25444,3 +25444,19 @@ token-position × waist-dim, the moment the skeleton trains.
   show backward propagation structure the δ=−1 population
   doesn't.** Registered with the refutation cited — a frame
   arriving after its own test was run, sorted honestly against it.
+
+- **THE BRACKET READ IS LIT (2026-08-06; my choice; the door's
+  FOURTH customer, #171's rent exercised):** registered
+  (78a317577991) BEFORE the table variant existed: one arm at 14
+  fdiv phrasings, the drop rule PINNED as last-3-by-table-order
+  (no cherry-picking) — which resolved to quarter-of / fifth-of /
+  b-first-div. HONEST COMPOSITION CAVEAT, stated before the read:
+  the last-3 rule removed the two constrained-k forms + the
+  inverted order, so 14 differs from 17 in AXIS COMPOSITION as
+  well as count — a categorical print still separates
+  valve-from-sigmoid, but a graded print carries the caveat.
+  BARS: 0/8 or 8/8 = VALVE ("slope" retires, sizing becomes
+  valve-hunting); 2-6/8 = SIGMOID (dose framing survives); 1 or
+  7 = valve-with-noise unless repeated; dup stays 60/60; no
+  promotion. Equalized TRUE against vfull's 6,540; fire burning
+  as aug-vf14.
