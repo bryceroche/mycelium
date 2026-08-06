@@ -25322,3 +25322,24 @@ token-position × waist-dim, the moment the skeleton trains.
   chain of near-misses now fully mapped: 339 rejects → not a
   slice; extension → empty; the relaxation road's true state is
   BLOCKED-BY-WORLD-SIZE, which no one knew this morning.
+
+- **THE FORK RULED: (b) — NO VALIDATION, NO RELAXATION (2026-08-06,
+  Bryce; the reversibility screen deciding, not caution):** option
+  (a) buys adjacent-population evidence for an IRREVERSIBLE move
+  (relaxed fences change what certifies; certified rows feed
+  training gold — the poisoned-gold path, uncatchable downstream);
+  validating on neighbors and moving on peers is the
+  vintage-mixing family's forbidden inference. Option (b) costs a
+  standing discard ALREADY priced at under-one-answer behind the
+  same mouth — **waiting costs a known amount of nothing-today**,
+  and when mouth-widening brings same-population text, the
+  December revisit trigger and the relaxation validation become
+  ONE EVENT. SUBJECT-WIDENING'S STATUS: refused as validation,
+  legitimate as EXPLORATORY (margins-on-neighbors, worth knowing,
+  worth nothing as a license — the label is the whole difference).
+  THE GENERALIZATION CARVED beside the specific: **the wild-1404
+  is the census, not a sample — every same-population instrument
+  wanting held-out data is BLOCKED-BY-WORLD-SIZE until the
+  population definition changes**; the relaxation was only the
+  first customer (invariance work, future marker work,
+  calibrations all inherit it).
