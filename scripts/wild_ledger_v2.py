@@ -14,6 +14,7 @@ import sys, os, json, re, hashlib
 sys.path.insert(0, "."); sys.path.insert(0, "scripts")
 os.environ.setdefault("ALG2", "1"); os.environ.setdefault("ALG_FTYPES", "8")
 os.environ.setdefault("ALG_HW", "512"); os.environ.setdefault("ALG_DUP", "1")
+os.environ.setdefault("ALG_WIDE", "1")  # gen-23 manifest era
 import numpy as np
 from collections import Counter, defaultdict
 from phase1_algebra_head import T_ALG, build_params, forward, decode, sent_indices, TOKENIZER_JSON
