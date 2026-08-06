@@ -25259,3 +25259,28 @@ token-position × waist-dim, the moment the skeleton trains.
   ALREADY STOCKED, no new harvesting needed; the road is unblocked
   and waits only on its registration (through the door) + the
   chain run over the held-out slice with candidate marker subsets.
+
+- **THE DUP THRESHOLD HUNT'S VERDICT — THE WALL SURVIVES THE DOSE
+  (2026-08-06; read against the door's registered bars,
+  dup_threshold_hunt):** on the guard-verified held-out forms:
+  **g22 60/60, v120 60/60, vdup19 60/60 — dup-novel misbind
+  UNMOVED at 19 phrasings, two past fdiv's felling zone** — while
+  fdiv holds 8/8 under vdup19 (regression clean; the new dup
+  entries cost fdiv nothing). THE REGISTERED PIN FIRES ON ITS
+  DISCOVERY BRANCH: **dup is the first construction whose wall
+  survives the dose that felled another's — dup's wall is NOT
+  phrasing-count; a second axis exists, binding-side, in
+  ALG_DUP's territory.** Convergent with dup's whole history read
+  backward: args=[a,a] was unrepresentable until a BIT was added
+  (structural entry, not diet); the six-arm DUP FIRE's 0/120 at
+  every surface; the crowding species' filler-free failures — the
+  construction's pathology was always BINDING-side, and the hunt
+  now proves phrasing-count cannot reach it at fdiv-felling
+  doses. Honest scope: a far higher threshold remains logically
+  possible; the pinned claim refuted is behaves-like-fdiv-at-the-
+  17-zone, and the axis question is now the lead. THE
+  PER-CONSTRUCTION LAW SHARPENS: thresholds are per-construction
+  AND some constructions' walls are not phrasing-walls at all —
+  the surface road's domain is parse-side AND construction-
+  dependent within parse-side. No promotion; the door's first
+  customer closes its loop registration→fire→read→verdict.
