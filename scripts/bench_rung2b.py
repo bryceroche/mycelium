@@ -147,5 +147,5 @@ print(f"=== VERDICT (pinned): {verdict} ===")
 json.dump({"ckpt": CKPT, "n": int(len(scores)), "n_correct": int(len(pos)),
            "n_misbound": int(len(neg)),
            "auc": None if np.isnan(auc) else auc, "verdict": verdict},
-          open(".cache/bench_rung2b.json", "w"), indent=1)
-print("[saved] .cache/bench_rung2b.json")
+          open(f".cache/bench_rung2b_{os.path.basename(CKPT).split(chr(46))[0]}.json", "w"), indent=1)
+print(f"[saved] .cache/bench_rung2b_{os.path.basename(CKPT).split(chr(46))[0]}.json")

@@ -25247,3 +25247,15 @@ token-position × waist-dim, the moment the skeleton trains.
   TRUE); fire = same recipe, arm vdup19, burning now. The read
   lands on a fresh guard-verified held-out dup form when the
   burn completes.
+
+- **TWO SMALL MOVES WHILE THE HUNT BURNS (2026-08-06; my choice):**
+  (1) THE ARTIFACT-CLOBBER RETIRED: bench_rung2b.py now writes
+  bench_rung2b_<ckpt-stem>.json — per-ckpt artifact names; the
+  fixed-path shared-state hazard flagged yesterday closes at its
+  site (the two-home treatment for artifact names, applied where
+  the hazard was caught). (2) THE RELAXATION SCOUT: **339 held-out
+  harvest rows exist** (harvest 1,743; the wild ledger consumed
+  1,404) — the marker relaxation's lawful validation slice is
+  ALREADY STOCKED, no new harvesting needed; the road is unblocked
+  and waits only on its registration (through the door) + the
+  chain run over the held-out slice with candidate marker subsets.
