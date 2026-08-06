@@ -25179,3 +25179,18 @@ token-position × waist-dim, the moment the skeleton trains.
   the metadatum enters as SUPERVISION (the roster works because
   it's trained, not injected; C1-A: auxiliary prediction beats
   hint concatenation), never as a marker bolted into text.
+
+- **THE DECEMBER PIN ON THE SURFACE ROAD (2026-08-06, Bryce;
+  banked before the cold session):** "the surface road works" and
+  "the surface road moves December" are SEPARABLE claims with
+  different evidence — the road has a MEASURED DOMAIN (parse-side
+  constructions, per-construction phrasing threshold, wall falls
+  categorically) and a MEASURED BOUNDARY (nothing on the
+  membership axis where 0.02 lives; flip unmoved by the table
+  that dissolved a wall the same day). The road's December value
+  is bounded by how much of the frontier's failure is PARSE-SIDE
+  — the census's arithmetic (34/46 wild lies out-of-dialect;
+  values and knowledge walls dominating) rides into the cold
+  session pinned beside the slope. Present-but-unextracted is a
+  metadatum's signature; capabilities are missing, metadata is
+  unread (#169 ratified).
