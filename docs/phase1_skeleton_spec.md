@@ -25211,3 +25211,21 @@ token-position × waist-dim, the moment the skeleton trains.
   quoted in the ledger); the script writes a fixed path — a
   stale-clobber hazard for a shared artifact name, noted for the
   deep-clean list.
+
+- **THE PRE-REGISTRATION DOOR BUILT (2026-08-06; my choice on the
+  open word; #159 made real; mycelium/preregistration.py; self-test
+  PASS):** the campaign's first FORESIGHT FENCE ships:
+  register(name, bars) pins bars to
+  .cache/registrations/<name>.json with commit hash + timestamp
+  and **REFUSES RE-REGISTRATION** (bars never bend — a second
+  pinning under the same name is a hard error, not an update);
+  require(name, artifact) is the read-side door — no registration
+  = no verdict, and a registration that POSTDATES an existing
+  artifact's mtime refuses the read (the re-read case caught).
+  Self-test proves all three properties: fresh passes, postdated
+  refuses, rebinding refuses. THE HONEST SCOPE carried in the
+  docstring: ordering enforced, blindness not claimed —
+  omissions (the confession list's entire population) are
+  converted into acts. ADOPTION PATH, not retroactive: new reads
+  use the door from birth; existing scripts migrate as they're
+  next touched (organize-machinery: no big-bang rewrite).
