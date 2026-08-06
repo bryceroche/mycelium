@@ -24999,3 +24999,43 @@ token-position × waist-dim, the moment the skeleton trains.
   tranche audits its routing filters against the new entries'
   phrasings as part of the license, not as an afterthought of
   the prep.
+
+- **THE SLOPE PROBE'S READ — THE TIE BREAKS ON FDIV, HOLDS ON DUP
+  (2026-08-06; all four arms on IDENTICAL fresh held-out probes,
+  recursion guard passed):** fdiv-novel quorum ("chopped into
+  same-size chunks", never seen by any table): **g22 0/8, vlow
+  0/8, vfull 0/8 — v120 8/8.** The 41-entry arms produced ZERO
+  generalization to the novel form; the 102-entry table produced
+  TOTAL generalization. **#160's PINNED PREDICTION IS REFUTED on
+  this axis** — coverage-sized expansion did NOT tie; the "41 was
+  simply too few" branch fires, and the surface road's slope is
+  MEASURED (0/8→8/8 between 8 and 17 fdiv phrasings) rather than
+  predicted. THE OTHER AXIS: dup-novel misbind 60/60 on ALL arms
+  including v120 — the dup band did not move (11 phrasings did not
+  cross whatever fdiv's 17 crossed). AXIS-DEPENDENT THRESHOLD:
+  the slope is real, per-construction, and somewhere between 8
+  and 17 phrasings for fdiv; the sizing question is now
+  per-construction phrasing count, not table total — which is the
+  redundancy-per-slot QUANTITY even though the bowl's specific
+  sizing claim (must exceed census) was refuted. Honest note: the
+  probes changed from the banked +0.7% read (old forms no longer
+  held-out for v120) — cross-arm comparison is clean (identical
+  probes, all arms fresh); comparison to the OLD tie is
+  cross-probe and not claimed. Phase B (flip, 2b) rides next; no
+  promotion — g22-lineage remains the gate.
+
+- **GUT #166 REGISTERED — "BIAS FOR ACTION, BLEND BY SITUATION"
+  (2026-08-06; beside #165; the reversibility discriminator is
+  the content):** the pairing is #165 convergent (said so, not
+  counted twice); the NEW piece is the trigger rule: **act where
+  inaction is irreversible; wait where action is.** The campaign's
+  disposition ledger sorts by reversibility and was never named:
+  no-mid-fire / pacing / audit-before-diet = wait-where-action-
+  is-irreversible; the gates, kills, and bars = act-where-
+  inaction-is (a lie certified is unrecoverable; a fire refused
+  is a re-run). THE SCREEN applied to the live case: the trace-
+  layer relaxation is reversible action (markers re-tighten;
+  held-out prices it) against a standing 313-correct discard —
+  bias toward the move, contingent on the held-out validation the
+  registration already requires. Reframe status stated; screens
+  are cheap.
