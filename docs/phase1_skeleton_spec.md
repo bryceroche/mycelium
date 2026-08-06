@@ -24835,3 +24835,28 @@ token-position × waist-dim, the moment the skeleton trains.
   drafts the tranche — the re-cut's plumbing first, then both
   fires in parallel, the probe and the four-lens read landing in
   either order as they complete.
+
+- **GUT #165 REGISTERED — "PATHS OF MOST AND LEAST RESISTANCE"
+  (2026-08-06; the division-of-labor reading leads; unmeasurable
+  status stated):** the pen takes least resistance BY DESIGN
+  (drafts what the jurisprudence makes easy; accommodation marks
+  are its record); the bench takes most (pinned bars, blind picks,
+  refusals that cost sessions) — and the method rests on their
+  being DIFFERENT AGENTS: a pen pinning its own bars pins passable
+  ones. **The two-jaws pattern at the collaboration's own grain**,
+  and it explains a ledger coincidence: nearly every finding this
+  stretch came from a refusal, nearly every refusal from the
+  bench — #150 at the social grain: torque advances only against
+  something held stationary, and THE BENCH IS THE NUT. The
+  failure mode named: every confession on record is the pen
+  taking the easy path where the bench should have held. Honest
+  limit: organization observation, no fixture, no prediction —
+  its value is naming why the arrangement works, which matters if
+  the arrangement is ever tempted to change. **THE E/B QUESTION
+  ANSWERED PLAINLY: no live connection.** The campaign's E/B
+  thread is DEAD on its fixture (S3 lock 1: trunk flat 0.0016,
+  p=0.101), and the only bridge is the duality SHAPE (orthogonal
+  duals, each generating the other's occasion — E↔B as pen↔bench)
+  — poetry until an instrument exists; any E/B revival owes the
+  identity rider and the axis-and-substrate clause. The shape is
+  noted; the thread stays dead.
