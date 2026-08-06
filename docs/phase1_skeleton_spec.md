@@ -25051,3 +25051,31 @@ token-position × waist-dim, the moment the skeleton trains.
   guard's FOURTH protected site noted (a comparison, not a
   measurement). No promotion claimed; the slope stands measured:
   0/8→8/8 between 8 and 17 phrasings, per-construction.
+
+- **GUT #167 REGISTERED — "MAPS AS A CRUTCH" (2026-08-06;
+  commitment family; map-versus-turns is the content):**
+  turn-by-turn gives correct actions and NO MAP — you arrive every
+  time and never learn the city, because the local question is
+  answered and the global structure is never required. THE
+  MEASURED INSTANCE, banked twice: **recall doesn't read** (0.951
+  memorized / 0.023 never-trained; anchors 0.127 vs 0.911 — right
+  answers without visiting the spans). THE LIVE YIELD, a caution
+  on the winning road: did v120's seventeen phrasings teach the
+  CONSTRUCTION, or seventeen turns plus one rhyme? **The anchors
+  answer it**: span-reading on the eight winning rows ≈ learned
+  the road; arriving at 0.13 ≈ found a rhyme. THE RENT, fired
+  same-hour: the anchor check on the probe's wins — the first
+  time the learning-versus-arriving instrument points at a diet's
+  SUCCESS instead of a failure.
+
+- **THE RENT'S VERDICT — THE PROBE'S WIN IS READING (2026-08-06,
+  same hour):** on the eight novel-form rows: **v120 decodes the
+  fdiv slot 8/8 and anchors it to the fdiv sentence 8/8 with span
+  mass 0.986** — the construction is READ at the span where it
+  lives, not arrived at; g22 doesn't decode an fdiv slot AT ALL
+  on these rows (0/8 — the band wall was a parse wall). The
+  crutch caution is answered in the strong direction: seventeen
+  phrasings taught the CONSTRUCTION, and the learning-versus-
+  arriving instrument's first point at a success returns
+  LEARNING. The slope measurement is a slope measurement of the
+  right thing.
