@@ -25460,3 +25460,19 @@ token-position × waist-dim, the moment the skeleton trains.
   7 = valve-with-noise unless repeated; dup stays 60/60; no
   promotion. Equalized TRUE against vfull's 6,540; fire burning
   as aug-vf14.
+
+- **THE BRACKET READ'S VERDICT — VALVE (2026-08-06; read against
+  the door's bars, fdiv_bracket_14):** vf14 prints **fdiv-novel
+  8/8** (dup 60/60, regression clean) — categorical at 14, per
+  the pinned bar: **VALVE. "Slope" retires as "under load" did**
+  (the registered vocabulary consequence executes: the road's
+  sizing question is VALVE-HUNTING — binary search per
+  construction — not dose curves). The bracket NARROWS: fdiv's
+  crossing sits in 11–14; the composition caveat mattered only
+  for a graded print and none came. THE VOCABULARY LAW'S FIRST
+  PROSPECTIVE EXECUTION: a word caught presuming a shape, tested
+  within a day, retired by measurement — the campaign's sizing
+  language now matches the world's measured behavior: nothing
+  partial happens at a wall, and walls have locations, not
+  gradients. Four door customers, four complete transits, zero
+  improvisation.
