@@ -24968,3 +24968,20 @@ token-position × waist-dim, the moment the skeleton trains.
   TIES if the bowl reason holds). NEXT: mix assembly + the 4k
   probe fire on its standing word (already given), same rows,
   same dose, one arm.
+
+- **THE SLOPE PROBE IS LIT (2026-08-06; word given; the
+  equalization rider CAUGHT A LIVE CONFOUND before it burned):**
+  prep v1 rendered 8,240 rows where vfull had rendered 6,540 —
+  the v2 table's richer pool reached rows the old pool couldn't,
+  which is EXACTLY the rider's confound (which-rows changing
+  alongside how-many-phrasings). The first launch was STOPPED,
+  the prep restricted to vfull's exact row set (identical: TRUE,
+  6,540), and the fire relaunched clean — **the only delta
+  between v120 and vfull is now the table.** Filters fixed at
+  build: dup mul-markers extended (square/multiplied), sel
+  smaller-markers (minimum), constrained-k exclusions
+  (quarter/fifth join Half/third) — three gold-breaking
+  misclassifications caught by reading the prep before adapting
+  it. Fire: 4×4k from g22, seed 100-era, arm v120, ckpt
+  g24_v120; the read lands against the banked vlow/vfull arms
+  (both tied +0.7%) and #160's pinned prediction.
