@@ -25476,3 +25476,18 @@ token-position × waist-dim, the moment the skeleton trains.
   partial happens at a wall, and walls have locations, not
   gradients. Four door customers, four complete transits, zero
   improvisation.
+
+- **THE BRACKET COUNTERSIGN (2026-08-06, Bryce):** the
+  prevention-vs-correction line carved ("under load" retired after
+  a month's damage; "slope" caught presuming, tested in a day —
+  the same upgrade the door made to bars). THE PRICE CONSEQUENCE:
+  valve-hunting is BINARY SEARCH, not curve-mapping — per-
+  construction sizing was expensive under a slope model and is
+  CHEAP under a valve model; December's surface arithmetic
+  inherits the price change. RULINGS: the 11–14 refinement is
+  DEPRIORITIZED (two fires for three-phrasing resolution on a
+  solved construction); **dup's next hunt is an AXIS SEARCH, not
+  a phrasing dose** — the binding-side finding says phrasing
+  isn't dup's axis; the question is whether ANY axis has a
+  crossing for it, which is a different design owing its own
+  registration when its word comes.
