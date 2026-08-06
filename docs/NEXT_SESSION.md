@@ -1,31 +1,38 @@
-# NEXT SESSION — cold start (updated 2026-08-05, end of the steering-arc session)
+# NEXT SESSION — cold start (updated 2026-08-06, end of the two-day surge)
 
-**FIRST DUTIES (words already given; two fires, parallel plan):**
-0. **Wild re-cut** — consumed-field resolution (zero-GPU) FIRST, then
-   exhaust-port plumbing (every link banks would-be answer + gold),
-   then the 1,404-row chain fire IN BACKGROUND (four-lens read:
-   population/attrition/virtue-vs-leak/enrichment gradient;
-   proportion rider: stage-wise denominators explicit).
-1. **The pen tranche** — ~80 new licensed entries (full jurisprudence:
-   axis tags, grammar stamps, rulebook) to bring the table to ~120.
-   The tranche's quality IS the probe's control.
-2. **The slope probe fires** — one arm, 120 entries, same rows/dose
-   (design at its ruling in the ledger).
-3. **The read** — against the original bars AND #160's pinned
-   prediction (coverage-sized 120 TIES if the bowl reason holds;
-   tie buys the redundancy-per-slot sizing rule).
+**READ FIRST:** CLAUDE.md → this file → the ledger's last ~30 entries
+(the surge: filler arc → steering arc → re-cut → slope probe → dup
+hunt → population exhaustion).
 
-**Holding for words:** the wild re-cut (3 riders: consumed-field
-first / every stage banks drops / correct-attrition only), the
-pre-registration door (#159, row_m shape), arms A/B (anchor-bias,
-bank surgery), the schema floor, the cold framing session
-(docs/DECEMBER_FRAMING.md), the clock (organ 3).
+**THE BOARD (words holding):**
+1. **The cold framing session** (Bryce's; docs/DECEMBER_FRAMING.md)
+   — now with quintuple inheritance: measured surface slope
+   (fdiv 0/8→8/8 at 17 phrasings), proof it's learning (anchors
+   0.986), the boundary (flip/settle untouched — parse-side only),
+   the dup axis (wall is binding-side, not phrasing-count), and the
+   census generalization (wild-1404 = the census; blocked-by-world-
+   size standing for all same-population held-out reads).
+2. **The invariance proposal** (#163: canonicalizer-as-oracle,
+   paraphrase pairs agree in the waist) — own generation (#126);
+   registration through the door first.
+3. **The clock** (organ 3) — spec-stage.
+4. Quiet: subject-widening exploratory read (margins-on-neighbors,
+   NO license authority); arms A/B (anchor-bias, bank surgery);
+   schema floor (#169: orientation metadata, teaching-not-telling).
 
-**This session's yield (ledger has full forms):** the steering arc
-closed end-to-end (revolving door → door opens 0.89→0.13 → gates
-eliminated → estimator refuted → ceiling 0.330@zero-harm → December
-arithmetic: <1 answer now, DEFERRED, revisit on mouth widening);
-load referent map COMPLETE; organ 2 full first cycle; laws carved:
-relative-discriminators-only, refusal-evidence (gates bank drops),
-naming-failure (3rd instance); detector_authority.py built;
-registry at 160 (eleven straight rule-producing entries).
+**STANDING RULINGS (fresh):** marker relaxation = fork (b): no
+validation no relaxation; converges with mouth-widening revisit.
+Registration marker_relaxation_heldout is VOID-BY-POPULATION.
+The pre-registration door (mycelium/preregistration.py) is LIVE —
+new reads register before existence; bars never rebind.
+
+**KEY NEW LAWS:** relative-discriminators-only; refusal-evidence
+(gates bank drops); held-out-inherits-population-definition;
+routing-filter clause (licenses audit their routers); the parse
+wall; the naming-failure law (3 instances); what's-held-stationary
++ level-vs-contrast screens.
+
+**ARTIFACTS OF THE SURGE:** wild_ledger_v2.jsonl (exhaust ports,
+838 would-be answers), relative_mass/scatter/anchors at slot grain,
+aug_table_v3 (110 licensed), g24_v120 + g24_vdup19 ckpts,
+registrations/ (the door's ledger).
