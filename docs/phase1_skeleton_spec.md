@@ -25303,3 +25303,22 @@ token-position × waist-dim, the moment the skeleton trains.
   slice inherits the POPULATION DEFINITION, not just the
   non-overlap; sibling of the vintage-mixing law, at the
   validation-design grain.
+
+- **THE HARVEST EXTENSION SCOUT — THE POPULATION IS EXHAUSTED
+  (2026-08-06; verified against the source: algebra train 1,744 +
+  prealgebra 1,205 = 2,949 = raw's exact count):** math_harvest_v0
+  already consumed the ENTIRE algebra+prealgebra MATH train split
+  — **no same-population held-out slice can exist**; the wild-1404
+  is the whole world under the current population definition, and
+  every row of it has served as the tuning table. THE FORK THIS
+  FORCES, a genuine scope decision (the word's, not the pen's):
+  (a) SUBJECT-WIDENING — counting_and_probability / number_theory
+  train under identical filters, declared as ADJACENT-POPULATION
+  pricing (weaker inference, honestly labeled: it validates the
+  markers' margins on neighbors, not peers); or (b) NO VALIDATION
+  → NO RELAXATION — the trace layer's trade stays priced-but-
+  unmoved until the mouth-widening era brings new same-population
+  text naturally. Both branches honest; neither chosen here. The
+  chain of near-misses now fully mapped: 339 rejects → not a
+  slice; extension → empty; the relaxation road's true state is
+  BLOCKED-BY-WORLD-SIZE, which no one knew this morning.
