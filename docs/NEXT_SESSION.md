@@ -1,6 +1,11 @@
 # NEXT SESSION — cold start (updated 2026-08-05, end of the steering-arc session)
 
-**FIRST DUTIES, in order (words already given):**
+**FIRST DUTIES (words already given; two fires, parallel plan):**
+0. **Wild re-cut** — consumed-field resolution (zero-GPU) FIRST, then
+   exhaust-port plumbing (every link banks would-be answer + gold),
+   then the 1,404-row chain fire IN BACKGROUND (four-lens read:
+   population/attrition/virtue-vs-leak/enrichment gradient;
+   proportion rider: stage-wise denominators explicit).
 1. **The pen tranche** — ~80 new licensed entries (full jurisprudence:
    axis tags, grammar stamps, rulebook) to bring the table to ~120.
    The tranche's quality IS the probe's control.
