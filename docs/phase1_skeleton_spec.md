@@ -24860,3 +24860,17 @@ token-position × waist-dim, the moment the skeleton trains.
   — poetry until an instrument exists; any E/B revival owes the
   identity rider and the axis-and-substrate clause. The shape is
   noted; the thread stays dead.
+
+- **#165 COMPLETED — THE ARRANGEMENT'S BLIND SPOT (2026-08-06,
+  Bryce's countersign):** the asymmetry named as the honest
+  completion: **the bench catches the pen because the pen's output
+  is legible; nothing structural catches the bench ruling badly** —
+  a bar pinned too loose, a countersign that rationalizes, a
+  caution that overreaches. The pen's pushback exists on the
+  record (the numbering correction, the #150 sequencing, the
+  "is 2% too strict" question) but is OCCASIONAL where the
+  bench's review is STRUCTURAL. Named rather than left implied;
+  no cure proposed — the known partial mitigations are already
+  law (bars in the frontier's standard forms, verdicts quoting
+  artifacts, the conviction index), all of which constrain WHAT
+  a ruling can say rather than reviewing the ruler.
