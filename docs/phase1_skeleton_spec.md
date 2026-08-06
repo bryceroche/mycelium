@@ -25079,3 +25079,17 @@ token-position × waist-dim, the moment the skeleton trains.
   arriving instrument's first point at a success returns
   LEARNING. The slope measurement is a slope measurement of the
   right thing.
+
+- **THE PARSE-WALL REFRAME (2026-08-06, Bryce's countersign):**
+  the surface band on this axis was neither a competence nor a
+  binding boundary — it was a **PARSE WALL: below threshold the
+  construction doesn't exist to the model; above it, it reads at
+  its span like a native form.** Explains both tied fires AND the
+  categorical break: nothing partial happens at a wall. The
+  instrument's first success-pointed outing ratified as standing
+  practice (every diet win owes an anchor check; minutes per).
+  THE COLD SESSION'S INHERITANCE stated: a measured slope AND
+  proof it's real learning, on one construction; dup at 60/60,
+  threshold unlocated — **December's surface term is now "how
+  many phrasings per slot, per construction": a question with a
+  method behind it rather than a hope.**
