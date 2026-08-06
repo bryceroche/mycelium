@@ -25146,3 +25146,36 @@ token-position × waist-dim, the moment the skeleton trains.
   organize-machinery-not-material boundary at a new site. The
   standing question ratified at zero cost: *did the instrument's
   resolution set this number, or the mechanism's ceiling?*
+
+- **PHASE B, FLIP LEG — THE WILD FLIP IS NOT A PHRASING-COUNT
+  PROBLEM (2026-08-06; instrument reproduced EXACTLY: g22 66/30/0,
+  vfull 50/28/18 vs banked — no drift, reads fire):** flip rates
+  on the wild transformable items: **g22 68.8% / vfull 64.1% /
+  v120 67.5%** — the 102-entry table moves wild flip NOWHERE
+  (67.5≈68.8), while the same table took novel-form fdiv 0/8→8/8
+  the same day. THE SEPARATION this prints: the parse wall was a
+  phrasing-count problem and fell at 17; **wild flip is
+  membership-territory** (recall under transformation, the
+  mechanism boundary's phenomenon) — a diet lever doesn't reach
+  it, consistent with recall-doesn't-read. The rung2b leg emitted
+  nothing (unit sequencing) — small read, owed, not blocking.
+
+- **GUT #169 REGISTERED — "MISSING ORIENTATION METADATA"
+  (2026-08-06; commitment family; the naming that unifies):** the
+  model orients by sentence index and consumes positions as if
+  EVERY sentence were load-bearing — **the missing metadatum is
+  which sentences carry constraints**, and the filler family is
+  what that assumption costs (zero fillers zero mis-anchor; C1-A
+  0.741 = the info is in the text and not reliably extracted —
+  the shape of a metadatum, not a capability). THE UNIFICATION:
+  the roster is the ONE orienting metadatum the model has (its
+  ablation 0.953→0.016, the campaign's largest effect — the
+  address table IS orientation); constraint-bearing marks would
+  be the ROSTER'S SECOND FIELD; #148's roster-relative arm was
+  architectural for exactly this reason. THE SHARPER JOB
+  STATEMENT for the schema floor: **the floor supplies
+  orientation metadata the parse currently infers wrong a
+  quarter of the time.** FENCE: teaching-not-telling governs —
+  the metadatum enters as SUPERVISION (the roster works because
+  it's trained, not injected; C1-A: auxiliary prediction beats
+  hint concatenation), never as a marker bolted into text.
