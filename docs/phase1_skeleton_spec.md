@@ -25391,3 +25391,35 @@ token-position × waist-dim, the moment the skeleton trains.
   the harvest extension is MOOT post-ruling (population exhausted,
   fork (b) stands); the true board: cold session, invariance
   registration, the clock.
+
+- **THE VOCABULARY LAW (2026-08-06, Bryce's countersign on #171):**
+  carved at its second instance: **vocabulary inherited from a
+  default assumption is a species of unexamined premise** — "under
+  load" covered two mechanisms; "slope" presumes a grade no
+  measurement showed; both found by measuring past them. The
+  relay-bias law's twelfth sighting acknowledged from the word's
+  own side — it caught the wordsmith, not the record.
+
+- **THE INVARIANCE FIRE REGISTERED — THE DOOR'S THIRD CUSTOMER
+  (2026-08-06; my choice on the open word; #163 made concrete;
+  registered before mint, trainer, or fire exist):** THE DESIGN:
+  paraphrase-PAIR training — the mint renders the SAME factor
+  graph twice through different licensed table entries (pair
+  identity certified by canonical_digest equality: the external
+  oracle, Goodhart-safe like the key — never a model signal); the
+  trainer adds an AGREEMENT TERM pulling the pair's matched slot
+  representations together in the waist (small pinned weight);
+  gold unchanged; #126 stamped — machinery, its own generation,
+  rides no diet. BARS (in the door,
+  .cache/registrations/invariance_fire.json): (i) PRIMARY: a
+  never-licensed form family improves vs the v120 continuation
+  control on guard-verified held-out probes; (ii) no-regression:
+  bigtest within −5 of control at graph-solve; (iii) the anchor
+  rider on any win; KILL: agreement term costs bigtest >5. THE
+  DISCRIMINATING PIN, the valve model's own test: **invariance
+  training should move parse-side VALVES (constructions cross at
+  lower phrasing counts) and should NOT touch dup** (binding-side
+  wall — if dup moves under an agreement term, the binding-side
+  conclusion needs revisiting; if it holds while valves move, both
+  findings confirm each other). The fire holds for its word; the
+  registration is the deliverable.
