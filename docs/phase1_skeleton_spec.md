@@ -25284,3 +25284,22 @@ token-position × waist-dim, the moment the skeleton trains.
   the surface road's domain is parse-side AND construction-
   dependent within parse-side. No promotion; the door's first
   customer closes its loop registration→fire→read→verdict.
+
+- **THE RELAXATION SCOUT CORRECTED — THE 339 ARE NOT A SLICE
+  (2026-08-06; caught at design-for-build, before any burn):** the
+  scout's claim ("339 held-out rows, no new harvesting needed") is
+  WRONG and struck: the 339 are the population FILTER'S REJECTS
+  (len≥300 / asy figures / values>300 / non-integer answers) — a
+  different distribution by construction, not held-out peers; a
+  validation on them would price the relaxation on rows the chain
+  was never meant to see. **REGISTRATION marker_relaxation_heldout
+  (85d0c44cdb0b) IS VOID-BY-POPULATION** — its design premise
+  fails; the door's immutability holds (no edit, no rebind): the
+  void is declared here, in the ledger, and a v2 registration
+  waits on the actual unblock — **a fresh harvest extension from
+  the MATH training split** (same filters, rows beyond v0's
+  coverage; dataset downloads are lawful). The near-miss's shape
+  banked: "available rows" ≠ "same-population rows" — a held-out
+  slice inherits the POPULATION DEFINITION, not just the
+  non-overlap; sibling of the vintage-mixing law, at the
+  validation-design grain.
