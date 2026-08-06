@@ -25229,3 +25229,21 @@ token-position × waist-dim, the moment the skeleton trains.
   converted into acts. ADOPTION PATH, not retroactive: new reads
   use the door from birth; existing scripts migrate as they're
   next touched (organize-machinery: no big-bang rewrite).
+
+- **THE DUP THRESHOLD HUNT IS LIT (2026-08-06; my choice on the
+  open word; THE DOOR'S FIRST CUSTOMER — registered through
+  mycelium/preregistration.py BEFORE tranche, prep, or fire
+  existed; commit d82b23f85480 pinned 11:40):** bars in the
+  registration: primary = dup-novel misbind <45/60 moves the wall,
+  <15/60 fells it; pin = per-construction threshold predicts dup
+  behaves like fdiv near 17 phrasings, and a 60/60 tie at 19 =
+  dup's wall is NOT phrasing-count (a second axis exists —
+  binding-side, the ALG_DUP bit's territory); anchor rider on any
+  win; no promotion. EXECUTION: TRANCHE5 (dup 11→19, 8 new
+  phrasings) licensed 110/110; the routing clause caught its
+  second customer ("own-product" lacked every mul-marker —
+  "roduct" added BEFORE prep, the same silent-poison shape as
+  square-of); prep equalized to vfull's exact 6,540 (verified
+  TRUE); fire = same recipe, arm vdup19, burning now. The read
+  lands on a fresh guard-verified held-out dup form when the
+  burn completes.

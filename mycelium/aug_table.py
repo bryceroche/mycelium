@@ -254,3 +254,15 @@ TRANCHE4 = [
     ("subadd", "take-away",  "Taking {b} away from {a} leaves {c}.", None, False),
     ("subadd", "remains",    "When {b} is removed from {a}, {c} remains.", None, False),
 ]
+
+# tranche 5 (2026-08-06, the dup threshold hunt — dup-only, 11 -> 19):
+TRANCHE5 = [
+    ("dup", "add-itself",   "Adding {a} to itself gives {c}.", None, False),
+    ("dup", "pair-of",      "A pair of {a}s makes {c}.", None, False),
+    ("dup", "same-again",   "{a} plus the same again is {c}.", None, False),
+    ("dup", "twice-over",   "{a} taken twice comes to {c}.", None, False),
+    ("dup", "self-times",   "{a} times itself equals {c}.", None, False),
+    ("dup", "squared",      "{a} squared is {c}.", None, False),
+    ("dup", "own-product",  "The product of {a} with itself is {c}.", None, False),
+    ("dup", "doubles-to",   "{a} doubles to {c}.", None, False),
+]
