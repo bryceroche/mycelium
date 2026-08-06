@@ -25194,3 +25194,20 @@ token-position × waist-dim, the moment the skeleton trains.
   session pinned beside the slope. Present-but-unextracted is a
   metadatum's signature; capabilities are missing, metadata is
   unread (#169 ratified).
+
+- **PHASE B, RUNG-2B LEG — SETTLE STAYS POPULATION-SPECIFIC UNDER
+  v120 (2026-08-06):** on the dup-misbinding bench under the
+  v120 ckpt: settle medians correct 3.551 vs misbound 3.674, AUC
+  0.507 — FLAT; the pinned verdict prints POPULATION-SPECIFIC
+  (settle is a pct-frame phenomenon), now under a third gate
+  lineage. Note: unlike wet_d12's UNSCORABLE (0 misbound), v120
+  produces both classes on this bench and settle still doesn't
+  separate them. PHASE B COMPLETE, one sentence: **the 102-entry
+  table changes NEITHER register signal (flip unmoved, settle
+  unmoved) while dissolving a parse wall the same day — the
+  surface road's effects are parse-side only, measured now on
+  three instruments.** Housekeeping flag: bench_rung2b.json was
+  OVERWRITTEN by the re-run (the old wet_d12 verdict survives
+  quoted in the ledger); the script writes a fixed path — a
+  stale-clobber hazard for a shared artifact name, noted for the
+  deep-clean list.
