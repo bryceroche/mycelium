@@ -24789,3 +24789,24 @@ token-position × waist-dim, the moment the skeleton trains.
   any resurrection owes an identity rider naming what the oracle
   read killed. #161's screen convicted a candidate generated
   AFTER the screen was written — the first prospective conviction.
+
+- **GUT #164 REGISTERED — "THE SAUCE REDUCES" (2026-08-05; exchange
+  family, beside #138; selective loss is the content):** reduction
+  removes the SOLVENT, not the solute — nothing added, correct at
+  the start, wrong at the end because the denominator left. The bar
+  vs the berries cleared: berries deplete by removal of both
+  classes; reduction is SELECTIVE — **the concentrating quantity is
+  the one that CANNOT EXIT.** THE MEASURED INSTANCE, banked
+  tonight: 1,404 in, 124 verdicts out, and every gate removes a
+  solvent it can see (foreign text, lexical mismatch, disagreement,
+  unattested values) — **what concentrates at certification is
+  whatever no gate can see**: 77/78 wild correct = membership;
+  confident systematic misparses pass at unanimity. THE YIELD:
+  [1293], the counterfeit warrant, and the memorization result
+  restated as ONE MECHANISM — the certified population is ENRICHED
+  in exactly the failure modes the chain is blind to. THE
+  PROSPECTIVE CLAIM: **any new fence further concentrates what it
+  can't detect** — fence-adding has a hidden cost coverage numbers
+  don't show; stated now so it's not discovered by adding one.
+  Fence on the fence: a reframe like the muffler, and says so —
+  the prediction is the value.
