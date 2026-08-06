@@ -25364,3 +25364,30 @@ token-position × waist-dim, the moment the skeleton trains.
   held, copy-not-generate the successor). The screen joins
   what's-held-stationary and level-vs-contrast as the third
   spec-time question.
+
+- **GUT #171 REGISTERED — "TWO VALVES ON THE HOSE" (2026-08-06;
+  exchange family; valve-versus-slope is the content):** the
+  segment between two valves stays pressurized after the upstream
+  shutoff — "off" at the source, stored energy in the line. THE
+  INSTANCE: the tied fires read "no effect" while the pressure sat
+  in the line — fdiv 0/8→8/8 on a form no table contained, g22 not
+  merely wrong but NEVER DECODING THE SLOT: closed, closed,
+  closed, open. THE SHARPENING: **thresholds are VALVES, not
+  slopes** — "slope" has been doing work the measurements don't
+  show (nothing partial at 8, 11, or 17); the sizing question is
+  "where's the valve," not "how steep the climb." The dup
+  prediction arrives independently at the banked conclusion: dup's
+  wall is a DIFFERENT valve, possibly one phrasing doesn't operate
+  — the binding-side finding re-derived from the valve model.
+  HONEST LIMIT: two constructions and resolution only at
+  8/11/17/19 — valve vs steep-sigmoid is UNSEPARATED. THE RENT,
+  unexercised and cheap: **the bracket read — one arm at 14
+  phrasings** (fdiv's crossing is bracketed 11–17; a valve
+  predicts 0/8 or 8/8 at 14, a sigmoid something between); same
+  design as the probe, only the table size changes; rides the
+  surface road's next word, no fire of its own needed. Relay
+  artifact noted and discarded (a stray tool-call apology; no
+  content); the relayed board line corrected against the record —
+  the harvest extension is MOOT post-ruling (population exhausted,
+  fork (b) stands); the true board: cold session, invariance
+  registration, the clock.
