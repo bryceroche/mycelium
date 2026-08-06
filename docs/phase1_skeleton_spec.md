@@ -24874,3 +24874,18 @@ token-position × waist-dim, the moment the skeleton trains.
   law (bars in the frontier's standard forms, verdicts quoting
   artifacts, the conviction index), all of which constrain WHAT
   a ruling can say rather than reviewing the ruler.
+
+- **RE-CUT DUTY 0 — THE CONSUMED FIELD RESOLVED (2026-08-06;
+  zero-GPU; the re-cut's population is settled):** text-identity
+  re-derivation (normalized harvest text ∩ gen23_mix) reproduces
+  the corrected consumption key EXACTLY: **81 trained (77/81
+  correct = 0.951) / 43 never-trained (1/43 = 0.023)** — the
+  December mechanism-boundary numbers confirmed from scratch. The
+  ledger's consumed FIELD (20 true; agrees with the re-derivation
+  on only 23/124) measures SOMETHING ELSE and is hereby
+  DEPRECATED for membership: **text identity is the authority**
+  (consistent with custody-gold law — membership keys on TEXT).
+  The re-cut's re-run banks membership by text identity per this
+  ruling; the field gets renamed or annotated at that write so no
+  future reader mistakes it. The trace now runs on the right
+  population. NEXT: exhaust-port plumbing, then the chain fire.
