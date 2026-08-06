@@ -24985,3 +24985,17 @@ token-position × waist-dim, the moment the skeleton trains.
   it. Fire: 4×4k from g22, seed 100-era, arm v120, ckpt
   g24_v120; the read lands against the banked vlow/vfull arms
   (both tied +0.7%) and #160's pinned prediction.
+
+- **THE ROUTING-FILTER CLAUSE (2026-08-06, Bryce's countersign on
+  the probe launch):** the three silent hazards (square-of as
+  addition, minimum as larger, constrained-k with arbitrary
+  divisors) were the POISONED-GOLD PATH — rows whose text and gold
+  disagree, entering with perfect custody paperwork — and they
+  were caught by READING THE PREP BEFORE ADAPTING IT, not by any
+  fence. The clause carved onto the check-design law:
+  **verification by construction INCLUDES THE FILTERS THAT ROUTE
+  ENTRIES TO ROWS** — a licensed entry is only as safe as the
+  router that decides where it renders; every future table
+  tranche audits its routing filters against the new entries'
+  phrasings as part of the license, not as an afterthought of
+  the prep.
