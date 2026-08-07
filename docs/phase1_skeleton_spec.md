@@ -25622,3 +25622,18 @@ token-position × waist-dim, the moment the skeleton trains.
   bars unmet-not-tested from v1 — this burn tests them. Honest
   delta note: ctl differs by term AND pair co-batching (inert
   without the term; order statistics only). Nothing promotes.
+
+- **THE INV2 COUNTERSIGN (2026-08-07, Bryce):** the diagnosis
+  carved: **ten epochs of patch-only template text isn't an
+  invariance experiment, it's a distribution shift wearing one** —
+  any result would have been about the substrate, not the term.
+  THE EQUALIZATION DISCIPLINE GENERALIZED: hold everything
+  constant except the thing under test, INCLUDING THE
+  DISTRIBUTION — the earlier fires held it by accident; this one
+  holds it on purpose. The co-batching note's status stated
+  precisely: sound argument, NOT a measurement — if the fire
+  prints marginal, that note is where the first question lands.
+  The decisive read re-ratified: anchor certification at fdiv's
+  0.986 standard — a win at low span mass is flattening wearing
+  invariance's clothes, a result that improves the number and
+  degrades the mechanism.
