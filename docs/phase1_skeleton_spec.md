@@ -25611,3 +25611,14 @@ token-position × waist-dim, the moment the skeleton trains.
   conviction of the mechanism. Ckpts g25_inv_* retained as
   collapse specimens only; nothing promotes; g22-lineage
   untouched.
+
+- **INV FIRE v2 LIT (2026-08-07; the substrate lesson applied
+  same-hour):** pairs EMBEDDED — the full 82,400-row mix with the
+  6,540 B-renderings APPENDED (88,940 rows; pair map a side file);
+  the sampler draws 2 pairs + 4 carrier rows per batch (the term
+  reads pair positions only); assembly patches A-changed + appends
+  B onto the banked g22 base states, sentinels ×6 required.
+  Arms ctl/inv, 4×4k from g22; registration dd52e4 stands with
+  bars unmet-not-tested from v1 — this burn tests them. Honest
+  delta note: ctl differs by term AND pair co-batching (inert
+  without the term; order statistics only). Nothing promotes.
