@@ -3,7 +3,7 @@
 after any registration. The ledger remains the sole authority)."""
 import re
 src = open("docs/phase1_skeleton_spec.md").read()
-pat = re.compile(r'\*\*GUT #(\d+)(?:\s*\(([^)]*)\))?\s*(?:REGISTERED)?\s*—\s*[“"]?([^”"(\n]+)', )
+pat = re.compile(r'\*\*GUT #(\d+)(?:\s*\(([^)]*)\))?\s*(?:REGISTERED)?\s*[—:+]\s*[“"]?([^”"(\n]+)', )
 lines = []
 for m in pat.finditer(src):
     num, paren, name = m.group(1), m.group(2) or "", m.group(3).strip().rstrip('"” ')

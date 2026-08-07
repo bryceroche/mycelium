@@ -1,5 +1,13 @@
 # THE GUT REGISTRY
 
+**STATUS (2026-08-07): FROZEN AT #100 — the rich historical record.**
+Hand-maintained through 2026-07-29 with verbatim words and dispositions;
+hand-maintenance went stale (the two-home lesson, demonstrated on this
+very file). The CURRENT spine is docs/GUT_INDEX.md — DERIVED from the
+ledger by scripts/gut_index.py, regenerated on demand, never stale.
+This file stays as the pre-#100 richness (verbatim words live only
+here); nothing appends to it. The ledger remains sole authority.
+
 **The campaign's instinct-to-machinery pipeline: Bryce's gut proposes, the
 grep disposes, the ledger remembers.** Every gut is registered in
 `docs/phase1_skeleton_spec.md` (the ledger — line numbers below point

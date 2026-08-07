@@ -1,7 +1,71 @@
 # GUT INDEX — derived from THE LEDGER (do not edit; regenerate via scripts/gut_index.py)
 
-One line per registration; full forms, rents, verdicts, and countersigns live in docs/phase1_skeleton_spec.md at the entry. The ledger is the sole authority.
+One line per registration; full forms, rents, verdicts, and countersigns live in docs/phase1_skeleton_spec.md at the entry. The ledger is the sole authority. For pre-#100 richness (verbatim
+instinct words, dispositions), see docs/GUT_REGISTRY.md — frozen at
+#100, historical.
 
+- **#16** THE MASK-AND-POOL AUDIT (2026-07-14) — ): the fear named the neighborhood; the resident was one street over — and REAL.** (1) THE
+- **#17** THE CRITICALITY FRAME (2026-07-15) — Bryce + relay) — the reactor audit.** Mycelium runs OPPOSITE criticality regimes in one re
+- **#18** THE KV AUDIT (2026-07-15) — Bryce + relay).** The pointers ARE key-value attention (slot-query x token-key through sof
+- **#19** THE CONDUCTIVITY AUDIT (2026-07-15) — /16, Bryce + relay).** The residual stream is the defect-free lattice BY DESIGN (additive 
+- **#20** THE MIRROR AUDIT (2026-07-16) — Bryce + relay).** THE SYMMETRY FILE, formally named (five sightings, one law): [85]'s iden
+- **#21** THE FLUX AUDIT (2026-07-16) — Bryce + relay + Code, registered in the amended form — both channels countersigned).** The
+- **#22** THE OOD DECOMPOSITION AUDIT — REGISTERED AS AMENDED AND (2026-07-16) — FIRED SAME-SESSION (2026-07-16, Bryce + relay + Code).** The claim: 'out of distribution' 
+- **#23** THE DIFFUSION IMPORT (2026-07-16) — Bryce + relay + Code, registered as amended — and the verification headline outranks the b
+- **#24** THE ALTERNATION AUDIT (2026-07-16) — Bryce + relay + Code, registered as amended).** THE VERIFICATION FIRST, because it refined
+- **#25** THE KNOT ACCOUNTING AUDIT (2026-07-16) — Bryce + relay + Code, registered as amended and FIRED).** The ninth built the knot ledger,
+- **#26** THE TEMPERATURE AUDIT (2026-07-16) — Bryce + relay + Code, registered as amended; (b)+(c) FIRED, (a) HOLDS FOR THE WORD).** The
+- **#27** THE COSINE-LAW AUDIT (2026-07-16) — Bryce + relay + Code, registered as amended and FIRED — with a same-hour kill).** The form
+- **#28** THE CAIRO READ — TUBES, HARMONIC ANALYSIS (2026-07-16) — Bryce + relay + Code; arrived as a story, earned its registration by catching a banked err
+- **#31** THE RING-DOWN AUDIT (2026-07-17) — Bryce + relay + Code, registered as amended and FIRED — the rare instinct that arrives POS
+- **#32** THE SMALL-STEPS CONSOLIDATION (2026-07-17) — Bryce + relay + Code, registered as amended and FIRED).** The instinct arrived as an imper
+- **#33** THE FINGERPOST (2026-07-20) — Bryce + relay + Code — the instinct that knocked for thirty years).** Iain Pears' four-nar
+- **#34** THE NOTEBOOK (2026-07-20) — Bryce + relay + Code, registered as amended).** The gut knocked on a tombstone (§3.3 burie
+- **#35** LIFE AND DEATH (2026-07-20) — Bryce + relay + Code, registered as amended; the census FIRED).** The decode's first hones
+- **#36** THE VASE AND THE LANTERN (2026-07-20) — Bryce + relay + Code, registered and the census WALKED).** The triple: integral (primes ar
+- **#37** LAPLACE AND SMITH (2026-07-20) — Bryce + relay + Code, registered as amended; (b) FIRED).** One physics, two instruments: t
+- **#38** THE PHOTO BOOTH (2026-07-20) — Bryce + relay + Code, registered as amended; the probe FIRED AND DIED CHEAP — by its own b
+- **#39** THE HONEYCOMB (2026-07-20) — Bryce + relay + Code, registered as amended; (a) FIRED).** Three interpretations, one theo
+- **#40** NAZARÉ RETURNS (2026-07-20) — Bryce + relay + Code, registered as amended; the census FIRED).** THE PROVENANCE, stronger
+- **#41** THE NOTEBOOK NEEDS SEARCH (2026-07-21) — Bryce + relay + Code, registered as amended).** The three words decode as a marriage licen
+- **#42** KNOTS AND KEYS (2026-07-21) — Bryce + relay + Code, registered; (a) FIRED).** The chord: #9 and #11 sounded together min
+- **#43** THE INFORMATION BOTTLENECK NAMED (2026-07-21) — Bryce + relay + Code — the founding objective gets its own gauge).** THE LAW, one breath: 
+- **#44** WIDTH OVER DEPTH (2026-07-21) — Bryce + relay + Code, registered; (a) FIRED).** The house's most-litigated axis, and every
+- **#45** PLANNING (2026-07-22) — Bryce + relay + Code, registered as amended).** THE ELEVENTH SIGHTING at the door (fabrica
+- **#46** SLOW IS FAST (2026-07-22) — Bryce + relay + Code, registered as amended).** THE TWELFTH SIGHTING at the door: '~99% of
+- **#47** MESSAGE PASSING (2026-07-22) — Bryce + relay + Code, registered; the probe FIRED).** The map banked with its lawful aster
+- **#48** FLIPPED (2026-07-22) — Bryce + relay + Code, registered; the probe FIRED AND DIED at its bar).** The gallery's se
+- **#49** THE ADMISSION COST LADDER (2026-07-22) — Bryce + relay + Code, registered; the audit WALKED).** The gut states the tower's founding
+- **#50** THE WAVE FACE (2026-07-22) — Bryce + relay + Code, registered; the dashboard FIRED).** The fiftieth knock finds the gal
+- **#51** THE PRISM (2026-07-22) — Bryce + relay + Code, registered; the band-dose probe CHARTERED AND FIRED).** **(a) THE PR
+- **#52** STILL LUCY (2026-07-22) — Bryce + relay + Code, registered as amended; the exam WIRED).** The gut hands the gallery 
+- **#53** THE BALL AND THE ATLAS RETURN (2026-07-22) — Bryce + relay + Code, registered; the delta-probe FIRES at two-floor vintage).** The gut p
+- **#54** THE CAPACITOR (2026-07-22) — Bryce + relay + Code, registered as amended; the discharge ledger BUILT and its first walk
+- **#55** THE DANCER AND THE CANVAS (2026-07-23) — Bryce + relay + Code, registered as amended; the probe registered watts-priced and GATED).
+- **#56** TWO SILHOUETTES (2026-07-23) — Bryce + relay + Code, registered as amended; the read QUEUED behind the burning fire).** T
+- **#57** CAST IRON (2026-07-23) — Bryce + relay + Code, registered as amended; two code reads answered same-hour, one lever 
+- **#58** THE HAMMERHEAD (2026-07-23) — Bryce + relay + Code, registered as amended; the read priced and QUEUED).** The honest sor
+- **#59** IT'S THERE, YOU JUST DON'T SEE IT (2026-07-24) — Bryce + relay + Code, registered; the audit WALKED in-entry).** The knock is epistemology,
+- **#60** CHILDREN RESIST CHANGE (2026-07-24) — Bryce + relay + Code, registered as amended; the discriminator READ from banked census sam
+- **#61** MAP REDUCE (2026-07-24) — Bryce + relay + Code, registered as amended; the census RUN same-hour, the line parked wit
+- **#62** THE HERRING SHOAL (2026-07-24) — Bryce + relay + Code, registered as amended; the read QUEUED behind the burning 18b).** Tw
+- **#63** THE SHOAL RETURNS WITH MUZERO (2026-07-24) — Bryce + relay + Code, registered lean — a boundary-confirmation with one amendment).** The
+- **#64** BREATH-CYCLE LOAD BALANCING (2026-07-24) — Bryce + relay + Code, registered as amended; the census RUN as arithmetic).** The map-redu
+- **#65** THE DEDUCER WANTS BACK IN THE GAME (2026-07-24) — Bryce direct — no relay; Code countersigns from the record).** The history stated true: th
+- **#66** NOETHER (2026-07-24) — Bryce direct — the decode arriving as its own countersign).** The theorem's working direct
+- **#67** BUILDING THE GRAPH IS THE HARD PART (2026-07-24) — Bryce direct — the decode its own countersign; the first gut whose primary yield is CONFIR
+- **#68** THE NEURAL COMPILER / LATTNER (2026-07-25) — Bryce direct — second consecutive confirmation-yield gut, arriving with the compiler liter
+- **#69** PREMATURE LOWERING / LATTNER III (2026-07-25) — Bryce direct — NOT a confirmation: two builds, one deep census, one honest no).** (1) **LO
+- **#70** BREATHS AS PROGRESSIVE LOWERING (2026-07-25) — Bryce direct — a RELITIGATION OF #69's NO, lawfully filed: the no was an inference from ge
+- **#71** PARALLEL LOWERING / DIFFUSION COMPILER (2026-07-25) — Bryce direct — two wonderings registered as ONE hypothesis seen from two sides, and THE TH
+- **#72** THE SOFT DEDUCER BET (2026-07-26) — Bryce direct — the architecture bet stated whole
+- **#73** FLEXIBLE BINDINGS (2026-07-26) — Bryce — the 1% print's mechanism name
+- **#74** LATENT EXAGGERATION (2026-07-26) — Bryce direct, nine interps countersigned against artifacts
+- **#75** THE DUAL-TRACK SYNTHESIS (2026-07-26) — Bryce direct — the answer to #74's refusal, countersigned
+- **#80** LAYER-WISE-NOT-BREATH-WISE (2026-07-27) — Bryce direct; countersigned against the record
+- **#83** THE HARNESS PROOF + THE RE-LIGHT (2026-07-27) — 
+- **#87** ENGINE 2 SPEC WRITTEN (2026-07-28) — — the composite gut converts to the campaign's first FULLY-SPECIFIED UNBUILT BET
+- **#93** THE EXCHANGE UNIFICATION PROPOSED, AUDITED TO (2026-07-28) — PARTIAL — AND THE COUNTER-FRAME ARRIVES WITH ITS RENT NAMED (2026-07-28, the linger
 - **#94** THE COMMITMENT FRAME GAINS (2026-07-29) — ITS MECHANISM (2026-07-29
 - **#95** the exchange family's (2026-07-29) — sixth, and the first to arrive carrying a design proposal (2026-07-29
 - **#97** §2-R SITS; THE (2026-07-29) — POSITION QUEUE HAS THE WORD (2026-07-29
