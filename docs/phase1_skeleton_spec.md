@@ -25736,3 +25736,20 @@ token-position × waist-dim, the moment the skeleton trains.
   convergent with #145's nozzle. THE YIELD: the open-cycle
   property, demonstrated twice, stated as architecture for the
   first time.
+
+- **THE PCT/SEL SUPPORT READS — UNINFORMATIVE BY SATURATION, TWO
+  VALVES MAPPED AS BYPRODUCT (2026-08-07):** pct-novel 0/8 on ALL
+  arms (below everyone's valve at 7 phrasings on this form
+  family); sel-novel 8/8 on ALL arms (above everyone's valve at
+  8) — **neither probe lands in a discrimination band; no
+  separation possible; the reads neither support nor contradict
+  the pair-data effect.** The effect's support stands at exactly
+  ONE construction (mod: 5/8 vs 1/8) — mod's probe happened to
+  land where v120 partially fails, which was luck, not design.
+  PROMOTION now owes: a probe PLACED in a discrimination band by
+  design (find a form family where the baseline is mid-range —
+  the valve map is the placement tool) + the dose-tuned fire, both
+  through the door. THE BYPRODUCT: the valve map grows — sel
+  crosses below 8 phrasings; pct's crossing sits above 7 on this
+  family. Saturated probes are wasted for arms and free for
+  cartography.
