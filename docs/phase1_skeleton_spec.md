@@ -25831,3 +25831,24 @@ token-position × waist-dim, the moment the skeleton trains.
   growth under an invariant claim; the three deferred roads'
   shared trigger is now also the claim's guarded gate. Decided by
   the word, analyzed by the pen, both signatures on the record.
+
+- **GUT #176 REGISTERED — "MISE EN PLACE" (2026-08-07; exchange
+  family, beside #118; operator-versus-transaction is the
+  content):** the fridge amortized TRIPS; mise en place frees
+  HANDS — a serial operator can't fetch and act at once, so
+  **anything discovered mid-action costs the action** (the pan
+  burns during the fetch). THE INSTANCES: the board audit was
+  mise en place applied to a docket (the framing session deferred
+  behind full hands until everything was staged and sorted); the
+  relight series (schema TypeError, two-terminal dens, shape
+  assert, stale row-count) — each an ingredient discovered while
+  the pan was hot; the empirical arrivals (idempotent stages, the
+  six-sentinel gate, registration-before-existence) are mise en
+  place learned one relight at a time. THE PROSPECTIVE RESIDUE,
+  sized honestly: **a staging manifest per fire** — config,
+  fixtures, gold paths, env, artifact names verified before
+  ignition (the door does this for bars; nothing does it for
+  ingredients) — would have caught most relights; but the
+  campaign already captured most of this benefit empirically, so
+  the residue is SMALL and the entry says so rather than
+  proposing ceremony for a solved problem.
