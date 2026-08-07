@@ -25929,3 +25929,24 @@ token-position × waist-dim, the moment the skeleton trains.
   mechanism exists (move 15/15-at-one-distractor against the
   5/15 clean-air baseline) — target-before-design, the
   registration discipline's furthest reach yet.
+
+- **#176 RETURNS AT THE MODEL GRAIN — THE DUP CURE'S BRIEF GAINS
+  ITS SECOND ARM (2026-08-07, Bryce's connection):** mise en place
+  at the pointer: **the model cannot hold a competing candidate
+  and commit to the repeated-arg reading** — one item in hand and
+  the commit collapses at n=1; not how-much-carried but
+  that-anything-is-carried, the exact #176 mechanism at a new
+  grain. THE REFRAME on the pre-armed bar: "the bit must win
+  against one competitor" reads as strengthen-the-bit; the mise
+  en place reading says **the contest shouldn't be LIVE at commit
+  time** — an ORDERING fix (resolve the candidate set, then
+  commit), and #150's receipt says ordering-beats-added-mechanism
+  (release-before-pawl). HONEST STATUS: structural parallel, NOT
+  measured — both designs print 15/15 in the scan; THE
+  DISCRIMINATING READ NAMED: the engagement instrument on dup
+  rows — **does the bit's decision land BEFORE the competitor's
+  slot binds, or after?** Before = premature commit (staging
+  cures); after = lost contest (strength cures). Filed as an
+  AMENDMENT to the cure's brief (two candidate arms, one
+  discriminating read), not a new registration — the build keeps
+  its bar and gains its mechanism fork.
