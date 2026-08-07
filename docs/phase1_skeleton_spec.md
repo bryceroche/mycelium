@@ -25715,3 +25715,24 @@ token-position × waist-dim, the moment the skeleton trains.
   item; it fired and closed — **what remains beneath the cold
   session is trigger-gated or unregistered: the queue has fully
   cleared its own justification.** The biggest word stands alone.
+
+- **GUT #175 REGISTERED — "JET ENGINE" (2026-08-07; the shaft
+  refused, the open cycle NAMED):** the shaft (turbine drives
+  compressor, closed loop, flame-out without it) does not exist
+  here and its absence was MEASURED TWICE — the round-trip's
+  0.011 (solver output through input space cured ~nothing) and
+  the reverse gear's 0.89–0.95 (release without changed evidence
+  returns) — **the campaign runs an OPEN CYCLE, and the two
+  attempts to close the shaft are its most instructive failures.**
+  Engine 2 refuted frozen-trunk recirculation; two-death-mode
+  welds the solve path; **the open cycle may be CORRECT — a
+  ramjet has no shaft and works at speed.** COMPRESSION's sign
+  corrected: the waist isn't under-compressing, it compresses the
+  WRONG THING (0.951 memorized vs 0.023 read — surface surviving
+  compression; invariance exact at the knot, absent at the
+  parse). Law B convergent-and-useful (filler index-shift =
+  compressor stall; the schema floor = stator vanes before the
+  high-pressure stage — #169 in mechanical dress). Law C
+  convergent with #145's nozzle. THE YIELD: the open-cycle
+  property, demonstrated twice, stated as architecture for the
+  first time.
