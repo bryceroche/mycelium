@@ -25705,3 +25705,13 @@ token-position × waist-dim, the moment the skeleton trains.
   term KILLED; data effect = a priced candidate with two owed
   reads; dup's wall confirmed from the side; the flattening
   caution graduated from caution to measured mechanism.
+
+- **THE INV2 COUNTERSIGN (2026-08-07, Bryce):** the composition
+  finding filed under its law — **the berries law at the fire
+  grain**: the denominator moved (+6,540 template rows), and a
+  gain measured against a shifted composition is not the same
+  object as a gain at preserved composition. The board's state
+  named: the invariance fire was the LAST registered-and-ready
+  item; it fired and closed — **what remains beneath the cold
+  session is trigger-gated or unregistered: the queue has fully
+  cleared its own justification.** The biggest word stands alone.
