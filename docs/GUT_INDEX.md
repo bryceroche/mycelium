@@ -1,0 +1,76 @@
+# GUT INDEX — derived from THE LEDGER (do not edit; regenerate via scripts/gut_index.py)
+
+One line per registration; full forms, rents, verdicts, and countersigns live in docs/phase1_skeleton_spec.md at the entry. The ledger is the sole authority.
+
+- **#94** THE COMMITMENT FRAME GAINS (2026-07-29) — ITS MECHANISM (2026-07-29
+- **#95** the exchange family's (2026-07-29) — sixth, and the first to arrive carrying a design proposal (2026-07-29
+- **#97** §2-R SITS; THE (2026-07-29) — POSITION QUEUE HAS THE WORD (2026-07-29
+- **#99** THE PACING LAW + A PROCESS (2026-07-29) — CONFESSION (2026-07-29
+- **#100** THE HUNDREDTH ROW AUDITS (2026-07-29) — THE OLDEST UNEXAMINED CONVENTION (2026-07-29
+- **#101** trapped heat, no crosswind; we're not (2026-07-30) — BREATHING" (2026-07-30, jurisdiction ruled before prescription
+- **#103** THE OBLIQUE-CUT SEED (2026-07-30) — "the optimal knife angle is 45 degrees, not head-on — we're missing a critical angle somew
+- **#104** SET BEFORE ACTING (2026-07-30) — "eggs in pan — don't touch them until they set"; commitment family, retrospective-confirma
+- **#105** IT'S THERE, WE JUST CAN'T SEE IT (2026-07-30) — seed; commitment family; two-directional history stated at registration
+- **#106** EFFICIENCY GAINS BY POOLING (2026-07-30) — exchange family, seventh seed; arrived with measurements on both sides of its own ledger
+- **#107** PLANNING (2026-07-30) — commitment family; the honest first move: the planner-watcher already exists and it's the 
+- **#108** THE MISSING COMMUNICATION (2026-07-30) — four instances in ten days make it a named pattern, not a hypothesis
+- **#109** ROTATION IS KEY (2026-07-31) — seed; three readings with standings stated
+- **#110** THE PHOTO BOOTH RETURNS WITH A DIFFERENT (2026-07-31) — QUESTION (2026-07-31, high conviction; ancestor #38's kill STANDS and is restated at regis
+- **#111** THREE-POINT OR FIVE-POINT TURN (2026-07-31) — commitment family, eleventh seed; confirmatory, no rent
+- **#112** MERGE SPACE (2026-07-31) — exchange family; THE NON-MONOTONE AMENDMENT to the exchange law
+- **#113** THE LOAD REDIRECT (2026-07-31) — commitment family; no build order
+- **#114** THE FALSE ALARM (2026-07-31) — the control fired before the verdict banks
+- **#115** SINK TO ABSORB NOISE (2026-08-01) — exchange family; absorption and slack are one clause from two sides
+- **#116** THE BATHTUB (2026-08-01) — commitment family, filed alongside #60 — hysteresis, both signs of one law
+- **#117** THE E&B FRAME'S FOURTH ARRIVAL (2026-08-01) — the standing refusals restated FIRST
+- **#118** THE STAGED-I/O PATTERN (2026-08-01) — exchange family; the kitchen algorithm sorted by the bench
+- **#119** CONTEXT MATTERS (2026-08-01) — three readings, one printing now
+- **#124** THE DIFFUSION COMPILER RETURNS CARRYING (2026-08-03) — THE NOTEBOOK (2026-08-03, Bryce: "neural diffusion compiler... everything in parallel... w
+- **#125** FREE ENERGY (2026-08-03) — two interps sorted
+- **#126** LOAD-BALANCED CHANGE (2026-08-03) — the day's own diagnosis
+- **#127** TOPOLOGY: MINIMIZE THE HILL CLIMB (2026-08-03) — the exchange family, #84's landscape territory
+- **#128** THE OOD LITERAL (2026-08-03) — the commitment family; the week's four specimens unified
+- **#129** ORGANIZED STATE, LESS FRICTION (2026-08-03) — a UNIFICATION, dispositioned as one — no rent owed, the instances predate it
+- **#130** THE TARPON (2026-08-03) — one catch, two decorations, one loud correction
+- **#131** THE DOORFRAME (2026-08-04) — the commitment family, filed beside the fingerpost #91
+- **#132** STABILITY VS PLASTICITY (2026-08-04) — the direct reading REFUSED on three measurements, the scheduling form KEPT
+- **#133** THE CLOCK (2026-08-04) — commitment family: when-to-stop is engagement timing
+- **#134** COMPLIANCE (2026-08-04) — #132's complement, the pair being the law
+- **#135** THE LIONFISH (2026-08-04) — exchange family, boundary geometry; the schema floor's FIFTH arrival
+- **#136** THE CLUTCH (2026-08-04) — commitment family, engagement dynamics; organ 2's transition made explicit before it's bui
+- **#137** SHAPE MEMORY (2026-08-04) — commitment family beside #136; the release fork's THIRD arm
+- **#138** THE MOLDY BERRIES (2026-08-04) — exchange family, composition drift over a depleting population
+- **#139** THE LIFEGUARD (2026-08-04) — commitment family, state across observations
+- **#140** THE HAMMERHEAD (2026-08-04) — the milestone row, and true to the hundredth-row pattern: the registry auditing its own co
+- **#141** THE REST (2026-08-04) — exchange family, equalization time
+- **#142** THE BLUR (2026-08-04) — commitment family, engagement geometry
+- **#143** LETTUCE SORTING (2026-08-04) — exchange family beside #138, the sorting rule to the berries' separation rule
+- **#144** CAPACITY FLEX (2026-08-04) — exchange family beside #104/#118
+- **#145** THE NOZZLE (2026-08-04) — commitment family; the jet mined thrice, the bar cleared on distinct physics
+- **#146** THE DAISY CHAIN (2026-08-05) — commitment family; the open mystery's first post-probe suspect, arriving with a POSITIVE d
+- **#147** WHITE NOISE MACHINE (2026-08-05) — exchange family; the masking-versus-subtraction distinction is the content
+- **#148** MISSING INDEX OR GPS (2026-08-05) — commitment family; the offset-not-absence distinction is the content
+- **#149** SOFT OR INDIRECT LIGHT (2026-08-05) — exchange family; the level-versus-difference screen is the content
+- **#150** FRICTION OVERCOMES INERTIA (2026-08-05) — commitment family; the coupling correction is the content
+- **#151** NINE WOMEN, NINE MONTHS (2026-08-05) — exchange family; allocation against an irreducible constraint
+- **#152** MUFFIN PAN VS CAKE PAN (2026-08-05) — exchange family, #84's PARTITION CLAUSE; family check done first — the bar was a mechanism
+- **#153** TOPSPIN TRAJECTORY (2026-08-05) — commitment family; longitudinal-versus-transverse is the content
+- **#154** GEESE FLYING FORMATION (2026-08-05) — exchange family; family check done — the shoal came thrice, the bar was a mechanism it did
+- **#155** SWIMMER'S CORE (2026-08-05) — commitment family; coupling-versus-generation is the content
+- **#156** TWO KEYS FOR ONE SLOT? (2026-08-05) — three readings, the instrument-authority reading leads
+- **#157** INSULATION AND ENTROPY (2026-08-05) — the leak/entropy distinction is the content
+- **#158** MUFFLER (2026-08-05) — exchange family; the over-muffling inversion is the content
+- **#159** TRAFFIC COP (2026-08-05) — the enforcement inventory is the content
+- **#160** XL SALAD BOWL (2026-08-05) — exchange family, beside the sink corollary; containment-versus-mixing is the content
+- **#161** HOLD THE NUT STATIONARY (2026-08-05) — commitment family, beside #150; counter-torque is the content
+- **#162** FOLLOW THE MANGO'S CONTOUR (2026-08-05) — commitment family, beside #131 as its sign-flipped sibling
+- **#163** DEEPMIND: INVARIANCE OR MCTS (2026-08-05) — 
+- **#164** THE SAUCE REDUCES (2026-08-05) — exchange family, beside #138; selective loss is the content
+- **#165** PATHS OF MOST AND LEAST RESISTANCE (2026-08-06) — the division-of-labor reading leads; unmeasurable status stated
+- **#166** BIAS FOR ACTION, BLEND BY SITUATION (2026-08-06) — beside #165; the reversibility discriminator is the content
+- **#167** MAPS AS A CRUTCH (2026-08-06) — commitment family; map-versus-turns is the content
+- **#168** LAPLACE THE TOKEN FLOW (2026-08-06) — filed as A FRAME WITHOUT AN OBJECT, not refused
+- **#169** MISSING ORIENTATION METADATA (2026-08-06) — commitment family; the naming that unifies
+- **#170** SHAPE OVER MASS (2026-08-06) — commitment family, beside #145; the load-path distinction is the content
+- **#171** TWO VALVES ON THE HOSE (2026-08-06) — exchange family; valve-versus-slope is the content
+- **#172** PHANTOM TRAFFIC WAVE (2026-08-06) — the signature-versus-mechanism sort is the content
