@@ -25917,3 +25917,15 @@ token-position × waist-dim, the moment the skeleton trains.
   training-signal/threshold question at the bit, not a diet
   question anywhere. The scan cost fifteen rows per point and
   closed the axis question the day it was opened.
+
+- **THE AXIS-SCAN COUNTERSIGN (2026-08-07, Bryce):** why every
+  prior instrument missed it: all assumed a GRADIENT IN LOAD, and
+  the pathology is PREFERENCE ORDER, not capacity — a step has no
+  gradient to detect. THE TRIAD carved: three walls data cannot
+  move — wide's emission geometry, dup's preference order, the
+  membership axis — **all on the shape side of the mass-or-shape
+  screen**; the screen's receipts grow. THE DOOR'S STRONGEST
+  POSITION noted: the dup-bit cure has its bar BEFORE its
+  mechanism exists (move 15/15-at-one-distractor against the
+  5/15 clean-air baseline) — target-before-design, the
+  registration discipline's furthest reach yet.
