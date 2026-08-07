@@ -140,3 +140,4 @@ One line per registration; full forms, rents, verdicts, and countersigns live in
 - **#174** TOO MUCH CLUTTER (2026-08-07) — answered straight, with data
 - **#175** JET ENGINE (2026-08-07) — the shaft refused, the open cycle NAMED
 - **#176** MISE EN PLACE (2026-08-07) — exchange family, beside #118; operator-versus-transaction is the content
+- **#177** KNIFE EDGE (2026-08-07) — commitment family; bounded-by-the-worse-side is the content

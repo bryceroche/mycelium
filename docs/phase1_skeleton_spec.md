@@ -25864,3 +25864,23 @@ token-position × waist-dim, the moment the skeleton trains.
   item: **the consolidation may be mostly done by the time anyone
   words it** — the board item stays fallow with this note
   attached.
+
+- **GUT #177 REGISTERED — "KNIFE EDGE" (2026-08-07; commitment
+  family; bounded-by-the-worse-side is the content):** an edge is
+  the intersection of two surfaces — sharpness is bounded by the
+  worse bevel; the apex never forms; effort past parity on the
+  good side is WASTED. CONVERGENT at the claim's grain (the chain:
+  refusal side honed — 40/40, zero certified lies, 291 rows;
+  answering side coarse — 0.023, 80.7% discard; "a certifier that
+  grows" IS the recognition, said so). THE SHARP APPLICATION, one
+  pattern the record held as four scope notes: **every instrument
+  is honed in-register and coarse at the frontier** — trace layer
+  (0 false trips / coin-flip), commit head (0.941 / 0.650),
+  trigger (0-FP / inverted 68.9%) — and the knife names the cost:
+  an instrument dull on one side doesn't cut anywhere the dull
+  side faces, WHICH IS WHERE DECEMBER'S GROWTH LIVES. The
+  instrument-frontier bevel is the mouth-widening fence's deeper
+  reading: widening exposes the dull bevels simultaneously.
+  HONEST STATUS: a diagnosis with NO CURE ATTACHED — data-side
+  approaches measurably don't reach the frontier side; sits as
+  diagnosis, implies nothing.
