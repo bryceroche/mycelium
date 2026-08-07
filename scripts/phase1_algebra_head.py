@@ -552,6 +552,10 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None):
             bv = cur @ p["W_bv"] + p["W_bv_b"]
             sc2 = (bq @ bk.transpose(-2, -1)) / math.sqrt(H_W)
             sc2 = sc2.clip(-1e4, 1e4) + (1.0 - slot_mask) * -1e4
+            if RINGS and int(os.environ.get("ALG_BEXIT", "0")):
+                # BEAM EXIT (door #8): committed slots leave the mixer as
+                # keys, proportional to mass — soft, init-closed (m starts 0)
+                sc2 = sc2 + m_c.reshape(B, 1, L_FAC) * -8.0
             h_slot = (sc2.softmax(-1) @ bv) @ p["W_bo"] + p["W_bo_b"]
             # ABLATION arms (2026-07-10): zero-mult keeps every param in the
             # graph (defined zero grads — the None-grad lesson, applied)
