@@ -25753,3 +25753,26 @@ token-position × waist-dim, the moment the skeleton trains.
   crosses below 8 phrasings; pct's crossing sits above 7 on this
   family. Saturated probes are wasted for arms and free for
   cartography.
+
+- **THE PLACED PROBE'S VERDICT — THE PAIR-DATA EFFECT FAILS ITS
+  SECOND TEST (2026-08-07; door customer #5, selection on baseline
+  only per the pinned rule):** scan on v120: mod2 6/8 (SELECTED),
+  mod3 0/8, fdiv2 3/8, pct2 0/8. On the selected form: **ictl 2/8,
+  iinv 2/8 — both pair arms BELOW the v120 baseline by 4.** The
+  registered flag branch executes: **the effect stays n=1 and
+  mod's 5/8 is flagged POSSIBLE-FLUKE** — across two mod form
+  families the pair arm prints 5-vs-1 then 2-vs-6: form-specific
+  noise at n=8 grain, not a stable effect. THE DEMOTION: the
+  pair-data candidate loses its promotion path's justification —
+  both pair arms carry bigtest costs (−58/−162 vs lineage) AND no
+  reliable sub-valve gain; **the dose-tuned fire is no longer
+  owed — it would need fresh justification through a new
+  registration.** The invariance road's full arc: term killed,
+  data effect demoted to unproven, the canonicalizer-oracle
+  concept intact but without a validated vehicle. THE BYPRODUCT,
+  banked honestly against the valve model: **fdiv2 prints 3/8 on
+  v120 — a MID-RANGE result exists** — the wall is FORM-FAMILY-
+  specific: "nothing partial" described one family's dose series;
+  across families, partial prints occur. The valve model holds
+  per-family; the construction-level claim softens to "each form
+  family has its own crossing, some families sit mid-band."
