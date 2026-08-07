@@ -25950,3 +25950,26 @@ token-position × waist-dim, the moment the skeleton trains.
   AMENDMENT to the cure's brief (two candidate arms, one
   discriminating read), not a new registration — the build keeps
   its bar and gains its mechanism fork.
+
+- **THE TIMING READ'S VERDICT — PREMATURE, UNANIMOUSLY (2026-08-07;
+  15/15, zero lost, zero other):** on every one-distractor row the
+  dup slot's args binding settles at token 21 — **two tokens BEFORE
+  the operand (the repeated letter's second occurrence, token 23)
+  arrives.** The commit forms before the evidence that
+  distinguishes dup from ordinary rel exists in the prefix. THE
+  FORK RESOLVES: **STAGING CURES** — the bit never loses a contest;
+  the pointer commits early and the competitor's mere existence
+  fills the uncommitted argument slot by default. Strength has
+  nothing to fix. THE UNIFICATION, the read's deepest yield:
+  **dup misbind joins the premature-commitment family** — mis-
+  anchoring was premature SPATIAL commitment (the pawl clicks at a
+  position before the home arrives); dup is premature ARGUMENT
+  commitment (the pawl clicks on args before the operand arrives)
+  — the engage-early pathology at two grains, and the campaign's
+  two deepest binding walls now share one root. THE CURE'S
+  REGISTRATION INHERITS EVERYTHING: bar (move 15/15-at-one-
+  distractor vs the 5/15 baseline), mechanism class (ORDERING —
+  hold the dup-slot commit until its sentence completes; #150's
+  release-before-pawl receipt), and the measured root (21 vs 23).
+  The mise en place gut, model grain, confirmed by intervention-
+  grade timing within a day of being spoken.
