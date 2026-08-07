@@ -26047,3 +26047,17 @@ token-position × waist-dim, the moment the skeleton trains.
   guidance; the clock's conditional summons noted as more likely
   (ordering necessary-but-insufficient is exactly its pinned
   condition).
+
+- **THE BEAM EXIT IS LIT — ORGAN 2'S TRUE SECOND FIRE (2026-08-07;
+  door customer #8, e5dd1493, registered before the surgery):** THE
+  DESIGN, one cut: committed slots' key contribution to the slot
+  mixer suppressed proportional to commit mass (soft, INIT-CLOSED —
+  mass starts 0 = bit-exact rings; the pawl itself decides who
+  leaves the beam). The redirect customer (#113) built literally;
+  the mise en place cure at the beam: finished bindings rest on
+  the counter as read-only anchors while unresolved contests get
+  the freed capacity. BARS: primary nd=1 <8/15; verification =
+  HELD AND WON (settle ≥ operand AND binding correct — the
+  stacked-pathology law's first application); no-harm nd=0 +
+  bigtest −5 vs rings ctl; kill >5. Arms rctl/bexit, 4k from g23,
+  burning.
