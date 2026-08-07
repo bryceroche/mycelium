@@ -1104,12 +1104,16 @@ def do_train(steps, lr, batch, seed):
                          ("query", (), dtypes.int)):
         npdt = np.float32 if dt == dtypes.float else np.int32
         bg[k] = fix(np.zeros((batch,) + shape, npdt), dt)
+    if int(os.environ.get("ALG_OPATT", "0")):
+        bg["opspan"] = fix(np.zeros((batch, L_FAC, T_ALG), np.float32), dtypes.float)
     assert_terminals(p=p, gold_keys=set(bg.keys()), site="do_train buffers")
 
     XOUT_TR = int(os.environ.get("ALG_XOUT", "0")) and \
         int(os.environ.get("ALG_RINGS", "0"))
     INV_TR = int(os.environ.get("ALG_INV", "0"))
     INV_PAIRS_ARR = np.load(os.environ["INV_PAIRS"]) if INV_TR else None
+    OPATT = int(os.environ.get("ALG_OPATT", "0"))
+    OPGOLD = np.load(os.environ["OPATT_GOLD"], mmap_mode="r") if OPATT else None
 
     @TinyJit
     def step():
@@ -1131,6 +1135,11 @@ def do_train(steps, lr, batch, seed):
             _d = o["fst_s"][0:4:2] - o["fst_s"][1:4:2]
             _pm = bg["presence"][0:4:2].unsqueeze(-1)
             l = l + 0.1 * (_d * _d * _pm).sum() / (_pm.sum() * o["fst_s"].shape[-1] + 1e-6)
+        if OPATT:  # dup_staging_cure arm 1: operand-attention TARGET
+            _op = bg["opspan"]
+            _dm = (_op.sum(-1) > 0).float()
+            _opn = _op / (_op.sum(-1, keepdim=True) + 1e-6)
+            l = l + ((-(o["fat"] + 1e-9).log() * _opn).sum(-1) * _dm).sum() / (_dm.sum() + 1e-6)
         opt.zero_grad()
         l.backward()
         opt.step()
@@ -1230,6 +1239,7 @@ def do_train(steps, lr, batch, seed):
         if b_mask is not None:
             b_mask.assign(Tensor(MASKS[idx], dtype=dtypes.float).contiguous()).realize()
         feed = {"presence": gold["presence"][idx], "is_lit_f": gold["is_lit"][idx],
+                **({"opspan": OPGOLD[idx].astype(np.float32)} if OPATT else {}),
                 "args": gold["args"][idx], "fspan": gold["fspan"][idx],
                 "vspan": gold["vspan"][idx], "ftype": gold["ftype"][idx],
                 "op": gold["op"][idx], "res": gold["res"][idx],
