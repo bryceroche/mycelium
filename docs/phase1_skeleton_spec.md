@@ -25852,3 +25852,15 @@ token-position × waist-dim, the moment the skeleton trains.
   campaign already captured most of this benefit empirically, so
   the residue is SMALL and the entry says so rather than
   proposing ceremony for a solved problem.
+
+- **CONSOLIDATION-BY-DISCOVERY NOTED (2026-08-07, Bryce's
+  countersign on #176):** four disciplines that arrived
+  independently (idempotent stages, the sentinel gate,
+  registration-before-existence, the docket audit) turn out to be
+  one principle — **compression happening by discovery rather
+  than by a consolidation pass, cheaper and more trustworthy than
+  the pass would have been.** Third-or-fourth incidental
+  installment on the fallow-lawful jurisprudence-consolidation
+  item: **the consolidation may be mostly done by the time anyone
+  words it** — the board item stays fallow with this note
+  attached.
