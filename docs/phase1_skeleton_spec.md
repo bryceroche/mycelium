@@ -25576,3 +25576,17 @@ token-position × waist-dim, the moment the skeleton trains.
   be read, the bar applies to the registered one). Burning as
   inv-fire; reads land on the registered bars + the
   discriminating pin (valves move, dup doesn't) when it quiets.
+
+- **THE INV-FIRE COUNTERSIGN — THE FLATTENING CAUTION (2026-08-07,
+  Bryce; pinned before the sheet lands):** an agreement term could
+  win by making the waist INSENSITIVE rather than the parse READ —
+  collapsing representations is exactly the kind of win that
+  arrives without span-reading. **The anchor rider matters MORE
+  here than on the surface fires**: fdiv's 0.986 set the standard;
+  this fire's win, if it comes, needs the same certification
+  before it counts as INVARIANCE rather than FLATTENING. The
+  identity-by-construction property ratified (the oracle is a
+  guarantee from the render path, not a measurement that could be
+  wrong — false-merge zero was the license, this is the license
+  spent). The pin's rare shape named: two banked findings able to
+  confirm each other through one fire, both outcomes structured.
