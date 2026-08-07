@@ -26033,3 +26033,17 @@ token-position × waist-dim, the moment the skeleton trains.
   baseline; scan identical to v120). The two-layer finding is
   the campaign's deepest dup mechanism yet: the wall has a wall
   behind it.
+
+- **THE STACKED-PATHOLOGY LAW (2026-08-07, Bryce's countersign on
+  arm 1):** carved in general form: **a cure that fixes the
+  surface layer reveals the layer beneath it, and a score-only bar
+  cannot distinguish "no change" from "one layer cured, next layer
+  exposed."** Token-level (mechanism-grain) verification is
+  therefore REQUIRED on every cure at a site suspected of
+  stacking — the verification clause graduates from this build's
+  innovation to standing law for stacked pathologies. The fork's
+  retirement ratified (strata, not rivals — neither arm alone
+  could ever have worked); the −107 as measured parameter
+  guidance; the clock's conditional summons noted as more likely
+  (ordering necessary-but-insufficient is exactly its pinned
+  condition).
