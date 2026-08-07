@@ -25637,3 +25637,17 @@ token-position × waist-dim, the moment the skeleton trains.
   0.986 standard — a win at low span mass is flattening wearing
   invariance's clothes, a result that improves the number and
   degrades the mechanism.
+
+- **TWO CARVES ON THE ARCHITECTURE ANSWER (2026-08-07, Bryce):**
+  (1) the solver-never-sees-attention separation is LOAD-BEARING —
+  the two-death-mode law's structural expression: attention is
+  proposer-side and probabilistic, the graph is discrete by
+  charter; attention reaching the solver would make the crush
+  inherit proposal uncertainty and the key would stop grading
+  primitives. (2) THE SEGMENTATION SHARPENING: **segmentation is
+  carried by attention but never supervised AS segmentation** —
+  the anchors measure where attention lands, nothing trains it to
+  land right; the silhouette is segmented by a process never asked
+  to segment (#169's shape; the schema floor's job). Poincaré
+  parking ratified (the waist's diagnosed problem is keeping too
+  much surface, not failing to represent hierarchy).
