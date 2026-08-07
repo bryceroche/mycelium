@@ -25544,3 +25544,17 @@ token-position × waist-dim, the moment the skeleton trains.
   trigger). THE RENT, fired same-hour: **the docket audit** —
   every open item marked LIVE / CONDITIONAL(trigger) / DEAD(reason)
   into docs/BOARD.md; the campaign's first-ever run of the pass.
+
+- **THE FRAMING SHEET REFRESHED (2026-08-07; my choice on the open
+  word, following the audit's own logic — work beneath the session
+  runs under an unset prioritization, so the word went to the
+  session's landing):** docs/DECEMBER_FRAMING.md gains the SURGE
+  ADDENDUM — the five inheritances with artifacts: the surface
+  road's domain/boundary/price (valves, parse-side only, bounded
+  away from the 0.02), the census exhaustion, the attrition
+  profile + enrichment gradient, the steering deferral, and the
+  net-for-the-session paragraph (ceiling levers unchanged and
+  still biggest; mouth-width is the single trigger three deferred
+  roads share). The original sheet's numbers untouched — addendum,
+  not rewrite. **The biggest word on the board now lands on a
+  current sheet.**
