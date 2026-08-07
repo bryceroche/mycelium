@@ -25651,3 +25651,23 @@ token-position × waist-dim, the moment the skeleton trains.
   to segment (#169's shape; the schema floor's job). Poincaré
   parking ratified (the waist's diagnosed problem is keeping too
   much surface, not failing to represent hierarchy).
+
+- **THE INV2 SUB-VALVE READ — THE TERM FAILS, THE PAIR-DATA EFFECT
+  IS DISCOVERED (2026-08-07; mod-novel, guard-verified, n=8):**
+  **ictl 5/8, iinv 1/8, v120 1/8.** THE PRIMARY BAR FAILS for the
+  agreement term (iinv = v120: no improvement). THE DISCOVERY is
+  the control's print: **the pair MIX alone — each graph seen in
+  two renderings, no loss term — lifts sub-valve mod generalization
+  1/8→5/8 over v120.** Two-views-per-graph is invariance training
+  BY EXAMPLE, and the explicit term ERASES the gain (5/8→1/8) —
+  exactly the flattening caution's shape: collapsing waist states
+  destroys the variation the data effect exploits. The saturated
+  probes agree (fdiv 8/8 / dup 60/60 everywhere — the pin's dup
+  half held: dup unmoved under the term). CAVEATS pinned: n=8;
+  anchor certification on ictl's 5 owed; bigtest no-regression
+  owed; more sub-valve probes (pct 7, sel 8 phrasings) owed
+  before the data effect is promoted from finding to law. THE
+  SHAPE, named for the registry: the mechanism was right and the
+  INSTRUMENT of it was wrong — invariance wants to be TAUGHT (by
+  paired examples), not ENFORCED (by a loss term). Teaching-not-
+  telling, at the loss function itself.
