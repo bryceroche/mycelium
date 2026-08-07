@@ -25684,3 +25684,24 @@ token-position × waist-dim, the moment the skeleton trains.
   no-regression, then pct/sel sub-valve support. The pin's
   bonus noted: dup confirmed itself through a fire aimed
   elsewhere.
+
+- **INV2 FOLLOW-UPS COMPLETE — THE KILL FIRES, THE DATA EFFECT GETS
+  ITS PRICE (2026-08-07):** ANCHOR CERT (ictl, mod-novel): where
+  the slot decodes straight-view it READS — 3/3 anchored at 0.967
+  span mass (the 0.986-standard neighborhood); decode 3/8 straight
+  (quorum wins rode views); thin but reading, not arriving.
+  BIGTEST: ctl 1076 gs / 1173 A; inv 967 gs / 1069 A — **the
+  agreement term costs −109 graph-solve vs its own control: THE
+  KILL BAR FIRES; the term is dead at this weight on every bar it
+  faced** (primary flat, kill exceeded 20×, flattening confirmed
+  in shape and price). AND THE HONEST COST LINE ON THE DATA
+  EFFECT: ctl itself sits ~−58 ANSWER below the vfull lineage —
+  the B-append shifted the mix's composition (+7.4% template
+  share, changed rows double-weighted); the pair-data effect's
+  sub-valve gain (1/8→5/8) is real-looking but NOT free —
+  promotion now requires the pct/sel support AND a dose-tuned
+  design (pairs at lower share, composition preserved) through
+  its own registration. The invariance fire's full disposition:
+  term KILLED; data effect = a priced candidate with two owed
+  reads; dup's wall confirmed from the side; the flattening
+  caution graduated from caution to measured mechanism.
