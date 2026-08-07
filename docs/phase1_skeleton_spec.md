@@ -25491,3 +25491,26 @@ token-position × waist-dim, the moment the skeleton trains.
   isn't dup's axis; the question is whether ANY axis has a
   crossing for it, which is a different design owing its own
   registration when its word comes.
+
+- **GUT #173 REGISTERED — "EMPTY THE POT TWICE" (2026-08-07;
+  exchange family; two-stage extraction is the content):** bulk
+  drains fast, film drains slow — the second dump is free ONLY
+  because you waited: staged collection with a SETTLING INTERVAL
+  between passes. Distinguished from both neighbors: #141's rest
+  is equalization (no second action); #96's eggs are protection
+  (don't disturb formation); this is TWO-STAGE EXTRACTION — first
+  pass complete and correct, second pass required, interval so the
+  second has something to collect. THE MEASURED GAP: **the chain
+  is SINGLE-PASS at the frontier** — 419 correct enter, 81
+  survive, the exhaust ports now record what each gate discarded
+  (the film on the walls), and drops are TERMINAL; in-register the
+  repair lattice IS the second pass (abstain → bench → re-enter),
+  and the frontier has no analog. The second-pass move differs
+  from a looser first pass: it needn't carry the one-for-one cost
+  because it can use information the first pass didn't have. THE
+  FENCE, the entry's own hard question: **what changes between
+  passes?** The pot waits for gravity; a chain second-pass needs
+  an intervening process or it's the revolving door again —
+  release without changed evidence, the question organ 2's arc
+  already answered once. Candidate intervening processes are
+  design work, not asserted here.

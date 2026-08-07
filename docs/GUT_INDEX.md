@@ -1,8 +1,6 @@
 # GUT INDEX — derived from THE LEDGER (do not edit; regenerate via scripts/gut_index.py)
 
-One line per registration; full forms, rents, verdicts, and countersigns live in docs/phase1_skeleton_spec.md at the entry. The ledger is the sole authority. For pre-#100 richness (verbatim
-instinct words, dispositions), see docs/GUT_REGISTRY.md — frozen at
-#100, historical.
+One line per registration; full forms, rents, verdicts, and countersigns live in docs/phase1_skeleton_spec.md at the entry. The ledger is the sole authority.
 
 - **#16** THE MASK-AND-POOL AUDIT (2026-07-14) — ): the fear named the neighborhood; the resident was one street over — and REAL.** (1) THE
 - **#17** THE CRITICALITY FRAME (2026-07-15) — Bryce + relay) — the reactor audit.** Mycelium runs OPPOSITE criticality regimes in one re
@@ -138,3 +136,4 @@ instinct words, dispositions), see docs/GUT_REGISTRY.md — frozen at
 - **#170** SHAPE OVER MASS (2026-08-06) — commitment family, beside #145; the load-path distinction is the content
 - **#171** TWO VALVES ON THE HOSE (2026-08-06) — exchange family; valve-versus-slope is the content
 - **#172** PHANTOM TRAFFIC WAVE (2026-08-06) — the signature-versus-mechanism sort is the content
+- **#173** EMPTY THE POT TWICE (2026-08-07) — exchange family; two-stage extraction is the content
