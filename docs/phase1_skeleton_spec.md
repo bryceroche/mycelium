@@ -25987,3 +25987,21 @@ token-position × waist-dim, the moment the skeleton trains.
   **nothing about the eventual build can be shaped toward its own
   acceptance, because acceptance, approach, and diagnosis were
   fixed first.**
+
+- **THE DUP STAGING CURE REGISTERED — DOOR CUSTOMER #7 (2026-08-07;
+  the word's next step; the best-armed registration in campaign
+  history):** FIRST ARM: auxiliary operand-attention supervision —
+  a per-slot target putting the dup slot's attention mass on the
+  SECOND occurrence tokens (gold from existing spans;
+  teaching-not-telling: auxiliary prediction, the C1-A receipt;
+  never a text hint). SECOND ARM if the first fails: breath-staged
+  commit via the rings machinery (args gated to breath 2+; #150's
+  ordering receipt). BARS: primary 15/15→<8/15 at one distractor;
+  no-harm (nd=0 stays ≥10/15; bigtest within −5); KILL includes
+  the deepest branch — **both arms failing = the premature-
+  commitment family needs the CLOCK (organ 3), banked as such**,
+  which would promote organ 3 from next-in-order to
+  mechanism-required. THE VERIFICATION CLAUSE, new to the door:
+  the timing read RE-RUNS post-cure — settle_tok ≥ operand_tok —
+  **the mechanism verified at the token, never inferred from the
+  score.** The fire holds for its word.
