@@ -26089,3 +26089,25 @@ token-position × waist-dim, the moment the skeleton trains.
   unproven here; the wave's existence is the instinct, its shape
   is the clock's to measure). The beam exit is the reckoning's
   first honest customer.
+
+- **THE WAVE'S SHAPE AMENDED — NAZARÉ, NOT π (2026-08-08, Bryce):**
+  the instinct sharpens: the wave is most likely **a focusing wave,
+  not a periodic one** — Nazaré's monster is made by BATHYMETRY:
+  the underwater canyon funnels ordinary swell energy into one
+  concentrated break. The design translation for organ 3's spec,
+  held as hypothesis: **the clock's wave is not a phase stamp
+  distinguishing breaths (π's job) but a CONCENTRATION dynamic —
+  the graph's structure is the canyon floor, evidence is the
+  swell, and a commit is the wave breaking where the medium
+  narrows.** The WHEN of commitment would then be geometric
+  (where the funnel concentrates enough evidence-energy), not
+  cyclic (a stamp saying which breath this is) — which coheres
+  with the record: the campaign's one confirmed concentration
+  mechanism is #164's gradient (the canyon-is-the-chain reading,
+  already banked), and the ratchet law wants engagement AT a
+  designed point, which a focusing medium provides and a cycle
+  does not. STATUS: hypothesis for the clock's spec, unmeasured;
+  the π-form stays refused-on-perceiver; the Nazaré form arrives
+  with a measured cousin (#164) and the phase-fence intact
+  (concentration shapes MEMORY/commit ordering, never the
+  deduction path).
