@@ -614,6 +614,9 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None):
                if "h_dig2" in p else {}),
         }
     out = heads_of(breaths[-1])
+    if int(os.environ.get("ALG_INV", "0")):
+        out["fst_s"] = breaths[-1]        # ORGAN: invariance fire — the pair
+                                          # agreement term reads the waist here
     if RINGS and K_B > 1 and slot_mask is not None and "W_bo" in p:
         out["cmt"] = cmt_logits[0].stack(*cmt_logits[1:], dim=1) if len(cmt_logits) > 1 \
             else cmt_logits[0].unsqueeze(1)               # (B, K_B-1, L_FAC)
@@ -1105,6 +1108,7 @@ def do_train(steps, lr, batch, seed):
 
     XOUT_TR = int(os.environ.get("ALG_XOUT", "0")) and \
         int(os.environ.get("ALG_RINGS", "0"))
+    INV_TR = int(os.environ.get("ALG_INV", "0"))
 
     @TinyJit
     def step():
@@ -1122,6 +1126,10 @@ def do_train(steps, lr, batch, seed):
         else:
             o = forward(p, b_tr, b_tk, b_se, slot_mask=b_mask)
         l = loss_fn(o, bg)
+        if INV_TR and "fst_s" in o:
+            _d = o["fst_s"][0::2] - o["fst_s"][1::2]
+            _pm = bg["presence"][0::2].unsqueeze(-1)
+            l = l + 0.1 * (_d * _d * _pm).sum() / (_pm.sum() * o["fst_s"].shape[-1] + 1e-6)
         opt.zero_grad()
         l.backward()
         opt.step()
@@ -1209,6 +1217,9 @@ def do_train(steps, lr, batch, seed):
             idx = rng.choice(pool, batch, replace=False, p=pw)
         else:
             idx = rng.choice(pool, batch, replace=False)
+        if INV_TR:  # invariance fire: batches are PAIRS (2k, 2k+1 share a graph)
+            k = rng.choice(n // 2, batch // 2, replace=False)
+            idx = np.stack([2 * k, 2 * k + 1], 1).reshape(-1)
         b_tr.assign(Tensor(states[idx].astype(np.float32), dtype=dtypes.float).contiguous()).realize()
         b_tk.assign(Tensor(tokmask[idx].astype(np.float32), dtype=dtypes.float).contiguous()).realize()
         b_se.assign(Tensor(sent[idx].astype(np.int32), dtype=dtypes.int).contiguous()).realize()
