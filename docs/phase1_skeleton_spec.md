@@ -25884,3 +25884,16 @@ token-position × waist-dim, the moment the skeleton trains.
   HONEST STATUS: a diagnosis with NO CURE ATTACHED — data-side
   approaches measurably don't reach the frontier side; sits as
   diagnosis, implies nothing.
+
+- **THE FENCE AMENDED — THE FOUR-BEVEL PRECONDITION (2026-08-07,
+  Bryce's countersign on #177):** the widening fence upgrades from
+  one measurement to a PRE-CONDITION LIST WITH A BOUNDING RULE:
+  **before any mouth-widening, all four instruments' frontier
+  bevels are measured — trace layer, commit head, trigger, and
+  the mouth's own calibration on the new band — and the claim's
+  survival is bounded by the WORST of them.** An amendment only
+  visible after the unification (four caveats separately were
+  scope notes; as one pattern they are a checklist). Carved into
+  the framing sheet's decision record same-transaction. The
+  cure-less diagnosis's value restated: a diagnosis with a target
+  list beats a proposal without one.

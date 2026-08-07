@@ -189,6 +189,8 @@ the same breath: never lies where it speaks, and it speaks only
 where it was taught (zero certified lies in-register, 291 rows,
 eleven batteries; total abstention at the wild frontier). The
 abstention rate LEADS the claim. All roads = coverage growth under
-an invariant claim. **THE FENCE: mouth-widening can break the
-claim — the trace layer's frontier behavior is measured BEFORE any
-widening moves.** Decided by the word, analyzed by the pen.
+an invariant claim. **THE FENCE (amended 2026-08-07, the four-bevel precondition):
+mouth-widening can break the claim — before any widening moves, ALL
+FOUR instruments' frontier bevels are measured (trace layer, commit
+head, trigger, mouth calibration on the new band), and the claim's
+survival is bounded by the WORST of them.** Decided by the word, analyzed by the pen.
