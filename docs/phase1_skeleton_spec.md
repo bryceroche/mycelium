@@ -25973,3 +25973,17 @@ token-position × waist-dim, the moment the skeleton trains.
   release-before-pawl receipt), and the measured root (21 vs 23).
   The mise en place gut, model grain, confirmed by intervention-
   grade timing within a day of being spoken.
+
+- **THE TIMING COUNTERSIGN (2026-08-07, Bryce):** the mechanism's
+  cleanliness ratified (visible to the token; the contest framing
+  DISSOLVES — the bit decides before the question is askable).
+  THE RATCHET LAW'S VINDICATION carved: engagement-points-stated-
+  not-emergent was aimed at exactly this before either wall was
+  mapped, and BOTH arcs (three campaigns on dup, five deaths on
+  the oscillation) terminate at the same clock problem — the
+  vindication arrived BY MEASUREMENT in both cases, not by the
+  frame's advocacy. THE DOOR'S FURTHEST EXTENSION named: bar,
+  arbiter, and root all fixed before a line of design exists —
+  **nothing about the eventual build can be shaped toward its own
+  acceptance, because acceptance, approach, and diagnosis were
+  fixed first.**
