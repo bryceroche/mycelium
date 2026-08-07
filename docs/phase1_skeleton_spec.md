@@ -25590,3 +25590,24 @@ token-position × waist-dim, the moment the skeleton trains.
   wrong — false-merge zero was the license, this is the license
   spent). The pin's rare shape named: two banked findings able to
   confirm each other through one fire, both outcomes structured.
+
+- **THE INVARIANCE FIRE — INVALID BY SUBSTRATE, THE CONTROL PROVES
+  IT (2026-08-07):** both arms collapse identically (ctl 0.131–
+  0.151, inv 0.147–0.154 val, vs ~0.94 lineage normal) — **the
+  ctl arm carries no agreement term, so the term is EXONERATED;
+  the substrate is convicted.** THE ERROR, named plainly: the pair
+  file was built as the ENTIRE training mix — 13,080 pure
+  table-rendered rows, no carrier corpus (the aug fires patched
+  6,540 rows INTO the 82,400-row mix; this fire trained on the
+  patch alone) — ~10 epochs of single-register template text: the
+  pure-prose-poison lesson's mirror image, relearned from the
+  dialect side. **Registered bars: UNMET-NOT-TESTED** — no verdict
+  attaches to the agreement term; the registration stands and a
+  v2 fire (pairs EMBEDDED in the full mix, pair-aware sampling)
+  returns to the ready list with this specimen as its first
+  design constraint. The cont-control's value banked: without the
+  ctl arm, a 0.15 inv arm would have read as the flattening
+  caution confirmed — the tightest control prevented a false
+  conviction of the mechanism. Ckpts g25_inv_* retained as
+  collapse specimens only; nothing promotes; g22-lineage
+  untouched.
