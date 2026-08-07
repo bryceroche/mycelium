@@ -25776,3 +25776,33 @@ token-position × waist-dim, the moment the skeleton trains.
   across families, partial prints occur. The valve model holds
   per-family; the construction-level claim softens to "each form
   family has its own crossing, some families sit mid-band."
+
+- **THE COLD FRAMING SESSION — RUN AS ANALYSIS, DECISION RESERVED
+  (2026-08-07; Bryce's invitation; the recommendation is the pen's,
+  the ratification is the word's):** THE WALK, every term cited:
+  (1) MATH-500 is never-trained BY DEFINITION — the never-trained
+  row (0.023, thrice-confirmed) is the predictor for ANY
+  open-admission claim: **leaf B's arithmetic stays collapsed.**
+  (2) The surge bounded the surface road AWAY from that row
+  (parse-side only, per-family valves; flip/settle untouched) —
+  no diet reaches the membership axis; the road grows in-dialect
+  competence only. (3) The census is exhausted — no new
+  same-population evidence arrives before December; the numbers
+  we have are the numbers we decide on. (4) The chain's character
+  is measured end-to-end: it discards 80.7% of correct work and
+  concentrates memorization — it is a CERTIFIER, not a coverage
+  machine; its virtue (zero false certification at the deployed
+  frontier: 40/40 refused) is the one property no competitor
+  claim can match. (5) The ceiling levers (E1+E3 answer-space +
+  length: 39.4%→63-70% addressable) are DESIGN work, not hope —
+  but addressable ≠ answerable, and the dialect gap stands
+  between them. **THE RECOMMENDATION: LEAF A — the campaign
+  ships "a system that never lies": every emitted answer
+  key-certified, total abstention beyond competence — with the
+  roads (answer-space, books/dialect, mouth-widening) reframed as
+  COVERAGE GROWTH under a claim that never changes.** The claim
+  is the chain of custody; coverage is the variable; every
+  bigger sentence (B, C) rests on an unmeasured term, and D
+  defers a decision A already wins. The three deferred roads'
+  shared trigger (mouth-widening) becomes the coverage roadmap's
+  first milestone. DECISION RESERVED FOR THE WORD.
