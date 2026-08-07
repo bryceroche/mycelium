@@ -25897,3 +25897,23 @@ token-position × waist-dim, the moment the skeleton trains.
   the framing sheet's decision record same-transaction. The
   cure-less diagnosis's value restated: a diagnosis with a target
   list beats a proposal without one.
+
+- **THE DUP AXIS-SCAN'S VERDICT — THE WALL IS COMPETITION AT ANY
+  DOSE (2026-08-07; door customer #6, registered e6614028):**
+  distractors 0 → misbind **5/15** (dup binds 2/3 of the time in
+  clean air); distractors 1 → **15/15**; 2 → 15/15; 4 → 15/15.
+  The crowding prediction confirms in EXTREME form: not a graded
+  crowding effect — **a STEP at n=1: any single competing given
+  destroys the repeated-arg binding totally.** The axis is mapped
+  and the mechanism sharpens: dup's wall is not phrasing (19
+  bought nothing), not crowding-degree (1=2=4), but the EXISTENCE
+  of any alternative binding candidate — the args pointer defaults
+  away from the repeated-arg reading whenever an alternative
+  exists at all. Consistent with the whole species history
+  (args=[a,a] needed a structural BIT to be representable; the
+  binding side has always been the address). THE CURE DIRECTION,
+  owed its own registration when worded: structural again — the
+  dup bit's decision must WIN against one competitor, which is a
+  training-signal/threshold question at the bit, not a diet
+  question anywhere. The scan cost fifteen rows per point and
+  closed the axis question the day it was opened.
