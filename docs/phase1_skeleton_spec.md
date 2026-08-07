@@ -25671,3 +25671,16 @@ token-position × waist-dim, the moment the skeleton trains.
   INSTRUMENT of it was wrong — invariance wants to be TAUGHT (by
   paired examples), not ENFORCED (by a loss term). Teaching-not-
   telling, at the loss function itself.
+
+- **THE TEACHING-NOT-TELLING LAW GENERALIZED (2026-08-07, Bryce's
+  countersign; third arrival, deepest site):** C1-A (auxiliary
+  beats hint), the wide arm (copy beats regenerate), now the
+  waist (pairs beat squeezing) — three sites, one principle,
+  carved general: **constraints applied TO the representation
+  destroy what constraints applied THROUGH the data create.**
+  The third instance reaches the loss function itself — further
+  than the first two. Follow-up order ratified: anchor cert on
+  ictl's five (decisive; 0.986 the standard), then bigtest
+  no-regression, then pct/sel sub-valve support. The pin's
+  bonus noted: dup confirmed itself through a fire aimed
+  elsewhere.
