@@ -4,6 +4,11 @@
 (the surge: filler arc → steering arc → re-cut → slope probe → dup
 hunt → population exhaustion).
 
+**THE DECEMBER CLAIM IS DECIDED (2026-08-07): LEAF A — a system
+that never lies; abstention leads; scope in the same breath;
+mouth-widening is the claim's guarded gate (trace frontier measured
+BEFORE widening).** All roads = coverage growth under the claim.
+
 **THE BOARD (words holding):**
 1. **The cold framing session** (Bryce's; docs/DECEMBER_FRAMING.md)
    — now with quintuple inheritance: measured surface slope

@@ -25806,3 +25806,28 @@ token-position × waist-dim, the moment the skeleton trains.
   defers a decision A already wins. The three deferred roads'
   shared trigger (mouth-widening) becomes the coverage roadmap's
   first milestone. DECISION RESERVED FOR THE WORD.
+
+- **THE DECEMBER CLAIM IS DECIDED — LEAF A RATIFIED WITH TWO
+  AMENDMENTS (2026-08-07; "agreed — a system that never lies";
+  the campaign's first strategic decision made entirely against
+  numbers):** THE CLAIM: **a system that never lies — it answers
+  ~0.2% of addressable MATH-500 and CERTIFIES what it answers.**
+  AMENDMENT ONE (scope in the same breath): the measured warrant
+  is zero certified lies in-register (291 rows, eleven vintage-
+  labeled batteries, the substrate-invariant basin found once and
+  fenced) + total abstention at the wild frontier under the
+  deployed mouth — the never-lies property on mouth-ADMITTED wild
+  text is NOT measured because almost none is admitted: **"never
+  lies where it speaks, and it speaks only where it was taught"**
+  — epistemically stronger, rhetorically weaker, the campaign's
+  standing trade. AMENDMENT TWO (abstention is the claim, not a
+  footnote): the ~0.2% answer rate LEADS — the claim nobody can
+  accuse of overreach, the one the chain of custody earns. THE
+  CLAIM'S OWN FENCE, carved with the decision: **mouth-widening is
+  the one road that can BREAK the claim** — what enters is
+  enriched in exactly what no gate sees (the gradient), so
+  widening requires the trace layer's frontier behavior measured
+  BEFORE it moves, never after. All roads reframe as coverage
+  growth under an invariant claim; the three deferred roads'
+  shared trigger is now also the claim's guarded gate. Decided by
+  the word, analyzed by the pen, both signatures on the record.

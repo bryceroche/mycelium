@@ -178,3 +178,17 @@ length) are UNCHANGED and remain the biggest arithmetic; the surface
 road is now priced per-construction and bounded away from the 0.02;
 the mouth's width is the single trigger three deferred roads share.
 The claim decision inherits all five with artifacts behind each.
+
+---
+
+## THE DECISION (2026-08-07 — RATIFIED)
+
+**LEAF A: a system that never lies.** It answers ~0.2% of
+addressable MATH-500 and certifies what it answers. Scope stated in
+the same breath: never lies where it speaks, and it speaks only
+where it was taught (zero certified lies in-register, 291 rows,
+eleven batteries; total abstention at the wild frontier). The
+abstention rate LEADS the claim. All roads = coverage growth under
+an invariant claim. **THE FENCE: mouth-widening can break the
+claim — the trace layer's frontier behavior is measured BEFORE any
+widening moves.** Decided by the word, analyzed by the pen.
