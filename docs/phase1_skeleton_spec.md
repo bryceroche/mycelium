@@ -26005,3 +26005,31 @@ token-position × waist-dim, the moment the skeleton trains.
   the timing read RE-RUNS post-cure — settle_tok ≥ operand_tok —
   **the mechanism verified at the token, never inferred from the
   score.** The fire holds for its word.
+
+- **ARM 1 KILLED — AND THE TIMING RE-RUN REVEALS THE SECOND LAYER
+  (2026-08-07; the verification clause pays for the whole door):**
+  THE KILL, mechanical: primary unmoved (nd=1 stays 15/15);
+  no-harm VIOLATED (nd=0 degrades 5/15→15/15 misbind — the aux
+  term at this weight destroys clean-air dup binding); bigtest
+  −107 gs vs ctl (kill bar exceeded 20×). Arm 1 is dead at this
+  weight. **BUT THE TIMING MOVED EXACTLY AS DESIGNED: 15/15
+  PREMATURE → 15/15 LOST** — settle_tok now lands at/after the
+  operand on every row; the commit waits for the evidence... and
+  then LOSES the contest it finally holds. THE DISCOVERY: **the
+  pathology is STACKED — premature commitment was MASKING a
+  genuine preference weakness underneath.** Staging alone converts
+  early-wrong into late-wrong; the fork's two mechanisms were
+  never rivals, they are LAYERS, and a cure must do BOTH: hold
+  the commit AND win the held contest. The score-only read would
+  have printed "no change" (15/15→15/15) and taught nothing —
+  the token-grain verification is why the kill carries a
+  mechanism instead of a shrug. NEXT DESIGN (its own word):
+  stage + strengthen jointly — the aux target at lower weight
+  (the −107 says 1.0 is far too hot) combined with dup-bit/args
+  preference supervision AT the operand-complete moment;
+  registered arm 2 (breath-staging) alone is now PREDICTED
+  INSUFFICIENT by this read, banked as such before it burns.
+  ctl continuation clean (bigtest 1233 = the g23 lineage
+  baseline; scan identical to v120). The two-layer finding is
+  the campaign's deepest dup mechanism yet: the wall has a wall
+  behind it.
