@@ -26061,3 +26061,31 @@ token-position × waist-dim, the moment the skeleton trains.
   stacked-pathology law's first application); no-harm nd=0 +
   bigtest −5 vs rings ctl; kill >5. Arms rctl/bexit, 4k from g23,
   burning.
+
+- **THE CATHEDRAL RECKONING — COMPONENT-BY-COMPONENT, NOT A
+  UNIFYING SENTENCE (2026-08-08; Bryce's discipline on the
+  migration story; the revenant handled by ledger):** (1) THE
+  NOTEBOOK: the rings' ACCUMULATE is **analogous, not identical**
+  — commitment mass on existing state, not a separate tensor bank;
+  the cathedral's design decisions (NB_SLOTS, NB_DIM, zero-init
+  projections) import NOTHING without their own argument. (2) THE
+  SILHOUETTE: **identity claim REFUSED** — the cathedral's was a
+  side-channel write source never fed back; the parser's waist is
+  the working representation everything reads. Same number (512),
+  OPPOSITE role — a coincidence of dimensionality, the
+  axis-and-substrate burn's exact shape. (3) THE WAVE: genuinely
+  unbuilt, genuinely unrefuted — **the clock is its lawful heir**,
+  and it inherits the perceiver's three failures as its fence:
+  phase touches MEMORY ORDERING only, never the deduction path.
+  SCOPE RIDER: the June refutation killed the SOLVE-SIDE
+  forgetting thesis (oracle ceiling at noise, shrinking with
+  depth, three domains) — that stays dead; the parse-side
+  evidence (the dup capacity contest, premature commitment) is
+  new ground the June reads never touched. The cathedral is not
+  vindicated; one of its three ideas has a lawful heir with a
+  measured disease. **THE GUT RIDING THE RECKONING: "there IS a
+  wave — not sure it's π"** — the phase-stamp's FORM is an open
+  design question for organ 3's spec (aperiodic yes, π-cycled
+  unproven here; the wave's existence is the instinct, its shape
+  is the clock's to measure). The beam exit is the reckoning's
+  first honest customer.
