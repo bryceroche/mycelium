@@ -25558,3 +25558,21 @@ token-position × waist-dim, the moment the skeleton trains.
   roads share). The original sheet's numbers untouched — addendum,
   not rewrite. **The biggest word on the board now lands on a
   current sheet.**
+
+- **THE INVARIANCE FIRE IS LIT (2026-08-07; my choice on the open
+  word; the door's registration dd52e4eda739 predates every
+  artifact):** THE MINT: 6,540 paraphrase pairs — the equalized
+  row set rendered TWICE through table v3 (independent draws;
+  100% text-distinct; graphs asserted identical — identity by
+  construction, the digest oracle's cheapest form). THE TRAINER
+  SURGERY, three cuts: fst_s emitted under ALG_INV (the waist
+  slot-state, the agreement term's read point); the sampler draws
+  PAIRS (2k,2k+1 share a graph); the term = 0.1-pinned L2 between
+  pair members' present-slot states — gold untouched, no
+  diagnostic in the loss (the register clause holds: the term
+  reads geometry, supervises nothing monitored). THE ARMS:
+  ctl/inv on the SAME pair mix, 4×4k from g22 each — only delta =
+  the term (tighter than the registered v120 control; both will
+  be read, the bar applies to the registered one). Burning as
+  inv-fire; reads land on the registered bars + the
+  discriminating pin (valves move, dup doesn't) when it quiets.
