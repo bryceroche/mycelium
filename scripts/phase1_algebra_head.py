@@ -1109,6 +1109,7 @@ def do_train(steps, lr, batch, seed):
     XOUT_TR = int(os.environ.get("ALG_XOUT", "0")) and \
         int(os.environ.get("ALG_RINGS", "0"))
     INV_TR = int(os.environ.get("ALG_INV", "0"))
+    INV_PAIRS_ARR = np.load(os.environ["INV_PAIRS"]) if INV_TR else None
 
     @TinyJit
     def step():
@@ -1127,8 +1128,8 @@ def do_train(steps, lr, batch, seed):
             o = forward(p, b_tr, b_tk, b_se, slot_mask=b_mask)
         l = loss_fn(o, bg)
         if INV_TR and "fst_s" in o:
-            _d = o["fst_s"][0::2] - o["fst_s"][1::2]
-            _pm = bg["presence"][0::2].unsqueeze(-1)
+            _d = o["fst_s"][0:4:2] - o["fst_s"][1:4:2]
+            _pm = bg["presence"][0:4:2].unsqueeze(-1)
             l = l + 0.1 * (_d * _d * _pm).sum() / (_pm.sum() * o["fst_s"].shape[-1] + 1e-6)
         opt.zero_grad()
         l.backward()
@@ -1217,9 +1218,12 @@ def do_train(steps, lr, batch, seed):
             idx = rng.choice(pool, batch, replace=False, p=pw)
         else:
             idx = rng.choice(pool, batch, replace=False)
-        if INV_TR:  # invariance fire: batches are PAIRS (2k, 2k+1 share a graph)
-            k = rng.choice(n // 2, batch // 2, replace=False)
-            idx = np.stack([2 * k, 2 * k + 1], 1).reshape(-1)
+        if INV_TR:  # inv-fire v2: 2 pairs (pos 0-3) + carrier rows (pos 4-7);
+            # pairs from INV_PAIRS side file — the carrier mix rides (the
+            # substrate lesson: never train on the patch alone)
+            pk = rng.choice(len(INV_PAIRS_ARR), 2, replace=False)
+            idx = np.concatenate([INV_PAIRS_ARR[pk].reshape(-1),
+                                  rng.choice(n, batch - 4, replace=False)])
         b_tr.assign(Tensor(states[idx].astype(np.float32), dtype=dtypes.float).contiguous()).realize()
         b_tk.assign(Tensor(tokmask[idx].astype(np.float32), dtype=dtypes.float).contiguous()).realize()
         b_se.assign(Tensor(sent[idx].astype(np.int32), dtype=dtypes.int).contiguous()).realize()
