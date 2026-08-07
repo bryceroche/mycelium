@@ -25530,3 +25530,17 @@ token-position × waist-dim, the moment the skeleton trains.
   pot's water was always in the pot." Exhaust port's second
   dividend inside a day noted: a gap unstatable before the
   plumbing is now measurable.
+
+- **GUT #174 REGISTERED — "TOO MUCH CLUTTER" (2026-08-07; answered
+  straight, with data):** the two-kinds distinction is the
+  content — STORAGE clutter (files, entries, index size) is cheap
+  and greppable; **ATTENTION clutter is the expensive kind**, and
+  its signature is a docket whose highest-value item keeps
+  deferring behind smaller ones — the framing session has held the
+  board's top for days while eleven guts, four door transits, and
+  three arcs ran past it, each individually cheap, collectively a
+  queue. MEMORY.md's precedent stands as the storage answer
+  (76.3→22.8KB, zero pointers lost, append rule + recompression
+  trigger). THE RENT, fired same-hour: **the docket audit** —
+  every open item marked LIVE / CONDITIONAL(trigger) / DEAD(reason)
+  into docs/BOARD.md; the campaign's first-ever run of the pass.

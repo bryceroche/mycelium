@@ -1,104 +1,50 @@
-# THE BOARD — open items, owners, blocking conditions
+# THE BOARD — docket artifact (2026-08-07 audit; gut #174's rent)
+Deciding stays with the word; this file marks status only.
+Re-audit at each chapter sync.
 
-**What this is (gut #107's yield):** the campaign's docket as an
-artifact — what's owed, who owns it, what blocks it, when last touched.
-State tracking ONLY: **the deciding stays with the word, one rung at a
-time** (the pacing fence is constitutional here; this file surfaces
-blocking conditions, it never computes next moves). Update duty: touch
-on open/close and at chapter boundaries. The ledger remains the record;
-this is the index of its open edges.
+## LIVE (will be worded)
+- **THE COLD FRAMING SESSION** — the biggest word; quintuple+
+  inheritance (slope→valve, learning-proof, boundary, dup axis,
+  census). Everything below it is smaller.
+- **The invariance fire** — registered (door #3), design complete,
+  holds for its word.
+- **The clock (organ 3)** — spec-stage; organ order says it's next
+  after the reverse gear's arc.
+- **Dup's axis-search** — design owed (NOT phrasing-dose); own
+  registration when worded.
+- **The schema floor** — job restated by #169 (orientation
+  metadata); teaching-not-telling fence.
+- **Arms A/B (anchor-bias ± persistence)** — bank-level surgery;
+  tests #153's persistence clause.
 
-*Last full pass: 2026-07-30 (gen-22 promotion day).*
+## CONDITIONAL (trigger pinned, sleeps until it fires)
+- Marker relaxation — trigger: mouth-widening (fork (b) ruled;
+  converges with December revisit).
+- December steering revisit — trigger: mouth-widening (same event).
+- Deep-tail wave claim — trigger: a SECOND unexplained shape
+  (texture rule holds the door).
+- Second-pass over drops — trigger: a what-changes-between-passes
+  design (else revolving door); additive-not-permissive class.
+- Bracket 11–14 refinement — DEPRIORITIZED (3-phrasing resolution
+  on a solved construction); revives only with a pricing need.
+- Subject-widening exploratory — allowed anytime, NO license
+  authority; runs only if margins-on-neighbors is worth knowing.
+- E/B revival — identity rider + axis-and-substrate clause owed.
+- Adaptive-K (#133) — reallocation-not-speedup framing pinned;
+  quiet until the clock exists.
+- Jurisprudence consolidation — fallow-lawful; revisit at the next
+  MEMORY.md recompression trigger.
 
-## In flight
-
-*(nothing — the estate is settled; the wild ledger is banked)*
-
-## The actuarial fixture (2026-07-31 — price proposals here first)
-
-`.cache/wild_ledger_v1.jsonl` — n=1404, full deployed chain, per-item.
-Standing rule: graded-tier proposals NAME THEIR SIGNAL first and price it
-against this table (free re-cut) — AND STATE ITS VOLUNTARINESS (#140:
-voluntary signals carry the six-null prior; involuntary emissions are
-the ampullae). Known: residual doesn't grade; quorum
-saturates (0.626 @ 5/5); LEVEL grades (0.78→0.47); mouth = register
-instrument (98.4% refusal, all levels); fences one-for-one at frontier;
-inner chain 9% coverage @ 0.63 — CORRECTED 2026-08-02: decomposes to trained-verbatim 0.95 / NEVER-TRAINED 0.02 (the December-relevant row; 457/1404 of fixture is training text; consumption key = sha ∩ deployed mix, never the candidates glob); unfenced 56% @ 0.53.
-
-## Owed — Bryce's word required to fire
-
-| Item | Owner | Blocking condition | Last touched |
-|---|---|---|---|
-| **THE SLOPE PROBE** (surface road NOT bought; AUG fire 2026-08-02: 41@10% no bar, arms tie): one arm ~120 entries, same rows/dose, one pen tranche — ties = mechanism ceiling, bends = 10× table measured. DESIGN PINS: (1) unique-reading audit at authoring (alphabet-exclusion clause, check spec); (2) **span punctuation forms DELIBERATELY** — the census is punctuation-blind (word-substring grains), so a probe inheriting its families might span in a subspace and tie for the same reason the arms tied at 41 (live hypothesis, pinned before authoring); (3) **AXIS TAGS at authoring** (ruled 2026-08-02): every entry tagged word-family-grain vs punctuation-bearing, so a bend decomposes post-hoc without a second arm (bank-don't-read applied prospectively) | fresh hand | its own word | 2026-08-02 |
-| ~~RUNGS 1+2+2b~~ DONE 2026-07-31: READINESS IS SETTLING — generalized (pct 0.834, dup-args 0.997; evidence-quantum grain); frontier UNTESTABLE-BY-INSTRUMENT (decision point stands); settle = the wetting call's mechanism instrument + diet after-read grain; 53% dup misbinding under load (diet pathology at population grade) | — | rung 3 awaits its word if ever | 2026-07-31 |
-| Wetting-clause blind call (pinned): dup-args diet ordering vs book-8 mix inclusion — the exchange law's live experiment | rides the dup-args word | pinned before wording; factory panel cell grain | 2026-07-31 |
-| ~~STRUCTURAL-RATE AUDIT~~ DONE 2026-07-31: 0.4% — [428] is a singleton; kind-exact 261/262; corpus structurally TIGHT; scope line = footnote with its number | — | — | 2026-07-31 |
-| ~~Harvest-vs-MATH-500 composition audit~~ DONE 2026-07-31: 39.4% addressable ceiling; biggest wall = answer representation (29.4% non-integer — a representation decision); December inherits the arithmetic | — | — | 2026-07-31 |
-| ~~December claim decision~~ **RESOLVED 2026-08-03 (pen, on the word): A-NOW-PLUS-D** — abstention product ships; census READ (schema 10/assembly 1/OOD 34: knowledge 18+values 16): SCHEMA FLOOR PAYS for reachable class (83%>60% bar); binder NOT the frontier bottleneck (1/46); roads re-ranked: ANSWER-SPACE first (35% lies + 29.4% M500 — word recommended), books, schema floor (CAMBIUM), macros. COUNTERSIGNED 08-03; ANSWER-SPACE WORD GIVEN → retro read PRINTED (197→317 stacked, 352 w/ len600; E3 digit-width biggest single lever +51; E1+E3 recommended first) → GEN-23 FIRED + BATTERY COMPLETE (08-03): B2 PASS 1238>=1214 (above g22's 1226!); B1 FAIL — split: SIGN 100% (solved terminal) / WIDE 0% (compounding-digit wall: per-digit ~90% ^ 6-7 positions; May's per-number-not-per-digit law returns). NO PROMOTION, g22 the gate, g23 diagnostic-banked. ~~(c) DONE: PROMOTED~~. WORDS WAITING: (a) wide re-fire (held — exponent argument) vs (b) copy-not-generate redesign (bench; #127 PIN: cannot pad-warm — transition cost structurally higher; #132: first build whose plasticity schedule must be DESIGNED — no inheritance to hold rigid) | Bryce | the word (a/b/c) | 2026-08-03 |
-| DUP-ARGS DIET — FIRE-READY (docs/DUP_DIET_DESIGN.md): arms 2/5/12% straddle the measured anchor; WET/DRY; verdict structure pinned; Option A (6 arms, ~8h) vs B (4 arms, ~5h) | Bryce | the word + the A/B choice; everything after is execution | 2026-07-31 |
-| Binding-family docket: pct part/base species (args_wrong 57% floor; detected+p-right+wrong-vars; context = anchors) | binding bench | the word; NOT a diet, NOT rendering (both refuted); joins rate-family jurisdiction | 2026-07-31 |
-| THE DECISION POINT — REPRICED 2026-08-04: **the commit head IS a working trained grading signal (mass AUC 0.941, slot-grain, held-out bigtest, one 4k bench fire — register-clean by construction)** after 4 cheap nulls; GRADUATED 08-04 (0.941 answer-grain) → WILD-PRICED 08-04: **mass AUC 0.650 WEAK — the first non-null frontier signal ever** (applicability: wild distribution compressed; modal/free = NULL, sixth axis). Leaf C: a weak first term, not usable at this strength; strengthening roads (frontier-inclusive commit gold, deeper rings dose) are priceable words | Bryce | next word if any | 2026-08-04 |
-| Binding bench design constraint (3 arrivals): commitments need a REVERSE + re-anchor between maneuvers | binding bench | convenes with the bench | 2026-07-31 |
-| Held-out-pairing composability read (train-without, test-with — the decisive form) | bench | expensive; docketed, not fired; the in-lexicon question is undecidable | 2026-07-31 |
-| Triage head RE-PRICING (MuZero-docketed; census volume now exists) | bench | the word; fences unchanged (two-death-mode, latents-never-replace-graph) | 2026-07-30 |
-| Soft-distance graph register (distinct candidate, not a rescue) | bench | the word; own bar + LOO rider BEFORE catch rate | 2026-07-30 |
-| Multi-route custody (#91; single-pen monoculture flagged by #106) | bench | the word; design unwritten | 2026-07-30 |
-| Diet dose-response / context ladder (post-cure characterization) | bench | the word; g22 promoted, substrate banked | 2026-07-30 |
-
-## Owed — bench work, no word needed (queued by priority)
-
-| Item | Owner | Blocking condition | Last touched |
-|---|---|---|---|
-| ~~One-door LAW sweep~~ DONE 2026-07-31: 7 laws enumerated; DOORS BUILT (mycelium/doors.py — certify_unique/quorum/deployed_env/row_m/seed registry); silent-60 dead; TRIPS remnant deleted; migration policy standing. Docketed: budget-spread policy, seed-join residual, era-stratified "certified" label | — | — | 2026-07-31 |
-| ~~k<=0 predicate guards~~ DONE 2026-07-31 (predicates reject, propagators empty-domain; sanity-checked) | — | — | 2026-07-31 |
-| ~~Set-vs-count value accounting~~ REFUSED at bar (1/263 false trip; specimen [428] = answer-equivalent-loose parse) — redesign paths filed, not pursued | — | — | 2026-07-31 |
-| VOTE-SEMANTICS WINDOW items: (1) permuted_view <=3-sentence collapse (landmine, not live); (2) THE DIGEST VOTE (08-04, PRICED: coincidence class decomposes 29 correct / 7 wrong — a precision-for-coverage trade in the one-for-one family, NOT free tightening) | bench | the window — never mid-campaign silently | 2026-08-04 |
-| ~~Wild-exposure re-sizing by template~~ CLOSED OBE 2026-07-31: the failing template is CURED (d1 7/8, basin gone) and chained-fdiv RELEASED — the sizing question is moot | — | — | 2026-07-31 |
-| Silhouette-triage spec (spec-first ruling; funnel region ledger §13) | bench | spec unwritten; no convention gates before spec + retro read | 2026-07-29 |
-| ~~THE 0/20 AUTOPSY~~ DISSOLVED 2026-08-02 by the corrected cut: the consumption KEY was wrong (candidates glob = book8-era waiting room; true record = deployed mix text). CORRECTED: trained-verbatim 81 @ 0.95, NEVER-TRAINED 43 @ 0.02; disjoint-0.75 dead; leaf B collapsed. NEW DOCKETS: (1) ~~CONSUMER AUDIT~~ **DONE 2026-08-02** (docs/CONSUMER_AUDIT_2026_08_02.md): BOOKS SCALE SAFE (SKIP_IDX sound); scope lines applied; SECOND BUG: entourage CENSUS_DISJOINT no-op since gen-13 (full-pool reads mislabeled disjoint; caveat regression 13/14→16; fix rides next entourage, never silently); (2) wild-ledger re-cut (g23 chain over the 1404): consumption SIDECAR (sha ∩ mix) + #139 RENT — per-item trajectory join vs banked g22 records; **BACKWARD MOVERS = the PRIMARY product** (a promotion is a net; nets hide components; the backward population is unmeasured across 3 promotions); frames stated (never-mix). 0.023 second look DONE: keeps predictor status w/ scope lines (algebra-slice, n=43); 0.951 = prose-PLUS-GRAPH memorization (81/81 annotated; books 5-6 + gen-10 prose lane); book7/8 rows NOT in deployed mix | bench | (1) FIRST WORK next session; (2) rides next re-cut | 2026-08-02 |
-| Criterion rebuild | bench | queued | 2026-07-29 |
-
-## Standing duties (recur, never close)
-
-| Duty | Cadence |
-|---|---|
-| Deep clean (apparatus audit; one-door sweep in scope; GOODHART AUDIT: any loss/reward/selection reading DIAGNOSTICS? + register COMPLETENESS: any diagnostic born since last clean unregistered? + IMPORT-TIME WRITES: does any module write at import? First pass 2026-08-02: 7 live bypasses named in ledger + CAVEAT DECAY: which printed numbers carry scope as DATA vs COMMENTARY? + ORPHANED VERDICTS: which registered predictions have banked artifacts and no ledger verdict? (3 candidates 08-03: parser_layer_read FIRST — layer-axis/composability-adjacent; resident_derived_read; torsion NaN; burial legitimate) + PRE-BUILD AUTHORITY CHECK (paid 4x) + SENTINEL AUDIT: enumerate sentinels vs planned extensions (UNASSIGNED=-1 specimen) + BUFFER-SPEC DOOR: derive gold-buffer lists from the head terminal set, one authority, fence fires at BUILD (4 dens/12h/3 files, 08-03) — composition_matrix, vote_sample_lattice, crossover_offceiling/depth_graded, fingerpost_v01, nack_incumbent_read, roundtrip_read — guard fix docketed, mechanical) | chapter boundaries (gen-weights → main syncs) |
-| Standing rehearsal, both tiers | every generation + every diet (rides entourage) |
-| Entourage (specialist/centroids/mouth/panel + re-hash) | every promotion, before the gate reads |
-| Registry re-audition (certificate pile) | every promotion |
-| Board file touch | open/close + chapter boundaries |
-
-## The vision page
-
-**CAMBIUM** (docs/CAMBIUM.md, 2026-08-03): the named design — cambium
-(parallel working state, signature C) + rings (committed record, rung 3
-R2) + the explicit tower (census-gated). Measured/conjecture split with
-vintages. K-sweep retro-read banked 2026-08-03 (t95 1/3/8; K8 cost
-0.5/0.6/4.2% — deeper degrades first): C confirmed at solve grain,
-June-engine territory only.
-
-## Asleep / open questions (setting, per #104 — not delinquent)
-
-| Item | State |
-|---|---|
-| §2-R Engine 2 (parser front-end + small untied trained stations) | SITS per gut #97 (position over the win) |
-| Composability A∘B (strong claim: gate trained on A and B handles A∘B) | registered open question — the MATH-500-relevant one |
-| L4/L5 harvest expansion (the level wall: +280/+252) | open; serves MATH-500 directly |
-| Jurisprudence consolidation pass (20+ laws, no compression yet) | fallow-lawful; candidate for a chapter boundary |
-| Bench flags: [1302] boundary, Law-8 family ×3, [1300] six-factor collision | filed, awaiting a jurisprudence session |
-| Paper I (decorrelation ceiling) / Paper II (compiler thesis + two-lever law at 3 points) | accumulating; hold for the merge |
-
-## Recently closed (this chapter)
-
-Gen-22 PROMOTED (diet fire; d1 cure 1/8→7/8, basin GONE; first verified
-manifest in five gens) · Entourage-22 SETTLED (10 stages; TRUE zero-point:
-DEPLOYED 40/40 refused under the real gen-22 mouth; dissent rotates n=2) ·
-Two-home sweep first pass (17 pairs; 4 live bypasses → 4 doors; ALG_HW
-gained its authority; gate_fixtures.py = roster authority; certifier
-manifest-driven + withdrawal-preserving) · Deep clean ×6 findings (gut
-#102) · Trace layer unified (mycelium/trace_layer.py) · Graph-register
-refuted all grains (antagonism law; wild side closed both directions) ·
-Wild rehearsal + four autopsies (value-fabrication template) · Tranches
-9-10 (book 8 at 10 tranches / 263 net certified after withdrawals) ·
-Roster = address table · Distance = screen not lever · [1293] tripwire →
-permanent infrastructure.
+## DEAD (closed, with reasons — resurrection owes identity riders)
+- Contour-following blade — killed at ORACLE grade (0.24; any
+  per-slot frame variation un-fixes the fixed point).
+- δ-matched estimator — refuted (offset is not a running count).
+- Raking screen as instrument — demoted to description (level-vs-
+  contrast survives as a spec-time question only).
+- Harvest extension — population EXHAUSTED (2,949 = the whole
+  algebra+prealgebra train; the wild-1404 is the census).
+- The 339-slice validation — VOID-BY-POPULATION (filter rejects,
+  not peers).
+- "Slope" and "under load" — vocabulary retired by measurement.
+- Neural-guided clean-CSP search / graph-register / perm-aug /
+  photon line — long-dead, listed for the stranger.

@@ -137,3 +137,4 @@ One line per registration; full forms, rents, verdicts, and countersigns live in
 - **#171** TWO VALVES ON THE HOSE (2026-08-06) — exchange family; valve-versus-slope is the content
 - **#172** PHANTOM TRAFFIC WAVE (2026-08-06) — the signature-versus-mechanism sort is the content
 - **#173** EMPTY THE POT TWICE (2026-08-07) — exchange family; two-stage extraction is the content
+- **#174** TOO MUCH CLUTTER (2026-08-07) — answered straight, with data
