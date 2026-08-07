@@ -131,3 +131,50 @@ includes everything the mouth refused (98.4% of the harvest),
 UNMEASURED on this axis; if the floor's value depends on converting
 refusals to answers, that number is not in evidence.** Pen-judged,
 per-specimen reasons banked; COUNTERSIGNED 2026-08-03.
+
+---
+
+## THE SURGE ADDENDUM (2026-08-05→07; what changed per term since this sheet was built)
+
+**THE SURFACE ROAD now has a measured domain, boundary, and price.**
+Domain: parse-side constructions only — fdiv went 0/8→8/8 on a
+never-licensed form (the parse WALL: below threshold the construction
+doesn't exist, above it reads native — anchors 0.986, learning
+certified, not recall). Crossings are VALVES not slopes (0/8, 0/8,
+8/8, 8/8 at 8/11/14/17 phrasings; fdiv's valve sits in 11–14):
+per-construction sizing is BINARY SEARCH, cheap. Boundary: the same
+table moved wild flip and settle NOWHERE — the membership axis (the
+0.02 row) is unreachable by any diet. Dup's wall is BINDING-side
+(19 phrasings, no movement) — not all parse-side walls are
+phrasing-walls. **Consequence for the claim: the road multiplies
+in-dialect competence per-construction; it does not touch the
+never-trained 0.02.**
+
+**THE CENSUS IS EXHAUSTED.** math_harvest_v0 consumed the ENTIRE
+algebra+prealgebra train split (2,949 rows to the row); the wild-1404
+is the census, not a sample — every same-population held-out
+validation is blocked-by-world-size until the population definition
+changes. Marker relaxation ruled fork (b): no validation, no
+relaxation; converges with mouth-widening.
+
+**THE ATTRITION PROFILE exists (exhaust ports, wild_ledger_v2):**
+419 correct answers enter the chain, 81 survive — 80.7% of correct
+work discarded, and the trace layer is the address (313 correct :
+319 lies held; the marginal curve is bimodal but fixture-fit —
+unvalidatable per the census). The chain CONCENTRATES membership
+(enrichment gradient 0.500→0.633 in lockstep with trained-share —
+#164 confirmed): the certified wild set is enriched in exactly what
+no gate sees. The frontier is SINGLE-PASS (drops terminal; a second
+pass over recorded drops is ADDITIVE-not-permissive — a safer class
+than relaxation, design question open: what changes between passes).
+
+**STEERING: deferred with a trigger.** The filler pathology's cure
+(row-gated +1 steering: 0.330 new-right at zero clean harm) is worth
+<1 wild answer at current admission; revisit fires on mouth-widening
+(same event as the relaxation's validation).
+
+**Net for the session:** the ceiling levers (answer-space E1+E3,
+length) are UNCHANGED and remain the biggest arithmetic; the surface
+road is now priced per-construction and bounded away from the 0.02;
+the mouth's width is the single trigger three deferred roads share.
+The claim decision inherits all five with artifacts behind each.
