@@ -25514,3 +25514,19 @@ token-position × waist-dim, the moment the skeleton trains.
   release without changed evidence, the question organ 2's arc
   already answered once. Candidate intervening processes are
   design work, not asserted here.
+
+- **THE #173 COUNTERSIGN (2026-08-07, Bryce):** the waiting
+  family's termination conditions carved (equalization ends at
+  flat gradient; protection at set structure; extraction when the
+  second pass has collected — "how long do I wait" answers
+  differently in each). THE REVERSIBILITY CLASSIFICATION, kept
+  most visible: **a second pass is ADDITIVE, not permissive** —
+  it changes nothing about the first pass's behavior, doesn't
+  touch certifier thresholds, doesn't inherit the one-for-one
+  price: a materially safer move under #166, and argued as such
+  if it ever gets a word. The candidates' shared shape named:
+  each is **information the first pass HAD and discarded** —
+  quorum dissent, trip identity, alternate view families. "The
+  pot's water was always in the pot." Exhaust port's second
+  dividend inside a day noted: a gap unstatable before the
+  plumbing is now measurable.
