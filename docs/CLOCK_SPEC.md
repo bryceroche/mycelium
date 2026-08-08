@@ -28,7 +28,19 @@ evidence-energy? Candidates, each measurable on banked parses:
       complete signal arm 1 aimed attention at)
 **The operator scan precedes any build**: which best separates
 healthy commits (nd=0 correct rows) from premature ones (the tok-21
-rows)? Chosen by measurement.
+rows)? Chosen by measurement. **THE NULL BRANCH (pinned): four is
+the registered set — if none separates, concentration is not the
+operator and the Nazaré frame owes a DIFFERENT design principle;
+no fifth candidate invented at the scan.** Correlated candidates
+(a/b/c rise together as context fills) are distinguished from
+proxies by pairwise correlation, reported with the scan.
+**SCAN VERDICT (2026-08-08): (d) SELECTED** — own-sentence
+completion, AUC 1.000 (healthy 1.0 vs premature 0.167); (a) also
+1.000 but IS (d) in disguise on this fixture (the 4th visible
+mention IS the operand — perfectly correlated, the proxy caught by
+the rider); (b) flat; (c) uninformative-by-saturation (text order
+binds the given before every rel — unrefuted, untested). Clock v1
+gates commitment on OWN-SENTENCE COMPLETION.
 
 ## 3. THE FENCES (all inherited, in from birth)
 - **Register clause:** the commit trigger is its own trained head

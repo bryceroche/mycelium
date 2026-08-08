@@ -26204,3 +26204,25 @@ token-position × waist-dim, the moment the skeleton trains.
   (canonicalizer at false-merge zero; the 4.49-vs-1.25 split;
   the species taxonomy = the unhappy families enumerated). THE
   WORD: Phase 1 step 1 — CLOCK_SPEC.md is written.
+
+- **THE OPERATOR SCAN'S VERDICT — (d) SELECTED, THE PROXY CAUGHT
+  (2026-08-08; door customer #9; Bryce's riders arrived with the
+  results and governed the reading):** healthy 10 / premature 15;
+  **(d) own-sentence completion AUC 1.000** (healthy commits at
+  1.0 — they wait for their sentence; premature at 0.167 — they
+  fire a sixth of the way in); (a) visible-mentions also 1.000 but
+  **IS (d) in disguise** — on this fixture the fourth mention IS
+  the operand, so a rides d's signal exactly (the correlation
+  rider's proxy, caught as prescribed); (b) flat 0.500; (c)
+  UNINFORMATIVE-BY-SATURATION (text order always binds the given
+  first — unrefuted, untested; the valve-cartography lesson
+  applied). THE PICK RULE EXECUTES: tie broken toward the simplest
+  — **(d) wins: clock v1 gates commitment on OWN-SENTENCE
+  COMPLETION.** The null branch written into §2 for every future
+  scan (four is the set; a miss owes a different principle, never
+  a fifth guess). The precedent note banked: the spec satisfied a
+  spec-time door inside its own charter (the nut is the anchor) —
+  the panel as design tool, first instance. The operator is
+  BEAUTIFULLY dumb: commit when your own sentence is done — mise
+  en place as a gating rule, the Nazaré funnel's narrowest
+  workable form.
