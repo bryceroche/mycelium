@@ -26191,3 +26191,16 @@ token-position × waist-dim, the moment the skeleton trains.
   head TRAINS toward convergence-certified finality, never READS
   a convergence meter at inference. Patience is the schedule;
   the organs are the plan.
+
+- **THE KITCHEN IMAGE CORRECTED + THE CLOCK SPEC'S WORD
+  (2026-08-08, Bryce):** the honest version carved: **the model
+  isn't holding all the ingredients — it's holding ONE, and
+  dropping the dish** (the n=1 step: full hands would degrade
+  gradually; one item collapses the binding absolutely) — the
+  stronger argument for the notebook, and the version the record
+  defends. The patience law's receipt cited (arm 1 fired before
+  timing was understood; informative only by the verification
+  clause). The Anna Karenina instrument predates the frame
+  (canonicalizer at false-merge zero; the 4.49-vs-1.25 split;
+  the species taxonomy = the unhappy families enumerated). THE
+  WORD: Phase 1 step 1 — CLOCK_SPEC.md is written.
