@@ -26393,3 +26393,27 @@ token-position × waist-dim, the moment the skeleton trains.
   Next design owes its own word: the bit's detection — and its
   first question is #155's (is the evidence absent from the
   state, or present and unread by this head?).
+
+- **THE BIT DETECTION READ — PRESENT AND UNREAD, AT 1.000
+  (2026-08-08; door customer #13; #155's question answered in one
+  read):** a fresh linear probe on the SAME waist slot-states the
+  bit reads separates novel-form dup from ordinary rels under
+  competition at **held-out accuracy 1.000 (n=100)** — while the
+  deployed bit's logit sits at −16.2 on those dup rows (fire rate
+  0.00) and −13.0 on NON-dup rows: **the bit is not merely silent
+  under competition — it is ANTI-correlated on these forms, worse
+  than blind.** THE VERDICT-PRESENT BRANCH EXECUTES: the evidence
+  is in the state, perfectly linearly readable, and one trained
+  head fails to read it — a HEAD problem, not waist starvation.
+  **#155's deep branch does NOT confirm** (good news: this wall
+  needs no new instrument class — the state already carries what's
+  needed). THE GIFT: the probe IS a demonstrated replacement
+  detector — same input, same role, 1.000 where h_dup prints 0.00.
+  THE FULL DUP PATH NOW EXISTS IN VERIFIED PIECES: a probe-grade
+  detector (today) + a perfect specialist pointer (this morning) —
+  the wall that survived three campaigns is reduced to ONE SMALL
+  INSTALLATION FIRE (retrain/replace h_dup toward
+  competition-spanning dup gold, or install the probe's map),
+  owing its own registration when worded. The relocation chain
+  complete in one day: preference → detection → read-but-unread —
+  each step found by instrumenting where the previous cure failed.
