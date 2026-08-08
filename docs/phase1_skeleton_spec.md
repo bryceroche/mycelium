@@ -26367,3 +26367,29 @@ token-position × waist-dim, the moment the skeleton trains.
   names its re-anchor. TIMING HONESTY: a three-element
   architecture gut arriving mid-fire is held for the board the
   fire may reorder — #179's discipline applied again.
+
+- **THE STRUCTURAL POINTER'S VERDICT — THE WALL RELOCATES ONE
+  STATION UPSTREAM (2026-08-08; door customer #12; the mechanism
+  split decides everything):** primary fails (nd=1 15/15), kill
+  fires (bigtest −28 gs), arm dead — AND THE MECHANISM READ
+  REWRITES THE MAP: **dargs-top==dv 15/15 — THE SPECIALIST IS
+  PERFECT. The dup bit FIRES 0/15** under one distractor (vs
+  firing in clean air, where 10/15 bind correctly). The gate to
+  the perfect specialist never opens. THE RELOCATION: the wall was
+  never the pointer's preference — **it is the DETECTOR: h_dup is
+  competition-suppressed**, and every prior arm re-reads in one
+  stroke: nothing attention-side or pointer-side could EVER have
+  won, because decode never took the dup path (bit<0 → top-2
+  spread → misbind guaranteed regardless of timing, capacity, or
+  the pointer's quality). Three campaigns of arms were aimed one
+  station downstream of the fault. THE UPSTREAM BRANCH
+  HALF-EXECUTES: the bit reads the same waist slot-state — if
+  that state carries no usable dup evidence under competition,
+  no bit head can fire on it: **#155's territory (the generation
+  side, one saturated instrument, no eyes) is now formally
+  summoned by a measured fault it alone can adjudicate.** The
+  campaign's sharpest address ever: ONE SCALAR HEAD's decision
+  under competition, with a perfect specialist waiting behind it.
+  Next design owes its own word: the bit's detection — and its
+  first question is #155's (is the evidence absent from the
+  state, or present and unread by this head?).
