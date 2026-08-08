@@ -844,7 +844,8 @@ def do_eval():
             out = forward(p, t_tr, t_tk, t_se, tail=_tl,
                           slot_mask=Tensor(mk, dtype=dtypes.float))
         keys = ("pres", "ftype", "op", "islit", "dig", "args", "res",
-                "query") + (("sel",) if "sel" in out else ()) + (("dup",) if "dup" in out else ())
+                "query") + (("sel",) if "sel" in out else ()) + (("dup",) if "dup" in out else ()) \
+            + (("dargs",) if "dargs" in out else ())
         o = {k: out[k].realize().numpy() for k in keys}
         for bi, i in enumerate(sl):
             i = int(i)
@@ -946,7 +947,8 @@ def do_errors():
                       Tensor(tokmask[sl_p].astype(np.float32), dtype=dtypes.float),
                       Tensor(sent[sl_p].astype(np.int32), dtype=dtypes.int))
         keys = ("pres", "ftype", "op", "islit", "dig", "args", "res",
-                "query") + (("sel",) if "sel" in out else ()) + (("dup",) if "dup" in out else ())
+                "query") + (("sel",) if "sel" in out else ()) + (("dup",) if "dup" in out else ()) \
+            + (("dargs",) if "dargs" in out else ())
         o = {k: out[k].realize().numpy() for k in keys}
         for bi, i in enumerate(sl):
             i = int(i)
