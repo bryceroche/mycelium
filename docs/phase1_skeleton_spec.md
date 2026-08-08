@@ -26330,3 +26330,21 @@ token-position × waist-dim, the moment the skeleton trains.
   (the WHEN tool works; the exit pays rings' debt; the wall's
   address is now exact: the args-pointer's preference order at
   the moment of a held contest).
+
+- **THE CONSTITUENCY READ — THE SECOND CLOCK EARNS ITS QUESTION
+  (2026-08-08; #179's pending read executed):** on the 470 filler
+  rows, mis-anchored slots: **c2ctl 0.465 vs cure 0.467 — the
+  completion gate moves spatial prematurity NOT AT ALL** (the same
+  gate that moved argumental timing 13/15→1/15). #179's two-grains
+  reading is now MEASURED: the evidence-completion clock serves
+  the argumental grain only; **the spatial grain (is my position
+  settled, against the anchor) is a separate constituency** — the
+  second clock's design question is earned, its operator already
+  phrased, its nut already named. Honest instrument note: the
+  rings-path filler mis-anchor rate (46.5%) is its own texture
+  (not comparable to plain-head readings — different path, noted
+  per never-mix). The organ order's future: the structural bit
+  design (the preference wall) and the second clock (the spatial
+  wall) are now BOTH pre-armed births, each with constituency,
+  operator question, and nut fixed before design — the door's
+  pattern extended to a family of organs.
