@@ -26435,3 +26435,17 @@ token-position × waist-dim, the moment the skeleton trains.
   cure** — it would say the head class is wrong for the read, not
   that the read is impossible; what gets built next differs
   entirely between the two.
+
+- **THE ERA-CHECK DISTINCTION (2026-08-08, Bryce's countersign; the
+  staging residue's promotion case building by specimen):** the
+  #176 residue was sized small because idempotent prep + sentinels
+  absorbed the WITHIN-FIRE benefit — the two env-era specimens
+  (opatt's val fixture, the rebuild's gold width) show they never
+  absorbed the ACROSS-ERA one: **sentinels verify that what's
+  staged is coherent; nothing verifies that what's staged belongs
+  to the era the fire targets.** Different check, different
+  failure, both specimens the second kind. THE CURE SHAPE named:
+  a one-file importable era manifest (deployed envs, consumers
+  derive) — the doors pattern's third domain after custody gold
+  and detector authority. Promotion earns by specimen, not
+  advocacy; the item waits for its word with two in hand.
