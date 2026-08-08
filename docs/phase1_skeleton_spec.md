@@ -26249,3 +26249,24 @@ token-position × waist-dim, the moment the skeleton trains.
   on schedule and still commits early. A partial result reads
   PROXY-DIVERGENT before it reads operator-wrong (stacking with
   the boundary-limited ceiling already pinned).
+
+- **GUT #179 REGISTERED — "TWO CLOCKS" (2026-08-08; the two-grains
+  reading leads; status pinned AWAITING V1'S VERDICT):** the
+  premature-commitment family was unified by ROOT, not mechanism —
+  argumental (dup, within-sentence, tok 21 vs 23) and spatial
+  (mis-anchoring, across-sentence, backward 100%). Clock v1's gate
+  (own-sentence completion) aims at the FIRST and has no purchase
+  on the second — a sentence can complete on schedule with the
+  commit parked at the wrong home. The hour-old proxy-divergence
+  caution may be A SECOND ORGAN, not a caveat: its operator a
+  different question (*is my position settled*, not *is my
+  evidence complete*), its nut the anchor (the reference that
+  doesn't move when the index shifts). WEAKER READINGS held:
+  fast/slow pair (no measured constituency); read/write pair
+  (that's REPLACE/ACCUMULATE — organ 2's territory, would blur
+  two organs). THE TIMING HONESTY: **the gut arrives one fire
+  early** — v1 is burning now, and its filler read decides: v1
+  cures argumental + filler unmoved = the second clock's
+  constituency MEASURED; v1 fails = the question is the first
+  clock, not a second. Registered so the verdict's filler read
+  has a hypothesis waiting rather than a surprise.
