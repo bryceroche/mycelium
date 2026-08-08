@@ -26417,3 +26417,14 @@ token-position × waist-dim, the moment the skeleton trains.
   owing its own registration when worded. The relocation chain
   complete in one day: preference → detection → read-but-unread —
   each step found by instrumenting where the previous cure failed.
+
+- **THE INSTALLATION COUNTERSIGN — THE TRANSPLANT DISTINCTION
+  (2026-08-08, Bryce):** the direct-install branch's claim
+  pre-split: assigning the probe's map into h_dup is a
+  **TRANSPLANT, not training** — it proves the PATH works end to
+  end without proving the head can LEARN it; a real result and a
+  different claim, and the branch's registration says which one
+  it makes if it fires. The consumed-ingredient pricing ratified
+  (re-stage path, not retained artifact — disk discipline was
+  correct); the two-station bar named the fire's most important
+  clause (this morning's relocation pin, applied prospectively).
