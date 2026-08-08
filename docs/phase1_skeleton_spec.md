@@ -26428,3 +26428,10 @@ token-position × waist-dim, the moment the skeleton trains.
   (re-stage path, not retained artifact — disk discipline was
   correct); the two-station bar named the fire's most important
   clause (this morning's relocation pin, applied prospectively).
+
+- **THE TRANSPLANT ENTRY SHARPENED (2026-08-08, Bryce):** the
+  outcome's classification completed: **a demonstrated path with
+  an unlearnable detector is an ARCHITECTURE FINDING, not a
+  cure** — it would say the head class is wrong for the read, not
+  that the read is impossible; what gets built next differs
+  entirely between the two.
