@@ -26348,3 +26348,22 @@ token-position × waist-dim, the moment the skeleton trains.
   wall) are now BOTH pre-armed births, each with constituency,
   operator question, and nut fixed before design — the door's
   pattern extended to a family of organs.
+
+- **GUT #180 REGISTERED — "PERCEIVER, CORE ROTATION, BREATH CYCLES"
+  (2026-08-08; three standings, sorted; conversion HELD until the
+  burning arm prints):** BREATH CYCLES: convergent — deployed,
+  load-bearing, three deep. PERCEIVER: refuted at architecture
+  grade (the three-pole map: dead/violent/wrong-attractor; frozen
+  recirculation dead at init ×4); revival owes the identity rider +
+  axis-and-substrate, must name which pole it escapes by what
+  measured mechanism, and NOTHING on the board summons it (the
+  live walls are a pointer's preference and a spatial gate —
+  neither addressed by a recirculating latent bank). CORE
+  ROTATION: held for interps — two lawful readings with different
+  treatments: the banked v110-era per-breath Q rotation (+4.4,
+  uniform phase, not-RoPE; would return as
+  assumption-to-test with lineage) vs rotation-as-decorrelation
+  (#91's custody fence). #109's rule rides either: any rotation
+  names its re-anchor. TIMING HONESTY: a three-element
+  architecture gut arriving mid-fire is held for the board the
+  fire may reorder — #179's discipline applied again.
