@@ -26134,3 +26134,19 @@ token-position × waist-dim, the moment the skeleton trains.
   (clock), win the contest (preference supervision, cooler than
   1.0), and exit the beam (capacity) — three layers, three tools,
   one design owing its registration when the clock exists.
+
+- **THE NAZARÉ RIDER — A DESCRIPTION WITH NO OPERATOR (2026-08-08,
+  Bryce):** the frame's honest gap pinned before it moves toward a
+  spec: "evidence-energy funneled by structure" NEEDS A QUANTITY
+  before it can order commits — candidates: incoming constraint
+  count, the slot's degree in the emerging graph, the fraction of
+  its arguments already bound. Each measurable, none chosen, and
+  **a metaphor that specifies THAT energy concentrates without
+  specifying WHAT is measured will accept any operator that
+  flatters it** — the operator choice is organ 3's FIRST design
+  question, named as such. The deep-water reading ratified (dup's
+  commit at tok 21 with the operand at 23 = a break at the wrong
+  bathymetry — conditionality, not regularity); the constructive
+  twin stands (the chain concentrates lies by accident; the clock
+  would concentrate commitment by design — same physics, opposite
+  intent, one already measured).
