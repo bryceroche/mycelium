@@ -494,7 +494,7 @@ def build_params(seed=0):
     return p
 
 
-def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None):
+def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None):
     B = trunk.shape[0]
     waist = (trunk @ p["waist_w"] + p["waist_b"]).gelu() + p["sent_emb"][sent]
 
@@ -546,7 +546,7 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None):
         cur = fst
         for kb in range(1, K_B):
             q_extra = cur + p["breath_emb"][kb].reshape(1, 1, -1)
-            h_tok, _ = bank(p["fq"], L_FAC, extra=q_extra)
+            h_tok, fat_cur = bank(p["fq"], L_FAC, extra=q_extra)
             bq = cur @ p["W_bq"] + p["W_bq_b"]
             bk = cur @ p["W_bk"] + p["W_bk_b"]
             bv = cur @ p["W_bv"] + p["W_bv_b"]
@@ -591,6 +591,11 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None):
                     m_c = m_c - rel
                     x_rel = x_rel + rel
                 dm = (1.0 - m_c) * cl.sigmoid()
+                if int(os.environ.get("ALG_CLOCK", "0")) and tail is not None:
+                    # CLOCK v1 (door #10): commit gated on OWN-SENTENCE
+                    # COMPLETION — attention mass on sentence-tail tokens
+                    c_j = (fat_cur * tail.reshape(B, 1, -1)).sum(-1, keepdim=True)                         / (fat_cur.sum(-1, keepdim=True) + 1e-6)
+                    dm = dm * c_j
                 anchor = (m_c * anchor + dm * cur_new) / (m_c + dm + 1e-6)
                 m_c = m_c + dm
                 cur = m_c * anchor + (1.0 - m_c) * cur_new
@@ -1050,6 +1055,19 @@ def do_train(steps, lr, batch, seed):
     rng = np.random.RandomState(seed)
 
     K_B = int(os.environ.get("ALG_BREATH", "1"))
+    CLOCK = int(os.environ.get("ALG_CLOCK", "0"))
+    TAILS = None
+    if CLOCK:
+        TAILS = np.zeros_like(sent, dtype=np.uint8)
+        for _ri in range(sent.shape[0]):
+            _s = sent[_ri]; _i = 0
+            while _i < len(_s):
+                _j = _i
+                while _j + 1 < len(_s) and _s[_j + 1] == _s[_i]: _j += 1
+                _h = _i + (_j - _i + 1) // 2
+                TAILS[_ri, _h:_j + 1] = 1
+                _i = _j + 1
+        print(f"[clock] tails ready ({TAILS.mean():.2f} of tokens)", flush=True)
     MASKS = None
     if K_B > 1:
         # mask-prep pass: masks from the WARM-STARTED head's own breath-0
@@ -1075,6 +1093,7 @@ def do_train(steps, lr, batch, seed):
     b_se = fix(np.zeros((batch, T_ALG), np.int32), dtypes.int)
     b_mask = fix(np.zeros((batch, L_FAC, L_FAC), np.float32), dtypes.float) \
         if K_B > 1 else None
+    b_tail = fix(np.zeros((batch, T_ALG), np.float32), dtypes.float) if CLOCK else None
     bg = {}
     for k, shape, dt in (("presence", (L_FAC,), dtypes.float),
                          ("is_lit_f", (L_FAC,), dtypes.float),
@@ -1127,13 +1146,13 @@ def do_train(steps, lr, batch, seed):
             # read finds wrong bindings (revoke gold = solver-refuted
             # commits, self-labeled from gold like the commit loss,
             # DETACHED); the second trains under live release dynamics.
-            o0 = forward(p, b_tr, b_tk, b_se, slot_mask=b_mask)
+            o0 = forward(p, b_tr, b_tk, b_se, slot_mask=b_mask, tail=b_tail)
             ok = ((o0["ftype"].argmax(-1) == bg["ftype"]).float()
                   * (o0["res"].argmax(-1) == bg["res"]).float())
             rv = (bg["presence"] * (1.0 - ok)).detach()
-            o = forward(p, b_tr, b_tk, b_se, slot_mask=b_mask, revoke=rv)
+            o = forward(p, b_tr, b_tk, b_se, slot_mask=b_mask, revoke=rv, tail=b_tail)
         else:
-            o = forward(p, b_tr, b_tk, b_se, slot_mask=b_mask)
+            o = forward(p, b_tr, b_tk, b_se, slot_mask=b_mask, tail=b_tail)
         l = loss_fn(o, bg)
         if INV_TR and "fst_s" in o:
             _d = o["fst_s"][0:4:2] - o["fst_s"][1:4:2]
@@ -1242,6 +1261,8 @@ def do_train(steps, lr, batch, seed):
         b_se.assign(Tensor(sent[idx].astype(np.int32), dtype=dtypes.int).contiguous()).realize()
         if b_mask is not None:
             b_mask.assign(Tensor(MASKS[idx], dtype=dtypes.float).contiguous()).realize()
+        if b_tail is not None:
+            b_tail.assign(Tensor(TAILS[idx].astype(np.float32), dtype=dtypes.float).contiguous()).realize()
         feed = {"presence": gold["presence"][idx], "is_lit_f": gold["is_lit"][idx],
                 **({"opspan": OPGOLD[idx].astype(np.float32)} if OPATT else {}),
                 "args": gold["args"][idx], "fspan": gold["fspan"][idx],
