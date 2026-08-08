@@ -26226,3 +26226,26 @@ token-position × waist-dim, the moment the skeleton trains.
   BEAUTIFULLY dumb: commit when your own sentence is done — mise
   en place as a gating rule, the Nazaré funnel's narrowest
   workable form.
+
+- **GUT #178 REGISTERED — "DON'T DETERMINE THE POSITION TOO EARLY"
+  (2026-08-08; the central diagnosis stated as a design principle;
+  every clause convergent and the synthesis is the value):** FIVE
+  MEASUREMENTS, ONE SENTENCE: premature commitment to the token
+  (21 vs 23); mis-anchoring δ=−1 backward everywhere; the
+  revolving door (release without changed evidence returns); the
+  round-trip's 0.011 (deduction after commitment cannot revise);
+  the operator scan (healthy 1.0, premature 0.167). **Decide
+  later.** THE BOUNDARY, also measured: maximize-uncertainty
+  literally = the ungated engine (759/759 still moving, uniformly
+  soft, erosion) and the bathtub law (barriers make correct
+  bindings STABLE) — so the honest form is **commit as late as
+  the evidence allows, AND NO LATER**: delay is a schedule; the
+  gate is a READINESS TEST (Nazaré: the break happens where
+  geometry concentrates, not after an interval). THE CAUTION
+  PINNED FOR CLOCK V1, pre-fire: own-sentence completion is a
+  PROXY for evidence-completion, and they diverge exactly where
+  evidence arrives ACROSS sentences (the filler species' home
+  turf) — a slot whose operand lives two sentences later commits
+  on schedule and still commits early. A partial result reads
+  PROXY-DIVERGENT before it reads operator-wrong (stacking with
+  the boundary-limited ceiling already pinned).
