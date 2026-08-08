@@ -607,7 +607,8 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None):
                     # CLOCK v1 (door #10): commit gated on OWN-SENTENCE
                     # COMPLETION — attention mass on sentence-tail tokens
                     c_j = (fat_cur * tail.reshape(B, 1, -1)).sum(-1, keepdim=True)                         / (fat_cur.sum(-1, keepdim=True) + 1e-6)
-                    dm = dm * c_j
+                    _fl = float(os.environ.get("ALG_CLOCK_FLOOR", "0"))
+                    dm = dm * (_fl + (1.0 - _fl) * c_j)
                 anchor = (m_c * anchor + dm * cur_new) / (m_c + dm + 1e-6)
                 m_c = m_c + dm
                 cur = m_c * anchor + (1.0 - m_c) * cur_new
@@ -1176,7 +1177,7 @@ def do_train(steps, lr, batch, seed):
             _op = bg["opspan"]
             _dm = (_op.sum(-1) > 0).float()
             _opn = _op / (_op.sum(-1, keepdim=True) + 1e-6)
-            l = l + ((-(o["fat"] + 1e-9).log() * _opn).sum(-1) * _dm).sum() / (_dm.sum() + 1e-6)
+            l = l + float(os.environ.get("OPATT_W", "1")) * ((-(o["fat"] + 1e-9).log() * _opn).sum(-1) * _dm).sum() / (_dm.sum() + 1e-6)
         opt.zero_grad()
         l.backward()
         opt.step()
