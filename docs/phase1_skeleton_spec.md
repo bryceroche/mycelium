@@ -26150,3 +26150,18 @@ token-position × waist-dim, the moment the skeleton trains.
   twin stands (the chain concentrates lies by accident; the clock
   would concentrate commitment by design — same physics, opposite
   intent, one already measured).
+
+- **THE BEXIT COUNTERSIGN — THE NEIGHBOR-COST LAW (2026-08-08,
+  Bryce):** the exit's justification restated smaller and cleaner:
+  **it earns its line by paying rings' debt** (repairing its own
+  organ, not curing dup). THE LAW carved: **a mechanism that
+  improves its target while degrading an untested neighbor is
+  only visible if the neighbor gets tested** — rings' commit
+  signal was measured at 0.941 while its crowding cost went
+  unmeasured until the exit's battery happened to test clean-air
+  dup; every future organ inherits the question: *what did this
+  break that nobody looked at?* (the two-terminal law's
+  behavioral sibling — emissions need gold feeds; mechanisms need
+  neighbor reads). The summons pattern ratified as measurement,
+  not advocacy: three independent reads arriving at the same
+  ownerless gap (the WHEN).
