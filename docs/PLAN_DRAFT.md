@@ -1,4 +1,9 @@
-# PLAN DRAFT — next steps (2026-08-08, for Bryce's review; nothing ratified)
+# PLAN DRAFT — next steps (2026-08-08; GOVERNING FRAME RATIFIED:
+# build the whole kitchen, patiently — Cambium and the Cathedral.
+# The model cannot cook holding every ingredient: breath cycles +
+# REPLACE/ACCUMULATE notebooks + the happy-families test (the
+# canonicalizer) + convergence across breaths + the Nazaré commit
+# wave. Phases below serve THAT architecture, not quick cures.)
 
 ## Phase 1 — ORGAN 3: THE CLOCK (the board's own conclusion)
 Thrice-summoned by measurement (double-failure branch, arm 1's timing
@@ -9,8 +14,11 @@ flip, the exit's can't-reach-WHEN). Order of work:
    in from birth: phase touches memory/commit ordering never
    deduction; register clause (commit trigger = own trained head,
    gold from solver-verified finality; settle never).
-2. **Operator scan BEFORE building** (cheap GPU): compute all three
-   candidate operators on banked parses; which best separates
+2. **Operator scan BEFORE building** (cheap GPU): compute the
+   candidate operators on banked parses — constraint count, slot
+   degree, bound-arg fraction; NOTE the register-clause fence:
+   cross-breath convergence is GOLD-SIDE only (finality labels),
+   never an inference-time trigger input; which best separates
    healthy commits (nd=0 correct) from premature ones (nd=1, the
    tok-21 rows)? Pick the operator by measurement, not flattery.
 3. **Build clock v1**: commit gating conditioned on the chosen

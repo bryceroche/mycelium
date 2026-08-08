@@ -26165,3 +26165,29 @@ token-position × waist-dim, the moment the skeleton trains.
   neighbor reads). The summons pattern ratified as measurement,
   not advocacy: three independent reads arriving at the same
   ownerless gap (the WHEN).
+
+- **THE VISION DIRECTIVE — BUILD THE WHOLE KITCHEN, PATIENTLY
+  (2026-08-08, Bryce; the plan's governing frame):** "we are asking
+  the model to cook a nice meal while holding all the ingredients
+  in its hands — it isn't possible." THE ARCHITECTURE NAMED, mapped
+  to the record: **breath cycles** (exist, ALG_BREATH); **REPLACE +
+  ACCUMULATE notebooks** (organ 2 — rings + the beam exit, Lucy's
+  50-First-Dates notebook: the working pan and the written record);
+  **the happy families** (Anna Karenina at the knot: all correct
+  parses are alike — they converge to one canonical form; every
+  failing parse fails its own way — the canonicalizer IS the
+  happiness test); **convergence across breath cycles** (the
+  stability of a slot's reading as breaths pass — the WHEN's
+  natural evidence); **the Nazaré wave triggering commitment**
+  (organ 3 — the funnel breaking where evidence concentrates).
+  "If we crash out here we didn't deserve the prize — be patient,
+  build toward Cambium and the Cathedral." THE ONE FENCE FLAGGED
+  BEFORE IT BITES: cross-breath convergence as a COMMIT-TRIGGER
+  INPUT would make settle a component — **the register clause
+  REFUSES settle as a component**; the lawful home for
+  convergence is GOLD-SIDE (solver-verified finality per breath —
+  "this binding, at this breath, was final" — is derivable at
+  train time and already the spec's prescribed gold); the trigger
+  head TRAINS toward convergence-certified finality, never READS
+  a convergence meter at inference. Patience is the schedule;
+  the organs are the plan.
