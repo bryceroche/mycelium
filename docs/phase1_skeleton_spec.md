@@ -26309,3 +26309,24 @@ token-position × waist-dim, the moment the skeleton trains.
   for a different reason); the timing read answers it in the same
   battery, so the reading order gains a step: gate-still-gating →
   then preference-refuses → then the structural branch.
+
+- **PHASE 2'S VERDICT — THE STRUCTURAL BRANCH EXECUTES (2026-08-08;
+  door customer #11):** THE INTERACTION RIDER'S QUESTION ANSWERS
+  FIRST, as ordered: **the floored gate STILL GATES** (premature
+  2/15 — throttling to 0.3 did not de-gate it); so the reading
+  proceeds and lands: HELD-NOT-WON persists (13/15 lost; nd=1
+  15/15 both arms; primary fails) — **the preference layer refuses
+  attention-side supervision at BOTH doses (1.0's −107 and 0.05's
+  nothing): a dose-spanning refusal.** The kill fires again
+  (bigtest cure −9 A / −13 gs vs control — the gate's cost is not
+  throttle-proportional; noted for any future gate form). THE
+  PRE-BANKED BRANCH EXECUTES: **structural entry at the bit** is
+  the named next design — the preference to USE the dup bit needs
+  the same door the bit itself needed (the species' oldest law
+  inheriting its newest problem). The preference wall now stands
+  THRICE-confirmed (arm 1, clock v1, phase 2) against two
+  supervision forms and three compositions; nothing attention-side
+  remains untried. Nothing promotes; the mechanism yields stand
+  (the WHEN tool works; the exit pays rings' debt; the wall's
+  address is now exact: the args-pointer's preference order at
+  the moment of a held contest).
