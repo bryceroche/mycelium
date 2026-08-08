@@ -75,6 +75,8 @@ TERMINALS = {
     "islit":  {"params": ["h_islit", "h_islit_b"], "emit": "islit", "gold": ["is_lit_f"], "when": lambda: True},
     "dig":    {"params": ["h_dig", "h_dig_b"],     "emit": "dig",   "gold": ["digits"],   "when": lambda: True},
     "args":   {"params": ["W_args"],               "emit": "args",  "gold": ["args"],     "when": lambda: True},
+    "dargs":  {"params": ["W_dargs"],              "emit": "dargs", "gold": ["args", "arg_dup"],
+               "when": lambda: int(os.environ.get("ALG_DUPPTR", "0")) > 0},
     "res":    {"params": ["W_res"],                "emit": "res",   "gold": ["res"],      "when": lambda: True},
     "query":  {"params": ["W_query"],              "emit": "query", "gold": ["query"],    "when": lambda: True},
     "sel":    {"params": ["h_sel", "h_sel_b"],     "emit": "sel",   "gold": ["sel"],      "when": lambda: _ft() >= 5},
@@ -501,6 +503,8 @@ def build_params(seed=0):
             p["W_cmt"] = t(np.zeros((H_W, 1)))       # zero-init commit head
             p["W_cmt_b"] = t(np.full(1, -4.0))       # init: commit ~nothing
     p["W_args"] = t(rng.randn(H_W, H_W) / math.sqrt(H_W))
+    if int(os.environ.get("ALG_DUPPTR", "0")):
+        p["W_dargs"] = t(rng.randn(H_W, H_W) / math.sqrt(H_W))
     p["W_res"] = t(rng.randn(H_W, H_W) / math.sqrt(H_W))
     p["W_query"] = t(rng.randn(H_W, H_W) / math.sqrt(H_W))
     return p
@@ -629,6 +633,8 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None):
             **({"sgn": (s @ p["h_sgn"] + p["h_sgn_b"]).squeeze(-1)}
                if "h_sgn" in p else {}),
             "args": (s @ p["W_args"]) @ vst.transpose(-2, -1),
+            **({"dargs": (s @ p["W_dargs"]) @ vst.transpose(-2, -1)}
+               if "W_dargs" in p else {}),
             "res": (s @ p["W_res"]) @ vst.transpose(-2, -1),
             **({"dig2": (s @ p["h_dig2"] + p["h_dig2_b"])
                 .reshape(B, L_FAC, N_DIG, 10),
@@ -712,6 +718,9 @@ def _loss_single(o, g):
         l = l + (ce(o["sel"], g["sel"]) * sm).sum() / (sm.sum() + 1e-6)
     if "dup" in o and "arg_dup" in g:           # gen-9: arg-multiplicity BCE
         l = l + (bce(o["dup"], g["arg_dup"]) * rel).sum() / n_rel
+    if "dargs" in o and "arg_dup" in g:         # door #12: the dedicated dup
+        dm2 = rel * g["arg_dup"]                # pointer — single-target gold
+        l = l + (ce(o["dargs"], g["args"].argmax(-1)) * dm2).sum() / (dm2.sum() + 1e-6)
     if "dig2" in o and "is_macro" in g:        # gen-15: OP_APPLY terms
         if "is_frac" in g:                     # mg2: frac k rides the dig2 CE
             mac2 = pres * (g["is_macro"] + g["is_frac"])
@@ -764,7 +773,8 @@ def decode(o_np):
         elif ft == 0:
             op = "add" if o_np["op"][j].argmax() == 0 else "mul"
             if "dup" in o_np and o_np["dup"][j] > 0:
-                a0 = int(np.argmax(o_np["args"][j]))   # gen-9: args=[a,a]
+                a0 = int(np.argmax(o_np["dargs"][j])) if "dargs" in o_np \
+                    else int(np.argmax(o_np["args"][j]))   # door #12 / gen-9
                 args = [a0, a0]
             else:
                 args = sorted(int(a) for a in
@@ -1066,6 +1076,10 @@ def do_train(steps, lr, batch, seed):
                       f"{'missing' if k not in sd0 else 'shape'})", flush=True)
         print(f"[train] WARM from {os.environ['WARM_FROM']}: "
               f"{n_load}/{len(p)} keys", flush=True)
+        if "W_dargs" in p and "W_dargs" not in sd0 and "W_args" in sd0:
+            p["W_dargs"].assign(sd0["W_args"].to(p["W_dargs"].device)
+                                .cast(p["W_dargs"].dtype)).realize()
+            print("[warm] W_dargs seeded from trained W_args (door #12)", flush=True)
     opt = AdamW(list(p.values()), lr=lr, weight_decay=0.01)
     rng = np.random.RandomState(seed)
 
