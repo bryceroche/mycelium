@@ -301,6 +301,18 @@ def sent_indices(text, offs, mask_row):
     return out
 
 
+def tails_of(sent_rows):
+    out = np.zeros_like(sent_rows, dtype=np.float32)
+    for ri in range(sent_rows.shape[0]):
+        s = sent_rows[ri]; i = 0
+        while i < len(s):
+            j = i
+            while j + 1 < len(s) and s[j + 1] == s[i]: j += 1
+            out[ri, i + (j - i + 1) // 2:j + 1] = 1.0
+            i = j + 1
+    return out
+
+
 def build_slot_masks(o_np, sent_rows):
     """Evidence-sharing slot mask (B, L, L) from the model's OWN breath-0
     outputs (deployable): same-sentence (attention-argmax sentence) OR
@@ -812,11 +824,13 @@ def do_eval():
         t_tr = Tensor(states[sl_p].astype(np.float32), dtype=dtypes.float)
         t_tk = Tensor(tokmask[sl_p].astype(np.float32), dtype=dtypes.float)
         t_se = Tensor(sent[sl_p].astype(np.int32), dtype=dtypes.int)
-        out = forward(p, t_tr, t_tk, t_se)
+        _tl = Tensor(tails_of(sent[sl_p]), dtype=dtypes.float) \
+            if int(os.environ.get("ALG_CLOCK", "0")) else None
+        out = forward(p, t_tr, t_tk, t_se, tail=_tl)
         if int(os.environ.get("ALG_BREATH", "1")) > 1 and "W_bo" in p:
             o0 = {k: out[k].realize().numpy() for k in ("fat", "args", "res")}
             mk = build_slot_masks(o0, sent[sl_p])
-            out = forward(p, t_tr, t_tk, t_se,
+            out = forward(p, t_tr, t_tk, t_se, tail=_tl,
                           slot_mask=Tensor(mk, dtype=dtypes.float))
         keys = ("pres", "ftype", "op", "islit", "dig", "args", "res",
                 "query") + (("sel",) if "sel" in out else ()) + (("dup",) if "dup" in out else ())

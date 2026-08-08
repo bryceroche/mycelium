@@ -26270,3 +26270,29 @@ token-position × waist-dim, the moment the skeleton trains.
   constituency MEASURED; v1 fails = the question is the first
   clock, not a second. Registered so the verdict's filler read
   has a hypothesis waiting rather than a surprise.
+
+- **CLOCK V1'S VERDICT — THE MECHANISM VALIDATES, THE ARM DIES ON
+  COST, THE PREFERENCE WALL CONFIRMS TWICE (2026-08-08; door
+  customer #10):** TIMING (the mechanism read): **PREMATURE 1/15,
+  LOST 14/15** — the completion gate moves commitment timing
+  almost completely (13/15 premature under exit-only → 1/15 under
+  the gate): **the readiness test works as designed; commits now
+  wait for their sentence.** And then lose — HELD-NOT-WON 14/15,
+  arm 1's reveal reproduced by an entirely different tool. THE
+  PREFERENCE LAYER IS NOW TWICE-CONFIRMED as the binding wall:
+  two staging mechanisms (aux attention, completion gate) both
+  move WHEN, neither wins the held contest. PRIMARY fails (nd=1
+  15/15 both arms); no-harm nd=0 clean (5/15 both); **bigtest
+  clock 1222/1121 vs cctl 1228/1130 — −6 ANSWER, −9 graph-solve:
+  THE KILL BAR FIRES BY THE LETTER** (>5), margin noted, bars
+  don't bend. THE PRE-WRITTEN READING ORDER RESOLVES CLEANLY:
+  not boundary-limited, not proxy-divergent — the timing moved,
+  so the gate functioned; the failure is the ALREADY-MAPPED
+  preference layer. PHASE 2'S BRIEF SHARPENS: the clock mechanism
+  is validated and killed only on cost at this form — the full
+  cure = the gate (cost-tuned) + WIN (preference supervision at
+  the operand-complete moment, weight ≪1.0) + EXIT. The
+  two-clocks filler read (#179's constituency question) remains
+  pending — the spatial grain untested by this battery. Nothing
+  promotes; ten door transits; the WHEN has a working tool for
+  the first time in the campaign's history.
