@@ -26296,3 +26296,16 @@ token-position × waist-dim, the moment the skeleton trains.
   pending — the spatial grain untested by this battery. Nothing
   promotes; ten door transits; the WHEN has a working tool for
   the first time in the campaign's history.
+
+- **THE PHASE-2 COUNTERSIGN — THE INTERACTION RIDER (2026-08-08,
+  Bryce):** derived-not-tuned ratified (a failure at these settings
+  is a failure of the composition, not a guess); the third-layer
+  anticipation named as the stacked-pathology law RUNNING FORWARD
+  (the campaign now expects layers). THE RIDER pinned for the
+  battery: the three tools were validated SEPARATELY and
+  composition can interact — if held-not-won persists, the honest
+  FIRST question is **did the floored gate still move timing at
+  0.3** (a throttled gate that stopped gating prints identically
+  for a different reason); the timing read answers it in the same
+  battery, so the reading order gains a step: gate-still-gating →
+  then preference-refuses → then the structural branch.
