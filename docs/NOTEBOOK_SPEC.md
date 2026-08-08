@@ -182,3 +182,9 @@ indices), not in attention; steering the grip cannot fix a stroke
 generated wrong, and the next instrument points at the waist/head
 state, not a stronger anchor term. A second revolving door is a
 LOCALIZATION finding, never "anchors don't work."
+
+## 9. THE CONVERGENCE LINE (2026-08-08)
+The clock's operator (commit on own-sentence completion) consumes
+the same metadatum the schema floor supplies (#169: boundaries,
+constraint-bearing sentences). Two organs, designed independently,
+one object. The floor is a dependency of the clock's accuracy.

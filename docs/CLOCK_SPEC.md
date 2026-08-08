@@ -76,3 +76,12 @@ the natural next read.
 spec (this) → operator scan (banked parses, zero-build) → clock v1
 (rings machinery, one cut, init-closed) → fire through the door on
 inherited bars. Patience is the schedule; the organs are the plan.
+
+## 6. THE CONVERGENCE LINE (2026-08-08)
+The selected operator (own-sentence completion) and #169's missing
+metadatum (which sentences bear constraints, where they end) are THE
+SAME OBJECT. The schema floor is therefore a DEPENDENCY of clock
+accuracy: the gate inherits the boundary detector's error rate
+(C1-A 0.741; the filler index-shift). Clock v1's partial results
+read BOUNDARY-LIMITED, not operator-wrong — and the floor's
+priority rises from lawful-coverage to clock-dependency.
