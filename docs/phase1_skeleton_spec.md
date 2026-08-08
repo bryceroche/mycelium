@@ -26111,3 +26111,26 @@ token-position × waist-dim, the moment the skeleton trains.
   with a measured cousin (#164) and the phase-fence intact
   (concentration shapes MEMORY/commit ordering, never the
   deduction path).
+
+- **THE BEAM EXIT'S VERDICT — CAPACITY TOOL, NOT TIMING TOOL
+  (2026-08-08; door customer #8's scoped branch executes):**
+  PRIMARY FAILS (nd=1 stays 15/15 both arms); NO KILL (bigtest
+  bexit 1206 vs rctl 1210 — −4, inside the bar); timing still
+  PREMATURE 13/15 — **the exit didn't gate commitment timing,
+  banked exactly as the registration scoped.** BUT THE REAL
+  SIGNAL, unpredicted: at nd=0 the rings path ITSELF destroys
+  clean-air dup binding (15/15 misbind vs the plain head's 5/15)
+  — **and the beam exit RESTORES it to 5/15.** The exit does free
+  capacity: enough to cure the rings path's own crowding-by-
+  machinery at zero competitors, not enough to win a one-
+  competitor contest, and nothing about WHEN. THE LAYER MAP
+  REFINES TO THREE: TIMING (premature — unaddressed by exit or
+  aux), PREFERENCE (lost when held — arm 1's reveal), CAPACITY
+  (real, exit-curable — the rings mixer itself consumes it). The
+  exit earns a place in organ 2's design as the capacity layer's
+  tool (it fixes what rings breaks); the WHEN still has no owner —
+  **the clock's summons strengthens a third time.** Nothing
+  promotes; the cure's full brief now reads: stage the commit
+  (clock), win the contest (preference supervision, cooler than
+  1.0), and exit the beam (capacity) — three layers, three tools,
+  one design owing its registration when the clock exists.
