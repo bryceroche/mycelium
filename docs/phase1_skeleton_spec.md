@@ -26548,3 +26548,21 @@ token-position × waist-dim, the moment the skeleton trains.
   Different builds, different verification stories; cheap to ask
   now, expensive to discover mid-build. Carved here; rides any
   floor spec doc at its creation.
+
+- **GUT #183 REGISTERED — "MESSAGE PASSING PROTOCOL" (2026-08-09;
+  status-checked, one live edge):** SOLVE-side: refuted and welded
+  (two-death-mode: loopy BP oscillates on cycles, arc consistency's
+  global narrowing is the sound mechanism; the deducer rests
+  validated-not-refuted); no summons. LOOP-DESCRIPTION side:
+  convergent and banked (#71's ladder — ~3.5 breaths per
+  implication layer, BP-round-like at the representational level,
+  correspondence approximate). THE LIVE EDGE: #152's transport —
+  the solver's cross-slot contradiction as the neural↔symbolic
+  message channel, sufficiency read pre-specified (trigger-flag ∩
+  solver-objection, day one, zero-GPU). THE UNCOVERED PIECE,
+  flagged and held: the campaign has no PROTOCOL — no contract for
+  what a message contains, when it sends, what the receiver must
+  do; genuinely unwritten AND premature — **specifying a protocol
+  for an unmeasured channel is the mise-en-place error in design
+  form** (the ingredient fetched before the pan needs it). It
+  waits behind the sufficiency read where it belongs.

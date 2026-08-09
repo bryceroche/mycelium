@@ -146,3 +146,4 @@ One line per registration; full forms, rents, verdicts, and countersigns live in
 - **#180** PERCEIVER, CORE ROTATION, BREATH CYCLES (2026-08-08) — three standings, sorted; conversion HELD until the burning arm prints
 - **#181** MAXIMIZE SURFACE, ROTATE π/4 (2026-08-08) — sorted, not converted
 - **#182** DIFFUSION, MULTI-LAYER IR (2026-08-08) — status-checked, and the yield is a design question
+- **#183** MESSAGE PASSING PROTOCOL (2026-08-09) — status-checked, one live edge
