@@ -26871,3 +26871,17 @@ token-position × waist-dim, the moment the skeleton trains.
   designs — **the detector's remaining problem is one scalar
   threshold against a fat tail**, the most localized any problem
   in this campaign has ever been.
+
+- **GUT #186 REGISTERED — "USE YOUR FRIEND'S PHONE" (2026-08-09;
+  exchange family; borrow-the-channel is the content):** the
+  message needs A channel, not a channel you OWN. Three instances,
+  none built for its current job: the solver's unsat as the
+  reverse gear's transport (0.744, zero new machinery); the trace
+  layer's markers on pre-existing lexical structure; the anchors'
+  involuntary attention footprints. THE FIFTH SPEC-TIME DOOR:
+  **what already carries this signal?** — with a retroactive
+  catch to its name (the graph-register proposal built a family
+  detector while the knot digest bank already existed). THE #144
+  BOUNDARY attached: borrow a CHANNEL (a signal computed for its
+  own reasons), never an INSTRUMENT (shared failure modes with
+  its original job — the pooling law's territory).
