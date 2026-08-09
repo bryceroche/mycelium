@@ -26566,3 +26566,24 @@ token-position × waist-dim, the moment the skeleton trains.
   for an unmeasured channel is the mise-en-place error in design
   form** (the ingredient fetched before the pan needs it). It
   waits behind the sufficiency read where it belongs.
+
+- **THE SUFFICIENCY READ — THE SOLVER CHANNEL CARRIES (2026-08-09;
+  door customer #15; dag8 valid-but-underpowered n=3, re-fired on
+  bigtest at power):** on 223 trigger-flagged wrong literal slots:
+  **the solver objects (unsat on the parsed graph) on 0.744 — the
+  HIGH branch (≥0.6) executes.** Context rates: all wrong literals
+  0.759 objection vs correct-slot rows 0.129 base — a 6:1 signal.
+  **#152's leading candidate is CONFIRMED ON EVIDENCE** (the
+  architecture-not-evidence caveat retires): the reverse gear's
+  transport arrives solver-side for ~3/4 of the traffic, through
+  the jaw that was never partitioned, at zero new machinery. THE
+  BLIND QUARTER stands scoped: ~0.26 of flagged wrongs are
+  well-formed-and-wrong ([1293]'s species) — trace/view channels
+  keep exactly that remit, now priced. THE PROTOCOL QUESTION
+  UNBLOCKS in shape (#183's hold releases): the message IS the
+  contradiction — content: unsat on the partial graph; sender:
+  the solver; receiver obligation: the revoke port organ 2
+  already built. It still WAITS for organ 2's build word — but
+  it now waits with its semantics measurable instead of
+  imaginable. Fifteen transits; the day-one read arrived before
+  day one.
