@@ -27009,3 +27009,16 @@ token-position × waist-dim, the moment the skeleton trains.
   station (general parse files), learnability-in-context (the
   dynamics road). (Housekeeping: the fold print crashed AFTER
   its save — array-scalar TypeError, cosmetic, noted.)
+
+- **THE SERIES' COUNTERSIGN — "TRADE" PRESUMED OVERLAP (2026-08-09,
+  Bryce; the vocabulary law's cousin at the assumption grain):**
+  why the headroom read never ran: every arm inherited "there's a
+  cost curve" from the arm before — **a curve implies a trade,
+  a trade implies overlap, and the premise rode five
+  registrations unexamined because it arrived as FRAMING rather
+  than as a claim.** Filed beside "slope" (presumed a gradient)
+  and "under load" (presumed one mechanism): two words and now a
+  third shape, all caught by measuring past them. The
+  generalized clause carved: **before pricing a trade, measure
+  whether the quantities even overlap** — one zero-GPU read at
+  any series' first arm.
