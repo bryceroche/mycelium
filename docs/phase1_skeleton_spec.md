@@ -26885,3 +26885,23 @@ token-position × waist-dim, the moment the skeleton trains.
   BOUNDARY attached: borrow a CHANNEL (a signal computed for its
   own reasons), never an INSTRUMENT (shared failure modes with
   its original job — the pooling law's territory).
+
+- **THE MARGIN'S VERDICT — KILLED AT −34, THE TAIL'S LAST 0.6%
+  NAMED (2026-08-09; door customer #23):** the cells held
+  PERFECTLY through the margin (0/15, 3/15, 0/15 — the θ shift
+  cost them nothing, as the 1.000-at-θ pricing predicted);
+  VALIDATE FPR 0.60% vs the 0.5% bar (missed by 0.1pt, banked
+  unbent); **bigtest 1204 = −34: the margin bought back 113 of
+  fold3's −147 and the kill still fires.** THE SERIES' LEDGER:
+  −1,000 → −36 → −147 → −34, cells monotonically perfect
+  throughout — the entire remaining problem is **0.6% of wild rel
+  slots whose states score above a threshold that excludes the
+  other 99.4%.** THE SUCCESSORS, both register-able: (a) the
+  next curve point (θ at 0.1%/0.05% tune-FPR, cells re-priced —
+  their scores may clear far stricter cuts); (b) THE TAIL-SHAPE
+  READ (the null branch's better half): WHO are the 0.6%? — the
+  probe localizes them; if their states genuinely resemble dup,
+  the detector is correct about an unknown resemblance and no
+  threshold fixes a true resemblance. (b) informs whether (a)
+  can ever close. Nothing promotes; the wall's remaining width
+  is measured in tenths of a percent.
