@@ -26526,3 +26526,25 @@ token-position × waist-dim, the moment the skeleton trains.
   board's live questions (detector coverage, spatial gate) are
   not addressed by rotation — the campaign just spent a day
   proving what arms aimed one station off a wall produce.
+
+- **GUT #182 REGISTERED — "DIFFUSION, MULTI-LAYER IR" (2026-08-08;
+  status-checked, and the yield is a design question):** DIFFUSION:
+  retired with remainder (signature C measured; torsion rider
+  refused the sampling path; what survived is owned by
+  measurements — parallel refinement, depth-ordered, clocked);
+  a fourth visit owes the identity rider + something the
+  retirement didn't cover. THE IR TOWER: live, gated, GATE PASSED
+  (census 83% schema-altitude ≥ the 60% bar) — the schema floor is
+  the board's most-attested unbuilt thing (six independent
+  arrivals) and sits BEHIND the live walls. THE YIELD, the tension
+  the record never stated: **#71 measured lowering as PARALLEL
+  (every altitude improving from breath one, no handoff); the
+  tower is SEQUENTIAL by construction (level N+1 consumes level
+  N's commitments; the key grades primitives).** THE FLOOR'S SPEC
+  NOW OWES THE ANSWER BEFORE BUILD: is the floor a COMMITTED
+  ARTIFACT the parse consumes (certifiable — the two-jaws law
+  allows only this to be graded) or an ALTITUDE the loop refines
+  alongside others (parallel, uncertifiable-as-artifact)?
+  Different builds, different verification stories; cheap to ask
+  now, expensive to discover mid-build. Carved here; rides any
+  floor spec doc at its creation.

@@ -145,3 +145,4 @@ One line per registration; full forms, rents, verdicts, and countersigns live in
 - **#179** TWO CLOCKS (2026-08-08) — the two-grains reading leads; status pinned AWAITING V1'S VERDICT
 - **#180** PERCEIVER, CORE ROTATION, BREATH CYCLES (2026-08-08) — three standings, sorted; conversion HELD until the burning arm prints
 - **#181** MAXIMIZE SURFACE, ROTATE π/4 (2026-08-08) — sorted, not converted
+- **#182** DIFFUSION, MULTI-LAYER IR (2026-08-08) — status-checked, and the yield is a design question
