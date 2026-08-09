@@ -4,8 +4,13 @@
 proposes and symbolic disposes* — a small trained head reads natural-
 language algebra into typed factor graphs, an exact solver crushes
 them, and an answer key certifies everything. The December claim:
-**a system that never lies** — it answers a small fraction and
-certifies what it answers; abstention leads.
+**a system that never lies.** Concretely: it answers roughly 0.2%
+of addressable MATH-500, has never certified a falsehood across 291
+in-register rows and eleven vintage-labeled batteries, and abstains
+40/40 at the wild frontier — where the mouth refuses 98.4% of
+incoming problems. The never-lies property on wild text the mouth
+*admits* is unmeasured, because it admits almost none. Never lies
+where it speaks; speaks only where it was taught.
 
 ## The funnel (the core idea)
 Think of it as a **fuzzy lookup table acting as a funnel**: an
@@ -128,7 +133,9 @@ refused with a citation. Three words have been *retired by
 measurement* ("slope," "under load," "trade") for presuming shapes
 the world didn't have.
 
-**Where it stands:** the claim's numbers as above, and the hardest
+**Where it stands:** zero certified lies across 291 rows and eleven
+batteries; total abstention at the wild frontier; ~0.2% of
+addressable MATH-500 answered and certified — and the hardest
 internal wall
 (duplicate-argument binding) disassembled to working machinery this
 week. A certifier that grows, never a guesser that shrinks.
