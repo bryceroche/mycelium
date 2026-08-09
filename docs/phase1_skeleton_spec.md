@@ -26664,3 +26664,29 @@ token-position × waist-dim, the moment the skeleton trains.
   calibration question) and (b) the nd≥2 station (a diagnosis
   question). Three campaigns' wall is now two small questions,
   each with its instrument already built.
+
+- **THE MECH-PER-CELL READ — THE DUP WALL ENDS AT THE MECHANISM
+  LEVEL (2026-08-09; the stations named, and none of them is dup):**
+  across all 45 rows, all cells: **bit_off 0, dargs_wrong 0 — the
+  dup machinery (broad detector + specialist) is PERFECT
+  everywhere.** The residuals decompose: nd=1 → 3 op_wrong (the
+  add/mul head, not dup); nd=2 → 8 no_rel (the rel slot doesn't
+  DECODE at all — a parse wall for this form at 2 distractors) +
+  7 op_wrong; nd=4 → 12 op_wrong. THE READING: what remains is
+  GENERIC novel-form-under-crowding parse quality — the op head's
+  errors RISE WITH CROWDING (3→7→12: a GRADED curve, unlike dup's
+  step — a different pathology family, crowding-graded, newly
+  observed) and ftype/pres fails at nd=2 — failures any novel-form
+  parse makes, dup or not. **THE DUP-SPECIFIC WALL IS CURED AT
+  MECHANISM LEVEL**: detector evidence present → read broadly →
+  specialist consulted → binding lands; the three-campaign story
+  closes with its machinery whole and its residuals reassigned to
+  the surface road's general domain (per-construction competence
+  under crowding) + the wild calibration question. Two notes for
+  the file: the op head joins the small-signal watch (its crowding
+  curve is the graded shape the resolution lens exists for); and
+  the arc's full chain banked as the campaign's deepest single
+  investigation: phrasing → crowding → preference → timing →
+  detection → read-but-unread → coverage → deployment-shape →
+  stations-not-dup. Nine stations walked, every step by
+  measurement.
