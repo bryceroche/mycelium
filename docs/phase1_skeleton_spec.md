@@ -26690,3 +26690,23 @@ token-position × waist-dim, the moment the skeleton trains.
   detection → read-but-unread → coverage → deployment-shape →
   stations-not-dup. Nine stations walked, every step by
   measurement.
+
+- **THE WATCH'S FIRST PATROL — THE INTERFERENCE FAMILY GAINS ITS
+  SECOND MEMBER (2026-08-09; door customer #18):** the op head on
+  novel dup forms: **head op-acc 0.50 / 0.55 / 0.12 / 0.55 across
+  nd=0/1/2/4 — coin-flip everywhere and ANTI-correlated at nd=2 —
+  while the fresh probe reads op at 1.000 in every cell.**
+  PRESENT-AND-UNREAD, the second head; the graded-note resolves:
+  the probe is FLAT-perfect (evidence does NOT fade with crowding)
+  → the head is STARVING, not the evidence; and the "graded
+  3/7/12" curve was sampling texture on a near-chance head — the
+  op head was broken on these forms even in clean air (the scan's
+  nd=0 passes rode variance). **Small-signal starvation
+  GENERALIZES: two heads, same architecture, same signature
+  (anti-correlation on separable evidence), found by the same
+  probe method on schedule.** The dynamics law's watch paid on
+  its first patrol; the cure class is #184's (split or broad-gold
+  fold) and owes its own word; the family is now a PATTERN with
+  a census question attached — how many of the stack's small
+  heads are starved on their minority cells? The probe method is
+  the census instrument, cheap, head by head.
