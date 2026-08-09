@@ -26620,3 +26620,25 @@ token-position × waist-dim, the moment the skeleton trains.
   fixtures with documented blind spots on the axis a diet
   targeted**; every prior bigtest dup read reclassified
   structurally-unable-to-see, not evidence-of-absence.
+
+- **GUT #184 REGISTERED — "TRAY AND DOOR" (2026-08-09; exchange
+  family, beside #176; the simultaneous-versus-sequential screen
+  is the content):** mise en place cures SEQUENTIAL overload
+  (stage, then act); the tray-and-door names the case that can't
+  sequence — **both hands required at once, neither task
+  deferrable: the cure is a SECOND AGENT.** Proven today, twice,
+  unnamed: the detector (joint training anti-correlated;
+  broad-gold isolation perfect — one head carrying main loss +
+  dup signal fails; a separate probe with its own gold succeeds)
+  and the specialist pointer (W_args keeps the general job,
+  W_dargs takes the contest, 15/15 where the shared pointer lost
+  always). THE SCREEN: when one parameter set must satisfy two
+  demands, ask SEQUENTIAL or SIMULTANEOUS — sequential failures
+  look like premature commitment (cure: stage, #176);
+  simultaneous look like interference (the joint objective
+  learning one signal wrong while optimizing another; cure:
+  split). Both now MEASURED, with different cures — the
+  distinction one word would have lost. THE BOUNDARY (#144
+  holds): a second agent is lawful only as a FUNCTIONAL split
+  (different jobs, different gold) — two heads on the same
+  objective would be a muffin pan, not a door-opener.

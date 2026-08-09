@@ -147,3 +147,4 @@ One line per registration; full forms, rents, verdicts, and countersigns live in
 - **#181** MAXIMIZE SURFACE, ROTATE π/4 (2026-08-08) — sorted, not converted
 - **#182** DIFFUSION, MULTI-LAYER IR (2026-08-08) — status-checked, and the yield is a design question
 - **#183** MESSAGE PASSING PROTOCOL (2026-08-09) — status-checked, one live edge
+- **#184** TRAY AND DOOR (2026-08-09) — exchange family, beside #176; the simultaneous-versus-sequential screen is the content
