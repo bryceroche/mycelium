@@ -26587,3 +26587,22 @@ token-position × waist-dim, the moment the skeleton trains.
   it now waits with its semantics measurable instead of
   imaginable. Fifteen transits; the day-one read arrived before
   day one.
+
+- **THE COVERAGE READ — A DEPLOYABLE-SHAPE DETECTOR EXISTS
+  (2026-08-09; door customer #16; two instrument stumbles declared:
+  dag8-era arg_dup key absent from test gold — derived from args
+  single-hot; bigtest holds NO natural dup rels — its mint is
+  coupled pairs, noted as fixture knowledge):** one ridge probe,
+  broad gold (nd 0/1/2/4 × table+novel forms + 200 natural bigtest
+  rel negatives): **held-out 1.000 in EVERY cell (8/8) and
+  bigtest rel false-fire 0.000 (n=200).** THE COVERAGE BRANCH
+  EXECUTES: the one-cell key was a GOLD-BREADTH artifact, not a
+  linear limitation — **a single linear map covers the entire
+  measured dup space and rejects the wild distribution**; the
+  interference finding sharpens to its final form (joint training
+  cannot find what broad-gold isolation finds at 1.000
+  everywhere). THE INSTALLATION QUESTION IS NOW PURE ENGINEERING:
+  transplant v2 (this broad map folded into h_dup, full battery:
+  all nd cells + bigtest no-harm) is the next arm and the coverage
+  read predicts it holds everywhere the one-cell key broke. The
+  dup wall's remaining distance: ONE fold and ONE battery.
