@@ -26492,3 +26492,16 @@ token-position × waist-dim, the moment the skeleton trains.
   head unlearned-in-context — **the wall is no longer a mystery
   anywhere; it is an engineering question with every piece
   measured.** Ckpt g30_transplant retained as the path's specimen.
+
+- **THE TRANSPLANT COUNTERSIGN — THE DYNAMICS LAW (2026-08-08,
+  Bryce):** carved general: **a linearly-separable signal that a
+  trained head learns ANTI-correlated is a fact about the training
+  dynamics, not about the representation** — the interference
+  question is the interesting one and it is general (any head, any
+  read, any joint stack). The one-cell-key characterization
+  ratified (precise, not disappointing — the remaining question
+  has an address); the inventory reading of the wall's final
+  state stands: nothing unknown, only work. The relocation chain's
+  epitaph: preference → detection → read-but-unread →
+  path-proven, every station found by measuring where the
+  previous cure failed.
