@@ -26730,3 +26730,30 @@ token-position × waist-dim, the moment the skeleton trains.
   cure queue (splits / broad-gold folds) prioritizes by cell
   thinness. The census instrument's symmetric value demonstrated:
   the same read that finds members certifies health.
+
+- **THE GOLD-MASS READ — THINNESS REFUTED, THE BAND RELOCATES
+  (2026-08-09; door customer #20; the pre-written fails branch
+  executes with a discovery inside it):** the counts: dup 3.9%
+  within-rel (thin, starved — consistent); BUT **mod sits at 0.512
+  within-div — 42,275 rows, perfectly balanced — and its head
+  STARVES anyway**; and **negative sign sits at 2.1% — thinner
+  than everything — and is CERTIFIED HEALTHY.** Thinness alone
+  predicts nothing; the registered alternative leads: **the
+  deliberate-fire variable** — sign was AIMED AT by E1's own fire
+  and holds its 2% minority at 0.95; mod's 42k rows are all
+  mint-phrased, and the starved cell was mod × NOVEL-FORM ×
+  crowding — a joint cell no fire ever aimed at. THE SYNTHESIS,
+  the census's true finding: every starved cell is an
+  OUT-OF-BAND JOINT (novel surface × crowding) and every probe
+  reads it at 1.000 — **the waist generalizes across the band;
+  the small heads do not. The surface-band law RELOCATES to the
+  head layer**: the band was never in the representation (the
+  probes prove it band-general); it lives in the last linear
+  maps, which hold their trained cells and starve outside them.
+  The valve story re-reads: 17 phrasings crossed the wall for
+  the big heads; the small binary heads never crossed with them.
+  THE SCREEN survives in corrected form: starvation risk =
+  out-of-band joint × no-deliberate-fire (computable per cell,
+  still pre-training); the cure class sharpens — deliberate
+  fires work (sign's receipt), broad-gold folds work (the
+  detector's receipt), and both are AIM, not mass.
