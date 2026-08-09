@@ -148,3 +148,4 @@ One line per registration; full forms, rents, verdicts, and countersigns live in
 - **#182** DIFFUSION, MULTI-LAYER IR (2026-08-08) — status-checked, and the yield is a design question
 - **#183** MESSAGE PASSING PROTOCOL (2026-08-09) — status-checked, one live edge
 - **#184** TRAY AND DOOR (2026-08-09) — exchange family, beside #176; the simultaneous-versus-sequential screen is the content
+- **#185** DEFLATED BALLOONS DON'T POP (2026-08-09) — exchange family, beside #112; catastrophic-versus- graceful is the content

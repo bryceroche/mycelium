@@ -26802,3 +26802,23 @@ token-position × waist-dim, the moment the skeleton trains.
   would most like to see. The sentinel design named as the
   neighbor-cost law's first PROSPECTIVE deployment (displacement
   visible in the same battery).
+
+- **GUT #185 REGISTERED — "DEFLATED BALLOONS DON'T POP"
+  (2026-08-09; exchange family, beside #112; catastrophic-versus-
+  graceful is the content):** a taut membrane has no slack — the
+  same insult that dents an under-inflated balloon BURSTS a full
+  one; the material didn't change, the stored tension did. #112's
+  slack clause gains its FRAGILITY half: maximum tension fails
+  catastrophically, not gracefully — measured twice: the saturated
+  commit head (0.9991, no contrast anywhere, the raking proof) and
+  the starved heads (0.56/anti-correlated = a POP, not a
+  degradation; sign, aimed once at 2.1%, dents instead — holds
+  0.95). THE PRE-BATTERY PIN, riding the burning fire: **if aim
+  works by giving a joint SLACK rather than teaching a fact, the
+  cured heads show GRADED behavior on joints ADJACENT to the
+  aimed cells** (a dent, not binary competence at the aim point
+  with chance one step away) — readable in the same battery via
+  adjacent-joint checks (e.g., crowding counts beyond the
+  sliver's 1-4, forms near but not in the six). Pinned as a
+  pre-registered READING of an existing battery, not a new
+  experiment — the honest limit stated.
