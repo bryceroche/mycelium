@@ -26606,3 +26606,17 @@ token-position × waist-dim, the moment the skeleton trains.
   all nd cells + bigtest no-harm) is the next arm and the coverage
   read predicts it holds everywhere the one-cell key broke. The
   dup wall's remaining distance: ONE fold and ONE battery.
+
+- **THE COVERAGE COUNTERSIGN (2026-08-09, Bryce):** the SAFE-vs-
+  effective distinction carved (the v1 key cratered bigtest
+  because nothing wild was in its gold; v2's 200 natural
+  negatives exist specifically so it won't — safety is a
+  gold-composition property); the dynamics law's exhibit A
+  generalized: **the anti-correlated-vs-perfect contrast depends
+  only on how the gradient arrived — likely to recur wherever a
+  small signal competes with a large loss** (a standing watch
+  item for every head in the stack); bigtest's dup blind spot
+  filed to the fixture-selection law beside adupheld — **two
+  fixtures with documented blind spots on the axis a diet
+  targeted**; every prior bigtest dup read reclassified
+  structurally-unable-to-see, not evidence-of-absence.
