@@ -26642,3 +26642,25 @@ token-position × waist-dim, the moment the skeleton trains.
   holds): a second agent is lawful only as a FUNCTIONAL split
   (different jobs, different gold) — two heads on the same
   objective would be a muffin pan, not a door-opener.
+
+- **TRANSPLANT V2'S VERDICT — TWO CELLS HELD, THE KILL FIRES, AND A
+  NEW STATION SHOWS (2026-08-09; door customer #17):** the broad
+  fold: **nd=0 5/15 (no-harm HOLDS — clean air preserved) and
+  nd=1 3/15 (the wall's movement REPRODUCED at deployment
+  shape)** — the v1 key's two failures cured exactly as coverage
+  predicted. BUT nd=2 15/15 / nd=4 12/15 stay broken — the
+  detector tests 1.000 on those cells in isolation, so the
+  residual failure sits at ANOTHER station (candidate: the rel
+  slot's decode itself under deeper crowding — the mech-per-cell
+  read owed before naming it). AND THE KILL FIRES: bigtest 1129
+  vs the 1165 baseline (−36) — v1's crater was ~1,000 points,
+  the natural negatives bought back ~970 of them, and the last
+  36 are the price of a detector meeting 1,500 rows that contain
+  ZERO natural dups (every fire is false by fixture construction
+  — bigtest's blind spot cuts both ways). Bars don't bend: v2 is
+  KILLED at this fold. THE HONEST STATE: the path holds at
+  deployment shape in the aimed cells; the remaining engineering
+  is (a) the wild false-fire tail (threshold/negatives — a
+  calibration question) and (b) the nd≥2 station (a diagnosis
+  question). Three campaigns' wall is now two small questions,
+  each with its instrument already built.
