@@ -26790,3 +26790,15 @@ token-position × waist-dim, the moment the skeleton trains.
   cures what mass couldn't, the relocation synthesis gains its
   interventional receipt and the surface road's whole economics
   reprice around AIM.
+
+- **THE AIM FIRE'S READING RIDER (2026-08-09, Bryce; pinned
+  mid-burn, before any number):** **the three members read
+  SEPARATELY before the aggregate** — the joints differ in kind
+  (dup's add-cell = a MASS correction inside an aimed cell; mod's
+  = a SURFACE aim across six forms; op's = a novel-form joint),
+  so a split verdict says WHICH KIND of aim carries and an
+  average would hide it. The guard's hardest work named: on a
+  fire the campaign wants to win, it guards against the win it
+  would most like to see. The sentinel design named as the
+  neighbor-cost law's first PROSPECTIVE deployment (displacement
+  visible in the same battery).
