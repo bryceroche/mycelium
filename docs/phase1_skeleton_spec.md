@@ -27061,3 +27061,18 @@ token-position × waist-dim, the moment the skeleton trains.
   mouth/watcher recalibration, registry re-audition — per
   standing law. The candidate rests as
   g23v5_candidate.safetensors until then.
+
+- **GEN-23v5 PROMOTED (2026-08-09; the word given; the manifest
+  write and the word one atomic act):** parser_ckpt →
+  g23v5.safetensors (hash banked); **the cure's scope AS DATA**
+  (rider 1): dup_cure field carries claimed cells, the nd=2
+  out-of-scope station, both unaddressed residuals named, the
+  mechanism line, and no_reader_may_infer (the band lives in the
+  heads — this cures ONE head's cells). Every manifest field
+  carried forward (the field-drop lesson honored). **ENTOURAGE-
+  23v5 OWED, frontier rehearsal FIRST** (rider 2): the wild
+  forty's 40/40 must stand under the changed detector — a cure
+  that quietly widened the mouth would be visible there and
+  nowhere else; then specialist remine, centroids rebuild,
+  mouth/watcher recal, registry re-audition. The three-campaign
+  wall's cure is DEPLOYED.
