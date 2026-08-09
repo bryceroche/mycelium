@@ -26822,3 +26822,32 @@ token-position × waist-dim, the moment the skeleton trains.
   sliver's 1-4, forms near but not in the six). Pinned as a
   pre-registered READING of an existing battery, not a new
   experiment — the honest limit stated.
+
+- **THE AIM FIRE'S VERDICT — THE SLIVER FAILS, AND THE FAILURE IS
+  THE RELOCATION CONFIRMED (2026-08-09; door customer #21; members
+  read separately per the rider):** DUP: bit-fire 0→3/15 on
+  held-out forms (a flicker, bar FAILED); MOD: 0/20 → 0/20
+  (unmoved entirely); OP: 12/15 both (this cell wasn't the
+  starved one); SENTINELS: 20/20 + 20/20 both arms (zero
+  displacement); BIGTEST: identical 1139/1238 (the 2% sliver cost
+  NOTHING). THE ADJACENT READ: moot — no cure took, no edges to
+  grade. THE DEEPER READING, and it closes the loop: **the fire
+  trained table forms and evaluated held-out forms — it asked the
+  HEADS to generalize across surface, which is exactly what the
+  relocation says heads cannot do.** Sign's receipt re-reads:
+  E1's eval IS its trained band (same "b is -x" surface) — sign
+  was cured IN-band; the aim sliver demanded CROSS-band transfer
+  and got the flicker shared features buy. THE SYNTHESIS EATS
+  ITS OWN FIRE AND SURVIVES: heads are band-local even when
+  aimed. THE CURE CLASS'S FINAL FORM: **a head cure must include
+  the TARGET SURFACE in its gold** — which the recursion guard
+  forbids for measurement fixtures (so held-out probes will
+  always show starved heads: an honesty about what benchmarks
+  CAN show) — and which deployment does NOT forbid (the wild is
+  the real eval; broad-gold folds trained on
+  deployment-representative surfaces are the lawful cure, the
+  detector's 8-cell receipt already in hand). The aim question
+  is settled by three fires: mass without aim (mod's 42k) =
+  nothing; aim without the band (this sliver) = a flicker; aim
+  WITH the band (sign, the detector) = cure. All three cells of
+  the design space now measured.
