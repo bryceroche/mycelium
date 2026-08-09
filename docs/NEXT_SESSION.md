@@ -40,4 +40,26 @@ wall; the naming-failure law (3 instances); what's-held-stationary
 **ARTIFACTS OF THE SURGE:** wild_ledger_v2.jsonl (exhaust ports,
 838 would-be answers), relative_mass/scatter/anchors at slot grain,
 aug_table_v3 (110 licensed), g24_v120 + g24_vdup19 ckpts,
-registrations/ (the door's ledger).
+registrations/ (the door's ledger).**THE DUP WALL IS DOWN (2026-08-09): V5 passes everything** — cells
+0/3/0, bigtest 1238 = baseline, zero wild cost; the dup path complete
+at deployment shape (broad-gold detector, gap-midpoint theta 0.9005,
+perfect specialist, decode routing; bench ckpt g31_v5.safetensors —
+ADOPTION is its own registration + full battery). Six-arm ledger:
+crater -> key -> -36 -> -147 -> -34 -> -31 -> 0.
+
+**THE BOARD:** (1) v5 adoption word (when wanted); (2) the second
+clock (spatial grain; constituency measured, nut = the anchor);
+(3) the floor's artifact-or-altitude question; (4) the era manifest
+(3 specimens); (5) general-parse residuals: op head + rel-decode
+under crowding (reassigned from dup).
+
+**THE WEEK'S LAWS (ledger has full forms):** band-lives-in-the-heads
+(waist is band-general — every probe 1.000); the design space
+(mass-sans-aim=0 / aim-sans-band=flicker / aim-with-band=cure);
+dynamics law + familiarity lens + implicit-register-gate; FIVE
+spec-time doors (+what-already-carries-this-signal); headroom-first
+(overlap before pricing); grains-state-conversion +
+trades-prove-overlap (on the door); retired vocabulary: slope,
+under load, trade.
+
+
