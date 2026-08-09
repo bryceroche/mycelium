@@ -26505,3 +26505,24 @@ token-position × waist-dim, the moment the skeleton trains.
   epitaph: preference → detection → read-but-unread →
   path-proven, every station found by measuring where the
   previous cure failed.
+
+- **GUT #181 REGISTERED — "MAXIMIZE SURFACE, ROTATE π/4"
+  (2026-08-08; sorted, not converted):** THE MAXIMIZE CLAUSE
+  REFUSED on two measurements: the non-monotone amendment (peak
+  throughput below peak density) and the muffin pan's bill
+  ([1293]: maximal independent surface, one basin) — the measured
+  form is **provision surface where exchange is needed, defend
+  independence where it isn't** (a scoping rule, not a
+  maximization). THE ROTATION HALF sorted three ways: π-form
+  refused-on-perceiver (×3) and carried to organ 3 as
+  shape-open — **π/4 specifically is UNLICENSED** (nothing
+  measured picks that constant); rotation-per-se has a receipt
+  (the v110-era Q rotation, +4.4, not-RoPE) — restoration enters
+  lawfully as assumption-to-test with lineage; **#109 governs:
+  any rotation names its re-anchor** — a per-breath core rotation
+  moves the frame every breath, the oracle blade's exact
+  conviction (uniform won by holding ONE frame); a rotating core
+  must say what stays still while it turns. TIMING NOTE: the
+  board's live questions (detector coverage, spatial gate) are
+  not addressed by rotation — the campaign just spent a day
+  proving what arms aimed one station off a wall produce.

@@ -144,3 +144,4 @@ One line per registration; full forms, rents, verdicts, and countersigns live in
 - **#178** DON'T DETERMINE THE POSITION TOO EARLY (2026-08-08) — the central diagnosis stated as a design principle; every clause convergent and the synthe
 - **#179** TWO CLOCKS (2026-08-08) — the two-grains reading leads; status pinned AWAITING V1'S VERDICT
 - **#180** PERCEIVER, CORE ROTATION, BREATH CYCLES (2026-08-08) — three standings, sorted; conversion HELD until the burning arm prints
+- **#181** MAXIMIZE SURFACE, ROTATE π/4 (2026-08-08) — sorted, not converted
