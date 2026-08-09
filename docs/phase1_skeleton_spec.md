@@ -26905,3 +26905,25 @@ token-position × waist-dim, the moment the skeleton trains.
   threshold fixes a true resemblance. (b) informs whether (a)
   can ever close. Nothing promotes; the wall's remaining width
   is measured in tenths of a percent.
+
+- **THE TAIL-SHAPE VERDICT — NOT TWINS, NOT NOISE: ATYPICAL
+  SURFACES (2026-08-09; door customer #24; 32/3,803 above θ =
+  0.84%):** the resemblance hypothesis's concrete form is REFUTED
+  clean — **value-twins 0/32**. But the mixed branch executes
+  with a shape the specimens declare themselves: the tail
+  concentrates in ORDINAL-INDIRECTION and SUBTRACTION-SURFACE
+  rels — "the first number and b together make c", "a exceeds b
+  by the fourth number", "b is d reduced by a", "the difference
+  between g and the second number" — the wild register's hardest
+  frames. THE READING: the probe fires on surface-ATYPICAL rel
+  states — its 1,600 negatives under-covered the rare surface
+  families, so rarity itself reads as dup-like. Not a detector
+  error about dup; a NEGATIVE-GOLD gap about the wild's tail
+  families. THE SUCCESSOR NAMED: **the targeted-negative fold
+  (v4)** — negatives drawn from the tail's own families
+  (indirection, inverse-add surfaces), the
+  safety-is-gold-composition law's third application; the
+  stricter-θ point stands down (the tail is structured — a
+  threshold would buy cell cost against a coverable family).
+  The dup detector's remaining width: one gold-composition pass
+  aimed at families the read just enumerated.
