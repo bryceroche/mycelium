@@ -26851,3 +26851,23 @@ token-position × waist-dim, the moment the skeleton trains.
   nothing; aim without the band (this sliver) = a flicker; aim
   WITH the band (sign, the detector) = cure. All three cells of
   the design space now measured.
+
+- **FOLD V3'S VERDICT — THE CELLS AT THEIR BEST, THE WILD AT ITS
+  WORST, THE MARGIN DESIGN TAKES THE BATON (2026-08-09; door
+  customer #22):** the dup cells print the best sheet the wall
+  has ever shown — **nd=0 0/15, nd=1 3/15, nd=4 0/15** (nd=2's
+  15/15 is the op/rel-decode station, out of scope as registered)
+  — and **bigtest craters −147 (1091): the kill fires at
+  twenty-nine times its bar.** The 3.75% probe false-fire
+  compounds across ~10 rel slots per row; scale (1,600 negatives)
+  moved the tail from v2's implicit rate but nowhere near 0.5%:
+  **the calibration residual RESISTS scale — the registered kill
+  branch executes and the THRESHOLD-MARGIN design is the banked
+  next** (price the margin on the held-out 400: the bias shift
+  that buys ≤0.5% wild, and its measured cell cost — a curve,
+  not a guess). The pattern of the fold series banked: each arm
+  improves the cells monotonically (crater → one-cell → two-cell
+  → three-cell-near-perfect) while the wild tail resists three
+  designs — **the detector's remaining problem is one scalar
+  threshold against a fat tail**, the most localized any problem
+  in this campaign has ever been.
