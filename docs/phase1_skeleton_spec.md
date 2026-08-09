@@ -27044,3 +27044,20 @@ token-position × waist-dim, the moment the skeleton trains.
   one-line why; the 0.951/0.023 guard moved beside the funnel
   framing. The graveyard kept exactly as was — the review's own
   ruling.
+
+- **THE ADOPTION SHEET — ALL BARS PASS, THE WORD AWAITED
+  (2026-08-09; door customer #26; the fold re-derived on g23's own
+  waist, headroom-first: gap EXISTS, cell-min 1.141 / wild-max
+  0.801, θ=0.971 at the midpoint, holdout FPR 0.00000):**
+  **g23v5_candidate vs the deployed g23**: dup cells 5/15/15/15 →
+  **0/3/15/0** (the wall's movement transfers whole; nd=2 is the
+  out-of-scope op/rel-decode station); **bigtest 1238 → 1238
+  IDENTICAL, graph-solve +2 (1143→1145); alg4test +1 (406→407);
+  sentinels 20/20 + 20/20.** The candidate strictly dominates:
+  everything held, dup cured in-scope, nothing displaced, two
+  fixtures a hair better. THE SHEET GOES TO THE WORD: the
+  manifest write (PROMOTED) is Bryce's alone and carries the
+  ENTOURAGE DUTY — specialist remine, monitor centroids rebuild,
+  mouth/watcher recalibration, registry re-audition — per
+  standing law. The candidate rests as
+  g23v5_candidate.safetensors until then.
