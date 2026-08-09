@@ -26449,3 +26449,23 @@ token-position × waist-dim, the moment the skeleton trains.
   derive) — the doors pattern's third domain after custody gold
   and detector authority. Promotion earns by specimen, not
   advocacy; the item waits for its word with two in hand.
+
+- **THE INSTALLATION'S VERDICT — THE HEAD RESISTS, AND THE RESIST
+  IS AN ARCHITECTURE FINDING (2026-08-08; door customer #14):**
+  primary fails (nd=1 15/15 both); no kill (bigtest dead even,
+  1164/1165 — substrate note: the vdup19 mix runs ~60 below the
+  gen23-mix lineage, consistent with its aug-era numbers);
+  mechanism: **dup-bit FIRES 0/15 — even 19 licensed phrasings
+  with competition present in-diet cannot teach h_dup this read**
+  — while dargs holds perfect 15/15. THE SHARP FORM of the
+  finding: the probe proved a FRESH linear head learns this read
+  at 1.000 in isolation — same class, same input — so the head
+  class is SUFFICIENT and **the JOINT TRAINING CONTEXT is what
+  resists**: trained beside the full loss stack, the bit's
+  gradient loses this cell (interference/allocation, not
+  expressivity). THE PRE-BANKED BRANCH FIRES: the TRANSPLANT —
+  probe map folded into h_dup (standardization absorbed into
+  weights+bias) — with its claim PRE-SPLIT: this proves the PATH,
+  not learnability; the learnability question (why joint training
+  starves one head's cell) is banked OPEN as the architecture
+  finding's own question.
