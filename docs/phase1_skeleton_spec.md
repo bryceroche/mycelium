@@ -26710,3 +26710,23 @@ token-position × waist-dim, the moment the skeleton trains.
   a census question attached — how many of the stack's small
   heads are starved on their minority cells? The probe method is
   the census instrument, cheap, head by head.
+
+- **THE HEAD CENSUS v1 — TWO CERTIFIED, ONE NEW MEMBER, THE FAMILY
+  AT THREE (2026-08-09; door customer #19; cells derived from the
+  mint, none added after results):** **SGN on negative literals:
+  head 0.95, probe 1.000 — CERTIFIED HEALTHY** (E1's deliberate
+  training holding its minority). **SEL smaller-under-crowding:
+  head 1.00, probe 1.000 — CERTIFIED HEALTHY.** **FTYPE on
+  mod-vs-fdiv novel forms under crowding: head 0.56, probe 1.000
+  — THE THIRD MEMBER**: near-chance on perfectly separable
+  evidence, the exact signature, at the thinnest construction in
+  the table (mod, 6 phrasings). THE PATTERN SHARPENS: starvation
+  tracks MINORITY THINNESS (dup's rare bit, op's tiny
+  novel-dup cell, mod's 6 phrasings) while deliberately-trained
+  minorities hold (sign entered by E1's own fire; sel's classes
+  balanced) — HYPOTHESIS for the cure's design, noted not
+  claimed: **starvation correlates with per-cell gold mass in
+  the mix**, quantifiable from the mix's own counts, and the
+  cure queue (splits / broad-gold folds) prioritizes by cell
+  thinness. The census instrument's symmetric value demonstrated:
+  the same read that finds members certifies health.
