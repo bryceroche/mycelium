@@ -26757,3 +26757,36 @@ token-position × waist-dim, the moment the skeleton trains.
   still pre-training); the cure class sharpens — deliberate
   fires work (sign's receipt), broad-gold folds work (the
   detector's receipt), and both are AIM, not mass.
+
+- **THE RELOCATION COUNTERSIGN (2026-08-09, Bryce):** the
+  augmentation program RE-READ in one line: **"not an undersized
+  sink — an unaimed one"** — the tied fires moved what the big
+  heads read and left the small heads exactly where they were
+  (fdiv 0/8→8/8 while dup sat at 60/60 ON THE SAME TABLE: same
+  substrate, different heads, the difference = which ones anything
+  aimed at). THE AIM RULE carved with both arms and the null:
+  deliberate fires work (sign, 0.95 from one fire); broad-gold
+  folds work (the detector, 1.000 × 8 cells); mass without aim
+  does nothing (mod, 42k rows, coin flip). THE SCREEN, cheaper
+  than its predecessor: **a joint either has a fire behind it or
+  it doesn't** — no counting, no probing.
+
+- **THE AIM FIRE REGISTERED (2026-08-09; door customer #21;
+  execution next session at full context per the tranche
+  precedent — build quality IS the experiment's validity):**
+  THE DESIGN: sign's E1 precedent applied to the family — a
+  deliberate diet fire AIMED at the three starved joints:
+  dup×novel-forms×crowding, op-on-dup (the 500-row add-dup cell
+  widened), mod×novel-forms×crowding — rendered through the
+  licensed table into the mix (equalized, carrier preserved, the
+  substrate lesson), one arm + continuation control, 4k from the
+  deployed lineage. BARS: the census RE-RUNS as the battery —
+  the three members' head-accs move toward their probes' 1.000
+  (member cure = head ≥0.85 on its joint); the two certified
+  heads STAY certified (no displacement); bigtest within −5;
+  kill >5. THE PREDICTION, pinned: aim works at small mass
+  (sign needed 2.1%) — the fire is a DIET SLIVER, not a flood;
+  dose declared at mint per the dose law. If the aimed fire
+  cures what mass couldn't, the relocation synthesis gains its
+  interventional receipt and the surface road's whole economics
+  reprice around AIM.
