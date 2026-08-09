@@ -26927,3 +26927,19 @@ token-position × waist-dim, the moment the skeleton trains.
   threshold would buy cell cost against a coverable family).
   The dup detector's remaining width: one gold-composition pass
   aimed at families the read just enumerated.
+
+- **THE TAIL COUNTERSIGN — THE FAMILIARITY LENS (2026-08-09,
+  Bryce):** carved general: a probe trained on under-covering
+  negatives correctly reports **"this doesn't look like the
+  negatives I know" — a different claim than "this looks like the
+  positive class"** — and any threshold trained on familiarity
+  will fire on sufficient unfamiliarity; the lens applies to
+  every detector in the stack (the mouth included — whose
+  foreign-vs-native read is exactly this claim made DELIBERATELY
+  and calibrated). The stand-down logic ratified (you don't buy
+  cell cost against a coverable family); the series' sentence
+  banked: **a wall being disassembled rather than attacked** —
+  every kill smaller, every successor named by its predecessor's
+  exact failure. Safety-is-gold-composition, third visit, same
+  lesson: a detector's competence is bounded by what its
+  negatives taught it about the world it will meet.
