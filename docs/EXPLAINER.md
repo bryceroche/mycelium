@@ -12,11 +12,19 @@ Think of it as a **fuzzy lookup table acting as a funnel**: an
 information bottleneck that *destroys the surface variation of
 English while preserving the math graph underneath*. "b plus b
 equals c," "the sum of b and b," "twice b makes c" — one graph.
-The **Anna Karenina principle is the certification story**: all
-happy parses are alike (they compile to ONE canonical knot — our
-canonicalizer measures false-merge at literally zero), while every
-failing parse fails in its own way (we have a taxonomy of the
-unhappy families, each mapped by measurement).
+The **Anna Karenina principle is the certification story**: gold
+parses of the same problem compile to ONE canonical knot (the
+canonicalizer's false-merge rate: measured zero), while every
+failing parse fails in its own way (a taxonomy of unhappy
+families, each mapped by measurement). The parser reaches that
+ceiling on roughly two-thirds of rows today — five independent
+views collapsing to one knot — and the shortfall is itself a
+diagnostic surface (18% of rows agree on *answers* while
+disagreeing on graphs, which is exactly the kind of coincidence
+the certification chain exists to catch). **The funnel's honesty
+guard sits here too**: on memorized text the system scores 0.951;
+on never-seen text, 0.023 — the lookup table *knows* it's a
+lookup table, which is why it certifies rather than guesses.
 
 ## Two sets of grouper jaws
 1. **The construction jaw** (neural): ~3.2M trained parameters over
@@ -33,8 +41,11 @@ unhappy families, each mapped by measurement).
    abstraction may live in recognition, never in verification).
 
 ## Breath cycles + the 50 First Dates notebooks
-The head runs **3 breath cycles** — iterative refinement at constant
-altitude, slots attending to slots (evidence-sharing masks from the
+The parser currently runs **3 breath cycles** (its deployed config;
+the earlier general engine ran K=8–16, and the ~3.5-breaths-per-
+implication-layer constant from that era is conjecture-grade in its
+own ledger entry) — iterative refinement at constant altitude,
+slots attending to slots (evidence-sharing masks from the
 model's own first parse). Two memories, like Lucy's notebook:
 **REPLACE** (the working state, overwritten every breath — the pan)
 and **ACCUMULATE** (the rings: committed bindings with evidence
@@ -78,12 +89,18 @@ rare constructions, novel phrasings, crowded contexts — while the
 trained output heads sit at chance or *anti-correlated* on the same
 states. Surface-brittleness is not in the representation; it's in
 the last linear maps, and it cures by **aim** (deliberate gold at a
-cell) or **broad-gold folds**, never by volume (42k balanced rows
-taught one head nothing its gold never aimed at).
+cell) or **broad-gold folds**, never by volume. The full 2×2 is
+measured: **mass without aim buys nothing** (42k balanced rows,
+coin-flip head); **aim without the band buys a flicker** (a 2%
+targeted sliver, near-zero transfer to held-out surfaces); **aim
+with the band cures** (one deliberate fire holds a 2% minority at
+0.95 permanently). "Cures by aim" is a measured claim with its
+null.
 
 ## The graveyard that taught the laws (honest status)
 - **Perceiver** (latent recirculation): refuted at architecture
-  grade — the three-pole map (dead / violent / wrong-attractor).
+  grade — frozen-trunk recirculation is dead at init (blur, not
+  compute); the three-pole map (dead / violent / wrong-attractor).
 - **HMM/telegraph signal** (alternating-layer carrier): lost to
   static layer polarization on the wrong substrate; dead on ours.
 - **Neural diffusion compiler**: retired with its remainder — the
@@ -111,9 +128,7 @@ refused with a citation. Three words have been *retired by
 measurement* ("slope," "under load," "trade") for presuming shapes
 the world didn't have.
 
-**Where it stands:** zero certified lies in-register across every
-battery; total abstention at the wild frontier; the memorization/
-reading boundary measured (0.951 on trained text, 0.023 on unseen —
-so we certify, we don't guess); and the hardest internal wall
+**Where it stands:** the claim's numbers as above, and the hardest
+internal wall
 (duplicate-argument binding) disassembled to working machinery this
 week. A certifier that grows, never a guesser that shrinks.

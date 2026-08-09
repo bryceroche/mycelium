@@ -27032,3 +27032,15 @@ token-position × waist-dim, the moment the skeleton trains.
   Sentinels verify coherence; era.py verifies membership — the
   era-check distinction now has its door. Adoption at next touch
   per organize-machinery; three specimens retired to a lane.
+
+- **THE EXPLAINER REVIEWED AND CORRECTED (2026-08-09; the relay's
+  countersign-grade review, all seven applied):** Anna Karenina
+  scoped (gold at zero false-merge; the parser at ~two-thirds
+  ceiling, shortfall-as-diagnostic, the 18% answer-coincidence);
+  never-lies scope moved into the same breath (291/11, 98.4%
+  refusal, unmeasured-on-admitted stated); abstention leads; breath
+  count scoped to configs with the 3.5-constant flagged
+  conjecture-grade; the aim 2×2 added whole; the perceiver's
+  one-line why; the 0.951/0.023 guard moved beside the funnel
+  framing. The graveyard kept exactly as was — the review's own
+  ruling.
