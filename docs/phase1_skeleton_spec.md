@@ -26469,3 +26469,26 @@ token-position × waist-dim, the moment the skeleton trains.
   not learnability; the learnability question (why joint training
   starves one head's cell) is banked OPEN as the architecture
   finding's own question.
+
+- **THE TRANSPLANT'S VERDICT — THE PATH IS PROVEN, AND ONLY THE
+  PATH (2026-08-08; the pre-split claims hold exactly):** at the
+  cell the probe was aimed at — nd=1, novel forms it NEVER saw
+  (table-forms-only training, guard honored) — **misbind 3/15:
+  the wall MOVES for the first time in three campaigns.** The
+  detector opens, the specialist is consulted, the binding lands:
+  the full dup path demonstrated END TO END, 12/15 correct where
+  every prior arm printed 15/15. AND THE TRANSPLANT IS NOT A
+  HEAD: nd=0 collapses (15/15), nd=2/4 stay broken, bigtest
+  prints 46/1500 — a 240-row probe is a ONE-CELL KEY that fires
+  wrongly across the wild distribution; the kill bar fires at
+  maximum and nothing promotes. THE CLAIMS, exactly as pre-split:
+  the path works; learnability-in-context remains open; and the
+  new question is COVERAGE — a detector that generalizes across
+  cells needs either broad-cell probe training (a wider
+  transplant, measurable next) or the joint-interference crack
+  (why full training starves this head's read while isolation
+  finds it at 1.000). The dup story's state after one day:
+  detector evidence present, specialist perfect, path proven,
+  head unlearned-in-context — **the wall is no longer a mystery
+  anywhere; it is an engineering question with every piece
+  measured.** Ckpt g30_transplant retained as the path's specimen.
