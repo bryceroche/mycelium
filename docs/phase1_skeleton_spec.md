@@ -26943,3 +26943,34 @@ token-position × waist-dim, the moment the skeleton trains.
   exact failure. Safety-is-gold-composition, third visit, same
   lesson: a detector's competence is bounded by what its
   negatives taught it about the world it will meet.
+
+- **THE IMPLICIT-REGISTER-GATE LAW (2026-08-09, Bryce's carve,
+  banked with v4's word):** **any detector trained on narrow
+  negatives is an implicit register gate — its "false positives"
+  are register signal, not error.** General, explains the dup
+  tail without appeal to dup, and predicts the same shape in
+  every thin-negative small detector the census says the stack
+  is full of. The mouth = the same claim made deliberately.
+
+- **V4'S VERDICT — KILLED AT −31, AND THE BARS' ARITHMETIC
+  SURFACES (2026-08-09; door customer #25):** cells hold (0/3/0
+  in-scope), VALIDATE met its 0.5% at the boundary, bigtest 1207
+  = −31: the kill fires again — family negatives bought only 3.
+  **THE ARITHMETIC FINDING the series was always going to hit:
+  at ~10 rel slots per row, a 0.5% SLOT-grade FPR is ~5% of ROWS
+  touched — the wild bar (≤0.5% slot) and the bigtest bar (−5
+  row) are structurally incompatible.** The true requirement is
+  ~0.03% slot FPR — 15× past v4 — which single-threshold linear
+  separation may not own. THE SUCCESSOR NAMED, and it is the
+  campaign's own signature pattern at the head grain:
+  **CORROBORATION GATING — the dup path taken only when
+  independent conditions agree** (bit above θ AND the specialist's
+  target plausible AND op-consistency) — multiplying
+  specificities the way the chain of custody multiplies fences;
+  each condition cheap, the product potentially 30× cleaner.
+  Alternative read first: the HEADROOM check (cells' minimum
+  score vs the negatives' extreme quantiles — whether a stricter
+  θ alone could ever reach 0.03% — zero-GPU from the banked
+  pools). The fold series rests at five arms, every kill smaller
+  or better-diagnosed, the last one converting two bars into an
+  arithmetic truth about per-slot gates.
