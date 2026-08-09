@@ -26974,3 +26974,38 @@ token-position × waist-dim, the moment the skeleton trains.
   pools). The fold series rests at five arms, every kill smaller
   or better-diagnosed, the last one converting two bars into an
   arithmetic truth about per-slot gates.
+
+- **THE GRAIN-CONVERSION CLAUSE (2026-08-09, Bryce's carve; the
+  bar-composition family named):** the fold series' fault filed
+  with its kin — berries (denominators), caveat decay (scope),
+  never-mix (frames): **two quantities in different currencies
+  compared as one, now at the REGISTRATION grain.** The door's
+  checklist gains the clause: **when a registration pins bars at
+  two grains, it states their conversion** — one sentence at arm
+  one instead of five arms to an arithmetic. Applies to every
+  future registration through the door.
+
+- **V5 — THE FIRST FULL PASS: THE DUP DETECTOR IS COMPLETE AT
+  DEPLOYMENT SHAPE (2026-08-09; the headroom check's gift, one
+  bias shift later):** θ at the gap midpoint (0.9005 — a PINNED
+  RULE: midway between the wild's maximum 0.431 and the cells'
+  minimum 1.370, chosen by the measured chasm, not feel): **cells
+  0/15, 3/15, 0/15 (the wall stays moved) and bigtest 1238 —
+  IDENTICAL to the control baseline. Zero wild cost. The kill
+  does not fire. Every bar met.** THE SERIES' FAULT, named at its
+  end: every prior fold placed θ at a QUANTILE OF THE NEGATIVES
+  (0.5% rule) — inside the wild distribution — while a chasm of
+  0.94 logits sat empty above it; the headroom check was the read
+  that should have run FIRST, and its lesson generalizes:
+  **before pricing a threshold's trade, measure whether the
+  distributions even touch.** THE LEDGER OF SIX ARMS: crater →
+  one-cell key → −36 → −147 → −34 → −31 → **0**, cells
+  monotonically perfect from v3 on. THE DUP PATH AT DEPLOYMENT
+  SHAPE: broad-gold detector (gap-θ'd) + perfect specialist +
+  decode routing — complete, verified, banked as
+  g31_v5.safetensors (bench ckpt; ADOPTION into any deployed
+  lineage is its own registration with the full battery).
+  Remaining dup-file items, all reassigned: nd=2's op/rel-decode
+  station (general parse files), learnability-in-context (the
+  dynamics road). (Housekeeping: the fold print crashed AFTER
+  its save — array-scalar TypeError, cosmetic, noted.)
