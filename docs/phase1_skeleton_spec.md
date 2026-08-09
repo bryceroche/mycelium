@@ -27022,3 +27022,13 @@ token-position × waist-dim, the moment the skeleton trains.
   generalized clause carved: **before pricing a trade, measure
   whether the quantities even overlap** — one zero-GPU read at
   any series' first arm.
+
+- **THE ERA MANIFEST BUILT (2026-08-09; the board's smallest item
+  retired; mycelium/era.py; self-test PASS):** the doors pattern's
+  third domain — ONE authority for the deployed era's envs
+  (manifest-driven with the gen-23 fallback; apply_era() at any
+  fire/rebuild/eval door) plus the MINT-ROW SCHEMA CONTRACT
+  (assert_mint_row — the aim sliver's specimen becomes a refusal).
+  Sentinels verify coherence; era.py verifies membership — the
+  era-check distinction now has its door. Adoption at next touch
+  per organize-machinery; three specimens retired to a lane.
