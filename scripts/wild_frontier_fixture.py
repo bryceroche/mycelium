@@ -28,6 +28,7 @@ import sys, os, json, re
 sys.path.insert(0, "."); sys.path.insert(0, "scripts")
 os.environ.setdefault("ALG2", "1"); os.environ.setdefault("ALG_FTYPES", "8")
 os.environ.setdefault("ALG_HW", "512"); os.environ.setdefault("ALG_DUP", "1")
+from mycelium.era import apply_era; apply_era()  # era door, adopted at next touch
 import numpy as np
 from collections import Counter
 from phase1_algebra_head import T_ALG, build_params, forward, decode, sent_indices, TOKENIZER_JSON

@@ -27076,3 +27076,17 @@ token-position × waist-dim, the moment the skeleton trains.
   nowhere else; then specialist remine, centroids rebuild,
   mouth/watcher recal, registry re-audition. The three-campaign
   wall's cure is DEPLOYED.
+
+- **ENTOURAGE-23v5, DUTY 1 PAID — THE FRONTIER STANDS (2026-08-09;
+  rider 2's exact check):** under the promoted gate: **DEPLOYED
+  mouth_refused 40/40 — unmoved**; STRESS (inner fences): abstain
+  25 / attest_block 2 / tripped 12 / certified_lie 1 (idx 5) —
+  the same single-lie exposure profile as the standing baseline.
+  **The changed detector did not widen the mouth; the claim's
+  frontier posture is intact.** (Process note: the rehearsal's
+  key-mismatch at first ignition was the era door's summons — 
+  mycelium/era.py adopted at next-touch exactly as its law
+  prescribed; first customer served.) ENTOURAGE DUTIES REMAINING,
+  owed to the next fires: specialist remine vs 23v5, monitor
+  centroids rebuild, mouth/watcher recalibration, registry
+  re-audition.

@@ -47,6 +47,12 @@ perfect specialist, decode routing; bench ckpt g31_v5.safetensors —
 ADOPTION is its own registration + full battery). Six-arm ledger:
 crater -> key -> -36 -> -147 -> -34 -> -31 -> 0.
 
+**GEN-23v5 IS THE GATE (2026-08-09, PROMOTED):** the dup-detector
+adoption — strict dominance sheet, scope as data in the manifest,
+frontier 40/40 CONFIRMED unmoved. **ENTOURAGE-23v5 owed:**
+specialist remine, centroids rebuild, mouth/watcher recal, registry
+re-audition (frontier duty PAID).
+
 **THE BOARD:** (1) v5 adoption word (when wanted); (2) the second
 clock (spatial grain; constituency measured, nut = the anchor);
 (3) the floor's artifact-or-altitude question; (4) the era manifest
