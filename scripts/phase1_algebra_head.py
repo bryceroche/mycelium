@@ -1271,6 +1271,11 @@ def do_train(steps, lr, batch, seed):
         ration_w = np.ones(n, np.float64)
         ration_w[np.array(r_idx, int)] = float(os.environ.get("RATION_W", "1.5"))
         print(f"[ration] {len(r_idx)} rows upweighted x{os.environ.get('RATION_W', '1.5')} in hot phase", flush=True)
+        if os.environ.get("RATION_FILE2"):
+            r2 = json.load(open(os.environ["RATION_FILE2"]))
+            ration_w[np.array(r2, int)] = np.maximum(
+                ration_w[np.array(r2, int)], float(os.environ.get("RATION_W2", "1.5")))
+            print(f"[ration2] {len(r2)} rows upweighted x{os.environ.get('RATION_W2', '1.5')} (max-combine on overlap)", flush=True)
 
     t0 = time.time()
     for s in range(steps):

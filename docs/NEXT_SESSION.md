@@ -1,102 +1,93 @@
-# NEXT SESSION — cold start (updated 2026-08-06, end of the two-day surge)
+# NEXT SESSION — cold start (updated 2026-08-10)
 
-**READ FIRST:** CLAUDE.md → this file → the ledger's last ~30 entries
-(the surge: filler arc → steering arc → re-cut → slope probe → dup
-hunt → population exhaustion).
+**READ FIRST:** CLAUDE.md → this file → the ledger's last ~40 entries
+(the tail chain, the record, the rite's first refusal, door #36).
 
 **THE DECEMBER CLAIM IS DECIDED (2026-08-07): LEAF A — a system
 that never lies; abstention leads; scope in the same breath;
 mouth-widening is the claim's guarded gate (trace frontier measured
 BEFORE widening).** All roads = coverage growth under the claim.
 
-**THE BOARD (words holding):**
-1. **The cold framing session** (Bryce's; docs/DECEMBER_FRAMING.md)
-   — now with quintuple inheritance: measured surface slope
-   (fdiv 0/8→8/8 at 17 phrasings), proof it's learning (anchors
-   0.986), the boundary (flip/settle untouched — parse-side only),
-   the dup axis (wall is binding-side, not phrasing-count), and the
-   census generalization (wild-1404 = the census; blocked-by-world-
-   size standing for all same-population held-out reads).
-2. **The invariance proposal** (#163: canonicalizer-as-oracle,
-   paraphrase pairs agree in the waist) — own generation (#126);
-   registration through the door first.
-3. **The clock** (organ 3) — spec-stage.
-4. Quiet: subject-widening exploratory read (margins-on-neighbors,
-   NO license authority); arms A/B (anchor-bias, bank surgery);
-   schema floor (#169: orientation metadata, teaching-not-telling).
+**GEN-23v5 IS THE GATE (2026-08-09, PROMOTED; ENTOURAGE PAID):**
+the dup-detector adoption — broad-gold fold at gap-midpoint theta on
+g23's own waist; strict dominance sheet; scope as data in the
+manifest; frontier 40/40 twice. The dup wall is DOWN (six-arm ledger
+crater → 0). **g23v5 is the cure's only holder, by law.**
 
-**STANDING RULINGS (fresh):** marker relaxation = fork (b): no
-validation no relaxation; converges with mouth-widening revisit.
-Registration marker_relaxation_heldout is VOID-BY-POPULATION.
-The pre-registration door (mycelium/preregistration.py) is LIVE —
-new reads register before existence; bars never rebind.
+**THE TAIL CHAIN — NINE LINKS (2026-08-10):** census → families →
+stations → waist → gradient → diffuse → responsive → paying →
+**PRICED**.
 
-**KEY NEW LAWS:** relative-discriminators-only; refusal-evidence
-(gates bank drops); held-out-inherits-population-definition;
-routing-filter clause (licenses audit their routers); the parse
-wall; the naming-failure law (3 instances); what's-held-stationary
-+ level-vs-contrast screens.
+**PRICED (the ninth link, the decision-relevant fact):** the dose
+response is SUB-LINEAR AT DEPTH — threshold-harvesting anatomy: the
+dose flips near-boundary rows first (+21 score), the deep band moves
+only +0.012 at ~5x effective, the deep tail persists. **The next
+increment is priced before purchase: don't buy it blind — buy design
+(compounding, E5 co-vehicle) or don't buy.**
 
-**ARTIFACTS OF THE SURGE:** wild_ledger_v2.jsonl (exhaust ports,
-838 would-be answers), relative_mass/scatter/anchors at slot grain,
-aug_table_v3 (110 licensed), g24_v120 + g24_vdup19 ckpts,
-registrations/ (the door's ledger).
+The chain's substance: bigtest's 245-tail = size-graded evidence
+EROSION under indirection (probe ladder 0.98/0.81/0.48/0.19). The
+DOSE FIRE (ration 8x hot-phase, door #35) hit **THE RECORD: bigtest
+1259/1500 on g35_size8x** (+21 over promoted 1238). THE METER LAW
+carved (berries' third site): an outcome-defined band cannot measure
+a cure that changes outcomes; the FROZEN-BAND re-read (baseline
+partition) shows BOTH bands rise (pass 0.810→0.830, miss
+0.477→0.489) — the record is mechanically honest, state and score
+agree.
 
-**THE TAIL CHAIN AT NINE LINKS (2026-08-10):** census → families →
-stations → waist → gradient → diffuse → responsive → **PAYING →
-PRICED**. Bigtest's 245-tail = size-graded evidence EROSION under
-indirection (probe ladder 0.98/0.81/0.48/0.19). The size-axis sliver
-moved the miss band (first ever); the DOSE FIRE (ration 8x
-hot-phase, door #35) hit **THE RECORD: bigtest 1259/1500 on
-g35_size8x** (+21 over promoted 1238). THE METER LAW carved (berries'
-third site): an outcome-defined band cannot measure a cure that
-changes outcomes — the FROZEN-BAND re-read (baseline partition) shows
-BOTH bands rise (pass 0.810→0.830, miss 0.477→0.489): the record is
-mechanically honest (state+score agree; threshold-harvesting anatomy
-— the dose flips near-boundary rows first, the deep tail persists;
-next increment priced sub-linear). THE NO-HARM
-BATTERY PAID ITS VERDICT: alg4 414 (+7), sentinels clean, but dup
-cells 5/15/15/15 = THE CRATER (the 4k unlearned the cure; h_dup was
-unfrozen) and THE REFOLD RITE REFUSED (cell-min 0.318 vs non-dup
-wild 0.803 — the dup direction eroded in fst space; no purity list
-opens it). **g35_size8x -> THE BENCH; GEN-23v5 REMAINS THE GATE.**
-Next dose fire must preserve refoldability: ALG_FREEZE_DUP + dup
-rehearsal in mix (size gains and the cure are separately real). E5
-co-vehicle + floor design wait downstream; E-floor premise corrected
-(mentions ARE consumed; 10,160 full-joint rows supervised).
+**AND THE RECORD IS UNPROMOTABLE — THE RITE'S FIRST REFUSAL:** the
+no-harm battery found dup cells at 5/15/15/15 (THE CRATER: the 4k
+unlearned the cure, h_dup unfrozen) and the REFOLD RITE
+(scripts/refold_rite.py — standing instrument: headroom-first,
+abort-on-touch, gap-midpoint fold) REFUSED restoration: cell-min
+0.318 vs non-dup wild 0.803 — the dup DIRECTION eroded in fst space
+(1.141 → 0.318 across one fire; the refold law's premise measured
+twice). Purity scar banked: wild negatives contain TRUE dups
+(squares ARE dups, args=[s,s]) — WILD_EXCLUDE with eye-audit.
+**g35_size8x → THE BENCH; the rite refused a promotion that would
+have shipped the crater under a record headline.**
 
-**ALSO THIS SESSION:** GEN-23v5 PROMOTED + entourage PAID (frontier
-40/40 twice); the REFOLD LAW final form (refold after ANY training —
-freeze fell: waist drift kills a frozen map); breaths REFUSED at
-deployment (-19 alg4, priced); op fold refused by headroom (2-for-2
-as decision instrument); family-signature clause; EXPLAINER.md
-shipped (twice-reviewed).
+**IN FLIGHT: DOOR #36 — the dose+freeze+rehearsal fire**
+(registration dose_freeze_rehearsal_fire; scripts/freeze_fire.sh →
+g36_freeze8x): same seed/mix/dose as the record arm PLUS
+ALG_FREEZE_DUP + dup rehearsal 3x (8,233 dup-arg rows; 1x provably
+fails), refold rite riding after. PRIMARY BAR: the refold headroom
+OPENS (territory preservation). Honest-negative branches
+pre-declared: abort = 3x can't hold territory under 8x dose
+(dose-rehearsal ratio becomes the dial); headroom-but-<1238 = the
+two goods trade; all-pass = promotion sheet to Bryce's word.
 
-**THE DUP WALL IS DOWN (2026-08-09): V5 passes everything** — cells
-0/3/0, bigtest 1238 = baseline, zero wild cost; the dup path complete
-at deployment shape (broad-gold detector, gap-midpoint theta 0.9005,
-perfect specialist, decode routing; bench ckpt g31_v5.safetensors —
-ADOPTION is its own registration + full battery). Six-arm ledger:
-crater -> key -> -36 -> -147 -> -34 -> -31 -> 0.
+**THE BOARD (one board; supersedes all prior lists, 2026-08-10):**
+1. Door #36 verdict (in flight — resolve on wake).
+2. The dose curve's next increment: priced sub-linear; buy design,
+   not volume (compounding / E5 length co-vehicle — one purchase,
+   two sheets).
+3. The second clock (spatial grain; constituency measured, nut =
+   the anchor).
+4. The floor's design (downstream of the size road; premise
+   corrected — mentions ARE consumed; 10,160 full-joint rows
+   already supervised).
+5. General-parse residuals: op head + rel-decode under crowding
+   (reassigned from dup; op geometry open, unforced).
 
-**GEN-23v5 IS THE GATE (2026-08-09, PROMOTED):** the dup-detector
-adoption — strict dominance sheet, scope as data in the manifest,
-frontier 40/40 CONFIRMED unmoved. **ENTOURAGE-23v5 PAID
-(all 10 stages; frontier stood twice; manifest re-hashed).**
+CLOSED (for the cold reader): the framing session (decided
+2026-08-07 → the claim above); the v5 adoption word (given and
+executed 2026-08-09 → the gate above); the era manifest (BUILT —
+mycelium/era.py, first customer served at next-touch during the
+entourage); the invariance proposal (own generation, waits behind
+the door); breaths at deployment (REFUSED, −19 alg4, priced).
 
-**THE BOARD:** (1) v5 adoption word (when wanted); (2) the second
-clock (spatial grain; constituency measured, nut = the anchor);
-(3) the floor's artifact-or-altitude question; (4) the era manifest
-(3 specimens); (5) general-parse residuals: op head + rel-decode
-under crowding (reassigned from dup).
-
-**THE WEEK'S LAWS (ledger has full forms):** band-lives-in-the-heads
-(waist is band-general — every probe 1.000); the design space
+**THE WEEK'S LAWS (ledger has full forms):** the refold law final
+form (refold after ANY training — freeze fell; and now: the
+territory itself dissolves under training, not just the map);
+the meter law (outcome-defined bands); headroom-first (3-for-3 as
+decision instrument: dup licensed, op refused, g35 refused);
+band-lives-in-the-heads (waist is band-general); the design space
 (mass-sans-aim=0 / aim-sans-band=flicker / aim-with-band=cure);
-dynamics law + familiarity lens + implicit-register-gate; FIVE
-spec-time doors (+what-already-carries-this-signal); headroom-first
-(overlap before pricing); grains-state-conversion +
-trades-prove-overlap (on the door); retired vocabulary: slope,
-under load, trade.
+FIVE spec-time doors; grains-state-conversion + trades-prove-overlap
+(on the door); retired vocabulary: slope, under load, trade.
 
-
+**STANDING RULINGS:** the pre-registration door
+(mycelium/preregistration.py) is LIVE — reads register before
+existence; bars never rebind. Marker relaxation = fork (b).
+Custody-gold, Goodhart fence, conviction index all in force.
