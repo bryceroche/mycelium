@@ -117,6 +117,12 @@ if excl: print(f"[purity] excluding wild problems {sorted(excl)} (eye-audited GE
 keep=np.array([i for i in range(len(WS)) if int(WIDX[i]) not in excl])
 cmin=float(score(cell_hold).min()); wmax=float(sw[keep].max()) if len(keep) else float("-inf")
 print(f"[headroom] cell-min {cmin:.3f}  wild-max {wmax:.3f}  (wild rel slots n={len(keep)}/{len(WS)})",flush=True)
+sc_cells={f"nd={k2[0]} novel={k2[1]}": score(X[len(X)//2:]) for k2,X in CELLS.items()}
+for nm,scs in sc_cells.items():
+    q=np.percentile(scs,[0,10,50,90])
+    print(f"[dist] {nm}: min {q[0]:+.3f}  p10 {q[1]:+.3f}  med {q[2]:+.3f}  p90 {q[3]:+.3f}",flush=True)
+swk=sw[keep] if len(keep) else np.zeros(0)
+print(f"[dist] wild(kept): p90 {np.percentile(swk,90):+.3f}  p99 {np.percentile(swk,99):+.3f}  max {swk.max():+.3f}",flush=True)
 if not (cmin > wmax):
     print("[ABORT] distributions touch — the fold is refused (headroom law)",flush=True); sys.exit(3)
 theta=(cmin+wmax)/2.0

@@ -27557,3 +27557,27 @@ token-position × waist-dim, the moment the skeleton trains.
   are SEPARATELY real, the fire must carry both. Instrument scar
   banked: wild negatives contain true dups (squares ARE dups) —
   the rite's negative pool wants a gold-audited non-dup subset.
+
+- **DOOR #36 KILLED BY THE LETTER — FREEZE+REHEARSAL DOES NOT HOLD
+  THE TERRITORY (2026-08-10):** the dose+freeze+rehearsal fire
+  (g36_freeze8x: seed/mix/dose identical to the record arm + h_dup
+  FROZEN + dup rehearsal 3x over the mix's 8,233 dup-arg rows via
+  the new RATION2) hit the pre-registered KILL branch (a): the rite
+  ABORTED at cell-min 0.183 vs wild-max 1.200 (#28 non-dup at
+  0.948) — headroom WORSE than the unprotected record arm (0.318).
+  The autopsy scan: dup cells 5/15/15/15 — THE EXACT CRATER, with
+  the fold's weights UNTOUCHED. **The freeze-fell law's third
+  measurement, now with rehearsal riding: 1x fails (tctl), unfrozen
+  8x fails (g35), frozen+3x-rehearsal fails equally (g36). The
+  rehearsal dial at 3x has NO measurable effect on territory
+  preservation.** Notable: the waist received dup-supervision
+  gradient THROUGH the frozen head all fire long and still rotated
+  away from it. THE NAMED OPEN PROBLEM (now the dose road's real
+  wall): TERRITORY PRESERVATION UNDER CONTINUATION — no promotable
+  dose fire exists until it is solved. Mechanism candidates held
+  apart pending the texture rule's read (the rite's min is a
+  worst-case print; broad-vs-concentrated erosion tells different
+  stories): the 3-arm cell-score DISTRIBUTION read is in flight
+  (g35/g36/g23v5, per-cell-kind quartiles; the rite permanently
+  gains the distribution dump before any abort). g36 -> the bench
+  beside g35; GEN-23v5 remains the gate.
