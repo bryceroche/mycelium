@@ -58,5 +58,5 @@ def read_model(name, ck):
     print(f"[{name}] op-miss rows: {bad}",flush=True)
     return bad
 b1=read_model("gate",".cache/g23v5.safetensors")
-b2=read_model("g38",".cache/g38_form_refold.safetensors")
+b2=read_model(os.environ.get("OPAUT_NAME","g39"),os.environ.get("OPAUT_CK",".cache/g39_op_refold.safetensors"))
 print(f"[fork-data] gate-miss {b1}  g38-miss {b2}  ops={[r['op'] for r in ROWS]}",flush=True)
