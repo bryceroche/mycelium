@@ -27688,3 +27688,33 @@ token-position × waist-dim, the moment the skeleton trains.
   The formation-rehearsal fire design now has a measured target:
   mul-dup × crowding × surface-diversity, freeze riding, the
   calibrated rite as post-fire gate.
+
+- **DOOR #37'S VERDICT — THE FORMATION CURE LANDS WHOLE AT ITS
+  TARGET; THE RESIDUE MOVES TO THE UNCOVERED BAND'S OP GRAIN
+  (2026-08-10):** the formation-rehearsal fire (g37_form: 2,000
+  crowded mul-dup rows, 7 licensed surfaces, positions varied,
+  nd 2-6; size 8x + rehearsal 3x; h_dup frozen; seed 127). THE
+  SHEET: control-assert reproduced to the digit (1.509/0.814,
+  θ 1.1617 — the instrument is deterministic); **g37 opens at
+  1.504/0.727 — the WIDEST gap any arm has shown (0.777 vs the
+  gate's own 0.695)**; fold θ 1.1156, FPR 0. Scan: 4/3/15/0 —
+  **nd=4 PERFECT (0/15), and the row-grade read prints 15/15:
+  every named failure row cured ON THE FENCED SURFACE** ("lots
+  of" never entered the mix — licensed-surface diversity bought
+  the novel phrasing back, the aim-fire law's lawful purchase
+  demonstrated). **bigtest 1259 — THE RECORD EQUALED with the
+  cure riding: the goods did NOT trade.** alg4 406 (≥402 ✓),
+  sentinels 20/20 ×2. THE ONE FAILED BAR: nd=0 at 4/15 (bar ≤0)
+  — and its autopsy (instrument's hardcoded [4,4] artifact noted
+  and fixed; rel_args is the truth) shows **formation INTACT at
+  nd=0 (all 15 rows form rel [0,0]) — the residue is OP-GRAIN:
+  mul-dup type margins sag to 0.61-0.67 (add 0.99) on the band
+  the sliver never covered (nd 0-1)** — the band-local law
+  collecting at the diet's edge, one grain finer than door #36's
+  version of the same lesson. NO PROMOTION (the bar is the bar);
+  g37 to the bench as the best arm ever benched. THE DOOR #38
+  DESIGN (one line in the mint): sliver v2 covers nd 0-6 —
+  composition correction, not redesign; everything else held
+  constant. The day's mechanism chain complete: territory (void)
+  → detection (fold, calibrated) → formation (diet-reachable,
+  surface-generalizes) → op-at-the-edge (the next dial).

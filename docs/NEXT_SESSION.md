@@ -63,10 +63,19 @@ novel-phrasing dup rows minted into the rehearsal set (the mix's
 dup rows are familiar low-crowding forms; the hole is exactly
 where the mix is empty).
 
+**DOOR #37 (the formation fire) NEARLY PROMOTES:** nd=4 cured
+0/15 with the row-grade 15/15 ON THE FENCED SURFACE; bigtest 1259
+= the record WITH the cure riding (goods did not trade); alg4 406,
+sentinels clean; g37 opens the widest calibrated gap yet
+(1.504/0.727). ONE bar failed: nd=0 4/15 — autopsy: formation
+INTACT (all rel [0,0] form), residue is OP-GRAIN on mul-dup at the
+band the sliver never covered (nd 0-1). g37 benched (best arm ever
+benched).
+
 **THE BOARD (one board; supersedes all prior lists, 2026-08-10):**
-1. The formation-rehearsal fire design (crowded novel-phrasing
-   dup rows in the rehearsal set) — the road to a promotable
-   dose arm; registration awaits the word.
+1. DOOR #38: sliver v2 covering nd 0-6 (one-line mint change,
+   all else held) — the promotable arm's registration awaits
+   the word.
 2. The dose curve's next increment: priced sub-linear; buy design,
    not volume (compounding / E5 length co-vehicle — one purchase,
    two sheets).

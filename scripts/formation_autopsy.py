@@ -30,7 +30,7 @@ def fixture_mint(nd, n=15, seed=96000):
         sents=[f"{L[i]} is {gv[i]}." for i in range(nd)]+[f"{L[dv]} is {x}.", w.format(a=L[dv],c=L[res])]
         rows.append({"text":f"Consider the numbers {', '.join(L[:res+1])}. "+" ".join(sents)+f" What is {L[res]}?","op":op})
     return rows
-ROWS=fixture_mint(4)
+ROWS=fixture_mint(int(os.environ.get("AUTOPSY_ND","4")))
 def softmax(x):
     e=np.exp(x-x.max()); return e/e.sum()
 def read_model(ck):
@@ -49,7 +49,8 @@ def read_model(ck):
         onp={k:o[k].realize().numpy() for k in keys if k in o}
         facs=decode({k:onp[k][0] for k in onp})[0] if True else None
         # cured? a rel factor with args [4,4]
-        cured=any(f.get("ftype")=="rel" and f.get("args")==[4,4] for f in facs)
+        _nd=int(os.environ.get("AUTOPSY_ND","4"))
+        cured=any(f.get("ftype")=="rel" and f.get("args")==[_nd,_nd] for f in facs)
         pres=onp["pres"][0]; on=[j for j in range(24) if pres[j]>0]
         ftv=onp["ftype"][0]
         ftypes=[FT[int(ftv[j].argmax())] for j in on]
