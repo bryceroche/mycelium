@@ -86,8 +86,16 @@ band the sliver never covered (nd 0-1). g37 benched (best arm ever
 benched).
 
 **THE BOARD (one board; supersedes all prior lists, 2026-08-10):**
-1. The op-grain autopsy (nd=0 failing four: decoded op + op-head
-   margins) — the promotion's last gate lives in the op file now.
+1. THE DECLARED-ALLOCATION FIRE (door #40 candidate): the ration
+   is a measured SIMPLEX (three fires: each good cures when fed,
+   bills a neighbor when not) — declare effective-reps per good
+   from banked receipts (formation @ #38's level, counterweight @
+   #39's, size @ #35's), solve weights+steps, all doses declared.
+   Arithmetic before burn; registration awaits the word.
+   (#39 receipts: nd0 CURED with mechanism confirmed both sides
+   — add +20→+15, mul margins re-opened; alg4 420 arc record;
+   nd4 diluted to 9/15 (old set returned); bigtest 1243;
+   stress lies 1→2 FLAGGED.)
 2. The dose curve's next increment: priced sub-linear; buy design,
    not volume (compounding / E5 length co-vehicle — one purchase,
    two sheets).

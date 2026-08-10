@@ -27822,3 +27822,35 @@ token-position × waist-dim, the moment the skeleton trains.
   door's checklist): **a read that joins states its key and
   asserts its cardinality.** Yield besides: the anomaly-taxonomy
   sweep question rides the deep-clean line. No build.
+
+- **DOOR #39'S VERDICT — THE MECHANISM CONFIRMED BOTH SIDES; THE
+  RATION IS A SIMPLEX (2026-08-10):** the counterweight fire:
+  control exact (fourth deployment); g39 opens 1.510/0.738; scan
+  **nd=0 CURED 0/15 — with the PRIMARY READ confirming the named
+  mechanism on both sides: add logits returned +20 → ~+15 (toward
+  the gate's +12.7) AND mul margins re-opened (+0.94..+2.24 from
+  #38's ±0.1 noise)** — the diagnosis (prior inflation by
+  reps-concentration) acted on, predicted, and measured true. THE
+  TRADE: nd=4 formation fell to 9/15 — **the OLD DETERMINISTIC SET
+  RETURNS (8/9 identical to g36's)**: the counterweight's 8x mass
+  diluted the formation sliver's relative share and the same rows
+  fell; bigtest 1243 (bar met +5; −16 from the record class);
+  alg4 420 — THE ARC RECORD (+13 over promoted; the counterweight
+  paid a dividend where mul lives); sentinels clean; frontier
+  DEPLOYED 40/40 held; **stress certified-lies 1→2 (idx 25,39) —
+  flagged in the claim's own currency.** NO PROMOTION (nd4 fails
+  scope). THE STRUCTURAL FINDING, three fires' worth: **THE RATION
+  SIMPLEX — hot-phase sampling mass is a fixed pie; size,
+  formation, and op-balance each cured when fed and each paid when
+  a neighbor fed** (#37 formation↑/nd0-op↓ latent; #38 confirmed;
+  #39 op↑/formation↓/size↓). Single-knob fires are now measured
+  exhausted: each cures its aim and bills a tenant. THE NEXT
+  DESIGN CANDIDATE (for the word): THE DECLARED-ALLOCATION FIRE —
+  the dose law's mature form: declare target effective-reps PER
+  GOOD from the banked receipts (formation at #38's feeding level,
+  counterweight at #39's, size at #35's), solve the weights (and
+  STEPS if the pie must grow absolutely) to satisfy all three
+  simultaneously; every constituency's dose declared, none
+  implicit. Arithmetic on banked counts before any burn. (Gut
+  #188's lens, cashing early: the diet ledger becomes bookkeeping
+  with declared keys and cardinalities.)
