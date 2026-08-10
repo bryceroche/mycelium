@@ -54,9 +54,14 @@ changes outcomes — the FROZEN-BAND re-read (baseline partition) shows
 BOTH bands rise (pass 0.810→0.830, miss 0.477→0.489): the record is
 mechanically honest (state+score agree; threshold-harvesting anatomy
 — the dose flips near-boundary rows first, the deep tail persists;
-next increment priced sub-linear). **OWED BEFORE ANY PROMOTION WORD:
-the no-harm battery incl. THE REFOLD RITE (scripts/noharm_battery.sh
-+ refold_rite.py — the fire moved the waist under the fold).** E5
+next increment priced sub-linear). THE NO-HARM
+BATTERY PAID ITS VERDICT: alg4 414 (+7), sentinels clean, but dup
+cells 5/15/15/15 = THE CRATER (the 4k unlearned the cure; h_dup was
+unfrozen) and THE REFOLD RITE REFUSED (cell-min 0.318 vs non-dup
+wild 0.803 — the dup direction eroded in fst space; no purity list
+opens it). **g35_size8x -> THE BENCH; GEN-23v5 REMAINS THE GATE.**
+Next dose fire must preserve refoldability: ALG_FREEZE_DUP + dup
+rehearsal in mix (size gains and the cure are separately real). E5
 co-vehicle + floor design wait downstream; E-floor premise corrected
 (mentions ARE consumed; 10,160 full-joint rows supervised).
 

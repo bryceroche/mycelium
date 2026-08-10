@@ -27534,3 +27534,26 @@ token-position × waist-dim, the moment the skeleton trains.
   h_dup trained freely through the 4k; the record 1259 was measured
   with that trained head; the rite replaces it and the battery
   prices the swap.
+
+- **THE RECORD ARM'S FULL PRICE TAG — NOT PROMOTABLE; THE RITE
+  EARNS ITS KEEP (2026-08-10):** the no-harm battery on g35_size8x
+  completes: bigtest 1259 (RECORD, mechanically honest by frozen
+  bands) / alg4 414 (+7 over 407) / sentinels 20-20 + 20-20 — and
+  **dup cells 5/15/15/15: THE CRATER ITSELF.** The 4k dose fire
+  (h_dup unfrozen) fully unlearned the cure — the tail fire's
+  "continuation unlearns the transplant" reproduced at the exact
+  original pathology. And the refold that would restore it is
+  REFUSED by headroom: cell-min 0.318 vs non-dup wild 0.803
+  (prob#28, f-inverse — eye-audited genuinely non-dup; no purity
+  list opens the gap). The dup DIRECTION eroded in fst space, not
+  just the head. **VERDICT: g35_size8x goes to THE BENCH
+  (panel-eligible); GEN-23v5 REMAINS THE GATE and the cure's only
+  holder, by law.** The rite refused a promotion that would have
+  shipped the crater under a record headline — the second wall the
+  refold law was built to be. DESIGN NOTE FOR THE NEXT FIRE (the
+  dose road stays open): a promotable dose fire must preserve
+  refoldability — ALG_FREEZE_DUP (the breath rig) + dup rehearsal
+  in the mix (circuit-rehearsal law); size gains and the dup cure
+  are SEPARATELY real, the fire must carry both. Instrument scar
+  banked: wild negatives contain true dups (squares ARE dups) —
+  the rite's negative pool wants a gold-audited non-dup subset.
