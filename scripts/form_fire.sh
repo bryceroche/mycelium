@@ -19,7 +19,6 @@ env CK=.cache/g37_form.safetensors OUT_JSON=.cache/calib_g37.json CK_OUT=.cache/
 echo "== g37 REFOLD scan =="
 env CK=.cache/g37_form_refold.safetensors $PY scripts/dup_axis_scan2.py | grep "^\[scan\]"
 echo "== row-grade autopsy re-read =="
-import subprocess
 env AUTOPSY_CKS="gate:.cache/g23v5.safetensors,g37:.cache/g37_form_refold.safetensors" $PY scripts/formation_autopsy.py 2>/dev/null | grep -E "cured|row|fails" || true
 echo "== bigtest =="
 env ALG_CKPT=.cache/g37_form_refold.safetensors ALG_TEST=.cache/algebra_nl_bigtest.jsonl ALG_TEST_NAME=bigtest $PY scripts/phase1_algebra_head.py --eval | grep TOTAL
