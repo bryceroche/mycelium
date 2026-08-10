@@ -27146,3 +27146,15 @@ token-position × waist-dim, the moment the skeleton trains.
   visible only at the headroom read. Membership diagnoses;
   headroom decides. The refusal's value stated: it cost nothing
   and prevented a promotion-grade mistake.
+
+- **THE TAIL FIRE'S RIDERS (2026-08-09, Bryce; pinned mid-burn):**
+  (1) THE TIE'S CONFOUND — a tie means the-dose-was-thin OR
+  the-misses-are-downstream-of-the-parse (rel-decode and the
+  op head's context geometry both live in this neighborhood; the
+  census showed subsurface saturates the misses, NOT that the
+  misses are parse failures): **the station read precedes any
+  dose argument.** (2) MECHANISM VERIFICATION ON A WIN — bigtest
+  is a score and scores move for wrong reasons (three receipts):
+  a win reads as the TARGETED JOINT converting (the family-split
+  of the after-misses vs the census), never the aggregate alone.
+  Same run, one split.
