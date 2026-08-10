@@ -27416,3 +27416,14 @@ token-position × waist-dim, the moment the skeleton trains.
   300→600 was always waiting on long-row competence). Noted for
   its own word; the diffuse verdict cautions expectations (a
   diffuse pathology may respond diffusely — dose honesty rides).
+
+- **THE SPREAD COUNTERSIGN (2026-08-10, Bryce):** the verification
+  form pinned for the size fire before it exists: **a diffuse
+  pathology verifies on the GRADIENT, not a binary — does 0.48
+  move toward 0.81** (the probe ladder as the meter, the failing
+  slots as the tail of the curve, no sharp before/after
+  expected). The E5 convergence noted (the +35 at length 300→600
+  always presumed long-row competence; a measured constituency
+  now arrives from an unrelated investigation). The beam's
+  unfunded summons ratified as the right death — named, raced,
+  placed mid-field, dead by measurement not preference.
