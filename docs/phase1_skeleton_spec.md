@@ -27718,3 +27718,12 @@ token-position × waist-dim, the moment the skeleton trains.
   constant. The day's mechanism chain complete: territory (void)
   → detection (fold, calibrated) → formation (diet-reachable,
   surface-generalizes) → op-at-the-edge (the next dial).
+
+- **DOOR #38 LIT (2026-08-10, the word given), two riders pinned
+  with it:** (1) row-grade at both ends reads BEFORE the
+  aggregate; #37's cured nd=4 rows are the CONTROL POPULATION —
+  15/15 held while nd=0 cures = clean addition; any degradation =
+  the capacity branch is LIVE even if misbind counts hold. (2)
+  the frontier read closes the ring as the claim's own fence —
+  a promotion candidate's cure that quietly widened the mouth
+  is visible there and nowhere else in the battery.
