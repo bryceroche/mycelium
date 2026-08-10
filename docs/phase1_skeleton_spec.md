@@ -27854,3 +27854,32 @@ token-position × waist-dim, the moment the skeleton trains.
   implicit. Arithmetic on banked counts before any burn. (Gut
   #188's lens, cashing early: the diet ledger becomes bookkeeping
   with declared keys and cardinalities.)
+
+- **DOOR #40 KILLED BY ONE — AND BRANCH (c) CONFIRMS INTERFERENCE
+  WITH A FINGERPRINT (2026-08-10):** the declared-allocation fire:
+  control exact (fifth); g40 opens 1.526/0.677 (second-widest);
+  **bigtest 1237 — one below the bar; the kill fires by the
+  letter.** THE MECHANISM VERDICT, and it is the day's second
+  arithmetic-grade print: formation restored to 1.0000 of its
+  cured receipt REGRESSED to nd4 12/15 — **the failing twelve are
+  EXACTLY g35's original twelve (the no-rehearsal arm's set):
+  with the counterweight present, formation rehearsal buys
+  NOTHING. Interference, not dilution; the sliver is NULLIFIED,
+  not squeezed.** The conflict is representation-grain: 1,653
+  mul-majority rows @ 8x pump mul-rel evidence in DISTINCT-args
+  geometry; formation needs mul-rel at args=[a,a] on novel
+  surfaces — two tenants contesting the SAME mul-rel prototype.
+  Meanwhile the op cure DEEPENED (mul margins +1.45..+2.76,
+  approaching gate-class; nd0 0/15 held) — robust good, wrong
+  vehicle. Branch (d) also live: ring paid (bigtest 1237, alg4
+  414 off the 420 record) despite the rest made whole — schedule
+  geometry (4,343 steps) or interference bleeding wide. Frontier
+  DEPLOYED 40/40; stress lies 2 (churned set {5,25}). g40 to the
+  bench. THE DESIGN CANDIDATE FOR THE WORD (door #41, THE
+  ONE-MASS FIRE): retire the distinct-args counterweight; carry
+  the op good on args=[a,a] VEHICLES — expand the crowded mul-dup
+  formation sliver and promote it to the 8x tier, sized by the op
+  arithmetic (mul-op mass ≥ the counterweight's receipt). One
+  mass, two goods, no prototype conflict BY CONSTRUCTION. The
+  simplex's lesson final form: tenants that share machinery must
+  share vehicles.

@@ -86,16 +86,16 @@ band the sliver never covered (nd 0-1). g37 benched (best arm ever
 benched).
 
 **THE BOARD (one board; supersedes all prior lists, 2026-08-10):**
-1. THE DECLARED-ALLOCATION FIRE (door #40 candidate): the ration
-   is a measured SIMPLEX (three fires: each good cures when fed,
-   bills a neighbor when not) — declare effective-reps per good
-   from banked receipts (formation @ #38's level, counterweight @
-   #39's, size @ #35's), solve weights+steps, all doses declared.
-   Arithmetic before burn; registration awaits the word.
-   (#39 receipts: nd0 CURED with mechanism confirmed both sides
-   — add +20→+15, mul margins re-opened; alg4 420 arc record;
-   nd4 diluted to 9/15 (old set returned); bigtest 1243;
-   stress lies 1→2 FLAGGED.)
+1. THE ONE-MASS FIRE (door #41 candidate): #40 KILLED BY ONE
+   (bigtest 1237) and confirmed INTERFERENCE with a fingerprint —
+   formation at full receipt rate regressed to EXACTLY g35's
+   twelve; the distinct-args counterweight NULLIFIES the dup
+   formation sliver (two tenants, one mul-rel prototype). The op
+   good itself is robust (margins +1.45..+2.76, nd0 0/15 held,
+   alg4 414/420-class). Design: carry op-balance on args=[a,a]
+   vehicles — expand the crowded mul-dup sliver, promote to 8x,
+   sized by op arithmetic. Tenants sharing machinery must share
+   vehicles. Registration awaits the word.
 2. The dose curve's next increment: priced sub-linear; buy design,
    not volume (compounding / E5 length co-vehicle — one purchase,
    two sheets).
