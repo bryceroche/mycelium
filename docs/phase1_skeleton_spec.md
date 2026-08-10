@@ -27772,3 +27772,53 @@ token-position × waist-dim, the moment the skeleton trains.
   item dissolves INTO the op file. NEXT (a read, zero-GPU-class):
   the OP-GRAIN AUTOPSY on the nd=0 rows — decoded op + op-head
   margins on the failing four — before any door #39 claims a fix.
+
+- **THE OP-GRAIN AUTOPSY — EVIDENCE VANISHED, AND THE ADD PRIOR
+  INFLATED (2026-08-10; the word given):** the failing four (rows
+  1/6/10/11 — four of the five nd=0 mul rows; row 9 survives at
+  margin +1.02) are not confident misroutes: **both op logits sit
+  at ~0 (add −0.02..+0.08, mul −0.14..−0.34) — the op evidence
+  VANISHED and the decision fell to noise**, versus the gate's
+  clean ±1 split (mul margins +1.85..+3.11). Meanwhile the add
+  rows' logits inflated +12.5 (gate) → +20 (g38): **the fires pump
+  the add prior** (the size sliver's mass is add-heavy at 8x)
+  while the op head's thin mul band — always the campaign's known
+  thin wall, 6-7-class weak — erodes below zero on the
+  unrehearsed cell (mul × novel surface × nd0). Same erosion
+  class as the day's every finding: thin-band evidence on
+  unrehearsed cells, surfacing where margins were thinnest. The
+  nd0/nd4 asymmetry explained: at nd4 crowding suppresses the add
+  prior and the mul signal clears; at nd0 the +20 add wall drowns
+  it. THE FORK, measured, to Bryce's word: (A) op-balance the
+  rationed mass (mul counterweight in the diet; prediction: add
+  logits return toward +12.5, mul margins re-open — root-cause
+  shaped, the inflation is its own meter); (B) fold-class cure at
+  the op head (risky: op feeds ALL rel decode); (C) scope
+  conversation (refused by default: the gate holds this cell at
+  0/15 — a promotion may not regress claimed scope).
+  RECOMMENDATION: (A).
+
+- **GUT #188 REGISTERED — "DB SET THEORY HAS SOMETHING TO TEACH
+  US" (2026-08-10; Bryce's text verbatim, three clauses with live
+  referents, no build proposed):** (1) NORMALIZATION AND ITS OWN
+  LIMIT — the anomaly taxonomy (insert/update/delete) with
+  campaign specimens of all three: vintage stamps dying on rerun
+  (update), the era-key mismatch (insert), the wild ledger's
+  exhaust ports built because drops recorded nothing (delete
+  anomaly by another name). Denormalization lawful where read
+  patterns demand it — certify_unique's visible divergent policy
+  independently discovered this. (2) THE JOIN AND ITS CARDINALITY
+  — the campaign's reads are joins (sha ∩ mix, flags ∩
+  objections, cells × crowding × surface) and its worst bites are
+  JOINS OVER THE WRONG KEY: the book-consumption key vs text
+  identity; "different pools on both sides of the gap"; TODAY'S
+  ALG_TRAIN_NAME fossil (the states join keyed by name while the
+  mix moved) — the freshest specimen, hours old. DB's discipline:
+  a join's key is DECLARED, not inferred. (3) THE CLOSED-WORLD
+  ASSUMPTION — absent vs unknown is three-valued; the tail's
+  0.185-vs-prior-0.190 read was ABSENT and only the scrambling
+  control made the bar readable; the stack has no vocabulary for
+  the third value. THE RENT (the registration's clause for the
+  door's checklist): **a read that joins states its key and
+  asserts its cardinality.** Yield besides: the anomaly-taxonomy
+  sweep question rides the deep-clean line. No build.
