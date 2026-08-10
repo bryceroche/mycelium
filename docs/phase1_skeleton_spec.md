@@ -27883,3 +27883,32 @@ token-position × waist-dim, the moment the skeleton trains.
   mass, two goods, no prototype conflict BY CONSTRUCTION. The
   simplex's lesson final form: tenants that share machinery must
   share vehicles.
+
+- **DOOR #41 — EVERY BAR MET; THE PROMOTION SHEET GOES TO THE
+  WORD (2026-08-10; the one-mass fire, branch (a)):** control
+  exact (sixth deployment); g41 opens 1.534/0.710 (θ 1.1220, FPR
+  0). **Scan 0/3/15/0 — THE FULL PROMOTED SCOPE, both goods
+  seated on one vehicle, first time in the arc**; row-grade 15/15
+  at BOTH ends (the deterministic twelve stay cured with the op
+  mass present — prototype contention CONFIRMED at the formation
+  end). THE RIDER'S FORK, honest middle: op decisions 5/5 correct
+  with real margins (+0.74..+2.00) at ~HALF #40's depth — the
+  args=[a,a] vehicle supplies sufficiency; the distinct-args mass
+  was buying extra depth. MONITORED-THINNESS LINE for the sheet:
+  the nd0 mul wall sits at +0.74 minimum vs the gate's +1.85 —
+  correct side, thinner wall, forecast-fragility note under
+  future fires (maintenance clause). RING: bigtest 1254 (≥1238 ✓,
+  record family, −5 from 1259); alg4 405 (≥402 ✓; #39's 420
+  dividend left with the counterweight); sentinels 20/20 ×2;
+  frontier DEPLOYED 40/40. THE SHEET'S EXPLICIT LINES: (1) stress
+  churn per the rider; (2) margin thinness; (3) size −5 vs
+  record. THE CANDIDATE: g41_onemass_refold.safetensors (the
+  calibrated rite's own fold on its own waist — the refold law
+  satisfied at derivation). **THE PROMOTION WORD IS BRYCE'S ALONE
+  and carries the ENTOURAGE DUTY** (specialist remine, centroids
+  rebuild, mouth/watcher recal, registry re-audition; the
+  frontier already stood in-battery). The arc's shape, sealed:
+  five fires (#35 record → #37 formation → #39 op → #40
+  interference-by-fingerprint → #41 one-mass) — each kill
+  smaller, each successor named by its predecessor's exact
+  failure, the last one carrying everything.
