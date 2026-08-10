@@ -27360,3 +27360,28 @@ token-position × waist-dim, the moment the skeleton trains.
   structure?) — the census's method one level finer. The floor's
   summons stands; its DESIGN waits on the discriminator; the
   spec's §2 is annotated superseded-pending.
+
+- **THE DISCRIMINATOR'S VERDICT — SIZE-GRADED EROSION, NOT BINARY
+  ABSENCE (2026-08-10; door customer #32; the rider's column
+  decides):** FEATURES: the 189 straight-miss ordinal rows are
+  simply LARGER — givens 7.2 vs 6.3, factors 14.4 vs 12.6, length
+  481 vs 386 — with ordinal/sub densities nearly equal: the
+  discriminator is SIZE, graded not categorical. THE PROBE
+  GRADIENT (the rider's necessity test): clean rel slots 0.98 →
+  **passing ordinal rows 0.810 → missing ordinal rows 0.477** →
+  failing slots 0.185(=prior). **Evidence presence is a GRADED
+  quantity eroding with row size under indirection** — the
+  earlier "absence" was the eroded end of a continuum (the
+  resolution lens vindicated: a continuous pathology measured
+  discretely printed as a wall). The necessity answer: presence
+  grades with passing — absence-degree tracks failure, and even
+  passers carry weakened states (0.81, not 0.98): the ordinal
+  register erodes arg evidence EVERYWHERE, failing where erosion
+  crosses the pointers' floor on the biggest rows. THE FLOOR'S
+  DESIGN QUESTION IS REPLACED: not missing-metadata (supervised
+  for 23k rows) but **EROSION-UNDER-SIZE — why does arg evidence
+  fade with row scale under indirection?** Candidates for the
+  mechanism read: attention dilution over long rosters, capacity
+  contention (the beam's territory), mention-distance. The
+  census→families→stations→waist→joint chain gains its fifth
+  link: the tail is the LARGE end of an erosion gradient.
