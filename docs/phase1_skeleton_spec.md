@@ -27090,3 +27090,21 @@ token-position × waist-dim, the moment the skeleton trains.
   owed to the next fires: specialist remine vs 23v5, monitor
   centroids rebuild, mouth/watcher recalibration, registry
   re-audition.
+
+- **ENTOURAGE-23v5 PAID — TEN STAGES, THE GATE FULLY DRESSED
+  (2026-08-09):** fresh repair corpora → states pair → specialist
+  REMINED → monitor centroids rebuilt in the gate's own fst space
+  → mouth rebuilt + length refit → disjoint census under the
+  fresh mouth → dissent-overlap read → collapse re-read →
+  manifest refreshed + RE-HASHED (the atomic law, entourage
+  edition) → **the standing rehearsal: DEPLOYED 40/40 refused,
+  STRESS profile identical (1 lie, idx 5) — the frontier stands
+  a SECOND time, now with every organ in the new coordinates.**
+  THE ACCRUAL worth its line: the collapse re-read printed the
+  inversion — *knot binds tighter than key in the head; frames
+  rule the trunk, knots rule the head* — **the entourage's own
+  standing instrument echoing the week's governing finding (the
+  band lives in the heads) from an entirely independent probe.**
+  GEN-23v5 stands fully dressed: gate, specialist, centroids,
+  mouth, watchers, registry — one another's current coordinates,
+  every hash current, the owed list CLEAR.

@@ -49,9 +49,8 @@ crater -> key -> -36 -> -147 -> -34 -> -31 -> 0.
 
 **GEN-23v5 IS THE GATE (2026-08-09, PROMOTED):** the dup-detector
 adoption — strict dominance sheet, scope as data in the manifest,
-frontier 40/40 CONFIRMED unmoved. **ENTOURAGE-23v5 owed:**
-specialist remine, centroids rebuild, mouth/watcher recal, registry
-re-audition (frontier duty PAID).
+frontier 40/40 CONFIRMED unmoved. **ENTOURAGE-23v5 PAID
+(all 10 stages; frontier stood twice; manifest re-hashed).**
 
 **THE BOARD:** (1) v5 adoption word (when wanted); (2) the second
 clock (spatial grain; constituency measured, nut = the anchor);
