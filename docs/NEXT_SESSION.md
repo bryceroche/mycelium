@@ -79,8 +79,9 @@ the door); breaths at deployment (REFUSED, −19 alg4, priced).
 
 **THE WEEK'S LAWS (ledger has full forms):** the refold law final
 form (refold after ANY training — freeze fell, three measurements);
-the meter law (outcome-defined bands); headroom-first (3-for-3 as
-decision instrument: dup licensed, op refused, g35 refused);
+the meter law (outcome-defined bands); headroom-first (2-for-2 as
+decision instrument: dup licensed, op refused; the g35/g36 refusals
+VOID — uncalibrated instrument);
 band-lives-in-the-heads (waist is band-general); the design space
 (mass-sans-aim=0 / aim-sans-band=flicker / aim-with-band=cure);
 FIVE spec-time doors; grains-state-conversion + trades-prove-overlap
