@@ -27436,3 +27436,24 @@ token-position × waist-dim, the moment the skeleton trains.
   already-adequate states and missed what the missers lack —
   size a correlate, not the axis). The third consecutive fire
   with verification order reversed, this one on a LADDER.
+
+- **THE SIZE FIRE'S VERDICT — THE GRADIENT MOVES IN-SHAPE, SMALL;
+  THE SCORE DOESN'T FOLLOW (2026-08-10; door customer #34):** THE
+  LADDER (the meter, read first as pinned): **miss band 0.441 →
+  0.466 (+0.025, toward presence) with the pass band flat
+  (0.813→0.810)** — the two-band rider's GOOD pattern: the sliver
+  reached what the missers lack, not what the passers had; the
+  erosion story is weakly supported, not refuted. THE SCORE:
+  size arm 1238 vs its control's 1245 (−7; no kill at >1233;
+  primary >1238 fails) — and the control's own +7 over the
+  promoted baseline is noted (continuation drift upward on the
+  plain carrier). VERDICT PER THE DIFFUSE-HONESTY CLAUSE:
+  **a diffuse pathology responded diffusely — the first
+  intervention EVER to move the miss band, at +0.025 per 3.4%
+  dose, without score conversion.** The dose question now opens
+  LAWFULLY (unlike the tail fire's zero, the mechanism responds;
+  the arithmetic: reaching 0.81 at this rate wants ~10x dose or
+  a compounding design — E5's length track as the natural
+  co-vehicle). Banked as the seventh link's finding: size is the
+  axis, the response is real, and the price at this dose is
+  gradient-without-score.
