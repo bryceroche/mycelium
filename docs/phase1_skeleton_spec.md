@@ -27457,3 +27457,16 @@ token-position × waist-dim, the moment the skeleton trains.
   co-vehicle). Banked as the seventh link's finding: size is the
   axis, the response is real, and the price at this dose is
   gradient-without-score.
+
+- **THE SIZE DOSE DESIGN REGISTERED (2026-08-10; door customer
+  #35; execution next window):** the arithmetic banked — +0.025
+  per 3.4%@1rep; gap 0.34; linear wants ~10x, which as APPEND
+  shifts composition ~25% (the inv2 hazard) — so **the design
+  uses the dose law's second knob: share held, REPS raised**
+  (~8x effective via the trainer's ration/weighted-sampling
+  path). PRIMARY = PROPORTIONALITY on the ladder: 0.466→≥0.55 =
+  the response scales; <0.50 = the diffuse ceiling found early
+  (a finding either way); pass band flat per the standing rider.
+  E5 joins as co-vehicle only if proportionality holds. The
+  fire lands next window at full context — the ration plumbing
+  deserves fresh care, per the tranche precedent.
