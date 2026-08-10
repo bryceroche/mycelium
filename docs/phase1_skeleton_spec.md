@@ -27228,3 +27228,41 @@ token-position × waist-dim, the moment the skeleton trains.
   diet-vs-structural). The successor named: the POINTER PROBE
   READ — waist-vs-head at the args/res stations on the tail's
   own rows.
+
+- **THE SOFT/HARD TOPOLOGY CARVE (2026-08-10, Bryce):** three
+  sites, one idea, two natures: v98's membership masks and the
+  bench slot_mask are **SOFT topology** (they shape attention's
+  mixing; a wrong mask degrades a distribution — priced −19 in a
+  laboratory); the graph's arg/res pointers are **HARD topology**
+  (a wrong pointer is a wrong constraint; the solver crushes or
+  refuses — inside the certification story). That is why pointer
+  failures cost bigtest and mask failures cost a bench arm. The
+  deducer's standing kept straight: Sudoku search-tier hit 100%;
+  two-death-mode closed the road because exact search dominates
+  clean CSPs — **validated-not-refuted is a different asset than
+  lost.**
+
+- **THE POINTER PROBE'S VERDICT — ABSENT: THE TAIL IS
+  WAIST-LIMITED (2026-08-10; door customer #31; the family's
+  FIRST low probe):** the probe reads healthy pointer slots at
+  0.983 and the tail's failing slots at **0.185 — far under the
+  0.4 absence bar.** For the first time in the interference
+  family's history, the evidence is NOT in the state: **the
+  ordinal/inverse indirection ("the fourth number", "exceeds by")
+  is never resolved into the waist at the failing slots** — no
+  head fold, no aim fire, no pointer redesign can read what
+  isn't there, WHICH EXPLAINS THE TAIL FIRE'S TOTAL
+  NON-CONVERSION in one number. THE BAND LAW GAINS ITS BOUNDARY:
+  heads starve on evidence PRESENT (dup, op, mod — the family);
+  the tail's pointers fail on evidence ABSENT — two different
+  diseases, and the second belongs to the machinery that
+  computes the state. **THE SCHEMA FLOOR IS SUMMONED WITH A
+  MEASURED CONSTITUENCY: 245 rows, 66% at the pointers, evidence
+  absent** — #169's orientation metadata (roster indirection
+  resolved as supervision) is no longer a coverage road; it is
+  the tail's ONLY road, and the floor's artifact-or-altitude
+  question now decides bigtest's remaining width. The read
+  chain that got here, complete: census → families → stations →
+  waist — four reads, each naming the next, ending at the organ
+  the board has held gated since the census first cleared its
+  bar.
