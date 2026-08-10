@@ -27490,3 +27490,28 @@ token-position × waist-dim, the moment the skeleton trains.
   frontier). The dose law's second knob vindicated at the score
   grain: share held, reps raised, composition unshifted — and
   the record arrived where the append hazard was avoided.
+
+- **THE METER LAW (2026-08-10, Bryce's carve; the berries law's
+  third site this month):** **an outcome-defined band cannot
+  measure a cure that changes outcomes** — tranche rates, then
+  depleting pools, now a meter whose own definition moves under
+  successful intervention. Frozen partitions are the lawful form
+  for any before/after read on outcome-defined groups.
+
+- **THE FROZEN-BAND READ — BOTH BANDS RISE; THE RECORD IS
+  MECHANICALLY HONEST (2026-08-10):** with bands fixed by the
+  baseline partition (the meter law's lawful form): **pass 0.810
+  → 0.830, miss 0.477 → 0.489** — both bands up on unchanged
+  populations, the original rider's CONFIRMING shape. The
+  record's anatomy: real state improvement everywhere + threshold
+  crossings at the near-boundary rows (~20 conversions = the
+  +21) — **no wrong-reason win; the score and the state agree.**
+  PROPORTIONALITY'S honest answer: SUB-LINEAR at the state grain
+  (+0.012 deep-band at ~5x effective) — **the dose harvests
+  threshold-adjacent rows first; the deep tail persists** —
+  diminishing returns expected as the near-boundary pool
+  empties, which prices the next dose increment honestly before
+  anyone buys it. STILL OWED for any promotion word: the full
+  no-harm ring (alg4, sentinels, frontier) + THE REFOLD RITE
+  (this fire moved the waist; the law knows). The chain's ninth
+  link: paying → PRICED.
