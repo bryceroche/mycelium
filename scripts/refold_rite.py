@@ -102,14 +102,21 @@ wild=[x["problem"] for x in h if x["level"]=="Level 4" and len(x["problem"])<300
       and "asy]" not in x["problem"]
       and all(int(n)<=300 for n in re.findall(r"\d+",x["problem"]))
       and int_answer(x["answer"]) is not None and 0<=int_answer(x["answer"])<=300][:40]
-WS=[]
-for t in wild:
+WS=[]; WIDX=[]
+for wi,t in enumerate(wild):
     onp,js=rel_states(t)
-    for j in js: WS.append(onp["fst_s"][0,j])
+    for j in js: WS.append(onp["fst_s"][0,j]); WIDX.append(wi)
 WS=np.array(WS) if WS else np.zeros((0,Xtr.shape[1]))
+WIDX=np.array(WIDX,np.int32)
 cell_hold=np.vstack([X[len(X)//2:] for X in CELLS.values()])
-cmin=float(score(cell_hold).min()); wmax=float(score(WS).max()) if len(WS) else float("-inf")
-print(f"[headroom] cell-min {cmin:.3f}  wild-max {wmax:.3f}  (wild rel slots n={len(WS)})",flush=True)
+sw=score(WS) if len(WS) else np.zeros(0)
+for r in np.argsort(-sw)[:5]:
+    print(f"[wild-rank] score {sw[r]:+.3f}  prob#{WIDX[r]}  {wild[WIDX[r]][:90]}",flush=True)
+excl=set(int(x) for x in os.environ.get("WILD_EXCLUDE","").split(",") if x.strip())
+if excl: print(f"[purity] excluding wild problems {sorted(excl)} (eye-audited GENUINE dup constructions — true fires, not false; the negative pool measures false-fire only)",flush=True)
+keep=np.array([i for i in range(len(WS)) if int(WIDX[i]) not in excl])
+cmin=float(score(cell_hold).min()); wmax=float(sw[keep].max()) if len(keep) else float("-inf")
+print(f"[headroom] cell-min {cmin:.3f}  wild-max {wmax:.3f}  (wild rel slots n={len(keep)}/{len(WS)})",flush=True)
 if not (cmin > wmax):
     print("[ABORT] distributions touch — the fold is refused (headroom law)",flush=True); sys.exit(3)
 theta=(cmin+wmax)/2.0

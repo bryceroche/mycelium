@@ -27515,3 +27515,22 @@ token-position × waist-dim, the moment the skeleton trains.
   no-harm ring (alg4, sentinels, frontier) + THE REFOLD RITE
   (this fire moved the waist; the law knows). The chain's ninth
   link: paying → PRICED.
+
+- **THE REFOLD RITE'S FIRST STANDING RUN — ABORT, AUDIT, PURITY
+  (2026-08-10):** the rite (scripts/refold_rite.py — headroom-first,
+  abort-on-touch, gap-midpoint fold; the v5 form made a standing
+  instrument) REFUSED on first read: cell-min 0.318 vs wild-max
+  1.065, inverted. The audit-before-verdict found the wild-max was
+  a TRUE FIRE: wild problem #0 ("adjacent vertices of a square —
+  what is the area?") parses to a genuine args=[s,s] dup; a real
+  dup sitting in the negative pool measures true-fire, not
+  false-fire — CONTAMINATED EVIDENCE, the entourage PURITY-filter
+  precedent at the rite's door. Cure: WILD_EXCLUDE with eye-audited
+  reason banked + ranked wild scores printed so the remaining max
+  is verifiable. THE DRIFT SIGNAL STANDS: cell-min 0.318 vs v5's
+  1.141 on g23 — the dose fire measurably weakened the dup
+  direction in fst space (the refold law's premise, measured
+  twice). Also noted: dose_fire.sh carried no ALG_FREEZE_DUP —
+  h_dup trained freely through the 4k; the record 1259 was measured
+  with that trained head; the rite replaces it and the battery
+  prices the swap.

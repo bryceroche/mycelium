@@ -4,7 +4,7 @@ cd /home/bryce/mycelium
 export ALG2=1 ALG_FTYPES=8 ALG_HW=512 ALG_DUP=1 ALG_WIDE=1
 PY=.venv/bin/python3
 echo "== RITE: refold on g35_size8x's own waist =="
-env CK=.cache/g35_size8x.safetensors CK_OUT=.cache/g35_size8x_refold.safetensors $PY scripts/refold_rite.py
+env WILD_EXCLUDE=0 CK=.cache/g35_size8x.safetensors CK_OUT=.cache/g35_size8x_refold.safetensors $PY scripts/refold_rite.py
 echo "== refolded: dup scan (the model's own head) =="
 env CK=.cache/g35_size8x_refold.safetensors $PY scripts/dup_axis_scan2.py | grep "^\[scan\]"
 echo "== refolded: bigtest =="
