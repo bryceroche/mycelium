@@ -59,7 +59,7 @@ else:
         "PRECOMPUTE_ONLY": "gen41repair"}, tail=1)
 
 print("=== E41 3/10: specialist remine vs g22 ===", flush=True)
-if _os.path.exists(".cache/phase1_gen23v5_nack.safetensors"):
+if _os.path.exists(".cache/phase1_gen41_nack.safetensors"):
     print("    [skip] specialist banked", flush=True)
     e = None
 else:
