@@ -27266,3 +27266,20 @@ token-position × waist-dim, the moment the skeleton trains.
   waist — four reads, each naming the next, ending at the organ
   the board has held gated since the census first cleared its
   bar.
+
+- **THE FLOOR SPEC WRITTEN (2026-08-10; the summoned organ gets
+  its charter; docs/FLOOR_SPEC.md):** the artifact-or-altitude
+  question ANSWERED BY THE RECORD with the third form the
+  dichotomy missed — **the floor is SUPERVISION: gold-side
+  altitude, artifact unchanged** (the graph stays the only
+  certified object; the waist is TAUGHT to resolve indirection —
+  auxiliary referent targets whose gold the mint already knows).
+  Design E-FLOOR: per-slot auxiliary pointer supervision on
+  indirect mentions, weight ≪1, declared sliver dose; six
+  inherited fences including the refold rite; **the verification
+  order is the family playbook REVERSED: the pointer probe
+  re-runs FIRST (0.185 must move toward presence before any
+  score counts)** — a score move without the probe moving is
+  refused as wrong-reason. First customer the 245-row tail;
+  second the filler species. Next: the gold-derivation check
+  (zero-GPU), then the fire on its own word.
