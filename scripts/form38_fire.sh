@@ -18,8 +18,12 @@ echo "== control passed; candidate =="
 env CK=.cache/g38_form.safetensors OUT_JSON=.cache/calib_g38.json CK_OUT=.cache/g38_form_refold.safetensors $PY scripts/calibrated_rite.py || echo "[g37] NO-HEADROOM"
 echo "== g37 REFOLD scan =="
 env CK=.cache/g38_form_refold.safetensors $PY scripts/dup_axis_scan2.py | grep "^\[scan\]"
-echo "== row-grade autopsy re-read =="
-env AUTOPSY_CKS="gate:.cache/g23v5.safetensors,g37:.cache/g38_form_refold.safetensors" $PY scripts/formation_autopsy.py 2>/dev/null | grep -E "cured|row|fails" || true
+echo "== row-grade autopsy: nd=4 =="
+env AUTOPSY_ND=4 AUTOPSY_CKS="gate:.cache/g23v5.safetensors,g38:.cache/g38_form_refold.safetensors" $PY scripts/formation_autopsy.py 2>/dev/null | grep -E "cured|fails" || true
+echo "== row-grade autopsy: nd=0 =="
+env AUTOPSY_ND=0 AUTOPSY_CKS="gate:.cache/g23v5.safetensors,g38:.cache/g38_form_refold.safetensors" $PY scripts/formation_autopsy.py 2>/dev/null | grep -E "cured|fails|row" || true
+echo "== frontier =="
+env WFF_CKPT=.cache/g38_form_refold.safetensors WFF_OUT=.cache/wff_g38refold.json $PY scripts/wild_frontier_fixture.py | grep -E "DEPLOYED|STRESS|LIE" || true
 echo "== bigtest =="
 env ALG_CKPT=.cache/g38_form_refold.safetensors ALG_TEST=.cache/algebra_nl_bigtest.jsonl ALG_TEST_NAME=bigtest $PY scripts/phase1_algebra_head.py --eval | grep TOTAL
 echo "== alg4test =="
