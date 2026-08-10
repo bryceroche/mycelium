@@ -27397,3 +27397,22 @@ token-position × waist-dim, the moment the skeleton trains.
   erosion-under-scale is exactly the constituency it never had;
   if the erosion-mechanism read points at capacity contention,
   the exit returns with a case instead of a hope.
+
+- **THE EROSION RACE — SPREAD VERDICT: DIFFUSE SIZE EROSION
+  (2026-08-10; door customer #33; n=7,643 slots):** every
+  candidate correlates negative and WEAK — text_len −0.174,
+  mention_dist −0.155, contention −0.134, dilution −0.090 (all
+  p≪0.001, all small, all collinear — longer rows carry more of
+  everything). **No mechanism dominates; the erosion is a diffuse
+  size effect**, not a single channel's failure: the registered
+  spread branch executes, and the beam's case is NOT made
+  (contention mid-pack). THE CURE REDIRECT this hands the board:
+  the tail fire aimed at SURFACE families at matched size and
+  converted zero; the discriminator says SIZE is the axis; the
+  race says size's erosion is diffuse — **the yet-untried aim is
+  the SIZE AXIS ITSELF: a large-row sliver (any frames, big
+  rosters) as an in-band diet at scale** — which also touches
+  E5's length track (the answer-space sheet's +35 at length
+  300→600 was always waiting on long-row competence). Noted for
+  its own word; the diffuse verdict cautions expectations (a
+  diffuse pathology may respond diffusely — dose honesty rides).
