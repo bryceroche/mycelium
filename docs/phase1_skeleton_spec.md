@@ -27283,3 +27283,28 @@ token-position × waist-dim, the moment the skeleton trains.
   refused as wrong-reason. First customer the 245-row tail;
   second the filler species. Next: the gold-derivation check
   (zero-GPU), then the fire on its own word.
+
+- **THE FLOOR COUNTERSIGN (2026-08-10, Bryce):** the cheapest-of-
+  three clause carved (**no new certified object = no new custody
+  link, no grading question — the floor is a training target, not
+  a stage**); the anchors-parallel named (the supervision existed
+  and was never emitted — footprints again); the gold-derivation
+  check's shrink branch pinned (partial labelability shrinks the
+  constituency and re-prices the dose BEFORE any GPU turns).
+
+- **THE GOLD-DERIVATION CHECK — THE GOLD WAS ALWAYS THERE
+  (2026-08-10; zero-GPU; the floor's last open question closes):**
+  bigtest: 1,187/1,187 ordinal rows carry the full mentions map
+  (var → char spans, INDIRECT spans included — "the fourth
+  number" sits in the map at its exact offsets); the training
+  mix: **23,366/23,366 — 100.00%.** The mint has emitted the
+  resolution into every row since the beginning, and nothing has
+  ever consumed it — the anchors-parallel exact: footprints
+  written, never read. NO SHRINK BRANCH: the constituency is
+  full; NO MINT NEEDED: the E-floor fire is pure assembly
+  (mentions → token-grade auxiliary targets via offsets, the
+  opatt-gold pattern → aux term at weight ≪1 → fire vs control
+  from g23v5, refold after, probe-first battery). The organ that
+  waited longest is now also the cheapest to build: its gold has
+  been riding in every training row for the whole campaign,
+  twenty-three thousand rows deep. The fire holds for its word.
