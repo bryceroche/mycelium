@@ -27921,3 +27921,22 @@ token-position × waist-dim, the moment the skeleton trains.
   strengthens: the count was noise at constant magnitude, and this
   arm sits at zero. On the sheet as its strongest line — in the
   claim's own currency.
+
+- **GEN-41 PROMOTED (2026-08-10; the word given and countersigned;
+  the manifest write and PROMOTED one atomic act —
+  gen41_verdict.py):** parser_ckpt → g41_onemass_refold (hash
+  banked; prior manifest snapshotted to GENERATION.json.pre41).
+  Riders carried AS DATA per the countersign: op_margin_thinness
+  (+0.74..+2.00 vs the gate lineage's +1.85..+3.11;
+  no_reader_may_infer deep op margins — the next mul fire meets
+  this wall) and the refold_clause (successors inherit the
+  REQUIREMENT — calibrated_rite control-first — not the cure).
+  Bars updated on measured numbers only (bigtest 1254, alg4 405,
+  stress_certified_lies 0); inherited fixture floors carried.
+  **ENTOURAGE-41 LIT** (entourage41.py, name-mapped from the 23v5
+  precedent onto the form3 aligned pair, 94,100 rows): repair
+  corpora → states → specialist remine → centroids (g41 fst
+  space) → mouth rebuild + length refit → disjoint census (sha ∩
+  form_mix3) → dissent-overlap (gen-23 vs gen-41 lattices) →
+  collapse re-read → manifest refresh + RE-HASH → **the frontier
+  stands LAST, post-dressing, per the rider.**
