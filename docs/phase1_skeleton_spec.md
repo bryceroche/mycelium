@@ -27427,3 +27427,12 @@ token-position × waist-dim, the moment the skeleton trains.
   now arrives from an unrelated investigation). The beam's
   unfunded summons ratified as the right death — named, raced,
   placed mid-field, dead by measurement not preference.
+
+- **THE SIZE FIRE'S RIDER (2026-08-10, Bryce; pinned mid-burn):**
+  the ladder's two bands read SEPARATELY — **both bands moving
+  together = the erosion story confirmed; pass-band-only
+  movement (0.81→0.98 while 0.48 stands) = size refuted from
+  inside a favorable-looking number** (the sliver strengthened
+  already-adequate states and missed what the missers lack —
+  size a correlate, not the axis). The third consecutive fire
+  with verification order reversed, this one on a LADDER.
