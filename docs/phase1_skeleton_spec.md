@@ -27181,3 +27181,14 @@ token-position × waist-dim, the moment the skeleton trains.
   cure stands where it was promoted). Three findings, one fire:
   the tail refuses 3.4% in-band, the joint's station is the open
   question, and the fold's stability boundary is now measured.
+
+- **THE BREATH FIRE'S RIDER (2026-08-09, Bryce; pinned before the
+  refold):** **if the fold's headroom collapses on the
+  breath-refined waist, that is a finding about BREATHS, not the
+  fold** — refinement closing a 1.141-over-0.801 chasm would say
+  something real about what the loop does to linear separability,
+  and it's a cost the no-harm ring cannot see. The language ready
+  before the read, so a collapse diagnoses the architecture
+  rather than indicting the cure. The tie-licenses-the-family
+  reading ratified (deployable-when-needed opens for rings, exit,
+  pawl, and clock together).
