@@ -27135,3 +27135,14 @@ token-position × waist-dim, the moment the skeleton trains.
   (cell-conditioned or nonlinear — open, unforced). The method's
   character: it cures where the geometry permits and REFUSES
   where it doesn't, by the same one read.
+
+- **THE FAMILY-SIGNATURE CLAUSE (2026-08-09, Bryce's countersign
+  on the op refusal):** carved so no future member inherits a
+  cure by default: **the interference family is defined by its
+  failure SIGNATURE (anti-correlated heads on separable
+  evidence), not by its GEOMETRY** — dup's evidence was globally
+  linear, op's is context-dependent, and a cure class that
+  transfers on one member may refuse on the next for reasons
+  visible only at the headroom read. Membership diagnoses;
+  headroom decides. The refusal's value stated: it cost nothing
+  and prevented a promotion-grade mistake.
