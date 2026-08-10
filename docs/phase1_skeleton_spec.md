@@ -27158,3 +27158,26 @@ token-position × waist-dim, the moment the skeleton trains.
   a win reads as the TARGETED JOINT converting (the family-split
   of the after-misses vs the census), never the aggregate alone.
   Same run, one split.
+
+- **THE TAIL FIRE'S VERDICT — KILLED, UNCONVERTED, AND THE FOLD'S
+  INSTABILITY EXPOSED (2026-08-09; door customer #28; riders
+  honored):** bigtest: tctl 1233 / tail 1227 — **the kill fires
+  (≤1233)**; the miss census RE-RUN prints IDENTICAL (245 misses,
+  same families — **the joint converted ZERO**; rider 2's split
+  leaves nothing to misread); rider 1 stands: the station read is
+  owed before any dose argument (downstream-of-parse suspicion
+  strengthened by total non-conversion). **AND THE MAJOR FINDING,
+  from the no-harm ring: the tail arm's dup cells print 5/15/15/15
+  — THE PROMOTED CURE IS GONE FROM THE ARM.** 4k steps of
+  ordinary continuation UNLEARNED the transplanted fold — the
+  same joint-training dynamics that starved h_dup originally
+  re-starved it on contact, exactly as the interference family
+  predicts. THE DEPLOYMENT LAW THIS CARVES: **transplanted heads
+  are unstable under continuation — any future training on the
+  23v5 lineage must FREEZE h_dup (exclude from the optimizer) or
+  RE-FOLD after** (headroom re-measured, the rite's short form);
+  the entourage/generation protocol inherits the clause. The
+  deployed g23v5 itself is UNTOUCHED (the arms were copies; the
+  cure stands where it was promoted). Three findings, one fire:
+  the tail refuses 3.4% in-band, the joint's station is the open
+  question, and the fold's stability boundary is now measured.
