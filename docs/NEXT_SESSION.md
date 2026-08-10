@@ -8,11 +8,15 @@ that never lies; abstention leads; scope in the same breath;
 mouth-widening is the claim's guarded gate (trace frontier measured
 BEFORE widening).** All roads = coverage growth under the claim.
 
-**GEN-23v5 IS THE GATE (2026-08-09, PROMOTED; ENTOURAGE PAID):**
-the dup-detector adoption — broad-gold fold at gap-midpoint theta on
-g23's own waist; strict dominance sheet; scope as data in the
-manifest; frontier 40/40 twice. The dup wall is DOWN (six-arm ledger
-crater → 0). **g23v5 is the cure's only holder, by law.**
+**GEN-41 IS THE GATE (2026-08-10, PROMOTED; the one-mass fire's
+arm):** g41_onemass_refold — both goods on one vehicle (formation +
+op-balance on args=[a,a] mass), full dup scope 0/3/-/0, bigtest
+1254, alg4 405, **stress certified lies ZERO** (better than 23v5's
+baseline 1). Riders AS DATA in the manifest: op-margin thinness
+(+0.74 floor — the next mul fire meets this wall) + the refold
+clause (successors inherit the REQUIREMENT, not the cure).
+ENTOURAGE-41 riding (frontier stands LAST, post-dressing).
+Lineage: g23v5 (2026-08-09, the dup-detector adoption) preceded.
 
 **THE TAIL CHAIN — NINE LINKS (2026-08-10):** census → families →
 stations → waist → gradient → diffuse → responsive → paying →
@@ -86,17 +90,9 @@ band the sliver never covered (nd 0-1). g37 benched (best arm ever
 benched).
 
 **THE BOARD (one board; supersedes all prior lists, 2026-08-10):**
-1. **THE PROMOTION SHEET (door #41, EVERY BAR MET) AWAITS
-   BRYCE'S WORD + ENTOURAGE DUTY.** Candidate:
-   g41_onemass_refold. Scan 0/3/-/0 = FULL SCOPE, both goods one
-   vehicle (first in arc); row-grade 15/15 both ends; bigtest
-   1254; alg4 405; sentinels clean; frontier 40/40 with STRESS
-   LIES ZERO (better than the gate's 1). Explicit lines: op
-   margins sufficient-but-thinner (+0.74 floor vs gate +1.85 —
-   maintenance note); size −5 vs record 1259; stress churn was
-   noise, this arm at zero. The word is the manifest write, one
-   atomic act, then entourage (remine/centroids/mouth/registry;
-   frontier already stood).
+1. ENTOURAGE-41 settlement (in flight): verify the ten stages,
+   ESPECIALLY the frontier standing last post-dressing; then
+   sync main (chapter boundary at settlement).
 2. The dose curve's next increment: priced sub-linear; buy design,
    not volume (compounding / E5 length co-vehicle — one purchase,
    two sheets).
