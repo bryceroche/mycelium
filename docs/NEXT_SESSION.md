@@ -40,7 +40,27 @@ wall; the naming-failure law (3 instances); what's-held-stationary
 **ARTIFACTS OF THE SURGE:** wild_ledger_v2.jsonl (exhaust ports,
 838 would-be answers), relative_mass/scatter/anchors at slot grain,
 aug_table_v3 (110 licensed), g24_v120 + g24_vdup19 ckpts,
-registrations/ (the door's ledger).**THE DUP WALL IS DOWN (2026-08-09): V5 passes everything** — cells
+registrations/ (the door's ledger).**THE TAIL CHAIN COMPLETE (2026-08-10, seven links):** census →
+families → stations → waist → gradient → diffuse → RESPONSIVE.
+Bigtest's 245-tail = size-graded evidence EROSION under indirection
+(probe ladder 0.98/0.81/0.48/0.19, all signatures measured); the
+SIZE-AXIS sliver moved the miss band for the first time in campaign
+history (0.441→0.466 @ 3.4% dose, pass band flat — the
+discriminating pattern) without score conversion. **THE DOSE ROAD IS
+OPEN BY ARITHMETIC: ~10x dose or compounding design; E5's length
+track is the co-vehicle (one purchase, two sheets).** The floor's
+design waits downstream of the size road; the E-floor premise was
+corrected (mentions ARE consumed; 10,160 full-joint rows already
+supervised).
+
+**ALSO THIS SESSION:** GEN-23v5 PROMOTED + entourage PAID (frontier
+40/40 twice); the REFOLD LAW final form (refold after ANY training —
+freeze fell: waist drift kills a frozen map); breaths REFUSED at
+deployment (-19 alg4, priced); op fold refused by headroom (2-for-2
+as decision instrument); family-signature clause; EXPLAINER.md
+shipped (twice-reviewed).
+
+**THE DUP WALL IS DOWN (2026-08-09): V5 passes everything** — cells
 0/3/0, bigtest 1238 = baseline, zero wild cost; the dup path complete
 at deployment shape (broad-gold detector, gap-midpoint theta 0.9005,
 perfect specialist, decode routing; bench ckpt g31_v5.safetensors —
