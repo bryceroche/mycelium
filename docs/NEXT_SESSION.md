@@ -90,9 +90,12 @@ band the sliver never covered (nd 0-1). g37 benched (best arm ever
 benched).
 
 **THE BOARD (one board; supersedes all prior lists, 2026-08-10):**
-1. ENTOURAGE-41 settlement (in flight): verify the ten stages,
-   ESPECIALLY the frontier standing last post-dressing; then
-   sync main (chapter boundary at settlement).
+1. ENTOURAGE-41 PAID (all ten; frontier stood POST-DRESSING
+   40/40, stress lies ZERO under the new mouth; dissent ROTATES,
+   overlap zero). GEN-41 rules. Next roads, all awaiting words:
+   the op-depth wall (+0.74 floor — the thinness maintenance
+   question); E5 length co-vehicle; the second clock; the floor's
+   design; the sha-fence on era's next-touch list.
 2. The dose curve's next increment: priced sub-linear; buy design,
    not volume (compounding / E5 length co-vehicle — one purchase,
    two sheets).
