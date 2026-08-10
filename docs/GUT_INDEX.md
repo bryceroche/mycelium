@@ -150,3 +150,4 @@ One line per registration; full forms, rents, verdicts, and countersigns live in
 - **#184** TRAY AND DOOR (2026-08-09) — exchange family, beside #176; the simultaneous-versus-sequential screen is the content
 - **#185** DEFLATED BALLOONS DON'T POP (2026-08-09) — exchange family, beside #112; catastrophic-versus- graceful is the content
 - **#186** USE YOUR FRIEND'S PHONE (2026-08-09) — exchange family; borrow-the-channel is the content
+- **#187** WHITE NOISE, SECOND VISIT (2026-08-10) — #147 cited; absent-versus-scrambled is the content

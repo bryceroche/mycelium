@@ -27308,3 +27308,34 @@ token-position × waist-dim, the moment the skeleton trains.
   waited longest is now also the cheapest to build: its gold has
   been riding in every training row for the whole campaign,
   twenty-three thousand rows deep. The fire holds for its word.
+
+- **GUT #187 REGISTERED — "WHITE NOISE, SECOND VISIT" (2026-08-10;
+  #147 cited; absent-versus-scrambled is the content):** the
+  pointer probe's 0.185 is NOT obviously absence — on a 24-class
+  task it could be the label PRIOR (probe learned nothing
+  slot-specific = true absence), chance-adjacent, or BELOW an
+  informed floor (present-and-scrambled — the anti-correlated
+  signature at the waist grain, a different disease with a
+  different cure). THE RENT, owed before the E-floor fire reads:
+  the ABSENT-EVIDENCE CONTROL — (a) the tail gold's majority-class
+  prior, (b) a shuffled-label probe's held-out print — so
+  presence, absence, and scrambling have measured signatures on
+  this fixture and the spec's probe-first bar is READABLE. The
+  floor's summons stands regardless (supervision helps empty or
+  scrambled); the diagnosis's precision is what's at stake.
+
+- **THE ABSENT-EVIDENCE CONTROL — ABSENCE CONFIRMED PRECISE
+  (2026-08-10; #187's rent paid same-hour):** the three signatures
+  now measured on this fixture: **presence 0.983 / tail 0.185 /
+  label prior 0.190 / shuffled-floor 0.120.** The tail probe sits
+  AT THE PRIOR — it learned nothing slot-specific: TRUE ABSENCE,
+  not scrambling (scrambling would print at-or-below the 0.120
+  shuffled floor with anti-structure; 0.185≈0.190 is the flat
+  print of an empty channel). The diagnosis stands precise; the
+  floor inherits exactly the problem its spec was written for;
+  and **the probe-first bar is now READABLE: the E-floor fire
+  must move the tail read from ~0.19 (prior) toward 0.98
+  (presence), with 0.12 marked as the scrambling alarm.** #187
+  banked as the caution that sharpened a bar rather than
+  overturned a diagnosis — the second visit earning its keep the
+  way second visits should.
