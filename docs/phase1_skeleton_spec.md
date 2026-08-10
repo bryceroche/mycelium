@@ -27470,3 +27470,23 @@ token-position × waist-dim, the moment the skeleton trains.
   E5 joins as co-vehicle only if proportionality holds. The
   fire lands next window at full context — the ration plumbing
   deserves fresh care, per the tranche precedent.
+
+- **THE DOSE FIRE'S VERDICT — THE ROAD PAYS A RECORD, AND THE
+  METER'S DENOMINATOR MOVED (2026-08-10; door customer #35
+  executed):** **bigtest 1259 ANSWER / 1169 graph-solve — the
+  campaign's BEST EVER on both grains** (+21 over the promoted
+  1238, +14 over the drift control's 1245; the primary >1238 is
+  MET). THE LADDER'S TWIST, read honestly: miss band prints 0.436
+  (apparently DOWN) — but the bands are OUTCOME-DEFINED, and the
+  miss band SHRANK (1,238 slots vs 1,402): converted rows
+  MIGRATED into the pass band (n up to 6,405), leaving a harder
+  residue behind — **the berries law AT THE METER: the
+  denominator moved, and per-band accuracy over shifted
+  populations is not the gradient** (the proportionality read is
+  CONFOUNDED-BY-MIGRATION, neither confirmed nor refuted). OWED
+  BEFORE ANY PROMOTION WORD: (1) the FROZEN-BAND re-read (bands
+  fixed by the baseline arm's partition — the honest gradient);
+  (2) the full no-harm battery (alg4, sentinels, dup-post-refold,
+  frontier). The dose law's second knob vindicated at the score
+  grain: share held, reps raised, composition unshifted — and
+  the record arrived where the append hazard was avoided.
