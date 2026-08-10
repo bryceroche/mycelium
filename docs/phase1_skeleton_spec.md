@@ -27960,3 +27960,20 @@ token-position × waist-dim, the moment the skeleton trains.
   lies again (21/5/14, all forty accounted).** The dressing did
   not widen the mouth; zero lies held through the swap. GEN-41
   RULES WITH ITS ENTOURAGE PAID.
+
+- **THE SHA-FENCE BUILT (2026-08-10; the word given; three
+  specimens' argument honored; gut #188's rent paid in machinery):**
+  the staged-arrays join is now DECLARED, not inferred. The
+  authority: mycelium/era.py mix_sha16(). The stamp: the assemble
+  writes the mix's sha into the npz it stages (form_assemble3, the
+  live customer). The door: load_alg hard-asserts the stamp
+  against the ALG_TRAIN it is about to pair with — stamped
+  mismatch = refusal with both hashes named; unstamped train
+  arrays announce themselves loudly (next-touch adoption, the
+  era.py pattern). SAME-TRANSACTION: the deployed form3 pair
+  restamped in the building commit (stamp 0cb4eb907527e53b — the
+  manifest's own train hash, one content key asserted at the
+  join). VERIFIED BOTH ARMS: the deployed pair passes; the
+  ALG_TRAIN_NAME replay's exact wrong join (form_mix2 vs form3
+  arrays) TRIPS at the door. The name-key fossil family's cure is
+  standing machinery; the board item closes.

@@ -27,6 +27,8 @@ out.flush(); del out
 samples, ids2, mask, offsets = PH.tokenize('.cache/form_mix3.jsonl')
 gold=build_gold(samples, offsets)
 sent=np.stack([sent_indices(s["text"],o,mask[i]) for i,(s,o) in enumerate(zip(samples,offsets))])
+from mycelium.era import mix_sha16
 np.savez('.cache/phase1_alg_states_form3.npz', tokmask=mask.astype(np.uint8),
-         sent=sent.astype(np.int8), **{f"g_{k}":v for k,v in gold.items()})
+         sent=sent.astype(np.int8), mix_sha=mix_sha16('.cache/form_mix3.jsonl'),
+         **{f"g_{k}":v for k,v in gold.items()})
 print("[aim] states + gold staged (WIDE era)", flush=True)

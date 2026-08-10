@@ -46,3 +46,14 @@ def assert_mint_row(row, site=""):
     if missing:
         raise KeyError(f"mint row missing {missing} at {site} — the era "
                        f"manifest's schema contract (aim-sliver specimen)")
+
+
+def mix_sha16(path):
+    """THE SHA-FENCE (2026-08-10; three specimens: the book-consumption
+    key, ALG_TRAIN_NAME's replay, entourage41's stale exists-check —
+    joins over names while content moved). The assemble stamps the
+    mix's sha into the staged npz; load_alg hard-asserts it against
+    the ALG_TRAIN it is about to pair with. A declared key, not an
+    inferred one (gut #188's rent)."""
+    import hashlib
+    return hashlib.sha256(open(path, "rb").read()).hexdigest()[:16]

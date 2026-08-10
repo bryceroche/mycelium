@@ -389,7 +389,23 @@ def load_alg(split):
     is_train = split == "train"
     split = TRAIN_NAME if is_train else (TEST_NAME if split == "test" else split)
     z = np.load(STATES_NPZ.format(split=split))
-    samples = [json.loads(l) for l in open(ALG_TRAIN if is_train else ALG_TEST)]
+    _mix_path = ALG_TRAIN if is_train else ALG_TEST
+    # THE SHA-FENCE (2026-08-10): staged arrays are a JOIN against the mix
+    # file, keyed by TRAIN_NAME — a name, not content. Three fossils rode
+    # that gap (the ALG_TRAIN_NAME replay trained on another mix's arrays
+    # to the digit). Stamped npz -> hard-assert; unstamped -> say so loudly.
+    if "mix_sha" in z.files:
+        from mycelium.era import mix_sha16
+        _want = str(z["mix_sha"])
+        _got = mix_sha16(_mix_path)
+        assert _got == _want, (
+            f"SHA-FENCE: staged arrays were built from a different mix "
+            f"(npz stamp {_want} != {_mix_path} sha {_got}) — the "
+            f"name-key points at the wrong content; re-assemble.")
+    elif is_train:
+        print(f"[sha-fence] UNSTAMPED train arrays for '{split}' — "
+              f"fence blind here until re-assembled", flush=True)
+    samples = [json.loads(l) for l in open(_mix_path)]
     # CUSTODY-GOLD GUARD (deep clean 2026-07-28): load_alg is the single door
     # every battery consumer's gold flows through, and ALG_TRAIN/ALG_TEST env
     # is the only redirection mechanism. Pen rows (delegated book annotations,

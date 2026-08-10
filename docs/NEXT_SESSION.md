@@ -95,7 +95,8 @@ benched).
    overlap zero). GEN-41 rules. Next roads, all awaiting words:
    the op-depth wall (+0.74 floor — the thinness maintenance
    question); E5 length co-vehicle; the second clock; the floor's
-   design; the sha-fence on era's next-touch list.
+   design. (The sha-fence is BUILT — load_alg asserts the mix
+   stamp; the replay's wrong join now trips at the door.)
 2. The dose curve's next increment: priced sub-linear; buy design,
    not volume (compounding / E5 length co-vehicle — one purchase,
    two sheets).
