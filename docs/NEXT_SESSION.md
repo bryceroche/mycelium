@@ -86,16 +86,17 @@ band the sliver never covered (nd 0-1). g37 benched (best arm ever
 benched).
 
 **THE BOARD (one board; supersedes all prior lists, 2026-08-10):**
-1. THE ONE-MASS FIRE (door #41 candidate): #40 KILLED BY ONE
-   (bigtest 1237) and confirmed INTERFERENCE with a fingerprint —
-   formation at full receipt rate regressed to EXACTLY g35's
-   twelve; the distinct-args counterweight NULLIFIES the dup
-   formation sliver (two tenants, one mul-rel prototype). The op
-   good itself is robust (margins +1.45..+2.76, nd0 0/15 held,
-   alg4 414/420-class). Design: carry op-balance on args=[a,a]
-   vehicles — expand the crowded mul-dup sliver, promote to 8x,
-   sized by op arithmetic. Tenants sharing machinery must share
-   vehicles. Registration awaits the word.
+1. **THE PROMOTION SHEET (door #41, EVERY BAR MET) AWAITS
+   BRYCE'S WORD + ENTOURAGE DUTY.** Candidate:
+   g41_onemass_refold. Scan 0/3/-/0 = FULL SCOPE, both goods one
+   vehicle (first in arc); row-grade 15/15 both ends; bigtest
+   1254; alg4 405; sentinels clean; frontier 40/40 with STRESS
+   LIES ZERO (better than the gate's 1). Explicit lines: op
+   margins sufficient-but-thinner (+0.74 floor vs gate +1.85 —
+   maintenance note); size −5 vs record 1259; stress churn was
+   noise, this arm at zero. The word is the manifest write, one
+   atomic act, then entourage (remine/centroids/mouth/registry;
+   frontier already stood).
 2. The dose curve's next increment: priced sub-linear; buy design,
    not volume (compounding / E5 length co-vehicle — one purchase,
    two sheets).

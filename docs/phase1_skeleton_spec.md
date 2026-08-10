@@ -27912,3 +27912,12 @@ token-position × waist-dim, the moment the skeleton trains.
   interference-by-fingerprint → #41 one-mass) — each kill
   smaller, each successor named by its predecessor's exact
   failure, the last one carrying everything.
+
+- **DOOR #41 ADDENDUM — THE STRESS TIER PRINTS ZERO (2026-08-10):**
+  the frontier's stress read on g41: abstain 21 / attest_block 5 /
+  tripped 14 / **certified lies 0** — all forty accounted, no lie
+  line. Better than the gate's own baseline (1) and the churn
+  family (2, churning sets). The churn rider's conclusion
+  strengthens: the count was noise at constant magnitude, and this
+  arm sits at zero. On the sheet as its strongest line — in the
+  claim's own currency.
