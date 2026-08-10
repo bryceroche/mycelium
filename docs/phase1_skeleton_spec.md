@@ -27192,3 +27192,23 @@ token-position × waist-dim, the moment the skeleton trains.
   rather than indicting the cure. The tie-licenses-the-family
   reading ratified (deployable-when-needed opens for rings, exit,
   pawl, and clock together).
+
+- **THE BREATH SHEET'S VERDICT — ADOPTION REFUSED, AND THE
+  FREEZE HALF FALLS (2026-08-09; door customer #29):** bigtest:
+  breath 1230 vs control 1233 (−3: inside the vs-control bar,
+  UNDER the 1233 adoption floor by 3); **alg4: 398 vs 417 — −19,
+  the no-harm bar fails decisively** — breaths COST on the harder
+  compositional fixture; **breaths stay bench**, the organ
+  family's door stays closed at deployment, banked with its
+  price. AND THE DEEPER FINDING, from the no-harm ring again:
+  **BOTH arms print 5/15/15/15 on dup cells — with h_dup FROZEN
+  and its weights untouched.** The cure died anyway: 4k of
+  continuation moved the WAIST beneath the frozen map, and a
+  linear map with intact weights misreads a drifted distribution.
+  **Freeze protects the map, not the map's meaning. THE LAW'S
+  FINAL FORM: REFOLD AFTER ANY TRAINING, full stop** — freeze is
+  at best a minor hygiene, never a protection; the transplant
+  cure is a POST-TRAINING RITE by nature (headroom re-measured,
+  map re-derived, on whatever waist training produced). The
+  deployed g23v5 remains the only holder of the cure — untouched,
+  intact, and now understood as such by law rather than luck.
