@@ -27747,3 +27747,28 @@ token-position × waist-dim, the moment the skeleton trains.
   the nd=0 cured-criterion reads formation (args) not op — the
   scan's op-match is the stricter read, consistent with the
   op-grain residue finding.
+
+- **DOOR #38'S VERDICT — BRANCH (c) BY THE LETTER; THE RESIDUE IS
+  THE OP FILE'S, NOT THE DUP FILE'S (2026-08-10):** the real fire
+  (form2-keyed; the replay struck): control exact (third
+  deployment); **g38 opens at 1.541/0.609 — headroom 0.932, the
+  widest ever** (g37 0.777, gate 0.695): edge coverage strengthened
+  BOTH sides of the calibrated gap. Scan 4/3/15/0: **nd=0 UNMOVED
+  at 4/15 — pre-registered branch (c) fires: the op residue is not
+  coverage-reachable at 3x.** BOTH RIDERS READ CLEAN: #37's
+  fifteen held 15/15 (clean addition, no capacity reallocation);
+  nd=0 formation intact (all rel [0,0] form — the 4/15 is purely
+  op-grain). THE RING: bigtest 1257 (≥1238 ✓; −2 vs the record,
+  noise-range, reported); alg4 408 (above the promoted 407);
+  sentinels 20/20 ×2; **frontier DEPLOYED 40/40 unmoved** (stress:
+  1 certified lie, MOVED idx 5→39, count unchanged — specimen
+  noted). VERDICT: the bar is the bar — nd0 fails the scope; NO
+  promotion; **g38 to the bench as the campaign's best arm**
+  (formation cured both ends, record-class score, widest gap,
+  ring clean, fence held). THE JOINED FILES: the sole residue —
+  op-mismatch on mul-dup at low crowding — belongs to the standing
+  board item "op head + rel-decode" (general-parse residuals,
+  reassigned from dup at the adoption); the dup file's last local
+  item dissolves INTO the op file. NEXT (a read, zero-GPU-class):
+  the OP-GRAIN AUTOPSY on the nd=0 rows — decoded op + op-head
+  margins on the failing four — before any door #39 claims a fix.

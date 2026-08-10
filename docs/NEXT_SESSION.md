@@ -63,7 +63,20 @@ novel-phrasing dup rows minted into the rehearsal set (the mix's
 dup rows are familiar low-crowding forms; the hole is exactly
 where the mix is empty).
 
-**DOOR #37 (the formation fire) NEARLY PROMOTES:** nd=4 cured
+**DOORS #37-#38 (the formation fires) NEARLY PROMOTE — the dup
+file's last local residue dissolved INTO the op file:** g38 (bench,
+the campaign's best arm): formation cured BOTH ends (nd4 0/15 with
+#37's fifteen held; nd0 formation intact), bigtest 1257/alg4 408/
+sentinels clean/frontier 40/40 unmoved, widest calibrated gap ever
+(1.541/0.609 = 0.932). The sole failing bar: nd0 4/15 = OP-mismatch
+on mul-dup at low crowding — branch (c) fired (not coverage-
+reachable at 3x); it belongs to the standing op-head item. OWED
+NEXT: the op-grain autopsy on the failing four (read, before any
+door #39). Door #38's first burn was a REPLAY (ALG_TRAIN_NAME
+fossil — states keyed by name; identical-to-the-digit unmasked it;
+sha-fence on era's next-touch list).
+
+**DOOR #37 (the formation fire) history:** nd=4 cured
 0/15 with the row-grade 15/15 ON THE FENCED SURFACE; bigtest 1259
 = the record WITH the cure riding (goods did not trade); alg4 406,
 sentinels clean; g37 opens the widest calibrated gap yet
@@ -73,9 +86,8 @@ band the sliver never covered (nd 0-1). g37 benched (best arm ever
 benched).
 
 **THE BOARD (one board; supersedes all prior lists, 2026-08-10):**
-1. DOOR #38: sliver v2 covering nd 0-6 (one-line mint change,
-   all else held) — the promotable arm's registration awaits
-   the word.
+1. The op-grain autopsy (nd=0 failing four: decoded op + op-head
+   margins) — the promotion's last gate lives in the op file now.
 2. The dose curve's next increment: priced sub-linear; buy design,
    not volume (compounding / E5 length co-vehicle — one purchase,
    two sheets).
