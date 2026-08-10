@@ -27117,3 +27117,21 @@ token-position × waist-dim, the moment the skeleton trains.
   band-lives-in-the-heads. **Nobody aimed the instrument at the
   question, and it answered it anyway** — the agreement that
   cannot have been engineered, which is the strongest kind.
+
+- **THE OP-HEAD FOLD — HEADROOM-NULL EXECUTES: THE GEOMETRY
+  DIFFERS (2026-08-09; door customer #27; banked, no fold):**
+  add-max 1.186 vs mul-min 0.878 on the joint population (cells +
+  2,400 natural bigtest op slots) — **the classes OVERLAP where
+  dup had a chasm.** The registered null fires: no fold; the
+  finding banked: **op is linearly readable WITHIN a population
+  (the watch's 1.000-per-cell probes) but not across the joint —
+  context-dependent evidence, a genuinely different geometry from
+  dup's globally-linear read.** The family's two members part
+  ways at the cure: dup folded because a measured chasm licensed
+  it; op refused because a measured overlap forbade it —
+  **headroom-first is now 2-for-2 as a decision instrument**, and
+  the blind fold it prevented would have wrecked bigtest on a
+  7%-mul wild distribution. Op's cure owes its own design
+  (cell-conditioned or nonlinear — open, unforced). The method's
+  character: it cures where the geometry permits and REFUSES
+  where it doesn't, by the same one read.
