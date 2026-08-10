@@ -27655,3 +27655,36 @@ token-position × waist-dim, the moment the skeleton trains.
   formation grain). The rite's standing form: scripts/
   calibrated_rite.py + calib_runner.sh (control-assert first,
   always).
+
+- **THE ND=4 FORMATION AUTOPSY — ONE SURFACE, DETERMINISTIC,
+  REHEARSAL REPAIRS IN ORDER (2026-08-10; the word given;
+  audit-before-diet honored before any corpus line claims the
+  fix):** the 15 fixture rows through gate/g35/g36
+  (formation_autopsy.py; banked .cache/formation_autopsy.json).
+  THE FACTS: (1) **every failure on both arms is op=mul** — the
+  "a lots of a make c" novel phrasing; every add row ("plus
+  another") cured everywhere. The formation hole is ONE SURFACE ×
+  CROWDING, not a general collapse. (2) **mode is ABSENT, deeply**:
+  n_on=5 vs the gate's 6 — the rel factor simply never forms;
+  presence logits −155 to −183 (no near-misses; not a threshold
+  problem). (3) **deterministic and NESTED**: g36's 9 failures are
+  a strict subset of g35's 12; rehearsal RESCUED rows 0/1/5
+  outright. (4) THE BURIED ORDER: on g35 the would-be slot's
+  latent ftype reads mod@0.99 (the "lots of" surface captured by
+  the mod frame); on g36, 5 of 9 failures read rel@0.53-0.67 —
+  **rehearsal at 3x moved the latent TYPE back to rel before
+  lifting PRESENCE** — repair has a measured ordering
+  (type-then-presence), and the dose-response now has anatomy:
+  3x bought type on 5 rows, full formation on 3. THE MECHANISM
+  NAMED: continuation on a mix whose dup rows are familiar
+  low-crowding formats pulls the UNREHEARSED novel surface back
+  toward the dialect's prior (mod) — the aim-fire law's dynamic
+  form: surface generalization is not just hard to buy, it DECAYS
+  under training that doesn't rehearse it. THE DIET LINE (for the
+  fire design; the recursion guard binds): the fixture phrasing
+  NEVER enters the mix — the cure mints crowded (nd 2-6) mul-dup
+  rows over the aug table's LICENSED mul formats at surface
+  diversity, buying novel-surface generalization the lawful way.
+  The formation-rehearsal fire design now has a measured target:
+  mul-dup × crowding × surface-diversity, freeze riding, the
+  calibrated rite as post-fire gate.
