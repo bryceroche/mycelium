@@ -27727,3 +27727,23 @@ token-position × waist-dim, the moment the skeleton trains.
   the frontier read closes the ring as the claim's own fence —
   a promotion candidate's cure that quietly widened the mouth
   is visible there and nowhere else in the battery.
+
+- **DOOR #38'S FIRST BURN WAS A REPLAY — THE NAME-KEY FOSSIL
+  (2026-08-10; caught before any verdict banked):** form38's
+  driver changed ALG_TRAIN to form_mix2 but left
+  ALG_TRAIN_NAME=form — and the trainer keys its states/gold
+  arrays by NAME (phase1_algebra_head.py:122), so the burn
+  consumed door #37's staged arrays and reproduced g37 TO THE
+  DIGIT (calibrated read 1.504/0.727 and scan 4/3/15/0
+  identical — an accidental determinism proof that unmasked
+  itself). The fossil-default family's next specimen, at the
+  states-key grain; row-count asserts cannot catch it (both
+  mixes are 93,400). OWED FENCE (era.py's next-touch list): the
+  assemble stamps the mix's sha into the npz; load_alg
+  hard-asserts it against ALG_TRAIN. Driver fixed
+  (ALG_TRAIN_NAME=form2), relaunched; the replay's outputs are
+  struck (they were #37's numbers wearing #38's unit name).
+  Rider note honored in passing: the replayed autopsy confirmed
+  the nd=0 cured-criterion reads formation (args) not op — the
+  scan's op-match is the stricter read, consistent with the
+  op-grain residue finding.
