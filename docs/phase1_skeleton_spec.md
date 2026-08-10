@@ -27385,3 +27385,15 @@ token-position × waist-dim, the moment the skeleton trains.
   contention (the beam's territory), mention-distance. The
   census→families→stations→waist→joint chain gains its fifth
   link: the tail is the LARGE end of an erosion gradient.
+
+- **THE GRADIENT COUNTERSIGN (2026-08-10, Bryce):** the
+  scale-effect distinction carved — identical frame densities,
+  just MORE: **a scale effect on a fixed mechanism is a different
+  object than a construction the waist can't build** (and a
+  different cure class). The lens's vindication timestamped
+  (two sessions from carve to catch — it set the SHAPE, not just
+  a number). THE BEAM'S POSSIBLE RE-SUMMONS flagged: **it was
+  refused at deployment on COST, not mechanism** — and measured
+  erosion-under-scale is exactly the constituency it never had;
+  if the erosion-mechanism read points at capacity contention,
+  the exit returns with a case instead of a hope.
