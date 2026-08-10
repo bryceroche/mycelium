@@ -27581,3 +27581,44 @@ token-position × waist-dim, the moment the skeleton trains.
   (g35/g36/g23v5, per-cell-kind quartiles; the rite permanently
   gains the distribution dump before any abort). g36 -> the bench
   beside g35; GEN-23v5 remains the gate.
+
+- **THE CONTROL READ DISSOLVES THE EROSION NARRATIVE — THE RITE
+  WAS AN UNCALIBRATED INSTRUMENT (2026-08-10; the distribution
+  read's third arm):** today's rite, run on the PROMOTED GATE
+  itself, ABORTS: g23v5 reads cell-min 0.347 / wild-max 1.120 —
+  the same weights that passed the adoption derivation at
+  1.141/0.801. Same bytes, different reading: THE INSTRUMENT
+  DIFFERS, NOT THE WAIST. The confound, named: the adoption
+  (door #26) derived on the fold-series pools (fixture cells +
+  the wild-LEDGER negative bank, 1,600 curated); the
+  reconstructed rite minted fresh transplant-era cells (seeds
+  98000+) and used the wild forty's parse slots (true-dup
+  contaminated) — different pools on BOTH sides of the gap.
+  Never-mix-generations' cousin at the instrument grain: NEVER
+  MIX INSTRUMENTS' READINGS. Under ONE instrument the three arms
+  read 0.347 / 0.318 / 0.183 with IDENTICAL medians (~1.05-1.13
+  every cell kind, novel formats tight everywhere) — the bulk
+  separability is INTACT on all three waists; the min rides
+  single outlier cells among fresh mints. VERDICTS RE-SCOPED BY
+  THIS ENTRY: (1) "the dup direction eroded in fst space,
+  1.141→0.318" — VOID, cross-instrument. (2) "territory
+  dissolves under training" — VOID (the seal's line corrected).
+  (3) both refold REFUSALS (g35, g36) — VOID, the instrument
+  fails its known-good control; door #36's kill stands
+  procedurally (the pinned bar fired) but its mechanism claim
+  (rehearsal-null at 3x) is UNREAD. (4) WHAT STANDS: the record's
+  honesty (frozen bands); the deployed-head CRATER on g35 AND g36
+  (5/15/15/15 via dup_axis_scan2 — the promotion-era instrument,
+  control-calibrated by construction): the deployed cure is
+  genuinely lost on both arms; THE REFOLD LAW STANDS UNCHANGED.
+  (5) g35's promotability is REOPENED-UNKNOWN pending a
+  calibrated rite. THE INSTRUMENT LAW CANDIDATE (for the carve):
+  **an instrument's abort means nothing until the instrument
+  passes its known-good control** — the rite must assert on the
+  manifest's parser BEFORE reading any candidate (conviction-
+  index kin, at the instrument grain). THE OWED BUILD: the
+  calibrated rite — cells from the promotion fixture's own mint
+  (dup_axis_scan2's), negatives from the wild-ledger bank
+  (fold-series pools), control-assert riding first; then g35/g36
+  re-read under it. The day ends with the machinery catching MY
+  reconstruction, not the model: the third arm was the audit.
