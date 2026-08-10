@@ -27339,3 +27339,24 @@ token-position × waist-dim, the moment the skeleton trains.
   banked as the caution that sharpened a bar rather than
   overturned a diagnosis — the second visit earning its keep the
   way second visits should.
+
+- **THE E-FLOOR FIRE HOLDS — TWO CORRECTIONS BEFORE IGNITION
+  (2026-08-10; verify-before-verdict catching the spec's own
+  premise):** (1) **the "never consumed" claim is STRUCK** —
+  build_gold line 187 feeds every mention span, indirect included,
+  into vspan gold; the vat head has trained toward "the fourth
+  number" tokens all along. (2) **the mix holds 10,160 rows in
+  the FULL tail joint** (sub AND ordinal AND crowded6+) with
+  complete supervision — mass, band, joint, mentions, args gold,
+  ALL present — and the waist still doesn't resolve at the tail
+  slots. THE DIAGNOSIS SHARPENS PAST THE SPEC: bigtest holds
+  1,187 ordinal rows and ~940 PASS — the 245 are a
+  sub-population WITHIN an otherwise-passing joint, and firing
+  more of the supervision that already exists at ten thousand
+  rows would be the unaimed-sink error wearing the floor's
+  clothes. **THE OWED READ BEFORE ANY FIRE: the within-joint
+  discriminator** — what separates the 245 from their passing
+  siblings (depth? frame combinations? mention distance? value
+  structure?) — the census's method one level finer. The floor's
+  summons stands; its DESIGN waits on the discriminator; the
+  spec's §2 is annotated superseded-pending.
