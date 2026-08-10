@@ -27108,3 +27108,12 @@ token-position × waist-dim, the moment the skeleton trains.
   GEN-23v5 stands fully dressed: gate, specialist, centroids,
   mouth, watchers, registry — one another's current coordinates,
   every hash current, the owed list CLEAR.
+
+- **THE UNENGINEERED AGREEMENT (2026-08-09, Bryce's ruling — a
+  line beside the relocation):** the collapse re-read — an
+  entourage-standing instrument aimed at nothing this week —
+  printed the head/trunk inversion (knots rule the head, frames
+  rule the trunk) in independent corroboration of
+  band-lives-in-the-heads. **Nobody aimed the instrument at the
+  question, and it answered it anyway** — the agreement that
+  cannot have been engineered, which is the strongest kind.
