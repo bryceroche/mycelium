@@ -40,18 +40,25 @@ wall; the naming-failure law (3 instances); what's-held-stationary
 **ARTIFACTS OF THE SURGE:** wild_ledger_v2.jsonl (exhaust ports,
 838 would-be answers), relative_mass/scatter/anchors at slot grain,
 aug_table_v3 (110 licensed), g24_v120 + g24_vdup19 ckpts,
-registrations/ (the door's ledger).**THE TAIL CHAIN COMPLETE (2026-08-10, seven links):** census →
-families → stations → waist → gradient → diffuse → RESPONSIVE.
-Bigtest's 245-tail = size-graded evidence EROSION under indirection
-(probe ladder 0.98/0.81/0.48/0.19, all signatures measured); the
-SIZE-AXIS sliver moved the miss band for the first time in campaign
-history (0.441→0.466 @ 3.4% dose, pass band flat — the
-discriminating pattern) without score conversion. **THE DOSE ROAD IS
-OPEN BY ARITHMETIC: ~10x dose or compounding design; E5's length
-track is the co-vehicle (one purchase, two sheets).** The floor's
-design waits downstream of the size road; the E-floor premise was
-corrected (mentions ARE consumed; 10,160 full-joint rows already
-supervised).
+registrations/ (the door's ledger).
+
+**THE TAIL CHAIN AT NINE LINKS (2026-08-10):** census → families →
+stations → waist → gradient → diffuse → responsive → **PAYING →
+PRICED**. Bigtest's 245-tail = size-graded evidence EROSION under
+indirection (probe ladder 0.98/0.81/0.48/0.19). The size-axis sliver
+moved the miss band (first ever); the DOSE FIRE (ration 8x
+hot-phase, door #35) hit **THE RECORD: bigtest 1259/1500 on
+g35_size8x** (+21 over promoted 1238). THE METER LAW carved (berries'
+third site): an outcome-defined band cannot measure a cure that
+changes outcomes — the FROZEN-BAND re-read (baseline partition) shows
+BOTH bands rise (pass 0.810→0.830, miss 0.477→0.489): the record is
+mechanically honest (state+score agree; threshold-harvesting anatomy
+— the dose flips near-boundary rows first, the deep tail persists;
+next increment priced sub-linear). **OWED BEFORE ANY PROMOTION WORD:
+the no-harm battery incl. THE REFOLD RITE (scripts/noharm_battery.sh
++ refold_rite.py — the fire moved the waist under the fold).** E5
+co-vehicle + floor design wait downstream; E-floor premise corrected
+(mentions ARE consumed; 10,160 full-joint rows supervised).
 
 **ALSO THIS SESSION:** GEN-23v5 PROMOTED + entourage PAID (frontier
 40/40 twice); the REFOLD LAW final form (refold after ANY training —
