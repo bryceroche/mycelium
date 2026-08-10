@@ -27940,3 +27940,23 @@ token-position × waist-dim, the moment the skeleton trains.
   form_mix3) → dissent-overlap (gen-23 vs gen-41 lattices) →
   collapse re-read → manifest refresh + RE-HASH → **the frontier
   stands LAST, post-dressing, per the rider.**
+
+- **ENTOURAGE-41 PAID — THE GATE MAY READ (2026-08-10):** all ten
+  stages settled on the second launch (the first caught a
+  wrong-skip: stage 3's exists-check still pointed at the 23v5
+  nack — the name-map-misses-the-hardcoded-check family, stopped
+  and fixed before stage 9 would have crashed on the missing
+  hash). The estate: specialist remined vs g41 (fresh 3,800
+  repair corpus, seeds 411-415); centroids rebuilt in g41's own
+  fst space (nine kinds); mouth rebuilt on the form3 family
+  (length-controlled thr 0.0136); disjoint census n=86: banked 1
+  / near 40 / knotted 45 (the 23v5 neighborhood); **dissent-
+  overlap: 2 vs 2, OVERLAP ZERO — the dissent ROTATES
+  (population-driven), consistent with the stress-churn reading**;
+  collapse inversion accrued unchanged; manifest refreshed +
+  re-hashed (atomic law, entourage edition). **STAGE 10, THE
+  RIDER'S READ: the frontier stood POST-DRESSING — DEPLOYED 40/40
+  mouth-refused under the NEW mouth, stress tier ZERO certified
+  lies again (21/5/14, all forty accounted).** The dressing did
+  not widen the mouth; zero lies held through the swap. GEN-41
+  RULES WITH ITS ENTOURAGE PAID.
