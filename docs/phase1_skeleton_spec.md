@@ -27212,3 +27212,19 @@ token-position × waist-dim, the moment the skeleton trains.
   map re-derived, on whatever waist training produced). The
   deployed g23v5 remains the only holder of the cure — untouched,
   intact, and now understood as such by law rather than luck.
+
+- **THE STATION READ'S VERDICT — THE TAIL FAILS AT THE POINTERS
+  (2026-08-10; door customer #30):** the 245 misses by first
+  failing station: **args 89 + res 72 = 161 (66%) — the bilinear
+  POINTERS**, digits 49 (20%), ftype 28 (11%), slots/op ~3%.
+  Cross-read with the census (subsurface 100%, ordinal 77%): the
+  tail is **binding-under-indirection** — "the fourth number" and
+  inverse-add frames break arg/res pointing, not classification.
+  THE TAIL FIRE'S NON-CONVERSION RE-READS: 3.4% aimed at surface
+  families, but the failing station is pointer-binding — the
+  dup precedent's exact question opens: **is the correct
+  arg/res linearly readable in the waist at the miss slots?**
+  (the family playbook: probe the waist before choosing
+  diet-vs-structural). The successor named: the POINTER PROBE
+  READ — waist-vs-head at the args/res stations on the tail's
+  own rows.
