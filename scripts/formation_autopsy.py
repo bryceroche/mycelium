@@ -69,11 +69,15 @@ def read_model(ck):
         out.append(diag)
     return out
 RES={}
-for name,ck in [("gate",".cache/g23v5.safetensors"),("g35",".cache/g35_size8x_refold.safetensors"),("g36",".cache/g36_freeze8x_refold.safetensors")]:
+import os as _os
+_cks=[("gate",".cache/g23v5.safetensors"),("g35",".cache/g35_size8x_refold.safetensors"),("g36",".cache/g36_freeze8x_refold.safetensors")]
+if _os.environ.get("AUTOPSY_CKS"):
+    _cks=[tuple(x.split(":",1)) for x in _os.environ["AUTOPSY_CKS"].split(",")]
+for name,ck in _cks:
     RES[name]=read_model(ck)
     cured=[i for i,d in enumerate(RES[name]) if d["cured"]]
     print(f"[{name}] cured rows: {len(cured)}/15  {cured}",flush=True)
-for name in ("g35","g36"):
+for name in [n for n,_ in _cks if n!="gate"]:
     print(f"--- {name} failures ---",flush=True)
     for i,d in enumerate(RES[name]):
         if d["cured"]: continue
@@ -83,9 +87,8 @@ for name in ("g35","g36"):
         print(f"[{name} row{i:2d}] op={ROWS[i]['op']:3s} mode={mode:9s} n_on={d['n_on']}(gate {g['n_on']}) "
               f"pres={dm['pres_logit']:+.2f} ftype_top={dm['ftype_top']}@{dm['p_top']:.2f} "
               f"p_rel={dm['p_rel']:.2f} rel_args={d['rel_args_all']}",flush=True)
-ov35=set(i for i,d in enumerate(RES["g35"]) if not d["cured"])
-ov36=set(i for i,d in enumerate(RES["g36"]) if not d["cured"])
-print(f"[overlap] g35-fail {sorted(ov35)}  g36-fail {sorted(ov36)}  shared {sorted(ov35&ov36)}",flush=True)
+for name,_ in _cks:
+    print(f"[fails] {name}: {sorted(i for i,d in enumerate(RES[name]) if not d['cured'])}",flush=True)
 json.dump({k:[{kk:vv for kk,vv in d.items()} for d in v] for k,v in RES.items()},
           open('.cache/formation_autopsy.json','w'), default=str)
 print("[banked] .cache/formation_autopsy.json",flush=True)
