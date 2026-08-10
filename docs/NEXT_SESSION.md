@@ -48,17 +48,25 @@ wild-forty slots, vs the adoption's fixture cells + wild-ledger
 negatives). NEVER MIX INSTRUMENTS' READINGS. Under one instrument
 all three arms read alike with identical healthy medians — bulk
 separability intact everywhere; the erosion narrative is DISSOLVED.
-THE REFOLD LAW STANDS (deployed-head reversion is real); the RITE
-needs calibration: **OWED NEXT — the calibrated rite (promotion-
-fixture cell mint + wild-ledger negatives, CONTROL-ASSERT on the
-gate riding first), then g35/g36 re-read under it. g35's record may
-yet carry the cure.** Both arms on the bench; GEN-23v5 remains the
-gate. Instrument-law candidate for the carve: an abort means
-nothing until the instrument passes its known-good control.
+THE REFOLD LAW STANDS. **THE CALIBRATED RITE (calibrated_rite.py,
+control-assert first — the instrument law carved) READ TRUE:
+control passes (1.509/0.814 ≈ adoption's numbers); g35 AND g36
+both OPEN; folds banked; and the decode scans print THE IDENTITY:
+misbind@nd4 = missing slots exactly (12=15−3, 9=15−6) — where the
+slot exists the fold cures it. The 4k fire's whole irreducible dup
+cost is REL-SLOT FORMATION under crowding** (novel phrasings;
+presence grain; no fold reaches it). Formation shows dose response
+to rehearsal (nd0 fully protected, nd4 3→6 slots). Neither arm
+meets scope (nd4 ≤0): both benched; GEN-23v5 remains the gate.
+NEXT DESIGN for the word: formation-targeted rehearsal — crowded
+novel-phrasing dup rows minted into the rehearsal set (the mix's
+dup rows are familiar low-crowding forms; the hole is exactly
+where the mix is empty).
 
 **THE BOARD (one board; supersedes all prior lists, 2026-08-10):**
-1. The calibrated rite (control-assert first), then g35/g36
-   re-read — g35's promotion question hangs on it.
+1. The formation-rehearsal fire design (crowded novel-phrasing
+   dup rows in the rehearsal set) — the road to a promotable
+   dose arm; registration awaits the word.
 2. The dose curve's next increment: priced sub-linear; buy design,
    not volume (compounding / E5 length co-vehicle — one purchase,
    two sheets).

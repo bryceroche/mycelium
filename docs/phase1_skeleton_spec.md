@@ -27622,3 +27622,36 @@ token-position × waist-dim, the moment the skeleton trains.
   (fold-series pools), control-assert riding first; then g35/g36
   re-read under it. The day ends with the machinery catching MY
   reconstruction, not the model: the third arm was the audit.
+
+- **THE CALIBRATED RITE READS TRUE — AND THE PROBLEM NARROWS TO
+  SLOT FORMATION (2026-08-10; the instrument law's first full
+  service):** the calibrated rite (fixture cells = promotion mint;
+  negatives = 4,043 in-register bigtest rel slots — the banked
+  pool's own lesson: the mouth guards the wild, false-fire duty is
+  over ADMITTED material) PASSES ITS CONTROL: g23v5 reads
+  fixture-min 1.509 / neg-max 0.814, θ 1.1617, FPR 0.00000 — the
+  adoption's numbers reproduced in class (1.141/0.801). The
+  instrument reads. THE CANDIDATE READS: **g35 OPENS (1.504/0.936,
+  θ 1.2197) and g36 OPENS (1.480/1.066, θ 1.2733), FPR 0 both —
+  all three waists carry the separability; both folds banked.**
+  THE DECODE-GRADE SCANS on the refolded arms: g35 3/3/15/12,
+  g36 0/3/15/9 — and THE IDENTITY that names the mechanism:
+  **misbind at nd=4 = missing slots EXACTLY on both arms (12=15−3,
+  9=15−6). Where the slot exists, the refold cures it perfectly.
+  The 4k continuation's entire irreducible dup cost is REL-SLOT
+  FORMATION under crowding at novel phrasings** — presence/ftype
+  grain, upstream of any detector; no fold reaches it. The
+  problem narrowed three times in one day: territory (VOID) →
+  detection (CURED by the calibrated fold) → FORMATION (the real
+  residue). Freeze+rehearsal shows DOSE RESPONSE at the formation
+  grain: nd=0 formation fully protected (g35's 3/15 → g36's
+  0/15), nd=4 partially (3 → 6 slots found). VERDICT: neither arm
+  meets the promoted scope (nd4 ≤ 0); both benched; GEN-23v5
+  remains the gate. THE NEXT DESIGN (for the word): formation-
+  targeted rehearsal — crowded novel-phrasing dup rows minted into
+  the rehearsal set (the mix's 8,233 dup rows are mostly familiar
+  low-crowding forms; the formation loss is precisely where the
+  mix is empty — a representability-shaped diet hole at the
+  formation grain). The rite's standing form: scripts/
+  calibrated_rite.py + calib_runner.sh (control-assert first,
+  always).
