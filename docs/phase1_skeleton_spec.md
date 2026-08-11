@@ -28530,3 +28530,23 @@ token-position × waist-dim, the moment the skeleton trains.
   twelfth and thirteenth. The wall-guard is BUILT in policy form
   the same day it was summoned: sensor + refire rite, zero new
   machinery, two fires' evidence.
+
+- **THE MINT-GRADE DEPTH DOSE — KILLED AT THE DESIGN TABLE
+  (2026-08-11; the campaign's first pre-ignition kill):** the
+  pricing arithmetic, run before any mint: #46's measured causal
+  rate (0.043 transfer/log-mass unit) × the affordable dose
+  (3,000 minted deep rows @3x = Δlog +0.11 at j6-7, dilution
+  4.9%) = **predicted +0.005 — an order under any bar. Reaching
+  +0.05 wants ×3.3 mass = ~30,000 rows or ~30% dilution: the
+  simplex forbids it.** THE DEPTH ROAD CLOSES AS A DIET QUESTION:
+  the axis is real, causal, and UNPURCHASABLE at ration grade —
+  PRICED's shape (measured rate × measured budget = too small)
+  arriving at the slot grain. No mint, no burn; the word's next
+  step consumed by a lawful refusal — arithmetic-before-burn
+  doing the only job cheaper than an honest kill. WHAT REMAINS
+  for the 233's deep cells: the ORGAN grain (nd2's two sightings
+  and the rescue's ordinal lean already point there — multi-read
+  machinery reaches what diets cannot feed) or the ceiling
+  accepted. The board sharpens: organic-failure gold, hot-LR
+  control, and THE BREATH BOOTSTRAP — which now carries the
+  depth question as its constituency.
