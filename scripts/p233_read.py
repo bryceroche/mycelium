@@ -3,7 +3,8 @@ banked 233 (frozen indices; the meter law's form)."""
 import json, re
 import numpy as np
 base=json.load(open('.cache/miss_census_gen41.json'))
-new=json.load(open('.cache/miss_census_g43.json'))
+import os
+new=json.load(open(os.environ.get('P233_NEW','.cache/miss_census_g44.json')))
 rows=[json.loads(l) for l in open('.cache/algebra_nl_bigtest.jsonl')]
 ORD=re.compile(r"(first|second|third|fourth|fifth) number")
 om=set(base["miss_idx"]); nm=set(new["miss_idx"])
