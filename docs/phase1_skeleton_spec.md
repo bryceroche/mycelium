@@ -28197,3 +28197,53 @@ token-position × waist-dim, the moment the skeleton trains.
   tonight: trilogy + confound + lean; the bootstrap design and
   the hot-LR control are its two named future words. g44r
   benched beside g44.
+
+- **GUT #189 REGISTERED — "WE NEED THE PERCEIVER" (2026-08-11,
+  Bryce's text; the defense, verbatim in substance):** the case
+  rests on one asymmetry: **slot attention lands in-span (0.911)
+  while the referent is token-readable (0.992) and slot-absent
+  (0.190) — the attention reads the right place and does not
+  carry the content.** A perceiver-style module offers what the
+  existing attention structurally lacks: a SECOND independently-
+  parameterized query into the same tokens WITH ITS OWN W_V — not
+  a duplicate but a different job on different gold, the twice-
+  validated form (W_dargs beside W_args; the broad detector
+  beside the trained head). The one-mass law governs shared
+  machinery; THE SPECIALIST LAW governs different jobs — and a
+  referent-transport query is a different job from span
+  segmentation. The gradient argument: #45's span pointer teaches
+  POINTING, not CARRYING — if the loss lives in W_V, a pointer
+  cures nothing and its null is uninterpretable. THE HONEST
+  ORDERING (the registration's rent): **the STATION READ decides
+  the door before either is built** — readouts at each transport
+  station (waist 0.992 banked → V-projection → attended pool
+  pre-wo → fst 0.190 banked) on the tail pool. Content dies at V
+  = the second query's case (perceiver leads); content survives V
+  but dies at pooling/wo = placement/mixing (#45-class or
+  wo-grain). Zero-GPU on banked artifacts; fired with this entry.
+
+- **THE STATION READ — EVERY STATION CARRIES; THE TAIL SPEAKS A
+  DIFFERENT SLOT CODE (2026-08-11; gut #189's rent paid, and the
+  fork it anticipated had a third prong):** readouts along the
+  transport path on ordinal rows (CPU, banked states, g41):
+  **waist 0.988 → V-projection 0.991 → attended pool pre-wo
+  0.911 → fst 0.927** — in-population ridges at every station,
+  INCLUDING the slot state itself. Against the banked 0.190
+  (probe trained on HEALTHY slots, tested on tail-wrong): both
+  numbers are true at once, therefore **the content ARRIVES and
+  is encoded in a DIFFERENT LINEAR CODE on tail slots than on
+  healthy slots — the transport thesis dies at the last station;
+  the failure is the READER.** The args pointer is monocultural:
+  trained overwhelmingly on the healthy code, it cannot read the
+  tail dialect that fst demonstrably carries at 0.93. Never-mix-
+  generations' coordinates law, surfacing WITHIN one model at the
+  slot-code grain. THE DOORS RE-SCOPED BY MEASUREMENT: the
+  perceiver's second-W_V query is NOT the target (V carries at
+  0.991); the span pointer is NOT the target (placement was
+  never broken); **THE SPECIALIST READER IS — a second args
+  pointer whose gold is the indirect population, reading the
+  tail code natively: the W_dargs receipt applied at its exact
+  original grain (different job, different gold, own pathway).**
+  Bryce's defense of the perceiver carried the winning law even
+  as the module it defended stood down: the specialist law chose
+  the door. Door #45's true form: THE DIALECT READER.
