@@ -28575,3 +28575,16 @@ token-position × waist-dim, the moment the skeleton trains.
   (warranted, first component named), organic-failure gold, the
   wall-guard standing. GEN-41 rules — fourteen exact controls,
   fences unbent.
+
+- **THE BOOTSTRAP'S TWO STANDING RIDERS (2026-08-11, Bryce's
+  carve, banked ahead of the registration):** (1) THE SURVIVAL
+  PRIMARY: the organ's warrant rests on two suggestive prints
+  (nd2's sightings, the 3.16 lean) — neither reproduced under
+  NORMALIZED scale; the first bootstrap fire's honest primary is
+  whether the effects SURVIVE their own confound's removal. If
+  true-scale breaths don't move nd2, the constituency evaporates
+  on the first read, not the third. (2) THE GUARD'S LR EXTENSION:
+  heat is a boundary-pusher — any future fire raising effective
+  scale inherits the jitter rite before its wall break convicts
+  anything. Both riders pre-date the design; the registration
+  inherits them whole.
