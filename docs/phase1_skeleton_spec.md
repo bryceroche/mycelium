@@ -28885,3 +28885,18 @@ token-position × waist-dim, the moment the skeleton trains.
   receivers. (3) the operator's reading, acted on with this
   entry: the WINDOW is the expiring message — the memory board
   relayed current before compaction.
+
+- **GUT REGISTERED — "IDENTIFY YOURSELF FIRST" (2026-08-11,
+  Bryce's text; the relay entry's companion, converted to
+  practice):** every relay message is a RULING (state changed,
+  hash exists), a REPORT (numbers printed, artifact banked), or a
+  COUNTERSIGN (judgment offered, nothing changed) — and today's
+  confusions were all category errors. **IDENTIFICATION ADOPTED:
+  the kind declared at the message's head — three words beating
+  a verification step** (the declared-key clause at the relay
+  grain). **TIME-SENSITIVITY REFUSED as a general marker** — the
+  pacing law governs; urgency markers inflate to meaninglessness
+  — WITH ONE NAMED EXCEPTION: a message that changes what a
+  burning fire should do (kill/stop/pre-ignition fault), because
+  the no-mid-fire law closes that window at ignition. The only
+  urgent category, rare by construction.
