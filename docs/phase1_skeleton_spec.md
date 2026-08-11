@@ -28063,3 +28063,41 @@ token-position × waist-dim, the moment the skeleton trains.
   chapter: one fire, one refutation, one mechanism named one
   grain deeper — census → families → stations → waist → tokens →
   TRANSPORT.
+
+- **THE ORGANS CHARTER (2026-08-10, Bryce's redirect: "prioritize
+  the organs even at a perf hit"):** the deployed gate is a
+  single-pass organism (ALG_BREATH=1; no notebook commits;
+  perceiver at its sanctioned monitor role; cathedral spec-stage).
+  THE TRANSPORT FINDING IS THE ORGANS' MECHANISTIC CASE: breaths
+  ARE token→slot transport (re-read under beliefs — built for
+  exactly the 0.882/0.190 stranding). THE ORDER, one machinery
+  change per door (never-bundle), probe-first, THE CLAIM'S FENCES
+  HARD AND UNWAIVABLE (cells scope, sentinels, frontier 40/40,
+  stress-lie family range) while SCORE IS SOFT (the word licenses
+  the hit; reported honestly, never bent): (1) BREATHS — door
+  #44, lit; (2) the NOTEBOOK (replace-and-accumulate; the W_cmt
+  soft-pawl machinery exists) — after breaths; (3) PERCEIVER as
+  monitor/segmenter; (4) CATHEDRAL (B3). The prior breath refusal
+  (−19 alg4) was a SCORE-FIRST verdict; the probe-first order
+  asks what breaths were built for. Bryce's rider answered in the
+  design: breaths TEACH THE EXISTING pathway (W_bo zero-init, no
+  new pointer head — one-mass-compatible); the specialist-law
+  fork (own-pathway W_dargs-style slot-side aux) is the PRE-NAMED
+  fallback arm if breaths don't carry it.
+
+- **THE SHAPING READ — THE ROOM WAS ALWAYS LIT; REF RETIRES
+  (2026-08-10):** ridge probes on the PRE-REF waists (banked
+  states, CPU): **g41 0.992, g23v5 0.992 holdout on bigtest
+  indirect sites (n=3,567)** — the token-grain referent has been
+  present at near-perfection across the whole lineage, BETTER
+  than h_ref's trained 0.882. The E-floor's supervision taught
+  nothing that wasn't there; ALG_REF RETIRES (the fork resolved
+  to its cheap side: pure transport work, one component, no
+  resolver to maintain). THE PRISTINE FORM OF THE TAIL'S
+  MECHANISM: tokens know at 0.992; slots read at 0.190; **the
+  entire 233-row bottleneck is ONE ATTENTION HOP.** Door #44's
+  stakes sharpen: breaths are the only existing machinery that
+  re-does that hop under belief conditioning — a probe move
+  confirms transport-by-reread; a flat probe sends the
+  structural aux (own-pathway, the W_dargs receipt) as the
+  clearly-scoped door #45.
