@@ -119,6 +119,16 @@ benched).
    dialect gold (specialist pattern at args grain); the set-based
    re-audit; the hot-LR control; the breath bootstrap design.
 
+   THE WALL-GUARD (door #47, BUILT as policy): the nd0-op wall
+   is a BINARY BIFURCATION flipped by data order alone (same
+   composition: −2.57 inversion at seed 127, +3.37 gate-plus at
+   227). GUARD = (a) post-fire wall check, HARD, with
+   REFIRE-ON-BREAK (one jittered refire before any diet verdict);
+   (b) the thinness watch as boundary sensor (deep floor = safe;
+   thin/inverted = adjacent). g46's fence-kill re-scoped (coin
+   flip); its primary miss stands. Depth-diet composition CAN
+   seat full scope (jitB 0/3/-/0 deep).
+
    DOOR #43 (E-floor, first form) history: tail
    probe FLAT 0.190 BUT h_ref transfers 0.882 on bigtest's own
    indirect sites — **THE EVIDENCE IS PRESENT AT THE TOKEN GRAIN

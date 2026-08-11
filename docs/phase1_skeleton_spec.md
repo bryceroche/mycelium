@@ -28503,3 +28503,30 @@ token-position × waist-dim, the moment the skeleton trains.
   (the guard is a diet-composition invariant, derivable next).
   The wall-guard question is now two hypotheses and one cheap
   experiment wide.
+
+- **DOOR #47'S VERDICT — BOUNDARY-PROXIMITY CONFIRMED, AND THE
+  BIFURCATION IS BINARY (2026-08-11):** ARM-H (held config, seed
+  227): nd0 0/15 with margins +1.83..+3.15 — held DEEP across
+  data orders. **ARM-B (broke config, seed 227): nd0 0/15 with
+  margins +2.11..+3.37 — DEEPER THAN THE GATE. The same
+  composition that INVERTED the wall at seed 127 (−2.57) prints
+  gate-plus depth at 227.** Outcome (iii) as pre-written, with
+  the sharper fact: the wall does not erode near the boundary —
+  it LANDS WHOLE on one side or the other; a true bifurcation
+  flipped by data order alone. THE GUARD'S MANDATE, both forms
+  now measured into necessity: **(a) the POST-FIRE WALL CHECK is
+  a standing HARD FENCE with a REFIRE-ON-BREAK policy — a wall
+  break no longer convicts a diet; it demands one jittered
+  refire before any composition verdict** (g46's fence-kill
+  RE-SCOPED: the depth tenant was convicted by a coin flip; its
+  primary miss +0.0135<+0.03 STANDS untouched); **(b) the
+  THINNESS WATCH graduates to the guard's boundary SENSOR** —
+  post-fire op-floor depth reads boundary distance (deep = off;
+  thin/inverted = adjacent → jitter-refire) — Goodhart intact:
+  post-fire check, never in loss. Noted without promotion talk
+  (arms pre-pinned discriminator-only): the depth-diet
+  composition CAN seat the full scope (jitB: 0/3/-/0, both walls
+  deep) — the composition was never the crime. Control exact
+  twelfth and thirteenth. The wall-guard is BUILT in policy form
+  the same day it was summoned: sensor + refire rite, zero new
+  machinery, two fires' evidence.
