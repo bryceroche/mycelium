@@ -28588,3 +28588,28 @@ token-position × waist-dim, the moment the skeleton trains.
   scale inherits the jitter rite before its wall break convicts
   anything. Both riders pre-date the design; the registration
   inherits them whole.
+
+- **DOOR #50'S VERDICT — THE ORGAN IS REAL; ITS AUTHORITY IS
+  UNTRAINED (2026-08-11; the bootstrap fire):** VACUOUSNESS
+  PASSED for the first time in the organ's history — gates open
+  (~0.49), pipe at full projection scale (|W_bo| 0.036, warm from
+  the router, sculpted +0.0028): BREATHING ENGAGED. **THE
+  SURVIVAL PRIMARY'S ANSWER: the ordinal lean survived its
+  confound's removal AND AMPLIFIED — 5.17 at true scale (18/181
+  ordinal converts vs 1/52 non-ordinal; churn-null expects ~15 vs
+  ~4; the rescue's confounded print was 3.16). The organ
+  preferentially converts the tail's own constituency — the only
+  mechanism in the campaign's history that does.** THE PRICE AT
+  50% AUTHORITY: the untrained dynamics overwrite the parse —
+  cells 15/15 across ALL bands (nd2 unreadable through the
+  crater), bigtest 1133, alg4 312, probe 0.155; the sentinels
+  alone held (20/20 ×2 through the storm). THE VERDICT: outcome
+  (a) with the damage rider — the organ is real, unconfounded,
+  and reaches what nothing else reaches; its AUTHORITY is the
+  untrained quantity. THE NEXT DIAL, named for the word:
+  AUTHORITY TITRATION — the same composition at low blend
+  (BREATH_GATE_INIT ≈ −2 → sigmoid 0.12, or annealed), reading
+  whether the 5.17 lean persists while the wreckage recedes. The
+  organs charter's first door is OPEN: engagement solved
+  (norm + warm pipe + open gates), competence titration is the
+  road. g50 to the bench as the organ's proof-of-life.

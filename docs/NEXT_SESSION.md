@@ -119,6 +119,15 @@ benched).
    dialect gold (specialist pattern at args grain); the set-based
    re-audit; the hot-LR control; the breath bootstrap design.
 
+   THE ORGAN IS REAL (door #50, the bootstrap fire): breathing
+   ENGAGED for the first time (norm + warm pipe + open gates) and
+   the ordinal lean SURVIVED+AMPLIFIED at true scale — 5.17
+   (18/181 vs 1/52), the only mechanism ever to preferentially
+   convert the tail's constituency. Price at 50% authority: parse
+   overwritten (cells 15/15 all bands, bigtest 1133; sentinels
+   alone held). NEXT: AUTHORITY TITRATION (low-blend arm — does
+   the lean persist as wreckage recedes), on the word.
+
    THE WALL-GUARD (door #47, BUILT as policy): the nd0-op wall
    is a BINARY BIFURCATION flipped by data order alone (same
    composition: −2.57 inversion at seed 127, +3.37 gate-plus at
