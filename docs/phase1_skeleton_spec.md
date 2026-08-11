@@ -28392,3 +28392,19 @@ token-position × waist-dim, the moment the skeleton trains.
   ROW grain; the slot-depth cell was never the aimed axis) — a
   design question for a word, now standing on three consecutive
   measured refutations that each narrowed the target.
+
+- **THE RETROACTIVE READ — EXPOSURE CO-LOCATES WITH THE DEFICIT
+  (2026-08-11; the aim-fire law's demand, zero-GPU):** the mix's
+  effective training mass by slot depth (ration-weighted) against
+  the transfer-by-index gradient: **corr(log mass, transfer) =
+  +0.68 over j=0..7; j=0 receives 5.9× j=7's mass, co-located
+  with the 0.219 deficit drop across the same span.** Not proof
+  (n=8 points, non-monotonic middle, current-mix proxy for a
+  multi-mix lineage) but the experience map's first check PASSES:
+  where the diet is thin, the readout is thin. THE SLOT-DEPTH
+  DIET DESIGN is licensed as a question: rebalance per-depth
+  mass (rows carrying late-index rel slots into the ration, or
+  deep-slot-heavy minting) — the first fire ever aimed at the
+  depth cell, with the receipt-shaped precedent (sign's 2.1%,
+  the detector's cells) that aim-on-the-band buys cures. Design
+  and dose arithmetic to a word.
