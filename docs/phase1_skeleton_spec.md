@@ -28976,3 +28976,20 @@ token-position × waist-dim, the moment the skeleton trains.
   exactly what never-lies must NOT do at the mouth — a mussel
   improves what passes; the chain's job is to refuse what it
   cannot certify. **Lawful upstream, unlawful at the boundary.**
+
+- **GUT REGISTERED — "ZEBRA MUSSELS" (2026-08-11, Bryce's text;
+  #164's biological instance):** selective removal ENRICHES the
+  residue — the water clears while the toxin concentrates, and it
+  looks like purification the whole time. #164's reduction law
+  with a receipt (correct-share 0.500→0.633 in lockstep with
+  trained-share). THE ADDITION #164 didn't state: **the filter is
+  WORKING CORRECTLY the entire time — a well-functioning
+  selective filter is a concentration mechanism BY CONSTRUCTION;
+  the better it works, the faster the residue concentrates.**
+  Five filters, five selectivities, one residue (trace 313/319,
+  mouth 98.4%, quorum, attestation). THE LIVE APPLICATION, the
+  claim's own fence re-armed: mouth-widening admits material
+  CONCENTRATED by everything upstream that worked — the knife
+  (all bevels at once) and the mussel (enriched arrivals) argue
+  the same order: THE WIDENING READ COMES FIRST. Registered
+  beside #164 with the filter-works-correctly clause.
