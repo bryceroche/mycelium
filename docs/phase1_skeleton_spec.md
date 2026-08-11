@@ -28993,3 +28993,19 @@ token-position × waist-dim, the moment the skeleton trains.
   (all bevels at once) and the mussel (enriched arrivals) argue
   the same order: THE WIDENING READ COMES FIRST. Registered
   beside #164 with the filter-works-correctly clause.
+
+- **DOOR #54'S VERDICT — THE RUNTIME RATCHET NEVER BIT; THE
+  TRAINING SHADOW SET A RECORD ON THE WRONG GRAIN (2026-08-11):**
+  vacuousness split: W_cmt direction TRAINED (0.029, full scale)
+  but bias closed (−3.93 from −4.0) — commits too conservative to
+  act. **THE PRIMARY FAILS BY THE LETTER: engaged regressions 108
+  — identical to the class, the churn uncut**; converts exactly
+  at the 20 floor; engaged nd4 partially recovered (3/15).
+  MEANWHILE the training-side shadow: **silent lean 2.59 — the
+  deployable bar's first silent clear, converts a record 30** —
+  guarded by the pinned reading note: a first on the WRONG GRAIN,
+  advancing nothing the pawl claimed; silent alg4 dips to 386 and
+  score 1218 (the trilemma's two-of-three again, the gift's axis
+  clearing this time). THE PRE-AUTHORIZED RESCUE FIRES: bias-open
+  pawl (CMT_B_INIT=-2.0, one line), same bars, one variant per
+  the rescue law — does a pawl that CAN act cut the churn?

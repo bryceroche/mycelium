@@ -537,7 +537,9 @@ def build_params(seed=0):
             # after 4k) — BREATH_GATE_INIT=0.0 opens the door at birth
         if int(os.environ.get("ALG_RINGS", "0")):    # RUNG-3 v1: the soft pawl
             p["W_cmt"] = t(np.zeros((H_W, 1)))       # zero-init commit head
-            p["W_cmt_b"] = t(np.full(1, -4.0))       # init: commit ~nothing
+            p["W_cmt_b"] = t(np.full(1, float(os.environ.get(
+                "CMT_B_INIT", "-4.0"))))             # init: commit ~nothing;
+                                                     # door #54-R: bias-open
     p["W_args"] = t(rng.randn(H_W, H_W) / math.sqrt(H_W))
     if int(os.environ.get("ALG_DUPPTR", "0")):
         p["W_dargs"] = t(rng.randn(H_W, H_W) / math.sqrt(H_W))
