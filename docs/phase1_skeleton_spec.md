@@ -28922,3 +28922,28 @@ token-position × waist-dim, the moment the skeleton trains.
   campaign's own best property. Filed as a walk and a sound after
   fifty-three doors, in a ledger that otherwise contains only
   work. Not everything needs to convert.
+
+- **DOOR #53'S VERDICT — THE TURN BRACKETED, nd0 CLEARED, THE ONE
+  WAVE EXHAUSTED (2026-08-11; the dial at p=0.75):** SILENT:
+  **nd0 0/15 — the first silent clear of that cell on any breath
+  arm** (residue read moot at zero); nd1/nd2/nd4 15/15 —
+  DIAL-INDEPENDENT, relocated at every coin weight; **the lean
+  0.78 — GONE; the non-monotone branch fires as pre-written: the
+  gift's turn is BRACKETED in (0.5, 0.75)** — it survives the
+  loop's absence (2.01 at half) and dies at its scarcity (0.78 at
+  quarter); score 1224; alg4 409 (above the gate's 407 again);
+  sentinels clean. ENGAGED: converged cells; misses 385,
+  regressions 169, score 1100 — **a quarter-trained loop is
+  hollowed authority: silence-weighting moves competence into
+  the weights AND drains the loop.** THE DIAL'S FINAL FORM: one
+  wave, two regions, three settings measured — the GIFT's region
+  (breathing-weighted) and the nd0/general-competence region
+  (silence-weighted) — with the DEEP CELLS in neither at any
+  weight. **The third region does not exist on this dial; the
+  second-mechanism clause takes the road** (selective authority
+  with its grain declared per the standing rider, annealing with
+  the ratchet flag, notebook-gated commit), and the gift's own
+  navigable band for any future coin sits in (0.5, 0.75). The
+  organ arc's window closes: eleven doors from summons to a
+  bracketed dependency curve, every branch pre-written, every
+  turn caught by its own registration.

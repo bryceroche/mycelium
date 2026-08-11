@@ -119,6 +119,14 @@ benched).
    dialect gold (specialist pattern at args grain); the set-based
    re-audit; the hot-LR control; the breath bootstrap design.
 
+   THE DIAL COMPLETE (door #53, p=0.75): nd0 CLEARED silent
+   (first ever) + alg4 409 > gate; but THE TURN BRACKETED — the
+   gift dies at loop-scarcity (lean 2.01@0.5 -> 0.78@0.75; band
+   (0.5,0.75)); deep cells dial-independent; engaged loop hollowed
+   (1100). ONE WAVE, TWO REGIONS, NO THIRD — the second-mechanism
+   clause takes the road: selective (grain-declared), annealed
+   (ratchet flag), notebook-gated. All on words.
+
    BREATH DROPOUT (door #52, p=0.5): BRANCH (b) REFUTED — the
    gift survives the loop's absence (silent lean 2.01); every
    silent axis moved toward deployable (misses 319→255, nd0 15→4,
