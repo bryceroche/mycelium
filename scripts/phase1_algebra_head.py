@@ -548,7 +548,7 @@ def build_params(seed=0):
     return p
 
 
-def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None):
+def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, drop=None):
     B = trunk.shape[0]
     waist = (trunk @ p["waist_w"] + p["waist_b"]).gelu() + p["sent_emb"][sent]
 
@@ -626,6 +626,9 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None):
                                          .gelu() @ p["W_bv"] + p["W_bv_b"]) \
                     @ p["W_bo"] + p["W_bo_b"]
             g = p["breath_gate"][kb].sigmoid()
+            if drop is not None:            # door #52: BREATH DROPOUT —
+                g = g * drop                # per-STEP coin; drop=0 makes the
+                                            # breath an exact identity (silent)
             cur_new = cur + g * (h_tok + h_slot - cur)
             if RINGS:  # the soft pawl: monotone commitment mass + anchor
                 cl = (cur_new @ p["W_cmt"] + p["W_cmt_b"])     # (B,L_FAC,1)
@@ -892,7 +895,8 @@ def do_eval():
         _tl = Tensor(tails_of(sent[sl_p]), dtype=dtypes.float) \
             if int(os.environ.get("ALG_CLOCK", "0")) else None
         out = forward(p, t_tr, t_tk, t_se, tail=_tl)
-        if int(os.environ.get("ALG_BREATH", "1")) > 1 and "W_bo" in p:
+        if int(os.environ.get("ALG_BREATH", "1")) > 1 and "W_bo" in p \
+                and not int(os.environ.get("BREATH_SILENT", "0")):
             o0 = {k: out[k].realize().numpy() for k in ("fat", "args", "res")}
             mk = build_slot_masks(o0, sent[sl_p])
             out = forward(p, t_tr, t_tk, t_se, tail=_tl,
@@ -1190,6 +1194,8 @@ def do_train(steps, lr, batch, seed):
     b_mask = fix(np.zeros((batch, L_FAC, L_FAC), np.float32), dtypes.float) \
         if K_B > 1 else None
     b_tail = fix(np.zeros((batch, T_ALG), np.float32), dtypes.float) if CLOCK else None
+    b_drop = fix(np.ones((1,), np.float32), dtypes.float) \
+        if os.environ.get("BREATH_DROPOUT") else None   # door #52 coin buffer
     bg = {}
     for k, shape, dt in (("presence", (L_FAC,), dtypes.float),
                          ("is_lit_f", (L_FAC,), dtypes.float),
@@ -1250,7 +1256,9 @@ def do_train(steps, lr, batch, seed):
             rv = (bg["presence"] * (1.0 - ok)).detach()
             o = forward(p, b_tr, b_tk, b_se, slot_mask=b_mask, revoke=rv, tail=b_tail)
         else:
-            o = forward(p, b_tr, b_tk, b_se, slot_mask=b_mask, tail=b_tail)
+            _bd = os.environ.get("BREATH_DROPOUT")
+            o = forward(p, b_tr, b_tk, b_se, slot_mask=b_mask, tail=b_tail,
+                        drop=(b_drop if _bd else None))
         l = loss_fn(o, bg)
         if INV_TR and "fst_s" in o:
             _d = o["fst_s"][0:4:2] - o["fst_s"][1:4:2]
@@ -1366,6 +1374,10 @@ def do_train(steps, lr, batch, seed):
             b_mask.assign(Tensor(MASKS[idx], dtype=dtypes.float).contiguous()).realize()
         if b_tail is not None:
             b_tail.assign(Tensor(TAILS[idx].astype(np.float32), dtype=dtypes.float).contiguous()).realize()
+        if b_drop is not None:
+            b_drop.assign(Tensor(np.array(
+                [1.0 if rng.rand() >= float(os.environ["BREATH_DROPOUT"]) else 0.0],
+                np.float32), dtype=dtypes.float).contiguous()).realize()
         feed = {"presence": gold["presence"][idx], "is_lit_f": gold["is_lit"][idx],
                 **({"opspan": OPGOLD[idx].astype(np.float32)} if OPATT else {}),
                 "args": gold["args"][idx], "fspan": gold["fspan"][idx],
