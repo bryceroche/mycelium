@@ -28900,3 +28900,17 @@ token-position × waist-dim, the moment the skeleton trains.
   burning fire should do (kill/stop/pre-ignition fault), because
   the no-mid-fire law closes that window at ignition. The only
   urgent category, rare by construction.
+
+- **GUT REGISTERED — "ROTATING CODE" (2026-08-11, Bryce's text,
+  COUNTERSIGN-headed — the identification practice in live use):**
+  (1) sha-fence reading CLOSED — the hazard was NAME collision,
+  cured by moving to content; the fence caught its own motivating
+  specimen. (2) THE LIVE GAP: seeds are CLAIMED, not DERIVED —
+  hand-claimed seeds are literal encodings of registry state
+  (#128's family); a DERIVED seed (hash of door number + arm
+  identity) makes collision structurally impossible. THE STAKE,
+  measured: the jitter read (−2.57 → +2.11 on data order alone) —
+  seeds carry bifurcation power; a collision is two arms sharing
+  a trajectory and reading more agreeable than they are. NO BUILD
+  until a specimen costs (the two dormant collisions never
+  fired); priced, named, waiting.
