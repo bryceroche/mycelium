@@ -42,11 +42,12 @@ def one(t):
     return decode({k:o[k][0] for k in o})[0]
 res={}
 for nd in (0,1,2,4):
-    rows=mint(nd); mis=0
-    for r in rows:
+    rows=mint(nd); mis=0; MISS_I=[]
+    for r_i,r in enumerate(rows):
         facs=one(r["text"])
         ok=any(f.get("ftype")=="rel" and f.get("args")==[r["dv"],r["dv"]] and f.get("op")==r["op"] for f in facs)
         mis+=(not ok)
+        if not ok: MISS_I.append(r_i)
     res[nd]=mis
-    print(f"[scan] distractors={nd}: misbind {mis}/15",flush=True)
+    print(f"[scan] distractors={nd}: misbind {mis}/15"+(f"  miss-rows {MISS_I}" if os.environ.get("SCAN_VERBOSE") else ""),flush=True)
 json.dump(res,open('.cache/dup_axis_scan2.json','w'))
