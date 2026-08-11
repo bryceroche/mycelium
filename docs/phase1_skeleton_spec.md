@@ -28479,3 +28479,27 @@ token-position × waist-dim, the moment the skeleton trains.
   fragility's standing cure), the mint-grade depth dose (behind
   the wall-guard), organic-failure gold, hot-LR control, breath
   bootstrap — all on words.
+
+- **THE WALL-GUARD'S FIRST READ — THE SHARE SPACE DOES NOT CONTAIN
+  THE DISCRIMINATOR (2026-08-11; the word's design duty, zero-GPU
+  from banked receipts):** the seven-arm table (holds: g36 0.2285,
+  g39 0.2567, g41 0.2587, g42 0.2580; breaks: g35 0.2025, g38
+  0.2372, **g46 0.2735 — ABOVE every held arm**): no monotone
+  threshold in full hot-mul NOR dup-share separates; the band
+  story dies on g36's −0.029 hold. **Hot-mul share is neither
+  necessary nor sufficient for the wall — the receipt metric was
+  a coincidence of the arms that carried it.** TWO CANDIDATES
+  LEFT STANDING: (1) VEHICLE-SPECIFICITY — which rows/surfaces
+  carry the mul mass, not how much (the counterweight and
+  one-mass eras' mul rode specific constructions); (2)
+  TRAJECTORY-BIFURCATION — the wall is hair-trigger because the
+  optimizer path passes near a bifurcation; tenant changes alter
+  batch-order (seed fixed, composition not) and the thin wall
+  lands on either side ~stochastically. THE DISCRIMINATING READ
+  (needs a word — two 4k fires): SEED-JITTER on one held and one
+  broke config (data-order seed only): wall state flips under
+  jitter = trajectory (the guard is then a POST-FIRE CHECK +
+  refire policy, not a diet rule); stable under jitter = vehicle
+  (the guard is a diet-composition invariant, derivable next).
+  The wall-guard question is now two hypotheses and one cheap
+  experiment wide.
