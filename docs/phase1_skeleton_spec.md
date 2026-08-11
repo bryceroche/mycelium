@@ -28613,3 +28613,24 @@ token-position × waist-dim, the moment the skeleton trains.
   organs charter's first door is OPEN: engagement solved
   (norm + warm pipe + open gates), competence titration is the
   road. g50 to the bench as the organ's proof-of-life.
+
+- **GUT REGISTERED — "MLIR / PROGRESSIVE LOWERING" (2026-08-11,
+  Bryce's text; the four-way sort honored):** (1) MEASURED AND
+  OURS: signature C (parallel refinement, altitude-ordered,
+  clocked) — banked with the vintage rivet; g50 is the FIRST
+  parser arm where breaths engaged, so C's transfer is now
+  TESTABLE — new standing, not new claim. (2) REFUTED, standS:
+  the diffusion-compiler framing (retired with its remainder;
+  #182's identity rider) — adds nothing beyond C. (3) REFUSED
+  TWICE: latents-as-deducer (the perceiver's three-pole map;
+  the two-jaws weld — abstraction never in verification).
+  BREATHS ARE TRANSPORT, NOT DEDUCTION — the 5.17 is transport's
+  number. (4) THE LIVE RENT, the one clause with no refusal
+  attached: **THE BREATH-0 COMPETENCE MAP** — the KenKen engine
+  printed determination 0.922 AUC from breath 0; nothing in the
+  parser has been read for it. The read: does g50's breath-0
+  state predict which rows/slots the later breaths CONVERT
+  (the 19, ordinal-leaned)? A READOUT, not a mechanism —
+  zero-GPU-class on banked artifacts, queued behind the
+  titration battery's completion. Progressive lowering stays at
+  #182's answer (gold-side supervision, unbuilt).
