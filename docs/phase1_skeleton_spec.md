@@ -28550,3 +28550,28 @@ token-position × waist-dim, the moment the skeleton trains.
   accepted. The board sharpens: organic-failure gold, hot-LR
   control, and THE BREATH BOOTSTRAP — which now carries the
   depth question as its constituency.
+
+- **DOOR #49'S VERDICT — THE ATTRIBUTION TABLE, PER EFFECT; THE
+  BOOTSTRAP WARRANTED WITH ITS PRICE SHEET FLIPPED (2026-08-11):**
+  the hot-LR control (single-pass 1.5e-4, byte-identical
+  otherwise; control exact fourteenth): **nd2 → BREATHS (heat
+  leaves it 15/15 unmoved — the two sightings are the organ's);
+  the ordinal lean → BREATHS (heat churns directionless at 0.80
+  vs the rescue's 3.16 — the tail's only directional print is the
+  organ's); the nd0 wall breaks → HEAT (full inversion −1.89..
+  −3.14 reproduced); the alg4 signature → HEAT (394, the −11/−14/
+  −19 class); bigtest cost → HEAT (1221).** Sentinels clean,
+  mouth 40/40. THE ORGAN'S FILE AFTER THE CONTROL: it keeps the
+  only two effects anything has ever produced in the tail's
+  direction and at nd2, and SHEDS ITS COSTS — which were the
+  loss-ladder's 1.5× heat, with a ONE-LINE CURE (normalize the
+  per-breath ladder by its weight sum → breath training at true
+  1× scale). **THE BOOTSTRAP PROJECT IS WARRANTED**: constituency
+  (the 233's deep cells + nd2), evidence (two owned effects),
+  price sheet (costs attributed away), and its design's first
+  component named (ladder normalization) before its first fire.
+  The wall note for the guard's file: heat is a boundary-pusher —
+  LR joins the adjacency signals. THE BOARD: the breath bootstrap
+  (warranted, first component named), organic-failure gold, the
+  wall-guard standing. GEN-41 rules — fourteen exact controls,
+  fences unbent.
