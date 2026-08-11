@@ -28835,3 +28835,22 @@ token-position × waist-dim, the moment the skeleton trains.
   third's absence** — a decision door #53's sheet could carry.
   CONVERGENT (weaker): the standing 5-view quorum family,
   measured territory. Banked awaiting the steer.
+
+- **THE 2-OF-3 ENTRY'S RIDER (2026-08-11, Bryce's carve; a caught
+  goalpost):** "score was the axis December never promised" is
+  TRUE and is also exactly the shape of a moved goalpost — the
+  score has been a PINNED, KILL-CARRYING BAR through fifty-three
+  doors, and deciding after a print that it was negotiable is the
+  failure the pre-registration door exists to prevent. If score
+  is ever to be the sacrificed third, that argues from the
+  claim's structure BEFORE a print makes it convenient, as a
+  REGISTERED SCOPE CHANGE — never absorbed as a reading. THE
+  HONEST TWO-OF-THREE PATH: the arm banks, and
+  can-a-gate-ship-below-gate-class becomes its own registered
+  decision at the December sheet's venue. AND THE GEOMETRY'S OWN
+  CORRECTION: one sine cut yields two regions — **the third
+  region, if it exists, is cut by a SECOND MECHANISM (selective
+  authority, annealing, notebook-gated commit), not chosen by
+  sacrificing an axis. The dial is still one wave.** Relayed
+  ahead-of-print reasoning caught and struck by the rider — the
+  discipline working on its own operator.
