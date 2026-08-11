@@ -28143,3 +28143,29 @@ token-position × waist-dim, the moment the skeleton trains.
   forewarned; the probe still reads first; and nd2's movement
   joins the sheet as a WATCHED lead (the station the whole dup
   arc could never touch responds to the organ, not the diet).
+
+- **THE RESCUE'S VERDICT — OPEN DOORS, EMPTY PIPE; THE BREATH
+  RE-ENTRY CLOSES ON ITS ONE VARIANT (2026-08-10):** vacuousness
+  check first: gates HELD at open init (sigmoid 0.49-0.50,
+  drifting faintly closed) and **W_bo still ~zero (0.0021) — the
+  delta path's output projection never grew.** At W_bo=0 every
+  breath is the identity; per-breath losses see identical states;
+  the growth gradient sits in a zero-init saddle. Probe: 0.165,
+  prior-class (instrument 0.975). BRANCH (c) BANKS: **the organ
+  does not fill under gentle continuation on this objective, doors
+  open or shut.** The rescue law's one variant is spent — STOP.
+  THE BREATH TRILOGY, banked for the board: (1) gates don't
+  self-open (#44); (2) opened gates don't fill (#44-R; the W_bo
+  saddle); (3) the bootstrap is a DESIGN QUESTION for its own
+  project — candidate forms for a future word: W_bo pad-warm from
+  attn_wo (never discard a trained router — the warm-start law),
+  per-breath forcing curricula, or the May v11 zero-init lesson's
+  inverse read. The organs charter holds; its first door needs a
+  key that doesn't exist yet. MEANWHILE THE TRANSPORT QUESTION'S
+  OTHER FORK LEADS THE BOARD: **door #45 candidate — THE
+  STRUCTURAL AUX (own-pathway, the W_dargs receipt): a slot-side
+  supervised pointer onto the indirect mention spans**, carrying
+  the resolved identity into fst by structure, not by rereading.
+  The 0.992/0.190 hop remains the campaign's narrowest named
+  target. nd=2's first-ever movement (8/15 under faint breath)
+  stays a WATCHED lead on the organ's file.
