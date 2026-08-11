@@ -28704,3 +28704,29 @@ token-position × waist-dim, the moment the skeleton trains.
   first composition honestly exhausted with its successor named
   by the organ's own signature. All to words. GEN-41 rules —
   every control exact, every fence unbent, the ledger whole.
+
+- **THE WIRING DISCOVERY — TWO READ GRAINS IN THE BREATH SHEETS
+  (2026-08-11; #167-instrument's next specimen, caught by the
+  competence map's own failure to find breaths):** forward()
+  engages breathing ONLY with slot_mask passed (line 599; the
+  script's --eval builds masks two-pass, lines 897-899). **Every
+  custom read on the breath arms — censuses, scans, probes,
+  P-233s — called forward bare: SINGLE-PASS readings of
+  breath-trained weights. The --eval scores (1133/1237/1250)
+  were two-pass, breathing engaged.** RE-GRADING, honest: (1)
+  THE LEANS (5.17/2.87/1.72) are a WEIGHTS property — visible
+  single-pass — which STRENGTHENS them (the organ's training
+  reshapes the weights toward ordinal conversion; no runtime
+  breathing needed to read it) — but their attribution to
+  runtime-vs-training dynamics is now open; (2) the cell craters
+  likewise single-pass weight damage; (3) the SCORES mixed
+  breathing in — the curve's score axis and its cell/lean axes
+  are DIFFERENT INSTRUMENTS; (4) the breath-0 competence map
+  needs the two-pass path (slot_mask) — queued corrected. THE
+  QUEUE FOR THE NEXT WINDOW, all reads before any new fire:
+  re-read the breath arms' cells/leans/probes UNDER TWO-PASS
+  (does runtime breathing add to, subtract from, or leave the
+  weight-level effects?), then the corrected competence map,
+  then the selective-authority design with a clean grain map.
+  The instrument law's lesson, third time this week: the read's
+  wiring is part of the read.
