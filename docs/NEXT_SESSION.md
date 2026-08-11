@@ -103,7 +103,23 @@ benched).
    BRACKETED (4.3% safe / 8.6% kills); thinness watch first print
    = RECOVERY (+0.74→+1.29); widest calibrated gap (0.956); g42
    benched panel-eligible. Stress-lie range across arms now 0-3
-   (churn; every sheet carries it). DOOR #43 (E-floor, first form) CLOSED by probe-first: tail
+   (churn; every sheet carries it). DOORS #43-#45 (the transport arc) CLOSED honestly: E-floor
+   refuted (probe flat; REF retired — the room was always lit at
+   0.992); breaths VACUOUS twice (gates don't self-open; opened
+   gates don't fill; loss-scale confound carved: breath arms =
+   1.5x hotter LR; nd2's two sightings + the rescue's suggestive
+   ordinal lean 3.16 ride the organ file); dialect reader =
+   SECOND MAJORITY TONGUE (in-register indirect gold is
+   majority-readable; THE REGISTER WALL AT THE CODE GRAIN: tail
+   code gold cannot come from the measured fixture). INSTRUMENT
+   LAWS gained: slot-aligned reads are train-register-only —
+   TEST READS MUST BE SET-BASED (the 85% figure void; the
+   station read's slot-station numbers owe a set-based re-audit
+   before door #46). NEXT CANDIDATES on words: organic-failure
+   dialect gold (specialist pattern at args grain); the set-based
+   re-audit; the hot-LR control; the breath bootstrap design.
+
+   DOOR #43 (E-floor, first form) history: tail
    probe FLAT 0.190 BUT h_ref transfers 0.882 on bigtest's own
    indirect sites — **THE EVIDENCE IS PRESENT AT THE TOKEN GRAIN
    AND STRANDED IN TRANSPORT (token→slot)**; the successor is

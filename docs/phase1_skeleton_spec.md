@@ -28247,3 +28247,37 @@ token-position × waist-dim, the moment the skeleton trains.
   Bryce's defense of the perceiver carried the winning law even
   as the module it defended stood down: the specialist law chose
   the door. Door #45's true form: THE DIALECT READER.
+
+- **DOOR #45'S VERDICT — SECOND MAJORITY TONGUE CONFIRMED, AND THE
+  INSTRUMENT TEACHES ITS OWN LESSON (2026-08-11):** the dialect
+  reader trained to a NEAR-COPY of the majority pointer: on
+  indirect slots the majority reads correctly, iargs agrees 0.978
+  (the gate-check with iargs:=args prints 1.000 on the same pool —
+  the arm's reader IS the majority tongue to within noise); on the
+  "tail-wrong" pool it adds nothing (0.000; shadow potential ~1
+  row). BRANCH (c) BY SIGNATURE: warm-seeded from W_args and fed
+  in-register indirect gold — which the majority tongue already
+  reads — the head had nothing to learn. **THE REGISTER WALL AT
+  THE CODE GRAIN: the tail code is a TEST-REGISTER phenomenon; its
+  gold cannot come from bigtest (measured, never trained), and the
+  mix's indirect slots do not carry it.** THE INSTRUMENT LESSON
+  (the gate-check's second gift): the read's "tail-wrong" pool
+  (3,313 slots, 85% of ordinal rel slots — ON THE GATE TOO) is
+  confounded by INFERENCE-TIME SLOT-ORDER FREEDOM — training
+  forces slot↔factor alignment; unseen rows don't; **slot-aligned
+  reads are TRAIN-REGISTER-ONLY instruments; test-row reads must
+  be SET-BASED** (decode/solve2 are order-free and always were).
+  The 85% figure is VOID as an args-quality claim. FENCES: cells
+  0/3/-/1 (ONE nd4 formation row nicked — noted), sentinels
+  clean, frontier 40/40 (1 lie @25), ring STRONG (bigtest 1257 —
+  above the gate +3; alg4 414). g45 benched (its ring is
+  panel-grade). THE SHARPENED SUCCESSOR (branch (c)'s pre-named
+  form, now doubly-shaped): dialect gold = the majority reader's
+  ORGANIC IN-REGISTER FAILURES (the specialist-remine pattern at
+  the args grain) + SET-BASED instruments before any bar is
+  pinned. And the station-read's 0.93 in-population fst ceiling
+  itself now needs the set-based re-audit (it used slot-aligned
+  gold on test rows — the same confound; the transport/code story
+  holds at the token stations (0.988/0.991, alignment-free) but
+  the SLOT-station numbers re-read before door #46 designs
+  anything.)

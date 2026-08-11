@@ -2,7 +2,7 @@
 reader's own accuracy on tail-wrong slots vs the majority reader,
 plus the not-a-second-tongue agreement clause + shadow potential."""
 import os, sys, json
-os.environ["ALG_DIAL"]="1"
+if os.environ.get("DIAL_GATECHK")!="1": os.environ["ALG_DIAL"]="1"
 for k,v in [("ALG2","1"),("ALG_FTYPES","8"),("ALG_HW","512"),("ALG_DUP","1"),("ALG_WIDE","1"),("ALG_INV","1")]: os.environ.setdefault(k,v)
 os.environ.setdefault("ALG_TEST",".cache/algebra_nl_bigtest.jsonl"); os.environ.setdefault("ALG_TEST_NAME","bigtest")
 sys.path.insert(0,'.'); sys.path.insert(0,'scripts')
@@ -21,11 +21,14 @@ for s0 in range(0,len(samples),8):
     o=forward(p,Tensor(states[slp].astype(np.float32),dtype=dtypes.float),
               Tensor(tokmask[slp].astype(np.float32),dtype=dtypes.float),
               Tensor(sent[slp].astype(np.int32),dtype=dtypes.int))
-    onp={k2:o[k2].realize().numpy() for k2 in ("args","iargs","pres","ftype")}
+    keys=("args","iargs","pres","ftype") if os.environ.get("DIAL_GATECHK")!="1" else ("args","pres","ftype")
+    onp={k2:o[k2].realize().numpy() for k2 in keys}
+    if "iargs" not in onp: onp["iargs"]=onp["args"]
     for bi,ri in enumerate(sl):
         if not ORD.search(samples[ri]["text"]): continue
         for j,f in enumerate(samples[ri]["factors"]):
             if f.get("ftype")!="rel" or len(set(f.get("args",[])))!=2: continue
+            if onp["pres"][bi,j]<=0 or onp["ftype"][bi,j].argmax()!=0: continue
             a0=sorted(f["args"])[0]
             am=int(np.argsort(-onp["args"][bi,j])[0]); am2=sorted(np.argsort(-onp["args"][bi,j])[:2].tolist())
             im=int(np.argsort(-onp["iargs"][bi,j])[0]); im2=sorted(np.argsort(-onp["iargs"][bi,j])[:2].tolist())
