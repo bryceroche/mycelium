@@ -28656,3 +28656,25 @@ token-position × waist-dim, the moment the skeleton trains.
   The organ's file, end of night: REAL, unconfounded, separable
   from its damage, curve in hand — from twice-refused to the
   campaign's only tail-converting mechanism in three doors.
+
+- **GUT REGISTERED — "THE PIKE'S JAW" (2026-08-11, Bryce's text;
+  beside the grouper, which stands):** the grouper names
+  SEQUENTIAL STATIONS (capture, then the pharyngeal mill — the
+  deployed chain's anatomy). The pike names what the grouper
+  cannot: **recurved teeth ratcheting prey inward WITHIN the
+  first jaw — one-way transport inside a station, every
+  relaxation an advance, nothing sliding back.** THE CLAUSE:
+  intra-station transport is its own mechanism, not a stage
+  boundary — the 0.992/0.190 hop lives INSIDE the construction
+  jaw at a hop no chart had drawn; the breath organ is its
+  ratchet candidate. THE FLAGGED RESEMBLANCE, unmeasured and
+  priced as such: recurved teeth advance ON RELAXATION — a pawl
+  — and the titration just printed converts-rise-when-calm
+  (whisper beats shout). Suspiciously ratchet-shaped: small
+  repeated advances over one hard grip. NOT a measurement; the
+  shape-match's cost is twice-learned this month. Noted where it
+  will matter: if the whisper band proves empty, ANNEALED
+  AUTHORITY is among the named compositional successors — the
+  ratchet's own shape, and this flag will be waiting at its
+  registration. No build; the grouper unrefuted; one clause, one
+  flag.
