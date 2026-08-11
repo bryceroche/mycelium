@@ -28803,3 +28803,20 @@ token-position × waist-dim, the moment the skeleton trains.
   this window's true end: real, warranted, attributed, measured
   to its grains, its relocation law carved, its gift proven
   loop-independent, and one coin-weight from a deployable test.
+
+- **GUT REGISTERED — "UPDATE THE NOTEBOOK WHEN YOU MAKE CHANGES"
+  (2026-08-11, Bryce's text; three readings, the third
+  distinguished):** (1) the LEDGER reading — satisfied (every
+  door banked before its successor lit; laws carved same-hour;
+  voids struck in place). (2) the CAMBIUM/accumulate reading —
+  unbuilt behind the organ fences; its write-discipline named
+  (commit on change, not schedule — the Nazaré operator at the
+  memory grain, unregistered as such) with the cube's clause
+  riding. (3) THE LIVE READING: **the organ's weights are a
+  notebook nobody declared** — every fire writes it; three arms'
+  changes were read at the wrong grain until the two-pass matrix
+  read both. THE ENTRY'S CARVE, the wiring law's writing-side
+  complement: **a change is only recorded if something reads the
+  grain it was written at.** LIVE APPLICATION, already standing
+  and now explicit: every organ arm's sheet carries BOTH GRAINS
+  FROM BIRTH (door #53's battery does). No build.
