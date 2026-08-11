@@ -29,8 +29,14 @@ def one(t):
     e=tok.encode(t); Ln=min(len(e.ids),T_ALG)
     ids[0,:Ln]=e.ids[:Ln]; msk[0,:Ln]=1.0
     snt[0]=sent_indices(t,list(e.offsets),msk[0])
-    out=forward(p,Tensor(recompute_states(ids).astype(np.float32),dtype=dtypes.float),
-                Tensor(msk,dtype=dtypes.float),Tensor(snt,dtype=dtypes.int))
+    _tr=Tensor(recompute_states(ids).astype(np.float32),dtype=dtypes.float)
+    _tk=Tensor(msk,dtype=dtypes.float); _se=Tensor(snt,dtype=dtypes.int)
+    out=forward(p,_tr,_tk,_se)
+    if os.environ.get("TWO_PASS")=="1" and "W_bo" in p:
+        from phase1_algebra_head import build_slot_masks
+        _o0={k:out[k].realize().numpy() for k in ("fat","args","res")}
+        _mk=build_slot_masks(_o0, snt)
+        out=forward(p,_tr,_tk,_se,slot_mask=Tensor(_mk,dtype=dtypes.float))
     keys=("pres","ftype","op","islit","dig","args","res","query")+(("sel",) if "sel" in out else ())+(("dup",) if "dup" in out else ())
     o={k:out[k].realize().numpy() for k in keys}
     return decode({k:o[k][0] for k in o})[0]

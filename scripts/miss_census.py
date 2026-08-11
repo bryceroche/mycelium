@@ -24,6 +24,11 @@ for s0 in range(0,len(samples),8):
     tk=Tensor(tokmask[slp].astype(np.float32),dtype=dtypes.float)
     se=Tensor(sent[slp].astype(np.int32),dtype=dtypes.int)
     o=forward(p,tr,tk,se)
+    if os.environ.get("TWO_PASS")=="1" and "W_bo" in p:
+        _o0={k:o[k].realize().numpy() for k in ("fat","args","res")}
+        _mk=build_slot_masks(_o0, sent[slp])
+        from tinygrad import Tensor as _T, dtypes as _dt
+        o=forward(p,tr,tk,se,slot_mask=_T(_mk,dtype=_dt.float))
     keys=("pres","ftype","op","islit","dig","args","res","query")+(("sel",) if "sel" in o else ())+(("dup",) if "dup" in o else ())+(("sgn",) if "sgn" in o else ())
     onp={k:o[k].realize().numpy() for k in keys}
     for bi,ri in enumerate(sl):
