@@ -29060,3 +29060,18 @@ token-position × waist-dim, the moment the skeleton trains.
   READ-BACK). The practice adopted with the fix: board writes
   assert their own read-back at the grain written. The relay
   fence's price question now has its first invoice.
+
+- **THE ACCUMULATE SPEC WRITTEN (2026-08-11; spec-first, the
+  word's next step at an organ's scale — docs/ACCUMULATE_SPEC.md;
+  nothing authorizes a fire):** the transfer question is the
+  spec's spine — the three no-transfer corpses share one anatomy
+  (mechanisms living in learned dynamics), and the one argument
+  with receipts stands against it: **structure transfers by
+  construction; learned dynamics don't** (the pointer law's
+  family). The object fork (state-side anchors / decode-side
+  conditioning / the June dual form) resolves by an
+  inference-only smoke: does pass-2 conditioned on pass-1's
+  committed factors move the deep cells at all? Fences in from
+  birth (certification boundary hard: accumulate NEVER feeds the
+  mouth or the key); the transfer clause's own removal test
+  carved as a bar-shape. The smoke fires on a word.
