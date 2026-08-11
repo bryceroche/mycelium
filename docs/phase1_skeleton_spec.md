@@ -28408,3 +28408,24 @@ token-position × waist-dim, the moment the skeleton trains.
   depth cell, with the receipt-shaped precedent (sign's 2.1%,
   the detector's cells) that aim-on-the-band buys cures. Design
   and dose arithmetic to a word.
+
+- **GUT #167, SECOND VISIT — "DON'T NAVIGATE BY GPS ALONE"
+  (2026-08-11, Bryce's text; the instrument-side clause):** the
+  first visit guarded the MODEL (recall-doesn't-read; every diet
+  win owes an anchor check — standing practice since). The second
+  visit guards the CAMPAIGN: tonight three cure classes died
+  because instruments were navigating by their own readout — the
+  dialect was the instrument's ghost, the 85% pool convicted the
+  deployed gate, the 0.190 was alignment artifact. Numbers
+  correct, MAP wrong: turn-by-turn into a field that wasn't
+  there. The clause: **#167-model guards arriving-without-
+  reading; #167-instrument guards measuring-without-a-map.** The
+  carved cure (control-assert: an instrument that convicts the
+  known-good produces no verdicts) covers the known-good case at
+  two grains now. THE NAMED GAP, banked without a build: readings
+  with NO known-good available — most frontier work. Partial
+  existing defense noted for the record: the pre-registration
+  door (bars pinned before measurement are terrain knowledge
+  independent of the instrument) guards INTERPRETATION but not
+  instrument validity; the gap stands, named, awaiting whatever
+  specimen teaches its cure.
