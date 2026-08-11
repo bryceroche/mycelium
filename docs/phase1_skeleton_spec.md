@@ -29046,3 +29046,17 @@ token-position × waist-dim, the moment the skeleton trains.
   engaged nd0 0/15 and nd4 6/15. All organ roads now converge on
   ACCUMULATE + the second-cut designs, on words, with the
   transfer question standing over them all.
+
+- **THE BOARD-RELAY FAILURE — THE WRITE-GRAIN LAW BITES ITS CARVER
+  (2026-08-11):** every memory-board update this window FAILED
+  SILENTLY (a regex demanding a bare date against a header
+  carrying a suffix; later edits anchored on the phantom) — the
+  cold-start surface sat at pre-GEN-41 through fourteen doors
+  while its updater reported success. Caught only when a
+  downstream anchor went missing. **The unfenced-channel entry's
+  specimen arrived on the OPERATOR'S side, and it cost a window's
+  worth of cold-start currency** (recovered — the ledger held
+  everything; the board rebuilt from it and VERIFIED BY
+  READ-BACK). The practice adopted with the fix: board writes
+  assert their own read-back at the grain written. The relay
+  fence's price question now has its first invoice.
