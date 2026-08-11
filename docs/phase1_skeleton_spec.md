@@ -29095,3 +29095,12 @@ token-position × waist-dim, the moment the skeleton trains.
   0 without it). The certification boundary stands untouched: the
   key graded every pass-2 answer in primitives as always. The
   design registration goes to a word with 4/0 as its floor.
+
+- **THE DESIGN REGISTRATION'S TWO INHERITED RIDERS (2026-08-11,
+  Bryce's carve, banked ahead):** (1) 4/0 is the FLOOR and the
+  ceiling is UNMEASURED — richer commits enter as a CLAIM WITH A
+  READ, never an assumption. (2) **the removal test is satisfied
+  by construction ONLY while nothing trains** (no gradients = no
+  other candidate); the moment a design fires with gradients it
+  becomes an ACTUAL BAR, and the registration says so explicitly
+  rather than inheriting today's tautology.

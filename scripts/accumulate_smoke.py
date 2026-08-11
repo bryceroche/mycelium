@@ -44,8 +44,16 @@ conv=0; reg=0; texts2=[]; kept=[]
 for i,r in enumerate(ROWS):
     facs,q=p1[i]
     givens=[f for f in facs if f.get("ftype")=="lit" or f.get("ftype")=="given"]
-    add=" ".join(f"It is known that {L[f['var']]} is {f['value']}." for f in givens
-                 if isinstance(f.get('var'),int) and 0<=f.get('var',99)<24 and isinstance(f.get('value'),int))
+    parts=[f"It is known that {L[f['var']]} is {f['value']}." for f in givens
+           if isinstance(f.get('var'),int) and 0<=f.get('var',99)<24 and isinstance(f.get('value'),int)]
+    if os.environ.get("REL_COMMITS")=="1":
+        for f in facs:
+            if f.get("ftype")=="rel" and len(set(f.get("args",[])))==2 and f.get("result") is not None:
+                a,b=sorted(f["args"]); c=f["result"]
+                if 0<=a<24 and 0<=b<24 and 0<=c<24 and c not in (a,b):
+                    if f.get("op")=="add": parts.append(f"{L[a]} and {L[b]} together make {L[c]}.")
+                    elif f.get("op")=="mul": parts.append(f"The product of {L[a]} and {L[b]} is {L[c]}.")
+    add=" ".join(parts)
     texts2.append(samples[r]["text"]+" "+add if add else samples[r]["text"])
 p2=run_pass(texts2)
 for i,r in enumerate(ROWS):
@@ -55,4 +63,4 @@ for i,r in enumerate(ROWS):
     if a1!=g_ and a2==g_: conv+=1
     if a1==g_ and a2!=g_: reg+=1
 print(f"[smoke] the 233 under pass-2 given-conditioning: converts {conv}  regressions {reg}",flush=True)
-json.dump({"converts":conv,"regressions":reg},open('.cache/accumulate_smoke.json','w'))
+json.dump({"converts":conv,"regressions":reg},open(os.environ.get("SMOKE_OUT",".cache/accumulate_smoke.json"),"w"))
