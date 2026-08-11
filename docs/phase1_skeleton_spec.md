@@ -28310,3 +28310,42 @@ token-position × waist-dim, the moment the skeleton trains.
   original axis, now located at the attention hop with honest
   numbers). The gut's service recorded: wrong on purpose, right
   on where to look.
+
+- **GUT #190 REGISTERED — "THE BOULEVARD" (2026-08-11, Bryce's
+  text; simultaneous-load decomposition):** a median decomposes
+  one hard crossing into two easy ones — not less traffic, less
+  SIMULTANEOUS load, with a place to commit partway; n−1
+  checkpoints max (one per gap). MEASURED REFERENT: tonight's
+  index gradient (0.804@j0 → 0.585@j7) = a crossing attempted in
+  one hop across a widening road; THE POOL HAS NO MEDIAN — every
+  slot resolves against the full roster in one attention pass.
+  CANDIDATE: STAGED RESOLUTION (resolve subset → commit → resolve
+  remainder against the committed partial) — the accumulate
+  notebook's shape and the beam exit's, arriving at a third site
+  with a gradient behind them. FENCES STANDING: the organ file's
+  two refusals (breaths don't bootstrap; the exit priced) are
+  inherited — a staged design must say how it escapes both;
+  #144's boundary: capacity decomposition lawful, instrument
+  duplication not. HONEST LIMIT: three cure classes closed
+  tonight by measurement; decomposability is UNMEASURED. THE
+  RENT (fired with this entry): does the thinning track roster
+  SIZE or slot INDEX independently? Index alone = staging has a
+  target; size = the pool saturates and no median helps.
+
+- **GUT #190's RENT PAID — THE ANSWER IS BOTH (2026-08-11):** the
+  two-way read on set-based pools: **index slope −0.009..−0.014
+  per slot AT FIXED SIZE (every size bin); size slope
+  −0.004..−0.013 per var AT FIXED INDEX (every j bin)** — the
+  thinning tracks BOTH axes independently at ~−0.01/unit each;
+  neither reduces to the other. The rent's fork answers in the
+  middle: the load is real on both dimensions, so **staged
+  resolution keeps its target** (commitment reduces simultaneous
+  load, which is what both slopes price) — but the pool ALSO
+  saturates with roster at fixed index, so a median alone is not
+  the whole cure. The boulevard's design question stands OPEN
+  with both organ-file fences inherited (breaths don't bootstrap;
+  the exit priced) and a measured two-axis load surface to design
+  against. The night's ledger closes here: three cure classes
+  closed by measurement, two instrument laws carved, the deficit
+  located at the pooling hop with an honest 0.78-graded ceiling
+  and a two-slope map. Everything downstream is a word.

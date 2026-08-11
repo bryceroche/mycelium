@@ -44,7 +44,7 @@ def run(i):
 ORD_ROWS=[i for i in range(len(samples)) if ORD.search(samples[i]["text"])]
 HEALTHY=[i for i in range(len(samples)) if not ORD.search(samples[i]["text"])][:400]
 def collect(rows):
-    X=[];Y=[];J=[]
+    X=[];Y=[];J=[];NV=[]
     for i in rows:
         st,at=run(i)
         T=len(mask[i])
@@ -53,9 +53,9 @@ def collect(rows):
             fm=spans_tokmask(f.get("spans") or [], offsets[i], at.shape[1])
             if fm.sum()==0: continue
             j=int(np.argmax(at @ fm))          # span-attention pairing (order-free)
-            X.append(st[j]); Y.append(sorted(f["args"])[0]); J.append(j)
-    return np.array(X),np.array(Y,np.int32),np.array(J)
-XO,YO,JO=collect(ORD_ROWS[:350]); XH,YH,JH=collect(HEALTHY)
+            X.append(st[j]); Y.append(sorted(f["args"])[0]); J.append(j); NV.append(samples[i]["n_vars"])
+    return np.array(X),np.array(Y,np.int32),np.array(J),np.array(NV)
+XO,YO,JO,NO=collect(ORD_ROWS[:350]); XH,YH,JH,NH2=collect(HEALTHY)
 print(f"[pools] ordinal slots {len(XO)}  healthy slots {len(XH)}",flush=True)
 def ridge(Xtr,Ytr):
     mu,sg=Xtr.mean(0),Xtr.std(0)+1e-6
@@ -75,3 +75,28 @@ for j in sorted(common)[:8]:
     accs.append(((prj(XO[JO==j])==YO[JO==j]).mean(), j, (JO==j).sum()))
 for a,j,n in accs: print(f"[B index j={j}] healthy_j->ordinal_j transfer {a:.3f} (n={n})",flush=True)
 if accs: print(f"[B] mean within-index transfer {np.mean([a for a,_,_ in accs]):.3f}  vs pooled cross {(pr(XO)==YO).mean():.3f}",flush=True)
+# (C) THE RENT: size vs index, two-way
+pred_ok=(pr(XO)==YO)
+import itertools
+print("[C rent] acc by (slot index bin, roster size bin):",flush=True)
+jb=np.digitize(JO,[3,6,10]); nb=np.digitize(NO,[8,12,16])
+for jj in range(4):
+    row=[]
+    for nn in range(4):
+        m=(jb==jj)&(nb==nn)
+        row.append(f"{pred_ok[m].mean():.2f}({m.sum()})" if m.sum()>=25 else "  -  ")
+    print(f"  j-bin{jj}: "+"  ".join(row),flush=True)
+# marginal slopes
+for name,g in [("index|size-controlled",None)]:
+    pass
+from numpy.polynomial import polynomial as P_
+for nn in range(4):
+    m=nb==nn
+    if m.sum()>80:
+        c=np.polyfit(JO[m],pred_ok[m].astype(float),1)[0]
+        print(f"[C rent] size-bin{nn}: acc-vs-INDEX slope {c:+.4f}/slot (n={m.sum()})",flush=True)
+for jj in range(4):
+    m=jb==jj
+    if m.sum()>80:
+        c=np.polyfit(NO[m],pred_ok[m].astype(float),1)[0]
+        print(f"[C rent] j-bin{jj}: acc-vs-SIZE slope {c:+.4f}/var (n={m.sum()})",flush=True)
