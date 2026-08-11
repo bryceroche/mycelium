@@ -28730,3 +28730,29 @@ token-position × waist-dim, the moment the skeleton trains.
   then the selective-authority design with a clean grain map.
   The instrument law's lesson, third time this week: the read's
   wiring is part of the read.
+
+- **THE GRAIN MATRIX COMPLETE — THE ORGAN'S GIFT AND ITS RUNTIME
+  ARE ENEMIES (2026-08-11; the two-pass re-reads, all arms):**
+  | authority | grain | cells nd0/1/2/4 | lean | misses |
+  | 50% | silent | 15/15/15/15 | 5.17 | 319 |
+  | 50% | engaged | 5/15/15/6 | 0.45 | 346 |
+  | 12% | silent | 5/15/15/15 | 2.87 | 250 |
+  | 12% | engaged | 5/15/15/14 | 0.74 | 251 |
+  | 5% | silent | 5/15/15/15 | 1.72 | 235 |
+  | 5% | engaged | 5/15/15/0 | 0.62 | 241 |
+  **THE LAW-GRADE FACTS: (1) the ordinal lean exists ONLY on the
+  silent grain — at every authority, engaging the runtime ERASES
+  or INVERTS it (5.17→0.45, 2.87→0.74, 1.72→0.62). The organ's
+  TRAINING leaves an ordinal-converting gift in the weights; the
+  organ's RUNTIME destroys its own gift. (2) runtime breathing
+  REPAIRS cells NONMONOTONICALLY in authority (nd4: full repair
+  at 5% (15→0), none at 12% (15→14), partial at 50% (15→6)) —
+  two unexplained shapes, the texture rule summons a mechanism
+  probe. (3) NEITHER GRAIN IS DEPLOYABLE: silent = lean + broken
+  cells; engaged = (whisper) better cells + no lean.** The
+  selective-authority design must now declare WHICH GRAIN it
+  aims at; train-with-breath/deploy-silent harvests the lean but
+  fails scope; every further move to words with the matrix in
+  hand. The arc's close: the organ is real on BOTH grains —
+  as a teacher (the weights' gift) and as a repairer (the
+  whisper's nd4) — and not yet as a deployable whole.
