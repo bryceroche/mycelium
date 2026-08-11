@@ -28756,3 +28756,27 @@ token-position × waist-dim, the moment the skeleton trains.
   hand. The arc's close: the organ is real on BOTH grains —
   as a teacher (the weights' gift) and as a repairer (the
   whisper's nd4) — and not yet as a deployable whole.
+
+- **THE SILENT DAMAGE IS FORMATION-RELOCATED-INTO-THE-LOOP
+  (2026-08-11; the deploy-silent road's autopsy, whisper arm):**
+  silent-grain nd4: formation CURED 0/15 — the deep rel slot no
+  longer FORMS in the weights alone (every diet arm held
+  formation and failed at op; this is the opposite). Silent nd0:
+  10/15 form (the 5 misbinds are formation-losses too). Read
+  against the matrix's engaged column (nd4 0/15 misbind at 5%):
+  **breath training moved FORMATION INTO THE LOOP — the weights
+  learned to rely on the runtime to complete deep slots; silent
+  reading finds formation gone precisely where engaged reading
+  finds it perfect.** The nonmonotone repair de-mystifies: the
+  whisper's loop completes a formation its weights half-built.
+  CURABILITY VERDICT: not fold-curable (no head owns it), not
+  obviously post-hoc-diet-curable (the relocation is
+  training-dynamics, not exposure) — the cure class is
+  TRAINING-TIME PROTECTION, and its named candidate:
+  **BREATH DROPOUT — train with the loop stochastically disabled
+  per step, forcing the weights to hold silent competence while
+  the organ trains its gift.** The deploy-silent road's design
+  question, sharpened to one knob, for a word. The week closes
+  with the organ's full anatomy: teacher (silent gift), repairer
+  (engaged completion), and now the relocation law that binds
+  them — what trains WITH the loop leans ON the loop.
