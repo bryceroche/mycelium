@@ -28959,3 +28959,20 @@ token-position × waist-dim, the moment the skeleton trains.
   that only suppresses regressions could be freezing everything —
   ≥20 converts is what separates advances-kept from
   nothing-moves.)
+
+- **GUT REGISTERED — "MUSSELS FILTER THE WATER" (2026-08-11,
+  Bryce's text; transform-versus-gate):** a mussel doesn't gate —
+  it PROCESSES AND RETURNS: nothing refused, everything passed
+  through IMPROVED. The mouth refuses and admits unchanged; the
+  fences hold or release; **the campaign's entire chain is gates,
+  and a mussel is the other kind of organ.** The one measured
+  transform-not-gate instance: the canonicalizer (prose in, one
+  knot out, false-merge zero) — symbolic, downstream, built.
+  Nothing neural transforms rather than gates; whether it should
+  is unmeasured. CANDIDATE SITE: ACCUMULATE (the notebook's other
+  half) — state passes through, completions retained, emerging
+  cleaner; the mussel-shape for the relocation law's cure. THE
+  CERTIFICATION-BOUNDARY FENCE attached: transform-and-return is
+  exactly what never-lies must NOT do at the mouth — a mussel
+  improves what passes; the chain's job is to refuse what it
+  cannot certify. **Lawful upstream, unlawful at the boundary.**
