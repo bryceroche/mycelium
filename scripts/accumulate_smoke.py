@@ -54,6 +54,8 @@ for i,r in enumerate(ROWS):
                     if f.get("op")=="add": parts.append(f"{L[a]} and {L[b]} together make {L[c]}.")
                     elif f.get("op")=="mul": parts.append(f"The product of {L[a]} and {L[b]} is {L[c]}.")
     add=" ".join(parts)
+    if os.environ.get("PLACEBO")=="1":
+        add=" ".join(["The list of numbers is considered again."]*max(len(parts),1))
     texts2.append(samples[r]["text"]+" "+add if add else samples[r]["text"])
     kept.append(add)
 p2=run_pass(texts2)

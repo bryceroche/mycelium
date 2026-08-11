@@ -29163,3 +29163,23 @@ token-position × waist-dim, the moment the skeleton trains.
   that survived every read tonight. The accumulate's file rests
   frozen on exactly honest ground: one mechanism receipt (4),
   one form refuted, one form standing, one splitter priced.
+
+- **THE PLACEBO'S VERDICT — APPENDING PER SE POISONS; TEXT-
+  CONDITIONING DIES AS A CLASS (2026-08-11):** length-matched
+  content-free appends: **regressions 1,234 (0.981 in-window) —
+  WORSE than the content arm's 874.** The attribution inverts the
+  suspicion: the harm is APPENDING ITSELF (register shift —
+  hybrid rows outside every training distribution shatter the
+  parse) and meaningful content MITIGATES rather than causes
+  (874 < 1,234). Duplicate-slot competition is acquitted as the
+  driver. **No smarter content saves an append mechanism with a
+  98% baseline harm: text-conditioning is DEAD AS A CLASS.**
+  FORM (A) — STATE-SIDE ANCHORS — IS THE FORK'S SOLE SURVIVOR
+  (never touches the text; inherits nothing from the class-death;
+  the 4-convert transfer receipt intact). The accumulate's road
+  is now single: the state-side anchor design, its registration
+  unfrozen INTO that one form when its word comes — with the
+  gradient-era removal test, both riders, and the certification
+  boundary waiting on its desk. The night's four smokes close:
+  4/0 (floor) → 1 (quality) → 874 (denominator paid) → 1,234
+  (class dead) — each read cheaper than the mistake it prevented.
