@@ -28820,3 +28820,18 @@ token-position × waist-dim, the moment the skeleton trains.
   grain it was written at.** LIVE APPLICATION, already standing
   and now explicit: every organ arm's sheet carries BOTH GRAINS
   FROM BIRTH (door #53's battery does). No build.
+
+- **GUT REGISTERED — "YIN, YANG AND YO: 2 OUT OF 3" (2026-08-11,
+  Bryce's text; AWAITING INTERP per the registry's own standard):**
+  the geometry: one sine cut yields TWO interlocking regions; a
+  third requires a second cut, and then no single boundary
+  separates all three — any two adjacent, the third reachable
+  only through one. A quorum over three parts, none sufficient
+  alone. LEAD CANDIDATE (the organ's trilemma): gift / cells /
+  score — no coin setting has cleared all three; the dial's whole
+  question is whether a third region exists or the curve only
+  ever yields two. **If the interp lands here, the yield is
+  sharp: stop asking for three, DECLARE WHICH TWO, and price the
+  third's absence** — a decision door #53's sheet could carry.
+  CONVERGENT (weaker): the standing 5-view quorum family,
+  measured territory. Banked awaiting the steer.
