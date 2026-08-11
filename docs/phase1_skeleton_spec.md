@@ -28121,3 +28121,25 @@ token-position × waist-dim, the moment the skeleton trains.
   score soft, vacuousness check re-runs on the rescue ckpt
   (gates must END open or move visibly, else the organ is
   refusing and that banks as ITS verdict).
+
+- **DOOR #44's FULL RECORD — VACUOUS FOR THE PROBE, VIOLENT AT THE
+  CELLS, AND ONE UNPRECEDENTED MOVEMENT (2026-08-10):** the arm
+  (gates never opened; breaths-don't-self-open banked): probe
+  0.180 vacuous; **cells 5/3/8/0 — the nd0 HARD FENCE BROKEN by
+  full OP INVERSION (all five mul rows decode add at confident
+  wrong margins −1.69..−3.08 — the thinness watch's FIRST TRUE
+  CATCH, and it caught a flip, not a thinning)**; and the lead
+  nobody ordered: **nd=2 at 8/15 — THE NEVER-CURED op/rel-decode
+  STATION'S FIRST MOVEMENT IN CAMPAIGN HISTORY**, half-cured
+  under 12%-blend faint breath. Ring: bigtest 1243 (soft,
+  licensed), **alg4 391 — the prior breath fire's −19 echoed at
+  −14: a REPRODUCIBLE alg4 cost signature of breath-flagged
+  training**, sentinels clean, frontier 40/40 (1 lie), P-233
+  0.63 (misses 233→255 net). g44 BENCHED with conflicts named.
+  THE SHAPE FOR THE RESCUE (gates open at birth, queued on the
+  GPU): faint breath already reorganizes decode — violently at
+  nd0-op (inversion), productively at nd2 (first movement),
+  expensively at alg4. Open gates will amplify; the fences stand
+  forewarned; the probe still reads first; and nd2's movement
+  joins the sheet as a WATCHED lead (the station the whole dup
+  arc could never touch responds to the organ, not the diet).
