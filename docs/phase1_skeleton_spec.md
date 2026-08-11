@@ -29009,3 +29009,14 @@ token-position × waist-dim, the moment the skeleton trains.
   clearing this time). THE PRE-AUTHORIZED RESCUE FIRES: bias-open
   pawl (CMT_B_INIT=-2.0, one line), same bars, one variant per
   the rescue law — does a pawl that CAN act cut the churn?
+
+- **THE RESCUE'S SECOND-BRANCH PRE-NAMING (2026-08-11, Bryce's
+  carve, ahead of the print):** if the churn survives an OPEN
+  pawl, persistence-within-the-pass closes as a class, the
+  notebook's case passes entirely to ACCUMULATE — and the pattern
+  earns its charter-grade name: **components engage; their
+  claimed mechanisms don't transfer to the parse** (the third
+  instance after breaths-at-50% and the shy pawl). A charter
+  observation, not a door verdict — pre-named so a third
+  no-transfer reads as the pattern it is rather than another
+  isolated null.
