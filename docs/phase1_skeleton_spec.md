@@ -29075,3 +29075,23 @@ token-position × waist-dim, the moment the skeleton trains.
   birth (certification boundary hard: accumulate NEVER feeds the
   mouth or the key); the transfer clause's own removal test
   carved as a bar-shape. The smoke fires on a word.
+
+- **THE ACCUMULATE SMOKE — STRUCTURE TRANSFERS WHERE DYNAMICS
+  DIDN'T (2026-08-11; the object fork resolves):** pass-2 on the
+  gate, conditioned on pass-1's own committed GIVENS restated in
+  the mint's canonical grammar (the weakest possible commit
+  class): **4 of the 233 convert with ZERO regressions.** The
+  pre-written fourth-no-transfer null REFUSES — committed
+  structure re-entering as text moves the deep structure at
+  inference, additively, cost-free: **the first tail conversion
+  in campaign history with no training, no churn, and no bill.**
+  The spec's spine collects its receipt at the organ site:
+  structure transferred by construction where three learned
+  mechanisms could not. THE FORK RESOLVES toward (B) decode-side
+  conditioning; the upside path is named (richer commit classes —
+  high-confidence rels — before the design registration numbers
+  its bars); the removal test is trivially satisfied by
+  construction (no conditioning, no effect — the same rows read
+  0 without it). The certification boundary stands untouched: the
+  key graded every pass-2 answer in primitives as always. The
+  design registration goes to a word with 4/0 as its floor.
