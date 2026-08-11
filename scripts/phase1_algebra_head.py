@@ -524,7 +524,10 @@ def build_params(seed=0):
         p["W_bo"] = t(np.zeros((H_W, H_W)))          # zero-init: breath deltas
         p["W_bo_b"] = t(np.zeros(H_W))               # start silent
         p["breath_emb"] = t(rng.randn(K_B, H_W) * 0.02)
-        p["breath_gate"] = t(np.full(K_B, -2.0))     # init-closed convex blend
+        p["breath_gate"] = t(np.full(K_B, float(os.environ.get(
+            "BREATH_GATE_INIT", "-2.0"))))   # init-closed convex blend;
+            # door #44-RESCUE: the organ does not self-open (gates at init
+            # after 4k) — BREATH_GATE_INIT=0.0 opens the door at birth
         if int(os.environ.get("ALG_RINGS", "0")):    # RUNG-3 v1: the soft pawl
             p["W_cmt"] = t(np.zeros((H_W, 1)))       # zero-init commit head
             p["W_cmt_b"] = t(np.full(1, -4.0))       # init: commit ~nothing

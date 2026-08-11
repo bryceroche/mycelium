@@ -28101,3 +28101,23 @@ token-position × waist-dim, the moment the skeleton trains.
   confirms transport-by-reread; a flat probe sends the
   structural aux (own-pathway, the W_dargs receipt) as the
   clearly-scoped door #45.
+
+- **DOOR #44 IS VACUOUS — THE ORGAN NEVER OPENED (2026-08-10):**
+  the probe printed 0.180 (prior-class; instrument 0.984) BUT the
+  vacuousness check on the checkpoint's own state rules the read:
+  **breath_gate at init ±0.05 (sigmoid ~0.12), |W_bo| 0.0025 from
+  zero — three breaths trained 4k steps and the gates never
+  moved.** The arm is a single-pass organism wearing the flag;
+  branch (b) does NOT bank (the hypothesis was never tested). THE
+  FINDING: **breaths do not self-open under gentle continuation**
+  — the zero-init chicken-and-egg (silent deltas → no gradient
+  case for opening → silence). The attention-bootstrap law
+  (banked May feedback: NEW ATTENTION PATHWAYS NEED DIRECT
+  SUPERVISION) meets its measured instance at the organ grain.
+  THE ONE RESCUE VARIANT (per the pre-registered-rescue law,
+  written bar): #44-RESCUE = the identical fire with
+  BREATH_GATE_INIT=0.0 (doors open at ~50% blend from step 0; a
+  one-env hook) — pass bar unchanged (probe ≥0.35), fences hard,
+  score soft, vacuousness check re-runs on the rescue ckpt
+  (gates must END open or move visibly, else the organ is
+  refusing and that banks as ITS verdict).
