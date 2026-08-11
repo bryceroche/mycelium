@@ -119,6 +119,13 @@ benched).
    dialect gold (specialist pattern at args grain); the set-based
    re-audit; the hot-LR control; the breath bootstrap design.
 
+   THE TITRATION (door #50-R): THE KNOBS SEPARATE — at 12%
+   authority the lean holds 2.87 (above the deployable bar) while
+   damage decays FASTER (regressions x0.37 vs lean x0.56) and
+   converts RISE (22>19); scores 1254/1237/1133 at 0/12/50%.
+   Deployable-when-needed within reach; next dial = finer
+   titration (word). Queued: breath-0 competence map read.
+
    THE ORGAN IS REAL (door #50, the bootstrap fire): breathing
    ENGAGED for the first time (norm + warm pipe + open gates) and
    the ordinal lean SURVIVED+AMPLIFIED at true scale — 5.17

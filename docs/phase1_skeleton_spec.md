@@ -28634,3 +28634,25 @@ token-position × waist-dim, the moment the skeleton trains.
   zero-GPU-class on banked artifacts, queued behind the
   titration battery's completion. Progressive lowering stays at
   #182's answer (gold-side supervision, unbuilt).
+
+- **THE TITRATION'S VERDICT — THE KNOBS SEPARATE; THE CURVE
+  FAVORS CALM (2026-08-11; door #50-RESCUE):** at 12% authority
+  (vacuousness: engaged — gates 0.116-0.120, pipe real):
+  **the lean HOLDS at 2.87 (20/181 vs 2/52, above the 2.5
+  deployable bar and the 2.0 pin) while the damage decays
+  FASTER — regressions 105→39 (×0.37) vs lean 5.17→2.87 (×0.56);
+  NOT a shared knee.** And the organ converts BETTER when calmer:
+  22 converts vs 19 at 50%. The curve's three score points:
+  1254 (0%) / 1237 (12%) / 1133 (50%); alg4 396; sentinels
+  20/20 ×2; cells PARTIAL (5/15/15/15 — nd1/nd4 still billed;
+  intact-class not yet reached). VERDICT: (a)-class SEPARATION —
+  deployable-when-needed is WITHIN REACH on a curve that favors
+  lower authority; the mechanism's signature: re-reading's value
+  concentrates at LOW blend (transport needs a whisper, not a
+  shout). NEXT DIAL for a word: finer titration (gate ≈−3 /
+  annealed / selective authority), reading for lean ≥2.5 with
+  cells intact and score gate-class. QUEUED: the breath-0
+  competence map (the MLIR gut's rent) on g50's banked states.
+  The organ's file, end of night: REAL, unconfounded, separable
+  from its damage, curve in hand — from twice-refused to the
+  campaign's only tail-converting mechanism in three doors.
