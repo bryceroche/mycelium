@@ -28780,3 +28780,26 @@ token-position × waist-dim, the moment the skeleton trains.
   with the organ's full anatomy: teacher (silent gift), repairer
   (engaged completion), and now the relocation law that binds
   them — what trains WITH the loop leans ON the loop.
+
+- **DOOR #52'S VERDICT — THE GIFT SURVIVES ITS LOOP'S ABSENCE;
+  THE GRAINS CONVERGE (2026-08-11; breath dropout p=0.5):**
+  vacuousness: engaged, pipe real, gates 0.49. **BRANCH (b)
+  REFUTED — the silent lean prints 2.01 under the coin: the
+  dependency is NOT the gift's source; the weights learn ordinal
+  conversion even with the loop absent half the steps.** THE
+  SILENT SHEET (deploy target): cells 4/15/15/15 (scope fails —
+  the relocation persists at p=0.5), lean 2.01 (at pin, under
+  the 2.5 bar), score 1233, **alg4 407 — the promoted gate's own
+  number**, sentinels clean. VS the same-authority arm sans coin:
+  misses 319→255, nd0 15→4, and a silent score that existed on
+  no prior breath arm. **Every silent axis moved toward
+  deployable.** THE ENGAGED SHEET: nd0 perfect, but the loop's
+  nd4 repair GONE (15/15 vs g50's 6) — the coin shifts
+  competence from the runtime into the weights; THE GRAINS
+  CONVERGE, which is what robustness training should print.
+  VERDICT: outcome (c) — the dial. THE NAMED INCREMENT:
+  silence-heavier coin (p≈0.75), riding the measured trend
+  (every axis monotone so far), for a word. The organ's arc at
+  this window's true end: real, warranted, attributed, measured
+  to its grains, its relocation law carved, its gift proven
+  loop-independent, and one coin-weight from a deployable test.

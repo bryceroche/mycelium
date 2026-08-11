@@ -119,6 +119,15 @@ benched).
    dialect gold (specialist pattern at args grain); the set-based
    re-audit; the hot-LR control; the breath bootstrap design.
 
+   BREATH DROPOUT (door #52, p=0.5): BRANCH (b) REFUTED — the
+   gift survives the loop's absence (silent lean 2.01); every
+   silent axis moved toward deployable (misses 319→255, nd0 15→4,
+   silent score 1233, alg4 407 = the gate's number); the grains
+   CONVERGE (engaged nd4 repair gone as silent competence grows).
+   THE DIAL: silence-heavier coin p≈0.75, on the word. Also
+   standing: selective design (grain-declared), texture probe,
+   competence map (two-pass).
+
    THE COMPOSITION CEILING (door #51): the band is EMPTY —
    lean needs >5%, cells never clear <=12% (floor = the pipe's
    residual cost); uniform-global authority exhausted honestly.
