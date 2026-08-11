@@ -28854,3 +28854,20 @@ token-position × waist-dim, the moment the skeleton trains.
   sacrificing an axis. The dial is still one wave.** Relayed
   ahead-of-print reasoning caught and struck by the rider — the
   discipline working on its own operator.
+
+- **GUT REGISTERED — "HANDS FREE TO RIDE" (2026-08-11, Bryce's
+  text; the mise-en-place family's THIRD mechanism):** #176
+  staged the carried load; #184 split the unsequenceable task;
+  the bike names what neither could — **hands committed to the
+  ongoing task itself: CONTINUOUS OCCUPATION, no discrete object
+  to stage, no load to hand off.** Tonight's referent exactly:
+  the organ's runtime is continuously occupied completing
+  formation — the relocation law bit because the loop was always
+  there. THE CLAUSE: the third failure mode's cure is neither
+  staging nor splitting — it is MAKING THE OCCUPATION OPTIONAL;
+  dropout is that cure, measured (p=0.5, the gift surviving).
+  Referent LIVE pending #53's sheet (can the weights learn
+  hands-free FULLY?). THE SCOPE CAUTION carried: hands-free is
+  the goal for RIDING — competence living in the runtime (the
+  engaged nd4 repair) is a defect only because the deploy target
+  is silent; that is a scope decision, not a law.
