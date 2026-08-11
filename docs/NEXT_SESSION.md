@@ -92,14 +92,20 @@ benched).
 **THE BOARD (one board; supersedes all prior lists, 2026-08-10):**
 1. ENTOURAGE-41 PAID (all ten; frontier stood POST-DRESSING
    40/40, stress lies ZERO under the new mouth; dissent ROTATES,
-   overlap zero). GEN-41 rules. THE POST-PROMOTION CENSUS (banked): 233
-   straight-view misses (from 245), anatomy UNCHANGED — subsurface
-   100%, ordinal 78%, crowded 76%; the tail is ONE family
-   (subtraction-surface indirection at size) and E5/floor/dose all
-   face it. THE THINNESS WATCH standing (op_margin_floor in the
-   Goodhart fence, loss-never; baseline +0.74 banked). Sha-fence
-   BUILT. Roads on words: E5 co-vehicle, the floor's design, the
-   second clock, the op-depth wall.
+   overlap zero). GEN-41 rules. THE TAIL AFTER THREE ATTACKS (all pre-registered,
+   all honest): surface@matched-size = ZERO; size@dose = threshold
+   harvest, sub-linear; length op-balanced = CORRELATE-NULL (door
+   #42: long band converts SLOWER, 0.135 vs 0.171 — the 3.2x
+   enrichment was subsurface's shadow). **The 233 are not
+   diet-reachable at the row-selection grain. Unplayed: ALTITUDE
+   cards — the floor's supervision form (gold-side) and the second
+   clock.** Door #42's side-gains banked: simplex tolerance
+   BRACKETED (4.3% safe / 8.6% kills); thinness watch first print
+   = RECOVERY (+0.74→+1.29); widest calibrated gap (0.956); g42
+   benched panel-eligible. Stress-lie range across arms now 0-3
+   (churn; every sheet carries it). Roads on words: the floor's
+   design, the second clock, the E5 WINDOW generation (its own
+   case now), the op-depth wall (recovering).
 2. The dose curve's next increment: priced sub-linear; buy design,
    not volume (compounding / E5 length co-vehicle — one purchase,
    two sheets).

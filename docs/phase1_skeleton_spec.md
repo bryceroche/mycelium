@@ -27999,3 +27999,33 @@ token-position × waist-dim, the moment the skeleton trains.
   subtraction-surface indirection at size, 100% saturated — the
   tail is ONE family at the surface grain, and the roads that
   would serve it now share a single named target.
+
+- **DOOR #42'S VERDICT — LENGTH IS A CORRELATE; THE ROAD CLOSES BY
+  ITS OWN BRANCH (2026-08-10):** the in-window length co-vehicle:
+  control exact (seventh); g42 opens 1.581/0.625 — a NEW WIDEST
+  gap (0.956); scope HELD in full (0/3/-/0, both ends 15/15) —
+  **the simplex tolerance is now BRACKETED: 4.33% dilution safe,
+  8.6% kills (two fires, a measured constant)**; the THINNESS
+  WATCH's first standing print is a RECOVERY: op floor +0.74 →
+  +1.29 (the op-balanced selection deepened the wall it was
+  fenced to protect); alg4 408; sentinels clean; frontier
+  DEPLOYED 40/40 (stress lies 3, {0,5,25} — the churn family's
+  highest; range now 0-3 across arms, on every future sheet).
+  **BUT P2 FAILS (bigtest 1245 < the gate's 1254) and P1 fails
+  DECISIVELY: converts 38 / regressions 45, and the long band
+  converts SLOWER than the short (7/52 = 0.135 vs 31/181 = 0.171,
+  ratio 0.79 vs the pinned ≥2.0).** LENGTH IS A CORRELATE, NOT
+  THE AXIS — the 3.2× enrichment was the subsurface family's
+  shadow (indirection lives disproportionately in long rows;
+  feeding length does not cure it). g42 to the bench (its gap
+  and its op-floor gains are PANEL-eligible per means-vs-
+  overlaps). THE ROAD MAP AFTER THREE ATTACKS ON THE 233's
+  CONSTITUENCY: surface families at matched size = ZERO (the
+  tail fire); size at dose = threshold harvest, sub-linear
+  (PRICED); length op-balanced = correlate-null (this door).
+  **The tail is not diet-reachable at the row-selection grain.
+  The unplayed cards are ALTITUDE cards: the floor's supervision
+  form (gold-side, the third form) and the second clock.** The
+  in-window null also weakens (does not kill) the E5 window
+  generation's presumption — its regime is different; its case
+  now needs its own evidence.
