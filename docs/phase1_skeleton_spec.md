@@ -28678,3 +28678,29 @@ token-position × waist-dim, the moment the skeleton trains.
   ratchet's own shape, and this flag will be waiting at its
   registration. No build; the grouper unrefuted; one clause, one
   flag.
+
+- **DOOR #51'S VERDICT — THE BAND IS EMPTY; THE COMPOSITION
+  CEILING, EXACTLY AS PRE-WRITTEN (2026-08-11):** the whisper arm
+  (5%, engaged, pipe sculpted 0.0034): **lean 1.72 (under both
+  bars) with the cell floor UNCHANGED (5/15/15/15 — identical to
+  12%: the floor is the pipe's residual cost, authority-
+  independent below 12).** Lean needs >5%; cells never clear
+  ≤12%: NO SETTING SATISFIES BOTH — **a ceiling on uniform-global
+  authority, not on the organ** (the rider's letter). THE
+  COMPLETE FIRST CURVE, banked: authority 0/5/12/50 → lean
+  −/1.72/2.87/5.17; regressions −/23/39/105; net misses
+  −/+2/+17/+86; score 1254/1250/1237/1133; alg4 408 at whisper;
+  sentinels unbroken at every point. The whisper's own sheet:
+  net damage −2 (nearly free) and **the transport probe's
+  FIRST-EVER upward twitch (0.210 vs the 0.185-0.190 prior
+  band).** THE SUCCESSORS INHERIT, ordered by the evidence:
+  **(1) SELECTIVE AUTHORITY leads — the lean IS selectivity
+  evidence (the organ's value is ordinal-concentrated; blend
+  gated by row/slot signal, whisper elsewhere), the monitor
+  family's lawful gating instruments standing ready; (2)
+  annealed authority (the pike's ratchet flag waiting at its
+  registration); (3) notebook-gated commit.** The organ's file
+  at true close: real, unconfounded, separable, CURVED — and its
+  first composition honestly exhausted with its successor named
+  by the organ's own signature. All to words. GEN-41 rules —
+  every control exact, every fence unbent, the ledger whole.

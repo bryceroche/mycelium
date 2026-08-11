@@ -119,6 +119,17 @@ benched).
    dialect gold (specialist pattern at args grain); the set-based
    re-audit; the hot-LR control; the breath bootstrap design.
 
+   THE COMPOSITION CEILING (door #51): the band is EMPTY —
+   lean needs >5%, cells never clear <=12% (floor = the pipe's
+   residual cost); uniform-global authority exhausted honestly.
+   THE FULL CURVE: 0/5/12/50% -> lean -/1.72/2.87/5.17; score
+   1254/1250/1237/1133; whisper nearly damage-free (net -2) with
+   the probe's FIRST upward twitch (0.210). SUCCESSORS on words:
+   (1) SELECTIVE AUTHORITY (leads — the lean is selectivity
+   evidence; monitor-family gating); (2) annealed (ratchet flag
+   waiting); (3) notebook-gated commit. Plus the breath-0
+   competence read (queued).
+
    THE TITRATION (door #50-R): THE KNOBS SEPARATE — at 12%
    authority the lean holds 2.87 (above the deployable bar) while
    damage decays FASTER (regressions x0.37 vs lean x0.56) and
