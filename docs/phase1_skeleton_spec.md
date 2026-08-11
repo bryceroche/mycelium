@@ -28429,3 +28429,23 @@ token-position × waist-dim, the moment the skeleton trains.
   independent of the instrument) guards INTERPRETATION but not
   instrument validity; the gap stands, named, awaiting whatever
   specimen teaches its cure.
+
+- **GUT #137, SECOND VISIT — "THE NEE-DOH CUBE" (2026-08-11,
+  Bryce's text; canonical rest vs elastic rest):** the bottle
+  returns to A rest shape; the cube returns to a STRUCTURED one —
+  flat faces, corners, canonical form. Elastic recovery vs
+  recovery-to-canonical-form. THE INSTANCE the campaign owns: the
+  canonicalizer's knot (wildly different prose, one knot,
+  false-merge zero) — deformation absorbed, structure restored
+  exactly; a bottle cold-starts empty, a cube cold-starts SHAPED.
+  THE MEASURED ABSENCE, tonight's cautionary referent: the mask
+  read — remove the crowding pressure and the deficit persists —
+  **is a cube that stays squashed**: real elastic recovery would
+  have printed deficit-under-load, restoration-when-cleared; the
+  pooling hop deforms and does not spring back, which is exactly
+  why congestion relocated to exposure. The entry's honest
+  content: canonical rest EXISTS where designed in (the knot,
+  downstream, symbolic) and is ABSENT where it wasn't (the hop,
+  upstream, learned). Refines #137's unbuilt elastic arm's bar:
+  it must demonstrate return TO STRUCTURE, not merely to rest.
+  No build; the organ fences stand.
