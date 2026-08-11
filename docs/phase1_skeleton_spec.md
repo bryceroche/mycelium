@@ -27977,3 +27977,25 @@ token-position × waist-dim, the moment the skeleton trains.
   ALG_TRAIN_NAME replay's exact wrong join (form_mix2 vs form3
   arrays) TRIPS at the door. The name-key fossil family's cure is
   standing machinery; the board item closes.
+
+- **THE CHOICE WORD EXECUTED — THE THINNESS WATCH + THE
+  POST-PROMOTION CENSUS (2026-08-10):** (1) **op_margin_floor
+  enters the Goodhart fence** (diagnostic_register.py,
+  loss-never): a margin term in any loss buys confident wrongness
+  at the wall; the watch PRICES future fires' erosion; sanctioned
+  data-selection only at the CELL grain (op-balanced vehicles per
+  the one-mass law), never the margin value. Baseline banked:
+  floor +0.74 on g41 (.cache/op_floor_watch.json) vs the
+  lineage's +1.85 — future batteries print it. (2) **the miss
+  census re-pointed at the manifest** (the two-home fix — it
+  hardcoded g23v5) and run under GEN-41: **233 straight-view
+  misses (from 245), and the anatomy is UNCHANGED: subsurface
+  233/233 = 100%, ordinal 78%, crowded6+ 76%** — the same three
+  shares as the g23v5-era census to within a point. THE READING:
+  the dose road ate 12 misses WITHOUT changing the tail's shape —
+  threshold-harvesting exactly as PRICED predicted (near-boundary
+  rows flip; the deep anatomy persists). The map for the next
+  words: E5/floor/dose all face the SAME constituency —
+  subtraction-surface indirection at size, 100% saturated — the
+  tail is ONE family at the surface grain, and the roads that
+  would serve it now share a single named target.

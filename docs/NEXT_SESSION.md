@@ -92,11 +92,14 @@ benched).
 **THE BOARD (one board; supersedes all prior lists, 2026-08-10):**
 1. ENTOURAGE-41 PAID (all ten; frontier stood POST-DRESSING
    40/40, stress lies ZERO under the new mouth; dissent ROTATES,
-   overlap zero). GEN-41 rules. Next roads, all awaiting words:
-   the op-depth wall (+0.74 floor — the thinness maintenance
-   question); E5 length co-vehicle; the second clock; the floor's
-   design. (The sha-fence is BUILT — load_alg asserts the mix
-   stamp; the replay's wrong join now trips at the door.)
+   overlap zero). GEN-41 rules. THE POST-PROMOTION CENSUS (banked): 233
+   straight-view misses (from 245), anatomy UNCHANGED — subsurface
+   100%, ordinal 78%, crowded 76%; the tail is ONE family
+   (subtraction-surface indirection at size) and E5/floor/dose all
+   face it. THE THINNESS WATCH standing (op_margin_floor in the
+   Goodhart fence, loss-never; baseline +0.74 banked). Sha-fence
+   BUILT. Roads on words: E5 co-vehicle, the floor's design, the
+   second clock, the op-depth wall.
 2. The dose curve's next increment: priced sub-linear; buy design,
    not volume (compounding / E5 length co-vehicle — one purchase,
    two sheets).

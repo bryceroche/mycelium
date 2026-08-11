@@ -1,7 +1,9 @@
 import os, sys, json, re
 for k,v in [("ALG2","1"),("ALG_FTYPES","8"),("ALG_HW","512"),("ALG_DUP","1"),("ALG_WIDE","1")]: os.environ.setdefault(k,v)
 os.environ.setdefault("ALG_TEST",".cache/algebra_nl_bigtest.jsonl"); os.environ.setdefault("ALG_TEST_NAME","bigtest")
-os.environ["ALG_CKPT"]=".cache/g23v5.safetensors"
+import json as _j
+_GATE = os.environ.get("CENSUS_CKPT") or _j.load(open(".cache/GENERATION.json"))["parser_ckpt"]
+os.environ["ALG_CKPT"]=_GATE
 sys.path.insert(0,'.'); sys.path.insert(0,'scripts')
 import numpy as np
 from collections import Counter
@@ -10,7 +12,7 @@ from tta_alg2_dials import solve2
 from tinygrad import Tensor, dtypes
 from tinygrad.nn.state import safe_load
 samples, states, tokmask, gold, sent = load_alg("test")
-p=build_params(0); sd=safe_load(".cache/g23v5.safetensors")
+p=build_params(0); sd=safe_load(_GATE)
 for k in p: p[k].assign(sd[k].to(p[k].device).cast(p[k].dtype)).realize()
 ORD=re.compile(r"(first|second|third|fourth|fifth) number")
 SUB=re.compile(r"minus|difference|exceeds|reduced|away from|less than|fewer|decreased")
@@ -42,4 +44,4 @@ for s0 in range(0,len(samples),8):
     if s0%400==0: print(f"  [{s0}/{len(samples)}]",flush=True)
 print(f"[census] straight-view misses {n_miss}")
 print("[families]", dict(miss_fams.most_common()))
-json.dump(dict(miss_fams),open('.cache/miss_census.json','w'))
+json.dump({'gate':_GATE,'n_miss':n_miss,'families':dict(miss_fams)},open('.cache/miss_census_gen41.json','w'))

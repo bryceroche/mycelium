@@ -61,6 +61,23 @@ DIAGNOSTICS = {
             "and blind the campaign's best mechanism-grade signal."
         ),
     },
+    "op_margin_floor": {
+        "coupling": "loss-never",
+        "why": (
+            "THE THINNESS WATCH (2026-08-10, gen-41's maintenance "
+            "rider): the minimum mul-dup op margin on the nd=0 "
+            "fixture reads how close the op head's thin wall sits to "
+            "the decode boundary (+0.74 at promotion vs the lineage's "
+            "+1.85). A margin term in any loss would buy confident "
+            "wrongness at the wall (margins are not correctness — "
+            "temperature-perpendicular kin); the watch exists to "
+            "PRICE future fires' erosion, and supervising it would "
+            "teach the head to look deep while binding shallow. "
+            "Sanctioned data-selection use: diet composition may "
+            "target the CELL the floor names (op-balanced vehicles — "
+            "the one-mass law), never the margin value itself."
+        ),
+    },
     "vote_entropy": {
         "coupling": "loss-never",
         "why": (
