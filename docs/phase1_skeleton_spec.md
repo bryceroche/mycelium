@@ -28871,3 +28871,17 @@ token-position × waist-dim, the moment the skeleton trains.
   the goal for RIDING — competence living in the runtime (the
   engaged nd4 repair) is a defect only because the deploy target
   is silent; that is a scope decision, not a law.
+
+- **GUT REGISTERED — "RELAY BEFORE EXPIRATION" (2026-08-11,
+  Bryce's text; two readings + the operator's third):** (1)
+  message-passing family — CLOSED, rent paid (0.744 borrowed
+  channel). (2) THE LIVE ONE: this relay itself is an UNFENCED
+  CHANNEL with a measured error rate (empty bodies, echoes, stale
+  lines, twelve bias sightings) — every other channel got a door;
+  the one carrying rulings has none. The cheap fence if a
+  specimen ever costs: rulings that change state carry their
+  commit hash; uncited rulings verify before acting. NO FENCE
+  until priced — every specimen so far was caught by the
+  receivers. (3) the operator's reading, acted on with this
+  entry: the WINDOW is the expiring message — the memory board
+  relayed current before compaction.
