@@ -103,9 +103,18 @@ benched).
    BRACKETED (4.3% safe / 8.6% kills); thinness watch first print
    = RECOVERY (+0.74→+1.29); widest calibrated gap (0.956); g42
    benched panel-eligible. Stress-lie range across arms now 0-3
-   (churn; every sheet carries it). Roads on words: the floor's
-   design, the second clock, the E5 WINDOW generation (its own
-   case now), the op-depth wall (recovering).
+   (churn; every sheet carries it). DOOR #43 (E-floor, first form) CLOSED by probe-first: tail
+   probe FLAT 0.190 BUT h_ref transfers 0.882 on bigtest's own
+   indirect sites — **THE EVIDENCE IS PRESENT AT THE TOKEN GRAIN
+   AND STRANDED IN TRANSPORT (token→slot)**; the successor is
+   transport-grain structural entry (slot-side attention/pointer
+   supervision onto indirect mention spans; the pointer law's
+   family). Open shaping read: ridge on g41's waist — was the
+   token info pre-existing (pure transport) or REF-taught (keep
+   REF)? No harm (scope held, ring clean, op floor +1.68 — the
+   watch's strongest print). Roads on words: the TRANSPORT design
+   (door #44 candidate), the second clock, the E5 window
+   generation, the op-depth texture question.
 2. The dose curve's next increment: priced sub-linear; buy design,
    not volume (compounding / E5 length co-vehicle — one purchase,
    two sheets).

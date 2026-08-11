@@ -28029,3 +28029,37 @@ token-position × waist-dim, the moment the skeleton trains.
   in-window null also weakens (does not kill) the E5 window
   generation's presumption — its regime is different; its case
   now needs its own evidence.
+
+- **DOOR #43'S VERDICT — THE FIRST FORM FAILS AS AIMED, AND THE
+  AUTOPSY FINDS THE EVIDENCE STRANDED IN TRANSPORT (2026-08-10):**
+  THE PROBE READ FIRST per the spec and printed FLAT: tail
+  first-arg 0.190 = the prior exactly (healthy 0.981 — instrument
+  sound). The primary fails; the wrong-reason rule made any score
+  moot (1251 was sub-gate anyway). P-233: ratio 1.44 (<2.0), net
+  −6. NO HARM ANYWHERE: scope 0/3/-/0, both ends 15/15, alg4 411,
+  sentinels clean, frontier 40/40 (stress 1@{39}; family range
+  0-3), control exact (eighth). Side-line: the THINNESS WATCH
+  prints its strongest recovery — op floor +1.68 (gate-class
+  margins +1.68..+3.04) with REF riding; noted, unexplained,
+  texture-rule eligible. **THE DISCRIMINATING READ IS THE DOOR'S
+  REAL YIELD: h_ref names the resolved variable at 0.882 ON
+  BIGTEST'S OWN INDIRECT SITES (0.756 mix train-fit) — a linear
+  readout off the waist finds the referent at the token grain on
+  the very register where the slot-grain probe reads 0.190. THE
+  EVIDENCE IS PRESENT AND STRANDED: resolution happens at the
+  tokens; the loss is in TOKEN→SLOT TRANSPORT** — the factor
+  slots' pooling never carries the resolved identity into fst on
+  tail rows. The floor's first form (token-grain supervision) is
+  refuted AS AIMED with the true site named by its own autopsy.
+  THE SUCCESSOR, named by the exact failure per the arc's
+  pattern: TRANSPORT-GRAIN structural entry (the pointer law's
+  own family — binding enters as structure: masks, spans) —
+  supervise the SLOT-side path onto the indirect mention spans so
+  the resolved identity rides into fst. OPEN CONTROL QUESTION
+  shaping that design (cheap read): was the token-grain referent
+  already present on g41's waist pre-REF (ridge probe)? Present =
+  pure transport work, REF unnecessary; absent = REF stays as the
+  resolver and transport joins it. g43 to the bench. The E-floor
+  chapter: one fire, one refutation, one mechanism named one
+  grain deeper — census → families → stations → waist → tokens →
+  TRANSPORT.
