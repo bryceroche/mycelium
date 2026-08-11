@@ -43,6 +43,7 @@ sys.path.insert(0, os.path.join(_ROOT, "scripts"))
 import numpy as np
 
 T_ALG = 256
+ALG_REF = int(os.environ.get("ALG_REF", "0"))   # E-FLOOR referent supervision
 H_TRUNK = 2048
 H_W = int(os.environ.get("ALG_HW", "512"))  # capacity-probe dial (2026-07-11)
 K_VARS = 24
@@ -152,6 +153,7 @@ def build_gold(samples, offsets):
         "sign": np.zeros((n, L_FAC), np.float32),        # E1: 1.0 = negative literal
         "fspan": np.zeros((n, L_FAC, T_ALG), np.float32),
         "vspan": np.zeros((n, K_VARS, T_ALG), np.float32),
+        **({"refvar": np.full((n, T_ALG), -1, np.int8)} if ALG_REF else {}),
         "query": np.zeros((n,), np.int32),
         "band": np.zeros((n,), np.int32),
         # the tranche (2026-07-09): explicit per-kind masks (rel mask was
@@ -186,6 +188,12 @@ def build_gold(samples, offsets):
         g["band"][i] = smp["decisions"]
         for v_str, spans in smp["mentions"].items():
             _spans_to_tokmask(spans, offs, g["vspan"][i, int(v_str)])
+            if ALG_REF:   # E-FLOOR (door #43): indirect sites only (char>2)
+                _ind = [sp for sp in spans if sp[1] - sp[0] > 2]
+                if _ind:
+                    _m = np.zeros(T_ALG, np.float32)
+                    _spans_to_tokmask(_ind, offs, _m)
+                    g["refvar"][i][_m > 0] = int(v_str)
         for j, f in enumerate(facs):
             g["presence"][i, j] = 1.0
             _spans_to_tokmask(f.get("spans") or [], offs, g["fspan"][i, j])
@@ -502,6 +510,8 @@ def build_params(seed=0):
     p["h_dig"], p["h_dig_b"] = lin(H_W, N_DIG * 10)
     if ALG_WIDE:                              # E1: the sign terminal
         p["h_sgn"], p["h_sgn_b"] = lin(H_W, 1)
+    if ALG_REF:                               # E-FLOOR: token-grain referent
+        p["h_ref"], p["h_ref_b"] = lin(H_W, K_VARS)
     if int(os.environ.get("ALG2", "0")) and \
             int(os.environ.get("ALG_FTYPES", "4")) >= 7:   # gen-15: OP_APPLY
         p["h_dig2"], p["h_dig2_b"] = lin(H_W, N_DIG * 10)
@@ -671,6 +681,8 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None):
                                                         # raw feed; audit-side)
     out["query"] = ((qst @ p["W_query"]) @ vst.transpose(-2, -1)).reshape(B, K_VARS)
     out["fat"], out["vat"] = fat, vat
+    if "h_ref" in p:
+        out["ref"] = waist @ p["h_ref"] + p["h_ref_b"]   # (B, T_ALG, K_VARS)
     if len(breaths) > 1:
         out["breaths"] = [heads_of(s) for s in breaths]
     return out
@@ -760,6 +772,10 @@ def _loss_single(o, g):
     vsn = g["vspan"] / (g["vspan"].sum(-1, keepdim=True) + 1e-6)
     vmask = (g["vspan"].sum(-1) > 0).float()
     l = l + ((-(o["vat"] + 1e-9).log() * vsn).sum(-1) * vmask).sum() / (vmask.sum() + 1e-6)
+    if "ref" in o and "refoh" in g:
+        _rm = g["refoh"].sum(-1)                          # (B, T_ALG) site mask
+        _rce = (-(o["ref"].log_softmax(-1)) * g["refoh"]).sum(-1)
+        l = l + float(os.environ.get("REF_W", "0.1")) * (_rce * _rm).sum() / (_rm.sum() + 1e-6)
     return l
 
 
@@ -1149,6 +1165,7 @@ def do_train(steps, lr, batch, seed):
                          ("args", (L_FAC, K_VARS), dtypes.float),
                          ("fspan", (L_FAC, T_ALG), dtypes.float),
                          ("vspan", (K_VARS, T_ALG), dtypes.float),
+                         *((("refoh", (T_ALG, K_VARS), dtypes.float),) if ALG_REF else ()),
                          ("ftype", (L_FAC,), dtypes.int),
                          ("op", (L_FAC,), dtypes.int),
                          ("res", (L_FAC,), dtypes.int),
@@ -1321,6 +1338,9 @@ def do_train(steps, lr, batch, seed):
                 **({"opspan": OPGOLD[idx].astype(np.float32)} if OPATT else {}),
                 "args": gold["args"][idx], "fspan": gold["fspan"][idx],
                 "vspan": gold["vspan"][idx], "ftype": gold["ftype"][idx],
+                **({"refoh": (np.eye(K_VARS, dtype=np.float32)[
+                        np.maximum(gold["refvar"][idx].astype(np.int32), 0)]
+                        * (gold["refvar"][idx] >= 0)[..., None])} if ALG_REF and "refvar" in gold else {}),
                 "op": gold["op"][idx], "res": gold["res"][idx],
                 "digits": gold["digits"][idx], "query": gold["query"][idx],
                 "sel": gold["sel"][idx], "is_rel": gold["is_rel"][idx],

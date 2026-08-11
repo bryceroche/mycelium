@@ -8,7 +8,7 @@ from tta_alg2_dials import solve2
 from tinygrad import Tensor, dtypes
 from tinygrad.nn.state import safe_load
 samples, states, tokmask, gold, sent = load_alg("test")
-p=build_params(0); sd=safe_load(".cache/g23v5.safetensors")
+p=build_params(0); sd=safe_load(os.environ.get("PROBE_CKPT",".cache/g23v5.safetensors"))
 for k in p: p[k].assign(sd[k].to(p[k].device).cast(p[k].dtype)).realize()
 TX=[]; TY=[]; HX=[]; HY=[]
 for s0 in range(0,len(samples),8):
@@ -48,4 +48,4 @@ pr=(((TX[ht:]-mu)/sg)@W).argmax(1)
 acc=(pr==TY[ht:]).mean()
 prh=(((HX-mu)/sg)@W).argmax(1)
 print(f"[probe] held-out TAIL first-arg acc {acc:.3f} (n={len(TY)-ht}) | healthy train-fit {(prh==HY).mean():.3f}")
-json.dump({"tail_acc":float(acc),"n":int(len(TY)-ht)},open('.cache/pointer_probe.json','w'))
+json.dump({"tail_acc":float(acc),"n":int(len(TY)-ht)},open(os.environ.get("PROBE_OUT",".cache/pointer_probe.json"),"w"))
