@@ -28349,3 +28349,46 @@ token-position × waist-dim, the moment the skeleton trains.
   closed by measurement, two instrument laws carved, the deficit
   located at the pooling hop with an honest 0.78-graded ceiling
   and a two-slope map. Everything downstream is a word.
+
+- **GUT #191 REGISTERED — "FOLLOW THE CONTOUR LINES" (2026-08-11,
+  Bryce's text; cheap-first routing on the measured surface):**
+  family check honored — #162's mango (blind contour-FOLLOWING as
+  instrument) stays dead (#161: per-slot frame variation un-fixes
+  the fixed point); THIS is path selection against a SURVEYED
+  field — the two-axis load surface acquired last night. Content:
+  resolve cheap slots first; let commitments reduce the field for
+  the expensive (signature C the precedent: families finish in
+  altitude order when free). Limits owned: it is #190's boulevard
+  from the routing side; no measurement yet that commitment
+  transfers benefit. THE RENT (fired with this entry, and it
+  found a lever the gut didn't claim): the neighbor-resolution
+  read is implementable WITHIN-ROW and CAUSAL at inference —
+  trunk states fixed, commitment simulated by MASKING resolved
+  factors' sentence spans from the attention field (tokmask as
+  the median; a decode-side staged resolution needing NO training
+  — the organ fences don't apply to a re-pool). Read: the deepest
+  rel slot's set-based readout, full field vs progressively
+  committed field. A positive delta = the load is externally
+  imposed and removable = staging has its mechanism; flat = the
+  deficit is intrinsic to the slot's own surface.
+
+- **GUT #191's RENT — NEGATIVE, AND IT REFRAMES THE SURFACE
+  (2026-08-11):** the within-row causal read: the deepest rel
+  slot's set-based readout at full field 0.663, half-committed
+  0.673, maximally-committed 0.657 — **flat to ±0.01. Removing
+  the entire crowd from the attention field does not help the
+  hard slot: the load is NOT congestion; the deficit is intrinsic
+  to the slot's reading of its own surface.** Cheap-first/staged
+  resolution loses its mechanism at the inference grain — the
+  boulevard class CLOSES at the pooling hop (one cheap read
+  instead of a design cycle; the gut paid for its own refutation
+  again). THE REFRAME the negative buys: the two-axis load
+  surface (−0.013/slot, −0.011/var) cannot be an inference-
+  capacity map — with competition removed the gradient persists —
+  so it is an EXPERIENCE map: training exposure thins at deep
+  indices and big rosters, and the readout thins with it. The
+  cure space returns to the diet at a NEW aim (per-slot-depth
+  exposure — the dose road's sub-linearity was measured at the
+  ROW grain; the slot-depth cell was never the aimed axis) — a
+  design question for a word, now standing on three consecutive
+  measured refutations that each narrowed the target.
