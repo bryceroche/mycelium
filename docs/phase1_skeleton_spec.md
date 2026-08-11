@@ -29020,3 +29020,29 @@ token-position × waist-dim, the moment the skeleton trains.
   observation, not a door verdict — pre-named so a third
   no-transfer reads as the pattern it is rather than another
   isolated null.
+
+- **DOOR #54-R'S VERDICT — THE CHURN SURVIVES THE OPEN PAWL;
+  PERSISTENCE-WITHIN-THE-PASS CLOSES AS A CLASS (2026-08-11):**
+  vacuousness: the pawl BORN OPEN and STAYED open (b −1.94,
+  direction trained) — the mechanism could act. **Engaged
+  regressions 111 vs the shy pawl's 108 vs the class's 108:
+  IDENTICAL. Shy and open fail the churn cut the same way — the
+  commit mechanism itself, not its bias, cannot stop later
+  breaths overwriting earlier-correct work.** The class closes by
+  measurement; the rescue is spent; **ACCUMULATE inherits the
+  notebook's entire case** — with the mussel's shape
+  (transform-and-return), the cube's clause (return to SHAPE),
+  commit-on-change, and the certification fence already at its
+  registration. THE CHARTER PATTERN, earning its pre-written
+  name on the third instance: **COMPONENTS ENGAGE; THEIR CLAIMED
+  MECHANISMS DON'T TRANSFER TO THE PARSE** (breaths at authority
+  — repair without deployability; the pawl shy and open — no
+  churn cut; each component real at SOME grain, none delivering
+  its registered claim at its registered site). A charter-grade
+  observation now standing over the organs program: engagement
+  is solved machinery; TRANSFER is the unsolved science. Side
+  notes: the open pawl's training shadow trades selectivity for
+  volume (silent 33 converts @ 1.61 vs the shy arm's 30 @ 2.59);
+  engaged nd0 0/15 and nd4 6/15. All organ roads now converge on
+  ACCUMULATE + the second-cut designs, on words, with the
+  transfer question standing over them all.
