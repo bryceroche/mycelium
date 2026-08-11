@@ -28947,3 +28947,15 @@ token-position × waist-dim, the moment the skeleton trains.
   organ arc's window closes: eleven doors from summons to a
   bracketed dependency curve, every branch pre-written, every
   turn caught by its own registration.
+
+- **DOOR #54's READING NOTE (2026-08-11, Bryce's carve, pinned to
+  the sheet ahead of its prints):** if the pawl opens and the
+  churn cut passes, **the silent grain remains unaddressed BY
+  CONSTRUCTION — a win here is a win on the ENGAGED TIER**, and
+  the deploy question stays where the dial left it. The boundary
+  rides the sheet so an engaged success cannot be read as
+  progress toward a silent deployment it structurally cannot
+  provide. (And the converts floor's role restated: a ratchet
+  that only suppresses regressions could be freezing everything —
+  ≥20 converts is what separates advances-kept from
+  nothing-moves.)
