@@ -28169,3 +28169,31 @@ token-position × waist-dim, the moment the skeleton trains.
   The 0.992/0.190 hop remains the campaign's narrowest named
   target. nd=2's first-ever movement (8/15 under faint breath)
   stays a WATCHED lead on the organ's file.
+
+- **THE RESCUE'S FULL RECORD + THE LOSS-SCALE CONFOUND + ONE
+  SUGGESTIVE LEAN (2026-08-10; the breath file's closing entry):**
+  fences: mouth 40/40, sentinels 20/20 ×2, formation intact both
+  ends; cells 4/3/10/0 — **nd2 MOVED AGAIN (10/15; two
+  independent sightings, 8 and 10)**, nd0 op at #38-class
+  near-boundary erosion. SCORE CRATER (soft, licensed, stated
+  plainly): bigtest 1181 (−73), alg4 361 — a 50% blend against an
+  empty delta pipe averages states toward stale anchors. **THE
+  CONFOUND, carved before anyone celebrates nd2: with identity
+  breaths the per-breath loss ladder averages to 1.5× the
+  single-pass loss scale — every breath-flag arm is secretly a
+  HOTTER-LR arm**, and op inversion + nd2 movement + the alg4
+  signature are all consistent with a hotter fire; the
+  discriminating control (single-pass LR 1.5e-4) is a named
+  future arm and P-233 rides it. **THE SUGGESTIVE LEAN
+  (corrected-instrument read; the driver's p233 default read the
+  stale file — fixed):** the rescue's TRUE P-233: converts 24 /
+  regressions 62, **ratio 3.16 ordinal-graded (0.122 vs 0.038)
+  — the ONLY ordinal-leaning conversion print the 233 have ever
+  given, on the only arm with any multi-read character**
+  (breath_emb-differentiated triple reads under 50% anchor
+  averaging). +1.6σ over the churn null at n=24: SUGGESTIVE, NOT
+  CONFIRMATORY, banked with both caveats and pointing the same
+  direction as the transport thesis. THE BREATH FILE CLOSES for
+  tonight: trilogy + confound + lean; the bootstrap design and
+  the hot-LR control are its two named future words. g44r
+  benched beside g44.
