@@ -28449,3 +28449,33 @@ token-position × waist-dim, the moment the skeleton trains.
   upstream, learned). Refines #137's unbuilt elastic arm's bar:
   it must demonstrate return TO STRUCTURE, not merely to rest.
   No build; the organ fences stand.
+
+- **DOOR #46'S VERDICT — KILLED AT THE FENCE AND UNDER THE BAR,
+  WITH A WEAK CAUSAL POSITIVE BANKED HONESTLY (2026-08-11):** the
+  slot-depth diet: g46 opens 1.577/0.564 (gap 1.013 — first past
+  a full logit, new widest); formation intact both ends; ring
+  clean (bigtest 1249, alg4 412, sentinels, mouth 40/40). **THE
+  KILL, twice over: (1) nd0 HARD FENCE — the op wall INVERTED
+  again (all five mul rows decode add, −1.03..−2.57) — the
+  FOURTH sighting of the nd0-op fragility under diet change
+  (g35-era, #37, #44, #46; held only by #39's counterweight and
+  #41's one-mass — and the one-mass sliver RODE this fire and
+  the wall flipped anyway: hot-share balance is INSUFFICIENT;
+  the wall is hair-trigger to any new tenant — a standing
+  wall-guard design question, to a word). (2) THE PRIMARY UNDER
+  BAR: j6-7 mean transfer +0.0135 (0.615→0.6285) vs the pinned
+  +0.03 and the priced +0.039 — HALF the predicted effect, with
+  j1 moving +0.017 muddying the band separation.** THE HONEST
+  RESIDUE, banked without promotion: the movement is
+  DIRECTIONALLY RIGHT AT THE TARGET CELLS (+0.013 j6, +0.014 j7)
+  — the exposure story gets WEAK causal support at ~0.35-0.5×
+  the correlational rate (the classic attenuation; the +0.68 was
+  part causation, part confound). Neither confirmed at bar nor
+  refuted at zero: the depth axis responds, slowly, and the next
+  increment would need the mint-grade dose (deep-slot-heavy
+  rows) plus the wall-guard solved first. g46 to the bench. THE
+  SESSION'S STATE FOR THE NEXT WINDOW: GEN-41 rules (untouched,
+  fences never bent); the board: the wall-guard design (the nd0
+  fragility's standing cure), the mint-grade depth dose (behind
+  the wall-guard), organic-failure gold, hot-LR control, breath
+  bootstrap — all on words.
