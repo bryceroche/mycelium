@@ -29104,3 +29104,20 @@ token-position × waist-dim, the moment the skeleton trains.
   other candidate); the moment a design fires with gradients it
   becomes an ACTUAL BAR, and the registration says so explicitly
   rather than inheriting today's tautology.
+
+- **THE RICHER-COMMIT READ — QUALITY GATES THE MECHANISM, AND THE
+  ZERO'S DENOMINATOR CONFESSES (2026-08-11):** rel-commits
+  UNFILTERED (every decoded 2-arg rel restated, wrong ones
+  included): **converts 1 vs the givens-only 4 — richer-but-
+  unfiltered is POORER: committing wrong structure entrenches it;
+  COMMIT QUALITY is the design's true pricing question** (the
+  confidence gate, not the commit class, is the dial). AND THE
+  INSTRUMENT CONFESSION, caught at the second print: regressions
+  within the 233 are STRUCTURALLY ZERO — miss rows cannot regress
+  — so both smokes' "0 regressions" is the population's shape,
+  not a safety measurement. **The cost-free claim is UNMEASURED
+  ON PASSERS; the full-population pass-2 read (does conditioning
+  break rows the gate solves?) is OWED before the design
+  registration numbers any floor.** The 4/0 floor amends to:
+  4 converts, cost unmeasured. The meter law's cousin at the
+  denominator grain, caught by its own second arm.
