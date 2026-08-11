@@ -29141,3 +29141,25 @@ token-position × waist-dim, the moment the skeleton trains.
   poisons passers (the object fork re-opens). The registration
   FREEZES pending the discriminator. 4 converts stand; every
   cost number is provisional.
+
+- **THE DISCRIMINATOR'S VERDICT — POISONING, NOT TRUNCATION; THE
+  TEXT-APPEND FORM REFUTED (2026-08-11):** regression rate 0.684
+  IN-window vs 0.719 over — FLAT; 723 of 874 regressions occur
+  with full content intact. **The window is acquitted; the
+  conditioning itself poisons: appending canonical restatements
+  to text the gate parses correctly breaks 68% of solved rows.**
+  Branch (B)'s text-append form is REFUTED AS IMPLEMENTED. The
+  mechanism hypotheses, named not claimed: (i) DUPLICATE-GIVEN
+  SLOT COMPETITION — the appends restate facts already in the
+  text by construction; duplicated givens may fight for slots;
+  (ii) REGISTER SHIFT — hybrid text+restatement rows sit outside
+  every training distribution. THE CHEAP SPLITTER, named for a
+  word: THE PLACEBO ARM — append a content-free mint-grammar
+  sentence (pure-append cost) vs the given-appends (content
+  cost); the difference attributes poison to duplication or to
+  appending per se. **FORM (A) — state-side anchors — STANDS
+  UNREFUTED** (no text touched); the object fork re-opens with
+  (A) as the surviving lead and 4 converts as the only number
+  that survived every read tonight. The accumulate's file rests
+  frozen on exactly honest ground: one mechanism receipt (4),
+  one form refuted, one form standing, one splitter priced.

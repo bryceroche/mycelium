@@ -55,12 +55,23 @@ for i,r in enumerate(ROWS):
                     elif f.get("op")=="mul": parts.append(f"The product of {L[a]} and {L[b]} is {L[c]}.")
     add=" ".join(parts)
     texts2.append(samples[r]["text"]+" "+add if add else samples[r]["text"])
+    kept.append(add)
 p2=run_pass(texts2)
+recs=[]
 for i,r in enumerate(ROWS):
     g_=samples[r]["solution"][samples[r]["query_var"]]
     facs1,q1=p1[i]; facs2,q2=p2[i]
     a1=solve2(facs1,q1,{"n_vars":24,"m":300}); a2=solve2(facs2,q2,{"n_vars":24,"m":300})
     if a1!=g_ and a2==g_: conv+=1
     if a1==g_ and a2!=g_: reg+=1
-print(f"[smoke] the 233 under pass-2 given-conditioning: converts {conv}  regressions {reg}",flush=True)
-json.dump({"converts":conv,"regressions":reg},open(os.environ.get("SMOKE_OUT",".cache/accumulate_smoke.json"),"w"))
+    ol=int(tokmask[r].sum()); al=len(tok.encode(kept[i]).ids) if kept[i] else 0
+    recs.append({"r":int(r),"p1":bool(a1==g_),"p2":bool(a2==g_),"ol":ol,"al":al})
+print(f"[smoke] converts {conv}  regressions {reg}",flush=True)
+import numpy as _np
+R=[x for x in recs if x["p1"] and not x["p2"]]
+P=[x for x in recs if x["p1"]]
+for lo,hi,name in ((0,250,"IN-window (ol+al<=250)"),(250,9999,"OVER-window (ol+al>250)")):
+    pp=[x for x in P if lo < x["ol"]+x["al"] <= hi]
+    rr=[x for x in pp if not x["p2"]]
+    print(f"[discriminator] {name}: regress {len(rr)}/{len(pp)} = {len(rr)/max(len(pp),1):.3f}",flush=True)
+json.dump({"converts":conv,"regressions":reg,"recs":recs},open(os.environ.get("SMOKE_OUT",".cache/accumulate_smoke.json"),"w"))
