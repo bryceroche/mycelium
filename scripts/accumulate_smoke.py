@@ -18,7 +18,7 @@ from tinygrad.nn.state import safe_load
 tok=Tokenizer.from_file(TOKENIZER_JSON)
 samples, states, tokmask, gold, sent = load_alg("test")
 base=json.load(open('.cache/miss_census_gen41.json'))
-ROWS=sorted(base["miss_idx"])
+ROWS=sorted(base["miss_idx"]) if os.environ.get("FULL_POP")!="1" else list(range(len(samples)))
 p=build_params(0); sd=safe_load(json.load(open('.cache/GENERATION.json'))["parser_ckpt"])
 for k in p: p[k].assign(sd[k].to(p[k].device).cast(p[k].dtype)).realize()
 L="abcdefghijklmnopqrstuvwx"

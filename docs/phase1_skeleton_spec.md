@@ -29121,3 +29121,23 @@ token-position × waist-dim, the moment the skeleton trains.
   registration numbers any floor.** The 4/0 floor amends to:
   4 converts, cost unmeasured. The meter law's cousin at the
   denominator grain, caught by its own second arm.
+
+- **THE FULL-POPULATION READ — 874 REGRESSIONS; THE COST CLAIM
+  INVERTS, WITH A NAMED CONFOUND (2026-08-11):** given-
+  conditioning on all 1,500: converts 4, **regressions 874 — the
+  most destructive intervention ever measured as implemented.**
+  The denominator confession vindicated within the hour: the
+  miss-only zeros concealed a catastrophe on passers. THE
+  CONFOUND, named before any mechanism claim: **T_ALG=256 —
+  appended restatements push long rows past the window,
+  TRUNCATING original content** (bigtest p90 = 188 tokens;
+  appends run 50-150) — the E5 window question resurfacing at
+  the accumulate's door. THE DISCRIMINATOR OWED before the
+  design registration exists at all: regressions vs
+  (orig+append) length — concentration past 250 tokens =
+  truncation artifact (the mechanism's true cost unmeasured
+  under this window; the accumulate NEEDS the window generation
+  or in-window commit budgets); spread = the conditioning itself
+  poisons passers (the object fork re-opens). The registration
+  FREEZES pending the discriminator. 4 converts stand; every
+  cost number is provisional.
