@@ -44,6 +44,7 @@ import numpy as np
 
 T_ALG = 256
 ALG_REF = int(os.environ.get("ALG_REF", "0"))   # E-FLOOR referent supervision
+ALG_DIAL = int(os.environ.get("ALG_DIAL", "0"))  # door #45: the dialect reader
 H_TRUNK = 2048
 H_W = int(os.environ.get("ALG_HW", "512"))  # capacity-probe dial (2026-07-11)
 K_VARS = 24
@@ -154,6 +155,7 @@ def build_gold(samples, offsets):
         "fspan": np.zeros((n, L_FAC, T_ALG), np.float32),
         "vspan": np.zeros((n, K_VARS, T_ALG), np.float32),
         **({"refvar": np.full((n, T_ALG), -1, np.int8)} if ALG_REF else {}),
+        **({"is_ind": np.zeros((n, L_FAC), np.float32)} if ALG_DIAL else {}),
         "query": np.zeros((n,), np.int32),
         "band": np.zeros((n,), np.int32),
         # the tranche (2026-07-09): explicit per-kind masks (rel mask was
@@ -186,8 +188,11 @@ def build_gold(samples, offsets):
         assert len(facs) <= L_FAC and smp["n_vars"] <= K_VARS
         g["query"][i] = smp["query_var"]
         g["band"][i] = smp["decisions"]
+        _indvars = set()
         for v_str, spans in smp["mentions"].items():
             _spans_to_tokmask(spans, offs, g["vspan"][i, int(v_str)])
+            if any(sp[1] - sp[0] > 2 for sp in spans):
+                _indvars.add(int(v_str))
             if ALG_REF:   # E-FLOOR (door #43): indirect sites only (char>2)
                 _ind = [sp for sp in spans if sp[1] - sp[0] > 2]
                 if _ind:
@@ -196,6 +201,8 @@ def build_gold(samples, offsets):
                     g["refvar"][i][_m > 0] = int(v_str)
         for j, f in enumerate(facs):
             g["presence"][i, j] = 1.0
+            if ALG_DIAL and f["ftype"] == "rel" and any(a in _indvars for a in f.get("args", [])):
+                g["is_ind"][i, j] = 1.0
             _spans_to_tokmask(f.get("spans") or [], offs, g["fspan"][i, j])
             if f["ftype"] == "rel":
                 g["ftype"][i, j] = 0
@@ -534,6 +541,8 @@ def build_params(seed=0):
     p["W_args"] = t(rng.randn(H_W, H_W) / math.sqrt(H_W))
     if int(os.environ.get("ALG_DUPPTR", "0")):
         p["W_dargs"] = t(rng.randn(H_W, H_W) / math.sqrt(H_W))
+    if ALG_DIAL:                              # door #45: dialect args pointer
+        p["W_iargs"] = t(rng.randn(H_W, H_W) / math.sqrt(H_W))
     p["W_res"] = t(rng.randn(H_W, H_W) / math.sqrt(H_W))
     p["W_query"] = t(rng.randn(H_W, H_W) / math.sqrt(H_W))
     return p
@@ -664,6 +673,8 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None):
             "args": (s @ p["W_args"]) @ vst.transpose(-2, -1),
             **({"dargs": (s @ p["W_dargs"]) @ vst.transpose(-2, -1)}
                if "W_dargs" in p else {}),
+            **({"iargs": (s @ p["W_iargs"]) @ vst.transpose(-2, -1)}
+               if "W_iargs" in p else {}),
             "res": (s @ p["W_res"]) @ vst.transpose(-2, -1),
             **({"dig2": (s @ p["h_dig2"] + p["h_dig2_b"])
                 .reshape(B, L_FAC, N_DIG, 10),
@@ -752,6 +763,10 @@ def _loss_single(o, g):
     if "dargs" in o and "arg_dup" in g:         # door #12: the dedicated dup
         dm2 = rel * g["arg_dup"]                # pointer — single-target gold
         l = l + (ce(o["dargs"], g["args"].argmax(-1)) * dm2).sum() / (dm2.sum() + 1e-6)
+    if "iargs" in o and "is_ind" in g:          # door #45: dialect reader —
+        im = is_rel * g["is_ind"] * pres        # indirect-population gold only
+        l = l + float(os.environ.get("DIAL_W", "1.0")) * (
+            (bce(o["iargs"], g["args"]).mean(-1) * im).sum() / (im.sum() + 1e-6))
     if "dig2" in o and "is_macro" in g:        # gen-15: OP_APPLY terms
         if "is_frac" in g:                     # mg2: frac k rides the dig2 CE
             mac2 = pres * (g["is_macro"] + g["is_frac"])
@@ -1113,6 +1128,9 @@ def do_train(steps, lr, batch, seed):
                       f"{'missing' if k not in sd0 else 'shape'})", flush=True)
         print(f"[train] WARM from {os.environ['WARM_FROM']}: "
               f"{n_load}/{len(p)} keys", flush=True)
+        if "W_iargs" in p and "W_iargs" not in sd0 and "W_args" in sd0:
+            p["W_iargs"].assign(sd0["W_args"].to(p["W_iargs"].device)
+                                .cast(p["W_iargs"].dtype)).realize()
         if "W_dargs" in p and "W_dargs" not in sd0 and "W_args" in sd0:
             p["W_dargs"].assign(sd0["W_args"].to(p["W_dargs"].device)
                                 .cast(p["W_dargs"].dtype)).realize()
@@ -1169,6 +1187,7 @@ def do_train(steps, lr, batch, seed):
                          ("fspan", (L_FAC, T_ALG), dtypes.float),
                          ("vspan", (K_VARS, T_ALG), dtypes.float),
                          *((("refoh", (T_ALG, K_VARS), dtypes.float),) if ALG_REF else ()),
+                         *((("is_ind", (L_FAC,), dtypes.float),) if ALG_DIAL else ()),
                          ("ftype", (L_FAC,), dtypes.int),
                          ("op", (L_FAC,), dtypes.int),
                          ("res", (L_FAC,), dtypes.int),
@@ -1344,6 +1363,7 @@ def do_train(steps, lr, batch, seed):
                 **({"refoh": (np.eye(K_VARS, dtype=np.float32)[
                         np.maximum(gold["refvar"][idx].astype(np.int32), 0)]
                         * (gold["refvar"][idx] >= 0)[..., None])} if ALG_REF and "refvar" in gold else {}),
+                **({"is_ind": gold["is_ind"][idx]} if ALG_DIAL and "is_ind" in gold else {}),
                 "op": gold["op"][idx], "res": gold["res"][idx],
                 "digits": gold["digits"][idx], "query": gold["query"][idx],
                 "sel": gold["sel"][idx], "is_rel": gold["is_rel"][idx],
