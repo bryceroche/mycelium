@@ -28914,3 +28914,11 @@ token-position × waist-dim, the moment the skeleton trains.
   a trajectory and reading more agreeable than they are. NO BUILD
   until a specimen costs (the two dormant collisions never
   fired); priced, named, waiting.
+
+- **GUT FILED — "CRUNCHY LEAVES" (2026-08-11, Bryce's text; no
+  rent owed):** the brittleness family already holds the
+  mechanism at three measured sites, and the satisfying part
+  isn't a mechanism — it's clean feedback, which is the
+  campaign's own best property. Filed as a walk and a sound after
+  fifty-three doors, in a ledger that otherwise contains only
+  work. Not everything needs to convert.
