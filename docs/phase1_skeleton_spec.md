@@ -28281,3 +28281,32 @@ token-position × waist-dim, the moment the skeleton trains.
   holds at the token stations (0.988/0.991, alignment-free) but
   the SLOT-station numbers re-read before door #46 designs
   anything.)
+
+- **THE TONGUES INVESTIGATION — NO TONGUES; THE DIALECT WAS THE
+  INSTRUMENT'S GHOST, AND THE HONEST STORY IS GRADED DEFICIT
+  (2026-08-11; the prepopulated gut investigated and refuted with
+  full credit — it forced the set-based audit that found the
+  truth):** with SPAN-ATTENTION PAIRING (order-free, the lawful
+  test-register instrument): healthy→healthy 0.935;
+  **healthy→ordinal TRANSFER 0.783 ≈ the ordinal in-population
+  ceiling 0.777** — the healthy-trained reader reads ordinal
+  slots AS WELL AS ANY LINEAR READER CAN. THE CODE-MISMATCH STORY
+  IS VOID (the 0.190 was slot-alignment artifact entirely; the
+  station read's 0.93 slot ceiling was alignment-inflated). What
+  stands on the sound instrument: **ordinal slots carry the
+  first-arg at only ~0.78 vs healthy 0.935 — a genuine EVIDENCE
+  DEFICIT at the slot grain (~0.15-0.22 missing), NOT a second
+  code — and it is INDEX-GRADED: within-index transfer 0.804 at
+  j=0 falling monotonically to 0.585 at j=7.** The original
+  size/crowding-graded EROSION story returns at the slot grain on
+  an honest instrument: as the roster deepens, each slot's pooled
+  evidence thins. NO READER FIX can exceed 0.78 — the dialect-
+  reader class is closed for good; the deficit is in POOLING
+  UNDER CROWDING (per-slot attention capacity as rosters grow).
+  THE CASCADE OF CORRECTIONS SEALED: 0.190 (artifact) → 0.93
+  (inflated) → 0.78-graded (sound). Doors re-scoped: #46-class
+  routing/reader designs CLOSED; the live question is the
+  POOLING-CAPACITY grain (crowding-graded, the tail chain's
+  original axis, now located at the attention hop with honest
+  numbers). The gut's service recorded: wrong on purpose, right
+  on where to look.
