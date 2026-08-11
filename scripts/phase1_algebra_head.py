@@ -713,6 +713,10 @@ def loss_fn(o, g):
             w = 1.0 + kb / max(K_B - 1, 1)
             term = _loss_single(full, g) * w
             tot = term if tot is None else tot + term
+        if int(os.environ.get("BREATH_NORM", "0")):
+            _wsum = sum(1.0 + kb / max(K_B - 1, 1) for kb in range(K_B))
+            return tot / _wsum          # door #50: TRUE-scale ladder — the
+                                        # 1.5x heat confound removed at birth
         return tot / K_B
     return _loss_single(o, g)
 
@@ -1128,6 +1132,12 @@ def do_train(steps, lr, batch, seed):
                       f"{'missing' if k not in sd0 else 'shape'})", flush=True)
         print(f"[train] WARM from {os.environ['WARM_FROM']}: "
               f"{n_load}/{len(p)} keys", flush=True)
+        if "W_bo" in p and int(os.environ.get("BREATH_WARM_BO", "0")) and "attn_wo" in sd0:
+            p["W_bo"].assign(sd0["attn_wo"].to(p["W_bo"].device)
+                             .cast(p["W_bo"].dtype)).realize()   # door #50:
+                             # the pipe warm-seeded from the trained router
+                             # (never discard a trained router — the W_bo
+                             # zero-saddle's named key)
         if "W_iargs" in p and "W_iargs" not in sd0 and "W_args" in sd0:
             p["W_iargs"].assign(sd0["W_args"].to(p["W_iargs"].device)
                                 .cast(p["W_iargs"].dtype)).realize()
