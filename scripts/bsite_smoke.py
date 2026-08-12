@@ -52,7 +52,7 @@ for s0 in range(0,15,8):
     keys=("pres","ftype","op","islit","dig","args","res","query")+(("sel",) if "sel" in oe else ())+(("dup",) if "dup" in oe else ())+(("sgn",) if "sgn" in oe else ())
     en={k2:oe[k2].realize().numpy() for k2 in keys}
     sn={k2:o0[k2].realize().numpy() for k2 in keys}
-    gm=np.full((8,L_FAC,1),0.2,np.float32)
+    gm=np.full((8,L_FAC,1),float(os.environ.get("BG_AUTH","0.2")),np.float32)
     for bi in range(8):
         for j in range(L_FAC):
             if en["pres"][bi,j]>0 and sn["pres"][bi,j]>0 and argpair(en,bi,j)!=argpair(sn,bi,j):
@@ -64,5 +64,5 @@ for s0 in range(0,15,8):
             facs=decode({k2:oo[k2][i] for k2 in oo})[0]
             ok=any(f.get("ftype")=="rel" and f.get("args")==[r["dv"],r["dv"]] and f.get("op")==r["op"] for f in facs)
             mis[nm]+=(not ok)
-print(f"[bsite nd4] misbind: uniform-engaged {mis['uni']}/15  EVENT-MODULATED {mis['mod']}/15",flush=True)
+print(f"[bsite nd4] misbind: uniform-engaged {mis['uni']}/15  FOCUSED(bg={os.environ.get('BG_AUTH','0.2')}) {mis['mod']}/15",flush=True)
 json.dump(mis,open('.cache/bsite_smoke.json','w'))
