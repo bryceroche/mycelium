@@ -29266,3 +29266,24 @@ token-position × waist-dim, the moment the skeleton trains.
   happens at the MARGINS of the runtime's competence, not its
   center — a mechanism finding no one would have guessed from the
   15→5 exhibit alone.
+
+- **THE DIFFERENCE GATE — THE NULL FIRES SHARPER THAN WRITTEN:
+  CARRIAGE IS AN ENSEMBLE PROPERTY (2026-08-11):** delta-gating
+  (engaged−silent pres > 2) carries ZERO (nd4 15/15 — worse than
+  every gate) despite selecting the relocated slots by
+  construction. THE DIAGNOSIS: anchoring ONLY the disputed slots
+  builds a MIXED ensemble — engaged and silent states side by
+  side — and the heads read slots RELATIONALLY (args/res pointers
+  compare slot states); **per-slot grain-mixing scrambles the
+  relational code. The coarse gate won by anchoring nearly the
+  whole bank — one grain's language throughout.** The tongues
+  saga's per-slot-code finding, returning as the carriage
+  mechanism's own constraint. THE GATE QUESTION CLOSES: the
+  design's gate is COARSE-WHOLE (anchor all engaged-formed slots;
+  the 2% standing cost) and refinement moves to the ENSEMBLE
+  GRAIN — **ROW-LEVEL gating** (anchor whole rows where the
+  engaged pass shows relocated content; selective per row,
+  consistent per ensemble) — named from the null, to a word. The
+  window's true last line: even the failed gate taught structure
+  — every read tonight, positive or null, left the mechanism
+  better drawn than it found it.
