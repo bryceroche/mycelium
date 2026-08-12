@@ -29225,3 +29225,14 @@ token-position × waist-dim, the moment the skeleton trains.
   set. To the word. THE NIGHT'S LAST LINE: five smokes and a
   sixth that carried — the notebook's surviving half took its
   first breath and moved the unmovable cells.
+
+- **THE ANCHOR DESIGN REGISTERED (2026-08-11; the window's final
+  act):** the accumulate's form enters the registry on measured
+  case alone — the 15→5 exhibit, the double-receipted spine, gate
+  quality as the first question (Bryce's rider), the gradient-era
+  removal bar armed (Bryce's rider), and the honest structural
+  note in its order of work: **an anchored-silent deployment is a
+  TWO-READ organism** — its scope and cost enter the December
+  sheet's conversation as a registered question when that day
+  comes, never absorbed. The night rests here: the notebook's
+  surviving half registered, breathing, and fenced.
