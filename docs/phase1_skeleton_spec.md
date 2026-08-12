@@ -29840,3 +29840,31 @@ token-position × waist-dim, the moment the skeleton trains.
   sliver, elders withdrawn — to a word. Door #59 closes: two
   cures banked, the third residue self-inflicted and named, the
   stack indicted by three independent meters.
+
+- **DOOR #60's VERDICT — THE RETIREMENT SPLITS ITS WARRANT AND
+  PRINTS THE ARC'S BEST SHEET AROUND ITS OWN REFUTATION
+  (2026-08-12):** THE EMISSION: sight 100/100, **ANSWER 43 — the
+  LOWEST, on the cleanest conditions: the stack-prior theory
+  REFUTED by its own cleanest test** (no elders, gate-fresh
+  weights — the residue persists); the arithmetic root named:
+  **products ≤300 force small-domination STRUCTURALLY — no mint
+  escapes the cap; THE CURE CHAIN HALTS** (three cures, three
+  partial/failed) and the mechanism read (slot-grain
+  digit-binding autopsy on cascade rows) takes the road. AND YET
+  THE SHEET AROUND IT: **bigtest 1259 — THE RECORD EQUALED; the
+  233 NET-POSITIVE for the first time on any arm (226 misses,
+  44/37); lean 2.24 above the pin; the fifteen at 4/15 with the
+  trio {183,332,825} REUNITED + 64 new (union 6/15; 183 a
+  four-door constant); the widest gap ever (1.057).** alg4 394:
+  the retirement meter reads PARTIAL — +7 relieved from the
+  stack, the fence still breached (~13 = the cascade diet's own
+  standing bill). nd2's fourth point: 15/15 on one generation —
+  the movement's key lives among the RETIRED elders (7→14→7→15
+  bracketed). Cells nd0 4/15 (the family; the guard's draw owed
+  if promotion is ever sought). Frontier 40/40, lies 1@5. THE
+  BOARD AFTER SIXTY DOORS: the mechanism read (the held-out
+  ANSWER's true mode), the nd2 key hunt (among four retired
+  sliver generations), the surface dial (the union growing), the
+  guard's draw if this sheet seeks promotion — all on words. The
+  arc's shape holds to the last: every celebration audited, every
+  refutation printing beside the best numbers of its era.
