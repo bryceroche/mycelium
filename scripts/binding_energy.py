@@ -26,13 +26,22 @@ def grains(tr,tk,se,snt_np):
     sn={k2:o0[k2].realize().numpy() for k2 in ("pres","ftype","args","dup")}
     en={k2:oe[k2].realize().numpy() for k2 in ("pres","ftype","args","dup")}
     return sn,en
+def argpair(oo,bi,j):
+    if oo["dup"][bi,j]>0:
+        a0=int(np.argmax(oo["args"][bi,j])); return (a0,a0)
+    return tuple(sorted(np.argsort(-oo["args"][bi,j])[:2].tolist()))
 def energy(sn,en,bi):
-    e=np.zeros(L_FAC)
+    """arm EVENTS: decode-grade rebinding (dup-aware argpair change),
+    presence-gated both grains; arm PGE: presence-gated distribution
+    movement. Returns (events_bool[L], pge[L])."""
+    ev=np.zeros(L_FAC); pg=np.zeros(L_FAC)
     for j in range(L_FAC):
+        if en["pres"][bi,j]<=0: continue
+        if sn["pres"][bi,j]>0 and argpair(en,bi,j)!=argpair(sn,bi,j): ev[j]=1.0
         pa=np.exp(sn["args"][bi,j]-sn["args"][bi,j].max()); pa/=pa.sum()
         pb=np.exp(en["args"][bi,j]-en["args"][bi,j].max()); pb/=pb.sum()
-        e[j]=float(np.abs(pa-pb).sum())          # args-distribution movement
-    return e
+        pg[j]=float(np.abs(pa-pb).sum())
+    return ev,pg
 # (1) fixture localization
 L="abcdefghij"
 def fixture_mint(nd, n=15, seed=96000):
@@ -48,7 +57,7 @@ def fixture_mint(nd, n=15, seed=96000):
         sents=[f"{L[i]} is {gv[i]}." for i in range(nd)]+[f"{L[dv]} is {x}.", w.format(a=L[dv],c=L[res])]
         rows.append({"text":f"Consider the numbers {', '.join(L[:res+1])}. "+" ".join(sents)+f" What is {L[res]}?","dv":dv,"op":op})
     return rows
-rows4=fixture_mint(4); hits=0; tot=0
+rows4=fixture_mint(4); hits=0; tot=0; EV_HIT=[]
 for s0 in range(0,15,8):
     ch=rows4[s0:s0+8]
     ids=np.zeros((8,T_ALG),np.int32); msk=np.zeros((8,T_ALG),np.float32); snt=np.zeros((8,T_ALG),np.int32)
@@ -59,8 +68,8 @@ for s0 in range(0,15,8):
     tr=Tensor(recompute_states(ids).astype(np.float32),dtype=dtypes.float)
     sn,en=grains(tr,Tensor(msk,dtype=dtypes.float),Tensor(snt,dtype=dtypes.int),snt)
     for i,r in enumerate(ch):
-        e=energy(sn,en,i)
-        jmax=int(np.argmax(e))
+        ev,pg=energy(sn,en,i)
+        jmax=int(np.argmax(pg))
         # the rebound slot: engaged dup-routed rel pointing [dv,dv]
         jre=-1
         for j in range(L_FAC):
@@ -69,7 +78,10 @@ for s0 in range(0,15,8):
                 jre=j; break
         if jre>=0:
             tot+=1; hits+= (jmax==jre)
-print(f"[energy fixture] max-energy slot == the REBOUND slot: {hits}/{tot}",flush=True)
+            EV_HIT.append((bool(ev[jre]>0), int(ev.sum())))
+print(f"[PGE fixture] max presence-gated energy == rebound slot: {hits}/{tot}",flush=True)
+rec=sum(1 for h,_ in EV_HIT if h); spars=[n for _,n in EV_HIT]
+print(f"[EVENTS fixture] rebound slot IS an event: {rec}/{len(EV_HIT)}  events/row median {int(np.median(spars))}",flush=True)
 # (2) the 233: row energy vs union converts
 samples, states, tokmask, gold, sent = load_alg("test")
 base=json.load(open('.cache/miss_census_gen41.json'))
@@ -85,9 +97,11 @@ for s0 in range(0,len(ROWS),8):
     sn,en=grains(tr,Tensor(tokmask[slp].astype(np.float32),dtype=dtypes.float),
                  Tensor(sent[slp].astype(np.int32),dtype=dtypes.int),sent[slp])
     for bi in range(len(sl)):
-        EN.append(energy(sn,en,bi).max())
+        ev,pg=energy(sn,en,bi)
+        EN.append((ev.sum(), pg.max()))
 EN=np.array(EN); y=np.array([1 if r in conv else 0 for r in ROWS])
-pos=EN[y==1]; neg=EN[y==0]
-auc=float((pos[:,None]>neg[None,:]).mean())
-print(f"[energy 233] row max-energy -> convert AUC {auc:.3f} ({int(y.sum())} converts / {int((1-y).sum())})",flush=True)
-json.dump({"fixture_hits":hits,"fixture_tot":tot,"auc":auc},open('.cache/binding_energy.json','w'))
+for col,name in ((0,"EVENT-count"),(1,"PGE-max")):
+    pos=EN[y==1,col]; neg=EN[y==0,col]
+    auc=float((pos[:,None]>neg[None,:]).mean()+0.5*(pos[:,None]==neg[None,:]).mean())
+    print(f"[{name} 233] -> convert AUC {auc:.3f}",flush=True)
+json.dump({"fixture_pge":hits,"fixture_tot":tot,"ev_recall":rec,"ev_sparsity":spars},open('.cache/binding_energy2.json','w'))
