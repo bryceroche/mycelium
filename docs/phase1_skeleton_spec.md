@@ -29819,3 +29819,11 @@ token-position × waist-dim, the moment the skeleton trains.
   toward a real read). Arm 1.491/0.558; ring pending in the log.
   The tower's ANSWER meter: 46→60→48 — two cures banked, one
   self-inflicted residue named, the retirement fire shaped.
+
+- **g59 GAP ADDENDUM (2026-08-12):** converts 49 (fourth record:
+  33→40→48→49); the fifteen at **4/15 — the highest yet** (183
+  now a THREE-DOOR constant; 825 returned; 650/1017 new; 332
+  dropped). The union of ever-converted chain rows: 5/15. The
+  tempered frame holds — per-door ratios are weather — but the
+  union's growth and 183's constancy are facts: **the wall thins
+  by attrition even as the residue wars continue.**
