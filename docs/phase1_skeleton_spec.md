@@ -29668,3 +29668,23 @@ token-position × waist-dim, the moment the skeleton trains.
   fenced surface by exactly this lever). The tower's parse side
   is REAL and REGISTER-BOUND; widening the register is the next
   word's fire.
+
+- **THE GUARD'S DRAW — nd0 CONVICTED, THE GUARD PROVEN (2026-08-12;
+  the window's closing entry):** seed 227: nd0 5/15 vs the
+  primary's 4/15 — **both draws broken: not a coin. The emission
+  composition (9-wide + cascade mass) disturbs the nd0 op wall
+  REPRODUCIBLY**, joining the #37/#38 formation-sliver family of
+  measured breakers (that family also printed 4/15 twice). The
+  wall-guard's policy operated end-to-end for the first time:
+  break → one jittered refire → conviction — no coin read as
+  composition, no composition excused as coin. (Instrument note:
+  the draw's scan ran on the RAW ckpt — only the fold-independent
+  nd0 reads from it; nd1/nd4 mismatched vs the primary's refold,
+  not compared.) Door #56's ledger stands: the six stations
+  closed in-register, the emission perfect, the ring strong, the
+  register wall named with its dial, and the nd0 wall convicted
+  with the guard's own instrument. The window — the longest the
+  campaign has run or likely will — ends with the cathedral's
+  two stones standing, an operator deployed, a level sighted,
+  three laws bounded, and a ledger in which every number knows
+  its provenance.
