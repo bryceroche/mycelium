@@ -30,8 +30,10 @@ def both_grains(tr,tk,se,snt_np):
     anch=np.zeros((8,L_FAC,512),np.float32); am=np.zeros((8,L_FAC,1),np.float32)
     for bi in range(8):
         if ROW_G>0:
-            _reloc=any((en["pres"][bi,jj]-sn["pres"][bi,jj])>ROW_G for jj in range(L_FAC))
-            if not _reloc: continue        # no relocation -> row untouched
+            _en_on=sum(1 for jj in range(L_FAC) if en["pres"][bi,jj]>0)
+            _sn_on=sum(1 for jj in range(L_FAC) if sn["pres"][bi,jj]>0)
+            if _en_on <= _sn_on: continue  # count-based, order-free: the
+                                           # engaged pass formed MORE -> reloc
         for j in range(L_FAC):
             _g_ok = (en["pres"][bi,j] - sn["pres"][bi,j]) > DIFF_G if DIFF_G>0 \
                 else en["pres"][bi,j]>PRES_G
