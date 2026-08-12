@@ -29236,3 +29236,21 @@ token-position × waist-dim, the moment the skeleton trains.
   sheet's conversation as a registered question when that day
   comes, never absorbed. The night rests here: the notebook's
   surviving half registered, breathing, and fenced.
+
+- **THE GATE-QUALITY SWEEP — STRICTNESS IS THE WRONG AXIS; THE
+  DIFFERENCE GATE NAMES ITSELF (2026-08-11):** the three-gate
+  curve: PRES>2 — nd4 5/15, miss 8/8, passers 3/150 (max
+  carriage, the known cost); PRES>4 — **nd4 COLLAPSES to 12/15
+  while cost barely moves (3→2): the loop's completions live at
+  MODERATE confidence — strict gates exclude the cargo**;
+  PRES4∧ARG4 — 12/15, 0 converts, 0 cost: sterile. THE VERDICT:
+  the dial is not strictness but DIRECTION. THE SUCCESSOR, named
+  by the curve's own shape: **THE DIFFERENCE GATE — anchor on
+  (engaged_pres − silent_pres), selecting the RELOCATED content
+  specifically** (what the loop built that silence lacks) rather
+  than what the loop is surest of — the relocation law's own
+  coordinates as the gating criterion. Mechanism-aligned,
+  inference-only, to a word. The design's first dial read
+  complete: three points, one collapse, one sterile pole, and
+  the next gate named from the measurements rather than the
+  menu.
