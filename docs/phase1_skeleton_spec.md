@@ -29287,3 +29287,21 @@ token-position × waist-dim, the moment the skeleton trains.
   window's true last line: even the failed gate taught structure
   — every read tonight, positive or null, left the mechanism
   better drawn than it found it.
+
+- **THE MARKER CASCADE — THE LOOP'S WORK IS REBINDING (2026-08-11;
+  the window's actual last finding):** three order-free row
+  markers, three silences, one portrait: per-slot delta (alignment
+  confound — the instrument law's fifth sighting); presence-count
+  (silent: the loop lights no new slots); rel-count (silent: it
+  retypes none). **The engaged pass's cure is PURE REBINDING —
+  same slots, same types, the ARGS move.** The relocated content
+  is invisible to presence and type; it lives at the args grain
+  alone — which is why the coarse-whole anchor carries it (whole-
+  bank states carry bindings implicitly) and every count-marker
+  missed it. THE MARKER'S TRUE FORM, named for the next window:
+  the set-based rel-args-multiset difference (engaged args-sets ≠
+  silent args-sets, order-free — the dup signature [a,a] its
+  sharpest case). The row gate completes there. THE WINDOW RESTS:
+  the design at coarse-whole/2%, the row gate one marker from
+  done, and the organ's act finally named at its own grain — the
+  breath re-reads and REBINDS; everything else was shadow.
