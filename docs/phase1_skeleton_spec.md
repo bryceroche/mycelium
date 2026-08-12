@@ -29644,3 +29644,27 @@ token-position × waist-dim, the moment the skeleton trains.
   annotates one floor up / parser emits / expansion grades / key
   grades primitives — six stations, each measured, never before
   all operating at once.
+
+- **DOOR #56's VERDICT — THE SIX-STATION LOOP CLOSES IN-REGISTER;
+  THE GAP AWAITS THE SURFACE DIAL (2026-08-12):** THE EMISSION
+  PRIMARY: **100/100 factor-exact, 100/100 ANSWER on held-out
+  cascades — sight is PERFECT in the mint's grammar; the
+  recursion charter's six stations (miner→admit→mint→emit→expand
+  →key) all operated at once for the first time since the
+  charter was carved.** Ring strong: bigtest 1245 (+7 over bar),
+  alg4 410 (> gate), sentinels clean, frontier 40/40 (1 lie @5 —
+  the baseline's own). Arm opens 1.587/0.685. nd0 4/15 — THE
+  GUARD'S DRAW PENDING (the jitter refire fires with this entry;
+  no conviction until it speaks). THE GAP READ'S HONESTY, both
+  halves: converts 33 (the most ever) at 2.87 lean — **but the
+  IDENTITY read attributes it AWAY from the tower: chain rows
+  0.067 vs non-chain 0.147 (ratio 0.45) — the mul-chain
+  constituency essentially untouched; the 33 are diet
+  side-effect** (the pure-mul sliver feeding op-adjacent effects
+  — information, not evidence, exactly as pinned). THE REGISTER
+  WALL AT THE TOWER'S DOOR: the parser sees the level where its
+  grammar lives; bigtest's chains speak bigtest's prose. THE
+  DIAL, named by receipt: SURFACE DIVERSITY (#37 generalized a
+  fenced surface by exactly this lever). The tower's parse side
+  is REAL and REGISTER-BOUND; widening the register is the next
+  word's fire.
