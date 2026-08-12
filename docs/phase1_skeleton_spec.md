@@ -29390,3 +29390,17 @@ token-position × waist-dim, the moment the skeleton trains.
   per-slot action) is the next word's question. The search that
   began at "there IS a wave" ends its measurement phase: the wave
   has coordinates.
+
+- **THE NAZARÉ OPERATOR SPEC WRITTEN (2026-08-12;
+  docs/NAZARE_SPEC.md; spec-first, nothing fires):** its first
+  act is RECOGNITION — **the operator's v1 already exists: the
+  row-gated cross-grain anchor IS Nazaré's first form** (commit
+  where the event field is non-empty; 5/15 carriage @ 0.7%
+  banked). The open forms enter as questions: (B) event-focused
+  breathing — hinging on whether within-loop gate modulation is
+  a DIFFERENT SITE from the ensemble law's output-mixing poison
+  (one smoke decides lawfulness before design); (C) wave-ordered
+  commitment (spec-stage, fenced from field-reduction). All
+  fences in from birth, where-not-whether hardest among them.
+  The gut's three-week arc — "there is a wave" → coordinates →
+  an operator with a measured floor — closes its spec.
