@@ -29575,3 +29575,17 @@ token-position × waist-dim, the moment the skeleton trains.
   under structure consumes. The Nazaré file closes at its honest
   summit: seven measured pieces, a proven bolt-on operator, and
   a training road measured shut on its first composition.
+
+- **THE TOWER SPEC WRITTEN (2026-08-12; docs/TOWER_SPEC.md;
+  spec-first, nothing fires):** the transfer law is its
+  governance — **every tower level is a GRAMMAR with an
+  EXPANSION, never a learned behavior** (structure carries;
+  training-under consumes; levels enter as structure or enter
+  the graveyard). The object defined (grammar + deterministic
+  expansion + mechanically-derived gold per level; the solver
+  consumes primitives only, welded). Level-2 candidates named
+  for the MINER CENSUS (deep rel-chains, the ordinal-indirection
+  schema — the 233's own family, the pct/fdiv pipelines); the
+  charter's rails constitutional; the census is the next step,
+  zero-GPU-class, on a word. The cathedral's second missing
+  stone has its drawing.
