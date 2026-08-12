@@ -1264,6 +1264,24 @@ def do_train(steps, lr, batch, seed):
                   * (o0["res"].argmax(-1) == bg["res"]).float())
             rv = (bg["presence"] * (1.0 - ok)).detach()
             o = forward(p, b_tr, b_tk, b_se, slot_mask=b_mask, revoke=rv, tail=b_tail)
+        elif int(os.environ.get("NAZ_TRAIN", "0")):
+            # NAZARÉ TRAINING (door #55): the organ-2 two-forward pattern —
+            # pre-pass yields the intra-pass event field IN-GRAPH (detached);
+            # the training pass runs FOCUSED. Training-time criterion
+            # (declared per the criterion-key clause, distinct from the
+            # read-time dup-aware argpair): argmax-change OR dup-flip on
+            # rel-typed present slots, breath-0 vs final.
+            o0 = forward(p, b_tr, b_tk, b_se, slot_mask=b_mask, tail=b_tail)
+            _b0 = o0["breaths"][0]
+            _relmask = (o0["pres"].squeeze(-1) > 0).float() \
+                * (o0["ftype"].argmax(-1) == 0).float()
+            _ev = (((_b0["args"].argmax(-1) != o0["args"].argmax(-1)).float()
+                    + ((_b0["dup"].squeeze(-1) > 0) != (o0["dup"].squeeze(-1) > 0)).float())
+                   .clip(0, 1) * _relmask).detach()
+            _bgauth = float(os.environ.get("NAZ_BG", "0.05"))
+            _gm = (_bgauth + (1.0 - _bgauth) * _ev).unsqueeze(-1).detach()
+            o = forward(p, b_tr, b_tk, b_se, slot_mask=b_mask, tail=b_tail,
+                        gmod=_gm)
         else:
             _bd = os.environ.get("BREATH_DROPOUT")
             o = forward(p, b_tr, b_tk, b_se, slot_mask=b_mask, tail=b_tail,
