@@ -12,7 +12,7 @@ samples, states, tokmask, gold, sent = load_alg("test")
 base=json.load(open('.cache/miss_census_gen41.json')); om=set(base["miss_idx"])
 rng=np.random.RandomState(7)
 ROWS=list(rng.choice([i for i in range(len(samples)) if i not in om],150,replace=False))
-p=build_params(0); sd=safe_load(".cache/g51_whisper.safetensors")
+p=build_params(0); sd=safe_load(os.environ.get("CK_OVERRIDE",".cache/g51_whisper.safetensors"))
 for k in p: p[k].assign(sd[k].to(p[k].device).cast(p[k].dtype)).realize()
 def argpair(oo,bi,j):
     if oo["dup"][bi,j]>0:

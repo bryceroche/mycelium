@@ -14,7 +14,7 @@ from tokenizers import Tokenizer
 from tinygrad import Tensor, dtypes
 from tinygrad.nn.state import safe_load
 tok=Tokenizer.from_file(TOKENIZER_JSON)
-p=build_params(0); sd=safe_load(".cache/g51_whisper.safetensors")
+p=build_params(0); sd=safe_load(os.environ.get("CK_OVERRIDE",".cache/g51_whisper.safetensors"))
 for k in p: p[k].assign(sd[k].to(p[k].device).cast(p[k].dtype)).realize()
 def argpair(oo,bi,j):
     if oo["dup"][bi,j]>0:
