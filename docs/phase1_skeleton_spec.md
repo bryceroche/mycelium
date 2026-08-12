@@ -29476,3 +29476,21 @@ token-position × waist-dim, the moment the skeleton trains.
   dump of both pipelines on one row) is next, to a word. #167's
   discipline: a campaign that measures without a map banks the
   contradiction rather than the convenient half.
+
+- **THE RECONCILIATION — THE FORK IS A CRITERION DRIFT; THE FIELD'S
+  15/15 STANDS (2026-08-12):** the one-row dump: fetch order
+  innocent (EARLY≡LATE — lazy contamination acquitted); the fork:
+  **the field read's rebound criterion carried the ftype==rel
+  gate; the economics/b0 reads dropped it** — ungated, jre lands
+  on silent-already-self-paired slots (the dump's j=4: silent
+  ap(4,4) pre-loop) one index from the true rebound (j=3:
+  (1,4)→(4,4)). **The 7/15 is STRUCK as artifact; the founding
+  15/15 is UN-question-marked** — its criterion was the lawful
+  one. THE ECONOMICS QUESTION REOPENS (the intra-pass read reruns
+  with the corrected criterion — cheap, next, to a word). The
+  dump's side nugget, noted for the organ file: engagement
+  INFLATES the dup head globally (silent ≈0/negative → engaged
+  +3..+9 across slots) — part of the field's events are dup-flag
+  flips, consistent with rebinding-via-dup-routing and worth its
+  own line when the operator trains. The contradiction lived
+  eleven entries and died by one dump — the ledger's way.
