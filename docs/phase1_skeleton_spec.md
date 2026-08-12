@@ -29443,3 +29443,17 @@ token-position × waist-dim, the moment the skeleton trains.
   armed. Nazaré, three weeks from image to operator: act, field,
   bound, site, floor, and now VALUE — every piece measured,
   every step through a door. The window ends.
+
+- **THE PASS-ECONOMICS READ — THE INTRA-PASS FIELD RECOVERS HALF
+  (2026-08-12):** breath-1-vs-final events within one engaged
+  forward: **rebound recall 7/15 at 3-sparsity — half the
+  cross-grain field's 15/15; the three→two collapse FAILS as
+  implemented.** The economics stand at three forwards. THE
+  ANOMALY, flagged not guessed: breaths[0] should twin the silent
+  state within the same forward (predicting 15/15-class); 7/15
+  says the exposed breath-0 heads differ from the bare pass's or
+  half the rebinding completes before the first comparison point
+  — one more wiring subtlety for the instrument file, its read
+  cheap and next, to a word. The operator's value stands
+  untouched (the focused wave's numbers were cross-grain-fielded);
+  only its deployment COUNT awaits the anomaly's answer.
