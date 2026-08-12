@@ -29501,3 +29501,21 @@ token-position × waist-dim, the moment the skeleton trains.
   decay / declared-key / two-quantities-one-name kin). **A
   CRITERION IS PART OF A READ'S DECLARED KEY.** The door's
   checklist inherits the clause.
+
+- **THE ECONOMICS RESOLVE — TWO FORWARDS, NOT THREE (2026-08-12;
+  the corrected rerun):** under the shared criterion, the
+  INTRA-PASS field reads **15/15 at 3-sparsity — identical to the
+  cross-grain field.** The 7/15 was wholly the drift; the rider's
+  condition held (no residual fork — the reconciliation made this
+  number trustworthy and it arrived clean). **THE FOCUSED
+  ORGANISM IS TWO-FORWARD: the engaged pass yields its own event
+  field from its own trajectory; the focused pass follows. No
+  silent baseline needed at inference.** The December-reserved
+  question stands at two reads as originally framed. The Nazaré
+  operator's complete measured sheet: act (rebinding + dup-flag
+  routing), field (15/15@3, one-forward-cheap), bound (where not
+  whether), site (in-settle lawful), floor (v1 = the row gate),
+  value (carriage whole at half the bill), economics (two
+  forwards). Seven pieces. The design's fire — training-time
+  integration under the armed removal bar — is the next word,
+  and it inherits everything measured.
