@@ -29697,3 +29697,30 @@ token-position × waist-dim, the moment the skeleton trains.
   Fusion high with the fifteen unmoved = the register wall at a
   new altitude, the surface dial still the road. Both halves
   worth having; they bank separately.
+
+- **DOOR #57's VERDICT — FUSION SIGHTED, TRANSFER BEGUN, THE
+  UNTOUCHABLE STATION MOVES DRY (2026-08-12):** THE FUSION READ:
+  factor-exact **94/100 (sighted — three sentences seen as one
+  slot)** but ANSWER 46/100 — the 0.8 bar FAILS; the split is
+  diagnostic (macro right, graph broken elsewhere): **the
+  DOUBLE-EMISSION autopsy owed** (the fused sentences plausibly
+  also emitting partial pairwise muls — contradictory graphs).
+  THE CELLS, a shape never seen: **nd0 HELD 0/15 on a
+  twice-convicted breaker family** (the conviction NARROWS — the
+  breaker was not cascades per se; candidates: the single-
+  sentence shape, or the warm-start difference — noted);
+  **nd2 7/15 — THE NEVER-CURED STATION'S FIRST DRY MOVEMENT**
+  (all prior movement was breath-flagged; fusion training reached
+  it silent and single-pass — a first-order lead); nd4 12/15
+  (formation ebbing as the altitude arrives — the trade noted).
+  THE TRANSFER: converts 40 (RECORD) and **the fifteen at 3/15 —
+  ratio 0.45 → 1.18 across ONE surface widening: the register
+  dial is RESPONSIVE; rows 183/332/825 are the tower's first
+  bigtest conversions through its own constituency.** Ring:
+  1244 (+6), alg4 409 (> gate), sentinels clean, frontier 40/40.
+  THE ROADS, in evidence order: (1) the ANSWER autopsy
+  (double-emission — cheap, first); (2) the surface dial
+  continues (measurably responsive); (3) nd2's dry lead (its own
+  file). The tower's parse side: sighted at two surfaces,
+  transferring at the margin, and moving a station nothing else
+  ever touched.
