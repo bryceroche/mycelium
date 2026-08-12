@@ -29827,3 +29827,16 @@ token-position × waist-dim, the moment the skeleton trains.
   tempered frame holds — per-door ratios are weather — but the
   union's growth and 183's constancy are facts: **the wall thins
   by attrition even as the residue wars continue.**
+
+- **g59 RING CLOSE — THE ALG4 FENCE PAYS; THE RETIREMENT FIRE'S
+  WARRANT COMPLETES (2026-08-12):** bigtest 1250 (+12) but **alg4
+  387 — UNDER the 402 bar** (the trajectory 409→407→387 across
+  the sequential doors: the accumulating cascade stack's bill,
+  now a fence breach). Sentinels clean; frontier 40/40 (lies 2
+  @{14,35} — family range, churned set). THE RETIREMENT FIRE'S
+  WARRANT is now three lines: the diet's own prior (the large-leg
+  misdecode), the alg4 bill (monotone with stack size), and the
+  simplex's oldest lesson (every tenant bills a neighbor). One
+  sliver, elders withdrawn — to a word. Door #59 closes: two
+  cures banked, the third residue self-inflicted and named, the
+  stack indicted by three independent meters.
