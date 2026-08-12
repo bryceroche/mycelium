@@ -177,6 +177,7 @@ def build_gold(samples, offsets):
         "digits2": np.zeros((n, L_FAC, N_DIG), np.int32),
         "is_macro": np.zeros((n, L_FAC), np.float32),
         "is_frac": np.zeros((n, L_FAC), np.float32),   # mg2: FRAC_OF (ftype 7)
+        "is_chain": np.zeros((n, L_FAC), np.float32),  # mg3: CHAIN_MUL (ftype 8)
         "y": np.zeros((n, L_FAC), np.int32),
     }
     for i, (smp, offs) in enumerate(zip(samples, offsets)):
@@ -268,6 +269,12 @@ def build_gold(samples, offsets):
                     assert t_ < 10 ** N_DIG
                     for d in range(N_DIG):
                         g[arr][i, j, d] = (t_ // 10 ** (N_DIG - 1 - d)) % 10
+            elif f["ftype"] == "macro" and f.get("name") == "CHAIN_MUL":
+                g["ftype"][i, j] = 8                     # mg3: the tower pilot
+                g["is_chain"][i, j] = 1.0
+                for v in f["xs"]:
+                    g["args"][i, j, v] = 1.0             # multi-hot xs
+                g["res"][i, j] = f["result"]
             elif f["ftype"] == "macro":
                 assert f.get("name") == "OP_APPLY"
                 g["ftype"][i, j] = 6
@@ -793,7 +800,8 @@ def _loss_single(o, g):
         l = l + (ce(o["dig2"], g["digits2"]).mean(-1) * mac).sum() / n_mac
         l = l + (ce(o["y"], g["y"]) * mac).sum() / n_mac * 2.0
     args_w = 1.0 + 4.0 * g["args"]
-    am = pres * (is_rel + is_sel + is_mod + is_pct + is_fdiv + is_macro + is_frac)
+    is_chain = g["is_chain"] if "is_chain" in g else is_mod * 0.0
+    am = pres * (is_rel + is_sel + is_mod + is_pct + is_fdiv + is_macro + is_frac + is_chain)
     n_am = am.sum() + 1e-6
     l = l + ((bce(o["args"], g["args"]) * args_w).mean(-1) * am).sum() / n_am * 2.0
     l = l + (ce(o["res"], g["res"]) * pres).sum() / n_p * 2.0
@@ -859,6 +867,12 @@ def decode(o_np):
             facs.append({"ftype": "fdiv",
                          "var": int(np.argmax(o_np["args"][j])),
                          "k": max(digval(), 2), "result": res})
+        elif ft == 8:
+            xs = sorted(int(v) for v in np.where(o_np["args"][j] > 0)[0].tolist())
+            if len(xs) >= 3:
+                facs.append({"ftype": "macro", "name": "CHAIN_MUL",
+                             "xs": xs, "result": res})
+            continue
         elif ft == 7 and "dig2" in o_np:
             k_ = int(sum(d * 10 ** (N_DIG - 1 - i2) for i2, d in
                          enumerate(o_np["dig2"][j].argmax(-1))))
@@ -1232,6 +1246,8 @@ def do_train(steps, lr, batch, seed):
                            if int(os.environ.get("ALG_FTYPES", "4")) >= 7 else ()),
                          *((("is_frac", (L_FAC,), dtypes.float),)
                            if int(os.environ.get("ALG_FTYPES", "4")) >= 8 else ()),
+                         *((("is_chain", (L_FAC,), dtypes.float),)
+                           if int(os.environ.get("ALG_FTYPES", "4")) >= 9 else ()),
                          # E1 (2026-08-03): sign gold buffer — two-terminal
                          # law, the same lesson as the gen-15 comment above
                          # (without it h_sgn leaves the graph: None grad)
@@ -1418,6 +1434,7 @@ def do_train(steps, lr, batch, seed):
                 "sel": gold["sel"][idx], "is_rel": gold["is_rel"][idx],
                 "is_mod": gold["is_mod"][idx], "is_sel": gold["is_sel"][idx],
                 "is_pct": gold["is_pct"][idx], "is_fdiv": gold["is_fdiv"][idx],
+                **({"is_chain": gold["is_chain"][idx]} if "is_chain" in gold else {}),
                 "arg_dup": (gold["arg_dup"][idx] if "arg_dup" in gold
                             else np.zeros_like(gold["is_rel"][idx])),
                 **({"is_macro": gold["is_macro"][idx],
