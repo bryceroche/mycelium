@@ -29354,3 +29354,20 @@ token-position × waist-dim, the moment the skeleton trains.
   second cuts, organic gold, the December-reserved two-read
   question. The queue's head holds the cathedral's missing
   stones.
+
+- **THE BINDING-ENERGY READ — THE CANDIDATE QUANTITY FAILS TO
+  LOCATE (2026-08-12; the queue-head's first step, negative and
+  useful):** fixture: max-energy slot == the rebound slot **0/15
+  — systematically elsewhere** (below chance: the field is
+  dominated by consequence-free args churn at other slots); the
+  233: row-energy → convert **AUC 0.464, chance.** Args-
+  distribution movement between grains is NOT the focusing
+  quantity as measured. **Nazaré's design does NOT proceed on
+  it** — the measure-first ordering doing exactly its job: no
+  operator gets built on a quantity that can't find its own
+  phenomenon. REFINEMENT CANDIDATES named for the next read
+  (words): presence-gated energy (junk-slot churn excluded);
+  decode-grade rebinding EVENTS (argmax-pair changes, dup-routed
+  — the marker cascade's own extraction) rather than distribution
+  movement. The queue's head holds; its quantity question is
+  re-opened with two shaped candidates and one dead one.
