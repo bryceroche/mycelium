@@ -29787,3 +29787,16 @@ token-position × waist-dim, the moment the skeleton trains.
   tried; ANSWER climbing as each residue is named (46→60→next);
   transfer begun at 1.18; the untouchable station touched once
   and lost once — every gain and loss with its provenance.
+
+- **DOOR #58's GAP ADDENDUM — THE TRANSFER CLAIM TEMPERED AT ITS
+  OWN n (2026-08-12):** converts **48 (the record's third
+  advance: 33→40→48)**, net 238 — but the fifteen print 2/15
+  (ratio 0.63 from #57's 1.18; row 825 lost). **At n=15 the
+  ratio wobbles ±0.5 per door: "transfer begun" tempers to TWO
+  STABLE CONVERSIONS (rows 183, 332 — held across both
+  sequential doors) and noise around them.** No established
+  transfer signal; the converts' record remains non-chain-
+  dominated (the cascade diets keep paying the broad tail while
+  the constituency waits on surfaces not yet minted). The
+  meter-law family's note: small-n ratios are weather; the
+  stable pair is the fact.
