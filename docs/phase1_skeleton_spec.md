@@ -29494,3 +29494,10 @@ token-position × waist-dim, the moment the skeleton trains.
   flips, consistent with rebinding-via-dup-routing and worth its
   own line when the operator trains. The contradiction lived
   eleven entries and died by one dump — the ledger's way.
+
+- **THE CRITERION-KEY LINE (2026-08-12, Bryce's carve):** the
+  ftype-gate drift is the oldest family at a new site — a
+  definition carried between reads without its qualifier (caveat
+  decay / declared-key / two-quantities-one-name kin). **A
+  CRITERION IS PART OF A READ'S DECLARED KEY.** The door's
+  checklist inherits the clause.

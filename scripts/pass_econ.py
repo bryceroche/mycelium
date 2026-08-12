@@ -52,7 +52,7 @@ for s0 in range(0,15,8):
     b0=oe["breaths"][0]; bf=oe   # breath-1 heads vs final heads
     b0a=b0["args"].realize().numpy(); b0d=b0["dup"].realize().numpy() if "dup" in b0 else np.zeros_like(b0a[...,0])
     bfa=oe["args"].realize().numpy(); bfd=oe["dup"].realize().numpy()
-    bfp=oe["pres"].realize().numpy()
+    bfp=oe["pres"].realize().numpy(); bft=oe["ftype"].realize().numpy()
     end={"args":bfa,"dup":bfd}
     for i,r in enumerate(ch):
         ev=np.zeros(L_FAC)
@@ -62,7 +62,8 @@ for s0 in range(0,15,8):
         # the rebound slot per the engaged decode
         jre=-1
         for j in range(L_FAC):
-            if bfp[i,j]>0 and bfd[i,j]>0 and int(np.argmax(bfa[i,j]))==r["dv"]: jre=j; break
+            if bfp[i,j]>0 and bft[i,j].argmax()==0 \
+               and bfd[i,j]>0 and int(np.argmax(bfa[i,j]))==r["dv"]: jre=j; break
         if jre>=0:
             tot+=1; rec+= bool(ev[jre]>0); SP.append(int(ev.sum()))
 print(f"[pass-econ] INTRA-PASS events (breath1 vs final): rebound recall {rec}/{tot}  sparsity median {int(np.median(SP)) if SP else -1}",flush=True)
