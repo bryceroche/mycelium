@@ -29745,3 +29745,20 @@ token-position × waist-dim, the moment the skeleton trains.
   instrument lesson honored: the refuted theory tested itself
   before banking — one rerun, one clean acquittal, the
   conviction landing on measured territory.
+
+- **GUT FILED — "BALANCE BOARD" (2026-08-12, Bryce's text; no
+  rent owed, one caution attached, one example updated):** the
+  campaign's version is not balance but a MEASURED OPTIMUM WITH
+  AN ARITHMETIC (the exchange law's peak-below-max; the simplex's
+  4.33/8.6 bracket; the authority curve's empty band; whisper-
+  vs-shout) — "find the balance" is the sentence said before the
+  measurement exists, and the boulevard and the difference gate
+  are its two graves. THE CAUTION, standing: at this stage,
+  balance is the frame most likely to propose a DIAL where a
+  RULE is needed. THE EXAMPLE'S UPDATE (the autopsy printed
+  between the entry's writing and its filing): the 94/46 split
+  attributed NOT to double-emission (acquitted) but to the OLD
+  SIZE EROSION eating the sequential rosters' givens — the case
+  resolved to measured territory, which is the entry's own point
+  performed: the read replaced the frame before the frame could
+  propose anything. Filed as understanding.
