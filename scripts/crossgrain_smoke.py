@@ -95,4 +95,4 @@ for s0 in range(0,len(ROWS),8):
         if a1!=g_ and a2==g_: res[pop][0]+=1
         if a1==g_ and a2!=g_: res[pop][1]+=1
 print(f"[xgrain 233] MISS: converts {res['miss'][0]} regress {res['miss'][1]} | PASS(150): converts {res['pass'][0]} regress {res['pass'][1]}",flush=True)
-json.dump({"nd4":mis,"pops":res},open('os.environ.get('XG_OUT','.cache/crossgrain_smoke.json')','w'))
+json.dump({"nd4":mis,"pops":res},open(os.environ.get('XG_OUT','.cache/crossgrain_smoke.json'),'w'))
