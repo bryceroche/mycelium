@@ -29800,3 +29800,22 @@ token-position × waist-dim, the moment the skeleton trains.
   the constituency waits on surfaces not yet minted). The
   meter-law family's note: small-n ratios are weather; the
   stable pair is the fact.
+
+- **DOOR #59's VERDICT — THE THIRD RESIDUE IS THE DIET'S OWN
+  PRIOR; THE SLIVER STACK SELF-INTERFERES (2026-08-12):** sight
+  100/100 again; ANSWER 60→48 — and the dumps name it: **the
+  large legs misdecode AS SMALL (280→80, 288→72 — the big value
+  read as 2) while small legs read perfectly. Three doors of
+  {2,3,4}-cascades taught a register-conditional prior — cascade
+  rows have small givens — and the diverse sliver arrives
+  outnumbered 2:1 by its own predecessors.** THE PATTERN ACROSS
+  THREE RESIDUES: each mint generation's constraint became the
+  next door's poison (cap→repetition; repetition-cure→diversity;
+  diversity vs the accumulated prior). THE CURE, compositional:
+  RETIRE THE ELDER SLIVERS — one cascade sliver (diverse,
+  in-band), the stack collapsed, to a word. THE CELLS' NOTE:
+  **nd2 RETURNED to 7/15** (7→14→7 across compositions — the
+  dry lead is COMPOSITION-KEYED, not lost; its file thickens
+  toward a real read). Arm 1.491/0.558; ring pending in the log.
+  The tower's ANSWER meter: 46→60→48 — two cures banked, one
+  self-inflicted residue named, the retirement fire shaped.
