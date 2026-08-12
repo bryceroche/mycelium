@@ -29305,3 +29305,33 @@ token-position × waist-dim, the moment the skeleton trains.
   the design at coarse-whole/2%, the row gate one marker from
   done, and the organ's act finally named at its own grain — the
   breath re-reads and REBINDS; everything else was shadow.
+
+- **THE ROW GATE COMPLETES — CARRIAGE HELD, COST CUT TO A THIRD
+  (2026-08-11):** the dup-aware args-multiset marker (decode's own
+  rule; the [a,a] blindness cured): **nd4 5/15 (full coarse-class
+  carriage) at passers 1/150 = 0.7% vs coarse-whole's 2%.**
+  Selective per row, consistent per ensemble — the ensemble law
+  honored, the relocated rows found by rebinding's own signature.
+  The anchor design's gate: ROW-SELECTIVE, its numbers measured,
+  its instrument five nulls deep in provenance and correct at
+  last.
+
+- **THE CAMBIUM/CATHEDRAL INVENTORY (2026-08-11, Bryce's text,
+  banked as the standing map):** BUILT+DEPLOYED: 512d waist,
+  predicate registry, dancer's silhouette, fingerpost 5-view
+  (18% coincidence class measured), Anna-Karenina-at-the-IR
+  (canonicalizer false-merge zero). BUILT+REFUTED: diffusion
+  compiler (retired with remainder); perceiver-as-recirculation
+  (three-pole; monitor role survives). ALIVE+PARTIAL: REPLACE
+  running (engaged tonight, ladder-normed, curve bracketed);
+  ACCUMULATE the newest thing alive (cross-grain registered,
+  15→5, row gate NOW COMPLETE at 0.7%, inference-only — the
+  gradient-era bar armed). MISSING: (1) THE NAZARÉ WAVE as a
+  FOCUSING operator — commitment where evidence-energy
+  concentrates; sentence-completion is its proxy, not the thing;
+  the second clock (spatial grain, nut=anchor) unbuilt; (2) THE
+  TOWER — multi-level IR beyond macro→primitive; census gate
+  long cleared, unbuilt; (3) THE LARGEST, off every list:
+  TRANSFER — the charter pattern is the campaign's open science
+  and every remaining organ answers to it. The map stands; the
+  words choose from it.
