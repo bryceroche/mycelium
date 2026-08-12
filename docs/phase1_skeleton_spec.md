@@ -29183,3 +29183,23 @@ token-position × waist-dim, the moment the skeleton trains.
   boundary waiting on its desk. The night's four smokes close:
   4/0 (floor) → 1 (quality) → 874 (denominator paid) → 1,234
   (class dead) — each read cheaper than the mistake it prevented.
+
+- **THE ANCHOR SMOKE — A PERFECT NULL, SELF-DIAGNOSED (2026-08-11;
+  the window's last read):** 0 converts / 0 regressions on both
+  populations at 5.9 anchored slots per row — **vacuous by
+  construction: same inputs, same weights, pass-2 fst ≈ pass-1
+  fst; the anchors pinned what would be there anyway. A
+  SELF-ANCHOR reads nothing** (the wiring law's final appearance
+  of the night). THE DESIGN'S TRUE OBJECT, exposed by its own
+  null: anchors must carry information the receiving pass would
+  NOT otherwise have — **CROSS-GRAIN ANCHORS: the ENGAGED pass's
+  loop-completed slots (the nd4 formation the runtime builds)
+  pinned into the SILENT read — the relocation law's direct
+  structural cure: the loop's work carried across the grain
+  boundary as state, needing neither weights nor continuous
+  occupation.** The v2 smoke (engaged→silent anchors on a breath
+  arm) is the form's real first read, to a word. The night ends
+  with the accumulate exactly here: one class dead, one form
+  standing, its true object named by its own null, and every
+  fence set. Fifty-four doors, five smokes, zero unaudited
+  celebrations.
