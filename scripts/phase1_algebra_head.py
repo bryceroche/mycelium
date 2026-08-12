@@ -550,7 +550,7 @@ def build_params(seed=0):
     return p
 
 
-def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, drop=None):
+def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, drop=None, anchor=None, amask=None):
     B = trunk.shape[0]
     waist = (trunk @ p["waist_w"] + p["waist_b"]).gelu() + p["sent_emb"][sent]
 
@@ -686,7 +686,12 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
                 "y": (s @ p["W_y"]) @ vst.transpose(-2, -1)}
                if "h_dig2" in p else {}),
         }
-    out = heads_of(breaths[-1])
+    _s_final = breaths[-1]
+    if anchor is not None and amask is not None:     # FORM (A): state-side
+        _s_final = amask * anchor + (1.0 - amask) * _s_final   # anchors —
+                                                     # structural re-entry the
+                                                     # forward cannot ignore
+    out = heads_of(_s_final)
     if int(os.environ.get("ALG_INV", "0")):
         out["fst_s"] = breaths[-1]        # ORGAN: invariance fire — the pair
                                           # agreement term reads the waist here
