@@ -29519,3 +29519,22 @@ token-position × waist-dim, the moment the skeleton trains.
   forwards). Seven pieces. The design's fire — training-time
   integration under the armed removal bar — is the next word,
   and it inherits everything measured.
+
+- **GUT REGISTERED — "THE RADIATOR" (2026-08-12, Bryce's text;
+  the exchange family's gradient clause):** surface area = #84/
+  #152 (subdivision buys surface, forfeits transport; "maximize
+  surface" already fenced); pressure = #145's nozzle. THE
+  ADDITION: **exchange requires a gradient across a boundary and
+  both sides matter — the rate is the PRODUCT of contact area and
+  the difference across it.** THE MEASURED INSTANCE, named:
+  uniform engagement was fins across the whole car — contact
+  everywhere, gradient in a few places, disturbance the cost of
+  contact-without-difference; **the focused wave is the
+  radiator's own arithmetic: maximize contact WHERE THE GRADIENT
+  IS.** The design's carryable form: the field measures gradient;
+  authority supplies contact; value is their product. PROSPECTIVE
+  THINNESS STATED (the registry's priced distinction): it
+  explains a measured result rather than predicting an unmeasured
+  one — the coordinates already say what the frame says. Filed as
+  the why behind a banked number, rent already paid by the
+  number itself.
