@@ -29371,3 +29371,22 @@ token-position × waist-dim, the moment the skeleton trains.
   — the marker cascade's own extraction) rather than distribution
   movement. The queue's head holds; its quantity question is
   re-opened with two shaped candidates and one dead one.
+
+- **THE NAZARÉ QUANTITY IS FOUND — REBINDING EVENTS LOCATE AT
+  15/15 WITH 3-SPARSE FIELDS (2026-08-12):** the two-arm read:
+  **decode-grade rebinding events (dup-routed argpair change,
+  presence-gated) contain the rebound slot 15/15 at median 3
+  events/row — 100% recall, 1-in-3 sparsity: a working focusing
+  field.** The distribution arm confirmed dead (0/15 twice — the
+  weather, not the act). THE SCOPE BOUND carved by the row-level
+  nulls (AUC 0.46/0.52): the field locates WHERE the loop acts,
+  not WHETHER acting converts — **focusing, not triage**; the
+  operator's claim is spatial and stops there. THE STATE: Nazaré
+  has, for the first time since its registration, all three
+  pieces — a measured act (rebinding), a locating field (events,
+  3-sparse), and a bounded claim (where, not whether). The
+  operator's DESIGN (commitment concentrated on the event field —
+  under the ensemble law's constraint, which forbids naive
+  per-slot action) is the next word's question. The search that
+  began at "there IS a wave" ends its measurement phase: the wave
+  has coordinates.
