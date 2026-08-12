@@ -18,7 +18,7 @@ from tinygrad.nn.state import safe_load
 tok=Tokenizer.from_file(TOKENIZER_JSON)
 p=build_params(0); sd=safe_load(".cache/g51_whisper.safetensors")
 for k in p: p[k].assign(sd[k].to(p[k].device).cast(p[k].dtype)).realize()
-PRES_G=float(os.environ.get("XG_PRES","2.0"))
+PRES_G=float(os.environ.get("XG_PRES","2.0")); ARG_G=float(os.environ.get("XG_ARG","0"))
 def both_grains(tr,tk,se,snt_np):
     o0=forward(p,tr,tk,se)                                   # silent (bare)
     o0n={k2:o0[k2].realize().numpy() for k2 in ("fat","args","res")}
@@ -31,6 +31,9 @@ def both_grains(tr,tk,se,snt_np):
     for bi in range(8):
         for j in range(L_FAC):
             if en["pres"][bi,j]>PRES_G:                      # the loop formed it
+                if ARG_G>0:
+                    a_=np.sort(en["args"][bi,j])[::-1]
+                    if len(a_)>2 and (a_[1]-a_[2])<=ARG_G: continue
                 anch[bi,j]=en["fst_s"][bi,j]; am[bi,j]=1.0
     oa=forward(p,tr,tk,se,anchor=Tensor(anch,dtype=dtypes.float),amask=Tensor(am,dtype=dtypes.float))  # silent + anchors
     an={k2:oa[k2].realize().numpy() for k2 in keys if k2!="fst_s"}
@@ -74,7 +77,7 @@ base=json.load(open('.cache/miss_census_gen41.json'))
 missset=set(base["miss_idx"])
 rng=np.random.RandomState(7)
 passers=[i for i in range(len(samples)) if i not in missset]
-ROWS=sorted(missset)+list(rng.choice(passers,300,replace=False))
+ROWS=sorted(missset)+list(rng.choice(passers,150,replace=False))
 res={"miss":[0,0],"pass":[0,0]}
 for s0 in range(0,len(ROWS),8):
     sl=np.array(ROWS[s0:s0+8])
@@ -91,5 +94,5 @@ for s0 in range(0,len(ROWS),8):
         pop="miss" if ri in missset else "pass"
         if a1!=g_ and a2==g_: res[pop][0]+=1
         if a1==g_ and a2!=g_: res[pop][1]+=1
-print(f"[xgrain 233] MISS: converts {res['miss'][0]} regress {res['miss'][1]} | PASS(300): converts {res['pass'][0]} regress {res['pass'][1]}",flush=True)
-json.dump({"nd4":mis,"pops":res},open('.cache/crossgrain_smoke.json','w'))
+print(f"[xgrain 233] MISS: converts {res['miss'][0]} regress {res['miss'][1]} | PASS(150): converts {res['pass'][0]} regress {res['pass'][1]}",flush=True)
+json.dump({"nd4":mis,"pops":res},open('os.environ.get('XG_OUT','.cache/crossgrain_smoke.json')','w'))
