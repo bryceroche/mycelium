@@ -32,7 +32,7 @@ while len(rows)<2000:
         nd=int(rng.randint(0,4))                   # distractor givens
     if _os.environ.get("DIVERSE_VALS")=="1":
         while True:
-            smalls=list(rng.choice([2,3,4,5],k-1,replace=False))
+            smalls=[int(x) for x in rng.choice([2,3,4,5],k-1,replace=False)]
             sp=1
             for v in smalls: sp*=v
             if 300//sp < 6: continue
