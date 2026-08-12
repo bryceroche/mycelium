@@ -11,7 +11,7 @@ from tokenizers import Tokenizer
 from tinygrad import Tensor, dtypes
 from tinygrad.nn.state import safe_load
 tok=Tokenizer.from_file(TOKENIZER_JSON)
-p=build_params(0); sd=safe_load(".cache/g56_chain.safetensors")
+p=build_params(0); sd=safe_load(os.environ.get("EM_CK",".cache/g56_chain.safetensors"))
 for k in p: p[k].assign(sd[k].to(p[k].device).cast(p[k].dtype)).realize()
 L="abcdefghijklmnopqrstuvwx"
 FORMS=["The product of {xs} is {r}.","Multiplying {xs} together gives {r}.","{r} is the product of {xs}."]
@@ -30,7 +30,16 @@ for _ in range(n):
     nv=nd+k+1; xs=list(range(nd,nd+k)); res=nd+k
     sents=[GIV[rng.randint(3)].format(v=L[i],n=gv[i]) for i in range(nd)]
     sents+=[GIV[rng.randint(3)].format(v=L[nd+i],n=vals[i]) for i in range(k)]
-    ms=FORMS[rng.randint(3)].format(xs=xs_phrase([L[v] for v in xs]),r=L[res])
+    if os.environ.get("SEQ_READ")=="1":
+        PAIR=["The product of {a} and {b} is {c}.","Multiplying {a} by {b} gives {c}.","{c} is {a} multiplied by {b}.","{a} times {b} makes {c}."]
+        ts=[nv+t for t in range(k-2)]; nv=nv+k-2
+        cs=[]; acc=xs[0]
+        for t,v in enumerate(xs[1:]):
+            tgt=res if t==k-2 else ts[t]
+            cs.append(PAIR[rng.randint(4)].format(a=L[acc],b=L[v],c=L[tgt])); acc=tgt
+        ms=" ".join(cs)
+    else:
+        ms=FORMS[rng.randint(3)].format(xs=xs_phrase([L[v] for v in xs]),r=L[res])
     pos=rng.randint(3); ins=0 if pos==0 else (len(sents)//2 if pos==1 else len(sents))
     body=sents[:ins]+[ms]+sents[ins:]
     text=f"Consider the numbers {', '.join(L[:nv])}. "+" ".join(body)+f" What is {L[res]}?"
