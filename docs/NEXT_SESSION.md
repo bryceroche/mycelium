@@ -3,6 +3,17 @@
 **READ FIRST:** CLAUDE.md → this file → the ledger's last ~40 entries
 (the tail chain, the record, the rite's first refusal, door #36).
 
+**THE QUEUE (2026-08-11 ruling, the top three = the cathedral's
+missing stones):** 1. NAZARÉ-AS-FOCUSING — commit where
+BINDING-ENERGY peaks (the rebinding discovery named its quantity);
+first step = the binding-energy field read on banked g51 (a read,
+on a word). 2. THE TOWER — multi-level IR, spec-first; warrant
+renewed (structure transferred at both poles tonight). 3. TRANSFER
+— the science over all organs (one affirmative vs three
+no-transfers; removal bars ride every organ fire). Behind: anchor
+design (row gate ANSWERED: 5/15 carriage @ 0.7% cost), second
+cuts, organic gold, the December two-read question (reserved).
+
 **THE DECEMBER CLAIM IS DECIDED (2026-08-07): LEAF A — a system
 that never lies; abstention leads; scope in the same breath;
 mouth-widening is the claim's guarded gate (trace frontier measured

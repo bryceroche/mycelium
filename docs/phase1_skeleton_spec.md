@@ -29335,3 +29335,22 @@ token-position × waist-dim, the moment the skeleton trains.
   TRANSFER — the charter pattern is the campaign's open science
   and every remaining organ answers to it. The map stands; the
   words choose from it.
+
+- **THE QUEUE REORDERED (2026-08-11, the word given): THE THREE
+  GAPS TO THE TOP.** (1) **NAZARÉ-AS-FOCUSING** — now with its
+  quantity named by the rebinding discovery: commit where
+  BINDING-ENERGY peaks (args-movement magnitude), not where
+  sentences end; the first step is a READ on banked arms (the
+  per-slot args-change map between grains on g51 = the binding-
+  energy field's first measurement; does it locate the slots the
+  loop cures?), then the second clock's design against it. (2)
+  **THE TOWER** — multi-level IR; spec-first; its warrant renewed
+  tonight (structure transferred at both poles; the tower is
+  structural by construction; its census gate long cleared). (3)
+  **TRANSFER** — the standing science over all organs; one
+  affirmative (cross-grain carriage) against three no-transfers;
+  every future organ fire carries its removal bar. Behind them:
+  the anchor design (gate ANSWERED: row-selective at 0.7%), the
+  second cuts, organic gold, the December-reserved two-read
+  question. The queue's head holds the cathedral's missing
+  stones.
