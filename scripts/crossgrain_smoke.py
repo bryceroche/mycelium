@@ -34,7 +34,11 @@ def both_grains(tr,tk,se,snt_np):
                 ms=[]
                 for jj in range(L_FAC):
                     if oo["pres"][bi,jj]>0 and oo["ftype"][bi,jj].argmax()==0:
-                        ms.append(tuple(sorted(np.argsort(-oo["args"][bi,jj])[:2].tolist())))
+                        if "dup" in oo and oo["dup"][bi,jj]>0:      # decode's own
+                            a0=int(np.argmax(oo["args"][bi,jj]))    # rule: the
+                            ms.append((a0,a0))                      # self-pair
+                        else:
+                            ms.append(tuple(sorted(np.argsort(-oo["args"][bi,jj])[:2].tolist())))
                 return sorted(ms)
             if _argset(en)==_argset(sn): continue   # THE TRUE MARKER: rebinding
                                                     # is args-grain, order-free
