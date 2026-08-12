@@ -29423,3 +29423,23 @@ token-position × waist-dim, the moment the skeleton trains.
   by their own instruments — and the wave, from image to
   coordinates to a lawful site for its operator, in three weeks
   of doors.
+
+- **THE FOCUSED WAVE — THE OPERATOR'S VALUE PROVEN AT SMOKE GRADE
+  (2026-08-12; the window's last print):** gmod = events 1.0 /
+  background 0.05 on g51, inference-only: **fixture carriage 0/15
+  (full engaged-class) AND passer cost HALVED (2 vs
+  uniform-engaged's 4 on 150).** Engaged carriage at
+  half-engaged disturbance with the background at one-twentieth
+  authority — **the wave breaks where the events are and the sea
+  stays calm — calmer than full engagement ever was.** The
+  value claim landed exactly as registered, before any training,
+  on banked machinery, through a registration whose negative
+  branches were armed. THE DESIGN'S BARS now number from
+  measured points (0/15 carriage; ≤2/150 cost; bg 0.05); its
+  open questions to words: the pass-economics (the focused read
+  is a THREE-forward organism at inference — silent, engaged-for-
+  events, focused — the December two-read question inherits the
+  count), and the training-time integration with the removal bar
+  armed. Nazaré, three weeks from image to operator: act, field,
+  bound, site, floor, and now VALUE — every piece measured,
+  every step through a door. The window ends.
