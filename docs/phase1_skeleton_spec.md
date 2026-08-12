@@ -29203,3 +29203,25 @@ token-position × waist-dim, the moment the skeleton trains.
   standing, its true object named by its own null, and every
   fence set. Fifty-four doors, five smokes, zero unaudited
   celebrations.
+
+- **THE CROSS-GRAIN SMOKE — THE FORM CARRIES; THE RELOCATION LAW'S
+  CURE WORKS AT FIRST CONTACT (2026-08-11; the window's closing
+  read):** on g51_whisper, engaged-pass states at confident slots
+  pinned into the silent read: **nd4 fixture misbind 15/15 silent
+  → 5/15 SILENT+ANCHORS (engaged 0/15) — two-thirds of the loop's
+  formation carried across the grain boundary as STATE, zero
+  training, first ungated try, on the cells that were
+  dial-independent through the whole titration.** The 233: 8
+  converts / 8 regressions (churn-neutral at the miss pop);
+  passers: 1 convert / 5 regressions of 300 (1.7% cost — the
+  coarse PRES>2 gate's bill; the quality lesson says the gate
+  tunes it). **THE ACCUMULATE'S FORM IS PROVEN AT SMOKE GRADE:
+  structure re-entering as structure carries what surface
+  restatement poisoned and self-anchoring couldn't touch** — the
+  spec's spine confirmed at both poles in one night. THE DESIGN
+  REGISTRATION UNFREEZES with a real case: cells 15→5, the
+  confidence gate as its first dial, the passer cost as its
+  first bar, the gradient-era removal test waiting, every fence
+  set. To the word. THE NIGHT'S LAST LINE: five smokes and a
+  sixth that carried — the notebook's surviving half took its
+  first breath and moved the unmovable cells.
