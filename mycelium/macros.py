@@ -27,7 +27,7 @@ Admitted entries:
     entry).
 """
 
-MACRO_GRAMMAR_VERSION = "mg2"   # mg1 entries FROZEN; mg2 adds FRAC_OF
+MACRO_GRAMMAR_VERSION = "mg3"   # mg1/mg2 FROZEN; mg3 adds CHAIN_MUL (the tower pilot, 2026-08-12)
 
 # Crown digests pinned by the admission review (root-marked WL canon of
 # {given k1, mul, given k2, mul, root-op}, values abstracted).
@@ -97,7 +97,29 @@ def expand_frac_of(f, next_var):
     return out, next_var
 
 
-EXPANDERS = {"OP_APPLY": expand_op_apply, "FRAC_OF": expand_frac_of}
+def expand_chain_mul(f, next_var):
+    """CHAIN_MUL (mg3, the tower's pilot class — PROPOSED BY THE MINER
+    2026-08-12: three mul-chain classes in the 233's gold, absent from
+    train; admitted as PILOT under the word, hand-quota noted).
+
+    f = {"ftype": "macro", "name": "CHAIN_MUL", "xs": [v0..vn] (n>=2),
+         "result": var}  —  result = v0*v1*...*vn.
+    Expansion: left-fold of rel-muls through consecutive temp vars.
+    Pure and deterministic; byte-identical forever under mg3."""
+    assert f["ftype"] == "macro" and f["name"] == "CHAIN_MUL"
+    xs = f["xs"]; assert len(xs) >= 3, "chains start at 3 legs (2 legs = a plain mul)"
+    out = []
+    acc = xs[0]
+    for i, v in enumerate(xs[1:]):
+        tgt = f["result"] if i == len(xs) - 2 else next_var
+        out.append({"ftype": "rel", "op": "mul", "args": [acc, v], "result": tgt})
+        if tgt != f["result"]:
+            acc = next_var; next_var += 1
+    return out, next_var
+
+
+EXPANDERS = {"OP_APPLY": expand_op_apply, "FRAC_OF": expand_frac_of,
+             "CHAIN_MUL": expand_chain_mul}
 
 
 def expand_graph(factors, n_vars):

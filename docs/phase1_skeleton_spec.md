@@ -29609,3 +29609,27 @@ token-position × waist-dim, the moment the skeleton trains.
   + expansion + a book tranche one floor up, per the charter) is
   the next word. The tower's first stone has a name counted into
   it.
+
+- **CHAIN_MUL ADMITTED (mg3) — THE TOWER'S FIRST STONE SET AND
+  VERIFIED (2026-08-12; admission is a ledger event, this is
+  it):** the pilot class built under the charter's every rail —
+  **miner-proposed** (three mul-chain classes in the 233's gold,
+  absent from train — constituency and absence one instrument),
+  **admitted as PILOT under the word** (hand-quota noted; mg1/mg2
+  FROZEN; semantics versioned — mg3), **grammar + deterministic
+  expansion** (left-fold of rel-muls through consecutive temps;
+  byte-identical forever), **gold derived at mint**, and **the
+  key untouched: 200/200 pilot rows grade EXACTLY through
+  primitive expansion** — certification level-invariant because
+  the ground floor never moved. The pilot tranche banked
+  (.cache/tower_pilot.jsonl, 200 macro-annotated rows one floor
+  up). THE NEXT WORD'S QUESTION: the parse-side emission fire —
+  teaching the parser to EMIT CHAIN_MUL (its own door; bars from
+  the census's coverage; the transfer law governing: the macro is
+  structure, the emission is the learned part, and the learned
+  part is recognition only — abstraction in annotation, never in
+  verification, as the two-jaws law has said from the first day).
+  The cathedral at this window's end: the wave deployed at read
+  time, the tower's first stone set and graded, transfer
+  governing both — and the ground floor exactly where it has
+  always been.
