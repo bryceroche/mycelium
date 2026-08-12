@@ -29589,3 +29589,23 @@ token-position × waist-dim, the moment the skeleton trains.
   charter's rails constitutional; the census is the next step,
   zero-GPU-class, on a word. The cathedral's second missing
   stone has its drawing.
+
+- **THE MINER CENSUS — THE TOWER'S FIRST CLASS NAMED BY COUNTING
+  (2026-08-12):** the mix's schema table: top-15 cover 52.8%
+  (add-chains dominate — the roster problems' shared shape;
+  fdiv∘mul pipelines the chained-fdiv registry family made
+  visible). **THE JOIN'S PRINT, the census's center: the 233's
+  gold graphs hold THREE classes ABSENT from training — all
+  MUL-CHAINS at depth (mul∘mul∘mul, sizes 4/5/6, product cascades
+  over big rosters).** A level-2 candidate with constituency AND
+  absence both measured, named by the instrument. THE HONEST
+  SCOPING the census forces: WL-on-gold is SURFACE-BLIND — the
+  ordinal-indirection family is a surface phenomenon invisible to
+  graph-shape mining; **its home is the parse side (the operator
+  already serves it); the tower serves the GRAPH-side gap, and
+  that gap is the mul-chain.** THE PILOT CLASS: CHAIN(mul,k) —
+  grammar over k-fold products, deterministic expansion to k
+  rel-muls, gold derivable at mint. The one-class pilot (grammar
+  + expansion + a book tranche one floor up, per the charter) is
+  the next word. The tower's first stone has a name counted into
+  it.

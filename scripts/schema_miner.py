@@ -24,6 +24,10 @@ TRAIN_SOURCES = {
     "dag11":   ".cache/dag11_train.jsonl",
 }
 HARVEST = ".cache/book1_prose_pairs.jsonl"   # gold graphs of the book pairs
+import os as _os
+if _os.environ.get("TOWER_CENSUS") == "1":
+    TRAIN_SOURCES = {"form_mix3": ".cache/form_mix3.jsonl"}
+    HARVEST = ".cache/tower_233.jsonl"        # the tail's own constituency
 CAP = 2000                                    # rows per source (runtime cap; logged)
 
 
@@ -189,7 +193,7 @@ def main():
     print(f"\n=== P3: THE CHRONIC FAMILY ===")
     by_item = {}
     for src, r in hrows:
-        idx = r["gen"]["src_idx"]
+        idx = r["gen"].get("src_idx") if isinstance(r.get("gen"),dict) else None
         by_item[idx] = {dg for dg, k, _ in mine_graph(r["factors"])}
     if 45 in by_item and 7 in by_item:
         shared = by_item[45] & by_item[7]
