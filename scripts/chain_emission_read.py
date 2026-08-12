@@ -18,7 +18,7 @@ FORMS=["The product of {xs} is {r}.","Multiplying {xs} together gives {r}.","{r}
 GIV=["{v} is {n}.","It is known that {v} is {n}.","{v} has the value {n}."]
 def xs_phrase(vs): return ", ".join(vs[:-1])+f" and {vs[-1]}" if len(vs)>2 else f"{vs[0]} and {vs[1]}"
 rng=np.random.RandomState(77000)   # FRESH seed — held out
-fe=0; ans=0; n=100; rowsb=[]
+fe=0; ans=0; n=100; rowsb=[]; AUT=[0]
 for _ in range(n):
     k=int(rng.randint(3,6)); nd=int(rng.randint(0,4))
     while True:
@@ -43,11 +43,11 @@ for _ in range(n):
     pos=rng.randint(3); ins=0 if pos==0 else (len(sents)//2 if pos==1 else len(sents))
     body=sents[:ins]+[ms]+sents[ins:]
     text=f"Consider the numbers {', '.join(L[:nv])}. "+" ".join(body)+f" What is {L[res]}?"
-    rowsb.append((text,xs,res,prod))
+    rowsb.append((text,xs,res,prod,nv))
 for s0 in range(0,n,8):
     ch=rowsb[s0:s0+8]
     ids=np.zeros((8,T_ALG),np.int32); msk=np.zeros((8,T_ALG),np.float32); snt=np.zeros((8,T_ALG),np.int32)
-    for i,(t,_,_,_) in enumerate(ch):
+    for i,(t,_,_,_,_) in enumerate(ch):
         e=tok.encode(t); Ln=min(len(e.ids),T_ALG)
         ids[i,:Ln]=e.ids[:Ln]; msk[i,:Ln]=1.0
         snt[i]=sent_indices(t,list(e.offsets),msk[i])
@@ -55,10 +55,14 @@ for s0 in range(0,n,8):
               Tensor(msk,dtype=dtypes.float),Tensor(snt,dtype=dtypes.int))
     keys=("pres","ftype","op","islit","dig","args","res","query")+(("sel",) if "sel" in o else ())+(("dup",) if "dup" in o else ())+(("sgn",) if "sgn" in o else ())+(("dig2",) if "dig2" in o else ())
     onp={k2:o[k2].realize().numpy() for k2 in keys}
-    for i,(t,xs,res,prod) in enumerate(ch):
+    for i,(t,xs,res,prod,nv_) in enumerate(ch):
         facs,q=decode({k2:onp[k2][i] for k2 in onp})
         hit=any(f.get("name")=="CHAIN_MUL" and sorted(f.get("xs",[]))==xs and f.get("result")==res for f in facs)
         fe+=hit
-        a=solve2(facs,q,{"n_vars":24,"m":300})
+        a=solve2(facs,q,{"n_vars":nv_,"m":300})
         ans+=(a==prod)
+        if os.environ.get("AUTOPSY")=="1" and hit and a!=prod and AUT[0]<10:
+            AUT[0]+=1
+            print(f"--- fail #{AUT[0]}: gold prod={prod} answered={a} xs={xs} res={res}",flush=True)
+            for f in facs: print(f"    {f}",flush=True)
 print(f"[emission] held-out cascades: macro factor-exact {fe}/{n}  ANSWER {ans}/{n}",flush=True)

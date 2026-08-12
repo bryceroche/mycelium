@@ -29724,3 +29724,24 @@ token-position × waist-dim, the moment the skeleton trains.
   file). The tower's parse side: sighted at two surfaces,
   transferring at the margin, and moving a station nothing else
   ever touched.
+
+- **THE ANSWER AUTOPSY — DOUBLE-EMISSION ACQUITTED, TEMPS
+  ACQUITTED BY THEIR OWN TEST, THE OLD EROSION CONVICTED
+  (2026-08-12):** the n_vars theory refuted cleanly (46/100
+  unchanged with true nv; #56's 100/100 through the same path was
+  the tell). THE REAL MODE, from the dumps: **given-value
+  misdecode on the sequential rows' longer rosters** (279-for-18;
+  doubled givens; contradiction-unsats) — the intermediates push
+  nv to 9-11 across 6-9 sentences, straight into the measured
+  size-erosion band. **The tail's original disease eats the
+  mint's own rows: fusion unimpeached at 94; the ANSWER ceiling
+  is the OLD gradient's, not the grammar's.** The finding's
+  shape: the tower bypasses depth for the REL structure and its
+  sequential training surface re-imports size at the GIVENS —
+  the erosion meets the tower on the training side. Roads noted
+  for words: mint-side (fewer/no distractors on sequential rows
+  — cut the roster back inside the band) and the standing
+  erosion file (which owns this mode wherever it appears). The
+  instrument lesson honored: the refuted theory tested itself
+  before banking — one rerun, one clean acquittal, the
+  conviction landing on measured territory.
