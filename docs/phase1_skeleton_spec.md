@@ -29457,3 +29457,22 @@ token-position × waist-dim, the moment the skeleton trains.
   cheap and next, to a word. The operator's value stands
   untouched (the focused wave's numbers were cross-grain-fielded);
   only its deployment COUNT awaits the anomaly's answer.
+
+- **THE b0 READ — THE TWIN HOLDS AND A CONTRADICTION SURFACES
+  (2026-08-12; banked as contradiction, not forced into story):**
+  breaths[0] twins the silent state EXACTLY (0 argpair diffs / 90
+  silent-on slots — the exposure is true; the instrument-fault
+  branch dies). The inline recompute confirms b0-vs-final at
+  7/15. **But the twin's algebra then demands silent-vs-final =
+  7/15 — while the banked field read printed 15/15 from nominally
+  identical quantities.** TWO READS, ONE QUANTITY, TWO ANSWERS:
+  binding_energy's 15/15 (the field's founding number) vs
+  b0/pass-econ's 7/15 — same dup-aware argpairs, same rebound
+  criterion, same arm. One mismeasures. **The field's 15/15
+  carries a question mark until the reconciliation read speaks**
+  (the operator's VALUE numbers — carriage 0/15, cost halved —
+  are behavioral and stand regardless; only the field's recall
+  statistic is in question). The reconciliation read (slot-by-slot
+  dump of both pipelines on one row) is next, to a word. #167's
+  discipline: a campaign that measures without a map banks the
+  contradiction rather than the convenient half.
