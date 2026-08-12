@@ -24,11 +24,22 @@ for _ in range(n):
         k=int(rng.randint(3,5)); nd=0
     else:
         k=int(rng.randint(3,6)); nd=int(rng.randint(0,4))
+    DIVV = os.environ.get("DIVERSE_VALS")=="1"
     while True:
-        vals=[int(rng.randint(2,5)) for _ in range(k)]
-        prod=1
-        for v in vals: prod*=v
-        if prod<=300: break
+        if DIVV:
+            smalls=list(rng.choice([2,3,4,5],k-1,replace=False))
+            sp=1
+            for v in smalls: sp*=v
+            if 300//sp < 6: continue
+            big=int(rng.randint(6,min(40,300//sp)+1))
+            vals=smalls+[big]; rng.shuffle(vals)
+            prod=sp*big
+            if prod<=300 and len(set(vals))==k: break
+        else:
+            vals=[int(rng.randint(2,5)) for _ in range(k)]
+            prod=1
+            for v in vals: prod*=v
+            if prod<=300: break
     gv=[int(rng.randint(2,90)) for _ in range(nd)]
     nv=nd+k+1; xs=list(range(nd,nd+k)); res=nd+k
     sents=[GIV[rng.randint(3)].format(v=L[i],n=gv[i]) for i in range(nd)]
