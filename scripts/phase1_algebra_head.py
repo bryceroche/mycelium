@@ -550,7 +550,7 @@ def build_params(seed=0):
     return p
 
 
-def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, drop=None, anchor=None, amask=None):
+def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, drop=None, anchor=None, amask=None, gmod=None):
     B = trunk.shape[0]
     waist = (trunk @ p["waist_w"] + p["waist_b"]).gelu() + p["sent_emb"][sent]
 
@@ -631,6 +631,8 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
             if drop is not None:            # door #52: BREATH DROPOUT —
                 g = g * drop                # per-STEP coin; drop=0 makes the
                                             # breath an exact identity (silent)
+            if gmod is not None:            # NAZARE (B)-site smoke: per-slot
+                g = g * gmod                # authority INSIDE the loop
             cur_new = cur + g * (h_tok + h_slot - cur)
             if RINGS:  # the soft pawl: monotone commitment mass + anchor
                 cl = (cur_new @ p["W_cmt"] + p["W_cmt_b"])     # (B,L_FAC,1)

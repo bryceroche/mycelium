@@ -29404,3 +29404,22 @@ token-position × waist-dim, the moment the skeleton trains.
   fences in from birth, where-not-whether hardest among them.
   The gut's three-week arc — "there is a wave" → coordinates →
   an operator with a measured floor — closes its spec.
+
+- **THE (B)-SITE SMOKE — LAWFUL; THE ENSEMBLE LAW'S BOUNDARY
+  DRAWN (2026-08-12; the window's closing read):** per-slot gate
+  modulation inside the loop (events 1.0 / others 0.2):
+  **carriage HELD — 0/15 event-modulated vs 0/15 uniform.** The
+  mixing poison is an OUTPUT-STATE phenomenon (frozen states of
+  two grains side by side scramble the relational read); WITHIN
+  the recurrence, differently-authorized slots CO-SETTLE into one
+  consistent ensemble. The ensemble law gains its boundary:
+  **states mixed after settling poison; authority mixed during
+  settling is lawful.** EVENT-FOCUSED BREATHING (Nazaré form B)
+  unlocks for design — the operator may concentrate the loop's
+  authority on the event field itself, inside the dynamics, with
+  the where-not-whether bound and every fence riding. To a word.
+  THE WINDOW'S LAST LINE, earned: fifty-four doors, sixteen
+  reads, two organ specs, three laws with their boundaries drawn
+  by their own instruments — and the wave, from image to
+  coordinates to a lawful site for its operator, in three weeks
+  of doors.
