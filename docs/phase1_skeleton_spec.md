@@ -29633,3 +29633,14 @@ token-position × waist-dim, the moment the skeleton trains.
   time, the tower's first stone set and graded, transfer
   governing both — and the ground floor exactly where it has
   always been.
+
+- **DOOR #56's READING NOTE (2026-08-12, Bryce's carve, pinned):**
+  the emission primary is a RECOGNITION bar — a failure convicts
+  the parser's SIGHT, never the level: the grammar's correctness
+  stands proven at 200/200 through the key, independent of
+  tonight. **Only sight is on trial.** And the six-station note
+  ahead of branch (a): emission clearing closes the recursion
+  charter's whole loop — miner proposes / review admits / mint
+  annotates one floor up / parser emits / expansion grades / key
+  grades primitives — six stations, each measured, never before
+  all operating at once.
