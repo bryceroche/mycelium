@@ -30,10 +30,10 @@ def both_grains(tr,tk,se,snt_np):
     anch=np.zeros((8,L_FAC,512),np.float32); am=np.zeros((8,L_FAC,1),np.float32)
     for bi in range(8):
         if ROW_G>0:
-            _en_on=sum(1 for jj in range(L_FAC) if en["pres"][bi,jj]>0)
-            _sn_on=sum(1 for jj in range(L_FAC) if sn["pres"][bi,jj]>0)
-            if _en_on <= _sn_on: continue  # count-based, order-free: the
-                                           # engaged pass formed MORE -> reloc
+            _en_rel=sum(1 for jj in range(L_FAC) if en["pres"][bi,jj]>0 and en["ftype"][bi,jj].argmax()==0)
+            _sn_rel=sum(1 for jj in range(L_FAC) if sn["pres"][bi,jj]>0 and sn["ftype"][bi,jj].argmax()==0)
+            if _en_rel <= _sn_rel: continue  # REL-count marker (order-free):
+                                             # the loop RETYPES, not lights
         for j in range(L_FAC):
             _g_ok = (en["pres"][bi,j] - sn["pres"][bi,j]) > DIFF_G if DIFF_G>0 \
                 else en["pres"][bi,j]>PRES_G
