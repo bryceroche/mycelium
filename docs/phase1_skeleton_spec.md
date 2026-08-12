@@ -29762,3 +29762,28 @@ token-position × waist-dim, the moment the skeleton trains.
   resolved to measured territory, which is the entry's own point
   performed: the read replaced the frame before the frame could
   propose anything. Filed as understanding.
+
+- **DOOR #58's VERDICT — THE EROSION HALF-CONFIRMED, THE RESIDUE
+  IS THE MINT'S OWN VALUE PROFILE, AND THE DRY LEAD RETREATS
+  (2026-08-12):** sight 100/100 in-band; **ANSWER 46→60: +14
+  banked CAUSALLY to the erosion** (the band exited, the gain
+  real) — but the 0.85 bar fails and the dumps convict the
+  residue: **small-value confusion across repeated near-identical
+  given sentences** (the product-cap forces values into {2,3,4};
+  rows read "a is 3. b is 3. c is 2." and the digit head shuffles
+  the assignment; one given dropped outright). A MINT ARTIFACT —
+  bigtest's chains carry diverse givens; the held-out ceiling
+  partially measures the mint's own adversarial repetition, not
+  deployment. THE CURE, mint-side again: DIVERSE-VALUE chains
+  (one large leg per chain keeps products ≤300 with distinct
+  values), to a word. THE CELLS' HARD FACT: **nd2 RETREATED to
+  14/15** (from #57's 7) under the in-band continuation — the
+  dry lead is FRAGILE, tied to #57's exact training composition,
+  its file annotated; nd0 4/15 (the family again; the guard's
+  draw owed before any composition conviction — this arm seeks
+  none); arm opens 1.476/0.568 (fixture-min below control for
+  the first time, gap still 0.9 — noted). The tower's ledger
+  after three emission doors: sight PERFECT at every surface
+  tried; ANSWER climbing as each residue is named (46→60→next);
+  transfer begun at 1.18; the untouchable station touched once
+  and lost once — every gain and loss with its provenance.
