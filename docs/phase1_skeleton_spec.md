@@ -29538,3 +29538,17 @@ token-position × waist-dim, the moment the skeleton trains.
   one — the coordinates already say what the frame says. Filed as
   the why behind a banked number, rent already paid by the
   number itself.
+
+- **DOOR #55's MID-BATTERY CAUTION (2026-08-12, Bryce's carve,
+  pinned before the focused prints):** the uniform loop no longer
+  completing nd4 (15/15 vs the whisper's 0/15) shows structure-
+  dependence early and it cuts BOTH ways: **specialization and
+  dependence look identical at this print.** Structure-carried
+  competence and a loop narrowed into its training regime wear
+  the same face; the whisper's 0/15 is the receipt that the
+  capability existed under uniform on a differently-trained
+  organism. Operationally moot if the deploy grain is focused;
+  CHARTER-grade regardless — training under a structure narrows
+  the organism to that structure: **the relocation law at the
+  REGIME grain.** The focused reads answer both questions at
+  once.
