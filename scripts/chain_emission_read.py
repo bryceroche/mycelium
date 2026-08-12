@@ -20,7 +20,10 @@ def xs_phrase(vs): return ", ".join(vs[:-1])+f" and {vs[-1]}" if len(vs)>2 else 
 rng=np.random.RandomState(77000)   # FRESH seed — held out
 fe=0; ans=0; n=100; rowsb=[]; AUT=[0]
 for _ in range(n):
-    k=int(rng.randint(3,6)); nd=int(rng.randint(0,4))
+    if os.environ.get("INBAND")=="1":
+        k=int(rng.randint(3,5)); nd=0
+    else:
+        k=int(rng.randint(3,6)); nd=int(rng.randint(0,4))
     while True:
         vals=[int(rng.randint(2,5)) for _ in range(k)]
         prod=1

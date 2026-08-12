@@ -25,8 +25,11 @@ def xs_phrase(vs):
 rng=np.random.RandomState(int(_os.environ.get("MINT_SEED","56000")))
 rows=[]; seen=set()
 while len(rows)<2000:
-    k=int(rng.randint(3,6))
-    nd=int(rng.randint(0,4))                       # distractor givens
+    if _os.environ.get("INBAND")=="1":
+        k=int(rng.randint(3,5)); nd=0              # door #58: inside the band
+    else:
+        k=int(rng.randint(3,6))
+        nd=int(rng.randint(0,4))                   # distractor givens
     while True:
         vals=[int(rng.randint(2,5)) for _ in range(k)]
         prod=1
