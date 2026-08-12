@@ -29552,3 +29552,26 @@ token-position × waist-dim, the moment the skeleton trains.
   the organism to that structure: **the relocation law at the
   REGIME grain.** The focused reads answer both questions at
   once.
+
+- **DOOR #55's VERDICT — TRAINING UNDER THE WAVE DESTROYS WHAT THE
+  WAVE CARRIES; THE BOLT-ON STANDS (2026-08-12):** the trained
+  arm: nd4 completed in NO mode (focused 15/15, uniform 15/15 —
+  vs the whisper bolt-on's 0/15); the silent gift GONE (1.24);
+  engaged-uniform COLLAPSED (550 misses, bigtest 936); silent
+  ring survived (1237, sentinels clean); focus still calms
+  relative to broken-uniform (20 vs 34/150) but calms a ruin.
+  **BRANCH (d)-PLUS: training-under-focus is REFUTED AS COMPOSED;
+  the removal bar found nothing to test — no gains existed. THE
+  OPERATOR'S DEPLOYMENT FORM IS THE BOLT-ON** (inference-time,
+  two-forward, on breath-trained arms — every proven number
+  banked on the whisper arm stands untouched). MECHANISMS NAMED,
+  not claimed: (i) non-event slots trained at 0.05 authority —
+  the loop's general competence STARVED through training
+  (uniform-collapse consistent); (ii) the in-graph event proxy
+  drifts as weights change — a moving criterion inside the loss
+  loop, the field chasing its own tail. THE CHARTER PATTERN'S
+  FIFTH SHADING: mechanisms that transfer at inference don't
+  survive being TRAINED UNDER — structure carries; training
+  under structure consumes. The Nazaré file closes at its honest
+  summit: seven measured pieces, a proven bolt-on operator, and
+  a training road measured shut on its first composition.
