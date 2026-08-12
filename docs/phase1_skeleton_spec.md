@@ -29254,3 +29254,15 @@ token-position × waist-dim, the moment the skeleton trains.
   complete: three points, one collapse, one sterile pole, and
   the next gate named from the measurements rather than the
   menu.
+
+- **THE DIFFERENCE GATE'S NULL, PRE-WRITTEN (2026-08-11, Bryce's
+  rider, banked before the print):** if selecting on
+  (engaged−silent) pres carries no better than the coarse gate,
+  **relocation is not separable from general engaged confidence**
+  — the loop's completions and its ordinary output share a
+  signal, and the gate question CLOSES at the coarse setting with
+  the 2% bill as the design's standing cost. A real answer, not a
+  failed sweep. Also banked from the sweep's own curve: relocation
+  happens at the MARGINS of the runtime's competence, not its
+  center — a mechanism finding no one would have guessed from the
+  15→5 exhibit alone.
