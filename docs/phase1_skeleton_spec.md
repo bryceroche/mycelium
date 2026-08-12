@@ -29688,3 +29688,12 @@ token-position × waist-dim, the moment the skeleton trains.
   two stones standing, an operator deployed, a level sighted,
   three laws bounded, and a ledger in which every number knows
   its provenance.
+
+- **DOOR #57's READING NOTE (2026-08-12, Bryce's carve, pinned):**
+  branch (a) is TWO claims — **fusion sighted (the mint's own
+  grammar; #56's shape at a harder task) and the fifteen chain
+  rows converting (bigtest's prose; the TRANSFER claim, pinned
+  unbarred)** — and only the second reaches the constituency.
+  Fusion high with the fifteen unmoved = the register wall at a
+  new altitude, the surface dial still the road. Both halves
+  worth having; they bank separately.
