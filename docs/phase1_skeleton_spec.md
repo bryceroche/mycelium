@@ -29887,3 +29887,5 @@ token-position × waist-dim, the moment the skeleton trains.
   the given grain) is the shaped candidate, to a word. The
   tower's ANSWER ceiling and the 233's tail are now ONE DISEASE
   measured at two grains — the campaign's fronts converge.
+
+- **2026-08-12 — DOOR #61 RIDER (countersigned pre-measurement): the null-spillover clause.** The bars stand as registered; the countersign adds the reading frame for one branch: **if ANSWER clears its bar with NO movement in the 233/nd2/fifteen columns, the one-disease convergence WEAKENS to a resemblance** — the two grains share a name, not a mechanism, and the tail's cure becomes its own problem again. Pinned before the battery prints so the frame cannot bend to the sheet. (Conversely: spillover with ANSWER clearing = the convergence's own confirmation, free of charge — same battery, columns already read.)
