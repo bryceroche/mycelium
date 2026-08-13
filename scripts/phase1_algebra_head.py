@@ -45,6 +45,7 @@ import numpy as np
 T_ALG = 256
 ALG_REF = int(os.environ.get("ALG_REF", "0"))   # E-FLOOR referent supervision
 ALG_DIAL = int(os.environ.get("ALG_DIAL", "0"))  # door #45: the dialect reader
+ALG_VALATT = int(os.environ.get("ALG_VALATT", "0"))  # door #61: given-binding aid
 H_TRUNK = 2048
 H_W = int(os.environ.get("ALG_HW", "512"))  # capacity-probe dial (2026-07-11)
 K_VARS = 24
@@ -178,6 +179,7 @@ def build_gold(samples, offsets):
         "is_macro": np.zeros((n, L_FAC), np.float32),
         "is_frac": np.zeros((n, L_FAC), np.float32),   # mg2: FRAC_OF (ftype 7)
         "is_chain": np.zeros((n, L_FAC), np.float32),  # mg3: CHAIN_MUL (ftype 8)
+        **({"valspan": np.zeros((n, L_FAC, T_ALG), np.float32)} if ALG_VALATT else {}),
         "y": np.zeros((n, L_FAC), np.int32),
     }
     for i, (smp, offs) in enumerate(zip(samples, offsets)):
@@ -217,6 +219,15 @@ def build_gold(samples, offsets):
             elif f["ftype"] == "given":
                 g["ftype"][i, j] = 1
                 g["is_lit"][i, j] = 1.0
+                if ALG_VALATT and f.get("spans"):
+                    _va, _vb = f["spans"][0]
+                    import re as _re
+                    for _vmm in _re.finditer(r"\d+", smp["text"][_va:_vb]):
+                        if int(_vmm.group()) == int(f["value"]):
+                            _spans_to_tokmask([(_va + _vmm.start(),
+                                                _va + _vmm.end())],
+                                              offs, g["valspan"][i, j])
+                            break
                 g["res"][i, j] = f["var"]
                 t = int(f["value"])
                 if t < 0:                    # E1: sign gold; digits carry |t|
@@ -786,6 +797,12 @@ def _loss_single(o, g):
     if "dargs" in o and "arg_dup" in g:         # door #12: the dedicated dup
         dm2 = rel * g["arg_dup"]                # pointer — single-target gold
         l = l + (ce(o["dargs"], g["args"].argmax(-1)) * dm2).sum() / (dm2.sum() + 1e-6)
+    if "valspan" in g:                          # door #61: given-binding aid —
+        _vs = g["valspan"]                       # the pointer law's structural
+        _vm = (_vs.sum(-1) > 0).float()          # entry at the value grain
+        _vsn = _vs / (_vs.sum(-1, keepdim=True) + 1e-6)
+        l = l + float(os.environ.get("VALATT_W", "1.0")) * (
+            (-(o["fat"] + 1e-9).log() * _vsn).sum(-1) * _vm).sum() / (_vm.sum() + 1e-6)
     if "iargs" in o and "is_ind" in g:          # door #45: dialect reader —
         im = is_rel * g["is_ind"] * pres        # indirect-population gold only
         l = l + float(os.environ.get("DIAL_W", "1.0")) * (
@@ -1248,6 +1265,8 @@ def do_train(steps, lr, batch, seed):
                            if int(os.environ.get("ALG_FTYPES", "4")) >= 8 else ()),
                          *((("is_chain", (L_FAC,), dtypes.float),)
                            if int(os.environ.get("ALG_FTYPES", "4")) >= 9 else ()),
+                         *((("valspan", (L_FAC, T_ALG), dtypes.float),)
+                           if ALG_VALATT else ()),
                          # E1 (2026-08-03): sign gold buffer — two-terminal
                          # law, the same lesson as the gen-15 comment above
                          # (without it h_sgn leaves the graph: None grad)
@@ -1435,6 +1454,7 @@ def do_train(steps, lr, batch, seed):
                 "is_mod": gold["is_mod"][idx], "is_sel": gold["is_sel"][idx],
                 "is_pct": gold["is_pct"][idx], "is_fdiv": gold["is_fdiv"][idx],
                 **({"is_chain": gold["is_chain"][idx]} if "is_chain" in gold else {}),
+                **({"valspan": gold["valspan"][idx]} if ALG_VALATT and "valspan" in gold else {}),
                 "arg_dup": (gold["arg_dup"][idx] if "arg_dup" in gold
                             else np.zeros_like(gold["is_rel"][idx])),
                 **({"is_macro": gold["is_macro"][idx],
