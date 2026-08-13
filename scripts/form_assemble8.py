@@ -1,7 +1,7 @@
 import sys, os, json
 os.environ.setdefault("ALG2","1"); os.environ.setdefault("ALG_FTYPES","9")
 os.environ.setdefault("ALG_HW","512"); os.environ.setdefault("ALG_DUP","1")
-os.environ.setdefault("ALG_WIDE","1")
+os.environ.setdefault("ALG_WIDE","1"); os.environ.setdefault("ALG_VALATT","1")
 import numpy as np
 from phase1_algebra_head import T_ALG, sent_indices, build_gold
 import phase1_algebra_head as PH
