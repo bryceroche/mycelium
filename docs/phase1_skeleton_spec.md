@@ -29868,3 +29868,22 @@ token-position × waist-dim, the moment the skeleton trains.
   guard's draw if this sheet seeks promotion — all on words. The
   arc's shape holds to the last: every celebration audited, every
   refutation printing beside the best numbers of its era.
+
+- **THE MECHANISM READ — BINDING SHUFFLE, NOT DIGITS; THE TAIL'S
+  OWN DISEASE AT THE GIVEN GRAIN (2026-08-12):** fifteen dumps,
+  one mode: **every substituted value is a NEIGHBOR'S value**
+  (7→2, 19→3, 20→4 — the big leg's slot copies an adjacent
+  given; two rows show the full value-vector ROTATED one
+  position). Two-digit values read CORRECTLY when bound right
+  (14, 11 — **the E3/wide-digit connection weakens honestly**;
+  the digit head is not the faulty faculty). THE MECHANISM:
+  **given-value BINDING SHUFFLE under repeated-similar-sentence
+  crowding — binding-under-crowding, the campaign's oldest
+  pathology, now measured at the given/value grain**; the cap's
+  arithmetic only breeds the repetition that feeds it. The
+  binding theorem's territory; the pointer law's remedies
+  (structural entry: spans, masks) are the cure family — a
+  given-binding aid (value-span supervision, OPATT's pattern at
+  the given grain) is the shaped candidate, to a word. The
+  tower's ANSWER ceiling and the 233's tail are now ONE DISEASE
+  measured at two grains — the campaign's fronts converge.
