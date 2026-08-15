@@ -34,6 +34,21 @@ the-door pattern as mycelium/doors.py.
 """
 
 DIAGNOSTICS = {
+    "fat_overlap": {
+        "coupling": "never",
+        "why": (
+            "Inter-slot fat-attention overlap on given slots (rung 0', "
+            "2026-08-15): solved ~0.027 vs miss populations ~0.12-0.13, "
+            "held under length control — the neighbor-copy disease "
+            "measured in the head's own coordinates. THE CARRIER'S "
+            "METER, never its loss: training overlap down directly "
+            "teaches slots to LOOK separated while binding wherever "
+            "they please (concealment, not cure — the Goodhart fence's "
+            "exact case, and door #61's canvas tax as precedent). "
+            "Structure enters (carriers, phasing); this number only "
+            "ever reads."
+        ),
+    },
     "self_loop_count": {
         "coupling": "never",
         "why": (
