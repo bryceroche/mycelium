@@ -46,6 +46,7 @@ T_ALG = 256
 ALG_REF = int(os.environ.get("ALG_REF", "0"))   # E-FLOOR referent supervision
 ALG_DIAL = int(os.environ.get("ALG_DIAL", "0"))  # door #45: the dialect reader
 ALG_VALATT = int(os.environ.get("ALG_VALATT", "0"))  # door #61: given-binding aid
+ALG_SIXWAVE = int(os.environ.get("ALG_SIXWAVE", "0"))  # door #62: six-wave slot phasing
 H_TRUNK = 2048
 H_W = int(os.environ.get("ALG_HW", "512"))  # capacity-probe dial (2026-07-11)
 K_VARS = 24
@@ -565,6 +566,8 @@ def build_params(seed=0):
         p["W_iargs"] = t(rng.randn(H_W, H_W) / math.sqrt(H_W))
     p["W_res"] = t(rng.randn(H_W, H_W) / math.sqrt(H_W))
     p["W_query"] = t(rng.randn(H_W, H_W) / math.sqrt(H_W))
+    if ALG_SIXWAVE:      # door #62: carrier gate — structure enters at zero
+        p["sw_g"] = t(np.zeros((1,)))
     return p
 
 
@@ -572,7 +575,7 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
     B = trunk.shape[0]
     waist = (trunk @ p["waist_w"] + p["waist_b"]).gelu() + p["sent_emb"][sent]
 
-    def bank(queries, nq, extra=None):
+    def bank(queries, nq, extra=None, pbias=None):
         q_in = queries.unsqueeze(0) + (extra if extra is not None else 0)
         q = q_in @ p["attn_wq"] + p["attn_wq_b"]
         k = waist @ p["attn_wk"] + p["attn_wk_b"]
@@ -582,6 +585,8 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
         kh = k.reshape(B, -1, N_HEADS, hd).permute(0, 2, 1, 3)
         vh = v.reshape(B, -1, N_HEADS, hd).permute(0, 2, 1, 3)
         sc = (qh @ kh.transpose(-2, -1)) / math.sqrt(hd)
+        if pbias is not None:   # door #62: six-wave phase-resonance bias
+            sc = sc + pbias
         sc = sc.clip(-1e4, 1e4) + (1.0 - tokmask.reshape(B, 1, 1, -1)) * -1e4
         at = sc.softmax(-1)
         st = (at @ vh).permute(0, 2, 1, 3).reshape(B, nq, H_W)
@@ -590,7 +595,21 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
         return st, at.mean(1)
 
     vst, vat = bank(p["vq"], K_VARS)
-    fst, fat = bank(p["fq"], L_FAC)
+    _pb = None
+    if ALG_SIXWAVE:
+        from tinygrad import Tensor, dtypes
+        # six helical carriers: token phase from sentence index (mod 6, 60
+        # deg apart, antiphase pairs); slot phase from slot index mod 6.
+        # Resonance bias cos(phi_slot - theta_tok) enters the factor bank's
+        # scores through the zero-init gate — structure, never supervision.
+        _th = (sent - (sent // 6) * 6).float() * (math.pi / 3.0)
+        _phi = np.pi / 3.0 * (np.arange(L_FAC) % 6)
+        _cph = Tensor(np.cos(_phi).astype(np.float32), dtype=dtypes.float)
+        _sph = Tensor(np.sin(_phi).astype(np.float32), dtype=dtypes.float)
+        _pb = (_cph.reshape(1, 1, L_FAC, 1) * _th.cos().reshape(B, 1, 1, -1)
+               + _sph.reshape(1, 1, L_FAC, 1)
+               * _th.sin().reshape(B, 1, 1, -1)) * p["sw_g"].reshape(1, 1, 1, 1)
+    fst, fat = bank(p["fq"], L_FAC, pbias=_pb)
     qst, _qa = bank(p["qq"], 1)
 
     # BRICK-P breathing (2026-07-09): K-1 refinement passes. Each breath
