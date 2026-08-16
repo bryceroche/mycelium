@@ -746,6 +746,9 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
                                                      # structural re-entry the
                                                      # forward cannot ignore
     out = heads_of(_s_final)
+    if int(os.environ.get("ALG_DEEPSUP", "0")) and K_B > 1 and len(breaths) > 1:
+        out["_early"] = [heads_of(b) for b in breaths[:-1]]   # V2: the whole
+                                                  # supply chain gets gradient
     if int(os.environ.get("ALG_INV", "0")):
         out["fst_s"] = breaths[-1]        # ORGAN: invariance fire — the pair
                                           # agreement term reads the waist here
@@ -1360,6 +1363,11 @@ def do_train(steps, lr, batch, seed):
             o = forward(p, b_tr, b_tk, b_se, slot_mask=b_mask, tail=b_tail,
                         drop=(b_drop if _bd else None), lsent=b_ls)
         l = loss_fn(o, bg)
+        if "_early" in o:                 # V2 deep supervision: same gold,
+            _dw = float(os.environ.get("DEEPSUP_W", "0.3"))   # every breath
+            for _ok in o["_early"]:
+                l = l + _dw * loss_fn({**_ok, "fat": o["fat"], "vat": o["vat"],
+                                       "query": o["query"]}, bg)
         if INV_TR and "fst_s" in o:
             _d = o["fst_s"][0:4:2] - o["fst_s"][1:4:2]
             _pm = bg["presence"][0:4:2].unsqueeze(-1)
