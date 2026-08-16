@@ -581,7 +581,7 @@ def build_params(seed=0):
     return p
 
 
-def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, drop=None, anchor=None, amask=None, gmod=None, pmask=None):
+def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, drop=None, anchor=None, amask=None, gmod=None, pmask=None, lsent=None):
     B = trunk.shape[0]
     waist = (trunk @ p["waist_w"] + p["waist_b"]).gelu() + p["sent_emb"][sent]
 
@@ -604,7 +604,10 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
         st = st + ((st @ p["ffn_w1"] + p["ffn_b1"]).gelu() @ p["ffn_w2"] + p["ffn_b2"])
         return st, at.mean(1)
 
-    vst, vat = bank(p["vq"], K_VARS)
+    _lb = None
+    if lsent is not None:               # V2: letter-keyed partition — imposed
+        _lb = lsent.reshape(B, 1, K_VARS, -1) * float(os.environ.get("LS_A", "1.0"))
+    vst, vat = bank(p["vq"], K_VARS, pbias=_lb)
     _pb = None
     if ALG_SIXWAVE:
         from tinygrad import Tensor, dtypes
