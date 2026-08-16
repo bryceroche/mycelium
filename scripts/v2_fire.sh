@@ -3,6 +3,8 @@ set -eo pipefail
 cd /home/bryce/mycelium
 export DEV=AMD ALG2=1 ALG_DUP=1 ALG_HW=512 ALG_WIDE=1 ALG_ALLOW_PEN_TRAIN=1
 PY=.venv/bin/python3
+echo "== ASSEMBLE form8 (VALATT+LSENT gold restage) =="
+env ALG_FTYPES=9 ALG_LSENT=1 $PY scripts/form_assemble8.py
 echo "== V2 ARM (letter-key + deepsup, from birth) =="
 env ALG_FTYPES=9 ALG_SIXWAVE=1 ALG_BREATH=3 BREATH_NORM=1 ALG_LSENT=1 ALG_DEEPSUP=1 \
     ALG_TRAIN=.cache/form_mix8.jsonl ALG_TRAIN_NAME=form8 \
