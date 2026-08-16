@@ -571,7 +571,7 @@ def build_params(seed=0):
     return p
 
 
-def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, drop=None, anchor=None, amask=None, gmod=None):
+def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, drop=None, anchor=None, amask=None, gmod=None, pmask=None):
     B = trunk.shape[0]
     waist = (trunk @ p["waist_w"] + p["waist_b"]).gelu() + p["sent_emb"][sent]
 
@@ -609,6 +609,8 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
         _pb = (_cph.reshape(1, 1, L_FAC, 1) * _th.cos().reshape(B, 1, 1, -1)
                + _sph.reshape(1, 1, L_FAC, 1)
                * _th.sin().reshape(B, 1, 1, -1)) * p["sw_g"].reshape(1, 1, 1, 1)
+    if pmask is not None:                 # A0: imposed route-mask (wiring,
+        _pb = pmask if _pb is None else _pb + pmask   # not knobs — no grad)
     fst, fat = bank(p["fq"], L_FAC, pbias=_pb)
     qst, _qa = bank(p["qq"], 1)
 
