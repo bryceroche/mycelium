@@ -1179,6 +1179,10 @@ def do_train(steps, lr, batch, seed):
                            f"refusing to cold-start silently (resume guard)")
     if int(os.environ.get("RESUME", "0")) and os.path.exists(ALG_CKPT):
         from tinygrad.nn.state import safe_load as _sl
+        import shutil
+        shutil.copy2(ALG_CKPT, ALG_CKPT + ".pre_resume")   # house rule
+        # (2026-08-16): RESUME never clobbers the only copy — the pre-swap
+        # checkpoint stays readable after the continuation overwrites in place
         sd0 = _sl(ALG_CKPT)
         assert set(sd0.keys()) == set(p.keys()), "resume key mismatch (hard error)"
         for k in p:
