@@ -27,3 +27,16 @@ untouched; the crowding scan stays diagnostic (Goodhart fence).
 - **Rung 2:** slot-bank phasing (slot k -> phase k mod 6) — carrier
   assignment at the decode end (neighbor-copy is slot-adjacent).
 - **Rung 3 (organ arc):** anchors as repeaters at six breath-cycle phases.
+
+## THE COMPOSED FORM (2026-08-15, countersigned): FDM x TDM
+MapReduce is the architecture; six-wave is the SHUFFLE's carrier set —
+BUT six channels cannot uniquely carry 15 facts (mod-6 aliasing at the
+shuffle recreates the split-gradient outliers). The reduce stage fixes
+it: K settle passes give the shuffle a time axis — SIX CARRIERS PER
+PASS x K PASSES = capacity 6K facts (FDM composed with TDM; the
+telegraph's mature form; K_min ~ D/4 rhymes from the June engine).
+MAP = isolation; SHUFFLE = within-pass zero-crosstalk (sum-cos^2=3);
+REDUCE = across-pass capacity (built: BRICK-P, K=3). The veto dissolves
+by construction: <=6-fact rows route in one pass (carrier invisible);
+only the crowded tail pays passes — thermal-window economics free from
+the pipeline shape. GATES: relay read + decode autopsy + spec bars.
