@@ -1077,7 +1077,9 @@ def do_errors():
         sl_p = np.concatenate([sl, sl[:1].repeat(pad)]) if pad else sl
         out = forward(p, Tensor(states[sl_p].astype(np.float32), dtype=dtypes.float),
                       Tensor(tokmask[sl_p].astype(np.float32), dtype=dtypes.float),
-                      Tensor(sent[sl_p].astype(np.int32), dtype=dtypes.int))
+                      Tensor(sent[sl_p].astype(np.int32), dtype=dtypes.int),
+                      lsent=(Tensor(gold["lsent"][sl_p].astype(np.float32),
+                                    dtype=dtypes.float) if ALG_LSENT and "lsent" in gold else None))
         keys = ("pres", "ftype", "op", "islit", "dig", "args", "res",
                 "query") + (("sel",) if "sel" in out else ()) + (("dup",) if "dup" in out else ()) \
             + (("dargs",) if "dargs" in out else ())
@@ -1270,6 +1272,8 @@ def do_train(steps, lr, batch, seed):
     b_tail = fix(np.zeros((batch, T_ALG), np.float32), dtypes.float) if CLOCK else None
     b_drop = fix(np.ones((1,), np.float32), dtypes.float) \
         if os.environ.get("BREATH_DROPOUT") else None   # door #52 coin buffer
+    b_ls = fix(np.zeros((batch, K_VARS, T_ALG), np.float32), dtypes.float) \
+        if ALG_LSENT else None                          # V2: letter partition
     bg = {}
     for k, shape, dt in (("presence", (L_FAC,), dtypes.float),
                          ("is_lit_f", (L_FAC,), dtypes.float),
@@ -1354,7 +1358,7 @@ def do_train(steps, lr, batch, seed):
         else:
             _bd = os.environ.get("BREATH_DROPOUT")
             o = forward(p, b_tr, b_tk, b_se, slot_mask=b_mask, tail=b_tail,
-                        drop=(b_drop if _bd else None))
+                        drop=(b_drop if _bd else None), lsent=b_ls)
         l = loss_fn(o, bg)
         if INV_TR and "fst_s" in o:
             _d = o["fst_s"][0:4:2] - o["fst_s"][1:4:2]
@@ -1466,6 +1470,8 @@ def do_train(steps, lr, batch, seed):
         b_tr.assign(Tensor(states[idx].astype(np.float32), dtype=dtypes.float).contiguous()).realize()
         b_tk.assign(Tensor(tokmask[idx].astype(np.float32), dtype=dtypes.float).contiguous()).realize()
         b_se.assign(Tensor(sent[idx].astype(np.int32), dtype=dtypes.int).contiguous()).realize()
+        if b_ls is not None:
+            b_ls.assign(Tensor(gold["lsent"][idx].astype(np.float32), dtype=dtypes.float).contiguous()).realize()
         if b_mask is not None:
             b_mask.assign(Tensor(MASKS[idx], dtype=dtypes.float).contiguous()).realize()
         if b_tail is not None:
