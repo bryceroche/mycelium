@@ -63,6 +63,9 @@ for s0 in range(0,len(rows),8):
         rem=[j for j in gsl if j not in aslot]
         rems=[ss for ss in litsent if ss not in asent]
         for j,ss in zip(rem,rems): aslot[j]=ss   # order fallback
+        if os.environ.get("PLACEBO")=="1" and len(aslot)>1:   # rotate routes
+            ks=sorted(aslot); vs=[aslot[k] for k in ks]
+            aslot={k:vs[(i+1)%len(vs)] for i,k in enumerate(ks)}
         for j in gsl:
             if j not in aslot: continue
             ss=aslot[j]
