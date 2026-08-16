@@ -7,7 +7,8 @@ components of the Communication Charter, from birth (the two-phone law).
 
 **The charter as build checklist:**
 1. TIMING — mixed shuffle granularity (per-layer short / per-breath long;
-   nine-months law: K_min~D/4 governs the sequential floor)
+   nine-months law governs; K_min~D/4 is JUNE-ENGINE VINTAGE — motivation
+   only; V5 derives its own sequential floor from the parser's depth ladder)
 2. LANGUAGE — from-birth only (the +0.192 receipt vs every mid-life grave)
 3. CHANNEL — write where the receiver reads (wiring law)
 4. LOAD BALANCE — even key distribution; 6 carriers x K breaths capacity
