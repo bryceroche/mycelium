@@ -47,6 +47,7 @@ ALG_REF = int(os.environ.get("ALG_REF", "0"))   # E-FLOOR referent supervision
 ALG_DIAL = int(os.environ.get("ALG_DIAL", "0"))  # door #45: the dialect reader
 ALG_VALATT = int(os.environ.get("ALG_VALATT", "0"))  # door #61: given-binding aid
 ALG_SIXWAVE = int(os.environ.get("ALG_SIXWAVE", "0"))  # door #62: six-wave slot phasing
+ALG_LSENT = int(os.environ.get("ALG_LSENT", "0"))    # V2: letter-keyed partition input
 H_TRUNK = 2048
 H_W = int(os.environ.get("ALG_HW", "512"))  # capacity-probe dial (2026-07-11)
 K_VARS = 24
@@ -181,6 +182,7 @@ def build_gold(samples, offsets):
         "is_frac": np.zeros((n, L_FAC), np.float32),   # mg2: FRAC_OF (ftype 7)
         "is_chain": np.zeros((n, L_FAC), np.float32),  # mg3: CHAIN_MUL (ftype 8)
         **({"valspan": np.zeros((n, L_FAC, T_ALG), np.float32)} if ALG_VALATT else {}),
+        **({"lsent": np.zeros((n, K_VARS, T_ALG), np.float32)} if ALG_LSENT else {}),
         "y": np.zeros((n, L_FAC), np.int32),
     }
     for i, (smp, offs) in enumerate(zip(samples, offsets)):
@@ -203,6 +205,14 @@ def build_gold(samples, offsets):
                     _m = np.zeros(T_ALG, np.float32)
                     _spans_to_tokmask(_ind, offs, _m)
                     g["refvar"][i][_m > 0] = int(v_str)
+        if ALG_LSENT:
+            import re as _re2
+            _parts=[(m.start(),m.end()) for m in _re2.finditer(r"[^.]+\.", smp["text"])]
+            for _v in range(min(smp.get("n_vars",K_VARS),K_VARS)):
+                _nm=chr(ord("a")+_v)
+                for _a,_b in _parts:
+                    if _re2.search(r"\b"+_nm+r"\b", smp["text"][_a:_b]):
+                        _spans_to_tokmask([(_a,_b)], offs, g["lsent"][i, _v])
         for j, f in enumerate(facs):
             g["presence"][i, j] = 1.0
             if ALG_DIAL and f["ftype"] == "rel" and any(a in _indvars for a in f.get("args", [])):
