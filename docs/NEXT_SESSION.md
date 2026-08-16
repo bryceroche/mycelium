@@ -228,3 +228,18 @@ FIVE spec-time doors; grains-state-conversion + trades-prove-overlap
 (mycelium/preregistration.py) is LIVE — reads register before
 existence; bars never rebind. Marker relaxation = fork (b).
 Custody-gold, Goodhart fence, conviction index all in force.
+
+
+## STATE 2026-08-16 (the hill arc — read the ledger's last ~30 entries from "DOOR #61 REGISTERED")
+GEN-41 still the gate. The tower/binding war produced: canonical-reorder
+receipt (len_asc 159/233), the residue-74 fixture (binding collapse above
+solvability), the refusal trigger, the placebo-differential law, the
+two-phone law (6 graves, 2 exceptions), the key-quality ladder, and THE
+COMMUNICATION CHARTER (7 components — standing registration rider).
+THE HILL: native from-birth build (NATIVE_SPEC) — twin protocol printed
+ENGAGEMENT +0.192 (first positive carrier ever); differential deferred to
+maturity; continuation (+10k both arms) BURNING as natcont; sheet 2 reads
+frozen bars + engagement column. Letter-key successor arm 5/5
+charter-complete, conditionally worded. Board: len_asc deployment,
+tremor-rescue+vote-gate, interleave view, letter-key arm. MEMORY.md board
+rebuild still OWED.
