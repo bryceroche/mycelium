@@ -615,7 +615,12 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
         # deg apart, antiphase pairs); slot phase from slot index mod 6.
         # Resonance bias cos(phi_slot - theta_tok) enters the factor bank's
         # scores through the zero-init gate — structure, never supervision.
-        _th = (sent - (sent // 6) * 6).float() * (math.pi / 3.0)
+        if int(os.environ.get("SW_SCRAMBLE", "0")):
+            _tab = Tensor(np.random.RandomState(227).randint(0, 6, 16)
+                          .astype(np.float32) * (math.pi / 3.0), dtype=dtypes.float)
+            _th = _tab[sent - (sent // 16) * 16]
+        else:
+            _th = (sent - (sent // 6) * 6).float() * (math.pi / 3.0)
         _phi = np.pi / 3.0 * (np.arange(L_FAC) % 6)
         _cph = Tensor(np.cos(_phi).astype(np.float32), dtype=dtypes.float)
         _sph = Tensor(np.sin(_phi).astype(np.float32), dtype=dtypes.float)
@@ -1263,7 +1268,10 @@ def do_train(steps, lr, batch, seed):
             sl_p = np.concatenate([sl, sl[:1].repeat(pad)]) if pad else sl
             out0 = forward(p, Tensor(states[sl_p].astype(np.float32), dtype=dtypes.float),
                            Tensor(tokmask[sl_p].astype(np.float32), dtype=dtypes.float),
-                           Tensor(sent[sl_p].astype(np.int32), dtype=dtypes.int))
+                           Tensor(sent[sl_p].astype(np.int32), dtype=dtypes.int),
+                           lsent=(Tensor(gold["lsent"][sl_p].astype(np.float32),
+                                         dtype=dtypes.float)
+                                  if ALG_LSENT and "lsent" in gold else None))
             o0 = {k: out0[k].realize().numpy() for k in ("fat", "args", "res")}
             MASKS[sl] = build_slot_masks(o0, sent[sl_p])[:len(sl)]
         print(f"[breath] masks ready (mean degree "
