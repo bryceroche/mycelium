@@ -49,6 +49,7 @@ ALG_VALATT = int(os.environ.get("ALG_VALATT", "0"))  # door #61: given-binding a
 ALG_SIXWAVE = int(os.environ.get("ALG_SIXWAVE", "0"))  # door #62: six-wave slot phasing
 ALG_LSENT = int(os.environ.get("ALG_LSENT", "0"))    # V2: letter-keyed partition input
 ALG_SYNC = int(os.environ.get("ALG_SYNC", "0"))      # sync-complete: one clock, both sides, ticking
+ALG_CONSUME = int(os.environ.get("ALG_CONSUME", "0"))  # consume-once credit (any breath, once)
 H_TRUNK = 2048
 H_W = int(os.environ.get("ALG_HW", "512"))  # capacity-probe dial (2026-07-11)
 K_VARS = 24
@@ -797,7 +798,7 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
                                                      # structural re-entry the
                                                      # forward cannot ignore
     out = heads_of(_s_final)
-    if int(os.environ.get("ALG_DEEPSUP", "0")) and K_B > 1 and len(breaths) > 1:
+    if (int(os.environ.get("ALG_DEEPSUP", "0")) or ALG_CONSUME) and K_B > 1 and len(breaths) > 1:
         out["_early"] = [heads_of(b) for b in breaths[:-1]]   # V2: the whole
                                                   # supply chain gets gradient
     if int(os.environ.get("ALG_INV", "0")):
@@ -1335,6 +1336,24 @@ def do_train(steps, lr, batch, seed):
         if os.environ.get("BREATH_DROPOUT") else None   # door #52 coin buffer
     b_ls = fix(np.zeros((batch, K_VARS, T_ALG), np.float32), dtypes.float) \
         if ALG_LSENT else None                          # V2: letter partition
+    if ALG_CONSUME:
+        bg["parents"] = fix(np.zeros((batch, L_FAC, L_FAC), np.float32), dtypes.float)
+        DEFINER = np.full((len(samples), K_VARS), -1, np.int32)
+        ARGM = gold["args"] > 0.5
+        for _i in range(len(samples)):
+            for _j in range(L_FAC):
+                if gold["presence"][_i, _j] > 0:
+                    DEFINER[_i, int(gold["res"][_i, _j])] = _j
+        PARENTS = np.zeros((len(samples), L_FAC, L_FAC), np.float32)
+        for _i in range(len(samples)):
+            for _j in range(L_FAC):
+                if gold["presence"][_i, _j] > 0 and gold["is_rel"][_i, _j] > 0:
+                    for _v in np.where(ARGM[_i, _j])[0]:
+                        _d = DEFINER[_i, _v]
+                        if _d >= 0 and _d != _j:
+                            PARENTS[_i, _j, _d] = 1.0
+        print(f"[consume] parent DAG built (mean parents "
+              f"{PARENTS.sum(-1)[gold['presence']>0].mean():.2f})", flush=True)
     bg = {}
     for k, shape, dt in (("presence", (L_FAC,), dtypes.float),
                          ("is_lit_f", (L_FAC,), dtypes.float),
@@ -1421,7 +1440,24 @@ def do_train(steps, lr, batch, seed):
             o = forward(p, b_tr, b_tk, b_se, slot_mask=b_mask, tail=b_tail,
                         drop=(b_drop if _bd else None), lsent=b_ls)
         l = loss_fn(o, bg)
-        if "_early" in o:                 # V2 deep supervision: same gold,
+        if ALG_CONSUME and "_early" in o:   # support-gated consume-once:
+            # any breath claims, each fact pays once; eligibility = the DAG
+            _cw = float(os.environ.get("CO_W", "0.5"))
+            _stages = list(o["_early"]) + [o]
+            _prev = bg["presence"] * 0.0
+            _P = bg["parents"]              # (B, L, L) adjacency
+            _need = _P.sum(-1)
+            for _ok in _stages:
+                _corr = ((_ok["ftype"].argmax(-1) == bg["ftype"]).float()
+                         * (_ok["res"].argmax(-1) == bg["res"]).float())
+                _elig = ((_P * _prev.unsqueeze(1)).sum(-1) >= _need - 1e-3).float()
+                _first = _corr * _elig * (1.0 - _prev) * bg["presence"]
+                _n1 = _first.sum() + 1e-6
+                l = l + _cw * ((ce(_ok["ftype"], bg["ftype"]) * _first).sum()
+                               + (ce(_ok["res"], bg["res"]) * _first).sum()
+                               + (bce(_ok["args"], bg["args"]).mean(-1) * _first).sum()) / _n1
+                _prev = (_prev + _first).clip(0, 1)
+        if "_early" in o and not ALG_CONSUME:  # deepsup (convicted; kept gated)
             _dw = float(os.environ.get("DEEPSUP_W", "0.3"))   # every breath
             for _ok in o["_early"]:
                 l = l + _dw * loss_fn({**_ok, "fat": o["fat"], "vat": o["vat"],
@@ -1536,6 +1572,8 @@ def do_train(steps, lr, batch, seed):
         b_tr.assign(Tensor(states[idx].astype(np.float32), dtype=dtypes.float).contiguous()).realize()
         b_tk.assign(Tensor(tokmask[idx].astype(np.float32), dtype=dtypes.float).contiguous()).realize()
         b_se.assign(Tensor(sent[idx].astype(np.int32), dtype=dtypes.int).contiguous()).realize()
+        if ALG_CONSUME:
+            bg["parents"].assign(Tensor(PARENTS[idx], dtype=dtypes.float).contiguous()).realize()
         if b_ls is not None:
             b_ls.assign(Tensor(gold["lsent"][idx].astype(np.float32), dtype=dtypes.float).contiguous()).realize()
         if b_mask is not None:
