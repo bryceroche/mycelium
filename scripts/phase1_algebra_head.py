@@ -48,6 +48,7 @@ ALG_DIAL = int(os.environ.get("ALG_DIAL", "0"))  # door #45: the dialect reader
 ALG_VALATT = int(os.environ.get("ALG_VALATT", "0"))  # door #61: given-binding aid
 ALG_SIXWAVE = int(os.environ.get("ALG_SIXWAVE", "0"))  # door #62: six-wave slot phasing
 ALG_LSENT = int(os.environ.get("ALG_LSENT", "0"))    # V2: letter-keyed partition input
+ALG_SYNC = int(os.environ.get("ALG_SYNC", "0"))      # sync-complete: one clock, both sides, ticking
 H_TRUNK = 2048
 H_W = int(os.environ.get("ALG_HW", "512"))  # capacity-probe dial (2026-07-11)
 K_VARS = 24
@@ -609,6 +610,35 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
         _lb = lsent.reshape(B, 1, K_VARS, -1) * float(os.environ.get("LS_A", "1.0"))
     vst, vat = bank(p["vq"], K_VARS, pbias=_lb)
     _pb = None
+    _sync = None
+    if ALG_SYNC:
+        from tinygrad import Tensor, dtypes
+        _A = float(os.environ.get("SYNC_A", "1.0"))
+        _phi = np.pi / 3.0 * (np.arange(L_FAC) % 6)
+        _cph = Tensor(np.cos(_phi).astype(np.float32), dtype=dtypes.float)
+        _sph = Tensor(np.sin(_phi).astype(np.float32), dtype=dtypes.float)
+        _th0 = (sent - (sent // 6) * 6).float() * (math.pi / 3.0)
+        _cth, _sth = _th0.cos(), _th0.sin()
+        _scr = None
+        if int(os.environ.get("SYNC_SCRAMBLE", "0")):
+            _scr = np.random.RandomState(227).uniform(0, 2 * np.pi, 8)
+        def _mk_pb(kb):
+            _d = float(_scr[kb]) if _scr is not None else kb * (math.pi / 3.0)
+            ck, sk = math.cos(_d), math.sin(_d)
+            cthk = _cth * ck - _sth * sk
+            sthk = _sth * ck + _cth * sk
+            return (_cph.reshape(1, 1, L_FAC, 1) * cthk.reshape(B, 1, 1, -1)
+                    + _sph.reshape(1, 1, L_FAC, 1)
+                    * sthk.reshape(B, 1, 1, -1)) * _A
+        _php = np.zeros((L_FAC, H_W), np.float32)
+        def _mk_osc(kb):   # the receiver's local oscillator — same clock
+            _d = float(_scr[kb]) if _scr is not None else kb * (math.pi / 3.0)
+            _o = _php.copy()
+            _o[:, 0] = np.cos(_phi + _d) * _A
+            _o[:, 1] = np.sin(_phi + _d) * _A
+            return Tensor(_o, dtype=dtypes.float).reshape(1, L_FAC, H_W)
+        _sync = (_mk_pb, _mk_osc)
+        _pb = _mk_pb(0)
     if ALG_SIXWAVE:
         from tinygrad import Tensor, dtypes
         # six helical carriers: token phase from sentence index (mod 6, 60
@@ -659,7 +689,11 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
         cur = fst
         for kb in range(1, K_B):
             q_extra = cur + p["breath_emb"][kb].reshape(1, 1, -1)
-            h_tok, fat_cur = bank(p["fq"], L_FAC, extra=q_extra)
+            if _sync is not None:   # sync-complete: transmitter ON during
+                q_extra = q_extra + _sync[1](kb)     # settle; receiver locked
+            h_tok, fat_cur = bank(p["fq"], L_FAC, extra=q_extra,
+                                  pbias=(_sync[0](kb) if _sync is not None
+                                         else None))
             bq = cur @ p["W_bq"] + p["W_bq_b"]
             bk = cur @ p["W_bk"] + p["W_bk_b"]
             bv = cur @ p["W_bv"] + p["W_bv_b"]
