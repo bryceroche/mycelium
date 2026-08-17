@@ -526,7 +526,10 @@ def build_params(seed=0):
         # the properly-wired receiver (2026-08-17): six-phase structure seeded
         # INTO the learned sync channel (init, not bias — the model may keep
         # or reshape it; amplitude matches the native init scale)
-        _s6 = np.arange(SENT_MAX) % 6 * (np.pi / 3.0)
+        if int(os.environ.get("SEPHASE_SCRAMBLE", "0")):
+            _s6 = np.random.RandomState(9).uniform(0, 2 * np.pi, SENT_MAX)
+        else:
+            _s6 = np.arange(SENT_MAX) % 6 * (np.pi / 3.0)
         _d6 = np.arange(H_W) * (2 * np.pi / H_W)
         _se = 0.1 * np.sqrt(2.0) * np.cos(_s6[:, None] + _d6[None, :] * 6)
         p["sent_emb"] = t(_se + rng.randn(SENT_MAX, H_W) * 0.02)
