@@ -1444,6 +1444,10 @@ def do_train(steps, lr, batch, seed):
         if ALG_CONSUME and "_early" in o:   # support-gated consume-once:
             # any breath claims, each fact pays once; eligibility = the DAG
             _cw = float(os.environ.get("CO_W", "0.5"))
+            def _ce(lg, tg):
+                return (lg.log_softmax(-1) * -1).gather(-1, tg.unsqueeze(-1)).squeeze(-1)
+            def _bce(lg, tg):
+                return lg.maximum(0) - lg * tg + (1 + (-lg.abs()).exp()).log()
             _stages = list(o["_early"]) + [o]
             _prev = bg["presence"] * 0.0
             _P = bg["parents"]              # (B, L, L) adjacency
@@ -1454,9 +1458,9 @@ def do_train(steps, lr, batch, seed):
                 _elig = ((_P * _prev.unsqueeze(1)).sum(-1) >= _need - 1e-3).float()
                 _first = _corr * _elig * (1.0 - _prev) * bg["presence"]
                 _n1 = _first.sum() + 1e-6
-                l = l + _cw * ((ce(_ok["ftype"], bg["ftype"]) * _first).sum()
-                               + (ce(_ok["res"], bg["res"]) * _first).sum()
-                               + (bce(_ok["args"], bg["args"]).mean(-1) * _first).sum()) / _n1
+                l = l + _cw * ((_ce(_ok["ftype"], bg["ftype"]) * _first).sum()
+                               + (_ce(_ok["res"], bg["res"]) * _first).sum()
+                               + (_bce(_ok["args"], bg["args"]).mean(-1) * _first).sum()) / _n1
                 _prev = (_prev + _first).clip(0, 1)
         if "_early" in o and not ALG_CONSUME:  # deepsup (convicted; kept gated)
             _dw = float(os.environ.get("DEEPSUP_W", "0.3"))   # every breath
