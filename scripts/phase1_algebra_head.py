@@ -1337,7 +1337,6 @@ def do_train(steps, lr, batch, seed):
     b_ls = fix(np.zeros((batch, K_VARS, T_ALG), np.float32), dtypes.float) \
         if ALG_LSENT else None                          # V2: letter partition
     if ALG_CONSUME:
-        bg["parents"] = fix(np.zeros((batch, L_FAC, L_FAC), np.float32), dtypes.float)
         DEFINER = np.full((len(samples), K_VARS), -1, np.int32)
         ARGM = gold["args"] > 0.5
         for _i in range(len(samples)):
@@ -1393,6 +1392,8 @@ def do_train(steps, lr, batch, seed):
                          ("query", (), dtypes.int)):
         npdt = np.float32 if dt == dtypes.float else np.int32
         bg[k] = fix(np.zeros((batch,) + shape, npdt), dt)
+    if ALG_CONSUME:
+        bg["parents"] = fix(np.zeros((batch, L_FAC, L_FAC), np.float32), dtypes.float)
     if int(os.environ.get("ALG_OPATT", "0")):
         bg["opspan"] = fix(np.zeros((batch, L_FAC, T_ALG), np.float32), dtypes.float)
     assert_terminals(p=p, gold_keys=set(bg.keys()), site="do_train buffers")
