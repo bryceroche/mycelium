@@ -522,7 +522,16 @@ def build_params(seed=0):
 
     p = {}
     p["waist_w"], p["waist_b"] = lin(H_TRUNK, H_W)
-    p["sent_emb"] = t(rng.randn(SENT_MAX, H_W) * 0.1)
+    if int(os.environ.get("ALG_SEPHASE", "0")):
+        # the properly-wired receiver (2026-08-17): six-phase structure seeded
+        # INTO the learned sync channel (init, not bias — the model may keep
+        # or reshape it; amplitude matches the native init scale)
+        _s6 = np.arange(SENT_MAX) % 6 * (np.pi / 3.0)
+        _d6 = np.arange(H_W) * (2 * np.pi / H_W)
+        _se = 0.1 * np.sqrt(2.0) * np.cos(_s6[:, None] + _d6[None, :] * 6)
+        p["sent_emb"] = t(_se + rng.randn(SENT_MAX, H_W) * 0.02)
+    else:
+        p["sent_emb"] = t(rng.randn(SENT_MAX, H_W) * 0.1)
     p["vq"] = t(rng.randn(K_VARS, H_W) * 0.02)
     p["fq"] = t(rng.randn(L_FAC, H_W) * 0.02)
     p["qq"] = t(rng.randn(1, H_W) * 0.02)
