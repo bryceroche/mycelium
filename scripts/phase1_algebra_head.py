@@ -1394,6 +1394,9 @@ def do_train(steps, lr, batch, seed):
         bg[k] = fix(np.zeros((batch,) + shape, npdt), dt)
     if ALG_CONSUME:
         bg["parents"] = fix(np.zeros((batch, L_FAC, L_FAC), np.float32), dtypes.float)
+        bg["claimed"] = fix(np.zeros((batch, L_FAC), np.float32), dtypes.float)
+        CLAIMED = np.zeros((len(samples), L_FAC), np.float32)  # the persistent
+        # ledger: once per fact per RUN — the sharpening subsidy excluded
     if int(os.environ.get("ALG_OPATT", "0")):
         bg["opspan"] = fix(np.zeros((batch, L_FAC, T_ALG), np.float32), dtypes.float)
     assert_terminals(p=p, gold_keys=set(bg.keys()), site="do_train buffers")
@@ -1405,6 +1408,7 @@ def do_train(steps, lr, batch, seed):
     OPATT = int(os.environ.get("ALG_OPATT", "0"))
     OPGOLD = np.load(os.environ["OPATT_GOLD"], mmap_mode="r") if OPATT else None
 
+    _NEWCL = [None]
     @TinyJit
     def step():
         Tensor.training = True
@@ -1449,7 +1453,8 @@ def do_train(steps, lr, batch, seed):
             def _bce(lg, tg):
                 return lg.maximum(0) - lg * tg + (1 + (-lg.abs()).exp()).log()
             _stages = list(o["_early"]) + [o]
-            _prev = bg["presence"] * 0.0
+            _prev = bg["claimed"] * 1.0   # the ledger seeds prev: paid facts
+                                           # never pay again this run
             _P = bg["parents"]              # (B, L, L) adjacency
             _need = _P.sum(-1)
             for _ok in _stages:
@@ -1462,6 +1467,8 @@ def do_train(steps, lr, batch, seed):
                                + (_ce(_ok["res"], bg["res"]) * _first).sum()
                                + (_bce(_ok["args"], bg["args"]).mean(-1) * _first).sum()) / _n1
                 _prev = (_prev + _first).clip(0, 1)
+            _newcl = (_prev - bg["claimed"]).clip(0, 1).realize()
+            _NEWCL[0] = _newcl
         if "_early" in o and not ALG_CONSUME:  # deepsup (convicted; kept gated)
             _dw = float(os.environ.get("DEEPSUP_W", "0.3"))   # every breath
             for _ok in o["_early"]:
@@ -1579,6 +1586,7 @@ def do_train(steps, lr, batch, seed):
         b_se.assign(Tensor(sent[idx].astype(np.int32), dtype=dtypes.int).contiguous()).realize()
         if ALG_CONSUME:
             bg["parents"].assign(Tensor(PARENTS[idx], dtype=dtypes.float).contiguous()).realize()
+            bg["claimed"].assign(Tensor(CLAIMED[idx], dtype=dtypes.float).contiguous()).realize()
         if b_ls is not None:
             b_ls.assign(Tensor(gold["lsent"][idx].astype(np.float32), dtype=dtypes.float).contiguous()).realize()
         if b_mask is not None:
@@ -1615,6 +1623,8 @@ def do_train(steps, lr, batch, seed):
             npdt = np.float32 if bg[k].dtype == dtypes.float else np.int32
             bg[k].assign(Tensor(v.astype(npdt), dtype=bg[k].dtype).contiguous()).realize()
         lv = step()
+        if ALG_CONSUME and _NEWCL[0] is not None:
+            CLAIMED[idx] = np.clip(CLAIMED[idx] + _NEWCL[0].numpy(), 0, 1)
         if s % 500 == 0 or s == steps - 1:
             v = float(lv.numpy())
             assert np.isfinite(v)
