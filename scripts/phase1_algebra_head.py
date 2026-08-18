@@ -52,6 +52,7 @@ ALG_SYNC = int(os.environ.get("ALG_SYNC", "0"))      # sync-complete: one clock,
 ALG_CONSUME = int(os.environ.get("ALG_CONSUME", "0"))  # consume-once credit (any breath, once)
 ALG_NOTEBOOK = int(os.environ.get("ALG_NOTEBOOK", "0"))  # the cathedral notebook
 ALG_CIRCLE = int(os.environ.get("ALG_CIRCLE", "0"))      # the traffic circle
+ALG_STELLAR = int(os.environ.get("ALG_STELLAR", "0"))    # cell-3b: helical handoff
 NB_H = int(os.environ.get("NB_H", "4"))                  # calibrated horizon
 H_TRUNK = 2048
 H_W = int(os.environ.get("ALG_HW", "512"))  # capacity-probe dial (2026-07-11)
@@ -730,6 +731,11 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
                 _at = _sc.softmax(-1)
                 _rd = sum(_at[:, j:j + 1] * _nb[j] for j in range(len(_nb)))
                 q_extra = q_extra + _rd.reshape(B, 1, -1)
+                if ALG_STELLAR:                        # cell-3b: the twist in
+                    _w = math.cos(kb * math.pi / (2 * K_B)) ** 2   # geometry —
+                    cur = _w * cur + (1 - _w) * _rd.reshape(B, 1, -1)
+                    q_extra = cur + p["breath_emb"][kb].reshape(1, 1, -1) + _rd.reshape(B, 1, -1)
+                                                          # no cliff, no gate
                 if ALG_CIRCLE and kb == NB_H + 1:     # the traffic circle:
                     cur = cur * 0.0 + _rd.reshape(B, 1, -1)   # residual severed
                     q_extra = (cur + p["breath_emb"][kb].reshape(1, 1, -1)
