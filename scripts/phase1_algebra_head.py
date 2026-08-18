@@ -50,6 +50,9 @@ ALG_SIXWAVE = int(os.environ.get("ALG_SIXWAVE", "0"))  # door #62: six-wave slot
 ALG_LSENT = int(os.environ.get("ALG_LSENT", "0"))    # V2: letter-keyed partition input
 ALG_SYNC = int(os.environ.get("ALG_SYNC", "0"))      # sync-complete: one clock, both sides, ticking
 ALG_CONSUME = int(os.environ.get("ALG_CONSUME", "0"))  # consume-once credit (any breath, once)
+ALG_NOTEBOOK = int(os.environ.get("ALG_NOTEBOOK", "0"))  # the cathedral notebook
+ALG_CIRCLE = int(os.environ.get("ALG_CIRCLE", "0"))      # the traffic circle
+NB_H = int(os.environ.get("NB_H", "4"))                  # calibrated horizon
 H_TRUNK = 2048
 H_W = int(os.environ.get("ALG_HW", "512"))  # capacity-probe dial (2026-07-11)
 K_VARS = 24
@@ -592,7 +595,22 @@ def build_params(seed=0):
     p["W_query"] = t(rng.randn(H_W, H_W) / math.sqrt(H_W))
     if ALG_SIXWAVE:      # door #62: carrier gate — structure enters at zero
         p["sw_g"] = t(np.zeros((1,)))
+    if ALG_NOTEBOOK:     # the cathedral (2026-08-18)
+        p["W_sil"] = t(rng.randn(H_W, H_W) / math.sqrt(H_W))
+        p["W_nq"] = t(rng.randn(H_W, H_W) / math.sqrt(H_W))
     return p
+
+
+NB_STAMPS = None
+if ALG_NOTEBOOK:
+    _ks = np.arange(8)
+    _ds = np.arange(512)
+    NB_STAMPS = np.cos(_ks[:, None] * np.pi / 8.0 * 7
+                       + _ds[None, :] * (2 * np.pi / 512)
+                       * (_ks[:, None] + 1)).astype(np.float32)
+    NB_STAMPS /= np.linalg.norm(NB_STAMPS, axis=1, keepdims=True)
+    _cc = np.abs(NB_STAMPS @ NB_STAMPS.T - np.eye(8)).max()
+    assert _cc < 0.35, f"sharpness assert FAILED: stamp cos {_cc:.3f}"
 
 
 def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, drop=None, anchor=None, amask=None, gmod=None, pmask=None, lsent=None):
@@ -701,7 +719,21 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
     if K_B > 1 and slot_mask is not None and "W_bo" in p:
         cur = fst
         for kb in range(1, K_B):
+            if ALG_NOTEBOOK and kb == 1:
+                from tinygrad import Tensor as _T2, dtypes as _dt2
+                _nb_st = _T2(NB_STAMPS, dtype=_dt2.float)
+                _nb = [cur.mean(1) @ p["W_sil"]]      # breath-0 silhouette
             q_extra = cur + p["breath_emb"][kb].reshape(1, 1, -1)
+            if ALG_NOTEBOOK:
+                _q = cur.mean(1) @ p["W_nq"]
+                _sc = (_q @ _nb_st[:len(_nb)].transpose(1, 0)) / math.sqrt(H_W)
+                _at = _sc.softmax(-1)
+                _rd = sum(_at[:, j:j + 1] * _nb[j] for j in range(len(_nb)))
+                q_extra = q_extra + _rd.reshape(B, 1, -1)
+                if ALG_CIRCLE and kb == NB_H + 1:     # the traffic circle:
+                    cur = cur * 0.0 + _rd.reshape(B, 1, -1)   # residual severed
+                    q_extra = (cur + p["breath_emb"][kb].reshape(1, 1, -1)
+                               + _rd.reshape(B, 1, -1))       # memory the road
             if _sync is not None:   # sync-complete: transmitter ON during
                 q_extra = q_extra + _sync[1](kb)     # settle; receiver locked
             h_tok, fat_cur = bank(p["fq"], L_FAC, extra=q_extra,
@@ -767,6 +799,8 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
                 cur = m_c * anchor + (1.0 - m_c) * cur_new
             else:
                 cur = cur_new
+            if ALG_NOTEBOOK:
+                _nb.append(cur.mean(1) @ p["W_sil"])
             breaths.append(cur)
 
     def heads_of(s):
