@@ -78,10 +78,12 @@ Unlisted until now: (a) THE MATCHED PAIR — W_sil/W_nq born phase-matched
 (transmitter-receiver coherent from birth: the sync graves' aim in the
 winning idiom — init, not bias); (b) attn_wq/wk (score-space itself —
 deepest, riskiest, last); (c) digit-position phase (parked).
-THE UNIFYING PRINCIPLE — CORRECTED 2026-08-19 (the shared-alphabet form
-was REFUTED by sephase-Q: six phases cannot name 24 slots): PER-CHANNEL
-ALPHABETS SIZED TO THEIR POPULATIONS (min-gap check mandatory pre-fire).
-One language was the dream; right-sized dialects are the law.
+THE UNIFYING PRINCIPLE — BRYCE'S RULING 2026-08-19: ONE SHARED SIX-PHASE
+LANGUAGE STANDS. The Q print (7/33) stands too — reconciled by OCTAVES:
+at grains whose population exceeds six, the language extends by frequency
+bands (six phases x octaves = unique codes IN the same alphabet; FDM's
+idiom). What died was six phases with weak frequency separation; the
+octave form is the language's lawful reach. Min-gap check still rides.
 
 ## CHANNEL TAXONOMY ADDENDUM 2 (2026-08-19)
 New: (a) THE SETTLE'S TRANSCEIVER — W_bq/W_bk born phase-matched (slot-to-
