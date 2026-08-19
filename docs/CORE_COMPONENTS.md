@@ -81,3 +81,10 @@ deepest, riskiest, last); (c) digit-position phase (parked).
 THE UNIFYING PRINCIPLE: one SHARED phase alphabet across all channels
 (charter's same-language at init) — the composed arm's true form when
 its two-wins gate opens.
+
+## CHANNEL TAXONOMY ADDENDUM 2 (2026-08-19)
+New: (a) THE SETTLE'S TRANSCEIVER — W_bq/W_bk born phase-matched (slot-to-
+slot communication protocol coherent at birth; attn-QK's idea at the settle
+grain, 1/64th the risk; READY-class); (b) the pointer-reader pair (W_args
+reads vq's code — parked behind the identity post-mortem); (c) output-class
+phases (h_ftype; speculative). Min-gap check rides every phase design.
