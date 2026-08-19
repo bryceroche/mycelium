@@ -59,6 +59,7 @@ SEPHASE_Q_SCRAMBLE = int(os.environ.get("SEPHASE_Q_SCRAMBLE", "0"))
 NB_FOCAL = float(os.environ.get("NB_FOCAL", "0"))        # magnifying glass: read sharpening
 ALG_SEPHASE_W = int(os.environ.get("ALG_SEPHASE_W", "0"))   # waist channel
 ALG_SEPHASE_PAIR = int(os.environ.get("ALG_SEPHASE_PAIR", "0"))  # transceiver
+ALG_SEPHASE_SETTLE = int(os.environ.get("ALG_SEPHASE_SETTLE", "0"))  # settle transceiver
 
 
 def phase_alphabet(n, dims, scale, rng, noise=0.2):
@@ -608,7 +609,14 @@ def build_params(seed=0):
         p["W_y"] = t(rng.randn(H_W, H_W) / math.sqrt(H_W))
     K_B = int(os.environ.get("ALG_BREATH", "1"))
     if K_B > 1:   # BRICK-P: masked slot-to-slot breathing (2026-07-09)
-        p["W_bq"], p["W_bq_b"] = lin(H_W, H_W)
+        if ALG_SEPHASE_SETTLE:   # the settle transceiver: slot-to-slot
+            _stp = phase_alphabet(H_W, H_W, 1.0 / math.sqrt(H_W), rng)
+            p["W_bq"] = t(_stp + rng.randn(H_W, H_W).astype(np.float32) / math.sqrt(H_W) * 0.2)
+            p["W_bq_b"] = t(np.zeros((H_W,)))
+            p["W_bk"] = t(_stp + rng.randn(H_W, H_W).astype(np.float32) / math.sqrt(H_W) * 0.2)
+            p["W_bk_b"] = t(np.zeros((H_W,)))
+        else:
+            p["W_bq"], p["W_bq_b"] = lin(H_W, H_W)
         p["W_bk"], p["W_bk_b"] = lin(H_W, H_W)
         p["W_bv"], p["W_bv_b"] = lin(H_W, H_W)
         p["W_bo"] = t(np.zeros((H_W, H_W)))          # zero-init: breath deltas
