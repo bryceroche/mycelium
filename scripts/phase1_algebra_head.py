@@ -57,6 +57,7 @@ NB_PERSLOT = int(os.environ.get("NB_PERSLOT", "0"))      # per-slot lanes: sharp
 ALG_SEPHASE_Q = int(os.environ.get("ALG_SEPHASE_Q", "0"))   # identity channel
 SEPHASE_Q_SCRAMBLE = int(os.environ.get("SEPHASE_Q_SCRAMBLE", "0"))
 NB_FOCAL = float(os.environ.get("NB_FOCAL", "0"))        # magnifying glass: read sharpening
+SEPHASE_B_BAND = int(os.environ.get("SEPHASE_B_BAND", "0"))  # banded-overlap stamps
 ALG_SEPHASE_W = int(os.environ.get("ALG_SEPHASE_W", "0"))   # waist channel
 ALG_SEPHASE_PAIR = int(os.environ.get("ALG_SEPHASE_PAIR", "0"))  # transceiver
 ALG_SEPHASE_SETTLE = int(os.environ.get("ALG_SEPHASE_SETTLE", "0"))  # settle transceiver
@@ -632,8 +633,13 @@ def build_params(seed=0):
             else:
                 _bph = _bk * np.pi / max(K_B, 1)
             _bd = np.arange(H_W)
-            _be = 0.02 * np.sqrt(2.0) * np.cos(
-                _bph[:, None] + _bd[None, :] * (2 * np.pi / H_W) * (_bk[:, None] + 1))
+            if SEPHASE_B_BAND:   # the orientation form: bands {k,k+1,k+2} —
+                _be = 0.02 * np.sqrt(2.0 / 3.0) * sum(   # adjacent corr ~2/3
+                    np.cos(_bph[:, None] + _bd[None, :] * (2 * np.pi / H_W)
+                           * (_bk[:, None] + 1 + _f)) for _f in range(3))
+            else:
+                _be = 0.02 * np.sqrt(2.0) * np.cos(
+                    _bph[:, None] + _bd[None, :] * (2 * np.pi / H_W) * (_bk[:, None] + 1))
             p["breath_emb"] = t(_be + rng.randn(K_B, H_W) * 0.004)
         else:
             p["breath_emb"] = t(rng.randn(K_B, H_W) * 0.02)
