@@ -54,6 +54,21 @@ ALG_NOTEBOOK = int(os.environ.get("ALG_NOTEBOOK", "0"))  # the cathedral noteboo
 ALG_CIRCLE = int(os.environ.get("ALG_CIRCLE", "0"))      # the traffic circle
 ALG_STELLAR = int(os.environ.get("ALG_STELLAR", "0"))    # cell-3b: helical handoff
 NB_PERSLOT = int(os.environ.get("NB_PERSLOT", "0"))      # per-slot lanes: sharp ink
+ALG_SEPHASE_Q = int(os.environ.get("ALG_SEPHASE_Q", "0"))   # identity channel
+ALG_SEPHASE_W = int(os.environ.get("ALG_SEPHASE_W", "0"))   # waist channel
+ALG_SEPHASE_PAIR = int(os.environ.get("ALG_SEPHASE_PAIR", "0"))  # transceiver
+
+
+def phase_alphabet(n, dims, scale, rng, noise=0.2):
+    """THE SHARED SIX-PHASE ALPHABET (2026-08-19): one coordinate code for
+    every seeded channel — row k rides phase (k mod 6)*pi/3 at frequency
+    family k+1, native scale, brownian seasoning (the receipt's recipe)."""
+    _k = np.arange(n)
+    _d = np.arange(dims)
+    _ph = (_k % 6) * (np.pi / 3.0)
+    _pat = scale * np.sqrt(2.0) * np.cos(
+        _ph[:, None] + _d[None, :] * (2 * np.pi / dims) * (_k[:, None] + 1))
+    return (_pat + rng.randn(n, dims) * scale * noise).astype(np.float32)
 NB_H = int(os.environ.get("NB_H", "4"))                  # calibrated horizon
 H_TRUNK = 2048
 H_W = int(os.environ.get("ALG_HW", "512"))  # capacity-probe dial (2026-07-11)
@@ -528,6 +543,10 @@ def build_params(seed=0):
 
     p = {}
     p["waist_w"], p["waist_b"] = lin(H_TRUNK, H_W)
+    if ALG_SEPHASE_W:
+        _ww = p["waist_w"].numpy()
+        _ww += phase_alphabet(H_TRUNK, H_W, 1.0 / math.sqrt(H_TRUNK), rng) * 0.5
+        p["waist_w"] = t(_ww)
     if int(os.environ.get("ALG_SEPHASE", "0")):
         # the properly-wired receiver (2026-08-17): six-phase structure seeded
         # INTO the learned sync channel (init, not bias — the model may keep
@@ -541,8 +560,12 @@ def build_params(seed=0):
         p["sent_emb"] = t(_se + rng.randn(SENT_MAX, H_W) * 0.02)
     else:
         p["sent_emb"] = t(rng.randn(SENT_MAX, H_W) * 0.1)
-    p["vq"] = t(rng.randn(K_VARS, H_W) * 0.02)
-    p["fq"] = t(rng.randn(L_FAC, H_W) * 0.02)
+    if ALG_SEPHASE_Q:
+        p["vq"] = t(phase_alphabet(K_VARS, H_W, 0.02, rng))
+        p["fq"] = t(phase_alphabet(L_FAC, H_W, 0.02, rng))
+    else:
+        p["vq"] = t(rng.randn(K_VARS, H_W) * 0.02)
+        p["fq"] = t(rng.randn(L_FAC, H_W) * 0.02)
     p["qq"] = t(rng.randn(1, H_W) * 0.02)
     for nm in ("wq", "wk", "wv", "wo"):
         p[f"attn_{nm}"], p[f"attn_{nm}_b"] = lin(H_W, H_W)
@@ -612,8 +635,13 @@ def build_params(seed=0):
     if ALG_SIXWAVE:      # door #62: carrier gate — structure enters at zero
         p["sw_g"] = t(np.zeros((1,)))
     if ALG_NOTEBOOK:     # the cathedral (2026-08-18)
-        p["W_sil"] = t(rng.randn(H_W, H_W) / math.sqrt(H_W))
-        p["W_nq"] = t(rng.randn(H_W, H_W) / math.sqrt(H_W))
+        if ALG_SEPHASE_PAIR:   # the transceiver: ink and query born in the
+            _shared = phase_alphabet(H_W, H_W, 1.0 / math.sqrt(H_W), rng)
+            p["W_sil"] = t(_shared + rng.randn(H_W, H_W).astype(np.float32) / math.sqrt(H_W) * 0.2)
+            p["W_nq"] = t(_shared + rng.randn(H_W, H_W).astype(np.float32) / math.sqrt(H_W) * 0.2)
+        else:                   # same coordinate code
+            p["W_sil"] = t(rng.randn(H_W, H_W) / math.sqrt(H_W))
+            p["W_nq"] = t(rng.randn(H_W, H_W) / math.sqrt(H_W))
     return p
 
 
