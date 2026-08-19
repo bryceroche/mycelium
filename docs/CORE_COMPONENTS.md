@@ -69,3 +69,15 @@ THE DEPLOYMENT WORD (item 5) rides above the queue: December's deliverable.
 Tier-2 correction: the tower is NOT parked — form_mix8 trains every
 from-birth arm daily; only its next floor waits. Tier-1's love =
 protection: bigtest certification + the deployment word.
+
+## THE CHANNEL TAXONOMY (2026-08-19 addendum)
+Seeded/planned: sent_emb (spatial, RECEIPT) / breath_emb (temporal, 227
+burning) / vq,fq (identity, sephase-Q) / waist_w (representational) /
+NB_STAMPS (memory addresses — born structured, sharpness-asserted).
+Unlisted until now: (a) THE MATCHED PAIR — W_sil/W_nq born phase-matched
+(transmitter-receiver coherent from birth: the sync graves' aim in the
+winning idiom — init, not bias); (b) attn_wq/wk (score-space itself —
+deepest, riskiest, last); (c) digit-position phase (parked).
+THE UNIFYING PRINCIPLE: one SHARED phase alphabet across all channels
+(charter's same-language at init) — the composed arm's true form when
+its two-wins gate opens.
