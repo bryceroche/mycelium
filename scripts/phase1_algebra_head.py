@@ -55,6 +55,7 @@ ALG_CIRCLE = int(os.environ.get("ALG_CIRCLE", "0"))      # the traffic circle
 ALG_STELLAR = int(os.environ.get("ALG_STELLAR", "0"))    # cell-3b: helical handoff
 NB_PERSLOT = int(os.environ.get("NB_PERSLOT", "0"))      # per-slot lanes: sharp ink
 ALG_SEPHASE_Q = int(os.environ.get("ALG_SEPHASE_Q", "0"))   # identity channel
+SEPHASE_Q_SCRAMBLE = int(os.environ.get("SEPHASE_Q_SCRAMBLE", "0"))
 ALG_SEPHASE_W = int(os.environ.get("ALG_SEPHASE_W", "0"))   # waist channel
 ALG_SEPHASE_PAIR = int(os.environ.get("ALG_SEPHASE_PAIR", "0"))  # transceiver
 
@@ -561,8 +562,18 @@ def build_params(seed=0):
     else:
         p["sent_emb"] = t(rng.randn(SENT_MAX, H_W) * 0.1)
     if ALG_SEPHASE_Q:
-        p["vq"] = t(phase_alphabet(K_VARS, H_W, 0.02, rng))
-        p["fq"] = t(phase_alphabet(L_FAC, H_W, 0.02, rng))
+        if SEPHASE_Q_SCRAMBLE:
+            _rs = np.random.RandomState(227)
+            def _scram(n, dims, scale):
+                _ph = _rs.uniform(0, 2 * np.pi, n)
+                _d = np.arange(dims)
+                _pt = scale * np.sqrt(2.0) * np.cos(_ph[:, None] + _d[None, :] * (2 * np.pi / dims) * (np.arange(n)[:, None] + 1))
+                return (_pt + rng.randn(n, dims) * scale * 0.2).astype(np.float32)
+            p["vq"] = t(_scram(K_VARS, H_W, 0.02))
+            p["fq"] = t(_scram(L_FAC, H_W, 0.02))
+        else:
+            p["vq"] = t(phase_alphabet(K_VARS, H_W, 0.02, rng))
+            p["fq"] = t(phase_alphabet(L_FAC, H_W, 0.02, rng))
     else:
         p["vq"] = t(rng.randn(K_VARS, H_W) * 0.02)
         p["fq"] = t(rng.randn(L_FAC, H_W) * 0.02)
