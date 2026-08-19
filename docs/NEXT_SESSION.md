@@ -243,3 +243,9 @@ frozen bars + engagement column. Letter-key successor arm 5/5
 charter-complete, conditionally worded. Board: len_asc deployment,
 tremor-rescue+vote-gate, interleave view, letter-key arm. MEMORY.md board
 rebuild still OWED.
+
+## 2026-08-19: THE CONVICTION BOARD
+Read docs/CORE_COMPONENTS.md — the 12 core components tiered by receipt
+status with refine/extend/titrate lanes. The titration queue and the
+December deployment word live there. Best arm: gsb_real (K7+notebook+
+dual-channel seed, 30/74@14k val; bigtest cert owed).
