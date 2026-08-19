@@ -53,6 +53,7 @@ ALG_CONSUME = int(os.environ.get("ALG_CONSUME", "0"))  # consume-once credit (an
 ALG_NOTEBOOK = int(os.environ.get("ALG_NOTEBOOK", "0"))  # the cathedral notebook
 ALG_CIRCLE = int(os.environ.get("ALG_CIRCLE", "0"))      # the traffic circle
 ALG_STELLAR = int(os.environ.get("ALG_STELLAR", "0"))    # cell-3b: helical handoff
+NB_PERSLOT = int(os.environ.get("NB_PERSLOT", "0"))      # per-slot lanes: sharp ink
 NB_H = int(os.environ.get("NB_H", "4"))                  # calibrated horizon
 H_TRUNK = 2048
 H_W = int(os.environ.get("ALG_HW", "512"))  # capacity-probe dial (2026-07-11)
@@ -737,14 +738,22 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
             if ALG_NOTEBOOK and kb == 1:
                 from tinygrad import Tensor as _T2, dtypes as _dt2
                 _nb_st = _T2(NB_STAMPS, dtype=_dt2.float)
-                _nb = [cur.mean(1) @ p["W_sil"]]      # breath-0 silhouette
+                _nb = [(cur @ p["W_sil"]) if NB_PERSLOT
+                       else (cur.mean(1) @ p["W_sil"])]   # sharp vs blurred ink
             q_extra = cur + p["breath_emb"][kb].reshape(1, 1, -1)
             if ALG_NOTEBOOK:
-                _q = cur.mean(1) @ p["W_nq"]
-                _sc = (_q @ _nb_st[:len(_nb)].transpose(1, 0)) / math.sqrt(H_W)
-                _at = _sc.softmax(-1)
-                _rd = sum(_at[:, j:j + 1] * _nb[j] for j in range(len(_nb)))
-                q_extra = q_extra + _rd.reshape(B, 1, -1)
+                if NB_PERSLOT:      # per-slot lanes: each slot queries the
+                    _q = cur @ p["W_nq"]              # shelf and reads ITS OWN
+                    _sc = (_q @ _nb_st[:len(_nb)].transpose(1, 0)) / math.sqrt(H_W)
+                    _at = _sc.softmax(-1)             # (B, L, k)
+                    _rd = sum(_at[:, :, j:j + 1] * _nb[j] for j in range(len(_nb)))
+                    q_extra = q_extra + _rd           # (B, L, H) — no blur
+                else:
+                    _q = cur.mean(1) @ p["W_nq"]
+                    _sc = (_q @ _nb_st[:len(_nb)].transpose(1, 0)) / math.sqrt(H_W)
+                    _at = _sc.softmax(-1)
+                    _rd = sum(_at[:, j:j + 1] * _nb[j] for j in range(len(_nb)))
+                    q_extra = q_extra + _rd.reshape(B, 1, -1)
                 if ALG_STELLAR:                        # cell-3b: the twist in
                     _w = math.cos(kb * math.pi / (2 * K_B)) ** 2   # geometry —
                     cur = _w * cur + (1 - _w) * _rd.reshape(B, 1, -1)
@@ -820,7 +829,8 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
             else:
                 cur = cur_new
             if ALG_NOTEBOOK:
-                _nb.append(cur.mean(1) @ p["W_sil"])
+                _nb.append((cur @ p["W_sil"]) if NB_PERSLOT
+                           else (cur.mean(1) @ p["W_sil"]))
             breaths.append(cur)
 
     def heads_of(s):
