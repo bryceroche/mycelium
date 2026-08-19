@@ -56,6 +56,7 @@ ALG_STELLAR = int(os.environ.get("ALG_STELLAR", "0"))    # cell-3b: helical hand
 NB_PERSLOT = int(os.environ.get("NB_PERSLOT", "0"))      # per-slot lanes: sharp ink
 ALG_SEPHASE_Q = int(os.environ.get("ALG_SEPHASE_Q", "0"))   # identity channel
 SEPHASE_Q_SCRAMBLE = int(os.environ.get("SEPHASE_Q_SCRAMBLE", "0"))
+NB_FOCAL = float(os.environ.get("NB_FOCAL", "0"))        # magnifying glass: read sharpening
 ALG_SEPHASE_W = int(os.environ.get("ALG_SEPHASE_W", "0"))   # waist channel
 ALG_SEPHASE_PAIR = int(os.environ.get("ALG_SEPHASE_PAIR", "0"))  # transceiver
 
@@ -784,12 +785,16 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
                 if NB_PERSLOT:      # per-slot lanes: each slot queries the
                     _q = cur @ p["W_nq"]              # shelf and reads ITS OWN
                     _sc = (_q @ _nb_st[:len(_nb)].transpose(1, 0)) / math.sqrt(H_W)
+                    if NB_FOCAL > 0:
+                        _sc = _sc * NB_FOCAL          # the magnifying glass
                     _at = _sc.softmax(-1)             # (B, L, k)
                     _rd = sum(_at[:, :, j:j + 1] * _nb[j] for j in range(len(_nb)))
                     q_extra = q_extra + _rd           # (B, L, H) — no blur
                 else:
                     _q = cur.mean(1) @ p["W_nq"]
                     _sc = (_q @ _nb_st[:len(_nb)].transpose(1, 0)) / math.sqrt(H_W)
+                    if NB_FOCAL > 0:
+                        _sc = _sc * NB_FOCAL          # the magnifying glass
                     _at = _sc.softmax(-1)
                     _rd = sum(_at[:, j:j + 1] * _nb[j] for j in range(len(_nb)))
                     q_extra = q_extra + _rd.reshape(B, 1, -1)
