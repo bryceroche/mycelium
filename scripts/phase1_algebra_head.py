@@ -577,7 +577,21 @@ def build_params(seed=0):
         p["W_bv"], p["W_bv_b"] = lin(H_W, H_W)
         p["W_bo"] = t(np.zeros((H_W, H_W)))          # zero-init: breath deltas
         p["W_bo_b"] = t(np.zeros(H_W))               # start silent
-        p["breath_emb"] = t(rng.randn(K_B, H_W) * 0.02)
+        if int(os.environ.get("ALG_SEPHASE_B", "0")):
+            # sephase-B (2026-08-18): the temporal sibling — breath_emb born
+            # with orthogonal phase stamps at native amplitude (init, the
+            # winning idiom; SEPHASE_B_SCRAMBLE randomizes phases, placebo)
+            _bk = np.arange(K_B)
+            if int(os.environ.get("SEPHASE_B_SCRAMBLE", "0")):
+                _bph = np.random.RandomState(227).uniform(0, 2 * np.pi, K_B)
+            else:
+                _bph = _bk * np.pi / max(K_B, 1)
+            _bd = np.arange(H_W)
+            _be = 0.02 * np.sqrt(2.0) * np.cos(
+                _bph[:, None] + _bd[None, :] * (2 * np.pi / H_W) * (_bk[:, None] + 1))
+            p["breath_emb"] = t(_be + rng.randn(K_B, H_W) * 0.004)
+        else:
+            p["breath_emb"] = t(rng.randn(K_B, H_W) * 0.02)
         p["breath_gate"] = t(np.full(K_B, float(os.environ.get(
             "BREATH_GATE_INIT", "-2.0"))))   # init-closed convex blend;
             # door #44-RESCUE: the organ does not self-open (gates at init
