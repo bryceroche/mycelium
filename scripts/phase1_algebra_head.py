@@ -617,7 +617,8 @@ def build_params(seed=0):
             p["W_bk_b"] = t(np.zeros((H_W,)))
         else:
             p["W_bq"], p["W_bq_b"] = lin(H_W, H_W)
-        p["W_bk"], p["W_bk_b"] = lin(H_W, H_W)
+        if not ALG_SEPHASE_SETTLE:
+            p["W_bk"], p["W_bk_b"] = lin(H_W, H_W)
         p["W_bv"], p["W_bv_b"] = lin(H_W, H_W)
         p["W_bo"] = t(np.zeros((H_W, H_W)))          # zero-init: breath deltas
         p["W_bo_b"] = t(np.zeros(H_W))               # start silent
