@@ -53,3 +53,19 @@ Every claim cites the ledger; bigtest certifies; placebo law governs.
 227-replication(breath seed) -> gsb_real maturity + BIGTEST cert ->
 sephase-Q -> focal read -> Nazaré bolt-on -> echo/flutter inks.
 THE DEPLOYMENT WORD (item 5) rides above the queue: December's deliverable.
+
+## TIER 3 REVIVAL ROADS (2026-08-19 — the misunderstood, given their due)
+- ALTERNATION's unfired message type: REFUTATION — the solver's minimal
+  conflict set names the parser's suspect factors (where-wrong, not what's-
+  true; the dead delivery sent knowns, which duplicated success). Revival:
+  conflict-guided re-read, refusal-triggered, random-accusation placebo.
+- CONDUCTOR's unfired role: the system is an orchestra with no conductor —
+  organs with scattered triggers (refusal/heat/claims/dissent). The
+  SANCTIONED monitor role = inference-only scheduling: read diagnostics
+  (never in loss), route rows to organs. Scheduling, not compute.
+- PREFILL's unfired composition: FINGERPOST x PREFILL — the vote's
+  UNANIMOUS factors (1.0000 tier) explicitated as text, re-read only the
+  disagreed region. Certified ink where the dead delivery used uncertified.
+Tier-2 correction: the tower is NOT parked — form_mix8 trains every
+from-birth arm daily; only its next floor waits. Tier-1's love =
+protection: bigtest certification + the deployment word.
