@@ -11,6 +11,8 @@ SRC=os.environ.get("MINER_SRC",".cache/phase1_alg_states_form8.npz")
 NPY=os.environ.get("MINER_NPY",".cache/phase1_alg_states_form8_states.npy")
 assert "test" not in SRC and "big" not in SRC
 CAP=int(os.environ.get("MINER_CAP","500"))
+CLU_CAP=int(os.environ.get("MINER_CLUCAP","4096"))
+DROPPED=[0]
 z=np.load(SRC); tk=z["tokmask"]; sent=z["sent"]; gft=z["g_ftype"]; gfs=z["g_fspan"]
 st=np.load(NPY, mmap_mode='r')
 P=np.random.RandomState(41).randn(2048,512)/np.sqrt(2048)
@@ -47,9 +49,10 @@ for ri in rows:
             else:
                 thr=0.92
             if c[j]<thr: j=-1
-        if j<0 and len(means)<4096:
+        if j<0 and len(means)<CLU_CAP:
             means.append(v.copy()); cnt.append(0); m2.append(np.zeros(512,np.float32)); kc.append({})
             j=len(means)-1
+        if j<0: DROPPED[0]+=1          # no-silent-caps: counted, loud
         if j>=0:
             cnt[j]+=1
             d=v-means[j]; means[j]=means[j]+d/cnt[j]; m2[j]=m2[j]+d*(v-means[j])
@@ -62,7 +65,7 @@ for j in range(len(means)):
          json.dumps(kc[j]),"form8-sentgrain"))
 db.commit()
 order=np.argsort(cnt)[::-1][:8]
-print(f"[v2-miner] {nsent} sentences from {CAP} rows -> {len(means)} clusters")
+print(f"[v2-miner] {nsent} sentences from {CAP} rows -> {len(means)} clusters (cap {CLU_CAP}; DROPPED {DROPPED[0]})")
 for j in order:
     tot=sum(kc[j].values()); dom=max(kc[j],key=kc[j].get) if kc[j] else "?"
     pur=kc[j].get(dom,0)/max(tot,1)
