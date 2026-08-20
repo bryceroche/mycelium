@@ -9,7 +9,23 @@ import phase1_algebra_head as PH
 from beacon_closing_arm import recompute_states
 from mycelium.era import mix_sha16
 rows8=[json.loads(l) for l in open('.cache/form_mix8.jsonl')]
-b9=[json.loads(l) for l in open('.cache/form_mix9.jsonl')][96100:96125]  # 25 uniques
+b9=[json.loads(l) for l in open('.cache/book9_t1_batch1.jsonl')]+[json.loads(l) for l in open('.cache/book9_t1_batch23.jsonl')]
+import copy as _cp
+_b=[]
+for r in b9:
+    _b.append({"text":r["original"],"factors":r["factors"],"query_var":r["query"],
+               "n_vars":24,"m":300,"solution":None,"decisions":0,"mentions":[],
+               "gen":"b9t1"})
+# solutions re-derived (key-lawful) at assembly
+from mycelium.csp_domains import problem_from_algebra2
+from mycelium.csp_core import solve_symbolic
+for r,src in zip(_b,b9):
+    gv={f["var"]:f["value"] for f in r["factors"] if f["ftype"]=="given"}
+    res=solve_symbolic(problem_from_algebra2(24,r["factors"],gv,300),budget=200_000,seed=0)
+    assert res["status"]=="solved"
+    r["solution"]=[int(res["assignment"][v]) for v in range(24)]
+    assert r["solution"][r["query_var"]]==src["answer"]
+b9=_b
 rng=np.random.RandomState(41)
 keep=np.sort(rng.choice(96100, 25000, replace=False))
 mix=[rows8[i] for i in keep]+[r for _ in range(10) for r in b9]
