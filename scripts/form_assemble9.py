@@ -17,7 +17,7 @@ for r in b9:
                "n_vars":24,"m":300,"solution":None,"decisions":0,"mentions":{},
                "gen":"b9t1"})
 # solutions re-derived (key-lawful) at assembly
-from mycelium.csp_domains import problem_from_algebra2
+from mycelium.csp_domains import problem_from_algebra3 as problem_from_algebra2
 from mycelium.csp_core import solve_symbolic
 for r,src in zip(_b,b9):
     gv={f["var"]:f["value"] for f in r["factors"] if f["ftype"]=="given"}
@@ -28,11 +28,12 @@ for r,src in zip(_b,b9):
 b9=_b
 rng=np.random.RandomState(41)
 keep=np.sort(rng.choice(96100, 25000, replace=False))
+NB9=len(b9)
 mix=[rows8[i] for i in keep]+[r for _ in range(10) for r in b9]
 with open('.cache/form_mix9.jsonl','w') as f:
     for r in mix: f.write(json.dumps(r)+"\n")
 n=len(mix)
-print(f"[assemble9] sampled-base mix: 25000 + 250 = {n} (share {250/n:.3%}, reps 10)", flush=True)
+print(f"[assemble9] sampled-base mix: 25000 + {10*NB9} = {n} (share {250/n:.3%}, reps 10)", flush=True)
 b8=np.load('.cache/phase1_alg_states_form8_states.npy', mmap_mode='r')
 out=np.lib.format.open_memmap('.cache/phase1_alg_states_form9_states.npy', mode='w+', dtype=np.float16, shape=(n,T_ALG,2048))
 CH=2048
@@ -40,12 +41,12 @@ for s0 in range(0,25000,CH):
     sl=keep[s0:min(s0+CH,25000)]
     out[s0:s0+len(sl)]=b8[sl]
 samples, ids2, mask, offsets = PH.tokenize('.cache/form_mix9.jsonl')
-uids=np.zeros((25,T_ALG),np.int32)
-for li in range(25): uids[li]=ids2[25000+li]
+uids=np.zeros((NB9,T_ALG),np.int32)
+for li in range(NB9): uids[li]=ids2[25000+li]
 sts=np.asarray(recompute_states(uids)).astype(np.float16)
 for rep in range(10):
-    base=25000+rep*25
-    for li in range(25):
+    base=25000+rep*NB9
+    for li in range(NB9):
         assert mix[base+li]["text"]==b9[li]["text"]
         out[base+li]=sts[li]
 out.flush(); del out

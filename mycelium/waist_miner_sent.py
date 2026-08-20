@@ -18,7 +18,7 @@ st=np.load(NPY, mmap_mode='r')
 P=np.random.RandomState(41).randn(2048,512)/np.sqrt(2048)
 KINDS=["rel","given","mod","sel","pct","fdiv","macro","frac","chain"]
 TAB=os.environ.get('MINER_TABLE','waist_patterns_sent')
-db=sqlite3.connect('.cache/campaign.db')
+db=sqlite3.connect(os.path.join(os.path.dirname(__file__),'..','.cache','campaign.db'))
 db.execute(f"""CREATE TABLE IF NOT EXISTS {TAB}(
   cluster_id INTEGER PRIMARY KEY, count INTEGER, mean BLOB, m2 BLOB,
   kind_counts TEXT, register TEXT)""")
@@ -63,7 +63,7 @@ for j in range(len(means)):
     db.execute(f"INSERT INTO {TAB} VALUES(?,?,?,?,?,?)",
         (j,cnt[j],means[j].astype(np.float32).tobytes(),m2[j].tobytes(),
          json.dumps(kc[j]),"form8-sentgrain"))
-db.commit()
+db.commit(); db.close()
 order=np.argsort(cnt)[::-1][:8]
 print(f"[v2-miner] {nsent} sentences from {CAP} rows -> {len(means)} clusters (cap {CLU_CAP}; DROPPED {DROPPED[0]})")
 for j in order:

@@ -6,7 +6,7 @@ two-pass masks (recorded). Fence: recognition proposes; the key certifies."""
 import os, sys, json, sqlite3
 sys.path.insert(0,'.'); sys.path.insert(0,'scripts')
 import numpy as np
-os.environ.setdefault("ALG_MINE_BREATHS","1")
+os.environ.setdefault("ALG_MINE_BREATHS","1"); os.environ.setdefault("ALG_BREATH","7")
 from phase1_algebra_head import build_params, forward, load_alg, build_slot_masks, L_FAC
 from tinygrad import Tensor, dtypes
 from tinygrad.nn.state import safe_load
@@ -58,7 +58,7 @@ for s0 in range(0,CAP,8):
                     t["kc"][cid][kind]=t["kc"][cid].get(kind,0)+1
                     if prev>=0: edges[(cyc-1,prev,cid)]=edges.get((cyc-1,prev,cid),0)+1
                 prev=cid
-db=sqlite3.connect('.cache/campaign.db')
+db=sqlite3.connect(os.path.join(os.path.dirname(__file__),'..','.cache','campaign.db'))
 db.execute("""CREATE TABLE IF NOT EXISTS waist_patterns_v3(
   cluster_id INTEGER, breath_cycle INTEGER, count INTEGER, mean BLOB, m2 BLOB,
   kind_counts TEXT, mask_provenance TEXT, PRIMARY KEY(cluster_id,breath_cycle))""")
@@ -73,7 +73,7 @@ for cyc,t in tabs.items():
              t["m2"][j].tobytes(),json.dumps(t["kc"][j]),"deploy-twopass-g41era"))
 for (cyc,a,b),n in edges.items():
     db.execute("INSERT INTO v3_transitions VALUES(?,?,?,?)",(cyc,a,b,n))
-db.commit()
+db.commit(); db.close()
 for cyc in sorted(tabs):
     t=tabs[cyc]
     top=int(np.argmax(t["cnt"]))

@@ -59,7 +59,7 @@ def solve_forced(facs, q_pred, smp):
     """Gold-free: returns forced answer at q_pred, or None. v2-aware
     (2026-07-09): routes through problem_from_algebra2, which handles
     rel/given identically and adds mod/sel — one seam, all callers upgraded."""
-    from mycelium.csp_domains import problem_from_algebra2
+    from mycelium.csp_domains import problem_from_algebra3 as problem_from_algebra2
     from mycelium.csp_core import solve_symbolic
     gv = {f["var"]: f["value"] for f in facs if f["ftype"] == "given"}
 
@@ -68,7 +68,12 @@ def solve_forced(facs, q_pred, smp):
             return list(f["args"]) + [f["result"]]
         if f["ftype"] == "mod":
             return [f["var"], f["result"]]
-        return [f["var"]]
+        if f["ftype"] == "pct":
+            return list(f.get("args", []))
+        if f["ftype"] == "fdiv":
+            return [f["var"], f["result"]]
+        return [f[k] for k in ("var", "result", "y", "a", "x") if k in f
+                and isinstance(f[k], int)] or [0]
     try:
         nv = max([smp["n_vars"]] + [v + 1 for f in facs for v in fv(f)]
                  + [q_pred + 1])
