@@ -98,7 +98,8 @@ for i in range(n):
     a=solve_forced(facs,q,samples[i])
     base[i]=a
     if a is None: refusals.append(i)
-r0=sum(1 for i in range(n) if base[i]==ga[i]); w0=sum(1 for i in range(n) if base[i] is not None and base[i]!=ga[i])
+r0=sum(1 for i in range(n) if base[i] is not None and ga[i] is not None and base[i]==ga[i])
+w0=sum(1 for i in range(n) if base[i] is not None and (ga[i] is None or base[i]!=ga[i]))
 print(f"[m500] lane baseline: right {r0} wrong {w0} refusals {len(refusals)}",flush=True)
 ar=0; aw=0; bk=0
 for ct,ri in enumerate(refusals):
@@ -116,7 +117,7 @@ for ct,ri in enumerate(refusals):
     top=max(set(forced),key=forced.count)
     if forced.count(top)>=3:
         bk+=1
-        if top==ga[ri]: ar+=1
+        if ga[ri] is not None and top==ga[ri]: ar+=1
         else: aw+=1
     if ct%50==0: print(f"[m500] rescue {ct}/{len(refusals)} (banked {bk})",flush=True)
 print(f"[m500] RESCUE: banked {bk} +right {ar} +WRONG {aw}",flush=True)
@@ -124,6 +125,8 @@ print(f"[m500] MATH-500: right {r0+ar}/500  wrong {w0+aw}  banked {sum(1 for i i
 from collections import Counter
 lv=Counter()
 for i in range(n):
-    if base[i] is not None and base[i]==ga[i]: lv[samples[i]["level"]]+=1
+    if base[i] is not None and ga[i] is not None and base[i]==ga[i]: lv[samples[i]["level"]]+=1
 print(f"[m500] rights by level (straight only): {dict(lv)}",flush=True)
+import json as _j2
+_j2.dump({"base":{str(i):base[i] for i in range(n) if base[i] is not None}},open('.cache/math500_results.json','w'))
 print("== MATH500 COMPLETE ==",flush=True)
