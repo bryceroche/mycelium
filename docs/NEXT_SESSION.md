@@ -272,3 +272,11 @@ carved — surgery's gate is the key; the diet pairs are (ORIGINAL prose,
 factors)). NEXT: assemble b9t1 into the training-mix format (original
 texts + factor gold), sha-fence, fire the continuation with the tranche
 in the diet, and measure the head's first steps into the wild register.
+
+
+## 2026-08-20 EOD: THE BRIDGE MOVES
+g42_bridge: 25 wild rows @1% dose -> the 25 originals go 5f/0r -> 16f/2r
+(TRAIN-FIT; held-out = t2's opening meter, pre-registered). Ring 1242
+(paid 11<20). g41 stays deployed. Disk reclaimed to 679G free. NEXT:
+tranche 2 (conflict-store-targeted worksheet; parse-before-train meter),
+fdiv schema, then the diet cycle again. The bridge builds.
