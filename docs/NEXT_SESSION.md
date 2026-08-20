@@ -249,3 +249,12 @@ Read docs/CORE_COMPONENTS.md — the 12 core components tiered by receipt
 status with refine/extend/titrate lanes. The titration queue and the
 December deployment word live there. Best arm: gsb_real (K7+notebook+
 dual-channel seed, 30/74@14k val; bigtest cert owed).
+
+
+## 2026-08-20: THE TRUE CHAIN + THE HONEST ZERO
+Deployed stack (manifest: conductor_v2): bigtest 1394/1500 (93.0%), wrongs 24.
+MATH-500 under the TRUE chain (mouth first): 0/500, ZERO lies (mouthless
+control: 2 rights, 259 lies — agreement is register-bound; the mouth is the
+wall's precondition). The road: the register bridge (books/harvest + a
+translation lane). Read CORE_COMPONENTS.md + the ledger's last ~40 entries.
+MEMORY.md board rebuild still OWED.
