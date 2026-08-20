@@ -43,8 +43,11 @@ Every claim cites the ledger; bigtest certifies; placebo law governs.
    the depth-geometry trigger is unmet; marriage clause standing).
 
 ## TIER 3 — VINTAGE / RETIRED (motivation, not evidence)
-8. **ALTERNATION NL<->SOLVER** — first delivery died clean (0/32, placebo'd);
-   the 43%-derivable asset + query-var partial-answer road banked.
+8. **ALTERNATION NL<->SOLVER** — PROMOTED TO TIER 1 (2026-08-19): the
+   conductor + refutation tree = the alternation realized. RECEIPT: routed
+   19/74 vs crossed 0/74 on the untouchable fixture (route-by-diagnosis is
+   the whole value; refutation is the message, not knowns). Vote wall owed
+   before deployment.
 10. **PERCEIVER CONDUCTOR** — retired as core BY RULING; monitor/segmenter
    only. Revival needs new theory + word.
 11. **ITERATIVE PREFILL** — May receipt, June-engine substrate; vintage.
