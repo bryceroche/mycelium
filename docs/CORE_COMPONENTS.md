@@ -94,3 +94,19 @@ slot communication protocol coherent at birth; attn-QK's idea at the settle
 grain, 1/64th the risk; READY-class); (b) the pointer-reader pair (W_args
 reads vq's code — parked behind the identity post-mortem); (c) output-class
 phases (h_ftype; speculative). Min-gap check rides every phase design.
+
+## V3: THE MLIR MINER (2026-08-20 — the breath-grain dialect atlas; WORD GIVEN)
+The breaths ARE a lowering pipeline (measured: decodability 0.63->0.80
+across cycles). V3 names each stage: silhouettes mined PER (sentence,
+breath_cycle) — compound key enforces never-mix-coordinates by schema —
+plus TRANSITION EDGES (basin@k -> basin@k+1 counts): lowering rules
+discovered from the model's own behavior. The final dialect's mature
+basins point at discrete algebra3 templates — geometry ends, the factor
+graph begins, the registry door sits exactly at the line.
+RIVETS: purity labels exist at MINING time only (deployment matches give
+shape-confidence, never certified meaning); the O(1) bypass has a named
+gap — ARGUMENT BINDING (a match gives the schema, not the letters/values;
+recognition skips settling, never parsing). THE ETERNAL FENCE: no path
+skips the CSP core and the key. One sentence: the model's thinking as a
+compiler — every pass indexed, shortcuts earned by counts, output
+impossible without proof.
