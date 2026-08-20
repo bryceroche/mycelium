@@ -20,6 +20,11 @@ def conn():
       receipts TEXT, grammar_version TEXT);
     CREATE TABLE IF NOT EXISTS residents(
       name TEXT PRIMARY KEY, filed TEXT, evidence TEXT, status TEXT);
+    CREATE TABLE IF NOT EXISTS waist_patterns(
+      cluster_id INTEGER PRIMARY KEY, count INTEGER,
+      mean BLOB, m2 BLOB,               -- Welford running stats (512-d)
+      register TEXT, first_seen TEXT, last_seen TEXT,
+      macro_candidate TEXT DEFAULT NULL);  -- rank-never-admit fills this
     CREATE TABLE IF NOT EXISTS conflict_cores(
       text_sha TEXT, register TEXT, diagnosis TEXT,
       core_factor TEXT, all_factors TEXT, recorded TEXT,
