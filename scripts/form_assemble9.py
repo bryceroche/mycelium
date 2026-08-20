@@ -14,7 +14,7 @@ import copy as _cp
 _b=[]
 for r in b9:
     _b.append({"text":r["original"],"factors":r["factors"],"query_var":r["query"],
-               "n_vars":24,"m":300,"solution":None,"decisions":0,"mentions":[],
+               "n_vars":24,"m":300,"solution":None,"decisions":0,"mentions":{},
                "gen":"b9t1"})
 # solutions re-derived (key-lawful) at assembly
 from mycelium.csp_domains import problem_from_algebra2
