@@ -15,8 +15,9 @@ z=np.load(SRC); tk=z["tokmask"]; sent=z["sent"]; gft=z["g_ftype"]; gfs=z["g_fspa
 st=np.load(NPY, mmap_mode='r')
 P=np.random.RandomState(41).randn(2048,512)/np.sqrt(2048)
 KINDS=["rel","given","mod","sel","pct","fdiv","macro","frac","chain"]
+TAB=os.environ.get('MINER_TABLE','waist_patterns_sent')
 db=sqlite3.connect('.cache/campaign.db')
-db.execute("""CREATE TABLE IF NOT EXISTS waist_patterns_sent(
+db.execute(f"""CREATE TABLE IF NOT EXISTS {TAB}(
   cluster_id INTEGER PRIMARY KEY, count INTEGER, mean BLOB, m2 BLOB,
   kind_counts TEXT, register TEXT)""")
 means=[]; cnt=[]; m2=[]; kc=[]
@@ -35,8 +36,17 @@ for ri in rows:
         kind=KINDS[int(gft[ri][int(mass.argmax())])] if mass.max()>0 else "none"
         j=-1
         if means:
-            M=np.stack(means); c=M@v; j=int(c.argmax())
-            if c[j]<0.92: j=-1
+            M=np.stack(means)
+            Mn=M/np.maximum(np.linalg.norm(M,axis=1,keepdims=True),1e-9)
+            c=Mn@v; j=int(c.argmax())
+            # VARIANCE-AWARE (2026-08-20): rigid clusters demand closeness —
+            # threshold tightens toward 3*spread, floored, capped at 0.92-base
+            if cnt[j]>=8:
+                sp=float(np.sqrt(np.maximum(m2[j],0)/max(cnt[j],1)).mean())
+                thr=1.0-min(0.08,max(0.02,3.0*sp))
+            else:
+                thr=0.92
+            if c[j]<thr: j=-1
         if j<0 and len(means)<4096:
             means.append(v.copy()); cnt.append(0); m2.append(np.zeros(512,np.float32)); kc.append({})
             j=len(means)-1
@@ -45,9 +55,9 @@ for ri in rows:
             d=v-means[j]; means[j]=means[j]+d/cnt[j]; m2[j]=m2[j]+d*(v-means[j])
             kc[j][kind]=kc[j].get(kind,0)+1
         nsent+=1
-db.execute("DELETE FROM waist_patterns_sent")
+db.execute(f"DELETE FROM {TAB}")
 for j in range(len(means)):
-    db.execute("INSERT INTO waist_patterns_sent VALUES(?,?,?,?,?,?)",
+    db.execute(f"INSERT INTO {TAB} VALUES(?,?,?,?,?,?)",
         (j,cnt[j],means[j].astype(np.float32).tobytes(),m2[j].tobytes(),
          json.dumps(kc[j]),"form8-sentgrain"))
 db.commit()
