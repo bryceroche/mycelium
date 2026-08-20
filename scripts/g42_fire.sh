@@ -3,6 +3,8 @@ set -eo pipefail
 cd /home/bryce/mycelium
 export DEV=AMD ALG2=1 ALG_DUP=1 ALG_HW=512 ALG_WIDE=1 ALG_ALLOW_PEN_TRAIN=1
 PY=.venv/bin/python3
+echo "== ASSEMBLE form9 =="
+env ALG_FTYPES=8 $PY scripts/form_assemble9.py
 echo "== G42 BRIDGE: gentle continuation on form_mix9 =="
 env ALG_FTYPES=8 RESUME=1 ALG_TRAIN=.cache/form_mix9.jsonl ALG_TRAIN_NAME=form9 \
     ALG_TEST=.cache/algebra_nl_test.jsonl ALG_TEST_NAME=test23 \
