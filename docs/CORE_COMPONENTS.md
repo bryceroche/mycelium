@@ -1,4 +1,20 @@
 # CORE_COMPONENTS — the conviction board (2026-08-19)
+
+## THE BIDIRECTIONAL INTERFACE (the architecture's spine — 2026-08-20)
+TWO ARROWS, ONE GRAPH:
+  CONTINUOUS -> DISCRETE : recognition lowers into structure (the waist
+    silhouettes -> centroid dialects -> algebra3 templates -> the CSP core;
+    v3's MLIR ladder — fuzzy cosine ends where UNSAT-checked exactness
+    begins, at the registry door).
+  DISCRETE -> CONTINUOUS : structure raises into topology (the factor
+    graph -> slot masks -> the settle's legal evidence moves per breath —
+    each dialect's legality constraints; the wiring law).
+THE LOOP: parse -> graph -> masks -> better settle -> better graph.
+THE ONE-GRAPH LAW (paid by V2's grave): both arrows derive from the SAME
+graph — recognition and topology speaking different structures kills
+competence. The registry = the single shared vocabulary; the key = the
+only certifier of anything either arrow produces.
+
 Status: RECEIPT (controlled+replicated) / WIN (controlled, replication owed) /
 SPEC (designed, unfired) / VINTAGE (era-tagged motivation) / GRAVE (closed).
 Every claim cites the ledger; bigtest certifies; placebo law governs.

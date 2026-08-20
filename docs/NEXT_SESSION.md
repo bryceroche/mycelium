@@ -280,3 +280,10 @@ g42_bridge: 25 wild rows @1% dose -> the 25 originals go 5f/0r -> 16f/2r
 (paid 11<20). g41 stays deployed. Disk reclaimed to 679G free. NEXT:
 tranche 2 (conflict-store-targeted worksheet; parse-before-train meter),
 fdiv schema, then the diet cycle again. The bridge builds.
+
+
+## THE BIDIRECTIONAL INTERFACE (read CORE_COMPONENTS.md top)
+Two arrows, one graph: continuous->discrete (silhouette dialects -> the
+registry door -> the core) and discrete->continuous (graph -> masks ->
+the settle's topology). The one-graph law (V2's grave): both arrows from
+the SAME graph. V3 (worded) builds the dialect atlas with mask provenance.
