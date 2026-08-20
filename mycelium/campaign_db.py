@@ -32,7 +32,7 @@ def seed():
     ft = [("rel",0),("given",1),("mod",2),("sel",3),("pct",4),
           ("fdiv",5),("macro",6),("frac",7),("chain",8)]
     for n,k in ft:
-        c.execute("INSERT OR IGNORE INTO ftypes VALUES(?,?,?,?,?,?)",
+        c.execute("INSERT OR IGNORE INTO ftypes VALUES(?,?,?,?,?,?,?)",
                   (n,k,"pre-2026-08","LIVE","deployed in g41 lineage",
                    "gen41+","none"))
     c.execute("INSERT OR IGNORE INTO macros VALUES(?,?,?,?,?)",
