@@ -17,7 +17,7 @@ for k in p: p[k].assign(sd[k].to(p[k].device).cast(p[k].dtype)).realize()
 CAP=int(os.environ.get("MINER_CAP","200"))
 K_B=int(os.environ.get("ALG_BREATH","3"))
 rng=np.random.RandomState(7)
-rows=rng.choice(min(25000,states.shape[0]),CAP,replace=False)
+rows=rng.choice(states.shape[0],min(CAP,states.shape[0]),replace=False)
 tabs={}; DROPPED=[0]
 def leader(cyc,v):
     t=tabs.setdefault(cyc,{"means":[],"cnt":[],"m2":[],"kc":[]})
