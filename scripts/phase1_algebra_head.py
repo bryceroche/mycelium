@@ -633,7 +633,11 @@ def build_params(seed=0):
             else:
                 _bph = _bk * np.pi / max(K_B, 1)
             _bd = np.arange(H_W)
-            if SEPHASE_B_BAND:   # the orientation form: bands {k,k+1,k+2} —
+            if SEPHASE_B_BAND == 2:  # the 1/3 dose: stride-2 bands
+                _be = 0.02 * np.sqrt(2.0 / 3.0) * sum(   # {2k,2k+1,2k+2} —
+                    np.cos(_bph[:, None] + _bd[None, :] * (2 * np.pi / H_W)
+                           * (2 * _bk[:, None] + 1 + _f)) for _f in range(3))
+            elif SEPHASE_B_BAND:  # the orientation form: bands {k,k+1,k+2} —
                 _be = 0.02 * np.sqrt(2.0 / 3.0) * sum(   # adjacent corr ~2/3
                     np.cos(_bph[:, None] + _bd[None, :] * (2 * np.pi / H_W)
                            * (_bk[:, None] + 1 + _f)) for _f in range(3))
