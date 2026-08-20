@@ -264,3 +264,11 @@ MEMORY.md board rebuild still OWED.
 The worksheet is banked (.cache/book9_t1_worksheet.json — routed rows,
 construction-tagged). NEXT SESSION OPENS AT THE SURGERY: annotate per the
 rulebook, then vote+key gate, then the diet. The stack awaits the register.
+
+
+## 2026-08-20 FINAL: B9T1 READY FOR THE DIET
+25 surgery rows KEY-GATED (the L1-vote-on-L3 category error caught and
+carved — surgery's gate is the key; the diet pairs are (ORIGINAL prose,
+factors)). NEXT: assemble b9t1 into the training-mix format (original
+texts + factor gold), sha-fence, fire the continuation with the tranche
+in the diet, and measure the head's first steps into the wild register.
