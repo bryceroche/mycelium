@@ -258,3 +258,9 @@ control: 2 rights, 259 lies — agreement is register-bound; the mouth is the
 wall's precondition). The road: the register bridge (books/harvest + a
 translation lane). Read CORE_COMPONENTS.md + the ledger's last ~40 entries.
 MEMORY.md board rebuild still OWED.
+
+
+## 2026-08-20 CLOSE: BOOK 9 T1 OPEN
+The worksheet is banked (.cache/book9_t1_worksheet.json — routed rows,
+construction-tagged). NEXT SESSION OPENS AT THE SURGERY: annotate per the
+rulebook, then vote+key gate, then the diet. The stack awaits the register.
