@@ -1737,7 +1737,9 @@ def do_train(steps, lr, batch, seed):
                 "sel": gold["sel"][idx], "is_rel": gold["is_rel"][idx],
                 "is_mod": gold["is_mod"][idx], "is_sel": gold["is_sel"][idx],
                 "is_pct": gold["is_pct"][idx], "is_fdiv": gold["is_fdiv"][idx],
-                **({"is_chain": gold["is_chain"][idx]} if "is_chain" in gold else {}),
+                **({"is_chain": gold["is_chain"][idx]}
+                   if "is_chain" in gold
+                   and int(os.environ.get("ALG_FTYPES", "4")) >= 9 else {}),
                 **({"valspan": gold["valspan"][idx]} if ALG_VALATT and "valspan" in gold else {}),
                 "arg_dup": (gold["arg_dup"][idx] if "arg_dup" in gold
                             else np.zeros_like(gold["is_rel"][idx])),
