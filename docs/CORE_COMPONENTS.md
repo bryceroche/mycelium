@@ -96,13 +96,22 @@ reads vq's code — parked behind the identity post-mortem); (c) output-class
 phases (h_ftype; speculative). Min-gap check rides every phase design.
 
 ## V3: THE MLIR MINER (2026-08-20 — the breath-grain dialect atlas; WORD GIVEN)
-The breaths ARE a lowering pipeline (measured: decodability 0.63->0.80
-across cycles). V3 names each stage: silhouettes mined PER (sentence,
+LATTNER'S PRINCIPLE ("you want true MLIR — don't lower too fast"):
+high-level code never jumps straight to machine code; it descends through
+NAMED dialects, one lowering pass at a time. The breaths ARE that pipeline
+(measured: decodability 0.63->0.80 across cycles). V3 names each stage: silhouettes mined PER (sentence,
 breath_cycle) — compound key enforces never-mix-coordinates by schema —
-plus TRANSITION EDGES (basin@k -> basin@k+1 counts): lowering rules
-discovered from the model's own behavior. The final dialect's mature
-basins point at discrete algebra3 templates — geometry ends, the factor
-graph begins, the registry door sits exactly at the line.
+each centroid carrying FULL WELFORD STATS (running mean mu, variance
+sigma^2, count n — the variance ENVELOPES are per-dialect: loose at cycle
+0 to absorb wild phrasing, granite-tight at the last cycle where binding
+must be exact; n = the maturity that EARNS a fast path), plus TRANSITION
+EDGES (basin@k -> basin@k+1 counts): lowering rules discovered from the
+model's own behavior. THE CONTINUOUS->DISCRETE BRIDGE: the final
+dialect's mature basins point at discrete algebra3 templates — fuzzy
+cosine on one side of the line, exact UNSAT-checked satisfiability on the
+other; geometry ends, the factor graph begins, and the registry door sits
+exactly at the line. This is the neural-symbolic handoff made into a
+TABLE: continuous recognition proposes, discrete verification disposes.
 RIVETS: purity labels exist at MINING time only (deployment matches give
 shape-confidence, never certified meaning); the O(1) bypass has a named
 gap — ARGUMENT BINDING (a match gives the schema, not the letters/values;
