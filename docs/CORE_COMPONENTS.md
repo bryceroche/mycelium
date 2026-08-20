@@ -119,3 +119,12 @@ recognition skips settling, never parsing). THE ETERNAL FENCE: no path
 skips the CSP core and the key. One sentence: the model's thinking as a
 compiler — every pass indexed, shortcuts earned by counts, output
 impossible without proof.
+
+V3 ADDENDUM — THE MASKS ARE THE OTHER ARROW: centroids lower continuous->
+discrete; masks raise discrete->continuous (graph as TOPOLOGY: each
+dialect's legality constraints — which evidence moves are permitted per
+pass). The loop: parse -> graph -> masks -> better settle -> better graph.
+RIVET: the wiring law makes cycle-k's manifold MASK-CONDITIONED — the
+dialect atlas records mask provenance (a quiet third key coordinate).
+THE LAW (paid by V2's grave): the coin's two faces derive from ONE graph
+— recognition and topology must speak the same structure.
