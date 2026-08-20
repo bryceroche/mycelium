@@ -919,12 +919,16 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
                 "y": (s @ p["W_y"]) @ vst.transpose(-2, -1)}
                if "h_dig2" in p else {}),
         }
+    if int(os.environ.get("ALG_MINE_BREATHS", "0")):
+        out_breaths = breaths          # v3: the dialect ladder's raw states
     _s_final = breaths[-1]
     if anchor is not None and amask is not None:     # FORM (A): state-side
         _s_final = amask * anchor + (1.0 - amask) * _s_final   # anchors —
                                                      # structural re-entry the
                                                      # forward cannot ignore
     out = heads_of(_s_final)
+    if int(os.environ.get("ALG_MINE_BREATHS", "0")) and K_B > 1 and slot_mask is not None:
+        out["breaths_all"] = out_breaths
     if (int(os.environ.get("ALG_DEEPSUP", "0")) or ALG_CONSUME) and K_B > 1 and len(breaths) > 1:
         out["_early"] = [heads_of(b) for b in breaths[:-1]]   # V2: the whole
                                                   # supply chain gets gradient
