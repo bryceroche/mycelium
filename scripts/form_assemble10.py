@@ -30,11 +30,12 @@ b9=_b
 rng=np.random.RandomState(41)
 keep=np.sort(rng.choice(96100, 25000, replace=False))
 NB9=len(b9)
-mix=[rows8[i] for i in keep]+[r for _ in range(10) for r in b9]
+REPS=int(os.environ.get("DIET_REPS","10"))
+mix=[rows8[i] for i in keep]+[r for _ in range(REPS) for r in b9]
 with open('.cache/form_mix10.jsonl','w') as f:
     for r in mix: f.write(json.dumps(r)+"\n")
 n=len(mix)
-print(f"[assemble10] sampled-base mix: 25000 + {10*NB9} = {n} (share {250/n:.3%}, reps 10)", flush=True)
+print(f"[assemble10] sampled-base mix: 25000 + {REPS*NB9} = {n} (diet mass {REPS*NB9}, reps {REPS})", flush=True)
 b8=np.load('.cache/phase1_alg_states_form8_states.npy', mmap_mode='r')
 out=np.lib.format.open_memmap('.cache/phase1_alg_states_form10_states.npy', mode='w+', dtype=np.float16, shape=(n,T_ALG,2048))
 CH=2048
@@ -45,7 +46,7 @@ samples, ids2, mask, offsets = PH.tokenize('.cache/form_mix10.jsonl')
 uids=np.zeros((NB9,T_ALG),np.int32)
 for li in range(NB9): uids[li]=ids2[25000+li]
 sts=np.asarray(recompute_states(uids)).astype(np.float16)
-for rep in range(10):
+for rep in range(REPS):
     base=25000+rep*NB9
     for li in range(NB9):
         assert mix[base+li]["text"]==b9[li]["text"]
