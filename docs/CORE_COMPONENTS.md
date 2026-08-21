@@ -144,3 +144,21 @@ RIVET: the wiring law makes cycle-k's manifold MASK-CONDITIONED — the
 dialect atlas records mask provenance (a quiet third key coordinate).
 THE LAW (paid by V2's grave): the coin's two faces derive from ONE graph
 — recognition and topology must speak the same structure.
+
+## THE HORIZON PAIR (2026-08-21 — prominent by the word)
+LEAN AS THE SOLVE JAW'S BIG SIBLING: the chain of custody IS a kernel
+property (mouth -> translate -> kernel -> certified); our unsat
+certificates are already mini-proofs; Lean compiles = the key at proof
+grain — and ITS COMPILE ERRORS ARE THE REFUTATION-ALTERNATION LOOP FOR
+FREE (unification failures = where-wrong messages: the conductor's
+receipted message type, transferred whole). Constitutional (local
+compiler). December-reserved: the register bridge remains the path — and
+it is the same path (translation is the hard half, measured thrice).
+ABSTRACT REASONING = COMPRESSION + PORT CRITICALITY: the amputation organ
+IS the criticality probe (drop a factor: forcing survives = optional
+port, breaks = mandatory); Anna Karenina = gauge-freedom detection
+(surface = optional); macro folding = MDL steps through the registry
+door; conserved atlas chains = compressible paths found wild.
+THE NEW INSTRUMENT REGISTERED: THE CRITICALITY CENSUS — the deletion
+probe over solved rows, extracting every graph's load-bearing skeleton;
+the abstraction meter: reasoning quality = how small the mandatory core.
