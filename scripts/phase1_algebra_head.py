@@ -663,7 +663,6 @@ def build_params(seed=0):
         p["W_iargs"] = t(rng.randn(H_W, H_W) / math.sqrt(H_W))
     p["W_res"] = t(rng.randn(H_W, H_W) / math.sqrt(H_W))
     p["W_query"] = t(rng.randn(H_W, H_W) / math.sqrt(H_W))
-    _pb_prior = _pb
     if ALG_SIXWAVE:      # door #62: carrier gate — structure enters at zero
         p["sw_g"] = t(np.zeros((1,)))
     if ALG_NOTEBOOK:     # the cathedral (2026-08-18)
@@ -718,6 +717,7 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
         _lb = lsent.reshape(B, 1, K_VARS, -1) * float(os.environ.get("LS_A", "1.0"))
     vst, vat = bank(p["vq"], K_VARS, pbias=_lb)
     _pb = None
+    _pb_prior = None
     _sync = None
     if ALG_SYNC:
         from tinygrad import Tensor, dtypes
@@ -762,15 +762,12 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
         _phi = np.pi / 3.0 * (np.arange(L_FAC) % 6)
         _cph = Tensor(np.cos(_phi).astype(np.float32), dtype=dtypes.float)
         _sph = Tensor(np.sin(_phi).astype(np.float32), dtype=dtypes.float)
-        _pb = (_cph.reshape(1, 1, L_FAC, 1) * _th.cos().reshape(B, 1, 1, -1)
+        _sw_term = (_cph.reshape(1, 1, L_FAC, 1) * _th.cos().reshape(B, 1, 1, -1)
                + _sph.reshape(1, 1, L_FAC, 1)
                * _th.sin().reshape(B, 1, 1, -1)) * p["sw_g"].reshape(1, 1, 1, 1)
+        _pb = _sw_term if _pb is None else _pb + _sw_term  # audit #6: adds
     if pmask is not None:                 # A0: imposed route-mask (wiring,
         _pb = pmask if _pb is None else _pb + pmask   # not knobs — no grad)
-    if _pb_prior is not None and _pb is not _pb_prior and _pb is not None:
-        _pb = _pb + _pb_prior          # audit #6: sixwave adds, never clobbers
-    elif _pb is None:
-        _pb = _pb_prior
     fst, fat = bank(p["fq"], L_FAC, pbias=_pb)
     qst, _qa = bank(p["qq"], 1)
 
