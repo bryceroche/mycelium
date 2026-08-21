@@ -100,6 +100,7 @@ samples=[{"text":_h[i]["problem"],"n_vars":24,"m":300,
           "solution":None,"query_var":None} for i in _fresh]
 n=len(samples)
 wild=[i for i in range(n) if wildness(samples[i]["text"])<=W_THR]
+lane_text={i:(lenasc(samples[i]["text"]) if i in set(wild) else samples[i]["text"]) for i in range(n)}
 print("[compose] lane parses ...",flush=True)
 all_parses=parse_texts([lane_text[i] for i in range(n)])
 lane_parse={i:all_parses[i] for i in range(n)}
