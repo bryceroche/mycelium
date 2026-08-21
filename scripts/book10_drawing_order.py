@@ -38,7 +38,7 @@ for f in draft_files:
             continue
         r = json.loads(line)
         facs = r.get("factors", [])
-        text = r["text"]
+        text = r.get("text") or r.get("original") or ""
         n_rows += 1
         givens = {fa["var"]: fa.get("value", 0) for fa in facs if fa["ftype"] == "given"}
         small_givens = sum(1 for v in givens.values() if v < 20)
