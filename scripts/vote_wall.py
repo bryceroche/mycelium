@@ -56,7 +56,12 @@ def rescue(facs,q,smp,text):
         for i in idxs:
             f2=[f for j,f in enumerate(facs) if j!=i]
             a=solve_forced(f2,q,smp)
-            if a is not None: return a
+            if a is not None:
+                try:
+                    from mycelium.campaign_db import record_core
+                    record_core(str(smp.get("text","")),os.environ.get("ALG_TEST_NAME","?"),"unsat",facs[i],[],"2026-08-20")
+                except Exception: pass
+                return a
         return None
     parts=re.split(r"(?<=\.)\s+",text.strip())
     if len(parts)<=3: return None
