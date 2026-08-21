@@ -76,7 +76,13 @@ def rescue(facs,q,smp,lane_text):
     if diagnose(facs,q)=="unsat":
         for i in [i for i,f in enumerate(facs) if f.get("ftype") in ("rel","given")][:20]:
             a=solve_forced([f for j,f in enumerate(facs) if j!=i],q,smp)
-            if a is not None: return a
+            if a is not None:
+                try:                    # audit #7: the conflict store hears
+                    from mycelium.campaign_db import record_core   # every organ
+                    record_core(str(smp.get("text","")),os.environ.get("ALG_TEST_NAME","?"),
+                                "unsat",facs[i],[],"2026-08-20")
+                except Exception: pass
+                return a
         return None
     t=lenasc(lane_text)
     if t==lane_text: return None

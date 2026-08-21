@@ -663,6 +663,7 @@ def build_params(seed=0):
         p["W_iargs"] = t(rng.randn(H_W, H_W) / math.sqrt(H_W))
     p["W_res"] = t(rng.randn(H_W, H_W) / math.sqrt(H_W))
     p["W_query"] = t(rng.randn(H_W, H_W) / math.sqrt(H_W))
+    _pb_prior = _pb
     if ALG_SIXWAVE:      # door #62: carrier gate — structure enters at zero
         p["sw_g"] = t(np.zeros((1,)))
     if ALG_NOTEBOOK:     # the cathedral (2026-08-18)
@@ -678,6 +679,7 @@ def build_params(seed=0):
 
 NB_STAMPS = None
 if ALG_NOTEBOOK:
+    assert int(os.environ.get("ALG_BREATH", "1")) <= 8, "NB_STAMPS holds 8 rows (audit #11)"
     _ks = np.arange(8)
     _ds = np.arange(512)
     NB_STAMPS = np.cos(_ks[:, None] * np.pi / 8.0 * 7
@@ -765,6 +767,10 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
                * _th.sin().reshape(B, 1, 1, -1)) * p["sw_g"].reshape(1, 1, 1, 1)
     if pmask is not None:                 # A0: imposed route-mask (wiring,
         _pb = pmask if _pb is None else _pb + pmask   # not knobs — no grad)
+    if _pb_prior is not None and _pb is not _pb_prior and _pb is not None:
+        _pb = _pb + _pb_prior          # audit #6: sixwave adds, never clobbers
+    elif _pb is None:
+        _pb = _pb_prior
     fst, fat = bank(p["fq"], L_FAC, pbias=_pb)
     qst, _qa = bank(p["qq"], 1)
 

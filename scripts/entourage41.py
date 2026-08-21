@@ -1,3 +1,5 @@
+# AUDIT #3 (2026-08-20): form3 states memmap RECLAIMED — repoint the mouth
+# rebuild (stage 5) at form8/form9 before any future entourage run.
 """entourage41.py — THE ESTATE SETTLEMENT FOR GEN-23 (2026-08-03; adapted
 from entourage22 by name-map: parser g23 + ALG_WIDE env + gen23 states pair
 (88,400 rows, sentinel-verified at the fire) + dissent overlap g22-vs-g23;

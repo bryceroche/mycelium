@@ -1,3 +1,6 @@
+import sys
+sys.exit("RETIRED (2026-08-20 audit #3): stitch-source memmaps (form2-7) were "
+         "reclaimed; regenerate via trunk recompute before reviving this script")
 import sys, os, json
 os.environ.setdefault("ALG2","1"); os.environ.setdefault("ALG_FTYPES","9")
 os.environ.setdefault("ALG_HW","512"); os.environ.setdefault("ALG_DUP","1")

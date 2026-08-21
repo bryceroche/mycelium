@@ -252,7 +252,7 @@ def census(db, n_mined, clusters_created):
 
     # FENCE (3): propose only. macro_candidate='PROPOSED' is a flag for the
     # rank-never-admit door elsewhere to consider — never an admission.
-    thresh_count = max(1, int(0.01 * n_mined))
+    thresh_count = max(1, int(0.01 * total_rows))
     proposed = db.execute(
         "SELECT cluster_id FROM waist_patterns WHERE count >= ?", (thresh_count,)
     ).fetchall()

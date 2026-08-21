@@ -61,7 +61,10 @@ def solve_forced(facs, q_pred, smp):
     rel/given identically and adds mod/sel — one seam, all callers upgraded."""
     from mycelium.csp_domains import problem_from_algebra3 as problem_from_algebra2
     from mycelium.csp_core import solve_symbolic
-    gv = {f["var"]: f["value"] for f in facs if f["ftype"] == "given"}
+    try:
+        gv = {f["var"]: f["value"] for f in facs if f["ftype"] == "given"}
+    except Exception:
+        return None
 
     def fv(f):
         if f["ftype"] in ("rel", "sel"):
