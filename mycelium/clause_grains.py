@@ -37,3 +37,35 @@ def clause_indices(text, offs, mask_row, sent_indices_fn, t_alg, sent_max):
                               arr[:, 0], "right")
         out[:len(arr)] = np.minimum(idx, sent_max - 1)
     return out
+
+
+# ---- MATH-MODE GRAINS (2026-08-22; the Karpathy-patch upgrade) ----
+# Equations are the wild register's true clauses. Seams = $-math-run
+# boundaries UNION prose punctuation. Same fallback contract: multi-
+# sentence text keeps period grains (dialect untouched by construction).
+_MATH_RUN = re.compile(r"\$[^$]+\$")
+
+
+def math_cut_positions(text):
+    cuts = set()
+    for m in _MATH_RUN.finditer(text):
+        cuts.add(m.start())
+        cuts.add(m.end())
+    for m in _CLAUSE.finditer(text):
+        cuts.add(m.end() - 1)
+    return sorted(cuts)
+
+
+def math_clause_indices(text, offs, mask_row, sent_indices_fn, t_alg, sent_max):
+    """Same contract as clause_indices; math runs become their own grains."""
+    if not is_single_sentence(text):
+        return sent_indices_fn(text, offs, mask_row)
+    bounds = math_cut_positions(text)
+    out = np.zeros((t_alg,), np.int32)
+    ntk = int(mask_row.sum())
+    arr = np.asarray(offs[:min(ntk, t_alg)], dtype=np.int64)
+    if len(arr) and bounds:
+        idx = np.searchsorted(np.asarray(bounds, dtype=np.int64),
+                              arr[:, 0], "right")
+        out[:len(arr)] = np.minimum(idx, sent_max - 1)
+    return out
