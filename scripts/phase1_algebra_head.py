@@ -1771,7 +1771,8 @@ def do_train(steps, lr, batch, seed):
             pk = rng.choice(len(INV_PAIRS_ARR), 2, replace=False)
             idx = np.concatenate([INV_PAIRS_ARR[pk].reshape(-1),
                                   rng.choice(n, batch - 4, replace=False)])
-        b_tr.assign(Tensor(states[idx].astype(np.float32), dtype=dtypes.float).contiguous()).realize()
+        if not TRUNK_LORA:   # audit #15: b_tr is dead under the in-graph trunk
+            b_tr.assign(Tensor(states[idx].astype(np.float32), dtype=dtypes.float).contiguous()).realize()
         b_tk.assign(Tensor(tokmask[idx].astype(np.float32), dtype=dtypes.float).contiguous()).realize()
         b_se.assign(Tensor(sent[idx].astype(np.int32), dtype=dtypes.int).contiguous()).realize()
         if TRUNK_LORA:

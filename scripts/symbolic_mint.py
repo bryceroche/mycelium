@@ -21,11 +21,13 @@ def OPA(op, k1, x, k2, y, r): return {"ftype": "macro", "name": "OP_APPLY",
                                       "y": y, "result": r}
 def PCT(a, b, p): return {"ftype": "pct", "args": [a, b], "p": p}
 
-LETTERS = [("x", "y"), ("a", "b"), ("p", "q"), ("m", "n"), ("r", "s")]
-Q = ["what is the value of ${v}$?", "find ${v}$.", "what is ${v}$?"]
+LETTERS = [("x", "y"), ("a", "b"), ("p", "q"), ("m", "n"), ("r", "s"),
+           ("u", "v"), ("j", "k"), ("s", "t"), ("c", "d"), ("y", "z")]
+Q = ["what is the value of ${v}$?", "find ${v}$.", "what is ${v}$?",
+     "determine the value of ${v}$.", "solve for ${v}$."]
 
 def fam_sumdiff(rng):
-    r1 = rng.randint(2, 90); r2 = rng.randint(1, r1 - 1)
+    r1 = rng.randint(2, 140); r2 = rng.randint(1, r1 - 1)
     A, B = r1 - r2, r1 + r2
     u, v = rng.choice(LETTERS)
     qv, qi = rng.choice([(u, 2), (v, 3)])
@@ -34,7 +36,7 @@ def fam_sumdiff(rng):
 
 def fam_coeff(rng):
     k1, k2 = rng.randint(2, 5), rng.randint(2, 5)
-    X, Y = rng.randint(1, 20), rng.randint(1, 20)
+    X, Y = rng.randint(1, 40), rng.randint(1, 40)
     C, D = k1 * X + Y, X + k2 * Y
     if max(C, D) > 300: return None
     u, v = rng.choice(LETTERS)
@@ -45,7 +47,7 @@ def fam_coeff(rng):
                OPA("add", 1, 2, k2, 3, 1)], qi, (X if qi == 2 else Y)
 
 def fam_eval(rng):
-    N, M = rng.randint(1, 30), rng.randint(1, 30)
+    N, M = rng.randint(1, 45), rng.randint(1, 45)
     K, L = rng.randint(2, 6), rng.randint(2, 6)
     if K * N + L * M > 300: return None
     u, v = rng.choice(LETTERS)
@@ -54,7 +56,7 @@ def fam_eval(rng):
     return t, [G(0, N), G(1, M), OPA("add", K, 0, L, 1, 2)], 2, K * N + L * M
 
 def fam_evalsq(rng):
-    N, C = rng.randint(2, 16), rng.randint(1, 40)
+    N, C = rng.randint(2, 16), rng.randint(1, 44)
     if N * N + C > 300: return None
     u, _ = rng.choice(LETTERS)
     t = f"If ${u} = {N}$, what is the value of ${u}^2 + {C}$?"
@@ -81,7 +83,7 @@ def fam_sqrt(rng):
 
 def fam_custom(rng):
     K, L = rng.randint(2, 6), rng.randint(2, 6)
-    P, Qv = rng.randint(1, 20), rng.randint(1, 20)
+    P, Qv = rng.randint(1, 30), rng.randint(1, 30)
     op = rng.choice(["add", "sub"])
     ans = K * P + L * Qv if op == "add" else K * P - L * Qv
     if not (0 <= ans <= 300): return None
@@ -118,7 +120,7 @@ def fam_pct(rng):
     return t, [G(0, V), PCT(0, 1, p)], 1, N
 
 def fam_seq(rng):
-    a = rng.randint(1, 40); d = rng.randint(2, 15)
+    a = rng.randint(1, 80); d = rng.randint(2, 25)
     B, C = a + d, a + 2 * d
     ans = a + 3 * d
     if ans > 300: return None
