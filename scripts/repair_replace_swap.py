@@ -75,11 +75,21 @@ def solve_forced(facs, q_pred, smp):
             return list(f.get("args", []))
         if f["ftype"] == "fdiv":
             return [f["var"], f["result"]]
+        if f["ftype"] == "macro":   # anchor-law seam (2026-08-21): xs/x/y/result are vars; k/k1/k2 are params
+            vs = [f[k] for k in ("x", "y", "result") if isinstance(f.get(k), int)]
+            vs += [v for v in f.get("xs", []) if isinstance(v, int)]
+            return vs or [0]
         return [f[k] for k in ("var", "result", "y", "a", "x") if k in f
                 and isinstance(f[k], int)] or [0]
     try:
         nv = max([smp["n_vars"]] + [v + 1 for f in facs for v in fv(f)]
                  + [q_pred + 1])
+        if any(f.get("ftype") == "macro" for f in facs):
+            # macros expand before the solver sees anything — the key grades
+            # in primitives, always (the charter; one seam, all callers)
+            from mycelium.macros import expand_graph
+            facs, nv = expand_graph(facs, nv)
+            gv = {f["var"]: f["value"] for f in facs if f["ftype"] == "given"}
         res = solve_symbolic(problem_from_algebra2(nv, facs, gv, smp["m"]),
                              budget=200_000, seed=0)
         if res["status"] != "solved":
