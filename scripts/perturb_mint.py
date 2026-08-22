@@ -23,7 +23,17 @@ def load_seeds():
         r = json.loads(l); byid[r["src_idx"]] = r
     skips = set(json.load(open('.cache/book12_anchor_skips.json')))
     wv = set(json.loads(l)["src_idx"] for l in open('.cache/g55_wildval.jsonl'))
-    return [v for k, v in sorted(byid.items()) if k not in skips and k not in wv]
+    # FAITHFUL-SURFACE FENCE (the two-nines lesson): only anchor-law
+    # sittings seed the mint — legacy rows carry precomputed givens whose
+    # values coincide with unrelated surface constants; perturbing those
+    # breaks text-math while the graph stays self-consistent.
+    faithful = set()
+    for fn in ('.cache/book12_anchor_batch1.jsonl',
+               '.cache/book13_t8_batch1.jsonl'):
+        for l in open(fn):
+            faithful.add(json.loads(l)["src_idx"])
+    return [v for k, v in sorted(byid.items())
+            if k in faithful and k not in skips and k not in wv]
 
 def param_values(facs):
     out = set()
@@ -35,12 +45,27 @@ def param_values(facs):
         if f["ftype"] == "fdiv": out.add(f["k"])
     return out
 
+_STRUCT = re.compile(r"\\sqrt\[\d+\]|\^\{\d+\}|\^\d+|_\{\d+\}|_\d+")
+
+def _protected(text):
+    return [m.span() for m in _STRUCT.finditer(text)]
+
 def variants(row, rng, want=30):
     text = row["original"]; facs = row["factors"]
     givens = sorted(set(f["value"] for f in facs if f["ftype"] == "given"))
     pv = param_values(facs)
+    prot = _protected(text)
+    def clean(v):
+        # a value is movable only if NO occurrence sits inside a structural
+        # span (root index, exponent, subscript) — the sqrt[3] lesson:
+        # the gate checks graph->key, never text-faithfulness; structure
+        # numerals must never move
+        for m in re.finditer(rf"\b{v}\b", text):
+            if any(a <= m.start() < b for a, b in prot):
+                return False
+        return True
     movable = [v for v in givens
-               if v not in pv and re.search(rf"\b{v}\b", text)]
+               if v not in pv and re.search(rf"\b{v}\b", text) and clean(v)]
     if not movable: return []
     out = []; seen = {text}
     for _ in range(want * 6):

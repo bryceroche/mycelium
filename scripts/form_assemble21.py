@@ -66,7 +66,7 @@ _clean=sorted(_byid.values(), key=lambda r: r["src_idx"])
 _wv=set(json.loads(l)["src_idx"] for l in open('.cache/g55_wildval.jsonl'))
 _clean=[r for r in _clean if r["src_idx"] not in _wv]
 _mint=[json.loads(l) for l in open('.cache/mint_perturb_v2.jsonl')]
-assert len(_mint)>2000, "POSITIVE PRESENCE: mint missing/short"
+assert len(_mint)>1000, "POSITIVE PRESENCE: mint missing/short"
 HUMAN_REPS=20   # G61 balance: human anchors 123x20=2460 vs mint 3970 (38% human)
 _human=list(_clean)
 _clean=_clean*HUMAN_REPS+_mint
