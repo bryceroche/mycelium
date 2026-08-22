@@ -28,6 +28,11 @@ WORDS.update({"half": 2, "doubled": 2, "twice": 2, "hundred": 100,
 
 
 def surface_numbers(text):
+    """ANCHOREDNESS (the gate's predicate): do the digits exist in the
+    surface for the emission head to bind? Decimal parts COUNT ("5.5"
+    anchors 5 — the head reads its digits). Distinct from atomic_numbers
+    below (the mint's predicate) — audit 2026-08-22 carved the two apart:
+    a value can be anchored yet unsafe to substitute."""
     nums = set(int(x) for x in re.findall(r"\d+", text))
     low = text.lower()
     for w, v in WORDS.items():
@@ -41,3 +46,11 @@ def unanchored_givens(row):
     nums = surface_numbers(row["original"])
     return [f["value"] for f in row["factors"]
             if f["ftype"] == "given" and f["value"] not in nums]
+
+
+def atomic_numbers(text):
+    """SUBSTITUTABILITY (the mint's predicate): integers standing alone —
+    never part of a decimal ("1.5" yields neither 1 nor 5). Only these
+    may be value-perturbed; the decimal-shredder specimen (audit #1,
+    seed 1592) is why the two predicates must never be conflated."""
+    return set(int(x) for x in re.findall(r"(?<![\d.])(\d+)(?![\d.])", text))

@@ -42,6 +42,7 @@ def param_values(facs):
             for k in ("k1", "k2", "a", "k"):
                 if isinstance(f.get(k), int): out.add(f[k])
         if f["ftype"] == "pct": out.add(f["p"])
+        if f["ftype"] == "mod": out.add(f["k"])
         if f["ftype"] == "fdiv": out.add(f["k"])
     return out
 
@@ -60,12 +61,19 @@ def variants(row, rng, want=30):
         # span (root index, exponent, subscript) — the sqrt[3] lesson:
         # the gate checks graph->key, never text-faithfulness; structure
         # numerals must never move
-        for m in re.finditer(rf"\b{v}\b", text):
+        for m in re.finditer(rf"(?<![\d.]){v}(?![\d.])", text):
             if any(a <= m.start() < b for a, b in prot):
                 return False
         return True
+    from mycelium.anchor_law import WORDS as _W
+    _low = text.lower()
+    def _word_anchored(v):
+        return any(_wv == v and re.search(rf"\b{re.escape(w)}\b", _low)
+                   for w, _wv in _W.items())
     movable = [v for v in givens
-               if v not in pv and re.search(rf"\b{v}\b", text) and clean(v)]
+               if v not in pv and re.search(rf"(?<![\d.]){v}(?![\d.])", text)
+               and clean(v) and not _word_anchored(v)]  # word+digit double
+               # anchor = ambiguous referent (the five-students specimen)
     if not movable: return []
     out = []; seen = {text}
     for _ in range(want * 6):
@@ -82,7 +90,7 @@ def variants(row, rng, want=30):
         newvals = list(mapping.values())
         if len(set(newvals)) != len(newvals): continue
         if any(nv in pv for nv in newvals): continue
-        t2 = re.sub(r"\b(\d+)\b",
+        t2 = re.sub(r"(?<![\d.])(\d+)(?![\d.])",
                     lambda m: str(mapping.get(int(m.group(1)), m.group(1))),
                     text)
         if t2 in seen: continue

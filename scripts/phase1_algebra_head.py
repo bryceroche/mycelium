@@ -1158,6 +1158,31 @@ def do_eval():
     for k in p:
         p[k].assign(sd[k].to(p[k].device).cast(p[k].dtype)).realize()
     n = len(samples)
+    if int(os.environ.get("ALG_TRUNK_LORA", "0")):
+        # audit 2026-08-22 #3: banked states are PURE-trunk; a LoRA ckpt
+        # must be ringed through its adapters or the number is a no-op
+        from beacon_closing_arm import _trunk_host
+        from mycelium.llama_loader import _rms_norm as _lrms
+        _host = _trunk_host()
+        _sc = float(os.environ.get("ALG_LORA_SCALE", "8.0"))
+        _LD = [{f"{_nm}_{_ab}": (p[f"lora{_li}_{_nm}_{_ab}"] * (_sc if _ab == "B" else 1.0))
+                for _nm in ("wq", "wo", "wdown") for _ab in ("A", "B")}
+               for _li in range(4)]
+        _samples2, _ids2, _msk2, _off2 = tokenize(ALG_TEST)
+        assert len(_samples2) == n, "eval tokenize/load_alg desync"
+        _st2 = np.zeros((n, T_ALG, H_TRUNK), np.float16)
+        for _s0 in range(0, n, 8):
+            _sl = slice(_s0, min(_s0 + 8, n))
+            _x = _host.llama_embed[Tensor(_ids2[_sl], dtype=dtypes.int)]
+            for _li, _layer in enumerate(_host.llama_layers):
+                _x = _layer(_x, _host.llama_rope_cos, _host.llama_rope_sin,
+                            lora=_LD[_li])
+            _x = _lrms(_x, _host.llama_layers[-1].ffn_norm,
+                       _host.llama_cfg.rms_norm_eps)
+            _st2[_sl] = _x.cast(dtypes.float).realize().numpy().astype(np.float16)
+        states = _st2
+        print(f"[eval] TRUNK_LORA: states recomputed through adapters "
+              f"(scale {_sc}) — HONEST LoRA-ring", flush=True)
     per_band = {}
     for s0 in range(0, n, 8):
         sl = np.arange(s0, min(s0 + 8, n))
@@ -1815,7 +1840,13 @@ def do_train(steps, lr, batch, seed):
             sp = ALG_CKPT.replace(".safetensors", f"_s{s+1}.safetensors")
             safe_save(p, sp)
             print(f"  [snap @{s+1}] -> {sp}", flush=True)
-    if best_snap is not None:
+    if best_snap is not None and TRUNK_LORA:
+        # audit 2026-08-22 #3: _quick_val reads PURE-trunk states — under
+        # LoRA it is a mismatched proxy; save FINAL-step params instead
+        # (snapshots carry the trajectory for selection)
+        print("[train] TRUNK_LORA: best-by-val restore SKIPPED (proxy is "
+              "pure-trunk; final-step params saved)", flush=True)
+    elif best_snap is not None:
         for k in p:
             p[k].assign(Tensor(best_snap[k], dtype=p[k].dtype)).realize()
         print(f"[train] restored BEST ckpt (val {best_val:.4f})", flush=True)
