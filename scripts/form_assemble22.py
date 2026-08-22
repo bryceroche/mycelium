@@ -55,13 +55,21 @@ _bad = [k for k, v in _byid.items() if unanchored_givens(v)]
 assert not _bad, f"ANCHOR LAW: {sorted(_bad)[:8]}"
 human = sorted(_byid.values(), key=lambda r: r["src_idx"])
 perturb = load_rows(['.cache/mint_perturb_v2.jsonl'])
-symb = load_rows(['.cache/mint_symbolic_v1.jsonl'])
-assert len(symb) > 20000, f"POSITIVE PRESENCE: scale mint short ({len(symb)})"
+comp = load_rows(['.cache/mint_comp_v3.jsonl'])
+assert len(comp) > 20000, f"POSITIVE PRESENCE: comp mint short ({len(comp)})"
+_shapes = len(set(r.get("shape") for r in comp))
+assert _shapes > 800, f"EFFECTIVE-N FENCE: only {_shapes} shapes (nominal-n is not n)"
+symb_all = load_rows(['.cache/mint_symbolic_v1.jsonl'])
+_r = np.random.RandomState(77)
+symb = [symb_all[i] for i in sorted(_r.choice(len(symb_all),
+        min(10000, len(symb_all)), replace=False))]
 HUMAN_REPS = 20
 print(f"[assemble22] JOINT SCALE: human {len(human)}x{HUMAN_REPS} + perturb "
-      f"{len(perturb)} + symbolic {len(symb)} + dialect base 25000", flush=True)
+      f"{len(perturb)} + COMP {len(comp)} ({_shapes} shapes) + template "
+      f"{len(symb)} + dialect base 25000", flush=True)
 wild = to_train(human, "b22human") * HUMAN_REPS + \
-       to_train(perturb, "b22perturb") + to_train(symb, "b22symb")
+       to_train(perturb, "b22perturb") + to_train(comp, "b22comp") + \
+       to_train(symb, "b22symb")
 rows8 = [json.loads(l) for l in open('.cache/form_mix8.jsonl')]
 rng = np.random.RandomState(41)
 keep = np.sort(rng.choice(96100, 25000, replace=False))
