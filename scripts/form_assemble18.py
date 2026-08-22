@@ -65,7 +65,7 @@ _clean=sorted(_byid.values(), key=lambda r: r["src_idx"])
 # tranche-8 rows (book13) join the diet
 _wv=set(json.loads(l)["src_idx"] for l in open('.cache/g55_wildval.jsonl'))
 _clean=[r for r in _clean if r["src_idx"] not in _wv]
-print(f"[assemble18] G55 wild-val split: diet {len(_clean)} / wild-val {len(_wildval)} (seed 555, banked)", flush=True)
+print(f"[assemble18] diet {len(_clean)} (fixed wild-val 20 excluded)", flush=True)
 diet=to_train(_clean,"b12diet")
 REPS=int(os.environ.get("DIET_REPS","1"))
 ND, NU = 0, len(diet)
