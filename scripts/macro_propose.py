@@ -15,22 +15,26 @@ sys.path.insert(0, '.'); sys.path.insert(0, 'scripts')
 from repair_replace_swap import solve_forced
 from mycelium.campaign_db import conn
 
-def sig_of(facs, sink, members, prod):
+def sig_of(facs, sink, members, prod, seen=None):
+    # machine deed graphs can be self-referential (result==arg) — cycle guard
+    seen = (seen or frozenset()) | {sink}
     f = facs[sink]
     if f["ftype"] == "rel":
         parts = []
         for a in f["args"]:
             p = prod.get(a)
             if p is None: parts.append("?")
+            elif p in seen: parts.append("CYC")
             elif p in members and facs[p]["ftype"] != "given":
-                parts.append(sig_of(facs, p, members, prod))
+                parts.append(sig_of(facs, p, members, prod, seen))
             elif facs[p]["ftype"] == "given": parts.append("G")
             else: parts.append("X")
         return f'{f["op"]}({",".join(sorted(parts))})'
     if f["ftype"] == "fdiv":
         p = prod.get(f["var"])
-        inner = ("G" if p is not None and facs[p]["ftype"] == "given"
-                 else sig_of(facs, p, members, prod)
+        inner = ("CYC" if p is not None and p in seen
+                 else "G" if p is not None and facs[p]["ftype"] == "given"
+                 else sig_of(facs, p, members, prod, seen)
                  if p in members else "X")
         return f'fdiv{f["k"]}({inner})'
     return "?"
