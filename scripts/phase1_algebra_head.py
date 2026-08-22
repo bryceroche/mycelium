@@ -673,6 +673,17 @@ def build_params(seed=0):
         else:                   # same coordinate code
             p["W_sil"] = t(rng.randn(H_W, H_W) / math.sqrt(H_W))
             p["W_nq"] = t(rng.randn(H_W, H_W) / math.sqrt(H_W))
+    if int(os.environ.get("ALG_TRUNK_LORA", "0")):
+        # THE TRUNK-COPY LoRA (2026-08-22, constitutional word): rank-r
+        # adapters on a RUNTIME copy of L0-L3 (wq/wo/wdown — the hook
+        # LlamaLayer already carries). Base trunk safetensors NEVER touched;
+        # research lineage only; zero-init B = zero delta at step 0.
+        _lr_r = int(os.environ.get("ALG_LORA_R", "16"))
+        _lrng = np.random.RandomState(seed + 7000)
+        for _li in range(4):
+            for _nm, _din in (("wq", 2048), ("wo", 2048), ("wdown", 8192)):
+                p[f"lora{_li}_{_nm}_A"] = t(_lrng.randn(_din, _lr_r) * 0.01)
+                p[f"lora{_li}_{_nm}_B"] = t(np.zeros((_lr_r, 2048)))
     return p
 
 
@@ -1357,6 +1368,14 @@ def do_train(steps, lr, batch, seed):
     samples, states, tokmask, gold, sent = load_alg("train")
     n = states.shape[0]
     p = build_params(seed)
+    TRUNK_LORA = int(os.environ.get("ALG_TRUNK_LORA", "0"))
+    if TRUNK_LORA:
+        from beacon_closing_arm import _trunk_host
+        HOST = _trunk_host()
+        _, IDS_ALL, _, _ = tokenize(os.environ["ALG_TRAIN"])
+        LORA_SCALE = float(os.environ.get("ALG_LORA_SCALE", "8.0"))
+        print(f"[lora] trunk-in-the-loop: r={os.environ.get('ALG_LORA_R','16')} "
+              f"scale={LORA_SCALE} rows={len(IDS_ALL)}", flush=True)
     if int(os.environ.get("RESUME", "0")) and not os.path.exists(ALG_CKPT):
         # RESUME GUARD (deep clean 2026-07-30): a missing ckpt under RESUME=1
         # previously fell through to FRESH RANDOM INIT silently — a
@@ -1461,6 +1480,7 @@ def do_train(steps, lr, batch, seed):
     def fix(a, dt):
         return Tensor(a, dtype=dt).contiguous().realize()
     b_tr = fix(np.zeros((batch, T_ALG, H_TRUNK), np.float32), dtypes.float)
+    b_ids = fix(np.zeros((batch, T_ALG), np.int32), dtypes.int) if TRUNK_LORA else None
     b_tk = fix(np.zeros((batch, T_ALG), np.float32), dtypes.float)
     b_se = fix(np.zeros((batch, T_ALG), np.int32), dtypes.int)
     b_mask = fix(np.zeros((batch, L_FAC, L_FAC), np.float32), dtypes.float) \
@@ -1546,16 +1566,27 @@ def do_train(steps, lr, batch, seed):
     @TinyJit
     def step():
         Tensor.training = True
+        if TRUNK_LORA:
+            from mycelium.llama_loader import _rms_norm as _ll_rms
+            _x = HOST.llama_embed[b_ids].detach()
+            for _li, _layer in enumerate(HOST.llama_layers):
+                _ld = {f"{_nm}_{_ab}": (p[f"lora{_li}_{_nm}_{_ab}"] * (LORA_SCALE if _ab == "B" else 1.0))
+                       for _nm in ("wq", "wo", "wdown") for _ab in ("A", "B")}
+                _x = _layer(_x, HOST.llama_rope_cos, HOST.llama_rope_sin, lora=_ld)
+            _x = _ll_rms(_x, HOST.llama_layers[-1].ffn_norm, HOST.llama_cfg.rms_norm_eps)
+            s_tr = _x.cast(dtypes.float)
+        else:
+            s_tr = b_tr
         if XOUT_TR:
             # ORGAN-2 fire (registered 2026-08-05): two-pass — the first
             # read finds wrong bindings (revoke gold = solver-refuted
             # commits, self-labeled from gold like the commit loss,
             # DETACHED); the second trains under live release dynamics.
-            o0 = forward(p, b_tr, b_tk, b_se, slot_mask=b_mask, tail=b_tail)
+            o0 = forward(p, s_tr, b_tk, b_se, slot_mask=b_mask, tail=b_tail)
             ok = ((o0["ftype"].argmax(-1) == bg["ftype"]).float()
                   * (o0["res"].argmax(-1) == bg["res"]).float())
             rv = (bg["presence"] * (1.0 - ok)).detach()
-            o = forward(p, b_tr, b_tk, b_se, slot_mask=b_mask, revoke=rv, tail=b_tail)
+            o = forward(p, s_tr, b_tk, b_se, slot_mask=b_mask, revoke=rv, tail=b_tail)
         elif int(os.environ.get("NAZ_TRAIN", "0")):
             # NAZARÉ TRAINING (door #55): the organ-2 two-forward pattern —
             # pre-pass yields the intra-pass event field IN-GRAPH (detached);
@@ -1563,7 +1594,7 @@ def do_train(steps, lr, batch, seed):
             # (declared per the criterion-key clause, distinct from the
             # read-time dup-aware argpair): argmax-change OR dup-flip on
             # rel-typed present slots, breath-0 vs final.
-            o0 = forward(p, b_tr, b_tk, b_se, slot_mask=b_mask, tail=b_tail)
+            o0 = forward(p, s_tr, b_tk, b_se, slot_mask=b_mask, tail=b_tail)
             _b0 = o0["breaths"][0]
             _relmask = (o0["pres"].squeeze(-1) > 0).float() \
                 * (o0["ftype"].argmax(-1) == 0).float()
@@ -1572,11 +1603,11 @@ def do_train(steps, lr, batch, seed):
                    .clip(0, 1) * _relmask).detach()
             _bgauth = float(os.environ.get("NAZ_BG", "0.05"))
             _gm = (_bgauth + (1.0 - _bgauth) * _ev).unsqueeze(-1).detach()
-            o = forward(p, b_tr, b_tk, b_se, slot_mask=b_mask, tail=b_tail,
+            o = forward(p, s_tr, b_tk, b_se, slot_mask=b_mask, tail=b_tail,
                         gmod=_gm)
         else:
             _bd = os.environ.get("BREATH_DROPOUT")
-            o = forward(p, b_tr, b_tk, b_se, slot_mask=b_mask, tail=b_tail,
+            o = forward(p, s_tr, b_tk, b_se, slot_mask=b_mask, tail=b_tail,
                         drop=(b_drop if _bd else None), lsent=b_ls)
         l = loss_fn(o, bg)
         if ALG_CONSUME and "_early" in o:   # support-gated consume-once:
@@ -1718,6 +1749,8 @@ def do_train(steps, lr, batch, seed):
         b_tr.assign(Tensor(states[idx].astype(np.float32), dtype=dtypes.float).contiguous()).realize()
         b_tk.assign(Tensor(tokmask[idx].astype(np.float32), dtype=dtypes.float).contiguous()).realize()
         b_se.assign(Tensor(sent[idx].astype(np.int32), dtype=dtypes.int).contiguous()).realize()
+        if TRUNK_LORA:
+            b_ids.assign(Tensor(IDS_ALL[idx].astype(np.int32), dtype=dtypes.int).contiguous()).realize()
         if ALG_CONSUME:
             bg["parents"].assign(Tensor(PARENTS[idx], dtype=dtypes.float).contiguous()).realize()
             bg["claimed"].assign(Tensor(CLAIMED[idx], dtype=dtypes.float).contiguous()).realize()
