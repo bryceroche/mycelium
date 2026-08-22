@@ -69,3 +69,27 @@ def math_clause_indices(text, offs, mask_row, sent_indices_fn, t_alg, sent_max):
                               arr[:, 0], "right")
         out[:len(arr)] = np.minimum(idx, sent_max - 1)
     return out
+
+
+# ---- THE CANONICALIZER (2026-08-22; Bryce's gut: "make the workspace
+# cleaner") ---- One canonical LaTeX surface — the MINT's surface — so
+# real wild text meets the mint-trained model halfway. Input-space only
+# (the len_asc family); fixes the digit-adjacency class at the root
+# (\frac 56 -> \frac{5}{6}; \log_464 -> \log_{4}64).
+_FRAC_BARE = re.compile(r"\\frac\s*(\d)(\d)")
+_FRAC_ONE = re.compile(r"\\frac\s*\{\s*(\d+)\s*\}\s*\{\s*(\d+)\s*\}")
+_LOG_BARE = re.compile(r"\\log_(\d)(\d+)")
+_DISPLAY = re.compile(r"\\\[|\\\]|\$\$")
+_WS = re.compile(r"[ \t]+")
+
+
+def canonicalize(text):
+    t = text.replace("\n", " ")
+    t = _DISPLAY.sub("$", t)
+    t = _FRAC_BARE.sub(r"\\frac{\1}{\2}", t)
+    t = _FRAC_ONE.sub(r"\\frac{\1}{\2}", t)
+    t = _LOG_BARE.sub(r"\\log_{\1}\2", t)
+    t = t.replace("\\!", "").replace("\\quad", " ").replace("\\,", " ")
+    t = t.replace("\\cdot", "\\times")
+    t = _WS.sub(" ", t).strip()
+    return t
