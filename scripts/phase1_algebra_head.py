@@ -1754,17 +1754,41 @@ def do_train(steps, lr, batch, seed):
                 ration_w[np.array(r2, int)], float(os.environ.get("RATION_W2", "1.5")))
             print(f"[ration2] {len(r2)} rows upweighted x{os.environ.get('RATION_W2', '1.5')} (max-combine on overlap)", flush=True)
 
+    # THE STRAW (2026-08-22, Bryce's air-mattress gut; env ALG_STRAW=1):
+    # when the front of the diet collapses (easy mass deflates), uniform
+    # sampling seals off the back — a channel keeps pulling from rows
+    # that still hold air. v1: class-prior x visit-decay weights riding
+    # the ration_w fitting (dialect trickle 0.15, wild 1.0, each visit
+    # deflates its row by 1/sqrt(1+visits)). Curriculum-grave cited at
+    # registration; regime-tagged to trunk-LoRA joint fires. v2 (loss-EMA
+    # straw) deferred pending per-row loss emission from step().
+    STRAW = int(os.environ.get("ALG_STRAW", "0"))
+    if STRAW:
+        _sw_base = np.ones(n, np.float64)
+        _sw_wild = np.array([1.0 if isinstance(smp.get("gen"), str)
+                             and smp["gen"].startswith("b22") else 0.15
+                             for smp in samples], np.float64)
+        _sw_visits = np.zeros(n, np.float64)
+        ration_w = _sw_base * _sw_wild
+        print(f"[straw] armed: wild rows {(1.0 == _sw_wild).sum()} @1.0, "
+              f"base {(0.15 == _sw_wild).sum()} @0.15, visit-decay live",
+              flush=True)
+
     t0 = time.time()
     for s in range(steps):
         cur_lr = lr_min + 0.5 * (lr - lr_min) * (1 + math.cos(math.pi * s / steps))
         opt.lr.assign(Tensor([cur_lr], dtype=dtypes.float)).realize()
         pool = (pools[min(3 * s // steps, 2)] if pools is not None
                 else np.arange(n))
-        if ration_w is not None and cur_lr > 0.5 * (lr + lr_min):
+        if STRAW:
+            ration_w = _sw_wild / np.sqrt(1.0 + _sw_visits)
+        if ration_w is not None and (STRAW or cur_lr > 0.5 * (lr + lr_min)):
             pw = ration_w[pool] / ration_w[pool].sum()
             idx = rng.choice(pool, batch, replace=False, p=pw)
         else:
             idx = rng.choice(pool, batch, replace=False)
+        if STRAW:
+            _sw_visits[idx] += 1.0
         if INV_TR:  # inv-fire v2: 2 pairs (pos 0-3) + carrier rows (pos 4-7);
             # pairs from INV_PAIRS side file — the carrier mix rides (the
             # substrate lesson: never train on the patch alone)
