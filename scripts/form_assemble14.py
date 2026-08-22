@@ -28,14 +28,7 @@ def load_rows(fs):
 # THE ANCHOR-LAW ASSEMBLY (2026-08-21): book12 re-annotations SUPERSEDE
 # by src_idx; skip-listed rows LEAVE the diet; every surviving given is
 # surface-anchored (digit or word) — the law as a mechanical door.
-import re as _re
-_WORDS={w:v for v,w in enumerate("zero one two three four five six seven eight nine ten eleven twelve thirteen fourteen fifteen sixteen seventeen eighteen nineteen twenty".split())}
-_WORDS.update({"half":2,"doubled":2,"twice":2,"thirty":30,"forty":40,"fifty":50,"sixty":60,"seventy":70,"eighty":80,"ninety":90,"hundred":100,"first":1,"second":2,"third":3,"fourth":4,"fifth":5,"sixth":6,"seventh":7,"eighth":8,"ninth":9})
-def _anchored(r):
-    nums=set(int(x) for x in _re.findall(r"\d+",r["original"]))
-    for w,v in _WORDS.items():
-        if _re.search(rf"\b{w}\b",r["original"],_re.I): nums.add(v)
-    return all(f["value"] in nums for f in r["factors"] if f["ftype"]=="given")
+from mycelium.anchor_law import unanchored_givens
 
 def to_train(rows,gen):
     out=[]
@@ -64,7 +57,7 @@ for r in _re12: _byid[r["src_idx"]]=r
 _skips=set(json.load(open('.cache/book12_anchor_skips.json')))
 _before=len(_byid)
 _byid={k:v for k,v in _byid.items() if k not in _skips}
-_bad=[k for k,v in _byid.items() if not _anchored(v)]
+_bad=[k for k,v in _byid.items() if unanchored_givens(v)]
 assert not _bad, f"ANCHOR LAW: unanchored givens in diet rows {sorted(_bad)[:8]}"
 print(f"[assemble14] anchor-law corpus: {_before} -> {len(_byid)} "
       f"(superseded {len(_re12)}, dropped {len(_skips)} skips, 100% anchored)", flush=True)
