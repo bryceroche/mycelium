@@ -1,0 +1,39 @@
+"""clause_grains.py — THE CLAUSE-GRAIN ORGAN (2026-08-21; the G53-kill
+correction). Pseudo-sentence indices for single-sentence wild text:
+boundaries at ". ", ", ", " and ", "; ", "? ". Multi-sentence text falls
+back to the period grains the dialect head was raised on.
+
+THE METER-DIVERGENCE LESSON (the first G53 fire's grave): this logic
+was previously EMBEDDED as an escaped string in two call sites; the
+escaping differed between the organ and its positive-presence check, so
+the check certified a code path the organ never ran — 25k dialect rows
+trained on comma-grains and the ring collapsed to 1093. THE LAW: a
+check must CALL the organ it certifies, never reimplement it. Import
+from here; never inline.
+"""
+import re
+
+import numpy as np
+
+_SENT_SPLIT = re.compile(r"(?<=\.)\s+")
+_CLAUSE = re.compile(r"\. |, | and |; |\? ")
+
+
+def is_single_sentence(text):
+    return len(_SENT_SPLIT.split(text.strip())) <= 1
+
+
+def clause_indices(text, offs, mask_row, sent_indices_fn, t_alg, sent_max):
+    """Same contract as phase1_algebra_head.sent_indices; activates only
+    on single-sentence text (dialect untouched by construction)."""
+    if not is_single_sentence(text):
+        return sent_indices_fn(text, offs, mask_row)
+    bounds = [m.end() - 1 for m in _CLAUSE.finditer(text)]
+    out = np.zeros((t_alg,), np.int32)
+    ntk = int(mask_row.sum())
+    arr = np.asarray(offs[:min(ntk, t_alg)], dtype=np.int64)
+    if len(arr) and bounds:
+        idx = np.searchsorted(np.asarray(bounds, dtype=np.int64),
+                              arr[:, 0], "right")
+        out[:len(arr)] = np.minimum(idx, sent_max - 1)
+    return out

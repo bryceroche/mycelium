@@ -16,20 +16,11 @@ from mycelium.era import mix_sha16
 import glob as _g
 
 
-import re as _re
-_CL=_re.compile(r"\\. |, | and |; |\\? ")
+# the G53-kill correction: organ imported, never inlined (meter-divergence law)
+from mycelium.clause_grains import clause_indices as _cg, is_single_sentence
+from phase1_algebra_head import SENT_MAX
 def clause_indices(text, offs, mask_row):
-    from phase1_algebra_head import SENT_MAX
-    if len(_re.split(r"(?<=\\.)\\s+",text.strip()))>1:
-        return sent_indices(text,offs,mask_row)
-    bounds=[m.end()-1 for m in _CL.finditer(text)]
-    out=np.zeros((T_ALG,),np.int32)
-    ntk=int(mask_row.sum())
-    arr=np.asarray(offs[:min(ntk,T_ALG)],dtype=np.int64)
-    if len(arr) and bounds:
-        idx=np.searchsorted(np.asarray(bounds,dtype=np.int64),arr[:,0],"right")
-        out[:len(arr)]=np.minimum(idx,SENT_MAX-1)
-    return out
+    return _cg(text, offs, mask_row, sent_indices, T_ALG, SENT_MAX)
 
 files=sorted(_g.glob('.cache/book*_t*_batch*.jsonl'))
 assert not any('t7self' in f for f in files), \
@@ -93,7 +84,7 @@ for rep in range(REPS):
 out.flush(); del out
 gold=build_gold(samples, offsets)
 sent=np.stack([clause_indices(s["text"],o,mask[i]) for i,(s,o) in enumerate(zip(samples,offsets))])
-n_clause=sum(1 for s2 in samples if len(_re.split(r"(?<=\.)\s+",s2["text"].strip()))<=1)
+n_clause=sum(1 for s2 in samples if is_single_sentence(s2["text"]))
 assert n_clause>0, "POSITIVE PRESENCE: no single-sentence rows — clause grains never engaged"
 print(f"[assemble13] clause-grain rows: {n_clause}/{len(samples)}", flush=True)
 np.savez('.cache/phase1_alg_states_form13.npz', tokmask=mask.astype(np.uint8),
