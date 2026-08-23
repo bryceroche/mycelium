@@ -1765,9 +1765,12 @@ def do_train(steps, lr, batch, seed):
     STRAW = int(os.environ.get("ALG_STRAW", "0"))
     if STRAW:
         _sw_base = np.ones(n, np.float64)
-        _sw_wild = np.array([1.0 if isinstance(smp.get("gen"), str)
-                             and smp["gen"].startswith("b22") else 0.15
-                             for smp in samples], np.float64)
+        _sw_h = float(os.environ.get("STRAW_HUMAN", "3.0"))
+        def _tier(smp):
+            g = smp.get("gen")
+            if not (isinstance(g, str) and g.startswith("b22")): return 0.15
+            return _sw_h if g == "b22human" else 1.0   # straw v2: three tiers
+        _sw_wild = np.array([_tier(smp) for smp in samples], np.float64)
         _sw_visits = np.zeros(n, np.float64)
         ration_w = _sw_base * _sw_wild
         print(f"[straw] armed: wild rows {(1.0 == _sw_wild).sum()} @1.0, "
