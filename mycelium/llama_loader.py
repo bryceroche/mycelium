@@ -191,7 +191,7 @@ class LlamaLayer:
         # deltas on wq (routing), wo (attn write-back), w_down (FFN write-back).
         # Adapted projection = h@W + (h@A)@B; B zero-init => zero delta at step 0.
         qproj = h @ self.wq.cast(x.dtype)
-        if lora is not None:
+        if lora is not None and "wq_A" in lora:
             qproj = qproj + (h @ lora["wq_A"].cast(x.dtype)) @ lora["wq_B"].cast(x.dtype)
         q = qproj.reshape(B, S, nh,  hd).transpose(1, 2)  # (B, nh, S, hd)
         k = (h @ self.wk.cast(x.dtype)).reshape(B, S, nkv, hd).transpose(1, 2)  # (B, nkv, S, hd)
@@ -211,7 +211,7 @@ class LlamaLayer:
         attn = scores.clip(-1e4, 1e4).softmax(-1).cast(v.dtype)
         ctx = (attn @ v).transpose(1, 2).reshape(B, S, H)  # (B, S, H)
         attn_out = ctx @ self.wo.cast(x.dtype)
-        if lora is not None:
+        if lora is not None and "wo_A" in lora:
             attn_out = attn_out + (ctx @ lora["wo_A"].cast(x.dtype)) @ lora["wo_B"].cast(x.dtype)
 
         x = x + attn_out
@@ -224,7 +224,7 @@ class LlamaLayer:
         up   = (h2 @ self.w_up.cast(x.dtype))
         gu   = gate * up
         ffn_out = gu @ self.w_down.cast(x.dtype)
-        if lora is not None:
+        if lora is not None and "wdown_A" in lora:
             ffn_out = ffn_out + (gu @ lora["wdown_A"].cast(x.dtype)) @ lora["wdown_B"].cast(x.dtype)
 
         return x + ffn_out
@@ -251,7 +251,7 @@ class LlamaLayer:
 
         # --- Attention --- (v300-2 lora mirror of __call__)
         qproj = h @ self.wq.cast(x.dtype)
-        if lora is not None:
+        if lora is not None and "wq_A" in lora:
             qproj = qproj + (h @ lora["wq_A"].cast(x.dtype)) @ lora["wq_B"].cast(x.dtype)
         q = qproj.reshape(B, S, nh,  hd).transpose(1, 2)
         k = (h @ self.wk.cast(x.dtype)).reshape(B, S, nkv, hd).transpose(1, 2)
@@ -269,7 +269,7 @@ class LlamaLayer:
         attn = scores.clip(-1e4, 1e4).softmax(-1).cast(v.dtype)
         ctx = (attn @ v).transpose(1, 2).reshape(B, S, H)
         attn_out = ctx @ self.wo.cast(x.dtype)
-        if lora is not None:
+        if lora is not None and "wo_A" in lora:
             attn_out = attn_out + (ctx @ lora["wo_A"].cast(x.dtype)) @ lora["wo_B"].cast(x.dtype)
 
         x = x + attn_out
@@ -279,7 +279,7 @@ class LlamaLayer:
         up   = (h2 @ self.w_up.cast(x.dtype))
         gu   = gate * up
         ffn_out = gu @ self.w_down.cast(x.dtype)
-        if lora is not None:
+        if lora is not None and "wdown_A" in lora:
             ffn_out = ffn_out + (gu @ lora["wdown_A"].cast(x.dtype)) @ lora["wdown_B"].cast(x.dtype)
 
         return x + ffn_out, attn

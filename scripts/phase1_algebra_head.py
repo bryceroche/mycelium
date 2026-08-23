@@ -679,9 +679,15 @@ def build_params(seed=0):
         # LlamaLayer already carries). Base trunk safetensors NEVER touched;
         # research lineage only; zero-init B = zero delta at step 0.
         _lr_r = int(os.environ.get("ALG_LORA_R", "16"))
+        _span = os.environ.get("ALG_LORA_SPAN", "0123")   # pool axis: layers
+        _proj = os.environ.get("ALG_LORA_PROJ", "all")    # pool axis: all|wq|wod
+        _pset = {"all": ("wq", "wo", "wdown"), "wq": ("wq",),
+                 "wod": ("wo", "wdown")}[_proj]
         _lrng = np.random.RandomState(seed + 7000)
         for _li in range(4):
+            if str(_li) not in _span: continue
             for _nm, _din in (("wq", 2048), ("wo", 2048), ("wdown", 8192)):
+                if _nm not in _pset: continue
                 p[f"lora{_li}_{_nm}_A"] = t(_lrng.randn(_din, _lr_r) * 0.01)
                 p[f"lora{_li}_{_nm}_B"] = t(np.zeros((_lr_r, 2048)))
     return p
@@ -1012,7 +1018,8 @@ def _loss_single(o, g):
     is_macro = g["is_macro"] if "is_macro" in g else is_mod * 0.0
     is_frac = g["is_frac"] if "is_frac" in g else is_mod * 0.0
     dm = g["is_lit_f"] + is_mod + is_pct + is_fdiv + is_macro + is_frac
-    l = l + (ce(o["dig"], g["digits"]).mean(-1) * dm).sum() / (dm.sum() + 1e-6)
+    l = l + (ce(o["dig"], g["digits"]).mean(-1) * dm).sum() / (dm.sum() + 1e-6) \
+        * float(os.environ.get("OBJW_DIG", "1.0"))       # pool axis OBJW
     if "sgn" in o and "sign" in g:              # E1: sign BCE on value slots
         l = l + (bce(o["sgn"], g["sign"]) * dm).sum() / (dm.sum() + 1e-6)
     if "cmt" in o:      # RUNG-3: commit-when-correct (self-labeled, DETACHED
@@ -1054,9 +1061,10 @@ def _loss_single(o, g):
     is_chain = g["is_chain"] if "is_chain" in g else is_mod * 0.0
     am = pres * (is_rel + is_sel + is_mod + is_pct + is_fdiv + is_macro + is_frac + is_chain)
     n_am = am.sum() + 1e-6
-    l = l + ((bce(o["args"], g["args"]) * args_w).mean(-1) * am).sum() / n_am * 2.0
-    l = l + (ce(o["res"], g["res"]) * pres).sum() / n_p * 2.0
-    l = l + ce(o["query"], g["query"]).mean() * 2.0
+    _ow_ptr = float(os.environ.get("OBJW_PTR", "1.0"))   # pool axis OBJW
+    l = l + ((bce(o["args"], g["args"]) * args_w).mean(-1) * am).sum() / n_am * 2.0 * _ow_ptr
+    l = l + (ce(o["res"], g["res"]) * pres).sum() / n_p * 2.0 * _ow_ptr
+    l = l + ce(o["query"], g["query"]).mean() * 2.0 * _ow_ptr
     fsn = g["fspan"] / (g["fspan"].sum(-1, keepdim=True) + 1e-6)
     # FAT_W (routing-canvas dose probe, gut #55 amended): the fat-CE canvas
     # has hung here at weight 1 all along; the probe doses it, never adds it.
@@ -1166,7 +1174,8 @@ def do_eval():
         _host = _trunk_host()
         _sc = float(os.environ.get("ALG_LORA_SCALE", "8.0"))
         _LD = [{f"{_nm}_{_ab}": (p[f"lora{_li}_{_nm}_{_ab}"] * (_sc if _ab == "B" else 1.0))
-                for _nm in ("wq", "wo", "wdown") for _ab in ("A", "B")}
+                for _nm in ("wq", "wo", "wdown") for _ab in ("A", "B")
+                if f"lora{_li}_{_nm}_A" in p} or None
                for _li in range(4)]
         _samples2, _ids2, _msk2, _off2 = tokenize(ALG_TEST)
         assert len(_samples2) == n, "eval tokenize/load_alg desync"
@@ -1596,8 +1605,10 @@ def do_train(steps, lr, batch, seed):
             _x = HOST.llama_embed[b_ids].detach()
             for _li, _layer in enumerate(HOST.llama_layers):
                 _ld = {f"{_nm}_{_ab}": (p[f"lora{_li}_{_nm}_{_ab}"] * (LORA_SCALE if _ab == "B" else 1.0))
-                       for _nm in ("wq", "wo", "wdown") for _ab in ("A", "B")}
-                _x = _layer(_x, HOST.llama_rope_cos, HOST.llama_rope_sin, lora=_ld)
+                       for _nm in ("wq", "wo", "wdown") for _ab in ("A", "B")
+                       if f"lora{_li}_{_nm}_A" in p}
+                _x = _layer(_x, HOST.llama_rope_cos, HOST.llama_rope_sin,
+                            lora=(_ld if _ld else None))
             _x = _ll_rms(_x, HOST.llama_layers[-1].ffn_norm, HOST.llama_cfg.rms_norm_eps)
             s_tr = _x.cast(dtypes.float)
         else:
