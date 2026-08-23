@@ -772,6 +772,12 @@ def arith3_propagator(state, factor):
     return s
 
 
+from functools import lru_cache as _registry_cache
+# perf audit 2026-08-23 #2: registry = pure fn of m; monotonicity selftest
+# verified once per (fn, m) per process, never re-verified (39% of profile)
+
+
+@_registry_cache(maxsize=8)
 def algebra_registry(m: int) -> dict:
     """Registry for integer linear/arithmetic systems over {0..m}."""
     reg = new_registry()
@@ -893,6 +899,7 @@ def sel_propagator(state, factor):
     return s
 
 
+@_registry_cache(maxsize=8)
 def algebra2_registry(m: int) -> dict:
     """arith3 + mod + sel over {0..m}."""
     reg = algebra_registry(m)
@@ -1002,6 +1009,7 @@ def fdiv_propagator(state, factor):
     return s
 
 
+@_registry_cache(maxsize=8)
 def algebra3_registry(m: int) -> dict:
     reg = algebra2_registry(m)
     register(reg, LTYPE_PCT, pct_pred, name="pct",

@@ -24,7 +24,19 @@ assert os.path.exists('.cache/base_t7self_deeds.jsonl')
 def load_rows(fs):
     return [json.loads(l) for f in fs for l in open(f) if l.strip()]
 
+import hashlib as _hl
+_SC_PATH = '.cache/solve_cache.jsonl'
+_SC = {}
+if os.path.exists(_SC_PATH):
+    for _l in open(_SC_PATH):
+        _e = json.loads(_l); _SC[_e["k"]] = _e["s"]
+    print(f"[solve-cache] {len(_SC)} entries loaded", flush=True)
+
 def to_train(rows, gen):
+    # perf audit 2026-08-23 #1: content-addressed solve cache — the same
+    # (factors, query) re-solved across the 12 skew assemblies (10.75x
+    # redundancy measured). Machine-solved, deterministic (seed 0), key-
+    # asserted on BOTH paths — custody untouched (no pen fields cached).
     out = []
     for r in rows:
         out.append({"text": r["original"], "factors": r["factors"],
@@ -34,14 +46,25 @@ def to_train(rows, gen):
     from mycelium.csp_domains import problem_from_algebra3
     from mycelium.csp_core import solve_symbolic
     from mycelium.macros import expand_graph
+    _new = []
     for t, src in zip(out, rows):
-        prim, nv = expand_graph(t["factors"], 24)
-        gv = {f["var"]: f["value"] for f in prim if f["ftype"] == "given"}
-        res = solve_symbolic(problem_from_algebra3(max(nv, 24), prim, gv, 300),
-                             budget=500_000, seed=0)
-        assert res["status"] == "solved"
-        t["solution"] = [int(res["assignment"][v]) for v in range(24)]
+        k = _hl.sha256(json.dumps({"f": t["factors"], "q": t["query_var"]},
+                                  sort_keys=True).encode()).hexdigest()[:24]
+        if k in _SC:
+            t["solution"] = list(_SC[k])
+        else:
+            prim, nv = expand_graph(t["factors"], 24)
+            gv = {f["var"]: f["value"] for f in prim if f["ftype"] == "given"}
+            res = solve_symbolic(problem_from_algebra3(max(nv, 24), prim, gv, 300),
+                                 budget=500_000, seed=0)
+            assert res["status"] == "solved"
+            t["solution"] = [int(res["assignment"][v]) for v in range(24)]
+            _SC[k] = t["solution"]; _new.append((k, t["solution"]))
         assert t["solution"][t["query_var"]] == src["answer"]
+    if _new:
+        with open(_SC_PATH, "a") as _f:
+            for k, sol in _new:
+                _f.write(json.dumps({"k": k, "s": sol}) + "\n")
     return out
 
 # human anchors (anchor-law corpus minus skips minus fixed wild-val)
@@ -102,6 +125,6 @@ gold = build_gold(samples, offsets)
 sent = np.stack([sent_indices(s["text"], o, mask[i])
                  for i, (s, o) in enumerate(zip(samples, offsets))])
 np.savez(os.environ.get('MIX_OUT', '.cache/form_mix23.jsonl').replace('form_mix','phase1_alg_states_form').replace('.jsonl','.npz'), tokmask=mask.astype(np.uint8),
-         sent=sent.astype(np.int8), mix_sha=mix_sha16(os.environ.get('MIX_OUT', '.cache/form_mix23.jsonl')),
+         sent=sent.astype(np.int8), ids=ids2.astype(np.int32), mix_sha=mix_sha16(os.environ.get('MIX_OUT', '.cache/form_mix23.jsonl')),
          **{f"g_{k}": v for k, v in gold.items()})
 print(f"[assemble23] STITCHED sparse-states + gold + sha ({n} rows)", flush=True)

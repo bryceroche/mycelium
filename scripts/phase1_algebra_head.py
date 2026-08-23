@@ -1406,7 +1406,13 @@ def do_train(steps, lr, batch, seed):
     if TRUNK_LORA:
         from beacon_closing_arm import _trunk_host
         HOST = _trunk_host()
-        _, IDS_ALL, _, _ = tokenize(os.environ["ALG_TRAIN"])
+        _npz_p = STATES_NPY.format(split=os.environ.get("ALG_TRAIN_NAME", "train")).replace("_states.npy", ".npz")
+        try:
+            _z = np.load(_npz_p)
+            IDS_ALL = _z["ids"]     # perf audit 2026-08-23 #4: assembly already
+            print(f"[lora] ids from sidecar {_npz_p}", flush=True)   # tokenized
+        except Exception:
+            _, IDS_ALL, _, _ = tokenize(os.environ["ALG_TRAIN"])
         LORA_SCALE = float(os.environ.get("ALG_LORA_SCALE", "8.0"))
         print(f"[lora] trunk-in-the-loop: r={os.environ.get('ALG_LORA_R','16')} "
               f"scale={LORA_SCALE} rows={len(IDS_ALL)}", flush=True)
