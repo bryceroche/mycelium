@@ -12,7 +12,9 @@ print(' '.join(f'{k}={v}' for k,v in r.items()))")
 echo "== POOL $ID :: $CFG =="
 eval "export $CFG"
 export DEV=AMD ALG2=1 ALG_DUP=1 ALG_HW=512 ALG_WIDE=1 ALG_ALLOW_PEN_TRAIN=1
-MIX=.cache/form_mix23_${diet}$( [ "$incanon" = "1" ] && echo _c ).jsonl
+CSUF=""
+[ "$incanon" = "1" ] && CSUF="_c" || true
+MIX=.cache/form_mix23_${diet}${CSUF}.jsonl
 if [ ! -f "$MIX" ]; then
   env ALG_FTYPES=8 ALG_TRUNK_LORA=1 DIET_SKEW=$diet IN_CANON=$incanon MIX_OUT=$MIX \
       .venv/bin/python3 scripts/form_assemble23.py
