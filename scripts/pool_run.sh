@@ -13,7 +13,7 @@ echo "== POOL $ID :: $CFG =="
 eval "export $CFG"
 export DEV=AMD ALG2=1 ALG_DUP=1 ALG_HW=512 ALG_WIDE=1 ALG_ALLOW_PEN_TRAIN=1
 CSUF=""
-[ "$incanon" = "1" ] && CSUF="_c" || true
+if [ "$incanon" = "1" ]; then CSUF="_c"; fi
 MIX=.cache/form_mix23_${diet}${CSUF}.jsonl
 if [ ! -f "$MIX" ]; then
   env ALG_FTYPES=8 ALG_TRUNK_LORA=1 DIET_SKEW=$diet IN_CANON=$incanon MIX_OUT=$MIX \
@@ -22,7 +22,7 @@ fi
 NAME=$(basename $MIX .jsonl | sed 's/form_mix/form/')
 CK=.cache/pool_${ID}.safetensors
 NBENV2=""
-[ "$nb" = "1" ] && NBENV2="ALG_NOTEBOOK=1 ALG_BREATH=3"
+if [ "$nb" = "1" ]; then NBENV2="ALG_NOTEBOOK=1 ALG_BREATH=3"; fi
 env DEV=CPU ALG2=1 ALG_FTYPES=8 ALG_DUP=1 ALG_HW=512 ALG_WIDE=1 ALG_TRUNK_LORA=1 \
     ALG_LORA_R=$rank ALG_LORA_SPAN=$span ALG_LORA_PROJ=$proj $NBENV2 \
     .venv/bin/python3 - << PYEOF2
@@ -38,7 +38,7 @@ safe_save(out,"$CK")
 print(f"[pool $ID] seed ckpt: head={sum(1 for k in out if not k.startswith('lora'))} lora={sum(1 for k in out if k.startswith('lora'))}")
 PYEOF2
 NBENV=""
-[ "$nb" = "1" ] && NBENV="ALG_NOTEBOOK=1 ALG_BREATH=3"
+if [ "$nb" = "1" ]; then NBENV="ALG_NOTEBOOK=1 ALG_BREATH=3"; fi
 env ALG_FTYPES=8 ALG_TRUNK_LORA=1 ALG_LORA_R=$rank ALG_LORA_SPAN=$span ALG_LORA_PROJ=$proj \
     ALG_ROPE_OFF=$ropeoff $NBENV \
     ALG_STRAW=1 STRAW_HUMAN=$strawh OBJW_PTR=$objwptr OBJW_DIG=$objwdig ALG_LORA_SCALE=8.0 \
