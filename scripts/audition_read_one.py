@@ -48,12 +48,43 @@ LD = [{f"{nm}_{ab}": (p[f"lora{li}_{nm}_{ab}"] * (8.0 if ab == "B" else 1.0))
 K = ("pres", "ftype", "op", "islit", "dig", "args", "res", "query")
 CANON = int(cfg.get("incanon", 0)) == 1
 
+def canon_digest(facs, q):
+    """isomorphism-lite canonical form: vars renumbered by first use in a
+    sorted factor serialization; the consensus comparator."""
+    import hashlib
+    ren = {}
+    def rv(v):
+        if v not in ren: ren[v] = len(ren)
+        return ren[v]
+    parts = []
+    for f in facs:
+        if f["ftype"] == "given":
+            parts.append(("g", rv(f["var"]), f["value"]))
+        elif f["ftype"] == "rel":
+            parts.append(("r", f.get("op"), tuple(rv(a) for a in f.get("args", [])),
+                          rv(f.get("result", 0))))
+        elif f["ftype"] == "macro":
+            parts.append(("m", f.get("name"), f.get("k1"), f.get("k2"),
+                          f.get("a"), f.get("k"),
+                          rv(f["x"]) if isinstance(f.get("x"), int) else None,
+                          rv(f["y"]) if isinstance(f.get("y"), int) else None,
+                          rv(f.get("result", 0))))
+        else:
+            parts.append((f["ftype"], f.get("p", f.get("k")),
+                          tuple(rv(a) for a in f.get("args", []))
+                          if "args" in f else rv(f.get("var", 0)),
+                          rv(f.get("result", 0)) if "result" in f else None))
+    blob = json.dumps(sorted(map(str, parts)))
+    return hashlib.sha256(blob.encode()).hexdigest()[:16]
+
+BATCH = 16   # perf r2 #3: widened from 8 (forward-only; VRAM-checked at first use)
+
 def read(rows):
     out = []
-    for s0 in range(0, len(rows), 8):
-        sl = rows[s0:s0 + 8]
-        ids = np.zeros((8, T_ALG), np.int32); msk = np.zeros((8, T_ALG), np.float32)
-        snt = np.zeros((8, T_ALG), np.int32)
+    for s0 in range(0, len(rows), BATCH):
+        sl = rows[s0:s0 + BATCH]
+        ids = np.zeros((BATCH, T_ALG), np.int32); msk = np.zeros((BATCH, T_ALG), np.float32)
+        snt = np.zeros((BATCH, T_ALG), np.int32)
         for li, r in enumerate(sl):
             t = canonicalize(r["original"]) if CANON else r["original"]
             e = tok.encode(t)
@@ -76,7 +107,7 @@ def read(rows):
                 a = solve_forced(facs, q, {"n_vars": 24, "m": 300})
             except Exception:
                 a = None
-            out.append(a)
+            out.append((a, canon_digest(facs, q) if a is not None else None))
     return out
 
 def fixtures():
@@ -109,9 +140,10 @@ def fixtures():
 rows = fixtures()
 ans = read(rows)
 json.dump({"id": CID,
-           "rows": [{"tag": r["tag"], "key": r["answer"], "got": a}
-                    for r, a in zip(rows, ans)]},
+           "rows": [{"tag": r["tag"], "key": r["answer"], "got": a,
+                     "dig": d}
+                    for r, (a, d) in zip(rows, ans)]},
           open(f'.cache/audition_{CID}.json', 'w'))
-n_r = sum(1 for r, a in zip(rows, ans) if a == r["answer"])
+n_r = sum(1 for r, (a, _) in zip(rows, ans) if a == r["answer"])
 print(f"[audition {CID}] rows {len(rows)} right {n_r} "
-      f"refused {sum(1 for a in ans if a is None)}", flush=True)
+      f"refused {sum(1 for a, _ in ans if a is None)}", flush=True)
