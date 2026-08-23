@@ -4,8 +4,14 @@ set -o pipefail
 cd /home/bryce/mycelium
 for ID in R01 R02 R03 R04 R05 R06 R07 R08 R09 R10 R11 R12 \
           R13 R14 R15 R16 R17 R18 R19 R20 R21 R22 R23 R24; do
+  if [ -f ".cache/pool_${ID}.done" ]; then
+    echo "==== ROUND1 $ID already done, skipping ===="
+    continue
+  fi
+  rm -f ".cache/pool_${ID}.safetensors"   # clean slate: no over-training a partial
   echo "==== ROUND1 $ID START $(date +%H:%M) ===="
   if ./scripts/pool_run.sh $ID; then
+    touch ".cache/pool_${ID}.done"
     echo "==== ROUND1 $ID DONE $(date +%H:%M) ===="
   else
     echo "==== ROUND1 $ID FAILED (continuing) ===="
