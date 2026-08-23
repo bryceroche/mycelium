@@ -1797,10 +1797,11 @@ def do_train(steps, lr, batch, seed):
                                   rng.choice(n, batch - 4, replace=False)])
         if not TRUNK_LORA:   # audit #15: b_tr is dead under the in-graph trunk
             b_tr.assign(Tensor(states[idx].astype(np.float32), dtype=dtypes.float).contiguous()).realize()
-        b_tk.assign(Tensor(tokmask[idx].astype(np.float32), dtype=dtypes.float).contiguous()).realize()
-        b_se.assign(Tensor(sent[idx].astype(np.int32), dtype=dtypes.int).contiguous()).realize()
+        _rl = [b_tk.assign(Tensor(tokmask[idx].astype(np.float32), dtype=dtypes.float).contiguous()),
+               b_se.assign(Tensor(sent[idx].astype(np.int32), dtype=dtypes.int).contiguous())]
         if TRUNK_LORA:
-            b_ids.assign(Tensor(IDS_ALL[idx].astype(np.int32), dtype=dtypes.int).contiguous()).realize()
+            _rl.append(b_ids.assign(Tensor(IDS_ALL[idx].astype(np.int32), dtype=dtypes.int).contiguous()))
+        Tensor.realize(*_rl)   # perf audit #2: one combined schedule, not N dispatches
         if ALG_CONSUME:
             bg["parents"].assign(Tensor(PARENTS[idx], dtype=dtypes.float).contiguous()).realize()
             bg["claimed"].assign(Tensor(CLAIMED[idx], dtype=dtypes.float).contiguous()).realize()

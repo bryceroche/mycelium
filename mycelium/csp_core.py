@@ -402,6 +402,13 @@ def lcv_valorder(state: CSPState, v: int, prior: Optional[list] = None) -> list:
     secondary tie-break (value-ordering is 2nd-order at small domains; finding c).
     """
     legal = sorted(state.domains[v])
+    if not state.problem.var_factors[v]:
+        # perf audit 2026-08-22 #1: a factor-free variable (the n_vars=24
+        # padding case) has no co-factors to constrain — every value is
+        # equally least-constraining; skip the per-value state.copy()
+        # (measured 59ms -> 0.76ms per padded solve, 78x). Value ORDER
+        # only; solved/unsat status untouched.
+        return legal
 
     def _removed(a: int) -> int:
         s2 = assign_var(state, v, a)
