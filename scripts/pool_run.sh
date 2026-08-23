@@ -19,8 +19,10 @@ if [ ! -f "$MIX" ]; then
 fi
 NAME=$(basename $MIX .jsonl | sed 's/form_mix/form/')
 CK=.cache/pool_${ID}.safetensors
+NBENV2=""
+[ "$nb" = "1" ] && NBENV2="ALG_NOTEBOOK=1 ALG_BREATH=3"
 env DEV=CPU ALG2=1 ALG_FTYPES=8 ALG_DUP=1 ALG_HW=512 ALG_WIDE=1 ALG_TRUNK_LORA=1 \
-    ALG_LORA_R=$rank ALG_LORA_SPAN=$span ALG_LORA_PROJ=$proj \
+    ALG_LORA_R=$rank ALG_LORA_SPAN=$span ALG_LORA_PROJ=$proj $NBENV2 \
     .venv/bin/python3 - << PYEOF2
 import sys; sys.path.insert(0,'.'); sys.path.insert(0,'scripts')
 from phase1_algebra_head import build_params
@@ -33,7 +35,10 @@ for k,v in p.items():
 safe_save(out,"$CK")
 print(f"[pool $ID] seed ckpt: head={sum(1 for k in out if not k.startswith('lora'))} lora={sum(1 for k in out if k.startswith('lora'))}")
 PYEOF2
+NBENV=""
+[ "$nb" = "1" ] && NBENV="ALG_NOTEBOOK=1 ALG_BREATH=3"
 env ALG_FTYPES=8 ALG_TRUNK_LORA=1 ALG_LORA_R=$rank ALG_LORA_SPAN=$span ALG_LORA_PROJ=$proj \
+    ALG_ROPE_OFF=$ropeoff $NBENV \
     ALG_STRAW=1 STRAW_HUMAN=$strawh OBJW_PTR=$objwptr OBJW_DIG=$objwdig ALG_LORA_SCALE=8.0 \
     RESUME=1 ALG_TRAIN=$MIX ALG_TRAIN_NAME=$NAME \
     ALG_TEST=.cache/algebra_nl_test.jsonl ALG_TEST_NAME=test23 \

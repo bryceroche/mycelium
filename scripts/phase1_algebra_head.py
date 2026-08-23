@@ -1173,6 +1173,7 @@ def do_eval():
         from mycelium.llama_loader import _rms_norm as _lrms
         _host = _trunk_host()
         _sc = float(os.environ.get("ALG_LORA_SCALE", "8.0"))
+        _ro = int(os.environ.get("ALG_ROPE_OFF", "0"))
         _LD = [{f"{_nm}_{_ab}": (p[f"lora{_li}_{_nm}_{_ab}"] * (_sc if _ab == "B" else 1.0))
                 for _nm in ("wq", "wo", "wdown") for _ab in ("A", "B")
                 if f"lora{_li}_{_nm}_A" in p} or None
@@ -1184,7 +1185,8 @@ def do_eval():
             _sl = slice(_s0, min(_s0 + 8, n))
             _x = _host.llama_embed[Tensor(_ids2[_sl], dtype=dtypes.int)]
             for _li, _layer in enumerate(_host.llama_layers):
-                _x = _layer(_x, _host.llama_rope_cos, _host.llama_rope_sin,
+                _x = _layer(_x, _host.llama_rope_cos[_ro:] if _ro else _host.llama_rope_cos,
+                            _host.llama_rope_sin[_ro:] if _ro else _host.llama_rope_sin,
                             lora=_LD[_li])
             _x = _lrms(_x, _host.llama_layers[-1].ffn_norm,
                        _host.llama_cfg.rms_norm_eps)
@@ -1414,6 +1416,7 @@ def do_train(steps, lr, batch, seed):
         except Exception:
             _, IDS_ALL, _, _ = tokenize(os.environ["ALG_TRAIN"])
         LORA_SCALE = float(os.environ.get("ALG_LORA_SCALE", "8.0"))
+        ROPE_OFF = int(os.environ.get("ALG_ROPE_OFF", "0"))
         print(f"[lora] trunk-in-the-loop: r={os.environ.get('ALG_LORA_R','16')} "
               f"scale={LORA_SCALE} rows={len(IDS_ALL)}", flush=True)
     if int(os.environ.get("RESUME", "0")) and not os.path.exists(ALG_CKPT):
@@ -1609,11 +1612,13 @@ def do_train(steps, lr, batch, seed):
         if TRUNK_LORA:
             from mycelium.llama_loader import _rms_norm as _ll_rms
             _x = HOST.llama_embed[b_ids].detach()
+            _rc = HOST.llama_rope_cos[ROPE_OFF:] if ROPE_OFF else HOST.llama_rope_cos
+            _rs = HOST.llama_rope_sin[ROPE_OFF:] if ROPE_OFF else HOST.llama_rope_sin
             for _li, _layer in enumerate(HOST.llama_layers):
                 _ld = {f"{_nm}_{_ab}": (p[f"lora{_li}_{_nm}_{_ab}"] * (LORA_SCALE if _ab == "B" else 1.0))
                        for _nm in ("wq", "wo", "wdown") for _ab in ("A", "B")
                        if f"lora{_li}_{_nm}_A" in p}
-                _x = _layer(_x, HOST.llama_rope_cos, HOST.llama_rope_sin,
+                _x = _layer(_x, _rc, _rs,
                             lora=(_ld if _ld else None))
             _x = _ll_rms(_x, HOST.llama_layers[-1].ffn_norm, HOST.llama_cfg.rms_norm_eps)
             s_tr = _x.cast(dtypes.float)
