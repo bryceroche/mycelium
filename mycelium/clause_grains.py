@@ -76,7 +76,7 @@ def math_clause_indices(text, offs, mask_row, sent_indices_fn, t_alg, sent_max):
 # real wild text meets the mint-trained model halfway. Input-space only
 # (the len_asc family); fixes the digit-adjacency class at the root
 # (\frac 56 -> \frac{5}{6}; \log_464 -> \log_{4}64).
-_FRAC_BARE = re.compile(r"\\frac\s*(\d)(\d)")
+_FRAC_BARE = re.compile(r"\\frac\s*(\d)(\d)(?!\d)")   # audit r1 #11: exactly two digits
 _FRAC_ONE = re.compile(r"\\frac\s*\{\s*(\d+)\s*\}\s*\{\s*(\d+)\s*\}")
 _LOG_BARE = re.compile(r"\\log_(\d)(\d+)")
 _DISPLAY = re.compile(r"\\\[|\\\]|\$\$")
@@ -88,7 +88,8 @@ def canonicalize(text):
     t = _DISPLAY.sub("$", t)
     t = _FRAC_BARE.sub(r"\\frac{\1}{\2}", t)
     t = _FRAC_ONE.sub(r"\\frac{\1}{\2}", t)
-    t = _LOG_BARE.sub(r"\\log_{\1}\2", t)
+    # _LOG_BARE rewrite REMOVED (audit r1 #11): \log_10100 is inherently
+    # ambiguous (base 10 vs base 1) — a canonicalizer must never guess
     t = t.replace("\\!", "").replace("\\quad", " ").replace("\\,", " ")
     t = t.replace("\\cdot", "\\times")
     t = _WS.sub(" ", t).strip()
