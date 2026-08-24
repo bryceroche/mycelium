@@ -113,30 +113,52 @@ def main():
             dec = []
             for j in range(L_FAC):
                 if pres[li, j] <= 0.5: continue
-                # per-cycle nearest cluster + chain score through transitions
-                chain = []; score = 0.0
+                # FULL-CHAIN VITERBI over top-K per cycle (tighten at
+                # every lowering step) + cycle-weighted label voting
+                TOPK = 5
+                layers = []
                 for ci, cyc in enumerate(cycles[:len(Bst)]):
                     v = Bst[min(ci, len(Bst) - 1)][li, j]
                     v = v / (np.linalg.norm(v) + 1e-9)
-                    bank = cents[cyc]
-                    bids = list(bank.keys())
+                    bank = cents[cyc]; bids = list(bank.keys())
                     sims = np.array([float(v @ bank[b]) for b in bids])
-                    order = np.argsort(-sims)[:3]
-                    if chain:
-                        prev = chain[-1]
-                        tr = trans.get(cyc, {}).get(prev, {})
-                        cand = [(sims[oi] + 0.2 * np.log1p(tr.get(bids[oi], 0)), oi)
-                                for oi in order]
-                        sbest, oi = max(cand)
-                    else:
-                        oi = order[0]; sbest = sims[oi]
-                    chain.append(bids[oi]); score += float(sbest)
-                # endpoint kind vote (walk back until a labeled cluster)
-                lab = None
-                for cid in reversed(chain):
-                    if cid in ckinds and ckinds[cid]:
-                        lab = max(ckinds[cid], key=ckinds[cid].get); break
-                if lab: dec.append(lab)
+                    order = np.argsort(-sims)[:TOPK]
+                    layers.append([(bids[oi], float(sims[oi])) for oi in order])
+                V = [sc for _, sc in layers[0]]
+                back = [[0] * TOPK]
+                for ci in range(1, len(layers)):
+                    cyc = cycles[ci]
+                    nV = []; nb = []
+                    for bi2, (cid, sc) in enumerate(layers[ci]):
+                        best, barg = -1e9, 0
+                        for ai, (pcid, _) in enumerate(layers[ci - 1]):
+                            tr = trans.get(cyc, {}).get(pcid, {})
+                            t = V[ai] + 0.2 * np.log1p(tr.get(cid, 0))
+                            if t > best: best, barg = t, ai
+                        nV.append(best + sc); nb.append(barg)
+                    V = nV; back.append(nb)
+                bi2 = int(np.argmax(V))
+                chain = []
+                for ci in range(len(layers) - 1, -1, -1):
+                    chain.append(layers[ci][bi2][0])
+                    bi2 = back[ci][bi2]
+                chain = chain[::-1]
+                # cycle-weighted kind vote (later cycles weigh more) +
+                # chain-stability confidence
+                votes = {}
+                labs_seq = []
+                for ci, cid in enumerate(chain):
+                    kc = ckinds.get(cid) or {}
+                    if not kc: continue
+                    lb = max(kc, key=kc.get)
+                    labs_seq.append(lb)
+                    w = 1.0 + ci / max(len(chain) - 1, 1)
+                    votes[lb] = votes.get(lb, 0.0) + w
+                if votes:
+                    lab = max(votes, key=votes.get)
+                    stab = labs_seq.count(lab) / max(len(labs_seq), 1)
+                    if stab >= float(os.environ.get("CHAIN_STAB", "0.0")):
+                        dec.append(lab)
             d = Counter(dec)
             g = gold_kinds(r["factors"])
             inter = sum((d & g).values())
