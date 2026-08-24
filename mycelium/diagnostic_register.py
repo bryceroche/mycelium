@@ -167,6 +167,18 @@ DIAGNOSTICS = {
             "which families need diet from measured flips (declared)."
         ),
     },
+    "chain_entropy": {
+        "coupling": "never",
+        "why": (
+            "THE DECOMPOSITION THERMOMETER (2026-08-24): per-cycle "
+            "cluster-assignment entropy (the lowering staircase), chain "
+            "kind-vote entropy (the fingerpost's refusal gate), and atlas "
+            "kind_counts entropy (centroid purity / split criterion). "
+            "Temperature-perpendicular-to-truth at every grain: an entropy "
+            "term in any loss buys confident wrongness, trained hedging, "
+            "or fake cluster purity. Instrument always, objective never."
+        ),
+    },
     "distance_screen": {
         "coupling": "never",
         "why": (
