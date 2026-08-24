@@ -15,7 +15,8 @@ export DEV=AMD ALG2=1 ALG_DUP=1 ALG_HW=512 ALG_WIDE=1 ALG_ALLOW_PEN_TRAIN=1
 CSUF=""
 if [ "$incanon" = "1" ]; then CSUF="_c"; fi
 MIX=.cache/form_mix23_${diet}${CSUF}.jsonl
-if [ ! -f "$MIX" ]; then
+NPZ=$(echo $MIX | sed 's/form_mix/phase1_alg_states_form/; s/.jsonl/.npz/')
+if [ ! -f "$MIX" ] || [ ! -f "$NPZ" ]; then
   env ALG_FTYPES=8 ALG_TRUNK_LORA=1 DIET_SKEW=$diet IN_CANON=$incanon MIX_OUT=$MIX \
       .venv/bin/python3 scripts/form_assemble23.py
 fi
