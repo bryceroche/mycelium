@@ -52,7 +52,7 @@ def main():
     for cid, cnt, mean, kc in c.execute(
             "SELECT cluster_id,count,mean,kind_counts FROM waist_patterns_sent"):
         if cnt < 5: continue
-        v = np.frombuffer(mean, np.float64).astype(np.float32)
+        v = np.frombuffer(mean, np.float32).copy()   # miner writes float32
         kcd = json.loads(kc) if kc else {}
         if not kcd: continue
         k = max(kcd, key=kcd.get)
