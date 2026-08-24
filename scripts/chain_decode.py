@@ -72,8 +72,21 @@ def main():
     gold = [v for k, v in sorted(byid.items()) if k not in sk]
     print(f"[chain] gold rows: {len(gold)}", flush=True)
 
+    OPG = os.environ.get("ATLAS_TABLE", "").endswith("_op")
     def gold_kinds(facs):
-        return Counter(f["ftype"] for f in facs)
+        if not OPG:
+            return Counter(f["ftype"] for f in facs)
+        out = []
+        for f in facs:
+            if f["ftype"] == "rel":
+                if f.get("op") == "mul" and len(set(f.get("args", []))) == 1:
+                    out.append("sq")
+                else: out.append(f.get("op", "rel"))
+            elif f["ftype"] == "macro":
+                out.append("opa" if f.get("name") == "OP_APPLY" else "fr")
+            elif f["ftype"] == "frac": out.append("fr")
+            else: out.append(f["ftype"])
+        return Counter(out)
 
     f1s = []
     for s0 in range(0, len(gold), 8):
