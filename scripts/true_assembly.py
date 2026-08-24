@@ -124,6 +124,28 @@ def main():
                         chain_lab[j] = max(ckinds[cid], key=ckinds[cid].get)
                         break
             facs_raw, q = decode({k2: onp[k2][li] for k2 in onp})
+            # A2: EXCLUSIVE VALUE BINDING — greedy 1:1 matching of given-
+            # slots x surface numbers by fat mass; each number spent once
+            _present = [j for j in range(L_FAC) if pres[li, j] > 0.5]
+            _gslots = [(_present[fi] if fi < len(_present) else None, fi)
+                       for fi, f in enumerate(facs_raw)]
+            _cand = []
+            for j, fi in _gslots:
+                if j is None: continue
+                lab = None  # chain label known below; score all, filter later
+                for ni, (nv, toks) in enumerate(nums):
+                    _cand.append((float(fat[li, j, toks].sum()), fi, ni))
+            if os.environ.get("A2_BIND", "fat") == "order":
+                _assign = {}; _ni = 0
+                for fi, f in enumerate(facs_raw):
+                    if f["ftype"] == "given" and _ni < len(nums):
+                        _assign[fi] = _ni; _ni += 1
+            else:
+                _cand.sort(reverse=True)
+                _assign = {}; _used = set()
+                for sc, fi, ni in _cand:
+                    if fi in _assign or ni in _used: continue
+                    _assign[fi] = ni; _used.add(ni)
             try:
                 a_raw = solve_forced(facs_raw, q, {"n_vars": 24, "m": 300})
             except Exception:
@@ -136,12 +158,11 @@ def main():
                 j = present[fi] if fi < len(present) else None
                 lab = chain_lab.get(j)
                 if lab == "given" or (lab is None and f["ftype"] == "given"):
-                    # value = fat-heaviest surface number in the slot's view
-                    if not nums: ok = False; break
-                    best = max(nums, key=lambda nv:
-                               float(fat[li, j, nv[1]].sum()) if j is not None else 0)
-                    born.append({"ftype": "given", "var": f.get("var", 0),
-                                 "value": best[0]})
+                    if fi in _assign:
+                        born.append({"ftype": "given", "var": f.get("var", 0),
+                                     "value": nums[_assign[fi]][0]})
+                    else:
+                        born.append(f)   # no exclusive number left: head value
                 elif lab in OPMAP:
                     ft, op = OPMAP[lab]
                     g = {"ftype": ft, "op": op,
