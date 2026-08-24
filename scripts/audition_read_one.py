@@ -129,6 +129,18 @@ def fixtures():
                   "answer": int(str(h[i]["answer"]).strip()), "tag": "held"}
                  for i in rg.permutation(len(h)) if i not in drafted
                  and str(h[i]["answer"]).strip().isdigit()][:10]
+    # ANCHOR POINTS (2026-08-23 gut): standard candles — trained human
+    # rows (failing = damage, not difficulty) + dialect rows (health)
+    _tr = [v for k, v in sorted(byid.items()) if k not in sk][:20]
+    rows += [{"original": r["original"], "answer": r["answer"], "tag": "anc_h"}
+             for r in _tr]
+    import phase1_algebra_head as _PH
+    _ds, _, _, _, _ = _PH.load_alg("test")
+    _rg = np.random.default_rng(41)
+    for _i in _rg.choice(len(_ds), 20, replace=False):
+        _s = _ds[int(_i)]
+        rows += [{"original": _s["text"],
+                  "answer": _s["solution"][_s["query_var"]], "tag": "anc_d"}]
     cen = json.load(open('.cache/frontier_census_t7.json'))["rows"]
     take = [r for r in cen if r["src_idx"] not in drafted][:100]
     rows += [{"original": h[r["src_idx"]]["problem"],

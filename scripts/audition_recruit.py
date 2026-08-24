@@ -32,9 +32,24 @@ def main():
     # behavior vector: per row, the emitted answer (None = refuse)
     beh = {c: [r["got"] for r in reads[c]] for c in ids}
     rights = {c: sum(1 for r in reads[c] if r["got"] == r["key"]) for c in ids}
-    floor = max(2, int(np.median(list(rights.values()))) // 2)
-    eligible = [c for c in ids if rights[c] >= floor]
-    print(f"[recruit] competence floor {floor}: {len(eligible)}/{len(ids)} eligible", flush=True)
+    def _anc(c, tag):
+        rs = [r for r in reads[c] if r["tag"] == tag]
+        return sum(1 for r in rs if r["got"] == r["key"]) / max(len(rs), 1)
+    has_anchors = any(r["tag"] == "anc_h" for r in reads[ids[0]])
+    if has_anchors:
+        # ANCHOR FLOORS (standard candles): orientation measured separately
+        # from frontier skill — dialect-anchor >= 0.3 AND trained-anchor
+        # >= 0.15, else the reader is damaged, not merely contrarian
+        eligible = [c for c in ids
+                    if _anc(c, "anc_d") >= 0.3 and _anc(c, "anc_h") >= 0.15]
+        print(f"[recruit] anchor floors (d>=.3, h>=.15): "
+              f"{len(eligible)}/{len(ids)} eligible; anchors: " +
+              " ".join(f"{c}:d{_anc(c,'anc_d'):.2f}/h{_anc(c,'anc_h'):.2f}"
+                       for c in ids), flush=True)
+    else:
+        floor = max(2, int(np.median(list(rights.values()))) // 2)
+        eligible = [c for c in ids if rights[c] >= floor]
+        print(f"[recruit] competence floor {floor}: {len(eligible)}/{len(ids)} eligible", flush=True)
     def dis(a, b):
         return sum(1 for x, y in zip(beh[a], beh[b]) if x != y) / n
     D = {(a, b): dis(a, b) for a in eligible for b in eligible if a < b}
