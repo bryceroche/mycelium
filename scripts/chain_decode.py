@@ -39,14 +39,14 @@ def load_atlas():
     c = sqlite3.connect('.cache/campaign.db')
     cents = {}; kinds = {}
     for cid, cyc, cnt, mean, kc in c.execute(
-            "SELECT cluster_id,breath_cycle,count,mean,kind_counts "
-            "FROM waist_patterns_v3 WHERE count >= 3"):
+            f"SELECT cluster_id,breath_cycle,count,mean,kind_counts "
+            f"FROM {os.environ.get('ATLAS_TABLE','waist_patterns_v3')} WHERE count >= 3"):
         v = np.frombuffer(mean, np.float32).copy()
         cents.setdefault(cyc, {})[cid] = v / (np.linalg.norm(v) + 1e-9)
         if kc:
             kinds[cid] = json.loads(kc)
     trans = {}
-    for cyc, a, b, cnt in c.execute("SELECT cycle,from_id,to_id,count FROM v3_transitions"):
+    for cyc, a, b, cnt in c.execute(f"SELECT cycle,from_id,to_id,count FROM {os.environ.get('ATLAS_TRANS','v3_transitions')}"):
         trans.setdefault(cyc, {}).setdefault(a, {})[b] = cnt
     c.close()
     return cents, kinds, trans
