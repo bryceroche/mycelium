@@ -27,7 +27,7 @@ from comp_mint import sample_expr, ok_node, val, LETTERS
 
 _ = load_alg("test")
 tok = Tokenizer.from_file(TOKENIZER_JSON)
-STATES = ["none", "given", "rel", "macro"]
+STATES = ["none", "given", "add", "sub", "mul", "sq", "fr", "opa"]
 
 # ---- instrumented renderer: returns (text, spans=[(kind,a,b)]) ----
 def render_sp(n, prec=0):
@@ -41,13 +41,13 @@ def render_sp(n, prec=0):
         if n[1][0] not in ("lit", "var"):
             inner = f"({inner})"; sp = [(k, a + 1, b + 1) for k, a, b in sp]
         s = f"{inner}^2"
-        return s, sp + [("rel", 0, len(s))]
+        return s, sp + [("sq", 0, len(s))]
     if t == "fr":
         inner, sp = render_sp(n[1], 0)
         s = "\\frac{%s}{%d}" % (inner, n[2])
         off = len("\\frac{")
         return s, [(k, a + off, b + off) for k, a, b in sp] + \
-               [("macro", 0, len(s))]
+               [("fr", 0, len(s))]
     if t == "opa":
         k1, a, k2, b, op = n[1], n[2], n[3], n[4], n[5]
         def leg(k, x):
@@ -60,7 +60,7 @@ def render_sp(n, prec=0):
         s = f"{la} {sgn} {lb}"
         off_b = len(la) + 3
         return s, sa + [(k, aa + off_b, bb + off_b) for k, aa, bb in sb] + \
-               [("macro", 0, len(s))]
+               [("opa", 0, len(s))]
     a, b = n[1], n[2]
     ra, sa = render_sp(a, 1 if t in ("add", "sub") else 2)
     rb, sb = render_sp(b, 2 if t == "sub" else (3 if t == "mul" else 1))
@@ -70,7 +70,7 @@ def render_sp(n, prec=0):
     else:
         s = f"{ra}{joiner}{rb}"; off_b = len(ra) + len(joiner)
     sp = sa + [(k, aa + off_b, bb + off_b) for k, aa, bb in sb]
-    return s, sp + [("rel", 0, len(s))]
+    return s, sp + [(t, 0, len(s))]
 
 TEMPL = ["If {d}, what is the value of ${e}$?",
          "Suppose {d}. What is ${e}$?",
@@ -176,7 +176,7 @@ def main():
                           for j in range(k)])
         banks[s] = c / (np.linalg.norm(c, axis=1, keepdims=True) + 1e-9)
     # ---- 3) empirical transitions ----
-    Tm = np.full((4, 4), 1e-3)
+    Tm = np.full((len(STATES), len(STATES)), 1e-3)
     for labs in seqs:
         for x, y in zip(labs, labs[1:]):
             Tm[STATES.index(x), STATES.index(y)] += 1
@@ -195,7 +195,7 @@ def main():
         em = em * tau
         em = em - np.log(np.exp(em).sum(1, keepdims=True))
         V = em[0].copy()
-        back = np.zeros((ntk, 4), np.int32)
+        back = np.zeros((ntk, len(STATES)), np.int32)
         for t in range(1, ntk):
             sc = V[:, None] + Tm
             back[t] = sc.argmax(0)
@@ -214,7 +214,18 @@ def main():
     gold = [v for k, v in sorted(byid.items()) if k not in sk]
     gf, go = waist_feats([r["original"] for r in gold])
     f1s = []
-    KMAP = {"rel": "rel", "given": "given", "macro": "macro"}
+    def gold_ops(facs):
+        out = []
+        for f in facs:
+            if f["ftype"] == "given": out.append("given")
+            elif f["ftype"] == "rel":
+                if f.get("op") == "mul" and len(set(f.get("args", []))) == 1:
+                    out.append("sq")
+                else: out.append(f.get("op", "rel"))
+            elif f["ftype"] == "macro":
+                out.append("opa" if f.get("name") == "OP_APPLY" else "fr")
+            else: out.append(f["ftype"])   # pct/fdiv/sel: honest misses
+        return out
     for r, h in zip(gold, gf):
         if h is None: f1s.append(0.0); continue
         path = decode(h)
@@ -223,12 +234,12 @@ def main():
             if (t == 0 or ki != path[t - 1]) and STATES[ki] != "none":
                 dec.append(STATES[ki])
         d = Counter(dec)
-        g = Counter(KMAP.get(f["ftype"], f["ftype"]) for f in r["factors"])
+        g = Counter(gold_ops(r["factors"]))
         inter = sum((d & g).values())
         f1s.append(2 * inter / max(sum(d.values()) + sum(g.values()), 1))
     f1s = np.array(f1s)
     print(f"[span] V2 KIND-MULTISET F1 on 143 gold: mean {f1s.mean():.3f} "
-          f"median {np.median(f1s):.3f} (v1 baseline 0.373; bar 0.5)  "
+          f"median {np.median(f1s):.3f} (v1 0.373 / v2 0.343; bar 0.5)  "
           f"rows>=0.5: {(f1s >= 0.5).sum()}/{len(f1s)}", flush=True)
     print("[span] VERDICT: " + ("THE KEYSTONE HOLDS — assembly is the game"
           if f1s.mean() >= 0.5 else

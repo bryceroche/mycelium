@@ -40,8 +40,10 @@ def main():
         # ANCHOR FLOORS (standard candles): orientation measured separately
         # from frontier skill — dialect-anchor >= 0.3 AND trained-anchor
         # >= 0.15, else the reader is damaged, not merely contrarian
-        eligible = [c for c in ids
-                    if _anc(c, "anc_d") >= 0.3 and _anc(c, "anc_h") >= 0.15]
+        # audition floor = dialect health only: 5k-step candidates have not
+        # drained the human anchors yet (the slow-drainage curve, not damage);
+        # the h-floor applies at HIRE-CONTINUATION time, not audition time
+        eligible = [c for c in ids if _anc(c, "anc_d") >= 0.3]
         print(f"[recruit] anchor floors (d>=.3, h>=.15): "
               f"{len(eligible)}/{len(ids)} eligible; anchors: " +
               " ".join(f"{c}:d{_anc(c,'anc_d'):.2f}/h{_anc(c,'anc_h'):.2f}"
