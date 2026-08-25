@@ -115,6 +115,10 @@ TERMINALS = {
     "dig2":   {"params": ["h_dig2", "h_dig2_b"],   "emit": "dig2",  "gold": ["digits2", "is_macro"], "when": lambda: int(os.environ.get("ALG2", "0")) and _ft() >= 7},
     "y":      {"params": ["W_y"],                  "emit": "y",     "gold": ["y"],        "when": lambda: int(os.environ.get("ALG2", "0")) and _ft() >= 7},
     "sgn":    {"params": ["h_sgn", "h_sgn_b"],     "emit": "sgn",   "gold": ["sign"],     "when": lambda: ALG_WIDE},
+    "depth":  {"params": ["h_depth", "h_depth_b"], "emit": "depth", "gold": ["depth"],
+               "when": lambda: int(os.environ.get("ALG_POSCH", "0")) > 0},
+    "term":   {"params": ["h_term", "h_term_b"],   "emit": "term",  "gold": ["term"],
+               "when": lambda: int(os.environ.get("ALG_POSCH", "0")) > 0},
     "cmt":    {"params": ["W_cmt", "W_cmt_b"],     "emit": "cmt",   "gold": ["ftype", "res"],
                "when": lambda: int(os.environ.get("ALG_RINGS", "0")) and int(os.environ.get("ALG_BREATH", "1")) > 1},
 }
@@ -168,6 +172,25 @@ def _spans_to_tokmask(spans, offs, out):
                 break
             if ts < ce and te > cs:
                 out[ti] = 1.0
+
+
+def _pos_meta(r):
+    """per-factor (graph depth 0-5, terminality) — the position channel's
+    gold (2026-08-24; labels derived from the factor list, key-lawful)."""
+    facs = r["factors"]; q = r.get("query_var", r.get("query", 0))
+    def var_of(f): return f.get("result", f.get("var", 0))
+    def dep(fi, seen):
+        f = facs[fi]
+        if f["ftype"] == "given": return 0
+        srcs = f.get("args", []) if "args" in f else [f.get("var", 0)]
+        ds = []
+        for v in srcs:
+            for fj, gg in enumerate(facs):
+                if fj != fi and var_of(gg) == v and fj not in seen:
+                    ds.append(dep(fj, seen | {fj}))
+        return 1 + max(ds, default=0)
+    return [(min(dep(fi, {fi}), 5), 1.0 if var_of(f) == q else 0.0)
+            for fi, f in enumerate(facs)]
 
 
 def build_gold(samples, offsets):
@@ -338,6 +361,15 @@ def build_gold(samples, offsets):
                         g[arr][i, j, d] = (t_ // 10 ** (N_DIG - 1 - d)) % 10
             else:
                 raise ValueError(f"unknown gold ftype {f['ftype']!r}")
+    if int(os.environ.get("ALG_POSCH", "0")):
+        g["depth"] = np.zeros((n, L_FAC), np.int32)
+        g["term"] = np.zeros((n, L_FAC), np.float32)
+        for ri, smp in enumerate(samples):
+            try:
+                for j, (d, t) in enumerate(_pos_meta(smp)[:L_FAC]):
+                    g["depth"][ri, j] = d; g["term"][ri, j] = t
+            except Exception:
+                pass
     return g
 
 
@@ -673,6 +705,15 @@ def build_params(seed=0):
         else:                   # same coordinate code
             p["W_sil"] = t(rng.randn(H_W, H_W) / math.sqrt(H_W))
             p["W_nq"] = t(rng.randn(H_W, H_W) / math.sqrt(H_W))
+    if int(os.environ.get("ALG_POSCH", "0")):
+        # THE POSITION CHANNEL (2026-08-24, word given; deficit twice-banked:
+        # ladder depth-at-chance + A0 balanced .222): supervised depth/term
+        # terminals — position TAUGHT into the states (gold outcomes, the
+        # lawful side of the Goodhart boundary)
+        p["h_depth"] = t(rng.randn(H_W, 6) / math.sqrt(H_W))
+        p["h_depth_b"] = t(np.zeros(6))
+        p["h_term"] = t(rng.randn(H_W, 1) / math.sqrt(H_W))
+        p["h_term_b"] = t(np.zeros(1))
     if int(os.environ.get("ALG_TRUNK_LORA", "0")):
         # THE TRUNK-COPY LoRA (2026-08-22, constitutional word): rank-r
         # adapters on a RUNTIME copy of L0-L3 (wq/wo/wdown — the hook
@@ -964,6 +1005,9 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
                                                         # (revisability meter's
                                                         # raw feed; audit-side)
     out["query"] = ((qst @ p["W_query"]) @ vst.transpose(-2, -1)).reshape(B, K_VARS)
+    if "h_depth" in p:
+        out["depth"] = fst @ p["h_depth"] + p["h_depth_b"]
+        out["term"] = (fst @ p["h_term"] + p["h_term_b"]).squeeze(-1)
     out["fat"], out["vat"] = fat, vat
     if "h_ref" in p:
         out["ref"] = waist @ p["h_ref"] + p["h_ref_b"]   # (B, T_ALG, K_VARS)
@@ -1015,6 +1059,9 @@ def _loss_single(o, g):
     l = l + (ce(o["ftype"], g["ftype"]) * pres).sum() / n_p
     l = l + (ce(o["op"], g["op"]) * rel).sum() / n_rel
     l = l + bce(o["islit"], g["is_lit_f"]).mean()
+    if "depth" in o and "depth" in g:      # the position channel (gold-fed)
+        l = l + (ce(o["depth"], g["depth"]) * pres).sum() / n_p
+        l = l + (bce(o["term"], g["term"]) * pres).sum() / n_p
     is_macro = g["is_macro"] if "is_macro" in g else is_mod * 0.0
     is_frac = g["is_frac"] if "is_frac" in g else is_mod * 0.0
     dm = g["is_lit_f"] + is_mod + is_pct + is_fdiv + is_macro + is_frac
@@ -1586,6 +1633,9 @@ def do_train(steps, lr, batch, seed):
                          # (without it h_sgn leaves the graph: None grad)
                          *((("sign", (L_FAC,), dtypes.float),)
                            if ALG_WIDE else ()),
+                         *((("depth", (L_FAC,), dtypes.int),
+                            ("term", (L_FAC,), dtypes.float))
+                           if int(os.environ.get("ALG_POSCH", "0")) else ()),
                          ("query", (), dtypes.int)):
         npdt = np.float32 if dt == dtypes.float else np.int32
         bg[k] = fix(np.zeros((batch,) + shape, npdt), dt)
