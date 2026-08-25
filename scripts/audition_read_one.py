@@ -107,7 +107,16 @@ def read(rows):
                 a = solve_forced(facs, q, {"n_vars": 24, "m": 300})
             except Exception:
                 a = None
-            out.append((a, canon_digest(facs, q) if a is not None else None))
+            def _op_of(f):
+                if f["ftype"] == "rel":
+                    if f.get("op") == "mul" and len(set(f.get("args", []))) == 1:
+                        return "sq"
+                    return f.get("op", "rel")
+                if f["ftype"] == "macro":
+                    return "opa" if f.get("name") == "OP_APPLY" else "fr"
+                return f["ftype"]
+            ops = sorted(_op_of(f) for f in facs if f["ftype"] != "given")
+            out.append((a, canon_digest(facs, q) if a is not None else None, ops))
     return out
 
 def fixtures():
@@ -153,9 +162,9 @@ rows = fixtures()
 ans = read(rows)
 json.dump({"id": CID,
            "rows": [{"tag": r["tag"], "key": r["answer"], "got": a,
-                     "dig": d}
-                    for r, (a, d) in zip(rows, ans)]},
+                     "dig": d, "ops": o2}
+                    for r, (a, d, o2) in zip(rows, ans)]},
           open(f'.cache/audition_{CID}.json', 'w'))
-n_r = sum(1 for r, (a, _) in zip(rows, ans) if a == r["answer"])
+n_r = sum(1 for r, (a, _, _o) in zip(rows, ans) if a == r["answer"])
 print(f"[audition {CID}] rows {len(rows)} right {n_r} "
-      f"refused {sum(1 for a, _ in ans if a is None)}", flush=True)
+      f"refused {sum(1 for a, _, _o in ans if a is None)}", flush=True)
