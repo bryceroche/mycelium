@@ -139,6 +139,14 @@ def main():
                     cands = []
                     for fi, (f, j) in enumerate(live):
                         if j is None: continue
+                        # attempt 2 (V2_BOTH, default on): the culprit must
+                        # be sworn by BOTH witnesses — solver (consistency:
+                        # LOO restores forcedness) AND chain (correspondence:
+                        # text-side dissent). Consistency alone was the lie
+                        # machine (attempt 1: +10 gold lies, 21 repair-emits
+                        # nearly all wrong).
+                        if int(os.environ.get("V2_BOTH", "1")) and j not in dis:
+                            continue
                         if try_solve([g for gi, (g, _) in enumerate(live)
                                       if gi != fi], q) is not None:
                             cands.append((j in dis, -onp["pres"][li, j], j))
