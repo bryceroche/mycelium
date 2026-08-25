@@ -1970,6 +1970,15 @@ def do_train(steps, lr, batch, seed):
                     "y": gold["y"][idx]} if "is_macro" in bg else {}),
                 **({"is_frac": gold["is_frac"][idx]} if "is_frac" in bg else {}),
                 **({"sign": gold["sign"][idx]} if "sign" in bg else {})}
+        # THE FEED DOOR (2026-08-25): the buffer list and the feed dict are
+        # TWO doors — a terminal registered in one but not the other trains
+        # against silent zeros (the opc/posch specimen: emission + gold
+        # buffer both present, grads flowing, gold all-zero). Any bg buffer
+        # with a same-named gold array rides automatically; new terminals
+        # can never miss the feed again.
+        for k in bg:
+            if k not in feed and k in gold:
+                feed[k] = gold[k][idx]
         for k, v in feed.items():
             npdt = np.float32 if bg[k].dtype == dtypes.float else np.int32
             bg[k].assign(Tensor(v.astype(npdt), dtype=bg[k].dtype).contiguous()).realize()
