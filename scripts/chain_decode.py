@@ -88,7 +88,7 @@ def main():
             else: out.append(f["ftype"])
         return Counter(out)
 
-    f1s = []
+    f1s = []; exacts = []
     for s0 in range(0, len(gold), 8):
         sl = gold[s0:s0 + 8]
         ids = np.zeros((8, T_ALG), np.int32); msk = np.zeros((8, T_ALG), np.float32)
@@ -163,7 +163,10 @@ def main():
             g = gold_kinds(r["factors"])
             inter = sum((d & g).values())
             f1s.append(2 * inter / max(sum(d.values()) + sum(g.values()), 1))
+            exacts.append(1 if d == g else 0)
     f1s = np.array(f1s)
+    print(f"[chain] EXACT-ROW multiset rate: {sum(exacts)}/{len(exacts)}",
+          flush=True)
     print(f"[chain] V4 KIND-MULTISET F1: mean {f1s.mean():.3f} median "
           f"{np.median(f1s):.3f} (flat-HMM curve .373/.343/.296; bar 0.5)  "
           f"rows>=0.5: {(f1s >= 0.5).sum()}/{len(f1s)}", flush=True)

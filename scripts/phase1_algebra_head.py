@@ -119,6 +119,9 @@ TERMINALS = {
                "when": lambda: int(os.environ.get("ALG_POSCH", "0")) > 0},
     "term":   {"params": ["h_term", "h_term_b"],   "emit": "term",  "gold": ["term"],
                "when": lambda: int(os.environ.get("ALG_POSCH", "0")) > 0},
+    "opc":    {"params": ["W_opc1", "W_opc1_b", "W_opc2", "W_opc2_b"],
+               "emit": "opc", "gold": ["opc"],
+               "when": lambda: int(os.environ.get("ALG_OPCOUNT", "0")) > 0},
     "cmt":    {"params": ["W_cmt", "W_cmt_b"],     "emit": "cmt",   "gold": ["ftype", "res"],
                "when": lambda: int(os.environ.get("ALG_RINGS", "0")) and int(os.environ.get("ALG_BREATH", "1")) > 1},
 }
@@ -191,6 +194,32 @@ def _pos_meta(r):
         return 1 + max(ds, default=0)
     return [(min(dep(fi, {fi}), 5), 1.0 if var_of(f) == q else 0.0)
             for fi, f in enumerate(facs)]
+
+
+OPC_CLASSES = ["add", "sub", "mul", "div", "sq", "opa", "fr",
+               "given", "mod", "sel", "pct", "fdiv"]
+OPC_CAP = 7
+
+
+def _opc_meta(r):
+    """per-row op-class counts (lever 3, 2026-08-25) — the SAME op-grain
+    mapping as chain_decode's grader (rel->op / dup-mul->sq / macro->opa|fr
+    / frac->fr / else ftype); gold at the ROW grain, where exactness lives."""
+    from collections import Counter
+    cnt = Counter()
+    for f in r["factors"]:
+        if f["ftype"] == "rel":
+            if f.get("op") == "mul" and len(set(f.get("args", []))) == 1:
+                cnt["sq"] += 1
+            else:
+                cnt[f.get("op", "add")] += 1
+        elif f["ftype"] == "macro":
+            cnt["opa" if f.get("name") == "OP_APPLY" else "fr"] += 1
+        elif f["ftype"] == "frac":
+            cnt["fr"] += 1
+        else:
+            cnt[f["ftype"]] += 1
+    return [min(cnt.get(c, 0), OPC_CAP) for c in OPC_CLASSES]
 
 
 def build_gold(samples, offsets):
@@ -368,6 +397,13 @@ def build_gold(samples, offsets):
             try:
                 for j, (d, t) in enumerate(_pos_meta(smp)[:L_FAC]):
                     g["depth"][ri, j] = d; g["term"][ri, j] = t
+            except Exception:
+                pass
+    if int(os.environ.get("ALG_OPCOUNT", "0")):
+        g["opc"] = np.zeros((n, len(OPC_CLASSES)), np.int32)
+        for ri, smp in enumerate(samples):
+            try:
+                g["opc"][ri] = _opc_meta(smp)
             except Exception:
                 pass
     return g
@@ -714,6 +750,16 @@ def build_params(seed=0):
         p["h_depth_b"] = t(np.zeros(6))
         p["h_term"] = t(rng.randn(H_W, 1) / math.sqrt(H_W))
         p["h_term_b"] = t(np.zeros(1))
+    if int(os.environ.get("ALG_OPCOUNT", "0")):
+        # LEVER 3 (2026-08-25, word given): the op-multiset COUNT head —
+        # pooled waist -> per-op-class count logits, supervised at the ROW
+        # grain from mint-source gold (whole-row exactness is where
+        # enumeration lives; per-slot decode compounds, a count read doesn't)
+        p["W_opc1"] = t(rng.randn(H_W, 256) / math.sqrt(H_W))
+        p["W_opc1_b"] = t(np.zeros(256))
+        p["W_opc2"] = t(rng.randn(256, len(OPC_CLASSES) * (OPC_CAP + 1))
+                        / math.sqrt(256))
+        p["W_opc2_b"] = t(np.zeros(len(OPC_CLASSES) * (OPC_CAP + 1)))
     if int(os.environ.get("ALG_TRUNK_LORA", "0")):
         # THE TRUNK-COPY LoRA (2026-08-22, constitutional word): rank-r
         # adapters on a RUNTIME copy of L0-L3 (wq/wo/wdown — the hook
@@ -1008,6 +1054,12 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
     if "h_depth" in p:
         out["depth"] = fst @ p["h_depth"] + p["h_depth_b"]
         out["term"] = (fst @ p["h_term"] + p["h_term_b"]).squeeze(-1)
+    if "W_opc1" in p:
+        _pool = ((waist * tokmask.unsqueeze(-1)).sum(1)
+                 / (tokmask.sum(1, keepdim=True) + 1e-6))
+        out["opc"] = ((_pool @ p["W_opc1"] + p["W_opc1_b"]).gelu()
+                      @ p["W_opc2"] + p["W_opc2_b"]).reshape(
+                          B, len(OPC_CLASSES), OPC_CAP + 1)
     out["fat"], out["vat"] = fat, vat
     if "h_ref" in p:
         out["ref"] = waist @ p["h_ref"] + p["h_ref_b"]   # (B, T_ALG, K_VARS)
@@ -1062,6 +1114,8 @@ def _loss_single(o, g):
     if "depth" in o and "depth" in g:      # the position channel (gold-fed)
         l = l + (ce(o["depth"], g["depth"]) * pres).sum() / n_p
         l = l + (bce(o["term"], g["term"]) * pres).sum() / n_p
+    if "opc" in o and "opc" in g:          # lever 3: row-grain count CE
+        l = l + ce(o["opc"], g["opc"]).mean()
     is_macro = g["is_macro"] if "is_macro" in g else is_mod * 0.0
     is_frac = g["is_frac"] if "is_frac" in g else is_mod * 0.0
     dm = g["is_lit_f"] + is_mod + is_pct + is_fdiv + is_macro + is_frac
@@ -1636,6 +1690,8 @@ def do_train(steps, lr, batch, seed):
                          *((("depth", (L_FAC,), dtypes.int),
                             ("term", (L_FAC,), dtypes.float))
                            if int(os.environ.get("ALG_POSCH", "0")) else ()),
+                         *((("opc", (len(OPC_CLASSES),), dtypes.int),)
+                           if int(os.environ.get("ALG_OPCOUNT", "0")) else ()),
                          ("query", (), dtypes.int)):
         npdt = np.float32 if dt == dtypes.float else np.int32
         bg[k] = fix(np.zeros((batch,) + shape, npdt), dt)
