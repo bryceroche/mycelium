@@ -1055,8 +1055,15 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
         out["depth"] = fst @ p["h_depth"] + p["h_depth_b"]
         out["term"] = (fst @ p["h_term"] + p["h_term_b"]).squeeze(-1)
     if "W_opc1" in p:
-        _pool = ((waist * tokmask.unsqueeze(-1)).sum(1)
-                 / (tokmask.sum(1, keepdim=True) + 1e-6))
+        if int(os.environ.get("ALG_OPCOUNT", "0")) == 2:
+            # rescue variant (registered pre-fire; mechanism-cleared): pool
+            # over the FIXED 24 slots — constant denominator keeps the
+            # readout EXTENSIVE (counts survive; token-mean normalized
+            # them away — the intensive-readout exclusion)
+            _pool = fst.mean(1)
+        else:
+            _pool = ((waist * tokmask.unsqueeze(-1)).sum(1)
+                     / (tokmask.sum(1, keepdim=True) + 1e-6))
         out["opc"] = ((_pool @ p["W_opc1"] + p["W_opc1_b"]).gelu()
                       @ p["W_opc2"] + p["W_opc2_b"]).reshape(
                           B, len(OPC_CLASSES), OPC_CAP + 1)
