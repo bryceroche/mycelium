@@ -28,7 +28,7 @@ def leader(cyc,v):
         c=Mn@v; j=int(c.argmax())
         if c[j]<0.92: j=-1
     if j<0:
-        if len(t["means"])>=8192: DROPPED[0]+=1; return -1
+        if len(t["means"])>=int(os.environ.get("MINER_MAXC","32768")): DROPPED[0]+=1; return -1
         t["means"].append(v.copy()); t["cnt"].append(0); t["m2"].append(np.zeros(v.shape[0],np.float32)); t["kc"].append({})
         j=len(t["means"])-1
     return j
