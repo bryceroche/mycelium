@@ -35,15 +35,17 @@ def leader(cyc,v):
         j=len(t["means"])-1
     return j
 edges={}
+REG=np.load(os.environ["MINER_REG"]) if os.environ.get("MINER_REG") else None
 for s0 in range(0,CAP,8):
     sl=[int(r) for r in rows[s0:s0+8]]; pad=8-len(sl); slp=sl+sl[:1]*pad
     ts=Tensor(states[slp].astype(np.float32),dtype=dtypes.float)
     tk=Tensor(tokmask[slp].astype(np.float32),dtype=dtypes.float)
     se=Tensor(sent[slp].astype(np.int32),dtype=dtypes.int)
-    o0=forward(p,ts,tk,se)
+    rg=Tensor(REG[slp].astype(np.float32),dtype=dtypes.float) if REG is not None else None
+    o0=forward(p,ts,tk,se,reg=rg)
     o0n={k:o0[k].realize().numpy() for k in ("fat","args","res")}
     mk=build_slot_masks(o0n,sent[slp])
-    o=forward(p,ts,tk,se,slot_mask=Tensor(mk,dtype=dtypes.float))
+    o=forward(p,ts,tk,se,slot_mask=Tensor(mk,dtype=dtypes.float),reg=rg)
     if "breaths_all" not in o: raise SystemExit("hook not engaged")
     B=[b.realize().numpy() for b in o["breaths_all"]]
     for bi,ri in enumerate(sl):
