@@ -14,6 +14,8 @@ from tinygrad.nn.state import safe_load
 samples, states, tokmask, gold, sent = load_alg("train")
 KINDS=["rel","given","mod","sel","pct","fdiv","macro","frac","chain"]
 p=build_params(0); sd=safe_load(os.environ["ALG_CKPT"])
+assert set(sd.keys())==set(p.keys()), \
+    f"ckpt/env mismatch: {sorted(set(sd)-set(p))[:4]}/{sorted(set(p)-set(sd))[:4]} (eval-load law)"
 for k in p: p[k].assign(sd[k].to(p[k].device).cast(p[k].dtype)).realize()
 CAP=int(os.environ.get("MINER_CAP","200"))
 K_B=int(os.environ.get("ALG_BREATH","3"))
