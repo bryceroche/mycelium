@@ -30,7 +30,7 @@ n = len(rows)
 Y = np.zeros((n, T_ALG), np.int8)
 ok = np.zeros(n, bool)
 for i, r in enumerate(rows):
-    e = tok.encode(r["original"])
+    e = tok.encode(r.get("text") or r["original"])
     offs = list(e.offsets)[:T_ALG]
     any_span = False
     for f in r.get("factors", []):
