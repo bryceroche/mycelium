@@ -47,6 +47,7 @@ def main():
     for t_ in (W1, b1, W2, b2): t_.requires_grad = True
     opt = AdamW([W1, b1, W2, b2], lr=3e-4, weight_decay=0.0)
     B = 8
+    Tensor.training = True
     for s in range(STEPS):
         idx = rng.choice(rows_ok, B, replace=False)
         X = Tensor(np.asarray(st[np.sort(idx)]).astype(np.float32))
