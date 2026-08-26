@@ -152,7 +152,14 @@ def main():
                     if not kc: continue
                     lb = max(kc, key=kc.get)
                     labs_seq.append(lb)
-                    w = 1.0 + ci / max(len(chain) - 1, 1)
+                    if os.environ.get("CHAIN_VOTE", "late") == "early":
+                        # the staircase's consequence (registered 2026-08-24,
+                        # fired 2026-08-25): early cycles are the coarse
+                        # CONFIDENT end (entropy 0.602 -> 0.755 rising);
+                        # weight them, not the thin late dialects
+                        w = 2.0 - ci / max(len(chain) - 1, 1)
+                    else:
+                        w = 1.0 + ci / max(len(chain) - 1, 1)
                     votes[lb] = votes.get(lb, 0.0) + w
                 if votes:
                     lab = max(votes, key=votes.get)
