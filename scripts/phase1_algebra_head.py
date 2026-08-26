@@ -1589,7 +1589,15 @@ def do_train(steps, lr, batch, seed):
                                 .cast(p["W_dargs"].dtype)).realize()
             print("[warm] W_dargs seeded from trained W_args (door #12)", flush=True)
     _frz = [k_ for k_ in (("h_dup", "h_dup_b") if int(os.environ.get("ALG_FREEZE_DUP", "0")) else ())]
-    if _frz: print(f"[freeze] excluded from optimizer: {_frz} (freeze-or-refold law)", flush=True)
+    if os.environ.get("ALG_TRAIN_ONLY"):
+        # the frozen-parse wake (2026-08-25): train ONLY the named params;
+        # everything else frozen — drift eliminated by construction, new
+        # organs learn around a byte-identical parse (clean attribution)
+        _only = set(os.environ["ALG_TRAIN_ONLY"].split(","))
+        _missing = _only - set(p.keys())
+        assert not _missing, f"ALG_TRAIN_ONLY names absent params: {_missing}"
+        _frz = [k_ for k_ in p if k_ not in _only]
+    if _frz: print(f"[freeze] excluded from optimizer: {len(_frz)} params (freeze-or-refold law)", flush=True)
     opt = AdamW([v_ for k_, v_ in p.items() if k_ not in _frz], lr=lr, weight_decay=0.01)
     rng = np.random.RandomState(seed)
 
