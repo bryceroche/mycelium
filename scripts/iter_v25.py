@@ -142,9 +142,23 @@ def main():
                 live = [(f, present[fi] if fi < len(present) else None)
                         for fi, f in enumerate(facs)]
                 lf = [f for f, _ in live]
+                def _opg(f):
+                    # SAME-LANGUAGE (the triad, enforced where it was
+                    # violated): the sharp atlas speaks OP-grain; map the
+                    # head's claim into it before comparing (chain_decode's
+                    # gold mapping verbatim)
+                    if f["ftype"] == "rel":
+                        if f.get("op") == "mul" and len(set(f.get("args", []))) == 1:
+                            return "sq"
+                        return f.get("op", "rel")
+                    if f["ftype"] == "macro":
+                        return "opa" if f.get("name") == "OP_APPLY" else "fr"
+                    if f["ftype"] == "frac":
+                        return "fr"
+                    return f["ftype"]
                 dis = {j for f, j in live
                        if j is not None and lab.get(j) is not None
-                       and lab[j] != f["ftype"]}
+                       and lab[j] != _opg(f)}
                 if it == 0 and live:
                     dis_stats.append(len(dis) / max(len(live), 1))
                 rec[li] = (lf, q)
