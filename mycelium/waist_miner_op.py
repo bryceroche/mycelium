@@ -67,20 +67,23 @@ for s0 in range(0,CAP,8):
                     if prev>=0: edges[(cyc-1,prev,cid)]=edges.get((cyc-1,prev,cid),0)+1
                 prev=cid
 db=sqlite3.connect(os.path.join(os.path.dirname(__file__),'..','.cache','campaign.db'))
-db.execute("""CREATE TABLE IF NOT EXISTS waist_patterns_op(
+import os as _os
+_TBL = _os.environ.get("MINER_TABLE", "waist_patterns_op")
+_TRS = _os.environ.get("MINER_TRANS", "op_transitions")
+db.execute(f"""CREATE TABLE IF NOT EXISTS {_TBL}(
   cluster_id INTEGER, breath_cycle INTEGER, count INTEGER, mean BLOB, m2 BLOB,
   kind_counts TEXT, mask_provenance TEXT, PRIMARY KEY(cluster_id,breath_cycle))""")
-db.execute("""CREATE TABLE IF NOT EXISTS op_transitions(
+db.execute(f"""CREATE TABLE IF NOT EXISTS {_TRS}(
   cycle INTEGER, from_id INTEGER, to_id INTEGER, count INTEGER,
   PRIMARY KEY(cycle,from_id,to_id))""")
-db.execute("DELETE FROM waist_patterns_op"); db.execute("DELETE FROM op_transitions")
+db.execute(f"DELETE FROM {_TBL}"); db.execute(f"DELETE FROM {_TRS}")
 for cyc,t in tabs.items():
     for j in range(len(t["means"])):
-        db.execute("INSERT INTO waist_patterns_op VALUES(?,?,?,?,?,?,?)",
+        db.execute(f"INSERT INTO {_TBL} VALUES(?,?,?,?,?,?,?)",
             (j,cyc,t["cnt"][j],t["means"][j].astype(np.float32).tobytes(),
              t["m2"][j].tobytes(),json.dumps(t["kc"][j]),"deploy-twopass-g41era"))
 for (cyc,a,b),n in edges.items():
-    db.execute("INSERT INTO op_transitions VALUES(?,?,?,?)",(cyc,a,b,n))
+    db.execute(f"INSERT INTO {_TRS} VALUES(?,?,?,?)",(cyc,a,b,n))
 db.commit(); db.close()
 for cyc in sorted(tabs):
     t=tabs[cyc]
