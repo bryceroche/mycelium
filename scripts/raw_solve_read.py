@@ -26,6 +26,23 @@ _ = load_alg("test")
 tok = Tokenizer.from_file(TOKENIZER_JSON)
 K = ("pres", "ftype", "op", "islit", "dig", "args", "res", "query")
 
+CMT_REG = int(os.environ.get("ALG_CMT_REG", "0"))
+if CMT_REG:
+    _zr = np.load('.cache/recognition_mouth.npz')
+    _MBANK = _zr['bank'].astype(np.float32)
+    _MCOEF = np.load('.cache/mouth_length_correction.npz')['coef'].astype(np.float32)
+
+def mouth_reg(sts, msk):
+    """the mouth's length-corrected read, per row (input feature for the
+    register-aware pawl; the mouth's exact deployed formula)."""
+    m = msk[:, :, None]
+    v = (sts * m).sum(1) / np.maximum(m.sum(1), 1)
+    v = v / (np.linalg.norm(v, axis=1, keepdims=True) + 1e-9)
+    d = 1.0 - v @ _MBANK.T
+    knn = np.sort(d, axis=1)[:, :8].mean(1)
+    L = np.maximum(msk.sum(1), 1)
+    return (knn - (_MCOEF[0] + _MCOEF[1] / L)).astype(np.float32)
+
 def main():
     ck = os.environ.get("RAW_CKPT", "gsb227_rings")
     p = build_params(0)
@@ -69,10 +86,12 @@ def main():
         ts = Tensor(sts, dtype=dtypes.float)
         tk = Tensor(msk, dtype=dtypes.float)
         se = Tensor(snt.astype(np.int32), dtype=dtypes.int)
-        o0 = forward(p, ts, tk, se)
+        rg = Tensor(mouth_reg(sts, msk), dtype=dtypes.float) if CMT_REG else None
+        o0 = forward(p, ts, tk, se, reg=rg)
         onp0 = {k2: o0[k2].realize().numpy() for k2 in ("fat", "args", "res")}
         mk = build_slot_masks(onp0, snt)
-        o = forward(p, ts, tk, se, slot_mask=Tensor(mk, dtype=dtypes.float))
+        o = forward(p, ts, tk, se, slot_mask=Tensor(mk, dtype=dtypes.float),
+                    reg=rg)
         ex = tuple(k2 for k2 in ("sel", "dup", "sgn") if k2 in o)
         onp = {k2: o[k2].realize().numpy() for k2 in K + ex}
         for li, r in enumerate(sl):

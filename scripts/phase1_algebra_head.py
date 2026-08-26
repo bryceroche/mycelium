@@ -124,6 +124,9 @@ TERMINALS = {
                "when": lambda: int(os.environ.get("ALG_OPCOUNT", "0")) > 0},
     "cmt":    {"params": ["W_cmt", "W_cmt_b"],     "emit": "cmt",   "gold": ["ftype", "res"],
                "when": lambda: int(os.environ.get("ALG_RINGS", "0")) and int(os.environ.get("ALG_BREATH", "1")) > 1},
+    "cmtreg": {"params": ["w_cmt_reg"],            "emit": "cmt",   "gold": ["ftype", "res"],
+               "when": lambda: int(os.environ.get("ALG_RINGS", "0")) and int(os.environ.get("ALG_CMT_REG", "0"))
+               and int(os.environ.get("ALG_BREATH", "1")) > 1},
 }
 
 
@@ -724,6 +727,9 @@ def build_params(seed=0):
             p["W_cmt_b"] = t(np.full(1, float(os.environ.get(
                 "CMT_B_INIT", "-4.0"))))             # init: commit ~nothing;
                                                      # door #54-R: bias-open
+            if int(os.environ.get("ALG_CMT_REG", "0")):
+                p["w_cmt_reg"] = t(np.zeros(1))      # zero-init: register
+                                                     # enters at no-effect
     p["W_args"] = t(rng.randn(H_W, H_W) / math.sqrt(H_W))
     if int(os.environ.get("ALG_DUPPTR", "0")):
         p["W_dargs"] = t(rng.randn(H_W, H_W) / math.sqrt(H_W))
@@ -793,7 +799,7 @@ if ALG_NOTEBOOK:
     assert _cc < 0.35, f"sharpness assert FAILED: stamp cos {_cc:.3f}"
 
 
-def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, drop=None, anchor=None, amask=None, gmod=None, pmask=None, lsent=None):
+def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, drop=None, anchor=None, amask=None, gmod=None, pmask=None, lsent=None, reg=None):
     B = trunk.shape[0]
     waist = (trunk @ p["waist_w"] + p["waist_b"]).gelu() + p["sent_emb"][sent]
 
@@ -971,6 +977,13 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
             cur_new = cur + g * (h_tok + h_slot - cur)
             if RINGS:  # the soft pawl: monotone commitment mass + anchor
                 cl = (cur_new @ p["W_cmt"] + p["W_cmt_b"])     # (B,L_FAC,1)
+                if reg is not None and "w_cmt_reg" in p:
+                    # REGISTER-AWARE COMMITMENT (2026-08-26, word given):
+                    # the mouth's length-corrected read as the pawl's INPUT
+                    # — commit boldly in-register, reluctantly on the
+                    # frontier. The mouth stays out of every loss (Goodhart
+                    # fence); the pawl is handed the map, not the meter.
+                    cl = cl + reg.reshape(B, 1, 1) * p["w_cmt_reg"]
                 cmt_logits.append(cl.squeeze(-1))
                 if XOUT:  # release BEFORE the pawl: the same-breath commit
                     # pressure is the graded arm's RESISTING term (#150)
@@ -1645,6 +1658,13 @@ def do_train(steps, lr, batch, seed):
     b_mask = fix(np.zeros((batch, L_FAC, L_FAC), np.float32), dtypes.float) \
         if K_B > 1 else None
     b_tail = fix(np.zeros((batch, T_ALG), np.float32), dtypes.float) if CLOCK else None
+    b_reg = fix(np.zeros((batch,), np.float32), dtypes.float) \
+        if int(os.environ.get("ALG_CMT_REG", "0")) else None
+    REG = np.load(os.environ.get("ALG_REG_NPY", ".cache/reg_form8.npy")) \
+        if b_reg is not None else None
+    if REG is not None:
+        assert len(REG) == len(samples), \
+            f"reg npy {len(REG)} rows vs {len(samples)} samples (desync)"
     b_drop = fix(np.ones((1,), np.float32), dtypes.float) \
         if os.environ.get("BREATH_DROPOUT") else None   # door #52 coin buffer
     b_ls = fix(np.zeros((batch, K_VARS, T_ALG), np.float32), dtypes.float) \
@@ -1750,11 +1770,13 @@ def do_train(steps, lr, batch, seed):
             # read finds wrong bindings (revoke gold = solver-refuted
             # commits, self-labeled from gold like the commit loss,
             # DETACHED); the second trains under live release dynamics.
-            o0 = forward(p, s_tr, b_tk, b_se, slot_mask=b_mask, tail=b_tail)
+            o0 = forward(p, s_tr, b_tk, b_se, slot_mask=b_mask, tail=b_tail,
+                         reg=b_reg)
             ok = ((o0["ftype"].argmax(-1) == bg["ftype"]).float()
                   * (o0["res"].argmax(-1) == bg["res"]).float())
             rv = (bg["presence"] * (1.0 - ok)).detach()
-            o = forward(p, s_tr, b_tk, b_se, slot_mask=b_mask, revoke=rv, tail=b_tail)
+            o = forward(p, s_tr, b_tk, b_se, slot_mask=b_mask, revoke=rv,
+                        tail=b_tail, reg=b_reg)
         elif int(os.environ.get("NAZ_TRAIN", "0")):
             # NAZARÉ TRAINING (door #55): the organ-2 two-forward pattern —
             # pre-pass yields the intra-pass event field IN-GRAPH (detached);
@@ -1776,7 +1798,7 @@ def do_train(steps, lr, batch, seed):
         else:
             _bd = os.environ.get("BREATH_DROPOUT")
             o = forward(p, s_tr, b_tk, b_se, slot_mask=b_mask, tail=b_tail,
-                        drop=(b_drop if _bd else None), lsent=b_ls)
+                        drop=(b_drop if _bd else None), lsent=b_ls, reg=b_reg)
         l = loss_fn(o, bg)
         if ALG_CONSUME and "_early" in o:   # support-gated consume-once:
             # any breath claims, each fact pays once; eligibility = the DAG
@@ -1957,6 +1979,8 @@ def do_train(steps, lr, batch, seed):
             b_mask.assign(Tensor(MASKS[idx], dtype=dtypes.float).contiguous()).realize()
         if b_tail is not None:
             b_tail.assign(Tensor(TAILS[idx].astype(np.float32), dtype=dtypes.float).contiguous()).realize()
+        if b_reg is not None:
+            b_reg.assign(Tensor(REG[idx].astype(np.float32), dtype=dtypes.float).contiguous()).realize()
         if b_drop is not None:
             b_drop.assign(Tensor(np.array(
                 [1.0 if rng.rand() >= float(os.environ["BREATH_DROPOUT"]) else 0.0],
