@@ -20,6 +20,10 @@ os.environ.setdefault("ALG_SIXWAVE", "1")
 os.environ.setdefault("ALG_RINGS", "1")
 os.environ.setdefault("ALG_XOUT", "1")
 os.environ.setdefault("ALG_XARM", "dump")
+os.environ.setdefault("NB_PERSLOT", "1")
+os.environ.setdefault("ALG_CMT_REG", "1")
+os.environ.setdefault("ATLAS_TABLE", "waist_patterns_sharp")
+os.environ.setdefault("ATLAS_TRANS", "sharp_transitions")
 os.environ.update({"DEV": "AMD", "ALG2": "1", "ALG_FTYPES": "9",
                    "ALG_DUP": "1", "ALG_HW": "512", "ALG_WIDE": "1",
                    "ALG_TEST": ".cache/algebra_nl_bigtest.jsonl",
@@ -41,6 +45,18 @@ from iter_a0 import chain_labels
 _ = load_alg("test")
 tok = Tokenizer.from_file(TOKENIZER_JSON)
 K = ("pres", "ftype", "op", "islit", "dig", "args", "res", "query")
+_zr = np.load('.cache/recognition_mouth.npz')
+_MBANK = _zr['bank'].astype(np.float32)
+_MCOEF = np.load('.cache/mouth_length_correction.npz')['coef'].astype(np.float32)
+
+def mouth_reg(sts, msk):
+    m = msk[:, :, None]
+    v = (sts * m).sum(1) / np.maximum(m.sum(1), 1)
+    v = v / (np.linalg.norm(v, axis=1, keepdims=True) + 1e-9)
+    d = 1.0 - v @ _MBANK.T
+    knn = np.sort(d, axis=1)[:, :8].mean(1)
+    L = np.maximum(msk.sum(1), 1)
+    return (knn - (_MCOEF[0] + _MCOEF[1] / L)).astype(np.float32)
 MAX_IT = int(os.environ.get("ITER_MAX", "6"))
 SMP = {"n_vars": 24, "m": 300}
 
@@ -54,7 +70,7 @@ def main():
     cents, ckinds, trans = load_atlas()
     cycles = sorted(cents)
     p = build_params(0)
-    sd = safe_load('.cache/gsb227_rings.safetensors')
+    sd = safe_load(f".cache/{os.environ.get('V25_CKPT', 'gsb227_sharpreg')}.safetensors")
     assert set(sd.keys()) == set(p.keys())
     for k in p:
         p[k].assign(sd[k].to(p[k].device).cast(p[k].dtype)).realize()
@@ -82,6 +98,7 @@ def main():
     tallies = {t: [0, 0, 0] for t in ("gold", "wv", "held")}  # forced/right/lies
     it_hist = Counter(); repair_used = 0; repair_emitted = 0
     accept_clean = 0; refuse_guard = 0
+    dis_stats = []          # validity tripwire: it-0 dissent fraction/row
     for s0 in range(0, len(rows), 8):
         sl = rows[s0:s0 + 8]
         ids = np.zeros((8, T_ALG), np.int32); msk = np.zeros((8, T_ALG), np.float32)
@@ -95,7 +112,8 @@ def main():
         ts = Tensor(sts, dtype=dtypes.float)
         tk = Tensor(msk, dtype=dtypes.float)
         se = Tensor(snt.astype(np.int32), dtype=dtypes.int)
-        o0 = forward(p, ts, tk, se)
+        rg = Tensor(mouth_reg(sts, msk), dtype=dtypes.float)
+        o0 = forward(p, ts, tk, se, reg=rg)
         onp0 = {k2: o0[k2].realize().numpy() for k2 in ("fat", "args", "res")}
         M = build_slot_masks(onp0, snt)
         RV = np.zeros((8, L_FAC), np.float32)          # the revoke vector
@@ -106,7 +124,7 @@ def main():
         used_repair = [False] * 8
         for it in range(MAX_IT):
             o = forward(p, ts, tk, se, slot_mask=Tensor(M, dtype=dtypes.float),
-                        revoke=Tensor(RV, dtype=dtypes.float))
+                        revoke=Tensor(RV, dtype=dtypes.float), reg=rg)
             ex = tuple(k2 for k2 in ("sel", "dup", "sgn") if k2 in o)
             onp = {k2: o[k2].realize().numpy() for k2 in K + ex}
             Bst = [b.realize().numpy() for b in o["breaths_all"]]
@@ -127,6 +145,8 @@ def main():
                 dis = {j for f, j in live
                        if j is not None and lab.get(j) is not None
                        and lab[j] != f["ftype"]}
+                if it == 0 and live:
+                    dis_stats.append(len(dis) / max(len(live), 1))
                 rec[li] = (lf, q)
                 a = try_solve(lf, q)
                 to_amp = set()
@@ -198,6 +218,9 @@ def main():
           f"repair-used {repair_used} repair-emitted {repair_emitted} "
           f"accept-clean {accept_clean} refuse-at-guard {refuse_guard}",
           flush=True)
+    ds = np.array(dis_stats)
+    print(f"[v25] TRIPWIRE it-0 dissent/present: median {np.median(ds):.2f} "
+          f"mean {ds.mean():.2f} (VOID if median > 0.5)", flush=True)
     print("[v25] BARS: gold net > -20 (v0)  |  guard: wv+held lies <= 12",
           flush=True)
 
