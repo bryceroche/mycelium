@@ -59,7 +59,7 @@ def main():
         lsm = lg.log_softmax(-1)
         yt = Tensor(y[..., None])
         nll = -lsm.gather(-1, yt).squeeze(-1)
-        loss = (nll * Tensor(w)).sum() / (w.sum() + 1e-6)
+        loss = (nll * Tensor(w)).sum() / (float(w.sum()) + 1e-6)
         opt.zero_grad(); loss.backward(); opt.step()
         if s % 500 == 0:
             print(f"[cue] step {s} loss {float(loss.numpy()):.4f}", flush=True)
