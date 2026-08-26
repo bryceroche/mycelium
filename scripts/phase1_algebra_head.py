@@ -403,6 +403,10 @@ def build_gold(samples, offsets):
             except Exception:
                 pass
     if int(os.environ.get("ALG_OPCOUNT", "0")):
+        # feed-door completion (2026-08-26): gold is built here, but CACHED
+        # npzs from before the surgery lack g_opc — load_alg's consumer
+        # must hard-error rather than zero-train (the first opc fire's
+        # lesson, now fenced at the missing-gold case too)
         g["opc"] = np.zeros((n, len(OPC_CLASSES)), np.int32)
         for ri, smp in enumerate(samples):
             try:
@@ -1680,6 +1684,11 @@ def do_train(steps, lr, batch, seed):
     b_mask = fix(np.zeros((batch, L_FAC, L_FAC), np.float32), dtypes.float) \
         if K_B > 1 else None
     b_tail = fix(np.zeros((batch, T_ALG), np.float32), dtypes.float) if CLOCK else None
+    if int(os.environ.get("ALG_OPCOUNT", "0")):
+        assert "opc" in gold, \
+            ("ALG_OPCOUNT=1 but the states npz has no g_opc — a pre-surgery "
+             "cache would zero-train the count head silently (feed-door "
+             "fence, missing-gold case). Re-precompute or inject g_opc.")
     b_reg = fix(np.zeros((batch,), np.float32), dtypes.float) \
         if int(os.environ.get("ALG_CMT_REG", "0")) else None
     REG = np.load(os.environ.get("ALG_REG_NPY", ".cache/reg_form8.npy")) \
