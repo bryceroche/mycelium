@@ -1648,6 +1648,28 @@ def do_train(steps, lr, batch, seed):
             MASKS[sl] = build_slot_masks(o0, sent[sl_p])[:len(sl)]
         print(f"[breath] masks ready (mean degree "
               f"{MASKS.sum(-1).mean():.1f}/{L_FAC})", flush=True)
+    MG = None
+    if int(os.environ.get("ALG_MASK_GOLD", "0")) and MASKS is not None:
+        # M3 (2026-08-26, word given; the nazare constitution): TRAINING
+        # masks from GOLD wiring — the key-gated truth, the one fully
+        # independent ocean; the head's own decoded wirings NEVER
+        # masquerade as mask gold (recirculation's sibling). Mixed with
+        # the heuristic mask per row (flat mix — no curriculum) so
+        # inference never meets an unseen regime.
+        _A = gold["args"]; _R = gold["res"].astype(np.int64)
+        _P = gold["presence"]
+        _n = len(_P)
+        MG = np.zeros((_n, L_FAC, L_FAC), np.uint8)
+        _roh = np.zeros((_n, L_FAC, K_VARS), np.float32)
+        np.put_along_axis(_roh, _R[:, :, None], 1.0, axis=2)
+        _roh *= _P[:, :, None]
+        for i in range(_n):
+            MG[i] = ((_A[i] @ _roh[i].T) > 0) & (_P[i][:, None] > 0) \
+                & (_P[i][None, :] > 0)
+            np.fill_diagonal(MG[i], 1)
+        print(f"[m3] gold-wiring masks ready (mean degree "
+              f"{MG.sum(-1).mean():.1f}/{L_FAC}, mix p="
+              f"{os.environ.get('ALG_MASK_GOLD_P', '0.5')})", flush=True)
 
     def fix(a, dt):
         return Tensor(a, dtype=dt).contiguous().realize()
@@ -1976,7 +1998,13 @@ def do_train(steps, lr, batch, seed):
         if b_ls is not None:
             b_ls.assign(Tensor(gold["lsent"][idx].astype(np.float32), dtype=dtypes.float).contiguous()).realize()
         if b_mask is not None:
-            b_mask.assign(Tensor(MASKS[idx], dtype=dtypes.float).contiguous()).realize()
+            _mfeed = MASKS[idx]
+            if MG is not None:
+                _coin = np.random.RandomState(1000 + s).random(len(idx)) \
+                    < float(os.environ.get("ALG_MASK_GOLD_P", "0.5"))
+                _mfeed = _mfeed.copy()
+                _mfeed[_coin] = MG[idx][_coin].astype(np.float32)
+            b_mask.assign(Tensor(_mfeed, dtype=dtypes.float).contiguous()).realize()
         if b_tail is not None:
             b_tail.assign(Tensor(TAILS[idx].astype(np.float32), dtype=dtypes.float).contiguous()).realize()
         if b_reg is not None:
