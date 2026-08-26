@@ -906,6 +906,14 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
                 _nb_st = _T2(NB_STAMPS, dtype=_dt2.float)
                 _nb = [(cur @ p["W_sil"]) if NB_PERSLOT
                        else (cur.mean(1) @ p["W_sil"])]   # sharp vs blurred ink
+            elif ALG_NOTEBOOK and int(os.environ.get("ALG_NBSHELF", "0")):
+                # v2.75 THE TRAJECTORY SHELF (2026-08-25, word given): stamp
+                # EVERY breath — Lucy's flipbook. NB_STAMPS' 8 orthogonal
+                # keys were provisioned at birth (audit #11); reads below
+                # already attend over len(_nb). Continuous stamps only (the
+                # atlas stays audit-side, recirculation fence honored).
+                _nb.append((cur @ p["W_sil"]) if NB_PERSLOT
+                           else (cur.mean(1) @ p["W_sil"]))
             q_extra = cur + p["breath_emb"][kb].reshape(1, 1, -1)
             if ALG_NOTEBOOK:
                 if NB_PERSLOT:      # per-slot lanes: each slot queries the
