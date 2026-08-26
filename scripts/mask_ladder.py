@@ -114,7 +114,7 @@ def main():
         M0 = build_slot_masks(onp0, snt)
         o1 = forward(p, ts, tk, se, slot_mask=Tensor(M0, dtype=dtypes.float))
         ex = tuple(k2 for k2 in ("sel", "dup", "sgn") if k2 in o1)
-        onp1 = {k2: o1[k2].realize().numpy() for k2 in K + ex}
+        onp1 = {k2: o1[k2].realize().numpy() for k2 in K + ex + ("fat",)}
         onp1_ptr = {k2: onp1[k2] for k2 in ("fat", "args", "res")}
         M1 = build_slot_masks(onp1_ptr, snt)            # refresh from sharp
         M2 = np.stack([directed_mask(onp1, li) for li in range(8)])
