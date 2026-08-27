@@ -55,12 +55,21 @@ def _scan_math(e):
     c['mul'] += len(re.findall(r'(?<=\d)(?=[a-z]\b)', e))           # 3x only
     c['mul'] += len(re.findall(r'(?<=\d)\(', e))                    # 3( only (kills f( )
     c['sq'] += len(re.findall(r'\^\{?2\}?(?![0-9])', e))            # ^{2} not ^{28}
-    c['fr'] += len(re.findall(r'\\d?frac|\\div|(?<=[\w}])/(?=[\w{])', e))
+    # numeric-only \frac{3}{5} is a VALUE (a rational literal), not a div op;
+    # variable-bearing \frac{3}{x} stays an operation
+    nfr = len(re.findall(r'\\d?frac\s*\{\s*\d+\s*\}\s*\{\s*\d+\s*\}', e))
+    afr = len(re.findall(r'\\d?frac', e))
+    c['fr'] += (afr - nfr)
+    c['fr'] += len(re.findall(r'\\div|(?<=[\w}])/(?=[\w{])', e))
     return c
+
+TYPE_ABSTAIN = re.compile(r'\bsimplify\b|\bsolve for\b|in the form|minimum value|maximum value|expressed? as', re.I)
 
 def op_witness(text):
     global _PROSE
     if _PROSE is None: _PROSE = _build_prose()
+    if TYPE_ABSTAIN.search(text):
+        return Counter()          # transformation-heavy type: surface != graph; abstain
     c = Counter()
     for m in MATH.finditer(text):
         c += _scan_math(m.group(1) or m.group(2) or '')
