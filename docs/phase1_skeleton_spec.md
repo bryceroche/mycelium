@@ -30737,3 +30737,25 @@ becomes each head's native loss with zero cross-role gradient path.
 outputs with no sum is just pointer heads in a trenchcoat; the bus IS the
 wire. Fire order: joint verdict first (burning now) decides frozen-vs-joint
 substrate for v5. HELD FOR THE WORD.
+
+## 2026-08-28 — v5 ADDENDUM (Gemini refinements, critiqued and accepted)
+(1) PRECISION: "zero cross-role gradient" holds for the NATIVE loss (per-role
+CE on each head's logits — literally no cross-role path). If any wire-level
+aux loss survives (v3's 0.2 cosine), gradients DO reach all heads through the
+sum — but parameters stay disjoint: the correct claim is ZERO PARAMETER
+INTERFERENCE, gradient traffic conditional on wire-loss. Ledger amended.
+(2) ACCEPTED — soft-pointer emission: head_r outputs logits over the
+codebook; v_r = softmax-weighted code mixture; emission = sum_r
+rotate_r(v_r). Output space bounded to the codebook hull; CE is the direct
+objective; at convergence p->one-hot -> exact bound codes on the wire.
+BONUS PHYSICS (ours, not the relay's): a mixture of unit phasors has modulus
+< 1 — an uncertain head writes DIMMER onto the wire. Amplitude becomes a
+free confidence channel, readable pre-cleanup (cleanup normalizes, so
+recovery is unharmed). Registered as a diagnostic candidate — NEVER
+supervised (Goodhart fence).
+(3) ACCEPTED — dimension hygiene: D_real=256 = P_planes=128; variables named
+explicitly (complex_tensor.py already carries the P = D//2 convention;
+v5 code to use D_real/P_planes names throughout).
+Division of labor banked: heads answer WHICH (classification), frozen
+phasors answer WHERE (rotation), the wire answers TRANSMIT (superposition).
+Binding is an architectural invariant the network cannot violate.
