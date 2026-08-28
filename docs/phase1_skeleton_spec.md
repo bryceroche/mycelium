@@ -30770,3 +30770,17 @@ amplitude MI audit made honest: A_r is deterministic given the FULL p_r —
 the audit conditions on scalar H(p_r) only, and the hypothesis is precisely
 that amplitude is GEOMETRY-AWARE confidence (mass on nearby codes dims less
 than mass on distant codes) where entropy is geometry-blind.
+
+## 2026-08-28 — JOINT VERDICT: ALL BARS PASS; THE BUS IMPROVES THE PARSE; v5 FIRES JOINT
+Unit bindbus-joint (warm sharp_bind3, all head params, LR 3e-5, 6k, seed 214)
+-> sharp_bindj. PARSE GUARD PASSED AND INVERTED: val 0.5883 -> 0.6058 (new
+lineage high — the rotational objective REGULARIZES the waist; pointer heads
+rose too: mint args .481->.508, res .676->.706). BUS GAIN: mint arg1 .603 /
+arg2 .598 (mean .6005 — bar cleared by a hair; arg2 alone 0.002 shy, noted).
+WILD CROSSOVER WIDENS: bus res .734 vs pointers .685 (gap .028 -> .049);
+op wild stable .692. SUBSTRATE RULE -> v5 trains JOINT from sharp_bindj.
+v5 BARS (pinned before fire): parse guard val >= 0.595 (new baseline 0.6058;
+< 0.58 kills), every mint role > the joint incumbents (args > .60, res >
+.59, op > .93), wild res >= pointer parity, the 90%/role certification bar
+stands as the target. Unit bindbus-v5: W5 heads fresh, all params train,
+LR 3e-5, 6k steps, seed 215.
