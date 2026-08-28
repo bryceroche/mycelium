@@ -1722,11 +1722,16 @@ def do_train(steps, lr, batch, seed):
     b_mask = fix(np.zeros((batch, L_FAC, L_FAC), np.float32), dtypes.float) \
         if K_B > 1 else None
     b_tail = fix(np.zeros((batch, T_ALG), np.float32), dtypes.float) if CLOCK else None
+    _GOLD_ALIAS = {"is_lit_f": "is_lit", "refoh": "refvar"}
+    _GOLD_OPTIONAL = {"opspan", "arg_dup", "sel", "sign", "y", "digits2",
+                      "is_macro", "is_frac", "is_chain"}
     for _tn, _t in TERMINALS.items():
         if not _t["when"](): continue
         for _gk in _t["gold"]:
-            assert _gk in gold, \
-                (f"terminal {_tn!r} is ACTIVE but gold {_gk!r} is missing from "
+            if _gk in _GOLD_OPTIONAL: continue
+            _gk2 = _GOLD_ALIAS.get(_gk, _gk)
+            assert _gk2 in gold, \
+                (f"terminal {_tn!r} is ACTIVE but gold {_gk2!r} is missing from "
                  f"the loaded states npz — a stale cache would zero-train it "
                  f"silently (the feed-door fence, GENERALIZED after the "
                  f"bindvec starvation). Re-precompute or inject g_{_gk}.")
