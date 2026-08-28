@@ -1,0 +1,135 @@
+{
+ "gen_id": "41",
+ "date": "2026-08-10",
+ "env": {
+  "ALG2": "1",
+  "ALG_FTYPES": "8",
+  "ALG_DUP": "1",
+  "ALG_HW": "512",
+  "ALG_WIDE": "1"
+ },
+ "parser_ckpt": ".cache/g41_onemass_refold.safetensors",
+ "specialist_ckpt": ".cache/phase1_gen41_nack.safetensors",
+ "monitor_centroids": ".cache/monitor_centroids_gen41.npz",
+ "mouth": ".cache/recognition_mouth_gen41.npz",
+ "corpora": {
+  "train": ".cache/form_mix3.jsonl",
+  "test": ".cache/dag8_test.jsonl"
+ },
+ "scope": {
+  "wide_not_claimed": true,
+  "claimed": "E1 (signed literals): sign-arm 116/120 = 96.7% on fresh held-out (B1' PASS). E3 (wide digits): TRAINED, NOT CLAIMED \u2014 0/40 at battery; the compounding-digit wall (per-digit ~90% over 7 positions); see the ledger 2026-08-03. No reader may infer wide competence.",
+  "dup_cure": {
+   "claimed": "dup binding at deployment scope: scan 0/15 (nd0), 3/15 (nd1), 0/15 (nd4) misbind; row-grade 15/15 at nd0 AND nd4 on the fenced novel surface (door #41 battery)",
+   "out_of_scope_station_nd2": "op-head + rel-decode under 2 distractors \u2014 general parse residuals, NOT addressed by this cure",
+   "op_head_residual_unaddressed": true,
+   "rel_decode_residual_unaddressed": true,
+   "mechanism": "calibrated-rite fold on g41's OWN waist (fixture-min 1.534 / neg-max 0.710, theta 1.1220, holdout FPR 0.00000; control g23v5 exact, sixth consecutive deployment)",
+   "no_reader_may_infer": "general small-head band coverage \u2014 the band lives in the heads; this cures ONE head's cells"
+  },
+  "op_margin_thinness": {
+   "data": "nd0 mul-dup fixture margins +0.74..+2.00 (gate lineage floor was +1.85..+3.11; #40's distinct-args arm +1.45..+2.76)",
+   "reading": "the args=[a,a] vehicle supplies SUFFICIENCY; distinct-args mass bought extra depth. Decisions 5/5 correct.",
+   "no_reader_may_infer": "deep op margins on mul-dup at low crowding \u2014 the next fire touching mul MEETS THIS WALL; maintenance note, not defect"
+  },
+  "refold_clause": "this checkpoint holds the dup cure because its fold was derived on ITS OWN waist and nothing has trained it since. REFOLD AFTER ANY TRAINING (the law's final form): any successor inherits the REQUIREMENT (scripts/calibrated_rite.py, control-assert first, always) \u2014 not the cure."
+ },
+ "regression_bars": {
+  "bigtest": 1254,
+  "alg4test": 405,
+  "alg2test": 674,
+  "vtest": 600,
+  "dagtest": 696,
+  "dag7btest": 576,
+  "dag8test": 577,
+  "acceptance(only-[45]-may-miss)": 1,
+  "sq": 0.7,
+  "fdiv": 0.62,
+  "coupled-ish": 0.65,
+  "ladder": 0.5,
+  "cert-v2-precision": 0.998,
+  "sign_arm_b1prime": 0.967,
+  "old_arm_b1prime": 0.942,
+  "stress_certified_lies": 0
+ },
+ "waivers": {
+  "panel": "cert-v2 members per panel.lattices (re-audition rides the bench queue; lineage-adjacency re-priced at next refresh)"
+ },
+ "hashes": {
+  "parser": "a3a12e50a957a413",
+  "specialist": "53fbcf1b5f27708f",
+  "centroids": "cc3d5186c79a40ea",
+  "mouth": "13183dad1766177e",
+  "train": "0cb4eb907527e53b"
+ },
+ "notes": "2026-08-10 GEN-41 PROMOTED (door #41, the one-mass fire; the word given and countersigned): g41_onemass_refold \u2014 crowded mul-dup sliver 2,700 @ 8x beside size 3,000 (one vehicle, two goods: formation AND op-balance; the distinct-args counterweight retired by the interference fingerprint), dup-familiar 8,233 @ 3x, h_dup frozen in-fire, fold re-derived post-fire by the calibrated rite (control sixth-exact). SHEET: scan 0/3/-/0 FULL SCOPE (first both-goods arm); row-grade 15/15 both ends; bigtest 1254; alg4 405; sentinels 20/20 x2; frontier DEPLOYED 40/40; STRESS CERTIFIED LIES ZERO (gate baseline was 1 \u2014 the claim's own currency IMPROVED). Explicit lines: op-margin thinness (scope as data), size -5 vs record 1259, stress churn resolved as noise. ENTOURAGE-41 OWED: specialist remine, centroids rebuild, mouth/watcher recal, registry re-audition, frontier stands LAST (post-dressing, per the rider \u2014 40/40 before dressing does not guarantee after). | 2026-08-09 GEN-23v5 PROMOTED (the dup-detector adoption, door #26): broad-gold h_dup fold at gap theta on g23's own waist; sheet = strict dominance (dup 0/3/-/0; bigtest 1238 identical +2gs; alg4 407; sentinels 20/20x2); ENTOURAGE-23v5 OWED: frontier 40/40 rehearsal FIRST (a changed detector must not widen the mouth), specialist remine, centroids rebuild, mouth/watcher recal, registry re-audition. | 2026-08-03 GEN-23 PROMOTED (SIGN-ONLY SCOPE, word (c)): the answer-space generation E1+E3 behind ALG_WIDE; padwarm from g22; 600x10 @ 6.787 pct; bigtest 1238 (above g22's 1226); B1' sign 96.7 vs old 94.2 fresh held-out; WIDE TRAINED NOT CLAIMED (see scope). Prior manifest notes preserved below. | 2026-07-30 GEN-22 PROMOTED: g22 (the fdiv-on-derived diet fire, 400x10 @ 4.85% on gen-21's register, SGDR 4x4k warm-from-g21; bigtest 1226; d1 fixture 1/8->7/8 with the sel-basin attractor 0.53->0.00 GONE; DEPLOYED wild forty 40/40 mouth-refused unchanged; the template hole closed). | 2026-07-30 ENTOURAGE-22 PAID (entourage22.py): specialist remined vs g22, centroids + mouth rebuilt in g22 space (aligned state pair, fossils fixed), dissent-overlap banked, standing rehearsal riding as stage 10. | 2026-07-30 ENTOURAGE-22 PAID (entourage22.py): specialist remined vs g22, centroids + mouth rebuilt in g22 space (aligned state pair, fossils fixed), dissent-overlap banked, standing rehearsal riding as stage 10. | 2026-07-30 ENTOURAGE-22 PAID (entourage22.py): specialist remined vs g22, centroids + mouth rebuilt in g22 space (aligned state pair, fossils fixed), dissent-overlap banked, standing rehearsal riding as stage 10. | 2026-08-10 ENTOURAGE-41 PAID (entourage22.py): specialist remined vs g22, centroids + mouth rebuilt in g22 space (aligned state pair, fossils fixed), dissent-overlap banked, standing rehearsal riding as stage 10.",
+ "panel": {
+  "members": {
+   "g18_armB": ".cache/g18_armB.safetensors",
+   "g19_w1024": ".cache/g19_padwarm_init.safetensors"
+  },
+  "lattices": {
+   "g18_armB": ".cache/lattice_gen18_B.json",
+   "g19_w1024": ".cache/lattice_gen19_W.json"
+  }
+ },
+ "macro": {
+  "grammar": "mg2",
+  "module": "mycelium/macros.py",
+  "note": "restored 2026-08-03 (verdict field-drop repair)"
+ },
+ "watchers": {
+  "note": "restored 2026-08-03; watcher recal rides entourage-23 per standing duty"
+ },
+ "field_drop_repair_2026_08_03": "gen23_verdict built a fresh dict and DROPPED panel/macro/watchers; restored from the battery log's own print ([panel] members from manifest) + entourage literals. LESSON for the buffer-spec door's sibling: a manifest writer carries forward every field it does not consciously change.",
+ "rescue_organ": {
+  "name": "the_walled_conductor",
+  "deployed": "2026-08-20",
+  "form": "refusal-triggered: diagnose(unsat|starved) -> route(amputation|len_asc) -> 5-view wall (>=3/5 banks)",
+  "scripts": {
+   "conductor_read.py": "f311a99cc5e8f87e",
+   "vote_wall.py": "fa47551d5e4a831d",
+   "deploy_battery.py": "4b7e091fc1bc1b63"
+  },
+  "battery": {
+   "register": "bigtest",
+   "baseline_right": 1253,
+   "net_right": 1352,
+   "wrongs_added": 0,
+   "banked": 99,
+   "refusals": 212
+  },
+  "fences": [
+   "rescue engages ONLY on refusals",
+   "the wall is mandatory",
+   "read-side only: no head weights"
+  ],
+  "superseded_by": "conductor_v2"
+ },
+ "conductor_v2": {
+  "name": "the_proactive_conductor",
+  "deployed": "2026-08-20",
+  "form": "rough-map lane BEFORE parse (wildness=corr(pos,len) of middle sentences, thr<=0.0 -> len_asc lane; census 739/1500) -> lane parse -> refusals into the reactive walled rescue (diagnose -> amputate|len_asc -> 5-view wall, >=3/5 banks)",
+  "scripts": {
+   "conductor_v2.py": "2c89f4842ec1f420"
+  },
+  "battery": {
+   "register": "bigtest",
+   "gate_alone": 1253,
+   "walled_v1": 1352,
+   "v2_net": 1394,
+   "wrongs": 24,
+   "wall_leaks": "1/167 banked",
+   "lane_baseline": {
+    "right": 1327,
+    "wrong": 23,
+    "refusals": 150
+   }
+  },
+  "fences": [
+   "the map navigates, never verifies (binding theorem)",
+   "the wall mandatory on every rescue",
+   "read-side only"
+  ]
+ }
+}
