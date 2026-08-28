@@ -1,0 +1,112 @@
+"""bind_read.py — THE BUS'S FIRST READ (2026-08-28): unbind each slot's
+emitted vector role-by-role (counter-rotation), cleanup against the
+codebook, recover (arg1, arg2, res, op); grade vs gold wiring on
+mint-val rows AND the 143 wild golds; baseline = the pointer heads'
+args/res on the same rows. BARS (pinned): mint-val role recovery >= 90%
+(the head can emit bindings); wild recovery reported vs pointers (parity
+= a second, mechanism-decorrelated wiring witness for the door).
+"""
+import os, sys, json, glob
+os.environ.update({"DEV": "AMD", "ALG2": "1", "ALG_FTYPES": "9",
+                   "ALG_DUP": "1", "ALG_HW": "512", "ALG_WIDE": "1",
+                   "ALG_BREATH": "7", "ALG_NOTEBOOK": "1", "ALG_SIXWAVE": "1",
+                   "NB_PERSLOT": "1", "ALG_BINDBUS": "1",
+                   "ALG_TEST": ".cache/algebra_nl_bigtest.jsonl",
+                   "ALG_TEST_NAME": "bigtest"})
+sys.path.insert(0, '.'); sys.path.insert(0, 'scripts')
+import numpy as np
+from phase1_algebra_head import (build_params, forward, T_ALG, TOKENIZER_JSON,
+                                 sent_indices, load_alg, build_slot_masks,
+                                 L_FAC, build_gold)
+from beacon_closing_arm import recompute_states
+from tokenizers import Tokenizer
+from tinygrad import Tensor, dtypes
+from tinygrad.nn.state import safe_load
+
+_ = load_alg("test")
+tok = Tokenizer.from_file(TOKENIZER_JSON)
+bz = np.load('.cache/bindbus_codes.npz')
+CB = bz['CB']; P = CB.shape[1] // 2
+TH = {r: bz[f'theta_{r}'] for r in ('arg1', 'arg2', 'res', 'op')}
+def unrot(v, th):
+    v2 = v.reshape(-1, P, 2)
+    c, s = np.cos(-th), np.sin(-th)
+    x, y = v2[..., 0], v2[..., 1]
+    return np.stack([c * x - s * y, s * x + c * y], -1).reshape(v.shape)
+def cleanup(v):
+    vn = v / (np.linalg.norm(v, axis=-1, keepdims=True) + 1e-9)
+    return (vn @ CB.T).argmax(-1)
+
+def main():
+    p = build_params(0)
+    sd = safe_load('.cache/sharp_bind.safetensors')
+    assert set(sd.keys()) == set(p.keys())
+    for k in p:
+        p[k].assign(sd[k].to(p[k].device).cast(p[k].dtype)).realize()
+    # rows: mint-val (200 from test23) + the 143 golds
+    mint = [json.loads(l) for l in open('.cache/algebra_nl_test.jsonl')][:200]
+    for r in mint: r['tag'] = 'mint'; r['original'] = r.get('text') or r.get('original')
+    byid = {}
+    for f in sorted(glob.glob('.cache/book*_t*_batch*.jsonl')):
+        for l in open(f): r = json.loads(l); byid[r["src_idx"]] = r
+    for l in open('.cache/book12_anchor_batch1.jsonl'):
+        r = json.loads(l); byid[r["src_idx"]] = r
+    sk = set(json.load(open('.cache/book12_anchor_skips.json')))
+    golds = [dict(v, tag='gold') for k, v in sorted(byid.items()) if k not in sk]
+    rows = mint + golds
+    from tokenizers import Tokenizer as _T
+    stats = {t: {r2: [0, 0] for r2 in ('arg1', 'arg2', 'res', 'op')}
+             for t in ('mint', 'gold')}
+    ptr = {t: [0, 0, 0, 0] for t in ('mint', 'gold')}   # a_ok, a_n, r_ok, r_n
+    for s0 in range(0, len(rows), 8):
+        sl = rows[s0:s0 + 8]
+        ids = np.zeros((8, T_ALG), np.int32); msk = np.zeros((8, T_ALG), np.float32)
+        snt = np.zeros((8, T_ALG), np.int32)
+        offs = []
+        for i, r in enumerate(sl):
+            e = tok.encode(r['original'])
+            Ln = min(len(e.ids), T_ALG)
+            ids[i, :Ln] = e.ids[:Ln]; msk[i, :Ln] = 1.0
+            snt[i] = sent_indices(r['original'], list(e.offsets), msk[i])
+            offs.append(list(e.offsets))
+        g = build_gold(sl, offs)
+        sts = np.asarray(recompute_states(ids)).astype(np.float32)
+        ts = Tensor(sts, dtype=dtypes.float)
+        tk = Tensor(msk, dtype=dtypes.float)
+        se = Tensor(snt.astype(np.int32), dtype=dtypes.int)
+        o0 = forward(p, ts, tk, se)
+        onp0 = {k2: o0[k2].realize().numpy() for k2 in ("fat", "args", "res")}
+        mk = build_slot_masks(onp0, snt)
+        o = forward(p, ts, tk, se, slot_mask=Tensor(mk, dtype=dtypes.float))
+        Bv = o["bind"].realize().numpy()
+        Ap = o["args"].realize().numpy(); Rp = o["res"].realize().numpy()
+        for i, r in enumerate(sl):
+            for j in range(L_FAC):
+                if g["presence"][i, j] <= 0: continue
+                aidx = np.where(g["args"][i, j] > 0)[0]
+                if len(aidx) == 0: a1 = a2 = int(g["res"][i, j])
+                elif len(aidx) == 1: a1 = a2 = int(aidx[0])
+                else: a1, a2 = int(aidx[0]), int(aidx[1])
+                truth = {'arg1': a1, 'arg2': a2, 'res': int(g["res"][i, j]),
+                         'op': 24 + min(int(g["ftype"][i, j]), 7)}
+                for role in truth:
+                    rec = int(cleanup(unrot(Bv[i, j], TH[role])))
+                    st = stats[r['tag']][role]
+                    st[1] += 1
+                    if rec == truth[role]: st[0] += 1
+                # pointer baseline: args top-2 & res argmax
+                pa = set(np.argsort(-Ap[i, j])[:2].tolist())
+                ptr[r['tag']][1] += 1
+                if {a1, a2} <= pa | {a1} and a1 in pa and a2 in pa: ptr[r['tag']][0] += 1
+                ptr[r['tag']][3] += 1
+                if int(Rp[i, j].argmax()) == truth['res']: ptr[r['tag']][2] += 1
+    for t in ('mint', 'gold'):
+        line = " ".join(f"{ro}:{stats[t][ro][0]/max(stats[t][ro][1],1):.3f}"
+                        for ro in ('arg1', 'arg2', 'res', 'op'))
+        a_ok, a_n, r_ok, r_n = ptr[t]
+        print(f"[bind {t}] BUS recovery {line}  (n={stats[t]['res'][1]})"
+              f"  |  POINTERS args {a_ok/max(a_n,1):.3f} res {r_ok/max(r_n,1):.3f}",
+              flush=True)
+
+if __name__ == "__main__":
+    main()
