@@ -122,8 +122,10 @@ TERMINALS = {
     "opc":    {"params": ["W_opc1", "W_opc1_b", "W_opc2", "W_opc2_b"],
                "emit": "opc", "gold": ["opc"],
                "when": lambda: int(os.environ.get("ALG_OPCOUNT", "0")) > 0},
-    "bindbus": {"params": ([f"W5_{r}_{s}" for r in ("a1", "a2", "rs", "op")
-                            for s in ("1", "b", "2")]
+    "bindbus": {"params": (["W_bind1", "W_bind1_b"] + [f"W6_{r}" for r in ("a1", "a2", "rs", "op")]
+                           if int(os.environ.get("ALG_BINDBUS", "0")) >= 6
+                           else [f"W5_{r}_{s}" for r in ("a1", "a2", "rs", "op")
+                                 for s in ("1", "b", "2")]
                            if int(os.environ.get("ALG_BINDBUS", "0")) >= 5
                            else ["W_bind1", "W_bind1_b", "W_bind2"]
                            if int(os.environ.get("ALG_BINDBUS", "0")) >= 2
@@ -767,7 +769,14 @@ def build_params(seed=0):
         pass
     if int(os.environ.get("ALG_BINDBUS", "0")):
         _bd = int(os.environ.get("ALG_BIND_D", "128"))
-        if int(os.environ["ALG_BINDBUS"]) >= 5:
+        if int(os.environ["ALG_BINDBUS"]) >= 6:
+            # v6 the middle door: SHARED 512-gelu trunk (load-bearing, the
+            # v5 kill's finding) + per-role OUTPUT projections only
+            p["W_bind1"] = t(rng.randn(H_W, 512) / math.sqrt(H_W))
+            p["W_bind1_b"] = t(np.zeros(512))
+            for _r6 in ("a1", "a2", "rs", "op"):
+                p[f"W6_{_r6}"] = t(rng.randn(512, 32) / math.sqrt(512))
+        elif int(os.environ["ALG_BINDBUS"]) >= 5:
             # v5: four role heads (docs/rotational_bus.md) — heads point,
             # frozen phasors bind, the wire sums (single-wire fence)
             for _r5 in ("a1", "a2", "rs", "op"):
@@ -1122,10 +1131,11 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
     if "h_depth" in p:
         out["depth"] = fst @ p["h_depth"] + p["h_depth_b"]
         out["term"] = (fst @ p["h_term"] + p["h_term_b"]).squeeze(-1)
-    if "W5_a1_1" in p:
-        # v5 binding by construction: heads answer WHICH (logits over the
+    if "W5_a1_1" in p or "W6_a1" in p:
+        # v5/v6 binding by construction: heads answer WHICH (logits over the
         # codebook, softmax -> code mixture); frozen phasors answer WHERE
-        # (+theta rotation); the wire answers TRANSMIT (sum of four)
+        # (+theta rotation); the wire answers TRANSMIT (sum of four).
+        # v6: logits from a SHARED gelu trunk + per-role projections.
         global _BINDF
         try: _BINDF
         except NameError: _BINDF = None
@@ -1142,8 +1152,11 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
         _CB5, _rot5 = _BINDF
         _P5 = _CB5.shape[1] // 2                # P_planes (D_real // 2)
         _wire = None; _lgs = []
+        _h6 = ((fst @ p["W_bind1"] + p["W_bind1_b"]).gelu()
+               if "W6_a1" in p else None)
         for _ri5, _r5 in enumerate(("a1", "a2", "rs", "op")):
-            _lg5 = (fst @ p[f"W5_{_r5}_1"] + p[f"W5_{_r5}_b"]).gelu() @ p[f"W5_{_r5}_2"]
+            _lg5 = (_h6 @ p[f"W6_{_r5}"] if _h6 is not None else
+                    (fst @ p[f"W5_{_r5}_1"] + p[f"W5_{_r5}_b"]).gelu() @ p[f"W5_{_r5}_2"])
             _lgs.append(_lg5)
             _v5 = _lg5.softmax(-1) @ _CB5       # soft pointer: codebook hull
             _vr5 = _v5.reshape(*_v5.shape[:-1], _P5, 2)

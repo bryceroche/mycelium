@@ -30893,3 +30893,23 @@ The door's remaining keys unchanged: cert-v2 panel at root grain; wild
 parse competence (the long game). The bus's proven value stays where it
 was measured: slot-grain wiring recovery, register invariance, the parse-
 regularizer effect (0.6134), and the amplitude diagnostic.
+
+## 2026-08-29 — REGISTERED + FIRED: BUS v6 (the middle door; word given) + THE R4 NORTH STAR
+BRYCE'S RULING BANKED: the destination is THE CARRIER MARRIAGE — merge the
+bus with the six helical sine waves WHEN GOOD AND READY. Readiness = bus
+competence (every negative this week traced to ~.50 wild args); v6 is the
+dowry work. DESIGN (from the v5 kill's finding): SHARED 512-gelu trunk
+(W_bind1 — load-bearing cross-role features, warm from the incumbent
+sharp_bindj) + per-role OUTPUT projections only (W6_a1/a2/rs/op, 512->32,
+fresh — decoupling where it was free); soft-pointer -> frozen phasors ->
+single wire (v5 machinery inherited); native per-role CE.
+TWO-PHASE FIRE (the bindj recipe, now deliberate): phase A frozen-parse
+(bind params only, LR 1e-4, 6k, seed 217 -> sharp_bind6a) so the newborn
+projections learn on good frozen features; phase B joint (all params,
+LR 3e-5, 6k, seed 218 -> sharp_bind6) so the waist meets the heads. Reads
+after each phase. BARS (pinned before fire, judged on phase B): parse val
+>= 0.60 (kill < 0.58); mint args > .62 (beat the monolith's .603); wild
+res >= .734 (hold the incumbent crossover). MISS on any -> the monolith
+stays incumbent, v6 banks negative, no rescue (the two-phase recipe IS the
+fair shot). If v6 takes the incumbency, the reopening math for the door
+(wild args >= .75) gets its first honest attempt.
