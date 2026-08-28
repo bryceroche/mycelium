@@ -30684,3 +30684,24 @@ seeded, fixed). First cut: 33 files, 860K, gen 41, commit 54b66f6; pushed.
 Laws: core is an EXPORT TARGET never a source (hand commits clobbered by
 design); re-cut at chapter boundaries with the gen-weights->main sync (a
 stale core that looks authoritative is worse than none).
+
+## 2026-08-28 — BUS v3 VERDICT: the role-factored loss pays; FIRST WILD CROSSOVER (res); 90% bar still standing
+Unit bindbus-v3 (warm from sharp_bind2, frozen-parse, 6k steps, seed 213;
+loss = per-role conjugate-rotate + CE vs codebook, cosine demoted to 0.2 aux).
+sharp_bind3.safetensors. Read (BR_V=3 BR_D=256):
+  mint  arg1 .566 arg2 .565 res .567 op .926   (v2: .526/.515/.519/.915)
+  wild  arg1 .524 arg2 .550 res .720 op .693   (v2: .503/.534/.656/.734)
+  pointers: args .481 mint / .558 wild; res .676 mint / .692 wild.
+VERDICTS: (1) supervising recoverability directly beats the cosine proxy —
+every mint role +4-5pts, third consecutive climb (args .385->.526->.566).
+(2) FIRST WILD CROSSOVER: bus res .720 > pointers .692 on the 143-gold rows
+— the first time ANY bus role beats the incumbent on wild text. Wild res
+EXCEEDS mint res (.720 vs .567): the anti-collapse direction, register
+invariance holding in the strong form. (3) The pinned >=90%/role mint bar is
+NOT met (args ~.57) — banked as a MISS; the bus is a maturing witness, not
+yet a certified reader. (4) op wild dipped .734->.693 (mint rose) — first
+role-level mint/wild divergence on op; watched, not diagnosed.
+Trajectory law (three points): each principled dial (capacity, then
+objective) buys ~+4-14pts; blind scale was never fired. Next dial candidates
+(registered, unfired): unfreeze the parse (joint fine-tune from sharp_bind3),
+longer burn, per-role output heads. Held for the word.
