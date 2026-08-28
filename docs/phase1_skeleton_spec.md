@@ -30861,3 +30861,20 @@ op-ids in var roles leave pointers untouched) — concordance = top in
 concordant' is PROMOTION-ELIGIBLE only if on gold emissions it keeps
 net >= +3 AND rights_kept >= 6; otherwise banks OBSERVATIONAL and the door
 is untouched. Chain: unit emission-bus (scored_emission EMIT_DUMP -> witness).
+
+## 2026-08-29 — STAGE 1 VERDICT: OBSERVATIONAL ONLY — GRAIN MISMATCH NAMED (the wiring witness answered a value question)
+Door re-run (incumbent confirmed: gold EMIT 20, 10r/10l net 0; wv -3, held
+-1; 26 emissions dumped). Bus witness: concordance 0/26 on BOTH lanes and
+BOTH classes. Probe (texture rule, before any conclusion): lanes ARE healthy
+— bindj parses decode and solve (answers produced; no exceptions) — they
+simply never re-derive the door's top. DIAGNOSIS: full-answer concordance
+demands VALUE competence (dig heads on wild text) the bus never claimed; its
+wild .734 is WIRING competence at slot grain. Asking the wiring witness a
+value question returns honest silence — no discrimination possible at this
+grain. Veto bar not met (0 kept anywhere); door untouched.
+REGISTERED — STAGE 1b (wiring grain): dump the door's winning-view parse;
+concordance = Jaccard between g41's edge set {(arg->res, op)} + given-vars
+and the bus-recovered edge set (bindj rel/given slots, bus a1/a2/rs; shared
+consecutive-letter var space makes cross-lineage edges comparable). STILL
+OBSERVATIONAL: threshold sweep on 20 gold emissions cannot promote (selection
+on the fixture); promotion requires a pinned tau confirmed on FRESH emissions.
