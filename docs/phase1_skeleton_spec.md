@@ -30784,3 +30784,19 @@ v5 BARS (pinned before fire): parse guard val >= 0.595 (new baseline 0.6058;
 .59, op > .93), wild res >= pointer parity, the 90%/role certification bar
 stands as the target. Unit bindbus-v5: W5 heads fresh, all params train,
 LR 3e-5, 6k steps, seed 215.
+
+## 2026-08-28 — v5 VERDICT: PARSE HIGH AGAIN (0.6134), BUS BARS MISSED; RESCUE REGISTERED
+Unit bindbus-v5 (W5 fresh, joint from sharp_bindj, LR 3e-5, 6k, seed 215) ->
+sharp_bind5. PARSE: val 0.6134 — THIRD consecutive lineage high under bus
+structure (pointers mint args .535, res .732 — also highs). BUS BARS MISSED
+HONESTLY: mint .554/.539/.552 (bars >.60/.60/.59), op .927 (bar >.93 — 0.003
+shy), wild res .637 vs pointers .671 — the crossover LOST. Mint args still
+edge pointers (.554 vs .535); wild does not.
+CONFOUND NAMED BEFORE ANY KILL: the W5 heads are newborns — 6k steps at the
+joint-protective LR 3e-5 vs the monolith's ~18k cumulative at 1e-4 (~10x
+effective-training gap). Architecture not yet separable from budget.
+RESCUE (pre-registered, one variant, bar pinned): frozen-parse continuation
+of W5 params ONLY from sharp_bind5 (the 0.6134 parse banked, untouched),
+LR 1e-4, 12k steps, seed 216. BAR: mint args >= .60 AND wild res >= pointer
+parity (.671) -> v5 architecture survives; MISS -> v5-at-this-scale verdict
+NEGATIVE, the joint-v3 monolith remains the bus incumbent. No second rescue.
