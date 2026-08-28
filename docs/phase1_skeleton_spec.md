@@ -30759,3 +30759,14 @@ v5 code to use D_real/P_planes names throughout).
 Division of labor banked: heads answer WHICH (classification), frozen
 phasors answer WHERE (rotation), the wire answers TRANSMIT (superposition).
 Binding is an architectural invariant the network cannot violate.
+
+## 2026-08-28 — docs/rotational_bus.md CREATED (the standing v5 contract)
+The handoff doc banked with three scalpel edits to the relay: (1) "freeze
+the trunk" language corrected — the trunk is frozen FOREVER (constitutional);
+the substrate rule's frozen branch freezes the parse HEAD params only.
+(2) The Atlas-Mahalanobis cleanup row stamped REGISTERED FUTURE (today's
+cleanup is cosine argmax; the atlas marriage is a later word). (3) The
+amplitude MI audit made honest: A_r is deterministic given the FULL p_r —
+the audit conditions on scalar H(p_r) only, and the hypothesis is precisely
+that amplitude is GEOMETRY-AWARE confidence (mass on nearby codes dims less
+than mass on distant codes) where entropy is geometry-blind.
