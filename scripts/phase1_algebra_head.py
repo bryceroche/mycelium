@@ -125,7 +125,7 @@ TERMINALS = {
     "bindbus": {"params": (["W_bind1", "W_bind1_b", "W_bind2"]
                            if int(os.environ.get("ALG_BINDBUS", "0")) >= 2
                            else ["W_bind"]),
-                "emit": "bind", "gold": ["bindvec"],
+                "emit": "bind", "gold": (["bindvec", "bind_ids"] if int(os.environ.get("ALG_BINDBUS", "0")) >= 3 else ["bindvec"]),
                 "when": lambda: int(os.environ.get("ALG_BINDBUS", "0")) > 0},
     "cmt":    {"params": ["W_cmt", "W_cmt_b"],     "emit": "cmt",   "gold": ["ftype", "res"],
                "when": lambda: int(os.environ.get("ALG_RINGS", "0")) and int(os.environ.get("ALG_BREATH", "1")) > 1},
@@ -1188,7 +1188,37 @@ def _loss_single(o, g):
         _e = o["bind"]; _t = g["bindvec"]
         _cos = (_e * _t).sum(-1) / ((_e.pow(2).sum(-1).sqrt() + 1e-6)
                                     * (_t.pow(2).sum(-1).sqrt() + 1e-6))
-        l = l + ((1.0 - _cos) * pres).sum() / n_p
+        _w = 1.0 if int(os.environ.get("ALG_BINDBUS", "0")) < 3 else 0.2
+        l = l + _w * ((1.0 - _cos) * pres).sum() / n_p
+    if "bind" in o and "bind_ids" in g and int(os.environ.get("ALG_BINDBUS", "0")) >= 3:
+        # v3 THE ROLE-FACTORED LOSS: supervise each role's unbound cleanup
+        # directly — conjugate-rotate the emission, CE against the codebook
+        global _BINDC
+        try: _BINDC
+        except NameError: _BINDC = None
+        if _BINDC is None:
+            import numpy as _np
+            from tinygrad import Tensor as _T3
+            _bz = _np.load(os.environ.get("BIND_CODES", ".cache/bindbus_codes.npz"))
+            _CBt = _T3(_bz["CB"].astype(_np.float32))
+            _rc = {}
+            for _ri, _r in enumerate(("arg1", "arg2", "res", "op")):
+                _th = _bz[f"theta_{_r}"]
+                _rc[_ri] = (_T3(_np.cos(-_th).astype(_np.float32)),
+                            _T3(_np.sin(-_th).astype(_np.float32)))
+            _BINDC = (_CBt, _rc)
+        _CBt, _rc = _BINDC
+        _P2 = _e.shape[-1] // 2
+        _er = _e.reshape(*_e.shape[:-1], _P2, 2)
+        _ex, _ey = _er[..., 0], _er[..., 1]
+        for _ri in range(4):
+            _c3, _s3 = _rc[_ri]
+            _ux = _ex * _c3 - _ey * _s3
+            _uy = _ex * _s3 + _ey * _c3
+            _u = Tensor.stack(_ux, _uy, dim=-1).reshape(*_e.shape)
+            _lg = _u @ _CBt.T                       # (B, L_FAC, 32)
+            _y = g["bind_ids"][..., _ri]
+            l = l + 0.5 * (ce(_lg, _y) * pres).sum() / n_p
     is_macro = g["is_macro"] if "is_macro" in g else is_mod * 0.0
     is_frac = g["is_frac"] if "is_frac" in g else is_mod * 0.0
     dm = g["is_lit_f"] + is_mod + is_pct + is_fdiv + is_macro + is_frac
@@ -1817,6 +1847,8 @@ def do_train(steps, lr, batch, seed):
                            if int(os.environ.get("ALG_OPCOUNT", "0")) else ()),
                          *((("bindvec", (L_FAC, int(os.environ.get("ALG_BIND_D", "128"))), dtypes.float),)
                            if int(os.environ.get("ALG_BINDBUS", "0")) else ()),
+                         *((("bind_ids", (L_FAC, 4), dtypes.int),)
+                           if int(os.environ.get("ALG_BINDBUS", "0")) >= 3 else ()),
                          ("query", (), dtypes.int)):
         npdt = np.float32 if dt == dtypes.float else np.int32
         bg[k] = fix(np.zeros((batch,) + shape, npdt), dt)
