@@ -266,13 +266,14 @@ def main():
         roots = r.get('_roots')
         if not roots: continue
         texts = [r['original']] + [permuted_view(r['original'], 77000 + 13 * hash(r['original'][:20]) % 1000 + k) for k in range(1, 5)]
-        votes = []
+        votes = []; view_facs = []
         for facs, q in parse_batch(texts):
             try:
                 a = solve2(facs, q, {"n_vars": 24, "m": 300})
             except Exception:
                 a = None
-            if a is not None: votes.append(a)
+            if a is not None:
+                votes.append(a); view_facs.append((a, facs))
         cand = Counter(v for v in votes if v in roots)
         t = T[r['tag']]
         if cand:
@@ -282,10 +283,12 @@ def main():
                 if top == r['answer']: t['ur'] += 1
                 else: t['ul'] += 1
                 if os.environ.get("EMIT_DUMP"):
+                    wf = next((f for a, f in view_facs if a == top), None)
                     _DUMP.append({"original": r['original'],
                                   "answer": r['answer'], "tag": r['tag'],
                                   "top": int(top), "cnt": int(cnt),
-                                  "right": int(top == r['answer'])})
+                                  "right": int(top == r['answer']),
+                                  "facs": wf})
     for tag, t in T.items():
         print(f"[score {tag}] n={t['n']} witnessed {t['wit']} eligible {t['elig']} "
               f"key-reachable {t['cover']} EMIT {t['uniq']} "
