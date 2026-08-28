@@ -30913,3 +30913,20 @@ res >= .734 (hold the incumbent crossover). MISS on any -> the monolith
 stays incumbent, v6 banks negative, no rescue (the two-phase recipe IS the
 fair shot). If v6 takes the incumbency, the reopening math for the door
 (wild args >= .75) gets its first honest attempt.
+
+## 2026-08-29 — R4 STAGE 0 VERDICT: NO MEASURED WARM START (the marriage will IMPOSE offsets, not inherit them)
+scripts/r4_stage0_phase_roles.py (zero-GPU scout). MINT: 201,400
+cross-sentence arg->res pairs; chi2=107 vs shuffle null (p<<0.01) BUT the
+effect is HOLLOW — the entire deviation is a +6% excess at dphase=0 (23,493
+vs 22,090 expected); every other bucket sits ON the null. At n=201k,
+significance is free; there is no usable phase-stride structure (the
+estimator-variance law's cousin: big-n chi2 masquerades as concentration).
+WILD: zero measurable pairs — book gold rows carry no mentions field; the
+wild arm is data-absent, not null. VERDICT: the registered prediction is NOT
+confirmed; the carriers are NOT proto-role-rotators at the sentence grain.
+DESIGN CONSEQUENCE FOR THE MARRIAGE (the north star stands): role offsets
+enter BY CONSTRUCTION (imposed, like the bus's frozen phasors — the same
+structural-entry law that won all week), not by measurement; the six-wave
+resonance remains the slot<->sentence KEYING channel, and the bus remains
+the role-binding channel — the marriage composes them rather than deriving
+one from the other.
