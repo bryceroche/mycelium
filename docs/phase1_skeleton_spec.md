@@ -30821,3 +30821,12 @@ sharp_bindj (wild res .734 vs pointers .685). Registered candidates (words
 required, each a NEW design not a rescue): v6 = shared 512-gelu trunk +
 per-role OUTPUT projections only (the middle door the v5 kill points at);
 emission-door integration of the incumbent's bus-res as second witness.
+
+## 2026-08-29 — REGISTERED: THE AMPLITUDE AUDIT (word given; fires on sharp_bind5r)
+Pre-registered in docs/rotational_bus.md S3; pass rule pinned BEFORE the
+read: I(correct; A_r | H-decile) must beat a within-decile permutation null
+(1000 perms) at p < 0.05 on >= 2 of 4 roles ON MINT. Wild reported
+alongside; selective-prediction at 50% coverage (rank by A vs by -H)
+reported as the practical payoff. Observational read on the banked v5r
+artifact — the ONE measurement only the killed soft-pointer architecture
+can provide; amplitude never enters any loss (Goodhart fence).
