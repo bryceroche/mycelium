@@ -30705,3 +30705,17 @@ Trajectory law (three points): each principled dial (capacity, then
 objective) buys ~+4-14pts; blind scale was never fired. Next dial candidates
 (registered, unfired): unfreeze the parse (joint fine-tune from sharp_bind3),
 longer burn, per-role output heads. Held for the word.
+
+## 2026-08-28 — WORD GIVEN: MEET THE BUS HALFWAY (joint fine-tune) + THE ARCHITECTURAL RULING
+Bryce's ruling: the rotational binding bus is THE CORE DRIVER of the
+architecture — build everything around it. (The four-times-killed wiring
+wound, reopened as rotation, is now the design center: slots bind to roles
+by phase, RMS-norm-proof, register-invariant by construction.)
+REGISTERED (bars pinned BEFORE measurement) — unit bindbus-joint:
+warm from sharp_bind3, ALL head params train (frozen-parse lifted; trunk
+frozen forever), LR 3e-5 gentle continuation, 6k steps, seed 214.
+BARS: (1) PARSE GUARD: val fac-exact-proxy >= 0.58 (baseline 0.5883 — the
+parse must not pay for the bus; < 0.57 KILLS the joint line). (2) BUS GAIN:
+mint args > 0.60 = the waist moved toward the bus; wild res vs pointers
+(.720 vs .692) must HOLD >= parity. (3) INVARIANCE: |mint-wild| per role
+watched; wild-res-exceeds-mint (the strong form) noted if it survives.
