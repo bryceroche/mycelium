@@ -70,6 +70,11 @@ def main():
         r = json.loads(l); byid[r["src_idx"]] = r
     sk = set(json.load(open('.cache/book12_anchor_skips.json')))
     golds = [dict(v, tag='gold') for k, v in sorted(byid.items()) if k not in sk]
+    for r in mint + golds:
+        r.setdefault('n_vars', 24); r.setdefault('m', 300)
+        r.setdefault('query_var', r.get('query', 0))
+        r.setdefault('decisions', 0); r.setdefault('mentions', {})
+        r.setdefault('text', r['original'])
     rows = mint + golds
     from tokenizers import Tokenizer as _T
     stats = {t: {r2: [0, 0] for r2 in ('arg1', 'arg2', 'res', 'op')}

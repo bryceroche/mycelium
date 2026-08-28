@@ -1722,11 +1722,14 @@ def do_train(steps, lr, batch, seed):
     b_mask = fix(np.zeros((batch, L_FAC, L_FAC), np.float32), dtypes.float) \
         if K_B > 1 else None
     b_tail = fix(np.zeros((batch, T_ALG), np.float32), dtypes.float) if CLOCK else None
-    if int(os.environ.get("ALG_OPCOUNT", "0")):
-        assert "opc" in gold, \
-            ("ALG_OPCOUNT=1 but the states npz has no g_opc — a pre-surgery "
-             "cache would zero-train the count head silently (feed-door "
-             "fence, missing-gold case). Re-precompute or inject g_opc.")
+    for _tn, _t in TERMINALS.items():
+        if not _t["when"](): continue
+        for _gk in _t["gold"]:
+            assert _gk in gold, \
+                (f"terminal {_tn!r} is ACTIVE but gold {_gk!r} is missing from "
+                 f"the loaded states npz — a stale cache would zero-train it "
+                 f"silently (the feed-door fence, GENERALIZED after the "
+                 f"bindvec starvation). Re-precompute or inject g_{_gk}.")
     b_reg = fix(np.zeros((batch,), np.float32), dtypes.float) \
         if int(os.environ.get("ALG_CMT_REG", "0")) else None
     REG = np.load(os.environ.get("ALG_REG_NPY", ".cache/reg_form8.npy")) \
