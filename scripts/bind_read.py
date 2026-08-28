@@ -25,17 +25,34 @@ from tinygrad.nn.state import safe_load
 
 _ = load_alg("test")
 tok = Tokenizer.from_file(TOKENIZER_JSON)
+# THE BUS'S FORMAL LANGUAGE IS COMPLEX (2026-08-28, word given):
+# C^64 is the truth, R^128 the implementation. Interleaved-real (P,2)
+# lifts to complex64; unbinding = multiplication by the conjugate role
+# phasor e^{-i theta}; cleanup similarity = Re<z, c> (the exact
+# isomorph of the R^128 cosine numerator).
 bz = np.load('.cache/bindbus_codes.npz')
 CB = bz['CB']; P = CB.shape[1] // 2
-TH = {r: bz[f'theta_{r}'] for r in ('arg1', 'arg2', 'res', 'op')}
-def unrot(v, th):
-    v2 = v.reshape(-1, P, 2)
-    c, s = np.cos(-th), np.sin(-th)
-    x, y = v2[..., 0], v2[..., 1]
-    return np.stack([c * x - s * y, s * x + c * y], -1).reshape(v.shape)
-def cleanup(v):
-    vn = v / (np.linalg.norm(v, axis=-1, keepdims=True) + 1e-9)
-    return (vn @ CB.T).argmax(-1)
+def lift(v):
+    v2 = v.reshape(*v.shape[:-1], P, 2)
+    return (v2[..., 0] + 1j * v2[..., 1]).astype(np.complex64)
+CBc = lift(CB)
+ROLE = {r: np.exp(-1j * bz[f'theta_{r}']).astype(np.complex64)
+        for r in ('arg1', 'arg2', 'res', 'op')}
+def unbind(v, role):
+    return lift(v) * ROLE[role]
+def cleanup_c(zc):
+    zn = zc / (np.sqrt((np.abs(zc) ** 2).sum(-1, keepdims=True)) + 1e-9)
+    return (zn @ np.conj(CBc).T).real.argmax(-1)
+# isomorphism self-check: complex path == real path on random probes
+_r = np.random.default_rng(0)
+_v = _r.standard_normal(CB.shape[1]).astype(np.float32)
+for _role in ROLE:
+    _th = bz[f'theta_{_role}']
+    _v2 = _v.reshape(P, 2); _c, _s = np.cos(-_th), np.sin(-_th)
+    _real = np.stack([_c * _v2[:, 0] - _s * _v2[:, 1],
+                      _s * _v2[:, 0] + _c * _v2[:, 1]], -1).reshape(-1)
+    _cplx = unbind(_v, _role)
+    assert np.allclose(lift(_real), _cplx, atol=1e-4), "C/R isomorphism broken"
 
 def main():
     p = build_params(0)
@@ -90,7 +107,7 @@ def main():
                 truth = {'arg1': a1, 'arg2': a2, 'res': int(g["res"][i, j]),
                          'op': 24 + min(int(g["ftype"][i, j]), 7)}
                 for role in truth:
-                    rec = int(cleanup(unrot(Bv[i, j], TH[role])))
+                    rec = int(cleanup_c(unbind(Bv[i, j], role)))
                     st = stats[r['tag']][role]
                     st[1] += 1
                     if rec == truth[role]: st[0] += 1
