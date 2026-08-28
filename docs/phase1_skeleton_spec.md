@@ -30800,3 +30800,24 @@ of W5 params ONLY from sharp_bind5 (the 0.6134 parse banked, untouched),
 LR 1e-4, 12k steps, seed 216. BAR: mint args >= .60 AND wild res >= pointer
 parity (.671) -> v5 architecture survives; MISS -> v5-at-this-scale verdict
 NEGATIVE, the joint-v3 monolith remains the bus incumbent. No second rescue.
+
+## 2026-08-28/29 — RESCUE VERDICT: v5 NEGATIVE AT THIS SCALE; THE SHARED LAYER IS LOAD-BEARING
+Unit bindbus-v5r (W5 only, frozen parse, LR 1e-4, 12k, seed 216) ->
+sharp_bind5r. Read: mint .595/.578/.592/op .931; wild .489/.542/.679/.670.
+BAR (mint args >= .60 AND wild res >= .671): arg1 .595 arg2 .578 MISS /
+wild res .679 PASS -> AND fails -> v5-AT-THIS-SCALE NEGATIVE per the
+pre-registered bar; NO SECOND RESCUE; the joint-v3 MONOLITH (sharp_bindj)
+REMAINS THE BUS INCUMBENT (its wild res .734 unbeaten by the factorized
+heads' .679 even at 2x steps).
+THE FINDING (banked, not just a kill): full factorized independence LOSES to
+the shared hidden layer at this scale — cross-role features are load-bearing
+for binding (knowing the op informs the args; roles share structure the
+512-gelu waist was exploiting). Echo of capability>diversity. The v5 CHAIN
+still paid: parse lineage highs came from ITS substrate fires (0.6134 banked
+in sharp_bind5/5r — parse incumbent), and binding-by-construction + the
+soft-pointer interface are proven machinery (one-hot -> exact recovery).
+ARTIFACT LEDGER: parse incumbent = sharp_bind5 (val .6134); bus incumbent =
+sharp_bindj (wild res .734 vs pointers .685). Registered candidates (words
+required, each a NEW design not a rescue): v6 = shared 512-gelu trunk +
+per-role OUTPUT projections only (the middle door the v5 kill points at);
+emission-door integration of the incumbent's bus-res as second witness.
