@@ -30830,3 +30830,22 @@ alongside; selective-prediction at 50% coverage (rank by A vs by -H)
 reported as the practical payoff. Observational read on the banked v5r
 artifact — the ONE measurement only the killed soft-pointer architecture
 can provide; amplitude never enters any loss (Goodhart fence).
+
+## 2026-08-29 — AMPLITUDE AUDIT VERDICT: PASS (3/4 mint roles); PHYSICS CONFIRMED, PRACTICAL EDGE MARGINAL
+Unit bind-amp-audit on sharp_bind5r (observational; Goodhart fence).
+MI(correct; A|H-decile) vs 1000-perm within-decile null:
+  mint arg1 +.0095 p=.000* / arg2 +.0072 p=.005* / res +.0076 p=.004* /
+  op +.0033 p=.147 (saturated at .932 acc — no room). PASS at pinned bar
+  (3/4 >= 2). Wild all-positive MI but under-powered at n=736 (arg1 p=.055,
+  res p=.074 near-miss; arg2/op no). VERDICTS: (1) the geometry hypothesis
+  is REAL — amplitude carries correctness information beyond entropy;
+  the sixth registered diagnostic (bind_amplitude, coupling=never) enters
+  mycelium/diagnostic_register.py. (2) HONEST LIMIT: selective@50 ties
+  entropy (mint ~.93 both; wild mixed res A .889 > H .878, arg2 H > A) —
+  as a PRACTICAL refusal dial it is redundant with entropy at this scale;
+  MI is real but ~0.01 bits. Instrument banked, no door changes claimed.
+  (3) SIDE FINDING — THE SUPERPOSITION TAX MEASURED: audit grades argmax
+  logits directly vs bind_read's wire round-trip (unbind+cleanup): mint
+  +1pt, wild res +3pts (.709 direct vs .679 through-wire) — the summed
+  wire costs 1-3pts of cross-role interference at 4 roles/128 planes.
+  First direct measurement of the bus's carrying cost.
