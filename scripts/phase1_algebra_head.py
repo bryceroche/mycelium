@@ -122,6 +122,8 @@ TERMINALS = {
     "opc":    {"params": ["W_opc1", "W_opc1_b", "W_opc2", "W_opc2_b"],
                "emit": "opc", "gold": ["opc"],
                "when": lambda: int(os.environ.get("ALG_OPCOUNT", "0")) > 0},
+    "bindbus": {"params": ["W_bind"], "emit": "bind", "gold": ["bindvec"],
+                "when": lambda: int(os.environ.get("ALG_BINDBUS", "0")) > 0},
     "cmt":    {"params": ["W_cmt", "W_cmt_b"],     "emit": "cmt",   "gold": ["ftype", "res"],
                "when": lambda: int(os.environ.get("ALG_RINGS", "0")) and int(os.environ.get("ALG_BREATH", "1")) > 1},
     "cmtreg": {"params": ["w_cmt_reg"],            "emit": "cmt",   "gold": ["ftype", "res"],
@@ -402,6 +404,30 @@ def build_gold(samples, offsets):
                     g["depth"][ri, j] = d; g["term"][ri, j] = t
             except Exception:
                 pass
+    if int(os.environ.get("ALG_BINDBUS", "0")):
+        # THE ROTATIONAL BINDING BUS (2026-08-28, word given): per-slot gold
+        # bound vectors — role-phase rotations of var/op codes (VSA in the
+        # Fourier domain; codes deterministic from .cache/bindbus_codes.npz)
+        _bz = np.load(".cache/bindbus_codes.npz")
+        _CB = _bz["CB"]; _P = _CB.shape[1] // 2
+        def _rotv(v, th):
+            v2 = v.reshape(_P, 2)
+            c_, s_ = np.cos(th), np.sin(th)
+            return np.stack([c_ * v2[:, 0] - s_ * v2[:, 1],
+                             s_ * v2[:, 0] + c_ * v2[:, 1]], -1).reshape(-1)
+        _TH = {r: _bz[f"theta_{r}"] for r in ("arg1", "arg2", "res", "op")}
+        g["bindvec"] = np.zeros((n, L_FAC, _CB.shape[1]), np.float32)
+        for i2 in range(n):
+            for j2 in range(L_FAC):
+                if g["presence"][i2, j2] <= 0: continue
+                aidx = np.where(g["args"][i2, j2] > 0)[0]
+                if len(aidx) == 0: a1 = a2 = int(g["res"][i2, j2])
+                elif len(aidx) == 1: a1 = a2 = int(aidx[0])
+                else: a1, a2 = int(aidx[0]), int(aidx[1])
+                r2 = int(g["res"][i2, j2]); opv = 24 + min(int(g["ftype"][i2, j2]), 7)
+                z = (_rotv(_CB[a1], _TH["arg1"]) + _rotv(_CB[a2], _TH["arg2"])
+                     + _rotv(_CB[r2], _TH["res"]) + _rotv(_CB[opv], _TH["op"]))
+                g["bindvec"][i2, j2] = z
     if int(os.environ.get("ALG_OPCOUNT", "0")):
         # feed-door completion (2026-08-26): gold is built here, but CACHED
         # npzs from before the surgery lack g_opc — load_alg's consumer
@@ -731,6 +757,11 @@ def build_params(seed=0):
             p["W_cmt_b"] = t(np.full(1, float(os.environ.get(
                 "CMT_B_INIT", "-4.0"))))             # init: commit ~nothing;
                                                      # door #54-R: bias-open
+        pass
+    if int(os.environ.get("ALG_BINDBUS", "0")):
+        p["W_bind"] = t(rng.randn(H_W, 128) / math.sqrt(H_W))
+    if int(os.environ.get("ALG_RINGS", "0")):
+        if True:
             if int(os.environ.get("ALG_CMT_REG", "0")):
                 p["w_cmt_reg"] = t(np.zeros(1))      # zero-init: register
                                                      # enters at no-effect
@@ -1071,6 +1102,8 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
     if "h_depth" in p:
         out["depth"] = fst @ p["h_depth"] + p["h_depth_b"]
         out["term"] = (fst @ p["h_term"] + p["h_term_b"]).squeeze(-1)
+    if "W_bind" in p:
+        out["bind"] = fst @ p["W_bind"]              # (B, L_FAC, 128)
     if "W_opc1" in p:
         if int(os.environ.get("ALG_OPCOUNT", "0")) == 2:
             # rescue variant (registered pre-fire; mechanism-cleared): pool
@@ -1140,6 +1173,11 @@ def _loss_single(o, g):
         l = l + (bce(o["term"], g["term"]) * pres).sum() / n_p
     if "opc" in o and "opc" in g:          # lever 3: row-grain count CE
         l = l + ce(o["opc"], g["opc"]).mean()
+    if "bind" in o and "bindvec" in g:     # the rotational binding bus
+        _e = o["bind"]; _t = g["bindvec"]
+        _cos = (_e * _t).sum(-1) / ((_e.pow(2).sum(-1).sqrt() + 1e-6)
+                                    * (_t.pow(2).sum(-1).sqrt() + 1e-6))
+        l = l + ((1.0 - _cos) * pres).sum() / n_p
     is_macro = g["is_macro"] if "is_macro" in g else is_mod * 0.0
     is_frac = g["is_frac"] if "is_frac" in g else is_mod * 0.0
     dm = g["is_lit_f"] + is_mod + is_pct + is_fdiv + is_macro + is_frac
@@ -1758,6 +1796,8 @@ def do_train(steps, lr, batch, seed):
                            if int(os.environ.get("ALG_POSCH", "0")) else ()),
                          *((("opc", (len(OPC_CLASSES),), dtypes.int),)
                            if int(os.environ.get("ALG_OPCOUNT", "0")) else ()),
+                         *((("bindvec", (L_FAC, 128), dtypes.float),)
+                           if int(os.environ.get("ALG_BINDBUS", "0")) else ()),
                          ("query", (), dtypes.int)):
         npdt = np.float32 if dt == dtypes.float else np.int32
         bg[k] = fix(np.zeros((batch,) + shape, npdt), dt)
