@@ -30719,3 +30719,21 @@ parse must not pay for the bus; < 0.57 KILLS the joint line). (2) BUS GAIN:
 mint args > 0.60 = the waist moved toward the bus; wild res vs pointers
 (.720 vs .692) must HOLD >= parity. (3) INVARIANCE: |mint-wild| per role
 watched; wild-res-exceeds-mint (the strong form) noted if it survives.
+
+## 2026-08-28 — REGISTERED: BUS v5 — FOUR ROLE HEADS, BINDING BY CONSTRUCTION
+Design ruling (Bryce's multi-head instinct + critique of the Gemini relay):
+(1) FOUR heads, one per role (arg1/arg2/res/op) — not 6; the six-wave
+3-antiphase-pair mapping belongs to the R4 carrier marriage, and the current
+bus lives in 128 complex planes, not 3. (2) The 1-head bottleneck is real
+but the mechanism is shared-hidden-feature competition (args starved at ~.57
+while op rides at .93), NOT "perturbed rotation angles" — the angles are
+frozen codes and cannot be perturbed. (3) THE STRUCTURAL-ENTRY UPGRADE: each
+role head emits UNBOUND CONTENT (which code occupies role r); the
+architecture applies the exact frozen phasor rotation and sums all four onto
+the single 256-d wire — binding by construction, learning only points.
+Recovery error reduces to classification error; v3's role-factored CE
+becomes each head's native loss with zero cross-role gradient path.
+(4) FENCE: the superposed single wire is NON-NEGOTIABLE — four separate
+outputs with no sum is just pointer heads in a trenchcoat; the bus IS the
+wire. Fire order: joint verdict first (burning now) decides frozen-vs-joint
+substrate for v5. HELD FOR THE WORD.
