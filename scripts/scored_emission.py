@@ -275,7 +275,7 @@ def main():
         t = T[r['tag']]
         if cand:
             top, cnt = cand.most_common(1)[0]
-            if cnt >= 2:
+            if cnt >= 3:
                 t['uniq'] += 1
                 if top == r['answer']: t['ur'] += 1
                 else: t['ul'] += 1
