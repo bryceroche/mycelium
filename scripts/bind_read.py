@@ -10,7 +10,8 @@ import os, sys, json, glob
 os.environ.update({"DEV": "AMD", "ALG2": "1", "ALG_FTYPES": "9",
                    "ALG_DUP": "1", "ALG_HW": "512", "ALG_WIDE": "1",
                    "ALG_BREATH": "7", "ALG_NOTEBOOK": "1", "ALG_SIXWAVE": "1",
-                   "NB_PERSLOT": "1", "ALG_BINDBUS": "1",
+                   "NB_PERSLOT": "1", "ALG_BINDBUS": os.environ.get("BR_V", "1"),
+                   "ALG_BIND_D": os.environ.get("BR_D", "128"),
                    "ALG_TEST": ".cache/algebra_nl_bigtest.jsonl",
                    "ALG_TEST_NAME": "bigtest"})
 sys.path.insert(0, '.'); sys.path.insert(0, 'scripts')
@@ -30,7 +31,7 @@ tok = Tokenizer.from_file(TOKENIZER_JSON)
 # lifts to complex64; unbinding = multiplication by the conjugate role
 # phasor e^{-i theta}; cleanup similarity = Re<z, c> (the exact
 # isomorph of the R^128 cosine numerator).
-bz = np.load('.cache/bindbus_codes.npz')
+bz = np.load(os.environ.get('BIND_CODES', '.cache/bindbus_codes.npz'))
 CB = bz['CB']; P = CB.shape[1] // 2
 def lift(v):
     v2 = v.reshape(*v.shape[:-1], P, 2)
@@ -56,7 +57,7 @@ for _role in ROLE:
 
 def main():
     p = build_params(0)
-    sd = safe_load('.cache/sharp_bind.safetensors')
+    sd = safe_load(os.environ.get('BR_CKPT', '.cache/sharp_bind.safetensors'))
     assert set(sd.keys()) == set(p.keys())
     for k in p:
         p[k].assign(sd[k].to(p[k].device).cast(p[k].dtype)).realize()

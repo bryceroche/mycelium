@@ -122,7 +122,10 @@ TERMINALS = {
     "opc":    {"params": ["W_opc1", "W_opc1_b", "W_opc2", "W_opc2_b"],
                "emit": "opc", "gold": ["opc"],
                "when": lambda: int(os.environ.get("ALG_OPCOUNT", "0")) > 0},
-    "bindbus": {"params": ["W_bind"], "emit": "bind", "gold": ["bindvec"],
+    "bindbus": {"params": (["W_bind1", "W_bind1_b", "W_bind2"]
+                           if int(os.environ.get("ALG_BINDBUS", "0")) >= 2
+                           else ["W_bind"]),
+                "emit": "bind", "gold": ["bindvec"],
                 "when": lambda: int(os.environ.get("ALG_BINDBUS", "0")) > 0},
     "cmt":    {"params": ["W_cmt", "W_cmt_b"],     "emit": "cmt",   "gold": ["ftype", "res"],
                "when": lambda: int(os.environ.get("ALG_RINGS", "0")) and int(os.environ.get("ALG_BREATH", "1")) > 1},
@@ -408,7 +411,7 @@ def build_gold(samples, offsets):
         # THE ROTATIONAL BINDING BUS (2026-08-28, word given): per-slot gold
         # bound vectors — role-phase rotations of var/op codes (VSA in the
         # Fourier domain; codes deterministic from .cache/bindbus_codes.npz)
-        _bz = np.load(".cache/bindbus_codes.npz")
+        _bz = np.load(os.environ.get("BIND_CODES", ".cache/bindbus_codes.npz"))
         _CB = _bz["CB"]; _P = _CB.shape[1] // 2
         def _rotv(v, th):
             v2 = v.reshape(_P, 2)
@@ -759,7 +762,13 @@ def build_params(seed=0):
                                                      # door #54-R: bias-open
         pass
     if int(os.environ.get("ALG_BINDBUS", "0")):
-        p["W_bind"] = t(rng.randn(H_W, 128) / math.sqrt(H_W))
+        _bd = int(os.environ.get("ALG_BIND_D", "128"))
+        if int(os.environ["ALG_BINDBUS"]) >= 2:
+            p["W_bind1"] = t(rng.randn(H_W, 512) / math.sqrt(H_W))
+            p["W_bind1_b"] = t(np.zeros(512))
+            p["W_bind2"] = t(rng.randn(512, _bd) / math.sqrt(512))
+        else:
+            p["W_bind"] = t(rng.randn(H_W, _bd) / math.sqrt(H_W))
     if int(os.environ.get("ALG_RINGS", "0")):
         if True:
             if int(os.environ.get("ALG_CMT_REG", "0")):
@@ -1102,8 +1111,10 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
     if "h_depth" in p:
         out["depth"] = fst @ p["h_depth"] + p["h_depth_b"]
         out["term"] = (fst @ p["h_term"] + p["h_term_b"]).squeeze(-1)
-    if "W_bind" in p:
-        out["bind"] = fst @ p["W_bind"]              # (B, L_FAC, 128)
+    if "W_bind2" in p:
+        out["bind"] = (fst @ p["W_bind1"] + p["W_bind1_b"]).gelu() @ p["W_bind2"]
+    elif "W_bind" in p:
+        out["bind"] = fst @ p["W_bind"]
     if "W_opc1" in p:
         if int(os.environ.get("ALG_OPCOUNT", "0")) == 2:
             # rescue variant (registered pre-fire; mechanism-cleared): pool
@@ -1804,7 +1815,7 @@ def do_train(steps, lr, batch, seed):
                            if int(os.environ.get("ALG_POSCH", "0")) else ()),
                          *((("opc", (len(OPC_CLASSES),), dtypes.int),)
                            if int(os.environ.get("ALG_OPCOUNT", "0")) else ()),
-                         *((("bindvec", (L_FAC, 128), dtypes.float),)
+                         *((("bindvec", (L_FAC, int(os.environ.get("ALG_BIND_D", "128"))), dtypes.float),)
                            if int(os.environ.get("ALG_BINDBUS", "0")) else ()),
                          ("query", (), dtypes.int)):
         npdt = np.float32 if dt == dtypes.float else np.int32
