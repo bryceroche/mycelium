@@ -30878,3 +30878,18 @@ and the bus-recovered edge set (bindj rel/given slots, bus a1/a2/rs; shared
 consecutive-letter var space makes cross-lineage edges comparable). STILL
 OBSERVATIONAL: threshold sweep on 20 gold emissions cannot promote (selection
 on the fixture); promotion requires a pinned tau confirmed on FRESH emissions.
+
+## 2026-08-29 — STAGE 1b VERDICT: NEGATIVE — THE BUS-AT-THE-DOOR LINE CLOSES (scope-tagged)
+Wiring-grain Jaccard on gold emissions: rights .319 vs lies .295 (separation
++0.023, lists fully interleaved — a lie at .60, rights at .14). No
+discriminative power at EITHER grain (answer: 0/26; wiring: nil). MECHANISM:
+the witness's own wild wiring accuracy (~.50-.55 args) dominates the
+agreement signal — cross-model concordance measures bindj's noise, not
+g41's truth. A witness must be competent before it can dissent meaningfully
+(the fingerpost law's quantitative face). DOOR UNTOUCHED (net 0 stands).
+CLOSURE SCOPE-TAGGED: reopens if a bus reader reaches wild args >= 0.75 AND
+res >= 0.85 on the golds (re-run stage 1b as-is; scripts stand ready).
+The door's remaining keys unchanged: cert-v2 panel at root grain; wild
+parse competence (the long game). The bus's proven value stays where it
+was measured: slot-grain wiring recovery, register invariance, the parse-
+regularizer effect (0.6134), and the amplitude diagnostic.
