@@ -23,7 +23,7 @@ import op_witness as OW
 
 _ = load_alg("test")
 tok = Tokenizer.from_file(TOKENIZER_JSON)
-OPS = ("add", "sub", "mul", "sq", "fr")
+OPS = ("add", "sub", "addf", "mul", "sq", "fr")
 ADDW = ('sum','total','plus','more','gain','increas','combin','altogether','older','taller','add','together','both')
 SUBW = ('differ','less','fewer','minus','subtract','younger','left','remain','lost','exceed','shorter','decreas','away','neither','not ')
 CLS = {c: i for i, c in enumerate(OPS)}
@@ -31,11 +31,7 @@ THR = float(os.environ.get("NLA_THR", "0.35"))
 MAXC = 4000
 
 def flavor(cue, fallback):
-    cl = cue.lower()
-    a = any(w in cl for w in ADDW); b = any(w in cl for w in SUBW)
-    if a and not b: return "add"
-    if b and not a: return "sub"
-    return fallback
+    return fallback          # symbols-only flavoring: prose stays wildcard
 
 def cue_sites():
     """(text, [(a,b,cls)]) from book3 wild spans + mint spans (canonical)."""
