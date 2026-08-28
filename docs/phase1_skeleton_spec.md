@@ -30669,3 +30669,18 @@ token-position × waist-dim, the moment the skeleton trains.
 - **2026-08-28 — THE ROTATIONAL BINDING BUS: MECHANISM PROVEN, AND THE FIRST REGISTER-INVARIANT INSTRUMENT IN CAMPAIGN HISTORY.** True first read (gold injected via complex_tensor, fence generalized+aliased after catching its own false positive): recovery from chance to arg1 .385 / arg2 .369 / res .39-.49 / op .64-.91 — a trained head EMITS FHRR bindings readable by conjugate-unbinding + codebook cleanup. Formal mint bar (>=90%/role) passed only by op — the linear 65k-param head underfits var-roles (capacity, not concept; MLP head + D=256 + longer fire = the registered dials). **THE HEADLINE: MINT == WILD (gold res 0.492 > mint 0.392!) — the register collapse that killed every projection-based instrument (taggers, count heads, LoRA adapters) DOES NOT APPEAR: rotational bindings ride register-invariant phase structure. A decorrelated wiring witness at ~70% of pointer strength on wild text, from a linear head's first attempt.** The wound-road and the door-road both inherit: wiring-as-rotation is real; the bus re-fires with capacity when the word comes.
 
 - **2026-08-28 — BUS v2 (capacity): vars 0.38 -> 0.52, INVARIANCE HOLDS (args |mint-wild| ~0.02; res 0.14 BETTER on wild — anti-collapse), AND THE FIRST CROSSOVER: bus args on mint (0.526) exceeds the pointer baseline (0.481); wild reads at ~93-95% of pointer strength.** Formal 90% bar: op only (0.915). The scaling read: MLP+256+6k beats linear+128+2k by +14pts on vars — capacity real, deceleration unknown at two points. **v3 REGISTERED (the principled dial, not blind scale): the ROLE-FACTORED LOSS — supervise each role's unbound cleanup directly (conjugate-rotate, then CE vs the codebook, per role) — optimizing recoverability itself instead of its cosine proxy.** The bus stands as the campaign's only register-invariant organ, now parity-adjacent as a second wiring witness.
+
+## 2026-08-28 — THE CORE CUT (chore, word given): orphan branch `core`
+One repo stays the single source of truth (repo-split REJECTED on custody
+grounds: the history backs the ledger's hashes). Instead: `core` = a
+machine-cut orphan branch, minimal deployed stack only. `scripts/cut_core.py`:
+curation judgment = the ENTRYPOINT list alone (CLAUDE.md S1 table); the file
+list is DERIVED (transitive local import closure — a new dependency rides in
+mechanically); GENERATION.json + generated README enter the tree (weights
+never do); the cut smoke-tests ITSELF from a temp checkout of the candidate
+commit (ast-parse everything + import the pure organs) and moves the ref only
+on PASS. The gate fired on cut #1 (closure missed __init__.py's imports —
+seeded, fixed). First cut: 33 files, 860K, gen 41, commit 54b66f6; pushed.
+Laws: core is an EXPORT TARGET never a source (hand commits clobbered by
+design); re-cut at chapter boundaries with the gen-weights->main sync (a
+stale core that looks authoritative is worse than none).
