@@ -30849,3 +30849,15 @@ MI(correct; A|H-decile) vs 1000-perm within-decile null:
   +1pt, wild res +3pts (.709 direct vs .679 through-wire) — the summed
   wire costs 1-3pts of cross-role interference at 4 roles/128 planes.
   First direct measurement of the bus's carrying cost.
+
+## 2026-08-29 — REGISTERED: THE BUS AT THE DOOR, STAGE 1 (word given; observe before veto)
+Fingerpost law honored: the bus incumbent (sharp_bindj) gets NO veto power
+until concordance PROVES discrimination on the door's own emissions.
+Instrument: scored_emission re-run dumps its emissions (EMIT_DUMP); then
+emission_bus_witness reads each through bindj — lane B = its pointer parse
+solved; lane A = wiring OVERRIDDEN by bus unbinding (rel+given slots;
+op-ids in var roles leave pointers untouched) — concordance = top in
+{ansA, ansB}. PINNED BAR (before measurement): the veto 'refuse unless
+concordant' is PROMOTION-ELIGIBLE only if on gold emissions it keeps
+net >= +3 AND rights_kept >= 6; otherwise banks OBSERVATIONAL and the door
+is untouched. Chain: unit emission-bus (scored_emission EMIT_DUMP -> witness).

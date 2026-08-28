@@ -153,6 +153,8 @@ def make_parser():
         return res
     return parse_batch
 
+_DUMP = []
+
 def main():
     sites = cue_sites()
     print(f"[nla] cue-site rows: {len(sites)}", flush=True)
@@ -279,10 +281,18 @@ def main():
                 t['uniq'] += 1
                 if top == r['answer']: t['ur'] += 1
                 else: t['ul'] += 1
+                if os.environ.get("EMIT_DUMP"):
+                    _DUMP.append({"original": r['original'],
+                                  "answer": r['answer'], "tag": r['tag'],
+                                  "top": int(top), "cnt": int(cnt),
+                                  "right": int(top == r['answer'])})
     for tag, t in T.items():
         print(f"[score {tag}] n={t['n']} witnessed {t['wit']} eligible {t['elig']} "
               f"key-reachable {t['cover']} EMIT {t['uniq']} "
               f"(right {t['ur']} lies {t['ul']} net {t['ur']-t['ul']})", flush=True)
+    if os.environ.get("EMIT_DUMP"):
+        json.dump(_DUMP, open(os.environ["EMIT_DUMP"], "w"))
+        print(f"[dump] {len(_DUMP)} emissions -> {os.environ['EMIT_DUMP']}", flush=True)
 
 if __name__ == "__main__":
     main()
