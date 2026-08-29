@@ -31175,3 +31175,26 @@ continuation of 8n (6k @3e-5 s224 -> sharp_bind8n2); ARM R2 = warm_s2v01
 + ALG_BUSLOOP=1 (-> sharp_bind8r2). BARS: R2 val - N2 val >= +0.005 (a
 REAL margin, not noise) AND wild res within 0.005. KILL: miss -> the port
 closes until S3 gives the clock teeth. No further variants.
+
+## 2026-08-30 — S2 v0.1 VERDICT: KILL — THE REDUNDANCY VERDICT (the network closed an open door); PORT CLOSED UNTIL S3
+N2 val 0.6630 / R2 val 0.6628 (bar: R2-N2 >= +0.005 — MISS); wild res
+within bar (.728/.730) but moot. THE DECISIVE READ: bus_g 0.02 -> 0.0046
+— given a decode-initialized, state-like read of its own past bindings
+through a live gradient path, the optimizer ACTIVELY CLOSED the gate.
+Two trials, two failure modes, one honest conclusion (v0 = sealed-gate
+deadlock, invalid; v0.1 = open gate, declined).
+THE MECHANISM (banked as law): **a recurrent channel must carry
+information the residual stream LOSES** — here the wire is a function of
+cur injected BESIDE cur (a reparameterization plus cross-tick
+interference noise), and the memory role is already served twice (the
+residual stream persists state; the notebook shelf preserves ink). The
+bus-as-memory competed with two incumbents and lost to both. Where the
+bus rotor still earns per the canon: relations ACROSS SLOTS (communication,
+not memory), the solver interface (emission — its proven role), and S3's
+regime — where rotated geometry makes the clock REQUIRED, not optional.
+S2 CLOSED per registration (no further variants); the stack proceeds to
+S3 (multiplicative breath-phase RoPE, the clock's teeth) on its word.
+SIDE LEDGER: the T^256 family continuation curve is remarkable — val
+0.6336 -> 0.638 -> 0.652 -> 0.663 across three 6k passes (mint pointer
+res 0.814); the family line compounds while the experiments around it
+return verdicts. sharp_bind8n2 = parse high-water.
