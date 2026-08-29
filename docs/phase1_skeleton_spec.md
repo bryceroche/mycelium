@@ -31462,3 +31462,19 @@ FENCE AT BIRTH: magnitude is observational; never supervised; any
 gating/weighting use requires its own registered charter (mouth-distance
 precedent). The polar decomposition is the bus's full language — theta
 spoken, r about to be heard.
+
+## 2026-08-30 — GARAGE VERDICT: KILL PER BAR (dead heat +0.0016; gate closed 0.02->0.0033); THE REDUNDANCY VERDICT GOES GENERAL; EIGHTH LINEAGE HIGH
+The network closed an ajar gate on comprehensible, typed, selectively-
+retrievable relational mail — the second active gate-closure (S2 v0.1:
+0.0046; garage: 0.0033). With the rendezvous dissolved AND role-typing
+AND cross-breath selectivity all present, the kill isolates the mechanism
+cleanly: THE REDUNDANCY VERDICT IS GENERAL — within the current head, NO
+in-loop reinjection of cur-derived signals pays; the residual stream +
+notebook shelf saturate the memory niche at this parse grain. THE IN-LOOP
+BUS ERA CLOSES (no rescue, per registration). The bus rotor's promotion
+to active layer waits for physics that make its content NON-derivable
+from cur (the composed stack / carrier era), not for better plumbing.
+Wild res stable .738 (watch bar .70 clear). SIDE LEDGER: N5 0.7067 / R5
+0.7083 — EIGHTH consecutive lineage high; the family curve broke 0.70
+(0.6202 -> 0.7083 across six gentle passes). sharp_bind11r = parse
+incumbent. The lowering probe fires next in the queue.
