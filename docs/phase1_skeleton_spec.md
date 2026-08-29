@@ -31222,3 +31222,24 @@ registered rescue (pre-pinned): if rot_g stagnates ~0, a single
 imposed-rotation arm (rot_g frozen at 1.0) under the same bars. KILL
 otherwise -> S3 v0 banks negative; the composed stack waits for new
 physics.
+
+## 2026-08-30 — REGISTERED (word given): S3 v0.1 — THE SELF-MEASURING BAND
+Band-width brainstorm banked with two corrections to the relay: (1) the
+bank attention carries NO explicit positional code — static pairs are
+content capacity, not a spatial map to protect; (2) the precedent is
+mixed (GPT-NeoX rotary_pct=0.25 partial, but Llama rotates 100% — the
+principle: rotated fraction scales with how CENTRAL the rotated variable
+is to the attention policy; breath-phase is secondary -> small fraction).
+The clock itself needs ~1 pair (log2 6 bits); band width buys
+CONTENT-CONDITIONED-ON-TIME, unknown a priori -> measured, not guessed.
+v0.1 DESIGN (fires after the v0 verdict, on its own word): (a) rot_g
+scalar -> PER-PAIR vector (8,) — gain-on-frozen-content per pair (lawful;
+gate corollary satisfied); the trained gain profile IS the dose-response:
+all-open -> widen the pool next fire; few-open -> the network has stated
+its temporal bandwidth. THE MODEL CHOOSES THE BAND-WIDTH; we choose only
+the candidate pool. (b) THE SPECTRUM AUDIT (zero-GPU, before any
+widening): per-pair q-k utility on banked ckpts; future donor pairs
+drafted from measured SLACK, never from load-bearing spectrum. (c)
+Registered future: bands at different wheel speeds (fast band on the
+breath hand; slow band on the pass wheel when multi-pass arrives — the
+odometer's coarse/fine structure mapped onto spectrum).
