@@ -124,17 +124,23 @@ def main():
                     st = stats[r['tag']][role]
                     st[1] += 1
                     if rec == truth[role]: st[0] += 1
-                # pointer baseline, dup-fair (audit 2026-08-30): decode's
-                # own rule — dup>0 emits (argmax, argmax), else sorted
-                # top-2; credit = MULTISET equality with gold (the old
-                # check collapsed to 'a1 in top2' on dup rows, inflating
-                # pointers vs the bus's both-roles-exact requirement)
-                if Dp is not None and float(Dp[i, j]) > 0:
-                    _a0 = int(np.argmax(Ap[i, j])); dec = (_a0, _a0)
-                else:
-                    dec = tuple(sorted(int(x) for x in np.argsort(-Ap[i, j])[:2]))
-                ptr[r['tag']][1] += 1
-                if dec == tuple(sorted((a1, a2))): ptr[r['tag']][0] += 1
+                # pointer-args baseline, dup-fair AND slot-scoped (audit
+                # 2026-08-30 + scope fix): scored ONLY on arg-bearing
+                # slots (given slots carry args:=res by bus convention;
+                # the pointer head never answers them — including them
+                # craters the baseline unfairly). Genuine-dup slots use
+                # decode's own rule (dup>0 -> (argmax, argmax)); two-arg
+                # slots use sorted-top-2 multiset equality. NOTE: bus arg
+                # stats still include given slots (its design covers them).
+                if len(aidx) >= 1:
+                    if len(aidx) == 1:
+                        _ok = (Dp is not None and float(Dp[i, j]) > 0
+                               and int(np.argmax(Ap[i, j])) == a1)
+                    else:
+                        dec = tuple(sorted(int(x) for x in np.argsort(-Ap[i, j])[:2]))
+                        _ok = dec == tuple(sorted((a1, a2)))
+                    ptr[r['tag']][1] += 1
+                    if _ok: ptr[r['tag']][0] += 1
                 ptr[r['tag']][3] += 1
                 if int(Rp[i, j].argmax()) == truth['res']: ptr[r['tag']][2] += 1
     for t in ('mint', 'gold'):

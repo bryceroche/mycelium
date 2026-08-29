@@ -31345,3 +31345,25 @@ regardless: it prices "absorbability" of imposed time on slack spectrum
 and closes out the synchronous model with a baseline for the
 parking-garage (drop-off) redesign. The run is a DIAGNOSTIC, not a
 breakthrough candidate — expectations set accordingly, in writing, first.
+
+## 2026-08-30 — S3 v0.1 VERDICT: ABSORBED (prediction 1, as pinned); S3 CLOSES; TWO HARNESS REPAIRS; THE LAWFUL RE-READS FIRE
+R4 val 0.6977 vs N4 0.6966 (+0.0011 < +0.005 bar); ALL 16 electives flat
+(max |g| .005, none open) — the pre-pinned prediction ordering hit its #1
+exactly: imposed time on slack spectrum is ABSORBED, harmless and
+unwanted at this grain. S3 CLOSES per registration (no further variants);
+the temporal rotor's future is the coordination-free redesign (the
+parking garage), not the synchronous handshake. Absorbability priced: ~0.
+SIDE NOTE: N4 0.6966 / R4 0.6977 — SEVENTH straight lineage high.
+HARNESS REPAIRS (both mine): (1) LAW EXTENDED — never edit a script a
+RUNNING CHAIN will invoke (bind_read.py edited mid-unit: N4's read ran on
+the corrupted pool n=736, R4's on the lawful pool n=842 — arms' gold rows
+non-comparable this round; val/mint unaffected). (2) The dup-fair fix
+OVER-CORRECTED: multiset equality punished pointers on GIVEN slots (gold
+args:=res by bus convention; the pointer head never answers them) —
+pointer args cratered to .392/.159. SCOPE FIX: pointer-args baseline
+scored on arg-bearing slots only (dup rule for unary, multiset for
+binary); bus args still cover all slots by design — asymmetry documented
+in the read's output comment.
+THE LAWFUL RE-READS (fired, GPU idle): sharp_bindj, sharp_bind7c (the
+.743 incumbency claim), sharp_bind10n, sharp_bind10r on the 177-text
+pool with scoped scoring — every standing wild number re-established.
