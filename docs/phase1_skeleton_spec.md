@@ -30968,3 +30968,27 @@ bus res >= S's AND pointer reads within noise (-0.01). KILL: T val < S val
 -> catalyst hypothesis NEGATIVE at this grain, static stands, banked.
 Door frozen; production untouched; scope = parse-side turning ONLY
 (role-offsets-on-carriers stays staged for the full marriage).
+
+## 2026-08-29 — R4-ALPHA VERDICT: ABSORPTION NULL — AND THE TAP DISCOVERY (the probe paid twice)
+ARMS: S val 0.6379 / T val 0.6382 (+0.0003 = noise; dead heat everywhere,
+reads identical to ~.002). ENGAGEMENT VERIFIED before banking (meter-
+divergence law; first probe was INVALID — forward without slot_mask skips
+the breath loop entirely, my harness bug — valid two-pass probe shows the
+turn perturbs args/res by ~1.0 logit): the null is REAL ABSORPTION — 6k
+steps of training fully compensate the turned grid at this grain. Catalyst
+hypothesis NOT supported for parse-side turning alone. Note: BOTH arms hit
+0.638 (fifth consecutive lineage high; continuation keeps paying +0.018).
+THE TAP DISCOVERY (the probe's real payment): bind outputs show diff=0.000
+under the turn because ALL bind blocks (v1..v6) read `fst` — the PRE-LOOP
+breath-0 state — while every parse head reads _s_final = breaths[-1]
+(7 cycles of refinement). THE ENTIRE BUS ERA TRAINED ON BREATH-0 STATES.
+Consequences: (1) the bus's wild res .734 was earned from RAW first-pass
+states vs pointers' refined states — the crossover understates the bus;
+(2) immediate headroom candidate: v7 = THE TAP MOVE (bind reads _s_final;
+monolith architecture unchanged; warm from sharp_bindj); (3) the marriage
+PREREQUISITE: per-cycle demodulation requires the bus tapping breath
+states — the tap move is R4's true first step, found by the probe's
+failure to move the bind needle. REGISTERED, HELD FOR THE WORD: v7 bars =
+mint args/res and wild res must EXCEED the incumbent (.603/.592 mint,
+.734 wild res); parse val >= 0.63 (both-arms baseline); kill on any miss,
+no rescue.
