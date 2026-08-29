@@ -31010,3 +31010,27 @@ v7b THE WIDTH (on the tap winner): ALG_BINDBUS=7, BIND_D=512, codes512,
 W_bind2 fresh square -> two-phase (A frozen-parse 6k @1e-4 / B joint 6k
 @3e-5); pure role-CE (cosine aux retired with the bindvec buffer for >=5).
 BARS: beats the v7a winner on mint args+res AND wild res. No rescues.
+
+## 2026-08-29 — THE ROTOR STACK (Bryce's gut, audited: three fixes = one architecture; long-term blueprint REGISTERED)
+The gut's three wants, audited against the ledger: (1) pi-cycled RoPE,
+(2) rotating wave not static resonance, (3) bus as an UPSTREAM layer.
+AUDIT FINDING (reconciles the gut with R4-alpha): the alpha null is
+SCOPE-TAGGED TO ADDITIVE ENTRY — the turn was a score BIAS (sc + pbias),
+which training subtracts out. pi-cycled RoPE is MULTIPLICATIVE — it rotates
+Q/K geometry itself (the v109pi precedent was multiplicative and paid).
+Rotation-as-geometry was never tested; the null does not block the want.
+Wants (1) and (2) are THE SAME FIX: the waves should be the ROTATION
+SCHEDULE of a breath-phase RoPE in the head's bank attention (per-breath
+angle advance on q/k; trunk stays frozen forever — this lives head-side),
+not an additive resonance grid. Want (3) is the marriage's second half:
+the wire stops being a read-out and becomes a RECURRENT CHANNEL — at
+breath k the bus emits bound relations from the current state; breath k+1
+receives demodulated reads (VSA working memory in the loop; the engine's
+conditioned-recirculation law honored: the medium is conditioned on what
+recirculates). SEQUENCING (each stage its own word + bars): S1 the tap
+(BURNING NOW — reading breath states is the prerequisite for writing them);
+S2 bus-in-the-loop (wire feeds breath k+1; smallest recurrent form);
+S3 breath-phase RoPE in the bank (multiplicative turn, waves as schedule).
+Long-term target: token RoPE (frozen trunk) -> breath RoPE (head bank) ->
+bus channel (recurrent binding) — three rotors, one stack, the paper's
+shape made mechanism.
