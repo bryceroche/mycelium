@@ -1285,6 +1285,8 @@ def _loss_single(o, g):
     elif "bind" in o and "bind_ids" in g and int(os.environ.get("ALG_BINDBUS", "0")) >= 3:
         # v3 THE ROLE-FACTORED LOSS: supervise each role's unbound cleanup
         # directly — conjugate-rotate the emission, CE against the codebook
+        _e = o["bind"]        # own binding: the cosine branch (which also
+                              # sets _e) is skipped in pure-CE modes (v7+)
         global _BINDC
         try: _BINDC
         except NameError: _BINDC = None
