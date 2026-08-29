@@ -31079,3 +31079,21 @@ gate) -> S3 multiplicative breath rotor (after S2, alpha null scope-tagged)
 -> composed stack (judged on the two campaign curves) ; parallel substrate
 road (Book 3 round 7); the long line to the door's reopening bar and
 MATH-500 cadence.
+
+## 2026-08-29 — rotor_clock.py BUILT (word given): THE MASTER CLOCK ARTIFACT
+mycelium/rotor_clock.py — the single source of truth for every phase table
+in the three-rotor stack; sync enforced by the IMPORT GRAPH (S2 imports
+cycle keys, S3 imports the rotation schedule — two organs can no longer
+keep separate time). Frozen constants: K=7 window; T^3 odometer with gears
+(1x,2x,4x) at 45deg base quantum — wheel 1 alias-free across the window BY
+CONSTRUCTION (the 60deg/K=7 collision that would have made the recurrent
+bus overwrite breath 0 with breath 6 is designed out); per-plane bus cycle
+rates (seed 13, bounded off 0 and off degeneracy); breath band = attention
+pairs 24-31 (token geometry in 0-23 survives rotation); scramble table
+(seed 1013) for the load-bearing control arm. Audits (observational,
+Goodhart-fenced): the odometer test + aliasing confusion matrix. The
+self-test EARNED ITS KEEP AT BIRTH: draft-1 odometer scored self-coherence
+(random content has none) — caught at import, redesigned to score against
+a known reference set as real cleanup does. Final: odometer diagonal 1.000,
+off-diag 0.000 on clean wires; all five self-tests pass. FREQUENCIES
+FROZEN, GAINS LEARNABLE — no rate in this file is a parameter.

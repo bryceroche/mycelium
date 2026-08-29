@@ -101,15 +101,21 @@ def scrambled_wheel_table(K=K_BREATH, seed=SCRAMBLE_SEED):
 
 
 # ------------------------------------------------- audits (observational)
-def demod_breath(wire_c, P, K=K_BREATH, seed=CYCLE_SEED):
+def demod_breath(wire_c, refs_c, K=K_BREATH, seed=CYCLE_SEED):
     """THE ODOMETER TEST: which breath wrote this wire? Counter-rotate by
-    every candidate k, score by peak cleanup coherence proxy (energy
-    concentration of the counter-rotated vector's mean phasor). Returns
-    argmax k. Observational only — never in a loss."""
+    every candidate k and score against the KNOWN reference set (cleanup
+    needs a dictionary — random content has no self-coherence; the first
+    draft of this audit failed its own self-test on exactly that). refs_c:
+    (n_refs, P) complex candidates (a codebook, or the true content in a
+    ground-truth audit). Returns (k_hat, scores). Observational only."""
+    P = wire_c.shape[-1]
+    R = np.atleast_2d(refs_c)
+    Rn = R / (np.linalg.norm(R, axis=-1, keepdims=True) + 1e-9)
     scores = []
     for k in range(K):
         z = wire_c * np.conj(cycle_phasor(k, P, seed))
-        scores.append(float(np.abs(z.sum()) / (np.abs(z).sum() + 1e-9)))
+        zn = z / (np.linalg.norm(z) + 1e-9)
+        scores.append(float(np.abs(zn @ np.conj(Rn).T).max()))
     return int(np.argmax(scores)), scores
 
 
@@ -122,7 +128,7 @@ def aliasing_confusion(P, K=K_BREATH, seed=CYCLE_SEED, trials=64, rng_seed=7):
         c = rng.standard_normal(P) + 1j * rng.standard_normal(P)
         c = (c / np.abs(c)).astype(np.complex64)
         for j in range(K):
-            k_hat, _ = demod_breath(c * cycle_phasor(j, P, seed), P, K, seed)
+            k_hat, _ = demod_breath(c * cycle_phasor(j, P, seed), c, K, seed)
             M[j, k_hat] += 1
     return M / trials
 
