@@ -31404,3 +31404,16 @@ wild res within 0.005 (lawful fixture, scoped scoring). READOUTS: bus_g
 final; shelf-attention entropy noted if diagnosable. KILL: miss -> typed
 relational recurrence banks negative for the era; the bus rotor's in-loop
 duty waits for new physics (S3-composed or carrier-era). No rescue.
+
+## 2026-08-30 — REGISTERED PREDICTION (pinned pre-read; garage pair mid-burn)
+The coordination tax is dissolved by design — but THE REDUNDANCY VERDICT
+still stands in the garage's path: deposits remain functions of cur
+injected beside cur. What's genuinely new vs S2: (a) attention retrieval
+(the proven mailbox channel), (b) role-typed structure in the ink, (c)
+cross-breath selectivity (a slot can read ANOTHER breath's relations
+selectively rather than the residual's blend). ORDERING: (1) most likely
+dead heat (redundancy dominates); (2) second, small WIN (typed selective
+retrieval pays on multi-clause rows — the first plausible win-path for
+in-loop bus duty since S2 opened); (3) least likely, tax (ajar gate can
+close to escape). Win probability higher than S2/S3's was — this is the
+first variant where BOTH prior kills' mechanisms are addressed.
