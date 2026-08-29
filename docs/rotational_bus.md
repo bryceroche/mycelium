@@ -1,9 +1,33 @@
-# The Rotational Binding Bus — v5 Architecture & Diagnostic Contract
+# The Rotational Binding Bus — Architecture & Diagnostic Contract
 
 **Status:** design center of the architecture (Bryce's ruling, 2026-08-28:
 "build everything around it"). Research lineage; the deployed stack
-(conductor_v2) is untouched. Ledger entries 2026-08-28 carry the verdicts,
+(conductor_v2) is untouched. Ledger entries 2026-08-28+ carry the verdicts,
 bars, and registrations; this doc is the standing contract.
+
+## 0. THE COMPATIBILITY RULING (2026-08-29, Bryce — governs all selection)
+
+**We do not select the highest-scoring component from each run; we select
+the most COMPATIBLE component family.** A component that scores higher but
+does not fit the long-term architecture is not chosen. Measurement
+discipline is unchanged — bars still pin before fires, verdicts still bank
+honestly, kills still kill CLAIMS — but what gets BUILT FORWARD is governed
+by fit with the target:
+
+**THE THREE-ROTOR STACK (the canon):**
+1. **TOKEN ROTOR** — base trunk RoPE (frozen, vanilla): text-space
+   coordinates.
+2. **BREATH ROTOR** — the T^3 torus clock: the six helical waves AS THE
+   CLOCK, with pi-cycled rotation turning the head's attention space in
+   sync with it (multiplicative — geometry, not bias).
+3. **BUS ROTOR** — the T^256-rotation bus (256 planes, D_real=512),
+   phasor role-binding as an ACTIVE RECURRENT LOOP (upstream layer
+   writing/reading bound relations across breaths), not a read-out wire.
+
+Corollary: a verdict like S1's (refined tap killed on the wild bar) closes
+an INCUMBENCY CONTEST, not a component family — the refined tap returns
+wherever the recurrent loop needs it, carrying its banked caveat (the
+two-tap law: preserve the invariant breath-0 read).
 
 ## 1. Context & motivation
 

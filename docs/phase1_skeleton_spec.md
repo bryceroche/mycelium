@@ -31054,3 +31054,18 @@ v7b BARS RE-PINNED vs the winner C: mint args > .621/.614, mint res >
 .614, wild res > .743, val >= 0.615. Warm = sharp_bind7c minus W_bind2
 (square fresh); two-phase (A frozen-parse 6k @1e-4 s221 / B joint 6k
 @3e-5 s222); pure role-CE; codes512.
+
+## 2026-08-29 — THE COMPATIBILITY RULING (Bryce; prominent in CLAUDE.md S4 + rotational_bus.md S0)
+Selection law: we choose the most COMPATIBLE component FAMILY, never the
+highest per-run scorer — a component's score does not matter if it does not
+fit the long-term architecture. THE CANON (the three-rotor stack): TOKEN
+ROTOR = base trunk RoPE (frozen, vanilla); BREATH ROTOR = the T^3 torus
+clock — the six helical waves ARE the clock, with pi-cycled rotation
+turning the head's attention space IN SYNC with it (multiplicative);
+BUS ROTOR = the T^256 rotational bus (256 planes / D_real=512, v7b's
+width) with phasor binding as an ACTIVE RECURRENT LOOP — an upstream
+layer, not a read-out wire. Measurement discipline UNCHANGED (bars pin,
+verdicts bank, kills kill claims); the ruling governs what gets BUILT
+FORWARD. Corollary applied retroactively: S1's kill closed an incumbency
+contest, not a family — the refined tap returns wherever the recurrent
+loop needs it, carrying the two-tap law as its caveat.

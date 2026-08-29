@@ -86,6 +86,13 @@ pure prose at 340 epochs is poison −243 — tune between).
 
 ## 4. The law family (violate at your peril; ledger has full forms)
 
+- **THE COMPATIBILITY RULING (2026-08-29)**: select the most COMPATIBLE
+  component family, never the highest per-run scorer. Target = the
+  THREE-ROTOR STACK (token rotor: frozen trunk RoPE / breath rotor: T^3
+  six-wave clock + pi-cycled attention rotation in sync / bus rotor: T^256
+  phasor binding as an ACTIVE RECURRENT LOOP). Full form:
+  `docs/rotational_bus.md` §0. Bars/kills still govern claims; fit governs
+  what gets built forward.
 - **The binding theorem**: concepts are bindings — not classifiable from surface
   (C2), not recoverable from wiring (Brick-M). Schema recognition is parse-side;
   the graph is frame-free.
