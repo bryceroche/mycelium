@@ -1,6 +1,6 @@
 # mycelium — core cut
 
-Machine-cut minimal view of the deployed Mycelium stack (33 files;
+Machine-cut minimal view of the deployed Mycelium stack (34 files;
 generation: 41). This branch is an EXPORT TARGET rebuilt by
 `scripts/cut_core.py` on main — never commit here by hand; the next cut
 clobbers it by design.
