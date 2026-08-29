@@ -31243,3 +31243,19 @@ drafted from measured SLACK, never from load-bearing spectrum. (c)
 Registered future: bands at different wheel speeds (fast band on the
 breath hand; slow band on the pass wheel when multi-pass arrives — the
 odometer's coarse/fine structure mapped onto spectrum).
+
+## 2026-08-30 — S3 v0.1 AMENDED (Bryce): 4 MANDATORY + 16 ELECTIVE
+The mandate solves elective-only ambiguity (all-closed could mean useless
+OR not-worth-the-climb; S2's lesson): 4 pairs rotate UNCONDITIONALLY
+(gain frozen 1.0 — imposed structure, absorbing the pre-pinned rescue arm
+into the main design), 16 pairs elective (zero-init per-pair gains — the
+self-measuring band). The elective question becomes clean: given that
+time exists in the geometry, how much more do you want?
+REFINEMENTS (critique products): (1) DONORS BY AUDIT, NEVER BY INDEX —
+the spectrum audit ranks all 32 pairs by q-k utility on the banked ckpt;
+the mandate takes the 4 slackest, electives the next 16; the 12 most
+load-bearing pairs stay static and untouchable. (2) Wheel jobs: mandatory
+4 on the BREATH HAND (unambiguous address); electives across breath
+hand + parity; pass-wheel spectrum dormant until multi-pass. Step-0
+perturbation = mandatory 4 only (electives zero-gained). Fires after the
+v0 verdict, on its word.
