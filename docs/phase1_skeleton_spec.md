@@ -31115,3 +31115,22 @@ periods (long horizons), golden-ratio incommensurate (never repeats).
 Self-tests extended (7): breath-hand uniqueness, T^3 uniqueness, breath-0
 rejects clock reads, cycle-key separation, odometer diag 1.000, scramble
 differs, pass wheel advances with wheels 0-1 unmoved. ALL PASS.
+
+## 2026-08-29 — v7b VERDICT: MINT BARS PASS, INCUMBENCY BAR MISSED (no rescue); T^256 IS THE FAMILY LINE PER THE RULING
+Unit r4-v7b2 (two-phase: A frozen-parse @1e-4 -> 7wa; B joint @3e-5 ->
+sharp_bind7w). Phase B judged: mint arg1 .640 / arg2 .632 / res .630 —
+ALL BEAT C (.621/.614/.614) ✓; val 0.6336 ✓ (joint lifted C's parse
++0.014); wild res .727 vs bar > .743 — MISS (phase A read .736, also shy;
+the joint phase traded a little wild for mint — the dialect creep, mild).
+Wild crossover vs pointers WIDENS regardless: .727 vs .667 (+0.060, the
+largest yet). Per registration: NO RESCUE; the BUS INCUMBENCY STAYS WITH C
+(sharp_bind7c, wild res .743). CONFOUND NOTED, NOT LITIGATED: W_bind2 was
+newborn (12k) vs the C lineage's ~24k cumulative — the familiar budget
+asymmetry; banked as context, not as an excuse.
+THE COMPATIBILITY RULING APPLIED: T^256 is the canon width — S2 (the
+recurrent bus) BUILDS ON THE T^256 FAMILY LINE (sharp_bind7w: canon width,
+mint-superior, wild within .016 of the incumbent), iterating within the
+family; C remains the measurement incumbent for claims. The v7 arc closes:
+tap verdict (invariance lives at breath-0), width verdict (T^256 family
+viable, mint-superior), the sextet clock built — all three S2 prerequisites
+in hand. S2 v0 HOLDS FOR THE WORD.
