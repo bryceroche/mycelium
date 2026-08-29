@@ -31311,3 +31311,24 @@ warm loader (pad-warm on rot_g growth = lawful), optimizer inclusion,
 amplitude audit's permutation null (group-random-walk valid), rot_band
 drift EXPLAINED (audit-drafted bands deliberately superseded rotor_clock's
 fixed 24-31 doc — truth-maintenance of rotor_clock queued).
+
+## 2026-08-30 — THE COORDINATION LAW (Bryce's gut; the triad's third leg upgraded)
+Message passing = (1) LANGUAGE, (2) CHANNEL, (3) COORDINATION — the third
+leg upgraded from "interval overlap" to the airport asymmetry: DROP-OFF
+(sender deposits into a persistent buffer; receiver reads when ready) has
+no coordination problem; PICKUP (synchronized rendezvous) does. And the
+dial: a SLOW interval is stable for coordination; a FAST one is productive.
+RETRO-EXPLANATIONS (measured, not speculative): S2's kill = a pickup
+system (tick-keyed unbind rendezvous) losing to two drop-off incumbents
+(residual stream; the notebook mailbox — content-addressed attention
+reads, zero rendezvous). Breath-0-outside-time = the slowest channel
+(written once, valid forever) and the invariance lives there. The
+notebook's whole career = the mailbox law avant la lettre.
+DESIGN CONSEQUENCES (registered): (a) RENDEZVOUS-FREE MESSAGING — prefer
+mailboxes (content-addressed, persistent) over synchronized handoffs;
+(b) unavoidable synchronization rides THE SLOWEST CLOCK THAT MEETS THE
+NEED (pass wheel before breath hand); (c) if the recurrent bus returns,
+v1 = THE PARKING GARAGE: cycle keys serve the WRITER only (phase-slot
+parking, no overwrites); readers retrieve by CONTENT via attention (no
+tick knowledge, no rendezvous) — phase for storage separation, attention
+for retrieval; the coordination problem dissolved, not solved.
