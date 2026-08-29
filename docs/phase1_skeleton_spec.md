@@ -31332,3 +31332,16 @@ v1 = THE PARKING GARAGE: cycle keys serve the WRITER only (phase-slot
 parking, no overwrites); readers retrieve by CONTENT via attention (no
 tick knowledge, no rendezvous) — phase for storage separation, attention
 for retrieval; the coordination problem dissolved, not solved.
+
+## 2026-08-30 — REGISTERED PREDICTION (pinned BEFORE the R4 read; unit mid-burn at step 4000)
+The coordination law applied to R4, with a precision: S3's rendezvous is
+SINGLE-PARTY (one organ's frame on a fixed schedule vs static keys — a
+scheduled lane shift), milder than S2's two-party pickup. PREDICTION
+ORDERING: (1) most likely ABSORBED dead heat (electives flat, mandate
+harmless on slack spectrum); (2) second, small TAX (mandate visibly costs
+val — forced rotation without exploitable signal); (3) least likely,
+small WIN (breath-differentiated attention pays). Value of the run
+regardless: it prices "absorbability" of imposed time on slack spectrum
+and closes out the synchronous model with a baseline for the
+parking-garage (drop-off) redesign. The run is a DIAGNOSTIC, not a
+breakthrough candidate — expectations set accordingly, in writing, first.
