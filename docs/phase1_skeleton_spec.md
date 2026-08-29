@@ -31417,3 +31417,23 @@ retrieval pays on multi-clause rows — the first plausible win-path for
 in-loop bus duty since S2 opened); (3) least likely, tax (ajar gate can
 close to escape). Win probability higher than S2/S3's was — this is the
 first variant where BOTH prior kills' mechanisms are addressed.
+
+## 2026-08-30 — THE MLIR CORRESPONDENCE (Bryce's gut) + THE LOWERING PROBE REGISTERED
+The gut: "coarse-to-fine over 7 breaths — MLIR progressive lowering."
+THE UNIFICATION BANKED: high-level IR is PORTABLE, lowered IR is
+TARGET-SPECIFIC — therefore the two-tap law IS compiler theory (breath-0
+invariance = IR portability at the ladder's top; the mint dialect = the
+target ISA the late breaths lower into). The chain_entropy diagnostic was
+already named "the lowering staircase"; the dormant R4 note ("NL targets
+early, graph late") is the same gut — now named GRAIN-SCHEDULED DEEP
+SUPERVISION (the MLIR ladder diet).
+AUDIT-BEFORE-DIET: THE LOWERING PROBE (registered; fires after the garage
+pair frees the GPU): mine per-breath states (ALG_MINE_BREATHS) on mint-val
++ the lawful wild golds; linear probes per breath at three grains —
+coarse (presence/ftype), mid (args/res), fine (digits). PREDICTIONS
+(pinned): (1) peak-breath ordering is monotone in grain (coarse saturates
+early, fine climbs late); (2) wild transfer decays DOWN the ladder
+(coarse probes port, fine probes don't). CONFIRMED -> the ladder diet
+(scheduled losses at the measured break points) earns its word; REFUTED
+-> the loop is not a lowering pipeline and the MLIR frame stays metaphor,
+banked as such.
