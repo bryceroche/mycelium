@@ -31437,3 +31437,28 @@ early, fine climbs late); (2) wild transfer decays DOWN the ladder
 (scheduled losses at the measured break points) earns its word; REFUTED
 -> the loop is not a lowering pipeline and the MLIR frame stays metaphor,
 banked as such.
+
+## 2026-08-30 — THE MAGNITUDE CHANNEL (Bryce's gut: "something about magnitude we're missing")
+THE DRAWER HAD IT: we adopted C as the formal language and used only half
+of every number. z = r*e^{i theta}: PHASE = WHAT (discrete symbol —
+binding, roles, the clock); MAGNITUDE = HOW MUCH (continuous epistemic
+state). Four instruments found this axis independently and were never
+unified: radius-as-consolidation-clock (two-channel law), the amplitude
+diagnostic (geometry-aware confidence, PASSED then shelved with v5), the
+thermometer (state-delta magnitude = temperature), the superposition tax
+(magnitude interference). And amplitude-rejected-by-RMS-norms explains
+the venue: the trunk erases r; the HEAD-SIDE WIRE (no RMS) can carry it.
+LIVE CONSEQUENCES: (1) the incumbent monolith's wire magnitude is UNREAD
+— cleanup normalizes; ||wire|| per slot never measured; (2) THE GARAGE IS
+ALREADY MAGNITUDE-WEIGHTED (q.deposit scores — louder deposits win
+retrieval; salience memory, unintended, burning now) — watched.
+REGISTERED: THE MAGNITUDE MAP (zero-training read, queued behind the
+fires; sharp_bind7c + 10n): per-slot ||wire|| vs (a) presence, (b) per-
+role recovery correctness, (c) register (mint/wild), (d) slot kind.
+PINNED PREDICTIONS: ||wire|| correlates with recovery correctness beyond
+chance (the monolith confesses like the soft-pointer did); register
+displaces magnitude (mint louder than wild — consolidation). GOODHART
+FENCE AT BIRTH: magnitude is observational; never supervised; any
+gating/weighting use requires its own registered charter (mouth-distance
+precedent). The polar decomposition is the bus's full language — theta
+spoken, r about to be heard.
