@@ -112,3 +112,44 @@ Bars pinned 2026-08-28 before the fire:
 - Constitutional regardless of branch: **the trunk is frozen forever** —
   "frozen parse" refers to the trained head's parse parameters, never to
   the trunk, which no branch of this rule may touch.
+
+## 5. THE ROADMAP (2026-08-29, endorsed; patience ruling attached)
+
+**Governance:** the December deadline is SOFT — extendable at any time
+(Bryce's ruling, 2026-08-29). Patience over pressure: stages fire when
+their prerequisites are honestly met, never to meet a date. One dial per
+fire; cont-controls; bars pin before every measurement; research lineage
+only (the deployed stack moves solely by battery + manifest).
+
+**Stage order (each stage holds for its own word):**
+
+- **[burning] v7b — bus width to the canon's T^256** (256 planes,
+  D_real=512, square W_bind2). Compatibility note: a bar miss iterates
+  WITHIN the T^256 family (longer burn, richer diet), never back to 128.
+- **[next, recommended] S2 — the bus rotor goes RECURRENT (v0):** at each
+  breath k>=1, wire computed from the REFINED state (the shelved T7
+  machinery returns here, per the ruling's corollary), per-role
+  demodulated reads injected into breath k+1's queries (the notebook's
+  port); external emission keeps reading breath-0 (the two-tap law as a
+  design constraint — the invariant wire survives). Zero-init gate at
+  entry (structure enters at zero, always). Bars: parse val vs natural
+  continuation; wild reads not degraded. Why first: the regularizer
+  effect (4-for-4) suggests binding pressure inside the loop presses
+  harder; the conditioned-recirculation law is satisfied (parser-state
+  recirculates, not frozen-layer blur).
+- **[after S2] S3 — the breath rotor goes MULTIPLICATIVE:** pi-cycled
+  rotation of the bank's Q/K per breath, six-wave clock as the schedule
+  (geometry, not bias — the alpha null is scope-tagged to additive
+  entry). Sequenced after S2 so rotation has recirculating structure to
+  act on. Cont-controlled pair.
+- **[then] THE COMPOSED STACK** — S2+S3 together: the clock turns the
+  attention while the bus carries relations through breath-time over the
+  frozen token rotor. Judged on the two campaign curves (parse val
+  trajectory; the wild gap), not a single bar.
+- **[parallel, CPU/Sonnet lane] the substrate road:** Book 3 round 7
+  (~184 L3 rows + the retry shelf) — every rotor verdict this week named
+  wild competence as the ceiling; the books feed it directly.
+- **[the long line] rotor stack matured -> bus crosses the door's
+  reopening bar (wild args >= 0.75, res >= 0.85) -> stage-1b rerun with a
+  competent witness -> emission door net-positive -> MATH-500 measurement
+  cadence on the true chain.**

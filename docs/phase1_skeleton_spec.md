@@ -31069,3 +31069,13 @@ verdicts bank, kills kill claims); the ruling governs what gets BUILT
 FORWARD. Corollary applied retroactively: S1's kill closed an incumbency
 contest, not a family — the refined tap returns wherever the recurrent
 loop needs it, carrying the two-tap law as its caveat.
+
+## 2026-08-29 — THE ROADMAP BANKED (rotational_bus.md S5) + THE PATIENCE RULING
+Bryce's ruling: the December deadline is SOFT — extendable at any time;
+patience over pressure (CLAUDE.md header amended). Roadmap banked in the
+contract doc: v7b (burning) -> S2 recurrent bus v0 (recommended next word;
+refined-tap machinery returns; two-tap law as design constraint; zero-init
+gate) -> S3 multiplicative breath rotor (after S2, alpha null scope-tagged)
+-> composed stack (judged on the two campaign curves) ; parallel substrate
+road (Book 3 round 7); the long line to the door's reopening bar and
+MATH-500 cadence.

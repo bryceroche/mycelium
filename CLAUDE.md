@@ -1,6 +1,8 @@
 # Mycelium — Agent Brief (2026-07-15)
 
-**Author:** Bryce + Claude · **Deadline:** Dec 25, 2026 · **Target:** MATH-500
+**Author:** Bryce + Claude · **Deadline:** Dec 25, 2026 (SOFT — extendable
+at any time, ruling 2026-08-29: patience over pressure) · **Target:** MATH-500
+· **Roadmap:** `docs/rotational_bus.md` §5 (the three-rotor stack)
 **Platform:** Shadow Glass (AMD 7900 XTX, 24GB) · tinygrad + AM driver · no ROCm
 **No external API calls in the system, ever** (dataset downloads are fine).
 MATH-500 is MEASURED, never trained on; the MATH *training* split is the harvest.
