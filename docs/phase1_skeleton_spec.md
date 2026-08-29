@@ -30951,3 +30951,20 @@ objective is worth more to the parse than any bind-head surgery is to the
 bus. READINESS ROAD RE-AIMED: wild parse competence (books, the harvest)
 is the pole; head surgery at this scale is closed until new physics
 (the marriage) or new data moves the floor.
+
+## 2026-08-29 — REGISTERED + FIRED: R4-ALPHA — THE TURNING-CARRIER PROBE (word given; the chicken-egg breaker)
+Bryce's hypothesis: the marriage may be the CATALYST for wild competence,
+not its reward (representation precedes competence; veto law governs
+downstream gavels only). Honest precedent correction banked: the 4-for-4
+parse lifts came from the bus LOSS channel, not input geometry; the probe
+stands on its own physics — today all 7 breaths share ONE static resonance
+grid (recirculation has no temporal address); the turn gives each breath a
+rotational address BY CONSTRUCTION (theta advances one 60deg bucket per
+cycle inside the breath loop; zero new params; ALG_SWTURN=0 byte-identical).
+CONT-CONTROL DESIGN (one variable): ARM S = natural continuation of
+sharp_bind6 (static, 6k @3e-5 seed 219 -> sharp_bind6s); ARM T = identical
++ ALG_SWTURN=1 (-> sharp_bind6t). BARS (pinned): T val > S val AND T wild
+bus res >= S's AND pointer reads within noise (-0.01). KILL: T val < S val
+-> catalyst hypothesis NEGATIVE at this grain, static stands, banked.
+Door frozen; production untouched; scope = parse-side turning ONLY
+(role-offsets-on-carriers stays staged for the full marriage).

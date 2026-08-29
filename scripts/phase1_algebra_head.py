@@ -893,6 +893,7 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
     _pb = None
     _pb_prior = None
     _sync = None
+    _swturn = None
     if ALG_SYNC:
         from tinygrad import Tensor, dtypes
         _A = float(os.environ.get("SYNC_A", "1.0"))
@@ -940,6 +941,20 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
                + _sph.reshape(1, 1, L_FAC, 1)
                * _th.sin().reshape(B, 1, 1, -1)) * p["sw_g"].reshape(1, 1, 1, 1)
         _pb = _sw_term if _pb is None else _pb + _sw_term  # audit #6: adds
+        if int(os.environ.get("ALG_SWTURN", "0")):
+            # R4-alpha (2026-08-29, word given): THE HELIX TURNS — sentence
+            # phase advances one 60deg bucket per breath cycle inside the
+            # breath loop (time-keyed recirculation). Zero new params;
+            # sw_g shared; ALG_SWTURN=0 is byte-identical to static.
+            def _mk_turn(_kb):
+                _s6 = sent + (_kb + 1)
+                _tht = (_s6 - (_s6 // 6) * 6).float() * (math.pi / 3.0)
+                return (_cph.reshape(1, 1, L_FAC, 1)
+                        * _tht.cos().reshape(B, 1, 1, -1)
+                        + _sph.reshape(1, 1, L_FAC, 1)
+                        * _tht.sin().reshape(B, 1, 1, -1)) \
+                    * p["sw_g"].reshape(1, 1, 1, 1)
+            _swturn = _mk_turn
     if pmask is not None:                 # A0: imposed route-mask (wiring,
         _pb = pmask if _pb is None else _pb + pmask   # not knobs — no grad)
     fst, fat = bank(p["fq"], L_FAC, pbias=_pb)
@@ -1007,7 +1022,8 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
                 q_extra = q_extra + _sync[1](kb)     # settle; receiver locked
             h_tok, fat_cur = bank(p["fq"], L_FAC, extra=q_extra,
                                   pbias=(_sync[0](kb) if _sync is not None
-                                         else None))
+                                         else _swturn(kb)
+                                         if _swturn is not None else None))
             bq = cur @ p["W_bq"] + p["W_bq_b"]
             bk = cur @ p["W_bk"] + p["W_bk_b"]
             bv = cur @ p["W_bv"] + p["W_bv_b"]
