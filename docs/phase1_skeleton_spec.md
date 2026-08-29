@@ -31280,3 +31280,34 @@ unitary. PAIR: N4 = continuation of 9n (6k @3e-5 s226 -> sharp_bind10n);
 R4 = +BREATHROT (-> sharp_bind10r). BARS (as registered): R4 - N4 >=
 +0.005 val AND wild within 0.005; readouts: elective gain profile +
 mandate cost. KILL -> S3 closes at this grain; no further variants.
+
+## 2026-08-30 — THE GUT AUDIT (Bryce: "bugs — delegate to Sonnet"): 3 auditors, 6 REAL FINDINGS, ALL FIXED; THE FIXTURE CORRUPTION
+The gut fired; three Sonnet auditors swept the surgery frontier, the
+instrument chain, and the trainer plumbing. Every finding verified by hand
+against code before fixing. THE BIG ONE (auditor 2): bind_read/
+bind_amp_audit/scored_emission assembled the gold pool by BARE src_idx
+across books — violating our own custody law (src_idx is BOOK-LOCAL).
+Confirmed: 74 book12-anchor rows OVERWROTE unrelated tranche rows; the
+skip list deleted 34 wrong rows and hit 0 of its 44 targets. Every wild
+bus/pointer number this arc ran on the corrupted pool — INTERNALLY
+comparable (same pool both arms; verdicts' DIRECTIONS stand) but not the
+lawful fixture. FIXED: text-identity keying (custody_gold's law), skips
+book12-local, drafted-exclusion split by native key (texts vs harvest
+idx). Lawful pool = re-counted at fix time; ALL wild absolute numbers
+(incl. the .743/.734 incumbency line) are REGIME-TAGGED corrupted-pool;
+re-reads on the lawful fixture queued behind the burning S3 pair.
+ALSO FIXED: (1) build_gold now emits g_bind_ids (was out-of-band
+injection only — BINDBUS>=3 unreproducible from source; found
+independently by two auditors); (2) THE SIDE-DOOR FENCE — is_chain/
+refvar/is_ind/valspan gold consumers outside TERMINALS get the same
+loud-at-startup guard (the opc specimen's shape, reopened via the feed
+dict's if-in-gold gating); (3) dup-fair pointer baseline in bind_read
+(old check collapsed to a1-in-top2 on dup rows — pointers inflated vs
+the bus's both-roles-exact); (4) witness pres_j mirrors decode's ft==8
+skip (slot misalignment unbinding wrong wires); (5) hd==64 assert on
+breathrot; (6) tg_rotate self-test coverage; TRUNK_LORA save print
+truth. CLEAN BILLS: S2/S3 tick indexing, bind/unbind sign conventions,
+warm loader (pad-warm on rot_g growth = lawful), optimizer inclusion,
+amplitude audit's permutation null (group-random-walk valid), rot_band
+drift EXPLAINED (audit-drafted bands deliberately superseded rotor_clock's
+fixed 24-31 doc — truth-maintenance of rotor_clock queued).

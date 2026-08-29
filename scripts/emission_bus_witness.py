@@ -106,7 +106,17 @@ def main():
         for i, r in enumerate(sl):
             ob = {k: onp[k][i] for k in onp}
             facs, q = decode(ob)
-            pres_j = [j for j in range(L_FAC) if ob["pres"][j] > 0]
+            # slot alignment (audit 2026-08-30): decode SKIPS ft==8 slots
+            # with <3 active args (its sole non-appending branch) — mirror
+            # that here or every later fac unbinds the wrong slot's wire
+            pres_j = []
+            for j in range(L_FAC):
+                if ob["pres"][j] <= 0: continue
+                _ft = (int(ob["ftype"][j].argmax())
+                       if ob["ftype"].shape[-1] >= 4 else 0)
+                if _ft == 8 and len(np.where(ob["args"][j] > 0)[0]) < 3:
+                    continue
+                pres_j.append(j)
             ans = {}
             for lane, ff in (("B", facs),
                              ("A", bus_facs(facs, pres_j, Bv[i]))):

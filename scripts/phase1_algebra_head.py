@@ -428,8 +428,9 @@ def build_gold(samples, offsets):
                              s_ * v2[:, 0] + c_ * v2[:, 1]], -1).reshape(-1)
         _TH = {r: _bz[f"theta_{r}"] for r in ("arg1", "arg2", "res", "op")}
         g["bindvec"] = np.zeros((n, L_FAC, _CB.shape[1]), np.float32)
-        for i2 in range(n):
-            for j2 in range(L_FAC):
+        g["bind_ids"] = np.zeros((n, L_FAC, 4), np.int32)   # audit 2026-08-30:
+        for i2 in range(n):            # the pipeline must produce what the
+            for j2 in range(L_FAC):    # fence demands — no out-of-band injection
                 if g["presence"][i2, j2] <= 0: continue
                 aidx = np.where(g["args"][i2, j2] > 0)[0]
                 if len(aidx) == 0: a1 = a2 = int(g["res"][i2, j2])
@@ -439,6 +440,7 @@ def build_gold(samples, offsets):
                 z = (_rotv(_CB[a1], _TH["arg1"]) + _rotv(_CB[a2], _TH["arg2"])
                      + _rotv(_CB[r2], _TH["res"]) + _rotv(_CB[opv], _TH["op"]))
                 g["bindvec"][i2, j2] = z
+                g["bind_ids"][i2, j2] = (a1, a2, r2, opv)
     if int(os.environ.get("ALG_OPCOUNT", "0")):
         # feed-door completion (2026-08-26): gold is built here, but CACHED
         # npzs from before the surgery lack g_opc — load_alg's consumer
@@ -902,6 +904,8 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
             # rot_g (zero-init: the model states its bandwidth). Static
             # pairs masked to 0 — the load-bearing spectrum untouched.
             _qc3, _qs3, _gm3, _ge3 = qrot
+            assert hd == 64, "S3 breathrot assumes hd=64 (32 pairs); " \
+                             "re-derive masks for other ALG_HW/N_HEADS"
             _bp = qh.reshape(*qh.shape[:-1], 32, 2)
             _bx, _by = _bp[..., 0], _bp[..., 1]
             _rx = _bx * _qc3 - _by * _qs3
@@ -1975,6 +1979,18 @@ def do_train(steps, lr, batch, seed):
                  f"the loaded states npz — a stale cache would zero-train it "
                  f"silently (the feed-door fence, GENERALIZED after the "
                  f"bindvec starvation). Re-precompute or inject g_{_gk}.")
+    # THE SIDE-DOOR FENCE (audit 2026-08-30): gold consumers living OUTSIDE
+    # TERMINALS get the same guard — a stale cache + an active flag would
+    # zero-train them silently (the feed dict's "if key in gold" gating
+    # omits the feed; the fixed buffer stays zero; grads flow; val looks
+    # fine — the opc specimen's exact shape, through the side door).
+    for _on2, _gk3 in ((int(os.environ.get("ALG_FTYPES", "4")) >= 9, "is_chain"),
+                       (bool(ALG_REF), "refvar"),
+                       (bool(ALG_DIAL), "is_ind"),
+                       (bool(ALG_VALATT), "valspan")):
+        assert (not _on2) or _gk3 in gold, \
+            (f"feature ACTIVE but gold {_gk3!r} missing from the states npz "
+             f"(the side-door fence) — re-precompute this cache.")
     b_reg = fix(np.zeros((batch,), np.float32), dtypes.float) \
         if int(os.environ.get("ALG_CMT_REG", "0")) else None
     REG = np.load(os.environ.get("ALG_REG_NPY", ".cache/reg_form8.npy")) \
@@ -2383,7 +2399,9 @@ def do_train(steps, lr, batch, seed):
             p[k].assign(Tensor(best_snap[k], dtype=p[k].dtype)).realize()
         print(f"[train] restored BEST ckpt (val {best_val:.4f})", flush=True)
     safe_save(p, ALG_CKPT)
-    print(f"[train] saved {ALG_CKPT} (best-by-val)", flush=True)
+    print(f"[train] saved {ALG_CKPT} "
+          f"({'final-step (TRUNK_LORA)' if int(os.environ.get('TRUNK_LORA', '0')) else 'best-by-val'})",
+          flush=True)
 
 
 # ===========================================================================

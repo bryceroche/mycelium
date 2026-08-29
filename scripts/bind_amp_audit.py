@@ -42,14 +42,18 @@ def rows_and_truth():
     mint = [json.loads(l) for l in open('.cache/algebra_nl_test.jsonl')][:200]
     for r in mint:
         r['tag'] = 'mint'; r['original'] = r.get('text') or r.get('original')
+    # custody law: src_idx is BOOK-LOCAL — key by TEXT identity; skips
+    # apply book12-locally (the fixture fix, audit 2026-08-30)
     byid = {}
     for f in sorted(glob.glob('.cache/book*_t*_batch*.jsonl')):
         for l in open(f):
-            r = json.loads(l); byid[r["src_idx"]] = r
-    for l in open('.cache/book12_anchor_batch1.jsonl'):
-        r = json.loads(l); byid[r["src_idx"]] = r
+            r = json.loads(l); byid[r["original"].strip()] = r
     sk = set(json.load(open('.cache/book12_anchor_skips.json')))
-    golds = [dict(v, tag='gold') for k, v in sorted(byid.items()) if k not in sk]
+    for l in open('.cache/book12_anchor_batch1.jsonl'):
+        r = json.loads(l)
+        if r["src_idx"] in sk: continue
+        byid[r["original"].strip()] = r
+    golds = [dict(v, tag='gold') for k, v in sorted(byid.items())]
     for r in mint + golds:
         r.setdefault('n_vars', 24); r.setdefault('m', 300)
         r.setdefault('query_var', r.get('query', 0))

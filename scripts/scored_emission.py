@@ -185,13 +185,17 @@ def main():
         CENT[c] = M / np.linalg.norm(M, axis=1, keepdims=True)
         print(f"[nla] {c}: {len(M)} centroids", flush=True)
 
+    # custody law: src_idx is BOOK-LOCAL — key by TEXT identity; skips
+    # apply book12-locally (the fixture fix, audit 2026-08-30)
     byid = {}
     for f in sorted(glob.glob('.cache/book*_t*_batch*.jsonl')):
-        for l in open(f): r = json.loads(l); byid[r["src_idx"]] = r
-    for l in open('.cache/book12_anchor_batch1.jsonl'):
-        r = json.loads(l); byid[r["src_idx"]] = r
+        for l in open(f): r = json.loads(l); byid[r["original"].strip()] = r
     sk = set(json.load(open('.cache/book12_anchor_skips.json')))
-    rows = [v for k, v in sorted(byid.items()) if k not in sk]
+    for l in open('.cache/book12_anchor_batch1.jsonl'):
+        r = json.loads(l)
+        if r["src_idx"] in sk: continue
+        byid[r["original"].strip()] = r
+    rows = [v for k, v in sorted(byid.items())]
     def canon(r):
         c = Counter()
         for f in r["factors"]:
@@ -209,12 +213,17 @@ def main():
     never = [{"original": r["original"], "answer": r["answer"], "tag": "wv"} for r in wv]
     dd = [json.loads(l) for l in open('.cache/base_t7self_deeds.jsonl')]
     h = [json.loads(l) for l in open('.cache/math_harvest_v0.jsonl')]
-    drafted = set(byid) | sk | set(x["src_idx"] for x in dd)
+    # drafted-exclusion by the RIGHT identities (fixture fix): book rows by
+    # TEXT; deeds by harvest-global src_idx (their native key). The old
+    # `set(byid) | sk` int-mixing excluded arbitrary harvest indices.
+    drafted_txt = set(byid)
+    drafted_idx = set(x["src_idx"] for x in dd)
     rng2 = np.random.default_rng(99)
     for seed in (99, 299):
         rg = np.random.default_rng(seed)
         never += [{"original": h[i]["problem"], "answer": int(str(h[i]["answer"]).strip()), "tag": "held"}
-                  for i in rg.permutation(len(h)) if i not in drafted
+                  for i in rg.permutation(len(h)) if i not in drafted_idx
+                  and h[i]["problem"].strip() not in drafted_txt
                   and str(h[i]["answer"]).strip().isdigit()][:10]
     allrows = [dict(original=r['original'], answer=r['answer'], tag='gold') for r in rows] + never
     gS, gOFF = states_for([r['original'] for r in allrows])

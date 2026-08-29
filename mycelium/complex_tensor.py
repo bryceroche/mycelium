@@ -66,4 +66,14 @@ if __name__ == "__main__":
     assert cleanup(unbind(z, phasor(th)), lift(cb)) == 3
     v = bind_clause_real(cb, {"a": th}, {"a": 7})
     assert cleanup(unbind(lift(v), phasor(th)), lift(cb)) == 7
-    print("complex_tensor: self-tests pass")
+    # tg_rotate coverage (audit 2026-08-30: was dead + untested — a future
+    # caller must inherit a VERIFIED sign convention)
+    import os as _os
+    _os.environ.setdefault("DEV", "CPU")
+    from tinygrad import Tensor as _T
+    _x = rng.standard_normal(128).astype(np.float32)
+    _got = tg_rotate(_T(_x.reshape(1, 128)), np.cos(th).astype(np.float32),
+                     np.sin(th).astype(np.float32)).numpy()[0]
+    _ref = lower(bind(lift(_x), phasor(th)))
+    assert np.abs(_got - _ref).max() < 1e-5, "tg_rotate sign convention broken"
+    print("complex_tensor: self-tests pass (incl. tg_rotate == bind)")

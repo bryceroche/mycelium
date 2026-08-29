@@ -64,13 +64,19 @@ def main():
     # rows: mint-val (200 from test23) + the 143 golds
     mint = [json.loads(l) for l in open('.cache/algebra_nl_test.jsonl')][:200]
     for r in mint: r['tag'] = 'mint'; r['original'] = r.get('text') or r.get('original')
+    # custody law: src_idx is BOOK-LOCAL — the pool keys by TEXT identity
+    # (audit 2026-08-30: bare-src_idx merge overwrote 74 tranche rows and
+    # the skip list hit 34 wrong ones); skips apply book12-locally.
     byid = {}
     for f in sorted(glob.glob('.cache/book*_t*_batch*.jsonl')):
-        for l in open(f): r = json.loads(l); byid[r["src_idx"]] = r
-    for l in open('.cache/book12_anchor_batch1.jsonl'):
-        r = json.loads(l); byid[r["src_idx"]] = r
+        for l in open(f):
+            r = json.loads(l); byid[r["original"].strip()] = r
     sk = set(json.load(open('.cache/book12_anchor_skips.json')))
-    golds = [dict(v, tag='gold') for k, v in sorted(byid.items()) if k not in sk]
+    for l in open('.cache/book12_anchor_batch1.jsonl'):
+        r = json.loads(l)
+        if r["src_idx"] in sk: continue
+        byid[r["original"].strip()] = r
+    golds = [dict(v, tag='gold') for k, v in sorted(byid.items())]
     for r in mint + golds:
         r.setdefault('n_vars', 24); r.setdefault('m', 300)
         r.setdefault('query_var', r.get('query', 0))
@@ -103,6 +109,7 @@ def main():
         o = forward(p, ts, tk, se, slot_mask=Tensor(mk, dtype=dtypes.float))
         Bv = o["bind"].realize().numpy()
         Ap = o["args"].realize().numpy(); Rp = o["res"].realize().numpy()
+        Dp = o["dup"].realize().numpy() if "dup" in o else None
         for i, r in enumerate(sl):
             for j in range(L_FAC):
                 if g["presence"][i, j] <= 0: continue
@@ -117,10 +124,17 @@ def main():
                     st = stats[r['tag']][role]
                     st[1] += 1
                     if rec == truth[role]: st[0] += 1
-                # pointer baseline: args top-2 & res argmax
-                pa = set(np.argsort(-Ap[i, j])[:2].tolist())
+                # pointer baseline, dup-fair (audit 2026-08-30): decode's
+                # own rule — dup>0 emits (argmax, argmax), else sorted
+                # top-2; credit = MULTISET equality with gold (the old
+                # check collapsed to 'a1 in top2' on dup rows, inflating
+                # pointers vs the bus's both-roles-exact requirement)
+                if Dp is not None and float(Dp[i, j]) > 0:
+                    _a0 = int(np.argmax(Ap[i, j])); dec = (_a0, _a0)
+                else:
+                    dec = tuple(sorted(int(x) for x in np.argsort(-Ap[i, j])[:2]))
                 ptr[r['tag']][1] += 1
-                if {a1, a2} <= pa | {a1} and a1 in pa and a2 in pa: ptr[r['tag']][0] += 1
+                if dec == tuple(sorted((a1, a2))): ptr[r['tag']][0] += 1
                 ptr[r['tag']][3] += 1
                 if int(Rp[i, j].argmax()) == truth['res']: ptr[r['tag']][2] += 1
     for t in ('mint', 'gold'):
