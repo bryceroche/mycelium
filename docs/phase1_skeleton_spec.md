@@ -31153,3 +31153,25 @@ sharp_bind8n); ARM R = +ALG_BUSLOOP=1 (-> sharp_bind8r), same seed.
 BARS (pinned): R val > N val; R wild res >= N - 0.005 (invariance not
 degraded); mint reported. KILL: R val < N val -> recurrent v0 banks
 negative, the port closes until S3 gives the clock teeth.
+
+## 2026-08-29/30 — S2 v0: INVALID AS TEST — THE GATE-DEADLOCK COROLLARY (two-terminal law, gate form); v0.1 FIRED
+Pair result: N val 0.6524 / R val 0.6532 (+0.0008 noise), reads identical
+to 3 decimals — BOTH arms a NEW LINEAGE HIGH (0.6336 -> 0.652+; the T^256
+family continuation keeps paying). Organ check (meter-divergence law):
+bus_g = -0.0002 after 6k — THE GATE NEVER OPENED. DIAGNOSIS, banked as a
+law: **a zero MULTIPLICATIVE gate on a pathway containing LEARNABLE params
+starves that pathway's own gradient** (every grad into W_busr multiplies
+by the gate = 0; the gate's grad flows only through the RANDOM projection
+= no reason to open). Cold-start deadlock. sw_g escaped it because its
+gated content was frozen-and-useful. AMENDMENT to structure-enters-at-zero:
+gates on learnable paths start AJAR (epsilon), not sealed; zero-init
+remains correct for frozen-content gates. Not a kill (R>=N; nothing
+engaged); v0 banks INVALID-AS-TEST.
+v0.1 (the valid experiment, one variant, bars pinned): W_busr DECODE-INIT
+(transpose stack W_bind2^T W_bind1^T per role /4 — reads are state-like
+from step 0) + bus_g init 0.02 (ajar: negligible perturbation, live
+gradient). Warm = sharp_bind8n + the two inits. ARM N2 = natural
+continuation of 8n (6k @3e-5 s224 -> sharp_bind8n2); ARM R2 = warm_s2v01
++ ALG_BUSLOOP=1 (-> sharp_bind8r2). BARS: R2 val - N2 val >= +0.005 (a
+REAL margin, not noise) AND wild res within 0.005. KILL: miss -> the port
+closes until S3 gives the clock teeth. No further variants.
