@@ -30992,3 +30992,21 @@ failure to move the bind needle. REGISTERED, HELD FOR THE WORD: v7 bars =
 mint args/res and wild res must EXCEED the incumbent (.603/.592 mint,
 .734 wild res); parse val >= 0.63 (both-arms baseline); kill on any miss,
 no rescue.
+
+## 2026-08-29 — v7 AMENDED + FIRED (word given): THE TAP PAIR (v7a) THEN THE WIDTH (v7b)
+Bryce's width ruling accepted with one correction: the REDUCTION is dropped,
+the PROJECTION kept — W_bind2 becomes square (512->512); deleting it would
+force gelu features to BE code superpositions (a straitjacket on the
+load-bearing shared features). codes512 built (P=256 planes, seed 12,
+unit-L2 complex Gaussian rows — convention audit: codes were NEVER per-plane
+unit-modulus; docs/rotational_bus.md truth-maintained; amplitude physics
+survives by convexity). Crosstalk measured down ~sqrt2 (.046 -> .036).
+v7a THE TAP PAIR (cont-control law): ARM C = natural continuation of the
+incumbent sharp_bindj (6k @3e-5 seed 220, static breath-0 tap); ARM T7 =
+byte-identical + ALG_BINDTAP=1 (bind reads _s_final). Zero newborns, loss
+unchanged — the single-dial ideal. BARS: T7 > C on wild res AND mint
+args+res; val within noise (+-0.008). KILL: T7 <= C on wild res.
+v7b THE WIDTH (on the tap winner): ALG_BINDBUS=7, BIND_D=512, codes512,
+W_bind2 fresh square -> two-phase (A frozen-parse 6k @1e-4 / B joint 6k
+@3e-5); pure role-CE (cosine aux retired with the bindvec buffer for >=5).
+BARS: beats the v7a winner on mint args+res AND wild res. No rescues.

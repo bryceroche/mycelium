@@ -122,7 +122,9 @@ TERMINALS = {
     "opc":    {"params": ["W_opc1", "W_opc1_b", "W_opc2", "W_opc2_b"],
                "emit": "opc", "gold": ["opc"],
                "when": lambda: int(os.environ.get("ALG_OPCOUNT", "0")) > 0},
-    "bindbus": {"params": (["W_bind1", "W_bind1_b"] + [f"W6_{r}" for r in ("a1", "a2", "rs", "op")]
+    "bindbus": {"params": (["W_bind1", "W_bind1_b", "W_bind2"]
+                           if int(os.environ.get("ALG_BINDBUS", "0")) >= 7
+                           else ["W_bind1", "W_bind1_b"] + [f"W6_{r}" for r in ("a1", "a2", "rs", "op")]
                            if int(os.environ.get("ALG_BINDBUS", "0")) >= 6
                            else [f"W5_{r}_{s}" for r in ("a1", "a2", "rs", "op")
                                  for s in ("1", "b", "2")]
@@ -769,7 +771,13 @@ def build_params(seed=0):
         pass
     if int(os.environ.get("ALG_BINDBUS", "0")):
         _bd = int(os.environ.get("ALG_BIND_D", "128"))
-        if int(os.environ["ALG_BINDBUS"]) >= 6:
+        if int(os.environ["ALG_BINDBUS"]) >= 7:
+            # v7b: the monolith at full width — W_bind2 is a SQUARE
+            # change-of-basis (reduction dropped, projection kept)
+            p["W_bind1"] = t(rng.randn(H_W, 512) / math.sqrt(H_W))
+            p["W_bind1_b"] = t(np.zeros(512))
+            p["W_bind2"] = t(rng.randn(512, _bd) / math.sqrt(512))
+        elif int(os.environ["ALG_BINDBUS"]) >= 6:
             # v6 the middle door: SHARED 512-gelu trunk (load-bearing, the
             # v5 kill's finding) + per-role OUTPUT projections only
             p["W_bind1"] = t(rng.randn(H_W, 512) / math.sqrt(H_W))
@@ -1184,7 +1192,13 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
         out["bind"] = _wire
         out["bind_lg"] = Tensor.stack(*_lgs, dim=-2)   # (B, L_FAC, 4, 32)
     elif "W_bind2" in p:
-        out["bind"] = (fst @ p["W_bind1"] + p["W_bind1_b"]).gelu() @ p["W_bind2"]
+        # THE TAP (2026-08-29): ALG_BINDTAP=1 or v>=7 reads _s_final (the
+        # refined post-breath state, like every parse head); default fst =
+        # breath-0 (the bus era's historical tap, kept for lineage compat)
+        _bsrc = (_s_final if (int(os.environ.get("ALG_BINDTAP", "0"))
+                              or int(os.environ.get("ALG_BINDBUS", "0")) >= 7)
+                 else fst)
+        out["bind"] = (_bsrc @ p["W_bind1"] + p["W_bind1_b"]).gelu() @ p["W_bind2"]
     elif "W_bind" in p:
         out["bind"] = fst @ p["W_bind"]
     if "W_opc1" in p:
@@ -1924,7 +1938,7 @@ def do_train(steps, lr, batch, seed):
                          *((("opc", (len(OPC_CLASSES),), dtypes.int),)
                            if int(os.environ.get("ALG_OPCOUNT", "0")) else ()),
                          *((("bindvec", (L_FAC, int(os.environ.get("ALG_BIND_D", "128"))), dtypes.float),)
-                           if int(os.environ.get("ALG_BINDBUS", "0")) else ()),
+                           if 0 < int(os.environ.get("ALG_BINDBUS", "0")) < 5 else ()),
                          *((("bind_ids", (L_FAC, 4), dtypes.int),)
                            if int(os.environ.get("ALG_BINDBUS", "0")) >= 3 else ()),
                          ("query", (), dtypes.int)):

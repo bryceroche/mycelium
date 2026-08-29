@@ -29,7 +29,7 @@ Binding is an architectural invariant it cannot violate.
 | Layer | Responsibility |
 |---|---|
 | Neural (4 heads) | "Which entity is this?" → logits over codebook \|C\| |
-| Codebook C | canonical unit-modulus vectors (\|c_k\| = 1), frozen |
+| Codebook C | unit-L2 random complex codes (row norm 1; per-plane modulus varies — truth-maintained 2026-08-29), frozen |
 | Structural (phasors) | "Where does it belong?" → fixed rotation e^{iθ_r}, frozen |
 | Wire (superposition) | "Transmit relation" → Z_wire = Σ_r v_r ⊙ e^{iθ_r} |
 | Cleanup (today) | cosine argmax vs codebook (`bind_read.py`) |
