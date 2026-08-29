@@ -31551,3 +31551,20 @@ notes: snap = argmax cleanup in-graph (non-differentiable; deposits enter
 as FACTS, gradient-free — drop-off mail, the coordination law's purest
 form); read side unchanged (content-addressed attention + role unbind).
 HELD FOR THE WORD.
+
+## 2026-08-30 — THE CANONICAL SHELF FIRED (word given): garage v2, facts on the lattice
+ALG_BUSGARAGE=2: write = wire -> per-role cleanup -> re-bind cleaned codes
+by construction -> rescale to pre-snap magnitude (the confidence stamp;
+wrong wires run quiet, so the shelf's own attention de-weights false
+facts — the measured confession as safety rail) -> DETACH (deposits are
+gradient-free FACTS; the coordination law's purest drop-off). Read path
+unchanged. SMOKE: noisy gold wire snaps back to the EXACT gold wire (max
+dev 0.0); ids round-trip. PAIR (cont-control from sharp_bind11n, seed
+228): N6 = natural continuation (-> sharp_bind12n); R6 = warm_shelf +
+BUSGARAGE=2 (-> sharp_bind12r). BARS: R6 - N6 >= +0.005 val AND wild res
+within 0.005; gate readout. PREDICTION (pinned): the redundancy objection
+is structurally answered (facts non-derivable) — ordering now WIN >=
+dead-heat > tax; the risk channel is FALSE FACTS (~1/3 of snaps wrong at
+current competence), mitigated by the quiet-when-wrong stamp. KILL: miss
+-> even lattice-committed facts don't pay at this grain; the in-loop bus
+truly waits for the composed stack. No rescue.

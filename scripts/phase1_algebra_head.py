@@ -1075,11 +1075,14 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
             import numpy as _np4
             from tinygrad import Tensor as _Ts4
             _bz4 = _np4.load(os.environ.get("BIND_CODES", ".cache/bindbus_codes.npz"))
-            _SGC = {}
+            _conj4, _plus4 = {}, {}
             for _rn4 in ("arg1", "arg2", "res", "op"):
                 _th4 = _bz4[f"theta_{_rn4}"]
-                _SGC[_rn4] = (_Ts4(_np4.cos(-_th4).astype(_np4.float32)),
-                              _Ts4(_np4.sin(-_th4).astype(_np4.float32)))
+                _conj4[_rn4] = (_Ts4(_np4.cos(-_th4).astype(_np4.float32)),
+                                _Ts4(_np4.sin(-_th4).astype(_np4.float32)))
+                _plus4[_rn4] = (_Ts4(_np4.cos(_th4).astype(_np4.float32)),
+                                _Ts4(_np4.sin(_th4).astype(_np4.float32)))
+            _SGC = (_conj4, _plus4, _Ts4(_bz4["CB"].astype(_np4.float32)))
         _garage = []
     _brot = None
     if int(os.environ.get("ALG_BREATHROT", "0")) and "rot_g" in p:
@@ -1163,7 +1166,7 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
                 _rd4 = sum(_at4[:, :, _j4:_j4 + 1] * _garage[_j4]
                            for _j4 in range(len(_garage)))
                 _rds4 = [_rot2(_rd4, _rc4, _rs4)
-                         for (_rc4, _rs4) in _SGC.values()]
+                         for (_rc4, _rs4) in _SGC[0].values()]
                 q_extra = q_extra + (Tensor.cat(*_rds4, dim=-1)
                                      @ p["W_busr"]) * p["bus_g"].reshape(1, 1, 1)
             if _sync is not None:   # sync-complete: transmitter ON during
@@ -1246,11 +1249,31 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
                            else (cur.mean(1) @ p["W_sil"]))
             breaths.append(cur)
             if _garage is not None:
-                # GARAGE WRITE (drop-off): deposit the refined state's
-                # role-bound wire on the shelf; the list IS the parking
-                # separation (no cycle keys, no overwrites, no rendezvous)
-                _garage.append((cur @ p["W_bind1"] + p["W_bind1_b"]).gelu()
-                               @ p["W_bind2"])
+                # GARAGE WRITE (drop-off): the refined state's role-bound
+                # wire; the list IS the parking separation
+                _wg4 = ((cur @ p["W_bind1"] + p["W_bind1_b"]).gelu()
+                        @ p["W_bind2"])
+                if int(os.environ.get("ALG_BUSGARAGE", "0")) >= 2:
+                    # THE CANONICAL SHELF (2026-08-30, word given): snap to
+                    # the lattice — per-role cleanup, re-bind the cleaned
+                    # codes BY CONSTRUCTION; the deposit is a FACT
+                    # (detached, gradient-free) carrying the pre-snap
+                    # magnitude as its confidence stamp (wrong wires run
+                    # quiet — the measured confession de-weights them in
+                    # the shelf's own attention). Two jaws, in the loop.
+                    _cj4, _pl4, _CBt4 = _SGC
+                    _canon4 = None
+                    for _rn4 in ("arg1", "arg2", "res", "op"):
+                        _zc4 = _rot2(_wg4, *_cj4[_rn4])
+                        _lg4 = _zc4 @ _CBt4.T
+                        _oh4 = (_lg4 == _lg4.max(-1, keepdim=True)).float()
+                        _oh4 = _oh4 / (_oh4.sum(-1, keepdim=True) + 1e-9)
+                        _cb4 = _rot2(_oh4 @ _CBt4, *_pl4[_rn4])
+                        _canon4 = _cb4 if _canon4 is None else _canon4 + _cb4
+                    _wn4 = _wg4.pow(2).sum(-1, keepdim=True).sqrt() + 1e-6
+                    _cn4 = _canon4.pow(2).sum(-1, keepdim=True).sqrt() + 1e-6
+                    _wg4 = (_canon4 / _cn4 * _wn4).detach()
+                _garage.append(_wg4)
             if _busloop is not None:
                 # S2 WRITE: wire from the REFINED state (the shelved T7
                 # machinery returns here, per the ruling's corollary),
