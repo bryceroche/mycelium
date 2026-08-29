@@ -31198,3 +31198,27 @@ SIDE LEDGER: the T^256 family continuation curve is remarkable — val
 0.6336 -> 0.638 -> 0.652 -> 0.663 across three 6k passes (mint pointer
 res 0.814); the family line compounds while the experiments around it
 return verdicts. sharp_bind8n2 = parse high-water.
+
+## 2026-08-30 — S3 REGISTERED + FIRED (word given): THE BREATH ROTOR — MULTIPLICATIVE, CLOCKED, GATED-ON-FROZEN
+The stack's second rotor goes live as an experiment. DESIGN: pi-cycled
+rotation of the bank's slot-QUERY reserved band (pairs 24-31, dims 48:64)
+by the sextet clock's angles (breath_qk_angles IMPORTED from
+mycelium/rotor_clock — sync = the import graph); KEYS are waist states
+(static across breaths), so the relative phase between a breath-k query
+and every token key IS phi(k) — a 60deg/breath phase-swept spotlight.
+Gemini's relative-rotation identity CORRECTED in implementation: Q-only
+rotation (both-sides rotation would cancel into relative form only if K
+also breathed — it does not). "Cannot be bypassed" is HYPOTHESIS, not
+theorem (the network can evacuate the band's key content); that is the
+experiment. ENTRY: frozen rotated content blended by zero-init gain rot_g
+— lawful under the gate-deadlock corollary (nothing learnable behind the
+gate; the sw_g pattern). Breath-0 unrotated (outside time). SMOKE: gate-
+zero = exact identity; rotation unitary and numpy-exact.
+PAIR (cont-control from sharp_bind8n2, the 0.663 high-water): ARM N3 =
+natural continuation (6k @3e-5 s225 -> sharp_bind9n); ARM R3 =
++ALG_BREATHROT=1 (-> sharp_bind9r). BARS: R3 val - N3 val >= +0.005 AND
+wild reads within 0.005; rot_g read at verdict (organ check). ONE
+registered rescue (pre-pinned): if rot_g stagnates ~0, a single
+imposed-rotation arm (rot_g frozen at 1.0) under the same bars. KILL
+otherwise -> S3 v0 banks negative; the composed stack waits for new
+physics.

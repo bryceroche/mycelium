@@ -818,6 +818,10 @@ def build_params(seed=0):
         _bd2 = int(os.environ.get("ALG_BIND_D", "128"))
         p["W_busr"] = t(rng.randn(4 * _bd2, H_W) / math.sqrt(4 * _bd2))
         p["bus_g"] = t(np.zeros((1,)))
+    if int(os.environ.get("ALG_BREATHROT", "0")):
+        # S3: blend gain for the breath rotor (frozen rotated content;
+        # zero-init gain is lawful — sw_g pattern, no deadlock)
+        p["rot_g"] = t(np.zeros((1,)))
     if ALG_NOTEBOOK:     # the cathedral (2026-08-18)
         if ALG_SEPHASE_PAIR:   # the transceiver: ink and query born in the
             _shared = phase_alphabet(H_W, H_W, 1.0 / math.sqrt(H_W), rng)
@@ -882,13 +886,30 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
     B = trunk.shape[0]
     waist = (trunk @ p["waist_w"] + p["waist_b"]).gelu() + p["sent_emb"][sent]
 
-    def bank(queries, nq, extra=None, pbias=None):
+    def bank(queries, nq, extra=None, pbias=None, qrot=None):
         q_in = queries.unsqueeze(0) + (extra if extra is not None else 0)
         q = q_in @ p["attn_wq"] + p["attn_wq_b"]
         k = waist @ p["attn_wk"] + p["attn_wk_b"]
         v = waist @ p["attn_wv"] + p["attn_wv_b"]
         hd = H_W // N_HEADS
         qh = q.reshape(B if extra is not None else 1, nq, N_HEADS, hd).permute(0, 2, 1, 3)
+        if qrot is not None and "rot_g" in p:
+            # S3 THE BREATH ROTOR (2026-08-30, word given): multiplicative
+            # pi-cycled rotation of the QUERY's reserved band (pairs 24-31,
+            # dims 48:64) by the sextet clock's angles — keys are waist
+            # states (static across breaths), so the relative phase IS
+            # phi(k). Frozen content, zero-init blend gain (sw_g pattern;
+            # no learnable params behind the gate — no deadlock).
+            _qc3, _qs3 = qrot
+            _b0 = qh[..., 48:64]
+            _bp = _b0.reshape(*_b0.shape[:-1], 8, 2)
+            _bx, _by = _bp[..., 0], _bp[..., 1]
+            _br = Tensor.stack(_bx * _qc3 - _by * _qs3,
+                               _bx * _qs3 + _by * _qc3,
+                               dim=-1).reshape(*_b0.shape)
+            qh = Tensor.cat(qh[..., :48],
+                            _b0 + (_br - _b0) * p["rot_g"].reshape(1, 1, 1, 1),
+                            dim=-1)
         kh = k.reshape(B, -1, N_HEADS, hd).permute(0, 2, 1, 3)
         vh = v.reshape(B, -1, N_HEADS, hd).permute(0, 2, 1, 3)
         sc = (qh @ kh.transpose(-2, -1)) / math.sqrt(hd)
@@ -1028,6 +1049,20 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
         return Tensor.stack(x * c - y * s, x * s + y * c, dim=-1).reshape(*v.shape)
 
     _bus_reg = None
+    _brot = None
+    if int(os.environ.get("ALG_BREATHROT", "0")) and "rot_g" in p:
+        global _S3C
+        try: _S3C
+        except NameError: _S3C = None
+        if _S3C is None:
+            import numpy as _np3
+            from tinygrad import Tensor as _Ts3
+            from mycelium.rotor_clock import breath_qk_angles
+            _ang3 = breath_qk_angles()               # (6, 8) from the clock
+            _S3C = {t3: (_Ts3(_np3.cos(_ang3[t3]).astype(_np3.float32)),
+                         _Ts3(_np3.sin(_ang3[t3]).astype(_np3.float32)))
+                    for t3 in range(_ang3.shape[0])}
+        _brot = _S3C
     if K_B > 1 and slot_mask is not None and "W_bo" in p:
         cur = fst
         for kb in range(1, K_B):
@@ -1078,7 +1113,9 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
             h_tok, fat_cur = bank(p["fq"], L_FAC, extra=q_extra,
                                   pbias=(_sync[0](kb) if _sync is not None
                                          else _swturn(kb)
-                                         if _swturn is not None else None))
+                                         if _swturn is not None else None),
+                                  qrot=(_brot[kb - 1] if _brot is not None
+                                        else None))
             bq = cur @ p["W_bq"] + p["W_bq_b"]
             bk = cur @ p["W_bk"] + p["W_bk_b"]
             bv = cur @ p["W_bv"] + p["W_bv_b"]
