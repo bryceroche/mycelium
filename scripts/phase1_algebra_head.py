@@ -824,6 +824,16 @@ def build_params(seed=0):
         # S3 v0.1: per-pair elective gains (32; mandatory/static pairs are
         # masked in forward — their entries get no gradient)
         p["rot_g"] = t(np.zeros((32,)))
+    if int(os.environ.get("ALG_BUSGARAGE", "0")):
+        # THE PARKING GARAGE (2026-08-30, word given): typed relational
+        # mail — deposits are role-bound wires; retrieval is content-
+        # addressed attention (drop-off semantics; the coordination law).
+        # Gate AJAR (gate-deadlock corollary — learnable path behind it);
+        # W_busr decode-init arrives via the warm file.
+        _bd4 = int(os.environ.get("ALG_BIND_D", "128"))
+        p["W_gq"] = t(rng.randn(H_W, _bd4) / math.sqrt(H_W))
+        p["W_busr"] = t(rng.randn(4 * _bd4, H_W) / math.sqrt(4 * _bd4))
+        p["bus_g"] = t(np.full(1, 0.02))
     if ALG_NOTEBOOK:     # the cathedral (2026-08-18)
         if ALG_SEPHASE_PAIR:   # the transceiver: ink and query born in the
             _shared = phase_alphabet(H_W, H_W, 1.0 / math.sqrt(H_W), rng)
@@ -1053,6 +1063,24 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
         return Tensor.stack(x * c - y * s, x * s + y * c, dim=-1).reshape(*v.shape)
 
     _bus_reg = None
+    _garage = None
+    if (int(os.environ.get("ALG_BUSGARAGE", "0")) and "W_gq" in p
+            and "W_bind2" in p):
+        assert not int(os.environ.get("ALG_BUSLOOP", "0")), \
+            "garage xor busloop — one recurrent bus form at a time"
+        global _SGC
+        try: _SGC
+        except NameError: _SGC = None
+        if _SGC is None:
+            import numpy as _np4
+            from tinygrad import Tensor as _Ts4
+            _bz4 = _np4.load(os.environ.get("BIND_CODES", ".cache/bindbus_codes.npz"))
+            _SGC = {}
+            for _rn4 in ("arg1", "arg2", "res", "op"):
+                _th4 = _bz4[f"theta_{_rn4}"]
+                _SGC[_rn4] = (_Ts4(_np4.cos(-_th4).astype(_np4.float32)),
+                              _Ts4(_np4.sin(-_th4).astype(_np4.float32)))
+        _garage = []
     _brot = None
     if int(os.environ.get("ALG_BREATHROT", "0")) and "rot_g" in p:
         global _S3C
@@ -1122,6 +1150,21 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
                 _rds = [_rot2(_rz, _rc2, _rs2)
                         for (_rc2, _rs2) in _rolec2.values()]
                 q_extra = q_extra + (Tensor.cat(*_rds, dim=-1)
+                                     @ p["W_busr"]) * p["bus_g"].reshape(1, 1, 1)
+            if _garage is not None and len(_garage) > 0:
+                # GARAGE READ (drop-off): content-addressed attention over
+                # the deposit shelf — the reader needs NO tick knowledge;
+                # then per-role conj unbind of the retrieved wire
+                _gq4 = cur @ p["W_gq"]
+                _sc4 = Tensor.cat(*[(_gq4 * _d4).sum(-1, keepdim=True)
+                                    / math.sqrt(float(_gq4.shape[-1]))
+                                    for _d4 in _garage], dim=-1)
+                _at4 = _sc4.softmax(-1)
+                _rd4 = sum(_at4[:, :, _j4:_j4 + 1] * _garage[_j4]
+                           for _j4 in range(len(_garage)))
+                _rds4 = [_rot2(_rd4, _rc4, _rs4)
+                         for (_rc4, _rs4) in _SGC.values()]
+                q_extra = q_extra + (Tensor.cat(*_rds4, dim=-1)
                                      @ p["W_busr"]) * p["bus_g"].reshape(1, 1, 1)
             if _sync is not None:   # sync-complete: transmitter ON during
                 q_extra = q_extra + _sync[1](kb)     # settle; receiver locked
@@ -1202,6 +1245,12 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
                 _nb.append((cur @ p["W_sil"]) if NB_PERSLOT
                            else (cur.mean(1) @ p["W_sil"]))
             breaths.append(cur)
+            if _garage is not None:
+                # GARAGE WRITE (drop-off): deposit the refined state's
+                # role-bound wire on the shelf; the list IS the parking
+                # separation (no cycle keys, no overwrites, no rendezvous)
+                _garage.append((cur @ p["W_bind1"] + p["W_bind1_b"]).gelu()
+                               @ p["W_bind2"])
             if _busloop is not None:
                 # S2 WRITE: wire from the REFINED state (the shelved T7
                 # machinery returns here, per the ruling's corollary),

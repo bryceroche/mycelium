@@ -31385,3 +31385,22 @@ mint pointers lead on arg-bearing slots (.64-.78); claims regime-tagged
 dead. (4) The T^256 family line (10n .739) still trails 7c (.764) on wild
 res — the wild-drift watch stands (bar .70; comfortably above). PARSE
 INCUMBENT: sharp_bind10r/10n (0.6977/0.6966).
+
+## 2026-08-30 — THE PARKING GARAGE FIRED (word given): the recurrent bus returns in drop-off form
+Design per the coordination law: WRITE = deposit the refined state's
+role-bound wire on a per-breath shelf (the list IS the parking separation
+— no cycle keys, no overwrites); READ = content-addressed attention over
+the shelf (W_gq query; the reader needs NO tick knowledge — zero
+rendezvous), then per-role conj unbind -> W_busr -> gate. vs the notebook:
+same mailbox physics, TYPED RELATIONAL ink (the bus's language) instead of
+generic ink — the experiment is whether typed mail pays where generic mail
+already serves. Gate AJAR 0.02 + decode-init W_busr (gate-deadlock
+corollary); W_gq fresh; superposed-single-wire + phase-parking registered
+as the scaling form (v2), not fired. garage xor busloop asserted.
+PAIR (cont-control from sharp_bind10n, seed 227): N5 = natural
+continuation (6k @3e-5 -> sharp_bind11n); R5 = warm_garage +
+ALG_BUSGARAGE=1 (-> sharp_bind11r). BARS: R5 val - N5 val >= +0.005 AND
+wild res within 0.005 (lawful fixture, scoped scoring). READOUTS: bus_g
+final; shelf-attention entropy noted if diagnosable. KILL: miss -> typed
+relational recurrence banks negative for the era; the bus rotor's in-loop
+duty waits for new physics (S3-composed or carrier-era). No rescue.
