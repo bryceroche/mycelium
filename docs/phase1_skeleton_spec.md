@@ -31478,3 +31478,21 @@ Wild res stable .738 (watch bar .70 clear). SIDE LEDGER: N5 0.7067 / R5
 0.7083 — EIGHTH consecutive lineage high; the family curve broke 0.70
 (0.6202 -> 0.7083 across six gentle passes). sharp_bind11r = parse
 incumbent. The lowering probe fires next in the queue.
+
+## 2026-08-30 — LOWERING PROBE VERDICT: MECHANICAL BAR REFUTED, TWO VALID GRAINS CONFIRM; THE FINE PROBE WAS DEGENERATE
+Printed verdict: peaks [coarse b2, mid b6, fine b0] -> NOT monotone.
+INSTRUMENT AUTOPSY (texture rule): the fine/digit probe read 1.00 at
+EVERY breath on BOTH registers — a ceiling with zero discriminative power
+(leading digit trivially decodable from trunk states; peak b0 is argmax-
+of-ties artifact). A broken instrument's peak is not evidence. ON THE TWO
+VALID GRAINS the pinned predictions BOTH hold: (1) coarse saturates early
+(mint .94->.97 by b2) while mid CLIMBS MONOTONICALLY to b6 (.61->.69) —
+coarse<=mid confirmed; (2) THE PORTABILITY DECAY IS NOW A CURVE: wild
+coarse transfer peaks at b1 (.67) and DECAYS breath-by-breath to .60 —
+the dialect creep measured per-breath for the first time; the two-tap law
+rendered as a staircase. Wild mid transfer poor throughout (~.17, above
+24-way chance but low) — wild wiring never ports at any breath (the wild
+competence wall, localized). VERDICT AS BANKED: lowering CONFIRMED at
+coarse/mid grain; fine grain UNMEASURED (probe v2 registered: harder fine
+target — full value or trailing digits on multi-digit givens). The MLIR
+frame graduates from metaphor to half-measured mechanism.
