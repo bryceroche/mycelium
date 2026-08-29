@@ -1195,9 +1195,9 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
         # THE TAP (2026-08-29): ALG_BINDTAP=1 or v>=7 reads _s_final (the
         # refined post-breath state, like every parse head); default fst =
         # breath-0 (the bus era's historical tap, kept for lineage compat)
-        _bsrc = (_s_final if (int(os.environ.get("ALG_BINDTAP", "0"))
-                              or int(os.environ.get("ALG_BINDBUS", "0")) >= 7)
-                 else fst)
+        _bsrc = (_s_final if int(os.environ.get("ALG_BINDTAP", "0"))
+                 else fst)   # tap dial ORTHOGONAL to version (v7a verdict:
+                             # invariance lives at breath-0; default stays)
         out["bind"] = (_bsrc @ p["W_bind1"] + p["W_bind1_b"]).gelu() @ p["W_bind2"]
     elif "W_bind" in p:
         out["bind"] = fst @ p["W_bind"]

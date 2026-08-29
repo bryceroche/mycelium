@@ -31034,3 +31034,23 @@ S3 breath-phase RoPE in the bank (multiplicative turn, waves as schedule).
 Long-term target: token RoPE (frozen trunk) -> breath RoPE (head bank) ->
 bus channel (recurrent binding) — three rotors, one stack, the paper's
 shape made mechanism.
+
+## 2026-08-29 — S1/v7a VERDICT: KILL PER BAR — AND THE TWO-TAP LAW (invariance lives at breath-0)
+ARM C (breath-0): val .6191; mint .621/.614/.614/.927; wild .497/.560/
+.743/.685 — C ALONE takes the bus incumbency (wild res .743, new record;
+sharp_bind7c). ARM T7 (refined tap): val .6213; mint .664/.659/.665/
+op .950 (MINT RECORDS, +4-5pts every role) but wild res .735 < C's .743
+-> THE PINNED KILL FIRES. THE FINDING: the breath loop's refinement is
+DIALECT-TUNED — register invariance is a property of the RAW breath-0
+states (the bus's mint~wild magic came from reading them); tapping refined
+states re-opens the register gap from the mint side (the universal
+mint-specialization creep, now localized to an organ: the loop).
+Consequences: (1) bus incumbent tap stays breath-0 (BINDBUS=7 untied from
+the tap — orthogonality fix committed); (2) REGISTERED CANDIDATE (held):
+the TWO-TAP BUS — read both channels (breath-0 = invariant wire, final =
+precise wire), certificates weigh them differently; (3) rotor-stack S2
+design must write from refined but PRESERVE the invariant early read.
+v7b BARS RE-PINNED vs the winner C: mint args > .621/.614, mint res >
+.614, wild res > .743, val >= 0.615. Warm = sharp_bind7c minus W_bind2
+(square fresh); two-phase (A frozen-parse 6k @1e-4 s221 / B joint 6k
+@3e-5 s222); pure role-CE; codes512.
