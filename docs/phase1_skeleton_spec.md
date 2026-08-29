@@ -31134,3 +31134,22 @@ family; C remains the measurement incumbent for claims. The v7 arc closes:
 tap verdict (invariance lives at breath-0), width verdict (T^256 family
 viable, mint-superior), the sextet clock built — all three S2 prerequisites
 in hand. S2 v0 HOLDS FOR THE WORD.
+
+## 2026-08-29 — S2 v0 REGISTERED + FIRED (word given): THE RECURRENT BUS
+The bus rotor's first recurrent form (docs/rotational_bus.md S5). WRITE at
+loop breath kb: wire from the REFINED cur (the shelved T7 machinery
+returns, per the ruling's corollary) via the family line's W_bind1/2,
+cycle-bound at tick kb-1 with tables IMPORTED from mycelium/rotor_clock
+(sync = the import graph; breath-0 never written — outside time, enforced).
+Register = running superposition. READ at kb>=2: conj-cycle to the most
+recent tick, per-role conj unbind, 4x512 concat -> W_busr (2048->512,
+fresh) -> q_extra, through bus_g (ZERO-INIT — structure enters at zero;
+step-0 forward provably identical to control). External emission unchanged
+(breath-0 tap — the invariant wire survives; the two-tap law as design).
+No new loss: the recurrent path trains through the parse losses; the
+emission CE trains the shared MLP. CONT-CONTROL PAIR from sharp_bind7w
+(the T^256 family line): ARM N = natural continuation (6k @3e-5 s223 ->
+sharp_bind8n); ARM R = +ALG_BUSLOOP=1 (-> sharp_bind8r), same seed.
+BARS (pinned): R val > N val; R wild res >= N - 0.005 (invariance not
+degraded); mint reported. KILL: R val < N val -> recurrent v0 banks
+negative, the port closes until S3 gives the clock teeth.

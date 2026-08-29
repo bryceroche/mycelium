@@ -811,6 +811,13 @@ def build_params(seed=0):
     p["W_query"] = t(rng.randn(H_W, H_W) / math.sqrt(H_W))
     if ALG_SIXWAVE:      # door #62: carrier gate — structure enters at zero
         p["sw_g"] = t(np.zeros((1,)))
+    if int(os.environ.get("ALG_BUSLOOP", "0")):
+        # S2 THE RECURRENT BUS (2026-08-29, word given): per-role
+        # demodulated reads of the cycle-keyed register project back into
+        # the breath queries; the gate starts closed (structure at zero)
+        _bd2 = int(os.environ.get("ALG_BIND_D", "128"))
+        p["W_busr"] = t(rng.randn(4 * _bd2, H_W) / math.sqrt(4 * _bd2))
+        p["bus_g"] = t(np.zeros((1,)))
     if ALG_NOTEBOOK:     # the cathedral (2026-08-18)
         if ALG_SEPHASE_PAIR:   # the transceiver: ink and query born in the
             _shared = phase_alphabet(H_W, H_W, 1.0 / math.sqrt(H_W), rng)
@@ -991,6 +998,36 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
         anchor = fst
         cmt_logits = []
         x_rel = m_c                                   # released-mass ledger
+    _busloop = None
+    if (int(os.environ.get("ALG_BUSLOOP", "0")) and "W_busr" in p
+            and "W_bind2" in p):
+        # S2: lazy frozen constants — cycle tables IMPORTED from the master
+        # clock (sync = the import graph), role conjugates from BIND_CODES
+        global _S2C
+        try: _S2C
+        except NameError: _S2C = None
+        if _S2C is None:
+            import numpy as _np2
+            from tinygrad import Tensor as _Ts2
+            from mycelium.rotor_clock import cycle_cos_sin, N_LOOP as _NL2
+            _bz2 = _np2.load(os.environ.get("BIND_CODES", ".cache/bindbus_codes.npz"))
+            _P2b = _bz2["CB"].shape[1] // 2
+            _cc2, _ss2 = cycle_cos_sin(_P2b)
+            _cyc2 = {t2: (_Ts2(_cc2[t2]), _Ts2(_ss2[t2])) for t2 in range(_NL2)}
+            _rolec2 = {}
+            for _rn2 in ("arg1", "arg2", "res", "op"):
+                _th2 = _bz2[f"theta_{_rn2}"]
+                _rolec2[_rn2] = (_Ts2(_np2.cos(-_th2).astype(_np2.float32)),
+                                 _Ts2(_np2.sin(-_th2).astype(_np2.float32)))
+            _S2C = (_cyc2, _rolec2)
+        _busloop = _S2C
+
+    def _rot2(v, c, s):        # interleaved-real phasor rotation
+        vr = v.reshape(*v.shape[:-1], v.shape[-1] // 2, 2)
+        x, y = vr[..., 0], vr[..., 1]
+        return Tensor.stack(x * c - y * s, x * s + y * c, dim=-1).reshape(*v.shape)
+
+    _bus_reg = None
     if K_B > 1 and slot_mask is not None and "W_bo" in p:
         cur = fst
         for kb in range(1, K_B):
@@ -1026,6 +1063,16 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
                     cur = cur * 0.0 + _rd.reshape(B, 1, -1)   # residual severed
                     q_extra = (cur + p["breath_emb"][kb].reshape(1, 1, -1)
                                + _rd.reshape(B, 1, -1))       # memory the road
+            if _busloop is not None and _bus_reg is not None:
+                # S2 READ: conj-cycle to the most recent write's tick, then
+                # per-role conj unbind; project through the zero-init gate
+                _cyc2, _rolec2 = _busloop
+                _ct2, _st2 = _cyc2[kb - 2]
+                _rz = _rot2(_bus_reg, _ct2, _st2 * -1.0)   # conj cycle
+                _rds = [_rot2(_rz, _rc2, _rs2)
+                        for (_rc2, _rs2) in _rolec2.values()]
+                q_extra = q_extra + (Tensor.cat(*_rds, dim=-1)
+                                     @ p["W_busr"]) * p["bus_g"].reshape(1, 1, 1)
             if _sync is not None:   # sync-complete: transmitter ON during
                 q_extra = q_extra + _sync[1](kb)     # settle; receiver locked
             h_tok, fat_cur = bank(p["fq"], L_FAC, extra=q_extra,
@@ -1103,6 +1150,16 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
                 _nb.append((cur @ p["W_sil"]) if NB_PERSLOT
                            else (cur.mean(1) @ p["W_sil"]))
             breaths.append(cur)
+            if _busloop is not None:
+                # S2 WRITE: wire from the REFINED state (the shelved T7
+                # machinery returns here, per the ruling's corollary),
+                # cycle-bound at tick kb-1; breath-0 is never written
+                # (outside time — the sextet clock's law)
+                _cyc2, _ = _busloop
+                _w2 = (cur @ p["W_bind1"] + p["W_bind1_b"]).gelu() @ p["W_bind2"]
+                _cw2, _sw2 = _cyc2[kb - 1]
+                _bus_reg = (_rot2(_w2, _cw2, _sw2) if _bus_reg is None
+                            else _bus_reg + _rot2(_w2, _cw2, _sw2))
 
     def heads_of(s):
         return {
