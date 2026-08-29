@@ -31097,3 +31097,21 @@ self-test EARNED ITS KEEP AT BIRTH: draft-1 odometer scored self-coherence
 a known reference set as real cleanup does. Final: odometer diagonal 1.000,
 off-diag 0.000 on clean wires; all five self-tests pass. FREQUENCIES
 FROZEN, GAINS LEARNABLE — no rate in this file is a parameter.
+
+## 2026-08-29 — THE SEXTET CLOCK (word given): rotor_clock re-cut to the canon
+Gear/quantum brainstorm verdict: the choice is free for uniqueness, binding
+for (i) canon coherence, (ii) noise margins, (iii) horizons, (iv) timing
+(cheapest before S2 trains — after, the quantum is baked into weights).
+THE RESOLUTION: the 60deg/K=7 aliasing dissolves under the correct frame —
+ALG_BREATH=7 is breath-0 (the raw bank read) + SIX loop breaths; the six
+waves clock the six loop breaths EXACTLY (tick = k-1, 60deg each), and
+**BREATH-0 IS OUTSIDE TIME** — unclocked by construction (phase_of(0)
+raises; the bus never writes it). The S1 two-tap law gets its place in the
+theory: the invariant raw state exists before the clock starts. Wheels
+re-jobbed: wheel 0 = breath hand (address), wheel 1 = parity (2x), wheel
+2 = THE PASS WHEEL (60deg per full pass; static this era — multi-pass
+hierarchical time reserved). Registered-not-chosen forks: CRT coprime
+periods (long horizons), golden-ratio incommensurate (never repeats).
+Self-tests extended (7): breath-hand uniqueness, T^3 uniqueness, breath-0
+rejects clock reads, cycle-key separation, odometer diag 1.000, scramble
+differs, pass wheel advances with wheels 0-1 unmoved. ALL PASS.
