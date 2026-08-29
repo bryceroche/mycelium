@@ -31527,3 +31527,27 @@ wall remains wild competence, now with a confidence-annotated map of
 exactly which slots the bus trusts. THE MAGNITUDE ARC CLOSES: four
 legacy instruments unified, the channel named, the confession measured,
 the dial priced — one gut, one night.
+
+## 2026-08-30 — REGISTERED: THE CANONICAL SHELF (garage v2 — the redundancy-breaker named)
+The relay's four candidates graded against the measured record: (1) exact
+unbinding — true math, insufficient economics (every loop consumer owns
+trained role extraction; redundant, as priced twice); (3) schema queries —
+real but needs query-side training (v2+, chicken-and-egg); (4) magnitude
+confidence — MEASURED (the confession + selective curve). (2) IS THE KEY
+AND OUR MISS: the killed garage shelved RAW MLP wires (drift-coupled
+functions of cur — the redundancy verdict's exact target). THE
+REDUNDANCY-BREAKER IS CANONICALIZATION: before shelving, snap the wire to
+the frozen lattice — per-role unbind -> cleanup to nearest code -> re-bind
+the cleaned ids BY CONSTRUCTION (v5 machinery) -> shelve the exact wire +
+the pre-snap magnitude as a confidence stamp. The snap is many-to-one:
+the deposit becomes a DISCRETE FACT the residual stream cannot linearly
+re-derive — drift-free, denoised, certainty-stamped. This is the two-jaws
+principle RECURSED INTO THE BREATH LOOP (neural proposes the wire;
+symbolic disposes via the snap; the verdict re-enters) — the fancy-lookup
+-table gut and iterated-A0 meeting in one mechanism. Satisfies the
+closure clause's own reopening condition ("physics that make content
+non-derivable from cur") — a NEW design, not a rescue. Implementation
+notes: snap = argmax cleanup in-graph (non-differentiable; deposits enter
+as FACTS, gradient-free — drop-off mail, the coordination law's purest
+form); read side unchanged (content-addressed attention + role unbind).
+HELD FOR THE WORD.
