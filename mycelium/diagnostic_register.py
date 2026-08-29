@@ -190,6 +190,22 @@ DIAGNOSTICS = {
             "scrutiny-router to judge, which its own charter forbids."
         ),
     },
+    # --- registered 2026-08-29, the amplitude audit (docs/rotational_bus.md
+    # S3; audit PASSED: MI(correct; A|H) beats within-decile permutation
+    # null on 3/4 mint roles) ---
+    "bind_amplitude": {
+        "coupling": "never",
+        "why": (
+            "Phasor modulus A_r = ||softmax(l_r) @ CB|| of a soft-pointer "
+            "bind head — geometry-aware confidence (mass split across "
+            "NEARBY codes dims the wire less than across distant codes; "
+            "entropy is geometry-blind). Emergent physics of unit-modulus "
+            "codewords under mixture — never trained, and supervising it "
+            "would teach the head to write BRIGHT while wrong (concealment "
+            "over confession). Observational always: refusal-dial studies "
+            "and audits read it; no loss, reward, or selection touches it."
+        ),
+    },
 }
 
 

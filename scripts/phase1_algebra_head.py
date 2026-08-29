@@ -122,10 +122,16 @@ TERMINALS = {
     "opc":    {"params": ["W_opc1", "W_opc1_b", "W_opc2", "W_opc2_b"],
                "emit": "opc", "gold": ["opc"],
                "when": lambda: int(os.environ.get("ALG_OPCOUNT", "0")) > 0},
-    "bindbus": {"params": (["W_bind1", "W_bind1_b", "W_bind2"]
+    "bindbus": {"params": (["W_bind1", "W_bind1_b"] + [f"W6_{r}" for r in ("a1", "a2", "rs", "op")]
+                           if int(os.environ.get("ALG_BINDBUS", "0")) >= 6
+                           else [f"W5_{r}_{s}" for r in ("a1", "a2", "rs", "op")
+                                 for s in ("1", "b", "2")]
+                           if int(os.environ.get("ALG_BINDBUS", "0")) >= 5
+                           else ["W_bind1", "W_bind1_b", "W_bind2"]
                            if int(os.environ.get("ALG_BINDBUS", "0")) >= 2
                            else ["W_bind"]),
-                "emit": "bind", "gold": (["bindvec", "bind_ids"] if int(os.environ.get("ALG_BINDBUS", "0")) >= 3 else ["bindvec"]),
+                "emit": "bind", "gold": (["bind_ids"] if int(os.environ.get("ALG_BINDBUS", "0")) >= 5
+                                         else ["bindvec", "bind_ids"] if int(os.environ.get("ALG_BINDBUS", "0")) >= 3 else ["bindvec"]),
                 "when": lambda: int(os.environ.get("ALG_BINDBUS", "0")) > 0},
     "cmt":    {"params": ["W_cmt", "W_cmt_b"],     "emit": "cmt",   "gold": ["ftype", "res"],
                "when": lambda: int(os.environ.get("ALG_RINGS", "0")) and int(os.environ.get("ALG_BREATH", "1")) > 1},
@@ -763,7 +769,21 @@ def build_params(seed=0):
         pass
     if int(os.environ.get("ALG_BINDBUS", "0")):
         _bd = int(os.environ.get("ALG_BIND_D", "128"))
-        if int(os.environ["ALG_BINDBUS"]) >= 2:
+        if int(os.environ["ALG_BINDBUS"]) >= 6:
+            # v6 the middle door: SHARED 512-gelu trunk (load-bearing, the
+            # v5 kill's finding) + per-role OUTPUT projections only
+            p["W_bind1"] = t(rng.randn(H_W, 512) / math.sqrt(H_W))
+            p["W_bind1_b"] = t(np.zeros(512))
+            for _r6 in ("a1", "a2", "rs", "op"):
+                p[f"W6_{_r6}"] = t(rng.randn(512, 32) / math.sqrt(512))
+        elif int(os.environ["ALG_BINDBUS"]) >= 5:
+            # v5: four role heads (docs/rotational_bus.md) — heads point,
+            # frozen phasors bind, the wire sums (single-wire fence)
+            for _r5 in ("a1", "a2", "rs", "op"):
+                p[f"W5_{_r5}_1"] = t(rng.randn(H_W, 256) / math.sqrt(H_W))
+                p[f"W5_{_r5}_b"] = t(np.zeros(256))
+                p[f"W5_{_r5}_2"] = t(rng.randn(256, 32) / math.sqrt(256))
+        elif int(os.environ["ALG_BINDBUS"]) >= 2:
             p["W_bind1"] = t(rng.randn(H_W, 512) / math.sqrt(H_W))
             p["W_bind1_b"] = t(np.zeros(512))
             p["W_bind2"] = t(rng.randn(512, _bd) / math.sqrt(512))
@@ -1111,7 +1131,43 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
     if "h_depth" in p:
         out["depth"] = fst @ p["h_depth"] + p["h_depth_b"]
         out["term"] = (fst @ p["h_term"] + p["h_term_b"]).squeeze(-1)
-    if "W_bind2" in p:
+    if "W5_a1_1" in p or "W6_a1" in p:
+        # v5/v6 binding by construction: heads answer WHICH (logits over the
+        # codebook, softmax -> code mixture); frozen phasors answer WHERE
+        # (+theta rotation); the wire answers TRANSMIT (sum of four).
+        # v6: logits from a SHARED gelu trunk + per-role projections.
+        global _BINDF
+        try: _BINDF
+        except NameError: _BINDF = None
+        if _BINDF is None:
+            import numpy as _np5
+            _bz5 = _np5.load(os.environ.get("BIND_CODES", ".cache/bindbus_codes.npz"))
+            _CB5 = Tensor(_bz5["CB"].astype(_np5.float32))
+            _rot5 = {}
+            for _ri5, _rn5 in enumerate(("arg1", "arg2", "res", "op")):
+                _th5 = _bz5[f"theta_{_rn5}"]
+                _rot5[_ri5] = (Tensor(_np5.cos(_th5).astype(_np5.float32)),
+                               Tensor(_np5.sin(_th5).astype(_np5.float32)))
+            _BINDF = (_CB5, _rot5)
+        _CB5, _rot5 = _BINDF
+        _P5 = _CB5.shape[1] // 2                # P_planes (D_real // 2)
+        _wire = None; _lgs = []
+        _h6 = ((fst @ p["W_bind1"] + p["W_bind1_b"]).gelu()
+               if "W6_a1" in p else None)
+        for _ri5, _r5 in enumerate(("a1", "a2", "rs", "op")):
+            _lg5 = (_h6 @ p[f"W6_{_r5}"] if _h6 is not None else
+                    (fst @ p[f"W5_{_r5}_1"] + p[f"W5_{_r5}_b"]).gelu() @ p[f"W5_{_r5}_2"])
+            _lgs.append(_lg5)
+            _v5 = _lg5.softmax(-1) @ _CB5       # soft pointer: codebook hull
+            _vr5 = _v5.reshape(*_v5.shape[:-1], _P5, 2)
+            _c5, _s5 = _rot5[_ri5]
+            _bx = _vr5[..., 0] * _c5 - _vr5[..., 1] * _s5
+            _by = _vr5[..., 0] * _s5 + _vr5[..., 1] * _c5
+            _b5 = Tensor.stack(_bx, _by, dim=-1).reshape(*_v5.shape)
+            _wire = _b5 if _wire is None else _wire + _b5
+        out["bind"] = _wire
+        out["bind_lg"] = Tensor.stack(*_lgs, dim=-2)   # (B, L_FAC, 4, 32)
+    elif "W_bind2" in p:
         out["bind"] = (fst @ p["W_bind1"] + p["W_bind1_b"]).gelu() @ p["W_bind2"]
     elif "W_bind" in p:
         out["bind"] = fst @ p["W_bind"]
@@ -1184,13 +1240,19 @@ def _loss_single(o, g):
         l = l + (bce(o["term"], g["term"]) * pres).sum() / n_p
     if "opc" in o and "opc" in g:          # lever 3: row-grain count CE
         l = l + ce(o["opc"], g["opc"]).mean()
-    if "bind" in o and "bindvec" in g:     # the rotational binding bus
+    if "bind" in o and "bindvec" in g and int(os.environ.get("ALG_BINDBUS", "0")) < 5:
+        # the rotational binding bus (v5 excluded: pure CE, no wire loss)
         _e = o["bind"]; _t = g["bindvec"]
         _cos = (_e * _t).sum(-1) / ((_e.pow(2).sum(-1).sqrt() + 1e-6)
                                     * (_t.pow(2).sum(-1).sqrt() + 1e-6))
         _w = 1.0 if int(os.environ.get("ALG_BINDBUS", "0")) < 3 else 0.2
         l = l + _w * ((1.0 - _cos) * pres).sum() / n_p
-    if "bind" in o and "bind_ids" in g and int(os.environ.get("ALG_BINDBUS", "0")) >= 3:
+    if "bind_lg" in o and "bind_ids" in g:
+        # v5 native loss: pure per-role classification CE — zero cross-role
+        # gradient (no wire-level term; parameters disjoint by construction)
+        l = l + 0.5 * (ce(o["bind_lg"], g["bind_ids"])
+                       * pres.unsqueeze(-1)).sum() / n_p
+    elif "bind" in o and "bind_ids" in g and int(os.environ.get("ALG_BINDBUS", "0")) >= 3:
         # v3 THE ROLE-FACTORED LOSS: supervise each role's unbound cleanup
         # directly — conjugate-rotate the emission, CE against the codebook
         global _BINDC
