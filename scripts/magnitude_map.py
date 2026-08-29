@@ -120,6 +120,15 @@ def main():
     print(f"  register displacement: mint {mm:.3f} vs wild {gm:.3f} "
           f"({'mint louder' if mm > gm else 'WILD louder'}, "
           f"ratio {mm / gm:.3f})", flush=True)
+    # the selective curve: res-recovery precision at loudness coverage
+    for t in ("mint", "gold"):
+        nrm = np.array(data[t]["nrm"]); cr = np.array(data[t]["cres"])
+        base = cr.mean()
+        line = " ".join(
+            f"@{int(c*100)}%:{cr[np.argsort(-nrm)[:max(int(len(cr)*c),1)]].mean():.3f}"
+            for c in (0.75, 0.5, 0.25, 0.1))
+        print(f"  selective res precision {t:5s} base {base:.3f}  {line}",
+              flush=True)
 
 
 if __name__ == "__main__":

@@ -31496,3 +31496,18 @@ competence wall, localized). VERDICT AS BANKED: lowering CONFIRMED at
 coarse/mid grain; fine grain UNMEASURED (probe v2 registered: harder fine
 target — full value or trailing digits on multi-digit givens). The MLIR
 frame graduates from metaphor to half-measured mechanism.
+
+## 2026-08-30 — MAGNITUDE MAP VERDICT: THE WIRE CONFESSES (prediction 1 CONFIRMED on both incumbents; prediction 2 split)
+corr(||wire||, res-correct): 7c mint +0.315 / wild +0.036; 10n (pure-CE
+line) mint +0.574 / wild +0.141 — right slots run LOUD (10n mint: 65.1 vs
+47.9). A FREE PER-SLOT CONFIDENCE CHANNEL exists on the incumbent line —
+untrained, unsupervised, read from the discarded half of the complex
+number. The CE-trained line confesses ~2x louder than the cosine-aux line
+(mechanism: CE shapes wire scale with confidence). PREDICTION 2 SPLIT:
+7c mint-louder (1.142, as pinned) but 10n WILD-louder (0.934) — register
+displacement is LINE-DEPENDENT; the consolidation reading is not
+universal; banked honestly, mechanism unsettled. The selective curve
+(precision at loudness coverage) fired as follow-up — the door-relevant
+number: can a magnitude threshold buy high-precision wild bus-res reads?
+Goodhart standing: bind wire magnitude joins bind_amplitude's charter
+family — observational; any gating use requires a registered charter.
