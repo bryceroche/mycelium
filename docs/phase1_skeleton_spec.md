@@ -31367,3 +31367,21 @@ in the read's output comment.
 THE LAWFUL RE-READS (fired, GPU idle): sharp_bindj, sharp_bind7c (the
 .743 incumbency claim), sharp_bind10n, sharp_bind10r on the 177-text
 pool with scoped scoring — every standing wild number re-established.
+
+## 2026-08-30 — THE LAWFUL STANDINGS (re-reads on the 177-text pool, scoped scoring)
+mint (fixture unchanged, SCOPED ptr baseline): bindj .603/.598/.592 (ptr
+args .641, res .706) / 7c .621/.614/.614 (.662, .734) / 10n .665/.646/
+.649, op .950 (.783, .858) / 10r ~same.
+wild gold (LAWFUL pool, 842 slots): bindj bus res .755 (ptr .705) / 7c
+bus res .764 (ptr .688) / 10n .739 (.684) / 10r .742 (.683).
+VERDICTS: (1) THE WILD RES CROSSOVER SURVIVES THE LAWFUL FIXTURE AND
+WIDENS — 7c .764 vs .688 (+.076, largest ever); the corrupted pool
+UNDERSTATED the bus. BUS INCUMBENT CONFIRMED: sharp_bind7c (.764). (2)
+Wild args: scoped pointers ~.24 on arg-bearing slots vs bus .54-.59 (all
+slots; asymmetry documented) — the binding-layer wild weakness lives in
+the POINTERS. (3) RETRACTION: all "bus beats pointers on MINT args"
+crossover claims were unscoped-baseline artifacts — under fair scoring
+mint pointers lead on arg-bearing slots (.64-.78); claims regime-tagged
+dead. (4) The T^256 family line (10n .739) still trails 7c (.764) on wild
+res — the wild-drift watch stands (bar .70; comfortably above). PARSE
+INCUMBENT: sharp_bind10r/10n (0.6977/0.6966).
