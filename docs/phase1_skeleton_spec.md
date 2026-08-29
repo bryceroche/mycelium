@@ -31511,3 +31511,19 @@ universal; banked honestly, mechanism unsettled. The selective curve
 number: can a magnitude threshold buy high-precision wild bus-res reads?
 Goodhart standing: bind wire magnitude joins bind_amplitude's charter
 family — observational; any gating use requires a registered charter.
+
+## 2026-08-30 — THE SELECTIVE CURVE: MINT NEAR-ORACLE, WILD MODEST (banked; charter question held)
+10n (CE line): mint base .649 -> @50% .920 / @25% .967 / @10% .984 — the
+loudest decile is a 98.4%-precision oracle over its own subset; wild base
+.739 -> @10% .833 (+9.4pts; real, modest — bounded by the +0.141 wild
+confession). 7c wild flat (corr .036, consistent). USES THAT NEED NO
+CHARTER (observational/selection-side): rehearsal targeting (loud-wrong
+slots = confident errors, prime autopsy material), diet gating candidates,
+instrument-grade mint filtering. USES REQUIRING A REGISTERED CHARTER
+(held for words): any emission-door gating; any certificate weighting.
+The door's reopening math (wild args >= .75 / res >= .85) is NOT met by
+selection alone — magnitude gets wild res to .833 at 10% coverage; the
+wall remains wild competence, now with a confidence-annotated map of
+exactly which slots the bus trusts. THE MAGNITUDE ARC CLOSES: four
+legacy instruments unified, the channel named, the confession measured,
+the dial priced — one gut, one night.
