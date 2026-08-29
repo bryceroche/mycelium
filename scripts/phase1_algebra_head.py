@@ -819,9 +819,9 @@ def build_params(seed=0):
         p["W_busr"] = t(rng.randn(4 * _bd2, H_W) / math.sqrt(4 * _bd2))
         p["bus_g"] = t(np.zeros((1,)))
     if int(os.environ.get("ALG_BREATHROT", "0")):
-        # S3: blend gain for the breath rotor (frozen rotated content;
-        # zero-init gain is lawful — sw_g pattern, no deadlock)
-        p["rot_g"] = t(np.zeros((1,)))
+        # S3 v0.1: per-pair elective gains (32; mandatory/static pairs are
+        # masked in forward — their entries get no gradient)
+        p["rot_g"] = t(np.zeros((32,)))
     if ALG_NOTEBOOK:     # the cathedral (2026-08-18)
         if ALG_SEPHASE_PAIR:   # the transceiver: ink and query born in the
             _shared = phase_alphabet(H_W, H_W, 1.0 / math.sqrt(H_W), rng)
@@ -894,22 +894,22 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
         hd = H_W // N_HEADS
         qh = q.reshape(B if extra is not None else 1, nq, N_HEADS, hd).permute(0, 2, 1, 3)
         if qrot is not None and "rot_g" in p:
-            # S3 THE BREATH ROTOR (2026-08-30, word given): multiplicative
-            # pi-cycled rotation of the QUERY's reserved band (pairs 24-31,
-            # dims 48:64) by the sextet clock's angles — keys are waist
-            # states (static across breaths), so the relative phase IS
-            # phi(k). Frozen content, zero-init blend gain (sw_g pattern;
-            # no learnable params behind the gate — no deadlock).
-            _qc3, _qs3 = qrot
-            _b0 = qh[..., 48:64]
-            _bp = _b0.reshape(*_b0.shape[:-1], 8, 2)
+            # S3 v0.1 THE BREATH ROTOR (2026-08-30): multiplicative
+            # pi-cycled rotation of the slot QUERY by the sextet clock —
+            # keys are waist states (static across breaths), so the
+            # relative phase IS phi(k). Per-pair effective gain =
+            # mandatory mask (frozen 1: time EXISTS) + elective mask *
+            # rot_g (zero-init: the model states its bandwidth). Static
+            # pairs masked to 0 — the load-bearing spectrum untouched.
+            _qc3, _qs3, _gm3, _ge3 = qrot
+            _bp = qh.reshape(*qh.shape[:-1], 32, 2)
             _bx, _by = _bp[..., 0], _bp[..., 1]
-            _br = Tensor.stack(_bx * _qc3 - _by * _qs3,
-                               _bx * _qs3 + _by * _qc3,
-                               dim=-1).reshape(*_b0.shape)
-            qh = Tensor.cat(qh[..., :48],
-                            _b0 + (_br - _b0) * p["rot_g"].reshape(1, 1, 1, 1),
-                            dim=-1)
+            _rx = _bx * _qc3 - _by * _qs3
+            _ry = _bx * _qs3 + _by * _qc3
+            _ge = _gm3 + _ge3 * p["rot_g"]
+            qh = Tensor.stack(_bx + (_rx - _bx) * _ge,
+                              _by + (_ry - _by) * _ge,
+                              dim=-1).reshape(*qh.shape)
         kh = k.reshape(B, -1, N_HEADS, hd).permute(0, 2, 1, 3)
         vh = v.reshape(B, -1, N_HEADS, hd).permute(0, 2, 1, 3)
         sc = (qh @ kh.transpose(-2, -1)) / math.sqrt(hd)
@@ -1056,12 +1056,23 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
         except NameError: _S3C = None
         if _S3C is None:
             import numpy as _np3
+            import json as _js3
             from tinygrad import Tensor as _Ts3
-            from mycelium.rotor_clock import breath_qk_angles
-            _ang3 = breath_qk_angles()               # (6, 8) from the clock
-            _S3C = {t3: (_Ts3(_np3.cos(_ang3[t3]).astype(_np3.float32)),
-                         _Ts3(_np3.sin(_ang3[t3]).astype(_np3.float32)))
-                    for t3 in range(_ang3.shape[0])}
+            from mycelium.rotor_clock import wheel_table, N_LOOP as _NL3
+            _bd3 = _js3.load(open(os.environ.get(
+                "ROT_BANDS", ".cache/rot_band_draft.json")))
+            _mand3, _elec3 = _bd3["mand"], _bd3["elec"]
+            _wt3 = wheel_table()                     # (6, 3) from the clock
+            _ang3 = _np3.zeros((_NL3, 32), _np3.float32)
+            for _j3 in _mand3:
+                _ang3[:, _j3] = _wt3[:, 0]           # mandate: breath hand
+            for _i3, _j3 in enumerate(_elec3):
+                _ang3[:, _j3] = _wt3[:, _i3 % 2]     # electives: hand+parity
+            _gm3 = _np3.zeros(32, _np3.float32); _gm3[_mand3] = 1.0
+            _ge3 = _np3.zeros(32, _np3.float32); _ge3[_elec3] = 1.0
+            _S3C = {t3: (_Ts3(_np3.cos(_ang3[t3])), _Ts3(_np3.sin(_ang3[t3])),
+                         _Ts3(_gm3), _Ts3(_ge3))
+                    for t3 in range(_NL3)}
         _brot = _S3C
     if K_B > 1 and slot_mask is not None and "W_bo" in p:
         cur = fst

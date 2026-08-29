@@ -31259,3 +31259,24 @@ load-bearing pairs stay static and untouchable. (2) Wheel jobs: mandatory
 hand + parity; pass-wheel spectrum dormant until multi-pass. Step-0
 perturbation = mandatory 4 only (electives zero-gained). Fires after the
 v0 verdict, on its word.
+
+## 2026-08-30 — S3 v0 VERDICT: GATE SHUT (dead heat 0.6802/0.6802, rot_g 0.001); v0.1 FIRES AS THE RESCUE + THE WILD-DRIFT FLAG
+v0: exact val tie, reads identical, elective scalar gate declined — the
+stagnation clause fires and (per the amendment) the pre-pinned rescue IS
+v0.1's mandate design. SIDE FLAG (banked, watched): the continuation
+curve's mint gains are partly purchased with WILD DRIFT — bus wild res
+across the family passes .731 -> .730 -> .709 while mint climbs
+(.6336 -> .680 val, mint ptr res .836 vs wild .656). The dialect creep is
+curve-level, not arm-level (pairs net it out); registered watch: if bus
+wild res falls below .70 on the family line, a register-rehearsal dose
+enters the diet discussion.
+SPECTRUM AUDIT (weight-norm proxy, banked ckpt 9n): utility 42-49 (flat,
+~15% spread — donor choice low-stakes). MANDATE {3,4,11,27} (slackest,
+breath hand, gain frozen 1.0); ELECTIVE 16 {0,6,8,9,10,12,13,14,16,18,
+19,21,23,24,26,29} (zero-init per-pair gains, hand+parity alternating);
+STATIC 12 untouched. rot_g -> (32,) masked; bands via ROT_BANDS json.
+Smoke: mandate rotates numpy-exact, electives/static untouched at init,
+unitary. PAIR: N4 = continuation of 9n (6k @3e-5 s226 -> sharp_bind10n);
+R4 = +BREATHROT (-> sharp_bind10r). BARS (as registered): R4 - N4 >=
++0.005 val AND wild within 0.005; readouts: elective gain profile +
+mandate cost. KILL -> S3 closes at this grain; no further variants.
