@@ -45,12 +45,15 @@ GEARS = (1, 2)                   # breath hand, parity (pass wheel is
 CYCLE_SEED = 13                  # per-plane bus cycle rates (frozen)
 SCRAMBLE_SEED = 1013             # scramble-control table (kill-criterion arm)
 
-# Band allocation for S3 (the breath rotor's reserved attention planes).
-# Head dim = ALG_HW / N_HEADS = 512/8 = 64 -> 32 rotation pairs; the breath
-# rotor owns the TOP 8 pairs; 0-23 stay static (token-derived geometry
-# survives rotation).
+# Band allocation for S3. TRUTH-MAINTAINED 2026-08-30: the live bands are
+# AUDIT-DRAFTED (spectrum audit ranks all 32 pairs by q-k utility; the
+# mandate takes the slackest, electives the next; the most load-bearing
+# stay static) and travel via the ROT_BANDS json (.cache/rot_band_draft
+# .json) consumed by the head. BREATH_BAND_PAIRS below is the LEGACY fixed
+# band (v0's reserved 24-31) kept only for breath_qk_angles() callers;
+# it does NOT describe the live allocation.
 HEAD_DIM_PAIRS = 32
-BREATH_BAND_PAIRS = tuple(range(24, 32))
+BREATH_BAND_PAIRS = tuple(range(24, 32))    # legacy (v0); live = ROT_BANDS
 
 
 def is_clocked(k):
