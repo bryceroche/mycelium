@@ -30930,3 +30930,24 @@ structural-entry law that won all week), not by measurement; the six-wave
 resonance remains the slot<->sentence KEYING channel, and the bus remains
 the role-binding channel — the marriage composes them rather than deriving
 one from the other.
+
+## 2026-08-29 — v6 VERDICT: NEGATIVE ON BUS BARS (no rescue, per registration); THE SHARING MONOTONE BANKED; PARSE INCUMBENT MOVES AGAIN (0.6202)
+Unit bindbus-v6 two-phase (A: frozen-parse 6k @1e-4 -> 6a; B: joint 6k
+@3e-5 -> sharp_bind6). Phase B judged: val 0.6202 PASS (FOURTH consecutive
+lineage high: .5883 -> .6058 -> .6134 -> .6202); mint args .605/.590 vs bar
+.62 MISS (ties the monolith .603/.598); wild res .713 vs bar .734 MISS
+(crossover vs pointers holds +.043 — pointers fell to .670 — but the bar
+was the incumbent's absolute). NO RESCUE (as registered). MONOLITH KEEPS
+THE BUS INCUMBENCY (sharp_bindj).
+THE SHARING MONOTONE (three architectures, same diet, same physics):
+wild res full-share .734 > output-split .713 > full-split .679. Binding
+recovery IMPROVES monotonically with parameter sharing across roles — the
+binding theorem's training-side echo: concepts are bindings, and the
+circuits that read bindings want to be entangled, not factorized. Role
+decoupling is a tax at every degree, paid in wild competence.
+PARSE INCUMBENT: sharp_bind6 (0.6202). The regularizer effect is now
+4-for-4: EVERY bus-structure fire lifted the parse. Standing read: the bus
+objective is worth more to the parse than any bind-head surgery is to the
+bus. READINESS ROAD RE-AIMED: wild parse competence (books, the harvest)
+is the pole; head surgery at this scale is closed until new physics
+(the marriage) or new data moves the floor.
