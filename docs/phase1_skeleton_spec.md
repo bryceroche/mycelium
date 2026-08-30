@@ -31786,3 +31786,18 @@ complete: preference NO (4x), capability YES-PARTIAL (94.5%), trainable
 improvement of the sealed road NOT at this recipe. The alternator pair
 (burning) is the era's last open question: does symbolic wiring of
 attention pay where symbolic memory did not?
+
+## 2026-08-31 — ALTERNATOR v0 VERDICT: DEAD HEAT PER BAR — BUT THE FIRST UNREJECTED GATE; THE IN-LOOP ERA CLOSES COMPLETE
+R8 0.7113 vs N8 0.7097 (+0.0016 < +0.005) — KILL per bar. THE TEXTURE:
+alt_g HELD at 0.0205 (ticked UP from 0.02) — every prior in-loop gate was
+actively closed (0.0046/0.0033/0.0068); the symbolic mask is the first
+organ the network chose to KEEP at its offered level. Tolerated, not
+valued: the softest kill of the era. Wild side: R8 bus res .733 vs .723
+(+.010, noise-adjacent, direction noted). v1 (value-grade deduction)
+remains registered on its own merits — a mask carrying DERIVED facts is
+a different offer than one restating parsed structure.
+THE IN-LOOP ERA CLOSES: preference NO x4 + tolerated x1; capability
+YES-PARTIAL (94.5%, the standing meter); trainable sealed improvement NO.
+The loop-side book is balanced and honest. NEXT (words standing): the
+tabula rasa pair — clean-slate file (equivalence-gated) then the
+fresh-head control.
