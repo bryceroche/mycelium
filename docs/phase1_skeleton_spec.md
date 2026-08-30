@@ -31750,3 +31750,22 @@ under 20deg noise. Physics-viable; costs nothing but a code re-mint +
 lineage retrain. NOTE: kept SEPARATE from the fresh-head control (one
 variable per fire — the control runs on incumbent codes; a sextet-born
 head is its own future word).
+
+## 2026-08-30 — SEXTET ADDENDUM (relay round 2, graded): CRT banked, precision banked, THE SWEEP CLEARS THE GATE
+ACCEPTED: (1) the CRT isomorphism Z6 ~ Z2 x Z3 — the theorem under our
+observations (the Z2 factor IS the triality/parity cosets matched to the
+measured lowering ladder; derived now, not noticed). STRIPPED as
+numerology: "Z3 governs arg1/arg2/res" — roles are FOUR and carry no Z3
+structure. (2) the precision for the paper: algebraic drift is EXACTLY
+zero (c+r-r = c mod 6); pairwise crosstalk zero-mean with O(1/sqrt P)
+variance; SUPERPOSITION interference is NOT zero and must be measured
+under load — correct critique of the first probe. (3) THE SUPERPOSITION
+RECOVERY SWEEP (zero-GPU, run): at P=256 both alphabets SATURATE (1.000)
+through K=8/sigma=.4 — the operating point (K=4) has ~8x headroom; the
+stress regime (K to 32, sigma to .8, P down to 64) shows NO systematic
+Z6 penalty (deltas mixed-sign within trial noise; hardest cell Z6
++0.073). VERDICT: Z6 IS DROP-IN PROVEN at the operating point with wide
+margin — the sextet unification's physics gate is fully cleared; the
+migration awaits its generation-boundary word. Paper sentence banked:
+continuous trunk proposes; the waist projects onto a discrete lattice of
+6^256 lawful states executing exact modular arithmetic without drift.
