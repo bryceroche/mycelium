@@ -32146,3 +32146,22 @@ multi-seed, both dialects — and carried into the crossover as the
 accuracy arm beside the depth arms: TWO MECHANISMS, ONE PROGRAM
 (masking = precision at all depths; closure = reach beyond K). Holds
 for the word.
+
+## 2026-09-01 — THE CROSSOVER PROGRAM FIRED (word given): two mechanisms, one chain
+BUILT: (1) gen_deep_ladders — form_mix10 (form8 + 24k ladders depth
+2..16 uniform, ~20% share) + deepval (150x8 depth buckets, HELD seed —
+the curve fixture); (2) v2 MASK RE-FORMATION — the hard mask rebuilt per
+breath, OPEN-BY-COMMITMENT only (never tightens: A0's grave + ensemble
+law honored; v0's soft bias rides alongside); (3) depth_curve.py (the
+falsifiable read). CHAIN: gen -> precompute form10 + deepval -> FIVE
+fires from sharp_bind14a (6k @3e-5, stack envs GARAGE=2 CIRCLE=2
+ALTMASK=1): ctrl s237/s238, v2-mask s237/s238, K8-ctrl s237
+(ALG_BREATH=8; breath_emb pad-warms 7->8; shelf clock untouched) ->
+reads: loop_val (operating grain) x5, depth curves x5 + 17da (shallow-
+trained reference), wild bind_read on the v2 arms.
+BARS PINNED: (accuracy arm) v2 wins iff both seeds >= +0.005 at
+OPERATING-grain loop_val OR mean >= +0.012; (the knee) K=7 curves
+collapse near depth ~7 (subsumption falsifiable); (the K-knee) K8 ctrl
+beats K7 ctrl on depth buckets 8-10 by >= +0.03 mean fac-exact = the
+knee MOVES with K (mechanism-level confirmation); wild reported not
+claimed. No rescues.

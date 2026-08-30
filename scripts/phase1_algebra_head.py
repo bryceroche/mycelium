@@ -1116,16 +1116,26 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
             bk = cur @ p["W_bk"] + p["W_bk_b"]
             bv = cur @ p["W_bv"] + p["W_bv_b"]
             sc2 = (bq @ bk.transpose(-2, -1)) / math.sqrt(H_W)
-            sc2 = sc2.clip(-1e4, 1e4) + (1.0 - slot_mask) * -1e4
-            if _snaps and "alt_g" in p:
-                # THE ALTERNATOR v0: producer->consumer adjacency from the
-                # LATEST lattice commitments wires the slot-mixer — the
-                # mask breathes; its content is symbolic (one-hot matmuls,
-                # JIT-safe; snaps detached — facts wire attention,
-                # attention makes new facts)
+            _sm_kb = slot_mask
+            _A5 = None
+            if _snaps and ("alt_g" in p
+                           or int(os.environ.get("ALG_MASKRE", "0"))):
                 _sa5 = _snaps[-1][0] + _snaps[-1][1]
                 _sr5 = _snaps[-1][2]
                 _A5 = _sr5 @ _sa5.transpose(-2, -1)
+                if int(os.environ.get("ALG_MASKRE", "0")):
+                    # v2 THE MASK RE-FORMATION (2026-09-01, word given):
+                    # the HARD mask rebuilt per breath — OPEN-BY-
+                    # COMMITMENT (committed producer->consumer edges may
+                    # attend across the first-pass mask; additive-optional
+                    # per the ensemble law; NEVER tightens — A0's grave
+                    # stays honored)
+                    _sm_kb = (slot_mask
+                              + ((_A5 + _A5.transpose(-2, -1)) > 0.5)
+                              .float()).clip(0, 1)
+            sc2 = sc2.clip(-1e4, 1e4) + (1.0 - _sm_kb) * -1e4
+            if _A5 is not None and "alt_g" in p:
+                # v0 soft bias rides alongside (facts wire attention)
                 sc2 = sc2 + (_A5 + _A5.transpose(-2, -1)) \
                     * p["alt_g"].reshape(1, 1, 1)
             if RINGS and int(os.environ.get("ALG_BEXIT", "0")):
