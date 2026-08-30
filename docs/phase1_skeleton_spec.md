@@ -31936,3 +31936,20 @@ first-win-after-four-kills demands a fresh seed before anything builds
 on it — N10/R10 from 14a, seed 234, bar identically +0.005. Win
 replicates -> the alternation line is a foundation; fails -> the 15d
 verdict banks as seed-weather and the wave returns to candidate status.
+
+## 2026-08-31 — THE LOOP-FREE VAL (found while validating the sealed reads): a campaign-wide reframe, banked honestly
+_quick_val calls forward WITHOUT slot_mask -> the breath loop NEVER runs
+in val (known only as the LoRA pure-trunk caveat, 08-22 #3; the loop
+omission was unflagged). CONSEQUENCES: (1) every val this era measured
+the SINGLE-PASS forward — pair verdicts remain valid comparisons
+(symmetric) but their mechanism story shifts: organs scored by how their
+TRAINING shapes shared weights, not by operating at eval; (2) the
+"sealed capability 0.6900 / 94.5% two-jaws ratio" claim is RETAGGED:
+that was sealed-TRAINING weight impact on a loop-free forward — the
+capability meter as defined never measured facts carrying reasoning at
+eval; the sealed-read instrument (mode-1 STEPS=1) is VOID (numbers
+identical to open = the seal never engaged). (3) THE FIX BUILT:
+scripts/loop_val.py — the same fac-exact criterion on the masked
+two-pass forward (organs OPERATING), mode-controllable; fires after the
+replication frees the GPU: 15d/15n open+sealed, 13n reference, 13p
+sealed — the TRUE capability table, first of its kind.
