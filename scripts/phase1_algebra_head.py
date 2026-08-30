@@ -794,6 +794,14 @@ def build_params(seed=0):
         p["W_gq"] = t(rng.randn(H_W, _bd4) / math.sqrt(H_W))
         p["W_busr"] = t(rng.randn(4 * _bd4, H_W) / math.sqrt(4 * _bd4))
         p["bus_g"] = t(np.full(1, 0.02))
+    if int(os.environ.get("ALG_DETWAVE", "0")):
+        # ALTERNATOR v1a THE DETERMINATION WAVE (2026-08-31, word given):
+        # per-breath solvability closure over the committed graph — givens
+        # seed, forced moves propagate (3 sweeps = multi-hop content no
+        # single attention step derives). "determination" is a registered
+        # DIAGNOSTIC (never supervised); as an INPUT it is lawful.
+        p["W_det"] = t(rng.randn(3, H_W) / math.sqrt(3))
+        p["det_g"] = t(np.full(1, 0.02))
     if int(os.environ.get("ALG_ALTMASK", "0")):
         # THE ALTERNATOR v0 (2026-08-30, word given): committed adjacency
         # (producer->consumer edges from the lattice snaps) reshapes the
@@ -1075,6 +1083,24 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
                         q_extra = _q_seal
                 else:
                     q_extra = q_extra + _inj4 * p["bus_g"].reshape(1, 1, 1)
+            if _snaps and "W_det" in p:
+                # THE DETERMINATION WAVE: seed at givens, 3 forced-move
+                # sweeps over the committed graph; per-slot features
+                # [frac-args-determined, res-determined, fires-now] enter
+                # through the ajar gate
+                _sa6, _sr6, _gv6 = _snaps[-1]
+                _det6 = (_gv6.unsqueeze(-1) * _sr6).max(1)          # (B,24)
+                _na6 = _sa6.sum(-1)                                  # (B,L)
+                for _ in range(3):
+                    _nd6 = (_sa6 @ _det6.unsqueeze(-1)).squeeze(-1)
+                    _fi6 = (_nd6 >= _na6).float() * (_na6 > 0).float()
+                    _det6 = (_det6
+                             + (_fi6.unsqueeze(-1) * _sr6).max(1)).clip(0, 1)
+                _fe6 = Tensor.stack((_nd6 / (_na6 + 1e-6)).clip(0, 1),
+                                    (_sr6 @ _det6.unsqueeze(-1)).squeeze(-1).clip(0, 1),
+                                    _fi6, dim=-1)                    # (B,L,3)
+                q_extra = q_extra + (_fe6 @ p["W_det"]) \
+                    * p["det_g"].reshape(1, 1, 1)
             if _sync is not None:   # sync-complete: transmitter ON during
                 q_extra = q_extra + _sync[1](kb)     # settle; receiver locked
             h_tok, fat_cur = bank(p["fq"], L_FAC, extra=q_extra,
@@ -1091,7 +1117,7 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
                 # mask breathes; its content is symbolic (one-hot matmuls,
                 # JIT-safe; snaps detached — facts wire attention,
                 # attention makes new facts)
-                _sa5, _sr5 = _snaps[-1]
+                _sa5, _sr5 = _snaps[-1][0], _snaps[-1][1]
                 _A5 = _sr5 @ _sa5.transpose(-2, -1)
                 sc2 = sc2 + (_A5 + _A5.transpose(-2, -1)) \
                     * p["alt_g"].reshape(1, 1, 1)
@@ -1187,10 +1213,13 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
                                         else _snap_a5 + _oh4[..., :24])
                         elif _rn4 == "res":
                             _snap_r5 = _oh4[..., :24]
+                        elif _rn4 == "op":
+                            _snap_g5 = _oh4[..., 25]   # ftype 'given' code
                         _cb4 = _rot2(_oh4 @ _CBt4, *_pl4[_rn4])
                         _canon4 = _cb4 if _canon4 is None else _canon4 + _cb4
-                    if "alt_g" in p:
-                        _snaps.append((_snap_a5.detach(), _snap_r5.detach()))
+                    if "alt_g" in p or "W_det" in p:
+                        _snaps.append((_snap_a5.detach(), _snap_r5.detach(),
+                                       _snap_g5.detach()))
                     _wn4 = _wg4.pow(2).sum(-1, keepdim=True).sqrt() + 1e-6
                     _cn4 = _canon4.pow(2).sum(-1, keepdim=True).sqrt() + 1e-6
                     _wg4 = (_canon4 / _cn4 * _wn4).detach()

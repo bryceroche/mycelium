@@ -31838,3 +31838,21 @@ heads reach val parity — the Z6 migration can ride a rebirth); (3) the
 wild gap remains the campaign's one true currency, and it lives in
 HISTORY DIVERSITY, not in val — the books road's thesis, measured from
 a new angle.
+
+## 2026-08-31 — ALTERNATOR v1a FIRED (word: "alternator seems most fundamental"): THE DETERMINATION WAVE
+The June engine's spirit returns in-graph: per breath, givens seed a
+determination map over the 24 vars; THREE forced-move sweeps propagate
+solvability over the committed graph (multi-hop transitive closure — the
+first in-loop offer whose content NO single attention step derives from
+cur; the redundancy verdict answered at its root). Per-slot features
+[frac-args-determined, res-determined, fires-now] enter q_extra through
+ajar det_g. LAW CHECK BANKED: "determination" is a registered DIAGNOSTIC
+(never in a loss); as an INPUT feature it is lawful — inputs are not
+supervision. v2 REGISTERED: full value-grade BP (exact arithmetic over
+value distributions) — the heavy form, its own word. SMOKE: 2-hop chain
+closes exactly, orphans stay dark, fire flags correct.
+PAIR (one dial; GPU idle -> fires now): N9 = continuation of sharp_bind14a
+(garage+circle+altmask config, seed 233 -> sharp_bind15n); R9 = same +
+ALG_DETWAVE=1 (W_det fresh via missing-key, det_g ajar -> sharp_bind15d).
+BARS: R9 - N9 >= +0.005 val; wild watch (.70); det_g + alt_g readouts.
+KILL: v1a banks negative; v2 keeps its own registration.
