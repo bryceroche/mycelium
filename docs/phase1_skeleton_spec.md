@@ -32086,3 +32086,24 @@ swap ~1.3pts, expected); wild unchanged (~0.72-0.73). Held for words:
 the books road (the schism made it thesis), funhouse mints, ladder-val
 split, deep problems (depth > K — where the subsumption law says
 symbols finally pay).
+
+## 2026-09-01 — THE DEPTH FRONTIER REGISTERED (the crossover experiment) + two relay corrections
+CORRECTIONS BANKED: (1) GIGO caveat on "zero-decay symbolic depth" —
+propagation is exact, PREMISES are snapped (~65%); deep chains need
+premise-vetting (magnitude channel, votes, certificates) welded to the
+closure; and the unlimited-depth symbolic engine ALREADY EXISTS (the CSP
+core, the outer jaw) — the frontier is the INTERFACE at depth, not the
+engine. (2) Architecture confabulation cut: the current head does NOT
+recirculate through Llama layers (that was the JUNE engine); the trunk
+runs ONCE, the breath loop iterates the HEAD's bank+mixer (~4 trunk
+layers + ~14 head passes, NOT 28 Llama layers). The hop conclusion
+survives: one breath ~ one slot-graph hop; envelope K ~ 6-7 — matching
+the subsumption law from the other side.
+REGISTERED — THE CROSSOVER EXPERIMENT (the thesis's signature figure):
+(a) form9-DEEP corpus: ladder depth swept 2..16 (fits 24 vars to ~depth
+16); (b) THE DEPTH CURVE read: accuracy vs rung depth per item —
+PREDICTIONS PINNED: neural-only collapses near depth ~ K=7 (the
+subsumption law made falsifiable); (c) the rescue arms beyond the knee:
+the wave in-loop AND solver-alternation (closed-loop lineage) — where
+symbols must finally pay or the thesis itself is wrong. Holds for the
+word.
