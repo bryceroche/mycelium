@@ -31989,3 +31989,27 @@ organ has a bankable win at any grain; the alternation physics stands
 unrefuted but unpaid; the instruments that now exist (loop_val, the
 seed-noise law, both noise floors) are the era's durable products —
 and every road again points at wild competence (the books).
+
+## 2026-08-31 — THE LADDER SCHISM (the cable found; the wave exonerated; the gap's structural mechanism)
+The cable check + gold-field probes: MINT (form8) forced-move ladder
+density = 0.000 under BOTH the forward rule AND the true 2-of-3 rule —
+the generator emits SIMULTANEOUS CONSTRAINT SYSTEMS (givens anchor
+results; every rel has >=2 unknowns; propagation never fires; solving is
+elimination). WILD (177 golds): 2-of-3 fire-rate 0.743 (forward alone
+0.544) — word problems are NARRATIVE LADDERS. The grammar schism's big
+brother: THE DIALECTS ARE DIFFERENT SPECIES OF GRAPH, and this is the
+first structural mechanism for the universal mint->wild collapse (organs
+trained where deduction is impossible; measured where it is empty).
+THE WAVE EXONERATED: its null was not weather alone — its feature is
+CONSTANT ZERO on the training corpus and the val fixture. The gut's
+metaphors decoded: clocks = the propagation arrow vs the constraint
+arrow (and two dialects keeping different structural time); cables = the
+field unplugged from the data; the switch = LADDER-BEARING DIET.
+THE REPAIR ROAD (registered; holds for the word): (1) the 2-of-3 field
+(the true forced-move rule) replaces forward-only in the wave — small
+tweak, exactly as sensed; (2) LADDER MINTS (form9): the generator
+already builds solution-first — emit evaluation-style chains (knowns
+feed forward) as a declared share of the diet; (3) the books rows enter
+training as the living ladder substrate (the wave and the books need
+each other — the convergence is total). The wave's true test = trained
+where its field is ALIVE.
