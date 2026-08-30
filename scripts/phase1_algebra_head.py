@@ -834,6 +834,12 @@ def build_params(seed=0):
         p["W_gq"] = t(rng.randn(H_W, _bd4) / math.sqrt(H_W))
         p["W_busr"] = t(rng.randn(4 * _bd4, H_W) / math.sqrt(4 * _bd4))
         p["bus_g"] = t(np.full(1, 0.02))
+    if int(os.environ.get("ALG_ALTMASK", "0")):
+        # THE ALTERNATOR v0 (2026-08-30, word given): committed adjacency
+        # (producer->consumer edges from the lattice snaps) reshapes the
+        # slot-mixer per breath — the mask BREATHES and its content is
+        # SYMBOLIC. Ajar gain (escape-valve lesson).
+        p["alt_g"] = t(np.full(1, 0.02))
     if ALG_NOTEBOOK:     # the cathedral (2026-08-18)
         if ALG_SEPHASE_PAIR:   # the transceiver: ink and query born in the
             _shared = phase_alphabet(H_W, H_W, 1.0 / math.sqrt(H_W), rng)
@@ -1084,6 +1090,7 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
                                 _Ts4(_np4.sin(_th4).astype(_np4.float32)))
             _SGC = (_conj4, _plus4, _Ts4(_bz4["CB"].astype(_np4.float32)))
         _garage = []
+    _snaps = []
     _brot = None
     if int(os.environ.get("ALG_BREATHROT", "0")) and "rot_g" in p:
         global _S3C
@@ -1214,6 +1221,16 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
             bv = cur @ p["W_bv"] + p["W_bv_b"]
             sc2 = (bq @ bk.transpose(-2, -1)) / math.sqrt(H_W)
             sc2 = sc2.clip(-1e4, 1e4) + (1.0 - slot_mask) * -1e4
+            if _snaps and "alt_g" in p:
+                # THE ALTERNATOR v0: producer->consumer adjacency from the
+                # LATEST lattice commitments wires the slot-mixer — the
+                # mask breathes; its content is symbolic (one-hot matmuls,
+                # JIT-safe; snaps detached — facts wire attention,
+                # attention makes new facts)
+                _sa5, _sr5 = _snaps[-1]
+                _A5 = _sr5 @ _sa5.transpose(-2, -1)
+                sc2 = sc2 + (_A5 + _A5.transpose(-2, -1)) \
+                    * p["alt_g"].reshape(1, 1, 1)
             if RINGS and int(os.environ.get("ALG_BEXIT", "0")):
                 # BEAM EXIT (door #8): committed slots leave the mixer as
                 # keys, proportional to mass — soft, init-closed (m starts 0)
@@ -1295,13 +1312,21 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
                     # the shelf's own attention). Two jaws, in the loop.
                     _cj4, _pl4, _CBt4 = _SGC
                     _canon4 = None
+                    _snap_a5, _snap_r5 = None, None
                     for _rn4 in ("arg1", "arg2", "res", "op"):
                         _zc4 = _rot2(_wg4, *_cj4[_rn4])
                         _lg4 = _zc4 @ _CBt4.T
                         _oh4 = (_lg4 == _lg4.max(-1, keepdim=True)).float()
                         _oh4 = _oh4 / (_oh4.sum(-1, keepdim=True) + 1e-9)
+                        if _rn4 in ("arg1", "arg2"):
+                            _snap_a5 = (_oh4[..., :24] if _snap_a5 is None
+                                        else _snap_a5 + _oh4[..., :24])
+                        elif _rn4 == "res":
+                            _snap_r5 = _oh4[..., :24]
                         _cb4 = _rot2(_oh4 @ _CBt4, *_pl4[_rn4])
                         _canon4 = _cb4 if _canon4 is None else _canon4 + _cb4
+                    if "alt_g" in p:
+                        _snaps.append((_snap_a5.detach(), _snap_r5.detach()))
                     _wn4 = _wg4.pow(2).sum(-1, keepdim=True).sqrt() + 1e-6
                     _cn4 = _canon4.pow(2).sum(-1, keepdim=True).sqrt() + 1e-6
                     _wg4 = (_canon4 / _cn4 * _wn4).detach()

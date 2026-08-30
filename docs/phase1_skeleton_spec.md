@@ -31707,3 +31707,22 @@ INTERPRETATION THRESHOLDS (pinned; both outcomes informative, no kill):
 val >= 0.71 -> architecture+data carry the curve (lineage is sentiment);
 val <= 0.66 -> THE BASIN IS CAPITAL (gentle-continuation doctrine's
 strongest evidence); between -> mixed, path partially load-bearing.
+
+## 2026-08-30 — THE ALTERNATOR v0 FIRED (word given, HIGH PRIORITY): alternation inside the breath cycle
+Both asks in one mechanism: per breath, the LATEST lattice commitments
+(snapped one-hots: which slot PRODUCES which var, which CONSUMES it)
+compute committed adjacency A = res_oh @ args_oh^T (one-hot matmuls,
+JIT-safe, snaps detached) -> injected into the slot-mixer scores through
+ajar alt_g (0.02). THE MASK BREATHES AND ITS CONTENT IS SYMBOLIC: facts
+wire attention; attention makes new facts — alternation every cycle.
+v1 REGISTERED (the June engine's return): value-grade deduction —
+per-breath forced-move/BP propagation over the committed graph, derived
+facts deposited back on the shelf (key still grades in primitives).
+PAIR (queued behind the pulse; ONE dial): CONTROL N8 = continuation of
+sharp_bind13q's config WITHOUT altmask (BUSGARAGE=2 SHELF_CIRCLE=2, seed
+232 -> sharp_bind14n); ARM R8 = same + ALG_ALTMASK=1 (-> sharp_bind14a).
+BARS: R8 open-mode val > N8 + 0.005; SEALED-mode val reported both arms
+(hypothesis: the alternator helps MOST when facts are the road); alt_g
+readout. KILL: R8 <= N8 -> v0 banks negative, v1 (value-grade) remains
+registered on its own merits. Sequencing: alternator pair -> clean-slate
+file (alternator = living organ by word) -> fresh-head control.
