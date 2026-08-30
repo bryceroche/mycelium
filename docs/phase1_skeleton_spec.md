@@ -31972,3 +31972,20 @@ or (b) an effect >= 2x the floor (+0.012). The wave's true effect
 estimate: +0.0005 +/- 0.006 — NULL at this grain.
 NEXT: the loop-val table (queued, burning) reads the organs OPERATING —
 the grain where the wave's runtime story lives or dies on its own.
+
+## 2026-08-31 — THE SEALED REPLICATION: THE WAVE IS NULL AT EVERY MEASURED GRAIN; THE SEALED NOISE FLOOR; THE TRUE TWO-JAWS RATIO
+Seed-234 sealed loop-vals: 16n 0.4678 / 16d 0.3989 — the wave's sealed
+"+0.034" mirror-flips to -0.069. VERDICT COMPLETE: the determination
+wave shows NO robust effect at ANY measured grain (val: +0.0065/-0.0054;
+sealed: +0.034/-0.069). Physics intact, benefit unmeasured — candidate
+status confirmed, no further wave fires without a new grain or a
+multi-seed design. THE SEALED NOISE FLOOR: sealed fac-exact across four
+6k-trained artifacts spans 0.399-0.468 — seed variance +/-0.03-0.07 at
+this grain (sealed performance is FRAGILE); sealed claims require many
+seeds or effects > 0.10. THE TRUE TWO-JAWS RATIO (the honest number):
+sealed 0.40-0.47 vs open 0.82 -> committed facts carry ~50+/-5% of the
+loop-engaged parse — half, not 94.5%. THE ERA'S FINAL BOOK: no in-loop
+organ has a bankable win at any grain; the alternation physics stands
+unrefuted but unpaid; the instruments that now exist (loop_val, the
+seed-noise law, both noise floors) are the era's durable products —
+and every road again points at wild competence (the books).
