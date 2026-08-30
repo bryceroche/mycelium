@@ -31726,3 +31726,27 @@ BARS: R8 open-mode val > N8 + 0.005; SEALED-mode val reported both arms
 readout. KILL: R8 <= N8 -> v0 banks negative, v1 (value-grade) remains
 registered on its own merits. Sequencing: alternator pair -> clean-slate
 file (alternator = living organ by word) -> fresh-head control.
+
+## 2026-08-30 — HEXAGON IS BESTAGON (Bryce's brainstorm, audited + probed): THE SEXTET UNIFICATION registered
+The relay's four graded: (1) Eisenstein-lattice quantization — wrong
+target as stated (our cleanup is nearest-of-32, not per-plane rounding)
+but the instinct points at the prize below; (2) balanced cancellation —
+real property, right home is the SUPERPOSED shelf (common-mode written
+every tick cancels over a revolution: automatic DC-removal; banked for
+shelf-v2); (3) triality — the even/odd triangles ARE the parity wheel's
+cosets, and the lowering probe already measured the coarse/fine split:
+GRAIN-SCHEDULED SUPERVISION GETS A GEOMETRIC ADDRESS (coarse losses on
+the even triangle, fine on the odd — the MLIR ladder diet and the
+hexagon are one object); (4) exact constants — minor alone, potent with:
+THE SEXTET UNIFICATION (registered; generation-boundary migration): the
+bus's formal language becomes Z6 PER PLANE — codes, role offsets, cycle
+keys all 60deg multiples -> binding/unbinding/clock-keying = EXACT
+INTEGER ADDITION MOD 6 per plane; the snap becomes arithmetic; the six
+waves become the GENERATORS of the bus's algebra (clock and codebook one
+system; the fancy lookup table in its purest form). PROBED (zero-GPU):
+Z6 crosstalk at P=256 statistically identical to continuous (mean .0546
+vs .0536; max BETTER .157 vs .178); arithmetic snap 89.5% planes exact
+under 20deg noise. Physics-viable; costs nothing but a code re-mint +
+lineage retrain. NOTE: kept SEPARATE from the fresh-head control (one
+variable per fire — the control runs on incumbent codes; a sextet-born
+head is its own future word).
