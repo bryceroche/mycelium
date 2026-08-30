@@ -31769,3 +31769,20 @@ margin — the sextet unification's physics gate is fully cleared; the
 migration awaits its generation-boundary word. Paper sentence banked:
 continuous trunk proposes; the waist projects onto a discrete lattice of
 6^256 lawful states executing exact modular arithmetic without drift.
+
+## 2026-08-30/31 — PULSE VERDICT: NEGATIVE PER OPEN BAR (no rescue); THE CAPABILITY METER READS ~94.5% VIA THE COOKER
+Pulse-trained (p=0.5 stochastic seal, 6k from 12r): OPEN-mode val 0.6990
+vs bar >= 0.7296 (13n - 0.008) — MISSED by -0.031: the pulsed regime
+TAXES the open mode ~3pts. Sealed-mode slot reads are IDENTICAL to
+cooker v1's constant-seal reads (mint ptr res .659 both) — the pulse
+closed NONE of the sealed gap. Verdict: pulsing bought nothing constant
+pressure hadn't, and charged the open mode for it. NEGATIVE, no rescue.
+THE SILVER READING: the capability meter doesn't need pulse training —
+SC_EVAL sealed reads work on ANY shelf-bearing ckpt. The meter's first
+readings stand: sealed ~0.690 vs open ceiling 0.7304 -> THE TWO-JAWS
+RATIO ~94.5% (how much of the parse crosses on committed symbols).
+Standing instrument, zero training cost. In-loop era summary now
+complete: preference NO (4x), capability YES-PARTIAL (94.5%), trainable
+improvement of the sealed road NOT at this recipe. The alternator pair
+(burning) is the era's last open question: does symbolic wiring of
+attention pay where symbolic memory did not?
