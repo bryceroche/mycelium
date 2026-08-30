@@ -32031,3 +32031,20 @@ open + wild bind_read on all four reported; the wave-field check re-run
 on form9 val (the field must be ALIVE where it trains — the cable
 verified plugged before the verdict is read). Diet effect (form9 vs
 form8 lineage) noted observationally, not claimed.
+
+## 2026-08-31 — THE FUNHOUSE (Bryce's gut via fastai/TTA): registered
+The mapping affirmed: the distortion-filter app IS TTA (identity =
+what survives every warp) — and the deployed 5-view vote is already our
+funhouse, but with ONE mirror shape (sentence order). REGISTERED:
+(1) TRAIN-SIDE, THE FUNHOUSE MINT (form9 v2): render each ladder graph
+k times through flat-mixed teeth combos (shuffle_letters/oblique/
+distractors — dials already in render()) — the effective-n law applied
+deliberately (shapes are n; surfaces are costumes); register invariance
+taught by construction. (2) TEST-SIDE: a second view family for wild
+reads — consistent variable-letter remapping — growing the vote from 5
+views on one axis to a lattice across two independent distortion axes
+(letter-dissent catches what order-dissent cannot). (3) Progressive
+resizing translated and REFUSED as schedule (curriculum is dead; flat
+mix won): teeth diversity enters flat, never staged. Holds for words;
+the ladder chain burns undisturbed (its v1 single-renders are the
+control the funhouse will be judged against).
