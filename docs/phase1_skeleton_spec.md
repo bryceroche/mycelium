@@ -31801,3 +31801,19 @@ YES-PARTIAL (94.5%, the standing meter); trainable sealed improvement NO.
 The loop-side book is balanced and honest. NEXT (words standing): the
 tabula rasa pair — clean-slate file (equivalence-gated) then the
 fresh-head control.
+
+## 2026-08-31 — THE CLEAN-SLATE FILE LANDED (equivalence-gated at 0.00e+00): tabula rasa part 1
+Surgery: v1/v5/v6 bind heads, S2 busloop, S3 breath-rot + turning waves,
+and raw-garage mode removed (~5KB of dead organs; git history is the
+museum — reading dead-lineage artifacts like sharp_bind5r now HARD-ERRORS
+on key mismatch, per the eval-load law, rather than silently mismodeling).
+THE EQUIVALENCE GATE: forward outputs on banked weights (7c / 10n / 12r;
+three living configs, all heads incl. the wire) reproduced EXACTLY —
+max deviation 0.00e+00 across every output. The living organs: monolith
+bind (all BINDBUS versions speak it now), tap flag, canonical shelf +
+circle + pulse machinery, alternator, notebook, six-wave, rings.
+PART 2 FIRED: THE FRESH-HEAD CONTROL — incumbent living config (BINDBUS=7
+D=512), NO warm, seed 231, 50k steps @1e-4 (the from-scratch answer to
+"is the continuation curve basin capital or architecture+data?").
+Thresholds stand as pinned: >=0.71 architecture+data / <=0.66 basin
+capital / between mixed.
