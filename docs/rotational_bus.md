@@ -153,3 +153,32 @@ only (the deployed stack moves solely by battery + manifest).
   reopening bar (wild args >= 0.75, res >= 0.85) -> stage-1b rerun with a
   competent witness -> emission door net-positive -> MATH-500 measurement
   cadence on the true chain.**
+
+## 6. THE DUAL-TERMINAL CONTRACT (2026-08-31 — the neuro-symbolic training law)
+
+Two equations govern every symbolic organ in the loop:
+dL_downstream/dp |_solver-path = 0  (detach + zero-grad comparisons:
+gradient descent is mathematically barred from modifying or gaming the
+deduction rules — no STE, no surrogate-gradient deformation)
+dL_bind/dp != 0  (the wire-maker's SECOND TERMINAL: the emission CE
+independently anchors proposal quality; without it the solver starves on
+drift while the optimizer feels nothing — the two-terminal law's shadow).
+
+Taxonomy (our position among hybrid designs): (1) hard snap, no upstream
+loss -> upstream drifts, solver starves; (2) hard snap + STE -> the
+backward pass lies about the forward pass (surrogate bias); (3) OURS —
+dual-terminal independence: exact discrete deduction forward, decoupled
+credit backward, proposal quality anchored by an independent loss.
+
+Precision for claims: the runtime story is STATIC-GRAPH CAPTURE (the
+micro-solver is fixed dataflow — comparisons, one-hot matmuls, unrolled
+sweeps — compiled into the same TinyJit kernels; values vary, structure
+never); the interface story is "representations exchanged forward,
+credit decoupled backward."
+
+THE COMPLETION (ours): the contract cuts both ways — the gradient cannot
+deform the rules, AND the rules cannot compel their own use (gates close
+freely; the four preference kills are that freedom exercised). The symbol
+is protected from the gradient; the gradient is protected from the
+symbol; USE IS EARNED, NEVER ENFORCED. Rhymes with the Goodhart fence
+for the same reason: a loss cannot corrupt what it cannot reach.

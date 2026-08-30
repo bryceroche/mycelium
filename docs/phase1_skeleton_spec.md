@@ -31856,3 +31856,12 @@ PAIR (one dial; GPU idle -> fires now): N9 = continuation of sharp_bind14a
 ALG_DETWAVE=1 (W_det fresh via missing-key, det_g ajar -> sharp_bind15d).
 BARS: R9 - N9 >= +0.005 val; wild watch (.70); det_g + alt_g readouts.
 KILL: v1a banks negative; v2 keeps its own registration.
+
+## 2026-08-31 — THE DUAL-TERMINAL CONTRACT banked (rotational_bus.md S6)
+The optimization-theory defense of the architecture: zero gradient on the
+solver path (rules ungameable — no STE bias) + nonzero independent bind
+loss (the wire-maker's second terminal — proposals anchored). Taxonomy vs
+drift/STE alternatives banked; static-graph-capture claim language
+banked. THE COMPLETION: the contract cuts both ways — use is earned,
+never enforced (the preference kills as evidence of the freedom); the
+Goodhart rhyme (a loss cannot corrupt what it cannot reach).
