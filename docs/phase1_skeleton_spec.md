@@ -32165,3 +32165,21 @@ collapse near depth ~7 (subsumption falsifiable); (the K-knee) K8 ctrl
 beats K7 ctrl on depth buckets 8-10 by >= +0.03 mean fac-exact = the
 knee MOVES with K (mechanism-level confirmation); wild reported not
 claimed. No rescues.
+
+## 2026-09-01 — ATLAS AUDIT (Bryce's ask) + THE CYCLE-RESOLVED ATLAS registered
+STATE CONFIRMED: NL atlas persisted with Welford (174 families;
+class/cycle/count/mean/m2 in campaign.db) + registry 367 + anchors 707;
+op-grain = monitor centroids (re-anchored per generation) +
+waist_patterns_op + in-run Welford-mean banks. NOT per-run-updated BY
+LAW: never-mix-generations (coordinates rotate; continuous cross-run
+folding blends frames) — accumulation is lawful WITHIN an anchoring,
+re-founding at era boundaries.
+REGISTERED — THE CYCLE-RESOLVED ATLAS (the cycle column's birth,
+justified by the measured lowering ladder): mine per-breath states
+(ALG_MINE_BREATHS on a banked stack artifact) into (class, cycle)
+Welford rows — SEVEN RESOLUTIONS, not seven copies: breath-2 centroids
+are coarse-family addresses, breath-6 fine — the ladder's address book.
+Serves: the settling meter (distance-to-cycle-centroid as the settle
+read), grain-scheduled supervision (targets per floor), and R4's
+carrier semantics. Queues behind the crossover chain; anchored to the
+artifact it mines (regime-tagged, per the law).
