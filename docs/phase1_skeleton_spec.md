@@ -31865,3 +31865,24 @@ drift/STE alternatives banked; static-graph-capture claim language
 banked. THE COMPLETION: the contract cuts both ways — use is earned,
 never enforced (the preference kills as evidence of the freedom); the
 Goodhart rhyme (a loss cannot corrupt what it cannot reach).
+
+## 2026-08-31 — THE ROADCUT CLOSURE (history search, Bryce's ask): two eras, one experiment
+The traffic circle's TRUE history (2026-08-18, the port era): Bryce's gut
+principle (structural mandatory routing, no bypass — waist/mouth/key as
+the working circles) -> calibrated cut (H=4) -> three-cell attribution ->
+cell-2's shock (the notebook USED — first optional structure engaged; the
+law refined: optional structure is declined unless it relieves a MEASURED
+deficit) -> cell-3b catastrophe (0/300; global-silhouette handoff = state
+replacement) -> THE ROADCUT CLOSED WHOLE ("died of PAYLOAD, not
+principle"; NB_PERSLOT salvaged as the sharp ink).
+THE CROSS-ERA CLOSURE (found by this search): the pressure cooker
+UNKNOWINGLY RE-RAN THE ROADCUT twelve days later with the payload the
+08-18 autopsy demanded — sharp, per-slot, lattice-committed facts instead
+of cur.mean blur. 0/300 then; 94.5% now. The payload diagnosis is
+CONFIRMED ACROSS ERAS by experiments that did not know they were the same
+experiment. And the refined two-phone law retroactively explains the
+entire in-loop preference record: four organs declined because they
+relieved no measured deficit — predicted the day the law was written.
+Correction to the relay AND to my own gloss: ALG_CIRCLE was never a
+"memory-forcing experiment" in isolation — it was the benched cell-3a of
+a complete, calibrated, three-cell program with its own laws and graves.
