@@ -31689,3 +31689,21 @@ lowering ladder: the cut hits the FINE breaths). THE PULSE (next in
 queue, auto) asks exactly the right follow-up: can training close the
 gap while keeping the open-mode val — the capability meter's first
 proper reading.
+
+## 2026-08-30 — TABULA RASA: BOTH WORDS GIVEN (fresh head + clean file); sequencing pinned
+ORDER (the running-chain law gates it): (1) the pulse finishes; (2) THE
+CLEAN-SLATE FILE — phase1_algebra_head.py rewritten keeping LIVING organs
+only: monolith bind (BINDBUS 3/7 — the incumbents' language), BINDTAP,
+the canonical shelf + circle + pulse (LIVING per the cooker's PARTIAL),
+notebook/six-wave/rings core. DROPPED to git history: v1 W_bind, v5/v6
+soft-pointer blocks, ALG_SWTURN, ALG_BUSLOOP (S2), garage v1 raw mode,
+ALG_BREATHROT (S3 arms are dead lineage; their artifacts read via
+git-era code — the archive IS the museum). EQUIVALENCE GATE: for every
+living config, the cleaned module's forward must match the current file
+EXACTLY on fixed inputs before the old code leaves the branch; (3) THE
+FRESH-HEAD CONTROL fires ON the cleaned file (tabula rasa on tabula
+rasa): incumbent living config, NO warm, seed 231, 50k steps @1e-4.
+INTERPRETATION THRESHOLDS (pinned; both outcomes informative, no kill):
+val >= 0.71 -> architecture+data carry the curve (lineage is sentiment);
+val <= 0.66 -> THE BASIN IS CAPITAL (gentle-continuation doctrine's
+strongest evidence); between -> mixed, path partially load-bearing.
