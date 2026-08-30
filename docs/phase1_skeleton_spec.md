@@ -32125,3 +32125,24 @@ mechanism-level confirmation). K>8 needs NB_STAMPS surgery — registered
 as its own chore. (2) THE WIDTH RETEST (second priority): fresh-trained
 H_W 512 vs 1024 pair on form9, noise-law design, 50k — capacity's
 honest re-ask at the new dialect. Both hold for words.
+
+## 2026-09-01 — THE SUBSUMPTION LAW'S SCOPE NARROWED (Bryce's push — correct): THE MASKING CHANNEL IS EXEMPT AND OPEN
+The correction owed: subsumption covers the PROPAGATION-CONTENT channel
+(symbolic features duplicating iterated attention's computation — the
+wave's offer). THE MASKING CHANNEL IS A DIFFERENT MECHANISM: masks
+remove DILUTION — precision at any depth, not reach beyond it — and the
+wild scoped pointer args (0.24) mark attention quality as the open
+wound. Status honestly: (a) UNDERBUILT — v0 alternator is a soft scalar
+bias, not the vision's per-breath HARD-mask re-formation (today's hard
+mask is frozen from pass 1); (b) UNMEASURED at grain until now — the
+pair verdicts used the loop-free val where in-loop masking is invisible.
+FIRST OPERATING-GRAIN READ (loop_val, 14n vs 14a): +0.0024 with the
+mask (0.8135 vs 0.8111) — positive, inside single-seed noise, ALIVE.
+REGISTERED — THE MASK RE-FORMATION (alternator v2, the vision's true
+organ): per-breath HARD mask rebuilt from commitments (slot token
+windows from snapped spans; mixer structure from committed adjacency —
+replacing the frozen first-pass mask), judged at the OPERATING grain,
+multi-seed, both dialects — and carried into the crossover as the
+accuracy arm beside the depth arms: TWO MECHANISMS, ONE PROGRAM
+(masking = precision at all depths; closure = reach beyond K). Holds
+for the word.
