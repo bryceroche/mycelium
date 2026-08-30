@@ -122,16 +122,9 @@ TERMINALS = {
     "opc":    {"params": ["W_opc1", "W_opc1_b", "W_opc2", "W_opc2_b"],
                "emit": "opc", "gold": ["opc"],
                "when": lambda: int(os.environ.get("ALG_OPCOUNT", "0")) > 0},
-    "bindbus": {"params": (["W_bind1", "W_bind1_b", "W_bind2"]
-                           if int(os.environ.get("ALG_BINDBUS", "0")) >= 7
-                           else ["W_bind1", "W_bind1_b"] + [f"W6_{r}" for r in ("a1", "a2", "rs", "op")]
-                           if int(os.environ.get("ALG_BINDBUS", "0")) >= 6
-                           else [f"W5_{r}_{s}" for r in ("a1", "a2", "rs", "op")
-                                 for s in ("1", "b", "2")]
-                           if int(os.environ.get("ALG_BINDBUS", "0")) >= 5
-                           else ["W_bind1", "W_bind1_b", "W_bind2"]
-                           if int(os.environ.get("ALG_BINDBUS", "0")) >= 2
-                           else ["W_bind"]),
+    "bindbus": {"params": ["W_bind1", "W_bind1_b", "W_bind2"],
+                # tabula-rasa cleanup 2026-08-31: monolith only (the
+                # sharing monotone's winner); v1/v5/v6 in git history
                 "emit": "bind", "gold": (["bind_ids"] if int(os.environ.get("ALG_BINDBUS", "0")) >= 5
                                          else ["bindvec", "bind_ids"] if int(os.environ.get("ALG_BINDBUS", "0")) >= 3 else ["bindvec"]),
                 "when": lambda: int(os.environ.get("ALG_BINDBUS", "0")) > 0},
@@ -773,32 +766,10 @@ def build_params(seed=0):
         pass
     if int(os.environ.get("ALG_BINDBUS", "0")):
         _bd = int(os.environ.get("ALG_BIND_D", "128"))
-        if int(os.environ["ALG_BINDBUS"]) >= 7:
-            # v7b: the monolith at full width — W_bind2 is a SQUARE
-            # change-of-basis (reduction dropped, projection kept)
-            p["W_bind1"] = t(rng.randn(H_W, 512) / math.sqrt(H_W))
-            p["W_bind1_b"] = t(np.zeros(512))
-            p["W_bind2"] = t(rng.randn(512, _bd) / math.sqrt(512))
-        elif int(os.environ["ALG_BINDBUS"]) >= 6:
-            # v6 the middle door: SHARED 512-gelu trunk (load-bearing, the
-            # v5 kill's finding) + per-role OUTPUT projections only
-            p["W_bind1"] = t(rng.randn(H_W, 512) / math.sqrt(H_W))
-            p["W_bind1_b"] = t(np.zeros(512))
-            for _r6 in ("a1", "a2", "rs", "op"):
-                p[f"W6_{_r6}"] = t(rng.randn(512, 32) / math.sqrt(512))
-        elif int(os.environ["ALG_BINDBUS"]) >= 5:
-            # v5: four role heads (docs/rotational_bus.md) — heads point,
-            # frozen phasors bind, the wire sums (single-wire fence)
-            for _r5 in ("a1", "a2", "rs", "op"):
-                p[f"W5_{_r5}_1"] = t(rng.randn(H_W, 256) / math.sqrt(H_W))
-                p[f"W5_{_r5}_b"] = t(np.zeros(256))
-                p[f"W5_{_r5}_2"] = t(rng.randn(256, 32) / math.sqrt(256))
-        elif int(os.environ["ALG_BINDBUS"]) >= 2:
-            p["W_bind1"] = t(rng.randn(H_W, 512) / math.sqrt(H_W))
-            p["W_bind1_b"] = t(np.zeros(512))
-            p["W_bind2"] = t(rng.randn(512, _bd) / math.sqrt(512))
-        else:
-            p["W_bind"] = t(rng.randn(H_W, _bd) / math.sqrt(H_W))
+        # tabula-rasa cleanup: the monolith is the only living bind head
+        p["W_bind1"] = t(rng.randn(H_W, 512) / math.sqrt(H_W))
+        p["W_bind1_b"] = t(np.zeros(512))
+        p["W_bind2"] = t(rng.randn(512, _bd) / math.sqrt(512))
     if int(os.environ.get("ALG_RINGS", "0")):
         if True:
             if int(os.environ.get("ALG_CMT_REG", "0")):
@@ -813,17 +784,22 @@ def build_params(seed=0):
     p["W_query"] = t(rng.randn(H_W, H_W) / math.sqrt(H_W))
     if ALG_SIXWAVE:      # door #62: carrier gate — structure enters at zero
         p["sw_g"] = t(np.zeros((1,)))
-    if int(os.environ.get("ALG_BUSLOOP", "0")):
-        # S2 THE RECURRENT BUS (2026-08-29, word given): per-role
-        # demodulated reads of the cycle-keyed register project back into
-        # the breath queries; the gate starts closed (structure at zero)
-        _bd2 = int(os.environ.get("ALG_BIND_D", "128"))
-        p["W_busr"] = t(rng.randn(4 * _bd2, H_W) / math.sqrt(4 * _bd2))
-        p["bus_g"] = t(np.zeros((1,)))
-    if int(os.environ.get("ALG_BREATHROT", "0")):
-        # S3 v0.1: per-pair elective gains (32; mandatory/static pairs are
-        # masked in forward — their entries get no gradient)
-        p["rot_g"] = t(np.zeros((32,)))
+    if int(os.environ.get("ALG_BUSGARAGE", "0")):
+        # THE PARKING GARAGE (2026-08-30, word given): typed relational
+        # mail — deposits are role-bound wires; retrieval is content-
+        # addressed attention (drop-off semantics; the coordination law).
+        # Gate AJAR (gate-deadlock corollary — learnable path behind it);
+        # W_busr decode-init arrives via the warm file.
+        _bd4 = int(os.environ.get("ALG_BIND_D", "128"))
+        p["W_gq"] = t(rng.randn(H_W, _bd4) / math.sqrt(H_W))
+        p["W_busr"] = t(rng.randn(4 * _bd4, H_W) / math.sqrt(4 * _bd4))
+        p["bus_g"] = t(np.full(1, 0.02))
+    if int(os.environ.get("ALG_ALTMASK", "0")):
+        # THE ALTERNATOR v0 (2026-08-30, word given): committed adjacency
+        # (producer->consumer edges from the lattice snaps) reshapes the
+        # slot-mixer per breath — the mask BREATHES and its content is
+        # SYMBOLIC. Ajar gain (escape-valve lesson).
+        p["alt_g"] = t(np.full(1, 0.02))
     if ALG_NOTEBOOK:     # the cathedral (2026-08-18)
         if ALG_SEPHASE_PAIR:   # the transceiver: ink and query born in the
             _shared = phase_alphabet(H_W, H_W, 1.0 / math.sqrt(H_W), rng)
@@ -888,32 +864,13 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
     B = trunk.shape[0]
     waist = (trunk @ p["waist_w"] + p["waist_b"]).gelu() + p["sent_emb"][sent]
 
-    def bank(queries, nq, extra=None, pbias=None, qrot=None):
+    def bank(queries, nq, extra=None, pbias=None):
         q_in = queries.unsqueeze(0) + (extra if extra is not None else 0)
         q = q_in @ p["attn_wq"] + p["attn_wq_b"]
         k = waist @ p["attn_wk"] + p["attn_wk_b"]
         v = waist @ p["attn_wv"] + p["attn_wv_b"]
         hd = H_W // N_HEADS
         qh = q.reshape(B if extra is not None else 1, nq, N_HEADS, hd).permute(0, 2, 1, 3)
-        if qrot is not None and "rot_g" in p:
-            # S3 v0.1 THE BREATH ROTOR (2026-08-30): multiplicative
-            # pi-cycled rotation of the slot QUERY by the sextet clock —
-            # keys are waist states (static across breaths), so the
-            # relative phase IS phi(k). Per-pair effective gain =
-            # mandatory mask (frozen 1: time EXISTS) + elective mask *
-            # rot_g (zero-init: the model states its bandwidth). Static
-            # pairs masked to 0 — the load-bearing spectrum untouched.
-            _qc3, _qs3, _gm3, _ge3 = qrot
-            assert hd == 64, "S3 breathrot assumes hd=64 (32 pairs); " \
-                             "re-derive masks for other ALG_HW/N_HEADS"
-            _bp = qh.reshape(*qh.shape[:-1], 32, 2)
-            _bx, _by = _bp[..., 0], _bp[..., 1]
-            _rx = _bx * _qc3 - _by * _qs3
-            _ry = _bx * _qs3 + _by * _qc3
-            _ge = _gm3 + _ge3 * p["rot_g"]
-            qh = Tensor.stack(_bx + (_rx - _bx) * _ge,
-                              _by + (_ry - _by) * _ge,
-                              dim=-1).reshape(*qh.shape)
         kh = k.reshape(B, -1, N_HEADS, hd).permute(0, 2, 1, 3)
         vh = v.reshape(B, -1, N_HEADS, hd).permute(0, 2, 1, 3)
         sc = (qh @ kh.transpose(-2, -1)) / math.sqrt(hd)
@@ -933,7 +890,6 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
     _pb = None
     _pb_prior = None
     _sync = None
-    _swturn = None
     if ALG_SYNC:
         from tinygrad import Tensor, dtypes
         _A = float(os.environ.get("SYNC_A", "1.0"))
@@ -981,20 +937,6 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
                + _sph.reshape(1, 1, L_FAC, 1)
                * _th.sin().reshape(B, 1, 1, -1)) * p["sw_g"].reshape(1, 1, 1, 1)
         _pb = _sw_term if _pb is None else _pb + _sw_term  # audit #6: adds
-        if int(os.environ.get("ALG_SWTURN", "0")):
-            # R4-alpha (2026-08-29, word given): THE HELIX TURNS — sentence
-            # phase advances one 60deg bucket per breath cycle inside the
-            # breath loop (time-keyed recirculation). Zero new params;
-            # sw_g shared; ALG_SWTURN=0 is byte-identical to static.
-            def _mk_turn(_kb):
-                _s6 = sent + (_kb + 1)
-                _tht = (_s6 - (_s6 // 6) * 6).float() * (math.pi / 3.0)
-                return (_cph.reshape(1, 1, L_FAC, 1)
-                        * _tht.cos().reshape(B, 1, 1, -1)
-                        + _sph.reshape(1, 1, L_FAC, 1)
-                        * _tht.sin().reshape(B, 1, 1, -1)) \
-                    * p["sw_g"].reshape(1, 1, 1, 1)
-            _swturn = _mk_turn
     if pmask is not None:                 # A0: imposed route-mask (wiring,
         _pb = pmask if _pb is None else _pb + pmask   # not knobs — no grad)
     fst, fat = bank(p["fq"], L_FAC, pbias=_pb)
@@ -1023,61 +965,34 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
         anchor = fst
         cmt_logits = []
         x_rel = m_c                                   # released-mass ledger
-    _busloop = None
-    if (int(os.environ.get("ALG_BUSLOOP", "0")) and "W_busr" in p
-            and "W_bind2" in p):
-        # S2: lazy frozen constants — cycle tables IMPORTED from the master
-        # clock (sync = the import graph), role conjugates from BIND_CODES
-        global _S2C
-        try: _S2C
-        except NameError: _S2C = None
-        if _S2C is None:
-            import numpy as _np2
-            from tinygrad import Tensor as _Ts2
-            from mycelium.rotor_clock import cycle_cos_sin, N_LOOP as _NL2
-            _bz2 = _np2.load(os.environ.get("BIND_CODES", ".cache/bindbus_codes.npz"))
-            _P2b = _bz2["CB"].shape[1] // 2
-            _cc2, _ss2 = cycle_cos_sin(_P2b)
-            _cyc2 = {t2: (_Ts2(_cc2[t2]), _Ts2(_ss2[t2])) for t2 in range(_NL2)}
-            _rolec2 = {}
-            for _rn2 in ("arg1", "arg2", "res", "op"):
-                _th2 = _bz2[f"theta_{_rn2}"]
-                _rolec2[_rn2] = (_Ts2(_np2.cos(-_th2).astype(_np2.float32)),
-                                 _Ts2(_np2.sin(-_th2).astype(_np2.float32)))
-            _S2C = (_cyc2, _rolec2)
-        _busloop = _S2C
-
     def _rot2(v, c, s):        # interleaved-real phasor rotation
         vr = v.reshape(*v.shape[:-1], v.shape[-1] // 2, 2)
         x, y = vr[..., 0], vr[..., 1]
         return Tensor.stack(x * c - y * s, x * s + y * c, dim=-1).reshape(*v.shape)
 
     _bus_reg = None
-    _brot = None
-    if int(os.environ.get("ALG_BREATHROT", "0")) and "rot_g" in p:
-        global _S3C
-        try: _S3C
-        except NameError: _S3C = None
-        if _S3C is None:
-            import numpy as _np3
-            import json as _js3
-            from tinygrad import Tensor as _Ts3
-            from mycelium.rotor_clock import wheel_table, N_LOOP as _NL3
-            _bd3 = _js3.load(open(os.environ.get(
-                "ROT_BANDS", ".cache/rot_band_draft.json")))
-            _mand3, _elec3 = _bd3["mand"], _bd3["elec"]
-            _wt3 = wheel_table()                     # (6, 3) from the clock
-            _ang3 = _np3.zeros((_NL3, 32), _np3.float32)
-            for _j3 in _mand3:
-                _ang3[:, _j3] = _wt3[:, 0]           # mandate: breath hand
-            for _i3, _j3 in enumerate(_elec3):
-                _ang3[:, _j3] = _wt3[:, _i3 % 2]     # electives: hand+parity
-            _gm3 = _np3.zeros(32, _np3.float32); _gm3[_mand3] = 1.0
-            _ge3 = _np3.zeros(32, _np3.float32); _ge3[_elec3] = 1.0
-            _S3C = {t3: (_Ts3(_np3.cos(_ang3[t3])), _Ts3(_np3.sin(_ang3[t3])),
-                         _Ts3(_gm3), _Ts3(_ge3))
-                    for t3 in range(_NL3)}
-        _brot = _S3C
+    _garage = None
+    if (int(os.environ.get("ALG_BUSGARAGE", "0")) and "W_gq" in p
+            and "W_bind2" in p):
+        assert int(os.environ.get("ALG_BUSGARAGE", "0")) >= 2, \
+            "garage v1 (raw wires) is dead — canonical shelf only"
+        global _SGC
+        try: _SGC
+        except NameError: _SGC = None
+        if _SGC is None:
+            import numpy as _np4
+            from tinygrad import Tensor as _Ts4
+            _bz4 = _np4.load(os.environ.get("BIND_CODES", ".cache/bindbus_codes.npz"))
+            _conj4, _plus4 = {}, {}
+            for _rn4 in ("arg1", "arg2", "res", "op"):
+                _th4 = _bz4[f"theta_{_rn4}"]
+                _conj4[_rn4] = (_Ts4(_np4.cos(-_th4).astype(_np4.float32)),
+                                _Ts4(_np4.sin(-_th4).astype(_np4.float32)))
+                _plus4[_rn4] = (_Ts4(_np4.cos(_th4).astype(_np4.float32)),
+                                _Ts4(_np4.sin(_th4).astype(_np4.float32)))
+            _SGC = (_conj4, _plus4, _Ts4(_bz4["CB"].astype(_np4.float32)))
+        _garage = []
+    _snaps = []
     if K_B > 1 and slot_mask is not None and "W_bo" in p:
         cur = fst
         for kb in range(1, K_B):
@@ -1113,29 +1028,73 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
                     cur = cur * 0.0 + _rd.reshape(B, 1, -1)   # residual severed
                     q_extra = (cur + p["breath_emb"][kb].reshape(1, 1, -1)
                                + _rd.reshape(B, 1, -1))       # memory the road
-            if _busloop is not None and _bus_reg is not None:
-                # S2 READ: conj-cycle to the most recent write's tick, then
-                # per-role conj unbind; project through the zero-init gate
-                _cyc2, _rolec2 = _busloop
-                _ct2, _st2 = _cyc2[kb - 2]
-                _rz = _rot2(_bus_reg, _ct2, _st2 * -1.0)   # conj cycle
-                _rds = [_rot2(_rz, _rc2, _rs2)
-                        for (_rc2, _rs2) in _rolec2.values()]
-                q_extra = q_extra + (Tensor.cat(*_rds, dim=-1)
-                                     @ p["W_busr"]) * p["bus_g"].reshape(1, 1, 1)
+            if _garage is not None and len(_garage) > 0:
+                # GARAGE READ (drop-off): content-addressed attention over
+                # the deposit shelf — the reader needs NO tick knowledge;
+                # then per-role conj unbind of the retrieved wire
+                _gq4 = cur @ p["W_gq"]
+                _sc4 = Tensor.cat(*[(_gq4 * _d4).sum(-1, keepdim=True)
+                                    / math.sqrt(float(_gq4.shape[-1]))
+                                    for _d4 in _garage], dim=-1)
+                _at4 = _sc4.softmax(-1)
+                _rd4 = sum(_at4[:, :, _j4:_j4 + 1] * _garage[_j4]
+                           for _j4 in range(len(_garage)))
+                _rds4 = [_rot2(_rd4, _rc4, _rs4)
+                         for (_rc4, _rs4) in _SGC[0].values()]
+                _inj4 = Tensor.cat(*_rds4, dim=-1) @ p["W_busr"]
+                _scm = int(os.environ.get("ALG_SHELF_CIRCLE", "0"))
+                if _scm and kb == int(os.environ.get("SC_KB", "4")):
+                    # THE PRESSURE COOKER (2026-08-30, word given):
+                    # residual SEVERED at this breath — committed facts
+                    # are the only road across. Ungated, full gradient.
+                    # mode 1 = constant seal (the boundary condition);
+                    # mode 2 = THE PULSE (per-step Bernoulli seal via the
+                    # _SEV data buffer — MASK_GOLD idiom; SC_EVAL forces
+                    # a mode at read time; sealed-mode val IS the
+                    # capability meter).
+                    _cur_seal = cur * 0.0 + _inj4
+                    _q_seal = _cur_seal + p["breath_emb"][kb].reshape(1, 1, -1)
+                    _q_open = q_extra + _inj4 * p["bus_g"].reshape(1, 1, 1)
+                    if _scm >= 2:
+                        _sce = os.environ.get("SC_EVAL", "")
+                        if _sce:
+                            _sv = float(_sce)
+                            cur = cur * (1.0 - _sv) + _cur_seal * _sv
+                            q_extra = _q_open * (1.0 - _sv) + _q_seal * _sv
+                        else:
+                            global _SEV
+                            try: _SEV
+                            except NameError: _SEV = None
+                            if _SEV is None:
+                                _SEV = Tensor([1.0]).contiguous().realize()
+                            _svt = _SEV.reshape(1, 1, 1)
+                            cur = cur * (1.0 - _svt) + _cur_seal * _svt
+                            q_extra = _q_open * (1.0 - _svt) + _q_seal * _svt
+                    else:
+                        cur = _cur_seal
+                        q_extra = _q_seal
+                else:
+                    q_extra = q_extra + _inj4 * p["bus_g"].reshape(1, 1, 1)
             if _sync is not None:   # sync-complete: transmitter ON during
                 q_extra = q_extra + _sync[1](kb)     # settle; receiver locked
             h_tok, fat_cur = bank(p["fq"], L_FAC, extra=q_extra,
                                   pbias=(_sync[0](kb) if _sync is not None
-                                         else _swturn(kb)
-                                         if _swturn is not None else None),
-                                  qrot=(_brot[kb - 1] if _brot is not None
-                                        else None))
+                                         else None))
             bq = cur @ p["W_bq"] + p["W_bq_b"]
             bk = cur @ p["W_bk"] + p["W_bk_b"]
             bv = cur @ p["W_bv"] + p["W_bv_b"]
             sc2 = (bq @ bk.transpose(-2, -1)) / math.sqrt(H_W)
             sc2 = sc2.clip(-1e4, 1e4) + (1.0 - slot_mask) * -1e4
+            if _snaps and "alt_g" in p:
+                # THE ALTERNATOR v0: producer->consumer adjacency from the
+                # LATEST lattice commitments wires the slot-mixer — the
+                # mask breathes; its content is symbolic (one-hot matmuls,
+                # JIT-safe; snaps detached — facts wire attention,
+                # attention makes new facts)
+                _sa5, _sr5 = _snaps[-1]
+                _A5 = _sr5 @ _sa5.transpose(-2, -1)
+                sc2 = sc2 + (_A5 + _A5.transpose(-2, -1)) \
+                    * p["alt_g"].reshape(1, 1, 1)
             if RINGS and int(os.environ.get("ALG_BEXIT", "0")):
                 # BEAM EXIT (door #8): committed slots leave the mixer as
                 # keys, proportional to mass — soft, init-closed (m starts 0)
@@ -1202,17 +1161,40 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
                 _nb.append((cur @ p["W_sil"]) if NB_PERSLOT
                            else (cur.mean(1) @ p["W_sil"]))
             breaths.append(cur)
-            if _busloop is not None:
-                # S2 WRITE: wire from the REFINED state (the shelved T7
-                # machinery returns here, per the ruling's corollary),
-                # cycle-bound at tick kb-1; breath-0 is never written
-                # (outside time — the sextet clock's law)
-                _cyc2, _ = _busloop
-                _w2 = (cur @ p["W_bind1"] + p["W_bind1_b"]).gelu() @ p["W_bind2"]
-                _cw2, _sw2 = _cyc2[kb - 1]
-                _bus_reg = (_rot2(_w2, _cw2, _sw2) if _bus_reg is None
-                            else _bus_reg + _rot2(_w2, _cw2, _sw2))
-
+            if _garage is not None:
+                # GARAGE WRITE (drop-off): the refined state's role-bound
+                # wire; the list IS the parking separation
+                _wg4 = ((cur @ p["W_bind1"] + p["W_bind1_b"]).gelu()
+                        @ p["W_bind2"])
+                if int(os.environ.get("ALG_BUSGARAGE", "0")) >= 2:
+                    # THE CANONICAL SHELF (2026-08-30, word given): snap to
+                    # the lattice — per-role cleanup, re-bind the cleaned
+                    # codes BY CONSTRUCTION; the deposit is a FACT
+                    # (detached, gradient-free) carrying the pre-snap
+                    # magnitude as its confidence stamp (wrong wires run
+                    # quiet — the measured confession de-weights them in
+                    # the shelf's own attention). Two jaws, in the loop.
+                    _cj4, _pl4, _CBt4 = _SGC
+                    _canon4 = None
+                    _snap_a5, _snap_r5 = None, None
+                    for _rn4 in ("arg1", "arg2", "res", "op"):
+                        _zc4 = _rot2(_wg4, *_cj4[_rn4])
+                        _lg4 = _zc4 @ _CBt4.T
+                        _oh4 = (_lg4 == _lg4.max(-1, keepdim=True)).float()
+                        _oh4 = _oh4 / (_oh4.sum(-1, keepdim=True) + 1e-9)
+                        if _rn4 in ("arg1", "arg2"):
+                            _snap_a5 = (_oh4[..., :24] if _snap_a5 is None
+                                        else _snap_a5 + _oh4[..., :24])
+                        elif _rn4 == "res":
+                            _snap_r5 = _oh4[..., :24]
+                        _cb4 = _rot2(_oh4 @ _CBt4, *_pl4[_rn4])
+                        _canon4 = _cb4 if _canon4 is None else _canon4 + _cb4
+                    if "alt_g" in p:
+                        _snaps.append((_snap_a5.detach(), _snap_r5.detach()))
+                    _wn4 = _wg4.pow(2).sum(-1, keepdim=True).sqrt() + 1e-6
+                    _cn4 = _canon4.pow(2).sum(-1, keepdim=True).sqrt() + 1e-6
+                    _wg4 = (_canon4 / _cn4 * _wn4).detach()
+                _garage.append(_wg4)
     def heads_of(s):
         return {
             "pres": (s @ p["h_pres"] + p["h_pres_b"]).squeeze(-1),
@@ -1264,43 +1246,7 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
     if "h_depth" in p:
         out["depth"] = fst @ p["h_depth"] + p["h_depth_b"]
         out["term"] = (fst @ p["h_term"] + p["h_term_b"]).squeeze(-1)
-    if "W5_a1_1" in p or "W6_a1" in p:
-        # v5/v6 binding by construction: heads answer WHICH (logits over the
-        # codebook, softmax -> code mixture); frozen phasors answer WHERE
-        # (+theta rotation); the wire answers TRANSMIT (sum of four).
-        # v6: logits from a SHARED gelu trunk + per-role projections.
-        global _BINDF
-        try: _BINDF
-        except NameError: _BINDF = None
-        if _BINDF is None:
-            import numpy as _np5
-            _bz5 = _np5.load(os.environ.get("BIND_CODES", ".cache/bindbus_codes.npz"))
-            _CB5 = Tensor(_bz5["CB"].astype(_np5.float32))
-            _rot5 = {}
-            for _ri5, _rn5 in enumerate(("arg1", "arg2", "res", "op")):
-                _th5 = _bz5[f"theta_{_rn5}"]
-                _rot5[_ri5] = (Tensor(_np5.cos(_th5).astype(_np5.float32)),
-                               Tensor(_np5.sin(_th5).astype(_np5.float32)))
-            _BINDF = (_CB5, _rot5)
-        _CB5, _rot5 = _BINDF
-        _P5 = _CB5.shape[1] // 2                # P_planes (D_real // 2)
-        _wire = None; _lgs = []
-        _h6 = ((fst @ p["W_bind1"] + p["W_bind1_b"]).gelu()
-               if "W6_a1" in p else None)
-        for _ri5, _r5 in enumerate(("a1", "a2", "rs", "op")):
-            _lg5 = (_h6 @ p[f"W6_{_r5}"] if _h6 is not None else
-                    (fst @ p[f"W5_{_r5}_1"] + p[f"W5_{_r5}_b"]).gelu() @ p[f"W5_{_r5}_2"])
-            _lgs.append(_lg5)
-            _v5 = _lg5.softmax(-1) @ _CB5       # soft pointer: codebook hull
-            _vr5 = _v5.reshape(*_v5.shape[:-1], _P5, 2)
-            _c5, _s5 = _rot5[_ri5]
-            _bx = _vr5[..., 0] * _c5 - _vr5[..., 1] * _s5
-            _by = _vr5[..., 0] * _s5 + _vr5[..., 1] * _c5
-            _b5 = Tensor.stack(_bx, _by, dim=-1).reshape(*_v5.shape)
-            _wire = _b5 if _wire is None else _wire + _b5
-        out["bind"] = _wire
-        out["bind_lg"] = Tensor.stack(*_lgs, dim=-2)   # (B, L_FAC, 4, 32)
-    elif "W_bind2" in p:
+    if "W_bind2" in p:
         # THE TAP (2026-08-29): ALG_BINDTAP=1 or v>=7 reads _s_final (the
         # refined post-breath state, like every parse head); default fst =
         # breath-0 (the bus era's historical tap, kept for lineage compat)
@@ -1308,8 +1254,6 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
                  else fst)   # tap dial ORTHOGONAL to version (v7a verdict:
                              # invariance lives at breath-0; default stays)
         out["bind"] = (_bsrc @ p["W_bind1"] + p["W_bind1_b"]).gelu() @ p["W_bind2"]
-    elif "W_bind" in p:
-        out["bind"] = fst @ p["W_bind"]
     if "W_opc1" in p:
         if int(os.environ.get("ALG_OPCOUNT", "0")) == 2:
             # rescue variant (registered pre-fire; mechanism-cleared): pool
@@ -1386,12 +1330,7 @@ def _loss_single(o, g):
                                     * (_t.pow(2).sum(-1).sqrt() + 1e-6))
         _w = 1.0 if int(os.environ.get("ALG_BINDBUS", "0")) < 3 else 0.2
         l = l + _w * ((1.0 - _cos) * pres).sum() / n_p
-    if "bind_lg" in o and "bind_ids" in g:
-        # v5 native loss: pure per-role classification CE — zero cross-role
-        # gradient (no wire-level term; parameters disjoint by construction)
-        l = l + 0.5 * (ce(o["bind_lg"], g["bind_ids"])
-                       * pres.unsqueeze(-1)).sum() / n_p
-    elif "bind" in o and "bind_ids" in g and int(os.environ.get("ALG_BINDBUS", "0")) >= 3:
+    if "bind" in o and "bind_ids" in g and int(os.environ.get("ALG_BINDBUS", "0")) >= 3:
         # v3 THE ROLE-FACTORED LOSS: supervise each role's unbound cleanup
         # directly — conjugate-rotate the emission, CE against the codebook
         _e = o["bind"]        # own binding: the cosine branch (which also
@@ -2364,6 +2303,13 @@ def do_train(steps, lr, batch, seed):
         for k, v in feed.items():
             npdt = np.float32 if bg[k].dtype == dtypes.float else np.int32
             bg[k].assign(Tensor(v.astype(npdt), dtype=bg[k].dtype).contiguous()).realize()
+        if int(os.environ.get("ALG_SHELF_CIRCLE", "0")) >= 2:
+            _sevb = globals().get("_SEV")
+            if _sevb is not None:      # the pulse: reseal per step
+                _sevb.assign(Tensor([1.0 if np.random.rand() <
+                                     float(os.environ.get("SC_P", "0.5"))
+                                     else 0.0],
+                                    dtype=_sevb.dtype)).realize()
         lv = step()
         if ALG_CONSUME and _NEWCL[0] is not None:
             CLAIMED[idx] = np.clip(CLAIMED[idx] + _NEWCL[0].numpy(), 0, 1)
@@ -2373,7 +2319,11 @@ def do_train(steps, lr, batch, seed):
             print(f"  step {s:5d} loss={v:.4f} lr={cur_lr:.1e} "
                   f"({(time.time()-t0)/(s+1):.2f}s/step)", flush=True)
         if (s + 1) % val_every == 0 or s == steps - 1:
+            if int(os.environ.get("ALG_SHELF_CIRCLE", "0")) >= 2:
+                os.environ["SC_EVAL"] = "0"     # val compares OPEN mode
             fv = _quick_val()
+            if int(os.environ.get("ALG_SHELF_CIRCLE", "0")) >= 2:
+                os.environ.pop("SC_EVAL", None)
             mark = ""
             if fv > best_val:
                 best_val = fv
