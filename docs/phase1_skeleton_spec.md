@@ -31925,3 +31925,14 @@ Bryce's fundamentality ranking (alternator first — called it).
 sharp_bind15d = the ALTERNATION LINE's founding artifact. Held for
 words: consolidate the line (continuation), v2 value-grade BP, sealed-
 mode read of the wave stack, books/sextet.
+
+## 2026-08-31 — WORD (my choice): THE SEALED READ + THE REPLICATION
+(1) Sealed capability of the alternation stack: 15d (and 15n control)
+val under constant seal (mode-1 STEPS=1 LR=0 read — the val path runs
+sealed in mode 1). PINNED PREDICTION (Nazare's frame): the wave pays
+MOST when facts are the road — 15d sealed val > the cooker's 0.6900;
+15d sealed/open ratio > the cooker-era 94.5%. (2) THE REPLICATION:
+first-win-after-four-kills demands a fresh seed before anything builds
+on it — N10/R10 from 14a, seed 234, bar identically +0.005. Win
+replicates -> the alternation line is a foundation; fails -> the 15d
+verdict banks as seed-weather and the wave returns to candidate status.
