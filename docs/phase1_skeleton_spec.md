@@ -31601,3 +31601,22 @@ verdict no preference test could give); val_P < val_C - 0.050 -> TOO
 LOSSY (the facts cannot carry; the wall named); between -> PARTIAL
 (carries with loss; grain analysis follows). Wild watch rides. One
 severance point, no sweep, no rescue.
+
+## 2026-08-30 — THE PULSE (Bryce's gut: "pulse blender, not constant rate") — cooker v2 PRE-REGISTERED before v1's verdict
+THE DIAGNOSIS OF CONSTANT PRESSURE: a permanent seal lets the network
+settle into a NEW steady state — most cheaply, an identity-ish carrier
+tunneled through W_busr (the shelf road as a second residual stream; the
+ice riding the vortex, never meeting the blades). PULSED SEVERANCE
+crushes the habit: per-step Bernoulli(p=0.5) seal — the network can rely
+on neither the residual (sometimes gone) nor a mechanical shelf-tunnel
+(sometimes unneeded), so shelf reads must carry CONTENT. Implementation
+is campaign idiom (the ALG_MASK_GOLD p=0.5 precedent): the sever flag is
+DATA — a (1,) buffer randomized per step, blended cur' = (1-sev)*cur +
+sev*road — one JIT graph, dynamic value. EVAL: read BOTH modes (sealed
+and open) — a pulse-trained head should hold val open AND degrade
+gracefully sealed; the sealed-mode val IS the capability meter.
+PRE-REGISTERED RELATION TO v1 (queued, unseen): v1 = the boundary
+condition (full constant pressure, cold plunge); if v1 lands TOO-LOSSY,
+v2 is the trainable road to the same capability — already registered,
+not a post-hoc rescue. BARS at v2 fire time: open-mode val within noise
+of control; sealed-mode val the headline number (floor pinned at fire).
