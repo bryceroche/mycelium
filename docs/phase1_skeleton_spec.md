@@ -31671,3 +31671,21 @@ phase1_algebra_head.py keeping only living organs (the audit found bugs
 living in the dead-experiment sediment; the core-cut philosophy applied
 to the file itself). Both HELD FOR WORDS; the GPU queue (cooker, pulse)
 runs first.
+
+## 2026-08-30 — COOKER v1 VERDICT: PARTIAL (carries with loss) — THE FIRST POSITIVE CAPABILITY EVIDENCE FOR THE IN-LOOP BUS
+CONTROL N7 val 0.7304 (TENTH consecutive lineage high). PRESSURE P val
+0.6900 with the residual SEVERED at breath 4 EVERY step — between the
+bars (not load-bearing at -0.02; far above too-lossy at -0.05): PARTIAL,
+delta -0.0404. THE READING: committed facts + shelf reads carried ~94.5%
+of control performance across a dead residual — a value that was an
+ALL-TIME RECORD four days ago, achieved with the artery cut. The
+preference verdicts said the loop never WANTS the organ; the cooker says
+the organ CAN carry nearly everything when made the road. GRAIN NOTES:
+the bind emission (breath-0 tap, upstream of the cut) was untouched
+(wild bus res .734 >= control's .727); the parse heads (reading
+_s_final, downstream of the cut) paid the -0.04 (mint ptr res .659 vs
+.893 — the pointer fine-grain suffered most; consistent with the
+lowering ladder: the cut hits the FINE breaths). THE PULSE (next in
+queue, auto) asks exactly the right follow-up: can training close the
+gap while keeping the open-mode val — the capability meter's first
+proper reading.
