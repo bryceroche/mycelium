@@ -32183,3 +32183,16 @@ Serves: the settling meter (distance-to-cycle-centroid as the settle
 read), grain-scheduled supervision (targets per floor), and R4's
 carrier semantics. Queues behind the crossover chain; anchored to the
 artifact it mines (regime-tagged, per the law).
+
+## 2026-09-01 — THE CYCLE-RESOLVED ATLAS BUILT (word given): (register, cycle, class) Welford + THE CREEP-BY-FLOOR read
+The physics refinement delivered with the build: THE TWO ATLASES SPLIT
+ALONG THE TWO-TAP LAW — the NL/trunk atlas is input-space and breath-
+invariant BY ARCHITECTURE (cycle stays NULL as its outside-time mark);
+the op/slot atlas BREATHES and gets the full keying. campaign.db table
+cycle_atlas: (register, cycle, class[ftype], count, mean, m2, ckpt) —
+regime-tagged to its artifact per the never-mix law. FREE INSTRUMENT
+SHIPPED: per-cycle mint<->wild centroid alignment = THE DIALECT CREEP BY
+FLOOR. PINNED: alignment FALLS with cycle (the two-tap law as a curve;
+the lowering probe's portability decay, now in centroid space). Mines
+sharp_bind14a (the era's common substrate); queued behind the crossover
+chain with the read fleet.
