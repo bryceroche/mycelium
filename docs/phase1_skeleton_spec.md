@@ -32196,3 +32196,16 @@ FLOOR. PINNED: alignment FALLS with cycle (the two-tap law as a curve;
 the lowering probe's portability decay, now in centroid space). Mines
 sharp_bind14a (the era's common substrate); queued behind the crossover
 chain with the read fleet.
+
+## 2026-09-01 — THE EFFICIENCY FIGURES (paper material; Bryce's realization banked with receipts)
+The loop lives HEAD-SIDE (the June engine recirculated trunk layers —
+Pythia L0-L3 x K=16; phase-1 deliberately moved the loop into the head).
+Numbers: trained params ~3.2M of ~1.24B stack = 0.26% (trunk 243M layers
++ 263M embed, frozen, run ONCE); per-breath cost ~1.3% of a trunk
+re-pass — seven breaths of deliberation < 1/5 of one extra trunk pass.
+With tabula rasa (3.2M from noise matches ten generations) and the
+subsumption law (the cheap loop buys K native hops), the paper's spine:
+frozen commodity trunk read once; a 0.26% breathing head deliberating in
+seven cycles; deliberation = measured progressive lowering; envelope =
+K hops; confidence = the radius; dialects = ladder density; beyond the
+envelope, the exact jaw. Every clause carries a banked number.
