@@ -31817,3 +31817,24 @@ D=512), NO warm, seed 231, 50k steps @1e-4 (the from-scratch answer to
 "is the continuation curve basin capital or architecture+data?").
 Thresholds stand as pinned: >=0.71 architecture+data / <=0.66 basin
 capital / between mixed.
+
+## 2026-08-31 — TABULA RASA VERDICT: ARCHITECTURE+DATA (val 0.7304 from ZERO — the lineage's high-water matched to the 4th decimal); THE WILD ASTERISK
+Fresh head, 50k steps from noise, cleaned file, incumbent config: val
+0.7304 @48k (still climbing at 44-48k) — EXACTLY the ten-generation
+curve's high-water. Pinned threshold >=0.71 fires: THE CONTINUATION
+CURVE'S VAL IS ARCHITECTURE+DATA, not basin capital. "Restarts jostle
+basins" RE-PINNED at the current regime: a restart MATCHES val outright.
+Mint bus reads slightly BETTER than lineage (args .682/.673 vs .677/.657;
+res .669 vs .661). THE WILD ASTERISK (banked, not hand-waved): the
+lineage keeps a register edge — fresh wild bus res .704 vs family
+.723-.733 (~-0.025); wild ptr res .646 vs .683. THE PATH CARRIES WILD
+CAPITAL EVEN WHERE IT CARRIES NO VAL — consistent with the lore: the
+family's wild robustness came from its mixed-era history (cosine-era
+bindj, varied diets), not derivable from 50k of flat form8. The refined
+claim for the doctrine: gentle continuation preserves REGISTER capital;
+architecture+data suffice for DIALECT competence. Consequences: (1) the
+paper has its control; (2) a sextet-born fresh head is de-risked (fresh
+heads reach val parity — the Z6 migration can ride a rebirth); (3) the
+wild gap remains the campaign's one true currency, and it lives in
+HISTORY DIVERSITY, not in val — the books road's thesis, measured from
+a new angle.
