@@ -31886,3 +31886,23 @@ relieved no measured deficit — predicted the day the law was written.
 Correction to the relay AND to my own gloss: ALG_CIRCLE was never a
 "memory-forcing experiment" in isolation — it was the benched cell-3a of
 a complete, calibrated, three-cell program with its own laws and graves.
+
+## 2026-08-31 — THE NAZARE CLOSURE (Bryce's drum, history recovered): the determination wave IS the operator
+The arc's three movements re-read: S13 (the funnel registered 2026-07-07:
+the canyon ADDS nothing — it refracts a wide front into convergence; a
+canyon focuses noise too) -> the shape amended (2026-08-08, Bryce:
+NAZARE NOT PI — commit is geometric, the break where the medium narrows;
+graph = canyon floor, evidence = swell) -> the quantity found
+(2026-08-12: rebinding events 15/15 at 3-sparse — a working focusing
+field; WHERE not WHETHER).
+THE CLOSURE: the determination wave (burning now) is the operator's
+in-graph incarnation — givens are the swell, the committed graph is the
+bathymetry, three sweeps propagate evidence-energy down the canyon, and
+THE FIRE-FLAG IS THE BREAK POINT (args-all-determined = the medium
+narrowed enough). The rebinding field measured Nazare BACKWARD (where
+the loop acts); the wave computes it FORWARD (where resolution is
+ready). Both scope-bounded identically (focusing, never triage); the
+ensemble law honored (additive features, no per-slot overwrite). The
+drum registered 2026-07-07 as a silhouette library, amended 2026-08-08
+into physics, measured 2026-08-12 as a field — and implemented
+2026-08-31 as dataflow, without anyone planning the rendezvous.
