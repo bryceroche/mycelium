@@ -1167,8 +1167,19 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
                            for _j4 in range(len(_garage)))
                 _rds4 = [_rot2(_rd4, _rc4, _rs4)
                          for (_rc4, _rs4) in _SGC[0].values()]
-                q_extra = q_extra + (Tensor.cat(*_rds4, dim=-1)
-                                     @ p["W_busr"]) * p["bus_g"].reshape(1, 1, 1)
+                _inj4 = Tensor.cat(*_rds4, dim=-1) @ p["W_busr"]
+                if (int(os.environ.get("ALG_SHELF_CIRCLE", "0"))
+                        and kb == int(os.environ.get("SC_KB", "4"))):
+                    # THE PRESSURE COOKER (2026-08-30, word given):
+                    # residual SEVERED at this breath — committed facts
+                    # are the only road across. Ungated, full gradient:
+                    # necessity replaces the ajar gate's trickle. (zero-
+                    # mult keeps params in graph — the None-grad lesson,
+                    # the traffic circle's own idiom.)
+                    cur = cur * 0.0 + _inj4
+                    q_extra = cur + p["breath_emb"][kb].reshape(1, 1, -1)
+                else:
+                    q_extra = q_extra + _inj4 * p["bus_g"].reshape(1, 1, 1)
             if _sync is not None:   # sync-complete: transmitter ON during
                 q_extra = q_extra + _sync[1](kb)     # settle; receiver locked
             h_tok, fat_cur = bank(p["fq"], L_FAC, extra=q_extra,

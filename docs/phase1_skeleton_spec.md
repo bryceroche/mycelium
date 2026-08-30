@@ -31586,3 +31586,18 @@ severance -> the shelf is load-bearing in a way that cannot be declined;
 val craters -> the facts are too lossy to be the road — decisive either
 way. Bars to pin at fire time: severed-arm val floor vs continuation
 control; wild watch; one severance point (mid-loop), no sweep.
+
+## 2026-08-30 — THE PRESSURE COOKER FIRED (word given): the capability question
+ALG_SHELF_CIRCLE=1 (requires BUSGARAGE=2): at breath SC_KB=4 the residual
+is SEVERED (cur = shelf read only, zero-mult idiom); the canonical facts
++ confidence stamps are the ONLY road across; the read is UNGATED with
+full gradient — necessity replaces the ajar trickle. Deposits after the
+severance derive from the rebuilt state (the loop continues on the far
+bank). ARMS (queued behind the shelf pair; seed 229, 6k @3e-5): CONTROL =
+continuation of sharp_bind12n; PRESSURE = warm sharp_bind12r (the shelf
+arm's co-trained organs) + SHELF_CIRCLE=1. BARS (pinned): val_P >= val_C
+- 0.020 -> THE SHELF IS LOAD-BEARING (facts can carry the road — the
+verdict no preference test could give); val_P < val_C - 0.050 -> TOO
+LOSSY (the facts cannot carry; the wall named); between -> PARTIAL
+(carries with loss; grain analysis follows). Wild watch rides. One
+severance point, no sweep, no rescue.
