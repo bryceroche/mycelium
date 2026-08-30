@@ -32107,3 +32107,21 @@ subsumption law made falsifiable); (c) the rescue arms beyond the knee:
 the wave in-loop AND solver-alternation (closed-loop lineage) — where
 symbols must finally pay or the thesis itself is wrong. Holds for the
 word.
+
+## 2026-09-01 — HORSEPOWER RULED ON (Bryce's question) + relay's symbolic-interface box truth-lined
+Relay correction (third aspirational-as-actual this week): no magnitude
+vetting gate exists (observational, Goodhart-fenced; a gating use needs
+its charter); dynamic masking = first-pass slot mask (static) + the
+alternator's tolerated 0.02 adjacency bias; the CSP solver has NEVER
+been in-loop (outer closed-loop chain + the training key only). The
+diagram's box is the roadmap, not the machine.
+HORSEPOWER: capacity history says width is not the wall (cap2x moved
+overlaps not means; the fresh head saturates the dialect at 3.2M); the
+subsumption law says THE REASONING LIMIT IS K, NOT WIDTH. REGISTERED:
+(1) THE K-KNEE ARM folded into the crossover experiment — depth curves
+at K=7 AND K=8 (stamp shelf's current max): the law predicts THE
+COLLAPSE KNEE MOVES WITH K (a dose-response no coincidence fakes; the
+mechanism-level confirmation). K>8 needs NB_STAMPS surgery — registered
+as its own chore. (2) THE WIDTH RETEST (second priority): fresh-trained
+H_W 512 vs 1024 pair on form9, noise-law design, 50k — capacity's
+honest re-ask at the new dialect. Both hold for words.
