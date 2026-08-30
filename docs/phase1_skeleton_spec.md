@@ -31653,3 +31653,21 @@ CAPABILITY question (cooker v1 constant seal, burning next; the pulse
 after). SIDE LEDGER: 0.7222/0.7225 — NINTH consecutive lineage high;
 sharp_bind12r = parse incumbent. The wild watch: bus wild res .733,
 above the .70 bar.
+
+## 2026-08-30 — TABULA RASA (Bryce's gut, interpreted): THE FROM-SCRATCH CONTROL registered as candidate
+The affordable reading: the HEAD (~3.2M params), not the trunk. The
+lineage carries nine generations of scar tissue (dead objectives, retired
+losses, breath-0-tapped bind training, opened-and-closed gates); the
+continuation curve (+13pts / 9 fires) is ATTRIBUTED to basin-deepening
+but the control has never run: same architecture, same mature diet, FROM
+ZERO (40-50k steps, ~5h). Lands near the incumbent -> the performance is
+architecture+data (lineage story is sentiment); lands far below -> the
+basin is real capital (gentle-continuation doctrine's strongest evidence
+ever). SCOPE-DECAY NOTE: "restarts jostle basins" was measured in an
+older regime — that verdict has EXPIRED and is due for re-pinning at the
+current architecture. Either outcome is paper-grade. SECOND READING, also
+registered: the CLEAN-SLATE FILE — a chapter-boundary rewrite of
+phase1_algebra_head.py keeping only living organs (the audit found bugs
+living in the dead-experiment sediment; the core-cut philosophy applied
+to the file itself). Both HELD FOR WORDS; the GPU queue (cooker, pulse)
+runs first.
