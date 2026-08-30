@@ -31568,3 +31568,21 @@ dead-heat > tax; the risk channel is FALSE FACTS (~1/3 of snaps wrong at
 current competence), mitigated by the quiet-when-wrong stamp. KILL: miss
 -> even lattice-committed facts don't pay at this grain; the in-loop bus
 truly waits for the composed stack. No rescue.
+
+## 2026-08-30 — THE PRESSURE COOKER (Bryce's gut): the escape-valve diagnosis + the shelf-circle design REGISTERED
+THE DIAGNOSIS: every in-loop null (S2, garage, and the shelf if it
+dead-heats) was measured WITH THE LID OFF — the residual stream rode
+intact, so the network always held an escape valve; the verdicts measured
+PREFERENCE (does it want the organ?) never CAPABILITY (can the organ
+carry?). A pressure cooker transforms by SEALING. THE PRECEDENT IS OURS:
+ALG_CIRCLE (the traffic circle, notebook era) — "residual severed; memory
+the road" — the exact move, waiting to be pointed at the new organ.
+THE DESIGN (registered, held for word + the shelf verdict): THE
+SHELF-CIRCLE — experimental arm severs cur at a mid-loop breath; the only
+state crossing the boundary is what the canonical shelf carries
+(committed facts + confidence stamps through the read path). Question
+changes from preference to CAPABILITY: val near baseline across the
+severance -> the shelf is load-bearing in a way that cannot be declined;
+val craters -> the facts are too lossy to be the road — decisive either
+way. Bars to pin at fire time: severed-arm val floor vs continuation
+control; wild watch; one severance point (mid-loop), no sweep.
