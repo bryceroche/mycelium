@@ -32209,3 +32209,20 @@ frozen commodity trunk read once; a 0.26% breathing head deliberating in
 seven cycles; deliberation = measured progressive lowering; envelope =
 K hops; confidence = the radius; dialects = ladder density; beyond the
 envelope, the exact jaw. Every clause carries a banked number.
+
+## 2026-09-01 — THE PAPER'S TRIANGLE (Bryce's three pillars, cut to defensible form)
+(1) EFFICIENCY: 0.26% trained / ~2% of a forward to deliberate / $0.05
+generations on consumer hardware — bankable now. (2) INTERPRETABILITY BY
+CONSTRUCTION, NOT AUTOPSY: the intermediate state IS a typed language
+(role-graphs, lattice ids, phase=WHAT radius=HOW-SURE, the measured
+lowering staircase, per-floor atlases, printable determination fields);
+receipts from the skeleton's birth (60/60 errors detectable, 0 silent);
+and the structural moat: THE GOODHART REGISTER — diagnostics
+constitutionally barred from every loss, so interpretability training
+cannot corrupt. (3) DETERMINISM SHARPENED: certified-where-it-answers,
+silent-where-it-cannot — the custody chain (mouth->vote->panel->key)
+makes wrong answers structurally impossible rather than statistically
+rare (MATH-500 0/500 WITH ZERO LIES as the ethic's standing proof).
+THE TRIANGLE IS THE CLAIM: each pillar alone has neighbors; all three
+from one architecture has none — a glass-box reasoner, too cheap to
+meter, that would rather say nothing than lie.
