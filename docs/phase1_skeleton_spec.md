@@ -32061,3 +32061,28 @@ ladder-alive dialect, density 0.743, the campaign's currency) are the
 verdict's second half, burning now. A future era-hygiene note banked:
 WHEN THE DIET CHANGES DIALECT, THE VAL FIXTURE MUST GROW A MATCHING
 SPLIT (a ladder-val), or every pair reads the wrong dialect's weather.
+
+## 2026-09-01 — THE WAVE'S FINAL VERDICT: NULL AT EVERY GRAIN, FED AND STARVED ALIKE — AND THE SUBSUMPTION LAW
+Wild reads x4: wave deltas +0.006/-0.002 (wild bus res), all metrics
+within noise both seeds. The complete characterization: multi-grain
+(val/wild), multi-seed, empty-field AND living-field diets — no effect.
+THE SUBSUMPTION LAW (the era's deepest finding, explaining every in-loop
+verdict at once): SEVEN BREATHS OF ITERATED ATTENTION ARE THEMSELVES A
+PROPAGATION ENGINE — soft message passing, depth <= K. On graphs within
+the loop's reach (ours: <= 6 rungs, 24 slots), explicit symbolic
+propagation DUPLICATES what iteration already computes; a symbolic copy
+of the loop's own fixed point adds nothing (the redundancy verdict's
+root form). Symbolic organs pay only BEYOND the loop's reach: (a) depth
+> K (unbuilt territory — the pass wheel's future), (b) when the loop is
+SEVERED (the cooker: facts carry ~50% alone), (c) capacity relief at a
+measured cap (cell-2's notebook — the one organ ever used). The wave
+RETIRES as an organ; its instruments remain (the 2-of-3 field check =
+the dialect-ladder densitometer that found THE SCHISM — its true gift).
+ERA ASSETS BANKED: form9 + ladder corpus (serve the books road
+regardless), the schism number (0.000 vs 0.743), the funhouse
+registration, the fixture-lag law, loop_val, both noise floors.
+Parse val on the new diet: ~0.717 (the form8-fixture cost of the diet
+swap ~1.3pts, expected); wild unchanged (~0.72-0.73). Held for words:
+the books road (the schism made it thesis), funhouse mints, ladder-val
+split, deep problems (depth > K — where the subsumption law says
+symbols finally pay).
