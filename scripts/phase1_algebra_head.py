@@ -1084,21 +1084,27 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
                 else:
                     q_extra = q_extra + _inj4 * p["bus_g"].reshape(1, 1, 1)
             if _snaps and "W_det" in p:
-                # THE DETERMINATION WAVE: seed at givens, 3 forced-move
-                # sweeps over the committed graph; per-slot features
-                # [frac-args-determined, res-determined, fires-now] enter
-                # through the ajar gate
-                _sa6, _sr6, _gv6 = _snaps[-1]
+                # THE 2-OF-3 FIELD (the ladder era, 2026-08-31): true
+                # forced moves — two determined roles force the third,
+                # forward ladder AND inverse anchor alike; seed at
+                # givens, 3 sweeps; features [ndet/3, res-det, fires]
+                _a6, _b6, _sr6, _gv6 = _snaps[-1]
                 _det6 = (_gv6.unsqueeze(-1) * _sr6).max(1)          # (B,24)
-                _na6 = _sa6.sum(-1)                                  # (B,L)
                 for _ in range(3):
-                    _nd6 = (_sa6 @ _det6.unsqueeze(-1)).squeeze(-1)
-                    _fi6 = (_nd6 >= _na6).float() * (_na6 > 0).float()
-                    _det6 = (_det6
-                             + (_fi6.unsqueeze(-1) * _sr6).max(1)).clip(0, 1)
-                _fe6 = Tensor.stack((_nd6 / (_na6 + 1e-6)).clip(0, 1),
-                                    (_sr6 @ _det6.unsqueeze(-1)).squeeze(-1).clip(0, 1),
-                                    _fi6, dim=-1)                    # (B,L,3)
+                    _r16 = (_a6 @ _det6.unsqueeze(-1)).squeeze(-1).clip(0, 1)
+                    _r26 = (_b6 @ _det6.unsqueeze(-1)).squeeze(-1).clip(0, 1)
+                    _r36 = (_sr6 @ _det6.unsqueeze(-1)).squeeze(-1).clip(0, 1)
+                    _nd6 = _r16 + _r26 + _r36
+                    _fi6 = ((_nd6 >= 2).float()
+                            * (1.0 - _gv6))                          # (B,L)
+                    _new6 = None
+                    for _oh6, _rr6 in ((_a6, _r16), (_b6, _r26), (_sr6, _r36)):
+                        _c6 = ((_fi6 * (1.0 - _rr6)).unsqueeze(-1)
+                               * _oh6).max(1)
+                        _new6 = _c6 if _new6 is None else _new6 + _c6
+                    _det6 = (_det6 + _new6).clip(0, 1)
+                _fe6 = Tensor.stack((_nd6 / 3.0).clip(0, 1), _r36, _fi6,
+                                    dim=-1)                          # (B,L,3)
                 q_extra = q_extra + (_fe6 @ p["W_det"]) \
                     * p["det_g"].reshape(1, 1, 1)
             if _sync is not None:   # sync-complete: transmitter ON during
@@ -1117,7 +1123,8 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
                 # mask breathes; its content is symbolic (one-hot matmuls,
                 # JIT-safe; snaps detached — facts wire attention,
                 # attention makes new facts)
-                _sa5, _sr5 = _snaps[-1][0], _snaps[-1][1]
+                _sa5 = _snaps[-1][0] + _snaps[-1][1]
+                _sr5 = _snaps[-1][2]
                 _A5 = _sr5 @ _sa5.transpose(-2, -1)
                 sc2 = sc2 + (_A5 + _A5.transpose(-2, -1)) \
                     * p["alt_g"].reshape(1, 1, 1)
@@ -1202,15 +1209,16 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
                     # the shelf's own attention). Two jaws, in the loop.
                     _cj4, _pl4, _CBt4 = _SGC
                     _canon4 = None
-                    _snap_a5, _snap_r5 = None, None
+                    _snap_a5 = _snap_b5 = _snap_r5 = None
                     for _rn4 in ("arg1", "arg2", "res", "op"):
                         _zc4 = _rot2(_wg4, *_cj4[_rn4])
                         _lg4 = _zc4 @ _CBt4.T
                         _oh4 = (_lg4 == _lg4.max(-1, keepdim=True)).float()
                         _oh4 = _oh4 / (_oh4.sum(-1, keepdim=True) + 1e-9)
-                        if _rn4 in ("arg1", "arg2"):
-                            _snap_a5 = (_oh4[..., :24] if _snap_a5 is None
-                                        else _snap_a5 + _oh4[..., :24])
+                        if _rn4 == "arg1":
+                            _snap_a5 = _oh4[..., :24]
+                        elif _rn4 == "arg2":
+                            _snap_b5 = _oh4[..., :24]
                         elif _rn4 == "res":
                             _snap_r5 = _oh4[..., :24]
                         elif _rn4 == "op":
@@ -1218,8 +1226,8 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
                         _cb4 = _rot2(_oh4 @ _CBt4, *_pl4[_rn4])
                         _canon4 = _cb4 if _canon4 is None else _canon4 + _cb4
                     if "alt_g" in p or "W_det" in p:
-                        _snaps.append((_snap_a5.detach(), _snap_r5.detach(),
-                                       _snap_g5.detach()))
+                        _snaps.append((_snap_a5.detach(), _snap_b5.detach(),
+                                       _snap_r5.detach(), _snap_g5.detach()))
                     _wn4 = _wg4.pow(2).sum(-1, keepdim=True).sqrt() + 1e-6
                     _cn4 = _canon4.pow(2).sum(-1, keepdim=True).sqrt() + 1e-6
                     _wg4 = (_canon4 / _cn4 * _wn4).detach()

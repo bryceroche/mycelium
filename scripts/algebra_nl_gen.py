@@ -338,3 +338,57 @@ def main(argv=None):
 
 if __name__ == "__main__":
     main()
+
+
+def gen_ladder(rng: random.Random, depth: int, m: int, inverse_p: float = 0.25):
+    """THE LADDER ERA (2026-08-31, word given): evaluation-style graphs —
+    knowns feed forward; inverse-anchor rungs force one unknown from two
+    knowns. 2-of-3 propagation density ~1.0 by construction (the mint
+    dialect's missing species; wild ladders measure 0.743)."""
+    sol, factors = [], []
+
+    def new_var(v):
+        sol.append(int(v))
+        return len(sol) - 1
+
+    det = []
+    for _ in range(2):
+        vi = new_var(rng.randint(1, max(2, m // 6)))
+        factors.append({"ftype": "given", "var": vi, "value": sol[vi],
+                        "role": "anchor"})
+        det.append(vi)
+    made = guard = 0
+    while made < depth and guard < depth * 8:
+        guard += 1
+        a, b = rng.sample(det, 2)
+        if rng.random() < inverse_p:
+            # inverse rung: result given, one arg known -> other arg FORCED
+            bv = rng.randint(1, max(1, m // 6))
+            rv = sol[a] + bv
+            if rv > m:
+                continue
+            bi = new_var(bv)
+            ri = new_var(rv)
+            factors.append({"ftype": "rel", "op": "add", "args": [a, bi],
+                            "result": ri,
+                            "surface": rng.choice(["add", "sub"])})
+            factors.append({"ftype": "given", "var": ri, "value": rv,
+                            "role": "anchor"})
+            det += [bi, ri]
+        else:
+            if (rng.random() < 0.4 and sol[a] > 1 and sol[b] > 1
+                    and sol[a] * sol[b] <= m):
+                ri = new_var(sol[a] * sol[b])
+                factors.append({"ftype": "rel", "op": "mul", "args": [a, b],
+                                "result": ri, "surface": "mul"})
+            else:
+                if sol[a] + sol[b] > m:
+                    continue
+                ri = new_var(sol[a] + sol[b])
+                factors.append({"ftype": "rel", "op": "add", "args": [a, b],
+                                "result": ri, "surface": "add"})
+            det.append(ri)
+        made += 1
+    derived = [f["result"] for f in factors if f["ftype"] == "rel"]
+    query = derived[-1] if derived else det[-1]
+    return len(sol), factors, sol, query

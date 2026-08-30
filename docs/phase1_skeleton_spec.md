@@ -32013,3 +32013,21 @@ feed forward) as a declared share of the diet; (3) the books rows enter
 training as the living ladder substrate (the wave and the books need
 each other — the convergence is total). The wave's true test = trained
 where its field is ALIVE.
+
+## 2026-08-31 — THE LADDER ERA FIRED (word given): form9, the 2-of-3 field, the noise-law pair design
+BUILT: gen_ladder (evaluation-style graphs: forward rungs + inverse-
+anchor rungs at p=.25, depth 2-6, m=300, the standard roundtrip gate;
+corpus 2-of-3 density 1.000, 0 rejected at probe) -> ladder24k ->
+form_mix9 = form8 + ladders shuffled (share ~20%, dose declared). The
+2-of-3 field replaces forward-only in the wave (smoke: forward ladder
+fires, INVERSE ANCHOR fires, givens excluded). CHAIN (one unit):
+corpus 24k -> precompute form9 (build_gold now emits bind_ids from
+source — the audit fix pays) -> FOUR fires per the seed-noise law:
+{control, wave} x seeds {235, 236}, warm sharp_bind14a, stack envs
+(GARAGE=2 CIRCLE=2 ALTMASK=1), 6k @3e-5, ALG_TRAIN=form_mix9 ->
+sharp_bind17{n,d}{a,b}. BARS (pinned, noise-law compliant): the wave
+WINS iff both seeds' deltas >= +0.005 OR mean delta >= +0.012; loop_val
+open + wild bind_read on all four reported; the wave-field check re-run
+on form9 val (the field must be ALIVE where it trains — the cable
+verified plugged before the verdict is read). Diet effect (form9 vs
+form8 lineage) noted observationally, not claimed.
