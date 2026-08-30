@@ -31640,3 +31640,16 @@ breaths on mint; (2) wild settles slower/less (dwell-difficulty law's
 state-side face); (3) never-settling items are wrong-enriched.
 TEMPERATURE-PERP-TRUTH stands guard: settling is a dwell/refusal READ,
 never a correctness signal, never supervised.
+
+## 2026-08-30 — SHELF VERDICT: KILL PER BAR (dead heat +0.0003; gate 0.02->0.0068); THE PREFERENCE QUESTION CLOSES WITH FULL GENERALITY; NINTH HIGH
+Even lattice-committed, confidence-stamped, non-derivable FACTS were
+declined when the residual rode along. Three organs, three declines (raw
+wires 0.0046 / typed mail 0.0033 / canonical facts 0.0068 — the shelf's
+gate closed slowest, a whisper of interest, but closed). THE PREFERENCE
+VERDICT, FINAL: with the lid off, the loop does not reach for ANY
+auxiliary memory at this parse grain — the residual+notebook niche is
+saturated, full stop. What remains is exactly what the queue holds: the
+CAPABILITY question (cooker v1 constant seal, burning next; the pulse
+after). SIDE LEDGER: 0.7222/0.7225 — NINTH consecutive lineage high;
+sharp_bind12r = parse incumbent. The wild watch: bus wild res .733,
+above the .70 bar.
