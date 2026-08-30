@@ -32048,3 +32048,16 @@ resizing translated and REFUSED as schedule (curriculum is dead; flat
 mix won): teeth diversity enters flat, never staged. Holds for words;
 the ladder chain burns undisturbed (its v1 single-renders are the
 control the funhouse will be judged against).
+
+## 2026-08-31/09-01 — LADDER ERA, FIRES COMPLETE: val-grain NULL (with the fixture-lag caveat); wild reads burning
+Four fires banked: s235 ctrl 0.7162 / wave 0.7181 (+0.0019); s236 ctrl
+0.7170 / wave 0.7159 (-0.0011). Mean +0.0004 — the noise-law val bars
+MISS. THE FIXTURE-LAG CAVEAT (flagged before the wild reads land, not
+after): the val fixture (test23) is the OLD constraint-system dialect —
+ladder density 0.000 — so the val grain measures the wave where its
+field remains EMPTY at eval; the diet changed, the yardstick did not.
+The pinned design's remaining reads (wild bind_read x4 — the
+ladder-alive dialect, density 0.743, the campaign's currency) are the
+verdict's second half, burning now. A future era-hygiene note banked:
+WHEN THE DIET CHANGES DIALECT, THE VAL FIXTURE MUST GROW A MATCHING
+SPLIT (a ladder-val), or every pair reads the wrong dialect's weather.
