@@ -31953,3 +31953,22 @@ scripts/loop_val.py — the same fac-exact criterion on the masked
 two-pass forward (organs OPERATING), mode-controllable; fires after the
 replication frees the GPU: 15d/15n open+sealed, 13n reference, 13p
 sealed — the TRUE capability table, first of its kind.
+
+## 2026-08-31 — REPLICATION VERDICT: THE WIN WAS WEATHER (R10 -0.0054 vs R9 +0.0065); THE WAVE RETURNS TO CANDIDATE STATUS; THE SEED-NOISE LAW
+Seed 234: N10 0.7178 / R10 0.7124 — the wave arm LOSES by nearly the
+mirror of seed 233's win. Per the pre-pinned registration: the 15d
+verdict banks as SEED-WEATHER; the determination wave returns to
+candidate status (its physics untouched, its VAL claim withdrawn; the
+alt_g synergy note likewise demoted to weather-suspect). The
+first-win-after-four-kills instinct to replicate BEFORE building was the
+save of the week.
+THE SEED-NOISE LAW (banked from the pair): at 6k-continuation grain, the
+single-seed pair noise is ~±0.005-0.006 — THE ERA'S BAR (+0.005) SAT AT
+ITS OWN NOISE FLOOR. Every dead-heat verdict (+0.0003..+0.0016) was
+well inside it (kills stand — they claimed nothing); any single-pair
+WIN at this grain is unbankable without seed replication. STANDING
+AMENDMENT: pair bars at this grain require either (a) 2-seed agreement,
+or (b) an effect >= 2x the floor (+0.012). The wave's true effect
+estimate: +0.0005 +/- 0.006 — NULL at this grain.
+NEXT: the loop-val table (queued, burning) reads the organs OPERATING —
+the grain where the wave's runtime story lives or dies on its own.
