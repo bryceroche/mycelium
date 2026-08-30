@@ -31620,3 +31620,23 @@ condition (full constant pressure, cold plunge); if v1 lands TOO-LOSSY,
 v2 is the trainable road to the same capability — already registered,
 not a post-hoc rescue. BARS at v2 fire time: open-mode val within noise
 of control; sealed-mode val the headline number (floor pinned at fire).
+
+## 2026-08-30 — THE PULSE FIRED (word given) + THE SETTLING METER REGISTERED (the entropy gut)
+PULSE (cooker v2, ALG_SHELF_CIRCLE=2): per-step Bernoulli(SC_P=0.5) seal
+via the _SEV data buffer (one JIT graph, dynamic value — the MASK_GOLD
+idiom); trainer reseals before every step; in-train val forced OPEN
+(SC_EVAL=0) for comparability; read-time SC_EVAL forces either mode —
+THE SEALED-MODE VAL IS THE CAPABILITY METER (how much parse lives in
+committed symbolic form; trackable across generations — the two-jaws
+ratio, quantified). ARM (queued behind cooker v1; warm sharp_bind12r,
+seed 230, 6k @3e-5 -> sharp_bind13q; dual-mode reads). BARS (pinned):
+open-mode val >= sharp_bind13n val - 0.008; sealed-mode val >= 0.50 ->
+LOAD-BEARING / < 0.35 -> TOO LOSSY / between -> PARTIAL. No rescue.
+THE ENTROPY GUT -> THE SETTLING METER (registered, read-only, built
+after the verdicts land): per-breath prediction-entropy trajectories
+(heads_of over breaths_all — the lowering staircase in its NATIVE
+currency). PINNED PREDICTIONS: (1) entropy falls monotonically across
+breaths on mint; (2) wild settles slower/less (dwell-difficulty law's
+state-side face); (3) never-settling items are wrong-enriched.
+TEMPERATURE-PERP-TRUTH stands guard: settling is a dwell/refusal READ,
+never a correctness signal, never supervised.

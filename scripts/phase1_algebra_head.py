@@ -1168,16 +1168,37 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
                 _rds4 = [_rot2(_rd4, _rc4, _rs4)
                          for (_rc4, _rs4) in _SGC[0].values()]
                 _inj4 = Tensor.cat(*_rds4, dim=-1) @ p["W_busr"]
-                if (int(os.environ.get("ALG_SHELF_CIRCLE", "0"))
-                        and kb == int(os.environ.get("SC_KB", "4"))):
+                _scm = int(os.environ.get("ALG_SHELF_CIRCLE", "0"))
+                if _scm and kb == int(os.environ.get("SC_KB", "4")):
                     # THE PRESSURE COOKER (2026-08-30, word given):
                     # residual SEVERED at this breath — committed facts
-                    # are the only road across. Ungated, full gradient:
-                    # necessity replaces the ajar gate's trickle. (zero-
-                    # mult keeps params in graph — the None-grad lesson,
-                    # the traffic circle's own idiom.)
-                    cur = cur * 0.0 + _inj4
-                    q_extra = cur + p["breath_emb"][kb].reshape(1, 1, -1)
+                    # are the only road across. Ungated, full gradient.
+                    # mode 1 = constant seal (the boundary condition);
+                    # mode 2 = THE PULSE (per-step Bernoulli seal via the
+                    # _SEV data buffer — MASK_GOLD idiom; SC_EVAL forces
+                    # a mode at read time; sealed-mode val IS the
+                    # capability meter).
+                    _cur_seal = cur * 0.0 + _inj4
+                    _q_seal = _cur_seal + p["breath_emb"][kb].reshape(1, 1, -1)
+                    _q_open = q_extra + _inj4 * p["bus_g"].reshape(1, 1, 1)
+                    if _scm >= 2:
+                        _sce = os.environ.get("SC_EVAL", "")
+                        if _sce:
+                            _sv = float(_sce)
+                            cur = cur * (1.0 - _sv) + _cur_seal * _sv
+                            q_extra = _q_open * (1.0 - _sv) + _q_seal * _sv
+                        else:
+                            global _SEV
+                            try: _SEV
+                            except NameError: _SEV = None
+                            if _SEV is None:
+                                _SEV = Tensor([1.0]).contiguous().realize()
+                            _svt = _SEV.reshape(1, 1, 1)
+                            cur = cur * (1.0 - _svt) + _cur_seal * _svt
+                            q_extra = _q_open * (1.0 - _svt) + _q_seal * _svt
+                    else:
+                        cur = _cur_seal
+                        q_extra = _q_seal
                 else:
                     q_extra = q_extra + _inj4 * p["bus_g"].reshape(1, 1, 1)
             if _sync is not None:   # sync-complete: transmitter ON during
@@ -2447,6 +2468,13 @@ def do_train(steps, lr, batch, seed):
         for k, v in feed.items():
             npdt = np.float32 if bg[k].dtype == dtypes.float else np.int32
             bg[k].assign(Tensor(v.astype(npdt), dtype=bg[k].dtype).contiguous()).realize()
+        if int(os.environ.get("ALG_SHELF_CIRCLE", "0")) >= 2:
+            _sevb = globals().get("_SEV")
+            if _sevb is not None:      # the pulse: reseal per step
+                _sevb.assign(Tensor([1.0 if np.random.rand() <
+                                     float(os.environ.get("SC_P", "0.5"))
+                                     else 0.0],
+                                    dtype=_sevb.dtype)).realize()
         lv = step()
         if ALG_CONSUME and _NEWCL[0] is not None:
             CLAIMED[idx] = np.clip(CLAIMED[idx] + _NEWCL[0].numpy(), 0, 1)
@@ -2456,7 +2484,11 @@ def do_train(steps, lr, batch, seed):
             print(f"  step {s:5d} loss={v:.4f} lr={cur_lr:.1e} "
                   f"({(time.time()-t0)/(s+1):.2f}s/step)", flush=True)
         if (s + 1) % val_every == 0 or s == steps - 1:
+            if int(os.environ.get("ALG_SHELF_CIRCLE", "0")) >= 2:
+                os.environ["SC_EVAL"] = "0"     # val compares OPEN mode
             fv = _quick_val()
+            if int(os.environ.get("ALG_SHELF_CIRCLE", "0")) >= 2:
+                os.environ.pop("SC_EVAL", None)
             mark = ""
             if fv > best_val:
                 best_val = fv
