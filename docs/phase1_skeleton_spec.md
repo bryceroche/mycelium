@@ -32226,3 +32226,21 @@ rare (MATH-500 0/500 WITH ZERO LIES as the ethic's standing proof).
 THE TRIANGLE IS THE CLAIM: each pillar alone has neighbors; all three
 from one architecture has none — a glass-box reasoner, too cheap to
 meter, that would rather say nothing than lie.
+
+## 2026-09-01 — RADIO WAVES + RESONANT FREQUENCY (Bryce's guts, decoded)
+(1) THE LOCK-IN LAW (named): the bus is formally a RADIO — per-plane
+rates = carrier frequencies; separate-bands = FDM; the six waves = the
+local oscillator; and cleanup (conj-phasor multiply -> integrate against
+the codebook) IS a lock-in amplifier, radio's canonical weak-signal
+detector. R4's receiver inherits sixty years of engineering (tuning,
+selectivity, adjacent-channel rejection) term for term — design it as a
+RECEIVER, not a novelty. (2) TRUTH RESONATES (the unification named):
+5/5 unanimity (measured 1.0000), the settle read, magnitude's confession,
+the vote quorum — one physics: only the consistent component accumulates
+across independent passes; every future certificate is a resonance
+detector. (3) REGISTERED — THE IMPULSE RESPONSE OF DELIBERATION: perturb
+state at breath k (small probe pattern), read the response at k+j — the
+loop's transfer function: ring (modes), damp (causal settle rate), or
+amplify (stability margins); the systems-identification companion to the
+settling meter; zero training. Holds for words; the crossover burns
+undisturbed.
