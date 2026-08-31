@@ -32255,3 +32255,16 @@ settle read made causal); (2) RESONANCE — fact-shaped damps SLOWER than
 noise (the loop keeps what fits its modes; "truth resonates" at the
 state grain); amplification would flag instability (none expected,
 worth knowing). Queued behind the crossover read fleet.
+
+## 2026-09-01 — IMPULSE ADDENDUM (relay graded): tau-fit + omega-sextet PRE-REGISTERED; linearity sweep = v2
+CORRECTIONS: the outer jaw is the FULL CSP core (2-of-3 was the retired
+wave's rule — conflation cut); v2 masking OPENS ONLY, never suppresses
+(A0's grave); probe breaths k0 in {1,2,3,4}. ACCEPTED: (a) THE TAU-FIT —
+G(n) ~ A e^{-n/tau}; the resonance claim in units: tau_fact > tau_noise;
+(b) THE OMEGA-SEXTET HYPOTHESIS, pre-registered BEFORE data: IF ringdown
+oscillates, omega ~ 2pi/6 (or harmonic) would prove the six-wave grid
+sits at the head's intrinsic mode (power note: <=6 lags, coarse omega —
+post-hoc fit, fires only on measured non-monotonicity, pinned now so it
+cannot be cherry-picked later); (c) LINEARITY SWEEP [eps,2eps,4eps] =
+impulse v2 — DEFERRED by the running-chain law (the v1 script is queued;
+v2 is a separate follow-up after the baseline lands).
