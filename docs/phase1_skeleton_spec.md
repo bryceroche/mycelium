@@ -32280,3 +32280,27 @@ REPAIR CHAIN (explicit envs): k8 retrain -> k8 + 17da depth curves ->
 (its unit stopped pre-collision and re-queued here). The four K=7
 curves bank from the original fleet before its expected crash at the
 missing ckpt.
+
+## 2026-09-01 — THE DEPTH CURVES: **NO KNEE** — AND THE AUTOPSY IS THE ARCHITECTURE'S DEEPEST VINDICATION
+All four K=7 arms: fac-exact 0.955-0.996 FLAT across depth 2..16 (mild
+tail 0.99->0.96 at d14-16, crowding-consistent). The pinned collapse-at-
+K prediction is REFUTED at this fixture — WITH the instrument autopsy:
+fac-exact measures PARSE, and parse is LOCAL — each slot reads from its
+own sentence; no K-hop propagation is required to parse rung 14. The
+knee prediction conflated PARSE depth with PROPAGATION depth. The
+subsumption law survives where its evidence lives (propagation-content
+duplication in-loop); its knee corollary at parse grain dies.
+THE DEEP READING (paper gold): **THE KNEE IS DESIGNED OUT OF THE
+ARCHITECTURE.** Attention-collapse-at-depth afflicts systems that must
+PROPAGATE VALUES THROUGH ACTIVATIONS (CoT LLMs). Ours never does: the
+neural jaw's task (parse) is depth-LOCAL by construction; depth routes
+to the exact jaw, which has NO decay at any depth. Where pure-neural
+systems fall off a cliff, our curve is FLAT — not because the head is
+deep, but because the DESIGN never asks it to be. The two-jaws split is
+not just precision insurance; it is DEPTH-IMMUNITY. K-knee arm: MOOT
+(no knee to move; the K8 repair still reads as a K-dose probe).
+REGISTERED: a local CoT-baseline arm on the same fixture (no external
+APIs — a local small LM someday) to render the comparative flat-vs-
+cliff figure. The campaign's binding constraint remains what every
+road said: WILD REGISTER, never depth. Loop_vals/atlas/impulse pending
+in the repair chain.
