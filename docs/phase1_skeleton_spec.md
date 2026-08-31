@@ -32334,3 +32334,19 @@ conditioned; structure is absorbed, noise is amplified). No ringing
 (monotone) -> the omega-sextet hypothesis stays unfired per its own
 pre-registration. The night's law: DELIBERATION IS NEAR-CRITICAL
 PLASTICITY ANNEALING ONTO A SYMBOLIC STABLE SUBSPACE.
+
+## 2026-09-01 — THE DISTRACTOR TEST (Bryce's hypothesis; scope-tag confirmed on the masking null)
+THE HYPOTHESIS: the masking channel nulled because the corpus was CLEAN
+— all teeth dials off; dilution cannot be cured where it does not exist;
+the wild register (ptr args 0.24) IS the heavy-distraction regime. The
+null is hereby scope-tagged: clean-template regime only.
+PHASE 1 (zero-training, fires now): distval fixture — depth {4,8,12,16}
+x teeth {0.0, 0.8} x 150 (held seed; render's own dials + irrelevant
+disjoint fragments) -> precompute -> differential reads on the BANKED
+arms (18n7 ctrl vs 18m7 MASKRE, + 17da reference). PINNED: (1) teeth
+COST exists for the unmasked ctrl (drop vs clean at matched depth);
+(2) THE DIFFERENTIAL: the MASKRE arm's teeth-cost < ctrl's (masking
+pays where dilution lives). Confirmed -> phase 2 (distractor-trained
+pairs, noise-law design) earns its word; refuted -> the channel stays
+closed even under distraction, and the hope moves to distractor
+TRAINING. The gut's alternation vision rides on phase 2's arms.
