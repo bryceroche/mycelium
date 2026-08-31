@@ -32508,3 +32508,23 @@ R_GAIN_INIT) — the audit-pre-registered rescue. Pair seeds 237/238, warm
 loop_vals. BAR (unchanged): wild scoped ptr args both seeds positive AND
 mean >= +0.02 vs controls (0.215/0.225); mint within noise. NO FURTHER
 VARIANTS — this is the one rescue.
+
+## 2026-09-01 — RADIO INTERFERENCE (Bryce's gut, drawer-audited): partially resolved + THE PORT CENSUS registered
+RESOLVED (receipts): spectral allocation (the FDM ruling), code
+crosstalk (continuous + Z6 sweeps), write interference (the garage's
+list; DC-cancellation banked for the superposed form). LIVE SITE 1: the
+superposition tax (1-3pts per wire read) — MEASURED, STANDING,
+unmitigated; a known debt, not a resolution. LIVE SITE 2 (the gut's
+likely target, NEVER measured): PORT CROWDING — q_extra now sums
+breath_emb + notebook read + garage read + detwave features, with the
+router on the bank and the alternator on the mixer: multiple
+transmitters, one antenna. Era organs were tested STACKED — if
+injections crowd or partially cancel on the shared port, some nulls
+could be interference artifacts, not organ verdicts.
+REGISTERED — THE PORT CENSUS (zero-training read): per breath, per
+organ: injection magnitude (relative to q_extra's base), pairwise
+cosine between organ injections (alignment/cancellation), and the port's
+SNR (organ signal vs breath_emb+notebook incumbents). Verdict grammar:
+orthogonal-and-small = clean spectrum (nulls stand); anti-aligned pairs
+= measured cancellation (stacked verdicts get an interference asterisk).
+Queues behind the rescue pair.
