@@ -32665,3 +32665,16 @@ stamp (feed the loud one — the power ecology's counsel; +0.5M);
 AS ONE CONTRAST per the reckoning's law: the capacity sequel = winner +
 FULL PACKAGE vs winner (was the mind starved? — one night, one answer);
 genesis's skeleton stays frozen for baseline comparability.
+
+## 2026-09-01 — 20M RULED IN (as the curve's third point): the capacity sequel finalized
+Feasibility: 20M ~ 6x, still 1.6% of stack, linear-cost organs only
+(2nd bank layer/breath, 4x FFNs, deep waist, quad-form pointers, fed
+ink) — step ~2-2.5x, 50k in ~7h; data ratio fine (~3M slot-instances);
+mint memorization self-confesses via the register gap (a free
+diagnostic). Discipline: the cap2x scar forbids CHOOSING a capacity —
+THE CAPACITY CURVE decides: three arms on genesis's winner = base
+(3.2M) / the fed mind (~8M package) / the 20M mind — judged on the
+wild artery + val + the register gap. The deliverable is a SLOPE:
+flat -> capacity was never the wall (the books stand alone); rising ->
+the task's capacity appetite measured, and any 20M-successor earns its
+conversation with evidence.
