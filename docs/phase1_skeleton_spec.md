@@ -32350,3 +32350,17 @@ pays where dilution lives). Confirmed -> phase 2 (distractor-trained
 pairs, noise-law design) earns its word; refuted -> the channel stays
 closed even under distraction, and the hope moves to distractor
 TRAINING. The gut's alternation vision rides on phase 2's arms.
+
+## 2026-09-01 — BRYCE'S CHALLENGE ACCEPTED: THE WILD 2x2 (static vs dynamic masking on WILD text)
+The distrust is law-backed: mint teeth are OUR OWN templates of noise
+(the schism's lesson — synthetic distraction rehearses wildness, does
+not constitute it); the running distractor test banks as scope-limited
+mint context only. THE TRUE COURT (zero-training — MASKRE has no
+learned params, so static-vs-dynamic is an EVAL DIAL on the same
+weights): the wild 177-text pool, 2x2 = {18n7 ctrl-trained, 18m7
+mask-trained} x {MASKRE off, on} via bind_read's wild section (slot-
+grain wiring recovery + scoped pointers). PINNED: dynamic-on beats
+static-off on wild wiring recovery IF the masking channel's wild story
+is real; a null here on TOP of the mint null closes the eval-time form
+entirely (leaving only distractor/wild TRAINING as the channel's
+remaining road).
