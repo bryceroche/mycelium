@@ -980,6 +980,9 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
 
     _bus_reg = None
     _garage = None
+    global _IMP                     # the impulse hook (systems-ID probe;
+    try: _IMP                       # None everywhere except under
+    except NameError: _IMP = None   # impulse_response.py — inert in training)
     if (int(os.environ.get("ALG_BUSGARAGE", "0")) and "W_gq" in p
             and "W_bind2" in p):
         assert int(os.environ.get("ALG_BUSGARAGE", "0")) >= 2, \
@@ -1004,6 +1007,8 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
     if K_B > 1 and slot_mask is not None and "W_bo" in p:
         cur = fst
         for kb in range(1, K_B):
+            if _IMP is not None and kb == _IMP[0]:
+                cur = cur + _IMP[1]          # the kick
             if ALG_NOTEBOOK and kb == 1:
                 from tinygrad import Tensor as _T2, dtypes as _dt2
                 _nb_st = _T2(NB_STAMPS, dtype=_dt2.float)

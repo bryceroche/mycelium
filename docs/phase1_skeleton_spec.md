@@ -32244,3 +32244,14 @@ loop's transfer function: ring (modes), damp (causal settle rate), or
 amplify (stability margins); the systems-identification companion to the
 settling meter; zero training. Holds for words; the crossover burns
 undisturbed.
+
+## 2026-09-01 — THE IMPULSE RESPONSE FIRED (word given; the mature domain honored: systems identification)
+The breath loop characterized as a dynamical system for the first time:
+a three-line inert hook (module-global _IMP; the kick at breath k0),
+probes = gaussian noise vs FACT-SHAPED (role-bound codebook wire), gain
+g(lag) per k0 in 1..4, 64 rows, eps = 0.1 x state rms, on the era
+substrate (14a). PINNED: (1) CONTRACTION — noise g(lag>=3) < 0.5 (the
+settle read made causal); (2) RESONANCE — fact-shaped damps SLOWER than
+noise (the loop keeps what fits its modes; "truth resonates" at the
+state grain); amplification would flag instability (none expected,
+worth knowing). Queued behind the crossover read fleet.
