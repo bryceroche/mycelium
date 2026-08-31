@@ -32304,3 +32304,33 @@ APIs — a local small LM someday) to render the comparative flat-vs-
 cliff figure. The campaign's binding constraint remains what every
 road said: WILD REGISTER, never depth. Loop_vals/atlas/impulse pending
 in the repair chain.
+
+## 2026-09-01 — THE OVERNIGHT HARVEST: five verdicts
+(1) K-DOSE: K=8 curve identical to K=7 (0.962-0.997; val 0.7143 within
+noise) — consistent with no-knee/parse-local; K is not a parse lever.
+(2) TRAIN-DEPTH EFFECT (17da shallow-trained reference): deep diet buys
++2-3.5pts at d14-16 (0.933 vs 0.955-0.969) — parse is MOSTLY local with
+a small learnable global component.
+(3) MASK RE-FORMATION v2: NEGATIVE at the operating grain, both seeds
+(-0.0025/-0.0106; bars required positive) — open-by-commitment masking
+does not pay and mildly harms; with the alternator's +0.0024-in-noise,
+THE MASKING CHANNEL CLOSES at the current parse grain (both soft and
+hard forms measured; the accuracy channel found no purchase).
+(4) CREEP-BY-FLOOR: REFUTED AT THIS GRAIN/POWER — mint<->wild centroid
+alignment ~0.30 FLAT-TO-RISING b0->b6 (0.296->0.313), n_classes=2 only
+(under-powered); tension with the two-tap law noted, not resolved
+(different grain: raw slot states vs bind reads).
+(5) THE IMPULSE RESPONSE — the loop's portrait: NOT a contraction
+(near-critical: late-kick gains ~1.00-1.05; early kicks grow ~5%/breath
+to 1.30) — and the naive contraction pin deserved its refutation: A
+LOOP THAT MUST REMEMBER CANNOT CONTRACT; near-unity gain IS memory
+(edge-of-criticality, the RNN lore). THE CAUSAL SETTLE IS VISIBLE
+ANYWAY, reframed: sensitivity falls monotonically with kick breath
+(k0=1: +30% growth; k0=4: +0.5%) — the loop starts PLASTIC and ends
+RIGID; settling measured causally at last. TAU REVERSED, beautifully:
+FACT-SHAPED kicks perturb LESS than iso-norm noise at every k0 — THE
+LATTICE IS THE LOOP'S STABLE SUBSPACE (codebook directions are better-
+conditioned; structure is absorbed, noise is amplified). No ringing
+(monotone) -> the omega-sextet hypothesis stays unfired per its own
+pre-registration. The night's law: DELIBERATION IS NEAR-CRITICAL
+PLASTICITY ANNEALING ONTO A SYMBOLIC STABLE SUBSPACE.
