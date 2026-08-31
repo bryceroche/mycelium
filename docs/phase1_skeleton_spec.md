@@ -32554,3 +32554,21 @@ LOSS may need louder entry — banked as a REFINEMENT CANDIDATE (evidence:
 one seed-pair, not law-grade). Mint loop_vals unharmed (0.8119/0.8138).
 NEXT: census hooks apply (the chain exited), equivalence gate, the
 spectrum reads on 19r + 17da.
+
+## 2026-09-01 — THE PORT CENSUS VERDICT: CLEAN SPECTRUM — AND THE POWER ECOLOGY (acceptance = loudness)
+Both stacks swept: ALL in-band pairwise cosines |cos| <= 0.088 —
+orthogonal everywhere, ZERO cancellation. PER THE PINNED GRAMMAR: the
+era's stacked nulls STAND as true organ verdicts; no interference
+asterisks. THE DEEPER FINDING — THE POWER TABLE: the notebook (the one
+organ ever accepted) broadcasts at 75-123% of the state's own magnitude;
+every rejected organ whispers at 1-3% (garage .02, detwave .017);
+breath_emb 2-5%. The router at 0.1 transmitted 0.2->0.6 logit-std on its
+own band (real re-routing pressure, growing with breath) — the rescue's
+0.02 CUT ITS POWER 5x AND ITS EFFECT TO ZERO: the rescue silenced the
+transmitter rather than testing it (mechanism for the verdict pair).
+THE AJAR REFINEMENT HARDENS: own-loss organs entering at whisper power
+are never heard — entry gain for supervised organs is a POWER BUDGET
+decision, not a deadlock guard (which they don't need). ACCEPTANCE =
+LOUDNESS is the era's power ecology in two words. The interference
+program closes: spectrum clean, ecology mapped, the census a standing
+instrument.

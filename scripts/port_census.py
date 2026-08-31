@@ -72,9 +72,15 @@ for i in range(len(organs)):
             a = acc.get((kb, organs[i])); b = acc.get((kb, organs[j]))
             if a and b:
                 va = np.mean(a[0], 0); vb = np.mean(b[0], 0)
+                if va.shape != vb.shape:
+                    cs = None      # different band (e.g. bank-logit space
+                    break          # vs state space) — no in-band interference
                 cs.append(float(va @ vb / (np.linalg.norm(va)
                                            * np.linalg.norm(vb) + 1e-9)))
-        if cs:
+        if cs is None:
+            print(f"  {organs[i]} x {organs[j]}: [different band — no "
+                  f"in-band interference possible]")
+        elif cs:
             print(f"  {organs[i]} x {organs[j]}: {np.mean(cs):+.3f}")
 print("[grammar] |cos|<0.2 & small rel-mags = clean spectrum (nulls "
       "stand); cos<-0.3 = measured cancellation (stacked verdicts get "
