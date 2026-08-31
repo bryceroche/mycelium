@@ -1020,6 +1020,9 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
     _bus_reg = None
     _rb_last = None
     _garage = None
+    global _CENSUS                  # the port census hook (inert unless
+    try: _CENSUS                    # port_census.py arms it — same
+    except NameError: _CENSUS = None  # pattern as _IMP below)
     global _IMP                     # the impulse hook (systems-ID probe;
     try: _IMP                       # None everywhere except under
     except NameError: _IMP = None   # impulse_response.py — inert in training)
@@ -1055,6 +1058,11 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
                 _nb = [(cur @ p["W_sil"]) if NB_PERSLOT
                        else (cur.mean(1) @ p["W_sil"])]   # sharp vs blurred ink
             q_extra = cur + p["breath_emb"][kb].reshape(1, 1, -1)
+            if _CENSUS is not None:
+                _CENSUS.append((kb, "state", cur.realize().numpy()))
+                _CENSUS.append((kb, "breath_emb",
+                                p["breath_emb"][kb].realize().numpy()
+                                .reshape(1, 1, -1)))
             if ALG_NOTEBOOK:
                 if NB_PERSLOT:      # per-slot lanes: each slot queries the
                     _q = cur @ p["W_nq"]              # shelf and reads ITS OWN
@@ -1064,6 +1072,8 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
                     _at = _sc.softmax(-1)             # (B, L, k)
                     _rd = sum(_at[:, :, j:j + 1] * _nb[j] for j in range(len(_nb)))
                     q_extra = q_extra + _rd           # (B, L, H) — no blur
+                    if _CENSUS is not None:
+                        _CENSUS.append((kb, "notebook", _rd.realize().numpy()))
                 else:
                     _q = cur.mean(1) @ p["W_nq"]
                     _sc = (_q @ _nb_st[:len(_nb)].transpose(1, 0)) / math.sqrt(H_W)
@@ -1095,6 +1105,10 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
                 _rds4 = [_rot2(_rd4, _rc4, _rs4)
                          for (_rc4, _rs4) in _SGC[0].values()]
                 _inj4 = Tensor.cat(*_rds4, dim=-1) @ p["W_busr"]
+                if _CENSUS is not None:
+                    _CENSUS.append((kb, "garage",
+                                    (_inj4 * p["bus_g"].reshape(1, 1, 1))
+                                    .realize().numpy()))
                 _scm = int(os.environ.get("ALG_SHELF_CIRCLE", "0"))
                 if _scm and kb == int(os.environ.get("SC_KB", "4")):
                     # THE PRESSURE COOKER (2026-08-30, word given):
@@ -1150,8 +1164,10 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
                     _det6 = (_det6 + _new6).clip(0, 1)
                 _fe6 = Tensor.stack((_nd6 / 3.0).clip(0, 1), _r36, _fi6,
                                     dim=-1)                          # (B,L,3)
-                q_extra = q_extra + (_fe6 @ p["W_det"]) \
-                    * p["det_g"].reshape(1, 1, 1)
+                _dinj = (_fe6 @ p["W_det"]) * p["det_g"].reshape(1, 1, 1)
+                q_extra = q_extra + _dinj
+                if _CENSUS is not None:
+                    _CENSUS.append((kb, "detwave", _dinj.realize().numpy()))
             if _sync is not None:   # sync-complete: transmitter ON during
                 q_extra = q_extra + _sync[1](kb)     # settle; receiver locked
             _rb7 = None
@@ -1166,6 +1182,10 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
                 _rb7 = ((_cq7 @ p["W_ra"])
                         @ (waist @ p["W_rb"]).transpose(-2, -1)) / 8.0
                 _rb_last = _rb7
+                if _CENSUS is not None:
+                    _CENSUS.append((kb, "router(bank)",
+                                    (_rb7 * p["r_gain"].reshape(1, 1, 1))
+                                    .realize().numpy()))
             h_tok, fat_cur = bank(p["fq"], L_FAC, extra=q_extra,
                                   pbias=(_sync[0](kb) if _sync is not None
                                          else None),

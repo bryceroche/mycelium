@@ -39,14 +39,13 @@ new = '''                    _rd = sum(_at[:, :, j:j + 1] * _nb[j] for j in rang
 assert old in s, "anchor 3"
 s = s.replace(old, new, 1)
 
-# 4. garage read capture (gated value)
-old = '''                q_extra = q_extra + (Tensor.cat(*_rds4, dim=-1)
-                                     @ p["W_busr"]) * p["bus_g"].reshape(1, 1, 1)'''
-new = '''                _ginj = (Tensor.cat(*_rds4, dim=-1)
-                         @ p["W_busr"]) * p["bus_g"].reshape(1, 1, 1)
-                q_extra = q_extra + _ginj
+# 4. garage read capture (gated value; _inj4 computed once, branches after)
+old = '''                _inj4 = Tensor.cat(*_rds4, dim=-1) @ p["W_busr"]'''
+new = '''                _inj4 = Tensor.cat(*_rds4, dim=-1) @ p["W_busr"]
                 if _CENSUS is not None:
-                    _CENSUS.append((kb, "garage", _ginj.realize().numpy()))'''
+                    _CENSUS.append((kb, "garage",
+                                    (_inj4 * p["bus_g"].reshape(1, 1, 1))
+                                    .realize().numpy()))'''
 assert old in s, "anchor 4"
 s = s.replace(old, new, 1)
 
