@@ -32477,3 +32477,14 @@ confirm registered (uniform inflation, symmetric across all pairs ever
 run — verdicts unaffected). CLEAN BILLS: snap 4-tuple retrofit, router
 broadcast, _rb_last paths, impulse inertness, _SEV JIT pattern.
 FIXES HELD for the router chain's exit (the running-chain law).
+
+## 2026-09-01 — ROUTER VERDICT: MISS BY 0.0005 (bars don't bend) — THE FIRST BOTH-SEEDS-POSITIVE WILD ORGAN; the audit's rescue stands ready
+Wild scoped ptr args: s237 +0.028, s238 +0.011 — BOTH POSITIVE (a first
+for any organ on the artery); mean +0.0195 vs the 0.02 bar — MISS by
+0.0005. Wild bus res positive both seeds (+0.008/+0.012); mint loop_val
+within no-harm noise (-0.004/-0.001). NEGATIVE-BY-BAR, banked straight.
+THE PRE-REGISTERED RESCUE (queued by the hardcode audit BEFORE these
+numbers existed — the cleanest rescue provenance possible): the fired
+r_gain=0.1 deviates 5x from the ajar law's 0.02 with no sweep; the
+rescue pair = identical arms at r_gain=0.02, same bar (both positive,
+mean >= +0.02), no further variants. Holds for the word.
