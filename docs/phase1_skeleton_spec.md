@@ -32268,3 +32268,15 @@ post-hoc fit, fires only on measured non-monotonicity, pinned now so it
 cannot be cherry-picked later); (c) LINEARITY SWEEP [eps,2eps,4eps] =
 impulse v2 — DEFERRED by the running-chain law (the v1 script is queued;
 v2 is a separate follow-up after the baseline lands).
+
+## 2026-09-01 — K8 ARM CRASH + REPAIR (the substitution lesson)
+The K=8 fire ran with a COLLAPSED env — the bash ${S/7/8} substitution
+silently failed to carry the config (37/41 warm keys; ftype head at
+default width; gold 'sel' unmapped -> KeyError). LESSON BANKED: chain
+env lines are written EXPLICIT, never by string substitution — a
+silently-degraded env is the worst failure class (it half-runs).
+REPAIR CHAIN (explicit envs): k8 retrain -> k8 + 17da depth curves ->
+4 operating-grain loop_vals -> cycle-atlas mine -> the impulse probe
+(its unit stopped pre-collision and re-queued here). The four K=7
+curves bank from the original fleet before its expected crash at the
+missing ckpt.
