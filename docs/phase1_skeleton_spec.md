@@ -32432,3 +32432,25 @@ first (deliberate-exclusion law). ALL EDITS HELD until the router chain
 exits (the running-chain law); then: /8.0 derivation fix + the
 calibration queue prioritized behind the router verdict. Two auditors
 still out.
+
+## 2026-09-01 — AUDIT (archivist, verified): the estate plan banked
+INVENTORY: 542 live scripts; ~95 LIVE (core closure + read fleet +
+books pipeline + generators + LoRA harness); 78 era-relics + 32
+superseded version-snapshots = ~110 archive candidates (families:
+kenken/sudoku/perceiver residue, battery_gen15-22 + gen*_verdict,
+dup_axis/dup_timing, xout_*, form_assemble2-15, aug v1-v3); 70% of all
+scripts have exactly ONE commit — the dominant one-shot mode is
+WITHIN-era (one script per ledger entry), which the harness fixes
+forward. TRAP LIST (never archive): mouth_recal_gen9b (deployed mouth;
+gen-9b is a CKPT lineage not a battery number), lattice_join (stable
+not stale; in the core closure), beacon_closing_arm (~280 importers).
+THE READ HARNESS (registered chore): scripts/read_harness.py exporting
+alg_env / load_bind_codes / gold_pool (custody law documented ONCE) /
+two_pass_forward — fleet shrinks ~250-300 lines; future reads start at
+~30 lines. ENV RETIREMENT: Tier A orphans (9: BREATH_ARM, CONSUME,
+MASK_GOLD_P, OPATT, POSCH, REG_NPY, SEPHASE_SETTLE, STELLAR, SYNC) +
+Tier B closed-arc (sephase family, DEEPSUP, LSENT, FREEZE_DUP) — a
+retire list with evidence, delete-nothing until the next equivalence-
+gated cleanup. The auditor's self-correction honored: the raw-shell-
+fired live set (LORA_* axes, ROPE_OFF, XARM/XOUT, STRAW, BINDTAP...)
+verified current and protected. Chores queue behind the router verdict.
