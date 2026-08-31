@@ -13,8 +13,19 @@ import sys
 
 sys.path.insert(0, 'scripts')
 from algebra_nl_gen import gen_ladder, render, roundtrip
+from tokenizers import Tokenizer
+_tok = Tokenizer.from_file(".cache/llama_tokenizer.json") if False else None
+try:
+    from phase1_algebra_head import TOKENIZER_JSON as _TJ
+except Exception:
+    _TJ = None
 
 M = 300
+import os
+os.environ.setdefault("ALG2", "1")
+from phase1_algebra_head import TOKENIZER_JSON
+from tokenizers import Tokenizer as _T
+_TOK = _T.from_file(TOKENIZER_JSON)
 rng = random.Random(4242)
 rows, rej = [], 0
 for depth in (4, 8, 12, 16):
@@ -47,6 +58,9 @@ for depth in (4, 8, 12, 16):
             ok, decisions = roundtrip(n_vars, gfactors, M, sol)
             if not ok:
                 rej += 1
+                continue
+            if _TOK is not None and len(_TOK.encode(text).ids) > 250:
+                rej += 1          # the truncation fence, honored at birth
                 continue
             rows.append({"n_vars": n_vars, "m": M, "text": text,
                          "factors": gfactors, "mentions": mentions,

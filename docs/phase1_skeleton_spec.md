@@ -32364,3 +32364,21 @@ static-off on wild wiring recovery IF the masking channel's wild story
 is real; a null here on TOP of the mint null closes the eval-time form
 entirely (leaving only distractor/wild TRAINING as the channel's
 remaining road).
+
+## 2026-09-01 — v3 REGISTERED: THE ROUTER HEAD (Bryce's skepticism, upgraded by three banked laws)
+Zero-params was v2's virtue for MEASUREMENT (the eval-dial 2x2 exists
+because of it) and its ceiling for CAPABILITY (a bit-rule cannot learn
+wild syntax's meaning of "distracting"). v3 (registered, pinned BEFORE
+the wild 2x2 lands): a learned masking router (~200-500k params):
+inputs = state + THE SNAPS (symbolic conditioning — the alternation
+with a learned interface); output = soft additive edge bias (B,L,L) —
+never hard -inf (A0's grave). THE UPGRADES OVER THE RELAY: (1) the
+attention-bootstrap law demands direct supervision -> the router trains
+on an AUXILIARY EDGE LOSS against GOLD producer->consumer adjacency
+(pairwise wiring supervision — never tried; args/res are per-slot) —
+the dual-terminal contract satisfied by design; (2) rule proposes,
+router disposes (commitments inform, a trained organ routes); (3) soft
+bias through a gain, deadlock-immune via the router's own loss.
+Sequencing: the wild 2x2 scopes the priors (null -> boolean rules
+cannot bridge wild syntax, router carries the channel alone; signal ->
+the router amplifies a real seed). Holds for the word.
