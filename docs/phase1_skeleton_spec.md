@@ -32587,3 +32587,15 @@ unchanged: both fresh seeds positive AND mean >= +0.02 on wild scoped
 ptr args vs the fresh controls); gains 0.05/0.15/0.20 = CALIBRATION
 ONLY (the dose-response curve; no claims without their own later
 confirmation). Mint loop_val within noise rides as the no-harm check.
+
+## 2026-09-01 — THE SYSTEMD BRACE TRAP (second env-mangling incident): the sweep caught corrupting itself at fire 2/10
+systemd strips ${VAR} brace expansions in transient-unit scripts (bare
+$VAR survives) — each gain arm trained at its TRUE gain but wrote to a
+COLLAPSED ckpt name: four gains overwriting one file; the reads would
+have measured gain-0.2 four times under four labels. Caught via the
+log-name anomaly + /proc cmdline inspection; only the seed-239 control
+(banked, clean) and one in-flight arm (discarded) were spent. THE LAW
+HARDENS (the K8 lesson's general form): TRANSIENT-UNIT SCRIPTS ARE
+FULLY LITERAL — no loops, no parameter expansion, every command written
+out; a silently-degraded unit is worse than a crashed one. Refired
+unrolled: 9 remaining fires + the read fleet, every name explicit.
