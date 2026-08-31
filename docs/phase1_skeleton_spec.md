@@ -32695,3 +32695,12 @@ stack - plain >= +0.03 wild scoped args = WIN; |delta| < 0.03 =
 INCONCLUSIVE -> second seed; register gap watched (the memorization
 tell). Corpus fires now (CPU); precompute queues behind the sweep;
 the fires launch on the sweep's verdict.
+
+## 2026-09-01 — PARAM LEDGER VERIFIED (2nd pass, Bryce's ask): two corrections banked
+Full 66-tensor enumeration, zero unaccounted. CORRECTIONS: (1) the FFN
+is 2x expansion (512->1024->512), NOT the 1x the starvation audit
+claimed — still under the 4x convention but half the gap (the audit
+flag softened, the package's FFN line becomes 2x->4x); (2) THE MACRO
+VALUE SYSTEM (W_y + h_dig2, ~0.3M) was hiding in "other" — named as
+its own organ. docs/param_ledger.md updated, rounded to 100k, exact
+totals at the foot (6,424,743 / 7,839,915).

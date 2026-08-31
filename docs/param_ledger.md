@@ -1,36 +1,40 @@
-# The Parameter Ledger (2026-09-01 — genesis-era exact counts)
+# The Parameter Ledger (2026-09-01 — genesis-era counts, verified)
 
-Counted directly from `build_params()` under the genesis configs
-(H_W=512, 8 heads, BINDBUS=7, D=512). The stale "3.2M" folk number is
-struck (conviction-index): the head grew through the eras to the
-figures below. Trained params only — the 1.24B trunk (243M layers +
-263M embeddings) is frozen, constitutional, run once per problem.
+Counted from `build_params()` under the genesis configs (H_W=512,
+8 heads, BINDBUS=7, D=512), verified by full per-tensor enumeration
+(66 tensors, zero unaccounted). Rounded to the nearest 100k; exact
+totals at the foot. The stale "3.2M" folk number is struck. Trained
+params only — the 1.24B trunk is frozen, constitutional, run once.
 
-| organ | plain twin | stack twin | notes |
+VERIFICATION CORRECTIONS (2nd pass): (1) the FFN is 2× expansion
+(512→1024→512), not the 1× first claimed — still under the 4×
+convention, but half the gap; (2) the macro value system (W_y + dig2)
+was hiding in "other" — now named.
+
+| organ | plain | stack | notes |
 |---|---:|---:|---|
-| bank attention + FFN | 2,113,024 | 2,113,024 | slot→token reads; FFN is 1× expansion (starvation-audit flag) |
-| garage (shelf attn + read) | — | 1,310,721 | W_gq + W_busr + bus_g; the canonical shelf's reader |
-| slot mixer | 1,050,624 | 1,050,624 | slot↔slot relations; SINGLE-headed (starvation-audit flag) |
-| waist encoder | 1,049,088 | 1,049,088 | trunk 2048 → 512; one linear map (starvation-audit flag) |
-| pointer heads (the artery) | 786,432 | 786,432 | W_args/W_res/W_query; single bilinear forms (flag) |
-| notebook + breath embeds | 527,879 | 527,879 | the one full-voice organ (power ecology) |
-| bind MLP (emission + garage writes) | 524,800 | 524,800 | W_bind1/2 — the bus's wire maker |
-| other | 278,528 | 278,528 | letter/sephase machinery etc. |
-| router | — | 102,913 | W_rs (snap-cond 73→512) + W_ra/W_rb (64-d) + r_gain |
-| classifier/digit heads | 81,567 | 81,567 | ftype/pres/islit/dig/dup/sgn |
-| var/query banks + gates | 12,801 | 12,801 | vq + sw_g etc. |
-| determination wave | — | 1,537 | W_det (3→512) + det_g |
-| alternator gain | — | 1 | alt_g |
-| **TOTAL** | **6,424,743** | **7,839,915** | stack organs add 1,415,172 (+22.0%) |
+| bank attention + FFN | 2.1M | 2.1M | slot→token reads; FFN at 2× (convention 4× — audit flag, softened) |
+| garage (shelf attn + read) | — | 1.3M | W_gq (0.3M) + W_busr (1.0M) |
+| slot mixer | 1.1M | 1.1M | slot↔slot relations; SINGLE-headed (audit flag) |
+| waist encoder | 1.0M | 1.0M | trunk 2048→512 via ONE linear map (audit flag) |
+| pointer heads (the artery) | 0.8M | 0.8M | W_args/W_res/W_query — single bilinear forms each (audit flag) |
+| notebook + breath embeds | 0.5M | 0.5M | the one full-voice organ (power ecology) |
+| bind MLP (emission + garage writes) | 0.5M | 0.5M | W_bind1/2 — the bus's wire maker |
+| macro value system | 0.3M | 0.3M | W_y + h_dig2 (macro/second-value machinery) |
+| router | — | 0.1M | W_rs (snap-cond) + W_ra/W_rb (64-d) + r_gain |
+| classifier + digit heads | 0.1M | 0.1M | ftype/pres/islit/dup/sgn/sel + h_dig |
+| banks, gates, wave, misc | 0.0M (~30k) | 0.0M (~30k) | vq/fq/qq, sw_g, W_det (1.5k), gains |
+| **TOTAL** | **6.4M** | **7.8M** | stack organs add 1.4M (+22%) |
 
-Fractions of the full system: plain 0.52%, stack 0.63% of the ~1.24B
-stack. Deliberation cost: ~2% of one trunk forward per 7-breath cycle.
+Exact: plain 6,424,743 · stack 7,839,915 (66 tensors). Fractions of
+the full system: 0.52% / 0.63% of the ~1.24B stack. Deliberation cost:
+~2% of one trunk forward per 7-breath cycle.
 
 ## The capacity roadmap (registered)
-- **Genesis** (burning next): these exact twins, 50k from noise, funhouse
-  diet, seed 241 — skeleton frozen for baseline comparability.
-- **The capacity curve** (the sequel, on genesis's winner): base (~6.4M)
-  vs the fed mind (~8M package: FFN→4×, gated 2-layer waist, multi-form
-  pointers, fed ink, mixer heads free) vs the 20M mind (+2nd bank layer
-  per breath, deep everything). The slope is the deliverable; the
-  register gap is the memorization tell.
+- **Genesis** (next): these exact twins, 50k from noise, funhouse diet,
+  seed 241 — skeleton frozen for baseline comparability.
+- **The capacity curve** (on genesis's winner): base (6.4M) vs the fed
+  mind (~8M: FFN 2×→4×, gated 2-layer waist, multi-form pointers, fed
+  ink, mixer heads free) vs the 20M mind (+2nd bank layer per breath,
+  deep everything). The slope is the deliverable; the register gap is
+  the memorization tell.
