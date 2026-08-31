@@ -32678,3 +32678,20 @@ wild artery + val + the register gap. The deliverable is a SLOPE:
 flat -> capacity was never the wall (the books stand alone); rising ->
 the task's capacity appetite measured, and any 20M-successor earns its
 conversation with evidence.
+
+## 2026-09-01 — GENESIS PREP (word given): the twins' exact ledgers + the funhouse diet + the gain rule
+FOLK NUMBER CORRECTED (conviction-index spirit): the head is not 3.2M —
+it grew through the eras to 6.42M PLAIN / 7.84M STACK (+1.42M = garage
+1.31M + router 0.10M + wave/gains; breakdown banked above the fold in
+this entry's table form: bank 2.11M, mixer 1.05M, waist 1.05M, pointers
+0.79M, notebook 0.53M, bind MLP 0.52M). THE FUNHOUSE DIET BUILT: 8k
+ladder shapes x 3 teeth-costumes (0/0.4/0.8) = 24k rows, token-gated at
+birth -> form_mix11 (share ~20%; the effective-n law deliberate).
+THE GAIN RULE, pinned BEFORE the sweep lands: genesis's stack twin uses
+r_gain 0.1 IF the confirmation arm confirms; else the calibration
+curve's best-mean gain, labeled EXPLORATORY. ARMS: seed 241 both twins,
+50k @1e-4 fresh-from-noise, H_W=512/8-heads frozen skeleton. BARS:
+stack - plain >= +0.03 wild scoped args = WIN; |delta| < 0.03 =
+INCONCLUSIVE -> second seed; register gap watched (the memorization
+tell). Corpus fires now (CPU); precompute queues behind the sweep;
+the fires launch on the sweep's verdict.
