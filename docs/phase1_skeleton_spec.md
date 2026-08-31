@@ -32618,3 +32618,17 @@ loop_val vs the 0.7304 fresh baseline. Organs and parse GROWING UP
 TOGETHER — the alternation thesis's true test at the grain where
 effects are bankable. Sequencing: the power sweep lands (feeds r_gain)
 -> genesis fires on its word.
+
+## 2026-09-01 — CAPACITY BRAINSTORM banked (two heads confirmed; the quadratic correction)
+Architecture confirmed: two trained attention systems (deliberation
+~3.2M x7 breaths; router ~0.1M) + zero-param exact organs over the
+frozen once-run trunk. CAPACITY: measured-saturated for the OLD task
+(cap2x, the fresh-head summit) — but genesis's teeth-fed co-developed
+task is NEW and the width retest inherits upgraded motivation. THE
+QUADRATIC CORRECTION: 2x H_W = ~4x params (still ~1% of stack — params
+near-free) but ~4x step FLOPs (50k: ~3h -> ~10h+/fire) — the compute,
+not the parameters, prices width. SEQUENCED: genesis stays the clean
+two-arm contrast at H_W=512 WITH the cheap gift (router routing space
+64->128 — trivial FLOPs, the audit's unswept width addressed); THE
+WIDTH PAIR fires on genesis's winner (the capacity question asked once,
+on the hardest task, where the answer is worth 10h/fire).
