@@ -32454,3 +32454,26 @@ retire list with evidence, delete-nothing until the next equivalence-
 gated cleanup. The auditor's self-correction honored: the raw-shell-
 fired live set (LORA_* axes, ROPE_OFF, XARM/XOUT, STRAW, BINDTAP...)
 verified current and protected. Chores queue behind the router verdict.
+
+## 2026-09-01 — AUDIT (bug hunt, cross-examined): two LATENT landmines + the dead assert + the 1.5x
+CROSS-EXAMINATION APPLIED (the seal): the auditor's "breaks-now" pair
+downgrades to BREAKS-ON-CONFIG — its repro env omitted ALG_SIXWAVE=1
+(present in EVERY actual fire; the sixwave branch is what binds Tensor
+into forward's scope) and the explicit BIND_CODES export (in every
+launcher). The week's completed fires are the counter-proof. BUT both
+are REAL LANDMINES one config-step from every run: (1) forward() has NO
+unconditional Tensor import — the new organs (_rot2/garage/detwave/
+router cat-stack calls) live on a scope accident; any SIXWAVE-off run
+dies at step 1. FIX: unconditional import at forward's top. (2) the
+in-file BIND_CODES default is the STALE 128-pair codebook — launcher
+memory is the only guard (the prose-promotions law violated in spirit).
+FIX: derive the default from ALG_BIND_D + assert pair-count match.
+ALSO ACCEPTED: (3) assert_terminals' emitted-check is dead code (the
+no-silent-fallbacks guarantee unenforced — e.g. ROUTER at K_B<=1 trains
+None-grad silently); register the wiring. (4) longstanding: final-
+breath-only loss terms (bind CE, router span, query...) counted ~1.5x
+via the per-breath loss loop's fallback merge — pre-existing, design-
+confirm registered (uniform inflation, symmetric across all pairs ever
+run — verdicts unaffected). CLEAN BILLS: snap 4-tuple retrofit, router
+broadcast, _rb_last paths, impulse inertness, _SEV JIT pattern.
+FIXES HELD for the router chain's exit (the running-chain law).
