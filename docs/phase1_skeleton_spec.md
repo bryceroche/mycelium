@@ -32412,3 +32412,23 @@ BARS (pinned): WILD scoped pointer args (the artery, ctrl ~0.215/0.232)
 — both seeds POSITIVE and mean >= +0.02; mint loop_val within noise
 (no harm). KILL: the token-grain learned form joins the closed forms
 and the channel's future moves to wild/distractor TRAINING data.
+
+## 2026-09-01 — AUDIT (hardcode assessor, verified): THE CALIBRATION QUEUE banked
+The auditor's law-awareness held (frozen frequencies, Goodhart register,
+self-pinned rates all correctly saluted as LEAVE). ACCEPTED FINDINGS,
+tiered: (1) r_gain 0.1 vs the ajar law's canonical 0.02 — documented
+(the router owns a loss -> deadlock-immune) but UNSWEPT and 5x the
+family convention; the burning pair fires at 0.1; the 0.02 sweep joins
+the queue for after its verdict. (2) Router unswept trio: span-loss
+0.5, routing width 64, the /8.0 LITERAL (must become sqrt-derived —
+goes stale if width changes; the garage does it right two functions
+over). (3) Discrete unswept: closure sweeps=3 (may under-propagate
+deep ladders vs the depth-5 cap), SC_KB=4. (4) Older leverage knobs:
+args_w 4.0, NLA_THR 0.35, leader-merge 0.15, eligibility caps 8/6
+(check the free recovery via the existing call-budget breaker).
+(5) Idiom alignment: NB_FOCAL and LS_A are env floats where every
+sibling gain is a learnable Tensor — LS_A's "imposed" comment checked
+first (deliberate-exclusion law). ALL EDITS HELD until the router chain
+exits (the running-chain law); then: /8.0 derivation fix + the
+calibration queue prioritized behind the router verdict. Two auditors
+still out.
