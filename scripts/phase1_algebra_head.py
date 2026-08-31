@@ -122,6 +122,9 @@ TERMINALS = {
     "opc":    {"params": ["W_opc1", "W_opc1_b", "W_opc2", "W_opc2_b"],
                "emit": "opc", "gold": ["opc"],
                "when": lambda: int(os.environ.get("ALG_OPCOUNT", "0")) > 0},
+    "router": {"params": ["W_rs", "W_ra", "W_rb", "r_gain"],
+               "emit": "rbias", "gold": ["fspan"],
+               "when": lambda: int(os.environ.get("ALG_ROUTER", "0")) > 0},
     "bindbus": {"params": ["W_bind1", "W_bind1_b", "W_bind2"],
                 # tabula-rasa cleanup 2026-08-31: monolith only (the
                 # sharing monotone's winner); v1/v5/v6 in git history
@@ -802,6 +805,15 @@ def build_params(seed=0):
         # DIAGNOSTIC (never supervised); as an INPUT it is lawful.
         p["W_det"] = t(rng.randn(3, H_W) / math.sqrt(3))
         p["det_g"] = t(np.full(1, 0.02))
+    if int(os.environ.get("ALG_ROUTER", "0")):
+        # v3 THE ROUTER HEAD (2026-09-01, word given): learned token-grain
+        # routing — snap-conditioned slot queries vs waist keys, soft bias
+        # into the BANK's reads (the measured artery); trained on its OWN
+        # span loss (bootstrap law; the dual-terminal contract by design)
+        p["W_rs"] = t(rng.randn(73, H_W) / math.sqrt(73))
+        p["W_ra"] = t(rng.randn(H_W, 64) / math.sqrt(H_W))
+        p["W_rb"] = t(rng.randn(H_W, 64) / math.sqrt(H_W))
+        p["r_gain"] = t(np.full(1, 0.1))
     if int(os.environ.get("ALG_ALTMASK", "0")):
         # THE ALTERNATOR v0 (2026-08-30, word given): committed adjacency
         # (producer->consumer edges from the lattice snaps) reshapes the
@@ -872,7 +884,7 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
     B = trunk.shape[0]
     waist = (trunk @ p["waist_w"] + p["waist_b"]).gelu() + p["sent_emb"][sent]
 
-    def bank(queries, nq, extra=None, pbias=None):
+    def bank(queries, nq, extra=None, pbias=None, rbias=None):
         q_in = queries.unsqueeze(0) + (extra if extra is not None else 0)
         q = q_in @ p["attn_wq"] + p["attn_wq_b"]
         k = waist @ p["attn_wk"] + p["attn_wk_b"]
@@ -884,6 +896,9 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
         sc = (qh @ kh.transpose(-2, -1)) / math.sqrt(hd)
         if pbias is not None:   # door #62: six-wave phase-resonance bias
             sc = sc + pbias
+        if rbias is not None:   # v3: the router's soft token bias (never
+            sc = sc + rbias.unsqueeze(1) * p["r_gain"].reshape(1, 1, 1, 1)
+                                # hard -inf — A0's grave)
         sc = sc.clip(-1e4, 1e4) + (1.0 - tokmask.reshape(B, 1, 1, -1)) * -1e4
         at = sc.softmax(-1)
         st = (at @ vh).permute(0, 2, 1, 3).reshape(B, nq, H_W)
@@ -979,6 +994,7 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
         return Tensor.stack(x * c - y * s, x * s + y * c, dim=-1).reshape(*v.shape)
 
     _bus_reg = None
+    _rb_last = None
     _garage = None
     global _IMP                     # the impulse hook (systems-ID probe;
     try: _IMP                       # None everywhere except under
@@ -1114,9 +1130,22 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
                     * p["det_g"].reshape(1, 1, 1)
             if _sync is not None:   # sync-complete: transmitter ON during
                 q_extra = q_extra + _sync[1](kb)     # settle; receiver locked
+            _rb7 = None
+            if "W_ra" in p:
+                if _snaps:
+                    _sf7 = Tensor.cat(_snaps[-1][0], _snaps[-1][1],
+                                      _snaps[-1][2],
+                                      _snaps[-1][3].unsqueeze(-1), dim=-1)
+                    _cq7 = cur + _sf7 @ p["W_rs"]
+                else:
+                    _cq7 = cur
+                _rb7 = ((_cq7 @ p["W_ra"])
+                        @ (waist @ p["W_rb"]).transpose(-2, -1)) / 8.0
+                _rb_last = _rb7
             h_tok, fat_cur = bank(p["fq"], L_FAC, extra=q_extra,
                                   pbias=(_sync[0](kb) if _sync is not None
-                                         else None))
+                                         else None),
+                                  rbias=_rb7)
             bq = cur @ p["W_bq"] + p["W_bq_b"]
             bk = cur @ p["W_bk"] + p["W_bk_b"]
             bv = cur @ p["W_bv"] + p["W_bv_b"]
@@ -1278,6 +1307,8 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
                                                      # structural re-entry the
                                                      # forward cannot ignore
     out = heads_of(_s_final)
+    if _rb_last is not None:
+        out["rbias"] = _rb_last
     if int(os.environ.get("ALG_MINE_BREATHS", "0")) and K_B > 1 and slot_mask is not None:
         out["breaths_all"] = out_breaths
     if (int(os.environ.get("ALG_DEEPSUP", "0")) or ALG_CONSUME) and K_B > 1 and len(breaths) > 1:
@@ -1382,6 +1413,10 @@ def _loss_single(o, g):
                                     * (_t.pow(2).sum(-1).sqrt() + 1e-6))
         _w = 1.0 if int(os.environ.get("ALG_BINDBUS", "0")) < 3 else 0.2
         l = l + _w * ((1.0 - _cos) * pres).sum() / n_p
+    if "rbias" in o and "fspan" in g:
+        # v3 router span loss (bootstrap law: new attention pathways get
+        # DIRECT supervision — gold factor spans, per slot)
+        l = l + 0.5 * (bce(o["rbias"], g["fspan"]).mean(-1) * pres).sum() / n_p
     if "bind" in o and "bind_ids" in g and int(os.environ.get("ALG_BINDBUS", "0")) >= 3:
         # v3 THE ROLE-FACTORED LOSS: supervise each role's unbound cleanup
         # directly — conjugate-rotate the emission, CE against the codebook

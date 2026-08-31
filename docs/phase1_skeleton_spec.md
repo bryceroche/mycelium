@@ -32398,3 +32398,17 @@ THE BANK'S token attention (per breath, snap-conditioned, gold-edge/
 span-supervised via the auxiliary loss), soft bias only. The registered
 priors updated per the pinned sequencing: boolean rules cannot bridge
 wild syntax — the router carries the channel alone.
+
+## 2026-09-01 — v3 THE ROUTER HEAD FIRED (word given): learned token-grain routing on wild text
+BUILT: W_rs (snap-conditioning 73->512) + W_ra/W_rb (64-d routing space)
++ r_gain (0.1; deadlock-immune — the router owns a loss). The bias
+enters THE BANK's slot->token scores (the measured artery), soft only.
+Supervision: BCE against g_fspan per slot (gold factor spans — the
+bootstrap law's direct supervision; pairwise/token-grain gold pressure
+never used before). TERMINALS entry fenced (gold=fspan).
+PAIR (noise law; controls EXIST: 18n7/18n7b): R arms s237/s238, warm
+14a, stack envs + ALG_ROUTER=1, 6k @3e-5 -> sharp_bind19r/19rb.
+BARS (pinned): WILD scoped pointer args (the artery, ctrl ~0.215/0.232)
+— both seeds POSITIVE and mean >= +0.02; mint loop_val within noise
+(no harm). KILL: the token-grain learned form joins the closed forms
+and the channel's future moves to wild/distractor TRAINING data.
