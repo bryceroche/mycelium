@@ -32599,3 +32599,22 @@ HARDENS (the K8 lesson's general form): TRANSIENT-UNIT SCRIPTS ARE
 FULLY LITERAL — no loops, no parameter expansion, every command written
 out; a silently-degraded unit is worse than a crashed one. Refired
 unrolled: 9 remaining fires + the read fleet, every name explicit.
+
+## 2026-09-01 — THE EFFICIENCY RECKONING (Bryce's push) + THE GENESIS PAIR registered
+THE DIAGNOSIS, owned: (1) the 6k-continuation pair paradigm is NOISE-
+FLOOR-BOUND (±0.005-6 measured) — rigorous nulls at low information per
+GPU-hour for small effects; (2) every organ was BOLTED onto a converged
+substrate (14a) — co-adaptation gains are invisible by construction in
+the bolt-on paradigm, and the tabula rasa proved 50k-from-noise reaches
+the summit ("restart the computer" was the instruction, unexecuted);
+(3) the diet still lacks the organs' food (no teeth in any training
+mix — masking fights dilution that isn't there).
+REGISTERED — THE GENESIS PAIR (the decisive-contrast design): fresh-
+from-noise PLAIN vs fresh-from-noise FULL ALTERNATION STACK (router at
+the sweep's best gain + garage + wave + breathing mask from step 0),
+50k steps, diet form_mix11 = form_mix10 + funhouse/distractor ladders
+(the registered corpora finally fed), judged on the wild artery +
+loop_val vs the 0.7304 fresh baseline. Organs and parse GROWING UP
+TOGETHER — the alternation thesis's true test at the grain where
+effects are bankable. Sequencing: the power sweep lands (feeds r_gain)
+-> genesis fires on its word.
