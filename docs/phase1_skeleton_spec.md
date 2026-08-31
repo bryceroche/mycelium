@@ -32541,3 +32541,16 @@ sharp_bind17da (the detwave stack). Verdict grammar pinned: |cos|<0.2
 and small relative rms = CLEAN SPECTRUM (the era's stacked nulls stand);
 cos<-0.3 anywhere = MEASURED CANCELLATION (those verdicts gain the
 interference asterisk and port discipline becomes the next program).
+
+## 2026-09-01 — RESCUE VERDICT: THE SIGNAL LIVED AT 0.1, DIES AT 0.02 — ROUTER BANKS NEGATIVE (one rescue, honored); THE AJAR REFINEMENT CANDIDATE
+20r/20rb wild scoped args: +0.002/-0.005 vs controls — the lawful 0.02
+nulls the effect the 0.1 arms showed (+0.028/+0.011). Per the pinned
+rules (one rescue, no variants): THE ROUTER CLOSES NEGATIVE, its 0.1
+config banked as the era's best UNCONFIRMED wild signal (both-seeds-
+positive, missed by 0.0005; any revisit is a NEW program — gain-swept,
+more seeds — on a new word). THE LAW LEARNS: ajar-0.02 protects gates
+over UNSUPERVISED learnable paths (the deadlock); an organ with ITS OWN
+LOSS may need louder entry — banked as a REFINEMENT CANDIDATE (evidence:
+one seed-pair, not law-grade). Mint loop_vals unharmed (0.8119/0.8138).
+NEXT: census hooks apply (the chain exited), equivalence gate, the
+spectrum reads on 19r + 17da.
