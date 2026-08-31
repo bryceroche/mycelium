@@ -32382,3 +32382,19 @@ bias through a gain, deadlock-immune via the router's own loss.
 Sequencing: the wild 2x2 scopes the priors (null -> boolean rules
 cannot bridge wild syntax, router carries the channel alone; signal ->
 the router amplifies a real seed). Holds for the word.
+
+## 2026-09-01 — WILD 2x2: EXACTLY ZERO (the opening was VACUOUS); the masking story's true anatomy
+All four cells identical to the 3rd decimal (wild and mint alike). NOT
+"masking fails" — the v2 open-by-commitment form OPENED NOTHING: the
+base slot mask runs ~16/24 mean degree and committed edges (typically
+near-neighbors) already sit inside the allowed set. The eval-time
+masking forms (v0 soft bias, v2 hard open) are now BOTH closed with
+mechanism: the slot-mixer mask was never the binding constraint on
+committed structure. THE AIM CORRECTION FOR v3 (the router head):
+the dilution that matters on wild text lives at the TOKEN GRAIN — the
+bank's slot->token reads (where wild pointer args crater to 0.215-0.232
+scoped) — not the slot-mixer. v3 re-aimed: the learned router biases
+THE BANK'S token attention (per breath, snap-conditioned, gold-edge/
+span-supervised via the auxiliary loss), soft bias only. The registered
+priors updated per the pinned sequencing: boolean rules cannot bridge
+wild syntax — the router carries the channel alone.
