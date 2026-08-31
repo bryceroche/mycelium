@@ -32632,3 +32632,19 @@ two-arm contrast at H_W=512 WITH the cheap gift (router routing space
 64->128 — trivial FLOPs, the audit's unswept width addressed); THE
 WIDTH PAIR fires on genesis's winner (the capacity question asked once,
 on the hardest task, where the answer is worth 10h/fire).
+
+## 2026-09-01 — HEAD-COUNT SCALING (Bryce's brainstorm): the near-free axis, aimed at the wound
+THE ACCOUNTING: at fixed H_W, head count is a RESHAPE — 8->16 heads =
+zero new params, ~zero FLOPs, hd 64->32; buys relational DIVERSITY,
+costs per-head rank (re-allocation, not capacity — the honest caveat).
+The direction matches the wound: wild args = binding discrimination =
+relations = the heads axis (width/cap2x = the content axis, already
+measured flat). SITE AUDIT: (1) THE SLOT MIXER IS SINGLE-HEADED — one
+bilinear carries all slot<->slot relations (the most head-starved organ;
+where wiring, the alternator, and committed structure live); (2) the
+router is single-headed (64-d; 4x32 could dedicate patterns to edges/
+spans/values). REGISTERED: genesis stays 8-head both twins (one-dial;
+baseline-comparable); THE CAPACITY SEQUEL becomes three arms on the
+winner: heads-16 (free) vs width-2x (priced) vs base — the two scaling
+philosophies raced honestly; multi-head mixer + multi-head router ride
+the sequel as site upgrades.
