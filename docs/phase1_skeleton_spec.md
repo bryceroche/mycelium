@@ -32572,3 +32572,18 @@ decision, not a deadlock guard (which they don't need). ACCEPTANCE =
 LOUDNESS is the era's power ecology in two words. The interference
 program closes: spectrum clean, ecology mapped, the census a standing
 instrument.
+
+## 2026-09-01 — THE ROUTER POWER PROGRAM (word given) + the unique-ID answer banked
+ID HYGIENE: the fixture corruption WAS a key-collision incident (book-
+local src_idx as global keys) — the standing law is content-identity /
+composite-natural keys; CHORE REGISTERED: verify the WL digest's
+collision margin at corpus scale (the canonical problem ID guards
+train/test disjointness). THE ROUTER POWER PROGRAM (the census's power
+mechanism made a program; selection-bias guarded): FRESH seeds 239/240
+throughout — controls (2 fires) + gains {0.05, 0.1, 0.15, 0.2} x 2
+seeds (8 fires) via R_GAIN_INIT. PRE-REGISTERED SPLIT: gain 0.1 = THE
+CONFIRMATION ARM (the standing both-seeds-positive hypothesis; bar
+unchanged: both fresh seeds positive AND mean >= +0.02 on wild scoped
+ptr args vs the fresh controls); gains 0.05/0.15/0.20 = CALIBRATION
+ONLY (the dose-response curve; no claims without their own later
+confirmation). Mint loop_val within noise rides as the no-harm check.
