@@ -32648,3 +32648,20 @@ baseline-comparable); THE CAPACITY SEQUEL becomes three arms on the
 winner: heads-16 (free) vs width-2x (priced) vs base — the two scaling
 philosophies raced honestly; multi-head mixer + multi-head router ride
 the sequel as site upgrades.
+
+## 2026-09-01 — THE STARVATION AUDIT (Bryce's brainstorm): the ~2.5x capacity package
+Correction folded in: head-count is a free reshape (zero params) — the
+2-3x growth comes from the starved organs. THE AUDIT: (1) THE FFN IS 1x
+EXPANSION (512->512->512 vs the 4x convention — the most standard
+starvation possible; +1.6M, linear cost); (2) THE WAIST IS ONE LINEAR
+MAP (2048->512 squeezed 4:1 through a single matrix — the register wall
+may partly live at the front door; gated 2-layer encoder +1M); (3) THE
+POINTER HEADS ARE SINGLE BILINEAR FORMS (the artery organ — wild args
+0.22 — expresses every arg relation through ONE 512x512 form;
+multi-form pointers +0.5-1M); (4) the notebook's ink is one linear
+stamp (feed the loud one — the power ecology's counsel; +0.5M);
+(5) mixer heads free, mixer depth +1M optional. PACKAGE: ~+5M -> ~8M
+(~2.5x), step cost ~+50% (linear, no quadratic) — 50k under 5h. ENTERS
+AS ONE CONTRAST per the reckoning's law: the capacity sequel = winner +
+FULL PACKAGE vs winner (was the mind starved? — one night, one answer);
+genesis's skeleton stays frozen for baseline comparability.
