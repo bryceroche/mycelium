@@ -815,7 +815,9 @@ def build_params(seed=0):
         p["W_rs"] = t(rng.randn(73, H_W) / math.sqrt(73))
         p["W_ra"] = t(rng.randn(H_W, 64) / math.sqrt(H_W))
         p["W_rb"] = t(rng.randn(H_W, 64) / math.sqrt(H_W))
-        p["r_gain"] = t(np.full(1, 0.1))
+        p["r_gain"] = t(np.full(1, float(os.environ.get("R_GAIN_INIT", "0.02"))))
+        # rescue 2026-09-01: default aligned to the AJAR law (0.02);
+        # sweepable via R_GAIN_INIT (the 0.1 deviation was unswept)
     if int(os.environ.get("ALG_ALTMASK", "0")):
         # THE ALTERNATOR v0 (2026-08-30, word given): committed adjacency
         # (producer->consumer edges from the lattice snaps) reshapes the

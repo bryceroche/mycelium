@@ -32500,3 +32500,11 @@ guard: ROUTER asserts ALG_BREATH>1 at build (the auditor's silent
 None-grad scenario now fails loudly; full emitted-wiring registered for
 the harness era). EQUIVALENCE GATE: all three living configs bit-
 identical post-surgery (max dev 0.0).
+
+## 2026-09-01 — THE ROUTER RESCUE FIRED (word given): r_gain at the ajar law's 0.02
+r_gain init aligned to the family convention (0.02; env-sweepable via
+R_GAIN_INIT) — the audit-pre-registered rescue. Pair seeds 237/238, warm
+14a, identical arms otherwise -> sharp_bind20r/20rb + wild reads +
+loop_vals. BAR (unchanged): wild scoped ptr args both seeds positive AND
+mean >= +0.02 vs controls (0.215/0.225); mint within noise. NO FURTHER
+VARIANTS — this is the one rescue.
