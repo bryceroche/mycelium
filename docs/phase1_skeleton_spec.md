@@ -32488,3 +32488,15 @@ numbers existed — the cleanest rescue provenance possible): the fired
 r_gain=0.1 deviates 5x from the ajar law's 0.02 with no sweep; the
 rescue pair = identical arms at r_gain=0.02, same bar (both positive,
 mean >= +0.02), no further variants. Holds for the word.
+
+## 2026-09-01 — THE LANDMINES DEFUSED (word given): equivalence-gated at bit-identity
+(1) forward() gains its unconditional Tensor/dtypes import — the scope
+accident closed (SIXWAVE-off no longer kills five organs). (2)
+BIND_CODES default DERIVED from ALG_BIND_D (_bind_codes_path: 128/256/
+512 map + a pair-count assert at load — stale codebooks now fail loudly;
+3 call sites rewired; launcher memory retired as a dependency mechanism).
+(3) _snap_g5 initialized with its siblings. (4) the minimal emitted-
+guard: ROUTER asserts ALG_BREATH>1 at build (the auditor's silent
+None-grad scenario now fails loudly; full emitted-wiring registered for
+the harness era). EQUIVALENCE GATE: all three living configs bit-
+identical post-surgery (max dev 0.0).

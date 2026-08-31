@@ -415,7 +415,7 @@ def build_gold(samples, offsets):
         # THE ROTATIONAL BINDING BUS (2026-08-28, word given): per-slot gold
         # bound vectors — role-phase rotations of var/op codes (VSA in the
         # Fourier domain; codes deterministic from .cache/bindbus_codes.npz)
-        _bz = np.load(os.environ.get("BIND_CODES", ".cache/bindbus_codes.npz"))
+        _bz = np.load(_bind_codes_path())
         _CB = _bz["CB"]; _P = _CB.shape[1] // 2
         def _rotv(v, th):
             v2 = v.reshape(_P, 2)
@@ -806,6 +806,8 @@ def build_params(seed=0):
         p["W_det"] = t(rng.randn(3, H_W) / math.sqrt(3))
         p["det_g"] = t(np.full(1, 0.02))
     if int(os.environ.get("ALG_ROUTER", "0")):
+        assert int(os.environ.get("ALG_BREATH", "1")) > 1, \
+            "ROUTER emits only inside the breath loop (no-silent-fallbacks)"
         # v3 THE ROUTER HEAD (2026-09-01, word given): learned token-grain
         # routing — snap-conditioned slot queries vs waist keys, soft bias
         # into the BANK's reads (the measured artery); trained on its OWN
@@ -880,7 +882,27 @@ if ALG_NOTEBOOK:
     assert _cc < 0.35, f"sharpness assert FAILED: stamp cos {_cc:.3f}"
 
 
+def _bind_codes_path():
+    """audit 2026-09-01: the default DERIVED from ALG_BIND_D (launcher
+    memory is not a dependency mechanism — the prose-promotions law)."""
+    d = int(os.environ.get("ALG_BIND_D", "128"))
+    default = {128: ".cache/bindbus_codes.npz",
+               256: ".cache/bindbus_codes256.npz",
+               512: ".cache/bindbus_codes512.npz"}.get(d,
+                    ".cache/bindbus_codes.npz")
+    path = os.environ.get("BIND_CODES", default)
+    import numpy as _np_bc
+    _cb = _np_bc.load(path)["CB"]
+    assert _cb.shape[1] == d, \
+        (f"BIND_CODES pair-count mismatch: {path} carries D={_cb.shape[1]} "
+         f"but ALG_BIND_D={d} — stale codebook")
+    return path
+
+
 def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, drop=None, anchor=None, amask=None, gmod=None, pmask=None, lsent=None, reg=None):
+    from tinygrad import Tensor, dtypes   # audit 2026-09-01: was a
+    # SCOPE ACCIDENT (bound only via the sixwave/sync branches — any
+    # SIXWAVE-off config killed five organs at step 1)
     B = trunk.shape[0]
     waist = (trunk @ p["waist_w"] + p["waist_b"]).gelu() + p["sent_emb"][sent]
 
@@ -1009,7 +1031,7 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
         if _SGC is None:
             import numpy as _np4
             from tinygrad import Tensor as _Ts4
-            _bz4 = _np4.load(os.environ.get("BIND_CODES", ".cache/bindbus_codes.npz"))
+            _bz4 = _np4.load(_bind_codes_path())
             _conj4, _plus4 = {}, {}
             for _rn4 in ("arg1", "arg2", "res", "op"):
                 _th4 = _bz4[f"theta_{_rn4}"]
@@ -1254,6 +1276,7 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
                     _cj4, _pl4, _CBt4 = _SGC
                     _canon4 = None
                     _snap_a5 = _snap_b5 = _snap_r5 = None
+                    _snap_g5 = None
                     for _rn4 in ("arg1", "arg2", "res", "op"):
                         _zc4 = _rot2(_wg4, *_cj4[_rn4])
                         _lg4 = _zc4 @ _CBt4.T
@@ -1428,7 +1451,7 @@ def _loss_single(o, g):
         if _BINDC is None:
             import numpy as _np
             from tinygrad import Tensor as _T3
-            _bz = _np.load(os.environ.get("BIND_CODES", ".cache/bindbus_codes.npz"))
+            _bz = _np.load(_bind_codes_path())
             _CBt = _T3(_bz["CB"].astype(_np.float32))
             _rc = {}
             for _ri, _r in enumerate(("arg1", "arg2", "res", "op")):
