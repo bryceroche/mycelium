@@ -32528,3 +32528,16 @@ SNR (organ signal vs breath_emb+notebook incumbents). Verdict grammar:
 orthogonal-and-small = clean spectrum (nulls stand); anti-aligned pairs
 = measured cancellation (stacked verdicts get an interference asterisk).
 Queues behind the rescue pair.
+
+## 2026-09-01 — THE PORT CENSUS BUILT + STAGED (word given)
+Built: scripts/port_census.py (per-breath organ injections: rms vs the
+state baseline, pairwise cosines, the interference grammar) +
+scripts/apply_census_hooks.py (the staged 6-anchor hook patch — state/
+breath_emb/notebook/garage/detwave/router captures, inert-by-default
+_CENSUS pattern like _IMP). SEQUENCE per the running-chain law: the
+rescue chain exits -> hooks applied -> eq_check equivalence gate ->
+census fires on sharp_bind19r (router+garage+circle+altmask stack) and
+sharp_bind17da (the detwave stack). Verdict grammar pinned: |cos|<0.2
+and small relative rms = CLEAN SPECTRUM (the era's stacked nulls stand);
+cos<-0.3 anywhere = MEASURED CANCELLATION (those verdicts gain the
+interference asterisk and port discipline becomes the next program).
