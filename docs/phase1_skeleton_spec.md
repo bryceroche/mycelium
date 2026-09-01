@@ -32873,3 +32873,25 @@ capacity tier: 0 at genesis baseline / 8 at the fed mind / 16 at the
 heads = more views per breath, more scratch = more addresses — the
 complementary axes). This keeps the capacity curve readable: params
 move, task format doesn't.
+
+## 2026-08-31 — THE ROUTER POWER VERDICT: KILLED (honest negative banked)
+
+router-power2 complete (fully-literal unit; 2 fresh seeds x control +
+4 gains {0.05,0.1,0.15,0.2}, 5k steps each; read fleet in-unit ->
+.cache/router_power_reads.log). Pre-pinned bar for the 0.1
+confirmation arm: BOTH seeds positive AND mean >= +0.02 wild scoped
+args vs same-seed controls. Result: s239 +0.002, s240 -0.024, mean
+-0.011 -> **KILL**. Full dose-response FLAT-TO-NEGATIVE (best mean =
+0.15 at -0.000; worst 0.2 at -0.014); s240's control read itself high
+(0.251 vs the ~0.22-0.23 band) — the fixture's seed/read noise brackets
+every delta. THE LOUDNESS HYPOTHESIS ANSWERED: power was not the
+blocker — 10x the silenced gain moves nothing. The router's earlier
+wild signal is ruled seed noise (the seed-noise law's third specimen).
+Collateral clean: BUS recovery + op/res flat at all gains (router
+inert, not harmful). GENESIS GAIN RULE RESOLVED per registration: not
+confirmed -> best-mean gain 0.15 ships as R_GAIN_INIT labeled
+EXPLORATORY (learnable gain; init only — no capability claim rides on
+it). The alternation road to wild gains now runs through the
+alternator + dynamic masking program and the wild-data diet, not
+router power. GPU: sweep released; genesis-prep (form11 precompute)
+now holds the device; wild certification queues behind it.
