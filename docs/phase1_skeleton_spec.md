@@ -32719,3 +32719,20 @@ visit-decay sampling into the head trainer for genesis-era diets
 (lawful, proven, loss-free; holds for word); (b) the standing arrow:
 every diet conversation ends at the books (round 7 grows trainable wild
 rows that no fixture owns).
+
+## 2026-09-01 — BOOKS ROUND 7 FIRED (word given): the harvest delegation, template-scarcity motivated
+Bryce's driver banked: the mint corpus is FEW TEMPLATES in many
+costumes (the effective-n law's warning) — only the harvest grows true
+shapes, for train AND test. THE FRONTIER RE-MEASURED: 1,376 eligible
+candidates (harvest minus drafted, integer answers <=300, length-
+bounded) — far deeper than the L3-lane figure. ROUND 7: three Sonnet
+annotators x 50-problem slices, the consolidated brief (the factor
+grammar rel/given with mul-inverse + add-encoded-sub; the eight hard
+laws incl the anchor law, no answer-stuffing, hand-verified solve; THE
+FAITHFULNESS LAW with its numerology negatives; skip-with-named-reason
+honored, 40-70% skip expected). PIPELINE UNCHANGED AND CONSTITUTIONAL:
+drafts -> MY seal (every row reviewed against raw text — the seal is
+the product) -> the 5-view + answer-key gate certification (GPU,
+queued behind genesis) -> book14 batches (book-local src_idx = the
+harvest_idx; text-identity keying downstream per custody law). Zero
+wrong rows ever banked; the streak defends itself.
