@@ -2,7 +2,7 @@
 
 Bryce Roche is an independent AI researcher, technologist, and lifelong endurance athlete whose path has taken him from the mountains of Montana to collegiate competition in Vermont, open-water racing in the Pacific, and now the problem of how machines can learn to reason.
 
-Bryce grew up in **Bozeman, Montana**, where Nordic skiing and distance running became a major part of his life. As a junior Nordic skier, he competed nationally and earned **All-American honors at the 2001 Junior Olympics in Marquette, Michigan**.
+Bryce grew up in **Bozeman, Montana**, where the outdoors shaped him early: hiking and mountain biking in the mountains around town, rafting the **Grand Canyon**, and — at age ten — riding a **bicycle from Bozeman to Texas with his dad**, an early lesson in what patience and daily mileage can accomplish. Nordic skiing and distance running became a major part of his life; as a junior Nordic skier, he competed nationally and earned **All-American honors at the 2001 Junior Olympics in Marquette, Michigan**.
 
 He went on to attend **Middlebury College in Vermont**, graduating with the Class of 2005. At Middlebury, Bryce competed in both **varsity Nordic skiing and varsity cross-country running**, continuing the endurance-sports career he had begun in Montana.
 
