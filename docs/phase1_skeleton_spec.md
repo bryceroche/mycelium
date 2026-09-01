@@ -32766,3 +32766,19 @@ whole machine within +/-0.005 of criticality. THE PAPER SENTENCE:
 deliberation is annealed near-critical dynamics with a contractive
 symbolic subspace. (The omega axis stays empty — no ringing was
 measured; the sextet hypothesis remains lawfully unfired.)
+
+## 2026-09-01 — THE PROPAGATOR SYNTHESIS (relay graded): accepted with Phase III struck
+ACCEPTED: the time-ordered propagator formalism (P = A_k products;
+lambda_eff = gain ratios), the evolving-propagator-not-LTI honesty, the
+five-instrument state-space table (ladder=computation, radius=
+confidence, propagator=retention, lattice=discrete state, Nazare=
+commitment). STRUCK, twice-fabricated: "Phase III: breaths 6-7
+contractive lock via GAC/MRV" — (a) NO solver engages in-loop (the
+outer jaw only; the ghost's fourth resurrection), (b) NO k0=5-7 data
+exists (probes covered k0 1-4). The measured truth is better: the
+lattice's contraction is a SUBSPACE PROPERTY active throughout the
+annealed regime (fact 0.999 vs noise 1.002-1.004 from kick-breath ~3),
+not a terminal phase. "Circulating on the bus" struck again (the
+mailbox does not circulate). AMENDED PAPER WORDING banked in this
+entry's body — scoped to measured ranges, the half-percent-of-
+criticality sentence as the flagship.
