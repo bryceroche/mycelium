@@ -32736,3 +32736,18 @@ the product) -> the 5-view + answer-key gate certification (GPU,
 queued behind genesis) -> book14 batches (book-local src_idx = the
 harvest_idx; text-identity keying downstream per custody law). Zero
 wrong rows ever banked; the streak defends itself.
+
+## 2026-09-01 — GENESIS HELD FOR WILD TEXT (Bryce's word): the diet gate pinned
+Genesis's fires are HELD until the wild pantry supports a proper run.
+THE GATE PROPOSED AND PINNED: >= 300 certified trainable wild rows
+(true shapes — likely exceeding the mint corpus's real template count),
+accumulated via annotation rounds (r7 in flight: 150 candidates; r8+
+launch as each round clears the seal; the frontier holds 1,376).
+SPLIT DISCIPLINE for new rows: 80/20 train/holdout by text identity —
+the holdout becomes the FIXTURE REFRESH (a wild eval pool no training
+run has ever touched; the current 177 stays the legacy fixture).
+DIET PLAN: form_mix12 = form_mix11 (mint+funhouse; its precompute
+proceeds as the base) + the certified wild rows at a DECLARED dose with
+straw-human-style reps (the straw port's first duty). The sweep verdict
+still lands (the gain rule holds); genesis fires the day the pantry
+crosses 300.
