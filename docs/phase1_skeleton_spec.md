@@ -32829,3 +32829,29 @@ Effective-n law satisfied where it matters: shapes are n, and this
 lane buys ~878 shapes against the mint's closed grammar. HELD for the
 word: 5-view certification of r7 + GSM8K drafts (GPU, behind the
 sweep), and the wild-lane's admission + dose into form_mix12.
+
+## 2026-08-31 — SCRATCH SLOTS registered (word given; capacity-curve candidate)
+
+**The idea (imported from DINOv2's register tokens, Darcet et al., via
+the ResNet lineage review):** all 24 factor slots are output-bound —
+every slot is graded. The organism has NO ungraded working memory in
+the bank; the register-token result predicts global context is being
+smuggled into whichever factor slots a given problem leaves unused
+(the exact pathology Meta found in background patches). **Registered
+remedy: +8 SCRATCH SLOTS — full attention citizens (attend over
+tokens and slots every breath), EXEMPT from emission, grading, and
+every loss term (the Goodhart fence applies: scratch content is never
+supervised, or it stops being scratch).** Allocation ruling: APPENDED,
+not carved — 24 factor + 8 scratch = 32 bank rows. The carve-out was
+measured and refused: 22.4% of funhouse24k rows use >16 factors, max
+row uses all 24 — carving 8 would clip genesis's own diet. Cost: ~4k
+params (8x512 slot embeds) + 24->32 attention rows. Placement: the
+capacity-curve package (fed mind), NOT the genesis baseline — genesis
+twins stay skeleton-frozen for comparability. Companion rules from the
+same review, pinned for the fed/20M builds: 2nd bank layer writes
+ADDITIVELY with zero-init output projection, identity path untouched
+(the V11 zero-init law and the ResNet branch recipe are one law); the
+2-layer waist goes residual (linear + residual MLP), never a deeper
+bottleneck stack. Bar at test time: wild-register gap shrinks OR
+unused-factor-slot activity cleans up vs the no-scratch twin; flat on
+both = honest negative, scratch slots retired.
