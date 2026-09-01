@@ -157,6 +157,8 @@ answer; it should be a decision.</p>
 <a href="paper1.pdf">PDF</a>
 <a href="ledger.md">The ledger (supplementary)</a>
 <a href="https://github.com/bryceroche/mycelium">Code</a>
+<a href="blog/">Blog</a>
+<a href="bio/">About</a>
 </div>
 <h2>Abstract</h2>
 {abstract_html}
@@ -186,6 +188,24 @@ gate annotated with the failure it provably catches.</figcaption></figure>
 home; the byline is the byline.</p>
 """)
 
+# ---------------------------------------------------------------- blog + bio
+BLOG = ROOT / "site" / "blog"
+blog_pages = []
+for md in sorted(BLOG.glob("*.md"), reverse=True):
+    lines = md.read_text().split("\n")
+    meta = {}
+    while lines and ":" in lines[0] and not lines[0].startswith("#"):
+        k, v = lines.pop(0).split(":", 1)
+        meta[k.strip()] = v.strip()
+    slug = md.stem
+    bhtml = markdown.markdown("\n".join(lines), extensions=["tables", "smarty"])
+    blog_pages.append((slug, meta.get("title", slug), meta.get("date", ""), bhtml))
+blog_index = "<h1 class=\"paper-title\">Blog</h1>\n<ul class=\"cardlist\">" + "".join(
+    f'<li><a href="{slug}/"><strong>{t}</strong></a> · {d}</li>'
+    for slug, t, d, _ in blog_pages) + "</ul>"
+bio_src = (ROOT / "site" / "bio.md").read_text()
+bio_html = markdown.markdown(bio_src, extensions=["smarty"])
+
 # ---------------------------------------------------------------- write dist
 if DIST.exists():
     shutil.rmtree(DIST)
@@ -199,3 +219,17 @@ for png in (PAPER / "figures" / "out").glob("*.png"):
     shutil.copy(png, DIST / "figures" / png.name)
 n = sum(1 for _ in DIST.rglob("*") if _.is_file())
 print(f"[site] {n} files -> {DIST}")
+
+(DIST / "blog").mkdir(exist_ok=True)
+(DIST / "blog" / "index.html").write_text(page("Blog — The Shape of Thought", blog_index, depth=1))
+for slug, t, d, bhtml in blog_pages:
+    (DIST / "blog" / slug).mkdir(parents=True, exist_ok=True)
+    (DIST / "blog" / slug / "index.html").write_text(
+        page(f"{t} — The Shape of Thought",
+             f'<p class="stamp">{d}</p><div class="paper-body">{bhtml}</div>'
+             f'<p><a href="../">&larr; all posts</a></p>', depth=2))
+(DIST / "bio").mkdir(exist_ok=True)
+(DIST / "bio" / "index.html").write_text(
+    page("Bryce Roche — The Shape of Thought",
+         f'<div class="paper-body">{bio_html}</div>', depth=1))
+print(f"[site] blog: {len(blog_pages)} posts + bio page")
