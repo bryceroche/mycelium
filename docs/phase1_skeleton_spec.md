@@ -32939,3 +32939,38 @@ staged forward patch apply_alternator_v2.py + eq_check AFTER
 genesis-prep releases the GPU (never-edit-a-running-invocation law)
 -> mint smoke (mechanics only) -> wild arms AFTER certification and
 the word.
+
+## 2026-09-01 — ALTERNATOR V2 ROUND 1: mechanics PASS, mint verdict INERT
+## (the redundancy law's value-level specimen); wild-ladder bar PENDING
+
+Chain ran end-to-end (alt2-chain2; first fire burned on a modeless
+invocation — argparse help exits 0; FENCED: the head now hard-errors
+exit 2 on no mode flag). **Equivalence bar (a): PASS** — eq A/B/C
+pre/post bit-identical x3. Smoke PASS (best val 0.7530). Twin arms
+(ctrl/alt2 x 239/240, form11, warm 14a, 6k): **capability bar (b)
+FAILED in round 1** — fact-fed loop_val: on239 0.4725 vs ctrl239
+0.7568 (-0.284, a basin COLLAPSE, jostle not data: FACTS banks
+identical across seeds by construction); on240 0.7579 vs ctrl240
+0.6538 (+0.104, best of all four); seeds disagree violently (form11
+grain itself rough: controls gape 0.103). **THE AUTOPSY (three cuts,
+one diagnosis)**: fed-vs-ablated read delta ~0.000 on BOTH seeds; yet
+alt2_g grew 0.02 -> 0.077/0.069 (3.5x, both seeds) and the buffer
+rides FULL (92% of items carry facts, ~4/item at theta 0.9). Gate
+open + buffer full + zero delta = the facts are REDUNDANT on mint:
+GAC over the parse's OWN confident commitments can only re-tell the
+parse what it committed — solution-space values injected into a
+structure-space task. The redundancy verdict (no in-loop reinjection
+of cur-derived signals pays) recurs one level up, exactly as the
+canonical-shelf admission rule predicted: only non-derivable content
+qualifies. **What remains OPEN (the actual hypothesis)**: wild
+narrative ladders, where derived values inform STRUCTURE (the
+chained-fdiv autopsy's derived-value digit path; arg disambiguation).
+Kill bar (c) explicitly names wild rows >=5 rels — the wild-ladder
+fixture does not exist until GSM8K certification lands (311 drafts
+with >=5 rels wait there). Round-2 protocol registered: certify ->
+build wild-ladder holdout -> fact-fed wild reads (bind_read gains the
+fact path) -> bar (c) decides advance-or-retire. Instruments banked:
+loop_val fact-fed mode (matches _quick_val to 4 decimals); ablation
+read = fed-vs-ablated delta, free per checkpoint. sharp_alt2on240
+(0.7590 ablated loop-val, 0.262 wild args) is PANEL-ELIGIBLE
+(means-vs-overlaps law) regardless of the organ verdict.

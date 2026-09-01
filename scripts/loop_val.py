@@ -30,7 +30,20 @@ for s0 in range(0, len(vs), 8):
     o0 = forward(p, ts, tk, se)
     onp0 = {k: o0[k].realize().numpy() for k in ("fat", "args", "res")}
     mk = build_slot_masks(onp0, vse[sl_p].astype(np.int32))
-    o = forward(p, ts, tk, se, slot_mask=Tensor(mk, dtype=dtypes.float))
+    fact_t = None
+    if int(os.environ.get("ALG_ALT2", "0")):
+        # ALTERNATOR V2 fact-fed read (2026-09-01): live facts from this
+        # checkpoint's own pass-1 parse — same convention as _quick_val
+        from phase1_algebra_head import alt2_fact_buf, K_VARS
+        _ka = ("pres", "ftype", "op", "dig") + \
+            (("dup",) if "dup" in o0 else ())
+        _oa = {**onp0, **{k: o0[k].realize().numpy() for k in _ka}}
+        _nv = np.array([vs[int(i)].get("n_vars", K_VARS) for i in sl_p])
+        _ma = np.array([vs[int(i)].get("m", 0) for i in sl_p])
+        fb = alt2_fact_buf(_oa, vse[sl_p].astype(np.int32), _nv, _ma)
+        fact_t = Tensor(fb, dtype=dtypes.float)
+    o = forward(p, ts, tk, se, slot_mask=Tensor(mk, dtype=dtypes.float),
+                fact_buf=fact_t)
     onp = {k: o[k].realize().numpy() for k in
            (("pres", "ftype", "op", "islit", "dig", "args", "res")
             + (("dup",) if "h_dup" in p else ()))}
