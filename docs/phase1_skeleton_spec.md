@@ -32704,3 +32704,18 @@ flag softened, the package's FFN line becomes 2x->4x); (2) THE MACRO
 VALUE SYSTEM (W_y + h_dig2, ~0.3M) was hiding in "other" — named as
 its own organ. docs/param_ledger.md updated, rounded to 100k, exact
 totals at the foot (6,424,743 / 7,839,915).
+
+## 2026-09-01 — DIET TILTING (Bryce's question, answered straight)
+NO adaptive tilt exists, in three layers: (1) schedule-tilting is DEAD
+BY MEASUREMENT (curriculum lost +88/+116; the dose law demands declared
+static shares; val-adaptive mixing = training on the meter — Goodhart's
+front door); (2) THE STRAW (G64/65: loss-free class/visit-decay
+sampling, the first wild liftoff ever) is the one lawful adaptive
+sampler — and it lives in the LoRA line, not the head trainer;
+(3) the wild pantry is nearly empty: ~150-177 true wild rows, mostly
+fixture-reserved — genesis's form_mix11 is 100% synthetic with the
+funhouse as the constitutional proxy. REGISTERED: (a) THE STRAW PORT —
+visit-decay sampling into the head trainer for genesis-era diets
+(lawful, proven, loss-free; holds for word); (b) the standing arrow:
+every diet conversation ends at the books (round 7 grows trainable wild
+rows that no fixture owns).
