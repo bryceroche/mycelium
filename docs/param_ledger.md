@@ -34,7 +34,10 @@ the full system: 0.52% / 0.63% of the ~1.24B stack. Deliberation cost:
 - **Genesis** (next): these exact twins, 50k from noise, funhouse diet,
   seed 241 — skeleton frozen for baseline comparability.
 - **The capacity curve** (on genesis's winner): base (6.4M) vs the fed
-  mind (~8M: FFN 2×→4×, gated 2-layer waist, multi-form pointers, fed
-  ink, mixer heads free) vs the 20M mind (+2nd bank layer per breath,
-  deep everything). The slope is the deliverable; the register gap is
-  the memorization tell.
+  mind (~8M: FFN 2×→4×, RESIDUAL 2-layer waist, multi-form pointers,
+  fed ink, mixer heads free, +8 scratch slots) vs the 20M mind (+2nd
+  bank layer per breath — additive, zero-init projection, identity
+  path untouched — deep everything, +16 scratch slots). Slot-scaling
+  doctrine (ledger 2026-08-31): var/factor slots FROZEN at 24 across
+  the curve; scratch scales with tier (0/8/16). The slope is the
+  deliverable; the register gap is the memorization tell.
