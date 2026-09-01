@@ -58,6 +58,10 @@ h1.paper-title { font-size: 2.0rem; line-height: 1.25; margin: 2.6rem 0 0.8rem;
 .lede { font-size: 1.18rem; font-style: italic; color: var(--accent);
   border-left: 3px solid var(--accent); padding-left: 0.9rem;
   margin: 1.6rem 0; text-wrap: balance; }
+.topnav { display: flex; gap: 1.1rem; align-items: baseline; }
+.topnav a { color: var(--ink-dim); text-decoration: none; font-size: 0.95rem; }
+.topnav a:hover { color: var(--accent); }
+.masthead .wrap { display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap; gap: 0.5rem; }
 .actions { display: flex; flex-wrap: wrap; gap: 0.6rem; margin: 1.4rem 0 2rem; }
 .actions a { border: 1.5px solid var(--accent); color: var(--accent);
   text-decoration: none; padding: 0.45rem 0.95rem; border-radius: 3px;
@@ -114,7 +118,12 @@ def page(title, body, depth=0):
 <style>{CSS}</style>{THEME_JS}</head><body>
 <header class="masthead"><div class="wrap">
 <a class="brand" href="{p if depth else './'}">The Shape of Thought</a>
+<nav class="topnav">
+<a href="{p if depth else './'}paper/">Paper</a>
+<a href="{p if depth else './'}blog/">Blog</a>
+<a href="{p if depth else './'}bio/">About</a>
 <a class="theme-note" href="javascript:flip()">light / dark</a>
+</nav>
 </div></header>
 <div class="wrap">
 {body}
