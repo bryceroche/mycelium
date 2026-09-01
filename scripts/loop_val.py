@@ -31,7 +31,8 @@ for s0 in range(0, len(vs), 8):
     onp0 = {k: o0[k].realize().numpy() for k in ("fat", "args", "res")}
     mk = build_slot_masks(onp0, vse[sl_p].astype(np.int32))
     fact_t = None
-    if int(os.environ.get("ALG_ALT2", "0")):
+    if int(os.environ.get("ALG_ALT2", "0")) \
+            and not int(os.environ.get("LV_NOFACT", "0")):
         # ALTERNATOR V2 fact-fed read (2026-09-01): live facts from this
         # checkpoint's own pass-1 parse — same convention as _quick_val
         from phase1_algebra_head import alt2_fact_buf, K_VARS

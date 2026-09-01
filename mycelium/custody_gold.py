@@ -23,6 +23,11 @@ HARVEST_PATH = ".cache/math_harvest_v0.jsonl"
 _harvest_by_text = None
 
 
+GSM8K_PARQUET = (".cache/gsm8k/datasets--openai--gsm8k/snapshots/"
+                 "740312add88f781978c0658806c59bc2815b9866/main/"
+                 "train-00000-of-00001.parquet")
+
+
 def _load_harvest():
     global _harvest_by_text
     if _harvest_by_text is None:
@@ -30,6 +35,18 @@ def _load_harvest():
         for line in open(HARVEST_PATH):
             r = json.loads(line)
             _harvest_by_text[r["problem"].strip()] = r["answer"]
+        # THE GSM8K KEY TABLE (2026-09-01, wild-lane extension): the
+        # dataset's own #### answers, same custody standing as the MATH
+        # harvest key — an answer source no pen can touch. Text identity
+        # is the key, exactly as for books. Lazy + optional: absent
+        # parquet just means GSM8K rows miss and hard-error as always.
+        import os
+        if os.path.exists(GSM8K_PARQUET):
+            import pyarrow.parquet as pq
+            t = pq.read_table(GSM8K_PARQUET).to_pydict()
+            for q, a in zip(t["question"], t["answer"]):
+                _harvest_by_text.setdefault(
+                    q.strip(), a.split("####")[-1].strip())
     return _harvest_by_text
 
 

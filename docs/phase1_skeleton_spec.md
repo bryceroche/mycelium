@@ -32974,3 +32974,30 @@ loop_val fact-fed mode (matches _quick_val to 4 decimals); ablation
 read = fed-vs-ablated delta, free per checkpoint. sharp_alt2on240
 (0.7590 ablated loop-val, 0.262 wild args) is PANEL-ELIGIBLE
 (means-vs-overlaps law) regardless of the organ verdict.
+
+## 2026-09-01 — THE ROW_GOLD DOOR BUILT + THE GSM8K REGISTER WALL
+
+Word given: fact-fed evaluation on wild narrative ladders. Built: (1)
+custody_gold gains THE GSM8K KEY TABLE (dataset #### answers by text
+identity, same standing as the MATH harvest key; lazy, optional); (2)
+load_alg's test-side pen guard gains its own prescribed route — pen
+rows admitted IFF every row's solution[query_var] KEY-VERIFIES via
+row_gold in-process, one miss = fixture refused (the door the error
+message always pointed to); (3) .cache/gsm8k_ladder_eval.jsonl — 311
+draft-grade deep-ladder rows (>=5 rels, median 6, max 14) in the
+prose-pairs convention, states precomputed (gsmladder). All 311
+KEY-VERIFIED at load.
+
+**THE READ: every arm at the FLOOR.** fac-exact on gsmladder (n=3211):
+ctrl239 0.0642 / ctrl240 0.0511 / on239 0.0268 / on240 0.0458 — vs
+0.65-0.76 on mint. Fed = ablated (organ inert here too). VERDICT: the
+head CANNOT PARSE the GSM8K register — a dialect wall, not an
+alternation result; no alternator verdict is measurable at the floor
+(differences are noise on 0.05). G58's lesson recurs on a new
+register: representation precedes deliberation. THE CONVERGENCE: the
+alternator's wild bar, genesis's gate, and the dialect all wait on the
+same act — certify GSM8K rows, train the register in (G63 bilingual
+precedent: joint diet), THEN measure the ping-pong where ladders
+live. Seed ruling (Bryce): reads are deterministic (seed-free); round
+2 training continues the healthy 240 basin, but any promotion claim
+still requires two fresh seeds (cont-control + seed-noise laws).

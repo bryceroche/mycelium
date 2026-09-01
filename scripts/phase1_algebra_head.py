@@ -693,11 +693,28 @@ def load_alg(split):
                 f"battery-adjacent and pen rows are an error (custody-gold "
                 f"law, warn-side fence)")
     elif n_pen:
-        raise RuntimeError(
-            f"load_alg: {n_pen} PEN rows (gen.src_idx present) in ALG_TEST — "
-            f"pen solution fields are not gold; route through "
-            f"mycelium.custody_gold.row_gold or use a mint fixture "
-            f"(docs/ARITH3_DIALECT.md, custody-gold law)")
+        # THE ROW_GOLD DOOR (2026-09-01): the guard's prescribed route,
+        # built. Pen rows are admitted to a TEST fixture IFF every row's
+        # solution[query_var] verifies against the INDEPENDENT key via
+        # the custody organ (text identity; MATH harvest + GSM8K key
+        # table). One miss or mismatch = hard error, fixture refused.
+        from mycelium.custody_gold import row_gold, is_pen_row
+        n_v = 0
+        for smp in samples:
+            if not is_pen_row(smp):
+                continue
+            gk = row_gold(smp)     # hard-errors on missing/non-int key
+            sv = smp["solution"][smp["query_var"]]
+            if int(gk) != int(sv):
+                raise RuntimeError(
+                    f"load_alg: pen row (gen.src_idx="
+                    f"{smp['gen'].get('src_idx')}) solution[query]={sv} "
+                    f"CONTRADICTS independent key {gk} — custody-gold "
+                    f"law, fixture refused")
+            n_v += 1
+        print(f"[load_alg] custody: {n_v} pen rows KEY-VERIFIED via "
+              f"row_gold (test fixture admitted; solution fields "
+              f"independently confirmed)")
     gold = {k[2:]: z[k] for k in z.files if k.startswith("g_")}
     if os.path.exists(STATES_NPY.format(split=split)):
         states = np.load(STATES_NPY.format(split=split), mmap_mode="r")
