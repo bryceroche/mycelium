@@ -32782,3 +32782,50 @@ not a terminal phase. "Circulating on the bus" struck again (the
 mailbox does not circulate). AMENDED PAPER WORDING banked in this
 entry's body — scoped to measured ranges, the half-percent-of-
 criticality sentence as the flagship.
+
+## 2026-08-31 — ROUND 7 SEALED (43/150) + THE GSM8K WILD LANE (pilot)
+
+**Round 7 harvest**: three Sonnet slices (A 11/50, B 16/50, C 16/50 =
+43 drafts, 28.7% yield; slice B relaunched with incremental-write after
+the 64k output-ceiling death — parts discipline now standard). All 43
+pass the mechanical pre-gate (scripts/r7_pregate.py: schema, bounds,
+coverage, anchor law with unit/word/lexical whitelist, brute-force
+solve + uniqueness + key match) AND the Fable faithfulness seal
+(hand-propagated). Four dup-add surgeries applied at seal: 1147/1003
+(unanchored formula-2 -> add(x,x)), 1595/1478 (role-conflated 2s
+riding unrelated anchors — the pairs-halving and area-formula 2s now
+dup-encoded, ratio/couple anchors kept honest). Sealer rulings, open
+to veto: (1) couple/pairs-2 admitted as lexical anchor (couple, half,
+each-other class); (2) direct system encoding (query pinned by the
+relation network, arg-only) admitted per book8 precedent + verified
+uniqueness. Cross-slice inconsistency logged: slice A skipped
+Pythagorean/completing-square rows that B/C lawfully encode via
+square-search + dup-add -> A's 39 skips queued for the v2-retry lane.
+Drafts banked: .cache/book14_r7_drafts_{a,b,c}.json (src_idx =
+harvest_idx; certification pending, GPU behind the sweep).
+
+**THE GSM8K WILD LANE (pilot, zero GPU)**: Bryce's worry — "small
+number of templates dressed up differently; not enough wild variety."
+Answer found ON DISK: the May-era GSM8K cache (7,473 train rows,
+openai/gsm8k parquet; test split constitutionally untouched).
+scripts/gsm8k_wild_extract.py machine-extracts factor graphs from the
+calculator annotations (<<a op b=c>>): custody holds — the rationale
+only PROPOSES; the gate is mechanical (every given anchored to a
+QUESTION literal, sub->add-encode, div->mul-inverse, integers in
+[0,300], forward propagation must reach the #### key, slots <=24).
+**Yield: 1,527 key-gated drafts (20.4%) -> .cache/gsm8k_wild_drafts
+.jsonl; 878 unique structural shapes (top shape only 48 rows); median
+6 vars / 3 rels, max 14; 311 rows with >=5 relations.** Reject census
+honest: unanchored 2,356 (rationale world-knowledge numbers), bounds
+2,002, non-integer 609, decimal-in-question 499. Known wart, flagged:
+value-keyed var unification collapses distinct same-valued quantities
+(2 oranges x $2 -> mul(v,v)) — lawful arithmetic, parse-side
+bindability left to the 5-view gate; per-mention vars = the v2
+extractor if vote rejects cluster there. Levers registered, unfired:
+m 300->999 (+~16% GSM8K, rescues ~1/3 of MATH bounds skips; digit
+heads already MSD<=999 — solver-domain + mint-compat design change,
+NEEDS THE WORD); ASDiv/SVAMP/MAWPS as further wild sources.
+Effective-n law satisfied where it matters: shapes are n, and this
+lane buys ~878 shapes against the mint's closed grammar. HELD for the
+word: 5-view certification of r7 + GSM8K drafts (GPU, behind the
+sweep), and the wild-lane's admission + dose into form_mix12.
