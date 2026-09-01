@@ -32895,3 +32895,47 @@ it). The alternation road to wild gains now runs through the
 alternator + dynamic masking program and the wild-data diet, not
 router power. GPU: sweep released; genesis-prep (form11 precompute)
 now holds the device; wild certification queues behind it.
+
+## 2026-09-01 — ALTERNATOR V2 REGISTERED (word given: per-breath ping-pong)
+
+**The build**: neural parse and symbolic propagation alternate INSIDE
+the breath cycle. After each loop breath k (1..6; breath-0 outside
+time, untouched), the confident slot subset discretizes to a partial
+graph -> scripts/alternator_bridge.py pings the June core's
+propagation layer ONLY (gac_propagate + forced singletons via
+problem_from_algebra3 — no search, no branching; meter-divergence law
+honored) -> returned facts inject into breath k+1. **Bridge BUILT and
+measured: 0.13 ms/call (48 calls/step ~ 6ms, ~2% of step); 200/200
+GSM8K sample rows fully forced at full commit (density-1.0 confirmed
+on the organ itself); 40/200 hand back derived facts at half-commit
+(prefix proxy = the floor of the early-fact rate).** THE FUEL RULING:
+GSM8K wild lane is ladder density 1.0 BY CONSTRUCTION (extractor
+admits only forced-propagation-solvable rows) vs harvest wild 0.743,
+mint 0.000 — the schism's cure arrived before the machine that needs it.
+
+**Design laws pinned**: (1) commit rule — only confident slots
+discretize (pres/pointer/digit thresholds; theta draft 0.9, to the
+calibration queue); contradiction (emptied domain) = silence, never
+gradient. (2) Injection per the structural-entry law: value channel
+(digit-embedded facts, content-addressed drop-off per the coordination
+law) + mask channel (confirmed rels update slot_mask certainty); facts
+DETACHED — dual-terminal by construction (dL/dp through solver = 0;
+use earned via downstream CE, never enforced; no solver-imitation
+loss; Goodhart fence on all diagnostics incl. the domain-mass
+matryoshka radius, which feeds the settling meter as diagnostic
+register ONLY). (3) JIT strategy = the proven ALTMASK numpy-bridge
+pattern (realize between breath segments, assign-in-place fact
+buffers). (4) Research lineage on the sharp_bind gate head; genesis
+twins stay skeleton-pure.
+
+**PRE-PINNED BARS (before any measurement, per protocol)**: (a)
+equivalence — alt2 disabled = bit-identical baseline (eq_check A/B/C);
+(b) capability — sealed-mode wild fac-exact (loop_val, n=3668) vs
+same-diet twin control: BOTH seeds positive AND mean >= +0.05 (sealed
+grain +/-0.03-0.07 respected); (c) kill — flat on wild rows with >=5
+relations specifically -> the subsumption law extends to wild ladders
+and alternator v2 retires honestly. **Build order**: bridge (DONE) ->
+staged forward patch apply_alternator_v2.py + eq_check AFTER
+genesis-prep releases the GPU (never-edit-a-running-invocation law)
+-> mint smoke (mechanics only) -> wild arms AFTER certification and
+the word.
