@@ -33025,3 +33025,19 @@ POST-TRAINING RE-AUDITION (registry precedent). G58 in constitutional
 form: the vote cannot gate its own cure. If granted: the 300-row gate
 opens (1,559 true rows), genesis fires, the alternator gets its
 ladder fixture on the far side.**
+
+## 2026-09-01 — THE ADMISSION RULING (word given) + GENESIS FIRED
+
+**RULING**: graph_true_vote_fail rows ADMITTED to the training diet
+under the mint-style machine gate (anchor + forced-solve + independent
+key); the 5-view vote becomes POST-TRAINING RE-AUDITION. The vote
+cannot gate its own cure (G58 in constitutional form). **THE DIET**:
+1,559 admitted (1,527 gsm8k + 32 r7); 80/20 text-identity split ->
+1,248 train uniques x 11 reps = 10.3% of form_mix12 (133,828 rows;
+dose law: both numbers declared; book2 band honored) + 311-text
+holdout banked as the wild read fixture (wild_admitted_holdout.jsonl,
+fixture name wildhold). **GENESIS FIRED** (genesis.service): form12 +
+wildhold precompute -> PLAIN twin -> STACK twin (garage+shelf+altmask),
+both seed 241, 50k steps FROM NOISE, no warm start. Bars as registered:
+stack-plain >= +0.03 wild scoped args on the holdout; register gap =
+memorization tell. The 300-row gate: OPEN (1,559 >> 300).
