@@ -135,7 +135,7 @@ fixture or the public ledger · <a href="https://github.com/bryceroche/mycelium"
 
 
 # ---------------------------------------------------------------- paper page
-src = (PAPER / "paper1_assembled.md").read_text()
+src = (PAPER / "paper1_assembled_v2.md").read_text()
 _, rest = src.split("\n", 1)
 body = markdown.markdown(rest, extensions=["tables", "smarty"])
 body = body.replace('src="figures/out/', 'src="../figures/')
@@ -148,7 +148,7 @@ body = re.sub(r'<img alt="([^"]*)" src="([^"]*)"\s*/?>', cap, body)
 paper_html = page(TITLE, f"""
 <h1 class="paper-title">{TITLE}</h1>
 <p class="byline">{BYLINE}</p>
-<p class="stamp">{STAMP} · <a href="../paper1.pdf">download PDF</a></p>
+<p class="stamp">{STAMP}</p>
 <div class="paper-body">{body}</div>
 """, depth=1)
 
@@ -163,7 +163,6 @@ landing = page("The Shape of Thought", f"""
 answer; it should be a decision.</p>
 <div class="actions">
 <a class="primary" href="paper/">Read the paper</a>
-<a href="paper1.pdf">PDF</a>
 <a href="ledger.md">The ledger (supplementary)</a>
 <a href="https://github.com/bryceroche/mycelium">Code</a>
 <a href="blog/">Blog</a>
