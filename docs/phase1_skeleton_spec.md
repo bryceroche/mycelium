@@ -32855,3 +32855,21 @@ ADDITIVELY with zero-init output projection, identity path untouched
 bottleneck stack. Bar at test time: wild-register gap shrinks OR
 unused-factor-slot activity cleans up vs the no-scratch twin; flat on
 both = honest negative, scratch slots retired.
+
+## 2026-08-31 — THE SLOT-SCALING DOCTRINE (agreed)
+
+Three slot species, three scaling laws: **var slots FROZEN at 24**
+(letter-bound; the consecutive-letters law is what makes the binding
+learnable — scaling means changing the naming grammar, not adding
+rows); **factor slots FROZEN at 24 across the capacity curve** (task
+capacity, not model capacity; corpus and slots cap each other
+mutually — scaling them is its own future experiment, fired only on a
+measured slot-overflow specimen from wild L4-5 rows, and ONLY paired
+with a depth-extended mint in the same transaction; the constitutional
+route to bigger problems remains the recursion charter's macros —
+slots x abstraction beats slots alone); **scratch slots SCALE with
+capacity tier: 0 at genesis baseline / 8 at the fed mind / 16 at the
+20M mind** (no grammar binding, no grading, no corpus coupling; more
+heads = more views per breath, more scratch = more addresses — the
+complementary axes). This keeps the capacity curve readable: params
+move, task format doesn't.
