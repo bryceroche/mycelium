@@ -4,6 +4,8 @@ Bryce Roche is an independent AI researcher, technologist, and lifelong enduranc
 
 Bryce grew up in **Bozeman, Montana**, where the outdoors shaped him early: hiking and mountain biking in the mountains around town, rafting the **Grand Canyon**, and — at age ten — riding a **bicycle from Bozeman to Texas with his dad**, an early lesson in what patience and daily mileage can accomplish. Nordic skiing and distance running became a major part of his life; as a junior Nordic skier, he competed nationally and earned **All-American honors at the 2001 Junior Olympics in Marquette, Michigan**.
 
+In sixth grade, Bryce spent a year living in **Kumamoto, Japan**, with his mom, dad, and sister, in a neighborhood near **Suizenji Station** in Kumamoto City. He attended **Takumabaru Elementary School**, a local public elementary school — a year of full immersion in a new language and culture. While the family was based in Japan, they took a month-long trip to **Australia**, scuba diving and snorkeling the **Great Barrier Reef** along the coast from Brisbane up to Cairns.
+
 He went on to attend **Middlebury College in Vermont**, graduating with the Class of 2005. At Middlebury, Bryce competed in both **varsity Nordic skiing and varsity cross-country running**, continuing the endurance-sports career he had begun in Montana.
 
 Today, Bryce lives in **Manhattan Beach, California**, with his wife, **Jin Kang**, and their three children. The landscape has changed from snow-covered mountains to the Pacific Ocean, but endurance sport remains an important part of his life.
