@@ -32751,3 +32751,18 @@ proceeds as the base) + the certified wild rows at a DECLARED dose with
 straw-human-style reps (the straw port's first duty). The sweep verdict
 still lands (the gain rule holds); genesis fires the day the pantry
 crosses 300.
+
+## 2026-09-01 — THE POLE LEDGER (the Laplace gut, corrected to Z): zero-GPU, from banked impulse data
+CORRECTIONS: discrete breaths -> the Z-TRANSFORM (poles vs the unit
+circle); the loop is TIME-VARYING (annealing) so no single transfer
+function exists — per-breath linearizations instead, extracted as
+successive-gain ratios from the banked impulse curves. THE NUMBERS:
+noise poles b1->b4: 1.081 -> 1.009 -> 1.004 -> 1.002 (the annealing AS
+pole migration: expansive writing phase settling onto the circle);
+fact poles: 1.065 -> 1.002 -> 0.999 -> 0.999 — CODEBOOK-ALIGNED
+DIRECTIONS CROSS INSIDE THE UNIT CIRCLE by breath 3 while noise stays
+marginally outside: structure gently absorbed, noise gently shed, the
+whole machine within +/-0.005 of criticality. THE PAPER SENTENCE:
+deliberation is annealed near-critical dynamics with a contractive
+symbolic subspace. (The omega axis stays empty — no ringing was
+measured; the sextet hypothesis remains lawfully unfired.)
