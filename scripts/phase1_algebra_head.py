@@ -515,6 +515,84 @@ def build_slot_masks(o_np, sent_rows):
     return masks
 
 
+def alt2_fact_buf(onp, se_np, n_vars_arr, m_arr, theta=0.9):
+    """ALTERNATOR V2 commit adapter + cycle driver (2026-09-01). Consumes
+    the realized pass-1 output dict (decode()'s key conventions: pres/
+    ftype/op/dig/args/res logits + optional dup), discretizes ONLY
+    confident slots (presence sigmoid > theta; ftype/res softmax top-prob
+    > theta; args sigmoid > theta — args is BCE-trained 2-hot, a softmax
+    read is wrong there), commits given/rel factors in the mint grammar,
+    calls the symbolic half (alternator_bridge.ping: GAC propagation
+    only), and packs the forced facts into (B, 24, 4) float32:
+    [1.0, h/9, t/9, o/9] per known var, zeros elsewhere. Contradiction
+    (mass None) or ANY per-item exception -> zeros for that item —
+    silence, never a crash (the bridge contract). Numpy in, numpy out:
+    detached by construction (the dual-terminal law). se_np rides for
+    signature symmetry with build_slot_masks (unused)."""
+    from alternator_bridge import ping   # lazy — scripts/ is on sys.path
+    B = onp["pres"].shape[0]
+    buf = np.zeros((B, K_VARS, 4), np.float32)
+
+    def _sig(x):
+        return 1.0 / (1.0 + np.exp(-x))
+
+    def _smax(x):
+        e = np.exp(x - x.max(-1, keepdims=True))
+        return e / e.sum(-1, keepdims=True)
+
+    for bi in range(B):
+        try:
+            ftp = _smax(onp["ftype"][bi])          # (L, nft)
+            rsp = _smax(onp["res"][bi])            # (L, K_VARS)
+            agp = _sig(onp["args"][bi])            # (L, K_VARS) 2-hot BCE
+            facs = []
+            for j in range(L_FAC):
+                if _sig(onp["pres"][bi, j]) <= theta:
+                    continue
+                ft = int(ftp[j].argmax())
+                if ftp[j, ft] <= theta:
+                    continue
+                res = int(rsp[j].argmax())
+                if rsp[j, res] <= theta:
+                    continue
+                if ft == 1:                        # given: digits carry value
+                    digs = onp["dig"][bi, j].argmax(-1)
+                    v = int(sum(d * 10 ** (N_DIG - 1 - i2)
+                                for i2, d in enumerate(digs)))
+                    facs.append({"ftype": "given", "var": res, "value": v})
+                elif ft == 0:                      # rel (decode conventions)
+                    op = "add" if onp["op"][bi, j].argmax() == 0 else "mul"
+                    if "dup" in onp and onp["dup"][bi, j] > 0:
+                        a0 = int(np.argmax(onp["args"][bi, j]))
+                        if agp[j, a0] <= theta:
+                            continue
+                        args = [a0, a0]
+                    else:
+                        top2 = np.argsort(-onp["args"][bi, j])[:2]
+                        if float(agp[j, top2].min()) <= theta:
+                            continue
+                        args = sorted(int(a) for a in top2)
+                    facs.append({"ftype": "rel", "op": op,
+                                 "args": args, "result": res})
+                # other ftypes: never committed (bridge grammar: given/rel)
+            if not facs:
+                continue
+            nv = max([int(n_vars_arr[bi])]        # do_eval's nv convention
+                     + [v + 1 for f in facs for v in
+                        ([f["var"]] if f["ftype"] == "given"
+                         else list(f["args"]) + [f["result"]])])
+            facts, mass, _r = ping(nv, facs, int(m_arr[bi]))
+            if mass is None:                       # contradiction: silence
+                continue
+            for v, val in facts.items():
+                if 0 <= v < K_VARS and 0 <= val <= 999:
+                    buf[bi, v] = (1.0, (val // 100) / 9.0,
+                                  (val // 10 % 10) / 9.0, (val % 10) / 9.0)
+        except Exception:
+            buf[bi] = 0.0                          # per-item silence
+    return buf
+
+
 # ===========================================================================
 # PRECOMPUTE (GPU once) — small corpus, plain npz
 # ===========================================================================
@@ -805,6 +883,15 @@ def build_params(seed=0):
         # DIAGNOSTIC (never supervised); as an INPUT it is lawful.
         p["W_det"] = t(rng.randn(3, H_W) / math.sqrt(3))
         p["det_g"] = t(np.full(1, 0.02))
+    if int(os.environ.get("ALG_ALT2", "0")):
+        # ALTERNATOR V2 (2026-09-01, word given): cycle-level ping-pong —
+        # pass-1 commits confident slots, the bridge propagates
+        # (alternator_bridge.ping; meter-divergence law: the check calls
+        # its organ), forced facts re-enter pass-2 as var-slot
+        # conditioning. W_fact is the ONLY path for facts: small-random
+        # init (the W_det idiom, NEVER zero); gate ajar (0.02, the law).
+        p["W_fact"] = t(rng.randn(4, H_W) / math.sqrt(4))
+        p["alt2_g"] = t(np.full(1, 0.02))
     if int(os.environ.get("ALG_ROUTER", "0")):
         assert int(os.environ.get("ALG_BREATH", "1")) > 1, \
             "ROUTER emits only inside the breath loop (no-silent-fallbacks)"
@@ -901,7 +988,7 @@ def _bind_codes_path():
     return path
 
 
-def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, drop=None, anchor=None, amask=None, gmod=None, pmask=None, lsent=None, reg=None):
+def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, drop=None, anchor=None, amask=None, gmod=None, pmask=None, lsent=None, reg=None, fact_buf=None):
     from tinygrad import Tensor, dtypes   # audit 2026-09-01: was a
     # SCOPE ACCIDENT (bound only via the sixwave/sync branches — any
     # SIXWAVE-off config killed five organs at step 1)
@@ -934,6 +1021,13 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
     if lsent is not None:               # V2: letter-keyed partition — imposed
         _lb = lsent.reshape(B, 1, K_VARS, -1) * float(os.environ.get("LS_A", "1.0"))
     vst, vat = bank(p["vq"], K_VARS, pbias=_lb)
+    if int(os.environ.get("ALG_ALT2", "0")) and fact_buf is not None:
+        # ALTERNATOR V2 injection: symbolic facts ((B, 24, 4): known flag
+        # + MSD digits/9) condition the var-slot states that args/res/y/
+        # query pointers and every breath read against. BOTH guards are
+        # load-bearing: env unset -> byte-identical baseline; fact_buf
+        # None -> byte-identical too (the injection is skipped entirely).
+        vst = vst + (fact_buf @ p["W_fact"]) * p["alt2_g"].reshape(1, 1, 1)
     _pb = None
     _pb_prior = None
     _sync = None
@@ -1986,6 +2080,8 @@ def do_train(steps, lr, batch, seed):
                 _i = _j + 1
         print(f"[clock] tails ready ({TAILS.mean():.2f} of tokens)", flush=True)
     MASKS = None
+    ALT2 = int(os.environ.get("ALG_ALT2", "0"))
+    FACTS = np.zeros((n, K_VARS, 4), np.float32) if ALT2 else None
     if K_B > 1:
         # mask-prep pass: masks from the WARM-STARTED head's own breath-0
         # parses (deployable-from-birth; frozen for training efficiency)
@@ -2003,6 +2099,19 @@ def do_train(steps, lr, batch, seed):
                                   if ALG_LSENT and "lsent" in gold else None))
             o0 = {k: out0[k].realize().numpy() for k in ("fat", "args", "res")}
             MASKS[sl] = build_slot_masks(o0, sent[sl_p])[:len(sl)]
+            if FACTS is not None:
+                # ALTERNATOR V2 pass-1 commit: the same realized parse the
+                # masks come from; facts banked like MASKS (frozen for
+                # training efficiency, rebuilt with the head at each prep)
+                _ka2 = (("pres", "ftype", "op", "dig")
+                        + (("dup",) if "dup" in out0 else ()))
+                _oa2 = {**o0, **{k: out0[k].realize().numpy() for k in _ka2}}
+                _nv2 = np.array([samples[int(i)].get("n_vars", K_VARS)
+                                 for i in sl_p])
+                _ma2 = np.array([samples[int(i)].get("m", 0)
+                                 for i in sl_p])
+                FACTS[sl] = alt2_fact_buf(_oa2, sent[sl_p], _nv2,
+                                          _ma2)[:len(sl)]
         print(f"[breath] masks ready (mean degree "
               f"{MASKS.sum(-1).mean():.1f}/{L_FAC})", flush=True)
     MG = None
@@ -2036,6 +2145,9 @@ def do_train(steps, lr, batch, seed):
     b_se = fix(np.zeros((batch, T_ALG), np.int32), dtypes.int)
     b_mask = fix(np.zeros((batch, L_FAC, L_FAC), np.float32), dtypes.float) \
         if K_B > 1 else None
+    b_fact = fix(np.zeros((batch, K_VARS, 4), np.float32), dtypes.float) \
+        if ALT2 else None   # ALT2: fixed shape, ALWAYS fed (zeros when no
+                            # facts) — the jitted step's signature is stable
     b_tail = fix(np.zeros((batch, T_ALG), np.float32), dtypes.float) if CLOCK else None
     _GOLD_ALIAS = {"is_lit_f": "is_lit", "refoh": "refvar"}
     _GOLD_OPTIONAL = {"opspan", "arg_dup", "sel", "sign", "y", "digits2",
@@ -2184,7 +2296,7 @@ def do_train(steps, lr, batch, seed):
                   * (o0["res"].argmax(-1) == bg["res"]).float())
             rv = (bg["presence"] * (1.0 - ok)).detach()
             o = forward(p, s_tr, b_tk, b_se, slot_mask=b_mask, revoke=rv,
-                        tail=b_tail, reg=b_reg)
+                        tail=b_tail, reg=b_reg, fact_buf=b_fact)
         elif int(os.environ.get("NAZ_TRAIN", "0")):
             # NAZARÉ TRAINING (door #55): the organ-2 two-forward pattern —
             # pre-pass yields the intra-pass event field IN-GRAPH (detached);
@@ -2202,11 +2314,12 @@ def do_train(steps, lr, batch, seed):
             _bgauth = float(os.environ.get("NAZ_BG", "0.05"))
             _gm = (_bgauth + (1.0 - _bgauth) * _ev).unsqueeze(-1).detach()
             o = forward(p, s_tr, b_tk, b_se, slot_mask=b_mask, tail=b_tail,
-                        gmod=_gm)
+                        gmod=_gm, fact_buf=b_fact)
         else:
             _bd = os.environ.get("BREATH_DROPOUT")
             o = forward(p, s_tr, b_tk, b_se, slot_mask=b_mask, tail=b_tail,
-                        drop=(b_drop if _bd else None), lsent=b_ls, reg=b_reg)
+                        drop=(b_drop if _bd else None), lsent=b_ls, reg=b_reg,
+                        fact_buf=b_fact)
         l = loss_fn(o, bg)
         if ALG_CONSUME and "_early" in o:   # support-gated consume-once:
             # any breath claims, each fact pays once; eligibility = the DAG
@@ -2264,9 +2377,25 @@ def do_train(steps, lr, batch, seed):
             sl = np.arange(s0, min(s0 + 8, len(vs)))
             pad = 8 - len(sl)
             sl_p = np.concatenate([sl, sl[:1].repeat(pad)]) if pad else sl
-            o = forward(p, Tensor(vst[sl_p].astype(np.float32), dtype=dtypes.float),
-                        Tensor(vtk[sl_p].astype(np.float32), dtype=dtypes.float),
-                        Tensor(vse[sl_p].astype(np.int32), dtype=dtypes.int))
+            _t1 = Tensor(vst[sl_p].astype(np.float32), dtype=dtypes.float)
+            _t2 = Tensor(vtk[sl_p].astype(np.float32), dtype=dtypes.float)
+            _t3 = Tensor(vse[sl_p].astype(np.int32), dtype=dtypes.int)
+            o = forward(p, _t1, _t2, _t3)
+            if int(os.environ.get("ALG_ALT2", "0")):
+                # ALTERNATOR V2 val two-pass: masked pass-2 + LIVE facts
+                # (recomputed from this checkpoint's own pass-1, not the
+                # banked FACTS — val measures the deployable cycle)
+                _kv = (("pres", "ftype", "op", "dig", "fat", "args", "res")
+                       + (("dup",) if "dup" in o else ()))
+                _ov = {k: o[k].realize().numpy() for k in _kv}
+                _mkv = build_slot_masks(_ov, vse[sl_p].astype(np.int32))
+                _nvv = np.array([vs[int(i)].get("n_vars", K_VARS)
+                                 for i in sl_p])
+                _mav = np.array([vs[int(i)].get("m", 0) for i in sl_p])
+                _fbv = alt2_fact_buf(_ov, vse[sl_p], _nvv, _mav)
+                o = forward(p, _t1, _t2, _t3,
+                            slot_mask=Tensor(_mkv, dtype=dtypes.float),
+                            fact_buf=Tensor(_fbv, dtype=dtypes.float))
             onp = {k: o[k].realize().numpy() for k in
                    (("pres", "ftype", "op", "islit", "dig", "args", "res") + (("dup",) if "h_dup" in p else ()))}
             for bi, i in enumerate(sl):
@@ -2391,6 +2520,8 @@ def do_train(steps, lr, batch, seed):
                 _mfeed = _mfeed.copy()
                 _mfeed[_coin] = MG[idx][_coin].astype(np.float32)
             b_mask.assign(Tensor(_mfeed, dtype=dtypes.float).contiguous()).realize()
+        if b_fact is not None:
+            b_fact.assign(Tensor(FACTS[idx], dtype=dtypes.float).contiguous()).realize()
         if b_tail is not None:
             b_tail.assign(Tensor(TAILS[idx].astype(np.float32), dtype=dtypes.float).contiguous()).realize()
         if b_reg is not None:
@@ -2562,7 +2693,12 @@ def main(argv=None):
     elif args.errors:
         do_errors()
     else:
+        # no-silent-fallbacks law (2026-09-01): a modeless invocation once
+        # burned a whole training chain — argparse help exits 0 and set -e
+        # sails past. Chains must die loudly here.
         ap.print_help()
+        ap.error("no mode flag (--train/--eval/--precompute/--selftest/"
+                 "--errors) — refusing to exit 0")
 
 
 if __name__ == "__main__":
