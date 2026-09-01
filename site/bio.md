@@ -6,7 +6,9 @@ Bryce grew up in Bozeman, Montana, where the outdoors shaped him early: hiking a
 
 In sixth grade, Bryce spent a year living in Kumamoto, Japan, with his mom, dad, and sister, in a neighborhood near Suizenji Station in Kumamoto City. He attended Takumabaru Elementary School, a local public elementary school — a year of full immersion in a new language and culture. While the family was based in Japan, they took a month-long trip to Australia, scuba diving and snorkeling the Great Barrier Reef along the coast from Brisbane up to Cairns.
 
-He went on to attend Middlebury College in Vermont, graduating with the Class of 2005. At Middlebury, Bryce competed in both varsity Nordic skiing and varsity cross-country running under legendary coach Terry Aldrich, who led both programs — continuing the endurance-sports career he had begun in Montana.
+In the summer of 2001, before starting college, Bryce and his family spent a month in East Africa — climbing Mt. Kenya and Mt. Kilimanjaro, then descending into Tanzania's Ngorongoro Crater on safari.
+
+He went on to attend Middlebury College in Vermont, graduating with the Class of 2005. At Middlebury, Bryce competed in both varsity Nordic skiing and varsity cross-country running under legendary coach Terry Aldrich, who led both programs — continuing the endurance-sports career he had begun in Montana. During his junior year, he spent a semester studying abroad at the University of Otago in New Zealand, trading Vermont's ridgelines for the mountains and coastlines of the South Island.
 
 Today, Bryce lives in Manhattan Beach, California, with his wife, Jin Kang, and their three children. The landscape has changed from snow-covered mountains to the Pacific Ocean, but endurance sport remains an important part of his life.
 
