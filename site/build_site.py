@@ -15,11 +15,11 @@ ROOT = Path(__file__).resolve().parents[1]
 PAPER = ROOT / "paper"
 DIST = ROOT / "site" / "dist"
 
-TITLE = "Certify, Answer, Flag, Abstain: A Chain of Custody for Machine-Read Mathematics"
+TITLE = "The Shape of Thought: Notes on Building a Reasoning Machine"
 BYLINE = "Bryce Roche · Claude (Anthropic)"
 TAG = subprocess.run(["git", "describe", "--tags", "--always"], cwd=ROOT,
                      capture_output=True, text=True).stdout.strip()
-STAMP = f"July 2026 · {TAG}"
+STAMP = f"September 2026 · {TAG}"
 
 CSS = """
 :root {
@@ -135,7 +135,7 @@ fixture or the public ledger · <a href="https://github.com/bryceroche/mycelium"
 
 
 # ---------------------------------------------------------------- paper page
-src = (PAPER / "paper1_assembled_v2.md").read_text()
+src = (PAPER / "shape_of_thought.md").read_text()
 _, rest = src.split("\n", 1)
 body = markdown.markdown(rest, extensions=["tables", "smarty"])
 body = body.replace('src="figures/out/', 'src="../figures/')
