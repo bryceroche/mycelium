@@ -33001,3 +33001,27 @@ precedent: joint diet), THEN measure the ping-pong where ladders
 live. Seed ruling (Bryce): reads are deterministic (seed-free); round
 2 training continues the healthy 240 basin, but any promotion claim
 still requires two fresh seeds (cont-control + seed-noise laws).
+
+## 2026-09-01 — THE WILD CERTIFICATION VERDICT (word given, fired, complete)
+
+wild_certify.py (adapted from book8; fixes two latent book8 gaps:
+missing ALG_WIDE env vs the g41 manifest, decode-incomplete key list)
+ran the STANDARD chain — manifest gate g41_onemass_refold, 5 permuted
+views, vote >=3, independent key via custody_gold (MATH harvest +
+GSM8K key table), three-valued mechanical verdict — over 1,570 rows
+(43 r7 + 1,527 GSM8K). **BUCKETS: certified 21 (6 r7 + 15 gsm8k);
+graph_true_vote_fail 1,538; vote_pass_graph_false 0 (THE ALARM BUCKET
+IS EMPTY — zero lies at scale, custody airtight); refused 11 (r7
+simultaneous systems, forward-prop-unreachable, ruled out of scope
+not into certified). Deep split (>=5 rels): 2 certified / 309
+true-but-unseen.** The register wall confirmed at certification
+scale: the vote cannot pass a dialect the parser cannot see. Rows
+banked: book14_certified.jsonl, gsm8k_certified.jsonl,
+wild_cert_results.json. **THE ADMISSION QUESTION now before Bryce:
+admit graph_true_vote_fail rows to the TRAINING diet under the
+mint-style machine gate (anchor + forced-solve + independent key —
+all three passed; mints never needed a vote), with the 5-view vote as
+POST-TRAINING RE-AUDITION (registry precedent). G58 in constitutional
+form: the vote cannot gate its own cure. If granted: the 300-row gate
+opens (1,559 true rows), genesis fires, the alternator gets its
+ladder fixture on the far side.**
