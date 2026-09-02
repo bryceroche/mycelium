@@ -26,9 +26,14 @@ breath clock there is a whole torus of possible bindings, geared to the
 clock in fixed ratio. Geometry has a name for this: a fiber bundle.
 The base is *when-in-thinking*. The fiber is *what-binds-to-what*.
 Content — the meaning squeezed out of the sentence — rides through the
-bundle after passing once through a narrow waist: 2048 dimensions
-funneled to 512, an underwater canyon that concentrates the scattered
-energy of language into one channel.
+bundle inside a narrow channel: a 512-dimensional waist, funneled down
+from the language model's 2048. And this is no one-time gate. Every
+breath's reading and every breath's writing crosses the waist again —
+all the traffic of deliberation lives inside the narrow channel, six
+crossings per revolution. Off the coast of Portugal, an underwater
+canyon at Nazaré funnels the scattered energy of the whole Atlantic
+into single hundred-foot waves. The waist is that canyon, and the
+thought never leaves it.
 
 A thought is not the bundle. A thought is a path through it.
 
@@ -46,11 +51,14 @@ still take collapsing like nested dolls, each smaller doll fitting
 inside the last. The tube the trajectory lives in gets thinner with
 every breath.
 
-And it does not end on the torus. It ends with a snap. When the
-spiral has contracted to within reach of exactly one canonical form,
-the system commits — a continuous winding path terminating on a
-discrete point, the way a crystal precipitates out of solution. The
-answer isn't the trajectory. The answer is the crystal it lands on.
+And it does not end on the torus. It ends the way a wave ends at
+Nazaré: the canyon has been concentrating energy the whole time, the
+seafloor rises, the swell steepens — and breaks. When the spiral has
+contracted to within reach of exactly one canonical form, the system
+commits: a continuous winding path terminating on a discrete point,
+the way a wave becomes a single crash, the way a crystal precipitates
+out of solution. The answer isn't the trajectory. The answer is the
+crystal it lands on.
 
 ## Why every correct thought looks the same
 
@@ -68,8 +76,9 @@ evidence of truth, because rightness has exactly one shape.
 
 > The shape of thought is a braid that tightens: a trajectory through
 > a geared bundle of tori — winding fixed by clocks, radius shrunk by
-> evidence, squeezed once through a 512-dimensional waist — ending in
-> a snap onto a crystal.
+> evidence, every breath crossing a 512-dimensional waist — steepening
+> like the wave over the canyon at Nazaré, until it breaks in a snap
+> onto a crystal.
 
 The next refinement is already on the bench: today the content space
 is flat, and flat space represents nested kinds poorly. Hyperbolic
