@@ -33145,3 +33145,25 @@ per-item recovery vs superposition load, on banked ckpts (genesis
 twins + 21n/20r lineage) — zero training; ghost-image (crosstalk)
 companion read via the port census machinery scoped WITHIN the bus.
 Fires on the free GPU as the next zero-training read.
+
+## 2026-09-02 — HOLOGRAPHIC CAPACITY AUDIT: VERDICT (both branches partially fire; budget split by load)
+
+scripts/holographic_audit.py (bind_read bucketed by factors/row) on
+veteran 21n239 + newborn genesis_stack241. **FINDINGS**: (1) GRACEFUL
+LOAD DECLINE IS REAL on both registers — mint ~0.85 -> ~0.68 over
+load 16->72; wild 0.78 -> 0.45 over load 12->56; no cliff (prediction
+2 CONFIRMED: holographic degradation shape). (2) NOT purely monotone:
+mint REBOUNDS at nf=20-22 (0.83-0.86) — regular deep-ladder structure
+superposes better than irregular shallow content (correlated images
+interfere less — textbook holography); structure-regularity offsets
+load. Texture-rule flag on the rebound. (3) THE DECOMPOSITION: at
+equal load (16-32 bindings) mint reads 0.82-0.86 vs wild 0.55-0.65 —
+the REGISTER GAP (~0.25) exceeds the load slope within wild's typical
+range (nf 5-9). **BUDGET VERDICT per the pinned fork: the wild
+ceiling at typical depth is MOSTLY register/learning (feed the wild
+diet), PARTLY capacity; capacity becomes dominant only in the deep
+tail (nf>=12: 0.45-0.58) — bind-width spend is justified for the
+20M mind's deep-problem reach, struck for the wild body.** Newborn
+beats veteran at every wild load (e.g. nf=7: 0.621 vs 0.559) — the
+wild dose helps across the whole curve, consistent with the register
+diagnosis.
