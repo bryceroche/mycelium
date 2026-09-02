@@ -5,6 +5,31 @@ date: 2026-09-01
 
 ![The shape of thought: a golden braid tightening through nested rings around an ocean-filled torus, breaking like a wave into a crystal of nodes and edges, under a ring of clocks.](../shape_header.jpg)
 
+<details>
+<summary><em>The image was generated from a prompt written by the machine's co-author. Click to read it.</em></summary>
+<blockquote>
+<p>A single continuous braid of six golden light-filaments winding around
+a great translucent glass torus on a black background, and the braid
+visibly transforms as it travels: on the left it is thick, loose, and
+wild — strands separated, wobbling, uncertain — and with each turn
+around the ring it grows tighter, thinner, and more ordered, passing
+through a sequence of nested translucent rings, each smaller than the
+last, like matryoshka dolls made of light, until on the right side it
+is a single taut wire of brilliant gold. There the deep-blue river of
+light that fills the torus's hollow interior — an underwater canyon
+funneling glowing currents — narrows to one blinding point and breaks
+like an ocean wave crashing: a burst of golden spray that condenses in
+mid-air into a small sharp crystal — a faceted polyhedron of glowing
+nodes connected by fine golden edges, hanging just beyond the torus's
+rim, the unmistakable destination of the wire. High above, a vast faint
+ring of hundreds of tiny clock-dials turns in silent gear-lock with the
+braid below. Long-exposure light-trail photography fused with precise
+scientific illustration; bioluminescent gold and deep Atlantic blue on
+pure black; immense scale; the feeling of inevitable convergence —
+chaos on the left, certainty on the right.</p>
+</blockquote>
+</details>
+
 This site had to earn its name eventually. Here is the answer, as far
 as the instruments can see it.
 
