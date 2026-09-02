@@ -3,6 +3,8 @@ date: 2026-09-01
 
 # What is the shape of thought?
 
+![The shape of thought: a golden braid tightening through nested rings around an ocean-filled torus, breaking like a wave into a crystal of nodes and edges, under a ring of clocks.](../shape_header.jpg)
+
 This site had to earn its name eventually. Here is the answer, as far
 as the instruments can see it.
 

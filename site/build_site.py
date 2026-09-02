@@ -223,6 +223,8 @@ n = sum(1 for _ in DIST.rglob("*") if _.is_file())
 print(f"[site] {n} files -> {DIST}")
 
 (DIST / "blog").mkdir(exist_ok=True)
+for img in BLOG.glob("*.jpg"):
+    shutil.copy(img, DIST / "blog" / img.name)
 (DIST / "blog" / "index.html").write_text(page("Blog — The Shape of Thought", blog_index, depth=1))
 for slug, t, d, bhtml in blog_pages:
     (DIST / "blog" / slug).mkdir(parents=True, exist_ok=True)
