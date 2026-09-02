@@ -33167,3 +33167,18 @@ tail (nf>=12: 0.45-0.58) — bind-width spend is justified for the
 beats veteran at every wild load (e.g. nf=7: 0.621 vs 0.559) — the
 wild dose helps across the whole curve, consistent with the register
 diagnosis.
+
+## 2026-09-02 — WORD GIVEN: v2.1 CANDIDATE BUILD + FIRE (package-level, exploratory)
+
+Bryce's ruling: build THE CANDIDATE only (4-layer step + alternation),
+skip the 2x2 for speed — the banked incumbent genesis_stack241
+(2-layer, no ping, same diet/seed) is the free control. CLAIM SCOPE
+PINNED: package-level verdict only (depth vs ping vs synergy
+unattributed until the solo arms run; a win funds them, a loss saves
+three runs). Non-negotiable rungs 1-2 of the bring-up ladder stand.
+TRAINING COMPOSITION: 4L blocks train inside the existing fused breath
+loop (no partition needed at train time) + v2.0 cycle-seam alternation
+(frozen-FACTS protocol); the per-step ping enters at READ time via the
+step-partitioned engine (reads-first per the v2.1 spec). Regime
+matched to the incumbent for comparability: from noise, 50k, seed
+241, form_mix12, stack envs. Verdict fixture: the wild holdout.
