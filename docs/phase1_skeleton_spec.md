@@ -33215,3 +33215,21 @@ step + 768 hologram vs incumbent (two deltas); alternation enters at
 READ time on the banked head, as inked. One night of GPU bought a
 precondition law and exonerated the stations (smoke parsed fine with
 them on).
+
+## 2026-09-02 — THE AVIAN BREATHING METAPHOR banked (the alternator's arc, named)
+
+Mammals breathe tidally: inhale, ONE exchange, exhale — dead volume,
+fresh mixing with spent. Birds (the dinosaurs' inheritance: air-sac
+skeletons, flow-through lungs) breathe UNIDIRECTIONALLY: air routed
+one way through the parabronchi, gas exchange on BOTH strokes,
+near-continuous extraction — how a goose flies over Everest.
+**The alternator's arc IS this evolution: v2.0 = tidal (full 7-breath
+cycle, one cycle-seam ping, all between-ping compute is dead volume);
+v2.1 per-step = flow-through (state circulates one way around the
+loop — the braid ring as parabronchus — solver exchange at EVERY
+station, seven extractions per revolution); the overlap/prefetch
+buffers = the air sacs (decouple flow phases so extraction never
+pauses).** Same tidal volume, multiplied extraction — the v2.1
+training spec's efficiency claim in 240-million-year-old engineering.
+Sits beside the Blackbird rule: one aviation law, one avian law.
+Cross-ref: docs/alternator_v21_training_spec.md.
