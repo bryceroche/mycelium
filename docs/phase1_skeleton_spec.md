@@ -33066,3 +33066,57 @@ constraints** (dup-scope domain product blows the arity cap at
 solver-side sibling of the [85] representability bug; registered for
 repair. Fixture solutions rebuilt dup-aware; 311/311 query-pinned,
 all independently key-confirmed at load.
+
+## 2026-09-02 — ALTERNATOR v2.1 SPEC INKED (word given) + THE BRING-UP LADDER + THE VERIFIER CHORE
+
+**VOCABULARY (ratified)**: breath_step := one pass through the
+lightweight per-step stack — FOUR LAYERS/STATIONS: (1) GATHER (bank
+attention, slots<-tokens through the waist), (2) RELATE (slot mixer),
+(3) INTEGRATE (second attention block pair — the room where
+per-step-injected solver facts get absorbed before commitment; the
+June engine's 4-per-breath precedent), (4) COMPRESS-AND-COMMIT (FFN +
+the step's own micro-bottleneck feeding notebook/shelf/emission —
+Tishby fractally applied). The frozen trunk is NOWHERE in the loop
+(spoke once, before step 0). Step boundary = THE SEAM: commit
+confident slots -> solver ping (gac organ) -> dynamic mask update
+from the committed skeleton -> facts injected into the next step.
+breath_cycle := 7 breath_steps; step-0 is intake OUTSIDE TIME (rotor
+does not advance; two-tap law lives there); steps 1-6 turn the sextet
+60 degrees each. Waist stays 512 for v2.1 (one change at a time; width
+belongs to the capacity curve). COMPUTE PRICE, stated: 2 -> 4
+attention blocks = ~2x per-step attention compute (sub-2x step time;
+FFN/commit don't multiply) — wall-clock recorded on every arm.
+
+**EXECUTION MODEL (Bryce's partition)**: JIT partitions by
+breath_step, not problem — ONE capture of the weight-tied step
+function (breath index as input), invoked 7x per cycle over a
+MEGA-BATCH (64-256 problems); solver pings batch into the seam;
+overlap/double-buffer per the prefetch precedent; per-step matryoshka
+radius (settling meter) becomes free. READS FIRST: training BPTT
+across 7 captures is real platform work, gated behind rung-4 payoff.
+
+**THE DEPTH RACE (pre-registered)**: 2-block vs 4-block step twins,
+same diet/seed/step-count, judged on the WILD HOLDOUT fac-exact
+(where structure pays: stack +0.0503 exploratory), register gap =
+memorization tell, wall-clock as price tag, 2-seed law for any claim.
+Magic numbers get measured, never assumed.
+
+**THE BRING-UP LADDER (law, adopted from the Modular/Qualcomm NPU
+talk)**: every new organ/backend walks the SAME four rungs, no
+exceptions, no jumping to the target: (1) equivalence/bit-identity
+gate (organ off = baseline exact), (2) mechanics smoke (step-time +
+NaN), (3) twinned arms (single-bit env delta), (4) matched read
+fleet vs pre-pinned bars. Applied ad hoc to alt2 and genesis; now
+constitutional. v2.1 rung 1: step-partitioned execution must
+reproduce the fused graph bit-identically with the ping disabled.
+
+**THE GRAMMAR-VERIFIER UNIFICATION (registered chore, now urgent)**:
+five propagation reimplementations in one week, the fifth wrong
+(caught by the row_gold door). ONE canonical verifier module — op
+registry, per-ftype invariants + dup-aware propagation — that every
+gate CALLS (mint gates, pregate, certifier, fixture builders,
+load_alg door). The MLIR dialect contract: every op maps to one
+verified kernel. Feeds Lowering Probe v2. Companion bug on file: the
+June core's gac_propagate does not propagate args=[a,a] (dup-scope
+arity blowup + no forcing even uncapped) — repair lands WITH the
+unification.
