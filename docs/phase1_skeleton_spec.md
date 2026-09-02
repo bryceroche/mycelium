@@ -33196,3 +33196,22 @@ early-step reads — judgment ONLY at cruise (50k, wild holdout).**
 Forward echo: the ping's theta=0.9 commit gate is a panel gap — early
 breaths SHOULD leak few facts (cold parse), late breaths seal (the
 matryoshka contraction at temperature). Never fix the early looseness.
+
+## 2026-09-02 — alt21cand241 v1: INVALID AS TEST — THE WARM-PARSE PRECONDITION (law)
+
+Candidate collapsed (mint 0.0112, wild 0.0756, flatlined from step
+4000) while the BUS learned normally at 768 (recovery .56/.61/.75/.72)
+— parse dead, binding alive = poisoned input, not capability. ROOT
+CAUSE CONFIRMED by the smoke control: identical envs warm from 14a ->
+0.7279 at 300 steps; from noise -> 0.0003 forever. **THE LAW: the
+frozen-FACTS protocol banks facts from the head's own mask-prep parse
+— a NEWBORN's parse is noise, so ALG_ALT2 + from-noise = 50k steps of
+garbage injected as detached truth into the var states (pointers/
+digits destroyed; bus taps survive). Frozen-FACTS REQUIRES A WARM
+PARSE; from-noise runs must train alternation-free (or live-facts,
+when the per-step trainer exists).** Repair aligns with the v2.1 spec
+proper: candidate v2 refired WITHOUT ALG_ALT2 — package = 4-layer
+step + 768 hologram vs incumbent (two deltas); alternation enters at
+READ time on the banked head, as inked. One night of GPU bought a
+precondition law and exonerated the stations (smoke parsed fine with
+them on).
