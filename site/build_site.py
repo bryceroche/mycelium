@@ -129,8 +129,8 @@ def page(title, body, depth=0):
 {body}
 </div>
 <footer><div class="wrap">
-{BYLINE} · {STAMP} · every number in the paper traces to a pinned
-fixture or the public ledger · <a href="https://github.com/bryceroche/mycelium">code &amp; ledger</a>
+{BYLINE} · {STAMP} · built on one card, between two jaws ·
+<a href="https://github.com/bryceroche/mycelium">code</a>
 </div></footer></body></html>"""
 
 
@@ -159,9 +159,9 @@ landing = page("The Shape of Thought", f"""
 <h1 class="paper-title">{TITLE}</h1>
 <p class="byline">{BYLINE}</p>
 <p class="stamp">{STAMP}</p>
-<p class="lede">A reasoning machine&rsquo;s output should not be an
-answer; it should be a decision &mdash; answer, or stay silent, and make
-even the silence legible.</p>
+<p class="lede">A neuro-symbolic dance: neural proposes, symbolic
+disposes &mdash; two jaws taking turns until the answer is certain, or
+the silence is.</p>
 <div class="actions">
 <a href="paper/">Read the paper</a>
 <a href="blog/">Blog</a>
@@ -172,18 +172,21 @@ even the silence legible.</p>
 {abstract_html}
 <h2>What this is</h2>
 <ul class="cardlist">
-<li><span class="k">TWO JAWS</span><br>A small trained head reads plain
-English into typed factor graphs; an exact constraint solver crushes
-them by deterministic search. Neural proposes, symbolic disposes &mdash;
-creativity in recognition, never in verification.</li>
-<li><span class="k">ONE CARD</span><br>The whole system trains and runs
-on a single consumer AMD GPU through tinygrad. The trained head is a
-fraction of one percent of the system&rsquo;s parameters; the frozen
-language model is read once per problem and never trained.</li>
-<li><span class="k">A WALL OF WITNESSES</span><br>Before it may answer,
-the system&rsquo;s reading must survive permuted re-readings, a panel of
-independently trained models, and an exact answer check. Right readings
-collide; wrong ones scatter. Only unanimity speaks.</li>
+<li><span class="k">A DIFFUSION COMPILER</span><br>Like MLIR, the
+system lowers language down a ladder of representations &mdash; prose to
+silhouette to typed graph to primitives &mdash; and refuses to lower
+prematurely. Unlike a compiler, it lowers everything in parallel: the
+whole graph settles together, like an image emerging from noise.</li>
+<li><span class="k">THE DANCER&rsquo;S SILHOUETTE</span><br>Understanding
+means watching the envelope of motion, not the costume. Every sentence
+is squeezed through a 512-dimension waist that destroys the phrasing
+and keeps the dance &mdash; two sentences that mean the same thing
+become the same thing.</li>
+<li><span class="k">A FANCY LOOKUP TABLE</span><br>Underneath the
+vocabulary: fuzzy matching and grouping against an atlas of known
+operation-shapes, maintained across model generations with running
+statistics. Recognition is lookup &mdash; and the keys are silhouettes,
+not sentences.</li>
 </ul>
 """)
 
