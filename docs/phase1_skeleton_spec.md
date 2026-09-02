@@ -33041,3 +33041,28 @@ wildhold precompute -> PLAIN twin -> STACK twin (garage+shelf+altmask),
 both seed 241, 50k steps FROM NOISE, no warm start. Bars as registered:
 stack-plain >= +0.03 wild scoped args on the holdout; register gap =
 memorization tell. The 300-row gate: OPEN (1,559 >> 300).
+
+## 2026-09-01 — GENESIS VERDICT: THE NEWBORNS READ WILD (the wall cracks)
+
+Both twins completed (seed 241, 50k from noise, form_mix12 @ 10.3%
+wild). **MINT: plain 0.9223 loop-val (RECORD class; mature lineage
+~0.81), stack 0.8353 under its sealed criterion. THE WILD HOLDOUT
+(311 never-trained texts, all KEY-VERIFIED at load): plain 0.1828,
+stack 0.2331 — vs the mature lineage's 0.03-0.06 register wall. One
+genesis with a 10.3% wild dose multiplied wild reading 4-5x, ON
+UNSEEN TEXTS.** The pre-pinned bar (stack-plain >= +0.03 wild scoped
+args, bind_read old pool): MISSED (-0.012, plain 0.232 / stack
+0.220); the matched wild-holdout fac-exact read (not the pinned bar;
+exploratory tag, single seed) favors the stack +0.0503 — the organs
+pay where the ladders live, not on the old fixture. Seed-241-only:
+all comparative claims await a second seed per the seed-noise law.
+BONUS FINDINGS, both custody wins: (1) the row_gold door REFUSED my
+holdout fixture and was right — my convenience propagator lacked the
+dup-add inverse (fifth propagation reimplementation this week; the
+grammar-verifier unification is now urgent, not hygienic); (2) **JUNE
+CORE GAP FILED: gac_propagate does not propagate args=[a,a]
+constraints** (dup-scope domain product blows the arity cap at
+301^2, and even uncapped the dup constraint does not force) — the
+solver-side sibling of the [85] representability bug; registered for
+repair. Fixture solutions rebuilt dup-aware; 311/311 query-pinned,
+all independently key-confirmed at load.
