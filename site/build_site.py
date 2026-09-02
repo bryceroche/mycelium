@@ -114,7 +114,9 @@ def page(title, body, depth=0):
 <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{title}</title>
 <meta name="description" content="{TITLE} — {BYLINE}">
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='0.9em' font-size='90'>✓</text></svg>">
+<link rel="icon" type="image/png" sizes="64x64" href="/favicon-64.png">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <style>{CSS}</style>{THEME_JS}</head><body>
 <header class="masthead"><div class="wrap">
 <a class="brand" href="{p if depth else './'}">The Shape of Thought</a>
@@ -214,6 +216,8 @@ if DIST.exists():
 (DIST / "paper").mkdir(parents=True)
 (DIST / "figures").mkdir()
 (DIST / "index.html").write_text(landing)
+for ic in ("favicon-64.png", "favicon-32.png", "apple-touch-icon.png"):
+    shutil.copy(ROOT / "site" / ic, DIST / ic)
 (DIST / "paper" / "index.html").write_text(paper_html)
 shutil.copy(PAPER / "paper1.pdf", DIST / "paper1.pdf")
 shutil.copy(ROOT / "docs" / "phase1_skeleton_spec.md", DIST / "ledger.md")
