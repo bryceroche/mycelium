@@ -159,41 +159,32 @@ landing = page("The Shape of Thought", f"""
 <h1 class="paper-title">{TITLE}</h1>
 <p class="byline">{BYLINE}</p>
 <p class="stamp">{STAMP}</p>
-<p class="lede">A deployed reasoning system&rsquo;s output should not be an
-answer; it should be a decision.</p>
+<p class="lede">A reasoning machine&rsquo;s output should not be an
+answer; it should be a decision &mdash; answer, or stay silent, and make
+even the silence legible.</p>
 <div class="actions">
-<a class="primary" href="paper/">Read the paper</a>
-<a href="ledger.md">The ledger (supplementary)</a>
-<a href="https://github.com/bryceroche/mycelium">Code</a>
+<a href="paper/">Read the paper</a>
 <a href="blog/">Blog</a>
 <a href="bio/">About</a>
+<a href="https://github.com/bryceroche/mycelium">Code</a>
 </div>
 <h2>Abstract</h2>
 {abstract_html}
 <h2>What this is</h2>
 <ul class="cardlist">
-<li><span class="k">THE ARTIFACT</span><br>A certification lattice: a
-small trained parser over a frozen trunk, an exact symbolic solver, and
-zero-parameter decision machinery that certifies 912 of 1,500 held-out
-problems at measured 1.0000 precision — with the boundary of that claim
-measured and published at the same strength.</li>
-<li><span class="k">THE METHOD</span><br>Fourteen model generations under
-registered predictions with mechanized verdicts. The complete
-chronological ledger — every registration, kill bar, verdict, and law —
-ships as supplementary material: offered for audit, not trust.</li>
-<li><span class="k">THE BET</span><br>The paper closes with a
-falsifiable, pre-registered prediction that its own certification
-instrument will age — published with the succession plan for its
-replacement.</li>
+<li><span class="k">TWO JAWS</span><br>A small trained head reads plain
+English into typed factor graphs; an exact constraint solver crushes
+them by deterministic search. Neural proposes, symbolic disposes &mdash;
+creativity in recognition, never in verification.</li>
+<li><span class="k">ONE CARD</span><br>The whole system trains and runs
+on a single consumer AMD GPU through tinygrad. The trained head is a
+fraction of one percent of the system&rsquo;s parameters; the frozen
+language model is read once per problem and never trained.</li>
+<li><span class="k">A WALL OF WITNESSES</span><br>Before it may answer,
+the system&rsquo;s reading must survive permuted re-readings, a panel of
+independently trained models, and an exact answer check. Right readings
+collide; wrong ones scatter. Only unanimity speaks.</li>
 </ul>
-<figure><img src="figures/f7c_chain_of_custody.png" alt="The chain of custody"
-loading="lazy"><figcaption><strong>Figure 1.</strong> The chain of
-custody: four gates, four invariances, five real trajectories — every
-gate annotated with the failure it provably catches.</figcaption></figure>
-<h2>Coming</h2>
-<p><em>Guided by Primes</em> (Paper II — the abstraction ladder) and
-<em>The Shadow of Intelligence</em> (essay). This site is the canonical
-home; the byline is the byline.</p>
 """)
 
 # ---------------------------------------------------------------- blog + bio
