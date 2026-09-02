@@ -33120,3 +33120,28 @@ verified kernel. Feeds Lowering Probe v2. Companion bug on file: the
 June core's gac_propagate does not propagate args=[a,a] (dup-scope
 arity blowup + no forcing even uncapped) — repair lands WITH the
 unification.
+
+## 2026-09-02 — REGISTERED: THE HOLOGRAPHIC CAPACITY AUDIT (word given)
+
+**The gut**: "holographic objects show different images depending on
+the angle you view them." Audited: the T^256 bus IS holographic
+storage in Plate's HRR sense — bindings superposed in one state,
+recovered by role-phase counter-rotation; the viewing angle IS the
+role phasor; bind_read's four recovery numbers (arg1/arg2/res/op) are
+image clarity at four angles. **HYPOTHESIS (pinned BEFORE the read)**:
+the wild arg-recovery ceiling (~0.55) is HOLOGRAPHIC CAPACITY
+SATURATION, not learning failure — deep problems superpose up to ~24
+factors x 4 roles ~ 100 bindings against the VSA capacity law
+(recoverable bindings ~ D/log(codebook)). **PREDICTIONS**: (1)
+per-item recovery falls monotonically with superposed-binding count
+(factors x roles); (2) the curve's shape matches the capacity law's
+graceful-degradation form, not a training-artifact cliff; (3) if
+confirmed, the remedy is PHYSICS (wider bind_d / sparser
+superposition at the 20M rung) and further training budget on the
+ceiling is struck; if refuted (flat curve), the ceiling is learning
+and capacity spend is struck. Either verdict redirects real budget.
+**THE READ**: bucket the bind_read gold fixture by factor count,
+per-item recovery vs superposition load, on banked ckpts (genesis
+twins + 21n/20r lineage) — zero training; ghost-image (crosstalk)
+companion read via the port census machinery scoped WITHIN the bus.
+Fires on the free GPU as the next zero-training read.
