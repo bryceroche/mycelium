@@ -33182,3 +33182,17 @@ loop (no partition needed at train time) + v2.0 cycle-seam alternation
 step-partitioned engine (reads-first per the v2.1 spec). Regime
 matched to the incumbent for comparability: from noise, 50k, seed
 241, form_mix12, stack envs. Verdict fixture: the wild holdout.
+
+## 2026-09-02 — THE BLACKBIRD RULE (gut, pinned BEFORE the candidate's reads)
+
+The SR-71 leaks fuel at rest BY DESIGN — panels sized for Mach-3
+expansion; demand ground-seal and the plane shatters at speed. Our
+measured twin: the loop's annealing (poles 1.08 -> 1.00, kick 30% ->
+0.5%) — loose cold, sealed at cruise. **PINNED for alt21cand241 (and
+all fresh-organ runs): rest-state leaks are design, not defect. Fresh
+zero-init stations + the fresh 768 bind MLP will look worse than the
+incumbent early; NO verdicts, kills, or course corrections from
+early-step reads — judgment ONLY at cruise (50k, wild holdout).**
+Forward echo: the ping's theta=0.9 commit gate is a panel gap — early
+breaths SHOULD leak few facts (cold parse), late breaths seal (the
+matryoshka contraction at temperature). Never fix the early looseness.
