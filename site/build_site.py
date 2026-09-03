@@ -181,7 +181,7 @@ and edges.</a></li>
 <li><a href="blog/2026-09-01-the-paper-in-plain-language/"><span class="k">THE PAPER, IN PLAIN LANGUAGE</span><br>The full technical paper,
 rewritten for the largest possible audience. Every number verified;
 every difficult idea explained rather than glossed.</a></li>
-<li><a href="blog/2026-09-02-the-telegraph-in-the-attention/"><span class="k">THE TELEGRAPH IN THE ATTENTION</span><br>A hidden two-state
+<li><a href="blog/2026-09-03-the-solver-inside-technical/"><span class="k">THE SOLVER INSIDE</span><br>A hidden two-state
 switch found in a hundred attention traces, and the frozen model
 that already knew how to solve Sudoku — the observations that seeded
 the architecture.</a></li>

@@ -1,10 +1,7 @@
-title: The solver inside (technical)
+title: The solver inside
 date: 2026-09-03
 
 # The solver inside: Pythia-410M, structured attention, and Sudoku
-
-*The technical version. A companion post tells the same story in
-plainer language.*
 
 ## The experiment
 
