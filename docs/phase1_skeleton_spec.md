@@ -33374,3 +33374,25 @@ wild holdout + mint. NOTE: this also re-opens the power-sweep's
 "router inert" verdict — that null may have been a fed-a-boolean
 artifact, not a true negative (the representability law's warning
 made flesh).
+
+## 2026-09-03 — ROUTER GRADED-INPUT VERDICT: NULL CONFIRMED (the honest answer, twice)
+
+Two-arm test complete (both warm from genesis_stack241, LR=1e-4, 12k,
+single-bit delta): graded 0.2394/0.8964 vs hard 0.2370/0.8950
+(wild/mint) — deltas +0.002/+0.001, noise floor. **The audit's
+representability hypothesis for the router is REFUTED: fed graded
+signal or boolean, identical. The power-sweep null was honest —
+"router inert" now stands twice-confirmed via independent mechanisms.
+THE ROUTER IS RETIRED from future builds with confidence (redundancy
+verdict's territory: snap-conditioned routing does not pay, however
+fed); its capacity budget flows to the MASK HEAD.** The audit method
+stands (the mask-head finding was code-verified starvation; this was
+its honest boundary). SIDE RESULT, big: gentle continuation (12k @
+1e-4) lifted MINT to ~0.8964 from stack241's 0.8353 — record-class,
+and both router arms show it identically (it's the continuation, not
+the router). WILD STANDINGS after the repairs era: **alt21warm 0.2433
+(NEW BEST — the 4L stations, born warm, +0.010 over incumbent)** >
+router arms 0.2394/0.2370 > genesis_stack241 0.2331. Cold-birth cure
+fully vindicated; alt21warm is the promotion candidate pending artery
++ 2-seed discipline. hologram768 wild read still owed (env combo:
+no-garage config — minor).
