@@ -33299,3 +33299,31 @@ at 14.5k (lawful: the Blackbird fence covers fresh organs judged
 early, not continuations falling below their own source — the
 distinction matters and is now written). repair3 refired: both arms
 at LR=1e-4 from their true sources.
+
+## 2026-09-03 — REGISTERED: THE MASK HEAD, fourth trained organ (word given)
+
+Gut audit CONFIRMED in code: dynamic masking (ALG_MASKRE) today is a
+REFLEX — 0 dedicated heads (rides shared bank/mixer), 0 learned params
+(hard threshold `_A5>0.5`, additive-open), ~0 metadata (committed
+edges only). The ping-pong's value flows through a channel that
+cannot learn from what flows through it — pipe without pump. **RULING:
+dynamic masking + the 7-rung atlas climb are the FRUIT of the
+neural/symbolic alternation; they get a dedicated trained organ — the
+MASK HEAD — sized UP (M_HEADS=4 dedicated attention heads, ~1.5-2M
+params, deliberately not the single-headed frugality the other organs
+carry). The precision channel (subsumption law's other half) finally
+gets its organ.** Full spec: docs/mask_head_spec.md. Inputs = the
+metadata the reflex discards: graded snap adjacency (not booleans),
+the per-step atlas consult (step_atlas.py — the ladder rungs), the
+domain-mass matryoshka radius (per-var seal), current beliefs,
+breath-step id (step-conditioned tightening). Output = SOFT learned
+mask bias, OPEN-ONLY (A0's grave: may raise attention on committed/
+atlas-favored edges, never tighten below the first-pass floor).
+Training: downstream parse loss ONLY (no mask-imitation target — the
+Goodhart fence); dual-terminal (atlas/facts detached); COLD-BIRTH
+(warm or bootstrapped, never from noise); gate ajar 0.02, zero-init
+output. Home: the step-partitioned engine's seam, beside ping +
+atlas consult — one construction job (compute/storage/metadata =
+the block / the mask-context buffer / the Section-2 input list). The
+reframe: v2.1 goes from "four-layer step" to "four-layer step + a
+masking LEARNER."
