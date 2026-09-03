@@ -174,21 +174,17 @@ the silence is.</p>
 {abstract_html}
 <h2>What this is</h2>
 <ul class="cardlist">
-<li><span class="k">A DIFFUSION COMPILER</span><br>Like MLIR, the
-system lowers language down a ladder of representations &mdash; prose to
-silhouette to typed graph to primitives &mdash; and refuses to lower
-prematurely. Unlike a compiler, it lowers everything in parallel: the
-whole graph settles together, like an image emerging from noise.</li>
-<li><span class="k">THE DANCER&rsquo;S SILHOUETTE</span><br>Understanding
-means watching the envelope of motion, not the costume. Every sentence
-is squeezed through a 512-dimension waist that destroys the phrasing
-and keeps the dance &mdash; two sentences that mean the same thing
-become the same thing.</li>
-<li><span class="k">A FANCY LOOKUP TABLE</span><br>Underneath the
-vocabulary: fuzzy matching and grouping against an atlas of known
-operation-shapes, maintained across model generations with running
-statistics. Recognition is lookup &mdash; and the keys are silhouettes,
-not sentences.</li>
+<li><a href="blog/2026-09-01-what-is-the-shape-of-thought/"><span class="k">WHAT IS THE SHAPE OF THOUGHT?</span><br>The site's title question,
+answered with measured geometry: a braid that tightens through nested
+rings, breaking like the wave at Nazar&eacute; into a crystal of nodes
+and edges.</a></li>
+<li><a href="blog/2026-09-01-the-paper-in-plain-language/"><span class="k">THE PAPER, IN PLAIN LANGUAGE</span><br>The full technical paper,
+rewritten for the largest possible audience. Every number verified;
+every difficult idea explained rather than glossed.</a></li>
+<li><a href="blog/2026-09-02-the-telegraph-in-the-attention/"><span class="k">THE TELEGRAPH IN THE ATTENTION</span><br>A hidden two-state
+switch found in a hundred attention traces, and the frozen model
+that already knew how to solve Sudoku — the observations that seeded
+the architecture.</a></li>
 </ul>
 """)
 
