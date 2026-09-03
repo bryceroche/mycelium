@@ -33245,3 +33245,28 @@ the warm smoke (0.7279, both aboard) proving the pathology bites
 NEWBORNS ONLY. Isolation twins queued in-unit and firing now: armA =
 4L@512, armB = 2L@768, 12k each (collapse visible by 4k). The
 incumbent genesis_stack241 stands; the week's wild result untouched.
+
+## 2026-09-02 — REGISTERED: THE PER-STEP ATLAS (Bryce; the cycle atlas promoted from instrument to organ)
+
+**Ruling**: historical-era centroid banks leave the operational store
+(ARCHIVED, not deleted — they carry the rotation series, Procrustes
+0.988). The operational atlas becomes CURRENT-ERA ONLY with **seven
+versions of centroids, one per breath_step**: key = (breath_step_id,
+centroid_id); era survives as a STAMP asserted against the manifest
+at load (wipe-and-re-anchor at every promotion; stale atlas = loud
+door). Justification is the matryoshka: a kind's location at step 1
+(loose) and step 6 (near-snap) are different places — one static
+centroid averages a trajectory; per-step banks are the resolution the
+bridge crossing actually needs. The cycle atlas
+(cycle_atlas_mine.py -> campaign.db, keyed register/cycle/class)
+already mined this shape as a diagnostic — this registration promotes
+it to conditioning: retrieved per step, offered to the INTEGRATE
+station (structural entry; a chart, not a checkpoint), NEVER in a
+loss (Goodhart fence — "be near your centroid" would coerce kinds,
+not describe them). BUILD HOME: the step-partitioned read engine's
+seams — one consult per step beside the solver ping; composes with
+the NL-atlas imbalance question (A3): per-step consultation, BOTH
+maps. Numerology struck en route: 7 breaths never traversed the 7
+historical eras (only the current era is ever live; the count was
+coincidence) — the instinct's true target was per-step versions
+within the era, now registered.
