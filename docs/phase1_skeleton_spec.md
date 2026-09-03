@@ -33396,3 +33396,16 @@ router arms 0.2394/0.2370 > genesis_stack241 0.2331. Cold-birth cure
 fully vindicated; alt21warm is the promotion candidate pending artery
 + 2-seed discipline. hologram768 wild read still owed (env combo:
 no-garage config — minor).
+
+## 2026-09-03 — RESUME READS + SEED 2 FIRED
+
+alt21warm artery: wild args 0.213 (parity band — the champion's edge
+is fac-exact, not the artery). hologram768 wild holdout: 0.1702 —
+the 768 plate UNDERPERFORMS the 512 heads (0.23-0.24) at matched-ish
+budget; shelved as viable-not-better, deep-tail rationale intact for
+the 20M rung (the capacity audit's ruling holding: width doesn't buy
+the wild body). SEED 242 of the champion fired (alt21warm recipe
+verbatim, in-unit wild read) — the 2-seed law's debt on the 0.2433
+claim. Env-omission note: two failed hologram reads were MY read env
+lacking garage flags (the assert tuple reads ckpt-has/p-lacks;
+misread twice) — reads must carry the TRAINED env, always.
