@@ -33424,3 +33424,22 @@ atlas consult + mask head at the seams) is built to deliver. Wild
 standings: alt21warm242 0.2530 > alt21warm 0.2433 > router arms
 0.2394/0.2370 > genesis_stack241 0.2331 > hologram768 0.1702. The
 4L-warm pair is the read engine's substrate; next build = the engine.
+
+## 2026-09-03 — THE ENGINE'S MAIDEN READS: rung 1 exact; alternation front-loaded; THE UNUSED FLOOD
+
+step_engine_read.py maiden matrix (2 heads x 2 fixtures x R=1/3).
+**Rung 1 PASS: R=1 == loop_val to 4 decimals both heads (0.2530 /
+0.7579).** Convergence: first conditioned pass = the big jump
+(champion wild 0.1745->0.2530; alt2 mint 0.7069->0.7579); second
+pass adds a sliver where injection lives (mint peak 0.7604 at pass
+2); plateau by pass 2-3. Iterated re-execution CONVERGES FAST; the
+alternation's value is front-loaded. **THE LEAK GAUGE HEADLINE: one
+alternation nearly TRIPLES wild forced-vars (86->225) — the flood
+rises but cannot be cashed: alt2on240 is register-walled (0.07) and
+the CHAMPION HAS NO INJECTION PORT (no W_fact; 1,083 forced vars/
+batch computed and discarded).** NEXT ARM (awaiting word): give the
+champion the port — warm-continue alt21warm242 +ALG_ALT2 (W_fact
+born zero-init), 12k @ 1e-4; every raising-law satisfied (warm host,
+WARM PARSE this time — FACTS from its own 0.78 parse — gentle LR);
+then engine re-reads, iteration finally compounds on a head that can
+receive the flood.
