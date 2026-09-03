@@ -33286,3 +33286,16 @@ REPAIR FIRED (word stands): (a) armB continues to 50k — the
 768-hologram baseline; (b) alt21 stations warm-continue from
 genesis_stack241 (12k) — the corrected candidate, stations born into
 a working parse. Wild holdout judges both.
+
+## 2026-09-03 — THE GENTLE-CONTINUATION LAW (paid for twice in one day)
+
+hologram768 v1 (warm from isoB at DEFAULT LR 3e-4): basin jostled and
+killed — val fell to 0.0117 by 12k, strictly below both its own
+inheritance (0.208) and its from-noise sibling at equal steps. The
+cont-control protocol's warning made mechanical: **warm continuations
+get EXPLICIT gentle LR (1e-4 or lower), never the fresh-run default;
+'restarts jostle' includes hot-LR restarts on warm weights.** Killed
+at 14.5k (lawful: the Blackbird fence covers fresh organs judged
+early, not continuations falling below their own source — the
+distinction matters and is now written). repair3 refired: both arms
+at LR=1e-4 from their true sources.
