@@ -33409,3 +33409,18 @@ verbatim, in-unit wild read) — the 2-seed law's debt on the 0.2433
 claim. Env-omission note: two failed hologram reads were MY read env
 lacking garage flags (the assert tuple reads ckpt-has/p-lacks;
 misread twice) — reads must carry the TRAINED env, always.
+
+## 2026-09-03 — SEED-2 VERDICT: TWO-SEED AGREEMENT ON THE WARM STATIONS (new wild record 0.2530)
+
+alt21warm242: wild holdout 0.2530 (NEW BEST), in-train val 0.7797.
+Both seeds positive vs incumbent (s241 +0.0102, s242 +0.0199, mean
++0.0150) — the seed-noise law's 2-seed agreement met; the honest
+scope: this is the STATIONS-ONLY claim (no ping at read), and the
+pinned v2.1 capability bar (mean >= +0.05, for the FULL alternating
+package) is NOT yet met — the stations alone deliver a consistent
+modest gain and EARN THEIR PLACE AS SUBSTRATE; the remaining +0.035
+to the bar is exactly what the read-engine phase (per-step ping +
+atlas consult + mask head at the seams) is built to deliver. Wild
+standings: alt21warm242 0.2530 > alt21warm 0.2433 > router arms
+0.2394/0.2370 > genesis_stack241 0.2331 > hologram768 0.1702. The
+4L-warm pair is the read engine's substrate; next build = the engine.
