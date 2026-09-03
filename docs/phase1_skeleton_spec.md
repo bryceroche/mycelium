@@ -33356,3 +33356,21 @@ now = {mixer heads, pointer multi-form, waist residual-2-layer, FFN
 input REPAIR (representability, not capacity — fire standalone, cheap)
 + notebook-shelf decoupling (storage). All measured against the wild
 holdout; behavioral-distance law governs (no blind scaling).
+
+## 2026-09-03 — FIRED (queued): THE ROUTER GRADED-INPUT REPAIR (word given)
+
+Audit headline built + fired. DISCOVERY at build: NO wild-capable head
+carries a trained router (only the dead power-sweep 21g lineage did;
+every genesis/repair head trained router-free) — so the repair
+INTRODUCES the router, born warm into a working parse (cold-birth's
+good condition: warm host, fresh small organ, gate ajar R_GAIN=0.15).
+Clean 2-arm test, queued behind alt21warm (single-process): both warm
+from genesis_stack241, LR=1e-4, 12k, form_mix12 — arm A router with
+GRADED input (softmax snap, ALG_ROUTER_GRADED=1), arm B router with
+HARD argmax input (today's reflex). A-B delta = the graded-input
+effect isolated (the audit's claim: graded signal un-starves the
+router). eq-gated (ROUTER_GRADED unset = bit-identical x3). Reads:
+wild holdout + mint. NOTE: this also re-opens the power-sweep's
+"router inert" verdict — that null may have been a fed-a-boolean
+artifact, not a true negative (the representability law's warning
+made flesh).
