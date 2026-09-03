@@ -33233,3 +33233,15 @@ pauses).** Same tidal volume, multiplied extraction — the v2.1
 training spec's efficiency claim in 240-million-year-old engineering.
 Sits beside the Blackbird rule: one aviation law, one avian law.
 Cross-ref: docs/alternator_v21_training_spec.md.
+
+## 2026-09-02 — candidate v2 (4L+768, no ALT2): ALSO COLLAPSED — suspect list narrowed to two
+
+Final: mint 0.0033 / wild 0.0449 / best val 0.0188; BUS again healthy
+(.51/.58/.74/.61 at 768). ALT2 was OFF -> frozen-FACTS acquitted as
+sole killer; the warm-parse law stands but is not the whole story.
+Remaining suspects, exactly two (v2 = incumbent + these deltas): (a)
+the 4L stations from noise, (b) the 768 hologram from noise — with
+the warm smoke (0.7279, both aboard) proving the pathology bites
+NEWBORNS ONLY. Isolation twins queued in-unit and firing now: armA =
+4L@512, armB = 2L@768, 12k each (collapse visible by 4k). The
+incumbent genesis_stack241 stands; the week's wild result untouched.
