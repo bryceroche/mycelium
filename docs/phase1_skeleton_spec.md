@@ -33327,3 +33327,32 @@ atlas consult — one construction job (compute/storage/metadata =
 the block / the mask-context buffer / the Section-2 input list). The
 reframe: v2.1 goes from "four-layer step" to "four-layer step + a
 masking LEARNER."
+
+## 2026-09-03 — THE ORGAN CAPACITY AUDIT (full census; report docs/organ_capacity_audit.md)
+
+Sonnet census on 3 axes (compute/data/storage) vs the mask-head
+yardstick. **THE HEADLINE — a SECOND pipe-without-pump found (the
+representability class, the audit's real prize)**: the ROUTER
+conditions inside the breath loop on HARD one-hot argmax reads off
+the garage codebook, while the GRADED pre-snap logits sit one line
+earlier — a boolean-where-graded-signal-exists, the exact masking
+pathology, not previously recognized. Cheap graded-input fix; feeds
+the router-data finding into the mask head's family. **NEW organ
+also surfaced**: the macro value system (W_y/h_dig2) has the pointer
+heads' single-bilinear disease and was NOT in the registered capacity
+package — folded in. COMPUTE-AXIS verdicts CORROBORATE the ledger's
+own 2026-09-01..03 reads (mixer single-QK^T over full 512 doing the
+most relational work = top starvation; pointers/waist/notebook single-
+form; the ~2.5x package stands, +macro-value now). STORAGE flag:
+notebook shelf hard-capped at 8 rows, 1:1-coupled to breath count —
+a ceiling independent of the compute fix. **LOOK-ALIKES cleared (not
+starvation)**: alt21 integrate stations (cold-birth init, already
+proven by isolation — full multi-head compute), step_atlas (zero-param
+BY DESIGN, Goodhart-fenced KNN). RIGHT-SIZED confirmed: classifier/
+digit heads, bind MLP, bank attention (8-headed; only FFN 2x-not-4x,
+already scoped). Consolidation: the capacity curve's fed-mind package
+now = {mixer heads, pointer multi-form, waist residual-2-layer, FFN
+4x, macro-value multi-form, +8 scratch slots} + the router graded-
+input REPAIR (representability, not capacity — fire standalone, cheap)
++ notebook-shelf decoupling (storage). All measured against the wild
+holdout; behavioral-distance law governs (no blind scaling).
