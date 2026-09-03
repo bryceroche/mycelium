@@ -33443,3 +33443,13 @@ born zero-init), 12k @ 1e-4; every raising-law satisfied (warm host,
 WARM PARSE this time — FACTS from its own 0.78 parse — gentle LR);
 then engine re-reads, iteration finally compounds on a head that can
 receive the flood.
+
+## 2026-09-03 — THE PORT ARM FIRED (word given)
+
+Champion alt21warm242 + injection port (W_fact/alt2_g born zero-init):
+warm on warm (FACTS from its own 0.78 parse — warm-parse law satisfied
+for the first time in an ALT2 training), LR=1e-4, 12k, seed 242 ->
+sharp_port242. In-unit engine re-reads: wild R=1/R=3 + mint R=3 — the
+question: does iteration COMPOUND once the flood has a port? (Maiden
+baseline to beat: wild 0.2530 plateau; 1,083 forced vars/batch
+previously discarded.)
