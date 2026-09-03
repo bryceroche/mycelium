@@ -33270,3 +33270,19 @@ maps. Numerology struck en route: 7 breaths never traversed the 7
 historical eras (only the current era is ever live; the count was
 coincidence) — the instinct's true target was per-step versions
 within the era, now registered.
+
+## 2026-09-02 — ISOLATION VERDICT: THE COLD-BIRTH LAW (stations guilty, hologram innocent)
+
+armA (4L@512, from noise): DEAD (0.003/0.003/0.0085 — the candidates'
+signature). armB (2L@768, from noise): HEALTHY (0.026 -> 0.123 ->
+0.208 at 12k, climbing). **Attribution complete: the 4-layer stations
+kill from-noise training; the 768 hologram is innocent and looks
+strong. With the warm smoke (0.7279, stations aboard) the law: NEW
+ATTENTION ORGANS CANNOT BE BORN COLD — the attention-bootstrap
+principle at organ scale. Stations enter WARM (continuation) or with
+direct supervision, never from noise.** Both prior candidate deaths
+explained (v1 = cold stations + garbage FACTS; v2 = cold stations).
+REPAIR FIRED (word stands): (a) armB continues to 50k — the
+768-hologram baseline; (b) alt21 stations warm-continue from
+genesis_stack241 (12k) — the corrected candidate, stations born into
+a working parse. Wild holdout judges both.
