@@ -33526,3 +33526,20 @@ boundaries (float non-associativity, not defect); structural line at
 1e-5 per the instrument's own grammar. Bar re-pinned ST_EQ_TOL=1e-5
 (3 orders above noise, 2 below structure); backward bar UNCHANGED
 (78/78 strict dual-criterion). Ladder refired.
+
+## 2026-09-04 — REGISTERED (gut): THE MASK DSL + THE SUDOKU RECREATION TEST
+
+The gut closes the circle to v98: dynamic masking heads get a custom
+DSL — a tiny deterministic language of masking rules (sets, group
+relations, pairwise predicates) that the mask head EMITS/selects but
+symbolic machinery EXECUTES (neural proposes, symbolic disposes,
+applied to attention geometry itself). Program inputs: the trunk's
+reading of the problem text (rules-of-the-game), the alternating
+neural state, solver commitments, atlas kinds. Staged v1 select ->
+v2 parameterize -> v3 emit, each gated by the bring-up ladder.
+**THE PINNED CONFIRMATION: present sudoku in prose; the DSL pipeline
+must reproduce the v98 hand-crafted mask EXACTLY (tensor equality on
+the same board encoding)** — the machine re-deriving, from language,
+the rules we once wrote by hand. Excavation of the v98 sudoku/
+coloring/kenken mask rules + docs/mask_dsl_spec.md delegated;
+findings land next entry.
