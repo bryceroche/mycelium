@@ -33543,3 +33543,26 @@ the same board encoding)** — the machine re-deriving, from language,
 the rules we once wrote by hand. Excavation of the v98 sudoku/
 coloring/kenken mask rules + docs/mask_dsl_spec.md delegated;
 findings land next entry.
+
+## 2026-09-04 — THE V98 MASK EXCAVATION + docs/mask_dsl_spec.md BANKED
+
+All five domains excavated with file:line ground truth: sudoku
+(sudoku.py:53-104 — heads 0-4 row / 5-9 col / 10-14 box / 15 global,
+5/5/5/1), kenken (fixed row/col + per-instance cage cliques,
+kenken.py:317-369,574-622), coloring (edge=2-member factor,
+self-edge fix load-bearing), circuits (gate cliques, T=3), and the
+GENERAL RULE that subsumes them all (factor_masks.py:511-607):
+allow(i,j) iff a shared factor of type t — membership outer product.
+The current MASKRE reflex is also expressible. **COVERAGE: nothing
+resisted — every rule <=5 DSL lines from atoms same_group/committed/
+flip/self/all.** Spec's masterstroke: open-only lives IN THE GRAMMAR
+— no complement atom exists, tightening is UNREPRESENTABLE (A0's
+grave honored by construction, not by check). Executor reuses the
+validated factor_masks path; programs are pure, hash-cacheable,
+fail-closed. Staged interface v1 select / v2 parameterize / v3
+grammar-constrained emit, identity-selection = bit-identical
+baseline. THE SUDOKU RECREATION TEST pinned: prose -> parse ->
+program -> executor mask == _build_sudoku_attention_masks(16), exact
+np.array_equal, failure modes separable. The kenken verification
+inlet stays out of masks by the same law that kept op-type out in
+v98 (C2). The mask head now has its language waiting.
