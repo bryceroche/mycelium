@@ -1,82 +1,95 @@
 title: The Lean horizon
 date: 2026-09-04
 
-# The Lean horizon: a reasoning engine that could write real proofs
+# The Lean horizon: two loops, one engine
 
-Everything on this site describes a reasoning engine with one shape:
-a neural side that reads messy language and *proposes* structure, an
-exact symbolic side that *disposes* — verifies or refuses — and a
-port between them through which verdicts flow back and change what
-the neural side looks at next. Today that engine reads algebra word
-problems. But the shape was chosen for where it can go.
+This project runs on a two-line theory of thinking:
 
-## The port is the whole game
+> **Compression that preserves the right ports is what makes
+> abstraction. Alternation between neural attention and an exact
+> solver is what makes reasoning.**
 
-Here is the thing we keep re-learning, most recently with hard
-measurements: a reasoning system is only as good as its **port** —
-the channel through which exact feedback re-enters the thinking
-loop. We spent weeks discovering that our solver could derive over a
-thousand forced conclusions per batch that the neural side simply
-threw away, because no port existed to receive them. We built the
-port; the numbers moved. The lesson generalizes: proposal without a
-verdict channel is just eloquence. The port is criticality
-infrastructure — and there is a second sense of "critical" here too.
-Our measurements show the deliberation loop operates *near
-criticality* in the physicist's sense: poised at the edge where
-signals neither die out nor explode, the only place memory and
-sensitivity coexist. A reasoning engine wants to live on that edge,
-and the port's verdicts are what keep it honest there.
+This post unpacks both lines, and then describes where they lead: an
+outer loop, wrapped around our whole engine, whose judge is the Lean
+proof compiler.
 
-## Compression is what makes it reasoning
+## Abstraction: compress, but keep the ports
 
-The other pillar is **compression**. Our engine forces every problem
-through a narrow waist that destroys phrasing and keeps structure —
-because understanding *is* selective destruction. And note what a
-mathematical proof actually is: the ultimate compression — a short
-certificate that stands in for infinitely many cases. "The sum of
-two even numbers is even" compresses an infinite table of facts into
-three lines. An engine built around compression at every layer —
-silhouettes for reading, factor graphs for structure, certificates
-for truth — is an engine already speaking proof's native language.
+Every abstraction is a compression — you throw away detail and keep
+a summary. But compression alone isn't abstraction; a blurry photo
+is compressed too. What makes an abstraction *work* is that the
+compression **preserves the ports**: the connection points through
+which the summarized thing still interacts with everything else.
+"A function that sorts a list" throws away the algorithm but keeps
+the interface — and the interface is what everything downstream
+plugs into. Compress away a port you needed, and the abstraction
+doesn't simplify your problem; it severs it.
 
-## The loop we can see from here
+Our engine is built as a stack of exactly such compressions. The
+512-dimension waist destroys phrasing but preserves quantities,
+roles, relations — the ports the solver plugs into. The factor graph
+throws away the story but keeps every constraint. We learned the
+port lesson the hard way, twice, with measurements: an organ fed a
+boolean where graded signal existed (a crushed port) sat inert for
+weeks; a solver deriving a thousand conclusions per batch with no
+port to deliver them through watched its work discarded. Port
+criticality is not a slogan here. It is the difference between
+abstraction and amputation.
 
-Now put the pieces together and look one horizon out. There exists a
-language called **Lean** — a proof assistant in which mathematical
-proofs are written as code, and a small, ferociously audited kernel
-*compiles* them. If a proof compiles, it is correct. Not probably
-correct, not persuasively correct: correct, with the same finality
-as our answer key, but for all of mathematics rather than one
-arithmetic answer.
+## Reasoning: the inner loop
 
-Our architecture maps onto that world with almost nothing changed:
+If abstraction is the statics, reasoning is the dynamics — and it is
+an **alternation**. Inside each deliberation, every breath, the
+neural heads commit what they're confident of; an exact constraint
+solver floods the consequences; and what returns through the port
+reshapes what attention looks at next. Neural proposes, symbolic
+disposes, neural re-attends — several times per problem, in
+milliseconds. That inner ping-pong is, as of this week, no longer a
+design: our new trainer runs it live at every breath, and the engine
+is learning under the rhythm for the first time.
 
-- The **neural jaw** reads a theorem statement — messy human
-  mathematics — and proposes proof steps, exactly as it now proposes
-  factor graphs.
-- The **Lean kernel** replaces our CSP solver as the symbolic jaw:
-  the universal verifier, the answer key for everything.
-- The **port** carries the compiler's verdicts back — and Lean's
-  errors are not just "no": they say *where* the proof breaks and
-  *what* was expected, precisely the graded, structured feedback our
-  dynamic masking is being built to steer by.
-- The **ping-pong** becomes the proof loop: propose, compile, read
-  the failure, re-attend, propose again — each iteration certified
-  or refused by machinery that cannot be argued with.
+The most underrated player in the inner loop is the solver's way of
+saying no. When constraints cannot all hold, it can return a
+**minimal unsatisfiable core** — the *smallest* subset of
+commitments that contradict each other. Not "something's wrong," but
+"these three things cannot all be true; everything else is fine."
+An MUC is itself a compression with perfect ports: it discards every
+innocent commitment and keeps precisely the handles the neural side
+needs to grab in order to reconsider. Refusal, made steerable.
 
-That last property is everything. A system that iterates against a
-compiler cannot fool itself, and it cannot fool you. Every accepted
-proof is checkable by anyone, forever, independent of the neural
-network that found it. The certified-or-silent principle we built
-for word problems, scaled to mathematics itself.
+## The outer loop: Lean as the court of final appeal
 
-We are not there. Today the engine is learning to read wild algebra
-prose, and the honest ledger says so. But we did not choose this
-architecture for algebra. We chose it because the shape — propose,
-verify, feed back through the port, compress at every layer, live
-near the critical edge — is the shape that scales from "Maria has
-three apples" to theorems no one has proved yet. The engine we are
-building is the small, auditable version of the engine mathematics
-will eventually want.
+Now wrap the whole engine in a second, slower loop. There is a
+language called **Lean**, in which mathematical proofs are code and
+a small, ferociously audited kernel *compiles* them. If a proof
+compiles, it is correct — with the same finality as our answer key,
+but for all of mathematics.
+
+The future we're pointing at keeps both loops, nested:
+
+- **Inner loop (milliseconds, every breath):** neural heads ↔ our
+  CSP solver — drafting steps, flooding consequences, pruning with
+  MUCs. Fast, local, exact-but-narrow. The scout.
+- **Outer loop (seconds, every draft):** the assembled proof goes to
+  the Lean compiler. Compile = done, certified forever, checkable by
+  anyone, independent of the network that found it. Fail = Lean
+  returns its own version of an MUC — an error that says *where* the
+  proof breaks and *what* was expected — which flows back through
+  the port, re-shapes attention, and launches the next inner-loop
+  drafting session. The judge.
+
+Two verifiers at two timescales, each speaking "no" in the most
+compressed, most portable form available — the MUC inside, the
+compiler error outside — and neural attention alternating with both.
+The inner loop makes drafts good enough to be worth compiling; the
+outer loop makes the whole system impossible to fool, including by
+itself.
+
+We are not there; today the engine is learning to read wild algebra
+prose, and the ledger says so plainly. But the two-line theory is
+already load-bearing at the small scale — measured, this week, in
+our own machine. Scaling it means adding an outer judge, not
+changing the shape. Abstraction by compression-with-ports; reasoning
+by alternation; certification by a judge that cannot be argued with.
 
 The horizon is far. The road points at it.
