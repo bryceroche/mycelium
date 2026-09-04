@@ -797,6 +797,9 @@ def run_train():
     w = StepWalker(H, p, B, jit=jit, ping=ping,
                    theta=float(os.environ.get("ST_THETA", "0.9")))
     w.prime()
+    Tensor.training = True     # tinygrad requires the flag for opt.step()
+    # (the head's do_train idiom, phase1_algebra_head.py:2484 — rung-2's
+    # first fix: grads were perfect, the flag was down)
     opt = AdamW(list(p.values()), lr=lr, weight_decay=0.01)
     for nm in w.names:
         p[nm].grad = w.gbufs[nm]   # the optimizer capture reads the
