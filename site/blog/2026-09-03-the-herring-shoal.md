@@ -39,7 +39,40 @@ two, the alternation: the neural side commits a few facts, the
 symbolic side floods their consequences through the graph, and the
 returning wave changes what the neural side looks at next.
 
+## What a message actually needs
+
+Watch the shoal closely enough and you can factor out what any
+message passing system requires. Three things:
+
+1. **A channel** — a medium the signal travels through. The herring
+   have water and the lateral line; our slots have attention edges;
+   the solver has the port.
+2. **A language** — a form both ends understand. The herring's
+   language is motion itself; ours is typed structure: factor roles,
+   committed edges, phase-bound wires. A channel without a shared
+   language carries noise, not news.
+3. **A time interval for the handoff** — and this one is the
+   sleeper. Sender and receiver almost never act at the same
+   instant. A message must *survive* between being sent and being
+   read.
+
+That third requirement may be the quiet reason attention works as
+well as it does. Attention is not a phone call — it is a **parking
+garage**. A fact gets written into the residual stream or a notebook
+slot and simply *parked there*, addressed by its content, until some
+later cycle's query comes looking for exactly that shape of thing
+and picks it up. Sender and receiver never need to meet. We learned
+this as a design law the hard way: dropping a passenger at the
+airport is easy, timing a pickup is hard — so build systems around
+drop-offs. Every organ in our machine that works well works this
+way: the notebook parks facts across breaths, the solver's port
+parks derived values for the next cycle, the committed structure
+parks itself in the masks. The wave through the shoal is fast
+precisely because no fish waits for a reply.
+
 There is a lesson in the herring for anyone building reasoning
 systems: you do not need a general to move an army. You need good
-local rules, honest neighbors, and a medium the wave can travel
-through. Most of our architecture is just that medium, kept clear.
+local rules, honest neighbors, a medium the wave can travel through
+— and a garage where messages wait, content-addressed, for whoever
+comes needing them. Most of our architecture is just that medium and
+that garage, kept clear.
