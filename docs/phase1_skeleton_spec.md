@@ -33517,3 +33517,12 @@ unattainable BY CONSTRUCTION (segment realizes change kernel fusion,
 1-2 ulp) — the rung fires with the STRICT bar first, prints measured
 deltas; any re-pin to ST_EQ_TOL happens as a REGISTERED ruling with
 numbers in hand, never silently. Rungs 0-4 staged; firing now.
+
+## 2026-09-04 — REGISTERED RE-PIN (word given): rung-1 forward bar -> maxabs 1e-5
+
+Measured basis (the strict bar's own loud printout): 12/16 keys differ
+at ~2e-7 = single-ulp kernel-fusion reordering at segment realize
+boundaries (float non-associativity, not defect); structural line at
+1e-5 per the instrument's own grammar. Bar re-pinned ST_EQ_TOL=1e-5
+(3 orders above noise, 2 below structure); backward bar UNCHANGED
+(78/78 strict dual-criterion). Ladder refired.
