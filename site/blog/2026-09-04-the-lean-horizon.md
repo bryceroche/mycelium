@@ -5,13 +5,14 @@ date: 2026-09-04
 
 This project runs on a two-line theory of thinking:
 
-> **Compression that preserves the right ports is what makes
-> abstraction. Alternation between neural attention and an exact
-> solver is what makes reasoning.**
+> **Abstraction is compression that preserves the vital ports.
+> Reasoning is the alternation that flows across them — neural
+> attention proposing, an exact solver disposing.**
 
-This post unpacks both lines, and then describes where they lead: an
-outer loop, wrapped around our whole engine, whose judge is the Lean
-proof compiler.
+Two sentences, one geometry: compression decides which doors survive;
+reasoning is the traffic through those doors. This post unpacks both,
+and then describes where they lead: an outer loop, wrapped around our
+whole engine, whose judge is the Lean proof compiler.
 
 ## Abstraction: compress, but keep the ports
 
