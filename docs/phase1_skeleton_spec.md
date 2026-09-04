@@ -33566,3 +33566,19 @@ program -> executor mask == _build_sudoku_attention_masks(16), exact
 np.array_equal, failure modes separable. The kenken verification
 inlet stays out of masks by the same law that kept op-type out in
 v98 (C2). The mask head now has its language waiting.
+
+## 2026-09-04 — REGISTERED RE-PIN 2: the forward bar is RELATIVE (ruler-relative law)
+
+Run-3's per-key table (banked in full above the assert): every diff
+is 1-2 ulp AT THE KEY'S OWN MAGNITUDE (dig 7.6e-6 = one float32 ulp
+at logit-scale 64; res 1.1e-4 = one ulp at ~1e3; args/y/pres
+likewise). An ABSOLUTE bar mis-meters keys of different scales — the
+estimator's ruler must match the quantity (the ruler-relative law,
+gut registry #81's principle). Bar re-pinned: rel = maxabs /
+max(1, |ref|max) <= ST_EQ_TOL (1e-5); measured rels sit at ~1e-7 —
+two orders of headroom, structural defects (>1e-5 rel) still fail
+loudly. eqbwd was ALWAYS relative (dual criterion) — forward now
+matches its meter. Also banked from run 3: an earlier refire had put
+the tolerance in the echo header only (assert satisfied BY A COMMENT
+— the check pattern-matched wording, not mechanism); fixed on the
+real invocations. Ladder refires as boss-rungs4.

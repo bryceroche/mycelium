@@ -677,14 +677,19 @@ def run_eqfwd():
         b = o_p[k].realize().numpy()
         eq = np.array_equal(a, b)
         d = float(np.abs(a.astype(np.float64) - b.astype(np.float64)).max())
-        print(f"  {k:8s} array_equal={eq}  maxabs={d:.3e}")
-        if not eq and d > tol:
+        # RE-PIN 2 (registered, 2026-09-04, ruler-relative law): the bar is
+        # RELATIVE to the key's own magnitude — measured diffs are 1-2 ulp
+        # AT SCALE (dig 7.6e-6 @ |x|~64, res 1.1e-4 @ |x|~1e3); an absolute
+        # bar mis-meters keys of different scales.
+        scale = max(1.0, float(np.abs(a).max()))
+        rel = d / scale
+        print(f"  {k:8s} array_equal={eq}  maxabs={d:.3e}  rel={rel:.3e}")
+        if not eq and rel > tol:
             bad.append(k)
     print(f"[eqfwd] {'PASS' if not bad else f'FAIL {bad}'} "
-          f"(bar: bitwise, ST_EQ_TOL={tol:g}; the realize boundary "
-          f"between segments changes kernel fusion — measured ~1e-7 "
-          f"single-ulp diffs on CPU; a re-pin is a REGISTERED call, "
-          f"never a silent one)")
+          f"(bar: RELATIVE ST_EQ_TOL={tol:g} per key scale; re-pin 2 "
+          f"registered 2026-09-04 on the measured ulp-at-scale table; "
+          f"any further change is a REGISTERED call, never silent)")
     assert not bad, "rung-1 forward equivalence FAILED (loudly, per the bar)"
 
 
