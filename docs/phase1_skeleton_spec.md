@@ -33490,3 +33490,30 @@ trainer enables (the gut's ruling holds). Mint R=3 read crashed
 in-unit (rerunnable, minor). Wild standings: port242 0.2540 >
 alt21warm242 0.2530 > alt21warm 0.2433 > stack241 0.2331 — three
 records in three days, each from a law learned the day before.
+
+## 2026-09-03 — THE FINAL BOSS BUILD DELIVERED (commit 0a8aff1) + THE VST DISCOVERY
+
+Factoring patch APPLIED: breath_step() extracted mechanically (free-
+var audited), fused forward pre/post BIT-IDENTICAL on all 16 emission
+keys. Trainer: the spec's "three captures" honestly became a
+16-capture family (the loop is shape-inhomogeneous per breath —
+notebook shelf grows, garage grows, kb branches); reverse walk
+recomputes in-capture; eager and JIT share one code path; 32
+unsupported env branches refuse loudly. CPU probe: forward worst
+2.1e-7 (fusion-boundary ulp), 78/78 param grads in tolerance, JIT
+bit-deterministic x3; two real bugs caught pre-GPU (fact-buffer
+sequencing; a lazy/mutation race doubling segment grads — realize-
+before-thread fix). **THE VST DISCOVERY (load-bearing): W_fact
+injects facts into vst, and vst is read ONLY by the emission heads —
+the breath loop never touches it. Per-step fact pings sharpen
+readouts and compound through the decode chain, but the DYNAMICS
+channel is the mask/atlas/mask-head seam — the final-boss ruling's
+scoping confirmed from inside the code: training-under-rhythm pays
+through masking, not fact-feed.** This also explains the front-loaded
+port verdict mechanistically. TRUE cross-breath gradient state: cur +
+the notebook ink shelf (NOT detached — gradient rides the ink).
+OPEN RULING FOR BRYCE: rung-1's bitwise-forward bar may be
+unattainable BY CONSTRUCTION (segment realizes change kernel fusion,
+1-2 ulp) — the rung fires with the STRICT bar first, prints measured
+deltas; any re-pin to ST_EQ_TOL happens as a REGISTERED ruling with
+numbers in hand, never silently. Rungs 0-4 staged; firing now.
