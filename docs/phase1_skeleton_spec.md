@@ -33593,3 +33593,24 @@ boss's mathematical core is beaten; what failed was rung-2's first
 optimizer call (Tensor.training flag down — tinygrad requirement;
 grads perfect, flag forgotten). Fixed per the head's own idiom;
 run 5 fired (full ladder: smoke -> ping twin -> wild fleet).
+
+## 2026-09-04 — REGISTERED + WORD GIVEN: THE CLOCK AUDIT (gut: "the six helical sine waves need our attention")
+
+The temporal rotor is the one organ built on faith and never
+measured: the omega-sextet never rang in the impulse response
+(exonerated via the ladder schism — the wave's corpus was mint,
+constant-zero feature, nothing to carry), and the exoneration's debt
+(re-read on WILD) was never collected. The step engine changed the
+economics: seams realize per-breath state anyway — clock observation
+is now free. **THE BUNDLE (zero training, fires when run 5 releases
+the GPU): (1) wave_field_check on the wild holdout with the champion —
+PINNED: fire_gold > 0 = the wave awakens on ladders; still zero on
+wild = the sextet is decoration, said plainly, params flow to the
+mask head. (2) Impulse v2 through the seams — tau-fit + omega-sextet
+design-tone detection + the linearity sweep (the pre-registered read
+finally collected). (3) Run 5's per-breath fact-rate table read
+against clock phase — does the solver's firing track the 60-degree
+geometry (the first clock-phase observation ever). (4) The
+BREATH_BAND_PAIRS->ROT_BANDS truth-maintenance chore closed in the
+same pass.** Either verdict pays: signal -> the rotor earns its
+flow-through place; silence -> honest negative, clock simplifies.
