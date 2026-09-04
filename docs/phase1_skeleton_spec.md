@@ -33453,3 +33453,22 @@ sharp_port242. In-unit engine re-reads: wild R=1/R=3 + mint R=3 — the
 question: does iteration COMPOUND once the flood has a port? (Maiden
 baseline to beat: wild 0.2530 plateau; 1,083 forced vars/batch
 previously discarded.)
+
+## 2026-09-03 — THE FINAL BOSS RULING (gut, countersigned)
+
+"The inner-step JIT compiler is necessary and the final boss." AUDIT
+CONFIRMS both halves: (1) NECESSARY — every registered organ now
+converges on the step seam (per-step ping, per-step atlas page, the
+mask head's re-masked pass, training under the true flow-through
+rhythm); v0's iterated re-execution is the cycle-grain approximation;
+the full vision requires the three-capture trainer
+(alternator_v21_training_spec.md). (2) FINAL BOSS — it is the LAST
+infrastructure build: 7-segment checkpointed BPTT on the AM driver is
+the campaign's hardest platform work, and everything after it is
+organs plugging into a standing frame. RE-SCOPE per the gut: the
+build is committed as the next flagship REGARDLESS of the port
+verdict's magnitude — the verdict calibrates expectations (how much
+the ping pays today) not the decision (the engine is what the mask
+head and per-step atlas require to exist at all). The boss fight's
+phases = the bring-up ladder, walked without shortcuts; rung 1
+(bit-identity, fwd AND bwd-within-tolerance) above all.
