@@ -33472,3 +33472,21 @@ the ping pays today) not the decision (the engine is what the mask
 head and per-step atlas require to exist at all). The boss fight's
 phases = the bring-up ladder, walked without shortcuts; rung 1
 (bit-identity, fwd AND bwd-within-tolerance) above all.
+
+## 2026-09-03 — THE PORT VERDICT: front-loaded, port open, NEW RECORD 0.2540
+
+port242 (champion + injection, warm-on-warm-gentle): in-train val
+0.9122 (fact-fed criterion — the loop feeding itself; record).
+ENGINE WILD READS, injection LIVE (facts 924->1085/batch): open
+0.1824 -> cond1 0.2530 (+0.071 — the largest single-alternation jump
+ever read) -> R=3 final 0.2540 (NEW RECORD, +0.001 over R=1; passes
+wiggle at noise). VERDICT: **the ping-pong is real and FRONT-LOADED
+— one exchange between the jaws is worth +0.07 wild; repeating at
+cycle grain buys pennies.** Bonus: port training lifted the OPEN
+parse too (0.1824 vs champion 0.1745). The final-boss case is thus
+correctly scoped: not read-time iteration but TRAINING UNDER THE
+RHYTHM + the mask head at the seam — what only the inner-step
+trainer enables (the gut's ruling holds). Mint R=3 read crashed
+in-unit (rerunnable, minor). Wild standings: port242 0.2540 >
+alt21warm242 0.2530 > alt21warm 0.2433 > stack241 0.2331 — three
+records in three days, each from a law learned the day before.
