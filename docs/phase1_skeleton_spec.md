@@ -33582,3 +33582,14 @@ matches its meter. Also banked from run 3: an earlier refire had put
 the tolerance in the echo header only (assert satisfied BY A COMMENT
 — the check pattern-matched wording, not mechanism); fixed on the
 real invocations. Ladder refires as boss-rungs4.
+
+## 2026-09-04 — RUNG 1 BEATEN (fwd + bwd, GPU, real champion) + rung-2 flag fix
+
+Run 4: **eqfwd PASS x2 (eager+JIT, relative bar) and eqbwd PASS x2
+(loss delta 1.132e-06; 78/78 param grads within the pinned dual
+criterion) — the step-partitioned walk provably computes the fused
+graph's forward AND gradients on the GPU, on sharp_port242.** The
+boss's mathematical core is beaten; what failed was rung-2's first
+optimizer call (Tensor.training flag down — tinygrad requirement;
+grads perfect, flag forgotten). Fixed per the head's own idiom;
+run 5 fired (full ladder: smoke -> ping twin -> wild fleet).
