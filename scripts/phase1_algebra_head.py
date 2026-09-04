@@ -861,6 +861,32 @@ def build_params(seed=0):
             p["W_cmt_b"] = t(np.full(1, float(os.environ.get(
                 "CMT_B_INIT", "-4.0"))))             # init: commit ~nothing;
                                                      # door #54-R: bias-open
+        if int(os.environ.get("ALG_ALT21", "0")):
+            # ALTERNATOR v2.1 (2026-09-02, word given): the INTEGRATE
+            # station pair — a SECOND bank-attention (slots<-tokens) +
+            # a SECOND slot-mixer per breath_step (stations 3-4 of the
+            # four-layer step; the June engine's 4-per-breath precedent).
+            # INIT LAW (ResNet/V11 zero-init): each block's OUTPUT
+            # projection starts at ZERO so the ALG_ALT21=1 forward is
+            # identical to baseline at birth (rung 1 of the bring-up
+            # ladder); every other tensor copies its original's idiom.
+            p["alt21_attn_wq"], p["alt21_attn_wq_b"] = lin(H_W, H_W)
+            p["alt21_attn_wk"], p["alt21_attn_wk_b"] = lin(H_W, H_W)
+            p["alt21_attn_wv"], p["alt21_attn_wv_b"] = lin(H_W, H_W)
+            p["alt21_attn_wo"] = t(np.zeros((H_W, H_W)))   # ZERO: silent birth
+            p["alt21_attn_wo_b"] = t(np.zeros(H_W))
+            if ALG_SEPHASE_SETTLE:   # mirror the settle-transceiver idiom
+                _stp21 = phase_alphabet(H_W, H_W, 1.0 / math.sqrt(H_W), rng)
+                p["alt21_W_bq"] = t(_stp21 + rng.randn(H_W, H_W).astype(np.float32) / math.sqrt(H_W) * 0.2)
+                p["alt21_W_bq_b"] = t(np.zeros((H_W,)))
+                p["alt21_W_bk"] = t(_stp21 + rng.randn(H_W, H_W).astype(np.float32) / math.sqrt(H_W) * 0.2)
+                p["alt21_W_bk_b"] = t(np.zeros((H_W,)))
+            else:
+                p["alt21_W_bq"], p["alt21_W_bq_b"] = lin(H_W, H_W)
+                p["alt21_W_bk"], p["alt21_W_bk_b"] = lin(H_W, H_W)
+            p["alt21_W_bv"], p["alt21_W_bv_b"] = lin(H_W, H_W)
+            p["alt21_W_bo"] = t(np.zeros((H_W, H_W)))      # ZERO: silent birth
+            p["alt21_W_bo_b"] = t(np.zeros(H_W))
         pass
     if int(os.environ.get("ALG_BINDBUS", "0")):
         _bd = int(os.environ.get("ALG_BIND_D", "128"))
@@ -1005,13 +1031,17 @@ def _bind_codes_path():
     return path
 
 
-def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, drop=None, anchor=None, amask=None, gmod=None, pmask=None, lsent=None, reg=None, fact_buf=None):
-    from tinygrad import Tensor, dtypes   # audit 2026-09-01: was a
-    # SCOPE ACCIDENT (bound only via the sixwave/sync branches — any
-    # SIXWAVE-off config killed five organs at step 1)
-    B = trunk.shape[0]
-    waist = (trunk @ p["waist_w"] + p["waist_b"]).gelu() + p["sent_emb"][sent]
 
+_STEP_TAP = None    # the step trainer's stage-0 seam (the _CENSUS/_IMP
+                    # hook pattern): None everywhere except under
+                    # scripts/step_trainer.py — inert in every other path
+
+
+def _make_bank(p, waist, tokmask, B):
+    """forward()'s bank attention, factored BY PURE CODE MOTION
+    (apply_step_trainer.py, 2026-09-03) so the step trainer can rebuild
+    the closure over ITS OWN waist tensor. forward's call sites are
+    unchanged; behavior bit-identical by construction."""
     def bank(queries, nq, extra=None, pbias=None, rbias=None):
         q_in = queries.unsqueeze(0) + (extra if extra is not None else 0)
         q = q_in @ p["attn_wq"] + p["attn_wq_b"]
@@ -1034,17 +1064,438 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
         st = st + ((st @ p["ffn_w1"] + p["ffn_b1"]).gelu() @ p["ffn_w2"] + p["ffn_b2"])
         return st, at.mean(1)
 
+    return bank
+
+
+def _heads_of(p, s, vst, B):
+    """forward()'s emission heads, factored BY PURE CODE MOTION
+    (apply_step_trainer.py, 2026-09-03): the step trainer runs these on
+    intermediate breath states at every seam (commit adapter) and on the
+    final state with the seam-current vst. Single source of truth."""
+    return {
+        "pres": (s @ p["h_pres"] + p["h_pres_b"]).squeeze(-1),
+        "ftype": s @ p["h_ftype"] + p["h_ftype_b"],
+        "op": s @ p["h_op"] + p["h_op_b"],
+        **({"sel": s @ p["h_sel"] + p["h_sel_b"]} if "h_sel" in p else {}),
+        **({"dup": (s @ p["h_dup"] + p["h_dup_b"]).squeeze(-1)}
+           if "h_dup" in p else {}),
+        "islit": (s @ p["h_islit"] + p["h_islit_b"]).squeeze(-1),
+        "dig": (s @ p["h_dig"] + p["h_dig_b"]).reshape(B, L_FAC, N_DIG, 10),
+        **({"sgn": (s @ p["h_sgn"] + p["h_sgn_b"]).squeeze(-1)}
+           if "h_sgn" in p else {}),
+        "args": (s @ p["W_args"]) @ vst.transpose(-2, -1),
+        **({"dargs": (s @ p["W_dargs"]) @ vst.transpose(-2, -1)}
+           if "W_dargs" in p else {}),
+        **({"iargs": (s @ p["W_iargs"]) @ vst.transpose(-2, -1)}
+           if "W_iargs" in p else {}),
+        "res": (s @ p["W_res"]) @ vst.transpose(-2, -1),
+        **({"dig2": (s @ p["h_dig2"] + p["h_dig2_b"])
+            .reshape(B, L_FAC, N_DIG, 10),
+            "y": (s @ p["W_y"]) @ vst.transpose(-2, -1)}
+           if "h_dig2" in p else {}),
+    }
+
+
+def _fact_inject(p, vst, fact_buf):
+    """The ALT2 injection (one line, factored so the trainer's per-seam
+    vst update calls the SAME organ — the meter-divergence law)."""
+    return vst + (fact_buf @ p["W_fact"]) * p["alt2_g"].reshape(1, 1, 1)
+
+
+def breath_step(p, state, kb, ctx):
+    """THE BREATH STEP — forward()'s K-breath loop BODY, factored to
+    module level BY PURE CODE MOTION (apply_step_trainer.py, 2026-09-03;
+    the final-boss ruling). forward() calls this in its loop: behavior
+    bit-identical by construction. The inner-step trainer
+    (scripts/step_trainer.py) walks the same function one breath at a
+    time with solver pings between dispatches.
+
+    state — the TRUE cross-breath set (mutated in place, also returned):
+      cur       (B, L_FAC, H_W) gradient-carrying slot state
+      breaths   list; cur appended per breath (the ladder loss feed)
+      nb, nb_st notebook shelf (ink list, GRADIENT-CARRYING) + stamps;
+                born at kb == 1 (nb/nb_st enter as None)
+      garage    deposit shelf (list; DETACHED under ALG_BUSGARAGE >= 2)
+      snaps, snaps_g  lattice snap tuples (DETACHED); only [-1] is read
+      rb_last   router bias (output-only)
+      m_c, anchor, cmt_logits, x_rel  RINGS pawl state (None when off)
+    ctx — per-forward constants: B, K_B, waist, tokmask, slot_mask,
+      bank, rot2, sync, drop, gmod, revoke, tail, reg, RINGS, XOUT,
+      XARM, XR_GRADED, XR_ELASTIC."""
+    from tinygrad import Tensor
+    global _CENSUS, _IMP
+    try: _CENSUS
+    except NameError: _CENSUS = None
+    try: _IMP
+    except NameError: _IMP = None
+    B = ctx["B"]; K_B = ctx["K_B"]
+    waist = ctx["waist"]; tokmask = ctx["tokmask"]
+    slot_mask = ctx["slot_mask"]; bank = ctx["bank"]; _rot2 = ctx["rot2"]
+    _sync = ctx["sync"]; drop = ctx["drop"]; gmod = ctx["gmod"]
+    revoke = ctx["revoke"]; tail = ctx["tail"]; reg = ctx["reg"]
+    RINGS = ctx["RINGS"]; XOUT = ctx["XOUT"]; XARM = ctx["XARM"]
+    XR_GRADED = ctx["XR_GRADED"]; XR_ELASTIC = ctx["XR_ELASTIC"]
+    cur = state["cur"]; breaths = state["breaths"]
+    _nb = state["nb"]; _nb_st = state["nb_st"]
+    _garage = state["garage"]; _snaps = state["snaps"]
+    _snaps_g = state["snaps_g"]; _rb_last = state["rb_last"]
+    m_c = state["m_c"]; anchor = state["anchor"]
+    cmt_logits = state["cmt_logits"]; x_rel = state["x_rel"]
+    if _IMP is not None and kb == _IMP[0]:
+        cur = cur + _IMP[1]          # the kick
+    if ALG_NOTEBOOK and kb == 1:
+        from tinygrad import Tensor as _T2, dtypes as _dt2
+        _nb_st = _T2(NB_STAMPS, dtype=_dt2.float)
+        _nb = [(cur @ p["W_sil"]) if NB_PERSLOT
+               else (cur.mean(1) @ p["W_sil"])]   # sharp vs blurred ink
+    q_extra = cur + p["breath_emb"][kb].reshape(1, 1, -1)
+    if _CENSUS is not None:
+        _CENSUS.append((kb, "state", cur.realize().numpy()))
+        _CENSUS.append((kb, "breath_emb",
+                        p["breath_emb"][kb].realize().numpy()
+                        .reshape(1, 1, -1)))
+    if ALG_NOTEBOOK:
+        if NB_PERSLOT:      # per-slot lanes: each slot queries the
+            _q = cur @ p["W_nq"]              # shelf and reads ITS OWN
+            _sc = (_q @ _nb_st[:len(_nb)].transpose(1, 0)) / math.sqrt(H_W)
+            if NB_FOCAL > 0:
+                _sc = _sc * NB_FOCAL          # the magnifying glass
+            _at = _sc.softmax(-1)             # (B, L, k)
+            _rd = sum(_at[:, :, j:j + 1] * _nb[j] for j in range(len(_nb)))
+            q_extra = q_extra + _rd           # (B, L, H) — no blur
+            if _CENSUS is not None:
+                _CENSUS.append((kb, "notebook", _rd.realize().numpy()))
+        else:
+            _q = cur.mean(1) @ p["W_nq"]
+            _sc = (_q @ _nb_st[:len(_nb)].transpose(1, 0)) / math.sqrt(H_W)
+            if NB_FOCAL > 0:
+                _sc = _sc * NB_FOCAL          # the magnifying glass
+            _at = _sc.softmax(-1)
+            _rd = sum(_at[:, j:j + 1] * _nb[j] for j in range(len(_nb)))
+            q_extra = q_extra + _rd.reshape(B, 1, -1)
+        if ALG_STELLAR:                        # cell-3b: the twist in
+            _w = math.cos(kb * math.pi / (2 * K_B)) ** 2   # geometry —
+            cur = _w * cur + (1 - _w) * _rd.reshape(B, 1, -1)
+            q_extra = cur + p["breath_emb"][kb].reshape(1, 1, -1) + _rd.reshape(B, 1, -1)
+                                                  # no cliff, no gate
+        if ALG_CIRCLE and kb == NB_H + 1:     # the traffic circle:
+            cur = cur * 0.0 + _rd.reshape(B, 1, -1)   # residual severed
+            q_extra = (cur + p["breath_emb"][kb].reshape(1, 1, -1)
+                       + _rd.reshape(B, 1, -1))       # memory the road
+    if _garage is not None and len(_garage) > 0:
+        # GARAGE READ (drop-off): content-addressed attention over
+        # the deposit shelf — the reader needs NO tick knowledge;
+        # then per-role conj unbind of the retrieved wire
+        _gq4 = cur @ p["W_gq"]
+        _sc4 = Tensor.cat(*[(_gq4 * _d4).sum(-1, keepdim=True)
+                            / math.sqrt(float(_gq4.shape[-1]))
+                            for _d4 in _garage], dim=-1)
+        _at4 = _sc4.softmax(-1)
+        _rd4 = sum(_at4[:, :, _j4:_j4 + 1] * _garage[_j4]
+                   for _j4 in range(len(_garage)))
+        _rds4 = [_rot2(_rd4, _rc4, _rs4)
+                 for (_rc4, _rs4) in _SGC[0].values()]
+        _inj4 = Tensor.cat(*_rds4, dim=-1) @ p["W_busr"]
+        if _CENSUS is not None:
+            _CENSUS.append((kb, "garage",
+                            (_inj4 * p["bus_g"].reshape(1, 1, 1))
+                            .realize().numpy()))
+        _scm = int(os.environ.get("ALG_SHELF_CIRCLE", "0"))
+        if _scm and kb == int(os.environ.get("SC_KB", "4")):
+            # THE PRESSURE COOKER (2026-08-30, word given):
+            # residual SEVERED at this breath — committed facts
+            # are the only road across. Ungated, full gradient.
+            # mode 1 = constant seal (the boundary condition);
+            # mode 2 = THE PULSE (per-step Bernoulli seal via the
+            # _SEV data buffer — MASK_GOLD idiom; SC_EVAL forces
+            # a mode at read time; sealed-mode val IS the
+            # capability meter).
+            _cur_seal = cur * 0.0 + _inj4
+            _q_seal = _cur_seal + p["breath_emb"][kb].reshape(1, 1, -1)
+            _q_open = q_extra + _inj4 * p["bus_g"].reshape(1, 1, 1)
+            if _scm >= 2:
+                _sce = os.environ.get("SC_EVAL", "")
+                if _sce:
+                    _sv = float(_sce)
+                    cur = cur * (1.0 - _sv) + _cur_seal * _sv
+                    q_extra = _q_open * (1.0 - _sv) + _q_seal * _sv
+                else:
+                    global _SEV
+                    try: _SEV
+                    except NameError: _SEV = None
+                    if _SEV is None:
+                        _SEV = Tensor([1.0]).contiguous().realize()
+                    _svt = _SEV.reshape(1, 1, 1)
+                    cur = cur * (1.0 - _svt) + _cur_seal * _svt
+                    q_extra = _q_open * (1.0 - _svt) + _q_seal * _svt
+            else:
+                cur = _cur_seal
+                q_extra = _q_seal
+        else:
+            q_extra = q_extra + _inj4 * p["bus_g"].reshape(1, 1, 1)
+    if _snaps and "W_det" in p:
+        # THE 2-OF-3 FIELD (the ladder era, 2026-08-31): true
+        # forced moves — two determined roles force the third,
+        # forward ladder AND inverse anchor alike; seed at
+        # givens, 3 sweeps; features [ndet/3, res-det, fires]
+        _a6, _b6, _sr6, _gv6 = _snaps[-1]
+        _det6 = (_gv6.unsqueeze(-1) * _sr6).max(1)          # (B,24)
+        for _ in range(3):
+            _r16 = (_a6 @ _det6.unsqueeze(-1)).squeeze(-1).clip(0, 1)
+            _r26 = (_b6 @ _det6.unsqueeze(-1)).squeeze(-1).clip(0, 1)
+            _r36 = (_sr6 @ _det6.unsqueeze(-1)).squeeze(-1).clip(0, 1)
+            _nd6 = _r16 + _r26 + _r36
+            _fi6 = ((_nd6 >= 2).float()
+                    * (1.0 - _gv6))                          # (B,L)
+            _new6 = None
+            for _oh6, _rr6 in ((_a6, _r16), (_b6, _r26), (_sr6, _r36)):
+                _c6 = ((_fi6 * (1.0 - _rr6)).unsqueeze(-1)
+                       * _oh6).max(1)
+                _new6 = _c6 if _new6 is None else _new6 + _c6
+            _det6 = (_det6 + _new6).clip(0, 1)
+        _fe6 = Tensor.stack((_nd6 / 3.0).clip(0, 1), _r36, _fi6,
+                            dim=-1)                          # (B,L,3)
+        _dinj = (_fe6 @ p["W_det"]) * p["det_g"].reshape(1, 1, 1)
+        q_extra = q_extra + _dinj
+        if _CENSUS is not None:
+            _CENSUS.append((kb, "detwave", _dinj.realize().numpy()))
+    if _sync is not None:   # sync-complete: transmitter ON during
+        q_extra = q_extra + _sync[1](kb)     # settle; receiver locked
+    _rb7 = None
+    if "W_ra" in p:
+        if _snaps:
+            _src7 = (_snaps_g[-1] if (_snaps_g and
+                     int(os.environ.get("ALG_ROUTER_GRADED", "0")))
+                     else _snaps[-1])
+            _sf7 = Tensor.cat(_src7[0], _src7[1],
+                              _src7[2],
+                              _src7[3].unsqueeze(-1), dim=-1)
+            _cq7 = cur + _sf7 @ p["W_rs"]
+        else:
+            _cq7 = cur
+        _rb7 = ((_cq7 @ p["W_ra"])
+                @ (waist @ p["W_rb"]).transpose(-2, -1)) / 8.0
+        _rb_last = _rb7
+        if _CENSUS is not None:
+            _CENSUS.append((kb, "router(bank)",
+                            (_rb7 * p["r_gain"].reshape(1, 1, 1))
+                            .realize().numpy()))
+    h_tok, fat_cur = bank(p["fq"], L_FAC, extra=q_extra,
+                          pbias=(_sync[0](kb) if _sync is not None
+                                 else None),
+                          rbias=_rb7)
+    bq = cur @ p["W_bq"] + p["W_bq_b"]
+    bk = cur @ p["W_bk"] + p["W_bk_b"]
+    bv = cur @ p["W_bv"] + p["W_bv_b"]
+    sc2 = (bq @ bk.transpose(-2, -1)) / math.sqrt(H_W)
+    _sm_kb = slot_mask
+    _A5 = None
+    if _snaps and ("alt_g" in p
+                   or int(os.environ.get("ALG_MASKRE", "0"))):
+        _sa5 = _snaps[-1][0] + _snaps[-1][1]
+        _sr5 = _snaps[-1][2]
+        _A5 = _sr5 @ _sa5.transpose(-2, -1)
+        if int(os.environ.get("ALG_MASKRE", "0")):
+            # v2 THE MASK RE-FORMATION (2026-09-01, word given):
+            # the HARD mask rebuilt per breath — OPEN-BY-
+            # COMMITMENT (committed producer->consumer edges may
+            # attend across the first-pass mask; additive-optional
+            # per the ensemble law; NEVER tightens — A0's grave
+            # stays honored)
+            _sm_kb = (slot_mask
+                      + ((_A5 + _A5.transpose(-2, -1)) > 0.5)
+                      .float()).clip(0, 1)
+    sc2 = sc2.clip(-1e4, 1e4) + (1.0 - _sm_kb) * -1e4
+    if _A5 is not None and "alt_g" in p:
+        # v0 soft bias rides alongside (facts wire attention)
+        sc2 = sc2 + (_A5 + _A5.transpose(-2, -1)) \
+            * p["alt_g"].reshape(1, 1, 1)
+    if RINGS and int(os.environ.get("ALG_BEXIT", "0")):
+        # BEAM EXIT (door #8): committed slots leave the mixer as
+        # keys, proportional to mass — soft, init-closed (m starts 0)
+        sc2 = sc2 + m_c.reshape(B, 1, L_FAC) * -8.0
+    h_slot = (sc2.softmax(-1) @ bv) @ p["W_bo"] + p["W_bo_b"]
+    # ABLATION arms (2026-07-10): zero-mult keeps every param in the
+    # graph (defined zero grads — the None-grad lesson, applied)
+    arm = os.environ.get("ALG_BREATH_ARM", "both")
+    if arm == "tok":
+        h_slot = h_slot * 0.0
+    elif arm == "slot":
+        h_tok = h_tok * 0.0
+    elif arm == "depth":
+        # the decider control: plain per-slot MLP second pass — same
+        # params repurposed, NO attention, no mask, no re-read
+        h_tok = h_tok * 0.0
+        h_slot = h_slot * 0.0 + ((cur @ p["W_bq"] + p["W_bq_b"])
+                                 .gelu() @ p["W_bv"] + p["W_bv_b"]) \
+            @ p["W_bo"] + p["W_bo_b"]
+    if int(os.environ.get("ALG_ALT21", "0")) and "alt21_W_bo" in p:
+        # ALTERNATOR v2.1 STATIONS 3-4 (2026-09-02): the INTEGRATE
+        # pair, between GATHER+RELATE above and the gate/commit
+        # below. Each block writes ADDITIVELY through its ZERO-INIT
+        # output projection, identity path untouched
+        # (out = out + block(out)). EQUIVALENCE BY CONSTRUCTION:
+        # at init alt21_attn_wo and alt21_W_bo are zeros, so
+        # _d21a = _d21b = exact zeros and h_slot (hence forward)
+        # equals baseline exactly at birth; env unset skips the
+        # whole block (the chain verifies via eq_check pre/post).
+        _s21 = h_tok + h_slot            # the stream after 1-2
+        # STATION 3: second bank-attention (slots<-tokens), live
+        # query = slot codes + stream + this breath's conditioning
+        _qx21 = p["fq"].unsqueeze(0) + _s21 + (q_extra - cur)
+        _q21 = _qx21 @ p["alt21_attn_wq"] + p["alt21_attn_wq_b"]
+        _k21 = waist @ p["alt21_attn_wk"] + p["alt21_attn_wk_b"]
+        _v21 = waist @ p["alt21_attn_wv"] + p["alt21_attn_wv_b"]
+        _hd21 = H_W // N_HEADS
+        _qh21 = _q21.reshape(B, L_FAC, N_HEADS, _hd21).permute(0, 2, 1, 3)
+        _kh21 = _k21.reshape(B, -1, N_HEADS, _hd21).permute(0, 2, 1, 3)
+        _vh21 = _v21.reshape(B, -1, N_HEADS, _hd21).permute(0, 2, 1, 3)
+        _sa21 = (_qh21 @ _kh21.transpose(-2, -1)) / math.sqrt(_hd21)
+        if _sync is not None:            # the same breath rotation
+            _sa21 = _sa21 + _sync[0](kb)
+        if _rb7 is not None:             # the same router bias
+            _sa21 = _sa21 + _rb7.unsqueeze(1) * p["r_gain"].reshape(1, 1, 1, 1)
+        _sa21 = _sa21.clip(-1e4, 1e4) + (1.0 - tokmask.reshape(B, 1, 1, -1)) * -1e4
+        _st21 = (_sa21.softmax(-1) @ _vh21).permute(0, 2, 1, 3).reshape(B, L_FAC, H_W)
+        _d21a = _st21 @ p["alt21_attn_wo"] + p["alt21_attn_wo_b"]
+        _s21 = _s21 + _d21a              # exact zero at birth
+        # STATION 4: second slot-mixer over the SAME breathed mask
+        _bq21 = _s21 @ p["alt21_W_bq"] + p["alt21_W_bq_b"]
+        _bk21 = _s21 @ p["alt21_W_bk"] + p["alt21_W_bk_b"]
+        _bv21 = _s21 @ p["alt21_W_bv"] + p["alt21_W_bv_b"]
+        _sm21 = (_bq21 @ _bk21.transpose(-2, -1)) / math.sqrt(H_W)
+        _sm21 = _sm21.clip(-1e4, 1e4) + (1.0 - _sm_kb) * -1e4
+        if _A5 is not None and "alt_g" in p:   # v0 bias, as station 2
+            _sm21 = _sm21 + (_A5 + _A5.transpose(-2, -1)) \
+                * p["alt_g"].reshape(1, 1, 1)
+        if RINGS and int(os.environ.get("ALG_BEXIT", "0")):
+            _sm21 = _sm21 + m_c.reshape(B, 1, L_FAC) * -8.0
+        _d21b = (_sm21.softmax(-1) @ _bv21) @ p["alt21_W_bo"] \
+            + p["alt21_W_bo_b"]
+        h_slot = h_slot + _d21a + _d21b  # additive; zeros at birth
+    g = p["breath_gate"][kb].sigmoid()
+    if drop is not None:            # door #52: BREATH DROPOUT —
+        g = g * drop                # per-STEP coin; drop=0 makes the
+                                    # breath an exact identity (silent)
+    if gmod is not None:            # NAZARE (B)-site smoke: per-slot
+        g = g * gmod                # authority INSIDE the loop
+    cur_new = cur + g * (h_tok + h_slot - cur)
+    if RINGS:  # the soft pawl: monotone commitment mass + anchor
+        cl = (cur_new @ p["W_cmt"] + p["W_cmt_b"])     # (B,L_FAC,1)
+        if reg is not None and "w_cmt_reg" in p:
+            # REGISTER-AWARE COMMITMENT (2026-08-26, word given):
+            # the mouth's length-corrected read as the pawl's INPUT
+            # — commit boldly in-register, reluctantly on the
+            # frontier. The mouth stays out of every loss (Goodhart
+            # fence); the pawl is handed the map, not the meter.
+            cl = cl + reg.reshape(B, 1, 1) * p["w_cmt_reg"]
+        cmt_logits.append(cl.squeeze(-1))
+        if XOUT:  # release BEFORE the pawl: the same-breath commit
+            # pressure is the graded arm's RESISTING term (#150)
+            rel = m_c * 0.0
+            if XARM == "elastic":            # standing leak toward
+                rel = rel + XR_ELASTIC * m_c  # rest; self-resetting
+            if revoke is not None:
+                rv = revoke.reshape(B, L_FAC, 1)
+                if XARM == "dump":
+                    rel = rel + m_c * rv      # instant
+                else:                         # graded|elastic
+                    rel = rel + XR_GRADED * m_c * rv
+            rel = rel.minimum(m_c)            # never below zero mass
+            m_c = m_c - rel
+            x_rel = x_rel + rel
+        dm = (1.0 - m_c) * cl.sigmoid()
+        if int(os.environ.get("ALG_CLOCK", "0")) and tail is not None:
+            # CLOCK v1 (door #10): commit gated on OWN-SENTENCE
+            # COMPLETION — attention mass on sentence-tail tokens
+            c_j = (fat_cur * tail.reshape(B, 1, -1)).sum(-1, keepdim=True)                         / (fat_cur.sum(-1, keepdim=True) + 1e-6)
+            _fl = float(os.environ.get("ALG_CLOCK_FLOOR", "0"))
+            dm = dm * (_fl + (1.0 - _fl) * c_j)
+        anchor = (m_c * anchor + dm * cur_new) / (m_c + dm + 1e-6)
+        m_c = m_c + dm
+        cur = m_c * anchor + (1.0 - m_c) * cur_new
+    else:
+        cur = cur_new
+    if ALG_NOTEBOOK:
+        _nb.append((cur @ p["W_sil"]) if NB_PERSLOT
+                   else (cur.mean(1) @ p["W_sil"]))
+    breaths.append(cur)
+    if _garage is not None:
+        # GARAGE WRITE (drop-off): the refined state's role-bound
+        # wire; the list IS the parking separation
+        _wg4 = ((cur @ p["W_bind1"] + p["W_bind1_b"]).gelu()
+                @ p["W_bind2"])
+        if int(os.environ.get("ALG_BUSGARAGE", "0")) >= 2:
+            # THE CANONICAL SHELF (2026-08-30, word given): snap to
+            # the lattice — per-role cleanup, re-bind the cleaned
+            # codes BY CONSTRUCTION; the deposit is a FACT
+            # (detached, gradient-free) carrying the pre-snap
+            # magnitude as its confidence stamp (wrong wires run
+            # quiet — the measured confession de-weights them in
+            # the shelf's own attention). Two jaws, in the loop.
+            _cj4, _pl4, _CBt4 = _SGC
+            _canon4 = None
+            _snap_a5 = _snap_b5 = _snap_r5 = None
+            _snap_g5 = None
+            for _rn4 in ("arg1", "arg2", "res", "op"):
+                _zc4 = _rot2(_wg4, *_cj4[_rn4])
+                _lg4 = _zc4 @ _CBt4.T
+                _oh4 = (_lg4 == _lg4.max(-1, keepdim=True)).float()
+                _oh4 = _oh4 / (_oh4.sum(-1, keepdim=True) + 1e-9)
+                if _rn4 == "arg1":
+                    _snap_a5 = _oh4[..., :24]
+                elif _rn4 == "arg2":
+                    _snap_b5 = _oh4[..., :24]
+                elif _rn4 == "res":
+                    _snap_r5 = _oh4[..., :24]
+                elif _rn4 == "op":
+                    _snap_g5 = _oh4[..., 25]   # ftype 'given' code
+                if int(os.environ.get("ALG_ROUTER_GRADED", "0")):
+                    _sg4 = _lg4.softmax(-1)   # GRADED: the
+                    # confidence distribution the argmax throws away
+                    if _rn4 == "arg1": _grad_a5 = _sg4[..., :24]
+                    elif _rn4 == "arg2": _grad_b5 = _sg4[..., :24]
+                    elif _rn4 == "res": _grad_r5 = _sg4[..., :24]
+                    elif _rn4 == "op": _grad_g5 = _sg4[..., 25]
+                _cb4 = _rot2(_oh4 @ _CBt4, *_pl4[_rn4])
+                _canon4 = _cb4 if _canon4 is None else _canon4 + _cb4
+            if "alt_g" in p or "W_det" in p:
+                _snaps.append((_snap_a5.detach(), _snap_b5.detach(),
+                               _snap_r5.detach(), _snap_g5.detach()))
+                if int(os.environ.get("ALG_ROUTER_GRADED", "0")):
+                    _snaps_g.append((_grad_a5.detach(),
+                        _grad_b5.detach(), _grad_r5.detach(),
+                        _grad_g5.detach()))
+            _wn4 = _wg4.pow(2).sum(-1, keepdim=True).sqrt() + 1e-6
+            _cn4 = _canon4.pow(2).sum(-1, keepdim=True).sqrt() + 1e-6
+            _wg4 = (_canon4 / _cn4 * _wn4).detach()
+        _garage.append(_wg4)
+    state["cur"] = cur; state["nb"] = _nb; state["nb_st"] = _nb_st
+    state["rb_last"] = _rb_last
+    state["m_c"] = m_c; state["anchor"] = anchor; state["x_rel"] = x_rel
+    return state
+
+
+def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, drop=None, anchor=None, amask=None, gmod=None, pmask=None, lsent=None, reg=None, fact_buf=None):
+    from tinygrad import Tensor, dtypes   # audit 2026-09-01: was a
+    # SCOPE ACCIDENT (bound only via the sixwave/sync branches — any
+    # SIXWAVE-off config killed five organs at step 1)
+    B = trunk.shape[0]
+    waist = (trunk @ p["waist_w"] + p["waist_b"]).gelu() + p["sent_emb"][sent]
+
+    bank = _make_bank(p, waist, tokmask, B)
     _lb = None
     if lsent is not None:               # V2: letter-keyed partition — imposed
         _lb = lsent.reshape(B, 1, K_VARS, -1) * float(os.environ.get("LS_A", "1.0"))
     vst, vat = bank(p["vq"], K_VARS, pbias=_lb)
+    _vst_base = vst   # pre-injection tap (step trainer reads this)
     if int(os.environ.get("ALG_ALT2", "0")) and fact_buf is not None:
         # ALTERNATOR V2 injection: symbolic facts ((B, 24, 4): known flag
         # + MSD digits/9) condition the var-slot states that args/res/y/
         # query pointers and every breath read against. BOTH guards are
         # load-bearing: env unset -> byte-identical baseline; fact_buf
         # None -> byte-identical too (the injection is skipped entirely).
-        vst = vst + (fact_buf @ p["W_fact"]) * p["alt2_g"].reshape(1, 1, 1)
+        vst = _fact_inject(p, vst, fact_buf)
     _pb = None
     _pb_prior = None
     _sync = None
@@ -1158,303 +1609,47 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
             _SGC = (_conj4, _plus4, _Ts4(_bz4["CB"].astype(_np4.float32)))
         _garage = []
     _snaps = []
+    _snaps_g = []   # router graded-input repair: softmax snap tuple (ALG_ROUTER_GRADED)
+    _bs_ctx = _bs_state = None
     if K_B > 1 and slot_mask is not None and "W_bo" in p:
         cur = fst
-        for kb in range(1, K_B):
-            if _IMP is not None and kb == _IMP[0]:
-                cur = cur + _IMP[1]          # the kick
-            if ALG_NOTEBOOK and kb == 1:
-                from tinygrad import Tensor as _T2, dtypes as _dt2
-                _nb_st = _T2(NB_STAMPS, dtype=_dt2.float)
-                _nb = [(cur @ p["W_sil"]) if NB_PERSLOT
-                       else (cur.mean(1) @ p["W_sil"])]   # sharp vs blurred ink
-            q_extra = cur + p["breath_emb"][kb].reshape(1, 1, -1)
-            if _CENSUS is not None:
-                _CENSUS.append((kb, "state", cur.realize().numpy()))
-                _CENSUS.append((kb, "breath_emb",
-                                p["breath_emb"][kb].realize().numpy()
-                                .reshape(1, 1, -1)))
-            if ALG_NOTEBOOK:
-                if NB_PERSLOT:      # per-slot lanes: each slot queries the
-                    _q = cur @ p["W_nq"]              # shelf and reads ITS OWN
-                    _sc = (_q @ _nb_st[:len(_nb)].transpose(1, 0)) / math.sqrt(H_W)
-                    if NB_FOCAL > 0:
-                        _sc = _sc * NB_FOCAL          # the magnifying glass
-                    _at = _sc.softmax(-1)             # (B, L, k)
-                    _rd = sum(_at[:, :, j:j + 1] * _nb[j] for j in range(len(_nb)))
-                    q_extra = q_extra + _rd           # (B, L, H) — no blur
-                    if _CENSUS is not None:
-                        _CENSUS.append((kb, "notebook", _rd.realize().numpy()))
-                else:
-                    _q = cur.mean(1) @ p["W_nq"]
-                    _sc = (_q @ _nb_st[:len(_nb)].transpose(1, 0)) / math.sqrt(H_W)
-                    if NB_FOCAL > 0:
-                        _sc = _sc * NB_FOCAL          # the magnifying glass
-                    _at = _sc.softmax(-1)
-                    _rd = sum(_at[:, j:j + 1] * _nb[j] for j in range(len(_nb)))
-                    q_extra = q_extra + _rd.reshape(B, 1, -1)
-                if ALG_STELLAR:                        # cell-3b: the twist in
-                    _w = math.cos(kb * math.pi / (2 * K_B)) ** 2   # geometry —
-                    cur = _w * cur + (1 - _w) * _rd.reshape(B, 1, -1)
-                    q_extra = cur + p["breath_emb"][kb].reshape(1, 1, -1) + _rd.reshape(B, 1, -1)
-                                                          # no cliff, no gate
-                if ALG_CIRCLE and kb == NB_H + 1:     # the traffic circle:
-                    cur = cur * 0.0 + _rd.reshape(B, 1, -1)   # residual severed
-                    q_extra = (cur + p["breath_emb"][kb].reshape(1, 1, -1)
-                               + _rd.reshape(B, 1, -1))       # memory the road
-            if _garage is not None and len(_garage) > 0:
-                # GARAGE READ (drop-off): content-addressed attention over
-                # the deposit shelf — the reader needs NO tick knowledge;
-                # then per-role conj unbind of the retrieved wire
-                _gq4 = cur @ p["W_gq"]
-                _sc4 = Tensor.cat(*[(_gq4 * _d4).sum(-1, keepdim=True)
-                                    / math.sqrt(float(_gq4.shape[-1]))
-                                    for _d4 in _garage], dim=-1)
-                _at4 = _sc4.softmax(-1)
-                _rd4 = sum(_at4[:, :, _j4:_j4 + 1] * _garage[_j4]
-                           for _j4 in range(len(_garage)))
-                _rds4 = [_rot2(_rd4, _rc4, _rs4)
-                         for (_rc4, _rs4) in _SGC[0].values()]
-                _inj4 = Tensor.cat(*_rds4, dim=-1) @ p["W_busr"]
-                if _CENSUS is not None:
-                    _CENSUS.append((kb, "garage",
-                                    (_inj4 * p["bus_g"].reshape(1, 1, 1))
-                                    .realize().numpy()))
-                _scm = int(os.environ.get("ALG_SHELF_CIRCLE", "0"))
-                if _scm and kb == int(os.environ.get("SC_KB", "4")):
-                    # THE PRESSURE COOKER (2026-08-30, word given):
-                    # residual SEVERED at this breath — committed facts
-                    # are the only road across. Ungated, full gradient.
-                    # mode 1 = constant seal (the boundary condition);
-                    # mode 2 = THE PULSE (per-step Bernoulli seal via the
-                    # _SEV data buffer — MASK_GOLD idiom; SC_EVAL forces
-                    # a mode at read time; sealed-mode val IS the
-                    # capability meter).
-                    _cur_seal = cur * 0.0 + _inj4
-                    _q_seal = _cur_seal + p["breath_emb"][kb].reshape(1, 1, -1)
-                    _q_open = q_extra + _inj4 * p["bus_g"].reshape(1, 1, 1)
-                    if _scm >= 2:
-                        _sce = os.environ.get("SC_EVAL", "")
-                        if _sce:
-                            _sv = float(_sce)
-                            cur = cur * (1.0 - _sv) + _cur_seal * _sv
-                            q_extra = _q_open * (1.0 - _sv) + _q_seal * _sv
-                        else:
-                            global _SEV
-                            try: _SEV
-                            except NameError: _SEV = None
-                            if _SEV is None:
-                                _SEV = Tensor([1.0]).contiguous().realize()
-                            _svt = _SEV.reshape(1, 1, 1)
-                            cur = cur * (1.0 - _svt) + _cur_seal * _svt
-                            q_extra = _q_open * (1.0 - _svt) + _q_seal * _svt
-                    else:
-                        cur = _cur_seal
-                        q_extra = _q_seal
-                else:
-                    q_extra = q_extra + _inj4 * p["bus_g"].reshape(1, 1, 1)
-            if _snaps and "W_det" in p:
-                # THE 2-OF-3 FIELD (the ladder era, 2026-08-31): true
-                # forced moves — two determined roles force the third,
-                # forward ladder AND inverse anchor alike; seed at
-                # givens, 3 sweeps; features [ndet/3, res-det, fires]
-                _a6, _b6, _sr6, _gv6 = _snaps[-1]
-                _det6 = (_gv6.unsqueeze(-1) * _sr6).max(1)          # (B,24)
-                for _ in range(3):
-                    _r16 = (_a6 @ _det6.unsqueeze(-1)).squeeze(-1).clip(0, 1)
-                    _r26 = (_b6 @ _det6.unsqueeze(-1)).squeeze(-1).clip(0, 1)
-                    _r36 = (_sr6 @ _det6.unsqueeze(-1)).squeeze(-1).clip(0, 1)
-                    _nd6 = _r16 + _r26 + _r36
-                    _fi6 = ((_nd6 >= 2).float()
-                            * (1.0 - _gv6))                          # (B,L)
-                    _new6 = None
-                    for _oh6, _rr6 in ((_a6, _r16), (_b6, _r26), (_sr6, _r36)):
-                        _c6 = ((_fi6 * (1.0 - _rr6)).unsqueeze(-1)
-                               * _oh6).max(1)
-                        _new6 = _c6 if _new6 is None else _new6 + _c6
-                    _det6 = (_det6 + _new6).clip(0, 1)
-                _fe6 = Tensor.stack((_nd6 / 3.0).clip(0, 1), _r36, _fi6,
-                                    dim=-1)                          # (B,L,3)
-                _dinj = (_fe6 @ p["W_det"]) * p["det_g"].reshape(1, 1, 1)
-                q_extra = q_extra + _dinj
-                if _CENSUS is not None:
-                    _CENSUS.append((kb, "detwave", _dinj.realize().numpy()))
-            if _sync is not None:   # sync-complete: transmitter ON during
-                q_extra = q_extra + _sync[1](kb)     # settle; receiver locked
-            _rb7 = None
-            if "W_ra" in p:
-                if _snaps:
-                    _sf7 = Tensor.cat(_snaps[-1][0], _snaps[-1][1],
-                                      _snaps[-1][2],
-                                      _snaps[-1][3].unsqueeze(-1), dim=-1)
-                    _cq7 = cur + _sf7 @ p["W_rs"]
-                else:
-                    _cq7 = cur
-                _rb7 = ((_cq7 @ p["W_ra"])
-                        @ (waist @ p["W_rb"]).transpose(-2, -1)) / 8.0
-                _rb_last = _rb7
-                if _CENSUS is not None:
-                    _CENSUS.append((kb, "router(bank)",
-                                    (_rb7 * p["r_gain"].reshape(1, 1, 1))
-                                    .realize().numpy()))
-            h_tok, fat_cur = bank(p["fq"], L_FAC, extra=q_extra,
-                                  pbias=(_sync[0](kb) if _sync is not None
-                                         else None),
-                                  rbias=_rb7)
-            bq = cur @ p["W_bq"] + p["W_bq_b"]
-            bk = cur @ p["W_bk"] + p["W_bk_b"]
-            bv = cur @ p["W_bv"] + p["W_bv_b"]
-            sc2 = (bq @ bk.transpose(-2, -1)) / math.sqrt(H_W)
-            _sm_kb = slot_mask
-            _A5 = None
-            if _snaps and ("alt_g" in p
-                           or int(os.environ.get("ALG_MASKRE", "0"))):
-                _sa5 = _snaps[-1][0] + _snaps[-1][1]
-                _sr5 = _snaps[-1][2]
-                _A5 = _sr5 @ _sa5.transpose(-2, -1)
-                if int(os.environ.get("ALG_MASKRE", "0")):
-                    # v2 THE MASK RE-FORMATION (2026-09-01, word given):
-                    # the HARD mask rebuilt per breath — OPEN-BY-
-                    # COMMITMENT (committed producer->consumer edges may
-                    # attend across the first-pass mask; additive-optional
-                    # per the ensemble law; NEVER tightens — A0's grave
-                    # stays honored)
-                    _sm_kb = (slot_mask
-                              + ((_A5 + _A5.transpose(-2, -1)) > 0.5)
-                              .float()).clip(0, 1)
-            sc2 = sc2.clip(-1e4, 1e4) + (1.0 - _sm_kb) * -1e4
-            if _A5 is not None and "alt_g" in p:
-                # v0 soft bias rides alongside (facts wire attention)
-                sc2 = sc2 + (_A5 + _A5.transpose(-2, -1)) \
-                    * p["alt_g"].reshape(1, 1, 1)
-            if RINGS and int(os.environ.get("ALG_BEXIT", "0")):
-                # BEAM EXIT (door #8): committed slots leave the mixer as
-                # keys, proportional to mass — soft, init-closed (m starts 0)
-                sc2 = sc2 + m_c.reshape(B, 1, L_FAC) * -8.0
-            h_slot = (sc2.softmax(-1) @ bv) @ p["W_bo"] + p["W_bo_b"]
-            # ABLATION arms (2026-07-10): zero-mult keeps every param in the
-            # graph (defined zero grads — the None-grad lesson, applied)
-            arm = os.environ.get("ALG_BREATH_ARM", "both")
-            if arm == "tok":
-                h_slot = h_slot * 0.0
-            elif arm == "slot":
-                h_tok = h_tok * 0.0
-            elif arm == "depth":
-                # the decider control: plain per-slot MLP second pass — same
-                # params repurposed, NO attention, no mask, no re-read
-                h_tok = h_tok * 0.0
-                h_slot = h_slot * 0.0 + ((cur @ p["W_bq"] + p["W_bq_b"])
-                                         .gelu() @ p["W_bv"] + p["W_bv_b"]) \
-                    @ p["W_bo"] + p["W_bo_b"]
-            g = p["breath_gate"][kb].sigmoid()
-            if drop is not None:            # door #52: BREATH DROPOUT —
-                g = g * drop                # per-STEP coin; drop=0 makes the
-                                            # breath an exact identity (silent)
-            if gmod is not None:            # NAZARE (B)-site smoke: per-slot
-                g = g * gmod                # authority INSIDE the loop
-            cur_new = cur + g * (h_tok + h_slot - cur)
-            if RINGS:  # the soft pawl: monotone commitment mass + anchor
-                cl = (cur_new @ p["W_cmt"] + p["W_cmt_b"])     # (B,L_FAC,1)
-                if reg is not None and "w_cmt_reg" in p:
-                    # REGISTER-AWARE COMMITMENT (2026-08-26, word given):
-                    # the mouth's length-corrected read as the pawl's INPUT
-                    # — commit boldly in-register, reluctantly on the
-                    # frontier. The mouth stays out of every loss (Goodhart
-                    # fence); the pawl is handed the map, not the meter.
-                    cl = cl + reg.reshape(B, 1, 1) * p["w_cmt_reg"]
-                cmt_logits.append(cl.squeeze(-1))
-                if XOUT:  # release BEFORE the pawl: the same-breath commit
-                    # pressure is the graded arm's RESISTING term (#150)
-                    rel = m_c * 0.0
-                    if XARM == "elastic":            # standing leak toward
-                        rel = rel + XR_ELASTIC * m_c  # rest; self-resetting
-                    if revoke is not None:
-                        rv = revoke.reshape(B, L_FAC, 1)
-                        if XARM == "dump":
-                            rel = rel + m_c * rv      # instant
-                        else:                         # graded|elastic
-                            rel = rel + XR_GRADED * m_c * rv
-                    rel = rel.minimum(m_c)            # never below zero mass
-                    m_c = m_c - rel
-                    x_rel = x_rel + rel
-                dm = (1.0 - m_c) * cl.sigmoid()
-                if int(os.environ.get("ALG_CLOCK", "0")) and tail is not None:
-                    # CLOCK v1 (door #10): commit gated on OWN-SENTENCE
-                    # COMPLETION — attention mass on sentence-tail tokens
-                    c_j = (fat_cur * tail.reshape(B, 1, -1)).sum(-1, keepdim=True)                         / (fat_cur.sum(-1, keepdim=True) + 1e-6)
-                    _fl = float(os.environ.get("ALG_CLOCK_FLOOR", "0"))
-                    dm = dm * (_fl + (1.0 - _fl) * c_j)
-                anchor = (m_c * anchor + dm * cur_new) / (m_c + dm + 1e-6)
-                m_c = m_c + dm
-                cur = m_c * anchor + (1.0 - m_c) * cur_new
-            else:
-                cur = cur_new
-            if ALG_NOTEBOOK:
-                _nb.append((cur @ p["W_sil"]) if NB_PERSLOT
-                           else (cur.mean(1) @ p["W_sil"]))
-            breaths.append(cur)
-            if _garage is not None:
-                # GARAGE WRITE (drop-off): the refined state's role-bound
-                # wire; the list IS the parking separation
-                _wg4 = ((cur @ p["W_bind1"] + p["W_bind1_b"]).gelu()
-                        @ p["W_bind2"])
-                if int(os.environ.get("ALG_BUSGARAGE", "0")) >= 2:
-                    # THE CANONICAL SHELF (2026-08-30, word given): snap to
-                    # the lattice — per-role cleanup, re-bind the cleaned
-                    # codes BY CONSTRUCTION; the deposit is a FACT
-                    # (detached, gradient-free) carrying the pre-snap
-                    # magnitude as its confidence stamp (wrong wires run
-                    # quiet — the measured confession de-weights them in
-                    # the shelf's own attention). Two jaws, in the loop.
-                    _cj4, _pl4, _CBt4 = _SGC
-                    _canon4 = None
-                    _snap_a5 = _snap_b5 = _snap_r5 = None
-                    _snap_g5 = None
-                    for _rn4 in ("arg1", "arg2", "res", "op"):
-                        _zc4 = _rot2(_wg4, *_cj4[_rn4])
-                        _lg4 = _zc4 @ _CBt4.T
-                        _oh4 = (_lg4 == _lg4.max(-1, keepdim=True)).float()
-                        _oh4 = _oh4 / (_oh4.sum(-1, keepdim=True) + 1e-9)
-                        if _rn4 == "arg1":
-                            _snap_a5 = _oh4[..., :24]
-                        elif _rn4 == "arg2":
-                            _snap_b5 = _oh4[..., :24]
-                        elif _rn4 == "res":
-                            _snap_r5 = _oh4[..., :24]
-                        elif _rn4 == "op":
-                            _snap_g5 = _oh4[..., 25]   # ftype 'given' code
-                        _cb4 = _rot2(_oh4 @ _CBt4, *_pl4[_rn4])
-                        _canon4 = _cb4 if _canon4 is None else _canon4 + _cb4
-                    if "alt_g" in p or "W_det" in p:
-                        _snaps.append((_snap_a5.detach(), _snap_b5.detach(),
-                                       _snap_r5.detach(), _snap_g5.detach()))
-                    _wn4 = _wg4.pow(2).sum(-1, keepdim=True).sqrt() + 1e-6
-                    _cn4 = _canon4.pow(2).sum(-1, keepdim=True).sqrt() + 1e-6
-                    _wg4 = (_canon4 / _cn4 * _wn4).detach()
-                _garage.append(_wg4)
-    def heads_of(s):
-        return {
-            "pres": (s @ p["h_pres"] + p["h_pres_b"]).squeeze(-1),
-            "ftype": s @ p["h_ftype"] + p["h_ftype_b"],
-            "op": s @ p["h_op"] + p["h_op_b"],
-            **({"sel": s @ p["h_sel"] + p["h_sel_b"]} if "h_sel" in p else {}),
-            **({"dup": (s @ p["h_dup"] + p["h_dup_b"]).squeeze(-1)}
-               if "h_dup" in p else {}),
-            "islit": (s @ p["h_islit"] + p["h_islit_b"]).squeeze(-1),
-            "dig": (s @ p["h_dig"] + p["h_dig_b"]).reshape(B, L_FAC, N_DIG, 10),
-            **({"sgn": (s @ p["h_sgn"] + p["h_sgn_b"]).squeeze(-1)}
-               if "h_sgn" in p else {}),
-            "args": (s @ p["W_args"]) @ vst.transpose(-2, -1),
-            **({"dargs": (s @ p["W_dargs"]) @ vst.transpose(-2, -1)}
-               if "W_dargs" in p else {}),
-            **({"iargs": (s @ p["W_iargs"]) @ vst.transpose(-2, -1)}
-               if "W_iargs" in p else {}),
-            "res": (s @ p["W_res"]) @ vst.transpose(-2, -1),
-            **({"dig2": (s @ p["h_dig2"] + p["h_dig2_b"])
-                .reshape(B, L_FAC, N_DIG, 10),
-                "y": (s @ p["W_y"]) @ vst.transpose(-2, -1)}
-               if "h_dig2" in p else {}),
-        }
+        # FINAL BOSS rung 0 (2026-09-03): the loop BODY lives in
+        # module-level breath_step (pure code motion — bit-identical by
+        # construction); state carries what crosses breath boundaries,
+        # ctx the per-forward constants. Under _STEP_TAP hold the fused
+        # loop is SKIPPED — the step trainer drives the walk itself.
+        _bs_ctx = {"B": B, "K_B": K_B, "waist": waist, "tokmask": tokmask,
+                   "slot_mask": slot_mask, "bank": bank, "rot2": _rot2,
+                   "sync": _sync, "drop": drop, "gmod": gmod,
+                   "revoke": revoke, "tail": tail, "reg": reg,
+                   "RINGS": RINGS, "XOUT": XOUT, "XARM": XARM,
+                   "XR_GRADED": XR_GRADED, "XR_ELASTIC": XR_ELASTIC}
+        _bs_state = {"cur": cur, "breaths": breaths, "nb": None,
+                     "nb_st": None, "garage": _garage, "snaps": _snaps,
+                     "snaps_g": _snaps_g, "rb_last": _rb_last,
+                     "m_c": m_c if RINGS else None,
+                     "anchor": anchor if RINGS else None,
+                     "cmt_logits": cmt_logits if RINGS else None,
+                     "x_rel": x_rel if RINGS else None}
+        if not (_STEP_TAP is not None and _STEP_TAP.get("hold")):
+            for kb in range(1, K_B):
+                breath_step(p, _bs_state, kb, _bs_ctx)
+            cur = _bs_state["cur"]
+            _rb_last = _bs_state["rb_last"]
+            if RINGS:
+                m_c = _bs_state["m_c"]
+                anchor = _bs_state["anchor"]
+                cmt_logits = _bs_state["cmt_logits"]
+                x_rel = _bs_state["x_rel"]
+
+    def heads_of(s, vst=vst):
+        return _heads_of(p, s, vst, B)
+    if _STEP_TAP is not None:
+        # the step trainer's stage-0 seam: everything the per-step walk
+        # needs, single source (inert when None — the _CENSUS pattern)
+        _STEP_TAP.update(ctx=_bs_ctx, state=_bs_state, waist=waist,
+                         vst=vst, vst_base=_vst_base, fst=fst, qst=qst,
+                         heads_of=heads_of, B=B)
     if int(os.environ.get("ALG_MINE_BREATHS", "0")):
         out_breaths = breaths          # v3: the dialect ladder's raw states
     _s_final = breaths[-1]
