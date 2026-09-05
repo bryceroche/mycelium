@@ -218,7 +218,6 @@ HOOKS = {
  "2026-09-02-one-card": "One consumer GPU, tinygrad to bare metal — a machine one person can audit, rerun, and disbelieve properly.",
  "2026-09-01-what-is-the-shape-of-thought": "The title question answered with measured geometry: a braid that tightens, breaking into a crystal.",
  "2026-09-01-the-paper-in-plain-language": "The full technical paper, rewritten for everyone. Every number verified verbatim.",
- "2026-09-01-the-blog-opens": "Where this space began: registered predictions, honest negatives, and the occasional story worth telling.",
 }
 # ---------------------------------------------------------------- blog + bio
 BLOG = ROOT / "site" / "blog"
