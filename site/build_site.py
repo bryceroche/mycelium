@@ -200,6 +200,7 @@ the silence is.</p>
 
 
 HOOKS = {
+ "2026-09-05-the-paired-atlas": "The model runs once; the reading never stops moving — seven pages for the language atlas, and the needle between the charts.",
  "2026-09-05-the-drafting-problem": "There are no good cards, only good cards for this deck — what Slay the Spire knows about attention masking.",
  "2026-09-04-the-lean-horizon": "Two nested loops — the CSP solver inside, the Lean compiler outside — and the two-line theory of abstraction and reasoning.",
  "2026-09-04-the-steering-wheel": "Dynamic attention as the driver, and the one-line language of looking: allow attention where a constraint is shared.",
