@@ -83,6 +83,14 @@ L_FAC = 24
 ALG_WIDE = int(os.environ.get("ALG_WIDE", "0"))
 N_DIG = 7 if ALG_WIDE else 3
 N_HEADS = 8
+MH_HEADS = int(os.environ.get("MH_HEADS", "4"))  # MASK HEAD bank width
+                                                 # (4 default; 8 = the
+                                                 # registered scale axis)
+assert H_W % MH_HEADS == 0, \
+    f"MH_HEADS={MH_HEADS} must divide H_W={H_W} (head reshape)"
+MH_CTX_F = 22   # mask-context features: 12 fact (arg1/arg2/res x 4) +
+                # 3 domain-mass port + 1 given-flag + 2 adjacency
+                # row/col mass + 2 prev-breath row/col + 2 breath phase
 SENT_MAX = 32
 
 
@@ -515,8 +523,15 @@ def build_slot_masks(o_np, sent_rows):
     return masks
 
 
-def alt2_fact_buf(onp, se_np, n_vars_arr, m_arr, theta=0.9):
-    """ALTERNATOR V2 commit adapter + cycle driver (2026-09-01). Consumes
+def _alt2_fact_buf_v0(onp, se_np, n_vars_arr, m_arr, theta=0.9):
+    """THE PRE-VECTOR REFERENCE (kept for ALG_SEAM_V0=1 fallback A/B;
+    scripts/apply_seam_vector.py, 2026-09-05). Per-item python loop —
+    the SWEEP VERDICT's measured bottleneck (~0.12s/item, CPU-bound).
+    Superseded by _alt2_fact_buf_v1 (batch-vectorized decode, bit-
+    identical by construction; scripts/seamtest_vector.py verifies).
+    Original docstring follows.
+
+    ALTERNATOR V2 commit adapter + cycle driver (2026-09-01). Consumes
     the realized pass-1 output dict (decode()'s key conventions: pres/
     ftype/op/dig/args/res logits + optional dup), discretizes ONLY
     confident slots (presence sigmoid > theta; ftype/res softmax top-prob
@@ -591,6 +606,118 @@ def alt2_fact_buf(onp, se_np, n_vars_arr, m_arr, theta=0.9):
         except Exception:
             buf[bi] = 0.0                          # per-item silence
     return buf
+
+
+def _alt2_fact_buf_v1(onp, se_np, n_vars_arr, m_arr, theta=0.9):
+    """VECTORIZED commit adapter (scripts/apply_seam_vector.py, 2026-09-05).
+    Bit-identical to _alt2_fact_buf_v0 by construction (verified by
+    scripts/seamtest_vector.py, np.array_equal on 200 realistic inputs):
+    the decode phase (presence sigmoid, ftype/res softmax+argmax, args
+    sigmoid, digit argmax, op argmax, dup sign, top-2 args by raw logit)
+    runs as a HANDFUL of whole-(B, L_FAC, ...) numpy ops instead of a
+    B*L_FAC python-level loop of per-slot numpy calls — every reduction
+    here is independent per (item, slot), so batching it changes nothing
+    about the floating-point result (same reduction, same axis, same
+    order; numpy sorts/reduces each 1-D slice along an axis identically
+    regardless of what else rides alongside it in the array).
+
+    The per-item python loop SURVIVES, but now only walks the (typically
+    few) slots that pass every gate (`keep`), to assemble the facs list
+    in the ORIGINAL ascending-j order and call the symbolic half
+    (alternator_bridge.ping — per-item by nature, cheap per the ledger,
+    NOT touched by this patch). Contradiction or any per-item exception
+    still zeros that item's buf row only — the bridge contract, preserved
+    verbatim."""
+    from alternator_bridge import ping   # lazy — scripts/ is on sys.path
+    B = onp["pres"].shape[0]
+    buf = np.zeros((B, K_VARS, 4), np.float32)
+    has_dup = "dup" in onp
+
+    def _sig(x):
+        return 1.0 / (1.0 + np.exp(-x))
+
+    def _smax(x):
+        e = np.exp(x - x.max(-1, keepdims=True))
+        return e / e.sum(-1, keepdims=True)
+
+    # ---- whole-batch decode: (B, L_FAC, ...) numpy ops, once each ------
+    pres_sig = _sig(onp["pres"])                          # (B, L)
+    ftp = _smax(onp["ftype"])                              # (B, L, nft)
+    ft_am = ftp.argmax(-1)                                  # (B, L)
+    ft_conf = np.take_along_axis(ftp, ft_am[..., None], -1)[..., 0]
+
+    rsp = _smax(onp["res"])                                 # (B, L, K_VARS)
+    res_am = rsp.argmax(-1)                                 # (B, L)
+    res_conf = np.take_along_axis(rsp, res_am[..., None], -1)[..., 0]
+
+    agp = _sig(onp["args"])                                 # (B, L, K_VARS) BCE 2-hot
+    op_am = onp["op"].argmax(-1)                            # (B, L)
+
+    digs = onp["dig"].argmax(-1)                             # (B, L, N_DIG)
+    place = (10 ** np.arange(N_DIG - 1, -1, -1)).astype(np.int64)
+    given_val = (digs.astype(np.int64) * place).sum(-1)      # (B, L)
+
+    raw_a0 = onp["args"].argmax(-1)                          # (B, L) raw-logit argmax (dup path)
+    a0_conf = np.take_along_axis(agp, raw_a0[..., None], -1)[..., 0]
+
+    top2 = np.argsort(-onp["args"], axis=-1)[..., :2]        # (B, L, 2) same per-row sort as the loop
+    top2_conf_min = np.take_along_axis(agp, top2, axis=-1).min(-1)
+    top2_sorted = np.sort(top2, axis=-1)                      # ascending pair (matches sorted(...))
+
+    dup_on = (onp["dup"] > 0) if has_dup else np.zeros_like(pres_sig, dtype=bool)
+
+    active = (pres_sig > theta) & (ft_conf > theta) & (res_conf > theta)
+    is_given = active & (ft_am == 1)
+    is_rel = active & (ft_am == 0)
+    rel_dup_ok = is_rel & dup_on & (a0_conf > theta)
+    rel_nondup_ok = is_rel & (~dup_on) & (top2_conf_min > theta)
+    keep = is_given | rel_dup_ok | rel_nondup_ok           # (B, L) slots to commit
+    keep_rows = keep.any(axis=1)
+
+    # ---- per-item assembly (ONLY over surviving slots) + ping ----------
+    for bi in range(B):
+        if not keep_rows[bi]:
+            continue
+        try:
+            facs = []
+            for j in np.nonzero(keep[bi])[0]:               # ascending j, original order
+                j = int(j)
+                if is_given[bi, j]:
+                    facs.append({"ftype": "given", "var": int(res_am[bi, j]),
+                                 "value": int(given_val[bi, j])})
+                else:
+                    op = "add" if op_am[bi, j] == 0 else "mul"
+                    if dup_on[bi, j]:
+                        a0 = int(raw_a0[bi, j])
+                        args = [a0, a0]
+                    else:
+                        args = [int(a) for a in top2_sorted[bi, j]]
+                    facs.append({"ftype": "rel", "op": op,
+                                 "args": args, "result": int(res_am[bi, j])})
+            nv = max([int(n_vars_arr[bi])]        # do_eval's nv convention
+                     + [v + 1 for f in facs for v in
+                        ([f["var"]] if f["ftype"] == "given"
+                         else list(f["args"]) + [f["result"]])])
+            facts, mass, _r = ping(nv, facs, int(m_arr[bi]))
+            if mass is None:                       # contradiction: silence
+                continue
+            for v, val in facts.items():
+                if 0 <= v < K_VARS and 0 <= val <= 999:
+                    buf[bi, v] = (1.0, (val // 100) / 9.0,
+                                  (val // 10 % 10) / 9.0, (val % 10) / 9.0)
+        except Exception:
+            buf[bi] = 0.0                          # per-item silence
+    return buf
+
+
+def alt2_fact_buf(onp, se_np, n_vars_arr, m_arr, theta=0.9):
+    """Dispatcher (scripts/apply_seam_vector.py, 2026-09-05): the
+    vectorized decode by default; ALG_SEAM_V0=1 selects the pre-vector
+    reference implementation for A/B fallback ONLY (not a shipping
+    config — the seamtest is the authority on equivalence, not this
+    flag's existence)."""
+    fn = _alt2_fact_buf_v0 if os.environ.get("ALG_SEAM_V0") else _alt2_fact_buf_v1
+    return fn(onp, se_np, n_vars_arr, m_arr, theta=theta)
 
 
 # ===========================================================================
@@ -887,6 +1014,34 @@ def build_params(seed=0):
             p["alt21_W_bv"], p["alt21_W_bv_b"] = lin(H_W, H_W)
             p["alt21_W_bo"] = t(np.zeros((H_W, H_W)))      # ZERO: silent birth
             p["alt21_W_bo_b"] = t(np.zeros(H_W))
+        if int(os.environ.get("ALG_MASKHEAD", "0")):
+            # THE MASK HEAD (2026-09-05, word given): the fourth trained
+            # organ — the learned PRECISION channel (mask_head_spec.md).
+            # A dedicated MH_HEADS-head attention bank over H_W with its
+            # own Wq/Wk/Wv, a gelu integration layer (mh_wu), a pair-key
+            # projection (mh_wp), a mask-context encoder (facts +
+            # graded adjacency + mass port + breath phase -> kv space),
+            # and an atlas-page port projection (mh_atlas_w). TWO
+            # ZERO-INIT output doors: mh_wo (output projection — the
+            # ResNet law) and mh_headmix (per-head score combiner), so
+            # the emitted bias is EXACTLY zero at birth; mh_gain is
+            # AJAR (0.02, gate-deadlock corollary) — the softplus slope
+            # gain*sigmoid(raw)*open is nonzero from step one, so both
+            # doors self-open. Sized UP per the word: ~1.97M at 4 heads
+            # (compute), state["mh_prev"] (storage), parse-CE-only
+            # training through the re-masked pass (learnable data).
+            p["mh_wq"], p["mh_wq_b"] = lin(H_W, H_W)
+            p["mh_wk"], p["mh_wk_b"] = lin(H_W, H_W)
+            p["mh_wv"], p["mh_wv_b"] = lin(H_W, H_W)
+            p["mh_wu"], p["mh_wu_b"] = lin(H_W, H_W)
+            p["mh_wo"] = t(np.zeros((H_W, H_W)))    # ZERO door 1: birth
+            p["mh_wo_b"] = t(np.zeros(H_W))         # is bit-identical
+            p["mh_wp"] = t(rng.randn(H_W, H_W) / math.sqrt(H_W))
+            p["mh_enc1"], p["mh_enc1_b"] = lin(MH_CTX_F, 256)
+            p["mh_enc2"], p["mh_enc2_b"] = lin(256, H_W)
+            p["mh_atlas_w"] = t(rng.randn(H_W, H_W) / math.sqrt(H_W))
+            p["mh_headmix"] = t(np.zeros(MH_HEADS)) # ZERO door 2
+            p["mh_gain"] = t(np.full(1, 0.02))      # AJAR (the law)
         pass
     if int(os.environ.get("ALG_BINDBUS", "0")):
         _bd = int(os.environ.get("ALG_BIND_D", "128"))
@@ -1305,6 +1460,111 @@ def breath_step(p, state, kb, ctx):
             _sm_kb = (slot_mask
                       + ((_A5 + _A5.transpose(-2, -1)) > 0.5)
                       .float()).clip(0, 1)
+    _mb = None
+    if int(os.environ.get("ALG_MASKHEAD", "0")) and "mh_wo" in p:
+        # THE MASK HEAD (2026-09-05): the learned precision channel at
+        # the RELATE seam. Reads what the >0.5 reflex throws away — the
+        # GRADED _A5 (confidences), solver fact_buf, the previous
+        # breath's adjacency (state storage), breath phase, and the
+        # domain-mass / atlas-page ports — and emits a soft OPEN-ONLY
+        # bias over the slot mixer. ALL metadata enters DETACHED (the
+        # dual-terminal law); the live terminal is cur (queries + kv
+        # stream). NO mask loss exists anywhere — trained ONLY by
+        # downstream parse CE through sc2 -> softmax -> h_slot -> cur
+        # -> emissions (Goodhart fence: a supervised mask teaches
+        # concealment; assert_not_supervised in spirit — no mask
+        # signal enters any loss, ever). EQUIVALENCE AT BIRTH: mh_wo
+        # and mh_headmix are ZERO-INIT, so _raw == 0 everywhere and
+        # _mb = gain*(softplus(_raw) - softplus(_raw*0))*open == exact
+        # zeros (identical kernels cancel bitwise). OPEN-ONLY: _mb is
+        # gated to the already-open region _sm_kb (committed MASKRE
+        # edges included) and bounded below by -gain*ln2 (the birth-
+        # plateau reference) — the -1e4 close and the base-mask
+        # SUPPORT are untouchable (A0's grave honored); a bounded
+        # signed bias within the open region is the alt_g precedent.
+        _z1 = (cur[:, :, :1] * 0.0).detach()
+        if _A5 is not None:
+            _A5s = (_A5 + _A5.transpose(-2, -1)).detach()
+            _mh_a = _snaps[-1][0]           # detached snap one-hots
+            _mh_b = _snaps[-1][1]
+            _mh_r = _snaps[-1][2]
+            _mh_g = _snaps[-1][3].unsqueeze(-1)
+            _mh_row = _A5s.mean(-1, keepdim=True)
+            _mh_col = _A5s.transpose(-2, -1).mean(-1, keepdim=True)
+        else:
+            _A5s = None
+            _mh_a = _mh_b = _mh_r = None
+            _mh_g = _z1; _mh_row = _z1; _mh_col = _z1
+        _mh_f = ctx.get("fact_buf")         # (B, K_VARS, 4) solver
+        if _mh_f is not None and _mh_a is not None:   # facts, detached
+            _mh_ff = Tensor.cat(_mh_a @ _mh_f, _mh_b @ _mh_f,
+                                _mh_r @ _mh_f, dim=-1)   # (B, L, 12):
+            # what the solver knows about MY args and MY result
+        else:
+            _mh_ff = Tensor.cat(*([_z1] * 12), dim=-1)
+        # DOMAIN-MASS PORT (documented, 2026-09-05): (B, K_VARS, 1)
+        # per-var matryoshka radius (alternator_bridge.ping returns
+        # mass; not yet threaded into the fused graph — only fact_buf
+        # is in-graph today). A seam driver may set ctx["mh_mass"];
+        # absent -> zeros, graph shape unchanged, grads stay defined.
+        _mh_m = ctx.get("mh_mass")
+        if _mh_m is not None and _mh_a is not None:
+            _mh_fm = Tensor.cat(_mh_a @ _mh_m, _mh_b @ _mh_m,
+                                _mh_r @ _mh_m, dim=-1)   # (B, L, 3)
+        else:
+            _mh_fm = Tensor.cat(*([_z1] * 3), dim=-1)
+        _mh_p = state.get("mh_prev")        # STORAGE READ: the organ
+        if _mh_p is not None:               # sees the commitment FLOW
+            _mh_pr = _mh_p.mean(-1, keepdim=True)
+            _mh_pc = _mh_p.transpose(-2, -1).mean(-1, keepdim=True)
+        else:
+            _mh_pr = _z1; _mh_pc = _z1
+        _mh_bs = _z1 + math.sin(kb * math.pi / 3.0)   # breath phase
+        _mh_bc = _z1 + math.cos(kb * math.pi / 3.0)   # (60-deg clock)
+        _mh_cf = Tensor.cat(_mh_ff, _mh_fm, _mh_g, _mh_row, _mh_col,
+                            _mh_pr, _mh_pc, _mh_bs, _mh_bc,
+                            dim=-1)          # (B, L, MH_CTX_F) DETACHED
+        _mh_ce = ((_mh_cf @ p["mh_enc1"] + p["mh_enc1_b"]).gelu()
+                  @ p["mh_enc2"] + p["mh_enc2_b"])    # (B, L, H_W)
+        # ATLAS-PAGE PORT (documented, 2026-09-05): (B, H_W) or
+        # (B, L, H_W) detached page(s) from mycelium/step_atlas.consult
+        # at a seam (the fused loop cannot consult mid-graph — consult
+        # is numpy); a seam driver may set ctx["mh_atlas"]; absent ->
+        # zeros from cur*0 keep mh_atlas_w in-graph (defined zero
+        # grads — the None-grad law; degrade gracefully).
+        _mh_ap = ctx.get("mh_atlas")
+        if _mh_ap is None:
+            _mh_ap = (cur * 0.0).detach()
+        _mh_ce = _mh_ce + _mh_ap.reshape(B, -1, H_W) @ p["mh_atlas_w"]
+        _mh_kv = cur + _mh_ce      # LIVE stream + detached context
+        _mh_q = cur @ p["mh_wq"] + p["mh_wq_b"]
+        _mh_k = _mh_kv @ p["mh_wk"] + p["mh_wk_b"]
+        _mh_v = _mh_kv @ p["mh_wv"] + p["mh_wv_b"]
+        _mh_hd = H_W // MH_HEADS
+        _mh_qh = _mh_q.reshape(B, L_FAC, MH_HEADS, _mh_hd).permute(0, 2, 1, 3)
+        _mh_kh = _mh_k.reshape(B, L_FAC, MH_HEADS, _mh_hd).permute(0, 2, 1, 3)
+        _mh_vh = _mh_v.reshape(B, L_FAC, MH_HEADS, _mh_hd).permute(0, 2, 1, 3)
+        _mh_sc = ((_mh_qh @ _mh_kh.transpose(-2, -1))
+                  / math.sqrt(_mh_hd)).clip(-1e4, 1e4)   # (B, M, L, L)
+        _mh_at = (_mh_sc
+                  + (1.0 - _sm_kb.unsqueeze(1)) * -1e4).softmax(-1)
+        _mh_gt = (_mh_at @ _mh_vh).permute(0, 2, 1, 3) \
+            .reshape(B, L_FAC, H_W)
+        _mh_u = (_mh_gt @ p["mh_wu"] + p["mh_wu_b"]).gelu()
+        _mh_o = _mh_u @ p["mh_wo"] + p["mh_wo_b"]     # ZERO door 1
+        _mh_rp = (_mh_o @ (_mh_kv @ p["mh_wp"]).transpose(-2, -1)) \
+            / math.sqrt(H_W)                # value-informed pair logits
+        _mh_rh = (_mh_sc * p["mh_headmix"].reshape(1, MH_HEADS, 1, 1)) \
+            .sum(1)                         # ZERO door 2: direct head
+        _raw = (_mh_rp + _mh_rh).clip(-30.0, 30.0)    # finite softplus
+        _mh_sp = (1.0 + _raw.exp()).log()             # softplus(raw)
+        _mh_sp0 = (1.0 + (_raw * 0.0).exp()).log()    # birth plateau
+        _mb = (p["mh_gain"].reshape(1, 1, 1)
+               * (_mh_sp - _mh_sp0) * _sm_kb)
+        if _A5s is not None:                # STORAGE WRITE: this
+            state["mh_prev"] = _A5s         # breath's consumed
+                                            # adjacency, detached
+        sc2 = sc2 + _mb        # the injection site: BEFORE the close
     sc2 = sc2.clip(-1e4, 1e4) + (1.0 - _sm_kb) * -1e4
     if _A5 is not None and "alt_g" in p:
         # v0 soft bias rides alongside (facts wire attention)
@@ -1364,6 +1624,9 @@ def breath_step(p, state, kb, ctx):
         _bk21 = _s21 @ p["alt21_W_bk"] + p["alt21_W_bk_b"]
         _bv21 = _s21 @ p["alt21_W_bv"] + p["alt21_W_bv_b"]
         _sm21 = (_bq21 @ _bk21.transpose(-2, -1)) / math.sqrt(H_W)
+        if _mb is not None:        # MASK HEAD: the same open-only
+            _sm21 = _sm21 + _mb    # bias, station-4 mixer (before
+                                   # ITS close — one geometry/breath)
         _sm21 = _sm21.clip(-1e4, 1e4) + (1.0 - _sm_kb) * -1e4
         if _A5 is not None and "alt_g" in p:   # v0 bias, as station 2
             _sm21 = _sm21 + (_A5 + _A5.transpose(-2, -1)) \
@@ -1622,9 +1885,21 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
                    "slot_mask": slot_mask, "bank": bank, "rot2": _rot2,
                    "sync": _sync, "drop": drop, "gmod": gmod,
                    "revoke": revoke, "tail": tail, "reg": reg,
+                   # MASK HEAD metadata (2026-09-05; plumbing only — a
+                   # dict key, zero compute when ALG_MASKHEAD unset).
+                   # ctx also serves the OPTIONAL per-seam ports read
+                   # via ctx.get: "mh_mass" (per-var domain-mass from
+                   # the solver ping) and "mh_atlas" (step_atlas
+                   # consult page) — populated by seam drivers only.
+                   "fact_buf": fact_buf,
                    "RINGS": RINGS, "XOUT": XOUT, "XARM": XARM,
                    "XR_GRADED": XR_GRADED, "XR_ELASTIC": XR_ELASTIC}
         _bs_state = {"cur": cur, "breaths": breaths, "nb": None,
+                     # MASK HEAD storage (2026-09-05): the graded
+                     # adjacency the organ consumed at the previous
+                     # breath_step (detached) — Δ-visibility into the
+                     # commitment FLOW; the notebook-threading contract
+                     "mh_prev": None,
                      "nb_st": None, "garage": _garage, "snaps": _snaps,
                      "snaps_g": _snaps_g, "rb_last": _rb_last,
                      "m_c": m_c if RINGS else None,
