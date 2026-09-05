@@ -33656,3 +33656,21 @@ edition). Bands note: NEITHER BREATH_BAND_PAIRS nor ROT_BANDS is live
 in the deployed head (docs/rotor_clock_bands_note.md). (3) Impulse v2
 flags don't exist in impulse_response.py (v1 only) — unit runs v1,
 gap echoed; v2 instrumentation owed. Unit fired.
+
+## 2026-09-05 — CLOCK AUDIT VERDICTS: the determination wave dies on wild; the sextet remains unmeasured
+
+wave_field_check with the env fix, champion port242: **fire_gold mean
+0.000 ON THE WILD LEG — the determination wave does not fire even
+where ladders live. The ladder-schism exoneration is REVOKED per the
+pinned bar: the wave is dead, not data-starved. W_det/det_g retire;
+params flow to the mask head** (the audit's standing destination for
+reclaimed budget). Precision kept honest: this verdict is the
+DETERMINATION WAVE (W_det organ), not the six helical waves — the
+sextet itself remains (a) UNMEASURED (impulse_response.py is v1 only;
+no tau-fit, no omega-FFT, no eps sweep — the v2 instrumentation is
+owed before any sextet verdict) and (b) UNWIRED (rotor_clock.py zero
+importers; the head's ALG_SIXWAVE is an independent implementation).
+The sextet's true audit = build impulse v2 + the install-vs-retire
+decision at the next rebirth. Impulse v1 gains printed to
+clock_audit.log (contraction bar pinned in-log). Bands note banked
+(docs/rotor_clock_bands_note.md): neither band table is live.
