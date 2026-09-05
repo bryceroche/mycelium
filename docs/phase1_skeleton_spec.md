@@ -33747,3 +33747,22 @@ eq gate -> apply -> full-vision smoke -> ROUND-2 TWIN (MASKHEAD+MASS+
 ATLAS vs MASKHEAD-only control, both warm port242, 6k gentle) ->
 wild+mint reads, envs toggled per arm. Round-1 baseline to beat:
 +0.0044 at half-vision.
+
+## 2026-09-05 — REGISTERED + WORD GIVEN: THE PAIRED ATLAS
+
+The asymmetry (math atlas 7 pages, NL atlas 1) DISSOLVED: the trunk's
+representation is static but the READING is not — per-breath
+attention-weighted pooling of the frozen token states yields an
+evolving NL state from a model that ran once (same rack, different
+pose). REGISTERED BUILD: (1) THE SEVEN-PAGE NL ATLAS — extend the
+miner: beside slot-state pooling, bank attention-weighted token-state
+pooling per (breath, class), second bank in the same npz, same
+stamp/door; (2) THE CROSS-ATLAS PRIOR — the two charts share the
+kind index; transport = the parse; at breath 0 the NL match
+pre-fetches the kind's math trajectory as a mask-head prior
+(conditioning, Goodhart-fenced); (3) THE LEAD/LAG NEEDLE — paired
+trajectories (reading_k, commitment_k) per kind; the cross-
+correlation measures whether unveiling leads or lags commitment —
+the alternation's sharpest designed instrument (the telegraph heard
+through a stethoscope, not a wall). Build queues behind round 2b
+(single-process); blog post live (the-paired-atlas).
