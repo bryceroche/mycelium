@@ -41,6 +41,29 @@ class StepWelford:
         return self.M2 / max(self.n - 1, 1)
 
 
+def atlas_class(gen):
+    """THE ATLAS CLASS LABELER (2026-09-05, mask-head round 2) — the
+    SINGLE SOURCE for a row's atlas class (meter-divergence law: the
+    miner and every feed-time consumer call THIS function, never a
+    reimplementation). gen = row.get("gen") ({} / None safe).
+      gen.ladder present      -> "ladder2-4" / "ladder5-8" / "ladder9+"
+                                 (depth buckets; teeth costume IGNORED)
+      gen.src == "gsm8k"      -> "wild_gsm8k"
+      gen.src == "r7"         -> "wild_r7"
+      anything else           -> "mint_form8"
+    """
+    g = gen or {}
+    if "ladder" in g:
+        d = int(g["ladder"])
+        return ("ladder2-4" if d <= 4
+                else "ladder5-8" if d <= 8 else "ladder9+")
+    if g.get("src") == "gsm8k":
+        return "wild_gsm8k"
+    if g.get("src") == "r7":
+        return "wild_r7"
+    return "mint_form8"
+
+
 def _era_stamp(manifest_path=MANIFEST):
     m = json.load(open(manifest_path))
     return os.path.basename(m["parser_ckpt"])
@@ -134,5 +157,14 @@ if __name__ == "__main__":
         raise AssertionError("stale atlas served — door failed")
     except RuntimeError:
         pass
+    # the labeler: one organ, every caller (miner + feeds)
+    assert atlas_class({"ladder": 3}) == "ladder2-4"
+    assert atlas_class({"ladder": 5, "teeth": 0.4}) == "ladder5-8"
+    assert atlas_class({"ladder": 12}) == "ladder9+"
+    assert atlas_class({"src": "gsm8k", "src_idx": 7}) == "wild_gsm8k"
+    assert atlas_class({"src": "r7"}) == "wild_r7"
+    assert atlas_class(None) == "mint_form8"
+    assert atlas_class({"shape": "x"}) == "mint_form8"
     print("[step_atlas] self-test PASS: Welford banks, stamped save/"
-          "load, loud door refuses cross-era, consult finds the kind")
+          "load, loud door refuses cross-era, consult finds the kind, "
+          "atlas_class buckets agree")
