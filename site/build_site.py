@@ -274,7 +274,7 @@ for slug, t, d, bhtml in blog_pages:
     (DIST / "blog" / slug / "index.html").write_text(
         page(f"{t} — The Shape of Thought",
              f'<p class="stamp">{d}</p><div class="paper-body">{bhtml}</div>'
-             f'<p><a href="../">&larr; all posts</a></p>', depth=2))
+             f'<p><a href="../../">&larr; all essays</a></p>', depth=2))
 (DIST / "bio").mkdir(exist_ok=True)
 (DIST / "bio" / "index.html").write_text(
     page("Bryce Roche — The Shape of Thought",
