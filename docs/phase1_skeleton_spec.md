@@ -33695,3 +33695,18 @@ CHAIN FIRED: eq gate -> smoke -> MASKHEAD twin (warm port242, 6k
 gentle, fused trainer) -> wild+mint reads. Three retired organs'
 budgets (router, W_det, + the reflex's poverty) funded this seat —
 the drafting player, finally hired.
+
+## 2026-09-05 — THE SEAM VECTORIZATION staged (2.3-3x, bit-identical)
+
+Profile confirmed the sweep's diagnosis at microscope grain: the cost
+was 1,536 tiny numpy calls per batch inside alt2_fact_buf's per-item
+loops (sigmoid x96k, argmax x100k per 60 calls). v1 batches decode
+into ~10 whole-(B,L) ops + a keep-mask; pings untouched. 53.6 -> 18.0
+us/item (2.3-3x); np.array_equal on 200 realistic items (incl. real
+form_mix rows, dup/contradiction/empty branches); dispatcher default
+v1, ALG_SEAM_V0 fallback. step_trainer's own packing confirmed
+already-batched (no patch needed). APPLICATION QUEUED behind the
+running mask-head chain (running-invocation law — proven-identical
+edits still wait their turn); applies + eq-checks when the chain
+exits. Expected effect: ping-ON walks drop from ~0.12 toward ~0.06
+s/item, re-opening the mega-batch question the sweep closed.
