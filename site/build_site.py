@@ -58,6 +58,8 @@ h1.paper-title { font-size: 2.0rem; line-height: 1.25; margin: 2.6rem 0 0.8rem;
 .lede { font-size: 1.18rem; font-style: italic; color: var(--accent);
   border-left: 3px solid var(--accent); padding-left: 0.9rem;
   margin: 1.6rem 0; text-wrap: balance; }
+.cardlist a, .cardlist a:visited { color: inherit; text-decoration: none; display: block; }
+.cardlist li:hover { border-color: var(--accent); }
 .topnav { display: flex; gap: 1.1rem; align-items: baseline; }
 .topnav a { color: var(--ink-dim); text-decoration: none; font-size: 0.95rem; }
 .topnav a:hover { color: var(--accent); }
@@ -121,7 +123,7 @@ def page(title, body, depth=0):
 <header class="masthead"><div class="wrap">
 <a class="brand" href="{p if depth else './'}">The Shape of Thought</a>
 <nav class="topnav">
-<a href="{p if depth else './'}paper/">Paper</a>
+<a href="{p if depth else './'}paper/">Core ideas</a>
 <a href="{p if depth else './'}blog/">Blog</a>
 <a href="{p if depth else './'}bio/">About</a>
 <a class="theme-note" href="javascript:flip()">light / dark</a>
@@ -151,6 +153,22 @@ paper_html = page(TITLE, f"""
 <h1 class="paper-title">{TITLE}</h1>
 <p class="byline">{BYLINE}</p>
 <p class="stamp">{STAMP}</p>
+<h2>The two observations that seeded everything</h2>
+<ul class="cardlist">
+<li><a href="../blog/2026-09-03-the-solver-inside-technical/"><span class="k">1 · NEURAL NETS BUILD SOLVERS INSIDE THEIR WEIGHTS</span><br>
+Frozen layers of a small language model, given hand-crafted attention
+masks, solved Sudoku, map coloring, and KenKen — the constraint-
+propagation machinery was already latent in the pretrained weights.
+They need help with the masking; the solving is in there. (Full
+story: The solver inside.)</a></li>
+<li><a href="../blog/2026-09-03-the-solver-inside-technical/"><span class="k">2 · THE TELEGRAPH IN THE ATTENTION</span><br>
+Our archived attention analyses (stored in our S3 buckets) carry a
+two-state hidden Markov signal — attention snapping between local
+focus and global survey, dwelling in each. We read this as the
+alternation between the neural network and its internal, improvised
+implementation of a solver — the rhythm this whole architecture
+makes explicit.</a></li>
+</ul>
 <div class="paper-body">{body}</div>
 """, depth=1)
 
@@ -165,7 +183,7 @@ landing = page("The Shape of Thought", f"""
 disposes &mdash; two jaws taking turns until the answer is certain, or
 the silence is.</p>
 <div class="actions">
-<a href="paper/">Read the paper</a>
+<a href="paper/">Core ideas</a>
 <a href="blog/">Blog</a>
 <a href="bio/">About</a>
 <a href="https://github.com/bryceroche/mycelium">Code</a>
@@ -200,9 +218,12 @@ for md in sorted(BLOG.glob("*.md"), reverse=True):
     slug = md.stem
     bhtml = markdown.markdown("\n".join(lines), extensions=["tables", "smarty"])
     blog_pages.append((slug, meta.get("title", slug), meta.get("date", ""), bhtml))
-blog_index = "<h1 class=\"paper-title\">Blog</h1>\n<ul class=\"cardlist\">" + "".join(
-    f'<li><a href="{slug}/"><strong>{t}</strong></a> · {d}</li>'
-    for slug, t, d, _ in blog_pages) + "</ul>"
+blog_index = ("<h1 class=\"paper-title\">Blog</h1>\n<ul class=\"cardlist\">"
+    + '<li><a href="../paper/"><strong>Core ideas</strong> · pinned — '
+      'the full essay: the shape of the machine, from the two jaws to the wall of witnesses</a></li>'
+    + "".join(
+    f'<li><a href="{slug}/"><strong>{t}</strong> · {d}</a></li>'
+    for slug, t, d, _ in blog_pages) + "</ul>")
 bio_src = (ROOT / "site" / "bio.md").read_text()
 bio_html = markdown.markdown(bio_src, extensions=["smarty"])
 
