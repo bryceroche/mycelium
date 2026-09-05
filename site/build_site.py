@@ -124,7 +124,6 @@ def page(title, body, depth=0):
 <a class="brand" href="{p if depth else './'}">The Shape of Thought</a>
 <nav class="topnav">
 <a href="{p if depth else './'}paper/">Core ideas</a>
-<a href="{p if depth else './'}blog/">Blog</a>
 <a href="{p if depth else './'}bio/">About</a>
 <a class="theme-note" href="javascript:flip()">light / dark</a>
 </nav>
@@ -175,7 +174,7 @@ makes explicit.</a></li>
 # ---------------------------------------------------------------- landing
 abstract = src.split("## Abstract\n", 1)[1].split("\n## ", 1)[0].strip()
 abstract_html = markdown.markdown(abstract, extensions=["smarty"])
-landing = page("The Shape of Thought", f"""
+landing_tpl = ("""
 <h1 class="paper-title">{TITLE}</h1>
 <p class="byline">{BYLINE}</p>
 <p class="stamp">{STAMP}</p>
@@ -184,28 +183,43 @@ disposes &mdash; two jaws taking turns until the answer is certain, or
 the silence is.</p>
 <div class="actions">
 <a href="paper/">Core ideas</a>
-<a href="blog/">Blog</a>
 <a href="bio/">About</a>
 <a href="https://github.com/bryceroche/mycelium">Code</a>
 </div>
 <h2>Abstract</h2>
 {abstract_html}
-<h2>What this is</h2>
+<h2>Core ideas</h2>
 <ul class="cardlist">
-<li><a href="blog/2026-09-01-what-is-the-shape-of-thought/"><span class="k">WHAT IS THE SHAPE OF THOUGHT?</span><br>The site's title question,
-answered with measured geometry: a braid that tightens through nested
-rings, breaking like the wave at Nazar&eacute; into a crystal of nodes
-and edges.</a></li>
-<li><a href="blog/2026-09-01-the-paper-in-plain-language/"><span class="k">THE PAPER, IN PLAIN LANGUAGE</span><br>The full technical paper,
-rewritten for the largest possible audience. Every number verified;
-every difficult idea explained rather than glossed.</a></li>
-<li><a href="blog/2026-09-03-the-solver-inside-technical/"><span class="k">THE SOLVER INSIDE</span><br>A hidden two-state
-switch found in a hundred attention traces, and the frozen model
-that already knew how to solve Sudoku — the observations that seeded
-the architecture.</a></li>
+<li><a href="paper/"><span class="k">THE SHAPE OF THOUGHT — THE FULL ESSAY</span><br>The whole machine in one piece: the two jaws, the waist, the rotors, the wall of witnesses, and the two observations that seeded everything.</a></li>
+</ul>
+<h2>The essays</h2>
+<ul class="cardlist">
+{essay_cards}
 </ul>
 """)
 
+
+HOOKS = {
+ "2026-09-04-the-lean-horizon": "Two nested loops — the CSP solver inside, the Lean compiler outside — and the two-line theory of abstraction and reasoning.",
+ "2026-09-04-the-steering-wheel": "Dynamic attention as the driver, and the one-line language of looking: allow attention where a constraint is shared.",
+ "2026-09-03-the-solver-inside-technical": "Pythia-410M + hand-crafted masks solved Sudoku — the solver was already latent in the weights. Plus the telegraph in the attention.",
+ "2026-09-03-the-herring-shoal": "Message passing without a messenger: channel, language, and the parking garage where facts wait to be found.",
+ "2026-09-03-the-atlas-of-thought": "Seven pages per centroid, one per breath — a kind is not a dot, it is a trajectory.",
+ "2026-09-02-crossing-the-bridge": "Neural, continuous, non-deterministic on one side; symbolic, discrete, deterministic on the other — every term defined.",
+ "2026-09-02-the-diffusion-compiler": "Lattner's law plus one amendment: when you do lower, lower everything together.",
+ "2026-09-02-the-dancers-silhouette": "The 512-dimension waist: understanding as the selective destruction of costume.",
+ "2026-09-02-a-fancy-lookup-table": "The proud deflation — retrieval with the right keys, over an honest atlas, is reasoning you can audit.",
+ "2026-09-02-happy-families": "Rightness has one shape; wrongness has infinite variety. The Anna Karenina engine of certification.",
+ "2026-09-02-the-two-jaws": "The grouper's anatomy: neural grips, symbolic crushes — and the ping-pong where they take turns.",
+ "2026-09-02-lucys-notebook": "The frozen model wakes with no memory; the notebook carries the facts. Working memory you can read.",
+ "2026-09-02-three-hands-on-one-clock": "Spatial, temporal, relational — the three rotors that keep time in where, when, and what-binds-to-what.",
+ "2026-09-02-nazare": "You do not fight the ocean's variety. You shape the floor beneath it.",
+ "2026-09-02-an-instance-of-the-fingerpost": "Many witnesses, one truth — and the minimal unsatisfiable core: refusal with a readable shape.",
+ "2026-09-02-one-card": "One consumer GPU, tinygrad to bare metal — a machine one person can audit, rerun, and disbelieve properly.",
+ "2026-09-01-what-is-the-shape-of-thought": "The title question answered with measured geometry: a braid that tightens, breaking into a crystal.",
+ "2026-09-01-the-paper-in-plain-language": "The full technical paper, rewritten for everyone. Every number verified verbatim.",
+ "2026-09-01-the-blog-opens": "Where this space began: registered predictions, honest negatives, and the occasional story worth telling.",
+}
 # ---------------------------------------------------------------- blog + bio
 BLOG = ROOT / "site" / "blog"
 blog_pages = []
@@ -224,6 +238,14 @@ blog_index = ("<h1 class=\"paper-title\">Blog</h1>\n<ul class=\"cardlist\">"
     + "".join(
     f'<li><a href="{slug}/"><strong>{t}</strong> · {d}</a></li>'
     for slug, t, d, _ in blog_pages) + "</ul>")
+essay_cards = "".join(
+    f'<li><a href="blog/{slug}/"><span class="k">{t.upper()}</span><br>'
+    f'{HOOKS.get(slug, d)}</a></li>'
+    for slug, t, d, _ in blog_pages)
+landing = page("The Shape of Thought", landing_tpl
+               .replace("{essay_cards}", essay_cards)
+               .replace("{TITLE}", TITLE).replace("{BYLINE}", BYLINE)
+               .replace("{STAMP}", STAMP).replace("{abstract_html}", abstract_html))
 bio_src = (ROOT / "site" / "bio.md").read_text()
 bio_html = markdown.markdown(bio_src, extensions=["smarty"])
 
