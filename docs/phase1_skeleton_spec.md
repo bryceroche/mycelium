@@ -33766,3 +33766,21 @@ correlation measures whether unveiling leads or lags commitment —
 the alternation's sharpest designed instrument (the telegraph heard
 through a stethoscope, not a wall). Build queues behind round 2b
 (single-process); blog post live (the-paired-atlas).
+
+## 2026-09-05 — THE PAIRED ATLAS staged (commit 6ea3f14); queued behind round 2b
+
+Third discarded-signal find: breath_step computes per-breath token
+attention (h_tok/fat_cur, phase1:1462) and DISCARDS it — the NL tap
+banks it (nl_all/nlat_all/nl0; nl0 proven pass-invariant, so feeds
+ride the pass-1 forward). Pooling: head-averaged bank attention over
+the ckpt's own waist; slot-permutation-stable by linearity (verified
+2e-4). Second chart same npz/stamp/door; cross_prior (cosine vs
+nl_means[0], returns math trajectory; XPRIOR=1 rescue mode / =2 fully
+deployable retrieval, gen-label = oracle bound, agreement printed);
+THE NEEDLE = Pearson cross-corr of first-difference contraction
+curves, lags -3..+3, positive = reading leads (self-test hears a
+designed +1 lead); leadlag_needle single-sourced in step_atlas. All
+gates green (4x --check, scratch rehearsal, mini-eq 12 tensors
+bit-identical, dollar 0). Deferrals: wild_r7 n=10 = noise row; old
+atlas vintage banked; xprior twin's arm awaits the round-2b verdict.
+Chain self-refuses while round-2b runs; wrapper queues it.
