@@ -33710,3 +33710,23 @@ running mask-head chain (running-invocation law — proven-identical
 edits still wait their turn); applies + eq-checks when the chain
 exits. Expected effect: ping-ON walks drop from ~0.12 toward ~0.06
 s/item, re-opening the mega-batch question the sweep closed.
+
+## 2026-09-05 — MASK HEAD TWIN, round 1: small wild positive, two senses still dark
+
+Single seed 242, 6k gentle, fused trainer, warm port242: **wild ON
+0.2511 vs OFF 0.2467 (+0.0044 for the learner); mint ON 0.9264 vs
+OFF 0.9286 (-0.002, noise)**. Both arms drift slightly below the
+source's 0.2540 wild while mint climbs to record ~0.93 — the THIRD
+sighting of the continuation pattern (mint-dominated diet at
+continuation trades wild for mint; wild-dose escalation registered
+as a lever). HONEST FRAME: the organ trained stably, positive where
+the reflex-vs-learner difference should show — WITH TWO OF ITS FOUR
+DESIGNED SENSES DARK (atlas pages and domain-mass are zero-fallback
+ports; only graded adjacency + frozen facts connected). +0.004 at
+half-vision and 6k steps is promising, not conclusive; wake-lag
+plausible for a 2M zero-init organ. Round 2 levers, in order: (1)
+connect the atlas port (mine the per-step atlas on port242's
+coordinates — the plumbing exists in step_atlas.py), (2) thread
+domain-mass, (3) longer training / the rebirth with the organ
+aboard, (4) wild-heavier continuation dose. Seam vectorization now
+UNBLOCKED (chain exited) — applies next.
