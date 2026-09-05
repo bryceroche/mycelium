@@ -33730,3 +33730,20 @@ coordinates — the plumbing exists in step_atlas.py), (2) thread
 domain-mass, (3) longer training / the rebirth with the organ
 aboard, (4) wild-heavier continuation dose. Seam vectorization now
 UNBLOCKED (chain exited) — applies next.
+
+## 2026-09-05 — ROUND 2 FIRED: the mask head at full vision
+
+Eyes connected (commit ef1d92e): miner via the existing
+ALG_MINE_BREATHS tap (zero patch — the least-invasive read), mass by
+EXTENDING alt2_fact_buf (one ping, one vintage; meter-divergence
+honored; default-fill m+1 = "nothing known", contradiction keeps the
+silence convention), atlas fed as per-CLASS trajectory pages (JIT-
+safe static kb slice; consult-by-similarity = the read-time upgrade,
+deferred with the step trainer's seams), atlas_class() the single-
+source labeler, loop_val + _quick_val patched same-transaction.
+Research manifest (.cache/RESEARCH_MANIFEST.json) stamps the atlas;
+GENERATION.json constitutionally untouched. CHAIN FIRED: mine 4096 ->
+eq gate -> apply -> full-vision smoke -> ROUND-2 TWIN (MASKHEAD+MASS+
+ATLAS vs MASKHEAD-only control, both warm port242, 6k gentle) ->
+wild+mint reads, envs toggled per arm. Round-1 baseline to beat:
++0.0044 at half-vision.
