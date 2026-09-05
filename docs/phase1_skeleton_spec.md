@@ -33674,3 +33674,24 @@ The sextet's true audit = build impulse v2 + the install-vs-retire
 decision at the next rebirth. Impulse v1 gains printed to
 clock_audit.log (contraction bar pinned in-log). Bands note banked
 (docs/rotor_clock_bands_note.md): neither band table is live.
+
+## 2026-09-05 — THE MASK HEAD FIRED (the player takes its seat)
+
+Built per spec + the capacity word: ~1.98M params (own wq/wk/wv,
+gelu integration, pair-key, zero-init wo + headmix, 22-feature
+context encoder, atlas projection, gain ajar 0.02; MH_HEADS 4/8 free
+reshape). Inputs: GRADED _A5 (pre-threshold), fact_buf slot-mapped,
+mh_prev (cross-breath commitment-flow storage threaded like the
+notebook), atlas/domain-mass PORTS (zero-fallback, None-grad law).
+Injection: sc2 + station-4 mixer, before the closes; gradient path
+runs mb -> softmax -> h_slot -> cur -> emissions -> parse CE (no
+mask target — Goodhart fence). RULING RATIFIED: exact-zero birth via
+twin-kernel cancellation with bounded SIGNED bias inside the open
+region (nonneg + zero-birth + live-grad is a theorem-impossible
+triple; A0's grave protects SUPPORT not sign; alt_g precedent).
+Birth proven BITWISE identical on all 7 emission keys with mixer
+live, both head counts; 18/18 grads defined, zero doors awake.
+CHAIN FIRED: eq gate -> smoke -> MASKHEAD twin (warm port242, 6k
+gentle, fused trainer) -> wild+mint reads. Three retired organs'
+budgets (router, W_det, + the reflex's poverty) funded this seat —
+the drafting player, finally hired.
