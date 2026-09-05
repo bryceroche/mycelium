@@ -52,7 +52,7 @@ def atlas_class(gen):
       gen.src == "r7"         -> "wild_r7"
       anything else           -> "mint_form8"
     """
-    g = gen or {}
+    g = gen if isinstance(gen, dict) else {}   # some rows carry gen as a string tag
     if "ladder" in g:
         d = int(g["ladder"])
         return ("ladder2-4" if d <= 4
