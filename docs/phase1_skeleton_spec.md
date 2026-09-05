@@ -33639,3 +33639,20 @@ the commit-adapter CPU work, (2) the overlap/prefetch pattern (spec
 S2 — hide pings inside GPU compute), (3) mega-batch pays today only
 for ping-free walks.** Wild standings unchanged: port242 0.2540 on
 top. GPU free; the clock audit is next in the queue.
+
+## 2026-09-05 — CLOCK AUDIT PRE-FLIGHT: two finds before any GPU burned
+
+(1) wave_field_check.py CLOBBERED caller env at import (ALG_TEST
+hardcoded to test23 via os.environ.update) — the wild leg would have
+silently read mint and produced a fake null identical to the control.
+Fixed: setdefault per key, caller wins (the explicit-env law's mirror:
+scripts must not overwrite the chain's declared envs). (2) **THE
+UNWIRED CLOCK: rotor_clock.py has ZERO importers** — the master-clock
+module (sextet, wheels, demod, self-tests) is a spec artifact never
+connected; the head implements its own six-wave logic independently
+(ALG_SIXWAVE, door #62); "sync enforced by the import graph" was
+prose over an empty graph (prose-promotions law's specimen, clock
+edition). Bands note: NEITHER BREATH_BAND_PAIRS nor ROT_BANDS is live
+in the deployed head (docs/rotor_clock_bands_note.md). (3) Impulse v2
+flags don't exist in impulse_response.py (v1 only) — unit runs v1,
+gap echoed; v2 instrumentation owed. Unit fired.

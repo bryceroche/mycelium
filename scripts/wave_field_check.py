@@ -9,14 +9,23 @@ Env: WF_CKPT (stack artifact with garage; DETWAVE not required — we
 recompute the field from the snaps directly).
 """
 import os, sys
-os.environ.update({"DEV": "AMD", "ALG2": "1", "ALG_FTYPES": "9",
-                   "ALG_DUP": "1", "ALG_HW": "512", "ALG_WIDE": "1",
-                   "ALG_BREATH": "7", "ALG_NOTEBOOK": "1", "ALG_SIXWAVE": "1",
-                   "NB_PERSLOT": "1", "ALG_BINDBUS": "7", "ALG_BIND_D": "512",
-                   "BIND_CODES": ".cache/bindbus_codes512.npz",
-                   "ALG_BUSGARAGE": "2", "ALG_MINE_BREATHS": "1",
-                   "ALG_TEST": ".cache/algebra_nl_test.jsonl",
-                   "ALG_TEST_NAME": "test23"})
+os.environ.setdefault("DEV", "AMD")
+os.environ.setdefault("ALG2", "1")
+os.environ.setdefault("ALG_FTYPES", "9")
+os.environ.setdefault("ALG_DUP", "1")
+os.environ.setdefault("ALG_HW", "512")
+os.environ.setdefault("ALG_WIDE", "1")
+os.environ.setdefault("ALG_BREATH", "7")
+os.environ.setdefault("ALG_NOTEBOOK", "1")
+os.environ.setdefault("ALG_SIXWAVE", "1")
+os.environ.setdefault("NB_PERSLOT", "1")
+os.environ.setdefault("ALG_BINDBUS", "7")
+os.environ.setdefault("ALG_BIND_D", "512")
+os.environ.setdefault("BIND_CODES", ".cache/bindbus_codes512.npz")
+os.environ.setdefault("ALG_BUSGARAGE", "2")
+os.environ.setdefault("ALG_MINE_BREATHS", "1")
+os.environ.setdefault("ALG_TEST", ".cache/algebra_nl_test.jsonl")
+os.environ.setdefault("ALG_TEST_NAME", "test23")
 sys.path.insert(0, '.'); sys.path.insert(0, 'scripts')
 import numpy as np
 from phase1_algebra_head import (build_params, forward, load_alg,
