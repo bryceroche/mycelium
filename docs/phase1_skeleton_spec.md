@@ -33784,3 +33784,17 @@ gates green (4x --check, scratch rehearsal, mini-eq 12 tensors
 bit-identical, dollar 0). Deferrals: wild_r7 n=10 = noise row; old
 atlas vintage banked; xprior twin's arm awaits the round-2b verdict.
 Chain self-refuses while round-2b runs; wrapper queues it.
+
+## 2026-09-05 — ADOPTED (Gemini's safeguard): THE COLLAPSE CHECK, measure-first
+
+Real failure mode accepted: diffuse/stopword-locked attention =>
+seven near-identical NL pages => illusory trajectory. Adopted per
+house style as MEASUREMENT not pre-filter (stopword masking would
+change the instrument before we hear it): scripts/atlas_collapse_
+check.py — per-class page spread (mean pairwise cosine distance
+among the 7 pages), both charts; **PINNED BAR: NL spread < 0.10 x
+math spread = loud NL-COLLAPSE WARNING** (diagnostic; a warning
+opens the token-masking design question WITH data). Runs CPU on the
+mined npz after the paired chain. The needle reader already banks
+per-breath attention entropy (the raw signal). Relay nit trimmed:
+none of substance — the physics framing matched the build.
