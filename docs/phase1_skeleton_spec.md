@@ -33614,3 +33614,28 @@ geometry (the first clock-phase observation ever). (4) The
 BREATH_BAND_PAIRS->ROT_BANDS truth-maintenance chore closed in the
 same pass.** Either verdict pays: signal -> the rotor earns its
 flow-through place; silence -> honest negative, clock simplifies.
+
+## 2026-09-05 — THE TWIN VERDICT + THE SWEEP VERDICT (the night of three answers)
+
+**TWIN (single seed 242, 6k gentle, single-bit delta)**: ping-trained
+0.2472 vs frozen-trained 0.2521 wild (engine and loop_val agree
+exactly); warm source port242 remains 0.2540. **Training under LIVE
+per-step facts LOST to frozen facts by -0.005, and both arms drifted
+slightly below their source** — per-step fact-training does not pay
+at this scale. MECHANISM per the VST discovery: facts feed the
+emission channel only; live early-breath facts are NOISIER labels
+than the source's mature frozen parse — training absorbed noise, not
+rhythm. The fact gauge's rise (5.16->6.0) was real but paid nothing:
+more commitment, same channel. The dynamics door (mask head) remains
+the scoped path — the final-boss ruling's scoping vindicated again.
+2-seed law: seed-241 twin owed before any claim hardens.
+**SWEEP (pings ON)**: B=32 0.129 / B=64 0.133 / B=128 0.127 / B=256
+0.120 s/item — FLAT. The mega-batch does NOT amortize ping-on walks
+because the cost is CPU seam work (per-item decode+ping), not GPU
+barriers. PROOF: the frozen arm (ping=0) ran 0.77s/step at B=32 =
+0.024s/item — 5x cheaper; the walk itself is FASTER per item than
+the fused trainer. **Perf road re-ranked: (1) vectorize/parallelize
+the commit-adapter CPU work, (2) the overlap/prefetch pattern (spec
+S2 — hide pings inside GPU compute), (3) mega-batch pays today only
+for ping-free walks.** Wild standings unchanged: port242 0.2540 on
+top. GPU free; the clock audit is next in the queue.
