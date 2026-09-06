@@ -33855,3 +33855,23 @@ is the bitwise unset one). Warm verified against port242 header
 station-4 single-head noted). CHAIN FIRED: waits for round-2b +
 paired-atlas, then eq gate -> smoke -> 12k FED TWIN -> reads ->
 re-mine (step_atlas_fed) -> collapse check.
+
+## 2026-09-05 — ROUND 2 VERDICT: the eyes as fed SUBTRACT; the mask head alone sets a NEW RECORD
+
+Full vision (MASKHEAD+MASS+ATLAS) wild 0.2501 / mint 0.9267 vs
+control (MASKHEAD only) **wild 0.2565 (NEW RECORD, > port242's
+0.2540) / mint 0.9313 (mint record too)**. The learner-alone claim
+is now TWICE-REPLICATED (0.2511 r1, 0.2565 r2 control) — the mask
+head is real. The connected eyes, as fed, cost -0.006 wild. PRIME
+SUSPECT (flagged, unproven): STALE VINTAGE WITHIN THE RUN — pages
+mined on port242's coordinates, then the arm trained 6k steps AWAY
+while feeding those static pages: the never-mix-coordinates law
+biting at intra-run grain (the atlas described a country drifting
+beneath it). Secondary: oracle-label crutch; mass default-fill
+near-uniform; dual wake-lag at 6k. NOT a retirement — a feeding
+problem: the deployable path (retrieval via cross_prior + fresh
+vintage per the fed chain's re-mine pattern, or periodic re-anchor)
+remains open, and the paired-atlas needle (running next) informs it.
+WILD STANDINGS: **mhr2ctl242 0.2565** > port242 0.2540 > mhr2on242
+0.2501 ... 2-seed law: the record needs its 241 twin before
+promotion talk.
