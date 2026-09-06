@@ -17,6 +17,18 @@ Mean-pooling over the fixed slot bank is the mouth's own idiom (pooled
 trunk reads) and keeps pages slot-permutation-stable; per-slot or
 presence-weighted pooling are read-time refinements, not mined here.
 
+THE NL CHART (apply_paired_miner.py, 2026-09-05, the paired atlas):
+beside the slot-state pooling, each item's per-breath READING is
+banked: the factor bank's head-averaged token attention (slot-
+averaged to one distribution over tokens) pools the ckpt's OWN
+waisted token states -> (H_W,) per (item, breath). The NL tap
+(apply_nl_tap.py) computes it in-graph under the SAME env
+(out["nl_all"]); this miner only accumulates. Second Welford bank,
+same classes, same npz (nl_means/nl_vars/nl_counts), same era
+stamp — one file, two charts. The asymmetry the registration
+dissolved: the trunk ran once, but the READING evolves per breath
+(same rack, different pose).
+
 CLASS LABEL: mycelium.step_atlas.atlas_class(row["gen"]) — the single-
 source labeler (meter-divergence law: feed-time consumers call the SAME
 organ). Ladder depth buckets 2-4/5-8/9+; wild by gen.src; else
@@ -105,6 +117,7 @@ def main():
         p[k].assign(sd[k].to(p[k].device).cast(p[k].dtype)).realize()
 
     cells = {}
+    cells_nl = {}      # the second chart (the reading)
     n_done = 0
     for s0 in range(0, len(take), 8):
         sl = take[s0:s0 + 8]
@@ -131,6 +144,9 @@ def main():
         br = [b.realize().numpy() for b in o["breaths_all"]]
         assert len(br) == K_STEPS, \
             f"breaths_all has {len(br)} steps, atlas wants {K_STEPS}"
+        nl = [t.realize().numpy() for t in o["nl_all"]]
+        assert len(nl) == K_STEPS, \
+            f"nl_all has {len(nl)} steps, atlas wants {K_STEPS}"
         for bi, i in enumerate(sl):        # pads (bi >= len(sl)) skipped
             cls = atlas_class(samples[int(i)].get("gen"))
             for s_id in range(K_STEPS):
@@ -139,6 +155,11 @@ def main():
                     cells[key] = StepWelford(H_W)
                 # POOLING (see module docstring): mean over the 24 slots
                 cells[key].add(br[s_id][bi].mean(0).astype(np.float64))
+                if key not in cells_nl:
+                    cells_nl[key] = StepWelford(H_W)
+                # NL: attention-pooled waisted token state (the tap
+                # already pooled in-graph; accumulate as-is)
+                cells_nl[key].add(nl[s_id][bi].astype(np.float64))
         n_done += len(sl)
         if (s0 // 8) % 64 == 0:
             print(f"[mine-atlas] {n_done}/{len(take)}", flush=True)
@@ -151,7 +172,8 @@ def main():
                            " deployed GENERATION.json untouched"}, f,
                   indent=1)
     path = save_atlas(cells, H_W, path=ATLAS_OUT,
-                      manifest_path=RESEARCH_MANIFEST)
+                      manifest_path=RESEARCH_MANIFEST,
+                      nl_cells=cells_nl)
     classes = sorted({c for (_, c) in cells})
     print(f"[mine-atlas] saved {path} (era anchored to {RESEARCH_MANIFEST})")
     print(f"[mine-atlas] classes={classes}")
@@ -159,6 +181,11 @@ def main():
         counts = [cells[(s, cls)].n if (s, cls) in cells else 0
                   for s in range(K_STEPS)]
         print(f"[mine-atlas]   {cls:12s} n/step={counts}")
+        ncounts = [cells_nl[(s, cls)].n if (s, cls) in cells_nl
+                   else 0 for s in range(K_STEPS)]
+        assert ncounts == counts, \
+            f"paired charts disagree on {cls}: {ncounts} vs {counts}"
+        print(f"[mine-atlas]   {cls:12s} nl n/step={ncounts}")
 
 
 if __name__ == "__main__":

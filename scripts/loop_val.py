@@ -19,6 +19,34 @@ assert set(sd.keys()) == set(p.keys()), \
     (sorted(set(sd) - set(p))[:4], sorted(set(p) - set(sd))[:4])
 for k in p:
     p[k].assign(sd[k].to(p[k].device).cast(p[k].dtype)).realize()
+# MASK HEAD round 2 (apply_mass_thread.py, 2026-09-05): the read
+# legs light the same two ports the trainer lit — toggled by the
+# SAME envs the chain sets per arm (trained-env law). Atlas loads
+# via the research-manifest loud door; env set + file missing =
+# hard error (no silent dark ports).
+_ATAB = _AIDX = None
+_XPV = int(os.environ.get("ALG_MH_XPRIOR", "0"))
+assert not _XPV or int(os.environ.get("ALG_MH_ATLAS", "0")), \
+    "ALG_MH_XPRIOR requires ALG_MH_ATLAS=1 (loud, never dark)"
+if int(os.environ.get("ALG_MH_ATLAS", "0")):
+    from mycelium.step_atlas import load_atlas, atlas_class
+    _atl = load_atlas(
+        os.environ.get("MH_ATLAS", ".cache/step_atlas_current.npz"),
+        manifest_path=os.environ.get("MH_ATLAS_MANIFEST",
+                                     ".cache/RESEARCH_MANIFEST.json"))
+    _acls = {c: i for i, c in enumerate(_atl["classes"])}
+    _tab = np.ascontiguousarray(
+        _atl["means"].transpose(1, 0, 2)).astype(np.float32)
+    _ATAB = np.concatenate(
+        [_tab, np.zeros((1,) + _tab.shape[1:], np.float32)])
+    _AIDX = np.array(
+        [_acls.get(atlas_class(s.get("gen")), len(_acls))
+         for s in vs], np.int64)
+    if _XPV:
+        from mycelium.step_atlas import cross_prior
+        assert _atl.get("nl_means") is not None, \
+            ("ALG_MH_XPRIOR needs the PAIRED atlas (nl chart) — "
+             "re-mine with the paired miner")
 n_ok = n_tot = 0
 for s0 in range(0, len(vs), 8):
     sl = np.arange(s0, min(s0 + 8, len(vs)))
@@ -30,7 +58,7 @@ for s0 in range(0, len(vs), 8):
     o0 = forward(p, ts, tk, se)
     onp0 = {k: o0[k].realize().numpy() for k in ("fat", "args", "res")}
     mk = build_slot_masks(onp0, vse[sl_p].astype(np.int32))
-    fact_t = None
+    fact_t = mass_t = None
     if int(os.environ.get("ALG_ALT2", "0")) \
             and not int(os.environ.get("LV_NOFACT", "0")):
         # ALTERNATOR V2 fact-fed read (2026-09-01): live facts from this
@@ -41,10 +69,29 @@ for s0 in range(0, len(vs), 8):
         _oa = {**onp0, **{k: o0[k].realize().numpy() for k in _ka}}
         _nv = np.array([vs[int(i)].get("n_vars", K_VARS) for i in sl_p])
         _ma = np.array([vs[int(i)].get("m", 0) for i in sl_p])
-        fb = alt2_fact_buf(_oa, vse[sl_p].astype(np.int32), _nv, _ma)
+        _mo = (np.zeros((len(sl_p), K_VARS), np.float32)
+               if int(os.environ.get("ALG_MH_MASS", "0")) else None)
+        fb = alt2_fact_buf(_oa, vse[sl_p].astype(np.int32), _nv, _ma,
+                           mass_out=_mo)
         fact_t = Tensor(fb, dtype=dtypes.float)
+        if _mo is not None:
+            mass_t = Tensor(np.clip(_mo / 301.0, 0.0, 1.0)
+                            [:, :, None].astype(np.float32),
+                            dtype=dtypes.float)
+    _lvai = _AIDX[sl_p].copy() if _AIDX is not None else None
+    if _XPV and _lvai is not None:
+        # THE CROSS-ATLAS PRIOR (apply_cross_prior.py): retrieval
+        # off the pass-1 breath-0 NL state (the tap) — mode 1 =
+        # unknown rows only, mode 2 = every row (deployable)
+        _xlv, _ = cross_prior(_atl, o0["nl0"].realize().numpy(),
+                              return_traj=False)
+        _rlv = ((_lvai == len(_acls)) if _XPV == 1
+                else np.ones(len(_lvai), bool))
+        _lvai = np.where(_rlv, _xlv, _lvai)
+    _mha_t = (Tensor(_ATAB[_lvai], dtype=dtypes.float)
+              if _ATAB is not None else None)
     o = forward(p, ts, tk, se, slot_mask=Tensor(mk, dtype=dtypes.float),
-                fact_buf=fact_t)
+                fact_buf=fact_t, mh_mass=mass_t, mh_atlas_traj=_mha_t)
     onp = {k: o[k].realize().numpy() for k in
            (("pres", "ftype", "op", "islit", "dig", "args", "res")
             + (("dup",) if "h_dup" in p else ()))}

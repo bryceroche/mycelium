@@ -91,6 +91,59 @@ assert H_W % MH_HEADS == 0, \
 MH_CTX_F = 22   # mask-context features: 12 fact (arg1/arg2/res x 4) +
                 # 3 domain-mass port + 1 given-flag + 2 adjacency
                 # row/col mass + 2 prev-breath row/col + 2 breath phase
+# ===========================================================================
+# THE FED MIND (apply_fed_mind.py, 2026-09-05, word given): ONE env
+# family. ALG_FED=1 turns all items on; ALG_FED_<ITEM>=0 ablates one
+# (MIXER/POINTERS/WAIST/FFN/MACRO/SCRATCH/ROTOR/NL0/SHELF). Family
+# unset = byte-identical (every new tensor and line is guarded).
+# ===========================================================================
+ALG_FED = int(os.environ.get("ALG_FED", "0"))
+
+
+def _fed_sub(_n):
+    return bool(ALG_FED and int(os.environ.get("ALG_FED_" + _n, "1")))
+
+
+FED_MIXER = _fed_sub("MIXER")
+FED_POINTERS = _fed_sub("POINTERS")
+FED_WAIST = _fed_sub("WAIST")
+FED_FFN = _fed_sub("FFN")
+FED_MACRO = _fed_sub("MACRO")
+FED_SCRATCH = _fed_sub("SCRATCH")
+FED_ROTOR = _fed_sub("ROTOR")
+FED_NL0 = _fed_sub("NL0")
+FED_SHELF = _fed_sub("SHELF")
+MX_HEADS = int(os.environ.get("MX_HEADS", "8"))   # fed mixer head count
+assert H_W % MX_HEADS == 0, \
+    f"MX_HEADS={MX_HEADS} must divide H_W={H_W} (head reshape)"
+PF_FORMS = int(os.environ.get("PF_FORMS", "3"))   # pointer/macro forms
+N_SCR = 8 if FED_SCRATCH else 0                   # scratch slot rows
+L_TOT = L_FAC + N_SCR                             # bank rows incl. scratch
+NB_ROWS = 16 if FED_SHELF else 8                  # shelf stamp rows (item 9)
+if FED_SCRATCH:
+    # read-back for scratch rows lives ONLY behind the fed mixer's
+    # zero-init door (the raising law: no cold births — fully-open
+    # columns would inject 8 cold states into a converged circuit)
+    assert FED_MIXER, \
+        "ALG_FED_SCRATCH requires ALG_FED_MIXER (scratch read-back door)"
+    assert not int(os.environ.get("ALG_RINGS", "0")), \
+        "scratch + RINGS unsupported (the pawl grades slots; loud door)"
+# FED item 7: THE BREATH ROTOR — mycelium/rotor_clock.py gets its FIRST
+# importer here (the clock-audit debt: sync enforced by the import
+# graph, finally true). Top-level and unconditional: numpy-only module,
+# no circularity, negligible cost. FREQUENCIES FROZEN, GAINS LEARNABLE
+# (the gains are fed_mx_hg) — zero parameters live here.
+from mycelium.rotor_clock import breath_qk_angles as _rc_breath_qk_angles
+_FED_ROT_C = _FED_ROT_S = None
+if FED_ROTOR:
+    assert (H_W // MX_HEADS) % 2 == 0 and (H_W // MX_HEADS) // 2 >= 32, \
+        "fed rotor band table needs >=32 pairs per head (64-d heads)"
+    _fed_ang = _rc_breath_qk_angles()      # (6, 8): legacy band 24..31
+    _FED_ROT_C = np.ones((_fed_ang.shape[0], (H_W // MX_HEADS) // 2),
+                         np.float32)
+    _FED_ROT_S = np.zeros_like(_FED_ROT_C)
+    _FED_ROT_C[:, 24:32] = np.cos(_fed_ang).astype(np.float32)
+    _FED_ROT_S[:, 24:32] = np.sin(_fed_ang).astype(np.float32)
 SENT_MAX = 32
 
 
@@ -523,7 +576,8 @@ def build_slot_masks(o_np, sent_rows):
     return masks
 
 
-def _alt2_fact_buf_v0(onp, se_np, n_vars_arr, m_arr, theta=0.9):
+def _alt2_fact_buf_v0(onp, se_np, n_vars_arr, m_arr, theta=0.9,
+                      mass_out=None):
     """THE PRE-VECTOR REFERENCE (kept for ALG_SEAM_V0=1 fallback A/B;
     scripts/apply_seam_vector.py, 2026-09-05). Per-item python loop —
     the SWEEP VERDICT's measured bottleneck (~0.12s/item, CPU-bound).
@@ -547,6 +601,11 @@ def _alt2_fact_buf_v0(onp, se_np, n_vars_arr, m_arr, theta=0.9):
     from alternator_bridge import ping   # lazy — scripts/ is on sys.path
     B = onp["pres"].shape[0]
     buf = np.zeros((B, K_VARS, 4), np.float32)
+    if mass_out is not None:
+        # THE MASS THREAD (apply_mass_thread.py, 2026-09-05): default
+        # fill = m+1 (full 0..m domain — nothing known); ping rows
+        # overwrite below. Contradiction keeps the fill (silence).
+        mass_out[:] = np.asarray(m_arr, np.float64)[:, None] + 1.0
 
     def _sig(x):
         return 1.0 / (1.0 + np.exp(-x))
@@ -599,16 +658,22 @@ def _alt2_fact_buf_v0(onp, se_np, n_vars_arr, m_arr, theta=0.9):
             facts, mass, _r = ping(nv, facs, int(m_arr[bi]))
             if mass is None:                       # contradiction: silence
                 continue
+            if mass_out is not None:               # the mass thread:
+                _nmv = min(len(mass), mass_out.shape[1])
+                mass_out[bi, :_nmv] = mass[:_nmv]  # post-GAC domain sizes
             for v, val in facts.items():
                 if 0 <= v < K_VARS and 0 <= val <= 999:
                     buf[bi, v] = (1.0, (val // 100) / 9.0,
                                   (val // 10 % 10) / 9.0, (val % 10) / 9.0)
         except Exception:
             buf[bi] = 0.0                          # per-item silence
+            if mass_out is not None:               # silence for mass too
+                mass_out[bi] = float(m_arr[bi]) + 1.0
     return buf
 
 
-def _alt2_fact_buf_v1(onp, se_np, n_vars_arr, m_arr, theta=0.9):
+def _alt2_fact_buf_v1(onp, se_np, n_vars_arr, m_arr, theta=0.9,
+                      mass_out=None):
     """VECTORIZED commit adapter (scripts/apply_seam_vector.py, 2026-09-05).
     Bit-identical to _alt2_fact_buf_v0 by construction (verified by
     scripts/seamtest_vector.py, np.array_equal on 200 realistic inputs):
@@ -631,6 +696,11 @@ def _alt2_fact_buf_v1(onp, se_np, n_vars_arr, m_arr, theta=0.9):
     from alternator_bridge import ping   # lazy — scripts/ is on sys.path
     B = onp["pres"].shape[0]
     buf = np.zeros((B, K_VARS, 4), np.float32)
+    if mass_out is not None:
+        # THE MASS THREAD (apply_mass_thread.py, 2026-09-05): default
+        # fill = m+1 (full 0..m domain — nothing known); ping rows
+        # overwrite below. Contradiction keeps the fill (silence).
+        mass_out[:] = np.asarray(m_arr, np.float64)[:, None] + 1.0
     has_dup = "dup" in onp
 
     def _sig(x):
@@ -701,23 +771,30 @@ def _alt2_fact_buf_v1(onp, se_np, n_vars_arr, m_arr, theta=0.9):
             facts, mass, _r = ping(nv, facs, int(m_arr[bi]))
             if mass is None:                       # contradiction: silence
                 continue
+            if mass_out is not None:               # the mass thread:
+                _nmv = min(len(mass), mass_out.shape[1])
+                mass_out[bi, :_nmv] = mass[:_nmv]  # post-GAC domain sizes
             for v, val in facts.items():
                 if 0 <= v < K_VARS and 0 <= val <= 999:
                     buf[bi, v] = (1.0, (val // 100) / 9.0,
                                   (val // 10 % 10) / 9.0, (val % 10) / 9.0)
         except Exception:
             buf[bi] = 0.0                          # per-item silence
+            if mass_out is not None:               # silence for mass too
+                mass_out[bi] = float(m_arr[bi]) + 1.0
     return buf
 
 
-def alt2_fact_buf(onp, se_np, n_vars_arr, m_arr, theta=0.9):
+def alt2_fact_buf(onp, se_np, n_vars_arr, m_arr, theta=0.9,
+                  mass_out=None):
     """Dispatcher (scripts/apply_seam_vector.py, 2026-09-05): the
     vectorized decode by default; ALG_SEAM_V0=1 selects the pre-vector
     reference implementation for A/B fallback ONLY (not a shipping
     config — the seamtest is the authority on equivalence, not this
     flag's existence)."""
     fn = _alt2_fact_buf_v0 if os.environ.get("ALG_SEAM_V0") else _alt2_fact_buf_v1
-    return fn(onp, se_np, n_vars_arr, m_arr, theta=theta)
+    return fn(onp, se_np, n_vars_arr, m_arr, theta=theta,
+              mass_out=mass_out)
 
 
 # ===========================================================================
@@ -878,6 +955,9 @@ def build_params(seed=0):
         return t(rng.randn(i, o) / math.sqrt(i)), t(np.zeros((o,)))
 
     p = {}
+    _rngF = np.random.RandomState(seed + 9000)   # FED stream: fed
+                                                 # tensors never move
+                                                 # the base rng stream
     p["waist_w"], p["waist_b"] = lin(H_TRUNK, H_W)
     if ALG_SEPHASE_W:
         _ww = p["waist_w"].numpy()
@@ -917,6 +997,26 @@ def build_params(seed=0):
         p[f"attn_{nm}"], p[f"attn_{nm}_b"] = lin(H_W, H_W)
     p["ffn_w1"], p["ffn_b1"] = lin(H_W, 2 * H_W)
     p["ffn_w2"], p["ffn_b2"] = lin(2 * H_W, H_W)
+    if FED_FFN:
+        # FED item 4: FFN 4x — extend by CONCATENATION so the base rng
+        # stream is untouched. New w1 columns: fresh features (fed
+        # stream, native scale); new b1: zeros; new w2 ROWS: ZEROS (the
+        # door — new hidden units speak through zeros, birth-identical
+        # in exact arithmetic, live grads from step one). PAD-WARM
+        # (do_train's loader) lands trained 2x weights on the prefix.
+        _fw1 = np.concatenate(
+            [p["ffn_w1"].detach().numpy(),
+             (_rngF.randn(H_W, 2 * H_W) / math.sqrt(H_W))
+             .astype(np.float32)], 1)
+        _fb1 = np.concatenate(
+            [p["ffn_b1"].detach().numpy(),
+             np.zeros(2 * H_W, np.float32)])
+        _fw2 = np.concatenate(
+            [p["ffn_w2"].detach().numpy(),
+             np.zeros((2 * H_W, H_W), np.float32)], 0)   # ZERO door
+        p["ffn_w1"] = t(_fw1)
+        p["ffn_b1"] = t(_fb1)
+        p["ffn_w2"] = t(_fw2)
     p["h_pres"], p["h_pres_b"] = lin(H_W, 1)
     # ALG2=1 -> tranche geometry (4-way ftype + selector head). Default keeps
     # the legacy 2-way build BYTE-COMPATIBLE with deployed checkpoints — every
@@ -1042,6 +1142,15 @@ def build_params(seed=0):
             p["mh_atlas_w"] = t(rng.randn(H_W, H_W) / math.sqrt(H_W))
             p["mh_headmix"] = t(np.zeros(MH_HEADS)) # ZERO door 2
             p["mh_gain"] = t(np.full(1, 0.02))      # AJAR (the law)
+        if FED_MIXER:
+            # FED item 1: per-head ZERO-INIT gains — the twin path's
+            # single door (heads reshape the trained W_bq/W_bk/W_bv;
+            # output speaks through the trained W_bo)
+            p["fed_mx_hg"] = t(np.zeros(MX_HEADS))
+        if FED_NL0 and int(os.environ.get("ALG_MASKHEAD", "0")):
+            # FED item 8: the breath-0 invariant feed's ZERO door into
+            # the mask-head context (inert when the organ is off)
+            p["fed_nl0_w"] = t(np.zeros((H_W, H_W)))
         pass
     if int(os.environ.get("ALG_BINDBUS", "0")):
         _bd = int(os.environ.get("ALG_BIND_D", "128"))
@@ -1061,6 +1170,38 @@ def build_params(seed=0):
         p["W_iargs"] = t(rng.randn(H_W, H_W) / math.sqrt(H_W))
     p["W_res"] = t(rng.randn(H_W, H_W) / math.sqrt(H_W))
     p["W_query"] = t(rng.randn(H_W, H_W) / math.sqrt(H_W))
+    if FED_POINTERS:
+        # FED item 2: PF_FORMS extra bilinears per pointer, zero gains
+        for _pfn in ("args", "res", "query"):
+            p["fed_pf_" + _pfn + "_W"] = t(np.stack(
+                [_rngF.randn(H_W, H_W).astype(np.float32)
+                 / math.sqrt(H_W) for _ in range(PF_FORMS)]))
+            p["fed_pf_" + _pfn + "_g"] = t(np.zeros(PF_FORMS))
+    if FED_MACRO and "h_dig2" in p:
+        # FED item 5: the macro value system's forms (W_y bilinear,
+        # h_dig2 linear) — the audit's previously-unflagged organ
+        p["fed_pf_y_W"] = t(np.stack(
+            [_rngF.randn(H_W, H_W).astype(np.float32) / math.sqrt(H_W)
+             for _ in range(PF_FORMS)]))
+        p["fed_pf_y_g"] = t(np.zeros(PF_FORMS))
+        p["fed_pf_dig2_W"] = t(np.stack(
+            [_rngF.randn(H_W, N_DIG * 10).astype(np.float32)
+             / math.sqrt(H_W) for _ in range(PF_FORMS)]))
+        p["fed_pf_dig2_g"] = t(np.zeros(PF_FORMS))
+    if FED_WAIST:
+        # FED item 3: residual waist layer, ZERO output door
+        p["fed_w2a"] = t(_rngF.randn(H_W, H_W).astype(np.float32)
+                         / math.sqrt(H_W))
+        p["fed_w2a_b"] = t(np.zeros(H_W))
+        p["fed_w2b"] = t(np.zeros((H_W, H_W)))   # ZERO door (ResNet law)
+        p["fed_w2b_b"] = t(np.zeros(H_W))
+    if FED_SCRATCH:
+        # FED item 6: +8 scratch slot embeds appended to fq (pad-warm
+        # loads the trained 24; the doctrine: factor slots stay 24,
+        # scratch scales with the tier)
+        p["fq"] = t(np.concatenate(
+            [p["fq"].detach().numpy(),
+             (_rngF.randn(N_SCR, H_W) * 0.02).astype(np.float32)], 0))
     if ALG_SIXWAVE:      # door #62: carrier gate — structure enters at zero
         p["sw_g"] = t(np.zeros((1,)))
     if int(os.environ.get("ALG_BUSGARAGE", "0")):
@@ -1117,6 +1258,13 @@ def build_params(seed=0):
         else:                   # same coordinate code
             p["W_sil"] = t(rng.randn(H_W, H_W) / math.sqrt(H_W))
             p["W_nq"] = t(rng.randn(H_W, H_W) / math.sqrt(H_W))
+        if FED_SHELF:
+            # FED item 9: the second ink lane (2 rows/breath — the
+            # lawful shelf-16; stamps rows 8..15). Read rides the
+            # ZERO-INIT gain; fed_sil2 wakes through it (item-2 law).
+            p["fed_sil2"] = t(_rngF.randn(H_W, H_W).astype(np.float32)
+                              / math.sqrt(H_W))
+            p["fed_nb_g"] = t(np.zeros(1))
     if int(os.environ.get("ALG_POSCH", "0")):
         # THE POSITION CHANNEL (2026-08-24, word given; deficit twice-banked:
         # ladder depth-at-chance + A0 balanced .222): supervised depth/term
@@ -1159,13 +1307,13 @@ def build_params(seed=0):
 NB_STAMPS = None
 if ALG_NOTEBOOK:
     assert int(os.environ.get("ALG_BREATH", "1")) <= 8, "NB_STAMPS holds 8 rows (audit #11)"
-    _ks = np.arange(8)
-    _ds = np.arange(512)
-    NB_STAMPS = np.cos(_ks[:, None] * np.pi / 8.0 * 7
+    _ks = np.arange(NB_ROWS)   # FED item 9: 16 rows under the
+    _ds = np.arange(512)           # family; rows 0..7 are bitwise the
+    NB_STAMPS = np.cos(_ks[:, None] * np.pi / 8.0 * 7   # legacy table
                        + _ds[None, :] * (2 * np.pi / 512)
                        * (_ks[:, None] + 1)).astype(np.float32)
     NB_STAMPS /= np.linalg.norm(NB_STAMPS, axis=1, keepdims=True)
-    _cc = np.abs(NB_STAMPS @ NB_STAMPS.T - np.eye(8)).max()
+    _cc = np.abs(NB_STAMPS @ NB_STAMPS.T - np.eye(NB_ROWS)).max()
     assert _cc < 0.35, f"sharpness assert FAILED: stamp cos {_cc:.3f}"
 
 
@@ -1185,6 +1333,39 @@ def _bind_codes_path():
          f"but ALG_BIND_D={d} — stale codebook")
     return path
 
+
+
+def _fed_core(x):
+    """FED item 6 (scratch): emission, grading, gold indexing, decode
+    and every loss live on the FIRST L_FAC rows only — scratch rows are
+    attention citizens, never supervised (the Goodhart fence: graded
+    scratch stops being scratch). No-op when scratch is off or x is not
+    slot-major (nothing else in the stack is 32-wide)."""
+    if N_SCR and x.shape[1] == L_TOT:
+        return x[:, :L_FAC]
+    return x
+
+
+def _fed_pf(p, name, s, vst, base):
+    """FED items 2/5: multi-form emission — base + sum_f g_f * form_f
+    with ZERO-INIT gains. Grad-aliveness (verified): at g=0 the form
+    weights carry zero-but-DEFINED grads (dL/dW_f = g_f * .. = 0, never
+    None) while dL/dg_f = <upstream, form_f> != 0 generically — one
+    optimizer step opens the gate; no deadlock. At g=0 the added term
+    is exact zeros (0 * finite), so birth is bit-identical. vst=None
+    means a plain linear form (h_dig2's shape)."""
+    gk = "fed_pf_" + name + "_g"
+    if not (ALG_FED and gk in p):
+        return base
+    W = p["fed_pf_" + name + "_W"]
+    g = p[gk]
+    extra = None
+    for f in range(PF_FORMS):
+        form = ((s @ W[f]) @ vst.transpose(-2, -1)) if vst is not None \
+            else (s @ W[f])
+        term = g[f] * form
+        extra = term if extra is None else extra + term
+    return base + extra
 
 
 _STEP_TAP = None    # the step trainer's stage-0 seam (the _CENSUS/_IMP
@@ -1227,6 +1408,7 @@ def _heads_of(p, s, vst, B):
     (apply_step_trainer.py, 2026-09-03): the step trainer runs these on
     intermediate breath states at every seam (commit adapter) and on the
     final state with the seam-current vst. Single source of truth."""
+    s = _fed_core(s)   # FED scratch: grade only the true factor rows
     return {
         "pres": (s @ p["h_pres"] + p["h_pres_b"]).squeeze(-1),
         "ftype": s @ p["h_ftype"] + p["h_ftype_b"],
@@ -1238,15 +1420,19 @@ def _heads_of(p, s, vst, B):
         "dig": (s @ p["h_dig"] + p["h_dig_b"]).reshape(B, L_FAC, N_DIG, 10),
         **({"sgn": (s @ p["h_sgn"] + p["h_sgn_b"]).squeeze(-1)}
            if "h_sgn" in p else {}),
-        "args": (s @ p["W_args"]) @ vst.transpose(-2, -1),
+        "args": _fed_pf(p, "args", s, vst,
+                        (s @ p["W_args"]) @ vst.transpose(-2, -1)),
         **({"dargs": (s @ p["W_dargs"]) @ vst.transpose(-2, -1)}
            if "W_dargs" in p else {}),
         **({"iargs": (s @ p["W_iargs"]) @ vst.transpose(-2, -1)}
            if "W_iargs" in p else {}),
-        "res": (s @ p["W_res"]) @ vst.transpose(-2, -1),
-        **({"dig2": (s @ p["h_dig2"] + p["h_dig2_b"])
+        "res": _fed_pf(p, "res", s, vst,
+                       (s @ p["W_res"]) @ vst.transpose(-2, -1)),
+        **({"dig2": _fed_pf(p, "dig2", s, None,
+                            s @ p["h_dig2"] + p["h_dig2_b"])
             .reshape(B, L_FAC, N_DIG, 10),
-            "y": (s @ p["W_y"]) @ vst.transpose(-2, -1)}
+            "y": _fed_pf(p, "y", s, vst,
+                         (s @ p["W_y"]) @ vst.transpose(-2, -1))}
            if "h_dig2" in p else {}),
     }
 
@@ -1302,7 +1488,12 @@ def breath_step(p, state, kb, ctx):
         from tinygrad import Tensor as _T2, dtypes as _dt2
         _nb_st = _T2(NB_STAMPS, dtype=_dt2.float)
         _nb = [(cur @ p["W_sil"]) if NB_PERSLOT
-               else (cur.mean(1) @ p["W_sil"])]   # sharp vs blurred ink
+               else (_fed_core(cur).mean(1) @ p["W_sil"])]   # sharp vs blurred
+        if FED_SHELF and "fed_sil2" in p:
+            # FED item 9: lane 2 born at the same breath (2 rows per
+            # breath — the structural coupling's lawful expansion)
+            state["nb2"] = [(cur @ p["fed_sil2"]) if NB_PERSLOT
+                            else (_fed_core(cur).mean(1) @ p["fed_sil2"])]
     q_extra = cur + p["breath_emb"][kb].reshape(1, 1, -1)
     if _CENSUS is not None:
         _CENSUS.append((kb, "state", cur.realize().numpy()))
@@ -1321,13 +1512,34 @@ def breath_step(p, state, kb, ctx):
             if _CENSUS is not None:
                 _CENSUS.append((kb, "notebook", _rd.realize().numpy()))
         else:
-            _q = cur.mean(1) @ p["W_nq"]
+            _q = _fed_core(cur).mean(1) @ p["W_nq"]
             _sc = (_q @ _nb_st[:len(_nb)].transpose(1, 0)) / math.sqrt(H_W)
             if NB_FOCAL > 0:
                 _sc = _sc * NB_FOCAL          # the magnifying glass
             _at = _sc.softmax(-1)
             _rd = sum(_at[:, j:j + 1] * _nb[j] for j in range(len(_nb)))
             q_extra = q_extra + _rd.reshape(B, 1, -1)
+        _nb2 = state.get("nb2")
+        if FED_SHELF and "fed_sil2" in p and _nb2:
+            # FED item 9: LANE-2 READ — stamps rows 8..8+k of the
+            # 16-row alphabet (own address space), entering through
+            # the ZERO-INIT gain door: birth bit-identical; the gain's
+            # live grad wakes fed_sil2 (item-2 law). Same query _q as
+            # lane 1 (per-slot or blurred, whichever branch ran).
+            _sc2r = (_q @ _nb_st[8:8 + len(_nb2)].transpose(1, 0)) \
+                / math.sqrt(H_W)
+            if NB_FOCAL > 0:
+                _sc2r = _sc2r * NB_FOCAL
+            _at2 = _sc2r.softmax(-1)
+            if NB_PERSLOT:
+                _rd2 = sum(_at2[:, :, _j2:_j2 + 1] * _nb2[_j2]
+                           for _j2 in range(len(_nb2)))
+                q_extra = q_extra + _rd2 * p["fed_nb_g"].reshape(1, 1, 1)
+            else:
+                _rd2 = sum(_at2[:, _j2:_j2 + 1] * _nb2[_j2]
+                           for _j2 in range(len(_nb2)))
+                q_extra = q_extra + _rd2.reshape(B, 1, -1) \
+                    * p["fed_nb_g"].reshape(1, 1, 1)
         if ALG_STELLAR:                        # cell-3b: the twist in
             _w = math.cos(kb * math.pi / (2 * K_B)) ** 2   # geometry —
             cur = _w * cur + (1 - _w) * _rd.reshape(B, 1, -1)
@@ -1368,7 +1580,25 @@ def breath_step(p, state, kb, ctx):
             _cur_seal = cur * 0.0 + _inj4
             _q_seal = _cur_seal + p["breath_emb"][kb].reshape(1, 1, -1)
             _q_open = q_extra + _inj4 * p["bus_g"].reshape(1, 1, 1)
-            if _scm >= 2:
+            _pcv4 = (globals().get("_PCV")
+                     if float(os.environ.get("ALG_PC_MIX", "0")) > 0.0
+                     and not os.environ.get("SC_EVAL", "") else None)
+            if _pcv4 is not None:
+                # THE PRESSURE MIX (apply_pressure_mix.py, 2026-09-06):
+                # per-row mixed seal — _PCV is a (B,1,1) data buffer
+                # (the _SEV/MASK_GOLD idiom: one JIT graph, dynamic
+                # value). 1.0 rows get the mode-1 constant severance
+                # (residual dead, shelf crossing the only road), 0.0
+                # rows the open path — same blend arithmetic as the
+                # SC_EVAL forms, per row (exact at v in {0,1}: 1.0*x =
+                # x, 0.0*finite = 0, x+0 = x). The trainer assigns it
+                # per step from the STABLE index-hash assignment (flat
+                # mix, never re-rolled); _quick_val is excluded by the
+                # existing SC_EVAL="0" push (val compares OPEN mode).
+                _pvt4 = _pcv4.reshape(-1, 1, 1)
+                cur = cur * (1.0 - _pvt4) + _cur_seal * _pvt4
+                q_extra = _q_open * (1.0 - _pvt4) + _q_seal * _pvt4
+            elif _scm >= 2:
                 _sce = os.environ.get("SC_EVAL", "")
                 if _sce:
                     _sv = float(_sce)
@@ -1435,10 +1665,22 @@ def breath_step(p, state, kb, ctx):
             _CENSUS.append((kb, "router(bank)",
                             (_rb7 * p["r_gain"].reshape(1, 1, 1))
                             .realize().numpy()))
-    h_tok, fat_cur = bank(p["fq"], L_FAC, extra=q_extra,
+    h_tok, fat_cur = bank(p["fq"], L_TOT, extra=q_extra,
                           pbias=(_sync[0](kb) if _sync is not None
                                  else None),
                           rbias=_rb7)
+    if int(os.environ.get("ALG_MINE_BREATHS", "0")):
+        # NL TAP (apply_nl_tap.py, 2026-09-05, the paired atlas):
+        # read-only capture of this breath's READING — head-avg
+        # token attention, slot-averaged to one distribution,
+        # pooling the SAME waist the bank read (attention-weighted
+        # mean over tokens -> (B, H_W)). Lazy tensors on state;
+        # realized only by miners/readers (the _CENSUS discipline:
+        # inert unless armed; training never sets this env).
+        _nlw = _fed_core(fat_cur).mean(1)            # (B, T) read
+        state.setdefault("nl_all", []).append(
+            (_nlw.unsqueeze(1) @ waist).squeeze(1))  # (B, H_W)
+        state.setdefault("nlat_all", []).append(_nlw)
     bq = cur @ p["W_bq"] + p["W_bq_b"]
     bk = cur @ p["W_bk"] + p["W_bk_b"]
     bv = cur @ p["W_bv"] + p["W_bv_b"]
@@ -1533,23 +1775,38 @@ def breath_step(p, state, kb, ctx):
         # zeros from cur*0 keep mh_atlas_w in-graph (defined zero
         # grads — the None-grad law; degrade gracefully).
         _mh_ap = ctx.get("mh_atlas")
+        if _mh_ap is None and ctx.get("mh_atlas_traj") is not None:
+            # ATLAS TRAJECTORY PORT (apply_mass_thread.py,
+            # 2026-09-05): (B, K_STEPS, H_W) per-row class pages;
+            # kb is a python int (the breath loop is unrolled) so
+            # this slice is static per jitted step. Page kb feeds
+            # breath kb (page 0 = intake, never consumed here —
+            # breath_step runs kb>=1). Consult-by-similarity is
+            # the read-time upgrade (seam drivers set "mh_atlas").
+            _mh_ap = ctx["mh_atlas_traj"][:, kb:kb + 1, :]
         if _mh_ap is None:
             _mh_ap = (cur * 0.0).detach()
         _mh_ce = _mh_ce + _mh_ap.reshape(B, -1, H_W) @ p["mh_atlas_w"]
+        _mh_nl = ctx.get("fed_nl0")
+        if _mh_nl is not None and "fed_nl0_w" in p:
+            # FED item 8: the breath-0 invariant page through its ZERO
+            # door — exact zeros at birth, live grads on fed_nl0_w
+            _mh_ce = _mh_ce + (_mh_nl.reshape(B, 1, H_W)
+                               @ p["fed_nl0_w"])
         _mh_kv = cur + _mh_ce      # LIVE stream + detached context
         _mh_q = cur @ p["mh_wq"] + p["mh_wq_b"]
         _mh_k = _mh_kv @ p["mh_wk"] + p["mh_wk_b"]
         _mh_v = _mh_kv @ p["mh_wv"] + p["mh_wv_b"]
         _mh_hd = H_W // MH_HEADS
-        _mh_qh = _mh_q.reshape(B, L_FAC, MH_HEADS, _mh_hd).permute(0, 2, 1, 3)
-        _mh_kh = _mh_k.reshape(B, L_FAC, MH_HEADS, _mh_hd).permute(0, 2, 1, 3)
-        _mh_vh = _mh_v.reshape(B, L_FAC, MH_HEADS, _mh_hd).permute(0, 2, 1, 3)
+        _mh_qh = _mh_q.reshape(B, L_TOT, MH_HEADS, _mh_hd).permute(0, 2, 1, 3)
+        _mh_kh = _mh_k.reshape(B, L_TOT, MH_HEADS, _mh_hd).permute(0, 2, 1, 3)
+        _mh_vh = _mh_v.reshape(B, L_TOT, MH_HEADS, _mh_hd).permute(0, 2, 1, 3)
         _mh_sc = ((_mh_qh @ _mh_kh.transpose(-2, -1))
                   / math.sqrt(_mh_hd)).clip(-1e4, 1e4)   # (B, M, L, L)
         _mh_at = (_mh_sc
                   + (1.0 - _sm_kb.unsqueeze(1)) * -1e4).softmax(-1)
         _mh_gt = (_mh_at @ _mh_vh).permute(0, 2, 1, 3) \
-            .reshape(B, L_FAC, H_W)
+            .reshape(B, L_TOT, H_W)
         _mh_u = (_mh_gt @ p["mh_wu"] + p["mh_wu_b"]).gelu()
         _mh_o = _mh_u @ p["mh_wo"] + p["mh_wo_b"]     # ZERO door 1
         _mh_rp = (_mh_o @ (_mh_kv @ p["mh_wp"]).transpose(-2, -1)) \
@@ -1575,6 +1832,67 @@ def breath_step(p, state, kb, ctx):
         # keys, proportional to mass — soft, init-closed (m starts 0)
         sc2 = sc2 + m_c.reshape(B, 1, L_FAC) * -8.0
     h_slot = (sc2.softmax(-1) @ bv) @ p["W_bo"] + p["W_bo_b"]
+    if FED_MIXER and "fed_mx_hg" in p:
+        # FED item 1: MIXER MULTI-HEAD — the twin-kernel form (chosen,
+        # not fallback: a score-level combine keeps ONE softmax = one
+        # geometry; per-head DISTRIBUTIONS are the multi-head win).
+        # The SAME W_bq/W_bk/W_bv reshaped into MX_HEADS heads (free
+        # reinterpretation — warm-load keys unchanged); the same
+        # mask-head bias, close, and alt bias stack as sc2; outputs
+        # gated by ZERO-INIT per-head gains, spoken through the
+        # TRAINED W_bo (no second bias). At zero gains the twin term
+        # is exact zeros -> birth bitwise = the single-head path;
+        # dL/dg_h = <dL/dh_slot @ W_bo^T, head_h> != 0 at WARM birth
+        # (port242's W_bo is trained/nonzero — measured ALIVE 1.6e-1
+        # in the warm-sim grad smoke). COLD-init caveat, stated
+        # honestly: build_params starts W_bo at zeros, so gains' grads
+        # are zero-defined for exactly as long as W_bo itself is zero
+        # (W_bo moves at step 1 via the base path; gains wake step 2 —
+        # no deadlock; the fed mind is a warm-continuation package by
+        # charter, so the warm case is the deployed case).
+        # (BEXIT's -8 soft exit is not mirrored: door #8 is off in the
+        # champion family; documented deferral.)
+        _mx_hd = H_W // MX_HEADS
+        _mx_q = bq.reshape(B, L_TOT, MX_HEADS, _mx_hd).permute(0, 2, 1, 3)
+        _mx_k = bk.reshape(B, L_TOT, MX_HEADS, _mx_hd).permute(0, 2, 1, 3)
+        _mx_v = bv.reshape(B, L_TOT, MX_HEADS, _mx_hd).permute(0, 2, 1, 3)
+        if FED_ROTOR and _FED_ROT_C is not None and 1 <= kb <= 6:
+            # FED item 7a: THE BREATH ROTOR INSTALLS HERE —
+            # 60deg/breath sextet rotation (rotor_clock's legacy band,
+            # pairs 24..31 of each 64d head), Q-SIDE ONLY (the v109pi
+            # precedent: one table on both sides cancels — relative
+            # phase is the signal). Behind the zero gains, so birth
+            # equivalence is free. kb -> tick kb-1 (breath-0 is
+            # outside time, phase_of's contract; kb > 6 unclocked).
+            from tinygrad import Tensor as _T7, dtypes as _d7
+            _rc7 = _T7(_FED_ROT_C[kb - 1], dtype=_d7.float) \
+                .reshape(1, 1, 1, -1)
+            _rs7 = _T7(_FED_ROT_S[kb - 1], dtype=_d7.float) \
+                .reshape(1, 1, 1, -1)
+            _qp7 = _mx_q.reshape(B, MX_HEADS, L_TOT, _mx_hd // 2, 2)
+            _qx7, _qy7 = _qp7[..., 0], _qp7[..., 1]
+            _mx_q = Tensor.stack(_qx7 * _rc7 - _qy7 * _rs7,
+                                 _qx7 * _rs7 + _qy7 * _rc7, dim=-1) \
+                .reshape(B, MX_HEADS, L_TOT, _mx_hd)
+        _mx_sc = (_mx_q @ _mx_k.transpose(-2, -1)) / math.sqrt(_mx_hd)
+        if _mb is not None:                 # the same mask-head bias
+            _mx_sc = _mx_sc + _mb.unsqueeze(1)
+        _sm_tw = _sm_kb
+        if N_SCR:
+            # FED item 6 read-back: scratch COLUMNS open ONLY here —
+            # behind the zero gains (the raising law's route)
+            _sm_tw = Tensor.cat(_sm_tw[:, :, :L_FAC],
+                                _sm_tw[:, :, L_FAC:] * 0.0 + 1.0,
+                                dim=2)
+        _mx_sc = (_mx_sc.clip(-1e4, 1e4)
+                  + (1.0 - _sm_tw.unsqueeze(1)) * -1e4)
+        if _A5 is not None and "alt_g" in p:   # same v0 bias as sc2
+            _mx_sc = _mx_sc + ((_A5 + _A5.transpose(-2, -1))
+                               * p["alt_g"].reshape(1, 1, 1)).unsqueeze(1)
+        _mx_o = (_mx_sc.softmax(-1) @ _mx_v) \
+            * p["fed_mx_hg"].reshape(1, MX_HEADS, 1, 1)   # ZERO gains
+        h_slot = h_slot + _mx_o.permute(0, 2, 1, 3) \
+            .reshape(B, L_TOT, H_W) @ p["W_bo"]
     # ABLATION arms (2026-07-10): zero-mult keeps every param in the
     # graph (defined zero grads — the None-grad lesson, applied)
     arm = os.environ.get("ALG_BREATH_ARM", "both")
@@ -1607,7 +1925,7 @@ def breath_step(p, state, kb, ctx):
         _k21 = waist @ p["alt21_attn_wk"] + p["alt21_attn_wk_b"]
         _v21 = waist @ p["alt21_attn_wv"] + p["alt21_attn_wv_b"]
         _hd21 = H_W // N_HEADS
-        _qh21 = _q21.reshape(B, L_FAC, N_HEADS, _hd21).permute(0, 2, 1, 3)
+        _qh21 = _q21.reshape(B, L_TOT, N_HEADS, _hd21).permute(0, 2, 1, 3)
         _kh21 = _k21.reshape(B, -1, N_HEADS, _hd21).permute(0, 2, 1, 3)
         _vh21 = _v21.reshape(B, -1, N_HEADS, _hd21).permute(0, 2, 1, 3)
         _sa21 = (_qh21 @ _kh21.transpose(-2, -1)) / math.sqrt(_hd21)
@@ -1616,7 +1934,7 @@ def breath_step(p, state, kb, ctx):
         if _rb7 is not None:             # the same router bias
             _sa21 = _sa21 + _rb7.unsqueeze(1) * p["r_gain"].reshape(1, 1, 1, 1)
         _sa21 = _sa21.clip(-1e4, 1e4) + (1.0 - tokmask.reshape(B, 1, 1, -1)) * -1e4
-        _st21 = (_sa21.softmax(-1) @ _vh21).permute(0, 2, 1, 3).reshape(B, L_FAC, H_W)
+        _st21 = (_sa21.softmax(-1) @ _vh21).permute(0, 2, 1, 3).reshape(B, L_TOT, H_W)
         _d21a = _st21 @ p["alt21_attn_wo"] + p["alt21_attn_wo_b"]
         _s21 = _s21 + _d21a              # exact zero at birth
         # STATION 4: second slot-mixer over the SAME breathed mask
@@ -1681,7 +1999,11 @@ def breath_step(p, state, kb, ctx):
         cur = cur_new
     if ALG_NOTEBOOK:
         _nb.append((cur @ p["W_sil"]) if NB_PERSLOT
-                   else (cur.mean(1) @ p["W_sil"]))
+                   else (_fed_core(cur).mean(1) @ p["W_sil"]))
+        if FED_SHELF and "fed_sil2" in p and state.get("nb2") is not None:
+            state["nb2"].append((cur @ p["fed_sil2"]) if NB_PERSLOT
+                                else (_fed_core(cur).mean(1)
+                                      @ p["fed_sil2"]))
     breaths.append(cur)
     if _garage is not None:
         # GARAGE WRITE (drop-off): the refined state's role-bound
@@ -1731,7 +2053,27 @@ def breath_step(p, state, kb, ctx):
                         _grad_g5.detach()))
             _wn4 = _wg4.pow(2).sum(-1, keepdim=True).sqrt() + 1e-6
             _cn4 = _canon4.pow(2).sum(-1, keepdim=True).sqrt() + 1e-6
-            _wg4 = (_canon4 / _cn4 * _wn4).detach()
+            _dep4 = _canon4 / _cn4 * _wn4
+            _wg4 = _dep4.detach()
+            _pcl4 = (globals().get("_PCV")
+                     if float(os.environ.get("ALG_PC_MIX", "0")) > 0.0
+                     and int(os.environ.get("ALG_PC_LIVE", "1"))
+                     and not os.environ.get("SC_EVAL", "") else None)
+            if _pcl4 is not None:
+                # THE LIVE WIRE (apply_pressure_mix.py, 2026-09-06):
+                # for SEALED training rows the shelf crossing carries
+                # gradient (per-row blend of live/detached — VALUES
+                # identical either way; detach only cuts the tape).
+                # Because _canon4 rides an argmax one-hot (grad-dead
+                # direction) the surviving live channel into the
+                # committer (W_bind1/2, upstream cur) is exactly the
+                # confidence stamp _wn4: commitment AMPLITUDE learns
+                # from downstream use; fact IDENTITY stays discrete.
+                # Dual-terminal contract: _snaps (the solver facts,
+                # detached above) untouched; open rows detached as
+                # today; val/reads detached via the SC_EVAL gate.
+                _plv4 = _pcl4.reshape(-1, 1, 1)
+                _wg4 = _dep4 * _plv4 + _dep4.detach() * (1.0 - _plv4)
         _garage.append(_wg4)
     state["cur"] = cur; state["nb"] = _nb; state["nb_st"] = _nb_st
     state["rb_last"] = _rb_last
@@ -1739,14 +2081,30 @@ def breath_step(p, state, kb, ctx):
     return state
 
 
-def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, drop=None, anchor=None, amask=None, gmod=None, pmask=None, lsent=None, reg=None, fact_buf=None):
+def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, drop=None, anchor=None, amask=None, gmod=None, pmask=None, lsent=None, reg=None, fact_buf=None, mh_mass=None, mh_atlas_traj=None):
     from tinygrad import Tensor, dtypes   # audit 2026-09-01: was a
     # SCOPE ACCIDENT (bound only via the sixwave/sync branches — any
     # SIXWAVE-off config killed five organs at step 1)
     B = trunk.shape[0]
     waist = (trunk @ p["waist_w"] + p["waist_b"]).gelu() + p["sent_emb"][sent]
+    if FED_WAIST and "fed_w2b" in p:
+        # FED item 3: waist2 = waist + MLP(waist), output ZERO-INIT —
+        # exact zeros at birth; every downstream organ (bank closure,
+        # breath ctx, step-trainer tap) inherits the rebound name
+        waist = waist + ((waist @ p["fed_w2a"] + p["fed_w2a_b"]).gelu()
+                         @ p["fed_w2b"] + p["fed_w2b_b"])
 
     bank = _make_bank(p, waist, tokmask, B)
+    if N_SCR and slot_mask is not None:
+        # FED item 6 mask ruling: scratch rows (queries) OPEN to all;
+        # scratch columns CLOSED here (no cold read-back at birth —
+        # the raising law; the fed mixer's zero door is the channel)
+        _f6c = slot_mask[:, :, :1] * 0.0            # (B, L_FAC, 1) zeros
+        _f6top = Tensor.cat(slot_mask,
+                            *([_f6c] * N_SCR), dim=2)  # (B, L_FAC, L_TOT)
+        _f6r = _f6top[:, :1, :] * 0.0 + 1.0         # (B, 1, L_TOT) ones
+        slot_mask = Tensor.cat(_f6top,
+                               *([_f6r] * N_SCR), dim=1)  # (B, L_TOT, L_TOT)
     _lb = None
     if lsent is not None:               # V2: letter-keyed partition — imposed
         _lb = lsent.reshape(B, 1, K_VARS, -1) * float(os.environ.get("LS_A", "1.0"))
@@ -1765,7 +2123,7 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
     if ALG_SYNC:
         from tinygrad import Tensor, dtypes
         _A = float(os.environ.get("SYNC_A", "1.0"))
-        _phi = np.pi / 3.0 * (np.arange(L_FAC) % 6)
+        _phi = np.pi / 3.0 * (np.arange(L_TOT) % 6)
         _cph = Tensor(np.cos(_phi).astype(np.float32), dtype=dtypes.float)
         _sph = Tensor(np.sin(_phi).astype(np.float32), dtype=dtypes.float)
         _th0 = (sent - (sent // 6) * 6).float() * (math.pi / 3.0)
@@ -1778,16 +2136,16 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
             ck, sk = math.cos(_d), math.sin(_d)
             cthk = _cth * ck - _sth * sk
             sthk = _sth * ck + _cth * sk
-            return (_cph.reshape(1, 1, L_FAC, 1) * cthk.reshape(B, 1, 1, -1)
-                    + _sph.reshape(1, 1, L_FAC, 1)
+            return (_cph.reshape(1, 1, L_TOT, 1) * cthk.reshape(B, 1, 1, -1)
+                    + _sph.reshape(1, 1, L_TOT, 1)
                     * sthk.reshape(B, 1, 1, -1)) * _A
-        _php = np.zeros((L_FAC, H_W), np.float32)
+        _php = np.zeros((L_TOT, H_W), np.float32)
         def _mk_osc(kb):   # the receiver's local oscillator — same clock
             _d = float(_scr[kb]) if _scr is not None else kb * (math.pi / 3.0)
             _o = _php.copy()
             _o[:, 0] = np.cos(_phi + _d) * _A
             _o[:, 1] = np.sin(_phi + _d) * _A
-            return Tensor(_o, dtype=dtypes.float).reshape(1, L_FAC, H_W)
+            return Tensor(_o, dtype=dtypes.float).reshape(1, L_TOT, H_W)
         _sync = (_mk_pb, _mk_osc)
         _pb = _mk_pb(0)
     if ALG_SIXWAVE:
@@ -1802,16 +2160,16 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
             _th = _tab[sent - (sent // 16) * 16]
         else:
             _th = (sent - (sent // 6) * 6).float() * (math.pi / 3.0)
-        _phi = np.pi / 3.0 * (np.arange(L_FAC) % 6)
+        _phi = np.pi / 3.0 * (np.arange(L_TOT) % 6)
         _cph = Tensor(np.cos(_phi).astype(np.float32), dtype=dtypes.float)
         _sph = Tensor(np.sin(_phi).astype(np.float32), dtype=dtypes.float)
-        _sw_term = (_cph.reshape(1, 1, L_FAC, 1) * _th.cos().reshape(B, 1, 1, -1)
-               + _sph.reshape(1, 1, L_FAC, 1)
+        _sw_term = (_cph.reshape(1, 1, L_TOT, 1) * _th.cos().reshape(B, 1, 1, -1)
+               + _sph.reshape(1, 1, L_TOT, 1)
                * _th.sin().reshape(B, 1, 1, -1)) * p["sw_g"].reshape(1, 1, 1, 1)
         _pb = _sw_term if _pb is None else _pb + _sw_term  # audit #6: adds
     if pmask is not None:                 # A0: imposed route-mask (wiring,
         _pb = pmask if _pb is None else _pb + pmask   # not knobs — no grad)
-    fst, fat = bank(p["fq"], L_FAC, pbias=_pb)
+    fst, fat = bank(p["fq"], L_TOT, pbias=_pb)
     qst, _qa = bank(p["qq"], 1)
 
     # BRICK-P breathing (2026-07-09): K-1 refinement passes. Each breath
@@ -1881,6 +2239,15 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
         # construction); state carries what crosses breath boundaries,
         # ctx the per-forward constants. Under _STEP_TAP hold the fused
         # loop is SKIPPED — the step trainer drives the walk itself.
+        _fed_nl0 = None
+        if FED_NL0 and int(os.environ.get("ALG_MASKHEAD", "0")) \
+                and "fed_nl0_w" in p:
+            # FED item 8: the breath-0 invariant NL page (two-tap law)
+            # — the nl-tap's pooled read, computed ONCE (the fq bank
+            # pass has no cur/fact/mask reach), DETACHED at entry (the
+            # mask head's metadata contract)
+            _fed_nl0 = (_fed_core(fat).mean(1).unsqueeze(1)
+                        @ waist).squeeze(1).detach()
         _bs_ctx = {"B": B, "K_B": K_B, "waist": waist, "tokmask": tokmask,
                    "slot_mask": slot_mask, "bank": bank, "rot2": _rot2,
                    "sync": _sync, "drop": drop, "gmod": gmod,
@@ -1891,7 +2258,9 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
                    # via ctx.get: "mh_mass" (per-var domain-mass from
                    # the solver ping) and "mh_atlas" (step_atlas
                    # consult page) — populated by seam drivers only.
-                   "fact_buf": fact_buf,
+                   "fact_buf": fact_buf, "mh_mass": mh_mass,
+                   "fed_nl0": _fed_nl0,
+                   "mh_atlas_traj": mh_atlas_traj,
                    "RINGS": RINGS, "XOUT": XOUT, "XARM": XARM,
                    "XR_GRADED": XR_GRADED, "XR_ELASTIC": XR_ELASTIC}
         _bs_state = {"cur": cur, "breaths": breaths, "nb": None,
@@ -1900,6 +2269,8 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
                      # breath_step (detached) — Δ-visibility into the
                      # commitment FLOW; the notebook-threading contract
                      "mh_prev": None,
+                     # FED item 9: shelf lane-2 ink (born at kb == 1)
+                     "nb2": None,
                      "nb_st": None, "garage": _garage, "snaps": _snaps,
                      "snaps_g": _snaps_g, "rb_last": _rb_last,
                      "m_c": m_c if RINGS else None,
@@ -1936,7 +2307,21 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
     if _rb_last is not None:
         out["rbias"] = _rb_last
     if int(os.environ.get("ALG_MINE_BREATHS", "0")) and K_B > 1 and slot_mask is not None:
-        out["breaths_all"] = out_breaths
+        out["breaths_all"] = [_fed_core(_b9) for _b9 in out_breaths]
+        # NL TAP (apply_nl_tap.py): the seven-page reading — breath
+        # 0 is the same fq bank pass fst came from (fat); breaths
+        # 1..K-1 were appended by breath_step under the same env.
+        _nl0w = _fed_core(fat).mean(1)
+        out["nl_all"] = ([(_nl0w.unsqueeze(1) @ waist).squeeze(1)]
+                         + ((_bs_state or {}).get("nl_all") or []))
+        out["nlat_all"] = ([_nl0w]
+                           + ((_bs_state or {}).get("nlat_all") or []))
+    if (int(os.environ.get("ALG_MINE_BREATHS", "0"))
+            or int(os.environ.get("ALG_MH_XPRIOR", "0"))):
+        # breath-0 NL state for the CROSS-ATLAS PRIOR — identical
+        # in pass-1 and pass-2 (fq bank: no cur/fact/mask reach)
+        out["nl0"] = (_fed_core(fat).mean(1)
+                      .unsqueeze(1) @ waist).squeeze(1)
     if (int(os.environ.get("ALG_DEEPSUP", "0")) or ALG_CONSUME) and K_B > 1 and len(breaths) > 1:
         out["_early"] = [heads_of(b) for b in breaths[:-1]]   # V2: the whole
                                                   # supply chain gets gradient
@@ -1951,10 +2336,13 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
             out["xrel"] = x_rel.squeeze(-1)             # released-mass ledger
                                                         # (revisability meter's
                                                         # raw feed; audit-side)
-    out["query"] = ((qst @ p["W_query"]) @ vst.transpose(-2, -1)).reshape(B, K_VARS)
+    out["query"] = _fed_pf(
+        p, "query", qst, vst,
+        (qst @ p["W_query"]) @ vst.transpose(-2, -1)).reshape(B, K_VARS)
     if "h_depth" in p:
-        out["depth"] = fst @ p["h_depth"] + p["h_depth_b"]
-        out["term"] = (fst @ p["h_term"] + p["h_term_b"]).squeeze(-1)
+        out["depth"] = _fed_core(fst) @ p["h_depth"] + p["h_depth_b"]
+        out["term"] = (_fed_core(fst) @ p["h_term"]
+                       + p["h_term_b"]).squeeze(-1)
     if "W_bind2" in p:
         # THE TAP (2026-08-29): ALG_BINDTAP=1 or v>=7 reads _s_final (the
         # refined post-breath state, like every parse head); default fst =
@@ -1962,21 +2350,22 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
         _bsrc = (_s_final if int(os.environ.get("ALG_BINDTAP", "0"))
                  else fst)   # tap dial ORTHOGONAL to version (v7a verdict:
                              # invariance lives at breath-0; default stays)
-        out["bind"] = (_bsrc @ p["W_bind1"] + p["W_bind1_b"]).gelu() @ p["W_bind2"]
+        out["bind"] = (_fed_core(_bsrc) @ p["W_bind1"]
+                       + p["W_bind1_b"]).gelu() @ p["W_bind2"]
     if "W_opc1" in p:
         if int(os.environ.get("ALG_OPCOUNT", "0")) == 2:
             # rescue variant (registered pre-fire; mechanism-cleared): pool
             # over the FIXED 24 slots — constant denominator keeps the
             # readout EXTENSIVE (counts survive; token-mean normalized
             # them away — the intensive-readout exclusion)
-            _pool = fst.mean(1)
+            _pool = _fed_core(fst).mean(1)
         else:
             _pool = ((waist * tokmask.unsqueeze(-1)).sum(1)
                      / (tokmask.sum(1, keepdim=True) + 1e-6))
         out["opc"] = ((_pool @ p["W_opc1"] + p["W_opc1_b"]).gelu()
                       @ p["W_opc2"] + p["W_opc2_b"]).reshape(
                           B, len(OPC_CLASSES), OPC_CAP + 1)
-    out["fat"], out["vat"] = fat, vat
+    out["fat"], out["vat"] = _fed_core(fat), vat
     if "h_ref" in p:
         out["ref"] = waist @ p["h_ref"] + p["h_ref_b"]   # (B, T_ALG, K_VARS)
     if len(breaths) > 1:
@@ -2569,6 +2958,54 @@ def do_train(steps, lr, batch, seed):
     MASKS = None
     ALT2 = int(os.environ.get("ALG_ALT2", "0"))
     FACTS = np.zeros((n, K_VARS, 4), np.float32) if ALT2 else None
+    # MASK HEAD round 2 (apply_mass_thread.py, 2026-09-05): the two
+    # dark senses. MASSB = per-var domain-mass banked at mask-prep
+    # (same vintage as FACTS), normalized /301 -> [0,1].
+    MH_MASS = int(os.environ.get("ALG_MH_MASS", "0"))
+    MASSB = np.zeros((n, K_VARS), np.float32) \
+        if (ALT2 and MH_MASS) else None
+    ATLAS_TAB = ATLAS_IDX = None
+    assert not int(os.environ.get("ALG_MH_XPRIOR", "0")) \
+        or int(os.environ.get("ALG_MH_ATLAS", "0")), \
+        ("ALG_MH_XPRIOR requires ALG_MH_ATLAS=1 (the trajectory "
+         "port it retrieves into) — refusing a silently dark prior")
+    if int(os.environ.get("ALG_MH_ATLAS", "0")):
+        # THE ATLAS FEED: per-row class trajectory pages (the
+        # research-manifest loud door; missing file = HARD error,
+        # never a silent dark port). Zero page for absent classes.
+        from mycelium.step_atlas import load_atlas, atlas_class
+        _amp = os.environ.get("MH_ATLAS_MANIFEST",
+                              ".cache/RESEARCH_MANIFEST.json")
+        _apath = os.environ.get("MH_ATLAS",
+                                ".cache/step_atlas_current.npz")
+        _atl = load_atlas(_apath, manifest_path=_amp)
+        _acls = {c: i for i, c in enumerate(_atl["classes"])}
+        _tab = np.ascontiguousarray(
+            _atl["means"].transpose(1, 0, 2)).astype(np.float32)
+        assert _tab.shape[1] >= K_B and _tab.shape[2] == H_W, \
+            (_tab.shape, K_B, H_W)
+        ATLAS_TAB = np.concatenate(
+            [_tab, np.zeros((1,) + _tab.shape[1:], np.float32)])
+        ATLAS_IDX = np.array(
+            [_acls.get(atlas_class(smp.get("gen")), len(_acls))
+             for smp in samples], np.int64)
+        print(f"[mh-atlas] trajectory feed live: {_apath} "
+              f"classes={sorted(_acls)} zero-page rows="
+              f"{int((ATLAS_IDX == len(_acls)).sum())}/{n}",
+              flush=True)
+        # THE CROSS-ATLAS PRIOR (apply_cross_prior.py, 2026-09-05):
+        # 1 = retrieve for UNKNOWN-class rows only; 2 = retrieve
+        # for ALL rows (deployable; gen-label mode = oracle upper
+        # bound, training scaffolding). NL0 fills at mask-prep.
+        XPRIOR = int(os.environ.get("ALG_MH_XPRIOR", "0"))
+        NL0 = None
+        if XPRIOR:
+            from mycelium.step_atlas import cross_prior
+            assert _atl.get("nl_means") is not None, \
+                ("ALG_MH_XPRIOR needs the PAIRED atlas (nl chart) "
+                 "— re-mine with the paired miner")
+            assert K_B > 1, "xprior rides the mask-prep pass"
+            NL0 = np.zeros((n, H_W), np.float32)
     if K_B > 1:
         # mask-prep pass: masks from the WARM-STARTED head's own breath-0
         # parses (deployable-from-birth; frozen for training efficiency)
@@ -2586,6 +3023,9 @@ def do_train(steps, lr, batch, seed):
                                   if ALG_LSENT and "lsent" in gold else None))
             o0 = {k: out0[k].realize().numpy() for k in ("fat", "args", "res")}
             MASKS[sl] = build_slot_masks(o0, sent[sl_p])[:len(sl)]
+            if ATLAS_TAB is not None and NL0 is not None:
+                # breath-0 NL state (the tap; pass-1 == pass-2)
+                NL0[sl] = out0["nl0"].realize().numpy()[:len(sl)]
             if FACTS is not None:
                 # ALTERNATOR V2 pass-1 commit: the same realized parse the
                 # masks come from; facts banked like MASKS (frozen for
@@ -2597,10 +3037,30 @@ def do_train(steps, lr, batch, seed):
                                  for i in sl_p])
                 _ma2 = np.array([samples[int(i)].get("m", 0)
                                  for i in sl_p])
+                _mo2 = (np.zeros((len(sl_p), K_VARS), np.float32)
+                        if MASSB is not None else None)
                 FACTS[sl] = alt2_fact_buf(_oa2, sent[sl_p], _nv2,
-                                          _ma2)[:len(sl)]
+                                          _ma2,
+                                          mass_out=_mo2)[:len(sl)]
+                if MASSB is not None:
+                    # normalize [0,1]: /301 (values<=300 law)
+                    MASSB[sl] = np.clip(_mo2[:len(sl)] / 301.0,
+                                        0.0, 1.0)
         print(f"[breath] masks ready (mean degree "
               f"{MASKS.sum(-1).mean():.1f}/{L_FAC})", flush=True)
+        if ATLAS_TAB is not None and NL0 is not None:
+            # retrieval instead of oracle labels (mode semantics in
+            # the atlas block above); the b_mha feed needs no change
+            _xci, _ = cross_prior(_atl, NL0, return_traj=False)
+            _unk = (ATLAS_IDX == len(_acls))
+            _rep = _unk if XPRIOR == 1 else np.ones(n, bool)
+            _agree = int((_xci[_rep] == ATLAS_IDX[_rep]).sum())
+            ATLAS_IDX = np.where(_rep, _xci, ATLAS_IDX)
+            print(f"[mh-xprior] mode={XPRIOR}: {int(_rep.sum())}/"
+                  f"{n} rows fed RETRIEVED trajectories "
+                  f"({int(_unk.sum())} unknown-class; retrieval "
+                  f"agrees with gen label on {_agree} of the "
+                  f"replaced)", flush=True)
     MG = None
     if int(os.environ.get("ALG_MASK_GOLD", "0")) and MASKS is not None:
         # M3 (2026-08-26, word given; the nazare constitution): TRAINING
@@ -2635,6 +3095,10 @@ def do_train(steps, lr, batch, seed):
     b_fact = fix(np.zeros((batch, K_VARS, 4), np.float32), dtypes.float) \
         if ALT2 else None   # ALT2: fixed shape, ALWAYS fed (zeros when no
                             # facts) — the jitted step's signature is stable
+    b_mhm = fix(np.zeros((batch, K_VARS, 1), np.float32), dtypes.float) \
+        if MASSB is not None else None   # mask-head mass port (b_fact idiom)
+    b_mha = fix(np.zeros((batch, ATLAS_TAB.shape[1], H_W), np.float32),
+                dtypes.float) if ATLAS_TAB is not None else None
     b_tail = fix(np.zeros((batch, T_ALG), np.float32), dtypes.float) if CLOCK else None
     _GOLD_ALIAS = {"is_lit_f": "is_lit", "refoh": "refvar"}
     _GOLD_OPTIONAL = {"opspan", "arg_dup", "sel", "sign", "y", "digits2",
@@ -2783,7 +3247,8 @@ def do_train(steps, lr, batch, seed):
                   * (o0["res"].argmax(-1) == bg["res"]).float())
             rv = (bg["presence"] * (1.0 - ok)).detach()
             o = forward(p, s_tr, b_tk, b_se, slot_mask=b_mask, revoke=rv,
-                        tail=b_tail, reg=b_reg, fact_buf=b_fact)
+                        tail=b_tail, reg=b_reg, fact_buf=b_fact,
+                        mh_mass=b_mhm, mh_atlas_traj=b_mha)
         elif int(os.environ.get("NAZ_TRAIN", "0")):
             # NAZARÉ TRAINING (door #55): the organ-2 two-forward pattern —
             # pre-pass yields the intra-pass event field IN-GRAPH (detached);
@@ -2801,12 +3266,14 @@ def do_train(steps, lr, batch, seed):
             _bgauth = float(os.environ.get("NAZ_BG", "0.05"))
             _gm = (_bgauth + (1.0 - _bgauth) * _ev).unsqueeze(-1).detach()
             o = forward(p, s_tr, b_tk, b_se, slot_mask=b_mask, tail=b_tail,
-                        gmod=_gm, fact_buf=b_fact)
+                        gmod=_gm, fact_buf=b_fact,
+                        mh_mass=b_mhm, mh_atlas_traj=b_mha)
         else:
             _bd = os.environ.get("BREATH_DROPOUT")
             o = forward(p, s_tr, b_tk, b_se, slot_mask=b_mask, tail=b_tail,
                         drop=(b_drop if _bd else None), lsent=b_ls, reg=b_reg,
-                        fact_buf=b_fact)
+                        fact_buf=b_fact,
+                        mh_mass=b_mhm, mh_atlas_traj=b_mha)
         l = loss_fn(o, bg)
         if ALG_CONSUME and "_early" in o:   # support-gated consume-once:
             # any breath claims, each fact pays once; eligibility = the DAG
@@ -2859,6 +3326,12 @@ def do_train(steps, lr, batch, seed):
 
     def _quick_val():
         vs, vst, vtk, vg, vse = load_split_val
+        _vaidx = (np.array(
+            [_acls.get(atlas_class(smp.get("gen")), len(_acls))
+             for smp in vs], np.int64)
+            if ATLAS_TAB is not None else None)
+        _xpv = (int(os.environ.get("ALG_MH_XPRIOR", "0"))
+                if ATLAS_TAB is not None else 0)
         n_ok = n_tot = 0
         for s0 in range(0, len(vs), 8):
             sl = np.arange(s0, min(s0 + 8, len(vs)))
@@ -2879,10 +3352,33 @@ def do_train(steps, lr, batch, seed):
                 _nvv = np.array([vs[int(i)].get("n_vars", K_VARS)
                                  for i in sl_p])
                 _mav = np.array([vs[int(i)].get("m", 0) for i in sl_p])
-                _fbv = alt2_fact_buf(_ov, vse[sl_p], _nvv, _mav)
+                _mov = (np.zeros((len(sl_p), K_VARS), np.float32)
+                        if MASSB is not None else None)
+                _fbv = alt2_fact_buf(_ov, vse[sl_p], _nvv, _mav,
+                                     mass_out=_mov)
+                _vmh = (Tensor(np.clip(_mov / 301.0, 0.0, 1.0)
+                               [:, :, None].astype(np.float32),
+                               dtype=dtypes.float)
+                        if _mov is not None else None)
+                _vai = (_vaidx[sl_p].copy()
+                        if _vaidx is not None else None)
+                if _xpv and _vai is not None:
+                    # cross-atlas prior on the val cycle (same
+                    # retrieval the trainer fed; pass-1 nl0)
+                    from mycelium.step_atlas import cross_prior
+                    _xcv, _ = cross_prior(
+                        _atl, o["nl0"].realize().numpy(),
+                        return_traj=False)
+                    _rpv = ((_vai == len(_acls)) if _xpv == 1
+                            else np.ones(len(_vai), bool))
+                    _vai = np.where(_rpv, _xcv, _vai)
+                _vat = (Tensor(ATLAS_TAB[_vai],
+                               dtype=dtypes.float)
+                        if ATLAS_TAB is not None else None)
                 o = forward(p, _t1, _t2, _t3,
                             slot_mask=Tensor(_mkv, dtype=dtypes.float),
-                            fact_buf=Tensor(_fbv, dtype=dtypes.float))
+                            fact_buf=Tensor(_fbv, dtype=dtypes.float),
+                            mh_mass=_vmh, mh_atlas_traj=_vat)
             onp = {k: o[k].realize().numpy() for k in
                    (("pres", "ftype", "op", "islit", "dig", "args", "res") + (("dup",) if "h_dup" in p else ()))}
             for bi, i in enumerate(sl):
@@ -2966,6 +3462,29 @@ def do_train(steps, lr, batch, seed):
               f"base {(0.15 == _sw_wild).sum()} @0.15, visit-decay live",
               flush=True)
 
+    _pc_mix = float(os.environ.get("ALG_PC_MIX", "0"))
+    _pc_assign = None
+    if _pc_mix > 0.0:
+        # THE PRESSURE MIX (2026-09-06): per-row seal assignment is a
+        # DETERMINISTIC hash of the dataset row index (Knuth
+        # multiplicative) — stable across epochs/steps/restarts (flat
+        # mix law: a constant sealed subpopulation, not a per-epoch
+        # coin). The seal needs the shelf road to exist and SC_EVAL
+        # unset (else the mode-2 branch bakes OPEN at JIT capture —
+        # the exact silent no-op the forensic caught in the champion).
+        assert int(os.environ.get("ALG_BUSGARAGE", "0")) >= 2             and int(os.environ.get("ALG_SHELF_CIRCLE", "0")) >= 1,             "ALG_PC_MIX needs ALG_BUSGARAGE>=2 + ALG_SHELF_CIRCLE (no shelf, no road)"
+        assert not os.environ.get("SC_EVAL", ""),             ("ALG_PC_MIX with SC_EVAL set would bake the seal shut at "
+             "JIT capture (the champion's silent no-op) — unset SC_EVAL; "
+             "val forces OPEN by itself")
+        _pc_h = ((np.arange(n, dtype=np.uint64) * np.uint64(2654435761))
+                 % np.uint64(4294967296)).astype(np.float64) / 4294967296.0
+        _pc_assign = (_pc_h < _pc_mix).astype(np.float32)
+        globals()["_PCV"] = Tensor(
+            np.zeros((batch, 1, 1), np.float32)).contiguous().realize()
+        print(f"[pressure] mixed-seal armed: share={_pc_mix} -> "
+              f"{int(_pc_assign.sum())}/{n} rows sealed (stable "
+              f"index-hash); live-wire="
+              f"{os.environ.get('ALG_PC_LIVE', '1')}", flush=True)
     t0 = time.time()
     for s in range(steps):
         cur_lr = lr_min + 0.5 * (lr - lr_min) * (1 + math.cos(math.pi * s / steps))
@@ -3009,6 +3528,12 @@ def do_train(steps, lr, batch, seed):
             b_mask.assign(Tensor(_mfeed, dtype=dtypes.float).contiguous()).realize()
         if b_fact is not None:
             b_fact.assign(Tensor(FACTS[idx], dtype=dtypes.float).contiguous()).realize()
+        if b_mhm is not None:
+            b_mhm.assign(Tensor(MASSB[idx][:, :, None],
+                                dtype=dtypes.float).contiguous()).realize()
+        if b_mha is not None:
+            b_mha.assign(Tensor(ATLAS_TAB[ATLAS_IDX[idx]],
+                                dtype=dtypes.float).contiguous()).realize()
         if b_tail is not None:
             b_tail.assign(Tensor(TAILS[idx].astype(np.float32), dtype=dtypes.float).contiguous()).realize()
         if b_reg is not None:
@@ -3060,6 +3585,10 @@ def do_train(steps, lr, batch, seed):
                                      float(os.environ.get("SC_P", "0.5"))
                                      else 0.0],
                                     dtype=_sevb.dtype)).realize()
+        if _pc_assign is not None:
+            globals()["_PCV"].assign(Tensor(
+                _pc_assign[idx].reshape(-1, 1, 1),
+                dtype=globals()["_PCV"].dtype)).realize()
         lv = step()
         if ALG_CONSUME and _NEWCL[0] is not None:
             CLAIMED[idx] = np.clip(CLAIMED[idx] + _NEWCL[0].numpy(), 0, 1)
