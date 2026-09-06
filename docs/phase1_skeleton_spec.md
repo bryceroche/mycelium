@@ -33875,3 +33875,29 @@ remains open, and the paired-atlas needle (running next) informs it.
 WILD STANDINGS: **mhr2ctl242 0.2565** > port242 0.2540 > mhr2on242
 0.2501 ... 2-seed law: the record needs its 241 twin before
 promotion talk.
+
+## 2026-09-05 — THE NEEDLE'S FIRST SWING + COLLAPSE CHECK: the two dances
+
+**COLLAPSE CHECK: CLEAN, emphatically** — NL page-spreads run 1.6-3.1x
+the math spreads (the reading is the LIVELIER chart; Gemini's failure
+mode not only absent, inverted). **THE NEEDLE (port242, both
+fixtures): (1) MINT — MATH LEADS READING by one breath, r=0.596 at
+lag -1** (commitment drives re-reading on template text: solve the
+pattern, then look). **(2) WILD — a different dance entirely: math
+contracts to its family (0.139->0.098, matryoshka) while the NL
+state EXPANDS away from its class page (0.143->0.331) as attention
+narrows (entropy 3.73->2.27). On wild text the reading INDIVIDUATES
+— the item leaves the family average and becomes itself — while the
+math homogenizes.** No linear lead survives (peak r=0.035) because
+the design assumed both charts contract; wild language does the
+opposite. TWO CONSEQUENCES: (a) a REGISTER SIGNATURE — template vs
+wild is readable in the NL trajectory's direction (contract vs
+individuate); candidate mouth/cert feature. (b) **THE ROUND-2
+NEGATIVE EXPLAINED, better than stale-vintage: feeding a
+family-average atlas page to wild items that are actively LEAVING
+the family average is anti-aligned conditioning** — the oracle-page
+feed subtracted because on wild text the class centroid is where the
+item is departing FROM, not heading TO. The atlas feed's future on
+wild = individuated targets (e.g., the item's OWN breath-0-anchored
+trajectory or residual-from-page coordinates), not raw family pages.
+The stethoscope works; the heart has two rhythms.
