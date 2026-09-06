@@ -33834,3 +33834,24 @@ v2 (the first follow-up: we are wiring the clock and still cannot
 hear it tick). PARALLEL TRACK named: the vote re-audition (the
 admission ruling's promised re-certification with a wild-capable
 gate) fires in any queue gap.
+
+## 2026-09-05 — THE FED MIND STAGED (commit 19efb21) + CHAIN FIRED (queue-wrapped)
+
++5,356,568 params (11.81M -> 17.17M; pointers 2.36M, FFN 1.05M,
+macro 0.89M, waist 0.53M, nl0 door 0.26M, shelf lane-2 0.26M,
+scratch 4k, mixer heads 8 params — the free reshape made literal,
+rotor 0 — frequencies frozen from the clock). ROTOR: Q-side pairs
+24-31, kb->tick honoring breath-0-outside-time; **rotor_clock.py's
+import graph is TRUE at last (first importer, top-level)**. Scratch:
+17 sites widened, 6 fenced via _fed_core (one cut covers every
+emission/loss/gold path), scratch columns closed in base masks,
+read-back only through zero-gained twin (no cold read-back;
+SCRATCH-requires-MIXER assert). Shelf-16 = second ink lane rows
+8-15 (coupling structural -> 2 rows/breath lawful form). Birth:
+FED-unset BITWISE; FED=1 bitwise on 7 of 9 items, shelf/query at
+<=3e-7 zero-add fusion regrouping (bisection banked; the hard gate
+is the bitwise unset one). Warm verified against port242 header
+(FFN pad-warm engages; 12 fed keys fresh). Deferrals honest (alt21
+station-4 single-head noted). CHAIN FIRED: waits for round-2b +
+paired-atlas, then eq gate -> smoke -> 12k FED TWIN -> reads ->
+re-mine (step_atlas_fed) -> collapse check.
