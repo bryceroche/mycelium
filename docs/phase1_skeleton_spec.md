@@ -33798,3 +33798,19 @@ opens the token-masking design question WITH data). Runs CPU on the
 mined npz after the paired chain. The needle reader already banks
 per-breath attention entropy (the raw signal). Relay nit trimmed:
 none of substance — the physics framing matched the build.
+
+## 2026-09-05 — WORD GIVEN: THE FED MIND (the registered ~2.5x package fires)
+
+The gut's "not breathing deeply enough" = the audit's own top line,
+never fired. Package (ledger-registered, audit-corroborated): MIXER
+MULTI-HEAD (free reshape, #1 starvation — the relate lung breathes
+through one head today), POINTER MULTI-FORM (zero-init additive
+forms beside the single bilinears), WAIST residual 2nd layer
+(zero-init), FFN 2x->4x (pad-warm law), MACRO-VALUE multi-form,
++8 SCRATCH SLOTS (appended, ungraded, Goodhart-exempt per the
+2026-08-31 registration). ~6.4M -> ~16M trained. Raising laws all
+apply: warm continuation route (every new pathway zero-init-additive
+or pad-warm — no cold births), gentle LR, package-level claim vs the
+champion lineage; from-noise rebirth (carrying Z6 install + atlas
+re-mine) follows only if the warm twin pays. Build delegated; chain
+queues behind round-2b + paired-atlas (single-process).
