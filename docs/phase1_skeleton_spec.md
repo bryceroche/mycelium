@@ -33814,3 +33814,23 @@ or pad-warm — no cold births), gentle LR, package-level claim vs the
 champion lineage; from-noise rebirth (carrying Z6 install + atlas
 re-mine) follows only if the warm twin pays. Build delegated; chain
 queues behind round-2b + paired-atlas (single-process).
+
+## 2026-09-05 — FED MIND ADDENDA (words given): rotors + three riders
+
+Addendum 1: THE ROTOR INSTALL — breath rotor (60-degree Q/K rotation,
+angles imported FROM rotor_clock.py — the module wired at last) on
+the NEW mixer-head path only (zero-doored = birth equivalence free);
+bus-rotor compat verified on new forms; scratch slots inherit the
+clock. Addendum 2, three riders: (8) THE BREATH-0 INVARIANT FEED —
+nl0 to the mask head's context (the two-tap law cashed; the fixed
+star beside the evolving inputs); (9) NOTEBOOK SHELF 8->16 (the
+audit's storage flag; pad-warm; 2-per-breath if coupling is
+structural); (10) post-twin ATLAS RE-MINE to step_atlas_fed.npz +
+collapse check (vintage hygiene; port242 atlas never overwritten).
+DELIBERATE EXCLUSIONS inked: wild-dose rebalance (diet+capacity
+confound — the NEXT experiment on the fed winner), DSL select stage
+(awaits round-2 verdict), per-step micro-waist (axis budget), impulse
+v2 (the first follow-up: we are wiring the clock and still cannot
+hear it tick). PARALLEL TRACK named: the vote re-audition (the
+admission ruling's promised re-certification with a wild-capable
+gate) fires in any queue gap.
