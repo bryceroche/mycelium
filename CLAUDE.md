@@ -140,6 +140,10 @@ pure prose at 340 epochs is poison −243 — tune between).
   own log) — background-task reapers kill watchers, not work. Use
   `--property=WorkingDirectory=` + absolute paths (a 4× repeated cd-omission
   taught this).
+- **`DEV=PCI+AMD`, never bare `DEV=AMD`** (since kernel 7.0, 2026-09-06): KFD
+  exposes the Raphael iGPU (gfx1036) and tinygrad's probe takes it first.
+  AM driver patched locally (src/tinygrad f7a6c9b) to survive the post-unload
+  PMFW state (Mode1Reset BAD_PREREQ -> full init). Ledger 2026-09-06.
 - Trunk host cached per process (was reloading 2.4GB per call). Trunk JIT
   deferred (zero-arg capture recaptures with this layer code; the residency
   smoke's buffer pattern is the recipe).

@@ -33986,3 +33986,53 @@ assignment, one JIT graph; row surgery proven bitwise. CHAIN FIRED:
 item-0 replication (port242, mhr2ctl242) -> eq gate -> apply ->
 smokes -> THE PRESSURE TWIN (PC_MIX=0.3 vs 0, warm fedon242, 12k) ->
 sealed-wild/open-wild/mint reads. Bars stand as pinned.
+
+## 2026-09-06 — THE POWER OUTAGE: cooker chain cut at step 6; steps 1-5 BANKED; re-fired as pc-resume
+
+Mains power failed at ~10:06 (previous boot dated Jul 16; ~52 days
+uptime). Chain state at the cut: **steps 1-5 COMPLETE and banked**
+— (1) ITEM-0 REPLICATED on two more checkpoints: sealed-wild
+fac-exact **0.0000 on port242 (open 0.1824) and 0.0000 on mhr2ctl242
+(open 0.1731)** — the finding of the campaign now stands on three
+legs (pc_item0_*.log); (2) eq A/B/C pre/post bit-identical (the
+pressure patch is byte-inert with ALG_PC_MIX unset); (3) CPU row
+smoke ALL GATES PASS (row surgery bitwise; committer grad 3.82 live /
+0.0 dead); (4) 300-step pressure smoke: 40147/133828 rows sealed,
+0.75s/step (vs 0.46 champion — the live seal's platform price), val
+proxy 0.2931 (sharp_pcsmoke.safetensors). Step 6 (THE PRESSURE TWIN)
+died in mask-prep before its first step — no partial checkpoint, no
+data loss (warm source fedon242 intact). WORKING TREE BANKED (commit
+3c471ee: the fed package + pressure apply had been sitting
+uncommitted — the outage is the specimen for "commit the applied
+head in the same transaction as the fire").
+
+**TWO PLATFORM FAULTS ON THE REBOOT (both root-caused, both fixed):**
+(a) The reboot booted the kernel that unattended-upgrades had staged
+on 09-04 (6.17 -> 7.0). Kernel 7.0's amdgpu exposes the Raphael iGPU
+(gfx1036) through KFD; tinygrad's iface probe tries KFD first, so
+`DEV=AMD` now selects the iGPU and dies (`Unsupported arch:
+gfx1036`). FIX = the explicit interface tinygrad itself prescribes:
+**`DEV=PCI+AMD` from now on, everywhere** (eq_check.py base env
+changed; every ledger recipe reading DEV=AMD means PCI+AMD; CLAUDE.md
+§5 amended). (b) With the PCI iface the AM driver found the card in
+state 2 (initialized by amdgpu, unbound at boot) and issued its
+Mode1Reset — the PMFW answered 0xFD BAD_PREREQ, and rejected EVERY
+message (EnableAllSmuFeatures too): kernel 7.0's amdgpu sends
+PrepareMp1ForUnload at unbind and the PMFW then refuses all driver
+traffic. Probe C: skip the reset, full init over the live PSP/SMU —
+the PSP reloads the SMU firmware (GFX_FW_TYPE_SMU), clearing the
+state; this is exactly amdgpu's own module-reload path. PATCHED in
+the tinygrad checkout (src/tinygrad f7a6c9b: on TimeoutError with
+C2PMSG_90 == 0xFD, fall through to full init; anything else still
+raises). BASELINE RE-ESTABLISHED before any run: eq A on the
+recovered GPU == the pre-outage post_A dump, 7 tensors bit-identical.
+Root hardening for a future boot (optional, needs root): a PCI
+secondary-bus reset after the unbind in tinygrad-unbind.service would
+return the card to state 1 and skip the fallback entirely.
+
+RE-FIRED 14:40 as unit pc-resume (.cache/pressure_chain_resume.sh =
+step 0 guard + steps 6-7 verbatim, DEV=PCI+AMD): pressure arm
+(ALG_PC_MIX=0.3, SC_EVAL unset) -> control arm (SC_EVAL=0) -> the
+seven reads. ETA ~21:30 (75-min mask-prep per arm + 12k steps at
+0.75s / 0.46s). BARS UNCHANGED as pinned. Nothing was measured; the
+verdict entry follows the reads.

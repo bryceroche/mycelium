@@ -8,7 +8,7 @@ weights. Env: EQ_CFG in {A, B, C}; EQ_OUT = npz path.
 """
 import os, sys, json
 CFG = os.environ["EQ_CFG"]
-base = {"DEV": "AMD", "ALG2": "1", "ALG_FTYPES": "9", "ALG_DUP": "1",
+base = {"DEV": "PCI+AMD", "ALG2": "1", "ALG_FTYPES": "9", "ALG_DUP": "1",
         "ALG_HW": "512", "ALG_WIDE": "1", "ALG_BREATH": "7",
         "ALG_NOTEBOOK": "1", "ALG_SIXWAVE": "1", "NB_PERSLOT": "1",
         "ALG_TEST": ".cache/algebra_nl_bigtest.jsonl", "ALG_TEST_NAME": "bigtest"}
