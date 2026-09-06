@@ -33964,3 +33964,25 @@ within -0.010 of control (no trade collapse); exploratory single-seed
 scope. (4) Riders: item-0 replication reads (port242 + mhr2ctl
 sealed-wild) in-chain; dead organs stay as inert riders (pruning is
 separate cleanup — no mid-experiment package edits). Build delegated.
+
+## 2026-09-06 — PRESSURE COOKER BUILT + FIRED; TWO FINDINGS AT BUILD TIME
+
+(1) **THE UNLIT STOVE: training never pressured the seal, ever** —
+SC_EVAL=0 exported process-wide collapses the mode-2 blend to open
+identity at JIT capture and _SEV is never created; the trainer's
+reseal no-ops forever. The cooker existed; no run ever cooked. The
+pressure arm runs SC_EVAL-unset (asserted loudly). (2) **THE LIVE
+WIRE**: deposits are detached+argmax'd — the committer learns
+NOTHING from downstream today (probe: W_bind1 grad 0.0). Under
+ALG_PC_LIVE the sealed rows' crossing un-detaches per-row, and via
+the argmax exactly the CONFIDENCE STAMP (_wn4) becomes the learnable
+channel: amplitude learns from use, identity stays discrete, solver
+facts stay detached (dual-terminal kept; probe grad 3.82). Three
+pre-existing live roads kept (post-seal breaths, the W_gq selection
+query, the notebook leak — leak documented, same in the 0.0000 meter,
+comparability holds; stricter seal = registered follow-up).
+Mechanism: _PCV (B,1,1) per-row seal vector, Knuth-hash stable
+assignment, one JIT graph; row surgery proven bitwise. CHAIN FIRED:
+item-0 replication (port242, mhr2ctl242) -> eq gate -> apply ->
+smokes -> THE PRESSURE TWIN (PC_MIX=0.3 vs 0, warm fedon242, 12k) ->
+sealed-wild/open-wild/mint reads. Bars stand as pinned.
