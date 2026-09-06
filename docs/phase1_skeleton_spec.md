@@ -33919,3 +33919,30 @@ the 241 twin owed; MECHANISM DEBT: sub-env ablations
 wanted. WILD STANDINGS: **fedon242 0.2613** > mhr2ctl242 0.2565 >
 port242 0.2540 > alt21warm242 0.2530 — four records in four days,
 each built on the last, every one traceable through the ledger.
+
+## 2026-09-06 — THE SILENT-ORGAN FORENSIC (docs/silent_organ_audit.md): the breakout localized
+
+**ITEM 0, THE FINDING OF THE CAMPAIGN: sealed-mode wild = 0.0000.**
+Under the pressure-cooker meter (residual severed at breath 4, only
+committed facts cross), fedon242 scores 0/2051 on wild (vs 0.2613
+open; 6 post-severance facts vs 1067). Every banked sealed number was
+mint/val (~94.5% band) — sealed-WILD was never measured. **The entire
+committed/structured channel — the channel every organ we built
+feeds — carries NOTHING on wild text; the open residual carries 100%.
+The wild records are real but ride the uncertified path. THIS is why
+the gains are incremental: we keep upgrading a pipeline wild never
+uses.** The breakout target is now explicit: teach the committed
+channel to carry wild (sealed-wild training regimes — the pressure
+cooker as objective, lawful: a capability target, not diagnostic
+supervision). **DEAD ORGANS CONFIRMED (~2.9M of the +5.36M package
+never learned)**: mh_atlas_w 262k (env-inert, zero grad by chain
+rule — the ALG_MH_ATLAS door never set in the champion recipe);
+pointer multi-form gains 2.36M (wired, sign-incoherent noise — dead);
+shelf lane-2 0.26M (dead). The fed win came entirely from the LIVING
+half (mixer/waist/FFN/nl0 — all monotonic learners; nl0 CLEARED, my
+suspicion wrong: correctly wired). Scratch embeds barely rotated
+(suspicious); mh_gain wobble unresolved. Read-regime cleared: open ==
+standard bit-identical; theta moves nothing; commit rate unchanged.
+DEBTS: replicate item 0 on a second ckpt; seed-241 HELD until the
+sealed-wild plan is set — the next run should chase the 0.26 of
+headroom, not replicate the increment.
