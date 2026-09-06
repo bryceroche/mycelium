@@ -33946,3 +33946,21 @@ standard bit-identical; theta moves nothing; commit rate unchanged.
 DEBTS: replicate item 0 on a second ckpt; seed-241 HELD until the
 sealed-wild plan is set — the next run should chase the 0.26 of
 headroom, not replicate the increment.
+
+## 2026-09-06 — WORD GIVEN: THE PRESSURE-COOKER CAMPAIGN (sealed-wild training)
+
+Target: the 0.26 headroom — teach the COMMITTED channel to carry wild
+(sealed-wild 0.0000 -> nonzero). Design pinned: (1) NOT full
+severance (a dead channel alone gives no gradient; the cold-birth
+analog) and NOT curriculum (curriculum is DEAD — flat-mix law):
+MIXED-SEAL training — a flat per-row mix, constant share of rows
+trained under the pressure-cooker seal (residual severed at the
+registered breath, only commitments cross) beside open rows; dose
+declared (opening share 30%). (2) Warm from fedon242, gentle LR,
+12k twin: pressure-mix vs plain continuation, single-bit delta.
+(3) BARS PINNED BEFORE MEASUREMENT: primary — sealed-wild fac-exact
+rises from 0.0000 to >= 0.05 (the channel OPENS); guard — open-wild
+within -0.010 of control (no trade collapse); exploratory single-seed
+scope. (4) Riders: item-0 replication reads (port242 + mhr2ctl
+sealed-wild) in-chain; dead organs stay as inert riders (pruning is
+separate cleanup — no mid-experiment package edits). Build delegated.
