@@ -33901,3 +33901,21 @@ item is departing FROM, not heading TO. The atlas feed's future on
 wild = individuated targets (e.g., the item's OWN breath-0-anchored
 trajectory or residual-from-page coordinates), not raw family pages.
 The stethoscope works; the heart has two rhythms.
+
+## 2026-09-06 — THE FED MIND VERDICT: DOUBLE RECORD (+0.0068 wild, +0.0060 mint)
+
+fedon242 wild 0.2613 / mint 0.9430 (BOTH RECORDS) vs fedoff242
+0.2545/0.9370 — **the package wins on BOTH registers
+simultaneously, the first intervention in campaign history to do so
+(every prior continuation traded wild against mint). That is the
+signature of genuine capacity relief, not reallocation — the gut's
+"not breathing deeply enough" vindicated at package level.** The
+chain also re-mined the fed atlas (step_atlas_fed.npz, stamped
+fedon242, collapse-check CLEAN — vintage hygiene automatic) and the
+rotor rode in silently (rotor_clock's first wired run). Scope:
+single seed 242, package-level (7 items + 3 riders); 2-SEED DEBT:
+the 241 twin owed; MECHANISM DEBT: sub-env ablations
+(ALG_FED_MIXER/POINTERS/...) available whenever attribution is
+wanted. WILD STANDINGS: **fedon242 0.2613** > mhr2ctl242 0.2565 >
+port242 0.2540 > alt21warm242 0.2530 — four records in four days,
+each built on the last, every one traceable through the ledger.
