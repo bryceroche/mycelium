@@ -34537,3 +34537,30 @@ Builders: three parallel agents, CPU-only (AM single-process law
 while pc-floor holds the card). Queue: `.cache/ladder_queue.sh`
 waits for pc-floor to exit, then runs rungs 1-3 on the GPU as unit
 pc-ladder. Verdict entries follow the reads.
+
+## 2026-09-07 — LADDER SCRIPTS BANKED (clock_read / needle_read / collider_read) + THE SEAL FENCE, a meter-divergence specimen caught at build time
+
+Three read scripts built CPU-only while the canary held the card,
+each with the pass structure copied from the atlas miner (pass 1
+open -> slot masks + fact_buf -> masked pass 2; breaths_all pooled
+over slots), correctness from step_engine_read.score_batch (never
+reimplemented; the collider asserts its per-slot mirror equals
+score_batch on every batch), class labels from atlas_class.
+**THE SEAL FENCE (needle builder's catch):** the fed atlas was mined
+by fed_mind_chain.sh with SC_EVAL=0 (open shelf circle); with
+SC_EVAL UNSET the head severs the residual at breath 4, so steps 4-6
+read in SEALED coordinates against an OPEN-mined atlas — measured on
+6 rows: z-radius 67-101 and cosine 1.16-1.25 (anti-aligned) at steps
+4-6 sealed, vs 0.9-1.9 / 0.07-0.09 open. An atlas mined open must be
+read open. The clock builder's independent observation is the same
+fence from the other side: a ~46x state-norm jump at breath 4 with
+SC_EVAL unset = the seal's injected garage replacing the residual
+(the champion's uncalibrated stamps). Both reads now run SC_EVAL=0
+(the machine's living regime); the collider reads pass 0, which has
+no breath loop and no seal. Filed beside the forensic's meter law.
+Collider builder's CPU smoke (96 wild rows, NOT a result): originals
+4 contradictory / 8 unique-but-wrong / 84 underdetermined, zero
+flips — the honest limit (consistent wrong readings; sparse
+commitment at theta 0.9 leaves most parses underdetermined) may bite
+before visibility does. The GPU read decides. Ready marker touched;
+pc-ladder-queue fires the chain when pc-floor exits.
