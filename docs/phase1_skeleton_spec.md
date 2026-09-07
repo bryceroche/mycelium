@@ -34334,3 +34334,15 @@ verdicts ride into the next breath as conditioning (the fact buffer's
 road), trained under the cooker's seal so the committed channel learns
 from collisions. If (1) fails, the deletion core still earns its keep
 as the survivor-autopsy instrument (which slots the paradox names).
+
+## 2026-09-07 — SITE: two posts LIVE (two winds; the godol collider) — deploy recipe corrected
+
+Deployed from gen-weights. RECIPE FIX: `wrangler pages deploy` from a
+non-main branch lands a PREVIEW (alias gen-weights.shape-of-thought.
+pages.dev) and the custom domain does NOT move — production branch is
+`main`; pass `--branch=main`. Also: node lives in ~/opt/node/bin (no
+npx on PATH in agent shells). Full recipe: `.venv/bin/python3
+site/build_site.py && PATH=$HOME/opt/node/bin:$PATH
+node_modules/.bin/wrangler pages deploy site/dist --project-name
+shape-of-thought --branch=main --commit-dirty=true`. Verified live:
+theshapeofthought.ai/blog/ lists both 2026-09-07 posts.
