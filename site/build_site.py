@@ -200,6 +200,8 @@ the silence is.</p>
 
 
 HOOKS = {
+ "2026-09-07-the-godol-collider": "Two rival readings, one exact solver — disambiguation by collision, and the honest limit: consistency is not truth.",
+ "2026-09-07-two-winds": "A flag shredded by excessive attention, a wet bag with no path through it — two dreams bound to organs and pinned before the read.",
  "2026-09-05-the-paired-atlas": "The model runs once; the reading never stops moving — seven pages for the language atlas, and the needle between the charts.",
  "2026-09-05-the-drafting-problem": "There are no good cards, only good cards for this deck — what Slay the Spire knows about attention masking.",
  "2026-09-04-the-lean-horizon": "Two nested loops — the CSP solver inside, the Lean compiler outside — and the two-line theory of abstraction and reasoning.",
