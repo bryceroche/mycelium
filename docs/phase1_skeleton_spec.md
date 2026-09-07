@@ -34496,3 +34496,44 @@ CAUSAL METRICS tracked on the waypoints s2000..s12000 after the run:
 stamp fraction < 1e-3 at breath 2, median/min stamp, alt21 key-bias
 displacement and whole-head drift (the failed arm's fingerprint:
 966x / 3.3x). Unit pc-floor; verdict entry follows the reads.
+
+## 2026-09-07 — WORD GIVEN: THE LADDER (rungs 1-3 fire after the floored canary) — one principle, two witnesses, one clock
+
+THE UNIFICATION (registered): dispersion is wrongness (Tolstoy). Two
+witnesses with independent failure modes — the GEOMETRIC witness (the
+atlas radius per breath, Welford-variance-calibrated: the road's
+spread is the z-score's ruler) and the SYMBOLIC witness (the
+collider: contradiction, and the deletion core that names the slot)
+— on one clock (the pages are keyed by breath; a machine that does
+not know its breath consults seven pages in blurred coordinates —
+never-mix-coordinates across BREATHS; the round-2 atlas negative may
+be partly the unwired sextet). Both enter the mask head as
+CONDITIONING, detached, never a loss (Goodhart fence; both join the
+diagnostic register). The needle stands BEHIND the mouth (the paper:
+on out-of-register text every witness misreads consistently).
+The page-feed failed because the page is a target; the RADIUS is the
+information (two-channel law: angle = identity, radius = state).
+
+RUNG 1 — THE CLOCK READ (`scripts/clock_read.py`, fedon242, mint +
+wild): (a) breath-identity probe (ridge, 70/30 items) — BAR acc >=
+0.95; printed beside a norm-only control (is identity carried by
+geometry or by the shrinking radius?); (b) the sextet signature —
+Procrustes rotation between consecutive loop breaths, eigen-angle
+histogram: a wired clock peaks near 60 deg; consolidation-only near 0.
+RUNG 2 — THE NEEDLE READ (`scripts/needle_read.py`, fedon242, the
+fed atlas stamped fedon242, wild + mint): per-item per-breath
+z-radius / cosine to the item's OWN class cell (math side; NL side
+too), AUC wrong-vs-correct per breath — BAR AUC >= 0.70 at the best
+breath; KILL < 0.60. The "adds to agreement" bar is rung 2b (after
+2 passes; needs the 5-view pipeline). Granularity caveat filed: the
+fed atlas has 6 coarse classes (register, ladder depth), not
+operation kinds — a pass here is a lower bound on the needle.
+RUNG 3 — THE COLLIDER READ (`scripts/collider_read.py`): bars as
+pinned in the 22nd (visibility >= 0.30 / kill < 0.10; flip precision
+>= 0.60; recovery >= 0.05; silent-wrong <= 0.01).
+RUNG 4 (build; HOLD for the word): needle + veto channel into the
+mask head as conditioning, trained under the cooker's seal.
+Builders: three parallel agents, CPU-only (AM single-process law
+while pc-floor holds the card). Queue: `.cache/ladder_queue.sh`
+waits for pc-floor to exit, then runs rungs 1-3 on the GPU as unit
+pc-ladder. Verdict entries follow the reads.
