@@ -35,10 +35,10 @@ dumps per-token waist states (the parse-side silhouette, capture-once schema).
 
 USAGE:
   CPU selftest:               .venv/bin/python3 scripts/phase1_delta_head.py --selftest
-  Precompute trunk states:    DEV=AMD .venv/bin/python3 scripts/phase1_delta_head.py --precompute
-  Train (smoke: STEPS=30):    DEV=AMD STEPS=600 .venv/bin/python3 scripts/phase1_delta_head.py --train
-  Eval a ckpt (+ solve rate): DEV=AMD .venv/bin/python3 scripts/phase1_delta_head.py --eval [--width 512]
-  Capture waist silhouettes:  DEV=AMD .venv/bin/python3 scripts/phase1_delta_head.py --capture
+  Precompute trunk states:    DEV=PCI+AMD .venv/bin/python3 scripts/phase1_delta_head.py --precompute
+  Train (smoke: STEPS=30):    DEV=PCI+AMD STEPS=600 .venv/bin/python3 scripts/phase1_delta_head.py --train
+  Eval a ckpt (+ solve rate): DEV=PCI+AMD .venv/bin/python3 scripts/phase1_delta_head.py --eval [--width 512]
+  Capture waist silhouettes:  DEV=PCI+AMD .venv/bin/python3 scripts/phase1_delta_head.py --capture
 """
 from __future__ import annotations
 

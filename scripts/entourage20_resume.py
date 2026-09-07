@@ -1,7 +1,7 @@
 import json, os, subprocess, sys
 sys.path.insert(0, "."); sys.path.insert(0, "scripts")
 def sh(cmd, extra=None, tail=2):
-    env = dict(os.environ); env.update({"DEV":"AMD","ALG2":"1","ALG_FTYPES":"8","ALG_DUP":"1"}); env.update(extra or {})
+    env = dict(os.environ); env.update({"DEV":"PCI+AMD","ALG2":"1","ALG_FTYPES":"8","ALG_DUP":"1"}); env.update(extra or {})
     r = subprocess.run(cmd, shell=True, env=env, capture_output=True, text=True)
     for l in (r.stdout + r.stderr).strip().splitlines()[-tail:]:
         print("   ", l, flush=True)

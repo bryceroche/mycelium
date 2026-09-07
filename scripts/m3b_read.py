@@ -20,7 +20,7 @@ os.environ.setdefault("ALG_SIXWAVE", "1")
 os.environ.setdefault("NB_PERSLOT", "1")
 os.environ.setdefault("ATLAS_TABLE", "waist_patterns_sharp")
 os.environ.setdefault("ATLAS_TRANS", "sharp_transitions")
-os.environ.update({"DEV": "AMD", "ALG2": "1", "ALG_FTYPES": "9",
+os.environ.update({"DEV": "PCI+AMD", "ALG2": "1", "ALG_FTYPES": "9",
                    "ALG_DUP": "1", "ALG_HW": "512", "ALG_WIDE": "1",
                    "ALG_TEST": ".cache/algebra_nl_bigtest.jsonl",
                    "ALG_TEST_NAME": "bigtest"})

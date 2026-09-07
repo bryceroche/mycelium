@@ -41,7 +41,7 @@ USAGE:
   CPU selftest (no GPU, no ckpt):
     .venv/bin/python3 scripts/capture_silhouette_trajectories.py --selftest
   Capture (GPU, eager — ~minutes):
-    DEV=AMD .venv/bin/python3 scripts/capture_silhouette_trajectories.py \
+    DEV=PCI+AMD .venv/bin/python3 scripts/capture_silhouette_trajectories.py \
         --ckpt .cache/fg_ckpts/fg_kenken_k16_reg/fg_kenken_k16_reg_final.safetensors \
         --test .cache/kenken_test_curriculum.jsonl --per-band 6 --out .cache/silhouette_traj_kenken_reg.npz
   Analyze + render (CPU, reads the npz):

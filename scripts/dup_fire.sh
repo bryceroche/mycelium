@@ -7,7 +7,7 @@
 # completion or pre-registered kill, nothing stirred.
 set -eo pipefail
 cd /home/bryce/mycelium
-export DEV=AMD ALG2=1 ALG_FTYPES=8 ALG_DUP=1 ALG_ALLOW_PEN_TRAIN=1
+export DEV=PCI+AMD ALG2=1 ALG_FTYPES=8 ALG_DUP=1 ALG_ALLOW_PEN_TRAIN=1
 PY=.venv/bin/python3
 echo "=== DUP 1/3: prep (mint, WET fold, assembly, sentinels) ==="
 $PY scripts/dup_fire_prep.py

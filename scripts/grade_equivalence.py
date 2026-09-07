@@ -17,7 +17,7 @@ bigtest with the UNIFORM metric and taxonomizes the correctness boundary:
 OUTPUT: the honest one-shot number, the corrected END-TO-END baseline
 (one-shot-forced + repaired-forced 226), and the boundary taxonomy.
 
-USAGE: DEV=AMD ALG_TEST=.cache/algebra_nl_bigtest.jsonl ALG_TEST_NAME=bigtest \
+USAGE: DEV=PCI+AMD ALG_TEST=.cache/algebra_nl_bigtest.jsonl ALG_TEST_NAME=bigtest \
            .venv/bin/python3 scripts/grade_equivalence.py
 """
 from __future__ import annotations

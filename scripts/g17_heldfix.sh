@@ -3,7 +3,7 @@
 # arms, splice into the battery logs, re-invoke the pen.
 set -eo pipefail
 cd /home/bryce/mycelium
-export DEV=AMD ALG2=1 ALG_FTYPES=8 ALG_DUP=1
+export DEV=PCI+AMD ALG2=1 ALG_FTYPES=8 ALG_DUP=1
 PY=.venv/bin/python3
 
 for cand in F R; do

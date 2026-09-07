@@ -21,7 +21,7 @@ OUTPUT: per-definition AUC for (a) SILENT vs CORRECT — THE number; (b) all-wro
 correct (general discrimination, context); plus the distribution summary (median
 confidence per class) so separation is visible, not just scored.
 
-USAGE:  DEV=AMD .venv/bin/python3 scripts/tier0_incumbent.py
+USAGE:  DEV=PCI+AMD .venv/bin/python3 scripts/tier0_incumbent.py
 """
 from __future__ import annotations
 

@@ -11,7 +11,7 @@ r=[x for x in rows if x['id']=='$ID'][0]
 print(' '.join(f'{k}={v}' for k,v in r.items()))")
 echo "== POOL $ID :: $CFG =="
 eval "export $CFG"
-export DEV=AMD ALG2=1 ALG_DUP=1 ALG_HW=512 ALG_WIDE=1 ALG_ALLOW_PEN_TRAIN=1
+export DEV=PCI+AMD ALG2=1 ALG_DUP=1 ALG_HW=512 ALG_WIDE=1 ALG_ALLOW_PEN_TRAIN=1
 CSUF=""
 if [ "$incanon" = "1" ]; then CSUF="_c"; fi
 MIX=.cache/form_mix23_${diet}${CSUF}.jsonl

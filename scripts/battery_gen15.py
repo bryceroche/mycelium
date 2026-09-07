@@ -12,7 +12,7 @@ manifest or refuses. Everything alongside gen-14; nothing touched.
 import json, os, subprocess, sys
 sys.path.insert(0, "."); sys.path.insert(0, "scripts")
 
-ENV = {"DEV": "AMD", "ALG2": "1", "ALG_FTYPES": "7", "ALG_DUP": "1"}
+ENV = {"DEV": "PCI+AMD", "ALG2": "1", "ALG_FTYPES": "7", "ALG_DUP": "1"}
 CANDS = {"A": ".cache/fire_armA.safetensors",
          "C1": ".cache/fire_armC1.safetensors"}
 FIXTURES = [("bigtest", ".cache/algebra_nl_bigtest.jsonl"),

@@ -22,7 +22,7 @@ JSD between breath-0 and breath-1 head distributions vs slot wrongness
 (midrank AUC). Portfolio classification on arrival; the customer (lone
 misbindings, if they stand) is already waiting.
 
-USAGE: DEV=AMD .venv/bin/python3 scripts/brickp_split_bars.py
+USAGE: DEV=PCI+AMD .venv/bin/python3 scripts/brickp_split_bars.py
 """
 from __future__ import annotations
 

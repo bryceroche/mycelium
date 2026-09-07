@@ -3,7 +3,7 @@
 # Four arms, sequential; every ckpt built alongside gen-14, nothing touched.
 set -eo pipefail
 cd /home/bryce/mycelium
-export DEV=AMD ALG2=1 ALG_FTYPES=7 ALG_DUP=1
+export DEV=PCI+AMD ALG2=1 ALG_FTYPES=7 ALG_DUP=1
 PY=.venv/bin/python3
 G14=.cache/phase1_gen14_head.safetensors
 

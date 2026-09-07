@@ -8,7 +8,7 @@ Same meter, same 143 golds, same nulls. Shelf so far: Llama-1B base
 (early zigzag + mixed zone), Pythia-410M base (punctuated glide).
 """
 import os, sys, json, glob
-os.environ.setdefault("DEV", "AMD")
+os.environ.setdefault("DEV", "PCI+AMD")
 sys.path.insert(0, '.'); sys.path.insert(0, 'scripts')
 import numpy as np
 from mycelium.llama_loader import (attach_llama_layers, LlamaConfig)

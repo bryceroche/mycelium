@@ -12,7 +12,7 @@ F1 on the 143 gold wild rows vs v1's 0.373 baseline and the 0.5 bar
 noted honestly).
 """
 import os, sys, json, glob, random
-os.environ.update({"DEV": "AMD", "ALG2": "1", "ALG_FTYPES": "8",
+os.environ.update({"DEV": "PCI+AMD", "ALG2": "1", "ALG_FTYPES": "8",
                    "ALG_DUP": "1", "ALG_HW": "512", "ALG_WIDE": "1",
                    "ALG_TEST": ".cache/algebra_nl_bigtest.jsonl",
                    "ALG_TEST_NAME": "bigtest"})

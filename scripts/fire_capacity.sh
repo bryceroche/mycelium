@@ -4,7 +4,7 @@
 # reused (trunk-side, H_W-invariant); ration per the proven clause.
 set -eo pipefail
 cd /home/bryce/mycelium
-export DEV=AMD ALG2=1 ALG_FTYPES=8 ALG_DUP=1 ALG_HW=1024
+export DEV=PCI+AMD ALG2=1 ALG_FTYPES=8 ALG_DUP=1 ALG_HW=1024
 PY=.venv/bin/python3
 MIX=.cache/gen18b_mix.jsonl
 echo "=== CAPACITY: 32k cold at H_W=1024 (quench rite) ==="

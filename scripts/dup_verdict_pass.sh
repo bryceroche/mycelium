@@ -4,7 +4,7 @@
 # bigtest+alg4 in one session (comparable conditions).
 set -eo pipefail
 cd /home/bryce/mycelium
-export DEV=AMD ALG2=1 ALG_FTYPES=8 ALG_DUP=1
+export DEV=PCI+AMD ALG2=1 ALG_FTYPES=8 ALG_DUP=1
 PY=.venv/bin/python3
 echo "=== NEIGHBOR READS (g22 bars: bigtest 1226, alg4 398) ==="
 for ARM in dry_d02 dry_d05 dry_d12 wet_d02 wet_d05 wet_d12; do

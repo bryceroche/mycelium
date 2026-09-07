@@ -48,7 +48,7 @@ Knobs: WC_INPUTS (comma list of input files, default all four),
 WC_LIMIT (int cap per input file, for smoke). GPU work (trunk + head)
 happens only under __main__.
 
-USAGE: DEV=AMD .venv/bin/python3 scripts/wild_certify.py
+USAGE: DEV=PCI+AMD .venv/bin/python3 scripts/wild_certify.py
 """
 import sys, os, json
 sys.path.insert(0, "."); sys.path.insert(0, "scripts")

@@ -9,7 +9,7 @@ Env: WF_CKPT (stack artifact with garage; DETWAVE not required — we
 recompute the field from the snaps directly).
 """
 import os, sys
-os.environ.setdefault("DEV", "AMD")
+os.environ.setdefault("DEV", "PCI+AMD")
 os.environ.setdefault("ALG2", "1")
 os.environ.setdefault("ALG_FTYPES", "9")
 os.environ.setdefault("ALG_DUP", "1")

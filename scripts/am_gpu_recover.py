@@ -55,7 +55,7 @@ def main() -> int:
         [sys.executable, "-c",
          "from tinygrad import Tensor; "
          "print('smoke:', (Tensor.ones(128,128)@Tensor.ones(128,128)).sum().item())"],
-        env={**os.environ, "DEV": "AMD"}, capture_output=True, text=True, timeout=180)
+        env={**os.environ, "DEV": "PCI+AMD"}, capture_output=True, text=True, timeout=180)
     print("  " + (r.stdout.strip() or r.stderr.strip().splitlines()[-1]))
     ok = "smoke: 2097152.0" in r.stdout
     print(f"[recover] {'OK — device recovered' if ok else 'FAILED — reboot likely required'}")

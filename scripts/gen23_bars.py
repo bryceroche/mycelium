@@ -135,7 +135,7 @@ if __name__ == "__main__":  # import-guard (the lesson, applied to its own autho
     env = dict(os.environ)
     env.update({"ALG_CKPT": ".cache/g23.safetensors",
                 "ALG_TEST": ".cache/algebra_nl_bigtest.jsonl",
-                "ALG_TEST_NAME": "bigtest", "DEV": "AMD"})
+                "ALG_TEST_NAME": "bigtest", "DEV": "PCI+AMD"})
     r = subprocess.run([".venv/bin/python3", "scripts/phase1_algebra_head.py",
                         "--eval"], env=env, capture_output=True, text=True)
     tail = r.stdout.strip().splitlines()[-6:]

@@ -9,7 +9,7 @@ Phase A (GPU): gsb227_opc opc argmax counts on 143 golds (grade) + the
 """
 import os, sys, json, re, glob
 os.environ.setdefault("ALG_MINE_BREATHS", "0")
-os.environ.update({"DEV": "AMD", "ALG2": "1", "ALG_FTYPES": "9",
+os.environ.update({"DEV": "PCI+AMD", "ALG2": "1", "ALG_FTYPES": "9",
                    "ALG_DUP": "1", "ALG_HW": "512", "ALG_WIDE": "1",
                    "ALG_BREATH": "7", "ALG_NOTEBOOK": "1", "ALG_SIXWAVE": "1",
                    "ALG_OPCOUNT": os.environ.get("OPC_MODE", "1"),

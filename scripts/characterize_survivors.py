@@ -16,7 +16,7 @@ sample render draws weren't logged — detectable from artifacts):
 Replays the deterministic stack (converged parser -> withhold-2 -> 4 specialist
 rounds, field-only) to identify survivors, then prints enrichment ratios.
 
-USAGE: DEV=AMD ALG_TEST=.cache/algebra_nl_bigtest.jsonl ALG_TEST_NAME=bigtest \
+USAGE: DEV=PCI+AMD ALG_TEST=.cache/algebra_nl_bigtest.jsonl ALG_TEST_NAME=bigtest \
            ROUNDS=4 ARM=field_only .venv/bin/python3 scripts/characterize_survivors.py
 """
 from __future__ import annotations

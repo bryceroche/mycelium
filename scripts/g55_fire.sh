@@ -1,7 +1,7 @@
 #!/bin/bash
 set -eo pipefail
 cd /home/bryce/mycelium
-export DEV=AMD ALG2=1 ALG_DUP=1 ALG_HW=512 ALG_WIDE=1 ALG_ALLOW_PEN_TRAIN=1
+export DEV=PCI+AMD ALG2=1 ALG_DUP=1 ALG_HW=512 ALG_WIDE=1 ALG_ALLOW_PEN_TRAIN=1
 PY=.venv/bin/python3
 echo "== ASSEMBLE form15 (mixture: deeds->base, surgery+rescue->diet) =="
 env ALG_FTYPES=8 DIET_REPS=${DIET_REPS:-3} $PY scripts/form_assemble15.py

@@ -87,7 +87,7 @@ propagation, AND proves soundness (a deliberately-wrong mock never yields an imp
 
 RUN COMMAND (AMD GPU)
 ---------------------
-  DEV=AMD \\
+  DEV=PCI+AMD \\
   FG_CKPT=.cache/fg_ckpts/fg_coloring_k16/fg_coloring_k16_final.safetensors \\
   FG_N_VALUES=3 FG_N_INSTANCES=8000 SEARCH_CONFIG=all SEARCH_BUDGETS=25,50,100,200 \\
       .venv/bin/python3 scripts/search_coloring.py

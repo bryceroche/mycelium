@@ -7,7 +7,7 @@ res-recovery correctness beyond chance; mint louder than wild
 Env: MM_CKPT, BR_V, BR_D, BIND_CODES (as bind_read).
 """
 import os, sys, json, glob
-os.environ.update({"DEV": "AMD", "ALG2": "1", "ALG_FTYPES": "9",
+os.environ.update({"DEV": "PCI+AMD", "ALG2": "1", "ALG_FTYPES": "9",
                    "ALG_DUP": "1", "ALG_HW": "512", "ALG_WIDE": "1",
                    "ALG_BREATH": "7", "ALG_NOTEBOOK": "1", "ALG_SIXWAVE": "1",
                    "NB_PERSLOT": "1",

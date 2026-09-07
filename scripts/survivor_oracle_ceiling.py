@@ -24,7 +24,7 @@ Identity from .cache/survivor_profile_bigtest.npz; everything else identical to
 the deployed stack (same solve_check incl. withhold-2, same 4 rounds, field-only
 arm: span channel zero, fbit ones).
 
-USAGE: DEV=AMD ALG_TEST=.cache/algebra_nl_bigtest.jsonl ALG_TEST_NAME=bigtest \
+USAGE: DEV=PCI+AMD ALG_TEST=.cache/algebra_nl_bigtest.jsonl ALG_TEST_NAME=bigtest \
            .venv/bin/python3 scripts/survivor_oracle_ceiling.py
 """
 from __future__ import annotations

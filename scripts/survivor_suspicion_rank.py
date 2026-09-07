@@ -24,7 +24,7 @@ REGISTERED PREDICTIONS (before measuring):
 Zero 4-round replay: survivor/recovered identity comes from
 .cache/survivor_profile_bigtest.npz; only the blank parse is re-run.
 
-USAGE: DEV=AMD ALG_TEST=.cache/algebra_nl_bigtest.jsonl ALG_TEST_NAME=bigtest \
+USAGE: DEV=PCI+AMD ALG_TEST=.cache/algebra_nl_bigtest.jsonl ALG_TEST_NAME=bigtest \
            .venv/bin/python3 scripts/survivor_suspicion_rank.py
 """
 from __future__ import annotations

@@ -1,7 +1,7 @@
 #!/bin/bash
 set -eo pipefail
 cd /home/bryce/mycelium
-export DEV=AMD ALG2=1 ALG_DUP=1 ALG_HW=512 ALG_WIDE=1 ALG_ALLOW_PEN_TRAIN=1
+export DEV=PCI+AMD ALG2=1 ALG_DUP=1 ALG_HW=512 ALG_WIDE=1 ALG_ALLOW_PEN_TRAIN=1
 PY=.venv/bin/python3
 echo "== ASSEMBLE form8 (VALATT+LSENT gold restage) =="
 env ALG_FTYPES=9 ALG_SEPHASE=1 $PY scripts/form_assemble8.py

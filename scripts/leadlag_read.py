@@ -53,7 +53,7 @@ _llpath, _llname = _FIXTURES.get(_ll, (_ll, os.path.basename(_ll)))
 # Champion env stack — VERBATIM from the round-2 chain, via setdefault
 # so a chain's explicit envs win; ALG_TEST comes from LL_TEST.
 _CHAMPION_ENVS = {
-    "DEV": "AMD", "ALG2": "1", "ALG_FTYPES": "9", "ALG_DUP": "1",
+    "DEV": "PCI+AMD", "ALG2": "1", "ALG_FTYPES": "9", "ALG_DUP": "1",
     "ALG_HW": "512", "ALG_WIDE": "1", "ALG_BREATH": "7",
     "ALG_NOTEBOOK": "1", "ALG_SIXWAVE": "1", "NB_PERSLOT": "1",
     "ALG_BINDBUS": "7", "ALG_BIND_D": "512",

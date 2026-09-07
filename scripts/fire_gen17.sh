@@ -7,7 +7,7 @@
 #         lever isolated; band-timing deliberately unasked).
 set -eo pipefail
 cd /home/bryce/mycelium
-export DEV=AMD ALG2=1 ALG_FTYPES=8 ALG_DUP=1
+export DEV=PCI+AMD ALG2=1 ALG_FTYPES=8 ALG_DUP=1
 PY=.venv/bin/python3
 G16=.cache/crown_reader_v4.safetensors
 

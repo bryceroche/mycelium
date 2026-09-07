@@ -14,7 +14,7 @@ precision/recall at t in {3,4,5} of 5. REGISTERED (relay): unanimity 5/5 is
 the 0.99+ certification channel. K>5 extension priced at ~7 min GPU per view;
 deferred until this curve says more K pays.
 
-USAGE: DEV=AMD ALG_TEST=.cache/algebra_nl_bigtest.jsonl ALG_TEST_NAME=bigtest \
+USAGE: DEV=PCI+AMD ALG_TEST=.cache/algebra_nl_bigtest.jsonl ALG_TEST_NAME=bigtest \
            .venv/bin/python3 scripts/portfolio_and_threshold.py
 """
 from __future__ import annotations

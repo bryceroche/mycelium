@@ -18,7 +18,7 @@ generator construction, so duplicates are collisions by definition):
   PHANT  — unpairable predicted rel/sel factors outside collisions
   QUERY  — q_pred != gold query var
 
-USAGE: DEV=AMD .venv/bin/python3 scripts/brickp_rel_bars.py
+USAGE: DEV=PCI+AMD .venv/bin/python3 scripts/brickp_rel_bars.py
 """
 from __future__ import annotations
 

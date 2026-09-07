@@ -6,7 +6,7 @@
 set -eo pipefail
 cd /home/bryce/mycelium
 PY=.venv/bin/python3
-export DEV=AMD ALG2=1 ALG_DUP=1 ALG_HW=512 ALG_WIDE=1 ALG_ALLOW_PEN_TRAIN=1
+export DEV=PCI+AMD ALG2=1 ALG_DUP=1 ALG_HW=512 ALG_WIDE=1 ALG_ALLOW_PEN_TRAIN=1
 for B in 0 2 4; do
   CK=.cache/beam_smoke_$B.safetensors
   $PY - << PYEOF2

@@ -1,7 +1,7 @@
 #!/bin/bash
 set -eo pipefail
 cd /home/bryce/mycelium
-export DEV=AMD ALG2=1 ALG_DUP=1 ALG_HW=512 ALG_WIDE=1 ALG_ALLOW_PEN_TRAIN=1
+export DEV=PCI+AMD ALG2=1 ALG_DUP=1 ALG_HW=512 ALG_WIDE=1 ALG_ALLOW_PEN_TRAIN=1
 PY=.venv/bin/python3
 for ARM in "gk5_arm ALG_SEPHASE=1_B5" "gnat_native ALG_SIXWAVE=1_B3"; do set -- $ARM
 CFG=$(echo $2 | sed 's/_B5/ ALG_SIXWAVE=1 ALG_BREATH=5/; s/_B3/ ALG_BREATH=3/')

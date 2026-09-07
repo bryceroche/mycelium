@@ -11,7 +11,7 @@ import json, sys, os, re
 sys.path.insert(0, "."); sys.path.insert(0, "scripts")
 import numpy as np
 
-os.environ.setdefault("DEV", "AMD")
+os.environ.setdefault("DEV", "PCI+AMD")
 from tokenizers import Tokenizer
 from tinygrad import Tensor, dtypes
 

@@ -22,7 +22,7 @@ each stage + peak; sysfs VRAM (mem_info_vram_used) when readable. Stages:
   -> S4 deducer loaded -> S5 deducer eval batch.
 
 USAGE:
-  DEV=AMD .venv/bin/python3 scripts/phase1_residency_smoke.py
+  DEV=PCI+AMD .venv/bin/python3 scripts/phase1_residency_smoke.py
   (env: LLAMA_WEIGHTS to override the weights path; B/T for the llama batch shape)
 """
 from __future__ import annotations

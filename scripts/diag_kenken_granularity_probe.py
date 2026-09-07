@@ -46,7 +46,7 @@ a GPU job. Bryce/main-thread fires the GPU run once a KenKen ckpt exists (FG_TAS
 scripts/factor_graph_train.py would produce one; per CLAUDE.md no KenKen ckpt exists yet).
 
 USAGE (when a KenKen ckpt exists — Bryce/main-thread runs this; agents do NOT):
-  DEV=AMD \
+  DEV=PCI+AMD \
   FG_CKPT=.cache/fg_ckpts/fg_kenken_k16/fg_kenken_k16_final.safetensors \
   .venv/bin/python3 scripts/diag_kenken_granularity_probe.py \
       --bands g40,g30,g20,g10 --per-band 50 --K 16 --eval-batch 8 --folds 5 --seed 0

@@ -8,7 +8,7 @@ null, autocorrelation period hunt. A replicated anatomy = a Shape of
 Thought cross-lineage datum; a different one = family fingerprints.
 """
 import os, sys, json, glob
-os.environ.setdefault("DEV", "AMD")
+os.environ.setdefault("DEV", "PCI+AMD")
 sys.path.insert(0, '.'); sys.path.insert(0, 'scripts')
 import numpy as np
 from mycelium.config import Config

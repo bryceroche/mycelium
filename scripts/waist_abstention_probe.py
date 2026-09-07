@@ -29,7 +29,7 @@ portfolio rule the signal is CLASSIFIED ON ARRIVAL: dense ranker vs
 rare-precise flag vs dead.
 
 USAGE (after deployment_honest_audit.py has written its npz):
-  DEV=AMD ALG_TEST=.cache/algebra_nl_bigtest.jsonl ALG_TEST_NAME=bigtest \
+  DEV=PCI+AMD ALG_TEST=.cache/algebra_nl_bigtest.jsonl ALG_TEST_NAME=bigtest \
       .venv/bin/python3 scripts/waist_abstention_probe.py
 """
 from __future__ import annotations

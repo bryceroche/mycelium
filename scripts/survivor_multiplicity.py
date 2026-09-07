@@ -32,7 +32,7 @@ ERROR TAXONOMY (multiplicity = paired field-errors + unpaired + query flag):
   field (rel_op / rel_args / rel_result / given_value); unpaired = missing /
   phantom; + query_wrong.
 
-USAGE: DEV=AMD ALG_TEST=.cache/algebra_nl_bigtest.jsonl ALG_TEST_NAME=bigtest \
+USAGE: DEV=PCI+AMD ALG_TEST=.cache/algebra_nl_bigtest.jsonl ALG_TEST_NAME=bigtest \
            .venv/bin/python3 scripts/survivor_multiplicity.py
 """
 from __future__ import annotations

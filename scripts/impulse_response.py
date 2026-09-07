@@ -11,7 +11,7 @@ would flag instability: none expected, worth knowing.
 Env: IR_CKPT (default sharp_bind14a).
 """
 import os, sys
-os.environ.update({"DEV": "AMD", "ALG2": "1", "ALG_FTYPES": "9",
+os.environ.update({"DEV": "PCI+AMD", "ALG2": "1", "ALG_FTYPES": "9",
                    "ALG_DUP": "1", "ALG_HW": "512", "ALG_WIDE": "1",
                    "ALG_BREATH": "7", "ALG_NOTEBOOK": "1", "ALG_SIXWAVE": "1",
                    "NB_PERSLOT": "1", "ALG_BINDBUS": "7", "ALG_BIND_D": "512",

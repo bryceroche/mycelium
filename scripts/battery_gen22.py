@@ -14,7 +14,7 @@ import json, os, subprocess, sys
 sys.path.insert(0, "."); sys.path.insert(0, "scripts")
 
 GEN = "22"
-ENV = {"DEV": "AMD", "ALG2": "1", "ALG_FTYPES": "8", "ALG_DUP": "1"}
+ENV = {"DEV": "PCI+AMD", "ALG2": "1", "ALG_FTYPES": "8", "ALG_DUP": "1"}
 CANDS = {"H": ".cache/g22.safetensors"}
 # two-home fix 2026-07-30: the roster's one authority
 from gate_fixtures import FIXTURES

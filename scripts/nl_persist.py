@@ -8,7 +8,7 @@ Keys per the binding theorem: (class, family, cycle) — slot_id is
 provenance only, never an aggregation key.
 """
 import json, re, os, sys, sqlite3, hashlib
-os.environ.update({"DEV": "AMD", "ALG2": "1", "ALG_FTYPES": "8",
+os.environ.update({"DEV": "PCI+AMD", "ALG2": "1", "ALG_FTYPES": "8",
                    "ALG_DUP": "1", "ALG_HW": "512", "ALG_WIDE": "1",
                    "ALG_TEST": ".cache/algebra_nl_bigtest.jsonl",
                    "ALG_TEST_NAME": "bigtest"})

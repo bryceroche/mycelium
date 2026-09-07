@@ -25,7 +25,7 @@ REGISTERED (before firing):
       measured number silently credited gold-checked acceptance).
   This number is the MATH-500-relevant one; nothing is quoted without it again.
 
-USAGE: DEV=AMD ALG_TEST=.cache/algebra_nl_bigtest.jsonl ALG_TEST_NAME=bigtest \
+USAGE: DEV=PCI+AMD ALG_TEST=.cache/algebra_nl_bigtest.jsonl ALG_TEST_NAME=bigtest \
            .venv/bin/python3 scripts/deployment_honest_audit.py
 """
 from __future__ import annotations

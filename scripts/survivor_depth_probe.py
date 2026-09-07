@@ -33,7 +33,7 @@ Requires .cache/oracle_recovered_bigtest.npz (run survivor_oracle_ceiling.py
 first) + the survivor profile npz. L8 states cached to
 .cache/algebra_bigtest_L8_states.npy on first run.
 
-USAGE: DEV=AMD ALG_TEST=.cache/algebra_nl_bigtest.jsonl ALG_TEST_NAME=bigtest \
+USAGE: DEV=PCI+AMD ALG_TEST=.cache/algebra_nl_bigtest.jsonl ALG_TEST_NAME=bigtest \
            .venv/bin/python3 scripts/survivor_depth_probe.py
 """
 from __future__ import annotations

@@ -3,7 +3,7 @@
 # priced dose): 2x4k SGDR from g17_armR on the reps-raised mix.
 set -eo pipefail
 cd /home/bryce/mycelium
-export DEV=AMD ALG2=1 ALG_FTYPES=8 ALG_DUP=1
+export DEV=PCI+AMD ALG2=1 ALG_FTYPES=8 ALG_DUP=1
 PY=.venv/bin/python3
 
 echo "=== G17B 1/3: precompute mix states ==="

@@ -16,7 +16,7 @@ imitate yet. >20% closure = the staircase is transitive and cheap.
 import argparse, json, os, subprocess, sys
 sys.path.insert(0, "."); sys.path.insert(0, "scripts")
 
-ENV = {"DEV": "AMD", "ALG2": "1", "ALG_FTYPES": "6"}
+ENV = {"DEV": "PCI+AMD", "ALG2": "1", "ALG_FTYPES": "6"}
 PARSER = ".cache/phase1_bilingual_head.safetensors"
 SPEC = ".cache/phase1_bilingual_nack.safetensors"
 
@@ -141,7 +141,7 @@ print(f"GRADIENT READ: distance-over-threshold {gap_old:.4f} -> {gap_new:.4f} "
       f"= {100*(1-gap_new/gap_old):.0f}%% closed (hypothesis: 10-20%% local / >20%% transitive)")
 '''
     open("/tmp/claude-1000/-home-bryce-mycelium/d57518e2-8afb-4987-989f-292859d8ca53/scratchpad/_s5.py", "w").write(code)
-    sh(".venv/bin/python3 /tmp/claude-1000/-home-bryce-mycelium/d57518e2-8afb-4987-989f-292859d8ca53/scratchpad/_s5.py", {"DEV": "AMD"}, tail=3)
+    sh(".venv/bin/python3 /tmp/claude-1000/-home-bryce-mycelium/d57518e2-8afb-4987-989f-292859d8ca53/scratchpad/_s5.py", {"DEV": "PCI+AMD"}, tail=3)
 
 def stage6_evals_and_manifest():
     print("[bump 6/6] evals + MANIFEST (the commit point)")

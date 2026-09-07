@@ -14,7 +14,7 @@ import json, os, subprocess, sys
 sys.path.insert(0, "."); sys.path.insert(0, "scripts")
 
 GEN = "21"
-ENV = {"DEV": "AMD", "ALG2": "1", "ALG_FTYPES": "8", "ALG_DUP": "1"}
+ENV = {"DEV": "PCI+AMD", "ALG2": "1", "ALG_FTYPES": "8", "ALG_DUP": "1"}
 CANDS = {"H": ".cache/g21.safetensors"}
 FIXTURES = [("bigtest", ".cache/algebra_nl_bigtest.jsonl"),
             ("alg4test", ".cache/algebra4_nl_test.jsonl"),

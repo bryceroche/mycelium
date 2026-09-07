@@ -23,7 +23,7 @@ REGISTERED (before firing):
      split by has-selector. Enriched on selector samples = the five-seat
      audience is load-bearing for quadratics.
 
-USAGE: DEV=AMD ALG2=1 ALG_CKPT=.cache/phase1_algebra2_head.safetensors \
+USAGE: DEV=PCI+AMD ALG2=1 ALG_CKPT=.cache/phase1_algebra2_head.safetensors \
        ALG_TEST=.cache/algebra2_nl_test.jsonl ALG_TEST_NAME=alg2test \
        .venv/bin/python3 scripts/tta_alg2_dials.py
 """

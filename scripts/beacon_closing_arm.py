@@ -35,7 +35,7 @@ REGISTERED (both endings pinned):
     criterion's jurisdiction is which property it SELECTS ON — "survived
     filter X" is evidence about detectability, not repairability.
 
-USAGE: DEV=AMD ALG_TEST=.cache/algebra_nl_bigtest.jsonl ALG_TEST_NAME=bigtest \
+USAGE: DEV=PCI+AMD ALG_TEST=.cache/algebra_nl_bigtest.jsonl ALG_TEST_NAME=bigtest \
            .venv/bin/python3 scripts/beacon_closing_arm.py
 """
 from __future__ import annotations

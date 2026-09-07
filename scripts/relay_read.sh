@@ -1,7 +1,7 @@
 #!/bin/bash
 set -eo pipefail
 cd /home/bryce/mycelium
-export DEV=AMD ALG2=1 ALG_FTYPES=8 ALG_HW=512 ALG_DUP=1 ALG_WIDE=1 ALG_INV=1 ALG_BREATH=3
+export DEV=PCI+AMD ALG2=1 ALG_FTYPES=8 ALG_HW=512 ALG_DUP=1 ALG_WIDE=1 ALG_INV=1 ALG_BREATH=3
 export ALG_TEST=.cache/algebra_nl_bigtest.jsonl ALG_TEST_NAME=bigtest
 PY=.venv/bin/python3
 echo "== RELAY READ pass-0 (straight) =="

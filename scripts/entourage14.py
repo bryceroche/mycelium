@@ -21,7 +21,7 @@ any stage leaves the composed stack exactly as it was.
 import json, os, subprocess, sys
 sys.path.insert(0, "."); sys.path.insert(0, "scripts")
 
-ENV = {"DEV": "AMD", "ALG2": "1", "ALG_FTYPES": "6", "ALG_DUP": "1"}
+ENV = {"DEV": "PCI+AMD", "ALG2": "1", "ALG_FTYPES": "6", "ALG_DUP": "1"}
 PARSER = ".cache/phase1_gen14_head.safetensors"
 NEW_NACK = ".cache/phase1_gen14_nack.safetensors"
 

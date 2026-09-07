@@ -2,7 +2,7 @@
 # aug_fire.sh — THE AUGMENTATION FIRE (2026-08-01, the word given).
 set -eo pipefail
 cd /home/bryce/mycelium
-export DEV=AMD ALG2=1 ALG_FTYPES=8 ALG_DUP=1 ALG_ALLOW_PEN_TRAIN=1
+export DEV=PCI+AMD ALG2=1 ALG_FTYPES=8 ALG_DUP=1 ALG_ALLOW_PEN_TRAIN=1
 PY=.venv/bin/python3
 SEED=97
 for ARM in vlow vfull; do

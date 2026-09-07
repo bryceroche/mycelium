@@ -25,9 +25,9 @@ withhold-2-and-solve again -> FORCED-answer recovery per stage. Oracle-flag arm
 reported as the ceiling condition.
 
 USAGE:
-  Prep:   DEV=AMD .venv/bin/python3 scripts/phase1_algebra_nack.py --prep
-  Train:  DEV=AMD STEPS=4000 .venv/bin/python3 scripts/phase1_algebra_nack.py --train
-  Eval:   DEV=AMD ALG_TEST=.cache/algebra_nl_bigtest.jsonl ALG_TEST_NAME=bigtest \
+  Prep:   DEV=PCI+AMD .venv/bin/python3 scripts/phase1_algebra_nack.py --prep
+  Train:  DEV=PCI+AMD STEPS=4000 .venv/bin/python3 scripts/phase1_algebra_nack.py --train
+  Eval:   DEV=PCI+AMD ALG_TEST=.cache/algebra_nl_bigtest.jsonl ALG_TEST_NAME=bigtest \
               .venv/bin/python3 scripts/phase1_algebra_nack.py --eval
 """
 from __future__ import annotations

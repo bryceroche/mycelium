@@ -8,7 +8,7 @@ disposes. Census fixture untouched.
 """
 import json, sys, os
 sys.path.insert(0, "."); sys.path.insert(0, "scripts")
-os.environ.update({"DEV": "AMD", "ALG2": "1", "ALG_FTYPES": "8",
+os.environ.update({"DEV": "PCI+AMD", "ALG2": "1", "ALG_FTYPES": "8",
                    "ALG_DUP": "1", "ALG_HW": "512", "ALG_WIDE": "1"})
 import numpy as np
 from collections import Counter

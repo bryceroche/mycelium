@@ -12,7 +12,7 @@ run_pilot () {
   ID=$1; rank=$2; span=$3; proj=$4; ropeoff=$5; objwptr=$6; objwdig=$7; seed=$8; mix=$9
   NAME=$(basename $mix .jsonl | sed 's/form_mix/form/')
   echo "== LEG A PILOT $ID (mix $NAME) =="
-  env DEV=AMD ALG2=1 ALG_FTYPES=8 ALG_DUP=1 ALG_HW=512 ALG_WIDE=1 \
+  env DEV=PCI+AMD ALG2=1 ALG_FTYPES=8 ALG_DUP=1 ALG_HW=512 ALG_WIDE=1 \
       ALG_TRUNK_LORA=1 ALG_LORA_R=$rank ALG_LORA_SPAN=$span ALG_LORA_PROJ=$proj \
       ALG_ROPE_OFF=$ropeoff ALG_LORA_SCALE=8.0 \
       ALG_STRAW=1 STRAW_HUMAN=3.0 OBJW_PTR=$objwptr OBJW_DIG=$objwdig \
@@ -23,7 +23,7 @@ run_pilot () {
       ALG_CKPT=.cache/pool_${ID}_opc.safetensors \
       STEPS=${STEPS:-4000} LR=1e-5 BATCH=8 SEED=$((seed+300)) SNAP_EVERY=0 \
       $PY scripts/phase1_algebra_head.py --train 2>&1 | tail -1
-  env DEV=AMD ALG2=1 ALG_FTYPES=8 ALG_DUP=1 ALG_HW=512 ALG_WIDE=1 \
+  env DEV=PCI+AMD ALG2=1 ALG_FTYPES=8 ALG_DUP=1 ALG_HW=512 ALG_WIDE=1 \
       ALG_TRUNK_LORA=1 ALG_LORA_R=$rank ALG_LORA_SPAN=$span ALG_LORA_PROJ=$proj \
       ALG_ROPE_OFF=$ropeoff ALG_LORA_SCALE=8.0 ALG_OPCOUNT=1 \
       OPCL_CKPT=pool_${ID}_opc \

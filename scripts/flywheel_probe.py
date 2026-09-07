@@ -26,7 +26,7 @@ out = {k: Tensor((v / len(SNAPS)).astype(np.float32), dtype=dtypes.float)
 safe_save(out, ".cache/g17c_flywheel.safetensors")
 print(f"[flywheel] averaged {len(SNAPS)} snapshots -> .cache/g17c_flywheel.safetensors")
 
-ENV = {"DEV": "AMD", "ALG2": "1", "ALG_FTYPES": "8", "ALG_DUP": "1"}
+ENV = {"DEV": "PCI+AMD", "ALG2": "1", "ALG_FTYPES": "8", "ALG_DUP": "1"}
 res = {}
 for name, path in [("bigtest", ".cache/algebra_nl_bigtest.jsonl"),
                    ("alg4test", ".cache/algebra4_nl_test.jsonl"),

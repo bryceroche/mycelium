@@ -13,7 +13,7 @@ the ladder (coarse ports, fine doesn't — the two-tap law as IR
 portability). Observational; nothing here enters any loss.
 """
 import os, sys, json, glob
-os.environ.update({"DEV": "AMD", "ALG2": "1", "ALG_FTYPES": "9",
+os.environ.update({"DEV": "PCI+AMD", "ALG2": "1", "ALG_FTYPES": "9",
                    "ALG_DUP": "1", "ALG_HW": "512", "ALG_WIDE": "1",
                    "ALG_BREATH": "7", "ALG_NOTEBOOK": "1", "ALG_SIXWAVE": "1",
                    "NB_PERSLOT": "1", "ALG_BINDBUS": "7", "ALG_BIND_D": "512",

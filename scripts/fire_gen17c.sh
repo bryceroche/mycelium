@@ -1,7 +1,7 @@
 #!/bin/bash
 set -eo pipefail
 cd /home/bryce/mycelium
-export DEV=AMD ALG2=1 ALG_FTYPES=8 ALG_DUP=1
+export DEV=PCI+AMD ALG2=1 ALG_FTYPES=8 ALG_DUP=1
 PY=.venv/bin/python3
 echo "=== G17C 1/3: precompute ==="
 ALG_TRAIN=.cache/gen17c_mix.jsonl ALG_TRAIN_NAME=g17c PRECOMPUTE_ONLY=g17c $PY scripts/phase1_algebra_head.py --precompute

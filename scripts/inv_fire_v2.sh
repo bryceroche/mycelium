@@ -5,7 +5,7 @@
 # onto banked g22 base states; sentinels; then ctl/inv arms.
 set -eo pipefail
 cd /home/bryce/mycelium
-export DEV=AMD ALG2=1 ALG_FTYPES=8 ALG_DUP=1 ALG_ALLOW_PEN_TRAIN=1
+export DEV=PCI+AMD ALG2=1 ALG_FTYPES=8 ALG_DUP=1 ALG_ALLOW_PEN_TRAIN=1
 PY=.venv/bin/python3
 MIX=.cache/inv2_mix.jsonl
 $PY - << 'PYEOF'

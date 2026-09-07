@@ -1,7 +1,7 @@
 #!/bin/bash
 set -eo pipefail
 cd /home/bryce/mycelium
-export DEV=AMD ALG2=1 ALG_FTYPES=8 ALG_DUP=1 ALG_HW=512 ALG_WIDE=1 ALG_ALLOW_PEN_TRAIN=1
+export DEV=PCI+AMD ALG2=1 ALG_FTYPES=8 ALG_DUP=1 ALG_HW=512 ALG_WIDE=1 ALG_ALLOW_PEN_TRAIN=1
 export ALG_TEST=.cache/algebra_nl_test.jsonl ALG_TEST_NAME=test23
 export RATION_FILE=.cache/size_sliver_idx.json RATION_W=8
 export RATION_FILE2=.cache/dup_rehearsal_idx.json RATION_W2=3

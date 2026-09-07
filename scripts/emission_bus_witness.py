@@ -18,7 +18,7 @@ net (rights_kept - lies_kept) >= +3 AND rights_kept >= 6 on gold.
 Otherwise the read banks as observational and the door is untouched.
 """
 import os, sys, json
-os.environ.update({"DEV": "AMD", "ALG2": "1", "ALG_FTYPES": "9",
+os.environ.update({"DEV": "PCI+AMD", "ALG2": "1", "ALG_FTYPES": "9",
                    "ALG_DUP": "1", "ALG_HW": "512", "ALG_WIDE": "1",
                    "ALG_BREATH": "7", "ALG_NOTEBOOK": "1", "ALG_SIXWAVE": "1",
                    "NB_PERSLOT": "1", "ALG_BINDBUS": "3", "ALG_BIND_D": "256",

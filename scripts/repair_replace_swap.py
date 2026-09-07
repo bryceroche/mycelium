@@ -35,7 +35,7 @@ REGISTERED (before firing):
   v0 scope: single move only (given_value class); multi-move + add-given +
   neural reads for args/ops = v1, gated on this result.
 
-USAGE: DEV=AMD ALG_TEST=.cache/algebra_nl_bigtest.jsonl ALG_TEST_NAME=bigtest \
+USAGE: DEV=PCI+AMD ALG_TEST=.cache/algebra_nl_bigtest.jsonl ALG_TEST_NAME=bigtest \
            .venv/bin/python3 scripts/repair_replace_swap.py
 """
 from __future__ import annotations

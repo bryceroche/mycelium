@@ -16,7 +16,7 @@ centroids (g22 fst space) -> mouth rebuild (g22 family) + length refit
 import json, os, subprocess, sys, hashlib
 sys.path.insert(0, "."); sys.path.insert(0, "scripts")
 
-ENV = {"DEV": "AMD", "ALG2": "1", "ALG_FTYPES": "8", "ALG_DUP": "1"}
+ENV = {"DEV": "PCI+AMD", "ALG2": "1", "ALG_FTYPES": "8", "ALG_DUP": "1"}
 PARSER = ".cache/g22.safetensors"
 NEW_NACK = ".cache/phase1_gen22_nack.safetensors"
 

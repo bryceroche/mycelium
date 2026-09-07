@@ -11,7 +11,7 @@ os.environ.setdefault("ALG_MINE_BREATHS", "1")
 os.environ.setdefault("ALG_BREATH", "7")
 os.environ.setdefault("ALG_NOTEBOOK", "1")
 os.environ.setdefault("ALG_SIXWAVE", "1")
-os.environ.update({"DEV": "AMD", "ALG2": "1", "ALG_FTYPES": "9",
+os.environ.update({"DEV": "PCI+AMD", "ALG2": "1", "ALG_FTYPES": "9",
                    "ALG_DUP": "1", "ALG_HW": "512", "ALG_WIDE": "1",
                    "ALG_TRAIN": ".cache/form_mix8.jsonl",
                    "ALG_TRAIN_NAME": "form8",

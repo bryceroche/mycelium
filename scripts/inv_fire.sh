@@ -5,7 +5,7 @@
 # nothing promotes; g22-lineage remains the gate.
 set -eo pipefail
 cd /home/bryce/mycelium
-export DEV=AMD ALG2=1 ALG_FTYPES=8 ALG_DUP=1 ALG_ALLOW_PEN_TRAIN=1
+export DEV=PCI+AMD ALG2=1 ALG_FTYPES=8 ALG_DUP=1 ALG_ALLOW_PEN_TRAIN=1
 PY=.venv/bin/python3
 MIX=.cache/inv_pairs.jsonl
 echo "=== INV: states for the pair mix (13,080 rows, full trunk pass) ==="

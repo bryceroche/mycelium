@@ -3,12 +3,12 @@ set -eo pipefail
 cd /home/bryce/mycelium
 PY=.venv/bin/python3
 echo "== CATHEDRAL TRIGGER: per-breath profile, K5@74k =="
-env DEV=AMD ALG2=1 ALG_FTYPES=9 ALG_DUP=1 ALG_HW=512 ALG_WIDE=1 ALG_SEPHASE=1 ALG_SIXWAVE=1 ALG_BREATH=5 BREATH_NORM=1 ALG_DEEPSUP=1 \
+env DEV=PCI+AMD ALG2=1 ALG_FTYPES=9 ALG_DUP=1 ALG_HW=512 ALG_WIDE=1 ALG_SEPHASE=1 ALG_SIXWAVE=1 ALG_BREATH=5 BREATH_NORM=1 ALG_DEEPSUP=1 \
   PR_CK=.cache/gk5_arm.safetensors ALG_TEST=.cache/algebra_nl_bigtest.jsonl ALG_TEST_NAME=bigtest $PY scripts/breath_profile.py
 echo "== CENSUSES for the multi-hop bucketing =="
-env DEV=AMD ALG2=1 ALG_FTYPES=9 ALG_DUP=1 ALG_HW=512 ALG_WIDE=1 ALG_SEPHASE=1 ALG_SIXWAVE=1 ALG_BREATH=5 BREATH_NORM=1 \
+env DEV=PCI+AMD ALG2=1 ALG_FTYPES=9 ALG_DUP=1 ALG_HW=512 ALG_WIDE=1 ALG_SEPHASE=1 ALG_SIXWAVE=1 ALG_BREATH=5 BREATH_NORM=1 \
   CENSUS_CKPT=.cache/gk5_arm.safetensors CENSUS_OUT=.cache/mc_k5_74.json ALG_TEST=.cache/algebra_nl_bigtest.jsonl ALG_TEST_NAME=bigtest $PY scripts/miss_census.py 2>/dev/null | grep census
-env DEV=AMD ALG2=1 ALG_FTYPES=9 ALG_DUP=1 ALG_HW=512 ALG_WIDE=1 ALG_SIXWAVE=1 ALG_BREATH=3 BREATH_NORM=1 \
+env DEV=PCI+AMD ALG2=1 ALG_FTYPES=9 ALG_DUP=1 ALG_HW=512 ALG_WIDE=1 ALG_SIXWAVE=1 ALG_BREATH=3 BREATH_NORM=1 \
   CENSUS_CKPT=.cache/gnat_native.safetensors CENSUS_OUT=.cache/mc_k3_74.json ALG_TEST=.cache/algebra_nl_bigtest.jsonl ALG_TEST_NAME=bigtest $PY scripts/miss_census.py 2>/dev/null | grep census
 $PY - << 'PEOF'
 import json

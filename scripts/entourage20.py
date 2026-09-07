@@ -16,7 +16,7 @@ census -> DISSENT-OVERLAP READ (the owed column) -> manifest refresh.
 import json, os, subprocess, sys
 sys.path.insert(0, "."); sys.path.insert(0, "scripts")
 
-ENV = {"DEV": "AMD", "ALG2": "1", "ALG_FTYPES": "8", "ALG_DUP": "1"}
+ENV = {"DEV": "PCI+AMD", "ALG2": "1", "ALG_FTYPES": "8", "ALG_DUP": "1"}
 PARSER = ".cache/g20.safetensors"
 NEW_NACK = ".cache/phase1_gen20_nack.safetensors"
 

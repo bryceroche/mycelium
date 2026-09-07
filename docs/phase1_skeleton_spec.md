@@ -34053,3 +34053,19 @@ eq_check sibling was fixed, this one missed) — fixed. (3) The apply
 payload's backslash continuations were eaten inside the triple-quoted
 string (asserts emitted on one line) — payload rewritten with parens;
 the emitted file is cleaned in the same post-chain edit as (1).
+
+## 2026-09-06 — ULTRAREVIEW CHAPTER B (base review-base-finalboss, 45 agents): the DEV sweep + the flag leak
+
+Confirmed: (1) the same SHELF_CIRCLE>=1 val-hygiene hole as the
+cooker review (head edit still deferred to post-chain); (2) bare
+DEV=AMD survived in files the campaign touched (step_trainer_rungs.sh,
+wave_field_check.py, leadlag_read.py) — the reviewer's point stands
+for the whole tree, so the rule was applied MECHANICALLY: **297
+sites in 253 scripts swept to DEV=PCI+AMD** (archive/ left as-is; the
+head file held until pc-resume completes — its three hits are
+docstring usage lines); all 120 .py compile, all 133 .sh parse;
+(3) step_trainer.run_train set the module-global Tensor.training and
+never restored it — wrapped in try/finally (restores the prior value),
+CPU selftest re-run. Chapter A (main..ed35fe2, code-only via the
+worktree scaffold /home/bryce/mycelium-review-A) awaits the user's
+launch from that directory.

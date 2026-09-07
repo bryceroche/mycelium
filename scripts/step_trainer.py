@@ -797,73 +797,77 @@ def run_train():
     w = StepWalker(H, p, B, jit=jit, ping=ping,
                    theta=float(os.environ.get("ST_THETA", "0.9")))
     w.prime()
-    Tensor.training = True     # tinygrad requires the flag for opt.step()
-    # (the head's do_train idiom, phase1_algebra_head.py:2484 — rung-2's
-    # first fix: grads were perfect, the flag was down)
-    opt = AdamW(list(p.values()), lr=lr, weight_decay=0.01)
-    for nm in w.names:
-        p[nm].grad = w.gbufs[nm]   # the optimizer capture reads the
-        # fixed accumulators; rebound before every step (rs fns None them)
+    _prev_training = Tensor.training
+    try:
+        Tensor.training = True     # tinygrad requires the flag for opt.step()
+        # (the head's do_train idiom, phase1_algebra_head.py:2484 — rung-2's
+        # first fix: grads were perfect, the flag was down)
+        opt = AdamW(list(p.values()), lr=lr, weight_decay=0.01)
+        for nm in w.names:
+            p[nm].grad = w.gbufs[nm]   # the optimizer capture reads the
+            # fixed accumulators; rebound before every step (rs fns None them)
 
-    def opt_step():
-        opt.step()
-        return list(p.values())    # closure-assign quirk: return targets
-    opt_fn = TinyJit(opt_step) if jit else opt_step
+        def opt_step():
+            opt.step()
+            return list(p.values())    # closure-assign quirk: return targets
+        opt_fn = TinyJit(opt_step) if jit else opt_step
 
-    rng = np.random.RandomState(seed)
-    lr_min = lr / 30.0
-    rate_sum = np.zeros(w.K_B - 1, np.float64)
-    rate_n = 0
-    skipped = 0
-    t0 = time.time()
-    for s in range(steps):
-        cur_lr = lr_min + 0.5 * (lr - lr_min) * (
-            1 + math.cos(math.pi * s / steps))
-        opt.lr.assign(Tensor([cur_lr], dtype=dtypes.float)).realize()
-        idx = rng.choice(n, B, replace=False)         # flat mix, always
-        w.load_batch(states, tokmask, sent, MASKS[idx], idx,
-                     feed=gold_feed(gold, idx))
-        if _envi("ALG_SHELF_CIRCLE") >= 2 and not os.environ.get("SC_EVAL"):
-            sev = getattr(H, "_SEV", None)
-            if sev is not None:                       # the pulse, per step
-                sev.assign(Tensor(
-                    [1.0 if np.random.rand()
-                     < float(os.environ.get("SC_P", "0.5")) else 0.0],
-                    dtype=sev.dtype)).realize()
-        fact0 = (FACTS[idx] if FACTS is not None
-                 else np.zeros((B, H.K_VARS, 4), np.float32))
-        nv, ma = _row_meta(H, samples, idx)
-        rates = w.walk_forward(fact0, sent[idx].astype(np.int32), nv, ma)
-        if rates:
-            rate_sum += np.array(rates, np.float64) / B
-            rate_n += 1
-        loss, seen = w.walk_backward()
-        if s == 0:
-            missing = [nm for nm in w.names if nm not in seen]
-            assert not missing, \
-                f"params with NO grad across the whole walk: {missing}"
-        if not np.isfinite(loss):
-            skipped += 1
-            print(f"  step {s}: NON-FINITE walk loss — optimizer SKIPPED "
-                  f"({skipped} total)", flush=True)
-        else:
-            for nm in w.names:
-                p[nm].grad = w.gbufs[nm]
-            opt_fn()
-        if s % log_every == 0 or s == steps - 1:
-            rr = (rate_sum / max(rate_n, 1)).round(2).tolist()
-            print(f"  step {s:5d} loss={loss:.4f} lr={cur_lr:.1e} "
-                  f"({(time.time() - t0) / (s + 1):.2f}s/step) "
-                  f"facts/item/breath={rr}", flush=True)
-            rate_sum[:] = 0.0
-            rate_n = 0
-        if snap_every and (s + 1) % snap_every == 0:
-            sp = out_ckpt.replace(".safetensors", f"_s{s + 1}.safetensors")
-            safe_save(p, sp)
-            print(f"  [snap @{s + 1}] -> {sp}", flush=True)
-    safe_save(p, out_ckpt)
-    print(f"[train] saved {out_ckpt} (final-step params; selection is "
-          f"external reads — the wild-val template)", flush=True)
+        rng = np.random.RandomState(seed)
+        lr_min = lr / 30.0
+        rate_sum = np.zeros(w.K_B - 1, np.float64)
+        rate_n = 0
+        skipped = 0
+        t0 = time.time()
+        for s in range(steps):
+            cur_lr = lr_min + 0.5 * (lr - lr_min) * (
+                1 + math.cos(math.pi * s / steps))
+            opt.lr.assign(Tensor([cur_lr], dtype=dtypes.float)).realize()
+            idx = rng.choice(n, B, replace=False)         # flat mix, always
+            w.load_batch(states, tokmask, sent, MASKS[idx], idx,
+                         feed=gold_feed(gold, idx))
+            if _envi("ALG_SHELF_CIRCLE") >= 2 and not os.environ.get("SC_EVAL"):
+                sev = getattr(H, "_SEV", None)
+                if sev is not None:                       # the pulse, per step
+                    sev.assign(Tensor(
+                        [1.0 if np.random.rand()
+                         < float(os.environ.get("SC_P", "0.5")) else 0.0],
+                        dtype=sev.dtype)).realize()
+            fact0 = (FACTS[idx] if FACTS is not None
+                     else np.zeros((B, H.K_VARS, 4), np.float32))
+            nv, ma = _row_meta(H, samples, idx)
+            rates = w.walk_forward(fact0, sent[idx].astype(np.int32), nv, ma)
+            if rates:
+                rate_sum += np.array(rates, np.float64) / B
+                rate_n += 1
+            loss, seen = w.walk_backward()
+            if s == 0:
+                missing = [nm for nm in w.names if nm not in seen]
+                assert not missing, \
+                    f"params with NO grad across the whole walk: {missing}"
+            if not np.isfinite(loss):
+                skipped += 1
+                print(f"  step {s}: NON-FINITE walk loss — optimizer SKIPPED "
+                      f"({skipped} total)", flush=True)
+            else:
+                for nm in w.names:
+                    p[nm].grad = w.gbufs[nm]
+                opt_fn()
+            if s % log_every == 0 or s == steps - 1:
+                rr = (rate_sum / max(rate_n, 1)).round(2).tolist()
+                print(f"  step {s:5d} loss={loss:.4f} lr={cur_lr:.1e} "
+                      f"({(time.time() - t0) / (s + 1):.2f}s/step) "
+                      f"facts/item/breath={rr}", flush=True)
+                rate_sum[:] = 0.0
+                rate_n = 0
+            if snap_every and (s + 1) % snap_every == 0:
+                sp = out_ckpt.replace(".safetensors", f"_s{s + 1}.safetensors")
+                safe_save(p, sp)
+                print(f"  [snap @{s + 1}] -> {sp}", flush=True)
+        safe_save(p, out_ckpt)
+        print(f"[train] saved {out_ckpt} (final-step params; selection is "
+              f"external reads — the wild-val template)", flush=True)
+    finally:
+        Tensor.training = _prev_training   # module-global flag: restore (ultrareview nit)
 
 
 # ===========================================================================

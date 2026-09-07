@@ -37,7 +37,7 @@ REGISTERED (before firing):
   (flag->abstain on undominated).
 
 USAGE (needs .cache/deploy_audit_bigtest.npz):
-  DEV=AMD ALG_TEST=.cache/algebra_nl_bigtest.jsonl ALG_TEST_NAME=bigtest \
+  DEV=PCI+AMD ALG_TEST=.cache/algebra_nl_bigtest.jsonl ALG_TEST_NAME=bigtest \
       .venv/bin/python3 scripts/ratchet_nack.py
 """
 from __future__ import annotations

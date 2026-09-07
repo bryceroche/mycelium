@@ -7,7 +7,7 @@ structure lives below the text embedding). Rebind winner (A0 machinery)
 -> solve_forced -> grade once. Baseline: A0 = 0/40 right, 18 solved.
 """
 import os, sys, json, glob
-os.environ.update({"DEV": "AMD", "ALG2": "1", "ALG_FTYPES": "8",
+os.environ.update({"DEV": "PCI+AMD", "ALG2": "1", "ALG_FTYPES": "8",
                    "ALG_DUP": "1", "ALG_HW": "512", "ALG_WIDE": "1",
                    "ALG_TEST": ".cache/algebra_nl_bigtest.jsonl",
                    "ALG_TEST_NAME": "bigtest", "ALG_TRUNK_LORA": "1"})
