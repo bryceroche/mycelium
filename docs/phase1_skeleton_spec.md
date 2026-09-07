@@ -34564,3 +34564,22 @@ flips — the honest limit (consistent wrong readings; sparse
 commitment at theta 0.9 leaves most parses underdetermined) may bite
 before visibility does. The GPU read decides. Ready marker touched;
 pc-ladder-queue fires the chain when pc-floor exits.
+
+## 2026-09-07 — THE FLOORED CANARY PASSES THE GATE; stopped at 8000 by the word (the 12k guard is not measured, by decision)
+
+Steps 5500/6000/6500 on the floored arm: **8.21 / 6.00 / 8.85** —
+where the unfloored twin (same seed, same batches) printed 9.60 /
+46.19 / 20.51. The zero-norm event's detonation did not happen under
+the floor. Word given ~16:50: STOP AT 8000 — the causal question (does
+the floor cure the collapse?) is answered at the 8000 waypoint (val
+proxy vs the failed arm's 0.4457; breath-2 stamps vs 0.16), and the
+12k channel/guard numbers would describe a regime the rebuild
+replaces (dose is not the lever, verdict above). The ladder's three
+reads, which decide the rebuild's design, take the card instead.
+Mechanics: pc-canary-stopper waits for s8000 + val@8000 then stops
+pc-floor; pc-ladder-queue fires the ladder; rung 0 = THE CANARY
+HARVEST (drift autopsy s6000/s8000, stamp amplitudes on every
+waypoint, sealed-wild + open-wild on s8000 vs the 0.3 arm's s8000 =
+0.1848 / 0.2389 and the control's 0.2501). Survival bar judged at
+8000; channel judged at matched 8k (Goldilocks vs linear reads
+against 0.1848: linear predicts ~0.09); guard at 12k: NOT MEASURED.
