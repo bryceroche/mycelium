@@ -633,13 +633,23 @@ def _alt2_fact_buf_v0(onp, se_np, n_vars_arr, m_arr, theta=0.9,
                     digs = onp["dig"][bi, j].argmax(-1)
                     v = int(sum(d * 10 ** (N_DIG - 1 - i2)
                                 for i2, d in enumerate(digs)))
+                    if "sgn" in onp and onp["sgn"][bi, j] > 0:
+                        v = -v                     # E1 negative literal (decode's rule;
+                                                   # ultrareview 2026-09-06: the adapter
+                                                   # must not launder a sign it read)
                     facs.append({"ftype": "given", "var": res, "value": v})
                 elif ft == 0:                      # rel (decode conventions)
                     op = "add" if onp["op"][bi, j].argmax() == 0 else "mul"
                     if "dup" in onp and onp["dup"][bi, j] > 0:
-                        a0 = int(np.argmax(onp["args"][bi, j]))
-                        if agp[j, a0] <= theta:
-                            continue
+                        if "dargs" in onp:         # door #12: the dedicated dup pointer
+                            dsp = _smax(onp["dargs"][bi, j])
+                            a0 = int(np.argmax(dsp))
+                            if dsp[a0] <= theta:
+                                continue
+                        else:
+                            a0 = int(np.argmax(onp["args"][bi, j]))
+                            if agp[j, a0] <= theta:
+                                continue
                         args = [a0, a0]
                     else:
                         top2 = np.argsort(-onp["args"][bi, j])[:2]
@@ -726,9 +736,16 @@ def _alt2_fact_buf_v1(onp, se_np, n_vars_arr, m_arr, theta=0.9,
     digs = onp["dig"].argmax(-1)                             # (B, L, N_DIG)
     place = (10 ** np.arange(N_DIG - 1, -1, -1)).astype(np.int64)
     given_val = (digs.astype(np.int64) * place).sum(-1)      # (B, L)
+    if "sgn" in onp:                                         # E1 negative literal (decode's rule)
+        given_val = np.where(onp["sgn"] > 0, -given_val, given_val)
 
-    raw_a0 = onp["args"].argmax(-1)                          # (B, L) raw-logit argmax (dup path)
-    a0_conf = np.take_along_axis(agp, raw_a0[..., None], -1)[..., 0]
+    if "dargs" in onp:                                       # door #12: dedicated dup pointer
+        dsp = _smax(onp["dargs"])                            # (B, L, K_VARS) CE-trained
+        raw_a0 = dsp.argmax(-1)
+        a0_conf = np.take_along_axis(dsp, raw_a0[..., None], -1)[..., 0]
+    else:
+        raw_a0 = onp["args"].argmax(-1)                      # (B, L) raw-logit argmax (dup path)
+        a0_conf = np.take_along_axis(agp, raw_a0[..., None], -1)[..., 0]
 
     top2 = np.argsort(-onp["args"], axis=-1)[..., :2]        # (B, L, 2) same per-row sort as the loop
     top2_conf_min = np.take_along_axis(agp, top2, axis=-1).min(-1)

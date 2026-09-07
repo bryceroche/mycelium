@@ -286,9 +286,13 @@ def main():
         elif gtrue is True:
             res["graph_true_vote_fail"].append(rec)
             tag = "WALL"     # register wall: true row the parser can't see
-        elif vote_pass and gtrue is False:
+        elif vote_pass and gtrue is False and gwhy != "graph_conflict":
             res["vote_pass_graph_false"].append(rec)
             tag = "ALARM"    # vote reaches the key, the graph CONTRADICTS it
+            # (a SELF-conflicted graph never derives a value at all — it is
+            # an annotation defect, routed to refused_other below with its
+            # graph_conflict reason, so ALARM keeps the docstring's meaning:
+            # the graph mechanically DERIVES a value contradicting the key)
         else:
             vwhy = ("vote_pass" if vote_pass else
                     "quorum_wrong_answer" if cnt >= 3 else "no_quorum")

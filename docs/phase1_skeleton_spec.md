@@ -34119,3 +34119,49 @@ the sealed channel's behavior and the 0.0000/0.2053 meters must be
 re-read under it before cross-generation comparison (meter-divergence
 law). Platform: 0.57 s/step pressure, 0.55 control (no seal tax at
 depth — the smoke's 0.75 was capture-era).
+
+## 2026-09-06 — WORD GIVEN: ROUND 2 (all debts + one addition); code landed; BARS PINNED BEFORE THE FIRE
+
+CODE (all committed, zero-GPU proofs): (1) **commit adapter now
+mirrors decode on both branches** — E1 sign (given negated when the
+sgn head fires; under the nonneg solver domain a confident negative
+contradicts -> silence, never a laundered positive fact) and door-#12
+dargs (dedicated dup pointer + its softmax confidence, when present);
+applied to v0 AND v1, `scripts/seamtest_adapter_contract.py` PASS
+(v0 == v1 on 96 items x 3 keyings; sign changed 42, dargs 8 — the
+test is not blind). (2) wild_certify: a SELF-conflicted graph no
+longer lands in ALARM (docstring meaning restored: ALARM = graph
+DERIVES a value contradicting the key); routed to refused_other with
+its graph_conflict reason. (3) step_atlas self-test removes its temp
+files (0 -> 0 litter, self-test PASS). Chapter A review closed.
+
+CHAIN `.cache/pc_round2.sh` (unit pc-round2), in order:
+**A. Meter re-reads under the fixed adapter** — sealed-wild on
+fedon242 / pcmix242 / pcctl242 and sealed-mint (step_engine R=1,
+test23) on fedon242 / pcmix242. REGISTERED PREDICTION: every re-read
+within |0.005| of its pre-fix value (0.0000 / 0.2053 / 0.0000 / — /
+0.8743; fedon242 sealed-mint is the reference the 0.8743 lacked).
+Larger movement = the adapter divergence was load-bearing -> audit
+before anything else is read. All later reads compare to THESE.
+**B. The snapshot ladder (my addition, descriptive frame = wild-val
+selection):** s4000/s8000 of both arms on both wild meters. Reads
+whether the channel opens early and plateaus or climbs, and where the
+control's own wild loss occurs (best-open-wild snapshot per arm
+reported).
+**C. The seed-241 twin** (warm fedon242, SEED=241; pressure 0.3 vs
+control): SAME BARS — primary sealed-wild >= 0.05 on pcmix241; guard
+open-wild pcmix241 >= pcctl241 - 0.010. Prediction: primary passes;
+the guard lands within +-0.005 of the 242 miss (either side; one
+item is noise at n=2051 — a two-seed guard verdict reads the pair).
+**D. The dose sweep** (SEED=242, warm fedon242; PC_MIX 0.15 and
+0.5; judged vs pcctl242 = 0.2506 open / 0.9537 mint): primary
+>= 0.05 each; guard >= 0.2506 - 0.010 = 0.2406. REGISTERED
+PREDICTION (monotone): sealed-wild(0.15) < 0.2053 < sealed-wild(0.5);
+open-wild cost grows with dose; 0.15 PASSES the guard. KILL: if
+sealed-wild(0.15) < 0.05 the channel needs >= 0.3 dose and the guard
+trade is the price at this LR (then the lever is LR/steps, not dose).
+Dose law: share declared (0.15/0.3/0.5), reps-per-unique unchanged
+(12k x batch 8 over 133,828 rows = 0.72 epochs; sealed rows see the
+seal on every visit — the STABLE assignment).
+ETA ~13h (reads ~20 min; four 12k arms at ~0.56 s/step + 75-min
+mask-prep each). Verdict entry follows the reads.

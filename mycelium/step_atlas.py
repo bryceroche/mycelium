@@ -271,6 +271,10 @@ if __name__ == "__main__":
         raise AssertionError("stale atlas served — door failed")
     except RuntimeError:
         pass
+    finally:
+        for _f in (mtmp.name, p, m2.name):     # no temp litter per run
+            try: os.remove(_f)
+            except OSError: pass
     # the labeler: one organ, every caller (miner + feeds)
     assert atlas_class({"ladder": 3}) == "ladder2-4"
     assert atlas_class({"ladder": 5, "teeth": 0.4}) == "ladder5-8"
