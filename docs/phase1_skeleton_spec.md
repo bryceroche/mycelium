@@ -34289,3 +34289,48 @@ RE-FIRED: `.cache/pc_dose.sh` as unit pc-dose — d15 then d50, reads,
 bars as pinned last night (primary >= 0.05; guard >= 0.2406 vs
 pcctl242; monotone prediction; 0.15-fails-to-open = KILL for dose as
 the lever).
+
+## 2026-09-07 — GUT REGISTERED (the 22nd): THE GODOL COLLIDER — disambiguation by collision in the solver; bars pinned before any read
+
+Bryce's image: a collider — smash two authorities together and watch
+what flies out. The engineering form: for an ambiguous reading, take
+the head's rival parses (the two gedolim) and collide each with the
+rest of the graph in the exact solver; what emerges (facts, unique
+answer, or a contradiction) is the disambiguation. The Gödel reading
+is the same machine seen from the failure side: smash a parse against
+itself until the paradox names its own participants (an unsat core).
+ORGANS ALREADY OWNED: `alternator_bridge.ping` (GAC propagation;
+contradiction = mass None), the uniqueness gate (`solve_forced`), the
+withhold-and-solve precedent (26% recovery, zero silent-wrong — the
+collider is its generalization: ENUMERATE alternatives instead of
+withholding one), the step engine's pass-0 outputs (`iterate_batch`
+holds them). GAP, named honestly: the blog says the solver "can hand
+back a minimal unsatisfiable core"; grep finds no MUC organ in
+csp_core/csp_domains — a deletion core over `ping` (drop one factor,
+re-ping, O(k)) is the cheap version and is all the collider needs.
+LAW CHECK: the solver's verdict enters as CONDITIONING (a veto/boost
+channel beside the fact buffer), never as a loss on the parse's
+confidence — Goodhart fence intact; consistency is checkable WITHOUT
+the key, so the collider is deployable; the key grades it only.
+THE HONEST LIMIT: consistency != truth. An exactly-determined problem
+can carry a consistent WRONG reading; the collider yields survivor
+SETS, and the fingerpost rule governs: one survivor -> disambiguated;
+several -> silence. Its reach is bounded by how many wrong readings
+are self-contradictory — the first number to measure.
+THE COLLIDER READ (measure-only, zero training; queued behind
+pc-dose): on wildhold with fedon242 and pcmix242 pass-0 outputs, per
+item enumerate single-slot alternatives (second-best args/res/ftype on
+slots below theta or within a small margin), ping the original and
+every variant; classify original {consistent-unique, underdetermined,
+contradictory}; FLIP iff original contradictory and exactly one
+variant consistent-unique; grade flips against the key afterward.
+BARS PINNED: (1) COLLIDER VISIBILITY — >= 30% of wrong wild parses are
+self-contradictory (below 10% = KILL: wrong readings are mostly
+consistent and disambiguation must come from elsewhere); (2) flip
+precision >= 0.60; (3) net recovery >= 5% of wild wrong-or-silent
+items with silent-wrong introduced <= 1% (withhold's precedent is 0).
+If (1)-(3) hold, the build is the VETO CHANNEL: the collider's
+verdicts ride into the next breath as conditioning (the fact buffer's
+road), trained under the cooker's seal so the committed channel learns
+from collisions. If (1) fails, the deletion core still earns its keep
+as the survivor-autopsy instrument (which slots the paradox names).
