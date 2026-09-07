@@ -34036,3 +34036,20 @@ step 0 guard + steps 6-7 verbatim, DEV=PCI+AMD): pressure arm
 seven reads. ETA ~21:30 (75-min mask-prep per arm + 12k steps at
 0.75s / 0.46s). BARS UNCHANGED as pinned. Nothing was measured; the
 verdict entry follows the reads.
+
+## 2026-09-06 — ULTRAREVIEW (base review-base-fedmind, 30 agents): three confirmed, one deferred by law
+
+(1) **Latent val-hygiene hole**: the pressure assert admits
+ALG_SHELF_CIRCLE=1 with ALG_PC_MIX>0, but _quick_val's SC_EVAL="0"
+push is mode>=2 only — at mode 1 the stale train-shaped _PCV would
+leak into val (crash or a silently mixed-seal val proxy). NOT the
+running config (pc-resume runs SHELF_CIRCLE=2: val is OPEN, the
+proxy is clean). Root fix = require SHELF_CIRCLE>=2 in the assert —
+applied to apply_pressure_mix.py now; the emitted head gets the same
+edit AFTER pc-resume completes (never edit code a running chain will
+re-import: the control arm and the reads import the head fresh).
+(2) mine_step_atlas.py's champion env dict still said DEV=AMD (the
+eq_check sibling was fixed, this one missed) — fixed. (3) The apply
+payload's backslash continuations were eaten inside the triple-quoted
+string (asserts emitted on one line) — payload rewritten with parens;
+the emitted file is cleaned in the same post-chain edit as (1).

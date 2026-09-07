@@ -63,7 +63,7 @@ import sys
 # Champion env stack — VERBATIM from .cache/mask_head_chain.sh (the
 # round-1 chain), via setdefault so a chain's explicit envs win.
 _CHAMPION_ENVS = {
-    "DEV": "AMD", "ALG2": "1", "ALG_FTYPES": "9", "ALG_DUP": "1",
+    "DEV": "PCI+AMD", "ALG2": "1", "ALG_FTYPES": "9", "ALG_DUP": "1",
     "ALG_HW": "512", "ALG_WIDE": "1", "ALG_BREATH": "7",
     "ALG_NOTEBOOK": "1", "ALG_SIXWAVE": "1", "NB_PERSLOT": "1",
     "ALG_BINDBUS": "7", "ALG_BIND_D": "512",
