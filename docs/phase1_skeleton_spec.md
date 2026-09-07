@@ -34395,3 +34395,59 @@ absent from both healthy ones. If confirmed, the fix is the STAMP
 FLOOR — a commitment amplitude that cannot vanish (parametrize the
 stamp so its gradient path is bounded away from zero), measured
 against the living configs by the eq gate before any re-fire.
+
+## 2026-09-07 — THE AMPLITUDE READ: collapse CONFIRMED at breath 2 — and the champion's stamps were never calibrated (3-4 orders of magnitude too loud)
+
+`scripts/stamp_amplitude_read.py` (read-only, GPU): the confidence-
+stamp norms (||_wg4|| per breath x row x slot, the garage deposits) on
+16 test rows, ALL rows sealed, five checkpoints. Stamp = ||w|| + 1e-6,
+so a collapsed stamp reads ~1e-6.
+
+| checkpoint | median stamp | breath 0-2 medians | frac < 1e-3 (b2) | max |
+|---|---|---|---|---|
+| fedon242 (champion, dead wire) | **412** | 65 / 71 / 74; b3-5 ~4.7e3 | 0 / 0 | 1.9e4 |
+| pcmix242_s8000 (0.3, healthy) | 3.9 | 0.08 / 0.13 / 0.22 | 0.02 | 69 |
+| d15_s4000 (healthy) | 3.15 | 0.57 / 0.48 / 0.44 | 0.00 | 123 |
+| d15_s8000 (damaged) | 3.41 | 0.92 / 0.69 / **0.065** | **0.16** | 331 |
+| d15_s12000 (damaged) | 3.35 | 0.44 / 0.33 / **0.015** | **0.23** | 241 |
+
+**PREDICTION CONFIRMED: the damaged snapshots carry a mass of near-
+zero stamps absent from the healthy 4k snapshot — concentrated in
+breath 2 (16% -> 23% of its stamps below 1e-3; median 0.44 -> 0.015),
+the last deposit before the seal at breath 4.** The healthy 0.3 arm
+shows the mild form (2-6% below 1e-3 at breaths 0-1): the live wire
+pushes amplitudes toward zero everywhere; at dose 0.15 it emptied a
+whole breath. Mechanism closed: a stamp at ~0 is a DEAD ZONE — its
+deposit vanishes, the sealed channel for that row empties, the loss
+returns toward the birth regime, and the huge-loss rows drag the
+whole head off its basin (the 3.3x drift); the direction w/||w|| of
+a vanished vector is noise, so the amplitude cannot climb back.
+
+**THE LARGER FINDING: the champion's stamps are 3-4 orders of
+magnitude louder than a trained stamp** (median 412, breaths 3-5 at
+~4.7e3, max 1.9e4, vs ~4 after 8k live steps). Under the dead wire
+no gradient ever calibrated the deposit amplitude; the garage has
+been shouting at the shelf's attention its whole life. Two
+consequences, both filed: (1) the cooker's birth loss (2245 at step
+0, ~1e4 per sealed row) is the champion's own uncalibrated garage
+driving post-seal activations to logit scales of thousands — the
+live wire's first 4k steps are spent shrinking it 100-1000x; (2) a
+SECOND CANDIDATE for the shredded flag (registered beside the mask
+degree, not instead of it): "excessive attention" = the shelf's
+attention over garage entries whose logits ride stamps of 1e3-1e4 —
+saturated, unselective. The flag audit reads both.
+
+FIX OPTIONS (hold for the word — each is a training regime):
+(A) THE SOFT FLOOR, env-gated (ALG_PC_FLOOR, default off = bit-
+identical): stamp = sqrt(||w||^2 + f^2) with f ~ 1e-2 (the healthy
+arm's 5th percentile at early breaths) — the deposit can never
+vanish, the gradient is bounded and nonzero everywhere, a slot can
+climb back. Test = refire d15 under the floor (survives? channel?
+guard?), eq A/B/C with the env unset for the bit-identity contract.
+(B) THE CALIBRATED STAMP — a bounded parametrization (saturating in
+the residual's scale) so amplitude can neither shout at 1e4 nor
+vanish: changes every living config's forward (the garage feeds OPEN
+breaths too via _at4) -> a new generation with full re-measure, not a
+patch. Recommendation: A now (cheap, decisive on the collapse), B
+registered for the next generation with the flag audit's numbers in
+hand.
