@@ -23,9 +23,9 @@ solve_symbolic -> solution[predicted query] == gold answer.
 
 USAGE:
   Selftest:    .venv/bin/python3 scripts/phase1_algebra_head.py --selftest
-  Precompute:  DEV=AMD .venv/bin/python3 scripts/phase1_algebra_head.py --precompute
-  Train:       DEV=AMD STEPS=8000 .venv/bin/python3 scripts/phase1_algebra_head.py --train
-  Eval:        DEV=AMD .venv/bin/python3 scripts/phase1_algebra_head.py --eval
+  Precompute:  DEV=PCI+AMD .venv/bin/python3 scripts/phase1_algebra_head.py --precompute
+  Train:       DEV=PCI+AMD STEPS=8000 .venv/bin/python3 scripts/phase1_algebra_head.py --train
+  Eval:        DEV=PCI+AMD .venv/bin/python3 scripts/phase1_algebra_head.py --eval
 """
 from __future__ import annotations
 
@@ -3472,8 +3472,13 @@ def do_train(steps, lr, batch, seed):
         # coin). The seal needs the shelf road to exist and SC_EVAL
         # unset (else the mode-2 branch bakes OPEN at JIT capture —
         # the exact silent no-op the forensic caught in the champion).
-        assert int(os.environ.get("ALG_BUSGARAGE", "0")) >= 2             and int(os.environ.get("ALG_SHELF_CIRCLE", "0")) >= 1,             "ALG_PC_MIX needs ALG_BUSGARAGE>=2 + ALG_SHELF_CIRCLE (no shelf, no road)"
-        assert not os.environ.get("SC_EVAL", ""),             ("ALG_PC_MIX with SC_EVAL set would bake the seal shut at "
+        assert (int(os.environ.get("ALG_BUSGARAGE", "0")) >= 2
+                and int(os.environ.get("ALG_SHELF_CIRCLE", "0")) >= 2), (
+            "ALG_PC_MIX needs ALG_BUSGARAGE>=2 + ALG_SHELF_CIRCLE>=2 (the per-row "
+            "blend rides the mode-2 SC_EVAL forms; _quick_val's OPEN push is "
+            "mode>=2 only — at mode 1 a stale _PCV would leak into val)")
+        assert not os.environ.get("SC_EVAL", ""), (
+            "ALG_PC_MIX with SC_EVAL set would bake the seal shut at "
              "JIT capture (the champion's silent no-op) — unset SC_EVAL; "
              "val forces OPEN by itself")
         _pc_h = ((np.arange(n, dtype=np.uint64) * np.uint64(2654435761))
