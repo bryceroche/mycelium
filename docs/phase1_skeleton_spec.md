@@ -34346,3 +34346,52 @@ site/build_site.py && PATH=$HOME/opt/node/bin:$PATH
 node_modules/.bin/wrangler pages deploy site/dist --project-name
 shape-of-thought --branch=main --commit-dirty=true`. Verified live:
 theshapeofthought.ai/blog/ lists both 2026-09-07 posts.
+
+## 2026-09-07 — THE DOSE VERDICT: dose is NOT the lever (0.5 saturates, 0.15 collapsed) — and THE AMPLITUDE COLLAPSE, the disease behind the zero-norm death
+
+pc-dose complete 10:10 (.cache/pc_dose.log). Both arms SEED=242, warm
+fedon242, 12k, guarded stamp; judged vs pcctl242 (0.2506 / 0.9537).
+
+| arm | sealed-wild | open-wild (guard >= 0.2406) | mint |
+|---|---|---|---|
+| d50 (share 0.5) | 0.1989 | 0.2379 — FAIL by 0.0027 | 0.9387 |
+| d15 (share 0.15) — RESTORED s4000 (see below) | 0.0561 | 0.2345 — FAIL | 0.9212 |
+| ref: pcmix242 (0.3) | 0.2053 | 0.2404 — FAIL by 0.0002 | 0.9449 |
+| ref: pcmix242_s4000 (0.3 at 4k) | 0.1185 | 0.2370 | — |
+
+**DOSE 0.5: primary PASSED (0.1989 >= 0.05) but the MONOTONE
+PREDICTION FAILED on the high side — 0.5 opens LESS than 0.3 (0.1989
+vs 0.2053) at 12k: the channel saturates between 0.3 and 0.5; the
+guard fails at every dose; mint drops with dose (0.9449 -> 0.9387).**
+**DOSE 0.15: THE ARM IS INVALID at 12k.** The guarded stamp carried it
+through the exact-zero event (5500: loss 9.60, normal) but the run
+then blew: loss 46.2 (6000), 20.5 (6500), 11.0 (7000); val proxy
+0.9212 (4k) -> 0.4457 (8k) -> 0.5908 (12k). best-by-val restored the
+s4000 params, so the d15 reads are a 4k-step arm. At MATCHED 4k the
+dose response is linear: 0.15 -> 0.0561, 0.3 -> 0.1185. The pinned
+kill (0.15 < 0.05) does not fire (0.0561), but the 12k question is
+unmeasured. VERDICT: DOSE IS NOT THE LEVER for the guard — no dose
+tested passes it, and more dose buys nothing past 0.3. Levers left:
+steps (the ladder still climbing at 12k), LR, and the structural
+candidate (the wet bag: trunk adapters + pressure).
+
+**THE DISEASE (param autopsy, zero-GPU, d15 s4000 -> s8000 vs the
+0.3 arm's own 4k->8k drift):** no blown weight — every key finite,
+max|theta| <= 0.04 — but the WHOLE head moved ~3.3x faster (median
+per-key ratio) and the alternator-2.1 key bias `alt21_W_bk_b` moved
+966x its normal drift (2.28 relative vs 0.0024); mask-head and fed
+biases 5-10x. That is a sustained stretch of huge gradients, not one
+bad step. Mechanism hypothesis (registered; the amplitude read is the
+test): the live wire is meant to shrink useless commitment amplitudes;
+at low dose (1.2 sealed rows/batch) the amplitude signal is sparse and
+some stamps collapse to ~0 -> those rows' committed channel goes empty
+AGAIN -> their loss returns toward the birth regime (~10^4/row; step-0
+batch loss was 1635 at 0.15) -> Adam follows those rows off the basin.
+The zero-norm NaN was the first symptom; the where-gate cured the
+symptom (finite) and left the disease. PREDICTION for the amplitude
+read (stamp norms on a fixed sealed batch, d15_s4000 vs d15_s8000 vs
+pcmix242_s8000): the damaged snapshot shows a mass of near-zero stamps
+absent from both healthy ones. If confirmed, the fix is the STAMP
+FLOOR — a commitment amplitude that cannot vanish (parametrize the
+stamp so its gradient path is bounded away from zero), measured
+against the living configs by the eq gate before any re-fire.
