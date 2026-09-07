@@ -34451,3 +34451,48 @@ breaths too via _at4) -> a new generation with full re-measure, not a
 patch. Recommendation: A now (cheap, decisive on the collapse), B
 registered for the next generation with the flag audit's numbers in
 hand.
+
+## 2026-09-07 — WORD GIVEN: FIX A, THE FLOORED CANARY — direction/amplitude verified, floor precommitted at 0.01, bars pinned for TWO hypotheses
+
+Authorized with Gemini's correction accepted: a soft floor keeps the
+SCALAR from silencing the deposit but its gradient is zero at the
+exact origin, so the fix only works if direction and amplitude are
+independent. VERIFIED (phase1_algebra_head.py, the deposit): _dep4 =
+_canon4 / _cn4 * _wn4 — direction = the discrete codebook composition
+(argmax one-hot, unit-normalized), amplitude = the stamp. Independent;
+the origin is a single point in 512-d, not a trap.
+IMPLEMENTED: ALG_PC_FLOOR (env-gated; unset = the where-gated form,
+proven bit-identical on eq A/B/C vs the sqrt-guard dumps): stamp =
+sqrt(||w||^2 + f^2) + 1e-6. CPU micro-test: stamps >= f at the origin
+and at 1e-6, grads finite.
+FLOOR PRECOMMITTED f = 0.01 — a deliberate DISAGREEMENT with the
+suggested 0.05-0.1: the healthy 0.3 arm's early-breath stamps run
+median 0.08-0.22 with a 5th percentile of 0.009; f=0.05 distorts a
+0.08 stamp by 18% and lifts ~a fifth of a healthy arm's stamps,
+compressing the confidence range the live wire is learning; f=0.01
+touches the bottom 5% of a healthy arm and lifts every collapsed stamp
+(1e-6..1e-3) by 1-4 orders. Touch the pathology, not the signal. No
+sweep until causation is established; the sweep is the registered
+follow-up if survival passes and the channel does not open.
+SINGLE VARIABLE: d15f = the guarded d15 arm + ALG_PC_FLOOR=0.01 ONLY
+(SEED 242, LR 1e-4, warm fedon242, batch 8, form12, 12k, PC_MIX 0.15).
+SNAP_EVERY 2000 (a write-only change; val at 2k intervals affects only
+best-by-val SELECTION, so the s12000 snapshot is the matched-steps
+read and best-by-val is reported beside it).
+BARS (three, all required for A to be called a fix):
+(1) SURVIVAL: no non-finite; no 500-step print > 20 after step 5000
+(healthy arms print up to ~13.4 — a bar at 10 would fail a healthy
+run); val proxy >= 0.90 at 8000 and 12000 (the failed arm: 0.4457 /
+0.5908); breath-2 stamps below 1e-3 <= 0.02 at 8k and 12k (failed
+arm: 0.16 / 0.23).
+(2) CHANNEL: sealed-wild >= 0.05 at s12000 (the campaign bar) — and
+the run ADJUDICATES two named hypotheses: GOLDILOCKS (Gemini: 0.15 is
+the gentle regime once the entry trap is removed -> >= 0.18) vs
+LINEAR DOSE RESPONSE (registered last night: 0.15@4k was 0.056 vs
+0.3@4k 0.1185 -> ~0.10 at 12k). Dividing line 0.14.
+(3) GUARD: open-wild >= 0.2406 (pcctl242 - 0.010, unchanged).
+Goldilocks predicts PASS; "dose is not the lever" predicts FAIL.
+CAUSAL METRICS tracked on the waypoints s2000..s12000 after the run:
+stamp fraction < 1e-3 at breath 2, median/min stamp, alt21 key-bias
+displacement and whole-head drift (the failed arm's fingerprint:
+966x / 3.3x). Unit pc-floor; verdict entry follows the reads.

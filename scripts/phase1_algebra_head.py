@@ -2076,8 +2076,18 @@ def breath_step(p, state, kb, ctx):
             # idiom): forward BIT-IDENTICAL (sqrt(s)+1e-6 for s>0; 1e-6 at s=0),
             # backward finite (zero into the s=0 branch).
             _ss4 = _wg4.pow(2).sum(-1, keepdim=True)
-            _sp4 = _ss4 > 0
-            _wn4 = _sp4.where(_sp4.where(_ss4, 1.0).sqrt(), 0.0) + 1e-6
+            _pcf4 = float(os.environ.get("ALG_PC_FLOOR", "0"))
+            if _pcf4 > 0.0:
+                # THE SOFT FLOOR (2026-09-07, word given; fix A for the
+                # amplitude collapse): stamp = sqrt(||w||^2 + f^2) >= f —
+                # the deposit (canon direction x stamp) can never vanish
+                # from the garage; gradient w/sqrt(||w||^2+f^2) is bounded
+                # and nonzero except at the exact origin (a point). Env-
+                # gated: unset = the where-gated form below, bit-identical.
+                _wn4 = (_ss4 + _pcf4 * _pcf4).sqrt() + 1e-6
+            else:
+                _sp4 = _ss4 > 0
+                _wn4 = _sp4.where(_sp4.where(_ss4, 1.0).sqrt(), 0.0) + 1e-6
             _cn4 = _canon4.pow(2).sum(-1, keepdim=True).sqrt() + 1e-6
             _dep4 = _canon4 / _cn4 * _wn4
             _wg4 = _dep4.detach()
