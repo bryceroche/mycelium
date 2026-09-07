@@ -34069,3 +34069,53 @@ never restored it — wrapped in try/finally (restores the prior value),
 CPU selftest re-run. Chapter A (main..ed35fe2, code-only via the
 worktree scaffold /home/bryce/mycelium-review-A) awaits the user's
 launch from that directory.
+
+## 2026-09-06 — THE PRESSURE-COOKER VERDICT: THE CHANNEL OPENS (0.0000 -> 0.2053); guard missed by ONE ITEM — MIXED, read by the pinned frame
+
+pc-resume complete 20:54 (.cache/pc_reads.log). Both arms warm from
+fedon242, 12k gentle, seed 242; pressure arm ALG_PC_MIX=0.3 (40147/
+133828 rows sealed, live wire on), control SC_EVAL=0 verbatim.
+
+| read (fixture) | pressure pcmix242 | control pcctl242 | champion fedon242 |
+|---|---|---|---|
+| sealed-wild, step_engine R=1 (wildhold n=2051) — PRIMARY | **0.2053** | 0.0000 | 0.0000 |
+| open-wild, loop_val SC=2/EVAL=0 (n=2051) — GUARD | 0.2404 | 0.2506 | 0.2613 |
+| mint test23, loop_val (n=3668) — side watch | 0.9449 | **0.9537** | 0.9430 |
+| sealed-mint, step_engine R=1 (n=3668) — exploratory | 0.8743 | (not read) | (not read under this meter) |
+
+**PRIMARY BAR PASSED, 4x over: sealed-wild 0.0000 -> 0.2053 (bar
+>= 0.05; 421 of 2051 items now carried by the COMMITTED channel
+alone).** Pass structure on the pressure arm: pass 0 (open) 0.1721
+-> pass 1 (conditioned/sealed) 0.2053 — under this meter the sealed
+pass now EXCEEDS the open pass; on the control 0.1736 -> 0.0000. The
+control's 0.0000 is item 0's FOURTH leg (fedon242, port242,
+mhr2ctl242, pcctl242). This is the first machine in the campaign
+whose certified path carries wild thought.
+
+**GUARD BAR MISSED, by one item: open-wild 0.2404 vs control 0.2506
+= -0.0102 against the pinned -0.010.** At n=2051 the bar is 20.5
+items; the arm lost 21. Bars never bend after measurement: the guard
+FAILS at the margin, banked as an honest negative. Verdict = MIXED
+(primary pass / guard fail), scope single-seed exploratory; nothing
+is promoted (research lineage). Reading (not a re-bar): the control
+itself fell -0.0107 vs the champion over the same 12k (0.2613 ->
+0.2506 — gentle continuation at LR 1e-4 still bleeds wild at this
+depth; the continuation cost dominates), so the seal's own net cost
+on open-wild is ~1 item beyond that. Mint: both arms above the
+champion; the CONTROL sets a mint record 0.9537 (+0.0107 — a
+continuation win to bank, seed 242); pressure -0.0088 vs control.
+
+DEBTS/NEXT (hold for the word): (a) seed-241 twin of the pair (the
+2-seed law before any program is built on 0.2053); (b) dose sweep
+ALG_PC_MIX in {0.15, 0.5} — the one-item guard miss is a dose
+question, and the flat-mix/dose law says declare share AND reps;
+(c) sealed-mint reference: fedon242 under step_engine R=1 on test23
+must be read straight before the 0.8743 means anything (never quote
+the forensic's band across meters); (d) the head edit batch now
+UNBLOCKED (chain done): SHELF_CIRCLE>=2 assert, the eaten
+backslashes, docstring DEV lines — and the commit-adapter contract
+fix (sign/dargs mirroring decode) pending the word, since it moves
+the sealed channel's behavior and the 0.0000/0.2053 meters must be
+re-read under it before cross-generation comparison (meter-divergence
+law). Platform: 0.57 s/step pressure, 0.55 control (no seal tax at
+depth — the smoke's 0.75 was capture-era).
