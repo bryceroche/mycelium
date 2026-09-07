@@ -2068,7 +2068,16 @@ def breath_step(p, state, kb, ctx):
                     _snaps_g.append((_grad_a5.detach(),
                         _grad_b5.detach(), _grad_r5.detach(),
                         _grad_g5.detach()))
-            _wn4 = _wg4.pow(2).sum(-1, keepdim=True).sqrt() + 1e-6
+            # THE CONFIDENCE STAMP, NaN-SAFE (2026-09-07, the dose-0.15 death):
+            # tinygrad's sqrt backward is grad/(2*sqrt(x)); an exact-zero
+            # deposit vector (the live wire shrinking a useless commitment to
+            # float32 zero) made this 0/0 -> NaN at step ~5000. The +1e-6 sat
+            # OUTSIDE the sqrt and guarded nothing. where()-gate (the CLAUDE.md
+            # idiom): forward BIT-IDENTICAL (sqrt(s)+1e-6 for s>0; 1e-6 at s=0),
+            # backward finite (zero into the s=0 branch).
+            _ss4 = _wg4.pow(2).sum(-1, keepdim=True)
+            _sp4 = _ss4 > 0
+            _wn4 = _sp4.where(_sp4.where(_ss4, 1.0).sqrt(), 0.0) + 1e-6
             _cn4 = _canon4.pow(2).sum(-1, keepdim=True).sqrt() + 1e-6
             _dep4 = _canon4 / _cn4 * _wn4
             _wg4 = _dep4.detach()

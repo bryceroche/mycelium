@@ -34261,3 +34261,31 @@ loss between steps 5001 and 5500 (`assert np.isfinite(v)` at the
 500-step print); the chain's set -e ended the unit before d50 ran.
 No trend precedes it — a numerical event, not a divergence. Root
 cause under audit before any re-fire; s4000 snapshot survives.
+
+## 2026-09-07 — THE ZERO-NORM DEATH: root cause of the dose-0.15 non-finite loss, fixed at the op, proven bit-identical
+
+MECHANISM (reproduced on CPU, `sqrt_guard` micro-test): the confidence
+stamp was `_wn4 = ||_wg4|| + 1e-6` with the epsilon OUTSIDE the sqrt.
+tinygrad's sqrt backward is grad/(2*sqrt(x)); an EXACT-ZERO deposit
+vector makes it 0/0 = NaN. Under the dead wire (every run before the
+cooker) no gradient ever crossed this sqrt, so the flaw was inert for
+its whole life; the live wire opened the tape, and the wire's own job
+— shrinking useless commitment amplitudes from downstream use — drives
+some slot's norm to float32 zero. **The fix blew up exactly where it
+succeeded.** Timing is seed/dose luck: the 0.3 arms survived 24k
+steps; 0.15 died between 5001 and 5500 (evidence:
+.cache/sharp_pcmix242_d15_CRASH.log — loss 4.66 at 5000, tracking the
+0.3 arm step for step; no trend, a single event). FIX: where()-gated
+stamp — forward BIT-IDENTICAL (sqrt(s)+1e-6 for s>0; 1e-6 at s=0),
+backward finite (zero into the s=0 branch), the §5 idiom. PROOFS:
+CPU micro-test (raw: NaN grads on the zero row; guarded: finite,
+forward array_equal); eq A/B/C bit-identical to the adapter-fixed
+dumps (which were themselves bit-identical to the pre-adapter dumps —
+the adapter fix moves no living config); pc_row_smoke ALL GATES
+(W_bind1 live 3.821 / dead 0.000 unchanged). Not a workaround: the
+NaN was the stamp's gradient, not a symptom to skip. The 500-step
+isfinite tripwire stays (loud, as it should be).
+RE-FIRED: `.cache/pc_dose.sh` as unit pc-dose — d15 then d50, reads,
+bars as pinned last night (primary >= 0.05; guard >= 0.2406 vs
+pcctl242; monotone prediction; 0.15-fails-to-open = KILL for dose as
+the lever).
