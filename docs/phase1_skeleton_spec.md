@@ -34165,3 +34165,56 @@ Dose law: share declared (0.15/0.3/0.5), reps-per-unique unchanged
 seal on every visit — the STABLE assignment).
 ETA ~13h (reads ~20 min; four 12k arms at ~0.56 s/step + 75-min
 mask-prep each). Verdict entry follows the reads.
+
+## 2026-09-07 — GUT REGISTERED (the 21st): THE SHREDDED FLAG + THE WET BAG — two images, two audits, predictions pinned before any read
+
+Bryce, on waking: (1) a flag shredded by the wind, captioned
+"excessive attention"; (2) a wet bag that cannot dry because there is
+no path for the wind THROUGH it, with people talking about topography.
+Registered per the discipline (20/20 so far): each image is bound to a
+named organ and a checkable prediction BEFORE anything is measured.
+
+**IMAGE 1 -> THE BASELINE MASK IS NEARLY ALL-TO-ALL.** The evidence-
+sharing slot mask (build_slot_masks: same-sentence OR shared-variable
+OR self) reads **mean degree 18.8/24 on the champion's train mix
+(fed_on242.log), 18.6/24 on the cooker's** — the baseline already
+opens ~78% of every row. The mask head is OPEN-ONLY by constitution:
+it can amplify lanes but never close a baseline lane; the drafting-
+problem post concedes thinning happens only by renormalization. A flag
+is a sheet held at one edge: too much wind and it shreds — attention
+with no selectivity carries no binding. Wild rows, with fewer/longer
+sentences, should be MORE open than mint under this mask. THE
+SHREDDED-FLAG AUDIT (read-only, after pc-round2 frees the GPU): per-
+item baseline degree on wildhold vs test23; fac-exact by degree
+tercile on wild; attention-entropy telegraph per breath by tercile.
+PREDICTIONS: wildhold mean degree exceeds test23 by >= 1.5 slots; the
+top-degree tercile's wild fac-exact trails the bottom tercile by
+>= 0.03; if both hold, the remedy is a TIGHTER BASELINE (a degree-cap
+or same-sentence-only baseline with the mask head opening from there)
+— not a stronger mask head, which the constitution forbids from
+closing anything. KILL: degree flat across registers or uncorrelated
+with fac-exact -> the flag is not this flag; next candidate = the
+token-level attention (T=... tokens), read via the paired atlas's
+per-breath pooling.
+
+**IMAGE 2 -> THE TIDAL BAG: A ROAD IN WITH NO ROAD THROUGH.** The
+ledger's own word for this is banked (2026-09-02 THE AVIAN BREATHING
+METAPHOR: tidal lung = a bag, air in and out the same opening; avian =
+flow-through). Two candidates, ranked: (a) **the frozen trunk** — the
+wet bag that never dries because no gradient flows through it; G58
+(2026-08-22) proved the frozen trunk's register representation WAS the
+wall (19/101 -> 54/101 with ~786k LoRA adapters), and the cooker just
+opened the committed channel on wild with the trunk still frozen.
+"Topography" = the landscape the wind must cross: the trunk's
+representation of the wild register. THE FLOW-THROUGH ARM (needs the
+word; ~3h): pressure 0.3 + ALG_TRUNK_LORA (the G58 recipe's adapters,
+warm fedon242 head), vs pcmix242 (frozen) and a LoRA-only control.
+PREDICTIONS: sealed-wild >= 0.2053 + 0.03; open-wild guard within
+-0.010 of the LoRA control; if sealed-wild moves and open-wild does
+NOT, the bag dried on the committed side only — the channel is where
+the trunk's unlock pays. (b) **dead-end garages**: organs where a
+deposit enters and nothing reads it — the forensic already found one
+(committer grad 0.0 -> the live wire); a systematic two-terminal
+census of every deposit/read pair (notebook slots, shelf lanes, mass
+thread, atlas port) is the zero-GPU half of this audit.
+Neither fires before pc-round2's verdict; the reads queue behind it.
