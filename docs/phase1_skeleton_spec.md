@@ -34218,3 +34218,46 @@ deposit enters and nothing reads it — the forensic already found one
 census of every deposit/read pair (notebook slots, shelf lanes, mass
 thread, atlas port) is the zero-GPU half of this audit.
 Neither fires before pc-round2's verdict; the reads queue behind it.
+
+## 2026-09-07 — ROUND 2, PARTS A-C BANKED: meters exact, the ladder climbs, THE SEED-241 TWIN replicates the channel and fails the guard; part D died on a non-finite loss
+
+**A. Meter re-reads under the fixed adapter: prediction held to the
+digit** — fedon242 sealed-wild 0.0000, pcmix242 0.2053, pcctl242
+0.0000, pcmix242 sealed-mint 0.8743 (all delta = 0). The adapter's
+sign/dargs divergence was never load-bearing; every prior read stands.
+NEW REFERENCE: **fedon242 sealed-MINT under step_engine R=1 = 0.0000**
+— under this meter the champion consumed the committed facts on
+NEITHER register; the forensic's "~94.5% sealed band" was a different
+sealing meter (loop_val SC_EVAL=1). The pressure arm's 0.8743 is an
+opening from zero. Meter-divergence law, filed as a specimen: never
+compare sealed numbers across meters.
+**B. The snapshot ladder** (pressure sealed-wild / pressure open-wild /
+control open-wild): s4000 0.1185 / 0.2370 / 0.2516; s8000 0.1848 /
+0.2389 / 0.2501; s12000 0.2053 / 0.2404 / 0.2506. The channel is
+still CLIMBING at 12k (not a plateau); the pressure arm's open-wild
+RISES with steps; the control's whole loss vs the champion (0.2613)
+lands inside the first 4k (the hot-restart jostle — gentle-
+continuation law) and then holds flat. Steps are a live lever.
+**C. THE SEED-241 TWIN.** pcmix241: sealed-wild **0.1975** (PRIMARY
+PASSED, 4x; two seeds 0.2053/0.1975), open-wild 0.2477, mint 0.9487.
+pcctl241: sealed-wild 0.0000 (item 0's FIFTH leg), open-wild
+**0.2686 — NEW WILD RECORD** (> fedon242 0.2613; a continuation win
+at seed 241 where seed 242's continuation LOST 0.0107 — the two
+controls straddle the champion by +-0.01), mint **0.9588 (mint
+record)**. GUARD: 0.2477 - 0.2686 = **-0.0209, FAILED** (bar -0.010).
+TWO-SEED GUARD VERDICT: fails both seeds (-0.0102, -0.0209; mean
+-0.0155) — the seal at dose 0.3 costs open-wild, and the cost is real
+(same sign twice), though each single-seed delta sits near one sigma
+of the fixture (sd ~0.0096 at n=2051, p~0.25). LESSON, filed: the
+guard was pinned AT the noise floor of its fixture; control seed
+spread (0.018) exceeds the bar (0.010). Future guards on wildhold
+carry >= 2 sigma (0.02) or a paired-seed frame, and controls are read
+per seed. WILD STANDINGS: pcctl241 0.2686 > fedon242 0.2613 >
+mhr2ctl242 0.2565 > port242 0.2540.
+**D. The dose sweep DIED**: pcmix242_d15 (share 0.15, 20074 rows
+sealed) tracked pcmix242's loss curve step for step (same seed, same
+batch order; 4.66 vs 4.85 at step 5000) and then hit a NON-FINITE
+loss between steps 5001 and 5500 (`assert np.isfinite(v)` at the
+500-step print); the chain's set -e ended the unit before d50 ran.
+No trend precedes it — a numerical event, not a divergence. Root
+cause under audit before any re-fire; s4000 snapshot survives.
