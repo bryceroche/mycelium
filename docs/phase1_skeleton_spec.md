@@ -35052,3 +35052,31 @@ each); form12 (131 GB) is the live diet. Checkpoints total 20 GB
 (889 files; 502 snapshots = 11 GB). Reproducible via --precompute
 (~an hour each). Deletion is Bryce's call; proposed: the retired
 memmaps (~1.0 TB), keep form12.
+
+## 2026-09-08 — PERF ITEM 3 BUILT: scripts/read_batch.py (one process, one fixture, many checkpoints — the standalone organs called, never reimplemented)
+
+Equality to the digit vs the standalone scripts (CPU, wild fixture):
+loop_val fedon242 0.2613 / pcctl242 0.2506 on the full 311 rows —
+the ledger's own banked numbers reproduced through the batch path;
+the sealed step-engine block identical field for field (pass 0 /
+facts / pass 1 / final); the [clock] line byte-identical; A -> B -> A
+in one process gives A's numbers twice (every head module-global
+that a read must not carry — _PCV, _CENSUS, _IMP, _STEP_TAP — is
+asserted None before every meter; Tensor.training asserted False).
+THE SC_EVAL DECISION: one process may serve both seal modes — the
+UNLIT STOVE was a JIT-CAPTURE specimen (the only @TinyJit lives in
+do_train); forward() on the read path is un-captured and reads
+SC_EVAL while it BUILDS each graph. Not taken on argument: read_batch
+runs a TRIPWIRE per process (loop_val's masked two-pass cycle on one
+batch under SC_EVAL=0 and unset must differ; measured max|d| 4734.5)
+and refuses to run if the modes agree; RB_ONE_MODE=1 is the escape
+hatch. The tripwire's first version probed an UNMASKED forward (no
+breath loop — the seal cannot show) and was caught by its own false
+alarm; fixed to the masked pass. Refactor patches for loop_val /
+step_engine_read wrap the bodies in functions with ZERO computation
+change (stdout byte-identical, 2/2 each); clock_read needs none.
+Timing on CPU understates the gain (kernels disk-cached, setup 0.6 s);
+the GPU projection (18 read launches -> 4 per chain, ~18 min -> ~4
+min of startup) is unmeasured until one GPU run. ALL THREE PERF
+ITEMS APPLY AFTER CHAIN 2 EXITS; the next chain is written on
+read_batch + the cache + the multi-wheel read.
