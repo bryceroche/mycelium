@@ -34910,3 +34910,45 @@ wild** (unchanged — its planes did not move), pass wheel 0.9736 /
 [0,20) on 192 planes; probe 0.9549 / 0.9624. The twin's bars and
 the chain's reads are unchanged (they read the bands file). Frozen
 at birth from here.
+
+## 2026-09-08 — WORD GIVEN (bias for action): THE KITCHEN SINK on the polar run — content-plane waist + E&B coupling; multi-hop DSL DECLINED for this run; the flag audit rides; two arms keep attribution
+
+Bryce: add the dimensional waist to the inner loop ("expand &
+collapse x7" — the hope: reduced dimensionality makes segment-and-
+classify easier with less noise), the E&B link to T^256 (refuted
+before the T^3 clock existed), multi-hop in the DSL mask if clean;
+stick with SQLite (campaign_db: registry + conflict store, embedded,
+daemonless — pgvector solves a problem we do not have).
+RULINGS: (1) ALG_POLAR_D — the waist acts on the 192 CONTENT planes
+only (384 dims -> d=128 -> 384), the 64 clock planes untouched so the
+bottleneck cannot fight the rotation; PCA-initialized from the
+champion's own polar states (.cache/polar_states_{mint,wild}.npz,
+256 x 7 x 24 x 512 each, dumped this morning under fedon242) so
+birth is the orthogonal projection onto the champion's top-128
+content subspace (rank read: 64 PCs keep 95%); a hard bottleneck,
+not a residual (the hope needs the constraint). Two new params.
+(2) ALG_POLAR_EM — a discrete Maxwell exchange on the clock planes
+along the slot-mask lanes: the two quadrature coordinates of each
+clocked plane trade through the difference across neighbouring slots
+(x_i += k sum_j M_ij (y_j - y_i); y_i -= k sum_j M_ij (x_j - x_i)),
+kappa FIXED at 0.1 (declared once; a zero-born learnable gain is the
+pattern that died — fed_mx_hg 0.02), content planes untouched. The
+wave now has a clock to be coherent against — the specific thing the
+June photon line lacked. (3) MULTI-HOP DSL: DECLINED for this run —
+the DSL executor is not in the live path (the champion's masks =
+the baseline rule + the mask head's open-only lanes), and composing
+a 78%-open baseline with itself is all-to-all with extra steps: the
+shredded flag made worse. Composition earns its place on a TIGHTENED
+baseline; the flag audit (registered 09-07, never run) rides this
+chain as a read so the DSL is designed on a measured baseline.
+ATTRIBUTION: two arms, seed 242 — ARM A polar only (the clean twin,
+bars as pinned) and ARM B the kitchen sink (polar + D=128 + EM=0.1),
+judged against ARM A: probe >= 0.95 both fixtures; breath-hand
+designed_mass >= 0.5 with the content control >= 0.9; open-wild and
+mint within -0.02 of ARM A; REGISTERED PREDICTION (the hope): the
+sink improves mint OR wild by >= +0.01 without costing the other
+-0.02. KILL: wild < ARM A - 0.02 = the sink hurts; which half is the
+follow-up ablation (D alone / EM alone). Seed 241 deferred to the
+verdict. Every door byte-inert when unset (eq A/B/C). Builder phase
+3 running (CPU); phase 4 = apply + eq + row smoke; fire on the
+proofs (the word for this run is given).
