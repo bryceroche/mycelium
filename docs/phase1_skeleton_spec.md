@@ -34738,3 +34738,51 @@ reads established stands as banked (fix A = the cure; 0.15 = the
 gentle dose); the 12k guard for the floored arm is simply unmeasured
 and will be measured, if at all, on the polar generation. The card
 waits for the polar twin.
+
+## 2026-09-07 — POLAR WAIST PHASE 1 BANKED: six anchors, one deleted line, birth proofs green on CPU; decisions on the builder's open questions
+
+Delivered (head untouched): scripts/apply_polar_waist.py (--check
+clean: 6 anchors, +243 lines, ONE deleted line = fed item 7a's `if`
+-> `elif`; symtable audit PASS; 0 new params; idempotence + vintage
+guards), .cache/polar_bands.json (READ by the head — the bands
+note's lesson), scripts/polar_birth_smoke.py (ALL GATES: A env-
+inertness bit-identical on 6 keys = the CPU stand-in for eq; B2
+||u||=1 to 6e-7; B3 breaths_all == r*u to 3e-8, median radius per
+breath 2.25 -> 4.68 monotone — growth is now a coordinate; B4 the
+rotation unit test reads 60.00/120.00/0.00 deg with content planes
+moving <= 6e-8; B6 state and Q share the same 56 clocked planes; C1
+where-gates exact at the origin (backward exactly 1.0); C2 two-
+terminal: parse loss reaches the head THROUGH the polar state,
+breaths_r/breaths_u losses reach nothing).
+BANDS (frozen): 256 planes, strided and disjoint — breath hand p==0
+mod 8 (32 planes), parity p==4 mod 16 (16), pass wheel p==2 mod 32
+(8, static), 200 content; reshaped per 64-d head the SAME planes land
+in every mixer head (one clock). Deltas on the state (it compounds),
+absolutes on Q (rebuilt each breath); the compounding contract is
+asserted against rotor_clock.wheel_table.
+PLACEMENT: after the pawl and the seal, before the notebook ink /
+breaths.append / the garage write (order asserted); the seal and the
+live wire are NOT edited; fix B (w' = w*R/(R+w), R detached — an
+un-detached R is a Goodhart loop: the committer could earn a loud
+stamp by shrinking the state) sits before _dep4 with the floor
+underneath; gradient (R/(R+w))^2 bounded and never zero (tanh
+rejected: e^-80 at the champion's w/R ~ 40 — dead at birth).
+Two catches at build: an epsilon denominator spiked to 1e6 at an
+exact-zero slot (replaced by a where-gated 1.0: u exactly unit, r
+the true radius, r*u == x at the origin); the C2 probe list corrected
+to assert the known-zero terminals (W_bind1 dead-wire, W_bq behind
+zero-init W_bo). Door #62 (sw_g) KEPT: it is a breath-0 token/slot
+resonance bias, kb-invariant, never a clock — cannot fight the sextet.
+DECISIONS on the open questions: (1) the Q-side as built rotates only
+the mixer's queries (behind the 2% gains) — the word says the
+attention space turns, so the MAIN sc2 path's bq gets the seventh
+anchor (ALG_POLAR_QROT=2, default under ALG_POLAR; same tables, same
+planes; gate B6 extended); (2) R detached — ratified; (3) slotvec
+radius stays coded, unexercised; scalar is the twin; (4)
+clock_read.py gains a CR_KEY dial (default breaths_all — existing
+behaviour unchanged) so the bar reads breaths_u; (5) ALG_POLAR_R_
+FLOOR registered as the follow-up if the twin prints a radius spike;
+(6) RINGS/notebook phase mixing flagged, moot in the deployed family.
+Phase 2 (GPU): eq PRE dumps taken on the unpatched head
+(.cache/eqpolar_pre_*.npz); apply after the seventh anchor lands;
+eq POST bit-identity; row smoke; then the twin on the word.
