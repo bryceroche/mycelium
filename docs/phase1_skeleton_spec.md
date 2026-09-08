@@ -34679,3 +34679,49 @@ principle that the solver's "no" must reach the mask head — through
 the fact buffer's silence made legible (which slots were committed
 when the row went silent), not through rival enumeration. Registered
 as the veto channel's remaining form; no bar yet.
+
+## 2026-09-07 — WORD GIVEN: THE POLAR WAIST GENERATION (T^256 direction channel + explicit radius + the sextet on the state AND the attention space); rung 0a read; Poincaré on deck
+
+RUNG 0a (zero-GPU): the champion's mixer gains fed_mx_hg (zero-born,
+the gate behind which fed item 7a's breath rotor lives) woke to
+abs-mean 0.023 (max 0.028) in fedon242, and SHRANK under the cooker
+(pcmix242 0.013; the floored 0.15 arm 0.014). The rotor is a Q-side
+60-degree turn on 8 of 32 pairs per head inside a mixer running at
+~2% gain: a whisper the state never heard (the clock read: zero
+60-degree mass). The bands note stands: neither BREATH_BAND_PAIRS nor
+ROT_BANDS ever governed a trained head. Rung 0b (an attention-pattern
+breath probe) needs a tap and ships with the build's instrumentation.
+
+THE DESIGN (Bryce + Claude, word given): a NEW GENERATION, env-gated
+(ALG_POLAR), birth-equivalent when off (eq A/B/C bit-identical), twin
+vs the champion's own continuation, two seeds. (1) THE POLAR STATE:
+the loop state per slot = radius x direction; the direction lives on
+the unit sphere of a T^256 torus (512 = 256 planes, the bus's own
+geometry); the radius is an explicit low-dim consolidation channel
+(diagnostic register: never supervised) — the two-channel law (angle
+= identity, radius = consolidation) becomes the parametrization; the
+norm growth measured today (7 -> 12) becomes a coordinate instead of
+a swamp. (2) THE SEXTET, GUARANTEED: rotor_clock.py becomes the
+single source of truth in fact — its wheels (breath hand 60 deg,
+parity 120 deg, pass wheel static) drive frozen, unconditional
+rotations (no gains, no learnable frequency) on designated clock
+bands of the planes, applied to BOTH the state's direction (so the
+state carries its breath) and the attention space (Q-side, the
+relative-phase precedent), every loop breath kb = 1..6; breath 0
+outside time. Content planes stay unclocked. (3) THE DEPOSIT'S
+RADIUS: fix B lands here — the stamp is the deposit's radius channel,
+calibrated to the state's scale, so amplitude can neither shout
+(1e4) nor vanish (the floor stays as the safety). (4) Numerics: the
+normalization is where-gated (the §5 idiom); no dtype literals in
+the JIT. BARS (pinned before the twin fires): breath-identity probe
+>= 0.95 on both fixtures (clock_read.py IS the instrument); >= 0.5
+of the Procrustes variance mass in [50,80) deg; open-wild and mint
+within the two-sigma frame of the continuation twin (wildhold sd
+~0.0096 -> -0.02); sealed-wild reported (the channel must not
+close). KILL: probe < 0.80 after 12k = the clock is still not in the
+state — the parametrization is wrong, not the dose.
+ON DECK (registered, not built): THE POINCARÉ BALL — with radius an
+explicit coordinate, the hyperbolic reading (radius = depth in the
+kind hierarchy) is one log-map away; the marriage clause governs
+(no hyperbolic quantity enters a softmax without a log-map; cosine
+is wrong in the ball). Spec: docs/polar_waist_spec.md (next entry).
