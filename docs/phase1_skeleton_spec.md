@@ -34657,3 +34657,25 @@ deletion core stays as an autopsy instrument.
 Logs: .cache/ladder.log, ladder_clock.log, ladder_needle_*.log,
 ladder_collider_*.log; arrays in .cache/clock_read_*.npz,
 needle_read_*.npz, collider_read_*.json.
+
+## 2026-09-07 — THE SURVIVOR VARIANT (exploratory, unpinned): the collider's second rule is dead too — uniqueness is not truth
+
+Rule tested (scripts/collider_survivor_variant.py, the collider's own
+forward/decode/grader, GPU read on both fixtures): original
+UNDERDETERMINED and EXACTLY ONE single-slot rival makes the query
+UNIQUE -> is that rival's slot correct? Wild: 3/45 (0.067; the
+original slot was already correct in 7/45). Mint: 1/65 (0.015; the
+original slot was ALREADY CORRECT in 57/65 — the rival that forces
+uniqueness is almost always a WRONG edit that over-constrains the
+graph into a unique wrong answer). By rival kind: args swaps 0/53,
+res2 0/11, add_top 2/24, add_res2 1/13. **Consistency-plus-
+uniqueness is not truth; on an exactly-determined grammar it is
+closer to anti-truth: the easiest way to force an answer is to break
+the reading.** The collider family (contradiction-flip, uniqueness-
+filter) is closed at this commitment density and grammar; the honest
+limit named in the 22nd registration is the whole story. What
+survives: the deletion core as an autopsy instrument, and the
+principle that the solver's "no" must reach the mask head — through
+the fact buffer's silence made legible (which slots were committed
+when the row went silent), not through rival enumeration. Registered
+as the veto channel's remaining form; no bar yet.
