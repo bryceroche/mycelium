@@ -34583,3 +34583,77 @@ waypoint, sealed-wild + open-wild on s8000 vs the 0.3 arm's s8000 =
 0.1848 / 0.2389 and the control's 0.2501). Survival bar judged at
 8000; channel judged at matched 8k (Goldilocks vs linear reads
 against 0.1848: linear predicts ~0.09); guard at 12k: NOT MEASURED.
+
+## 2026-09-07 — THE LADDER VERDICTS (+ the canary's 8k channel): floor cures the collapse and 0.15 is Goldilocks at 8k; THE CLOCK IS NOT IN THE STATE; the needle passes on direction and INVERTS on wild radius; the collider is KILLED by underdetermination
+
+**RUNG 0 — THE CANARY HARVEST (stopped at 8000 by the word).**
+SURVIVAL: PASSED on every count — val proxy 0.9378 at 8k (bar 0.90;
+unfloored 0.4457; the 0.3 arm 0.9316), breath-2 stamps < 1e-3 = 0.00
+at every waypoint (bar 0.02; unfloored 0.16), whole-head drift ratio
+0.58 (6k) / 0.91 (8k) vs the reference (unfloored 3.34), alt21_W_bk_b
+ratio 1.7 / 2.4 (unfloored 966), prints 6.00 / 8.85 / 4.57 at 6000 /
+6500 / 7000 (unfloored 46.2 / 20.5 / 11.0). The floor is holding 1% of
+stamps at 0.01 by 6k and 5% by 8k — the would-be collapses, caught.
+**Fix A is the cure for the collapse; fix B (the calibrated stamp)
+stays registered for the next generation as a scale fix, not a
+stability fix.** CHANNEL at matched 8k: sealed-wild **0.1502** (the
+0.3 arm's s8000: 0.1848; linear dose response predicted ~0.09) —
+GOLDILOCKS WINS at 8k: half the dose buys 81% of the channel. OPEN-
+WILD at 8k: **0.2462** (the 0.3 arm's s8000 0.2389; control s8000
+0.2501) — the guard at matched 8k is -0.0039: PASSES the -0.010 bar.
+The dose verdict is amended: dose IS a lever once the entry trap is
+removed — 0.15 floored opens the channel and holds the guard at 8k.
+12k not measured (by decision). Registered next: the floored 0.15 arm
+to 12k with the 12k guard, seeds 242 + 241 (the two-seed law).
+
+**RUNG 1 — THE CLOCK READ: FAIL, and the failure is legible.** Breath-
+identity probe: mint 0.6011 / wild 0.5325 (bar 0.95; chance 0.14);
+norm-only control 0.247 / 0.263. Confusion: breaths 0 and 1
+identified perfectly (77/77, 73/77); from breath 2 on, identity
+smears across neighbours (mint b3: 30/77 right, mass on 2/4/5/6).
+Sextet signature: variance-weighted Procrustes eigen-angles between
+loop breaths put 0.000 mass in [50,80) deg and 0.98-0.99 in [0,20) —
+NO 60-degree rotation; the state consolidates (norm 7.0 -> 11.9
+monotone) and does not turn. **THE MACHINE KNOWS BREATH 0 AND BREATH 1
+AND THEN LOSES COUNT.** The gut ("the clock is critical") and the
+audit ("unwired") are the same fact: the six-wave phasing (door #62)
+does not imprint breath identity on the state; rotor_clock.py's
+sextet is the unbuilt organ. Consequence for the atlas: seven pages
+consulted by a machine that cannot tell page 3 from page 5. Wiring
+the clock is now a registered precondition of the rebuild (rung 4).
+
+**RUNG 2 — THE NEEDLE READ: PASS on direction, with a register
+inversion that is itself the finding.** Cosine-to-road (the
+consult's own metric): mint AUC **0.848** at step 0 (209 correct / 91
+wrong), wild **0.748** at step 0 (7 correct / 304 wrong — n_correct is
+tiny; weak evidence). z-radius (variance-normalized, the Welford
+ruler): mint 0.689 at step 6 (inconclusive), NL 0.703 at step 1
+(pass); **wild z-radius 0.232 — INVERTED: correct wild readings sit
+FARTHER from the wild_gsm8k road than wrong ones (median 1.16 vs
+0.92)**, and NL z 0.42. Reading: on mint the road is a contracting
+family and distance = wrongness (Tolstoy holds); on wild the correct
+readings INDIVIDUATE away from the register's average — the two-
+dances entry (2026-09-06) measured from the other side. The needle's
+best step is step 0 on every passing metric and cosine AUC DECLINES
+across breaths on mint (0.85 -> 0.77): the initial silhouette's
+direction is the diagnostic, not the late trajectory. Granularity
+caveat stands (6 coarse classes). Rung 2b (adds-to-agreement) and a
+kind-level atlas are the follow-ups; the z-radius is NOT a wild
+wrongness meter and must not be fed as one.
+
+**RUNG 3 — THE COLLIDER READ: KILLED, at the visibility bar, by
+underdetermination.** Wrong originals contradictory: wild 16/311 =
+0.051, mint 3/142 = 0.021 (kill < 0.10). Wrong originals
+UNDERDETERMINED: 270/311 wild, 135/142 mint — at theta 0.9 the
+committed subset is too sparse to force the query, so the propagator
+has nothing to contradict; unique-but-wrong readings exist (25 wild,
+4 mint: the honest limit, present). Zero flips; silent-wrong 0.
+Survivor sets: wild 201 items with 0 unique candidates, 49 with
+exactly 1. The Gödel half has nothing to name at this commitment
+density. Not dead as an idea — dead as designed: a collider needs a
+denser commit (lower theta) or full decoded graphs to see anything;
+that is a new registration with its own bars, not a re-bar. The
+deletion core stays as an autopsy instrument.
+Logs: .cache/ladder.log, ladder_clock.log, ladder_needle_*.log,
+ladder_collider_*.log; arrays in .cache/clock_read_*.npz,
+needle_read_*.npz, collider_read_*.json.
