@@ -91,7 +91,7 @@ Envs:
            on 32 planes, 120 on 16, static on 8), so its [50,80) bin
            has a hard ceiling near the breath hand's share — a diluted
            meter, one level up from the 'all' dilution. WHY (2026-09-07, the birth read):
-           the polar waist clocks 56 of 256 planes BY DESIGN and leaves
+           the polar waist clocks a designed subset of the 256 planes (read from the bands file) and leaves
            200 at 0 deg, so a variance-weighted histogram over all 512
            dims has a CEILING on mass[50,80) near the clocked planes'
            share of the energy — the birth read's 0.057 is that
@@ -522,7 +522,7 @@ def run(fixture):
     dw = DESIGNED.get(CR_PLANES)           # the selection's designed window
     if CR_PLANES != "all":
         # THE PLANE RESTRICTION (2026-09-07, the birth read): the polar
-        # waist clocks 56 of 256 planes BY DESIGN and pins 200 at 0 deg,
+        # waist clocks a designed subset of the 256 planes (bands file) and pins the rest at 0 deg,
         # so a variance-weighted histogram over all 512 dims has a
         # CEILING on mass[50,80) near the clocked planes' energy share.
         # PER-WHEEL (the second refinement): even 'clocked' mixes three

@@ -34895,3 +34895,18 @@ wild informational. Chain .cache/polar_twin.sh carries these reads
 (breath_hand = the bar; parity + content = controls). Birth values
 are the reference the 12k numbers are read against: the question is
 whether training KEEPS the clock (0.83 -> ?) or cancels it.
+
+## 2026-09-08 — RULING: the clock is 64 planes (32/16/16 — powers of two); bands v2 frozen; birth clock re-read
+
+Bryce: 64 complex planes for the clock instead of 56. Bands v2
+(.cache/polar_bands.json, version 2): breath hand p==0 mod 8 (32),
+parity p==4 mod 16 (16), pass wheel p==2 mod 16 (16, static this
+era); residues mod 16 = {0,8} | {4} | {2} — disjoint; 64/256 = 25%
+clocked, 192 content. The head's reader accepted the file (door
+print: clocked=64, 32/16/16). Birth clock per wheel (GPU, fedon242
+weights, n=64): breath hand designed_mass **0.8291 mint / 0.8745
+wild** (unchanged — its planes did not move), pass wheel 0.9736 /
+0.9898 at [0,20) on its now-16 planes, content 0.9697 / 0.9897 at
+[0,20) on 192 planes; probe 0.9549 / 0.9624. The twin's bars and
+the chain's reads are unchanged (they read the bands file). Frozen
+at birth from here.
