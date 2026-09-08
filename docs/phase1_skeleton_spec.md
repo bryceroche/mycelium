@@ -34869,3 +34869,29 @@ variance; parity reported at [110,130); pass and content reported at
 breaths_u, both fixtures, kill < 0.80. Builder adding the per-wheel
 dial; the twin chain's read line is updated BEFORE the fire (never
 edit a running chain).
+
+## 2026-09-07 — THE BIRTH CLOCK, PER WHEEL: the instrument is final; the twin's bars in their final wording
+
+clock_read CR_KEY=breaths_u CR_RANK=64, fedon242 weights, ALG_POLAR=1,
+n=64, both fixtures — designed_mass on each wheel's own planes:
+| wheel | designed window | mint | wild |
+|---|---|---|---|
+| breath hand (64d) | [50,80) | **0.8291** | **0.8745** |
+| parity (32d) | [110,130) | 0.9209 | 0.9510 |
+| content (400d) | [0,20) | 0.9700 | 0.9916 |
+Probe 0.9549 / 0.9624 (unchanged by the dial — it reads section A).
+The mixed clocked read's 0.43/0.40 was pure dilution: on its own
+planes the breath hand turns at 0.83-0.87 of its variance at birth
+(the remainder = the learned tangential write of warm weights), and
+each wheel peaks in its designed bin with zero mass in the others'.
+FINAL BAR WORDING (pinned; the twin has not fired): at 12k, on
+BOTH fixtures, (1) probe_acc >= 0.95 on breaths_u [kill < 0.80];
+(2) designed_mass >= 0.5 on CR_PLANES=breath_hand AND the content
+control's designed_mass >= 0.9 at [0,20) (the second clause is what
+stops a restriction artefact from passing as a clock); parity
+reported; (3) open-wild and mint within -0.02 of the matching-seed
+control (pcctl242 0.2506/0.9537; pcctl241 0.2686/0.9588); sealed-
+wild informational. Chain .cache/polar_twin.sh carries these reads
+(breath_hand = the bar; parity + content = controls). Birth values
+are the reference the 12k numbers are read against: the question is
+whether training KEEPS the clock (0.83 -> ?) or cancels it.
