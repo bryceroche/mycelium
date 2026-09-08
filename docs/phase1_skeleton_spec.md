@@ -35234,3 +35234,46 @@ mask head's lanes are the only road — the cooker's logic applied to
 attention; the flag audit showed the baseline is NOT the accuracy
 lever, which frees it to be a training pressure) is the registered
 remedy; the pointer forms and notebook lane 2 are pruning candidates.
+
+## 2026-09-08 — THE MANDATORY-ROAD LAW (Bryce), THE PRE/POST KNOB LAW, and the atlas wiring confirmed — as NOT wired
+
+LAW 1 — THE MANDATORY ROAD: every organ enters as a road with no
+bypass, never as an invitation through a gain. Under gentle
+continuation the open residual already solves the loss, so a gated
+organ is voted down from birth (mh_gain 0.02 -> 0.0011 -> 0.0002;
+fed_mx_hg 0.02 -> 0.023; the pointer forms and notebook lane 2 at
+0.0004). The two proofs of the week: the SEAL (residual removed ->
+the committed channel opened 0 -> 0.2 in one run) and the CLOCK (no
+gain -> probe 1.0 at birth and at 12k). Corollary for the gate-
+deadlock rule: "ajar" was never enough; the road must be the only
+road for some share of the traffic (the cooker's per-row mix is the
+template for every organ: the MASK COOKER, the FACT COOKER, ...).
+LAW 2 — THE PRE/POST KNOB: every organ's injection is censused pre-
+gain and post-gain, per breath, relative to the base state, before
+any claim about it (the garage specimen: gain 0.0077 x stamps 1e4 =
+0.4x of the state — the gain's VALUE said silent, the census said
+loud). The census extension is the instrument (builder running).
+THE ATLASES, CONFIRMED NOT WIRED: (1) training-time: the math atlas
+enters the mask head behind ALG_MH_ATLAS (a door + mh_atlas_w); the
+door was armed in exactly two chains (mask_head_r2, paired_atlas,
+2026-09-05), fed the family PAGE, and SUBTRACTED on wild (anti-
+aligned conditioning); off in every chain since (fed mind, cooker,
+polar) — env-inert by the chain rule, as the forensic found.
+(2) read-time: step_engine_read's atlas consult loads the atlas
+through step_atlas's DEFAULT manifest (.cache/GENERATION.json — the
+DEPLOYED parser) while research atlases are stamped to research
+ckpts via MH_ATLAS_MANIFEST — so the consult REFUSES on every
+research checkpoint ("stale atlas in fresh coordinates") and has
+never once fired on this lineage: a manifest-plumbing bug, not a
+door; fix = honor MH_ATLAS_MANIFEST at read time (registered; the
+JIT-read builder holds the reader files, so it lands after). (3) the
+NL (paired) atlas: mined, keyed by breath, its cross-prior feed
+(ALG_MH_XPRIOR) tried once in the paired chain — THE TWO DANCES
+verdict; not in any live loop. WIRING PLAN under the laws, in order:
+the census read (which organs carry) -> re-mine BOTH atlases on the
+polar+sink machine in polar coordinates at KIND granularity (WL
+digest) -> the feed FORM = the needle (direction-at-breath-0 vs the
+kind's road, the passing metric; never the page, never the wild
+z-radius) -> a MANDATORY port into the mask head (no gain) under a
+mask cooker that makes the head's lanes the only road on a share of
+rows -> the twin. Each rung a read with a bar.
