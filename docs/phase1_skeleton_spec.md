@@ -34844,3 +34844,28 @@ fixtures, kill < 0.80. Guards unchanged (open-wild and mint within
 -0.02 of the matching-seed control). Chain staged at
 .cache/polar_twin.sh (seeds 242 then 241, ~8h with reads). Fire on
 the word.
+
+## 2026-09-07 — BIRTH READ, RESTRICTED (both fixtures) + THE SEXTET BAR PINNED PER WHEEL (before any twin step)
+
+clock_read CR_KEY=breaths_u CR_PLANES=clocked CR_RANK=64, fedon242
+weights, ALG_POLAR=1, n=64: probe **0.9549 mint / 0.9624 wild** (bar
+0.95: PASS at birth on both; norm-only 0.17 / 0.15); clocked-plane
+mass[50,80) **0.4267 / 0.3996**, peak bin [50,60); content control
+0.0025 / 0.0000 (0.97 / 0.99 at [0,20)). The builder's attribution
+control stands: with ALG_POLAR unset the clocked planes read 0.0148
+vs content 0.0142 (nothing found when nothing is there); on a
+synthetic perfect turn the restricted read gives 0.92 where the
+full-state read gives 0.02 — the 40x suppression the birth read
+exposed. RANK NOTE: the restricted mass is rank-sensitive (the
+Procrustes eigen-decomposition is degenerate under a uniform turn);
+every quoted mass carries CR_RANK=64.
+THE BAR, PINNED PER WHEEL (the clocked set mixes three designed
+angles — 60 deg on 32 planes, 120 on 16, static on 8 — so the
+60-deg bin can never exceed the breath hand's share; the 0.5-on-
+clocked pin was still the wrong ruler): at 12k, on the BREATH-HAND
+planes, mass at the designed angle [50,80) >= 0.5 of that wheel's
+variance; parity reported at [110,130); pass and content reported at
+[0,20) as controls. Primary bar unchanged: probe >= 0.95 on
+breaths_u, both fixtures, kill < 0.80. Builder adding the per-wheel
+dial; the twin chain's read line is updated BEFORE the fire (never
+edit a running chain).
