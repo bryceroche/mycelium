@@ -77,10 +77,20 @@ Envs:
            non-default read — so a polar read can never overwrite the
            historical one, or another dial's.
   CR_PLANES  which DIMS the Procrustes fit (B) may use: 'all'
-           (default, unchanged behaviour) or 'clocked' — restrict to
-           the clocked planes' dims (2p, 2p+1 for each plane p listed
-           in .cache/polar_bands.json), with the CONTENT planes fitted
-           separately as a control. WHY (2026-09-07, the birth read):
+           (default, unchanged behaviour), 'clocked' (every clocked
+           plane), or ONE WHEEL — 'breath_hand' (32 planes, designed
+           60 deg/breath), 'parity' (16, designed 120 deg), 'pass' (8,
+           static this era), 'content' (200, never clocked). Dims come
+           from .cache/polar_bands.json (2p, 2p+1 per plane p); the
+           CONTENT planes are fitted separately as a standing control
+           for every clocked selection. A wheel selection also reports
+           designed_mass = the mass at THAT wheel's DESIGNED angle on
+           THAT wheel's own planes ([50,80) breath hand, [110,130)
+           parity, [0,20) pass and content) — the bar's quantity.
+           WHY PER-WHEEL: 'clocked' mixes three designed angles (60 deg
+           on 32 planes, 120 on 16, static on 8), so its [50,80) bin
+           has a hard ceiling near the breath hand's share — a diluted
+           meter, one level up from the 'all' dilution. WHY (2026-09-07, the birth read):
            the polar waist clocks 56 of 256 planes BY DESIGN and leaves
            200 at 0 deg, so a variance-weighted histogram over all 512
            dims has a CEILING on mass[50,80) near the clocked planes'
@@ -123,6 +133,12 @@ CR_SEED = int(os.environ.get("CR_SEED", "242"))
 CR_TEST = os.environ.get("CR_TEST", "both").strip().lower()
 CR_KEY = os.environ.get("CR_KEY", "breaths_all").strip()
 CR_PLANES = os.environ.get("CR_PLANES", "all").strip().lower()
+# FAIL FAST: a typo'd dial must not cost a full read before it errors
+# (the selection is only consumed after collect_states, which is the
+# expensive part). Validated here, at import, in one second.
+_CR_PLANE_SELS = ("all", "clocked", "breath_hand", "parity", "pass", "content")
+assert CR_PLANES in _CR_PLANE_SELS, (
+    f"CR_PLANES={CR_PLANES!r} unknown (want {'|'.join(_CR_PLANE_SELS)})")
 POLAR_BANDS = os.environ.get("ALG_POLAR_BANDS", ".cache/polar_bands.json")
 LAM = 1e-2
 BATCH = 8
@@ -217,19 +233,34 @@ def common_basis(X, ks, rank):
     return Vt[:r].T, r, var_kept
 
 
-def band_dims(D):
-    """(clocked_dims, content_dims) for a D-dimensional state, from the
-    SAME allocation file the head reads (ALG_POLAR_BANDS, default
+# THE DESIGNED ANGLE per selectable dim-set: the window the sextet's own
+# design says that wheel's planes must turn into, in 10-degree histogram
+# bins. Reading the mass at a wheel's DESIGNED angle ON THAT WHEEL'S OWN
+# PLANES is the only comparison that is not diluted by the other wheels:
+# the clocked set mixes 60 deg (32 planes), 120 deg (16) and 0 deg (8),
+# so its [50,80) bin has a hard ceiling near the breath hand's share.
+DESIGNED = {"breath_hand": (5, 8, "[50,80)"),      # 60 deg/breath
+            "parity":      (11, 13, "[110,130)"),  # 120 deg/breath
+            "pass":        (0, 2, "[0,20)"),       # static this era
+            "content":     (0, 2, "[0,20)")}       # never clocked
+_WHEEL_ALIAS = {"pass": "pass_wheel", "pass_wheel": "pass"}
+
+
+def band_sets(D):
+    """Every selectable dim-set for a D-dimensional state, from the SAME
+    allocation file the head reads (ALG_POLAR_BANDS, default
     .cache/polar_bands.json — one band table, one reader idiom: the
     bands note's lesson is that a table nobody reads governs nothing).
-    Plane p occupies dims (2p, 2p+1), the interleaved-real convention
-    of rotor_clock / the head's _rot2."""
+    Returns {name: dim indices} with a key per wheel ('breath_hand',
+    'parity', 'pass'), plus 'clocked' (their union) and 'content' (the
+    complement). Plane p occupies dims (2p, 2p+1), the interleaved-real
+    convention of rotor_clock / the head's _rot2."""
     import json
     import numpy as np
     path = os.path.join(ROOT, POLAR_BANDS) if not os.path.isabs(POLAR_BANDS) \
         else POLAR_BANDS
     assert os.path.exists(path), (
-        f"CR_PLANES=clocked needs the band allocation {path} (the file "
+        f"CR_PLANES={CR_PLANES} needs the band allocation {path} (the file "
         f"the head itself reads); run with CR_PLANES=all otherwise")
     with open(path) as f:
         bj = json.load(f)
@@ -237,11 +268,34 @@ def band_dims(D):
     assert int(bj["n_planes"]) == P, (
         f"{path} declares {bj['n_planes']} planes but the states are "
         f"D={D} ({P} planes) — wrong allocation for this read")
-    cp = sorted({int(pl) for w in bj["wheels"] for pl in w["planes"]})
-    assert cp and cp[-1] < P
-    cd = np.concatenate([[2 * p, 2 * p + 1] for p in cp]).astype(np.int64)
-    nd = np.array([d for d in range(D) if d not in set(cd.tolist())], np.int64)
-    return cd, nd
+
+    def dims_of(planes):
+        pl = sorted({int(x) for x in planes})
+        assert pl and pl[-1] < P
+        return np.concatenate([[2 * p, 2 * p + 1] for p in pl]).astype(np.int64)
+
+    sets, seen = {}, set()
+    for w in bj["wheels"]:
+        nm = str(w["name"])
+        nm = _WHEEL_ALIAS.get(nm, nm) if nm not in DESIGNED else nm
+        assert nm in DESIGNED, (
+            f"{path}: wheel '{w['name']}' has no designed angle here "
+            f"(known: {sorted(DESIGNED)}) — the file and this reader "
+            f"disagree about what the clock is")
+        sets[nm] = dims_of(w["planes"])
+        seen |= set(int(x) for x in w["planes"])
+    sets["clocked"] = dims_of(sorted(seen))
+    sets["content"] = np.array([d for d in range(D)
+                                if d not in set(sets["clocked"].tolist())],
+                               np.int64)
+    return sets
+
+
+def band_dims(D):
+    """(clocked_dims, content_dims) — the two-set view, from band_sets
+    (one source of truth for the allocation)."""
+    st = band_sets(D)
+    return st["clocked"], st["content"]
 
 
 def loop_sextet(X, pairs, rank, dims=None):
@@ -465,20 +519,29 @@ def run(fixture):
     pairs = [(k, k + 1) for k in loop_ks[:-1]]
     fit_dims = None                        # None = the full state (historical)
     ctl = None
-    if CR_PLANES == "clocked":
+    dw = DESIGNED.get(CR_PLANES)           # the selection's designed window
+    if CR_PLANES != "all":
         # THE PLANE RESTRICTION (2026-09-07, the birth read): the polar
         # waist clocks 56 of 256 planes BY DESIGN and pins 200 at 0 deg,
         # so a variance-weighted histogram over all 512 dims has a
         # CEILING on mass[50,80) near the clocked planes' energy share.
-        # Restricting the fit asks the question the bar meant to ask;
-        # the content planes are fitted SEPARATELY as the control (their
-        # mass belongs at 0 deg — that is what "unclocked" means).
-        fit_dims, ctl_dims = band_dims(D)
-        ctl = loop_sextet(X, pairs, CR_RANK, ctl_dims)
-    elif CR_PLANES != "all":
-        print(f"[clock-read] unknown CR_PLANES={CR_PLANES!r} "
-              f"(want all|clocked)")
-        return
+        # PER-WHEEL (the second refinement): even 'clocked' mixes three
+        # designed angles — 60 deg on 32 planes, 120 deg on 16, static
+        # on 8 — so its [50,80) bin cannot exceed the breath hand's
+        # share either. A wheel's own planes read at that wheel's own
+        # DESIGNED angle is the undiluted question.
+        _sets = band_sets(D)
+        assert CR_PLANES in _sets, (
+            f"CR_PLANES={CR_PLANES!r} is a known selection but "
+            f"{POLAR_BANDS} declares no such set (has {sorted(_sets)}) — "
+            f"the allocation file and this reader disagree")
+        fit_dims = _sets[CR_PLANES]
+        if CR_PLANES != "content":
+            # the content planes are the standing control for every
+            # clocked selection (their mass belongs at 0 deg — that is
+            # what "unclocked" means). When content IS the selection it
+            # is its own primary; no second copy.
+            ctl = loop_sextet(X, pairs, CR_RANK, _sets["content"])
     sx = loop_sextet(X, pairs, CR_RANK, fit_dims)
     basis, rank, var_kept = sx["basis"], sx["rank"], sx["var_kept"]
     rows, all_ang, all_w = sx["rows"], sx["all_ang"], sx["all_w"]
@@ -488,12 +551,24 @@ def run(fixture):
     print("== B. THE SEXTET SIGNATURE (orthogonal Procrustes per "
           "consecutive breath pair) ==")
     if fit_dims is not None:
-        print(f"   PLANES=clocked: fit restricted to {sx['n_dims']} of "
-              f"{D} dims ({len(fit_dims) // 2} clocked planes from "
-              f"{POLAR_BANDS}); {ctl['n_dims'] // 2} content planes are "
-              f"fitted separately below as the control. THE DENOMINATOR "
-              f"IS THE RESTRICTED SUBSPACE — these masses are NOT "
-              f"comparable to a CR_PLANES=all read.")
+        print(f"   PLANES={CR_PLANES}: fit restricted to {sx['n_dims']} of "
+              f"{D} dims ({len(fit_dims) // 2} planes from {POLAR_BANDS})"
+              + ("" if ctl is None else
+                 f"; {ctl['n_dims'] // 2} content planes fitted separately "
+                 f"below as the control")
+              + ". THE DENOMINATOR IS THE RESTRICTED SUBSPACE — these "
+                "masses are NOT comparable to a CR_PLANES=all read.")
+        if dw is not None:
+            print(f"   DESIGNED ANGLE for '{CR_PLANES}' = {dw[2]} deg "
+                  f"(rotor_clock: breath hand 60/breath, parity 120/breath, "
+                  f"pass wheel static this era) — designed_mass below is "
+                  f"the bar's quantity: mass at THIS wheel's designed "
+                  f"angle on THIS wheel's own planes.")
+        else:
+            print(f"   NO SINGLE DESIGNED ANGLE for '{CR_PLANES}' (it mixes "
+                  f"wheels: 60 deg on 32 planes, 120 on 16, static on 8) — "
+                  f"its [50,80) bin is CEILINGED by the breath hand's "
+                  f"share; select a wheel for the undiluted read.")
     print(f"   shared subspace rank r={rank} "
           f"(captures {var_kept:.4f} of centered variance); angles are "
           f"eigen-plane angles of R_k, WEIGHTED by that plane's share "
@@ -534,6 +609,11 @@ def run(fixture):
     mass0 = float(hist_loop[0:2].sum())       # 0-20 deg
     print(f"   peak bin = [{peak * 10},{peak * 10 + 10})   "
           f"mass[50,80) = {mass60:.4f}   mass[0,20) = {mass0:.4f}")
+    dmass = None
+    if dw is not None:
+        dmass = float(hist_loop[dw[0]:dw[1]].sum())
+        print(f"   DESIGNED MASS ({CR_PLANES} @ {dw[2]} deg) = "
+              f"{dmass:.4f}   <- THE BAR'S QUANTITY")
     if ctl is not None:
         print()
         print(f"   CONTENT-PLANE CONTROL ({ctl['n_dims'] // 2} unclocked "
@@ -542,7 +622,8 @@ def run(fixture):
         print(f"      peak bin = [{int(np.argmax(ctl['hist_loop'])) * 10},"
               f"{int(np.argmax(ctl['hist_loop'])) * 10 + 10})   "
               f"mass[50,80) = {ctl['mass60']:.4f}   "
-              f"mass[0,20) = {ctl['mass0']:.4f}")
+              f"mass[0,20) = {ctl['mass0']:.4f}   "
+              f"designed[0,20) = {ctl['mass0']:.4f}")
         print(f"      EXPECTATION (descriptive): the clock never touches "
               f"these planes, so their mass belongs near 0 deg. Mass at "
               f"60 deg HERE would mean the restriction is not doing what "
@@ -563,6 +644,9 @@ def run(fixture):
     np.savez(out,
              fixture=fixture, ckpt=CKPT, key=CR_KEY, planes=CR_PLANES,
              n_dims_fit=sx["n_dims"], K=K, N=N, D=D, rank=rank,
+             **({} if dw is None else dict(
+                 designed_lo_deg=dw[0] * 10, designed_hi_deg=dw[1] * 10,
+                 designed_mass=dmass)),
              var_kept=var_kept, seed=CR_SEED,
              **({} if ctl is None else dict(
                  content_n_dims=ctl["n_dims"], content_rank=ctl["rank"],
@@ -589,6 +673,8 @@ def run(fixture):
           f"norm_only_acc={pr['norm_acc']:.4f} "
           f"sextet_peak_bin=[{peak * 10},{peak * 10 + 10}) "
           f"mass[50,80)={mass60:.4f} mass[0,20)={mass0:.4f} "
+          + ("" if dw is None else
+             f"designed_mass={dmass:.4f}(@{dw[2]}) ")
           + ("" if ctl is None else
              f"content_mass[50,80)={ctl['mass60']:.4f} "
              f"content_mass[0,20)={ctl['mass0']:.4f} ")
