@@ -35015,3 +35015,40 @@ batch 64 (not bit-identical in principle — scheduling noise can flip
 a thresholded mask on a rare row; needs its own equality read).
 Arm A step 0: loss 8.7551 (plain continuation 8.85) — the birth shock
 of the 64-plane clock at the loss level is small.
+
+## 2026-09-08 — PERF ITEMS 1+2 BUILT (CPU-proved, unapplied until chain 2 exits); THE DISK
+
+Item 1, scripts/apply_maskprep_cache.py (3 anchors; the do_train
+diff is one replaced line + two hunks entirely inside `if _mp_key`;
+door ALG_MASKPREP_CACHE, unset = the old path, no [maskprep] line).
+Arrays cached: MASKS always; FACTS under ALT2; MASSB under ALT2 +
+MH_MASS; NL0 under MH_ATLAS + MH_XPRIOR. KEY: head-source sha + the
+shas of every mycelium/*.py it imports; a sha over every REALIZED
+param after warm/resume/pad-warm/door-12 seeding (what the pass
+consumes) + the warm file's sha + SEED; the train identity from the
+sha-fence's own organ (mix_sha16, the npz's mix_sha stamp, file
+fingerprints); every ALG_* var plus every env name the head source
+reads (regex over the source — self-maintaining) + DEV/BEAM/JIT/
+NOOPT; the bytes of side files named by env values. Big files
+(the 131 GB memmap, the 14 GB npz) keyed by (size, mtime_ns) +
+their declared stamp, not byte-hashed (cap 256 MB) — the 2-batch
+recompute is the content check. Trainer-only dials (STEPS/LR/BATCH/
+VAL_EVERY/SNAP_EVERY) excluded, and the exclusion is RE-PROVED from
+the source at every key build (raises if any is read ahead of the
+pass). Smoke: dark path bit-identical on all four arrays; MISS
+banks, HIT verifies on 2 batches; a flipped entry in a verified
+batch fails loudly (scope honestly stated: a flip outside the
+sampled batches is not caught); the key moves for ALG_POLAR,
+SC_EVAL, NB_PERSLOT, seed, a 1e-3 param nudge, side-file bytes, head
+bytes, and holds for trainer dials. Expected bucket ~55 MB at n=133k.
+Item 2, the multi-wheel clock read (patch + preview): CR_PLANES as a
+list, states collected once; single-value output byte-identical
+(stdout diff empty; npz identical on 36 keys); three selections in
+22.4 s vs 21.7 s for one on CPU.
+THE DISK: / at 100%, 17 GB free of 1.9 TB. .cache holds 1.7 TB, of
+which ~1.1 TB is precomputed trunk-state memmaps for RETIRED diets
+(form8-11 94-118 GB each; tail/size/aim/inv2/gen23/vdup19 81-90 GB
+each); form12 (131 GB) is the live diet. Checkpoints total 20 GB
+(889 files; 502 snapshots = 11 GB). Reproducible via --precompute
+(~an hour each). Deletion is Bryce's call; proposed: the retired
+memmaps (~1.0 TB), keep form12.
