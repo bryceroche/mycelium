@@ -27,8 +27,10 @@ random init: this smoke tests MECHANISM, not skill).
         bands at breath k turned by exactly the wheel's angle — 60 deg
         breath hand, 120 deg parity, 0 deg pass wheel — and the content
         planes are BITWISE unchanged;
-     B6 the Q-side plane indexing (state and attention share the SAME
-        plane indices through the mixer's per-head reshape);
+     B6 the Q-side plane indexing on BOTH attention paths — the fed
+        mixer (through its per-head reshape) and the main sc2 mixer
+        (flat on 512 dims) must agree plane-for-plane with the state's
+        clock, and ALG_POLAR_QROT must default to 2 (main + mixer);
      B5 THE BREATH PROBE at birth on breaths_u, using clock_read.py's
         OWN ridge_probe (the meter law: a check must call its organ),
         printed beside the same probe on breaths_all and clock_read's
@@ -285,14 +287,36 @@ _flat = np.stack([_qx * _rc - _qy * _rs, _qx * _rs + _qy * _rc], -1) \
 _bad = [p for p in range(_P)
         if abs(_flat[2 * p] - _qac[_KBQ - 1][p]) > 1e-6
         or abs(_flat[2 * p + 1] - _qas[_KBQ - 1][p]) > 1e-6]
-assert not _bad, f"GATE B6 FAIL: Q-side plane indexing wrong for {_bad[:8]}"
+assert not _bad, f"GATE B6 FAIL: mixer Q-side plane indexing wrong for {_bad[:8]}"
+# THE MAIN sc2 PATH (ALG_POLAR_QROT >= 2, the default): no head reshape —
+# _rot2 straight on the 512-d queries. It must produce the SAME per-plane
+# phase as the mixer's reshaped path, or "one clock" is a story.
+_mx, _my = _bq[0, 0, 0::2], _bq[0, 0, 1::2]
+_mc, _ms = _qac[_KBQ - 1], _qas[_KBQ - 1]
+_main = np.empty(M_ON.H_W, np.float32)
+_main[0::2] = _mx * _mc - _my * _ms
+_main[1::2] = _mx * _ms + _my * _mc
+assert np.allclose(_main, _flat, atol=1e-6), \
+    ("GATE B6 FAIL: the main sc2 path and the mixer disagree on per-plane "
+     "phase — they are two clocks, not one")
+_uncl = np.array([p for p in range(_P) if _qwof[p] < 0], np.int64)
+assert np.array_equal(_main[2 * _uncl], _bq[0, 0, 2 * _uncl]) and \
+    np.array_equal(_main[2 * _uncl + 1], _bq[0, 0, 2 * _uncl + 1]), \
+    "GATE B6 FAIL: content planes moved on the main path"
+assert M_ON.POLAR_QROT == 2, \
+    f"GATE B6 FAIL: ALG_POLAR_QROT default is {M_ON.POLAR_QROT}, expected 2"
 _nq = int((_qwof >= 0).sum())
-print(f"[polar-smoke] GATE B6 PASS: the Q-side reshape lands the SAME "
-      f"{_nq} clocked plane indices as the state's clock (all {_P} planes "
-      f"checked at loop breath {_KBQ}; content planes exactly unrotated) — "
-      f"state and attention are ONE clock. NOTE: the Q rotation itself is "
-      f"invisible in birth emissions because it sits behind the mixer's "
-      f"zero-init fed_mx_hg gains.", flush=True)
+print(f"[polar-smoke] GATE B6 PASS: BOTH Q paths land the SAME {_nq} "
+      f"clocked plane indices as the state's clock — the mixer through its "
+      f"(MX_HEADS, {_hd2}) reshape and the MAIN sc2 path flat on 512 dims "
+      f"agree plane-for-plane (all {_P} planes at loop breath {_KBQ}; "
+      f"{len(_uncl)} content planes exactly unrotated on both). QROT "
+      f"default = {M_ON.POLAR_QROT} (main+mixer). NOTE the asymmetry: "
+      f"the MIXER's turn is invisible in birth emissions (it sits behind "
+      f"zero-init fed_mx_hg gains), while the MAIN path's turn is LIVE at "
+      f"birth — it enters sc2 ungated, so it does move the parse. That is "
+      f"the point of QROT=2, and it is why this is a new generation "
+      f"measured as a twin, never asserted equivalent.", flush=True)
 
 
 # --- B5 THE BREATH PROBE at birth (clock_read.py's own organ) --------------

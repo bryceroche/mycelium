@@ -70,8 +70,20 @@ DOORS (spec S3), all printed once at build_params, all inert unset:
                          that no head reads never governed anything)
   ALG_POLAR_R_MODE       scalar (default) | slotvec
   ALG_POLAR_RG           slotvec group count (default 8)
-  ALG_POLAR_QROT=1       Q-side mixer rotation (default on)
+  ALG_POLAR_QROT=2       Q-side attention rotation: 0 = off, 1 = the fed
+                         mixer only, 2 = THE MAIN sc2 PATH + the mixer
+                         (DEFAULT — the word says the attention space
+                         turns, and the mixer alone is a 2%-gain whisper)
   ALG_POLAR_STAMP=1      the deposit-radius fix B (default on)
+
+REGISTERED FOLLOW-UP, not built (lead's ruling 2026-09-07):
+ALG_POLAR_R_FLOOR — a lower bound on the state radius. The polar
+normalization is exactly safe AT the origin (u = 0, du/dx = 1) but
+d(u)/dx scales as 1/r as a slot's radius APPROACHES zero. The measured
+state radius is 7-12 and nothing drives it down the way the live wire
+drove the deposit, so no floor ships this generation; if the twin ever
+prints a radius spike or a small-r gradient blowup, this door is the
+fix (the ALG_PC_FLOOR precedent: env-gated, unset = bit-identical).
 
 --check: loads the file, asserts every anchor present and unique,
 builds the would-be result, ast-parses it, runs the symtable free-
@@ -153,7 +165,8 @@ ALG_POLAR = int(os.environ.get("ALG_POLAR", "0"))
 POLAR_BANDS = os.environ.get("ALG_POLAR_BANDS", ".cache/polar_bands.json")
 POLAR_R_MODE = os.environ.get("ALG_POLAR_R_MODE", "scalar")   # scalar|slotvec
 POLAR_RG = int(os.environ.get("ALG_POLAR_RG", "8"))           # slotvec groups
-POLAR_QROT = int(os.environ.get("ALG_POLAR_QROT", "1"))       # Q-side rotation
+POLAR_QROT = int(os.environ.get("ALG_POLAR_QROT", "2"))       # 0/1/2: off,
+                                                # mixer only, main+mixer
 POLAR_STAMP = int(os.environ.get("ALG_POLAR_STAMP", "1"))     # fix B
 _POLAR_TAB = None           # (delta_cos, delta_sin, abs_cos, abs_sin, wheel_of)
 _POLAR_SHOWN = False
@@ -285,7 +298,8 @@ patch(2, "build_params: the polar door prints its state once",
               f"planes={H_W // 2} clocked={sum(_pn)} "
               f"(breath-hand {_pn[0]} / parity {_pn[1]} / pass {_pn[2]}) "
               f"content={H_W // 2 - sum(_pn)} | R_MODE={POLAR_R_MODE}"
-              f"({_polar_groups()} group(s)) QROT={POLAR_QROT} "
+              f"({_polar_groups()} group(s)) QROT={POLAR_QROT}"
+              f"({'off' if not POLAR_QROT else ('mixer' if POLAR_QROT == 1 else 'main+mixer')}) "
               f"STAMP={POLAR_STAMP} FLOOR={os.environ.get('ALG_PC_FLOOR', '0')} "
               f"| sextet = mycelium/rotor_clock.wheel_table() "
               f"(frozen, ungained, breath-0 outside time)", flush=True)''')
@@ -381,15 +395,18 @@ patch(4, "breath_step: fix B — the confidence stamp becomes the deposit's radi
 # ===========================================================================
 patch(5, "breath_step: Q-side sextet on the mixer (replaces fed item 7a under ALG_POLAR)",
       '''        if FED_ROTOR and _FED_ROT_C is not None and 1 <= kb <= 6:''',
-      '''        if ALG_POLAR and POLAR_QROT and 1 <= kb <= _RC_N_LOOP:
+      '''        if ALG_POLAR and POLAR_QROT >= 1 and 1 <= kb <= _RC_N_LOOP:
             # THE SEXTET, Q-SIDE (spec S1.2): the SAME plane allocation
             # as the state's clock, reshaped (MX_HEADS, pairs/head) —
             # state and attention are ONE clock, not two. ABSOLUTE
             # angles here (the query is rebuilt from cur every breath:
             # nothing compounds), K UNROTATED (the v109pi precedent:
             # one table on both sides cancels — relative phase is the
-            # signal). UNCONDITIONAL: no gains, no learnable rate. This
-            # REPLACES fed item 7a, whose 60 deg on 8 of 32 pairs sat
+            # signal). UNCONDITIONAL: no gains, no learnable rate. The
+            # mixer builds _mx_q from the UNROTATED bq (the main path's
+            # turn rides its own tensor, _bq2), so QROT=2 rotates each
+            # attention ONCE — never twice. This REPLACES fed item 7a,
+            # whose 60 deg on 8 of 32 pairs sat
             # behind mixer gains of 0.023 and shrank to 0.013 under the
             # cooker (rung 0a) — a whisper the state never heard. With
             # ALG_POLAR unset item 7a below runs byte-identically.
@@ -430,6 +447,41 @@ patch(6, "forward: breaths_u / breaths_r exposed beside breaths_all",
             out["breaths_r"] = [_fed_core(_x9) for _x9 in
                                 ([_r0p.detach()]
                                  + ((_bs_state or {}).get("r_all") or []))]''')
+
+# ===========================================================================
+# 7. breath_step (the MAIN slot mixer) — THE SEXTET ON THE ATTENTION SPACE.
+#    Lead's ruling 2026-09-07: the word says the attention space turns, and
+#    the fed mixer alone is a 2%-gain whisper (rung 0a) — so the sc2 path's
+#    queries turn too. ALG_POLAR_QROT=2 (the default) = main + mixer.
+# ===========================================================================
+patch(7, "breath_step: Q-side sextet on the MAIN sc2 path (ALG_POLAR_QROT>=2)",
+      '''    bq = cur @ p["W_bq"] + p["W_bq_b"]
+    bk = cur @ p["W_bk"] + p["W_bk_b"]
+    bv = cur @ p["W_bv"] + p["W_bv_b"]
+    sc2 = (bq @ bk.transpose(-2, -1)) / math.sqrt(H_W)''',
+      '''    bq = cur @ p["W_bq"] + p["W_bq_b"]
+    bk = cur @ p["W_bk"] + p["W_bk_b"]
+    bv = cur @ p["W_bv"] + p["W_bv_b"]
+    _bq2 = bq
+    if ALG_POLAR and POLAR_QROT >= 2 and 1 <= kb <= _RC_N_LOOP:
+        # THE SEXTET ON THE ATTENTION SPACE (spec S1.2; lead's ruling
+        # 2026-09-07). The mixer's rotation rides behind fed_mx_hg
+        # gains that woke to 0.023 and SHRANK to 0.013 under the cooker
+        # — a whisper. The slot mixer's OWN queries are where the
+        # attention actually speaks, so they turn here on the SAME 256
+        # planes, by the SAME rotor_clock wheel table, ABSOLUTE angles
+        # (the query is rebuilt from cur each breath: nothing
+        # compounds), K UNROTATED (the v109pi relative-phase
+        # precedent), no gains and no learnable rate. It rides its OWN
+        # tensor: bq itself stays untouched, so the mixer below builds
+        # _mx_q from the unrotated queries and applies its own turn —
+        # each attention is rotated exactly ONCE at QROT=2.
+        from tinygrad import Tensor as _Tm, dtypes as _dm
+        _mdc, _mds, _mac, _mas, _mwof = _polar_tables()
+        _bq2 = _rot2(bq,
+                     _Tm(_mac[kb - 1], dtype=_dm.float),
+                     _Tm(_mas[kb - 1], dtype=_dm.float))
+    sc2 = (_bq2 @ bk.transpose(-2, -1)) / math.sqrt(H_W)''')
 
 for num, desc, old, new in PATCHES:
     assert old in s, f"anchor {num} MISSING ({desc}) — read the file, adjust"
@@ -479,9 +531,24 @@ assert '.tanh()' not in s.split('THE DEPOSIT\'S RADIUS')[1][:2000], \
 assert s.count('elif FED_ROTOR and _FED_ROT_C is not None') == 1 and \
     s.count('if FED_ROTOR and _FED_ROT_C is not None') == 1, \
     "item 7a must become the ELIF arm (replaced, not stacked)"
-assert s.index('if ALG_POLAR and POLAR_QROT') < \
+assert s.index('if ALG_POLAR and POLAR_QROT >= 1') < \
     s.index('elif FED_ROTOR and _FED_ROT_C is not None'), \
     "the polar Q rotation must take precedence over item 7a"
+# -- the main sc2 path turns on its OWN tensor: exactly ONE rotation per
+#    attention at QROT=2 (bq itself must reach the mixer unrotated)
+assert s.count('_bq2 = bq\n') == 1 and s.count('_bq2 = _rot2(bq,') == 1, \
+    "the main-path rotation must ride its own tensor"
+assert s.count('sc2 = (_bq2 @ bk.transpose(-2, -1))') == 1 and \
+    'sc2 = (bq @ bk.transpose' not in s, "sc2 must read the rotated queries"
+assert s.count('_mx_q = bq.reshape(') == 1, \
+    ("the mixer must still build _mx_q from the UNROTATED bq — otherwise "
+     "QROT=2 turns the mixer twice")
+assert s.index('_bq2 = _rot2(bq,') < s.index('_mx_q = bq.reshape('), \
+    "main-path rotation sits at the bq site, ahead of the mixer"
+# -- both Q paths and the state read the SAME table function
+assert s.count('_polar_tables()') == 5, \
+    ("one table source: def + build_params print + state + mixer Q + "
+     "main-path Q (five call sites, no second table anywhere)")
 # -- every diagnostic tap is detached (the Goodhart fence, two-terminal)
 for _t in ('state.setdefault("u_all", []).append(_pol_u.detach())',
            'state.setdefault("r_all", []).append(_pol_r.detach())',

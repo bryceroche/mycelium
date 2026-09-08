@@ -37,7 +37,13 @@ checkpoint, over a fixture of test rows. Two measurements:
 
 THE TAP: ALG_MINE_BREATHS=1 -> forward() returns out["breaths_all"],
 the K per-breath raw slot states (B, L_FAC, H_W). No patch to the
-head; nothing new runs in the graph. POOLING: mean over the 24 factor
+head; nothing new runs in the graph. CR_KEY selects the tap: the
+default 'breaths_all' is the historical read (r*u / the old
+coordinates), and under the POLAR WAIST (ALG_POLAR=1) 'breaths_u'
+reads the unit-direction channel beside it — the same probe with the
+radius confound removed. The key is stamped into the npz and the
+[clock] line: never-mix-coordinates applies between these two taps as
+much as between generations. POOLING: mean over the 24 factor
 slots per item per breath — the miner's own choice
 (scripts/mine_step_atlas.py), so these coordinates are the ATLAS's
 coordinates. PASS STRUCTURE: the deployable two-pass cycle
@@ -58,6 +64,14 @@ Envs:
            UNSET/'both' = run BOTH, each in its own child process
            (ALG_TEST is read at head IMPORT time — one process can
            hold exactly one fixture)
+  CR_KEY   which per-breath tap to read (default 'breaths_all' — the
+           r*u / old coordinates, so every existing invocation and every
+           banked clock_read_*.npz is UNCHANGED). 'breaths_u' reads the
+           POLAR WAIST's direction channel (needs ALG_POLAR=1 in the
+           env; docs/polar_waist_spec.md S4) — the same probe with the
+           radius confound removed, which is the spec S6 instrument.
+           The key travels into the npz and the [clock] summary line, so
+           a read can never be mistaken for the other coordinate.
   CR_RANK  Procrustes subspace rank (default 64)
   CR_SEED  split/permutation seed (default 242)
   DEV      setdefault PCI+AMD (GPU); test with DEV=CPU CR_N=6
@@ -85,6 +99,7 @@ CR_N = int(os.environ.get("CR_N", "256"))
 CR_RANK = int(os.environ.get("CR_RANK", "64"))
 CR_SEED = int(os.environ.get("CR_SEED", "242"))
 CR_TEST = os.environ.get("CR_TEST", "both").strip().lower()
+CR_KEY = os.environ.get("CR_KEY", "breaths_all").strip()
 LAM = 1e-2
 BATCH = 8
 
@@ -268,7 +283,8 @@ def collect_states(fixture):
     take = np.arange(n_take)
     print(f"[clock-read] fixture={fixture} "
           f"({os.environ['ALG_TEST_NAME']}) rows={n_take}/{n_all} "
-          f"ckpt={CKPT} dev={os.environ.get('DEV')}", flush=True)
+          f"ckpt={CKPT} dev={os.environ.get('DEV')} key={CR_KEY} "
+          f"polar={os.environ.get('ALG_POLAR', '0')}", flush=True)
 
     p = build_params(0)
     sd = safe_load(CKPT)
@@ -301,10 +317,18 @@ def collect_states(fixture):
         o = forward(p, ts, tk, se,
                     slot_mask=Tensor(mk, dtype=dtypes.float),
                     fact_buf=Tensor(fb, dtype=dtypes.float))
-        br = [b.realize().numpy() for b in o["breaths_all"]]
+        assert CR_KEY in o, (
+            f"forward() emitted no '{CR_KEY}' (keys: "
+            f"{sorted(k for k in o if k.startswith('breaths'))}). "
+            f"'breaths_u' needs ALG_POLAR=1 in the env (the polar waist's "
+            f"direction tap); 'breaths_all' needs ALG_MINE_BREATHS=1.")
+        br = [b.realize().numpy() for b in o[CR_KEY]]
+        assert br[0].ndim == 3, (
+            f"CR_KEY='{CR_KEY}' gives {br[0].ndim}-d pages; this read pools "
+            f"(B, L_FAC, D) slot-major states (breaths_all / breaths_u)")
         if pages is None:
             pages = [[] for _ in br]
-            print(f"[clock-read] breaths_all K={len(br)} "
+            print(f"[clock-read] {CR_KEY} K={len(br)} "
                   f"page={br[0].shape} (K=7 expected: breath-0 + six "
                   f"loop breaths)", flush=True)
         elif len(br) != len(pages):
@@ -416,7 +440,7 @@ def run(fixture):
 
     out = os.path.join(ROOT, ".cache", f"clock_read_{fixture}.npz")
     np.savez(out,
-             fixture=fixture, ckpt=CKPT, K=K, N=N, D=D, rank=rank,
+             fixture=fixture, ckpt=CKPT, key=CR_KEY, K=K, N=N, D=D, rank=rank,
              var_kept=var_kept, seed=CR_SEED,
              probe_acc=pr["acc"], norm_only_acc=pr["norm_acc"],
              confusion=pr["conf"], per_breath_norm=pr["per_breath_norm"],
@@ -432,7 +456,7 @@ def run(fixture):
              hist_loop=hist_loop, hist_01=h01,
              angles_01=ang01, weights_01=w01, r2_01=r2_01)
     print(f"[clock-read] saved {out}")
-    print(f"[clock] fixture={fixture} n={N} K={K} "
+    print(f"[clock] fixture={fixture} key={CR_KEY} n={N} K={K} "
           f"probe_acc={pr['acc']:.4f} (bar>=0.95 {bar}) "
           f"norm_only_acc={pr['norm_acc']:.4f} "
           f"sextet_peak_bin=[{peak * 10},{peak * 10 + 10}) "
