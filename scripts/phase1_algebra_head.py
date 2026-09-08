@@ -271,6 +271,144 @@ def _polar_ru_join(u, r, g):
     reads (spec S1.3: reads are polar OR cartesian, the caller's choice;
     with ALG_POLAR unset this function is never called at all)."""
     return (u.reshape(u.shape[0], u.shape[1], g, -1) * r).reshape(u.shape)
+
+
+# ===========================================================================
+# THE KITCHEN SINK (apply_polar_sink.py, 2026-09-08) — two organs on the
+# polar DIRECTION u, each behind its own door, each byte-inert when unset.
+#   ALG_POLAR_D  the CONTENT-PLANE WAIST: collapse & expand the 192
+#                content planes' 384 dims through a d-wide bottleneck,
+#                once per breath ("expand & collapse x7"). The 64 CLOCK
+#                planes are in neither its domain nor its range, so the
+#                bottleneck CANNOT fight the rotation.
+#   ALG_POLAR_EM the E&B COUPLING: one discrete Maxwell-like exchange
+#                step per breath on the CLOCK planes, along the slot-mask
+#                lanes (the mask actually in force this breath). kappa is
+#                FIXED and unlearnable — the zero-born-gain pattern died
+#                in fed_mx_hg (0.023 at best, 0.013 under the cooker).
+# Both are norm-changing and both restore the norm OF THEIR OWN BLOCK
+# through the one where-gated organ below, so ||u|| == 1 still holds and
+# neither door can rescale the other's channel (a single GLOBAL renorm
+# would let the collapsing content block amplify the clock every breath
+# — the bottleneck fighting the rotation by the back door).
+# ===========================================================================
+POLAR_D = int(os.environ.get("ALG_POLAR_D", "0"))       # content-waist width
+POLAR_D_INIT = os.environ.get("ALG_POLAR_D_INIT", "")   # PCA-birth override
+POLAR_EM = float(os.environ.get("ALG_POLAR_EM", "0"))   # E&B kappa (FIXED)
+assert ALG_POLAR or not (POLAR_D or POLAR_EM), \
+    ("ALG_POLAR_D / ALG_POLAR_EM ride on the polar direction u — they "
+     "require ALG_POLAR=1 (refusing a door that would do nothing)")
+assert POLAR_D >= 0 and POLAR_EM == POLAR_EM, "bad ALG_POLAR_D/ALG_POLAR_EM"
+_POLAR_SINK = None          # (cdim, sel, gate_content, gate_clock, gate_pl)
+_POLAR_SINK_SHOWN = False
+
+
+def _polar_sink():
+    """The dim tables and constant tensors BOTH sink organs share, built
+    ONCE from the `wheel_of` map _polar_tables owns — the SAME band
+    allocation the sextet turns. No second band table exists (the meter-
+    divergence law: a check must call its organ). Returns
+      cdim   (C,)      the CONTENT dims; plane p owns dims 2p, 2p+1
+      sel    (H_W, C)  the one-hot gather/scatter constant: x @ sel is
+                       the content block, sel @ W scatters a content-
+                       shaped matrix back into waist coordinates with
+                       EXACT zeros on every clock dim
+      g_c    (H_W,)    1.0 on content dims, 0.0 on clock dims
+      g_k    (H_W,)    its complement (1.0 on clock dims)
+      g_p    (P,)      1.0 on CLOCKED planes (the EM step's gate)
+    Built lazily and cached module-side (the _SGC pattern): the tensors
+    are constants, so the JIT sees the same buffers every call."""
+    global _POLAR_SINK
+    if _POLAR_SINK is None:
+        from tinygrad import Tensor as _Tk, dtypes as _dk
+        _wof = _polar_tables()[4]                    # (P,) -1 = content
+        _P = H_W // 2
+        _cp = np.flatnonzero(_wof < 0).astype(np.int64)
+        assert 0 < len(_cp) < _P, \
+            "the sink needs BOTH a content band and a clock band"
+        _cd = np.empty(2 * len(_cp), np.int64)
+        _cd[0::2] = 2 * _cp
+        _cd[1::2] = 2 * _cp + 1
+        _sl = np.zeros((H_W, len(_cd)), np.float32)
+        _sl[_cd, np.arange(len(_cd))] = 1.0
+        _gc = np.zeros(H_W, np.float32)
+        _gc[_cd] = 1.0
+        _POLAR_SINK = (_cd, _Tk(_sl, dtype=_dk.float),
+                       _Tk(_gc, dtype=_dk.float),
+                       _Tk(1.0 - _gc, dtype=_dk.float),
+                       _Tk((_wof >= 0).astype(np.float32), dtype=_dk.float))
+    return _POLAR_SINK
+
+
+def _polar_keepnorm(u_new, u_old, gate):
+    """Restore the norm of the GATE'd block of u_new to the norm u_old's
+    same block carried, and leave every dim OUTSIDE the gate multiplied by
+    EXACTLY 1.0 (bitwise passthrough — this is what makes each door's
+    bit-identity proof possible). ||u|| == 1 survives because each organ
+    restores its own block and the blocks partition the waist.
+    WHERE-GATED TWICE, the _polar_ru idiom: the sqrt (no grad/(2*sqrt 0))
+    and the denominator (replaced by 1.0, never by an epsilon — an eps
+    guard keeps the forward finite and hands the backward a 1/eps spike
+    at precisely the state the guard exists for)."""
+    _s0 = (u_old * u_old * gate).sum(-1, keepdim=True)
+    _s1 = (u_new * u_new * gate).sum(-1, keepdim=True)
+    _p0 = _s0 > 0
+    _p1 = _s1 > 0
+    _n0 = _p0.where(_p0.where(_s0, 1.0).sqrt(), 0.0)     # true block norm
+    _n1 = _p1.where(_p1.where(_s1, 1.0).sqrt(), 1.0)     # guarded denom
+    return u_new * (1.0 + gate * (_n0 / _n1 - 1.0))
+
+
+def _polar_waist(u, p, state):
+    """ALG_POLAR_D — THE CONTENT-PLANE WAIST. c' = c @ W_down @ W_up on
+    the 384 content dims; the 128 clock dims are in neither the domain
+    nor the range. The two (C, d) / (d, C) parameters are scattered into
+    waist coordinates ONCE PER FORWARD (cached in `state`, which is a
+    fresh dict per forward and shared across the breaths) so the seven
+    breaths pay one scatter, not seven; the scatter constant carries
+    EXACT zeros, so the clock columns of the effective W_up are exactly
+    0.0 and the clock dims of c' are exactly 0.0 -> u * g_k + c' leaves
+    every clock dim BITWISE untouched. Then the content block's norm is
+    restored, so ||u|| == 1 still holds and the clock keeps its share."""
+    _cd, _sel, _gc, _gk, _gp = _polar_sink()
+    _wd = state.get("polar_wd_eff")
+    if _wd is None:
+        _wd = _sel @ p["polar_wd"]                       # (H_W, d)
+        state["polar_wd_eff"] = _wd
+        state["polar_wu_eff"] = p["polar_wu"] @ _sel.transpose(-2, -1)
+    _wu = state["polar_wu_eff"]                          # (d, H_W)
+    _cn = (u @ _wd) @ _wu                # exact zeros on every clock dim
+    return _polar_keepnorm(u * _gk + _cn, u, _gc)
+
+
+def _polar_em(u, msk, kappa):
+    """ALG_POLAR_EM — THE E&B COUPLING on the clock planes, along the
+    slot-mask lanes. With (x, y) the coordinates of a clocked plane and
+    Mhat the ROW-NORMALIZED mask actually in force this breath (so kappa
+    is dimensionless):
+        x_i += kappa * sum_j Mhat_ij (y_j - y_i)
+        y_i -= kappa * sum_j Mhat_ij (x_j - x_i)
+    i.e. z <- (I - i*kappa*L)z with L the row-normalized graph Laplacian:
+    the two field components exchange along the OPEN lanes. kappa is a
+    python float baked into the graph — FIXED, declared once, never a
+    parameter (no zero-born gain: fed_mx_hg's grave).
+    CONTENT PLANES: their delta is multiplied by an exact 0.0, so they
+    pass through bitwise; the clock block's norm is then restored (the
+    update is norm-CHANGING: |1 - i*kappa*lambda| > 1)."""
+    from tinygrad import Tensor as _Te
+    _cd, _sel, _gc, _gk, _gp = _polar_sink()
+    _B, _L, _W = u.shape[0], u.shape[1], u.shape[2]
+    _uv = u.reshape(_B, _L, _W // 2, 2)
+    _x = _uv[..., 0]
+    _y = _uv[..., 1]                                     # (B, L, P)
+    _dg = msk.sum(-1, keepdim=True)                      # (B, L, 1) degree
+    _pg = _dg > 0
+    _dn = _pg.where(_dg, 1.0)              # the guarded denominator (1.0)
+    _lx = (msk @ _x) / _dn - _x            # sum_j Mhat_ij (x_j - x_i)
+    _ly = (msk @ _y) / _dn - _y
+    _kg = _gp.reshape(1, 1, -1) * kappa    # CLOCKED planes only
+    _un = _Te.stack(_x + _kg * _ly, _y - _kg * _lx, dim=-1).reshape(_B, _L, _W)
+    return _polar_keepnorm(_un, u, _gk)
 SENT_MAX = 32
 
 
@@ -1461,6 +1599,58 @@ def build_params(seed=0):
                 if _nm not in _pset: continue
                 p[f"lora{_li}_{_nm}_A"] = t(_lrng.randn(_din, _lr_r) * 0.01)
                 p[f"lora{_li}_{_nm}_B"] = t(np.zeros((_lr_r, 2048)))
+    if ALG_POLAR and POLAR_D:
+        # THE CONTENT-PLANE WAIST's two parameters. BIRTH = the champion's
+        # OWN manifold: W_down = V, W_up = V^T with V the top-d principal
+        # directions of the content dims of the dumped fedon242 polar
+        # directions (scripts/polar_waist_init.py; both fixtures, all
+        # breaths, all slots, centered). A random init here would be a
+        # fresh 98k-parameter organ dropped into a warm continuation —
+        # blur, not compute. A MISSING FILE IS A HARD ERROR: no silent
+        # random init, ever (the no-silent-fallbacks rule).
+        _cdim = _polar_sink()[0]
+        _pwi = POLAR_D_INIT or f".cache/polar_waist_init_d{POLAR_D}.npz"
+        assert os.path.exists(_pwi), (
+            f"ALG_POLAR_D={POLAR_D} but {_pwi} is missing — the content "
+            f"waist is born as the PCA projection of the champion's own "
+            f"manifold, never at random. Build it with "
+            f"scripts/polar_waist_init.py (ALG_POLAR_D_INIT overrides "
+            f"the path).")
+        _pz = np.load(_pwi)
+        _wd0 = np.asarray(_pz["W_down"], np.float32)
+        _wu0 = np.asarray(_pz["W_up"], np.float32)
+        assert _wd0.shape == (len(_cdim), POLAR_D) \
+            and _wu0.shape == (POLAR_D, len(_cdim)), (
+                f"{_pwi}: W_down{_wd0.shape} / W_up{_wu0.shape} do not "
+                f"match ({len(_cdim)}, {POLAR_D}) / ({POLAR_D}, "
+                f"{len(_cdim)}) — wrong width or wrong band allocation")
+        assert np.array_equal(np.asarray(_pz["content_dims"], np.int64),
+                              _cdim), (
+            f"{_pwi} was built against a DIFFERENT band allocation than "
+            f"{POLAR_BANDS} — the waist would collapse the wrong dims")
+        p["polar_wd"] = t(_wd0)
+        p["polar_wu"] = t(_wu0)
+    global _POLAR_SINK_SHOWN
+    if ALG_POLAR and (POLAR_D or POLAR_EM) and not _POLAR_SINK_SHOWN:
+        # THE SINK DOOR: one line, once, naming what is about to run.
+        # Silent when both doors are shut.
+        _POLAR_SINK_SHOWN = True
+        _nc = len(_polar_sink()[0])
+        _dtxt = "off"
+        if POLAR_D:
+            _dtxt = ("%d content dims -> %d -> %d, %d params, init %s"
+                     % (_nc, POLAR_D, _nc, 2 * _nc * POLAR_D,
+                        POLAR_D_INIT
+                        or (".cache/polar_waist_init_d%d.npz" % POLAR_D)))
+        _etxt = ("off" if not POLAR_EM else
+                 "kappa=%g on the clock planes along the slot-mask lanes, "
+                 "FIXED (not learnable), 0 params" % POLAR_EM)
+        print("[polar-sink] ALG_POLAR_D=%d (%s) | ALG_POLAR_EM=%g (%s) | "
+              "the waist never touches the %d clock dims and the coupling "
+              "never touches the %d content dims; each organ restores its "
+              "OWN block norm, so ||u|| == 1 still holds and r is untouched"
+              % (POLAR_D, _dtxt, POLAR_EM, _etxt, H_W - _nc, _nc),
+              flush=True)
     return p
 
 
@@ -2231,6 +2421,25 @@ def breath_step(p, state, kb, ctx):
             _pol_u = _rot2(_pol_u,
                            _Tp(_pdc[kb - 1], dtype=_dp.float),
                            _Tp(_pds[kb - 1], dtype=_dp.float))
+        if POLAR_EM:
+            # (B) THE E&B COUPLING (apply_polar_sink.py, 2026-09-08).
+            # AFTER the sextet's turn, BEFORE the content waist: one
+            # discrete Maxwell-like exchange step on the CLOCK planes
+            # along the lanes of `_sm_kb` — the slot mask THIS breath's
+            # own attention closes sc2 with (MASKRE re-formation
+            # included), reused rather than rebuilt. kappa is fixed and
+            # unlearnable. Content planes pass through bitwise; the
+            # clock block's norm is restored inside the organ.
+            _pol_u = _polar_em(_pol_u, _sm_kb, POLAR_EM)
+        if POLAR_D:
+            # (A) THE CONTENT-PLANE WAIST ("expand & collapse x7"). The
+            # 192 content planes' 384 dims collapse to ALG_POLAR_D and
+            # expand back, born as the champion's own top-d content
+            # subspace. The 128 clock dims are in neither the domain nor
+            # the range — the bottleneck cannot fight the rotation — and
+            # the content block's norm is restored inside the organ, so
+            # ||u|| == 1 still holds and r is untouched.
+            _pol_u = _polar_waist(_pol_u, p, state)
         cur = _polar_ru_join(_pol_u, _pol_r, _pg)
         if int(os.environ.get("ALG_MINE_BREATHS", "0")):
             # THE TAP (spec S4): u and r beside r*u, DETACHED — the

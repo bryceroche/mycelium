@@ -30,6 +30,7 @@ a loss: it is an initialization, computed once, banked, and hashed.
 Run from the repo root:
   .venv/bin/python3 scripts/polar_waist_init.py            # d = 64,128,256
   PWI_DIMS=128 .venv/bin/python3 scripts/polar_waist_init.py
+  PWI_MODE=uncentered PWI_DIMS=128 .venv/bin/python3 scripts/polar_waist_init.py
 """
 import hashlib
 import json
@@ -45,6 +46,18 @@ BANDS = os.environ.get("ALG_POLAR_BANDS", ".cache/polar_bands.json")
 FIX = {"mint": ".cache/polar_states_mint.npz",
        "wild": ".cache/polar_states_wild.npz"}
 DIMS = [int(x) for x in os.environ.get("PWI_DIMS", "64,128,256").split(",")]
+# THE BASIS (lead's ruling 2026-09-08, decision 2): the map the head runs is
+#   c -> c @ W_down @ W_up   —  LINEAR, no bias, NO CENTERING.
+# "centered" takes the eigenvectors of the covariance (classical PCA: the
+# spec's wording); "uncentered" takes the eigenvectors of the SECOND MOMENT
+# E[c c^T], which is the least-squares-optimal rank-d subspace FOR THE MAP
+# ACTUALLY RUN. The two differ because the content mean is not small: it
+# carries ~0.16 of the per-row content energy and only ~0.89 of it lies
+# inside the centered top-128. Uncentered files carry the suffix "u".
+PWI_MODE = os.environ.get("PWI_MODE", "centered")
+assert PWI_MODE in ("centered", "uncentered"), \
+    f"PWI_MODE={PWI_MODE} (centered|uncentered)"
+SUF = "" if PWI_MODE == "centered" else "u"
 WAIST = 512
 
 
@@ -94,15 +107,20 @@ def main():
           f"all slots)", flush=True)
 
     mu = C.mean(0)
-    Xc = C - mu
-    cov = (Xc.T @ Xc) / (n - 1)
-    ev, V = np.linalg.eigh(cov)          # ascending
+    if PWI_MODE == "centered":
+        Xc = C - mu
+        M = (Xc.T @ Xc) / (n - 1)        # covariance: classical PCA
+        what = "centered variance"
+    else:
+        M = (C.T @ C) / n                # second moment: the map's own metric
+        what = "uncentered energy"
+    ev, V = np.linalg.eigh(M)            # ascending
     ev = ev[::-1]
     V = V[:, ::-1]                       # (D, D) columns = PCs, descending
     tot = float(ev.sum())
-    print(f"[pwi] centered total variance = {tot:.6g}; "
-          f"content-block energy (uncentered) = "
-          f"{float((C * C).sum(1).mean()):.6g} per row "
+    print(f"[pwi] mode={PWI_MODE} ({what}) total = {tot:.6g}; "
+          f"content-block energy per row = "
+          f"{float((C * C).sum(1).mean()):.6g} "
           f"(mean ‖mu‖^2 share = {float(mu @ mu):.6g})", flush=True)
 
     rows = []
@@ -125,14 +143,15 @@ def main():
                               / np.maximum(den, 1e-12)))
         orth = float(np.abs(P.T @ P - np.eye(d)).max())
         assert orth < 1e-4, f"V_{d} is not orthonormal ({orth:.2e})"
-        out = f".cache/polar_waist_init_d{d}.npz"
+        out = f".cache/polar_waist_init_d{d}{SUF}.npz"
         np.savez(out, W_down=Vd, W_up=np.ascontiguousarray(Vd.T),
                  mean=mu.astype(np.float32),
                  content_dims=cdim.astype(np.int64),
                  evr=(ev[:d] / tot).astype(np.float64),
                  var_kept=np.float64(kept), d=np.int64(d),
                  n_rows=np.int64(n), waist=np.int64(WAIST),
-                 bands=np.array(BANDS), version=np.int64(1))
+                 bands=np.array(BANDS), version=np.int64(1),
+                 basis=np.array(PWI_MODE))
         sha = hashlib.sha256(open(out, "rb").read()).hexdigest()[:16]
         rows.append((d, kept, rel, rel_g, rel_n, out, sha,
                      2 * d * D))
@@ -140,7 +159,7 @@ def main():
               f"{rel:.4f}  rel(global)={rel_g:.4f}  after-rescale={rel_n:.4f}"
               f"  params={2 * d * D}  -> {out} sha16={sha}", flush=True)
 
-    print("[pwi] --- THE PCA VARIANCE TABLE (centered, pooled) ---")
+    print(f"[pwi] --- THE PCA TABLE ({PWI_MODE}, pooled) ---")
     print("[pwi]    d | var kept | recon rel err | after rescale | params")
     for d, kept, rel, rel_g, rel_n, out, sha, np_ in rows:
         print(f"[pwi] {d:4d} |  {kept:.4f}  |    {rel:.4f}     |   "

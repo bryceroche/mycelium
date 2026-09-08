@@ -78,7 +78,15 @@ os.environ["SC_EVAL"] = "0"            # the machine's living regime — SEAL FE
 import numpy as np                                              # noqa: E402
 from tinygrad import Tensor, dtypes                             # noqa: E402
 
-HEAD = os.path.join(_ROOT, "scripts", "phase1_algebra_head.py")
+# The baseline the staged source is diffed against. Once the lead has
+# APPLIED the patch, the live head already carries the sink and the
+# idempotence guard refuses to stage from it — so this smoke is re-runnable
+# post-apply by pointing PS_TARGET at a pristine pre-apply copy
+# (git show <pre-apply rev>:scripts/phase1_algebra_head.py > /tmp/head_pre.py).
+# The apply subprocesses in GATE 5 inherit PS_TARGET from the environment,
+# so baseline and staging always name the SAME file — never two vintages.
+HEAD = os.environ.get("PS_TARGET",
+                      os.path.join(_ROOT, "scripts", "phase1_algebra_head.py"))
 BANDS = json.load(open(os.path.join(_ROOT, ".cache", "polar_bands.json")))
 D_WIDTH = 128
 KAPPA = 0.1
