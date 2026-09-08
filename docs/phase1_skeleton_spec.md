@@ -34725,3 +34725,16 @@ explicit coordinate, the hyperbolic reading (radius = depth in the
 kind hierarchy) is one log-map away; the marriage clause governs
 (no hyperbolic quantity enters a softmax without a log-map; cosine
 is wrong in the ball). Spec: docs/polar_waist_spec.md (next entry).
+
+## 2026-09-07 — RULING: the floored 12k twin is RETIRED unfired (obsolete branch)
+
+The registered follow-up "floored 0.15 to 12k, seeds 242 + 241, the
+12k guard" is struck by decision (Bryce): the soft floor proved its
+point at 8000 (survival on every count; Goldilocks at matched 8k),
+and the clock read established that this architecture does not turn
+its clock. Eight hours of compute on a parametrization already
+scheduled for replacement is an obsolete-branch spend. What the 8k
+reads established stands as banked (fix A = the cure; 0.15 = the
+gentle dose); the 12k guard for the floored arm is simply unmeasured
+and will be measured, if at all, on the polar generation. The card
+waits for the polar twin.
