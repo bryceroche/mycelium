@@ -35200,3 +35200,37 @@ batch, assign-in-place inputs, the trainer's own idiom) — expected
 bar. The cache remains the campaign's big win (75 min -> seconds per
 arm on a hit). Next chain template: ALG_MASKPREP_CACHE=1 on every
 arm; reads via read_batch with clock:breath_hand+parity+content.
+
+## 2026-09-08 — THE GAIN TABLE + THE PORT CENSUS: what the gut is pointing at, with the instrument's gap named
+
+Gate/gain scalars (born AJAR at 0.02 by law), champion -> polar+sink:
+mh_gain (the mask head) **0.0011 -> 0.0002** (training turned the
+player DOWN 20x, then 100x); bus_g (the garage read-back) 0.0077 ->
+**0.0542** (7x UP under the clock); alt2_g (fact injection) 0.057 ->
+0.072; alt_g 0.028 -> 0.020; fed_mx_hg (mixer) 0.023 -> 0.031;
+fed_pf_* (pointer forms) 0.0004-0.006 and fed_nb_g (notebook lane 2)
+0.0004 — the forensic's dead organs, still in the graph; sw_g 0.38 ->
+0.36.
+THE NUANCE THAT STOPS AN OVERCLAIM: a gain's value is not its
+organ's volume. The port census (scripts/port_census.py, the
+_CENSUS hook; organs today: breath_emb, garage, notebook) on wild:
+the garage injects at 0.35-0.46x of the base state in the champion
+DESPITE bus_g = 0.0077 — because the deposits it multiplies ride
+stamps of 1e3-1e4 (the amplitude read): the gain SHRANK to calibrate
+the product, and grew 7x in the polar arm because fix B shrank the
+stamps. Gain x organ-scale is what training sets; the two are
+redundant coordinates. The notebook injects at 1.0-1.4x (the
+dominant port), breath_emb at 0.06-0.15x, cosines clean (< 0.35).
+THE GAP: the census covers 3 of the ~8 injections into the state. It
+does NOT see the mask head (mh_gain 0.0002: silent, or loud-times-
+tiny like the garage? UNKNOWN), the alternator fact injection, the
+mixer, or the sink's two organs. That is the wiring question's
+missing instrument — builder extending the hook (post- AND pre-gain
+per organ, so the gain's effect is legible). Read on both machines
+follows. Registered in advance: if the mask head's post-gain
+injection is < 0.02x of the base state, the player is silent and the
+"mask cooker" (sever the baseline lanes on a share of rows so the
+mask head's lanes are the only road — the cooker's logic applied to
+attention; the flag audit showed the baseline is NOT the accuracy
+lever, which frees it to be a training pressure) is the registered
+remedy; the pointer forms and notebook lane 2 are pruning candidates.
