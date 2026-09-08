@@ -123,3 +123,48 @@ We named the site for a shape: a braid that tightens, winding fixed
 by clocks, radius shrunk by evidence. This week we learned the
 winding was never fixed, because the braid had no place to turn.
 Now it does.
+
+---
+
+## Postscript, September 8: the machine keeps its clock
+
+The twin ran. Two arms from the same starting point, twelve thousand
+gentle steps each, judged against a plain continuation trained the
+old way.
+
+The clock survived training. After twelve thousand steps a linear
+probe reads the breath off the machine's state at **1.0000** on both
+synthetic and wild problems, where the old machine read 0.60 and
+0.53. Three quarters of the breath hand's variance turns at sixty
+degrees per breath, the parity wheel turns at one hundred twenty,
+and the content planes turn at nothing. The learned write shaved the
+rotation from 0.83 at birth to 0.72 and did not cancel it. The
+machine knows its breath.
+
+The first arm, the clock alone, paid for it: about five points of
+accuracy on synthetic problems, and one on wild. The second arm added
+the two ideas the compass-and-odometer picture had been waiting for,
+a bottleneck on the content planes only, so the clock's planes are
+never squeezed, seeded from the machine's own top directions, and a
+small Maxwell-style exchange between neighbouring slots on the clock
+planes, so phase travels along the lanes attention allows. That arm
+keeps the clock at the same strength and gives the accuracy back
+entirely: **0.2511 on wild and 0.9556 on synthetic**, level with the
+plain continuation to within a fraction of a point on both. A
+machine that knows its breath, at no measured cost against one that
+does not.
+
+One bar failed as written, and we say so. The control clause we
+pinned for the content planes asked that at least ninety percent of
+their motion sit near zero degrees, to guard against the plane
+selection manufacturing a fake sixty. After training they sit near
+eighty percent, on both arms. The artefact the clause guards against
+is absent, content shows two to four percent at sixty against
+seventy-two on the breath hand, but the clause as pinned failed, and
+bars do not bend after the fact. It is recorded as a fail, and the
+better wording is registered for the next twin, not applied to this
+one.
+
+Single seed. The second seed, and the question of which half of the
+sink pays, are the next fires. The braid has a place to turn now,
+and it turned.

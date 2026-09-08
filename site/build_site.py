@@ -200,7 +200,7 @@ the silence is.</p>
 
 
 HOOKS = {
- "2026-09-07-a-place-to-turn": "A rotation is invisible on a growing radius — the state becomes compass and odometer, and the attention space finally turns.",
+ "2026-09-07-a-place-to-turn": "VERDICT (Sep 8): the machine keeps its clock — breath decodes at 1.0 after training, at no measured cost with the sink. A rotation is invisible on a growing radius; the state becomes compass and odometer.",
  "2026-09-07-the-godol-collider": "VERDICT (Sep 7): killed at the visibility bar — 5% of wrong readings self-contradict; uniqueness is not truth. Two rival readings, one exact solver, and the honest limit, with postscript.",
  "2026-09-07-two-winds": "VERDICT (Sep 8): the flag's first binding is struck — openness goes with correctness on wild; the second binding (uncalibrated deposits) stands; the bag is still unread. With postscript.",
  "2026-09-05-the-paired-atlas": "The model runs once; the reading never stops moving — seven pages for the language atlas, and the needle between the charts.",
