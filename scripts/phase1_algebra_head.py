@@ -144,6 +144,133 @@ if FED_ROTOR:
     _FED_ROT_S = np.zeros_like(_FED_ROT_C)
     _FED_ROT_C[:, 24:32] = np.cos(_fed_ang).astype(np.float32)
     _FED_ROT_S[:, 24:32] = np.sin(_fed_ang).astype(np.float32)
+# ===========================================================================
+# THE POLAR WAIST (apply_polar_waist.py, 2026-09-07; docs/polar_waist_spec
+# .md). The loop state as r * u: u on the unit sphere of the T^256 torus,
+# r an explicit radius channel. The sextet turns u's CLOCK BANDS every
+# loop breath with FROZEN, UNGAINED angles from mycelium/rotor_clock.py —
+# which is the single source of truth here BY IMPORT, not by prose.
+# Every line below is inert with ALG_POLAR unset (the band file is not
+# even opened): the equivalence contract is eq A/B/C bit-identical.
+# ===========================================================================
+from mycelium.rotor_clock import (N_LOOP as _RC_N_LOOP,           # noqa: E402
+                                  N_WHEELS as _RC_N_WHEELS,
+                                  QUANTUM as _RC_QUANTUM,
+                                  wheel_table as _rc_wheel_table)
+ALG_POLAR = int(os.environ.get("ALG_POLAR", "0"))
+POLAR_BANDS = os.environ.get("ALG_POLAR_BANDS", ".cache/polar_bands.json")
+POLAR_R_MODE = os.environ.get("ALG_POLAR_R_MODE", "scalar")   # scalar|slotvec
+POLAR_RG = int(os.environ.get("ALG_POLAR_RG", "8"))           # slotvec groups
+POLAR_QROT = int(os.environ.get("ALG_POLAR_QROT", "2"))       # 0/1/2: off,
+                                                # mixer only, main+mixer
+POLAR_STAMP = int(os.environ.get("ALG_POLAR_STAMP", "1"))     # fix B
+_POLAR_TAB = None           # (delta_cos, delta_sin, abs_cos, abs_sin, wheel_of)
+_POLAR_SHOWN = False
+
+
+def _polar_groups():
+    """The radius channel's width: 1 scalar per slot (default) or
+    POLAR_RG group radii (ALG_POLAR_R_MODE=slotvec). Groups are whole
+    numbers of PLANES, so a band rotation never straddles a group and
+    every group norm is rotation-invariant."""
+    if POLAR_R_MODE == "scalar":
+        return 1
+    assert POLAR_R_MODE == "slotvec", \
+        f"ALG_POLAR_R_MODE={POLAR_R_MODE} (scalar|slotvec)"
+    assert H_W % POLAR_RG == 0 and (H_W // POLAR_RG) % 2 == 0, \
+        f"ALG_POLAR_RG={POLAR_RG} must split H_W={H_W} into even-sized groups"
+    return POLAR_RG
+
+
+def _polar_tables():
+    """THE FROZEN WHEEL TABLES, built once from the band allocation the
+    head READS (POLAR_BANDS) and the angles rotor_clock OWNS.
+    Returns (dc, ds, ac, as_, wheel_of):
+      dc/ds  (N_LOOP, P) cos/sin of the per-breath INCREMENT — what the
+             STATE applies (it compounds: u_k = rot(u_{k-1}, delta_k));
+      ac/as_ (N_LOOP, P) cos/sin of the ABSOLUTE phase — what the
+             Q-SIDE applies (the query is rebuilt from cur each breath,
+             so there is nothing to compound);
+      wheel_of (P,) the owning wheel per plane, -1 = content.
+    Content planes carry cos=1, sin=0: bit-identical passthrough.
+    THE COMPOUNDING CONTRACT is asserted here, not asserted in prose:
+    the accumulated increments must reproduce rotor_clock's absolute
+    table exactly."""
+    global _POLAR_TAB
+    if _POLAR_TAB is None:
+        import json as _pjs
+        _P = H_W // 2
+        assert _P == MX_HEADS * ((H_W // MX_HEADS) // 2), \
+            "plane count must reshape to (MX_HEADS, pairs/head) for the Q side"
+        with open(POLAR_BANDS) as _pf:
+            _pb = _pjs.load(_pf)
+        assert int(_pb["waist"]) == H_W and int(_pb["n_planes"]) == _P, \
+            f"{POLAR_BANDS}: waist/plane mismatch (head H_W={H_W})"
+        assert len(_pb["wheels"]) == _RC_N_WHEELS, \
+            f"{POLAR_BANDS}: {len(_pb['wheels'])} wheels, clock has {_RC_N_WHEELS}"
+        _wof = np.full(_P, -1, np.int64)
+        for _wi, _wd in enumerate(_pb["wheels"]):
+            assert int(_wd["wheel"]) == _wi, "wheels out of order"
+            for _pl in _wd["planes"]:
+                _pl = int(_pl)
+                assert 0 <= _pl < _P, f"plane {_pl} out of range"
+                assert _wof[_pl] < 0, \
+                    f"plane {_pl} claimed twice — SEPARATE BANDS is a law"
+                _wof[_pl] = _wi
+        _abs = _rc_wheel_table()                      # (N_LOOP, N_WHEELS)
+        _dlt = np.zeros_like(_abs)
+        _dlt[0] = _abs[0]
+        _dlt[1:] = _abs[1:] - _abs[:-1]
+        assert np.allclose(np.cos(np.cumsum(_dlt, 0)), np.cos(_abs), atol=1e-6) \
+            and np.allclose(np.sin(np.cumsum(_dlt, 0)), np.sin(_abs), atol=1e-6), \
+            "state increments do not accumulate to rotor_clock's absolute phase"
+        assert np.allclose(np.cos(_dlt[1:, 0]), math.cos(_RC_QUANTUM)) \
+            and np.allclose(np.sin(_dlt[1:, 0]), math.sin(_RC_QUANTUM)), \
+            "the breath hand must advance exactly one quantum (60 deg)/breath"
+        _dc = np.ones((_RC_N_LOOP, _P), np.float32)
+        _ds = np.zeros((_RC_N_LOOP, _P), np.float32)
+        _ac = np.ones((_RC_N_LOOP, _P), np.float32)
+        _as = np.zeros((_RC_N_LOOP, _P), np.float32)
+        for _pl in range(_P):
+            _wi = int(_wof[_pl])
+            if _wi < 0:
+                continue                              # content: identity
+            _dc[:, _pl] = np.cos(_dlt[:, _wi]); _ds[:, _pl] = np.sin(_dlt[:, _wi])
+            _ac[:, _pl] = np.cos(_abs[:, _wi]); _as[:, _pl] = np.sin(_abs[:, _wi])
+        _POLAR_TAB = (_dc, _ds, _ac, _as, _wof)
+    return _POLAR_TAB
+
+
+def _polar_ru(x, g):
+    """THE POLAR DECOMPOSITION — the ONE organ every caller uses (the
+    meter-divergence law: a check must call its organ). x: (B, L, H_W).
+    Returns (r, u) with r (B, L, g, 1) the per-group radius and u the
+    unit direction; x == r*u EXACTLY, including at the origin.
+    TWO WHERE-GATES, both load-bearing (CLAUDE.md S5; the confidence
+    stamp's own NaN-safe idiom, extended):
+      * the SQRT gate — an exact-zero slot must not send grad/(2*sqrt(0))
+        to NaN (the stamp's step-5000 detonation);
+      * the DENOMINATOR gate — the radius is replaced by 1.0 (never by
+        an epsilon) in the division, so at the origin u is exactly zero
+        and du/dx is exactly 1. An epsilon guard is NOT enough here: it
+        keeps the forward finite but hands the backward a 1/eps = 1e6
+        spike at precisely the state the guard exists for. The reported
+        radius stays the TRUE radius (0 at the origin) — the guard
+        lives in the division, never in the coordinate.
+    r is a DIAGNOSTIC-REGISTER coordinate: read it, never supervise it."""
+    _xg = x.reshape(x.shape[0], x.shape[1], g, -1)
+    _ss = _xg.pow(2).sum(-1, keepdim=True)
+    _sp = _ss > 0
+    _r = _sp.where(_sp.where(_ss, 1.0).sqrt(), 0.0)   # true radius, 0 at origin
+    _rd = _sp.where(_r, 1.0)                          # the guarded denominator
+    return _r, (_xg / _rd).reshape(x.shape)
+
+
+def _polar_ru_join(u, r, g):
+    """r * u back to the old coordinates — what every existing organ
+    reads (spec S1.3: reads are polar OR cartesian, the caller's choice;
+    with ALG_POLAR unset this function is never called at all)."""
+    return (u.reshape(u.shape[0], u.shape[1], g, -1) * r).reshape(u.shape)
 SENT_MAX = 32
 
 
@@ -961,6 +1088,22 @@ def load_alg(split):
 def build_params(seed=0):
     from tinygrad import Tensor, dtypes
     rng = np.random.RandomState(seed)
+    global _POLAR_SHOWN
+    if ALG_POLAR and not _POLAR_SHOWN:
+        # THE POLAR DOOR (spec S3): one line, once, naming the frozen
+        # allocation it is about to run under. Silent when unset.
+        _POLAR_SHOWN = True
+        _pd0, _pd1, _pa0, _pa1, _pwof = _polar_tables()
+        _pn = [int((_pwof == _wi).sum()) for _wi in range(_RC_N_WHEELS)]
+        print(f"[polar] ALG_POLAR=1 bands={POLAR_BANDS} "
+              f"planes={H_W // 2} clocked={sum(_pn)} "
+              f"(breath-hand {_pn[0]} / parity {_pn[1]} / pass {_pn[2]}) "
+              f"content={H_W // 2 - sum(_pn)} | R_MODE={POLAR_R_MODE}"
+              f"({_polar_groups()} group(s)) QROT={POLAR_QROT}"
+              f"({'off' if not POLAR_QROT else ('mixer' if POLAR_QROT == 1 else 'main+mixer')}) "
+              f"STAMP={POLAR_STAMP} FLOOR={os.environ.get('ALG_PC_FLOOR', '0')} "
+              f"| sextet = mycelium/rotor_clock.wheel_table() "
+              f"(frozen, ungained, breath-0 outside time)", flush=True)
 
     def t(a):
         x = Tensor(a.astype(np.float32), dtype=dtypes.float,
@@ -1701,7 +1844,26 @@ def breath_step(p, state, kb, ctx):
     bq = cur @ p["W_bq"] + p["W_bq_b"]
     bk = cur @ p["W_bk"] + p["W_bk_b"]
     bv = cur @ p["W_bv"] + p["W_bv_b"]
-    sc2 = (bq @ bk.transpose(-2, -1)) / math.sqrt(H_W)
+    _bq2 = bq
+    if ALG_POLAR and POLAR_QROT >= 2 and 1 <= kb <= _RC_N_LOOP:
+        # THE SEXTET ON THE ATTENTION SPACE (spec S1.2; lead's ruling
+        # 2026-09-07). The mixer's rotation rides behind fed_mx_hg
+        # gains that woke to 0.023 and SHRANK to 0.013 under the cooker
+        # — a whisper. The slot mixer's OWN queries are where the
+        # attention actually speaks, so they turn here on the SAME 256
+        # planes, by the SAME rotor_clock wheel table, ABSOLUTE angles
+        # (the query is rebuilt from cur each breath: nothing
+        # compounds), K UNROTATED (the v109pi relative-phase
+        # precedent), no gains and no learnable rate. It rides its OWN
+        # tensor: bq itself stays untouched, so the mixer below builds
+        # _mx_q from the unrotated queries and applies its own turn —
+        # each attention is rotated exactly ONCE at QROT=2.
+        from tinygrad import Tensor as _Tm, dtypes as _dm
+        _mdc, _mds, _mac, _mas, _mwof = _polar_tables()
+        _bq2 = _rot2(bq,
+                     _Tm(_mac[kb - 1], dtype=_dm.float),
+                     _Tm(_mas[kb - 1], dtype=_dm.float))
+    sc2 = (_bq2 @ bk.transpose(-2, -1)) / math.sqrt(H_W)
     _sm_kb = slot_mask
     _A5 = None
     if _snaps and ("alt_g" in p
@@ -1873,7 +2035,33 @@ def breath_step(p, state, kb, ctx):
         _mx_q = bq.reshape(B, L_TOT, MX_HEADS, _mx_hd).permute(0, 2, 1, 3)
         _mx_k = bk.reshape(B, L_TOT, MX_HEADS, _mx_hd).permute(0, 2, 1, 3)
         _mx_v = bv.reshape(B, L_TOT, MX_HEADS, _mx_hd).permute(0, 2, 1, 3)
-        if FED_ROTOR and _FED_ROT_C is not None and 1 <= kb <= 6:
+        if ALG_POLAR and POLAR_QROT >= 1 and 1 <= kb <= _RC_N_LOOP:
+            # THE SEXTET, Q-SIDE (spec S1.2): the SAME plane allocation
+            # as the state's clock, reshaped (MX_HEADS, pairs/head) —
+            # state and attention are ONE clock, not two. ABSOLUTE
+            # angles here (the query is rebuilt from cur every breath:
+            # nothing compounds), K UNROTATED (the v109pi precedent:
+            # one table on both sides cancels — relative phase is the
+            # signal). UNCONDITIONAL: no gains, no learnable rate. The
+            # mixer builds _mx_q from the UNROTATED bq (the main path's
+            # turn rides its own tensor, _bq2), so QROT=2 rotates each
+            # attention ONCE — never twice. This REPLACES fed item 7a,
+            # whose 60 deg on 8 of 32 pairs sat
+            # behind mixer gains of 0.023 and shrank to 0.013 under the
+            # cooker (rung 0a) — a whisper the state never heard. With
+            # ALG_POLAR unset item 7a below runs byte-identically.
+            from tinygrad import Tensor as _Tq, dtypes as _dq
+            _qdc, _qds, _qac, _qas, _qwof = _polar_tables()
+            _rcq = _Tq(_qac[kb - 1].reshape(MX_HEADS, _mx_hd // 2),
+                       dtype=_dq.float).reshape(1, MX_HEADS, 1, -1)
+            _rsq = _Tq(_qas[kb - 1].reshape(MX_HEADS, _mx_hd // 2),
+                       dtype=_dq.float).reshape(1, MX_HEADS, 1, -1)
+            _qp8 = _mx_q.reshape(B, MX_HEADS, L_TOT, _mx_hd // 2, 2)
+            _qx8, _qy8 = _qp8[..., 0], _qp8[..., 1]
+            _mx_q = Tensor.stack(_qx8 * _rcq - _qy8 * _rsq,
+                                 _qx8 * _rsq + _qy8 * _rcq, dim=-1) \
+                .reshape(B, MX_HEADS, L_TOT, _mx_hd)
+        elif FED_ROTOR and _FED_ROT_C is not None and 1 <= kb <= 6:
             # FED item 7a: THE BREATH ROTOR INSTALLS HERE —
             # 60deg/breath sextet rotation (rotor_clock's legacy band,
             # pairs 24..31 of each 64d head), Q-SIDE ONLY (the v109pi
@@ -2014,6 +2202,44 @@ def breath_step(p, state, kb, ctx):
         cur = m_c * anchor + (1.0 - m_c) * cur_new
     else:
         cur = cur_new
+    _pol_r = None
+    if ALG_POLAR:
+        # THE POLAR WAIST (apply_polar_waist.py, 2026-09-07; spec S1).
+        # The loop state becomes r * u — u on the unit sphere of the
+        # T^256 torus (256 planes of the 512-d waist, the bus's own
+        # geometry), r the explicit radius channel (consolidation; the
+        # measured 7 -> 12 growth becomes a COORDINATE instead of a
+        # swamp). THE GUARANTEED SEXTET: u's clock bands turn by
+        # rotor_clock's frozen wheel INCREMENTS (breath hand 60 deg,
+        # parity 120 deg, pass wheel static) at every loop breath
+        # 1..6 — no gains, no learnable rate, no schedule, breath 0
+        # outside time; content planes multiply by cos=1/sin=0 and pass
+        # through BITWISE. The write that just happened (cur_new) lands
+        # in u, which is re-normalized WHERE-GATED, and in r, which
+        # rides its own channel: writes tangential, reads polar.
+        # PLACEMENT is load-bearing: after the pawl and after the seal
+        # (so a SEALED row's crossing state carries (r, u) and the
+        # clock too — the seal's own 46x norm jump becomes a radius
+        # reading rather than a coordinate break), and before the
+        # notebook ink, the garage write and breaths.append (so every
+        # downstream organ reads ONE state in ONE frame).
+        _pg = _polar_groups()
+        _pol_r, _pol_u = _polar_ru(cur, _pg)
+        if 1 <= kb <= _RC_N_LOOP:
+            from tinygrad import Tensor as _Tp, dtypes as _dp
+            _pdc, _pds, _pac, _pas, _pwof = _polar_tables()
+            _pol_u = _rot2(_pol_u,
+                           _Tp(_pdc[kb - 1], dtype=_dp.float),
+                           _Tp(_pds[kb - 1], dtype=_dp.float))
+        cur = _polar_ru_join(_pol_u, _pol_r, _pg)
+        if int(os.environ.get("ALG_MINE_BREATHS", "0")):
+            # THE TAP (spec S4): u and r beside r*u, DETACHED — the
+            # clock read probes the direction without the radius
+            # confound, and no diagnostic can teach the radius
+            # (the Goodhart fence; the two-terminal proof is
+            # scripts/polar_birth_smoke.py item 5).
+            state.setdefault("u_all", []).append(_pol_u.detach())
+            state.setdefault("r_all", []).append(_pol_r.detach())
     if ALG_NOTEBOOK:
         _nb.append((cur @ p["W_sil"]) if NB_PERSLOT
                    else (_fed_core(cur).mean(1) @ p["W_sil"]))
@@ -2089,6 +2315,29 @@ def breath_step(p, state, kb, ctx):
                 _sp4 = _ss4 > 0
                 _wn4 = _sp4.where(_sp4.where(_ss4, 1.0).sqrt(), 0.0) + 1e-6
             _cn4 = _canon4.pow(2).sum(-1, keepdim=True).sqrt() + 1e-6
+            if ALG_POLAR and POLAR_STAMP and _pol_r is not None:
+                # THE DEPOSIT'S RADIUS — FIX B (spec S1.4; the amplitude
+                # read of 2026-09-07: champion stamps median 412 / max
+                # 1.9e4 against a state radius of 7-12, and 0 under the
+                # live wire without the floor). The stamp becomes the
+                # deposit's RADIUS CHANNEL, calibrated to THIS slot's own
+                # state radius R:
+                #        w' = w * R / (R + w)
+                # w' -> w for w << R (the healthy regime is untouched),
+                # w' -> R for w >> R (a deposit can never shout louder
+                # than the state that wrote it), and dw'/dw = (R/(R+w))^2
+                # is bounded and NEVER zero. The algebraic saturation is
+                # chosen over tanh precisely here: tanh's gradient at the
+                # champion's w/R ~ 40 is exp(-80) — a live wire DEAD at
+                # birth, the very pathology the pressure campaign cured.
+                # R is DETACHED: it is a SCALE, not a signal (an un-
+                # detached R lets the committer earn a loud stamp by
+                # shrinking the state — a Goodhart loop). ALG_PC_FLOOR
+                # rides underneath, unchanged: the floor sets the bottom,
+                # the radius sets the top; amplitude can neither shout
+                # nor vanish.
+                _rst4 = _pol_r.mean(-2).detach()          # (B, L, 1)
+                _wn4 = _wn4 * _rst4 / (_rst4 + _wn4)
             _dep4 = _canon4 / _cn4 * _wn4
             _wg4 = _dep4.detach()
             _pcl4 = (globals().get("_PCV")
@@ -2344,6 +2593,24 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
         out["rbias"] = _rb_last
     if int(os.environ.get("ALG_MINE_BREATHS", "0")) and K_B > 1 and slot_mask is not None:
         out["breaths_all"] = [_fed_core(_b9) for _b9 in out_breaths]
+        if ALG_POLAR:
+            # SPEC S4: the atlas tap keeps the OLD coordinates (r*u) in
+            # breaths_all — every banked atlas stays readable — and the
+            # DIRECTION arrives beside it so clock_read.py can probe
+            # both (angle = identity, radius = consolidation: the two-
+            # channel law, now two keys). Breath 0 is OUTSIDE TIME
+            # (rotor_clock's contract): unrotated, and its (r, u) come
+            # from the SAME organ the loop uses — one meter, one
+            # caller. Both taps are DETACHED: a diagnostic terminal
+            # that cannot teach (the Goodhart fence).
+            _pg0 = _polar_groups()
+            _r0p, _u0p = _polar_ru(out_breaths[0], _pg0)
+            out["breaths_u"] = [_fed_core(_x9) for _x9 in
+                                ([_u0p.detach()]
+                                 + ((_bs_state or {}).get("u_all") or []))]
+            out["breaths_r"] = [_fed_core(_x9) for _x9 in
+                                ([_r0p.detach()]
+                                 + ((_bs_state or {}).get("r_all") or []))]
         # NL TAP (apply_nl_tap.py): the seven-page reading — breath
         # 0 is the same fq bank pass fst came from (fat); breaths
         # 1..K-1 were appended by breath_step under the same env.

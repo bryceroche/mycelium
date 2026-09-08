@@ -34786,3 +34786,37 @@ FLOOR registered as the follow-up if the twin prints a radius spike;
 Phase 2 (GPU): eq PRE dumps taken on the unpatched head
 (.cache/eqpolar_pre_*.npz); apply after the seventh anchor lands;
 eq POST bit-identity; row smoke; then the twin on the word.
+
+## 2026-09-07 — POLAR WAIST APPLIED: phase 2 gates green (eq A/B/C bit-identical, row smoke ALL GATES); the seventh anchor and a double-rotation bug caught at build
+
+Follow-ups landed before apply: (1) the SEVENTH ANCHOR — the main
+sc2 attention path's queries rotate on the same 256-plane absolute
+table (ALG_POLAR_QROT=2 default: main + mixer; 1 = mixer only; 0 =
+off). Build catch: `bq` feeds BOTH sc2 and the mixer's `_mx_q`;
+rotating it in place would have turned the mixer twice (120 deg at
+kb=3). Fix: the main path's turn rides its own tensor (`_bq2`), the
+mixer keeps building from the untouched `bq` and applies its own —
+each attention turns exactly once; five structural asserts pin it,
+and `_polar_tables()` is asserted to have exactly five call sites
+(one table, no second source). (2) clock_read.py CR_KEY dial
+(default breaths_all: banked reads unchanged; breaths_u = the
+direction tap). (3) ALG_POLAR_R_FLOOR registered in the apply
+script's docstring, unbuilt. Diff shape: 7 hunks, +269 / -2 (both
+deletions one-line rewrites). Birth smoke ALL GATES: env-inertness
+bit-identical after the seventh anchor; B6 extended — mixer and main
+path agree plane-for-plane on all 256 planes, 200 content planes
+exactly unrotated on both.
+PHASE 2 (GPU): APPLIED to scripts/phase1_algebra_head.py; eq A/B/C
+POST vs PRE (ALG_POLAR unset): 7 tensors bit-identical x3; pc_row_
+smoke ALL GATES on the applied head. The generation exists behind its
+door. NOTE for the twin (builder's B6 asymmetry): the mixer's turn is
+invisible at birth (zero-init fed_mx_hg) but the MAIN path's turn is
+LIVE at birth — QROT=2 moves the parse from step 0 on top of the
+state rotation; warm-from-fedon242 feels it immediately (watch the
+first prints, not only the 12k bars).
+TWIN DECLARATION (single variable): polar ONLY — ALG_POLAR=1 on the
+champion's regime (SC_EVAL=0, no cooker) vs the EXISTING plain
+continuations pcctl242 / pcctl241; the sealed-wild read is
+informational (0.0000 expected on both without the cooker). Reads:
+clock_read on breaths_u (THE BAR) and breaths_all, open-wild, mint,
+sealed-wild. Fire on the word.
