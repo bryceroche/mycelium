@@ -135,3 +135,44 @@ an autopsy instrument: the paradox that names which slot was wrong.
 Two sages walk into an accelerator. What comes out is a smaller set
 of things that could possibly be true. That is what reasoning was
 always supposed to be.
+
+---
+
+## Postscript, September 7: the collider is dead, and here is the shape of the body
+
+The read ran the same evening, on the champion, both fixtures,
+bars exactly as pinned above.
+
+Collider visibility, the fraction of wrong readings that are
+self-contradictory, came in at **5.1% on wild problems and 2.1% on
+synthetic ones**, against a bar of 30% and a kill at 10%. Killed at
+the first bar, on both fixtures. The reason is not that wrong
+readings are consistent. It is that they are *underdetermined*:
+87% of the wrong wild readings committed too few slots for the
+propagator to force the query at all, so there was nothing for a
+rival reading to collide with. Zero flips fired. Zero silent-wrong
+answers were introduced, which is the one bar that passed, and it
+passed vacuously.
+
+We then tested the natural second rule offline, unpinned and
+labelled as such: when the original is underdetermined and exactly
+one rival makes the query unique, trust that rival. It is worse
+than nothing. The rival's slot was correct 7% of the time on wild
+and 1.5% on synthetic, and on synthetic the *original* slot had
+already been right in 57 of 65 cases. The easiest way to force a
+unique answer is to break the reading. Uniqueness is not truth, and
+on an exactly-determined grammar it is closer to anti-truth.
+
+What survives: the deletion core, the Gödel half, stays as an
+autopsy instrument, because a paradox that names its own
+participants is still the most legible refusal we have. And the
+principle the post opened with survives unharmed: the solver's "no"
+still has to reach the organ that steers attention. It will not
+arrive through rival enumeration. It will arrive, if it arrives,
+through the solver's silence made legible: which slots were
+committed when the row went quiet. That is registered, with no bar
+yet.
+
+Two sages walked into the accelerator. Most of the time nothing
+came out, because most of the time neither sage had said enough to
+contradict the other. That is also a result.
