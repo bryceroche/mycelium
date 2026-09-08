@@ -200,6 +200,7 @@ the silence is.</p>
 
 
 HOOKS = {
+ "2026-09-07-a-place-to-turn": "A rotation is invisible on a growing radius — the state becomes compass and odometer, and the attention space finally turns.",
  "2026-09-07-the-godol-collider": "Two rival readings, one exact solver — disambiguation by collision, and the honest limit: consistency is not truth.",
  "2026-09-07-two-winds": "A flag shredded by excessive attention, a wet bag with no path through it — two dreams bound to organs and pinned before the read.",
  "2026-09-05-the-paired-atlas": "The model runs once; the reading never stops moving — seven pages for the language atlas, and the needle between the charts.",
