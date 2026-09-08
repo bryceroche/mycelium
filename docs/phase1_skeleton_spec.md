@@ -34988,3 +34988,30 @@ exit): eq POST gate -> THE SHREDDED-FLAG AUDIT (both fixtures) ->
 ARM B (polar + D=128u + EM=0.1, seed 242, 12k) -> reads for A and B
 (clock per wheel on breaths_u, open-wild, mint, sealed-wild). Bars as
 pinned 09-08. Arm A (pc-polar-a) in mask-prep.
+
+## 2026-09-08 — PERF CAMPAIGN (word given: prioritize): three claims, built now on CPU, applied after chain 2 (never edit code a queued chain imports)
+
+Measured fixed costs: mask-prep ~75 min per training arm (breath-0
+parse over 133,828 rows at batch 8, eager, plus a bridge ping per
+item — identical arrays for every arm warm from the same ckpt on the
+same train file); each read process ~1 min of trunk reload + JIT
+capture (~20 reads per chain); the clock read = 3 wheels x 2
+fixtures = 6 processes per arm where the states need collecting once.
+(1) THE MASK-PREP CACHE (ALG_MASKPREP_CACHE, env-gated; unset =
+byte-identical): key = sha(WARM_FROM bytes) + the train arrays'
+sha-fence identity + every ALG_*/SC_EVAL/BIND_CODES door + sha(head
+source); on a hit, load and RE-VERIFY the first two batches by
+recomputation (loud on mismatch — never a silent fallback). 75 min ->
+seconds on a hit. Numerically inert by construction.
+(2) MULTI-WHEEL CLOCK READ: CR_PLANES accepts a list; states
+collected once per fixture; single-value output byte-identical.
+(3) THE BATCH READER (scripts/read_batch.py): one process, one
+fixture, many checkpoints — params re-assigned, graph captured once;
+same organs (loop_val / step_engine_read functions), equality to the
+digit vs the standalone scripts is the proof; the SC_EVAL-at-capture
+specimen (THE UNLIT STOVE) governs: one captured graph serves one
+seal mode. Registered as a measured variant behind (1): mask-prep at
+batch 64 (not bit-identical in principle — scheduling noise can flip
+a thresholded mask on a rare row; needs its own equality read).
+Arm A step 0: loss 8.7551 (plain continuation 8.85) — the birth shock
+of the 64-plane clock at the loss level is small.
