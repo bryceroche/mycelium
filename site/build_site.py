@@ -202,7 +202,7 @@ the silence is.</p>
 HOOKS = {
  "2026-09-07-a-place-to-turn": "A rotation is invisible on a growing radius — the state becomes compass and odometer, and the attention space finally turns.",
  "2026-09-07-the-godol-collider": "VERDICT (Sep 7): killed at the visibility bar — 5% of wrong readings self-contradict; uniqueness is not truth. Two rival readings, one exact solver, and the honest limit, with postscript.",
- "2026-09-07-two-winds": "PENDING: a flag shredded by excessive attention, a wet bag with no path through it — two dreams bound to organs and pinned before the read; the reads run this week.",
+ "2026-09-07-two-winds": "VERDICT (Sep 8): the flag's first binding is struck — openness goes with correctness on wild; the second binding (uncalibrated deposits) stands; the bag is still unread. With postscript.",
  "2026-09-05-the-paired-atlas": "The model runs once; the reading never stops moving — seven pages for the language atlas, and the needle between the charts.",
  "2026-09-05-the-drafting-problem": "There are no good cards, only good cards for this deck — what Slay the Spire knows about attention masking.",
  "2026-09-04-the-lean-horizon": "Two nested loops — the CSP solver inside, the Lean compiler outside — and the two-line theory of abstraction and reasoning.",

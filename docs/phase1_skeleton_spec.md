@@ -35093,3 +35093,28 @@ repair/dose fixture (<= 12G each). The companion index .npz files
 for the deleted diets remain (metadata only; a training call on a
 deleted diet fails loudly on the missing memmap — never silent).
 / free: 16 GB -> 1.2 TB. Chain 2 was untouched (form12 only).
+
+## 2026-09-08 — THE SHREDDED-FLAG AUDIT: this was not that flag (both bars FAIL; the second INVERTS); eq gate for the sink patch passed; arm B on the card
+
+Chain 2's gate: eq A/B/C POST vs the pre-sink dumps — bit-identical
+x3 (the sink doors are inert unset). flag_audit.py (fedon242, pass-0
+outputs, both fixtures): wildhold mean baseline degree 16.18/24
+(67.4% open), test23 14.83 (61.8%) — BAR 1 (wild - mint >= 1.5
+slots): +1.355, FAIL. Wild slot fac-exact by degree tercile: tightest
+0.1527 (deg 14.1), middle 0.1554, most open **0.2007** (deg 18.7) —
+BAR 2 (tightest beats most-open by >= 0.03): **-0.048, FAIL and
+INVERTED.** Openness goes WITH correctness on wild. Reading, with the
+confound named: the baseline mask is built from the head's OWN
+breath-0 parse (shared-variable lanes), so a reading that finds more
+shared variables opens more lanes — correctness -> openness is at
+least as plausible as the reverse; either way the hypothesis "the
+baseline is too open and that hurts" has no support. The 18.6/24
+(78%) figure was the TRAIN mix's degree; the fixtures sit at 62-67%.
+VERDICT: the flag's first binding (baseline mask degree) is REFUTED.
+The second binding (the shelf's attention over garage entries riding
+stamps of 1e3-1e4 — the amplitude read) stands, and the polar
+generation's fix B is its structural remedy; read on arm B. The DSL
+composition question is unblocked in the other direction: a tighter
+baseline is NOT the lever; composition (two-hop lanes) can be judged
+on its own bar without the flag. The wet bag's trunk-adapter arm
+remains queued (unread). Arm B (polar + sink) training.
