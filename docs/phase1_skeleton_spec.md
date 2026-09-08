@@ -34952,3 +34952,39 @@ follow-up ablation (D alone / EM alone). Seed 241 deferred to the
 verdict. Every door byte-inert when unset (eq A/B/C). Builder phase
 3 running (CPU); phase 4 = apply + eq + row smoke; fire on the
 proofs (the word for this run is given).
+
+## 2026-09-08 — THE KITCHEN SINK APPLIED; arm A on the card; chain 2 queued behind it
+
+Phase 3 delivered (CPU): scripts/apply_polar_sink.py — 3 anchors,
++209 / -0; ALG_POLAR_D (content-plane waist; two new tensors,
+98,304 params at d=128; PCA birth loaded VERBATIM from a file, loud
+if missing) and ALG_POLAR_EM (kappa a baked python float — zero
+params, fed_mx_hg's grave). PCA on 86,016 content rows (both
+fixtures x 7 breaths x 24 slots): d=64 keeps 0.814, **d=128 keeps
+0.919**, d=256 keeps 0.982; birth reconstruction error at d=128:
+0.326 centered — the map the head runs is UNCENTERED (c -> c V V^T),
+and the uncentered second-moment basis reconstructs at 0.246, so
+THE TWIN USES THE UNCENTERED INIT (ALG_POLAR_D_INIT=.cache/polar_
+waist_init_d128u.npz; builder banking). EM at kappa=0.1 on the
+champion's states: clocked-block norm grows ~0.3% per breath before
+renorm, direction moves 6-7%; content dims bitwise untouched.
+RENORM RULING: block-local (each organ restores its own block), not
+global — a global renorm would amplify the clock every breath as the
+content block collapses (the bottleneck fighting the rotation by the
+back door). Proofs (polar_sink_smoke, CPU): env-inertness bit-
+identical on 27 tensors with doors unset (and with ALG_POLAR unset);
+clock dims bitwise under D; content dims bitwise under EM; ||u||=1
+everywhere; two-terminal: parse loss reaches polar_wd/wu, the
+diagnostic taps reach nothing. APPLIED (CPU) while arm A trains
+(its process holds its own copy; eq POST vs eqpolar_post_* = the
+same head vintage, doors unset, gates chain 2 before any step). Row
+smoke ALL GATES on the applied head. Builder's flags carried: the
+EM lane graph closes scratch columns for factor rows (no hub); kappa
+tracks phase spread not degree; the flag audit's bar 1 may be
+ceiling-limited if masks saturate near 24 (n=8 read 17.0 wild /
+16.8 mint — noise, but the ceiling is real).
+CHAIN 2 (.cache/polar_chain2.sh, unit pc-polar-2, queued on arm A's
+exit): eq POST gate -> THE SHREDDED-FLAG AUDIT (both fixtures) ->
+ARM B (polar + D=128u + EM=0.1, seed 242, 12k) -> reads for A and B
+(clock per wheel on breaths_u, open-wild, mint, sealed-wild). Bars as
+pinned 09-08. Arm A (pc-polar-a) in mask-prep.
