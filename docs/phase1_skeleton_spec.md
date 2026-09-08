@@ -35118,3 +35118,58 @@ composition question is unblocked in the other direction: a tighter
 baseline is NOT the lever; composition (two-hop lanes) can be judged
 on its own bar without the flag. The wet bag's trunk-adapter arm
 remains queued (unread). Arm B (polar + sink) training.
+
+## 2026-09-08 — THE POLAR TWIN VERDICT: THE MACHINE KEEPS ITS CLOCK — and with the kitchen sink it keeps it for free
+
+Chain 2 complete (.cache/polar_chain2.log). Both arms seed 242, warm
+fedon242, 12k gentle, champion regime (no cooker); control = pcctl242
+(open-wild 0.2506 / mint 0.9537). clock_read on breaths_u, n=256,
+CR_RANK=64, per wheel.
+
+| read | ARM A polar | ARM B polar+sink | control | bar |
+|---|---|---|---|---|
+| breath probe mint / wild | **1.0000 / 1.0000** | **1.0000 / 1.0000** | 0.60 / 0.53 (champion) | >= 0.95 PASS (kill < 0.80) |
+| breath-hand designed mass @60 mint / wild | 0.7150 / 0.7221 | 0.7179 / 0.7543 | 0.000 (champion) | >= 0.5 PASS |
+| parity @120 mint / wild | 0.7196 / 0.7264 | 0.7063 / 0.7660 | — | reported |
+| content control @0 mint / wild | 0.7887 / 0.8023 | 0.7787 / 0.8141 | — | >= 0.9 **FAIL as pinned** |
+| content mass @60 mint / wild | 0.036 / 0.035 | 0.019 / 0.028 | — | (the artefact the control guards: absent) |
+| open-wild | 0.2409 (-0.0097) | **0.2511 (+0.0005)** | 0.2506 | within -0.02: PASS / PASS |
+| mint | 0.9051 (-0.0486) | **0.9556 (+0.0019)** | 0.9537 | within -0.02: **FAIL** / PASS |
+| sealed-wild (informational) | 0.0000 | 0.0000 | 0.0000 | no cooker in these arms |
+
+**ARM A: TRAINING KEEPS THE CLOCK.** Breath identity decodes at
+1.0000 on both fixtures after 12k steps (the champion: 0.60 / 0.53);
+the breath hand holds 0.72 of its variance at 60 deg (birth 0.83 /
+0.87 — the tangential write shaved it and did not cancel it), parity
+0.72 at 120. The cost: mint -0.049 (the guard FAILS), wild -0.010
+(the guard passes). Trajectory 0.785 -> 0.876 -> 0.905 was still
+climbing at 12k.
+**ARM B: THE SINK REPAIRS THE COST ENTIRELY.** Polar + content waist
+(D=128, uncentered PCA birth) + E&B coupling (kappa 0.1): probe
+1.0000 / 1.0000, breath hand 0.72 / 0.75, and **open-wild 0.2511 /
+mint 0.9556 — level with the plain continuation on both registers
+(+0.0005 / +0.0019)**, and vs ARM A **+0.0102 wild / +0.0505 mint**.
+The registered prediction ("the sink improves mint OR wild by >=
++0.01 without costing the other -0.02") PASSES on BOTH; the kill
+(wild < A - 0.02) is nowhere near. The birth shock was a third of
+arm A's (val 0.912 at 4k vs 0.785). **A machine that knows its
+breath with every fiber — probe 1.0, three quarters of the breath
+hand's variance turning at 60 degrees — at no measured cost on
+either register versus a machine that does not.** Which half of the
+sink pays (the waist's denoising, the coupling, or the PCA birth) is
+the registered ablation (D alone / EM alone / both, seed 242).
+THE ONE HONEST FAIL: the content-control clause (>= 0.9 at 0 deg)
+fails on both arms (0.78-0.81 after training; 0.97 at birth). The
+clause was pinned to catch a restriction artefact (fake 60-deg mass
+manufactured by the plane selection); that artefact is absent —
+content mass at 60 deg is 0.02-0.04 vs 0.72-0.75 on the breath hand.
+What the clause actually measured is that trained content planes
+move more between breaths than the champion's (the write is doing
+work). The clause FAILS as pinned and is recorded so; a re-pin for
+future twins (content mass at the clock's designed angles <= 0.1)
+is registered, not applied retroactively.
+SCOPE: single seed (242); seed 241 is the next fire (arm B recipe);
+the cooker did not ride (sealed-wild 0.0000 on all three, as
+expected). The polar+sink machine is the research champion
+candidate; promotion needs the battery (verdict script), not this
+entry. WILD STANDINGS unchanged at the top (pcctl241 0.2686).
