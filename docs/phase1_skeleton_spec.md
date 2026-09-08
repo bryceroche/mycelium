@@ -35080,3 +35080,16 @@ the GPU projection (18 read launches -> 4 per chain, ~18 min -> ~4
 min of startup) is unmeasured until one GPU run. ALL THREE PERF
 ITEMS APPLY AFTER CHAIN 2 EXITS; the next chain is written on
 read_batch + the cache + the multi-wheel read.
+
+## 2026-09-08 — THE DISK CLEARED (word given): 1.2 TB freed — retired-diet trunk-state memmaps deleted; form12 and every test fixture kept
+
+Deleted (all > 50 GB, none open by any process, all reproducible
+via --precompute on their diet jsonl): aim 88G, form8 93G, form9/10/
+11 117G each, form22 61G, form23 {bal,bal_c,hum,hum_c 61G; sys,sys_c
+62G; pert,pert_c 66G; skel,skel_c 76G; chain,chain_c 107G}, g21 76G,
+g22 80G, gen23 86G, inv2 86G, size 89G, tail 89G, vdup19 80G.
+KEPT: form12 (130G, the live diet), form14/15 (25G), every test/val/
+repair/dose fixture (<= 12G each). The companion index .npz files
+for the deleted diets remain (metadata only; a training call on a
+deleted diet fails loudly on the missing memmap — never silent).
+/ free: 16 GB -> 1.2 TB. Chain 2 was untouched (form12 only).
