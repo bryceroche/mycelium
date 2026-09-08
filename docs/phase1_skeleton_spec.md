@@ -34820,3 +34820,27 @@ continuations pcctl242 / pcctl241; the sealed-wild read is
 informational (0.0000 expected on both without the cooker). Reads:
 clock_read on breaths_u (THE BAR) and breaths_all, open-wild, mint,
 sealed-wild. Fire on the word.
+
+## 2026-09-07 — THE BIRTH READ + A RE-PIN BEFORE THE TWIN FIRES (instrument ceiling, not a bent bar)
+
+Birth read (GPU, fedon242 weights, ALG_POLAR=1, mint n=64): breath
+probe on breaths_u **0.9549 (norm-only 0.1729)**; on breaths_all
+0.9549 (norm-only 0.2180). The rotation alone carries breath identity
+through the JIT at birth — the tap and the sextet work as built. The
+twin's question is therefore whether TRAINING KEEPS IT (the tangential
+write is learned and could cancel the turn if the turn hurts), not
+whether it starts.
+RE-PIN (before any twin step; the birth read exposed the ruler): the
+"Procrustes mass in [50,80) >= 0.5" bar was pinned against TOTAL
+variance, but only 56/256 planes are clocked and the 200 content
+planes sit at 0 deg by design — at birth the bin reads 0.057, a
+ceiling of the instrument, not a fact about the clock. Re-pinned:
+the sextet-mass bar is read on the CLOCKED planes only (clock_read
+CR_PLANES=clocked, builder adding) — >= 0.5 of the clocked planes'
+variance mass in [50,80) at 12k; the content planes reported as the
+control (expected at 0 deg). The PRIMARY bar is unchanged and was
+never touched: breath probe >= 0.95 on breaths_u at 12k on BOTH
+fixtures, kill < 0.80. Guards unchanged (open-wild and mint within
+-0.02 of the matching-seed control). Chain staged at
+.cache/polar_twin.sh (seeds 242 then 241, ~8h with reads). Fire on
+the word.
