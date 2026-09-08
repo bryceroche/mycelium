@@ -35173,3 +35173,30 @@ the cooker did not ride (sealed-wild 0.0000 on all three, as
 expected). The polar+sink machine is the research champion
 candidate; promotion needs the battery (verdict script), not this
 entry. WILD STANDINGS unchanged at the top (pcctl241 0.2686).
+
+## 2026-09-08 — PERF APPLIED (all three) and MEASURED on the card: the cache is the win; the reads are compute-bound, not startup-bound
+
+APPLIED after chain 2 exited: (1) the mask-prep cache (smoke ALL
+GATES incl. the tamper kill; eq A/B/C bit-identical vs the pre-sink
+dumps; row smoke ALL GATES) — door ALG_MASKPREP_CACHE=1, first arm
+banks, later arms hit; (2) the loop_val / step_engine_read refactor
+patches and the multi-wheel clock read (byte-identical to their
+previews; GPU: the patched standalones reproduce fedon242's banked
+0.2613 open / 0.0000 sealed exactly); (3) scripts/read_batch.py
+(GPU: 0.2613 / 0.2506 loopval, 0.0000 / 0.0000 sealed, to the digit;
+the SC_EVAL tripwire PASS in-process, max|d| 4734.5).
+THE HONEST TIMING: standalone loop_val 109 s + step_engine 121 s per
+checkpoint on wild; read_batch 258 s / 233 s per checkpoint for three
+meters, setup 10 s paid once — incremental per extra checkpoint
+233 s vs 268 s cold: **~35 s saved per checkpoint (13%)**, not the
+~60 s/process I projected. The reads are COMPUTE-bound: the read
+path's forward is EAGER (no TinyJit outside do_train) at batch 8, ~1.3
+s per two-pass batch, while the trained step does fwd+bwd in 0.5 s
+under the JIT. The startup I blamed was mostly the first process's
+kernel compiles, which the disk cache already amortizes. REGISTERED
+as the next perf item, the real lever: a JIT'd read forward (fixed
+batch, assign-in-place inputs, the trainer's own idiom) — expected
+2-3x on every read; equality to the digit vs the eager path is its
+bar. The cache remains the campaign's big win (75 min -> seconds per
+arm on a hit). Next chain template: ALG_MASKPREP_CACHE=1 on every
+arm; reads via read_batch with clock:breath_hand+parity+content.

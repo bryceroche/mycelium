@@ -143,7 +143,15 @@ def iterate_batch(run_pass, commit, R, injectable):
     return outs, facts, conv_at
 
 
-def main():
+def main(ckpt=None, data=None, p=None):
+    """REFACTOR (2026-09-08, scripts/read_batch.py): the body is
+    VERBATIM — same statements, same order, same arithmetic, same
+    prints. The three new keyword arguments only let an already-built
+    fixture (load_alg tuple) and param dict be handed in, so N
+    checkpoints share ONE process (the loop_val idiom: assign in
+    place, re-run the same read); None means build them here, exactly
+    as the standalone did. Returns the read's numbers so a caller can
+    check them without scraping stdout."""
     from phase1_algebra_head import (build_params, forward, load_alg,
                                      build_slot_masks, alt2_fact_buf, K_VARS)
     from tinygrad import Tensor, dtypes
@@ -151,7 +159,7 @@ def main():
 
     R = int(os.environ.get("SE_R", "3"))
     THETA = float(os.environ.get("SE_THETA", "0.9"))
-    ckpt = os.environ["SE_CKPT"]
+    ckpt = os.environ["SE_CKPT"] if ckpt is None else ckpt
     atlas_on = os.path.exists(ATLAS_PATH)
     if atlas_on:
         # read-only key request: forward adds out["fst_s"] under ALG_INV;
@@ -170,8 +178,9 @@ def main():
         print("[step-engine] NOTICE: ckpt carries W_fact but ALG_ALT2 is "
               "unset — injection off (forward's guard); leak gauge only")
 
-    vs, vst, vtk, vg, vse = load_alg("test")
-    p = build_params(0)
+    vs, vst, vtk, vg, vse = load_alg("test") if data is None else data
+    if p is None:
+        p = build_params(0)
     assert set(sd.keys()) == set(p.keys()), \
         (sorted(set(sd) - set(p))[:4], sorted(set(p) - set(sd))[:4])
     for k in p:
@@ -252,6 +261,10 @@ def main():
                       f"(n={int(m.sum())})")
         except Exception as e:
             print(f"[step-engine] atlas consult SKIPPED (diagnostic): {e}")
+
+    return {"n_ok": n_ok.copy(), "n_tot": int(n_tot),
+            "n_facts": n_facts.copy(), "R": R,
+            "final": float(n_ok[R] / max(n_tot, 1))}
 
 
 def selftest():

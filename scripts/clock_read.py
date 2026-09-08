@@ -76,7 +76,13 @@ Envs:
            .cache/clock_read_<fixture>_<CR_KEY>_<CR_PLANES>.npz for any
            non-default read — so a polar read can never overwrite the
            historical one, or another dial's.
-  CR_PLANES  which DIMS the Procrustes fit (B) may use: 'all'
+  CR_PLANES  which DIMS the Procrustes fit (B) may use — ONE selection
+           or a COMMA-SEPARATED LIST of them (2026-09-08; e.g.
+           'breath_hand,parity,content'). A list collects the states
+           ONCE, reads section A ONCE, and then runs section B per
+           selection: one [clock] line and one npz each, same fields,
+           same naming. A single value behaves exactly as before.
+           Selections: 'all'
            (default, unchanged behaviour), 'clocked' (every clocked
            plane), or ONE WHEEL — 'breath_hand' (32 planes, designed
            60 deg/breath), 'parity' (16, designed 120 deg), 'pass' (8,
@@ -137,8 +143,20 @@ CR_PLANES = os.environ.get("CR_PLANES", "all").strip().lower()
 # (the selection is only consumed after collect_states, which is the
 # expensive part). Validated here, at import, in one second.
 _CR_PLANE_SELS = ("all", "clocked", "breath_hand", "parity", "pass", "content")
-assert CR_PLANES in _CR_PLANE_SELS, (
-    f"CR_PLANES={CR_PLANES!r} unknown (want {'|'.join(_CR_PLANE_SELS)})")
+# MULTI-WHEEL (2026-09-08): CR_PLANES is a COMMA-SEPARATED LIST. Every
+# entry is validated here, at import, before a single state is collected;
+# duplicates are refused because two identical selections would write the
+# same npz twice (one meter, one file — the naming law of 2026-09-07).
+# A single value is a list of one and behaves exactly as before.
+CR_PLANE_LIST = [x.strip() for x in CR_PLANES.split(",") if x.strip()]
+assert CR_PLANE_LIST, "CR_PLANES is empty (want all|clocked|<wheel>[,...])"
+for _sel in CR_PLANE_LIST:
+    assert _sel in _CR_PLANE_SELS, (
+        f"CR_PLANES entry {_sel!r} unknown "
+        f"(want {'|'.join(_CR_PLANE_SELS)}, comma-separated for several)")
+assert len(set(CR_PLANE_LIST)) == len(CR_PLANE_LIST), (
+    f"CR_PLANES={CR_PLANES!r} repeats a selection — the second read would "
+    f"overwrite the first's npz")
 POLAR_BANDS = os.environ.get("ALG_POLAR_BANDS", ".cache/polar_bands.json")
 LAM = 1e-2
 BATCH = 8
@@ -485,42 +503,23 @@ def collect_states(fixture):
     return X
 
 
-def run(fixture):
+
+def sextet_section(X, K, N, D, pr, bar, pairs, fixture, sel):
+    """SECTION B for ONE plane selection — the whole of the old
+    section B, verbatim, with the module-level CR_PLANES read replaced
+    by the `sel` argument. MULTI-WHEEL (2026-09-08): CR_PLANES takes a
+    comma-separated LIST, the states are collected ONCE per fixture and
+    section A is read ONCE, and this organ runs per listed selection —
+    one [clock] line and one npz each, under the existing naming
+    convention. A single-value CR_PLANES therefore calls this exactly
+    once and prints exactly what it printed before (the chain that read
+    three wheels per fixture went from six state collections to two;
+    collect_states is the expensive half)."""
     import numpy as np
-    _install_envs(fixture)
-    sys.path.insert(0, ROOT)
-    sys.path.insert(0, os.path.join(ROOT, "scripts"))
-    X = collect_states(fixture)
-    K, N, D = X.shape
-    print(f"[clock-read] states X = (K={K}, N={N}, D={D})", flush=True)
-
-    # ---------------------------------------------- A: THE BREATH PROBE
-    pr = ridge_probe(X, CR_SEED)
-    bar = "PASS" if pr["acc"] >= 0.95 else "FAIL"
-    print()
-    print("== A. THE BREATH PROBE (state -> breath id; ridge, "
-          "70/30 by item) ==")
-    print(f"   items train/test = {pr['n_train']}/{pr['n_test']}   "
-          f"rows/class = {pr['n_test']}")
-    print(f"   probe accuracy      = {pr['acc']:.4f}   "
-          f"[PINNED BAR >= 0.95: {bar}]")
-    print(f"   norm-only accuracy  = {pr['norm_acc']:.4f}   "
-          f"(1-D ||x|| nearest class-mean; the consolidation control)")
-    print("   mean ||x|| per breath: " +
-          " ".join(f"b{k}:{v:.4g}" for k, v in
-                   enumerate(pr["per_breath_norm"])))
-    print("   confusion (rows=true breath, cols=predicted):")
-    print("        " + " ".join(f"{k:>4d}" for k in range(K)))
-    for k in range(K):
-        print(f"     b{k}  " + " ".join(f"{c:>4d}" for c in pr["conf"][k]))
-
-    # ------------------------------------------ B: THE SEXTET SIGNATURE
-    loop_ks = list(range(1, K))            # breath 0 is outside time
-    pairs = [(k, k + 1) for k in loop_ks[:-1]]
     fit_dims = None                        # None = the full state (historical)
     ctl = None
-    dw = DESIGNED.get(CR_PLANES)           # the selection's designed window
-    if CR_PLANES != "all":
+    dw = DESIGNED.get(sel)                 # the selection's designed window
+    if sel != "all":
         # THE PLANE RESTRICTION (2026-09-07, the birth read): the polar
         # waist clocks a designed subset of the 256 planes (bands file) and pins the rest at 0 deg,
         # so a variance-weighted histogram over all 512 dims has a
@@ -531,12 +530,12 @@ def run(fixture):
         # share either. A wheel's own planes read at that wheel's own
         # DESIGNED angle is the undiluted question.
         _sets = band_sets(D)
-        assert CR_PLANES in _sets, (
-            f"CR_PLANES={CR_PLANES!r} is a known selection but "
+        assert sel in _sets, (
+            f"CR_PLANES={sel!r} is a known selection but "
             f"{POLAR_BANDS} declares no such set (has {sorted(_sets)}) — "
             f"the allocation file and this reader disagree")
-        fit_dims = _sets[CR_PLANES]
-        if CR_PLANES != "content":
+        fit_dims = _sets[sel]
+        if sel != "content":
             # the content planes are the standing control for every
             # clocked selection (their mass belongs at 0 deg — that is
             # what "unclocked" means). When content IS the selection it
@@ -551,7 +550,7 @@ def run(fixture):
     print("== B. THE SEXTET SIGNATURE (orthogonal Procrustes per "
           "consecutive breath pair) ==")
     if fit_dims is not None:
-        print(f"   PLANES={CR_PLANES}: fit restricted to {sx['n_dims']} of "
+        print(f"   PLANES={sel}: fit restricted to {sx['n_dims']} of "
               f"{D} dims ({len(fit_dims) // 2} planes from {POLAR_BANDS})"
               + ("" if ctl is None else
                  f"; {ctl['n_dims'] // 2} content planes fitted separately "
@@ -559,13 +558,13 @@ def run(fixture):
               + ". THE DENOMINATOR IS THE RESTRICTED SUBSPACE — these "
                 "masses are NOT comparable to a CR_PLANES=all read.")
         if dw is not None:
-            print(f"   DESIGNED ANGLE for '{CR_PLANES}' = {dw[2]} deg "
+            print(f"   DESIGNED ANGLE for '{sel}' = {dw[2]} deg "
                   f"(rotor_clock: breath hand 60/breath, parity 120/breath, "
                   f"pass wheel static this era) — designed_mass below is "
                   f"the bar's quantity: mass at THIS wheel's designed "
                   f"angle on THIS wheel's own planes.")
         else:
-            print(f"   NO SINGLE DESIGNED ANGLE for '{CR_PLANES}' (it mixes "
+            print(f"   NO SINGLE DESIGNED ANGLE for '{sel}' (it mixes "
                   f"wheels: 60 deg on 32 planes, 120 on 16, static on 8) — "
                   f"its [50,80) bin is CEILINGED by the breath hand's "
                   f"share; select a wheel for the undiluted read.")
@@ -612,7 +611,7 @@ def run(fixture):
     dmass = None
     if dw is not None:
         dmass = float(hist_loop[dw[0]:dw[1]].sum())
-        print(f"   DESIGNED MASS ({CR_PLANES} @ {dw[2]} deg) = "
+        print(f"   DESIGNED MASS ({sel} @ {dw[2]} deg) = "
               f"{dmass:.4f}   <- THE BAR'S QUANTITY")
     if ctl is not None:
         print()
@@ -638,11 +637,11 @@ def run(fixture):
     # built. DEFAULTS KEEP THE HISTORICAL PATH (nothing downstream moves);
     # any non-default read gets its own file, so two meters can never
     # land in one filename (never-mix-coordinates, at the filesystem).
-    _sfx = "" if (CR_KEY == "breaths_all" and CR_PLANES == "all") \
-        else f"_{CR_KEY}_{CR_PLANES}"
+    _sfx = "" if (CR_KEY == "breaths_all" and sel == "all") \
+        else f"_{CR_KEY}_{sel}"
     out = os.path.join(ROOT, ".cache", f"clock_read_{fixture}{_sfx}.npz")
     np.savez(out,
-             fixture=fixture, ckpt=CKPT, key=CR_KEY, planes=CR_PLANES,
+             fixture=fixture, ckpt=CKPT, key=CR_KEY, planes=sel,
              n_dims_fit=sx["n_dims"], K=K, N=N, D=D, rank=rank,
              **({} if dw is None else dict(
                  designed_lo_deg=dw[0] * 10, designed_hi_deg=dw[1] * 10,
@@ -667,7 +666,7 @@ def run(fixture):
              hist_loop=hist_loop, hist_01=h01,
              angles_01=ang01, weights_01=w01, r2_01=r2_01)
     print(f"[clock-read] saved {out}")
-    print(f"[clock] fixture={fixture} key={CR_KEY} planes={CR_PLANES}"
+    print(f"[clock] fixture={fixture} key={CR_KEY} planes={sel}"
           f"({sx['n_dims']}/{D}d) n={N} K={K} "
           f"probe_acc={pr['acc']:.4f} (bar>=0.95 {bar}) "
           f"norm_only_acc={pr['norm_acc']:.4f} "
@@ -679,6 +678,45 @@ def run(fixture):
              f"content_mass[50,80)={ctl['mass60']:.4f} "
              f"content_mass[0,20)={ctl['mass0']:.4f} ")
           + f"entry_b0b1_wmean={wm01:.2f}", flush=True)
+
+
+def run(fixture):
+    # (numpy moved with section B into sextet_section — run() itself no
+    # longer touches it)
+    _install_envs(fixture)
+    sys.path.insert(0, ROOT)
+    sys.path.insert(0, os.path.join(ROOT, "scripts"))
+    X = collect_states(fixture)
+    K, N, D = X.shape
+    print(f"[clock-read] states X = (K={K}, N={N}, D={D})", flush=True)
+
+    # ---------------------------------------------- A: THE BREATH PROBE
+    pr = ridge_probe(X, CR_SEED)
+    bar = "PASS" if pr["acc"] >= 0.95 else "FAIL"
+    print()
+    print("== A. THE BREATH PROBE (state -> breath id; ridge, "
+          "70/30 by item) ==")
+    print(f"   items train/test = {pr['n_train']}/{pr['n_test']}   "
+          f"rows/class = {pr['n_test']}")
+    print(f"   probe accuracy      = {pr['acc']:.4f}   "
+          f"[PINNED BAR >= 0.95: {bar}]")
+    print(f"   norm-only accuracy  = {pr['norm_acc']:.4f}   "
+          f"(1-D ||x|| nearest class-mean; the consolidation control)")
+    print("   mean ||x|| per breath: " +
+          " ".join(f"b{k}:{v:.4g}" for k, v in
+                   enumerate(pr["per_breath_norm"])))
+    print("   confusion (rows=true breath, cols=predicted):")
+    print("        " + " ".join(f"{k:>4d}" for k in range(K)))
+    for k in range(K):
+        print(f"     b{k}  " + " ".join(f"{c:>4d}" for c in pr["conf"][k]))
+
+    # ------------------------------------------ B: THE SEXTET SIGNATURE
+    # MULTI-WHEEL (2026-09-08): the pairs are a property of K, not of
+    # the plane selection — built once, handed to every selection.
+    loop_ks = list(range(1, K))            # breath 0 is outside time
+    pairs = [(k, k + 1) for k in loop_ks[:-1]]
+    for _sel in CR_PLANE_LIST:
+        sextet_section(X, K, N, D, pr, bar, pairs, fixture, _sel)
 
 
 def main():
