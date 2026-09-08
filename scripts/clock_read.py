@@ -72,7 +72,29 @@ Envs:
            radius confound removed, which is the spec S6 instrument.
            The key travels into the npz and the [clock] summary line, so
            a read can never be mistaken for the other coordinate.
-  CR_RANK  Procrustes subspace rank (default 64)
+  OUT      .cache/clock_read_<fixture>.npz for the DEFAULT dials, and
+           .cache/clock_read_<fixture>_<CR_KEY>_<CR_PLANES>.npz for any
+           non-default read — so a polar read can never overwrite the
+           historical one, or another dial's.
+  CR_PLANES  which DIMS the Procrustes fit (B) may use: 'all'
+           (default, unchanged behaviour) or 'clocked' — restrict to
+           the clocked planes' dims (2p, 2p+1 for each plane p listed
+           in .cache/polar_bands.json), with the CONTENT planes fitted
+           separately as a control. WHY (2026-09-07, the birth read):
+           the polar waist clocks 56 of 256 planes BY DESIGN and leaves
+           200 at 0 deg, so a variance-weighted histogram over all 512
+           dims has a CEILING on mass[50,80) near the clocked planes'
+           share of the energy — the birth read's 0.057 is that
+           ceiling, not the absence of a clock. Restricting the fit
+           asks the question the bar meant to ask. THE DENOMINATOR
+           CHANGES with this dial: masses are shares of the FITTED
+           subspace's energy, so an 'all' number and a 'clocked' number
+           are different meters and must never be compared (never-mix-
+           coordinates, applied to instruments). The dial is stamped
+           into the npz and the [clock] line for exactly that reason.
+  CR_RANK  Procrustes subspace rank (default 64; capped by the fitted
+           dim count, so a restricted read cannot ask for more rank
+           than it has dims)
   CR_SEED  split/permutation seed (default 242)
   DEV      setdefault PCI+AMD (GPU); test with DEV=CPU CR_N=6
 
@@ -100,6 +122,8 @@ CR_RANK = int(os.environ.get("CR_RANK", "64"))
 CR_SEED = int(os.environ.get("CR_SEED", "242"))
 CR_TEST = os.environ.get("CR_TEST", "both").strip().lower()
 CR_KEY = os.environ.get("CR_KEY", "breaths_all").strip()
+CR_PLANES = os.environ.get("CR_PLANES", "all").strip().lower()
+POLAR_BANDS = os.environ.get("ALG_POLAR_BANDS", ".cache/polar_bands.json")
 LAM = 1e-2
 BATCH = 8
 
@@ -191,6 +215,65 @@ def common_basis(X, ks, rank):
     r = max(r, 2)
     var_kept = float((S[:r] ** 2).sum() / max((S ** 2).sum(), 1e-30))
     return Vt[:r].T, r, var_kept
+
+
+def band_dims(D):
+    """(clocked_dims, content_dims) for a D-dimensional state, from the
+    SAME allocation file the head reads (ALG_POLAR_BANDS, default
+    .cache/polar_bands.json — one band table, one reader idiom: the
+    bands note's lesson is that a table nobody reads governs nothing).
+    Plane p occupies dims (2p, 2p+1), the interleaved-real convention
+    of rotor_clock / the head's _rot2."""
+    import json
+    import numpy as np
+    path = os.path.join(ROOT, POLAR_BANDS) if not os.path.isabs(POLAR_BANDS) \
+        else POLAR_BANDS
+    assert os.path.exists(path), (
+        f"CR_PLANES=clocked needs the band allocation {path} (the file "
+        f"the head itself reads); run with CR_PLANES=all otherwise")
+    with open(path) as f:
+        bj = json.load(f)
+    P = D // 2
+    assert int(bj["n_planes"]) == P, (
+        f"{path} declares {bj['n_planes']} planes but the states are "
+        f"D={D} ({P} planes) — wrong allocation for this read")
+    cp = sorted({int(pl) for w in bj["wheels"] for pl in w["planes"]})
+    assert cp and cp[-1] < P
+    cd = np.concatenate([[2 * p, 2 * p + 1] for p in cp]).astype(np.int64)
+    nd = np.array([d for d in range(D) if d not in set(cd.tolist())], np.int64)
+    return cd, nd
+
+
+def loop_sextet(X, pairs, rank, dims=None):
+    """THE SEXTET ORGAN — the Procrustes sweep over consecutive loop
+    pairs, factored so the PRIMARY read and the CONTENT CONTROL call
+    the SAME meter (the meter-divergence law: a check must call its
+    organ). dims=None fits the full state (the historical path, bit-
+    for-bit); an index array restricts the shared basis AND the fit to
+    those dims. Returns everything the printer and the npz need."""
+    import numpy as np
+    Xs = X if dims is None else X[:, :, dims]
+    K = Xs.shape[0]
+    basis, rank_, var_kept = common_basis(Xs, list(range(K)), rank)
+    hist_loop = np.zeros(18)
+    rows, all_ang, all_w = [], [], []
+    for (a, b) in pairs:
+        ang, w, r2 = procrustes_pair(Xs[a], Xs[b], basis)
+        hist_loop += hist18(ang, w)
+        wm = float((ang * w).sum()) if w.sum() > 0 else float("nan")
+        pk = int(np.argmax(hist18(ang, w)))
+        rows.append((f"{a}->{b}", r2, wm, pk))
+        all_ang.append(ang)
+        all_w.append(w)
+    if len(pairs):
+        hist_loop = hist_loop / len(pairs)
+    ang01, w01, r2_01 = procrustes_pair(Xs[0], Xs[1], basis)
+    return dict(basis=basis, rank=rank_, var_kept=var_kept,
+                hist_loop=hist_loop, rows=rows, all_ang=all_ang,
+                all_w=all_w, ang01=ang01, w01=w01, r2_01=r2_01,
+                n_dims=Xs.shape[2],
+                mass60=float(hist_loop[5:8].sum()),
+                mass0=float(hist_loop[0:2].sum()))
 
 
 def procrustes_pair(Xa, Xb, B):
@@ -380,10 +463,37 @@ def run(fixture):
     # ------------------------------------------ B: THE SEXTET SIGNATURE
     loop_ks = list(range(1, K))            # breath 0 is outside time
     pairs = [(k, k + 1) for k in loop_ks[:-1]]
-    basis, rank, var_kept = common_basis(X, list(range(K)), CR_RANK)
+    fit_dims = None                        # None = the full state (historical)
+    ctl = None
+    if CR_PLANES == "clocked":
+        # THE PLANE RESTRICTION (2026-09-07, the birth read): the polar
+        # waist clocks 56 of 256 planes BY DESIGN and pins 200 at 0 deg,
+        # so a variance-weighted histogram over all 512 dims has a
+        # CEILING on mass[50,80) near the clocked planes' energy share.
+        # Restricting the fit asks the question the bar meant to ask;
+        # the content planes are fitted SEPARATELY as the control (their
+        # mass belongs at 0 deg — that is what "unclocked" means).
+        fit_dims, ctl_dims = band_dims(D)
+        ctl = loop_sextet(X, pairs, CR_RANK, ctl_dims)
+    elif CR_PLANES != "all":
+        print(f"[clock-read] unknown CR_PLANES={CR_PLANES!r} "
+              f"(want all|clocked)")
+        return
+    sx = loop_sextet(X, pairs, CR_RANK, fit_dims)
+    basis, rank, var_kept = sx["basis"], sx["rank"], sx["var_kept"]
+    rows, all_ang, all_w = sx["rows"], sx["all_ang"], sx["all_w"]
+    hist_loop = sx["hist_loop"]
+    ang01, w01, r2_01 = sx["ang01"], sx["w01"], sx["r2_01"]
     print()
     print("== B. THE SEXTET SIGNATURE (orthogonal Procrustes per "
           "consecutive breath pair) ==")
+    if fit_dims is not None:
+        print(f"   PLANES=clocked: fit restricted to {sx['n_dims']} of "
+              f"{D} dims ({len(fit_dims) // 2} clocked planes from "
+              f"{POLAR_BANDS}); {ctl['n_dims'] // 2} content planes are "
+              f"fitted separately below as the control. THE DENOMINATOR "
+              f"IS THE RESTRICTED SUBSPACE — these masses are NOT "
+              f"comparable to a CR_PLANES=all read.")
     print(f"   shared subspace rank r={rank} "
           f"(captures {var_kept:.4f} of centered variance); angles are "
           f"eigen-plane angles of R_k, WEIGHTED by that plane's share "
@@ -397,25 +507,12 @@ def run(fixture):
               f"or lower CR_RANK.")
     print("   pair        R^2      wmean_ang  peak_bin   top-3 "
           "(angle:weight)")
-    hist_loop = np.zeros(18)
-    rows = []
-    all_ang, all_w = [], []
-    for (a, b) in pairs:
-        ang, w, r2 = procrustes_pair(X[a], X[b], basis)
-        h = hist18(ang, w)
-        hist_loop += h
+    for ((a, b), (_nm, r2, wm, pk), ang, w) in zip(pairs, rows,
+                                                   all_ang, all_w):
         order = np.argsort(-w)[:3]
         top = " ".join(f"{ang[i]:.1f}:{w[i]:.3f}" for i in order)
-        wm = float((ang * w).sum()) if w.sum() > 0 else float("nan")
-        pk = int(np.argmax(h))
-        rows.append((f"{a}->{b}", r2, wm, pk))
-        all_ang.append(ang)
-        all_w.append(w)
         print(f"   b{a}->b{b}   {r2:>7.4f}  {wm:>9.2f}  "
               f"[{pk * 10:>3d},{pk * 10 + 10:>3d})   {top}")
-    if len(pairs):
-        hist_loop = hist_loop / len(pairs)
-    ang01, w01, r2_01 = procrustes_pair(X[0], X[1], basis)
     h01 = hist18(ang01, w01)
     wm01 = float((ang01 * w01).sum()) if w01.sum() > 0 else float("nan")
     print(f"   b0->b1 (ENTRY STEP, unclocked -> clocked; reported "
@@ -437,11 +534,41 @@ def run(fixture):
     mass0 = float(hist_loop[0:2].sum())       # 0-20 deg
     print(f"   peak bin = [{peak * 10},{peak * 10 + 10})   "
           f"mass[50,80) = {mass60:.4f}   mass[0,20) = {mass0:.4f}")
+    if ctl is not None:
+        print()
+        print(f"   CONTENT-PLANE CONTROL ({ctl['n_dims'] // 2} unclocked "
+              f"planes, {ctl['n_dims']} dims, r={ctl['rank']}, "
+              f"var_kept={ctl['var_kept']:.4f}):")
+        print(f"      peak bin = [{int(np.argmax(ctl['hist_loop'])) * 10},"
+              f"{int(np.argmax(ctl['hist_loop'])) * 10 + 10})   "
+              f"mass[50,80) = {ctl['mass60']:.4f}   "
+              f"mass[0,20) = {ctl['mass0']:.4f}")
+        print(f"      EXPECTATION (descriptive): the clock never touches "
+              f"these planes, so their mass belongs near 0 deg. Mass at "
+              f"60 deg HERE would mean the restriction is not doing what "
+              f"it says — either the allocation file disagrees with the "
+              f"weights, or the state is turning for another reason.")
 
-    out = os.path.join(ROOT, ".cache", f"clock_read_{fixture}.npz")
+    # THE OUTPUT NAME CARRIES THE DIAL (2026-09-07). Historically the
+    # name held only the fixture, so a breaths_u read and a breaths_all
+    # read of the same fixture — or a clocked and an all read — SILENTLY
+    # OVERWROTE each other; this was not hypothetical, a CPU n=6 smoke
+    # clobbered the GPU birth read's mint npz while the dial was being
+    # built. DEFAULTS KEEP THE HISTORICAL PATH (nothing downstream moves);
+    # any non-default read gets its own file, so two meters can never
+    # land in one filename (never-mix-coordinates, at the filesystem).
+    _sfx = "" if (CR_KEY == "breaths_all" and CR_PLANES == "all") \
+        else f"_{CR_KEY}_{CR_PLANES}"
+    out = os.path.join(ROOT, ".cache", f"clock_read_{fixture}{_sfx}.npz")
     np.savez(out,
-             fixture=fixture, ckpt=CKPT, key=CR_KEY, K=K, N=N, D=D, rank=rank,
+             fixture=fixture, ckpt=CKPT, key=CR_KEY, planes=CR_PLANES,
+             n_dims_fit=sx["n_dims"], K=K, N=N, D=D, rank=rank,
              var_kept=var_kept, seed=CR_SEED,
+             **({} if ctl is None else dict(
+                 content_n_dims=ctl["n_dims"], content_rank=ctl["rank"],
+                 content_var_kept=ctl["var_kept"],
+                 content_hist_loop=ctl["hist_loop"],
+                 content_mass60=ctl["mass60"], content_mass0=ctl["mass0"])),
              probe_acc=pr["acc"], norm_only_acc=pr["norm_acc"],
              confusion=pr["conf"], per_breath_norm=pr["per_breath_norm"],
              class_norm_mean=pr["class_norm_mean"],
@@ -456,12 +583,16 @@ def run(fixture):
              hist_loop=hist_loop, hist_01=h01,
              angles_01=ang01, weights_01=w01, r2_01=r2_01)
     print(f"[clock-read] saved {out}")
-    print(f"[clock] fixture={fixture} key={CR_KEY} n={N} K={K} "
+    print(f"[clock] fixture={fixture} key={CR_KEY} planes={CR_PLANES}"
+          f"({sx['n_dims']}/{D}d) n={N} K={K} "
           f"probe_acc={pr['acc']:.4f} (bar>=0.95 {bar}) "
           f"norm_only_acc={pr['norm_acc']:.4f} "
           f"sextet_peak_bin=[{peak * 10},{peak * 10 + 10}) "
           f"mass[50,80)={mass60:.4f} mass[0,20)={mass0:.4f} "
-          f"entry_b0b1_wmean={wm01:.2f}", flush=True)
+          + ("" if ctl is None else
+             f"content_mass[50,80)={ctl['mass60']:.4f} "
+             f"content_mass[0,20)={ctl['mass0']:.4f} ")
+          + f"entry_b0b1_wmean={wm01:.2f}", flush=True)
 
 
 def main():
