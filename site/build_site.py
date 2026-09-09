@@ -200,6 +200,7 @@ the silence is.</p>
 
 
 HOOKS = {
+ "2026-09-08-the-pressure-cooker": "The certified channel carried nothing; a seal, a live wire, and a floor opened it. Every organ must be a mandatory road — the law that closes the gap between the vision and the code.",
  "2026-09-07-a-place-to-turn": "VERDICT (Sep 8): the machine keeps its clock — breath decodes at 1.0 after training, at no measured cost with the sink. A rotation is invisible on a growing radius; the state becomes compass and odometer.",
  "2026-09-07-the-godol-collider": "VERDICT (Sep 7): killed at the visibility bar — 5% of wrong readings self-contradict; uniqueness is not truth. Two rival readings, one exact solver, and the honest limit, with postscript.",
  "2026-09-07-two-winds": "VERDICT (Sep 8): the flag's first binding is struck — openness goes with correctness on wild; the second binding (uncalibrated deposits) stands; the bag is still unread. With postscript.",
@@ -227,7 +228,7 @@ HOOKS = {
 # ---------------------------------------------------------------- blog + bio
 BLOG = ROOT / "site" / "blog"
 blog_pages = []
-PIN_FIRST = ["2026-09-07-a-place-to-turn"]     # the live generation leads the splash
+PIN_FIRST = ["2026-09-08-the-pressure-cooker", "2026-09-07-a-place-to-turn"]     # the live generation leads the splash
 _posts = sorted(BLOG.glob("*.md"), reverse=True)
 _posts = [m for m in _posts if m.stem in PIN_FIRST] + [m for m in _posts if m.stem not in PIN_FIRST]
 for md in _posts:
