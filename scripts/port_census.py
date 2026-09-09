@@ -77,7 +77,7 @@ if missing: print(f"[census] fresh-init: {missing}")
 # the organs that ride a named gain, and the gain each one rides
 GAIN_OF = {"maskhead": "mh_gain", "alt": "alt_g", "altfact": "alt2_g",
            "mixer": "fed_mx_hg", "garage": "bus_g", "detwave": "det_g",
-           "router(bank)": "r_gain"}
+           "router(bank)": "r_gain", "notebook2": "fed_nb_g"}
 
 N = int(os.environ.get("PC_N", "32"))
 N = min(N, len(vs))
@@ -121,12 +121,12 @@ for s0 in range(0, N, 8):
         acc[(kb, organ)][1].append(m)
         acc[(kb, organ)][2].append(mo)
         acc[(kb, organ)][3].append(arr.shape)
-        if organ in ("state", "state_slot"):
+        if organ in ("state", "state_slot", "state_hslot"):
             base_mag.setdefault(organ, {}).setdefault(kb, []).append(m)
             base_shape.setdefault(organ, {})[kb] = arr.shape
     H._CENSUS = None
 
-BASELINES = ("state", "state_slot")
+BASELINES = ("state", "state_slot", "state_hslot")
 organs = sorted({o2 for (_, o2) in acc if o2 not in BASELINES})
 kbs = sorted({k for (k, _) in acc})
 posts = [o2 for o2 in organs if o2 + "_pre" in organs]
@@ -152,11 +152,27 @@ def band_of(organ):
 
 BAND = {o2: band_of(o2) for o2 in organs}
 BASE_OF = {"state": "state", "slot": "state_slot"}
+# H_SLOT-BAND ORGANS (apply_census_organs2.py, 2026-09-08): the mixer and
+# the two ALT21 stations do not add into `cur` — they add into h_slot,
+# which reaches the state only through the breath gate. Their denominator
+# is the h_slot they add to; dividing them by the loop state answered a
+# question nobody asked. Falls back to the band default on a head that
+# predates the state_hslot baseline.
+BASE_PICK = {"mixer": "state_hslot", "mixer_pre": "state_hslot",
+             "alt21_s3": "state_hslot", "alt21_s4": "state_hslot"}
+# Organs with NO SCALAR GAIN on their path: their door is a ZERO-INIT
+# OUTPUT MATRIX, not an ajar gain, so post IS the whole reading and a
+# _pre form would be a fake ratio in a different space. Named here so
+# their empty row in the gain ledger reads as a fact, not an omission.
+NO_GAIN = ("alt21_s3", "alt21_s4")
 
 
-def base_rms(kb, band):
-    """The band's OWN baseline rms at this breath, or None."""
-    k = BASE_OF.get(band)
+def base_rms(kb, organ):
+    """The organ's OWN baseline rms at this breath, or None. An explicit
+    pick (h_slot-band) wins over the band default."""
+    k = BASE_PICK.get(organ)
+    if k not in base_mag:
+        k = BASE_OF.get(BAND.get(organ, "?"))
     v = base_mag.get(k, {}).get(kb) if k else None
     return float(np.mean(v)) if v else None
 
@@ -189,7 +205,7 @@ for o2 in organs:
             cells.append(f"{'-':>16}")
             continue
         m = float(np.mean(acc[(kb, o2)][1]))
-        base = base_rms(kb, BAND[o2])
+        base = base_rms(kb, o2)
         cells.append(f"{m:>8.4g}({m / base:>5.2f}x)" if base
                      else f"{m:>8.4g}{'( n/a)':>8}")
     print(f"  {o2:<{_w}} {BAND[o2]:<6} " + " ".join(cells))
@@ -204,7 +220,7 @@ if _masked:
                 cells.append(f"{'-':>16}")
                 continue
             m = float(np.mean(acc[(kb, o2)][2]))
-            base = base_rms(kb, BAND[o2])
+            base = base_rms(kb, o2)
             cells.append(f"{m:>8.4g}({m / base:>5.2f}x)" if base
                          else f"{m:>8.4g}{'( n/a)':>8}")
         print(f"  {o2:<{_w}} {'[open]':<6} " + " ".join(cells))
@@ -231,6 +247,11 @@ if posts:
         print(f"  {o2:<{_w}}{gtxt}")
         print(f"  {'':<{_w}} " + " ".join(f"b{kb}:{c}" for kb, c in
                                           zip(kbs, cells)))
+    _ng = [o2 for o2 in NO_GAIN if o2 in organs]
+    if _ng:
+        print(f"  NO SCALAR GAIN on their path (zero-init output matrices, "
+              f"not an ajar gain — post IS the whole reading; a _pre would "
+              f"be a fake ratio in a different space): {', '.join(_ng)}")
 
 # ------------------------------------------- the 2026-09-01 reading, kept
 print("breath | " + " | ".join(f"{o2}: rms(rel)" for o2 in organs))
@@ -239,7 +260,7 @@ for kb in kbs:
     for o2 in organs:
         if (kb, o2) in acc:
             m = np.mean(acc[(kb, o2)][1])
-            base = base_rms(kb, BAND[o2])
+            base = base_rms(kb, o2)
             cells.append(f"{o2}:{m:.3f}({m / base:.2f}x)" if base
                          else f"{o2}:{m:.3f}(n/a)")
         else:
@@ -277,11 +298,14 @@ print("[grammar] BANDS: state = the residual space the loop state lives "
       "scores (the router), which has NO baseline recorded — its rel "
       "column reads n/a and its rms is a bare logit std. Never divide "
       "across bands.")
-print("[grammar] h_slot-band organs (mixer) are further scaled by the "
-      "breath gate g = sigmoid(breath_gate[kb]) before reaching cur; "
-      "altfact is recorded at b0 against the VAR-SLOT state it modifies, "
-      "not against the loop state.")
-print("[grammar] UNCENSUSED still: notebook lane 2 (fed_nb_g), the sync "
-      "receiver oscillator, the BEXIT commit-mass bias, ALT21 stations "
-      "3-4, and the state REPLACEMENTS (stellar/circle/seal). Absence "
-      "from this table is not a claim of silence.")
+print("[grammar] h_slot-band organs (mixer, alt21_s3, alt21_s4) divide "
+      "by state_hslot — the h_slot they add to — and are then further "
+      "scaled by the breath gate g = sigmoid(breath_gate[kb]) before "
+      "reaching cur; altfact is recorded at b0 against the VAR-SLOT "
+      "state it modifies, not against the loop state.")
+print("[grammar] UNCENSUSED still: the sync receiver oscillator "
+      "(ALG_SYNC), the BEXIT commit-mass bias (ALG_BEXIT), the per-"
+      "forward biases (sixwave sw_g, pmask, FED waist2), the _IMP "
+      "systems-ID kick, and the state REPLACEMENTS (stellar / circle / "
+      "the pressure seal), which are not injections. Absence from this "
+      "table is not a claim of silence.")

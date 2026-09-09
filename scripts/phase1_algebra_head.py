@@ -1881,6 +1881,9 @@ def breath_step(p, state, kb, ctx):
             _at = _sc.softmax(-1)
             _rd = sum(_at[:, j:j + 1] * _nb[j] for j in range(len(_nb)))
             q_extra = q_extra + _rd.reshape(B, 1, -1)
+            if _CENSUS is not None:
+                _CENSUS.append((kb, "notebook",
+                                _rd.reshape(B, 1, -1).realize().numpy()))
         _nb2 = state.get("nb2")
         if FED_SHELF and "fed_sil2" in p and _nb2:
             # FED item 9: LANE-2 READ — stamps rows 8..8+k of the
@@ -1897,11 +1900,24 @@ def breath_step(p, state, kb, ctx):
                 _rd2 = sum(_at2[:, :, _j2:_j2 + 1] * _nb2[_j2]
                            for _j2 in range(len(_nb2)))
                 q_extra = q_extra + _rd2 * p["fed_nb_g"].reshape(1, 1, 1)
+                if _CENSUS is not None:
+                    _CENSUS.append((kb, "notebook2",
+                                    (_rd2 * p["fed_nb_g"].reshape(1, 1, 1))
+                                    .realize().numpy()))
+                    _CENSUS.append((kb, "notebook2_pre",
+                                    _rd2.realize().numpy()))
             else:
                 _rd2 = sum(_at2[:, _j2:_j2 + 1] * _nb2[_j2]
                            for _j2 in range(len(_nb2)))
                 q_extra = q_extra + _rd2.reshape(B, 1, -1) \
                     * p["fed_nb_g"].reshape(1, 1, 1)
+                if _CENSUS is not None:
+                    _CENSUS.append((kb, "notebook2",
+                                    (_rd2.reshape(B, 1, -1)
+                                     * p["fed_nb_g"].reshape(1, 1, 1))
+                                    .realize().numpy()))
+                    _CENSUS.append((kb, "notebook2_pre",
+                                    _rd2.reshape(B, 1, -1).realize().numpy()))
         if ALG_STELLAR:                        # cell-3b: the twist in
             _w = math.cos(kb * math.pi / (2 * K_B)) ** 2   # geometry —
             cur = _w * cur + (1 - _w) * _rd.reshape(B, 1, -1)
@@ -2231,6 +2247,8 @@ def breath_step(p, state, kb, ctx):
         # keys, proportional to mass — soft, init-closed (m starts 0)
         sc2 = sc2 + m_c.reshape(B, 1, L_FAC) * -8.0
     h_slot = (sc2.softmax(-1) @ bv) @ p["W_bo"] + p["W_bo_b"]
+    if _CENSUS is not None:
+        _CENSUS.append((kb, "state_hslot", h_slot.realize().numpy()))
     if FED_MIXER and "fed_mx_hg" in p:
         # FED item 1: MIXER MULTI-HEAD — the twin-kernel form (chosen,
         # not fallback: a score-level combine keeps ONE softmax = one
@@ -2390,6 +2408,16 @@ def breath_step(p, state, kb, ctx):
         _d21b = (_sm21.softmax(-1) @ _bv21) @ p["alt21_W_bo"] \
             + p["alt21_W_bo_b"]
         h_slot = h_slot + _d21a + _d21b  # additive; zeros at birth
+        if _CENSUS is not None:
+            # THE LARGEST HOLE, closed (apply_census_organs2.py): two
+            # additive writes into the state every breath, ON in the
+            # champion family, never measured. NO _pre FORM: stations
+            # 3-4 ride the ZERO-INIT OUTPUT MATRIX idiom (alt21_attn_wo,
+            # alt21_W_bo), not a scalar gain — there is nothing to
+            # divide out, and a pre-projection "pre" would be a fake
+            # ratio in a different space.
+            _CENSUS.append((kb, "alt21_s3", _d21a.realize().numpy()))
+            _CENSUS.append((kb, "alt21_s4", _d21b.realize().numpy()))
     g = p["breath_gate"][kb].sigmoid()
     if drop is not None:            # door #52: BREATH DROPOUT —
         g = g * drop                # per-STEP coin; drop=0 makes the
