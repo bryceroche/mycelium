@@ -35363,3 +35363,45 @@ it. THE PERF CAMPAIGN'S TALLY: mask-prep 75 min -> seconds per arm on
 a cache hit; reads ~20 min -> < 1 min per chain; the next chain is
 written on ALG_MASKPREP_CACHE=1 + read_batch + ALG_JIT_READ=1 +
 CR_PLANES lists.
+
+## 2026-09-08 — THE ORGAN CENSUS, COMPLETE: every road into the state has a pre/post reading (the second law, done)
+
+Census patch 2 applied (5 anchors, pure insertion; eq A/B/C bit-
+identical vs the census-1 dumps; row smoke ALL GATES): the ALT21
+stations 3-4 (`h_slot + _d21a + _d21b`; NO scalar gain — their door is
+the zero-init output matrices, so no `_pre` exists and the reader
+says so), notebook lane 2 pre/post, the blurred notebook branch, and
+a `state_hslot` baseline for the organs that add into h_slot rather
+than cur. GPU, N=32, wild (mint agrees):
+
+| organ | band / base | champion post (pre) | polar+sink post (pre) |
+|---|---|---|---|
+| notebook lane 1 | state | 1.05-1.41x | 0.96-1.44x |
+| ALT21 station 4 | h_slot | **0.41-0.49x** (no gain) | **0.46-0.57x** |
+| garage | state | 0.34-0.46x | 0.42-0.53x |
+| ALT21 station 3 | h_slot | **0.27-0.28x** (no gain) | **0.33-0.42x** |
+| sink waist delta | state | — | 0.06-0.28x |
+| sink E&B delta | state | — | 0.03-0.04x |
+| mixer (2.1M) | h_slot | 0.02x (pre 0.66-0.93x) | 0.02x |
+| fact injection | var-slot | 0.02x (pre 0.43x) | 0.03x |
+| committed-edge bias | slot score | 0.003x | 0.003x |
+| notebook lane 2 | state | **0.0003x (pre 0.86-1.06x)** | 0.0003x (pre 0.79-1.06x) |
+| mask head (2.0M) | slot score | **~1e-5x (pre 0.01-0.02x)** | ~1e-5x (pre 0.02-0.09x) |
+
+CORRECTED READING: the NEURAL side of the alternation is LOUD — the
+flow-through stations carry 0.3-0.5x of the slot state, twenty times
+the mixer at the same seam, and are louder still under the clock
+(the clock helps the stations). What whispers is the SYMBOLIC ->
+NEURAL direction (facts 2-3%, committed edges 0.3%) and THE MASK
+HEAD. The ping-pong's return road is the quiet one — consistent with
+the forensic (the certified channel empty on wild) and with the
+cooker opening it under pressure. NOTEBOOK LANE 2: a wide-open
+source with the tap shut — pre-gain at full state volume, gain
+learned down to 0.0004: training REJECTED it at full volume (not a
+stillbirth). PRUNING VERDICT: lane 2 and the pointer forms (0.0004-
+0.006) are cut at the next generation — with evidence, not by
+suspicion. The mixer (2%) and the fact injection (2-3%): cook-or-
+prune by ablation, registered. Cosines everywhere |cos| <= 0.14
+except alt x maskhead (-0.29 / -0.40; both tiny). Logs:
+.cache/portcensus2_*_{wild,mint}.log. The mask cooker build is
+staging against this head (a0d7b75).
