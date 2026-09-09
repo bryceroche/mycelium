@@ -166,6 +166,7 @@ POLAR_QROT = int(os.environ.get("ALG_POLAR_QROT", "2"))       # 0/1/2: off,
 POLAR_STAMP = int(os.environ.get("ALG_POLAR_STAMP", "1"))     # fix B
 _POLAR_TAB = None           # (delta_cos, delta_sin, abs_cos, abs_sin, wheel_of)
 _POLAR_SHOWN = False
+_MC_SHOWN = False        # THE MASK COOKER's doors: printed once
 
 
 def _polar_groups():
@@ -1226,7 +1227,23 @@ def load_alg(split):
 def build_params(seed=0):
     from tinygrad import Tensor, dtypes
     rng = np.random.RandomState(seed)
-    global _POLAR_SHOWN
+    global _POLAR_SHOWN, _MC_SHOWN
+    if not _MC_SHOWN and (float(os.environ.get("ALG_MASK_COOK", "0")) > 0.0
+                          or int(os.environ.get("ALG_MASK_SEAL", "0"))
+                          or os.environ.get("ALG_MASK_COOK_SKEL", "")
+                          or os.environ.get("MC_EVAL", "")):
+        # THE MASK COOKER's doors (spec S2): one line, once, naming
+        # every one of them. Silent when all are unset.
+        _MC_SHOWN = True
+        print(f"[maskcook] doors: ALG_MASK_COOK="
+              f"{os.environ.get('ALG_MASK_COOK', '0')} (train dose) "
+              f"ALG_MASK_COOK_SKEL="
+              f"{os.environ.get('ALG_MASK_COOK_SKEL', 'self')} (floor) "
+              f"ALG_MASK_SEAL={os.environ.get('ALG_MASK_SEAL', '0')} "
+              f"(read-time meter: ALL rows) "
+              f"MC_EVAL={os.environ.get('MC_EVAL', '') or '(unset)'} "
+              f"(non-empty = OPEN) | severed baseline -> skeleton floor "
+              f"+ sc2 + log sigmoid(raw), ungained", flush=True)
     if ALG_POLAR and not _POLAR_SHOWN:
         # THE POLAR DOOR (spec S3): one line, once, naming the frozen
         # allocation it is about to run under. Silent when unset.
@@ -1805,6 +1822,76 @@ def _fact_inject(p, vst, fact_buf):
     return vst + _fi * p["alt2_g"].reshape(1, 1, 1)
 
 
+def _mask_cook_v():
+    """THE MASK COOKER's per-row seal value (apply_mask_cook.py,
+    2026-09-08; spec docs/mask_cooker_spec.md). Returns
+
+      None      nothing is sealed — today's path, bit-for-bit;
+      1.0       EVERY row is sealed: ALG_MASK_SEAL=1, the READ-TIME
+                meter (mask-sealed-wild / mask-sealed-mint), the
+                baseline severed for all rows at read;
+      (B,1,1)   the `_MCV` data buffer do_train arms — the _PCV idiom:
+                one JIT graph, dynamic value, a STABLE index-hash
+                assignment (flat mix, never re-rolled per epoch).
+
+    VAL/READ HYGIENE: MC_EVAL non-empty forces the OPEN regime and wins
+    over every other door. The trainer pushes MC_EVAL="0" around
+    _quick_val — its OWN guard, not SC_EVAL's, because that push is
+    conditional on ALG_SHELF_CIRCLE >= 2 while the mask road must be
+    excluded from val at every shelf mode. Outside do_train `_MCV` never
+    exists, so ALG_MASK_COOK in a read env is inert by construction (the
+    trained-env law; the _PCV precedent)."""
+    if os.environ.get("MC_EVAL", ""):
+        return None                     # val/read compares OPEN
+    if int(os.environ.get("ALG_MASK_SEAL", "0")):
+        return 1.0                      # the read-time meter: all rows
+    if float(os.environ.get("ALG_MASK_COOK", "0")) <= 0.0:
+        return None
+    _v = globals().get("_MCV")          # armed only inside do_train
+    return None if _v is None else _v.reshape(-1, 1, 1)
+
+
+def _mask_cook_skel(B, L, fat_cur, ctx):
+    """The SEVERED baseline's SKELETON: the lanes whose openness is
+    GUARANTEED on a sealed row — the floor the head is not allowed to
+    close (a slot can always read itself; no row can be talked into
+    having no lanes). Values in [0, 1]; DETACHED (structure, never a
+    gradient road — the mask head's metadata contract).
+
+      ALG_MASK_COOK_SKEL=self      (default) the diagonal.
+      ALG_MASK_COOK_SKEL=sentence  same-sentence lanes, self included:
+        the breath's OWN reading (fat_cur, this breath's head-averaged
+        token attention) pushed through the token->sentence map, so
+        P = attn @ onehot(sent) is each slot's sentence distribution and
+        P @ P^T its pairwise agreement (the meter-divergence law: the
+        skeleton CALLS the organ in force, it does not rebuild a second
+        copy of build_slot_masks' `same` from stale numpy).
+
+    The birth proof does not depend on which: the floor is
+    logsigmoid(0)*skel + (1-skel)*(-1e4), which is <= logsigmoid(0) for
+    ANY skel in [0, 1], so at raw = 0 the maximum returns the constant
+    log(0.5) on every lane — the all-lanes-open field, bitwise."""
+    from tinygrad import Tensor, dtypes
+    _mode = os.environ.get("ALG_MASK_COOK_SKEL", "self")
+    _eye = Tensor(np.eye(L, dtype=np.float32),
+                  dtype=dtypes.float).reshape(1, L, L)
+    if _mode == "self":
+        return _eye
+    assert _mode == "sentence", (
+        f"ALG_MASK_COOK_SKEL={_mode!r}: the skeleton is 'self' "
+        f"(the diagonal) or 'sentence' (same-sentence lanes)")
+    _snt = ctx.get("mc_sent")
+    assert _snt is not None, (
+        "ALG_MASK_COOK_SKEL=sentence needs ctx['mc_sent'] (forward "
+        "passes it); a seam driver calling breath_step directly must "
+        "supply it — refusing to fall back to 'self' silently")
+    _ar = Tensor(np.arange(SENT_MAX, dtype=np.float32),
+                 dtype=dtypes.float).reshape(1, 1, SENT_MAX)
+    _oh = (_snt.float().reshape(B, -1, 1) == _ar).float()   # (B, T, S)
+    _pp = fat_cur @ _oh                                     # (B, L, S)
+    return (_pp @ _pp.transpose(-2, -1) + _eye).clip(0.0, 1.0).detach()
+
+
 def breath_step(p, state, kb, ctx):
     """THE BREATH STEP — forward()'s K-breath loop BODY, factored to
     module level BY PURE CODE MOTION (apply_step_trainer.py, 2026-09-03;
@@ -2102,6 +2189,18 @@ def breath_step(p, state, kb, ctx):
                       + ((_A5 + _A5.transpose(-2, -1)) > 0.5)
                       .float()).clip(0, 1)
     _mb = None
+    # THE MASK COOKER (apply_mask_cook.py, 2026-09-08): the CLOSE mask.
+    # `_sm_kb` until the cooker severs it per sealed row; all THREE slot
+    # mixers close with it (sc2, the FED twin, ALT21 station 4) — one
+    # mask, one road. With every cooker door unset it IS `_sm_kb`, the
+    # same object: env-inertness by identity, not by value.
+    _mck = _sm_kb
+    assert not (int(os.environ.get("ALG_MASK_SEAL", "0"))
+                and not (int(os.environ.get("ALG_MASKHEAD", "0"))
+                         and "mh_wo" in p)), (
+        "ALG_MASK_SEAL needs the mask head (ALG_MASKHEAD=1 and mh_wo in "
+        "the checkpoint): with no head there are no lanes to seal to, "
+        "and the meter would silently read the OPEN machine")
     if int(os.environ.get("ALG_MASKHEAD", "0")) and "mh_wo" in p:
         # THE MASK HEAD (2026-09-05): the learned precision channel at
         # the RELATE seam. Reads what the >0.5 reflex throws away — the
@@ -2215,8 +2314,45 @@ def breath_step(p, state, kb, ctx):
         _raw = (_mh_rp + _mh_rh).clip(-30.0, 30.0)    # finite softplus
         _mh_sp = (1.0 + _raw.exp()).log()             # softplus(raw)
         _mh_sp0 = (1.0 + (_raw * 0.0).exp()).log()    # birth plateau
+        _mc_pre = (_mh_sp - _mh_sp0) * _sm_kb   # the census PRE tap
         _mb = (p["mh_gain"].reshape(1, 1, 1)
                * (_mh_sp - _mh_sp0) * _sm_kb)
+        _mcv = _mask_cook_v()
+        if _mcv is not None:
+            # THE MASK COOKER (apply_mask_cook.py, 2026-09-08; spec
+            # docs/mask_cooker_spec.md; the mandatory-road law).
+            # SEALED rows: the baseline stops being the road. Its hard
+            # CLOSE is lifted (all factor lanes structurally open;
+            # scratch columns keep the baseline's policy — FED item 6's
+            # raising law stands), its SKELETON survives as the floor
+            # the head may not close, and the head's RAW logits become
+            # the mask over ALL lanes: sc2 + log(sigmoid(raw)),
+            # UNGATED by mh_gain, UNMULTIPLIED by the baseline.
+            # OPEN rows: today's `_mb` and today's close, bit-for-bit —
+            # the pressure mix's arithmetic, per row, exact at v in
+            # {0,1} (1.0*x = x, 0.0*finite = 0, x + 0 = x).
+            # BIRTH: mh_wo and mh_headmix are zero-init -> _raw == 0 ->
+            # the gate is the CONSTANT log(0.5) on every lane and the
+            # floor equals it bitwise (the same kernel chain on
+            # _raw*0 — the _mh_sp0 idiom), so a sealed row's attention
+            # is the softmax over ALL lanes: cold but FUNCTIONAL, and
+            # the loss sharpens it. No -inf/NaN: _raw is re-clipped to
+            # [-30, 30] here (this organ's own guard, not a borrowed
+            # one) and log-sigmoid is -softplus(-raw), finite at -30.
+            # ONE MASK, ONE ROAD: the blend happens ONCE, here, so all
+            # three consumers of `_mb` (sc2, the FED mixer, ALT21
+            # station 4) see the same road by construction.
+            _mcr = _raw.clip(-30.0, 30.0)
+            _mclg = -(1.0 + (-_mcr).exp()).log()            # log sigmoid
+            _mclg0 = -(1.0 + (-(_mcr * 0.0)).exp()).log()   # its birth
+            _mcsk = _mask_cook_skel(B, L_TOT, fat_cur, ctx)
+            _mcb = _mclg.maximum(_mclg0 * _mcsk + (1.0 - _mcsk) * -1e4)
+            _mcc = Tensor(np.concatenate(
+                [np.ones(L_FAC, np.float32),
+                 np.zeros(L_TOT - L_FAC, np.float32)])).reshape(1, 1, -1)
+            _mb = _mb * (1.0 - _mcv) + _mcb * _mcv
+            _mc_pre = _mc_pre * (1.0 - _mcv) + _mcb * _mcv
+            _mck = _sm_kb * (1.0 - _mcv) + _sm_kb.maximum(_mcc) * _mcv
         if _A5s is not None:                # STORAGE WRITE: this
             state["mh_prev"] = _A5s         # breath's consumed
                                             # adjacency, detached
@@ -2228,9 +2364,12 @@ def breath_step(p, state, kb, ctx):
             # THREE mixers (sc2, _mx_sc, _sm21) — one tensor, one record.
             _CENSUS.append((kb, "maskhead", _mb.realize().numpy()))
             _CENSUS.append((kb, "maskhead_pre",
-                            ((_mh_sp - _mh_sp0) * _sm_kb)
-                            .realize().numpy()))
-    sc2 = sc2.clip(-1e4, 1e4) + (1.0 - _sm_kb) * -1e4
+                            _mc_pre.realize().numpy()))
+                            # (the SAME expression when the cooker is
+                            # off; on sealed rows PRE == POST, because
+                            # the gate is ungained — the meter must
+                            # call the organ in force, not a copy)
+    sc2 = sc2.clip(-1e4, 1e4) + (1.0 - _mck) * -1e4   # cooker: _mck
     if _A5 is not None and "alt_g" in p:
         # v0 soft bias rides alongside (facts wire attention)
         sc2 = sc2 + (_A5 + _A5.transpose(-2, -1)) \
@@ -2320,7 +2459,7 @@ def breath_step(p, state, kb, ctx):
         _mx_sc = (_mx_q @ _mx_k.transpose(-2, -1)) / math.sqrt(_mx_hd)
         if _mb is not None:                 # the same mask-head bias
             _mx_sc = _mx_sc + _mb.unsqueeze(1)
-        _sm_tw = _sm_kb
+        _sm_tw = _mck              # cooker: the severed close
         if N_SCR:
             # FED item 6 read-back: scratch COLUMNS open ONLY here —
             # behind the zero gains (the raising law's route)
@@ -2399,7 +2538,7 @@ def breath_step(p, state, kb, ctx):
         if _mb is not None:        # MASK HEAD: the same open-only
             _sm21 = _sm21 + _mb    # bias, station-4 mixer (before
                                    # ITS close — one geometry/breath)
-        _sm21 = _sm21.clip(-1e4, 1e4) + (1.0 - _sm_kb) * -1e4
+        _sm21 = _sm21.clip(-1e4, 1e4) + (1.0 - _mck) * -1e4  # cooker
         if _A5 is not None and "alt_g" in p:   # v0 bias, as station 2
             _sm21 = _sm21 + (_A5 + _A5.transpose(-2, -1)) \
                 * p["alt_g"].reshape(1, 1, 1)
@@ -2835,7 +2974,12 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
                    "fed_nl0": _fed_nl0,
                    "mh_atlas_traj": mh_atlas_traj,
                    "RINGS": RINGS, "XOUT": XOUT, "XARM": XARM,
-                   "XR_GRADED": XR_GRADED, "XR_ELASTIC": XR_ELASTIC}
+                   "XR_GRADED": XR_GRADED, "XR_ELASTIC": XR_ELASTIC,
+                   # THE MASK COOKER's sentence-skeleton port
+                   # (ALG_MASK_COOK_SKEL=sentence): the token->sentence
+                   # ids. A dict key only — zero compute when the door
+                   # is unset or the skeleton is `self`.
+                   "mc_sent": sent}
         _bs_state = {"cur": cur, "breaths": breaths, "nb": None,
                      # MASK HEAD storage (2026-09-05): the graded
                      # adjacency the organ consumed at the previous
@@ -4339,6 +4483,47 @@ def do_train(steps, lr, batch, seed):
               f"{int(_pc_assign.sum())}/{n} rows sealed (stable "
               f"index-hash); live-wire="
               f"{os.environ.get('ALG_PC_LIVE', '1')}", flush=True)
+    _mc_mix = float(os.environ.get("ALG_MASK_COOK", "0"))
+    _mc_assign = None
+    if _mc_mix > 0.0:
+        # THE MASK COOKER (2026-09-08, docs/mask_cooker_spec.md): the
+        # per-row severance of the BASELINE slot mask. Armed exactly
+        # like the pressure mix (a (B,1,1) buffer created BEFORE the
+        # first step() capture — the JIT law) and INDEPENDENT of it: a
+        # different Knuth multiplier AND a different addend, so a row
+        # may be sealed by either cooker, both, or neither. Measured at
+        # n = 25000: |P(both) - P(pc)P(mc)| <= 1e-4 at the doses in
+        # play; all four cells occur.
+        assert int(os.environ.get("ALG_MASKHEAD", "0")) and "mh_wo" in p, (
+            "ALG_MASK_COOK needs the mask head (ALG_MASKHEAD=1 and "
+            "mh_wo in the params): the cooker severs the baseline so "
+            "the HEAD's lanes are the only road — with no head a "
+            "sealed row would have no mask at all")
+        assert not int(os.environ.get("ALG_MASK_SEAL", "0")), (
+            "ALG_MASK_SEAL is the READ-TIME meter (every row sealed); "
+            "with ALG_MASK_COOK it would seal training entirely and "
+            "the dose would be a lie — unset it")
+        assert not os.environ.get("MC_EVAL", ""), (
+            "ALG_MASK_COOK with MC_EVAL set would bake the cooker OPEN "
+            "at JIT capture (THE UNLIT STOVE: training that never "
+            "sealed) — unset MC_EVAL; val pushes it by itself")
+        _mc_skel = os.environ.get("ALG_MASK_COOK_SKEL", "self")
+        assert _mc_skel in ("self", "sentence"), (
+            f"ALG_MASK_COOK_SKEL={_mc_skel!r}: 'self' or 'sentence'")
+        _mc_h = ((np.arange(n, dtype=np.uint64) * np.uint64(2246822519)
+                  + np.uint64(2654435761)) % np.uint64(4294967296)
+                 ).astype(np.float64) / 4294967296.0
+        _mc_assign = (_mc_h < _mc_mix).astype(np.float32)
+        globals()["_MCV"] = Tensor(
+            np.zeros((batch, 1, 1), np.float32)).contiguous().realize()
+        _mc_both = (float((_mc_assign * _pc_assign).sum()) / max(n, 1)
+                    if _pc_assign is not None else 0.0)
+        print(f"[maskcook] baseline severance armed: share={_mc_mix} -> "
+              f"{int(_mc_assign.sum())}/{n} rows sealed (stable "
+              f"index-hash, multiplier 2246822519); skeleton={_mc_skel}"
+              f"; both-seals={_mc_both:.4f} of rows (pressure share "
+              f"{_pc_mix}); the head's raw logits are the mask on those "
+              f"rows (sc2 + log sigmoid(raw), ungained)", flush=True)
     t0 = time.time()
     for s in range(steps):
         cur_lr = lr_min + 0.5 * (lr - lr_min) * (1 + math.cos(math.pi * s / steps))
@@ -4443,6 +4628,10 @@ def do_train(steps, lr, batch, seed):
             globals()["_PCV"].assign(Tensor(
                 _pc_assign[idx].reshape(-1, 1, 1),
                 dtype=globals()["_PCV"].dtype)).realize()
+        if _mc_assign is not None:
+            globals()["_MCV"].assign(Tensor(
+                _mc_assign[idx].reshape(-1, 1, 1),
+                dtype=globals()["_MCV"].dtype)).realize()
         lv = step()
         if ALG_CONSUME and _NEWCL[0] is not None:
             CLAIMED[idx] = np.clip(CLAIMED[idx] + _NEWCL[0].numpy(), 0, 1)
@@ -4454,7 +4643,14 @@ def do_train(steps, lr, batch, seed):
         if (s + 1) % val_every == 0 or s == steps - 1:
             if int(os.environ.get("ALG_SHELF_CIRCLE", "0")) >= 2:
                 os.environ["SC_EVAL"] = "0"     # val compares OPEN mode
+            # THE MASK COOKER's own val guard (2026-09-08): pushed
+            # UNCONDITIONALLY, because the SC_EVAL push above is
+            # conditional on ALG_SHELF_CIRCLE >= 2 and an attention
+            # organ must be excluded from val at every shelf mode. Any
+            # non-empty value means OPEN; only "0" is ever pushed.
+            os.environ["MC_EVAL"] = "0"       # ... and the OPEN mask
             fv = _quick_val()
+            os.environ.pop("MC_EVAL", None)
             if int(os.environ.get("ALG_SHELF_CIRCLE", "0")) >= 2:
                 os.environ.pop("SC_EVAL", None)
             mark = ""
