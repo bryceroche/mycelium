@@ -35405,3 +35405,48 @@ prune by ablation, registered. Cosines everywhere |cos| <= 0.14
 except alt x maskhead (-0.29 / -0.40; both tiny). Logs:
 .cache/portcensus2_*_{wild,mint}.log. The mask cooker build is
 staging against this head (a0d7b75).
+
+## 2026-09-08 — THE MASK COOKER BUILT (CPU-proved), rulings, and the chain queued behind seed 241 (the word)
+
+scripts/apply_mask_cook.py (13 anchors; --check clean; idempotence;
+symtable audit) + scripts/mask_cook_smoke.py ALL GATES: env-inert
+bit-identical (both configs, cold and warm stand-ins); per-row
+surgery bitwise (open rows == all-open, sealed == all-sealed;
+sealed vs open differ 0.226); THE BIRTH FIELD = the constant
+log(0.5) on every lane, the severed close exactly zero, sealed-under-
+sparse == open-under-all-open to 8.6e-6 end to end; two-terminal:
+on sealed rows the parse loss reaches mh_wq/wk/wv (0.16/0.19/1.03),
+mh_wo 1.18, mh_headmix 2.86, the context encoder 0.21/0.11 (at the
+true zero birth the doors carry and the bank wakes one step later —
+the ResNet law, no deadlock); all-open batches' gradients bitwise
+the pristine head's; the two cookers compose (independent Knuth
+hashes, |P(both)-P(pc)P(mc)| <= 9e-5; every row bitwise its single-
+configuration run); ALG_MASK_SEAL=1 at read == the all-rows-sealed
+path bitwise; MC_EVAL forces OPEN over every door around _quick_val
+(pushed unconditionally — the SC_EVAL push is conditional on the
+shelf circle and could not be borrowed). Fixture fact: build_params
+starts W_bo at zero, so on a cold init the slot mask has no effect
+on any emission — the gates that must see the road run on a warm
+stand-in (the deployed case).
+RULINGS: (1) the identity is NOT the hard close for sealed rows —
+the close is lifted and the skeleton survives as a FLOOR (bias =
+max(logsigmoid(raw), the skeleton's birth openness)); the gate is
+the only thing that opens or closes every other lane; (2) the E&B
+coupling and the mask head's own attention keep reading _sm_kb (the
+clock physics and the head's input are not the road; asserted
+structurally); (3) ALG_MASKPREP_IGNORE=ALG_MASK_COOK,ALG_MASK_COOK_
+SKEL is lawful (the pass runs before _MCV is armed; proven) — the
+cook and control arms share a bucket; (4) skeleton `self` for the
+twin; `sentence` degenerates to self on diffuse attention (noted);
+(5) a read_batch masksealed meter is a follow-up (standalone
+loop_val under the JIT reads in 16 s).
+CHAIN (.cache/mask_cook_chain.sh, unit pc-maskcook, queued on
+pc-polar-241's exit — the running chain re-imports the head for its
+reads, so nothing lands before it exits): apply -> eq A/B/C (doors
+unset) vs the census-2 dumps -> both row smokes -> the champion
+candidate's mask-sealed baseline (polarsink242, ALG_MASK_SEAL=1:
+the ~0 the bar opens from) -> ARM COOK (warm polarsink242, 12k,
+seed 242, dose 0.15, skel self) -> ARM CTRL (polarsink242
+continued, cooker off) -> reads: clock per wheel, open-wild/mint,
+mask-sealed wild/mint (BAR 1), the census on sealed rows (BAR 2).
+Bars per docs/mask_cooker_spec.md section 4; ~8 h.
