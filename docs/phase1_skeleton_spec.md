@@ -35771,3 +35771,55 @@ birth, eq-checked against the severed read); the ratio table is
 removal cost per M params; rebalancing = grow the organs with the
 highest cost per param, never the loudest. A wrong prediction here is
 banked as the finding, not corrected after the fact.
+
+## 2026-09-09 — THE SEVERANCE LADDER VERDICT: two loud organs remove for free (station 4, the garage), the notebook is the machine's best parameter, the registers split (mint rides depth, wild rides grounding); 4.4M dead by severance
+
+READS (unit pc-sever, .cache/sever_ladder.log; eq gate A/B/C bit-
+identical with ALG_SEVER unset; loop_val JIT on polarsink242; baseline
+open wild 0.2511 n=2051 / mint 0.9556 n=3668; cost = baseline - severed):
+  organ     params   wild cost   mint cost   per M (wild / mint)   pinned prediction -> verdict
+  notebook  0.8M     0.042       0.156       0.052 / 0.195         >=0.05/>=0.05 -> LOAD-BEARING (wild under my 0.05; the frame holds)
+  ffn       2.1M     0.024       0.106       0.011 / 0.050         >=0.05/>=0.05 -> LOAD-BEARING (wild under; mint far over)
+  s3        1.1M     0.054       0.007       0.049 / 0.006         ~0.05/~0.02   -> LOAD-BEARING on WILD ONLY (mint under 0.01)
+  mixer     1.1M     0.009       0.010       0.008 / 0.009         <0.02/<0.01   -> mint at the 0.01 line; wild noise
+  garage    1.8M     0.012       0.001       0.007 / 0.001         0.02-0.05/0.01-0.03 -> WRONG: between frames (1.2 SE wild, noise mint)
+  s4        1.1M     0.002       0.004       —                     load-bearing  -> WRONG: NOISE on both = DEAD BY SEVERANCE
+  fedtwin   0        -0.0005     0.000       —                     NOISE -> NOISE (right)
+  altv0     0        0.000       0.000       —                     NOISE -> exactly zero (right)
+  pforms    3.3M     0.000       0.000       —                     NOISE -> exactly zero: DEAD BY SEVERANCE (right)
+TWO PREDICTIONS WRONG, banked as the finding: STATION 4 injects at
+0.35-0.72x of the state band on the control (the loudest slot-to-slot
+road in the census) and REMOVES FOR FREE (-0.002 / -0.004); THE GARAGE
+injects at 0.43-0.55x and removes for ~1 point of wild and nothing on
+mint. THE CENSUS READS VOLUME; THE LADDER READS NECESSITY — a road can
+be loud and redundant (the state re-derives what it carried from the
+other roads within the same breath). AMENDMENT TO THE HEADROOM
+COROLLARY: the pre/post census is necessary, not sufficient; no organ
+is called load-bearing without a severance read. Gemini's station-4
+call was right by the wrong argument (it carries plenty; it is just not
+needed).
+THE REGISTER SPLIT: mint capability rides DEPTH (notebook 0.156 + FFN
+0.106; everything else < 0.01); wild capability rides GROUNDING (station
+3 0.054, notebook 0.042, FFN 0.024). Station 3 is a wild-only organ:
+5.4 points on wild for 1.1M, 0.7 on mint. The notebook is the best
+parameter in the machine on BOTH registers (0.05 and 0.20 per M).
+THE RATIO VERDICT: the head is NOT well balanced — 4.4M (25%) is dead
+by severance (pforms 3.3M, station 4 1.1M), on top of the mask head's
+2.0M whose slot-mask removal cost was already <= 0 and fed_nl0 / lane 2
+(~0.5M) already recorded dead: ~6.9M of 17.3M (40%) removes for nothing
+measurable; the two organs that carry the most per parameter (notebook
+0.8M, station 3 1.1M) are among the smallest. The garage (1.8M, the bus
+rotor of the three-rotor stack) stays by THE COMPATIBILITY RULING (fit
+governs what is built forward) but the claim "the bus carries wild
+capability" is not supported: at most 1.2 points at read time.
+NEXT (registered; the build needs the word): THE BALANCED GENERATION —
+(1) PRUNE AT BIRTH: pforms, station 4, fed_nl0, lane 2 (4.9M), params
+dropped, the pruned build eq-checked against the severed read (same
+numbers, fewer keys); the mask head HELD until its two registered
+follow-ups (residual seal; gate born aimed) are judged, then pruned or
+kept on their verdict. (2) GROW where the cost per parameter is highest:
+the notebook (more lanes / a wider shelf) and a second grounding station
+in station 3's form (slots<-tokens, the wild organ), each as a mandatory
+road, each with a pinned severance bar (removal cost >= the organ it
+grows from). (3) The mixer's mint cost at exactly 0.01 gets a second
+read at another seed before any call.
