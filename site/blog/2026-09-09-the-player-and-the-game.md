@@ -110,3 +110,31 @@ pinned before the card is touched:
 
 Either answer is a result. The player is awake now. Whether it has
 a game is a number, and the number is next.
+
+---
+
+## Postscript, the same morning: the number
+
+The severance probe ran before dawn. Flatten every slot's attention
+over the tokens during the six loop breaths, keeping the first
+reading intact, and wild accuracy falls from 0.2511 to **0.1536**,
+synthetic from 0.9556 to **0.7704**. Flatten the first reading too
+and both collapse, 0.05 and 0.005, the floor. So the re-reading is
+load-bearing: two fifths of the machine's wild capability and a fifth
+of its synthetic capability ride on which words each slot reads as
+the parse firms. The pot is not empty. Headroom of ten points on
+wild and nineteen on synthetic, measured before a line of cooker is
+written.
+
+The texture inside the number is the useful part. The machine has
+two roads from slots to words, the main reading bank and a second
+one inside the alternator's flow-through stations, and on wild
+problems the second road carries two thirds of the headroom. On
+synthetic problems the main bank carries nearly all of it. Wild text
+is being grounded, mostly, by the organ built for the ping-pong.
+
+Outcome A. The player has a game, and it is between the slots and
+the words. The token cooker is registered with its bars: on a share
+of rows the mask head's own gate over the tokens becomes the
+grounding, starting from the flat field this probe measured and
+climbing, or not. That run needs the word.

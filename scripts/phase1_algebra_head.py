@@ -167,6 +167,7 @@ POLAR_STAMP = int(os.environ.get("ALG_POLAR_STAMP", "1"))     # fix B
 _POLAR_TAB = None           # (delta_cos, delta_sin, abs_cos, abs_sin, wheel_of)
 _POLAR_SHOWN = False
 _MC_SHOWN = False        # THE MASK COOKER's doors: printed once
+_TS_SHOWN = False        # THE TOKEN SEAL's door: printed once
 
 
 def _polar_groups():
@@ -1227,7 +1228,23 @@ def load_alg(split):
 def build_params(seed=0):
     from tinygrad import Tensor, dtypes
     rng = np.random.RandomState(seed)
-    global _POLAR_SHOWN, _MC_SHOWN
+    global _POLAR_SHOWN, _MC_SHOWN, _TS_SHOWN
+    if not _TS_SHOWN and _tok_seal_mode() != "0":
+        # THE TOKEN SEAL's door: one line, once, naming the severance
+        # and its scope. Silent when the door is unset.
+        _TS_SHOWN = True
+        _ts_m = _tok_seal_mode()
+        print(f"[tokseal] ALG_TOK_SEAL={_ts_m} — slot->token attention "
+              f"WEIGHTS = uniform over the prompt's real tokens (0 on "
+              f"pads) at "
+              f"{'breath 0 AND loop breaths 1..K-1' if _ts_m == 'all' else 'loop breaths 1..K-1 (breath 0 grounding INTACT)'}"
+              f"; ALG_TOK_SEAL_S3="
+              f"{os.environ.get('ALG_TOK_SEAL_S3', '1')} (ALT21 station "
+              f"3, the second slots<-tokens road: 1 = sealed too, 0 = "
+              f"narrow fq-only arm). NOT sealed: the var bank (pointer "
+              f"targets), the query bank, every slot<->slot mixer. "
+              f"READ-ONLY: do_train refuses to start with this set.",
+              flush=True)
     if not _MC_SHOWN and (float(os.environ.get("ALG_MASK_COOK", "0")) > 0.0
                           or int(os.environ.get("ALG_MASK_SEAL", "0"))
                           or os.environ.get("ALG_MASK_COOK_SKEL", "")
@@ -1740,12 +1757,57 @@ _STEP_TAP = None    # the step trainer's stage-0 seam (the _CENSUS/_IMP
                     # scripts/step_trainer.py — inert in every other path
 
 
+def _tok_seal_mode():
+    """THE TOKEN SEAL's door (apply_tok_seal.py, 2026-09-09; the
+    registered TOKEN-ATTENTION SEVERANCE PROBE — the headroom read that
+    precedes any token cooker). A READ door; do_train refuses to start
+    with it set.
+
+      "0"    (default) off — byte-inert, the same objects, the same
+             kernels, the same bytes.
+      "loop" loop breaths 1..K_B-1 read the tokens uniformly; breath 0's
+             grounding is untouched.
+      "all"  breath 0's factor-bank read is flattened too (the floor).
+
+    A mistyped door must never read as OFF (the ALG_JIT_READ idiom), so
+    anything else raises here rather than silently measuring the open
+    machine."""
+    _v = os.environ.get("ALG_TOK_SEAL", "0") or "0"
+    assert _v in ("0", "loop", "all"), (
+        f"ALG_TOK_SEAL={_v!r} is not one of 0 / loop / all — a mistyped "
+        f"door must never read as OFF (it would silently report the "
+        f"UNSEVERED machine as the severance read)")
+    return _v
+
+
+def _tok_seal_on(kb):
+    """Is THIS breath's slot->token attention flattened? kb = 0 is
+    breath 0's grounding read (only `all` cuts it); kb >= 1 is a loop
+    breath (both `loop` and `all` cut it). One organ, both call sites —
+    the road is decided in exactly one place."""
+    _m = _tok_seal_mode()
+    return _m == "all" or (_m == "loop" and kb >= 1)
+
+
+def _tok_flat(tokmask, B):
+    """THE UNIFORM READING: 1/n_tok on every real token of the row, 0 on
+    every pad, shaped (B, 1, 1, T) to broadcast over heads and slots.
+
+    NO epsilon denominator (registered): token counts are integer-valued
+    floats >= 1, so `.maximum(1.0)` is the exact identity on every row
+    that has tokens and turns the empty row into 0/1 = 0. A `+ 1e-6`
+    guard would put the uniform off by ~1e-6 at n = 1 — the proof's own
+    tolerance, i.e. a bar passed by luck. Nothing else here divides."""
+    _u = tokmask.reshape(B, 1, 1, -1)
+    return _u / _u.sum(-1, keepdim=True).maximum(1.0)
+
+
 def _make_bank(p, waist, tokmask, B):
     """forward()'s bank attention, factored BY PURE CODE MOTION
     (apply_step_trainer.py, 2026-09-03) so the step trainer can rebuild
     the closure over ITS OWN waist tensor. forward's call sites are
     unchanged; behavior bit-identical by construction."""
-    def bank(queries, nq, extra=None, pbias=None, rbias=None):
+    def bank(queries, nq, extra=None, pbias=None, rbias=None, flat=False):
         q_in = queries.unsqueeze(0) + (extra if extra is not None else 0)
         q = q_in @ p["attn_wq"] + p["attn_wq_b"]
         k = waist @ p["attn_wk"] + p["attn_wk_b"]
@@ -1762,6 +1824,21 @@ def _make_bank(p, waist, tokmask, B):
                                 # hard -inf — A0's grave)
         sc = sc.clip(-1e4, 1e4) + (1.0 - tokmask.reshape(B, 1, 1, -1)) * -1e4
         at = sc.softmax(-1)
+        if flat:
+            # THE TOKEN SEAL (apply_tok_seal.py, 2026-09-09). The
+            # slot->token attention WEIGHTS become the uniform
+            # distribution over the prompt's real tokens (0 on pads),
+            # so the value read below is the TOKEN MEAN for every slot.
+            # Cut AT THE SOURCE: both consumers of `at` — the value
+            # read `at @ vh` and the returned head-average `at.mean(1)`
+            # (fat_cur / fat, and through it the clock c_j, the NL tap
+            # and the cooker's sentence skeleton) — inherit the flat
+            # field by construction. ONE ROAD, CONSISTENTLY.
+            # The zero-multiply (not a plain rebind) keeps the q/k path
+            # in the graph with defined zero grads: the ALG_BREATH_ARM
+            # idiom, the None-grad lesson. softmax output is finite, so
+            # `at * 0.0` is exactly zero.
+            at = at * 0.0 + _tok_flat(tokmask, B)
         st = (at @ vh).permute(0, 2, 1, 3).reshape(B, nq, H_W)
         st = st @ p["attn_wo"] + p["attn_wo_b"] + q_in.reshape(-1, nq, H_W)
         st = st + ((st @ p["ffn_w1"] + p["ffn_b1"]).gelu() @ p["ffn_w2"] + p["ffn_b2"])
@@ -2133,7 +2210,14 @@ def breath_step(p, state, kb, ctx):
     h_tok, fat_cur = bank(p["fq"], L_TOT, extra=q_extra,
                           pbias=(_sync[0](kb) if _sync is not None
                                  else None),
-                          rbias=_rb7)
+                          rbias=_rb7,
+                          # THE TOKEN SEAL: this breath's RE-READING of
+                          # the text. `loop` and `all` both cut it; the
+                          # grounding at breath 0 is decided in
+                          # forward(). Every consumer of fat_cur (the
+                          # clock c_j, the NL tap, the cooker's sentence
+                          # skeleton) inherits the flat field from here.
+                          flat=_tok_seal_on(kb))
     if int(os.environ.get("ALG_MINE_BREATHS", "0")):
         # NL TAP (apply_nl_tap.py, 2026-09-05, the paired atlas):
         # read-only capture of this breath's READING — head-avg
@@ -2527,7 +2611,18 @@ def breath_step(p, state, kb, ctx):
         if _rb7 is not None:             # the same router bias
             _sa21 = _sa21 + _rb7.unsqueeze(1) * p["r_gain"].reshape(1, 1, 1, 1)
         _sa21 = _sa21.clip(-1e4, 1e4) + (1.0 - tokmask.reshape(B, 1, 1, -1)) * -1e4
-        _st21 = (_sa21.softmax(-1) @ _vh21).permute(0, 2, 1, 3).reshape(B, L_TOT, H_W)
+        _a21 = _sa21.softmax(-1)
+        if _tok_seal_on(kb) and int(os.environ.get("ALG_TOK_SEAL_S3", "1")):
+            # THE TOKEN SEAL, second road (registered scope). Station 3
+            # is a SECOND slots<-tokens bank attention over the same
+            # waist and the same tokmask; leaving it live would leave
+            # the grounding BYPASSABLE and a "no headroom" verdict would
+            # be an artifact of the bypass, not a fact about grounding
+            # (THE HEADROOM COROLLARY: removal cost must be the cost of
+            # removing the road, all of it). ALG_TOK_SEAL_S3=0 gives the
+            # NARROW arm (fq bank only) for the texture read.
+            _a21 = _a21 * 0.0 + _tok_flat(tokmask, B)
+        _st21 = (_a21 @ _vh21).permute(0, 2, 1, 3).reshape(B, L_TOT, H_W)
         _d21a = _st21 @ p["alt21_attn_wo"] + p["alt21_attn_wo_b"]
         _s21 = _s21 + _d21a              # exact zero at birth
         # STATION 4: second slot-mixer over the SAME breathed mask
@@ -2881,7 +2976,14 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
         _pb = _sw_term if _pb is None else _pb + _sw_term  # audit #6: adds
     if pmask is not None:                 # A0: imposed route-mask (wiring,
         _pb = pmask if _pb is None else _pb + pmask   # not knobs — no grad)
-    fst, fat = bank(p["fq"], L_TOT, pbias=_pb)
+    # THE TOKEN SEAL (apply_tok_seal.py, 2026-09-09): breath 0's
+    # GROUNDING. `loop` leaves it intact (the slots are grounded once
+    # and only the re-reading is severed); `all` flattens it too — the
+    # floor, where no factor slot ever aims at a token.
+    # NOT SEALED, registered: the VAR bank above (vst — the pointer
+    # TARGET space; flattening it deletes the alphabet rather than
+    # severing a reading) and the QUERY bank below.
+    fst, fat = bank(p["fq"], L_TOT, pbias=_pb, flat=_tok_seal_on(0))
     qst, _qa = bank(p["qq"], 1)
 
     # BRICK-P breathing (2026-07-09): K-1 refinement passes. Each breath
@@ -3824,6 +3926,22 @@ def do_train(steps, lr, batch, seed):
     from tinygrad.nn.optim import AdamW
     from tinygrad.nn.state import safe_save
 
+    # THE TOKEN SEAL IS A READ DOOR (apply_tok_seal.py, 2026-09-09).
+    # It is a SEVERANCE for measuring the grounding's removal cost — not
+    # an organ, not a regime, not a regularizer. Trained through, it
+    # would (a) teach the machine to do without the reading, which is a
+    # cooker and needs its own registration and its own dose, and (b)
+    # bake the flat attention into the JIT capture where nothing would
+    # ever print it again (THE UNLIT STOVE). The guard is do_train's
+    # FIRST executable statement — ahead of load_alg, ahead of the
+    # mask-prep pass, ahead of every capture — so `_quick_val` inside
+    # this process cannot see the door either. Loud, like ALG_MASK_SEAL's.
+    assert _tok_seal_mode() == "0", (
+        f"ALG_TOK_SEAL={os.environ.get('ALG_TOK_SEAL')!r} is set and this "
+        f"is a TRAINING run — the token seal is a READ door (the headroom "
+        f"probe, ledger 2026-09-09). Training through it is a token "
+        f"COOKER: a different thing, with its own dose, its own per-row "
+        f"buffer and its own registration. Unset ALG_TOK_SEAL.")
     samples, states, tokmask, gold, sent = load_alg("train")
     n = states.shape[0]
     p = build_params(seed)

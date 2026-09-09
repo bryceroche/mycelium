@@ -35564,3 +35564,49 @@ at any level is RETIRED as a wild lever, and the effort goes to the
 needle ladder and the solver interface. Between 0.02 and 0.10: the
 texture rule (a mechanism probe: which slots' pointers move).
 Build (30 min, CPU) + read (1 min under the JIT) — hold for the word.
+
+## 2026-09-09 — THE TOKEN-ATTENTION SEVERANCE PROBE: HEADROOM EXISTS at the slot->token level (0.10 wild / 0.19 mint), and the second grounding road carries more of it on wild
+
+Door applied (apply_tok_seal.py; eq A/B/C bit-identical vs the
+cooker-era dumps; row smoke ALL GATES). polarsink242, loop_val under
+the JIT, the baseline RE-MEASURED to the digit (0.2511 / 0.9556):
+
+| arm | what is flattened | wild | drop | mint | drop |
+|---|---|---|---|---|---|
+| unset | — | 0.2511 | — | 0.9556 | — |
+| loop | both slot->token banks, breaths 1-6 | **0.1536** | **-0.0975** | **0.7704** | **-0.185** |
+| loop-narrow | the main bank only (station 3 live) | 0.2194 | -0.032 | 0.7833 | -0.172 |
+| all | breath 0 too (the floor) | 0.0536 | -0.198 | 0.0046 | -0.951 |
+
+VERDICT BY THE PINNED BARS: the loop drop is 0.0975 on wild — 0.0025
+shy of outcome (A)'s 0.10, inside the texture band by a hair; the
+texture read was built into the run and it is the finding: **on
+wild, the alternator's station-3 grounding road carries two thirds
+of the headroom (0.065) and the main bank one third (0.032); on
+mint the main bank carries nearly all of it (0.172 of 0.185).** So
+outcome (A) in substance: the dynamic re-reading of the tokens across
+the loop breaths IS load-bearing — 39% of wild and 19% of mint ride
+on it — and outcome (B) is dead: dynamic attention at the slot->
+token level is exactly where this machine's grounding lives. The
+breath-0 severance is the floor (everything).
+THE HEADROOM COROLLARY, obeyed: the pot is measured before the
+cooker — 0.10 on wild, 0.19 on mint, split between two roads.
+THE TOKEN COOKER (registered; spec next; the run needs the word): on
+a dose of rows the grounding banks' attention over tokens (breaths
+1-6; station 3 included, since it carries the larger wild share) is
+replaced by the MASK HEAD's token-level gate — a per-slot
+distribution over the prompt's tokens the head emits from its
+context (the polar state, the notebook, the solver facts, the atlas
+needle when it lands) — so on sealed rows the head must do the
+grounding itself; open rows bit-identical; birth = the head's gate
+at uniform = the `loop` severance (0.1536 wild), the floor it climbs
+from. Meter: token-sealed-wild/mint (ALG_TOK_SEAL with the head's
+gate as the road, all rows at read). BARS: token-sealed-wild >=
+0.1536 + 0.05 (the head grounds better than uniform); the census
+shows the head's token gate carrying; open-wild/mint within -0.02 of
+the control; the clock stays. KILL: token-sealed-wild <= the
+uniform floor + 0.01 after 12k = the head cannot ground from its
+context — grounding needs the bank's q·k (the reading is content-
+addressed, not steerable), and dynamic masking stays where it is.
+Both grounding roads are named organs now: `bank` (the fq bank) and
+ALT21 station 3; their pre/post census is the next read.
