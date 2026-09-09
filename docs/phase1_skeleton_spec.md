@@ -35719,3 +35719,55 @@ robustness is not an escape); (b) a gate born AIMED (init from the
 bank's own attention, not uniform) so the run starts from 0.25 not 0.15.
 Neither before the ratio audit (next entry). tokcook242 is PANEL-
 ELIGIBLE, not the champion; polarsink242 remains the research candidate.
+
+## 2026-09-09 — THE SEVERANCE LADDER (the word: "make sure the param ratios are well balanced"): removal cost per organ, predictions PINNED before the reads
+
+THE RULER: parameters are not capability in this family (the mask head:
+2.0M at 1e-5x; the seal: 0 params opened 0.20 of wild). A ratio audit
+means REMOVAL COST PER PARAMETER (the headroom corollary applied to
+every organ), read at read time on the research candidate polarsink242,
+zero training. Gemini's parameter-ratio critique, checked against the
+checkpoint: the "fat readout" (5.2M, 30%) is 3.3M of pointer forms
+behind gains at 0.000-0.004 (dead, not fat; live readout ~1.9M, 11%);
+"99.6% of errors are pointers" is the chain-wide parse-to-annotation
+AGREEMENT (ledger 18650), not an error breakdown (relay reconstruction,
+sighting 12); "station 4 duplicates sc2, dead weight" is contradicted by
+the census (station 4 injects at 0.35-0.72x of the state band on the
+control, the loudest slot-to-slot road; the zero-PARAM duplicates are
+the fed twin at 0.03x and the v0 alt bias at 0.00x). Correct: grounding
+is where capability lives; the mask head's 2.0M is judged by the token
+cooker (bar 1 failed by 0.0027 — see the verdict above). CORRECTION to
+my own read this morning: breath_gate (sigmoid 0.14 at b0 -> 0.024 at
+b6) throttles the WHOLE state update (cur + g*(h_tok + h_slot - cur)),
+not the sc2 mixer alone; the mixer's own post-gate injection is the one
+loop organ the census never recorded ('mixer' = the fed twin).
+THE DOORS (scripts/apply_sever_doors.py, applied: 9 organs, 12 anchors,
+env ALG_SEVER=<list>, unset = untouched; eq gate A/B/C vs the tok-cook
+post dumps runs first in the chain; JIT key picks ALG_SEVER up by source
+scan): notebook (the shelf read into q_extra), garage (the open bus
+injection; the sealed road untouched), s3 / s4 (ALT21 stations' writes),
+mixer (sc2's own h_slot), fedtwin (_mx_inj), altv0 (alt_g at both
+sites), ffn (loop breaths only; the b0 read keeps it), pforms (the
+readout forms' gains). Not on the ladder: the mask head (slot-mask
+removal cost already 0; token attention 0.10/0.19 by the probe), the
+main bank (it IS the state), fed_nl0 / lane 2 (already recorded dead).
+READS: loop_val, polarsink242, wild n=2051 (1 SE ~ 0.010) / mint n=3668
+(1 SE ~ 0.004); baseline open read first. Chain .cache/sever_ladder.sh
+(unit pc-sever, log .cache/sever_ladder.log).
+PREDICTIONS PINNED (removal cost wild / mint; frames: NOISE = within 1
+SE on both; LOAD-BEARING = drop >= 0.02 on wild or >= 0.01 on mint):
+  notebook  >= 0.05 / >= 0.05  LOAD-BEARING (carries 1.0-1.4x of the band)
+  garage    0.02-0.05 / 0.01-0.03  load-bearing, moderate
+  s3        ~0.05 / ~0.02  (the probe's 2/3 of the token headroom)
+  s4        0.02-0.05 / 0.01-0.03  load-bearing (Gemini: dead weight)
+  mixer     < 0.02 / < 0.01  small
+  fedtwin   NOISE (0.03x, zero params)
+  altv0     NOISE (0.00x, zero params)
+  ffn       >= 0.05 / >= 0.05  LOAD-BEARING (7 applications per forward)
+  pforms    NOISE (gains ~0.001; 3.3M params)
+RULES (pinned): an organ at NOISE on both registers is DEAD BY
+SEVERANCE and leaves in the next generation's build (params dropped at
+birth, eq-checked against the severed read); the ratio table is
+removal cost per M params; rebalancing = grow the organs with the
+highest cost per param, never the loudest. A wrong prediction here is
+banked as the finding, not corrected after the fact.

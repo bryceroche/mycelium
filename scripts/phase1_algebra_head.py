@@ -117,6 +117,14 @@ MX_HEADS = int(os.environ.get("MX_HEADS", "8"))   # fed mixer head count
 assert H_W % MX_HEADS == 0, \
     f"MX_HEADS={MX_HEADS} must divide H_W={H_W} (head reshape)"
 PF_FORMS = int(os.environ.get("PF_FORMS", "3"))   # pointer/macro forms
+# THE SEVERANCE LADDER (apply_sever_doors.py, 2026-09-09): read-time
+# organ severance for removal-cost reads. Unset = untouched forward.
+_SEVER_ORGANS = frozenset(("notebook", "garage", "s3", "s4", "mixer",
+                           "fedtwin", "altv0", "ffn", "pforms"))
+_SEVER = frozenset(x for x in os.environ.get("ALG_SEVER", "").split(",") if x)
+assert _SEVER <= _SEVER_ORGANS, \
+    f"ALG_SEVER unknown organ(s) {sorted(_SEVER - _SEVER_ORGANS)}; " \
+    f"known: {sorted(_SEVER_ORGANS)}"
 N_SCR = 8 if FED_SCRATCH else 0                   # scratch slot rows
 L_TOT = L_FAC + N_SCR                             # bank rows incl. scratch
 NB_ROWS = 16 if FED_SHELF else 8                  # shelf stamp rows (item 9)
@@ -1786,7 +1794,7 @@ def _fed_pf(p, name, s, vst, base):
     is exact zeros (0 * finite), so birth is bit-identical. vst=None
     means a plain linear form (h_dig2's shape)."""
     gk = "fed_pf_" + name + "_g"
-    if not (ALG_FED and gk in p):
+    if not (ALG_FED and gk in p) or "pforms" in _SEVER:
         return base
     W = p["fed_pf_" + name + "_W"]
     g = p[gk]
@@ -2098,7 +2106,10 @@ def _make_bank(p, waist, tokmask, B):
             at = at * (1.0 - tgv) + tgate.reshape(B, 1, nq, -1) * tgv
         st = (at @ vh).permute(0, 2, 1, 3).reshape(B, nq, H_W)
         st = st @ p["attn_wo"] + p["attn_wo_b"] + q_in.reshape(-1, nq, H_W)
-        st = st + ((st @ p["ffn_w1"] + p["ffn_b1"]).gelu() @ p["ffn_w2"] + p["ffn_b2"])
+        _ffn_sv = ((st @ p["ffn_w1"] + p["ffn_b1"]).gelu() @ p["ffn_w2"] + p["ffn_b2"])
+        if "ffn" in _SEVER and extra is not None:   # sever: loop breaths only
+            _ffn_sv = _ffn_sv * 0.0
+        st = st + _ffn_sv
         return st, at.mean(1)
 
     return bank
@@ -2291,6 +2302,8 @@ def breath_step(p, state, kb, ctx):
                 _sc = _sc * NB_FOCAL          # the magnifying glass
             _at = _sc.softmax(-1)             # (B, L, k)
             _rd = sum(_at[:, :, j:j + 1] * _nb[j] for j in range(len(_nb)))
+            if "notebook" in _SEVER:
+                _rd = _rd * 0.0
             q_extra = q_extra + _rd           # (B, L, H) — no blur
             if _CENSUS is not None:
                 _CENSUS.append((kb, "notebook", _rd.realize().numpy()))
@@ -2301,6 +2314,8 @@ def breath_step(p, state, kb, ctx):
                 _sc = _sc * NB_FOCAL          # the magnifying glass
             _at = _sc.softmax(-1)
             _rd = sum(_at[:, j:j + 1] * _nb[j] for j in range(len(_nb)))
+            if "notebook" in _SEVER:
+                _rd = _rd * 0.0
             q_extra = q_extra + _rd.reshape(B, 1, -1)
             if _CENSUS is not None:
                 _CENSUS.append((kb, "notebook",
@@ -2362,6 +2377,7 @@ def breath_step(p, state, kb, ctx):
         _rds4 = [_rot2(_rd4, _rc4, _rs4)
                  for (_rc4, _rs4) in _SGC[0].values()]
         _inj4 = Tensor.cat(*_rds4, dim=-1) @ p["W_busr"]
+        _inj4o = _inj4 * 0.0 if "garage" in _SEVER else _inj4   # sever door
         if _CENSUS is not None:
             _CENSUS.append((kb, "garage",
                             (_inj4 * p["bus_g"].reshape(1, 1, 1))
@@ -2378,7 +2394,7 @@ def breath_step(p, state, kb, ctx):
             # capability meter).
             _cur_seal = cur * 0.0 + _inj4
             _q_seal = _cur_seal + p["breath_emb"][kb].reshape(1, 1, -1)
-            _q_open = q_extra + _inj4 * p["bus_g"].reshape(1, 1, 1)
+            _q_open = q_extra + _inj4o * p["bus_g"].reshape(1, 1, 1)
             _pcv4 = (globals().get("_PCV")
                      if float(os.environ.get("ALG_PC_MIX", "0")) > 0.0
                      and not os.environ.get("SC_EVAL", "") else None)
@@ -2416,7 +2432,7 @@ def breath_step(p, state, kb, ctx):
                 cur = _cur_seal
                 q_extra = _q_seal
         else:
-            q_extra = q_extra + _inj4 * p["bus_g"].reshape(1, 1, 1)
+            q_extra = q_extra + _inj4o * p["bus_g"].reshape(1, 1, 1)
     if _snaps and "W_det" in p:
         # THE 2-OF-3 FIELD (the ladder era, 2026-08-31): true
         # forced moves — two determined roles force the third,
@@ -2690,7 +2706,7 @@ def breath_step(p, state, kb, ctx):
                             # the gate is ungained — the meter must
                             # call the organ in force, not a copy)
     sc2 = sc2.clip(-1e4, 1e4) + (1.0 - _mck) * -1e4   # cooker: _mck
-    if _A5 is not None and "alt_g" in p:
+    if _A5 is not None and "alt_g" in p and "altv0" not in _SEVER:
         # v0 soft bias rides alongside (facts wire attention)
         sc2 = sc2 + (_A5 + _A5.transpose(-2, -1)) \
             * p["alt_g"].reshape(1, 1, 1)
@@ -2706,6 +2722,8 @@ def breath_step(p, state, kb, ctx):
         # keys, proportional to mass — soft, init-closed (m starts 0)
         sc2 = sc2 + m_c.reshape(B, 1, L_FAC) * -8.0
     h_slot = (sc2.softmax(-1) @ bv) @ p["W_bo"] + p["W_bo_b"]
+    if "mixer" in _SEVER:
+        h_slot = h_slot * 0.0
     if _CENSUS is not None:
         _CENSUS.append((kb, "state_hslot", h_slot.realize().numpy()))
     if FED_MIXER and "fed_mx_hg" in p:
@@ -2796,6 +2814,8 @@ def breath_step(p, state, kb, ctx):
             * p["fed_mx_hg"].reshape(1, MX_HEADS, 1, 1)   # ZERO gains
         _mx_inj = _mx_o.permute(0, 2, 1, 3) \
             .reshape(B, L_TOT, H_W) @ p["W_bo"]
+        if "fedtwin" in _SEVER:
+            _mx_inj = _mx_inj * 0.0
         h_slot = h_slot + _mx_inj
         if _CENSUS is not None:
             # STATE band. The reader's grammar line says the rest: an
@@ -2880,13 +2900,17 @@ def breath_step(p, state, kb, ctx):
             _sm21 = _sm21 + _mb    # bias, station-4 mixer (before
                                    # ITS close — one geometry/breath)
         _sm21 = _sm21.clip(-1e4, 1e4) + (1.0 - _mck) * -1e4  # cooker
-        if _A5 is not None and "alt_g" in p:   # v0 bias, as station 2
+        if _A5 is not None and "alt_g" in p and "altv0" not in _SEVER:   # v0 bias, as station 2
             _sm21 = _sm21 + (_A5 + _A5.transpose(-2, -1)) \
                 * p["alt_g"].reshape(1, 1, 1)
         if RINGS and int(os.environ.get("ALG_BEXIT", "0")):
             _sm21 = _sm21 + m_c.reshape(B, 1, L_FAC) * -8.0
         _d21b = (_sm21.softmax(-1) @ _bv21) @ p["alt21_W_bo"] \
             + p["alt21_W_bo_b"]
+        if "s3" in _SEVER:
+            _d21a = _d21a * 0.0
+        if "s4" in _SEVER:
+            _d21b = _d21b * 0.0
         h_slot = h_slot + _d21a + _d21b  # additive; zeros at birth
         if _CENSUS is not None:
             # THE LARGEST HOLE, closed (apply_census_organs2.py): two
