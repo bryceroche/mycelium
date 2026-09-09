@@ -35610,3 +35610,39 @@ context — grounding needs the bank's q·k (the reading is content-
 addressed, not steerable), and dynamic masking stays where it is.
 Both grounding roads are named organs now: `bank` (the fq bank) and
 ALT21 station 3; their pre/post census is the next read.
+
+## 2026-09-09 — THE TOKEN COOKER BUILT + APPLIED THROUGH ITS GATES (unfired); the floor and the birth gate measured
+
+Built (scripts/apply_tok_cook.py: 16 anchors; the mask head's
+context construction lifted to module level by pure code motion and
+memoized per breath so the gate and the head hold ONE tensor; the
+gate = softmax over real tokens of (head-context @ tg_a)(waist @
+tg_b)^T — scored on the head's context state `_mh_kv`, not its
+zero-doored output (a gate on `_mh_o` would be uniform AND dead);
+W_tg = 512x128 + 512x128 = 131,072 params, born only when the door
+is set; the SAME gate replaces both grounding roads on sealed rows
+(station 3 included); third independent hash; TC_EVAL unconditional;
+read door ALG_TOK_SEAL=head; census organ `tokgate` = KL from
+uniform per slot + rms). CPU smoke ALL GATES (480 tensors bit-
+identical unset across both configs and every tok-seal value; gate
+sums to 1 within 6e-7, pads exactly 0; per-row surgery bitwise;
+two-terminal into tg_a/tg_b and every mask-head param; the three
+cookers compose — 8 cells; the head meter == the sealed training
+path to 9.5e-6, the blend scalar vs buffer difference named).
+APPLIED (head + port_census reader): eq A/B/C bit-identical vs the
+tok-seal dumps; pc_row_smoke ALL GATES on the applied head (the
+mask-cook and tok-seal smokes cannot be re-run against a target
+that already carries their patches — their idempotence guards
+refuse — so their coverage rests on the bit-identical eq gate).
+THE FLOOR, re-measured on the CONTROL polarsink242c: open 0.2506 /
+0.9610; uniform (loop) **0.1482 / 0.7587**. THE BIRTH GATE on
+polarsink242's real warm state (census, ALG_TOK_SEAL=head): KL from
+uniform 0.014 -> 0.029 nats across breaths (aim 0.003-0.008 of log
+n_tok 3.90) — the gate is born at the floor, as designed.
+BARS (spec §4, restated against the control's floor): (1) token-
+sealed(head) wild >= 0.1482 + 0.05 = 0.1982 on tokcook242 (and the
+arm's own loop floor reported); (2) the gate's aim grows (census KL
+>> 0.03 on sealed reading); (3) open-wild/mint within -0.02 of
+0.2506 / 0.9610; (4) clock probe >= 0.95. KILL: head-sealed wild <=
+floor + 0.01. Chain .cache/tok_cook_twin.sh staged, UNFIRED — the
+word.

@@ -84,6 +84,9 @@ N = min(N, len(vs))
 acc = {}          # (kb, organ) -> [vecs (H,)], [rms], [rms|open], [shape]
 base_mag = {}     # baseline name -> kb -> [rms]   (each band its own)
 base_shape = {}   # baseline name -> kb -> shape   (the band signature)
+tg_kl = {}        # kb -> [mean KL from uniform per slot]  (THE TOKEN GATE)
+tg_ref = {}       # kb -> [log n_tok]  the uniform gate's own entropy,
+                  # DERIVED from the recorded gate (pads are exactly 0.0)
 for s0 in range(0, N, 8):
     sl = np.arange(s0, min(s0 + 8, len(vs)))
     pad = 8 - len(sl)
@@ -124,10 +127,26 @@ for s0 in range(0, N, 8):
         if organ in ("state", "state_slot", "state_hslot"):
             base_mag.setdefault(organ, {}).setdefault(kb, []).append(m)
             base_shape.setdefault(organ, {})[kb] = arr.shape
+        if organ == "tokgate":
+            # THE TOKEN GATE (apply_tok_cook.py, 2026-09-09): the
+            # uniform reference, MEASURED on the same rows rather than
+            # assumed — n_tok is the count of strictly positive entries
+            # per slot, and pads are EXACTLY 0.0 by construction (the
+            # -1e4 pad addend underflows in the softmax).
+            _nt = (arr > 0.0).sum(-1)
+            tg_ref.setdefault(kb, []).append(
+                float(np.log(np.maximum(_nt, 1)).mean()))
+        if organ == "tokgate_kl":
+            tg_kl.setdefault(kb, []).append(float(arr.mean()))
     H._CENSUS = None
 
 BASELINES = ("state", "state_slot", "state_hslot")
-organs = sorted({o2 for (_, o2) in acc if o2 not in BASELINES})
+# THE TOKEN GATE's KL is a DIVERGENCE, not an injection: its rms is not
+# an amplitude and a (1,)-vector cosine is +-1 by construction. It is read
+# in its own section below, never in the injection table.
+DIVERGENCES = ("tokgate_kl",)
+organs = sorted({o2 for (_, o2) in acc
+                 if o2 not in BASELINES and o2 not in DIVERGENCES})
 kbs = sorted({k for (k, _) in acc})
 posts = [o2 for o2 in organs if o2 + "_pre" in organs]
 H_W = int(base_shape["state"][max(base_shape["state"])][-1])
@@ -164,7 +183,11 @@ BASE_PICK = {"mixer": "state_hslot", "mixer_pre": "state_hslot",
 # OUTPUT MATRIX, not an ajar gain, so post IS the whole reading and a
 # _pre form would be a fake ratio in a different space. Named here so
 # their empty row in the gain ledger reads as a fact, not an omission.
-NO_GAIN = ("alt21_s3", "alt21_s4")
+NO_GAIN = ("alt21_s3", "alt21_s4", "tokgate")
+# `tokgate` (THE TOKEN COOKER, 2026-09-09) rides NO scalar gain at all —
+# it does not add into a band, it REPLACES the slot->token attention on
+# sealed rows. There is nothing to divide out and no pre-gain form to
+# report; its empty gain-ledger row is a fact, like stations 3-4's.
 
 
 def base_rms(kb, organ):
@@ -252,6 +275,26 @@ if posts:
         print(f"  NO SCALAR GAIN on their path (zero-init output matrices, "
               f"not an ajar gain — post IS the whole reading; a _pre would "
               f"be a fake ratio in a different space): {', '.join(_ng)}")
+
+# ------------------------------------------------------- the token gate
+if tg_kl:
+    print("TOKEN GATE — THE AIM (apply_tok_cook.py, 2026-09-09). KL = the "
+          "organ's OWN mean KL from uniform per slot (nats, quoted not "
+          "rebuilt); log n_tok = the uniform gate's entropy, DERIVED from "
+          "the recorded gate on the same rows; aim = KL / log n_tok in "
+          "[0, 1): 0.000 IS the uniform floor the severance probe "
+          "measured, 1.000 would be a delta on one token. The cooker's "
+          "job is to move `aim`.")
+    for kb in sorted(tg_kl):
+        _kl = float(np.mean(tg_kl[kb]))
+        _rf = float(np.mean(tg_ref.get(kb, [0.0]))) or float("nan")
+        _rm = (float(np.mean(acc[(kb, "tokgate")][1]))
+               if (kb, "tokgate") in acc else float("nan"))
+        print(f"  b{kb}:  KL={_kl:>9.5f}  log n_tok={_rf:>7.4f}  "
+              f"aim={_kl / _rf:>7.5f}  rms={_rm:.5g}")
+    print("  [grammar] the gate is a DISTRIBUTION over the prompt's real "
+          "tokens (exactly 0 on pads), not an injection: it has no band "
+          "baseline, no gain and no pre-form. Read `aim`, not `rms`.")
 
 # ------------------------------------------- the 2026-09-01 reading, kept
 print("breath | " + " | ".join(f"{o2}: rms(rel)" for o2 in organs))
