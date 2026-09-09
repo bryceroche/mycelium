@@ -35485,3 +35485,59 @@ on the clock and mint; the wild cost is the generation's open debt
 (the sink ablation — waist alone / E&B alone — and the cooker on the
 polar machine are its two registered remedies). The mask cooker
 chain (pc-maskcook) fired on this unit's exit.
+
+## 2026-09-09 — THE MASK COOKER VERDICT: the player woke (1e-5x -> 0.84x) and nothing changed — because the slot mask carries no capability. THE HEADROOM COROLLARY.
+
+pc-maskcook (warm polarsink242, 12k, seed 242): ARM COOK (dose 0.15,
+skel self) vs ARM CTRL (cooker off, same seed). Perf path proven in
+anger (cache banks 12 MB/bucket; every read under the JIT).
+
+| read | COOK | CTRL | baseline polarsink242 | bar |
+|---|---|---|---|---|
+| mask-sealed wild (identity baseline + the head's gate) | 0.2482 | **0.2560** | 0.2521 | ">= 0.05 from ~0" — VACUOUS: never ~0 |
+| open-wild | 0.2491 | 0.2506 | 0.2511 | guard -0.0015 PASS |
+| mask-sealed mint | 0.9618 | 0.9550 | 0.9528 | (vacuous) |
+| mint | **0.9626** | 0.9610 | 0.9556 | guard +0.0016 PASS |
+| mask head on sealed rows (census, x of the score band) | b1 0.03, b2 0.10, b3 0.56, **b4 0.84**, b5 0.54, b6 0.37 | (pending) | 1e-5 | >= 0.1x from b2: **PASS** |
+| clock probe / breath hand | 1.0 / 0.75 | 1.0 / 0.69 | — | PASS |
+
+**THE ORGAN WOKE.** Under the seal the mask head's gate carries at
+up to 0.84x of the score band — from 1e-5x. The mandatory-road law
+holds a second time: give an organ the only road and it carries.
+The gate it learned is anti-aligned with the committed-edge bias
+(cos -0.70): on sealed rows the head learned to UNDO what the alt
+bias does (a lead for the alt organ's own audit).
+**AND NOTHING CHANGED.** Every checkpoint reads the same with the
+baseline mask severed as with it: polarsink242 0.2521 vs 0.2511
+open; the control 0.2560 mask-sealed vs 0.2506 open (unmasked is
+slightly BETTER on wild); the cooked head's learned gate 0.2482
+(marginally worse than uniform, within noise). Because the gate at
+birth is sigmoid(~0) = all lanes half-open = all-to-all attention,
+and all-to-all reads as well as the baseline, THE SLOT MASK IS NOT
+LOAD-BEARING in this machine. The flag audit's inverted correlation
+(openness -> correctness) was this fact seen sideways. The seal
+removed nothing the parse needed; the cooker cooked an empty pot.
+**THE HEADROOM COROLLARY (to the mandatory-road law):** a cooker
+converts headroom, and headroom is the BYPASS'S REMOVAL COST,
+measured FIRST. The pressure cooker's forensic measured it: sever
+the residual, 0.26 -> 0.0000 — 0.26 of headroom, and the cooker
+converted 0.2 of it. The mask cooker's headroom was never read
+before the fire: sever the slot mask, 0.2511 -> 0.2521 — zero (or
+negative). Sever, measure the drop, THEN cook; a zero drop means the
+road is not where capability lives, however loud the organ can be
+made. Filed beside the law in CLAUDE.md.
+CONSEQUENCES: (1) the slot-level dynamic-masking thesis ("the
+steering wheel", "the drafting problem") is not where wild
+capability lives at this stage — the parse does not depend on which
+SLOTS see which. The mask head's next road is the TOKEN-level
+attention (which words each slot reads from the trunk bank — the
+reading itself; the flag's second binding pointed at the garage's
+attention), and the headroom read comes FIRST: sever the token
+attention's structure on a share of rows and measure the drop.
+(2) The cooked arm's mint 0.9626 is a lineage high, but the
+control's 0.9610 says it is continuation, not the cooker.
+(3) The two arms' cache buckets did not share despite the ignore
+list (585bbe.. vs 7179c4..) — a key-composition bug to fix (the
+declared exclusions themselves probably entered the key).
+(4) The atlas/needle/MUC ladder (09-08) is unchanged in order; its
+rung 3 feeds the mask head, so the headroom read precedes it too.

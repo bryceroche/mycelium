@@ -131,7 +131,10 @@ pure prose at 340 epochs is poison −243 — tune between).
   birth (mh_gain 0.02→0.0002). Proofs: the seal (channel 0→0.2), the clock (no
   gain, probe 1.0). **THE PRE/POST KNOB LAW**: census every organ's injection
   pre- and post-gain per breath before any claim (gain 0.008 × stamps 1e4 =
-  0.4× of the state). Ledger 2026-09-08.
+  0.4× of the state). **THE HEADROOM COROLLARY (2026-09-09)**: a cooker converts
+  headroom = the bypass's removal cost, measured FIRST (sever, read the drop,
+  then cook); the mask cooker woke its organ to 0.84× and changed nothing
+  because the slot mask's removal cost was zero. Ledger 2026-09-08/09.
 - **Poincaré-Euclidean marriage clause** (for when the ball's flag lifts):
   hyperbolic quantities never enter softmax without a log-map; cosine is wrong
   in the ball.

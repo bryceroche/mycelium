@@ -137,3 +137,40 @@ the same way and in that order: as roads, under pressure, measured
 pre and post, each with a bar before the next is touched. The
 increments were never the architecture's fault. They were the
 residual's, and we have finally taken its bypass away.
+
+---
+
+## Postscript, September 9: the second cooker, and what an empty pot teaches
+
+The mask cooker ran overnight, the law applied to attention: on a
+share of rows the baseline mask was severed and the mask head's own
+logits became the only lanes. The organ woke exactly as the law
+predicts. On sealed rows its gate now carries at up to 0.84 of the
+band it lives in, from a hundred-thousandth. Give an organ the only
+road and it carries.
+
+And the numbers did not move. Not on the cooked arm, not on the
+control, not on wild, not on synthetic. The reason was in the
+baseline we read before firing, and we should have read it before
+building: with the baseline mask severed entirely, the champion
+scores 0.2521 on wild against 0.2511 with it, and the control reads
+slightly *better* unmasked. The slot mask was never load-bearing.
+All-to-all attention among the slots does the job as well as any
+mask, so the seal removed nothing the parse needed, and the organ,
+forced to carry, had nothing to carry. It learned a gate that undoes
+the committed-edge bias, and the machine did not care.
+
+So the law gets its corollary. A cooker converts headroom, and
+headroom is the bypass's removal cost, measured first. The pressure
+cooker had a forensic behind it: sever the residual and wild goes
+from 0.26 to zero, so there was 0.26 to convert, and it converted a
+fifth. The mask cooker had no such read, and its headroom was zero.
+Sever, measure the drop, then cook. If the drop is nothing, the road
+is not where capability lives, however loud you can make the organ
+that owns it.
+
+Where that leaves the steering wheel: not on the slot mask. The
+parse does not depend on which slots see which. If dynamic attention
+matters in this machine, it matters at the level of which *words*
+each slot reads, and that headroom read comes before anything is
+built on it. The player is awake now. It needs a game.
