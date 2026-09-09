@@ -35552,7 +35552,7 @@ failure mode is the mis-aimed pointer: the wrong number bound to the
 right role — the paper's 99.6%-decodable survivors).
 THE PROBE (a read; a small env-gated door in the head to flatten the
 slot->token attention `fat` to uniform over the prompt's tokens on
-ALL rows at read time, ALG_TOK_SEAL=1; byte-inert unset; eq gate):
+ALL rows at read time — door values `loop` (breaths 1-6 only; breath-0 grounding kept) and `all` (breath 0 too); `=1` RAISES by design; ALG_TOK_SEAL_S3=0 = the narrow arm that leaves the alternator's station-3 grounding road open; byte-inert unset; eq gate):
 loop_val open-wild and mint on polarsink242 with and without the
 door. OUTCOMES PINNED: (A) HEADROOM EXISTS — wild drops by >= 0.10
 (0.25 -> <= 0.15): grounding is load-bearing; a token cooker
