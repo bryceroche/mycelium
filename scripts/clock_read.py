@@ -431,6 +431,10 @@ def collect_states(fixture):
     from phase1_algebra_head import (build_params, forward, load_alg,
                                      build_slot_masks, alt2_fact_buf,
                                      K_VARS)
+    # THE JIT'D READ FORWARD (door ALG_JIT_READ; mycelium/jit_read.py).
+    # Door unset -> _rf(forward, ...) IS forward(...), `keys` dropped.
+    from mycelium.jit_read import read_forward as _rf
+    _JK_OPEN = ("fat", "args", "res", "pres", "ftype", "op", "dig", "dup")
 
     samples, states, tokmask, gold, sent = load_alg("test")
     n_all = len(samples)
@@ -457,7 +461,7 @@ def collect_states(fixture):
         tk = Tensor(tokmask[sl_p].astype(np.float32), dtype=dtypes.float)
         se = Tensor(sent[sl_p].astype(np.int32), dtype=dtypes.int)
         # pass 1: unmasked parse -> masks + live facts (loop_val's cycle)
-        o0 = forward(p, ts, tk, se)
+        o0 = _rf(forward, p, ts, tk, se, keys=_JK_OPEN)
         onp0 = {k: o0[k].realize().numpy() for k in ("fat", "args", "res")}
         mk = build_slot_masks(onp0, sent[sl_p].astype(np.int32))
         _ka = (("pres", "ftype", "op", "dig")
@@ -469,9 +473,9 @@ def collect_states(fixture):
         fb = alt2_fact_buf(_oa, sent[sl_p], _nv, _ma)
         # pass 2: the breathing walk; the tap hands back the raw
         # per-breath slot states
-        o = forward(p, ts, tk, se,
-                    slot_mask=Tensor(mk, dtype=dtypes.float),
-                    fact_buf=Tensor(fb, dtype=dtypes.float))
+        o = _rf(forward, p, ts, tk, se, keys=(CR_KEY,),
+                slot_mask=Tensor(mk, dtype=dtypes.float),
+                fact_buf=Tensor(fb, dtype=dtypes.float))
         assert CR_KEY in o, (
             f"forward() emitted no '{CR_KEY}' (keys: "
             f"{sorted(k for k in o if k.startswith('breaths'))}). "

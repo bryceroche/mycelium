@@ -156,6 +156,11 @@ def main(ckpt=None, data=None, p=None):
                                      build_slot_masks, alt2_fact_buf, K_VARS)
     from tinygrad import Tensor, dtypes
     from tinygrad.nn.state import safe_load
+    # THE JIT'D READ FORWARD (door ALG_JIT_READ; mycelium/jit_read.py).
+    # Door unset -> _rf(forward, ...) IS forward(...), `keys` dropped:
+    # byte-inert. Imported here, beside the other lazy imports, so
+    # `import step_engine_read` stays CPU-safe and GPU-free.
+    from mycelium.jit_read import read_forward as _rf
 
     R = int(os.environ.get("SE_R", "3"))
     THETA = float(os.environ.get("SE_THETA", "0.9"))
@@ -205,11 +210,15 @@ def main(ckpt=None, data=None, p=None):
         se = Tensor(vse[sl_p].astype(np.int32), dtype=dtypes.int)
 
         def run_pass(mk, fb):
-            o = forward(p, ts, tk, se,
-                        slot_mask=(None if mk is None
-                                   else Tensor(mk, dtype=dtypes.float)),
-                        fact_buf=(None if fb is None
-                                  else Tensor(fb, dtype=dtypes.float)))
+            # The open pass (mk None) and a conditioned pass feed
+            # DIFFERENT ports, so under the door they capture different
+            # graphs by construction — the port signature is part of
+            # jit_read's key, not a convention anyone has to remember.
+            o = _rf(forward, p, ts, tk, se, keys=kset,
+                    slot_mask=(None if mk is None
+                               else Tensor(mk, dtype=dtypes.float)),
+                    fact_buf=(None if fb is None
+                              else Tensor(fb, dtype=dtypes.float)))
             return {k: o[k].realize().numpy() for k in kset}
 
         def commit(onp):

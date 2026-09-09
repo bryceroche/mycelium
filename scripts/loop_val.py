@@ -12,6 +12,18 @@ from phase1_algebra_head import (build_params, forward, load_alg,
 from tinygrad import Tensor, dtypes
 from tinygrad.nn.state import safe_load
 
+# THE JIT'D READ FORWARD (2026-09-08; door ALG_JIT_READ, the module
+# mycelium/jit_read.py). With the door UNSET, `_rf(forward, ...)` IS
+# `forward(...)` — the same call with the same arguments, `keys`
+# dropped on the floor — so this file is byte-inert until the door
+# opens. With it set, each pass runs from a captured graph keyed by
+# (which ports are fed, which outputs are asked for, the batch shape,
+# the value of EVERY env name the head's source reads — SC_EVAL among
+# them, per THE UNLIT STOVE — and the identity of the param dict).
+# Weights swap in place (p[k].assign), so a checkpoint swap re-uses
+# the same graph; a mode change never can.
+from mycelium.jit_read import read_forward as _rf
+
 # REFACTOR (2026-09-08, scripts/read_batch.py): the module body moved
 # into atlas_tables()/read()/main() with ZERO change to any computation
 # — same statements, same order, same arithmetic, same print. Standalone
@@ -76,6 +88,21 @@ def read(ckpt, data=None, p=None):
     for k in p:
         p[k].assign(sd[k].to(p[k].device).cast(p[k].dtype)).realize()
     _ATAB, _AIDX, _atl, _acls = atlas_tables(vs)
+    # THE JIT'D READ's output declarations (door ALG_JIT_READ): a
+    # captured graph's return value is fixed at capture, so the keys a
+    # pass consumes must be named before the graph exists. These two
+    # tuples are built from the SAME branch conditions the eager
+    # realize sets below use — ALT2/LV_NOFACT for the open pass's fact
+    # block, _XPV for nl0, "h_dup" in p for dup — so the door never
+    # asks forward() for an output the eager path would not have
+    # realized. With the door shut they are unused.
+    _jk_open = (("fat", "args", "res")
+                + (("pres", "ftype", "op", "dig", "dup")
+                   if int(os.environ.get("ALG_ALT2", "0"))
+                   and not int(os.environ.get("LV_NOFACT", "0")) else ())
+                + (("nl0",) if _XPV else ()))
+    _jk_masked = (("pres", "ftype", "op", "islit", "dig", "args", "res")
+                  + (("dup",) if "h_dup" in p else ()))
     n_ok = n_tot = 0
     for s0 in range(0, len(vs), 8):
         sl = np.arange(s0, min(s0 + 8, len(vs)))
@@ -84,7 +111,7 @@ def read(ckpt, data=None, p=None):
         ts = Tensor(vst[sl_p].astype(np.float32), dtype=dtypes.float)
         tk = Tensor(vtk[sl_p].astype(np.float32), dtype=dtypes.float)
         se = Tensor(vse[sl_p].astype(np.int32), dtype=dtypes.int)
-        o0 = forward(p, ts, tk, se)
+        o0 = _rf(forward, p, ts, tk, se, keys=_jk_open)
         onp0 = {k: o0[k].realize().numpy() for k in ("fat", "args", "res")}
         mk = build_slot_masks(onp0, vse[sl_p].astype(np.int32))
         fact_t = mass_t = None
@@ -120,8 +147,9 @@ def read(ckpt, data=None, p=None):
             _lvai = np.where(_rlv, _xlv, _lvai)
         _mha_t = (Tensor(_ATAB[_lvai], dtype=dtypes.float)
                   if _ATAB is not None else None)
-        o = forward(p, ts, tk, se, slot_mask=Tensor(mk, dtype=dtypes.float),
-                    fact_buf=fact_t, mh_mass=mass_t, mh_atlas_traj=_mha_t)
+        o = _rf(forward, p, ts, tk, se, keys=_jk_masked,
+                slot_mask=Tensor(mk, dtype=dtypes.float),
+                fact_buf=fact_t, mh_mass=mass_t, mh_atlas_traj=_mha_t)
         onp = {k: o[k].realize().numpy() for k in
                (("pres", "ftype", "op", "islit", "dig", "args", "res")
                 + (("dup",) if "h_dup" in p else ()))}

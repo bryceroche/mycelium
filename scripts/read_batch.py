@@ -216,6 +216,23 @@ assert not isinstance(HEAD.forward, TinyJit), (
     "bakes SC_EVAL at capture; read_batch must not share a graph across "
     "meters. Run one meter mode per process.")
 
+# THE JIT'D READ DOOR (mycelium/jit_read.py, 2026-09-08). The fence
+# above still stands and still means exactly what it said: forward()
+# itself is never wrapped, so no graph is shared across meters by
+# accident. jit_read captures graphs BESIDE forward() and keys every
+# one of them on the value of every env name the head's source reads —
+# SC_EVAL, SC_KB, ALG_SHELF_CIRCLE, ALG_PC_MIX included — so a mode
+# change gets its own graph instead of a stale one. THE UNLIT STOVE,
+# keyed instead of argued. Assert it here rather than trusting prose.
+from mycelium import jit_read                               # noqa: E402
+_JRN = jit_read.env_names(os.path.abspath(HEAD.__file__))
+if jit_read.enabled():
+    for _req in ("SC_EVAL", "SC_KB", "ALG_SHELF_CIRCLE", "ALG_PC_MIX",
+                 "ALG_BREATH", "ALG_ALT2", "ALG_INV"):
+        assert _req in _JRN, (
+            f"ALG_JIT_READ=1 but {_req} is not in jit_read's env key — a "
+            f"captured graph would outlive the mode that built it")
+
 # hooks that a miner/trainer arms and a read must never inherit
 _HOOKS = ("_PCV", "_SEV", "_CENSUS", "_IMP", "_STEP_TAP")
 
@@ -265,6 +282,11 @@ def banner():
           f"dev={os.environ.get('DEV')} one_mode={ONE_MODE}", flush=True)
     print(f"[read-batch] organs: loop_val={_LV_MOD} "
           f"step_engine_read={_SE_MOD} clock_read={_CR_MOD}", flush=True)
+    print(f"[read-batch] jit-read={'ON' if jit_read.enabled() else 'off'}"
+          + (f" (env key spans {len(_JRN)} names; slots capped at "
+             f"{os.environ.get('ALG_JIT_READ_MAX', '32')})"
+             if jit_read.enabled() else " (forward runs eager)"),
+          flush=True)
     print(f"[read-batch] ckpts={CKPTS}", flush=True)
     print(f"[read-batch] meters={METERS}", flush=True)
 
@@ -320,11 +342,17 @@ def sc_eval_tripwire(p, data):
         finding), and the shelf-circle seal lives INSIDE the loop at
         SC_KB, so an unmasked forward is insensitive to SC_EVAL by
         construction and would make this tripwire cry wolf."""
-        o0 = HEAD.forward(p, ts, tk, se)
+        # Through jit_read's door, so that under ALG_JIT_READ=1 the
+        # tripwire probes THE PATH THE METERS TAKE (a check must call
+        # its organ). Door shut, these two lines are the eager calls
+        # they replace, argument for argument.
+        o0 = jit_read.read_forward(HEAD.forward, p, ts, tk, se,
+                                   keys=("fat", "args", "res"))
         onp0 = {k: o0[k].realize().numpy() for k in ("fat", "args", "res")}
         mk = HEAD.build_slot_masks(onp0, vse[sl_p].astype(np.int32))
-        o = HEAD.forward(p, ts, tk, se,
-                         slot_mask=Tensor(mk, dtype=dtypes.float))
+        o = jit_read.read_forward(HEAD.forward, p, ts, tk, se,
+                                  keys=("res",),
+                                  slot_mask=Tensor(mk, dtype=dtypes.float))
         return o["res"].realize().numpy()
 
     with env_scope(SC_EVAL="0"):
