@@ -35646,3 +35646,34 @@ arm's own loop floor reported); (2) the gate's aim grows (census KL
 0.2506 / 0.9610; (4) clock probe >= 0.95. KILL: head-sealed wild <=
 floor + 0.01. Chain .cache/tok_cook_twin.sh staged, UNFIRED — the
 word.
+
+## 2026-09-09 — GUT REGISTERED (the 23rd): "the air is stuck — we need convection" — the turnover read says TURBULENT, NOT STUCK; convection reframed as sink + return; the token cooker fires
+
+THE TURNOVER READ (CPU, the dumped polar states, 256 rows x 24 slots
+x 7 breaths, both fixtures): per-slot turnover ||x_{k+1}-x_k||/||x_k||
+= 0.46-0.66 every breath (p10 >= 0.36), angle between consecutive
+directions 27-34 deg, new-variance fraction 0.20-0.31 per breath,
+slots frozen (turnover < 0.02) by breath 6: **0 of 24** on both
+fixtures. The clock read's R^2 = 0.97 between breaths was the SLOT-
+POOLED mean, which barely moves because the slots move in different
+directions and cancel: the air is turbulent, not stagnant. THE PAWL
+READ is moot: the commitment-mass ratchet (`cur = m_c*anchor +
+(1-m_c)*cur_new`) is the RINGS branch, and ALG_RINGS is OFF in the
+deployed family (`"m_c": m_c if RINGS else None`) — the champion
+runs `cur = cur_new`; nothing in the state ever freezes, so "nothing
+un-commits" was aimed at an organ that is not there. Commitment in
+this machine happens in the DEPOSITS (the garage) and the adapter's
+discretization, not in the state.
+WHAT IS STUCK: (1) no cold sink — the common mode only heats
+(per-slot norm 12 -> 19 across the breaths, monotone; the polar
+radius is a coordinate with no regulator); (2) no return — the
+symbolic side re-enters at 2% (facts) / 0.3% (edges) and says
+nothing on contradiction. Convection reframed: not more motion but
+ORGANIZED motion — a cold leg (commit/sever: the sealed channel as
+the deployed regime, the pressure cooker's road made the cycle's
+cold leg) and a return (the solver's refusal re-entering the
+reading; the token gate conditioned on the facts is the first return
+road, in flight now). The release valve (the MUC melting deposits,
+not state) stays registered at rung 4 with the pawl language struck.
+READS FIRST ruling honored (Bryce): nothing in the read changes the
+cooker; THE TOKEN COOKER TWIN FIRED (unit pc-tokcook) on the word.
