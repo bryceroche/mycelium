@@ -35677,3 +35677,45 @@ road, in flight now). The release valve (the MUC melting deposits,
 not state) stays registered at rung 4 with the pawl language struck.
 READS FIRST ruling honored (Bryce): nothing in the read changes the
 cooker; THE TOKEN COOKER TWIN FIRED (unit pc-tokcook) on the word.
+
+## 2026-09-09 — THE TOKEN COOKER VERDICT: BAR 1 FAILED BY 0.0027 (head-sealed wild 0.1955 vs >= 0.1982), NOT KILLED (kill <= 0.1582) — the gate aims (KL x5-8) but the cooker bought ROBUSTNESS, not STEERING
+
+tokcook242 (warm polarsink242, 12k, seed 242, dose 0.15, S3=1; unit
+pc-tokcook; chain .cache/tok_cook_twin.sh; log .cache/tok_cook_twin.log;
+census .cache/portcensus_tokcook.log). Val proxy 0.8945 @4k / 0.9433 @8k
+(best) / 0.9430 @12k. READS (JIT, n=2051 wild / 3668 mint):
+  open            wild 0.2409 (ctl 0.2506, -0.0097)  mint 0.9433 (ctl 0.9610, -0.0177)
+  head-sealed     wild **0.1955** (bar >= 0.1982: FAIL by 0.0027 ~ 5 rows)  mint 0.8070
+  uniform (loop)  wild 0.1565 (ctl 0.1482)   mint 0.8053 (ctl 0.7587)
+  clock           probe 1.0000 on breath_hand/parity/content x mint/wild;
+                  designed mass 0.71-0.77 (PASS)
+  tokgate census  KL from uniform 0.097-0.221 nats (aim 0.025-0.057 of
+                  log n_tok 3.90) vs birth 0.014-0.029 (aim 0.003-0.008):
+                  the gate MOVED, x5-8 (BAR 2 PASS) — and is still 94-97%
+                  of the way to uniform.
+BARS: (1) FAIL (0.1955 < 0.1982; bars never bend); KILL NOT TRIGGERED
+(0.1955 > 0.1582); (2) PASS; (3) PASS (mint -0.0177 within -0.02, at the
+edge); (4) PASS. VERDICT: NOT PROMOTED, NOT KILLED.
+THE TEXTURE: head-sealed wild rose +0.047 over the control's floor
+(0.1482 -> 0.1955) but the arm's OWN flat floor rose too (0.1482 ->
+0.1565), so the gate's own contribution on wild is +0.039; on mint the
+gate contributes +0.002 (0.8070 vs 0.8053) while the flat floor rose
++0.047 (0.7587 -> 0.8053). On 15% of rows the loss faced "aim the gate
+or make the parse survive flat attention" and chose the second on mint
+entirely and mostly on wild: THE COOKER CONVERTED HEADROOM INTO
+ROBUSTNESS, NOT STEERING. 4.7 of the 10.2 wild points converted, and
+the gate that did it is near-uniform (aim 3-6%). The kill clause's
+hypothesis (grounding is content-addressed q.k, not steerable from the
+mask head's context) is NOT refuted by this run and NOT confirmed
+either; a gate born at uniform with a 0.15 dose had one run to learn to
+aim and learned a little. CENSUS SIDE-EFFECTS (wild, post-gain): ALT21
+station 4 ROSE 0.35-0.72x -> 0.59-1.15x; station 3 FELL 0.20-0.45x ->
+0.17-0.27x; the mask head's OWN output woke (pre 0.10-0.33 -> 7-16 =
+1.4-5.8x of the slot band) because the token gate's context runs through
+its encoder, while its slot-mask gain stays 0.01-0.02x (mh_gain 0.0002).
+NEXT for this road (registered, unfired): (a) the residual-seal form of
+the cooker (spec §4's follow-up: seal the RESIDUAL of the reading, so
+robustness is not an escape); (b) a gate born AIMED (init from the
+bank's own attention, not uniform) so the run starts from 0.25 not 0.15.
+Neither before the ratio audit (next entry). tokcook242 is PANEL-
+ELIGIBLE, not the champion; polarsink242 remains the research candidate.
