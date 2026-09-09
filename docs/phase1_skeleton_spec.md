@@ -35913,3 +35913,48 @@ question is CLOSED as unsupervisable, not solved: no gold trajectory
 exists and the Goodhart fence forbids inventing one from a diagnostic;
 the game is slot->token (the severance probe), and that road's first
 organ just failed its bar.
+
+## 2026-09-09 — GATE 4 PASS; THE BALANCED GENERATION FIRED (unit pc-balanced, 16:46); THE COLLIDER REOPENED AS A RETURN ROAD (word given) — rung 1 bars pinned
+
+GATE 3 (after a harness fix: backward before any realize of the outputs
+— realizing an output replaces its graph with a buffer and the loss
+loses its path; the first probe's all-zero grads were the harness, not
+the organs): P == G == G+sever bitwise; all-open cooker rows == open
+(max|d| 9.9e-5, cross-graph); sealed rows differ (35.9); grads
+nb2_sil 2.6e3, alt5_attn_wo 9.0e2 (the zero-init idiom: ink and output
+wake first; nb2_nq / alt5_attn_wq exactly 0 at birth by construction),
+W_sil 1.9e3, alt21_attn_wo 4.7e2, attn_wo 1.5e4 on the open rows.
+GATE 4: 3-step train smoke, ALG_BAL_COOK=0.5 — armed 66,912/133,828
+rows; loss 8.60 -> 6.13 finite; the mask-prep bucket 34ef6f2f banked
+(arms G and C hit it; arm P pays one pass). FIRED: .cache/balanced_gen.sh
+as pc-balanced at 16:46 (P -> G -> C, sequential; ~7h with P's pass).
+
+THE COLLIDER, REOPENED (the 24th gut; the word). The 2026-09-07 kill
+stands: as a VERIFIER (does a wrong reading contradict itself in the
+solver) it is dead — 5% visibility; a wrong parse is a coherent parse
+of a different problem. REFRAMED as a RETURN ROAD: two readings of one
+text meet in the solver and the slots where they DIVERGE are the front;
+the front is a per-slot signal the next breath can act on (the token
+gate BORN AIMED at the front — the registered follow-up to the failed
+cooker — instead of born uniform). The rivals exist already: the main
+bank and station 3 are two grounding roads carrying different
+registers (the ladder); seed 241 is a third. Disagreement is visible
+where contradiction was not (means-vs-overlaps: cap2x, same score,
+24.7% item-level disagreement).
+RUNG 1 (zero training; four reads after the generation lands): on the
+wild holdout, reading A = polarsink242 open; B = polarsink242 with
+ALG_SEVER=s3; C = polarsink241 open. Per slot, against the gold
+factor: P(wrong | A,B disagree) vs P(wrong | agree), same for (A,C).
+BARS: disagreement covers >= 40% of A's wrong slots AND lift >= 3x
+over the base wrong rate, on at least one rival pair. KILL: neither
+pair reaches both -> the front is too thin to steer by; the collider
+dies a second time, at the slot level, and its home is the certifier's
+panel, not the breath.
+RUNG 2 (zero training, registered, fires only on rung 1): a third
+reading re-grounding the front's slots on the union of A and B's
+evidence, three-way vote; bar: open wild >= A + 0.010.
+RUNG 3 (a run; needs the word again): the front as an input to the
+token gate's context under the residual-seal cooker; bar: head-sealed
+wild >= 0.1955 + 0.050 (the five points the uniform-born gate missed).
+Read script to build: scripts/collider_front_read.py (per-slot dumps
+of A/B/C on the wild holdout + the gold join; CPU grading).
