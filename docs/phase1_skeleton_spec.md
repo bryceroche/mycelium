@@ -35321,3 +35321,24 @@ entering the state, the player redrawing the mask — is running at
 garage and the raw residual. The forensic's incrementality, the
 whispering rotor, and the silent player are one finding.
 Logs: .cache/portcensus_{sharp_fedon242,sharp_polarsink242}_{wild,mint}.log.
+
+## 2026-09-08 — THE MASK COOKER REGISTERED (docs/mask_cooker_spec.md): the player gets a road
+
+Three structural reasons the mask head is silent, all in the code:
+two zero-born output doors (mh_wo, mh_headmix) the loss never grew; a
+gain the loss closed 100x; and the open-only rule AS IMPLEMENTED —
+`_mb = gain * (softplus(raw) - softplus(0)) * _sm_kb`: the head can
+only re-weight lanes the baseline already opened, the baseline opens
+62-67% of them, so the head has almost nothing to add and learns it
+has nothing to add. THE DESIGN: on a dose of rows (0.15, stable hash,
+the _PCV idiom) the baseline mask is SEVERED to the identity and the
+mask head's raw logits become the mask (`sc2 + log(sigmoid(raw))`,
+ungated) — its lanes the only road; open rows bit-identical to
+today; birth = a uniform half-open field (functional, not dead); a
+new meter, mask-sealed-wild (the baseline severed for all rows at
+read: parse accuracy on the head's lanes alone; the champion reads
+~0 by construction). Bars pinned in the spec: the road opens
+(>= 0.05), the organ carries (census >= 0.1x on sealed rows), the
+guard (-0.02 vs the polarsink242 continuation control), the clock
+stays (probe >= 0.95). Build serialized behind the JIT-read and
+census-2 head patches (anchor hygiene); the run needs the word.
