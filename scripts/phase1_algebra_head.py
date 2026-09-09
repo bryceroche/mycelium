@@ -120,11 +120,33 @@ PF_FORMS = int(os.environ.get("PF_FORMS", "3"))   # pointer/macro forms
 # THE SEVERANCE LADDER (apply_sever_doors.py, 2026-09-09): read-time
 # organ severance for removal-cost reads. Unset = untouched forward.
 _SEVER_ORGANS = frozenset(("notebook", "garage", "s3", "s4", "mixer",
-                           "fedtwin", "altv0", "ffn", "pforms"))
+                           "fedtwin", "altv0", "ffn", "pforms",
+                           "s5", "nb2"))   # the balanced generation
 _SEVER = frozenset(x for x in os.environ.get("ALG_SEVER", "").split(",") if x)
 assert _SEVER <= _SEVER_ORGANS, \
     f"ALG_SEVER unknown organ(s) {sorted(_SEVER - _SEVER_ORGANS)}; " \
     f"known: {sorted(_SEVER_ORGANS)}"
+# THE BALANCED GENERATION (apply_balanced_gen.py, 2026-09-09): prune
+# the dead-by-severance organs at birth; regrow where the removal cost
+# per parameter is highest (lane 2 as a road; station 5); the balanced
+# cooker makes the new organs mandatory on a share of rows.
+_PRUNE_ORGANS = frozenset(("pforms", "s4", "fednl0", "lane2"))
+_PRUNE = frozenset(x for x in os.environ.get("ALG_PRUNE", "").split(",") if x)
+assert _PRUNE <= _PRUNE_ORGANS, \
+    f"ALG_PRUNE unknown organ(s) {sorted(_PRUNE - _PRUNE_ORGANS)}"
+ALG_NB2 = int(os.environ.get("ALG_NB2", "0"))
+ALG_ALT5 = int(os.environ.get("ALG_ALT5", "0"))
+ALG_BAL_COOK = float(os.environ.get("ALG_BAL_COOK", "0"))
+
+
+def _bal_cook_v():
+    """THE BALANCED COOKER's per-row seal value: None (nothing sealed —
+    today's path), or the (B,1,1,1) `_BCV` buffer do_train arms (the
+    _PCV/_MCV/_TCV idiom). BC_EVAL non-empty forces OPEN (val/read)."""
+    if os.environ.get("BC_EVAL", "") or ALG_BAL_COOK <= 0.0:
+        return None
+    _v = globals().get("_BCV")
+    return None if _v is None else _v.reshape(-1, 1, 1, 1)
 N_SCR = 8 if FED_SCRATCH else 0                   # scratch slot rows
 L_TOT = L_FAC + N_SCR                             # bank rows incl. scratch
 NB_ROWS = 16 if FED_SHELF else 8                  # shelf stamp rows (item 9)
@@ -1740,6 +1762,33 @@ def build_params(seed=0):
               "OWN block norm, so ||u|| == 1 still holds and r is untouched"
               % (POLAR_D, _dtxt, POLAR_EM, _etxt, H_W - _nc, _nc),
               flush=True)
+    # THE BALANCED GENERATION (apply_balanced_gen.py, 2026-09-09)
+    if _PRUNE:
+        _drop = [k for k in p if
+                 ("pforms" in _PRUNE and k.startswith("fed_pf_"))
+                 or ("s4" in _PRUNE and k.startswith("alt21_W_b"))
+                 or ("fednl0" in _PRUNE and k == "fed_nl0_w")
+                 or ("lane2" in _PRUNE and k in ("fed_sil2", "fed_nb_g"))]
+        _np_ = 0
+        for k in _drop:
+            _np_ += int(np.prod(p[k].shape)); del p[k]
+        print(f"[prune] ALG_PRUNE={sorted(_PRUNE)}: dropped {len(_drop)} "
+              f"keys / {_np_} params (dead by severance, ledger 2026-09-09)",
+              flush=True)
+    if ALG_NB2:
+        assert ALG_NOTEBOOK and NB_PERSLOT and "fed_sil2" not in p, (
+            "ALG_NB2 needs the per-slot notebook and lane 2 of the fed "
+            "package PRUNED (ALG_PRUNE=lane2): one second lane, as a road")
+        assert NB_ROWS >= 16, "ALG_NB2 stamps rows 8..15 (NB_ROWS=16)"
+        p["nb2_sil"] = t(np.zeros((H_W, H_W)))   # ZERO INK: silent birth
+        p["nb2_nq"] = t(rng.randn(H_W, H_W) / math.sqrt(H_W))
+    if ALG_ALT5:
+        assert "alt21_attn_wo" in p, "ALG_ALT5 rides the ALT21 flow (station 3)"
+        p["alt5_attn_wq"], p["alt5_attn_wq_b"] = lin(H_W, H_W)
+        p["alt5_attn_wk"], p["alt5_attn_wk_b"] = lin(H_W, H_W)
+        p["alt5_attn_wv"], p["alt5_attn_wv_b"] = lin(H_W, H_W)
+        p["alt5_attn_wo"] = t(np.zeros((H_W, H_W)))   # ZERO: silent birth
+        p["alt5_attn_wo_b"] = t(np.zeros(H_W))
     return p
 
 
@@ -2283,11 +2332,14 @@ def breath_step(p, state, kb, ctx):
         _nb_st = _T2(NB_STAMPS, dtype=_dt2.float)
         _nb = [(cur @ p["W_sil"]) if NB_PERSLOT
                else (_fed_core(cur).mean(1) @ p["W_sil"])]   # sharp vs blurred
+        if ALG_NB2 and "nb2_sil" in p:
+            state["nbb"] = [cur @ p["nb2_sil"]]   # lane 2 as a road
         if FED_SHELF and "fed_sil2" in p:
             # FED item 9: lane 2 born at the same breath (2 rows per
             # breath — the structural coupling's lawful expansion)
             state["nb2"] = [(cur @ p["fed_sil2"]) if NB_PERSLOT
                             else (_fed_core(cur).mean(1) @ p["fed_sil2"])]
+    _bal_v = _bal_cook_v()      # THE BALANCED COOKER (None = open)
     q_extra = cur + p["breath_emb"][kb].reshape(1, 1, -1)
     if _CENSUS is not None:
         _CENSUS.append((kb, "state", cur.realize().numpy()))
@@ -2304,7 +2356,26 @@ def breath_step(p, state, kb, ctx):
             _rd = sum(_at[:, :, j:j + 1] * _nb[j] for j in range(len(_nb)))
             if "notebook" in _SEVER:
                 _rd = _rd * 0.0
+            if _bal_v is not None:            # THE BALANCED COOKER:
+                _rd = _rd * (1.0 - _bal_v.reshape(B, 1, 1))   # lane 1 sealed
             q_extra = q_extra + _rd           # (B, L, H) — no blur
+            if ALG_NB2 and "nb2_sil" in p:
+                # LANE 2 AS A ROAD (the balanced generation): own ink,
+                # own query, rows 8..15 of the stamp alphabet, NO GAIN.
+                _nbb = state["nbb"]
+                _qb = cur @ p["nb2_nq"]
+                _scb = (_qb @ _nb_st[8:8 + len(_nbb)].transpose(1, 0)) \
+                    / math.sqrt(H_W)
+                if NB_FOCAL > 0:
+                    _scb = _scb * NB_FOCAL
+                _atb = _scb.softmax(-1)
+                _rdb = sum(_atb[:, :, _jb:_jb + 1] * _nbb[_jb]
+                           for _jb in range(len(_nbb)))
+                if "nb2" in _SEVER:
+                    _rdb = _rdb * 0.0
+                q_extra = q_extra + _rdb
+                if _CENSUS is not None:
+                    _CENSUS.append((kb, "nb2", _rdb.realize().numpy()))
             if _CENSUS is not None:
                 _CENSUS.append((kb, "notebook", _rd.realize().numpy()))
         else:
@@ -2316,6 +2387,8 @@ def breath_step(p, state, kb, ctx):
             _rd = sum(_at[:, j:j + 1] * _nb[j] for j in range(len(_nb)))
             if "notebook" in _SEVER:
                 _rd = _rd * 0.0
+            assert _bal_v is None and not ALG_NB2, \
+                "the balanced generation is per-slot (NB_PERSLOT=1) only"
             q_extra = q_extra + _rd.reshape(B, 1, -1)
             if _CENSUS is not None:
                 _CENSUS.append((kb, "notebook",
@@ -2487,7 +2560,18 @@ def breath_step(p, state, kb, ctx):
     # only inside do_train unless ALG_TOK_SEAL=head is the read.
     _tcv = _tok_cook_v()
     _tgt = None
-    if _tcv is not None:
+    if _bal_v is not None:
+        # THE BALANCED COOKER on the grounding: sealed rows read the
+        # tokens FLAT through the main bank and station 3 (the token
+        # seal's field, per row, at the weights' source — the cooker
+        # blend the token cooker built); station 5 is exempt: on those
+        # rows it is the only aimed grounding. Does not compose with
+        # the token cooker (one aim per road).
+        assert _tcv is None, "ALG_BAL_COOK and ALG_TOK_COOK do not compose"
+        _tgt = _tok_flat(tokmask, B).reshape(B, 1, -1) \
+            .expand(B, L_TOT, tokmask.shape[-1]).contiguous()
+        _tcv = _bal_v
+    elif _tcv is not None:
         assert (int(os.environ.get("ALG_MASKHEAD", "0")) and "mh_wo" in p
                 and "tg_a" in p), (
             "the token cooker needs the MASK HEAD (ALG_MASKHEAD=1, "
@@ -2840,7 +2924,7 @@ def breath_step(p, state, kb, ctx):
         h_slot = h_slot * 0.0 + ((cur @ p["W_bq"] + p["W_bq_b"])
                                  .gelu() @ p["W_bv"] + p["W_bv_b"]) \
             @ p["W_bo"] + p["W_bo_b"]
-    if int(os.environ.get("ALG_ALT21", "0")) and "alt21_W_bo" in p:
+    if int(os.environ.get("ALG_ALT21", "0")) and "alt21_attn_wo" in p:
         # ALTERNATOR v2.1 STATIONS 3-4 (2026-09-02): the INTEGRATE
         # pair, between GATHER+RELATE above and the gate/commit
         # below. Each block writes ADDITIVELY through its ZERO-INIT
@@ -2891,27 +2975,69 @@ def breath_step(p, state, kb, ctx):
         _st21 = (_a21 @ _vh21).permute(0, 2, 1, 3).reshape(B, L_TOT, H_W)
         _d21a = _st21 @ p["alt21_attn_wo"] + p["alt21_attn_wo_b"]
         _s21 = _s21 + _d21a              # exact zero at birth
-        # STATION 4: second slot-mixer over the SAME breathed mask
-        _bq21 = _s21 @ p["alt21_W_bq"] + p["alt21_W_bq_b"]
-        _bk21 = _s21 @ p["alt21_W_bk"] + p["alt21_W_bk_b"]
-        _bv21 = _s21 @ p["alt21_W_bv"] + p["alt21_W_bv_b"]
-        _sm21 = (_bq21 @ _bk21.transpose(-2, -1)) / math.sqrt(H_W)
-        if _mb is not None:        # MASK HEAD: the same open-only
-            _sm21 = _sm21 + _mb    # bias, station-4 mixer (before
-                                   # ITS close — one geometry/breath)
-        _sm21 = _sm21.clip(-1e4, 1e4) + (1.0 - _mck) * -1e4  # cooker
-        if _A5 is not None and "alt_g" in p and "altv0" not in _SEVER:   # v0 bias, as station 2
-            _sm21 = _sm21 + (_A5 + _A5.transpose(-2, -1)) \
-                * p["alt_g"].reshape(1, 1, 1)
-        if RINGS and int(os.environ.get("ALG_BEXIT", "0")):
-            _sm21 = _sm21 + m_c.reshape(B, 1, L_FAC) * -8.0
-        _d21b = (_sm21.softmax(-1) @ _bv21) @ p["alt21_W_bo"] \
-            + p["alt21_W_bo_b"]
+        _d21c = None
+        if ALG_ALT5 and "alt5_attn_wo" in p:
+            # STATION 5 (the balanced generation, 2026-09-09): a THIRD
+            # slots<-tokens bank attention in station 3's form — the
+            # ladder read station 3 as the wild organ (0.054 per 1.1M).
+            # ZERO-INIT output (silent birth). Under the READ-TIME token
+            # seal it flattens with the other grounding roads; under the
+            # BALANCED cooker it is the exempt, mandatory road.
+            _qx5 = p["fq"].unsqueeze(0) + _s21 + (q_extra - cur)
+            _q5 = _qx5 @ p["alt5_attn_wq"] + p["alt5_attn_wq_b"]
+            _k5 = waist @ p["alt5_attn_wk"] + p["alt5_attn_wk_b"]
+            _v5 = waist @ p["alt5_attn_wv"] + p["alt5_attn_wv_b"]
+            _qh5 = _q5.reshape(B, L_TOT, N_HEADS, _hd21).permute(0, 2, 1, 3)
+            _kh5 = _k5.reshape(B, -1, N_HEADS, _hd21).permute(0, 2, 1, 3)
+            _vh5 = _v5.reshape(B, -1, N_HEADS, _hd21).permute(0, 2, 1, 3)
+            _sa5 = (_qh5 @ _kh5.transpose(-2, -1)) / math.sqrt(_hd21)
+            if _sync is not None:
+                _sa5 = _sa5 + _sync[0](kb)
+            if _rb7 is not None:
+                _sa5 = _sa5 + _rb7.unsqueeze(1) * p["r_gain"].reshape(1, 1, 1, 1)
+            _sa5 = _sa5.clip(-1e4, 1e4) + (1.0 - tokmask.reshape(B, 1, 1, -1)) * -1e4
+            _a5 = _sa5.softmax(-1)
+            if _tok_seal_on(kb) and int(os.environ.get("ALG_TOK_SEAL_S3", "1")):
+                _a5 = _a5 * 0.0 + _tok_flat(tokmask, B)   # the read-time seal
+            if _tgt is not None and _bal_v is None \
+                    and int(os.environ.get("ALG_TOK_COOK_S3", "1")):
+                _a5 = _a5 * (1.0 - _tcv) + _tgt.reshape(B, 1, L_TOT, -1) * _tcv
+            _st5 = (_a5 @ _vh5).permute(0, 2, 1, 3).reshape(B, L_TOT, H_W)
+            _d21c = _st5 @ p["alt5_attn_wo"] + p["alt5_attn_wo_b"]
+            if "s5" in _SEVER:
+                _d21c = _d21c * 0.0
+            _s21 = _s21 + _d21c
+            if _CENSUS is not None:
+                _CENSUS.append((kb, "alt21_s5", _d21c.realize().numpy()))
+        if "alt21_W_bo" in p:   # station 4 (pruned = absent)
+            # STATION 4: second slot-mixer over the SAME breathed mask
+            _bq21 = _s21 @ p["alt21_W_bq"] + p["alt21_W_bq_b"]
+            _bk21 = _s21 @ p["alt21_W_bk"] + p["alt21_W_bk_b"]
+            _bv21 = _s21 @ p["alt21_W_bv"] + p["alt21_W_bv_b"]
+            _sm21 = (_bq21 @ _bk21.transpose(-2, -1)) / math.sqrt(H_W)
+            if _mb is not None:        # MASK HEAD: the same open-only
+                _sm21 = _sm21 + _mb    # bias, station-4 mixer (before
+                                       # ITS close — one geometry/breath)
+            _sm21 = _sm21.clip(-1e4, 1e4) + (1.0 - _mck) * -1e4  # cooker
+            if _A5 is not None and "alt_g" in p and "altv0" not in _SEVER:   # v0 bias, as station 2
+                _sm21 = _sm21 + (_A5 + _A5.transpose(-2, -1)) \
+                    * p["alt_g"].reshape(1, 1, 1)
+            if RINGS and int(os.environ.get("ALG_BEXIT", "0")):
+                _sm21 = _sm21 + m_c.reshape(B, 1, L_FAC) * -8.0
+            _d21b = (_sm21.softmax(-1) @ _bv21) @ p["alt21_W_bo"] \
+                + p["alt21_W_bo_b"]
+        else:
+            _d21b = None
         if "s3" in _SEVER:
             _d21a = _d21a * 0.0
-        if "s4" in _SEVER:
+        if "s4" in _SEVER and _d21b is not None:
             _d21b = _d21b * 0.0
-        h_slot = h_slot + _d21a + _d21b  # additive; zeros at birth
+        if _d21b is not None:
+            h_slot = h_slot + _d21a + _d21b  # additive; zeros at birth
+        else:
+            h_slot = h_slot + _d21a
+        if _d21c is not None:
+            h_slot = h_slot + _d21c          # station 5, additive
         if _CENSUS is not None:
             # THE LARGEST HOLE, closed (apply_census_organs2.py): two
             # additive writes into the state every breath, ON in the
@@ -2921,7 +3047,8 @@ def breath_step(p, state, kb, ctx):
             # divide out, and a pre-projection "pre" would be a fake
             # ratio in a different space.
             _CENSUS.append((kb, "alt21_s3", _d21a.realize().numpy()))
-            _CENSUS.append((kb, "alt21_s4", _d21b.realize().numpy()))
+            if _d21b is not None:
+                _CENSUS.append((kb, "alt21_s4", _d21b.realize().numpy()))
     g = p["breath_gate"][kb].sigmoid()
     if drop is not None:            # door #52: BREATH DROPOUT —
         g = g * drop                # per-STEP coin; drop=0 makes the
@@ -3035,6 +3162,8 @@ def breath_step(p, state, kb, ctx):
     if ALG_NOTEBOOK:
         _nb.append((cur @ p["W_sil"]) if NB_PERSLOT
                    else (_fed_core(cur).mean(1) @ p["W_sil"]))
+        if ALG_NB2 and "nb2_sil" in p and state.get("nbb") is not None:
+            state["nbb"].append(cur @ p["nb2_sil"])
         if FED_SHELF and "fed_sil2" in p and state.get("nb2") is not None:
             state["nb2"].append((cur @ p["fed_sil2"]) if NB_PERSLOT
                                 else (_fed_core(cur).mean(1)
@@ -4954,6 +5083,31 @@ def do_train(steps, lr, batch, seed):
               f"those rows the mask head's gate is the ONLY slot->token "
               f"road at loop breaths 1..K-1 (breath 0 untouched)",
               flush=True)
+    _bc_assign = None
+    if ALG_BAL_COOK > 0.0:
+        # THE BALANCED COOKER (2026-09-09): the per-row seal of the OLD
+        # memory and grounding roads; armed like the three cookers before
+        # it (a (B,1,1) buffer BEFORE the first capture; a FOURTH Knuth
+        # multiplier and addend, stable index-hash, never re-rolled).
+        assert ALG_NB2 and ALG_ALT5 and "nb2_sil" in p and "alt5_attn_wo" in p, (
+            "ALG_BAL_COOK seals lane 1 / bank / station 3 — it needs the "
+            "organs that carry the sealed rows: ALG_NB2=1 ALG_ALT5=1")
+        assert float(os.environ.get("ALG_TOK_COOK", "0")) <= 0.0, \
+            "ALG_BAL_COOK and ALG_TOK_COOK do not compose"
+        assert _tok_seal_mode() == "0" and not os.environ.get("BC_EVAL", ""), \
+            "ALG_TOK_SEAL / BC_EVAL are read-time doors; unset them for training"
+        _bc_h = ((np.arange(n, dtype=np.uint64) * np.uint64(668265263)
+                  + np.uint64(1013904223)) % np.uint64(4294967296)
+                 ).astype(np.float64) / 4294967296.0
+        _bc_assign = (_bc_h < ALG_BAL_COOK).astype(np.float32)
+        globals()["_BCV"] = Tensor(
+            np.zeros((batch, 1, 1), np.float32)).contiguous().realize()
+        print(f"[balcook] armed: share={ALG_BAL_COOK} -> "
+              f"{int(_bc_assign.sum())}/{n} rows sealed (stable index-hash, "
+              f"multiplier 668265263); on those rows lane 1 reads x0 and the "
+              f"main bank + station 3 read the tokens FLAT at loop breaths — "
+              f"lane 2 and station 5 are the only memory and grounding",
+              flush=True)
     t0 = time.time()
     for s in range(steps):
         cur_lr = lr_min + 0.5 * (lr - lr_min) * (1 + math.cos(math.pi * s / steps))
@@ -5066,6 +5220,10 @@ def do_train(steps, lr, batch, seed):
             globals()["_TCV"].assign(Tensor(
                 _tc_assign[idx].reshape(-1, 1, 1),
                 dtype=globals()["_TCV"].dtype)).realize()
+        if _bc_assign is not None:
+            globals()["_BCV"].assign(Tensor(
+                _bc_assign[idx].reshape(-1, 1, 1),
+                dtype=globals()["_BCV"].dtype)).realize()
         lv = step()
         if ALG_CONSUME and _NEWCL[0] is not None:
             CLAIMED[idx] = np.clip(CLAIMED[idx] + _NEWCL[0].numpy(), 0, 1)
@@ -5089,7 +5247,9 @@ def do_train(steps, lr, batch, seed):
             # grounding organ must be excluded from val at every shelf
             # mode. Any non-empty value means OPEN; only "0" is pushed.
             os.environ["TC_EVAL"] = "0"       # ... and the OPEN reading
+            os.environ["BC_EVAL"] = "0"       # ... and the balanced cooker OPEN
             fv = _quick_val()
+            os.environ.pop("BC_EVAL", None)
             os.environ.pop("TC_EVAL", None)
             os.environ.pop("MC_EVAL", None)
             if int(os.environ.get("ALG_SHELF_CIRCLE", "0")) >= 2:

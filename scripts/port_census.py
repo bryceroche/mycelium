@@ -178,12 +178,13 @@ BASE_OF = {"state": "state", "slot": "state_slot"}
 # question nobody asked. Falls back to the band default on a head that
 # predates the state_hslot baseline.
 BASE_PICK = {"mixer": "state_hslot", "mixer_pre": "state_hslot",
-             "alt21_s3": "state_hslot", "alt21_s4": "state_hslot"}
+             "alt21_s3": "state_hslot", "alt21_s4": "state_hslot",
+             "alt21_s5": "state_hslot"}   # the balanced generation
 # Organs with NO SCALAR GAIN on their path: their door is a ZERO-INIT
 # OUTPUT MATRIX, not an ajar gain, so post IS the whole reading and a
 # _pre form would be a fake ratio in a different space. Named here so
 # their empty row in the gain ledger reads as a fact, not an omission.
-NO_GAIN = ("alt21_s3", "alt21_s4", "tokgate")
+NO_GAIN = ("alt21_s3", "alt21_s4", "tokgate", "alt21_s5", "nb2")
 # `tokgate` (THE TOKEN COOKER, 2026-09-09) rides NO scalar gain at all —
 # it does not add into a band, it REPLACES the slot->token attention on
 # sealed rows. There is nothing to divide out and no pre-gain form to
