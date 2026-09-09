@@ -35883,3 +35883,33 @@ BARS (pinned; wild n=2051 1 SE ~ 0.010, mint n=3668 1 SE ~ 0.004):
   KILL: G1 and G2 both fail on BOTH G arms -> growth by duplication is
   dead in this family; the balance is the prune alone (balP242 the
   candidate if P1 holds). Bars never bend after the reads.
+
+## 2026-09-09 — WORD GIVEN: drop the mask half of the mask-prep pass after the generation lands (+ the pass goes through the JIT reader)
+
+WHAT THE PASS IS: one breath-0 forward per training row (133,828 rows,
+batch 8, the plain forward — NOT the JIT reader), from which two
+artifacts fall out: (a) THE SLOT MASK, build_slot_masks — same-sentence
+OR shared-variable OR self, on the head's OWN breath-0 pointers (no
+oracle exists; frozen across all 7 breaths and all 12k steps); (b) THE
+FACT BUFFER, alt2_fact_buf — the same parse through the adapter and the
+solver's propagation. Measured cost: ~78 min per new parameter set
+(tokcook: fired 10:59, banked 12:17; the balanced smoke the same).
+THE VERDICTS THAT DECIDE IT: the slot mask is NOT load-bearing (severed
+to all-to-all: wild 0.2521 vs 0.2511, ledger 2026-09-09 mask cooker);
+the facts ARE (altfact_pre 0.43x of the state band at b0; the first
+return road). THE WORD: after the balanced generation lands (and the
+pruned arm confirms the severance read), (1) DROP the mask half — the
+family runs all-to-all among the slots, the frozen MASKS array leaves
+the trainer and the cache; the mask head's slot-mask lane loses its
+last consumer (its own verdict pending the two registered follow-ups);
+(2) KEEP the facts half; (3) the pass goes through the JIT read forward
+(mycelium/jit_read.py; 8-14x measured) at a larger batch — THIS is
+where the hour goes, not the mask arithmetic (a numpy rule over 24
+slots; the forward is the cost and the facts need it too). Relay
+corrections banked: "78 minutes spent on the mask" (the forward is
+shared); "the token cooker is training right now" (it landed at 14:04:
+bar 1 failed by 0.0027, not killed). The 7-breath mask-trajectory
+question is CLOSED as unsupervisable, not solved: no gold trajectory
+exists and the Goodhart fence forbids inventing one from a diagnostic;
+the game is slot->token (the severance probe), and that road's first
+organ just failed its bar.
