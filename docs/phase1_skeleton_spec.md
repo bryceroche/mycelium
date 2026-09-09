@@ -35823,3 +35823,63 @@ in station 3's form (slots<-tokens, the wild organ), each as a mandatory
 road, each with a pinned severance bar (removal cost >= the organ it
 grows from). (3) The mixer's mint cost at exactly 0.01 gets a second
 read at another seed before any call.
+
+## 2026-09-09 — THE BALANCED GENERATION (word given): three arms staged, bars PINNED before the reads
+
+THE BUILD (scripts/apply_balanced_gen.py, applied on top of the sever
+doors; eq gate A/B/C bit-identical with every door unset — GATE 1 PASS):
+  ALG_PRUNE=pforms,s4,fednl0,lane2   build_params drops the 21 keys /
+      4,828,176 params the ladder found dead by severance (+ fed_nl0 and
+      lane 2, recorded dead). Station 4's forward is key-guarded; the
+      other three were already. Pruned birth ckpt: sharp_polarsink242p
+      (95 keys). GATE 2, the pruned birth read on wild: 0.2491 vs 0.2511
+      (-0.002; bar within 0.005: PASS) — mint pending at this writing.
+  ALG_NB2=1   the second notebook lane REBORN AS A ROAD: own ink nb2_sil
+      (ZERO-INIT: silent birth, the station-3 idiom, the ink wakes first
+      and the query follows), own query nb2_nq, stamp rows 8..15, NO GAIN
+      (the fed package's lane 2 died behind fed_nb_g = 0.0004: the
+      mandatory-road law's own specimen). +0.52M.
+  ALG_ALT5=1  STATION 5: a third slots<-tokens bank attention in station
+      3's form (q = fq + stream + conditioning; k,v = waist; the same
+      sync/router terms; the read-time token seal flattens it with the
+      other roads), ZERO-INIT output. +1.05M.
+  ALG_BAL_COOK=0.15   THE BALANCED COOKER: on a stable index-hash share
+      of rows (a FOURTH Knuth multiplier, 668265263) lane 1's read x0 and
+      the main bank's + station 3's slot->token attention FLAT (the token
+      cooker's per-row blend at the weights' source), so lane 2 and
+      station 5 are the ONLY memory and grounding on those rows. Val and
+      reads push BC_EVAL (open). Does not compose with ALG_TOK_COOK.
+  Sever doors "s5", "nb2"; census organs alt21_s5, nb2 (port_census
+  BASE_PICK/NO_GAIN). Birth smoke (.cache/bal_smoke.py, GATE 3): P == G
+  == G+sever bitwise; all-open cooker rows == open; sealed rows differ;
+  two-terminal grads on nb2_sil / alt5_attn_wo and on the old roads.
+  GATE 4: 3-step train smoke with the cooker armed.
+THE ARMS (.cache/balanced_gen.sh, unit pc-balanced; warm polarsink242,
+12k, seed 242, the form12 flat mix, BATCH 8, LR 1e-4; sequential):
+  balP242  prune only (the pruned control; 12.4M)
+  balG242  prune + lane 2 + station 5, zero-init birth, no cooker (14.0M)
+  balC242  balG242 + the balanced cooker at 0.15
+  The 12k-continued control is polarsink242c (0.2506 / 0.9610); the
+  ladder's baseline for removal costs is polarsink242 (s3 0.054 wild;
+  notebook 0.042 wild / 0.156 mint).
+BARS (pinned; wild n=2051 1 SE ~ 0.010, mint n=3668 1 SE ~ 0.004):
+  P1  balP242 open wild >= 0.2406 AND mint >= 0.9560 (within -0.010 /
+      -0.005 of the control): THE PRUNE IS FREE — 4.8M leaves the family.
+  P2  clock probe >= 0.95.
+  G1  (each G arm, judged alone) open wild >= 0.2606 OR mint >= 0.9660
+      (+0.010 / +0.005 over the control), the other within the P1 guard.
+  G2  THE GROWTH CARRIES (the registered severance bar): sever(s3,s5)
+      wild cost >= 0.074 (station 3 alone cost 0.054: the grounding road
+      grew by >= 2 points); sever(notebook,nb2) cost >= 0.062 wild OR
+      >= 0.186 mint (lane 1 alone: 0.042 / 0.156).
+  G3  clock probe >= 0.95.  G4  census: nb2 and alt21_s5 each carry
+      >= 0.1x of their band by breath 6 on wild (they woke).
+  REGISTERED PREDICTION: balP242 passes P1 (severance said free);
+  balG242 wakes station 5 (the station-3 precedent) and NOT lane 2
+  (zero ink behind a working lane 1 — the s4 pattern); balC242 wakes
+  both and is the arm that passes G2, at a G1 cost on mint within the
+  guard (the token cooker's robustness price, smaller here because the
+  sealed rows keep a full aimed grounding road).
+  KILL: G1 and G2 both fail on BOTH G arms -> growth by duplication is
+  dead in this family; the balance is the prune alone (balP242 the
+  candidate if P1 holds). Bars never bend after the reads.
