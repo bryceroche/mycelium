@@ -35342,3 +35342,24 @@ read: parse accuracy on the head's lanes alone; the champion reads
 guard (-0.02 vs the polarsink242 continuation control), the clock
 stays (probe >= 0.95). Build serialized behind the JIT-read and
 census-2 head patches (anchor hygiene); the run needs the word.
+
+## 2026-09-08 — THE JIT READ, GATED ON THE CARD: bit-identical, 8-14x; a chain's reads collapse from ~20 minutes to under a minute
+
+mycelium/jit_read.py (door ALG_JIT_READ; graphs captured BESIDE
+forward(), never on it — read_batch's no-capture fence stands; key =
+outs x batch x fed ports x params identity x all 152 env names the
+head source reads, so SC_EVAL / ALG_INV get their own graphs and the
+UNLIT STOVE cannot recur; tail batches padded, one graph; slots
+capped at 32, loud on thrash). GPU GATE (fedon242, wild, n=2051):
+loop_val 0.2613 eager AND jit, **133 s -> 16 s**; step_engine sealed
+0.0000 both, **140 s -> 14 s**; read_batch 2 ckpts x 3 meters
+(0.2613 / 0.2506 loopval, 0.0000 / 0.0000 sealed, clock lines
+identical), **507 s -> 37 s**, with the second checkpoint's meters at
+~2 s each. Equality to the digit everywhere. Registered side finding
+(pre-existing, not the JIT's): the eager read is not schedule-
+invariant at ~4e-5 when a reader widens its realize set — the JIT
+pins the one-schedule answer; the readers' actual key sets never hit
+it. THE PERF CAMPAIGN'S TALLY: mask-prep 75 min -> seconds per arm on
+a cache hit; reads ~20 min -> < 1 min per chain; the next chain is
+written on ALG_MASKPREP_CACHE=1 + read_batch + ALG_JIT_READ=1 +
+CR_PLANES lists.
