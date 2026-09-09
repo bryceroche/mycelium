@@ -35450,3 +35450,38 @@ seed 242, dose 0.15, skel self) -> ARM CTRL (polarsink242
 continued, cooker off) -> reads: clock per wheel, open-wild/mint,
 mask-sealed wild/mint (BAR 1), the census on sealed rows (BAR 2).
 Bars per docs/mask_cooker_spec.md section 4; ~8 h.
+
+## 2026-09-08 — SEED 241 OF THE POLAR+SINK ARM: the clock and mint replicate; wild does NOT — the two-seed verdict is MIXED
+
+pc-polar-241 (warm fedon242, 12k, seed 241, polar + D=128u + EM=0.1;
+first arm on the perf path: mask-prep cache banked its bucket
+(11.9 MB, FACTS+MASKS), JIT reads 37.6 s wild / 32.6 s mint for all
+meters). Control = pcctl241 (0.2686 / 0.9588 — the wild record).
+
+| read | polarsink241 | vs pcctl241 | seed 242 (vs pcctl242) | bar |
+|---|---|---|---|---|
+| probe wild / mint | 1.0000 / 1.0000 | — | 1.0000 / 1.0000 | >= 0.95 PASS x2 |
+| breath hand @60 wild / mint | 0.7613 / 0.7018 | — | 0.7543 / 0.7179 | >= 0.5 PASS x2 |
+| content @60 (re-pinned control) | 0.030 / 0.041 | — | 0.028 / 0.019 | <= 0.1 PASS x2 |
+| open-wild | 0.2409 | **-0.0277 FAIL** | 0.2511 (+0.0005 PASS) | within -0.02 |
+| mint | 0.9526 | -0.0062 PASS | 0.9556 (+0.0019 PASS) | within -0.02 |
+| sealed-wild | 0.0000 | (no cooker) | 0.0000 | informational |
+
+TWO-SEED VERDICT: THE CLOCK REPLICATES (probe 1.0 x4; breath hand
+0.70-0.76 x4); MINT REPLICATES (within -0.007 of both controls);
+WILD IS MIXED — the guard passes at seed 242 and FAILS at seed 241 by
+0.008 beyond the bar. Against the champion fedon242 (0.2613) rather
+than the matched controls, both sink arms sit BELOW it (-0.0102 /
+-0.0204) while the plain continuations straddle it (+0.0073 /
+-0.0107). Honest reading: the polar+sink generation keeps its clock
+and its mint at no cost, and costs 1-3 points of wild — the
+yesterday's phrase "at no measured cost" is SOFTENED to "at no
+measured cost on mint; wild within noise on one seed and -0.028 on
+the other". The control spread (0.018) is again wider than the bar
+(0.010-0.020): the guard question needs a paired-seed frame, which
+this pair now provides: mean delta vs matched controls -0.0136 on
+wild, -0.0022 on mint. The research-champion-candidate claim stands
+on the clock and mint; the wild cost is the generation's open debt
+(the sink ablation — waist alone / E&B alone — and the cooker on the
+polar machine are its two registered remedies). The mask cooker
+chain (pc-maskcook) fired on this unit's exit.

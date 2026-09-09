@@ -168,3 +168,14 @@ one.
 Single seed. The second seed, and the question of which half of the
 sink pays, are the next fires. The braid has a place to turn now,
 and it turned.
+
+*Second seed, September 8: the clock replicates, breath identity at
+1.0 and the breath hand at 0.70 to 0.76 on both fixtures, and the
+synthetic accuracy holds within a point of its control. Wild does not
+fully replicate: 0.2409 against a control of 0.2686 on this seed,
+where the first seed had matched its control. Across the pair the
+machine costs about one point of wild on average and up to three on
+one seed. "At no measured cost" above is therefore too strong; the
+honest phrase is at no measured cost on synthetic problems, and a
+small, seed-dependent cost on wild, now registered as the
+generation's open debt.*
