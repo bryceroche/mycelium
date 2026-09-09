@@ -35541,3 +35541,26 @@ list (585bbe.. vs 7179c4..) — a key-composition bug to fix (the
 declared exclusions themselves probably entered the key).
 (4) The atlas/needle/MUC ladder (09-08) is unchanged in order; its
 rung 3 feeds the mask head, so the headroom read precedes it too.
+
+## 2026-09-09 — REGISTERED: THE TOKEN-ATTENTION SEVERANCE PROBE (the headroom read that precedes any token cooker); the slot-vs-token hypothesis
+
+HYPOTHESIS (Bryce, with Gemini's framing; unmeasured): dynamic
+attention has no job among the 24 slots — few, and already sharing
+the notebook, the shelf and dense attention — and its whole job is
+slot-to-token grounding (100-300 tokens, mostly filler; the wild
+failure mode is the mis-aimed pointer: the wrong number bound to the
+right role — the paper's 99.6%-decodable survivors).
+THE PROBE (a read; a small env-gated door in the head to flatten the
+slot->token attention `fat` to uniform over the prompt's tokens on
+ALL rows at read time, ALG_TOK_SEAL=1; byte-inert unset; eq gate):
+loop_val open-wild and mint on polarsink242 with and without the
+door. OUTCOMES PINNED: (A) HEADROOM EXISTS — wild drops by >= 0.10
+(0.25 -> <= 0.15): grounding is load-bearing; a token cooker
+(uniform-attention severance on a dose of rows; the mask head's
+token-level gate as the only road) is registered next with the
+cooker template. (B) NO HEADROOM — wild drops < 0.02: token
+attention is not the bottleneck either; dynamic attention masking
+at any level is RETIRED as a wild lever, and the effort goes to the
+needle ladder and the solver interface. Between 0.02 and 0.10: the
+texture rule (a mechanism probe: which slots' pointers move).
+Build (30 min, CPU) + read (1 min under the JIT) — hold for the word.
