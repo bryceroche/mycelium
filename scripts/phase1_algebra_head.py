@@ -1790,7 +1790,19 @@ def _heads_of(p, s, vst, B):
 def _fact_inject(p, vst, fact_buf):
     """The ALT2 injection (one line, factored so the trainer's per-seam
     vst update calls the SAME organ — the meter-divergence law)."""
-    return vst + (fact_buf @ p["W_fact"]) * p["alt2_g"].reshape(1, 1, 1)
+    _fi = fact_buf @ p["W_fact"]          # PRE-gain (named for the census)
+    _cs = globals().get("_CENSUS")       # the port census hook, inert when
+    if _cs is not None:                  # None (forward's `global _CENSUS`
+        # THE PORT CENSUS, organ pass (apply_census_organs.py, 2026-09-08).
+        # kb=0: this injection lands on the VAR SLOTS, before the breath
+        # loop — so the state baseline recorded here is vst's, and the
+        # reader's rel-column divides by the band the organ actually
+        # modifies. post AND pre: gain x organ-scale, two coordinates.
+        _cs.append((0, "state", vst.realize().numpy()))
+        _cs.append((0, "altfact",
+                    (_fi * p["alt2_g"].reshape(1, 1, 1)).realize().numpy()))
+        _cs.append((0, "altfact_pre", _fi.realize().numpy()))
+    return vst + _fi * p["alt2_g"].reshape(1, 1, 1)
 
 
 def breath_step(p, state, kb, ctx):
@@ -2054,6 +2066,8 @@ def breath_step(p, state, kb, ctx):
                      _Tm(_mac[kb - 1], dtype=_dm.float),
                      _Tm(_mas[kb - 1], dtype=_dm.float))
     sc2 = (_bq2 @ bk.transpose(-2, -1)) / math.sqrt(H_W)
+    if _CENSUS is not None:
+        _CENSUS.append((kb, "state_slot", sc2.realize().numpy()))
     _sm_kb = slot_mask
     _A5 = None
     if _snaps and ("alt_g" in p
@@ -2191,11 +2205,27 @@ def breath_step(p, state, kb, ctx):
             state["mh_prev"] = _A5s         # breath's consumed
                                             # adjacency, detached
         sc2 = sc2 + _mb        # the injection site: BEFORE the close
+        if _CENSUS is not None:
+            # post-gain = what actually biases the scores; pre-gain = the
+            # same organ with mh_gain lifted out, so "silent" and
+            # "loud-times-tiny" stop being the same reading. _mb feeds
+            # THREE mixers (sc2, _mx_sc, _sm21) — one tensor, one record.
+            _CENSUS.append((kb, "maskhead", _mb.realize().numpy()))
+            _CENSUS.append((kb, "maskhead_pre",
+                            ((_mh_sp - _mh_sp0) * _sm_kb)
+                            .realize().numpy()))
     sc2 = sc2.clip(-1e4, 1e4) + (1.0 - _sm_kb) * -1e4
     if _A5 is not None and "alt_g" in p:
         # v0 soft bias rides alongside (facts wire attention)
         sc2 = sc2 + (_A5 + _A5.transpose(-2, -1)) \
             * p["alt_g"].reshape(1, 1, 1)
+        if _CENSUS is not None:
+            _CENSUS.append((kb, "alt",
+                            ((_A5 + _A5.transpose(-2, -1))
+                             * p["alt_g"].reshape(1, 1, 1))
+                            .realize().numpy()))
+            _CENSUS.append((kb, "alt_pre",
+                            (_A5 + _A5.transpose(-2, -1)).realize().numpy()))
     if RINGS and int(os.environ.get("ALG_BEXIT", "0")):
         # BEAM EXIT (door #8): committed slots leave the mixer as
         # keys, proportional to mass — soft, init-closed (m starts 0)
@@ -2284,10 +2314,21 @@ def breath_step(p, state, kb, ctx):
         if _A5 is not None and "alt_g" in p:   # same v0 bias as sc2
             _mx_sc = _mx_sc + ((_A5 + _A5.transpose(-2, -1))
                                * p["alt_g"].reshape(1, 1, 1)).unsqueeze(1)
-        _mx_o = (_mx_sc.softmax(-1) @ _mx_v) \
+        _mx_raw = _mx_sc.softmax(-1) @ _mx_v          # PRE-gain (named)
+        _mx_o = _mx_raw \
             * p["fed_mx_hg"].reshape(1, MX_HEADS, 1, 1)   # ZERO gains
-        h_slot = h_slot + _mx_o.permute(0, 2, 1, 3) \
+        _mx_inj = _mx_o.permute(0, 2, 1, 3) \
             .reshape(B, L_TOT, H_W) @ p["W_bo"]
+        h_slot = h_slot + _mx_inj
+        if _CENSUS is not None:
+            # STATE band. The reader's grammar line says the rest: an
+            # h_slot-band injection is further scaled by the breath gate
+            # g = sigmoid(breath_gate[kb]) before it reaches cur.
+            _CENSUS.append((kb, "mixer", _mx_inj.realize().numpy()))
+            _CENSUS.append((kb, "mixer_pre",
+                            (_mx_raw.permute(0, 2, 1, 3)
+                             .reshape(B, L_TOT, H_W) @ p["W_bo"])
+                            .realize().numpy()))
     # ABLATION arms (2026-07-10): zero-mult keeps every param in the
     # graph (defined zero grads — the None-grad lesson, applied)
     arm = os.environ.get("ALG_BREATH_ARM", "both")
@@ -2430,7 +2471,12 @@ def breath_step(p, state, kb, ctx):
             # included), reused rather than rebuilt. kappa is fixed and
             # unlearnable. Content planes pass through bitwise; the
             # clock block's norm is restored inside the organ.
+            _cs_u0 = _pol_u if _CENSUS is not None else None
             _pol_u = _polar_em(_pol_u, _sm_kb, POLAR_EM)
+            if _CENSUS is not None:
+                _CENSUS.append((kb, "sink_em",
+                                _polar_ru_join(_pol_u - _cs_u0, _pol_r,
+                                               _pg).realize().numpy()))
         if POLAR_D:
             # (A) THE CONTENT-PLANE WAIST ("expand & collapse x7"). The
             # 192 content planes' 384 dims collapse to ALG_POLAR_D and
@@ -2439,7 +2485,12 @@ def breath_step(p, state, kb, ctx):
             # the range — the bottleneck cannot fight the rotation — and
             # the content block's norm is restored inside the organ, so
             # ||u|| == 1 still holds and r is untouched.
+            _cs_u1 = _pol_u if _CENSUS is not None else None
             _pol_u = _polar_waist(_pol_u, p, state)
+            if _CENSUS is not None:
+                _CENSUS.append((kb, "sink_waist",
+                                _polar_ru_join(_pol_u - _cs_u1, _pol_r,
+                                               _pg).realize().numpy()))
         cur = _polar_ru_join(_pol_u, _pol_r, _pg)
         if int(os.environ.get("ALG_MINE_BREATHS", "0")):
             # THE TAP (spec S4): u and r beside r*u, DETACHED — the

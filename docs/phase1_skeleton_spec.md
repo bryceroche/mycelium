@@ -35277,3 +35277,47 @@ kind's road, the passing metric; never the page, never the wild
 z-radius) -> a MANDATORY port into the mask head (no gain) under a
 mask cooker that makes the head's lanes the only road on a share of
 rows -> the twin. Each rung a read with a bar.
+
+## 2026-09-08 — THE ORGAN CENSUS (GPU, N=32, both machines, both fixtures): THE PLAYER IS SILENT — and three more organs whisper
+
+Census hooks applied (7 anchors; eq A/B/C bit-identical vs the
+mask-prep-era dumps; row smoke ALL GATES; the old census never fed
+fact_buf to pass 1 — it measured a configuration the machine never
+runs; fixed in the reader). Per-breath injection rms, wild, as x of
+its band's base (state band vs [state]; slot-score band vs raw sc2):
+
+| organ (band) | champion post (pre) | polar+sink post (pre) |
+|---|---|---|
+| notebook (state) | 1.05-1.41x | 0.96-1.44x |
+| garage (state) | 0.34-0.46x | 0.42-0.53x |
+| sink_waist (state) | — | 0.06-0.28x (a real delta) |
+| sink_em (state) | — | 0.03-0.04x |
+| mixer (state; 2.1M params) | **0.02x** (pre 0.66-0.93x, gain 0.023) | 0.02x (pre 0.61-0.92x, gain 0.031) |
+| altfact = the FACT INJECTION (var-slot state) | **0.02x** (pre 0.43x, gain 0.057) | 0.03x (pre 0.43x, gain 0.071) |
+| alt = committed-edge bias (slot score) | **0.00x**: 0.017 vs sc2 3.5-5.8 (pre 0.10-0.18x, gain 0.028) | 0.00x (pre 0.14-0.22x, gain 0.020) |
+| MASK HEAD (slot score; 2.0M params) | **~1e-5x**: 4e-5..1e-4 vs sc2 3.5-5.8; PRE-gain already 0.01-0.02x; gain 0.0011 | ~1e-5x; pre grew to 0.02-0.09x, gain fell to 0.0002 |
+
+**THE PLAYER IS SILENT, on both coordinates.** The mask head's
+post-gain logits sit five orders under the score band, and its
+pre-gain organ is at one to two percent of it — unlike the garage
+(gain 0.008 x loud stamps = 0.4x), this is not loud-times-tiny;
+the organ itself is quiet and the loss closed its gain 100x on top.
+The registered condition (< 0.02x) is met by five orders: **THE MASK
+COOKER FIRES** (design entry next; the run needs the word). In the
+polar arm the mask head's pre-gain output GREW 2-5x while its gain
+fell 5x — the organ is trying to speak and the loss keeps turning it
+down: the mandatory-road law's specimen in one row. The alt bias
+(the committed edges' road into attention, the ping-pong's steering
+signal) is equally silent at 0.3% of the score band; the FACT
+INJECTION and the MIXER carry at 2% of the state. Cosines: alt x
+maskhead -0.29 (champion) / -0.40 (polar) — the two attention
+organs cancel each other's whispers (the pinned < -0.3 tripwire
+trips in the polar arm; both are tiny, so it is a note, not a
+verdict). THE CARRIERS: notebook (~1.2x) and garage (~0.4x); with
+the sink, the waist's delta (0.06-0.28x). Everything the "vision"
+calls the alternation — committed edges steering attention, facts
+entering the state, the player redrawing the mask — is running at
+0.3-2% volume; the machine deliberates through the notebook and the
+garage and the raw residual. The forensic's incrementality, the
+whispering rotor, and the silent player are one finding.
+Logs: .cache/portcensus_{sharp_fedon242,sharp_polarsink242}_{wild,mint}.log.
