@@ -36068,3 +36068,29 @@ unanimity is a certification tier). Rungs 2-3 STRUCK; the "gate born
 aimed" follow-up loses its aiming signal and needs another source (the
 solver's refusal — the MUC — is the remaining candidate). THE ORDER
 shrinks: judge -> mask-prep -> the MUC -> the cold leg; T1/T2/T3 behind.
+
+## 2026-09-10 — ARM balG242 VERDICT: G1 FAIL, G2 FAIL (both new organs remove for free; station 5 never woke, lane 2 woke and is redundant); G3 PASS; G4 half
+
+balG242 (prune + lane 2 + station 5, zero-init birth, no cooker; 14.0M;
+unit pc-balanced2): val proxy 0.9313 / 0.9425 / 0.9496. READS: open wild
+0.2526 (= balP242's 0.2526; G1 needs >= 0.2606: FAIL) / open mint
+**0.9496** (control 0.9610, balP242 0.9651; G1 needs >= 0.9660 and the
+guard >= 0.9560: BOTH FAIL — the growth COST 1.5 points of mint against
+the pruned arm). Clock probe 1.0000 x6 (G3 PASS). SEVERANCE on the arm
+(cost = open - severed): s3 0.0517 / 0.0104; s5 **0.0035 / 0.0000**;
+s3+s5 0.0537 / 0.0107 (G2 needs >= 0.074 wild: FAIL); notebook 0.0449 /
+0.1622; nb2 **0.0054 / -0.0019** (severing lane 2 IMPROVES mint);
+notebook+nb2 0.0449 / 0.1587 (G2 needs >= 0.062 wild or >= 0.186 mint:
+FAIL). CENSUS (wild, post): nb2 0.16-0.22x of the state band (G4 >= 0.1x
+PASS), alt21_s5 **0.05x** (G4 FAIL: it never woke), station 3 0.33-0.42x,
+notebook 1.0-1.45x. REGISTERED PREDICTION WRONG on station 5: I predicted
+the station-3 precedent (a zero-init grounding bank wakes and carries);
+it did not — a THIRD grounding bank born behind two working ones stays
+at 0.05x and removes for free (the station-4 pattern). Lane 2 half-
+right: it woke (0.2x) and is redundant (the same pattern at the
+reservoir). VERDICT: balG242 NOT PROMOTED. T3 (more grounding banks):
+STRUCK unless balC242's cooker wakes station 5 AND passes G2 — grounding
+depth saturates at two when born as an invitation. The question the
+cooker arm answers: does making the new organs MANDATORY on 15% of
+rows wake them, and at what mint price (the token cooker's precedent
+says robustness, not carrying).
