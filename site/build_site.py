@@ -200,6 +200,7 @@ the silence is.</p>
 
 
 HOOKS = {
+ "2026-09-09-the-order": "The cycle as it stands tonight — reservoirs, working fluid, cold leg, return roads, mass — and the five things left to close it, in the order we will do them. Two units running against pinned bars.",
  "2026-09-09-the-balance-sheet": "The first return road failed its bar by a hair and bought robustness, not steering. Then the severance ladder: two loud organs remove for free, the notebook is the best parameter in the machine, and seven of seventeen million parameters remove for nothing. Where the mass should sit.",
  "2026-09-09-turbulent-air": "The gut said the air was stuck; the turnover read says it is turbulent — half of every slot replaced each breath, zero frozen. What is missing is a cold sink and a road home: convection is organized motion, not more of it.",
  "2026-09-09-the-player-and-the-game": "The mask head woke under pressure and nothing changed: the slot mask was never load-bearing. Headroom first — and, by dawn, the number: sever the re-reading and wild falls 0.25 to 0.15. The game is between the slots and the words.",
@@ -231,7 +232,7 @@ HOOKS = {
 # ---------------------------------------------------------------- blog + bio
 BLOG = ROOT / "site" / "blog"
 blog_pages = []
-PIN_FIRST = ["2026-09-09-the-balance-sheet", "2026-09-09-turbulent-air", "2026-09-09-the-player-and-the-game", "2026-09-08-the-pressure-cooker", "2026-09-07-a-place-to-turn"]     # the live generation leads the splash
+PIN_FIRST = ["2026-09-09-the-order", "2026-09-09-the-balance-sheet", "2026-09-09-turbulent-air", "2026-09-09-the-player-and-the-game", "2026-09-08-the-pressure-cooker", "2026-09-07-a-place-to-turn"]     # the live generation leads the splash
 _posts = sorted(BLOG.glob("*.md"), reverse=True)
 _posts = [m for m in _posts if m.stem in PIN_FIRST] + [m for m in _posts if m.stem not in PIN_FIRST]
 for md in _posts:
