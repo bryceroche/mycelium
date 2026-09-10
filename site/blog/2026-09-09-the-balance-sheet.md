@@ -144,3 +144,39 @@ should be large, the working fluid should move, the cold leg should
 be unavoidable, and the return should carry. We had the mass in the
 readout and in a mixer nobody needed. The numbers will say whether
 moving it works.
+
+---
+
+## Postscript, the next morning: the verdict
+
+The three arms landed overnight. The prune is free: with 4.8 million
+parameters gone, the pruned arm scores 0.2526 on wild and 0.9651 on
+synthetic against the continued control's 0.2506 and 0.9610, the
+family's synthetic record, at three quarters of the step time. Both
+bars passed. That arm is the balance.
+
+The growth did not carry. Born plain, the third grounding station
+never woke and removes for nothing, and the second notebook lane woke
+to a fifth of its band and is redundant, at a cost of a point and a
+half of synthetic. Born under a cooker that sealed the old lane and
+the old grounding on fifteen percent of rows, the station still never
+woke, the lane still removes for nothing, and the parse simply learned
+to survive without the old lane: the old lane's own removal cost fell.
+Both growth arms failed the bars on record, so the kill stands as
+pinned. Growth by duplication is dead in this family, and our own
+prediction that the cooked arm would wake both organs was wrong.
+
+What the two cookers proved between them is now a law. A cooker
+converts headroom into a new organ only when the seal leaves the
+residual no way to carry the sealed rows itself. The pressure cooker
+worked because it severed the residual and left the committed channel
+or nothing. The token cooker and the balanced cooker left the state
+standing, and in both cases the loss took the cheaper road, which was
+robustness to the seal rather than carrying by the new organ. Sever
+the residual's own path on sealed rows, or the seal teaches survival.
+
+The collider, read the same night, died a second time at the slot
+level: a slot where two readings disagree is wrong 78% of the time,
+and one where they agree is wrong 72%. On wild text the front is
+everywhere, so it points nowhere. Its home is the certifier, where
+row-level unanimity is already a tier.
