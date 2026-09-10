@@ -36026,3 +36026,45 @@ MUC -> the cold leg); T2 is discussed with the MUC (both return roads);
 T1 may ride the mask-prep rebuild since both touch the token side.
 Refuted-cell fence honored: nothing recirculates through the frozen
 trunk (blur, not compute); T1/T2 are trained layers AFTER the waist.
+
+## 2026-09-09 — ARM balP242 VERDICT: THE PRUNE IS FREE (P1, P2 PASS; mint 0.9651 = family record; step 0.51 -> 0.39 s); the chain died on a PC_CKPT bug (relaunched as pc-balanced2); COLLIDER RUNG 1: KILL (the lift bar was unreachable; the front is uninformative either way)
+
+balP242 (prune only, 12.4M, warm polarsink242, 12k, seed 242; unit
+pc-balanced; .cache/sharp_balP242.log): val proxy 0.9305 / 0.9523 /
+0.9651 (best @12k). The mask-prep pass ~50 min (params-keyed miss);
+0.39 s/step (the family ran 0.49-0.52: the prune is a 24% step-time
+gain). READS: open wild **0.2526** (control 0.2506, +0.0020; P1 bar
+>= 0.2406 PASS) / open mint **0.9651** (control 0.9610, +0.0041; bar >=
+0.9560 PASS) — the family's MINT RECORD (prior 0.9626 maskcook242).
+Clock: probe 1.0000 on all six wheels (P2 PASS); designed mass
+0.87-0.96 on the breath hand (up from 0.71-0.77). Severance on the
+pruned arm: s3 cost 0.057 wild / 0.005 mint; notebook 0.039 / 0.157 —
+the ladder's shape, unchanged. VERDICT: P1 + P2 PASS: 4.83M params
+leave the family at NO cost, with a small gain on both registers and
+a mint record. balP242 is the PRUNED CANDIDATE (wild still behind
+fedon242's 0.2613 / pcctl241's 0.2686 — those are other lineages).
+THE CHAIN BUG (mine): the census line passed LV_CKPT; port_census reads
+PC_CKPT -> KeyError -> set -e killed the chain before arms G and C.
+Relaunched: .cache/balanced_gen2.sh (P's census re-run, then G, C) as
+pc-balanced2 at 19:4x. Bars unchanged.
+COLLIDER RUNG 1 (pc-collider1, 19:26; the GPU was free after the
+chain died): A = polarsink242 open 0.2511; B = A sever=s3 0.1975; C =
+polarsink241 open 0.2409; n = 2051 present gold slots (fac-exact is
+PER SLOT). Base wrong rate 0.749. A vs B: disagree 28.9% of slots
+(83.6% of rows), COVERAGE 0.301, P(wrong | dis) 0.782, LIFT 1.04x. A vs
+C: disagree 50.7% of slots (96.5% of rows), COVERAGE 0.529, P(wrong |
+dis) 0.782, LIFT 1.04x. PINNED BARS: coverage >= 0.40 (C passes, B
+fails) AND lift >= 3.0 (both fail) -> KILL as pinned. BANKED: the lift
+bar was UNREACHABLE — with a base wrong rate of 0.749 the maximum lift
+is 1.34x; a mis-pinned bar (the sextet-mass precedent), recorded, not
+bent. THE FINDING STANDS WITHOUT IT: P(wrong | disagree) 0.782 vs
+P(wrong | agree) ~0.715 (A vs C) — disagreement between two readings
+barely predicts a wrong slot, and the front flags 53% of wrong slots
+AND 44% of right ones. On wild text three quarters of the factor slots
+are wrong; the front is everywhere, so it points nowhere. THE COLLIDER
+DIES A SECOND TIME, at the slot level; its home is the certifier's
+panel (diagram- and landscape-invariance at the ROW level, where
+unanimity is a certification tier). Rungs 2-3 STRUCK; the "gate born
+aimed" follow-up loses its aiming signal and needs another source (the
+solver's refusal — the MUC — is the remaining candidate). THE ORDER
+shrinks: judge -> mask-prep -> the MUC -> the cold leg; T1/T2/T3 behind.
