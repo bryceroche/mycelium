@@ -35988,3 +35988,41 @@ breath) — the balance-sheet post said the notebook was the only thing
 that remembers; fixed to "the notebook and the garage remember; the
 notebook is the one the loop cannot do without" (durable != load-
 bearing: garage removal cost ~0.012 / 0.001).
+
+## 2026-09-09 — WORD GIVEN: the token side gets its layers (three registrations; sequenced behind THE ORDER)
+
+THE FINDING BEHIND IT: after the four frozen Llama layers the trained
+token representation is `waist = gelu(trunk @ waist_w + b) + sent_emb`
+— a per-token linear map. There is NO trained token<-token attention in
+the head and NO tokens<-slots road anywhere: every alternator station
+reads slots<-tokens; the words the machine reads at breath 7 are the
+words it read at breath 1. G58 (the constitutional LoRA) showed the
+frozen trunk's register representation was the wild ceiling; the fed-
+mind family runs on precomputed trunk states and never received that
+fix. The ladder's depth verdict: duplicated MIXING is free (station 4),
+duplicated GROUNDING pays (station 3): depth is added where severance
+says it carries, never generically.
+REGISTERED (all three; each a run; bars pinned here, refined only
+before firing):
+  T1  ONE TRAINED TOKEN<-TOKEN BLOCK AFTER THE WAIST (the cheap form of
+      G58): 8-head attention + FFN over the waist tokens, zero-init
+      output, on the memmapped states (the trunk stays out of the
+      loop). ~1.0-3.0M. Bars: open wild >= control + 0.010 with mint
+      within -0.005; severance cost >= 0.020 wild.
+  T2  A TOKENS<-SLOTS STATION PER BREATH (the reverse of station 3):
+      each token attends over the current slot states and updates its
+      representation before the next grounding read — dynamic RE-READING
+      with no mask trajectory to supervise; the return road inside the
+      reading. Zero-init output; one more sublayer per breath (~+8%
+      step). Bars: as T1, plus the turnover read on the TOKEN side (the
+      words must actually change across breaths: token-state turnover
+      >= 0.05 by breath 6 on wild, else the road is decorative).
+  T3  MORE GROUNDING BANKS — conditional on balG242/balC242: if station
+      5 passes G2 (sever(s3,s5) >= 0.074 wild) a fourth is registered
+      with the same bar shape; if station 5 is free, T3 is STRUCK
+      (grounding depth saturates at two).
+SEQUENCE: behind THE ORDER (judge -> mask-prep -> collider 2-3 -> the
+MUC -> the cold leg); T2 is discussed with the MUC (both return roads);
+T1 may ride the mask-prep rebuild since both touch the token side.
+Refuted-cell fence honored: nothing recirculates through the frozen
+trunk (blur, not compute); T1/T2 are trained layers AFTER the waist.
