@@ -36094,3 +36094,46 @@ depth saturates at two when born as an invitation. The question the
 cooker arm answers: does making the new organs MANDATORY on 15% of
 rows wake them, and at what mint price (the token cooker's precedent
 says robustness, not carrying).
+
+## 2026-09-10 — ARM balC242 VERDICT + THE GENERATION'S VERDICT: growth by duplication is DEAD in this family (the KILL as pinned); balP242 IS THE BALANCE; THE RESIDUAL-SEAL LAW (two cookers, one mechanism)
+
+balC242 (prune + lane 2 + station 5 + the balanced cooker 0.15: 20,071
+of 133,828 rows sealed; 0.43 s/step; unit pc-balanced2): val proxy
+0.9637 best @12k. READS: open wild 0.2535 (control 0.2506 +0.003; G1
+>= 0.2606 FAIL; guard PASS) / open mint 0.9637 (control 0.9610 +0.003;
+G1 >= 0.9660 FAIL; guard >= 0.9560 PASS). Clock 1.0000 x6 (G3 PASS).
+SEVERANCE (cost = open - severed): s3 0.0643 / 0.0060; s5 **0.0000 /
+0.0002**; s3+s5 0.0633 / 0.0065 (G2 >= 0.074: FAIL); notebook 0.0307 /
+0.1172; nb2 0.0019 / -0.0003; notebook+nb2 0.0253 / 0.1254 (G2 >= 0.062
+or >= 0.186: FAIL). CENSUS (wild): nb2 0.11-0.17x (G4 PASS), alt21_s5
+**0.02-0.03x** (G4 FAIL — asleep even as the ONLY aimed grounding on
+15% of rows), station 3 0.27-0.41x, notebook 0.85-1.43x.
+THE GENERATION: G1 and G2 fail on BOTH growth arms -> THE KILL AS
+PINNED: growth by duplication is dead in this family; THE BALANCE IS
+THE PRUNE ALONE. **balP242 is the pruned candidate** (0.2526 / 0.9651,
+12.4M, 0.39 s/step; mint record). T3 STRUCK. Lane 2 and station 5 are
+not in the family; ALG_NB2 / ALG_ALT5 / ALG_BAL_COOK stay as doors
+(off), with their verdicts. Prediction ledger: P right; G wrong on
+station 5; C wrong twice (station 5 did not wake; the mint price was
+not paid — mint ROSE +0.003 — because the parse took the other exit).
+THE RESIDUAL-SEAL LAW (registered as a law; three specimens): a cooker
+converts headroom into the NEW organ only if the seal leaves the
+residual NO way to carry the sealed rows itself. THE PRESSURE COOKER
+severed the residual (the committed channel or nothing) -> the channel
+opened 0 -> 0.20. THE TOKEN COOKER sealed the grounding attention and
+left the state -> the parse learned to work with FLAT attention (flat
+floor 0.1482 -> 0.1565, 0.7587 -> 0.8053); the gate aimed a little and
+the bar was missed. THE BALANCED COOKER sealed lane 1 and the grounding
+attention and left the state + lane 2 + station 5 -> the parse learned
+to survive WITHOUT lane 1 (the notebook's own removal cost FELL, 0.157
+-> 0.117 mint, 0.039 -> 0.031 wild) and station 5 never woke. The
+residual is the cheapest road, and the loss takes the cheapest road:
+ROBUSTNESS TO THE SEAL beats CARRYING BY THE NEW ORGAN whenever the
+residual survives the seal. COROLLARY for every cooker after this one:
+on sealed rows sever the residual state's own path as well (the
+pressure cooker's SHELF_CIRCLE form), or the seal teaches survival.
+The registered residual-seal form of the token cooker (spec §4's
+follow-up) is now the ONLY form that can pass its bar. THE ORDER stands:
+mask-prep drop + JIT -> the MUC (headroom read first) -> the cold leg
+as deployment -> T1/T2 (T3 struck). Chain artifacts: .cache/
+balanced_gen2.log, portcensus_bal{P,G,C}242.log, sharp_bal{P,G,C}242.*.

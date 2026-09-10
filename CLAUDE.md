@@ -135,6 +135,13 @@ pure prose at 340 epochs is poison −243 — tune between).
   headroom = the bypass's removal cost, measured FIRST (sever, read the drop,
   then cook); the mask cooker woke its organ to 0.84× and changed nothing
   because the slot mask's removal cost was zero. Ledger 2026-09-08/09.
+  **THE RESIDUAL-SEAL LAW (2026-09-10)**: a cooker converts headroom into
+  the new organ only if the seal leaves the residual NO way to carry the
+  sealed rows itself — the loss takes the cheapest road, and robustness to
+  the seal beats carrying (token cooker: flat floors rose; balanced cooker:
+  lane 1's removal cost fell, station 5 never woke; the pressure cooker
+  worked because it severed the residual). Sever the residual's own path on
+  sealed rows, or the seal teaches survival. Ledger 2026-09-10.
 - **Poincaré-Euclidean marriage clause** (for when the ball's flag lifts):
   hyperbolic quantities never enter softmax without a log-map; cosine is wrong
   in the ball.
