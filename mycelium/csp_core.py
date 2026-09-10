@@ -715,3 +715,60 @@ if __name__ == "__main__":
     parse_ok = _ast_parse_ok()
     print(f"[ast.parse] ok={parse_ok}", flush=True)
     sys.exit(0 if parse_ok else 1)
+
+
+# ===========================================================================
+# THE MINIMAL UNSATISFIABLE CORE (2026-09-10, the steering wheel's driver)
+# ===========================================================================
+def deletion_core(items, is_unsat, max_checks=None):
+    """Deletion-based minimal unsatisfiable core over an abstract item
+    list. `is_unsat(subset)` must return True only on a CERTIFIED
+    unsatisfiable subset (a 'budget' answer counts as False: the item is
+    kept, the core may then be non-minimal — sound, never optimistic).
+    Precondition: is_unsat(items) is True. Returns (core, checks).
+    One pass: drop each item whose removal keeps the rest unsatisfiable.
+    Domain-free by construction — nothing here knows what an item is."""
+    core = list(items)
+    checks = 0
+    i = 0
+    while i < len(core):
+        if max_checks is not None and checks >= max_checks:
+            break
+        trial = core[:i] + core[i + 1:]
+        checks += 1
+        if trial and is_unsat(trial):
+            core = trial            # the item was not needed for the refusal
+        else:
+            i += 1                  # needed: keep it, move on
+    return core, checks
+
+
+def _subproblem(problem: Problem, keep) -> Problem:
+    """The same Problem with only the factors at indices `keep`
+    (var_factors rebuilt; domains0 and the registry shared)."""
+    keep = list(keep)
+    facs = [problem.factors[i] for i in keep]
+    vf = [[] for _ in range(problem.n_vars)]
+    for fi, f in enumerate(facs):
+        for u in f.scope:
+            vf[u].append(fi)
+    return Problem(n_vars=problem.n_vars, domains0=problem.domains0,
+                   factors=facs, var_factors=vf, registry=problem.registry)
+
+
+def unsat_core(problem: Problem, budget: int = 20000, seed: int = 0) -> dict:
+    """The core of a refused Problem, over FACTOR INDICES. Returns
+    {'status': 'core' | 'sat' | 'budget', 'core': [factor indices],
+     'checks': n}. 'sat'/'budget' mean the whole problem was not certified
+    unsat, so there is no core to find. Givens that live in domains0 are
+    not deletable here (see alternator_bridge.refuse_and_core for the
+    parse-level core, where a given IS a deletable item)."""
+    r = solve_symbolic(problem, budget=budget, seed=seed)
+    if r["status"] != "unsat":
+        return {"status": r["status"], "core": [], "checks": 1}
+
+    def _is_unsat(keep):
+        return solve_symbolic(_subproblem(problem, keep), budget=budget,
+                              seed=seed)["status"] == "unsat"
+    core, checks = deletion_core(list(range(len(problem.factors))), _is_unsat)
+    return {"status": "core", "core": core, "checks": checks + 1}

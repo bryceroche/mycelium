@@ -90,3 +90,39 @@ if __name__ == "__main__":
           f"half-commit")
     print(f"[bridge] fully-forced at full commit: {full_ok}/{len(samp)} "
           f"(ladder density check — extractor promises 100%)")
+
+
+def refuse_and_core(n_vars, factors, m, budget=20000, seed=0):
+    """THE STEERING WHEEL's driver (2026-09-10, the word): solve the
+    committed parse COMPLETELY (the June core's search, budgeted); on a
+    certified refusal, the deletion-based MINIMAL UNSATISFIABLE CORE over
+    the parse's OWN items — factor dicts, givens included (a wrong given
+    is a wrong slot too). Returns
+      {'status': 'sat' | 'unsat' | 'budget' | 'unbuildable',
+       'core': [indices into `factors`], 'checks': n}
+    'unsat' + core = the proof the wheel steers by: the smallest set of
+    slots that cannot coexist. Everything here is detached fact (the
+    dual-terminal contract): it conditions, it never supervises."""
+    from mycelium.csp_core import solve_symbolic, deletion_core
+
+    def _build(fs):
+        gv = {f["var"]: f["value"] for f in fs if f["ftype"] == "given"}
+        return problem_from_algebra3(n_vars, fs, gv, m)
+
+    def _is_unsat(fs):
+        try:
+            return solve_symbolic(_build(fs), budget=budget,
+                                  seed=seed)["status"] == "unsat"
+        except (ValueError, KeyError, IndexError):
+            return False            # an unbuildable subset is never a proof
+    try:
+        r = solve_symbolic(_build(list(factors)), budget=budget, seed=seed)
+    except (ValueError, KeyError, IndexError) as e:
+        return {"status": "unbuildable", "core": [], "checks": 1,
+                "why": type(e).__name__}
+    if r["status"] != "unsat":
+        return {"status": r["status"], "core": [], "checks": 1}
+    idx = list(range(len(factors)))
+    core, checks = deletion_core(
+        idx, lambda keep: _is_unsat([factors[i] for i in keep]))
+    return {"status": "unsat", "core": core, "checks": checks + 1}
