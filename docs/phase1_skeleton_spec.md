@@ -36578,3 +36578,39 @@ decodable >= 0.90. KILL: D1 fails -> age-tagging costs accuracy; mode 1
 ("every memory reads as current") stays and the channel stays content-
 only. HELD behind stellarator v2 (pc-stellar2): if the total cut fails,
 the planes remain a leak we live with and the delay line is struck.
+
+## 2026-09-10 — THE CANONICAL FRAME VERDICT (balU242): U1 PASS (mint 0.9708 = record), U2 FAIL (the frame is free, it does not pay by the pinned clauses), U3 PASS; THE EXEMPTION'S COST MEASURED: 11 wild points and 31 mint points rode the exempt clock block across the cut
+
+balU242 (warm balS242, 12k, ALG_STELLAR=1 ALG_CLOCK_CANON=1; unit
+pc-canon 13:02-15:15): val proxy 0.9708 best.
+  READ            balU242            balS242            bar
+  open wild       0.2579             0.2608             >= 0.2508 PASS (-0.0029)
+  open mint       **0.9708**         0.9654             >= 0.9604 PASS (+0.0054; the family's MINT RECORD)
+  clock probe     1.0000 x6          1.0000             >= 0.95 PASS
+  sever notebook  0.1282 / 0.4730    cost 0.130 / 0.498 (was 0.138 / 0.513)
+  sever garage    0.2452 / 0.9722    cost **0.013 / -0.001** (was 0.023 / 0.004)
+  census (wild)   notebook 0.85-1.40x, garage 0.54-0.61x, s3 0.46-0.77x
+  radius (wild)   12.5 16.4 20.2 20.5 20.9 22.4 23.1 — MONOTONE again
+                  (v1: peaked at b2, held ~20); turnover 0.71 -> 0.42
+U2 (garage cost >= 0.033 wild OR open wild >= 0.2658 OR notebook cost
+>= 0.158): FAIL on all three clauses. The registered prediction (the
+bus gains most from a clean frame) was WRONG: the garage's removal
+cost FELL to 0.013 wild and severing it IMPROVES mint by 0.001. VERDICT:
+the canonical frame is FREE (within every guard; a mint record) and
+does not, by itself, make the memories more necessary. Its value is as
+the PREREQUISITE for the total cut — measured next.
+THE EXEMPTION'S COST (pc-stellar2's first read; eq gate bit-identical
+x3 with ALG_STELLAR=2 unset): balS242 (v1-trained, clock exempt) read
+with the TOTAL cut and no frame: wild 0.2608 -> **0.1497**, mint 0.9654
+-> **0.6513**. The exempt clock block carried 11 wild points and 31 mint
+points across the cut: the leak the spectral read found (55% of the
+add/mul discriminant on the clock planes; share 0.17 -> 0.34) was
+load-bearing, not cosmetic. Prediction (< 0.15 wild) held, at 0.1497.
+THE BIRTH READ for v2: balU242 (canon-trained) under the total cut,
+untrained: wild **0.2072**, mint **0.8457** — far above balS242's 0.1497
+/ 0.6513 under the same cut, as predicted: the canonical frame already
+carries the bearing through the ink, so the total cut costs 5 wild and
+12 mint points at birth instead of 11 and 31. ARM balV242 training
+(15:17 + the 42-min facts pass; step 4500 at 16:34); V1-V4 comparator
+= balU242: wild >= 0.2479, mint >= 0.9658, notebook cost >= 0.130,
+clock-plane share < 0.25, clock >= 0.95; kill wild < 0.2279.
