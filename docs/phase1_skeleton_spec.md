@@ -36166,3 +36166,34 @@ STEPS=1 through the training entry):
      joins the family env from the next run; FAIL -> the door stays
      off and the finding is banked (the mask is load-bearing for the
      pruned family after all).
+
+## 2026-09-10 — GUT REGISTERED (the 25th): "stereotypes are exaggerated — would exaggerating the atlas centroids give more separation?" — THE CARICATURE READ (word given), bar pinned
+
+THE FORMAL CATCH: pushing every centroid from the grand mean by one
+factor is invisible to a cosine read and only re-biases a Euclidean one
+— the data do not move. The caricature that works (face perception)
+amplifies the DISTINCTIVE directions relative to a norm: whitening by
+the within-kind covariance (LDA). Where it can act: nearest-centroid
+READERS (the monitor centroids, the mouth, the needle's retrieval); as a
+TRAINING signal it would put a diagnostic in the loss (the Goodhart
+fence) and push the state toward a kind classifier (the binding
+theorem) — not built without a headroom read.
+THE READ (scripts/caricature_read.py, CPU, zero GPU): factor-KIND
+recognition by nearest centroid on per-slot loop states (a
+dump_polar_states dump, all[N,7,24,512]), gold kinds (ftype, op) =
+given / rel_add / rel_mul (the only kinds present in both fixtures; the
+monitor's sel/fdiv/mod/pct do not occur in them), leave-one-out over
+present slots, per breath, in raw-euclid / raw-cos / caricature a=2,3 /
+shrinkage-whitened lambda=0.1,0.5; plus the centroid cosine matrix raw
+vs whitened at breath 6 (codebook geometry = margin: cosines predict
+confusions). Two runs: a PREVIEW on the existing polar dumps (256 rows,
+provenance: the polar family), then the read proper on fresh dumps from
+balP242 (queued behind pc-mpjit: .cache/caricature_chain.sh, unit
+pc-caric).
+BAR (pinned): on WILD at breath 6, best of (caricature, whitened) LOO
+kind accuracy >= raw best + 0.050 -> the separation is real and the
+caricatured bank is registered for the mouth/monitor re-anchor; else
+the caricature dies as a reader (and stays dead as a loss). Mint
+reported. Caveat recorded: whitening's covariance is fit on all rows
+(the centroids are LOO; the covariance is not) — a mild optimism that
+only matters if the verdict is within a point of the bar.
