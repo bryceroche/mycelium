@@ -200,6 +200,7 @@ the silence is.</p>
 
 
 HOOKS = {
+ "2026-09-10-the-steering-wheel": "Pythia solved Sudoku with the rules written as masks and scored zero without them. The wheel assembles: commit to the solver on every breath, the minimal unsatisfiable core as the driver, the mask DSL as the linkage, entering the loop not the readout. KenKen first.",
  "2026-09-09-the-words-never-change": "Do we want more layers in the loop? A duplicate mixer was free and a duplicate grounding bank paid — and on the other side of the waist there is no trained attention over the words at all, and no road from slots back to words. Three layers, with the word.",
  "2026-09-09-the-order": "The cycle as it stands tonight — reservoirs, working fluid, cold leg, return roads, mass — and the five things left to close it, in the order we will do them. Two units running against pinned bars.",
  "2026-09-09-the-balance-sheet": "VERDICT (Sep 10): the prune is free — 4.8M gone, a synthetic record, three quarters of the step time. Growth by duplication is dead; the residual-seal law. With the severance ladder that found it, and postscript.",
@@ -233,7 +234,7 @@ HOOKS = {
 # ---------------------------------------------------------------- blog + bio
 BLOG = ROOT / "site" / "blog"
 blog_pages = []
-PIN_FIRST = ["2026-09-09-the-words-never-change", "2026-09-09-the-order", "2026-09-09-the-balance-sheet", "2026-09-09-turbulent-air", "2026-09-09-the-player-and-the-game", "2026-09-08-the-pressure-cooker", "2026-09-07-a-place-to-turn"]     # the live generation leads the splash
+PIN_FIRST = ["2026-09-10-the-steering-wheel", "2026-09-09-the-words-never-change", "2026-09-09-the-order", "2026-09-09-the-balance-sheet", "2026-09-09-turbulent-air", "2026-09-09-the-player-and-the-game", "2026-09-08-the-pressure-cooker", "2026-09-07-a-place-to-turn"]     # the live generation leads the splash
 _posts = sorted(BLOG.glob("*.md"), reverse=True)
 _posts = [m for m in _posts if m.stem in PIN_FIRST] + [m for m in _posts if m.stem not in PIN_FIRST]
 for md in _posts:
