@@ -36399,3 +36399,39 @@ a model trained with the residual, the residual IS the road; the
 notebook carries 0.04/0.16 beside it. The arm (balS242, training since
 10:51) must convert all of that into the junction. This is the
 sharpest headroom number of the campaign: 25 and 97 points.
+
+## 2026-09-10 — THE STELLARATOR VERDICT: ALL BARS PASS — the notebook IS the road (removal cost 0.039 -> 0.138 wild, 0.157 -> 0.513 mint), wild 0.2608 (+0.006 over the candidate), the clock intact, the radius no longer monotone, the late breaths did NOT freeze; balS242 is THE CANDIDATE
+
+balS242 (warm balP242, 12k, seed 242, ALG_SLOT_ALL=1 ALG_STELLAR=1; unit
+pc-stellar 10:50-12:58; the JIT facts pass 42 min; 0.38 s/step): loss
+23.2 at step 0 (the snipped residual: the birth floor 0.001/0.000) ->
+9.7 by step 500 -> 4.89 at 12k; val proxy 0.9368 / 0.9558 / 0.9654 (ahead
+of balP242 at every checkpoint).
+  READ            balS242            balP242 (family env)   bar
+  open wild       **0.2608**         0.2545                 >= 0.2445 PASS (+0.0063; fedon242's 0.2613 is the campaign's cross-lineage record — 0.0005 away)
+  open mint       0.9654             0.9665                 >= 0.9615 PASS (-0.0011)
+  clock probe     1.0000 x6          1.0000                 >= 0.95 PASS (S3: the exemption holds)
+  sever notebook  0.1224 / 0.4523    cost 0.039 / 0.157     S2: cost **0.138 / 0.513** — PASS by 5x / 3x: THE NOTEBOOK IS THE ROAD
+  sever garage    0.2379 / 0.9613    cost 0.012 / 0.001     cost 0.023 / 0.004 (up; still a side road)
+  sever s3        0.1931 / 0.9583    cost 0.057 / 0.005     cost 0.068 / 0.007
+  sever ffn       0.1960 / 0.7767    cost 0.024 / 0.106     cost 0.065 / 0.189 (depth matters more when the state must be rebuilt from ink)
+  census (wild)   notebook 0.86-1.42x, garage 0.61-0.66x (was 0.43-0.55), s3 0.43-0.66x (was 0.27-0.45): every road LOUDER
+  S4 radius       wild 12.9 16.5 20.2 19.8 19.0 19.6 20.3 (balP242: 12.3 -> 21.2 MONOTONE) — no longer monotone: PEAKS at b2, dips, holds
+  S4 turnover     wild 0.68 0.70 0.53 0.58 0.55 0.52 (balP242: 0.57 ... 0.38): HIGHER at every breath and NOT collapsing late — the breath-gate freeze risk did not materialize; the junction stirs, it does not freeze
+VERDICT: S1, S2, S3 PASS; S4 as predicted. THE STELLARATOR LIVES on the
+sharp payload: the August grave was payload, as the autopsy said. The
+residual-seal law's geometric form works without a cooker: the notebook
+went from 4 points to 14 on wild, from 16 to 51 on mint, by being made
+the only road; every other organ got louder beside it. **balS242 is the
+research candidate** (12.4M, 0.38 s/step). Registered predictions: all
+four right (S1 wild within +0.01 — it was +0.006).
+NEXT (in order, the word for the clock fix given): (1) THE GARAGE'S
+CLOCK BLOCK: the deposit written at breath j carries breath j's clock
+phase; the read at breath k undoes the ROLE rotation and nothing undoes
+the clock — a stale bearing enters the state's clock planes through
+W_busr. FIX (word given): unwind the deposit's clock planes by the
+wheel's angle difference (k - j) at read, before scoring and mixing
+(door ALG_GAR_UNWIND; the content planes untouched; eq unset). Single
+delta: arm balU242 warm balS242. (2) THE GARAGE JOINS THE JUNCTION
+(clock-exempt or unwound, whichever (1) says), the pair notebook +
+garage as the carry. (3) The wheel's executor into the loop's lanes.
