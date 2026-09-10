@@ -36435,3 +36435,38 @@ wheel's angle difference (k - j) at read, before scoring and mixing
 delta: arm balU242 warm balS242. (2) THE GARAGE JOINS THE JUNCTION
 (clock-exempt or unwound, whichever (1) says), the pair notebook +
 garage as the carry. (3) The wheel's executor into the loop's lanes.
+
+## 2026-09-10 — THE CANONICAL CLOCK FRAME (word given: "fix the clock block"): the memories written at phase 0, the reads re-phased; bars PINNED; arm balU242 fired
+
+THE CORRECTION TO MY OWN PICTURE: the deposit is cur -> W_bind1 -> gelu
+-> W_bind2 and the ink is cur -> W_sil — dense maps that SMEAR the
+state's clock phase across every dim of the wire, so "unwind the
+deposit's clock planes" is not a defined operation in bus coordinates.
+The defined fix: write in a canonical frame. FRAMES FROM THE CODE: the
+polar rotation + recompose (breath kb) precede the ink append and the
+garage write, so both memories are written at abs[kb-1]; both are read
+at breath kb before its rotation, at abs[kb-2] (identity at kb=1).
+THE DOOR (scripts/apply_clock_canon.py, applied; ALG_CLOCK_CANON=1 under
+ALG_POLAR; unset = untouched): `_clock_frame(x, k, sign, rot2)` rotates
+the clock planes by sign * abs[k-1] (content planes identity in the
+tables). Writes: cur de-rotated (sign -1, k = kb) before W_sil and
+before W_bind1. Reads: the notebook read `_rd` and the garage injection
+`_inj4` (after W_busr) re-phased (sign +1, k = kb-1). CPU smoke:
+canon -> rephase identity to 2.4e-7, content planes bitwise untouched,
+clock planes move 5.7-6.2 at k=3,6, identity at k=1 (abs[0] = 0).
+CHAIN (.cache/canon_chain.sh, unit pc-canon): eq gate A/B/C (unset) vs
+the stellarator post dumps -> THE BIRTH READ: balS242 with the canonical
+frame imposed at read time (how much the trained W_sil / W_busr depend
+on the stale phase) -> ARM balU242: warm balS242, 12k, seed 242, the
+family env + ALG_STELLAR=1 + ALG_CLOCK_CANON=1 -> reads: clock; open;
+severance notebook / garage on both; census wild; radius.
+BARS (comparator balS242: 0.2608 / 0.9654; notebook cost 0.138 / 0.513;
+garage cost 0.023 / 0.004): U1 open wild >= 0.2508 AND mint >= 0.9604
+(guards). U2 THE FRAME PAYS: garage cost >= 0.033 wild (+0.010) OR open
+wild >= 0.2658 (+0.005) OR notebook cost >= 0.158 wild (+0.020). U3
+clock probe >= 0.95. KILL: U1 fails -> the phase in the memories was
+information the readers used; the alternative delta is the EXEMPT form
+(mask the clock block out of both wires). REGISTERED PREDICTION: birth
+read drops modestly (wild 0.20-0.25: the readers learned around the
+stale phase, not with it); U1 passes; U2 passes on the garage clause
+(the bus was the organ with the most to gain from a clean frame).

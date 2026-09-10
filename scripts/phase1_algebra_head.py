@@ -53,6 +53,20 @@ ALG_CONSUME = int(os.environ.get("ALG_CONSUME", "0"))  # consume-once credit (an
 ALG_NOTEBOOK = int(os.environ.get("ALG_NOTEBOOK", "0"))  # the cathedral notebook
 ALG_CIRCLE = int(os.environ.get("ALG_CIRCLE", "0"))      # the traffic circle
 ALG_STELLAR = int(os.environ.get("ALG_STELLAR", "0"))    # cell-3b: helical handoff
+ALG_CLOCK_CANON = int(os.environ.get("ALG_CLOCK_CANON", "0"))   # memories in a canonical clock frame
+
+
+def _clock_frame(x, k, sign, rot2):
+    """Rotate x's CLOCK planes by sign * (the wheel's absolute phase
+    after loop breath k); k < 1 = phase 0 = identity. Content planes
+    are identity in the tables. sign=-1 canonicalizes a write,
+    sign=+1 re-phases a read to the reader's frame."""
+    if k < 1:
+        return x
+    from tinygrad import Tensor as _Tf, dtypes as _df
+    _, _, _fac, _fas, _ = _polar_tables()
+    return rot2(x, _Tf(_fac[k - 1], dtype=_df.float),
+                _Tf(float(sign) * _fas[k - 1], dtype=_df.float))
 NB_PERSLOT = int(os.environ.get("NB_PERSLOT", "0"))      # per-slot lanes: sharp ink
 ALG_SEPHASE_Q = int(os.environ.get("ALG_SEPHASE_Q", "0"))   # identity channel
 SEPHASE_Q_SCRAMBLE = int(os.environ.get("SEPHASE_Q_SCRAMBLE", "0"))
@@ -2359,6 +2373,8 @@ def breath_step(p, state, kb, ctx):
                 _sc = _sc * NB_FOCAL          # the magnifying glass
             _at = _sc.softmax(-1)             # (B, L, k)
             _rd = sum(_at[:, :, j:j + 1] * _nb[j] for j in range(len(_nb)))
+            if ALG_CLOCK_CANON and ALG_POLAR:
+                _rd = _clock_frame(_rd, kb - 1, +1, _rot2)   # the reader's frame
             if "notebook" in _SEVER:
                 _rd = _rd * 0.0
             if _bal_v is not None:            # THE BALANCED COOKER:
@@ -2465,6 +2481,8 @@ def breath_step(p, state, kb, ctx):
         _rds4 = [_rot2(_rd4, _rc4, _rs4)
                  for (_rc4, _rs4) in _SGC[0].values()]
         _inj4 = Tensor.cat(*_rds4, dim=-1) @ p["W_busr"]
+        if ALG_CLOCK_CANON and ALG_POLAR:
+            _inj4 = _clock_frame(_inj4, kb - 1, +1, _rot2)   # the reader's frame
         _inj4o = _inj4 * 0.0 if "garage" in _SEVER else _inj4   # sever door
         if _CENSUS is not None:
             _CENSUS.append((kb, "garage",
@@ -3175,8 +3193,10 @@ def breath_step(p, state, kb, ctx):
             state.setdefault("u_all", []).append(_pol_u.detach())
             state.setdefault("r_all", []).append(_pol_r.detach())
     if ALG_NOTEBOOK:
-        _nb.append((cur @ p["W_sil"]) if NB_PERSLOT
-                   else (_fed_core(cur).mean(1) @ p["W_sil"]))
+        _cur_w = (_clock_frame(cur, kb, -1, _rot2)
+                  if ALG_CLOCK_CANON and ALG_POLAR else cur)   # canonical frame
+        _nb.append((_cur_w @ p["W_sil"]) if NB_PERSLOT
+                   else (_fed_core(_cur_w).mean(1) @ p["W_sil"]))
         if ALG_NB2 and "nb2_sil" in p and state.get("nbb") is not None:
             state["nbb"].append(cur @ p["nb2_sil"])
         if FED_SHELF and "fed_sil2" in p and state.get("nb2") is not None:
@@ -3187,7 +3207,9 @@ def breath_step(p, state, kb, ctx):
     if _garage is not None:
         # GARAGE WRITE (drop-off): the refined state's role-bound
         # wire; the list IS the parking separation
-        _wg4 = ((cur @ p["W_bind1"] + p["W_bind1_b"]).gelu()
+        _cur_g = (_clock_frame(cur, kb, -1, _rot2)
+                  if ALG_CLOCK_CANON and ALG_POLAR else cur)   # canonical frame
+        _wg4 = ((_cur_g @ p["W_bind1"] + p["W_bind1_b"]).gelu()
                 @ p["W_bind2"])
         if int(os.environ.get("ALG_BUSGARAGE", "0")) >= 2:
             # THE CANONICAL SHELF (2026-08-30, word given): snap to
