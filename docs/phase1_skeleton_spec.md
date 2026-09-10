@@ -36295,3 +36295,38 @@ factor error's address, and it points at the token side (T1/T2: the
 representation the loop reads on wild text does not carry the op).
 W1 (the refusal read): first launch died on a decode key (query; then
 y) — fixed, relaunched as pc-refusal3.
+
+## 2026-09-10 — W1 THE REFUSAL VISIBILITY READ: the solver refuses HALF of wrong parses with ZERO false refusals; the core names wrong slots at 0.75 precision — LIVE on mint as pinned, FAIL on wild by the core-size clause (median 4 vs <= 3); a re-pin PROPOSED (needs the word)
+
+READ (unit pc-refusal4; balP242 final parses via decode() per slot,
+.cache/refusal_{wild,mint}_balP242.jsonl; the dumps reproduce loop_val's
+0.2526 / 0.9651 exactly; grader scripts/refusal_grade.py: complete
+solve + deletion core on refusal):
+  WILD (311 rows): wrong rows 309 (row-level exactness 2/311 = 0.6% —
+  fac-exact 0.25 per slot compounds to almost no fully-right wild
+  parse), refused 159: **P(refuse | wrong) = 0.515** (bar >= 0.15:
+  PASS x3); right rows 2, refused 0. Core size median **4** (bar <= 3:
+  FAIL by one), mean 3.81 over ~6.6 present slots per row; **core
+  precision 0.753** (three of four named slots are actually wrong),
+  recall 0.527 (the core names half of a row's wrong slots).
+  MINT (300 rows): wrong rows 65, refused 32: P(refuse | wrong) = 0.492;
+  right rows 235, refused **0**: P(refuse | right) = 0.000. Core median
+  3 (PASS), precision 0.353, recall 0.649. W1 LIVE on mint as pinned.
+VERDICT AS PINNED: wild FAIL (the size clause), mint LIVE. Bars never
+bend; the numbers are banked.
+WHAT THE NUMBERS SAY: the solver's refusal is a PRECISE signal — zero
+false refusals in 237 right rows across both fixtures — where the
+collider's front was not (0.78 vs 0.72). Half of all wrong wild parses
+are refused; the collider's 5% self-contradiction was a whole-problem
+lower bound and the final-parse refusal rate is ten times it. The core
+is a CONFLICT SET, not a blame assignment: on mint a wrong given's core
+includes the right relations it violates (precision 0.35), so the
+wheel's turn is "re-read every core slot", not "the core is wrong".
+PROPOSED RE-PIN (a registered ruling; needs the word): the size clause
+was pinned for 5-factor parses and wild parses carry ~6.6 slots; replace
+"median core <= 3" with "core precision >= 0.60 on wild" (the quantity
+the wheel steers by), under which wild is LIVE at 0.753. Until the word
+the wild verdict stands as FAIL and the wheel's build proceeds on the
+mint verdict (LIVE) and on KenKen (W3), where the mask is mandatory.
+FOLLOW-UP (registered): per-BREATH refusal (the true W1) needs the
+step trainer's per-breath decode; the final-parse rate is its floor.

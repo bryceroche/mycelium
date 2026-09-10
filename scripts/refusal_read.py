@@ -47,7 +47,8 @@ for s0 in range(0, N, 8):
         for j in range(L_FAC):
             if row["pres"][j] <= 0: continue
             rj = dict(row); pr = np.full_like(row["pres"], -1.0); pr[j] = row["pres"][j]; rj["pres"] = pr
-            for f in decode(rj): f["_slot"] = j; parse.append(f)
+            _facs, _q = decode(rj)          # decode returns (factors, query var)
+            for f in _facs: f["_slot"] = j; parse.append(f)
         wrong = []; extra = [int(j) for j in range(L_FAC) if row["pres"][j] > 0 and vg["presence"][i, j] < 0.5]
         for j in range(L_FAC):
             if vg["presence"][i, j] < 0.5: continue
