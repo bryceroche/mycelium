@@ -19,7 +19,7 @@ assert set(sd.keys()) == set(p.keys()), (sorted(set(sd) - set(p))[:4], sorted(se
 for k in p: p[k].assign(sd[k].to(p[k].device).cast(p[k].dtype)).realize()
 _ATAB, _AIDX, _atl, _acls = atlas_tables(vs)
 _jk_open = (("fat", "args", "res") + (("pres", "ftype", "op", "dig", "dup") if int(os.environ.get("ALG_ALT2", "0")) and not int(os.environ.get("LV_NOFACT", "0")) else ()) + (("nl0",) if _XPV else ()))
-_jk_masked = ("pres", "ftype", "op", "islit", "dig", "args", "res") + (("dup",) if "h_dup" in p else ()) + (("sgn",) if "h_sgn" in p else ()) + (("dargs",) if "W_dargs" in p else ()) + (("dig2",) if "h_dig2" in p else ())
+_jk_masked = ("pres", "ftype", "op", "islit", "dig", "args", "res", "query") + (("sel",) if "h_sel" in p else ()) + (("dup",) if "h_dup" in p else ()) + (("sgn",) if "h_sgn" in p else ()) + (("dargs",) if "W_dargs" in p else ()) + (("dig2",) if "h_dig2" in p else ()) + (("y",) if "W_y" in p else ())
 N = len(vs); n_ok = n_tot = 0; fo = open(out_path, "w")
 for s0 in range(0, N, 8):
     sl = np.arange(s0, min(s0 + 8, N)); pad = 8 - len(sl)

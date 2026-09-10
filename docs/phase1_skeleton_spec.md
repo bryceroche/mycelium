@@ -36255,3 +36255,43 @@ to the step trainer's ping -> W2 -> the KenKen parser (word) -> W3.
 Absorbs THE ORDER's item 3 (the release valve). Registered predictions:
 W1 P(refuse | wrong) lands 0.10-0.25 (live, barely); W2 passes; W3's
 parser bar is the hard one (cage spans are long and numerous).
+
+## 2026-09-10 — THE MASK-PREP REBUILD VERDICT: all-to-all is FREE and joins the family (M3 PASS: 0.2545 / 0.9665); the JIT pass is bit-identical (M1, proved from the buckets) but the pass is SOLVER-BOUND — 42 min, not 12 (M2 FAIL as pinned); THE CARICATURE DIES AS A READER (+0.020 vs the +0.050 bar)
+
+MASK-PREP (unit pc-mpjit, 05:47-08:37):
+  M0 eager: the patch changed the pass's source fingerprint, so the
+     "hit" was a MISS and ran the full eager pass: ~75 min (05:47 ->
+     07:05) — the baseline, re-measured. Banked 1797f7c0.
+  M1 JIT (batch 32): the key differed AGAIN (7c31d68e; the ignore door
+     did not cover the JIT dial — registered bug, low priority), so no
+     verify-on-hit ran; the pass took 46 min (07:06 -> 07:52). THE PROOF
+     CAME FROM THE BUCKETS INSTEAD: FACTS (133828,24,4) and MASKS
+     (133828,24,24) of the eager and JIT buckets are BITWISE EQUAL
+     (np.array_equal, max|d| 0). Step-0 loss identical (8.3543).
+  M2 timed MISS, warm balP242, ALG_SLOT_ALL=1: 42.0 min (07:52:21 ->
+     08:34:22). BAR <= 12 min: FAIL as pinned. THE FINDING: the JIT
+     took the forward from ~75 to ~42-46 min, so the forward was ~1/2
+     of the pass and the other ~40 min is CPU — the facts half
+     (alt2_fact_buf: the solver's propagation per row in python) — the
+     pass is SOLVER-BOUND, not forward-bound. My "8-14x" claim assumed
+     the forward was the cost; banked as wrong. REGISTERED FIX: the
+     facts decode across CPU cores (a process pool over row batches; the
+     forward's outputs are numpy by then) — 40 min / n_cores.
+  M3 THE FAMILY SWITCH: balP242 with ALG_SLOT_ALL=1: wild **0.2545**
+     (+0.0019 vs 0.2526), mint **0.9665** (+0.0014 vs 0.9651; a read-
+     time mint record). BAR within -0.010 / -0.005: PASS. ALG_SLOT_ALL=1
+     JOINS THE FAMILY ENV from the next run: the frozen slot mask leaves
+     the family; the mask head's slot-mask lane loses its last consumer.
+THE CARICATURE READ proper (unit pc-caric; fresh balP242 states, 256
+rows each): WILD b6 raw best 0.728 (cos) -> caricature a=2 0.717, a=3
+0.722, whitened 0.748 / 0.742 -> best +0.020 vs the +0.050 bar: FAIL —
+THE CARICATURE DIES AS A READER (and stays dead as a loss). The literal
+exaggeration does nothing (the formal catch held); whitening buys ~2-3
+points. Mint at ceiling (0.997 -> 1.000). THE FINDING THAT STAYS: on
+wild, rel_add and rel_mul centroids sit at cosine 0.857 (mint 0.508)
+— the wild register's slot states barely carry the OPERATION; the
+reader gets given-vs-rel and guesses add-vs-mul. That is the wild
+factor error's address, and it points at the token side (T1/T2: the
+representation the loop reads on wild text does not carry the op).
+W1 (the refusal read): first launch died on a decode key (query; then
+y) — fixed, relaunched as pc-refusal3.
