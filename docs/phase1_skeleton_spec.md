@@ -36340,3 +36340,53 @@ it W1 is LIVE on wild (0.753) and mint (as before). Numbers unchanged;
 the ruling is registered with them in hand (the rung-1 re-pin
 precedent). The wheel has a domain on word problems: half of all wrong
 parses, named to three-quarters precision, zero false refusals.
+
+## 2026-09-10 — THE STELLARATOR, REFIRED (word given; "do we snip? I'm inclined if you are" — yes): the August cell-3b door rewritten for today's payload; bars PINNED
+
+THE HISTORY (ledger 08-18 / 08-31): the traffic-circle principle
+(structural mandatory routing, no bypass) -> the hard cut at H=4 (cell-
+3a) and the helical handoff (cell-3b, residual cos^2 / notebook sin^2)
+as co-equal forms -> cell-3b 0/300 -> THE ROADCUT CLOSED: "died of
+PAYLOAD, not principle" (the write was cur.mean(1), a global blur);
+NB_PERSLOT salvaged -> the pressure cooker re-ran the roadcut with a
+sharp payload and crossed at 94.5%. TODAY'S READING: the roundabout is
+the ancestor of the mandatory-road law and the residual-seal law — a
+traffic light is a gain (voted shut), a roundabout is geometry; the cut
+concentrates the cross-breath gradient into the ink (the final boss's
+"true cross-breath gradient state: cur + the notebook ink"); it is the
+residual-seal law built into geometry (no cooker, no row share, no
+survival exit) and the heat cycle's cold sink (the junction is where the
+state becomes definite before it continues).
+THE DOOR (scripts/apply_stellarator.py, applied; ALG_STELLAR=1; unset =
+untouched): per-slot junction (the August form reshaped a blurred read
+and would crash under NB_PERSLOT); THE SNIP: w(kb) = cos^2(kb*pi/(2*(K_B
+-1))) = 0.933, 0.75, 0.5, 0.25, 0.067, **0.0** at kb=1..6 — exactly zero
+at the last loop breath (August's /(2*K_B) left 5% standing: a bypass
+under the residual-seal law), no cliff; THE CLOCK EXEMPT: under
+ALG_POLAR the blend applies to the CONTENT dims (g_c); the clock block
+(g_k) passes — the sextet is a coordinate system, not a road, and the
+ink would overwrite it. Junction v1 = the per-slot notebook read (the
+best parameter in the machine); the garage keeps its q_extra road; the
+core enters when the wheel is wired (single delta, per the 08-18 rule).
+CHAIN (.cache/stellar_chain.sh, unit pc-stellar): eq gate A/B/C (unset)
+vs the balanced post dumps -> THE BIRTH READ: balP242 + ALG_SLOT_ALL=1
++ ALG_STELLAR=1 at read time, wild and mint = THE RESIDUAL'S OWN
+REMOVAL COST on a model trained with it (prediction: wild < 0.10, mint
+< 0.50 — the residual is the road today) -> ARM balS242: warm balP242,
+12k, seed 242, ALG_SLOT_ALL=1 ALG_STELLAR=1 (the family env from now:
+all-to-all), the JIT facts pass -> reads: clock; open wild/mint;
+severance notebook / garage / s3 / ffn on both; census wild; the
+radius read (dump_polar_states on balS242, 256 rows each: per-breath
+slot norm — balP242's family runs 11 -> 18 monotone).
+BARS (pinned; comparator = balP242 under the family env, 0.2545 /
+0.9665): S1 open wild >= 0.2445 AND mint >= 0.9615 (the guards). S2
+THE ROAD: notebook removal cost on balS242 >= 0.039 + 0.020 wild OR >=
+0.157 + 0.030 mint (the notebook is now the road; its cost must rise).
+S3 clock probe >= 0.95 (the exemption's test). S4 (reported, predicted):
+per-breath slot norm no longer monotone across the breaths (the
+junction is a sink). KILL: S1 wild < 0.2245 (-0.03) -> the August grave
+reopens: the payload is still insufficient, and the roundabout's live
+forms fall back to the query-side circle. REGISTERED PREDICTION: S1
+passes with wild within +/-0.01 of 0.2545 (the pressure cooker crossed
+at 94.5% with a sharp payload); S2 passes on mint at least; S3 passes;
+S4 shows the norm falling at the late breaths.

@@ -2433,9 +2433,19 @@ def breath_step(p, state, kb, ctx):
                     _CENSUS.append((kb, "notebook2_pre",
                                     _rd2.reshape(B, 1, -1).realize().numpy()))
         if ALG_STELLAR:                        # cell-3b: the twist in
-            _w = math.cos(kb * math.pi / (2 * K_B)) ** 2   # geometry —
-            cur = _w * cur + (1 - _w) * _rd.reshape(B, 1, -1)
-            q_extra = cur + p["breath_emb"][kb].reshape(1, 1, -1) + _rd.reshape(B, 1, -1)
+            # THE STELLARATOR, REFIRED (apply_stellarator.py, 2026-09-10):
+            # the helical handoff residual -> notebook junction, per-slot
+            # payload, SNIPPED to exactly 0 at the last loop breath, the
+            # clock block exempt (a coordinate system, not a road).
+            _w = math.cos(kb * math.pi / (2 * (K_B - 1))) ** 2   # 1 -> 0
+            _rdj = _rd if NB_PERSLOT else _rd.reshape(B, 1, -1)
+            if ALG_POLAR:
+                _, _, _sg_c, _sg_k, _ = _polar_sink()
+                _wv = _w * _sg_c.reshape(1, 1, -1) + _sg_k.reshape(1, 1, -1)
+            else:
+                _wv = _w
+            cur = _wv * cur + (1.0 - _wv) * _rdj
+            q_extra = cur + p["breath_emb"][kb].reshape(1, 1, -1) + _rdj
                                                   # no cliff, no gate
         if ALG_CIRCLE and kb == NB_H + 1:     # the traffic circle:
             cur = cur * 0.0 + _rd.reshape(B, 1, -1)   # residual severed
