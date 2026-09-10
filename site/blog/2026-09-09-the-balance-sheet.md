@@ -92,7 +92,8 @@ The notebook, the smallest organ on the ladder at under a million
 parameters, is the best parameter in the machine on both registers:
 four points of wild and sixteen of synthetic when it is severed. Of
 course it is. It is the reservoir. The state is water, and the
-notebook is the only thing that remembers the last breath.
+notebook and the garage are the two things that remember the last
+breath, and the notebook is the one the loop cannot do without.
 
 The second grounding station carries five points of wild for a
 million parameters and less than one point of synthetic. It is a
