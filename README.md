@@ -1,5 +1,7 @@
 # Mycelium
 
+**Blog and notes: [theshapeofthought.ai](https://theshapeofthought.ai/)**
+
 **A self-certifying natural-language math reasoning system, built on one rule:
 neural proposes, symbolic disposes.**
 
