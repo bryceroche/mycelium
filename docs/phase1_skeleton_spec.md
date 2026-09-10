@@ -36542,3 +36542,39 @@ bypass accepted and named. REGISTERED PREDICTION: the exemption's cost
 read collapses (< 0.15 wild); balU242's total-cut birth read is far
 better than balS242's (the frame already carries the bearing); V1-V4
 pass; V2 lands near 0.20.
+
+## 2026-09-10 — THE DELAY LINE (word given): the clock planes as a declared time-tagged channel; compass vs channel; held behind stellarator v2
+
+THE IDEA (from the leak itself): a plane turning one quantum per breath
+is a rotating frame — content written into it is stamped with its write
+breath BY GEOMETRY (no parameter): read at breath k, content written at
+breath j arrives rotated by (k - j) quanta. A fixed-weight reader can
+tell how old a memory is from its angle. The bus does this for ROLES;
+the clock can do it for TIME. Today the same planes are also the
+compass, and one signal cannot be both bearing and message — the leak
+(the discriminant 55% on the clock planes; share 0.17 -> 0.34 under the
+exempt cut) is content using the compass as a road.
+THE DESIGN: (1) SPLIT: per wheel, a few COMPASS planes (unit-amplitude
+bearing, content-free, exempt from any cut; the clock probe reads THEM,
+CR_PLANES per-wheel lists already support it) and the remaining planes
+as the CHANNEL (a declared road under the cut like any content plane);
+the bands: breath hand 32 planes, parity 16, pass 16 -> compass e.g. 2
+per wheel (6 planes), channel 58. (2) THE AGE-TAGGED FRAME: the
+canonical primitive's second mode, ALG_CLOCK_CANON=2 — writes at phase
+0 as now; reads re-phased by (reader - writer) instead of to the
+reader's bearing, so a recalled entry reads as exactly as old as it is
+(one sign/angle choice in _clock_frame; per-entry, since the shelf
+holds one ink per breath). (3) THE FIRST TENANT: the return road —
+facts and the core re-entering on the channel planes, time-stamped for
+free ("established at breath 3"); after the wheel's executor exists.
+BARS (form; comparator = the v2 candidate if V passes, else balU242):
+D1 open wild / mint within the guards (-0.010 / -0.005) under mode 2 +
+the compass split. D2 THE AGE IS READABLE: a linear probe on the
+notebook read's channel planes predicts the write breath of the
+recalled entry with accuracy >= 0.90 on wild (the delay line works as a
+delay line). D3 clock probe on the COMPASS planes >= 0.95. D4 (with
+the tenant, later): the wheel's core arrives with its breath stamp
+decodable >= 0.90. KILL: D1 fails -> age-tagging costs accuracy; mode 1
+("every memory reads as current") stays and the channel stays content-
+only. HELD behind stellarator v2 (pc-stellar2): if the total cut fails,
+the planes remain a leak we live with and the delay line is struck.
