@@ -36614,3 +36614,35 @@ carries the bearing through the ink, so the total cut costs 5 wild and
 (15:17 + the 42-min facts pass; step 4500 at 16:34); V1-V4 comparator
 = balU242: wild >= 0.2479, mint >= 0.9658, notebook cost >= 0.130,
 clock-plane share < 0.25, clock >= 0.95; kill wild < 0.2279.
+
+## 2026-09-10 — GUT REGISTERED (the 28th): "does gradient reach the farmer?" — THE GRADIENT CENSUS (read-only), queued behind stellarator v2; the deep-supervision grave named
+
+THE GRAVE FIRST: tipping the farmer directly — per-breath deep
+supervision (ALG_DEEPSUP, 2026-08-16, V2) — was CONVICTED: d0 destroyed
+0/15 -> 15/15 vs the native arm, "teaching-vs-maintenance"; kept gated.
+So the read comes before any new tip.
+THE READ (scripts/apply_grad_tap.py: `_GTAP` probe leaves added to the
+state ENTERING each breath and to the readout's state; the notebook
+read's attention recorded; None everywhere else — the _IMP/_CENSUS
+idiom, never a training door; scripts/grad_census.py: 8 training rows,
+the head's two-pass forward, THE REAL LOSS (_loss_single), backward;
+reports ||dL/d(state entering breath kb)|| for kb = 1..6, the readout's
+state gradient as the unit, THE FARMER RATIO b1/readout, and the shelf
+attention per breath (whose ink is read; its entropy vs uniform — the
+junction-entropy read registered this afternoon, now taken). Chain
+.cache/grad_census_chain.sh (unit pc-gcensus) waits for pc-stellar2,
+applies the tap, eq-gates (None), and reads balP242 (the residual
+family), balS242 (v1), balU242 (canon), balV242 (v2).
+REGISTERED PREDICTIONS: (1) balP242: the profile is FLAT-ish (the
+residual carries gradient nearly intact: dcur_new/dcur = 1-g >= 0.86);
+farmer ratio >= 0.3. (2) balS242/U242: the profile DECAYS toward early
+breaths — the cut routes cross-breath gradient through the shelf
+attention; farmer ratio < 0.1. (3) the shelf attention is RECENT-heavy
+(the latest ink dominates; entropy well below uniform) — the delay line's
+age tag would give the reader a reason to look back. (4) balV242 (total
+cut): the farmer ratio is the lowest of the four. WHAT A THIN FARMER
+MEANS: not a bug in the loss but the geometry of credit — if breath 1
+receives < 5% of the readout's gradient, breath 1 is trained mostly by
+what breath 2 wants, and the remedies are structural (an age-tagged
+shelf the reader can address; the return road's facts at breath 1),
+never a per-breath loss (the grave).
