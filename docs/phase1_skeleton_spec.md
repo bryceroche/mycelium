@@ -36330,3 +36330,13 @@ the wild verdict stands as FAIL and the wheel's build proceeds on the
 mint verdict (LIVE) and on KenKen (W3), where the mask is mandatory.
 FOLLOW-UP (registered): per-BREATH refusal (the true W1) needs the
 step trainer's per-breath decode; the final-parse rate is its floor.
+
+## 2026-09-10 — REGISTERED RE-PIN (word given): W1's core-size clause -> core precision >= 0.60 on wild
+
+The size clause ("median core <= 3") was pinned for 5-factor parses;
+wild parses carry ~6.6 slots. The wheel steers by which slots the core
+names, so the clause becomes "core precision >= 0.60 on wild". Under
+it W1 is LIVE on wild (0.753) and mint (as before). Numbers unchanged;
+the ruling is registered with them in hand (the rung-1 re-pin
+precedent). The wheel has a domain on word problems: half of all wrong
+parses, named to three-quarters precision, zero false refusals.
