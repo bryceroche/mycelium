@@ -859,6 +859,11 @@ def build_slot_masks(o_np, sent_rows):
     outputs (deployable): same-sentence (attention-argmax sentence) OR
     shared-variable (top-2 args + res argmax overlap) OR self."""
     B = o_np["fat"].shape[0]
+    if int(os.environ.get("ALG_SLOT_ALL", "0")):
+        # THE MASK HALF DROPPED (apply_maskprep_jit.py, 2026-09-10): the
+        # severance ladder read the frozen slot mask as not load-bearing
+        # (all-to-all 0.2521 vs 0.2511); the family runs all-to-all.
+        return np.ones((B, L_FAC, L_FAC), np.float32)
     masks = np.zeros((B, L_FAC, L_FAC), np.float32)
     for bi in range(B):
         tok_star = o_np["fat"][bi].argmax(-1)              # (L,)
@@ -4510,18 +4515,34 @@ def do_train(steps, lr, batch, seed):
         # verification batches run, and the recomputed rows are
         # asserted against the cache below before it is trusted.
         _mp_key, _mp_fp, _mp_cached = _maskprep_lookup(p, n, seed)
-        _mp_starts = (range(0, n, 8) if _mp_cached is None
+        # THE MASK-PREP REBUILD (apply_maskprep_jit.py, 2026-09-10): the
+        # pass through the JIT reader at a larger batch. Verification
+        # batches (8-row granularity) are a subset of any batch >= 8, so
+        # the hit path still re-runs and asserts exactly those rows.
+        _mp_jit = int(os.environ.get("ALG_MASKPREP_JIT", "0"))
+        _mp_B = int(os.environ.get("ALG_MASKPREP_B", "32")) if _mp_jit else 8
+        assert _mp_B >= 8 and _mp_B % 8 == 0, _mp_B
+        if _mp_jit:
+            from mycelium import jit_read as _mp_jr
+            _mp_prev = os.environ.get("ALG_JIT_READ")
+            os.environ["ALG_JIT_READ"] = "1"
+            _mp_keys = (("fat", "args", "res")
+                        + (("pres", "ftype", "op", "dig", "dup") if FACTS is not None else ())
+                        + (("nl0",) if (ATLAS_TAB is not None and NL0 is not None) else ()))
+            print(f"[maskprep] JIT pass: batch {_mp_B}, keys {_mp_keys}", flush=True)
+        _mp_starts = (range(0, n, _mp_B) if _mp_cached is None
                       else _maskprep_ver_starts(n))
         for s0 in _mp_starts:
-            sl = np.arange(s0, min(s0 + 8, n))
-            pad = 8 - len(sl)
+            sl = np.arange(s0, min(s0 + _mp_B, n))
+            pad = _mp_B - len(sl)
             sl_p = np.concatenate([sl, sl[:1].repeat(pad)]) if pad else sl
-            out0 = forward(p, Tensor(states[sl_p].astype(np.float32), dtype=dtypes.float),
-                           Tensor(tokmask[sl_p].astype(np.float32), dtype=dtypes.float),
-                           Tensor(sent[sl_p].astype(np.int32), dtype=dtypes.int),
-                           lsent=(Tensor(gold["lsent"][sl_p].astype(np.float32),
-                                         dtype=dtypes.float)
-                                  if ALG_LSENT and "lsent" in gold else None))
+            _mp_args = (p, Tensor(states[sl_p].astype(np.float32), dtype=dtypes.float),
+                        Tensor(tokmask[sl_p].astype(np.float32), dtype=dtypes.float),
+                        Tensor(sent[sl_p].astype(np.int32), dtype=dtypes.int))
+            _mp_ls = (Tensor(gold["lsent"][sl_p].astype(np.float32), dtype=dtypes.float)
+                      if ALG_LSENT and "lsent" in gold else None)
+            out0 = (_mp_jr.read_forward(forward, *_mp_args, keys=_mp_keys, lsent=_mp_ls)
+                    if _mp_jit else forward(*_mp_args, lsent=_mp_ls))
             o0 = {k: out0[k].realize().numpy() for k in ("fat", "args", "res")}
             MASKS[sl] = build_slot_masks(o0, sent[sl_p])[:len(sl)]
             if ATLAS_TAB is not None and NL0 is not None:
@@ -4556,6 +4577,12 @@ def do_train(steps, lr, batch, seed):
                                    _mp_out["MASSB"])
             if ATLAS_TAB is not None:
                 NL0 = _mp_out["NL0"]
+        if _mp_jit:
+            _mp_jr.reset()            # drop the captured read graph
+            if _mp_prev is None:
+                os.environ.pop("ALG_JIT_READ", None)
+            else:
+                os.environ["ALG_JIT_READ"] = _mp_prev
         print(f"[breath] masks ready (mean degree "
               f"{MASKS.sum(-1).mean():.1f}/{L_FAC})", flush=True)
         if ATLAS_TAB is not None and NL0 is not None:

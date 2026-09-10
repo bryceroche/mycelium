@@ -36137,3 +36137,32 @@ follow-up) is now the ONLY form that can pass its bar. THE ORDER stands:
 mask-prep drop + JIT -> the MUC (headroom read first) -> the cold leg
 as deployment -> T1/T2 (T3 struck). Chain artifacts: .cache/
 balanced_gen2.log, portcensus_bal{P,G,C}242.log, sharp_bal{P,G,C}242.*.
+
+## 2026-09-10 — THE MASK-PREP REBUILD (the order's item 2): two doors applied, bars PINNED before the proofs
+
+scripts/apply_maskprep_jit.py (applied; 2 doors, 4 anchors, unset =
+untouched): ALG_SLOT_ALL=1 — build_slot_masks returns all-ones (one
+door, one place: the pass, _quick_val, loop_val, the collider read all
+inherit; the E&B coupling rides the same lanes); ALG_MASKPREP_JIT=1 —
+the pass calls jit_read.read_forward at ALG_MASKPREP_B (default 32)
+instead of the eager forward at 8; the captured graph is dropped after
+the pass. The cache's verify-on-hit re-runs its verification batches
+THROUGH whatever path is live and asserts them against the banked
+rows — the bit-identity proof is the cache's own.
+PROOF CHAIN (.cache/mpjit_gates.sh, unit pc-mpjit; short GPU runs,
+STEPS=1 through the training entry):
+  M0 eager HIT on balP242's bucket (b29757cf) with the doors unset:
+     the restructured eager path verifies against its own cache (PASS
+     = "cache HIT"; any mismatch asserts).
+  M1 JIT HIT on the same bucket (ALG_MASKPREP_JIT=1): bit-identical
+     verification rows through the captured graph (PASS = HIT).
+  M2 TIMED MISS: warm balP242, ALG_SLOT_ALL=1 (new key), the full
+     pass through the JIT at batch 32. BAR: the pass (MISS line to
+     "cached ->") <= 12 min (was ~50-78). The bucket banked here is the
+     candidate's own next warm.
+  M3 THE FAMILY SWITCH READ: loop_val balP242 with ALG_SLOT_ALL=1, wild
+     and mint, vs its open 0.2526 / 0.9651. BAR: within -0.010 / -0.005
+     (the 0.2521-vs-0.2511 precedent says noise). PASS -> ALG_SLOT_ALL=1
+     joins the family env from the next run; FAIL -> the door stays
+     off and the finding is banked (the mask is load-bearing for the
+     pruned family after all).
