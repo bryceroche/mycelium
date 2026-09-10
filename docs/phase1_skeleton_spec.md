@@ -36514,3 +36514,31 @@ the August blur returning by another door; bar to pin with the tap.
 op on wild lives in ~35 planes; T1/T2's bar can ask that it live in the
 content band. Scripts: the reads are inline (ledger-only) — a
 scripts/spectrum_read.py to bank them is a chore.
+
+## 2026-09-10 — STELLARATOR v2 (word given): the TOTAL cut under the canonical frame; bars pinned in FORM (the comparator's numbers fill in when balU242 lands, before V is measured)
+
+THE DOOR (scripts/apply_stellarator2.py, STAGED, applied by the chain
+after pc-canon releases the head): ALG_STELLAR=2 = the helical handoff
+on EVERY plane, no clock exemption; v1 (=1) bit-identical. The bearing
+survives through the canonical frame (ALG_CLOCK_CANON): the ink is
+written at phase 0 and re-phased to the reader, so the ink's clock
+planes carry the reader's bearing and the cut can be total.
+CHAIN (.cache/stellar2_chain.sh, unit pc-stellar2, waits for pc-canon):
+apply -> eq gate (unset) -> THE EXEMPTION'S COST: balS242 read with the
+total cut, no canonical frame (prediction: wild < 0.15 — the exempt
+block carried content across the cut) -> the birth read: balU242 with
+the total cut at read time -> ARM balV242: warm balU242, 12k, seed 242,
+ALG_STELLAR=2 ALG_CLOCK_CANON=1 -> reads: clock; open; severance
+notebook / garage; the spectrum (clock-plane variance share at b6,
+eff-rank per breath) and the radius.
+BARS (form; comparator = balU242's open / notebook cost as read by
+pc-canon): V1 open wild >= balU242 - 0.010 AND mint >= balU242 - 0.005.
+V2 THE BYPASS CLOSED: clock-plane variance share at b6 (wild) < 0.25
+(balP242 0.170, balS242 0.338). V3 clock probe >= 0.95 (the canonical
+frame carries the bearing through a total cut — the real test of the
+frame). V4 notebook cost >= balU242's. KILL: V1 wild < balU242 - 0.030
+-> the bearing does not survive a total cut; v1's exemption stays, its
+bypass accepted and named. REGISTERED PREDICTION: the exemption's cost
+read collapses (< 0.15 wild); balU242's total-cut birth read is far
+better than balS242's (the frame already carries the bearing); V1-V4
+pass; V2 lands near 0.20.
