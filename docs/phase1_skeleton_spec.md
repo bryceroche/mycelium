@@ -35958,3 +35958,33 @@ token gate's context under the residual-seal cooker; bar: head-sealed
 wild >= 0.1955 + 0.050 (the five points the uniform-born gate missed).
 Read script to build: scripts/collider_front_read.py (per-slot dumps
 of A/B/C on the wild holdout + the gold join; CPU grading).
+
+## 2026-09-09 — THE ORDER (word given): the heat cycle's remaining pieces, in sequence
+
+After tonight's reads (the balanced generation pc-balanced; the
+collider rung 1 pc-collider1 queued behind it):
+  0. Judge the generation against P1-P2 / G1-G4 and the kill; judge
+     rung 1 against coverage >= 0.40 and lift >= 3x.
+  1. THE MASK-PREP PASS: drop the mask half (the family runs all-to-all
+     among the slots); keep the facts half; route the pass through the
+     JIT read forward at a larger batch (78 min -> under 10). First,
+     because it cuts an hour off every run that follows.
+  2. THE COLLIDER rungs 2-3 (only if rung 1 passes): the front re-read
+     and vote (zero training; bar open wild >= A + 0.010); then the
+     token gate BORN AIMED at the front under the residual-seal cooker
+     (a run; bar head-sealed wild >= 0.2055). If rung 1 kills, the
+     collider's home is the certifier's panel and rung 3 is struck.
+  3. THE MUC — return road two: the solver's refusal re-entering the
+     loop; melts DEPOSITS in the garage (the state never freezes), not
+     state. Rung 4 of the atlas/needle/MUC ladder; no code exists.
+     Headroom read first (the corollary): what does the reading do
+     today on rows the solver refuses — the visibility of refusal.
+  4. THE COLD LEG AS THE DEPLOYED REGIME: the sealed channel (the
+     pressure cooker's road) becomes the deployment; a battery and a
+     verdict script, the manifest written in the same act.
+CORRECTION BANKED (Bryce's catch): the T^256 bus / garage IS durable
+across breaths (a deposit list appended every breath, read every
+breath) — the balance-sheet post said the notebook was the only thing
+that remembers; fixed to "the notebook and the garage remember; the
+notebook is the one the loop cannot do without" (durable != load-
+bearing: garage removal cost ~0.012 / 0.001).
