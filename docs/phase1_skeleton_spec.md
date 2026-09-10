@@ -36197,3 +36197,61 @@ the caricature dies as a reader (and stays dead as a loss). Mint
 reported. Caveat recorded: whitening's covariance is fit on all rows
 (the centroids are LOO; the covariance is not) — a mild optimism that
 only matters if the verdict is within a point of the bar.
+
+## 2026-09-10 — THE STEERING WHEEL (word given): true alternation on every breath + the solver's core as the driver; three bars pinned; absorbs the release-valve item
+
+THE FACTS IT ASSEMBLES FROM (all in the ledger already): (1) the step
+trainer (FINAL BOSS, 2026-09-03/04: stage 0 + K_B-1 breath_step
+dispatches with a solver ping between each, facts as detached
+constants, checkpointed backward; rung 1 beaten on the champion) — the
+per-breath commit is BUILT, unused since the fed-mind lineage; (2) THE
+VST DISCOVERY (09-03): facts inject into vst, which only the emission
+heads read — the loop never sees the solver; the return road today
+steers the readout, not the dynamics; (3) the MASK DSL (09-04; docs/
+mask_dsl_spec.md): the mask head SELECTS a program, symbolic machinery
+EXECUTES it; every v98 rule (sudoku/kenken/coloring/circuits) <= 5
+lines; tightening unrepresentable; solver commitments already a
+program input; THE SUDOKU RECREATION TEST pinned (prose -> parse ->
+program -> executor mask == the v98 hand-built mask, np.array_equal);
+(4) the June engine (Pythia + membership masks) solved sudoku and
+scored ZERO unmasked: the mask IS the rules; (5) the sparsity law:
+the slot mask is load-bearing in proportion to how sparse the
+constraint graph is relative to the sequence (5-factor word problems:
+free; 81-cell sudoku: everything).
+THE WHEEL: on EVERY breath k: commit the tentative parse -> the solver
+(GAC) -> {facts, refusal, THE CORE} -> the DSL executor -> the mask
+for breath k+1 (slot lanes + token focus), entering the LOOP (the
+lanes the loop reads), never vst. THE CORE = a deletion-based minimal
+unsatisfiable core in csp_core (domain-free): on refusal, the smallest
+factor set that cannot coexist — a proof, where the collider's front
+was a rumor (0.78 vs 0.72). The wheel's turn: open the lanes among the
+core's slots, re-read their sentences, melt their deposits (the MUC
+release valve, now with a driver). T1/T2 (token side) are the linkage:
+T1's token<-token mask DERIVED from parse + core (free-learned masks
+are what scored zero); T2 lets a core change what a word means next
+breath.
+WHY KENKEN FIRST: on word problems the wheel turns only on refusals
+(ceiling = the refusal rate on wrong parses; the collider's 5% whole-
+problem self-contradiction is a lower bound); on KenKen the mask is
+the computation, MANDATORY BY THE DOMAIN — the residual-seal law is
+satisfied for free (no bypass to learn survival through). The parser
+must generate cage membership from prose; the oracle membership is in
+the data (.cache/kenken_nl_{train,test}.jsonl, 39,995 / 60 rows,
+members_flat per factor); that parser has never been trained (a run;
+the word again).
+BARS (pinned): W1 REFUSAL VISIBILITY (CPU, once the core exists): on
+the wild holdout, per-breath commits of the champion's own parses;
+report P(refuse | wrong final parse), P(refuse | right), and core size;
+the road is LIVE if P(refuse | wrong) >= 0.15 with median core <= 3
+factors (else the wheel has nothing to steer with on word problems and
+lives on puzzles). W2 THE SUDOKU RECREATION TEST as pinned 09-04:
+exact equality with the v98 mask. W3 KENKEN: parsed membership ==
+oracle membership on the 60-row test (exact per-row match >= 0.90) AND
+the June engine on generated masks solves at >= its oracle-mask rate
+- 0.02. KILL: W1 fails AND W3 fails -> the wheel has no domain.
+BUILD ORDER: the core (csp_core, ~30 lines, + unit test on the
+coloring/sudoku fixtures) -> W1 read -> the executor v1 (select) wired
+to the step trainer's ping -> W2 -> the KenKen parser (word) -> W3.
+Absorbs THE ORDER's item 3 (the release valve). Registered predictions:
+W1 P(refuse | wrong) lands 0.10-0.25 (live, barely); W2 passes; W3's
+parser bar is the hard one (cage spans are long and numerous).
