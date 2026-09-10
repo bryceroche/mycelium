@@ -36390,3 +36390,12 @@ forms fall back to the query-side circle. REGISTERED PREDICTION: S1
 passes with wild within +/-0.01 of 0.2545 (the pressure cooker crossed
 at 94.5% with a sharp payload); S2 passes on mint at least; S3 passes;
 S4 shows the norm falling at the late breaths.
+
+## 2026-09-10 — THE STELLARATOR BIRTH READ: the residual's removal cost is EVERYTHING (0.2545 -> 0.0010 wild; 0.9665 -> 0.0000 mint); eq gate bit-identical
+
+balP242 read with ALG_STELLAR=1 imposed (untrained): wild 0.0010, mint
+0.0000 — the prediction (< 0.10 / < 0.50) held and understated it. On
+a model trained with the residual, the residual IS the road; the
+notebook carries 0.04/0.16 beside it. The arm (balS242, training since
+10:51) must convert all of that into the junction. This is the
+sharpest headroom number of the campaign: 25 and 97 points.
