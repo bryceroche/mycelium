@@ -36470,3 +36470,47 @@ information the readers used; the alternative delta is the EXEMPT form
 read drops modestly (wild 0.20-0.25: the readers learned around the
 stale phase, not with it); U1 passes; U2 passes on the garage clause
 (the bus was the organ with the most to gain from a clean frame).
+
+## 2026-09-10 — GUT REGISTERED (the 26th/27th: "spectral decomposition" / "entropy"): THE STATE'S SPECTRUM IS A FUNNEL, AND THE CLOCK PLANES CARRY CONTENT — the stellarator's exemption is a bypass
+
+WHAT WAS EXPLORED: spectral x3 (06-21 SVD collapse: healthy; 06-23 KenKen
+Laplacian: bands do not hand you cages; 09-01 the port census: clean
+spectrum, acceptance = loudness; the FDM ruling = the polar bands);
+entropy x2 (vote entropy: basin depth, never correctness — the Goodhart
+fence; the settling meter as distance-to-cycle-centroid + wild settle
+pricing). NOT explored: the state's own spectrum across breaths.
+THE READS (CPU, the banked dumps; effective rank = exp(spectral
+entropy) of the pooled slot states, N*L rows x 512):
+  balP242 wild 31.5 23.1 18.6 15.6 14.0 13.0 12.2 | mint 50.6 -> 16.5
+  balS242 wild 29.1 18.9 13.0 13.3 15.2 14.2 10.1 | mint 50.1 -> 15.3
+  the reading collapses onto ~12 directions of 512 by breath 6 (the
+  canyon in spectral terms); the stellarator narrows the last breath
+  further (10.1) with a bump at b4-b5. Content planes' plane-spectrum
+  is FLAT (eff-rank 167-169 of 192 planes): the collapse is in
+  directions, not plane-aligned.
+THE FINDING: the add-vs-mul LDA discriminant (wild b6, shrinkage 0.05):
+d' 1.96 (balP242) / 1.84 (balS242); **55.6% / 54.4% of its energy on the
+64 CLOCK planes**; its top-6 planes ALL clock planes (176, 210, 128, 152,
+68, 104 / 176, 128, 232, 50, 48, 72); 50% of the discriminant in 35-36
+planes, 90% in ~140. The clock planes are a ROTATING FRAME WITH CONTENT
+IN IT: the rotation is the clock, the amplitudes on those planes are
+free, and the machine stores the OPERATION there. Variance share on the
+clock planes at b6 wild: balP242 0.170 -> **balS242 0.338**: under the
+cut, content MIGRATED onto the exempt block. THE STELLARATOR'S CLOCK
+EXEMPTION IS A BYPASS (the residual-seal law, on my own design): the
+loss found the one road left open. balS242's bars stand as measured;
+the exemption's cost is a REGISTERED READ, not a retraction.
+REGISTERED: (1) THE EXEMPTION'S REMOVAL COST (read-time; queued behind
+pc-canon since the door edits the head the chain re-imports): balS242
+read with the clock planes cut too (ALG_STELLAR=2: no exemption) —
+prediction: wild collapses (< 0.15) = the exempt block carried content
+across the cut. (2) STELLARATOR v2 (an arm; the word again): canonical
+frame (balU242's door) + NO exemption — the ink's re-phased clock planes
+carry the reader's bearing, so the cut can be total; comparator
+balU242. (3) THE JUNCTION'S ENTROPY: a census tap on the notebook
+read's attention (per slot per breath) — a flat read over the shelf is
+the August blur returning by another door; bar to pin with the tap.
+(4) The discriminant's spectrum as the token-side layers' target: the
+op on wild lives in ~35 planes; T1/T2's bar can ask that it live in the
+content band. Scripts: the reads are inline (ledger-only) — a
+scripts/spectrum_read.py to bank them is a chore.
