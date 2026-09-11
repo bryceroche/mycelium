@@ -54,6 +54,7 @@ ALG_NOTEBOOK = int(os.environ.get("ALG_NOTEBOOK", "0"))  # the cathedral noteboo
 ALG_CIRCLE = int(os.environ.get("ALG_CIRCLE", "0"))      # the traffic circle
 ALG_STELLAR = int(os.environ.get("ALG_STELLAR", "0"))    # cell-3b: helical handoff
 ALG_CLOCK_CANON = int(os.environ.get("ALG_CLOCK_CANON", "0"))   # memories in a canonical clock frame
+_GTAP = None      # THE GRADIENT TAP (apply_grad_tap.py): read-only probe leaves per breath
 
 
 def _clock_frame(x, k, sign, rot2):
@@ -2339,6 +2340,8 @@ def breath_step(p, state, kb, ctx):
     RINGS = ctx["RINGS"]; XOUT = ctx["XOUT"]; XARM = ctx["XARM"]
     XR_GRADED = ctx["XR_GRADED"]; XR_ELASTIC = ctx["XR_ELASTIC"]
     cur = state["cur"]; breaths = state["breaths"]
+    if _GTAP is not None and kb in _GTAP:
+        cur = cur + _GTAP[kb]            # the probe leaf: dL/d(state entering breath kb)
     _nb = state["nb"]; _nb_st = state["nb_st"]
     _garage = state["garage"]; _snaps = state["snaps"]
     _snaps_g = state["snaps_g"]; _rb_last = state["rb_last"]
@@ -2372,6 +2375,8 @@ def breath_step(p, state, kb, ctx):
             if NB_FOCAL > 0:
                 _sc = _sc * NB_FOCAL          # the magnifying glass
             _at = _sc.softmax(-1)             # (B, L, k)
+            if _GTAP is not None:
+                _GTAP.setdefault("at", []).append((kb, _at.detach()))
             _rd = sum(_at[:, :, j:j + 1] * _nb[j] for j in range(len(_nb)))
             if ALG_CLOCK_CANON and ALG_POLAR:
                 _rd = _clock_frame(_rd, kb - 1, +1, _rot2)   # the reader's frame
@@ -2455,11 +2460,11 @@ def breath_step(p, state, kb, ctx):
             # clock block exempt (a coordinate system, not a road).
             _w = math.cos(kb * math.pi / (2 * (K_B - 1))) ** 2   # 1 -> 0
             _rdj = _rd if NB_PERSLOT else _rd.reshape(B, 1, -1)
-            if ALG_POLAR:
+            if ALG_POLAR and ALG_STELLAR < 2:
                 _, _, _sg_c, _sg_k, _ = _polar_sink()
                 _wv = _w * _sg_c.reshape(1, 1, -1) + _sg_k.reshape(1, 1, -1)
             else:
-                _wv = _w
+                _wv = _w            # v2 (ALG_STELLAR >= 2): the TOTAL cut, no exemption
             cur = _wv * cur + (1.0 - _wv) * _rdj
             q_extra = cur + p["breath_emb"][kb].reshape(1, 1, -1) + _rdj
                                                   # no cliff, no gate
@@ -3554,6 +3559,8 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
     if int(os.environ.get("ALG_MINE_BREATHS", "0")):
         out_breaths = breaths          # v3: the dialect ladder's raw states
     _s_final = breaths[-1]
+    if _GTAP is not None and "final" in _GTAP:
+        _s_final = _s_final + _GTAP["final"]
     if anchor is not None and amask is not None:     # FORM (A): state-side
         _s_final = amask * anchor + (1.0 - amask) * _s_final   # anchors —
                                                      # structural re-entry the

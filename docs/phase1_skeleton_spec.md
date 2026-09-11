@@ -36679,3 +36679,53 @@ drifted 0.2608 -> 0.2579 -> 0.2526 across the three arms (each within
 its guard; the sum is -0.008, below one SE of 0.010) — WATCHED, not
 claimed either way; the next arm's wild guard is pinned against
 balS242's 0.2608 to stop a drift from hiding in guards.
+
+## 2026-09-10 — THE GRADIENT CENSUS VERDICT: the farmer is tipped generously (through the FIRST ink), the residual family is flat, and the total cut opens A DESERT IN THE MIDDLE — breaths 3-5 receive 1-7% of the readout's gradient; the shelf reads FIRST-heavy and near-uniform, not recent-heavy
+
+READ (unit pc-gcensus2; 8 form12 training rows; the real loss; eq gate
+bit-identical x3 with the tap None). ||dL/d(state entering breath kb)||
+relative to the readout's own state gradient:
+  arm      b1     b2     b3     b4     b5     b6    | farmer b1/readout | b1/b6
+  balP242  1.376  0.919  0.826  0.802  0.799  0.808 | 1.38 | 1.7   (the residual family: FLAT)
+  balS242  1.121  0.698  0.575  0.478  0.451  0.452 | 1.12 | 2.5   (v1)
+  balU242  1.134  0.673  0.547  0.475  0.458  0.450 | 1.13 | 2.5   (frame)
+  balV242  0.985  0.384  **0.068  0.012  0.015**  0.098 | 0.99 | 10.1 (v2: THE MIDDLE DESERT)
+THE SHELF READ (mean attention over inks, first ink = the state entering
+breath 1; entropy vs uniform): balP242 b6: [.245 .155 .167 .147 .138 .147]
+1.65/1.79; balS242 b3: [.587 .176 .237], b4: [.499 ...], b6: [.095 .127
+.240 .235 .154 .149] 1.69/1.79; balV242 b3: [.588 .209 .203], b4: [.427
+...], b6: [.136 .252 .235 .134 .129 .114] 1.62/1.79.
+PREDICTIONS: (1) RIGHT — the residual family is flat (b2-b6 ~0.8) and the
+farmer gets MORE than the readout (1.38). (2) WRONG — the farmer under the
+cut is 1.12, not < 0.1: breath 1's state writes THE FIRST INK, and the
+first ink is the most-read entry on the shelf at breaths 2-4 (0.50-0.59)
+— the farmer is tipped through the shelf, not the residual. (3) WRONG —
+the shelf is FIRST-heavy at the early breaths and near-UNIFORM late
+(90% of the uniform entropy at b6), not recent-heavy: the late state is
+a consensus of its own history with a preference for the grounding
+read. (4) HALF — v2 has the lowest credit, but not at the farmer: at
+the MIDDLE. Under the total cut, breaths 3-5 reach the loss only through
+their ink's ~0.13-0.25 share of a near-uniform read and the vanishing
+carry (0.25 x 0.067 x 0): their states are trained by 1-7% of the
+readout's gradient. Breath 1 (the first ink) and breath 6 (the last
+carry) are fine. The line cooks, not the farmer.
+THE JUNCTION ENTROPY (registered this afternoon, now read): 1.62-1.69
+nats of 1.79 at b6 on every cut arm — the read over the shelf is a
+BLUR with a first-ink preference; the August grave's payload problem
+re-appears as a READ problem (sharp inks, blurred recall), and the
+machine reads a mint record anyway: the final state is an ensemble
+over time. Whether sharper recall would read better is exactly the
+delay line's question — D5 ADDED to its bars: junction entropy at b6
+< 1.2 nats (the reader sharpens once it can tell ages apart).
+REGISTERED (the middle desert's remedies; never a per-breath loss —
+the deep-supervision grave): (a) THE DELAY LINE (word given): age-tagged
+inks let the reader ADDRESS a breath; credit follows attention. (b) THE
+SHELF READOUT (candidate, needs the word): the readout heads read the
+final state AND an attention over the whole shelf, so every breath's
+ink is on the road to the one loss — the diffusion form without
+per-breath targets; single delta; bar: the middle breaths' credit >=
+0.2 of the readout's on the census, with wild/mint within the guards.
+(c) the schedule itself (cos^2 drops to 0.25 by b4) is a dial, not a
+law: a slower helix (e.g. cos^2 over 2*K) keeps a thinner residual
+longer — but it is a bypass by degree, and the residual-seal law says
+the loss will find it; held.
