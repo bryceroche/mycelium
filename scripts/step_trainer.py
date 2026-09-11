@@ -93,7 +93,7 @@ def _envi(k, d="0"):
 
 # every env whose loop/loss branch this walker does not thread; set any
 # of these and the trainer refuses LOUDLY (no silent divergence)
-REFUSED = ("ALG_RINGS", "ALG_XOUT", "ALG_CLOCK", "ALG_STELLAR",
+REFUSED = ("ALG_RINGS", "ALG_XOUT", "ALG_CLOCK",   # ALG_STELLAR lifted 2026-09-11: v2 lives inside breath_step (rung 1 re-proven)
            "ALG_CIRCLE", "NAZ_TRAIN", "ALG_CONSUME", "ALG_DEEPSUP",
            "ALG_TRUNK_LORA", "BREATH_DROPOUT", "ALG_MASK_GOLD",
            "CURRICULUM", "RATION_FILE", "ALG_STRAW", "ALG_LSENT",
@@ -234,8 +234,13 @@ class StepWalker:
         self.snaps_on = self.garage and ("alt_g" in p or "W_det" in p)
         self.perslot = bool(H.NB_PERSLOT)
         L, K, T = H.L_FAC, H.K_VARS, H.T_ALG
+        LT = H.L_TOT                       # the loop state's rows (factor + scratch)
         HW, HT = H.H_W, H.H_TRUNK
-        self.L = L
+        self.L = L; self.LT = LT; self.T = T
+        self.wheel = bool(_envi("ST_WHEEL"))
+        self.wheel_beta = float(os.environ.get("ST_WHEEL_BETA", "3"))
+        self.wheel_mode = os.environ.get("ST_WHEEL_MODE", "own")
+        self.workers = int(os.environ.get("ST_WORKERS", "0")) or None
 
         def fix(shape, dt=dtypes.float, rg=False):
             npdt = np.float32 if dt == dtypes.float else np.int32
@@ -250,12 +255,12 @@ class StepWalker:
         self.b_facts = [fix((B, K, 4)) for _ in range(self.K_B)]
         # state banks (spec S1: entry state per step, thin tensors);
         # cur/nb are the gradient-crossing set -> requires_grad leaves
-        self.cur_bank = [fix((B, L, HW), rg=True) for _ in range(self.K_B)]
-        nb_shape = (B, L, HW) if self.perslot else (B, HW)
+        self.cur_bank = [fix((B, LT, HW), rg=True) for _ in range(self.K_B)]
+        nb_shape = (B, LT, HW) if self.perslot else (B, HW)
         self.nb_bank = ([fix(nb_shape, rg=True) for _ in range(self.K_B)]
                         if self.notebook else [])
         gd = int(p["W_bind2"].shape[1]) if self.garage else 0
-        self.gar_bank = ([fix((B, L, gd)) for _ in range(self.K_B - 1)]
+        self.gar_bank = ([fix((B, LT, gd)) for _ in range(self.K_B - 1)]
                          if self.garage else [])
         self.snap_bank = ({k: [fix((B, L, 24)), fix((B, L, 24)),
                                fix((B, L, 24)), fix((B, L))]
@@ -266,12 +271,16 @@ class StepWalker:
         self.waist_bank = fix((B, T, HW))
         self.vst_base_bank = fix((B, K, HW))
         # grad threading buffers (dL/dstate down the ladder)
-        self.G_cur = fix((B, L, HW))
+        self.G_cur = fix((B, LT, HW))
         self.G_nb = ([fix(nb_shape) for _ in range(self.K_B)]
                      if self.notebook else [])
         # seam decode buffers
-        self.cur_dec = fix((B, L, HW))
+        self.cur_dec = fix((B, LT, HW))
         self.fact_dec = fix((B, K, 4))
+        self.fat_bank = fix((B, LT, T))    # stage-0 attention: the wheel's source sentences
+        self.fat_np = None
+        self.wheel_bank = ([fix((B, 1, LT, T)) for _ in range(self.K_B - 2)]
+                           if self.wheel else [])
         self.dec_keys = (["pres", "ftype", "op", "dig", "args", "res"]
                          + (["dup"] if "h_dup" in p else []))
         # gold buffers + grad accumulators (fixed; the optimizer capture
@@ -324,6 +333,10 @@ class StepWalker:
             assert kk in tap["state"], f"state contract broke: missing {kk}"
         self.rot2 = tap["ctx"]["rot2"]
         self.emit_keys = sorted(tap["heads_of"](tap["fst"]).keys())
+        if self.wheel:
+            self.dec_keys = [k for k in ("pres", "ftype", "op", "dig", "args", "res", "dup",
+                                         "sgn", "dargs", "dig2", "sel", "islit", "y")
+                             if k in self.emit_keys]
 
     def _mk_ctx(self, waist):
         H = self.H
@@ -339,6 +352,8 @@ class StepWalker:
         n_nb, n_gar, _ = shelf_plan(k, self.notebook, self.garage,
                                     self.snaps_on)
         return {"cur": cur, "breaths": [],
+                "wheel_bias": (self.wheel_bank[k - 2]
+                               if (self.wheel and k >= 2) else None),
                 "nb": ([self.nb_bank[j] for j in range(n_nb)]
                        if (self.notebook and k > 1) else None),
                 "nb_st": (self.nb_st_const
@@ -357,7 +372,7 @@ class StepWalker:
             # banks are PURE VALUES (the reverse walk recomputes live);
             # detach cuts any chance of cross-step graph chaining
             return [tap["waist"].detach(), tap["vst_base"].detach(),
-                    tap["fst"].detach()]
+                    tap["fst"].detach(), tap["fat"].detach()]
         return s0
 
     def _mk_fwd(self, k):
@@ -471,10 +486,13 @@ class StepWalker:
         self.waist_bank.assign(r[0])
         self.vst_base_bank.assign(r[1])
         self.cur_bank[0].assign(r[2])
+        self.fat_bank.assign(r[3])
         self.Tensor.realize(self.waist_bank, self.vst_base_bank,
-                            self.cur_bank[0])
+                            self.cur_bank[0], self.fat_bank)
+        self.fat_np = self.fat_bank.numpy() if self.wheel else None
         fact_cur = fact0
         rates = []
+        self.turned = []
         for k in range(1, self.K_B):
             outs = self.fwd_fns[k]()
             todo = [self.cur_bank[k]]
@@ -499,16 +517,25 @@ class StepWalker:
                     self.snap_bank[k][jj].assign(outs[i + jj])
                 todo += self.snap_bank[k]
             self.Tensor.realize(*todo)
-            if self.ping:
+            if self.ping or self.wheel:
                 # the seam stub: decode confident slots on vst(fact_{k-1}),
                 # ping the organ, pack the fixed (B,24,4) buffer
                 self.put(self.fact_dec, fact_cur)
                 self.cur_dec.assign(self.cur_bank[k]).realize()
                 dec = self.dec_fn()
                 onp = {kk: t.numpy() for kk, t in zip(self.dec_keys, dec)}
+            if self.ping:
                 fact_cur = H.alt2_fact_buf(onp, se_np, nv, ma,
                                            theta=self.theta)
                 rates.append(int((fact_cur[:, :, 0] > 0).sum()))
+            if self.wheel and k <= self.K_B - 2:
+                # THE WHEEL (2026-09-11): commit this breath's parse, solve,
+                # core, spotlight for breath k+1 — a detached constant
+                bias, turned = wheel_bias(H, onp, self.fat_np, se_np, nv, ma,
+                                          self.wheel_beta, self.wheel_mode,
+                                          self.workers, self.LT)
+                self.put(self.wheel_bank[k - 1], bias)
+                self.turned.append(turned)
             self.put(self.b_facts[k], fact_cur)
         return rates
 
@@ -592,6 +619,31 @@ def load_ckpt_into(H, p, path):
 
 
 def prep_masks_facts(H, p, samples, states, tokmask, sent):
+    """Cached by the warm checkpoint's sha + the mask door (2026-09-11);
+    the pass itself runs through the JIT reader at batch 32 (bit-identical
+    to eager: ledger 2026-09-10)."""
+    import hashlib
+    from mycelium.jit_read import read_forward as _rf, reset as _jr_reset
+    _ck = os.environ.get("ST_CKPT", "")
+    _key = hashlib.sha256((open(_ck, "rb").read() if _ck and os.path.isfile(_ck) else b"") + os.environ.get("ALG_SLOT_ALL", "0").encode() + str(states.shape[0]).encode()).hexdigest()[:16]
+    _cp = f".cache/st_prep_{_key}.npz"
+    if os.path.isfile(_cp):
+        z = np.load(_cp); print(f"[prep] cache HIT {_cp}", flush=True)
+        return z["MASKS"], (z["FACTS"] if "FACTS" in z.files else None)
+    print(f"[prep] cache MISS {_cp} -> the JIT pass at batch 32", flush=True)
+    _prev = os.environ.get("ALG_JIT_READ"); os.environ["ALG_JIT_READ"] = "1"
+    try:
+        MASKS, FACTS = _prep_pass(H, p, samples, states, tokmask, sent, _rf)
+    finally:
+        _jr_reset()
+        if _prev is None: os.environ.pop("ALG_JIT_READ", None)
+        else: os.environ["ALG_JIT_READ"] = _prev
+    np.savez_compressed(_cp, MASKS=MASKS, **({"FACTS": FACTS} if FACTS is not None else {}))
+    print(f"[prep] cached -> {_cp}", flush=True)
+    return MASKS, FACTS
+
+
+def _prep_pass(H, p, samples, states, tokmask, sent, _rf):
     """do_train's mask-prep pass on the factored module: masks + fact_0
     from the WARM head's own breath-0 parse (the warm-parse law — the
     warm source's parse feeds the first seam, never a newborn's)."""
@@ -601,14 +653,16 @@ def prep_masks_facts(H, p, samples, states, tokmask, sent):
     alt2 = bool(_envi("ALG_ALT2"))
     MASKS = np.zeros((n, L, L), np.float32)
     FACTS = np.zeros((n, K, 4), np.float32) if alt2 else None
-    for s0 in range(0, n, 8):
-        sl = np.arange(s0, min(s0 + 8, n))
-        pad = 8 - len(sl)
+    _PB = 32
+    _keys = ("fat", "args", "res", "pres", "ftype", "op", "dig", "dup")
+    for s0 in range(0, n, _PB):
+        sl = np.arange(s0, min(s0 + _PB, n))
+        pad = _PB - len(sl)
         sl_p = np.concatenate([sl, sl[:1].repeat(pad)]) if pad else sl
-        out0 = H.forward(
+        out0 = _rf(H.forward,
             p, Tensor(states[sl_p].astype(np.float32), dtype=dtypes.float),
             Tensor(tokmask[sl_p].astype(np.float32), dtype=dtypes.float),
-            Tensor(sent[sl_p].astype(np.int32), dtype=dtypes.int))
+            Tensor(sent[sl_p].astype(np.int32), dtype=dtypes.int), keys=_keys)
         o0 = {k: out0[k].realize().numpy() for k in ("fat", "args", "res")}
         MASKS[sl] = H.build_slot_masks(o0, sent[sl_p])[:len(sl)]
         if FACTS is not None:
@@ -619,6 +673,44 @@ def prep_masks_facts(H, p, samples, states, tokmask, sent):
             ma = np.array([samples[int(i)].get("m", 0) for i in sl_p])
             FACTS[sl] = H.alt2_fact_buf(oa, sent[sl_p], nv, ma)[:len(sl)]
     return MASKS, FACTS
+
+
+def wheel_bias(H, onp, fat_np, se_np, nv, ma, beta, mode, workers, LT):
+    """The spotlight: per row, decode the parse slot by slot, solve, and
+    on a certified refusal +beta on the token scores of the core slots'
+    source sentences (own | union). Returns ((B,1,LT,T) bias, rows turned)."""
+    sys.path.insert(0, "scripts")
+    from alternator_bridge import core_rows
+    B, T = se_np.shape
+    parses = []; rows = []
+    for b in range(B):
+        row = {kk: onp[kk][b] for kk in onp}
+        row["query"] = np.zeros(H.K_VARS, np.float32)
+        parse = []
+        for j in range(H.L_FAC):
+            if row["pres"][j] <= 0:
+                continue
+            rj = dict(row); pr = np.full_like(row["pres"], -1.0); pr[j] = row["pres"][j]; rj["pres"] = pr
+            try:
+                facs, _ = H.decode(rj)
+            except Exception:
+                facs = []
+            for f in facs:
+                f["_slot"] = j; parse.append(f)
+        parses.append(parse); rows.append((int(nv[b]), parse, int(ma[b])))
+    res = core_rows(rows, workers)
+    bias = np.zeros((B, 1, LT, T), np.float32); turned = 0
+    for b, (status, core) in enumerate(res):
+        if status != "unsat" or not core:
+            continue
+        turned += 1
+        parse = parses[b]
+        slots = [parse[k]["_slot"] for k in core]
+        sents = {j: int(se_np[b, min(int(fat_np[b, j].argmax()), T - 1)]) for j in slots}
+        for j in slots:
+            want = set(sents.values()) if mode == "union" else {sents[j]}
+            bias[b, 0, j, :] = np.where(np.isin(se_np[b], list(want)), beta, 0.0)
+    return bias, turned
 
 
 def _row_meta(H, samples, idx):
@@ -856,7 +948,8 @@ def run_train():
                 rr = (rate_sum / max(rate_n, 1)).round(2).tolist()
                 print(f"  step {s:5d} loss={loss:.4f} lr={cur_lr:.1e} "
                       f"({(time.time() - t0) / (s + 1):.2f}s/step) "
-                      f"facts/item/breath={rr}", flush=True)
+                      f"facts/item/breath={rr}"
+                      + (f" wheel-turned/breath={getattr(w, 'turned', [])}" if w.wheel else ""), flush=True)
                 rate_sum[:] = 0.0
                 rate_n = 0
             if snap_every and (s + 1) % snap_every == 0:

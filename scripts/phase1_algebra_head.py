@@ -3615,7 +3615,7 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
         # needs, single source (inert when None — the _CENSUS pattern)
         _STEP_TAP.update(ctx=_bs_ctx, state=_bs_state, waist=waist,
                          vst=vst, vst_base=_vst_base, fst=fst, qst=qst,
-                         heads_of=heads_of, B=B)
+                         heads_of=heads_of, B=B, fat=fat)   # fat: the wheel's sentences
     if int(os.environ.get("ALG_MINE_BREATHS", "0")):
         out_breaths = breaths          # v3: the dialect ladder's raw states
     _s_final = breaths[-1]

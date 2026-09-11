@@ -126,3 +126,32 @@ def refuse_and_core(n_vars, factors, m, budget=20000, seed=0):
     core, checks = deletion_core(
         idx, lambda keep: _is_unsat([factors[i] for i in keep]))
     return {"status": "unsat", "core": core, "checks": checks + 1}
+
+
+# ---------------------------------------------------------------------------
+# THE WHEEL'S POOL (2026-09-11): the solver's cores across CPU cores. The
+# pass is solver-bound; a spawn-context pool keeps the children clear of
+# the parent's GPU handle (the AM single-process law).
+# ---------------------------------------------------------------------------
+_POOL = None
+
+
+def _core_worker(args):
+    n_vars, parse, m = args
+    r = refuse_and_core(n_vars, parse, m)
+    return r["status"], r["core"]
+
+
+def core_rows(rows, workers=None):
+    """rows: list of (n_vars, parse, m). Returns [(status, core), ...] in
+    order. workers=None -> os.cpu_count()-2; workers<=1 -> in-process."""
+    import os as _os
+    global _POOL
+    if workers is None:
+        workers = max(1, (_os.cpu_count() or 2) - 2)
+    if workers <= 1 or len(rows) <= 1:
+        return [_core_worker(a) for a in rows]
+    if _POOL is None:
+        import multiprocessing as _mp
+        _POOL = _mp.get_context("spawn").Pool(workers)
+    return _POOL.map(_core_worker, rows, chunksize=1)

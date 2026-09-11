@@ -36830,3 +36830,39 @@ in a process pool (the pass is solver-bound: ~50% refusals x ~0.15 s
 per core x B rows x 5 breaths). Bars to pin at fire time from the
 step trainer's own control (ping=0 vs ping+wheel). The token-side
 station T2 (tokens<-slots) follows as the linkage's second half.
+
+## 2026-09-11 — THE WHEEL, STAGE 2 BUILT (word given): the step trainer extended — the core's spotlight as a second detached constant per seam, a spawn pool for the cores, the ALG_STELLAR fence lifted, L_TOT banks, a cached JIT prep; bars PINNED; chain fired
+
+THE BUILD (scripts/apply_wheel_train.py on scripts/step_trainer.py;
+alternator_bridge.core_rows: a spawn-context Pool — the children never
+touch the GPU (AM single-process); the head's step tap banks `fat`):
+at every seam k <= K_B-2 the walker decodes the breath's parse (the
+emission heads on cur_bank[k], all decode keys), commits it row by row
+to the solver in the pool, and on a certified refusal builds the
+spotlight (+beta on the core slots' source-sentence tokens; own|union)
+into a fixed (B,1,L_TOT,T) buffer that breath k+1's state carries as
+state["wheel_bias"] — the same port the read-time wheel used, so the
+trained regime IS the read regime. The facts stay FROZEN (ST_PING=0:
+the 09-04 twin found live facts LOSE, the VST channel) — single delta:
+the wheel. Two fences lifted with proofs owed by the chain: ALG_STELLAR
+(the walker refused it since 09-03; v2 lives inside breath_step) and
+the state banks re-sized to L_TOT=32 (the fed scratch rows; the walker
+predates them) — --eqfwd (ST_EQ_TOL=1e-5, the 09-04 re-pin) and --eqbwd
+under the family env on balV242 run FIRST and stop the chain on failure.
+CHAIN (.cache/wheel_train_chain.sh, unit pc-wheeltrain): selftest ->
+eqfwd -> eqbwd -> a 3-step wheel smoke (pays the prep once; cached by
+ckpt sha) -> ARM stC242 (control: ST_PING=0 ST_WHEEL=0, 6000 steps at
+B=32, warm balV242) -> ARM stW242 (ST_WHEEL=1 own beta=3) -> reads:
+loop_val open on both; wheel_read own/3 on both (wild); mint on both.
+BARS (pinned): WT3 THE TRAINER IS NOT THE CONFOUND: stC242 open wild >=
+0.2426 and mint >= 0.9707 (balV242's guards); if WT3 fails the wheel
+verdict is scoped to "vs the step-trainer control" only. WT1 THE WHEEL
+PAYS: wheel-read(own/3) of stW242 on wild >= open(stC242) + 0.010, with
+open mint(stW242) >= open mint(stC242) - 0.005. WT2 THE PARSE LEARNED
+TO USE IT: wheel-read(stW242) - open(stW242) >= +0.010 (the read-time
+wheel on balV242 gave +0.0034). KILL: wheel-read(stW242) < open(stC242)
+- 0.010 -> training under the wheel hurts; the spotlight form is struck
+and the core's next port is the slot lanes (the DSL's own form).
+REGISTERED PREDICTION: WT3 passes; WT2 passes (+0.015: the parse learns
+to trust an aimed re-read); WT1 lands +0.005 to +0.012 (a coin-flip on
+the bar); the wheel turns on ~50% of wild rows per seam, ~10% of mint.
