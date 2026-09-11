@@ -343,9 +343,14 @@ class StepWalker:
                                          "sgn", "dargs", "dig2", "sel", "islit", "y")
                              if k in self.emit_keys]
 
-    def _mk_ctx(self, waist):
+    def _mk_ctx(self, waist, k=None):
         H = self.H
         return {"B": self.B, "K_B": self.K_B, "waist": waist,
+                # the mask head reads the seam's facts as a context feature
+                # (2026-09-11: the fused ctx carries fact_buf / mh_mass /
+                # fed_nl0 / mh_atlas_traj; the walker's ctx predated them)
+                "fact_buf": (self.b_facts[k - 1] if k is not None else self.b_facts[0]),   # the facts ENTERING breath k
+                "mh_mass": None, "fed_nl0": None, "mh_atlas_traj": None,
                 "tokmask": self.b_tk, "slot_mask": self.mask_bank,
                 "bank": H._make_bank(self.p, waist, self.b_tk, self.B),
                 "rot2": self.rot2, "sync": None, "drop": None,
@@ -386,7 +391,7 @@ class StepWalker:
     def _mk_fwd(self, k):
         def fwd():
             state = self._mk_state(k, self.cur_bank[k - 1])
-            self.H.breath_step(self.p, state, k, self._mk_ctx(self.waist_bank))
+            self.H.breath_step(self.p, state, k, self._mk_ctx(self.waist_bank, k))
             outs = [state["cur"]]
             if self.notebook:
                 outs += state["nb"][-2:] if k == 1 else [state["nb"][-1]]

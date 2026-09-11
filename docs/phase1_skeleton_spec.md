@@ -36894,3 +36894,43 @@ scripts/setup_am_driver.sh`. Every chain stopped cleanly; nothing is
 wedged. Stage 2 waits on the fix AND on the bisection's verdict — the
 walker does not train under a family it cannot reproduce (rung 1 is
 the fence, and the bar does not bend to 1e-4).
+
+## 2026-09-11 — RUNG 1 BEATEN UNDER THE NEW FAMILY: the walker's forward at rel 7e-7 (bar 1e-5), backward 95/95; the cause was the mask head's CONTEXT DICT (three finds, one mine); the GPU restored by the setcap recipe; STAGE 2 FIRED
+
+THE HUNT (in order): (1) the "semantic" call from eager==JIT was WRONG in
+its inference (both walker paths share the segment cuts) — the loop's
+own sensitivity read (scripts/loop_sensitivity.py: a 1e-6 relative
+input perturbation moves the emissions 1-2e-6 on P, S and V alike — no
+amplification) ruled out fusion noise for the right reason; (2) the
+door bisection: the gap follows the CHECKPOINT (V no-doors 2.2e-4, V
+with doors 1e-4, S 3e-5, P 1e-6) — the doors were never the cause;
+(3) the per-breath state diff (scripts/st_breath_diff.py): entering
+breath 2 matches at 5e-7, entering breath 3 is off 1.5e-4, flat after;
+(4) the per-organ diff at breath 2 (scripts/st_organ_diff.py, the
+census armed on both sides): maskhead_pre rel 1.07 — 100% — with every
+other organ matching; (5) a debug census of the mask head's context
+features: `mh_f` (the fact buffer the mask head reads through
+ctx.get("fact_buf")) rel 1.0 at EVERY breath: THE WALKER'S CTX DICT
+PREDATES THE MASK HEAD'S PORTS (fact_buf / mh_mass / fed_nl0 /
+mh_atlas_traj, 09-05); it carried none, the mask head saw zeros. The
+fix's first form pointed at b_facts[k], which the walker fills AFTER
+breath k (the seam buffer for the reverse walk) — still zeros at
+segment time (my bug); the causal buffer is b_facts[k-1], the facts
+ENTERING breath k (= fact0 unpinged; the live previous-seam facts
+under pings: exactly "every breath commits and receives"). Also
+threaded: state["mh_prev"] (the mask head's consumed adjacency, 09-05)
+through a per-segment bank (harmless before breath 3; correct after);
+the walker's banks re-sized to L_TOT=32 (cur/nb/garage/snap); the
+forward's PROCESSED slot mask banked at stage 0; `fat` banked for the
+wheel. Why balP242 passed at 1e-6 with the same hole: its mask head's
+fact features happen to be near-inert on the 8 eq rows; the gap scaled
+with what the mask head does with facts across the lineage.
+PROOFS (family env, balV242, JIT): --eqfwd rel 2.9e-7 .. 6.8e-7 (bar
+1e-5) PASS; --eqbwd loss 7.896887 both, 95/95 params within 1e-4 rel
+PASS. The step trainer runs the stellarator v2 + canonical frame +
+all-to-all family, proven.
+THE GPU: restored 10:2x by `sudo bash scripts/setup_am_driver.sh`
+(Bryce) — caps re-granted on /usr/bin/python3.12; the quirks entry
+(2026-07-06) was exact. STAGE 2 FIRED: .cache/wheel_train_chain.sh as
+pc-wheeltrain4 (rung 1 x2 again -> the wheel smoke -> stC242 -> stW242
+-> reads); bars WT1-WT3 as pinned.
