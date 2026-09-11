@@ -10,7 +10,7 @@ import os, sys
 sys.path.insert(0, "."); sys.path.insert(0, "scripts")
 import numpy as np
 import phase1_algebra_head as H
-from phase1_algebra_head import build_params, forward, load_alg, build_slot_masks, L_FAC, _loss_single
+from phase1_algebra_head import build_params, forward, load_alg, build_slot_masks, L_FAC, L_TOT, _loss_single
 from tinygrad import Tensor, dtypes
 from tinygrad.nn.state import safe_load
 ckpt = os.environ["GC_CKPT"]
@@ -23,8 +23,8 @@ ts = Tensor(vst[sl].astype(np.float32), dtype=dtypes.float); tk = Tensor(vtk[sl]
 o0 = forward(p, ts, tk, se); onp0 = {k: o0[k].realize().numpy() for k in ("fat", "args", "res")}
 mk = Tensor(build_slot_masks(onp0, vse[sl].astype(np.int32)), dtype=dtypes.float)
 K = int(os.environ.get("ALG_BREATH", "7"))
-taps = {kb: Tensor(np.zeros((B, L_FAC, 512), np.float32), requires_grad=True) for kb in range(1, K)}
-taps["final"] = Tensor(np.zeros((B, L_FAC, 512), np.float32), requires_grad=True)
+taps = {kb: Tensor(np.zeros((B, L_TOT, 512), np.float32), requires_grad=True) for kb in range(1, K)}
+taps["final"] = Tensor(np.zeros((B, L_TOT, 512), np.float32), requires_grad=True)
 H._GTAP = taps
 o = forward(p, ts, tk, se, slot_mask=mk)
 g = {}

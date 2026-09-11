@@ -36646,3 +36646,36 @@ receives < 5% of the readout's gradient, breath 1 is trained mostly by
 what breath 2 wants, and the remedies are structural (an age-tagged
 shelf the reader can address; the return road's facts at breath 1),
 never a per-breath loss (the grave).
+
+## 2026-09-10 — STELLARATOR v2 VERDICT: ALL BARS PASS — the total cut holds under the canonical frame; the bypass is closed (clock-plane share 0.338 -> 0.221); mint 0.9757 = record; balV242 is THE CANDIDATE
+
+balV242 (warm balU242, 12k, ALG_STELLAR=2 ALG_CLOCK_CANON=1; unit
+pc-stellar2 15:17-17:27): val proxy 0.9493 / 0.9719 / 0.9757.
+  READ             balV242            balU242 (comparator)   bar
+  open wild        0.2526             0.2579                 >= 0.2479 PASS (-0.0053)
+  open mint        **0.9757**         0.9708                 >= 0.9658 PASS (+0.0049; the family's MINT RECORD)
+  clock probe      1.0000 x6          1.0000                 >= 0.95 PASS (V3: the frame carries the bearing through a TOTAL cut)
+  sever notebook   0.1165 / 0.4133    cost 0.130 / 0.498     cost **0.136 / 0.562** >= 0.130 PASS (V4)
+  sever garage     0.2467 / 0.9746    cost 0.013 / -0.001    cost 0.006 / 0.001 (the bus: still a side road)
+  clock-plane share at b6 (wild / mint)  **0.221 / 0.222**   (balP242 0.170, balS242 0.338)   < 0.25 PASS (V2: THE BYPASS CLOSED)
+  eff-rank per breath (wild)  31.8 17.8 11.8 12.2 12.8 9.5 8.6 (balS242 ... 10.1; balP242 ... 12.2)
+  radius (wild)    12.6 16.7 20.3 19.7 19.4 21.2 21.5; turnover 0.76 ... 0.50 (not frozen)
+  clock designed-mass window (breath hand)  0.51 / 0.55 (was 0.85-0.96): the probe is perfect but the
+                   hand's mass is less concentrated in the designed bin — the cut now touches the clock
+                   planes' AMPLITUDES (the compass is carried by the re-phased ink); a delay-line item.
+VERDICT: V1-V4 PASS. The residual is extinguished on the WHOLE state at
+the last loop breath; the bearing survives through the canonical frame;
+the leak that carried 11 wild / 31 mint points across v1's exempt block
+is closed (share back to 0.22), and the machine reads BETTER on mint and
+within the guard on wild. **balV242 is the research candidate** (12.4M,
+0.39 s/step; the family env: ALG_PRUNE + ALG_SLOT_ALL=1 + ALG_STELLAR=2
++ ALG_CLOCK_CANON=1). Registered predictions: all four right. THE DELAY
+LINE is UNBLOCKED (its precondition was v2's pass); the compass-mass
+finding above is its first datum: with no exemption, the compass rides
+the ink's re-phased planes, so the compass/channel split should give the
+bearing back its own planes. The lineage today: polarsink242 -> balP242
+(prune) -> balS242 (v1) -> balU242 (frame) -> balV242 (v2). Wild has
+drifted 0.2608 -> 0.2579 -> 0.2526 across the three arms (each within
+its guard; the sum is -0.008, below one SE of 0.010) — WATCHED, not
+claimed either way; the next arm's wild guard is pinned against
+balS242's 0.2608 to stop a drift from hiding in guards.
