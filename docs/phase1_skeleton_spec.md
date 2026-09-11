@@ -36804,3 +36804,29 @@ gain is zero. REGISTERED PREDICTION: X1 fails narrowly (wild +0.003 to
 +0.008) — the spotlight moves attention but the parse's readout was
 trained on unaimed reads; X2 passes (W1 said 51% of final parses
 refuse; earlier breaths refuse at least as often).
+
+## 2026-09-11 — THE WHEEL AT READ TIME, VERDICT: X1 FAIL as pinned (best +0.0034 wild, own/3), X2 PASS (48% of rows refused at breath 2); the prediction (a narrow miss) held; STAGE 2 = training under the wheel
+
+READ (unit pc-wheel, 20:0x-20:57; eager; balV242 open 0.2526 / 0.9757):
+  wild  union beta=3  0.2550 (+0.0024) | union beta=6  0.2535 (+0.0009) | own beta=3  **0.2560 (+0.0034)**
+  mint  union beta=3  0.9757 (+0.0000)
+  refusals per breath (wild, of 312 rows): b1 170  b2 150-155  b3 142-145  b4 143-144  b5 155-162 (46-54%);
+  core size mean 3.7 (mint: 34/19/19/18/20 of 304; cores 4.3). Rows turned = rows refused.
+BARS: X1 (wild >= 0.2626 on some config with mint >= 0.9707): FAIL; the
+kill line (wild >= 0.2576 on any config): NOT reached -> as pinned: a
+trained parse cannot use a spotlight it never trained under. X2 (>= 30%
+refused at breath 2): PASS at 48%. Prediction (+0.003 to +0.008): held
+at +0.0034. The wheel HAS work in the middle at every breath (half the
+wild rows are refused at breaths 2-5, with cores of ~4 slots); the
+spotlight moves attention and the readout, trained on unaimed reads,
+gains within noise. STAGE 2 (the word: "up next: slot->token linkage;
+tentative commit every breath with MUC in return"): TRAIN UNDER THE
+WHEEL — the step trainer (FINAL BOSS: per-breath captures with the
+solver between segments; facts as detached constants into fixed
+buffers; 0.77 s/step at B=32 on its frozen arm) extended with the core
+-> spotlight as a second detached constant per breath (a (B,1,L_TOT,T)
+buffer read by breath_step as state["wheel_bias"]), the solver's cores
+in a process pool (the pass is solver-bound: ~50% refusals x ~0.15 s
+per core x B rows x 5 breaths). Bars to pin at fire time from the
+step trainer's own control (ping=0 vs ping+wheel). The token-side
+station T2 (tokens<-slots) follows as the linkage's second half.
