@@ -36866,3 +36866,31 @@ and the core's next port is the slot lanes (the DSL's own form).
 REGISTERED PREDICTION: WT3 passes; WT2 passes (+0.015: the parse learns
 to trust an aimed re-read); WT1 lands +0.005 to +0.012 (a coin-flip on
 the bar); the wheel turns on ~50% of wild rows per seam, ~10% of mint.
+
+## 2026-09-11 — STAGE 2's RUNG 1 FAILED, SEMANTICALLY: the walker disagrees with the fused loop at rel 1e-4 under the new family (eager == JIT to the digit; the old family passes at 1e-6); backward off on mh_gain and alt2_g only; the door bisection runs on CPU — the GPU lost to the setcap quirk
+
+RUNG 1 (--eqfwd, ST_EQ_TOL=1e-5, balV242, the family env): after two
+shape fixes (the walker's banks sized for L_FAC=24; the loop carries
+L_TOT=32 since the fed scratch rows — cur/nb/garage/snap banks re-sized;
+the walker now banks the forward's PROCESSED slot mask from the stage-0
+tap instead of the raw (B,24,24) one), the walker runs the full family
+end to end and disagrees with the fused forward on every loop-dependent
+key at rel 7e-5 .. 1.7e-4 (args maxabs 1.43e-2; res 1.76e-2), the
+breath-0 keys (fat, vat, query, bind) bitwise equal. THE SPLIT: ST_JIT=0
+(eager segments) reproduces the SAME numbers to the digit -> semantic,
+not fusion; the OLD family (balP242: no ALG_STELLAR / ALG_CLOCK_CANON /
+ALG_SLOT_ALL) under the same walker PASSES at rel 1.3e-6. --eqbwd
+(eager): 93/95 params in tolerance; FAILING mh_gain (rel 2.0e-2) and
+alt2_g — both organs live on the slot-mask lanes (a clue toward the
+mask door). One of the three doors behaves differently dispatched
+breath-by-breath than fused. Bisection (one door at a time, eager)
+running on CPU (unit pc-stdoor-cpu) because:
+THE GPU IS GONE FROM USER SPACE (06:5x): PermissionError in the AM
+driver's PCI enable write; the quirks memory's own entry (2026-07-06):
+an unattended OS upgrade replaced python3 and stripped the setcap
+grants (getcap on the venv python: empty; unattended-upgrade-shutdown
+in the process list). FIX (needs sudo; no reboot): `sudo bash
+scripts/setup_am_driver.sh`. Every chain stopped cleanly; nothing is
+wedged. Stage 2 waits on the fix AND on the bisection's verdict — the
+walker does not train under a family it cannot reproduce (rung 1 is
+the fence, and the bar does not bend to 1e-4).
