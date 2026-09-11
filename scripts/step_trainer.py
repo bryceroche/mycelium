@@ -278,6 +278,7 @@ class StepWalker:
         self.cur_dec = fix((B, LT, HW))
         self.fact_dec = fix((B, K, 4))
         self.fat_bank = fix((B, LT, T))    # stage-0 attention: the wheel's source sentences
+        self.mask_bank = fix((B, LT, LT))  # the forward's PROCESSED slot mask (fed scratch rule)
         self.fat_np = None
         self.wheel_bank = ([fix((B, 1, LT, T)) for _ in range(self.K_B - 2)]
                            if self.wheel else [])
@@ -341,7 +342,7 @@ class StepWalker:
     def _mk_ctx(self, waist):
         H = self.H
         return {"B": self.B, "K_B": self.K_B, "waist": waist,
-                "tokmask": self.b_tk, "slot_mask": self.b_mask,
+                "tokmask": self.b_tk, "slot_mask": self.mask_bank,
                 "bank": H._make_bank(self.p, waist, self.b_tk, self.B),
                 "rot2": self.rot2, "sync": None, "drop": None,
                 "gmod": None, "revoke": None, "tail": None, "reg": None,
@@ -372,7 +373,8 @@ class StepWalker:
             # banks are PURE VALUES (the reverse walk recomputes live);
             # detach cuts any chance of cross-step graph chaining
             return [tap["waist"].detach(), tap["vst_base"].detach(),
-                    tap["fst"].detach(), tap["fat"].detach()]
+                    tap["fst"].detach(), tap["fat"].detach(),
+                    tap["ctx"]["slot_mask"].detach()]
         return s0
 
     def _mk_fwd(self, k):
@@ -487,8 +489,9 @@ class StepWalker:
         self.vst_base_bank.assign(r[1])
         self.cur_bank[0].assign(r[2])
         self.fat_bank.assign(r[3])
+        self.mask_bank.assign(r[4])
         self.Tensor.realize(self.waist_bank, self.vst_base_bank,
-                            self.cur_bank[0], self.fat_bank)
+                            self.cur_bank[0], self.fat_bank, self.mask_bank)
         self.fat_np = self.fat_bank.numpy() if self.wheel else None
         fact_cur = fact0
         rates = []
