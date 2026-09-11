@@ -55,6 +55,7 @@ ALG_CIRCLE = int(os.environ.get("ALG_CIRCLE", "0"))      # the traffic circle
 ALG_STELLAR = int(os.environ.get("ALG_STELLAR", "0"))    # cell-3b: helical handoff
 ALG_CLOCK_CANON = int(os.environ.get("ALG_CLOCK_CANON", "0"))   # memories in a canonical clock frame
 _GTAP = None      # THE GRADIENT TAP (apply_grad_tap.py): read-only probe leaves per breath
+_IDLE = frozenset(int(x) for x in os.environ.get("ALG_IDLE_BREATHS", "").split(",") if x)   # read-only
 
 
 def _clock_frame(x, k, sign, rot2):
@@ -2459,6 +2460,8 @@ def breath_step(p, state, kb, ctx):
             # payload, SNIPPED to exactly 0 at the last loop breath, the
             # clock block exempt (a coordinate system, not a road).
             _w = math.cos(kb * math.pi / (2 * (K_B - 1))) ** 2   # 1 -> 0
+            if kb in _IDLE:
+                _w = 1.0                     # idle: no junction blend
             _rdj = _rd if NB_PERSLOT else _rd.reshape(B, 1, -1)
             if ALG_POLAR and ALG_STELLAR < 2:
                 _, _, _sg_c, _sg_k, _ = _polar_sink()
@@ -3088,6 +3091,8 @@ def breath_step(p, state, kb, ctx):
             if _d21b is not None:
                 _CENSUS.append((kb, "alt21_s4", _d21b.realize().numpy()))
     g = p["breath_gate"][kb].sigmoid()
+    if kb in _IDLE:
+        g = g * 0.0                          # idle: no update
     if drop is not None:            # door #52: BREATH DROPOUT —
         g = g * drop                # per-STEP coin; drop=0 makes the
                                     # breath an exact identity (silent)
