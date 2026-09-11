@@ -137,9 +137,28 @@ _POOL = None
 
 
 def _core_worker(args):
+    """One row, HARD-BOUNDED (2026-09-11): a training-time parse from an early
+    breath can be badly under-determined (many factors, few givens, domain
+    0..300) and a complete solve can run for an hour on one core. A wall-clock
+    alarm (WHEEL_ROW_TIMEOUT s, default 3) and a small decision budget
+    (WHEEL_BUDGET, default 2000) bound it; timing out = not certified = no
+    core (the conservative answer; the wheel only turns on proofs)."""
+    import os as _os, signal as _sig
     n_vars, parse, m = args
-    r = refuse_and_core(n_vars, parse, m)
-    return r["status"], r["core"]
+    t = float(_os.environ.get("WHEEL_ROW_TIMEOUT", "3"))
+    budget = int(_os.environ.get("WHEEL_BUDGET", "2000"))
+    def _alarm(signum, frame):
+        raise TimeoutError("wheel row timeout")
+    _old = _sig.signal(_sig.SIGALRM, _alarm)
+    _sig.setitimer(_sig.ITIMER_REAL, t)
+    try:
+        r = refuse_and_core(n_vars, parse, m, budget=budget)
+        return r["status"], r["core"]
+    except TimeoutError:
+        return "timeout", []
+    finally:
+        _sig.setitimer(_sig.ITIMER_REAL, 0)
+        _sig.signal(_sig.SIGALRM, _old)
 
 
 def core_rows(rows, workers=None):
