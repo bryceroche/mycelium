@@ -262,8 +262,8 @@ class StepWalker:
         gd = int(p["W_bind2"].shape[1]) if self.garage else 0
         self.gar_bank = ([fix((B, LT, gd)) for _ in range(self.K_B - 1)]
                          if self.garage else [])
-        self.snap_bank = ({k: [fix((B, L, 24)), fix((B, L, 24)),
-                               fix((B, L, 24)), fix((B, L))]
+        self.snap_bank = ({k: [fix((B, LT, 24)), fix((B, LT, 24)),
+                               fix((B, LT, 24)), fix((B, LT))]
                            for k in range(1, self.K_B)}
                           if self.snaps_on else {})
         # per-forward constants recomputed at stage-0, then frozen for
