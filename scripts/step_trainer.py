@@ -279,6 +279,10 @@ class StepWalker:
         self.fact_dec = fix((B, K, 4))
         self.fat_bank = fix((B, LT, T))    # stage-0 attention: the wheel's source sentences
         self.mask_bank = fix((B, LT, LT))  # the forward's PROCESSED slot mask (fed scratch rule)
+        # the mask head's cross-breath storage (state["mh_prev"]: the consumed
+        # adjacency, written at breath k >= 2, read at k+1) — 2026-09-11
+        self.mhp_bank = ([fix((B, LT, LT)) for _ in range(self.K_B)]
+                         if self.snaps_on else [])
         self.fat_np = None
         self.wheel_bank = ([fix((B, 1, LT, T)) for _ in range(self.K_B - 2)]
                            if self.wheel else [])
@@ -353,6 +357,8 @@ class StepWalker:
         n_nb, n_gar, _ = shelf_plan(k, self.notebook, self.garage,
                                     self.snaps_on)
         return {"cur": cur, "breaths": [],
+                "mh_prev": (self.mhp_bank[k - 1]
+                            if (self.snaps_on and k >= 3) else None),
                 "wheel_bias": (self.wheel_bank[k - 2]
                                if (self.wheel and k >= 2) else None),
                 "nb": ([self.nb_bank[j] for j in range(n_nb)]
@@ -388,6 +394,8 @@ class StepWalker:
                 outs.append(state["garage"][-1])
             if self.snaps_on:
                 outs += list(state["snaps"][-1])
+                if k >= 2:
+                    outs.append(state["mh_prev"])    # the consumed adjacency
             return [t.detach() for t in outs]   # banks are pure values
         return fwd
 
@@ -519,6 +527,10 @@ class StepWalker:
                 for jj in range(4):
                     self.snap_bank[k][jj].assign(outs[i + jj])
                 todo += self.snap_bank[k]
+                i += 4
+                if k >= 2:
+                    self.mhp_bank[k].assign(outs[i])
+                    todo.append(self.mhp_bank[k])
             self.Tensor.realize(*todo)
             if self.ping or self.wheel:
                 # the seam stub: decode confident slots on vst(fact_{k-1}),
