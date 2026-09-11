@@ -200,6 +200,7 @@ the silence is.</p>
 
 
 HOOKS = {
+ "2026-09-10-the-line-cooks": "Five reads in one day: the clock writing memories in the wrong frame; content smuggled through the exempt clock planes (11 and 31 points); the gradient census — the farmer is tipped through the first ink and the middle breaths starve, then prove decorative; the slot-to-word wire; and the wheel turning at read time, a core on every breath.",
  "2026-09-10-the-stellarator": "The residual is a bypass. Snip it, helically, to exactly zero by the last breath, with the clock exempt — the August roundabout re-fired with a sharp payload. The birth read: 0.001 and 0.000. And the solver pinged on every breath: facts, refusal, and now the core.",
  "2026-09-10-the-steering-wheel": "Pythia solved Sudoku with the rules written as masks and scored zero without them. The wheel assembles: commit to the solver on every breath, the minimal unsatisfiable core as the driver, the mask DSL as the linkage, entering the loop not the readout. KenKen first.",
  "2026-09-09-the-words-never-change": "Do we want more layers in the loop? A duplicate mixer was free and a duplicate grounding bank paid — and on the other side of the waist there is no trained attention over the words at all, and no road from slots back to words. Three layers, with the word.",
@@ -235,7 +236,7 @@ HOOKS = {
 # ---------------------------------------------------------------- blog + bio
 BLOG = ROOT / "site" / "blog"
 blog_pages = []
-PIN_FIRST = ["2026-09-10-the-stellarator", "2026-09-10-the-steering-wheel", "2026-09-09-the-words-never-change", "2026-09-09-the-order", "2026-09-09-the-balance-sheet", "2026-09-09-turbulent-air", "2026-09-09-the-player-and-the-game", "2026-09-08-the-pressure-cooker", "2026-09-07-a-place-to-turn"]     # the live generation leads the splash
+PIN_FIRST = ["2026-09-10-the-line-cooks", "2026-09-10-the-stellarator", "2026-09-10-the-steering-wheel", "2026-09-09-the-words-never-change", "2026-09-09-the-order", "2026-09-09-the-balance-sheet", "2026-09-09-turbulent-air", "2026-09-09-the-player-and-the-game", "2026-09-08-the-pressure-cooker", "2026-09-07-a-place-to-turn"]     # the live generation leads the splash
 _posts = sorted(BLOG.glob("*.md"), reverse=True)
 _posts = [m for m in _posts if m.stem in PIN_FIRST] + [m for m in _posts if m.stem not in PIN_FIRST]
 for md in _posts:
