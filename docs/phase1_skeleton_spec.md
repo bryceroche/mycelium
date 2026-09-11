@@ -36729,3 +36729,40 @@ per-breath targets; single delta; bar: the middle breaths' credit >=
 law: a slower helix (e.g. cos^2 over 2*K) keeps a thinner residual
 longer — but it is a bypass by degree, and the residual-seal law says
 the loss will find it; held.
+
+## 2026-09-10 — THE MIDDLE'S REMOVAL COST: under the total cut, breaths 3-5 REMOVE FOR FREE (idling them IMPROVES wild by 0.4 pts) — the desert is decorative, not starved; breath 6 carries 5-6 wild points; the loop is effectively b0, b1, b2, b6
+
+READ (unit pc-idle, 19:3x-19:51; eq gate bit-identical x3 with the door
+unset; ALG_IDLE_BREATHS: gate closed + no junction blend at the named
+breaths, the clock still turns, the ink written is a copy):
+  arm (open)                idle 3,4,5        idle 4            idle 3,4,5,6
+  balP242 (0.2545/0.9665)   0.2487/0.9580     0.2574/0.9659     0.2482/0.9556
+                             cost 0.006/0.009  -0.003/0.001      0.006/0.011
+  balS242 (0.2608/0.9654)   0.2282/0.9550     0.2560/0.9656     0.2238/0.9332
+                             cost 0.033/0.010  0.005/0.000       0.037/0.032
+  balV242 (0.2526/0.9757)   **0.2565/0.9738** 0.2511/0.9755     0.1999/0.9370
+                             cost **-0.004/0.002**  0.002/0.000  0.053/0.039
+VERDICT: under the total cut the middle breaths cost NOTHING to remove
+(wild goes UP 0.4 when they are idled; mint -0.2 within noise); breath
+6 alone is worth ~5.7 wild / ~3.7 mint (the last breath + the readout's
+carry). The gradient census's desert is therefore not a starved worker
+but a decorative one: the machine's deliberation is effectively THREE
+loop breaths (1, 2, 6) after the grounding read, and the mint record
+was set with the middle asleep. Under the residual family the middle
+is nearly free too (0.6/0.9 pts); under v1 it carried 3 wild points
+(the exempt clock block's content rode through the middle — gone in v2).
+Idling breath 4 alone is free everywhere (P: wild +0.3).
+WHAT THIS DECIDES: the credit remedies for the middle (the shelf
+readout; the delay line's credit motive) are MOOT as remedies — there
+is nothing to credit. Two live roads instead: (A) THE SHORT LOOP (perf;
+a run — the word): skip the middle breaths' compute in training and at
+read (a true skip door: the bank, the stations, the mixers not run at
+kb in {3,4,5}; the clock still turns 60 deg/breath so the sextet keeps
+its full turn; the ink not re-written) -> ~40% of the loop's step time
+and of the facts pass, at no cost by this read; bars: wild >= 0.2608 -
+0.010 (anchored), mint >= 0.9757 - 0.005, clock >= 0.95, step time <=
+0.28 s. (B) GIVE THE MIDDLE A JOB: the steering wheel's re-reads belong
+exactly there — commit at breath 2, solve, core, re-read at 3-5 under
+the core's mask; the idle capacity is where the return road can act
+(the order's next build). The delay line keeps its own bars (D1-D5) as
+a recall-sharpness question, no longer a credit question.
