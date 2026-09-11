@@ -55,6 +55,18 @@ ALG_CIRCLE = int(os.environ.get("ALG_CIRCLE", "0"))      # the traffic circle
 ALG_STELLAR = int(os.environ.get("ALG_STELLAR", "0"))    # cell-3b: helical handoff
 ALG_CLOCK_CANON = int(os.environ.get("ALG_CLOCK_CANON", "0"))   # memories in a canonical clock frame
 _GTAP = None      # THE GRADIENT TAP (apply_grad_tap.py): read-only probe leaves per breath
+_CONST_T = {}
+
+
+def _ct(key, arr):
+    """A realized constant Tensor cached by key (perf audit #7): per-breath wheel
+    tables and stamps were re-uploaded as graph nodes on every step."""
+    t = _CONST_T.get(key)
+    if t is None:
+        from tinygrad import Tensor as _Tc, dtypes as _dc
+        t = _Tc(np.ascontiguousarray(arr, dtype=np.float32), dtype=_dc.float).contiguous().realize()
+        _CONST_T[key] = t
+    return t
 _WHEEL = None     # THE STEERING WHEEL at read time (apply_wheel_read.py): None = no wheel
 
 
@@ -115,8 +127,8 @@ def _clock_frame(x, k, sign, rot2):
         return x
     from tinygrad import Tensor as _Tf, dtypes as _df
     _, _, _fac, _fas, _ = _polar_tables()
-    return rot2(x, _Tf(_fac[k - 1], dtype=_df.float),
-                _Tf(float(sign) * _fas[k - 1], dtype=_df.float))
+    return rot2(x, _ct(("fac", k), _fac[k - 1]),
+                _ct(("fas", k, int(sign)), float(sign) * _fas[k - 1]))
 NB_PERSLOT = int(os.environ.get("NB_PERSLOT", "0"))      # per-slot lanes: sharp ink
 ALG_SEPHASE_Q = int(os.environ.get("ALG_SEPHASE_Q", "0"))   # identity channel
 SEPHASE_Q_SCRAMBLE = int(os.environ.get("SEPHASE_Q_SCRAMBLE", "0"))
@@ -2400,7 +2412,7 @@ def breath_step(p, state, kb, ctx):
         cur = cur + _IMP[1]          # the kick
     if ALG_NOTEBOOK and kb == 1:
         from tinygrad import Tensor as _T2, dtypes as _dt2
-        _nb_st = _T2(NB_STAMPS, dtype=_dt2.float)
+        _nb_st = _ct("nb_st", NB_STAMPS)
         _nb = [(cur @ p["W_sil"]) if NB_PERSLOT
                else (_fed_core(cur).mean(1) @ p["W_sil"])]   # sharp vs blurred
         if ALG_NB2 and "nb2_sil" in p:
@@ -2739,9 +2751,7 @@ def breath_step(p, state, kb, ctx):
         # each attention is rotated exactly ONCE at QROT=2.
         from tinygrad import Tensor as _Tm, dtypes as _dm
         _mdc, _mds, _mac, _mas, _mwof = _polar_tables()
-        _bq2 = _rot2(bq,
-                     _Tm(_mac[kb - 1], dtype=_dm.float),
-                     _Tm(_mas[kb - 1], dtype=_dm.float))
+        _bq2 = _rot2(bq, _ct(("mac", kb), _mac[kb - 1]), _ct(("mas", kb), _mas[kb - 1]))
     sc2 = (_bq2 @ bk.transpose(-2, -1)) / math.sqrt(H_W)
     if _CENSUS is not None:
         _CENSUS.append((kb, "state_slot", sc2.realize().numpy()))
@@ -2859,7 +2869,7 @@ def breath_step(p, state, kb, ctx):
             _mclg0 = -(1.0 + (-(_mcr * 0.0)).exp()).log()   # its birth
             _mcsk = _mask_cook_skel(B, L_TOT, fat_cur, ctx)
             _mcb = _mclg.maximum(_mclg0 * _mcsk + (1.0 - _mcsk) * -1e4)
-            _mcc = Tensor(np.concatenate(
+            _mcc = _ct("mcc", np.concatenate(
                 [np.ones(L_FAC, np.float32),
                  np.zeros(L_TOT - L_FAC, np.float32)])).reshape(1, 1, -1)
             _mb = _mb * (1.0 - _mcv) + _mcb * _mcv
@@ -2943,10 +2953,8 @@ def breath_step(p, state, kb, ctx):
             # ALG_POLAR unset item 7a below runs byte-identically.
             from tinygrad import Tensor as _Tq, dtypes as _dq
             _qdc, _qds, _qac, _qas, _qwof = _polar_tables()
-            _rcq = _Tq(_qac[kb - 1].reshape(MX_HEADS, _mx_hd // 2),
-                       dtype=_dq.float).reshape(1, MX_HEADS, 1, -1)
-            _rsq = _Tq(_qas[kb - 1].reshape(MX_HEADS, _mx_hd // 2),
-                       dtype=_dq.float).reshape(1, MX_HEADS, 1, -1)
+            _rcq = _ct(("qac", kb), _qac[kb - 1].reshape(MX_HEADS, _mx_hd // 2)).reshape(1, MX_HEADS, 1, -1)
+            _rsq = _ct(("qas", kb), _qas[kb - 1].reshape(MX_HEADS, _mx_hd // 2)).reshape(1, MX_HEADS, 1, -1)
             _qp8 = _mx_q.reshape(B, MX_HEADS, L_TOT, _mx_hd // 2, 2)
             _qx8, _qy8 = _qp8[..., 0], _qp8[..., 1]
             _mx_q = Tensor.stack(_qx8 * _rcq - _qy8 * _rsq,
@@ -3214,9 +3222,7 @@ def breath_step(p, state, kb, ctx):
         if 1 <= kb <= _RC_N_LOOP:
             from tinygrad import Tensor as _Tp, dtypes as _dp
             _pdc, _pds, _pac, _pas, _pwof = _polar_tables()
-            _pol_u = _rot2(_pol_u,
-                           _Tp(_pdc[kb - 1], dtype=_dp.float),
-                           _Tp(_pds[kb - 1], dtype=_dp.float))
+            _pol_u = _rot2(_pol_u, _ct(("pdc", kb), _pdc[kb - 1]), _ct(("pds", kb), _pds[kb - 1]))
         if POLAR_EM:
             # (B) THE E&B COUPLING (apply_polar_sink.py, 2026-09-08).
             # AFTER the sextet's turn, BEFORE the content waist: one
@@ -3392,6 +3398,8 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
     # SCOPE ACCIDENT (bound only via the sixwave/sync branches — any
     # SIXWAVE-off config killed five organs at step 1)
     B = trunk.shape[0]
+    if trunk.dtype != dtypes.float:
+        trunk = trunk.cast(dtypes.float)   # perf audit #4: half feeds upcast in-graph (exact)
     waist = (trunk @ p["waist_w"] + p["waist_b"]).gelu() + p["sent_emb"][sent]
     if FED_WAIST and "fed_w2b" in p:
         # FED item 3: waist2 = waist + MLP(waist), output ZERO-INIT —
@@ -3987,18 +3995,34 @@ def do_eval():
         sl = np.arange(s0, min(s0 + 8, n))
         pad = 8 - len(sl)
         sl_p = np.concatenate([sl, sl[:1].repeat(pad)]) if pad else sl
-        t_tr = Tensor(states[sl_p].astype(np.float32), dtype=dtypes.float)
+        t_tr = Tensor(np.ascontiguousarray(states[sl_p]), dtype=dtypes.half)   # perf audit #4
         t_tk = Tensor(tokmask[sl_p].astype(np.float32), dtype=dtypes.float)
         t_se = Tensor(sent[sl_p].astype(np.int32), dtype=dtypes.int)
         _tl = Tensor(tails_of(sent[sl_p]), dtype=dtypes.float) \
             if int(os.environ.get("ALG_CLOCK", "0")) else None
-        out = forward(p, t_tr, t_tk, t_se, tail=_tl)
+        _jv = int(os.environ.get("ALG_JIT_VAL", "0"))      # perf audit #9
+        if _jv:
+            from mycelium.jit_read import read_forward as _rfv
+            _jk_v = (("pres", "ftype", "op", "islit", "dig", "args", "res", "query")
+                     + (("sel",) if "h_sel" in p else ()) + (("dup",) if "h_dup" in p else ())
+                     + (("dargs",) if "W_dargs" in p else ()))
+            _prev_jr = os.environ.get("ALG_JIT_READ"); os.environ["ALG_JIT_READ"] = "1"
+            out = _rfv(forward, p, t_tr, t_tk, t_se, keys=("fat", "args", "res"), tail=_tl)
+        else:
+            out = forward(p, t_tr, t_tk, t_se, tail=_tl)
         if int(os.environ.get("ALG_BREATH", "1")) > 1 and "W_bo" in p \
                 and not int(os.environ.get("BREATH_SILENT", "0")):
             o0 = {k: out[k].realize().numpy() for k in ("fat", "args", "res")}
             mk = build_slot_masks(o0, sent[sl_p])
-            out = forward(p, t_tr, t_tk, t_se, tail=_tl,
-                          slot_mask=Tensor(mk, dtype=dtypes.float))
+            if _jv:
+                out = _rfv(forward, p, t_tr, t_tk, t_se, keys=_jk_v, tail=_tl,
+                           slot_mask=Tensor(mk, dtype=dtypes.float))
+            else:
+                out = forward(p, t_tr, t_tk, t_se, tail=_tl,
+                              slot_mask=Tensor(mk, dtype=dtypes.float))
+        if _jv:
+            if _prev_jr is None: os.environ.pop("ALG_JIT_READ", None)
+            else: os.environ["ALG_JIT_READ"] = _prev_jr
         keys = ("pres", "ftype", "op", "islit", "dig", "args", "res",
                 "query") + (("sel",) if "sel" in out else ()) + (("dup",) if "dup" in out else ()) \
             + (("dargs",) if "dargs" in out else ())
@@ -4635,7 +4659,7 @@ def do_train(steps, lr, batch, seed):
             sl = np.arange(s0, min(s0 + _mp_B, n))
             pad = _mp_B - len(sl)
             sl_p = np.concatenate([sl, sl[:1].repeat(pad)]) if pad else sl
-            _mp_args = (p, Tensor(states[sl_p].astype(np.float32), dtype=dtypes.float),
+            _mp_args = (p, Tensor(np.ascontiguousarray(states[sl_p]), dtype=dtypes.half),
                         Tensor(tokmask[sl_p].astype(np.float32), dtype=dtypes.float),
                         Tensor(sent[sl_p].astype(np.int32), dtype=dtypes.int))
             _mp_ls = (Tensor(gold["lsent"][sl_p].astype(np.float32), dtype=dtypes.float)
@@ -4660,7 +4684,11 @@ def do_train(steps, lr, batch, seed):
                                  for i in sl_p])
                 _mo2 = (np.zeros((len(sl_p), K_VARS), np.float32)
                         if MASSB is not None else None)
-                FACTS[sl] = alt2_fact_buf(_oa2, sent[sl_p], _nv2,
+                if int(os.environ.get("ALG_FACTS_POOL", "0")):     # perf audit #3
+                    from facts_pool import run as _fp_run
+                    FACTS[sl] = _fp_run(_oa2, sent[sl_p], _nv2, _ma2, mass_out=_mo2)[:len(sl)]
+                else:
+                  FACTS[sl] = alt2_fact_buf(_oa2, sent[sl_p], _nv2,
                                           _ma2,
                                           mass_out=_mo2)[:len(sl)]
                 if MASSB is not None:
@@ -4722,7 +4750,7 @@ def do_train(steps, lr, batch, seed):
 
     def fix(a, dt):
         return Tensor(a, dtype=dt).contiguous().realize()
-    b_tr = fix(np.zeros((batch, T_ALG, H_TRUNK), np.float32), dtypes.float)
+    b_tr = fix(np.zeros((batch, T_ALG, H_TRUNK), np.float16), dtypes.half)   # perf audit #4
     b_ids = fix(np.zeros((batch, T_ALG), np.int32), dtypes.int) if TRUNK_LORA else None
     b_tk = fix(np.zeros((batch, T_ALG), np.float32), dtypes.float)
     b_se = fix(np.zeros((batch, T_ALG), np.int32), dtypes.int)
@@ -4871,7 +4899,7 @@ def do_train(steps, lr, batch, seed):
             _x = _ll_rms(_x, HOST.llama_layers[-1].ffn_norm, HOST.llama_cfg.rms_norm_eps)
             s_tr = _x.cast(dtypes.float)
         else:
-            s_tr = b_tr
+            s_tr = b_tr.cast(dtypes.float)   # perf audit #4: exact upcast in-graph
         if XOUT_TR:
             # ORGAN-2 fire (registered 2026-08-05): two-pass — the first
             # read finds wrong bindings (revoke gold = solver-refuted
@@ -5255,18 +5283,18 @@ def do_train(steps, lr, batch, seed):
             pk = rng.choice(len(INV_PAIRS_ARR), 2, replace=False)
             idx = np.concatenate([INV_PAIRS_ARR[pk].reshape(-1),
                                   rng.choice(n, batch - 4, replace=False)])
+        _rl = []
         if not TRUNK_LORA:   # audit #15: b_tr is dead under the in-graph trunk
-            b_tr.assign(Tensor(states[idx].astype(np.float32), dtype=dtypes.float).contiguous()).realize()
-        _rl = [b_tk.assign(Tensor(tokmask[idx].astype(np.float32), dtype=dtypes.float).contiguous()),
-               b_se.assign(Tensor(sent[idx].astype(np.int32), dtype=dtypes.int).contiguous())]
+            _rl.append(b_tr.assign(Tensor(np.ascontiguousarray(states[idx]), dtype=dtypes.half).contiguous()))   # perf audit #4: half feed
+        _rl += [b_tk.assign(Tensor(tokmask[idx].astype(np.float32), dtype=dtypes.float).contiguous()),
+                b_se.assign(Tensor(sent[idx].astype(np.int32), dtype=dtypes.int).contiguous())]
         if TRUNK_LORA:
             _rl.append(b_ids.assign(Tensor(IDS_ALL[idx].astype(np.int32), dtype=dtypes.int).contiguous()))
-        Tensor.realize(*_rl)   # perf audit #2: one combined schedule, not N dispatches
         if ALG_CONSUME:
-            bg["parents"].assign(Tensor(PARENTS[idx], dtype=dtypes.float).contiguous()).realize()
-            bg["claimed"].assign(Tensor(CLAIMED[idx], dtype=dtypes.float).contiguous()).realize()
+            _rl.append(bg["parents"].assign(Tensor(PARENTS[idx], dtype=dtypes.float).contiguous()))
+            _rl.append(bg["claimed"].assign(Tensor(CLAIMED[idx], dtype=dtypes.float).contiguous()))
         if b_ls is not None:
-            b_ls.assign(Tensor(gold["lsent"][idx].astype(np.float32), dtype=dtypes.float).contiguous()).realize()
+            _rl.append(b_ls.assign(Tensor(gold["lsent"][idx].astype(np.float32), dtype=dtypes.float).contiguous()))
         if b_mask is not None:
             _mfeed = MASKS[idx]
             if MG is not None:
@@ -5274,23 +5302,23 @@ def do_train(steps, lr, batch, seed):
                     < float(os.environ.get("ALG_MASK_GOLD_P", "0.5"))
                 _mfeed = _mfeed.copy()
                 _mfeed[_coin] = MG[idx][_coin].astype(np.float32)
-            b_mask.assign(Tensor(_mfeed, dtype=dtypes.float).contiguous()).realize()
+            _rl.append(b_mask.assign(Tensor(_mfeed, dtype=dtypes.float).contiguous()))
         if b_fact is not None:
-            b_fact.assign(Tensor(FACTS[idx], dtype=dtypes.float).contiguous()).realize()
+            _rl.append(b_fact.assign(Tensor(FACTS[idx], dtype=dtypes.float).contiguous()))
         if b_mhm is not None:
-            b_mhm.assign(Tensor(MASSB[idx][:, :, None],
-                                dtype=dtypes.float).contiguous()).realize()
+            _rl.append(b_mhm.assign(Tensor(MASSB[idx][:, :, None],
+                                dtype=dtypes.float).contiguous()))
         if b_mha is not None:
-            b_mha.assign(Tensor(ATLAS_TAB[ATLAS_IDX[idx]],
-                                dtype=dtypes.float).contiguous()).realize()
+            _rl.append(b_mha.assign(Tensor(ATLAS_TAB[ATLAS_IDX[idx]],
+                                dtype=dtypes.float).contiguous()))
         if b_tail is not None:
-            b_tail.assign(Tensor(TAILS[idx].astype(np.float32), dtype=dtypes.float).contiguous()).realize()
+            _rl.append(b_tail.assign(Tensor(TAILS[idx].astype(np.float32), dtype=dtypes.float).contiguous()))
         if b_reg is not None:
-            b_reg.assign(Tensor(REG[idx].astype(np.float32), dtype=dtypes.float).contiguous()).realize()
+            _rl.append(b_reg.assign(Tensor(REG[idx].astype(np.float32), dtype=dtypes.float).contiguous()))
         if b_drop is not None:
-            b_drop.assign(Tensor(np.array(
+            _rl.append(b_drop.assign(Tensor(np.array(
                 [1.0 if rng.rand() >= float(os.environ["BREATH_DROPOUT"]) else 0.0],
-                np.float32), dtype=dtypes.float).contiguous()).realize()
+                np.float32), dtype=dtypes.float).contiguous()))
         feed = {"presence": gold["presence"][idx], "is_lit_f": gold["is_lit"][idx],
                 **({"opspan": OPGOLD[idx].astype(np.float32)} if OPATT else {}),
                 "args": gold["args"][idx], "fspan": gold["fspan"][idx],
@@ -5326,7 +5354,8 @@ def do_train(steps, lr, batch, seed):
                 feed[k] = gold[k][idx]
         for k, v in feed.items():
             npdt = np.float32 if bg[k].dtype == dtypes.float else np.int32
-            bg[k].assign(Tensor(v.astype(npdt), dtype=bg[k].dtype).contiguous()).realize()
+            _rl.append(bg[k].assign(Tensor(v.astype(npdt), dtype=bg[k].dtype).contiguous()))
+        Tensor.realize(*_rl)   # perf audit #5: the whole feed in ONE schedule
         if int(os.environ.get("ALG_SHELF_CIRCLE", "0")) >= 2:
             _sevb = globals().get("_SEV")
             if _sevb is not None:      # the pulse: reseal per step

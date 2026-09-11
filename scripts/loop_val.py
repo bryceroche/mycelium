@@ -108,7 +108,7 @@ def read(ckpt, data=None, p=None):
         sl = np.arange(s0, min(s0 + 8, len(vs)))
         pad = 8 - len(sl)
         sl_p = np.concatenate([sl, sl[:1].repeat(pad)]) if pad else sl
-        ts = Tensor(vst[sl_p].astype(np.float32), dtype=dtypes.float)
+        ts = Tensor(np.ascontiguousarray(vst[sl_p]), dtype=dtypes.half)   # perf audit #4: half feed, upcast in-graph
         tk = Tensor(vtk[sl_p].astype(np.float32), dtype=dtypes.float)
         se = Tensor(vse[sl_p].astype(np.int32), dtype=dtypes.int)
         o0 = _rf(forward, p, ts, tk, se, keys=_jk_open)
