@@ -106,8 +106,12 @@ def refuse_and_core(n_vars, factors, m, budget=20000, seed=0):
     from mycelium.csp_core import solve_symbolic, deletion_core
 
     def _build(fs):
+        # macros expand before the solver sees anything (the key grades in
+        # primitives, always); the core stays in the PARSE's own items
+        from mycelium.macros import expand_graph
+        fs, nv = expand_graph(list(fs), n_vars)
         gv = {f["var"]: f["value"] for f in fs if f["ftype"] == "given"}
-        return problem_from_algebra3(n_vars, fs, gv, m)
+        return problem_from_algebra3(nv, fs, gv, m)
 
     def _is_unsat(fs):
         try:

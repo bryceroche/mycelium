@@ -4228,7 +4228,7 @@ _MP_HASH_CAP = 256 << 20
 # those arms share a bucket; the exclusion is CHECKED against the source
 # on every key build (_maskprep_trainer_only), never asserted in prose.
 _MP_TRAINER_ONLY = ("STEPS", "LR", "BATCH", "VAL_EVERY", "SNAP_EVERY",
-                    "PRECOMPUTE_ONLY")
+                    "PRECOMPUTE_ONLY", "PROFILE")   # ALG_CKPT stays in the key: the pass's fingerprint reads it under RESUME
 # everything the mask-prep pass actually calls (the reachability set the
 # exclusion check is run against)
 _MP_PASS_FUNCS = ("forward", "build_params", "build_slot_masks",
@@ -4655,6 +4655,28 @@ def do_train(steps, lr, batch, seed):
             print(f"[maskprep] JIT pass: batch {_mp_B}, keys {_mp_keys}", flush=True)
         _mp_starts = (range(0, n, _mp_B) if _mp_cached is None
                       else _maskprep_ver_starts(n))
+        # perf audit #3 (2026-09-11): the facts half across CPU cores, flushed in
+        # LARGE chunks (a pool job per 32-row batch was 58k tiny pickles: slower)
+        _fp_on = int(os.environ.get("ALG_FACTS_POOL", "0")) and FACTS is not None
+        _fp_flush = int(os.environ.get("ALG_FACTS_FLUSH", "1024"))
+        _fp_pending = []
+        def _fp_drain():
+            if not _fp_pending:
+                return
+            from facts_pool import run as _fp_run
+            _oa = {k: np.concatenate([q[1][k] for q in _fp_pending], 0) for k in _fp_pending[0][1]}
+            _se = np.concatenate([q[2] for q in _fp_pending], 0)
+            _nv = np.concatenate([q[3] for q in _fp_pending], 0)
+            _ma = np.concatenate([q[4] for q in _fp_pending], 0)
+            _mo = np.zeros((len(_nv), K_VARS), np.float32) if MASSB is not None else None
+            _fb = _fp_run(_oa, _se, _nv, _ma, mass_out=_mo)
+            _off = 0
+            for _sl, *_ in _fp_pending:
+                FACTS[_sl] = _fb[_off:_off + len(_sl)]
+                if MASSB is not None:
+                    MASSB[_sl] = np.clip(_mo[_off:_off + len(_sl)] / 301.0, 0.0, 1.0)
+                _off += len(_sl)
+            _fp_pending.clear()
         for s0 in _mp_starts:
             sl = np.arange(s0, min(s0 + _mp_B, n))
             pad = _mp_B - len(sl)
@@ -4684,17 +4706,21 @@ def do_train(steps, lr, batch, seed):
                                  for i in sl_p])
                 _mo2 = (np.zeros((len(sl_p), K_VARS), np.float32)
                         if MASSB is not None else None)
-                if int(os.environ.get("ALG_FACTS_POOL", "0")):     # perf audit #3
-                    from facts_pool import run as _fp_run
-                    FACTS[sl] = _fp_run(_oa2, sent[sl_p], _nv2, _ma2, mass_out=_mo2)[:len(sl)]
+                if _fp_on:                                         # perf audit #3
+                    _fp_pending.append((sl, {k: v[:len(sl)] for k, v in _oa2.items()},
+                                        sent[sl_p][:len(sl)], _nv2[:len(sl)], _ma2[:len(sl)]))
+                    if sum(len(q[0]) for q in _fp_pending) >= _fp_flush:
+                        _fp_drain()
                 else:
-                  FACTS[sl] = alt2_fact_buf(_oa2, sent[sl_p], _nv2,
-                                          _ma2,
-                                          mass_out=_mo2)[:len(sl)]
-                if MASSB is not None:
-                    # normalize [0,1]: /301 (values<=300 law)
-                    MASSB[sl] = np.clip(_mo2[:len(sl)] / 301.0,
-                                        0.0, 1.0)
+                    FACTS[sl] = alt2_fact_buf(_oa2, sent[sl_p], _nv2,
+                                              _ma2,
+                                              mass_out=_mo2)[:len(sl)]
+                    if MASSB is not None:
+                        # normalize [0,1]: /301 (values<=300 law)
+                        MASSB[sl] = np.clip(_mo2[:len(sl)] / 301.0,
+                                            0.0, 1.0)
+        if _fp_on:
+            _fp_drain()
         if _mp_key is not None:
             _mp_out = _maskprep_finish(
                 _mp_key, _mp_fp, _mp_cached, n, _mp_starts,
