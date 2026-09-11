@@ -55,6 +55,54 @@ ALG_CIRCLE = int(os.environ.get("ALG_CIRCLE", "0"))      # the traffic circle
 ALG_STELLAR = int(os.environ.get("ALG_STELLAR", "0"))    # cell-3b: helical handoff
 ALG_CLOCK_CANON = int(os.environ.get("ALG_CLOCK_CANON", "0"))   # memories in a canonical clock frame
 _GTAP = None      # THE GRADIENT TAP (apply_grad_tap.py): read-only probe leaves per breath
+_WHEEL = None     # THE STEERING WHEEL at read time (apply_wheel_read.py): None = no wheel
+
+
+def _wheel_turn(p, state, kb, fat, sent, vst, B):
+    """Commit this breath's parse to the solver; on a certified refusal,
+    the core's slots get a spotlight on their source sentences for the
+    next breath. Returns a (B, 1, L_TOT, T) token-score bias or None."""
+    import numpy as _np
+    from tinygrad import Tensor as _Tw, dtypes as _dw
+    sys.path.insert(0, "scripts")
+    from alternator_bridge import refuse_and_core
+    o = _heads_of(p, state["cur"], vst, B)
+    onp = {k: v.realize().numpy() for k, v in o.items()}
+    fat_np = fat.realize().numpy() if hasattr(fat, "realize") else _np.asarray(fat)
+    sent_np = sent.numpy() if hasattr(sent, "numpy") else _np.asarray(sent)
+    T = sent_np.shape[1]
+    bias = _np.zeros((B, 1, L_TOT, T), _np.float32)
+    beta = float(_WHEEL.get("beta", 3.0)); mode = _WHEEL.get("mode", "union")
+    turned = 0
+    for b in range(B):
+        row = {k: onp[k][b] for k in onp}
+        row["query"] = _np.zeros(K_VARS, _np.float32)      # decode returns (facs, query)
+        parse = []
+        for j in range(L_FAC):
+            if row["pres"][j] <= 0:
+                continue
+            rj = dict(row); pr = _np.full_like(row["pres"], -1.0); pr[j] = row["pres"][j]; rj["pres"] = pr
+            try:
+                _facs, _ = decode(rj)
+            except Exception:
+                _facs = []
+            for f in _facs:
+                f["_slot"] = j; parse.append(f)
+        r = refuse_and_core(int(_WHEEL["n_vars"][b]), parse, int(_WHEEL["m"][b]))
+        _WHEEL.setdefault("stats", []).append((kb, r["status"], len(r["core"])))
+        if r["status"] != "unsat" or not r["core"]:
+            continue
+        turned += 1
+        core_slots = [parse[k]["_slot"] for k in r["core"]]
+        sents = {}
+        for j in core_slots:
+            tok = int(fat_np[b, j].argmax()); sents[j] = int(sent_np[b, min(tok, T - 1)])
+        for j in core_slots:
+            want = set(sents.values()) if mode == "union" else {sents[j]}
+            m = _np.isin(sent_np[b], list(want))
+            bias[b, 0, j, :] = _np.where(m, beta, 0.0).astype(_np.float32)
+    _WHEEL.setdefault("turned", []).append((kb, turned, B))
+    return _Tw(bias, dtype=_dw.float) if turned else None
 _IDLE = frozenset(int(x) for x in os.environ.get("ALG_IDLE_BREATHS", "").split(",") if x)   # read-only
 
 
@@ -2641,9 +2689,12 @@ def breath_step(p, state, kb, ctx):
             _CENSUS.append((kb, "tokgate", _tgt.realize().numpy()))
             _CENSUS.append((kb, "tokgate_kl",
                             _tg_kl.mean(1, keepdim=True).realize().numpy()))
+    _pb_kb = (_sync[0](kb) if _sync is not None else None)
+    _wb = state.get("wheel_bias")
+    if _wb is not None:                    # THE STEERING WHEEL's spotlight
+        _pb_kb = _wb if _pb_kb is None else _pb_kb + _wb
     h_tok, fat_cur = bank(p["fq"], L_TOT, extra=q_extra,
-                          pbias=(_sync[0](kb) if _sync is not None
-                                 else None),
+                          pbias=_pb_kb,
                           rbias=_rb7,
                           # THE TOKEN SEAL: this breath's RE-READING of
                           # the text. `loop` and `all` both cut it; the
@@ -2989,6 +3040,8 @@ def breath_step(p, state, kb, ctx):
         _sa21 = (_qh21 @ _kh21.transpose(-2, -1)) / math.sqrt(_hd21)
         if _sync is not None:            # the same breath rotation
             _sa21 = _sa21 + _sync[0](kb)
+        if state.get("wheel_bias") is not None:   # the wheel's spotlight, second road
+            _sa21 = _sa21 + state["wheel_bias"]
         if _rb7 is not None:             # the same router bias
             _sa21 = _sa21 + _rb7.unsqueeze(1) * p["r_gain"].reshape(1, 1, 1, 1)
         _sa21 = _sa21.clip(-1e4, 1e4) + (1.0 - tokmask.reshape(B, 1, 1, -1)) * -1e4
@@ -3545,6 +3598,8 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
         if not (_STEP_TAP is not None and _STEP_TAP.get("hold")):
             for kb in range(1, K_B):
                 breath_step(p, _bs_state, kb, _bs_ctx)
+                if _WHEEL is not None and kb < K_B - 1:
+                    _bs_state["wheel_bias"] = _wheel_turn(p, _bs_state, kb, fat, sent, vst, B)
             cur = _bs_state["cur"]
             _rb_last = _bs_state["rb_last"]
             if RINGS:

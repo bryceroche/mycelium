@@ -36766,3 +36766,41 @@ exactly there — commit at breath 2, solve, core, re-read at 3-5 under
 the core's mask; the idle capacity is where the return road can act
 (the order's next build). The delay line keeps its own bars (D1-D5) as
 a recall-sharpness question, no longer a credit question.
+
+## 2026-09-10 — THE WHEEL, STAGE 1 (word given: "keep the middle breaths and give them a job; every breath commits a tentative parse and receives a core; buff the slot->token linkage for wild"): the read-time wheel built; bars pinned
+
+THE CORRECTION FIRST: today NO breath commits during training — the
+loop's facts are frozen from the mask-prep pass at breath 0, and the
+per-breath ping exists only in the step trainer (proven, shelved). "Every
+breath commits and receives a core" is the registered design, now built
+in two stages: STAGE 1 = the wheel at READ time on the trained
+candidate (zero training: does a core-driven re-read help a trained
+parse at all?); STAGE 2 = training under it (the step trainer or a
+per-step read-only pre-pass with a process pool for the solver).
+STAGE 1 (scripts/apply_wheel_read.py, applied; scripts/wheel_read.py):
+after each loop breath k < K_B-1, forward commits the breath's parse
+(the emission heads on the breath state -> decode per slot), solves it
+completely, and on a certified refusal takes the core; the core's slots
+get a SPOTLIGHT for breath k+1 — +beta on the token scores of their
+source sentences (the grounding read's argmax token's sentence), mode
+'own' (each core slot re-reads its own sentence) or 'union' (each core
+slot re-reads the union of the core's sentences: the conflict's whole
+evidence) — entering BOTH grounding roads (the main bank's pbias beside
+the sync bias; station 3's scores). Open-only: a positive bias, never a
+mask. `_WHEEL` None = untouched (eq gate vs the idle dumps). THIS IS the
+slot->token linkage buff for wild in its first form: the re-read aimed
+by a proof.
+CHAIN (.cache/wheel_chain.sh, unit pc-wheel): eq gate -> a 16-row smoke
+-> wild: union/3, union/6, own/3 -> mint: union/3 (eager: the solver
+runs between breaths, ~10-15 min per read).
+BARS (comparator balV242 open 0.2526 / 0.9757): X1 the wheel HELPS at
+read time: wild >= 0.2626 (+0.010) on at least one (mode, beta) with
+mint >= 0.9707 on that config. X2 it turns: rows refused at breath 2
+>= 30% (the wheel has work in the middle). KILL: no config reaches wild
+>= 0.2576 (+0.005) -> a trained parse cannot use a spotlight it never
+trained under; STAGE 2 (training with the wheel) proceeds anyway on the
+mint-live W1 verdict, but with the birth prediction that the read-time
+gain is zero. REGISTERED PREDICTION: X1 fails narrowly (wild +0.003 to
++0.008) — the spotlight moves attention but the parse's readout was
+trained on unaimed reads; X2 passes (W1 said 51% of final parses
+refuse; earlier breaths refuse at least as often).
