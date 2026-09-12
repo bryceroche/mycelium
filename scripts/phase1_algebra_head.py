@@ -4345,6 +4345,12 @@ def _maskprep_fingerprints(p, n, seed):
                | {k for k in os.environ if k.startswith("ALG_")}
                | set(_MP_EXTRA_ENV))
               - set(_MP_CTRL) - _ign - _maskprep_trainer_only(src))
+    if not int(os.environ.get("RESUME", "0")):
+        # the OUTPUT checkpoint path is read by this fingerprint only under
+        # RESUME (as the warm source); otherwise it is the arm's NAME, and
+        # keying on it (and on the file once it exists) re-keyed every arm
+        # (2026-09-11: the B=8 and B=32 timing runs missed each other).
+        _names.discard("ALG_CKPT")
     fp["env"] = {k: os.environ.get(k) for k in sorted(_names)}
     fp["env_files"] = {k: _maskprep_file_fp(v)
                        for k, v in sorted(fp["env"].items())

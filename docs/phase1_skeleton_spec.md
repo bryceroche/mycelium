@@ -36934,3 +36934,52 @@ THE GPU: restored 10:2x by `sudo bash scripts/setup_am_driver.sh`
 (2026-07-06) was exact. STAGE 2 FIRED: .cache/wheel_train_chain.sh as
 pc-wheeltrain4 (rung 1 x2 again -> the wheel smoke -> stC242 -> stW242
 -> reads); bars WT1-WT3 as pinned.
+
+## 2026-09-11 — THE PERF AUDIT IMPLEMENTED (word given): every head-side item bit-identical; the facts pass 42 -> 12.5 min; per-row step time 66 -> 31 ms at B=32; the compile cache stable across processes; ONE KERNEL is 76% of the step's device time; the training run stopped for it
+
+THE AUDIT (docs/perf_audit_2026_09_11.md; a subagent's static read, CPU
+kernel counts: the fused step = 2,465 kernels, ~180 us each, ~0.5% of
+peak — latency-bound). IMPLEMENTED (scripts/apply_perf_audit.py +
+scripts/facts_pool.py + a tinygrad patch): #2 tinygrad's kernel-name
+suffix -> a content hash of the AST (the per-process counter made 23%
+of the disk compile cache byte-identical duplicates; local tinygrad
+ead858c); #4 the trunk states fed as float16 with an exact in-graph
+upcast (trainer buffer, feed, maskprep pass, val, loop_val); #5 the
+whole per-step feed in ONE realize (was ~30); #7 per-breath wheel
+tables / stamps / the mask cooker's column mask as cached constant
+Tensors (_ct); #9 ALG_JIT_VAL (the val through the JIT reader); #3
+ALG_FACTS_POOL (the solver half across CPU cores, spawn children pinned
+to CPU; FLUSHED in 1024-row chunks — a job per 32-row batch was SLOWER,
+71 min: 58k tiny pickles). Also: the core builder expands macros before
+the solver (mycelium.macros.expand_graph; CHAIN_MUL core test passes).
+PROOFS: eq gate A/B/C bit-identical vs the pre-patch dumps (the const
+cache and the upcast are always-on). The compile cache: two identical
+eq processes add 0 rows (216,651 -> 216,651 -> 216,651).
+MEASURED: the facts pass (pool on, JIT batch 32, half feed) **12.5 min**
+(16:14:02 -> 16:26:30) vs 42 min serial-JIT / 78 eager — and the
+profile shows the pass's device time is ~45 s total: the remaining
+12 min is HOST (python per batch, the memmap read, the decode). Step
+timing (60-step runs, the cumulative average minus step 0):
+B=8 0.53 s/step = 66 ms/row; B=16 0.73 = 46 ms/row; **B=32 0.99 =
+31 ms/row (2.1x per row; fits the card)** — a training-REGIME lever
+(rows per update), a registered twin, not a free change. ALG_JIT_VAL:
+the first val pays a ~70 s capture (116 s vs the eager val's ~50 s);
+a wash over 3 vals — stays OFF. THE KEY BUG's mechanism found: the
+OUTPUT checkpoint path (ALG_CKPT) entered the mask-prep key, and its
+FILE fingerprint once written — the B=8 and B=32 runs missed each
+other by exactly `env_files/ALG_CKPT`; the trainer-only fence refused
+the blanket exclusion (the fingerprint reads ALG_CKPT under RESUME), so
+it is excluded only when RESUME=0 (the pass never depends on it then).
+THE PROFILE (PROFILE=1, 30 steps at B=8; scripts/profile_summary.py):
+the step's own kernels = 132 ms/step of device time (wall ~400 ms: the
+rest is launch/host); **ONE kernel, r_512_8_24_192_192_192_192_512_8_
+24_192_192_192_192_7_192_192_..., takes 100 ms/step = 76%** — a
+reduction over the 192 CONTENT PLANES fused across the 7 breaths (the
+polar block's content band, most likely the block-norm's backward),
+a pathological fusion. BEAM TRIAL (registered, firing): JITBEAM=2
+IGNORE_JIT_FIRST_BEAM=1 on the fused step; TOLERANCE RULING pinned
+before the read: the beamed step-0 loss within 1e-4 relative of the
+unbeamed (7.7315 at B=8, 6.3974 at B=32), the 30-step trajectory
+within 1e-3; the read: the profile's device time per step and the
+wall. If the monster does not yield to BEAM, the alternative is a
+.contiguous() cut in the polar block to unfuse the breaths (eq-gated).
