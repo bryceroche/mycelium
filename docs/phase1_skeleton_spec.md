@@ -37283,3 +37283,57 @@ in a new form: parallelize the core's checks across the idle workers
 arithmetic predicates — not built, the spotlight form being a null.
 THE T1 CHAIN started 15:51 (pc-t1 via the orchestrator): birth check,
 then t1c242 (control) and t1a242 (T1), reads; bars as pinned above.
+
+## 2026-09-12 — THE SHELF READOUT (word given; "the graph is time"): built as an apply script, birth measured on a scratch copy, bars pinned, chain queued behind T1
+
+THE BRAINSTORM (Karpathy's clip, "the future of AI is a graph"): the
+shallow-wide argument — a long thin graph through time starves the
+nodes far from the loss — is our MIDDLE DESERT named (the census:
+breaths 3-5 at 1-7% of the readout's credit; they remove for free).
+The transformer's cure is not a per-step loss (the deep-supervision
+grave, 08-16) but a SHORT PATH from every node to the one loss through
+attention across positions. For the loop, that is the registered
+candidate (2026-09-10 (b)): the readout reads an attention over the
+whole shelf. Also from the clip: our loop is a directed graph over five
+node types (tokens, factor slots, scratch, notebook, bus) whose only
+DAG is time (slots are a set; T2 is the missing back-edge); the two
+jaws are Software 1.0 (the solver) and 2.0 (the head + the books as its
+data engine); Software 3.0 is fenced out; our cycle is communicate,
+compute, CERTIFY — and the wheel verdict says the third phase is a
+reader, not yet a participant. Blog: "The graph is time".
+THE ORGAN (scripts/apply_shelf_readout.py; ALG_SHELF=1, ALG_SHELF_D=64,
+ALG_SHELF_B0; 65,543 params): at the readout, per slot, a softmax over
+the K=7 breath states of q(final).k(state_k)/sqrt(D) + b_k; the read =
+the weighted sum of the STATES (no value map — the states are the
+shelf). A road: all readout traffic passes through the mix; sever door
+"shelf" (= the final state alone, the removal read). Birth ~= the final
+state: b_last = B0, q/k at 0.01/sqrt(H_W) (content term ~0). Measured
+on a scratch copy (CPU, random params/input): the worst relative change
+of any head output at birth = 0.373 (B0=3), 0.063 (B0=5), 0.0088 (B0=7)
+— a 23% / 4% / 0.6% blend of history into the read. The step trainer
+REFUSES ALG_SHELF (the loss->every-breath edge is not threaded by the
+walker yet; a registered job if the shelf lives).
+THE CHAIN (.cache/shelf_chain.sh, pc-shelf, queued behind pc-orch/T1):
+apply -> THE BIRTH READS on balV242 with the untrained shelf
+(shelf_birth_ckpt.py writes balV242 + fresh sh_* so the eval loader's
+key fence holds) at B0 = 3, 5, 7 on both registers -> **SR-BIRTH RULE
+(pinned): B0 = the smallest of {3,5,7} with birth wild >= 0.2476 and
+birth mint >= 0.9707 (a 0.005 birth cost allowed), else 7** -> ARM
+sr242 (warm balV242, 12k, B=8, LR 1e-4, seed 242, flat mix) -> reads:
+open, idle 3,4,5, sever=shelf, on wild and mint; the gradient census
+(train rows 0:8, as balV242's).
+BARS (pinned before any read; the natural-continuation control is
+t1c242, same recipe from balV242): **SR-CENSUS PASS** = min over b3,b4,b5
+of (credit / readout) >= 0.20 on sr242 (balV242: 0.068/0.012/0.015);
+< 0.10 = FAIL-CLOSED (the road was voted shut: the loss kept the last
+breath). **SR-GUARD**: wild >= 0.2426 and mint >= 0.9707; KILL below.
+**SR-IDLE**: idle 3,4,5 on sr242 costs >= 0.010 wild (the middle became
+load-bearing; on balP242 idling IMPROVED wild by 0.006). **SR-SEVER**:
+the removal read (final state alone) — reported, no bar. REGISTERED
+PREDICTION: B0=5 chosen; SR-CENSUS at the edge (b3-b5 at 0.10-0.30);
+wild within +-0.005 of t1c242's open wild; mint +0.002..+0.008 (a
+sharper ensemble over time); SR-IDLE turns positive but lands 0.005-
+0.010 (below the bar). If SR-CENSUS passes and SR-IDLE fails, the
+credit flowed but the middle still computes nothing worth keeping: the
+desert is a CAPACITY question, not a wiring one, and the age-tagged
+delay line is the next word.

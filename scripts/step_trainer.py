@@ -93,7 +93,8 @@ def _envi(k, d="0"):
 
 # every env whose loop/loss branch this walker does not thread; set any
 # of these and the trainer refuses LOUDLY (no silent divergence)
-REFUSED = ("ALG_RINGS", "ALG_XOUT", "ALG_CLOCK",   # ALG_STELLAR lifted 2026-09-11: v2 lives inside breath_step (rung 1 re-proven)
+REFUSED = ("ALG_SHELF",   # the shelf readout (2026-09-12) adds a loss->every-breath edge the walker does not thread yet
+           "ALG_RINGS", "ALG_XOUT", "ALG_CLOCK",   # ALG_STELLAR lifted 2026-09-11: v2 lives inside breath_step (rung 1 re-proven)
            "ALG_CIRCLE", "NAZ_TRAIN", "ALG_CONSUME", "ALG_DEEPSUP",
            "ALG_TRUNK_LORA", "BREATH_DROPOUT", "ALG_MASK_GOLD",
            "CURRICULUM", "RATION_FILE", "ALG_STRAW", "ALG_LSENT",
