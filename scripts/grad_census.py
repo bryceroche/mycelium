@@ -8,6 +8,7 @@ read's attention over the shelf per breath (whose ink is read). Env:
 GC_CKPT + the family envs; GC_ROWS (default 0:8)."""
 import os, sys
 sys.path.insert(0, "."); sys.path.insert(0, "scripts")
+if os.environ.get("GC_HEAD_DIR"): sys.path.insert(0, os.environ["GC_HEAD_DIR"])   # a reference copy of the head (e.g. git HEAD) for before/after rulings
 import numpy as np
 import phase1_algebra_head as H
 from phase1_algebra_head import build_params, forward, load_alg, build_slot_masks, L_FAC, L_TOT, _loss_single
@@ -35,6 +36,9 @@ loss = _loss_single(o, g)
 for t in p.values(): t.grad = None
 loss.backward()
 lv = float(loss.numpy())
+if os.environ.get("GC_DUMP"):                       # the loss + every param grad, for a before/after ruling
+    np.savez(os.environ["GC_DUMP"], loss=np.array(lv), **{("g_" + k): (p[k].grad.detach().numpy() if p[k].grad is not None else np.zeros(1)) for k in p})
+    print(f"[grad-census] dumped loss + {len(p)} param grads -> {os.environ['GC_DUMP']}")
 def gn(t):
     return 0.0 if t.grad is None else float((t.grad.detach() ** 2).sum(-1).sqrt().mean().numpy())
 fin = gn(taps["final"])

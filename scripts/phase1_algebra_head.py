@@ -3755,10 +3755,10 @@ def _loss_single(o, g):
     n_rel = rel.sum() + 1e-6
 
     def bce(lg, tg):
-        return lg.maximum(0) - lg * tg + (1 + (-lg.abs()).exp()).log()
+        return (lg.maximum(0) - lg * tg + (1 + (-lg.abs()).exp()).log()).contiguous()   # perf: own kernel
 
     def ce(lg, tg):
-        return (lg.log_softmax(-1) * -1).gather(-1, tg.unsqueeze(-1)).squeeze(-1)
+        return (lg.log_softmax(-1) * -1).gather(-1, tg.unsqueeze(-1)).squeeze(-1).contiguous()   # perf: own kernel
 
     l = bce(o["pres"], pres).mean()
     l = l + (ce(o["ftype"], g["ftype"]) * pres).sum() / n_p
@@ -3839,7 +3839,7 @@ def _loss_single(o, g):
         _vm = (_vs.sum(-1) > 0).float()          # entry at the value grain
         _vsn = _vs / (_vs.sum(-1, keepdim=True) + 1e-6)
         l = l + float(os.environ.get("VALATT_W", "1.0")) * (
-            (-(o["fat"] + 1e-9).log() * _vsn).sum(-1) * _vm).sum() / (_vm.sum() + 1e-6)
+            (-(o["fat"] + 1e-9).log() * _vsn).sum(-1).contiguous() * _vm).sum() / (_vm.sum() + 1e-6)
     if "iargs" in o and "is_ind" in g:          # door #45: dialect reader —
         im = is_rel * g["is_ind"] * pres        # indirect-population gold only
         l = l + float(os.environ.get("DIAL_W", "1.0")) * (
@@ -3865,10 +3865,10 @@ def _loss_single(o, g):
     # FAT_W (routing-canvas dose probe, gut #55 amended): the fat-CE canvas
     # has hung here at weight 1 all along; the probe doses it, never adds it.
     fat_w = float(os.environ.get("FAT_W", "1"))
-    l = l + fat_w * ((-(o["fat"] + 1e-9).log() * fsn).sum(-1) * pres).sum() / n_p
+    l = l + fat_w * ((-(o["fat"] + 1e-9).log() * fsn).sum(-1).contiguous() * pres).sum() / n_p
     vsn = g["vspan"] / (g["vspan"].sum(-1, keepdim=True) + 1e-6)
     vmask = (g["vspan"].sum(-1) > 0).float()
-    l = l + ((-(o["vat"] + 1e-9).log() * vsn).sum(-1) * vmask).sum() / (vmask.sum() + 1e-6)
+    l = l + ((-(o["vat"] + 1e-9).log() * vsn).sum(-1).contiguous() * vmask).sum() / (vmask.sum() + 1e-6)
     if "ref" in o and "refoh" in g:
         _rm = g["refoh"].sum(-1)                          # (B, T_ALG) site mask
         _rce = (-(o["ref"].log_softmax(-1)) * g["refoh"]).sum(-1)
