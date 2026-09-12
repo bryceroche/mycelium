@@ -37186,3 +37186,34 @@ only arm decides). REGISTERED PREDICTION: wild +0.005 to +0.015 (a coin
 flip on the bar), mint flat within 0.003, the removal read >= 0.02
 (the wild register's failures are grounding failures and a 5-word
 window is the cheapest context there is).
+
+## 2026-09-12 — THE PROOF IS THE PROPAGATION: the wheel arm's 4 s/step decomposed; the slow rows are the search's own unsat proofs; propagation certifies 50/51 refusals; the core 5.4x faster with identical cores (256/256); staged behind the running arm
+
+THE DECOMPOSITION (stW242 at step 2400, 3.97 s/step): the step
+trainer's GPU walk ~0.72 s (the glue refactor's target, CPU-proven,
+GPU gate queued) + 5 wheel breaths x 0.645 s mean pool wall (the
+slowest NOVEL row of the breath, capped by the 2 s alarm) + the seam
+decodes. THE PROFILE (the fixture's 256 distinct rows, m <= 10000,
+solve_symbolic wrapped): 205 satisfiable rows cost 5 ms each; the 51
+unsat rows cost 7.69 s mean (p90 13.8 s, the worst four 80 s each) —
+and **378 of their 393 s are inside solve_symbolic calls that RETURN
+unsat**: the deletion core's checks (13.5 solver calls per row, F=12.5)
+each prove unsatisfiability by exhausting the search tree, and on a
+wide domain with rel:mul the tree is wide (the sat-returning witness
+searches cost 14 s total; budget exhaustion 0 checks). THE FIX (a
+sound one): GAC propagation to a fixpoint FIRST — an emptied domain is
+a certificate (the alternator's facts path already runs this) — and
+the budgeted search only when propagation does not refute. Measured
+on the fixture: **50/51 unsat rows refuted by propagation alone (1.0 s
+total vs 3.5 s of search); the deletion core with propagation-first
+checks 71.6 s vs 397.7 s, IDENTICAL cores 51/51; the whole
+refuse_and_core over 256 rows 73.6 s vs 396.2 s with identical
+(status, core) 256/256; worst row 35 s vs 83 s** (the residue: sat
+witness searches on wide domains, still caught by the 2 s alarm).
+STAGED, not applied: scripts/apply_wheel_propfirst.py (idempotent),
+run as the first line of the glue gate (.cache/glue_gate.sh) AFTER
+pc-wheelarm completes — the arm's READS re-import the bridge
+(wheel_read.py), and the running arm's pool workers hold the old
+module; the never-edit-under-a-running-chain rule. Expected wheel
+wall per breath after: ~0.25 s (memo + prop-first + 2 s cap) -> the
+wheel arm ~1.25 s + the glued walk ~0.3 s = ~1.5 s/step from 4.
