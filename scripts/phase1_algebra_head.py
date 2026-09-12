@@ -5294,10 +5294,47 @@ def do_train(steps, lr, batch, seed):
               f"main bank + station 3 read the tokens FLAT at loop breaths — "
               f"lane 2 and station 5 are the only memory and grounding",
               flush=True)
+    # THE COPYIN FEED (perf, 2026-09-12): every per-step host->device write
+    # used to go through assign(...).realize() = an EAGER SCHEDULER PASS per
+    # step (three of them: lr, the feed list, the pulse) — ~300 ms of host
+    # time per step against ~60 ms of device time. A fixed buffer's bytes
+    # are written directly (Buffer.copyin: the HCQ copy queue waits on the
+    # device timeline, so ordering against the queued step holds); the JIT
+    # reads the same buffers. ALG_FEED_COPYIN=0 keeps the assign path (A/B).
+    _FEED_COPYIN = int(os.environ.get("ALG_FEED_COPYIN", "1"))
+    _NPDT = {dtypes.half: np.float16, dtypes.float: np.float32, dtypes.int: np.int32}
+    from tinygrad.uop.ops import Ops as _Ops
+    def _fd(t, arr, _rl):
+        """feed numpy `arr` into fixed device tensor `t` (copyin) or queue the assign (old path)."""
+        npdt = _NPDT[t.dtype]
+        if _FEED_COPYIN:
+            a = np.ascontiguousarray(arr, dtype=npdt)
+            assert t.uop.base.op is _Ops.BUFFER, f"feed target not a realized buffer: {t.uop.base.op}"
+            buf = t.uop.base.buffer
+            assert buf.nbytes == a.nbytes, f"feed size mismatch {buf.nbytes} != {a.nbytes} ({t.shape} vs {a.shape})"
+            buf.copyin(memoryview(a))
+        else:
+            _rl.append(t.assign(Tensor(np.ascontiguousarray(arr, dtype=npdt), dtype=t.dtype).contiguous()))
+    _STEP_TIME = int(os.environ.get("ALG_STEP_TIME", "0"))
+    _STEP_PROF = os.environ.get("ALG_STEP_PROF", "")     # cProfile the JIT step call for steps 5..24 -> this path
+    if _STEP_PROF:
+        import cProfile
+        _prof = cProfile.Profile()
+        from tinygrad import Device
+    _tt = {"feed": 0.0, "step": 0.0, "n": 0}
+    if _FEED_COPYIN:
+        opt.lr.realize()
+        _sevb0 = globals().get("_SEV")
+        if _sevb0 is not None:
+            _sevb0.realize()
     t0 = time.time()
     for s in range(steps):
+        _tp0 = time.perf_counter()
         cur_lr = lr_min + 0.5 * (lr - lr_min) * (1 + math.cos(math.pi * s / steps))
-        opt.lr.assign(Tensor([cur_lr], dtype=dtypes.float)).realize()
+        if _FEED_COPYIN:
+            _fd(opt.lr, np.array([cur_lr], np.float32), None)
+        else:
+            opt.lr.assign(Tensor([cur_lr], dtype=dtypes.float)).realize()
         pool = (pools[min(3 * s // steps, 2)] if pools is not None
                 else np.arange(n))
         if STRAW:
@@ -5317,16 +5354,16 @@ def do_train(steps, lr, batch, seed):
                                   rng.choice(n, batch - 4, replace=False)])
         _rl = []
         if not TRUNK_LORA:   # audit #15: b_tr is dead under the in-graph trunk
-            _rl.append(b_tr.assign(Tensor(np.ascontiguousarray(states[idx]), dtype=dtypes.half).contiguous()))   # perf audit #4: half feed
-        _rl += [b_tk.assign(Tensor(tokmask[idx].astype(np.float32), dtype=dtypes.float).contiguous()),
-                b_se.assign(Tensor(sent[idx].astype(np.int32), dtype=dtypes.int).contiguous())]
+            _fd(b_tr, states[idx], _rl)   # perf audit #4: half feed
+        _fd(b_tk, tokmask[idx], _rl)
+        _fd(b_se, sent[idx], _rl)
         if TRUNK_LORA:
-            _rl.append(b_ids.assign(Tensor(IDS_ALL[idx].astype(np.int32), dtype=dtypes.int).contiguous()))
+            _fd(b_ids, IDS_ALL[idx], _rl)
         if ALG_CONSUME:
-            _rl.append(bg["parents"].assign(Tensor(PARENTS[idx], dtype=dtypes.float).contiguous()))
-            _rl.append(bg["claimed"].assign(Tensor(CLAIMED[idx], dtype=dtypes.float).contiguous()))
+            _fd(bg["parents"], PARENTS[idx], _rl)
+            _fd(bg["claimed"], CLAIMED[idx], _rl)
         if b_ls is not None:
-            _rl.append(b_ls.assign(Tensor(gold["lsent"][idx].astype(np.float32), dtype=dtypes.float).contiguous()))
+            _fd(b_ls, gold["lsent"][idx], _rl)
         if b_mask is not None:
             _mfeed = MASKS[idx]
             if MG is not None:
@@ -5334,23 +5371,21 @@ def do_train(steps, lr, batch, seed):
                     < float(os.environ.get("ALG_MASK_GOLD_P", "0.5"))
                 _mfeed = _mfeed.copy()
                 _mfeed[_coin] = MG[idx][_coin].astype(np.float32)
-            _rl.append(b_mask.assign(Tensor(_mfeed, dtype=dtypes.float).contiguous()))
+            _fd(b_mask, _mfeed, _rl)
         if b_fact is not None:
-            _rl.append(b_fact.assign(Tensor(FACTS[idx], dtype=dtypes.float).contiguous()))
+            _fd(b_fact, FACTS[idx], _rl)
         if b_mhm is not None:
-            _rl.append(b_mhm.assign(Tensor(MASSB[idx][:, :, None],
-                                dtype=dtypes.float).contiguous()))
+            _fd(b_mhm, MASSB[idx][:, :, None], _rl)
         if b_mha is not None:
-            _rl.append(b_mha.assign(Tensor(ATLAS_TAB[ATLAS_IDX[idx]],
-                                dtype=dtypes.float).contiguous()))
+            _fd(b_mha, ATLAS_TAB[ATLAS_IDX[idx]], _rl)
         if b_tail is not None:
-            _rl.append(b_tail.assign(Tensor(TAILS[idx].astype(np.float32), dtype=dtypes.float).contiguous()))
+            _fd(b_tail, TAILS[idx], _rl)
         if b_reg is not None:
-            _rl.append(b_reg.assign(Tensor(REG[idx].astype(np.float32), dtype=dtypes.float).contiguous()))
+            _fd(b_reg, REG[idx], _rl)
         if b_drop is not None:
-            _rl.append(b_drop.assign(Tensor(np.array(
+            _fd(b_drop, np.array(
                 [1.0 if rng.rand() >= float(os.environ["BREATH_DROPOUT"]) else 0.0],
-                np.float32), dtype=dtypes.float).contiguous()))
+                np.float32), _rl)
         feed = {"presence": gold["presence"][idx], "is_lit_f": gold["is_lit"][idx],
                 **({"opspan": OPGOLD[idx].astype(np.float32)} if OPATT else {}),
                 "args": gold["args"][idx], "fspan": gold["fspan"][idx],
@@ -5385,16 +5420,19 @@ def do_train(steps, lr, batch, seed):
             if k not in feed and k in gold:
                 feed[k] = gold[k][idx]
         for k, v in feed.items():
-            npdt = np.float32 if bg[k].dtype == dtypes.float else np.int32
-            _rl.append(bg[k].assign(Tensor(v.astype(npdt), dtype=bg[k].dtype).contiguous()))
-        Tensor.realize(*_rl)   # perf audit #5: the whole feed in ONE schedule
+            _fd(bg[k], v, _rl)
+        if _rl:
+            Tensor.realize(*_rl)   # perf audit #5: the whole feed in ONE schedule (assign path only)
         if int(os.environ.get("ALG_SHELF_CIRCLE", "0")) >= 2:
             _sevb = globals().get("_SEV")
             if _sevb is not None:      # the pulse: reseal per step
-                _sevb.assign(Tensor([1.0 if np.random.rand() <
-                                     float(os.environ.get("SC_P", "0.5"))
-                                     else 0.0],
-                                    dtype=_sevb.dtype)).realize()
+                _pulse = np.array([1.0 if np.random.rand() <
+                                   float(os.environ.get("SC_P", "0.5"))
+                                   else 0.0], np.float32)
+                if _FEED_COPYIN:
+                    _fd(_sevb, _pulse, None)
+                else:
+                    _sevb.assign(Tensor(_pulse, dtype=_sevb.dtype)).realize()
         if _pc_assign is not None:
             globals()["_PCV"].assign(Tensor(
                 _pc_assign[idx].reshape(-1, 1, 1),
@@ -5411,14 +5449,34 @@ def do_train(steps, lr, batch, seed):
             globals()["_BCV"].assign(Tensor(
                 _bc_assign[idx].reshape(-1, 1, 1),
                 dtype=globals()["_BCV"].dtype)).realize()
-        lv = step()
+        if s == 5:
+            _t5 = time.time()   # the steady frame: steps 5.. (the JIT captures at steps 1-2)
+        _tp1 = time.perf_counter()
+        if _STEP_PROF and 5 <= s < 25:
+            _prof.enable(); lv = step(); _prof.disable()
+        else:
+            lv = step()
+        if _STEP_TIME and s >= 5:
+            _tp2 = time.perf_counter()
+            _tt["feed"] += _tp1 - _tp0; _tt["step"] += _tp2 - _tp1; _tt["n"] += 1
+            if _STEP_PROF:   # split the step call from the GPU's remaining work
+                Device[Device.DEFAULT].synchronize(); _tt["sync"] = _tt.get("sync", 0.0) + (time.perf_counter() - _tp2)
+        if _STEP_PROF and s == 25:
+            import pstats
+            _prof.dump_stats(_STEP_PROF)
+            _ps = pstats.Stats(_STEP_PROF); _ps.sort_stats("cumulative")
+            print(f"[step-prof] 20 step() calls profiled -> {_STEP_PROF}; sync after step {1e3*_tt['sync']/_tt['n']:.0f} ms/step", flush=True)
+            _ps.print_stats(40); _ps.sort_stats("tottime"); _ps.print_stats(25)
         if ALG_CONSUME and _NEWCL[0] is not None:
             CLAIMED[idx] = np.clip(CLAIMED[idx] + _NEWCL[0].numpy(), 0, 1)
         if s % 500 == 0 or s == steps - 1:
             v = float(lv.numpy())
             assert np.isfinite(v)
             print(f"  step {s:5d} loss={v:.4f} lr={cur_lr:.1e} "
-                  f"({(time.time()-t0)/(s+1):.2f}s/step)", flush=True)
+                  f"({(time.time()-t0)/(s+1):.2f}s/step"
+                  + (f"; steady {(time.time()-_t5)/(s-5):.3f}s/step from step 5" if s > 5 else "") + ")"
+                  + (f" [host feed {1e3*_tt['feed']/max(_tt['n'],1):.0f} ms + step-call {1e3*_tt['step']/max(_tt['n'],1):.0f} ms per step, n={_tt['n']}]" if _STEP_TIME else ""),
+                  flush=True)
         if (s + 1) % val_every == 0 or s == steps - 1:
             if int(os.environ.get("ALG_SHELF_CIRCLE", "0")) >= 2:
                 os.environ["SC_EVAL"] = "0"     # val compares OPEN mode

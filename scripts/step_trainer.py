@@ -695,12 +695,18 @@ def _prep_pass(H, p, samples, states, tokmask, sent, _rf):
     return MASKS, FACTS
 
 
+_WHEEL_TIME = int(os.environ.get("ST_WHEEL_TIME", "0"))   # per-breath wheel timing (decode vs cores vs statuses)
+_WHEEL_DUMP = os.environ.get("ST_WHEEL_DUMP", "")        # append each breath's wheel rows + answers (pickle stream)
+
+
 def wheel_bias(H, onp, fat_np, se_np, nv, ma, beta, mode, workers, LT):
     """The spotlight: per row, decode the parse slot by slot, solve, and
     on a certified refusal +beta on the token scores of the core slots'
     source sentences (own | union). Returns ((B,1,LT,T) bias, rows turned)."""
-    sys.path.insert(0, "scripts")
+    if "scripts" not in sys.path:
+        sys.path.insert(0, "scripts")
     from alternator_bridge import core_rows
+    _t0 = time.time()
     B, T = se_np.shape
     parses = []; rows = []
     for b in range(B):
@@ -718,7 +724,22 @@ def wheel_bias(H, onp, fat_np, se_np, nv, ma, beta, mode, workers, LT):
             for f in facs:
                 f["_slot"] = j; parse.append(f)
         parses.append(parse); rows.append((int(nv[b]), parse, int(ma[b])))
+    _t1 = time.time()
     res = core_rows(rows, workers)
+    _t2 = time.time()
+    if _WHEEL_TIME:
+        from collections import Counter
+        import resource
+        _c = Counter(st for st, _ in res)
+        print(f"[wheel-time] B={B} decode {_t1 - _t0:.2f}s cores {_t2 - _t1:.2f}s "
+              f"factors/row {np.mean([len(p) for p in parses]):.1f} "
+              f"status {dict(_c)} maxrss {resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1e6:.1f} GB", flush=True)
+    if _WHEEL_DUMP:
+        # the rows the wheel solved this breath + the pool's answers: a CPU
+        # fixture for timeout/budget/memo experiments without the GPU
+        import pickle
+        with open(_WHEEL_DUMP, "ab") as f:
+            pickle.dump({"rows": rows, "res": res, "t_cores": _t2 - _t1}, f)
     bias = np.zeros((B, 1, LT, T), np.float32); turned = 0
     for b, (status, core) in enumerate(res):
         if status != "unsat" or not core:

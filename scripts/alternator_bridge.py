@@ -151,18 +151,33 @@ def _core_worker(args):
     n_vars, parse, m = args
     t = float(_os.environ.get("WHEEL_ROW_TIMEOUT", "3"))
     budget = int(_os.environ.get("WHEEL_BUDGET", "2000"))
+    # THE FINALLY RACE (2026-09-12, killed stW242 at step ~2800 after 8 h):
+    # the alarm can fire AFTER refuse_and_core returned and BEFORE the timer
+    # is cancelled (inside the finally) -> the TimeoutError escaped the
+    # handler, crossed the pool and took the arm down. The handler now only
+    # raises while the solve is ARMED (a flag cleared first thing after the
+    # solve); a late alarm is a no-op, and an outer catch keeps the row's
+    # answer conservative ("timeout") if one still slips through.
+    armed = [True]
     def _alarm(signum, frame):
-        raise TimeoutError("wheel row timeout")
+        if armed[0]:
+            raise TimeoutError("wheel row timeout")
     _old = _sig.signal(_sig.SIGALRM, _alarm)
-    _sig.setitimer(_sig.ITIMER_REAL, t)
     try:
-        r = refuse_and_core(n_vars, parse, m, budget=budget)
-        return r["status"], r["core"]
+        _sig.setitimer(_sig.ITIMER_REAL, t)
+        try:
+            r = refuse_and_core(n_vars, parse, m, budget=budget)
+            armed[0] = False
+            return r["status"], r["core"]
+        except TimeoutError:
+            armed[0] = False
+            return "timeout", []
+        finally:
+            armed[0] = False
+            _sig.setitimer(_sig.ITIMER_REAL, 0)
+            _sig.signal(_sig.SIGALRM, _old)
     except TimeoutError:
         return "timeout", []
-    finally:
-        _sig.setitimer(_sig.ITIMER_REAL, 0)
-        _sig.signal(_sig.SIGALRM, _old)
 
 
 def core_rows(rows, workers=None):
