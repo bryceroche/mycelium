@@ -54,6 +54,24 @@ def main():
         kept = int((cert & (ts <= to)).sum())
         walls = [max(min(out[_key(r)][2], to) for r in b["rows"]) for b in breaths]
         print(f"   timeout {to:5.2f}s: refusals kept {kept:4d}/{cert.sum()}  rows over {int((ts>to).sum()):4d}  breath wall(max row) mean {np.mean(walls):.2f}s")
+    ms = np.array([r[2] for r in rows])
+    print("[clinic] by domain bound m:")
+    for mv in sorted(set(ms.tolist())):
+        mm = ms == mv
+        print(f"   m={mv:8d} n={mm.sum():4d}  time p50 {np.percentile(ts[mm],50):.3f} p90 {np.percentile(ts[mm],90):.3f} max {ts[mm].max():.2f}  "
+              f"status {dict(Counter(np.array(sts)[mm].tolist()))}")
+    # the memo: a row seen before (this fixture) costs 0; wall = max over novel rows, per timeout
+    print("[clinic] with the memo (novel rows only), per timeout: breath wall mean / max:")
+    for to in (0.5, 1.0, 2.0, 3.0):
+        seen2 = set(); walls = []
+        for b in breaths:
+            w = 0.0
+            for r in b["rows"]:
+                k = _key(r)
+                if k in seen2: continue
+                seen2.add(k); w = max(w, min(out[k][2], to))
+            walls.append(w)
+        print(f"   timeout {to:4.1f}s: wall mean {np.mean(walls):.2f}s max {np.max(walls):.2f}s  (no memo: {np.mean([max(min(out[_key(r)][2], to) for r in b['rows']) for b in breaths]):.2f}s)")
     # what do the slow rows look like
     order = np.argsort(-ts)[:5]
     for i in order:

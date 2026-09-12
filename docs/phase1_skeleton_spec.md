@@ -37031,3 +37031,64 @@ head's sha is in the key, so this edit cost one 12.5-min facts pass.
 STAGE 2 RELAUNCHED: .cache/wheel_train_chain.sh as pc-wheeltrain5
 (selftest -> rung 1 fwd/bwd under the cut loss -> wheel smoke -> stC242
 -> stW242 -> reads); bars WT1-WT3 as pinned (2026-09-11 above).
+
+## 2026-09-12 — THE STEADY FRAME: the fused step is GPU-bound at 62 ms (B=8) / 6 ms per row (B=32, 64); the 60-step frame had been counting the JIT capture; the copyin feed; the wheel arm's death (THE FINALLY RACE) and its clinic (unbounded rows, the memo, a 2 s row timeout); the arm relaunched
+
+THE WHEEL ARM DIED at step ~2800 (8 h in, 10.1 s/step): a
+`TimeoutError: wheel row timeout` escaped `_core_worker` — the SIGALRM
+fired AFTER refuse_and_core returned and BEFORE the timer was cancelled
+(traceback: alternator_bridge.py:164, the `finally`), crossed the pool
+and took the arm down. THE FINALLY RACE, fixed: the handler raises only
+while the solve is armed (flag cleared first thing after the solve),
+plus an outer catch (commit dfc2989). The control arm stC242 finished
+(0.72 s/step, saved).
+THE CPROFILE RULING on the fused trainer (ALG_STEP_PROF, 20 step() calls
+at B=8): **the JIT call costs ~1 ms of host time per step** (140 graph
+execs = 15 ms over 20 steps; HCQGraph.__call__ 71 us each). The step's
+graphs (DEBUG=2): 32+2+64+128+256+512+1024+749 kernels in 8 batches
+(JIT_BATCH_SIZE doubles per flush) = ~60 ms of device wall at B=8 (the
+1024-batch alone 40 ms). The earlier "0.37-0.53 s/step" frame was
+"cumulative average minus step 0" — it AMORTIZED THE JIT CAPTURE at
+steps 1-2 (~20 s) over 59 steps; the audit's per-row numbers were
+capture-polluted. THE STEADY FRAME (printed always now: "steady X s/step
+from step 5"): **B=8 0.062 s/step (7.8 ms/row); B=32 0.195 (6.1); B=64
+0.386 (6.0; fits the card)** — GPU-bound and LINEAR in B from 32 up;
+the host feed line (60/190/378 ms) is the copyin's wait on the previous
+step's graph, i.e. the GPU, not python. Losses identical to the assign
+path at every B (7.7315/6.5040; 6.3974/5.5023; B=64 5.7987).
+THE COPYIN FEED (ALG_FEED_COPYIN=1 default): the per-step host->device
+writes (lr, the feed list, the pulse) go through Buffer.copyin into the
+fixed buffers instead of assign(...).realize() (an eager scheduler pass
+each); gate: losses identical at B=8/32 vs ALG_FEED_COPYIN=0. It bought
+little (the step was never host-bound once the monster fell) but it
+removes three scheduler passes per step and stays.
+THE WHEEL CLINIC (ST_WHEEL_TIME per-breath timing; ST_WHEEL_DUMP a
+960-row fixture from a 6-step smoke; scripts/wheel_rows_analysis.py
+replays it on CPU with a 12 s cap): the pool's wall per breath is the
+SLOWEST ROW (0.12 s when all rows are quick, 3.08 s = the alarm when any
+row hangs; x5 breaths = the 10 s/step). Row time p50 5 ms, p90 0.2 s;
+solved rows (87%) p90 25 ms; unsat rows (9%) median 0.17 s, p90 0.9 s
+(the deletion core's F sub-solves). THE UNBOUNDED ROWS: all 35 timeouts
+in the fixture were the big-number family with **m = 1,000,000** (6000
+rows = 4.5% of form12: "a is 267066 ..."): GAC over a million-wide
+domain never returns at any budget (12 s cap still timing out) — the
+wheel now skips them (WHEEL_M_MAX=10000 -> status "unbounded", no core;
+conservative). After the skip: 9 timeouts left, all m=1000 rows with
+rel:mul (the mul propagator is ~m^2 per pass). THE MEMO: 72% of the
+wheel's rows within a step are re-solves of the same committed parse
+(the parse settles across breaths); a parse-keyed FIFO memo
+(WHEEL_MEMO_MAX=200k) in wheel_bias banks the deterministic answer.
+THE TIMEOUT (pinned from the replay): refusals kept per row timeout
+0.5 s 65/84, 1 s 75/84, **2 s 79/84 (94%)**, 3 s 80/84; breath wall
+with the memo 0.24 / 0.41 / **0.63** / 0.83 s. WHEEL_ROW_TIMEOUT=2.
+Expected arm: ~0.6 s x 5 breaths + 0.7 s GPU = ~4 s/step (was 10.1),
+6000 steps ~6.5 h. RSS watch: the smoke's maxrss 16.4 GB at step 5; the
+dead arm's main process was 19.9 GB at 3.4 h (21.4 GB peak) — read at
+the verdict.
+RELAUNCHED (pc-wheelarm, .cache/wheel_arm_chain.sh): wheel smoke 3 steps
+-> ARM stW242 (WHEEL_ROW_TIMEOUT=2 WHEEL_M_MAX=10000, memo on) -> the
+reads for stC242 (already trained) and stW242; bars WT1-WT3 as pinned
+(2026-09-11). The wheel's mechanics changed (skip + timeout + memo), not
+its contract: the spotlight still turns only on a certified refusal.
+NOTE the maskprep key includes the head's sha: every head edit costs one
+12.5-min facts pass (three today); batch head edits before GPU trials.

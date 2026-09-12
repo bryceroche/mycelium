@@ -151,6 +151,14 @@ def _core_worker(args):
     n_vars, parse, m = args
     t = float(_os.environ.get("WHEEL_ROW_TIMEOUT", "3"))
     budget = int(_os.environ.get("WHEEL_BUDGET", "2000"))
+    # THE UNBOUNDED ROWS (2026-09-12, the row clinic): the big-number family
+    # carries m=1,000,000 (4.5% of form12) and GAC over a million-wide domain
+    # runs past any wall clock at ANY budget (35/35 timeouts in the fixture
+    # were these rows; 12 s cap still timing out). The wheel does not turn on
+    # them: status "unbounded", no core — conservative, and the pool's wall
+    # stops being the pathological row x 5 breaths.
+    if m > int(_os.environ.get("WHEEL_M_MAX", "10000")):
+        return "unbounded", []
     # THE FINALLY RACE (2026-09-12, killed stW242 at step ~2800 after 8 h):
     # the alarm can fire AFTER refuse_and_core returned and BEFORE the timer
     # is cancelled (inside the finally) -> the TimeoutError escaped the

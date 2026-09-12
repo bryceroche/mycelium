@@ -64,3 +64,14 @@ time 132 -> 32.7 ms; wall B=32 0.99 -> 0.49 s/step (15 ms/row), B=8 0.53 -> 0.37
 BEAM (JITBEAM=2) was a null on it (100 -> 104 ms; other kernels 132 -> 114 ms
 total); candidates hit the 10 s compile alarm / 3000-uop cap, and no schedule
 search can un-fuse a kernel. Ledger entry of the same date has the full form.
+
+## Addendum 2 (2026-09-12) — the steady frame
+
+The 60-step "cumulative average minus step 0" frame amortized the JIT capture
+(steps 1-2, ~20 s) over 59 steps; every per-row number above is capture-polluted.
+cProfile of the JIT call: ~1 ms host per step; 8 HCQ graph batches (~60 ms device
+wall at B=8). Steady frame (from step 5, printed by the trainer now): B=8 0.062
+s/step, B=32 0.195, B=64 0.386 — GPU-bound, linear per row from B=32 (6 ms/row).
+Copyin feed (ALG_FEED_COPYIN) replaces three eager scheduler passes per step;
+losses identical. Ledger 2026-09-12 has the wheel clinic (the other perf target:
+the wheel arm at 10 s/step -> ~4 expected).

@@ -695,6 +695,18 @@ def _prep_pass(H, p, samples, states, tokmask, sent, _rf):
     return MASKS, FACTS
 
 
+_MEMO = {}
+_MEMO_MAX = int(os.environ.get("WHEEL_MEMO_MAX", "200000"))
+
+
+def _memo_key(row):
+    """canonical key of a wheel row: (n_vars, m, the parse's factor dicts minus their slot tags), order-free"""
+    import json as _json
+    n_vars, parse, m = row
+    return (int(n_vars), int(m), tuple(sorted(_json.dumps({k: v for k, v in f.items() if k != "_slot"},
+                                                          sort_keys=True, default=str) for f in parse)))
+
+
 _WHEEL_TIME = int(os.environ.get("ST_WHEEL_TIME", "0"))   # per-breath wheel timing (decode vs cores vs statuses)
 _WHEEL_DUMP = os.environ.get("ST_WHEEL_DUMP", "")        # append each breath's wheel rows + answers (pickle stream)
 
@@ -725,13 +737,26 @@ def wheel_bias(H, onp, fat_np, se_np, nv, ma, beta, mode, workers, LT):
                 f["_slot"] = j; parse.append(f)
         parses.append(parse); rows.append((int(nv[b]), parse, int(ma[b])))
     _t1 = time.time()
-    res = core_rows(rows, workers)
+    # THE MEMO (2026-09-12, the row clinic: 72% of the wheel's rows within a
+    # step are re-solves of the same committed parse — the parse settles
+    # across breaths): the solver is deterministic (seed 0), so an identical
+    # (n_vars, m, parse) row gets its banked answer; only novel rows go to
+    # the pool. Bounded (WHEEL_MEMO_MAX entries, FIFO).
+    keys = [_memo_key(r) for r in rows]
+    todo = [i for i, k in enumerate(keys) if k not in _MEMO]
+    if todo:
+        fresh = core_rows([rows[i] for i in todo], workers)
+        for i, ans in zip(todo, fresh):
+            if len(_MEMO) >= _MEMO_MAX:
+                _MEMO.pop(next(iter(_MEMO)))
+            _MEMO[keys[i]] = ans
+    res = [_MEMO[k] for k in keys]
     _t2 = time.time()
     if _WHEEL_TIME:
         from collections import Counter
         import resource
         _c = Counter(st for st, _ in res)
-        print(f"[wheel-time] B={B} decode {_t1 - _t0:.2f}s cores {_t2 - _t1:.2f}s "
+        print(f"[wheel-time] B={B} decode {_t1 - _t0:.2f}s cores {_t2 - _t1:.2f}s memo-miss {len(todo)}/{B} "
               f"factors/row {np.mean([len(p) for p in parses]):.1f} "
               f"status {dict(_c)} maxrss {resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1e6:.1f} GB", flush=True)
     if _WHEEL_DUMP:
