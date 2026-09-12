@@ -37254,3 +37254,32 @@ matters; the mint record is the dose, not an organ). The wheel's perf
 work (the clinic, the memo, prop-first) stays: the read-time wheel and
 the refusal reads use the same bridge, and the step trainer is the
 FINAL BOSS's trainer regardless of the wheel.
+
+## 2026-09-12 — THE GLUE GATE: rung 1 PASS on balV242 under the jitted glue (fwd 1e-5, bwd 95/95); the step trainer 0.72 -> ~0.37 s/step at B=32; propagation-first applied — the solver's WORK fell 5.4x but the wheel's per-breath WALL did not (0.645 -> 0.612 s): banked as a null on the wall
+
+RUNG 1 (family env, balV242, ST_EQN=8, ST_JIT=1, the glued walker vs
+the fused loop): **eqfwd PASS** (relative 1e-5 per key scale); **eqbwd
+PASS** — loss fused=walk=7.896888 (delta 4.8e-7), 95/95 param grads
+within the pinned dual criterion. The in-capture assigns (banks, the
+G thread, the accumulator adds, the loss bank) are ordered correctly
+by the scheduler on the GPU as on the CPU probe.
+THE TIMING (control shape, 60 steps B=32, cumulative averages 2.93 @20,
+1.70 @40, 1.28 @59): **steady ~0.37-0.41 s/step (was 0.72)** — 11.6
+ms/row vs the fused trainer's 6.1 (the walker recomputes stage 0 per
+reverse segment and runs 13 captures per step; that is its price, not
+glue). The FINAL BOSS's trainer is ~1.9x faster from here.
+THE WHEEL SHAPE (12 steps B=32, prop-first bridge live in the spawned
+workers, memo on): cores **0.612 s per breath mean over 60 breaths**
+(0.645 before prop-first), memo-miss 8.8 rows/breath (the smoke's
+early steps: fresh rows), one 2 s timeout still seen. THE WALL DID NOT
+MOVE: the fixture's 5.4x was total solver WORK; the breath's wall is
+its slowest novel row, and that row is now an unsat row's deletion
+core — F propagation-to-fixpoint checks (GAC over 300-wide domains with
+rel:mul, ~10-40 ms each) — not the search. A null on the wall, banked;
+the bridge stays (it is the read-time wheel's and the refusal reads'
+cost, and their work fell 5.4x). The next lever, IF the wheel returns
+in a new form: parallelize the core's checks across the idle workers
+(QuickXplain-style divide and conquer) or bounds consistency for the
+arithmetic predicates — not built, the spotlight form being a null.
+THE T1 CHAIN started 15:51 (pc-t1 via the orchestrator): birth check,
+then t1c242 (control) and t1a242 (T1), reads; bars as pinned above.
