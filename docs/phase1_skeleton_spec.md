@@ -37217,3 +37217,40 @@ pc-wheelarm completes — the arm's READS re-import the bridge
 module; the never-edit-under-a-running-chain rule. Expected wheel
 wall per breath after: ~0.25 s (memo + prop-first + 2 s cap) -> the
 wheel arm ~1.25 s + the glued walk ~0.3 s = ~1.5 s/step from 4.
+
+## 2026-09-12 — THE WHEEL VERDICT (stage 2, bars WT1-WT3 as pinned 2026-09-11): WT3 PASS, WT1 FAIL, WT2 FAIL, not a KILL — THE SPOTLIGHT FORM IS A NULL; a side effect: the B=32 step-trainer continuation sets a MINT RECORD 0.9831 on both arms
+
+THE READS (re-run with full logs, .cache/read_*_st{C,W}242.log; the
+chain's own read lines were lost to its grep/journal, exit 0 all six):
+  stC242 (control, 6000 steps B=32 from balV242): open wild 0.2521,
+    open mint 0.9831; wheel-read own/3 wild 0.2511 (refuses 136-154 of
+    312 rows per breath, core 3.72).
+  stW242 (trained under the wheel): open wild 0.2516, open mint 0.9831;
+    wheel-read own/3 wild 0.2516 (refuses 155-169 per breath, core 3.87).
+THE BARS: **WT3 PASS** (0.2521 >= 0.2426; 0.9831 >= 0.9707 — the trainer
+is not the confound). **WT1 FAIL**: wheel-read(stW242) 0.2516 < open
+(stC242) + 0.010 = 0.2621 (mint guard held, 0.9831 = 0.9831). **WT2
+FAIL**: wheel-read(stW242) - open(stW242) = 0.0000 < +0.010. **KILL not
+met**: 0.2516 > 0.2421 — training under the wheel did not hurt. The
+registered prediction (WT2 +0.015, WT1 +0.005..+0.012) was WRONG on
+both: the spotlight turned on ~50% of wild rows per seam as predicted
+(148-169/312) and moved nothing — at read time (+0.0034 on balV242,
+2026-09-11) and after 6000 steps of training with it (0.0000). The
+wheel-trained parser refuses MORE (169 vs 148 at b1) with the same
+accuracy: it commits more refutable parses, and the aimed re-read does
+not repair them. THE SPOTLIGHT FORM IS A NULL (banked): a +beta on the
+core slots' source-sentence token scores is not a road the loss can
+use; the wild failures the core points at are not fixed by looking
+harder at the same words. The KILL clause's successor (the core's
+next port = the slot lanes, the DSL's own form) is NOT triggered by
+the bars as pinned; it is the natural next form and needs the word.
+THE SIDE EFFECT: both arms read mint **0.9831** (balV242 0.9757, the
+prior record) with wild flat (0.2521/0.2516 vs 0.2526): 6000 steps at
+B=32 = 192k rows of gentle continuation vs the fused arms' 12k x 8 =
+96k — THE BATCH-32 TWIN (registered, unfired, the dose law) has been
+fired by accident on the step trainer's path and paid on mint only.
+Not a promotion candidate on its own (wild is the register that
+matters; the mint record is the dose, not an organ). The wheel's perf
+work (the clinic, the memo, prop-first) stays: the read-time wheel and
+the refusal reads use the same bridge, and the step trainer is the
+FINAL BOSS's trainer regardless of the wheel.
