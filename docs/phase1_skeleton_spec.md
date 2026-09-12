@@ -37337,3 +37337,33 @@ sharper ensemble over time); SR-IDLE turns positive but lands 0.005-
 credit flowed but the middle still computes nothing worth keeping: the
 desert is a CAPACITY question, not a wiring one, and the age-tagged
 delay line is the next word.
+
+## 2026-09-12 — CANDIDATE (needs the word): THE DENOISING SCHEDULE — diffusion's lesson for the desert is local targets, not longer gradient paths
+
+FROM THE BRAINSTORM (Bryce: "a diffusion compiler lowering little by
+little; how does the gradient know a subtle middle change mattered?"):
+it does not — credit is first-order in the final loss, and a change the
+answer does not reflect earns none, correctly. The desert is the OTHER
+case (an effect attenuated on the way back), which the shelf readout
+paves. DIFFUSION'S ACTUAL TRICK: no gradient through time at all —
+each step is trained alone on a target correct by construction (undo
+one step of a KNOWN corruption at a KNOWN level t), and the
+intermediates' unlikeness to the final image never matters because no
+step is graded on the final image. THE AUGUST GRAVE asked the wrong
+per-breath question (the answer from whatever the breath had); the
+diffusion form asks "recover the clean parse given THIS MUCH of it
+hidden" — a solvable job at every level. OUR CORRUPTION PROCESS is
+discrete (mask slots, drop givens, scramble a pointer; the hidden
+fraction falls with the breath index) fed through the seam's fact
+injection port; the M3 precedent (gold masks on a flat 50-50 mix with
+the model's own, the Nazare constitution) is the answer to exposure
+bias, which diffusion sidesteps only because its x_t is the same
+object at training and inference. Parallels that hold: the six-wave
+clock = the timestep conditioning; our intermediates are parses
+(readable, pingable), better than noise. Fails: the stochastic sampler
+(seven deterministic breaths carry the schedule by clock + level).
+REGISTERED, unfired: the same instruments as the shelf readout (the
+census on b3-b5, the idle read, the wild/mint guards) so the two
+answers to the desert — pave the path (shelf) vs remove the need for
+it (denoising) — read on one scale. NOT before the shelf read lands:
+if the paved road alone wakes the middle, the harder change is moot.
