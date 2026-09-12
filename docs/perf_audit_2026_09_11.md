@@ -53,3 +53,14 @@ tinygrad hash-conses identical UOps.
 
 Non-findings: Tensor.training=True has no effect (no dropout/BN); Tensor.stack/.contiguous()
 sites are not graph splitters; .realize().numpy() inside forward are all behind _CENSUS.
+
+## Addendum (2026-09-11 evening) — the monster kernel
+
+The 100 ms/step kernel was the fused LOSS (one scalar output, 40 accumulators,
+47 loops), not the polar block. Cut by `.contiguous()` on the `ce`/`bce` outputs
+and the fat/vat per-row partials (commit cfe52b0): each term's reduction is its
+own parallel kernel. Ruling bit-identical (loss + 95 grads, CPU). Step device
+time 132 -> 32.7 ms; wall B=32 0.99 -> 0.49 s/step (15 ms/row), B=8 0.53 -> 0.37.
+BEAM (JITBEAM=2) was a null on it (100 -> 104 ms; other kernels 132 -> 114 ms
+total); candidates hit the 10 s compile alarm / 3000-uop cap, and no schedule
+search can un-fuse a kernel. Ledger entry of the same date has the full form.

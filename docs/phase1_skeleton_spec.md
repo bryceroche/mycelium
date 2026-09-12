@@ -36983,3 +36983,51 @@ unbeamed (7.7315 at B=8, 6.3974 at B=32), the 30-step trajectory
 within 1e-3; the read: the profile's device time per step and the
 wall. If the monster does not yield to BEAM, the alternative is a
 .contiguous() cut in the polar block to unfuse the breaths (eq-gated).
+
+## 2026-09-11 — THE MONSTER KERNEL CUT: the fused loss unfused; step time halved (B=32 0.99 -> 0.49 s/step = 15 ms/row; B=8 0.53 -> 0.37); CPU ruling bit-identical (loss + 95 grads); BEAM banked as a null on it; the wheel chain relaunched
+
+THE IDENTIFICATION (a CPU DEBUG=4 dump, .cache/gc_debug4.log:27275):
+the 100 ms/step kernel is NOT the polar block's backward as guessed
+above — it is THE LOSS. Its signature is `data0_1` (one scalar output)
+with **40 `float accN[1]` accumulators and 47 loops in 594 lines**:
+every `.sum()` term of `_loss_single` (ce over the 24 slots, the bce
+terms, the fat/vat rows, the pointer/digit/type heads, all 7 breaths)
+fused by the scheduler into ONE single-output reduction — which the
+device runs SERIALLY (one workgroup owns the one output). The many
+`_192` (B x 24) and `_131072` (B x L_TOT x 512) inputs are the loss's
+per-slot logits and the trunk-shaped terms, not the content planes.
+THE CUT (scripts/phase1_algebra_head.py, commit cfe52b0): `ce()` and
+`bce()` return `.contiguous()`; the fat/vat per-row `.sum(-1)` partials
+are `.contiguous()` — each term's big reduction is now its own kernel
+with B x 24 (or B x rows) outputs, i.e. parallel across workgroups; the
+final scalar sum is over a few hundred numbers. No numerics change: the
+same ops, only the realize boundaries.
+THE RULING (pinned: loss <= 1e-6 rel, every param grad <= 1e-5 rel;
+CPU, rows 0:3 of form12, balV242; the BEFORE from the git-HEAD head via
+the new GC_HEAD_DIR door of scripts/grad_census.py, GC_DUMP on both;
+scripts/compare_loss_dump.py): **loss 6.70252943 both; worst grad rel
+0.00e+00 over 95/95 params — BIT-IDENTICAL.** (The first before-dump
+at B=8 rows was OOM-killed on CPU at 30 GB; B=3 rows is the fixture.)
+THE PROFILE (PROFILE=1, 30 steps B=8, same frame as the audit): the
+step's own kernels **132 -> 32.7 ms/step of device time; the monster
+is gone from the x30 list** (top kernel now 2.1 ms). Total device time
+of the run 47.7 -> 44.6 s (the monster's 3.1 s).
+THE WALL (60-step runs, cumulative average minus step 0 — the audit's
+frame): **B=32 0.99 -> 0.49 s/step (31 -> 15 ms/row); B=8 0.53 -> 0.37
+(66 -> 46 ms/row).** Step-0 losses identical to the unbeamed reference
+(7.7315 at B=8, 6.3974 at B=32) and the 60-step loss at B=32 equal to
+the beamed run's (5.5023). Per-kernel launch cost now dominates again.
+BEAM (JITBEAM=2, the trial pinned above): device time 132 -> 114 ms on
+the OTHER kernels, the monster 100 -> 104 ms (3112 ms/30 in the beamed
+profile) — a NULL on the thing that mattered, banked. Mechanism: the
+search's candidates for a 40-accumulator kernel hit BEAM_TIMEOUT_SEC
+(10 s compile alarm) and BEAM_UOPS_MAX (3000); GROUP/GROUPTOP could
+only split ONE reduce axis of a kernel that had 40 separate ones. The
+search cost 11h43m of CPU across the two runs and its B=32 wall is
+unreadable (the cumulative average swallowed the ~40-min search). No
+flag reaches a fusion decision: BEAM tunes a kernel's schedule, the
+`.contiguous()` cut changes WHICH kernels exist. Maskprep key note: the
+head's sha is in the key, so this edit cost one 12.5-min facts pass.
+STAGE 2 RELAUNCHED: .cache/wheel_train_chain.sh as pc-wheeltrain5
+(selftest -> rung 1 fwd/bwd under the cut loss -> wheel smoke -> stC242
+-> stW242 -> reads); bars WT1-WT3 as pinned (2026-09-11 above).
