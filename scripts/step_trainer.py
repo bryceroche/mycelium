@@ -208,6 +208,10 @@ def gold_spec(H, p):
 # THE WALKER
 # ===========================================================================
 
+_PUT_ASSIGN = int(os.environ.get("ST_PUT_ASSIGN", "0"))
+from tinygrad.uop.ops import Ops as _Ops
+
+
 class StepWalker:
     """Owns the fixed buffers, the capture family, and the walk drivers.
     ST_JIT=0: the same closures run eagerly (the correctness reference —
@@ -275,8 +279,7 @@ class StepWalker:
         self.G_nb = ([fix(nb_shape) for _ in range(self.K_B)]
                      if self.notebook else [])
         # seam decode buffers
-        self.cur_dec = fix((B, LT, HW))
-        self.fact_dec = fix((B, K, 4))
+        self.fact_dec = fix((B, K, 4))     # (the seam decode reads cur_bank[k] directly since the glue)
         self.fat_bank = fix((B, LT, T))    # stage-0 attention: the wheel's source sentences
         self.mask_bank = fix((B, LT, LT))  # the forward's PROCESSED slot mask (fed scratch rule)
         # the mask head's cross-breath storage (state["mh_prev"]: the consumed
@@ -302,18 +305,34 @@ class StepWalker:
         self.emit_keys = None
         self.rs_layout = {}
         wrap = (TinyJit if self.jit else (lambda f: f))
+        # THE JITTED GLUE (2026-09-12): the walk loss accumulates on the
+        # device (one read per step), the bank writes / grad-thread writes /
+        # accumulator adds live INSIDE the captures (no eager scheduler pass
+        # between dispatches), the seam decode reads cur_bank[k] directly.
+        self.loss_bank = fix((1,))
         self.s0_fn = wrap(self._mk_s0())
         self.fwd_fns = {k: wrap(self._mk_fwd(k))
                         for k in range(1, self.K_B)}
         self.rs_fns = {k: wrap(self._mk_rs(k)) for k in range(1, self.K_B)}
         self.rs0_fn = wrap(self._mk_rs0())
-        self.dec_fn = wrap(self._mk_dec())
+        self.dec_fns = {k: wrap(self._mk_dec(k)) for k in range(1, self.K_B)}
+        self.zero_fn = wrap(self._mk_zero())
 
     # ---- plumbing -------------------------------------------------------
     def put(self, buf, arr):
+        """host -> fixed device buffer. THE JITTED GLUE (2026-09-12): a
+        direct Buffer.copyin (the HCQ copy queue orders it after the queued
+        work) instead of assign(...).realize() = one eager scheduler pass
+        per call (~35 per step). ST_PUT_ASSIGN=1 keeps the old path."""
         npdt = np.float32 if buf.dtype == self.dt.float else np.int32
-        buf.assign(self.Tensor(np.ascontiguousarray(arr, dtype=npdt),
-                               dtype=buf.dtype).contiguous()).realize()
+        a = np.ascontiguousarray(arr, dtype=npdt)
+        if _PUT_ASSIGN:
+            buf.assign(self.Tensor(a, dtype=buf.dtype).contiguous()).realize()
+            return
+        assert buf.uop.base.op is _Ops.BUFFER, f"put target not a realized buffer: {buf.uop.base.op}"
+        b = buf.uop.base.buffer
+        assert b.nbytes == a.nbytes, f"put size mismatch {b.nbytes} != {a.nbytes} ({buf.shape} vs {a.shape})"
+        b.copyin(memoryview(a))
 
     def _tap_call(self, fact_buf):
         """One stage-0 pass through the REAL forward under hold: builds
@@ -392,26 +411,39 @@ class StepWalker:
         def fwd():
             state = self._mk_state(k, self.cur_bank[k - 1])
             self.H.breath_step(self.p, state, k, self._mk_ctx(self.waist_bank, k))
-            outs = [state["cur"]]
+            # banks are pure values (detach); written INSIDE the capture —
+            # each bank written here is never read by this breath (fwd k
+            # reads cur/nb/garage/snap/mh_prev of earlier breaths only)
+            outs = [self.cur_bank[k].assign(state["cur"].detach())]
             if self.notebook:
-                outs += state["nb"][-2:] if k == 1 else [state["nb"][-1]]
+                if k == 1:
+                    outs += [self.nb_bank[0].assign(state["nb"][-2].detach()),
+                             self.nb_bank[1].assign(state["nb"][-1].detach())]
+                else:
+                    outs.append(self.nb_bank[k].assign(state["nb"][-1].detach()))
             if self.garage:
-                outs.append(state["garage"][-1])
+                outs.append(self.gar_bank[k - 1].assign(state["garage"][-1].detach()))
             if self.snaps_on:
-                outs += list(state["snaps"][-1])
-                if k >= 2:
-                    outs.append(state["mh_prev"])    # the consumed adjacency
-            return [t.detach() for t in outs]   # banks are pure values
+                outs += [self.snap_bank[k][jj].assign(state["snaps"][-1][jj].detach()) for jj in range(4)]
+                if k >= 2 and state["mh_prev"] is not None:   # the consumed adjacency (None without the mask head)
+                    outs.append(self.mhp_bank[k].assign(state["mh_prev"].detach()))
+            return outs
         return fwd
 
-    def _mk_dec(self):
+    def _mk_dec(self, k):
         def dec():
             vstk = (self.H._fact_inject(self.p, self.vst_base_bank,
                                         self.fact_dec)
                     if self.inject else self.vst_base_bank)
-            o = self.H._heads_of(self.p, self.cur_dec, vstk, self.B)
+            o = self.H._heads_of(self.p, self.cur_bank[k], vstk, self.B)
             return [o[kk].detach() for kk in self.dec_keys]
         return dec
+
+    def _mk_zero(self):
+        def zero():
+            targets = [self.G_cur, self.loss_bank] + self.G_nb + [self.gbufs[n] for n in self.names]
+            return [t.assign(self.Tensor.zeros(*t.shape, dtype=t.dtype).contiguous()) for t in targets]
+        return zero
 
     def _mk_rs(self, k):
         n_nb, _, _ = shelf_plan(k, self.notebook, self.garage, self.snaps_on)
@@ -440,14 +472,18 @@ class StepWalker:
             full.update(tap["heads_of"](cur_out))
             term = self.H._loss_single(full, self.bg) * self.w[k]
             (scalar + term).backward()
-            ret = [term.detach(), self.cur_bank[k - 1].grad]
-            ret += [self.nb_bank[j].grad for j in range(n_nb)]
+            # the thread + the accumulators, written inside the capture: the
+            # scheduler orders every read of G_cur/G_nb/gbufs (the grad
+            # graphs) before their assign (the eqbwd gate proves it)
+            ret = [self.loss_bank.assign(self.loss_bank + term.detach().reshape(1)),
+                   self.G_cur.assign(self.cur_bank[k - 1].grad)]
+            ret += [self.G_nb[j].assign(self.nb_bank[j].grad) for j in range(n_nb)]
             gnames = []
             for n in self.names:
                 g = self.p[n].grad
                 if g is not None:
                     gnames.append(n)
-                    ret.append(g)
+                    ret.append(self.gbufs[n].assign(self.gbufs[n] + g))
             if k in self.rs_layout:
                 assert self.rs_layout[k] == gnames, "rs layout drifted"
             self.rs_layout[k] = gnames
@@ -467,13 +503,13 @@ class StepWalker:
             term_sh = (self.H._loss_single(shared, self.bg)
                        * self.shared_extra)
             (scalar + term0 + term_sh).backward()
-            ret = [term0.detach()]
+            ret = [self.loss_bank.assign(self.loss_bank + term0.detach().reshape(1))]
             gnames = []
             for n in self.names:
                 g = self.p[n].grad
                 if g is not None:
                     gnames.append(n)
-                    ret.append(g)
+                    ret.append(self.gbufs[n].assign(self.gbufs[n] + g))
             if 0 in self.rs_layout:
                 assert self.rs_layout[0] == gnames, "rs0 layout drifted"
             self.rs_layout[0] = gnames
@@ -510,39 +546,14 @@ class StepWalker:
         rates = []
         self.turned = []
         for k in range(1, self.K_B):
-            outs = self.fwd_fns[k]()
-            todo = [self.cur_bank[k]]
-            self.cur_bank[k].assign(outs[0])
-            i = 1
-            if self.notebook:
-                if k == 1:
-                    self.nb_bank[0].assign(outs[1])
-                    self.nb_bank[1].assign(outs[2])
-                    todo += [self.nb_bank[0], self.nb_bank[1]]
-                    i = 3
-                else:
-                    self.nb_bank[k].assign(outs[1])
-                    todo.append(self.nb_bank[k])
-                    i = 2
-            if self.garage:
-                self.gar_bank[k - 1].assign(outs[i])
-                todo.append(self.gar_bank[k - 1])
-                i += 1
-            if self.snaps_on:
-                for jj in range(4):
-                    self.snap_bank[k][jj].assign(outs[i + jj])
-                todo += self.snap_bank[k]
-                i += 4
-                if k >= 2:
-                    self.mhp_bank[k].assign(outs[i])
-                    todo.append(self.mhp_bank[k])
-            self.Tensor.realize(*todo)
+            outs = self.fwd_fns[k]()      # the banks are assigned inside
+            if not self.jit:
+                self.Tensor.realize(*outs)
             if self.ping or self.wheel:
                 # the seam stub: decode confident slots on vst(fact_{k-1}),
                 # ping the organ, pack the fixed (B,24,4) buffer
                 self.put(self.fact_dec, fact_cur)
-                self.cur_dec.assign(self.cur_bank[k]).realize()
-                dec = self.dec_fn()
+                dec = self.dec_fns[k]()
                 onp = {kk: t.numpy() for kk, t in zip(self.dec_keys, dec)}
             if self.ping:
                 fact_cur = H.alt2_fact_buf(onp, se_np, nv, ma,
@@ -564,48 +575,24 @@ class StepWalker:
         threaded through G_cur/G_nb, param grads accumulated into the
         fixed gbufs. Returns (walk loss = the TRUE fused-ladder value,
         set of param names that received grads)."""
-        zero = [self.G_cur] + self.G_nb
-        for g in zero:
-            g.assign(g * 0.0)
-        self.Tensor.realize(*zero)
-        seen = set()
-        loss = 0.0
-
-        def acc(gnames, gs):
-            todo = []
-            for n, g in zip(gnames, gs):
-                if n in seen:
-                    self.gbufs[n].assign(self.gbufs[n] + g)
-                else:
-                    self.gbufs[n].assign(g)
-                    seen.add(n)
-                todo.append(self.gbufs[n])
-            self.Tensor.realize(*todo)
-
+        # THE JITTED GLUE (2026-09-12): zero the thread/accumulators/loss in
+        # one capture; each reverse segment threads dL/dstate and adds its
+        # param grads INSIDE its capture (the ordering of reads-before-assign
+        # is the scheduler's, proven by the eqbwd gate); ONE host read of the
+        # loss per step. (The eager era's lesson stays: an assign realized
+        # before the grads that read it doubles them — hence in-capture.)
+        z = self.zero_fn()
+        if not self.jit:
+            self.Tensor.realize(*z)
         for k in reverse_schedule(self.K_B):
-            n_nb, _, _ = shelf_plan(k, self.notebook, self.garage,
-                                    self.snaps_on)
             ret = self.rs_fns[k]()
-            # PIN every output BEFORE touching the G buffers: the lazy
-            # grad graphs READ G_cur/G_nb, and assigning the new thread
-            # values first makes them recompute against the mutated
-            # buffers (measured: exactly-doubled segment grads at K=2 —
-            # the probe's second lesson). realize() is a no-op under JIT.
-            self.Tensor.realize(*ret)
-            loss += float(ret[0].numpy())
-            i = 2 + n_nb
-            gnames = self.rs_layout[k]
-            todo = [self.G_cur]
-            self.G_cur.assign(ret[1])
-            for j in range(n_nb):
-                self.G_nb[j].assign(ret[2 + j])
-                todo.append(self.G_nb[j])
-            self.Tensor.realize(*todo)
-            acc(gnames, ret[i:i + len(gnames)])
+            if not self.jit:
+                self.Tensor.realize(*ret)
         ret0 = self.rs0_fn()
-        self.Tensor.realize(*ret0)     # same pin (G_cur read by the dot)
-        loss += float(ret0[0].numpy())
-        acc(self.rs_layout[0], ret0[1:1 + len(self.rs_layout[0])])
+        if not self.jit:
+            self.Tensor.realize(*ret0)
+        seen = set().union(*self.rs_layout.values()) if self.rs_layout else set()
+        loss = float(self.loss_bank.numpy()[0])
         return loss, seen
 
     def read_final(self):
@@ -972,6 +959,10 @@ def run_train():
 
         rng = np.random.RandomState(seed)
         lr_min = lr / 30.0
+        opt.lr.realize()                       # a fixed buffer from here on (put)
+        _sev = getattr(H, "_SEV", None)
+        if _sev is not None:
+            _sev.realize()
         rate_sum = np.zeros(w.K_B - 1, np.float64)
         rate_n = 0
         skipped = 0
@@ -979,17 +970,15 @@ def run_train():
         for s in range(steps):
             cur_lr = lr_min + 0.5 * (lr - lr_min) * (
                 1 + math.cos(math.pi * s / steps))
-            opt.lr.assign(Tensor([cur_lr], dtype=dtypes.float)).realize()
+            w.put(opt.lr, np.array([cur_lr], np.float32))
             idx = rng.choice(n, B, replace=False)         # flat mix, always
             w.load_batch(states, tokmask, sent, MASKS[idx], idx,
                          feed=gold_feed(gold, idx))
             if _envi("ALG_SHELF_CIRCLE") >= 2 and not os.environ.get("SC_EVAL"):
-                sev = getattr(H, "_SEV", None)
-                if sev is not None:                       # the pulse, per step
-                    sev.assign(Tensor(
+                if _sev is not None:                      # the pulse, per step
+                    w.put(_sev, np.array(
                         [1.0 if np.random.rand()
-                         < float(os.environ.get("SC_P", "0.5")) else 0.0],
-                        dtype=sev.dtype)).realize()
+                         < float(os.environ.get("SC_P", "0.5")) else 0.0], np.float32))
             fact0 = (FACTS[idx] if FACTS is not None
                      else np.zeros((B, H.K_VARS, 4), np.float32))
             nv, ma = _row_meta(H, samples, idx)

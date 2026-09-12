@@ -37092,3 +37092,37 @@ reads for stC242 (already trained) and stW242; bars WT1-WT3 as pinned
 its contract: the spotlight still turns only on a certified refusal.
 NOTE the maskprep key includes the head's sha: every head edit costs one
 12.5-min facts pass (three today); batch head edits before GPU trials.
+
+## 2026-09-12 — THE JITTED GLUE (step trainer; CPU probes PASS; GPU rung 1 queued behind the arm): the walker's eager scheduler passes between dispatches moved inside the captures
+
+THE ARM'S PACE after the clinic: stW242 relaunched at 08:47 — step 200 at
+4.64 s/step (cumulative, capture included); the wheel's cores 0.645 s
+per breath mean over the last 300 breaths (the replay predicted 0.63);
+the memo misses 1-6 of 32 rows after a step's first breath. 6000 steps
+~7.5 h (ETA ~16:20). The step trainer's control shape runs 0.72 s/step
+vs the fused trainer's 0.195 steady at the same B=32: the walker paid an
+EAGER SCHEDULER PASS per glue op — ~35 put() assigns per step, 6 bank
+assign/realize sets in the forward, and per reverse segment a pin
+realize + a host .numpy() of the loss + a G-thread realize + the
+accumulator adds (up to 95 assign kernels through the scheduler) x 7.
+THE GLUE (scripts/step_trainer.py): put() -> Buffer.copyin (ST_PUT_
+ASSIGN=1 keeps the old path); fwd captures assign their banks inside
+(each bank written by breath k is read by no op of breath k); rs
+captures thread G_cur/G_nb and ADD into the gbufs inside (the scheduler
+orders the grad graphs' reads before the assigns); a device loss_bank
+accumulates the walk loss (ONE host read per step); a zero capture
+(zeros, not x*0 — a NaN in an accumulator would have been immortal);
+per-k decode captures read cur_bank[k] (no cur_dec copy); lr and the
+pulse via put. Interface unchanged (walk_backward returns loss, seen;
+gbufs hold the step's grads; the eq modes untouched).
+CPU PROBES (--cpuprobe, random params B=2, MemoryMax=9G beside the arm):
+**jit=1 PASS — forward within fusion noise, loss fused=walk=90.638008
+delta 0, 78/78 param grads within the pinned dual criterion, replays
+IDENTICAL; jit=0 PASS.** (The probe's June-era env has no mask head:
+mh_prev is None there — guarded; the 09-11 mhp_bank line would have
+crashed the probe too.) Committed; the GPU gate (.cache/glue_gate.sh,
+pc-gluegate, queued behind pc-wheelarm): rung 1 eqfwd/eqbwd on
+balV242 under the family env (bars as pinned 2026-09-04: fwd 1e-5 rel,
+bwd 1e-4 rel dual criterion) then the timings (control shape 60 steps
+B=32; wheel shape 12 steps). The glue is NOT used by the running arm
+(its process imported the pre-glue file).
