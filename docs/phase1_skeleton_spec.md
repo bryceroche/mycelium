@@ -37126,3 +37126,63 @@ balV242 under the family env (bars as pinned 2026-09-04: fwd 1e-5 rel,
 bwd 1e-4 rel dual criterion) then the timings (control shape 60 steps
 B=32; wheel shape 12 steps). The glue is NOT used by the running arm
 (its process imported the pre-glue file).
+
+## 2026-09-12 — T1, THE TOKEN CONVOLUTION (word given; "The dancer's pixels"): built, born bit-exact, bars pinned, chain queued; THE SHOAL banked as a null
+
+THE BRAINSTORM (Bryce: CNN parallels — segmenting the dancer's
+silhouette, the herring shoal's k-NN, converting the 512-d state into
+an image; a relay proposed 1D circular convs along the plane bands, a
+U-Net over the 256 polar coordinates, k-hop limits in the middle
+breaths). THE RULING: (1) our loop's message passing is all-to-all
+attention over 32 rows, not a shoal — THE SHOAL IS A BANKED NULL: the
+factor-graph slot mask's removal cost was ZERO (2026-09-09, ALG_SLOT_ALL
+0.2545/0.9665); the June KenKen engine's membership masks were
+load-bearing because KenKen hands the structure in; in parsing the
+structure is the output (the Nazare constitution) and the one
+structure-following channel is the wheel (turns on proofs). (2) The
+CNN's power is weight sharing across a symmetry, and ours already
+exists across breaths (one organ set per breath, the six-wave clock as
+position code) and across planes (the polar block = a 1x1 conv with two
+channels over 256 planes). (3) Any conv with kernel > 1 over the plane
+axis — 2D reshape OR the relay's 1D-along-the-band / U-Net — invents an
+adjacency that does not exist (the content planes are a SET); the
+clock harmonics are the one ordered band and there are six of them;
+the "6 planes carry 55%" finding was a linear spectral read. k-hop
+limits in the middle breaths starve the desert (the idle read: b3-b5
+remove for free). (4) The axis WITH pixels is the sentence: adjacent
+words mean adjacent things; our failure is grounding on wild (0.25 vs
+mint 0.976), the slot->token linkage; segmentation there = chunking
+mentions before the slots look. Blog: site/blog/2026-09-12-the-dancers-
+pixels.md (live).
+THE ORGAN (scripts/phase1_algebra_head.py, ALG_T1=K, 265,216 params at
+K=5): after the waist (and the fed waist layer; the refuted-cell fence
+honored — a trained layer AFTER the waist, nothing recirculates through
+the trunk): a depthwise K-tap convolution over tokens (neighbors beyond
+the sentence read as 0 via tokmask; the center tap reads the row) then
+a pointwise 512x512 mix + bias. A ROAD, no bypass, no gain (the
+mandatory-road law): the waist passes THROUGH it. Birth = identity
+(center tap 1, other taps 0, pointwise I, bias 0) -> bit-exact the
+pre-T1 function: scripts/t1_birth_check.py, 16 forward outputs, worst
+maxabs 0.000e+00 PASS (CPU, family env). Linear on purpose: a
+nonlinear branch needs a zero output door = a gated invitation (voted
+down from birth, mh_gain 0.02->0.0002). Sever door: ALG_SEVER=t1 (skips
+the conv at read = the removal cost). Note this is the LOCAL form of
+the registered token-side T1 (2026-09-09: token<-token mask derived
+from parse + core); the mask-derived form stays registered as T1m.
+THE CHAIN (.cache/t1_chain.sh, pc-t1, queued behind pc-wheelarm and
+pc-gluegate): the birth check, then two arms from balV242 under the
+family recipe (12k steps, B=8, LR 1e-4, seed 242, flat mix): t1c242 =
+the natural continuation (ALG_T1=0; the cont-control protocol), t1a242
+= T1 (ALG_T1=5); reads: open wild/mint on both; sever=t1 on t1a242.
+BARS (pinned before any read): **T1-PASS** = wild(t1a242) >= wild(t1c242)
++ 0.010 AND wild(t1a242) >= 0.2626 (the 0.2526 record + 0.010) AND
+mint(t1a242) >= 0.9707 AND mint(t1a242) >= mint(t1c242) - 0.005.
+**T1-KILL** = wild(t1a242) <= wild(t1c242) OR mint(t1a242) < 0.9607.
+Between = INCONCLUSIVE (a second seed before any claim).
+**T1-CARRIES** (the removal read) = sever=t1 on t1a242 drops wild by
+>= 0.020; a drop < 0.005 with a PASS would say the lift came from the
+extra capacity, not the context (then the twin: a 512x512 pointwise-
+only arm decides). REGISTERED PREDICTION: wild +0.005 to +0.015 (a coin
+flip on the bar), mint flat within 0.003, the removal read >= 0.02
+(the wild register's failures are grounding failures and a 5-word
+window is the cheapest context there is).

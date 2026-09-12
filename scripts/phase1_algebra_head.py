@@ -197,7 +197,15 @@ PF_FORMS = int(os.environ.get("PF_FORMS", "3"))   # pointer/macro forms
 # organ severance for removal-cost reads. Unset = untouched forward.
 _SEVER_ORGANS = frozenset(("notebook", "garage", "s3", "s4", "mixer",
                            "fedtwin", "altv0", "ffn", "pforms",
-                           "s5", "nb2"))   # the balanced generation
+                           "s5", "nb2", "t1"))   # the balanced generation (+ T1, 2026-09-12)
+# T1 (2026-09-12, the word — "The dancer's pixels"): the token-side
+# convolution. ALG_T1=K (odd taps; 0 = off): a depthwise convolution over
+# the TOKEN axis on the waist (K taps per channel, the center tap 1 and
+# the rest 0 at birth) followed by a pointwise mix (identity at birth) —
+# a ROAD, no bypass (the mandatory-road law): the waist passes through
+# it; birth is bit-exact the pre-T1 function. Neighbors outside the
+# sentence (tokmask 0) contribute nothing. The one axis with pixels.
+ALG_T1 = int(os.environ.get("ALG_T1", "0"))
 _SEVER = frozenset(x for x in os.environ.get("ALG_SEVER", "").split(",") if x)
 assert _SEVER <= _SEVER_ORGANS, \
     f"ALG_SEVER unknown organ(s) {sorted(_SEVER - _SEVER_ORGANS)}; " \
@@ -1685,6 +1693,12 @@ def build_params(seed=0):
         p["fed_w2a_b"] = t(np.zeros(H_W))
         p["fed_w2b"] = t(np.zeros((H_W, H_W)))   # ZERO door (ResNet law)
         p["fed_w2b_b"] = t(np.zeros(H_W))
+    if ALG_T1:
+        assert ALG_T1 % 2 == 1, "ALG_T1 = an odd tap count"
+        _dw = np.zeros((ALG_T1, H_W), np.float32); _dw[ALG_T1 // 2] = 1.0
+        p["t1_dw"] = t(_dw)                                   # identity at birth
+        p["t1_pw"] = t(np.eye(H_W, dtype=np.float32))         # identity at birth
+        p["t1_b"] = t(np.zeros(H_W))
     if FED_SCRATCH:
         # FED item 6: +8 scratch slot embeds appended to fq (pad-warm
         # loads the trained 24; the doctrine: factor slots stay 24,
@@ -2172,6 +2186,21 @@ def _mh_ctx(p, cur, state, ctx, kb, B, _A5, _snaps):
     _mh_kv = cur + _mh_ce      # LIVE stream + detached context
     state["tc_mh_ctx"] = (kb, _mh_kv, _A5s)
     return _mh_kv, _A5s
+
+
+def _t1_conv(p, x, tokmask):
+    """T1 (2026-09-12): depthwise K-tap convolution over tokens (masked
+    neighbors) + pointwise mix. Identity at birth: center tap 1, other taps
+    0, pointwise = I, bias 0 -> returns x bit-exactly (x*1 + 0*... then
+    x @ I: every product exact, every added zero exact)."""
+    K = int(p["t1_dw"].shape[0]); h = K // 2; T = x.shape[1]
+    xm = x * tokmask.unsqueeze(-1)                  # neighbors beyond the sentence read as 0
+    xp = xm.pad(((0, 0), (h, h), (0, 0)))
+    y = x * p["t1_dw"][h]                           # the center tap reads the row itself
+    for d in range(K):
+        if d != h:
+            y = y + xp[:, d:d + T] * p["t1_dw"][d]
+    return y @ p["t1_pw"] + p["t1_b"]
 
 
 def _make_bank(p, waist, tokmask, B):
@@ -3407,6 +3436,8 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
         # breath ctx, step-trainer tap) inherits the rebound name
         waist = waist + ((waist @ p["fed_w2a"] + p["fed_w2a_b"]).gelu()
                          @ p["fed_w2b"] + p["fed_w2b_b"])
+    if ALG_T1 and "t1_dw" in p and "t1" not in _SEVER:
+        waist = _t1_conv(p, waist, tokmask)   # T1: the token convolution (a road)
 
     bank = _make_bank(p, waist, tokmask, B)
     if N_SCR and slot_mask is not None:
