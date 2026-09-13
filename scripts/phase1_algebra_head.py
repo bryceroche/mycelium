@@ -154,6 +154,12 @@ def _melt(cur, m):
     return cur + mm * (fresh - cur * g)               # content replaced on melted slots; clock (g=0) kept
 
 
+def _wheel_memo_key(row):
+    import json as _json
+    n_vars, parse, m = row
+    return (int(n_vars), int(m), tuple(sorted(_json.dumps({k: v for k, v in f.items() if k != "_slot"}, sort_keys=True, default=str) for f in parse)))
+
+
 def _wheel_turn(p, state, kb, fat, sent, vst, B):
     """Commit this breath's parse to the solver; on a certified refusal,
     the core's slots get a spotlight on their source sentences for the
@@ -161,7 +167,7 @@ def _wheel_turn(p, state, kb, fat, sent, vst, B):
     import numpy as _np
     from tinygrad import Tensor as _Tw, dtypes as _dw
     sys.path.insert(0, "scripts")
-    from alternator_bridge import _core_worker   # the guarded row: alarm (WHEEL_ROW_TIMEOUT), WHEEL_M_MAX, prop-first (2026-09-13)
+    from alternator_bridge import core_rows      # the pool of guarded rows (alarm, WHEEL_M_MAX, prop-first) + the parse memo (2026-09-13)
     o = _heads_of(p, state["cur"], vst, B)
     onp = {k: v.realize().numpy() for k, v in o.items()}
     if _WHEEL_NOGOOD and _WHEEL.get("nogood"):
@@ -173,6 +179,7 @@ def _wheel_turn(p, state, kb, fat, sent, vst, B):
     melt = _np.zeros((B, L_TOT), _np.float32)          # THE MELT's mask for the next breath
     beta = float(_WHEEL.get("beta", 3.0)); mode = _WHEEL.get("mode", "union")
     turned = 0
+    _rows = []; _parses = []; _rowd = []
     for b in range(B):
         row = {k: onp[k][b] for k in onp}
         row["query"] = _np.zeros(K_VARS, _np.float32)      # decode returns (facs, query)
@@ -187,7 +194,19 @@ def _wheel_turn(p, state, kb, fat, sent, vst, B):
                 _facs = []
             for f in _facs:
                 f["_slot"] = j; parse.append(f)
-        _st, _core = _core_worker((int(_WHEEL["n_vars"][b]), parse, int(_WHEEL["m"][b])))
+        _rows.append((int(_WHEEL["n_vars"][b]), parse, int(_WHEEL["m"][b]))); _parses.append(parse); _rowd.append(row)
+    # THE READ-TIME POOL + MEMO (perf, 2026-09-13): the batch's rows solved in
+    # parallel; an identical (n_vars, m, parse) row across breaths/batches is
+    # answered from the memo (the solver is deterministic) — 15 min -> ~4 per read
+    _memo = _WHEEL.setdefault("memo", {})
+    _keys = [_wheel_memo_key(r) for r in _rows]
+    _todo = [i for i, k in enumerate(_keys) if k not in _memo]
+    if _todo:
+        for i, ans in zip(_todo, core_rows([_rows[i] for i in _todo], None)):
+            _memo[_keys[i]] = ans
+    for b in range(B):
+        row = _rowd[b]; parse = _parses[b]
+        _st, _core = _memo[_keys[b]]
         _WHEEL.setdefault("stats", []).append((kb, _st, len(_core)))
         if _st != "unsat" or not _core:
             continue
