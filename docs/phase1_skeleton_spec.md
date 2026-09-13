@@ -37612,3 +37612,51 @@ pointers middle, results late) would remove the tug of war a single
 blur creates on fields whose turn has come. Same read queued on
 ds242 (does the blurred ladder stage the fields?), on t1c242, and on
 balV242 mint (pc-dishline, CPU).
+
+## 2026-09-12 — VERDICTS: THE SHELF READOUT FAILS CLOSED (SR-CENSUS 0.104/0.009/0.002 — the attention stayed on the last breath; SR-IDLE missed by 0.0002); THE BLURRED LADDER'S FULL FOG IS THE CANDIDATE (the selection rule: ds242 idle cost 0.0117 vs the gentle arm's 0.0000); the gentle blur is a null; the dish-line read on ds242
+
+THE SHELF (sr242) — the GPU census (rows 0:8, balV242's frame): b1=1.019
+b2=0.455 **b3=0.104 b4=0.009 b5=0.002** b6=0.009 (the control t1c242, same
+frame: 1.087 0.365 0.052 0.016 0.049 0.146; balV242: 0.985 0.384 0.068
+0.012 0.015 0.098). **SR-CENSUS: FAIL-CLOSED** (min over b3-b5 = 0.002 <
+0.10): the shelf's softmax kept the last breath; b4/b5 got LESS credit
+than under the control. With SR-IDLE missed (0.0098) and SR-GUARD held
+(0.2526 / 0.9801, +0.003 mint over the control), the paved road did
+not open: the loss, given a learnable preference over breaths, chose
+the finished state — THE MANDATORY-ROAD LAW in a new costume (a
+softmax bias is a gain the loss can close). Not a kill; the shelf is
+NOT the desert's answer as built. A shelf that cannot close (a fixed
+uniform prior, or the blur beneath it) is the only form left for it,
+and it is not registered.
+THE BLURRED LADDER — arm 2, dsg242 (beta_max 0.2): open wild 0.2506,
+open mint 0.9806; idle 3,4,5: wild 0.2506 (cost **0.0000**), mint
+0.9796 (0.0010); census b3-b5 = 0.082 / 0.018 / 0.019 (balV242's
+numbers). DS-GUARD PASS, **DS-IDLE FAIL**: the gentle blur changed the
+mint read (+0.0035 over the control) and nothing about the middle.
+THE SELECTION RULE (pinned): the guard-passing arm with the larger
+idle cost — **ds242 (beta_max 0.7) IS THE CANDIDATE**: wild 0.2530 (the
+control 0.2535, balV242 0.2526), mint **0.9815** (the fused-arm
+record), idle cost 0.0117 (PASS), the middle's final-rung credit
+0.305 / 0.087 / 0.056 (x4-7). The full fog did what the fog should:
+the picture now comes into focus over THREE breaths (the dish-line
+read on ds242, wild: pres .81->.88, args .30->.38, dig .12->.33 from b0
+to b2, flat after) where balV242 was finished at breath 0 (.88/.39/.18
+-> .32) — and breaths 3-5 now carry state the last breath uses even
+though their own decodes are flat. Wild did not move: the desert was
+never the wild register's bottleneck (grounding is), and the
+prediction "mint flat" was wrong: the blur is worth +0.004 mint.
+DISH-LINE READ, balV242 on MINT (N=256): b0 pres .999 ftype .987 op
+.997 args .856 res .925 dig .864 -> b1 .999/1.000/1.000/.942/.987/.987
+-> b2 1.000/1.000/1.000/.965/.995/.999 -> flat: on synthetic the
+machine DOES sharpen pointers/results/digits over two breaths, then
+idles four. Two breaths of work, five of tail, on both registers.
+BEFORE ANY CLAIM: a second seed of ds242 (ds241, seed 241) — the mint
+record and the idle cost need the twin; and the T1 variance floor
+(t1c241) that the stop cancelled — both fired now on the idle GPU
+(pc-twins2: t1c241 -> ds241 -> reads), bars as pinned for each.
+THE NEXT FORM (needs the word): THE DISH LINE — a field-wise blur:
+beta_{k,f} = beta_max * cos^2 clipped to zero at field f's stage
+(presence/type/digits early, pointers middle, results late), the
+stage order taken from the measured sharpening order on mint (pres,
+ftype, op by b1; dig by b2; args/res by b2-b3), removing the tug of
+war on fields whose turn has come. Instruments as DS-*.
