@@ -38164,3 +38164,28 @@ unless told otherwise (a fence to build). RECOVERY: the aligner chain's
 precompute (form12al = the same rows, same texts) rebuilds the states
 under a new name; form12's memmap is regenerated from it (or from the
 Sep-1 npz) before any form12 run. The melt chain re-runs after.
+
+## 2026-09-13 — THE ALIGNER TWIN VERDICT: NULL-TO-NEGATIVE — al242 wild 0.2443 (control 0.2535: -0.009), al241 wild 0.2501 (control 0.2652: -0.015); mint 0.9757 / 0.9793 (controls 0.9771 / 0.9771); the span terms DID fire on the pen rows (64/64 sampled rows carry vspan tokens, ~3.7 per row) — anchoring a given's VALUE digits as its variable's mention does not help wild grounding, and leans against it
+
+ALIGN-PASS impossible (both pairs negative); ALIGN-KILL (both <= -0.010)
+missed by 0.0008 on seed 242 — banked as a NULL with a consistent
+negative sign (mean -0.012, each ~1 SE). Mechanism verified first: the
+aligned mentions become vspan token targets through the tokenizer
+offsets (pen64_aligned fixture: 236 vspan tokens over 64 rows; fspan
+still 0 — relation phrases are unanchored). THE READING: in prose a
+given's variable is a QUANTITY named by a noun phrase ("a base coat
+that takes 2 minutes": the variable is the coat's drying time; 2 is its
+value). Pointing the variable-mention target at the digits teaches the
+grounding roads that the variable IS the number — and the relation
+slots' pointers (args -> variables) then have their targets' anchors at
+the wrong words; the head's own implicit grounding did no worse. The
+data-engine lesson: the wild register's grounding gold has to name the
+quantities, not the numerals — exactly the annotators' L3 work the
+books do by hand ("the third number" spans), which no aligner can do
+from digits. THE VALUE ALIGNER is struck as a wild lever in this
+convention; its file (.cache/form_mix12_aligned.jsonl) stays as a
+fixture. (The mint reads: -0.0014 / +0.0022 — noise.)
+WHAT THIS LEAVES for wild grounding: T2 (the structural claim mask;
+cold reads running), and the annotators' quantity mentions on the pen
+rows (a books-campaign item: n annotated prose rows, the critical path
+the campaign already named on 2026-08-xx — "n is the critical path").
