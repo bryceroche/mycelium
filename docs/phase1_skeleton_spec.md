@@ -37931,3 +37931,31 @@ lost); training under it lands INCONCLUSIVE (+0.010) with more
 refusals per breath than stW242's 155-169/312 — the melt makes the
 machine commit more distinct parses per breath, and the refusal rate
 is the wheel's ceiling.
+
+## 2026-09-13 — THE NOGOOD (Bryce: "the second read might be the same as the first"): the melt gains two additions from the certificate — melt the LEAST-CONFIDENT core member only, and mask that slot's refuted choice out of the next decode and the final read (ALG_WHEEL_NOGOOD=1, unset bit-identical); the melt chain is stopped after its pick, the nogood birth reads run, the pick is made over all nine configs, then the arm
+
+THE OBJECTION: with a slot's content wiped, the re-read is the same
+function of the same words with the same query — the deterministic
+grounding road can return the same wrong binding. THE ADDITIONS (scripts
+/apply_nogood.py; pure-numpy helpers _slot_margins / _nogood_pick /
+_nogood_apply, unit-tested): (1) a minimal core says "one of these is
+wrong" and not which; the machine's MARGINS say which — the core
+member whose weakest decision field (res top1-top2; op; args 2nd-vs-3rd)
+has the smallest margin is the one melted, the others kept; (2) THE
+NOGOOD: that slot's refuted choice (the field's previous argmax) is
+masked to -1e9 in the next breath's decode before the commit, and — so
+it reaches the answer — in wheel_read's final decode (the model's
+ranking filtered by the parse's own self-contradictions; the key still
+grades; conflict-driven search's nogood learning at the seam). Over
+five rounds the machine walks its ranked alternatives with the solver
+pruning each. Applied live (door off = inert; syntax + import checked;
+the running chain's later reads import it unchanged).
+THE ORCHESTRATION (pc-meltorch): the melt-only chain (pc-melt2)
+finishes its five birth reads and prints its pick; it is STOPPED before
+the smoke/arm; the four nogood birth reads run (beta 0/3 x melt 0.0/
+1.0, nogood on); THE PICK RULE over all nine configs (the best birth
+wild read) chooses the training config; the arm stM242 and the reads
+follow with bars TM-* as pinned. (The first melt chain's first read
+was stopped by me at 10.5 min on a false stall — the holdout is all
+m=300 and a wheel-read takes ~15 min; the guarded row worker is now
+the read-time path regardless.)

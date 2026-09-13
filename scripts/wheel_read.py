@@ -38,6 +38,8 @@ for s0 in range(0, N, 8):
     H._WHEEL = {"n_vars": [vs[int(i)].get("n_vars", K_VARS) for i in sl_p], "m": [vs[int(i)].get("m", 300) for i in sl_p], "beta": beta, "mode": mode, "stats": [], "turned": []}
     o = forward(p, ts, tk, se, slot_mask=Tensor(mk, dtype=dtypes.float), fact_buf=fact_t, mh_mass=None, mh_atlas_traj=_mha_t)
     onp = {k: o[k].realize().numpy() for k in (("pres", "ftype", "op", "islit", "dig", "args", "res") + (("dup",) if "h_dup" in p else ()))}
+    if getattr(H, "_WHEEL_NOGOOD", 0) and H._WHEEL.get("nogood"):
+        H._nogood_apply(onp, H._WHEEL["nogood"])        # THE NOGOOD reaches the final read: the ranking filtered by the parse's own refutations
     ALLST.extend(H._WHEEL["stats"]); ALLTU.extend(H._WHEEL["turned"]); H._WHEEL = None
     for bi, i in enumerate(sl):
         i = int(i)

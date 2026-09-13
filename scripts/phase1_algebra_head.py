@@ -106,6 +106,39 @@ _WHEEL = None     # THE STEERING WHEEL at read time (apply_wheel_read.py): None 
 _WHEEL_MELT = (float(os.environ["ALG_WHEEL_MELT"]) if os.environ.get("ALG_WHEEL_MELT") not in (None, "") else None)
 
 
+_WHEEL_NOGOOD = int(os.environ.get("ALG_WHEEL_NOGOOD", "0"))
+
+
+def _slot_margins(row, j):
+    """(field, margin, prev_choice) per decision field of slot j from a row's
+    head logits: res (top1-top2), op (rel slots), args (2nd-of-top2 vs 3rd)."""
+    import numpy as _np
+    out = []
+    r = _np.sort(row["res"][j])[::-1]; out.append(("res", float(r[0] - r[1]), int(row["res"][j].argmax())))
+    if int(row["ftype"][j].argmax()) == 0 and "op" in row:
+        o = _np.sort(row["op"][j])[::-1]; out.append(("op", float(o[0] - o[1]), int(row["op"][j].argmax())))
+        a = _np.argsort(-row["args"][j]); av = row["args"][j][a]
+        out.append(("args", float(av[1] - av[2]), int(a[1])))     # the weaker of the top-2 pointers
+    return out
+
+
+def _nogood_pick(row, core_slots):
+    """The least-confident (slot, field, prev_choice) among the core's slots."""
+    best = None
+    for j in core_slots:
+        for f, m, c in _slot_margins(row, j):
+            if best is None or m < best[1]:
+                best = (j, m, f, c)
+    return (best[0], best[2], best[3]) if best else None
+
+
+def _nogood_apply(onp, nogoods):
+    """Mask the previous choices out of the head logits, in place. nogoods: list of (b, j, field, idx)."""
+    for b, j, f, idx in nogoods:
+        onp[f][b, j, idx] = -1e9
+    return onp
+
+
 def _melt(cur, m):
     """cur: (B, LT, HW); m: (B, LT) 1.0 on the slots to melt. On those slots the
     content dims become _WHEEL_MELT x ||slot|| x unit seeded noise (0 -> zeros);
@@ -128,9 +161,11 @@ def _wheel_turn(p, state, kb, fat, sent, vst, B):
     import numpy as _np
     from tinygrad import Tensor as _Tw, dtypes as _dw
     sys.path.insert(0, "scripts")
-    from alternator_bridge import refuse_and_core
+    from alternator_bridge import _core_worker   # the guarded row: alarm (WHEEL_ROW_TIMEOUT), WHEEL_M_MAX, prop-first (2026-09-13)
     o = _heads_of(p, state["cur"], vst, B)
     onp = {k: v.realize().numpy() for k, v in o.items()}
+    if _WHEEL_NOGOOD and _WHEEL.get("nogood"):
+        _nogood_apply(onp, _WHEEL["nogood"])          # THE NOGOOD: refuted choices are not re-committed
     fat_np = fat.realize().numpy() if hasattr(fat, "realize") else _np.asarray(fat)
     sent_np = sent.numpy() if hasattr(sent, "numpy") else _np.asarray(sent)
     T = sent_np.shape[1]
@@ -152,12 +187,18 @@ def _wheel_turn(p, state, kb, fat, sent, vst, B):
                 _facs = []
             for f in _facs:
                 f["_slot"] = j; parse.append(f)
-        r = refuse_and_core(int(_WHEEL["n_vars"][b]), parse, int(_WHEEL["m"][b]))
-        _WHEEL.setdefault("stats", []).append((kb, r["status"], len(r["core"])))
-        if r["status"] != "unsat" or not r["core"]:
+        _st, _core = _core_worker((int(_WHEEL["n_vars"][b]), parse, int(_WHEEL["m"][b])))
+        _WHEEL.setdefault("stats", []).append((kb, _st, len(_core)))
+        if _st != "unsat" or not _core:
             continue
         turned += 1
-        core_slots = [parse[k]["_slot"] for k in r["core"]]
+        core_slots = [parse[k]["_slot"] for k in _core]
+        if _WHEEL_NOGOOD:
+            _pk = _nogood_pick(row, sorted(set(core_slots)))
+            if _pk is not None:
+                _j, _f, _c = _pk
+                core_slots = [_j]                       # the least-confident member only
+                _WHEEL.setdefault("nogood", []).append((b, _j, _f, _c))
         for j in core_slots:
             melt[b, j] = 1.0
         sents = {}
