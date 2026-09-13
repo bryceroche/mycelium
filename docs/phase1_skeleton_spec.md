@@ -37417,3 +37417,32 @@ VARIANCE if wild(t1c241) >= 0.2635; CONTEXT-IN-TRAINING (the conv's
 neighbors mattered while learning even though the read ignores them)
 if wild(t1p242) <= 0.2585 AND wild(t1c241) <= 0.2585. Mixed = a second
 seed of each before any claim.
+
+## 2026-09-12 — THE DENOISING SCHEDULE, refined (the gut: parallel sharpening, "an image coming into focus", NOT serial): the uniform kernel over the masking kernel; the cheapest form is TARGET-SIDE — a blurred gold per breath on the stellarator's cos^2 clock; a loss-only change
+
+THE KERNEL: discrete diffusion's two forward processes — the MASKING
+(absorbing) kernel reveals symbols in groups (serial in slots: some
+finalized, the rest blank) vs the UNIFORM kernel (every symbol
+corrupted a little at the same level; all slots sharpen together).
+Bryce's gut is the uniform kernel, and it is what the machine already
+does unprompted: the spectral read's effective rank funnels ~30 ->
+10-12 across the seven breaths, all slots at once. THE ROADS: an
+input-side x_t (a corrupted parse fed to breath k) needs a parse->state
+encoder we do not have (the fact port carries the solver's VALUES, not
+a parse) — held. THE TARGET-SIDE FORM (no new organ; a loss-only
+change): at breath k decode every slot (the ping's heads_of on
+breaths[k] exists) and score it against a BLURRED GOLD — per
+categorical field, (1 - beta_k) * onehot + beta_k * uniform — with
+weight w_k; the last breath keeps the sharp gold. Early breaths are
+asked to be uncertain in the right direction, not right; the grave
+(08-16) asked breath 2 for the sharp picture. Every breath's state
+then has a two-hop path to a solvable target; parallel across slots.
+THE SCHEDULE: beta_k on the stellarator's own clock, cos^2(k*pi/(2(K-1)))
+(1 at breath 1 -> 0 at the last loop breath): the seal and the
+sharpening on one clock. (A schedule fit to the machine's own measured
+per-breath entropy is a hyperparameter, not a supervised diagnostic —
+the Goodhart fence is not touched — but cos^2 first.) INSTRUMENTS as
+the shelf's: SR-CENSUS (b3-b5 credit >= 0.20), SR-IDLE (idle 3,4,5
+costs >= 0.010 wild), the guards (wild >= 0.2426, mint >= 0.9707; the
+grave's kill), vs the t1c242 control. Needs the word; not before the
+shelf read (pc-shelf, running).
