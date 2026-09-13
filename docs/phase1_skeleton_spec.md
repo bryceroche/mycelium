@@ -38189,3 +38189,22 @@ WHAT THIS LEAVES for wild grounding: T2 (the structural claim mask;
 cold reads running), and the annotators' quantity mentions on the pen
 rows (a books-campaign item: n annotated prose rows, the critical path
 the campaign already named on 2026-08-xx — "n is the critical path").
+
+## 2026-09-13 — T2 THE CLAIM MASK, first cold reads on balV242 (wild / mint): 3:0.2 -> 0.2579 / 0.9757; 3:0.3 -> 0.2550 / 0.9757; 1.5:0.2 -> 0.2535 / 0.9757 (open 0.2526 / 0.9757) — MONOTONE in the mask's strength, mint untouched to the digit; a sweep to stronger masks queued; bars pinned
+
+THE READ: tokens claimed by a slot's station-3 attention (> tau) at
+breath k cost every other slot -beta on both grounding roads at breath
+k+1 — structure, no parameter, no training. Wild rises with the mask's
+strength (+0.0053 at beta 3 / tau 0.2 — 0.55 SE — while mint does not
+move at all: on templated text the claims are already exclusive; on
+prose they are contested). Paired per-slot reads vs open (balV242 wild)
+are in the ledger's next line. THE SWEEP (pc-t2sweep, behind the melt
+re-run): 6:0.2, 3:0.15, 6:0.15, 10:0.2, 6:0.1 — cold, wild + mint,
+paired. BARS (pinned): T2-COLD WIN = a config with paired McNemar z >=
+2.0 AND wild >= open + 0.015 with mint >= 0.9707 (a read-time win to
+twin on ds242 and t1c241); T2-TRAIN (if any config is a cold win, or
+the best is >= +0.010): an arm from balV242 under the mask vs t1c242
+/ t1c241, PASS at >= +0.020 or twinned >= +0.010. REGISTERED
+PREDICTION: the sweep peaks between beta 3-6 at tau 0.15-0.2 at
++0.008 to +0.015 cold; training under the mask adds as much again (the
+grounding roads learn to read AROUND claims instead of fighting them).
