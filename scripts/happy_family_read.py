@@ -32,7 +32,7 @@ for k in p: p[k].assign(sd[k].to(p[k].device).cast(p[k].dtype)).realize()
 atlas = load_atlas(os.environ.get("HF_ATLAS", ".cache/step_atlas_current.npz"), manifest_path=os.environ.get("MH_ATLAS_MANIFEST", ".cache/RESEARCH_MANIFEST.json"))   # the research era anchor (the miner writes it)
 M, V, C = atlas["means"], atlas["vars"], atlas["counts"]          # (K, ncls, D)
 K = M.shape[0]
-zs = np.full((N, K), np.nan); cls = np.full((N, K), -1); okrow = np.zeros(N, bool)
+zs = np.full((N, K), np.nan); cls = np.full((N, K), -1); okrow = np.zeros(N, bool); okfrac = np.zeros(N)
 for s0 in range(0, N, 8):
     sl = idx[s0:s0 + 8]; pad = 8 - len(sl); sl_p = np.concatenate([sl, sl[:1].repeat(pad)]) if pad else sl
     ts = Tensor(np.ascontiguousarray(vst[sl_p]), dtype=dtypes.half); tk = Tensor(vtk[sl_p].astype(np.float32)); se = Tensor(vse[sl_p].astype(np.int32), dtype=dtypes.int)
@@ -45,10 +45,10 @@ for s0 in range(0, N, 8):
     br = [b.numpy().mean(1) for b in o["breaths_all"]]                # (B, D) mean-pooled over slots, the miner's idiom
     onp = {k: o[k].numpy() for k in ("pres", "ftype", "op", "dig", "args", "res") + (("dup",) if "dup" in o else ())}
     for bi, i in enumerate(sl):
-        i = int(i); ok = True; any_slot = False
+        i = int(i); ok = True; any_slot = False; n_s = 0; n_ok = 0
         for j in range(L_FAC):
             if vg["presence"][i, j] < 0.5: continue
-            any_slot = True
+            any_slot = True; n_s += 1
             sok = (onp["pres"][bi, j] > 0) and int(onp["ftype"][bi, j].argmax()) == vg["ftype"][i, j] and int(onp["res"][bi, j].argmax()) == vg["res"][i, j]
             if vg["ftype"][i, j] == 0:
                 sok = sok and int(onp["op"][bi, j].argmax()) == vg["op"][i, j]
@@ -56,8 +56,8 @@ for s0 in range(0, N, 8):
                 sok = sok and ((bool(onp["dup"][bi, j] > 0) and int(np.argmax(onp["args"][bi, j])) in gset) if (len(gset) == 1 and "dup" in onp) else set(np.argsort(-onp["args"][bi, j])[:2].tolist()) == gset)
             else:
                 sok = sok and bool((onp["dig"][bi, j].argmax(-1) == vg["digits"][i, j]).all())
-            ok = ok and sok
-        okrow[s0 + bi] = ok and any_slot
+            ok = ok and sok; n_ok += int(sok)
+        okrow[s0 + bi] = ok and any_slot; okfrac[s0 + bi] = n_ok / max(n_s, 1)
         for kb in range(min(K, len(br))):
             s = br[kb][bi]; live = C[kb] > 0
             if not live.any(): continue
@@ -65,10 +65,11 @@ for s0 in range(0, N, 8):
             c = int(np.argmax(sim)); ci = np.where(live)[0][c]
             zs[s0 + bi, kb] = np.linalg.norm(s - M[kb][ci]) / (np.sqrt(V[kb][ci].mean()) + 1e-9); cls[s0 + bi, kb] = ci
 name = os.path.basename(os.environ["HF_CKPT"]).replace("sharp_", "").replace(".safetensors", "")
-print(f"[happy-family] {name} on {os.environ.get('ALG_TEST_NAME','?')} N={N}: rows correct {okrow.mean():.3f}; atlas cells live per breath {[int((C[k] > 0).sum()) for k in range(K)]}")
+half = okfrac >= 0.5
+print(f"[happy-family] {name} on {os.environ.get('ALG_TEST_NAME','?')} N={N}: rows fully correct {okrow.mean():.3f}, rows >= half correct {half.mean():.3f}; atlas cells live per breath {[int((C[k] > 0).sum()) for k in range(K)]}")
 for kb in range(K):
     z = zs[:, kb]; m = ~np.isnan(z)
     if m.sum() < 10: continue
-    print(f"  breath {kb}: AUROC(correct | tighter) = {auroc(-z[m], okrow[m].astype(int)):.3f} | z median correct {np.median(z[m & okrow]):.2f} vs wrong {np.median(z[m & ~okrow]):.2f} | nearest-class hist {np.bincount(cls[m, kb], minlength=M.shape[1]).tolist()}")
+    print(f"  breath {kb}: AUROC(>=half | tighter) = {auroc(-z[m], half[m].astype(int)):.3f} | AUROC(full) = {auroc(-z[m], okrow[m].astype(int)):.3f} | z median >=half {np.median(z[m & half]) if (m & half).any() else float('nan'):.2f} vs below {np.median(z[m & ~half]) if (m & ~half).any() else float('nan'):.2f} | nearest-class hist {np.bincount(cls[m, kb], minlength=M.shape[1]).tolist()}")
 zp = np.nanmean(zs, axis=1); m = ~np.isnan(zp)
-print(f"  pooled over breaths: AUROC = {auroc(-zp[m], okrow[m].astype(int)):.3f}  (bar >= 0.65 = a certificate; < 0.55 = not a compass on this register)")
+print(f"  pooled over breaths: AUROC(>=half) = {auroc(-zp[m], half[m].astype(int)):.3f}, AUROC(full) = {auroc(-zp[m], okrow[m].astype(int)):.3f}  (bar >= 0.65 on >=half = a certificate; < 0.55 = not a compass on this register)")
