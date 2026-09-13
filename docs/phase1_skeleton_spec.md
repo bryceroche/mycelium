@@ -37660,3 +37660,26 @@ beta_{k,f} = beta_max * cos^2 clipped to zero at field f's stage
 stage order taken from the measured sharpening order on mint (pres,
 ftype, op by b1; dig by b2; args/res by b2-b3), removing the tug of
 war on fields whose turn has come. Instruments as DS-*.
+
+## 2026-09-12 — CANDIDATE (needs the word): THE WHIP — a state-side kick at a middle breath (the laundry analogy: send a wave through the fabric before folding)
+
+BRYCE'S GUT: shirts out of the dryer are wrinkled; whip them (a wave
+through the fabric) before folding. THE LITERAL MAP: the wave is GAC
+propagation through the committed factor graph (50/51 refusals fall to
+the wave alone; the fold is the commit; the alternator whips before it
+folds every breath); the warning is ORDER — a whip at the last breath
+folds a wrinkled shirt; whips go early/middle with relaxing breaths
+after. THE PRODUCTIVE MAP: whip the STATE, not the target — at breath
+k add Gaussian noise to every slot's CONTENT planes (the clock planes
+untouched: the machine keeps its time), amplitude in units of the
+median slot norm, the SAME kick at training and at read (a seeded
+kick; diffusion samplers re-noise at inference too — a train/read
+mismatch otherwise). This is the input-side denoising form the ledger
+said needed a parse->state road: noise needs none; the rungs after
+the kick grade each breath on undoing it; every slot kicked equally
+(the fog; no tug of war with fields whose turn has come). It answers
+the desert by construction: the tail has wrinkles to remove. DOOR:
+ALG_WHIP=k:amp (e.g. 3:0.3, 3:0.6); arms from balV242 (family recipe);
+instruments as DS-*: idle 3,4,5 >= 0.010 wild, the census (b4/b5
+rising), the guards; REGISTERED PREDICTION: matches the fog's idle
+result, beats it on b4/b5 credit; a second arm stacks whip + blur.
