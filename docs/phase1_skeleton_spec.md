@@ -38045,3 +38045,22 @@ mint(stM242) >= open mint(stC3k) - 0.005; INCONCLUSIVE +0.010..+0.020;
 KILL < open(stC3k) - 0.020. The structural lever left unbuilt: two
 half-batches pipelined so the GPU walks one while the pool solves the
 other (a walker rebuild; ~2x; registered, not fired).
+
+## 2026-09-13 — THE HAPPY-FAMILY READ on MINT: A COMPASS — AUROC(fully correct | tighter) = 0.787 pooled (bar 0.65) where 88.7% of rows are fully correct; the register asymmetry is the finding: Anna Karenina's clustering certifies where the family is happy (mint) and inverts where it is not (wild, 0.27)
+
+ds242, its own atlas, test23 N=300: rows fully correct 0.887 (the >=
+half label saturates at 1.000 — AUROC undefined); **AUROC(full) 0.787
+pooled over breaths**: on synthetic, the z-radius to the nearest cell
+separates the fully-correct parses from the rest at 0.79, a certificate
+without the solver, on the register where the certificate is least
+needed. On wild the same statistic reads 0.27 — the correct rows are
+the outliers of a wrong-majority cell. THE LAW-SHAPED READING: a
+Welford atlas is the mean and spread of WHATEVER the majority does;
+it certifies "typical", and typical is correct only where the machine
+is usually right. The atlas is therefore a mouth-side instrument (in-
+distribution + typical = certifiable) and not a wild-register compass
+until wild is a happy family. Rung 3 stays unfired; the mined ds242
+atlas is banked for the deployed stack's certification context
+(.cache/step_atlas_ds242.npz, research-era anchored).
+(pc-nogood6 was stopped and relaunched as pc-nogood7 on a mistaken
+timing check — the chain had already read the re-timed script; ~5 min.)
