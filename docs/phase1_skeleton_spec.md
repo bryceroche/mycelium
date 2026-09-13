@@ -38109,3 +38109,44 @@ span -> build_gold's tokenizer offsets do the rest) would give the
 grounding roads a value-side target on 18.5k more prose rows for
 free; the variable-phrase mentions stay the annotators' (L3) — a data-
 engine item, registered (needs the word): THE VALUE ALIGNER.
+
+## 2026-09-13 — CORRECTION to THE SPAN COVERAGE: the 23,228 "prose with mentions" rows are templated variants ("The following facts hold about a, b, c ..."); REAL prose = the 18,508 gsm8k pen rows, and NONE carries a span — the grounding roads have ZERO direct supervision on the wild register; the waist probe cannot be run on wild (no span gold) and is set aside; THE VALUE ALIGNER moves to the front of the order of attack
+
+My register regex missed the "The following facts hold about ..." template. Every
+row with mentions anchors LETTERS (and letter-free paraphrases like "the third
+number"); the gsm8k pen rows — the only real prose in training — have mentions {}
+and factor spans []. In the loss, fsn/vsn are zero on them: the slot->token
+attention CE (fat/vat) contributes nothing on prose; wild grounding is trained
+only through what the pointer/value heads make of whatever the attention
+fetched. THE WAIST PROBE (trunk L3 vs waist vs random projection, token tagging)
+has no wild target and reads 1.000 on templated text from every feature set —
+uninformative; set aside honestly (a wild span fixture would revive it). THE
+VALUE ALIGNER (the word: the order of attack) becomes the first grounding move:
+a given's value appears as a digit string in the prose; align it as the given's
+VARIABLE mention (in prose a given's variable is named by its value), write
+mentions for the pen rows, and the fat/vat terms wake on 18.5k rows. Unknowns
+and relation phrases stay unanchored (the annotators' L3). T2 rides on it.
+
+## 2026-09-13 — THE VALUE ALIGNER built and run (scripts/value_aligner.py): 13,409 of 13,475 gsm8k pen rows touched; 42,625 of 45,496 givens aligned (94%; 3,586 multi-occurrence) -> .cache/form_mix12_aligned.jsonl; THE ALIGNER TWIN queued (al242 / al241 vs t1c242 / t1c241); T2 THE CLAIM MASK built (a structural back-edge; calibration read pending)
+
+THE ALIGNER: for every given (var v, value x) in a pen row, x as a whole
+number in the text (digits, thousands commas, $ and % stripped) -> char
+spans written as mentions[v] (the given's variable is named by its value
+in prose); multi-occurrence values keep every occurrence (the softmax
+target spreads); word numbers and non-integers are left unanchored; the
+row's gen carries aligned=value-aligner-2026-09-13. The fat/vat terms
+wake on these rows: the first direct grounding supervision on real prose.
+THE TWIN (pc-align, behind the melt chain): the same recipe as the T1
+controls (warm balV242, 12k, B=8, flat mix) on the aligned file, seeds 242
+and 241, vs t1c242 (0.2535 / 0.9771) and t1c241 (0.2652 / 0.9771).
+BARS (SE units): ALIGN-PASS = mean over the two seed pairs of (al - control)
+on wild >= +0.015 with both pairs positive, and mint within 0.005 of the
+controls; ALIGN-KILL = both pairs <= -0.010. Registered prediction: +0.010
+to +0.025 (the first supervised anchors on the wild register; a given's
+number is the easiest binding and the pointer heads read through it).
+T2 (scripts/apply_t2_claim.py; ALG_T2_CLAIM="beta:tau"): a token claimed
+by a slot's station-3 attention (> tau) at breath k costs every other slot
+-beta on both grounding roads at breath k+1; a melted slot's claims are
+released. Unset bit-identical (5.2995 / 0.0279). At tau 0.5 the tiny
+fixture's losses did not move — the calibration read (the head-mean
+attention's max per slot) decides tau; T2's cold read follows on the GPU.
