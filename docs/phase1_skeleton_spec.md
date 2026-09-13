@@ -37991,3 +37991,23 @@ arm (pc-nogood, this evening).
 FIRST COLD NOGOOD READ (balV242, wild): beta 0 / melt 0.0 / nogood:
 0.2477 (open 0.2526; spotlight-only 0.2560) — the untrained repairer
 costs 0.005, as predicted; three configs to go.
+
+## 2026-09-13 — THE SPAWN STORM (an hour lost, three restarts): the read-time wheel's new pool re-imported wheel_read.py — an UNGUARDED script — in every spawn worker, and each worker ran the whole read (trunk load, forward, its own pool); wheel_read.py is main-guarded now; the propagation-first bridge patch (applied by the glue gate 09-12) was never committed until now
+
+The read-time pool (perf, 10:50) made `_wheel_turn` call core_rows,
+whose spawn-context workers import the parent's __main__ module —
+wheel_read.py, whose body ran at module level (no `if __name__ ==
+"__main__"`): every worker re-ran the read from the top and spawned
+its own pool. Symptoms: the second cold read at 12 min with five
+fresh children at 100%+ CPU and 0 s elapsed, forever. Two of my
+repair attempts made it worse: a `pkill -f "scripts/wheel_read.py"`
+matched my OWN shell (exit 144 — the guard rule violated again: build
+patterns from concatenated strings), and a heuristic guard edit
+duplicated the body (an unguarded copy above a guarded one — import
+still ran the read). Fixed properly: `_main()` from the first
+statement, `if __name__ == "__main__"`, verified by `import wheel_read`
+running nothing. RULES: any script that may become a spawn parent is
+main-guarded (step_trainer.py already was; loop_val.py's read is a
+function); never pkill with a literal pattern. The chain relaunched
+(pc-nogood4) over the three unbanked configs (0:1.0, 3:1.0, 3:0.0);
+the banked cold read (0:0.0 nogood: 0.2477) stands in the pick file.
