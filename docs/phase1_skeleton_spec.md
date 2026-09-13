@@ -37852,3 +37852,40 @@ cores; the training-time wheel's memo/prop-first bridge). Bars: the
 wheel's WT-* re-pinned in SE units (wild >= +0.020 over the control or
 twinned; mint guard), plus WH-IDLE/CENSUS. T2 (tokens<-slots) remains
 the other grounding move.
+
+## 2026-09-13 — THE WHIP VERDICT: a NULL for the desert — both arms hold the guards, neither moves the middle's idle cost (paired +0.0000 / +0.0015, 20/20 and 23/20 discordant) nor its census credit; idling the breaths AFTER the kick is catastrophic (-0.045 wild, -0.076 mint at 0.3) — the tail learned the whip's job and the read does not need it
+
+wh242a (ALG_WHIP=3:0.3, warm balV242 12k B=8 seed 242; control t1c242
+0.2535 / 0.9771): open wild **0.2438** (-0.010, 1 SE; guard 0.2426
+held by 0.001), open mint 0.9774; idle 3,4,5: wild 0.2438 (paired diff
+**+0.0000**, 20 lost / 20 gained, SE 0.0031), mint 0.9752 (+0.0022, z
+2.0); **idle 4,5,6: wild 0.1989 (-0.045), mint 0.9010 (-0.076)**; census
+b3-b5 0.051 / 0.023 / 0.038 (balV242: 0.068 / 0.012 / 0.015).
+wh242b (3:0.6): open wild 0.2511, open mint **0.9801** (+0.003, 1.3
+SE); idle 3,4,5: wild 0.2496 (**+0.0015**, 23/20, z 0.46), mint 0.9782
+(+0.0019, z 1.7); idle 4,5,6: wild 0.2092 (-0.042), mint 0.9498
+(-0.030); census 0.050 / 0.012 / 0.026.
+THE BARS: WH-GUARD PASS (both); **WH-IDLE FAIL (both)**; **WH-CENSUS
+FAIL (both)** — no rise on b4/b5; WH-TAIL (idle 4,5,6): the breaths
+after the kick are now indispensable — because they remove the kick.
+THE READING: the whip gives the middle a job, and the tail learns it
+(idle 4-6 with the wrinkle left in: catastrophic), but the job is
+self-inflicted and self-cancelling — the read after the tail has done
+it is the read balV242 gave (wild 0.244-0.251, mint 0.977-0.980), and
+idling 3-5 changes 40 slots instead of the fog's 160. Contrast the
+fog: its rungs gave the middle a job the ANSWER depends on (idle cost
++0.010 x2, census x4-7, mint +0.003-0.004). Diffusion's input-side
+form does not transfer here because, unlike a denoiser, our read does
+not have to reconstruct the state — the sentence is re-read every
+breath and the tail simply re-derives; a state-side wrinkle is work
+the read never needed. Registered prediction wrong ("matches the fog
+on idle, beats it on b4/b5"). The whip stays as an organ (ALG_WHIP,
+default off; the robustness read is useful) — THE SCHEDULED WHIP is
+DEPRIORITIZED by the sequencing rule pinned last night (a kick at one
+breath could not make the tail load-bearing; six will not). THE
+TARGETED WHIP (the core's slots) is a different claim — it ties the
+kick to a certificate about the ANSWER — and stays a candidate behind
+T2. The desert's answer, as of this morning, is the blurred ladder
+alone; the wild register's answer is grounding.
+(The chain's paired-read lines were lost to the journal — `| sed` at
+a pipeline's end drops like `| cut`; the per-slot files carried them.)
