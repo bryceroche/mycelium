@@ -37959,3 +37959,5 @@ follow with bars TM-* as pinned. (The first melt chain's first read
 was stopped by me at 10.5 min on a false stall — the holdout is all
 m=300 and a wheel-read takes ~15 min; the guarded row worker is now
 the read-time path regardless.)
+
+## 2026-09-13 — THE WORD: the baseline wipe stopped after one cold read (spotlight-only on balV242: wild 0.2560, +0.0034 over open — the read-time wheel reproduced); THE NOGOOD CHAIN fired (pc-nogood): four cold reads (beta 0/3 x melt 0.0/1.0, least-confident melt + nogood) -> the pick among them -> stM242 -> reads; bars TM-* as pinned
