@@ -37795,3 +37795,27 @@ the wheel's slot-lane form) — with wild bars at 0.020 or twinned.
 The whip chain is running (birth read at 3:0.3, wild 0.2516: a cold
 30% content kick at breath 3 costs 0.001 on wild — the read barely
 depends on what breath 3's content planes carry; mint and 0.6 next).
+
+## 2026-09-12 — THE WHIP's birth reads: a cold kick at breath 3 of 30% or 60% of every slot's content norm costs 0.001 on wild and NOTHING on mint (0.6: +0.0011) — the read barely depends on the direction breath 3's content planes carry; a false alarm on my side (the loop breaths run only under a slot mask; my CPU probes called forward without one) cost the chain 15 minutes; relaunched as pc-whip2
+
+BIRTH READS (balV242 whipped at read, the GPU chain, two-pass read):
+3:0.3 wild **0.2516** / mint **0.9757**; 3:0.6 wild **0.2516** / mint
+**0.9768** (balV242 open: 0.2526 / 0.9757). A 60% content-plane kick
+at the state entering breath 3 moves wild by -0.001 (0.1 SE) and mint
+by +0.0011 (0.5 SE): THE MACHINE IS ALREADY ROBUST TO THE WRINKLE —
+consistent with the desert (the tail re-derives what it needs from the
+grounding read and the shelf; breath 3's content direction is not
+load-bearing), and a stronger version of the idle read (idling 3-5
+removes the state's contribution; the whip randomizes it — both cost
+~nothing cold). The whip's arms therefore start from a machine that
+does not need to learn to remove this wrinkle to read well — the
+question the arms answer is whether TRAINING under it makes the tail
+do something the read then depends on (WH-IDLE, WH-CENSUS b4/b5).
+THE FALSE ALARM: a CPU probe (forward on 8 rows, whip on vs off) showed
+bit-identical outputs and I stopped the chain; the probe had called
+forward WITHOUT a slot mask, and the K-breath loop runs only under one
+(the read's pass 2) — breath_step was never entered. The GPU birth
+reads were right all along. Rule: a probe of the loop passes
+slot_mask (ones) and fact_buf, as t1_birth_check.py does. Relaunched
+(pc-whip2, 21:12): birth reads again (cheap), wh242a, wh242b, reads +
+paired + census; bars as pinned.
