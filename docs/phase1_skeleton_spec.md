@@ -37715,3 +37715,20 @@ claims need >= 0.007 or the twin; the ledger's wild "records" carry
 their SE. The robust signals of the day are the structural ones: the
 census ratios (x4-7 on fixed rows), the dish-line curves, the idle
 read's direction on paired slots.
+
+## 2026-09-12 — THE PAIRED READ (instrument built: loop_val LV_PER_SLOT + scripts/paired_read.py): the fog's idle cost is +0.0117 with paired SE 0.0061 (McNemar z +1.92; 90 slots lost / 66 gained when breaths 3-5 idle); the gentle blur's is exactly zero (42 / 42)
+
+ds242 (full fog), wild, open vs ALG_IDLE_BREATHS=3,4,5 on the same 2051
+slots: 0.2530 vs 0.2413, diff +0.0117; discordant slots: right only
+open 90, right only idle 66, both 429; paired SE 0.0061; McNemar z
++1.92 (p ~ 0.055 two-sided) — the DS-IDLE bar (>= 0.010) is met by a
+read whose own paired uncertainty is 0.006: at the edge, not inside
+the noise, and the direction is the structural fact — 156 slots
+(7.6%) change outcome when the middle idles, where the gentle arm
+changes 84 with net zero (42/42) and balP242 idled to a GAIN. The
+middle is doing something under the fog, worth ~+1 point net on wild
+at 1.9 sigma; the census (x4-7) and the dish-line curve are the
+robust half of the verdict; ds241 (seed 241) reads next (~21:05).
+The instrument: LV_PER_SLOT=<npz> makes loop_val record (row, slot,
+ok); paired_read.py A.npz B.npz reports diff, discordants, paired SE,
+McNemar z. From here idle/sever claims quote the paired SE.

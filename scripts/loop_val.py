@@ -104,6 +104,7 @@ def read(ckpt, data=None, p=None):
     _jk_masked = (("pres", "ftype", "op", "islit", "dig", "args", "res")
                   + (("dup",) if "h_dup" in p else ()))
     n_ok = n_tot = 0
+    _PS = [] if os.environ.get("LV_PER_SLOT") else None   # THE PAIRED READ (2026-09-12): per-slot outcomes to an npz
     for s0 in range(0, len(vs), 8):
         sl = np.arange(s0, min(s0 + 8, len(vs)))
         pad = 8 - len(sl)
@@ -175,6 +176,10 @@ def read(ckpt, data=None, p=None):
                     ok &= bool((onp["dig"][bi, j].argmax(-1) ==
                                 vg["digits"][i, j]).all())
                 n_ok += ok
+                if _PS is not None:
+                    _PS.append((i, j, bool(ok)))
+    if _PS is not None:
+        np.savez(os.environ["LV_PER_SLOT"], rows=np.array([r for r, _, _ in _PS]), slots=np.array([c for _, c, _ in _PS]), ok=np.array([o for _, _, o in _PS]))
     return n_ok, n_tot
 
 

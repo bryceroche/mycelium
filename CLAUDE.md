@@ -110,6 +110,12 @@ pure prose at 340 epochs is poison −243 — tune between).
 - **Estimator variance masquerades as distance**: pooling variable-length
   evidence inherits a sample-size coordinate ("is this distance or is this n?").
   Mouth reads are length-controlled; vintages never mix (straight-to-straight).
+  **THE NUMBER (2026-09-12):** the wild fac-exact read (n=2051 slots, p~0.25)
+  has SE 0.0096 (a two-read difference 0.0135); mint (n=3668, p~0.98) SE
+  0.0023. A +0.010 wild bar is ONE standard error: wild claims need >= 0.020
+  or a seed twin on both sides; paired reads (open vs idle/sever) quote the
+  paired SE (`LV_PER_SLOT` + `scripts/paired_read.py`). T1's "record" 0.2706
+  fell inside the seed spread (the seed-241 control read 0.2652).
 - **Never mix generations' head-space coordinates** (drift = pure rotation,
   aligned 0.988): Procrustes-align or re-anchor. Radius is a consolidation clock
   (two-channel reads: angle=identity, radius=consolidation).
