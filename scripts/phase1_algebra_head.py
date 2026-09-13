@@ -55,6 +55,37 @@ ALG_CIRCLE = int(os.environ.get("ALG_CIRCLE", "0"))      # the traffic circle
 ALG_STELLAR = int(os.environ.get("ALG_STELLAR", "0"))    # cell-3b: helical handoff
 ALG_CLOCK_CANON = int(os.environ.get("ALG_CLOCK_CANON", "0"))   # memories in a canonical clock frame
 _GTAP = None      # THE GRADIENT TAP (apply_grad_tap.py): read-only probe leaves per breath
+# THE WHIP (2026-09-12, the word): ALG_WHIP="k:amp" kicks the state ENTERING
+# breath k with Gaussian noise on the content planes (per slot: amp x the
+# slot's norm); the breaths after it have wrinkles to remove. Training feeds
+# fresh noise per step (_WHIP_SRC = the trainer's buffer); the read uses a
+# seeded constant (the same kick at train-time val and at read).
+_WHIP = os.environ.get("ALG_WHIP", "")
+_WHIP_K = int(_WHIP.split(":")[0]) if _WHIP else 0
+_WHIP_AMP = float(_WHIP.split(":")[1]) if _WHIP else 0.0
+_WHIP_SRC = None
+_WHIP_CONST = {}
+
+
+def _whip_noise(B, LT, HW):
+    if _WHIP_SRC is not None:
+        return _WHIP_SRC
+    key = (B, LT, HW)
+    if key not in _WHIP_CONST:
+        from tinygrad import Tensor as _Tw
+        _WHIP_CONST[key] = _Tw(np.random.RandomState(4242).randn(B, LT, HW).astype(np.float32)).contiguous().realize()
+    return _WHIP_CONST[key]
+
+
+def _whip_kick(cur):
+    """cur + amp * ||cur_slot|| * unit-norm content-plane noise, per slot."""
+    B, LT, HW = (int(x) for x in cur.shape)
+    n = _whip_noise(B, LT, HW)
+    if ALG_POLAR:
+        n = n * _polar_sink()[2]        # content dims only: the clock keeps its time
+    nn = (n * n).sum(-1, keepdim=True).sqrt() + 1e-6
+    nc = (cur * cur).sum(-1, keepdim=True).sqrt()
+    return cur + n / nn * nc * _WHIP_AMP
 _CONST_T = {}
 
 
@@ -68,6 +99,26 @@ def _ct(key, arr):
         _CONST_T[key] = t
     return t
 _WHEEL = None     # THE STEERING WHEEL at read time (apply_wheel_read.py): None = no wheel
+# THE MELT (2026-09-13, the targeted whip): ALG_WHEEL_MELT=<amp> — the core's
+# slots have their content planes replaced (amp x slot norm of seeded unit
+# noise; 0 = zeroed; the clock kept) at the state entering the next breath,
+# so they are RE-DERIVED from the sentence. None = off (bit-identical).
+_WHEEL_MELT = (float(os.environ["ALG_WHEEL_MELT"]) if os.environ.get("ALG_WHEEL_MELT") not in (None, "") else None)
+
+
+def _melt(cur, m):
+    """cur: (B, LT, HW); m: (B, LT) 1.0 on the slots to melt. On those slots the
+    content dims become _WHEEL_MELT x ||slot|| x unit seeded noise (0 -> zeros);
+    the clock dims are untouched; other slots are untouched."""
+    B, LT, HW = (int(x) for x in cur.shape)
+    n = _whip_noise(B, LT, HW)
+    g = _polar_sink()[2] if ALG_POLAR else 1.0
+    n = n * g
+    nn = (n * n).sum(-1, keepdim=True).sqrt() + 1e-6
+    nc = (cur * cur).sum(-1, keepdim=True).sqrt()
+    fresh = n / nn * nc * _WHEEL_MELT                 # the melted content (amp 0 -> zeros)
+    mm = m.reshape(B, LT, 1)
+    return cur + mm * (fresh - cur * g)               # content replaced on melted slots; clock (g=0) kept
 
 
 def _wheel_turn(p, state, kb, fat, sent, vst, B):
@@ -84,6 +135,7 @@ def _wheel_turn(p, state, kb, fat, sent, vst, B):
     sent_np = sent.numpy() if hasattr(sent, "numpy") else _np.asarray(sent)
     T = sent_np.shape[1]
     bias = _np.zeros((B, 1, L_TOT, T), _np.float32)
+    melt = _np.zeros((B, L_TOT), _np.float32)          # THE MELT's mask for the next breath
     beta = float(_WHEEL.get("beta", 3.0)); mode = _WHEEL.get("mode", "union")
     turned = 0
     for b in range(B):
@@ -106,6 +158,8 @@ def _wheel_turn(p, state, kb, fat, sent, vst, B):
             continue
         turned += 1
         core_slots = [parse[k]["_slot"] for k in r["core"]]
+        for j in core_slots:
+            melt[b, j] = 1.0
         sents = {}
         for j in core_slots:
             tok = int(fat_np[b, j].argmax()); sents[j] = int(sent_np[b, min(tok, T - 1)])
@@ -114,7 +168,8 @@ def _wheel_turn(p, state, kb, fat, sent, vst, B):
             m = _np.isin(sent_np[b], list(want))
             bias[b, 0, j, :] = _np.where(m, beta, 0.0).astype(_np.float32)
     _WHEEL.setdefault("turned", []).append((kb, turned, B))
-    return _Tw(bias, dtype=_dw.float) if turned else None
+    state["wheel_melt"] = (_Tw(melt, dtype=_dw.float) if (turned and _WHEEL_MELT is not None) else None)
+    return _Tw(bias, dtype=_dw.float) if (turned and beta != 0.0) else None
 _IDLE = frozenset(int(x) for x in os.environ.get("ALG_IDLE_BREATHS", "").split(",") if x)   # read-only
 
 
@@ -204,6 +259,12 @@ _SEVER_ORGANS = frozenset(("notebook", "garage", "s3", "s4", "mixer",
 # loss to every breath. ALG_SHELF_D = the q/k width; ALG_SHELF_B0 = the
 # last breath's logit at birth (the birth read picks it: 3/5/7).
 ALG_SHELF = int(os.environ.get("ALG_SHELF", "0"))
+# THE BLURRED LADDER (2026-09-12, the word): ALG_BLUR=1 blurs rung k's gold
+# toward uniform by ALG_BLUR_MAX * cos^2(k*pi/(2(K-1))) — the denoising
+# schedule's target-side form (each breath graded on a job its level can do;
+# the last rung sharp). CE/BCE are linear in the target: exact.
+ALG_BLUR = int(os.environ.get("ALG_BLUR", "0"))
+ALG_BLUR_MAX = float(os.environ.get("ALG_BLUR_MAX", "0.7"))
 ALG_SHELF_D = int(os.environ.get("ALG_SHELF_D", "64"))
 ALG_SHELF_B0 = float(os.environ.get("ALG_SHELF_B0", "5"))
 # T1 (2026-09-12, the word — "The dancer's pixels"): the token-side
@@ -2461,6 +2522,13 @@ def breath_step(p, state, kb, ctx):
     cur = state["cur"]; breaths = state["breaths"]
     if _GTAP is not None and kb in _GTAP:
         cur = cur + _GTAP[kb]            # the probe leaf: dL/d(state entering breath kb)
+    if _WHIP_K and kb == _WHIP_K:
+        cur = _whip_kick(cur)            # THE WHIP: the state entering breath kb, kicked
+    _wm = state.get("wheel_melt")
+    if _WHEEL_MELT is not None and _wm is not None:
+        cur = _melt(cur, _wm)            # THE MELT: the core's slots, re-derived this breath
+        if _WHEEL is not None:
+            state["wheel_melt"] = None   # consumed (the read-time wheel rewrites it per breath)
     _nb = state["nb"]; _nb_st = state["nb_st"]
     _garage = state["garage"]; _snaps = state["snaps"]
     _snaps_g = state["snaps_g"]; _rb_last = state["rb_last"]
@@ -3800,7 +3868,8 @@ def loss_fn(o, g):
         for kb, ob in enumerate(o["breaths"]):
             full = dict(o, **ob)
             w = 1.0 + kb / max(K_B - 1, 1)
-            term = _loss_single(full, g) * w
+            beta = (ALG_BLUR_MAX * math.cos(kb * math.pi / (2 * max(K_B - 1, 1))) ** 2) if ALG_BLUR else 0.0
+            term = _loss_single(full, g, blur=beta) * w
             tot = term if tot is None else tot + term
         if int(os.environ.get("BREATH_NORM", "0")):
             _wsum = sum(1.0 + kb / max(K_B - 1, 1) for kb in range(K_B))
@@ -3810,7 +3879,7 @@ def loss_fn(o, g):
     return _loss_single(o, g)
 
 
-def _loss_single(o, g):
+def _loss_single(o, g, blur=0.0):
     from tinygrad import Tensor
     pres = g["presence"]
     n_p = pres.sum() + 1e-6
@@ -3825,10 +3894,17 @@ def _loss_single(o, g):
     n_rel = rel.sum() + 1e-6
 
     def bce(lg, tg):
-        return (lg.maximum(0) - lg * tg + (1 + (-lg.abs()).exp()).log()).contiguous()   # perf: own kernel
+        b = lg.maximum(0) - lg * tg + (1 + (-lg.abs()).exp()).log()
+        if blur:   # THE BLURRED LADDER: target (1-blur)*t + blur*0.5, exactly (BCE is linear in t)
+            b = (1.0 - blur) * b + blur * (lg.maximum(0) - 0.5 * lg + (1 + (-lg.abs()).exp()).log())
+        return b.contiguous()   # perf: own kernel
 
     def ce(lg, tg):
-        return (lg.log_softmax(-1) * -1).gather(-1, tg.unsqueeze(-1)).squeeze(-1).contiguous()   # perf: own kernel
+        ls = lg.log_softmax(-1)
+        c = (ls * -1).gather(-1, tg.unsqueeze(-1)).squeeze(-1)
+        if blur:   # THE BLURRED LADDER: target (1-blur)*onehot + blur*uniform, exactly (CE is linear in t)
+            c = (1.0 - blur) * c + blur * (ls * -1).mean(-1)
+        return c.contiguous()   # perf: own kernel
 
     l = bce(o["pres"], pres).mean()
     l = l + (ce(o["ftype"], g["ftype"]) * pres).sum() / n_p
@@ -4900,6 +4976,9 @@ def do_train(steps, lr, batch, seed):
             f"reg npy {len(REG)} rows vs {len(samples)} samples (desync)"
     b_drop = fix(np.ones((1,), np.float32), dtypes.float) \
         if os.environ.get("BREATH_DROPOUT") else None   # door #52 coin buffer
+    b_whip = fix(np.zeros((batch, L_TOT, H_W), np.float32), dtypes.float) if _WHIP_K else None   # THE WHIP's fresh noise per step
+    if b_whip is not None:
+        globals()["_WHIP_SRC"] = b_whip
     b_ls = fix(np.zeros((batch, K_VARS, T_ALG), np.float32), dtypes.float) \
         if ALG_LSENT else None                          # V2: letter partition
     if ALG_CONSUME:
@@ -5457,6 +5536,8 @@ def do_train(steps, lr, batch, seed):
             _fd(b_tail, TAILS[idx], _rl)
         if b_reg is not None:
             _fd(b_reg, REG[idx], _rl)
+        if b_whip is not None:
+            _fd(b_whip, rng.randn(batch, L_TOT, H_W).astype(np.float32), _rl)   # THE WHIP: fresh noise this step
         if b_drop is not None:
             _fd(b_drop, np.array(
                 [1.0 if rng.rand() >= float(os.environ["BREATH_DROPOUT"]) else 0.0],
@@ -5568,7 +5649,9 @@ def do_train(steps, lr, batch, seed):
             # mode. Any non-empty value means OPEN; only "0" is pushed.
             os.environ["TC_EVAL"] = "0"       # ... and the OPEN reading
             os.environ["BC_EVAL"] = "0"       # ... and the balanced cooker OPEN
+            globals()["_WHIP_SRC"] = None          # the val reads with the seeded kick, like the read
             fv = _quick_val()
+            globals()["_WHIP_SRC"] = b_whip
             os.environ.pop("BC_EVAL", None)
             os.environ.pop("TC_EVAL", None)
             os.environ.pop("MC_EVAL", None)

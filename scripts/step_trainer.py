@@ -290,6 +290,8 @@ class StepWalker:
         self.fat_np = None
         self.wheel_bank = ([fix((B, 1, LT, T)) for _ in range(self.K_B - 2)]
                            if self.wheel else [])
+        self.melt_bank = ([fix((B, LT)) for _ in range(self.K_B - 2)]
+                          if self.wheel else [])          # THE MELT's per-breath mask (2026-09-13)
         self.dec_keys = (["pres", "ftype", "op", "dig", "args", "res"]
                          + (["dup"] if "h_dup" in p else []))
         # gold buffers + grad accumulators (fixed; the optimizer capture
@@ -386,6 +388,8 @@ class StepWalker:
                             if (self.snaps_on and k >= 3) else None),
                 "wheel_bias": (self.wheel_bank[k - 2]
                                if (self.wheel and k >= 2) else None),
+                "wheel_melt": (self.melt_bank[k - 2]
+                               if (self.wheel and k >= 2 and getattr(self.H, "_WHEEL_MELT", None) is not None) else None),
                 "nb": ([self.nb_bank[j] for j in range(n_nb)]
                        if (self.notebook and k > 1) else None),
                 "nb_st": (self.nb_st_const
@@ -563,10 +567,11 @@ class StepWalker:
             if self.wheel and k <= self.K_B - 2:
                 # THE WHEEL (2026-09-11): commit this breath's parse, solve,
                 # core, spotlight for breath k+1 — a detached constant
-                bias, turned = wheel_bias(H, onp, self.fat_np, se_np, nv, ma,
-                                          self.wheel_beta, self.wheel_mode,
-                                          self.workers, self.LT)
+                bias, turned, melt = wheel_bias(H, onp, self.fat_np, se_np, nv, ma,
+                                                self.wheel_beta, self.wheel_mode,
+                                                self.workers, self.LT)
                 self.put(self.wheel_bank[k - 1], bias)
+                self.put(self.melt_bank[k - 1], melt)
                 self.turned.append(turned)
             self.put(self.b_facts[k], fact_cur)
         return rates
@@ -754,17 +759,20 @@ def wheel_bias(H, onp, fat_np, se_np, nv, ma, beta, mode, workers, LT):
         with open(_WHEEL_DUMP, "ab") as f:
             pickle.dump({"rows": rows, "res": res, "t_cores": _t2 - _t1}, f)
     bias = np.zeros((B, 1, LT, T), np.float32); turned = 0
+    melt = np.zeros((B, LT), np.float32)                 # THE MELT's mask
     for b, (status, core) in enumerate(res):
         if status != "unsat" or not core:
             continue
         turned += 1
         parse = parses[b]
         slots = [parse[k]["_slot"] for k in core]
+        for j in slots:
+            melt[b, j] = 1.0
         sents = {j: int(se_np[b, min(int(fat_np[b, j].argmax()), T - 1)]) for j in slots}
         for j in slots:
             want = set(sents.values()) if mode == "union" else {sents[j]}
             bias[b, 0, j, :] = np.where(np.isin(se_np[b], list(want)), beta, 0.0)
-    return bias, turned
+    return bias, turned, melt
 
 
 def _row_meta(H, samples, idx):

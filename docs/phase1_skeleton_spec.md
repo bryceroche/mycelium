@@ -37889,3 +37889,45 @@ T2. The desert's answer, as of this morning, is the blurred ladder
 alone; the wild register's answer is grounding.
 (The chain's paired-read lines were lost to the journal — `| sed` at
 a pipeline's end drops like `| cut`; the per-slot files carried them.)
+
+## 2026-09-13 — THE TARGETED WHIP / THE MELT built and FIRED (the word: "fire when ready"): the wheel's third form — the core's slots have their content planes melted at the seam, re-derived from the sentence next breath; the Markov cut refused (the words are the bypass the repair needs)
+
+THE RULING WITH BRYCE: no restriction of a breath to its predecessor —
+the repair of a wrong token binding needs the words, which the
+grounding roads re-read every breath; the seven breaths stay and the
+extra ones become REPAIR ROUNDS driven by the solver's certificate.
+THE ORGAN (scripts/apply_targeted_whip.py; ALG_WHEEL_MELT=<amp>, unset
+= bit-identical — the CPU fixture's 2-step losses 5.2995/0.0279 hold):
+on a certified refusal the core names slots that cannot coexist;
+`_melt` replaces those slots' CONTENT planes with amp x the slot's norm
+of seeded unit noise (0 = zeroed) and keeps the clock planes; the
+state entering the next breath carries the melt, so the slot must be
+re-derived from the tokens (the spotlight told the machine where to
+look — ignorable; the melt takes away what it would coast on — a
+mandatory road, no gain to vote down; the amplitude the only dial).
+Read time: `_wheel_turn` writes state["wheel_melt"] (consumed at the
+next breath's entry; the bias is returned only when beta != 0).
+Training (the step trainer): `wheel_bias` returns the melt mask; the
+walker carries a melt bank per breath into state["wheel_melt"].
+THE CHAIN (.cache/melt_chain.sh, pc-melt, fired 09:5x): BIRTH READS —
+the read-time wheel on balV242 (wild, WR_MODE=own) at (beta 3, no
+melt) = the spotlight reference, (0, melt 0.0), (0, melt 1.0),
+(3, melt 1.0), (0, melt 0.3) -> THE PICK RULE (pinned): the melt
+config with the best birth wild read -> a 3-step smoke -> ARM stM242
+(step trainer, ST_WHEEL=1 + the picked beta/melt, warm balV242, 6000
+steps B=32 — the control stC242 exists: 0.2521 / 0.9831) -> reads:
+open wild/mint on stM242 and stC242 (re-read), wheel+melt wild on both.
+BARS (in SE units, pinned before any read): **TM-BIRTH**: a read-time
+melt on balV242 that lifts wild >= +0.020 over open (0.2526) is a
+READ-TIME WIN by itself (then twinned on stC242); between +0.010 and
++0.020 = a lead to train on; <= 0 = the melt costs cold (expected: the
+re-derivation must be learned). **TM-TRAIN PASS** = wheel+melt(stM242)
+>= open(stC242) + 0.020 (= 0.2721) AND open mint(stM242) >= 0.9781;
+**INCONCLUSIVE** = +0.010..+0.020 (a seed twin); **TM-KILL** =
+wheel+melt(stM242) < open(stC242) - 0.020. REGISTERED PREDICTION: the
+cold melt costs 0.005-0.015 wild (a wrong slot melted is re-derived
+wrongly again by an untrained repairer; a right slot in a core is
+lost); training under it lands INCONCLUSIVE (+0.010) with more
+refusals per breath than stW242's 155-169/312 — the melt makes the
+machine commit more distinct parses per breath, and the refusal rate
+is the wheel's ceiling.
