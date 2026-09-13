@@ -37768,3 +37768,30 @@ paired idle cost. REGISTERED PREDICTION: the birth reads at 0.3 cost
 idle (~+0.010) and beats it on b4/b5; wh242b either kills mint's
 guard or is the stronger candidate; whip + blur stacked is a second
 chain if either passes.
+
+## 2026-09-12 — THE FOG'S SECOND SEED (ds241) REPLICATES: idle 3,4,5 costs +0.0102 (paired SE 0.0064, z +1.61; pooled over both seeds z +2.49); mint +0.0027 over its seed control (ds242: +0.0044); wild flat/-1 SE — THE BLURRED LADDER'S CLAIM IS STRUCTURAL AND TWINNED, NOT A WILD GAIN
+
+ds241 (ALG_BLUR=1 beta_max 0.7, SEED=241, warm balV242 12k B=8; its
+seed control t1c241: wild 0.2652 / mint 0.9771): open wild **0.2550**
+(-0.010 vs its control, 1 SE), open mint **0.9798** (+0.0027; ds242
++0.0044 over t1c242), idle 3,4,5: wild 0.2448 (**cost +0.0102**, paired
+SE 0.0064, McNemar z +1.61; 96 lost / 75 gained), mint 0.9733 (cost
+0.0065). POOLED over the two seeds: net 45 of 327 discordant slots, **z
++2.49** — idling the middle costs wild under the fog at 2.5 sigma
+(under the gentle blur exactly 0; under balP242 a gain). DS-IDLE
+replicated; DS-GUARD held both seeds (0.2530/0.9815; 0.2550/0.9798).
+THE VERDICT AS TWINNED: the blurred ladder makes the middle breaths
+load-bearing (idle +0.010 x2, census x4-7, the dish-line curve over
+three breaths) and is worth ~+0.003-0.004 mint (1.3-1.9 SE each,
+consistent in sign across seeds); it does NOT move wild (-0.0005,
+-0.010). The candidate ds242 stands as the FAMILY'S NEXT BASE for
+structure (the middle now exists to build on) with the mint record
+0.9815 — NOT as a wild win. Wild's bottleneck is grounding, untouched
+by anything that changes what the middle breaths do with the state;
+T1-as-context, the wheel's spotlight and the shelf all confirm it
+from different sides today. THE NEXT WILD MOVE must touch the
+token<->slot roads (T2, the missing back-edge; the mask-derived T1m;
+the wheel's slot-lane form) — with wild bars at 0.020 or twinned.
+The whip chain is running (birth read at 3:0.3, wild 0.2516: a cold
+30% content kick at breath 3 costs 0.001 on wild — the read barely
+depends on what breath 3's content planes carry; mint and 0.6 next).
