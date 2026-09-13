@@ -37555,3 +37555,60 @@ bearing on synthetic) or, if it holds, is the stronger candidate. The
 step trainer does not need a fence (loss-only; the walker calls
 _loss_single per segment — blur=0 default; a walker port of the
 schedule is a registered job if the ladder lives).
+
+## 2026-09-12 — THE SHELF READOUT's reads (census on the GPU queued); THE BLURRED LADDER's first arm (beta_max 0.7): DS-GUARD PASS, DS-IDLE PASS (0.0117), a fused-arm MINT RECORD 0.9815, the middle's census credit x4-6; THE DISH-LINE READ: under the sharp ladder every breath's state already decodes the whole parse from breath 0 — the fields do not stage
+
+THE SHELF (sr242, ALG_SHELF=1 B0=3, warm balV242 12k B=8 seed 242; CPU
+reads, files .cache/read_cpu_*_sr242.log; val proxy 0.9616/0.9760/
+0.9801 vs the control's 0.9430/0.9722/0.9771): open wild **0.2526**
+(control t1c242 0.2535; balV242 0.2526), open mint **0.9801** (control
+0.9771; balV242 0.9757). SR-GUARD PASS. Idle 3,4,5: wild 0.2428 (cost
+**0.0098**), mint 0.9744 (cost 0.0057) — **SR-IDLE MISSES BY 0.0002**
+(bar >= 0.010; the bar does not bend; balP242's idle IMPROVED wild by
+0.006, so the swing is 0.016: the middle went from decorative to
+nearly load-bearing). Sever=shelf (the final state alone): wild 0.2521
+(-0.0005), mint 0.9782 (-0.0019) — the shelf read itself carries
+little at read time; the network trained under it. SR-CENSUS: the CPU
+census (GC_ROWS=0:3, MemoryMax 12G) was OOM-killed beside the GPU
+trainer; a GPU census (rows 0:8, balV242's own frame) for sr242 AND the
+control t1c242 is queued behind the ladder chain (pc-census2). Verdict
+on the shelf WAITS for it. (The chain's own read lines were lost to
+the journal again — shelf_chain2.sh inherited the grep-pipe reads; the
+CPU reads are the record.)
+THE BLURRED LADDER, ARM 1 — ds242 (ALG_BLUR=1 beta_max 0.7, same
+recipe; loss 35 -> 28 at 3-3.5k as the blur term dominates; val proxy
+0.9673/0.9752/**0.9815** vs the control's 0.9430/0.9722/0.9771): open
+wild **0.2530** (control 0.2535), open mint **0.9815** (the fused-arm
+record; balV242 0.9757, the shelf 0.9801). **DS-GUARD PASS** (0.2530 >=
+0.2426; 0.9815 >= 0.9707). Idle 3,4,5: wild 0.2413 -> cost **0.0117**,
+**DS-IDLE PASS** (>= 0.010); mint 0.9727 (cost 0.0088). THE CENSUS
+(GPU, rows 0:8): b1=2.846 b2=1.739 **b3=0.305 b4=0.087 b5=0.056** b6=0.066
+(balV242: 0.985 0.384 0.068 0.012 0.015 0.098): the middle's credit
+from the final rung rose x4.5 / x7 / x4 — with no new edge; the states
+the final rung reads THROUGH changed (the farmer 2.85: breath 1's
+state now carries 2.8x the readout's gradient — the early rungs'
+blurred targets have made the early states the place where the
+picture is still forming). THE REGISTERED PREDICTION WAS WRONG THE
+GOOD WAY: I predicted 0.7 would fail mint's guard; it set the record.
+The gentle arm dsg242 (0.2) is training; the selection rule (the
+guard-passing arm with the larger idle cost) reads after it.
+THE DISH-LINE READ (scripts/breath_field_read.py: per breath, per
+field accuracy of the decoded parse; balV242 on wild, N=256):
+  breath   pres  ftype   op   args   res   dig
+  b0      .883  .844  .672  .392  .780  .184
+  b1      .896  .835  .690  .382  .783  .308
+  b2-b6   .89   .83   .68   .37   .78   .32   (flat to the digit)
+Under the sharp ladder EVERY breath's state already decodes the whole
+parse at the final level from breath 0 — presence, type, op, pointers,
+results all flat across the seven breaths; only the digits climb
+(0.18 -> 0.32 by breath 2) and then stop. The machine does not stage
+its fields: it is a one-breath parser with a decorative tail on wild
+(the idle read's finding, now seen per field). Bryce's dish line
+(serial in STAGES, parallel in ITEMS — scrape all plates, then rinse
+all) is therefore not what the machine runs today; it is what a
+staged schedule could TEACH: a field-wise blur (each field's blur
+falling to zero at its own stage: presence/type/digits early,
+pointers middle, results late) would remove the tug of war a single
+blur creates on fields whose turn has come. Same read queued on
+ds242 (does the blurred ladder stage the fields?), on t1c242, and on
+balV242 mint (pc-dishline, CPU).
