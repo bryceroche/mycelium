@@ -37961,3 +37961,33 @@ m=300 and a wheel-read takes ~15 min; the guarded row worker is now
 the read-time path regardless.)
 
 ## 2026-09-13 — THE WORD: the baseline wipe stopped after one cold read (spotlight-only on balV242: wild 0.2560, +0.0034 over open — the read-time wheel reproduced); THE NOGOOD CHAIN fired (pc-nogood): four cold reads (beta 0/3 x melt 0.0/1.0, least-confident melt + nogood) -> the pick among them -> stM242 -> reads; bars TM-* as pinned
+
+## 2026-09-13 — GUT REGISTERED: "get the NL and math operation atlases working; they pair with Anna Karenina — happy families cluster via Welford stats" — THE ATLAS REVIVAL registered in three rungs (needs the word for the mining pass)
+
+THE RECORD: the cycle-resolved atlas (09-01: (register, cycle, class)
+Welford cells; step_atlas.py consult / cross_prior / z-radius) was
+mined 09-05/09-06 on the fed lineage; it carried nothing because (a)
+the walker's ctx never passed mh_atlas_traj (fixed 09-11) and (b) an
+atlas is GENERATION-SPECIFIC (coordinates rotate; never mix
+generations' head-space coordinates) — against balV242 it is two
+generations stale; the family env does not set ALG_MH_ATLAS. The Anna
+Karenina mechanism in the ledger is the certification wall (08-20:
+unanimity across 5 views; 15/74 banked, wrong-banked 0); the research
+reads this week are single-view.
+THE RUNGS: (1) RE-MINE both atlases on the current base (ds242 or
+balV242; mine_step_atlas.py; one GPU pass). (2) THE HAPPY-FAMILY READ
+(zero training): per wild row, the variance-normalized z-radius of its
+breath states to the nearest cell; BAR (pinned): AUROC of "correct
+parse" vs z-radius >= 0.65 on wild (a certificate without the solver)
+— below 0.55 the clusters do not separate right from wrong and the
+atlas is not a compass on wild. (3) THE ATLAS AS NAVIGATION FOR THE
+NOGOOD: on a refuted choice, the row's cluster gives a prior over
+which alternative to commit next (re-weighting the nogood's
+second-best by the kind's typical structure) — the atlas entering at a
+decision, a road, not a feature to ignore. Plus THE STACKED WALL (a
+read): the wheel+nogood read under the 5 views with the vote — the
+refutation wall on the invariance wall. Sequence: behind the nogood
+arm (pc-nogood, this evening).
+FIRST COLD NOGOOD READ (balV242, wild): beta 0 / melt 0.0 / nogood:
+0.2477 (open 0.2526; spotlight-only 0.2560) — the untrained repairer
+costs 0.005, as predicted; three configs to go.
