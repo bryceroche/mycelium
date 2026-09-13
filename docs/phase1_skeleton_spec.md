@@ -38011,3 +38011,37 @@ main-guarded (step_trainer.py already was; loop_val.py's read is a
 function); never pkill with a literal pattern. The chain relaunched
 (pc-nogood4) over the three unbanked configs (0:1.0, 3:1.0, 3:0.0);
 the banked cold read (0:0.0 nogood: 0.2477) stands in the pick file.
+
+## 2026-09-13 — THE HAPPY-FAMILY READ on wild: NOT A COMPASS (AUROC 0.45-0.52 per breath, pooled 0.489 on >= half-correct rows; INVERTED 0.23-0.29 on fully-correct rows — the correct rows are FARTHER from their cell); the atlases re-mined on ds242 (rung 1 done); the nogood chain re-timed (1 s row cap, 3000 steps, its own 3000-step control) with TM bars re-pinned before any read
+
+RUNG 1: both charts mined on ds242 (4096 train rows; classes ladder2-4,
+ladder5-8, ladder9+, mint_form8, wild_gsm8k, wild_r7; era-anchored to
+the research manifest). RUNG 2 (wild holdout, 311 rows; rows fully
+correct 1.3%, >= half correct 21.9%): every wild row lands in the
+wild_gsm8k cell (296-303/311 per breath) at z-radius ~21 whether right
+or wrong; **AUROC(>= half | tighter) 0.451 / 0.441 / 0.470 / 0.510 /
+0.514 / 0.516 / 0.499 across b0-b6, pooled 0.489 — BELOW THE 0.55
+FLOOR: the atlas is not a compass on wild.** AUROC(fully correct)
+0.235-0.292: the rare fully-correct wild rows are FARTHER from the
+cell than the wrong ones — the cell's centroid is the mean of a 78%-
+wrong family; on this register the "happy family" is the outlier and
+the centroid is the unhappy mean. Anna Karenina's clustering needs
+the majority to be happy; on wild at 0.25 it is not. Rung 3 (the atlas
+as navigation for the nogood) is NOT fired; the atlas stays mined for
+mint (the read pending) and as the deployed stack's certification
+context. Verdict scoped: ds242, its own atlas, mean-pooled slot
+states; a presence-weighted pooling or a per-slot atlas is a
+different instrument (not registered).
+THE NOGOOD CHAIN RE-TIMED (Bryce: "why six hours; perf first?"): the
+arm is 5 solver waits per step serial with an idle GPU (~0.6 s pool
+wall x 5 + 0.37 s walk = 3.4 s/step). Applied: (1) WHEEL_ROW_TIMEOUT
+2 -> 1 s (the clinic: keeps 75/84 = 89% of refusals vs 94%; wall mean
+0.41 vs 0.63 s); (2) 3000 steps instead of 6000 with ITS OWN 3000-step
+control stC3k (the dose law: the control at the same length; stC242's
+6000-step numbers are not the comparator) — ~1.9 h for the arm + 20
+min for the control. TM BARS RE-PINNED to stC3k before any read:
+TM-TRAIN PASS = wheel+nogood(stM242) >= open(stC3k) + 0.020 and open
+mint(stM242) >= open mint(stC3k) - 0.005; INCONCLUSIVE +0.010..+0.020;
+KILL < open(stC3k) - 0.020. The structural lever left unbuilt: two
+half-batches pipelined so the GPU walks one while the pool solves the
+other (a walker rebuild; ~2x; registered, not fired).
