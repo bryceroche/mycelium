@@ -38086,3 +38086,26 @@ time (the key gates the data; a training-time signal "your consistent
 parse disagrees with the key" is the pressure cooker's territory, not
 the wheel's) and which at read time needs the mouth/atlas (typicality)
 or the vote (view-invariance): the stacked wall.
+
+## 2026-09-13 — THE SPAN COVERAGE (found while probing the waist): the grounding terms (fat/vat: slot->token attention CE on normalized gold spans) VANISH on rows without span annotations — and that is 44% of the prose training rows (the 18,508 machine-gate pen rows) and 100% of the wild holdout; the books' 23,228 annotated prose rows are the only supervision the grounding roads get on wild text
+
+form12 by register x annotation: templated (letters) 55,372 with
+mentions + 36,720 without; PROSE 23,228 with mentions (the books'
+annotated harvest: char spans per variable mention + per relation
+phrase) and 18,508 without (the gsm8k machine-gate pen rows, admission
+2026-09-01: factor gold from the certified parse, no spans). The wild
+holdout (311 gsm8k rows): mentions {} on every row. In _loss_single,
+fsn = fspan / (sum + 1e-6) and vsn likewise: an all-zero span row gives
+fsn = 0 and the attention terms contribute NOTHING — the grounding
+roads on those rows are trained only through what the pointer/value
+heads make of whatever the attention fetched. So: wild grounding IS
+supervised, by the books (56% of prose rows), and the pen rows add
+factor gold without telling the machine WHERE in the sentence the
+bindings live. Two consequences: (1) a WAIST PROBE on the wild
+register must use the books' prose rows (spans exist there); the
+holdout cannot host it; (2) an AUTO-ALIGNER for the pen rows' VALUES
+(a given's number appears as a digit string in the text -> a char
+span -> build_gold's tokenizer offsets do the rest) would give the
+grounding roads a value-side target on 18.5k more prose rows for
+free; the variable-phrase mentions stay the annotators' (L3) — a data-
+engine item, registered (needs the word): THE VALUE ALIGNER.
