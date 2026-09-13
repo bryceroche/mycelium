@@ -38150,3 +38150,17 @@ by a slot's station-3 attention (> tau) at breath k costs every other slot
 released. Unset bit-identical (5.2995 / 0.0279). At tau 0.5 the tiny
 fixture's losses did not move — the calibration read (the head-mean
 attention's max per slot) decides tau; T2's cold read follows on the GPU.
+
+## 2026-09-13 — INCIDENT (mine): the waist probe's CPU precompute, launched at ~12:12 with ALG_TRAIN still = form12 and killed three minutes later in the memory crunch, TRUNCATED and partially rewrote the 140 GB training-states memmap while the melt arm read it — the melt arm died, its 3000-step control trained on zero states (loss 66 -> 33; reads 0.1585 / 0.6050), THE MELT VERDICT IS VOID; the states are being rebuilt
+
+The precompute opens the memmap with mode "w+" (a fresh sparse file) and
+fills it batch by batch; killed early, it leaves zeros. The melt arm
+(stM242) and the control (stC3k) both read that file: their results are
+struck. RULES: (1) never run --precompute for a split while anything reads
+that split's states (the memmap is shared, not copied); (2) a precompute
+for a probe uses ITS OWN split names for BOTH ALG_TRAIN and ALG_TEST;
+(3) the trainer should refuse a states file younger than its npz sibling
+unless told otherwise (a fence to build). RECOVERY: the aligner chain's
+precompute (form12al = the same rows, same texts) rebuilds the states
+under a new name; form12's memmap is regenerated from it (or from the
+Sep-1 npz) before any form12 run. The melt chain re-runs after.
