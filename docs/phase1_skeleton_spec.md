@@ -37367,3 +37367,53 @@ census on b3-b5, the idle read, the wild/mint guards) so the two
 answers to the desert — pave the path (shelf) vs remove the need for
 it (denoising) — read on one scale. NOT before the shelf read lands:
 if the paved road alone wakes the middle, the harder change is moot.
+
+## 2026-09-12 — T1 VERDICT (bars as pinned this morning): T1-PASS on every accuracy bar — WILD RECORD 0.2706 (control 0.2535; the prior campaign record 0.2613) — but T1-CARRIES FAILS: severing the conv at read time gives 0.2716; the organ's learned weights are 1% from identity. The lift is in the OTHER weights. Twins queued (pointwise-only; a seed-241 control floor)
+
+THE READS (CPU, JIT read, files .cache/read_cpu_*; the chain's GPU
+reads ran but their lines never reached the journal — see THE JOURNAL
+CUT below; GPU re-reads queued):
+  t1c242 (control, natural continuation of balV242, 12k B=8 seed 242):
+    open wild **0.2535**, open mint **0.9771**.
+  t1a242 (T1, ALG_T1=5, same recipe): open wild **0.2706**, open mint
+    0.9766; sever=t1 (the conv skipped at read): wild **0.2716**, mint
+    0.9755. Val proxy at 12k: 0.9766 vs the control's 0.9771.
+THE BARS: **T1-PASS**: 0.2706 >= 0.2535 + 0.010 = 0.2635 (yes); >= 0.2626
+(yes); mint 0.9766 >= 0.9707 and >= 0.9771 - 0.005 (yes). **T1-KILL**
+not met. **T1-CARRIES FAIL**: the removal read is -0.001 (severing
+IMPROVES wild by 0.001; bar: a drop >= 0.020). THE WEIGHTS: after 12k
+steps the neighbor taps carry 0.6% of the center tap's norm (mean |w|
+0.005-0.006 vs 0.990), the pointwise mix is identity to 0.002 off-
+diagonal, the bias 0.001 — T1 learned to be (almost) the identity, and
+the read confirms it carries nothing. The +0.017 wild over the control
+lives in the OTHER 12.4M parameters: the arm trained under a slightly
+time-varying blur of the waist (a 1% road-perturbation every step) and
+reached a different basin. Two readings, and the twins decide: (a) THE
+REGULARIZER — a training-time perturbation of the waist generalizes
+better on wild (then the pointwise-only arm, ALG_T1=1, which has no
+context, lifts too; the pinned twin); (b) VARIANCE — two continuations
+from balV242 differ by 0.017 on wild by luck (then a seed-241 control
+lands anywhere in 0.25-0.27; ADDED to the twin chain: t1c241, ALG_T1=0
+SEED=241, the variance floor — a 0.017 claim needs it). The family's
+own spread across the balP/S/U/V arms was ~0.003; the mint-record
+control stC242 read 0.2521; 0.2706 is +5 sigma of that spread, which is
+why (b) must be measured rather than assumed. If (a): a wild record by
+a regularizer we can name, and T1 as CONTEXT is a null (the neighbors
+are not read) — the honest headline would be "the waist wants noise,
+not neighbors"; if (b): the family's wild variance is 6x what we
+believed and every wild verdict of this month needs a seed twin.
+THE JOURNAL CUT (the mystery of the silent reads, resolved by a 4-line
+unit): under systemd-run, lines written by a pipeline that ENDS IN
+`cut` never reach the journal (`echo` and `| cat` survive; `| cut` is
+lost) — the wheel chain's and the T1 chain's read lines were produced
+and dropped, not skipped; both chains' reads ran (the T1 chain's GPU
+JIT reads take ~20 s each). Rule from here: chain reads write to FILES
+and print with cat/echo; never end a unit's pipeline in cut. (The
+"cut buffers pipes" note of 09-10 was this, misdiagnosed.)
+QUEUED (pc-t1twin behind pc-shelf): t1p242 (ALG_T1=1) + t1c241 (seed
+241) + GPU re-reads of t1c242/t1a242; bars for the twins, pinned now:
+REGULARIZER if wild(t1p242) >= 0.2635 AND wild(t1c241) <= 0.2585;
+VARIANCE if wild(t1c241) >= 0.2635; CONTEXT-IN-TRAINING (the conv's
+neighbors mattered while learning even though the read ignores them)
+if wild(t1p242) <= 0.2585 AND wild(t1c241) <= 0.2585. Mixed = a second
+seed of each before any claim.
