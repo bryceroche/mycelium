@@ -37683,3 +37683,35 @@ ALG_WHIP=k:amp (e.g. 3:0.3, 3:0.6); arms from balV242 (family recipe);
 instruments as DS-*: idle 3,4,5 >= 0.010 wild, the census (b4/b5
 rising), the guards; REGISTERED PREDICTION: matches the fog's idle
 result, beats it on b4/b5 credit; a second arm stacks whip + blur.
+
+## 2026-09-12 — T1 CLOSED AS VARIANCE: the seed-241 control reads wild 0.2652 (the seed-242 control 0.2535); T1's 0.2706 sits inside the seed spread — and the arithmetic behind it: THE WILD READ'S STANDARD ERROR IS 0.0096, so a +0.010 wild bar is ONE standard error; every +0.01 wild claim of this month is re-read as noise-level unless twinned
+
+t1c241 (ALG_T1=0, SEED=241, warm balV242 12k B=8 — the same continuation
+as t1c242 with another seed): open wild **0.2652**, open mint 0.9771
+(t1c242: 0.2535 / 0.9771). THE TWIN BARS (pinned 2026-09-12 morning):
+VARIANCE if wild(t1c241) >= 0.2635 — **MET**. T1 (0.2706) exceeds the
+seed floor by 0.0054, inside the spread; the pointwise twin (0.2545)
+and the identity-weights read already said the organ carries nothing.
+**T1 VERDICT: PASS on the bars as pinned, but the bars were pinned
+inside the noise — banked as NOT DEMONSTRATED; the organ stays built
+(ALG_T1, default off).**
+THE ARITHMETIC (a law-grade finding — "estimator variance masquerades
+as distance", CLAUDE.md §4, now with the number): the wild holdout's
+fac-exact is a proportion over n=2051 slots at p~0.25: **binomial SE
+0.0096 per read; the SE of a difference of two independent reads
+0.0136**. The mint read (n=3668, p~0.98): SE 0.0023 / 0.0033. So (a)
+every wild bar of +0.010 this month (T1-PASS, WT1, the drift watch at
+0.2608->0.2526, the "record" 0.2613 vs 0.2565) sat at ~1 SE; (b) the
+family's arm-to-arm wild spread of "~0.003" was a coincidence of four
+arms; (c) mint differences of 0.004 (the fog's +0.0044 over the
+control) are ~1.3 SE — also needing the twin (ds241 running); (d)
+PAIRED reads on the same checkpoint (open vs idle, open vs sever) are
+tighter than two independent reads (the same slots; only discordant
+slots contribute) but their SE is unmeasured — loop_val reports the
+aggregate only; a per-slot paired read is a registered instrument.
+THE RULE FROM HERE: a wild claim needs >= 0.020 (2 SE of a read) OR a
+seed twin on both sides; bars on wild are pinned in SE units; mint
+claims need >= 0.007 or the twin; the ledger's wild "records" carry
+their SE. The robust signals of the day are the structural ones: the
+census ratios (x4-7 on fixed rows), the dish-line curves, the idle
+read's direction on paired slots.
