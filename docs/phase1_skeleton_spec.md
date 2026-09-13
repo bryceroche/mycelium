@@ -37490,3 +37490,68 @@ RELAUNCH: .cache/shelf_chain2.sh (pc-shelf2, behind pc-t1twin): the
 birth reads are banked (B0=3 by the pinned rule; 0.2516/0.9755), so
 the chain runs the arm sr242 (ALG_SHELF=1 B0=3, warm balV242, 12k, B=8,
 seed 242) then the reads + the census; bars SR-* as pinned.
+
+## 2026-09-12 — THE T1 TWIN (partial; the run stopped by the word for the blurred ladder): the pointwise-only arm does NOT lift (0.2545 vs control 0.2535) — the regularizer reading fails; severing either organ at read time gives +0.011; the seed-241 variance floor died unmeasured
+
+t1p242 (ALG_T1=1, pointwise only, same recipe): open wild **0.2545**,
+mint 0.9766; sever=t1 at read: wild **0.2652**, mint 0.9768. Against
+the twin bars: REGULARIZER needed wild(t1p242) >= 0.2635 — FAIL (the
+open read); VARIANCE and CONTEXT-IN-TRAINING both need the seed-241
+floor (t1c241), which was 5 minutes into training when the word came
+to stop the run — UNMEASURED. What stands: (a) a near-identity
+pointwise map trained on the waist does not reproduce T1's lift, so
+"the waist wants noise" is not it; (b) in BOTH arms, skipping the
+organ at read time is worth +0.010 (t1a: 0.2706 -> 0.2716; t1p:
+0.2545 -> 0.2652): the organ's learned 1% deviation from identity
+HURTS the read while the network trained under it — the presence of a
+trainable road on the waist changes the basin the rest of the network
+finds, and its read-time output is a small tax. The T1 verdict stays
+OPEN on the variance axis: a seed twin (t1c241, ~30 min GPU) is the
+next read whenever the GPU is free; until then 0.2706 is a single-arm
+number, not a record. (The stop also cancelled the GPU re-reads of
+t1c242/t1a242; the CPU reads stand.)
+
+## 2026-09-12 — THE BLURRED LADDER built (word given: "build and deploy the denoising schedule"): the target-side denoising schedule as an exact change inside the loss's two helpers; gate PASSED (blur off bit-identical); the blur's magnitude measured — the sharp ladder has trained 9-nat margins at breath 0 — two arms (beta_max 0.7 / 0.2) queued behind the shelf
+
+THE FORM (scripts/apply_blurred_ladder.py; ALG_BLUR=1, ALG_BLUR_MAX):
+rung k's gold is blurred toward uniform by beta_k = BLUR_MAX *
+cos^2(k*pi/(2(K-1))) — rung 0 most blurred, the last rung SHARP (the
+stellarator's clock). CE and BCE are LINEAR in the target, so the
+blurred-target loss is exactly (1-beta)*L(gold) + beta*L(uniform),
+implemented inside `ce`/`bce` (every categorical and binary term of
+_loss_single blurs at once; the stage-0 attention terms fat/vat/ref —
+soft targets shared across rungs — do not). No new parameter; the
+forward untouched; the read untouched.
+THE GATE (CPU, the 64-row fixture, 2 steps from balV242): ALG_BLUR=0
+step losses **5.2995 / 0.0279 = the current head's, bit-identical**;
+ALG_BLUR=1 (0.7) runs (no starved param) with step-0 loss **150.80**.
+THE MAGNITUDE: L(0.7) - L(0) = 145.5 = (sum_k w_k beta_k / K) *
+(L_uniform - L_gold) with sum_k w_k beta_k / K = 0.438 -> L_uniform -
+L_gold ~= 332 nats per rung (~9 nats per term over ~37 terms): the
+sharp ladder has trained balV242 to ~9-nat logit margins at EVERY
+breath, breath 0 included. The blur is therefore not a nudge: at
+beta_max 0.7, rung 0's target (0.3 onehot + 0.7 uniform) asks for
+~2-nat margins where 9 exist — a real move of the early states'
+decodes, which is the point (three breaths trained to already be the
+answer add nothing), and a real risk to the basin (gentle
+continuation from a confident checkpoint). Hence TWO ARMS, both from
+balV242, 12k, B=8, seed 242: **ds242 (beta_max 0.7, the gut's "from
+total noise")** and **dsg242 (beta_max 0.2, the gentle blur)**.
+READS (chain .cache/ds_chain.sh, pc-ds, behind pc-shelf2): open wild/
+mint, idle 3,4,5 wild/mint, the census (train rows 0:8) per arm.
+BARS (pinned): **DS-GUARD** wild >= 0.2426 and mint >= 0.9707 (the
+grave's kill below: the blur wrecked the basin). **DS-IDLE PASS** =
+idle 3,4,5 costs >= 0.010 wild (the middle became load-bearing;
+balP242: idling improved wild by 0.006; the control t1c242 is the
+natural-continuation reference). **DS-CENSUS** (reported, no bar: the
+blur adds no edge from the final rung; the middle's credit from ITS
+OWN rungs is what changes, which the census's frame does not read).
+SELECTION RULE: the candidate is the arm passing DS-GUARD with the
+larger idle cost; an arm failing the guard is a kill for that
+beta_max only. REGISTERED PREDICTION: dsg242 (0.2) passes the guard,
+wild within +-0.008 of the control, idle cost 0.005-0.015 (at the
+bar); ds242 (0.7) fails mint's guard (the 9-nat margins are load-
+bearing on synthetic) or, if it holds, is the stronger candidate. The
+step trainer does not need a fence (loss-only; the walker calls
+_loss_single per segment — blur=0 default; a walker port of the
+schedule is a registered job if the ladder lives).
