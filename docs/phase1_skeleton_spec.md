@@ -38064,3 +38064,25 @@ atlas is banked for the deployed stack's certification context
 (.cache/step_atlas_ds242.npz, research-era anchored).
 (pc-nogood6 was stopped and relaunched as pc-nogood7 on a mistaken
 timing check — the chain had already read the re-timed script; ~5 min.)
+
+## 2026-09-13 — THE NOGOOD'S COLD READS (balV242, wild): every form costs ~0.005 cold (zeroed 0.2477; noise 0.2482; noise + spotlight 0.2482; spotlight-only reference 0.2560; open 0.2526) — TM-BIRTH: no read-time win; the refusals per breath FALL 152 -> 114 -> 95 -> 73 -> 62: the repair loop CONVERGES to satisfiable parses, and satisfiable is not correct
+
+With the least-confident melt + the nogood the read-time wheel refuses
+fewer rows each breath (152/312 at b1 to 62/312 at b5) where the
+spotlight-only wheel refused 136-154 at every breath: the melt + nogood
+do what they were built to do — each round removes a contradiction and
+the parse walks to consistency. Accuracy stays at 0.248 because the
+solver's certificate is a refusal, not a proof: a wrong parse that is
+SATISFIABLE draws no core, and the walk stops there. This is the
+wheel's ceiling stated from the other side (2026-09-10: "on word
+problems the wheel turns only on refusals"): the nogood converts
+refusals into consistent commitments, and on wild most wrong parses
+are consistent. The training arm still runs (the repairer is untrained
+cold; the arm asks whether training under rounds of melt + nogood
+changes what the machine commits FIRST), bars TM-* vs stC3k as pinned.
+THE IMPLICATION for the wheel's design: the missing certificate is
+"consistent but wrong" — which only the ANSWER KEY sees at training
+time (the key gates the data; a training-time signal "your consistent
+parse disagrees with the key" is the pressure cooker's territory, not
+the wheel's) and which at read time needs the mouth/atlas (typicality)
+or the vote (view-invariance): the stacked wall.
