@@ -113,6 +113,42 @@ states carry, and a real risk to a checkpoint that reached its record
 by being confident everywhere. Two arms are queued: the full fog, and
 a gentle one, with bars pinned on the idle read and the guards.
 
+## The dish line, and the tug of war
+
+There is a third shape, and Bryce found it while the first arm was
+training. When you wash dishes you do not take one plate through the
+whole pipeline and then start the next. You scrape every plate, then
+rinse every plate, then scrub every plate. The stages are serial and
+the items are parallel. The curtain is serial in items. The fog is
+parallel in everything. The dish line is serial in stages and
+parallel in items, and for a parse the stages are not slots but
+fields: which slots exist, what type each is, the digits read off the
+text, then the argument pointers, then the results. Every slot at
+every stage, in the order the dependencies dictate.
+
+It matters because a single fog fights the line. The full blur asks
+the first breath to be uncertain about everything, including presence
+and digits that the grounding read makes obvious immediately. The
+rung pulls those fields toward uniform while the sentence pulls them
+sharp. That is a gradient tug of war on fields whose turn has already
+come, and it is wasted force. A field-wise blur, each field's blur
+falling to zero at its own stage, keeps the fog and drops the fight.
+
+Before choosing the order by hand, we measured the one the machine
+runs. Decoding every breath's state on the current checkpoint and
+scoring each field per breath gave a flat table on wild text:
+presence, type, operator, pointers and results at the same accuracy
+from the first breath to the last, to the second decimal. Only the
+digits climb, and only for two breaths. On synthetic, pointers and
+digits sharpen across the first two breaths and then stop. The machine
+was a two-breath parser with a decorative tail, and under the sharp
+ladder it staged nothing. The same read on the first blurred arm shows
+the picture coming into focus over three breaths instead of one, with
+the middle breaths' share of the final gradient up four to seven
+times, and idling them now costs a point of wild where it used to cost
+nothing. The fog did what the fog should. The line is the next thing
+to teach it.
+
 ## The line
 
 A curtain reveals; a fog lifts. A parse is bindings, and bindings do
