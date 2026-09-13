@@ -38208,3 +38208,8 @@ the best is >= +0.010): an arm from balV242 under the mask vs t1c242
 PREDICTION: the sweep peaks between beta 3-6 at tau 0.15-0.2 at
 +0.008 to +0.015 cold; training under the mask adds as much again (the
 grounding roads learn to read AROUND claims instead of fighting them).
+T2 PAIRED (balV242 wild, open vs the mask, same 2051 slots): 3:0.2 gains
+34 slots / loses 23 (net +11, paired SE 0.0037, McNemar z +1.46);
+3:0.3 gains 20 / loses 15 (z +0.85); 1.5:0.2 gains 15 / loses 13 (z
++0.38) — the direction is consistent and monotone in the mask; not yet
+at the bar (z >= 2); the sweep decides.
