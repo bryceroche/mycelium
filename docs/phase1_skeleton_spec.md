@@ -37819,3 +37819,36 @@ reads were right all along. Rule: a probe of the loop passes
 slot_mask (ones) and fact_buf, as t1_birth_check.py does. Relaunched
 (pc-whip2, 21:12): birth reads again (cheap), wh242a, wh242b, reads +
 paired + census; bars as pinned.
+
+## 2026-09-13 — CANDIDATES (need the word): THE SCHEDULED WHIP (noise on every breath, cos^2-decreasing — the full diffusion recipe, feasible because the grounding roads re-read the sentence every breath) and THE TARGETED WHIP (the wheel's third form: kick the CORE's slots, not spotlight their words)
+
+CORRECTION STATED TO BRYCE: the whip has NOT helped yet — the cold
+birth read (0.001 wild, 0 mint) says the machine is already robust to
+the kick; the arms (wh242a/b, pc-whip2) decide under WH-*.
+THE SCHEDULED WHIP: sigma_k = sigma_max * cos^2(k*pi/(2(K-1))) on the
+state entering breath k for k=1..K-1 (zero at the last breath) — the
+same clock as the stellarator's cut and the blurred ladder's blur;
+blur (uncertainty asked) + scheduled noise (uncertainty given) = the
+two halves of one diffusion recipe. Feasible because the conditioning
+(the sentence) is re-read by the grounding roads EVERY breath, as a
+diffusion model's cross-attention re-reads the prompt at every step.
+Cautions: the FIRST INK (breath 1's notebook entry is the most-read
+shelf entry; a big sigma_1 noises it — diffusion has no first ink);
+amplitude: try 0.3 and 0.6, not a tiptoe (the fog's 0.7 lesson).
+Sequence: AFTER the single-whip verdict (if a kick at one breath
+cannot make the tail load-bearing, six will not; if it can, the
+schedule is the generalization). Bars = WH-* with wild in SE units.
+THE TARGETED WHIP (the wheel's third form; the relay's "slot-lane
+mask" form is pushed back: slot-slot masks were measured non-load-
+bearing — the shoal's removal cost 0 — and the soft spotlight showed
+"where to look" is ignorable): kick ONLY the slots the solver's
+minimal unsatisfiable core names, hard, at the seam after the core
+returns; leave the rest. The machine must RE-DERIVE those slots from
+the sentence (the state it would coast on is gone) — "melt their
+deposits" (the wheel plan, 2026-09-10) with a driver; a mandatory
+road (no gain to vote down); the amplitude the only dial. Mechanism =
+the whip organ + the read-time core (wheel_read.py's per-breath
+cores; the training-time wheel's memo/prop-first bridge). Bars: the
+wheel's WT-* re-pinned in SE units (wild >= +0.020 over the control or
+twinned; mint guard), plus WH-IDLE/CENSUS. T2 (tokens<-slots) remains
+the other grounding move.
