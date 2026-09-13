@@ -37732,3 +37732,39 @@ robust half of the verdict; ds241 (seed 241) reads next (~21:05).
 The instrument: LV_PER_SLOT=<npz> makes loop_val record (row, slot,
 ok); paired_read.py A.npz B.npz reports diff, discordants, paired SE,
 McNemar z. From here idle/sever claims quote the paired SE.
+
+## 2026-09-12 — THE WHIP built (word given), gate PASSED, two arms queued behind the twins
+
+THE FORM (scripts/apply_whip.py; ALG_WHIP="k:amp"): in breath_step,
+the state ENTERING breath k is kicked: cur + amp * ||cur_slot|| *
+(unit-norm Gaussian noise on the CONTENT planes; the polar sink's
+content gate g_c — the 128 clock dims untouched, the machine keeps its
+time). Training: fresh noise every step through a fixed feed buffer
+(b_whip, copyin; _WHIP_SRC); the train-time val and the read use a
+SEEDED constant (RandomState 4242) — the same kick every read, as a
+diffusion sampler re-noises at inference. Unset: bit-identical (the
+branch is skipped). The walker refuses ALG_WHIP (the kick is not
+threaded).
+THE GATE (CPU, the 64-row fixture, 2 steps from balV242): ALG_WHIP
+unset -> step losses 5.2995 / 0.0279 = the current head's; ALG_WHIP=
+3:0.3 -> 5.3048 / 3.7580 (the tail's job stops being trivial — the
+second step no longer collapses to 0.03 on 64 memorized rows), val
+proxy 0.9659 both (the seeded kick at read costs nothing on the tiny
+set at 0.3).
+THE CHAIN (.cache/whip_chain.sh, pc-whip, behind pc-twins2): apply ->
+BIRTH READS (balV242 whipped at read, amp 0.3 / 0.6 on wild and mint —
+the cost of the wrinkle before any training to remove it) -> ARMS
+wh242a (3:0.3) and wh242b (3:0.6), warm balV242, 12k, B=8, seed 242 ->
+per arm: open, idle 3,4,5 (per-slot + THE PAIRED READ), idle 4,5,6
+(the breaths AFTER the kick — the whip's own tail), the census.
+BARS (pinned this afternoon, restated): WH-GUARD wild >= 0.2426 and
+mint >= 0.9707 (kill below); WH-IDLE PASS = idle 3,4,5 costs >= 0.010
+wild with the paired SE quoted (and the McNemar z); WH-CENSUS: b4 and
+b5 credit above the fog's 0.087 / 0.056 (the whip's claim: the breaths
+after the kick have a picture of their own to form); WH-TAIL (idle
+4,5,6): reported. SELECTION: the guard-passing arm with the larger
+paired idle cost. REGISTERED PREDICTION: the birth reads at 0.3 cost
+< 0.01 wild and < 0.005 mint, at 0.6 more; wh242a matches the fog on
+idle (~+0.010) and beats it on b4/b5; wh242b either kills mint's
+guard or is the stronger candidate; whip + blur stacked is a second
+chain if either passes.
