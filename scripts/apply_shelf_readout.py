@@ -62,4 +62,24 @@ rep('''def _t1_conv(p, x, tokmask):
 
 def _t1_conv(p, x, tokmask):
 ''')
+rep('''    out = heads_of(_s_final)
+    if _rb_last is not None:
+''', '''    out = heads_of(_s_final)
+    _last_heads = dict(out)   # the readout's heads (the shelf read when ALG_SHELF): the ladder's last rung under the shelf
+    if _rb_last is not None:
+''')
+rep('''    if len(breaths) > 1:
+        out["breaths"] = [heads_of(s) for s in breaths]
+    return out
+''', '''    if len(breaths) > 1:
+        # THE LADDER (v98): per-breath heads on the raw states. Under the
+        # shelf readout the LAST rung scores the shelf read (the readout the
+        # loss and the read must share; without it the shelf's params had no
+        # gradient — 2026-09-12); off the shelf the rung is bit-identical.
+        if ALG_SHELF and "sh_q" in p and "shelf" not in _SEVER:
+            out["breaths"] = [heads_of(s) for s in breaths[:-1]] + [_last_heads]
+        else:
+            out["breaths"] = [heads_of(s) for s in breaths]
+    return out
+''')
 open(p, "w").write(s); print("[apply] the shelf readout applied to", p)

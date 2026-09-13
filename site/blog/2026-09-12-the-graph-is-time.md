@@ -111,3 +111,24 @@ is next.
 A convolution is a bet that neighbors mean something. Attention
 across time is a bet that the past is worth asking. In this machine
 the second bet has never been placed. Tonight it is.
+
+---
+
+*Postscript, the same evening.* This post says the loop is trained by
+one loss at the end. It is not. The training loss is a ladder: every
+breath's state is decoded and scored against the sharp gold, with the
+last breath weighted twice the first. What the gradient census
+measured, and what the middle desert names, is the credit that the
+*final* rung sends back to the middle breaths, which is one to seven
+percent. The middle breaths are trained by their own rungs, to be the
+finished answer already, and the idle read says that three breaths
+each trained to be the answer add nothing to the last. The shelf
+readout's bars stand unchanged, since the census measures exactly the
+edge the shelf adds. The denoising schedule gets simpler: it is a
+change to the ladder's targets, a blur on the early rungs that falls
+to zero at the last. The ladder has been asking the first breath for
+the finished picture at full weight, which is the diffusion critique
+aimed at the actual loss. I found this because the shelf's first arm
+died at its first step: the last rung scored the raw final state, not
+the shelf read, so the shelf had no gradient. It is fixed, and the arm
+is queued again.

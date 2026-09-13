@@ -197,7 +197,15 @@ PF_FORMS = int(os.environ.get("PF_FORMS", "3"))   # pointer/macro forms
 # organ severance for removal-cost reads. Unset = untouched forward.
 _SEVER_ORGANS = frozenset(("notebook", "garage", "s3", "s4", "mixer",
                            "fedtwin", "altv0", "ffn", "pforms",
-                           "s5", "nb2", "t1"))   # the balanced generation (+ T1, 2026-09-12)
+                           "s5", "nb2", "t1", "shelf"))   # the balanced generation (+ T1, the shelf readout, 2026-09-12)
+# THE SHELF READOUT (2026-09-12, the word): ALG_SHELF=1 reads the answer from
+# an attention over every breath's state (per slot, query = the final state,
+# + a learned per-breath logit bias) — the shallow-wide edge from the one
+# loss to every breath. ALG_SHELF_D = the q/k width; ALG_SHELF_B0 = the
+# last breath's logit at birth (the birth read picks it: 3/5/7).
+ALG_SHELF = int(os.environ.get("ALG_SHELF", "0"))
+ALG_SHELF_D = int(os.environ.get("ALG_SHELF_D", "64"))
+ALG_SHELF_B0 = float(os.environ.get("ALG_SHELF_B0", "5"))
 # T1 (2026-09-12, the word — "The dancer's pixels"): the token-side
 # convolution. ALG_T1=K (odd taps; 0 = off): a depthwise convolution over
 # the TOKEN axis on the waist (K taps per channel, the center tap 1 and
@@ -1693,6 +1701,12 @@ def build_params(seed=0):
         p["fed_w2a_b"] = t(np.zeros(H_W))
         p["fed_w2b"] = t(np.zeros((H_W, H_W)))   # ZERO door (ResNet law)
         p["fed_w2b_b"] = t(np.zeros(H_W))
+    if ALG_SHELF:
+        _rS = np.random.RandomState(seed + 7331)
+        p["sh_q"] = t((_rS.randn(H_W, ALG_SHELF_D) * 0.01 / math.sqrt(H_W)).astype(np.float32))
+        p["sh_k"] = t((_rS.randn(H_W, ALG_SHELF_D) * 0.01 / math.sqrt(H_W)).astype(np.float32))
+        _sb = np.zeros(K_B, np.float32); _sb[-1] = ALG_SHELF_B0
+        p["sh_b"] = t(_sb)                                    # the last breath preferred at birth
     if ALG_T1:
         assert ALG_T1 % 2 == 1, "ALG_T1 = an odd tap count"
         _dw = np.zeros((ALG_T1, H_W), np.float32); _dw[ALG_T1 // 2] = 1.0
@@ -2186,6 +2200,21 @@ def _mh_ctx(p, cur, state, ctx, kb, B, _A5, _snaps):
     _mh_kv = cur + _mh_ce      # LIVE stream + detached context
     state["tc_mh_ctx"] = (kb, _mh_kv, _A5s)
     return _mh_kv, _A5s
+
+
+def _shelf_readout(p, breaths):
+    """THE SHELF READOUT (2026-09-12): per slot, softmax over the K breath
+    states of (q(final) . k(state_k) / sqrt(D) + b_k); the read = the
+    weighted sum of the states themselves (no value map: the states ARE
+    the shelf). A road; birth ~= the final state (b_last = ALG_SHELF_B0)."""
+    S = breaths[0].stack(*breaths[1:], dim=1)               # (B, K, LT, HW)
+    K = int(S.shape[1])
+    assert int(p["sh_b"].shape[0]) == K, f"shelf bias sized {p['sh_b'].shape[0]} for {K} breaths"
+    q = breaths[-1] @ p["sh_q"]                             # (B, LT, D)
+    k = S @ p["sh_k"]                                       # (B, K, LT, D)
+    e = (q.unsqueeze(1) * k).sum(-1) / math.sqrt(float(p["sh_q"].shape[1])) + p["sh_b"].reshape(1, K, 1)
+    a = e.softmax(1)                                        # (B, K, LT)
+    return (a.unsqueeze(-1) * S).sum(1)                     # (B, LT, HW)
 
 
 def _t1_conv(p, x, tokmask):
@@ -3658,6 +3687,8 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
     if int(os.environ.get("ALG_MINE_BREATHS", "0")):
         out_breaths = breaths          # v3: the dialect ladder's raw states
     _s_final = breaths[-1]
+    if ALG_SHELF and "sh_q" in p and "shelf" not in _SEVER and len(breaths) > 1:
+        _s_final = _shelf_readout(p, breaths)    # THE SHELF READOUT: every breath on the road to the loss
     if _GTAP is not None and "final" in _GTAP:
         _s_final = _s_final + _GTAP["final"]
     if anchor is not None and amask is not None:     # FORM (A): state-side
@@ -3665,6 +3696,7 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
                                                      # structural re-entry the
                                                      # forward cannot ignore
     out = heads_of(_s_final)
+    _last_heads = dict(out)   # the readout's heads (the shelf read when ALG_SHELF): the ladder's last rung under the shelf
     if _rb_last is not None:
         out["rbias"] = _rb_last
     if int(os.environ.get("ALG_MINE_BREATHS", "0")) and K_B > 1 and slot_mask is not None:
@@ -3748,7 +3780,14 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
     if "h_ref" in p:
         out["ref"] = waist @ p["h_ref"] + p["h_ref_b"]   # (B, T_ALG, K_VARS)
     if len(breaths) > 1:
-        out["breaths"] = [heads_of(s) for s in breaths]
+        # THE LADDER (v98): per-breath heads on the raw states. Under the
+        # shelf readout the LAST rung scores the shelf read (the readout the
+        # loss and the read must share; without it the shelf's params had no
+        # gradient — 2026-09-12); off the shelf the rung is bit-identical.
+        if ALG_SHELF and "sh_q" in p and "shelf" not in _SEVER:
+            out["breaths"] = [heads_of(s) for s in breaths[:-1]] + [_last_heads]
+        else:
+            out["breaths"] = [heads_of(s) for s in breaths]
     return out
 
 
@@ -5042,6 +5081,11 @@ def do_train(steps, lr, batch, seed):
             l = l + float(os.environ.get("OPATT_W", "1")) * ((-(o["fat"] + 1e-9).log() * _opn).sum(-1) * _dm).sum() / (_dm.sum() + 1e-6)
         opt.zero_grad()
         l.backward()
+        # THE NO-GRAD FENCE (2026-09-12): name the starved parameters instead
+        # of the optimizer's bare `assert x is not None` (the shelf arm died
+        # nameless at its first step)
+        _nog = [k_ for k_, v_ in p.items() if k_ not in _frz and v_.grad is None]
+        assert not _nog, f"params with NO gradient in the training step: {_nog}"
         opt.step()
         return l.realize()
 

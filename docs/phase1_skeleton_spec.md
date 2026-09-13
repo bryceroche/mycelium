@@ -37446,3 +37446,47 @@ the shelf's: SR-CENSUS (b3-b5 credit >= 0.20), SR-IDLE (idle 3,4,5
 costs >= 0.010 wild), the guards (wild >= 0.2426, mint >= 0.9707; the
 grave's kill), vs the t1c242 control. Needs the word; not before the
 shelf read (pc-shelf, running).
+
+## 2026-09-12 — THE LADDER (a correction that reframes the desert and both remedies): the training loss is the v98 LADDER — per-breath weighted CE on every breath's raw state — not "one loss at the end"; the census's "readout" is the ladder's LAST RUNG; the shelf arm died because the last rung scored the raw last state, not the shelf read (its params had no gradient); fixed; relaunch queued
+
+THE DEATH (pc-shelf, sr242, 17:13): `AssertionError` inside AdamW —
+`unwrap(t.grad)` on a parameter with no gradient — nameless. A no-grad
+fence now names them (the head's training step asserts with the
+list): **sh_q, sh_k, sh_b**. Reproduced on CPU in one step with a
+64-row train file (.cache/form_tiny64.jsonl + test_tiny64.jsonl;
+--precompute then --train; ~3 min — a fixture worth keeping for
+training-step bugs). A probe confirmed `_shelf_readout` IS called in
+the training forward (K=7, requires_grad through) — the loss simply
+does not read it.
+THE LADDER: `loss_fn(o, g)` (phase1_algebra_head.py:3786) scores
+`o["breaths"]` = [heads_of(s) for s in breaths] — EVERY breath's raw
+state decoded and graded against the SHARP gold with weight
+1 + k/(K-1) (1.0 at breath 0 -> 2.0 at the last), summed / K_B; the
+top-level heads (heads_of(_s_final) — what loop_val READS) supply only
+the shared keys (fat/vat/query...). Consequences, stated plainly:
+(1) the loop has been trained with sharp per-breath supervision at
+every breath all along — the "deep-supervision grave" (08-16,
+ALG_DEEPSUP/_early) was an EXTRA copy of it; (2) the gradient census's
+"credit relative to the readout" measured the FINAL RUNG's path
+(grad_census calls _loss_single on the top-level heads), so THE MIDDLE
+DESERT is precisely "the final rung's gradient does not reach the
+middle" — the middle states are trained by their OWN rungs, to be
+decodable as the finished answer NOW; the idle read (b3-b5 remove for
+free) then says: three breaths each trained to already be the answer
+add nothing to the last; (3) both blog posts of today said "the one
+loss at the end" — postscripts added; the shelf's and the schedule's
+BARS are unaffected (the census measures the final rung's edge, which
+is what the shelf adds), but the DENOISING SCHEDULE gets simpler and
+sharper: it is a change to the LADDER'S TARGETS — blur rung k's gold by
+beta_k = cos^2(k*pi/(2(K-1))) (rung 0 near-uniform, the last rung
+sharp) — the ladder has been asking breath 1 for the finished picture
+with weight 1.0, which is the diffusion critique aimed at the actual
+loss. (4) THE FIX for the shelf: under ALG_SHELF the ladder's last rung
+scores the shelf read (`_last_heads`, the same heads the read uses);
+off the shelf the rung is the old recompute, bit-identical by
+construction. CPU 2-step train passes (loss 5.30 -> 0.03 on the tiny
+set, no starved param). apply_shelf_readout.py carries the same edit.
+RELAUNCH: .cache/shelf_chain2.sh (pc-shelf2, behind pc-t1twin): the
+birth reads are banked (B0=3 by the pinned rule; 0.2516/0.9755), so
+the chain runs the arm sr242 (ALG_SHELF=1 B0=3, warm balV242, 12k, B=8,
+seed 242) then the reads + the census; bars SR-* as pinned.
