@@ -38351,3 +38351,26 @@ not the second, and even the first did not move); (b) the target is
 under-learned at 12k steps of gentle continuation (30% top-token) and a
 longer or stronger dose would show. ALIGN2's bars (mean >= +0.015 both
 positive / both <= -0.010) decide on the pair.
+
+## 2026-09-14 — THE ALIGNER v2 VERDICT: NULL — seed 242 wild -0.0014, seed 241 -0.0102 (0.2550 vs t1c241 0.2652); mint +0.0014 / +0.0005; ALIGN2-PASS impossible, KILL not met — teaching the given slots to read their numerals on prose (learned to 30% top-token) does not move wild: the given slots' grounding is not the wild bottleneck; the argument pointers are
+
+al2_241: open wild 0.2550, open mint 0.9776 (control t1c241: 0.2652 /
+0.9771). Both pairs negative (-0.0014, -0.0102; mean -0.0058, each
+inside 1 SE); v1 (digits as the variable's mention) was -0.009 / -0.015.
+THE SUM OF THE ALIGNERS: on prose, span targets for the GIVEN slots —
+whether as the variable's mention or as the factor's own span — do not
+move wild; the head guesses values from context and reads them right
+often enough, and the field that fails, argument pointers (0.39), is
+untouched by any given-slot anchor. The three token-road interventions
+of the weekend (T1, T2, the aligners) all sit inside a standard error.
+What the args field needs is WHICH QUANTITY a relation's operand is — a
+binding between a relation phrase and a quantity phrase — and no
+numeral anchor names a quantity phrase. THE LAST CHEAP AUTOMATIC
+ANCHOR: the operator cue (each/per/total/times as/more than/half/twice)
+as the RELATION slot's span, assigned only when a row has exactly one
+relation of the cue's class (v3; coverage to be measured; the same
+intervention type that just went null on givens — registered, low
+prior). THE DATA LEVER stands: quantity-phrase mentions by hand (the
+books' L3), the campaign's August critical path. THE CERTIFIER stands:
+the fingerpost's read-time form (abstain unless stable) is how wild
+becomes trustworthy before it becomes correct.
