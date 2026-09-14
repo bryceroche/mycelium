@@ -38444,3 +38444,37 @@ the weekend says it moves with information (annotated quantity
 phrases), not with wiring. The token loop stays worth building for
 STRUCTURE (its own breaths, clock and bus) once there is supervision
 for it to consume.
+
+## 2026-09-14 — THE NL LOOP (word given: "let's build the NL loop; interleaved with the math loop; sharing the T6 clock and the T256 bus; its own atlas chart and its own masks"): v1 registered — a token step per breath, interleaved before the slot step; the token states re-enter the slot loop's grounding roads every breath
+
+THE FORM (v1, ALG_TOKLOOP=1): per breath kb, before breath_step, the
+token states tok (B, T, 512; tok_1 = the waist) take one token step:
+multi-head token<-token attention with the SENTENCE mask (tokens attend
+within their sentence — the NL loop's own structural mask; the claims
+and the certificate masks are v2), the shared clock as the pi-cycled
+Q/K rotation of that attention (the slot loop's own idiom; the token
+STATES are not rotated in v1 so birth stays exact), and a zero-init
+output projection: tok <- tok + attn(tok) @ W_o with W_o = 0 — bit-
+identical at birth by construction. The slot loop's ctx then reads the
+NEW token states every breath (ctx["waist"] and the bank rebuilt from
+tok_k): the grounding roads and station 3 read what the token loop
+wrote. The per-breath NL page for the atlas's second chart is the
+pooled token state per breath (nl_all from the loop, not from a single
+reading replayed). NOT in v1 (registered as v2): expand-collapse on
+tokens (the polar waist on (B, T, 512) — needs its own gate: the shared
+projection is not identity on tokens), the token bus, the claims and
+the certificates as token-side masks, the locus's nogood.
+THE LAW'S CAVEAT, stated before the read: W_o = 0 is a gain at zero —
+the mandatory-road law says gated organs are voted down from birth
+under gentle continuation. v1 accepts this for the exact birth and
+CENSUSES it (the pre/post knob law): ||attn @ W_o|| / ||tok|| per
+breath on the trained arm; if the ratio stays < 0.05 the road form
+(the token step REPLACING the waist) is v2's first change.
+GATES: unset bit-identical (the fixture's 5.2995 / 0.0279); set: the
+step-0 loss identical, step-1 different (W_o moves). ARMS: warm balV242
+(new params fresh), 12k, B=8, seeds 242/241 vs t1c242/t1c241. BARS
+(SE units): TOK-PASS = mean over the two pairs >= +0.020 wild with both
+positive and mint within 0.005; TOK-KILL = both <= -0.010; the census
+reported. REGISTERED PREDICTION: wild +0.000..+0.010 (structure alone
+has not moved wild all weekend; the token loop's value arrives with
+supervision it can consume), mint +0.000..+0.005, census ratio 0.02-0.10.
