@@ -97,8 +97,7 @@ def main():
     from phase1_algebra_head import (build_params, forward, load_alg,
                                      build_slot_masks, alt2_fact_buf,
                                      K_VARS, H_W)
-    from mycelium.step_atlas import (StepWelford, save_atlas, atlas_class,
-                                     K_STEPS)
+    from mycelium.step_atlas import AtlasBanks, atlas_class, K_STEPS
 
     samples, states, tokmask, gold, sent = load_alg("train")
     n_all = len(samples)
@@ -116,8 +115,7 @@ def main():
     for k in p:
         p[k].assign(sd[k].to(p[k].device).cast(p[k].dtype)).realize()
 
-    cells = {}
-    cells_nl = {}      # the second chart (the reading)
+    banks = AtlasBanks(H_W)   # ONE MAP, TWO CHARTS: one accumulator, one save (2026-09-14)
     n_done = 0
     for s0 in range(0, len(take), 8):
         sl = take[s0:s0 + 8]
@@ -150,16 +148,11 @@ def main():
         for bi, i in enumerate(sl):        # pads (bi >= len(sl)) skipped
             cls = atlas_class(samples[int(i)].get("gen"))
             for s_id in range(K_STEPS):
-                key = (s_id, cls)
-                if key not in cells:
-                    cells[key] = StepWelford(H_W)
-                # POOLING (see module docstring): mean over the 24 slots
-                cells[key].add(br[s_id][bi].mean(0).astype(np.float64))
-                if key not in cells_nl:
-                    cells_nl[key] = StepWelford(H_W)
-                # NL: attention-pooled waisted token state (the tap
-                # already pooled in-graph; accumulate as-is)
-                cells_nl[key].add(nl[s_id][bi].astype(np.float64))
+                # THE SLOT CHART (the commitment): mean over the 24 slots
+                banks.add("slot", s_id, cls, br[s_id][bi].mean(0).astype(np.float64))
+                # THE TOKEN CHART (the reading): the attention-pooled waisted
+                # token state (the tap pooled in-graph; accumulate as-is)
+                banks.add("token", s_id, cls, nl[s_id][bi].astype(np.float64))
         n_done += len(sl)
         if (s0 // 8) % 64 == 0:
             print(f"[mine-atlas] {n_done}/{len(take)}", flush=True)
@@ -171,21 +164,14 @@ def main():
                            " — era anchor for step_atlas artifacts;"
                            " deployed GENERATION.json untouched"}, f,
                   indent=1)
-    path = save_atlas(cells, H_W, path=ATLAS_OUT,
-                      manifest_path=RESEARCH_MANIFEST,
-                      nl_cells=cells_nl)
-    classes = sorted({c for (_, c) in cells})
+    path = banks.save(ATLAS_OUT, RESEARCH_MANIFEST)   # the paired-count law lives in save
+    classes = banks.classes()
     print(f"[mine-atlas] saved {path} (era anchored to {RESEARCH_MANIFEST})")
     print(f"[mine-atlas] classes={classes}")
     for cls in classes:
-        counts = [cells[(s, cls)].n if (s, cls) in cells else 0
-                  for s in range(K_STEPS)]
+        counts = [banks.count("slot", s, cls) for s in range(K_STEPS)]
         print(f"[mine-atlas]   {cls:12s} n/step={counts}")
-        ncounts = [cells_nl[(s, cls)].n if (s, cls) in cells_nl
-                   else 0 for s in range(K_STEPS)]
-        assert ncounts == counts, \
-            f"paired charts disagree on {cls}: {ncounts} vs {counts}"
-        print(f"[mine-atlas]   {cls:12s} nl n/step={ncounts}")
+        print(f"[mine-atlas]   {cls:12s} token n/step={[banks.count('token', s, cls) for s in range(K_STEPS)]}")
 
 
 if __name__ == "__main__":

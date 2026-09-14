@@ -242,7 +242,7 @@ HOOKS = {
 # ---------------------------------------------------------------- blog + bio
 BLOG = ROOT / "site" / "blog"
 blog_pages = []
-PIN_FIRST = ["2026-09-14-two-loops-one-shape", "2026-09-12-the-whip", "2026-09-12-the-fog-not-the-curtain", "2026-09-12-two-roads-to-the-middle", "2026-09-12-the-graph-is-time", "2026-09-12-the-dancers-pixels", "2026-09-10-the-line-cooks", "2026-09-10-the-stellarator", "2026-09-10-the-steering-wheel", "2026-09-09-the-words-never-change", "2026-09-09-the-order", "2026-09-09-the-balance-sheet", "2026-09-09-turbulent-air", "2026-09-09-the-player-and-the-game", "2026-09-08-the-pressure-cooker", "2026-09-07-a-place-to-turn"]     # the live generation leads the splash
+PIN_FIRST = ["2026-09-14-one-map-two-charts", "2026-09-14-two-loops-one-shape", "2026-09-12-the-whip", "2026-09-12-the-fog-not-the-curtain", "2026-09-12-two-roads-to-the-middle", "2026-09-12-the-graph-is-time", "2026-09-12-the-dancers-pixels", "2026-09-10-the-line-cooks", "2026-09-10-the-stellarator", "2026-09-10-the-steering-wheel", "2026-09-09-the-words-never-change", "2026-09-09-the-order", "2026-09-09-the-balance-sheet", "2026-09-09-turbulent-air", "2026-09-09-the-player-and-the-game", "2026-09-08-the-pressure-cooker", "2026-09-07-a-place-to-turn"]     # the live generation leads the splash
 _posts = sorted(BLOG.glob("*.md"), reverse=True)
 _posts = [m for m in _posts if m.stem in PIN_FIRST] + [m for m in _posts if m.stem not in PIN_FIRST]
 for md in _posts:

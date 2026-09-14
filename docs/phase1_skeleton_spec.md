@@ -38496,3 +38496,47 @@ forward carry every breath). In code: Certificate(.slots, .tokens,
 carry(fat)); Atlas(chart[medium]) under one class axis — the seam for the
 Loop refactor (a loop = medium + organs; what crosses between loops is the
 waist forward and a carried certificate back).
+ONE MAP, TWO CHARTS + THE BRIDGE (2026-09-14, word given; blog "One map,
+two charts", pinned first). Bryce: one atlas object with two projections
+(NL = tokens, math = slots); one bridge object with methods to project to
+tokens or slots — no ad hoc masking functions for words and variables;
+the forward bridge 2k -> 512 (the waist); the return bridge = the cross
+attention matrix projecting certificates (MUC contradictions, view
+instability) back and forth as dynamic masks. BUILT:
+  mycelium/step_atlas.py: Atlas (charts {"slot","token"} under ONE class
+  index and ONE era stamp; Chart.locate/trajectory/radius; Atlas.consult,
+  Atlas.transport(src, dst, step, states) = locate on one chart, read the
+  other at the same coordinate — cross_prior IS transport(token->slot, 0);
+  Atlas.radius = the happy-family z-radius on either chart); AtlasBanks
+  (the miner's accumulator, the paired-count law in save). The npz layout
+  is UNCHANGED (means/vars/counts = slot chart; nl_* = token chart) and
+  the loaded Atlas keeps the dict protocol, so every existing reader
+  (the head's ALG_MH_ATLAS door, loop_val, happy_family_read, needle/
+  leadlag/step_engine reads) is untouched; step_atlas_ds242.npz loads
+  with both charts. Self-test extended (transport both ways == cross_prior;
+  radius == happy_family_read's formula; single-chart door loud; layout).
+  mycelium/loop_bridge.py: Certificate(kind, slots|tokens, nogoods,
+  breath; born fixed at birth); Bridge(fat, sent, tokmask) with
+  to_tokens(slots, "sentence"|"mass"), to_slots(tokens, "mass"|"argmax"),
+  spotlight(slots, beta, mode) = THE WHEEL'S BIAS, project(cert) fills
+  the missing side only; the in-graph roads claims_bias / melt /
+  nogood_apply / same_sentence as pure functions of tensors. The mass
+  projections are adjoint through fat (self-test).
+  scripts/bridge_identity_check.py: the reference = the code that ran
+  TODAY, extracted VERBATIM from the files (the trainer's wheel_bias
+  tail, the head's _wheel_turn tail, _claim_bias, _melt, _nogood_apply,
+  _token_step's sentence mask): 14/14 identical (bias AND melt, union
+  and own) BEFORE the apply.
+  scripts/apply_bridge.py APPLIED: the head's _claim_bias / _melt /
+  _nogood_apply delegate; _wheel_turn's spotlight = Bridge.spotlight;
+  the trainer's wheel_bias spotlight = the SAME call (the two private
+  copies are gone); the miner accumulates through AtlasBanks (staged,
+  GPU, not run). GATE: the 64-row CPU fixture step-0 loss door off 5.2995
+  / door on 5.3010 — identical to the pre-apply numbers.
+  DEFERRED (not edited under the running arms): _token_step's own
+  sentence mask -> same_sentence (code motion after pc-tokloop ends).
+  NOTE: the mask-prep key includes the head sha, so the chain's read and
+  second arm re-prep (12.5 min each) — accepted.
+  THE LEXICON (dozen -> 12) stays a separate registered organ: it is a
+  table keyed by SURFACE PHRASE, not by kind; it feeds the token chart's
+  pages, it is not a chart. The order of attack is unchanged.

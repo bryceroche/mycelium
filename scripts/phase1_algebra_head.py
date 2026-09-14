@@ -118,12 +118,8 @@ _T2_TAU = float(_T2.split(":")[1]) if _T2 else 0.5
 def _claim_bias(prev_at, melted, B, LT):
     """prev_at: (B, LT, T) last breath's head-mean slots<-tokens attention; melted: (B, LT) or None.
     Returns (B, 1, LT, T): -beta where the token is claimed (> tau) by ANOTHER, unmelted slot."""
-    C = (prev_at > _T2_TAU).float()
-    if melted is not None:
-        C = C * (1.0 - melted.reshape(B, LT, 1))
-    anyc = C.sum(1, keepdim=True)                     # (B, 1, T)
-    other = ((anyc - C) > 0).float()                  # claimed by someone else
-    return (other * -_T2_BETA).reshape(B, 1, LT, -1)
+    from mycelium.loop_bridge import claims_bias    # THE BRIDGE (2026-09-14): the claims road, one definition
+    return claims_bias(prev_at, melted, B, LT, _T2_BETA, _T2_TAU)
 
 
 def _slot_margins(row, j):
@@ -151,24 +147,18 @@ def _nogood_pick(row, core_slots):
 
 def _nogood_apply(onp, nogoods):
     """Mask the previous choices out of the head logits, in place. nogoods: list of (b, j, field, idx)."""
-    for b, j, f, idx in nogoods:
-        onp[f][b, j, idx] = -1e9
-    return onp
+    from mycelium.loop_bridge import nogood_apply   # THE BRIDGE: the nogood road
+    return nogood_apply(onp, nogoods)
 
 
 def _melt(cur, m):
     """cur: (B, LT, HW); m: (B, LT) 1.0 on the slots to melt. On those slots the
     content dims become _WHEEL_MELT x ||slot|| x unit seeded noise (0 -> zeros);
     the clock dims are untouched; other slots are untouched."""
+    from mycelium.loop_bridge import melt as _bridge_melt   # THE BRIDGE: the melt road
     B, LT, HW = (int(x) for x in cur.shape)
-    n = _whip_noise(B, LT, HW)
-    g = _polar_sink()[2] if ALG_POLAR else 1.0
-    n = n * g
-    nn = (n * n).sum(-1, keepdim=True).sqrt() + 1e-6
-    nc = (cur * cur).sum(-1, keepdim=True).sqrt()
-    fresh = n / nn * nc * _WHEEL_MELT                 # the melted content (amp 0 -> zeros)
-    mm = m.reshape(B, LT, 1)
-    return cur + mm * (fresh - cur * g)               # content replaced on melted slots; clock (g=0) kept
+    return _bridge_melt(cur, m, _WHEEL_MELT, _whip_noise(B, LT, HW),
+                        _polar_sink()[2] if ALG_POLAR else 1.0)
 
 
 def _wheel_memo_key(row):
@@ -192,8 +182,7 @@ def _wheel_turn(p, state, kb, fat, sent, vst, B):
     fat_np = fat.realize().numpy() if hasattr(fat, "realize") else _np.asarray(fat)
     sent_np = sent.numpy() if hasattr(sent, "numpy") else _np.asarray(sent)
     T = sent_np.shape[1]
-    bias = _np.zeros((B, 1, L_TOT, T), _np.float32)
-    melt = _np.zeros((B, L_TOT), _np.float32)          # THE MELT's mask for the next breath
+    melt = _np.zeros((B, L_TOT), _np.float32)          # THE MELT's mask for the next breath = the MUC certificate on slots
     beta = float(_WHEEL.get("beta", 3.0)); mode = _WHEEL.get("mode", "union")
     turned = 0
     _rows = []; _parses = []; _rowd = []
@@ -237,13 +226,10 @@ def _wheel_turn(p, state, kb, fat, sent, vst, B):
                 _WHEEL.setdefault("nogood", []).append((b, _j, _f, _c))
         for j in core_slots:
             melt[b, j] = 1.0
-        sents = {}
-        for j in core_slots:
-            tok = int(fat_np[b, j].argmax()); sents[j] = int(sent_np[b, min(tok, T - 1)])
-        for j in core_slots:
-            want = set(sents.values()) if mode == "union" else {sents[j]}
-            m = _np.isin(sent_np[b], list(want))
-            bias[b, 0, j, :] = _np.where(m, beta, 0.0).astype(_np.float32)
+    # THE BRIDGE (2026-09-14): the MUC certificate, born on slots, projected to the
+    # tokens through this breath's cross attention — the spotlight, one construction
+    from mycelium.loop_bridge import Bridge
+    bias = Bridge(fat_np, sent_np).spotlight(melt, beta, mode)
     _WHEEL.setdefault("turned", []).append((kb, turned, B))
     state["wheel_melt"] = (_Tw(melt, dtype=_dw.float) if (turned and _WHEEL_MELT is not None) else None)
     return _Tw(bias, dtype=_dw.float) if (turned and beta != 0.0) else None

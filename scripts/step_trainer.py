@@ -758,20 +758,17 @@ def wheel_bias(H, onp, fat_np, se_np, nv, ma, beta, mode, workers, LT):
         import pickle
         with open(_WHEEL_DUMP, "ab") as f:
             pickle.dump({"rows": rows, "res": res, "t_cores": _t2 - _t1}, f)
-    bias = np.zeros((B, 1, LT, T), np.float32); turned = 0
-    melt = np.zeros((B, LT), np.float32)                 # THE MELT's mask
+    melt = np.zeros((B, LT), np.float32); turned = 0     # THE MELT's mask = the MUC certificate on slots
     for b, (status, core) in enumerate(res):
         if status != "unsat" or not core:
             continue
         turned += 1
-        parse = parses[b]
-        slots = [parse[k]["_slot"] for k in core]
-        for j in slots:
-            melt[b, j] = 1.0
-        sents = {j: int(se_np[b, min(int(fat_np[b, j].argmax()), T - 1)]) for j in slots}
-        for j in slots:
-            want = set(sents.values()) if mode == "union" else {sents[j]}
-            bias[b, 0, j, :] = np.where(np.isin(se_np[b], list(want)), beta, 0.0)
+        for k in core:
+            melt[b, parses[b][k]["_slot"]] = 1.0
+    # THE BRIDGE (2026-09-14): the certificate projected to the tokens — the
+    # spotlight, ONE construction shared with the head (bridge_identity_check.py)
+    from mycelium.loop_bridge import Bridge
+    bias = Bridge(fat_np, se_np).spotlight(melt, beta, mode)
     return bias, turned, melt
 
 
