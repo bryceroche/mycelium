@@ -38213,3 +38213,44 @@ T2 PAIRED (balV242 wild, open vs the mask, same 2051 slots): 3:0.2 gains
 3:0.3 gains 20 / loses 15 (z +0.85); 1.5:0.2 gains 15 / loses 13 (z
 +0.38) — the direction is consistent and monotone in the mask; not yet
 at the bar (z >= 2); the sweep decides.
+
+## 2026-09-13 — THE MELT VERDICT (re-run on the rebuilt states): FAIL, not a kill — training under rounds of least-confident melt + nogood does not change what the machine commits first, and the read-time repair loop costs wild on both arms; T2's sweep: the best cold mask stays at +0.0053 (z 1.15-1.46), below the bar — no training arm
+
+THE MELT (stM242: ST_WHEEL=1, beta 0, melt 1.0, nogood, 3000 steps B=32 from
+balV242; its own-length control stC3k, 3000 steps, no wheel):
+  stM242: open wild 0.2516, open mint 0.9733; wheel+melt+nogood read 0.2482.
+  stC3k:  open wild 0.2569, open mint 0.9801; wheel+melt+nogood read 0.2443.
+TM-TRAIN vs stC3k: PASS needed 0.2769; INCONCLUSIVE needed >= 0.2669; KILL
+< 0.2369 — the wheel read on the trained arm is 0.2482 (-0.0087 vs the
+control's open, 0.9 SE): **FAIL, not a kill**. The arm's own open read is
+-0.005 wild / -0.007 mint vs the control (training under the melt rounds
+cost a little of both), and the read-time repair loop costs -0.003 on the
+trained arm and -0.013 on the untrained control: melting and re-deriving
+the least-confident core slot under a nogood makes parses CONSISTENT
+(the refusal counts fall across breaths, banked this morning) and
+consistency is not correctness — the wheel's ceiling stated for the
+third time (spotlight, melt, nogood). The wheel's forms are exhausted on
+the wild register as it stands: the certificate is a refusal, and most
+wrong wild parses are satisfiable. THE WHEEL IS PARKED (all doors stay,
+default off); what it needs is a certificate that sees "consistent but
+wrong", which only the key gives at training time — the pressure-cooker
+territory — or typicality/the vote at read time (the stacked wall,
+unbuilt).
+T2 THE CLAIM MASK, the sweep (balV242, cold, wild / mint; paired vs open):
+6:0.2 -> 0.2579 / 0.9755 (net +11 slots, z 1.15); 3:0.15 -> 0.2511 / 0.9760
+(z -0.40); 6:0.15 -> 0.2555 / 0.9755 (z 0.60); 10:0.2 -> 0.2565 / 0.9755
+(z 0.76); 6:0.1 -> 0.2452 / 0.9752 (z -1.46: too many claims, every token
+contested). With this morning's 3:0.2 (0.2579, z 1.46) the surface is
+flat at +0.005 for beta >= 3 at tau 0.2 and falls on either side. T2-COLD
+WIN needed z >= 2 and >= +0.015: NOT MET; T2-TRAIN's trigger (best >=
++0.010): NOT MET. T2 as a structural claim mask is a small, consistent,
+insignificant positive — banked, not fired. (Mint untouched by every
+config: on templated text the claims are already exclusive.)
+THE DAY'S SUM for wild grounding: the value aligner (digits as mentions)
+leans negative; T2 (claims as structure) is +0.005 and flat; the melt
+and nogood (the certificate as a driver) lean negative. Every read this
+week that touched the token roads moved wild by less than a standard
+error. The register's gold names quantities the way the books' annotators
+do, and no automatic anchor has reproduced that. THE CRITICAL PATH is the
+one the campaign named in August: n annotated prose rows. The GPU is idle;
+nothing is queued; every remaining registered item needs the word.
