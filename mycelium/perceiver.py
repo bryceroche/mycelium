@@ -65,10 +65,11 @@ class LoopHealth:
         self.cls_slot, self.cls_tok = [], []
         self.wheel_status, self.wheel_core = [], []
         self.row_ok, self.slot_ok, self.present = [], [], []
+        self.slot_margins = []          # (K, b, L, 3): res / op / args per present slot (NaN absent)
         self.ids = []
 
     def add(self, ids, meters, census=None, cls_slot=None, cls_tok=None,
-            wheel=None, row_ok=None, slot_ok=None, present=None):
+            wheel=None, row_ok=None, slot_ok=None, present=None, slot_margins=None):
         """meters: {name: (K, b)}; census: {organ: (K, b)}; wheel: [(status, core)]."""
         self.ids.extend(int(i) for i in ids)
         for k in METERS:
@@ -83,6 +84,7 @@ class LoopHealth:
         if row_ok is not None: self.row_ok.append(np.asarray(row_ok, bool))
         if slot_ok is not None: self.slot_ok.append(np.asarray(slot_ok, bool))
         if present is not None: self.present.append(np.asarray(present, bool))
+        if slot_margins is not None: self.slot_margins.append(np.asarray(slot_margins, np.float64))
 
     def meter(self, name):
         return np.concatenate(self.m[name], axis=1)          # (K, N)
@@ -96,14 +98,22 @@ class LoopHealth:
     def rows_ok(self):
         return np.concatenate(self.row_ok) if self.row_ok else None
 
+    def rows_half(self):
+        """THE LABEL (happy_family_read's): >= half of the row's present slots
+        correct. Fully-correct rows are ~2% of wild — too few positives."""
+        if not self.slot_ok:
+            return None
+        so = np.concatenate(self.slot_ok); pr = np.concatenate(self.present)
+        return (so & pr).sum(1) / np.maximum(pr.sum(1), 1) >= 0.5
+
     def report(self, bar=0.65):
         """Per breath: the medians and, when gold is present, the AUROC of
         row-correct vs each meter (lower = healthier, so the score is
         -meter). A meter is a COMPASS at AUROC >= bar (the happy-family
         bar). Returns {(meter, k): auroc} and prints the table."""
-        ok = self.rows_ok()
+        ok = self.rows_half(); full = self.rows_ok()
         out = {}
-        print(f"[perceiver] N={self.n} rows, K={self.K} breaths" + (f", rows correct {ok.mean():.3f}" if ok is not None else ""))
+        print(f"[perceiver] N={self.n} rows, K={self.K} breaths" + (f", rows >= half correct {ok.mean():.3f} (fully {full.mean():.3f}); AUROC label = >= half" if ok is not None else ""))
         hdr = "meter        " + " ".join(f"   b{k}   " for k in range(self.K))
         print(hdr)
         for name in METERS:
@@ -118,10 +128,22 @@ class LoopHealth:
                     out[(name, k)] = a; aus.append(a)
                 flag = " <- COMPASS" if np.nanmax(aus) >= bar else ""
                 print(f"  {'':12s} AUROC  " + " ".join(f"{a:8.3f}" for a in aus) + flag)
+        if self.slot_margins and self.slot_ok:
+            # SLOT-LEVEL calibration: the slot's own margin per field vs slot-correct (present slots only)
+            SM = np.concatenate(self.slot_margins, axis=1)      # (K, N, L, 3)
+            so = np.concatenate(self.slot_ok); pr = np.concatenate(self.present)
+            for fi, f in enumerate(("res", "op", "args")):
+                aus = []
+                for k in range(self.K):
+                    v = SM[k][:, :, fi]; msk = pr & ~np.isnan(v)
+                    aus.append(auroc(v[msk], so[msk]) if msk.sum() >= 10 else float("nan"))
+                    out[(f"slot_margin_{f}", k)] = aus[-1]
+                flag = " <- COMPASS" if np.nanmax(aus) >= bar else ""
+                print(f"  slot:{f:8s} AUROC  " + " ".join(f"{a:8.3f}" for a in aus) + f"  (n={int((pr & ~np.isnan(SM[-1][:, :, fi])).sum())} slots){flag}")
         if self.wheel_status and ok is not None:
             st = np.array(self.wheel_status); un = st == "unsat"
             if un.any() and (~un).any():
-                print(f"  wheel: refused {un.mean():.3f} of rows; P(wrong|unsat) {(~ok[un]).mean():.3f} vs P(wrong|sat) {(~ok[~un]).mean():.3f}")
+                print(f"  wheel: refused {un.mean():.3f} of rows; P(< half | unsat) {(~ok[un]).mean():.3f} vs P(< half | sat) {(~ok[~un]).mean():.3f}; P(not full | unsat) {(~full[un]).mean():.3f} vs {(~full[~un]).mean():.3f}")
         for o in sorted(self.census):
             C = self.organ(o)
             print(f"  census {o:14s} median ratio " + " ".join(f"{np.nanmedian(C[k]):8.4f}" for k in range(self.K)))
@@ -134,6 +156,7 @@ class LoopHealth:
         if self.row_ok: d["row_ok"] = self.rows_ok()
         if self.slot_ok: d["slot_ok"] = np.concatenate(self.slot_ok)
         if self.present: d["present"] = np.concatenate(self.present)
+        if self.slot_margins: d["slot_margins"] = np.concatenate(self.slot_margins, axis=1)
         if self.wheel_status:
             d["wheel_status"] = np.array(self.wheel_status); d["wheel_core"] = np.array(self.wheel_core)
         if self.cls_slot: d["cls_slot"] = np.concatenate(self.cls_slot, axis=1); d["cls_tok"] = np.concatenate(self.cls_tok, axis=1)
@@ -190,10 +213,14 @@ if __name__ == "__main__":
     # a designed compass: the gap is larger on wrong rows at the late breaths
     meters = {k: rng.random((K, N)) for k in METERS}
     meters["gap"][4:] += (~ok)[None] * 1.5
-    hl.add(np.arange(N), meters, census={"tokloop": rng.random((K, N)) * 0.05}, wheel=[("unsat", [1]) if (not o and rng.random() < 0.6) else ("sat", []) for o in ok], row_ok=ok)
+    L = 6; pres = rng.random((N, L)) < 0.7; sok = pres & (rng.random((N, L)) < 0.5); sok[ok] = pres[ok]     # correct rows: every present slot right
+    sm = np.where(pres[None, :, :, None], rng.random((K, N, L, 3)) + sok[None, :, :, None] * 1.0, np.nan)   # a designed slot compass
+    hl.add(np.arange(N), meters, census={"tokloop": rng.random((K, N)) * 0.05}, wheel=[("unsat", [1]) if (not o and rng.random() < 0.6) else ("sat", []) for o in ok], row_ok=ok, slot_ok=sok, present=pres, slot_margins=sm)
+    assert (hl.rows_half() | ~ok).all() and hl.rows_half().mean() >= ok.mean()
     assert hl.n == N and hl.meter("gap").shape == (K, N)
     tab = hl.report()
     assert tab[("gap", 6)] >= 0.65 and tab[("gap", 0)] < 0.65, tab[("gap", 6)]
+    assert tab[("slot_margin_res", 3)] >= 0.65
     assert abs(auroc(np.arange(10), np.arange(10) >= 5) - 1.0) < 1e-9 and abs(auroc(np.zeros(10), np.arange(10) >= 5) - 0.5) < 1e-9
     import tempfile, os
     pth = hl.save(tempfile.mktemp(suffix=".npz")); z = np.load(pth); assert z["m_gap"].shape == (K, N) and z["row_ok"].sum() == ok.sum(); os.remove(pth)

@@ -29,6 +29,10 @@ def _main():
     assert set(sd) == set(p), (sorted(set(sd) - set(p))[:3], sorted(set(p) - set(sd))[:3])
     for k in p: p[k].assign(sd[k].to(p[k].device).cast(p[k].dtype)).realize()
     atlas = load_atlas(os.environ.get("PV_ATLAS", ".cache/step_atlas_ds242.npz"), manifest_path=os.environ.get("MH_ATLAS_MANIFEST", ".cache/RESEARCH_MANIFEST.json"))
+    # THE LOUD DOOR, EXTENDED (2026-09-14): the atlas's era must be THIS checkpoint — the
+    # never-mix-generations law; the first tl242 read against the ds242 atlas was VOID (z ~ 100s).
+    assert atlas.stamp == os.path.basename(os.environ["PV_CKPT"]), \
+        f"perceiver_read: atlas era {atlas.stamp!r} != ckpt {os.path.basename(os.environ['PV_CKPT'])!r} — re-mine the atlas on this checkpoint first"
     SOLVE = int(os.environ.get("PV_SOLVE", "1")); TAU = 0.5
     if SOLVE:
         from alternator_bridge import core_rows
@@ -72,6 +76,7 @@ def _main():
             K = len(br); hl = LoopHealth(K); print(f"[perceiver-read] K={K} breaths, N={N} rows, ckpt={os.path.basename(os.environ['PV_CKPT'])}", flush=True)
         b_n = len(sl); tkm = vtk[sl_p].astype(bool)
         met = {k: np.full((K, b_n), np.nan) for k in METERS}; cs = np.full((K, b_n), -1); ct = np.full((K, b_n), -1)
+        smg = np.full((K, b_n, L_FAC, 3), np.nan)
         for k in range(K):
             S = br[k][:b_n].mean(1)
             z, c = atlas.radius("slot", k, S); met["z_slot"][k] = z; cs[k] = c
@@ -85,7 +90,8 @@ def _main():
                 pres_j = [j for j in range(L_FAC) if row["pres"][j] > 0]
                 mm = {"res": [], "op": [], "args": []}
                 for j in pres_j:
-                    for f, m, _ in _slot_margins(row, j): mm[f].append(m)
+                    for f, m, _ in _slot_margins(row, j):
+                        mm[f].append(m); smg[k, bi, j, ("res", "op", "args").index(f)] = m
                 for f in mm: met[f"margin_{f}"][k, bi] = min(mm[f]) if mm[f] else np.nan
                 if pres_j:
                     C = (fa[k][bi][pres_j] > TAU)                          # (n_pres, T)
@@ -107,7 +113,7 @@ def _main():
         if SOLVE:
             rows = [(int(_nv[bi]), _decode_slots({kk: onp[kk][bi] for kk in onp}), int(_ma[bi])) for bi in range(b_n)]
             wheel = core_rows(rows, None)
-        hl.add(sl, met, census=cen, cls_slot=cs, cls_tok=ct, wheel=wheel, row_ok=rok, slot_ok=sok, present=pres)
+        hl.add(sl, met, census=cen, cls_slot=cs, cls_tok=ct, wheel=wheel, row_ok=rok, slot_ok=sok, present=pres, slot_margins=smg)
         if (s0 // 8) % 16 == 0: print(f"[perceiver-read] {s0 + b_n}/{N} ({time.time() - t0:.0f}s)", flush=True)
 
     name = os.path.basename(os.environ["PV_CKPT"]).replace("sharp_", "").replace(".safetensors", "")
