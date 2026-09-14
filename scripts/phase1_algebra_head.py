@@ -2383,13 +2383,17 @@ def _token_step(p, tok, tokmask, sent, B, kb):
     k = (tok @ p["tok_wk"] + p["tok_wk_b"]).reshape(B, T, N_HEADS, hd).permute(0, 2, 1, 3)
     v = (tok @ p["tok_wv"] + p["tok_wv_b"]).reshape(B, T, N_HEADS, hd).permute(0, 2, 1, 3)
     sc = (q @ k.transpose(-2, -1)) / math.sqrt(hd)                       # (B, H, T, T)
-    same = (sent.reshape(B, 1, T, 1) == sent.reshape(B, 1, 1, T)).float()  # the sentence mask
-    ok = same * tokmask.reshape(B, 1, 1, T)
+    from mycelium.loop_bridge import same_sentence    # THE BRIDGE (2026-09-14): the token loop's within-medium mask, one definition
+    ok = same_sentence(sent, tokmask, B, T)
     sc = sc.clip(-1e4, 1e4) + (1.0 - ok) * -1e4
     a = sc.softmax(-1)
     o = (a @ v).permute(0, 2, 1, 3).reshape(B, T, H_W) @ p["tok_wo"] + p["tok_wo_b"]
-    if _CENSUS is not None:      # the pre/post knob law: the injection vs the state, per breath
-        _CENSUS.append((kb, "tokloop", (o.pow(2).sum(-1).sqrt() / (tok.pow(2).sum(-1).sqrt() + 1e-6)).mean().realize().numpy()))
+    if _CENSUS is not None:      # the pre/post knob law: the injection vs its OWN band's state, per breath
+        # (port_census grammar: raw arrays; pads zeroed so the nonzero-RMS column reads real tokens;
+        #  the ratio = tokloop / tokloop_state per breath)
+        _tm = tokmask.reshape(B, T, 1)
+        _CENSUS.append((kb, "tokloop_state", (tok * _tm).realize().numpy()))
+        _CENSUS.append((kb, "tokloop", (o * _tm).realize().numpy()))
     return tok + o
 
 

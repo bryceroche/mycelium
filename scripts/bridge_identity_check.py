@@ -79,11 +79,15 @@ ng = [(0, 3, "res", 5), (2, 7, "op", 1), (5, 31, "res", 23)]
 H._nogood_apply(o1, ng); nogood_apply(o2, ng)
 check("_nogood_apply", np.concatenate([o1["res"].ravel(), o1["op"].ravel()]), np.concatenate([o2["res"].ravel(), o2["op"].ravel()]))
 # 4. _token_step's sentence mask, the two lines verbatim
-k0 = hsrc.index("    same = (sent.reshape(B, 1, T, 1)"); k1 = hsrc.index("\n", hsrc.index("    ok = same *", k0))
-lines = textwrap.dedent(hsrc[k0:k1])
-sent_t = Tensor(se_np); tk_t = Tensor((rng.random((B, T)) > 0.2).astype(np.float32))
-g = {"sent": sent_t, "tokmask": tk_t, "B": B, "T": T}
-exec(lines, g)
-check("_token_step sentence mask", g["ok"].numpy(), same_sentence(sent_t, tk_t, B, T).numpy())
+k0 = hsrc.find("    same = (sent.reshape(B, 1, T, 1)")
+if k0 < 0:
+    print("[bridge-id] _token_step sentence mask: APPLIED (same_sentence; verified pre-apply 2026-09-14)")
+else:
+    k1 = hsrc.index("\n", hsrc.index("    ok = same *", k0))
+    lines = textwrap.dedent(hsrc[k0:k1])
+    sent_t = Tensor(se_np); tk_t = Tensor((rng.random((B, T)) > 0.2).astype(np.float32))
+    g = {"sent": sent_t, "tokmask": tk_t, "B": B, "T": T}
+    exec(lines, g)
+    check("_token_step sentence mask", g["ok"].numpy(), same_sentence(sent_t, tk_t, B, T).numpy())
 print(f"[bridge-id] {'ALL PASS' if not fails else f'{fails} FAIL'}")
 sys.exit(1 if fails else 0)
