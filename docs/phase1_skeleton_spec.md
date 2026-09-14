@@ -38651,3 +38651,19 @@ READING FRAME (pinned before the read): a meter is a COMPASS at AUROC
 HYPOTHESIS: max_k AUROC(gap) > max(AUROC(z_slot), AUROC(z_tok)) on
 wild; the wheel's P(wrong|unsat) quoted beside. Reads: tl242 (wild +
 mint), ds242 (wild). Zero training.
+THE PERCEIVER STEP 1 — THE FIRST READ VOID (2026-09-14 evening), two
+causes, both fixed before any number was quoted: (1) the read of tl242
+against the ds242-stamped atlas was CROSS-ERA (the loud door checks the
+manifest, not the checkpoint being read; z-radii of 85-400 = states far
+from every page) — the door is EXTENDED: perceiver_read asserts
+atlas.stamp == the checkpoint's basename, refusing otherwise; the tl242
+record is filed as VOID_perceiver_tl242_wildhold_crossera.npz; (2) the
+label: rows FULLY correct on wild are 5 of 311 — every row-level AUROC
+rested on five positives; the label is now happy_family_read's ">= half
+of the present slots correct" (fully-correct quoted beside), and the
+margins are calibrated at SLOT level (slot_ok vs the slot's own margin,
+n = 2051 wild slots). Also: perceiver_read is main-guarded (the solver
+pool's spawn re-imported it — the spawn-storm rule, second offence, same
+fix). The chain reads ds242 (wild + mint) — the atlas's own era. The
+frame stands: compass at AUROC >= 0.65 on the >= half label; the chart
+gap vs either radius.
