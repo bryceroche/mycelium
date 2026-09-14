@@ -181,6 +181,8 @@ class Perceiver:
 
 
 if __name__ == "__main__":
+    import os, sys
+    sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))   # the repo root (mycelium.loop_bridge)
     rng = np.random.default_rng(5)
     K, N = 7, 200
     hl = LoopHealth(K)
