@@ -38734,3 +38734,22 @@ correct: 88.7%, 34 wrong rows). The same meters, the other register:
   the wheel's refusal rate) — a mouth-like read from inside the loop,
   without the mouth. Registered as a candidate meter: "the reading's
   contraction" (z_tok[b0] - z_tok[b6]).
+RULING — SONNET'S CURATION AND THE RADIUS GAP (2026-09-14, Bryce's
+question): the gap does NOT select training data. (1) On wild it is not
+a compass (0.53 at every breath) — selecting on it selects noise; (2)
+rows chosen because the atlas cannot place them become the rows the
+next atlas is mined on: the meter becomes the target through selection
+(the fence's own wording for the "never" tier). THE QUEUE keys on the
+fingerpost's disagreement across views ("loss-never", declared
+selection use) and the slot-level args margin (the compass that sees
+wild failure); the answer key gates admission; silver never gold;
+human-audited sample; versioned apart. THE GAP'S JOB is the OUTCOME
+METER of curation: after training on curated rows, does wild's reading
+begin to contract across the breaths (z_tok[b0] - z_tok[b6], flat ~0
+today on wild vs ~8 on mint)? The gap watches the medicine; it does not
+choose the patient.
+THE PERCEIVER STEP 2 — WORD GIVEN (2026-09-14): the views + vote lever,
+read on ds242 wild. The extra-cycle lever is PARKED pending design: the
+breath rotor's period is K_B (the clock tables are pi-cycled over 7),
+so a second cycle at read time is out of the clock's distribution — it
+needs the delay line / a period-aware clock, not a read.
