@@ -107,6 +107,7 @@ _WHEEL_MELT = (float(os.environ["ALG_WHEEL_MELT"]) if os.environ.get("ALG_WHEEL_
 
 
 _WHEEL_NOGOOD = int(os.environ.get("ALG_WHEEL_NOGOOD", "0"))
+_LOCUS = None      # THE LOCUS-DRIVEN MELT (2026-09-14): {"melt": (B, LT) numpy, "kb": int} from the fingerpost's disagreement locus
 # T2 — THE CLAIM MASK (2026-09-13): tokens <- slots as structure. ALG_T2_CLAIM="beta:tau".
 _T2 = os.environ.get("ALG_T2_CLAIM", "")
 _T2_CLAIM = bool(_T2)
@@ -2608,6 +2609,9 @@ def breath_step(p, state, kb, ctx):
     if _WHIP_K and kb == _WHIP_K:
         cur = _whip_kick(cur)            # THE WHIP: the state entering breath kb, kicked
     _wm = state.get("wheel_melt")
+    if _LOCUS is not None and kb == _LOCUS["kb"] and _WHEEL_MELT is not None:
+        from tinygrad import Tensor as _Tl
+        _wm = _Tl(np.asarray(_LOCUS["melt"], np.float32))   # the locus: slots whose reading is unstable across views
     state["melted"] = _wm if (_WHEEL_MELT is not None and _wm is not None) else None   # this breath's released slots (T2)
     if _WHEEL_MELT is not None and _wm is not None:
         cur = _melt(cur, _wm)            # THE MELT: the core's slots, re-derived this breath

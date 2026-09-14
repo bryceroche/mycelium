@@ -38395,3 +38395,23 @@ people" is the phrase near those), for a human to confirm or correct in
 one keystroke — the L3 surgery at a fraction of the cost; output = a
 book of prose rows with mentions, the fixture the campaign's critical
 path named in August.
+
+## 2026-09-14 — THE LOCUS-DRIVEN MELT registered and fired cold (the word: "we do want the locus driven mask"): the fingerpost's disagreement locus (slots whose coarse reading is absent in >= 2 of 4 permuted views) melted at the state entering breath 4 on balV242, wild; the NL loop's certificate as its mask, read before any training
+
+THE NL MUC = THE DISAGREEMENT LOCUS (the 07-20 rider): a satisfiable
+wrong parse is invisible to the solver but usually unstable across
+views. THE READ (scripts/locus_read.py; the head's _LOCUS hook,
+apply_locus_melt.py, off by default): per row, the original + 4
+permuted views (trunk recomputed per view), the coarse key (ftype, op,
+value) per slot — pointers excluded since variable numbering varies
+across views — a slot unstable if its key is missing from >= LR_K=2
+views; the unstable slots melted (ALG_WHEEL_MELT=1.0) at breath 4 and
+the row re-read; paired scoring per slot vs the open read. BARS
+(pinned): LOCUS-COLD WIN = McNemar z >= 2.0 AND wild >= open + 0.015;
+LOCUS-PRECISION (reported, the diagnostic that matters most): P(wrong |
+unstable) vs P(wrong | stable) — the certificate is worth building on
+if unstable slots are wrong at >= 2x the stable rate. REGISTERED
+PREDICTION: the locus marks 30-45% of wild slots; P(wrong | unstable)
+~0.85 vs ~0.65 stable (a real but coarse certificate); the cold melt
+itself lands within +-0.010 (an untrained repairer, as with the core),
+so the win bar is not met cold and the training arm is the next form.
