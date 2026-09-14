@@ -38478,3 +38478,21 @@ positive and mint within 0.005; TOK-KILL = both <= -0.010; the census
 reported. REGISTERED PREDICTION: wild +0.000..+0.010 (structure alone
 has not moved wild all weekend; the token loop's value arrives with
 supervision it can consume), mint +0.000..+0.005, census ratio 0.02-0.10.
+THE NL LOOP v1 GATE: door off bit-identical (5.2995 / 0.0279); door on: the
+EAGER forward at birth bit-identical on all 16 outputs; the JIT'd training
+loss at step 0 5.3010 (deterministic; 5.3007 with the bank not rebuilt) vs
+5.2995 — a 2e-4 relative fusion-order residue around the added zero,
+amplified by the loss's log terms; recorded, accepted (below anything an
+arm sees). ARMS FIRED (pc-tokloop): tl242 / tl241, warm balV242 (tok_*
+fresh: W_o = 0), 12k, B=8, vs t1c242 / t1c241; the reads with ALG_TOKLOOP=1.
+THE REPRESENTATION (Bryce: the two atlases and the two mask systems are
+different but related): the same latent, two projections — the shared axes
+are the breath and the kind; the mediums are tokens and slots. One atlas,
+two charts, one class index (the file already has this shape). One
+certificate, two masks: born in one medium, carried to the other by the
+cross-medium attention (fat carries slot certificates to tokens; its
+transpose carries token/locus certificates to slots; the claims are the
+forward carry every breath). In code: Certificate(.slots, .tokens,
+carry(fat)); Atlas(chart[medium]) under one class axis — the seam for the
+Loop refactor (a loop = medium + organs; what crosses between loops is the
+waist forward and a carried certificate back).

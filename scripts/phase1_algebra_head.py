@@ -336,6 +336,10 @@ _SEVER_ORGANS = frozenset(("notebook", "garage", "s3", "s4", "mixer",
 # loss to every breath. ALG_SHELF_D = the q/k width; ALG_SHELF_B0 = the
 # last breath's logit at birth (the birth read picks it: 3/5/7).
 ALG_SHELF = int(os.environ.get("ALG_SHELF", "0"))
+# THE NL LOOP v1 (2026-09-14): ALG_TOKLOOP=1 — a sentence-masked token<-token
+# attention step per breath, interleaved before the slot step; the slot loop
+# reads the token loop's states every breath. Zero-init output: exact birth.
+ALG_TOKLOOP = int(os.environ.get("ALG_TOKLOOP", "0"))
 # THE BLURRED LADDER (2026-09-12, the word): ALG_BLUR=1 blurs rung k's gold
 # toward uniform by ALG_BLUR_MAX * cos^2(k*pi/(2(K-1))) — the denoising
 # schedule's target-side form (each breath graded on a job its level can do;
@@ -1846,6 +1850,13 @@ def build_params(seed=0):
         p["fed_w2a_b"] = t(np.zeros(H_W))
         p["fed_w2b"] = t(np.zeros((H_W, H_W)))   # ZERO door (ResNet law)
         p["fed_w2b_b"] = t(np.zeros(H_W))
+    if ALG_TOKLOOP:
+        _rT = np.random.RandomState(seed + 4242)
+        for _nm in ("tok_wq", "tok_wk", "tok_wv"):
+            p[_nm] = t((_rT.randn(H_W, H_W) / math.sqrt(H_W)).astype(np.float32))
+            p[_nm + "_b"] = t(np.zeros(H_W))
+        p["tok_wo"] = t(np.zeros((H_W, H_W), np.float32))     # the zero door: exact birth (censused)
+        p["tok_wo_b"] = t(np.zeros(H_W))
     if ALG_SHELF:
         _rS = np.random.RandomState(seed + 7331)
         p["sh_q"] = t((_rS.randn(H_W, ALG_SHELF_D) * 0.01 / math.sqrt(H_W)).astype(np.float32))
@@ -2375,6 +2386,25 @@ def _t1_conv(p, x, tokmask):
         if d != h:
             y = y + xp[:, d:d + T] * p["t1_dw"][d]
     return y @ p["t1_pw"] + p["t1_b"]
+
+
+def _token_step(p, tok, tokmask, sent, B, kb):
+    """THE NL LOOP's breath (v1): tok (B, T, HW) <- tok + SentenceAttn(tok) @ W_o.
+    Tokens attend within their own sentence (sent ids equal) and only over
+    real tokens; W_o is zero at birth."""
+    T = int(tok.shape[1]); hd = H_W // N_HEADS
+    q = (tok @ p["tok_wq"] + p["tok_wq_b"]).reshape(B, T, N_HEADS, hd).permute(0, 2, 1, 3)
+    k = (tok @ p["tok_wk"] + p["tok_wk_b"]).reshape(B, T, N_HEADS, hd).permute(0, 2, 1, 3)
+    v = (tok @ p["tok_wv"] + p["tok_wv_b"]).reshape(B, T, N_HEADS, hd).permute(0, 2, 1, 3)
+    sc = (q @ k.transpose(-2, -1)) / math.sqrt(hd)                       # (B, H, T, T)
+    same = (sent.reshape(B, 1, T, 1) == sent.reshape(B, 1, 1, T)).float()  # the sentence mask
+    ok = same * tokmask.reshape(B, 1, 1, T)
+    sc = sc.clip(-1e4, 1e4) + (1.0 - ok) * -1e4
+    a = sc.softmax(-1)
+    o = (a @ v).permute(0, 2, 1, 3).reshape(B, T, H_W) @ p["tok_wo"] + p["tok_wo_b"]
+    if _CENSUS is not None:      # the pre/post knob law: the injection vs the state, per breath
+        _CENSUS.append((kb, "tokloop", (o.pow(2).sum(-1).sqrt() / (tok.pow(2).sum(-1).sqrt() + 1e-6)).mean().realize().numpy()))
+    return tok + o
 
 
 def _make_bank(p, waist, tokmask, B):
@@ -3828,7 +3858,12 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
                      "cmt_logits": cmt_logits if RINGS else None,
                      "x_rel": x_rel if RINGS else None}
         if not (_STEP_TAP is not None and _STEP_TAP.get("hold")):
+            _tok = waist
             for kb in range(1, K_B):
+                if ALG_TOKLOOP and "tok_wq" in p:      # THE NL LOOP: the token step, then the slot step reads it
+                    _tok = _token_step(p, _tok, tokmask, sent, B, kb)
+                    _bs_ctx["waist"] = _tok
+                    _bs_ctx["bank"] = _make_bank(p, _tok, tokmask, B)
                 breath_step(p, _bs_state, kb, _bs_ctx)
                 if _WHEEL is not None and kb < K_B - 1:
                     _bs_state["wheel_bias"] = _wheel_turn(p, _bs_state, kb, fat, sent, vst, B)
