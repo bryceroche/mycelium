@@ -107,6 +107,22 @@ _WHEEL_MELT = (float(os.environ["ALG_WHEEL_MELT"]) if os.environ.get("ALG_WHEEL_
 
 
 _WHEEL_NOGOOD = int(os.environ.get("ALG_WHEEL_NOGOOD", "0"))
+# T2 — THE CLAIM MASK (2026-09-13): tokens <- slots as structure. ALG_T2_CLAIM="beta:tau".
+_T2 = os.environ.get("ALG_T2_CLAIM", "")
+_T2_CLAIM = bool(_T2)
+_T2_BETA = float(_T2.split(":")[0]) if _T2 else 0.0
+_T2_TAU = float(_T2.split(":")[1]) if _T2 else 0.5
+
+
+def _claim_bias(prev_at, melted, B, LT):
+    """prev_at: (B, LT, T) last breath's head-mean slots<-tokens attention; melted: (B, LT) or None.
+    Returns (B, 1, LT, T): -beta where the token is claimed (> tau) by ANOTHER, unmelted slot."""
+    C = (prev_at > _T2_TAU).float()
+    if melted is not None:
+        C = C * (1.0 - melted.reshape(B, LT, 1))
+    anyc = C.sum(1, keepdim=True)                     # (B, 1, T)
+    other = ((anyc - C) > 0).float()                  # claimed by someone else
+    return (other * -_T2_BETA).reshape(B, 1, LT, -1)
 
 
 def _slot_margins(row, j):
@@ -850,9 +866,16 @@ def build_gold(samples, offsets):
     for i, (smp, offs) in enumerate(zip(samples, offsets)):
         # gen-10 prose rows: factors may carry NO spans (raw prose has no
         # letter anchors) — sort them last; span losses auto-mask on zeros
-        facs = sorted(smp["factors"],
-                      key=lambda f: (min(s for s, _ in f["spans"])
-                                     if f.get("spans") else 10 ** 9))
+        # THE SLOT ORDER (2026-09-14): sort by span start only when EVERY
+        # factor carries a span (templated rows); a row with partial spans
+        # (the aligner's numerals on pen rows) keeps its annotation order —
+        # sorting it put the givens first and re-numbered the slots against
+        # the holdout's convention (wild 0.2535 -> 0.1165, a pure artifact)
+        if all(f.get("spans") for f in smp["factors"]):
+            facs = sorted(smp["factors"],
+                          key=lambda f: min(s for s, _ in f["spans"]))
+        else:
+            facs = list(smp["factors"])
         assert len(facs) <= L_FAC and smp["n_vars"] <= K_VARS
         g["query"][i] = smp["query_var"]
         g["band"][i] = smp["decisions"]
@@ -2585,6 +2608,7 @@ def breath_step(p, state, kb, ctx):
     if _WHIP_K and kb == _WHIP_K:
         cur = _whip_kick(cur)            # THE WHIP: the state entering breath kb, kicked
     _wm = state.get("wheel_melt")
+    state["melted"] = _wm if (_WHEEL_MELT is not None and _wm is not None) else None   # this breath's released slots (T2)
     if _WHEEL_MELT is not None and _wm is not None:
         cur = _melt(cur, _wm)            # THE MELT: the core's slots, re-derived this breath
         if _WHEEL is not None:
@@ -2891,6 +2915,10 @@ def breath_step(p, state, kb, ctx):
     _wb = state.get("wheel_bias")
     if _wb is not None:                    # THE STEERING WHEEL's spotlight
         _pb_kb = _wb if _pb_kb is None else _pb_kb + _wb
+    _t2b = None
+    if _T2_CLAIM and state.get("prev_a21") is not None:   # T2: last breath's claims, first road
+        _t2b = _claim_bias(state["prev_a21"], state.get("melted"), B, L_TOT)
+        _pb_kb = _t2b if _pb_kb is None else _pb_kb + _t2b
     h_tok, fat_cur = bank(p["fq"], L_TOT, extra=q_extra,
                           pbias=_pb_kb,
                           rbias=_rb7,
@@ -3236,10 +3264,14 @@ def breath_step(p, state, kb, ctx):
             _sa21 = _sa21 + _sync[0](kb)
         if state.get("wheel_bias") is not None:   # the wheel's spotlight, second road
             _sa21 = _sa21 + state["wheel_bias"]
+        if _t2b is not None:                       # T2: the claims, second road
+            _sa21 = _sa21 + _t2b
         if _rb7 is not None:             # the same router bias
             _sa21 = _sa21 + _rb7.unsqueeze(1) * p["r_gain"].reshape(1, 1, 1, 1)
         _sa21 = _sa21.clip(-1e4, 1e4) + (1.0 - tokmask.reshape(B, 1, 1, -1)) * -1e4
         _a21 = _sa21.softmax(-1)
+        if _T2_CLAIM:
+            state["prev_a21"] = _a21.mean(1).detach()   # T2: this breath's claims, for the next breath
         if _tok_seal_on(kb) and int(os.environ.get("ALG_TOK_SEAL_S3", "1")):
             # THE TOKEN SEAL, second road (registered scope). Station 3
             # is a SECOND slots<-tokens bank attention over the same

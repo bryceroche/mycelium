@@ -38319,3 +38319,19 @@ the numeral is the top token in 7% of given slots; the digit head is
 right on 45% of those slots regardless of the mass (0.457 at mass <
 0.1) — the value copy does not depend on reading the numeral, which is
 the wild digit failure seen from inside: the head guesses values.
+
+## 2026-09-14 — THE ALIGNER v2 ARM (valid gold) COLLAPSED WILD TO 0.1165 (mint 0.9766) — AND IT IS A SLOT-ORDER ARTIFACT, NOT THE TARGET: build_gold sorted factors by span start, so a pen row whose givens now carry spans had its givens moved to the front and its slots re-numbered against the holdout's convention (57/64 fixture rows re-ordered); build_gold now sorts only when every factor has a span; the npz is rebuilt and the arms re-fired
+
+al2_242 (v2 gold, valid): open wild **0.1165** (control 0.2535), open mint
+0.9766 — a halving of wild with mint intact is the signature of a
+convention mismatch on the prose rows only. The fixture test: the v2
+rows vs the same rows with spans stripped differ in g_ftype / g_res on
+57/64 rows and in g_op on 34/64 (g_presence 0/64: the same slots are
+present, in a different order). The head's slot fields are positional;
+the holdout's pen rows (no spans) keep their annotation order; the arm
+learned the sorted order. FIX (phase1_algebra_head.py build_gold): sort
+by span start only when EVERY factor carries a span (templated rows —
+unchanged, bit-identical); partial-span rows keep their order. RULE:
+gold conventions are positional; any data change that could re-order
+slots is checked against the read fixture's convention before an arm.
+The second seed was stopped before replicating the artifact.
