@@ -38546,3 +38546,23 @@ one SE). Verdict waits on tl241 (bars: TOK-PASS mean >= +0.020 wild both
 positive, mint within 0.005; TOK-KILL both <= -0.010). No per-slot file
 exists for t1c242 (predates LV_PER_SLOT) — the paired read needs a
 re-read of the control after the chain (GPU; nothing beside an arm).
+THE NL LOOP v1 VERDICT (2026-09-14 13:20): NULL, banked. tl242 wild 0.2545
+/ mint 0.9785 vs t1c242 0.2535 / 0.9771 (paired n=2051: gained 81, lost
+79, z -0.16); tl241 wild 0.2584 / mint 0.9796 vs t1c241 0.2652 / 0.9771
+(paired: gained 71, lost 85, z +1.12). Mean wild -0.003 (neither TOK-PASS
+>= +0.020 nor TOK-KILL <= -0.010); mint +0.0014 / +0.0025 (inside 0.005).
+The control re-reads reproduced 0.2535 / 0.2652 exactly (deterministic
+reads). THE CENSUS (port_census on tl242, 32 wild rows, the pre/post knob
+law): the token step's injection is 0.0083 -> 0.0073 RMS per breath
+against its own band's state 0.162 -> 0.163 = 0.05x at every breath;
+tok_wo grew from 0 to norm 1.7 / 1.85 (q/k/v ~22). The organ WOKE (not
+a gated-organ death) and carried nothing wild could use: sentence-local
+token<-token attention over the waist, once per breath, does not move
+binding. Regime tag: warm balV242, 12k, B=8, v1 (no shared clock on the
+tokens, no expand-collapse, no token bus, no locus mask). The v2 items
+stay registered; none is fired by this null. The paired reads' control
+files now exist (.cache/ps_open_wild_t1c242/t1c241.npz).
+THE BRIDGE COMPLETE: _token_step's sentence mask -> same_sentence
+(fixture gate 5.2995 / 5.3010 identical); the tokloop census entries are
+in the port grammar (raw arrays, pads zeroed). No loop builds a mask by
+hand: the head's masks are the bridge's roads and the slot mask builder.

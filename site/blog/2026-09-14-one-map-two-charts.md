@@ -90,3 +90,17 @@ after, and the reason to do it before the results land is the reason
 to do any refactor early: the next organ, the locus-driven token
 mask, would otherwise have been a sixth private function. Now it is
 a certificate and a call.
+
+## Postscript, the same afternoon
+
+The language loop's first version finished its two seeds. Against the
+matched controls, wild moved by a tenth of a point on one seed and
+minus seven tenths on the other, with paired tests at z of minus 0.16
+and plus 1.12. Synthetic moved up by a fifth of a point on both. That is
+a null on both bars, and it is banked as one. The census says the organ
+was alive: its injection ran at about five percent of the token state
+at every breath, and its output matrix grew from zero. A sentence-local
+token attention, once per breath, does not move binding on ordinary
+prose. The second version, with the shared clock on the tokens and the
+locus-driven token mask, is now a certificate and a call away, which is
+what the refactor was for.
