@@ -38540,3 +38540,9 @@ instability) back and forth as dynamic masks. BUILT:
   THE LEXICON (dozen -> 12) stays a separate registered organ: it is a
   table keyed by SURFACE PHRASE, not by kind; it feeds the token chart's
   pages, it is not a chart. The order of attack is unchanged.
+THE NL LOOP v1 — SEED 242 READ (2026-09-14 12:07): tl242 wild 0.2545 /
+mint 0.9785 vs t1c242 0.2535 / 0.9771 (+0.0010 / +0.0014; both inside
+one SE). Verdict waits on tl241 (bars: TOK-PASS mean >= +0.020 wild both
+positive, mint within 0.005; TOK-KILL both <= -0.010). No per-slot file
+exists for t1c242 (predates LV_PER_SLOT) — the paired read needs a
+re-read of the control after the chain (GPU; nothing beside an arm).
