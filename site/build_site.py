@@ -200,6 +200,7 @@ the silence is.</p>
 
 
 HOOKS = {
+ "2026-09-14-two-loops-one-shape": "Wild fails on argument pointers and digits, not on math. Four organs on the token roads left it where the data left it. The turn: the language side gets its own atlas (a curated lexicon of what prose means), its own certifier (the fingerpost), and its own masks (claims) — two loops, one shape, and the trunk stays four cheap layers.",
  "2026-09-12-the-whip": "Shirts out of the dryer are wrinkled; whip them before you fold. The literal whip is constraint propagation through the committed graph; the productive one is a seeded kick to the state at breath three, content planes only, the same at read — diffusion's input-side form, no road needed. Two arms, bars pinned.",
  "2026-09-12-the-fog-not-the-curtain": "Discrete diffusion offers two corruptions: the masking kernel reveals symbols in groups (a curtain, serial, permanent) and the uniform kernel blurs every symbol at once (a fog, parallel, revisable). A parse is bindings, and the loop sharpens everything at once — the fog is the job; the blurred ladder is its loss.",
  "2026-09-12-two-roads-to-the-middle": "The gradient desert in the loop's middle breaths, and two remedies read on one instrument: the shelf readout paves an edge from the loss to every breath (its birth read cost a thousandth); the denoising schedule removes the need for the edge — a blurred gold per breath on the stellarator's clock, the uniform kernel, the image coming into focus.",
@@ -241,7 +242,7 @@ HOOKS = {
 # ---------------------------------------------------------------- blog + bio
 BLOG = ROOT / "site" / "blog"
 blog_pages = []
-PIN_FIRST = ["2026-09-12-the-whip", "2026-09-12-the-fog-not-the-curtain", "2026-09-12-two-roads-to-the-middle", "2026-09-12-the-graph-is-time", "2026-09-12-the-dancers-pixels", "2026-09-10-the-line-cooks", "2026-09-10-the-stellarator", "2026-09-10-the-steering-wheel", "2026-09-09-the-words-never-change", "2026-09-09-the-order", "2026-09-09-the-balance-sheet", "2026-09-09-turbulent-air", "2026-09-09-the-player-and-the-game", "2026-09-08-the-pressure-cooker", "2026-09-07-a-place-to-turn"]     # the live generation leads the splash
+PIN_FIRST = ["2026-09-14-two-loops-one-shape", "2026-09-12-the-whip", "2026-09-12-the-fog-not-the-curtain", "2026-09-12-two-roads-to-the-middle", "2026-09-12-the-graph-is-time", "2026-09-12-the-dancers-pixels", "2026-09-10-the-line-cooks", "2026-09-10-the-stellarator", "2026-09-10-the-steering-wheel", "2026-09-09-the-words-never-change", "2026-09-09-the-order", "2026-09-09-the-balance-sheet", "2026-09-09-turbulent-air", "2026-09-09-the-player-and-the-game", "2026-09-08-the-pressure-cooker", "2026-09-07-a-place-to-turn"]     # the live generation leads the splash
 _posts = sorted(BLOG.glob("*.md"), reverse=True)
 _posts = [m for m in _posts if m.stem in PIN_FIRST] + [m for m in _posts if m.stem not in PIN_FIRST]
 for md in _posts:
