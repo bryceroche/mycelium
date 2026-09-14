@@ -38254,3 +38254,57 @@ error. The register's gold names quantities the way the books' annotators
 do, and no automatic anchor has reproduced that. THE CRITICAL PATH is the
 one the campaign named in August: n annotated prose rows. The GPU is idle;
 nothing is queued; every remaining registered item needs the word.
+
+## 2026-09-14 — EUREKA (Bryce): TWO LOOPS, ONE SHAPE — the language side gets its own atlas (a curated lexicon of what prose means), its own certifier (the fingerpost / the view-unanimity wall), and its own masks (claims); the trunk stays four frozen layers; the order of attack given; THE SURFACE CENSUS; THE VALUE ALIGNER v2 (numerals as the GIVEN FACTOR's span) fired on two seeds; the fingerpost's record recovered
+
+THE SYMMETRY (blog: "Two loops, one shape", live): math side = atlas
+(kinds/macros) + certifier (the CSP) + dynamic masks (slots); NL side =
+lexicon + fingerpost + claims; the waist is the handoff; each loop
+proposes neurally and disposes symbolically in its own medium.
+Doctrine: abstraction lives in recognition — a lexicon is recognition
+knowledge (zero params), the NL macro library. Frozen-layer recirculation
+stays refuted; deeper layers are the costliest params — parked behind
+the lexicon.
+THE SURFACE CENSUS (gsm8k pen rows, 13,475): givens are NUMERALS 99.0%
+(45,034), number words 0.3% (143), absent/derived 0.7% (319) — the
+lexicon's value rung has nothing to reach in this harvest; relations are
+add 26,631 / mul 19,877 only; operator cue words in 75% of rows: each
+37%, total 17%, per 16%, left 12%, times as 4.5%, more than 3.7%, half
+3.4%, twice 3.4%, in all 2.8%; multiplier words in 7% of rows. The
+lexicon's OPERATOR rung (each/per/total/left/times as/more than) is
+where it has reach.
+THE VALUE ALIGNER v2 (scripts/value_aligner_v2.py; v1's error: the numeral
+went into mentions[var], the variable's channel — the variable is the
+quantity): v2 writes the numeral as the GIVEN FACTOR's own span ->
+build_gold's fspan for that slot = the numeral's tokens (verified on a
+fresh 64-row fixture pen64_al2 with its OWN split names + its own 64-row
+precompute: 217/226 given slots carry fspan tokens; vspan 0). 42,625/
+45,496 givens anchored (94%). The states for form12al2 are a symlink to
+the rebuilt form12al states (identical rows; NO precompute — the incident
+rule). ARMS (pc-align2): al2_242 / al2_241, warm balV242, 12k, B=8, vs
+t1c242 (0.2535 / 0.9771) and t1c241 (0.2652 / 0.9771). BARS: ALIGN2-PASS
+= mean over the two pairs of (al2 - control) on wild >= +0.015 with both
+positive and mint within 0.005; ALIGN2-KILL = both <= -0.010. REGISTERED
+PREDICTION: +0.005..+0.020 — the given slots' attention now has a target
+on prose; the pointer failures (args) are not touched by it.
+THE FINGERPOST, from the archive (Bryce: "the July mouth that abstained
+unless confident, ~99%"): three things under one name. (1) THE
+CERTIFICATION TIER (07-09): TTA five-view unanimity of forced answers =
+0.9982 precision at 38.1% coverage (570R/1W); the decision lattice
+CERTIFY / ANSWER / FLAG / ABSTAIN. (2) GUT #33 THE FINGERPOST (07-20):
+on vote-split items, render each contested parse to canonical dialect
+with a deterministic writer and let the FROZEN TRUNK adjudicate by
+paraphrase fidelity — 103/147 = 70.1% preference for the true reading;
+a WITNESS, never a judge (the Wood fence); the joint read plurality>=5 +
+fingerpost-confirms = 31/31, composite 0.99920. (3) THE MOUTH's abstain
+(the OOD detector: "far from every family = abstain hard"), with the
+sentence that bounds all of it: "unanimity certifies reading STABILITY,
+which coincides with truth only in-distribution" — on foreign text the
+lattice certifies stability, not correctness. FOR THE NL LOOP: the
+fingerpost is the certifier, and its limit is the wheel's limit stated
+on the language side — stable across views != correct, as satisfiable
+!= correct. It certifies; it does not repair. Its training-side form
+(view-consistency as a CONSTRAINT on pen rows, never as gold) is the
+second rung after the aligner; its read-time form (the 08-20 wall:
+15/74 banked, 0 wrong, 59 abstained) already exists in the deployed
+stack and is not in the research reads.
