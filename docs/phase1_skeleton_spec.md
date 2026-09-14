@@ -38566,3 +38566,57 @@ THE BRIDGE COMPLETE: _token_step's sentence mask -> same_sentence
 (fixture gate 5.2995 / 5.3010 identical); the tokloop census entries are
 in the port grammar (raw arrays, pads zeroed). No loop builds a mask by
 hand: the head's masks are the bridge's roads and the slot mask builder.
+THE PERCEIVER (2026-09-14 evening, Bryce: "the perceiver organ that
+watches the two loops with read access to critical meta data on the
+loops' health and information processing; levers to adjust the thinking
+process between loop cycles"). REGISTERED, design stage; build holds for
+the word. Standing law honored: the perceiver is retired as core and
+sanctioned as MONITOR / SEGMENTER (CLAUDE.md s6) — this IS the monitor
+role, with levers. Fences: (1) THE GOODHART FENCE — every quantity it
+reads is a METER, never a TARGET: no gradient flows through a read; the
+head is never trained through the perceiver; if the policy is ever
+learned, its reward is the ANSWER KEY at the cycle level and the meters
+are its inputs only ("training on outcomes a diagnostic predicts is
+lawful; training on the diagnostic is not"); (2) "never"-tier meters
+(fat_overlap, self_loop_count, settle) are read for the REPORT and may
+not drive data selection; lever policies that read them are declared at
+the call site naming the register; (3) no external calls; abstain is a
+lever and the books are its road.
+THE READ SIDE (all exist; the perceiver joins them into one record per
+row per breath, LoopHealth): the port census (every organ's injection
+vs its band, incl. tokloop / tokloop_state); settle (state delta norm
+per breath) and the contraction curves; slot margins per field
+(_slot_margins: res/op/args) and presence; claim conflicts (tokens
+claimed by > 1 slot, from prev_a21); the wheel's stats (sat / unsat /
+timeout, core size, turned); the fingerpost's unanimity per slot and the
+locus (view instability); the atlas radius + nearest class on BOTH
+charts (Atlas.radius; the lead/lag needle between them); the clock
+phase; the mouth's register distance. Absent at inference by law: gold
+(the dish line is a training-side read only).
+THE LEVERS (between breaths / between cycles; every cross-medium lever
+is a Certificate the bridge projects — no new mask code): the MUC melt
++ spotlight (beta), the claims (beta, tau), the locus token mask, the
+nogood; the atlas page (condition on the transported trajectory or
+not); the cycle count (stop early when settled with margins, spend a
+second 7-breath cycle when unstable); the views (spend 4 more
+permutations and VOTE per slot — the one lever measured to CHANGE a
+read: 9.8% of slots unstable, P(wrong|unstable) 0.82); the solver budget
+(rows, timeout); ABSTAIN (the fingerpost's tier: 0.9982 precision @ 38%
+coverage = the "what stands" curve).
+HONEST PRIORS (measured this weekend): the wheel's levers (melt / nogood
+/ spotlight) and the claims are NULL on wild under the open read —
+consistent != correct; a re-read with unchanged input reproduces the
+decode exactly. So the perceiver's lift can only come from levers that
+CHANGE THE INPUT to the re-read (views, masks born from disagreement,
+atlas conditioning) or from ABSTAIN (coverage x precision). The first
+deliverable is therefore a coverage/precision curve on wild with the
+perceiver's policy vs the fingerpost's 5-view unanimity alone.
+v0 = a RULE TABLE, ledgered and deterministic (no training): observe ->
+decide -> certificates + scalars; measured by paired reads on vs off
+(paired SE ~0.006; claims need 0.020 or twins). Learned policy (offline
+contextual bandit on the key, meters as inputs) only after v0 shows a
+lever with a measured effect. Order proposed: (1) LoopHealth record +
+the report (CPU/GPU read, no training) on tl242 / ds242 / balV242;
+(2) the vote-in-the-loop lever + the cycle-count lever, paired reads;
+(3) abstain as the curve; (4) the disagreement-born masks through the
+bridge. Bars pinned per lever before its read.
