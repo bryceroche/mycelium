@@ -38415,3 +38415,32 @@ PREDICTION: the locus marks 30-45% of wild slots; P(wrong | unstable)
 ~0.85 vs ~0.65 stable (a real but coarse certificate); the cold melt
 itself lands within +-0.010 (an untrained repairer, as with the core),
 so the win bar is not met cold and the training arm is the next form.
+
+## 2026-09-14 — THE LOCUS READ (balV242, wild, cold): the coarse locus marks 9.8% of slots; P(wrong | unstable) 0.820 vs P(wrong | stable) 0.740 — a weak certificate at a 75% base wrong-rate; the melt of the locus at breath 4 changed ZERO of 2051 slot outcomes (the hook verified live on CPU: melting every slot moves ftype by 8.7) — the deterministic re-read is now measured: without a nogood, the second read IS the first read
+
+The disagreement locus over four permuted views (coarse key: ftype, op,
+value; pointers excluded because variable numbering varies across
+views): 9.8% of wild slots unstable (predicted 30-45% — the coarse key
+is stable for most slots; pointer instability is invisible to it, and
+pointers are the field that fails). Precision: unstable slots are
+wrong 82% of the time, stable ones 74% — a 1.1x certificate where the
+bar was 2x; at a 25% correct register "wrong" is the default and no
+certificate about stability can be precise about it. THE MELT: the
+unstable slots melted at breath 4 and the row re-read gave EXACTLY the
+open decode on every slot (gained 0, lost 0, stable changed 0): the
+grounding roads re-derive the same reading from the same words —
+Bryce's objection of 09-13 ("the second read might be the same as the
+first") is now a measurement, and it is exact. The wheel's nogood was
+the thing that made a second read different; a locus form needs its
+own nogood (the disagreeing FIELD across views is the natural one) —
+registered, not fired: at this base rate a repaired slot is re-derived
+wrong again by an untrained repairer, as the melt+nogood cold reads
+showed (-0.005). THE READING FOR THE TWO-LOOP PLAN: the fingerpost is
+an ABSTENTION instrument on wild (the 08-20 wall: 15/74 banked, 0
+wrong) and not a repair driver; on a register where three quarters of
+slots are wrong, no certificate can point at the wrong ones with
+useful precision — the register has to move first, and every read of
+the weekend says it moves with information (annotated quantity
+phrases), not with wiring. The token loop stays worth building for
+STRUCTURE (its own breaths, clock and bus) once there is supervision
+for it to consume.
