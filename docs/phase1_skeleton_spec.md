@@ -38335,3 +38335,19 @@ unchanged, bit-identical); partial-span rows keep their order. RULE:
 gold conventions are positional; any data change that could re-order
 slots is checked against the read fixture's convention before an arm.
 The second seed was stopped before replicating the artifact.
+
+## 2026-09-14 — THE ALIGNER v2 (valid gold, order fixed), seed 242: wild 0.2521 (control 0.2535: -0.0014), mint 0.9785 (+0.0014) — FLAT; the target was learned only partly (the numeral is the given slot's top token in 30% of prose slots, up from 5%; mass 0.187 from 0.042) and it competes with the value copy (the digit head on those training slots 0.945 vs the control's 0.991); seed 241 reads ~09:25
+
+The fat-probe on the pen64_al2 fixture (64 TRAINING pen rows, 217 given
+slots with a numeral): control t1c242 attends the numeral with mass 0.042
+(top token 5%) and reads the digits right 99.1% (memorized); al2_242
+attends with mass 0.187 (top token 30%, >= 0.5 in 7%) and reads the
+digits right 94.5%. Under a span target the head moves part of its
+attention to the number and loses a little of the copy it had — and the
+wild read does not move. Two readings held until seed 241: (a) NULL — the
+given slots' grounding was never wild's bottleneck (the dish-line said
+digits 0.32 and args 0.39 fail; a numeral target reaches the first and
+not the second, and even the first did not move); (b) the target is
+under-learned at 12k steps of gentle continuation (30% top-token) and a
+longer or stronger dose would show. ALIGN2's bars (mean >= +0.015 both
+positive / both <= -0.010) decide on the pair.
