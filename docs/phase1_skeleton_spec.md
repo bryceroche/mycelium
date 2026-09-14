@@ -38308,3 +38308,14 @@ on the language side — stable across views != correct, as satisfiable
 second rung after the aligner; its read-time form (the 08-20 wall:
 15/74 banked, 0 wrong, 59 abstained) already exists in the deployed
 stack and is not in the research reads.
+
+## 2026-09-14 — THE ALIGNER v2 ARMS WERE INVALID (mine): the precompute npz carries the GOLD ARRAYS (build_gold at precompute time), and load_alg reads gold from the npz, not the jsonl — I copied form12al's npz to form12al2, so both v2 arms trained on v1's gold (al2_242 == al242 bit for bit: 0.2443 / 0.9757 and identical val proxies); the "spans stripped" control was bogus for the same reason; the fat term IS live (FAT_W=0 drops the step-0 loss 34.93 -> 31.41 on prose, 7.66 -> 5.01 on templated); the given slots' attention sits on the numeral in only 7% of prose slots (mass mean 0.044) — the v2 target is real and unmet; the npz is being rebuilt from the v2 rows (states untouched) and the arms re-fired
+
+RULE: a jsonl's gold lives in its split's npz; a new jsonl needs its npz
+rebuilt (tokenize + build_gold + savez) even when the states are shared;
+never copy another split's npz. The fat-probe (balV242, pen64_al2, 217
+given slots): attention mass on the numeral mean 0.044, median 0.016,
+the numeral is the top token in 7% of given slots; the digit head is
+right on 45% of those slots regardless of the mass (0.457 at mass <
+0.1) — the value copy does not depend on reading the numeral, which is
+the wild digit failure seen from inside: the head guesses values.
