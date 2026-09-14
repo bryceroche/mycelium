@@ -37,7 +37,7 @@ def _main():
     if SOLVE:
         from alternator_bridge import core_rows
     K = None; hl = None; t0 = time.time()
-    CENSUS_ORGANS = ("notebook", "garage", "mixer", "maskhead", "alt21_s3", "tokloop")
+    CENSUS_ORGANS = ("notebook", "garage", "mixer", "alt21_s3", "tokloop")   # state-band organs only (the ratio divides by the state band; maskhead is slot-band)
 
     def score_rows(onp, sl):
         """happy_family_read's slot scoring: slot_ok (b, L), present (b, L), row_ok (b,)."""

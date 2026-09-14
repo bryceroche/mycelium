@@ -38667,3 +38667,41 @@ pool's spawn re-imported it — the spawn-storm rule, second offence, same
 fix). The chain reads ds242 (wild + mint) — the atlas's own era. The
 frame stands: compass at AUROC >= 0.65 on the >= half label; the chart
 gap vs either radius.
+THE PERCEIVER STEP 1 — THE WILD TABLE (ds242 on wildhold, 311 rows /
+2051 slots, the atlas's own era; label = >= half of present slots
+correct, 21.9% of rows; fully correct 1.3%). Signed AUROC per breath:
+  THE CHART GAP HYPOTHESIS: REFUTED on wild — gap 0.47-0.53 at every
+  breath; z_slot 0.44-0.52; z_tok 0.41-0.50. Neither chart's radius
+  is a compass for wild rows on this checkpoint (the atlas is a
+  compass on mint only, as the happy-family read said).
+  COMPASSES: settle at breath 3 = 0.731 (b4 0.683) — rows whose state
+  is still moving at the middle breaths are the wrong ones (a "never"-
+  tier meter: report + inference control only, never selection);
+  the SLOT-LEVEL args margin = 0.579 at b0 rising to 0.764 at b6 (n=894
+  relation slots) — the machine's own confidence in its argument
+  pointers predicts slot correctness and SHARPENS every breath; res
+  0.60-0.64 flat; op 0.54-0.59. Row-level margins (the min over slots)
+  0.57-0.65 (args b5 0.654).
+  claim_conflict at tau 0.5 is identically 0 on wild — a dead meter as
+  defined (two slots never both exceed 0.5 on one token); re-define as
+  the max second-share before it is read again.
+  THE WHEEL on wild: refused 46.6% of rows; P(< half | unsat) 0.793 vs
+  P(< half | sat) 0.771 — the solver's refusal is nearly uninformative
+  about correctness on wild at the row level (consistent != correct,
+  again, from the other side: a wrong parse is usually consistent).
+  THE WHAT-STANDS CURVE at slot level by the slot's own args margin at
+  the last breath: coverage 20% -> precision 0.536 (n=179); 40% ->
+  0.405; 60% -> 0.328. A single-view confidence is a WEAK certifier
+  next to the fingerpost's 5-view unanimity (0.9982 @ 38%, row level):
+  the abstain lever's road is the views, not the margins.
+  The census (state-band organs, per-row ratio to the state): notebook
+  1.1-1.4x, alt21_s3 0.6-1.2x, garage 0.33-0.48x, mixer 0.07-0.11x;
+  the maskhead row (3-5x) was a BAND MISMATCH (slot-band organ over the
+  state band) — dropped from the read.
+  IMPLICATION FOR THE LEVERS (step 2): the meters that see wild failure
+  are the args margin (per slot, sharpening per breath) and the mid-
+  breath motion; the levers to read first are (a) spend views + vote
+  where the args margin is low / the row still moves at b3, and (b) the
+  extra cycle for rows still moving at b3. The gap-driven rule in RULES
+  v0 ("unstable": gap >= 1.0) is STRUCK for wild; the settled rule
+  (settle <= 0.02 & margins >= 1.0 -> stop) is supported in direction.

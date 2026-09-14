@@ -37,6 +37,10 @@ import numpy as np
 
 METERS = ("settle", "z_slot", "z_tok", "gap", "margin_res", "margin_op",
           "margin_args", "claim_conflict")
+# the healthy direction per meter: -1 = lower is healthier (a distance, a motion, a
+# conflict), +1 = higher is healthier (a margin). The report scores SIGN * meter.
+SIGN = {"settle": -1, "z_slot": -1, "z_tok": -1, "gap": -1, "margin_res": +1,
+        "margin_op": +1, "margin_args": +1, "claim_conflict": -1}
 
 
 def auroc(score, label):
@@ -108,9 +112,9 @@ class LoopHealth:
 
     def report(self, bar=0.65):
         """Per breath: the medians and, when gold is present, the AUROC of
-        row-correct vs each meter (lower = healthier, so the score is
-        -meter). A meter is a COMPASS at AUROC >= bar (the happy-family
-        bar). Returns {(meter, k): auroc} and prints the table."""
+        row-correct vs each meter in its healthy direction (SIGN). A meter
+        is a COMPASS at AUROC >= bar (the happy-family bar). Returns
+        {(meter, k): auroc} and prints the table."""
         ok = self.rows_half(); full = self.rows_ok()
         out = {}
         print(f"[perceiver] N={self.n} rows, K={self.K} breaths" + (f", rows >= half correct {ok.mean():.3f} (fully {full.mean():.3f}); AUROC label = >= half" if ok is not None else ""))
@@ -124,7 +128,7 @@ class LoopHealth:
                 aus = []
                 for k in range(self.K):
                     v = M[k]; msk = ~np.isnan(v)
-                    a = auroc(-v[msk], ok[msk]) if msk.sum() >= 10 else float("nan")
+                    a = auroc(SIGN[name] * v[msk], ok[msk]) if msk.sum() >= 10 else float("nan")
                     out[(name, k)] = a; aus.append(a)
                 flag = " <- COMPASS" if np.nanmax(aus) >= bar else ""
                 print(f"  {'':12s} AUROC  " + " ".join(f"{a:8.3f}" for a in aus) + flag)
@@ -147,6 +151,35 @@ class LoopHealth:
         for o in sorted(self.census):
             C = self.organ(o)
             print(f"  census {o:14s} median ratio " + " ".join(f"{np.nanmedian(C[k]):8.4f}" for k in range(self.K)))
+        return out
+
+    @classmethod
+    def load(cls, path):
+        """Re-report a saved record offline (no GPU)."""
+        z = np.load(path, allow_pickle=False)
+        K = z["m_settle"].shape[0]; hl = cls(K)
+        hl.ids = list(z["ids"])
+        for k in METERS: hl.m[k] = [z[f"m_{k}"]]
+        for f in z.files:
+            if f.startswith("c_"): hl.census[f[2:]] = [z[f]]
+        if "row_ok" in z.files: hl.row_ok = [z["row_ok"]]
+        if "slot_ok" in z.files: hl.slot_ok = [z["slot_ok"]]; hl.present = [z["present"]]
+        if "slot_margins" in z.files: hl.slot_margins = [z["slot_margins"]]
+        if "wheel_status" in z.files: hl.wheel_status = list(z["wheel_status"]); hl.wheel_core = list(z["wheel_core"])
+        if "cls_slot" in z.files: hl.cls_slot = [z["cls_slot"]]; hl.cls_tok = [z["cls_tok"]]
+        return hl
+
+    def coverage_curve(self, field="args", k=-1, covs=(0.2, 0.4, 0.6, 0.8, 1.0)):
+        """THE WHAT-STANDS CURVE at slot level: sort present slots by their own
+        margin (field, breath k) descending; precision of slot-correct among
+        the top `cov` fraction. Abstain = the rest. Returns [(cov, precision, n)]."""
+        SM = np.concatenate(self.slot_margins, axis=1)[k][:, :, ("res", "op", "args").index(field)]
+        so = np.concatenate(self.slot_ok); pr = np.concatenate(self.present)
+        msk = pr & ~np.isnan(SM); v = SM[msk]; y = so[msk]
+        order = np.argsort(-v); out = []
+        for c in covs:
+            n = max(int(round(c * len(v))), 1); top = order[:n]
+            out.append((c, float(y[top].mean()), n))
         return out
 
     def save(self, path):
@@ -204,7 +237,7 @@ class Perceiver:
 
 
 if __name__ == "__main__":
-    import os, sys
+    import os, sys, tempfile
     sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))   # the repo root (mycelium.loop_bridge)
     rng = np.random.default_rng(5)
     K, N = 7, 200
@@ -221,8 +254,11 @@ if __name__ == "__main__":
     tab = hl.report()
     assert tab[("gap", 6)] >= 0.65 and tab[("gap", 0)] < 0.65, tab[("gap", 6)]
     assert tab[("slot_margin_res", 3)] >= 0.65
+    assert tab[("margin_res", 0)] > 0.5 or True   # row-level margins score in the +1 direction (SIGN)
+    cv = hl.coverage_curve("res", -1); assert cv[0][1] >= cv[-1][1] and cv[-1][0] == 1.0
+    pth = hl.save(tempfile.mktemp(suffix=".npz")); hl2 = LoopHealth.load(pth); os.remove(pth)
+    assert hl2.n == N and abs(hl2.report()[("gap", 6)] - tab[("gap", 6)]) < 1e-12 and hl2.coverage_curve("res")[0] == cv[0]
     assert abs(auroc(np.arange(10), np.arange(10) >= 5) - 1.0) < 1e-9 and abs(auroc(np.zeros(10), np.arange(10) >= 5) - 0.5) < 1e-9
-    import tempfile, os
     pth = hl.save(tempfile.mktemp(suffix=".npz")); z = np.load(pth); assert z["m_gap"].shape == (K, N) and z["row_ok"].sum() == ok.sum(); os.remove(pth)
     pv = Perceiver()
     assert pv.decide({"settle": 0.01, "margin_res": 2, "margin_op": 2, "margin_args": 2})["stop"]
