@@ -38374,3 +38374,24 @@ prior). THE DATA LEVER stands: quantity-phrase mentions by hand (the
 books' L3), the campaign's August critical path. THE CERTIFIER stands:
 the fingerpost's read-time form (abstain unless stable) is how wild
 becomes trustworthy before it becomes correct.
+
+## 2026-09-14 — THE OPERATOR LEXICON, rung 1 measured and NOT FIRED: the relation-cue aligner (scripts/relation_cue_aligner.py) anchors a cue phrase as the relation slot's span only when the assignment is unambiguous — 2,948 of 13,475 pen rows (22%), 3,223 of 46,508 relations (7%): each 1,199, times 627, total 374, in total 297, per 242, twice 187 — a one-token span on 7% of relation slots cannot move a field at 0.39 by a standard error; the arms are not worth the GPU
+
+The coverage arithmetic: the args field fails on ~61% of wild relation
+slots; a cue anchor reaches 7% of training relations with a single
+token ("each") that names the operator, not the operands; the aligner
+family's three arms so far (v1, v2 x2 seeds) moved wild by < 1 SE with
+targets that reached 94% of givens. Registered with its coverage; fired
+only if a later read shows relation-slot attention is what moves args.
+THE AUTOMATIC TOKEN-SIDE ANCHORS ARE EXHAUSTED: numerals (v1, v2),
+cues (v3, 7%), claims (T2, +0.005), a token convolution (T1, variance).
+What remains for the args field is a quantity-PHRASE mention per
+variable on prose rows — the books' L3 annotation — and the certifier
+at read time. THE ANNOTATION ASSISTANT (registered, needs the word): a
+tool that proposes, for each pen row, the phrase around each number
+and the candidate quantity phrases for each variable (from the gold's
+relation structure: a variable that is the result of "each" x "12
+people" is the phrase near those), for a human to confirm or correct in
+one keystroke — the L3 surgery at a fraction of the cost; output = a
+book of prose rows with mentions, the fixture the campaign's critical
+path named in August.
