@@ -715,19 +715,7 @@ def wheel_bias(H, onp, fat_np, se_np, nv, ma, beta, mode, workers, LT):
     B, T = se_np.shape
     parses = []; rows = []
     for b in range(B):
-        row = {kk: onp[kk][b] for kk in onp}
-        row["query"] = np.zeros(H.K_VARS, np.float32)
-        parse = []
-        for j in range(H.L_FAC):
-            if row["pres"][j] <= 0:
-                continue
-            rj = dict(row); pr = np.full_like(row["pres"], -1.0); pr[j] = row["pres"][j]; rj["pres"] = pr
-            try:
-                facs, _ = H.decode(rj)
-            except Exception:
-                facs = []
-            for f in facs:
-                f["_slot"] = j; parse.append(f)
+        parse = H._decode_slots({kk: onp[kk][b] for kk in onp})   # one definition (the head's)
         parses.append(parse); rows.append((int(nv[b]), parse, int(ma[b])))
     _t1 = time.time()
     # THE MEMO (2026-09-12, the row clinic: 72% of the wheel's rows within a

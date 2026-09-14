@@ -161,6 +161,26 @@ def _melt(cur, m):
                         _polar_sink()[2] if ALG_POLAR else 1.0)
 
 
+def _decode_slots(row):
+    """The wheel's parse: decode each present slot ALONE (so a bad slot cannot
+    sink its neighbours); every factor carries its slot as "_slot". row: one
+    row's realized head logits (decode's key conventions)."""
+    import numpy as _np
+    row = dict(row); row["query"] = _np.zeros(K_VARS, _np.float32)      # decode returns (facs, query)
+    parse = []
+    for j in range(L_FAC):
+        if row["pres"][j] <= 0:
+            continue
+        rj = dict(row); pr = _np.full_like(row["pres"], -1.0); pr[j] = row["pres"][j]; rj["pres"] = pr
+        try:
+            _facs, _ = decode(rj)
+        except Exception:
+            _facs = []
+        for f in _facs:
+            f["_slot"] = j; parse.append(f)
+    return parse
+
+
 def _wheel_memo_key(row):
     import json as _json
     n_vars, parse, m = row
@@ -188,18 +208,7 @@ def _wheel_turn(p, state, kb, fat, sent, vst, B):
     _rows = []; _parses = []; _rowd = []
     for b in range(B):
         row = {k: onp[k][b] for k in onp}
-        row["query"] = _np.zeros(K_VARS, _np.float32)      # decode returns (facs, query)
-        parse = []
-        for j in range(L_FAC):
-            if row["pres"][j] <= 0:
-                continue
-            rj = dict(row); pr = _np.full_like(row["pres"], -1.0); pr[j] = row["pres"][j]; rj["pres"] = pr
-            try:
-                _facs, _ = decode(rj)
-            except Exception:
-                _facs = []
-            for f in _facs:
-                f["_slot"] = j; parse.append(f)
+        parse = _decode_slots(row)                          # one definition (the perceiver reads it too)
         _rows.append((int(_WHEEL["n_vars"][b]), parse, int(_WHEEL["m"][b]))); _parses.append(parse); _rowd.append(row)
     # THE READ-TIME POOL + MEMO (perf, 2026-09-13): the batch's rows solved in
     # parallel; an identical (n_vars, m, parse) row across breaths/batches is
@@ -2970,6 +2979,7 @@ def breath_step(p, state, kb, ctx):
         state.setdefault("nl_all", []).append(
             (_nlw.unsqueeze(1) @ waist).squeeze(1))  # (B, H_W)
         state.setdefault("nlat_all", []).append(_nlw)
+        state.setdefault("fat_all", []).append(_fed_core(fat_cur))   # THE PERCEIVER's tap (2026-09-14): this breath's slots<-tokens attention
     bq = cur @ p["W_bq"] + p["W_bq_b"]
     bk = cur @ p["W_bk"] + p["W_bk_b"]
     bv = cur @ p["W_bv"] + p["W_bv_b"]
@@ -3890,6 +3900,10 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
         out["rbias"] = _rb_last
     if int(os.environ.get("ALG_MINE_BREATHS", "0")) and K_B > 1 and slot_mask is not None:
         out["breaths_all"] = [_fed_core(_b9) for _b9 in out_breaths]
+        # THE PERCEIVER's reads (2026-09-14): every breath's emission heads (the
+        # margins) and slots<-tokens attention (the claims). Lazy; readers realize.
+        out["heads_all"] = [heads_of(_b9) for _b9 in out_breaths]
+        out["fat_all"] = ([_fed_core(fat)] + ((_bs_state or {}).get("fat_all") or []))
         if ALG_POLAR:
             # SPEC S4: the atlas tap keeps the OLD coordinates (r*u) in
             # breaths_all — every banked atlas stays readable — and the

@@ -38620,3 +38620,34 @@ the report (CPU/GPU read, no training) on tl242 / ds242 / balV242;
 (2) the vote-in-the-loop lever + the cycle-count lever, paired reads;
 (3) abstain as the curve; (4) the disagreement-born masks through the
 bridge. Bars pinned per lever before its read.
+THE PERCEIVER — WORD GIVEN (2026-09-14 evening). Bryce's two notes
+answered: (1) "additions to the NL projection of the atlas?" — no: the
+atlas is the MAP (kind x breath x medium, mined once); the perceiver's
+record is the WEATHER (one row, one breath, its distance from its kind
+on EACH chart); they meet at THE CHART GAP z_tok - z_slot = which loop
+is sick (reading vs math) — the meter ranked first. (2) Gemini: "the
+model needs training data on descriptive word phrases" = the books'
+critical path restated (the weekend's nulls agree); the perceiver's
+contribution is THE QUEUE: rows/slots where views disagree are the ones
+worth a human or silver annotation (lawful: vote entropy / unanimity is
+"loss-never" with declared selection use; settle-tier meters never
+select).
+STEP 1 BUILT: mycelium/perceiver.py (LoopHealth: settle, z_slot, z_tok,
+gap, margin_res/op/args, claim_conflict, the census ratios per organ,
+the wheel's verdict, gold scoring for RESEARCH reads; report = AUROC per
+meter per breath, compass bar 0.65; Perceiver.decide = THE RULE TABLE v0,
+thresholds PINNED in RULES: settled (settle <= 0.02 & margins >= 1.0 ->
+stop), unstable (gap >= 1.0 -> 4 views + an extra cycle + the locus
+certificate), conflict (claim_conflict >= 0.10 -> the claims
+certificate), abstain (wheel unsat or a zero-margin field); self-test).
+The head: ALG_MINE_BREATHS now also hands out heads_all (every breath's
+emission heads) and fat_all (every breath's slots<-tokens attention) —
+lazy, read-only env; _decode_slots (the wheel's slot-by-slot parse) is
+ONE definition used by _wheel_turn, the trainer's wheel_bias and the
+perceiver read (code motion; fixture gate 5.2995 / 5.3010 identical).
+scripts/perceiver_read.py = the read (PV_CKPT, PV_N, PV_SOLVE).
+READING FRAME (pinned before the read): a meter is a COMPASS at AUROC
+>= 0.65 for row-correct on wild (the happy-family bar); THE CHART GAP
+HYPOTHESIS: max_k AUROC(gap) > max(AUROC(z_slot), AUROC(z_tok)) on
+wild; the wheel's P(wrong|unsat) quoted beside. Reads: tl242 (wild +
+mint), ds242 (wild). Zero training.
