@@ -38753,3 +38753,13 @@ read on ds242 wild. The extra-cycle lever is PARKED pending design: the
 breath rotor's period is K_B (the clock tables are pi-cycled over 7),
 so a second cycle at read time is out of the clock's distribution — it
 needs the delay line / a period-aware clock, not a read.
+STEP 2 REGISTERED (2026-09-14): scripts/perceiver_vote_read.py — the
+views + vote lever on ds242 wild (4 permuted views; the locus read's
+coarse-key agreement per slot; THE DIGITS VOTE on given slots matched
+across views by the bridge's SOURCE TOKEN string — the numeral is the
+same string under a sentence permutation; majority of original + views,
+ties to the original). BARS (pinned): VOTE-LEVER if paired slot-exact
+diff >= +0.010 AND McNemar z >= 2.0; the perceiver SAVES VIEWS if the
+lowest-min-args-margin 50% of rows capture >= 80% of the net gain; the
+abstain curves (by agreement, by args margin, combined) are reported,
+not barred.
