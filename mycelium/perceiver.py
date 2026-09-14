@@ -117,7 +117,10 @@ class LoopHealth:
         {(meter, k): auroc} and prints the table."""
         ok = self.rows_half(); full = self.rows_ok()
         out = {}
-        print(f"[perceiver] N={self.n} rows, K={self.K} breaths" + (f", rows >= half correct {ok.mean():.3f} (fully {full.mean():.3f}); AUROC label = >= half" if ok is not None else ""))
+        label = ">= half"
+        if ok is not None and (ok.all() or not ok.any()) and full is not None and full.any() and not full.all():
+            ok, label = full, "fully correct"        # the half label is degenerate (mint): fall back to the full one
+        print(f"[perceiver] N={self.n} rows, K={self.K} breaths" + (f", rows >= half correct {self.rows_half().mean():.3f} (fully {full.mean():.3f}); AUROC label = {label}" if ok is not None else ""))
         hdr = "meter        " + " ".join(f"   b{k}   " for k in range(self.K))
         print(hdr)
         for name in METERS:

@@ -38705,3 +38705,32 @@ correct, 21.9% of rows; fully correct 1.3%). Signed AUROC per breath:
   extra cycle for rows still moving at b3. The gap-driven rule in RULES
   v0 ("unstable": gap >= 1.0) is STRUCK for wild; the settled rule
   (settle <= 0.02 & margins >= 1.0 -> stop) is supported in direction.
+THE PERCEIVER STEP 1 — THE MINT TABLE (ds242 on test23, 300 rows / 3668
+slots; every row >= half correct, so the label falls back to FULLY
+correct: 88.7%, 34 wrong rows). The same meters, the other register:
+  the atlas IS a compass on mint (as the happy-family read said):
+  z_slot 0.72-0.80 at every breath, z_tok 0.68-0.85 (0.850 at b6), the
+  GAP 0.35 at b0 rising to 0.725 at b6 (the reading's radius falls
+  30.6 -> 22.2 across the breaths while the commitment's stays ~29:
+  the reading CONTRACTS onto its kind as it breathes; wild's does not,
+  z_tok 21 flat).
+  margins: res 0.86 -> 0.974, args 0.78 -> 0.954 (row level, the min
+  over slots); slot level res 0.90-0.94, args 0.85 -> 0.975, op 0.42 ->
+  0.76 (only at the last breath). THE WHAT-STANDS CURVE on mint:
+  precision 1.000 at 20/40/60% coverage by the args margin.
+  settle on mint is INVERTED at b1 and b6 (0.25): the wrong rows are the
+  ones that stop moving early (34 negatives — a texture, not a claim).
+  THE WHEEL on mint: refused 5.0% of rows; P(not full | unsat) = 1.000
+  vs 0.067 — every refusal is a wrong row: the solver's certificate is
+  PERFECT in-distribution and near-useless on wild (the July law
+  restated with numbers: unanimity/consistency certify stability, which
+  coincides with truth only in-distribution).
+  THE TWO REGISTERS SIDE BY SIDE (the perceiver's first finding): on
+  mint every meter is a compass and the reading contracts onto its
+  kind; on wild only the args margin (0.76, sharpening) and the mid-
+  breath motion (0.73) see failure, the reading never contracts (z_tok
+  flat ~21), and the certifier is blind. The perceiver can therefore
+  TELL THE REGISTERS APART from the meters alone (z_tok's trajectory +
+  the wheel's refusal rate) — a mouth-like read from inside the loop,
+  without the mouth. Registered as a candidate meter: "the reading's
+  contraction" (z_tok[b0] - z_tok[b6]).
