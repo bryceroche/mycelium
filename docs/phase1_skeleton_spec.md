@@ -39188,3 +39188,15 @@ their answer fields, the return format. Bryce runs Sonnet; the gate
 runs here; a human audits a sample. MATH-500 stays the measurement and
 the gsm8k test split stays untouched: the pivot is to WILD PROSE as the
 priority with gsm8k's TRAIN problems as its source.
+THE ADMISSION GATE, CORRECTED TWICE BY ITS OWN SELF-TEST (2026-09-15): (1)
+the rulebook first demanded every variable be DEFINED by a given or a
+relation's result — the dialect is a CONSTRAINT graph (an unknown is
+determined through relations it enters as an argument), so the rulebook
+now asks only that the query appear in the graph; (2) wild_certify's
+graph_verdict (forward propagation with inverse moves) reads every mint
+row as INDETERMINATE (simultaneous equations) — the certifier is the
+June CSP core: solve_symbolic on the annotated graph (macros expanded,
+budget 5000, m = 300 for annotated rows) and the assignment at
+query_var must BE the key. Self-test: 200/200 mint rows admitted with
+their own key; a contradicted / out-of-range row refused. The gate is
+the answer key's hand on the diet's door, mechanical.

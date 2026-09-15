@@ -56,8 +56,29 @@ def rulebook(row):
     return None
 
 
+def solver_verdict(row, key, budget=5000):
+    """THE CERTIFIER: the June core solves the annotated graph completely (macros
+    expanded first; the key grades in primitives); the row certifies only if the
+    search finds an assignment whose query value IS the key. Budget exhaustion
+    refuses (it cannot certify). Returns (True | False, detail)."""
+    from alternator_bridge import problem_from_algebra3
+    from mycelium.csp_core import solve_symbolic
+    from mycelium.macros import expand_graph
+    fs, nv = expand_graph(list(row["factors"]), row["n_vars"])
+    m = int(row.get("m") or 300)
+    if key > m: return False, f"key_{key}_above_m_{m}"
+    gv = {f["var"]: f["value"] for f in fs if f["ftype"] == "given"}
+    try:
+        prob = problem_from_algebra3(nv, fs, gv, m)
+    except Exception as e:
+        return False, f"unbuildable:{type(e).__name__}"
+    res = solve_symbolic(prob, budget=budget, seed=0)
+    asg = res.get("assignment")
+    if asg is None: return False, f"unsat_or_budget:{res.get('status', '?')}"
+    return int(asg[row["query_var"]]) == int(key), f"query_val={asg[row['query_var']]}"
+
+
 def admit(rows, version="sonnet_v1"):
-    from wild_certify import graph_verdict
     out = []; why = {}
     for r in rows:
         reason = rulebook(r)
@@ -65,8 +86,8 @@ def admit(rows, version="sonnet_v1"):
             key = r.get("key", key_of(r.get("answer_field")))
             if key is None: reason = "no_key"
             else:
-                ok, detail = graph_verdict(r, key)
-                reason = None if ok is True else ("key_contradicted" if ok is False else f"indeterminate:{detail}")
+                ok, detail = solver_verdict(r, key)
+                reason = None if ok else f"refused:{detail.split(':')[0]}"
         if reason is None:
             r = dict(r); g = dict(r.get("gen") or {}); g.update({"src": "gsm8k", "silver": version, "admitted_by": "admit_annotation:key+rulebook"}); r["gen"] = g; out.append(r)
         else:
