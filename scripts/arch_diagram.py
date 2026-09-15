@@ -48,7 +48,7 @@ gpos = {}
 for g in cfg["groups"]:
     ax.add_patch(FancyBboxPatch((g["x"], g["y"]), g["w"], g["h"], boxstyle="round,pad=0.4,rounding_size=1.5", fc=g["color"], ec="#999", lw=1.2, zorder=0))
     ax.text(g["x"] + 0.8, g["y"] + g["h"] - 1.8, g["label"], fontsize=11, weight="bold", color="#333", va="top", zorder=1)
-NW, NH = 14.5, 9.5; centers = {}
+NW, NH = 14.5, 11.0; centers = {}
 for nd in cfg["nodes"]:
     x, y = nd["x"], nd["y"]; sym = nd["params"].get("symbolic", False)
     ax.add_patch(FancyBboxPatch((x, y), NW, NH, boxstyle="round,pad=0.3,rounding_size=0.8", fc="white", ec="#444" if not sym else "#8a6d3b", lw=1.4, ls="-" if not sym else "--", zorder=2))
@@ -60,8 +60,10 @@ for nd in cfg["nodes"]:
         if len(cur) + len(w) + 1 > 36: lines.append(cur); cur = w
         else: cur = (cur + " " + w).strip()
     lines.append(cur)
-    ax.text(x + 0.5, y + NH - 3.0, "\n".join(lines[:4]), fontsize=6.9, va="top", zorder=3, color="#333", linespacing=1.15)
-    ax.text(x + NW - 0.5, y + 0.6, fmt(counts[nd["id"]], sym), fontsize=7.4, ha="right", va="bottom", color="#1a4d8f" if not sym else "#8a6d3b", weight="bold", zorder=3)
+    ax.text(x + 0.5, y + NH - 4.1, "\n".join(lines[:3]), fontsize=6.9, va="top", zorder=3, color="#333", linespacing=1.15)
+    if nd.get("layers"):   # THE LAYERS LINE (2026-09-15): attention blocks / depth per organ, from the config
+        ax.text(x + 0.5, y + 0.6, nd["layers"], fontsize=6.4, va="bottom", zorder=3, color="#0b6e4f", style="italic")
+    ax.text(x + NW - 0.5, y + NH - 2.5, fmt(counts[nd["id"]], sym), fontsize=7.0, ha="right", va="top", color="#1a4d8f" if not sym else "#8a6d3b", weight="bold", zorder=3)
     centers[nd["id"]] = (x + NW / 2, y + NH / 2, x, y)
 for a, b, lab in cfg["edges"]:
     (ax0, ay0, x0, y0), (bx0, by0, x1, y1) = centers[a], centers[b]

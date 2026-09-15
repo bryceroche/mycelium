@@ -68,12 +68,13 @@
    "id": "embed",
    "group": "trunk",
    "x": 3,
-   "y": 72,
+   "y": 70,
    "label": "Llama-3.2-1B embedding",
    "detail": "128,256 x 2048",
    "params": {
     "llama_embed": true
-   }
+   },
+   "layers": "1 lookup"
   },
   {
    "id": "trunk",
@@ -84,7 +85,8 @@
    "detail": "4 of 16 layers, 2048d, RoPE (the token rotor); precomputed once to a memmap",
    "params": {
     "llama_layers": true
-   }
+   },
+   "layers": "4 transformer blocks x (32-head GQA attn + FFN 8192)"
   },
   {
    "id": "text",
@@ -95,7 +97,8 @@
    "detail": "T = 256 tokens; sentence ids",
    "params": {
     "symbolic": true
-   }
+   },
+   "layers": "tokenizer + sentence ids"
   },
   {
    "id": "waist",
@@ -109,7 +112,8 @@
      "^waist",
      "^sent"
     ]
-   }
+   },
+   "layers": "1 linear 2048->512 + GELU"
   },
   {
    "id": "fed",
@@ -122,7 +126,8 @@
     "regex": [
      "^fed"
     ]
-   }
+   },
+   "layers": "1 residual MLP at the waist"
   },
   {
    "id": "xattn",
@@ -133,13 +138,14 @@
    "detail": "the slots<-tokens attention matrix carries CERTIFICATES back and forth as masks (Bridge.to_tokens / to_slots / spotlight)",
    "params": {
     "symbolic": true
-   }
+   },
+   "layers": "the bank's 8-head attention matrix (no weights of its own)"
   },
   {
    "id": "tokstep",
    "group": "nl",
    "x": 39,
-   "y": 79,
+   "y": 77.5,
    "label": "Token step (v1)",
    "detail": "sentence-masked token<-token attention per breath; zero-init output (NULL on wild, alive at 0.05x)",
    "params": {
@@ -147,29 +153,32 @@
      "^tok_"
     ],
     "ckpt": "tokloop"
-   }
+   },
+   "layers": "1 attn block (8 heads, 64d) x 7 breaths, weights shared"
   },
   {
    "id": "lexicon",
    "group": "nl",
    "x": 39,
-   "y": 65,
+   "y": 64,
    "label": "THE LEXICON (symbolic convolution)",
    "detail": "cardinal grammar + curated entries -> value certificates (wordmint +5.8 pts)",
    "params": {
     "symbolic": true
-   }
+   },
+   "layers": "sliding matcher (0 layers)"
   },
   {
    "id": "fingerpost",
    "group": "nl",
    "x": 39,
-   "y": 52,
+   "y": 51.5,
    "label": "Fingerpost certifier",
    "detail": "5 permuted views; unanimity certifies; the locus = the NL MUC (views certify, never decode)",
    "params": {
     "symbolic": true
-   }
+   },
+   "layers": "5 forwards x the whole loop"
   },
   {
    "id": "clock",
@@ -184,7 +193,8 @@
      "^sw$",
      "^qq$"
     ]
-   }
+   },
+   "layers": "6 waves; 7 breaths; tables, no layers"
   },
   {
    "id": "bus",
@@ -199,7 +209,8 @@
      "^bus",
      "^W_bind"
     ]
-   }
+   },
+   "layers": "1 phasor bind/unbind per breath"
   },
   {
    "id": "atlas",
@@ -210,7 +221,8 @@
    "detail": "kind x breath x medium (slot chart / token chart), one class index; transport across; never a target",
    "params": {
     "symbolic": true
-   }
+   },
+   "layers": "2 charts x 7 breaths x kinds"
   },
   {
    "id": "perceiver",
@@ -221,13 +233,14 @@
    "detail": "LoopHealth per row per breath; rule table; levers = certificates + cycles + views + abstain",
    "params": {
     "symbolic": true
-   }
+   },
+   "layers": "rule table (0 layers)"
   },
   {
    "id": "bank",
    "group": "math",
    "x": 73,
-   "y": 78,
+   "y": 77,
    "label": "Bank attention  slots<-tokens",
    "detail": "the slot banks read the waist (attn_*, fq, vq)",
    "params": {
@@ -236,20 +249,22 @@
      "^fq",
      "^vq"
     ]
-   }
+   },
+   "layers": "1 attn block (8 heads, 64d) x 7 breaths, weights shared"
   },
   {
    "id": "mixer",
    "group": "math",
    "x": 73,
-   "y": 64,
+   "y": 63.5,
    "label": "Slot mixer",
    "detail": "slot<-slot attention, queries rotated by the clock (W_bq/bk/bv/bo)",
    "params": {
     "regex": [
      "^W_b[qkvo]"
     ]
-   }
+   },
+   "layers": "1 single-head attn (512d) x 7 breaths, shared"
   },
   {
    "id": "ffn",
@@ -262,13 +277,14 @@
     "regex": [
      "^ffn"
     ]
-   }
+   },
+   "layers": "1 MLP 512->1024->512 x 7 breaths, shared"
   },
   {
    "id": "notebook",
    "group": "math",
    "x": 73,
-   "y": 36,
+   "y": 36.5,
    "label": "Notebook + garage",
    "detail": "per-slot memory written at phase 0 (W_sil, W_nq, W_gq, W_y)",
    "params": {
@@ -279,26 +295,28 @@
      "^W_y",
      "^nb"
     ]
-   }
+   },
+   "layers": "1 write + 1 read per breath (per-slot)"
   },
   {
    "id": "maskhead",
    "group": "math",
    "x": 73,
-   "y": 22,
+   "y": 23,
    "label": "Mask head",
    "detail": "the learned precision channel at the relate seam (mh_*)",
    "params": {
     "regex": [
      "^mh"
     ]
-   }
+   },
+   "layers": "1 MLP over the relate seam x 7 breaths"
   },
   {
    "id": "alt",
    "group": "math",
    "x": 89,
-   "y": 78,
+   "y": 77,
    "label": "Alternator stations",
    "detail": "the facts pass: committed facts re-enter the loop (alt*, W_fact)",
    "params": {
@@ -306,20 +324,22 @@
      "^alt",
      "^W_fact"
     ]
-   }
+   },
+   "layers": "3 stations (s3/s4/s5) x 7 breaths"
   },
   {
    "id": "polar",
    "group": "math",
    "x": 89,
-   "y": 64,
+   "y": 63.5,
    "label": "Polar sink",
    "detail": "content planes vs clock planes (128 clocked)",
    "params": {
     "regex": [
      "^polar"
     ]
-   }
+   },
+   "layers": "1 sink 384->128->384 (content planes)"
   },
   {
    "id": "stellar",
@@ -330,29 +350,32 @@
    "detail": "the residual snipped to 0 at the last loop breath",
    "params": {
     "symbolic": true
-   }
+   },
+   "layers": "the residual x 0 at breath 6"
   },
   {
    "id": "wheel",
    "group": "math",
    "x": 89,
-   "y": 36,
+   "y": 36.5,
    "label": "Wheel / MUC certifier",
    "detail": "the solver pinged every breath; the unsat core = the math MUC (consistent != correct on wild)",
    "params": {
     "symbolic": true
-   }
+   },
+   "layers": "solver ping x up to 6 breaths"
   },
   {
    "id": "ladder",
    "group": "math",
    "x": 89,
-   "y": 22,
+   "y": 23,
    "label": "The ladder (training)",
    "detail": "every breath graded vs gold; blurred / clock-calibrated targets",
    "params": {
     "symbolic": true
-   }
+   },
+   "layers": "7 rungs, weights 1 -> 2"
   },
   {
    "id": "heads",
@@ -370,7 +393,8 @@
      "^W_dargs",
      "^W_iargs"
     ]
-   }
+   },
+   "layers": "1 linear head per field (+ 2 bilinear pointer heads)"
   },
   {
    "id": "solver",
@@ -381,7 +405,8 @@
    "detail": "general predicate-driven search (GAC/MRV/LCV); the answer key gates all data",
    "params": {
     "symbolic": true
-   }
+   },
+   "layers": "GAC / MRV / LCV search"
   },
   {
    "id": "mouth",
@@ -392,7 +417,8 @@
    "detail": "register -> diagram invariance -> landscape invariance -> key",
    "params": {
     "symbolic": true
-   }
+   },
+   "layers": "kNN + 5-view vote + panel"
   }
  ],
  "edges": [

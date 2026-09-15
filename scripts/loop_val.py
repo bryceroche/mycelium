@@ -131,6 +131,39 @@ def _lex_apply(onp, fat, sl, sl_p, vs):
                 _LEX_STATS["taken"] += 1
 
 
+_NUMTAB = None
+
+
+def _lex_substitute(st_np, tk_np, sl, sl_p, vs):
+    import phase1_algebra_head as _H
+    from mycelium.lexicon import match, span_tokens
+    from tokenizers import Tokenizer
+    global _LEX_TOK, _NUMTAB
+    try:
+        _LEX_TOK
+    except NameError:
+        _LEX_TOK = Tokenizer.from_file(_H.TOKENIZER_JSON)
+    if _NUMTAB is None:
+        _z = np.load(".cache/numeral_table.npz"); _NUMTAB = (_z["mean"], _z["count"])
+    mean, cnt = _NUMTAB
+    for bi in range(len(sl)):
+        text = vs[int(sl[bi])]["text"]; ms = match(text)
+        if not ms:
+            continue
+        _LEX_STATS["rows"] += 1
+        enc = _LEX_TOK.encode(text)
+        for toks, role, val in span_tokens(ms, list(enc.offsets), _H.T_ALG):
+            if role != "value" or not float(val).is_integer() or not (0 <= int(val) < len(cnt)) or cnt[int(val)] < 5:
+                continue
+            if any(_LEX_TOK.decode([enc.ids[t]]).strip().isdigit() for t in toks):
+                continue                                   # a digit token: never touched
+            toks = sorted(toks); _LEX_STATS["spans"] += 1
+            st_np[bi, toks[0]] = mean[int(val)]
+            for t in toks[1:]:
+                tk_np[bi, t] = 0.0
+            _LEX_STATS["taken"] += 1
+
+
 def read(ckpt, data=None, p=None):
     """loop_val's read, VERBATIM. data = load_alg("test") tuple and
     p = build_params(0) may be handed in already built (read_batch);
@@ -166,8 +199,16 @@ def read(ckpt, data=None, p=None):
         sl = np.arange(s0, min(s0 + 8, len(vs)))
         pad = 8 - len(sl)
         sl_p = np.concatenate([sl, sl[:1].repeat(pad)]) if pad else sl
-        ts = Tensor(np.ascontiguousarray(vst[sl_p]), dtype=dtypes.half)   # perf audit #4: half feed, upcast in-graph
-        tk = Tensor(vtk[sl_p].astype(np.float32), dtype=dtypes.float)
+        _st_np = np.ascontiguousarray(vst[sl_p]); _tk_np = vtk[sl_p].astype(np.float32)
+        if _LEX == 3:
+            # THE SUBSTITUTION ROAD (2026-09-15): a matched WORD span's first token takes the mean
+            # trunk state of its numeral (.cache/numeral_table.npz) and the span's other tokens are
+            # masked out — the head reads "a dozen" the way it reads "12" and allocates the slot
+            # itself. Digit tokens are never touched. Zero parameters; the same road at train time.
+            _st_np = _st_np.copy(); _tk_np = _tk_np.copy()
+            _lex_substitute(_st_np, _tk_np, sl, sl_p, vs)
+        ts = Tensor(_st_np, dtype=dtypes.half)   # perf audit #4: half feed, upcast in-graph
+        tk = Tensor(_tk_np, dtype=dtypes.float)
         se = Tensor(vse[sl_p].astype(np.int32), dtype=dtypes.int)
         o0 = _rf(forward, p, ts, tk, se, keys=_jk_open)
         onp0 = {k: o0[k].realize().numpy() for k in ("fat", "args", "res")}
@@ -211,7 +252,7 @@ def read(ckpt, data=None, p=None):
         onp = {k: o[k].realize().numpy() for k in
                (("pres", "ftype", "op", "islit", "dig", "args", "res")
                 + (("dup",) if "h_dup" in p else ()))}
-        if _LEX:
+        if _LEX in (1, 2):
             # THE LEXICON ROAD (2026-09-15, word given; mycelium/lexicon.py, the
             # symbolic convolution): a GIVEN slot whose source token (the bridge's
             # argmax read at intake) lies inside a matched value span takes the
