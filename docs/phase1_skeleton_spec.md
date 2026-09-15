@@ -39200,3 +39200,28 @@ budget 5000, m = 300 for annotated rows) and the assignment at
 query_var must BE the key. Self-test: 200/200 mint rows admitted with
 their own key; a contradicted / out-of-range row refused. The gate is
 the answer key's hand on the diet's door, mechanical.
+THE CERTIFICATE-WEIGHTED LEVEL LADDER — WORD GIVEN, BUILT, FIRED
+(2026-09-15 afternoon; Bryce's question "reward the right answer AND
+change per breath?" answered: not the state, not change as such — the
+decode along a schedule, with the certifiers steering which slots the
+next rung weighs). THE BUILD: _loss_single(o, g, blur, sw) — sw (B,
+L_FAC) per-slot weights on the FIELD terms (ftype / op / dig / args /
+res), the gold unchanged (bit-identical when None; fixture gate
+5.2995); the step trainer's walker applies the head's clock-target fog
+per rung (the unnamed terms unfogged — declared) and, at rung k, sw =
+1 + lambda * melt_bank[k-2] (the wheel's unsat core from breath k-1 —
+the MATH certificate; the NL certificate waits on the frozen-teacher
+locus ruling). ST_CERT_LAMBDA (needs ST_WHEEL=1). The wheel runs
+SILENT (beta 0, no melt): the certificate re-weights the ladder and
+does nothing else — attribution clean. ARMS (pc-certladder): CL242
+(lambda 0, the control) and CW242 (lambda 2), the step trainer's
+regime (3000 steps, B=32, warm balV242, ~3.4 s/step with the wheel);
+gates first (eq gates under the clock target; a 3-step smoke at
+lambda 2). BARS (pinned): MECHANISM — the repair rate P(a core slot
+correct at the end | flagged at breath k) higher on CW than CL (read
+registered: wheel_read with per-breath cores); STRUCTURAL — progress
+at b3 and the cosines vs CL; PERFORMANCE — paired vs CL: wild >= +0.020
+(z >= 2) to claim, mint within 0.005; KILL — mint <= -0.010. Prior on
+wild is LOW (the wheel is blind on wild: P(< half | unsat) 0.79 vs
+0.77): the arm tests the MECHANISM (does the loop learn to repair what
+the certifier flags?) on the register where the certifier sees.

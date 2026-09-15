@@ -245,6 +245,12 @@ class StepWalker:
         self.wheel = bool(_envi("ST_WHEEL"))
         self.wheel_beta = float(os.environ.get("ST_WHEEL_BETA", "3"))
         self.wheel_mode = os.environ.get("ST_WHEEL_MODE", "own")
+        # THE CERTIFICATE-WEIGHTED LEVEL LADDER (2026-09-15, word given): rung k's field terms
+        # are re-weighted 1 + lambda on the slots the wheel's unsat core named at breath k-1
+        # (melt_bank[k-2], the certificate; the melt / spotlight organs stay off unless asked);
+        # the fog per rung is the head's clock target (ALG_CLOCK_TARGET), the unnamed terms unfogged.
+        self.cert_lambda = float(os.environ.get("ST_CERT_LAMBDA", "0") or 0)
+        assert not (self.cert_lambda > 0 and not self.wheel), "ST_CERT_LAMBDA needs ST_WHEEL=1 (the certificate is the wheel's core)"
         self.workers = int(os.environ.get("ST_WORKERS", "0")) or None
 
         def fix(shape, dt=dtypes.float, rg=False):
@@ -435,6 +441,14 @@ class StepWalker:
             return outs
         return fwd
 
+    def _fog(self, k):
+        return self.H._clock_fog(k, 0.0) if getattr(self.H, "_CLOCK_TARGET", None) else 0.0
+
+    def _sw(self, k):
+        if self.cert_lambda > 0 and k >= 2:
+            return 1.0 + self.cert_lambda * self.melt_bank[k - 2][:, :self.H.L_FAC]
+        return None
+
     def _mk_dec(self, k):
         def dec():
             vstk = (self.H._fact_inject(self.p, self.vst_base_bank,
@@ -475,7 +489,7 @@ class StepWalker:
             # DETACHED (they pay once, at stage-0, with sum(w))
             full = {kk: vv.detach() for kk, vv in o0.items()}
             full.update(tap["heads_of"](cur_out))
-            term = self.H._loss_single(full, self.bg) * self.w[k]
+            term = self.H._loss_single(full, self.bg, blur=self._fog(k), sw=self._sw(k)) * self.w[k]
             (scalar + term).backward()
             # the thread + the accumulators, written inside the capture: the
             # scheduler orders every read of G_cur/G_nb/gbufs (the grad
@@ -501,7 +515,7 @@ class StepWalker:
                 self.p[n].grad = None
             o0, tap = self._tap_call(self.b_facts[0])
             scalar = (tap["fst"] * self.G_cur).sum()
-            term0 = self.H._loss_single(o0, self.bg) * self.w[0]
+            term0 = self.H._loss_single(o0, self.bg, blur=self._fog(0)) * self.w[0]
             shared = dict(o0)
             for ek in self.emit_keys:
                 shared[ek] = o0[ek].detach()

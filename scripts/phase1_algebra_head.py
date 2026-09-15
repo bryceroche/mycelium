@@ -4037,7 +4037,7 @@ def _clock_fog(kb, beta):
                           for f, (a, d) in _CLOCK_TARGET.items()}}
 
 
-def _loss_single(o, g, blur=0.0):
+def _loss_single(o, g, blur=0.0, sw=None):
     from tinygrad import Tensor
     pres = g["presence"]
     n_p = pres.sum() + 1e-6
@@ -4050,6 +4050,13 @@ def _loss_single(o, g, blur=0.0):
     is_fdiv = g["is_fdiv"] if "is_fdiv" in g else g["is_lit_f"] * 0.0
     rel = pres * is_rel
     n_rel = rel.sum() + 1e-6
+    # THE CERTIFICATE-WEIGHTED LADDER (2026-09-15, word given): sw (B, L_FAC) per-slot
+    # weights on the FIELD terms (ftype / op / dig / args / res) — the gold stays the target,
+    # a certificate only re-weights which slots this rung grades. None = bit-identical.
+    if sw is not None:
+        pres_w = pres * sw; n_p_w = pres_w.sum() + 1e-6; rel_w = rel * sw; n_rel_w = rel_w.sum() + 1e-6
+    else:
+        pres_w, n_p_w, rel_w, n_rel_w = pres, n_p, rel, n_rel
 
     _bf = blur if isinstance(blur, dict) else None          # THE CLOCK-CALIBRATED TARGETS: per-field fog
     _b0 = (_bf.get("_", 0.0) if _bf is not None else blur)   # the scalar fog (the ladder's) for unnamed terms
@@ -4072,8 +4079,8 @@ def _loss_single(o, g, blur=0.0):
         return c.contiguous()   # perf: own kernel
 
     l = bce(o["pres"], pres, "pres").mean()
-    l = l + (ce(o["ftype"], g["ftype"], "ftype") * pres).sum() / n_p
-    l = l + (ce(o["op"], g["op"], "op") * rel).sum() / n_rel
+    l = l + (ce(o["ftype"], g["ftype"], "ftype") * pres_w).sum() / n_p_w
+    l = l + (ce(o["op"], g["op"], "op") * rel_w).sum() / n_rel_w
     l = l + bce(o["islit"], g["is_lit_f"]).mean()
     if "depth" in o and "depth" in g:      # the position channel (gold-fed)
         l = l + (ce(o["depth"], g["depth"]) * pres).sum() / n_p
@@ -4125,7 +4132,8 @@ def _loss_single(o, g, blur=0.0):
     is_macro = g["is_macro"] if "is_macro" in g else is_mod * 0.0
     is_frac = g["is_frac"] if "is_frac" in g else is_mod * 0.0
     dm = g["is_lit_f"] + is_mod + is_pct + is_fdiv + is_macro + is_frac
-    l = l + (ce(o["dig"], g["digits"], "dig").mean(-1) * dm).sum() / (dm.sum() + 1e-6) \
+    dm_w = dm if sw is None else dm * sw
+    l = l + (ce(o["dig"], g["digits"], "dig").mean(-1) * dm_w).sum() / (dm_w.sum() + 1e-6) \
         * float(os.environ.get("OBJW_DIG", "1.0"))       # pool axis OBJW
     if "sgn" in o and "sign" in g:              # E1: sign BCE on value slots
         l = l + (bce(o["sgn"], g["sign"]) * dm).sum() / (dm.sum() + 1e-6)
@@ -4169,8 +4177,9 @@ def _loss_single(o, g, blur=0.0):
     am = pres * (is_rel + is_sel + is_mod + is_pct + is_fdiv + is_macro + is_frac + is_chain)
     n_am = am.sum() + 1e-6
     _ow_ptr = float(os.environ.get("OBJW_PTR", "1.0"))   # pool axis OBJW
-    l = l + ((bce(o["args"], g["args"], "args") * args_w).mean(-1) * am).sum() / n_am * 2.0 * _ow_ptr
-    l = l + (ce(o["res"], g["res"], "res") * pres).sum() / n_p * 2.0 * _ow_ptr
+    am_w, n_am_w = (am, n_am) if sw is None else (am * sw, (am * sw).sum() + 1e-6)
+    l = l + ((bce(o["args"], g["args"], "args") * args_w).mean(-1) * am_w).sum() / n_am_w * 2.0 * _ow_ptr
+    l = l + (ce(o["res"], g["res"], "res") * pres_w).sum() / n_p_w * 2.0 * _ow_ptr
     l = l + ce(o["query"], g["query"]).mean() * 2.0 * _ow_ptr
     fsn = g["fspan"] / (g["fspan"].sum(-1, keepdim=True) + 1e-6)
     # FAT_W (routing-canvas dose probe, gut #55 amended): the fat-CE canvas
