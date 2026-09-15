@@ -38899,3 +38899,16 @@ does not leap. The state-noise costume stays registered, lower prior
 (a second fog on a path the fog already bent). The blurred ladder's
 structural claim (2026-09-12: "middle breaths load-bearing") is
 AMENDED: load-bearing by delayed commitment, not by distributed work.
+THE DISH LINES OF THE FOUR ARMS (wild, per-field accuracy per breath):
+every arm's decode is finished by breath 2 on every field and flat
+after — args 0.32 -> 0.39 by b2 (cl242 / cl241 / ds242 alike), dig 0.13
+-> 0.37; balV242 (no fog) decodes args at 0.41 AT BREATH 0 and drifts
+DOWN to 0.38 by b6; cd242's fog held args at 0.13 / 0.23 at b0 / b1 and
+released them to 0.38 by b2. The level ladder staged NOTHING in decode
+space (presence/type were already ~0.9 from b0). So the three
+geometries differ in the readout's NULL SPACE only: the decode reaches
+the same ceiling by breath 2 in every arm, and what the schedules move
+is where the state travels while the decode stands still. The gut's
+"lowering" cannot be seen in the decode because there is no lowering
+left to do after breath 2 on this checkpoint: the ceiling is the
+binding information, not the path. Banked.
