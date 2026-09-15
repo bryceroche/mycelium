@@ -38975,3 +38975,16 @@ the row's NUMERAL tokens competing as candidates on equal footing: a
 numeral win leaves the head's decode alone, so the lexicon never
 overrides a numeral read (the wild guard against spurious "one"
 spans). Same bars.
+THE LEXICON ROAD, MODE 2 (2026-09-15 05:55, ds242): wordmint 0.8683 ->
+0.9264 (paired: gained 287 / lost 74; z 11.2; 1797 of 1834 given slots
+took a span) — LEX-RECOVER MET (+0.0581 >= +0.056, z >= 5): the bridge's
+mass rule recovers half the headroom. WILD: 0.2530 -> 0.2477 (lost 12 /
+gained 1; z 3.05) — the NO-LOSS bar FAILED. The autopsy: the 12 lost
+were correct NUMERAL reads (gold 12, 36, 5 ...) overwritten by prose
+cardinals ("one", "three", "two"); on wild only 7 of 105 value spans are
+a WORDED gold given (precision 0.07 — the surface census again: wild's
+givens are numerals 99%). THE NUMERAL GUARD (mode 2b, fired): a decode
+whose value matches a numeral present in the text is a numeral READ
+and is never overridden; the lexicon fills only slots the head is
+guessing. wordmint is unaffected by construction (no numerals). Same
+bars.
