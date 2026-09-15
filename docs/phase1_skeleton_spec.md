@@ -39225,3 +39225,13 @@ at b3 and the cosines vs CL; PERFORMANCE — paired vs CL: wild >= +0.020
 wild is LOW (the wheel is blind on wild: P(< half | unsat) 0.79 vs
 0.77): the arm tests the MECHANISM (does the loop learn to repair what
 the certifier flags?) on the register where the certifier sees.
+THE THIRD PASS (2026-09-15 13:45, scripts/fingerpost_queue.py on the
+top-300 tranche, 4 views each): instability quartiles 0 / 0 / 0.17; 7%
+of rows have >= 1/3 unstable slots; the head of the re-sorted queue:
+"divided the pile into thirds", "guess the total number", "three full
+cans" — worded quantities and partitives, the register the lexicon
+and the books are for. Most parses on the tranche are STABLE across
+views (consistent, not thereby correct — the July law). The packet
+(.cache/annotation_packet_top300.json) is re-ordered by instability
+then queue rank; THE QUEUE IS HANDED OVER: Bryce runs Sonnet, the gate
+(scripts/admit_annotation.py) admits, a human audits a sample.
