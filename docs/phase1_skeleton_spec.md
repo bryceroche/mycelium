@@ -39085,3 +39085,24 @@ scores (the wheel's spotlight road, both attention sites). Read-time,
 sweep beta in {1, 2, 4} on wild, mint no-loss at the best beta. BARS
 (pinned): NUMSPOT-PASS = paired vs open >= +0.020 wild with z >= 2 (the
 target is 1009 given slots at 31% correct); mint within 0.005.
+THE NUMERAL SPOTLIGHT VERDICT (2026-09-15 11:18, ds242, read-time, the
+given slots pass 1 typed spotlit on digit tokens, both attention roads):
+NEGATIVE at every beta, growing with beta — wild beta 1: 0.2506 (lost 24
+/ gained 19, z +0.76 for open); beta 2: 0.2457 (lost 56 / gained 41, z
++1.52); beta 4: 0.2233 (lost 122 / gained 61, z +4.51); mint beta 2:
+0.9798 (lost 8 / gained 2, z +1.90). NUMSPOT-PASS not met; banked as a
+NEGATIVE. THE LESSON: the census's meter (a given slot's argmax is a
+digit 6% on wild vs 63% on mint) is a SYMPTOM, not the mechanism —
+forcing the slot's attention onto the digit token breaks the read it
+was making. On wild the value reaches the slot through the CONTEXT the
+trunk already mixed (the numeral's value is smeared into its neighbours'
+L0-L3 features), and the slot reads it from there 31% of the time;
+pointing it at the raw digit token removes that route without adding
+one. Consistent with the lexicon probe (the numeral's value lives on a
+token axis) and with the substitution road (which works BECAUSE it
+writes onto that axis, at the input, before the mixing the head
+expects). Read-time attention biases on ds242 are now 0 for 4
+(spotlight / claims / locus / numeral): the loop's attention is not
+where wild's binding is decided. Regime tag: ds242, read time; the
+same certificate at TRAINING time (the head learns to use the digit
+mass) is a different arm, prior low.
