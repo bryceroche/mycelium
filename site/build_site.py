@@ -242,7 +242,7 @@ HOOKS = {
 # ---------------------------------------------------------------- blog + bio
 BLOG = ROOT / "site" / "blog"
 blog_pages = []
-PIN_FIRST = ["2026-09-15-the-symbolic-convolution", "2026-09-14-one-map-two-charts", "2026-09-14-two-loops-one-shape", "2026-09-12-the-whip", "2026-09-12-the-fog-not-the-curtain", "2026-09-12-two-roads-to-the-middle", "2026-09-12-the-graph-is-time", "2026-09-12-the-dancers-pixels", "2026-09-10-the-line-cooks", "2026-09-10-the-stellarator", "2026-09-10-the-steering-wheel", "2026-09-09-the-words-never-change", "2026-09-09-the-order", "2026-09-09-the-balance-sheet", "2026-09-09-turbulent-air", "2026-09-09-the-player-and-the-game", "2026-09-08-the-pressure-cooker", "2026-09-07-a-place-to-turn"]     # the live generation leads the splash
+PIN_FIRST = ["2026-09-15-the-symbolic-convolution", "2026-09-15-the-machine-drawn", "2026-09-14-one-map-two-charts", "2026-09-14-two-loops-one-shape", "2026-09-12-the-whip", "2026-09-12-the-fog-not-the-curtain", "2026-09-12-two-roads-to-the-middle", "2026-09-12-the-graph-is-time", "2026-09-12-the-dancers-pixels", "2026-09-10-the-line-cooks", "2026-09-10-the-stellarator", "2026-09-10-the-steering-wheel", "2026-09-09-the-words-never-change", "2026-09-09-the-order", "2026-09-09-the-balance-sheet", "2026-09-09-turbulent-air", "2026-09-09-the-player-and-the-game", "2026-09-08-the-pressure-cooker", "2026-09-07-a-place-to-turn"]     # the live generation leads the splash
 _posts = sorted(BLOG.glob("*.md"), reverse=True)
 _posts = [m for m in _posts if m.stem in PIN_FIRST] + [m for m in _posts if m.stem not in PIN_FIRST]
 for md in _posts:
@@ -282,7 +282,7 @@ for ic in ("favicon-64.png", "favicon-32.png", "apple-touch-icon.png"):
 (DIST / "paper" / "index.html").write_text(paper_html)
 shutil.copy(PAPER / "paper1.pdf", DIST / "paper1.pdf")
 shutil.copy(ROOT / "docs" / "phase1_skeleton_spec.md", DIST / "ledger.md")
-for png in (PAPER / "figures" / "out").glob("*.png"):
+for png in list((PAPER / "figures" / "out").glob("*.png")) + list((PAPER / "figures" / "out").glob("*.svg")):
     shutil.copy(png, DIST / "figures" / png.name)
 n = sum(1 for _ in DIST.rglob("*") if _.is_file())
 print(f"[site] {n} files -> {DIST}")

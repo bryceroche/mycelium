@@ -1,0 +1,540 @@
+{
+ "title": "Mycelium: two loops, one shape",
+ "subtitle": "the composed system as of 2026-09-15 (research lineage ds242; the NL loop v1 from the tl242 arm)",
+ "ckpt": ".cache/sharp_ds242.safetensors",
+ "ckpt_extra": {
+  "tokloop": ".cache/sharp_tl242.safetensors"
+ },
+ "trunk_weights": ".cache/llama-3.2-1b-weights/model.safetensors",
+ "trunk_layers": 4,
+ "groups": [
+  {
+   "id": "trunk",
+   "label": "FROZEN TRUNK (input space; never trained)",
+   "x": 1,
+   "y": 8,
+   "w": 18,
+   "h": 84,
+   "color": "#f2f2f2"
+  },
+  {
+   "id": "bridge",
+   "label": "THE BRIDGE (two lanes)",
+   "x": 21,
+   "y": 8,
+   "w": 14,
+   "h": 84,
+   "color": "#fff4e0"
+  },
+  {
+   "id": "nl",
+   "label": "THE NL LOOP  (medium: tokens, 256 x 512d)",
+   "x": 37,
+   "y": 50,
+   "w": 32,
+   "h": 42,
+   "color": "#e8f1fb"
+  },
+  {
+   "id": "shared",
+   "label": "SHARED AIR (both loops breathe it)",
+   "x": 37,
+   "y": 8,
+   "w": 32,
+   "h": 41,
+   "color": "#eef7ea"
+  },
+  {
+   "id": "math",
+   "label": "THE MATH LOOP  (medium: slots, 32 x 512d; 7 breaths)",
+   "x": 71,
+   "y": 8,
+   "w": 32,
+   "h": 84,
+   "color": "#fbe9e9"
+  },
+  {
+   "id": "out",
+   "label": "READOUT + VERIFICATION (neural proposes, symbolic disposes)",
+   "x": 105,
+   "y": 8,
+   "w": 18,
+   "h": 84,
+   "color": "#f6f0fa"
+  }
+ ],
+ "nodes": [
+  {
+   "id": "embed",
+   "group": "trunk",
+   "x": 3,
+   "y": 72,
+   "label": "Llama-3.2-1B embedding",
+   "detail": "128,256 x 2048",
+   "params": {
+    "llama_embed": true
+   }
+  },
+  {
+   "id": "trunk",
+   "group": "trunk",
+   "x": 3,
+   "y": 48,
+   "label": "Llama layers L0-L3",
+   "detail": "4 of 16 layers, 2048d, RoPE (the token rotor); precomputed once to a memmap",
+   "params": {
+    "llama_layers": true
+   }
+  },
+  {
+   "id": "text",
+   "group": "trunk",
+   "x": 3,
+   "y": 22,
+   "label": "the text",
+   "detail": "T = 256 tokens; sentence ids",
+   "params": {
+    "symbolic": true
+   }
+  },
+  {
+   "id": "waist",
+   "group": "bridge",
+   "x": 23,
+   "y": 62,
+   "label": "THE WAIST  2048 -> 512",
+   "detail": "the forward lane: the reading carried down into the slots' space (+ sentence embedding)",
+   "params": {
+    "regex": [
+     "^waist",
+     "^sent"
+    ]
+   }
+  },
+  {
+   "id": "fed",
+   "group": "bridge",
+   "x": 23,
+   "y": 44,
+   "label": "FED mixer at the waist",
+   "detail": "the deeper lungs (fed_*)",
+   "params": {
+    "regex": [
+     "^fed"
+    ]
+   }
+  },
+  {
+   "id": "xattn",
+   "group": "bridge",
+   "x": 23,
+   "y": 22,
+   "label": "THE RETURN LANE",
+   "detail": "the slots<-tokens attention matrix carries CERTIFICATES back and forth as masks (Bridge.to_tokens / to_slots / spotlight)",
+   "params": {
+    "symbolic": true
+   }
+  },
+  {
+   "id": "tokstep",
+   "group": "nl",
+   "x": 39,
+   "y": 79,
+   "label": "Token step (v1)",
+   "detail": "sentence-masked token<-token attention per breath; zero-init output (NULL on wild, alive at 0.05x)",
+   "params": {
+    "regex": [
+     "^tok_"
+    ],
+    "ckpt": "tokloop"
+   }
+  },
+  {
+   "id": "lexicon",
+   "group": "nl",
+   "x": 39,
+   "y": 65,
+   "label": "THE LEXICON (symbolic convolution)",
+   "detail": "cardinal grammar + curated entries -> value certificates (wordmint +5.8 pts)",
+   "params": {
+    "symbolic": true
+   }
+  },
+  {
+   "id": "fingerpost",
+   "group": "nl",
+   "x": 39,
+   "y": 52,
+   "label": "Fingerpost certifier",
+   "detail": "5 permuted views; unanimity certifies; the locus = the NL MUC (views certify, never decode)",
+   "params": {
+    "symbolic": true
+   }
+  },
+  {
+   "id": "clock",
+   "group": "shared",
+   "x": 39,
+   "y": 35,
+   "label": "T6 clock (breath rotor)",
+   "detail": "six-wave, pi-cycled over the breaths; canonical frame",
+   "params": {
+    "regex": [
+     "^breath",
+     "^sw$",
+     "^qq$"
+    ]
+   }
+  },
+  {
+   "id": "bus",
+   "group": "shared",
+   "x": 39,
+   "y": 22,
+   "label": "T256 bus rotor",
+   "detail": "phasor binding as an active recurrent loop (W_busr, bind)",
+   "params": {
+    "regex": [
+     "^W_busr",
+     "^bus",
+     "^W_bind"
+    ]
+   }
+  },
+  {
+   "id": "atlas",
+   "group": "shared",
+   "x": 39,
+   "y": 9.5,
+   "label": "ATLAS: one map, two charts",
+   "detail": "kind x breath x medium (slot chart / token chart), one class index; transport across; never a target",
+   "params": {
+    "symbolic": true
+   }
+  },
+  {
+   "id": "perceiver",
+   "group": "shared",
+   "x": 54.5,
+   "y": 22,
+   "label": "PERCEIVER",
+   "detail": "LoopHealth per row per breath; rule table; levers = certificates + cycles + views + abstain",
+   "params": {
+    "symbolic": true
+   }
+  },
+  {
+   "id": "bank",
+   "group": "math",
+   "x": 73,
+   "y": 78,
+   "label": "Bank attention  slots<-tokens",
+   "detail": "the slot banks read the waist (attn_*, fq, vq)",
+   "params": {
+    "regex": [
+     "^attn",
+     "^fq",
+     "^vq"
+    ]
+   }
+  },
+  {
+   "id": "mixer",
+   "group": "math",
+   "x": 73,
+   "y": 64,
+   "label": "Slot mixer",
+   "detail": "slot<-slot attention, queries rotated by the clock (W_bq/bk/bv/bo)",
+   "params": {
+    "regex": [
+     "^W_b[qkvo]"
+    ]
+   }
+  },
+  {
+   "id": "ffn",
+   "group": "math",
+   "x": 73,
+   "y": 50,
+   "label": "Per-breath FFN",
+   "detail": "the loop's feed-forward (ffn_*)",
+   "params": {
+    "regex": [
+     "^ffn"
+    ]
+   }
+  },
+  {
+   "id": "notebook",
+   "group": "math",
+   "x": 73,
+   "y": 36,
+   "label": "Notebook + garage",
+   "detail": "per-slot memory written at phase 0 (W_sil, W_nq, W_gq, W_y)",
+   "params": {
+    "regex": [
+     "^W_sil",
+     "^W_nq",
+     "^W_gq",
+     "^W_y",
+     "^nb"
+    ]
+   }
+  },
+  {
+   "id": "maskhead",
+   "group": "math",
+   "x": 73,
+   "y": 22,
+   "label": "Mask head",
+   "detail": "the learned precision channel at the relate seam (mh_*)",
+   "params": {
+    "regex": [
+     "^mh"
+    ]
+   }
+  },
+  {
+   "id": "alt",
+   "group": "math",
+   "x": 89,
+   "y": 78,
+   "label": "Alternator stations",
+   "detail": "the facts pass: committed facts re-enter the loop (alt*, W_fact)",
+   "params": {
+    "regex": [
+     "^alt",
+     "^W_fact"
+    ]
+   }
+  },
+  {
+   "id": "polar",
+   "group": "math",
+   "x": 89,
+   "y": 64,
+   "label": "Polar sink",
+   "detail": "content planes vs clock planes (128 clocked)",
+   "params": {
+    "regex": [
+     "^polar"
+    ]
+   }
+  },
+  {
+   "id": "stellar",
+   "group": "math",
+   "x": 89,
+   "y": 50,
+   "label": "Stellarator",
+   "detail": "the residual snipped to 0 at the last loop breath",
+   "params": {
+    "symbolic": true
+   }
+  },
+  {
+   "id": "wheel",
+   "group": "math",
+   "x": 89,
+   "y": 36,
+   "label": "Wheel / MUC certifier",
+   "detail": "the solver pinged every breath; the unsat core = the math MUC (consistent != correct on wild)",
+   "params": {
+    "symbolic": true
+   }
+  },
+  {
+   "id": "ladder",
+   "group": "math",
+   "x": 89,
+   "y": 22,
+   "label": "The ladder (training)",
+   "detail": "every breath graded vs gold; blurred / clock-calibrated targets",
+   "params": {
+    "symbolic": true
+   }
+  },
+  {
+   "id": "heads",
+   "group": "out",
+   "x": 107,
+   "y": 66,
+   "label": "Emission heads",
+   "detail": "pres / ftype / op / digits / args / res / query (h_*, W_args, W_res)",
+   "params": {
+    "regex": [
+     "^h_",
+     "^W_args",
+     "^W_res",
+     "^W_query",
+     "^W_dargs",
+     "^W_iargs"
+    ]
+   }
+  },
+  {
+   "id": "solver",
+   "group": "out",
+   "x": 107,
+   "y": 44,
+   "label": "CSP solver",
+   "detail": "general predicate-driven search (GAC/MRV/LCV); the answer key gates all data",
+   "params": {
+    "symbolic": true
+   }
+  },
+  {
+   "id": "mouth",
+   "group": "out",
+   "x": 107,
+   "y": 22,
+   "label": "Mouth + vote + panel",
+   "detail": "register -> diagram invariance -> landscape invariance -> key",
+   "params": {
+    "symbolic": true
+   }
+  }
+ ],
+ "edges": [
+  [
+   "text",
+   "embed",
+   ""
+  ],
+  [
+   "embed",
+   "trunk",
+   ""
+  ],
+  [
+   "trunk",
+   "waist",
+   "2048d"
+  ],
+  [
+   "waist",
+   "fed",
+   ""
+  ],
+  [
+   "fed",
+   "bank",
+   "the reading"
+  ],
+  [
+   "waist",
+   "tokstep",
+   "tokens"
+  ],
+  [
+   "tokstep",
+   "bank",
+   "per breath"
+  ],
+  [
+   "lexicon",
+   "xattn",
+   "value certs"
+  ],
+  [
+   "xattn",
+   "bank",
+   "digits / spotlight / claims"
+  ],
+  [
+   "wheel",
+   "xattn",
+   "MUC certs"
+  ],
+  [
+   "fingerpost",
+   "xattn",
+   "locus"
+  ],
+  [
+   "bank",
+   "mixer",
+   ""
+  ],
+  [
+   "mixer",
+   "ffn",
+   ""
+  ],
+  [
+   "ffn",
+   "notebook",
+   ""
+  ],
+  [
+   "notebook",
+   "maskhead",
+   ""
+  ],
+  [
+   "clock",
+   "mixer",
+   "phase"
+  ],
+  [
+   "clock",
+   "tokstep",
+   "phase"
+  ],
+  [
+   "bus",
+   "mixer",
+   "binding"
+  ],
+  [
+   "atlas",
+   "perceiver",
+   "radius"
+  ],
+  [
+   "perceiver",
+   "xattn",
+   "levers"
+  ],
+  [
+   "maskhead",
+   "heads",
+   "final state"
+  ],
+  [
+   "heads",
+   "solver",
+   "factor graph"
+  ],
+  [
+   "solver",
+   "wheel",
+   "refuse + core"
+  ],
+  [
+   "heads",
+   "mouth",
+   ""
+  ],
+  [
+   "alt",
+   "bank",
+   "facts"
+  ],
+  [
+   "polar",
+   "mixer",
+   ""
+  ],
+  [
+   "stellar",
+   "heads",
+   ""
+  ],
+  [
+   "ladder",
+   "heads",
+   "loss"
+  ]
+ ]
+}
