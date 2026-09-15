@@ -104,15 +104,21 @@ def _lex_apply(onp, fat, sl, sl_p, vs):
         for f in _H._decode_slots(row):
             if f.get("ftype") != "given":
                 continue
-            j = f["_slot"]; t0 = br.source_token(bi, j)
-            for toks, val in vspans:
-                if t0 in toks and float(val).is_integer() and 0 <= int(val) < 10 ** onp["dig"].shape[-2]:
-                    digs = [int(c) for c in str(int(val)).zfill(onp["dig"].shape[-2])]
-                    onp["dig"][bi, j] = 0.0
-                    for di, d in enumerate(digs):
-                        onp["dig"][bi, j, di, d] = 20.0
-                    _LEX_STATS["taken"] += 1
-                    break
+            j = f["_slot"]; chosen = None
+            if _LEX == 1:                       # mode 1: the source token (argmax) inside a span
+                t0 = br.source_token(bi, j)
+                chosen = next((val for toks, val in vspans if t0 in toks), None)
+            else:                               # mode 2: THE BRIDGE's mass — the span this slot reads most
+                mass = [fat[bi, j, sorted(toks)].sum() for toks, _ in vspans]
+                k = int(np.argmax(mass))
+                if mass[k] > 0:
+                    chosen = vspans[k][1]
+            if chosen is not None and float(chosen).is_integer() and 0 <= int(chosen) < 10 ** onp["dig"].shape[-2]:
+                digs = [int(c) for c in str(int(chosen)).zfill(onp["dig"].shape[-2])]
+                onp["dig"][bi, j] = 0.0
+                for di, d in enumerate(digs):
+                    onp["dig"][bi, j, di, d] = 20.0
+                _LEX_STATS["taken"] += 1
 
 
 def read(ckpt, data=None, p=None):
