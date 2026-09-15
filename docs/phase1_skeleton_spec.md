@@ -39021,3 +39021,13 @@ it once had (a texture for the ladder: the late breaths overwrite a
 soft read). So the lexicon road's 5.8-point recovery is digits; the
 residual 5.5 = wrong-span assignments (74) + the ~3 points spelling
 costs the pointers and types, which no digit road reaches.
+LEXICON_v2 (2026-09-15, the multipliers as hidden-given values: twice /
+double / half -> 2, triple -> 3, a quarter -> 4 — the pen dialect's own
+encoding) on the wild holdout: 0.2535 (125 spans, 18 slots taken,
+gained 1 / lost 0 vs open) — identical to v1: on these 20 rows the head
+proposes no given slot for the constant that the guard would leave
+open, so the multipliers have no effect HERE; measurable only on a
+worded fixture with multipliers (registered: "wordmint-2", mint rows
+rewritten with twice/half where the dialect has the constant). Bryce's
+"word given for your choice" spent on this rung; banked as no-effect
+on the holdout, not as a null of the rung.
