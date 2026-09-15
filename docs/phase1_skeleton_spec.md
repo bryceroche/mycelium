@@ -39121,3 +39121,16 @@ same subset, because preservation is set by the training signal, not
 by the projection's form. An intervention before the waist must ADD
 information the trunk's L3 features lack or the diet never rewarded —
 it cannot recover it by reshaping the map.
+THE ANNOTATION QUEUE, FIRST PASS (2026-09-15, scripts/perceiver_queue.py,
+ds242 on 2000 of the diet's 13,475 pen rows): rows with any wrong slot
+0.537, >= half wrong 0.026 (52 rows), rows with spans 0.000; wrong slots
+given 1351 / rel 656. THE FINDING: the machine has FIT its training wild
+rows (>= half wrong on 2.6%) while the held-out wild reads at 0.25 —
+the disease is a GENERALIZATION GAP across prose rows, not an unfit
+diet. So the training-side queue is thin (52 rows) and the queue must
+draw from the UNANNOTATED pool (gsm8k rows outside the diet and the
+holdout), ranked by the perceiver's inference-time meters (the args
+margin, then the views), with the annotation = spans / mentions for
+quantity phrases and relations (no wild training row carries any).
+The duplicated pen rows in the diet (the reps) surface as identical
+queue entries — the dose law's reps-per-unique, visible.
