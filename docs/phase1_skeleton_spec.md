@@ -38961,3 +38961,17 @@ BARS (pinned before the read): LEX-RECOVER on wordmint = paired vs the
 open wordmint read >= +0.056 (half the 0.113 drop) with McNemar z >= 5;
 on the wild holdout (23 rows with a number word) the bar is NO LOSS
 (paired diff >= -0.005 vs open ds242) and the lift is reported.
+THE LEXICON ROAD, MODE 1 (2026-09-15 05:54, ds242): wordmint 0.8683 ->
+0.8918 (paired: gained 115 / lost 29; z 7.2) — significant, and 2.3 of
+the 11.3 points: LEX-RECOVER's size bar (>= +0.056) NOT met. The
+counter says why: 1834 value spans, 796 given slots taken — the
+argmax-token rule misses most givens because a given slot's strongest
+intake read is often the VARIABLE letter ("c is forty-five" -> "c"),
+not the numeral. Wild: 78 rows matched (mostly "one" in prose), 105
+spans, 3 slots taken, 0.2530 -> 0.2530 exactly — the no-loss bar met,
+no lift. MODE 2 (fired, pc-lexicon2): THE BRIDGE's mass rule — each
+given slot takes the value span it reads most (to_slots "mass"), with
+the row's NUMERAL tokens competing as candidates on equal footing: a
+numeral win leaves the head's decode alone, so the lexicon never
+overrides a numeral read (the wild guard against spurious "one"
+spans). Same bars.
