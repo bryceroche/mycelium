@@ -39134,3 +39134,12 @@ margin, then the views), with the annotation = spans / mentions for
 quantity phrases and relations (no wild training row carries any).
 The duplicated pen rows in the diet (the reps) surface as identical
 queue entries — the dose law's reps-per-unique, visible.
+THE UNANNOTATED POOL (2026-09-15): .cache/gsm8k_pool_unannotated.jsonl =
+5,946 gsm8k TRAIN rows outside the diet and the holdout (the gsm8k test
+split's 1,319 rows are never used); the answer key is the answer field;
+factors empty (the pen never touched them). THE SECOND PASS
+(scripts/perceiver_rank.py, fired): rank without gold by (dangling
+variables desc, min args margin asc), with settle at b3 and the kind on
+both charts, CALIBRATED first on the holdout (AUROC vs >= half correct)
+— dangling variables = a free SYNTACTIC verifier (variables a decoded
+relation references that no given defines and no relation produces).
