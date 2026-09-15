@@ -38936,3 +38936,28 @@ reads the phrase) is the certain route and needs no training; ROWS are
 viable only DOSED (share-of-mix AND reps-per-unique declared). The
 lexicon's effect on the wild holdout is bounded by phrase frequency
 there (counted below); its PURPOSE is the register beyond the holdout.
+THE WORDED MINT (2026-09-15, word given; scripts/build_wordmint.py):
+the 300 mint test rows with every integer numeral rewritten as cardinal
+words (1834 numerals, 6.1 per row; 15,036 spans/mentions re-offset, 0
+mismatches; tokens max 219), precomputed as its own split (wordmint).
+THE HEADROOM: ds242 mint 0.9815 -> wordmint 0.8683 (paired n=3668: lost
+427 / gained 12; z +19.8) — ELEVEN POINTS of slot-exact from spelling
+alone, on the register the machine reads at 98%. The lexicon's
+headroom is real and measurable at n=300.
+THE DIALECT (the pen rows): "twice as many taxis" = a hidden GIVEN
+(value 2) + a mul relation; "half the price" = given 2 + mul reversed;
+"a couple of buses" = given 2. So EVERY lexicon entry is a VALUE
+certificate for a given slot; the relation's structure is the head's
+job as before. mycelium/lexicon.py (lexicon_v1): the cardinal grammar
+(hundreds/tens/units composed) + value entries (a dozen, a pair, a
+couple, a hundred, a thousand) + multiplier entries (twice, double,
+triple, half, quarter — held until a given-constant road exists);
+match() = the symbolic convolution (self-test).
+THE LEXICON ROAD (scripts/loop_val.py, LV_LEXICON=1): a GIVEN slot
+whose source token (Bridge.source_token — the argmax of its intake
+attention, the wheel's own convention) lies inside a matched value
+span takes the entry's digits. No threshold, no gain, no parameters.
+BARS (pinned before the read): LEX-RECOVER on wordmint = paired vs the
+open wordmint read >= +0.056 (half the 0.113 drop) with McNemar z >= 5;
+on the wild holdout (23 rows with a number word) the bar is NO LOSS
+(paired diff >= -0.005 vs open ds242) and the lift is reported.

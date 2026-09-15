@@ -74,6 +74,47 @@ def atlas_tables(vs):
     return _ATL_CACHE
 
 
+_LEX = int(os.environ.get("LV_LEXICON", "0"))
+_LEX_STATS = {"spans": 0, "taken": 0, "rows": 0}
+
+
+def _lex_apply(onp, fat, sl, sl_p, vs):
+    import phase1_algebra_head as _H
+    from mycelium.lexicon import match, span_tokens
+    from mycelium.loop_bridge import Bridge
+    from tokenizers import Tokenizer
+    global _LEX_TOK
+    try:
+        _LEX_TOK
+    except NameError:
+        _LEX_TOK = Tokenizer.from_file(_H.TOKENIZER_JSON)
+    B = len(sl_p); T = fat.shape[-1]
+    br = Bridge(fat, np.zeros((B, T), np.int32))          # the correspondence only (source tokens); no sentences needed
+    for bi in range(len(sl)):
+        text = vs[int(sl[bi])]["text"]; ms = match(text)
+        if not ms:
+            continue
+        _LEX_STATS["rows"] += 1
+        spans = span_tokens(ms, list(_LEX_TOK.encode(text).offsets), _H.T_ALG)
+        vspans = [(set(toks), val) for toks, role, val in spans if role == "value"]
+        _LEX_STATS["spans"] += len(vspans)
+        if not vspans:
+            continue
+        row = {k: onp[k][bi] for k in onp}
+        for f in _H._decode_slots(row):
+            if f.get("ftype") != "given":
+                continue
+            j = f["_slot"]; t0 = br.source_token(bi, j)
+            for toks, val in vspans:
+                if t0 in toks and float(val).is_integer() and 0 <= int(val) < 10 ** onp["dig"].shape[-2]:
+                    digs = [int(c) for c in str(int(val)).zfill(onp["dig"].shape[-2])]
+                    onp["dig"][bi, j] = 0.0
+                    for di, d in enumerate(digs):
+                        onp["dig"][bi, j, di, d] = 20.0
+                    _LEX_STATS["taken"] += 1
+                    break
+
+
 def read(ckpt, data=None, p=None):
     """loop_val's read, VERBATIM. data = load_alg("test") tuple and
     p = build_params(0) may be handed in already built (read_batch);
@@ -154,6 +195,12 @@ def read(ckpt, data=None, p=None):
         onp = {k: o[k].realize().numpy() for k in
                (("pres", "ftype", "op", "islit", "dig", "args", "res")
                 + (("dup",) if "h_dup" in p else ()))}
+        if _LEX:
+            # THE LEXICON ROAD (2026-09-15, word given; mycelium/lexicon.py, the
+            # symbolic convolution): a GIVEN slot whose source token (the bridge's
+            # argmax read at intake) lies inside a matched value span takes the
+            # entry's digits. Parameter-free; neural proposes, the lexicon disposes.
+            _lex_apply(onp, onp0["fat"], sl, sl_p, vs)
         for bi, i in enumerate(sl):
             i = int(i)
             for j in range(L_FAC):
@@ -179,6 +226,7 @@ def read(ckpt, data=None, p=None):
                 if _PS is not None:
                     _PS.append((i, j, bool(ok)))
     if _PS is not None:
+        if _LEX: print(f"[lexicon] rows with matches {_LEX_STATS['rows']}, value spans {_LEX_STATS['spans']}, given slots taken {_LEX_STATS['taken']}", flush=True)
         np.savez(os.environ["LV_PER_SLOT"], rows=np.array([r for r, _, _ in _PS]), slots=np.array([c for _, c, _ in _PS]), ok=np.array([o for _, _, o in _PS]))
     return n_ok, n_tot
 
