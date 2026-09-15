@@ -19,8 +19,12 @@ ONES = {w: i for i, w in enumerate(["zero", "one", "two", "three", "four", "five
 TENS = {w: i * 10 for i, w in enumerate(["", "", "twenty", "thirty", "forty", "fifty", "sixty", "seventy", "eighty", "ninety"]) if w}
 # THE ENTRIES (v1): value phrases and multipliers. Version: lexicon_v1 (2026-09-15).
 VALUE_ENTRIES = {"a dozen": 12, "dozen": 12, "a pair": 2, "a pair of": 2, "a hundred": 100, "a thousand": 1000, "a couple": 2, "a couple of": 2}
-MUL_ENTRIES = {"twice": 2.0, "double": 2.0, "doubled": 2.0, "triple": 3.0, "tripled": 3.0, "thrice": 3.0, "half": 0.5, "half of": 0.5, "a quarter of": 0.25, "quadruple": 4.0}
-VERSION = "lexicon_v1"
+# THE MULTIPLIERS AS HIDDEN GIVENS (lexicon_v2, 2026-09-15): the pen dialect encodes "twice as
+# many" as a GIVEN constant 2 + a mul relation, "half the price" as a given 2 with the relation
+# reversed, "a quarter" as a given 4 — so a multiplier is a VALUE certificate for the constant's
+# slot, and rides the same road. (The old MUL_ENTRIES with fractional values are retired.)
+MUL_ENTRIES = {"twice": 2, "double": 2, "doubled": 2, "triple": 3, "tripled": 3, "thrice": 3, "half": 2, "half of": 2, "a quarter of": 4, "a quarter": 4, "quadruple": 4}
+VERSION = "lexicon_v2"
 
 _NUMWORD = re.compile(r"\b(?:(one|two|three|four|five|six|seven|eight|nine)\s+hundred(?:\s+(?:and\s+)?)?)?(?:(twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety)(?:[\s-](one|two|three|four|five|six|seven|eight|nine))?|(zero|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen))?\b", re.I)
 
@@ -43,7 +47,7 @@ def entries(text):
     """Table entries in `text`: [(start, end, role, value)], longest match first
     at each position, no overlaps."""
     cands = []
-    for tab, role in ((VALUE_ENTRIES, "value"), (MUL_ENTRIES, "mul")):
+    for tab, role in ((VALUE_ENTRIES, "value"), (MUL_ENTRIES, "value")):   # v2: multipliers are hidden-given VALUES
         for phrase, val in tab.items():
             for m in re.finditer(r"\b" + re.escape(phrase) + r"\b", text, re.I):
                 cands.append((m.start(), -(m.end() - m.start()), m.end(), role, val))
@@ -82,10 +86,10 @@ if __name__ == "__main__":
     assert cardinal("two hundred and seven") == [(0, 21, 207)]
     assert cardinal("ten. zero") == [(0, 3, 10), (5, 9, 0)]
     assert cardinal("the second number") == []
-    assert entries("She bought a dozen eggs and twice as many apples") == [(11, 18, "value", 12), (28, 33, "mul", 2.0)]
-    assert entries("half of a dozen") == [(0, 7, "mul", 0.5), (8, 15, "value", 12)]
+    assert entries("She bought a dozen eggs and twice as many apples") == [(11, 18, "value", 12), (28, 33, "value", 2)]
+    assert entries("half of a dozen") == [(0, 7, "value", 2), (8, 15, "value", 12)]
     m = match("a dozen eggs, one hundred cups, twice the rest, a pair of shoes")
-    assert [(r, v) for _, _, r, v in m] == [("value", 12), ("value", 100), ("mul", 2.0), ("value", 2)], m
+    assert [(r, v) for _, _, r, v in m] == [("value", 12), ("value", 100), ("value", 2), ("value", 2)], m
     offs = [(0, 1), (1, 7), (8, 12), (13, 16), (17, 24), (25, 29)]      # "a dozen eggs and twelve cups"
     st = span_tokens(match("a dozen eggs and twelve cups"), offs, 6)
     assert st == [([0, 1], "value", 12), ([4], "value", 12)], st
