@@ -39169,3 +39169,22 @@ mentions + relation spans + the factor graph; consecutive letters;
 the answer key gates admission; silver never gold; human-audited
 sample). The fingerpost's views on this tranche = the third pass
 (registered; ~2 GPU-hours). THE CRITICAL PATH FOR WILD IS NOW A FILE.
+THE PIVOT'S TOOLING (2026-09-15, word given for my choice): (1) the
+fingerpost's views on the top-300 tranche (scripts/fingerpost_queue.py,
+fired: gsmq300 split; per row the fraction of slots with agreement <= 1
+of 4 views; the queue re-sorted by instability); (2) THE ADMISSION GATE
+scripts/admit_annotation.py — an annotated row enters the diet only if
+the rulebook holds (dense variables, every one defined, integer values
+<= 300, <= 1 fdiv, spans/mentions inside the text, a query_var) AND
+wild_certify.graph_verdict FORCES the answer key (the gsm8k "####"
+number) at query_var; admitted rows stamped gen.silver = <version>,
+written apart. Self-test: mint rows with their own key admit; a
+contradicted / out-of-range row is refused. (3) THE PACKET
+.cache/annotation_packet_top300.json: the dialect (variables by first
+mention; givens with the stating span; hidden constants as givens over
+the word; relations with the clause span; mentions per variable; the
+rules), 3 worked mint examples with spans + mentions, the 300 rows with
+their answer fields, the return format. Bryce runs Sonnet; the gate
+runs here; a human audits a sample. MATH-500 stays the measurement and
+the gsm8k test split stays untouched: the pivot is to WILD PROSE as the
+priority with gsm8k's TRAIN problems as its source.
