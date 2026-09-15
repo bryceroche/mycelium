@@ -44,7 +44,11 @@ def rulebook(row):
         for s, e in f.get("spans") or []:
             if not (0 <= s < e <= len(text)): return "span_bounds"
     if n_fdiv > 1: return "fdiv_count"
-    if used != set(range(n)) or defined != set(range(n)): return "variables_not_dense_or_undefined"
+    # the dialect is a CONSTRAINT graph, not a directed computation: an unknown may be
+    # determined only through relations it enters as an argument (inverse moves) — so the
+    # rulebook asks only that the query appears in some factor; DETERMINACY is the
+    # certifier's verdict (graph_verdict: forces the key / contradicts / indeterminate)
+    if row["query_var"] not in used: return "query_not_in_graph"
     for v_str, spans in (row.get("mentions") or {}).items():
         if not (0 <= int(v_str) < n): return "mention_var"
         for s, e in spans:
