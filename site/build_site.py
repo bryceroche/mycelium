@@ -200,6 +200,11 @@ the silence is.</p>
 
 
 HOOKS = {
+    "2026-09-14-one-map-two-charts": "the two loops share an atlas with a chart per medium and a bridge whose return lane is the attention matrix itself; certificates cross it as masks",
+    "2026-09-15-the-symbolic-convolution": "spelling numbers as words costs the parser eleven points; a sliding symbolic matcher that writes the numeral under the word gives most of them back, with no parameters",
+    "2026-09-15-the-machine-drawn": "the whole system in one figure, drawn from a config file with every parameter counted from the checkpoint",
+    "2026-09-15-the-queue": "four nulls on the loop's attention, a generalization gap under all of them, and the machine ranking its own reading list for the annotators",
+
  "2026-09-14-two-loops-one-shape": "Wild fails on argument pointers and digits, not on math. Four organs on the token roads left it where the data left it. The turn: the language side gets its own atlas (a curated lexicon of what prose means), its own certifier (the fingerpost), and its own masks (claims) — two loops, one shape, and the trunk stays four cheap layers.",
  "2026-09-12-the-whip": "Shirts out of the dryer are wrinkled; whip them before you fold. The literal whip is constraint propagation through the committed graph; the productive one is a seeded kick to the state at breath three, content planes only, the same at read — diffusion's input-side form, no road needed. Two arms, bars pinned.",
  "2026-09-12-the-fog-not-the-curtain": "Discrete diffusion offers two corruptions: the masking kernel reveals symbols in groups (a curtain, serial, permanent) and the uniform kernel blurs every symbol at once (a fog, parallel, revisable). A parse is bindings, and the loop sharpens everything at once — the fog is the job; the blurred ladder is its loss.",
@@ -260,9 +265,18 @@ blog_index = ("<h1 class=\"paper-title\">Blog</h1>\n<ul class=\"cardlist\">"
     + "".join(
     f'<li><a href="{slug}/"><strong>{t}</strong> · {d}</a></li>'
     for slug, t, d, _ in blog_pages) + "</ul>")
+def _subtitle(slug):
+    """a post's own subtitle: the H1's text after the first colon (the house style), else None"""
+    import re as _re
+    for md in BLOG.glob(slug + ".md"):
+        m = _re.search(r"^# [^:\n]+:\s*(.+)$", md.read_text(), _re.M)
+        return m.group(1).strip() if m else None
+    return None
+
+
 essay_cards = "".join(
     f'<li><a href="blog/{slug}/"><span class="k">{t.upper()}</span><br>'
-    f'{HOOKS.get(slug, d)}</a></li>'
+    f'{HOOKS.get(slug, _subtitle(slug) or d)}</a></li>'
     for slug, t, d, _ in blog_pages)
 landing = page("The Shape of Thought", landing_tpl
                .replace("{essay_cards}", essay_cards)
