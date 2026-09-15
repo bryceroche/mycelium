@@ -95,8 +95,12 @@ def _lex_apply(onp, fat, sl, sl_p, vs):
         if not ms:
             continue
         _LEX_STATS["rows"] += 1
-        spans = span_tokens(ms, list(_LEX_TOK.encode(text).offsets), _H.T_ALG)
+        _enc = _LEX_TOK.encode(text)
+        spans = span_tokens(ms, list(_enc.offsets), _H.T_ALG)
         vspans = [(set(toks), val) for toks, role, val in spans if role == "value"]
+        # the numerals compete on equal footing (mode 2): a digit token is a candidate whose
+        # win leaves the head's own decode alone — the lexicon never overrides a numeral read
+        numtoks = [({ti}, None) for ti, tid in enumerate(_enc.ids[:_H.T_ALG]) if _LEX_TOK.decode([tid]).strip().isdigit()]
         _LEX_STATS["spans"] += len(vspans)
         if not vspans:
             continue
@@ -109,10 +113,11 @@ def _lex_apply(onp, fat, sl, sl_p, vs):
                 t0 = br.source_token(bi, j)
                 chosen = next((val for toks, val in vspans if t0 in toks), None)
             else:                               # mode 2: THE BRIDGE's mass — the span this slot reads most
-                mass = [fat[bi, j, sorted(toks)].sum() for toks, _ in vspans]
+                cands = vspans + numtoks
+                mass = [fat[bi, j, sorted(toks)].sum() for toks, _ in cands]
                 k = int(np.argmax(mass))
                 if mass[k] > 0:
-                    chosen = vspans[k][1]
+                    chosen = cands[k][1]        # None when a numeral token wins: the decode stands
             if chosen is not None and float(chosen).is_integer() and 0 <= int(chosen) < 10 ** onp["dig"].shape[-2]:
                 digs = [int(c) for c in str(int(chosen)).zfill(onp["dig"].shape[-2])]
                 onp["dig"][bi, j] = 0.0
