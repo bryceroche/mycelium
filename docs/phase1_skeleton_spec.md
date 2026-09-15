@@ -38837,3 +38837,15 @@ within 0.005 of ds242 (0.9815 / 0.9798), wild claims need >= +0.020
 mean over seeds 242/241 (paired reads); KILL: mint <= -0.010 both
 seeds. Warm balV242, 12k, B=8, blur 0.7 base env (ds242's), two seeds
 per costume. Arms hold for the word.
+THE CLOCK-CALIBRATED TARGETS — WORD GIVEN (2026-09-14 evening): the two
+target costumes fired (pc-ct): cd242 / cd241 (the diffusion compiler)
+and cl242 / cl241 (the level ladder), warm balV242, 12k, B=8, ALG_BLUR=1
+ALG_BLUR_MAX=0.7 + ALG_CLOCK_TARGET; per arm the open reads (wild per-
+slot, paired vs ds242 / ds241), the idle-3,4,5 reads, the trajectory
+read. Bars as registered. Follow-ons registered, not fired: the state-
+noise costume (a kick at every breath with the clock's amplitude, the
+whip generalized) and the perceiver's SCHEDULE-COMPLIANCE meter (the
+decode's entropy at breath k vs the schedule's fog at breath k — a
+calibrated meter with no gold). Bryce's framing, banked: the ladder
+does not move the state in the middle (the organs do, in the readout's
+null space); it is why nothing organizes the motion.
