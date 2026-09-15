@@ -38763,3 +38763,28 @@ diff >= +0.010 AND McNemar z >= 2.0; the perceiver SAVES VIEWS if the
 lowest-min-args-margin 50% of rows capture >= 80% of the net gain; the
 abstain curves (by agreement, by args margin, combined) are reported,
 not barred.
+THE PERCEIVER STEP 2 VERDICT (2026-09-14, ds242 on wildhold, 2051 slots
+/ 942 given, 4 permuted views): THE VOTE IS NEGATIVE — open 0.2530 ->
+voted 0.2360 (diff -0.0171; gained 21 / lost 56; McNemar z -3.99); the
+digits vote changed 166 given slots: right 0.337 BEFORE (= the
+unchanged givens' 0.336) and 0.127 AFTER. Not the matching: rows with a
+repeated numeral are 0.23 of the lost and 0.19 of the gained vs 0.26
+of all rows. The majority of the permuted views is WRONG more often
+than the original: on wild, a sentence permutation DEGRADES the read
+(the original order carries the binding — referents, pronouns, "the
+rest"), and a majority of degraded readers loses to the single good
+one. THE DISAGREEMENT CERTIFICATE STANDS: P(wrong | agree <= 1 of 4)
+0.940 (n=300, 14.6% of slots) vs P(wrong | agree == 4) 0.702; AUROC
+0.595. THE ABSTAIN CURVE by agreement is a weak tier on wild: precision
+0.298 @ 76.7% coverage (agree 4/4) vs 0.253 open — the stable slots
+are still wrong 70% of the time; by the args margin (relation slots):
+0.495 @ the top 20%. Combined 0.319 @ 27%. The spend curve is moot on
+a negative gain. LAW (the July law's second clause, with numbers): on
+wild the views are a CERTIFIER, never a DECODER — unanimity marks
+stability (0.94 precision on the unstable), and the vote does not
+correct. The perceiver's views lever is ABSTAIN / QUEUE only (the
+unstable 15% of slots = the annotation queue's first tranche); the
+vote-as-repair is struck. The extra-cycle lever stays parked (clock
+period). STEP 3 next: the abstain curve as THE "WHAT STANDS" page
+(row-level, wild + mint, the fingerpost's tier beside the perceiver's
+meters) — a read, then the page needs the word.
