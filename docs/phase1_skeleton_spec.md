@@ -38864,3 +38864,38 @@ is the real test of the target's shape; a control read of balV242's
 (no-fog) trajectory is queued after the chain — if its geometry
 matches ds242's, the fog never touched the path and the wander belongs
 to the organs (the readout's null space), not to the schedule.
+THE LEVEL-LADDER COSTUME VERDICT (2026-09-14 night, cl242 / cl241 vs
+ds242 / ds241): THE PATH MOVED, replicated on both seeds — progress to
+the finish b1..b5 = 0.045/0.097/0.198/0.275/0.456 (cl242) and 0.036/
+0.081/0.191/0.271/0.452 (cl241) vs ds242's 0.06/0.08/0.12/0.16/0.31;
+EVERY direction cosine positive on both seeds (+0.02..+0.13; the b2>3
+thrash gone) — the first monotone march in the campaign; the end leap
+gone (b6 step 0.65 / 0.66 vs 0.96-0.99); the largest step is now b1
+(0.91 / 0.92). Against the bar as PINNED: the cosine clause MET;
+progress at b3 0.20 / 0.19 < 0.30 NOT met; the idle cost FELL (wild
+0.0093 / 0.0083, mint 0.0033 / 0.0060 vs ds242's 0.0117 / 0.0102) —
+the state marches through the middle while the decode leans on it
+LESS. PERFORMANCE null: wild 0.2516 / 0.2472 (paired vs ds: z +0.31 /
++1.49 for the control; mean -0.0046), mint 0.9793 / 0.9815 (inside the
+0.005 band). Not a candidate on performance; the structural half is a
+finding, not a promotion.
+THE NO-FOG CONTROL (balV242's trajectory, wild, read after the chain)
+REFRAMES THE WEEK: balV242 progress b1..b5 = 0.130/0.155/0.257/0.314/
+0.495 — MORE progress than ds242 at every breath (b3 0.26 vs 0.12) —
+smaller steps (0.80/0.64/0.44/0.52/0.58/0.50) and NO end leap; its
+cosines mixed (+0.38 / -0.11 / +0.15 / -0.01 / -0.11: some thrash). So
+THE BLUR CREATED THE STALL-THEN-LEAP: the fog asked the early breaths
+to stay soft, the machine held its commitment to the end and leapt
+(b6 0.96), and the "middle-breath idle cost" the blurred ladder won
+was the delayed commitment breaking when the middle is skipped — not
+the middle doing more work. Three geometries, one wild score:
+  balV242 (no fog): most progress, some thrash, wild 0.2526 mint 0.9757
+  ds242 (fog 0.7):  stall then leap,               wild 0.2526 mint 0.9815
+  cl242 (level ladder): monotone march, less progress, wild 0.2516 mint 0.9793
+The path's shape does not move wild; it tracks mint by ~0.006 at most.
+The gut's diagnosis stands (the middle wanders, the end leaps) but its
+CAUSE was the fog, and the level ladder is the version of the fog that
+does not leap. The state-noise costume stays registered, lower prior
+(a second fog on a path the fog already bent). The blurred ladder's
+structural claim (2026-09-12: "middle breaths load-bearing") is
+AMENDED: load-bearing by delayed commitment, not by distributed work.
