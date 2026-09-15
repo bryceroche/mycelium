@@ -38988,3 +38988,26 @@ whose value matches a numeral present in the text is a numeral READ
 and is never overridden; the lexicon fills only slots the head is
 guessing. wordmint is unaffected by construction (no numerals). Same
 bars.
+THE LEXICON ROAD VERDICT (2026-09-15 05:56, mode 2b = the bridge's mass
+rule + numerals competing + the numeral guard; ds242; read-time, no
+training, no parameters): LEX-RECOVER MET — wordmint 0.8683 -> 0.9264
+(+0.0581 paired, gained 287 / lost 74, z 11.2; half the 11.3-point
+headroom); NO-LOSS MET — wild 0.2530 -> 0.2535 (gained 1 / lost 0; 18
+slots taken of 105 spans). BOTH BARS PASS: the lexicon road is a
+CANDIDATE organ of the read path (the first road this week to move a
+register). Its lift on the holdout is bounded by the register (7 worded
+givens in 311 rows); its purpose is the worded register, where it
+recovers half of what spelling costs. Regime: ds242, lexicon_v1
+(cardinals + a dozen / a pair / a couple / a hundred / a thousand;
+multipliers held), the intake attention (breath 0) as the bridge.
+Residual on wordmint: 5.5 points (0.9264 vs 0.9815) — 74 wrong-span
+assignments + whatever spelling costs the POINTERS; the per-field read
+on wordmint (fired) says which. NEXT RUNGS registered: (1) the
+multipliers (twice / half / double) as hidden-given certificates need
+the slot that HOLDS the constant — the head must first propose a given
+slot for "twice" (it does on pen rows: "a couple of buses" -> given 2);
+read: does ds242 emit a given slot on "twice" rows? (2) the final-
+breath attention as the bridge (fat_all[-1]) vs the intake's; (3) the
+lexicon at TRAINING time as a token-born certificate (the road inside
+the loop, T2's claims precedent) — needs the word; (4) the fingerpost's
+certification of entries (view-invariance per entry) before v2 entries.
