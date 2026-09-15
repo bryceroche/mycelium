@@ -39143,3 +39143,14 @@ variables desc, min args margin asc), with settle at b3 and the kind on
 both charts, CALIBRATED first on the holdout (AUROC vs >= half correct)
 — dangling variables = a free SYNTACTIC verifier (variables a decoded
 relation references that no given defines and no relation produces).
+THE RANKER'S CALIBRATION (2026-09-15, ds242 on the holdout, n=311, label
+>= half correct): AUROC dangling variables 0.552 (median 0 on ok rows vs
+1 on wrong — a weak verifier at row level), args margin 0.637 (row
+level: the min over slots), settle at b3 0.731 (the compass again). So
+the pool is ranked by settle at b3 first, then the args margin, with
+dangling variables as a tiebreak — the ranker's key updated after the
+calibration (bars-before-measurement: the meters were pinned, the ORDER
+among them is the calibration's finding). The first pool precompute
+failed on a missing "decisions" field (stubbed; the stale 6.2 GB memmap
+from the failed run removed before the refire — a partial memmap makes
+the chain's existence check lie).

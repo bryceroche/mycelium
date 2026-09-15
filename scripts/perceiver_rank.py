@@ -63,7 +63,8 @@ def _main():
         y = np.array([r["half_ok"] for r in out]); d = np.array([r["dangling"] for r in out], float); m = np.array([r["min_args_margin"] if r["min_args_margin"] is not None else np.nan for r in out]); s3 = np.array([r["settle_b3"] for r in out])
         mm = ~np.isnan(m)
         print(f"[rank] CALIBRATION on {name} (n={len(y)}, >= half {y.mean():.3f}): AUROC dangling {auroc(-d, y):.3f} | args margin {auroc(m[mm], y[mm]):.3f} | settle b3 {auroc(-s3, y):.3f}; dangling median ok {np.median(d[y]):.1f} vs wrong {np.median(d[~y]):.1f}")
-    out.sort(key=lambda r: (-r["dangling"], r["min_args_margin"] if r["min_args_margin"] is not None else 1e9))
+    # the calibrated order (holdout AUROC: settle b3 0.731 > args margin 0.637 > dangling 0.552)
+    out.sort(key=lambda r: (-r["settle_b3"], r["min_args_margin"] if r["min_args_margin"] is not None else 1e9, -r["dangling"]))
     path = os.environ.get("PR_OUT", f".cache/annotation_rank_{name}.jsonl")
     with open(path, "w") as f:
         for r in out: f.write(json.dumps(r) + "\n")
