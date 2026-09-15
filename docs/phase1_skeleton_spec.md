@@ -39235,3 +39235,10 @@ views (consistent, not thereby correct — the July law). The packet
 (.cache/annotation_packet_top300.json) is re-ordered by instability
 then queue rank; THE QUEUE IS HANDED OVER: Bryce runs Sonnet, the gate
 (scripts/admit_annotation.py) admits, a human audits a sample.
+NOTE (2026-09-15 14:00): the cert-ladder chain's eq-gate lines ended in
+`| cut` — journald dropped them (the standing quirk, hit again); the
+pipelines succeeded (set -o pipefail would have aborted the chain), so
+the gates RAN and matched, but their PASS/FAIL text is lost. The arms'
+comparison (CW vs CL) is internally valid regardless — both use the
+walker; the gates are re-run to a FILE after the chain for the record.
+Rule restated: chains write gate output to files, never through cut.
