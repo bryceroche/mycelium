@@ -38788,3 +38788,52 @@ vote-as-repair is struck. The extra-cycle lever stays parked (clock
 period). STEP 3 next: the abstain curve as THE "WHAT STANDS" page
 (row-level, wild + mint, the fingerpost's tier beside the perceiver's
 meters) — a read, then the page needs the word.
+THE TRAJECTORY READ (2026-09-14 evening, Bryce's gut: "MLIR, min(max
+step)); know the start and finish in state space; baby steps"). ds242,
+311 wild / 300 mint rows, the loop's state path per row:
+  step (||ds||/||s||)  b1 0.97  b2 0.58  b3 0.53  b4 0.67  b5 0.67  b6 0.96
+  cos(step_k, step_k+1)   +0.00  -0.10  +0.00  +0.07  +0.15  (wild; mint the same)
+  progress to s_6         b1 0.06 b2 0.08 b3 0.12 b4 0.16 b5 0.31 b6 1.00
+  the dish line (wild)    args 0.32 -> 0.37 (b1) -> 0.39 (b2) -> 0.39 flat;
+                          dig 0.12 -> 0.31 -> 0.38 -> 0.39 flat; res/op flat from b1
+  (mint: every field >= 0.97 by b2, flat after)
+VERDICT: THE MIDDLE WANDERS AND THE END LEAPS. The middle breaths take
+LARGE steps (0.5-0.7 of the norm) that make NO progress toward the
+finish (cos ~ 0: orthogonal wander; 70% of the path is walked at b5->b6,
+the stellarator's snip + readout), and the DECODE is finished by breath
+1-2 on both registers — the ladder asks every breath for the answer,
+the machine answers at breath 1 and idles. A two-level compiler
+pretending to be seven; the gradient desert in state-space terms.
+Correct and wrong rows have the SAME geometry (>= half vs < half
+identical to 2 decimals) — the wander is structural, not a symptom.
+scripts/trajectory_read.py (a read).
+THE CLOCK-CALIBRATED TARGETS (2026-09-14, Bryce: "versions of the
+training target calibrated to the T6 clock; a diffusion compiler doing
+a little of everything at each step, lowering the entire structure in
+parallel; don't ask early breaths to have the answer"). REGISTERED.
+The existing blurred ladder is already a clock function: beta_k =
+BLUR_MAX * cos^2(phi_k / 2) with phi_k = k*pi/(K-1) the breath rotor's
+pi-cycled phase — one fog for every field. THE DESIGN: per-FIELD fog
+on the SAME clock: fog_f(k) = a_f * cos^2(k*pi / (2*d_f)) for k < d_f,
+0 after — a_f the field's starting fog (how much of the answer the
+first breath may NOT have), d_f its deadline (the breath by which it is
+sharp). The target at breath k is the gold fogged by fog_f(k) per
+field: a KNOWN point between the start (uniform) and the finish (sharp
+gold), so every breath is asked for its rung of the lowering and none
+for the answer. Two costumes, one door (ALG_CLOCK_TARGET="f:a:d,..."):
+  THE DIFFUSION COMPILER (Bryce's): every deadline = K-1 (parallel
+  lowering), start fogs by binding depth — pres/ftype 0.5, res/op 0.7,
+  args/dig 0.9;
+  THE LEVEL LADDER (MLIR's): staggered deadlines — pres/ftype d=2,
+  res d=4, op d=5, args/dig d=6 (the dish line's own order), a = 0.7.
+Fences: the fog is the TARGET (lawful; the blurred ladder's precedent);
+step size / progress / settle NEVER enter the loss (the register's
+"never" tier) — they are the STRUCTURAL BARS read after. Unset door =
+the scalar blur path, bit-identical (gate).
+BARS (pinned): STRUCTURAL (primary): the trajectory read's progress at
+b3 >= 0.30 (from 0.12) with cos(b2>3, b3>4) > 0, AND the middle-breath
+idle cost >= ds242's (+0.0117 wild / +0.0102 mint); PERFORMANCE: mint
+within 0.005 of ds242 (0.9815 / 0.9798), wild claims need >= +0.020
+mean over seeds 242/241 (paired reads); KILL: mint <= -0.010 both
+seeds. Warm balV242, 12k, B=8, blur 0.7 base env (ds242's), two seeds
+per costume. Arms hold for the word.
