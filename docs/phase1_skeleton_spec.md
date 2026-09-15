@@ -38912,3 +38912,27 @@ is where the state travels while the decode stands still. The gut's
 "lowering" cannot be seen in the decode because there is no lowering
 left to do after breath 2 on this checkpoint: the ceiling is the
 binding information, not the path. Banked.
+THE LEXICON PROBE (2026-09-14 night, Bryce: "does the trunk carry the
+value of a number word, or only the word?"; scripts/lexicon_probe.py,
+CPU, the precomputed L0-L3 states, 18,354 numeral tokens in 4000 diet
+rows + every number-word token in the diet): (1) the numeral probe
+works — a ridge map state -> log10(value) reads held-out numerals at
+R^2 0.998, within x2 always, exact 0.67 (the token IS its value);
+(2) the SAME map sends every number word to the numeral MEAN (dozen ->
+27, twice -> 13, pair -> 11): the value axis the head's digit readout
+could use is numeral-token-specific — the words do not lie on it;
+(3) BY COSINE the words sit NEXT TO their numeral: "twice" is nearest
+to "2" among 100 numerals on 100% of its 576 tokens; "double" top-1 on
+62% (median rank 1); "pair" and "doubled" median rank 2; "dozen"
+median rank 4 of 100 (never 1). VERDICT: the trunk carries the
+association as a NEIGHBOURHOOD (the word sits beside its numeral) but
+not as a DECODABLE VALUE (not on the axis the digit head reads). The
+head can only learn the bridge from the neighbourhood to the digits
+from rows that teach it, and the diet has 87 "dozen" rows in 133,828
+(0.07%) — the dose law says it never will at that share. So: the
+LEXICON ROAD (a token-born certificate from a curated phrase table,
+projected through the bridge to a digit-field bias on the slot that
+reads the phrase) is the certain route and needs no training; ROWS are
+viable only DOSED (share-of-mix AND reps-per-unique declared). The
+lexicon's effect on the wild holdout is bounded by phrase frequency
+there (counted below); its PURPOSE is the register beyond the holdout.
