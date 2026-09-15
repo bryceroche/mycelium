@@ -39154,3 +39154,18 @@ among them is the calibration's finding). The first pool precompute
 failed on a missing "decisions" field (stubbed; the stale 6.2 GB memmap
 from the failed run removed before the refire — a partial memmap makes
 the chain's existence check lie).
+THE ANNOTATION QUEUE, SECOND PASS — BUILT (2026-09-15 13:04): the pool's
+5,946 rows precomputed (gsmpool split, 6.2 GB) and ranked without gold
+by the calibrated order (settle at b3 desc, args margin asc, dangling
+desc): settle quartiles 0.523 / 0.538 / 0.553, args margin median 0.91,
+dangling median 1 (>= 3 on 2% of rows). The head of the queue reads as
+the binding failures the holdout shows: comparatives ("4 seconds slower
+than"), tiered prices, ordinal chains, currency decimals.
+.cache/annotation_queue_top300.jsonl = the first tranche for the books:
+the top 300 IN-REACH rows (integers <= 300, >= 2 numerals — the
+annotation rulebook's range) with the answer field, the meters, the
+kind on both charts, and the annotation request (quantity-phrase
+mentions + relation spans + the factor graph; consecutive letters;
+the answer key gates admission; silver never gold; human-audited
+sample). The fingerpost's views on this tranche = the third pass
+(registered; ~2 GPU-hours). THE CRITICAL PATH FOR WILD IS NOW A FILE.
