@@ -101,6 +101,7 @@ def _lex_apply(onp, fat, sl, sl_p, vs):
         # the numerals compete on equal footing (mode 2): a digit token is a candidate whose
         # win leaves the head's own decode alone — the lexicon never overrides a numeral read
         numtoks = [({ti}, None) for ti, tid in enumerate(_enc.ids[:_H.T_ALG]) if _LEX_TOK.decode([tid]).strip().isdigit()]
+        numvals = {int(x) for x in __import__("re").findall(r"\d+", text)}
         _LEX_STATS["spans"] += len(vspans)
         if not vspans:
             continue
@@ -109,6 +110,10 @@ def _lex_apply(onp, fat, sl, sl_p, vs):
             if f.get("ftype") != "given":
                 continue
             j = f["_slot"]; chosen = None
+            # THE NUMERAL GUARD (mode 2, 2026-09-15): a decode that already matches a numeral
+            # present in the text is a numeral READ — the lexicon never overrides it
+            if _LEX >= 2 and f.get("value") is not None and int(f["value"]) in numvals:
+                continue
             if _LEX == 1:                       # mode 1: the source token (argmax) inside a span
                 t0 = br.source_token(bi, j)
                 chosen = next((val for toks, val in vspans if t0 in toks), None)
