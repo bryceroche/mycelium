@@ -39047,3 +39047,21 @@ headroom; vs mode 2b +0.0346 (gained 140 / lost 13, z 10.3). WILD:
 RULE (fired): bare cardinals < 10 are substituted only in rows with no
 digit numeral (wild's givens are numerals 99%; "one of them" in a digit
 row is prose). wordmint has no digits: unchanged by construction.
+THE SUBSTITUTION ROAD VERDICT (2026-09-15 07:19, mode 3 + the census
+rule, ds242): WORDMINT 0.8683 -> 0.9610 (gained 349 / lost 9, z 18.0;
+82% of the 11.3-point headroom; +0.035 over the mass rule, z 10.3);
+WILD 0.2530 -> 0.2530 (gained 4 / lost 4, z 0.00; 15 spans substituted
+after the census rule: twice / half of / dozen / a pair of). BOTH BARS
+PASS, cleanly. THE LEXICON'S ROAD IS THE SUBSTITUTION: the symbolic
+convolution writes the numeral's trunk state under the word, the head
+reads a number and allocates the slot itself; the digit override (mode
+2b) is retired as the road (kept as a tool). Regime: ds242, lexicon_v2,
+the numeral table over the diet, the census rule. The constant-slot
+question Bryce named is resolved this way: not a rule over dangling
+variables but a numeral where the word was. Residual on wordmint 2.0
+points (0.9610 vs 0.9815): the wrong-span cases are gone (9 lost); what
+remains is the ~1 point spelling costs each binding field plus the
+masked span tokens' absence. NEXT: the road at TRAINING time is free
+(the same substitution on the diet's states at feed) — it makes worded
+rows in the diet readable, which is the dose the aligner never had;
+registered, needs the word.

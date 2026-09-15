@@ -97,3 +97,20 @@ A filter would have relearned the smearing the trunk already did. A
 template written as a symbol has perfect invariance, zero parameters,
 and a certificate the fingerpost can audit entry by entry. The gut was
 right about the property. The property wanted a table.
+
+## Postscript, the same morning
+
+The road got shorter and better. Instead of writing the value into the
+digit field after the decode, the matcher now writes it before the
+parser sees the text: a matched word span's token features are replaced
+by the frozen trunk's average features for that numeral, taken from
+56,086 numeral tokens in the training diet. The parser then reads "a
+dozen" the way it reads "12", and allocates the slot for it by itself,
+which the earlier road could not do. On the worded fixture that takes
+0.8683 to 0.9610, 349 slots gained and 9 lost, eighty-two percent of
+what spelling cost. On the wild holdout it is exactly neutral, four
+gained and four lost, once one census fact is honoured: a row that
+writes its quantities as digits does not write one of them as "one", so
+bare small cardinals are substituted only in rows with no digit at all.
+The property the gut named was translation invariance. The best place
+to apply it turned out to be the input.
