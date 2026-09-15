@@ -39106,3 +39106,18 @@ expects). Read-time attention biases on ds242 are now 0 for 4
 where wild's binding is decided. Regime tag: ds242, read time; the
 same certificate at TRAINING time (the head learns to use the digit
 mass) is a different arm, prior low.
+THE WAIST-PRESERVATION PROBE (2026-09-15, scripts/waist_lexicon_probe.py,
+ds242's waist applied to the diet's trunk states): the numeral value
+axis SURVIVES the waist — ridge R^2 0.998 (2048d) -> 0.980 (512d),
+within-x2 1.000 -> 0.988, exact 0.67 -> 0.41 (some precision spent);
+the multipliers' neighbourhood is KEPT OR SHARPENED — twice -> 2 top-1
+1.000 in both spaces, double 0.62 -> 1.00, pair rank 2 -> 1 (top-1
+0.91); "dozen" -> 12 DEGRADES, rank 6 -> 27 of 100. Reading: the waist
+keeps what the loss rewarded (numerals, and the constants the pen
+dialect uses as hidden givens) and discards what the diet never asked
+for (87 "dozen" rows in 133k). The waist is not a bottleneck for
+numbers; a learned nonlinear projection would preserve exactly the
+same subset, because preservation is set by the training signal, not
+by the projection's form. An intervention before the waist must ADD
+information the trunk's L3 features lack or the diet never rewarded —
+it cannot recover it by reshaping the map.
