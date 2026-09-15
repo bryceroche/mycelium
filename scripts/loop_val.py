@@ -132,6 +132,18 @@ def _lex_apply(onp, fat, sl, sl_p, vs):
 
 
 _NUMTAB = None
+_NUMSPOT_BETA = float(os.environ.get("LV_NUMSPOT", "0") or 0)
+_NS_STATS = {"slots": 0}
+
+
+def _ns_setup():
+    import phase1_algebra_head as _H
+    from tokenizers import Tokenizer
+    global _LEX_TOK
+    try:
+        _LEX_TOK
+    except NameError:
+        _LEX_TOK = Tokenizer.from_file(_H.TOKENIZER_JSON)
 
 
 def _lex_substitute(st_np, tk_np, sl, sl_p, vs):
@@ -240,6 +252,22 @@ def read(ckpt, data=None, p=None):
                                 [:, :, None].astype(np.float32),
                                 dtype=dtypes.float)
         _lvai = _AIDX[sl_p].copy() if _AIDX is not None else None
+        if _NUMSPOT_BETA:
+            # THE NUMERAL SPOTLIGHT (2026-09-15): digit tokens (the census's class) get +beta on the
+            # token scores of the slots pass 1 typed as GIVEN — a token-born certificate through the
+            # wheel's own road. Constant across breaths; read time only.
+            import phase1_algebra_head as _H
+            _ns_setup(); _B = len(sl_p); _T = vse.shape[1]
+            _nsb = np.zeros((_B, 1, _H.L_TOT, _T), np.float32)
+            _gid = 1   # decode()'s ftype id for "given" (asserted from the source by the apply)
+            for bi in range(_B):
+                enc = _LEX_TOK.encode(vs[int(sl_p[bi])]["text"]); dig = np.zeros(_T, bool)
+                for t_, tid in enumerate(enc.ids[:_T]):
+                    if _LEX_TOK.decode([tid]).strip().isdigit(): dig[t_] = True
+                for j in range(L_FAC):
+                    if int(_oa["ftype"][bi, j].argmax()) == _gid and _oa["pres"][bi, j] > 0:
+                        _nsb[bi, 0, j, dig] = _NUMSPOT_BETA
+            _H._NUMSPOT = _nsb; _NS_STATS["slots"] += int((_nsb[:, 0, :, :].max(-1) > 0).sum())
         if _XPV and _lvai is not None:
             # THE CROSS-ATLAS PRIOR (apply_cross_prior.py): retrieval
             # off the pass-1 breath-0 NL state (the tap) — mode 1 =
@@ -258,6 +286,8 @@ def read(ckpt, data=None, p=None):
         onp = {k: o[k].realize().numpy() for k in
                (("pres", "ftype", "op", "islit", "dig", "args", "res")
                 + (("dup",) if "h_dup" in p else ()))}
+        if _NUMSPOT_BETA:
+            import phase1_algebra_head as _H2; _H2._NUMSPOT = None
         if _LEX in (1, 2):
             # THE LEXICON ROAD (2026-09-15, word given; mycelium/lexicon.py, the
             # symbolic convolution): a GIVEN slot whose source token (the bridge's
@@ -289,6 +319,7 @@ def read(ckpt, data=None, p=None):
                 if _PS is not None:
                     _PS.append((i, j, bool(ok)))
     if _PS is not None:
+        if _NUMSPOT_BETA: print(f"[numspot] beta {_NUMSPOT_BETA}: given slots spotlit {_NS_STATS['slots']}", flush=True)
         if _LEX: print(f"[lexicon] rows with matches {_LEX_STATS['rows']}, value spans {_LEX_STATS['spans']}, given slots taken {_LEX_STATS['taken']}", flush=True)
         np.savez(os.environ["LV_PER_SLOT"], rows=np.array([r for r, _, _ in _PS]), slots=np.array([c for _, c, _ in _PS]), ok=np.array([o for _, _, o in _PS]))
     return n_ok, n_tot

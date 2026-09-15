@@ -39065,3 +39065,23 @@ masked span tokens' absence. NEXT: the road at TRAINING time is free
 (the same substitution on the diet's states at feed) — it makes worded
 rows in the diet readable, which is the dose the aligner never had;
 registered, needs the word.
+THE ATTENTION CENSUS (2026-09-15, word given; scripts/attention_census.py,
+ds242, the last breath's slots<-tokens attention per present gold slot):
+  MINT  given ok   (n=1814): argmax token is a DIGIT 0.632, mass on digits 0.194
+        rel ok     (n=1786): argmax is a digit 0.001, is an operator cue 0.093
+  WILD  given ok   (n=317):  argmax is a digit 0.060, mass on digits 0.104
+        given wrong(n=692):  argmax is a digit 0.062, mass on digits 0.110
+        rel ok / wrong:      argmax digit 0.13 / 0.07, cue 0.13 / 0.07
+  entropy ~2.4-2.8 everywhere (diffuse on both registers; on mint the
+  argmax still lands on the digit).
+VERDICT: THE BINDING FAILURE LOCALIZED TO THE ATTENTION. Wild's givens
+are numerals 99% and the head reads numerals at 1.00 on mint, yet on
+wild a given slot's strongest read is a digit token 6% of the time (vs
+63%) — the slot does not look at the number it must read, whether it
+ends up right or wrong. The road: THE NUMERAL SPOTLIGHT — a token-born
+certificate over digit tokens (the census's own class), projected to
+the slots the first pass types as GIVEN, as +beta on their token
+scores (the wheel's spotlight road, both attention sites). Read-time,
+sweep beta in {1, 2, 4} on wild, mint no-loss at the best beta. BARS
+(pinned): NUMSPOT-PASS = paired vs open >= +0.020 wild with z >= 2 (the
+target is 1009 given slots at 31% correct); mint within 0.005.

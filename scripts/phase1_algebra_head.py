@@ -107,6 +107,7 @@ _WHEEL_MELT = (float(os.environ["ALG_WHEEL_MELT"]) if os.environ.get("ALG_WHEEL_
 
 
 _WHEEL_NOGOOD = int(os.environ.get("ALG_WHEEL_NOGOOD", "0"))
+_NUMSPOT = None    # THE NUMERAL SPOTLIGHT (2026-09-15): (B, 1, L_TOT, T) numpy bias on the slots<-tokens scores (digit tokens, given slots) at every breath; None = off (bit-identical)
 _LOCUS = None      # THE LOCUS-DRIVEN MELT (2026-09-14): {"melt": (B, LT) numpy, "kb": int} from the fingerpost's disagreement locus
 # T2 — THE CLAIM MASK (2026-09-13): tokens <- slots as structure. ALG_T2_CLAIM="beta:tau".
 _T2 = os.environ.get("ALG_T2_CLAIM", "")
@@ -2955,6 +2956,10 @@ def breath_step(p, state, kb, ctx):
                             _tg_kl.mean(1, keepdim=True).realize().numpy()))
     _pb_kb = (_sync[0](kb) if _sync is not None else None)
     _wb = state.get("wheel_bias")
+    if _NUMSPOT is not None:               # THE NUMERAL SPOTLIGHT (2026-09-15): a constant certificate, both roads
+        _nsb = _ct("numspot", _NUMSPOT) if _NUMSPOT.shape[0] == B else None
+        if _nsb is not None:
+            _wb = _nsb if _wb is None else _wb + _nsb
     if _wb is not None:                    # THE STEERING WHEEL's spotlight
         _pb_kb = _wb if _pb_kb is None else _pb_kb + _wb
     _t2b = None
@@ -3305,8 +3310,8 @@ def breath_step(p, state, kb, ctx):
         _sa21 = (_qh21 @ _kh21.transpose(-2, -1)) / math.sqrt(_hd21)
         if _sync is not None:            # the same breath rotation
             _sa21 = _sa21 + _sync[0](kb)
-        if state.get("wheel_bias") is not None:   # the wheel's spotlight, second road
-            _sa21 = _sa21 + state["wheel_bias"]
+        if _wb is not None:                        # the wheel's spotlight (+ the numeral spotlight), second road
+            _sa21 = _sa21 + _wb
         if _t2b is not None:                       # T2: the claims, second road
             _sa21 = _sa21 + _t2b
         if _rb7 is not None:             # the same router bias
