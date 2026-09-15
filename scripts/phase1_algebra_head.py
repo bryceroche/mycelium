@@ -341,6 +341,15 @@ ALG_TOKLOOP = int(os.environ.get("ALG_TOKLOOP", "0"))
 # the last rung sharp). CE/BCE are linear in the target: exact.
 ALG_BLUR = int(os.environ.get("ALG_BLUR", "0"))
 ALG_BLUR_MAX = float(os.environ.get("ALG_BLUR_MAX", "0.7"))
+# THE CLOCK-CALIBRATED TARGETS (2026-09-14, registered): ALG_CLOCK_TARGET="field:a:d,..." —
+# per-FIELD fog on the same clock as the blurred ladder: fog_f(k) = a * cos^2(k*pi/(2*d)) for
+# k < d, 0 after (a = the starting fog, d = the deadline breath). Fields: pres ftype res op
+# args dig; every other term follows the scalar ladder fog. Unset = the scalar path, bit-identical.
+_CLOCK_TARGET = {}
+for _ct_item in [x for x in os.environ.get("ALG_CLOCK_TARGET", "").split(",") if x]:
+    _f, _a, _d = _ct_item.split(":")
+    assert _f in ("pres", "ftype", "res", "op", "args", "dig"), _f
+    _CLOCK_TARGET[_f] = (float(_a), int(_d))
 ALG_SHELF_D = int(os.environ.get("ALG_SHELF_D", "64"))
 ALG_SHELF_B0 = float(os.environ.get("ALG_SHELF_B0", "5"))
 # T1 (2026-09-12, the word — "The dancer's pixels"): the token-side
@@ -4004,7 +4013,7 @@ def loss_fn(o, g):
             full = dict(o, **ob)
             w = 1.0 + kb / max(K_B - 1, 1)
             beta = (ALG_BLUR_MAX * math.cos(kb * math.pi / (2 * max(K_B - 1, 1))) ** 2) if ALG_BLUR else 0.0
-            term = _loss_single(full, g, blur=beta) * w
+            term = _loss_single(full, g, blur=_clock_fog(kb, beta)) * w
             tot = term if tot is None else tot + term
         if int(os.environ.get("BREATH_NORM", "0")):
             _wsum = sum(1.0 + kb / max(K_B - 1, 1) for kb in range(K_B))
@@ -4012,6 +4021,15 @@ def loss_fn(o, g):
                                         # 1.5x heat confound removed at birth
         return tot / K_B
     return _loss_single(o, g)
+
+
+def _clock_fog(kb, beta):
+    """The per-breath fog: the scalar ladder fog `beta` for the unnamed terms ("_") and the
+    clock-calibrated fog per named field. Returns a float when the door is unset."""
+    if not _CLOCK_TARGET:
+        return beta
+    return {"_": beta, **{f: (a * math.cos(kb * math.pi / (2 * d)) ** 2 if kb < d else 0.0)
+                          for f, (a, d) in _CLOCK_TARGET.items()}}
 
 
 def _loss_single(o, g, blur=0.0):
@@ -4028,22 +4046,29 @@ def _loss_single(o, g, blur=0.0):
     rel = pres * is_rel
     n_rel = rel.sum() + 1e-6
 
-    def bce(lg, tg):
+    _bf = blur if isinstance(blur, dict) else None          # THE CLOCK-CALIBRATED TARGETS: per-field fog
+    _b0 = (_bf.get("_", 0.0) if _bf is not None else blur)   # the scalar fog (the ladder's) for unnamed terms
+    def _fog(f):
+        return _b0 if (_bf is None or f is None) else _bf.get(f, _b0)
+
+    def bce(lg, tg, f=None):
+        blur = _fog(f)
         b = lg.maximum(0) - lg * tg + (1 + (-lg.abs()).exp()).log()
         if blur:   # THE BLURRED LADDER: target (1-blur)*t + blur*0.5, exactly (BCE is linear in t)
             b = (1.0 - blur) * b + blur * (lg.maximum(0) - 0.5 * lg + (1 + (-lg.abs()).exp()).log())
         return b.contiguous()   # perf: own kernel
 
-    def ce(lg, tg):
+    def ce(lg, tg, f=None):
+        blur = _fog(f)
         ls = lg.log_softmax(-1)
         c = (ls * -1).gather(-1, tg.unsqueeze(-1)).squeeze(-1)
         if blur:   # THE BLURRED LADDER: target (1-blur)*onehot + blur*uniform, exactly (CE is linear in t)
             c = (1.0 - blur) * c + blur * (ls * -1).mean(-1)
         return c.contiguous()   # perf: own kernel
 
-    l = bce(o["pres"], pres).mean()
-    l = l + (ce(o["ftype"], g["ftype"]) * pres).sum() / n_p
-    l = l + (ce(o["op"], g["op"]) * rel).sum() / n_rel
+    l = bce(o["pres"], pres, "pres").mean()
+    l = l + (ce(o["ftype"], g["ftype"], "ftype") * pres).sum() / n_p
+    l = l + (ce(o["op"], g["op"], "op") * rel).sum() / n_rel
     l = l + bce(o["islit"], g["is_lit_f"]).mean()
     if "depth" in o and "depth" in g:      # the position channel (gold-fed)
         l = l + (ce(o["depth"], g["depth"]) * pres).sum() / n_p
@@ -4095,7 +4120,7 @@ def _loss_single(o, g, blur=0.0):
     is_macro = g["is_macro"] if "is_macro" in g else is_mod * 0.0
     is_frac = g["is_frac"] if "is_frac" in g else is_mod * 0.0
     dm = g["is_lit_f"] + is_mod + is_pct + is_fdiv + is_macro + is_frac
-    l = l + (ce(o["dig"], g["digits"]).mean(-1) * dm).sum() / (dm.sum() + 1e-6) \
+    l = l + (ce(o["dig"], g["digits"], "dig").mean(-1) * dm).sum() / (dm.sum() + 1e-6) \
         * float(os.environ.get("OBJW_DIG", "1.0"))       # pool axis OBJW
     if "sgn" in o and "sign" in g:              # E1: sign BCE on value slots
         l = l + (bce(o["sgn"], g["sign"]) * dm).sum() / (dm.sum() + 1e-6)
@@ -4139,8 +4164,8 @@ def _loss_single(o, g, blur=0.0):
     am = pres * (is_rel + is_sel + is_mod + is_pct + is_fdiv + is_macro + is_frac + is_chain)
     n_am = am.sum() + 1e-6
     _ow_ptr = float(os.environ.get("OBJW_PTR", "1.0"))   # pool axis OBJW
-    l = l + ((bce(o["args"], g["args"]) * args_w).mean(-1) * am).sum() / n_am * 2.0 * _ow_ptr
-    l = l + (ce(o["res"], g["res"]) * pres).sum() / n_p * 2.0 * _ow_ptr
+    l = l + ((bce(o["args"], g["args"], "args") * args_w).mean(-1) * am).sum() / n_am * 2.0 * _ow_ptr
+    l = l + (ce(o["res"], g["res"], "res") * pres).sum() / n_p * 2.0 * _ow_ptr
     l = l + ce(o["query"], g["query"]).mean() * 2.0 * _ow_ptr
     fsn = g["fspan"] / (g["fspan"].sum(-1, keepdim=True) + 1e-6)
     # FAT_W (routing-canvas dose probe, gut #55 amended): the fat-CE canvas
