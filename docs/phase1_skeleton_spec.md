@@ -38849,3 +38849,18 @@ decode's entropy at breath k vs the schedule's fog at breath k — a
 calibrated meter with no gold). Bryce's framing, banked: the ladder
 does not move the state in the middle (the organs do, in the readout's
 null space); it is why nothing organizes the motion.
+THE DIFFUSION-COMPILER COSTUME VERDICT (2026-09-14 night, cd242 / cd241
+vs ds242 / ds241): STRUCTURAL BAR FAILED — the geometry is UNCHANGED to
+three decimals (progress at b3 0.123 / 0.120 vs 0.124; cos b2>3 -0.10;
+steps 0.96 / 0.58 / 0.53 / 0.67 / 0.67 / 0.97); idle cost wild 0.0083 /
+0.0137, mint 0.0090 / 0.0098 (ds242 0.0117 / 0.0102) — the middle stays
+load-bearing at the blur's level. PERFORMANCE null: wild 0.2482 /
+0.2526 (paired vs ds: z +1.41 / +0.64 for the control), mint 0.9817 /
+0.9801 (ds 0.9815 / 0.9798). In hindsight the costume differs from the
+plain blur only in per-field amplitude (0.5-0.9 around 0.7 on the same
+clock): a small change in the target, no change in the path. Banked as
+null. The level ladder (staggered deadlines: early fields sharp by b2)
+is the real test of the target's shape; a control read of balV242's
+(no-fog) trajectory is queued after the chain — if its geometry
+matches ds242's, the fog never touched the path and the wander belongs
+to the organs (the readout's null space), not to the schedule.
