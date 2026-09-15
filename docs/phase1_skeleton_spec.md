@@ -39031,3 +39031,19 @@ worded fixture with multipliers (registered: "wordmint-2", mint rows
 rewritten with twice/half where the dialect has the constant). Bryce's
 "word given for your choice" spent on this rung; banked as no-effect
 on the holdout, not as a null of the rung.
+THE SUBSTITUTION ROAD (2026-09-15 07:18, LV_LEXICON=3; the numeral table
+= the mean L0-L3 trunk state per numeral 0..999 over 56,086 diet tokens,
+0..100 fully covered): a matched WORD span's first token takes its
+numeral's mean state before the waist, the span's other tokens are
+masked out, digit tokens never touched — the head reads "a dozen" as it
+reads "12" and ALLOCATES THE SLOT ITSELF (the resolution of the constant
+slot: upstream of the decode, not a rule over dangling variables — the
+parse dump showed 4-9 undefined variables per multiplier row, a pointer
+failure no read-time rule can resolve). WORDMINT: 0.8683 -> 0.9610
+(paired vs open: gained 349 / lost 9, z 18.0) = 82% of the 11.3-point
+headroom; vs mode 2b +0.0346 (gained 140 / lost 13, z 10.3). WILD:
+0.2482 (vs open: lost 20 / gained 10, z 1.83; diff -0.0049 — inside the
+-0.005 bar by a hair, not clean): the prose cardinals again. THE CENSUS
+RULE (fired): bare cardinals < 10 are substituted only in rows with no
+digit numeral (wild's givens are numerals 99%; "one of them" in a digit
+row is prose). wordmint has no digits: unchanged by construction.

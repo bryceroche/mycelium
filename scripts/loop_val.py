@@ -152,9 +152,15 @@ def _lex_substitute(st_np, tk_np, sl, sl_p, vs):
             continue
         _LEX_STATS["rows"] += 1
         enc = _LEX_TOK.encode(text)
+        # THE CENSUS RULE (2026-09-15): a row that writes its quantities as digits does not write one
+        # of them as a bare small cardinal ("one of them", "three times a week") — wild's givens are
+        # numerals 99%; bare cardinals < 10 are substituted only in rows with NO digit numeral.
+        _has_digits = bool(__import__("re").search(r"\d", text))
         for toks, role, val in span_tokens(ms, list(enc.offsets), _H.T_ALG):
             if role != "value" or not float(val).is_integer() or not (0 <= int(val) < len(cnt)) or cnt[int(val)] < 5:
                 continue
+            if _has_digits and int(val) < 10 and len(toks) == 1:
+                continue                                   # a bare small cardinal in a digit row: prose, not a quantity
             if any(_LEX_TOK.decode([enc.ids[t]]).strip().isdigit() for t in toks):
                 continue                                   # a digit token: never touched
             toks = sorted(toks); _LEX_STATS["spans"] += 1
