@@ -39011,3 +39011,13 @@ breath attention as the bridge (fat_all[-1]) vs the intake's; (3) the
 lexicon at TRAINING time as a token-born certificate (the road inside
 the loop, T2's claims precedent) — needs the word; (4) the fingerpost's
 certification of entries (view-invariance per entry) before v2 entries.
+THE WORDED MINT'S DISH LINE (ds242, open, per field at the last breath;
+mint in parentheses): pres 1.000 (1.000), ftype 0.987 (0.999), res
+0.984 (0.995), op 1.000 (1.000), args 0.971 (0.982), DIGITS 0.815
+(1.000). Spelling costs DIGITS 18.5 points on the given slots and ~1
+point on each binding field. The digit read of number words PEAKS at
+b4 (0.864) and DECAYS to 0.815 by b6 — the loop loses a word-number
+it once had (a texture for the ladder: the late breaths overwrite a
+soft read). So the lexicon road's 5.8-point recovery is digits; the
+residual 5.5 = wrong-span assignments (74) + the ~3 points spelling
+costs the pointers and types, which no digit road reaches.
