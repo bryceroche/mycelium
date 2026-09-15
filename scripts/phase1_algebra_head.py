@@ -3917,6 +3917,7 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
         # THE PERCEIVER's reads (2026-09-14): every breath's emission heads (the
         # margins) and slots<-tokens attention (the claims). Lazy; readers realize.
         out["heads_all"] = [heads_of(_b9) for _b9 in out_breaths]
+        out["vst_mine"] = vst           # THE VISIBILITY READ (2026-09-15): the variable states the pointer heads read against
         out["fat_all"] = ([_fed_core(fat)] + ((_bs_state or {}).get("fat_all") or []))
         if ALG_POLAR:
             # SPEC S4: the atlas tap keeps the OLD coordinates (r*u) in

@@ -39242,3 +39242,22 @@ the gates RAN and matched, but their PASS/FAIL text is lost. The arms'
 comparison (CW vs CL) is internally valid regardless — both use the
 walker; the gates are re-run to a FILE after the chain for the record.
 Rule restated: chains write gate output to files, never through cut.
+THE VISIBILITY READ — WORD GIVEN (2026-09-15; scripts/visibility_read.py;
+queued behind the cert-ladder arms as pc-after, with the eq gates re-run
+to a file). Per row, per breath, per slot the velocity dx is split into
+three orthogonal parts: CLOCK (the polar sink's clock planes), VISIBLE
+(the content part projected onto the readout's row space — the linear
+heads' columns + the pointer directions W_args v_i / W_res v_i / W_query
+v_i for the row's variable states, restricted to the content planes),
+NULL (the rest). THE PREDICTION, pinned: the middle breaths (b2-b5) are
+mostly clock + null; the visible share is small (< 20%) but not zero
+(the margins grow every breath). If the null share dominates, the road
+registered is "organs write only where the readout reads" (a
+structural projection of the organs' injections; needs the word). The
+Hilbert-space relay assessed: the projection theorem = this meter (kept);
+the adjoint = mass conservation (already held by the bridge's mass
+rule); RKHS = a soft matcher, later; the contraction mapping = the
+WRONG theorem (the loop is non-autonomous by design: the breath rotor,
+the schedule; a fixed point of an autonomous map is the answer-at-
+breath-1 failure). Bit-identical head edit: out["vst_mine"] under the
+mine env only (the variable states the pointer heads read against).
