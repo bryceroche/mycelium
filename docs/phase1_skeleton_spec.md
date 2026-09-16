@@ -39407,3 +39407,35 @@ OUTSIDE the system; scripts/sonnet_collect.py joins the returns, runs
 the admission gate, writes .cache/silver_sonnet_v1.jsonl (stamped
 gen.silver, versioned apart) and a 10% audit sample; the dose (share-
 of-mix, reps-per-unique) is declared before any mix.
+THE MENTION MASK — WORD GIVEN (2026-09-16 morning). THE FINDING FIRST: the
+gold pipeline already builds the structure the silver rows carry —
+build_gold writes fspan (per-factor span token masks) and vspan (per-
+variable mention masks) for any row with spans / mentions — and the
+family env has NO CONSUMER for them: the ROUTER (ALG_ROUTER: W_rs / W_ra
+/ W_rb / r_gain; emits rbias, the slots<-tokens soft token bias,
+supervised by BCE against fspan at every rung) is OFF in the family,
+and vspan's consumer was the value aligner (null on numerals). So on
+wild the spans and mentions would enter the diet and teach nothing.
+THE ROAD: the silver arm turns the router on — the sanctioned SOFT form
+("never hard -inf — A0's grave"): the slots' token scores get + bias x
+gain where the bias is trained to point at each factor's stating span;
+on wild rows with silver spans this is the first time the slot<-token
+attention has real targets on prose. THE CAVEAT (the mandatory-road
+law): r_gain is a learnable gain (init 0.02) — an invitation the
+residual votes down from birth; the arm runs the gain FIXED (R_GAIN
+constitutional, e.g. 1.0) so the bias is a road, and the pre/post knob
+census reads its injection. The token loop's within-mention mask (the
+NL loop's own structure) is v2: at read time no gold mentions exist,
+so a gold mask at training is a teacher signal absent at test (the
+teacher-forcing grave) — it needs the model's own breath-0 mentions
+as the read-time source, a design after the router arm.
+THE SILVER ARM (holds until the silver split exists and the dose is
+declared): ALG_ROUTER=1 + R_GAIN fixed, the family env otherwise, warm
+balV242, the diet = form_mix12 + the admitted silver rows at a declared
+share-of-mix and reps-per-unique; CONTROLS: the same diet with the
+router off (the data alone), and the family base (neither). Two seeds.
+BARS: wild paired >= +0.020 (z >= 2) over the data-alone control to
+credit the road, >= +0.020 over the base to credit the data; mint
+within 0.005; KILL mint <= -0.010. MECHANISM: rbias vs fspan AUROC on
+the holdout's rows (no spans there — read on the silver audit sample's
+held-out half instead: the audit split is also the mechanism fixture).
