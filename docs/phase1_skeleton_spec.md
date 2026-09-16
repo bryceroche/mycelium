@@ -39692,7 +39692,7 @@ approved and word given for the entire queue as you see fit").**
 (`silver_sonnet_v1_audit`, `_v1p2_audit`, `_v1t2_audit`) stay on file
 for a later human read; no silver row is gold, all carry gen.silver.
 (2) THE DOSE: form_mix12 + (475 stories + their K=3 copies) x dup 2;
-share-of-mix ~3.5% at the expected ~1,400 copies (the books' band:
+share-of-mix ~2.7% at the expected ~1,400 copies (base 133,828 rows) (the books' band:
 prose at 2.9% regularized, pure prose poisoned), reps-per-unique story
 per epoch = (1 + copies) x 2 <= 8; the builder prints both. (3) THE
 SILVER CHAIN fires via `pc-silver` (`.cache/silver_launch.sh` waits
