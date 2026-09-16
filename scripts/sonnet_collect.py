@@ -16,7 +16,25 @@ for line in open(ret_path):
     if "refuse" in o: refused["sonnet:" + str(o["refuse"])[:40]] = refused.get("sonnet:" + str(o["refuse"])[:40], 0) + 1; continue
     r = by_id.get(o.get("id"))
     if r is None: refused["unknown_id"] = refused.get("unknown_id", 0) + 1; continue
-    rets.append({"text": r["text"], "answer_field": r["answer_field"], "n_vars": o.get("n_vars"), "query_var": o.get("query_var"), "factors": o.get("factors"), "mentions": o.get("mentions") or {}, "m": 300, "decisions": 0, "solution": [],
+    # spans and mentions arrive as EXACT SUBSTRINGS; convert to offsets (every occurrence for mentions,
+    # the first for a factor's span); a substring not found is dropped (the gate sees the row without it)
+    def offs(text, subs, all_occ):
+        out = []
+        for sub in subs or []:
+            if not isinstance(sub, str) or not sub: continue
+            i = text.find(sub)
+            while i >= 0:
+                out.append([i, i + len(sub)])
+                if not all_occ: break
+                i = text.find(sub, i + 1)
+        return out
+    facs = []
+    for f in (o.get("factors") or []):
+        f = dict(f)
+        if isinstance(f.get("spans"), list) and f["spans"] and isinstance(f["spans"][0], str): f["spans"] = offs(r["text"], f["spans"], False)
+        facs.append(f)
+    ments = {k: (offs(r["text"], v, True) if v and isinstance(v[0], str) else v) for k, v in (o.get("mentions") or {}).items()}
+    rets.append({"text": r["text"], "answer_field": r["answer_field"], "n_vars": o.get("n_vars"), "query_var": o.get("query_var"), "factors": facs, "mentions": ments, "m": 300, "decisions": 0, "solution": [],
                  "gen": {"src": "gsm8k", "pool": "queue_top300", "queue_rank": r.get("queue_rank"), "fingerpost_unstable": r.get("fingerpost_unstable")}})
 adm, why = admit(rets, version)
 random.Random(0).shuffle(adm); n_audit = max(1, int(round(frac * len(adm)))) if adm else 0
