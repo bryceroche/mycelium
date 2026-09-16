@@ -75,7 +75,10 @@ def solver_verdict(row, key, budget=5000):
     from mycelium.csp_core import solve_symbolic
     from mycelium.macros import expand_graph
     fs, nv = expand_graph(list(row["factors"]), row["n_vars"])
-    m = int(row.get("m") or (VALUE_CAP + 1))
+    # the domain follows the row: 2x its largest given and 2x the key, floor 300, cap VALUE_CAP + 1 — GAC
+    # over a 10,000-wide domain made the tranche-2 gate crawl (the wheel's WHEEL_M_MAX lesson, again)
+    gmax = max([f.get("value", 0) for f in fs if f["ftype"] == "given"] + [1])
+    m = int(row.get("m") or min(VALUE_CAP + 1, max(300, 2 * gmax, 2 * key)))
     if key > m: return False, f"key_{key}_above_m_{m}"
     gv = {f["var"]: f["value"] for f in fs if f["ftype"] == "given"}
     try:
