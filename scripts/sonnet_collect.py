@@ -2,11 +2,11 @@
 GATE (scripts/admit_annotation.py: the rulebook + the solver forcing the key),
 write the admitted silver split (versioned apart) and the human-audit sample.
 usage: sonnet_collect.py returns.jsonl [version=sonnet_v1] [audit_frac=0.1]"""
-import json, random, sys
+import json, random, sys, os
 sys.path.insert(0, "."); sys.path.insert(0, "scripts")
 from admit_annotation import admit, key_of
 ret_path = sys.argv[1]; version = sys.argv[2] if len(sys.argv) > 2 else "sonnet_v1"; frac = float(sys.argv[3]) if len(sys.argv) > 3 else 0.1
-pk = json.load(open(".cache/annotation_packet_top300.json")); by_id = {r["id"]: r for r in pk["rows"]}
+pk = json.load(open(os.environ.get("PACKET", ".cache/annotation_packet_top300.json"))); by_id = {r["id"]: r for r in pk["rows"]}
 rets = []; refused = {}
 for line in open(ret_path):
     line = line.strip()
