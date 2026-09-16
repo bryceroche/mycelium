@@ -36,7 +36,9 @@ for line in open(ret_path):
     ments = {k: (offs(r["text"], v, True) if v and isinstance(v[0], str) else v) for k, v in (o.get("mentions") or {}).items()}
     rets.append({"text": r["text"], "answer_field": r["answer_field"], "n_vars": o.get("n_vars"), "query_var": o.get("query_var"), "factors": facs, "mentions": ments, "decisions": 0, "solution": [],
                  "gen": {"src": "gsm8k", "pool": "queue_top300", "queue_rank": r.get("queue_rank"), "fingerpost_unstable": r.get("fingerpost_unstable")}})
-adm, why = admit(rets, version)
+refd = []; adm, why = admit(rets, version, refused_out=refd)
+with open(f".cache/silver_{version}_refused.jsonl", "w") as f:
+    for r in refd: f.write(json.dumps(r) + "\n")
 random.Random(0).shuffle(adm); n_audit = max(1, int(round(frac * len(adm)))) if adm else 0
 with open(f".cache/silver_{version}.jsonl", "w") as f:
     for r in adm: f.write(json.dumps(r) + "\n")

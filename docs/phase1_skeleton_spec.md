@@ -39552,3 +39552,24 @@ road, mint within 0.005, KILL mint <= -0.010; the census reads the
 message's share of the token state. Prior: the road has no work on
 mint (the one-way bridge reads it at 0.98) — its work is on prose,
 beside the silver rows.
+
+**2026-09-16 — TRANCHE 2 GATED: 417 UNIQUE SILVER STORIES.** The
+second tranche (300 in-reach pool rows below the top-300 in the
+perceiver's calibrated order; Sonnet-terse, 30 batches as subagents in
+the assistant's session) returned 237 annotations + 63 Sonnet refusals
+(values past the 9999 cap, week-fractions the dialect cannot state,
+etc.). The admission gate (domain follows the row: min(10000,
+max(300, 2 x max given, 2 x key)); CSP-certified at query_var) ADMITTED
+166 / 237 = 70% (tranche 1: 97%) — refused: 61 solver disagreements
+(the key at query_var is not what the graph solves to), 7 rel_pointers,
+3 values > 9999. Merged (dedupe by text): tranche 1 251 + tranche 2 166
+-> 417 unique silver stories in `.cache/silver_sonnet_v1_all.jsonl`;
+tranche 2's admitted rows `.cache/silver_sonnet_v1t2.jsonl` (versioned
+apart), 17-row audit sample `.cache/silver_sonnet_v1t2_audit.jsonl`,
+the 166 new stories `.cache/silver_sonnet_v1t2_new.jsonl` (queued for
+the resampler at K=3 after the tranche-1 pass). The admission rate fell
+27 points down the calibrated order: the rows the perceiver ranks less
+in-reach are the rows Sonnet's graphs get wrong more often — a
+dialect-reach reading, not noise (61 rows). The gate now writes every
+refused row with its full reason (`.cache/silver_<version>_refused.jsonl`;
+audit-before-diet) — the 61 solver refusals are autopsied below.

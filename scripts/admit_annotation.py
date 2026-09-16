@@ -91,7 +91,8 @@ def solver_verdict(row, key, budget=5000):
     return int(asg[row["query_var"]]) == int(key), f"query_val={asg[row['query_var']]}"
 
 
-def admit(rows, version="sonnet_v1"):
+def admit(rows, version="sonnet_v1", refused_out=None):
+    """refused_out: optional list; every refused row lands there with its FULL reason under gen.refused (the autopsy artifact)"""
     out = []; why = {}
     for r in rows:
         reason = rulebook(r)
@@ -105,6 +106,8 @@ def admit(rows, version="sonnet_v1"):
             r = dict(r); g = dict(r.get("gen") or {}); g.update({"src": "gsm8k", "silver": version, "admitted_by": "admit_annotation:key+rulebook"}); r["gen"] = g; out.append(r)
         else:
             why[reason.split(":")[0]] = why.get(reason.split(":")[0], 0) + 1
+            if refused_out is not None:
+                r = dict(r); g = dict(r.get("gen") or {}); g["refused"] = reason; r["gen"] = g; refused_out.append(r)
     return out, why
 
 
