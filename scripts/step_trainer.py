@@ -595,14 +595,16 @@ class StepWalker:
                 if _WHEEL_TIME: print(f"[wheel-block] breath {k}: {time.time() - _tw0:.2f}s (wheel_bias + puts)", flush=True)
             self.put(self.b_facts[k], fact_cur)
         if self.wheel and self.wheel_late:
-            # THE LATE WHEEL: every breath's parse pulled once, solved in ONE pool call
-            _tl0 = time.time(); rows_all = []; onps = []
+            # THE LATE WHEEL, ONE POOL CALL (2026-09-15 evening): the gate showed each breath's
+            # wheel_bias costs ~1.0 s = the 1 s row cap paid once PER BREATH; all breaths' memo
+            # misses now go to the pool in ONE call, so the cap is paid once per step
+            _tl0 = time.time(); onps = []
             for k in range(1, self.K_B - 1):
                 dec = self.dec_fns[k](); onp = {kk: t.numpy() for kk, t in zip(self.dec_keys, dec)}; onps.append(onp)
-            for k, onp in zip(range(1, self.K_B - 1), onps):
-                bias, turned, melt = wheel_bias(H, onp, self.fat_np, se_np, nv, ma, self.wheel_beta, self.wheel_mode, self.workers, self.LT)
+            outs = wheel_bias_multi(H, onps, self.fat_np, se_np, nv, ma, self.wheel_beta, self.wheel_mode, self.workers, self.LT)
+            for k, (bias, turned, melt) in zip(range(1, self.K_B - 1), outs):
                 self.put(self.wheel_bank[k - 1], bias); self.put(self.melt_bank[k - 1], melt); self.turned.append(turned)
-            if _WHEEL_TIME: print(f"[wheel-late] {self.K_B - 2} breaths: {time.time() - _tl0:.2f}s", flush=True)
+            if _WHEEL_TIME: print(f"[wheel-late] {self.K_B - 2} breaths, one pool call: {time.time() - _tl0:.2f}s", flush=True)
         return rates
 
     def walk_backward(self):
@@ -787,6 +789,40 @@ def wheel_bias(H, onp, fat_np, se_np, nv, ma, beta, mode, workers, LT):
     from mycelium.loop_bridge import Bridge
     bias = Bridge(fat_np, se_np).spotlight(melt, beta, mode)
     return bias, turned, melt
+
+
+def wheel_bias_multi(H, onps, fat_np, se_np, nv, ma, beta, mode, workers, LT):
+    """wheel_bias over several breaths with ONE pool call: decode every breath's rows,
+    answer the memo hits, send the union of misses to the pool once, then assemble each
+    breath's (bias, turned, melt) exactly as wheel_bias would. Same answers by construction
+    (the solver is deterministic; the memo is shared)."""
+    from alternator_bridge import core_rows
+    from mycelium.loop_bridge import Bridge
+    B = len(nv); per = []
+    for onp in onps:
+        parses = [H._decode_slots({kk: onp[kk][b] for kk in onp}) for b in range(B)]
+        rows = [(int(nv[b]), parses[b], int(ma[b])) for b in range(B)]
+        per.append((parses, rows, [_memo_key(r) for r in rows]))
+    todo = {}
+    for _, rows, keys in per:
+        for r, k in zip(rows, keys):
+            if k not in _MEMO and k not in todo: todo[k] = r
+    if todo:
+        ks = list(todo); fresh = core_rows([todo[k] for k in ks], workers)
+        for k, ans in zip(ks, fresh):
+            if len(_MEMO) >= _MEMO_MAX: _MEMO.pop(next(iter(_MEMO)))
+            _MEMO[k] = ans
+    outs = []
+    for parses, rows, keys in per:
+        res = [_MEMO[k] for k in keys]
+        melt = np.zeros((B, LT), np.float32); turned = 0
+        for b, (status, core) in enumerate(res):
+            if status != "unsat" or not core: continue
+            turned += 1
+            for c in core: melt[b, parses[b][c]["_slot"]] = 1.0
+        bias = Bridge(fat_np, se_np).spotlight(melt, beta, mode)
+        outs.append((bias, turned, melt))
+    return outs
 
 
 def _row_meta(H, samples, idx):

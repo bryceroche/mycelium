@@ -39274,3 +39274,14 @@ trajectory progress 0.03 / 0.07 / 0.20 / 0.33 / 0.55, cosines all
 positive (+0.10..+0.22), steps 0.93 -> 0.50 monotone, no end leap — the
 smoothest path yet, the baseline CW242 must beat on the repair rate and
 the paired reads.
+THE WHEEL'S REAL COST (2026-09-15 17:30, the late-wheel gate's timers):
+each breath's wheel_bias takes 1.00 s — exactly WHEEL_ROW_TIMEOUT: with
+32 rows per breath some row hits the 1 s cap nearly every time, and the
+cap is paid once per POOL CALL, i.e. once per breath (5 s per step); the
+GPU stalls were the minor part. The late wheel as first written still
+called the pool per breath (3.0-5.5 s per step). FIX (staged in the
+live trainer, gated at the next GPU window): wheel_bias_multi — all
+breaths' memo misses in ONE pool call per step, the cap paid once
+(~1 s): expected ~4 s -> ~1.5 s per step for the silent wheel. CW242
+runs on the per-breath-pool late path (already started; the identity
+gate covers it: same banks).
