@@ -39622,3 +39622,17 @@ the breath-1 sever, the cap experiment) started on pc-orch2's exit and
 does not depend on the locus npz. Rule: gate collectors run ALONE or
 with a memory bound — a solver domain is a memory allocation, not a
 number.
+
+**2026-09-16 — THE SILVER SPLIT AT 475.** Under the capped ladder:
+tranche 1 pass 1 re-gated 139/143 (unchanged), pass 2 117/123 (+5: the
+narrow-domain refusals of the first gating), tranche 2 219/237. Rebuilt
+by text identity: 251 + 5 + 219 = **475 unique silver stories**
+(`.cache/silver_sonnet_v1_all.jsonl`; the 5 in
+`silver_sonnet_v1t1_ladder_new.jsonl`, the 219 in
+`silver_sonnet_v1t2_new.jsonl`; audit samples 14 + 11 + 17 = 42 rows
+across the three versioned files). The gate's mint self-test under the
+ladder re-run to `.cache/admit_selftest.log`. The resampler (K=3, the
+ladder in `solve_certified`) runs over all 475 as pc-resample3 ->
+`.cache/silver_sonnet_v1_all_x3.jsonl`; the dose declaration and the
+silver chain (SR242 / SB242 / SD242 vs balV242) hold for Bryce's audit
+and the word.
