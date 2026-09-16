@@ -39387,3 +39387,15 @@ overnight locus precompute (load 22): 6408 / 13,475 rows at 06:15 after
 8 h; the remainder at the uncontended rate ~ 11:00. RULE: no CPU
 experiment beside a GPU read that decodes on the CPU (the wheel's
 decode + the tokenizer + the view recompute are CPU-bound too).
+CORRECTION (2026-09-16 06:25): the row-cap experiment printed only its
+header in 11 hours — it never completed even the ALARMED runs (272 rows
+at <= 1 s each on 4 workers should take ~70 s). The likely cause is a
+spawn worker killed under the unit's 6 GB memory fence (each worker
+imports the solver stack) — a killed worker hangs Pool.map forever —
+and the spinning remainder was the load. So the previous entry's claim
+"rows run for hours without the alarm" is NOT SUPPORTED by this run
+(it rests on the 2026-09-11 note alone); the experiment is void and
+will be re-run with an adequate fence, no other CPU load, and a per-
+row timing wrapper from the start. Two lessons filed: a pool inside a
+memory-fenced unit needs the fence sized for its workers; and Pool.map
+has no timeout — a dead worker is a silent hang.
