@@ -39439,3 +39439,27 @@ credit the road, >= +0.020 over the base to credit the data; mint
 within 0.005; KILL mint <= -0.010. MECHANISM: rbias vs fspan AUROC on
 the holdout's rows (no spans there — read on the silver audit sample's
 held-out half instead: the audit split is also the mechanism fixture).
+THE SONNET PASS — FIRST PASS COMPLETE (2026-09-16 ~08:00; run inside the
+assistant's session as subagents, never by the system): 300 rows -> 143
+annotated by the annotators, 157 refused by them (the first pass ran
+under the BOOKS' rules: the 300 cap, one division; 40 of the first 92
+refusals were the cap alone); THE GATE (the loosened silver rulebook +
+the solver forcing the key) ADMITTED 121 of 143 (85%); 22 gate
+refusals; .cache/silver_sonnet_v1.jsonl (121 rows, stamped
+gen.silver=sonnet_v1, versioned apart); the audit sample
+.cache/silver_sonnet_v1_audit.jsonl (12 rows) for Bryce. THE ANNOTATOR
+COMPARISON at the gate (the bar was admission rate + the audit):
+Haiku terse 3 admitted of 50 rows (6%; 43 refused by Haiku itself,
+one misreading the constraint graph as a forward pass); Sonnet terse
+37 of 80 (46%; 82% of its annotations admitted); Sonnet verbose 81 of
+170 (48%; 89% admitted). VERDICT: Sonnet terse is the annotator — the
+same admission rate as verbose at ~75% of the cost (~90-110k tokens per
+10 rows vs 100-170k); Haiku is struck for this dialect. Cost of the
+pass: ~3.2M tokens across 33 agent runs (3 API timeouts relaunched).
+Two rows in the audit deserve a look on principle: an agent redesigned
+a graph around the old cap (a route the text does not state); an
+answer key contradicted by the text's own relations (95 vs 115).
+THE SECOND PASS (needs the word; ~16 Sonnet-terse batches, ~1.6M
+tokens): the 157 refused rows under protocol v2 (cap 9999, fdiv up to
+3, named universal constants as hidden givens) — expected to more than
+double the admitted count.
