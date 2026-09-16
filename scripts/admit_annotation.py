@@ -67,7 +67,7 @@ def rulebook(row):
     return None
 
 
-DOMAIN_LADDER = (10**4, 10**5, 10**6, 10**7)   # widened only when the row-sized domain refuses
+DOMAIN_LADDER = (10**4, 10**5)   # widened only when the row-sized domain refuses; 10^6+ builds multi-GB domains (OOM-killed the locus precompute 2026-09-16)
 
 
 class _Timeout(Exception): pass
