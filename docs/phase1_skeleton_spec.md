@@ -39343,3 +39343,34 @@ Perf note: CW242 ran at 3.73 s/step on the fast wheel (CL 3.95): the
 pool was 1.3-1.8 s of it; the rest of the wheel's overhead is the five
 per-breath decode pulls (the dec_fns + .numpy() syncs) — to be timed
 before the next wheel arm.
+THE VISIBILITY READ VERDICT (2026-09-15 22:05, ds242, wild 311 / mint
+300 rows; the share of ||dx||^2 per breath, median over rows, wild):
+  breath        b1     b2     b3     b4     b5     b6
+  clock        0.11   0.84   0.89   0.80   0.75   0.29
+  visible      0.22   0.07   0.07   0.11   0.15   0.37
+  null         0.67   0.09   0.04   0.09   0.10   0.32
+  (mint within 0.03 of every cell; correct and wrong rows identical)
+  visible-only progress to the finish: 0.03 / 0.05 / 0.12 / 0.23 / 0.39
+THE PREDICTION (middle breaths mostly clock + null; visible < 20% but
+> 0) CONFIRMED in its letter and CORRECTED in its weight: the middle
+breaths' motion is THE CLOCK — 84-89% of the squared step at b2-b5 is
+the polar sink's 128 clock planes rotating under the breath rotor, by
+design. The content moves little in the middle: visible 7-15%, null
+4-10% of a step that is itself 0.5-0.7 of the norm — roughly 0.15-0.2
+of the norm per breath in content, and mostly VISIBLE (the margins
+sharpening). So: (1) "the middle wanders in the null space" is
+RETIRED — the middle rotates; the null-content share there is small;
+the road "organs write only where the readout reads" is NOT warranted
+for the middle breaths; (2) the one null-space write is BREATH 1 (67%
+of the intake step is content the readout cannot see) — the loop's
+initial organization (the notebook's phase-0 write, the garage's
+deposits); whether it is working memory or waste is a sever read
+(project breath 1's update onto the visible subspace; registered, a
+read); (3) the trajectory read's absolute progress / cosines were
+rotation-contaminated (the same rotor in every arm, so the BETWEEN-arm
+differences stand: ds vs balV vs cl differ in content); the content-
+only path (PV_CONTENT=1) is added for the re-read tomorrow. eq gates
+under the clock target: eqfwd PASS, eqbwd PASS (to files this time).
+The Hilbert relay's one useful claim, the projection theorem as a
+meter, delivered the day's cleanest reframing: the wander was the
+clock.

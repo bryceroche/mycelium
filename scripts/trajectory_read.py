@@ -31,6 +31,12 @@ def _main():
         _nv = np.array([vs[int(i)].get("n_vars", K_VARS) for i in sl_p]); _ma = np.array([vs[int(i)].get("m", 0) for i in sl_p])
         o = forward(p, ts, tk, se, slot_mask=Tensor(mk, dtype=dtypes.float), fact_buf=Tensor(alt2_fact_buf(_oa, vse[sl_p].astype(np.int32), _nv, _ma), dtype=dtypes.float))
         br = [b.numpy().astype(np.float64) for b in o["breaths_all"]]; hd = [{k: v.numpy() for k, v in h.items() if k in fields} for h in o["heads_all"]]
+        if int(os.environ.get("PV_CONTENT", "0")):
+            # THE CONTENT-ONLY PATH (2026-09-15, after the visibility read: 85% of the middle breaths'
+            # motion is the clock planes' rotation) — the clock planes are zeroed before the geometry
+            import phase1_algebra_head as _H
+            _g = _H._polar_sink()[2].numpy().reshape(-1).astype(np.float64)
+            br = [b * _g for b in br]
         if K is None: K = len(br); print(f"[traj] K={K} N={N} ckpt={os.path.basename(os.environ['PV_CKPT'])}", flush=True)
         b_n = len(sl)
         for bi in range(b_n):
