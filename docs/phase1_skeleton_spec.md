@@ -39399,3 +39399,11 @@ will be re-run with an adequate fence, no other CPU load, and a per-
 row timing wrapper from the start. Two lessons filed: a pool inside a
 memory-fenced unit needs the fence sized for its workers; and Pool.map
 has no timeout — a dead worker is a silent hang.
+THE SONNET PASS — WORD GIVEN (2026-09-16 morning): .cache/sonnet_top300/
+prompt_01..30.txt (10 rows each, the queue's order; the dialect, 3 worked
+mint examples with spans + mentions, the rules, the return format, a
+refusal form for out-of-rule rows) + README; Bryce runs the calls
+OUTSIDE the system; scripts/sonnet_collect.py joins the returns, runs
+the admission gate, writes .cache/silver_sonnet_v1.jsonl (stamped
+gen.silver, versioned apart) and a 10% audit sample; the dose (share-
+of-mix, reps-per-unique) is declared before any mix.
