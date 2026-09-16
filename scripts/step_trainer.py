@@ -250,6 +250,10 @@ class StepWalker:
         # (melt_bank[k-2], the certificate; the melt / spotlight organs stay off unless asked);
         # the fog per rung is the head's clock target (ALG_CLOCK_TARGET), the unnamed terms unfogged.
         self.cert_lambda = float(os.environ.get("ST_CERT_LAMBDA", "0") or 0)
+        # THE LATE WHEEL (2026-09-15): the silent wheel (beta 0, no melt) steers nothing in the
+        # forward, so it runs once after it — one pull, one pool call, the banks before the backward
+        self.wheel_late = bool(_envi("ST_WHEEL_LATE"))
+        assert not (self.wheel_late and (self.wheel_beta != 0.0 or H._WHEEL_MELT is not None)), "ST_WHEEL_LATE needs a silent wheel (ST_WHEEL_BETA=0, no ALG_WHEEL_MELT)"
         assert not (self.cert_lambda > 0 and not self.wheel), "ST_CERT_LAMBDA needs ST_WHEEL=1 (the certificate is the wheel's core)"
         self.workers = int(os.environ.get("ST_WORKERS", "0")) or None
 
@@ -578,16 +582,27 @@ class StepWalker:
                 fact_cur = H.alt2_fact_buf(onp, se_np, nv, ma,
                                            theta=self.theta)
                 rates.append(int((fact_cur[:, :, 0] > 0).sum()))
-            if self.wheel and k <= self.K_B - 2:
+            if self.wheel and k <= self.K_B - 2 and not self.wheel_late:
                 # THE WHEEL (2026-09-11): commit this breath's parse, solve,
                 # core, spotlight for breath k+1 — a detached constant
+                _tw0 = time.time()
                 bias, turned, melt = wheel_bias(H, onp, self.fat_np, se_np, nv, ma,
                                                 self.wheel_beta, self.wheel_mode,
                                                 self.workers, self.LT)
                 self.put(self.wheel_bank[k - 1], bias)
                 self.put(self.melt_bank[k - 1], melt)
                 self.turned.append(turned)
+                if _WHEEL_TIME: print(f"[wheel-block] breath {k}: {time.time() - _tw0:.2f}s (wheel_bias + puts)", flush=True)
             self.put(self.b_facts[k], fact_cur)
+        if self.wheel and self.wheel_late:
+            # THE LATE WHEEL: every breath's parse pulled once, solved in ONE pool call
+            _tl0 = time.time(); rows_all = []; onps = []
+            for k in range(1, self.K_B - 1):
+                dec = self.dec_fns[k](); onp = {kk: t.numpy() for kk, t in zip(self.dec_keys, dec)}; onps.append(onp)
+            for k, onp in zip(range(1, self.K_B - 1), onps):
+                bias, turned, melt = wheel_bias(H, onp, self.fat_np, se_np, nv, ma, self.wheel_beta, self.wheel_mode, self.workers, self.LT)
+                self.put(self.wheel_bank[k - 1], bias); self.put(self.melt_bank[k - 1], melt); self.turned.append(turned)
+            if _WHEEL_TIME: print(f"[wheel-late] {self.K_B - 2} breaths: {time.time() - _tl0:.2f}s", flush=True)
         return rates
 
     def walk_backward(self):

@@ -39261,3 +39261,16 @@ WRONG theorem (the loop is non-autonomous by design: the breath rotor,
 the schedule; a fixed point of an autonomous map is the answer-at-
 breath-1 failure). Bit-identical head edit: out["vst_mine"] under the
 mine env only (the variable states the pointer heads read against).
+THE LATE WHEEL — GATED AND LIVE (2026-09-15 17:30): 4 steps per mode from
+the same checkpoint and seed at lambda 2 — printed losses IDENTICAL
+(63.8736 / 50.6309 / 44.1705 / 38.6563 in both) => identical certificate
+banks; the silent wheel runs once after the forward (ST_WHEEL_LATE=1;
+asserts beta 0 and no melt). Bryce's ruling applied: bit-identical code
+needs no identical-code arms — CL242 ran per-breath, CW242 runs late.
+Applied to the live trainer by the orchestrator (scripts/apply_late_wheel.py).
+CL242 (the control, the level ladder in the step trainer, wheel silent,
+lambda 0; 3000 steps B=32 warm balV242): wild 0.2535, mint 0.9752;
+trajectory progress 0.03 / 0.07 / 0.20 / 0.33 / 0.55, cosines all
+positive (+0.10..+0.22), steps 0.93 -> 0.50 monotone, no end leap — the
+smoothest path yet, the baseline CW242 must beat on the repair rate and
+the paired reads.
