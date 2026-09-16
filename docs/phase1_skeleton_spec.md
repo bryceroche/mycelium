@@ -39463,3 +39463,9 @@ THE SECOND PASS (needs the word; ~16 Sonnet-terse batches, ~1.6M
 tokens): the 157 refused rows under protocol v2 (cap 9999, fdiv up to
 3, named universal constants as hidden givens) — expected to more than
 double the admitted count.
+CORRECTION (2026-09-16 08:10): the collector still stamped m = 300 on
+every return, so 13 of the gate's 22 refusals were my stale domain
+bound (keys 375..5040 refused as "above m"), not the annotations; the
+collector now leaves m to the silver rulebook (VALUE_CAP + 1). The
+remaining genuine gate refusals: 8 rows whose graph does not determine
+the query (the solver's unassigned sentinel) and 2 keys above 9999.
