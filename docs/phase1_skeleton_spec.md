@@ -39321,3 +39321,25 @@ mode. REGISTERED: a DETERMINISTIC row cap — the solver's own decision
 budget + the arity cap instead of the alarm — makes the wheel
 reproducible and the perf gate provable; needs the clinic's numbers
 (which refusals the 1 s cap kept) re-read in budget units.
+THE CERTIFICATE-WEIGHTED LEVEL LADDER VERDICT (2026-09-15 21:36, CW242 vs
+CL242, the step trainer's regime, 3000 steps B=32 warm balV242, the
+fast wheel): NULL. Paired wild 0.2530 vs 0.2535 (gained 25 / lost 26,
+z +0.14); paired mint 0.9755 vs 0.9752 (gained 4 / lost 3, z -0.38).
+The trajectory IDENTICAL to CL242's (progress 0.03 / 0.07 / 0.20 / 0.33
+/ 0.55; cosines +0.10 / +0.00 / +0.17 / +0.21 / +0.17; steps 0.92 ->
+0.49): re-weighting the ladder's field terms by the solver's core at
+the previous breath changed nothing the reads can see on either
+register. The repair-rate read (the mechanism meter) is bounded by the
+outcome: 51 discordant slots of 2051 — the two models decode alike; not
+run. Reading: on mint the wheel's certificate names slots that are
+already right at the end (P(not full | unsat) 1.0 concerns the 5% of
+rows the model gets wrong, where the core is one symptom among the
+row's errors); on wild the certificate is blind. A loss weight can only
+move what the certificate sees and the gold already grades. THE PARITY
+ARM: NOT WARRANTED by this run (the math half of the mechanism shows
+nothing); the locus precompute runs overnight regardless — the NL
+certificate is the queue's and the perceiver's, not only this arm's.
+Perf note: CW242 ran at 3.73 s/step on the fast wheel (CL 3.95): the
+pool was 1.3-1.8 s of it; the rest of the wheel's overhead is the five
+per-breath decode pulls (the dec_fns + .numpy() syncs) — to be timed
+before the next wheel arm.
