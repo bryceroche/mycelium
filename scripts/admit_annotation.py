@@ -11,6 +11,7 @@ usage: admit_annotation.py annotations.jsonl admitted_out.jsonl [silver_version]
 Self-test: --selftest runs the gate over mint rows with their own key."""
 import json, re, sys
 sys.path.insert(0, "."); sys.path.insert(0, "scripts")
+from mycelium.csp_core import solve_symbolic
 
 
 # THE SILVER RULEBOOK (2026-09-16, loosened to the machine's own dialect after the first pass refused
@@ -66,29 +67,61 @@ def rulebook(row):
     return None
 
 
+DOMAIN_LADDER = (10**4, 10**5, 10**6, 10**7)   # widened only when the row-sized domain refuses
+
+
+class _Timeout(Exception): pass
+
+
+def _alarm(signum, frame): raise _Timeout()
+
+
+def solve_walled(prob, budget=5000, wall=30, seed=0):
+    """solve_symbolic under a wall clock; returns the result dict or {"status": "timeout"}"""
+    import signal
+    old = signal.signal(signal.SIGALRM, _alarm); signal.setitimer(signal.ITIMER_REAL, wall)
+    try:
+        return solve_symbolic(prob, budget=budget, seed=seed)
+    except _Timeout:
+        return {"status": "timeout"}
+    finally:
+        signal.setitimer(signal.ITIMER_REAL, 0); signal.signal(signal.SIGALRM, old)
+
+
+def solve_ladder(build, m0, budget=5000, wall=30):
+    """THE DOMAIN LADDER (2026-09-16): solve at the row-sized domain m0 first; a row the solver
+    cannot SOLVE there (unsat / budget / timeout) is retried one rung wider, up to 10^7 — percent
+    chains multiply a given by 100 before dividing, products of two givens exceed 2x either, and
+    an integer domain that omits the intermediate is UNSAT, not wrong. Only a status of "solved"
+    carries an assignment (an unsat result carries a best_partial full of INT_MIN — the gate
+    once read that as a query value). Returns (result, m) of the first solve, or the last refusal."""
+    res = {"status": "?"}; m = m0
+    for m in [m0] + [x for x in DOMAIN_LADDER if x > m0]:
+        try:
+            prob = build(m)
+        except Exception as e:
+            return {"status": f"unbuildable:{type(e).__name__}"}, m
+        res = solve_walled(prob, budget=budget, wall=wall)
+        if res.get("status") == "solved": return res, m
+    return res, m
+
+
 def solver_verdict(row, key, budget=5000):
     """THE CERTIFIER: the June core solves the annotated graph completely (macros
     expanded first; the key grades in primitives); the row certifies only if the
     search finds an assignment whose query value IS the key. Budget exhaustion
     refuses (it cannot certify). Returns (True | False, detail)."""
     from alternator_bridge import problem_from_algebra3
-    from mycelium.csp_core import solve_symbolic
     from mycelium.macros import expand_graph
     fs, nv = expand_graph(list(row["factors"]), row["n_vars"])
-    # the domain follows the row: 2x its largest given and 2x the key, floor 300, cap VALUE_CAP + 1 — GAC
-    # over a 10,000-wide domain made the tranche-2 gate crawl (the wheel's WHEEL_M_MAX lesson, again)
+    if key > VALUE_CAP: return False, f"key_{key}_above_cap_{VALUE_CAP}"
     gmax = max([f.get("value", 0) for f in fs if f["ftype"] == "given"] + [1])
-    m = int(row.get("m") or min(VALUE_CAP + 1, max(300, 2 * gmax, 2 * key)))
-    if key > m: return False, f"key_{key}_above_m_{m}"
+    m0 = int(row.get("m") or min(VALUE_CAP + 1, max(300, 2 * gmax, 2 * key)))
     gv = {f["var"]: f["value"] for f in fs if f["ftype"] == "given"}
-    try:
-        prob = problem_from_algebra3(nv, fs, gv, m)
-    except Exception as e:
-        return False, f"unbuildable:{type(e).__name__}"
-    res = solve_symbolic(prob, budget=budget, seed=0)
-    asg = res.get("assignment")
-    if asg is None: return False, f"unsat_or_budget:{res.get('status', '?')}"
-    return int(asg[row["query_var"]]) == int(key), f"query_val={asg[row['query_var']]}"
+    res, m = solve_ladder(lambda m: problem_from_algebra3(nv, fs, gv, m), m0, budget=budget)
+    if res.get("status") != "solved": return False, f"unsolved:{res.get('status', '?')}@m={m}"
+    asg = res["assignment"]
+    return int(asg[row["query_var"]]) == int(key), f"query_val={asg[row['query_var']]}@m={m}"
 
 
 def admit(rows, version="sonnet_v1", refused_out=None):

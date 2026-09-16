@@ -12,7 +12,8 @@ are silver-of-silver and count as REPS PER UNIQUE under the dose law.
 usage: resample_silver.py in.jsonl out.jsonl K [seed]"""
 import json, re, sys, random
 sys.path.insert(0, "."); sys.path.insert(0, "scripts")
-from admit_annotation import VALUE_CAP
+import signal
+from admit_annotation import VALUE_CAP, solve_ladder, _Timeout, _alarm
 from mycelium.csp_domains import problem_from_algebra3
 from mycelium.csp_core import solve_symbolic
 from mycelium.macros import expand_graph
@@ -20,33 +21,33 @@ from mycelium.doors import certify_unique
 
 def build(factors, n_vars, m=None):
     fs, nv = expand_graph([dict(f) for f in factors], n_vars); gv = {f["var"]: f["value"] for f in fs if f["ftype"] == "given"}
-    # the domain follows the row (2x its largest given, floor 300, cap 9999+1): GAC over a 10,000-wide
-    # domain is what stalled the first run — the wheel's own lesson (WHEEL_M_MAX)
+    # the row-sized domain first (2x its largest given, floor 300); the ladder in solve_certified widens it
     if m is None: m = min(VALUE_CAP + 1, max(300, 2 * max([f["value"] for f in fs if f["ftype"] == "given"] + [1])))
     return problem_from_algebra3(nv, fs, gv, m)
 
 
-class _Timeout(Exception): pass
-
-
-def _alarm(signum, frame): raise _Timeout()
-
 def solve_certified(factors, n_vars, query_var, budget=5000, wall=30):
-    """the solve + the uniqueness certificate under a wall clock: a copy that does not certify in
-    `wall` seconds is dropped (conservative — never a copy without a certificate)"""
-    import signal
-    old = signal.signal(signal.SIGALRM, _alarm); signal.setitimer(signal.ITIMER_REAL, wall)
+    """the solve + the uniqueness certificate under a wall clock per rung of the domain ladder
+    (admit_annotation.solve_ladder): a copy that does not SOLVE and certify is dropped
+    (conservative — never a copy without a certificate)"""
+    r, m = solve_ladder(lambda m: build(factors, n_vars, m), build_m0(factors, n_vars), budget=budget, wall=wall)
+    if r.get("status") != "solved": return None
+    asg = [int(x) for x in r["assignment"][:n_vars]]
+    if any(not (0 <= v <= VALUE_CAP) for v in asg): return None
     try:
-        r = solve_symbolic(build(factors, n_vars), budget=budget, seed=0)
-        if r.get("assignment") is None: return None
-        asg = [int(x) for x in r["assignment"][:n_vars]]
-        if any(not (0 <= v <= VALUE_CAP) for v in asg): return None
-        if not certify_unique(build(factors, n_vars), query_var, asg[query_var], budget): return None
-        return asg
+        old = signal.signal(signal.SIGALRM, _alarm); signal.setitimer(signal.ITIMER_REAL, wall)
+        try:
+            if not certify_unique(build(factors, n_vars, m), query_var, asg[query_var], budget): return None
+        finally:
+            signal.setitimer(signal.ITIMER_REAL, 0); signal.signal(signal.SIGALRM, old)
     except _Timeout:
         return None
-    finally:
-        signal.setitimer(signal.ITIMER_REAL, 0); signal.signal(signal.SIGALRM, old)
+    return asg
+
+
+def build_m0(factors, n_vars):
+    fs, nv = expand_graph([dict(f) for f in factors], n_vars)
+    return min(VALUE_CAP + 1, max(300, 2 * max([f["value"] for f in fs if f["ftype"] == "given"] + [1])))
 
 def rewrite(text, subs):
     """subs: {old_digit_string: new_digit_string}; every word-bounded occurrence; returns (new_text, shift)"""
