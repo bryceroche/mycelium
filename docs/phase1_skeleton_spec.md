@@ -39671,3 +39671,17 @@ step or cosine is a clock measurement unless the clock is projected
 out. Standing: the shape of the path (creep/march/leap) does not
 predict the read (four shapes, one score) — the geometry of the
 motion is not where wild's 0.25 lives; the binding is.
+
+**2026-09-16 — THE BREATH-1 SEVER READ: THE INVISIBLE WRITE IS KEPT
+(the sever road CLOSED).** ds242, the null-content share of breath 1's
+step (median) 0.677 wild / 0.698 mint — two thirds of breath 1 lands
+in the read-out's null space, as the visibility read said. Removing
+that invisible component at read time (`scripts/breath1_sever_read.py`,
+`H._IMP=(2, kick)`), paired per slot: wild 0.2530 -> 0.2448 (diff
+-0.0083; gained 34 / lost 51; McNemar z -1.84); mint 0.9815 -> 0.9768
+(diff -0.0046; gained 6 / lost 23; McNemar z -3.16). The write the
+read-out cannot see at breath 1 is READ LATER: it is the seed the
+middle breaths creep from (mint significant; wild the same sign at
+1.8 z). "Breath 1 wastes a step in the null space" is retired with
+its siblings; the breath-1 sever road (registered 09-15, "if the read
+says waste") is CLOSED unfired. Logs `.cache/b1sever_ds242_{wild,mint}.log`.
