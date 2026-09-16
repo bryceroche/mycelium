@@ -4876,6 +4876,11 @@ def do_train(steps, lr, batch, seed):
                                 .cast(p["W_dargs"].dtype)).realize()
             print("[warm] W_dargs seeded from trained W_args (door #12)", flush=True)
     _frz = [k_ for k_ in (("h_dup", "h_dup_b") if int(os.environ.get("ALG_FREEZE_DUP", "0")) else ())]
+    # ALG_FREEZE=a,b,... (2026-09-16): named params held constitutional — the router's r_gain in the
+    # silver arm (a fixed gain makes the span-supervised bias a ROAD, not an invitation the residual votes down)
+    for _fk in [x for x in os.environ.get("ALG_FREEZE", "").split(",") if x]:
+        assert _fk in p, f"ALG_FREEZE names an absent param: {_fk}"
+        if _fk not in _frz: _frz.append(_fk)
     if os.environ.get("ALG_TRAIN_ONLY"):
         # the frozen-parse wake (2026-08-25): train ONLY the named params;
         # everything else frozen — drift eliminated by construction, new
