@@ -39491,7 +39491,7 @@ books' range: a few reps regularize, hundreds poison). Smoke on 5
 parents at K=2: 3 resamplable, 6 certified copies. THE SECOND PASS
 fired (16 Sonnet-terse batches over the 157 refused rows under
 protocol v2).
-THE SECOND PASS COMPLETE (2026-09-16 ~09:30; 16 Sonnet-terse batches over
+THE SECOND PASS COMPLETE (2026-09-16 ~08:30; 16 Sonnet-terse batches over
 the 157 first-pass refusals under protocol v2; one API timeout
 relaunched): 123 annotated, 34 refused by the annotator (comparisons /
 max, unnamed unit facts, non-integer intermediates — the dialect's real
