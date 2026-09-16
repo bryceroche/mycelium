@@ -2902,7 +2902,10 @@ def breath_step(p, state, kb, ctx):
             _cq7 = cur
         _rb7 = ((_cq7 @ p["W_ra"])
                 @ (waist @ p["W_rb"]).transpose(-2, -1)) / 8.0
-        _rb_last = _rb7
+        # THE ROUTER MEETS THE SCRATCH ROWS (2026-09-16): the bias rides all L_TOT bank rows in
+        # the attention; the EMISSION graded against fspan is the factor rows only (the FED
+        # convention: emission, grading and gold live on the first L_FAC rows)
+        _rb_last = _fed_core(_rb7)
         if _CENSUS is not None:
             _CENSUS.append((kb, "router(bank)",
                             (_rb7 * p["r_gain"].reshape(1, 1, 1))

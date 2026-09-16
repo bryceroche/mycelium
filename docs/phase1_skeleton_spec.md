@@ -39503,3 +39503,16 @@ the 300-row tranche; deduplicated by text). The loosened rulebook
 recovered 112 of 157 refusals: the books' 300 cap and single division
 were refusing the dialect's own range. Cost of the second pass: ~1.8M
 Sonnet tokens. Audit for Bryce: 14 + 11 rows.
+THE ROUTER GATED FOR THE SILVER ARM (2026-09-16 ~09:10): ALG_FREEZE=a,b
+(named params held constitutional; inert unset) + the router's emission
+graded on the FACTOR rows only (_fed_core: the router predates the FED
+scratch rows — its bias rides all L_TOT bank rows in the attention, the
+emission vs fspan is L_FAC rows; the first two patches padded the wrong
+side and are gone). Fixture gate: unset 5.2995 (bit-identical); ALG_ROUTER=1
+R_GAIN_INIT=1.0 ALG_FREEZE=r_gain runs (5.79 -> 0.49 over 2 steps; 1
+param frozen). The silver chain (.cache/silver_chain.sh) is staged:
+the diet builder (dose printed), the form12s precompute, SR242 (the
+router road) vs SD242 (the data alone) vs balV242, paired reads. HOLDS
+FOR: Bryce's audit of the 25 sample rows, the dose declaration, the
+word. The resampler over the merged 251 stories runs as pc-resample
+(the first run over 139 was killed by my own 50-minute timeout).
