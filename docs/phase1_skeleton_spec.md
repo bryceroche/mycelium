@@ -39491,3 +39491,15 @@ books' range: a few reps regularize, hundreds poison). Smoke on 5
 parents at K=2: 3 resamplable, 6 certified copies. THE SECOND PASS
 fired (16 Sonnet-terse batches over the 157 refused rows under
 protocol v2).
+THE SECOND PASS COMPLETE (2026-09-16 ~09:30; 16 Sonnet-terse batches over
+the 157 first-pass refusals under protocol v2; one API timeout
+relaunched): 123 annotated, 34 refused by the annotator (comparisons /
+max, unnamed unit facts, non-integer intermediates — the dialect's real
+limits); THE GATE admitted 112 of 123 (91%; refusals: 8 graphs that do
+not determine the key, 2 over the fdiv cap, 1 value 22,000).
+.cache/silver_sonnet_v1p2.jsonl (112) + the audit sample (11). MERGED:
+.cache/silver_sonnet_v1_all.jsonl = 251 UNIQUE SILVER STORIES (84% of
+the 300-row tranche; deduplicated by text). The loosened rulebook
+recovered 112 of 157 refusals: the books' 300 cap and single division
+were refusing the dialect's own range. Cost of the second pass: ~1.8M
+Sonnet tokens. Audit for Bryce: 14 + 11 rows.
