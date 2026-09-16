@@ -618,10 +618,11 @@ class StepWalker:
             _tl0 = time.time(); onps = []
             for k in range(1, self.K_B - 1):
                 dec = self.dec_fns[k](); onp = {kk: t.numpy() for kk, t in zip(self.dec_keys, dec)}; onps.append(onp)
+            _tl1 = time.time()
             outs = wheel_bias_multi(H, onps, self.fat_np, se_np, nv, ma, self.wheel_beta, self.wheel_mode, self.workers, self.LT)
             for k, (bias, turned, melt) in zip(range(1, self.K_B - 1), outs):
                 self.put(self.wheel_bank[k - 1], bias); self.put(self.melt_bank[k - 1], melt); self.turned.append(turned)
-            if _WHEEL_TIME: print(f"[wheel-late] {self.K_B - 2} breaths, one pool call: {time.time() - _tl0:.2f}s", flush=True)
+            if _WHEEL_TIME: print(f"[wheel-late] {self.K_B - 2} breaths: decode pulls {_tl1 - _tl0:.2f}s, one pool call + puts {time.time() - _tl1:.2f}s", flush=True)
         return rates
 
     def walk_backward(self):
