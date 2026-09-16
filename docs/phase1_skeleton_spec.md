@@ -39285,3 +39285,21 @@ breaths' memo misses in ONE pool call per step, the cap paid once
 (~1 s): expected ~4 s -> ~1.5 s per step for the silent wheel. CW242
 runs on the per-breath-pool late path (already started; the identity
 gate covers it: same banks).
+THE PARITY — WORD GIVEN IF WARRANTED (2026-09-15 18:20). THE NL
+CERTIFICATE FOR TRAINING: scripts/locus_precompute.py — the fingerpost's
+per-slot instability over the diet's 13,475 pen rows, ONE frozen teacher
+(ds242), 4 views, unstable = absent in >= 2 (queued overnight as
+pc-after4, ~6 GPU-hours). THE DECLARATION (the diagnostic register, view
+instability = "loss-never"): the mask enters training as a per-slot
+LOSS WEIGHT from a FROZEN teacher — curricular; no gradient reaches the
+meter; the trained model cannot game a fixed weight. Recorded as a
+declared use; if Bryce rules it a fence violation the arm is struck.
+THE TRAINER: ST_LOCUS=<npz> — odd breaths weight 1 + lambda * locus (a
+per-row constant), even breaths 1 + lambda * the wheel's core from
+breath k-1 (CW's path); inert without ST_LOCUS. THE ARM (staged, fired
+by hand tomorrow with CW242's numbers): CP242, the late wheel, lambda 2,
+3000 steps B=32 warm balV242; paired vs CL242 and CW242; trajectory.
+"Warranted" = CW242 shows the mechanism (the repair rate on flagged
+slots above CL's) without a mint kill. ETA: CW242's verdict ~22:30,
+the visibility read ~23:00, the multi-pool gate ~23:10, the locus
+precompute ~05:00, the parity arm (if fired at ~08:00) ~11:00.

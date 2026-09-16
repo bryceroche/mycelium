@@ -252,6 +252,17 @@ class StepWalker:
         self.cert_lambda = float(os.environ.get("ST_CERT_LAMBDA", "0") or 0)
         # THE LATE WHEEL (2026-09-15): the silent wheel (beta 0, no melt) steers nothing in the
         # forward, so it runs once after it — one pull, one pool call, the banks before the backward
+        # THE PARITY (2026-09-15, word given if warranted): ST_LOCUS=<npz from locus_precompute.py> —
+        # odd breaths weight the NL certificate (the frozen teacher's per-slot view instability, a
+        # per-row constant), even breaths the math certificate (the wheel's core from breath k-1).
+        # Declared per the diagnostic register: a loss WEIGHT from a frozen teacher, no gradient
+        # reaches the meter. Without ST_LOCUS every breath takes the math certificate (CW's path).
+        self.batch_rows = None
+        self.locus_path = os.environ.get("ST_LOCUS", "")
+        self.locus = None; self.locus_bank = None
+        if self.locus_path:
+            _z = np.load(self.locus_path); self.locus = {int(r): _z["unstable"][i] for i, r in enumerate(_z["rows"])}
+            self.locus_bank = fix((B, H.L_FAC))
         self.wheel_late = bool(_envi("ST_WHEEL_LATE"))
         assert not (self.wheel_late and (self.wheel_beta != 0.0 or H._WHEEL_MELT is not None)), "ST_WHEEL_LATE needs a silent wheel (ST_WHEEL_BETA=0, no ALG_WHEEL_MELT)"
         assert not (self.cert_lambda > 0 and not self.wheel), "ST_CERT_LAMBDA needs ST_WHEEL=1 (the certificate is the wheel's core)"
@@ -449,7 +460,11 @@ class StepWalker:
         return self.H._clock_fog(k, 0.0) if getattr(self.H, "_CLOCK_TARGET", None) else 0.0
 
     def _sw(self, k):
-        if self.cert_lambda > 0 and k >= 2:
+        if self.cert_lambda <= 0:
+            return None
+        if self.locus_bank is not None and k % 2 == 1:      # THE PARITY: odd breaths = the NL certificate
+            return 1.0 + self.cert_lambda * self.locus_bank
+        if k >= 2:                                           # even breaths (and every breath without ST_LOCUS) = the math certificate
             return 1.0 + self.cert_lambda * self.melt_bank[k - 2][:, :self.H.L_FAC]
         return None
 
@@ -555,6 +570,8 @@ class StepWalker:
         stubs. Returns (facts-per-seam counts, the seam fact bufs are
         left in b_facts for the reverse walk)."""
         H = self.H
+        if self.locus_bank is not None:   # THE PARITY: this batch's NL certificate (rows without one -> zeros)
+            self.put(self.locus_bank, np.stack([self.locus.get(int(r), np.zeros(self.H.L_FAC, np.float32)) for r in self.batch_rows]).astype(np.float32))
         self.put(self.b_facts[0], fact0)
         r = self.s0_fn()
         self.waist_bank.assign(r[0])
@@ -1031,6 +1048,7 @@ def run_train():
                 1 + math.cos(math.pi * s / steps))
             w.put(opt.lr, np.array([cur_lr], np.float32))
             idx = rng.choice(n, B, replace=False)         # flat mix, always
+            w.batch_rows = idx                               # THE PARITY: the NL certificate is looked up per row
             w.load_batch(states, tokmask, sent, MASKS[idx], idx,
                          feed=gold_feed(gold, idx))
             if _envi("ALG_SHELF_CIRCLE") >= 2 and not os.environ.get("SC_EVAL"):
