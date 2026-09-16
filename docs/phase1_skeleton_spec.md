@@ -39516,3 +39516,13 @@ router road) vs SD242 (the data alone) vs balV242, paired reads. HOLDS
 FOR: Bryce's audit of the 25 sample rows, the dose declaration, the
 word. The resampler over the merged 251 stories runs as pc-resample
 (the first run over 139 was killed by my own 50-minute timeout).
+TRANCHE 2 OF THE QUEUE — WORD GIVEN FOR MY CHOICE (2026-09-16 ~09:20):
+the next 300 in-reach rows (integers <= 9999, >= 2 numerals) in the
+ranked pool order after the first tranche (260 wild_gsm8k / 38 wild_r7
+/ 2 ladder9+ by the slot chart), one pass under protocol v2, Sonnet
+terse (the second pass showed v2 admits ~85-90% of annotations, so one
+pass per tranche from here); 30 batches (~3M tokens); the fingerpost's
+views skipped for annotation order (they only re-sort). Expected ~250
+more stories -> ~500 unique structures, the range where the books
+scaled. .cache/annotation_packet_tranche2.json; the collector takes
+PACKET=<packet> for the join.
