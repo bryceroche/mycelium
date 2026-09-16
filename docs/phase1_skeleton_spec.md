@@ -39374,3 +39374,16 @@ under the clock target: eqfwd PASS, eqbwd PASS (to files this time).
 The Hilbert relay's one useful claim, the projection theorem as a
 meter, delivered the day's cleanest reframing: the wander was the
 clock.
+THE ROW-CAP EXPERIMENT (2026-09-15 19:00 -> 06:15 stopped): the alarm-
+free run (B: the decision budget + arity cap + M_MAX only) did NOT
+finish in 11 hours on 300 fixture rows with 4 workers — some rows run
+for hours without the wall clock, as the 2026-09-11 note said. So the
+alarm cannot simply go; a deterministic cap must bound the PROPAGATION
+(rounds x arity) as well as the search, tighter than today's, and be
+re-clinic'd for which refusals it keeps. Its A-runs' non-determinism
+count is lost (journald unreadable under load; three stuck journalctl
+readers at 100% CPU killed at 06:20). The experiment also starved the
+overnight locus precompute (load 22): 6408 / 13,475 rows at 06:15 after
+8 h; the remainder at the uncontended rate ~ 11:00. RULE: no CPU
+experiment beside a GPU read that decodes on the CPU (the wheel's
+decode + the tokenizer + the view recompute are CPU-bound too).
