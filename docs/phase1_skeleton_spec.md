@@ -39636,3 +39636,38 @@ ladder in `solve_certified`) runs over all 475 as pc-resample3 ->
 `.cache/silver_sonnet_v1_all_x3.jsonl`; the dose declaration and the
 silver chain (SR242 / SB242 / SD242 vs balV242) hold for Bryce's audit
 and the word.
+
+**2026-09-16 — THE TRAJECTORY RE-READ IN CONTENT TERMS (PV_CONTENT=1;
+the projection theorem as a meter, applied): CREEP THEN LEAP, NOT
+STALL THEN LEAP.** Wild holdout, n=311, the four arms' content-only
+paths (`.cache/trajc_<arm>_wild.log`; the full-state reads
+`.cache/traj_<arm>_wild.log` beside them):
+
+| arm | mid-breath steps b2..b5 | cos b2>3 .. b5>6 | prog by b5 (full-state) | b6 step |
+| ds242 (the blur) | 0.26 0.20 0.34 0.38 | +0.42 +0.52 +0.90 +0.57 | 0.375 (0.307) | 0.879 = the leap |
+| balV242 (no fog) | 0.43 0.26 0.31 0.28 | +0.08 +0.80 +0.49 +0.57 | 0.843 (0.495) | 0.150 — none |
+| cl242 (level ladder) | 0.43 0.39 0.39 0.35 | +0.67 +0.76 +0.83 +0.62 | 0.648 (0.456) | 0.421 |
+| CL242 (cert-weighted) | 0.36 0.35 0.39 0.34 | +0.61 +0.82 +0.84 +0.67 | 0.690 (0.548) | 0.332 |
+
+(1) THE MIDDLE MARCHES on every arm: every mid-path cosine is positive
+and most are > 0.5; the full-state cosines near zero (ds242 -0.10 /
+0.00 / +0.07) were the clock planes rotating (the visibility read).
+"The middle wanders / stalls" is RETIRED in both its forms; what the
+blur produces is CREEP (small coherent steps, 0.375 of the path by b5)
+THEN LEAP (b6 carries 62% of the path). (2) balV242 without fog is a
+CONVERGING march: 84% of the path by b5, steps shrinking to 0.15 at
+b6 — no leap at all. (3) The level ladders even the steps out
+(0.33-0.43 across all six breaths, the leap gone) — the calibrated
+target does what it was drawn to do, on the content path, and still
+buys nothing on the read (CL242 wild 0.2535). (4) Breath 1 is the
+large step that is NOT progress: 1.0 of motion for 0.02-0.08 of the
+path on the fogged arms (cos b1>2 ~0.1) — the null-space write, now
+seen as a content write that the path does not keep; balV242 keeps
+more of it (prog 0.18, cos 0.70). (5) The full-state read UNDERCOUNTED
+mid-path progress on every arm (balV242 0.50 -> 0.84): the clock's
+rotation inflated the path length in the denominator. Rule: trajectory
+reads on this family are CONTENT reads (PV_CONTENT=1); a full-state
+step or cosine is a clock measurement unless the clock is projected
+out. Standing: the shape of the path (creep/march/leap) does not
+predict the read (four shapes, one score) — the geometry of the
+motion is not where wild's 0.25 lives; the binding is.
