@@ -39573,3 +39573,34 @@ in-reach are the rows Sonnet's graphs get wrong more often — a
 dialect-reach reading, not noise (61 rows). The gate now writes every
 refused row with its full reason (`.cache/silver_<version>_refused.jsonl`;
 audit-before-diet) — the 61 solver refusals are autopsied below.
+
+**2026-09-16 — THE AUTOPSY: 53 OF THE 61 REFUSALS WERE THE GATE'S OWN
+(THE DOMAIN LADDER).** The refused-rows file showed 56 of the 61 solver
+refusals returning the same query value, -2147483648 = INT_MIN. Two
+defects, both in the certifier, neither in Sonnet's graphs: (1) the
+solver returns status `unsat` WITH a best_partial (unassigned cells
+INT_MIN) and the gate read the partial as an assignment without
+checking the status; (2) this morning's row-sized domain (2x the
+largest given) omits the intermediates of percent chains (450 x 8 =
+3600 before /100; the Bobby row: key 184, domain 900) and of products
+of two givens — an integer domain that omits an intermediate is UNSAT,
+not a wrong graph. Tranche 1 was gated under the fixed 10,000 domain
+and never met defect (2) at scale; tranche 2 met it 56 times. Measured:
+a SOLVED row costs 0.03 s at m=10^4 and 0.2 s at m=10^5 — width is
+cheap where the search succeeds; the crawl belonged to unsat rows'
+backtracking. THE FIX (`admit_annotation.solve_ladder`, shared by the
+resampler): solve at the row-sized domain; any non-solved status
+(unsat / budget / timeout, 30 s wall per rung) widens one rung, 10^4 ..
+10^7; only `status == "solved"` carries an assignment. Re-verdict of
+the 56 under the ladder: 53 ADMIT (44 at 10^4, 11 at 10^5; the slow
+rows ~30-39 s = the 10^4 rung's unsat backtracking before widening),
+2 honest disagreements (solved query != key), 1 key = 10,000 (above
+the 9999 cap). The narrow-domain resampler pass over tranche 1
+(251 parents, 182 resamplable, 511 certified copies, 35 dropped) is
+kept aside as `.cache/silver_sonnet_v1_all_x3.narrowdomain511.jsonl`
+and re-run under the ladder over the rebuilt split (pc-resample3).
+Tranche 2 is re-gated under the ladder; tranche 1's two passes are
+re-gated under scratch names to recover any refusal of the same kind;
+counts follow. Rule: a refusal count that moves with the gate's own
+settings is the gate's, not the data's — read the refused file before
+any admission rate is quoted.
