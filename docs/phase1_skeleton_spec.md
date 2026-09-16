@@ -39604,3 +39604,21 @@ re-gated under scratch names to recover any refusal of the same kind;
 counts follow. Rule: a refusal count that moves with the gate's own
 settings is the gate's, not the data's — read the refused file before
 any admission rate is quoted.
+
+**2026-09-16 — THE LADDER'S TOP RUNGS OOM-KILLED THE LOCUS PRECOMPUTE;
+CAPPED AT 10^5.** The first regate chain's tranche-1 collector reached
+13 GB RSS on a row that climbed to the 10^6 / 10^7 rungs (the June core
+builds the domain per variable; 10^7 x n_vars is gigabytes) and the OOM
+killer took the neighbour: pc-orch2's locus precompute at 12,808 /
+13,475 rows (18.5 h; `locus_precompute.py` writes its npz only at the
+end — no partial). The ladder is capped at 10^5 (`DOMAIN_LADDER`);
+no tranche-2 row needed more (the 53 rescues: 44 at 10^4, 11 at 10^5);
+a row that does not solve at 10^5 is refused as `unsolved@m=100000`.
+The locus npz served THE PARITY ARM (ST_LOCUS), which CW242's null did
+not warrant — the relaunch is REGISTERED, needing the word, not fired
+(18 h of CPU for a parked arm). Tranche 2 under the ladder: ADMITTED
+219 / 237 (92%; 166 + the 53). pc-after5 (the content-only trajectories,
+the breath-1 sever, the cap experiment) started on pc-orch2's exit and
+does not depend on the locus npz. Rule: gate collectors run ALONE or
+with a memory bound — a solver domain is a memory allocation, not a
+number.
