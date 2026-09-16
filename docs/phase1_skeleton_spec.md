@@ -39477,3 +39477,17 @@ truncation, not the graph). .cache/silver_sonnet_v1.jsonl = 139 rows;
 the audit sample = 14 rows (.cache/silver_sonnet_v1_audit.jsonl).
 Yield of the first pass: 139 / 300 = 46% of the tranche; the 157
 annotator refusals are the second pass's material.
+THE RESAMPLER — WORD GIVEN, BUILT (2026-09-16; scripts/resample_silver.py):
+silver x K — the story kept word for word (every span / mention re-
+offset; audit 0 mismatches), the resamplable givens (a value that
+appears as a digit numeral in its own span and is unique in the row;
+hidden constants stay) take new values in [v/3, 3v] capped at 9999,
+every occurrence of the numeral rewritten so the story stays
+consistent, the answer recomputed by the June solver and each copy
+CERTIFIED UNIQUE (doors.certify_unique, budget 5000) with every value an
+integer <= the cap. Copies are stamped gen.resample = {parent, k, key:
+"solver"}: silver-of-silver, REPS PER UNIQUE under the dose law (the
+books' range: a few reps regularize, hundreds poison). Smoke on 5
+parents at K=2: 3 resamplable, 6 certified copies. THE SECOND PASS
+fired (16 Sonnet-terse batches over the 157 refused rows under
+protocol v2).
