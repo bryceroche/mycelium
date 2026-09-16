@@ -39303,3 +39303,21 @@ by hand tomorrow with CW242's numbers): CP242, the late wheel, lambda 2,
 slots above CL's) without a mint kill. ETA: CW242's verdict ~22:30,
 the visibility read ~23:00, the multi-pool gate ~23:10, the locus
 precompute ~05:00, the parity arm (if fired at ~08:00) ~11:00.
+THE MULTI-POOL GATE (2026-09-15 18:40): losses identical for 3 steps
+(63.8736 / 50.6309 / 44.1705) and DIFFERENT at step 3 (38.6461 vs
+38.6563); timers 1.26 s / 1.82 s per step for the whole wheel (from
+3.0-5.5 s). THE FINDING is not about the multi call: the wheel's row
+cap is WALL-CLOCK (WHEEL_ROW_TIMEOUT=1 s) — a row that times out in one
+run may finish in another when the pool's contention differs (one call
+with 5 breaths' rows vs 5 calls), so the certificate banks are TIMING-
+DEPENDENT. The per-breath path is non-deterministic across runs in the
+same way; the earlier 4-step identity was the cap not biting. So
+"bit-identical" cannot be proved for any wheel path with a wall-clock
+cap, and the orchestrator's revert was a no-op (the committed trainer
+already carried the multi call): CW242 RUNS ON THE MULTI-POOL LATE
+WHEEL. Attribution vs CL242 holds — the certificate is the same
+mechanism; its exact membership per step varies with timing in every
+mode. REGISTERED: a DETERMINISTIC row cap — the solver's own decision
+budget + the arity cap instead of the alarm — makes the wheel
+reproducible and the perf gate provable; needs the clinic's numbers
+(which refusals the 1 s cap kept) re-read in budget units.
