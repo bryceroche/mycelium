@@ -39685,3 +39685,25 @@ middle breaths creep from (mint significant; wild the same sign at
 1.8 z). "Breath 1 wastes a step in the null space" is retired with
 its siblings; the breath-1 sever road (registered 09-15, "if the read
 says waste") is CLOSED unfired. Logs `.cache/b1sever_ds242_{wild,mint}.log`.
+
+**2026-09-16 — WORD GIVEN FOR THE WHOLE QUEUE (Bryce: "everything
+approved and word given for the entire queue as you see fit").**
+(1) THE AUDIT: waived by the word — the 42 audit rows
+(`silver_sonnet_v1_audit`, `_v1p2_audit`, `_v1t2_audit`) stay on file
+for a later human read; no silver row is gold, all carry gen.silver.
+(2) THE DOSE: form_mix12 + (475 stories + their K=3 copies) x dup 2;
+share-of-mix ~3.5% at the expected ~1,400 copies (the books' band:
+prose at 2.9% regularized, pure prose poisoned), reps-per-unique story
+per epoch = (1 + copies) x 2 <= 8; the builder prints both. (3) THE
+SILVER CHAIN fires via `pc-silver` (`.cache/silver_launch.sh` waits
+for pc-resample3 to EXIT WITH SUCCESS — a partial copies file would
+pass the chain's existence check — and for pc-after5's cap experiment
+to free the GPU; then `.cache/silver_chain.sh`, logging to
+`.cache/silver_chain.log`): form12s precompute (~1.5 h), then SR242
+(the router mention road), SB242 (the write-back), SD242 (data alone),
+12k steps B=8 warm from balV242, each read open wild/mint per slot +
+content-only trajectory; paired SR/SB vs SD (the road), SD vs balV242
+(the data). Bars as pinned 09-16: wild >= +0.020 paired vs SD (z >= 2)
+to credit a road; mint within 0.005; KILL mint <= -0.010. (4) NOT
+fired, as I see fit: the locus precompute relaunch (18 h for the
+parity arm CW242 did not warrant) — stays registered.
