@@ -39469,3 +39469,11 @@ bound (keys 375..5040 refused as "above m"), not the annotations; the
 collector now leaves m to the silver rulebook (VALUE_CAP + 1). The
 remaining genuine gate refusals: 8 rows whose graph does not determine
 the query (the solver's unassigned sentinel) and 2 keys above 9999.
+THE FIRST PASS, FINAL COUNT (2026-09-16 08:15): 139 of 143 annotations
+ADMITTED (97%) under the silver rulebook with the domain bound at
+VALUE_CAP + 1; 4 gate refusals (2 keys above 9999; 2 graphs that do not
+determine the query — 6 of the 8 "undetermined" rows were the m = 300
+truncation, not the graph). .cache/silver_sonnet_v1.jsonl = 139 rows;
+the audit sample = 14 rows (.cache/silver_sonnet_v1_audit.jsonl).
+Yield of the first pass: 139 / 300 = 46% of the tranche; the 157
+annotator refusals are the second pass's material.
