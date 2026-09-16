@@ -18,17 +18,35 @@ from mycelium.csp_core import solve_symbolic
 from mycelium.macros import expand_graph
 from mycelium.doors import certify_unique
 
-def build(factors, n_vars):
+def build(factors, n_vars, m=None):
     fs, nv = expand_graph([dict(f) for f in factors], n_vars); gv = {f["var"]: f["value"] for f in fs if f["ftype"] == "given"}
-    return problem_from_algebra3(nv, fs, gv, VALUE_CAP + 1)
+    # the domain follows the row (2x its largest given, floor 300, cap 9999+1): GAC over a 10,000-wide
+    # domain is what stalled the first run — the wheel's own lesson (WHEEL_M_MAX)
+    if m is None: m = min(VALUE_CAP + 1, max(300, 2 * max([f["value"] for f in fs if f["ftype"] == "given"] + [1])))
+    return problem_from_algebra3(nv, fs, gv, m)
 
-def solve_certified(factors, n_vars, query_var, budget=5000):
-    r = solve_symbolic(build(factors, n_vars), budget=budget, seed=0)
-    if r.get("assignment") is None: return None
-    asg = [int(x) for x in r["assignment"][:n_vars]]
-    if any(not (0 <= v <= VALUE_CAP) for v in asg): return None
-    if not certify_unique(build(factors, n_vars), query_var, asg[query_var], budget): return None
-    return asg
+
+class _Timeout(Exception): pass
+
+
+def _alarm(signum, frame): raise _Timeout()
+
+def solve_certified(factors, n_vars, query_var, budget=5000, wall=30):
+    """the solve + the uniqueness certificate under a wall clock: a copy that does not certify in
+    `wall` seconds is dropped (conservative — never a copy without a certificate)"""
+    import signal
+    old = signal.signal(signal.SIGALRM, _alarm); signal.setitimer(signal.ITIMER_REAL, wall)
+    try:
+        r = solve_symbolic(build(factors, n_vars), budget=budget, seed=0)
+        if r.get("assignment") is None: return None
+        asg = [int(x) for x in r["assignment"][:n_vars]]
+        if any(not (0 <= v <= VALUE_CAP) for v in asg): return None
+        if not certify_unique(build(factors, n_vars), query_var, asg[query_var], budget): return None
+        return asg
+    except _Timeout:
+        return None
+    finally:
+        signal.setitimer(signal.ITIMER_REAL, 0); signal.signal(signal.SIGALRM, old)
 
 def rewrite(text, subs):
     """subs: {old_digit_string: new_digit_string}; every word-bounded occurrence; returns (new_text, shift)"""
