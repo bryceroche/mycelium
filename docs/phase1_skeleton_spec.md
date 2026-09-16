@@ -39526,3 +39526,29 @@ views skipped for annotation order (they only re-sort). Expected ~250
 more stories -> ~500 unique structures, the range where the books
 scaled. .cache/annotation_packet_tranche2.json; the collector takes
 PACKET=<packet> for the join.
+THE WRITE-BACK — THE OTHER HALF OF THE BRIDGE (2026-09-16, word given;
+blog "The other half of the bridge", pinned first). Bryce's gut ("CNN
+and herring have something we don't") audited: locality was spent
+(the lexicon paid once as a symbol; T1 learned the identity; the slot
+mask weightless; slot-order recency a coin flip — 38% of prose pointers
+within 2 back, 33% forward; mint 50% forward); what the shoal has that
+the loop lacked is MUTUALITY: the bridge's arrows all pointed one way
+(slots read tokens seven times; the tokens never hear back; the only
+tokens<-slots traffic was a read-time mask). The June engine had both
+halves of BP; the phase-1 bridge had one. THE ROAD (ALG_WRITEBACK=g):
+after breath k's read, the same attention's transpose carries each
+slot's typed state (cur @ W_back, 0.26M params) back to the tokens it
+read; the message is scaled per token to g x ||token|| (a FIXED gain —
+not a parameter the residual can vote down); breath k+1's keys and
+values are built from the written-back tokens (no bypass); pads
+untouched; censused (writeback / writeback_state per breath). The
+walker refuses it (the step trainer does not thread it). Gate: unset
+5.2995 bit-identical; g = 0.5 first hit a non-finite loss (d sqrt(0)
+in the backward on pad tokens' zero message) — the epsilon moved inside
+the sqrt (the NaN-guard idiom). SB242 (g = 0.5) joins the silver chain
+beside SR242 (the router) and SD242 (the data alone); BARS as the
+silver arm's: paired vs SD242 wild >= +0.020 (z >= 2) to credit the
+road, mint within 0.005, KILL mint <= -0.010; the census reads the
+message's share of the token state. Prior: the road has no work on
+mint (the one-way bridge reads it at 0.98) — its work is on prose,
+beside the silver rows.

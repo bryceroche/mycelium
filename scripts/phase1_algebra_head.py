@@ -336,6 +336,13 @@ ALG_SHELF = int(os.environ.get("ALG_SHELF", "0"))
 # attention step per breath, interleaved before the slot step; the slot loop
 # reads the token loop's states every breath. Zero-init output: exact birth.
 ALG_TOKLOOP = int(os.environ.get("ALG_TOKLOOP", "0"))
+# THE WRITE-BACK — the other half of the bridge (2026-09-16, word given): after breath k's slots read the
+# tokens, the SAME attention's transpose carries each slot's typed state back to the tokens it read, so
+# breath k+1 re-reads a text that knows what was committed to it (the factor->variable half of BP; the
+# June engine had both halves, the phase-1 bridge had one). A ROAD: a fixed relative gain (ALG_WRITEBACK =
+# the message's norm as a fraction of the token's norm; not a parameter), the next breath's keys and
+# values built from the written-back tokens — no bypass. 0 = off (bit-identical).
+ALG_WRITEBACK = float(os.environ.get("ALG_WRITEBACK", "0") or 0)
 # THE BLURRED LADDER (2026-09-12, the word): ALG_BLUR=1 blurs rung k's gold
 # toward uniform by ALG_BLUR_MAX * cos^2(k*pi/(2(K-1))) — the denoising
 # schedule's target-side form (each breath graded on a job its level can do;
@@ -1862,6 +1869,9 @@ def build_params(seed=0):
             p[_nm + "_b"] = t(np.zeros(H_W))
         p["tok_wo"] = t(np.zeros((H_W, H_W), np.float32))     # the zero door: exact birth (censused)
         p["tok_wo_b"] = t(np.zeros(H_W))
+    if ALG_WRITEBACK:
+        _rW = np.random.RandomState(seed + 5150)
+        p["wb_w"] = t((_rW.randn(H_W, H_W) / math.sqrt(H_W)).astype(np.float32))   # slot state -> token message
     if ALG_SHELF:
         _rS = np.random.RandomState(seed + 7331)
         p["sh_q"] = t((_rS.randn(H_W, ALG_SHELF_D) * 0.01 / math.sqrt(H_W)).astype(np.float32))
@@ -2414,6 +2424,22 @@ def _token_step(p, tok, tokmask, sent, B, kb):
         _CENSUS.append((kb, "tokloop_state", (tok * _tm).realize().numpy()))
         _CENSUS.append((kb, "tokloop", (o * _tm).realize().numpy()))
     return tok + o
+
+
+def _writeback(p, tok, cur, fat_cur, tokmask, B, kb):
+    """THE WRITE-BACK: tokens <- slots through the transpose of this breath's slots<-tokens attention.
+    msg_t = sum_j A[j, t] * (cur_j @ W_back), scaled per token to ALG_WRITEBACK x ||tok_t||; pads untouched."""
+    T = int(tok.shape[1]); tm = tokmask.reshape(B, T, 1)
+    msg = fat_cur.transpose(-2, -1) @ (cur @ p["wb_w"])                       # (B, T, HW)
+    # the epsilon INSIDE the sqrt: pad tokens receive an exactly-zero message, and d sqrt(0) is inf
+    # in the backward (the NaN guard idiom; the fixture gate caught a non-finite loss without it)
+    mn = ((msg * msg).sum(-1, keepdim=True) + 1e-12).sqrt()
+    tn = ((tok * tok).sum(-1, keepdim=True) + 1e-12).sqrt()
+    msg = msg / mn * tn * ALG_WRITEBACK * tm
+    if _CENSUS is not None:      # the pre/post knob law: the message vs the token state, per breath
+        _CENSUS.append((kb, "writeback_state", (tok * tm).realize().numpy()))
+        _CENSUS.append((kb, "writeback", msg.realize().numpy()))
+    return tok + msg
 
 
 def _make_bank(p, waist, tokmask, B):
@@ -2984,6 +3010,7 @@ def breath_step(p, state, kb, ctx):
                           # at the weights' source (so fat_cur and the
                           # value read inherit it together).
                           tgate=_tgt, tgv=_tcv)
+    state["fat_cur"] = fat_cur          # THE WRITE-BACK reads this breath's attention (a reference; no op)
     if int(os.environ.get("ALG_MINE_BREATHS", "0")):
         # NL TAP (apply_nl_tap.py, 2026-09-05, the paired atlas):
         # read-only capture of this breath's READING — head-avg
@@ -3882,6 +3909,10 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
                     _bs_ctx["waist"] = _tok
                     _bs_ctx["bank"] = _make_bank(p, _tok, tokmask, B)
                 breath_step(p, _bs_state, kb, _bs_ctx)
+                if ALG_WRITEBACK and "wb_w" in p and kb < K_B - 1:   # THE WRITE-BACK: the text learns what was committed to it
+                    _tok = _writeback(p, _tok, _bs_state["cur"], _bs_state["fat_cur"], tokmask, B, kb)
+                    _bs_ctx["waist"] = _tok
+                    _bs_ctx["bank"] = _make_bank(p, _tok, tokmask, B)
                 if _WHEEL is not None and kb < K_B - 1:
                     _bs_state["wheel_bias"] = _wheel_turn(p, _bs_state, kb, fat, sent, vst, B)
             cur = _bs_state["cur"]
