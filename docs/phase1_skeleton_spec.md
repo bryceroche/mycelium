@@ -39840,3 +39840,46 @@ chain re-runs on canonical gold (parents AND copies; the copies inherit
 the parent's numbering). Rule: SILVER ENTERS IN THE MACHINE'S
 CONVENTION — the gate canonicalizes before admission; an annotation
 protocol that is valid for the solver is not yet valid for the slots.
+
+**2026-09-17 — THE POSITIONAL LAW (the fit read's root cause, found by
+inspection).** The first-mention renumbering did NOT move the read
+(balV242 0.0326 either way; SD242 0.069 -> 0.051 — it had partly
+learned the foreign numbering); the pen-order fixture neither (0.036).
+The parse dump (`parse_dump.py`, 3 silver + 3 holdout rows) showed
+the machine's scheme directly, and the census confirmed it: on the pen
+dialect EVERY FACTOR INTRODUCES EXACTLY ONE NEW VARIABLE AND ITS INDEX
+IS THE FACTOR'S SLOT (13,475 diet pen rows 1.000; the holdout 0.997) —
+a given at slot k is variable k; a relation at slot k introduces
+variable k, its result or its one unknown argument ("40 = partner +
+10" is add(1,2)->0 at slot 2). Mint obeys a DIFFERENT law (variables
+by first mention, 1.00; slot == variable 0.000 in either order): the
+machine carries two conventions keyed by register, and reads prose in
+the positional one. The gold builder's span sort (mint's convention,
+applied to any fully-spanned row) broke the positional law on EVERY
+silver row — in the training gold of the chain (all three arms) and
+in every fixture read; my two hand re-orderings broke it too. THE
+READS with the law intact (Sonnet's own order, which obeys it on 76%
+of rows; spans stripped so the builder keeps the order; `silver473o`):
+balV242 0.0326 -> 0.0704 (res 0.53 -> 0.69, args 0.06 -> 0.13, ftype
+0.52 -> 0.66); SD242 0.0753. Still below the holdout's 0.25: Sonnet
+lists the givens first (law-abiding but not the READING order the
+machine emits, where a relation follows its sentence's givens — every
+interleaved relation shifts all later slots by one; digits 0.16 for
+that reason). THE FIX: `scripts/canonical_positional.py` — greedy in
+reading order (a given ready at its numeral, a relation when its
+statement ends), each step the earliest factor introducing exactly one
+unseen variable; renumber by slot; remap; stamp gen.canonical =
+"positional"; re-certify. The gold builder KEEPS a stamped row's order
+with its spans (gate: CPU tiny64 step-0 loss 5.2995, bit-identical on
+unstamped rows) — the router's spans survive. Rows with no positional
+order (two unknowns at once; a variable no factor introduces) are
+refused. ALSO SEEN, on the holdout itself: THE PROSE DEPTH CEILING —
+balV242 reads slots 0-2 at 0.33-0.47, slot 3 at 0.22, slot 4 at 0.17,
+slot 5+ near 0 (mint: 0.95-1.00 through slot 21). The diet's pen rows
+have 5-7 factors; the machine never learned prose past the sixth slot.
+Silver rows (11 factors median) are the data that would raise it —
+once their order is the machine's. THE CHAIN VERDICT OF 09-16 IS
+VOID as a read of the data: it trained on gold in a foreign order.
+Rule: THE GOLD MUST BE IN THE MACHINE'S CONVENTION BEFORE A DIET LINE
+IS READ — the fit read (LV_FIELDS on the trained rows) is mandatory
+before any arm on new-source data.
