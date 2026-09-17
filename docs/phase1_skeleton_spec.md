@@ -39754,3 +39754,18 @@ precompute (partial memmap removed — it makes the existence check
 lie); the dose reprints from the builder. Registered for the resampler:
 refuse a draw whose solution holds a 0 (the generator's own rule) and
 dedupe by text at write time.
+
+**2026-09-16 — THE CAPACITY RULE: two silver stories exceed the head's
+slot banks.** The form12s precompute ran all 17,147 batches and
+asserted in build_gold: a story with 25 factors / 25 vars and one with
+26 / 26 (the head's K_VARS = L_FAC = 24). The silver rulebook checked
+the dialect's ranges, never the machine's capacity — the mint generator
+never makes such a row, so the rule had never been needed. Added to
+the gate (`SLOT_CAP = 24`: `capacity_<f>f_<v>v`); the 2 parents and
+their 4 copies removed from the split (`silver_capacity_refused.jsonl`)
+-> 473 stories + 1,194 copies; the stale memmap removed (a complete
+memmap of the wrong mix passes the existence check); the chain
+relaunched from the mix. Cost: one precompute (~1.5 h). The n_vars
+census of the silver stories: median 10, 21 rows >= 18 — the silver
+dialect is wider than mint's (mint's rows sit at 5-12 vars); the head's
+24 slots hold it with room.

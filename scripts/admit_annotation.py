@@ -31,6 +31,7 @@ def rulebook(row):
     n = row.get("n_vars"); facs = row.get("factors") or []; text = row.get("text", "")
     if not isinstance(n, int) or n <= 0: return "n_vars"
     if not facs: return "no_factors"
+    if n > SLOT_CAP or len(facs) > SLOT_CAP: return f"capacity_{len(facs)}f_{n}v"   # the head's slot banks: K_VARS = L_FAC = 24 (a 25-var story cannot be trained on; the form12s precompute asserted on it 2026-09-16)
     if "query_var" not in row or not (0 <= row["query_var"] < n): return "query_var"
     used = set(); defined = set(); n_fdiv = 0
     for f in facs:
@@ -67,6 +68,7 @@ def rulebook(row):
     return None
 
 
+SLOT_CAP = 24   # the head's K_VARS / L_FAC — a row past it has no gold
 DOMAIN_LADDER = (10**4, 10**5)   # widened only when the row-sized domain refuses; 10^6+ builds multi-GB domains (OOM-killed the locus precompute 2026-09-16)
 
 
