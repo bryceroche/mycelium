@@ -264,6 +264,10 @@ class StepWalker:
             _z = np.load(self.locus_path); self.locus = {int(r): _z["unstable"][i] for i, r in enumerate(_z["rows"])}
             self.locus_bank = fix((B, H.L_FAC))
         self.wheel_late = bool(_envi("ST_WHEEL_LATE"))
+        # THE MATCHING LOSS (2026-09-17, word given): between the forward chain and the backward chain, assign each
+        # law-abiding row's gold factors to the predicted slots that carry them and permute the gold feed (match_gold);
+        # ST_MATCH_IDENTITY=1 runs the machinery with the identity assignment (the gate: bit-identical to ST_MATCH=0)
+        self.match = bool(_envi("ST_MATCH")); self.match_identity = bool(_envi("ST_MATCH_IDENTITY")); self.match_stats = (0, 0); self.feed = None
         assert not (self.wheel_late and (self.wheel_beta != 0.0 or H._WHEEL_MELT is not None)), "ST_WHEEL_LATE needs a silent wheel (ST_WHEEL_BETA=0, no ALG_WHEEL_MELT)"
         assert not (self.cert_lambda > 0 and not self.wheel), "ST_CERT_LAMBDA needs ST_WHEEL=1 (the certificate is the wheel's core)"
         self.workers = int(os.environ.get("ST_WORKERS", "0")) or None
@@ -561,9 +565,13 @@ class StepWalker:
         self.put(self.b_se, sent[idx])
         self.put(self.b_mask, masks)
         if feed is not None:
+            self.feed = feed
             for kk, buf in self.bg.items():
                 assert kk in feed, f"feed missing gold {kk} (feed door)"
                 self.put(buf, feed[kk])
+
+    def reput_gold(self):
+        for kk, buf in self.bg.items(): self.put(buf, self.feed[kk])
 
     def walk_forward(self, fact0, se_np=None, nv=None, ma=None):
         """Spec S1 forward: stage-0 + K_B-1 dispatches with CPU seam
@@ -623,6 +631,12 @@ class StepWalker:
             for k, (bias, turned, melt) in zip(range(1, self.K_B - 1), outs):
                 self.put(self.wheel_bank[k - 1], bias); self.put(self.melt_bank[k - 1], melt); self.turned.append(turned)
             if _WHEEL_TIME: print(f"[wheel-late] {self.K_B - 2} breaths: decode pulls {_tl1 - _tl0:.2f}s, one pool call + puts {time.time() - _tl1:.2f}s", flush=True)
+        if self.match and self.feed is not None:   # THE MATCHING LOSS: the last breath's decode -> the assignment -> the permuted gold, before the reverse walk
+            from match_gold import match_feed, preds_from_decode
+            self.put(self.fact_dec, fact_cur)
+            dec = self.dec_fns[self.K_B - 1](); onp = {kk: t.numpy() for kk, t in zip(self.dec_keys, dec)}
+            self.match_stats = match_feed(self.feed, preds_from_decode(onp), identity=self.match_identity)
+            self.reput_gold()
         return rates
 
     def walk_backward(self):
@@ -1079,7 +1093,7 @@ def run_train():
                 opt_fn()
             if s % log_every == 0 or s == steps - 1:
                 rr = (rate_sum / max(rate_n, 1)).round(2).tolist()
-                print(f"  step {s:5d} loss={loss:.4f} lr={cur_lr:.1e} "
+                print((f"[match] permuted {w.match_stats[0]}/{w.match_stats[1]} law rows | " if w.match else "") + f"  step {s:5d} loss={loss:.4f} lr={cur_lr:.1e} "
                       f"({(time.time() - t0) / (s + 1):.2f}s/step) "
                       f"facts/item/breath={rr}"
                       + (f" wheel-turned/breath={getattr(w, 'turned', [])}" if w.wheel else ""), flush=True)
