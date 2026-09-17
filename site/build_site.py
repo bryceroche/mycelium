@@ -200,6 +200,8 @@ the silence is.</p>
 
 
 HOOKS = {
+ "2026-09-17-building-the-bridge": "Two sides that do not speak the same language, and the crossings we built: certificates as masks, the write-back, the clock, and a loss that forgives the order.",
+ "2026-09-17-the-gold-was-in-the-wrong-language": "A null that meant nothing: three label conventions, one bit, and 3,303 stories at zero tokens once the gold spoke the machine's language.",
     "2026-09-16-the-other-half-of-the-bridge": "the bridge between text and graph had arrows one way only; the write-back carries each slot's commitment back to the tokens it read, the missing half of belief propagation",
 
     "2026-09-14-one-map-two-charts": "the two loops share an atlas with a chart per medium and a bridge whose return lane is the attention matrix itself; certificates cross it as masks",
@@ -249,7 +251,7 @@ HOOKS = {
 # ---------------------------------------------------------------- blog + bio
 BLOG = ROOT / "site" / "blog"
 blog_pages = []
-PIN_FIRST = ["2026-09-16-the-other-half-of-the-bridge", "2026-09-15-the-queue", "2026-09-15-the-symbolic-convolution", "2026-09-15-the-machine-drawn", "2026-09-14-one-map-two-charts", "2026-09-14-two-loops-one-shape", "2026-09-12-the-whip", "2026-09-12-the-fog-not-the-curtain", "2026-09-12-two-roads-to-the-middle", "2026-09-12-the-graph-is-time", "2026-09-12-the-dancers-pixels", "2026-09-10-the-line-cooks", "2026-09-10-the-stellarator", "2026-09-10-the-steering-wheel", "2026-09-09-the-words-never-change", "2026-09-09-the-order", "2026-09-09-the-balance-sheet", "2026-09-09-turbulent-air", "2026-09-09-the-player-and-the-game", "2026-09-08-the-pressure-cooker", "2026-09-07-a-place-to-turn"]     # the live generation leads the splash
+PIN_FIRST = ["2026-09-17-building-the-bridge", "2026-09-17-the-gold-was-in-the-wrong-language", "2026-09-16-the-other-half-of-the-bridge", "2026-09-15-the-queue", "2026-09-15-the-symbolic-convolution", "2026-09-15-the-machine-drawn", "2026-09-14-one-map-two-charts", "2026-09-14-two-loops-one-shape", "2026-09-12-the-whip", "2026-09-12-the-fog-not-the-curtain", "2026-09-12-two-roads-to-the-middle", "2026-09-12-the-graph-is-time", "2026-09-12-the-dancers-pixels", "2026-09-10-the-line-cooks", "2026-09-10-the-stellarator", "2026-09-10-the-steering-wheel", "2026-09-09-the-words-never-change", "2026-09-09-the-order", "2026-09-09-the-balance-sheet", "2026-09-09-turbulent-air", "2026-09-09-the-player-and-the-game", "2026-09-08-the-pressure-cooker", "2026-09-07-a-place-to-turn"]     # the live generation leads the splash
 _posts = sorted(BLOG.glob("*.md"), reverse=True)
 _posts = [m for m in _posts if m.stem in PIN_FIRST] + [m for m in _posts if m.stem not in PIN_FIRST]
 for md in _posts:
