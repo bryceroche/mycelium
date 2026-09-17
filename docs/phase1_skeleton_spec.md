@@ -40032,3 +40032,28 @@ MATCHING LOSS (set prediction: Hungarian assignment of predicted
 factors to gold with the induced variable correspondence; the read
 matched the same way) — built only if (1) shows order is a large share;
 it changes the v98 ladder and gets its own bars and a mint gate.
+
+**2026-09-17 — THE MATCHED READ: ORDER IS ~4.5 POINTS OF THE HOLDOUT,
+AND ALL OF THE POSITIONAL DIET'S LOSS.** `matched_read.py` over the
+LV_DUMP files (its positional path reproduces the reads to four
+decimals — the instrument is verified). Holdout: balV242 0.2526 ->
+MATCHED 0.2979 (+0.045); SD242p 0.2413 -> 0.2935 (+0.052). Silver
+rows: balV242 0.0862 -> 0.1125 (+0.026); SD242p 0.2158 -> 0.2079 (the
+greedy matcher is not guaranteed >= positional; it learned the
+positional order, res 0.95). (1) Order is a MINOR share of the whole
+gap: matched, the base reads the holdout at 0.30 — content is the
+rest (matched digits 0.50, args 0.29, res 0.64, op 0.77). (2) Order is
+ALL of the positional diet's holdout loss: matched, SD242p 0.294 vs the
+base 0.298 (−0.004 vs −0.011 positional) — the diet shifted the
+machine's ordering habit toward the silver serialization and the
+positional read charged it; its content on the holdout is intact.
+Bryce's critique measured: the positional loss and read punish
+serialization, not understanding. VERDICT ON THE MATCHING LOSS: NOT
+the large lever (content is), but it is the channel through which
+silver gold interferes with the pen order — warranted as the thing
+that lets the machine learn silver's structure without paying a
+serialization tax on the holdout; built behind the dose ladder's
+verdict, with the matched read reported beside the positional read
+from here on (the positional read stays the ledger's primary number
+until the loss changes; bars are pinned on it). The dose ladder runs:
+form12sp6 = 9,870 silver rows, share 6.87%, 21.5 rows/story/epoch.
