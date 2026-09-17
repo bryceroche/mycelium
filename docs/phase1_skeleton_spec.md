@@ -40073,3 +40073,28 @@ named (matched dig 0.50) is not a dose problem. Trajectory: the
 family's march. Rung 2 (SD24k: dup 2 for 24k steps — exposure without
 share) runs; the mint pairing vs the base completes in the follow-up
 (the base's mint per-slot file was missing).
+
+**2026-09-17 — SD24k SCUTTLED AT STEP 9,500 OF 24,000; THE PIVOT TO
+GSM8K'S CALCULATOR CHAINS (word given for the whole queue).** Bryce's
+read: the diet's mint (86% of 134k rows) has taught a rigid template
+(the worded-mint drop of 11 points; wild given slots attend a digit
+token 6% vs mint's 63%); the machine also FITS its 13,475 pen rows and
+reads new ones at 0.25 — a unique-count failure as much as a template
+one; share follows n (473 stories carry ~2.5% at the books' 7 reps;
+2,000 carry ~10%). THE PIVOT: GSM8K train's solutions carry calculator
+chains (`<<48/2=24>>`) — a factor graph in disguise, human-written,
+zero tokens: a deterministic parser -> the dialect (givens at their
+numerals with spans; hidden givens for constants; rels per `=`; results
+as new variables) -> the gate (the solver forcing the human final
+answer; capacity; ranges) -> positional canonicalization -> the
+resampler. Scope: the train split minus the 311-row holdout and the
+1,319 test rows, by text identity (never used). Then THE REBALANCED
+DIET (mint ~60 / wilded mint ~20 / pen 10 / silver ~10 at <= 8 reps
+per story, seed twins), the wilded mint generator (worded numerals,
+distractor clauses, phrasing variety), the prose digit/span loss
+up-weight arm, and SVAMP / ASDiv / MAWPS for surface variety (small,
+equation-annotated). TinyGSM flagged: no independent key (silver of
+silver; a regularizing register at most). GSM-Plus / GSM-Hard are
+test-split perturbations: contaminated, never. The dose ladder's rung
+1 stands as read (SDd6 null; fit 0.36; args +0.028; digits flat);
+rung 2 is unfinished and unread.
