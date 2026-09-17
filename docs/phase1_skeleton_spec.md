@@ -40301,3 +40301,19 @@ LOSS's acceptance: the probe (the head's loss on original vs permuted
 gold, per candidate row) showed the hit rule and the content proxy
 each wrong on one row; the proxy lacked the loss's largest term, the
 stage-0 attention graded against the factor's span — added; re-run.
+
+**2026-09-17 15:24 — DIET V2, THE TWIN: WILD 0.2677 (+0.015, z 1.7) —
+BELOW THE BAR ON THE SECOND SEED; NO CLAIM. The first two-seed positive
+of the campaign.** SDv2_241: wild 0.2677 (paired vs base +0.0151, SE
+0.0089, z 1.70), mint 0.9779 (+0.0022; safe). Twins paired: 0.2760 vs
+0.2677, +0.0083 at z 1.19 (inside the seed spread). The bar was +0.020
+at z >= 2 on BOTH seeds; seed 242 clears (z 2.66), seed 241 does not.
+Verdict per the pinned frame: NOT AT THE BAR. What stands without a
+claim: two seeds, same sign, mean +0.019; every wild field up on both
+(241: digits 0.362, args 0.404, res 0.809, ftype 0.847); mint up on
+both; matched (241) reported below. Regime tag: diet v2 (mint 60 /
+pen 7.3 / silver 20.2 over 3,763 stories at ~7 reps), 12k B=8 warm
+balV242. The next read is diet v3 (pc-dietv3, running: + SVAMP/ASDiv
+2,373 stories, mint 50% half wilded, two seeds, the same bar). Rule
+kept: a two-seed positive below the bar is a DIRECTION, banked as
+such, and never rounded up to a record.
