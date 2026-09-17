@@ -40006,3 +40006,29 @@ positional gold. NIGHT'S STANDING: the silver diet is LEARNABLE in the
 machine's convention (0.086 -> 0.216 in one arm), transfers structure,
 and does not clear the wild bar at 2.4% / 7 exposures in either
 convention; the roads add nothing on top in either.
+
+**2026-09-17 — WORD GIVEN (Bryce: "word given for all of the above"):
+the matched read, the dose ladder, the matching loss if warranted.**
+Bryce's critique, accepted and reframed: the 2.4% dose is likely too
+small (the fit read agrees: 0.216 at 7 exposures); the positional law
+is a SERIALIZATION of the output (every graph has the form; 460/473
+took it), not a template on the prose — but the order-sensitivity of
+the positional loss and read IS the brittleness (the same graphs read
+0.03 / 0.07 / 0.083 / 0.086 by order alone; the perceiver's permutation
+finding is the same fact); the slot ceiling on wild is not the
+architecture (mint reads 22 slots at 0.95+) but prose at depth, never
+in the diet. THE PROGRAM: (1) THE MATCHED READ (zero training):
+`LV_DUMP` writes every gold slot's fields beside the machine's per-slot
+predictions; `scripts/matched_read.py` matches predicted factors to
+gold by CONTENT (givens by value; relations in gold-topological order
+by op + pointers under the induced variable map) and reports matched
+fac-exact beside positional — the share of the silver gap and of the
+holdout's 0.25 that is ORDER. (2) THE DOSE LADDER (pc-ladder, running):
+SDd6_242 = positional diet at dup 6 (share ~7%) 12k; SD24k_242 = dup 2
+for 24k steps — share vs exposure; bars: paired wild vs balV242 >=
++0.020 (z >= 2), mint within 0.005, KILL mint <= −0.010; each arm also
+read on its own silver rows (the fit) and paired vs SD242p. (3) THE
+MATCHING LOSS (set prediction: Hungarian assignment of predicted
+factors to gold with the induced variable correspondence; the read
+matched the same way) — built only if (1) shows order is a large share;
+it changes the v98 ladder and gets its own bars and a mint gate.
