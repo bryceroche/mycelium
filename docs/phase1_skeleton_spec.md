@@ -39808,3 +39808,35 @@ silver stories themselves (the trained rows) differently? If SD242
 does not fit its own silver rows at this dose, exposure is the limiter
 (the dose ladder is the read); if it fits them and wild does not move,
 the gap is generalization again (n is the lever, not dose).
+
+**2026-09-16 night — THE FIT READ: THE MACHINE CANNOT READ THE SILVER
+ROWS IT TRAINED ON (0.069) — THE NUMBERING CONVENTION.** SD242 on the
+473 silver stories (its own training rows, `silver473` fixture): fac-
+exact 0.0686; balV242 (never saw them) 0.0325; both against 0.25 on the
+wild holdout. Not difficulty — a CONVENTION: the machine's variable bank
+is positional and it learned the pen rows' numbering, variables in
+order of FIRST APPEARANCE in the text (mint: 1.00 of 500 rows, every
+variable incl. results mentioned; pen rows interleave givens and
+relations in reading order, "g g r g r"). Sonnet numbers the givens
+first ("g g g g g g r r"): variables in text order in 0.30 of silver
+rows, factors in span order 0.05. The gold builder sorts spanned
+factors by span start (the factor slots are fine); the VARIABLE numbers
+it leaves as annotated — so 70% of silver rows carried gold pointers
+(args / result / query) in a foreign numbering, and the chain trained
+on them: the +0.006 wild was earned against a diet whose pointer gold
+disagreed with the machine's own convention on 7 rows in 10 (the
+router road's −0.008: its span-supervised bias learned the foreign
+numbering). What the waived audit could not have caught: a human reads
+a valid graph; the machine reads slot numbers. THE FIX
+(`scripts/canonical_silver.py`): renumber every variable by first
+mention (a given's numeral span or a mention span; silver mentions
+0.83 of variables, 0.69 of results); an unmentioned variable takes its
+producing factor's span-start position; remap args / result /
+query_var / mentions / solution; RE-CERTIFY every row through the gate
+(the key at the new query var). The canonical read (pc-canon): balV242
+and SD242 on `silver473c`; the base's read is the verdict — if it rises
+from 0.03 toward the wild level, the numbering was the artifact and the
+chain re-runs on canonical gold (parents AND copies; the copies inherit
+the parent's numbering). Rule: SILVER ENTERS IN THE MACHINE'S
+CONVENTION — the gate canonicalizes before admission; an annotation
+protocol that is valid for the solver is not yet valid for the slots.
