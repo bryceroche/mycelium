@@ -40229,3 +40229,18 @@ resampled: 1,709 parents -> 4,456 copies after the filter (tier 1:
 4,076). SVAMP/ASDiv: 0 copies on the first pass — the extractor gave
 anchored givens no spans (the resampler resamples spanned givens only);
 spans added, re-running (pc-eqsets2).
+
+**2026-09-17 13:31 — DIET V2 BUILT (the dose law, declared):**
+`form_mix_v2.jsonl` = 117,056 rows: mint 80,296 (60.0%; a 67% subsample
+of the 120,353-row pool), pen 9,800 (7.3%; the 1,225 chain-lane
+stories of 08-31 x 8.0 reps), chain tier 1 11,340 (8.5%; 1,594 stories
++ 4,076 copies x dup 2 = 7.1 reps/story), chain tier 2 lexicon 12,330
+(9.2%; 1,709 + 4,456 x 2 = 7.2), Sonnet 3,290 (2.5%; 460 + 1,185 x 2 =
+7.2). Prose 27.5% of the mix over 4,988 unique stories (this morning:
+10.1% over 1,225); silver 20.2% over 3,763 stories at ~7 reps — the
+books' band per story, the share carried by n. Precompute formv2
+(~1 h), then SDv2_242 and its twin SDv2_241 (12k, B=8, warm balV242)
+vs balV242; bars: paired wild >= +0.020 (z >= 2) on BOTH seeds, mint
+within 0.005, KILL mint <= −0.010; each arm read on wild / mint /
+its own silver rows with fields, matched, and paired. SVAMP/ASDiv and
+the wilded mint wait for v3.
