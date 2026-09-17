@@ -6,7 +6,7 @@ share without exceeding the reps cap). Every silver row must be positional (gen.
 usage: build_diet_v2.py out.jsonl --mint 0.60 --pen 0.10 --reps-cap 8 --silver name=stories.jsonl[:copies.jsonl] ..."""
 import json, sys, random, argparse, collections
 ap = argparse.ArgumentParser(); ap.add_argument("out"); ap.add_argument("--mint", type=float, default=0.60); ap.add_argument("--pen", type=float, default=0.10)
-ap.add_argument("--reps-cap", type=float, default=8.0); ap.add_argument("--silver", action="append", default=[]); ap.add_argument("--seed", type=int, default=0); ap.add_argument("--total", type=int, default=0)
+ap.add_argument("--reps-cap", type=float, default=8.0); ap.add_argument("--silver", action="append", default=[]); ap.add_argument("--seed", type=int, default=0); ap.add_argument("--total", type=int, default=0); ap.add_argument("--wild-frac", type=float, default=0.0, help="fraction of the sampled MINT rows passed through wild_mint (worded numerals / distractor prefix)")
 a = ap.parse_args(); rng = random.Random(a.seed)
 mix = [json.loads(l) for l in open(".cache/form_mix12.jsonl")]
 G = lambda r: r.get("gen") if isinstance(r.get("gen"), dict) else {}
@@ -21,7 +21,11 @@ for spec in a.silver:
 total = a.total or len(mix)
 n_mint = int(total * a.mint); n_pen = int(total * a.pen); n_silver_all = total - n_mint - n_pen
 n_sources = len(silver); per_src = n_silver_all / max(n_sources, 1)
-out = []; rng.shuffle(mint); out += mint[:n_mint]; report = [f"mint {n_mint} rows ({n_mint/total:.1%}; {n_mint/len(mint):.0%} of the pool's {len(mint)})"]
+out = []; rng.shuffle(mint); mint_rows = mint[:n_mint]; n_wild = 0
+if a.wild_frac > 0:
+    sys.path.insert(0, "scripts"); from wild_mint import wild
+    mint_rows = [wild(r, rng, do_words=rng.random() < 0.7, do_distractor=rng.random() < 0.7) if rng.random() < a.wild_frac else r for r in mint_rows]; n_wild = sum(1 for r in mint_rows if (G(r) or {}).get("wild"))
+out += mint_rows; report = [f"mint {n_mint} rows ({n_mint/total:.1%}; {n_mint/len(mint):.0%} of the pool's {len(mint)}; wilded {n_wild} = {n_wild/max(n_mint,1):.0%})"]
 reps_pen = min(a.reps_cap, n_pen / len(pen_u)); pen_rows = []
 for t, rs in pen_u.items(): pen_rows += (rs * 20)[:max(1, round(reps_pen))]
 out += pen_rows; report.append(f"pen {len(pen_rows)} rows ({len(pen_rows)/total:.1%}; {len(pen_u)} unique stories x {reps_pen:.1f} reps)")
