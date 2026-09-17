@@ -888,7 +888,12 @@ def build_gold(samples, offsets):
         # (the aligner's numerals on pen rows) keeps its annotation order —
         # sorting it put the givens first and re-numbered the slots against
         # the holdout's convention (wild 0.2535 -> 0.1165, a pure artifact)
-        if all(f.get("spans") for f in smp["factors"]):
+        # THE POSITIONAL LAW (2026-09-17): a row stamped gen.canonical == "positional" (silver, ordered
+        # so factor k introduces variable k — the pen dialect the machine decodes prose in) KEEPS its
+        # order even with every span present; the span sort is mint's convention and broke the law
+        # on every silver row (the fit read: 0.03 on the machine's own training rows)
+        _gen = smp.get("gen") if isinstance(smp.get("gen"), dict) else {}
+        if all(f.get("spans") for f in smp["factors"]) and _gen.get("canonical") != "positional":
             facs = sorted(smp["factors"],
                           key=lambda f: min(s for s, _ in f["spans"]))
         else:

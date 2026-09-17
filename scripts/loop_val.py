@@ -212,7 +212,8 @@ def read(ckpt, data=None, p=None):
     _jk_masked = (("pres", "ftype", "op", "islit", "dig", "args", "res")
                   + (("dup",) if "h_dup" in p else ()))
     n_ok = n_tot = 0
-    _PS = [] if os.environ.get("LV_PER_SLOT") else None   # THE PAIRED READ (2026-09-12): per-slot outcomes to an npz
+    _PS = [] if os.environ.get("LV_PER_SLOT") else None
+    import collections as _c; _FIELDS = _c.defaultdict(lambda: [0, 0]) if os.environ.get("LV_FIELDS") else None   # THE PAIRED READ (2026-09-12): per-slot outcomes to an npz
     for s0 in range(0, len(vs), 8):
         sl = np.arange(s0, min(s0 + 8, len(vs)))
         pad = 8 - len(sl)
@@ -300,24 +301,34 @@ def read(ckpt, data=None, p=None):
                 if vg["presence"][i, j] < 0.5:
                     continue
                 n_tot += 1
-                ok = (onp["pres"][bi, j] > 0)
-                ok &= int(onp["ftype"][bi, j].argmax()) == vg["ftype"][i, j]
-                ok &= int(onp["res"][bi, j].argmax()) == vg["res"][i, j]
+                f_pres = bool(onp["pres"][bi, j] > 0)
+                f_ftype = int(onp["ftype"][bi, j].argmax()) == vg["ftype"][i, j]
+                f_res = int(onp["res"][bi, j].argmax()) == vg["res"][i, j]
+                ok = f_pres and f_ftype and f_res
+                f_op = f_args = f_dig = None
                 if vg["ftype"][i, j] == 0:
-                    ok &= int(onp["op"][bi, j].argmax()) == vg["op"][i, j]
+                    f_op = int(onp["op"][bi, j].argmax()) == vg["op"][i, j]
                     gset = set(np.where(vg["args"][i, j] > .5)[0].tolist())
                     if len(gset) == 1 and "dup" in onp:
-                        ok &= bool(onp["dup"][bi, j] > 0)
-                        ok &= int(np.argmax(onp["args"][bi, j])) in gset
+                        f_args = bool(onp["dup"][bi, j] > 0) and int(np.argmax(onp["args"][bi, j])) in gset
                     else:
                         top2 = set(np.argsort(-onp["args"][bi, j])[:2].tolist())
-                        ok &= top2 == gset
+                        f_args = top2 == gset
+                    ok = ok and f_op and f_args
                 else:
-                    ok &= bool((onp["dig"][bi, j].argmax(-1) ==
-                                vg["digits"][i, j]).all())
+                    f_dig = bool((onp["dig"][bi, j].argmax(-1) ==
+                                  vg["digits"][i, j]).all())
+                    ok = ok and f_dig
                 n_ok += ok
+                if _FIELDS is not None:   # LV_FIELDS=1: per-field and per-slot-position tallies (the fit-read instrument, 2026-09-16)
+                    for k, v in (("pres", f_pres), ("ftype", f_ftype), ("res", f_res), ("op", f_op), ("args", f_args), ("dig", f_dig), ("exact", ok)):
+                        if v is not None: _FIELDS[k][0] += int(v); _FIELDS[k][1] += 1
+                    _FIELDS["slot%02d" % j][0] += int(ok); _FIELDS["slot%02d" % j][1] += 1
                 if _PS is not None:
                     _PS.append((i, j, bool(ok)))
+    if _FIELDS is not None:
+        print("[fields] " + " ".join(f"{k}={v[0]/max(v[1],1):.3f}({v[1]})" for k, v in _FIELDS.items() if not k.startswith("slot")), flush=True)
+        print("[slots]  " + " ".join(f"{k[4:]}:{v[0]/max(v[1],1):.2f}({v[1]})" for k, v in sorted(_FIELDS.items()) if k.startswith("slot")), flush=True)
     if _PS is not None:
         if _NUMSPOT_BETA: print(f"[numspot] beta {_NUMSPOT_BETA}: given slots spotlit {_NS_STATS['slots']}", flush=True)
         if _LEX: print(f"[lexicon] rows with matches {_LEX_STATS['rows']}, value spans {_LEX_STATS['spans']}, given slots taken {_LEX_STATS['taken']}", flush=True)
