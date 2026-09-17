@@ -40189,3 +40189,28 @@ certificate-weighted loss re-run on legible gold (its 09-16 null was
 on foreign gold); (4) parity of the two loops (ST_LOCUS; needs the
 locus npz — 18 h, still unfired). Blog: "The gold was in the wrong
 language" and "Building the bridge" published and pinned.
+
+**2026-09-17 — SVAMP + ASDiv INTO THE DIALECT: 2,373 ROWS; THE
+MATCHING LOSS BUILT AND IN ITS GATE.** `eq_sets_extract.py` (the two
+sets' equations through a shunting-yard parse; givens anchored to
+numerals or to lexicon word spans — ASDiv writes many numbers as words,
+"Seven red apples"; sub / div re-encoded; the propagated query must
+equal the dataset's answer): 3,305 problems -> **2,373 rows** (SVAMP 955
+of 1,000; ASDiv 1,418 of 2,305); rejects: expr 346 (formulas beyond
++ − × ÷), answer 246 (non-integer or missing), non-integer 216,
+unanchored 104, key-mismatch 20. (A one-line `if` had swallowed its
+pop: `7+2` hung and every parenthesised SVAMP equation was refused —
+found by a per-problem alarm.) Certified keep-order + resampled x3
+(pc-eqsets). Sources for the diet after this: chain tier 1 (1,594),
+chain tier 2 lexicon (1,709), Sonnet (460), SVAMP/ASDiv (2,373) = 6,136
+unique prose stories (the diet had 1,225). THE MATCHING LOSS:
+`scripts/match_gold.py` (the assignment under the positional law:
+givens by digits, relations in gold order by op + pointers under the
+induced variable map; the gold feed permuted on the host; CPU self-test
+passes) hooked into the walker between the forward chain and the
+reverse chain (`ST_MATCH=1`; the last breath's decode is the
+prediction — no extra forward; `ST_MATCH_IDENTITY=1` for the gate).
+The gate (CPU, tiny64, warm balV242, 2 steps): off vs identity must be
+bit-identical; on must run and count permutations. `wild_mint.py`
+(worded numerals + a distractor prefix, spans shifted exactly, span
+audit) staged for diet v3.
