@@ -9,6 +9,8 @@ for r in rows:
     text = r["original"]; used = []; ok = True; facs = []
     for f in r["factors"]:
         f = dict(f)
+        if f["ftype"] == "given" and f.get("spans"):   # tier-2 lexicon givens carry their word span already
+            used.append(tuple(f["spans"][0])); facs.append(f); continue
         if f["ftype"] == "given":
             v = str(f["value"]); hit = None
             for m in re.finditer(r"(?<![\w.])" + re.escape(v) + r"(?![\w]|\.\d)", text):
@@ -21,7 +23,7 @@ for r in rows:
         facs.append(f)
     if not ok: ref += 1; continue
     out.append({"text": text, "factors": facs, "n_vars": r["n_vars"], "query_var": r["query_var"], "m": r.get("m", 10000), "mentions": {}, "decisions": 0, "solution": [],
-                "answer_field": f"#### {r['answer']}", "key": int(r["answer"]), "gen": {"src": "gsm8k", "src_idx": r.get("src_idx"), "silver": "chain_v2", "admitted_by": "gsm8k_wild_extract:key-propagation"}})
+                "answer_field": f"#### {r['answer']}", "key": int(r["answer"]), "gen": {"src": "gsm8k", "src_idx": r.get("src_idx"), "silver": "chain_v2", "tier": ("lexicon" if any(x.get("hidden") for x in facs) else "anchored"), "admitted_by": "gsm8k_wild_extract:key-propagation"}})
 with open(sys.argv[2], "w") as f:
     for r in out: f.write(json.dumps(r) + "\n")
 print(f"[chain-post] {len(rows)} drafts -> {len(out)} rows with given spans ({ref} refused: a given's numeral not located)")

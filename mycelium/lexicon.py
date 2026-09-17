@@ -24,7 +24,27 @@ VALUE_ENTRIES = {"a dozen": 12, "dozen": 12, "a pair": 2, "a pair of": 2, "a hun
 # reversed, "a quarter" as a given 4 — so a multiplier is a VALUE certificate for the constant's
 # slot, and rides the same road. (The old MUL_ENTRIES with fractional values are retired.)
 MUL_ENTRIES = {"twice": 2, "double": 2, "doubled": 2, "triple": 3, "tripled": 3, "thrice": 3, "half": 2, "half of": 2, "a quarter of": 4, "a quarter": 4, "quadruple": 4}
-VERSION = "lexicon_v2"
+# THE UNIT CONSTANTS (lexicon_v3, 2026-09-17): a rationale's constant that the question states only as a
+# unit word ("per hour" -> 60, "a week" -> 7, "%" -> 100). value -> the trigger words; the constant is
+# admitted only when the rationale NEEDS that value and a trigger is in the text (a given with the word's span).
+UNIT_ENTRIES = {100: ["%", "percent"], 60: ["hour", "hours", "minute", "minutes"], 7: ["week", "weeks", "weekly"], 24: ["day", "days", "daily"],
+                12: ["year", "years", "month", "months", "dozen"], 365: ["year", "years"], 52: ["year", "years"], 30: ["month", "months"], 31: ["month"],
+                1000: ["kilogram", "kilograms", "kg", "km", "kilometer", "kilometers", "liter", "liters", "thousand"], 16: ["pound", "pounds"], 3: ["yard", "yards", "third"],
+                2: ["twice", "double", "doubled", "half", "pair", "couple", "both"], 4: ["quarter", "quarters", "quadruple"], 10: ["decade", "dime", "dimes"], 5: ["nickel", "nickels"], 25: ["quarter", "quarters"],
+                3600: ["hour", "hours"], 1440: ["day", "days"], 20: ["score"], 6: ["half a dozen"], 8: ["byte", "octet"], 1: ["a", "an", "one", "single", "each"]}
+VERSION = "lexicon_v3"
+
+def constants(text):
+    """every value the text states without a numeral: [(start, end, value)] — table entries (a dozen, twice),
+    number words (five), and unit triggers (percent -> 100). Overlapping candidates all returned; the caller
+    picks by the value it needs and keeps spans disjoint."""
+    out = [(s, e, v) for s, e, _, v in entries(text)]
+    out += cardinal(text)
+    for val, words in UNIT_ENTRIES.items():
+        for w in words:
+            for m in re.finditer((r"" if w == "%" else r"\b") + re.escape(w) + (r"" if w == "%" else r"\b"), text, re.I):
+                out.append((m.start(), m.end(), val))
+    return out
 
 _NUMWORD = re.compile(r"\b(?:(one|two|three|four|five|six|seven|eight|nine)\s+hundred(?:\s+(?:and\s+)?)?)?(?:(twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety)(?:[\s-](one|two|three|four|five|six|seven|eight|nine))?|(zero|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen))?\b", re.I)
 

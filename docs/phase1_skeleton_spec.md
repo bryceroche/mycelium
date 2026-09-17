@@ -40122,3 +40122,27 @@ located, silver form) -> positional canonicalization with the gate.
 Anchored givens only (the machine's convention: ~1% hidden); the
 2,356 "unanchored" rows (rationale constants) are a registered second
 tier. Expected: well above the pilot's 20.4%.
+
+**2026-09-17 — THE CHAIN LANE, TIER 1: 1,594 CANONICAL STORIES AT
+ZERO TOKENS.** `gsm8k_wild_extract.py` at M=9999 over the 7,473 train
+rows, the holdout excluded by text (302 hit): 1,669 drafts (22.3%);
+rejects: unanchored 3,136 (a constant the question states in words or
+as a unit), non-integer 844, decimal-in-question 580, bounds 378,
+expr-parse 338, key-not-derived 117, no-calc-annotations 90. The post
+step located every given's numeral span on 1,594 (75 refused); the
+positional canonicalizer (ASAP; the gate re-certifying against the
+human key) kept **1,594 / 1,594** (751 reordered) — add 2,923 / mul
+2,540, no sub/div (the extractor re-encodes per the grammar), 6
+factors median, 20 max, no holdout leakage. Against the diet's 1,225
+unique chain-lane stories this is +1,594 new unique prose structures
+(the 08-31 census: shapes are n). The resampler (x3) runs
+(pc-resample-chain). TIER 2 (pc-chain2): `lexicon_v3` adds
+UNIT_ENTRIES (percent -> 100, hour -> 60, week -> 7, year -> 12 /
+365 / 52 ...) and `lexicon.constants(text)`; the extractor (GW_LEXICON=1)
+admits an unanchored constant as a given WITH THE WORD'S SPAN when the
+rationale needs that value and the text states it — rows stamped
+gen.tier = "lexicon" (the machine's convention has ~1% hidden givens;
+the tier is dosed and read apart). Expected: a large share of the
+3,136. Registered behind it: an expression parser for the 338
+expr-parse rejects; the cents transform for the 1,424 non-integer /
+decimal rows (a design question: the text would change).

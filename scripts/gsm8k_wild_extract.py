@@ -14,6 +14,9 @@ from collections import Counter
 import os
 M = int(os.environ.get('GW_M', '999'))   # the head's digit width: 3 digits (MSD-first) -> 999; 2026-09-17: was 300 (the books' cap)
 OUT = os.environ.get('GW_OUT', '.cache/gsm8k_wild_drafts.jsonl')
+LEXICON = bool(os.environ.get('GW_LEXICON'))
+if LEXICON:
+    import sys as _sys; _sys.path.insert(0, '.'); from mycelium import lexicon as _lex
 EXCLUDE = set()
 for _p in os.environ.get('GW_EXCLUDE', '').split(','):
     if _p: EXCLUDE |= {__import__('json').loads(l)['text'] for l in open(_p)}
@@ -44,6 +47,7 @@ def extract(question, rationale, key):
     for x in re.findall(r'\d[\d,]*', question):
         qnums.add(int(x.replace(',', '')))
     calcs = CALC.findall(rationale)
+    lexcands = _lex.constants(question) if LEXICON else []; lexused = []
     if not calcs:
         return None, 'no-calc-annotations'
     nv = 0
@@ -68,6 +72,13 @@ def extract(question, rationale, key):
             factors.append({"ftype": "given", "var": i, "value": v})
             by_val[v] = i
             return i
+        if LEXICON:   # TIER 2 (2026-09-17): a constant the question states in words / as a unit -> a given with the WORD's span
+            for (s_, e_, val) in lexcands:
+                if val == v and not any(a <= s_ < b for a, b in lexused):
+                    lexused.append((s_, e_)); i = new_var(v)
+                    factors.append({"ftype": "given", "var": i, "value": v, "spans": [[s_, e_]], "hidden": "lexicon"})
+                    by_val[v] = i
+                    return i
         return None
 
     def emit(a, op, b, r):
