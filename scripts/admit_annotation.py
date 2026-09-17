@@ -96,7 +96,7 @@ def solve_ladder(build, m0, budget=5000, wall=30):
     carries an assignment (an unsat result carries a best_partial full of INT_MIN — the gate
     once read that as a query value). Returns (result, m) of the first solve, or the last refusal."""
     res = {"status": "?"}; m = m0
-    for m in [m0] + [x for x in DOMAIN_LADDER if x > m0]:
+    for m in [x for x in DOMAIN_LADDER if x >= m0] or [m0]:   # the first rung is 10^4: a solved row costs 0.03 s there, and the row-sized rung's UNSAT costs the whole wall (the resampler crawled at 2 min/parent)
         try:
             prob = build(m)
         except Exception as e:

@@ -39707,3 +39707,34 @@ content-only trajectory; paired SR/SB vs SD (the road), SD vs balV242
 to credit a road; mint within 0.005; KILL mint <= -0.010. (4) NOT
 fired, as I see fit: the locus precompute relaunch (18 h for the
 parity arm CW242 did not warrant) — stays registered.
+
+**2026-09-16 evening — TWO BLOCKERS CLEARED IN FRONT OF THE SILVER
+CHAIN.** (1) THE RESAMPLER CRAWLED (160 parents in 5.3 h): each parent
+draws up to 120 random value sets, most fail the solver (a resampled
+given that feeds a division is rarely divisible), and under the ladder
+an UNSAT search burns the whole 30 s wall per rung per draw — the
+narrow domain had returned those failures in 0.4 s. Root cause: unsat
+is slow at width, and the resampler's draws are mostly unsat. Fixes
+(`resample_silver.py`): the wall is 2 s per rung (a solvable copy
+solves in 0.03 s at 10^4 / 0.2 s at 10^5; the wall bites unsat only);
+the ladder's first rung is 10^4 for everyone (the row-sized rung's
+unsat cost the wall for no gain); half the draws are SHAPE-PRESERVING
+(v x a / b with b | v, a, b <= 6) so divisibility survives; 60 draws
+per parent, and a parent whose first 12 draws never solve is skipped
+(one burned 261 s for nothing). Timed at 5 s walls: 12 parents -> 15
+copies in 403 s. RS_RESUME=1 keeps a killed run's copies (parents
+matched by their numeral-masked story). pc-resample3 stopped at 459
+copies / ~160 parents; pc-resample4 resumes. (2) THE CAP EXPERIMENT
+(`wheel_cap_experiment.py`) spawned its phase-B pool WITHOUT a main
+guard: the spawn context re-imported the module in every worker (the
+header printed 7 times, RuntimeError in each), and the per-result
+600 s timeout then waited 272 x 600 s on dead workers — 5 h holding
+the GPU in front of the word. Stopped; the experiment stays REGISTERED
+(a deterministic decision-budget cap) behind a main guard. The launcher
+pc-silver now waits for pc-resample4 (success) and the free GPU.
+Arm cost: 0.39 s/step (the head's own trainer; the step trainer's
+3.9 s was the wheel) -> ~80 min per 12k arm; the chain ~5 h after the
+precompute. Rule (again): pgrep -f matches EVERY shell whose command
+text contains the pattern, including a sibling background shell of the
+same session — build patterns from concatenated strings, or kill by
+unit.
