@@ -83,17 +83,21 @@ def permute_row(feed, i, sigma):
     if "bind_ids" in feed:   # (L, 4) per slot: (arg1, arg2, res, 24+ftype) — the first three are VARIABLE indices; moved by sigma above, remapped by V here
         b = feed["bind_ids"][i]; b[:, :3] = V[b[:, :3].astype(int)]; feed["bind_ids"][i] = b
 
-def match_feed(feed, preds, identity=False):
-    """permute every law-abiding row of the feed toward its predictions; returns (n_permuted, n_law)"""
+def match_feed(feed, preds, identity=False, raw=None):
+    """permute every law-abiding row of the feed toward its predictions; returns (n_permuted, n_law).
+    raw: the decode's raw heads (batch-first) — when given, a permutation is accepted only if the proxy loss falls."""
     B = feed["presence"].shape[0]; n_perm = 0; n_law = 0
     for i in range(B):
         if not law_holds(feed, i): continue
         n_law += 1
         if identity: continue
         pr = {k: v[i] for k, v in preds.items()}; sigma = assign(feed, i, pr); ident = np.arange(len(sigma))
-        # accept the assignment only if it carries MORE gold factors than the identity (the read's own rule): a
-        # permutation can never make the graded content worse than the positional gold
-        if (sigma != ident).any() and hits(feed, i, pr, sigma) > hits(feed, i, pr, ident): permute_row(feed, i, sigma); n_perm += 1
+        if not (sigma != ident).any(): continue
+        if hits(feed, i, pr, sigma) <= hits(feed, i, pr, ident): continue   # the read's rule: more gold carried
+        if raw is not None:   # the loss's rule: the graded content terms must fall
+            ri = {k: v[i] for k, v in raw.items()}
+            if not (proxy_loss(feed, i, ri, sigma) < proxy_loss(feed, i, ri, ident) - 1e-6): continue
+        permute_row(feed, i, sigma); n_perm += 1
     return n_perm, n_law
 
 if __name__ == "__main__":   # CPU self-test: a shuffled gold matched against its own unshuffled predictions returns to the original
@@ -128,3 +132,31 @@ def preds_from_decode(onp):
     out = {"pres": onp["pres"], "ftype": onp["ftype"].argmax(-1), "op": onp["op"].argmax(-1), "dig": onp["dig"].argmax(-1), "args": onp["args"], "res": onp["res"].argmax(-1)}
     if "dup" in onp: out["dup"] = onp["dup"]
     return out
+
+
+def _lsm(x):
+    x = x - x.max(-1, keepdims=True); return x - np.log(np.exp(x).sum(-1, keepdims=True))
+
+def _bce(lg, t):
+    return np.maximum(lg, 0) - lg * t + np.log1p(np.exp(-np.abs(lg)))
+
+def proxy_loss(feed, i, raw, sigma):
+    """the loss's slot-graded content terms on row i under the assignment sigma (gold slot k graded at
+    predicted slot sigma[k]; variables remapped by V = sigma), from the decode's RAW heads — the acceptance
+    audit: a permutation is accepted only if this falls (the read's hit rule alone accepted a swap of two
+    givens that raised the loss; the probe of 2026-09-17)"""
+    n = int(feed["presence"][i].sum()); V = sigma; L = len(sigma)
+    pres_t = np.zeros(L); pres_t[sigma[:n]] = 1.0
+    lp = raw["pres"].reshape(L, -1)[:, 0]; l = _bce(lp, pres_t).mean()
+    ft = _lsm(raw["ftype"]); op = _lsm(raw["op"]); rs = _lsm(raw["res"]); dg = _lsm(raw["dig"]); ar = raw["args"]
+    n_p = n_rel = n_dig = 0; s_ft = s_op = s_rs = s_dg = s_ar = 0.0
+    for k in range(n):
+        p = int(sigma[k]); n_p += 1
+        s_ft += -ft[p, int(feed["ftype"][i, k])]; s_rs += -rs[p, int(V[int(feed["res"][i, k])])]
+        if feed["is_rel"][i, k] > 0.5:
+            n_rel += 1; s_op += -op[p, int(feed["op"][i, k])]
+            t = np.zeros(ar.shape[1]); t[[int(V[a]) for a in np.where(feed["args"][i, k] > 0.5)[0]]] = 1.0
+            s_ar += (_bce(ar[p], t) * (1.0 + 4.0 * t)).mean()
+        else:
+            n_dig += 1; s_dg += np.mean([-dg[p, d, int(feed["digits"][i, k, d])] for d in range(dg.shape[1])])
+    return l + s_ft / max(n_p, 1) + s_rs / max(n_p, 1) + s_op / max(n_rel, 1) + s_ar / max(n_rel, 1) + s_dg / max(n_dig, 1)

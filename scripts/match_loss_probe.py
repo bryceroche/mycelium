@@ -26,7 +26,8 @@ def tens(f): return {k: Tensor(np.ascontiguousarray(v), dtype=(dtypes.int if v.d
 def L(f): return float(loss_fn(o, tens(f)).numpy())
 import copy
 base = L(feed); print(f"[probe] loss on the original gold: {base:.4f}")
-full = copy.deepcopy(feed); n = MG.match_feed(full, preds); print(f"[probe] permuted {n[0]}/{n[1]} rows; loss on the fully permuted gold: {L(full):.4f} (delta {L(full)-base:+.4f})")
+raw = {k: onp[k] for k in ("pres", "ftype", "op", "dig", "args", "res")}; raw["pres"] = raw["pres"].reshape(B, L_FAC, 1)
+full = copy.deepcopy(feed); n = MG.match_feed(full, preds, raw=raw); print(f"[probe] permuted {n[0]}/{n[1]} rows; loss on the fully permuted gold: {L(full):.4f} (delta {L(full)-base:+.4f})")
 # per-row: which rows changed
 rows = [i for i in range(B) if any((full[k][i] != feed[k][i]).any() for k in feed)]
 print("[probe] rows permuted:", rows)
