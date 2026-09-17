@@ -39955,3 +39955,24 @@ the machine reads; (c) THE FIT READ on the positional training rows
 wild fell, the silver register interferes and the diet needs the
 depth ceiling addressed first (short-graph silver, or a curriculum by
 factor count — regime-tagged: flat mix is the law at scale).
+
+**2026-09-17 03:00 — THE FIT READ ON THE POSITIONAL ROWS: THE GOLD IS
+LEARNABLE, AND THE DEPTH CEILING LIFTS ON TRAINED ROWS.** The 460
+positional stories (SD242p's own training rows, `silver460`): balV242
+0.086 (res 0.78, args 0.20, dig 0.15; slots 0.29/0.17/0.18 then <=
+0.06); SD242 (trained on the FOREIGN gold) 0.078 — nothing readable was
+learned from it; **SD242p 0.216** (res 0.97, ftype 0.79, op 0.81, args
+0.34, dig 0.25; slots 0.45/0.28/0.33/0.23/0.21/0.24/0.19/0.16/0.16 —
+slots 5-8 at 0.16-0.24 where the base reads 0.03-0.06). One 12k arm at
+2.4% share and 7 exposures per story taught the machine to read
+11-factor prose graphs to a fifth of their slots and lifted the ceiling
+on those rows; the in-reach holdout fell 0.011 (1.5 z) in the same
+arm. So the exposure question and the interference question are both
+live and now separable: the ladder (more dose / more steps) asks
+whether the fit keeps rising and whether the holdout recovers or keeps
+falling; the per-field holdout read (pc-wfields) asks WHERE the
+holdout lost (early slots = a convention clash at the front; late
+slots = the register). Rule confirmed: the fit read is the first read
+on any new-source diet — it separates "not learned" (SD242: 0.078)
+from "learned and not transferred" (SD242p: 0.216 / −0.011) in one
+number.
