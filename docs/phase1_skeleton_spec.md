@@ -39914,3 +39914,44 @@ positional chain (SR242p / SB242p / SD242p on form12sp = form_mix12 +
 460 stories + 1,185 copies, dup 2) is the first honest read of the
 silver diet — fired on the standing word for the queue once the rule
 read picks the order.
+
+**2026-09-17 02:25 — THE POSITIONAL CHAIN VERDICT: NULL, AND THE
+CORRECTED GOLD READS WORSE THAN THE BROKEN GOLD (z 2.27 paired).**
+form12sp = form_mix12 + 460 positional stories + 1,185 positional
+copies, dup 2 (share 2.40%, 7.2 rows/story/epoch); arms 12k B=8 warm
+balV242; the same bars.
+
+| arm | wild | mint | paired wild | z |
+| balV242 (base) | 0.2526 | 0.9757 | — | — |
+| SD242p (data alone, positional) | 0.2413 | 0.9782 | vs base −0.0112 (SE 0.0075) | −1.50 |
+| SR242p (router road) | 0.2482 | 0.9793 | vs SDp +0.0068 (SE 0.0055) | +1.24 |
+| SB242p (write-back) | 0.2448 | 0.9782 | vs SDp +0.0034 (SE 0.0060) | +0.57 |
+| SD242 (data alone, FOREIGN gold, 09-16) | 0.2589 | 0.9798 | vs SD242p +0.0176 (SE 0.0077) | **+2.27** |
+
+Mint within 0.005 everywhere (no kill; both diets regularize mint).
+Wild: the positional diet reads BELOW the base (1.5 z) and below the
+foreign-gold diet (2.3 z paired; 144 vs 108 discordant slots) — single
+seeds both, so no claim at the campaign's bar (>= 0.020 or twins), but
+the sign is the finding: gold the machine could not read (span-sorted,
+foreign numbering) left the holdout alone or helped a little (+0.006,
+0.8 z), while gold in the machine's own convention (slot == variable,
+ASAP reading order) pulled the holdout DOWN. Reading: the foreign-gold
+rows trained the machine on prose TEXT with a target it treated as
+another register (mint-like) — a regularizer; the positional rows
+compete directly with the pen convention on the same slots with
+11-factor graphs the base cannot read past slot 4 (the depth ceiling),
+at 7 exposures per story — interference before learning. The roads:
+both null again (the router +0.007 at 1.2 z, the write-back +0.003);
+the trajectories the family's converging march. WHAT STANDS: at 2.4%
+share and ~7 reps per unique the silver diet does not clear the bar in
+either convention; the mention road and the write-back add nothing on
+top of it in either. WHAT IS REGISTERED (needing the word): (a) the
+SEED TWIN of SD242p (seed 241) — the 2.3 z between the two SD arms is
+one seed pair; (b) THE DOSE LADDER on positional gold (SD-d6 ~7% share
+vs SD-24k double exposure) — Bryce's exposure question, now with gold
+the machine reads; (c) THE FIT READ on the positional training rows
+(pc-fitread2, running): if SD242p reads its own rows near the base's
+0.086, the dose is too low to learn them at all; if it fits them and
+wild fell, the silver register interferes and the diet needs the
+depth ceiling addressed first (short-graph silver, or a curriculum by
+factor count — regime-tagged: flat mix is the law at scale).
