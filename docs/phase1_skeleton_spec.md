@@ -40166,3 +40166,26 @@ order. The chain lane after this: 1,594 + 1,709 = 3,303 unique prose
 stories (the diet had 1,225), resampled x3 (pc-chainkeep), tier-2
 rows stamped gen.tier = "lexicon" for separate dosing. `datasets` is
 not installed; SVAMP / ASDiv / MAWPS fetch registered behind the diet.
+
+**2026-09-17 — MAXIMUM ALTERNATION (Bryce's directive: "promote and
+truly engrain maximum alternation in the model during training") —
+REGISTERED, mechanisms named, the word to follow per arm.** Alternation
+= per breath: continuous read -> discrete proposal (decode) ->
+certificate (the solver's propagation) -> continuous re-read WITH the
+certificate. What exists: the certificate masks (spotlight / melt /
+nogood — parked: consistent != correct), the late wheel in the step
+trainer, the write-back (tokens <- slots), the level ladder (breath-
+calibrated targets), the certificate-weighted loss (null on foreign
+gold). Candidate arms, in order: (1) THE MATCHING LOSS first — a
+set-prediction loss (Hungarian assignment of predicted factors to
+gold with the induced variable correspondence) so the discrete
+object's invariance is respected before any discrete feedback is
+trusted (the matched read: order was all of the positional diet's
+loss); (2) THE ALTERNATION ARM — the late wheel ON in training with
+the certificate masks carried into the next breath through the
+write-back (the bridge's return road as a training-time signal, not
+a read-time one), the level ladder on, graded per breath; (3) the
+certificate-weighted loss re-run on legible gold (its 09-16 null was
+on foreign gold); (4) parity of the two loops (ST_LOCUS; needs the
+locus npz — 18 h, still unfired). Blog: "The gold was in the wrong
+language" and "Building the bridge" published and pinned.
