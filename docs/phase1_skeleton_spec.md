@@ -39738,3 +39738,19 @@ precompute. Rule (again): pgrep -f matches EVERY shell whose command
 text contains the pattern, including a sibling background shell of the
 same session — build patterns from concatenated strings, or kill by
 unit.
+
+**2026-09-16 — THE RESAMPLER'S YIELD, FILTERED: 1,197 CERTIFIED COPIES
+OVER 428 OF 475 STORIES.** pc-resample4 (2 s walls, shape-preserving
+draws): 475 parents -> 1,252 certified copies (428 parents with copies:
+410 x 3, 4 x 2, 14 x 1; the sample copy's offset audit 0 mismatches;
+no copy equals a parent's text; every copy's masked story matches its
+parent). Integrity read before the diet: 43 copies carry a ZERO
+intermediate (a resampled draw made a difference vanish — "0 kittens";
+legal arithmetic, a broken story) and 12 copies duplicate another's
+text (two draws landed on the same values). Both DROPPED -> 1,197
+copies (`silver_sonnet_v1_all_x3.jsonl`; the raw file kept as
+`.raw1252.jsonl`). The chain was restarted at batch 0 of the form12s
+precompute (partial memmap removed — it makes the existence check
+lie); the dose reprints from the builder. Registered for the resampler:
+refuse a draw whose solution holds a 0 (the generator's own rule) and
+dedupe by text at write time.
