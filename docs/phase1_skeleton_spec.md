@@ -40244,3 +40244,20 @@ vs balV242; bars: paired wild >= +0.020 (z >= 2) on BOTH seeds, mint
 within 0.005, KILL mint <= −0.010; each arm read on wild / mint /
 its own silver rows with fields, matched, and paired. SVAMP/ASDiv and
 the wilded mint wait for v3.
+
+**2026-09-17 14:53 — DIET V2, SEED 242: WILD 0.2760, +0.0234 PAIRED
+(z 2.66) — THE BAR CLEARED ON THE FIRST SEED; THE TWIN DECIDES.**
+SDv2_242 (12k, B=8, warm balV242 on form_mix_v2): wild **0.2760**
+(base 0.2526; paired +0.0234, SE 0.0088, McNemar z −2.66 in the
+arm's favour; discordant 187 vs 139), mint 0.9768 (+0.0011, z 0.55:
+within 0.005, no kill). FIELDS on wild: digits 0.381 (base 0.336,
++0.045), args 0.396 (+0.038), pres 0.915 (+0.018), res 0.802
+(+0.019), ftype 0.836, op 0.705 (+0.025) — every field up, and the
+NUMERALS moved, which no dose of the old diet did (SDd6: digits flat
+at 0.340). On the Sonnet silver rows (2.5% of this diet) the fit is
+0.156. The claim waits for SDv2_241 (running): the bar is +0.020 at
+z >= 2 on BOTH seeds. If it holds, this is the first wild read at the
+bar in the campaign (T1's 0.2706 fell inside the seed spread; the fed
+mind's 0.2613 was the record) — and it came from n: 4,988 unique prose
+stories at 27.5% of the mix, in the machine's own convention, at zero
+annotation tokens.
