@@ -39976,3 +39976,33 @@ slots = the register). Rule confirmed: the fit read is the first read
 on any new-source diet — it separates "not learned" (SD242: 0.078)
 from "learned and not transferred" (SD242p: 0.216 / −0.011) in one
 number.
+
+**2026-09-17 03:20 — WHERE THE HOLDOUT MOVED: THE TWO DIETS TAUGHT
+DIFFERENT FIELDS.** Per-field on the wild holdout (LV_FIELDS): base
+pres 0.897 / ftype 0.832 / res 0.783 / dig 0.336 / args 0.358 / exact
+0.253, slots 0.47 / 0.33 / 0.44 / 0.22 / 0.17. SD242p (positional
+gold): res **0.799** (+0.016), dig 0.322 (−0.014), ftype 0.826, args
+0.362, exact 0.241; slots 0.43 / 0.32 / **0.38** / 0.24 / 0.17. SD242
+(foreign gold): res 0.760 (−0.023), dig **0.358** (+0.022), ftype
+0.816, args 0.367, exact 0.259; slots 0.48 / 0.36 / 0.39 / 0.23 / 0.17.
+Reading: the positional gold taught STRUCTURE (result pointers rose on
+the holdout; 0.97 on its own rows) and cost NUMERAL READING at the
+front slots (slot 2, the first relation's slot, 0.44 -> 0.38; digits
+−0.014) — a residual convention clash at the front: the ASAP rule's
+relation placement is close to the pen's but not identical (on its own
+trained rows SD242p's ftype-per-slot is 0.79 while res is 0.97 — the
+order is still contested where the values are not). The foreign gold
+taught numeral reading (a given's digit target is right under any
+order) and cost structure (its pointers were noise). Neither is the
+diet; the diet the data wants has the positional structure AND the
+front-slot order the machine already keeps. REGISTERED (the word):
+(a) THE ORDER READ — infer the pen dialect's relation placement from
+the machine's own decoded order on the holdout (where it agrees with
+gold) and from the pen rows' ftype patterns by sentence, then re-derive
+the canonical rule (the ASAP rule was a guess that read 0.086 vs
+0.083 — the read cannot pick the rule at this resolution; the trained
+fit can); (b) the seed twin of SD242p; (c) the dose ladder on
+positional gold. NIGHT'S STANDING: the silver diet is LEARNABLE in the
+machine's convention (0.086 -> 0.216 in one arm), transfers structure,
+and does not clear the wild bar at 2.4% / 7 exposures in either
+convention; the roads add nothing on top in either.
