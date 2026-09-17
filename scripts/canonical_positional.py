@@ -23,12 +23,22 @@ def ready_pos(f):
     if not sp: return 10**9
     return min(s for s, _ in sp) if f["ftype"] == "given" else max(e for _, e in sp)
 
+RULE = __import__("os").environ.get("CP_RULE", "asap")   # "asap": a relation is stated as soon as its arguments are known (the pen shape
+                                                          # "g g r g r"; slot 2 = the first relation); "spanend": at the end of its last evidence span
+
 def positional_order(r):
-    F = r["factors"]; seen = set(); order = []; left = list(range(len(F)))
+    F = r["factors"]; seen = set(); order = []; left = list(range(len(F))); intro = {}
     while left:
         cands = [i for i in left if len(set(vars_of(F[i])) - seen) == 1]
         if not cands: return None, f"no_positional_order_at_slot_{len(order)}"
-        i = min(cands, key=lambda i: (ready_pos(F[i]), i)); order.append(i); seen |= set(vars_of(F[i])); left.remove(i)
+        def key(i):
+            f = F[i]
+            if RULE == "asap" and f["ftype"] != "given":
+                known = [intro[v] for v in vars_of(f) if v in intro]
+                return (max(known) + 0.5 if known else ready_pos(f), ready_pos(f), i)   # right after its last known argument
+            return (ready_pos(f), 0, i)
+        i = min(cands, key=key); order.append(i)
+        (v,) = set(vars_of(F[i])) - seen; intro[v] = key(i)[0]; seen |= set(vars_of(F[i])); left.remove(i)
     if len(seen) != r["n_vars"]: return None, f"vars_{r['n_vars']}_introduced_{len(seen)}"
     return order, None
 
@@ -57,7 +67,7 @@ if __name__ == "__main__":
         c, w = canonicalize(r)
         if c is None: why[w.split("_at_")[0]] = why.get(w.split("_at_")[0], 0) + 1; continue
         reordered += [f["ftype"] for f in c["factors"]] != [f["ftype"] for f in r["factors"]] or any(f.get("var") != g.get("var") for f, g in zip(c["factors"], r["factors"]))
-        key = r.get("key", key_of(r.get("answer_field"))); ok, d = solver_verdict(c, key)
+        key = r.get("key", key_of(r.get("answer_field"))); ok, d = (True, "nogate") if __import__("os").environ.get("CP_NOGATE") else solver_verdict(c, key)
         if not ok: why["gate:" + d.split("@")[0]] = why.get("gate:" + d.split("@")[0], 0) + 1; continue
         out.append(c)
     with open(sys.argv[2], "w") as f:

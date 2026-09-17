@@ -39883,3 +39883,34 @@ VOID as a read of the data: it trained on gold in a foreign order.
 Rule: THE GOLD MUST BE IN THE MACHINE'S CONVENTION BEFORE A DIET LINE
 IS READ — the fit read (LV_FIELDS on the trained rows) is mandatory
 before any arm on new-source data.
+
+**2026-09-17 — THE POSITIONAL READS, THE RESIDUAL, AND WHAT IT IS.**
+`canonical_positional.py` over the 473 stories: 460 kept (322
+reordered; refused 8 with no positional order — a relation introducing
+two unknowns at once — 4 with a variable no factor introduces, 1 gate
+timeout); the 1,194 copies: 1,185 kept. The law holds on every output
+row. THE READ (spans kept, stamped; the builder keeps the order):
+balV242 0.0326 (span-sorted) -> 0.0704 (order intact) -> **0.0831**
+(positional); result pointers 0.53 -> 0.78 = the holdout's 0.78; args
+0.06 -> 0.18; ftype 0.65; digits 0.15. SD242 0.078. LENGTH-MATCHED
+(the holdout's per-slot file by factor count): holdout rows <= 5
+factors 0.379, 6-8 factors 0.247, >= 9 factors 0.138 (slots 0-2
+0.40/0.25/0.48, slot 3+ <= 0.12); silver (11 factors median) 0.083
+(slots 0.29/0.18/0.16). Slot 2 is the tell (0.48 vs 0.16): on pen rows
+slot 2 is the first relation, right after its two givens; the
+span-end rule pushed relations late ("ggggrrr" 47) — the ASAP rule
+(a relation is stated as soon as its arguments are known; CP_RULE=asap)
+is read beside it. HIDDEN GIVENS are NOT the residual: pen rows carry
+a given 2 for "twice" in 429/462 rows (the numeral 2 elsewhere in the
+text in 407 — the 1% "hidden" census was that artifact); silver's 345
+hidden givens all carry spans and sit at their phrase's position under
+the positional order. THE DUMP on positional silver (6 rows): the base
+MISREADS THE NUMERALS (51 for 50 donuts, 25 for 18 flowers, 4/12/16
+for 6 piglets) and emits generic add-chains — the wild register's own
+failure, not a convention: these are the queue's rows, the ones the
+machine cannot read, and the silver diet exists to teach them. THE
+CONVENTION WORK IS DONE to the degree the evidence supports; the
+positional chain (SR242p / SB242p / SD242p on form12sp = form_mix12 +
+460 stories + 1,185 copies, dup 2) is the first honest read of the
+silver diet — fired on the standing word for the queue once the rule
+read picks the order.
