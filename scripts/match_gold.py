@@ -54,6 +54,22 @@ def assign(feed, i, pred):
         p = min(free, key=lambda p: abs(p - k)); free.remove(p); sigma[k] = p
     return np.array([sigma[k] for k in range(L)])
 
+def hits(feed, i, pred, sigma):
+    """how many present gold factors are fully carried by the slot sigma assigns them (the read's fac-exact rule)"""
+    n = int(feed["presence"][i].sum()); V = sigma; h = 0
+    for k in range(n):
+        p = int(sigma[k])
+        if not (pred["pres"][p] > 0) or int(pred["ftype"][p]) != int(feed["ftype"][i, k]): continue
+        if int(pred["res"][p]) != int(V[int(feed["res"][i, k])]): continue
+        if feed["is_rel"][i, k] > 0.5:
+            ga = {int(V[a]) for a in np.where(feed["args"][i, k] > 0.5)[0]}; top2 = np.argsort(-pred["args"][p])[:2].tolist()
+            if int(pred["op"][p]) != int(feed["op"][i, k]): continue
+            if not ((len(ga) == 1 and pred.get("dup", np.zeros(len(sigma)))[p] > 0 and top2[0] in ga) or (len(ga) == 2 and set(top2) == ga)): continue
+        else:
+            if not (pred["dig"][p] == feed["digits"][i, k]).all(): continue
+        h += 1
+    return h
+
 def permute_row(feed, i, sigma):
     """gold slot k -> slot sigma[k]; variable k -> sigma[k] (the law: var k lives at slot k); in place on row i"""
     L = len(sigma); V = sigma   # the var permutation IS sigma under the law (K == L == 24)
@@ -72,8 +88,10 @@ def match_feed(feed, preds, identity=False):
         if not law_holds(feed, i): continue
         n_law += 1
         if identity: continue
-        sigma = assign(feed, i, {k: v[i] for k, v in preds.items()})
-        if (sigma != np.arange(len(sigma))).any(): permute_row(feed, i, sigma); n_perm += 1
+        pr = {k: v[i] for k, v in preds.items()}; sigma = assign(feed, i, pr); ident = np.arange(len(sigma))
+        # accept the assignment only if it carries MORE gold factors than the identity (the read's own rule): a
+        # permutation can never make the graded content worse than the positional gold
+        if (sigma != ident).any() and hits(feed, i, pr, sigma) > hits(feed, i, pr, ident): permute_row(feed, i, sigma); n_perm += 1
     return n_perm, n_law
 
 if __name__ == "__main__":   # CPU self-test: a shuffled gold matched against its own unshuffled predictions returns to the original
