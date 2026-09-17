@@ -40098,3 +40098,27 @@ silver; a regularizing register at most). GSM-Plus / GSM-Hard are
 test-split perturbations: contaminated, never. The dose ladder's rung
 1 stands as read (SDd6 null; fit 0.36; args +0.028; digits flat);
 rung 2 is unfinished and unread.
+
+**2026-09-17 — TWO CORRECTIONS TO THE RECORD, AND THE CHAIN LANE
+RE-FIRED.** (1) THE DIET'S PROSE IS THE 08-31 CHAIN LANE, NOT HAND
+ANNOTATION: form_mix12's 13,475 gsm8k rows are 1,225 unique stories
+(x ~11 reps) = the machine-extracted GSM8K drafts admitted then (the
+holdout's 311 drawn from the same lane). The machine fits 1,225 unique
+prose stories and reads new ones at 0.25 — the unique count was 1,225
+all along; the silver added 460 (+37%). (2) THE GRAMMAR HAS TWO
+OPERATORS: the pen dialect is add and mul (26,631 / 19,877 in the
+diet; mint 1,723 / 111); the head's op gold is BINARY (`0 if add else
+1`) and decodes add / mul; the extractor's docstring carries the rule
+(x−y=d -> add(y,d)=x; a/b=c -> mul(c,b)=a). Sonnet's 329 sub and 131
+div relations (273 of 460 rows) were written into BOTH silver chains'
+gold as mul with the wrong arity — corrupted structure on 59% of
+silver rows. `canonical_positional.reencode_ops` now re-encodes before
+ordering (the unknown becomes an argument: the pen form "40 = partner
++ 10"); the silver files are re-canonicalized (pc-recanon). THE CHAIN
+LANE (pc-chain): `gsm8k_wild_extract.py` at M=9999 (the wide head has
+7 digits; the 08-31 cap of 300 refused 2,002 rows on bounds), the
+holdout excluded by text, drafts -> `gsm8k_chain_post.py` (given spans
+located, silver form) -> positional canonicalization with the gate.
+Anchored givens only (the machine's convention: ~1% hidden); the
+2,356 "unanchored" rows (rationale constants) are a registered second
+tier. Expected: well above the pilot's 20.4%.

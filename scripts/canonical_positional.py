@@ -42,7 +42,19 @@ def positional_order(r):
     if len(seen) != r["n_vars"]: return None, f"vars_{r['n_vars']}_introduced_{len(seen)}"
     return order, None
 
+def reencode_ops(r):
+    """THE GRAMMAR'S TWO OPERATORS (2026-09-17): the pen dialect is add and mul only (26,631 / 19,877 in the
+    diet; the head's op gold is binary and decodes add/mul). sub(a,b)->r is add(b,r)->a; div(a,b)->r is
+    mul(b,r)->a — the known moves to the result side and the unknown becomes an argument (the pen form
+    "40 = partner + 10"). Sonnet's 329 sub / 131 div relations had been written into the gold as mul."""
+    c = json.loads(json.dumps(r))
+    for f in c["factors"]:
+        if f["ftype"] == "rel" and f.get("op") == "sub": a, b = f["args"]; f["op"] = "add"; f["args"] = [b, f["result"]]; f["result"] = a
+        elif f["ftype"] == "rel" and f.get("op") == "div": a, b = f["args"]; f["op"] = "mul"; f["args"] = [b, f["result"]]; f["result"] = a
+    return c
+
 def canonicalize(r):
+    r = reencode_ops(r)
     order, why = positional_order(r)
     if order is None: return None, why
     F = r["factors"]; new = {}; seen = set()

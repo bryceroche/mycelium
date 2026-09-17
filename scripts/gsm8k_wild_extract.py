@@ -11,7 +11,12 @@ GSM8K test split NEVER touched. Output: .cache/gsm8k_wild_drafts.jsonl
 import json, re, sys
 from collections import Counter
 
-M = 300
+import os
+M = int(os.environ.get('GW_M', '999'))   # the head's digit width: 3 digits (MSD-first) -> 999; 2026-09-17: was 300 (the books' cap)
+OUT = os.environ.get('GW_OUT', '.cache/gsm8k_wild_drafts.jsonl')
+EXCLUDE = set()
+for _p in os.environ.get('GW_EXCLUDE', '').split(','):
+    if _p: EXCLUDE |= {__import__('json').loads(l)['text'] for l in open(_p)}
 SNAP = ('.cache/gsm8k/datasets--openai--gsm8k/snapshots/'
         '740312add88f781978c0658806c59bc2815b9866/main/'
         'train-00000-of-00001.parquet')
@@ -180,6 +185,7 @@ t = pq.read_table(SNAP).to_pydict()
 qs, ans = t['question'], t['answer']
 out, rej = [], Counter()
 for i in range(len(qs)):
+    if qs[i] in EXCLUDE: rej['excluded_holdout'] += 1; continue
     a = ans[i]
     tail = a.split('####')[-1].strip().replace(',', '')
     try:
@@ -200,7 +206,7 @@ for i in range(len(qs)):
     d.update({"src": "gsm8k_train", "src_idx": i,
               "original": qs[i], "answer": key})
     out.append(d)
-with open('.cache/gsm8k_wild_drafts.jsonl', 'w') as fh:
+with open(OUT, 'w') as fh:
     for d in out:
         fh.write(json.dumps(d) + '\n')
 print(f"[gsm8k wild] {len(out)} drafts from {len(qs)} "
