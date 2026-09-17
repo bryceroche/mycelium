@@ -26,8 +26,17 @@ def ready_pos(f):
 RULE = __import__("os").environ.get("CP_RULE", "asap")   # "asap": a relation is stated as soon as its arguments are known (the pen shape
                                                           # "g g r g r"; slot 2 = the first relation); "spanend": at the end of its last evidence span
 
+def law_holds(F):
+    seen = set()
+    for k, f in enumerate(F):
+        vs = set(vars_of(f))
+        if vs - seen != {k}: return False
+        seen |= vs
+    return True
+
 def positional_order(r):
     F = r["factors"]; seen = set(); order = []; left = list(range(len(F))); intro = {}
+    if RULE == "keep" and law_holds(F): return list(range(len(F))), None   # the extractor's (rationale) order IS the machine's convention
     while left:
         cands = [i for i in left if len(set(vars_of(F[i])) - seen) == 1]
         if not cands: return None, f"no_positional_order_at_slot_{len(order)}"

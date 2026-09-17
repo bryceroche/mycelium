@@ -40146,3 +40146,23 @@ the tier is dosed and read apart). Expected: a large share of the
 3,136. Registered behind it: an expression parser for the 338
 expr-parse rejects; the cents transform for the 1,424 non-integer /
 decimal rows (a design question: the text would change).
+
+**2026-09-17 — TIER 2: +1,709 STORIES (3,303 IN THE CHAIN LANE); THE
+MACHINE'S CONVENTION IS THE EXTRACTOR'S RATIONALE ORDER (VERIFIED).**
+Tier 2 (GW_LEXICON=1): 3,511 drafts (47.0%, from 22.3%); 3,303 with
+spans; **1,709 NEW** stories beyond tier 1 carrying 2,288 lexicon
+givens (a word or unit span: percent, hour, week, twice, a dozen);
+the gate re-certified 1,709 / 1,709. Rejects left: unanchored 1,016,
+non-integer 982, decimal-in-question 580, bounds 396, expr-parse 382.
+THE CONVENTION, VERIFIED: tier 1 re-extracted 1,165 of the diet's
+1,225 stories and its factor sequences are IDENTICAL on all 1,165 —
+the diet's prose convention is the extractor's emission order (the
+human rationale's step order, var == slot by construction), so the
+chain rows KEEP that order (`CP_RULE=keep`: identity when the law
+holds; the ASAP reorder of 751 tier-1 rows is retracted — the
+ASAP-ordered files kept as `.asap.jsonl`). Sonnet's rows, which come
+givens-first, keep the ASAP rule as the nearest proxy for rationale
+order. The chain lane after this: 1,594 + 1,709 = 3,303 unique prose
+stories (the diet had 1,225), resampled x3 (pc-chainkeep), tier-2
+rows stamped gen.tier = "lexicon" for separate dosing. `datasets` is
+not installed; SVAMP / ASDiv / MAWPS fetch registered behind the diet.
