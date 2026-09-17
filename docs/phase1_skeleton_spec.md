@@ -40057,3 +40057,19 @@ verdict, with the matched read reported beside the positional read
 from here on (the positional read stays the ledger's primary number
 until the loss changes; bars are pinned on it). The dose ladder runs:
 form12sp6 = 9,870 silver rows, share 6.87%, 21.5 rows/story/epoch.
+
+**2026-09-17 — THE DOSE LADDER, RUNG 1: SDd6 (share 6.87%, 21.5
+rows/story/epoch, 12k) — NULL AT THE BAR; THE DROP IS GONE; THE FIT
+RISES.** Wild 0.2535 (base 0.2526; paired −0.001, z −0.1), mint 0.9798
+(+0.004), own silver rows **0.358** (dup 2: 0.216; base 0.086; res
+0.994, ftype 0.90, op 0.95, args 0.46, dig 0.35). Paired vs SD242p
+(dup 2): +0.012 (z 1.6) — tripling the dose recovered the dup-2 arm's
+holdout loss. Holdout fields: args **0.386** (base 0.358, +0.028),
+res 0.792 (+0.009), dig 0.340 (flat), ftype 0.815 (−0.017). Reading:
+dose buys the FIT on the silver rows (0.22 -> 0.36) and transfers
+STRUCTURE to the holdout (args, res up) without moving the total; the
+numerals do not move with dose — the content gap the matched read
+named (matched dig 0.50) is not a dose problem. Trajectory: the
+family's march. Rung 2 (SD24k: dup 2 for 24k steps — exposure without
+share) runs; the mint pairing vs the base completes in the follow-up
+(the base's mint per-slot file was missing).
