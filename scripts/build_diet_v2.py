@@ -24,7 +24,12 @@ n_sources = len(silver); per_src = n_silver_all / max(n_sources, 1)
 out = []; rng.shuffle(mint); mint_rows = mint[:n_mint]; n_wild = 0
 if a.wild_frac > 0:
     sys.path.insert(0, "scripts"); from wild_mint import wild
-    mint_rows = [wild(r, rng, do_words=rng.random() < 0.7, do_distractor=rng.random() < 0.7) if rng.random() < a.wild_frac else r for r in mint_rows]; n_wild = sum(1 for r in mint_rows if (G(r) or {}).get("wild"))
+    from tokenizers import Tokenizer; import re as _re
+    _tj = _re.search(r'^TOKENIZER_JSON\s*=\s*(.+)$', open("scripts/phase1_algebra_head.py").read(), _re.M).group(1); _tok = Tokenizer.from_file(eval(_tj)); T_ALG = 256
+    def _wild_fit(r):   # THE TOKEN BUDGET: a wilded row past T_ALG tokens is refused by the precompute (TRUNCATION) — keep the row plain instead
+        w = wild(r, rng, do_words=rng.random() < 0.7, do_distractor=rng.random() < 0.7)
+        return w if len(_tok.encode(w["text"]).ids) <= T_ALG else r
+    mint_rows = [_wild_fit(r) if rng.random() < a.wild_frac else r for r in mint_rows]; n_wild = sum(1 for r in mint_rows if (G(r) or {}).get("wild"))
 out += mint_rows; report = [f"mint {n_mint} rows ({n_mint/total:.1%}; {n_mint/len(mint):.0%} of the pool's {len(mint)}; wilded {n_wild} = {n_wild/max(n_mint,1):.0%})"]
 reps_pen = min(a.reps_cap, n_pen / len(pen_u)); pen_rows = []
 for t, rs in pen_u.items(): pen_rows += (rs * 20)[:max(1, round(reps_pen))]
