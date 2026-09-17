@@ -39769,3 +39769,42 @@ relaunched from the mix. Cost: one precompute (~1.5 h). The n_vars
 census of the silver stories: median 10, 21 rows >= 18 — the silver
 dialect is wider than mint's (mint's rows sit at 5-12 vars); the head's
 24 slots hold it with room.
+
+**2026-09-16 — THE SILVER CHAIN VERDICT: THE DATA AT 2.4% IS UNDER THE
+BAR (+0.006, z 0.8); NEITHER ROAD ADDS TO IT (the router −0.008 at
+z 1.5 against; the write-back −0.004).** The diet: form_mix12 + 473
+silver stories + 1,194 certified copies at dup 2 (share 2.43%, 7.0
+rows/story/epoch); arms 12k steps B=8 warm from balV242, 0.39 s/step;
+reads open per slot, paired (`.cache/paired_*`), content trajectories.
+
+| arm | wild | mint | paired wild | z |
+| balV242 (base) | 0.2526 | 0.9757 | — | — |
+| SD242 (data alone) | 0.2589 | 0.9798 | vs base +0.0063 (SE 0.0078) | 0.81 |
+| SR242 (router road) | 0.2511 | 0.9793 | vs SD −0.0078 (SE 0.0052) | −1.50 |
+| SB242 (write-back) | 0.2550 | 0.9785 | vs SD −0.0039 (SE 0.0055) | −0.71 |
+
+Mint: every arm within +0.005 of the base (no kill; the silver rows
+regularize, as the books' prose did). Wild: the data alone moves
++0.006 — the right sign, 0.8 paired z, UNDER the +0.020 bar (one SE is
+0.0096; the bar is two). The roads: on the same diet the router reads
+BELOW the data alone (65 slots right only under SD vs 49 under SR;
+z 1.5 against — the span-supervised bias costs, not helps, at this
+dose), the write-back the same sign at 0.7 z. NULL on both roads per
+the pinned bars; the write-back's mint is within 0.005 (its road has
+no work on mint, as predicted). The content trajectories of all three
+arms are balV242's converging march to the third decimal (SD prog by
+b3 0.540, SR 0.549, SB 0.508; base 0.438 at b3 in the 09-16 read —
+the silver arms reach further sooner; the shape does not read the
+score, again). WHAT THE READ SAYS: the silver rows carry a small
+transferable signal at 2.4% and 5 exposures per story; the exposure
+question (Bryce, 21:00) is live. REGISTERED, needing the word — THE
+DOSE LADDER: (a) SD-d6 = the same diet at dup 6 (share ~7%, ~21
+rows/story/epoch, near the books' 10-rep working point after the 0.7
+pass); (b) SD-24k = dup 2 for 24k steps (the same dialect balance,
+double the exposures) — (a) vs (b) separates share from exposure;
+bars as the chain's: wild >= +0.020 paired vs balV242. FIRST, a
+zero-training read: THE FIT READ — do SD242 and balV242 read the 473
+silver stories themselves (the trained rows) differently? If SD242
+does not fit its own silver rows at this dose, exposure is the limiter
+(the dose ladder is the read); if it fits them and wild does not move,
+the gap is generalization again (n is the lever, not dose).
