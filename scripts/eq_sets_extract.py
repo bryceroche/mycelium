@@ -35,7 +35,10 @@ def build(text, expr, key):
         if v != int(v) or not (0 <= v <= M): return None
         v = int(v)
         if v == 1 or v in nums:
-            i = new_var(); facs.append({"ftype": "given", "var": i, "value": v}); by_val[v] = i; return i
+            i = new_var(); f = {"ftype": "given", "var": i, "value": v}
+            for m in re.finditer(r"(?<![\w.])" + re.escape(str(v)) + r"(?![\w]|\.\d)", text):   # the numeral's span (first unused) — the resampler needs it
+                if not any(a <= m.start() < b for a, b in lexused): lexused.append((m.start(), m.end())); f["spans"] = [[m.start(), m.end()]]; break
+            facs.append(f); by_val[v] = i; return i
         for s, e, val in lex:
             if val == v and not any(a <= s < b for a, b in lexused):
                 lexused.append((s, e)); i = new_var(); facs.append({"ftype": "given", "var": i, "value": v, "spans": [[s, e]], "hidden": "lexicon"}); by_val[v] = i; return i

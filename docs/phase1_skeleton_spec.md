@@ -40214,3 +40214,18 @@ The gate (CPU, tiny64, warm balV242, 2 steps): off vs identity must be
 bit-identical; on must run and count permutations. `wild_mint.py`
 (worded numerals + a distractor prefix, spans shifted exactly, span
 audit) staged for diet v3.
+
+**2026-09-17 — THE MATCHING LOSS GATE: BIT-IDENTICAL (5.3248 /
+0.0492 on all three arms), AND TRIVIALLY SO — the prose smoke queued.**
+Off, identity, and on read the same two step losses on the tiny64
+fixture; but the fixture is mint, which obeys a different numbering
+law, so "permuted 0/0 law rows": the machinery engages on no row. The
+identity arm therefore proves only that an engaged-but-identity
+assignment leaves the feed untouched (the permutation code path ran on
+zero rows). THE PROSE SMOKE (pc-matchsmoke, CPU): 64 chain-lane rows
+as their own split (`form_tiny64p`), 2 walker steps, ST_MATCH off vs
+on — on must report permuted rows and a finite loss. Chain tier 2
+resampled: 1,709 parents -> 4,456 copies after the filter (tier 1:
+4,076). SVAMP/ASDiv: 0 copies on the first pass — the extractor gave
+anchored givens no spans (the resampler resamples spanned givens only);
+spans added, re-running (pc-eqsets2).
