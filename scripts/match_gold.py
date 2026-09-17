@@ -15,9 +15,8 @@ def law_holds(feed, i):
     """positional law on row i of the feed: the var-set of slot k minus the vars seen before is exactly {k}"""
     L = feed["presence"].shape[1]; seen = set()
     n = int(feed["presence"][i].sum())
-    for k in range(n):
-        vs = set(np.where(feed["args"][i, k] > 0.5)[0].tolist())
-        if feed["is_rel"][i, k] > 0.5: vs.add(int(feed["res"][i, k]))
+    for k in range(n):   # the gold encoding: a given's variable is res[k] (args empty); a relation's are args + res
+        vs = set(np.where(feed["args"][i, k] > 0.5)[0].tolist()); vs.add(int(feed["res"][i, k]))
         if vs - seen != {k}: return False
         seen |= vs
     return True
@@ -86,7 +85,7 @@ if __name__ == "__main__":   # CPU self-test: a shuffled gold matched against it
         vals = [5, 7, None, 9, None]
         for k, v in enumerate(vals):
             f["presence"][0, k] = 1
-            if v is not None: f["ftype"][0, k] = 1; f["is_lit_f"][0, k] = 1; f["args"][0, k, k] = 1; f["digits"][0, k] = [0, 0, v]; f["vspan"][0, k, k] = 1; f["fspan"][0, k, k] = 1
+            if v is not None: f["ftype"][0, k] = 1; f["is_lit_f"][0, k] = 1; f["res"][0, k] = k; f["digits"][0, k] = [0, 0, v]; f["vspan"][0, k, k] = 1; f["fspan"][0, k, k] = 1
         f["is_rel"][0, 2] = 1; f["args"][0, 2, [0, 1]] = 1; f["res"][0, 2] = 2; f["op"][0, 2] = 0
         f["is_rel"][0, 4] = 1; f["args"][0, 4, [2, 3]] = 1; f["res"][0, 4] = 4; f["op"][0, 4] = 1
         f["query"][0] = 4; return f
@@ -97,7 +96,7 @@ if __name__ == "__main__":   # CPU self-test: a shuffled gold matched against it
     sigma = assign(g, 0, pr); print("sigma (gold slot -> pred slot):", sigma[:5].tolist())
     assert sigma[:5].tolist() == [0, 1, 3, 2, 4], sigma[:5]
     import copy; g2 = copy.deepcopy(g); permute_row(g2, 0, sigma)
-    assert g2["ftype"][0, :5].tolist() == [1, 1, 1, 0, 0] and g2["res"][0, 3] == 3 and g2["res"][0, 4] == 4 and set(np.where(g2["args"][0, 4] > 0)[0]) == {3, 2} and g2["query"][0] == 4 and g2["digits"][0, 2].tolist() == [0, 0, 9]
+    assert g2["ftype"][0, :5].tolist() == [1, 1, 1, 0, 0] and g2["res"][0, :5].tolist() == [0, 1, 2, 3, 4] and set(np.where(g2["args"][0, 4] > 0)[0]) == {3, 2} and g2["query"][0] == 4 and g2["digits"][0, 2].tolist() == [0, 0, 9]
     g3 = copy.deepcopy(g); n = match_feed(g3, {k: v[None] for k, v in pr.items()}); assert n == (1, 1)
     g4 = copy.deepcopy(g); n = match_feed(g4, {k: v[None] for k, v in pr.items()}, identity=True); assert all((g4[k] == g[k]).all() for k in g)
     print("[match_gold] self-test PASS: permuted gold matches the predictions' order; identity leaves the feed untouched")
