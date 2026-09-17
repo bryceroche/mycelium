@@ -80,6 +80,8 @@ def permute_row(feed, i, sigma):
         if key in feed: a = feed[key][i]; new = np.empty_like(a); new[sigma] = V[a.astype(int)]; feed[key][i] = new
     a = feed["vspan"][i]; new = np.empty_like(a); new[V] = a; feed["vspan"][i] = new
     feed["query"][i] = V[int(feed["query"][i])]
+    if "bind_ids" in feed:   # (L, 4) per slot: (arg1, arg2, res, 24+ftype) — the first three are VARIABLE indices; moved by sigma above, remapped by V here
+        b = feed["bind_ids"][i]; b[:, :3] = V[b[:, :3].astype(int)]; feed["bind_ids"][i] = b
 
 def match_feed(feed, preds, identity=False):
     """permute every law-abiding row of the feed toward its predictions; returns (n_permuted, n_law)"""
