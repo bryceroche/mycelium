@@ -40341,3 +40341,22 @@ sacred loss; not now). Cost: the loss graph twice per rung (small
 beside the forward). Parked until the GPU frees (diet v3 to ~19:00);
 the host machinery (`match_gold.py`, the walker hook) stays, proposing
 the permutation. The matched READ stands as the instrument.
+
+**2026-09-17 — THE ANNEALED KERNEL BUILT (word given; Bryce's gut:
+"tied to the CNN kernel").** `ALG_KANNEAL="s1,s2,...,sK"`: at breath k
+the bank's keys and values are built from the token states smoothed
+along the sequence by a Gaussian of width s_k tokens, bounded by the
+sentence mask (never across sentences; pads never sources; a row with
+no mass keeps itself) — scale space over the token axis, coarse early
+and fine late; a FIXED operator (no parameter, no gain: the mandatory-
+road law); stage 0 and s_k = 0 read the raw states, so the env unset
+is bit-identical by construction (the CPU fixture gate pc-kagate).
+The walker refuses it. THE ARM (pc-ka, staged behind diet v3 and the
+gate): KA242 = diet v3, seed 242, sigmas 8, 4, 2, 1, 0.5, 0 — ONE
+variable against SDv3_242 (same diet, same seed): bars paired wild
+>= +0.020 (z >= 2), mint within 0.005, KILL mint <= −0.010; reads with
+fields + matched + vs balV242. The prediction pinned: the kernel's work
+is on the NUMERALS (the late breaths must pin a token; the census: wild
+given slots' argmax is a digit 6%) — digits and args move if it works;
+mint has no headroom for it. The level ladder rides a second arm only
+if the first moves.
