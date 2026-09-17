@@ -40317,3 +40317,27 @@ balV242. The next read is diet v3 (pc-dietv3, running: + SVAMP/ASDiv
 2,373 stories, mint 50% half wilded, two seeds, the same bar). Rule
 kept: a two-seed positive below the bar is a DIRECTION, banked as
 such, and never rounded up to a record.
+
+**2026-09-17 — THE MATCHING LOSS: THE HOST-SIDE ACCEPTANCE CANNOT BE
+MADE FAITHFUL; THE EXACT DESIGN REGISTERED (min-of-losses on the
+device).** The probe (`match_loss_probe.py`: the head's loss on 8 chain
+rows, original vs permuted gold, per candidate row) against three
+acceptance rules: the read's hit rule accepts a given swap that raises
+the true loss (+1.17); a content proxy from the final heads rejects a
+swap that lowers it (−2.27); adding the attention term (fat vs fspan)
+leaves both verdicts unchanged. The terms the final heads cannot see —
+the binding bus's four code losses, the ladder's earlier rungs — carry
+the difference, and a proxy that models them is the loss. The smoke
+under every rule so far: the on-loss is ABOVE the off-loss at step 0
+(42.84 vs 41.95); no permutation has been accepted that the loss
+endorses on this fixture except by luck. THE DESIGN: the walker holds
+a second gold buffer set carrying the permuted gold (equal to the
+original when no permutation is proposed); each rung's loss is
+min(L(o, gold), L(o, gold_perm)) — the batch-level minimum: a bad
+assignment costs nothing by construction, a good one lowers the loss,
+and the gate (gold_perm == gold) is bit-identical. Per-row minima
+would need the ladder's terms reduced per row (a restructure of the
+sacred loss; not now). Cost: the loss graph twice per rung (small
+beside the forward). Parked until the GPU frees (diet v3 to ~19:00);
+the host machinery (`match_gold.py`, the walker hook) stays, proposing
+the permutation. The matched READ stands as the instrument.
