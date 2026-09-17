@@ -159,4 +159,11 @@ def proxy_loss(feed, i, raw, sigma):
             s_ar += (_bce(ar[p], t) * (1.0 + 4.0 * t)).mean()
         else:
             n_dig += 1; s_dg += np.mean([-dg[p, d, int(feed["digits"][i, k, d])] for d in range(dg.shape[1])])
-    return l + s_ft / max(n_p, 1) + s_rs / max(n_p, 1) + s_op / max(n_rel, 1) + s_ar / max(n_rel, 1) + s_dg / max(n_dig, 1)
+    tot = l + s_ft / max(n_p, 1) + s_rs / max(n_p, 1) + s_op / max(n_rel, 1) + s_ar / max(n_rel, 1) + s_dg / max(n_dig, 1)
+    if "fat" in raw and "fspan" in feed:   # THE ATTENTION TERM (the loss's largest): stage-0 slot->token attention graded against the factor's span
+        fat = raw["fat"]; s_fat = 0.0
+        for k in range(n):
+            sp = feed["fspan"][i, k]; z = sp.sum()
+            if z > 0: s_fat += -(np.log(fat[int(sigma[k])] + 1e-9) * (sp / z)).sum()
+        tot = tot + float(__import__("os").environ.get("FAT_W", "1")) * s_fat / max(n_p, 1)
+    return tot

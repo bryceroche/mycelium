@@ -40279,3 +40279,25 @@ by V. The rule that falls out: a matching loss on a positional gold
 must permute EVERY variable-indexed field consistently (args by
 sigma×V, res / y / query / bind_ids by V, vspan by V) — the loss is the
 audit, and it must not rise on any accepted permutation. Re-running.
+
+**2026-09-17 — KERNEL ANNEALING REGISTERED (Bryce: coarse-to-fine
+over the breaths; "tied to the CNN kernel").** The content trajectory
+already shrinks its step 8x over six breaths and the level ladder asks
+the fine fields late; nothing in the READ changes resolution with the
+breath. Two organs, complementary: (a) THE ANNEALED KERNEL — scale
+space over the token axis: the keys and values the slots read at
+breath k are the token states smoothed along the sequence by a fixed
+Gaussian of width sigma_k (e.g. 8, 4, 2, 1, 0.5, 0 tokens), within
+sentence bounds (the sentence mask), parameter-free (no gain; the
+mandatory-road law), bit-identical at sigma 0; coarse early (a slot
+near "45 minutes" reads the phrase), fine late (the slot must pin the
+numeral — the census: wild given slots' argmax is a digit 6%). A
+training arm on diet v2 with the level ladder; bars as the diet's.
+(b) THE ANNEALED WINDOW — the attention's support narrowing with the
+breath around the slot's previous centre (whole text -> sentence ->
+tokens), or its soft form, a per-breath temperature; a read-time
+probe first. Order: the kernel arm, then the window. THE MATCHING
+LOSS's acceptance: the probe (the head's loss on original vs permuted
+gold, per candidate row) showed the hit rule and the content proxy
+each wrong on one row; the proxy lacked the loss's largest term, the
+stage-0 attention graded against the factor's span — added; re-run.

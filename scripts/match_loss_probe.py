@@ -26,7 +26,7 @@ def tens(f): return {k: Tensor(np.ascontiguousarray(v), dtype=(dtypes.int if v.d
 def L(f): return float(loss_fn(o, tens(f)).numpy())
 import copy
 base = L(feed); print(f"[probe] loss on the original gold: {base:.4f}")
-raw = {k: onp[k] for k in ("pres", "ftype", "op", "dig", "args", "res")}; raw["pres"] = raw["pres"].reshape(B, L_FAC, 1)
+raw = {k: onp[k] for k in ("pres", "ftype", "op", "dig", "args", "res")}; raw["pres"] = raw["pres"].reshape(B, L_FAC, 1); raw["fat"] = o["fat"].numpy()
 full = copy.deepcopy(feed); n = MG.match_feed(full, preds, raw=raw); print(f"[probe] permuted {n[0]}/{n[1]} rows; loss on the fully permuted gold: {L(full):.4f} (delta {L(full)-base:+.4f})")
 # per-row: which rows changed
 rows = [i for i in range(B) if any((full[k][i] != feed[k][i]).any() for k in feed)]
@@ -41,3 +41,10 @@ for i in rows:
     one = copy.deepcopy(feed)
     for k in feed: one[k][i] = full[k][i]
     print(f"[probe]   only row {i} permuted -> {L(one):.4f} (delta {L(one)-base:+.4f}); sigma head: {MG.assign(feed, i, {k: v[i] for k, v in preds.items()})[:int(feed['presence'][i].sum())].tolist()}")
+print("[probe] per candidate row: hits id->sigma | proxy id->sigma | TRUE loss delta with only this row permuted")
+for i in range(B):
+    if not MG.law_holds(feed, i): continue
+    pr = {k: v[i] for k, v in preds.items()}; sigma = MG.assign(feed, i, pr); ident = np.arange(len(sigma))
+    if not (sigma != ident).any(): continue
+    ri = {k: v[i] for k, v in raw.items()}; one = copy.deepcopy(feed); MG.permute_row(one, i, sigma)
+    print(f"[probe]   row {i}: hits {MG.hits(feed, i, pr, ident)}->{MG.hits(feed, i, pr, sigma)} | proxy {MG.proxy_loss(feed, i, ri, ident):.3f}->{MG.proxy_loss(feed, i, ri, sigma):.3f} | true delta {L(one)-base:+.4f} | sigma {sigma[:int(feed['presence'][i].sum())].tolist()}")

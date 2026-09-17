@@ -635,7 +635,7 @@ class StepWalker:
             from match_gold import match_feed, preds_from_decode
             self.put(self.fact_dec, fact_cur)
             dec = self.dec_fns[self.K_B - 1](); onp = {kk: t.numpy() for kk, t in zip(self.dec_keys, dec)}
-            _raw = {k: onp[k] for k in ("pres", "ftype", "op", "dig", "args", "res") if k in onp}
+            _raw = {k: onp[k] for k in ("pres", "ftype", "op", "dig", "args", "res") if k in onp}; _raw["fat"] = self.fat_np if self.fat_np is not None else self.fat_bank.numpy()
             self.match_stats = match_feed(self.feed, preds_from_decode(onp), identity=self.match_identity, raw=_raw)
             self.reput_gold()
         return rates
