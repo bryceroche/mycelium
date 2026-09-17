@@ -40261,3 +40261,21 @@ bar in the campaign (T1's 0.2706 fell inside the seed spread; the fed
 mind's 0.2613 was the record) — and it came from n: 4,988 unique prose
 stories at 27.5% of the mix, in the machine's own convention, at zero
 annotation tokens.
+
+**2026-09-17 — THE MATCHING LOSS PROSE SMOKE: THREE DEFECTS FOUND BY
+THE LOSS ITSELF.** On 64 chain rows (`form_tiny64p`; the positional law
+holds on 64/64 — on the mint fixture 22/64, which is why the first gate
+was trivially bit-identical): (1) the law check read a given's variable
+from `args` — the gold encoding puts it in `res` (args empty) — so no
+row engaged ("permuted 0/0"); fixed. (2) With rows engaging, the loss
+ROSE (41.95 -> 45.11 at step 0): the completion of an assignment to a
+full permutation (unmatched gold factors to the nearest free slot)
+displaced factors already in place — now a permutation is accepted
+only when it carries strictly more gold factors than the identity, by
+the read's own rule. (3) Still a rise with 1 row permuted: `bind_ids`
+(the binding bus's per-slot (arg1, arg2, res, ftype) codes) had moved
+with the slot but kept variable indices in the OLD numbering; remapped
+by V. The rule that falls out: a matching loss on a positional gold
+must permute EVERY variable-indexed field consistently (args by
+sigma×V, res / y / query / bind_ids by V, vspan by V) — the loss is the
+audit, and it must not rise on any accepted permutation. Re-running.
