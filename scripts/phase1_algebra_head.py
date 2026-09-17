@@ -2447,17 +2447,41 @@ def _writeback(p, tok, cur, fat_cur, tokmask, B, kb):
     return tok + msg
 
 
-def _make_bank(p, waist, tokmask, B):
+ALG_KANNEAL = [float(x) for x in os.environ.get("ALG_KANNEAL", "").split(",") if x.strip()]   # THE ANNEALED KERNEL (2026-09-17, word given): sigma per breath, in tokens
+
+
+def _kanneal_smooth(waist, tokmask, sent, B, sigma):
+    """scale space over the token axis: each token's state becomes the Gaussian-weighted mean of its
+    sentence-mates within sigma tokens (row-normalized; pads excluded as sources; a row with no mass
+    keeps itself). A FIXED operator — no parameter, no gain (the mandatory-road law); sigma 0 = identity."""
+    from tinygrad import Tensor
+    from mycelium.loop_bridge import same_sentence
+    T = int(waist.shape[1]); pos = Tensor.arange(T).float()
+    d2 = (pos.reshape(T, 1) - pos.reshape(1, T)) ** 2
+    g = (-d2 / (2.0 * sigma * sigma)).exp().reshape(1, T, T) * same_sentence(sent, tokmask, B, T).reshape(B, T, T)
+    mass = g.sum(-1, keepdim=True); g = g / (mass + 1e-6) + (mass < 1e-6).float() * Tensor.eye(T).reshape(1, T, T)
+    return g @ waist
+
+
+def _make_bank(p, waist, tokmask, B, sent=None):
     """forward()'s bank attention, factored BY PURE CODE MOTION
     (apply_step_trainer.py, 2026-09-03) so the step trainer can rebuild
     the closure over ITS OWN waist tensor. forward's call sites are
-    unchanged; behavior bit-identical by construction."""
+    unchanged; behavior bit-identical by construction.
+    THE ANNEALED KERNEL (ALG_KANNEAL, 2026-09-17): at breath kb the keys and values are built from the
+    token states smoothed by sigma_kb (coarse early, fine late); kb None (stage 0) and sigma 0 read the
+    raw states — bit-identical when the env is unset."""
+    _smoothed = {}
     def bank(queries, nq, extra=None, pbias=None, rbias=None, flat=False,
-             tgate=None, tgv=None):
+             tgate=None, tgv=None, kb=None):
         q_in = queries.unsqueeze(0) + (extra if extra is not None else 0)
         q = q_in @ p["attn_wq"] + p["attn_wq_b"]
-        k = waist @ p["attn_wk"] + p["attn_wk_b"]
-        v = waist @ p["attn_wv"] + p["attn_wv_b"]
+        src = waist
+        if ALG_KANNEAL and kb is not None and sent is not None and kb < len(ALG_KANNEAL) and ALG_KANNEAL[kb] > 0:
+            if kb not in _smoothed: _smoothed[kb] = _kanneal_smooth(waist, tokmask, sent, B, ALG_KANNEAL[kb])
+            src = _smoothed[kb]
+        k = src @ p["attn_wk"] + p["attn_wk_b"]
+        v = src @ p["attn_wv"] + p["attn_wv_b"]
         hd = H_W // N_HEADS
         qh = q.reshape(B if extra is not None else 1, nq, N_HEADS, hd).permute(0, 2, 1, 3)
         kh = k.reshape(B, -1, N_HEADS, hd).permute(0, 2, 1, 3)
@@ -3000,7 +3024,7 @@ def breath_step(p, state, kb, ctx):
     if _T2_CLAIM and state.get("prev_a21") is not None:   # T2: last breath's claims, first road
         _t2b = _claim_bias(state["prev_a21"], state.get("melted"), B, L_TOT)
         _pb_kb = _t2b if _pb_kb is None else _pb_kb + _t2b
-    h_tok, fat_cur = bank(p["fq"], L_TOT, extra=q_extra,
+    h_tok, fat_cur = bank(p["fq"], L_TOT, extra=q_extra, kb=kb,
                           pbias=_pb_kb,
                           rbias=_rb7,
                           # THE TOKEN SEAL: this breath's RE-READING of
@@ -3711,7 +3735,7 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
     if ALG_T1 and "t1_dw" in p and "t1" not in _SEVER:
         waist = _t1_conv(p, waist, tokmask)   # T1: the token convolution (a road)
 
-    bank = _make_bank(p, waist, tokmask, B)
+    bank = _make_bank(p, waist, tokmask, B, sent=sent)
     if N_SCR and slot_mask is not None:
         # FED item 6 mask ruling: scratch rows (queries) OPEN to all;
         # scratch columns CLOSED here (no cold read-back at birth —
@@ -3912,12 +3936,12 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
                 if ALG_TOKLOOP and "tok_wq" in p:      # THE NL LOOP: the token step, then the slot step reads it
                     _tok = _token_step(p, _tok, tokmask, sent, B, kb)
                     _bs_ctx["waist"] = _tok
-                    _bs_ctx["bank"] = _make_bank(p, _tok, tokmask, B)
+                    _bs_ctx["bank"] = _make_bank(p, _tok, tokmask, B, sent=sent)
                 breath_step(p, _bs_state, kb, _bs_ctx)
                 if ALG_WRITEBACK and "wb_w" in p and kb < K_B - 1:   # THE WRITE-BACK: the text learns what was committed to it
                     _tok = _writeback(p, _tok, _bs_state["cur"], _bs_state["fat_cur"], tokmask, B, kb)
                     _bs_ctx["waist"] = _tok
-                    _bs_ctx["bank"] = _make_bank(p, _tok, tokmask, B)
+                    _bs_ctx["bank"] = _make_bank(p, _tok, tokmask, B, sent=sent)
                 if _WHEEL is not None and kb < K_B - 1:
                     _bs_state["wheel_bias"] = _wheel_turn(p, _bs_state, kb, fat, sent, vst, B)
             cur = _bs_state["cur"]
