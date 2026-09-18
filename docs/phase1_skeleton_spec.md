@@ -40466,3 +40466,20 @@ wheel's: a wall clock; a deterministic round budget is the registered
 successor. Chains relaunched (v3, KA, the mask reads behind them); the
 CPU fixture gate re-run beside them as the smoke (it runs the same
 pass). Cost of the day's launches ≈ 4.5 h of GPU.
+
+**2026-09-17 20:55 — THE OFFENDER NAMED: THE WILDED BIG-NUMBER ROWS.**
+The row wall printed them: row 40 (n_vars 5, m 1,000,000, 5 factors),
+row 163 (n_vars 3, m 1,000,000, 3 factors) — the mint big-number family
+(m = 10^6, 4.5% of form12), whose numerals the wilding spelled as
+words: the early-breath parse decodes NO given, and propagation over
+a million-wide domain with nothing known never converges. In v2 the
+same rows carried digits, decoded, and collapsed at once — which is
+why v2 ran and v3 hung, three launches running. THE GUARD
+(deterministic, before the solver): m > ALG_FACTS_M_MAX (10,000) with
+no decoded given -> silenced (no facts, mass m+1); the wall lowered to
+2 s as the backstop. What it says about the wilded mint: for the
+big-number family the wilding removes exactly what the machine reads
+the value from; those rows train the head to read words as numbers
+(the lexicon road's register) and give the solver nothing — by design
+now, not by accident. Relaunched (fourth launch; the first three cost
+~5 h).
