@@ -41035,3 +41035,21 @@ small positive inside the noise. Standing: the per-slot claim (masked
 score and has not moved beyond noise; the census's shift-left (19–
 21.5% within two vs the base's 17.4%) is the leading indicator. The
 annealed decode reads now on the base and PM35_242.
+
+**2026-09-18 15:45 — THE READS TABLE (word given): BUILT; THE CLAIM
+ASSERTED AGAINST ITS ARTIFACTS.** `scripts/reads.py` ingests every
+read from the artifacts — read logs (open / fields / masked), the
+chain-accuracy logs, the matched reads recomputed from the dumps —
+into `reads` in `.cache/rows.sqlite` with value, n, SE, the per-field
+values, the artifact path and mtime, and the git sha at ingest; never
+from prose. `pair A B fixture [legal]` computes McNemar from the two
+per-slot files and stores it; `assert ckpt fixture kind value` is the
+conviction index's assert-on-read as a command (exit 1 on a mismatch
+or when NO artifact exists for a quoted number — the revenant's
+doorway closed); `table fixture [kind]` prints the campaign's numbers
+from the artifacts. First build: 171 reads; asserted OK: PM35_scratch
+_241 masked 0.3291, SDv3_241 masked 0.3008, balV242 test23 0.9757; the
+claim's paired z reproduced from the per-slot files (+0.0283, z +2.82,
+gained 241 / lost 183). Rule from here: a number enters the ledger
+with a `reads.py assert` behind it, and every chain ends with
+`reads.py ingest`.
