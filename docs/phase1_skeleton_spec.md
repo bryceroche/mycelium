@@ -40996,3 +40996,31 @@ own path) — unaffected; the canonicalizer's re-certifications after
 likely this fault; re-certifying it is registered. RULE: the gate's
 self-test runs after EVERY change to the gate or the ladder, as a
 gate, not a courtesy.
+
+**2026-09-18 15:13 — THE FIRST WILD CLAIM OF THE CAMPAIGN AT THE BAR:
+PM35_scratch, BOTH SEEDS.** PM35_scratch_241 (random init, 48k, mint
+35% half wilded / prose 65%; seed 241): wild open **0.2989** (+0.0463
+vs base, z 4.44), masked **0.3291** (vs SDv3_241 masked 0.3008:
++0.0283, SE 0.0100, z 2.82; vs base masked +0.0419, z 3.89); matched
+0.328; fields: digits 0.451 masked, args **0.449**, op 0.737, ftype
+0.852, res 0.799; mint 0.6069 (res 0.711, args 0.621). With seed 242
+(masked 0.3267, +0.0258 at z 2.50): the pinned bar — paired masked
+wild vs the best warm arm >= +0.020 at z >= 2 on BOTH seeds — is
+CLEARED (+0.026 / +0.028; z 2.5 / 2.8). Open wild 0.2994 / 0.2989, the
+first pair above 0.30 unmasked; mean masked 0.328. REGIME TAG: diet
+form_mix_pm35 (50,653 rows; 7,361 prose stories with copies, mint 35%
+half wilded), random init, 48k steps B=8 (66 min at 0.083 s/step),
+the numeral mask at the read, the 311-row holdout (2 leaked rows,
+both read worse; the clean 309-row fixture within 0.002). THE
+LINEAGE: no v98 ancestry; a 12M head trained from nothing. What it
+does NOT claim: mint (0.59–0.61 against the deployed 0.976 — the
+promotion battery would kill it; mint rehearsal is the path, and the
+directive deferred it); the ROW (PM35_242 solved 11 / 311 masked; the
+twin's row read runs); MATH-500 (unread on this lineage; the head's
+register is GSM8K prose). NEXT (needing the word): mint rehearsal on
+this lineage toward a battery (a mint share curve at 48k: 35 -> 50%,
+or a rehearsal phase); the annealed decode read (queued); the pool's
+rejects through an expression parser for n; the seed pair as the
+rule for every arm of this lineage. Standing rule kept: the claim is
+per-slot on the holdout; the row is the score, and the row has not
+moved beyond noise.
