@@ -40483,3 +40483,13 @@ the value from; those rows train the head to read words as numbers
 (the lexicon road's register) and give the solver nothing — by design
 now, not by accident. Relaunched (fourth launch; the first three cost
 ~5 h).
+
+**2026-09-17 20:50 — THE LOSSLESS GUARD.** The 2 s wall caught rows at
+m = 10,000 too (16 in the first flush): wilded rows whose parse decodes
+no given take seconds, not forever. With nothing known, propagation
+assigns nothing — the facts are empty and the mass is the full domain
+whether or not the solve finishes — so a row with NO decoded given is
+now skipped before the solver, deterministically and losslessly, at
+any m. The wall (5 s) remains for rows with givens that still run
+long; the walled line counts givens so the real loss (facts a slow row
+would have produced) can be read. Fifth launch 20:50.
