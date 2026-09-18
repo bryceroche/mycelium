@@ -51,4 +51,4 @@ if __name__ == "__main__":
     base = None
     for name, kw in (("none", {}), ("num", {"num": True}), ("pos", {"pos": True}), ("num+pos", {"num": True, "pos": True})):
         acc, f = score(D, texts, nd=nd, **kw); base = acc if base is None else base
-        print(f"[dmask] {sys.argv[1].split('/')[-1]:<34} {name:<8} fac-exact {acc:.4f} ({acc - base:+.4f}) | ftype {f['ftype']:.3f} res {f['res']:.3f} args {f['args']:.3f} dig {f['dig']:.3f}")
+        print(f"[dmask] {sys.argv[1].split('/')[-1]:<34} {name:<9} fac-exact {acc:.4f} ({acc - base:+.4f}) | ftype {f['ftype']:.3f} res {f['res']:.3f} args {f['args']:.3f} dig {f['dig']:.3f}")

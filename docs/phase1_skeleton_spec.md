@@ -40902,3 +40902,28 @@ to move, which no warm arm did. The twin PM35_scratch_241 runs
 (13:59; reads ~15:10) — it decides both the slot claim (masked wild
 +0.026 vs SDv3_241 at z 2.5 on seed 242) and whether the row count
 repeats.
+
+**2026-09-18 14:30 — ONE RULEBOOK, TWO DOORS (word given): BUILT; A
+SECOND MASK REFUTED BY THE CONTROL BEFORE IT SHIPPED.**
+`mycelium/rulebook.py` holds the dialect's declarative rules with the
+REGISTER each is true of ("all" rules may mask; "prose" rules may only
+be read); the admission gate delegates to it (self-test 200/200), and
+the three decode-side readers (loop_val's LV_LEGAL, chain_acc,
+decode_masks) take the numeral mask from the same object — the offline
+scorer reproduces 0.2872 / 0.2989 after the refactor. THE DECODE
+DOOR's census (`violation_census.py`) on the decoded wild graphs: a
+value off the legal set in 38–46% of rows (the numeral mask's work);
+pointer_order broken in 1–4% (the machine already keeps the prose law);
+and "a variable introduced twice" in 37–52% of rows — which I wrote as
+an "all" rule and built a repair for (re-assign a re-introduced
+variable to its most probable untaken one). THE CONTROL REFUTED IT:
+wild −0.021 / −0.013, MINT −0.32. The rule was wrong: the dialect is a
+CONSTRAINT graph — a variable may be both a relation's result and a
+given ("40 = partner + 10" is add(1,2)->0 with given 0 = 40); the
+positional law's "one new variable per factor" counts the relation's
+unknown ARGUMENT, not its result. The census counted a non-rule. The
+rule is struck from the rulebook with the reason; the repair is
+removed. The lesson of the positional mask, applied on the first try:
+every rule carries a register and is read on mint before it touches
+wild. The rulebook's decode door has exactly one mask (values) and
+two reads (pointers, pointer order).

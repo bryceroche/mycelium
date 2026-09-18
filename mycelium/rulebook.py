@@ -24,7 +24,8 @@ RULES = {   # name -> (register, description)
     "capacity":        ("all",   "n_vars and the factor count are within the head's banks"),
     "pointers":        ("all",   "a relation's two args and its result are variables of the row"),
     "op":              ("all",   "a relation's operator is one of the dialect's"),
-    "single_intro":    ("all",   "every variable is introduced by exactly one factor (a given's var or a relation's new variable)"),
+    # "single_intro" REFUTED 2026-09-18: the graph is a set of CONSTRAINTS — a variable may be both a relation's result and a
+    # given ("40 = partner + 10": add(1,2)->0 with given 0 = 40); the repair read −0.02 wild / −0.32 mint on the control.
     "query_in_graph":  ("all",   "the query variable appears in some factor"),
     "fdiv":            ("all",   "at most FDIV_CAP constant divisions, in the diet's form"),
     "span_bounds":     ("all",   "every span lies inside the text"),
@@ -130,3 +131,4 @@ def violations(parse, text=None, register="all"):
     for v, ks in intro.items():
         if len(ks) > 1: hit("single_intro")
     return out
+

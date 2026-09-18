@@ -16,4 +16,4 @@ for path in [sys.argv[1]] + sys.argv[3:]:
         v = violations(parse, texts[i], register="prose")
         for k, c in v.items(): tot[k] += c; rows_hit[k] += 1
     n = len(per_row)
-    print(f"[violations] {path.split('/')[-1]}: rows {n} | rows breaking a rule: " + ", ".join(f"{k} {rows_hit[k]} ({rows_hit[k]/n:.0%})" for k in ("value_legal", "single_intro", "pointers", "pointer_order") if k in rows_hit) + f" | slot counts {dict(tot)}")
+    print(f"[violations] {path.split('/')[-1]}: rows {n} | rows breaking a rule: " + ", ".join(f"{k} {rows_hit[k]} ({rows_hit[k]/n:.0%})" for k in ("value_legal", "pointers", "pointer_order") if k in rows_hit) + f" | slot counts {dict(tot)}")
