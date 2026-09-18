@@ -41053,3 +41053,29 @@ claim's paired z reproduced from the per-slot files (+0.0283, z +2.82,
 gained 241 / lost 183). Rule from here: a number enters the ledger
 with a `reads.py assert` behind it, and every chain ends with
 `reads.py ingest`.
+
+**2026-09-18 15:29 — THE ANNEALED DECODE: REFUTED AS A DECODER, BY THE
+PINNED BAR.** Over graphs near the argmax (E = −log p_head + 8·[unsat]
++ 3·[not unique]; 120 Metropolis steps, and a 48-draw rejection
+sampler beside it): balV242 correct 8 -> 8, refused 149 -> 101, wrong
+154 -> 202 (sampler and annealer alike; 13k / 20k solver calls);
+PM35_scratch_242 correct 9 -> 13 (3 from refused, 1 from wrong),
+refused 160 -> 82, wrong 142 -> 216. The bar was "correct up AND wrong
+not up": wrong rose by 48 and 74. Every refusal the search moved
+became a CONSISTENT WRONG graph at a ratio of ~19 : 1 against a right
+one. What it says, precisely: the machine's neighbourhood in graph
+space is full of solvable, unique, likely graphs that are wrong, and
+nothing available at inference — consistency, uniqueness, the head's
+likelihood — distinguishes them from the right one; a search over
+that neighbourhood is a machine for manufacturing confident wrong
+answers. The refusals are the SAFE half and must not be spent. CLOSED
+as a decoder (regime: wild holdout, these two checkpoints, this
+energy). What survives: the machinery (raw slot dumps, the pooled
+energy evaluator) is a certifier's test bench — the question it can
+answer next is whether ANY inference-time signal separates the right
+consistent graph from the wrong ones (the perceiver's margins, the
+views' agreement, the mouth) — the fingerpost's job, and the reason
+the row-level wall is a certification wall as much as a reading one.
+Closed with the read-time attention operators (0 for 6): the decode-
+side roads that pay are the ones that remove impossible answers (the
+numeral mask); the ones that search for better answers do not.
