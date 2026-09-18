@@ -215,7 +215,24 @@ def read(ckpt, data=None, p=None):
     _PS = [] if os.environ.get("LV_PER_SLOT") else None
     import collections as _c; _FIELDS = _c.defaultdict(lambda: [0, 0]) if os.environ.get("LV_FIELDS") else None
     _DUMP = [] if os.environ.get("LV_DUMP") else None
-    _DUMPR = [] if os.environ.get("LV_DUMP_RAW") else None   # THE PAIRED READ (2026-09-12): per-slot outcomes to an npz
+    _DUMPR = [] if os.environ.get("LV_DUMP_RAW") else None
+    _LEGAL = os.environ.get("LV_LEGAL", "") == "num"   # THE NUMERAL MASK (2026-09-17, a read-time road): legal values only
+    if _LEGAL:
+        import re as _re; from mycelium import lexicon as _lx
+        def _lsm_np(x): x = x - x.max(-1, keepdims=True); return x - np.log(np.exp(x).sum(-1, keepdims=True))
+        def _digits_of(v, nd): return [(v // 10 ** (nd - 1 - d)) % 10 for d in range(nd)]
+        _legal_cache = {}
+        def _legal_vals(i):
+            if i not in _legal_cache:
+                t = vs[int(i)]["text"]; vals = {1}
+                for m in _re.findall(r"\d[\d,]*", t):
+                    try: v = int(m.replace(",", ""))
+                    except ValueError: continue
+                    if 0 <= v < 10 ** 7: vals.add(v)
+                for _, _, v in _lx.constants(t):
+                    if 0 <= int(v) < 10 ** 7: vals.add(int(v))
+                _legal_cache[i] = sorted(vals)
+            return _legal_cache[i]   # THE PAIRED READ (2026-09-12): per-slot outcomes to an npz
     for s0 in range(0, len(vs), 8):
         sl = np.arange(s0, min(s0 + 8, len(vs)))
         pad = 8 - len(sl)
@@ -322,6 +339,15 @@ def read(ckpt, data=None, p=None):
                                   vg["digits"][i, j]).all())
                     ok = ok and f_dig
                 n_ok += ok
+                if _LEGAL and vg["ftype"][i, j] != 0 and int(onp["ftype"][bi, j].argmax()) != 0:   # THE NUMERAL MASK (LV_LEGAL=num, 2026-09-17): a given's value is the most probable LEGAL value
+                    _dg = _lsm_np(onp["dig"][bi, j]); _best = None
+                    for _v in _legal_vals(i):
+                        _sc = sum(_dg[d, dd] for d, dd in enumerate(_digits_of(_v, _dg.shape[0])))
+                        if _best is None or _sc > _best[0]: _best = (_sc, _v)
+                    if _best is not None:
+                        _onp_dig = onp["dig"][bi, j]; _fake = np.full_like(_onp_dig, -1e9)
+                        for d, dd in enumerate(_digits_of(_best[1], _dg.shape[0])): _fake[d, dd] = 0.0
+                        onp["dig"][bi, j] = _fake   # the legal choice becomes the argmax the read compares
                 if _DUMPR is not None:    # LV_DUMP_RAW=path: the RAW heads per gold slot (the decode-mask reads, 2026-09-17)
                     _DUMPR.append((i, j, int(vg["ftype"][i, j]), int(vg["op"][i, j]), np.where(vg["args"][i, j] > .5)[0].tolist(), int(vg["res"][i, j]), vg["digits"][i, j].tolist(),
                                    float(np.ravel(onp["pres"][bi, j])[0]), onp["ftype"][bi, j].astype(np.float32), onp["op"][bi, j].astype(np.float32), onp["args"][bi, j].astype(np.float32), onp["res"][bi, j].astype(np.float32), onp["dig"][bi, j].astype(np.float32), float(np.ravel(onp["dup"][bi, j])[0]) if "dup" in onp else 0.0))

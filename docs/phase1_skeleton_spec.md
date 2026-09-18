@@ -40580,3 +40580,33 @@ rather than the slot's own previous attention (a certificate-centred
 window is the spotlight, which was 0 for 4). Regime tag: diet v3, 12k
 warm balV242, one seed each. The GPU: the decode-mask reads, then the
 worded-mint reads.
+
+**2026-09-17 23:10 — THE NUMERAL MASK CLEARS THE BAR: +0.035 ON THE
+BASE (z 8.4), +0.023 ON THE V2 ARM (z 6.9), ZERO LOSSES, MINT FLAT.**
+The decode-mask reads (`decode_masks.py` over raw heads): balV242 wild
+0.2526 -> **0.2872** under num (digits 0.336 -> 0.409; gained 71 slots,
+lost 0; McNemar z +8.43); SDv2_242 0.2760 -> **0.2989** (digits 0.381 ->
+0.429; gained 47, lost 0; z +6.86). Mint: balV242 0.9757 -> 0.9757,
+SDv2_242 0.9768 -> 0.9774 — flat, as pinned. The mask never loses a
+slot because it changes a value only when the free argmax is OFF the
+legal set (the text's numerals, the lexicon's constants, 1) — a value
+no prose row can have. POS: wild +0.0000 on both (the machine's
+pointers on prose already lie inside the law — its pointer errors are
+within-law errors), mint −0.70 (the register proof: pos is bound to
+the pen convention and must never touch mint; it is retired as a
+road). WHAT THIS IS: a read-time legality constraint at the decode —
+the Jev relay's one transferable idea, and the first road since the
+fed mind to clear the wild bar (+0.020 at z >= 2), here at z 7-8 with
+no seed question (a deterministic function of the checkpoint). It
+COMPOSES with the diet: SDv2_242 masked reads 0.2989, the highest wild
+read in the campaign; the base masked (0.2872) beats every unmasked
+diet arm. It is now a first-class read (`LV_LEGAL=num` in loop_val:
+the legal choice replaces the digit argmax the read compares); the
+masked read is reported beside the positional read from here; the
+deployed stack's read gets it at the next promotion battery (the
+fingerpost's abstain consumes the margin between the free and the
+legal choice — registered). The lexicon (v3, unit constants) is what
+makes the legal set complete on prose; the mask is the lexicon's
+third road (after the mass rule and the substitution). Reads queued
+(pc-legal): the masked wild read on all seven checkpoints, paired
+open vs legal per checkpoint and legal vs legal across the diets.
