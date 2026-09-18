@@ -1151,9 +1151,10 @@ def _ping_walled(ping, nv, facs, m, bi):
     # given — the wilded big-number rows, whose numerals are now words the early parse cannot read — sends
     # propagation into an unbounded run (in v2 the same rows carried digits and collapsed at once). Silence
     # such a row before the solver, deterministically; the wall (2 s) stays as the backstop.
-    if m > int(_os.environ.get("ALG_FACTS_M_MAX", "10000")) and not any(f.get("ftype") == "given" for f in facs):
-        raise Exception("facts: unbounded domain, no given")
-    wall = float(_os.environ.get("ALG_FACTS_ROW_WALL", "2"))
+    n_given = sum(1 for f in facs if f.get("ftype") == "given")
+    if n_given == 0:   # LOSSLESS (2026-09-17): with nothing known, propagation assigns nothing — the facts are empty and the
+        raise Exception("facts: no given decoded")   # mass is the full domain whether or not the solve finishes; skip it, deterministically
+    wall = float(_os.environ.get("ALG_FACTS_ROW_WALL", "5"))
     if wall <= 0:
         return ping(nv, facs, m)
     armed = [True]
@@ -1167,7 +1168,7 @@ def _ping_walled(ping, nv, facs, m, bi):
             r = ping(nv, facs, m); armed[0] = False; return r
         except _FactsTimeout:
             armed[0] = False
-            print(f"[facts] row {bi}: ping past {wall:.0f} s (n_vars {nv}, m {m}, {len(facs)} factors) — silenced", flush=True)
+            print(f"[facts] row {bi}: ping past {wall:.0f} s (n_vars {nv}, m {m}, {len(facs)} factors, {n_given} givens) — silenced", flush=True)
             raise
         finally:
             armed[0] = False; _sg.setitimer(_sg.ITIMER_REAL, 0); _sg.signal(_sg.SIGALRM, _old)
