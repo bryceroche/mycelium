@@ -41079,3 +41079,33 @@ the row-level wall is a certification wall as much as a reading one.
 Closed with the read-time attention operators (0 for 6): the decode-
 side roads that pay are the ones that remove impossible answers (the
 numeral mask); the ones that search for better answers do not.
+
+**2026-09-18 15:50 — THE CERTIFIER'S BENCH: THE HEAD'S OWN SIGNALS
+SEPARATE RIGHT FROM WRONG CONSISTENT GRAPHS AT AUROC ~0.75, AND
+NOTHING CERTIFIES.** `certifier_bench.py` (per-row labels from the
+row-level reader, signals from the raw slot heads), right vs wrong
+among the solver-accepted rows: balV242 8 vs 171; PM35_242 11 vs 168;
+PM35_241 9 vs 173. AUROC — min slot confidence 0.73 / 0.73 / 0.76;
+mean slot confidence 0.72 / 0.68 / 0.76; args margin 0.61 / 0.69 /
+0.63; res margin 0.71 / 0.63 / 0.70; total log-likelihood 0.56 / 0.63 /
+0.87 (the 0.87 rests on 9 right rows and does not repeat on the seed);
+row length INVERTED 0.72 / 0.69 / 0.80 (shorter decoded graphs are
+more often right — the row wall in one number); presence margin ~0.5
+(nothing). Coverage at 0.9 precision: 0 rows on every signal but one
+— on PM35_241 the rows where the numeral mask changed NO given (10 of
+182) — a certificate of "the machine's values were already legal",
+too thin to build on. Reading, with the annealed decode's refutation:
+the machine does not know when it is wrong; its confidence is a
+0.75-grade hint, not a certificate; the fingerpost's abstain at the
+row level can trade coverage for precision only modestly with these
+signals (the 5-view vote — permutation agreement — is the campaign's
+stronger certifier and was negative on wild in the perceiver's read;
+cross-lineage agreement (the panel) is the registered next signal,
+now cheap: two lineages read the same rows, and the reads table holds
+both). Regime tag: wild holdout, these three checkpoints, the masked
+decode. Bryce's ruling (15:40): mint is an INGREDIENT (the value axis,
+sized by the wild digit read: 35%), not a score; the promotion battery
+is to be redefined around wild rows and MATH-500; mint rehearsal is
+struck. The day's queue is empty; needing the word: the MATH-500
+true-chain read on the 35% lineage (a measurement), the rejects
+parser (n), the 96k ceiling read (seed pair), the panel signal.
