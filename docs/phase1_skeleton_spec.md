@@ -40392,4 +40392,4 @@ every row; the serial pass is the reference) and a default worker cap
 of 8. `core_rows` (the wheel's pool) got the same map earlier today.
 The relaunched SDv3_242 is progressing (children carrying CPU); a
 watchdog now flags a frozen arm in 10 min. Rule: every Pool.map in the
-system is a hang waiting for a dead worker — none remain unwalled.
+system is a hang waiting for a dead worker — none remain unwalled on any chain (one stays in the standalone `wheel_rows_analysis.py`).
