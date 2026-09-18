@@ -10,14 +10,14 @@ def main():
     from phase1_algebra_head import build_params, forward, load_alg, build_slot_masks, alt2_fact_buf, _decode_slots, K_VARS
     from tinygrad import Tensor, dtypes
     from tinygrad.nn.state import safe_load
-    from admit_annotation import solve_walled
+    from admit_annotation import solve_ladder
     from alternator_bridge import problem_from_algebra3
     from mycelium.custody_gold import row_gold
     from mycelium import lexicon as L
     vs, vst, vtk, vg, vse = load_alg("test"); n = len(vs)
     p = build_params(0); sd = safe_load(os.environ["CA_CKPT"]); assert set(sd) == set(p)
     for k in p: p[k].assign(sd[k].to(p[k].device).cast(p[k].dtype)).realize()
-    mask = bool(int(os.environ.get("CA_MASK", "0"))); wall = float(os.environ.get("CA_WALL", "2"))
+    mask = bool(int(os.environ.get("CA_MASK", "0"))); wall = float(os.environ.get("CA_WALL", "10"))
     KEYS = ("pres", "ftype", "op", "dig", "args", "res") + (("dup",) if "h_dup" in p else ())
     def lsm(x): x = x - x.max(-1, keepdims=True); return x - np.log(np.exp(x).sum(-1, keepdims=True))
     def legal(text):
@@ -54,8 +54,12 @@ def main():
             used = [f.get("var") for f in parse if f["ftype"] == "given"] + [a for f in parse if f["ftype"] == "rel" for a in list(f["args"]) + [f["result"]]]
             nvv = max([q + 1] + [v + 1 for v in used if v is not None]); gv = {f["var"]: f["value"] for f in parse if f["ftype"] == "given"}
             if key is None or not parse: refused += 1; continue
+            # THE DOMAIN FOLLOWS THE ROW (the gate's rule): 2x the largest given, 2x the key, floor 300 — the June core at a
+            # flat 10,000 timed out on 298/300 MINT graphs at a 2 s wall (the instrument's first run, 2026-09-18); the ladder
+            # widens on refusal with a wall per rung
+            gmax = max([int(v) for v in gv.values()] + [1]); m0 = int(min(10001, max(300, 2 * gmax, 2 * key)))
             try:
-                res = solve_walled(problem_from_algebra3(nvv, parse, gv, 10000), budget=5000, wall=wall)
+                res, _m = solve_ladder(lambda m: problem_from_algebra3(nvv, parse, gv, m), m0, budget=5000, wall=wall)
             except Exception: res = {"status": "unbuildable"}
             if res.get("status") != "solved": refused += 1; continue
             if int(res["assignment"][q]) == key: correct += 1
