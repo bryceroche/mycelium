@@ -41221,3 +41221,14 @@ family reads (one set of attention biases per arm: the certificate
 masks first, the operators added one at a time on top). The same
 applies to every organ nulled alone this month: the family is the
 body they are re-read in.
+
+**2026-09-18 18:10 — THE VOTE, BOTH LINEAGES.** balV242: open 0.2526
+-> voted 0.2404 (z −4.00; the 09-14 finding reproduced on the base);
+P(wrong | disagree) 0.952, P(wrong | unanimous) 0.697. PM35_scratch_
+241: z −0.90; 0.943 / 0.654. The contrast is the finding: the
+permutation vote damages the mint-shaped base and is neutral on the
+from-scratch prose lineage — the new lineage is permutation-stable on
+prose where the old one was not; and on both, view DISAGREEMENT names
+a wrong slot at 94–95% — the fingerpost's prose road is refusal, not
+certification. Artifacts: `.cache/perceiver_vote_{balV242,PM35_
+scratch_241}_wildhold.npz`.
