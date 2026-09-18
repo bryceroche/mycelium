@@ -40682,3 +40682,25 @@ of GPU paid for them. NEXT (needing the word): the promotion battery
 with the masked read; the remaining ~4,000 pool rows through the chain
 lane (n for the structural half); the fingerpost's abstain on the
 free-vs-legal margin.
+
+**2026-09-18 — THE PROSE PIVOT (Bryce: "the real barrier is NL
+comprehension, not reasoning… train a new model from scratch on GSM8K
+and similar; mint regression is okay").** The evidence for the
+diagnosis is the week's: on one machine mint's slot fields read
+0.96–1.00 and wild's 0.30–0.42; the barrier is binding in prose (args
+0.29–0.33 matched; masked digits 0.41–0.43). Engineering critique
+banked: 7,361 stories is thin for a 12M head shaped by hundreds of
+thousands of mint rows, and the campaign's law is that continuation
+deepens while restarts jostle — so the test is ONE variable: the same
+prose-only diet with two starts, random init (PS_scratch, 24k steps)
+and warm from balV242 (PS_warm, 12k); scratch winning measures the
+mint template as a burden, warm winning keeps the scaffolding and
+drops mint from the diet. The pool is exhausted at the chain lane
+(every train row went through; the rejects need an expression parser
+/ the cents transform — registered). THE DIET: `form_mix_prose.jsonl`
+— zero mint; chain t1 + t2 + eqsets + Sonnet + the 1,225 pen stories,
+with copies, dup 2, reps <= 8. Reads: wild open + masked, the fit on
+silver, mint for the COST only (no mint bar), row-level chain accuracy
+as the headline (registered: `chain_acc.py`). Bars: paired masked wild
+vs SDv3_241 (the best prose arm) >= +0.020 at z >= 2; twins if either
+moves.
