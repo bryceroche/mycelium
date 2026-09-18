@@ -40955,3 +40955,24 @@ catalog agrees with the builder's declared shares, except that the
 catalog sees wilded mint rows as unknown texts (rewritten) — a wilded
 mix's wilded share reads as "?" (18.7% in pm35); registered: stamp
 wilded rows with their parent's hash.
+
+**2026-09-18 15:05 — THE ANNEALED DECODE (word given): built, queued.**
+Simulated annealing as the SOLVER: no (the June core certifies or
+refuses; local search cannot certify — the neural-guided-search
+closure of June). As training noise: the fog, already null. As a
+SEARCH OVER THE PARSE: the live case — the median wild row has four
+wrong slots and the fixes must agree, a coupled energy that per-slot
+argmax cannot find. `scripts/anneal_decode.py`: per row, from ALL 24
+slots' raw heads (`CA_RAWDUMP` in chain_acc), Metropolis moves (a
+slot's presence / ftype / op / res / one arg / value in the legal
+set) under T 1.0 -> 0.05 over 120 steps, E = −log p_head(graph) + 8·
+[the solver finds no assignment] + 3·[the assignment is not unique];
+the lowest-energy graph is solved and graded end to end; beside it a
+plain rejection sampler (48 draws of 3 flips, filtered, max
+likelihood). THE PINNED BAR: rows CORRECT up (from 8 / 11 of 311) AND
+rows WRONG not up — the census's other half (52–64% of rows already
+consistent and wrong) means a search that rewards consistency can
+convert refusals into consistent wrong answers; uniqueness and the
+head's likelihood are the only terms that can prefer the right
+consistent graph. Reads on balV242 and PM35_scratch_242 (pc-anneal,
+behind the twin's row-level read; CPU, six workers).
