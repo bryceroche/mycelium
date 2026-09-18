@@ -93,7 +93,7 @@ def _envi(k, d="0"):
 
 # every env whose loop/loss branch this walker does not thread; set any
 # of these and the trainer refuses LOUDLY (no silent divergence)
-REFUSED = ("ALG_SHELF", "ALG_WHIP", "ALG_TOKLOOP", "ALG_WRITEBACK", "ALG_KANNEAL",   # the shelf readout / the whip (2026-09-12): the walker threads neither the shelf edge nor the kick
+REFUSED = ("ALG_SHELF", "ALG_WHIP", "ALG_TOKLOOP", "ALG_WRITEBACK", "ALG_KANNEAL", "ALG_KWINDOW",   # the shelf readout / the whip (2026-09-12): the walker threads neither the shelf edge nor the kick
            "ALG_RINGS", "ALG_XOUT", "ALG_CLOCK",   # ALG_STELLAR lifted 2026-09-11: v2 lives inside breath_step (rung 1 re-proven)
            "ALG_CIRCLE", "NAZ_TRAIN", "ALG_CONSUME", "ALG_DEEPSUP",
            "ALG_TRUNK_LORA", "BREATH_DROPOUT", "ALG_MASK_GOLD",

@@ -2487,6 +2487,19 @@ def _writeback(p, tok, cur, fat_cur, tokmask, B, kb):
 
 
 ALG_KANNEAL = [float(x) for x in os.environ.get("ALG_KANNEAL", "").split(",") if x.strip()]   # THE ANNEALED KERNEL (2026-09-17, word given): sigma per breath, in tokens
+ALG_KWINDOW = [float(x) for x in os.environ.get("ALG_KWINDOW", "").split(",") if x.strip()]   # THE HIERARCHICAL WINDOW (2026-09-17, word given): half-width per breath, in tokens (0 = whole text)
+ALG_KWINDOW_GAIN = float(os.environ.get("ALG_KWINDOW_GAIN", "4"))                            # the penalty at one half-width, in nats/2 (fixed — not a parameter)
+
+
+def _window_bias(fat_prev, w, B, L, T):
+    """the window at this breath around each slot's CENTRE at the previous breath (the argmax of its
+    attention): a soft penalty -gain * d^2 / (2 w^2) on the attention logits, added on the spotlight road
+    (pbias). Coarse-to-fine: a wide window early refines to a narrow one late, the way a hierarchical index
+    scores coarse blocks and descends. Fixed (no parameter, no gain to vote down); env unset = no bias."""
+    from tinygrad import Tensor
+    c = fat_prev.detach().argmax(-1).float().reshape(B, 1, L, 1)          # (B, 1, L, 1) token centres
+    pos = Tensor.arange(T).float().reshape(1, 1, 1, T)
+    return -ALG_KWINDOW_GAIN * ((pos - c) ** 2) / (2.0 * w * w)
 
 
 def _kanneal_smooth(waist, tokmask, sent, B, sigma):
@@ -3063,6 +3076,9 @@ def breath_step(p, state, kb, ctx):
     if _T2_CLAIM and state.get("prev_a21") is not None:   # T2: last breath's claims, first road
         _t2b = _claim_bias(state["prev_a21"], state.get("melted"), B, L_TOT)
         _pb_kb = _t2b if _pb_kb is None else _pb_kb + _t2b
+    if ALG_KWINDOW and kb >= 1 and kb < len(ALG_KWINDOW) and ALG_KWINDOW[kb] > 0 and state.get("fat_cur") is not None:   # THE HIERARCHICAL WINDOW
+        _kwb = _window_bias(state["fat_cur"], ALG_KWINDOW[kb], B, L_TOT, int(tokmask.shape[1]))
+        _pb_kb = _kwb if _pb_kb is None else _pb_kb + _kwb
     h_tok, fat_cur = bank(p["fq"], L_TOT, extra=q_extra, kb=kb,
                           pbias=_pb_kb,
                           rbias=_rb7,
