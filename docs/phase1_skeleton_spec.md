@@ -40493,3 +40493,22 @@ now skipped before the solver, deterministically and losslessly, at
 any m. The wall (5 s) remains for rows with givens that still run
 long; the walled line counts givens so the real loss (facts a slow row
 would have produced) can be read. Fifth launch 20:50.
+
+**2026-09-17 — THE HIERARCHICAL WINDOW BUILT AND QUEUED (word given:
+"if KA242 comes back flat then we move to hierarchical windowing").**
+`ALG_KWINDOW="w0,...,wK"`: at breath k >= 1 each slot's attention gets
+a soft penalty −gain·d²/(2w_k²) around its CENTRE at breath k−1 (the
+argmax of its previous attention) on the spotlight road (pbias); the
+window narrows over the breaths (0, 64, 32, 16, 8, 4, 2 tokens) — a
+coarse index that descends, the DeepSeek indexer's shape and the
+complement of the annealed kernel (the kernel changes what a token
+carries; the window changes where the slot may look). Fixed gain 4 (no
+parameter); env unset = no bias (the CPU gate pc-wigate). The walker
+refuses it. THE ARM (pc-wi, staged): WI242 = diet v3, seed 242 — ONE
+variable vs SDv3_242, bars as KA242's; THE CONDITION in the launcher:
+it fires only if KA242's paired read vs SDv3_242 is below the bar
+(diff < 0.020 or z < 2); if KA242 clears, it HOLDS and names the
+kernel+window stack as the next arm for the word. Prediction pinned:
+the window's work is on args and digits (the slot must land on the
+numeral); a wrong coarse centre is the failure mode (the soft penalty
+keeps mass elsewhere; a hard window would not).
