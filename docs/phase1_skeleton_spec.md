@@ -40802,3 +40802,23 @@ with the mint register open for later, as Bryce ruled. Registered
 this lineage (48k steps; mint 35%); its promotion path (mint would
 need rehearsal before any battery). The row-level read (chain_acc,
 recalibrated) runs on it now.
+
+**2026-09-18 11:52 — PM25_scratch_241 (THE TWIN): MASKED WILD 0.3155,
+THE CAMPAIGN'S HIGHEST; THE FROM-SCRATCH LINEAGE AT PARITY-OR-BETTER
+ON BOTH SEEDS.** Random init, 24k, form_mix_pm25, seed 241: wild open
+0.2760 (+0.0234 vs base, z 2.22), masked **0.3155** (vs SDv3_241
+masked 0.3008: +0.0146, z 1.46; vs base masked +0.0283, z 2.59);
+matched 0.292; fields on wild: ftype 0.871, res 0.813, op 0.739, args
+**0.444** (a campaign high; the warm arms 0.36–0.42), digits 0.414
+masked; mint 0.0832 (accepted); silver460 fit 0.147. THE LINEAGE, two
+seeds vs the warm v3 pair, masked: 242 0.3028 vs 0.2916 (+0.011), 241
+0.3155 vs 0.3008 (+0.015) — same sign both seeds, mean +0.013, under
+the +0.020 bar: parity-or-better, no claim. Structure fields above
+every warm arm on both seeds. What stands: a 12M head trained from
+nothing in 35 minutes on 7,361 prose stories with a quarter of mint
+is the best wild reader the campaign has, and it owes nothing to the
+v98 lineage; mint (0.08–0.16) is the price, deferred by the directive.
+NEXT on this lineage (needing the word): the dose curve (48k steps;
+mint 35% for the value axis; the wilded share), mint rehearsal toward
+a promotion battery, and the pool's rejects through an expression
+parser for more n. The row-level read runs now on both seeds.
