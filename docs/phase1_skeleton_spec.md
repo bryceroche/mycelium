@@ -40822,3 +40822,31 @@ NEXT on this lineage (needing the word): the dose curve (48k steps;
 mint 35% for the value axis; the wilded share), mint rehearsal toward
 a promotion battery, and the pool's rejects through an expression
 parser for more n. The row-level read runs now on both seeds.
+
+**2026-09-18 12:20 — THE ROW IS THE WALL: ROW-LEVEL CHAIN ACCURACY,
+CALIBRATED (mint 278/300 = 0.927, the bigtest level), ON SIX
+CHECKPOINTS.** `chain_acc.py` (decode -> [mask] -> the June solver at
+the row-sized domain -> the key), wild holdout, rows solved of 311,
+open / masked: balV242 **7 / 8**; SDv3_241 5 / 5; PS_warm_242 6 / 7;
+PS_scratch_242 2 / 4; PM25_scratch_242 4 / 3; PM25_scratch_241 5 / 4.
+Refused (the solver finds no assignment) 35–47%; WRONG (a consistent
+graph that solves to the wrong answer) 52–64%. At p ≈ 0.02 the SE is
+~2.5 rows: every entry is the same number. Six points of masked slot
+gain (0.2872 -> 0.3155) and the structural highs of the from-scratch
+lineage do not reach the row, because a row needs EVERY factor right
+and the week's slot gains are spread across rows that remain wrong
+elsewhere. Two things this settles: (1) the slot metric and the row
+metric are DECOUPLED at this level — fac-exact is the diagnostic, the
+row is the score, and the campaign's wild number is ~2%; (2) the
+dangerous half is not the refusals but the WRONG: half the wild rows
+yield a graph the solver accepts and solves to the wrong answer —
+"consistent != correct" at the row level, which is the fingerpost's
+whole job and the reason the answer key gates everything. What moves
+rows: whole-row correctness, which at ~6 factors per row wants
+per-slot reads far above 0.30 on the SAME rows, or an abstain that
+keeps the machine to the rows it can do. Fired under the prose
+directive: the dose curve on the from-scratch lineage (PM35_scratch:
+mint 35%, 48k steps, seed 242) — the lineage's per-slot ceiling is the
+question. Registered: the row-level read joins every chain from here;
+a per-row error census (which factor breaks the row) is the next
+instrument.
