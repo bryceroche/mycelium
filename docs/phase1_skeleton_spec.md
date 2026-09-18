@@ -40512,3 +40512,7 @@ kernel+window stack as the next arm for the word. Prediction pinned:
 the window's work is on args and digits (the slot must land on the
 numeral); a wrong coarse centre is the failure mode (the soft penalty
 keeps mass elsewhere; a hard window would not).
+(Amended 21:30, Bryce: "run the hierarchical windowing anyways
+regardless of the outcome of KA242" — the condition is removed; WI242
+fires after KA242 whatever it reads. Two one-variable arms against the
+same control; the stack follows if either moves.)
