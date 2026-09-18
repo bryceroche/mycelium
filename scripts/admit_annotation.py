@@ -63,7 +63,7 @@ def solve_ladder(build, m0, budget=5000, wall=30):
     carries an assignment (an unsat result carries a best_partial full of INT_MIN — the gate
     once read that as a query value). Returns (result, m) of the first solve, or the last refusal."""
     res = {"status": "?"}; m = m0
-    for m in [x for x in DOMAIN_LADDER if x >= m0] or [m0]:   # the first rung is 10^4: a solved row costs 0.03 s there, and the row-sized rung's UNSAT costs the whole wall (the resampler crawled at 2 min/parent)
+    for m in [m0] + [x for x in DOMAIN_LADDER if x > m0]:   # THE ROW-SIZED RUNG FIRST (restored 2026-09-18): 09-17's "10^4 first" broke mint admission — a 12-factor mint graph at 10^4 does not converge (the self-test: every row timed out at 60 s; the canary was not re-run after the change). Unsat draws cost a wall per rung; the resampler's walls are short.
         try:
             prob = build(m)
         except Exception as e:
