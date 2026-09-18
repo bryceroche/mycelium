@@ -40976,3 +40976,23 @@ convert refusals into consistent wrong answers; uniqueness and the
 head's likelihood are the only terms that can prefer the right
 consistent graph. Reads on balV242 and PM35_scratch_242 (pc-anneal,
 behind the twin's row-level read; CPU, six workers).
+
+**2026-09-18 15:00 — THE CANARY THAT WAS NOT RE-RUN: THE GATE HAD
+BEEN BROKEN FOR MINT SINCE 09-17 18:10.** The self-test after the
+rulebook refactor ran 33 minutes at full CPU: every mint row
+"unsolved:timeout@m=100000" at 60 s. Cause: yesterday's resampler
+speed-up made 10^4 the ladder's FIRST rung for every row; a 12-factor
+mint graph at a 10^4-wide domain does not converge under a 30 s wall
+(the pool test on 09-17 had shown 6/6 mint rows timing out at 3 s —
+the signal was there). Chain, eqsets and Sonnet rows are small and
+kept certifying, which is why nothing noticed; the self-test (200
+mint rows) is the canary and it was last run at 12:48 on 09-17,
+BEFORE the change. Restored: the row-sized rung first, then 10^4,
+10^5 (one mint row: solved in under a second). Scope of the fault:
+NO admitted row was mis-admitted (a timeout refuses); the resampler's
+copies certified through `solve_certified` at the row-sized m0 (its
+own path) — unaffected; the canonicalizer's re-certifications after
+18:10 refused 1 row as "gate:unsolved:timeout" (a Sonnet story) —
+likely this fault; re-certifying it is registered. RULE: the gate's
+self-test runs after EVERY change to the gate or the ladder, as a
+gate, not a courtesy.
