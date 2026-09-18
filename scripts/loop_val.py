@@ -320,6 +320,15 @@ def read(ckpt, data=None, p=None):
                 if vg["presence"][i, j] < 0.5:
                     continue
                 n_tot += 1
+                if _LEGAL and vg["ftype"][i, j] != 0 and int(onp["ftype"][bi, j].argmax()) != 0:   # THE NUMERAL MASK (LV_LEGAL=num, 2026-09-17): a given's value is the most probable LEGAL value
+                    _dg = _lsm_np(onp["dig"][bi, j]); _best = None
+                    for _v in _legal_vals(i):
+                        _sc = sum(_dg[d, dd] for d, dd in enumerate(_digits_of(_v, _dg.shape[0])))
+                        if _best is None or _sc > _best[0]: _best = (_sc, _v)
+                    if _best is not None:
+                        _onp_dig = onp["dig"][bi, j]; _fake = np.full_like(_onp_dig, -1e9)
+                        for d, dd in enumerate(_digits_of(_best[1], _dg.shape[0])): _fake[d, dd] = 0.0
+                        onp["dig"][bi, j] = _fake   # the legal choice becomes the argmax the read compares
                 f_pres = bool(onp["pres"][bi, j] > 0)
                 f_ftype = int(onp["ftype"][bi, j].argmax()) == vg["ftype"][i, j]
                 f_res = int(onp["res"][bi, j].argmax()) == vg["res"][i, j]
@@ -339,15 +348,6 @@ def read(ckpt, data=None, p=None):
                                   vg["digits"][i, j]).all())
                     ok = ok and f_dig
                 n_ok += ok
-                if _LEGAL and vg["ftype"][i, j] != 0 and int(onp["ftype"][bi, j].argmax()) != 0:   # THE NUMERAL MASK (LV_LEGAL=num, 2026-09-17): a given's value is the most probable LEGAL value
-                    _dg = _lsm_np(onp["dig"][bi, j]); _best = None
-                    for _v in _legal_vals(i):
-                        _sc = sum(_dg[d, dd] for d, dd in enumerate(_digits_of(_v, _dg.shape[0])))
-                        if _best is None or _sc > _best[0]: _best = (_sc, _v)
-                    if _best is not None:
-                        _onp_dig = onp["dig"][bi, j]; _fake = np.full_like(_onp_dig, -1e9)
-                        for d, dd in enumerate(_digits_of(_best[1], _dg.shape[0])): _fake[d, dd] = 0.0
-                        onp["dig"][bi, j] = _fake   # the legal choice becomes the argmax the read compares
                 if _DUMPR is not None:    # LV_DUMP_RAW=path: the RAW heads per gold slot (the decode-mask reads, 2026-09-17)
                     _DUMPR.append((i, j, int(vg["ftype"][i, j]), int(vg["op"][i, j]), np.where(vg["args"][i, j] > .5)[0].tolist(), int(vg["res"][i, j]), vg["digits"][i, j].tolist(),
                                    float(np.ravel(onp["pres"][bi, j])[0]), onp["ftype"][bi, j].astype(np.float32), onp["op"][bi, j].astype(np.float32), onp["args"][bi, j].astype(np.float32), onp["res"][bi, j].astype(np.float32), onp["dig"][bi, j].astype(np.float32), float(np.ravel(onp["dup"][bi, j])[0]) if "dup" in onp else 0.0))
