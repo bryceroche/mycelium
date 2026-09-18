@@ -1137,6 +1137,38 @@ def build_slot_masks(o_np, sent_rows):
     return masks
 
 
+class _FactsTimeout(Exception):
+    pass
+
+
+def _ping_walled(ping, nv, facs, m, bi):
+    """THE FACTS ROW WALL (2026-09-17): one row of the facts pass ran without bound (the diet-v3 arm: three
+    launches, ~4 h, one chunk that never returned under any pool and then never returned in-process).
+    A wall-clock alarm (ALG_FACTS_ROW_WALL s, default 20) bounds ping per row; a row past it is SILENCED
+    (the per-item idiom: no facts, mass = m+1) and named once, so the offender can be read."""
+    import signal as _sg, os as _os
+    wall = float(_os.environ.get("ALG_FACTS_ROW_WALL", "20"))
+    if wall <= 0:
+        return ping(nv, facs, m)
+    armed = [True]
+    def _al(signum, frame):
+        if armed[0]:
+            raise _FactsTimeout()
+    _old = _sg.signal(_sg.SIGALRM, _al)
+    try:
+        _sg.setitimer(_sg.ITIMER_REAL, wall)
+        try:
+            r = ping(nv, facs, m); armed[0] = False; return r
+        except _FactsTimeout:
+            armed[0] = False
+            print(f"[facts] row {bi}: ping past {wall:.0f} s (n_vars {nv}, m {m}, {len(facs)} factors) — silenced", flush=True)
+            raise
+        finally:
+            armed[0] = False; _sg.setitimer(_sg.ITIMER_REAL, 0); _sg.signal(_sg.SIGALRM, _old)
+    except _FactsTimeout:
+        raise Exception("facts row wall")
+
+
 def _alt2_fact_buf_v0(onp, se_np, n_vars_arr, m_arr, theta=0.9,
                       mass_out=None):
     """THE PRE-VECTOR REFERENCE (kept for ALG_SEAM_V0=1 fallback A/B;
@@ -1226,7 +1258,7 @@ def _alt2_fact_buf_v0(onp, se_np, n_vars_arr, m_arr, theta=0.9,
                      + [v + 1 for f in facs for v in
                         ([f["var"]] if f["ftype"] == "given"
                          else list(f["args"]) + [f["result"]])])
-            facts, mass, _r = ping(nv, facs, int(m_arr[bi]))
+            facts, mass, _r = _ping_walled(ping, nv, facs, int(m_arr[bi]), bi)
             if mass is None:                       # contradiction: silence
                 continue
             if mass_out is not None:               # the mass thread:
@@ -1346,7 +1378,7 @@ def _alt2_fact_buf_v1(onp, se_np, n_vars_arr, m_arr, theta=0.9,
                      + [v + 1 for f in facs for v in
                         ([f["var"]] if f["ftype"] == "given"
                          else list(f["args"]) + [f["result"]])])
-            facts, mass, _r = ping(nv, facs, int(m_arr[bi]))
+            facts, mass, _r = _ping_walled(ping, nv, facs, int(m_arr[bi]), bi)
             if mass is None:                       # contradiction: silence
                 continue
             if mass_out is not None:               # the mass thread:
