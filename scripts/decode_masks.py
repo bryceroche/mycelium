@@ -8,21 +8,13 @@ fac-exact under: none | num | pos | num+pos.
         variable (PROSE ONLY: mint numbers by first mention).
 usage: decode_masks.py raw.pkl split.jsonl [N_DIG]"""
 import pickle, sys, json, re, collections, numpy as np
-sys.path.insert(0, "."); from mycelium import lexicon as L
+sys.path.insert(0, "."); from mycelium.rulebook import legal_values as _legal_values, digits_of as _digits_of
 
 def lsm(x): x = x - x.max(-1, keepdims=True); return x - np.log(np.exp(x).sum(-1, keepdims=True))
 
-def legal_values(text, nd):
-    vals = {1}
-    for m in re.findall(r"\d[\d,]*", text):
-        try: v = int(m.replace(",", ""))
-        except ValueError: continue
-        if 0 <= v < 10 ** nd: vals.add(v)
-    for _, _, v in L.constants(text):
-        if 0 <= int(v) < 10 ** nd: vals.add(int(v))
-    return sorted(vals)
+def legal_values(text, nd): return _legal_values(text, nd)
 
-def digits_of(v, nd): return [(v // 10 ** (nd - 1 - d)) % 10 for d in range(nd)]
+def digits_of(v, nd): return _digits_of(v, nd)
 
 def score(D, texts, num=False, pos=False, nd=7):
     n_ok = 0; F = collections.Counter(); cache = {}

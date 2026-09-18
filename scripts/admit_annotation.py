@@ -27,45 +27,10 @@ def key_of(answer_field):
 
 
 def rulebook(row):
-    """returns None when the row is well-formed, else the reason"""
-    n = row.get("n_vars"); facs = row.get("factors") or []; text = row.get("text", "")
-    if not isinstance(n, int) or n <= 0: return "n_vars"
-    if not facs: return "no_factors"
-    if n > SLOT_CAP or len(facs) > SLOT_CAP: return f"capacity_{len(facs)}f_{n}v"   # the head's slot banks: K_VARS = L_FAC = 24 (a 25-var story cannot be trained on; the form12s precompute asserted on it 2026-09-16)
-    if "query_var" not in row or not (0 <= row["query_var"] < n): return "query_var"
-    used = set(); defined = set(); n_fdiv = 0
-    for f in facs:
-        ft = f.get("ftype")
-        if ft == "given":
-            v = f.get("value")
-            if not isinstance(v, int) or not (0 <= v <= VALUE_CAP): return f"value_{v}"
-            if not (0 <= f.get("var", -1) < n): return "given_var"
-            defined.add(f["var"]); used.add(f["var"])
-        elif ft == "rel":
-            if f.get("op") not in ("add", "sub", "mul", "div"): return f"op_{f.get('op')}"
-            a = f.get("args", []); r = f.get("result")
-            if len(a) != 2 or not all(0 <= x < n for x in a) or not (0 <= (r if r is not None else -1) < n): return "rel_pointers"
-            used.update(a); used.add(r); defined.add(r)
-        elif ft == "fdiv":
-            # the diet's form: {"ftype":"fdiv","var":a,"k":k,"result":r} (a / k = r, k a constant divisor)
-            n_fdiv += 1
-            if not (isinstance(f.get("k"), int) and f["k"] >= 2) or not (0 <= f.get("var", -1) < n) or not (0 <= f.get("result", -1) < n): return "fdiv_form"
-            used.add(f["var"]); used.add(f["result"])
-        else:
-            return f"ftype_{ft}"
-        for s, e in f.get("spans") or []:
-            if not (0 <= s < e <= len(text)): return "span_bounds"
-    if n_fdiv > FDIV_CAP: return "fdiv_count"
-    # the dialect is a CONSTRAINT graph, not a directed computation: an unknown may be
-    # determined only through relations it enters as an argument (inverse moves) — so the
-    # rulebook asks only that the query appears in some factor; DETERMINACY is the
-    # certifier's verdict (graph_verdict: forces the key / contradicts / indeterminate)
-    if row["query_var"] not in used: return "query_not_in_graph"
-    for v_str, spans in (row.get("mentions") or {}).items():
-        if not (0 <= int(v_str) < n): return "mention_var"
-        for s, e in spans:
-            if not (0 <= s < e <= len(text)): return "mention_bounds"
-    return None
+    """returns None when the row is well-formed, else the reason — ONE RULEBOOK, TWO DOORS (2026-09-18): the rules live in
+    mycelium/rulebook.py and the decode door reads the same object"""
+    from mycelium.rulebook import row_reasons
+    return row_reasons(row)
 
 
 SLOT_CAP = 24   # the head's K_VARS / L_FAC — a row past it has no gold

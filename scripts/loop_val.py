@@ -216,23 +216,10 @@ def read(ckpt, data=None, p=None):
     import collections as _c; _FIELDS = _c.defaultdict(lambda: [0, 0]) if os.environ.get("LV_FIELDS") else None
     _DUMP = [] if os.environ.get("LV_DUMP") else None
     _DUMPR = [] if os.environ.get("LV_DUMP_RAW") else None
-    _LEGAL = os.environ.get("LV_LEGAL", "") == "num"   # THE NUMERAL MASK (2026-09-17, a read-time road): legal values only
+    _LEGAL = os.environ.get("LV_LEGAL", "") == "num"   # THE NUMERAL MASK (2026-09-17, a read-time road): legal values only — mycelium.rulebook
     if _LEGAL:
-        import re as _re; from mycelium import lexicon as _lx
-        def _lsm_np(x): x = x - x.max(-1, keepdims=True); return x - np.log(np.exp(x).sum(-1, keepdims=True))
-        def _digits_of(v, nd): return [(v // 10 ** (nd - 1 - d)) % 10 for d in range(nd)]
-        _legal_cache = {}
-        def _legal_vals(i):
-            if i not in _legal_cache:
-                t = vs[int(i)]["text"]; vals = {1}
-                for m in _re.findall(r"\d[\d,]*", t):
-                    try: v = int(m.replace(",", ""))
-                    except ValueError: continue
-                    if 0 <= v < 10 ** 7: vals.add(v)
-                for _, _, v in _lx.constants(t):
-                    if 0 <= int(v) < 10 ** 7: vals.add(int(v))
-                _legal_cache[i] = sorted(vals)
-            return _legal_cache[i]   # THE PAIRED READ (2026-09-12): per-slot outcomes to an npz
+        from mycelium.rulebook import legal_digit_logits as _legal_digit_logits
+  # THE PAIRED READ (2026-09-12): per-slot outcomes to an npz
     for s0 in range(0, len(vs), 8):
         sl = np.arange(s0, min(s0 + 8, len(vs)))
         pad = 8 - len(sl)
@@ -320,15 +307,9 @@ def read(ckpt, data=None, p=None):
                 if vg["presence"][i, j] < 0.5:
                     continue
                 n_tot += 1
-                if _LEGAL and vg["ftype"][i, j] != 0 and int(onp["ftype"][bi, j].argmax()) != 0:   # THE NUMERAL MASK (LV_LEGAL=num, 2026-09-17): a given's value is the most probable LEGAL value
-                    _dg = _lsm_np(onp["dig"][bi, j]); _best = None
-                    for _v in _legal_vals(i):
-                        _sc = sum(_dg[d, dd] for d, dd in enumerate(_digits_of(_v, _dg.shape[0])))
-                        if _best is None or _sc > _best[0]: _best = (_sc, _v)
-                    if _best is not None:
-                        _onp_dig = onp["dig"][bi, j]; _fake = np.full_like(_onp_dig, -1e9)
-                        for d, dd in enumerate(_digits_of(_best[1], _dg.shape[0])): _fake[d, dd] = 0.0
-                        onp["dig"][bi, j] = _fake   # the legal choice becomes the argmax the read compares
+                if _LEGAL and vg["ftype"][i, j] != 0 and int(onp["ftype"][bi, j].argmax()) != 0:   # THE NUMERAL MASK (LV_LEGAL=num): one rulebook, two doors
+                    _fake = _legal_digit_logits(onp["dig"][bi, j], vs[int(i)]["text"])
+                    if _fake is not None: onp["dig"][bi, j] = _fake
                 f_pres = bool(onp["pres"][bi, j] > 0)
                 f_ftype = int(onp["ftype"][bi, j].argmax()) == vg["ftype"][i, j]
                 f_res = int(onp["res"][bi, j].argmax()) == vg["res"][i, j]

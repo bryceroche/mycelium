@@ -27,22 +27,12 @@ def main():
     from tinygrad.nn.state import safe_load
     from alternator_bridge import problem_from_algebra3
     from mycelium.custody_gold import row_gold
-    from mycelium import lexicon as L
     vs, vst, vtk, vg, vse = load_alg("test"); n = len(vs)
     p = build_params(0); sd = safe_load(os.environ["CA_CKPT"]); assert set(sd) == set(p)
     for k in p: p[k].assign(sd[k].to(p[k].device).cast(p[k].dtype)).realize()
     mask = bool(int(os.environ.get("CA_MASK", "0"))); wall = float(os.environ.get("CA_WALL", "3"))
     KEYS = ("pres", "ftype", "op", "dig", "args", "res") + (("dup",) if "h_dup" in p else ())
-    def lsm(x): x = x - x.max(-1, keepdims=True); return x - np.log(np.exp(x).sum(-1, keepdims=True))
-    def legal(text):
-        vals = {1}
-        for m in re.findall(r"\d[\d,]*", text):
-            try: v = int(m.replace(",", ""))
-            except ValueError: continue
-            if 0 <= v < 10 ** 7: vals.add(v)
-        for _, _, v in L.constants(text):
-            if 0 <= int(v) < 10 ** 7: vals.add(int(v))
-        return sorted(vals)
+    from mycelium.rulebook import legal_digit_logits
     correct = refused = wrong = 0; nd = None; tasks = []; keys = {}
     for s0 in range(0, n, 8):
         sl = np.arange(s0, min(s0 + 8, n)); pad = 8 - len(sl); sl_p = np.concatenate([sl, sl[:1].repeat(pad)]) if pad else sl
@@ -54,14 +44,11 @@ def main():
         onp = {k: o[k].numpy() for k in KEYS}; qv = o["query"].numpy().argmax(-1)
         for bi, i in enumerate(sl):
             i = int(i); row = {k: onp[k][bi].copy() for k in KEYS}
-            if mask:
-                vals = legal(vs[i]["text"]); dg = lsm(row["dig"]); nd = dg.shape[1]
+            if mask:   # THE NUMERAL MASK — one rulebook, two doors
                 for j in range(row["ftype"].shape[0]):
                     if int(row["ftype"][j].argmax()) == 0: continue
-                    best = max(vals, key=lambda v: sum(dg[j, d, (v // 10 ** (nd - 1 - d)) % 10] for d in range(nd)))
-                    fake = np.full_like(row["dig"][j], -1e9)
-                    for d in range(nd): fake[d, (best // 10 ** (nd - 1 - d)) % 10] = 0.0
-                    row["dig"][j] = fake
+                    fake = legal_digit_logits(row["dig"][j], vs[i]["text"])
+                    if fake is not None: row["dig"][j] = fake
             parse = _decode_slots(row); q = int(qv[bi])
             try: key = int(row_gold(vs[i]))
             except Exception: key = vs[i].get("key"); key = int(key) if key is not None else None
