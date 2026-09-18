@@ -40610,3 +40610,24 @@ makes the legal set complete on prose; the mask is the lexicon's
 third road (after the mass rule and the substitution). Reads queued
 (pc-legal): the masked wild read on all seven checkpoints, paired
 open vs legal per checkpoint and legal vs legal across the diets.
+
+**2026-09-17 23:20 — THE WILDED MINT CLOSES THE WORDED REGISTER
+(z 14).** Worded mint (`wordmint_test`, numerals spelled as words; the
+lexicon's fixture): balV242 0.9070; SDv2_242 (prose diet, plain mint)
+0.9234 (+0.0164, z 3.86 — prose alone helps the worded register a
+little); SDv3_242 (mint 50% with half wilded) **0.9667** (+0.0597,
+z 12.3); SDv3_241 **0.9716** (+0.0646, z 14.0; vs SDv2_242 +0.0483,
+z 11.7). The v3 arms read worded mint within 0.002 of plain mint
+(0.9738) — the register gap the 09-15 read measured at 11.3 points
+(ds242: 0.9815 -> 0.8683) is closed in training by the wilded rows, at
+no cost on plain mint (within 0.005) or on wild (v3 = v2). The
+substitution road (LV_LEXICON=3) had recovered 82% of the headroom at
+read time; the diet recovers ~97% and needs no road at inference. The
+v3 regime stands on this alone: the wilded mint is kept (regime tag:
+worded numerals + distractor prefix on half the mint share). What it
+says about the earlier reading ("number words are a neighbourhood of
+the numeral, not a value"): the head LEARNS the value axis for words
+when the diet asks — the trunk's geometry was never the wall; the
+diet was. Registered: the wild-holdout equivalent — does the wilded
+mint move the machine's reading of worded quantities in PROSE (the
+holdout's worded givens are few; a census first).
