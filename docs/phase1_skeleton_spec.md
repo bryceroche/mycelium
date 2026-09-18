@@ -40424,3 +40424,11 @@ register proof — if mint does not drop, pos is not register-bound and
 the reading changes); a wild gain >= +0.010 registers a candidate road
 (the fingerpost's abstain consumes the margin; training-time use needs
 the register flag), >= +0.020 paired is the claim.
+
+**2026-09-17 20:25 — THE AM SINGLE-PROCESS LAW, MET AT THE READ: a
+read cannot run beside an arm.** The decode-mask reads failed at
+build_params with "Failed to acquire lock file am_0000:03:00.0.lock" —
+the AM driver admits ONE GPU process; the v3 arm holds it. "Nothing
+runs beside an arm" is not only a perf rule; it is enforced. The reads
+are queued behind pc-dietv3 and pc-ka (the same unit, waiting). The
+relaunched SDv3_242 is progressing (six facts children carrying CPU).
