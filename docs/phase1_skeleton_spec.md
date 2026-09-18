@@ -40887,3 +40887,18 @@ rows: mint 35% half wilded, pen 10%, silver the rest), 48k steps at
 (queued behind the row-level read; the seed-pair rule). If the twin
 holds, this is the first wild claim of the campaign at the bar, and it
 belongs to a lineage with no v98 ancestry, trained in ~66 minutes.
+
+**2026-09-18 14:00 — THE DOSE ARM AT THE ROW: 11 OF 311 MASKED (the
+first row-level movement), THE CENSUS SHIFTS LEFT.** PM35_scratch_242,
+row-level chain accuracy: open 6 / 311 (0.019), masked **11 / 311
+(0.035)** — base 7 / 8; refused 43%, wrong 54%. The census: rows fully
+right 7 (base 5), one away 19 (base 13; 6.1%), within two 21.5% (base
+17.4%); the mode still at 3–4 wrong slots. The one-away rows break on
+digits 7 of 19 — the numeral mask's exact repair, which is how the
+masked row read gains three rows over the open one. At p ≈ 0.035 the
+SE is ~3 rows: 11 vs 8 is not a claim; the census shift (17.4 -> 21.5%
+within two) is the leading indicator that the distribution has begun
+to move, which no warm arm did. The twin PM35_scratch_241 runs
+(13:59; reads ~15:10) — it decides both the slot claim (masked wild
++0.026 vs SDv3_241 at z 2.5 on seed 242) and whether the row count
+repeats.
