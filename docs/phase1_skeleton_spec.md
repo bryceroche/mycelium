@@ -40927,3 +40927,31 @@ removed. The lesson of the positional mask, applied on the first try:
 every rule carries a register and is read on mint before it touches
 wild. The rulebook's decode door has exactly one mask (values) and
 two reads (pointers, pointer order).
+
+**2026-09-18 14:45 — THE ROW CATALOG (word given), AND ITS FIRST QUERY:
+A 2-ROW LEAK IN THE HOLDOUT, HARMLESS.** `scripts/row_catalog.py`
+builds `.cache/rows.sqlite` — every row the campaign holds (157,082
+table rows over 12 training/measurement files + form_mix12) with
+provenance: role, source, tier, convention, silver version, admitting
+gate, resample k, file. Queries: `sources` (rows and unique texts per
+source/tier/convention), `dose <mix>` (the dose law of any mix as a
+join: rows, unique texts, reps per unique, per source), `find`. Its
+built-in leakage check (measurement texts inside training files) fired
+on the first build: the wild holdout shares texts with form_mix12 —
+counted as 20 table rows, which are 2 TEXTS (holdout rows 303 and
+304, two of the nine round-7 rows appended to the holdout) repeated
+~10x in the base diet's pen rows. Effect on every wild number: the
+two rows read WORSE than the rest (0.10–0.15 vs 0.25–0.30), so no read
+was inflated; the clean 309-row numbers are within 0.002 of the quoted
+ones (balV242 0.2526 -> 0.2541; PM35 masked 0.3267 -> 0.3284). The
+clean fixture `.cache/wild_clean_holdout.jsonl` (309 rows) is written
+and REGISTERED for the next battery (the 311-row fixture stays for the
+week's paired continuity; the effect is ledgered). The silver460 "fit"
+fixture's overlap with the chain files is by design (it reads trained
+rows). Root cause: the holdout was assembled from the 08-31 lane and
+the r7 drafts before form_mix12's pen rows were fixed; the catalog's
+leakage check now runs on every build. `dose form_mix_pm35` from the
+catalog agrees with the builder's declared shares (mint 22.7% un-
+wilded + 18.7% wilded-rewritten texts = 41%... — NOTE: the catalog
+sees wilded mint rows as unknown texts (rewritten), so a wilded mix's
+mint share reads as "?" — registered: stamp wilded rows' parent hash).
