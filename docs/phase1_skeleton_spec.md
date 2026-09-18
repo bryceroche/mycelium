@@ -40378,3 +40378,18 @@ alarm cannot interrupt every solve; a worker can die); the map no
 longer depends on knowing. The chain relaunched from the arms (the mix
 and its precompute exist; the build is guarded): SDv3_242 from 17:21,
 its twin after; verdicts ~19:00; KA242 follows.
+
+**2026-09-17 17:25 — THE HANG'S REAL SITE: THE FACTS POOL (not the
+wheel; the family env has no wheel). `facts_pool.run` mapped whole row
+chunks across 14 spawn children with `Pool.map` (no timeout) beside a
+~18 GB parent on a 30 GB box that was swapping (the harness killed
+this session's waiters for memory in the same hour): a child lost to
+the OOM killer takes its chunk with it and the map waits forever — the
+evidence (idle children with zero CPU) fits. Fix at the root: the
+hang-proof map (unordered, a wall per chunk, a lost chunk recomputed
+once in a fresh pool and then in-process — the facts are needed for
+every row; the serial pass is the reference) and a default worker cap
+of 8. `core_rows` (the wheel's pool) got the same map earlier today.
+The relaunched SDv3_242 is progressing (children carrying CPU); a
+watchdog now flags a frozen arm in 10 min. Rule: every Pool.map in the
+system is a hang waiting for a dead worker — none remain unwalled.
