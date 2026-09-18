@@ -40704,3 +40704,20 @@ silver, mint for the COST only (no mint bar), row-level chain accuracy
 as the headline (registered: `chain_acc.py`). Bars: paired masked wild
 vs SDv3_241 (the best prose arm) >= +0.020 at z >= 2; twins if either
 moves.
+
+**2026-09-18 07:22 — PS_warm_242 (PROSE-ONLY, WARM): WILD UNCHANGED,
+MINT −39 POINTS.** 12k steps on form_mix_prose (zero mint) from
+balV242: wild open 0.2721 (+0.0195 vs base, z 2.13), masked **0.2955**
+(vs SDv3_241 masked 0.3008: −0.0054, z 0.68 — null against the best
+mixed arm; vs base masked +0.0083, z 0.90); matched 0.305; fields:
+digits 0.387 (masked 0.435), args 0.400; the fit on silver460 0.145.
+MINT: 0.9757 -> **0.5891** (args 0.649, res 0.788, digits 0.802) —
+the mint knowledge decays fast without rehearsal, and wild did not
+rise for it. Reading, at the warm start: mint in the diet was FREE
+for wild (the mixed arms read the same) and it kept mint; the "mint
+template is the burden" hypothesis is not supported by the warm arm.
+The pinned question is the cold start: PS_scratch_242 (24k, random
+init) runs — scratch above 0.30 masked would say the template was the
+burden; scratch below the warm arm says the mint-shaped head is the
+scaffolding and the diet's prose share, not mint's absence, is what
+moved wild. Regime tag: prose-only 45k rows, seed 242, 12k.
