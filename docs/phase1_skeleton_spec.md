@@ -41024,3 +41024,14 @@ rejects through an expression parser for n; the seed pair as the
 rule for every arm of this lineage. Standing rule kept: the claim is
 per-slot on the holdout; the row is the score, and the row has not
 moved beyond noise.
+
+**2026-09-18 15:30 — THE CLAIM'S ROW COLUMN.** PM35_scratch_241 at the
+row: 9 / 311 open, 9 masked (the mask added no row here: its one-away
+rows break on res 5, presence 4, ftype 3 — not digits); census: fully
+right 8, one away 15 (4.8%), within two 19.0%. The lineage's pair at
+the row, masked: 11 and 9 vs the base's 8 (SE ~3 rows) — a consistent
+small positive inside the noise. Standing: the per-slot claim (masked
+0.327 / 0.329 vs 0.301, z 2.5 / 2.8) is banked; the row (~3%) is the
+score and has not moved beyond noise; the census's shift-left (19–
+21.5% within two vs the base's 17.4%) is the leading indicator. The
+annealed decode reads now on the base and PM35_242.
