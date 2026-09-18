@@ -40758,3 +40758,23 @@ digits recovered toward the warm arms' (0.38+ open) — if both hold,
 masked wild lands above 0.30 and this is the first from-scratch
 lineage of the campaign. Queued behind the chain-accuracy reads (the
 AM lock).
+
+**2026-09-18 08:40 — ROW-LEVEL CHAIN ACCURACY, FIRST RUN: THE
+INSTRUMENT FAILED ITS CALIBRATION; THE WILD ROWS ARE PROVISIONAL.**
+`chain_acc.py` (decode -> mask -> solver -> key) on the mint control:
+balV242 on test23 CORRECT 2 / 300, REFUSED 298 — on a fixture the
+machine reads at 0.976 per slot. The fault is the solver call: a flat
+10,000-wide domain with a 2 s wall, and the June core on a 12-factor
+mint graph at that width runs past 2 s (the pool test on 09-17 had
+shown 6/6 mint rows timing out at 3 s). So the wild refusals (40–49%)
+are contaminated by the wall, and the wild rows read (base 7 / 8
+masked, SDv3_241 5 / 5, PS_warm 5 / 6, PS_scratch 2 / 4, of 311) are
+PROVISIONAL — lower bounds. Fixed as the gate works: the domain
+follows the row (2x the largest given, 2x the key, floor 300), the
+ladder widens on refusal, 10 s per rung; re-queued behind PM25 with
+the mint control first (it must read near the bigtest level, ~0.93,
+before any wild row is quoted). What the provisional rows already say
+if they hold in shape: the slot gains of the week land in rows that
+stay wrong elsewhere; the row is the wall; and the read that matters
+was not being taken. Rule: an instrument is calibrated on the
+register it can't fail on before it is read on the one it can.
