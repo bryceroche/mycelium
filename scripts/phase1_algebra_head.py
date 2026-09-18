@@ -5361,7 +5361,7 @@ def do_train(steps, lr, batch, seed):
     OPGOLD = np.load(os.environ["OPATT_GOLD"], mmap_mode="r") if OPATT else None
 
     _NEWCL = [None]
-    @TinyJit
+    _WHEEL_TRAIN = int(os.environ.get("ALG_WHEEL_TRAIN", "0"))   # THE TRAINING-TIME WHEEL (2026-09-18, the family arm): the solver turns on every breath inside the forward; the step runs un-JIT'd (a host round trip per breath)
     def step():
         Tensor.training = True
         if TRUNK_LORA:
@@ -5465,6 +5465,8 @@ def do_train(steps, lr, batch, seed):
         assert not _nog, f"params with NO gradient in the training step: {_nog}"
         opt.step()
         return l.realize()
+    if not _WHEEL_TRAIN:
+        step = TinyJit(step)
 
     # HYGIENE (the stack-at-convergence protocol): cosine LR decay + periodic
     # validation on the SMALL test slice (bigtest stays untouched as measurement
@@ -5906,10 +5908,17 @@ def do_train(steps, lr, batch, seed):
         if s == 5:
             _t5 = time.time()   # the steady frame: steps 5.. (the JIT captures at steps 1-2)
         _tp1 = time.perf_counter()
+        if _WHEEL_TRAIN:   # arm the wheel for this batch's rows (the read-time dict, per batch): n_vars / m per row, beta, mode, a fresh memo
+            globals()["_WHEEL"] = {"n_vars": [int(samples[int(i)].get("n_vars", K_VARS)) for i in idx], "m": [int(samples[int(i)].get("m", 300)) for i in idx],
+                                   "beta": float(os.environ.get("ALG_WHEEL_BETA", "3.0")), "mode": os.environ.get("ALG_WHEEL_MODE", "union"), "memo": {}}
         if _STEP_PROF and 5 <= s < 25:
             _prof.enable(); lv = step(); _prof.disable()
         else:
             lv = step()
+        if _WHEEL_TRAIN:
+            _wst = globals()["_WHEEL"].get("stats", []); _wtu = globals()["_WHEEL"].get("turned", [])
+            if s % 200 == 0: print(f"[wheel-train] step {s}: statuses {dict(__import__('collections').Counter(st for _, st, _ in _wst))} turned {sum(t for _, t, _ in _wtu)}/{sum(b for _, _, b in _wtu)}", flush=True)
+            globals()["_WHEEL"] = None
         if _STEP_TIME and s >= 5:
             _tp2 = time.perf_counter()
             _tt["feed"] += _tp1 - _tp0; _tt["step"] += _tp2 - _tp1; _tt["n"] += 1
