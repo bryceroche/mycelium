@@ -41171,3 +41171,27 @@ identical (5.2995). Cost: the in-graph wheel at ~4 s/step -> 12k
 steps ≈ 13 h; overnight. The from-scratch lineage was chosen over
 balV242 because its atlas era is clean and its structure fields are
 the campaign's best.
+
+**2026-09-18 17:20 — THE ORGAN CENSUS (Bryce: "did we leave out any
+other critical organs?").** LIVE in FAM already: the T6 clock (polar
+sink + canonical clock), the six-wave rotor, the T256 bind bus, the
+notebook, the garage, the deposit shelf, the mask head, the fed half,
+stellar, the facts seam. ADDED by the family arm: the atlas door, the
+training-time wheel (spotlight / melt / nogood every breath), the
+write-back, the token loop, the claims. ADDED on review: the cross-
+atlas prior (`ALG_MH_XPRIOR`: the token chart transported into the
+slot chart inside the forward — the dual projection in the loop), the
+mass thread (`ALG_MH_MASS`: the solver's domain sizes to the head), the
+router (the mention road; null twice alone — the liver-alone case),
+the level ladder (the clock's training-side half). LEFT OUT with
+reasons: the kernel and the window (the same attention road the
+certificate masks now hold — one set of attention biases per family),
+the certificate-weighted and matching losses (walker-only / parked),
+the scratch slots (registered 08-31, never built), the trunk (frozen by
+law), the cooker (a regime) and the straw (a sampler). MISSING FROM THE
+BODY: a certifier that works on prose (the fingerpost is synthetic-
+only; the vote failed on wild; the head's confidence is a 0.75 hint) —
+the next organ to build after the family reads. The family chain is
+staged (`.cache/family_chain.sh`: FAM_241 vs CTRL_241, both
+continuations from PM35_scratch_241, 12k each, every read + the row
+level + paired), waiting on the atlas and the gates.
