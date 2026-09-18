@@ -40432,3 +40432,20 @@ the AM driver admits ONE GPU process; the v3 arm holds it. "Nothing
 runs beside an arm" is not only a perf rule; it is enforced. The reads
 are queued behind pc-dietv3 and pc-ka (the same unit, waiting). The
 relaunched SDv3_242 is progressing (six facts children carrying CPU).
+
+**2026-09-17 20:35 — THE HANG'S TRUE CAUSE: ONE UNBOUNDED ROW IN THE
+FACTS PASS. THE ROW WALL.** The hang-proof pool named it: "1 chunk never
+returned within 600 s" twice under fresh pools, then the in-process
+recompute of chunk 2 sat forever — the same chunk every launch. Not a
+dead worker, not memory (those made it worse): `ping` (the solver's
+propagation on the machine's early-breath parse) has no bound per row,
+and one diet-v3 row's parse runs it without end. Fix at the root:
+`_ping_walled` — a wall-clock alarm per row (ALG_FACTS_ROW_WALL, 20 s;
+the wheel's alarm idiom with the armed flag), past which the row is
+SILENCED (the per-item idiom: no facts, mass m+1) and printed with its
+n_vars / m / factor count, so the offender is read once the pass runs.
+Non-determinism caveat as the wheel's: a wall clock; a deterministic
+round budget is the registered successor. Chains relaunched (v3, KA,
+the mask reads behind them); the CPU fixture gate re-run beside them
+as the smoke (it runs the same pass). Cost of the day's three launches
+≈ 4.5 h of GPU.
