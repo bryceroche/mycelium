@@ -40721,3 +40721,27 @@ init) runs — scratch above 0.30 masked would say the template was the
 burden; scratch below the warm arm says the mint-shaped head is the
 scaffolding and the diet's prose share, not mint's absence, is what
 moved wild. Regime tag: prose-only 45k rows, seed 242, 12k.
+
+**2026-09-18 08:00 — PS_scratch_242 (PROSE-ONLY, RANDOM INIT, 24k):
+THE TEMPLATE WAS A BURDEN FOR STRUCTURE AND THE SCAFFOLD FOR VALUES.**
+Wild open 0.2257 (−0.0268 vs base, z 2.51), masked **0.2779** (vs
+SDv3_241 masked 0.3008: −0.0229, z 2.23 — below the best mixed arm;
+vs base masked −0.0093, z 0.84); matched 0.230 (order's share 0.004:
+a cold prose model emits in the pen convention natively). Mint 0.0139
+(never trained; accepted). THE FIELDS ON WILD, the finding: ftype
+0.875, res 0.822, op 0.744, args 0.419 — EVERY structural field at a
+campaign high (the warm arms: ftype 0.83–0.85, res 0.78–0.81, op
+0.68–0.71, args 0.36–0.42) — and digits **0.235** (masked 0.342), the
+worst of any arm (the warm arms 0.34–0.39). Read with PS_warm_242
+(wild flat, mint −39 points): the mint-shaped head carries the VALUE
+axis — the digit decoder was trained on mint's million clean numerals
+and 7,361 prose stories cannot retrain it — and it carries a
+structural habit that prose from scratch does better without. Bryce's
+instinct measured: right on structure, wrong on values; the answer is
+not prose-only but prose-first. REGISTERED (the next arm, needs the
+word): PS_mix_scratch — random init, 24k+, prose 75% (this diet) +
+mint 25% (half wilded) as the value-axis scaffold; bars: masked wild
+vs SDv3_241 >= +0.020 (z >= 2) and mint read for the cost; a masked
+read above 0.30 with structure at the scratch arm's level would make
+it the new base lineage. Regime tags: prose-only 45k rows, seed 242;
+scratch 24k steps at 0.08 s/step.
