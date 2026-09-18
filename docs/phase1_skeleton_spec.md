@@ -40516,3 +40516,25 @@ keeps mass elsewhere; a hard window would not).
 regardless of the outcome of KA242" — the condition is removed; WI242
 fires after KA242 whatever it reads. Two one-variable arms against the
 same control; the stack follows if either moves.)
+
+**2026-09-17 21:48 — DIET V3 VERDICT: THE SAME SHAPE AS V2 — ONE SEED
+CLEARS, THE TWIN AT z 1.8; NO CLAIM; FOUR SEEDS ACROSS TWO DIETS, ALL
+POSITIVE.** form_mix_v3 (mint 50% half wilded / pen 7.3 / eqsets 6.3 /
+chain 17.7 / Sonnet 2.5; prose 34% over 7,361 stories): SDv3_242 wild
+0.2686 (+0.0161, z 1.76), mint 0.9749; SDv3_241 wild **0.2765**
+(+0.0239, z 2.61), mint 0.9738 (−0.0019; safe); twins paired +0.0078
+(z 1.23). Matched 0.316 / 0.318 (base 0.298). Fields (241): digits
+0.372, args 0.424 (base 0.336 / 0.358). On its own silver rows 0.144.
+Read with v2 (0.2760 / 0.2677): four seeds, +0.023 / +0.015 / +0.016 /
++0.024, mean +0.0195; mint within 0.005 on all four; in each diet one
+seed clears +0.020 at z >= 2 and the other reads z 1.7–1.8. Under the
+pinned frame (both seeds) neither diet claims; as a direction it is
+4/4 with the digits moving on every arm. V3 did NOT add on top of v2
+(the extra 2,373 stories at 3.5 reps and the wilded mint bought
+nothing visible at this resolution) — the wilded mint is a regime
+change worth keeping only if the worded-mint read moves (registered:
+read wordmint on SDv3 vs SDv2). Standing: n is the lever and the
+resolution is the wall — the next data step is the unannotated pool's
+remaining ~4,000 rows through the chain lane's tiers (zero tokens) and
+a seed-pair rule for every diet arm from here. The facts pass: 3 rows
+walled in SDv3_242, the no-given guard silent by design. KA242 runs.
