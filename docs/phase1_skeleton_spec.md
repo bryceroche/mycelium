@@ -40850,3 +40850,23 @@ mint 35%, 48k steps, seed 242) — the lineage's per-slot ceiling is the
 question. Registered: the row-level read joins every chain from here;
 a per-row error census (which factor breaks the row) is the next
 instrument.
+
+**2026-09-18 12:30 — THE PER-ROW ERROR CENSUS: THE MEDIAN WILD ROW HAS
+FOUR WRONG SLOTS; ONE ROW IN TWENTY IS ONE FIX AWAY.** `row_census.py`
+over the wild dumps (rows by wrong-slot count; the first-failing field
+per slot in the read's order): balV242 rows fully right 5 (1.6%), one
+away 13 (4.2%), within two 17.4%; the mode at 3–4 wrong slots of ~6.6;
+SDv3_241 3 / 16 / 17.7%; PM25_scratch_241 2 / 17 / 17.0%; PS_scratch
+0 / 10 / 10.6%. Wrong slots by first-failing field (base): digits 511,
+ftype 305, res 263, presence 212, op 130, args 112 (args is checked
+last, so its count is the residue after the earlier fields — the
+matched read's 0.29 is the truer args number). The shape is the
+finding: the wall is not one field on a few rows but three to five
+errors spread over most rows, so no single road (the mask fixed
+digits; the diets fixed structure) moves a row, and 83% of rows are
+three or more fixes away. To move rows the whole distribution must
+shift left — per-slot reads in the 0.7+ regime on the SAME rows, i.e.
+the machine must learn to read a whole prose problem, not slots of
+it. The one-away rows (4–5%) are the fingerpost's natural harvest:
+certify-or-abstain there first. Registered: the census joins every
+chain; a read of the 17 one-away rows by hand (what breaks them).
