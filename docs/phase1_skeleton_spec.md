@@ -40631,3 +40631,17 @@ when the diet asks — the trunk's geometry was never the wall; the
 diet was. Registered: the wild-holdout equivalent — does the wilded
 mint move the machine's reading of worded quantities in PROSE (the
 holdout's worded givens are few; a census first).
+
+**2026-09-17 23:35 — A READ-DETERMINISM CAVEAT ON KA242 / WI242, AND
+THE IN-LOOP MASK CORRECTED.** The first in-loop masked read was a
+no-op (the mask edited the digits AFTER the slot's comparison — fixed:
+the block now precedes the scoring; re-running). Its accidental value:
+a second open read of every checkpoint. balV242 and the four diet arms
+reproduced to the slot (0 discordant). KA242 and WI242 did NOT: KA242
+0.2760 vs 0.2750 (49 / 47 discordant), WI242 0.2706 vs 0.2672 (21 /
+14) — the two organs' reads wobble between identical runs (the
+smoothing matmul and the window bias are not bit-reproducible on the
+GPU across runs, or their argmaxes sit on ties). Their null verdicts
+stand (the wobble is the size of their effects), and the "62
+discordant slots" reading of WI242 is within that wobble. Rule: an
+organ's read is quoted with a repeat read from here.

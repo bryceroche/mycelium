@@ -106,3 +106,40 @@ any arm trains on a new source, the fit read runs: the machine reads
 the rows it is about to train on, and the number says whether the
 labels are legible. That read costs a minute and would have saved the
 week.
+
+## Postscript, the same night
+
+Three results landed after this was published, and together they say
+where the numeral problem lives.
+
+**Two attention organs, both null.** We built a coarse-to-fine kernel
+that smooths what each token carries early and sharpens it late, and a
+hierarchical window that narrows where each slot may look around where
+it looked the breath before. Both are parameter-free and both gate
+bit-identical when off. Trained on the same diet against the same
+control, the kernel moved wild by 0.007 and the window by 0.002, and
+neither moved the digits at all. Read-time attention operators are now
+zero for six this week. Changing how the slot looks does not change
+what the slot decodes.
+
+**A legality mask, cleared at z 8.** A given's value in prose can only
+be a numeral present in the text, a lexicon constant, or one. Letting
+the digit heads choose the most probable legal value instead of a free
+argmax lifts the base machine from 0.253 to 0.287 on the wild holdout,
+with 71 slots gained and none lost, and lifts the best diet arm to
+0.299, the highest wild read of the campaign. Mint does not move,
+because mint's values were always legal. The same constraint on
+pointers did nothing on prose and destroyed mint, which is the proof
+that pointer order is a convention of the register and value legality
+is not.
+
+**Wilded mint, closed register.** Spelling out half of the synthetic
+numerals as words during training took the worded-number gap from
+6.5 points to 0.2, at no cost on plain mint or on prose. The trunk's
+geometry was never the wall for number words. The diet was.
+
+The lesson the three share: the slot's failure on prose numerals is
+not a failure of attention resolution, and it is not a failure of the
+frozen trunk. It is a failure to prefer the numeral, and the two
+things that fix it are teaching (more prose, wilded mint) and
+constraint (the legal set at the decode). We are doing both.
