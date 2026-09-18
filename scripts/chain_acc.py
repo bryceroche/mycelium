@@ -33,7 +33,7 @@ def main():
     mask = bool(int(os.environ.get("CA_MASK", "0"))); wall = float(os.environ.get("CA_WALL", "3"))
     KEYS = ("pres", "ftype", "op", "dig", "args", "res") + (("dup",) if "h_dup" in p else ())
     from mycelium.rulebook import legal_digit_logits
-    correct = refused = wrong = 0; nd = None; tasks = []; keys = {}
+    correct = refused = wrong = 0; nd = None; tasks = []; keys = {}; rawdump = [] if os.environ.get("CA_RAWDUMP") else None
     for s0 in range(0, n, 8):
         sl = np.arange(s0, min(s0 + 8, n)); pad = 8 - len(sl); sl_p = np.concatenate([sl, sl[:1].repeat(pad)]) if pad else sl
         nv = np.array([vs[int(i)].get("n_vars", K_VARS) for i in sl_p]); ma = np.array([vs[int(i)].get("m", 0) for i in sl_p])
@@ -41,7 +41,10 @@ def main():
         o0 = forward(p, ts, tk, se); onp0 = {k: o0[k].numpy() for k in ("fat", "args", "res")}
         mk = build_slot_masks(onp0, se.numpy()); _oa = {**onp0, **{k: o0[k].numpy() for k in ("pres", "ftype", "op", "dig") + (("dup",) if "dup" in o0 else ())}}
         o = forward(p, ts, tk, se, slot_mask=Tensor(mk, dtype=dtypes.float), fact_buf=Tensor(alt2_fact_buf(_oa, se.numpy(), nv, ma), dtype=dtypes.float))
-        onp = {k: o[k].numpy() for k in KEYS}; qv = o["query"].numpy().argmax(-1)
+        onp = {k: o[k].numpy() for k in KEYS}; qv = o["query"].numpy().argmax(-1); qlog = o["query"].numpy()
+        if rawdump is not None:   # CA_RAWDUMP=path: every slot's raw heads per row, for the annealed decode (2026-09-18)
+            for bi, i in enumerate(sl):
+                rawdump.append({"i": int(i), "text": vs[int(i)]["text"], "q": qlog[bi].astype(np.float32), **{k: onp[k][bi].astype(np.float32) for k in KEYS}})
         for bi, i in enumerate(sl):
             i = int(i); row = {k: onp[k][bi].copy() for k in KEYS}
             if mask:   # THE NUMERAL MASK — one rulebook, two doors
@@ -71,6 +74,12 @@ def main():
         if st != "solved": refused += 1
         elif val == key: correct += 1
         else: wrong += 1
+    if rawdump is not None:
+        import pickle
+        for r in rawdump:
+            try: r["key"] = int(row_gold(vs[r["i"]]))
+            except Exception: r["key"] = vs[r["i"]].get("key")
+        pickle.dump(rawdump, open(os.environ["CA_RAWDUMP"], "wb")); print(f"[chain-acc] raw slots for {len(rawdump)} rows -> {os.environ['CA_RAWDUMP']}", flush=True)
     print(f"[chain-acc] {os.path.basename(os.environ['CA_CKPT'])} on {os.environ.get('ALG_TEST_NAME')} mask={int(mask)}: rows {n} | CORRECT {correct} ({correct/n:.3f}) | refused {refused} ({refused/n:.3f}) | wrong {wrong} ({wrong/n:.3f})", flush=True)
 
 if __name__ == "__main__":
