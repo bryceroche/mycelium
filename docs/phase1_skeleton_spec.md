@@ -40538,3 +40538,22 @@ resolution is the wall — the next data step is the unannotated pool's
 remaining ~4,000 rows through the chain lane's tiers (zero tokens) and
 a seed-pair rule for every diet arm from here. The facts pass: 3 rows
 walled in SDv3_242, the no-given guard silent by design. KA242 runs.
+
+**2026-09-17 22:24 — KA242 (THE ANNEALED KERNEL): NULL; THE DIGITS
+PREDICTION REFUTED AT THIS DOSE.** KA242 (diet v3, seed 242, sigmas
+8/4/2/1/0.5/0 tokens) wild 0.2760, mint 0.9733; paired vs SDv3_242
+(same diet, same seed): +0.0073 (SE 0.0053, z 1.38) — under the bar;
+mint −0.0016 (safe). Fields vs the control: digits 0.368 vs 0.367
+(FLAT — the pinned prediction was that the kernel's work is on the
+numerals), args 0.419 vs 0.404 (+0.015), res 0.805 vs 0.805, ftype
+0.846 vs 0.842. Matched 0.3145 (control 0.3164). KA242's read is
+SDv3_241's read (0.2765, digits 0.372, args 0.424) to the third
+decimal: inside the diet's seed spread. Cost: 0.085 s/step vs 0.078
+(the smoothing matmul per breath). Verdict: NULL; the kernel does not
+change what the slots read from the numerals at read time — the
+lexicon probe said the trunk already carries a numeral's neighbourhood
+in the numeral's own state; smoothing adds nothing the value axis did
+not have. Regime tag: diet v3, 12k warm balV242, one seed. WI242 (the
+window: WHERE the slot looks) runs now — the census failure it targets
+(argmax on a digit 6%) is a placement failure, which the kernel never
+addressed.
