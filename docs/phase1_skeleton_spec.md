@@ -40360,3 +40360,21 @@ is on the NUMERALS (the late breaths must pin a token; the census: wild
 given slots' argmax is a digit 6%) — digits and args move if it works;
 mint has no headroom for it. The level ladder rides a second arm only
 if the first moves.
+
+**2026-09-17 17:21 — THE DIET-V3 ARM HUNG 64 MIN IN THE MASK-PREP PASS
+(Pool.map, again); THE SOLVER POOL IS NOW HANG-PROOF; RELAUNCHED.** The
+first SDv3_242 sat asleep from 16:15: 30 s of CPU in 64 min, GPU 0%,
+17.8 GB RSS, the wheel's spawn-pool workers idle — `core_rows` was a
+`Pool.map` with no timeout (the cap experiment's death, 09-15, in a
+second caller). Fix at the root (`alternator_bridge.core_rows`):
+`imap_unordered` over index-tagged rows with a wall per result (4x the
+row alarm + 20 s); rows that never return are answered "timeout" (the
+conservative answer — the wheel only turns on proofs) and the pool is
+terminated and rebuilt. Verified: on 6 mint rows the pool's answers
+equal the in-process answers; against workers that die on spawn (a
+stdin test's own fault) the map returned in 32 s with six timeouts
+instead of hanging. What hung the row itself is not identified (the
+alarm cannot interrupt every solve; a worker can die); the map no
+longer depends on knowing. The chain relaunched from the arms (the mix
+and its precompute exist; the build is guarded): SDv3_242 from 17:21,
+its twin after; verdicts ~19:00; KA242 follows.
