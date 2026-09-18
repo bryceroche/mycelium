@@ -1147,7 +1147,13 @@ def _ping_walled(ping, nv, facs, m, bi):
     A wall-clock alarm (ALG_FACTS_ROW_WALL s, default 20) bounds ping per row; a row past it is SILENCED
     (the per-item idiom: no facts, mass = m+1) and named once, so the offender can be read."""
     import signal as _sg, os as _os
-    wall = float(_os.environ.get("ALG_FACTS_ROW_WALL", "20"))
+    # THE DETERMINISTIC GUARD (2026-09-17, the row named by the wall): a million-wide domain with NO decoded
+    # given — the wilded big-number rows, whose numerals are now words the early parse cannot read — sends
+    # propagation into an unbounded run (in v2 the same rows carried digits and collapsed at once). Silence
+    # such a row before the solver, deterministically; the wall (2 s) stays as the backstop.
+    if m > int(_os.environ.get("ALG_FACTS_M_MAX", "10000")) and not any(f.get("ftype") == "given" for f in facs):
+        raise Exception("facts: unbounded domain, no given")
+    wall = float(_os.environ.get("ALG_FACTS_ROW_WALL", "2"))
     if wall <= 0:
         return ping(nv, facs, m)
     armed = [True]
