@@ -40745,3 +40745,16 @@ vs SDv3_241 >= +0.020 (z >= 2) and mint read for the cost; a masked
 read above 0.30 with structure at the scratch arm's level would make
 it the new base lineage. Regime tags: prose-only 45k rows, seed 242;
 scratch 24k steps at 0.08 s/step.
+
+**2026-09-18 08:10 — PM25_scratch_242 FIRED under the prose directive
+("train a new model from scratch on GSM8K… sort mint out later" — the
+mint share sorted by the two arms' evidence).** `form_mix_pm25.jsonl`:
+45,878 rows — mint 25% (15,000; half wilded), pen 12% (5.9 reps), the
+chain tiers 20%, eqsets 14%, Sonnet 5.5%; random init, 24k steps,
+seed 242; reads as the prose chain's; bars: masked wild vs SDv3_241
+>= +0.020 (z >= 2); mint read for the cost. The pinned prediction:
+structure at the scratch arm's level (ftype ~0.87, args ~0.42) with
+digits recovered toward the warm arms' (0.38+ open) — if both hold,
+masked wild lands above 0.30 and this is the first from-scratch
+lineage of the campaign. Queued behind the chain-accuracy reads (the
+AM lock).
