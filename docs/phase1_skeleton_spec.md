@@ -40870,3 +40870,20 @@ the machine must learn to read a whole prose problem, not slots of
 it. The one-away rows (4–5%) are the fingerpost's natural harvest:
 certify-or-abstain there first. Registered: the census joins every
 chain; a read of the 17 one-away rows by hand (what breaks them).
+
+**2026-09-18 13:53 — PM35_scratch_242 (THE DOSE ARM: mint 35%, 48k,
+random init): MASKED WILD 0.3267 — CLEARS THE BAR AGAINST THE BEST
+WARM ARM ON ONE SEED; THE TWIN DECIDES.** Wild open **0.2994** (+0.0468
+vs base, z 4.33), masked **0.3267** (vs SDv3_241 masked 0.3008:
++0.0258, SE 0.0103, z 2.50 — the bar is +0.020 at z >= 2; vs base
+masked +0.0395, z 3.56); matched 0.335. Fields on wild: digits 0.457
+masked (a campaign high), args **0.448** (a high), ftype 0.851, res
+0.804, op 0.690. Mint 0.5870 (from 0.16 at 25% / 24k: the value axis
+and the register recover with share and steps; res 0.698, args 0.616
+are where mint still lags). The fit on silver460 0.243 (the best of
+any arm: the lineage learns its prose). Regime: form_mix_pm35 (50,653
+rows: mint 35% half wilded, pen 10%, silver the rest), 48k steps at
+0.083 s/step (66 min), seed 242. THE CLAIM waits for PM35_scratch_241
+(queued behind the row-level read; the seed-pair rule). If the twin
+holds, this is the first wild claim of the campaign at the bar, and it
+belongs to a lineage with no v98 ancestry, trained in ~66 minutes.
