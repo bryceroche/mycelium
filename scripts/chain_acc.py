@@ -69,11 +69,14 @@ def main():
                 i, st, val = it.next(timeout=wall * 3 + 30); out[i] = (st, val)
         except mp.TimeoutError:
             print(f"[chain-acc] {len(tasks) - len(out)} rows never returned — counted as refused", flush=True)
+    per_row = {}
     for (i, q, key, parse, gv, nvv) in tasks:
         st, val = out.get(i, ("hung", None))
-        if st != "solved": refused += 1
-        elif val == key: correct += 1
-        else: wrong += 1
+        if st != "solved": refused += 1; per_row[i] = "refused"
+        elif val == key: correct += 1; per_row[i] = "correct"
+        else: wrong += 1; per_row[i] = "wrong"
+    if os.environ.get("CA_ROWS"):   # per-row labels for the certifier's bench (2026-09-18)
+        json.dump({str(k): v for k, v in per_row.items()}, open(os.environ["CA_ROWS"], "w"))
     if rawdump is not None:
         import pickle
         for r in rawdump:
