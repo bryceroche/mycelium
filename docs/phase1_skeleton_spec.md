@@ -40645,3 +40645,40 @@ GPU across runs, or their argmaxes sit on ties). Their null verdicts
 stand (the wobble is the size of their effects), and the "62
 discordant slots" reading of WI242 is within that wobble. Rule: an
 organ's read is quoted with a repeat read from here.
+
+**2026-09-17 23:50 — THE MASKED TABLE, ALL SEVEN CHECKPOINTS: EVERY
+ARM GAINS 0.020–0.035 WITH 0–1 LOSSES; SDv3_241 MASKED = 0.3008, THE
+FIRST WILD READ ABOVE 0.30; AND HALF THE DIET'S GAIN WAS LEGALITY.**
+`LV_LEGAL=num` (in-loop, before the score; reproduces the offline
+scorer to the slot):
+
+| checkpoint | open | masked | gain | lost/gained | z |
+| balV242 | 0.2526 | 0.2872 | +0.035 | 0 / 71 | 8.4 |
+| SDv2_242 | 0.2760 | 0.2989 | +0.023 | 0 / 47 | 6.9 |
+| SDv2_241 | 0.2677 | 0.2955 | +0.028 | 0 / 57 | 7.6 |
+| SDv3_242 | 0.2686 | 0.2916 | +0.023 | 1 / 48 | 6.7 |
+| SDv3_241 | 0.2765 | **0.3008** | +0.024 | 1 / 51 | 6.9 |
+| KA242 | 0.2760 | 0.2964 | +0.020 | 47 / 89 | 3.6 |
+| WI242 | 0.2706 | 0.2921 | +0.022 | 16 / 60 | 5.1 |
+
+(KA/WI's "lost" counts are their read wobble, ledgered above.) THE
+SECOND FINDING: masked, the diet's edge over the base HALVES —
+SDv2_242 vs balV242 +0.0117 (z 1.31; unmasked +0.0234, z 2.66),
+SDv3_241 vs balV242 +0.0137 (z 1.51; unmasked +0.0239, z 2.61). Half
+of what the prose diet taught was "pick a legal numeral", which the
+mask supplies at zero cost; the other half (~+0.012–0.014, in args
+and res — structure) is the diet's own, and it is under the bar on
+its own. The base's masked digits (0.409) sit within 0.02 of every
+diet arm's masked digits (0.415–0.429): the numeral gap between the
+base and the diets was mostly legality. WHAT STANDS AT THE END OF
+2026-09-17: (1) THE NUMERAL MASK — a read-time road at z 7–8 on every
+checkpoint, composing with everything, into the deployed read at the
+next battery; (2) the prose diets — a structural direction (+0.012
+masked, four seeds positive) under the bar; (3) the wilded mint —
+closes the worded register (z 14) at no cost; (4) read-time attention
+operators — 0 for 6, retired as a class; (5) the matching loss — the
+min-of-losses design, parked; (6) the facts pass — four guards, ~5 h
+of GPU paid for them. NEXT (needing the word): the promotion battery
+with the masked read; the remaining ~4,000 pool rows through the chain
+lane (n for the structural half); the fingerpost's abstain on the
+free-vs-legal margin.
