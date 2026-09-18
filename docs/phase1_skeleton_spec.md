@@ -40951,7 +40951,7 @@ fixture's overlap with the chain files is by design (it reads trained
 rows). Root cause: the holdout was assembled from the 08-31 lane and
 the r7 drafts before form_mix12's pen rows were fixed; the catalog's
 leakage check now runs on every build. `dose form_mix_pm35` from the
-catalog agrees with the builder's declared shares (mint 22.7% un-
-wilded + 18.7% wilded-rewritten texts = 41%... — NOTE: the catalog
-sees wilded mint rows as unknown texts (rewritten), so a wilded mix's
-mint share reads as "?" — registered: stamp wilded rows' parent hash).
+catalog agrees with the builder's declared shares, except that the
+catalog sees wilded mint rows as unknown texts (rewritten) — a wilded
+mix's wilded share reads as "?" (18.7% in pm35); registered: stamp
+wilded rows with their parent's hash.
