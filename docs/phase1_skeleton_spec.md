@@ -41109,3 +41109,39 @@ is to be redefined around wild rows and MATH-500; mint rehearsal is
 struck. The day's queue is empty; needing the word: the MATH-500
 true-chain read on the 35% lineage (a measurement), the rejects
 parser (n), the 96k ceiling read (seed pair), the panel signal.
+
+**2026-09-18 16:30 — THE WIRING AUDIT (Bryce's gut: "something feels
+off"; four Sonnet auditors, file:line-cited).** THE WIRING TRUTH of
+every arm this week, under FAM/TR (`.cache/lossfix_trial.sh`): trunk
+-> the head (7 breaths, notebook, bind bus, polar clock, six-wave
+bias; mask head live in code with its gain collapsed) with ONE solver
+consult per row — the breath-0 parse to `ping`, its facts injected
+once before the breath stack — then decode, the numeral mask, the
+solver. NOT in the machine: (1) per-breath alternation — the wheel
+(`_WHEEL`) is set only by `apply_wheel_read.py`, which no chain runs;
+`ALG_TOKLOOP`, `ALG_WRITEBACK`, `ALG_T2_CLAIM` unset; the bridge's
+spotlight / melt / nogood / claims_bias fire only behind them; (2) the
+atlas — two charts built (`step_atlas.Atlas`), one hook into the
+forward (`mh_atlas_w`, `ALG_MH_ATLAS`), the flag never set, marked
+dead with zero gradient in the 09-06 forensic; offline instrument
+only; (3) the factor-graph slot mask — all-ones by the 09-10 ruling
+(`ALG_SLOT_ALL=1`; removal cost zero); "mean degree 24.0/24" is
+correct and deliberate; (4) the certification chain — the deployed
+stack is gen41 / conductor_v2 (ALG_FTYPES=8, no breaths, an
+incompatible key set); the mouth and lattice scripts are hard-coded
+to bigtest; every wild number this week is a raw single-view decode.
+THE JULY MEMORIES: the 0.9982 certifier = five-view unanimity on
+synthetic bigtest (07-09), never on prose; on wild for the research
+lineage the vote was NEGATIVE (09-14, z −3.99: views certify
+stability, not correctness); "happy families" on wild (09-13) INVERTED
+(AUROC 0.489; fully-correct rows farther from their centroid). Every
+parking was a measured decision and is in the ledger; what the gut
+caught is the AGGREGATE: the system as designed alternates, certifies
+and consults its atlas; the system as trained consults once. Fired:
+the vote read on PM35_scratch_241 and balV242 (`perceiver_vote_read`,
+the one link that runs on this lineage today). REGISTERED (the word):
+THE ALTERNATION ARM as one package on the from-scratch lineage — the
+wheel + write-back + claims in the training forward as roads with no
+bypass (the mandatory-road law), against the same diet; the
+certification chain rebuilt for this lineage (the mouth's state pool
+and the lattice on wild).
