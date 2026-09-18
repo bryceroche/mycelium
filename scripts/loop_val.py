@@ -214,7 +214,8 @@ def read(ckpt, data=None, p=None):
     n_ok = n_tot = 0
     _PS = [] if os.environ.get("LV_PER_SLOT") else None
     import collections as _c; _FIELDS = _c.defaultdict(lambda: [0, 0]) if os.environ.get("LV_FIELDS") else None
-    _DUMP = [] if os.environ.get("LV_DUMP") else None   # THE PAIRED READ (2026-09-12): per-slot outcomes to an npz
+    _DUMP = [] if os.environ.get("LV_DUMP") else None
+    _DUMPR = [] if os.environ.get("LV_DUMP_RAW") else None   # THE PAIRED READ (2026-09-12): per-slot outcomes to an npz
     for s0 in range(0, len(vs), 8):
         sl = np.arange(s0, min(s0 + 8, len(vs)))
         pad = 8 - len(sl)
@@ -321,6 +322,9 @@ def read(ckpt, data=None, p=None):
                                   vg["digits"][i, j]).all())
                     ok = ok and f_dig
                 n_ok += ok
+                if _DUMPR is not None:    # LV_DUMP_RAW=path: the RAW heads per gold slot (the decode-mask reads, 2026-09-17)
+                    _DUMPR.append((i, j, int(vg["ftype"][i, j]), int(vg["op"][i, j]), np.where(vg["args"][i, j] > .5)[0].tolist(), int(vg["res"][i, j]), vg["digits"][i, j].tolist(),
+                                   float(np.ravel(onp["pres"][bi, j])[0]), onp["ftype"][bi, j].astype(np.float32), onp["op"][bi, j].astype(np.float32), onp["args"][bi, j].astype(np.float32), onp["res"][bi, j].astype(np.float32), onp["dig"][bi, j].astype(np.float32), float(np.ravel(onp["dup"][bi, j])[0]) if "dup" in onp else 0.0))
                 if _DUMP is not None:     # LV_DUMP=path: the per-slot predictions beside the gold, for the matched read (2026-09-17)
                     _DUMP.append((i, j, int(vg["ftype"][i, j]), int(vg["op"][i, j]), np.where(vg["args"][i, j] > .5)[0].tolist(), int(vg["res"][i, j]), vg["digits"][i, j].tolist(),
                                   int(onp["ftype"][bi, j].argmax()), int(onp["op"][bi, j].argmax()), np.argsort(-onp["args"][bi, j])[:2].tolist(), int(onp["res"][bi, j].argmax()), onp["dig"][bi, j].argmax(-1).tolist(), bool(onp["pres"][bi, j] > 0), bool(onp["dup"][bi, j] > 0) if "dup" in onp else False))
@@ -332,6 +336,8 @@ def read(ckpt, data=None, p=None):
                     _PS.append((i, j, bool(ok)))
     if _DUMP is not None:
         import pickle; pickle.dump(_DUMP, open(os.environ["LV_DUMP"], "wb")); print(f"[dump] {len(_DUMP)} gold slots with predictions -> {os.environ['LV_DUMP']}", flush=True)
+    if _DUMPR is not None:
+        import pickle; pickle.dump(_DUMPR, open(os.environ["LV_DUMP_RAW"], "wb")); print(f"[dump-raw] {len(_DUMPR)} gold slots with raw heads -> {os.environ['LV_DUMP_RAW']}", flush=True)
     if _FIELDS is not None:
         print("[fields] " + " ".join(f"{k}={v[0]/max(v[1],1):.3f}({v[1]})" for k, v in _FIELDS.items() if not k.startswith("slot")), flush=True)
         print("[slots]  " + " ".join(f"{k[4:]}:{v[0]/max(v[1],1):.2f}({v[1]})" for k, v in sorted(_FIELDS.items()) if k.startswith("slot")), flush=True)

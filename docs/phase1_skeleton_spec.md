@@ -40406,3 +40406,21 @@ precompute stand) with ALG_FACTS_WORKERS=6 on both chains; the capped
 pool is the default from here. Cost today from the two pool failures:
 ~3.5 h of GPU time. ETA: SDv3_242 reads ~20:30, the twin ~21:15, KA242
 ~22:00.
+
+**2026-09-17 — THE DECODE MASKS (word given; from the Jev relay: never
+choose outside the legal set).** Two read-time masks from the dialect's
+own laws, zero training (`scripts/decode_masks.py` over a raw-heads
+dump, `LV_DUMP_RAW`): NUM — a given's value is chosen among the legal
+values (numerals in the text, lexicon constants, 1) by the digit heads'
+joint log-probability (register-free); POS — a slot may only point at
+variables introduced at or before it, and a decoded given's variable is
+its slot (the pen convention; PROSE ONLY — mint numbers by first
+mention and would be mis-constrained). Reads (pc-dmask, beside the v3
+arm at low priority): balV242 and SDv2_242 on wildhold and test23 under
+none / num / pos / num+pos. PREDICTIONS PINNED: num raises wild digits
+(the free argmax lands off the text's numerals) and leaves mint ~flat
+(0.999 already); pos raises wild args and res and LOWERS mint (the
+register proof — if mint does not drop, pos is not register-bound and
+the reading changes); a wild gain >= +0.010 registers a candidate road
+(the fingerpost's abstain consumes the margin; training-time use needs
+the register flag), >= +0.020 paired is the claim.
