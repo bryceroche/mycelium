@@ -41145,3 +41145,29 @@ wheel + write-back + claims in the training forward as roads with no
 bypass (the mandatory-road law), against the same diet; the
 certification chain rebuilt for this lineage (the mouth's state pool
 and the lattice on wild).
+
+**2026-09-18 17:00 — THE FAMILY ARM (word given: "plug in all the
+organs… the works… the organs work together as a family").** Design,
+under the compatibility ruling (the family fires as ONE arm; ablations
+only if it moves) and the cont-control protocol: FAM_241 = continuation
+from PM35_scratch_241 on form_mix_pm35 with every organ ON — the T6
+clock and six-wave (already live), the T256 bind bus (live), the atlas
+with two charts (`ALG_MH_ATLAS=1`, the atlas mined from
+PM35_scratch_241's OWN states — the era door; manifest
+`.cache/RESEARCH_MANIFEST_pm35.json`), alternation on every breath
+(THE TRAINING-TIME WHEEL `ALG_WHEEL_TRAIN=1`: the solver turns on every
+breath's decode inside the forward with spotlight + melt + nogood, the
+train step un-JIT'd for it; the write-back `ALG_WRITEBACK=0.5`; the
+token loop `ALG_TOKLOOP=1`; the claims `ALG_T2_CLAIM=1`), dynamic
+masking (the mask head live; the certificate masks via the wheel; the
+slot mask stays all-ones per the 09-10 ruling — its removal cost was
+zero) — vs CTRL_241 = the same continuation with nothing new, same
+steps, same seed. Bars: paired masked wild vs CTRL >= +0.020 (z >= 2);
+the row-level read beside it; a census of every organ's injection
+pre- and post-gain (the pre/post knob law) before any claim; mint read
+for information. Gates before firing: the CPU fixture with the three
+in-graph doors ON (composition), the wheel door ON (runs), unset bit-
+identical (5.2995). Cost: the in-graph wheel at ~4 s/step -> 12k
+steps ≈ 13 h; overnight. The from-scratch lineage was chosen over
+balV242 because its atlas era is clean and its structure fields are
+the campaign's best.
