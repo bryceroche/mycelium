@@ -224,4 +224,27 @@ def core_rows(rows, workers=None):
     if _POOL is None:
         import multiprocessing as _mp
         _POOL = _mp.get_context("spawn").Pool(workers)
-    return _POOL.map(_core_worker, rows, chunksize=1)
+    # THE HANG-PROOF MAP (2026-09-17): Pool.map has no timeout — a worker that dies or a row whose solve the
+    # alarm cannot interrupt hangs the map forever (the cap experiment 09-15; the diet-v3 arm 09-17: 64 min
+    # asleep in the mask-prep pass, GPU idle). Results are collected unordered with a wall per result; rows
+    # that never return are answered "timeout" (conservative — the wheel only turns on proofs) and the pool
+    # is terminated and rebuilt so the hung worker cannot poison the next call.
+    import multiprocessing as _mp, time as _time
+    t = float(_os.environ.get("WHEEL_ROW_TIMEOUT", "3")); wall = t * 4 + 20.0
+    out = [None] * len(rows); it = _POOL.imap_unordered(_tagged_worker, list(enumerate(rows)), chunksize=1)
+    try:
+        for _ in range(len(rows)):
+            i, ans = it.next(timeout=wall); out[i] = ans
+    except _mp.TimeoutError:
+        missing = [i for i, a in enumerate(out) if a is None]
+        print(f"[core_rows] {len(missing)} of {len(rows)} rows never returned within {wall:.0f} s — answered timeout; the pool is rebuilt", flush=True)
+        for i in missing: out[i] = ("timeout", [])
+        try: _POOL.terminate()
+        except Exception: pass
+        _POOL = None
+    return out
+
+
+def _tagged_worker(args):
+    i, a = args
+    return i, _core_worker(a)
