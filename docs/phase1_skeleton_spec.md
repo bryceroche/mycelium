@@ -40778,3 +40778,27 @@ if they hold in shape: the slot gains of the week land in rows that
 stay wrong elsewhere; the row is the wall; and the read that matters
 was not being taken. Rule: an instrument is calibrated on the
 register it can't fail on before it is read on the one it can.
+
+**2026-09-18 09:35 — PM25_scratch_242: A FROM-SCRATCH MODEL AT PARITY
+WITH THE BEST WARM LINEAGE ON WILD.** Random init, 24k steps (35 min),
+form_mix_pm25 (prose 75% / mint 25% half wilded, 45,878 rows): wild
+open 0.2686 (+0.0161 vs base, z 1.50), masked **0.3028** (vs SDv3_241
+masked 0.3008: +0.0020, z 0.19 — PARITY; vs base masked +0.0156,
+z 1.42); matched 0.293. Fields on wild: ftype 0.865, res 0.810, op
+0.729, args 0.424 (the scratch arm's structural highs, kept), digits
+0.332 open / 0.401 masked (recovered from the prose-only scratch arm's
+0.235 / 0.342 to the warm arms' level) — the pinned prediction held on
+both halves. Mint 0.1619 (res 0.511, digits 0.142: 25% of a 46k-row
+diet for 24k steps does not train the mint register; accepted per the
+directive — the value axis it needed for PROSE it got). The fit on
+silver460 0.149. What it means: the balV242 ancestry (the v98 lineage,
+hundreds of thousands of mint rows, the whole entourage) is NOT
+required to reach the campaign's best wild read; a 12M head trained
+from nothing on 7,361 prose stories plus a quarter of mint reaches it
+in 35 minutes — and reads structure BETTER (ftype +0.02, op +0.02 over
+SDv3_241). Not a claim over SDv3_241 (z 0.2); a new LINEAGE at parity,
+with the mint register open for later, as Bryce ruled. Registered
+(needing the word): the seed twin PM25_scratch_241; the dose curve on
+this lineage (48k steps; mint 35%); its promotion path (mint would
+need rehearsal before any battery). The row-level read (chain_acc,
+recalibrated) runs on it now.
