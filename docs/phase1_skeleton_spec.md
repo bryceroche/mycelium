@@ -41195,3 +41195,29 @@ the next organ to build after the family reads. The family chain is
 staged (`.cache/family_chain.sh`: FAM_241 vs CTRL_241, both
 continuations from PM35_scratch_241, 12k each, every read + the row
 level + paired), waiting on the atlas and the gates.
+
+**2026-09-18 18:00 — THE FAMILY GATES PASS; THE VOTE ON THE NEW
+LINEAGE; BRYCE'S RULING ON THE READ-SIDE ORGANS.** The CPU fixture:
+unset 5.2995 / 0.0279 (bit-identical); the training-time wheel alone
+5.3072 / 0.0280 (runs; every mint parse "solved", turned 0/10 — the
+wheel turns on unsat cores; 108 s/step on CPU is the pool); the three
+in-graph organs together (write-back + token loop + claims 3:0.2)
+5.4125 (compose). The full family gate (nine added organs) runs next;
+the chain fires only on its last line. THE VOTE on PM35_scratch_241
+(`perceiver_vote_read`, 4 views, wildhold): open 0.2989 -> voted
+0.2960 (z −0.90) — no longer the negative decoder it was on ds242
+(z −3.99), and not a lever; as a CERTIFIER: P(wrong | views
+disagree) 0.943 (n 282), P(wrong | unanimous) 0.654 (n 1,591) —
+disagreement is a strong REFUSAL signal on prose, unanimity is 35%
+precision (the synthetic register's 99.8% does not transfer); AUROC of
+slot-ok on agreement 0.595. This is the fingerpost's honest prose
+number for this lineage: an abstain road, not a certificate. RULING
+(Bryce): "lets not give up on kernel smoothing, hierarchical windowing
+or other experiments — they were tested on a crippled model." Applied:
+the 09-17 "read-time attention operators retired as a class" is
+NARROWED to "null on the crippled body"; the family arm is the new
+baseline; FAM+kernel and FAM+window are the next two arms after the
+family reads (one set of attention biases per arm: the certificate
+masks first, the operators added one at a time on top). The same
+applies to every organ nulled alone this month: the family is the
+body they are re-read in.
