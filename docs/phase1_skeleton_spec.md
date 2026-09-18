@@ -40393,3 +40393,16 @@ of 8. `core_rows` (the wheel's pool) got the same map earlier today.
 The relaunched SDv3_242 is progressing (children carrying CPU); a
 watchdog now flags a frozen arm in 10 min. Rule: every Pool.map in the
 system is a hang waiting for a dead worker — none remain unwalled on any chain (one stays in the standalone `wheel_rows_analysis.py`).
+
+**2026-09-17 19:45 — THE SECOND SDv3_242 WAS STARVED, NOT HUNG: killed
+at 2 h 22 min and relaunched with six facts workers.** Diagnosis at
+19:43: parent 18.6 GB RSS with 4.1 GB swapped, system swap 6.7 GB in
+use and paging, GPU 0%, CPU 93% idle, the 14 facts children at ~3 min
+CPU each after two hours — the old pool (already imported by that
+process) spawns 14 children that each import the head beside the
+parent, past the 30 GB box; the pass crawled in swap. The v2 arms ran
+the same code when the box was free. Relaunched (the chain's mix and
+precompute stand) with ALG_FACTS_WORKERS=6 on both chains; the capped
+pool is the default from here. Cost today from the two pool failures:
+~3.5 h of GPU time. ETA: SDv3_242 reads ~20:30, the twin ~21:15, KA242
+~22:00.
