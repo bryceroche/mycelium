@@ -40557,3 +40557,26 @@ not have. Regime tag: diet v3, 12k warm balV242, one seed. WI242 (the
 window: WHERE the slot looks) runs now — the census failure it targets
 (argmax on a digit 6%) is a placement failure, which the kernel never
 addressed.
+
+**2026-09-17 22:58 — WI242 (THE HIERARCHICAL WINDOW): NULL, AND
+NEARLY INERT — THE TWO READ-SIDE ORGANS TOGETHER.** WI242 (diet v3,
+seed 242, windows 0/64/32/16/8/4/2 tokens, gain 4) wild 0.2706, mint
+0.9730; paired vs SDv3_242: +0.0020 (SE 0.0038, z 0.51); mint −0.0019
+(safe). Discordant slots 29 vs 33 of 2,051 — the window changed almost
+no decision. Fields vs the control: digits 0.367 vs 0.367, args 0.409
+vs 0.404, res 0.804 vs 0.805. Matched 0.318 (control 0.316). WITH
+KA242 (+0.007, z 1.4; digits flat): two fixed, parameter-free
+operators on the read — one on WHAT a token carries (scale space), one
+on WHERE a slot may look (a narrowing window around its own previous
+centre) — and neither moves the numerals. Read with 09-15's read-time
+biases (0 for 4): 0 for 6. The reading: the wild given slot's failure
+to land on the numeral is not a resolution or a support problem the
+read can fix from outside; the slot does not carry a representation
+that prefers the numeral, so widening, narrowing or smoothing its
+view changes nothing — the digits move only when the DIET moves them
+(v2/v3: +0.03 to +0.045 on every arm). Registered, low prior: a hard
+window (gain 20+) and a window centred on the lexicon's numeral spans
+rather than the slot's own previous attention (a certificate-centred
+window is the spotlight, which was 0 for 4). Regime tag: diet v3, 12k
+warm balV242, one seed each. The GPU: the decode-mask reads, then the
+worded-mint reads.
