@@ -180,6 +180,13 @@ def _melt(cur, m):
                         _polar_sink()[2] if ALG_POLAR else 1.0)
 
 
+# THE CERTIFICATE PASS's reader keys (2026-09-19): every decode field
+# _heads_of can emit, in one place so forward()'s hb_* emission and the
+# mask-prep pass's read_forward(keys=...) never drift apart.
+_HB_DECODE_KEYS = ("pres", "ftype", "op", "sel", "dup", "islit", "dig",
+                   "sgn", "args", "dargs", "iargs", "res", "dig2", "y")
+
+
 def _decode_slots(row):
     """The wheel's parse: decode each present slot ALONE (so a bad slot cannot
     sink its neighbours); every factor carries its slot as "_slot". row: one
@@ -4081,6 +4088,16 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
         # THE PERCEIVER's reads (2026-09-14): every breath's emission heads (the
         # margins) and slots<-tokens attention (the claims). Lazy; readers realize.
         out["heads_all"] = [heads_of(_b9) for _b9 in out_breaths]
+        # THE CERTIFICATE PASS's reader keys (2026-09-19, the speed
+        # campaign): jit_read.read_forward can flatten a LIST OF TENSORS
+        # (key\x00i in _make_slot) but not heads_all's list of DICTS — so
+        # the same tensors, repackaged one list per decode field. Zero
+        # extra compute (heads_all[kb][key] IS hb_key[kb]); heads_all
+        # itself stays for the eager road (ALG_CERT_EAGER=1) and every
+        # other consumer.
+        for _hbk in _HB_DECODE_KEYS:
+            if _hbk in out["heads_all"][0]:
+                out["hb_" + _hbk] = [_h[_hbk] for _h in out["heads_all"]]
         out["vst_mine"] = vst           # THE VISIBILITY READ (2026-09-15): the variable states the pointer heads read against
         out["fat_all"] = ([_fed_core(fat)] + ((_bs_state or {}).get("fat_all") or []))
         if ALG_POLAR:
@@ -5157,21 +5174,47 @@ def do_train(steps, lr, batch, seed):
         _cert_memo = {}
         _cert_pending = []   # (row_i, kb, memo_key, n_vars, parse, m, row)
         _cert_flush = int(os.environ.get("ALG_CERT_FLUSH", "512"))
+        # THE TWO-HALVES CENSUS (2026-09-19, the card measurement: 0.52 s/row,
+        # the JIT'd step is 0.113 s/step — the pass is the whole cost):
+        # timed separately so a fix to one half is provable against a number,
+        # not a feeling. _cert_fwd_s: the per-batch forward/decode half (the
+        # extra multi-breath read). _cert_solve_s: wall INSIDE core_rows[_budget]
+        # (the solver flushes only — excludes bookkeeping between flushes).
+        _cert_fwd_s = 0.0
+        _cert_solve_s = 0.0
+        _cert_memo_hits = 0
+        _cert_solves = 0
+        _cert_status_ct = {}         # raw status string -> count (every (row,breath) pair, memo hits included)
+        _cert_unsat_core_ct = 0
+        _cert_unsat_nocore_ct = 0
+        _cert_budget = int(os.environ.get("ALG_CERT_BUDGET", "0"))   # 0 = the wall (core_rows); >0 = decisions-only (core_rows_budget)
 
         def _cert_drain():
+            nonlocal _cert_solve_s, _cert_memo_hits, _cert_solves, _cert_unsat_core_ct, _cert_unsat_nocore_ct
             if not _cert_pending:
                 return
             sys.path.insert(0, "scripts")
-            from alternator_bridge import core_rows as _cert_core_rows
+            from alternator_bridge import core_rows as _cert_core_rows, core_rows_budget as _cert_core_rows_budget
             _todo = [qi for qi, q in enumerate(_cert_pending) if q[2] not in _cert_memo]
+            _cert_memo_hits += len(_cert_pending) - len(_todo)
             if _todo:
-                _ans = _cert_core_rows(
+                _t_solve0 = time.time()
+                _solver = _cert_core_rows_budget if _cert_budget else _cert_core_rows
+                _ans = _solver(
                     [(_cert_pending[qi][3], _cert_pending[qi][4], _cert_pending[qi][5])
                      for qi in _todo], None)
+                _cert_solve_s += time.time() - _t_solve0
+                _cert_solves += len(_todo)
                 for qi, a in zip(_todo, _ans):
                     _cert_memo[_cert_pending[qi][2]] = a
             for _row_i, _kb, _key, _nv, _parse, _m, _row in _cert_pending:
                 _st, _core = _cert_memo[_key]
+                _cert_status_ct[_st] = _cert_status_ct.get(_st, 0) + 1
+                if _st == "unsat":
+                    if _core:
+                        _cert_unsat_core_ct += 1
+                    else:
+                        _cert_unsat_nocore_ct += 1
                 if _st != "unsat" or not _core:
                     continue
                 _core_slots = [_parse[_k]["_slot"] for _k in _core]
@@ -5248,34 +5291,58 @@ def do_train(steps, lr, batch, seed):
             _mk_full = build_slot_masks(o0, sent[sl_p])
             MASKS[sl] = _mk_full[:len(sl)]
             if CERTS is not None and K_B > 2:
-                # THE PASS's certificate half (correctness first, cost noted
-                # in the report): forward() only runs the breath loop when
-                # slot_mask is not None, so this batch's own freshly-banked
-                # mask (this pass's whole point) is what turns it on — a
-                # SECOND full multi-breath forward, mirroring the two-call
-                # idiom already used at eval (build_slot_masks then re-call
-                # with slot_mask). ALG_MASKPREP_JIT's reader cannot return
-                # per-breath heads, so this half always runs the plain
-                # (un-JIT'd) forward — the exact, slow twin of the read.
+                # THE PASS's certificate half. forward() only runs the breath
+                # loop when slot_mask is not None, so this batch's own
+                # freshly-banked mask (this pass's whole point) is what turns
+                # it on. Two roads:
+                #   default (fast, THE SPEED CAMPAIGN 2026-09-19): the masked
+                #     + mine-breaths graph is captured ONCE by jit_read and
+                #     REPLAYED per batch — heads_all's list-of-DICTS cannot
+                #     flow through the reader (it only flattens lists of
+                #     tensors), so forward() also emits hb_<field> (one list
+                #     of tensors per decode field, same underlying tensors).
+                #   ALG_CERT_EAGER=1: the original plain (un-JIT'd) forward()
+                #     call — kept for the reader-vs-eager identity gate.
+                _t_fwd0 = time.time()
                 _mine_prev = os.environ.get("ALG_MINE_BREATHS")
                 os.environ["ALG_MINE_BREATHS"] = "1"
+                _hb_keys = tuple("hb_" + _k for _k in _HB_DECODE_KEYS)
                 try:
-                    _cert_out = forward(
-                        p, Tensor(np.ascontiguousarray(states[sl_p]), dtype=dtypes.half),
-                        Tensor(tokmask[sl_p].astype(np.float32), dtype=dtypes.float),
-                        Tensor(sent[sl_p].astype(np.int32), dtype=dtypes.int),
-                        slot_mask=Tensor(_mk_full, dtype=dtypes.float), lsent=_mp_ls)
+                    if int(os.environ.get("ALG_CERT_EAGER", "0")):
+                        _cert_out = forward(
+                            p, Tensor(np.ascontiguousarray(states[sl_p]), dtype=dtypes.half),
+                            Tensor(tokmask[sl_p].astype(np.float32), dtype=dtypes.float),
+                            Tensor(sent[sl_p].astype(np.int32), dtype=dtypes.int),
+                            slot_mask=Tensor(_mk_full, dtype=dtypes.float), lsent=_mp_ls)
+                    else:
+                        from mycelium import jit_read as _cert_jr
+                        _jr_prev = os.environ.get("ALG_JIT_READ")
+                        os.environ["ALG_JIT_READ"] = "1"
+                        try:
+                            _cert_out = _cert_jr.read_forward(
+                                forward, p,
+                                Tensor(np.ascontiguousarray(states[sl_p]), dtype=dtypes.half),
+                                Tensor(tokmask[sl_p].astype(np.float32), dtype=dtypes.float),
+                                Tensor(sent[sl_p].astype(np.int32), dtype=dtypes.int),
+                                keys=_hb_keys,
+                                slot_mask=Tensor(_mk_full, dtype=dtypes.float))
+                        finally:
+                            if _jr_prev is None:
+                                os.environ.pop("ALG_JIT_READ", None)
+                            else:
+                                os.environ["ALG_JIT_READ"] = _jr_prev
                 finally:
                     if _mine_prev is None:
                         os.environ.pop("ALG_MINE_BREATHS", None)
                     else:
                         os.environ["ALG_MINE_BREATHS"] = _mine_prev
-                _heads_all_c = _cert_out.get("heads_all")
-                if _heads_all_c is not None:
+                _present_keys = [_k[3:] for _k in _hb_keys if _k in _cert_out]
+                if _present_keys:
                     _nv_c = np.array([samples[int(i)].get("n_vars", K_VARS) for i in sl_p])
                     _ma_c = np.array([samples[int(i)].get("m", 0) for i in sl_p])
                     for _kb in range(1, K_B - 1):
-                        _onp_c = {k: v.realize().numpy() for k, v in _heads_all_c[_kb].items()}
+                        _onp_c = {kk: _cert_out["hb_" + kk][_kb].realize().numpy()
+                                  for kk in _present_keys}
                         for _bi, _i in enumerate(sl):
                             _row_c = {k: _onp_c[k][_bi] for k in _onp_c}
                             _parse_c = _decode_slots(_row_c)
@@ -5285,6 +5352,7 @@ def do_train(steps, lr, batch, seed):
                                                   _parse_c, int(_ma_c[_bi]), _row_c))
                     if len(_cert_pending) >= _cert_flush:
                         _cert_drain()
+                _cert_fwd_s += time.time() - _t_fwd0
             if ATLAS_TAB is not None and NL0 is not None:
                 # breath-0 NL state (the tap; pass-1 == pass-2)
                 NL0[sl] = out0["nl0"].realize().numpy()[:len(sl)]
@@ -5348,7 +5416,17 @@ def do_train(steps, lr, batch, seed):
                       f"post-pass ({int((CERTS > 0).sum())} flags discarded)",
                       flush=True)
                 CERTS = np.zeros_like(CERTS)
-            print(f"[cert] pass done in {time.time() - _cert_t0:.1f}s", flush=True)
+            _cert_total_s = time.time() - _cert_t0
+            print(f"[cert] pass done in {_cert_total_s:.1f}s "
+                  f"(forward-half {_cert_fwd_s:.1f}s, solver-half {_cert_solve_s:.1f}s "
+                  f"[{'budget=' + str(_cert_budget) if _cert_budget else 'wall'}], "
+                  f"other/bookkeeping {_cert_total_s - _cert_fwd_s - _cert_solve_s:.1f}s; "
+                  f"eager={int(os.environ.get('ALG_CERT_EAGER', '0'))})", flush=True)
+            print(f"[cert] solver census: solves={_cert_solves} memo-hits={_cert_memo_hits} "
+                  f"({_cert_memo_hits}/{_cert_solves + _cert_memo_hits} pairs answered from "
+                  f"memo) statuses={dict(sorted(_cert_status_ct.items()))} "
+                  f"unsat-with-core={_cert_unsat_core_ct} unsat-no-core={_cert_unsat_nocore_ct}",
+                  flush=True)
             for _kb in range(1, max(K_B - 1, 1)):
                 _flagged = (CERTS[:, _kb, :] > 0).any(-1)
                 _nf = int(_flagged.sum())

@@ -248,3 +248,68 @@ def core_rows(rows, workers=None):
 def _tagged_worker(args):
     i, a = args
     return i, _core_worker(a)
+
+
+# ---------------------------------------------------------------------------
+# THE BUDGET-ONLY ROAD (2026-09-19, THE CERTIFICATE PASS's speed campaign):
+# solve_symbolic already carries a per-call DECISION-NODE budget (status
+# 'budget' on exhaustion — deterministic, no wall-clock needed) — the
+# per-row SIGALRM/itimer in _core_worker is a SEPARATE, redundant guard on
+# top of it. For the mask-prep pass (many small, mostly-cheap solves) the
+# alarm's setitimer/signal.signal syscalls are pure overhead; this twin
+# worker skips them and lets the budget alone bound the work. Used only
+# when the certificate pass asks for it (ALG_CERT_BUDGET > 0); core_rows /
+# _core_worker are UNCHANGED (the training-time wheel keeps its wall).
+# ---------------------------------------------------------------------------
+_POOL_BUDGET = None
+
+
+def _core_worker_budget(args):
+    """One row, budget-only: no SIGALRM, no itimer — ALG_CERT_BUDGET
+    decision-nodes is the sole bound. Same 'unbounded' guard as
+    _core_worker (WHEEL_M_MAX): a huge domain makes even one decision's
+    propagation expensive, which a decision cap alone does not bound."""
+    import os as _os
+    n_vars, parse, m = args
+    if m > int(_os.environ.get("WHEEL_M_MAX", "10000")):
+        return "unbounded", []
+    budget = int(_os.environ.get("ALG_CERT_BUDGET", "2000"))
+    r = refuse_and_core(n_vars, parse, m, budget=budget)
+    return r["status"], r["core"]
+
+
+def _tagged_worker_budget(args):
+    i, a = args
+    return i, _core_worker_budget(a)
+
+
+def core_rows_budget(rows, workers=None):
+    """rows: list of (n_vars, parse, m). Returns [(status, core), ...] in
+    order — THE CERTIFICATE PASS's fast twin of core_rows: no per-row
+    wall-clock alarm, only the decision-node budget (ALG_CERT_BUDGET).
+    Same hang-proof pool-level wall as core_rows (a generous backstop
+    now, not the bound — a budget-capped solve should return in ms)."""
+    import os as _os
+    global _POOL_BUDGET
+    if workers is None:
+        workers = max(1, (_os.cpu_count() or 2) - 2)
+    if workers <= 1 or len(rows) <= 1:
+        return [_core_worker_budget(a) for a in rows]
+    if _POOL_BUDGET is None:
+        import multiprocessing as _mp
+        _POOL_BUDGET = _mp.get_context("spawn").Pool(workers)
+    import multiprocessing as _mp
+    wall = float(_os.environ.get("ALG_CERT_POOL_WALL", "60"))
+    out = [None] * len(rows)
+    it = _POOL_BUDGET.imap_unordered(_tagged_worker_budget, list(enumerate(rows)), chunksize=1)
+    try:
+        for _ in range(len(rows)):
+            i, ans = it.next(timeout=wall); out[i] = ans
+    except _mp.TimeoutError:
+        missing = [i for i, a in enumerate(out) if a is None]
+        print(f"[core_rows_budget] {len(missing)} of {len(rows)} rows never returned within {wall:.0f}s — answered timeout; the pool is rebuilt", flush=True)
+        for i in missing: out[i] = ("timeout", [])
+        try: _POOL_BUDGET.terminate()
+        except Exception: pass
+        _POOL_BUDGET = None
+    return out
