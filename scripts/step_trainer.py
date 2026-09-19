@@ -102,7 +102,13 @@ REFUSED = ("ALG_SHELF", "ALG_WHIP", "ALG_TOKLOOP", "ALG_WRITEBACK", "ALG_KANNEAL
            "ALG_INV", "ALG_OPATT", "ALG_CMT_REG", "ALG_ROUTER_GRADED",
            "ALG_FREEZE_DUP", "ALG_TRAIN_ONLY", "ALG_POSCH",
            "ALG_OPCOUNT", "ALG_REF", "ALG_DIAL", "ALG_VALATT",
-           "ALG_DUPPTR", "ALG_DETWAVE", "ALG_WHEEL_CERT")   # THE CERTIFICATE PASS
+           "ALG_DUPPTR", "ALG_DETWAVE", "ALG_WHEEL_CERT",   # THE CERTIFICATE PASS
+           "ALG_SPAN_ALL", "ALG_ANCHOR")   # THE BREATH-SHARPENING ORGANS (2026-09-19):
+           # the walker's per-seam heads_of calls never thread a per-breath
+           # rbias_all/rbias2_all list, and breath_step's ctx here carries
+           # no "anchor_bias0" key (the walker builds its own ctx dict —
+           # see REQ_CTX below, which THE BREATH-0 ANCHOR is deliberately
+           # absent from)
            # (2026-09-18): the walker steps one breath at a time with solver
            # pings between dispatches (its OWN wheel road) — it does not
            # thread the mask-prep pass's precomputed CERTS buffer or the

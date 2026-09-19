@@ -206,6 +206,32 @@ DIAGNOSTICS = {
             "and audits read it; no loss, reward, or selection touches it."
         ),
     },
+    # --- registered 2026-09-19, THE CRITICALITY METER (scripts/
+    # criticality_meter.py, built on the membrane census) ---
+    "criticality": {
+        "coupling": "never",
+        "why": (
+            "The breath loop's binding-mass multiplication factor: "
+            "k_eff(k) = mean_j m_{k+1}(j)/mean_j m_k(j) where m_k(j) is "
+            "the fraction of a slot's attention mass sitting on its gold "
+            "span at breath k, and the per-row slope of log-mass over "
+            "k=1..K_B-1 (supercritical/subcritical). Reads whether the "
+            "loop is CONVERGING attention onto a binding or dispersing "
+            "it — an iterated-map diagnostic, not a correctness signal "
+            "(PM35_scratch_241's own read: wild mildly subcritical, mean "
+            "slope -0.014; mint clearly supercritical post-breath-0, "
+            "+0.059; the correctness join is underpowered at n=9 correct "
+            "wild rows and shows no reliable relationship either way). "
+            "A loss or reward term pushing k_eff toward 1 (or toward "
+            ">1) would teach the attention to LOOK converged — mass "
+            "piling onto the ANNOTATED span's tokens regardless of "
+            "whether that span is where the binding actually lives on a "
+            "row the annotation heuristic mis-scored — the exact "
+            "concealment shape the fence exists to block. Instrument "
+            "always: reads the loop's dynamics for the record, never a "
+            "target."
+        ),
+    },
 }
 
 

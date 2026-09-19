@@ -41921,3 +41921,22 @@ m_k and the supercritical fraction. THE MECHANISM BAR for PMS2, beside
 the accuracy bar: wild's k_eff crosses 1 (the lineage's is below 1).
 Built by the census's analyst; read first on PM35_scratch_241, then on
 the arm.
+
+**2026-09-19 13:10 — THE STAMPED DIET (form_mix_pm35v) BANKED.** The
+stamper (`scripts/stamp_value_spans.py`): 174,785 given factors —
+135,894 resolved by a standalone numeral (boundary-checked: "12" never
+inside "120"; currency, percent, decimals, comma-grouped, signs),
+37,600 by a lexicon word span (half / twice / three / third / hour /
+minutes ...), 1,291 (0.74%) unresolvable (competition values computed
+in the text, e.g. f(11)); all occurrences kept (a multi-positive mask
+is honest for a BCE loss); `mentions` only — no factor `spans` touched
+and no factor reordered. THE IDENTITY GATE PASSED: the rebuilt npz
+(`rebuild_gold_npz.py` over the HARD-LINKED states memmap, inode
+shared, no copy) is bit-identical to the old on every array but
+g_vspan (tokmask, sent, presence, ftype, res, args, digits, fspan, op,
+sel, sign, dup, is_*, bindvec, bind_ids, y, band, query). COVERAGE:
+prose rows with any value span 11.1% -> 100%, prose GIVEN SLOTS with a
+value span 16.1% -> 99.8%; mint 78.3% -> 98.8%; all 44.6% -> 99.4%. A
+20-row spot check bound every numeral and word to the right variable.
+The chart re-mined on the stamped diet (`xcorr_chart_formpm35v.npz`,
+13 s): the value table now sees every given. The arm's fuel is in.

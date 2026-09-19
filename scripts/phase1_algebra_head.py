@@ -4326,7 +4326,17 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
             # mask head's metadata contract)
             _fed_nl0 = (_fed_core(fat).mean(1).unsqueeze(1)
                         @ waist).squeeze(1).detach()
+        # THE BREATH-0 ANCHOR (ALG_ANCHOR=<beta>, 2026-09-19): fat (B,
+        # L_TOT, T), the grounding read's head-mean slots<-tokens
+        # attention — NOT FED-trimmed, so scratch rows ride as-is —
+        # detached (a keep-bias, no grad) and pre-scaled by beta once
+        # here rather than every breath. None (the default, beta==0)
+        # means breath_step's ctx.get returns None and nothing is added
+        # anywhere: bit-identical.
+        _anch_bias0 = ((ALG_ANCHOR * fat.detach()).reshape(B, 1, L_TOT, -1)
+                       if ALG_ANCHOR else None)
         _bs_ctx = {"B": B, "K_B": K_B, "waist": waist, "tokmask": tokmask,
+                   "anchor_bias0": _anch_bias0,
                    "slot_mask": slot_mask, "bank": bank, "rot2": _rot2,
                    "sync": _sync, "drop": drop, "gmod": gmod,
                    "revoke": revoke, "tail": tail, "reg": reg,
@@ -6171,6 +6181,7 @@ def do_train(steps, lr, batch, seed):
         # read straight off out["rbias2"] on the val split.
         _r2log = int(os.environ.get("ALG_ROUTER_LOG", "0"))
         _r2_bce_sum = np.zeros(2, np.float64); _r2_bce_n = 0
+        _r2_bce_by_breath = {}   # ALG_SPAN_ALL: kb (1..K_B-1) -> [sum_res, sum_given, n]
         for s0 in range(0, len(vs), 8):
             sl = np.arange(s0, min(s0 + 8, len(vs)))
             pad = 8 - len(sl)
@@ -6217,7 +6228,26 @@ def do_train(steps, lr, batch, seed):
                             slot_mask=Tensor(_mkv, dtype=dtypes.float),
                             fact_buf=Tensor(_fbv, dtype=dtypes.float),
                             mh_mass=_vmh, mh_atlas_traj=_vat)
-            if _r2log and "rbias2" in o:
+            if _r2log and "rbias2_all" in o:
+                # THE PER-BREATH SPAN LOSS's own log (ALG_SPAN_ALL=1):
+                # the SAME numpy-side BCE mirror, once per breath in the
+                # list (breaths 1..K_B-1, matching state["rbias2_all"]'s
+                # append order in breath_step).
+                _fsp = vg["fspan"][sl_p]; _pr = vg["presence"][sl_p]
+                _bidx = np.arange(len(sl_p))[:, None]
+                _vgv = vg["vspan"][sl_p][_bidx, vg["res"][sl_p]]   # (b, L_FAC, T)
+                def _bce_np2(lg, tg):
+                    return np.logaddexp(0.0, lg) - lg * tg
+                for _bi_rel, _rb2t in enumerate(o["rbias2_all"]):
+                    _kb_idx = _bi_rel + 1   # breaths 1..K_B-1
+                    _rb2np = _rb2t.realize().numpy()
+                    _res_l = (_bce_np2(_rb2np[:, 2], _fsp).mean(-1) * _pr).sum() \
+                        / max(float(_pr.sum()), 1e-6)
+                    _giv_l = (_bce_np2(_rb2np[:, 3], _vgv).mean(-1) * _pr).sum() \
+                        / max(float(_pr.sum()), 1e-6)
+                    _acc = _r2_bce_by_breath.setdefault(_kb_idx, [0.0, 0.0, 0])
+                    _acc[0] += _res_l; _acc[1] += _giv_l; _acc[2] += 1
+            elif _r2log and "rbias2" in o:
                 _rb2np = o["rbias2"].realize().numpy()      # (b, 4, L_FAC, T)
                 _fsp = vg["fspan"][sl_p]; _pr = vg["presence"][sl_p]
                 _bidx = np.arange(_rb2np.shape[0])[:, None]
@@ -6254,7 +6284,12 @@ def do_train(steps, lr, batch, seed):
                         ok &= bool((onp["dig"][bi, j].argmax(-1) ==
                                     vg["digits"][i, j]).all())
                     n_ok += ok
-        if _r2log and _r2_bce_n:
+        if _r2log and _r2_bce_by_breath:
+            for _kb_idx in sorted(_r2_bce_by_breath):
+                _sr, _sg, _cnt = _r2_bce_by_breath[_kb_idx]
+                print(f"[router2-log] val span-loss breath {_kb_idx}: "
+                      f"res={_sr/_cnt:.4f} given={_sg/_cnt:.4f}", flush=True)
+        elif _r2log and _r2_bce_n:
             print(f"[router2-log] val span-loss res={_r2_bce_sum[0]/_r2_bce_n:.4f} "
                   f"given={_r2_bce_sum[1]/_r2_bce_n:.4f}", flush=True)
         return n_ok / max(n_tot, 1)
@@ -6375,19 +6410,23 @@ def do_train(steps, lr, batch, seed):
             globals()["_CERT_CENSUS_SC"] = None
             globals()["_CERT_BUF"] = _CTV   # restore the TRAINING buffer (the diagnostic call borrowed the global)
     if int(os.environ.get("ALG_ROUTER_CENSUS", "0")):
-        # THE PRE/POST CENSUS for THE BUS-NATIVE ROUTER (ALG_ROUTER=2,
-        # the pre/post knob law): ONE plain, un-JIT'd forward() call on
-        # one batch, before step() is ever defined/captured — arms the
-        # generic _CENSUS port (router2(bank)/router2(ptr)/args_pre,
-        # already written by breath_step/forward) and _CERT_CENSUS_SC
-        # (bank()'s own raw pre-bias score readback) on the SAME call.
-        assert "W_rq2" in p, "ALG_ROUTER_CENSUS needs ALG_ROUTER=2"
+        # THE PRE/POST CENSUS for THE BUS-NATIVE ROUTER (ALG_ROUTER=2) AND
+        # THE BREATH-0 ANCHOR (ALG_ANCHOR=<beta>) — the pre/post knob law:
+        # ONE plain, un-JIT'd forward() call on one batch, before step()
+        # is ever defined/captured — arms the generic _CENSUS port
+        # (router2(bank)/router2(ptr)/args_pre/anchor, already written by
+        # breath_step/forward) and _CERT_CENSUS_SC (bank()'s own raw
+        # pre-bias score readback) on the SAME call. Either door alone is
+        # enough to arm this census; each prints only its own section.
+        assert "W_rq2" in p or ALG_ANCHOR, (
+            "ALG_ROUTER_CENSUS needs ALG_ROUTER=2 and/or ALG_ANCHOR set")
         globals()["_CENSUS"] = []
         globals()["_CERT_CENSUS_SC"] = {}
         _rc_idx = np.arange(min(batch, n))
+        _rc_tm = tokmask[_rc_idx].astype(np.float32)
         _rc_out = forward(
             p, Tensor(np.ascontiguousarray(states[_rc_idx]), dtype=dtypes.half),
-            Tensor(tokmask[_rc_idx].astype(np.float32), dtype=dtypes.float),
+            Tensor(_rc_tm, dtype=dtypes.float),
             Tensor(sent[_rc_idx].astype(np.int32), dtype=dtypes.int),
             slot_mask=Tensor(MASKS[_rc_idx], dtype=dtypes.float))
         _rc_out["args"].realize()   # force the graph through before reading the census lists
@@ -6411,6 +6450,20 @@ def do_train(steps, lr, batch, seed):
                 print(f"[router2-census]  breath {_kb}: |beta_ptr*(P_arg1+P_arg2)| "
                       f"mean {_ptr_mean:.4f}, |args logits (pre-fusion)| mean "
                       f"{_args_mean:.4f}, ratio {_pratio:.4f}", flush=True)
+        for _kb in sorted({kb_ for kb_, tag, _ in _rc_cen if tag == "anchor"}):
+            _av = next(v for kb_, tag, v in _rc_cen if tag == "anchor" and kb_ == _kb)
+            # _av: (B, 1, L_TOT, T) == beta*fat0, constant across breaths
+            # by construction — masked to the REAL tokens only (padding
+            # excluded), averaged over batch and slot uniformly.
+            _am = _rc_tm.reshape(_rc_tm.shape[0], 1, 1, -1)
+            _anch_num = float((np.abs(_av) * _am).sum())
+            _anch_den = float(_am.sum()) * _av.shape[1] * _av.shape[2]
+            _anch_mean = _anch_num / max(_anch_den, 1e-9)
+            _sc_mean = float(np.mean(_rc_sc[_kb])) if _kb in _rc_sc else float("nan")
+            _aratio = _anch_mean / _sc_mean if _sc_mean == _sc_mean and _sc_mean != 0 else float("nan")
+            print(f"[router2-census]  breath {_kb}: |beta*fat0| mean (real "
+                  f"tokens) {_anch_mean:.4f}, raw |bank score| mean "
+                  f"{_sc_mean:.4f}, ratio {_aratio:.4f}", flush=True)
         globals()["_CENSUS"] = None
         globals()["_CERT_CENSUS_SC"] = None
     _pc_mix = float(os.environ.get("ALG_PC_MIX", "0"))
