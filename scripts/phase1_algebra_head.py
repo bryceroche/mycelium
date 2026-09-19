@@ -6089,9 +6089,19 @@ def do_train(steps, lr, batch, seed):
         if _sevb0 is not None:
             _sevb0.realize()
     t0 = time.time()
+    # THE SEGMENTED SCHEDULE (2026-09-19): STEP_OFFSET / SCHED_STEPS let a run
+    # that is one segment of a longer cosine (a chain of processes, each
+    # re-running the mask-prep + certificate pass from the segment's warm head)
+    # continue the SAME schedule: step s of this process is step s + offset of
+    # a SCHED_STEPS-long cosine. Both unset = the literal old schedule.
+    _soff = int(os.environ.get("STEP_OFFSET", "0"))
+    _stot = int(os.environ.get("SCHED_STEPS", "0")) or steps
+    assert _soff + steps <= _stot, f"STEP_OFFSET {_soff} + STEPS {steps} exceeds SCHED_STEPS {_stot}"
+    if _soff or _stot != steps:
+        print(f"[train] segmented schedule: steps {_soff}..{_soff + steps} of a {_stot}-step cosine", flush=True)
     for s in range(steps):
         _tp0 = time.perf_counter()
-        cur_lr = lr_min + 0.5 * (lr - lr_min) * (1 + math.cos(math.pi * s / steps))
+        cur_lr = lr_min + 0.5 * (lr - lr_min) * (1 + math.cos(math.pi * (s + _soff) / _stot))
         if _FEED_COPYIN:
             _fd(opt.lr, np.array([cur_lr], np.float32), None)
         else:
