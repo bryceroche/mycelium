@@ -41420,3 +41420,28 @@ fact-shaped probe damps like noise (no resonance) at k0>=2 and slightly
 slower at k0=1 (1.10 vs 1.07 at lag 6). A SMOKE (n=8), not a read: the
 full read + the wave-field check are requeued behind the Z6 arm
 (pc-postfam2).
+
+**2026-09-18 22:40 — THE Z6 GENESIS ARM'S READ: NULL at the bar; the
+row-level read is the campaign's highest on one seed.** PMZ6_scratch_241
+(the codebook re-minted on Z6; random init, 48k at 0.089 s/step,
+form_mix_pm35, seed 241) vs PM35_scratch_241 (the incumbent codes, same
+recipe): paired MASKED wild 0.3325 vs 0.3291 (+0.0034, paired SE 0.0086,
+McNemar z 0.40) — the bar was +0.020 at z 2: NOT MET; open 0.3008 vs
+0.2989 (z 0.23); mint 0.6232 vs the incumbent's 0.59-0.61 (information);
+matched 0.3384 (order's share +0.0375). AT THE ROW (chain_acc, wildhold
+311): masked 17 correct / 128 refused / 166 wrong vs the incumbent's 9 /
+129 / 173; open 13 vs 9. Seventeen is the campaign's highest row count
+(PM35_scratch_242 masked 11), +8 rows on one seed at ~2 SE of a
+difference of counts (SE ~2.5 rows each) — a single-seed row-level
+signal under the slot-level null; NO CLAIM (the twin PMZ6_scratch_242
+is the registered next read, needing the word). VERDICT FOR THE BUILD:
+under the compatibility ruling the Z6 codes are the FIT with the six-
+wave clock (period 6 on both rotors) and this read is their no-cost
+certificate (every axis within a third of a standard error; the row
+read above); the Z6 codebook may enter the family env on fit
+(`BIND_CODES=.cache/bindbus_codes512_z6.npz`) — registered, not
+promoted: the family arm keeps the incumbent codes so that it changes
+ONE thing (the organs) against CTRL_241. Numbers asserted through
+`reads.py assert` (read_legal_wild / read_open_wild / read_open_mint
+logs). The post-family reads (impulse v2 full, the wave-field check on
+PM35_scratch_241) run now behind it (pc-postfam2).
