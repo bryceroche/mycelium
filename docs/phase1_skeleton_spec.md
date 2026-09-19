@@ -41460,3 +41460,38 @@ champion's regime and the regime has changed — a re-read with the
 control (SDv3_241, the warm lineage) is the next zero-GPU read, so the
 lineage and the diet can be told apart. Artifact:
 `.cache/wave_field_PM35_scratch_241.log`.
+
+**2026-09-18 23:15 — THE CERTIFICATE PASS: built, gated, and its cost
+measured on the card.** The implementer's gates (CPU): the identity
+check `cert_spotlight == Bridge.spotlight` bit-exact (union/own, beta
+{3,1,0}, unflagged rows, 20 fixtures); the fixture unset 5.2995 /
+0.0279 bit-identical; `ALG_WHEEL_CERT_ZERO=1` bit-identical with the
+road on (B=2 and B=64: 6.7227 = unset); the road live when flags are
+present (B=64: 6.7252 vs 6.7227); tiny64 census 7-8/64 rows flagged per
+breath; the pre/post census: the injected spotlight's mean |value| on
+flagged (row, slot) entries 0.19 against raw |scores| 10-15 (ratio
+0.013-0.018; +3 on the wanted tokens, the read-time wheel's beta). The
+cache excludes CERTS from bit-equality (0/24 rows differed on the hit;
+between two cold runs the flag counts drifted 8/7/7/8/8 vs 8/8/8/7/7 —
+the wall-clock non-determinism the exclusion exists for). THE COST ON
+THE CARD (pc-certcost: 1024 rows of form_mix_pm35, all nine organs,
+warm PM35_scratch_241): the pass 534.8 s = 0.52 s/row -> 7.3 h for the
+50,653-row diet; the pass flags 22-28% of the rows per breath (229/219/
+227/257/283 of 1024 at breaths 1-5, nogood-picked single slots); THE
+STEP with all nine organs on the certificate road: steady 0.113 s/step
+(B=8; the un-JIT'd live wheel was ~99 s) -> a 12k arm in 23 min. The
+pass is the cost, not the step: its forward half is a second EAGER
+multi-breath forward per 32-row batch (the JIT'd reader returns no per-
+breath heads) and its solver half walls refusals at 2 s. BACK TO THE
+IMPLEMENTER: time the halves; the forward half through the reader
+(per-breath heads emitted as lists of tensors, which the reader already
+flattens); the solver half's status/time census; a decision-budget cap
+in place of the wall (deterministic AND cheap) as the registered
+option. MEANWHILE THE GPU LINE (23:15): THE EIGHT-ORGAN FAMILY ARM —
+FAM8_241 (the family minus the wheel: atlas dual projection + xprior +
+mass, write-back 0.5, token loop, T2 claims 3:0.2, router, the clock
+ladder; JIT on) vs CTRL_241 (the plain continuation), both 12k from
+PM35_scratch_241 on form_mix_pm35, the family chain's reads and paired
+verdicts (bars: paired masked wild FAM8 vs CTRL >= +0.020, z >= 2;
+CTRL vs PM35_scratch_241 = the continuation's own drift). The nine-
+organ FAM_241 follows on the fast pass and reads against both.
