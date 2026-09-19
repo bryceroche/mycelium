@@ -41232,3 +41232,24 @@ prose where the old one was not; and on both, view DISAGREEMENT names
 a wrong slot at 94–95% — the fingerpost's prose road is refusal, not
 certification. Artifacts: `.cache/perceiver_vote_{balV242,PM35_
 scratch_241}_wildhold.npz`.
+
+**2026-09-18 17:10 — THE FAMILY ARM FIRED.** Two false starts, both
+the era door working: the chain first aborted on the errored old-
+format gate line (the check now reads the last line), then the head
+refused the DEFAULT atlas (`step_atlas_current.npz`, stamped
+port242) — "stale atlas in fresh coordinates (never-mix-generations
+law)" — because the chain had not passed `MH_ATLAS`; the miner had
+stamped the new file correctly (`step_atlas_pm35_241.npz`, era
+PM35_scratch_241, both charts populated: wild_gsm8k token n/step
+1,692). With the path passed: `[train] WARM from PM35_scratch_241:
+95/108 keys` (13 organ params fresh), `[mh-atlas] trajectory feed
+live … zero-page rows=0/50653` (every diet row has an atlas class).
+FAM_241's environment: ALG_MH_ATLAS=1 ALG_MH_XPRIOR=1 (the dual
+projection in the loop) ALG_MH_MASS=1 ALG_WHEEL_TRAIN=1 (melt, nogood;
+2 s row wall) ALG_WRITEBACK=0.5 ALG_TOKLOOP=1 ALG_T2_CLAIM=3:0.2
+ALG_ROUTER=1 (gain 1.0, frozen) ALG_CLOCK_TARGET (the level ladder), on
+form_mix_pm35, 12k steps, seed 241; CTRL_241 follows on the same
+warm source with none of them. The row-level read and the paired
+verdicts close the chain; `reads.py ingest` last. Staged behind it on
+the word: FAMKA_241 and FAMWI_241 (the kernel and the window on the
+family body).
