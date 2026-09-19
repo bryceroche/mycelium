@@ -11,14 +11,15 @@ would flag instability: none expected, worth knowing.
 Env: IR_CKPT (default sharp_bind14a).
 """
 import os, sys
-os.environ.update({"DEV": "PCI+AMD", "ALG2": "1", "ALG_FTYPES": "9",
+for _k, _v in {"DEV": "PCI+AMD", "ALG2": "1", "ALG_FTYPES": "9",
                    "ALG_DUP": "1", "ALG_HW": "512", "ALG_WIDE": "1",
                    "ALG_BREATH": "7", "ALG_NOTEBOOK": "1", "ALG_SIXWAVE": "1",
                    "NB_PERSLOT": "1", "ALG_BINDBUS": "7", "ALG_BIND_D": "512",
                    "BIND_CODES": ".cache/bindbus_codes512.npz",
                    "ALG_BUSGARAGE": "2", "ALG_MINE_BREATHS": "1",
                    "ALG_TEST": ".cache/algebra_nl_test.jsonl",
-                   "ALG_TEST_NAME": "test23"})
+                   "ALG_TEST_NAME": "test23"}.items():
+    os.environ.setdefault(_k, _v)   # IMPULSE v2 (2026-09-18): the caller's family env wins (the bind14a defaults were an older era)
 sys.path.insert(0, '.'); sys.path.insert(0, 'scripts')
 import numpy as np
 import phase1_algebra_head as H
@@ -87,3 +88,20 @@ for pname, pat in (("noise", noise), ("fact", fact)):
         print(f"  k0={k0}:  " + " ".join(f"{x:.3f}" for x in g))
 print("[pinned] contraction iff noise gain(lag>=3) < 0.5; "
       "fact damps slower than noise = resonance")
+
+# IMPULSE v2 (2026-09-18, collected): tau-fit + the linearity sweep + the sextet projection, on the noise probe at k0=1
+def _gain_curve(pat_, k0=1):
+    gains = []
+    for s0 in range(0, N, 8):
+        sl = np.arange(s0, s0 + 8); base = run(sl)
+        pert = run(sl, imp=(k0, Tensor(np.broadcast_to(pat_, (8, 24, 512)).copy(), dtype=dtypes.float)))
+        d = [float(np.linalg.norm(pert[k] - base[k]) / 8) for k in range(K_B)]; d0 = d[k0] + 1e-9
+        gains.append([d[k] / d0 for k in range(k0, K_B)])
+    return np.mean(gains, 0)
+g1 = _gain_curve(noise); lags = np.arange(len(g1))
+m = lags[1:] if len(lags) > 1 else lags; y = np.log(np.maximum(g1[1:], 1e-6)) if len(lags) > 1 else np.log(g1)
+A = np.vstack([m, np.ones_like(m)]).T; slope, icpt = np.linalg.lstsq(A, y, rcond=None)[0]; tau = -1.0 / slope if slope < 0 else float("inf")
+resid = y - (slope * m + icpt); sext = float(np.dot(resid, np.cos(2 * np.pi * m / 6.0))) / max(len(m), 1)
+g_half = _gain_curve(noise * 0.5); g_dbl = _gain_curve(noise * 2.0)
+lin = float(np.mean(np.abs(g_half[1:] - g1[1:]) + np.abs(g_dbl[1:] - g1[1:])) / max(float(np.mean(g1[1:])), 1e-6)) if len(g1) > 1 else float("nan")
+print(f"[impulse-v2] noise k0=1 gains {' '.join(f'{x:.3f}' for x in g1)} | tau-fit {tau:.2f} breaths (log-linear lags 1..{len(m)}) | sextet projection of the residual {sext:+.4f} (6 lags: a projection, not a detection) | linearity: mean |gain(0.5x, 2x) - gain(1x)| / gain(1x) = {lin:.3f} (0 = linear)", flush=True)
