@@ -54,6 +54,11 @@ ALG_NOTEBOOK = int(os.environ.get("ALG_NOTEBOOK", "0"))  # the cathedral noteboo
 ALG_CIRCLE = int(os.environ.get("ALG_CIRCLE", "0"))      # the traffic circle
 ALG_STELLAR = int(os.environ.get("ALG_STELLAR", "0"))    # cell-3b: helical handoff
 ALG_CLOCK_CANON = int(os.environ.get("ALG_CLOCK_CANON", "0"))   # memories in a canonical clock frame
+# THE BREATH-SHARPENING ORGANS (2026-09-19, THE BREATH-0 ANCHOR + THE
+# PER-BREATH SPAN LOSS; ledger "CAN THE BREATH CYCLE LEARN TO SHARPEN
+# WILD?"): both doors, dead unless set.
+ALG_SPAN_ALL = int(os.environ.get("ALG_SPAN_ALL", "0"))   # supervise the router's span EVERY breath, not just the last
+ALG_ANCHOR = float(os.environ.get("ALG_ANCHOR", "0"))     # beta: breath-0's grounding attention as a keep-bias, every loop breath
 _GTAP = None      # THE GRADIENT TAP (apply_grad_tap.py): read-only probe leaves per breath
 # THE WHIP (2026-09-12, the word): ALG_WHIP="k:amp" kicks the state ENTERING
 # breath k with Gaussian noise on the content planes (per slot: amp x the
@@ -3264,6 +3269,12 @@ def breath_step(p, state, kb, ctx):
         # the attention; the EMISSION graded against fspan is the factor rows only (the FED
         # convention: emission, grading and gold live on the first L_FAC rows)
         _rb_last = _fed_core(_rb7)
+        if ALG_SPAN_ALL:
+            # THE PER-BREATH SPAN LOSS (2026-09-19): keep every breath's
+            # v3 rbias, threaded like fat_all — the breath-0 grounding
+            # read has no router output, so this list holds breaths
+            # 1..K_B-1 only.
+            state.setdefault("rbias_all", []).append(_rb_last)
         if _CENSUS is not None:
             _CENSUS.append((kb, "router(bank)",
                             (_rb7 * p["r_gain"].reshape(1, 1, 1))
@@ -3321,6 +3332,11 @@ def breath_step(p, state, kb, ctx):
                                              # plumbing verbatim (mandatory-road law: fixed r_gain, no extra gate)
         _rb_last = _fed_core(_rb7)
         _s4_last = _fed_core4(_S4)
+        if ALG_SPAN_ALL:
+            # THE PER-BREATH SPAN LOSS (2026-09-19): keep every breath's
+            # v2 4-channel S, threaded like fat_all — breaths 1..K_B-1
+            # only (breath 0's grounding read has no router output).
+            state.setdefault("rbias2_all", []).append(_s4_last)
         # THE POINTER PRIOR THROUGH THE SURFACE (road c): slot j's arg-a
         # mention agreeing with slot k's res mention, over the REAL
         # tokens only (padding excluded from both softmaxes)
@@ -3405,6 +3421,18 @@ def breath_step(p, state, kb, ctx):
     if ALG_KWINDOW and kb >= 1 and kb < len(ALG_KWINDOW) and ALG_KWINDOW[kb] > 0 and state.get("fat_cur") is not None:   # THE HIERARCHICAL WINDOW
         _kwb = _window_bias(state["fat_cur"], ALG_KWINDOW[kb], B, L_TOT, int(tokmask.shape[1]))
         _pb_kb = _kwb if _pb_kb is None else _pb_kb + _kwb
+    _anch_b0 = ctx.get("anchor_bias0")
+    if _anch_b0 is not None:
+        # THE BREATH-0 ANCHOR (ALG_ANCHOR=<beta>, 2026-09-19): the tokens
+        # found at breath 0 (fat, detached — no grad; a keep-bias, never
+        # a hard mask) carried into EVERY loop breath on the SAME pbias
+        # road pbias/rbias/xcorr use, before the clip. Constant across
+        # breaths by construction (fat0 does not change); zero beta (the
+        # default) means this ctx key is never built (see forward()) —
+        # bit-identical.
+        _pb_kb = _anch_b0 if _pb_kb is None else _pb_kb + _anch_b0
+        if _CENSUS is not None:
+            _CENSUS.append((kb, "anchor", _anch_b0.realize().numpy()))
     h_tok, fat_cur = bank(p["fq"], L_TOT, extra=q_extra, kb=kb,
                           pbias=_pb_kb,
                           rbias=_rb7,
@@ -4250,6 +4278,8 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
     _rb_last = None
     _rptr_last = None
     _s4_last = None
+    _rbias_all = None
+    _rbias2_all = None
     _garage = None
     global _CENSUS                  # the port census hook (inert unless
     try: _CENSUS                    # port_census.py arms it — same
@@ -4367,6 +4397,8 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
             _rb_last = _bs_state["rb_last"]
             _rptr_last = _bs_state.get("rptr_last")
             _s4_last = _bs_state.get("s4_last")
+            _rbias_all = _bs_state.get("rbias_all")
+            _rbias2_all = _bs_state.get("rbias2_all")
             if RINGS:
                 m_c = _bs_state["m_c"]
                 anchor = _bs_state["anchor"]
@@ -4402,6 +4434,10 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
         _CENSUS.append((-1, "args_pre", out["args"].realize().numpy()))
     if _rb_last is not None:
         out["rbias"] = _rb_last
+    if _rbias_all:
+        out["rbias_all"] = _rbias_all     # THE PER-BREATH SPAN LOSS (v3): list of (B, L_FAC, T), breaths 1..K_B-1
+    if _rbias2_all:
+        out["rbias2_all"] = _rbias2_all   # THE PER-BREATH SPAN LOSS (v2): list of (B, 4, L_FAC, T), breaths 1..K_B-1
     if _s4_last is not None:
         # THE BUS-NATIVE ROUTER's per-field census tap (road b/c support)
         out["rbias2"] = _s4_last          # (B, 4, L_FAC, T): arg1/arg2/res/given
@@ -4617,20 +4653,46 @@ def _loss_single(o, g, blur=0.0, sw=None):
         # sum against fspan too would fight the given channel's own
         # vspan target (it would be pulled toward zero to keep the sum
         # matching fspan).
-        l = l + 0.5 * (bce(o["rbias"], g["fspan"]).mean(-1) * pres).sum() / n_p
+        # THE PER-BREATH SPAN LOSS (ALG_SPAN_ALL, 2026-09-19): unset (the
+        # default) reads o["rbias"] alone — the LITERAL old loss, bit-
+        # identical. Set, and "rbias_all" present (v1 router only), mean
+        # the SAME loss over every breath that produced a router bias
+        # (breaths 1..K_B-1; breath 0's grounding read has none), each
+        # weighted equally.
+        if ALG_SPAN_ALL and o.get("rbias_all"):
+            _rb_terms = o["rbias_all"]
+            _rb_loss = sum(bce(_rb, g["fspan"]).mean(-1)
+                           for _rb in _rb_terms) / len(_rb_terms)
+        else:
+            _rb_loss = bce(o["rbias"], g["fspan"]).mean(-1)
+        l = l + 0.5 * (_rb_loss * pres).sum() / n_p
     if "rbias2" in o and "fspan" in g:
         # v4 THE BUS-NATIVE ROUTER's SPLIT span losses (2026-09-19): the
         # res channel keeps v3's target (the factor's own span); the
         # given channel is supervised by the VALUE mention of the slot's
         # OWN variable (g["res"]-gathered vspan row, the positional
         # law's slot==variable identity read through the gold res index
-        # rather than assumed).
-        l = l + 0.5 * (bce(o["rbias2"][:, 2], g["fspan"]).mean(-1) * pres).sum() / n_p
+        # rather than assumed). ALG_SPAN_ALL: same mean-over-breaths
+        # treatment as v3 above, reading "rbias2_all" (a list of the
+        # full (B, 4, L_FAC, T) per breath) when present; unset is
+        # bit-identical to the single-breath form.
+        _span_all_v2 = ALG_SPAN_ALL and o.get("rbias2_all")
+        if _span_all_v2:
+            _res_loss = sum(bce(_rb2[:, 2], g["fspan"]).mean(-1)
+                            for _rb2 in o["rbias2_all"]) / len(o["rbias2_all"])
+        else:
+            _res_loss = bce(o["rbias2"][:, 2], g["fspan"]).mean(-1)
+        l = l + 0.5 * (_res_loss * pres).sum() / n_p
         if "vspan" in g and "res" in g:
             _r2oh = (g["res"].unsqueeze(-1)
                      == Tensor.arange(K_VARS).reshape(1, 1, K_VARS)).float()
             _vgiv = _r2oh @ g["vspan"]        # (B, L_FAC, T): slot j's own var's mention
-            l = l + 0.5 * (bce(o["rbias2"][:, 3], _vgiv).mean(-1) * pres).sum() / n_p
+            if _span_all_v2:
+                _giv_loss = sum(bce(_rb2[:, 3], _vgiv).mean(-1)
+                                for _rb2 in o["rbias2_all"]) / len(o["rbias2_all"])
+            else:
+                _giv_loss = bce(o["rbias2"][:, 3], _vgiv).mean(-1)
+            l = l + 0.5 * (_giv_loss * pres).sum() / n_p
     if "bind" in o and "bind_ids" in g and int(os.environ.get("ALG_BINDBUS", "0")) >= 3:
         # v3 THE ROLE-FACTORED LOSS: supervise each role's unbound cleanup
         # directly — conjugate-rotate the emission, CE against the codebook

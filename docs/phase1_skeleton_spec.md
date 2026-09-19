@@ -41894,3 +41894,30 @@ were the surface pivot's whole hand. Builders: the data stamp (a
 Sonnet agent; CPU) and the two head doors (the router's builder; CPU
 gates); the chain `.cache/pms2_chain.sh` fires when both report and the
 merged head reads bit-identical unset.
+
+**2026-09-19 12:45 — THE CRITICALITY METER (word given; Bryce: "the
+sharpening on mint and degradation on wild reminds me of nuclear
+reactions taking off vs grinding to a halt").** THE READING: the breath
+loop is an iterated map on the binding; the census's per-breath span
+hit is its multiplication factor — mint 0.10 -> 0.20 (supercritical,
+settling), wild 0.48 -> 0.34 (subcritical, decaying to a floor); the
+impulse read on the same body (wild rows) says the same in state space
+(a breath-1 kick persists at gain 1.0 = critical; kicks at breaths 2-4
+contract to 0.2-0.4 = subcritical). ONE DYNAMIC, TWO OUTCOMES: the
+middle breaths contract toward learned attractors; mint's are the right
+bindings (contraction = sharpening); wild's breath-0 reading sits away
+from any learned attractor and the same contraction erodes it toward a
+mint-shaped fixed point. In reactor terms the breath-sharpening arm
+adds FUEL at every breath (the per-breath span loss), makes wild prose
+FISSILE (the stamped value spans) and adds a REFLECTOR (the anchor;
+beta = the albedo, whose failure mode is lock-in on breath 0's reading
+— hence 2.0 with a census). THE METER (a diagnostic; the Goodhart
+fence — never in a loss; registered in diagnostic_register): per slot
+per breath the BINDING MASS m_k = the attention mass on the slot's gold
+span (factor span where annotated, the value's numeral occurrences for
+givens); k_eff(k) = mean m_{k+1} / mean m_k per register; the fuel map
+(by slot kind, slot index, sentence distance); the per-row slope of log
+m_k and the supercritical fraction. THE MECHANISM BAR for PMS2, beside
+the accuracy bar: wild's k_eff crosses 1 (the lineage's is below 1).
+Built by the census's analyst; read first on PM35_scratch_241, then on
+the arm.
