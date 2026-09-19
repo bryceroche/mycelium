@@ -752,8 +752,12 @@ TERMINALS = {
     "opc":    {"params": ["W_opc1", "W_opc1_b", "W_opc2", "W_opc2_b"],
                "emit": "opc", "gold": ["opc"],
                "when": lambda: int(os.environ.get("ALG_OPCOUNT", "0")) > 0},
-    "router": {"params": ["W_rs", "W_ra", "W_rb", "r_gain"],
-               "emit": "rbias", "gold": ["fspan"],
+    "router": {"params": (["W_rs", "W_ra", "W_rb", "r_gain"]
+                          if int(os.environ.get("ALG_ROUTER", "0")) < 2 else
+                          ["W_rq2", "W_rk2", "theta_given", "r_gain"]),
+               "emit": "rbias",
+               "gold": (["fspan"] if int(os.environ.get("ALG_ROUTER", "0")) < 2
+                        else ["fspan", "vspan"]),
                "when": lambda: int(os.environ.get("ALG_ROUTER", "0")) > 0},
     "bindbus": {"params": ["W_bind1", "W_bind1_b", "W_bind2"],
                 # tabula-rasa cleanup 2026-08-31: monolith only (the
@@ -1992,13 +1996,55 @@ def build_params(seed=0):
     if int(os.environ.get("ALG_ROUTER", "0")):
         assert int(os.environ.get("ALG_BREATH", "1")) > 1, \
             "ROUTER emits only inside the breath loop (no-silent-fallbacks)"
-        # v3 THE ROUTER HEAD (2026-09-01, word given): learned token-grain
-        # routing — snap-conditioned slot queries vs waist keys, soft bias
-        # into the BANK's reads (the measured artery); trained on its OWN
-        # span loss (bootstrap law; the dual-terminal contract by design)
-        p["W_rs"] = t(rng.randn(73, H_W) / math.sqrt(73))
-        p["W_ra"] = t(rng.randn(H_W, 64) / math.sqrt(H_W))
-        p["W_rb"] = t(rng.randn(H_W, 64) / math.sqrt(H_W))
+        _rver0 = int(os.environ.get("ALG_ROUTER", "0"))
+        if _rver0 == 1:
+            # v3 THE ROUTER HEAD (2026-09-01, word given): learned token-grain
+            # routing — snap-conditioned slot queries vs waist keys, soft bias
+            # into the BANK's reads (the measured artery); trained on its OWN
+            # span loss (bootstrap law; the dual-terminal contract by design)
+            p["W_rs"] = t(rng.randn(73, H_W) / math.sqrt(73))
+            p["W_ra"] = t(rng.randn(H_W, 64) / math.sqrt(H_W))
+            p["W_rb"] = t(rng.randn(H_W, 64) / math.sqrt(H_W))
+        elif _rver0 >= 2:
+            # v4 THE BUS-NATIVE ROUTER (2026-09-19, THE SURFACE PIVOT, word
+            # given): the query is the slot's OWN bind-bus vector (the same
+            # W_bind1/W_bind1_b/W_bind2 the garage writes), UNBOUND per
+            # field by that field's role phasor (rotation-equivariant by
+            # construction — see scripts/router2_equivariance.py). v3's
+            # W_rs/W_ra/W_rb are NOT built here (the no-dead-grad fence:
+            # a param this router never reads would starve under v2).
+            assert "W_bind1" in p and "W_bind2" in p, (
+                "ALG_ROUTER=2 needs the bind bus (ALG_BINDBUS>=1 with its "
+                "params already built above): the bus-native router reads "
+                "the slot's own bus vector, produced by W_bind1/W_bind2")
+            _bd2 = int(os.environ.get("ALG_BIND_D", "128"))
+            assert _bd2 % 2 == 0, "ALG_BIND_D must be even (interleaved pairs)"
+            _P2 = _bd2 // 2
+            # theta_given (2026-09-19, word given: the codebook has no
+            # 'given' role — givens are a VALUE slot on the res variable,
+            # not one of the codebook's four bound roles). A LEARNED angle,
+            # zero-init: unbind-by-zero is the identity rotation (full
+            # magnitude at birth, no gain to vote down — the mandatory-
+            # road law), letting training discover its own alignment.
+            p["theta_given"] = t(np.zeros(_P2, dtype=np.float32))
+            # W_rq2 (2026-09-19): "keep the phase structure" taken
+            # literally — a PER-PLANE complex scalar (not a dense 512x512
+            # mix), stored as (P,2) = (real, imag). This is the structure
+            # that makes the equivariance proof exact under INDEPENDENT
+            # per-plane rotations (a dense mixer would only commute with a
+            # single GLOBAL phase, not per-plane ones): complex scalar
+            # multiplication commutes with rotation in the SAME plane.
+            # init identity-ish: (1, 0) per plane == the identity map.
+            p["W_rq2"] = t(np.stack([np.ones(_P2, np.float32),
+                                     np.zeros(_P2, np.float32)], -1))
+            # W_rk2: the token key's entry into the bus's phase space —
+            # a free dense projection (no equivariance constraint: the
+            # equivariance proof rotates the KEY vector directly, not the
+            # waist it came from, so nothing here needs to commute with
+            # anything). Standard fan-in init.
+            p["W_rk2"] = t(rng.randn(H_W, _bd2) / math.sqrt(H_W))
+        else:
+            raise ValueError(f"unknown ALG_ROUTER version {_rver0!r}")
         p["r_gain"] = t(np.full(1, float(os.environ.get("R_GAIN_INIT", "0.02"))))
         # rescue 2026-09-01: default aligned to the AJAR law (0.02);
         # sweepable via R_GAIN_INIT (the 0.1 deviation was unswept)
@@ -2180,6 +2226,15 @@ def _fed_core(x):
     slot-major (nothing else in the stack is 32-wide)."""
     if N_SCR and x.shape[1] == L_TOT:
         return x[:, :L_FAC]
+    return x
+
+
+def _fed_core4(x):
+    """_fed_core's twin for THE BUS-NATIVE ROUTER's 4-channel tensor
+    (B, 4, L_TOT, T): the slot-major axis is index 2 here, not 1 — a
+    plain re-application of _fed_core would slice the wrong axis."""
+    if N_SCR and x.shape[2] == L_TOT:
+        return x[:, :, :L_FAC]
     return x
 
 
@@ -2516,6 +2571,154 @@ ALG_KWINDOW = [float(x) for x in os.environ.get("ALG_KWINDOW", "").split(",") if
 ALG_KWINDOW_GAIN = float(os.environ.get("ALG_KWINDOW_GAIN", "4"))                            # the penalty at one half-width, in nats/2 (fixed — not a parameter)
 
 
+# ===========================================================================
+# THE CORRESPONDENCE CHART (ALG_XCORR, 2026-09-19, word given: THE SURFACE
+# PIVOT) — a coordinate-free, era-free PRIOR on where each slot's FACTOR and
+# VALUE binding lives in the text, mined from GOLD SPANS over the training
+# diet (no model involved), keyed by a SURFACE SIGNATURE (sentence-count x
+# numeral-count buckets), and consumed as an additive bias into the
+# grounding bank's scores with a FIXED gain (a road; the mandatory-road law
+# — no learnable gate). Applied ONLY at the breath-0 GROUNDING read (the
+# same imposed-structure slot pmask/lsent already occupy), never threaded
+# through the per-breath loop. Unset (ALG_XCORR=""): the literal old code.
+# ===========================================================================
+ALG_XCORR = os.environ.get("ALG_XCORR", "")
+ALG_XCORR_ON = ALG_XCORR != ""
+ALG_XCORR_GAIN = float(ALG_XCORR) if ALG_XCORR_ON else None
+ALG_XCORR_V = os.environ.get("ALG_XCORR_V", "")
+ALG_XCORR_V_GAIN = (float(ALG_XCORR_V) if ALG_XCORR_V != ""
+                    else ALG_XCORR_GAIN)
+ALG_XCORR_CHART = os.environ.get("ALG_XCORR_CHART",
+                                 ".cache/xcorr_chart_formpm35.npz")
+ALG_XCORR_CENSUS = int(os.environ.get("ALG_XCORR_CENSUS", "0"))
+XCORR_SENT_BUCKETS = 8    # sentence index 0..7, clipped
+XCORR_KIND_BUCKETS = 4    # numeral / number word / operator cue / other
+N_XCORR_SIG = 25          # sentence-count bucket (5) x numeral-count bucket (5)
+_XCORR_NUMWORDS = None
+_XCORR_CUE_RE = None
+_XCORR_TOK = None
+_XCORR_CHART_CACHE = {}   # path -> {"fac": (25,L_FAC,8,4), "val": same}, float32 log-odds
+
+
+def xcorr_signature(n_sent, n_num):
+    """25 signatures: sentence-count bucket {1,2,3,4,5+} x numeral-count
+    bucket {0-1,2,3,4,5+}. n_sent/n_num are counts over REAL tokens only."""
+    sb = min(max(int(n_sent), 1), 5) - 1
+    n_num = int(n_num)
+    nb = 0 if n_num <= 1 else min(n_num - 1, 4)
+    return sb * 5 + nb
+
+
+def _xcorr_numwords():
+    global _XCORR_NUMWORDS
+    if _XCORR_NUMWORDS is None:
+        from mycelium.lexicon import ONES, TENS
+        _XCORR_NUMWORDS = set(ONES) | set(TENS) | {"hundred", "thousand"}
+    return _XCORR_NUMWORDS
+
+
+def _xcorr_cue_re():
+    global _XCORR_CUE_RE
+    if _XCORR_CUE_RE is None:
+        import re
+        # THE SURFACE CENSUS's cue list (scripts/attention_census.py,
+        # 2026-09-15), reused verbatim so the chart's "operator cue" kind
+        # matches the census's.
+        _XCORR_CUE_RE = re.compile(
+            r"^(each|total|per|times|more|less|fewer|half|twice|double|"
+            r"altogether|combined|every|sum|difference|product|"
+            r"remaining|left|rest)$", re.I)
+    return _XCORR_CUE_RE
+
+
+def _xcorr_tokenizer():
+    global _XCORR_TOK
+    if _XCORR_TOK is None:
+        from tokenizers import Tokenizer
+        _XCORR_TOK = Tokenizer.from_file(TOKENIZER_JSON)
+    return _XCORR_TOK
+
+
+def _xcorr_kind(tok_str):
+    """0 numeral / 1 number word / 2 operator cue / 3 other, from ONE
+    decoded, stripped token string."""
+    s = tok_str.strip()
+    if not s:
+        return 3
+    if s.isdigit():
+        return 0
+    if s.lower() in _xcorr_numwords():
+        return 1
+    if _xcorr_cue_re().match(s):
+        return 2
+    return 3
+
+
+def xcorr_row_features(text, tokmask_row, sent_row, T):
+    """Re-tokenizes `text` with the head's own tokenizer (the SAME
+    offsets/truncation build_gold's caller used) to get per-token kind
+    (T,) int8 in {0,1,2,3} and this row's surface signature id. Gated by
+    tokmask_row/sent_row so padding never enters n_sent/n_num."""
+    tok = _xcorr_tokenizer()
+    ids = tok.encode(text).ids[:T]
+    kinds = np.full(T, 3, np.int8)
+    real = np.zeros(T, bool)
+    real[:len(ids)] = np.asarray(tokmask_row[:len(ids)]) > 0
+    for i, tid in enumerate(ids):
+        if real[i]:
+            kinds[i] = _xcorr_kind(tok.decode([tid]))
+    n_num = int((kinds == 0)[real].sum())
+    rs = np.asarray(sent_row[:len(ids)])[real[:len(ids)]]
+    n_sent = int(rs.max()) + 1 if len(rs) else 1
+    return kinds, xcorr_signature(n_sent, n_num)
+
+
+def xcorr_load_chart(path=None):
+    path = path or ALG_XCORR_CHART
+    if path not in _XCORR_CHART_CACHE:
+        z = np.load(path)
+        _XCORR_CHART_CACHE[path] = {"fac": z["fac"].astype(np.float32),
+                                    "val": z["val"].astype(np.float32)}
+    return _XCORR_CHART_CACHE[path]
+
+
+def xcorr_row_bias(text, tokmask_row, sent_row, chart, T,
+                   gain_f=1.0, gain_v=1.0):
+    """(L_FAC, T) float32 — the chart's log-odds at THIS row's (signature,
+    per-token sentence-bucket, per-token kind), gain-scaled and clipped to
+    [-4, 4] PER TERM (fac and val separately), zero on pad tokens. Either
+    gain 0.0 -> that term contributes exactly zero."""
+    kinds, sig = xcorr_row_features(text, tokmask_row, sent_row, T)
+    out = np.zeros((L_FAC, T), np.float32)
+    real = np.asarray(tokmask_row[:T]) > 0
+    if not real.any():
+        return out
+    idx = np.where(real)[0]
+    sb = np.clip(np.asarray(sent_row)[idx].astype(np.int64), 0,
+                XCORR_SENT_BUCKETS - 1)
+    kd = kinds[idx].astype(np.int64)
+    if gain_f:
+        out[:, idx] += np.clip(gain_f * chart["fac"][sig][:, sb, kd],
+                               -4.0, 4.0)
+    if gain_v:
+        out[:, idx] += np.clip(gain_v * chart["val"][sig][:, sb, kd],
+                               -4.0, 4.0)
+    return out
+
+
+def xcorr_build_array(samples, tokmask, sent, chart, T,
+                      gain_f=1.0, gain_v=1.0):
+    """(n, L_FAC, T) float16 — xcorr_row_bias for every row, host-side, no
+    model call. Deterministic in (chart, gains) — the mask-prep pass's own
+    kind of array (bank it like FACTS)."""
+    n = len(samples)
+    out = np.zeros((n, L_FAC, T), np.float16)
+    for i in range(n):
+        out[i] = xcorr_row_bias(samples[i]["text"], tokmask[i], sent[i],
+                                chart, T, gain_f, gain_v)
+    return out
+
+
 def _window_bias(fat_prev, w, B, L, T):
     """the window at this breath around each slot's CENTRE at the previous breath (the argmax of its
     attention): a soft penalty -gain * d^2 / (2 w^2) on the attention logits, added on the spotlight road
@@ -2574,6 +2777,16 @@ def _make_bank(p, waist, tokmask, B, sent=None):
             _ccs = globals().get("_CERT_CENSUS_SC")
             if _ccs is not None:
                 _ccs.setdefault(kb, []).append(float(sc.abs().mean().numpy()))
+        if kb is None and nq == L_TOT:
+            # THE CORRESPONDENCE CHART's own pre/post readback
+            # (ALG_XCORR_CENSUS=1): the raw pre-bias score magnitude at
+            # the GROUNDING factor-bank call only (kb is None there;
+            # nq == L_TOT distinguishes it from the var/query banks,
+            # which also pass kb=None). Same dark-unless-armed idiom as
+            # _CERT_CENSUS_SC above; never during the JIT'd step.
+            _xcs = globals().get("_XCORR_CENSUS_SC")
+            if _xcs is not None:
+                _xcs.append(float(sc.abs().mean().numpy()))
         if pbias is not None:   # door #62: six-wave phase-resonance bias
             sc = sc + pbias
         if rbias is not None:   # v3: the router's soft token bias (never
@@ -2801,6 +3014,7 @@ def breath_step(p, state, kb, ctx):
     _nb = state["nb"]; _nb_st = state["nb_st"]
     _garage = state["garage"]; _snaps = state["snaps"]
     _snaps_g = state["snaps_g"]; _rb_last = state["rb_last"]
+    _rptr_last = state.get("rptr_last"); _s4_last = state.get("s4_last")
     m_c = state["m_c"]; anchor = state["anchor"]
     cmt_logits = state["cmt_logits"]; x_rel = state["x_rel"]
     if _IMP is not None and kb == _IMP[0]:
@@ -3032,6 +3246,8 @@ def breath_step(p, state, kb, ctx):
         q_extra = q_extra + _sync[1](kb)     # settle; receiver locked
     _rb7 = None
     if "W_ra" in p:
+        # v3 THE ROUTER HEAD, ALG_ROUTER=1 — VERBATIM (the params build
+        # only creates W_rs/W_ra/W_rb under v1; see there for why)
         if _snaps:
             _src7 = (_snaps_g[-1] if (_snaps_g and
                      int(os.environ.get("ALG_ROUTER_GRADED", "0")))
@@ -3052,6 +3268,81 @@ def breath_step(p, state, kb, ctx):
             _CENSUS.append((kb, "router(bank)",
                             (_rb7 * p["r_gain"].reshape(1, 1, 1))
                             .realize().numpy()))
+    elif "W_rq2" in p:
+        # v4 THE BUS-NATIVE ROUTER, ALG_ROUTER=2 (2026-09-19, THE SURFACE
+        # PIVOT — word given): the query is THIS SLOT's own bind-bus
+        # vector (the same wire the garage deposits: W_bind1/W_bind1_b/
+        # W_bind2), recomputed FRESH from `cur` here — the state ENTERING
+        # this breath (matching v3's query timing) — rather than read
+        # from `_garage` (which lags a breath's mixing and is None unless
+        # ALG_BUSGARAGE is separately armed; this router needs only the
+        # bus params + ALG_BINDBUS, not the parking-garage organ).
+        global _R2C
+        try: _R2C
+        except NameError: _R2C = None
+        if _R2C is None:
+            import numpy as _npr2
+            from tinygrad import Tensor as _Tr2
+            _bzr2 = _npr2.load(_bind_codes_path())
+            _R2C = {}
+            for _rn2 in ("arg1", "arg2", "res"):
+                _th2 = _bzr2[f"theta_{_rn2}"].astype(_npr2.float32)
+                # UNBIND = multiply by the conjugate phasor e^{-i*theta}:
+                # (cos theta, -sin theta) fed to the head's own _rot2.
+                _R2C[_rn2] = (_Tr2(_npr2.cos(_th2)), _Tr2(-_npr2.sin(_th2)))
+        _cur_g7 = (_clock_frame(cur, kb, -1, _rot2)
+                   if ALG_CLOCK_CANON and ALG_POLAR else cur)   # canonical
+                                                    # frame, same as the garage's deposit
+        _bus7 = ((_cur_g7 @ p["W_bind1"] + p["W_bind1_b"]).gelu()
+                 @ p["W_bind2"])         # (B, L_TOT, bind_d): the slot's OWN bus vector, LIVE
+        _thg_c7, _thg_s7 = p["theta_given"].cos(), (-p["theta_given"]).sin()
+        _fields7 = {
+            "arg1": _rot2(_bus7, *_R2C["arg1"]),
+            "arg2": _rot2(_bus7, *_R2C["arg2"]),
+            "res":  _rot2(_bus7, *_R2C["res"]),
+            "given": _rot2(_bus7, _thg_c7, _thg_s7),
+        }
+        _key7 = waist @ p["W_rk2"]      # (B, T, bind_d): the token key, into the same phase space
+        _P7 = p["W_rk2"].shape[-1] // 2
+        _Ss7 = {}
+        for _fn7, _qv7 in _fields7.items():
+            # W_rq2: a PER-PLANE complex scalar (keeps the phase
+            # structure — see the params build); _rot2 is the general
+            # complex-multiply, not just unit rotation, so this is the
+            # same op reused for the learned scale.
+            _qv7s = _rot2(_qv7, p["W_rq2"][:, 0], p["W_rq2"][:, 1])
+            # "real inner product of interleaved pairs" == the plain R^2P
+            # dot product (Re(z*conj(w)) is exactly that, by the
+            # interleaved-real layout law in mycelium/complex_tensor.py)
+            _Ss7[_fn7] = (_qv7s @ _key7.transpose(-2, -1)) / math.sqrt(_P7)
+        _S4 = Tensor.stack(_Ss7["arg1"], _Ss7["arg2"], _Ss7["res"],
+                           _Ss7["given"], dim=1)      # (B, 4, L_TOT, T)
+        _rb7 = _Ss7["res"] + _Ss7["given"]   # ROAD (a): reuse the rbias
+                                             # plumbing verbatim (mandatory-road law: fixed r_gain, no extra gate)
+        _rb_last = _fed_core(_rb7)
+        _s4_last = _fed_core4(_S4)
+        # THE POINTER PRIOR THROUGH THE SURFACE (road c): slot j's arg-a
+        # mention agreeing with slot k's res mention, over the REAL
+        # tokens only (padding excluded from both softmaxes)
+        _tm7 = tokmask.reshape(B, 1, -1)
+        def _tsoft7(s7):
+            return (s7.clip(-1e4, 1e4) + (1.0 - _tm7) * -1e4).softmax(-1)
+        _att_a1_7 = _tsoft7(_fed_core(_Ss7["arg1"]))
+        _att_a2_7 = _tsoft7(_fed_core(_Ss7["arg2"]))
+        _att_r7_7 = _tsoft7(_fed_core(_Ss7["res"]))
+        # slot k -> variable index: IDENTITY (K_VARS == L_FAC == 24, the
+        # positional law's convention on pen rows — the honest limit of
+        # this mapping is stated in the report, not hidden here)
+        _Pa1_7 = _att_a1_7 @ _att_r7_7.transpose(-2, -1)   # (B, L_FAC, L_FAC==K_VARS)
+        _Pa2_7 = _att_a2_7 @ _att_r7_7.transpose(-2, -1)
+        _rptr_last = Tensor.stack(_Pa1_7, _Pa2_7, dim=1)   # (B, 2, L_FAC, K_VARS): census
+        if _CENSUS is not None:
+            _CENSUS.append((kb, "router2(bank)",
+                            (_rb7 * p["r_gain"].reshape(1, 1, 1))
+                            .realize().numpy()))
+            _CENSUS.append((kb, "router2(ptr)",
+                            (float(os.environ.get("ALG_ROUTER_PTR", "2.0"))
+                             * (_Pa1_7 + _Pa2_7)).realize().numpy()))
     # THE TOKEN COOKER (apply_tok_cook.py, 2026-09-09; spec
     # docs/token_cooker_spec.md). THE GATE, computed ONCE per breath and
     # spent on BOTH grounding roads (this bank read and ALT21 station 3)
@@ -3804,11 +4095,12 @@ def breath_step(p, state, kb, ctx):
         _garage.append(_wg4)
     state["cur"] = cur; state["nb"] = _nb; state["nb_st"] = _nb_st
     state["rb_last"] = _rb_last
+    state["rptr_last"] = _rptr_last; state["s4_last"] = _s4_last
     state["m_c"] = m_c; state["anchor"] = anchor; state["x_rel"] = x_rel
     return state
 
 
-def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, drop=None, anchor=None, amask=None, gmod=None, pmask=None, lsent=None, reg=None, fact_buf=None, mh_mass=None, mh_atlas_traj=None):
+def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, drop=None, anchor=None, amask=None, gmod=None, pmask=None, lsent=None, reg=None, fact_buf=None, mh_mass=None, mh_atlas_traj=None, xcorr=None):
     from tinygrad import Tensor, dtypes   # audit 2026-09-01: was a
     # SCOPE ACCIDENT (bound only via the sixwave/sync branches — any
     # SIXWAVE-off config killed five organs at step 1)
@@ -3900,6 +4192,22 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
         _pb = _sw_term if _pb is None else _pb + _sw_term  # audit #6: adds
     if pmask is not None:                 # A0: imposed route-mask (wiring,
         _pb = pmask if _pb is None else _pb + pmask   # not knobs — no grad)
+    if xcorr is not None:
+        # THE CORRESPONDENCE CHART (ALG_XCORR, 2026-09-19): a coordinate-
+        # free, era-free PRIOR on where each slot's FACTOR/VALUE binding
+        # lives in the text, mined from gold spans (no model involved).
+        # `xcorr` arrives (B, L_FAC, T) with the road's gain(s) ALREADY
+        # baked in and each term clipped to [-4, 4] by the caller
+        # (xcorr_row_bias / xcorr_build_array) — imposed structure, like
+        # pmask/lsent above, applied ONLY at this grounding read, never
+        # threaded through the per-breath loop.
+        _xb = xcorr
+        if _xb.dtype != dtypes.float:
+            _xb = _xb.cast(dtypes.float)
+        if N_SCR:
+            _xb = Tensor.cat(_xb, Tensor.zeros(B, N_SCR, _xb.shape[-1]), dim=1)
+        _xb = _xb.reshape(B, 1, L_TOT, _xb.shape[-1])
+        _pb = _xb if _pb is None else _pb + _xb
     # THE TOKEN SEAL (apply_tok_seal.py, 2026-09-09): breath 0's
     # GROUNDING. `loop` leaves it intact (the slots are grounded once
     # and only the re-reading is severed); `all` flattens it too — the
@@ -3940,6 +4248,8 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
 
     _bus_reg = None
     _rb_last = None
+    _rptr_last = None
+    _s4_last = None
     _garage = None
     global _CENSUS                  # the port census hook (inert unless
     try: _CENSUS                    # port_census.py arms it — same
@@ -4016,6 +4326,7 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
                      "nb2": None,
                      "nb_st": None, "garage": _garage, "snaps": _snaps,
                      "snaps_g": _snaps_g, "rb_last": _rb_last,
+                     "rptr_last": _rptr_last, "s4_last": _s4_last,
                      "m_c": m_c if RINGS else None,
                      "anchor": anchor if RINGS else None,
                      "cmt_logits": cmt_logits if RINGS else None,
@@ -4054,6 +4365,8 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
                         _certF, fat, sent, _WHEEL_CERT_BETA, _WHEEL_CERT_MODE)
             cur = _bs_state["cur"]
             _rb_last = _bs_state["rb_last"]
+            _rptr_last = _bs_state.get("rptr_last")
+            _s4_last = _bs_state.get("s4_last")
             if RINGS:
                 m_c = _bs_state["m_c"]
                 anchor = _bs_state["anchor"]
@@ -4081,8 +4394,28 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
                                                      # forward cannot ignore
     out = heads_of(_s_final)
     _last_heads = dict(out)   # the readout's heads (the shelf read when ALG_SHELF): the ladder's last rung under the shelf
+    if _CENSUS is not None and "W_rq2" in p:
+        # THE PRE/POST CENSUS's PRE reading for the args logits (the
+        # pre/post knob law): captured BEFORE the pointer-prior fusion
+        # below, so a census script can compare the injected
+        # beta_ptr*(P_arg1+P_arg2) against what it lands on.
+        _CENSUS.append((-1, "args_pre", out["args"].realize().numpy()))
     if _rb_last is not None:
         out["rbias"] = _rb_last
+    if _s4_last is not None:
+        # THE BUS-NATIVE ROUTER's per-field census tap (road b/c support)
+        out["rbias2"] = _s4_last          # (B, 4, L_FAC, T): arg1/arg2/res/given
+        out["rptr"] = _rptr_last          # (B, 2, L_FAC, K_VARS): arg1/arg2 pointer priors
+        # THE POINTER PRIOR THROUGH THE SURFACE (road c, mandatory —
+        # fixed beta_ptr, no learnable gate): slot index == variable
+        # index by construction (K_VARS == L_FAC == 24, the positional
+        # law's identity convention) — exact on pen/positional-gold rows;
+        # on a row whose variable order departs from slot order (e.g.
+        # mint's argsort-by-span convention) this is an approximation,
+        # stated here rather than corrected, per the brief's instruction
+        # to say what was decided.
+        _beta_ptr = float(os.environ.get("ALG_ROUTER_PTR", "2.0"))
+        out["args"] = out["args"] + _beta_ptr * (_rptr_last[:, 0] + _rptr_last[:, 1])
     if int(os.environ.get("ALG_MINE_BREATHS", "0")) and K_B > 1 and slot_mask is not None:
         out["breaths_all"] = [_fed_core(_b9) for _b9 in out_breaths]
         # THE PERCEIVER's reads (2026-09-14): every breath's emission heads (the
@@ -4276,10 +4609,28 @@ def _loss_single(o, g, blur=0.0, sw=None):
                                     * (_t.pow(2).sum(-1).sqrt() + 1e-6))
         _w = 1.0 if int(os.environ.get("ALG_BINDBUS", "0")) < 3 else 0.2
         l = l + _w * ((1.0 - _cos) * pres).sum() / n_p
-    if "rbias" in o and "fspan" in g:
+    if "rbias" in o and "fspan" in g and "rbias2" not in o:
         # v3 router span loss (bootstrap law: new attention pathways get
-        # DIRECT supervision — gold factor spans, per slot)
+        # DIRECT supervision — gold factor spans, per slot). Under
+        # ALG_ROUTER=2 "rbias" is the res+given SUM (the bank-bias road)
+        # and is graded via the SPLIT terms below instead — grading the
+        # sum against fspan too would fight the given channel's own
+        # vspan target (it would be pulled toward zero to keep the sum
+        # matching fspan).
         l = l + 0.5 * (bce(o["rbias"], g["fspan"]).mean(-1) * pres).sum() / n_p
+    if "rbias2" in o and "fspan" in g:
+        # v4 THE BUS-NATIVE ROUTER's SPLIT span losses (2026-09-19): the
+        # res channel keeps v3's target (the factor's own span); the
+        # given channel is supervised by the VALUE mention of the slot's
+        # OWN variable (g["res"]-gathered vspan row, the positional
+        # law's slot==variable identity read through the gold res index
+        # rather than assumed).
+        l = l + 0.5 * (bce(o["rbias2"][:, 2], g["fspan"]).mean(-1) * pres).sum() / n_p
+        if "vspan" in g and "res" in g:
+            _r2oh = (g["res"].unsqueeze(-1)
+                     == Tensor.arange(K_VARS).reshape(1, 1, K_VARS)).float()
+            _vgiv = _r2oh @ g["vspan"]        # (B, L_FAC, T): slot j's own var's mention
+            l = l + 0.5 * (bce(o["rbias2"][:, 3], _vgiv).mean(-1) * pres).sum() / n_p
     if "bind" in o and "bind_ids" in g and int(os.environ.get("ALG_BINDBUS", "0")) >= 3:
         # v3 THE ROLE-FACTORED LOSS: supervise each role's unbound cleanup
         # directly — conjugate-rotate the emission, CE against the codebook
@@ -5115,6 +5466,23 @@ def do_train(steps, lr, batch, seed):
     MH_MASS = int(os.environ.get("ALG_MH_MASS", "0"))
     MASSB = np.zeros((n, K_VARS), np.float32) \
         if (ALT2 and MH_MASS) else None
+    XCORR = None   # THE CORRESPONDENCE CHART (2026-09-19): host-only, no
+                   # model call — built here (not inside the K_B>1 mask-
+                   # prep pass below, which it does not depend on)
+    if ALG_XCORR_ON:
+        _xc_t0 = time.time()
+        _xc_chart = xcorr_load_chart(ALG_XCORR_CHART)
+        print(f"[xcorr] chart {ALG_XCORR_CHART} gain_f={ALG_XCORR_GAIN} "
+              f"gain_v={ALG_XCORR_V_GAIN} — building the diet's bias array "
+              f"({n} rows, host, no model call) ...", flush=True)
+        XCORR = xcorr_build_array(samples, tokmask, sent, _xc_chart, T_ALG,
+                                  ALG_XCORR_GAIN, ALG_XCORR_V_GAIN)
+        _xc_real = int(np.asarray(tokmask).astype(np.int64).sum())
+        _xc_mean = (float(np.abs(XCORR).astype(np.float64).sum())
+                   / max(1, _xc_real * L_FAC))   # float16 .sum() overflows in-dtype; upcast first
+        print(f"[xcorr] array ready {XCORR.shape} {XCORR.dtype} in "
+              f"{time.time() - _xc_t0:.1f}s (mean|Xb| on real tokens "
+              f"{_xc_mean:.4f})", flush=True)
     ATLAS_TAB = ATLAS_IDX = None
     assert not int(os.environ.get("ALG_MH_XPRIOR", "0")) \
         or int(os.environ.get("ALG_MH_ATLAS", "0")), \
@@ -5485,6 +5853,8 @@ def do_train(steps, lr, batch, seed):
                             # facts) — the jitted step's signature is stable
     b_mhm = fix(np.zeros((batch, K_VARS, 1), np.float32), dtypes.float) \
         if MASSB is not None else None   # mask-head mass port (b_fact idiom)
+    b_xcorr = fix(np.zeros((batch, L_FAC, T_ALG), np.float16), dtypes.half) \
+        if ALG_XCORR_ON else None   # THE CORRESPONDENCE CHART's feed (b_fact idiom)
     b_mha = fix(np.zeros((batch, ATLAS_TAB.shape[1], H_W), np.float32),
                 dtypes.float) if ATLAS_TAB is not None else None
     b_tail = fix(np.zeros((batch, T_ALG), np.float32), dtypes.float) if CLOCK else None
@@ -5633,13 +6003,13 @@ def do_train(steps, lr, batch, seed):
             # commits, self-labeled from gold like the commit loss,
             # DETACHED); the second trains under live release dynamics.
             o0 = forward(p, s_tr, b_tk, b_se, slot_mask=b_mask, tail=b_tail,
-                         reg=b_reg)
+                         reg=b_reg, xcorr=b_xcorr)
             ok = ((o0["ftype"].argmax(-1) == bg["ftype"]).float()
                   * (o0["res"].argmax(-1) == bg["res"]).float())
             rv = (bg["presence"] * (1.0 - ok)).detach()
             o = forward(p, s_tr, b_tk, b_se, slot_mask=b_mask, revoke=rv,
                         tail=b_tail, reg=b_reg, fact_buf=b_fact,
-                        mh_mass=b_mhm, mh_atlas_traj=b_mha)
+                        mh_mass=b_mhm, mh_atlas_traj=b_mha, xcorr=b_xcorr)
         elif int(os.environ.get("NAZ_TRAIN", "0")):
             # NAZARÉ TRAINING (door #55): the organ-2 two-forward pattern —
             # pre-pass yields the intra-pass event field IN-GRAPH (detached);
@@ -5647,7 +6017,8 @@ def do_train(steps, lr, batch, seed):
             # (declared per the criterion-key clause, distinct from the
             # read-time dup-aware argpair): argmax-change OR dup-flip on
             # rel-typed present slots, breath-0 vs final.
-            o0 = forward(p, s_tr, b_tk, b_se, slot_mask=b_mask, tail=b_tail)
+            o0 = forward(p, s_tr, b_tk, b_se, slot_mask=b_mask, tail=b_tail,
+                        xcorr=b_xcorr)
             _b0 = o0["breaths"][0]
             _relmask = (o0["pres"].squeeze(-1) > 0).float() \
                 * (o0["ftype"].argmax(-1) == 0).float()
@@ -5658,13 +6029,13 @@ def do_train(steps, lr, batch, seed):
             _gm = (_bgauth + (1.0 - _bgauth) * _ev).unsqueeze(-1).detach()
             o = forward(p, s_tr, b_tk, b_se, slot_mask=b_mask, tail=b_tail,
                         gmod=_gm, fact_buf=b_fact,
-                        mh_mass=b_mhm, mh_atlas_traj=b_mha)
+                        mh_mass=b_mhm, mh_atlas_traj=b_mha, xcorr=b_xcorr)
         else:
             _bd = os.environ.get("BREATH_DROPOUT")
             o = forward(p, s_tr, b_tk, b_se, slot_mask=b_mask, tail=b_tail,
                         drop=(b_drop if _bd else None), lsent=b_ls, reg=b_reg,
                         fact_buf=b_fact,
-                        mh_mass=b_mhm, mh_atlas_traj=b_mha)
+                        mh_mass=b_mhm, mh_atlas_traj=b_mha, xcorr=b_xcorr)
         l = loss_fn(o, bg)
         if ALG_CONSUME and "_early" in o:   # support-gated consume-once:
             # any breath claims, each fact pays once; eligibility = the DAG
@@ -5731,6 +6102,13 @@ def do_train(steps, lr, batch, seed):
         _xpv = (int(os.environ.get("ALG_MH_XPRIOR", "0"))
                 if ATLAS_TAB is not None else 0)
         n_ok = n_tot = 0
+        # THE LIVE GATE's span-loss log (ALG_ROUTER_LOG=1, 2026-09-19):
+        # un-JIT'd by construction (this whole function is), reusing the
+        # existing periodic val call (VAL_EVERY) rather than adding new
+        # scheduling — a numpy-side BCE mirror of the trainer's own,
+        # read straight off out["rbias2"] on the val split.
+        _r2log = int(os.environ.get("ALG_ROUTER_LOG", "0"))
+        _r2_bce_sum = np.zeros(2, np.float64); _r2_bce_n = 0
         for s0 in range(0, len(vs), 8):
             sl = np.arange(s0, min(s0 + 8, len(vs)))
             pad = 8 - len(sl)
@@ -5777,6 +6155,18 @@ def do_train(steps, lr, batch, seed):
                             slot_mask=Tensor(_mkv, dtype=dtypes.float),
                             fact_buf=Tensor(_fbv, dtype=dtypes.float),
                             mh_mass=_vmh, mh_atlas_traj=_vat)
+            if _r2log and "rbias2" in o:
+                _rb2np = o["rbias2"].realize().numpy()      # (b, 4, L_FAC, T)
+                _fsp = vg["fspan"][sl_p]; _pr = vg["presence"][sl_p]
+                _bidx = np.arange(_rb2np.shape[0])[:, None]
+                _vgv = vg["vspan"][sl_p][_bidx, vg["res"][sl_p]]   # (b, L_FAC, T)
+                def _bce_np(lg, tg):
+                    return np.logaddexp(0.0, lg) - lg * tg
+                _res_l = (_bce_np(_rb2np[:, 2], _fsp).mean(-1) * _pr).sum() \
+                    / max(float(_pr.sum()), 1e-6)
+                _giv_l = (_bce_np(_rb2np[:, 3], _vgv).mean(-1) * _pr).sum() \
+                    / max(float(_pr.sum()), 1e-6)
+                _r2_bce_sum += np.array([_res_l, _giv_l]); _r2_bce_n += 1
             onp = {k: o[k].realize().numpy() for k in
                    (("pres", "ftype", "op", "islit", "dig", "args", "res") + (("dup",) if "h_dup" in p else ()))}
             for bi, i in enumerate(sl):
@@ -5802,6 +6192,9 @@ def do_train(steps, lr, batch, seed):
                         ok &= bool((onp["dig"][bi, j].argmax(-1) ==
                                     vg["digits"][i, j]).all())
                     n_ok += ok
+        if _r2log and _r2_bce_n:
+            print(f"[router2-log] val span-loss res={_r2_bce_sum[0]/_r2_bce_n:.4f} "
+                  f"given={_r2_bce_sum[1]/_r2_bce_n:.4f}", flush=True)
         return n_ok / max(n_tot, 1)
 
     load_split_val = load_alg("test")
@@ -5919,6 +6312,45 @@ def do_train(steps, lr, batch, seed):
                       f"ratio {_ratio:.4f}", flush=True)
             globals()["_CERT_CENSUS_SC"] = None
             globals()["_CERT_BUF"] = _CTV   # restore the TRAINING buffer (the diagnostic call borrowed the global)
+    if int(os.environ.get("ALG_ROUTER_CENSUS", "0")):
+        # THE PRE/POST CENSUS for THE BUS-NATIVE ROUTER (ALG_ROUTER=2,
+        # the pre/post knob law): ONE plain, un-JIT'd forward() call on
+        # one batch, before step() is ever defined/captured — arms the
+        # generic _CENSUS port (router2(bank)/router2(ptr)/args_pre,
+        # already written by breath_step/forward) and _CERT_CENSUS_SC
+        # (bank()'s own raw pre-bias score readback) on the SAME call.
+        assert "W_rq2" in p, "ALG_ROUTER_CENSUS needs ALG_ROUTER=2"
+        globals()["_CENSUS"] = []
+        globals()["_CERT_CENSUS_SC"] = {}
+        _rc_idx = np.arange(min(batch, n))
+        _rc_out = forward(
+            p, Tensor(np.ascontiguousarray(states[_rc_idx]), dtype=dtypes.half),
+            Tensor(tokmask[_rc_idx].astype(np.float32), dtype=dtypes.float),
+            Tensor(sent[_rc_idx].astype(np.int32), dtype=dtypes.int),
+            slot_mask=Tensor(MASKS[_rc_idx], dtype=dtypes.float))
+        _rc_out["args"].realize()   # force the graph through before reading the census lists
+        _rc_cen = globals()["_CENSUS"]; _rc_sc = globals()["_CERT_CENSUS_SC"]
+        print(f"[router2-census] one un-JIT'd forward, {len(_rc_idx)} rows:", flush=True)
+        _args_pre = next((v for _, tag, v in _rc_cen if tag == "args_pre"), None)
+        for _kb in sorted({kb_ for kb_, tag, _ in _rc_cen if tag == "router2(bank)"}):
+            _bv = next(v for kb_, tag, v in _rc_cen if tag == "router2(bank)" and kb_ == _kb)
+            _bias_mean = float(np.abs(_bv).mean())
+            _sc_mean = float(np.mean(_rc_sc[_kb])) if _kb in _rc_sc else float("nan")
+            _ratio = _bias_mean / _sc_mean if _sc_mean == _sc_mean and _sc_mean != 0 else float("nan")
+            print(f"[router2-census]  breath {_kb}: |S_res+S_given|*r_gain mean "
+                  f"{_bias_mean:.4f}, raw |bank score| mean {_sc_mean:.4f}, "
+                  f"ratio {_ratio:.4f}", flush=True)
+        if _args_pre is not None:
+            _args_mean = float(np.abs(_args_pre).mean())
+            for _kb in sorted({kb_ for kb_, tag, _ in _rc_cen if tag == "router2(ptr)"}):
+                _pv = next(v for kb_, tag, v in _rc_cen if tag == "router2(ptr)" and kb_ == _kb)
+                _ptr_mean = float(np.abs(_pv).mean())
+                _pratio = _ptr_mean / _args_mean if _args_mean else float("nan")
+                print(f"[router2-census]  breath {_kb}: |beta_ptr*(P_arg1+P_arg2)| "
+                      f"mean {_ptr_mean:.4f}, |args logits (pre-fusion)| mean "
+                      f"{_args_mean:.4f}, ratio {_pratio:.4f}", flush=True)
+        globals()["_CENSUS"] = None
+        globals()["_CERT_CENSUS_SC"] = None
     _pc_mix = float(os.environ.get("ALG_PC_MIX", "0"))
     _pc_assign = None
     if _pc_mix > 0.0:
@@ -6147,6 +6579,8 @@ def do_train(steps, lr, batch, seed):
             _fd(b_fact, FACTS[idx], _rl)
         if b_mhm is not None:
             _fd(b_mhm, MASSB[idx][:, :, None], _rl)
+        if b_xcorr is not None:
+            _fd(b_xcorr, XCORR[idx], _rl)   # THE CORRESPONDENCE CHART's feed: this batch's precomputed bias
         if b_mha is not None:
             _fd(b_mha, ATLAS_TAB[ATLAS_IDX[idx]], _rl)
         if b_tail is not None:

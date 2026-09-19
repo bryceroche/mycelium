@@ -219,6 +219,11 @@ def read(ckpt, data=None, p=None):
     _LEGAL = os.environ.get("LV_LEGAL", "") == "num"   # THE NUMERAL MASK (2026-09-17, a read-time road): legal values only — mycelium.rulebook
     if _LEGAL:
         from mycelium.rulebook import legal_digit_logits as _legal_digit_logits
+    _XCORR_ON = os.environ.get("ALG_XCORR", "") != ""   # THE CORRESPONDENCE CHART, read-time road (2026-09-19)
+    if _XCORR_ON:
+        import phase1_algebra_head as _HX
+        _XCORR_CHART = _HX.xcorr_load_chart()
+        _XCORR_GF, _XCORR_GV = _HX.ALG_XCORR_GAIN, _HX.ALG_XCORR_V_GAIN
   # THE PAIRED READ (2026-09-12): per-slot outcomes to an npz
     for s0 in range(0, len(vs), 8):
         sl = np.arange(s0, min(s0 + 8, len(vs)))
@@ -235,7 +240,17 @@ def read(ckpt, data=None, p=None):
         ts = Tensor(_st_np, dtype=dtypes.half)   # perf audit #4: half feed, upcast in-graph
         tk = Tensor(_tk_np, dtype=dtypes.float)
         se = Tensor(vse[sl_p].astype(np.int32), dtype=dtypes.int)
-        o0 = _rf(forward, p, ts, tk, se, keys=_jk_open)
+        xcorr_t = None
+        if _XCORR_ON:
+            # per-batch, host-side (the same helper the miner and the
+            # training array use): no cached per-row array exists for an
+            # arbitrary TEST fixture, so this re-derives it every batch.
+            _xb = np.stack([_HX.xcorr_row_bias(
+                vs[int(i)]["text"], vtk[i], vse[i], _XCORR_CHART,
+                _HX.T_ALG, _XCORR_GF, _XCORR_GV) for i in sl_p]
+            ).astype(np.float32)
+            xcorr_t = Tensor(_xb, dtype=dtypes.float)
+        o0 = _rf(forward, p, ts, tk, se, keys=_jk_open, xcorr=xcorr_t)
         onp0 = {k: o0[k].realize().numpy() for k in ("fat", "args", "res")}
         mk = build_slot_masks(onp0, vse[sl_p].astype(np.int32))
         fact_t = mass_t = None
@@ -289,7 +304,8 @@ def read(ckpt, data=None, p=None):
                   if _ATAB is not None else None)
         o = _rf(forward, p, ts, tk, se, keys=_jk_masked,
                 slot_mask=Tensor(mk, dtype=dtypes.float),
-                fact_buf=fact_t, mh_mass=mass_t, mh_atlas_traj=_mha_t)
+                fact_buf=fact_t, mh_mass=mass_t, mh_atlas_traj=_mha_t,
+                xcorr=xcorr_t)
         onp = {k: o[k].realize().numpy() for k in
                (("pres", "ftype", "op", "islit", "dig", "args", "res")
                 + (("dup",) if "h_dup" in p else ()))}

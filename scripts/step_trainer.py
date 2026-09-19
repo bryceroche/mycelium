@@ -123,6 +123,21 @@ def refuse_unsupported():
             f"step_trainer v1 supports the champion configuration only; "
             f"refused envs set: {bad} — extend the walker deliberately "
             f"(state threading + loss split) before lifting this fence")
+    # THE BUS-NATIVE ROUTER (2026-09-19): ALG_ROUTER is already in the
+    # blanket REFUSED list above (this walker threads neither router
+    # version through its per-seam heads_of calls), but ROUTER=2 gets
+    # its OWN named refusal — a future edit that narrows the blanket
+    # ALG_ROUTER refusal to "v1 only" must not silently let v2 through:
+    # the pointer-prior fusion into out["args"] and the split rbias2
+    # span losses are NOT threaded by the seam walker.
+    if _envi("ALG_ROUTER") >= 2:
+        raise RuntimeError(
+            "step_trainer v1 does not support ALG_ROUTER=2 (THE "
+            "BUS-NATIVE ROUTER): its pointer-prior fusion into "
+            "out['args'] and its split rbias2 (res/given) span losses "
+            "are computed only by the fused forward()'s per-breath "
+            "walk — extend the walker deliberately before lifting "
+            "this fence")
     assert _envi("ALG_BREATH", "1") > 1, "step trainer needs ALG_BREATH > 1"
 
 
