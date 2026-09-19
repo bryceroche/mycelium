@@ -41656,3 +41656,17 @@ that were null as 12k continuations on a trained body grow into a
 different organism when present from birth (the mandatory-road law's
 strongest form); WHAT IT CANNOT: the live per-breath wheel (still the
 epoch-stale road).
+
+**2026-09-19 08:35 — THE SEGMENTED CONTROL (PMC_241) READ: the
+segmentation costs nothing.** Four 12k segments on one cosine, no
+organs, random init seed 241: the trajectory at the segment ends
+(masked wild) 0.2940 -> 0.3159 -> 0.3272 -> 0.3276; final open wild
+0.3008 (the lineage's PM35_scratch_241: 0.2989), MASKED 0.3276 (0.3291),
+matched 0.3350, mint 0.6047 (0.59-0.61), rows 10 / 110 refused / 191
+wrong masked (the lineage 9). Every read within a standard error of the
+one-process lineage: four optimizer restarts with re-prepped facts on
+one cosine reproduce the 48k run — the segmented schedule is a faithful
+substrate for the from-scratch family, and PMC_241 is its control. The
+chaining itself: each segment warm-started (loss continuous across the
+boundary), the schedule continued (LR 8.6e-5 -> 5.2e-5 -> 1.7e-5 ->
+3.3e-6 at the boundaries). PMF_241 begins now (~9 h).
