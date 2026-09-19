@@ -41771,3 +41771,58 @@ breaths (the bridge's own road; positive keep, unlike the null negative
 claims) — a surface organ for the follow-up arm, not added to the
 current build. Span coverage on the diet for the router's channels:
 73% of rows carry factor spans, 34% value spans.
+
+**2026-09-19 12:40 — THE SURFACE ORGANS BUILT AND GATED (two Sonnet
+builders; committed).** (A) THE BUS-NATIVE ROUTER (ALG_ROUTER=2): the
+per-slot bus vector is the garage's own projection of the state
+entering the breath (W_bind1/W_bind2, the clock frame removed under
+CLOCK_CANON) — not the detached garage shelf; four fields unbind it by
+the codes' role phasors (theta_arg1/arg2/res; "given" by a learned
+zero-init theta_given = identity at birth); the query projection is a
+PER-PLANE complex scalar (W_rq2, init (1,0)) because only a diagonal
+commutes with 256 independent plane angles — the equivariance script
+proves it (rotate bus and key together: score error 4e-6; a dense
+mixer: 4.69, the negative control); keys = waist @ W_rk2 (H_W -> 512);
+score = the real inner product of interleaved pairs / 16. Roads: the
+res + given channels enter the bank's scores on the rbias road (r_gain
+frozen at 1.0), with split span losses (fspan; vspan gathered by the
+slot's res index); the pointer prior P_a[j,k] = <softmax_t S_a[j],
+softmax_t S_res[k]> enters out["args"] at the fixed ALG_ROUTER_PTR (2.0)
+with slot k -> variable k (exact on positional rows, approximate on
+mint's first-mention rows — declared). +160k params (W_rk2); ~5% step
+cost. GATES: unset 5.2995/0.0279 bit-identical; ROUTER=1 before/after
+bit-identical (45.3017/47.1173 on the family config); the road live
+(6.3090/0.9443); span losses over 100 CPU steps res 0.51 -> 0.13 ->
+0.12, given 0.49 -> 0.08 -> 0.06; the pre/post census on the warm
+fixture: the token bias 0.10-0.18x of the raw bank scores per breath;
+THE POINTER PRIOR'S INJECTION 0.2-0.3% of the args logits (a warm head's
+logits are ~19 and its untrained channels diffuse; from scratch the
+logits start near zero and the channels train — re-read on the arm via
+the args_pre tap; if it stays an invitation, beta rises). (B) THE
+CORRESPONDENCE CHART (ALG_XCORR): token kinds numeral / number word
+(lexicon ONES/TENS + hundred/thousand) / operator cue (the surface
+census's regex verbatim) / other; signature = sentence bucket {1,2,3,
+4,5+} x numeral bucket {0-1,2,3,4,5+} (25, all populated on the diet;
+the most common: 4+ sentences x 5+ numerals, n 8,032); per signature
+per slot an (8 sentences x 4 kinds) log-odds table vs uniform for the
+FACTOR span and for the VALUE span — the vspan gold is a whole-clause
+mention span, so the value table counts only its numeral-kind tokens
+(THE NUMERAL FILTER, measured: unfiltered it was 96% "other"); mined
+from the gold alone in 18 s (`mine_xcorr_chart.py` ->
+`.cache/xcorr_chart_formpm35.npz`): the factor table's mean sentence
+index per slot 1.24, 2.20, 3.10, 3.99, 4.93, 5.68, 6.46 (monotone — the
+positional law's surface twin, read off the gold); the value table's
+numeral mass on pen given slots 1.000. Consumed at breath 0's
+grounding read only (the census: wild's binding is found at breath 0),
+banked at mask-prep (float16 (n, 24, 256), deterministic, in the cache's
+bit-equality), fed per step; a read-time helper builds it on the fly
+(loop_val; jit_read port "xcorr"). GATES: unset bit-identical; gain 0
+bit-identical; live 6.5329/0.0356; the chart sanity above; THE READ-
+TIME ROAD on PM35_scratch_241 at gain 2.0: 0.2623 vs 0.3291 — NEGATIVE
+by 0.067, as expected for a checkpoint that never trained with the
+road (and the builder's census ratio "712x" was against a RANDOM head's
+scores of 0.003, not a trained head's — struck as a magnitude claim).
+THE GAIN RULING: the arm runs the chart at gain 1.0 — a log prior enters
+the logits unscaled (the Bayesian entry); gain 2 double-counts. THE
+MERGED HEAD'S GATE (surface_gate.sh): unset 5.2995/0.0279 bit-identical;
+the surface config's own fixture run in progress.
