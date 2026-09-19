@@ -41772,7 +41772,7 @@ claims) — a surface organ for the follow-up arm, not added to the
 current build. Span coverage on the diet for the router's channels:
 73% of rows carry factor spans, 34% value spans.
 
-**2026-09-19 12:40 — THE SURFACE ORGANS BUILT AND GATED (two Sonnet
+**2026-09-19 11:20 — THE SURFACE ORGANS BUILT AND GATED (two Sonnet
 builders; committed).** (A) THE BUS-NATIVE ROUTER (ALG_ROUTER=2): the
 per-slot bus vector is the garage's own projection of the state
 entering the breath (W_bind1/W_bind2, the clock frame removed under
@@ -41827,7 +41827,7 @@ the logits unscaled (the Bayesian entry); gain 2 double-counts. THE
 MERGED HEAD'S GATE (surface_gate.sh): unset 5.2995/0.0279 bit-identical;
 the surface config's own fixture run in progress.
 
-**2026-09-19 12:55 — THE SURFACE ARM FIRED (word given for the launch
+**2026-09-19 11:29 — THE SURFACE ARM FIRED (word given for the launch
 when built).** The merged head's gate: unset 5.2995/0.0279 bit-
 identical; the surface config runs on the fixture (6.4093/1.7561). The
 chain (pc-pms, `.cache/pms_chain.sh`): PMS_241 = the PM35 recipe
