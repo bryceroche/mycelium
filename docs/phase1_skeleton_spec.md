@@ -41670,3 +41670,54 @@ substrate for the from-scratch family, and PMC_241 is its control. The
 chaining itself: each segment warm-started (loss continuous across the
 boundary), the schedule continued (LR 8.6e-5 -> 5.2e-5 -> 1.7e-5 ->
 3.3e-6 at the boundaries). PMF_241 begins now (~9 h).
+
+**2026-09-19 10:20 — THE SURFACE PIVOT (word given, three times: stop
+the run; implement the findings; launch the new run when built).** THE
+FROM-SCRATCH FAMILY STOPPED in segment 2 (PMF_241 after segment 1:
+masked wild 0.2413 vs the control's 0.2940 at step 12k; loss 26.4 vs
+20.7 — the organs slowed the early climb by five points; segment 1's
+checkpoint banked, the arm's verdict unread; also noted in the stop:
+the arm consumed PM35_scratch_241's atlas, whose token chart lives in
+THAT head's waist coordinates — a from-scratch head has different
+coordinates, a never-mix-coordinates violation the family arm carried
+from its env; any atlas road in a from-scratch run must be keyed
+coordinate-free). THE FINDINGS (the brainstorm, audited): (1) the bus
+and the router are disconnected — the router's query is the slot state
+plus a 73-dim one-hot parse snapshot; the bus holds the same binding as
+256 role-bound phasors (theta_arg1/arg2/res/op in the codes) and the
+router never reads it; the wrapper (complex_tensor) is verified equal
+to the head's own interleaved-real rotation and simply not called. (2)
+the atlas and the dynamic masks are siblings that cross the media by
+two mechanisms (class retrieval vs the live attention) and share
+nothing; the missing object is a CORRESPONDENCE chart. (3) SURFACE TO
+VOLUME: every organ added this week is interior and passes through one
+membrane — a single head-mean slots<-tokens matrix per breath; a wild
+row puts ~3x the tokens per slot on that membrane as a mint row; nine
+interior organs read null; the binding wall (args 0.45, digits 0.45,
+given-slot argmax on a digit 6% on wild vs 63% on mint) IS the
+membrane. THE BUILD (delegated to Sonnet builders, CPU gates; the GPU
+serialized by a lock): (A) THE BUS-NATIVE ROUTER, ALG_ROUTER=2: per
+slot, per FIELD (arg1, arg2, res, given-value) a query = the slot's bus
+vector UNBOUND by the field's role phasor, keys = the waist projected
+into the same phase space, the score a real inner product of
+interleaved pairs (rotation-equivariant); PER-FIELD correspondence
+channels (finding 3's surface growth): the res/given channels carry
+the span loss (fspan/vspan gold), the arg channels bias the slot
+POINTERS through the surface (slot j's arg-1 mention agreeing with slot
+k's res mention over the tokens = a pointer prior); ROUTER=1 verbatim.
+(B) THE CORRESPONDENCE CHART, coordinate-free: mined from the GOLD
+spans over the diet, keyed by a SURFACE SIGNATURE (sentence count x
+numeral count buckets), the pattern per slot index = the distribution
+over (sentence index, token kind: numeral / number word / operator cue
+/ other); consumed as an additive bias into the bank's scores with a
+fixed gain (a road; ALG_XCORR) — the positional law's surface twin.
+(C) THE MEMBRANE CENSUS (an analyst; zero training): per wild row the
+tokens per slot and the sentence distance, and slot accuracy against
+both, on PM35_scratch_241 — the measurement that says whether accuracy
+tracks surface load. THE RUN (word given for launch when built), bars
+pinned: PMS_241 = the PM35 recipe unchanged (form_mix_pm35, random
+init seed 241, 48k, one process) + the surface organs (A + B), vs the
+banked PM35_scratch_241: paired MASKED wild >= +0.020 (z >= 2); the row
+read beside; mint for information; the surface census re-read on the
+arm. Registered behind it: the family + surface arm (segmented) if the
+surface moves.
