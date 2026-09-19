@@ -41266,3 +41266,26 @@ road redundant on this lineage; the read says. FAM_241's first
 wheel line: step 0 statuses solved 27 / unsat 8 / timeout 5, turned
 8/40 — the wheel turns in training; 99 s for step 0 (the un-JIT'd
 first compile); the steady rate at step 5 sets the finish.
+
+**2026-09-18 17:50 — THE RELAYED QUEUE, VERIFIED AGAINST THE LEDGER
+(Z6, impulse v2, the settling meter).** All three are real
+registrations. (1) Z6: "DROP-IN PROVEN at the operating point… the Z6
+migration can ride a rebirth" (ledger 31742–31837; the genesis pair
+09-01). No env door exists — Z6 is the bind bus's codebook form; the
+rebirth it waits for is exactly the from-scratch lineage, so it is
+REGISTERED as the next genesis arm: a Z6 codebook (`BIND_CODES`) for a
+from-scratch training — needs the codebook generator's Z6 form
+(scoped next). (2) IMPULSE v2 (the 09-04 clock-audit bundle, never
+collected): the script now honors the family env (its defaults were
+the bind14a era) and computes the pre-registered v2 reads — the tau
+fit (log-linear on lags 1..6), the linearity sweep (gain at 0.5x / 2x
+kick vs 1x), the sextet projection of the residual (6 lags: a
+projection, not a detection, said plainly). (3) THE SETTLING METER: the
+perceiver read carries settle and the matryoshka radius (the mass
+thread, now ON in the family arm). QUEUED behind the family chain
+(pc-postfam, GPU): atlases mined for FAM_241 and CTRL_241 (their own
+eras), the perceiver read on both (settle, mass, the compasses), impulse
+v2 on PM35_scratch_241 / FAM_241 / CTRL_241, the wave-field check on
+wild for the same (does the six-wave fire on prose — the 09-04 pin:
+zero on wild = decoration). All zero training; the reads table
+ingests them.
