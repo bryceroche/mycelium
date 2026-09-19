@@ -42060,3 +42060,32 @@ anchor 0 / pointer 0 / all three), paired against its own full read —
 the sensitivity of the trained head to each road; and the peak-not-mean
 census on the arm. The training ablations (one road off per arm, 48k)
 are registered behind the reads, needing the word.
+
+**2026-09-19 15:55 — THE READ-TIME ABLATIONS ON THE TRAINED ARM: one road
+load-bearing, two inert.** PMS2_241 read (masked wild) with each road
+removed at read time, paired against its own full read (0.3155): the
+CHART off -> 0.2667 (-0.049, z 5.6 against: the head grew around the
+chart; removing it at read breaks the binding — the mandatory-road
+signature, load-bearing, not "the chart hurts"); the ANCHOR off -> 0.3150
+(-0.0005, z 0.19; 14 vs 13 discordant slots: INERT — at +4 x fat0 on a
+grounding attention spread over the clause the keep-bias is spread
+too; the breath-0 mass collapse to 0.073 is the same fact); the POINTER
+PRIOR off -> 0.3155 exactly (ZERO discordant slots: the prior's push
+never crosses an argmax gap — dead at read; mint's args loss did not
+come from it at read time); all three off -> 0.2643. THE FIVE CHANGES
+COLLAPSE TO THREE LIVE ONES: the router's per-field channels with the
+per-breath span loss on the stamped spans, and the chart; the anchor
+and the pointer prior are invitations (the pre/post knob law: census
+before claims — the read-time census is that census). WHAT THE ARM
+SAYS, in full: the surface roads bind (the criticality bar met, final
+span mass +33%), the chart is what the trained head binds THROUGH, and
+the chart's FACTOR-CLAUSE table pulls breath 0 off the numeral (mass
+0.073) — the value read pays. THE NEXT ARMS (registered, needing the
+word; the training ablations): PMS3_241 = PMS2 with the chart's VALUE
+table only (ALG_XCORR_V=1.0, the factor table 0 — the prior that points
+at the numeral, not the clause), anchor and pointer prior off (inert;
+removed for cleanliness); PMS4_241 = PMS2 with no chart (the router's
+channels + the per-breath loss + the stamped spans alone). Each 48k,
+~1.5 h + reads; both against PM35_scratch_241 and PMS2_241. The
+peak-not-mean census on the trained arm re-runs as a unit (the CPU
+census was killed by the box's memory pressure beside the reads).
