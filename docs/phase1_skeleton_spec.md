@@ -41895,7 +41895,7 @@ Sonnet agent; CPU) and the two head doors (the router's builder; CPU
 gates); the chain `.cache/pms2_chain.sh` fires when both report and the
 merged head reads bit-identical unset.
 
-**2026-09-19 12:45 — THE CRITICALITY METER (word given; Bryce: "the
+**2026-09-19 12:25 — THE CRITICALITY METER (word given; Bryce: "the
 sharpening on mint and degradation on wild reminds me of nuclear
 reactions taking off vs grinding to a halt").** THE READING: the breath
 loop is an iterated map on the binding; the census's per-breath span
@@ -41922,7 +41922,7 @@ the accuracy bar: wild's k_eff crosses 1 (the lineage's is below 1).
 Built by the census's analyst; read first on PM35_scratch_241, then on
 the arm.
 
-**2026-09-19 13:10 — THE STAMPED DIET (form_mix_pm35v) BANKED.** The
+**2026-09-19 12:33 — THE STAMPED DIET (form_mix_pm35v) BANKED.** The
 stamper (`scripts/stamp_value_spans.py`): 174,785 given factors —
 135,894 resolved by a standalone numeral (boundary-checked: "12" never
 inside "120"; currency, percent, decimals, comma-grouped, signs),
@@ -41941,7 +41941,7 @@ value span 16.1% -> 99.8%; mint 78.3% -> 98.8%; all 44.6% -> 99.4%. A
 The chart re-mined on the stamped diet (`xcorr_chart_formpm35v.npz`,
 13 s): the value table now sees every given. The arm's fuel is in.
 
-**2026-09-19 13:20 — THE CRITICALITY METER'S BASELINE (PM35_scratch_241;
+**2026-09-19 12:42 — THE CRITICALITY METER'S BASELINE (PM35_scratch_241;
 `scripts/criticality_meter.py`; `.cache/criticality_PM35_scratch_241.txt`;
 registered as the diagnostic "criticality", coupling never).**
 Definitions: the span is the slot's annotated factor span where one
@@ -41968,7 +41968,7 @@ PINNED: wild's per-row mean slope > 0 AND supercritical fraction >=
 0.50 (the lineage: -0.014 / 0.286), with mint's not falling below 0.90;
 the accuracy bar stands beside it (paired masked wild >= +0.020, z 2).
 
-**2026-09-19 13:40 — THE BREATH-SHARPENING DOORS GATED (the router's
+**2026-09-19 12:52 — THE BREATH-SHARPENING DOORS GATED (the router's
 builder).** ALG_SPAN_ALL=1: every breath's router output kept (rbias_all
 / rbias2_all, the breaths_all idiom) and the same span losses applied
 at every breath 1..K_B-1 (mean over breaths); unset = the literal old
@@ -41996,7 +41996,7 @@ live and swept its finished doors in with the stamped-diet entry (the
 second such sweep this campaign; ledger commits now add the ledger
 file only). THE MERGED HEAD'S GATE (surface2_gate.sh) running.
 
-**2026-09-19 13:50 — THE BREATH-SHARPENING ARM FIRED (word given).** The
+**2026-09-19 12:58 — THE BREATH-SHARPENING ARM FIRED (word given).** The
 merged head's gate: unset 5.2995/0.0279 bit-identical; the full config
 runs on the fixture (7.6643/3.7123). pc-pms2 (`.cache/pms2_chain.sh`):
 PMS2_241 = form_mix_pm35v (the stamped diet), random init seed 241, 48k,
