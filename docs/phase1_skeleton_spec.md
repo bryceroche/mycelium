@@ -41253,3 +41253,16 @@ warm source with none of them. The row-level read and the paired
 verdicts close the chain; `reads.py ingest` last. Staged behind it on
 the word: FAMKA_241 and FAMWI_241 (the kernel and the window on the
 family body).
+
+**2026-09-18 17:25 — THE LEXICON'S PLACE IN THE FAMILY (Bryce: "is the
+lexicon at the frozen trunk layer active?").** No: it is active at the
+decode door (the numeral mask's legal set), in the data (tier-2 word
+spans), and as the read-time substitution road only when a read asks
+(`LV_LEXICON=3`); the pre-trunk text normalization was registered
+09-15 and never built. Added to the family chains: a third read per
+arm, masked + lexicon (`LV_LEGAL=num LV_LEXICON=3`), beside the two
+comparable reads — the wilded mint may have made the substitution
+road redundant on this lineage; the read says. FAM_241's first
+wheel line: step 0 statuses solved 27 / unsat 8 / timeout 5, turned
+8/40 — the wheel turns in training; 99 s for step 0 (the un-JIT'd
+first compile); the steady rate at step 5 sets the finish.
