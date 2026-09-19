@@ -41582,3 +41582,41 @@ parses drift), each a single nogood-picked slot. Banked in
 `.cache/maskprep_0690b141ae7bf166.npz` (CERTS int8 (50653, 7, 32)) — the
 twins reuse it. The arm behind it runs at 0.134 s/step (the eight-organ
 step's cost; the certificate road adds nothing measurable).
+
+**2026-09-19 03:30 — THE FAMILY VERDICT: the nine organs together are
+NULL on wild at the slot; the wheel's share is zero; the row moves +6 on
+one seed, for the third time.** FAM_241 (every organ: atlas dual
+projection + xprior + mass, the wheel via the certificate pass (melt
+1.0, nogood, beta 3 union), write-back 0.5, token loop, T2 claims,
+router, the clock ladder; 12k from PM35_scratch_241 at 0.132 s/step)
+vs CTRL_241: paired MASKED wild 0.3354 vs 0.3340 (+0.0015, SE 0.0064, z
+0.23) — the bar +0.020 NOT MET; open 0.3120 vs 0.3033 (+0.0088, z 1.36);
+matched 0.3442; mint 0.6538 vs 0.6448 (+0.009: the wheel's flags land
+on mint rows, where the solver can refuse); rows 13 masked / 14 open vs
+7 (refused 110 vs 124, wrong 188 vs 180). THE WHEEL'S SHARE (FAM vs
+FAM8, paired): -0.0015 masked wild (SE 0.0053, z 0.28), open
+identical (0.3120 = 0.3120), rows 13 = 13: the epoch-stale certificate
+road changed NOTHING on wild that the eight in-graph organs had not
+already done, and what they did is null at the slot. THREE ARMS, ONE
+SHAPE (all seed 241, all vs their control): Z6 codes (z 0.40; rows 17
+vs 9), eight organs (z 0.44; 13 vs 7), nine organs (z 0.23; 13 vs 7):
+null at the slot; +6-8 rows at the row; the organs shift refusals into
+commitments that split near even. VERDICT: the family, as wired and
+trained for 12k steps of continuation, does not move the wild register
+at the bar; the mandatory-road law's reading is that every road is
+live and none carries a wild signal the residual lacks — the organs
+operate; the register does not need them. What this does NOT say: (a)
+whether the live wheel (per-breath steering on the biased trajectory,
+~99 s/step) would differ — the certificate road is epoch-stale, stated
+at design; (b) whether 12k steps of continuation can wake organs that a
+from-scratch training with the organs present from step 0 would grow
+into (the PM35 lineage itself came from scratch; a from-scratch family
+arm is the honest test of "the organs work as a family" and is
+REGISTERED: PMF_241 = form_mix_pm35, random init, 48k, all nine organs,
+vs PM35_scratch_241 — needs the word, ~2.2 h pass + ~1.8 h arm); (c)
+the row-level +6-8 on seed 241, three times, which only the seed-242
+twins can turn into a claim or a null. The costs, for the record: the
+in-graph organs +65% per step; the certificate pass 2.2 h per diet x
+env (cached). THE FAMILY CAMPAIGN'S BOOKS ARE CLOSED on the continuation
+regime; the from-scratch family arm and the twins are the two reads
+that remain, both registered, both needing the word.
