@@ -41995,3 +41995,17 @@ ledger commit a65a6733 was made with -a while the builder's tree was
 live and swept its finished doors in with the stamped-diet entry (the
 second such sweep this campaign; ledger commits now add the ledger
 file only). THE MERGED HEAD'S GATE (surface2_gate.sh) running.
+
+**2026-09-19 13:50 — THE BREATH-SHARPENING ARM FIRED (word given).** The
+merged head's gate: unset 5.2995/0.0279 bit-identical; the full config
+runs on the fixture (7.6643/3.7123). pc-pms2 (`.cache/pms2_chain.sh`):
+PMS2_241 = form_mix_pm35v (the stamped diet), random init seed 241, 48k,
+one process, B=8; ALG_ROUTER=2 (r_gain 1.0 frozen, ALG_ROUTER_PTR=2.0),
+ALG_XCORR=1.0 on the re-mined chart, ALG_SPAN_ALL=1, ALG_ANCHOR=4.0; the
+family reads, paired vs PM35_scratch_241. BARS as pinned: accuracy —
+paired MASKED wild >= +0.020 (z >= 2), rows beside, mint for
+information; mechanism — the criticality meter on the arm: wild's
+per-row mean slope > 0 and supercritical fraction >= 0.50 (the
+lineage -0.014 / 0.286), mint's not below 0.90; plus the peak-not-mean
+census of the anchor and the pointer prior's injection on the trained
+arm. Expected ~1.5 h of training + ~25 min of reads.
