@@ -41865,3 +41865,32 @@ already carry word spans. (3) THE BREATH-0 ANCHOR (registered 11:05):
 the structural twin — the tokens found at breath 0 carried as a keep-
 bias. The three make THE BREATH-SHARPENING ARM (PMS2), the follow-up to
 the surface arm now training; needs the word.
+
+**2026-09-19 12:20 — THE SURFACE ARM STOPPED (Bryce: "we dont have
+enough value spans for wild prose"); THE BREATH-SHARPENING ARM (word
+given).** PMS_241 stopped at step 23,500 of 48k (loss 16.18; its mask-
+prep and xcorr arrays banked; no read taken — its router's value
+channel was training on a diet whose prose rows carry value spans on
+11%, the gap the census named; the arm is superseded rather than read).
+THE ARM: PMS2_241 = the surface arm's recipe (form_mix random init seed
+241, 48k, one process; ALG_ROUTER=2 r_gain 1.0 ALG_ROUTER_PTR=2.0;
+ALG_XCORR=1.0) on THE STAMPED DIET form_mix_pm35v (the zero-token value
+spans: every given factor's numeral occurrences, lexicon words for the
+worded givens, stamped into `mentions`; factor order untouched — the
+identity gate asserts every non-mentions gold array bit-identical to
+the old npz; the states memmap hard-linked, never copied) + ALG_SPAN_ALL=1
+(the span losses at every breath 1..K_B-1, mean over breaths) +
+ALG_ANCHOR=2.0 (breath 0's attention, detached, as a +beta keep-bias on
+the bank's scores at every later breath). CONTROL: PM35_scratch_241
+(the lineage; banked). BARS, PINNED: paired MASKED wild PMS2 vs
+PM35_scratch_241 >= +0.020 (z >= 2); rows beside; mint for information;
+the membrane census re-read on the arm (the per-breath span-hit
+trajectory: does the wild binding now HOLD through the breaths — the
+mechanism read, 0.48 -> 0.34 on the lineage). ATTRIBUTION: the arm
+changes five things against the lineage (router, chart, spans, per-
+breath loss, anchor) by the word; if it moves, the ablations attribute
+(each item off, one arm each, registered); if it does not, the five
+were the surface pivot's whole hand. Builders: the data stamp (a
+Sonnet agent; CPU) and the two head doors (the router's builder; CPU
+gates); the chain `.cache/pms2_chain.sh` fires when both report and the
+merged head reads bit-identical unset.
