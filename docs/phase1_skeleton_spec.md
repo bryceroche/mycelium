@@ -41365,3 +41365,58 @@ audit's line map lands; gates: the CPU fixture unset 5.2995, the pass
 on tiny64 producing non-zero flags, the pre/post census of the
 injected bias, then the family arm rebuilt on it. The late wheel is
 the measured fallback if epoch-stale certificates do not teach.
+
+**2026-09-18 22:05 — THE PERF AUDIT'S LINE MAP (a Sonnet agent, 46
+tool uses) and the certificate pass delegated.** VERDICT: of the nine
+family organs, ONLY the wheel forces the JIT off — `_wheel_turn` is the
+one organ with an unconditional realize/numpy pair and a host solver
+call inside `forward()`; write-back (`_writeback`), the token loop
+(`_token_step`) and the T2 claims (`claims_bias`) are pure tensor ops
+whose only numpy is census-gated, and SB242/tl242 already ran them on
+the JIT'd fused trainer at 0.077-0.125 s/step (B=8). The walker road
+(option A: thread waist/tok per breath + a G_waist gradient channel
+through the capture family) is LARGE and no faster than a buffered
+wheel (~3.5-4.2 s/step at B=32); the walker also silently no-ops
+ALG_T2_CLAIM (prev_a21 is never threaded across captures — a small
+bank fix if that road is ever wanted). The buffered wheel (option B,
+per step, two JIT'd forwards + one pooled solve) is ~1.5-2.0 s/step;
+the epoch grain (the ledgered certificate pass) costs nothing per step.
+CAVEAT STATED, NOT GLOSSED: every buffered/banked wheel is a DIFFERENT
+ALGORITHM from the live per-breath steering — the certificate is born
+on the unbiased trajectory (one epoch behind at the epoch grain), not
+on the trajectory the steering itself would have produced; the late
+wheel's equivalence was only ever proven for loss-reweighting (beta 0).
+The family arm on the certificate road therefore reads "the family with
+an epoch-stale wheel"; if it does not teach, the live wheel's cost (~99
+s/step un-JIT'd, or the walker's ~4 s/step) is the price of the exact
+algorithm and is ledgered as such. DELEGATED (a Sonnet implementer, CPU
+only): `ALG_WHEEL_CERT=1` — the mask-prep pass banks CERTS int8 (n,
+K_B, L_TOT) {0 none, 1 core, 2 nogood-picked} from per-breath decodes
+solved in large pool flushes, excluded from the cache's bit-equality
+verification (the wall clock makes refusals non-deterministic), the
+new env names in the cache key; a fixed (B, K_B, L_TOT) device buffer
+fed per step by copyin; `loop_bridge.cert_spotlight` = the in-graph
+Bridge.spotlight (argmax source token -> sentence -> own/union), the
+melt from the same flags; gates: the identity check vs the numpy
+spotlight (bit-exact, both modes), the CPU fixture unset 5.2995
+bit-identical, `ALG_WHEEL_CERT_ZERO=1` bit-identical with the road on,
+the tiny64 census non-zero, the pre/post census of the injected bias.
+The staging after the gates: FAM_241 (all nine organs, the wheel via
+the certificate road) vs CTRL_241 on the JIT'd trainer behind the Z6
+arm; the eight-organ arm (the family minus the wheel, ALG_WHEEL_TRAIN=0)
+is the immediate fallback if the pass fails its gates.
+
+**2026-09-18 22:05 — IMPULSE v2 crashed on the family body (shape).** The
+post-family unit died at the first read: the kick pattern was shaped
+for 24 slots (the bind14a era) and the family body's bank is L_TOT=32
+(cannot broadcast (8,24,512) to (8,32,512)); the chain's grep filter
+had swallowed the error line (the unit's own log now keeps each read's
+full output in `.cache/impulse_v2_<ckpt>.log`). Fixed (L_TOT from the
+head); the CPU smoke at 8 rows on PM35_scratch_241: a kick at breath 1
+does NOT contract (noise gain 0.98-1.07 through lag 6, tau-fit inf)
+while kicks at breaths 2-4 contract to 0.2-0.4 by lag 2-3 — consistent
+with the visibility read (breath 1 is the one null-space write); the
+fact-shaped probe damps like noise (no resonance) at k0>=2 and slightly
+slower at k0=1 (1.10 vs 1.07 at lag 6). A SMOKE (n=8), not a read: the
+full read + the wave-field check are requeued behind the Z6 arm
+(pc-postfam2).
