@@ -41523,3 +41523,30 @@ parent 0.3291), masked+lexicon 0.3320, matched 0.3437, mint 0.6448
 (rehearsal continues), rows 7/311 (parent 9): the continuation alone
 drifts up at the slot and not at the row — the family arms are read
 against THIS, not the parent.
+
+**2026-09-19 00:20 — THE EIGHT-ORGAN FAMILY VERDICT: NULL at the bar;
+the row count moves again on one seed.** FAM8_241 (the family minus the
+wheel: atlas dual projection + xprior + mass, write-back 0.5, token
+loop, T2 claims 3:0.2, router, the clock ladder; 12k from
+PM35_scratch_241 at 0.133 s/step, JIT on) vs CTRL_241 (the plain
+continuation, 0.081 s/step): paired MASKED wild 0.3369 vs 0.3340
+(+0.0029, paired SE 0.0066, z 0.44) — the bar +0.020 at z 2 NOT MET;
+open 0.3120 vs 0.3033 (+0.0088, z 1.34, the campaign's highest open
+read); matched 0.3496 vs 0.3437; masked+lexicon 0.3359 vs 0.3320; mint
+0.6450 vs 0.6448 (no cost). AT THE ROW: 13 / 111 refused / 187 wrong
+(masked) vs the control's 7 / 124 / 180 — +6 rows on one seed (~1.7 SE
+of a difference of counts); the organs make the machine COMMIT more
+(refusals 124 -> 111) and the commitments split 6 right / 7 wrong. The
+continuation itself: CTRL vs the parent +0.0049 (z 0.80). THE SHAPE
+REPEATS: the Z6 arm (+0.0034, z 0.40; rows 17 vs 9) and this arm (+0.003,
+z 0.44; rows 13 vs 7) both read null at the slot and +6-8 rows at the
+row on seed 241 — a row-level signal the slot read cannot see, or the
+seed's own row-level spread (SE ~2.5 rows per read; the control's 7 vs
+the parent's 9 shows the drift's size). It is not claimable from one
+seed; the twins (FAM8_242 / PMZ6_242 with CTRL_242) are the read that
+decides it, registered, needing the word. The in-graph organs cost 65%
+of the step (0.081 -> 0.133) for no slot-level gain: under the mandatory-
+road law each entered as a road, and the read says the roads carry no
+wild signal the residual lacks — the family's remaining member is the
+wheel (FAM_241, on the certificate road, running next). Numbers asserted
+through reads.py.
