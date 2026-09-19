@@ -41967,3 +41967,31 @@ is underpowered (9 correct wild rows). THE MECHANISM BAR FOR PMS2,
 PINNED: wild's per-row mean slope > 0 AND supercritical fraction >=
 0.50 (the lineage: -0.014 / 0.286), with mint's not falling below 0.90;
 the accuracy bar stands beside it (paired masked wild >= +0.020, z 2).
+
+**2026-09-19 13:40 — THE BREATH-SHARPENING DOORS GATED (the router's
+builder).** ALG_SPAN_ALL=1: every breath's router output kept (rbias_all
+/ rbias2_all, the breaths_all idiom) and the same span losses applied
+at every breath 1..K_B-1 (mean over breaths); unset = the literal old
+loss. ALG_ANCHOR=beta: breath 0's grounding attention (full (B, L_TOT,
+T), detached) times beta, built once and added on the pbias road at
+every later breath (beta 0 = the ctx key absent). No new params. GATES:
+unset 5.2995/0.0279 bit-identical; ANCHOR=0 bit-identical; SPAN_ALL
+with no router bit-identical; the full breath-sharpening config live
+(6.6481/2.0148); THE PER-BREATH SPAN LOSSES DECREASE AT EVERY BREATH
+over 150 CPU steps (breath 1 res 0.376 -> 0.308, given 0.394 -> 0.328;
+breath 4 0.322 -> 0.243 / 0.288 -> 0.210; breath 6 0.318 -> 0.237 /
+0.285 -> 0.205) — the middle breaths take the fuel; the walker refuses
+both doors. THE ANCHOR'S CENSUS AND THE GAIN RULING: at beta 2 the
+builder's census read the anchor at 0.1-0.2% of the raw bank score —
+but it averaged the bias over ALL real tokens, and a keep-bias is
+PEAKED: beta x fat0 at the found token (fat0's peak ~0.2-0.5 on wild),
+so the injected magnitude at the token that matters is beta x 0.2-0.5;
+to match the router road's own magnitude (~1.5-2.4 units, 10-18% of the
+raw score) the arm enters the anchor at ALG_ANCHOR=4.0 (peak +0.8 to
++2.0; lock-in at a fully confident breath 0 would be +4, which a head
+trained with the road from birth calibrates against). The peak-not-
+mean census is the pre/post read to take on the arm. HOUSEKEEPING: the
+ledger commit a65a6733 was made with -a while the builder's tree was
+live and swept its finished doors in with the stamped-diet entry (the
+second such sweep this campaign; ledger commits now add the ledger
+file only). THE MERGED HEAD'S GATE (surface2_gate.sh) running.
