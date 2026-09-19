@@ -41721,3 +41721,53 @@ banked PM35_scratch_241: paired MASKED wild >= +0.020 (z >= 2); the row
 read beside; mint for information; the surface census re-read on the
 arm. Registered behind it: the family + surface arm (segmented) if the
 surface moves.
+
+**2026-09-19 11:05 — THE MEMBRANE CENSUS (an analyst; PM35_scratch_241;
+wild = the masked read, mint = the open read; artifact
+`.cache/membrane_census_PM35_scratch_241.txt`, script
+`scripts/membrane_census.py`).** DEFINITIONS FORCED BY THE DATA: the
+wild holdout carries NO span annotations (g_fspan/g_vspan all zero;
+`mentions: {}` on every row) — the value's location is found by
+matching the gold value's decode against token runs (min sentence
+distance over occurrences); gold values are read slot-keyed from
+g_digits (the raw factor list is not slot-aligned on mint). ALSO FOUND:
+`out["fat"]` is breath 0's attention (the local is bound once and never
+reassigned across the breathing loop; the final breath's is
+`out["fat_all"][-1]`) — the read-time wheel and the certificate pass
+project through breath 0's attention, as designed, but every reader
+that called `out["fat"]` "the final attention" read breath 0. THE
+NUMBERS: surface load — wild 54 tokens / 3.4 sentences / 6.6 factors
+per row (8.7 tokens per factor), mint 129 / 14.6 / 12.2 (10.8): the
+raw token load per factor is NOT higher on wild (finding 3's "3x" was
+wrong as stated; the wild rows are shorter, denser prose). (4a)
+accuracy vs tokens-per-factor is flat within slot index (corr -0.03
+wild, -0.00 mint): a row-level confound of the depth ceiling, not a
+load effect. (4b) SENTENCE DISTANCE is the load variable that survives
+the slot-index control: wild 0.563 at distance 0 -> 0.236 at 1 ->
+0.194 at 3+ (corr -0.17); mint 0.816 -> 0.635 -> 0.474 (corr -0.33).
+(4c) THE MEMBRANE'S SHARE: a factor-span HIT (the final breath's argmax
+inside the slot's span) triples wild accuracy (0.252 -> 0.746; mint
+0.578 -> 0.842); 84% (wild) / 91% (mint) of WRONG given slots have the
+argmax OUTSIDE the value's tokens — most wrongness is the attention
+never landing on the binding, not the decode failing after a find.
+(4d) the prose depth ceiling reproduced (wild slot 0 0.64 -> slot 5
+0.11 -> slot 8+ ~0; mint 0.45-0.69 across 22 slots). THE NEW FACT: THE
+PER-BREATH TRAJECTORY OF THE SPAN HIT — wild 0.482 at breath 0 then
+0.36/0.34/0.35/0.35/0.34/0.36: the binding is FOUND at breath 0 and
+partly LOST through the breaths; mint 0.10 -> 0.04 -> 0.11 -> 0.18 ->
+0.20 -> 0.19 -> 0.20: built up over the breaths. The breathing that
+builds mint's binding erodes wild's. CALIBRATION FLAG: the given-slot
+digit-argmax rate on this checkpoint is wild 0.661 / mint 0.230 —
+inverted from the 09-15 reference (6% / 63% on ds242, a different
+lineage and, per the fat finding, possibly a different breath); the
+09-15 number does not transfer to the PM35 lineage and is not
+requoted. VERDICT: finding 3 stands in its corrected form — the wall is
+the membrane (84% of wrong slots never land), the load variable is
+SENTENCE DISTANCE not token density, and the sharpest fact is the
+breath-0-finds / later-loses dynamic on wild. REGISTERED from it: THE
+BREATH-0 ANCHOR — a certificate born on the attention at breath 0 (the
+tokens each slot found) carried forward as a soft bias through the
+breaths (the bridge's own road; positive keep, unlike the null negative
+claims) — a surface organ for the follow-up arm, not added to the
+current build. Span coverage on the diet for the router's channels:
+73% of rows carry factor spans, 34% value spans.
