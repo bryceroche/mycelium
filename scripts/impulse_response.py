@@ -23,7 +23,7 @@ for _k, _v in {"DEV": "PCI+AMD", "ALG2": "1", "ALG_FTYPES": "9",
 sys.path.insert(0, '.'); sys.path.insert(0, 'scripts')
 import numpy as np
 import phase1_algebra_head as H
-from phase1_algebra_head import (build_params, forward, load_alg,
+from phase1_algebra_head import (build_params, forward, load_alg, L_TOT,
                                  build_slot_masks)
 from tinygrad import Tensor, dtypes
 from tinygrad.nn.state import safe_load
@@ -62,15 +62,15 @@ print(f"[impulse] state rms {rms:.3f}; kick eps {EPS:.3f} "
       f"(ckpt={os.environ.get('IR_CKPT', 'sharp_bind14a')})")
 
 # probes: gaussian noise vs fact-shaped (role-bound codebook wire)
-noise = rng.standard_normal((1, 24, 512)).astype(np.float32)
-noise = noise / np.linalg.norm(noise) * EPS * np.sqrt(24)
+noise = rng.standard_normal((1, L_TOT, 512)).astype(np.float32)
+noise = noise / np.linalg.norm(noise) * EPS * np.sqrt(L_TOT)
 th = bz["theta_res"]
 code = bz["CB"][7].reshape(256, 2)
 c, s_ = np.cos(th), np.sin(th)
 fact1 = np.stack([code[:, 0] * c - code[:, 1] * s_,
                   code[:, 0] * s_ + code[:, 1] * c], -1).reshape(512)
-fact = np.tile(fact1, (1, 24, 1)).astype(np.float32)
-fact = fact / np.linalg.norm(fact) * EPS * np.sqrt(24)
+fact = np.tile(fact1, (1, L_TOT, 1)).astype(np.float32)
+fact = fact / np.linalg.norm(fact) * EPS * np.sqrt(L_TOT)
 
 for pname, pat in (("noise", noise), ("fact", fact)):
     print(f"probe={pname}:  k0 \\ gain at lag 1..")
@@ -80,7 +80,7 @@ for pname, pat in (("noise", noise), ("fact", fact)):
             sl = np.arange(s0, s0 + 8)
             base = run(sl)
             pert = run(sl, imp=(k0, Tensor(np.broadcast_to(
-                pat, (8, 24, 512)).copy(), dtype=dtypes.float)))
+                pat, (8, L_TOT, 512)).copy(), dtype=dtypes.float)))
             d = [float(np.linalg.norm(pert[k] - base[k]) / 8) for k in range(K_B)]
             d0 = d[k0] + 1e-9
             gains.append([d[k] / d0 for k in range(k0, K_B)])
@@ -94,7 +94,7 @@ def _gain_curve(pat_, k0=1):
     gains = []
     for s0 in range(0, N, 8):
         sl = np.arange(s0, s0 + 8); base = run(sl)
-        pert = run(sl, imp=(k0, Tensor(np.broadcast_to(pat_, (8, 24, 512)).copy(), dtype=dtypes.float)))
+        pert = run(sl, imp=(k0, Tensor(np.broadcast_to(pat_, (8, L_TOT, 512)).copy(), dtype=dtypes.float)))
         d = [float(np.linalg.norm(pert[k] - base[k]) / 8) for k in range(K_B)]; d0 = d[k0] + 1e-9
         gains.append([d[k] / d0 for k in range(k0, K_B)])
     return np.mean(gains, 0)
