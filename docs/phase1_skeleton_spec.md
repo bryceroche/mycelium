@@ -41621,7 +41621,7 @@ env (cached). THE FAMILY CAMPAIGN'S BOOKS ARE CLOSED on the continuation
 regime; the from-scratch family arm and the twins are the two reads
 that remain, both registered, both needing the word.
 
-**2026-09-19 04:10 — THE FROM-SCRATCH FAMILY (word given; Bryce: "lets
+**2026-09-19 06:40 — THE FROM-SCRATCH FAMILY (word given; Bryce: "lets
 train all nine organs together from step zero -- i suspect the whole
 organism must grow together").** THE DESIGN: PMF_241 = form_mix_pm35,
 random init (seed 241), 48k steps, B=8, ALL NINE ORGANS from step 0
