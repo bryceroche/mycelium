@@ -41304,3 +41304,23 @@ stands: FAM_241 (running; step 0 at 99 s, the steady rate pending) ->
 CTRL_241 -> the reads and paired verdicts -> the post-family bundle
 (atlases, the settling meter, impulse v2, the wave-field check) ->
 [the word] FAMKA_241 / FAMWI_241 -> [the word] the Z6 genesis arm.
+
+**2026-09-18 18:10 — THE Z6 GENESIS ARM (word given): THE CODEBOOK
+RE-MINTED, THE ARM STAGED.** `scripts/bindbus_codes_z6.py` re-mints the
+incumbent codebook (32 codes x 256 planes, four role offsets) with
+every phase and offset quantized to Z6 (multiples of pi/3), magnitudes
+kept — the minimal migration ("a code re-mint + lineage retrain"). The
+banked probes reproduce on the new file: crosstalk mean |cos| 0.0354
+(incumbent 0.0355; max 0.112 vs 0.142 — better, as the 08-29 probe
+found), the arithmetic snap under 20-degree per-plane noise 0.866 of
+planes exact (the probe's 0.895; the incumbent's continuous phases
+snap to nothing). `.cache/bindbus_codes512_z6.npz`; the head loads it
+through BIND_CODES unchanged (the CPU fixture gate, from scratch,
+runs now). THE ARM: PMZ6_scratch_241 = the PM35 scratch recipe (random
+init, 48k, form_mix_pm35, seed 241) born on Z6 — ONE variable vs
+PM35_scratch_241 (the incumbent codes, same seed, same recipe); bars:
+paired masked wild >= +0.020 (z >= 2); the row-level read beside it;
+mint for information; the twin on the word if it moves. Queued behind
+the family chain and the post-family bundle (the AM lock); the chain
+checks the Z6 gate's last line before firing. The genesis the sextet
+unification waited for since 08-29.
