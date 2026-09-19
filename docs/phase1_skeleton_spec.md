@@ -41324,3 +41324,20 @@ mint for information; the twin on the word if it moves. Queued behind
 the family chain and the post-family bundle (the AM lock); the chain
 checks the Z6 gate's last line before firing. The genesis the sextet
 unification waited for since 08-29.
+
+**2026-09-18 21:10 — THE FAMILY ARM STOPPED: THE UN-JIT'D STEP IS
+>70 s; THE PERF WINS WERE NOT CLAIMED IN IT (Bryce: "have we claimed
+the big perf wins?").** FAM_241 ran 4 h 07 m (3 h 40 m CPU) and never
+printed step 200: the training-time wheel as I built it turns the
+step's JIT off (a host round trip per breath), and without the JIT
+tinygrad re-realizes the whole graph every step — step 0's 98.9 s was
+the per-step price, not a compile; 12k steps would take ten days. The
+week's perf wins — the JIT'd step at 0.06–0.08 s and the late wheel's
+one pool call per step (1.3–1.8 s) — live in the walker and the head's
+JIT'd path, and the family arm used neither. Stopped; the GPU line
+proceeds (the post-family bundle on the checkpoints that exist, then
+the Z6 genesis arm on the JIT'd trainer). The family arm is rebuilt on
+the fast road after a perf audit (delegated): the walker with the
+late wheel, or the head's two-pass step with the wheel's biases as
+data buffers (the MASK_GOLD idiom: one JIT graph, dynamic values).
+Rule: an organ enters on the JIT'd road or it does not enter.
