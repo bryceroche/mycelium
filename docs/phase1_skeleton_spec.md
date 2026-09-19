@@ -41550,3 +41550,22 @@ road law each entered as a road, and the read says the roads carry no
 wild signal the residual lacks — the family's remaining member is the
 wheel (FAM_241, on the certificate road, running next). Numbers asserted
 through reads.py.
+
+**2026-09-19 00:30 — THE FAST PASS ON THE CARD: 2.5x, and the solver is
+now the floor.** cert_cost.sh (1024 diet rows, nine organs): the pass
+214.9 s (was 534.8) = 0.21 s/row -> ~3 h for the 50,653-row diet; the
+step 0.112 s/step steady (unchanged). The census: 5,120 (row, breath)
+pairs, 29 from the memo; statuses solved 2,437 / unsat-with-core 1,214
+(the flags, 24%) / TIMEOUT 1,060 (21%) / unbuildable 304 / unbounded
+105. The timeouts are the cost: 1,060 x 2 s of wall across ~14 workers
+~150 s, and a timeout flags nothing. (The pass line's halves overlap —
+forward 207.7 + solver 194.3 with "bookkeeping -187": the drain is timed
+inside the forward timer; a reporting nit, the total is right.) The
+options for the next pass, registered: a shorter wall for the pass only
+(`WHEEL_ROW_TIMEOUT` 0.5-1 s: every timeout is wasted work, but unsat
+proofs between the walls would be lost — a census of proof times
+decides it) or the budget road at diet scale (deterministic; tiny64
+said 7x the solver time, the card's mix may differ). NOT relaunched:
+FAM_241's pass is running at this rate (~3 h) and lands before morning
+with its result CACHED in the maskprep npz for the twins; the pass's
+cost is paid once per diet x env.
