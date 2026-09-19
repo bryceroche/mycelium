@@ -107,6 +107,24 @@ _WHEEL_MELT = (float(os.environ["ALG_WHEEL_MELT"]) if os.environ.get("ALG_WHEEL_
 
 
 _WHEEL_NOGOOD = int(os.environ.get("ALG_WHEEL_NOGOOD", "0"))
+# THE CERTIFICATE PASS (2026-09-18, MapReduce at epoch grain; docs/phase1_skeleton_spec.md:41345):
+# ALG_WHEEL_TRAIN's wheel-turn is a host round trip inside forward() (the JIT off, ~99s/step) —
+# the exact, slow road. ALG_WHEEL_CERT=1 is the fast twin: the mask-prep pass precomputes, per
+# row x breath, exactly what _wheel_turn would have flagged (bank CERTS in the maskprep cache),
+# and do_train feeds the batch's flags into a FIXED device buffer (_CERT_BUF) that forward()'s
+# per-breath loop reads to rebuild the melt/spotlight IN-GRAPH — no host call, the JIT stays on.
+# Reuses ALG_WHEEL_BETA / ALG_WHEEL_MODE / ALG_WHEEL_MELT / ALG_WHEEL_NOGOOD. The two roads never
+# coexist (both are "the wheel turns"; picking one is a training-arm decision, not a stack).
+_WHEEL_CERT = int(os.environ.get("ALG_WHEEL_CERT", "0"))
+assert not (_WHEEL_CERT and int(os.environ.get("ALG_WHEEL_TRAIN", "0"))), (
+    "ALG_WHEEL_CERT and ALG_WHEEL_TRAIN are two roads to the same certificate "
+    "(the exact host round trip vs the precomputed in-graph feed) — they never "
+    "coexist; unset one.")
+_WHEEL_CERT_BETA = float(os.environ.get("ALG_WHEEL_BETA", "3.0"))
+_WHEEL_CERT_MODE = os.environ.get("ALG_WHEEL_MODE", "union")
+_CERT_BUF = None   # do_train's fixed (BATCH, K_B, L_TOT) device buffer under ALG_WHEEL_CERT;
+                   # None everywhere else (eval/read paths) — bit-identical by construction
+_CERT_CENSUS_SC = None   # THE PRE/POST CENSUS (ALG_CERT_CENSUS=1): {kb: [mean|sc| per bank() call]}; None = off (dark, zero cost)
 _NUMSPOT = None    # THE NUMERAL SPOTLIGHT (2026-09-15): (B, 1, L_TOT, T) numpy bias on the slots<-tokens scores (digit tokens, given slots) at every breath; None = off (bit-identical)
 _LOCUS = None      # THE LOCUS-DRIVEN MELT (2026-09-14): {"melt": (B, LT) numpy, "kb": int} from the fingerpost's disagreement locus
 # T2 — THE CLAIM MASK (2026-09-13): tokens <- slots as structure. ALG_T2_CLAIM="beta:tau".
@@ -2539,6 +2557,16 @@ def _make_bank(p, waist, tokmask, B, sent=None):
         kh = k.reshape(B, -1, N_HEADS, hd).permute(0, 2, 1, 3)
         vh = v.reshape(B, -1, N_HEADS, hd).permute(0, 2, 1, 3)
         sc = (qh @ kh.transpose(-2, -1)) / math.sqrt(hd)
+        if kb is not None:
+            # THE PRE/POST CENSUS (ALG_CERT_CENSUS=1; the pre/post knob law):
+            # a diagnostic-only readback of the raw pre-bias score magnitude
+            # at this breath. Dark unless the do_train diagnostic call arms
+            # it (never during the JIT'd step — a .numpy() call here would
+            # break capture; the census's own forward runs un-JIT'd, before
+            # step() is ever defined).
+            _ccs = globals().get("_CERT_CENSUS_SC")
+            if _ccs is not None:
+                _ccs.setdefault(kb, []).append(float(sc.abs().mean().numpy()))
         if pbias is not None:   # door #62: six-wave phase-resonance bias
             sc = sc + pbias
         if rbias is not None:   # v3: the router's soft token bias (never
@@ -3999,6 +4027,24 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
                     _bs_ctx["bank"] = _make_bank(p, _tok, tokmask, B, sent=sent)
                 if _WHEEL is not None and kb < K_B - 1:
                     _bs_state["wheel_bias"] = _wheel_turn(p, _bs_state, kb, fat, sent, vst, B)
+                # THE CERTIFICATE PASS (2026-09-18): the IN-GRAPH twin of the
+                # wheel-turn above — a precomputed (row, breath) certificate,
+                # read live from a fixed device buffer (do_train arms it; None
+                # everywhere else, so this whole road is dead weight when
+                # ALG_WHEEL_CERT is unset). No host call, no python branching
+                # on tensor values: the JIT stays on (unlike ALG_WHEEL_TRAIN).
+                _cb = globals().get("_CERT_BUF")
+                # THE EVAL/READ FENCE: _CERT_BUF is a fixed BATCH-shaped
+                # buffer, armed once for the whole training run — a same-
+                # process eval call (_quick_val's fixed batch of 8) never
+                # matches the train batch's B and must see None, exactly
+                # like loop_val/chain_acc's fresh imports do by construction.
+                if _cb is not None and int(_cb.shape[0]) == B and kb < K_B - 1:
+                    from mycelium.loop_bridge import cert_spotlight
+                    _certF = (_cb[:, kb, :] > 0).float()
+                    _bs_state["wheel_melt"] = (_certF if _WHEEL_MELT is not None else None)
+                    _bs_state["wheel_bias"] = cert_spotlight(
+                        _certF, fat, sent, _WHEEL_CERT_BETA, _WHEEL_CERT_MODE)
             cur = _bs_state["cur"]
             _rb_last = _bs_state["rb_last"]
             if RINGS:
@@ -4653,7 +4699,12 @@ def do_errors():
 # ===========================================================================
 _MP_CTRL = ("ALG_MASKPREP_CACHE", "ALG_MASKPREP_DIR", "ALG_MASKPREP_IGNORE")
 _MP_EXTRA_ENV = ("DEV", "BEAM", "JIT", "NOOPT")
-_MP_ARRAYS = ("MASKS", "FACTS", "MASSB", "NL0")
+_MP_ARRAYS = ("MASKS", "FACTS", "MASSB", "NL0", "CERTS")
+_MP_NONDET = ("CERTS",)   # excluded from the bit-equality assert below: the
+                         # solver's wall clock makes a refusal non-
+                         # deterministic under load (mismatches are logged,
+                         # never asserted — the cert pass's own exception to
+                         # the mask-prep cache's usual bit-identical law)
 # Files at or under this size are keyed by their BYTES; bigger ones by
 # (size, mtime_ns) plus whatever DECLARED stamp they carry. The staged
 # train npz is 14 GB at form-scale and the states memmap 140 GB — hashing
@@ -4877,6 +4928,18 @@ def _maskprep_finish(key, fp, cached, n, starts, arrays):
         assert c.shape == cur.shape and c.dtype == cur.dtype, (
             f"[maskprep] STALE CACHE {_maskprep_path(key)}: {nm} is "
             f"{c.shape}/{c.dtype}, this run wants {cur.shape}/{cur.dtype}")
+        if nm in _MP_NONDET:
+            # THE CERTIFICATE PASS's exception: the solver's wall clock
+            # makes a refusal non-deterministic under load — logged, never
+            # asserted (the mask-prep cache's usual bit-identical law does
+            # not apply to this one array).
+            _mism_rows = int((c[rows] != cur[rows]).any(-1).any(-1).sum())
+            _mism_cells = int((c[rows] != cur[rows]).sum())
+            print(f"[maskprep] {nm}: {_mism_rows}/{len(rows)} recomputed "
+                  f"rows differ from cache ({_mism_cells} cells) — solver "
+                  f"wall-clock variance, NOT asserted (cached values win)",
+                  flush=True)
+            continue
         if not np.array_equal(c[rows], cur[rows]):
             _bad = rows[[not np.array_equal(c[r], cur[r]) for r in rows]]
             raise RuntimeError(
@@ -5026,6 +5089,7 @@ def do_train(steps, lr, batch, seed):
                 _i = _j + 1
         print(f"[clock] tails ready ({TAILS.mean():.2f} of tokens)", flush=True)
     MASKS = None
+    CERTS = None   # THE CERTIFICATE PASS: stays None (no buffer armed) unless K_B > 1
     ALT2 = int(os.environ.get("ALG_ALT2", "0"))
     FACTS = np.zeros((n, K_VARS, 4), np.float32) if ALT2 else None
     # MASK HEAD round 2 (apply_mass_thread.py, 2026-09-05): the two
@@ -5081,6 +5145,48 @@ def do_train(steps, lr, batch, seed):
         # parses (deployable-from-birth; frozen for training efficiency)
         print("[breath] mask-prep pass ...", flush=True)
         MASKS = np.zeros((n, L_FAC, L_FAC), np.float32)
+        # THE CERTIFICATE PASS (2026-09-18): CERTS[i, kb, j] = 0 none / 1 core
+        # (spotlight + melt) / 2 nogood-picked core member — exactly what
+        # _wheel_turn would flag at breath kb for row i (kb in 1..K_B-2).
+        # Solver-bound, so rows x breaths are memoized (identical parses
+        # across breaths/batches share a solve) and flushed in LARGE chunks
+        # through the wheel's own hang-proof pool (core_rows), never one
+        # pool call per batch.
+        CERTS = np.zeros((n, K_B, L_TOT), np.int8) if _WHEEL_CERT else None
+        _cert_t0 = time.time()
+        _cert_memo = {}
+        _cert_pending = []   # (row_i, kb, memo_key, n_vars, parse, m, row)
+        _cert_flush = int(os.environ.get("ALG_CERT_FLUSH", "512"))
+
+        def _cert_drain():
+            if not _cert_pending:
+                return
+            sys.path.insert(0, "scripts")
+            from alternator_bridge import core_rows as _cert_core_rows
+            _todo = [qi for qi, q in enumerate(_cert_pending) if q[2] not in _cert_memo]
+            if _todo:
+                _ans = _cert_core_rows(
+                    [(_cert_pending[qi][3], _cert_pending[qi][4], _cert_pending[qi][5])
+                     for qi in _todo], None)
+                for qi, a in zip(_todo, _ans):
+                    _cert_memo[_cert_pending[qi][2]] = a
+            for _row_i, _kb, _key, _nv, _parse, _m, _row in _cert_pending:
+                _st, _core = _cert_memo[_key]
+                if _st != "unsat" or not _core:
+                    continue
+                _core_slots = [_parse[_k]["_slot"] for _k in _core]
+                _picked = None
+                if _WHEEL_NOGOOD:
+                    _pk = _nogood_pick(_row, sorted(set(_core_slots)))
+                    if _pk is not None:
+                        _picked = _pk[0]
+                        _core_slots = [_picked]
+                if _picked is not None:
+                    CERTS[_row_i, _kb, _picked] = 2
+                else:
+                    for _j in _core_slots:
+                        CERTS[_row_i, _kb, _j] = 1
+            _cert_pending.clear()
         # THE MASK-PREP CACHE (apply_maskprep_cache.py, 2026-09-08).
         # Door unset: _maskprep_lookup returns (None, None, None), the
         # iterator is the literal old range, and _maskprep_finish is
@@ -5139,7 +5245,46 @@ def do_train(steps, lr, batch, seed):
             out0 = (_mp_jr.read_forward(forward, *_mp_args, keys=_mp_keys, lsent=_mp_ls)
                     if _mp_jit else forward(*_mp_args, lsent=_mp_ls))
             o0 = {k: out0[k].realize().numpy() for k in ("fat", "args", "res")}
-            MASKS[sl] = build_slot_masks(o0, sent[sl_p])[:len(sl)]
+            _mk_full = build_slot_masks(o0, sent[sl_p])
+            MASKS[sl] = _mk_full[:len(sl)]
+            if CERTS is not None and K_B > 2:
+                # THE PASS's certificate half (correctness first, cost noted
+                # in the report): forward() only runs the breath loop when
+                # slot_mask is not None, so this batch's own freshly-banked
+                # mask (this pass's whole point) is what turns it on — a
+                # SECOND full multi-breath forward, mirroring the two-call
+                # idiom already used at eval (build_slot_masks then re-call
+                # with slot_mask). ALG_MASKPREP_JIT's reader cannot return
+                # per-breath heads, so this half always runs the plain
+                # (un-JIT'd) forward — the exact, slow twin of the read.
+                _mine_prev = os.environ.get("ALG_MINE_BREATHS")
+                os.environ["ALG_MINE_BREATHS"] = "1"
+                try:
+                    _cert_out = forward(
+                        p, Tensor(np.ascontiguousarray(states[sl_p]), dtype=dtypes.half),
+                        Tensor(tokmask[sl_p].astype(np.float32), dtype=dtypes.float),
+                        Tensor(sent[sl_p].astype(np.int32), dtype=dtypes.int),
+                        slot_mask=Tensor(_mk_full, dtype=dtypes.float), lsent=_mp_ls)
+                finally:
+                    if _mine_prev is None:
+                        os.environ.pop("ALG_MINE_BREATHS", None)
+                    else:
+                        os.environ["ALG_MINE_BREATHS"] = _mine_prev
+                _heads_all_c = _cert_out.get("heads_all")
+                if _heads_all_c is not None:
+                    _nv_c = np.array([samples[int(i)].get("n_vars", K_VARS) for i in sl_p])
+                    _ma_c = np.array([samples[int(i)].get("m", 0) for i in sl_p])
+                    for _kb in range(1, K_B - 1):
+                        _onp_c = {k: v.realize().numpy() for k, v in _heads_all_c[_kb].items()}
+                        for _bi, _i in enumerate(sl):
+                            _row_c = {k: _onp_c[k][_bi] for k in _onp_c}
+                            _parse_c = _decode_slots(_row_c)
+                            _key_c = _wheel_memo_key(
+                                (int(_nv_c[_bi]), _parse_c, int(_ma_c[_bi])))
+                            _cert_pending.append((int(_i), _kb, _key_c, int(_nv_c[_bi]),
+                                                  _parse_c, int(_ma_c[_bi]), _row_c))
+                    if len(_cert_pending) >= _cert_flush:
+                        _cert_drain()
             if ATLAS_TAB is not None and NL0 is not None:
                 # breath-0 NL state (the tap; pass-1 == pass-2)
                 NL0[sl] = out0["nl0"].realize().numpy()[:len(sl)]
@@ -5171,15 +5316,20 @@ def do_train(steps, lr, batch, seed):
                                             0.0, 1.0)
         if _fp_on:
             _fp_drain()
+        if CERTS is not None:
+            _cert_drain()
         if _mp_key is not None:
             _mp_out = _maskprep_finish(
                 _mp_key, _mp_fp, _mp_cached, n, _mp_starts,
                 {"MASKS": MASKS, "FACTS": FACTS, "MASSB": MASSB,
-                 "NL0": (NL0 if ATLAS_TAB is not None else None)})
+                 "NL0": (NL0 if ATLAS_TAB is not None else None),
+                 "CERTS": CERTS})
             MASKS, FACTS, MASSB = (_mp_out["MASKS"], _mp_out["FACTS"],
                                    _mp_out["MASSB"])
             if ATLAS_TAB is not None:
                 NL0 = _mp_out["NL0"]
+            if CERTS is not None:
+                CERTS = _mp_out["CERTS"]
         if _mp_jit:
             _mp_jr.reset()            # drop the captured read graph
             if _mp_prev is None:
@@ -5188,6 +5338,26 @@ def do_train(steps, lr, batch, seed):
                 os.environ["ALG_JIT_READ"] = _mp_prev
         print(f"[breath] masks ready (mean degree "
               f"{MASKS.sum(-1).mean():.1f}/{L_FAC})", flush=True)
+        if CERTS is not None:
+            # THE ZERO GATE (debug-only): with ALG_WHEEL_CERT_ZERO=1 the
+            # census still prints (banked truthfully) but the FED buffer is
+            # forced empty — step 0/1 losses must then be bit-identical to
+            # the unset machine (THE bit-identical gate the ledger pins).
+            if int(os.environ.get("ALG_WHEEL_CERT_ZERO", "0")):
+                print(f"[cert] ALG_WHEEL_CERT_ZERO=1: zeroing the CERTS feed "
+                      f"post-pass ({int((CERTS > 0).sum())} flags discarded)",
+                      flush=True)
+                CERTS = np.zeros_like(CERTS)
+            print(f"[cert] pass done in {time.time() - _cert_t0:.1f}s", flush=True)
+            for _kb in range(1, max(K_B - 1, 1)):
+                _flagged = (CERTS[:, _kb, :] > 0).any(-1)
+                _nf = int(_flagged.sum())
+                _ms = (float(CERTS[_flagged, _kb, :].astype(bool).sum(-1).mean())
+                       if _nf else 0.0)
+                _ng = int((CERTS[:, _kb, :] == 2).sum())
+                print(f"[cert]  breath {_kb}: flagged {_nf}/{n} rows, "
+                      f"mean {_ms:.2f} flagged slots/flagged row, "
+                      f"nogood picks {_ng}", flush=True)
         if ATLAS_TAB is not None and NL0 is not None:
             # retrieval instead of oracle labels (mode semantics in
             # the atlas block above); the b_mha feed needs no change
@@ -5612,6 +5782,65 @@ def do_train(steps, lr, batch, seed):
               f"base {(0.15 == _sw_wild).sum()} @0.15, visit-decay live",
               flush=True)
 
+    # THE CERTIFICATE PASS's feed (2026-09-18): a fixed (BATCH, K_B, L_TOT)
+    # device buffer, armed ONCE before the first step() capture (the _PCV
+    # idiom below) — forward()'s per-breath loop reads it via
+    # globals().get("_CERT_BUF"); do_train writes this step's batch of
+    # precomputed flags into it every step (the feed loop, _fd).
+    _CTV = None
+    if _WHEEL_CERT:
+        assert CERTS is not None, (
+            "ALG_WHEEL_CERT=1 but the mask-prep pass never ran (K_B <= 1) — "
+            "there is nothing to certify; unset ALG_WHEEL_CERT or raise "
+            "ALG_BREATH")
+        globals()["_CERT_BUF"] = Tensor(
+            np.zeros((batch, K_B, L_TOT), np.float32)).contiguous().realize()
+        _CTV = globals()["_CERT_BUF"]
+        print(f"[cert] feed armed: buffer {tuple(_CTV.shape)} "
+              f"beta={_WHEEL_CERT_BETA} mode={_WHEEL_CERT_MODE} "
+              f"melt={_WHEEL_MELT} nogood={_WHEEL_NOGOOD}", flush=True)
+        if int(os.environ.get("ALG_CERT_CENSUS", "0")):
+            # THE PRE/POST CENSUS (the pre/post knob law): ONE plain,
+            # un-JIT'd forward() call on one batch, BEFORE step() is ever
+            # defined/captured — _CERT_CENSUS_SC arms bank()'s readback,
+            # never live during the JIT'd step.
+            from mycelium.loop_bridge import cert_spotlight as _cc_spotlight
+            _cc_idx = np.arange(min(batch, n))
+            globals()["_CERT_CENSUS_SC"] = {}
+            globals()["_CERT_BUF"] = Tensor(
+                np.ascontiguousarray(CERTS[_cc_idx], np.float32)).contiguous().realize()
+            _cc_out = forward(
+                p, Tensor(np.ascontiguousarray(states[_cc_idx]), dtype=dtypes.half),
+                Tensor(tokmask[_cc_idx].astype(np.float32), dtype=dtypes.float),
+                Tensor(sent[_cc_idx].astype(np.int32), dtype=dtypes.int),
+                slot_mask=Tensor(MASKS[_cc_idx], dtype=dtypes.float))
+            _cc_fat = _cc_out["fat"].realize()   # out["fat"] is FED-trimmed to L_FAC (scratch rows
+                                                 # dropped); every real flag lives in [0, L_FAC) by
+                                                 # construction (_decode_slots only visits L_FAC rows),
+                                                 # so slicing CERTS to :L_FAC below matches it exactly
+            _cc_sc = globals()["_CERT_CENSUS_SC"]
+            print(f"[cert-census] one un-JIT'd forward, {len(_cc_idx)} rows:", flush=True)
+            for _kb in range(1, K_B - 1):
+                _ccF = (CERTS[_cc_idx, _kb, :L_FAC] > 0)
+                _cc_melted = int(_ccF.any(-1).sum())
+                _row_means = []
+                if _cc_melted:
+                    _cc_bias = _cc_spotlight(
+                        Tensor(_ccF.astype(np.float32)), _cc_fat,
+                        Tensor(sent[_cc_idx].astype(np.int32)),
+                        _WHEEL_CERT_BETA, _WHEEL_CERT_MODE).numpy()
+                    for _b in range(len(_cc_idx)):
+                        for _j in np.where(_ccF[_b])[0]:
+                            _row_means.append(float(np.abs(_cc_bias[_b, 0, _j, :]).mean()))
+                _bias_mean = float(np.mean(_row_means)) if _row_means else 0.0
+                _sc_mean = float(np.mean(_cc_sc[_kb])) if _kb in _cc_sc else 0.0
+                _ratio = (_bias_mean / _sc_mean) if _sc_mean > 0 else float("nan")
+                print(f"[cert-census]  breath {_kb}: rows melted "
+                      f"{_cc_melted}/{len(_cc_idx)}, injected-bias mean|value| "
+                      f"(flagged) {_bias_mean:.4f}, raw |score| mean {_sc_mean:.4f}, "
+                      f"ratio {_ratio:.4f}", flush=True)
+            globals()["_CERT_CENSUS_SC"] = None
+            globals()["_CERT_BUF"] = _CTV   # restore the TRAINING buffer (the diagnostic call borrowed the global)
     _pc_mix = float(os.environ.get("ALG_PC_MIX", "0"))
     _pc_assign = None
     if _pc_mix > 0.0:
@@ -5877,6 +6106,8 @@ def do_train(steps, lr, batch, seed):
                 feed[k] = gold[k][idx]
         for k, v in feed.items():
             _fd(bg[k], v, _rl)
+        if _CTV is not None:
+            _fd(_CTV, CERTS[idx], _rl)   # THE CERTIFICATE PASS's feed: this batch's precomputed flags
         if _rl:
             Tensor.realize(*_rl)   # perf audit #5: the whole feed in ONE schedule (assign path only)
         if int(os.environ.get("ALG_SHELF_CIRCLE", "0")) >= 2:
@@ -5957,7 +6188,10 @@ def do_train(steps, lr, batch, seed):
             os.environ["TC_EVAL"] = "0"       # ... and the OPEN reading
             os.environ["BC_EVAL"] = "0"       # ... and the balanced cooker OPEN
             globals()["_WHIP_SRC"] = None          # the val reads with the seeded kick, like the read
+            _cb_bak = globals().get("_CERT_BUF")   # THE CERTIFICATE PASS: _quick_val's fixed
+            globals()["_CERT_BUF"] = None          # batch-of-8 must see None (eval reads OPEN)
             fv = _quick_val()
+            globals()["_CERT_BUF"] = _cb_bak
             globals()["_WHIP_SRC"] = b_whip
             os.environ.pop("BC_EVAL", None)
             os.environ.pop("TC_EVAL", None)

@@ -181,6 +181,32 @@ def nogood_apply(onp, nogoods):
     return onp
 
 
+def cert_spotlight(F, fat, sent, beta, mode):
+    """THE CERTIFICATE PASS (2026-09-18): the in-graph twin of
+    Bridge(fat, sent).spotlight(F, beta, mode) — F (B, LT) {0,1} tensor
+    (a precomputed certificate's flags, read live from a batch's device
+    buffer) instead of a numpy melt array. fat (B, LT, T) the breath-0
+    head-mean slots<-tokens attention (tinygrad Tensor); sent (B, T)
+    sentence ids (tinygrad Tensor). Returns (B, 1, LT, T), bit-identical
+    to the numpy road on the same inputs: no tokmask (spotlight never
+    applied one either — padding tokens fall out only if their sentence
+    id never matches a flagged slot's source sentence, exactly as
+    Bridge.spotlight leaves them)."""
+    B, LT, T = (int(x) for x in fat.shape)
+    src_tok = fat.argmax(axis=-1)                                        # (B, LT) int: slot j's most-attended token
+    sent_exp = sent.reshape(B, 1, T).expand(B, LT, T)
+    src_sent = sent_exp.gather(-1, src_tok.reshape(B, LT, 1)).squeeze(-1)  # (B, LT): slot j's source sentence
+    own_mask = (sent.reshape(B, 1, T) == src_sent.reshape(B, LT, 1)).float()  # (B, LT, T)
+    Ff = F.reshape(B, LT, 1)
+    if mode == "own":
+        bias = beta * Ff * own_mask
+    else:
+        assert mode == "union", mode
+        wanted_tok = (own_mask * Ff).max(1)                               # (B, T): 1 where ANY flagged slot's sentence == t's
+        bias = beta * Ff * wanted_tok.reshape(B, 1, T)
+    return bias.reshape(B, 1, LT, T)
+
+
 def same_sentence(sent, tokmask, B, T):
     """The token loop's WITHIN-MEDIUM mask (B, 1, T, T): 1 where query and
     key tokens share a sentence and the key is a real token."""

@@ -41412,12 +41412,12 @@ for 24 slots (the bind14a era) and the family body's bank is L_TOT=32
 (cannot broadcast (8,24,512) to (8,32,512)); the chain's grep filter
 had swallowed the error line (the unit's own log now keeps each read's
 full output in `.cache/impulse_v2_<ckpt>.log`). Fixed (L_TOT from the
-head); the CPU smoke at 8 rows on PM35_scratch_241: a kick at breath 1
+head); the CPU read (n=64 rows, the script's fixed N; IR_N is not a knob) on PM35_scratch_241, reproduced bit-for-bit on the GPU at 22:36: a kick at breath 1
 does NOT contract (noise gain 0.98-1.07 through lag 6, tau-fit inf)
 while kicks at breaths 2-4 contract to 0.2-0.4 by lag 2-3 — consistent
 with the visibility read (breath 1 is the one null-space write); the
 fact-shaped probe damps like noise (no resonance) at k0>=2 and slightly
-slower at k0=1 (1.10 vs 1.07 at lag 6). A SMOKE (n=8), not a read: the
+slower at k0=1 (1.10 vs 1.07 at lag 6); linearity 0.245 (a nonlinear response); the sextet projection of the residual -0.004 (no six-wave resonance detected). n=64 of the 311 holdout rows, the family body (PM35_scratch_241). The
 full read + the wave-field check are requeued behind the Z6 arm
 (pc-postfam2).
 

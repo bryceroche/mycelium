@@ -102,7 +102,11 @@ REFUSED = ("ALG_SHELF", "ALG_WHIP", "ALG_TOKLOOP", "ALG_WRITEBACK", "ALG_KANNEAL
            "ALG_INV", "ALG_OPATT", "ALG_CMT_REG", "ALG_ROUTER_GRADED",
            "ALG_FREEZE_DUP", "ALG_TRAIN_ONLY", "ALG_POSCH",
            "ALG_OPCOUNT", "ALG_REF", "ALG_DIAL", "ALG_VALATT",
-           "ALG_DUPPTR", "ALG_DETWAVE")
+           "ALG_DUPPTR", "ALG_DETWAVE", "ALG_WHEEL_CERT")   # THE CERTIFICATE PASS
+           # (2026-09-18): the walker steps one breath at a time with solver
+           # pings between dispatches (its OWN wheel road) — it does not
+           # thread the mask-prep pass's precomputed CERTS buffer or the
+           # forward()-loop feed that consumes it
 
 REQ_CTX = ("B", "K_B", "waist", "tokmask", "slot_mask", "bank", "rot2",
            "sync", "drop", "gmod", "revoke", "tail", "reg", "RINGS",
