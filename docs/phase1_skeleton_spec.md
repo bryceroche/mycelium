@@ -41495,3 +41495,31 @@ PM35_scratch_241 on form_mix_pm35, the family chain's reads and paired
 verdicts (bars: paired masked wild FAM8 vs CTRL >= +0.020, z >= 2;
 CTRL vs PM35_scratch_241 = the continuation's own drift). The nine-
 organ FAM_241 follows on the fast pass and reads against both.
+
+**2026-09-18 23:50 — THE FAST PASS (the implementer's second round)
+and the nine-organ arm queued.** On tiny64 (CPU) the pass fell 220.3 s
+-> 27.0 s (8.2x): the forward half 207.9 -> 15.2 s once it goes through
+the JIT'd reader (forward emits `hb_<field>` per-breath lists under
+ALG_MINE_BREATHS; the reader flattens lists; `ALG_CERT_EAGER=1` keeps the
+eager road), the solver half 2.9 s unchanged. The reader-vs-eager gate:
+every head field and every `_decode_slots` parse identical; the 2 of
+14,336 CERTS cells that differed were one row's timeout<->unsat flip at
+the 2 s wall — the wall's variance, not the reader (the reader road
+reproduced its own census twice). THE BUDGET ROAD (`core_rows_budget`,
+`ALG_CERT_BUDGET`, opt-in): 0 timeouts, deterministic, every difference
+an ADDITION over the wall (5 cells), solver half 2.8 -> 20.9 s — the
+registered decision-budget cap now exists; the wall stays the default
+for the arm (the budget re-measured at diet scale is the next read).
+Gates re-verified: unset 5.2995/0.0279, the zero gate bit-identical,
+the identity check, the walker's refusal. Committed 67b08041. QUEUED
+(pc-family9, behind the eight-organ chain): the pass re-measured on the
+card (cert_cost.sh, 1024 rows) -> FAM_241 = all nine organs with the
+wheel on the certificate road, 12k from PM35_scratch_241, the family
+reads, paired vs CTRL_241 (the bar: masked wild >= +0.020, z >= 2) and
+vs FAM8_241 (the wheel's share). THE CONTROL'S READS (CTRL_241, the
+plain 12k continuation at 0.081 s/step): open wild 0.3033, MASKED WILD
+0.3340 (the campaign's highest masked read by a hair: Z6 0.3325, the
+parent 0.3291), masked+lexicon 0.3320, matched 0.3437, mint 0.6448
+(rehearsal continues), rows 7/311 (parent 9): the continuation alone
+drifts up at the slot and not at the row — the family arms are read
+against THIS, not the parent.
