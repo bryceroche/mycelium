@@ -41620,3 +41620,39 @@ in-graph organs +65% per step; the certificate pass 2.2 h per diet x
 env (cached). THE FAMILY CAMPAIGN'S BOOKS ARE CLOSED on the continuation
 regime; the from-scratch family arm and the twins are the two reads
 that remain, both registered, both needing the word.
+
+**2026-09-19 04:10 — THE FROM-SCRATCH FAMILY (word given; Bryce: "lets
+train all nine organs together from step zero -- i suspect the whole
+organism must grow together").** THE DESIGN: PMF_241 = form_mix_pm35,
+random init (seed 241), 48k steps, B=8, ALL NINE ORGANS from step 0
+(atlas dual projection + xprior + mass, the wheel via the certificate
+pass (melt 1.0, nogood, beta 3 union, 2 s wall), write-back 0.5, token
+loop, T2 claims 3:0.2, router, the clock ladder). THE SEGMENTED
+SCHEDULE (new: STEP_OFFSET / SCHED_STEPS, fixture bit-identical unset):
+the 48k run is FOUR 12k processes on ONE cosine; each segment re-runs
+the mask-prep + certificate pass from its own warm head, so the wheel's
+certificates refresh every 12k steps as the parses become worth
+certifying (the epoch grain at genesis). THE CONTROL (the cont-control
+protocol): PMC_241 = the same four-segment chain with NO organs — it
+separates the organs from the segmentation itself (four optimizer
+restarts and re-prepped facts, which the one-process PM35 lineage never
+had), and runs FIRST (cheap; it validates the chaining before the
+expensive arm). BARS, PINNED: paired MASKED wild PMF vs PMC >= +0.020
+(z >= 2) = the organs' claim; PMF vs PM35_scratch_241 (the lineage) and
+PMC vs PM35_scratch_241 (the segmentation alone) for information; the
+row read (chain_acc) beside; mint for information (the ingredient);
+masked wild after EVERY segment on both arms (the trajectory: when, if
+ever, the organs separate). THE SEGMENT-1 CENSUS (the random head's
+wheel, measured first on 1024 diet rows): 5,120 pairs -> solved 3,816 /
+unbuildable 958 / timeout 169 / unbounded 105 / UNSAT 72; 1-2% of rows
+flagged per breath (21/1/10/17/23 of 1024) — a random parse degenerates
+to a trivially satisfiable graph, so the wheel is nearly silent by
+itself at genesis and needs no zeroing: it enters as a road from step 0
+and its certificates grow with the parses. The pass at genesis is fast
+(56 s / 1024 rows, mostly memo; ~45 min for the diet); later segments'
+passes ~2.2 h each. Cost: PMC ~1.5-2 h; PMF ~9-10 h. Chain
+`.cache/pmf_chain.sh` (pc-pmf). WHAT THIS ARM ANSWERS: whether organs
+that were null as 12k continuations on a trained body grow into a
+different organism when present from birth (the mandatory-road law's
+strongest form); WHAT IT CANNOT: the live per-breath wheel (still the
+epoch-stale road).
