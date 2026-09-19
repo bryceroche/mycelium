@@ -42089,3 +42089,20 @@ channels + the per-breath loss + the stamped spans alone). Each 48k,
 ~1.5 h + reads; both against PM35_scratch_241 and PMS2_241. The
 peak-not-mean census on the trained arm re-runs as a unit (the CPU
 census was killed by the box's memory pressure beside the reads).
+
+**2026-09-19 16:10 — THE CENSUS ON THE TRAINED ARM (pc-census, one
+un-JIT'd forward, 4 fixture rows).** The router's token bias |S_res +
+S_given| x r_gain: 18.6 / 24.3 / 24.5 / 25.4 / 25.3 / 24.2 at breaths
+1-6 against raw bank scores 11.3 / 12.5 / 11.6 / 10.3 / 10.7 / 11.0 —
+ratio 1.6-2.5: THE ROUTER'S CHANNELS BECAME THE BANK'S DOMINANT
+ADDRESSING SIGNAL (twice the native scores; the warm fixture had read
+0.10-0.18x before training). The pointer prior: 0.04-0.09 against args
+logits 16.6 (0.2-0.6%) — inert, as the read-time ablation found. The
+anchor (mean over real tokens): 0.046 against 10-12 (0.4%) — inert; the
+peak at the found token is not what this census measures, but the
+read-time ablation (z 0.19) already answered the question the peak
+would have. THE ROADS' LEDGER, closed: the bus-native router (live,
+dominant), the chart (live at breath 0, load-bearing, and the breath-0
+value collapse's author through its clause table), the per-breath
+span loss (live: the meter), the stamped spans (the fuel); the anchor
+and the pointer prior (invitations; struck from the next arms).
