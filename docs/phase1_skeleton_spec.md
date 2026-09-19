@@ -41826,3 +41826,14 @@ THE GAIN RULING: the arm runs the chart at gain 1.0 — a log prior enters
 the logits unscaled (the Bayesian entry); gain 2 double-counts. THE
 MERGED HEAD'S GATE (surface_gate.sh): unset 5.2995/0.0279 bit-identical;
 the surface config's own fixture run in progress.
+
+**2026-09-19 12:55 — THE SURFACE ARM FIRED (word given for the launch
+when built).** The merged head's gate: unset 5.2995/0.0279 bit-
+identical; the surface config runs on the fixture (6.4093/1.7561). The
+chain (pc-pms, `.cache/pms_chain.sh`): PMS_241 = the PM35 recipe
+unchanged (form_mix_pm35, random init seed 241, 48k, one process, B=8)
++ ALG_ROUTER=2 (r_gain frozen 1.0, ALG_ROUTER_PTR=2.0) + ALG_XCORR=1.0;
+the family reads (open/masked/lexicon/matched/chain_acc), paired vs the
+banked PM35_scratch_241. Bars as pinned 10:20: paired MASKED wild >=
++0.020 (z >= 2); rows beside; mint for information. Expected ~1.3 h of
+training + ~25 min of reads.
