@@ -41940,3 +41940,30 @@ value span 16.1% -> 99.8%; mint 78.3% -> 98.8%; all 44.6% -> 99.4%. A
 20-row spot check bound every numeral and word to the right variable.
 The chart re-mined on the stamped diet (`xcorr_chart_formpm35v.npz`,
 13 s): the value table now sees every given. The arm's fuel is in.
+
+**2026-09-19 13:20 — THE CRITICALITY METER'S BASELINE (PM35_scratch_241;
+`scripts/criticality_meter.py`; `.cache/criticality_PM35_scratch_241.txt`;
+registered as the diagnostic "criticality", coupling never).**
+Definitions: the span is the slot's annotated factor span where one
+exists (mint: every present slot) else, for GIVEN slots, the union of
+the gold value's numeral occurrences (wild has no annotation; wild
+relation slots are excluded); binding mass m_k = the head-mean
+attention's mass on the span at breath k (an indicator dot product; a
+slot fully on its span scores 1.0); breath 0 is outside the loop and
+excluded from the slope. THE NUMBERS: mean mass per breath — wild
+0.311, 0.294, 0.287, 0.271, 0.271, 0.267, 0.269 (k_eff 0.95, 0.98,
+0.94, 1.00, 0.98, 1.01); mint 0.451, 0.212, 0.267, 0.298, 0.300, 0.296,
+0.298 (k_eff 0.47, 1.26, 1.11, 1.01, 0.99, 1.01 — breath 0's diffuse
+attention covers mint's wide clause spans, the mass dips at breath 1
+and the loop re-converges onto the span). THE PER-ROW SLOPE of log m_k
+over breaths 1..6: WILD mean -0.0136 (median -0.0204), 28.6% of rows
+supercritical; MINT mean +0.0594 (median +0.0582), 95.0% supercritical.
+The fuel map: mass growth (last/first) wild given 0.867; mint given
+0.618, relation 0.699; by slot index wild 0-2 0.94 / 3-5 0.59 / 6+
+0.84, mint 0.73 / 0.83 / 0.53; a final-breath span HIT carries growth
+~1.0 on both registers, a MISS 0.60 wild / 0.42 mint (the loop holds
+what it has and does not recover what it lost). The correctness join
+is underpowered (9 correct wild rows). THE MECHANISM BAR FOR PMS2,
+PINNED: wild's per-row mean slope > 0 AND supercritical fraction >=
+0.50 (the lineage: -0.014 / 0.286), with mint's not falling below 0.90;
+the accuracy bar stands beside it (paired masked wild >= +0.020, z 2).
