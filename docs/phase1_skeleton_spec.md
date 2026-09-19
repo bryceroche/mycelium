@@ -41289,3 +41289,18 @@ v2 on PM35_scratch_241 / FAM_241 / CTRL_241, the wave-field check on
 wild for the same (does the six-wave fire on prose — the 09-04 pin:
 zero on wild = decoration). All zero training; the reads table
 ingests them.
+
+**2026-09-18 17:55 — Z6, SCOPED.** The bind bus's codebook
+(`.cache/bindbus_codes512.npz`: CB (32, 512) + theta_arg1 / theta_arg2
+/ theta_res / theta_op) is a banked artifact; its generator is not in
+the tree (no writer of the theta keys exists in scripts/ or
+mycelium/). A Z6 rebirth needs a NEW generator: per-plane phases on
+Z6 (multiples of pi/3) for the codes and the four role offsets, per
+`docs/rotational_bus.md` (the CRT isomorphism Z6 ~ Z2 x Z3 the ledger
+accepted 08-30), written to a new BIND_CODES file; then a from-scratch
+arm on form_mix_pm35 with it (the genesis the migration was waiting
+for). Registered, needing the word; no GPU until then. The queue as it
+stands: FAM_241 (running; step 0 at 99 s, the steady rate pending) ->
+CTRL_241 -> the reads and paired verdicts -> the post-family bundle
+(atlases, the settling meter, impulse v2, the wave-field check) ->
+[the word] FAMKA_241 / FAMWI_241 -> [the word] the Z6 genesis arm.
