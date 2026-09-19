@@ -41569,3 +41569,16 @@ said 7x the solver time, the card's mix may differ). NOT relaunched:
 FAM_241's pass is running at this rate (~3 h) and lands before morning
 with its result CACHED in the maskprep npz for the twins; the pass's
 cost is paid once per diet x env.
+
+**2026-09-19 03:15 — THE CERTIFICATE PASS AT DIET SCALE (FAM_241's
+prep).** 50,653 rows x 5 breaths = 253,265 (row, breath) pairs: 52,337
+from the memo, 200,928 solved in the pool; 7,952 s (2.2 h; 0.157 s/row
+— under the 1024-row estimate because the memo grows with n). Statuses:
+solved 129,151 / unsat-with-core 60,094 (the flags; every unsat carried a
+core) / TIMEOUT 47,041 (23%, the wasted 2 s walls) / unbuildable 11,748 /
+unbounded 5,230 / budget 1. Flags per breath: 11,238 / 10,343 / 10,717 /
+12,765 / 15,031 of 50,653 rows (22-30%, rising with the breath as the
+parses drift), each a single nogood-picked slot. Banked in
+`.cache/maskprep_0690b141ae7bf166.npz` (CERTS int8 (50653, 7, 32)) — the
+twins reuse it. The arm behind it runs at 0.134 s/step (the eight-organ
+step's cost; the certificate road adds nothing measurable).
