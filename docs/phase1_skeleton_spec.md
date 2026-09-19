@@ -41837,3 +41837,31 @@ the family reads (open/masked/lexicon/matched/chain_acc), paired vs the
 banked PM35_scratch_241. Bars as pinned 10:20: paired MASKED wild >=
 +0.020 (z >= 2); rows beside; mint for information. Expected ~1.3 h of
 training + ~25 min of reads.
+
+**2026-09-19 11:50 — CAN THE BREATH CYCLE LEARN TO SHARPEN WILD? (Bryce's
+question; the census by register).** THE SPANS IN THE DIET
+(form_mix_pm35, 50,653 rows): prose rows 29,653 — FACTOR spans on 79% of
+rows but on only 50% of their present factors, VALUE spans on 11% of
+rows; mint 10,120 / wilded mint 10,476 — factor spans on 81% of factors,
+value spans on 64% of rows; the chain56/form37 stamps 100%. The wild
+holdout: none. THE SUPERVISION AS WIRED: the router's span loss (v3 and
+v2 alike) trains `rb_last` = the LAST breath's bias only; the per-breath
+attention (`fat_all`, the perceiver's tap) is supervised by nothing —
+the breaths 1..5 are free to drift, and on wild they do (the census:
+found at breath 0, 0.48; 0.34 after). ANSWER: partially, and not as
+wired — (i) half of prose's factor spans exist, prose's VALUE spans
+essentially do not (11%), and the value binding is the failure class
+(84% of wrong given slots never land on the value's tokens); (ii) no
+loss reaches the middle breaths. REGISTERED (the breath-sharpening
+items, zero-token): (1) THE PER-BREATH SPAN LOSS — the router's channels
+(or the bank's own attention) supervised at EVERY breath, not the last;
+the taps exist; the attention-bootstrap principle's road. (2) VALUE
+SPANS FOR PROSE AT ZERO TOKENS — for a given factor the value is a
+numeral; its span is the numeral's occurrence in the text (the
+extractor stamps it; ties broken by sentence proximity to the factor
+span, or all occurrences kept), which fills the value-span gap on every
+prose row without annotation; the chain lane's tier-2 lexicon givens
+already carry word spans. (3) THE BREATH-0 ANCHOR (registered 11:05):
+the structural twin — the tokens found at breath 0 carried as a keep-
+bias. The three make THE BREATH-SHARPENING ARM (PMS2), the follow-up to
+the surface arm now training; needs the word.
