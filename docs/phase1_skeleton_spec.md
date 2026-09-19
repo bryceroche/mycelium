@@ -42027,3 +42027,36 @@ runs now — the verdict's second half: if wild's breaths now HOLD the
 binding while the slot score fell, the surface roads did their job and
 the decode is what lost; if the slope is still negative, the roads did
 not reach the middle breaths. Numbers asserted through reads.py.
+
+**2026-09-19 15:45 — THE MECHANISM VERDICT: THE BAR IS MET — the breaths
+now hold and grow wild's binding; the decode did not follow.** The
+criticality meter on PMS2_241 (`.cache/criticality_PMS2_241.txt`; the
+report's prose paragraph is the lineage's reading baked in by the
+analyst — the tables are the arm's): WILD per-row slope of log binding
+mass over breaths 1..6 mean +0.0152 (median +0.0052), SUPERCRITICAL
+58.5% of rows — the pinned bar (slope > 0, >= 0.50) MET against the
+lineage's -0.0136 / 28.6%; MINT +0.0418 / 92.3% (>= 0.90 held). THE
+MASS TRAJECTORIES: wild 0.073, 0.343, 0.353, 0.352, 0.355, 0.360, 0.359
+(k_eff 4.70 then 1.03, 1.00, 1.01, 1.01, 1.00) vs the lineage 0.311 ->
+0.269 decaying; mint 0.241 -> 0.445 vs 0.451 -> 0.298. THE FINAL
+BINDING MASS ON THE GOLD SPANS IS A THIRD HIGHER ON WILD (0.359 vs
+0.269) AND HALF AGAIN ON MINT (0.445 vs 0.298): the surface roads put
+the attention on the spans and the breaths keep it there. THE FUEL MAP:
+wild slots whose value is in their own sentence end at 0.718 mass
+(growth 5.6x); distant values (dist >= 1) end at 0.121 — the chart's
+prior, keyed on the row's surface, does not reach across sentences.
+THE ANOMALY: wild's BREATH-0 mass on the value collapsed to 0.073 (the
+lineage 0.311): the grounding read is now dominated by the chart's
+FACTOR-clause prior (mean |Xb| 3.09 on real tokens; slot 0's top cells
+are "other"-kind tokens in the clause, not the numeral) and the anchor
+then carries that clause-level reading forward at +4 x fat0 — the value
+read pays: wild digits 0.376 vs 0.407. THE DISAGREEMENT IS THE FINDING:
+the membrane moved (the mechanism bar) and the score fell (the accuracy
+bar) — a better-bound attention that the decode did not convert, with
+two named suspects (the chart at breath 0 / the anchor carrying it; the
+pointer prior on mint's args). ZERO-TRAINING READS FIRED (pc-ablate):
+the trained arm read with each road removed at read time (chart 0 /
+anchor 0 / pointer 0 / all three), paired against its own full read —
+the sensitivity of the trained head to each road; and the peak-not-mean
+census on the arm. The training ablations (one road off per arm, 48k)
+are registered behind the reads, needing the word.
