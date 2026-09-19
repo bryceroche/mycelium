@@ -42009,3 +42009,21 @@ per-row mean slope > 0 and supercritical fraction >= 0.50 (the
 lineage -0.014 / 0.286), mint's not below 0.90; plus the peak-not-mean
 census of the anchor and the pointer prior's injection on the trained
 arm. Expected ~1.5 h of training + ~25 min of reads.
+
+**2026-09-19 15:30 — THE BREATH-SHARPENING ARM'S ACCURACY VERDICT: BELOW
+THE LINEAGE; the accuracy bar NOT MET.** PMS2_241 (the stamped diet;
+ROUTER=2 + XCORR 1.0 + SPAN_ALL + ANCHOR 4.0; 48k at 0.165 s/step) vs
+PM35_scratch_241: paired MASKED wild 0.3155 vs 0.3291 (-0.0137, paired
+SE 0.0101, McNemar z 1.35 AGAINST the arm); open 0.2886 vs 0.2989
+(-0.0102, z 1.02 against); matched 0.3233 vs 0.3384; mint 0.5523 vs
+0.59-0.61 (-5 points; args 0.563 vs 0.613-0.643 — the pointer road
+cost mint's pointers); AT THE ROW 6 masked / 4 open vs 9 / 9 (refused
+105 vs 129: the arm commits more and is wrong more). The fields: wild
+digits 0.376 (the lineage 0.407 on the same seed), args 0.441 (0.446),
+res 0.809 (0.792), ftype 0.843 (0.853). A one-seed read at -1.4 SE; not
+a certified negative at the bar (which needs the twin), but nothing in
+it points up. THE MECHANISM READ (the criticality meter on the arm)
+runs now — the verdict's second half: if wild's breaths now HOLD the
+binding while the slot score fell, the surface roads did their job and
+the decode is what lost; if the slope is still negative, the roads did
+not reach the middle breaths. Numbers asserted through reads.py.
