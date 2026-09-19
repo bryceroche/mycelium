@@ -41445,3 +41445,18 @@ ONE thing (the organs) against CTRL_241. Numbers asserted through
 `reads.py assert` (read_legal_wild / read_open_wild / read_open_mint
 logs). The post-family reads (impulse v2 full, the wave-field check on
 PM35_scratch_241) run now behind it (pc-postfam2).
+
+**2026-09-18 23:00 — THE WAVE-FIELD CHECK on the family body: the
+determination field FIRES on wild.** wave_field_check (the cable check,
+2026-08-31) on PM35_scratch_241, wildhold rows=128, masked two-pass,
+organs operating: fire_snap 0.206, fire_gold 0.234, fire_agree 0.782.
+The 2026-09-05 verdict on the champion (port242) was fire_gold 0.000
+on the wild leg — the wave dead, not data-starved. On the from-scratch
+35%-mint lineage the snapped field fires on a quarter of the wild
+determinations and agrees with the gold-wired field 78% of the time. A
+READ, not a claim (one checkpoint, 128 rows, no bar pinned in advance);
+what it changes: the 09-05 retirement of W_det/det_g was scoped to the
+champion's regime and the regime has changed — a re-read with the
+control (SDv3_241, the warm lineage) is the next zero-GPU read, so the
+lineage and the diet can be told apart. Artifact:
+`.cache/wave_field_PM35_scratch_241.log`.
