@@ -41341,3 +41341,27 @@ the fast road after a perf audit (delegated): the walker with the
 late wheel, or the head's two-pass step with the wheel's biases as
 data buffers (the MASK_GOLD idiom: one JIT graph, dynamic values).
 Rule: an organ enters on the JIT'd road or it does not enter.
+
+**2026-09-18 21:30 — THE MAPREDUCE ALTERNATION (word given; Bryce:
+"the alternation with the symbolic solver makes perf wins harder to
+claim — wonder if the answer looks like mapreduce").** It does: the
+blocker was a host round trip inside the fused forward, not the
+solver's cost. THE SHAPE: map the forward over rows on the GPU
+(JIT'd; every breath's decode at once) -> map the wheel over rows x
+breaths in the hang-proof pool -> reduce the certificates into FIXED
+per-breath buffers -> the JIT'd training forward reads them; no host
+call inside a graph. THREE GRAINS: epoch (the mask-prep pass extended
+from one facts consult to per-breath certificates — costs nothing per
+step; stale by an epoch, ~2 epochs per 12k run), step-one-behind (the
+walker's late wheel, 1.3–1.8 s), pipelined (a background pool a step
+ahead; the pool's throughput is the ceiling). FIRST: the epoch grain —
+THE CERTIFICATE PASS: per row per breath per slot a flag {none,
+spotlight (in the solver's core), melt (conflict), nogood} (int8; ~7 MB
+for the diet), banked beside FACTS/MASKS in the maskprep cache; the
+JIT'd forward rebuilds the biases in-graph from the flags and the live
+attention (the read-time wheel's construction); flags of zero = bit-
+identical (the gate). Delegated to a Sonnet implementer after the perf
+audit's line map lands; gates: the CPU fixture unset 5.2995, the pass
+on tiny64 producing non-zero flags, the pre/post census of the
+injected bias, then the family arm rebuilt on it. The late wheel is
+the measured fallback if epoch-stale certificates do not teach.
