@@ -42247,3 +42247,21 @@ is which) and the relation structure, which no span supervises and
 which the row needs. The mechanism bar for the twins is restated as
 the FINAL MASS (wild >= the lineage's 0.269 + 0.03) beside the accuracy
 bar; the slope is reported, not pinned.
+
+**2026-09-19 22:25 — THE PERF LADDER (the 1024-row slice, B=8, 60
+steps, steady s/step; device time = the whole step, host feed 3-4 ms).**
+lean 0.063 | ALG_ROUTER=2 0.087 (+38%) | + ALG_SPAN_ALL 0.141 (+62% on
+top) | ROUTER=2 + the chart 0.087 (THE CHART IS FREE: a banked bias fed
+by copyin) | the PMS3 config 0.141 (0.165 at diet scale). The two roads
+cost 2.2x for a few percent of the lean step's FLOPs: kernel count and
+unfused per-breath work (four separate channel rotations, matmuls and
+softmaxes per breath; K_B-1 separate BCE graphs and backwards for the
+per-breath span loss), not compute. THE FIX (the router's builder, CPU
+gates): stack the four channels into one rotate / one batched matmul /
+one softmax per breath; the keys computed once per forward; the per-
+breath span outputs stacked into one tensor and ONE BCE against the
+broadcast gold; THE NUMBER GATE — bit-identical printed losses before
+and after on the fixture and on 20 tiny64 steps (reassociation ordered
+to match, or reported to the digit); kernel counts per step before /
+after; then the ladder re-measured on the card. Target: the PMS3 body
+under 0.09 s/step (a 48k run ~70 min).
