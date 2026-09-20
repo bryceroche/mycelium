@@ -42281,7 +42281,7 @@ priority). At diet scale the chassis body should run ~0.115 s/step: a
 PMS4 at seed 242 vs PM35_scratch_242) are ready to fire on the word:
 ~3.5 h for the pair with reads.
 
-**2026-09-20 00:20 — THE ARGUMENT-BINDING CENSUS (`scripts/args_census.py`;
+**2026-09-20 09:49 — THE ARGUMENT-BINDING CENSUS (`scripts/args_census.py`;
 `.cache/args_census.txt`; zero GPU).** Definitions: the introducing
 factor of variable v = the slot whose gold res is v (THE POSITIONAL LAW
 holds on 94.3% of wild argument instances); on wild (no spans) a
@@ -42328,7 +42328,7 @@ BARS to pin before firing: wild args field >= +0.05 paired (n 1042, SE
 ~0.015: 3 SE) and masked wild >= +0.020 vs PMS4_241; rows beside; the
 census (c) re-read on the arm: the same-sentence cell is the target.
 
-**2026-09-20 00:45 — THE SURFACE-GROUNDED STRUCTURAL POINTER (word given
+**2026-09-20 09:59 — THE SURFACE-GROUNDED STRUCTURAL POINTER (word given
 for my choice; Bryce: "a surface grounded structural pointer to replace
 the blind bilinear dot product with explicit surface overlap").** THE
 CHOICE, and why: not ADD but SEVER first — by the residual-seal law
@@ -42357,7 +42357,7 @@ census (0.40) re-read on the arm as the target; rows beside; mint for
 information (the sever may cost mint's pointers — the accepted risk,
 stated: if mint args fall below 0.55 the add form is the next arm).
 
-**2026-09-20 01:10 — THE ARG-MENTION STAMP: the honest reach.** The
+**2026-09-20 10:12 — THE ARG-MENTION STAMP: the honest reach.** The
 stamper (`stamp_arg_mentions.py` -> form_mix_pm35a; the wild fixture
 `wild_admitted_holdout_a.jsonl`, measurement only) reuses the census's
 lists and heuristics verbatim and adds THE SAME-SENTENCE RESTRICTION
@@ -42379,7 +42379,7 @@ introducer). Identity: factors, texts, mentions byte-identical plus
 the two new fields on every factor (`arg_spans` per argument position;
 `cue_spans`).
 
-**2026-09-20 01:50 — THE POINTER DOORS GATED; THE GAIN RULING; the arm's
+**2026-09-20 10:44 — THE POINTER DOORS GATED; THE GAIN RULING; the arm's
 prep running.** The head (commit 9334371e): g_aspan (n, L_FAC, 2, T) /
 g_cspan built from the stamped fields (the gold identity gate: every
 existing array bit-identical; tiny64's new arrays all-zero; 64 arg-
@@ -42410,3 +42410,12 @@ pass. The fallback stated in advance: if PMS5's mint args fall below
 0.55 or wild args do not move, the `add` form on the same diet is the
 next arm (the bilinear kept, the surface added — the seal risk
 accepted for the read).
+
+**2026-09-20 10:55 — THE ARG-STAMPED GOLD BANKED (formpm35a).** The
+rebuild over the hard-linked states: every shared array bit-identical
+to formpm35v's; the new arrays on RELATION slots (ftype 0, n 178,370):
+arg1 mention 65.7%, arg2 56.1%, cue 80.0%. A GAP for later: the head
+fills the mention gold only in its `rel` branch, so the `sel` (7,729)
+and `pct` (364) relation types are stamped in the jsonl and zero in
+the gold (4% of relations; the arm runs without them; registered).
+The fixture gate runs; the arm launches on its pass.
