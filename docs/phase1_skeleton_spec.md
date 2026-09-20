@@ -42176,3 +42176,14 @@ numeral prior + the bus-native router + the per-breath loss on the
 stamped spans is the best slot-level body the campaign has, from
 scratch, and it has not moved the row; the twin is the certification
 read if PMS4 does not beat it.
+
+**2026-09-19 19:40 — PERF WORK (word given): the surface roads' step
+cost.** The lean body trains at 0.061 s/step; PMS2/PMS3/PMS4 at 0.165-
+0.168 — 2.7x, a 48k run 2.2 h instead of 50 min; the builder's CPU
+estimate was ~5%. THE LADDER (pc-perf, queued behind PMS4; the 1024-row
+slice, 60 steps each, ALG_STEP_TIME + the step profiler): lean /
+ROUTER=2 / +SPAN_ALL / +XCORR / the PMS3 config / ROUTER=1 — the steady
+s/step and the sync-after-step split per rung attribute the cost to a
+road; then the fix (the router's builder, CPU gates: bit-identical
+losses at the same seed before/after) and the re-measure. The chassis
+gets its 50-minute run back before the twin fires.
