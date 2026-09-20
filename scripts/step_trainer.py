@@ -103,7 +103,13 @@ REFUSED = ("ALG_SHELF", "ALG_WHIP", "ALG_TOKLOOP", "ALG_WRITEBACK", "ALG_KANNEAL
            "ALG_FREEZE_DUP", "ALG_TRAIN_ONLY", "ALG_POSCH",
            "ALG_OPCOUNT", "ALG_REF", "ALG_DIAL", "ALG_VALATT",
            "ALG_DUPPTR", "ALG_DETWAVE", "ALG_WHEEL_CERT",   # THE CERTIFICATE PASS
-           "ALG_SPAN_ALL", "ALG_ANCHOR")   # THE BREATH-SHARPENING ORGANS (2026-09-19):
+           "ALG_SPAN_ALL", "ALG_ANCHOR",   # THE BREATH-SHARPENING ORGANS (2026-09-19):
+           "ALG_SPAN_ARGS", "ALG_SPAN_OP", "ALG_SPAN_OP_ROAD", "ALG_PTR_SURF")
+           # THE SURFACE-GROUNDED STRUCTURAL POINTER (2026-09-20): same
+           # reason as ALG_SPAN_ALL/ALG_ANCHOR above — the walker's per-
+           # seam heads_of calls never thread aspan_all/ospan_all, and
+           # ALG_PTR_SURF's out["args"] rewrite lives only in the fused
+           # forward()'s emission code the walker does not call.
            # the walker's per-seam heads_of calls never thread a per-breath
            # rbias_all/rbias2_all list, and breath_step's ctx here carries
            # no "anchor_bias0" key (the walker builds its own ctx dict —
