@@ -240,7 +240,7 @@ class _Slot:
 
 _OPT_PORTS = ("slot_mask", "revoke", "tail", "drop", "anchor", "amask",
               "gmod", "pmask", "lsent", "reg", "fact_buf", "mh_mass",
-              "mh_atlas_traj", "xcorr")
+              "mh_atlas_traj", "xcorr", "res_map")
 
 
 def _make_slot(fwd, p, key, B, ts, tk, se, opts, keys):

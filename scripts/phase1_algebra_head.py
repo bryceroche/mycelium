@@ -4222,7 +4222,7 @@ def breath_step(p, state, kb, ctx):
     return state
 
 
-def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, drop=None, anchor=None, amask=None, gmod=None, pmask=None, lsent=None, reg=None, fact_buf=None, mh_mass=None, mh_atlas_traj=None, xcorr=None):
+def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, drop=None, anchor=None, amask=None, gmod=None, pmask=None, lsent=None, reg=None, fact_buf=None, mh_mass=None, mh_atlas_traj=None, xcorr=None, res_map=None):
     from tinygrad import Tensor, dtypes   # audit 2026-09-01: was a
     # SCOPE ACCIDENT (bound only via the sixwave/sync branches — any
     # SIXWAVE-off config killed five organs at step 1)
@@ -4566,43 +4566,54 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
         # THE BUS-NATIVE ROUTER's per-field census tap (road b/c support)
         out["rbias2"] = _s4_last          # (B, 4 or 5, L_FAC, T): arg1/arg2/res/given(/op)
         out["rptr"] = _rptr_last          # (B, 2, L_FAC, K_VARS): arg1/arg2 pointer priors
-        # THE POINTER THROUGH THE SURFACE: slot index == variable index
-        # by construction (K_VARS == L_FAC == 24, the positional law's
-        # identity convention) — exact on pen/positional-gold rows; on a
-        # row whose variable order departs from slot order (e.g. mint's
-        # argsort-by-span convention) this is an approximation, stated
-        # here rather than corrected.
+        # THE POINTER THROUGH THE SURFACE.
         #
-        # ALG_PTR_SURF unset (2026-09-19 form, bit-identical): the
-        # mandatory road — fixed beta_ptr, no learnable gate, ADDED to
-        # the bilinear args logits.
+        # ALG_PTR_SURF unset (2026-09-19 form, bit-identical): the old
+        # mandatory road — fixed beta_ptr, no learnable gate, slot index
+        # treated AS variable index, ADDED to the bilinear args logits.
+        # Kept exactly as-is (PMS5's collapse was in the add/sever forms
+        # only; this road is untouched, gate (a) covers it).
         #
-        # ALG_PTR_SURF=add:<gain> (2026-09-20): the surface overlap
-        # O_a[j,k] (== rptr_last[:,a], the arg-a channel's attention
-        # agreeing with slot k's res attention) enters as gain*log(O_a+
-        # 1e-6) PER ARGUMENT, summed into the SAME multi-hot args
-        # logits (out["args"] has no separate arg1/arg2 axis — decided
-        # to add each argument's log-evidence independently, the way
-        # independent log-odds evidence composes).
-        #
-        # ALG_PTR_SURF=sever:<gain> (2026-09-20): the bilinear logits
-        # are REPLACED by the same surface term. "Replaced" is done by
-        # the zero-multiply idiom (out["args"] * 0.0 + surface_term),
-        # NOT a fresh rebind: W_args/W_query/etc. stay IN the graph so
-        # their gradient from the args loss is a DEFINED zero (never
-        # None — the no-grad fence), while the surface term is the
-        # ONLY live gradient path the args loss has left — into
-        # rptr_last, hence S_arg1/S_arg2/S_res, hence W_rk2/W_rq2/the
-        # bus (verified: gate (c)'s grad-norm census). No presence/
-        # legality masking exists on out["args"] at training time today
-        # (checked _heads_of's "args" head — the decode-time LV_LEGAL
-        # numeral mask is a separate, external road) — nothing to
-        # preserve on either switch.
+        # THE RES-SCATTER FIX (2026-09-20, PMS5 collapsed: wild args
+        # 0.081 vs PMS4 0.444, mint args 0.036 vs 0.649 — every other
+        # field intact). O_a[j,k] = rptr_last[:,a] indexes SLOTS k, but
+        # the args gold indexes VARIABLES; slot k == variable k only on
+        # POSITIONAL rows, and the diet is 35% mint (first-mention
+        # numbering) where it does not hold — training the add/sever
+        # forms directly against O_a taught the channels to point at the
+        # wrong slots on mint rows, fighting their own span losses.
+        # Fix: scatter through the res head's own slot->variable map.
+        # R[k,v] = presence(k) * 1[res[k]==v] (presence folded into R —
+        # mathematically identical to masking O_a[j,k] by presence(k)
+        # separately, since a per-k scalar commutes with the sum over
+        # k). V_a[j,v] = sum_k O_a[j,k] * R[k,v], a
+        # (B,L_FAC,L_FAC) @ (B,L_FAC,K_VARS) matmul.
+        #   - res_map given (TRAINING, do_train feeds it): R is built
+        #     from GOLD res + GOLD presence — teacher-forcing the
+        #     MAPPING itself (the target SPACE the args-pointer surface
+        #     term scatters through), not the args gold being trained
+        #     (out["args"] is still supervised against g["args"] exactly
+        #     as before).
+        #   - res_map is None (READ time: loop_val / chain_acc / any
+        #     forward call with no gold): R is built from the head's OWN
+        #     res prediction (argmax, one-hot by max-comparison) and its
+        #     own presence prediction (sigmoid > 0.5), DETACHED — a
+        #     structural READ port, not a differentiable path (the
+        #     scatter routes gradient correctly; it does not exist to
+        #     teach res via the args loss).
         if ALG_PTR_SURF:
+            if res_map is not None:
+                _R_scat = res_map
+            else:
+                _res_oh5 = (out["res"] == out["res"].max(-1, keepdim=True)).float()
+                _pres_oh5 = (out["pres"].sigmoid() > 0.5).float().unsqueeze(-1)
+                _R_scat = (_res_oh5 * _pres_oh5).detach()
+            _V1_5 = _rptr_last[:, 0] @ _R_scat   # (B,L_FAC,L_FAC)@(B,L_FAC,K_VARS) -> (B,L_FAC,K_VARS)
+            _V2_5 = _rptr_last[:, 1] @ _R_scat
             _psm5, _, _psg5 = ALG_PTR_SURF.partition(":")
             _ps_gain5 = float(_psg5)
-            _o1_5 = (_rptr_last[:, 0] + 1e-6).log()
-            _o2_5 = (_rptr_last[:, 1] + 1e-6).log()
+            _o1_5 = (_V1_5 + 1e-6).log()
+            _o2_5 = (_V2_5 + 1e-6).log()
             _surf5 = _ps_gain5 * (_o1_5 + _o2_5)
             if _psm5 == "add":
                 out["args"] = out["args"] + _surf5
@@ -5772,6 +5783,20 @@ def do_train(steps, lr, batch, seed):
         print(f"[xcorr] array ready {XCORR.shape} {XCORR.dtype} in "
               f"{time.time() - _xc_t0:.1f}s (mean|Xb| on real tokens "
               f"{_xc_mean:.4f})", flush=True)
+    RESMAP = None   # THE RES-SCATTER FIX (2026-09-20, PMS5's collapse):
+                    # R[k,v] = presence(k) * 1[gold res[k]==v] — teacher-
+                    # forcing the SLOT->VARIABLE map (the target space
+                    # the args-pointer surface term must scatter through,
+                    # not the args gold itself) into forward()'s res_map
+                    # port. Precomputed once, host-side, same idiom as
+                    # the ALG_MASK_GOLD gold-wiring mask just above (put
+                    # along axis + presence fold).
+    if ALG_PTR_SURF:
+        _rm_R = gold["res"].astype(np.int64)
+        _rm_P = gold["presence"]
+        RESMAP = np.zeros((n, L_FAC, K_VARS), np.float32)
+        np.put_along_axis(RESMAP, _rm_R[:, :, None], 1.0, axis=2)
+        RESMAP *= _rm_P[:, :, None]
     ATLAS_TAB = ATLAS_IDX = None
     assert not int(os.environ.get("ALG_MH_XPRIOR", "0")) \
         or int(os.environ.get("ALG_MH_ATLAS", "0")), \
@@ -6144,6 +6169,8 @@ def do_train(steps, lr, batch, seed):
         if MASSB is not None else None   # mask-head mass port (b_fact idiom)
     b_xcorr = fix(np.zeros((batch, L_FAC, T_ALG), np.float16), dtypes.half) \
         if ALG_XCORR_ON else None   # THE CORRESPONDENCE CHART's feed (b_fact idiom)
+    b_resmap = fix(np.zeros((batch, L_FAC, K_VARS), np.float32), dtypes.float) \
+        if ALG_PTR_SURF else None   # THE RES-SCATTER FIX's feed (b_fact idiom)
     b_mha = fix(np.zeros((batch, ATLAS_TAB.shape[1], H_W), np.float32),
                 dtypes.float) if ATLAS_TAB is not None else None
     b_tail = fix(np.zeros((batch, T_ALG), np.float32), dtypes.float) if CLOCK else None
@@ -6292,13 +6319,13 @@ def do_train(steps, lr, batch, seed):
             # commits, self-labeled from gold like the commit loss,
             # DETACHED); the second trains under live release dynamics.
             o0 = forward(p, s_tr, b_tk, b_se, slot_mask=b_mask, tail=b_tail,
-                         reg=b_reg, xcorr=b_xcorr)
+                         reg=b_reg, xcorr=b_xcorr, res_map=b_resmap)
             ok = ((o0["ftype"].argmax(-1) == bg["ftype"]).float()
                   * (o0["res"].argmax(-1) == bg["res"]).float())
             rv = (bg["presence"] * (1.0 - ok)).detach()
             o = forward(p, s_tr, b_tk, b_se, slot_mask=b_mask, revoke=rv,
                         tail=b_tail, reg=b_reg, fact_buf=b_fact,
-                        mh_mass=b_mhm, mh_atlas_traj=b_mha, xcorr=b_xcorr)
+                        mh_mass=b_mhm, mh_atlas_traj=b_mha, xcorr=b_xcorr, res_map=b_resmap)
         elif int(os.environ.get("NAZ_TRAIN", "0")):
             # NAZARÉ TRAINING (door #55): the organ-2 two-forward pattern —
             # pre-pass yields the intra-pass event field IN-GRAPH (detached);
@@ -6307,7 +6334,7 @@ def do_train(steps, lr, batch, seed):
             # read-time dup-aware argpair): argmax-change OR dup-flip on
             # rel-typed present slots, breath-0 vs final.
             o0 = forward(p, s_tr, b_tk, b_se, slot_mask=b_mask, tail=b_tail,
-                        xcorr=b_xcorr)
+                        xcorr=b_xcorr, res_map=b_resmap)
             _b0 = o0["breaths"][0]
             _relmask = (o0["pres"].squeeze(-1) > 0).float() \
                 * (o0["ftype"].argmax(-1) == 0).float()
@@ -6318,13 +6345,13 @@ def do_train(steps, lr, batch, seed):
             _gm = (_bgauth + (1.0 - _bgauth) * _ev).unsqueeze(-1).detach()
             o = forward(p, s_tr, b_tk, b_se, slot_mask=b_mask, tail=b_tail,
                         gmod=_gm, fact_buf=b_fact,
-                        mh_mass=b_mhm, mh_atlas_traj=b_mha, xcorr=b_xcorr)
+                        mh_mass=b_mhm, mh_atlas_traj=b_mha, xcorr=b_xcorr, res_map=b_resmap)
         else:
             _bd = os.environ.get("BREATH_DROPOUT")
             o = forward(p, s_tr, b_tk, b_se, slot_mask=b_mask, tail=b_tail,
                         drop=(b_drop if _bd else None), lsent=b_ls, reg=b_reg,
                         fact_buf=b_fact,
-                        mh_mass=b_mhm, mh_atlas_traj=b_mha, xcorr=b_xcorr)
+                        mh_mass=b_mhm, mh_atlas_traj=b_mha, xcorr=b_xcorr, res_map=b_resmap)
         l = loss_fn(o, bg)
         if ALG_CONSUME and "_early" in o:   # support-gated consume-once:
             # any breath claims, each fact pays once; eligibility = the DAG
@@ -6994,6 +7021,8 @@ def do_train(steps, lr, batch, seed):
             _fd(b_mhm, MASSB[idx][:, :, None], _rl)
         if b_xcorr is not None:
             _fd(b_xcorr, XCORR[idx], _rl)   # THE CORRESPONDENCE CHART's feed: this batch's precomputed bias
+        if b_resmap is not None:
+            _fd(b_resmap, RESMAP[idx], _rl)   # THE RES-SCATTER FIX's feed: this batch's gold slot->variable map
         if b_mha is not None:
             _fd(b_mha, ATLAS_TAB[ATLAS_IDX[idx]], _rl)
         if b_tail is not None:
