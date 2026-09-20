@@ -42090,7 +42090,7 @@ channels + the per-breath loss + the stamped spans alone). Each 48k,
 peak-not-mean census on the trained arm re-runs as a unit (the CPU
 census was killed by the box's memory pressure beside the reads).
 
-**2026-09-19 16:10 — THE CENSUS ON THE TRAINED ARM (pc-census, one
+**2026-09-19 16:40 — THE CENSUS ON THE TRAINED ARM (pc-census, one
 un-JIT'd forward, 4 fixture rows).** The router's token bias |S_res +
 S_given| x r_gain: 18.6 / 24.3 / 24.5 / 25.4 / 25.3 / 24.2 at breaths
 1-6 against raw bank scores 11.3 / 12.5 / 11.6 / 10.3 / 10.7 / 11.0 —
@@ -42107,7 +42107,7 @@ value collapse's author through its clause table), the per-breath
 span loss (live: the meter), the stamped spans (the fuel); the anchor
 and the pointer prior (invitations; struck from the next arms).
 
-**2026-09-19 16:30 — THE CHASSIS ABLATIONS FIRED (word given; Bryce:
+**2026-09-19 17:05 — THE CHASSIS ABLATIONS FIRED (word given; Bryce:
 "build the chassis now and add bells and whistles later").** THE CHASSIS
 = the lean body that holds the wild record (the 35% lineage) + the
 surface roads that bind (the bus-native router with the per-breath span
