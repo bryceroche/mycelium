@@ -42470,3 +42470,33 @@ each read vs PMS4_241 and the lineage; ~4 h with reads. The bars as
 pinned (args +0.05 paired vs PMS4; masked +0.020; the same-sentence
 cell). The failed PMS5 stands in the record (1 row; masked -0.106 at
 z 11.7 vs PMS4).
+
+**2026-09-20 15:40 — PMS5b (the scatter-fixed sever) CONFIRMS A DEAD
+POINTER, AND THE CENSUS NAMES THE DESIGN ERROR (mine).** PMS5b_241: wild
+args 0.102, mint args 0.003; losses IDENTICAL to PMS5's at steps 0 /
+24k / 48k (56.9140 / 11.8315 / 9.4155) — a flat overlap scattered
+through any map gives the same logits, so identical losses = the
+pointer never moved in either run; PMS5's 0.081 is what a flat top-2
+by index decodes to. THE CENSUS ON THE TRAINED PMS5 CHECKPOINT: the
+res channel's bias 2.7x the bank's raw scores (strongly trained), yet
+O_arg1 / O_arg2 row entropy 2.98 / 2.99 of 3.18 — FLAT after 48k
+steps. WHY: O[j,k] = sum_t p_a[j,t] p_res[k,t] multiplies two attention
+distributions over TOKEN POSITIONS; a re-mention never occupies the
+same positions as the introduction ("Tom" in sentence 3 vs "Tom" in
+sentence 1), so the product is ~0 for every k, log(0 + 1e-6) is a
+constant, and the pointer is structurally blind — not a vanishing
+gradient, an empty intersection by construction. The overlap belongs
+in STATE space: q_a[j] = sum_t p_a[j,t] waist_t (the argument's
+attended token state), c[k] = sum_t p_res[k,t] waist_t (slot k's
+attended clause state), logit[j,k] = (q_a[j] W) . c[k] / sqrt(d) — the
+trunk represents the two mentions alike, so the match is the
+coreference. THE CHAIN STOPPED before PMS5c (the add form would have
+been PMS4 plus a constant). The gate that can see learning, pinned for
+the rebuild: WARM from PMS4_241 (trained res channels), fixed LR 1e-4,
+500 steps at B=4 on the mixed fixture, sever — the args proxy must RISE
+from chance; the position-overlap form on the same gate as the control
+(expected flat). Three defects in one road in one day — the slot->
+variable map, the position overlap, and the uninformative 300-step
+gate — each caught by a census after a 2-hour arm; the lesson: a
+structural road's gradient and its target space are gated on a WARM
+body before the arm, never after.
