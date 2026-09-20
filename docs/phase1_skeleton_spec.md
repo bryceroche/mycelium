@@ -42106,3 +42106,18 @@ dominant), the chart (live at breath 0, load-bearing, and the breath-0
 value collapse's author through its clause table), the per-breath
 span loss (live: the meter), the stamped spans (the fuel); the anchor
 and the pointer prior (invitations; struck from the next arms).
+
+**2026-09-19 16:30 — THE CHASSIS ABLATIONS FIRED (word given; Bryce:
+"build the chassis now and add bells and whistles later").** THE CHASSIS
+= the lean body that holds the wild record (the 35% lineage) + the
+surface roads that bind (the bus-native router with the per-breath span
+loss on the stamped diet); the bells and whistles (atlas, wheel /
+alternation, anchor, pointer prior, KA / WI) go on the shelf with their
+gates intact. pc-pms34 (`.cache/pms34_chain.sh`), each 48k from scratch
+on form_mix_pm35v, seed 241, B=8: PMS3_241 = ROUTER=2 + SPAN_ALL + the
+chart's VALUE table only (ALG_XCORR=0.0 ALG_XCORR_V=1.0: the numeral
+prior without the clause prior); PMS4_241 = ROUTER=2 + SPAN_ALL, no
+chart. Anchor and pointer prior off. Reads: the family set; paired
+masked wild vs PM35_scratch_241 (the accuracy bar, +0.020 z 2) and vs
+PMS2_241 (the chart's attribution); rows beside; the criticality meter
+on both (the mechanism bar as pinned); mint for information. ~3.5 h.
