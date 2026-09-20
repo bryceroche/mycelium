@@ -42265,3 +42265,18 @@ and after on the fixture and on 20 tiny64 steps (reassociation ordered
 to match, or reported to the digit); kernel counts per step before /
 after; then the ladder re-measured on the card. Target: the PMS3 body
 under 0.09 s/step (a 48k run ~70 min).
+
+**2026-09-19 23:10 — THE PERF FIX ON THE CARD: the chassis body 0.141 ->
+0.100 s/step (-29%), losses bit-identical.** The ladder re-run on the
+fused code (the slice, B=8, 60 steps): ROUTER=2 0.087 -> 0.084; ROUTER=2
++ SPAN_ALL 0.141 -> 0.099 (the per-breath loss's cost +0.054 -> +0.015:
+one elementwise BCE over the stacked breaths instead of six graphs);
+the PMS3 config 0.141 -> 0.100; every printed loss identical to the
+original code (55.0674 / 55.1008 / 56.6409). What remains: ROUTER=2's
+own +0.021 over lean (the batched (B,4,L_TOT,512) rotate + matmul per
+breath) and the loss's +0.016 — a second pass, registered (the keys
+and the rotate could ride the bank's existing projections; low
+priority). At diet scale the chassis body should run ~0.115 s/step: a
+48k arm ~95 min instead of 2.2 h. Committed 1e3496a3. The twins (PMS3 /
+PMS4 at seed 242 vs PM35_scratch_242) are ready to fire on the word:
+~3.5 h for the pair with reads.
