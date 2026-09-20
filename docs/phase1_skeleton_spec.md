@@ -42327,3 +42327,32 @@ TRAINED arm; the inert 2.0 of the surface arm was a warm-head census)
 BARS to pin before firing: wild args field >= +0.05 paired (n 1042, SE
 ~0.015: 3 SE) and masked wild >= +0.020 vs PMS4_241; rows beside; the
 census (c) re-read on the arm: the same-sentence cell is the target.
+
+**2026-09-20 00:45 — THE SURFACE-GROUNDED STRUCTURAL POINTER (word given
+for my choice; Bryce: "a surface grounded structural pointer to replace
+the blind bilinear dot product with explicit surface overlap").** THE
+CHOICE, and why: not ADD but SEVER first — by the residual-seal law
+(2026-09-10) an added surface road beside a bilinear pointer that
+already carries mint (args 0.65-0.68) is voted down on wild, the seal
+teaching survival; so the args logits ARE the overlap (slot j's
+argument channel attention against slot k's res-channel attention,
+entered as gain x log O) and the bilinear is severed (detached), one
+road to the pointer through the text; the arg channels are trained by
+the args loss through the overlap AND by their own span loss on the
+stamped mentions. The additive form (`add:<gain>`) is built as the
+fallback if the sever fails to bootstrap from scratch. THE BUILDS (two
+Sonnet agents, CPU gates): the arg-mention stamper (`stamp_arg_mentions
+.py` -> form_mix_pm35a: per relation, per argument position, the
+introducing clause's content words recurring in the relation's clause
+(same-sentence: excluding the introducing value phrase); the pronoun
+where nothing recurs; cue spans) and the head doors (g_aspan / g_cspan
+in the gold; ALG_SPAN_ARGS; the operator channel on theta_op with
+ALG_SPAN_OP; ALG_PTR_SURF=add|sever). THE ARM (`.cache/pms5_chain.sh`,
+fires when both gate): PMS5_241 = PMS4's body (router + per-breath span
+loss, NO chart — one variable against PMS4) on form_mix_pm35a + SPAN_ARGS
++ SPAN_OP + sever:4.0; 48k, seed 241. BARS, PINNED: wild ARGS field >=
++0.05 paired vs PMS4_241 (n 1042, SE ~0.015: 3 SE); masked wild >=
++0.020 vs PMS4_241 (z 2); the same-sentence anchored cell of the args
+census (0.40) re-read on the arm as the target; rows beside; mint for
+information (the sever may cost mint's pointers — the accepted risk,
+stated: if mint args fall below 0.55 the add form is the next arm).
