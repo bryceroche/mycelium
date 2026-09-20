@@ -42378,3 +42378,35 @@ checks the census (91.9% vs 91.6% anchored + pronoun excluding no-
 introducer). Identity: factors, texts, mentions byte-identical plus
 the two new fields on every factor (`arg_spans` per argument position;
 `cue_spans`).
+
+**2026-09-20 01:50 — THE POINTER DOORS GATED; THE GAIN RULING; the arm's
+prep running.** The head (commit 9334371e): g_aspan (n, L_FAC, 2, T) /
+g_cspan built from the stamped fields (the gold identity gate: every
+existing array bit-identical; tiny64's new arrays all-zero; 64 arg-
+stamped prose rows decode back to the right tokens — "bulbs" / "per");
+ALG_SPAN_ARGS (the arg channels' span loss, weighted by non-empty
+mentions); the operator channel on theta_op (ALG_SPAN_OP; its road
+ALG_SPAN_OP_ROAD off); ALG_PTR_SURF: `add:<g>` adds g x (log O_arg1 +
+log O_arg2) to the bilinear args logits, `sever:<g>` REPLACES them
+(the bilinear zero-multiplied: a defined-zero gradient) — O_a[j,k] =
+<softmax_t S_a[j], softmax_t S_res[k]>, the head's own attentions, no
+gold in the graph. THE REWIRE PROVEN: the W_rk2 grad norm from the args
+loss alone 0.000 (bilinear) -> 15.26 (sever) — the pointer's only road
+is the text. THE WARM-FIXTURE LIVE GATE MISSED, honestly: on tiny64
+(balV242 warm, 150 steps, no arg spans) the sever collapses args to
+chance (an untrained router replacing a trained bilinear) and add
+holds the bilinear's 92% without gaining; O is FLAT at init (row
+entropy 3.0-3.1 of 3.18). That is not the arm's regime: from scratch
+the bilinear and the router start together, and the mentions supervise
+the channels on 56% of prose / 58% of mint arguments. THE GAIN RULING:
+at gain 4 the surface term (39) is twice a TRAINED bilinear's scale
+(19); at gain 2 it is at parity — PMS5 enters at sever:2.0 (a peaked
+O gives ~11 logits of separation; lock-in bounded). THE PREP UNIT
+(pc-pms5prep): the gold rebuilt over the hard-linked states for
+formpm35a -> the identity check (every shared array equal to
+formpm35v's; the coverage printed) -> the merged head's fixture gate
+(unset 5.2995 / the config runs) -> pc-pms5 launched automatically on
+pass. The fallback stated in advance: if PMS5's mint args fall below
+0.55 or wild args do not move, the `add` form on the same diet is the
+next arm (the bilinear kept, the surface added — the seal risk
+accepted for the read).
