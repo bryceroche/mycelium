@@ -42500,3 +42500,23 @@ variable map, the position overlap, and the uninformative 300-step
 gate — each caught by a census after a 2-hour arm; the lesson: a
 structural road's gradient and its target space are gated on a WARM
 body before the arm, never after.
+
+**2026-09-20 17:00 — THE WARM GATE SEPARATES THE FORMS; the state pointer
+fires severed.** From PMS4_241 (trained res/given channels), fixed LR
+1e-4, 500 steps at B=4 on the 44-relation mixed fixture (32 prose + 32
+mint, custody-filtered), the args top-2 proxy every 50 steps: the
+POSITION overlap severed (the control) 0.045 flat, BCE 1.68 flat — dead,
+as diagnosed; the STATE pointer severed 0.09 -> 0.18 rising, BCE 0.79
+-> 0.74 falling — the road is alive, building the pointer from nothing
+through the text alone; the STATE pointer ADDED to the warm bilinear
+~0.50 throughout (0.48, 0.55, 0.52, 0.52, 0.36, 0.50) = the bilinear's
+own level on this fixture, the surface adding nothing beside a pointer
+that already carries — the residual-seal law's prediction, observed.
+THE CHOICE: the arm fires SEVERED (PMS5d_241: state:sever:2.0 on
+form_mix_pm35a, 48k from scratch — both sides start at zero there, so
+the warm gate's slow start is not the regime; the add form would be
+PMS4 with a voted-down road). Committed (the state pointer); the
+fixture gate runs in the prep unit; the chain launches on its pass.
+Bars as pinned (args +0.05 paired vs PMS4; masked +0.020; the same-
+sentence cell; mint's pointers watched: if mint args fall below 0.55
+the sever cost mint, and the read says whether wild paid for it).
