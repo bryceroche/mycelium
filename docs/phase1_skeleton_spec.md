@@ -42447,3 +42447,26 @@ registered arm with its defect removed); the add form remains the
 fallback. A lesson for the ledger: a road that enters as structure
 must be exact on EVERY register in the diet, or the registers fight
 through the shared organ.
+
+**2026-09-20 13:30 — THE RES-SCATTER FIX GATED; both pointer forms fire
+in one chain.** The fix (commit 02aac357): a `res_map` port on
+forward() — gold res one-hot x presence at training (a fixed buffer
+fed by copyin; the mapping's target space, not the args gold), the
+head's own res argmax x (pres > 0.5) at read; V_a = O_a @ R; add /
+sever on log V. Gates: unset and PMS3 bit-identical; the identity
+under R = I to 2e-6 (tiny64 is only 28% positional, so the check used
+a synthetic identity map); the mint mapping check on 64 real mint rows
+(11% positional): R's column for each gold argument is the introducing
+slot — correct. THE LIVE GATE IS UNINFORMATIVE, stated: 300 steps from
+random init at B=4 on a 32 prose + 32 mint fixture (custody-filtered)
+left the args proxy at "two present slots at random" (0.20-0.23) under
+BOTH sever and add — and every other head is near chance there too
+(the lineage needs ~24k steps to reach parity; a 300-step cosine spends
+most of its steps near 3e-6). The 48k arm is the only test. TO SPEND
+THE CARD ONCE: pc-pms5b runs PMS5b_241 (sever:2.0, the sharp form) then
+PMS5c_241 (add:2.0, the safe form: the bilinear kept, the surface added
+— the seal risk accepted for the read) back to back on form_mix_pm35a,
+each read vs PMS4_241 and the lineage; ~4 h with reads. The bars as
+pinned (args +0.05 paired vs PMS4; masked +0.020; the same-sentence
+cell). The failed PMS5 stands in the record (1 row; masked -0.106 at
+z 11.7 vs PMS4).
