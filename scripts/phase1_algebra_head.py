@@ -3301,51 +3301,89 @@ def breath_step(p, state, kb, ctx):
                 # UNBIND = multiply by the conjugate phasor e^{-i*theta}:
                 # (cos theta, -sin theta) fed to the head's own _rot2.
                 _R2C[_rn2] = (_Tr2(_npr2.cos(_th2)), _Tr2(-_npr2.sin(_th2)))
+            # THE PERF PASS (2026-09-19, THE SURFACE ROADS COST 2.2x):
+            # pre-stack the THREE FIXED role codes into one (3, P) cos/
+            # sin pair, ONCE per process — the codebook never changes.
+            # "given"'s theta is a TRAINABLE weight and joins per
+            # forward-call below (state-cached), never baked in here.
+            _R2C["stack3"] = (
+                _Tr2.stack(_R2C["arg1"][0], _R2C["arg2"][0], _R2C["res"][0], dim=0),
+                _Tr2.stack(_R2C["arg1"][1], _R2C["arg2"][1], _R2C["res"][1], dim=0))
         _cur_g7 = (_clock_frame(cur, kb, -1, _rot2)
                    if ALG_CLOCK_CANON and ALG_POLAR else cur)   # canonical
                                                     # frame, same as the garage's deposit
         _bus7 = ((_cur_g7 @ p["W_bind1"] + p["W_bind1_b"]).gelu()
                  @ p["W_bind2"])         # (B, L_TOT, bind_d): the slot's OWN bus vector, LIVE
-        _thg_c7, _thg_s7 = p["theta_given"].cos(), (-p["theta_given"]).sin()
-        _fields7 = {
-            "arg1": _rot2(_bus7, *_R2C["arg1"]),
-            "arg2": _rot2(_bus7, *_R2C["arg2"]),
-            "res":  _rot2(_bus7, *_R2C["res"]),
-            "given": _rot2(_bus7, _thg_c7, _thg_s7),
-        }
-        _key7 = waist @ p["W_rk2"]      # (B, T, bind_d): the token key, into the same phase space
         _P7 = p["W_rk2"].shape[-1] // 2
-        _Ss7 = {}
-        for _fn7, _qv7 in _fields7.items():
-            # W_rq2: a PER-PLANE complex scalar (keeps the phase
-            # structure — see the params build); _rot2 is the general
-            # complex-multiply, not just unit rotation, so this is the
-            # same op reused for the learned scale.
-            _qv7s = _rot2(_qv7, p["W_rq2"][:, 0], p["W_rq2"][:, 1])
-            # "real inner product of interleaved pairs" == the plain R^2P
-            # dot product (Re(z*conj(w)) is exactly that, by the
-            # interleaved-real layout law in mycelium/complex_tensor.py)
-            _Ss7[_fn7] = (_qv7s @ _key7.transpose(-2, -1)) / math.sqrt(_P7)
-        _S4 = Tensor.stack(_Ss7["arg1"], _Ss7["arg2"], _Ss7["res"],
-                           _Ss7["given"], dim=1)      # (B, 4, L_TOT, T)
-        _rb7 = _Ss7["res"] + _Ss7["given"]   # ROAD (a): reuse the rbias
-                                             # plumbing verbatim (mandatory-road law: fixed r_gain, no extra gate)
+        # THE STACKED ROLE CODES (4, P) — arg1/arg2/res/given — cached in
+        # `state` (constant across breaths within ONE forward call:
+        # theta_given is a trainable weight, so this is rebuilt on the
+        # FIRST breath of every forward call, never baked into the
+        # process-level _R2C cache above).
+        _r2rc = state.get("_r2_role_cs")
+        if _r2rc is None:
+            _thg_c7, _thg_s7 = p["theta_given"].cos(), (-p["theta_given"]).sin()
+            _c4 = Tensor.cat(_R2C["stack3"][0], _thg_c7.unsqueeze(0), dim=0)   # (4, P)
+            _s4 = Tensor.cat(_R2C["stack3"][1], _thg_s7.unsqueeze(0), dim=0)
+            _r2rc = (_c4, _s4)
+            state["_r2_role_cs"] = _r2rc
+        _c4, _s4 = _r2rc
+        # THE STACKED KEY (B, 1, bind_d, T) — cached in `state`, keyed by
+        # the WAIST OBJECT's identity: under ALG_TOKLOOP/WRITEBACK off,
+        # ctx["waist"] is the SAME python object every breath (never
+        # reassigned), so this recomputes exactly once per distinct
+        # waist rather than once per breath.
+        if state.get("_r2_waist_id") != id(waist):
+            state["_r2_key"] = (waist @ p["W_rk2"]).transpose(-2, -1).unsqueeze(1)
+            state["_r2_waist_id"] = id(waist)
+        _key7t = state["_r2_key"]      # (B, 1, bind_d, T)
+        # ONE stacked unbind rotate, broadcast over the 4-field axis —
+        # the SAME per-element arithmetic four separate _rot2 calls would
+        # do (each output element reads only its own x/y/c/s: no
+        # reduction, so no reassociation is possible; verified bit-
+        # identical against the sequential form on a standalone check).
+        _bxy = _bus7.reshape(B, L_TOT, _P7, 2)
+        _bx = _bxy[..., 0].unsqueeze(1)        # (B, 1, L_TOT, P)
+        _by = _bxy[..., 1].unsqueeze(1)
+        _c4r = _c4.reshape(1, 4, 1, _P7)
+        _s4r = _s4.reshape(1, 4, 1, _P7)
+        _qx = _bx * _c4r - _by * _s4r          # (B, 4, L_TOT, P): unbind
+        _qy = _bx * _s4r + _by * _c4r
+        # W_rq2: the SAME per-plane complex scalar for every field (the
+        # original loop applied the identical p["W_rq2"] each iteration)
+        # — one more broadcast rotate, no per-field stacking needed.
+        _wa = p["W_rq2"][:, 0].reshape(1, 1, 1, _P7)
+        _wb = p["W_rq2"][:, 1].reshape(1, 1, 1, _P7)
+        _qx2 = _qx * _wa - _qy * _wb
+        _qy2 = _qx * _wb + _qy * _wa
+        _Q4 = Tensor.stack(_qx2, _qy2, dim=-1).reshape(B, 4, L_TOT, 2 * _P7)
+        # ONE batched matmul against the key (broadcast over the 4-field
+        # axis) instead of four — "real inner product of interleaved
+        # pairs" == the plain R^2P dot product (Re(z*conj(w)) is exactly
+        # that, by the interleaved-real layout law in
+        # mycelium/complex_tensor.py); verified bit-identical against
+        # four separate matmuls on a standalone check.
+        _S4 = (_Q4 @ _key7t) / math.sqrt(_P7)   # (B, 4, L_TOT, T): arg1/arg2/res/given
+        _rb7 = _S4[:, 2] + _S4[:, 3]   # ROAD (a): reuse the rbias
+                                       # plumbing verbatim (mandatory-road law: fixed r_gain, no extra gate)
         _rb_last = _fed_core(_rb7)
         _s4_last = _fed_core4(_S4)
         if ALG_SPAN_ALL:
             # THE PER-BREATH SPAN LOSS (2026-09-19): keep every breath's
-            # v2 4-channel S, threaded like fat_all — breaths 1..K_B-1
-            # only (breath 0's grounding read has no router output).
-            state.setdefault("rbias2_all", []).append(_s4_last)
+            # res/given channels only (the two the loss reads), threaded
+            # like fat_all — breaths 1..K_B-1 only (breath 0's grounding
+            # read has no router output). The PERF PASS (2026-09-19):
+            # storing 2 channels instead of 4 halves the stack this
+            # becomes at emission.
+            state.setdefault("rbias2_all", []).append(_s4_last[:, 2:4])
         # THE POINTER PRIOR THROUGH THE SURFACE (road c): slot j's arg-a
         # mention agreeing with slot k's res mention, over the REAL
-        # tokens only (padding excluded from both softmaxes)
-        _tm7 = tokmask.reshape(B, 1, -1)
-        def _tsoft7(s7):
-            return (s7.clip(-1e4, 1e4) + (1.0 - _tm7) * -1e4).softmax(-1)
-        _att_a1_7 = _tsoft7(_fed_core(_Ss7["arg1"]))
-        _att_a2_7 = _tsoft7(_fed_core(_Ss7["arg2"]))
-        _att_r7_7 = _tsoft7(_fed_core(_Ss7["res"]))
+        # tokens only (padding excluded) — ONE softmax over the stacked
+        # arg1/arg2/res channels instead of three separate calls.
+        _tm7b = tokmask.reshape(B, 1, 1, -1)
+        _S3 = _fed_core4(_S4[:, 0:3])          # (B, 3, L_FAC, T): arg1, arg2, res
+        _att3 = (_S3.clip(-1e4, 1e4) + (1.0 - _tm7b) * -1e4).softmax(-1)
+        _att_a1_7, _att_a2_7, _att_r7_7 = _att3[:, 0], _att3[:, 1], _att3[:, 2]
         # slot k -> variable index: IDENTITY (K_VARS == L_FAC == 24, the
         # positional law's convention on pen rows — the honest limit of
         # this mapping is stated in the report, not hidden here)
@@ -4445,9 +4483,18 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
     if _rb_last is not None:
         out["rbias"] = _rb_last
     if _rbias_all:
-        out["rbias_all"] = _rbias_all     # THE PER-BREATH SPAN LOSS (v3): list of (B, L_FAC, T), breaths 1..K_B-1
+        # THE PERF PASS (2026-09-19, THE SURFACE ROADS COST 2.2x): ONE
+        # Tensor.stack here (not a python list riding into the loss) —
+        # (B, K_B-1, L_FAC, T), breaths 1..K_B-1. Stacking is a pure
+        # movement op (no arithmetic), so this cannot change any value;
+        # it only lets the loss run ONE elementwise BCE kernel instead
+        # of K_B-1 separate ones (verified bit-identical: see the loss).
+        out["rbias_all"] = Tensor.stack(*_rbias_all, dim=1)
     if _rbias2_all:
-        out["rbias2_all"] = _rbias2_all   # THE PER-BREATH SPAN LOSS (v2): list of (B, 4, L_FAC, T), breaths 1..K_B-1
+        # Per breath, only the res/given channels are kept (channels
+        # 2/3 of the 4-way S) — half the width of the full (B,4,L_FAC,T)
+        # a list of them used to carry — stacked once: (B, K_B-1, 2, L_FAC, T).
+        out["rbias2_all"] = Tensor.stack(*_rbias2_all, dim=1)
     if _s4_last is not None:
         # THE BUS-NATIVE ROUTER's per-field census tap (road b/c support)
         out["rbias2"] = _s4_last          # (B, 4, L_FAC, T): arg1/arg2/res/given
@@ -4669,10 +4716,24 @@ def _loss_single(o, g, blur=0.0, sw=None):
         # the SAME loss over every breath that produced a router bias
         # (breaths 1..K_B-1; breath 0's grounding read has none), each
         # weighted equally.
-        if ALG_SPAN_ALL and o.get("rbias_all"):
-            _rb_terms = o["rbias_all"]
-            _rb_loss = sum(bce(_rb, g["fspan"]).mean(-1)
-                           for _rb in _rb_terms) / len(_rb_terms)
+        # THE PERF PASS (2026-09-19, THE SURFACE ROADS COST 2.2x): the
+        # ELEMENTWISE bce formula runs ONCE, batched over every breath
+        # (one kernel graph instead of K_B-1 small ones — the actual
+        # cost, per the card's cProfile: several chained elementwise ops
+        # per breath). The per-breath `.mean(-1)` REDUCTION is kept
+        # SLICED, one call per breath, deliberately NOT fused into the
+        # batched kernel: fusing the T-axis reduction into the bigger
+        # tensor's kernel measurably reorders the sum (a verified 1-ULP
+        # diff on a synthetic check) — slicing after the elementwise
+        # kernel reproduces the ORIGINAL per-breath reduction exactly,
+        # so the cross-breath python sum()/n stays bit-identical.
+        _rbias_all_t = o.get("rbias_all")
+        if ALG_SPAN_ALL and _rbias_all_t is not None:
+            _KB1v1 = _rbias_all_t.shape[1]
+            _fsp_b1 = g["fspan"].unsqueeze(1)          # (B, 1, L_FAC, T), broadcasts
+            _bce_all_v1 = bce(_rbias_all_t, _fsp_b1)   # (B, KB1, L_FAC, T): ONE kernel
+            _rb_loss = sum(_bce_all_v1[:, _i1].mean(-1)
+                           for _i1 in range(_KB1v1)) / _KB1v1
         else:
             _rb_loss = bce(o["rbias"], g["fspan"]).mean(-1)
         l = l + 0.5 * (_rb_loss * pres).sum() / n_p
@@ -4682,14 +4743,18 @@ def _loss_single(o, g, blur=0.0, sw=None):
         # given channel is supervised by the VALUE mention of the slot's
         # OWN variable (g["res"]-gathered vspan row, the positional
         # law's slot==variable identity read through the gold res index
-        # rather than assumed). ALG_SPAN_ALL: same mean-over-breaths
-        # treatment as v3 above, reading "rbias2_all" (a list of the
-        # full (B, 4, L_FAC, T) per breath) when present; unset is
-        # bit-identical to the single-breath form.
-        _span_all_v2 = ALG_SPAN_ALL and o.get("rbias2_all")
+        # rather than assumed). ALG_SPAN_ALL: reads "rbias2_all", now a
+        # single STACKED tensor (B, K_B-1, 2, L_FAC, T) built once by
+        # Tensor.stack at emission (not a python list) — same batched-
+        # elementwise / sliced-reduction split as v3 above.
+        _rbias2_all_t = o.get("rbias2_all")
+        _span_all_v2 = ALG_SPAN_ALL and _rbias2_all_t is not None
         if _span_all_v2:
-            _res_loss = sum(bce(_rb2[:, 2], g["fspan"]).mean(-1)
-                            for _rb2 in o["rbias2_all"]) / len(o["rbias2_all"])
+            _KB1v2 = _rbias2_all_t.shape[1]
+            _fsp_b2 = g["fspan"].unsqueeze(1)
+            _res_bce_all = bce(_rbias2_all_t[:, :, 0], _fsp_b2)   # (B, KB1, L_FAC, T)
+            _res_loss = sum(_res_bce_all[:, _i2].mean(-1)
+                            for _i2 in range(_KB1v2)) / _KB1v2
         else:
             _res_loss = bce(o["rbias2"][:, 2], g["fspan"]).mean(-1)
         l = l + 0.5 * (_res_loss * pres).sum() / n_p
@@ -4698,8 +4763,10 @@ def _loss_single(o, g, blur=0.0, sw=None):
                      == Tensor.arange(K_VARS).reshape(1, 1, K_VARS)).float()
             _vgiv = _r2oh @ g["vspan"]        # (B, L_FAC, T): slot j's own var's mention
             if _span_all_v2:
-                _giv_loss = sum(bce(_rb2[:, 3], _vgiv).mean(-1)
-                                for _rb2 in o["rbias2_all"]) / len(o["rbias2_all"])
+                _vgiv_b = _vgiv.unsqueeze(1)
+                _giv_bce_all = bce(_rbias2_all_t[:, :, 1], _vgiv_b)
+                _giv_loss = sum(_giv_bce_all[:, _i2].mean(-1)
+                                for _i2 in range(_KB1v2)) / _KB1v2
             else:
                 _giv_loss = bce(o["rbias2"][:, 3], _vgiv).mean(-1)
             l = l + 0.5 * (_giv_loss * pres).sum() / n_p
@@ -6229,21 +6296,21 @@ def do_train(steps, lr, batch, seed):
                             fact_buf=Tensor(_fbv, dtype=dtypes.float),
                             mh_mass=_vmh, mh_atlas_traj=_vat)
             if _r2log and "rbias2_all" in o:
-                # THE PER-BREATH SPAN LOSS's own log (ALG_SPAN_ALL=1):
-                # the SAME numpy-side BCE mirror, once per breath in the
-                # list (breaths 1..K_B-1, matching state["rbias2_all"]'s
-                # append order in breath_step).
+                # THE PER-BREATH SPAN LOSS's own log (ALG_SPAN_ALL=1): the
+                # SAME numpy-side BCE mirror, once per breath, read off
+                # the STACKED (b, K_B-1, 2, L_FAC, T) tensor (channel
+                # 0=res, 1=given — the PERF PASS's emission shape).
                 _fsp = vg["fspan"][sl_p]; _pr = vg["presence"][sl_p]
                 _bidx = np.arange(len(sl_p))[:, None]
                 _vgv = vg["vspan"][sl_p][_bidx, vg["res"][sl_p]]   # (b, L_FAC, T)
                 def _bce_np2(lg, tg):
                     return np.logaddexp(0.0, lg) - lg * tg
-                for _bi_rel, _rb2t in enumerate(o["rbias2_all"]):
+                _rb2np_all = o["rbias2_all"].realize().numpy()   # (b, KB1, 2, L_FAC, T)
+                for _bi_rel in range(_rb2np_all.shape[1]):
                     _kb_idx = _bi_rel + 1   # breaths 1..K_B-1
-                    _rb2np = _rb2t.realize().numpy()
-                    _res_l = (_bce_np2(_rb2np[:, 2], _fsp).mean(-1) * _pr).sum() \
+                    _res_l = (_bce_np2(_rb2np_all[:, _bi_rel, 0], _fsp).mean(-1) * _pr).sum() \
                         / max(float(_pr.sum()), 1e-6)
-                    _giv_l = (_bce_np2(_rb2np[:, 3], _vgv).mean(-1) * _pr).sum() \
+                    _giv_l = (_bce_np2(_rb2np_all[:, _bi_rel, 1], _vgv).mean(-1) * _pr).sum() \
                         / max(float(_pr.sum()), 1e-6)
                     _acc = _r2_bce_by_breath.setdefault(_kb_idx, [0.0, 0.0, 0])
                     _acc[0] += _res_l; _acc[1] += _giv_l; _acc[2] += 1
