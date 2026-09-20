@@ -42356,3 +42356,25 @@ loss, NO chart — one variable against PMS4) on form_mix_pm35a + SPAN_ARGS
 census (0.40) re-read on the arm as the target; rows beside; mint for
 information (the sever may cost mint's pointers — the accepted risk,
 stated: if mint args fall below 0.55 the add form is the next arm).
+
+**2026-09-20 01:10 — THE ARG-MENTION STAMP: the honest reach.** The
+stamper (`stamp_arg_mentions.py` -> form_mix_pm35a; the wild fixture
+`wild_admitted_holdout_a.jsonl`, measurement only) reuses the census's
+lists and heuristics verbatim and adds THE SAME-SENTENCE RESTRICTION
+(a candidate overlapping the introducing given's own value span is
+excluded — the mention must be the RE-mention). PROSE (94,136 relations,
+188,272 argument instances): content-word mention 37.3%, pronoun 19.3%,
+neither 21.3%, unresolved 2.5%, NO INTRODUCER 19.6% (the variable is no
+factor's result — pre-positional rows and the pct self-reference; the
+census silently skipped these); the restriction emptied 12% of same-
+sentence matches; cue spans on 83.5% of relation clauses; every
+mention a single word. Excluding no-introducer: 70% anchored + pronoun
+(the census's 77% counted the trivial same-sentence self-match). MINT:
+content 6.8%, neither 64.6% — mint's variables are single LETTERS and
+the content rule (>= 3 characters) drops them; under the sever mint
+needs its letter re-mention — the stamper is being extended (letters
+as names, word-boundary, case-sensitive). The wild fixture cross-
+checks the census (91.9% vs 91.6% anchored + pronoun excluding no-
+introducer). Identity: factors, texts, mentions byte-identical plus
+the two new fields on every factor (`arg_spans` per argument position;
+`cue_spans`).
