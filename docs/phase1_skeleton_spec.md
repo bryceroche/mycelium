@@ -42218,3 +42218,32 @@ the twin pair holds +0.011 / +0.003 the numeral prior is a small real
 road and the router is a free one; registered, needing the word, after
 the perf fix (each twin then ~50 min instead of 2.2 h). The meters on
 PMS3 / PMS4 and the perf ladder run now. Numbers asserted.
+
+**2026-09-19 22:10 — THE METERS ON PMS3 / PMS4: the slope bar is
+confounded by breath 0; the final binding mass is the honest read.**
+PMS4 (router + spans, no chart): wild mass 0.335, 0.363, 0.342, 0.329,
+0.323, 0.315, 0.313 (breath 0 like the lineage's 0.311; slope -0.020,
+28.9% supercritical — the pinned bar NOT met, the lineage's shape);
+mint 0.428 -> 0.816 (89.7%). PMS3 (+ the numeral prior): wild 0.062,
+0.328, 0.341, 0.357, 0.331, 0.332, 0.348 (slope +0.011, 55.3% — the
+bar met); mint 0.508 -> 0.752 (93.7%). THE CONFOUND: PMS3 and PMS2 read
+"supercritical" on wild because the CHART collapses breath 0's mass on
+the value (0.06 vs 0.31-0.34 without it: the chart's bias at the
+grounding read spreads attention over numeral-kind tokens in the
+predicted sentence, off the specific numeral) and the breaths then
+recover to ~0.35 — a positive slope from a suppressed start, not a
+loop that sharpens more. The slope is not a clean barometer; the
+meter's honest reads are the trajectory and the FINAL MASS. THE FINAL
+MASS ON THE GOLD SPAN, all bodies (wild / mint): the lineage 0.269 /
+0.298; PMS4 0.313 / 0.816; PMS3 0.348 / 0.752; PMS2 0.359 / 0.740 —
+every road body binds MORE (+16-33% on wild; 2.5x on mint), and mint's
+binding converted (mint +4-8 points) while wild's did not (slots
+neutral to +0.011; rows flat). WHY WILD'S DOES NOT CONVERT (a reading,
+registered for the census): the masked read already restricts a
+given's value to the text's numerals — the legality the attention was
+being taught — so attention-on-the-numeral has little left to add on
+the masked read; wild's remaining wall is args (0.44-0.45: WHICH slot
+is which) and the relation structure, which no span supervises and
+which the row needs. The mechanism bar for the twins is restated as
+the FINAL MASS (wild >= the lineage's 0.269 + 0.03) beside the accuracy
+bar; the slope is reported, not pinned.
