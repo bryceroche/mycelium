@@ -42187,3 +42187,34 @@ s/step and the sync-after-step split per rung attribute the cost to a
 road; then the fix (the router's builder, CPU gates: bit-identical
 losses at the same seed before/after) and the re-measure. The chassis
 gets its 50-minute run back before the twin fires.
+
+**2026-09-19 21:55 — THE CHASSIS ABLATIONS' VERDICT: the chart's clause
+table was the surface arm's whole cost; the numeral prior is worth
++0.008 on one seed; neither body clears the bar against the lineage;
+the row does not move.** PMS4_241 (no chart: ROUTER=2 + SPAN_ALL on the
+stamped diet): masked wild 0.3325, open 0.3003, matched 0.3413, mint
+0.6497; rows 9 masked / 7 open. PAIRED masked wild vs the lineage
++0.0034 (SE 0.0093, z 0.37) — NULL; vs the surface arm PMS2 +0.0171 (z
+1.73); open vs the lineage +0.0015 (z 0.16). PMS3 vs PMS4 (the numeral
+prior's share): +0.0078 (SE 0.0095, z 0.82). THE TABLE (seed 241, from
+scratch, masked wild / rows masked / mint): the lineage 0.3291 / 9 /
+0.61; PMS2 (router + full chart + spans + anchor + pointer) 0.3155 / 6 /
+0.55; PMS4 (router + spans) 0.3325 / 9 / 0.65; PMS3 (router + spans +
+numeral prior) 0.3403 / 6 / 0.68. READING: (1) the clause table cost
+0.025 at the slot and 13 points of mint — the one unambiguous
+attribution (z 2.65); (2) the router + the per-breath loss on the
+stamped spans is NEUTRAL at the slot against the lineage (z 0.37) and
+neutral at the row (9 = 9), with mint +4 for free; (3) the numeral
+prior adds +0.008 (z 0.8) at the slot and takes 3 rows (6 vs 9, ~1 SE);
+(4) NOTHING HAS MOVED THE ROW on this holdout all week: every body from
+6 to 17 rows sits within the row read's own spread, in both directions,
+uncorrelated with the slot read (Z6 17 rows at slot-null; PMS3 6 rows
+at the slot record). THE CHASSIS, as the evidence has it: the lineage's
+recipe + ROUTER=2 + SPAN_ALL on the stamped diet (PMS4) is a body that
+binds (the meter, pending) at no cost and no slot gain; the numeral
+prior is a candidate (+0.008, one seed). THE CERTIFICATION READ: the
+seed-242 twins of PMS3 and PMS4 against PM35_scratch_242 (banked) — if
+the twin pair holds +0.011 / +0.003 the numeral prior is a small real
+road and the router is a free one; registered, needing the word, after
+the perf fix (each twin then ~50 min instead of 2.2 h). The meters on
+PMS3 / PMS4 and the perf ladder run now. Numbers asserted.
