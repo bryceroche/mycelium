@@ -42419,3 +42419,31 @@ fills the mention gold only in its `rel` branch, so the `sel` (7,729)
 and `pct` (364) relation types are stamped in the jsonl and zero in
 the gold (4% of relations; the arm runs without them; registered).
 The fixture gate runs; the arm launches on its pass.
+
+**2026-09-20 12:50 — PMS5 (the severed pointer) COLLAPSED: a mapping
+defect, not a verdict on the surface pointer.** PMS5_241 (sever:2.0 on
+form_mix_pm35a, 48k at 0.128 s/step): wild args 0.081 (PMS4 0.444),
+open wild 0.1989, masked 0.2267; MINT args 0.036 (PMS4 0.649), mint
+0.3569; every other field intact (wild ftype 0.862, res 0.800, dig
+0.400, op 0.733 — op slightly UP with the operator channel). THE CAUSE:
+the overlap O_a[j,k] is over SLOTS and the args gold indexes VARIABLES;
+the build mapped slot k -> variable k (the positional convention),
+which holds on prose (94%) and NOT on mint (first-mention numbering);
+the diet is 35% mint, so on a third of the steps the args loss taught
+the shared channels to point at the wrong slots, against their own
+span losses, and the pointer never formed on either register (the
+mint collapse to 0.036 is the signature). The builder declared the
+approximation; I accepted it for a mint-bearing diet — my error, and
+the decode (a top-2 ranking) rules out the log term's sign. THE FIX
+(delegated): scatter the slot overlap into variable space through the
+RES head — V_a[j,v] = sum_k O_a[j,k] R[k,v], R = the slot->variable
+one-hot (gold res at training, teacher-forcing the mapping; the head's
+own res argmax at read), presence-masked; exact under both conventions.
+Gates: unset bit-identical; the mapping identity on positional rows;
+the mint mapping check; THE LIVE GATE FROM RANDOM INIT on a mixed
+prose+mint fixture (the args proxy must rise from chance under sever
+and add). The corrected arm re-fires under the same word (the same
+registered arm with its defect removed); the add form remains the
+fallback. A lesson for the ledger: a road that enters as structure
+must be exact on EVERY register in the diet, or the registers fight
+through the shared organ.
