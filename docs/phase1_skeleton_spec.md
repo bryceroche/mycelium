@@ -42152,3 +42152,27 @@ given slots' token attention and a legal-value set for the digit heads
 (the numeral mask's construction, per breath); at the epoch grain
 first (the certificate pass's banked-buffer idiom, flags of zero bit-
 identical), the late wheel as the read-time form.
+
+**2026-09-19 19:00 — PMS3 (the value-table chart): THE CAMPAIGN'S
+HIGHEST SLOT READS, UNDER THE BAR AGAINST THE LINEAGE; THE ROW FELL.**
+PMS3_241 (from scratch on the stamped diet, seed 241, 48k at 0.165
+s/step; ROUTER=2 + SPAN_ALL + the chart's VALUE table only; no anchor,
+no pointer prior): MASKED wild 0.3403 (the record; the continuation
+control 0.3340, the lineage 0.3291), open 0.3086 (the lineage 0.2989),
+matched 0.3520 (record), MINT 0.6846 (the record for a 35% body; the
+lineage 0.59-0.61, the surface arm 0.5523; args 0.676, res 0.790);
+fields on wild: args 0.451, digits 0.408, res 0.804, pres 0.922. PAIRED
+masked wild: vs the lineage +0.0112 (SE 0.0097, z 1.2) — the bar +0.020
+at z 2 NOT MET; vs the surface arm PMS2 +0.0249 (z 2.65) — THE CLAUSE
+TABLE'S COST, attributed: the factor-clause prior at breath 0 cost
+0.025 at the slot and 13 points of mint; vs CTRL_241 +0.0063 (z 0.65).
+AT THE ROW: 6 masked / 3 open vs the lineage's 9 / 9 (refused 120 vs
+129, wrong 185 vs 173) — the slot record and the row fall together
+again (the third body this week to do so: Z6 and the eight organs
+rose at the row and not the slot; this one the reverse). Numbers
+asserted through reads.py. PMS4 (no chart) training; the meter on both
+queued behind it (pc-meter34). What PMS3 says for the chassis: the
+numeral prior + the bus-native router + the per-breath loss on the
+stamped spans is the best slot-level body the campaign has, from
+scratch, and it has not moved the row; the twin is the certification
+read if PMS4 does not beat it.
