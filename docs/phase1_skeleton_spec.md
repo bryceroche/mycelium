@@ -42280,3 +42280,50 @@ priority). At diet scale the chassis body should run ~0.115 s/step: a
 48k arm ~95 min instead of 2.2 h. Committed 1e3496a3. The twins (PMS3 /
 PMS4 at seed 242 vs PM35_scratch_242) are ready to fire on the word:
 ~3.5 h for the pair with reads.
+
+**2026-09-20 00:20 — THE ARGUMENT-BINDING CENSUS (`scripts/args_census.py`;
+`.cache/args_census.txt`; zero GPU).** Definitions: the introducing
+factor of variable v = the slot whose gold res is v (THE POSITIONAL LAW
+holds on 94.3% of wild argument instances); on wild (no spans) a
+factor's clause = the sentence of its value numeral (givens) or of its
+evaluated result / nearest cue-bearing sentence (relations); on the
+diet the real fspan (28,995 pairs with both spans). ANCHORING: a
+content word (105 stopwords + 49 cue words/phrases excluded) of the
+introducing clause recurs in the relation's clause. THE NUMBERS. (a)
+distance: wild 63% same sentence, 25% one away, 9% two, 2.5% three+
+(the diet 67 / 22 / 7 / 4). (b) anchored: WILD 91.6% (pronoun 5.6%,
+neither 2.8%); by distance 0.99 / 0.79 / 0.77 / 0.70 — the diet's real
+spans agree (91.9%; 1.00 / 0.76 / 0.78 / 0.67), so the heuristic is
+not finding what it wants. (c) THE ACCURACY JOIN (args-correct per
+relation, class x distance, PMS3 / the lineage): anchored dist 0 =
+0.401 / 0.397 (n 481); anchored dist 1 = 0.554 / 0.533 (242); dist 2 =
+0.552 / 0.563; pronoun 0.51 / 0.55 (65); neither 0.44 / 0.53 (36).
+ACCURACY DOES NOT TRACK ANCHORING, and the worst cell is the SAME
+SENTENCE: an argument introduced in the relation's own sentence is
+bound at 0.40, one or two sentences away at 0.53-0.56, on both
+checkpoints. (d) the stamper's reach on the diet's prose relations:
+77.4% anchored (3+ shared words in 75% of those), 3.6% pronoun, 3.7%
+neither, 15.3% unresolved. THE READING: the wall is not coreference
+REACH — nine of ten arguments are lexically reachable and the pointer
+fails them at the same rate as the unreachable ones, so the pointer is
+not using the surface at all (a slot-state bilinear, 0.45 all
+campaign); and the wall is WORST WHERE EVERY SURFACE ROAD WE BUILT IS
+BLIND: every road works at SENTENCE granularity (the source sentence,
+the chart's sentence index, the union-of-sentences spotlight) and a
+same-sentence argument needs discrimination WITHIN the sentence —
+which quantity in this clause is the argument. THE ARG-MENTION STAMP
+(token spans by lexical recurrence: the matched content words inside
+the relation's clause) is exactly that discriminator, and it reaches
+three of four prose arguments at zero token cost. THE ARM (design,
+needing the word): PMS5 = PMS4's body (router + SPAN_ALL on the stamped
+diet; the numeral prior as PMS3 if wanted) + the arg-mention spans
+stamped (relation j's arg-a mention = the introducing clause's content
+words recurring in j's clause; pronoun rows: the pronoun token; neither:
+no span) + the arg channels' per-breath span loss + THE POINTER THROUGH
+THE SURFACE as structure (P_a[j,k] = the arg-a channel's attention on
+slot k's clause, entered into the args logits at a gain censused on the
+TRAINED arm; the inert 2.0 of the surface arm was a warm-head census)
++ the operator channel (theta_op; the cue span from the same stamper).
+BARS to pin before firing: wild args field >= +0.05 paired (n 1042, SE
+~0.015: 3 SE) and masked wild >= +0.020 vs PMS4_241; rows beside; the
+census (c) re-read on the arm: the same-sentence cell is the target.
