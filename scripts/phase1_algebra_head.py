@@ -66,7 +66,14 @@ ALG_ANCHOR = float(os.environ.get("ALG_ANCHOR", "0"))     # beta: breath-0's gro
 ALG_SPAN_ARGS = int(os.environ.get("ALG_SPAN_ARGS", "0"))     # arg1/arg2 channels' BCE against aspan
 ALG_SPAN_OP = int(os.environ.get("ALG_SPAN_OP", "0"))         # the 5th (op/cue) channel's BCE against cspan
 ALG_SPAN_OP_ROAD = int(os.environ.get("ALG_SPAN_OP_ROAD", "0"))  # the op channel joins the rbias bank-bias sum
-ALG_PTR_SURF = os.environ.get("ALG_PTR_SURF", "")             # "add:<gain>" | "sever:<gain>" | "" (unset = old beta_ptr road, bit-identical)
+ALG_PTR_SURF = os.environ.get("ALG_PTR_SURF", "")             # "add:<gain>" | "sever:<gain>" | "state:add:<gain>" | "state:sever:<gain>" | "" (unset = old beta_ptr road, bit-identical)
+# THE STATE-SPACE POINTER (2026-09-20, PMS5b's death): the POSITION
+# overlap O[j,k] = sum_t p_a[j,t]*p_res[k,t] is empty by construction (a
+# re-mention never occupies the same token positions as the
+# introduction) — "state:" rebuilds the pointer in STATE space instead
+# (attended waist states, not token-position products). Kept alongside
+# the position forms (the control) under one env, one prefix.
+ALG_PTR_SURF_STATE = ALG_PTR_SURF.startswith("state:")
 _GTAP = None      # THE GRADIENT TAP (apply_grad_tap.py): read-only probe leaves per breath
 # THE WHIP (2026-09-12, the word): ALG_WHIP="k:amp" kicks the state ENTERING
 # breath k with Gaussian noise on the content planes (per slot: amp x the
@@ -767,7 +774,8 @@ TERMINALS = {
                "when": lambda: int(os.environ.get("ALG_OPCOUNT", "0")) > 0},
     "router": {"params": (["W_rs", "W_ra", "W_rb", "r_gain"]
                           if int(os.environ.get("ALG_ROUTER", "0")) < 2 else
-                          ["W_rq2", "W_rk2", "theta_given", "r_gain"]),
+                          ["W_rq2", "W_rk2", "theta_given", "r_gain"]
+                          + (["W_ps"] if os.environ.get("ALG_PTR_SURF", "").startswith("state:") else [])),
                "emit": "rbias",
                "gold": (["fspan"] if int(os.environ.get("ALG_ROUTER", "0")) < 2
                         else ["fspan", "vspan"]),
@@ -2083,6 +2091,14 @@ def build_params(seed=0):
         else:
             raise ValueError(f"unknown ALG_ROUTER version {_rver0!r}")
         p["r_gain"] = t(np.full(1, float(os.environ.get("R_GAIN_INIT", "0.02"))))
+        if ALG_PTR_SURF_STATE:
+            # THE STATE-SPACE POINTER's own weight (2026-09-20): the
+            # arg-channel's attended waist state, projected through
+            # W_ps, dotted against the res-channel's attended waist
+            # state — init IDENTITY so the pointer starts as a plain
+            # cosine-like similarity in the trunk's own coordinates
+            # (not a random rotation), matching the brief's spec.
+            p["W_ps"] = t(np.eye(H_W, dtype=np.float32))
         # rescue 2026-09-01: default aligned to the AJAR law (0.02);
         # sweepable via R_GAIN_INIT (the 0.1 deviation was unswept)
     if int(os.environ.get("ALG_ALTMASK", "0")):
@@ -4601,6 +4617,22 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
         #     structural READ port, not a differentiable path (the
         #     scatter routes gradient correctly; it does not exist to
         #     teach res via the args loss).
+        # THE STATE-SPACE POINTER (2026-09-20, PMS5b's death, coordinator's
+        # design): PMS5b (the res-scattered POSITION form) also died —
+        # the census showed O_arg row entropy FLAT (2.98/3.18) even with
+        # a strongly-trained res channel, because the position overlap
+        # O[j,k] = sum_t p_a[j,t]*p_res[k,t] is EMPTY BY CONSTRUCTION: a
+        # re-mention ("Tom" in sentence 3) never occupies the same token
+        # POSITIONS as the introduction ("Tom" in sentence 1), so the
+        # product is ~0 for every k regardless of training and
+        # log(0+1e-6) is a near-constant. "state:" rebuilds the pointer
+        # in STATE space: q_a[j] = the arg channel's ATTENDED WAIST STATE
+        # (sum_t p_a[j,t]*waist_t), c[k] = the res channel's attended
+        # waist state — logit_a[j,k] = (q_a[j] @ W_ps) . c[k] / sqrt(H_W).
+        # Gradient flows through attention-WEIGHTED SUMS of waist states
+        # (healthy, like any attention), not through a product of two
+        # near-uniform token distributions. Computed at the LAST breath
+        # only (out["rbias2"] is already that breath's channels).
         if ALG_PTR_SURF:
             if res_map is not None:
                 _R_scat = res_map
@@ -4608,13 +4640,45 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
                 _res_oh5 = (out["res"] == out["res"].max(-1, keepdim=True)).float()
                 _pres_oh5 = (out["pres"].sigmoid() > 0.5).float().unsqueeze(-1)
                 _R_scat = (_res_oh5 * _pres_oh5).detach()
-            _V1_5 = _rptr_last[:, 0] @ _R_scat   # (B,L_FAC,L_FAC)@(B,L_FAC,K_VARS) -> (B,L_FAC,K_VARS)
-            _V2_5 = _rptr_last[:, 1] @ _R_scat
-            _psm5, _, _psg5 = ALG_PTR_SURF.partition(":")
+            _psurf_body5 = ALG_PTR_SURF[6:] if ALG_PTR_SURF_STATE else ALG_PTR_SURF
+            _psm5, _, _psg5 = _psurf_body5.partition(":")
             _ps_gain5 = float(_psg5)
-            _o1_5 = (_V1_5 + 1e-6).log()
-            _o2_5 = (_V2_5 + 1e-6).log()
-            _surf5 = _ps_gain5 * (_o1_5 + _o2_5)
+            if ALG_PTR_SURF_STATE:
+                _tm5 = tokmask.reshape(B, 1, -1)
+                def _tsoft5(s5):
+                    return (s5.clip(-1e4, 1e4) + (1.0 - _tm5) * -1e4).softmax(-1)
+                _pa1_5 = _tsoft5(out["rbias2"][:, 0])   # (B, L_FAC, T)
+                _pa2_5 = _tsoft5(out["rbias2"][:, 1])
+                _pres_5 = _tsoft5(out["rbias2"][:, 2])
+                _qa1_5 = _pa1_5 @ waist        # (B, L_FAC, H_W): the arg's attended state
+                _qa2_5 = _pa2_5 @ waist
+                _ck_5 = _pres_5 @ waist        # (B, L_FAC, H_W): slot k's attended clause state
+                _hw5 = waist.shape[-1]
+                _lg1_5 = ((_qa1_5 @ p["W_ps"]) @ _ck_5.transpose(-2, -1)) / math.sqrt(_hw5)
+                _lg2_5 = ((_qa2_5 @ p["W_ps"]) @ _ck_5.transpose(-2, -1)) / math.sqrt(_hw5)
+                # presence-mask k: R already zeroes absent-k contributions
+                # in the matmul below (0 * anything == 0), so this masking
+                # matters for the DIAGNOSTIC softmax_k read (gate 2, the
+                # census) rather than the trained value — done here once,
+                # shared by both consumers.
+                _presk_5 = _R_scat.sum(-1).reshape(B, 1, L_FAC)   # presence of slot k, (B,1,L_FAC)
+                _lg1_5m = _lg1_5.clip(-1e4, 1e4) + (1.0 - _presk_5) * -1e4
+                _lg2_5m = _lg2_5.clip(-1e4, 1e4) + (1.0 - _presk_5) * -1e4
+                out["ptr_state_logit"] = Tensor.stack(_lg1_5m, _lg2_5m, dim=1)   # (B, 2, L_FAC, L_FAC): census tap
+                # NO softmax over k, NO log: L_a[j,v] = sum_k logit_a[j,k]
+                # * R[k,v] is an EXACT gather/scatter of logits (R is
+                # one-hot per k), not a probability composition.
+                _V1_5 = _lg1_5m @ _R_scat   # (B,L_FAC,L_FAC)@(B,L_FAC,K_VARS) -> (B,L_FAC,K_VARS)
+                _V2_5 = _lg2_5m @ _R_scat
+                _surf5 = _ps_gain5 * (_V1_5 + _V2_5)
+            else:
+                # the POSITION form (the control, UNCHANGED): O_a scattered
+                # through R, then a log so it composes with logits.
+                _V1_5 = _rptr_last[:, 0] @ _R_scat   # (B,L_FAC,L_FAC)@(B,L_FAC,K_VARS) -> (B,L_FAC,K_VARS)
+                _V2_5 = _rptr_last[:, 1] @ _R_scat
+                _o1_5 = (_V1_5 + 1e-6).log()
+                _o2_5 = (_V2_5 + 1e-6).log()
+                _surf5 = _ps_gain5 * (_o1_5 + _o2_5)
             if _psm5 == "add":
                 out["args"] = out["args"] + _surf5
             elif _psm5 == "sever":
@@ -4622,7 +4686,8 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
             else:
                 raise ValueError(
                     f"unknown ALG_PTR_SURF mode {_psm5!r} "
-                    f"(want add:<gain> or sever:<gain>)")
+                    f"(want add:<gain>, sever:<gain>, state:add:<gain>, "
+                    f"or state:sever:<gain>)")
         else:
             _beta_ptr = float(os.environ.get("ALG_ROUTER_PTR", "2.0"))
             out["args"] = out["args"] + _beta_ptr * (_rptr_last[:, 0] + _rptr_last[:, 1])
@@ -4730,6 +4795,22 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
             out["breaths"] = [heads_of(s) for s in breaths[:-1]] + [_last_heads]
         else:
             out["breaths"] = [heads_of(s) for s in breaths]
+        # THE LADDER SHADOWS THE ARGS FUSION (2026-09-20, found while
+        # chasing the state-space pointer's None-gradient): loss_fn's
+        # per-breath ladder calls _loss_single on THESE dicts, each
+        # built by a FRESH heads_of(s) — the PLAIN bilinear "args", with
+        # NO knowledge of the top-level out["args"] fusion (the router's
+        # beta_ptr road, or ALG_PTR_SURF's add/sever/state terms). Every
+        # ladder-trained config has therefore graded the unfused
+        # bilinear the whole time, regardless of what out["args"] itself
+        # carries. The fusion lives at the LAST breath only (by
+        # construction — the router's own channels), so patch just that
+        # slot to the ALREADY-FUSED out["args"] — bit-identical when no
+        # fusion ran (heads_of(_s_final) with _s_final is breaths[-1] is
+        # the SAME call as this slot's own heads_of(s), deterministic;
+        # verified before applying this fix).
+        if "args" in out:
+            out["breaths"][-1] = dict(out["breaths"][-1], args=out["args"])
     return out
 
 
@@ -6756,6 +6837,41 @@ def do_train(steps, lr, batch, seed):
                         else "PEAKED" if _ent.mean() < 0.3 * _maxent else "MID")
                 print(f"[router2-census]  O_{_an} row entropy mean {_ent.mean():.4f} "
                       f"of max {_maxent:.4f} ({_tag})", flush=True)
+        if ALG_PTR_SURF_STATE and "ptr_state_logit" in _rc_out:
+            # THE STATE-SPACE POINTER's own census (2026-09-20): the row
+            # entropy of softmax_k(logit_a[j,:]) (peaked vs flat — the
+            # thing PMS5b's position form could never be, by
+            # construction) and the top-2-over-v accuracy of the FUSED
+            # out["args"] against gold, restricted to present relation
+            # slots — the "before/after training" comparison is made by
+            # running this same census on the pre- and post-training
+            # checkpoint (two process invocations).
+            _lg_state_v = _rc_out["ptr_state_logit"].realize().numpy()   # (B, 2, L_FAC, L_FAC)
+            for _an, _lv in (("arg1", _lg_state_v[:, 0]), ("arg2", _lg_state_v[:, 1])):
+                _sm = _lv - _lv.max(-1, keepdims=True)
+                _sm = np.exp(_sm); _sm /= np.maximum(_sm.sum(-1, keepdims=True), 1e-12)
+                _ent2 = -(_sm * np.log(np.maximum(_sm, 1e-12))).sum(-1)   # (B, L_FAC)
+                _maxent2 = math.log(_lv.shape[-1])
+                _tag2 = ("FLAT" if _ent2.mean() > 0.7 * _maxent2
+                         else "PEAKED" if _ent2.mean() < 0.3 * _maxent2 else "MID")
+                print(f"[router2-census]  STATE logit_{_an} softmax_k row "
+                      f"entropy mean {_ent2.mean():.4f} of max {_maxent2:.4f} "
+                      f"({_tag2})", flush=True)
+            _args_v = _rc_out["args"].realize().numpy()   # (B, L_FAC, K_VARS)
+            _rel_v = (gold["presence"][_rc_idx] > 0.5) & (gold["is_rel"][_rc_idx] > 0.5)
+            _n_rel_v = int(_rel_v.sum())
+            if _n_rel_v:
+                _hit = 0
+                for _bi, _i in enumerate(_rc_idx):
+                    for _j in range(L_FAC):
+                        if not _rel_v[_bi, _j]:
+                            continue
+                        _gset = set(np.where(gold["args"][int(_i), _j] > 0.5)[0].tolist())
+                        _top2 = set(np.argsort(-_args_v[_bi, _j])[:2].tolist())
+                        _hit += int(_top2 == _gset)
+                print(f"[router2-census]  out['args'] top-2==gold on "
+                      f"present relation slots: {_hit}/{_n_rel_v} = "
+                      f"{_hit / _n_rel_v:.4f}", flush=True)
         if "args" in _rc_out:
             # THE GRAD-NORM VERIFICATION (2026-09-20, gate c): does the
             # ARGS LOSS ALONE reach W_rk2? A fresh forward + backward
