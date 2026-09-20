@@ -42121,3 +42121,34 @@ chart. Anchor and pointer prior off. Reads: the family set; paired
 masked wild vs PM35_scratch_241 (the accuracy bar, +0.020 z 2) and vs
 PMS2_241 (the chart's attribution); rows beside; the criticality meter
 on both (the mechanism bar as pinned); mint for information. ~3.5 h.
+
+**2026-09-19 17:30 — THE CHASSIS RULING (word given; Bryce: "keep the
+trunk output states in memory; use value propagation not pass/fail
+certificates; add feedback circuits after the chassis stabilizes").**
+THREE PARTS. (1) THE TRUNK IS THE RETINA: the frozen Llama L0-L3 states
+stay precomputed and in memory (the memmap), read by every breath and
+never recirculated through; the inner loop is head-internal — the
+breaths re-reading fixed states. (2) VALUE PROPAGATION, NOT PASS/FAIL:
+the solver enters the loop, when it enters, as a PROPAGATOR — given a
+partial parse it computes what a slot's value must be, and that
+implied value is checked against the TEXT (which numerals exist and
+where), turning a math-side fact into a text-side certificate the
+binding can use (a Certificate born on slots, projected to tokens by
+the bridge); consistency certificates (refusal, core, melt, nogood —
+the wheel family, null all week) do not carry text-side information
+and are retired as the loop's feedback signal. The precedent: the one
+alternation that moved wild at z 7-8 was the numeral mask — a text-
+legality exchange, not a solver verdict. (3) SEQUENCE: the chassis
+(the lean body + the roads that bind) is stabilized and CERTIFIED first
+(the wild bar on a seed twin); the feedback circuit (the per-breath
+propagation road) is built only after. NOW RUNNING: the chassis
+ablations PMS3 / PMS4 (pc-pms34); the twin of whichever holds is the
+certification read. REGISTERED (the feedback circuit, design only, no
+build until the chassis stands): ALG_PROP — per breath k >= 1, the
+decoded partial parse's implied values (the June engine's propagation
+at the row-sized domain, pooled and walled as the facts pass is) ->
+the value's numeral occurrences in the text -> a legality bias on the
+given slots' token attention and a legal-value set for the digit heads
+(the numeral mask's construction, per breath); at the epoch grain
+first (the certificate pass's banked-buffer idiom, flags of zero bit-
+identical), the late wheel as the read-time form.
