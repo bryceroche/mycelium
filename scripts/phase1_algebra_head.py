@@ -66,7 +66,7 @@ ALG_ANCHOR = float(os.environ.get("ALG_ANCHOR", "0"))     # beta: breath-0's gro
 ALG_SPAN_ARGS = int(os.environ.get("ALG_SPAN_ARGS", "0"))     # arg1/arg2 channels' BCE against aspan
 ALG_SPAN_OP = int(os.environ.get("ALG_SPAN_OP", "0"))         # the 5th (op/cue) channel's BCE against cspan
 ALG_SPAN_OP_ROAD = int(os.environ.get("ALG_SPAN_OP_ROAD", "0"))  # the op channel joins the rbias bank-bias sum
-ALG_PTR_SURF = os.environ.get("ALG_PTR_SURF", "")             # "add:<gain>" | "sever:<gain>" | "state:add:<gain>" | "state:sever:<gain>" | "" (unset = old beta_ptr road, bit-identical)
+ALG_PTR_SURF = os.environ.get("ALG_PTR_SURF", "")             # "add:<gain>" | "sever:<gain>" | "state:add:<gain>" | "state:sever:<gain>" | "entity:add:<gain>" | "entity:sever:<gain>" | "" (unset = old beta_ptr road, bit-identical)
 # THE STATE-SPACE POINTER (2026-09-20, PMS5b's death): the POSITION
 # overlap O[j,k] = sum_t p_a[j,t]*p_res[k,t] is empty by construction (a
 # re-mention never occupies the same token positions as the
@@ -74,6 +74,18 @@ ALG_PTR_SURF = os.environ.get("ALG_PTR_SURF", "")             # "add:<gain>" | "
 # (attended waist states, not token-position products). Kept alongside
 # the position forms (the control) under one env, one prefix.
 ALG_PTR_SURF_STATE = ALG_PTR_SURF.startswith("state:")
+# THE ENTITY KEY ON THE BUS, STEP 1 (2026-09-21, the twin-key census's
+# diagnosis): same-sentence candidate slots share nearly identical
+# CLAUSE keys c[k] (the res channel's attended waist state — both
+# candidates attend the same sentence), which is why "state:" flips a
+# coin between them (0.40); their VALUE-MENTION keys ("3 apples" vs "5
+# oranges") are distinct. "entity:" is identical to "state:" except the
+# candidate key is e[k] = the GIVEN channel's (rbias2 channel 3) own
+# attended waist state — the value mention's neighborhood — with a
+# fallback to the res-channel clause key c[k] for slots whose OWN
+# predicted ftype is not "given" (a relation slot has no value-mention
+# span of its own to key on).
+ALG_PTR_SURF_ENTITY = ALG_PTR_SURF.startswith("entity:")
 _GTAP = None      # THE GRADIENT TAP (apply_grad_tap.py): read-only probe leaves per breath
 # THE WHIP (2026-09-12, the word): ALG_WHIP="k:amp" kicks the state ENTERING
 # breath k with Gaussian noise on the content planes (per slot: amp x the
@@ -791,7 +803,7 @@ TERMINALS = {
     "router": {"params": (["W_rs", "W_ra", "W_rb", "r_gain"]
                           if int(os.environ.get("ALG_ROUTER", "0")) < 2 else
                           ["W_rq2", "W_rk2", "theta_given", "r_gain"]
-                          + (["W_ps"] if os.environ.get("ALG_PTR_SURF", "").startswith("state:") else [])),
+                          + (["W_ps"] if os.environ.get("ALG_PTR_SURF", "").startswith(("state:", "entity:")) else [])),
                "emit": "rbias",
                "gold": (["fspan"] if int(os.environ.get("ALG_ROUTER", "0")) < 2
                         else ["fspan", "vspan"]),
@@ -2117,13 +2129,16 @@ def build_params(seed=0):
         else:
             raise ValueError(f"unknown ALG_ROUTER version {_rver0!r}")
         p["r_gain"] = t(np.full(1, float(os.environ.get("R_GAIN_INIT", "0.02"))))
-        if ALG_PTR_SURF_STATE:
-            # THE STATE-SPACE POINTER's own weight (2026-09-20): the
-            # arg-channel's attended waist state, projected through
-            # W_ps, dotted against the res-channel's attended waist
-            # state — init IDENTITY so the pointer starts as a plain
-            # cosine-like similarity in the trunk's own coordinates
-            # (not a random rotation), matching the brief's spec.
+        if ALG_PTR_SURF_STATE or ALG_PTR_SURF_ENTITY:
+            # THE STATE-SPACE POINTER's own weight (2026-09-20, shared
+            # with THE ENTITY KEY, 2026-09-21): the arg-channel's
+            # attended waist state, projected through W_ps, dotted
+            # against the candidate KEY's attended waist state (res-
+            # channel clause state for "state:", given-channel entity
+            # state for "entity:") — init IDENTITY so the pointer
+            # starts as a plain cosine-like similarity in the trunk's
+            # own coordinates (not a random rotation), matching the
+            # brief's spec.
             p["W_ps"] = t(np.eye(H_W, dtype=np.float32))
         # rescue 2026-09-01: default aligned to the AJAR law (0.02);
         # sweepable via R_GAIN_INIT (the 0.1 deviation was unswept)
@@ -4832,10 +4847,15 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
                 _res_oh5 = (out["res"] == out["res"].max(-1, keepdim=True)).float()
                 _pres_oh5 = (out["pres"].sigmoid() > 0.5).float().unsqueeze(-1)
                 _R_scat = (_res_oh5 * _pres_oh5).detach()
-            _psurf_body5 = ALG_PTR_SURF[6:] if ALG_PTR_SURF_STATE else ALG_PTR_SURF
+            if ALG_PTR_SURF_STATE:
+                _psurf_body5 = ALG_PTR_SURF[6:]
+            elif ALG_PTR_SURF_ENTITY:
+                _psurf_body5 = ALG_PTR_SURF[7:]
+            else:
+                _psurf_body5 = ALG_PTR_SURF
             _psm5, _, _psg5 = _psurf_body5.partition(":")
             _ps_gain5 = float(_psg5)
-            if ALG_PTR_SURF_STATE:
+            if ALG_PTR_SURF_STATE or ALG_PTR_SURF_ENTITY:
                 _tm5 = tokmask.reshape(B, 1, -1)
                 def _tsoft5(s5):
                     return (s5.clip(-1e4, 1e4) + (1.0 - _tm5) * -1e4).softmax(-1)
@@ -4844,10 +4864,35 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
                 _pres_5 = _tsoft5(out["rbias2"][:, 2])
                 _qa1_5 = _pa1_5 @ waist        # (B, L_FAC, H_W): the arg's attended state
                 _qa2_5 = _pa2_5 @ waist
-                _ck_5 = _pres_5 @ waist        # (B, L_FAC, H_W): slot k's attended clause state
+                _ck_5 = _pres_5 @ waist        # (B, L_FAC, H_W): slot k's attended CLAUSE state (res channel)
+                if ALG_PTR_SURF_ENTITY:
+                    # THE ENTITY KEY (2026-09-21, the twin-key census's
+                    # diagnosis): same-sentence candidates share nearly
+                    # identical clause keys c[k] (both attend the same
+                    # sentence) but distinct VALUE-MENTION keys ("3
+                    # apples" vs "5 oranges") — key on the GIVEN channel
+                    # (rbias2 channel 3) instead. Fall back to the
+                    # clause key c[k] for slots whose OWN predicted
+                    # ftype is not "given" (ftype class 1 — a relation
+                    # slot has no value-mention span of its own to key
+                    # on; state the rule, per the brief).
+                    _pg_5 = _tsoft5(out["rbias2"][:, 3])
+                    _ek_5 = _pg_5 @ waist       # (B, L_FAC, H_W): slot k's attended ENTITY (value-mention) state
+                    _isgiven5 = (out["ftype"].argmax(-1) == 1).float().unsqueeze(-1)   # (B, L_FAC, 1)
+                    _key_5 = _isgiven5 * _ek_5 + (1.0 - _isgiven5) * _ck_5
+                    # THE TWIN-KEY CENSUS TAP (2026-09-21): the clause key,
+                    # the entity key, and each slot's peak clause-attention
+                    # token (a same-sentence proxy) — read-only, for the
+                    # gate's own cosine census below; never consumed by
+                    # the loss or the decode.
+                    out["ptr_ck"] = _ck_5
+                    out["ptr_ek"] = _ek_5
+                    out["ptr_slot_tok"] = _pres_5.argmax(-1)
+                else:
+                    _key_5 = _ck_5
                 _hw5 = waist.shape[-1]
-                _lg1_5 = ((_qa1_5 @ p["W_ps"]) @ _ck_5.transpose(-2, -1)) / math.sqrt(_hw5)
-                _lg2_5 = ((_qa2_5 @ p["W_ps"]) @ _ck_5.transpose(-2, -1)) / math.sqrt(_hw5)
+                _lg1_5 = ((_qa1_5 @ p["W_ps"]) @ _key_5.transpose(-2, -1)) / math.sqrt(_hw5)
+                _lg2_5 = ((_qa2_5 @ p["W_ps"]) @ _key_5.transpose(-2, -1)) / math.sqrt(_hw5)
                 # presence-mask k: R already zeroes absent-k contributions
                 # in the matmul below (0 * anything == 0), so this masking
                 # matters for the DIAGNOSTIC softmax_k read (gate 2, the
@@ -4879,7 +4924,8 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
                 raise ValueError(
                     f"unknown ALG_PTR_SURF mode {_psm5!r} "
                     f"(want add:<gain>, sever:<gain>, state:add:<gain>, "
-                    f"or state:sever:<gain>)")
+                    f"state:sever:<gain>, entity:add:<gain>, or "
+                    f"entity:sever:<gain>)")
         else:
             _beta_ptr = float(os.environ.get("ALG_ROUTER_PTR", "2.0"))
             out["args"] = out["args"] + _beta_ptr * (_rptr_last[:, 0] + _rptr_last[:, 1])
@@ -7027,7 +7073,7 @@ def do_train(steps, lr, batch, seed):
             print(f"[router2-census]  breath {_kb}: |beta*fat0| mean (real "
                   f"tokens) {_anch_mean:.4f}, raw |bank score| mean "
                   f"{_sc_mean:.4f}, ratio {_aratio:.4f}", flush=True)
-        if ALG_PTR_SURF and not ALG_PTR_SURF_STATE and "rptr" in _rc_out:
+        if ALG_PTR_SURF and not ALG_PTR_SURF_STATE and not ALG_PTR_SURF_ENTITY and "rptr" in _rc_out:
             # THE POINTER THROUGH THE SURFACE's own census (2026-09-20):
             # the injected magnitude relative to the bilinear it composes
             # with (add) or replaces (sever), plus whether O_a is peaked
@@ -7056,7 +7102,7 @@ def do_train(steps, lr, batch, seed):
                         else "PEAKED" if _ent.mean() < 0.3 * _maxent else "MID")
                 print(f"[router2-census]  O_{_an} row entropy mean {_ent.mean():.4f} "
                       f"of max {_maxent:.4f} ({_tag})", flush=True)
-        if ALG_PTR_SURF_STATE and "ptr_state_logit" in _rc_out:
+        if (ALG_PTR_SURF_STATE or ALG_PTR_SURF_ENTITY) and "ptr_state_logit" in _rc_out:
             # THE STATE-SPACE POINTER's own census (2026-09-20): the row
             # entropy of softmax_k(logit_a[j,:]) (peaked vs flat — the
             # thing PMS5b's position form could never be, by
@@ -7091,6 +7137,45 @@ def do_train(steps, lr, batch, seed):
                 print(f"[router2-census]  out['args'] top-2==gold on "
                       f"present relation slots: {_hit}/{_n_rel_v} = "
                       f"{_hit / _n_rel_v:.4f}", flush=True)
+        if ALG_PTR_SURF_ENTITY and "ptr_ck" in _rc_out:
+            # THE TWIN-KEY CENSUS (2026-09-21, the gate's own quick
+            # version of the analyst's census, so the gate explains
+            # itself): mean cosine similarity between SAME-SENTENCE
+            # present-slot pairs under the clause key c[k] (res
+            # channel) vs the entity key e[k] (given channel) — the
+            # diagnosis predicts c[k] is nearly degenerate there (both
+            # candidates attend the same sentence) while e[k] separates
+            # ("3 apples" vs "5 oranges"). "Same sentence" is a proxy:
+            # each slot's peak clause-attention TOKEN (ptr_slot_tok),
+            # looked up in the row's own sentence-index array.
+            _ck_v = _rc_out["ptr_ck"].realize().numpy()       # (B, L_FAC, H_W)
+            _ek_v = _rc_out["ptr_ek"].realize().numpy()
+            _tok_v = _rc_out["ptr_slot_tok"].realize().numpy()   # (B, L_FAC) peak token per slot
+            _pres_v = gold["presence"][_rc_idx] > 0.5          # (B, L_FAC)
+            _sent_v = sent[_rc_idx]                             # (B, T)
+            def _cos6(a, b):
+                na = np.linalg.norm(a); nb = np.linalg.norm(b)
+                return float(a @ b / (na * nb)) if na > 1e-9 and nb > 1e-9 else float("nan")
+            _cc6, _ee6, _npair6 = [], [], 0
+            for _bi in range(_ck_v.shape[0]):
+                _pslots = np.where(_pres_v[_bi])[0]
+                _ssent = {int(_j): int(_sent_v[_bi, int(_tok_v[_bi, _j])]) for _j in _pslots}
+                for _a6 in range(len(_pslots)):
+                    for _b6 in range(_a6 + 1, len(_pslots)):
+                        _j1, _j2 = int(_pslots[_a6]), int(_pslots[_b6])
+                        if _ssent[_j1] != _ssent[_j2]:
+                            continue
+                        _cc6.append(_cos6(_ck_v[_bi, _j1], _ck_v[_bi, _j2]))
+                        _ee6.append(_cos6(_ek_v[_bi, _j1], _ek_v[_bi, _j2]))
+                        _npair6 += 1
+            if _npair6:
+                print(f"[router2-census] TWIN-KEY: {_npair6} same-sentence "
+                      f"present-slot pairs | mean cos(clause c[k]) "
+                      f"{np.nanmean(_cc6):.4f} | mean cos(entity e[k]) "
+                      f"{np.nanmean(_ee6):.4f}", flush=True)
+            else:
+                print("[router2-census] TWIN-KEY: 0 same-sentence present-slot "
+                      "pairs on this census batch", flush=True)
         if "args" in _rc_out:
             # THE GRAD-NORM VERIFICATION (2026-09-20, gate c): does the
             # ARGS LOSS ALONE reach W_rk2? A fresh forward + backward
