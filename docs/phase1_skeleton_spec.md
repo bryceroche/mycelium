@@ -42740,7 +42740,7 @@ candidates); a res road for mint's identity (64% of mint's pointer
 wall); the row census by failure class on PMS4_242 (both seeds now
 banked). Numbers asserted.
 
-**2026-09-21 02:10 — THE PLATFORM (word given for the whole queue; Bryce's
+**2026-09-21 07:48 — THE PLATFORM (word given for the whole queue; Bryce's
 Roblox analogy: a wrapper that makes every problem a new game on a
 familiar platform).** THE READING: the math side already IS the
 platform (24 slots, the primes, the bus roles, the clock, seven
@@ -42771,7 +42771,7 @@ that follows = the chassis body on the positional diet (+ the renderer's
 rows if the surface census matches) with the HUD, vs PMS4 on both
 seeds. Bars pinned when the builds gate.
 
-**2026-09-21 08:05 — THE PROSE RENDERER BUILT (`scripts/prose_render.py`;
+**2026-09-21 08:12 — THE PROSE RENDERER BUILT (`scripts/prose_render.py`;
 `.cache/render_v1_5k.jsonl` + `render_v1_val.jsonl`).** Templates + an
 entity lexicon, no model: graphs sampled in positional order (given +
 rel add/mul, 2 args, values <= 300; mod/sel/pct/fdiv/macro/frac out of
