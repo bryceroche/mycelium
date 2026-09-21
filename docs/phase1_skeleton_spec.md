@@ -42841,3 +42841,21 @@ exceptions. One more mode reads now (v <= j, no presence: the pure
 positional index); with it the builder reports the "gold outside the
 legal set" fraction per mode, the number that decides whether any
 pointer legality exists that does not lose.
+
+**2026-09-21 08:50 — THE PLATFORM ARM, data half, FIRED (word given for
+the queue).** The diet form_mix_pm35pr (55,653 rows; states precomputed
+08:15-08:40): the prose + positional-mint pm35p (50,653; relation slots
+arg1 66% / arg2 56% / cue 80%; positional 0.68) + the rendered 5k
+(relation slots arg1 100% / arg2 100% / cue 98%; value spans 100%;
+positional 1.000; share 9%); the whole 0.71 positional. pc-pms6:
+PMS6_241 = the chassis body (ROUTER=2, SPAN_ALL) + ALG_SPAN_ARGS=1 +
+ALG_SPAN_OP=1 (the arg and operator channels now fully supervised on
+the rendered rows), no chart, no pointer fusion; 48k from scratch, seed
+241; the family reads; paired vs PMS4_241 (the chassis on the old diet
+— the data half's own share) and vs the lineage. BARS, PINNED: paired
+MASKED wild vs PMS4_241 >= +0.020 (z 2); the wild ARGS field >= +0.03
+paired (the arg channels' supervision is what changed); rows beside;
+mint for information (the positional mint may move mint's identity —
+its args are watched); the target-side census re-read on the arm. The
+HUD is the platform's other half and enters as its own arm on top of
+this one when it gates.
