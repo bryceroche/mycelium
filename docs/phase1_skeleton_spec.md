@@ -42890,3 +42890,21 @@ Lesson applied: every GPU command in a chain takes `.cache/gpu.lock`,
 reads included (`pms6_reads.sh`, relaunched; it queues behind the
 builder's check and the legality sweep). The checkpoint is banked; the
 verdict follows the reads.
+
+**2026-09-21 10:33 — THE HUD COMMITTED; ITS ARM FIRED; the pure-index
+legality is a no-op.** The HUD's 600-step card check: bounded (59.3 ->
+24.6 at step 500 -> 33.9), no explosion; my "within 10% of 31.26"
+clause was mis-referenced (31.26 is the PMS3 config's value; the HUD
+ran the PMS4 config, which has no slice reference) — the stability
+criterion is the one that stands, and it passes. Committed e196c008
+(with the legality masks as read-time diagnostics). THE LEGALITY
+FINDING (partial, the builder's sweep continuing): the pure-index mask
+(v <= j, no presence) on PMS4_241's masked wild read changes ZERO
+slots — the head never points forward; the pointer wall lies entirely
+inside the law's legal space, which is the target-side census's
+"selection among real candidates" said a third way. pc-pms7: PMS7_241
+= PMS6's recipe + ALG_HUD=1 on pm35pr, every GPU command under the
+lock; vs PMS6_241 (the HUD's own share; bar +0.020 z 2) and PMS4_241;
+queued behind PMS6's reads and the sweep. PMS6's first read: open wild
+0.2974 (PMS4 0.3003), args 0.440 (0.444) — the data half reads flat on
+wild so far; the masked read, rows and mint follow.
