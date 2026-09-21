@@ -42520,3 +42520,34 @@ fixture gate runs in the prep unit; the chain launches on its pass.
 Bars as pinned (args +0.05 paired vs PMS4; masked +0.020; the same-
 sentence cell; mint's pointers watched: if mint args fall below 0.55
 the sever cost mint, and the read says whether wild paid for it).
+
+**2026-09-20 17:10 — THE LADDER SHADOW (the builder's finding; the root
+cause under both dead pointer arms and the "inert" pointer prior).**
+`loss_fn` grades `out["breaths"]` — a per-breath list rebuilt by a
+FRESH `heads_of(state)` at every breath whenever K_B > 1 — never the
+top-level `out["args"]` that every pointer fusion (the surface arm's
+pointer prior, PMS5's and PMS5b's severed overlaps) modified. So no
+surface pointer ever received a gradient from the args loss; at read
+the fused (untrained) pointer was decoded, at training the ladder's
+own bilinear was graded. PMS5's 0.08 and PMS5b's 0.10 are what an
+untrained fusion decodes to; the empty position overlap was real (the
+census's flat entropy) and secondary. The pointer prior "inert at 0.2%
+of the args logits" on the surface arm was structural, not a magnitude
+question. THE FIX (in commit c64003c8, which PMS5d runs): the ladder's
+LAST breath takes the fused args (`out["breaths"][-1] = dict(...,
+args=out["args"])`) — bit-identical when no fusion is active (the
+unset gate 5.2995 / 0.0279 holds). A PIN CHANGES, stated: the PMS3
+fixture's step-1 loss was 2.9154 and is now 5.9540 — step 0 identical
+(the forward is unchanged), step 1 differs because the builder's gate
+config carries the default pointer prior (ALG_ROUTER_PTR 2.0) and its
+gradient now reaches the router; the arms themselves ran ALG_ROUTER_PTR
+= 0.0, unaffected. The warm gate's trajectories (17:00) were run WITH
+this fix, which is why the state form rose. THE STATE POINTER'S
+CENSUS on the warm body: logit entropy over k 1.93 of 3.18 at the warm
+start (already MID, not flat: attended states discriminate from the
+first step) — the position form's 2.98. THE READING OF THE ARC: a road
+that enters as structure must be verified to be IN THE LOSS (a grad
+norm from that loss alone, on the parameters the road owns) before any
+arm — the two-terminal form of the representability audit: emission
+AND gold feed, or the grad is None. PMS5d (17:03) is the first pointer
+arm with its road in the loss.
