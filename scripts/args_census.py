@@ -539,7 +539,7 @@ def main():
     P("-" * 78)
     P("c. ACCURACY JOIN (wild): args-correct rate by (class x distance), both checkpoints")
     P("-" * 78)
-    ckpts = {"PMS3_241": ".cache/dump_wild_PMS3_241.pkl",
+    ckpts = {"PMS5d_241": ".cache/dump_wild_PMS5d_241.pkl", "PMS4_241": ".cache/dump_wild_PMS4_241.pkl", "PMS3_241": ".cache/dump_wild_PMS3_241.pkl",
              "PM35_scratch_241": ".cache/dump_wild_PM35_scratch_241.pkl"}
     acc_tables = {}
     for tag, path in ckpts.items():
