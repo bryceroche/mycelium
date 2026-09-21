@@ -42601,3 +42601,41 @@ whose predicted res equals the pointed variable) or miss outright; the
 res-correct rate of targets vs all slots. The reading it is for: what
 fraction of the pointer wall is variable identity inside the slot
 state vs a true pointer miss — the next road's address.
+
+**2026-09-20 19:50 — THE TARGET-SIDE ARGS CENSUS (`args_census.py` e.;
+`.cache/args_census_target.txt`; zero GPU).** Definitions: target
+labeled = the introducing slot's PREDICTED res equals the argument's
+variable; args-correct = the variable is in the relation's predicted
+top-2 (per argument; a looser criterion than the field metric, which
+is why the rates read ~0.77 not 0.45). WILD (1,481 argument instances;
+PMS4 / PMS3 / the lineage / PMS5d): TARGETS ARE LABELED BETTER THAN
+AVERAGE — res-correct 0.80 over all present slots but 0.90 over the
+slots something later points at (the 0.80 is dragged down by slots
+nothing references); only 9-10% of instances have a mislabeled
+target. Args-correct given a labeled target 0.77 / 0.77 / 0.77 / 0.68;
+given a mislabeled one 0.48 / 0.56 / 0.51 / 0.15 — the per-instance
+gap is large everywhere, but MISLABELED TARGETS ACCOUNT FOR ONLY 15-21%
+OF WRONG WILD ARGUMENTS. THE ATTRIBUTION of the wrong ones: 79-81%
+TRUE POINTER MISSES — the pointer lands on ANOTHER real, correctly-
+labeled slot; 8-9% follow the head's own mislabel; 11-12% point at a
+variable no slot claims. MINT (PMS4, 2,264 instances): res-correct
+0.73 on targets, mislabeled targets 25.5% of instances, and they
+account for 64% of mint's wrong arguments — mint's args wall IS
+variable identity. THE READING: on wild the pointer's wall is a
+SELECTION error among correctly identified variables — the head knows
+which variables exist (0.90) and picks the wrong real one four times
+in five — the same-sentence cell being where the candidates crowd;
+on mint it is identity (res 0.73) and a res road would move mint's
+args substantially. What this says for the pointer design: the text
+is the only place the selection evidence lives (which of these
+variables this clause re-mentions), and the text-only pointer read
+0.29 — weak alone; the bilinear at 0.44 selects on slot states; the
+combination (the add form from scratch: the bilinear's candidates,
+the surface's evidence) is now the design the census argues for,
+with the seal risk to be read rather than assumed. REGISTERED: (a) the
+add form from scratch (PMS5e = PMS4's body + state:add on the arg-
+stamped diet; the pointer prior in the loss for the first time); (b) a
+RES road for mint's identity (mint's res 0.73: the introducing slot's
+own variable — the positional/first-mention convention is deterministic
+from the text order; a structural res prior is cheap). Both need the
+word; the twins run first.
