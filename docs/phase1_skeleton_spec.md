@@ -42705,3 +42705,37 @@ is not certified as the chassis for wild; PMS4's twin (no chart) runs
 next and reads the router + spans alone across the pair. The lineage
 PM35_scratch remains the wild-record body on the seed pair (0.3291 /
 0.3267). Numbers asserted.
+
+**2026-09-21 01:35 — THE CHASSIS VERDICT ACROSS THE SEED PAIR.** PMS4_242
+(router + per-breath span loss on the stamped diet, no chart; 48k at
+0.123 s/step, final loss 7.17): masked wild 0.3320 vs the lineage
+twin's 0.3267 (+0.0054, SE 0.0091, z 0.59); open 0.3057 vs 0.2994
+(+0.0063, z 0.69); matched 0.3506 (seed 242's highest); rows 10 masked
+/ 7 open vs 11 / 11; args 0.453 (seed 242's highest); mint 0.6464 vs
+0.587 (+6). THE PAIR, PMS4 vs the lineage: masked +0.003 (241) / +0.005
+(242); rows 9 vs 9 / 10 vs 11; mint +4 / +6. THE PAIR, the numeral
+prior (PMS3 vs PMS4): +0.008 (241) / -0.016 (242, z 1.66 against) —
+NULL, sign-flipping; its rows 6 / 5 vs 9 / 10 — down on both. VERDICT:
+THE CHASSIS IS THE LINEAGE'S RECIPE + THE ROUTER ON THE BUS + THE PER-
+BREATH SPAN LOSS ON THE STAMPED DIET (the PMS4 body): NEUTRAL on wild
+at the slot and the row across two seeds (a free addition — no cost),
++4-6 mint on both seeds (the one robust gain of the surface pivot),
+the binding roads live, in the loss, and dominant in the bank, at a
+48k cost of ~95 min. NOT the chart: its numeral prior is null across
+the pair and costs rows. NOT a wild gain: the wild record stays the
+lineage's (0.3291 / 0.3267) within a standard error of the chassis
+(0.3325 / 0.3320). THE WEEK'S ACCOUNT ON WILD: the numeral mask (+0.03,
+z 8) and the prose diet at 35% mint (the from-scratch lineage, z 2.5-
+2.8 on two seeds) moved it; nine family organs, three surface roads,
+three pointer arms and a chart did not; the per-row wall (~3%) has not
+moved by any body. WHAT THE CHASSIS NOW HAS that the lineage lacks:
+argument-mention and cue gold on 56-66% / 80% of relation slots, arg
+and operator channels with span losses, the stamped value spans, a
+pointer fusion that is in the loss, a warm gate that sees a road learn,
+and a fused step. THE QUEUE (registered, needing the word): the
+additive state pointer from scratch on the chassis (the census argues
+for it: wild's pointer wall is SELECTION among real candidates, the
+text is where the evidence lives, the bilinear supplies the
+candidates); a res road for mint's identity (64% of mint's pointer
+wall); the row census by failure class on PMS4_242 (both seeds now
+banked). Numbers asserted.
