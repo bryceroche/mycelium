@@ -69,6 +69,7 @@ def legal_digit_logits(dig_logits, text, nd=None):
     if v is None: return None
     fake = np.full_like(dig_logits, -1e9)
     for d, dd in enumerate(digits_of(v, nd)): fake[d, dd] = 0.0
+    return fake
 
 
 def legal_arg_vars(pres, res, j, mode="intro"):
