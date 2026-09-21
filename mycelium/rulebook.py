@@ -69,6 +69,71 @@ def legal_digit_logits(dig_logits, text, nd=None):
     if v is None: return None
     fake = np.full_like(dig_logits, -1e9)
     for d, dd in enumerate(digits_of(v, nd)): fake[d, dd] = 0.0
+
+
+def legal_arg_vars(pres, res, j, mode="intro"):
+    """THE LEGAL-POINTER MASK (2026-09-21, the numeral mask's sibling for
+    pointers): the "pointers" rule read at decode time — a relation's
+    argument may only be a variable that some OTHER PRESENT slot
+    introduced. `pres` and `res` are the model's OWN per-slot
+    predictions (predicted presence, predicted res) for every slot of
+    the row, in slot order — read-time, no gold. Legal variables for
+    slot j = {res[k] : k present, k != j} ("intro"); mode "prefix"
+    additionally requires k < j — THE POSITIONAL LAW: an argument points
+    to an EARLIER slot (exact on the prose/positional convention;
+    approximate on mint, which numbers variables by first mention
+    instead of slot order — see RULES["pointer_order"], register
+    "prose"). Mode "index" (2026-09-21) does not touch `res` at all —
+    intro/prefix compound the res head's own error rate (0.80-0.90 on
+    targets) into the mask, silently masking out the pointer's correct
+    answer wherever res mislabels the introducing slot; "index" trusts
+    THE POSITIONAL LAW directly (variable v is introduced by slot v)
+    instead of the res head's guess: legal set = {v : v < j, pres[v]}
+    — pure index + presence, exact on positional rows (94% of wild),
+    approximate on mint (which numbers by first mention, not slot
+    order). "index" still LOSES (2026-09-21 census): two conditions in
+    it remove correct answers. (1) `pres[v] > 0` depends on the
+    presence head (0.91 on targets) — the mask must not depend on
+    ANOTHER head's error rate any more than intro/prefix depend on
+    res's; drop it. (2) `v < j` strictly excludes v == j, but THE ONE-
+    UNKNOWN-ARGUMENT pattern the canonicalizer licenses ("40 = partner
+    + 10": the relation AT slot j introduces variable j as one of its
+    OWN arguments, with an EARLIER variable as its result) makes the
+    slot's own index a legal, correct pointer — ~15% of the diet's
+    relation slots. Mode "index2" (2026-09-21) is the pure-index
+    correction: legal set = {v : v <= j}, no presence at all — every
+    variable index up to and including the slot's own. Returns a set
+    of legal variable indices (possibly empty)."""
+    if mode == "index":
+        return {k for k in range(len(pres)) if k < j and pres[k]}
+    if mode == "index2":
+        return {v for v in range(j + 1)}
+    out = set()
+    for k in range(len(pres)):
+        if k == j or not pres[k]:
+            continue
+        if mode == "prefix" and not (k < j):
+            continue
+        out.add(int(res[k]))
+    return out
+
+
+def legal_arg_logits(args_logits, pres, res, j, mode="intro"):
+    """args_logits (K_VARS,) rewritten so illegal columns are -inf and
+    legal columns keep their own score (a top-2/argmax over this ranks
+    LEGAL candidates only) — the args-decode analogue of
+    legal_digit_logits. None if no legal variable (the row has nothing
+    to point at under this rule; the caller keeps the raw logits, same
+    no-op convention as legal_digit_logits)."""
+    legal = legal_arg_vars(pres, res, j, mode)
+    if not legal:
+        return None
+    idx = [v for v in legal if 0 <= v < len(args_logits)]
+    if not idx:
+        return None
+    fake = np.full_like(args_logits, -1e9)
+    fake[idx] = args_logits[idx]
+    return fake
     return fake
 
 

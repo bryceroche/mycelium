@@ -210,14 +210,30 @@ _HB_DECODE_KEYS = ("pres", "ftype", "op", "sel", "dup", "islit", "dig",
 def _decode_slots(row):
     """The wheel's parse: decode each present slot ALONE (so a bad slot cannot
     sink its neighbours); every factor carries its slot as "_slot". row: one
-    row's realized head logits (decode's key conventions)."""
+    row's realized head logits (decode's key conventions).
+
+    THE LEGAL-POINTER MASK (CA_LEGAL_ARGS=intro|prefix, 2026-09-21, the
+    numeral mask's sibling for arguments — mycelium.rulebook, shared with
+    loop_val.py's LV_LEGAL_ARGS): read-time, no gold. Computed from the
+    row's OWN (unmasked) per-slot presence/res BEFORE the per-slot
+    isolation below erases the neighbours decode() would otherwise see."""
     import numpy as _np
     row = dict(row); row["query"] = _np.zeros(K_VARS, _np.float32)      # decode returns (facs, query)
+    _ca_legal = os.environ.get("CA_LEGAL_ARGS", "")
+    assert _ca_legal in ("", "intro", "prefix", "index", "index2"), f"CA_LEGAL_ARGS wants intro|prefix|index|index2, got {_ca_legal!r}"
+    if _ca_legal:
+        from mycelium.rulebook import legal_arg_logits as _ca_legal_arg_logits
+        _ca_pres = row["pres"] > 0
+        _ca_res = row["res"].argmax(-1)
     parse = []
     for j in range(L_FAC):
         if row["pres"][j] <= 0:
             continue
         rj = dict(row); pr = _np.full_like(row["pres"], -1.0); pr[j] = row["pres"][j]; rj["pres"] = pr
+        if _ca_legal:
+            _fakea = _ca_legal_arg_logits(rj["args"][j], _ca_pres, _ca_res, j, _ca_legal)
+            if _fakea is not None:
+                rj["args"] = rj["args"].copy(); rj["args"][j] = _fakea
         try:
             _facs, _ = decode(rj)
         except Exception:
@@ -2002,6 +2018,16 @@ def build_params(seed=0):
         p["t1_dw"] = t(_dw)                                   # identity at birth
         p["t1_pw"] = t(np.eye(H_W, dtype=np.float32))         # identity at birth
         p["t1_b"] = t(np.zeros(H_W))
+    if ALG_HUD:
+        # THE TOKEN HUD (2026-09-21): 5 small embedding tables, one per
+        # feature (kind/sentence/position/value/repeated); N(0, 0.02) —
+        # live from birth, no gain (the mandatory-road law). ALG_HUD_ZERO
+        # forces literal zeros (the road's plumbing gated bit-identical
+        # against ALG_HUD unset, isolated from the random init).
+        _rngH = np.random.RandomState(seed + 8123)
+        for _hnm, _hsz in HUD_TABLE_SIZES.items():
+            p[_hnm] = t(np.zeros((_hsz, H_W), np.float32) if ALG_HUD_ZERO
+                       else (_rngH.randn(_hsz, H_W) * 0.02).astype(np.float32))
     if FED_SCRATCH:
         # FED item 6: +8 scratch slot embeds appended to fq (pad-warm
         # loads the trained 24; the doctrine: factor slots stay 24,
@@ -2770,6 +2796,162 @@ def xcorr_build_array(samples, tokmask, sent, chart, T,
         out[i] = xcorr_row_bias(samples[i]["text"], tokmask[i], sent[i],
                                 chart, T, gain_f, gain_v)
     return out
+
+
+# ===========================================================================
+# THE TOKEN HUD (ALG_HUD, 2026-09-21, ledger "2026-09-21 07:48 — THE
+# PLATFORM", wrapper 3): a deterministic feature strip on EVERY token
+# entering the waist, identical on both registers — the chart done at the
+# TOKEN, not the sentence (xcorr's sibling: xcorr biases the FACTOR bank's
+# scores from a mined chart; the HUD adds a fixed, chart-free per-token
+# identity straight into the waist itself). Five features per token, each
+# with its own small learned embedding table (dim H_W): (1) kind — 5-way
+# numeral / number word / operator cue / entity-like / other, reusing
+# _xcorr_numwords/_xcorr_cue_re verbatim so "numeral"/"number word"/
+# "operator cue" mean the same thing the correspondence chart's kind does;
+# (2) sentence index, clipped 0..7 (XCORR_SENT_BUCKETS's own bucketing);
+# (3) position within the sentence, bucketed {first, early, middle, late,
+# last} over REAL tokens only; (4) the numeral's value bucket for numeral
+# tokens {0, 1, 2-9, 10-99, 100-999, 1000+}, else "none" (7 buckets total);
+# (5) is-repeated — the (lowercased) token string occurs more than once in
+# the row's real tokens (2-way). THE MANDATORY-ROAD LAW: no gain — the
+# embeddings are added directly to the waist (waist = waist + sum_f
+# E_f[feat_f]) and initialized N(0, 0.02) so the road is live from birth;
+# ALG_HUD_ZERO=1 is the debug door that forces the tables to literal zeros
+# so the road's OWN plumbing (indexing, gather, sum) can be gated
+# bit-identical against ALG_HUD unset without also testing the tables'
+# random init.
+# ===========================================================================
+ALG_HUD = int(os.environ.get("ALG_HUD", "0"))
+ALG_HUD_ZERO = int(os.environ.get("ALG_HUD_ZERO", "0"))
+HUD_N_FEATS = 5
+HUD_TABLE_NAMES = ("hud_kind", "hud_sent", "hud_pos", "hud_val", "hud_rep")
+HUD_TABLE_SIZES = {"hud_kind": 5, "hud_sent": 8, "hud_pos": 5,
+                   "hud_val": 7, "hud_rep": 2}   # 5+8+5+7+2 = 27 rows x H_W
+
+
+def _hud_kind(tok_str, is_sent_initial, is_repeated):
+    """0 numeral / 1 number word / 2 operator cue / 3 entity-like / 4
+    other, from ONE decoded, stripped token string. Numeral/number-word/
+    operator-cue tests are _xcorr_kind's, verbatim (same census cue list);
+    entity-like = a capitalized word NOT sentence-initial, or a word that
+    recurs elsewhere in the row's text (either condition, checked AFTER
+    the numeral/word/cue tests so a capitalized cue or numeral never
+    misclassifies)."""
+    s = tok_str.strip()
+    if not s:
+        return 4
+    if s.isdigit():
+        return 0
+    if s.lower() in _xcorr_numwords():
+        return 1
+    if _xcorr_cue_re().match(s):
+        return 2
+    if (s[:1].isupper() and not is_sent_initial) or is_repeated:
+        return 3
+    return 4
+
+
+def _hud_value_bucket(tok_str, kind):
+    """7-way numeral value bucket: {0, 1, 2-9, 10-99, 100-999, 1000+} for
+    kind==0 (numeral) tokens, else bucket 6 ("none")."""
+    if kind != 0:
+        return 6
+    try:
+        v = int(tok_str.strip())
+    except ValueError:
+        return 6
+    if v == 0: return 0
+    if v == 1: return 1
+    if v <= 9: return 2
+    if v <= 99: return 3
+    if v <= 999: return 4
+    return 5
+
+
+def _hud_pos_bucket(rel_idx, sent_len):
+    """5-way position-in-sentence bucket {first, early, middle, late,
+    last} over the sentence's REAL tokens (rel_idx 0-based, sent_len the
+    sentence's real-token count). A length-1 "sentence" is "first"."""
+    if sent_len <= 1 or rel_idx == 0:
+        return 0
+    if rel_idx == sent_len - 1:
+        return 4
+    frac = rel_idx / (sent_len - 1)
+    if frac < 1.0 / 3.0:
+        return 1
+    if frac < 2.0 / 3.0:
+        return 2
+    return 3
+
+
+def hud_row_features(text, tokmask_row, sent_row, T):
+    """(T, 5) int8 THE TOKEN HUD features per token, re-tokenizing `text`
+    with the head's own tokenizer (xcorr_row_features's own path: the SAME
+    offsets/truncation build_gold's caller used). Deterministic; host-
+    only, no model call. Gated by tokmask_row so padding never enters a
+    sentence's length/position/repeat counts."""
+    tok = _xcorr_tokenizer()
+    ids = tok.encode(text).ids[:T]
+    n = len(ids)
+    feats = np.zeros((T, HUD_N_FEATS), np.int8)
+    if n == 0:
+        return feats
+    real = np.zeros(n, bool)
+    real[:n] = np.asarray(tokmask_row[:n]) > 0
+    strs = [tok.decode([tid]).strip() for tid in ids]
+    lowered = [s.lower() for s in strs]
+    from collections import Counter
+    cnt = Counter(lowered[i] for i in range(n) if real[i] and lowered[i])
+    sb = np.asarray(sent_row[:n], np.int64)
+    rel_idx = np.zeros(n, np.int64)
+    sent_len = {}
+    for i in range(n):
+        if not real[i]:
+            continue
+        sv = int(sb[i])
+        rel_idx[i] = sent_len.get(sv, 0)
+        sent_len[sv] = sent_len.get(sv, 0) + 1
+    for i in range(n):
+        if not real[i]:
+            continue
+        sv = int(sb[i])
+        is_initial = rel_idx[i] == 0
+        is_rep = cnt[lowered[i]] > 1
+        k = _hud_kind(strs[i], is_initial, is_rep)
+        feats[i, 0] = k
+        feats[i, 1] = min(sv, 7)
+        feats[i, 2] = _hud_pos_bucket(int(rel_idx[i]), sent_len[sv])
+        feats[i, 3] = _hud_value_bucket(strs[i], k)
+        feats[i, 4] = int(is_rep)
+    return feats
+
+
+def hud_build_array(samples, tokmask, sent, T):
+    """(n, T, 5) int8 — hud_row_features for every row, host-side, no
+    model call. Deterministic — the mask-prep pass's own kind of array
+    (banked like FACTS/XCORR)."""
+    n = len(samples)
+    out = np.zeros((n, T, HUD_N_FEATS), np.int8)
+    for i in range(n):
+        out[i] = hud_row_features(samples[i]["text"], tokmask[i], sent[i], T)
+    return out
+
+
+def hud_census(hud, tokmask):
+    """THE TOKEN HUD's feature census (gate c): kind distribution, entity
+    rate, and repeated rate over REAL tokens ONLY (pad cells default to
+    kind 0/"numeral" via np.zeros — a real tokmask gate is load-bearing,
+    not decorative, or padding silently inflates the numeral bucket).
+    hud: (n, T, 5) int8; tokmask: (n, T) truthy-for-real. Returns a dict;
+    printed by the caller."""
+    real = np.asarray(tokmask) > 0
+    kinds = hud[..., 0][real]; rep = hud[..., 4][real]
+    names = ("numeral", "number_word", "operator_cue", "entity_like", "other")
+    dist = {names[k]: float((kinds == k).mean()) for k in range(5)}
+    return {"kind_dist": dist,
+           "entity_rate": dist["entity_like"],
+           "repeated_rate": float(rep.mean())}
 
 
 def _window_bias(fat_prev, w, B, L, T):
@@ -4238,7 +4420,7 @@ def breath_step(p, state, kb, ctx):
     return state
 
 
-def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, drop=None, anchor=None, amask=None, gmod=None, pmask=None, lsent=None, reg=None, fact_buf=None, mh_mass=None, mh_atlas_traj=None, xcorr=None, res_map=None):
+def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, drop=None, anchor=None, amask=None, gmod=None, pmask=None, lsent=None, reg=None, fact_buf=None, mh_mass=None, mh_atlas_traj=None, xcorr=None, res_map=None, hud=None):
     from tinygrad import Tensor, dtypes   # audit 2026-09-01: was a
     # SCOPE ACCIDENT (bound only via the sixwave/sync branches — any
     # SIXWAVE-off config killed five organs at step 1)
@@ -4246,6 +4428,16 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
     if trunk.dtype != dtypes.float:
         trunk = trunk.cast(dtypes.float)   # perf audit #4: half feeds upcast in-graph (exact)
     waist = (trunk @ p["waist_w"] + p["waist_b"]).gelu() + p["sent_emb"][sent]
+    if ALG_HUD and hud is not None:
+        # THE TOKEN HUD (2026-09-21): a deterministic per-token feature
+        # strip added to the waist ONCE, here, where it is formed from the
+        # trunk states — so every downstream consumer (the bank's keys,
+        # breath 0's grounding read, every later breath) sees it, never
+        # threaded through the per-breath loop. `hud` arrives (B, T, 5)
+        # int (hud_row_features / hud_build_array, host-side, no gain).
+        _hi = hud if hud.dtype == dtypes.int else hud.cast(dtypes.int)
+        for _hfi, _hnm in enumerate(HUD_TABLE_NAMES):
+            waist = waist + p[_hnm][_hi[:, :, _hfi]]
     if FED_WAIST and "fed_w2b" in p:
         # FED item 3: waist2 = waist + MLP(waist), output ZERO-INIT —
         # exact zeros at birth; every downstream organ (bank closure,
@@ -5872,6 +6064,21 @@ def do_train(steps, lr, batch, seed):
         print(f"[xcorr] array ready {XCORR.shape} {XCORR.dtype} in "
               f"{time.time() - _xc_t0:.1f}s (mean|Xb| on real tokens "
               f"{_xc_mean:.4f})", flush=True)
+    HUD = None   # THE TOKEN HUD (2026-09-21): host-only, no model call —
+                # built here for the same reason XCORR is (independent of
+                # the K_B>1 mask-prep pass below)
+    if ALG_HUD:
+        _hd_t0 = time.time()
+        print(f"[hud] ALG_HUD=1 (zero={ALG_HUD_ZERO}) — building the "
+              f"diet's per-token feature array ({n} rows, host, no model "
+              f"call) ...", flush=True)
+        HUD = hud_build_array(samples, tokmask, sent, T_ALG)
+        _hc = hud_census(HUD, tokmask)
+        print(f"[hud] array ready {HUD.shape} {HUD.dtype} in "
+              f"{time.time() - _hd_t0:.1f}s | kind_dist="
+              f"{ {k: round(v, 4) for k, v in _hc['kind_dist'].items()} } "
+              f"entity_rate={_hc['entity_rate']:.4f} "
+              f"repeated_rate={_hc['repeated_rate']:.4f}", flush=True)
     RESMAP = None   # THE RES-SCATTER FIX (2026-09-20, PMS5's collapse):
                     # R[k,v] = presence(k) * 1[gold res[k]==v] — teacher-
                     # forcing the SLOT->VARIABLE map (the target space
@@ -6260,6 +6467,8 @@ def do_train(steps, lr, batch, seed):
         if ALG_XCORR_ON else None   # THE CORRESPONDENCE CHART's feed (b_fact idiom)
     b_resmap = fix(np.zeros((batch, L_FAC, K_VARS), np.float32), dtypes.float) \
         if ALG_PTR_SURF else None   # THE RES-SCATTER FIX's feed (b_fact idiom)
+    b_hud = fix(np.zeros((batch, T_ALG, HUD_N_FEATS), np.int32), dtypes.int) \
+        if ALG_HUD else None   # THE TOKEN HUD's feed (b_fact idiom)
     b_mha = fix(np.zeros((batch, ATLAS_TAB.shape[1], H_W), np.float32),
                 dtypes.float) if ATLAS_TAB is not None else None
     b_tail = fix(np.zeros((batch, T_ALG), np.float32), dtypes.float) if CLOCK else None
@@ -6408,13 +6617,13 @@ def do_train(steps, lr, batch, seed):
             # commits, self-labeled from gold like the commit loss,
             # DETACHED); the second trains under live release dynamics.
             o0 = forward(p, s_tr, b_tk, b_se, slot_mask=b_mask, tail=b_tail,
-                         reg=b_reg, xcorr=b_xcorr, res_map=b_resmap)
+                         reg=b_reg, xcorr=b_xcorr, res_map=b_resmap, hud=b_hud)
             ok = ((o0["ftype"].argmax(-1) == bg["ftype"]).float()
                   * (o0["res"].argmax(-1) == bg["res"]).float())
             rv = (bg["presence"] * (1.0 - ok)).detach()
             o = forward(p, s_tr, b_tk, b_se, slot_mask=b_mask, revoke=rv,
                         tail=b_tail, reg=b_reg, fact_buf=b_fact,
-                        mh_mass=b_mhm, mh_atlas_traj=b_mha, xcorr=b_xcorr, res_map=b_resmap)
+                        mh_mass=b_mhm, mh_atlas_traj=b_mha, xcorr=b_xcorr, res_map=b_resmap, hud=b_hud)
         elif int(os.environ.get("NAZ_TRAIN", "0")):
             # NAZARÉ TRAINING (door #55): the organ-2 two-forward pattern —
             # pre-pass yields the intra-pass event field IN-GRAPH (detached);
@@ -6423,7 +6632,7 @@ def do_train(steps, lr, batch, seed):
             # read-time dup-aware argpair): argmax-change OR dup-flip on
             # rel-typed present slots, breath-0 vs final.
             o0 = forward(p, s_tr, b_tk, b_se, slot_mask=b_mask, tail=b_tail,
-                        xcorr=b_xcorr, res_map=b_resmap)
+                        xcorr=b_xcorr, res_map=b_resmap, hud=b_hud)
             _b0 = o0["breaths"][0]
             _relmask = (o0["pres"].squeeze(-1) > 0).float() \
                 * (o0["ftype"].argmax(-1) == 0).float()
@@ -6434,13 +6643,13 @@ def do_train(steps, lr, batch, seed):
             _gm = (_bgauth + (1.0 - _bgauth) * _ev).unsqueeze(-1).detach()
             o = forward(p, s_tr, b_tk, b_se, slot_mask=b_mask, tail=b_tail,
                         gmod=_gm, fact_buf=b_fact,
-                        mh_mass=b_mhm, mh_atlas_traj=b_mha, xcorr=b_xcorr, res_map=b_resmap)
+                        mh_mass=b_mhm, mh_atlas_traj=b_mha, xcorr=b_xcorr, res_map=b_resmap, hud=b_hud)
         else:
             _bd = os.environ.get("BREATH_DROPOUT")
             o = forward(p, s_tr, b_tk, b_se, slot_mask=b_mask, tail=b_tail,
                         drop=(b_drop if _bd else None), lsent=b_ls, reg=b_reg,
                         fact_buf=b_fact,
-                        mh_mass=b_mhm, mh_atlas_traj=b_mha, xcorr=b_xcorr, res_map=b_resmap)
+                        mh_mass=b_mhm, mh_atlas_traj=b_mha, xcorr=b_xcorr, res_map=b_resmap, hud=b_hud)
         l = loss_fn(o, bg)
         if ALG_CONSUME and "_early" in o:   # support-gated consume-once:
             # any breath claims, each fact pays once; eligibility = the DAG
@@ -7149,6 +7358,8 @@ def do_train(steps, lr, batch, seed):
             _fd(b_xcorr, XCORR[idx], _rl)   # THE CORRESPONDENCE CHART's feed: this batch's precomputed bias
         if b_resmap is not None:
             _fd(b_resmap, RESMAP[idx], _rl)   # THE RES-SCATTER FIX's feed: this batch's gold slot->variable map
+        if b_hud is not None:
+            _fd(b_hud, HUD[idx], _rl)   # THE TOKEN HUD's feed: this batch's precomputed per-token features
         if b_mha is not None:
             _fd(b_mha, ATLAS_TAB[ATLAS_IDX[idx]], _rl)
         if b_tail is not None:

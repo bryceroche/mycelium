@@ -104,7 +104,14 @@ REFUSED = ("ALG_SHELF", "ALG_WHIP", "ALG_TOKLOOP", "ALG_WRITEBACK", "ALG_KANNEAL
            "ALG_OPCOUNT", "ALG_REF", "ALG_DIAL", "ALG_VALATT",
            "ALG_DUPPTR", "ALG_DETWAVE", "ALG_WHEEL_CERT",   # THE CERTIFICATE PASS
            "ALG_SPAN_ALL", "ALG_ANCHOR",   # THE BREATH-SHARPENING ORGANS (2026-09-19):
-           "ALG_SPAN_ARGS", "ALG_SPAN_OP", "ALG_SPAN_OP_ROAD", "ALG_PTR_SURF")
+           "ALG_SPAN_ARGS", "ALG_SPAN_OP", "ALG_SPAN_OP_ROAD", "ALG_PTR_SURF",
+           "ALG_HUD")
+           # THE TOKEN HUD (2026-09-21): forward()'s new `hud` port is fed
+           # only by the mask-prep pass's b_hud buffer (do_train's own
+           # step()) and by loop_val/chain_acc's read-time helper — the
+           # walker builds neither; it calls forward() with none of the
+           # ports THE TOKEN HUD needs and would silently train with the
+           # tables cold (byte-different loss, no error) if not refused.
            # THE SURFACE-GROUNDED STRUCTURAL POINTER (2026-09-20): same
            # reason as ALG_SPAN_ALL/ALG_ANCHOR above — the walker's per-
            # seam heads_of calls never thread aspan_all/ospan_all, and

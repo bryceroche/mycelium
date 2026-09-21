@@ -219,11 +219,20 @@ def read(ckpt, data=None, p=None):
     _LEGAL = os.environ.get("LV_LEGAL", "") == "num"   # THE NUMERAL MASK (2026-09-17, a read-time road): legal values only — mycelium.rulebook
     if _LEGAL:
         from mycelium.rulebook import legal_digit_logits as _legal_digit_logits
+    _LEGAL_ARGS = os.environ.get("LV_LEGAL_ARGS", "")   # THE LEGAL-POINTER MASK (2026-09-21): "intro" | "prefix" | "index" | "" — mycelium.rulebook, composes with LV_LEGAL=num
+    assert _LEGAL_ARGS in ("", "intro", "prefix", "index", "index2"), f"LV_LEGAL_ARGS wants intro|prefix|index|index2, got {_LEGAL_ARGS!r}"
+    if _LEGAL_ARGS:
+        from mycelium.rulebook import legal_arg_logits as _legal_arg_logits, legal_arg_vars as _legal_arg_vars
+        _NOTIN_NUM = _NOTIN_DEN = 0   # THE COORDINATOR'S DIAGNOSTIC (2026-09-21): fraction of gold arg
+                                     # variables NOT in the mask's own legal set (why a mask can hurt)
     _XCORR_ON = os.environ.get("ALG_XCORR", "") != ""   # THE CORRESPONDENCE CHART, read-time road (2026-09-19)
     if _XCORR_ON:
         import phase1_algebra_head as _HX
         _XCORR_CHART = _HX.xcorr_load_chart()
         _XCORR_GF, _XCORR_GV = _HX.ALG_XCORR_GAIN, _HX.ALG_XCORR_V_GAIN
+    _HUD_ON = int(os.environ.get("ALG_HUD", "0")) != 0   # THE TOKEN HUD, read-time road (2026-09-21)
+    if _HUD_ON:
+        import phase1_algebra_head as _HH
   # THE PAIRED READ (2026-09-12): per-slot outcomes to an npz
     for s0 in range(0, len(vs), 8):
         sl = np.arange(s0, min(s0 + 8, len(vs)))
@@ -250,7 +259,16 @@ def read(ckpt, data=None, p=None):
                 _HX.T_ALG, _XCORR_GF, _XCORR_GV) for i in sl_p]
             ).astype(np.float32)
             xcorr_t = Tensor(_xb, dtype=dtypes.float)
-        o0 = _rf(forward, p, ts, tk, se, keys=_jk_open, xcorr=xcorr_t)
+        hud_t = None
+        if _HUD_ON:
+            # per-batch, host-side (the same helper the mask-prep pass's
+            # HUD array uses): no cached per-row array exists for an
+            # arbitrary TEST fixture, so this re-derives it every batch.
+            _hb = np.stack([_HH.hud_row_features(
+                vs[int(i)]["text"], vtk[i], vse[i], _HH.T_ALG)
+                for i in sl_p]).astype(np.int32)
+            hud_t = Tensor(_hb, dtype=dtypes.int)
+        o0 = _rf(forward, p, ts, tk, se, keys=_jk_open, xcorr=xcorr_t, hud=hud_t)
         onp0 = {k: o0[k].realize().numpy() for k in ("fat", "args", "res")}
         mk = build_slot_masks(onp0, vse[sl_p].astype(np.int32))
         fact_t = mass_t = None
@@ -305,7 +323,7 @@ def read(ckpt, data=None, p=None):
         o = _rf(forward, p, ts, tk, se, keys=_jk_masked,
                 slot_mask=Tensor(mk, dtype=dtypes.float),
                 fact_buf=fact_t, mh_mass=mass_t, mh_atlas_traj=_mha_t,
-                xcorr=xcorr_t)
+                xcorr=xcorr_t, hud=hud_t)
         onp = {k: o[k].realize().numpy() for k in
                (("pres", "ftype", "op", "islit", "dig", "args", "res")
                 + (("dup",) if "h_dup" in p else ()))}
@@ -319,6 +337,13 @@ def read(ckpt, data=None, p=None):
             _lex_apply(onp, onp0["fat"], sl, sl_p, vs)
         for bi, i in enumerate(sl):
             i = int(i)
+            if _LEGAL_ARGS:
+                # THE LEGAL-POINTER MASK (LV_LEGAL_ARGS=intro|prefix): the
+                # model's OWN per-slot presence/res for the WHOLE row,
+                # read-time, no gold — computed once per row, applied per
+                # slot below.
+                _pres_row = onp["pres"][bi] > 0
+                _res_row = onp["res"][bi].argmax(-1)
             for j in range(L_FAC):
                 if vg["presence"][i, j] < 0.5:
                     continue
@@ -332,8 +357,13 @@ def read(ckpt, data=None, p=None):
                 ok = f_pres and f_ftype and f_res
                 f_op = f_args = f_dig = None
                 if vg["ftype"][i, j] == 0:
-                    f_op = int(onp["op"][bi, j].argmax()) == vg["op"][i, j]
                     gset = set(np.where(vg["args"][i, j] > .5)[0].tolist())
+                    if _LEGAL_ARGS:   # THE LEGAL-POINTER MASK: applied BEFORE the top-2/argmax, same convention as LV_LEGAL=num
+                        _legalset = _legal_arg_vars(_pres_row, _res_row, j, _LEGAL_ARGS)
+                        _NOTIN_DEN += len(gset); _NOTIN_NUM += len(gset - _legalset)
+                        _fakea = _legal_arg_logits(onp["args"][bi, j], _pres_row, _res_row, j, _LEGAL_ARGS)
+                        if _fakea is not None: onp["args"][bi, j] = _fakea
+                    f_op = int(onp["op"][bi, j].argmax()) == vg["op"][i, j]
                     if len(gset) == 1 and "dup" in onp:
                         f_args = bool(onp["dup"][bi, j] > 0) and int(np.argmax(onp["args"][bi, j])) in gset
                     else:
@@ -364,6 +394,9 @@ def read(ckpt, data=None, p=None):
     if _FIELDS is not None:
         print("[fields] " + " ".join(f"{k}={v[0]/max(v[1],1):.3f}({v[1]})" for k, v in _FIELDS.items() if not k.startswith("slot")), flush=True)
         print("[slots]  " + " ".join(f"{k[4:]}:{v[0]/max(v[1],1):.2f}({v[1]})" for k, v in sorted(_FIELDS.items()) if k.startswith("slot")), flush=True)
+    if _LEGAL_ARGS:
+        print(f"[legalargs] mode={_LEGAL_ARGS} gold-not-in-legal-set: "
+              f"{_NOTIN_NUM}/{_NOTIN_DEN} = {_NOTIN_NUM / max(_NOTIN_DEN, 1):.4f}", flush=True)
     if _PS is not None:
         if _NUMSPOT_BETA: print(f"[numspot] beta {_NUMSPOT_BETA}: given slots spotlit {_NS_STATS['slots']}", flush=True)
         if _LEX: print(f"[lexicon] rows with matches {_LEX_STATS['rows']}, value spans {_LEX_STATS['spans']}, given slots taken {_LEX_STATS['taken']}", flush=True)
