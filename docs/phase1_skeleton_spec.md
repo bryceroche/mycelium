@@ -42969,3 +42969,21 @@ its twin in chain_acc); the fix and the bit-identity gate (PMS4_241
 and PMS7's paired verdict re-run after it. PMS7 so far (valid): open
 wild 0.3077 (+0.010 over PMS6, z pending), mint 0.370 (the diet's
 cost, not the HUD's).
+
+**2026-09-21 12:55 — THE MASK BUG'S ROOT CAUSE: one missing `return`.**
+`mycelium/rulebook.legal_digit_logits` lost its `return fake` when the
+builder inserted `legal_arg_vars` beside it this morning; the function
+returned None, both doors' `if fake is not None` guards never fired,
+and every masked read since 07:54 was open — in loop_val AND chain_acc
+from the one shared function ("one rulebook, two doors" cuts both
+ways). The HUD correlation was timing: PMS7's masked read ran a minute
+after the builder's fix landed in the tree. Restored (commit 31604cd6;
+the function verified to return a (7, 11) array with 7 zeros). The
+builder's restore gate runs on the card (PMS4_241 masked 0.3325 / open
+0.3003; PM35_scratch_241 0.3291; chain_acc 9 / 7) and then the whole
+legality sweep re-runs; PMS6's masked read, its masked row count, and
+the three paired verdicts (PMS6 vs PMS4; PMS7 vs PMS6 = the HUD's
+share; PMS7 vs PMS4) re-run in pc-remask under the lock. REGISTERED:
+`reads.py` asserts legal_wild != open_wild per checkpoint on ingest
+(a masked read equal to its open read is a broken mask, never a
+result).
