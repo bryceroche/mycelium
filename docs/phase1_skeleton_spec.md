@@ -42795,3 +42795,31 @@ beside the prose and the mint (share and reps declared by the dose
 law), giving the arg channels full supervision on its rows; the arm's
 design waits on the positional-mint rebuild and the legal-pointer
 reads.
+
+**2026-09-21 09:00 — ONE CONVENTION: 61% of mint rewrites; 34% has no
+positional order — a scope boundary, registered.** `canonicalize_mint.py`
+-> form_mix_pm35p (+ npz over the hard-linked states): mint 17,348 rows
+— 10,515 rewritten to the positional law and re-certified (the
+original row solved from scratch, not its zero-filled `solution`
+placeholder); 5,830 REFUSED for no positional order (pair_sum /
+pair_diff 3,392 of them, 100% refused: a two-unknown linear system is
+not a forward chain of one-new-variable factors; also Vieta pairs, CRT,
+fdiv_a, pct_base, seq_anchor); 701 above the value cap 9,999 (the same
+cap the admission gate enforces); 302 originally unsolvable (a pre-
+existing data defect surfaced). Prose byte-identical (33,305 rows; all
+30 npz arrays on the prose mask). The positional fraction (res[k]==k)
+on mint 0.17 -> 0.53 overall, 0.91 on the rewritten rows (the rest is
+the one-unknown-argument pattern the canonicalizer licenses, where the
+new variable is an argument, not the result: 100% of the residual);
+prose 0.816 (the census's 0.94 was over argument instances, a
+different denominator). Four latent defects found: the base
+canonicalizer never remaps a macro's x/y/xs (9.6% of mint would have
+been corrupted silently), crashes on string-typed gen, refuses on
+padded n_vars, and trusts a placeholder solution. THE BOUNDARY: the
+positional law is the forward-chaining dialect; a third of mint is
+the CSP's own domain (simultaneous systems) and keeps first-mention
+numbering — two conventions remain, on a smaller and now-explicit
+minority. THE DIET for the next arm: form_mix_pm35pr = pm35p + the
+rendered 5k (55,653 rows; the rendered share 9%, reps ~7 per unique
+over 48k steps like every row); its trunk states precompute now
+(pc-precomp).
