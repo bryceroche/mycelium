@@ -42639,3 +42639,19 @@ RES road for mint's identity (mint's res 0.73: the introducing slot's
 own variable — the positional/first-mention convention is deterministic
 from the text order; a structural res prior is cheap). Both need the
 word; the twins run first.
+
+**2026-09-20 21:00 — THE TWIN DIVERGED; the chain stopped; the probe
+runs.** PMS3_242 (the numeral-prior chassis body at seed 242, on the
+head after the ladder fix and the state pointer): loss 58.8 at step 0,
+1.46e6 at step 500, 1e9-1e10 through 39k — a divergence in the first
+500 steps that never recovered; the twin is void, the chain stopped
+before PMS4_242. Unknown: whether the surface roads are seed-sensitive
+(the seed-241 arms all trained cleanly; PMS5d at seed 241 on this very
+code trained cleanly) or the code the twins run on breaks THIS config
+(the ladder patch under ALG_ROUTER_PTR = 0.0 multiplies the pointer
+prior by 0.0 — a 0 x inf would be NaN, and the loss is finite and huge,
+so the suspect is a head whose logits explode: the router's channels
+are unbounded through W_rk2). THE PROBE (pc-divprobe; the 1024-row
+slice, 1,000 steps each, loss every 500): the PMS3 config at seed 242
+and at seed 241; the PMS4 config at 242; the lean body at 242 —
+separates seed from code from road.
