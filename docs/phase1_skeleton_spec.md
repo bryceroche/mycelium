@@ -43033,3 +43033,50 @@ rows 5-10 of 311, since the campaign's first prose lineage. The next
 design starts from the target-side census's fact — selection among
 correctly labeled candidates, worst in the same sentence — and not
 from the surface, which four roads and two diets have now saturated.
+
+**2026-09-21 14:45 — THE LEGALITY SWEEP, restored mask (killed by the
+word before its rows; the masked/open/mint reads on all four
+checkpoints landed).** Masked baselines restored to the digit (PMS4
+0.3325 / 0.3320, the lineage 0.3291 / 0.3267). Every res- or presence-
+derived pointer mask LOSES 6-9 points of args on every checkpoint; the
+pure-index mask (v <= j) is an EXACT no-op on wild (0 discordant slots
+on all four — the head never points forward; the wall is inside the
+law's space) and COSTS mint 13 points (0.6568 -> 0.5254, z 21; 39% of
+mint's gold pointers sit outside the positional space — the two
+conventions measured a fourth way). The legal-pointer wrapper CLOSES:
+there is no pointer legality on wild that removes anything; the
+numeral mask's success came from a legal set the text defines exactly,
+and no such set exists for arguments. Struck for good measure: the
+morning's pre-fix sweep numbers.
+
+**2026-09-21 14:50 — THE ENTITY ROLE ON THE BUS (word given; the
+turning-point brainstorm).** THE FRAME, corrected and kept: the slots
+already talk (the dense two-bank attention under the all-ones mask,
+where the bilinear pointer reads 0.44); the structured slot graph (the
+mask head) died as a gain, the solver-derived structure read null four
+ways; what the slots lack is a LANGUAGE for the tie. THE ANATOMY: the
+state pointer keyed each candidate by its RES channel's attended state
+= the clause — same-sentence candidates ("3 apples", "5 oranges") have
+the same clause, so their keys are twins by construction and the
+pointer flips a coin (the 0.40 cell); their VALUE-MENTION keys are
+distinct, and the relation's re-mention names one of them. THE
+DESIGN: (1) THE KEY SWAP — the pointer's candidate key becomes the
+GIVEN channel's attended state e[k] (the value mention's
+neighbourhood), the query stays the arg channel's re-mention state;
+(2) THE ENTITY ROLE — a new role phasor on the bus; e[k] bound under it
+into slot k's bus register at breath 1 so every later breath can
+unbind the entity by role: slot-to-slot in the bus's own language, the
+role as the channel, the breath as the timing — not a dense layer
+(a channel without a language, the same blur) and not a hand-built
+graph (needs the structure it should discover). THE CENSUS FIRST (the
+analyst, one forward per checkpoint): on same-sentence candidate
+pairs, the cosine of the clause keys vs the value keys vs the slot
+states, and whether the arg query ranks the true candidate first under
+each key — the anatomy proven or refuted before the arm. THE GATE:
+the warm gate (from PMS4, 500 steps) with the state form as the paired
+control — the entity key must rise above 0.09 -> 0.18. THE BAR for the
+arm: the same-sentence cell of the args census (0.40) and wild args
++0.05 paired vs PMS4; mint's identity watched. If the value keys do
+not separate the twins either, the entity is not on the surface and
+the memory must be built inside the slots from nothing — the larger
+design, named.
