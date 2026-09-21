@@ -42687,3 +42687,21 @@ the card 31.2624 at step 500 at seed 241 (the exact 02aac357 value) and
 (the void PMS3_242 artifacts removed): PMS3_242 then PMS4_242 vs
 PM35_scratch_242, the paired verdicts restored in the chain (the
 lineage twin; PMS3 vs PMS4 at 242). ~3.3 h.
+
+**2026-09-21 00:05 — PMS3's TWIN: the numeral-prior chassis is NULL on
+wild across the seed pair; the mint gain reproduces.** PMS3_242 (seed
+242 on the fixed head, 48k at 0.124 s/step, final loss 7.03): masked
+wild 0.3159 vs the lineage twin PM35_scratch_242's 0.3267 (-0.0107,
+paired SE 0.0093, z ~1.2 against); open 0.2877 vs 0.2994 (-0.0117);
+matched 0.3286; rows 5 masked / 3 open vs the lineage twin's 11; MINT
+0.6641 vs 0.587 (+7.7). THE PAIR: seed 241 +0.011, seed 242 -0.011 —
+the mean is zero, the slot record on 241 was the seed's spread, and
+the row read is down on both seeds (6 vs 9; 5 vs 11). THE ROBUST
+GAIN: mint +8 points on both seeds (0.6846 / 0.6641 vs 0.61 / 0.59) —
+the surface roads (the router's channels + the per-breath span loss on
+the stamped spans + the numeral prior) bind and convert on the
+templated register and not on prose. VERDICT: the numeral-prior body
+is not certified as the chassis for wild; PMS4's twin (no chart) runs
+next and reads the router + spans alone across the pair. The lineage
+PM35_scratch remains the wild-record body on the seed pair (0.3291 /
+0.3267). Numbers asserted.
