@@ -42551,3 +42551,32 @@ norm from that loss alone, on the parameters the road owns) before any
 arm — the two-terminal form of the representability audit: emission
 AND gold feed, or the grad is None. PMS5d (17:03) is the first pointer
 arm with its road in the loss.
+
+**2026-09-20 19:20 — PMS5d (the state pointer, severed, IN the loss): the
+pointer learns and loses to the bilinear in every cell — the sever
+line CLOSES.** PMS5d_241: wild args 0.295 (PMS4 0.444; the dead arms
+0.08 / 0.10), mint args 0.290 (0.649), open wild 0.2882, MASKED 0.3174
+(vs PMS4 0.3325: -0.015, z 1.78 against; vs the lineage -0.012, z 1.29
+against), matched 0.3301, mint 0.4711, rows 1 masked; every non-pointer
+field intact. THE CENSUS CELLS (args-correct, wild, anchored class):
+same sentence 0.231 vs PMS4's 0.420; distance 1 0.380 vs 0.537;
+distance 2 0.379 vs 0.483; 3+ 0.375 vs 0.458 — uniformly weaker,
+including the same-sentence cell it was built for; not complementary
+at the cell level. THE READING: a pointer built from the router's
+attended text states alone carries LESS pointer information than the
+slot states do (the bilinear already reads the trunk through the bank
+and reaches 0.44); the args census's finding that accuracy does not
+track lexical anchoring stands, and the pointer's remaining failure is
+not "it cannot see the text". WHAT THE ARC BOUGHT: the ladder shadow
+found and fixed (every fused args road is now in the loss — the
+pointer prior included); the arg-mention and cue stamps (66% / 56% /
+80% of relation slots) and the arg/op channels with their span losses,
+all gated; the warm gate that sees learning. WHAT CLOSES: the severed
+surface pointer (three arms). REGISTERED, needing the word: (a) the
+ADD form from scratch (bilinear + state pointer growing together; the
+warm gate says the surface adds nothing beside a carrying bilinear —
+the seal law — so the prior is low); (b) THE CHASSIS TWINS (PMS3 /
+PMS4 at seed 242 vs PM35_scratch_242) — the certification read the
+chassis still lacks, ~3.3 h; (c) the row census by failure class on
+PMS4 — the wall named by the data before the next pointer design.
+Numbers asserted.
