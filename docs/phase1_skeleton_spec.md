@@ -42771,7 +42771,7 @@ that follows = the chassis body on the positional diet (+ the renderer's
 rows if the surface census matches) with the HUD, vs PMS4 on both
 seeds. Bars pinned when the builds gate.
 
-**2026-09-21 08:30 — THE PROSE RENDERER BUILT (`scripts/prose_render.py`;
+**2026-09-21 08:05 — THE PROSE RENDERER BUILT (`scripts/prose_render.py`;
 `.cache/render_v1_5k.jsonl` + `render_v1_val.jsonl`).** Templates + an
 entity lexicon, no model: graphs sampled in positional order (given +
 rel add/mul, 2 args, values <= 300; mod/sel/pct/fdiv/macro/frac out of
@@ -42796,7 +42796,7 @@ law), giving the arg channels full supervision on its rows; the arm's
 design waits on the positional-mint rebuild and the legal-pointer
 reads.
 
-**2026-09-21 09:00 — ONE CONVENTION: 61% of mint rewrites; 34% has no
+**2026-09-21 08:14 — ONE CONVENTION: 61% of mint rewrites; 34% has no
 positional order — a scope boundary, registered.** `canonicalize_mint.py`
 -> form_mix_pm35p (+ npz over the hard-linked states): mint 17,348 rows
 — 10,515 rewritten to the positional law and re-certified (the
@@ -42823,3 +42823,21 @@ minority. THE DIET for the next arm: form_mix_pm35pr = pm35p + the
 rendered 5k (55,653 rows; the rendered share 9%, reps ~7 per unique
 over 48k steps like every row); its trunk states precompute now
 (pc-precomp).
+
+**2026-09-21 08:25 — LEGAL POINTERS, read-time: every legality mask so
+far LOSES.** On the four checkpoints (the lineage and the chassis, both
+seeds), wild, open read: args 0.449 / 0.448 / 0.444 / 0.453 unmasked;
+"intro" (legal = variables some other present slot's PREDICTED res
+introduces) 0.36-0.38; "prefix" (intro + earlier) 0.35-0.36; "index"
+(v < j, present) 0.38-0.39; fac-exact -0.02 / -0.02 / -0.016. A legality
+mask can only lose by removing correct answers, so each loss names a
+false assumption: intro/prefix assume the res head (0.80; 0.90 on
+targets) — the pointer is the better witness when they disagree;
+index assumes presence (0.91) and strict precedence — the one-unknown-
+argument pattern (15% of relation slots) makes the slot's own index a
+correct pointer. The numeral mask worked because its legal set came
+from the TEXT (exact); these came from other heads or from a rule with
+exceptions. One more mode reads now (v <= j, no presence: the pure
+positional index); with it the builder reports the "gold outside the
+legal set" fraction per mode, the number that decides whether any
+pointer legality exists that does not lose.
