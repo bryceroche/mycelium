@@ -42860,7 +42860,7 @@ its args are watched); the target-side census re-read on the arm. The
 HUD is the platform's other half and enters as its own arm on top of
 this one when it gates.
 
-**2026-09-21 10:10 — THE TOKEN HUD BUILT (CPU-gated; the card check
+**2026-09-21 08:57 — THE TOKEN HUD BUILT (CPU-gated; the card check
 queued).** ALG_HUD=1: five deterministic features per token — kind
 (numeral / number word / operator cue / entity-like / other), sentence
 index (0-7), position in sentence (5 buckets), the numeral's value
