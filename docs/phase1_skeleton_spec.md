@@ -43080,3 +43080,33 @@ arm: the same-sentence cell of the args census (0.40) and wild args
 not separate the twins either, the entity is not on the surface and
 the memory must be built inside the slots from nothing — the larger
 design, named.
+
+**2026-09-21 15:20 — THE TWIN-KEY CENSUS REFUTES THE KEY SWAP before the
+build (`scripts/twin_key_census.py`; `.cache/twin_key_census.txt`; one
+forward per checkpoint; the waist recomputed from the head's own
+projection).** On wild's same-sentence candidate pairs (n 4,496 pairs;
+mean candidate set 3.5, chance rank-1 0.286): PMS4_241 final breath —
+CLAUSE keys (the res channel's attended waist state) cosine 0.673 same-
+sentence vs 0.630 different; VALUE-MENTION keys (the given channel)
+0.775 vs 0.749; the raw slot states 0.365 vs 0.352. The value keys are
+MORE alike than the clause keys, not less; both channels pool the same
+context. THE RANKING: the relation's arg-channel state ranks the true
+candidate first at 0.216 (clause) / 0.198 (value) — at or below
+chance; PMS3 clears chance once (0.289, clause, breath 1) and falls
+back by the final breath; rank-1 is lower on args-wrong instances
+(the mechanism exists where it is present at all) but sits at chance
+overall. MINT HAS NO SAME-SENTENCE PAIRS: one fact per sentence by
+construction — the twin problem is wild's alone. VERDICT: the pooled
+attended states of the waist blur "3 apples" and "5 oranges" through
+every channel; the entity-key pointer as specified (the given channel's
+state as the key) would not break the tie and is NOT built into an arm
+(the builder's warm gate of it runs as a confirmation only). THE ONE
+UNTESTED SPECIFIC: the given channel peaks on the NUMERAL; the
+discriminator is the NOUN — a single-token noun state ("apples" vs
+"oranges") may be distinct where every pooled key is not; the analyst
+measures it now (noun-token cosines on the same pairs; the re-mention
+token's rank-1; waist vs trunk states). If the noun tokens separate,
+the design becomes an ENTITY CHANNEL supervised on noun spans (the
+stamper can mark them) with the role on the bus; if even the noun
+tokens are twins, the surface is blind to the tie at the token and
+the memory must be built inside the slots.
