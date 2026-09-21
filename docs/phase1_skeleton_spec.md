@@ -42679,3 +42679,11 @@ read the 02aac357 value 31.26 at 500 and stay bounded). The twins
 re-fire on the pass. The number gate's lesson, again: 20 steps do not
 see a divergence at step 300; a road's gate runs 600 steps on the
 card.
+
+**2026-09-20 21:55 — THE FIX PASSES; THE TWINS RE-FIRE.** The fixed head
+(commit above): unset 5.2995 / 0.0279 bit-identical; the PMS3 config on
+the card 31.2624 at step 500 at seed 241 (the exact 02aac357 value) and
+20.04 at seed 242 (was 3.4e6), bounded through 600. pc-twins relaunched
+(the void PMS3_242 artifacts removed): PMS3_242 then PMS4_242 vs
+PM35_scratch_242, the paired verdicts restored in the chain (the
+lineage twin; PMS3 vs PMS4 at 242). ~3.3 h.
