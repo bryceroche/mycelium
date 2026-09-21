@@ -42770,3 +42770,28 @@ statistics). SEQUENCE: (2)'s read-time numbers first (zero training);
 that follows = the chassis body on the positional diet (+ the renderer's
 rows if the surface census matches) with the HUD, vs PMS4 on both
 seeds. Bars pinned when the builds gate.
+
+**2026-09-21 08:30 — THE PROSE RENDERER BUILT (`scripts/prose_render.py`;
+`.cache/render_v1_5k.jsonl` + `render_v1_val.jsonl`).** Templates + an
+entity lexicon, no model: graphs sampled in positional order (given +
+rel add/mul, 2 args, values <= 300; mod/sel/pct/fdiv/macro/frac out of
+scope for v1), rendered with per-op cue templates ("3 more than",
+"twice as many as", "together"), re-mentions by name or pronoun, same-
+sentence introductions, distractor sentences (~20%), number words
+(~25%); EVERY SPAN GOLD BY CONSTRUCTION (clause, value, argument re-
+mention, cue) recorded while rendering; each row admitted through the
+unchanged answer-key gate (5,000 / 5,000). THE SURFACE CENSUS vs the
+wild holdout: tokens/row 36.9 vs 42.0; sentences 4.9 vs 3.4 (more
+fragmented — the v2 lever); factors 6.0 vs 6.6; cue rows 0.98 vs 0.95;
+argument distance same-sentence 0.57 vs 0.65, one back 0.22 vs 0.24,
+two 0.14 vs 0.09, three+ 0.08 vs 0.02; anchored / pronoun / neither
+0.93 / 0.07 / 0.00 vs 0.67 / 0.05 / 0.28 — the point: no rendered
+argument lacks a gold target. THE LEAK CHECK: max token Jaccard vs the
+holdout 0.370 (5k) / 0.324 (val), under the 0.5 bar. Provenance stamped
+gen.source = "render", canonical = "positional". Three template bugs
+found and fixed in the build (a doubled "times", a self-combination
+alias, subject/object pronouns). HOW IT ENTERS: as a diet source
+beside the prose and the mint (share and reps declared by the dose
+law), giving the arg channels full supervision on its rows; the arm's
+design waits on the positional-mint rebuild and the legal-pointer
+reads.
