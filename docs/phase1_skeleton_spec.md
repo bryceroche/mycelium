@@ -43140,3 +43140,25 @@ prior entered as structure (the numeral mask's true sibling: a legal
 set the text defines); if not, the tie is not on the surface in any
 form and the memory is built inside the slots (Gemini's stronger
 claim, standing).
+
+**2026-09-21 16:40 — THE LEXICAL-IDENTITY CENSUS, first pass: negative as
+defined; one refinement before the surface closes.** With the
+candidate's key = the content words within 4 tokens after its numeral
+and the query = the relation's re-mention words pooled: wild reach
+0.77 / precision 0.014 / mean |M| 4.4 (the twin cell 0.84 / 0.006 /
+4.9); the diet's prose the same shape; THE READ-TIME LEXICAL MASK on
+PMS4_241's dump fixes 0 and breaks 91-101 of 1,628 arguments — a legal
+set as permissive as the candidate pool removes nothing and costs. As
+defined the tie is not lexical. THE DEFINITION IS THE SUSPECT: a 4-
+token window after "3" in "3 apples and 5 oranges" gives both slots the
+key {apples, oranges}, which forces |M| ~ 4-5 by construction; the
+stamped re-mentions are single words. The refinement runs (zero GPU):
+one-token keys (the head noun after the numeral) and one-token queries
+(the stamped word per argument position), exact stem match, the mask
+only where the match is unique. If precision stays near zero with one-
+token keys, the surface closes for good and the tie-breaker is built
+inside the slots. ALSO BANKED: the entity-key pointer mode (commit
+5c3e2210) — the warm gate 0.2045 vs the state control's 0.1591 at step
+500 on 44 slots (overlapping; weak), the builder's own twin-key census
+agreeing with the analyst's (entity keys MORE alike, 0.916 vs 0.840);
+no arm on it; the bus-storage step holds.
