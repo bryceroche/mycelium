@@ -42842,7 +42842,7 @@ positional index); with it the builder reports the "gold outside the
 legal set" fraction per mode, the number that decides whether any
 pointer legality exists that does not lose.
 
-**2026-09-21 08:50 — THE PLATFORM ARM, data half, FIRED (word given for
+**2026-09-21 08:41 — THE PLATFORM ARM, data half, FIRED (word given for
 the queue).** The diet form_mix_pm35pr (55,653 rows; states precomputed
 08:15-08:40): the prose + positional-mint pm35p (50,653; relation slots
 arg1 66% / arg2 56% / cue 80%; positional 0.68) + the rendered 5k
