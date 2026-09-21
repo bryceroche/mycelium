@@ -42655,3 +42655,27 @@ are unbounded through W_rk2). THE PROBE (pc-divprobe; the 1024-row
 slice, 1,000 steps each, loss every 500): the PMS3 config at seed 242
 and at seed 241; the PMS4 config at 242; the lean body at 242 —
 separates seed from code from road.
+
+**2026-09-20 21:35 — THE BISECT NAMES THE LADDER PATCH; the fix applied.**
+THE PROBE (the slice, 1,000 steps): the PMS3 config diverges at seed
+242 (3.4e6 at step 500) AND at seed 241 (1.4e5); the PMS4 config at
+242 (2.4e9); the lean body at 242 is clean (18.7) — the code, not the
+seed, and not the chart. THE BISECT (the PMS3 config, seed 241, 600
+steps, the head at each commit): 04a7a1e6 (the surface organs) 31.24
+at step 500; 1e3496a3 (the perf fusion) 31.26; 9334371e (the pointer
+doors) 31.26; 02aac357 (the res scatter) 31.26; c64003c8 (the state
+pointer + THE LADDER PATCH) 3.9e6 — the patch. Applied unconditionally
+(`if "args" in out`), it routed the ladder's last-breath args loss
+through the top-level out["args"] on configs with NO fusion — a tensor
+that is NOT the ladder slot's own heads_of(s) (the "bit-identical when
+no fusion ran" claim was false in practice); that path explodes
+within 500 steps. Why the pointer arm survived: PMS5d ran with a
+fusion active, where the patch is the intended road. THE FIX: the patch
+applies only when ALG_PTR_SURF is set; the beta_ptr prior stays where
+it always was (outside the loss, as ledgered). Checks running: the CPU
+fixture (unset 5.2995 / 0.0279 bit-identical; the sever config runs)
+and the card (the PMS3 config at seeds 241 and 242, 600 steps: must
+read the 02aac357 value 31.26 at 500 and stay bounded). The twins
+re-fire on the pass. The number gate's lesson, again: 20 steps do not
+see a divergence at step 300; a road's gate runs 600 steps on the
+card.
