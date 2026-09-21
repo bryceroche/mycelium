@@ -4809,7 +4809,15 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
         # fusion ran (heads_of(_s_final) with _s_final is breaths[-1] is
         # the SAME call as this slot's own heads_of(s), deterministic;
         # verified before applying this fix).
-        if "args" in out:
+        # THE BISECT (2026-09-20 21:30): applied unconditionally this patch
+        # DIVERGED the chassis configs (ROUTER=2 + SPAN_ALL, no fusion) at
+        # step ~500 on both seeds (loss 31 -> 3.9e6 on the slice; PMS3_242
+        # void) — the "bit-identical when no fusion ran" claim was false in
+        # practice: the top-level out["args"] is not the ladder slot's own
+        # heads_of(s) tensor. So the patch applies ONLY when an
+        # ALG_PTR_SURF fusion is active (the pointer arms trained cleanly
+        # with it); the beta_ptr prior stays where it always was.
+        if "args" in out and ALG_PTR_SURF:
             out["breaths"][-1] = dict(out["breaths"][-1], args=out["args"])
     return out
 
@@ -6810,13 +6818,15 @@ def do_train(steps, lr, batch, seed):
             print(f"[router2-census]  breath {_kb}: |beta*fat0| mean (real "
                   f"tokens) {_anch_mean:.4f}, raw |bank score| mean "
                   f"{_sc_mean:.4f}, ratio {_aratio:.4f}", flush=True)
-        if ALG_PTR_SURF and "rptr" in _rc_out:
+        if ALG_PTR_SURF and not ALG_PTR_SURF_STATE and "rptr" in _rc_out:
             # THE POINTER THROUGH THE SURFACE's own census (2026-09-20):
             # the injected magnitude relative to the bilinear it composes
             # with (add) or replaces (sever), plus whether O_a is peaked
             # or flat at this checkpoint (a flat overlap means the
             # surface term is nearly a constant additive shift — no
-            # useful signal yet).
+            # useful signal yet). POSITION form only — this reproduces
+            # the log(O_a) formula the position form actually uses; the
+            # STATE form's own census (logit_a, no log) is below.
             _psm6, _, _psg6 = ALG_PTR_SURF.partition(":")
             _gain6 = float(_psg6)
             _rptr_v = _rc_out["rptr"].realize().numpy()   # (B, 2, L_FAC, K_VARS): O_a1, O_a2
