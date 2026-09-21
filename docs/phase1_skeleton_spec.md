@@ -43002,3 +43002,34 @@ step (0.128) and is kept in the chassis config as a candidate, not a
 claim. The reads-table sanity cleared on the re-read (PMS6 masked !=
 open). PMS6b (mint untouched + the rendered rows) reads now — the data
 half's real test.
+
+**2026-09-21 14:45 — THE PLATFORM'S VERDICT (the four wrappers, one
+day).** PMS6b_241 (the rendered 5k added to the arg-stamped diet, mint
+untouched; the arg and operator channels fully supervised on the
+rendered rows): MASKED wild 0.3213 vs PMS4's 0.3325 (-0.0112, SE
+0.0089, z 1.25 against); open 0.3008 vs 0.3003 (flat); args 0.433 vs
+0.444; matched 0.3506; rows 6 / 6 vs 9 / 7; mint 0.634 vs 0.650 — the
+rendered rows are NULL-to-negative on wild: full mention supervision
+on 5k template rows did not move the pointer on prose (the surface
+census's fragmentation gap, sentences 4.9 vs 3.4, is the named
+suspect; the renderer's rows also crowd the same-sentence cell less
+than wild). THE FOUR WRAPPERS: (1) one convention — STRUCK (a third of
+mint is not forward-chainable; the rewrite cost 27 mint points for a
+wild null); (2) legal pointers — every res- or presence-derived mask
+LOSES (the pointer is the better witness), the pure-index mask is a
+NO-OP (the head never points forward — the builder's sweep re-run on
+the restored mask confirms or corrects this by evening); (3) the token
+HUD — +0.006 masked / +0.010 open over its diet-mate at ~1 SE, free per
+step: a candidate, not a claim; (4) the prose renderer — null-to-
+negative at 9% share. THE STANDING CHASSIS is unchanged: the lineage's
+recipe + the router + the per-breath span loss on the stamped diet
+(PMS4: masked 0.3325 / 0.3320 on the seed pair). WHAT THE DAY BOUGHT
+that stands: the renderer as a data organ (span-complete, admitted,
+leak-checked) for the next surface design; the canonicalizer and the
+convention boundary; the mask sanity fence in the reads table; the
+root-cause habit for read scripts (a masked read must differ from its
+open read). THE WALL IS UNMOVED: wild args 0.43-0.45 on every body,
+rows 5-10 of 311, since the campaign's first prose lineage. The next
+design starts from the target-side census's fact — selection among
+correctly labeled candidates, worst in the same sentence — and not
+from the surface, which four roads and two diets have now saturated.
