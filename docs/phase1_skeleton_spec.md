@@ -42908,3 +42908,22 @@ lock; vs PMS6_241 (the HUD's own share; bar +0.020 z 2) and PMS4_241;
 queued behind PMS6's reads and the sweep. PMS6's first read: open wild
 0.2974 (PMS4 0.3003), args 0.440 (0.444) — the data half reads flat on
 wild so far; the masked read, rows and mint follow.
+
+**2026-09-21 10:50 — PMS6's mint read: -27 points, and the fixture
+cannot be canonicalized.** PMS6_241 open mint 0.3790 (PMS4 0.6497):
+res 0.548 (0.728), digits 0.730 (0.972), args 0.426 (0.649), ftype
+0.916 (0.995) — every mint head fell together, the shape of a
+convention mismatch. The mint fixture (algebra_nl_test, 300 rows) put
+through the canonicalizer: 300 / 300 refused, "no positional order" —
+the fixture is entirely simultaneous systems, the CSP's own domain,
+first-mention by nature. So the drop is REAL for that register: a mint
+half trained in two conventions at once (61% positional, 39% first-
+mention) lost coherence on the first-mention register the fixture
+measures. (Bryce's ruling stands that mint is an ingredient, not a
+score; but a diet whose mint half contradicts itself is a worse
+ingredient.) THE CLEAN ALTERNATIVE, prepared: form_mix_pm35ar = the
+arg-stamped diet with mint UNTOUCHED + the rendered 5k — the texts
+identical in order to pm35pr's, so the states memmap is hard-linked
+and only the gold rebuilds (pc-rebuildar). If PMS6 reads flat on wild,
+the positional mint is struck and the platform's data half re-runs as
+pm35ar (PMS6b) — the rendered rows alone as the data change.
