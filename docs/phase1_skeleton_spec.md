@@ -43110,3 +43110,33 @@ the design becomes an ENTITY CHANNEL supervised on noun spans (the
 stamper can mark them) with the role on the bus; if even the noun
 tokens are twins, the surface is blind to the tie at the token and
 the memory must be built inside the slots.
+
+**2026-09-21 16:00 — THE ENTITY-NOUN CENSUS: the surface is blind to the
+tie at the token, by this measure (`scripts/entity_noun_census.py`;
+zero GPU — the waist recomputed in numpy from the checkpoint's own
+weights over the trunk memmap).** Given-introduced arguments on wild
+(939 scored; 517 with a same-sentence competitor): the entity noun =
+the first content token within 4 tokens after the value numeral; the
+query = the stamped re-mention token. Single-token cosines, same-
+sentence vs different-sentence pairs: WAIST 0.583 vs 0.362; TRUNK
+(2048-d, pre-projection) 0.619 vs 0.544 — the waist projection
+TRIPLES the same-sentence clustering (0.075 -> 0.221): the head's own
+projection makes twins more alike, not less. THE RANKING: the re-
+mention token ranks the true candidate first at 0.459 in both spaces
+against a chance of 0.453 — indistinguishable from random, at the
+token, in the trunk itself. Caveat stated by the analyst: the fixture's
+stamped spans are not disambiguated per argument position, so some of
+the at-chance read may be the query's noise. VERDICT SO FAR: pooled
+keys blur (the twin-key census), single noun states cluster by
+sentence and do not rank the referent (this census) — no channel over
+these token states, supervised or not, has been shown to break the
+same-sentence tie; the entity CHANNEL is not built on this evidence.
+THE LAST SURFACE TEST, running (zero GPU): LEXICAL IDENTITY — does the
+re-mention WORD string-match exactly one candidate's noun, and is that
+candidate the gold (reach, precision, and the args accuracy under a
+read-time lexical mask on the banked dumps)? If the text holds the
+tie-breaker as a string, the road is a deterministic lexical pointer
+prior entered as structure (the numeral mask's true sibling: a legal
+set the text defines); if not, the tie is not on the surface in any
+form and the memory is built inside the slots (Gemini's stronger
+claim, standing).
