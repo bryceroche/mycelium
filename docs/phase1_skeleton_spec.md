@@ -42739,3 +42739,34 @@ text is where the evidence lives, the bilinear supplies the
 candidates); a res road for mint's identity (64% of mint's pointer
 wall); the row census by failure class on PMS4_242 (both seeds now
 banked). Numbers asserted.
+
+**2026-09-21 02:10 — THE PLATFORM (word given for the whole queue; Bryce's
+Roblox analogy: a wrapper that makes every problem a new game on a
+familiar platform).** THE READING: the math side already IS the
+platform (24 slots, the primes, the bus roles, the clock, seven
+breaths, the numeral mask, the solver); the model plays an unfamiliar
+game in two places — the variable-numbering convention (positional on
+prose, first-mention on mint: two control schemes for one button; the
+census put 64% of mint's pointer wall on identity and the pointer arms
+fought across it) and the raw surface (every wild row new text, read
+raw). THE FOUR WRAPPERS, cheapest first, all under the word: (1) ONE
+CONVENTION — mint canonicalized to the positional law (form_mix_pm35p;
+renumbered, re-certified by the answer key; the data builder); (2)
+LEGAL POINTERS — an argument may only target a variable another
+present slot introduced ("intro"), or an earlier one ("prefix"); the
+numeral mask's sibling, read-time first on the four banked chassis /
+lineage checkpoints, then training-time (the router's builder); (3)
+THE TOKEN HUD — a deterministic feature strip on every token (kind,
+sentence index, position in sentence, value bucket) embedded into the
+waist, identical on both registers (a small organ; the warm gate and a
+600-step card check before any arm); (4) THE PROSE RENDERER — GSM8K-
+shaped narratives rendered FROM factor graphs (entity lexicon,
+templates per op with cue words, re-mentions and pronouns at wild's
+rates, same-sentence introductions, distractors), every span gold by
+construction, admitted by the answer key, leak-checked against the
+holdout (a fresh builder; 5k rows + a surface census against wild's
+statistics). SEQUENCE: (2)'s read-time numbers first (zero training);
+(1) and (4) build in parallel; (3) after (2) on the same file; the arm
+that follows = the chassis body on the positional diet (+ the renderer's
+rows if the surface census matches) with the HUD, vs PMS4 on both
+seeds. Bars pinned when the builds gate.
