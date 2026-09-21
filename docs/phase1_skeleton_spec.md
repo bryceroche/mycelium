@@ -42946,3 +42946,26 @@ PM35_scratch_241 masked 0.3291 restored to the digit, then the sweep
 and the two arms' masked reads re-run. THE LESSON, for the reads
 table: a masked read must differ from its open read; `reads.py` gets
 an assert that legal_wild != open_wild per checkpoint (registered).
+
+**2026-09-21 12:40 — PMS6's VALID READS: the positional mint STRUCK;
+the data half re-fired on pm35ar; the mask bug localized.** PMS6_241
+(pm35pr): OPEN wild 0.2974 vs PMS4's 0.3003 (-0.0029, SE 0.0090, z
+0.32 — null); rows 5 open (PMS4 7); mint 0.3790 (-27); its masked read
+void (the mask bug). VERDICT: canonicalizing 61% of mint to the
+positional law bought nothing on wild and cost the mint register 27
+points (a mint half in two conventions); STRUCK for the diet — the
+convention boundary (34% simultaneous systems) is the ledgered
+finding, the rewrite is not a data lever. PMS6b_241 fired 12:26
+(pc-pms6b, every GPU command under the lock): the chassis body + the
+arg/op span losses on form_mix_pm35ar (the arg-stamped diet with mint
+UNTOUCHED + the rendered 5k) — the rendered rows alone as the data
+change; vs PMS4_241 and the lineage; the bars as pinned for PMS6
+(masked +0.020 z 2; args +0.03). THE MASK BUG LOCALIZED: PMS7's masked
+read (ALG_HUD=1) fired the mask (0.3301 vs its open 0.3077) while every
+HUD-unset masked read equalled its open read — the mask's application
+sits inside or depends on the builder's HUD branch in loop_val (and
+its twin in chain_acc); the fix and the bit-identity gate (PMS4_241
+0.3325 / 0.3003; rows 9 / 7) are with the builder; PMS6's masked read
+and PMS7's paired verdict re-run after it. PMS7 so far (valid): open
+wild 0.3077 (+0.010 over PMS6, z pending), mint 0.370 (the diet's
+cost, not the HUD's).
