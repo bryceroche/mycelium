@@ -52,6 +52,10 @@ def ingest():
         val, cnt = float(mm[-1][0]), int(mm[-1][1]); fl = re.findall(r"^\[fields\].*$", txt, re.M); f = _fields(fl[-1]) if fl else {}
         se = math.sqrt(val * (1 - val) / max(cnt, 1))
         put((ckpt, fixture, kind, mask, val, cnt, se, "", None, None, None, None, f.get("pres"), f.get("ftype"), f.get("op"), f.get("args"), f.get("res"), f.get("dig"), p, _mtime(p), sha, now, None))
+    # THE MASK SANITY (2026-09-21): a masked read equal to its open read is a broken mask, never a result
+    # (the numeral mask silently returned None for a morning: every masked read was open). Loud, not fatal.
+    for r in db.execute("SELECT a.ckpt, a.value, b.value FROM reads a JOIN reads b ON a.ckpt=b.ckpt AND a.fixture=b.fixture AND a.fixture='wildhold' AND a.kind='masked' AND b.kind='open' WHERE abs(a.value-b.value) < 1e-9").fetchall():
+        print(f"[reads] MASK SANITY: {r[0]} wildhold masked == open ({r[1]:.4f}) — the numeral mask did not fire; the masked read is VOID", flush=True)
     # chain accuracy: any chain_acc*.log
     for p in glob.glob(".cache/chain_acc*.log"):
         for line in open(p, errors="ignore"):
