@@ -42859,3 +42859,22 @@ mint for information (the positional mint may move mint's identity —
 its args are watched); the target-side census re-read on the arm. The
 HUD is the platform's other half and enters as its own arm on top of
 this one when it gates.
+
+**2026-09-21 10:10 — THE TOKEN HUD BUILT (CPU-gated; the card check
+queued).** ALG_HUD=1: five deterministic features per token — kind
+(numeral / number word / operator cue / entity-like / other), sentence
+index (0-7), position in sentence (5 buckets), the numeral's value
+bucket (7), is-repeated (2) — each a learned table (27 x 512 = 13,824
+floats, N(0, 0.02); a road, no gain) summed into the waist ONCE where
+it is formed, before breath 0's grounding read and the bank's keys;
+banked at mask-prep (deterministic, in the cache's bit-equality), fed
+by copyin; computed on the fly at read (loop_val, chain_acc; the jit
+reader's "hud" port); the walker refuses it. Gates: unset bit-identical
+(the PMS4 config's head outputs equal to the digit); ALG_HUD_ZERO
+bit-identical; live and different; THE FEATURE CENSUS on 64 wild
+rows: numeral 7.0%, number word 0.6%, cue 3.0%, entity-like 48.1%,
+other 41.3%; repeated 48.3% (the entity test is loose — half of all
+tokens; a v2 tightening if the road reads as noise). The 600-step
+divergence check on the slice (the ladder lesson) is queued behind
+PMS6 on the lock; the HUD arm follows its pass. Not committed until
+the check lands.
