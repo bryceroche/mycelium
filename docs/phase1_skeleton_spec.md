@@ -42878,3 +42878,15 @@ tokens; a v2 tightening if the road reads as noise). The 600-step
 divergence check on the slice (the ladder lesson) is queued behind
 PMS6 on the lock; the HUD arm follows its pass. Not committed until
 the check lands.
+
+**2026-09-21 10:35 — PMS6 trained; its reads collided on the card and
+re-run under the lock.** PMS6_241 finished 48k at 0.126 s/step (the
+per-batch loss bounded, 9.7-26 over the last 5k: the mixed diet's
+three registers and the extra span terms make the printed value noisy,
+not divergent). The chain's reads were not under the GPU lock and the
+builder's queued HUD check took the card the moment training ended —
+tinygrad's own AM lock refused the read and the chain aborted (set -e).
+Lesson applied: every GPU command in a chain takes `.cache/gpu.lock`,
+reads included (`pms6_reads.sh`, relaunched; it queues behind the
+builder's check and the legality sweep). The checkpoint is banked; the
+verdict follows the reads.
