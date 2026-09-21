@@ -42580,3 +42580,24 @@ PMS4 at seed 242 vs PM35_scratch_242) — the certification read the
 chassis still lacks, ~3.3 h; (c) the row census by failure class on
 PMS4 — the wall named by the data before the next pointer design.
 Numbers asserted.
+
+**2026-09-20 19:35 — THE CHASSIS TWINS (word given) and THE TARGET-SIDE
+ARGS CENSUS (word given).** pc-twins (`.cache/twins_chain.sh`): PMS3_242
+(router + per-breath span loss + the numeral-prior chart) and PMS4_242
+(no chart), the seed-241 recipes at seed 242 on form_mix_pm35v, 48k
+each, vs the banked PM35_scratch_242 (masked wild 0.3267) — THE
+CERTIFICATION READ of the chassis: the bar as pinned (+0.020, z 2,
+paired) on the twin, and the pair of seeds read together; rows beside;
+mint for information. Code note: the twins run on the head after the
+ladder fix and the state pointer (dead code when unset; the ladder's
+last-breath patch is numerically identical with the pointer prior off,
+as these configs run it) — the seed-241 arms ran before it; stated.
+~3.3 h. THE TARGET-SIDE CENSUS (the analyst, zero GPU): for every
+relation argument, is the INTRODUCING slot's predicted res correct
+(the target labeled), and is the argument in the relation's predicted
+top-2 — the cross-tab per checkpoint and per distance; among wrong
+arguments, does the pointer follow the head's own mislabel (a slot
+whose predicted res equals the pointed variable) or miss outright; the
+res-correct rate of targets vs all slots. The reading it is for: what
+fraction of the pointer wall is variable identity inside the slot
+state vs a true pointer miss — the next road's address.
