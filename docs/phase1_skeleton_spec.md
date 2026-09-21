@@ -42987,3 +42987,18 @@ share; PMS7 vs PMS4) re-run in pc-remask under the lock. REGISTERED:
 `reads.py` asserts legal_wild != open_wild per checkpoint on ingest
 (a masked read equal to its open read is a broken mask, never a
 result).
+
+**2026-09-21 14:20 — THE PLATFORM ARMS ON THE POSITIONAL DIET, valid
+reads: both NULL on wild.** PMS6_241 (the positional diet): MASKED wild
+0.3242 vs PMS4's 0.3325 (-0.0083, SE 0.0092, z 0.90); open 0.2974 vs
+0.3003 (z 0.32); rows 8 masked / 5 open vs 9 / 7; mint 0.379 (-27) —
+the positional mint STRUCK stands. PMS7_241 (+ the HUD, same diet):
+MASKED 0.3301 vs PMS6's 0.3242 (+0.0059, SE 0.0080, z 0.73); open
+0.3077 vs 0.2974 (+0.0102, z 1.27); rows 8 masked / 7 open vs 8 / 5;
+mint 0.370 (the diet's); vs PMS4 masked -0.0024 (z 0.26). THE HUD'S
+SHARE on wild: +0.006 masked / +0.010 open at ~1 SE — an invitation
+until a twin or a larger gain says otherwise; it costs nothing per
+step (0.128) and is kept in the chassis config as a candidate, not a
+claim. The reads-table sanity cleared on the re-read (PMS6 masked !=
+open). PMS6b (mint untouched + the rendered rows) reads now — the data
+half's real test.
