@@ -42927,3 +42927,22 @@ identical in order to pm35pr's, so the states memmap is hard-linked
 and only the gold rebuilds (pc-rebuildar). If PMS6 reads flat on wild,
 the positional mint is struck and the platform's data half re-runs as
 pm35ar (PMS6b) — the rendered rows alone as the data change.
+
+**2026-09-21 12:35 — STRUCK: every "masked" read since this morning is
+an open read — THE NUMERAL MASK IS DEAD IN loop_val since the builder's
+edits.** Evidence: PMS4_241 wild with LV_LEGAL=num read 0.3325 last
+night (21:46) and 0.3003 — the open value — at 07:54 today on the same
+checkpoint and the same env; PMS6's "masked" 0.2974 equals its open
+0.2974. Consequences: (a) the legality sweep's numbers (intro / prefix
+/ index / index2, and "index2 is a no-op") are VOID — struck from the
+10:33 entry's claim; the unmasked args drops (0.449 -> 0.36-0.39) were
+measured on open reads and may stand, but the sweep re-runs whole;
+(b) PMS6's and PMS7's masked reads and their paired verdicts are void;
+their OPEN reads and row counts stand (PMS6 open 0.2974, PMS7 open
+0.3077 — the HUD +0.010 open over PMS6 on the first look); (c) the
+builder is finding the line (its LV_LEGAL_ARGS / HUD edits in
+loop_val, ~lines 219-370) with the gate: PMS4_241 masked 0.3325 and
+PM35_scratch_241 masked 0.3291 restored to the digit, then the sweep
+and the two arms' masked reads re-run. THE LESSON, for the reads
+table: a masked read must differ from its open read; `reads.py` gets
+an assert that legal_wild != open_wild per checkpoint (registered).
