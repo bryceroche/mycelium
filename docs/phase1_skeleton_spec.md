@@ -43162,3 +43162,39 @@ inside the slots. ALSO BANKED: the entity-key pointer mode (commit
 500 on 44 slots (overlapping; weak), the builder's own twin-key census
 agreeing with the analyst's (entity keys MORE alike, 0.916 vs 0.840);
 no arm on it; the bus-storage step holds.
+
+**2026-09-21 17:00 — THE SURFACE CLOSES: the one-token lexical census
+is negative, and it names what the twins are.** One-token keys (the
+head noun after the numeral) vs one-token queries (the stamped re-
+mention word per argument position): WILD (270 well-defined queries
+of 1,628 — 1,226 AMBIGUOUS, the stamped span for a position already
+covering more than one word; 132 empty): reach 0.311, precision 0.093
+overall; the twin cell reach 0.311, precision 0.044; by distance the
+same-sentence cell reads precision 0.000. The diet's prose (2,722
+queries): reach 0.084, precision 0.023. Relation-type candidates have
+no key 79-87% of the time. THE READ-TIME MASK where the match is
+unique (n 62): 0.758 -> 0.516, +0 fixed / -15 broken; the twin cell (n
+24): 0.625 -> 0.458, 0 fixed / 4 broken. THE EXAMPLES SAY WHY: "How
+many more tickets should Jeanne buy?" — the query "ticket" matches
+BOTH candidates, two ticket quantities; "3 sandwiches left" — "sandwich"
+matches three or four. The same-sentence twins are, in the main, THE
+SAME ENTITY AT DIFFERENT ROLES OR TIMES (bought / more / left / each),
+not two entities; no noun distinguishes them, no pooled or single-token
+state does (the two censuses before), and no string does. THE SURFACE
+IS CLOSED at every grain tried this week: pooled clause and value
+states, single noun tokens in waist and trunk, stemmed lexical
+identity, sentence-granular priors, a span-complete renderer. WHAT
+DISTINGUISHES THE TWINS is structural: the ORDER of introduction (the
+positional index the slot already carries) and the ROLE around each
+mention (the cue: bought / more / left / each / then), which the
+operator channel reads for relations and nothing reads for givens.
+REGISTERED, the design that follows from it (needing the word): THE
+ROLE SIGNATURE — each GIVEN slot binds its own clause cue (stamped by
+the same stamper) under a role phasor on the bus beside its value;
+a relation's argument query carries its own cue and the relative
+order; the pointer scores cue-compatibility and precedence in phase
+space — memory inside the slot, keyed on role and time, not on
+identity. The alternative, also registered: leave the pointer wall
+(it is ~15% of a row's slots) and turn the campaign's lever to the row's
+other half — the 40% refusals, where the solver rejects a graph the
+head nearly had.
