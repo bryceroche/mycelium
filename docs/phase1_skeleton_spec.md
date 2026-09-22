@@ -43328,3 +43328,30 @@ RESOLUTION GATE runs on the 1,024-row slice (its gold rebuilt from
 the pm35c stamps), 1,500 steps at B=8, the twin cell in the hundreds:
 the arm fires only if the same-noun cell's control-subtracted rise
 clears 2 SE with the different-noun cell holding within 1 SE.
+
+**2026-09-22 — THE ROLE SIGNATURE CLEARS ITS GATE; THE ARM FIRES.** The
+resolution gate (from PMS4_241, fixed LR, 1,500 steps at B=8; the
+slice's gold rebuilt from the pm35c stamps; the twin cell read on the
+775 custody-verified slice rows — a training-set read, a mechanism
+gate, not a claim): SAME-NOUN cell (n 499) treatment 0.661 -> 0.701,
+control 0.677 -> 0.663, control-subtracted +0.054, paired SE 0.0225, z
++2.40 — the pinned 2 SE cleared; DIFFERENT-NOUN (n 169) +0.006 (z
+0.18) — holds; MIXED / NO-KEY (n 861) +0.036 (z 2.07) — moves too. The
+role term stays commensurate with the bilinear (10.2 vs 10.2 pre;
+10.3 vs 10.2 post); the pointer road alive (W_rk2 grad from the args
+loss 0.21 -> 0.16; the control 0); w_prec 0 -> 0.0025 (precedence
+begins to enter). The 76-row read was underpowered, not a negative.
+AN INCIDENT, disclosed and repaired: a precompute without the split
+filter truncated the shared slice memmap through its hard link (rows
+8-1023 zeroed in both names); stopped, rebuilt exactly from the same
+texts, verified finite and non-zero on all rows — THE RULE: `PRECOMPUTE_
+ONLY=<split>` whenever a states file is shared by hard link. Committed
+fb245dfe. THE ARM (pc-pms8prep -> pc-pms8): the diet's gold rebuilt on
+form_mix_pm35c (identity vs pm35a's arrays; rcue coverage printed),
+the fixture gate (unset 5.2995 / the config runs), then PMS8_241 = the
+chassis body + SPAN_ARGS + SPAN_OP + SPAN_RCUE + SPAN_ARCUE + role:add:
+2.0 on the rcue codes file, 48k, seed 241, vs PMS4_241 and the lineage;
+BARS as pinned: the wild same-noun twin cell >= 0.770 + 0.05; wild
+args >= +0.03 paired; masked wild informational (+0.020 the claim
+bar); mint's identity and the different-noun cell watched. Step 2 (the
+role bound into the bus register) follows the arm's read.
