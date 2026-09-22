@@ -43546,3 +43546,26 @@ resolution gate (pc-busreggate, now running behind this chain) and, on its
 word, THE ARM: PMS8's recipe + ALG_BUSREG from scratch, seed 241, vs
 PMS8_241 — the register must beat the claim body it stands on, +0.020
 paired, or it is an ablation.
+
+**2026-09-22 15:22 — THE CLAIM'S ANATOMY ON THE CERTIFICATION SEED (zero
+GPU, dump_wild_PMS8_242.pkl vs dump_wild_PMS4_242.pkl).** THE POINTER
+CELLS DID NOT MOVE: twin-split same-noun 0.777 -> 0.788 (n 382),
+different-noun flat, mixed 0.667 = 0.667; the mixed-bucket cells: k IS A
+RELATION 0.588 -> 0.586 (n 473), a derived-from-k competitor present 0.671
+-> 0.687, given-only 0.858 -> 0.855, given with a relation competitor
+0.770 -> 0.778. The seed-241 body's +0.040 on the derived-argument cell
+DOES NOT REPLICATE — it was seed noise on n 473. THE ROW CENSUS (PMS8_242
+vs PMS4_242): fully right 8 vs 9, ONE AWAY 30 vs 23, <=2 away 23.5% vs
+22.2%; wrong slots by field: digits 478 vs 470, ftype 280 vs 289, res 248
+vs 260, presence 188 vs 175, op 96 vs 115, ARGS 89 vs 115 (the args
+first-break count falls on both seeds: 79 vs 100 on 241, 89 vs 115 on
+242 — fewer slots reach args wrong because fewer are wrong upstream, not
+because the pointer chooses better among candidates). READING: the Role
+Signature's certified +0.02 is a COMPOSITION claim — more slots right
+through ftype / res / op and fewer refusals — and the pointer wall
+(args 0.43-0.45; the derived-argument cell 0.58-0.62; same-noun ~0.78)
+is UNMOVED on the certification seed. The organ that targets the wall's
+own cell is the bus register, and its gate bar (DERIVED-ARG >= 2 SE,
+control-subtracted) is the right bar: the first read that would move the
+number the decomposition named. Artifacts: twin_split_census_PMS8_242.txt,
+mixed_bucket_census_242pair.txt.
