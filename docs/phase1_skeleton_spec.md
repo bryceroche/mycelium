@@ -43198,3 +43198,29 @@ identity. The alternative, also registered: leave the pointer wall
 (it is ~15% of a row's slots) and turn the campaign's lever to the row's
 other half — the 40% refusals, where the solver rejects a graph the
 head nearly had.
+
+**2026-09-22 — THE TWIN-SPLIT CENSUS (word given) and THE DECISION RULE.**
+THE WAIST BRAINSTORM: two blurs in order — the trunk's four layers
+contextualize same-sentence words (noun cosine 0.62 same vs 0.54
+different in the trunk), then the learned 512-d waist projection
+triples the gap (0.58 vs 0.36) because it keeps the directions the head
+is graded on (sentence, position, role) and no loss ever asked it to
+keep lexical identity; the pooled attention finishes it. THE DESIGN
+REGISTERED: THE DUAL-STREAM IDENTITY PORT — the contextual stream (the
+waist, as is) and an IDENTITY stream (the token id looked up in Llama's
+frozen input embedding, projected by a small fixed map to 64-128 dims;
+context-free) kept side by side, never summed (one map, two charts,
+inside the token); the identity rides as the bank's second value
+stream so a slot accumulates the identity of what it attended, and
+the pointer compares identity parts at the attended argmax token
+(peak, not mean). Cost: token ids banked (57 MB), the embedding table
+host-cached (525 MB), an identity memmap beside the states (~1.8 GB).
+ITS BOUND: identity separates DIFFERENT-NOUN twins only; SAME-NOUN
+twins (the same entity at different roles/times) need THE ROLE
+SIGNATURE. THE CENSUS (an analyst, zero GPU): every same-sentence
+argument tie on wild and the diet's prose classified by whether the
+gold candidate and its competitors share a head noun; the deciding
+number = the share of the WRONG same-sentence arguments in each class.
+THE RULE, pinned before the read: different-noun wrong mass dominates
+-> the Dual-Stream Identity Port leads; same-noun dominates -> the Role
+Signature leads. Both remain registered; the loser follows the winner.
