@@ -35,13 +35,15 @@ The reads table: `.venv/bin/python3 scripts/reads.py table wildhold` (assert-on-
    names swapped (the way .cache/twins_chain.sh was made from pms34_chain.sh); every GPU
    command under `flock -w 36000 .cache/gpu.lock`; launch with
    `systemd-run --user --unit=pc-pms8t --property=WorkingDirectory=/home/bryce/mycelium /usr/bin/bash <chain>`.
-2. Step 2 of the Role Signature: the role bound under theta_rcue into the slot's persistent
-   bus register at breath 1 (the organ's builder had the brief; ledger 2026-09-22).
+2. BUILT + GATED 09-22 (commit de7dc8b9; ledger): THE BUS REGISTER (ALG_BUSREG) = step 2 (the role in the
+   slot's bus register at breath 1) and the identity port as ONE organ (identity looked up for givens,
+   PROPAGATED for relations). pc-busreggate = the resolution warm gate on the slice, queued behind the twin
+   (bar: DERIVED-ARG cell >= 2 SE, GIVEN-ONLY holds; busreg_cell_compare.py). The arm needs the gate + the word.
 3. DONE 09-22 12:50 (scripts/mixed_bucket_census.py -> .cache/mixed_bucket_census.txt): the
    inherited key dissolves the mixed bucket (89% SAME-NOUN); the wall is ~90% same-quantity
    selection, 55-57% of it pointing at DERIVED arguments (k a relation; args-correct 0.58-0.62)
    whose identity is in no token — identity must be PROPAGATED through the bus (ledger).
-4. THE DUAL-STREAM IDENTITY PORT (registered; low priority: its cell is 85-92% right).
+4. THE DUAL-STREAM IDENTITY PORT: folded into item 2 (the register's identity stream; ident_codes_mint.py).
 5. The refusal lever: 40% of wild rows are refusals — the row's other half. The failure-class
    row census DONE 09-22 (row_census.py on four bodies, ledger): DIGITS (the given's value) is the
    largest failure class on every body, 5x args; one-away rows break on digits and ftype first.

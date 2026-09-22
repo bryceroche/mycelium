@@ -43449,3 +43449,67 @@ first census says the row's other half is VALUE BINDING (digits) by a
 factor of five over args, on every body — the wall the handoff named
 ("values 0.45") is the larger of the two. Numbers quote the two census
 files; the wild slot reads asserted.
+
+**2026-09-22 14:52 — THE BUS REGISTER BUILT AND GATED (word given for the
+recommendation: step 2 of the Role Signature and the identity port as ONE
+organ); the resolution warm gate queued behind the twin.** THE ORGAN
+(ALG_BUSREG=<gain>, ALG_BUSREG_PROP=1|0; commit de7dc8b9): one bus vector
+per slot, a SUPERPOSITION of two role-bound streams in the bus's own
+language — the RCUE channel's attended token key (bus space) bound under
+theta_rcue, written at breath 1 and KEPT (memory inside the slot, keyed on
+role); and the GIVEN channel's pooled IDENTITY bound under theta_id, where
+identity = Llama's frozen input embedding, CENTRED on the vocabulary mean
+(uncentred the random-pair cosine was 0.12; centred 0.001) and pushed
+through one fixed orthonormal map into the 512-d bus space, unit rows
+(`scripts/ident_codes_mint.py` -> `.cache/ident_codes512.npz`; theta_id
+appended to `.cache/bindbus_codes512ri.npz`, every old key byte-identical).
+Context-free, breath-free, NEVER summed into the waist: the port the
+2026-09-22 twin-split entry registered, in the bus. PROPAGATION (the
+decomposition's demand — 57% of the wall points at derived arguments whose
+identity is in no token): from breath 2 on, a slot the previous rung
+believes is a relation (P(given) from its ftype head, detached) inherits
+the identity carried by the slots its previous-rung args belief points at
+(the belief softmax over variables, through the slot->variable map,
+detached — a FACT, the garage's deposit law; the identity CONTENT gradient-
+carrying); a result of a result arrives two breaths later. THE READ, every
+rung: the OP channel's query unbinds the role, the arg channels' re-
+mention identities unbind the identity — two dot products per (j, k)
+through per-plane complex-scalar read weights (W_regq, W_idq; identity
+init), times the fixed gain, scattered through the slot->variable map
+(gold at training, predicted at read — the ALG_PTR_SURF convention) into
+that rung's args (in the loss via the ladder; the last rung through the
+fused out["args"]). Port: forward(..., ident=(B, T) token ids) — the
+trainer's IDENT array + b_ident feed, quick-val, both censuses, loop_val,
+chain_acc, jit_read's port list; step_trainer refuses ALG_BUSREG. THE
+ALGEBRA (numpy, the minted codes): unbind(bind(x)) exact (same-token match
+1.0000 against a random-token spread sd 0.065; the other stream's
+crosstalk is a norm-1 vector orthogonal in expectation); a propagated
+identity (a+b)/2 matches each parent at 0.50, a stranger at 0.00. THE
+GATE (CPU, tiny64, 2 steps; `.cache/busreg_gate.sh`): unset 5.2995 /
+0.0279 BIT-IDENTICAL; role8 (PMS8's config) 6.5535 / 1.1061 unchanged;
+busreg 6.3838 / 1.2233 and busregnp (no propagation) 6.3837 / 1.2184 run.
+IN THE LOSS (the week's rule): W_regq 0.0127 and W_idq 0.0903 grad-norm
+from the args loss alone (the router census's probe); a clean probe on
+the squared args gave 182 / 1528 and finite differences on the args output
+of 0.55 / 2.74 per +0.5 on a read weight. AN INSTRUMENT FAULT FOUND AND
+FIXED ON THE WAY: the first probe printed 0.000000 for both weights — the
+router census hook realize()s intermediate tensors, and tinygrad's realize
+substitutes the buffer into every tensor sharing that node, cutting the
+gradient path through it; the grad-norm probe's forward now runs with the
+hook disarmed. The incumbent W_rk2 reading was itself a lower bound (1.31
+hooked, 2.30 clean): every W_rk2 grad-norm quoted since 2026-09-20 was
+taken through the hook — the signs (zero vs nonzero) stand, the magnitudes
+are understated. At random init on the tiny fixture the register's terms
+are near-constant across candidates (role 0.269 +- 0.007, identity 0.88 +-
+0.01): the router's channels are uniform before training; on the warm
+body they are sharp. THE RESOLUTION WARM GATE (pc-busreggate,
+`.cache/warm_busreg_gate_slice1024.sh`, waits for the twin's chain, every
+GPU command under the lock): treatment = PMS8's recipe + ALG_BUSREG=2.0
+warm from PMS8_241 (the record body), control = PMS8's recipe warm from
+PMS8_241, 1,500 steps at B=8 on the 1,024-row pm35c slice, dumps pre/post
+on the 880-row valid slice; THE BAR (pinned): `busreg_cell_compare.py` —
+the DERIVED-ARG cell (k is a relation) control-subtracted rise >= 2 SE
+with GIVEN-ONLY holding within 1 SE (the mixed-bucket cells, paired SE,
+the role gate's machinery); the twin-cell compare reported beside. The
+arm (PMS8's recipe + the register from scratch, seed 241, vs PMS8_241)
+fires only on the gate's word.
