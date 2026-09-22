@@ -105,6 +105,10 @@ REFUSED = ("ALG_SHELF", "ALG_WHIP", "ALG_TOKLOOP", "ALG_WRITEBACK", "ALG_KANNEAL
            "ALG_DUPPTR", "ALG_DETWAVE", "ALG_WHEEL_CERT",   # THE CERTIFICATE PASS
            "ALG_SPAN_ALL", "ALG_ANCHOR",   # THE BREATH-SHARPENING ORGANS (2026-09-19):
            "ALG_SPAN_ARGS", "ALG_SPAN_OP", "ALG_SPAN_OP_ROAD", "ALG_PTR_SURF",
+           "ALG_SPAN_RCUE", "ALG_SPAN_ARCUE",   # THE ROLE SIGNATURE (2026-09-22): same
+           # reason as ALG_SPAN_ARGS/ALG_SPAN_OP above — the walker's per-seam heads_of
+           # calls never thread a per-breath rcue_all list, and the role pointer's
+           # out["args"] rewrite lives only in the fused forward()'s emission code
            "ALG_HUD")
            # THE TOKEN HUD (2026-09-21): forward()'s new `hud` port is fed
            # only by the mask-prep pass's b_hud buffer (do_train's own

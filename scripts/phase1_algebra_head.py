@@ -66,7 +66,19 @@ ALG_ANCHOR = float(os.environ.get("ALG_ANCHOR", "0"))     # beta: breath-0's gro
 ALG_SPAN_ARGS = int(os.environ.get("ALG_SPAN_ARGS", "0"))     # arg1/arg2 channels' BCE against aspan
 ALG_SPAN_OP = int(os.environ.get("ALG_SPAN_OP", "0"))         # the 5th (op/cue) channel's BCE against cspan
 ALG_SPAN_OP_ROAD = int(os.environ.get("ALG_SPAN_OP_ROAD", "0"))  # the op channel joins the rbias bank-bias sum
-ALG_PTR_SURF = os.environ.get("ALG_PTR_SURF", "")             # "add:<gain>" | "sever:<gain>" | "state:add:<gain>" | "state:sever:<gain>" | "entity:add:<gain>" | "entity:sever:<gain>" | "" (unset = old beta_ptr road, bit-identical)
+# THE ROLE SIGNATURE (2026-09-22, ledger "THE TWIN-SPLIT VERDICT": same-
+# noun twins — the same entity at different roles/times, "bought 3
+# tickets ... 5 more tickets" — carry 2.8x the wrong-argument mass of
+# different-noun twins; no identity signal separates them, only the
+# ROLE CUE around each mention and the ORDER of introduction). A sixth
+# router channel, "rcue": each GIVEN slot's own role-cue span (bought /
+# more / left / each / then), plus a light auxiliary target on the
+# arg1/arg2 channels (the re-mention's own nearby cue). Both dead
+# unless set; old diets/checkpoints load unchanged (zeros where the
+# fields are absent).
+ALG_SPAN_RCUE = int(os.environ.get("ALG_SPAN_RCUE", "0"))     # the 6th (rcue) channel's BCE against rcue, on given slots
+ALG_SPAN_ARCUE = int(os.environ.get("ALG_SPAN_ARCUE", "0"))   # light aux: arg1/arg2 channels also BCE against arcue
+ALG_PTR_SURF = os.environ.get("ALG_PTR_SURF", "")             # "add:<gain>" | "sever:<gain>" | "state:add:<gain>" | "state:sever:<gain>" | "entity:add:<gain>" | "entity:sever:<gain>" | "role:add:<gain>" | "role:sever:<gain>" | "" (unset = old beta_ptr road, bit-identical)
 # THE STATE-SPACE POINTER (2026-09-20, PMS5b's death): the POSITION
 # overlap O[j,k] = sum_t p_a[j,t]*p_res[k,t] is empty by construction (a
 # re-mention never occupies the same token positions as the
@@ -86,6 +98,17 @@ ALG_PTR_SURF_STATE = ALG_PTR_SURF.startswith("state:")
 # predicted ftype is not "given" (a relation slot has no value-mention
 # span of its own to key on).
 ALG_PTR_SURF_ENTITY = ALG_PTR_SURF.startswith("entity:")
+# THE ROLE SIGNATURE POINTER (2026-09-22, the winner of THE TWIN-SPLIT
+# CENSUS's decision rule): u_j = the OP channel's attended waist state
+# (relation j's own role query — already supervised by cspan), r_k =
+# the RCUE channel's attended waist state (candidate k's role-cue
+# neighborhood) — a learned compatibility over role PAIRS (not
+# identity), plus a learned precedence term over (j-k). "add" is the
+# primary form (the role term carries information the bilinear cannot
+# — the seal law's objection is weaker than for state:/entity:, which
+# rebuild a signal the bilinear could in principle already carry);
+# "sever" is the diagnostic twin.
+ALG_PTR_SURF_ROLE = ALG_PTR_SURF.startswith("role:")
 _GTAP = None      # THE GRADIENT TAP (apply_grad_tap.py): read-only probe leaves per breath
 # THE WHIP (2026-09-12, the word): ALG_WHIP="k:amp" kicks the state ENTERING
 # breath k with Gaussian noise on the content planes (per slot: amp x the
@@ -803,7 +826,8 @@ TERMINALS = {
     "router": {"params": (["W_rs", "W_ra", "W_rb", "r_gain"]
                           if int(os.environ.get("ALG_ROUTER", "0")) < 2 else
                           ["W_rq2", "W_rk2", "theta_given", "r_gain"]
-                          + (["W_ps"] if os.environ.get("ALG_PTR_SURF", "").startswith(("state:", "entity:")) else [])),
+                          + (["W_ps"] if os.environ.get("ALG_PTR_SURF", "").startswith(("state:", "entity:")) else [])
+                          + (["W_role", "w_prec"] if os.environ.get("ALG_PTR_SURF", "").startswith("role:") else [])),
                "emit": "rbias",
                "gold": (["fspan"] if int(os.environ.get("ALG_ROUTER", "0")) < 2
                         else ["fspan", "vspan"]),
@@ -938,6 +962,16 @@ def build_gold(samples, offsets):
         # not here).
         "aspan": np.zeros((n, L_FAC, 2, T_ALG), np.float32),   # arg1/arg2 re-mention in the clause
         "cspan": np.zeros((n, L_FAC, T_ALG), np.float32),      # operator cue words in the clause
+        # THE ROLE SIGNATURE's arm (2026-09-22): role_cues (per-factor,
+        # a window of role-cue words around the factor's own clause —
+        # stamped on givens around the value numeral, per the stamper's
+        # rulebook) and arg_role_cues (per-relation-argument, the cue
+        # near that argument's re-mention). Present for EVERY row (zero
+        # when the jsonl carries no such fields, per the two-terminal
+        # law without a new BUILD-time env gate — same convention as
+        # aspan/cspan above).
+        "rcue": np.zeros((n, L_FAC, T_ALG), np.float32),        # the factor's own role-cue span
+        "arcue": np.zeros((n, L_FAC, 2, T_ALG), np.float32),    # per-arg-position role cue near the re-mention
         **({"refvar": np.full((n, T_ALG), -1, np.int8)} if ALG_REF else {}),
         **({"is_ind": np.zeros((n, L_FAC), np.float32)} if ALG_DIAL else {}),
         "query": np.zeros((n,), np.int32),
@@ -1011,6 +1045,14 @@ def build_gold(samples, offsets):
             if ALG_DIAL and f["ftype"] == "rel" and any(a in _indvars for a in f.get("args", [])):
                 g["is_ind"][i, j] = 1.0
             _spans_to_tokmask(f.get("spans") or [], offs, g["fspan"][i, j])
+            # THE ROLE SIGNATURE's arm (2026-09-22): role_cues, when the
+            # jsonl carries the field, on ANY factor type (the data
+            # builder stamps it on givens within a window around the
+            # value numeral; a factor with no such field leaves the
+            # slot at zero by construction — the two-terminal law).
+            _rcuesp = f.get("role_cues")
+            if _rcuesp:
+                _spans_to_tokmask(_rcuesp, offs, g["rcue"][i, j])
             if f["ftype"] == "rel":
                 g["ftype"][i, j] = 0
                 g["is_rel"][i, j] = 1.0
@@ -1036,6 +1078,16 @@ def build_gold(samples, offsets):
                 _cuesp = f.get("cue_spans")
                 if _cuesp:
                     _spans_to_tokmask(_cuesp, offs, g["cspan"][i, j])
+                # THE ROLE SIGNATURE's arm: arg_role_cues[a] is the role
+                # cue near argument a's RE-MENTION (as opposed to
+                # role_cues above, which is the factor's OWN clause cue)
+                # — same position convention as arg_spans (0=arg1,
+                # 1=arg2).
+                _arcues = f.get("arg_role_cues")
+                if _arcues:
+                    for _rai, _rasp in enumerate(_arcues[:2]):
+                        if _rasp:
+                            _spans_to_tokmask(_rasp, offs, g["arcue"][i, j, _rai])
             elif f["ftype"] == "given":
                 g["ftype"][i, j] = 1
                 g["is_lit"][i, j] = 1.0
@@ -2140,6 +2192,20 @@ def build_params(seed=0):
             # own coordinates (not a random rotation), matching the
             # brief's spec.
             p["W_ps"] = t(np.eye(H_W, dtype=np.float32))
+        if ALG_PTR_SURF_ROLE:
+            # THE ROLE SIGNATURE POINTER's own weights (2026-09-22): the
+            # relation's OP-channel query, projected through W_role,
+            # dotted against the candidate's RCUE-channel key — init
+            # IDENTITY (same rationale as W_ps: a plain cosine-like
+            # similarity at birth, not a random rotation). w_prec (the
+            # learned precedence weight over (j-k)/L_FAC) starts at
+            # ZERO — the mandatory-road law's "no gain" form does not
+            # apply here (this is a coefficient on a structural
+            # feature, not a gate on an organ's output), but a zero
+            # start means training discovers the sign and scale of
+            # "earlier/later" on its own rather than being handed one.
+            p["W_role"] = t(np.eye(H_W, dtype=np.float32))
+            p["w_prec"] = t(np.zeros(1, dtype=np.float32))
         # rescue 2026-09-01: default aligned to the AJAR law (0.02);
         # sweepable via R_GAIN_INIT (the 0.1 deviation was unswept)
     if int(os.environ.get("ALG_ALTMASK", "0")):
@@ -3537,13 +3603,32 @@ def breath_step(p, state, kb, ctx):
         try: _R2C
         except NameError: _R2C = None
         _op_on5 = bool(ALG_SPAN_OP or ALG_SPAN_OP_ROAD)   # THE OPERATOR CHANNEL (2026-09-20)
-        if _R2C is None or ("op" not in _R2C and _op_on5):
+        # THE ROLE SIGNATURE's 6th channel (2026-09-22): the RCUE
+        # channel needs the OP channel as its partner (the role
+        # pointer's query is the op channel's attended state) — armed
+        # by ALG_SPAN_RCUE (its own span loss) or by the role pointer
+        # itself (ALG_PTR_SURF=role:...), and requires _op_on5.
+        _rcue_on6 = bool(ALG_SPAN_RCUE or ALG_PTR_SURF_ROLE)
+        if _rcue_on6:
+            assert _op_on5, (
+                "ALG_SPAN_RCUE / ALG_PTR_SURF=role: needs the OP channel "
+                "armed too (ALG_SPAN_OP=1 or ALG_SPAN_OP_ROAD=1): the "
+                "role pointer's query u_j is the OP channel's attended "
+                "state")
+        if _R2C is None or ("op" not in _R2C and _op_on5) or ("rcue" not in _R2C and _rcue_on6):
             import numpy as _npr2
             from tinygrad import Tensor as _Tr2
             _bzr2 = _npr2.load(_bind_codes_path())
+            if _rcue_on6:
+                assert "theta_rcue" in _bzr2.files, (
+                    f"ALG_SPAN_RCUE/ALG_PTR_SURF=role: needs theta_rcue in "
+                    f"the codebook ({_bind_codes_path()!r}) — point "
+                    f"BIND_CODES at .cache/bindbus_codes512r.npz "
+                    f"(bindbus_codes_rcue.py's mint)")
             if _R2C is None:
                 _R2C = {}
-            for _rn2 in (("arg1", "arg2", "res") + (("op",) if _op_on5 else ())):
+            for _rn2 in (("arg1", "arg2", "res") + (("op",) if _op_on5 else ())
+                        + (("rcue",) if _rcue_on6 else ())):
                 if _rn2 in _R2C:
                     continue
                 _th2 = _bzr2[f"theta_{_rn2}"].astype(_npr2.float32)
@@ -3580,12 +3665,15 @@ def breath_step(p, state, kb, ctx):
             if _op_on5:
                 _c_parts.append(_R2C["op"][0].unsqueeze(0))
                 _s_parts.append(_R2C["op"][1].unsqueeze(0))
-            _c4 = Tensor.cat(*_c_parts, dim=0)   # (4 or 5, P)
+            if _rcue_on6:
+                _c_parts.append(_R2C["rcue"][0].unsqueeze(0))
+                _s_parts.append(_R2C["rcue"][1].unsqueeze(0))
+            _c4 = Tensor.cat(*_c_parts, dim=0)   # (4, 5, or 6, P)
             _s4 = Tensor.cat(*_s_parts, dim=0)
             _r2rc = (_c4, _s4)
             state["_r2_role_cs"] = _r2rc
         _c4, _s4 = _r2rc
-        _n_ch5 = _c4.shape[0]   # 4 (unset) or 5 (THE OPERATOR CHANNEL armed)
+        _n_ch5 = _c4.shape[0]   # 4 (unset), 5 (OP armed), or 6 (+ RCUE, THE ROLE SIGNATURE)
         # THE STACKED KEY (B, 1, bind_d, T) — cached in `state`, keyed by
         # the WAIST OBJECT's identity: under ALG_TOKLOOP/WRITEBACK off,
         # ctx["waist"] is the SAME python object every breath (never
@@ -3645,6 +3733,11 @@ def breath_step(p, state, kb, ctx):
                 state.setdefault("aspan_all", []).append(_s4_last[:, 0:2])
             if ALG_SPAN_OP and _n_ch5 >= 5:
                 state.setdefault("ospan_all", []).append(_s4_last[:, 4:5])
+            if ALG_SPAN_RCUE and _n_ch5 >= 6:
+                # THE ROLE SIGNATURE's 6th (rcue) channel, per breath —
+                # index 5, present only when _rcue_on6 (which requires
+                # the OP channel at index 4, per the assert above).
+                state.setdefault("rcue_all", []).append(_s4_last[:, 5:6])
         # THE POINTER PRIOR THROUGH THE SURFACE (road c): slot j's arg-a
         # mention agreeing with slot k's res mention, over the REAL
         # tokens only (padding excluded) — ONE softmax over the stacked
@@ -4599,6 +4692,7 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
     _rbias2_all = None
     _aspan_all = None
     _ospan_all = None
+    _rcue_all = None
     _garage = None
     global _CENSUS                  # the port census hook (inert unless
     try: _CENSUS                    # port_census.py arms it — same
@@ -4730,6 +4824,7 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
             _rbias2_all = _bs_state.get("rbias2_all")
             _aspan_all = _bs_state.get("aspan_all")
             _ospan_all = _bs_state.get("ospan_all")
+            _rcue_all = _bs_state.get("rcue_all")
             if RINGS:
                 m_c = _bs_state["m_c"]
                 anchor = _bs_state["anchor"]
@@ -4785,6 +4880,9 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
     if _ospan_all:
         # THE OPERATOR CHANNEL's span loss, per breath — (B, K_B-1, 1, L_FAC, T).
         out["ospan_all"] = Tensor.stack(*_ospan_all, dim=1)
+    if _rcue_all:
+        # THE ROLE SIGNATURE's rcue channel, per breath — (B, K_B-1, 1, L_FAC, T).
+        out["rcue_all"] = Tensor.stack(*_rcue_all, dim=1)
     if _s4_last is not None:
         # THE BUS-NATIVE ROUTER's per-field census tap (road b/c support)
         out["rbias2"] = _s4_last          # (B, 4 or 5, L_FAC, T): arg1/arg2/res/given(/op)
@@ -4851,6 +4949,8 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
                 _psurf_body5 = ALG_PTR_SURF[6:]
             elif ALG_PTR_SURF_ENTITY:
                 _psurf_body5 = ALG_PTR_SURF[7:]
+            elif ALG_PTR_SURF_ROLE:
+                _psurf_body5 = ALG_PTR_SURF[5:]
             else:
                 _psurf_body5 = ALG_PTR_SURF
             _psm5, _, _psg5 = _psurf_body5.partition(":")
@@ -4908,6 +5008,54 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
                 _V1_5 = _lg1_5m @ _R_scat   # (B,L_FAC,L_FAC)@(B,L_FAC,K_VARS) -> (B,L_FAC,K_VARS)
                 _V2_5 = _lg2_5m @ _R_scat
                 _surf5 = _ps_gain5 * (_V1_5 + _V2_5)
+            elif ALG_PTR_SURF_ROLE:
+                # THE ROLE SIGNATURE POINTER (2026-09-22, THE TWIN-SPLIT
+                # VERDICT's winner): ONE role query per relation j (not
+                # per arg position — role/precedence do not distinguish
+                # arg1 from arg2) against ONE role key per candidate k.
+                # u_j = the OP channel's attended waist state (channel
+                # 4: "the relation's role" — already trained by cspan).
+                # r_k = the RCUE channel's attended waist state (channel
+                # 5: "the candidate's role cue"). Requires _n_ch5 >= 6
+                # (the RCUE channel armed — enforced by the assert at
+                # the router's build above, which ties ALG_PTR_SURF=
+                # role: to ALG_SPAN_OP/OP_ROAD being set too).
+                assert out["rbias2"].shape[1] >= 6, (
+                    "ALG_PTR_SURF=role: needs the RCUE channel armed "
+                    "(ALG_SPAN_RCUE=1, and ALG_SPAN_OP or ALG_SPAN_OP_ROAD "
+                    "for its OP-channel partner)")
+                _tm5r = tokmask.reshape(B, 1, -1)
+                def _tsoft5r(s5):
+                    return (s5.clip(-1e4, 1e4) + (1.0 - _tm5r) * -1e4).softmax(-1)
+                _pop5 = _tsoft5r(out["rbias2"][:, 4])   # (B, L_FAC, T): relation j's OP-channel attention
+                _prc5 = _tsoft5r(out["rbias2"][:, 5])   # (B, L_FAC, T): candidate k's RCUE-channel attention
+                _uj_5 = _pop5 @ waist        # (B, L_FAC, H_W): the relation's role query
+                _rk_5 = _prc5 @ waist        # (B, L_FAC, H_W): the candidate's role-cue key
+                _hw5r = waist.shape[-1]
+                _lgrole_5 = ((_uj_5 @ p["W_role"]) @ _rk_5.transpose(-2, -1)) / math.sqrt(_hw5r)
+                # THE PRECEDENCE TERM: a learned scalar (w_prec, init 0)
+                # times (j-k)/L_FAC, a FIXED (L_FAC, L_FAC) constant —
+                # cached at module level (the codebook-cache pattern:
+                # built once per process, never per forward call).
+                global _ROLE_JK
+                try: _ROLE_JK
+                except NameError: _ROLE_JK = None
+                if _ROLE_JK is None:
+                    import numpy as _npjk
+                    _jk_np5 = ((_npjk.arange(L_FAC)[:, None]
+                               - _npjk.arange(L_FAC)[None, :]).astype(_npjk.float32)
+                               / L_FAC)
+                    _ROLE_JK = Tensor(_jk_np5).reshape(1, L_FAC, L_FAC)
+                _lgrole_5 = _lgrole_5 + p["w_prec"].reshape(1, 1, 1) * _ROLE_JK
+                # presence-mask k over the SAME convention as state/
+                # entity above (R already zeroes absent-k in the
+                # scatter matmul; this masking is for the diagnostic
+                # softmax_k read, done once, shared by both).
+                _presk_5r = _R_scat.sum(-1).reshape(B, 1, L_FAC)
+                _lgrole_5m = _lgrole_5.clip(-1e4, 1e4) + (1.0 - _presk_5r) * -1e4
+                out["ptr_role_logit"] = _lgrole_5m   # (B, L_FAC, L_FAC): census tap
+                _Vrole_5 = _lgrole_5m @ _R_scat   # (B,L_FAC,L_FAC)@(B,L_FAC,K_VARS) -> (B,L_FAC,K_VARS)
+                _surf5 = _ps_gain5 * _Vrole_5
             else:
                 # the POSITION form (the control, UNCHANGED): O_a scattered
                 # through R, then a log so it composes with logits.
@@ -4924,8 +5072,9 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
                 raise ValueError(
                     f"unknown ALG_PTR_SURF mode {_psm5!r} "
                     f"(want add:<gain>, sever:<gain>, state:add:<gain>, "
-                    f"state:sever:<gain>, entity:add:<gain>, or "
-                    f"entity:sever:<gain>)")
+                    f"state:sever:<gain>, entity:add:<gain>, "
+                    f"entity:sever:<gain>, role:add:<gain>, or "
+                    f"role:sever:<gain>)")
         else:
             _beta_ptr = float(os.environ.get("ALG_ROUTER_PTR", "2.0"))
             out["args"] = out["args"] + _beta_ptr * (_rptr_last[:, 0] + _rptr_last[:, 1])
@@ -5258,6 +5407,43 @@ def _loss_single(o, g, blur=0.0, sw=None):
             else:
                 _o_loss = bce(o["rbias2"][:, 4], g["cspan"]).mean(-1)
             l = l + 0.5 * (_o_loss * _ow).sum() / _n_ow
+        if ALG_SPAN_RCUE and "rcue" in g and o["rbias2"].shape[1] >= 6:
+            # THE ROLE SIGNATURE's 6th (rcue) channel span loss
+            # (2026-09-22): weighted by presence, by "is this slot a
+            # GIVEN" (the role_cues field is stamped on givens, per the
+            # brief), and by "does this row even carry a stamped cue"
+            # (rcue.sum(-1) > 0) — the same empty-mask guard as the arg
+            # and op losses above.
+            _rcmask = (g["rcue"].sum(-1) > 0).float() * g["is_lit"]   # (B, L_FAC)
+            _rw = pres * _rcmask; _n_rw = _rw.sum() + 1e-6
+            _rcue_all_t = o.get("rcue_all")
+            _span_all_rcue = ALG_SPAN_ALL and _rcue_all_t is not None
+            if _span_all_rcue:
+                _KB1r = _rcue_all_t.shape[1]
+                _rgold_b = g["rcue"].unsqueeze(1)               # (B, 1, L_FAC, T)
+                _rc_bce_all = bce(_rcue_all_t[:, :, 0], _rgold_b)   # (B, KB1, L_FAC, T)
+                _rc_loss = sum(_rc_bce_all[:, _i5].mean(-1)
+                               for _i5 in range(_KB1r)) / _KB1r
+            else:
+                _rc_loss = bce(o["rbias2"][:, 5], g["rcue"]).mean(-1)
+            l = l + 0.5 * (_rc_loss * _rw).sum() / _n_rw
+        if ALG_SPAN_ARCUE and "arcue" in g:
+            # THE ROLE SIGNATURE's light auxiliary term (2026-09-22): the
+            # arg1/arg2 channels (already trained against aspan, the
+            # re-mention itself) ALSO cover the role cue found NEAR that
+            # re-mention (arcue) — a second, lightly-weighted target on
+            # the SAME channels (not a new channel: "the arg channels'
+            # attended states are already the re-mention", per the
+            # brief). Last breath only (no ALG_SPAN_ALL threading — this
+            # is deliberately the small auxiliary form, not a full span
+            # loss with its own per-breath buffer).
+            _arcmask = (g["arcue"].sum(-1) > 0).float()   # (B, L_FAC, 2)
+            _ARCUE_W = 0.1   # light: an order of magnitude under the primary span losses' 0.5
+            for _rapos in (0, 1):
+                _raw = pres * _arcmask[:, :, _rapos]
+                _n_raw = _raw.sum() + 1e-6
+                _arc_loss = bce(o["rbias2"][:, _rapos], g["arcue"][:, :, _rapos]).mean(-1)
+                l = l + _ARCUE_W * (_arc_loss * _raw).sum() / _n_raw
     if "bind" in o and "bind_ids" in g and int(os.environ.get("ALG_BINDBUS", "0")) >= 3:
         # v3 THE ROLE-FACTORED LOSS: supervise each role's unbound cleanup
         # directly — conjugate-rotate the emission, CE against the codebook
@@ -7073,7 +7259,7 @@ def do_train(steps, lr, batch, seed):
             print(f"[router2-census]  breath {_kb}: |beta*fat0| mean (real "
                   f"tokens) {_anch_mean:.4f}, raw |bank score| mean "
                   f"{_sc_mean:.4f}, ratio {_aratio:.4f}", flush=True)
-        if ALG_PTR_SURF and not ALG_PTR_SURF_STATE and not ALG_PTR_SURF_ENTITY and "rptr" in _rc_out:
+        if ALG_PTR_SURF and not ALG_PTR_SURF_STATE and not ALG_PTR_SURF_ENTITY and not ALG_PTR_SURF_ROLE and "rptr" in _rc_out:
             # THE POINTER THROUGH THE SURFACE's own census (2026-09-20):
             # the injected magnitude relative to the bilinear it composes
             # with (add) or replaces (sever), plus whether O_a is peaked
@@ -7176,6 +7362,36 @@ def do_train(steps, lr, batch, seed):
             else:
                 print("[router2-census] TWIN-KEY: 0 same-sentence present-slot "
                       "pairs on this census batch", flush=True)
+        if ALG_PTR_SURF_ROLE and "ptr_role_logit" in _rc_out:
+            # THE ROLE SIGNATURE POINTER's own census (2026-09-22, gate
+            # d): the injected magnitude relative to the bilinear it
+            # composes with (add) or replaces (sever), and w_prec's
+            # current value — run this same census before and after the
+            # 500-step warm gate (two process invocations) to read the
+            # pre/post comparison the brief asks for.
+            _psm7, _, _psg7 = ALG_PTR_SURF.partition(":")
+            _args_post_v7 = _rc_out["args"].realize().numpy()
+            _args_pre_mean7 = float(np.abs(_args_pre).mean()) if _args_pre is not None else float("nan")
+            _args_post_mean7 = float(np.abs(_args_post_v7).mean())
+            # THE INJECTED MAGNITUDE (fixed, 2026-09-22): NOT the raw
+            # pre-scatter (B, L_FAC, L_FAC) logit matrix's abs-mean —
+            # that average is dominated by the -1e4 presence-mask floor
+            # on the (usually many) ABSENT candidate columns and says
+            # almost nothing about what reaches the loss. What actually
+            # reaches out["args"] is recovered directly from add's
+            # definition (out = pre + g*V_role) / sever's (out = g*V_role
+            # alone) — exact by construction, no re-derivation of V_role
+            # needed.
+            _role_surf_v = (_args_post_v7 - _args_pre
+                            if _psm7 == "add" and _args_pre is not None
+                            else _args_post_v7)
+            _role_surf_mean = float(np.abs(_role_surf_v).mean())
+            _wprec_v = float(p["w_prec"].realize().numpy()[0]) if "w_prec" in p else float("nan")
+            print(f"[router2-census] ALG_PTR_SURF={ALG_PTR_SURF} ({_psm7}): "
+                  f"|injected g*V_role| mean {_role_surf_mean:.4f}, "
+                  f"|bilinear args logits (pre-fusion)| mean {_args_pre_mean7:.4f}, "
+                  f"|out['args'] (post)| mean {_args_post_mean7:.4f}, "
+                  f"w_prec {_wprec_v:.6f}", flush=True)
         if "args" in _rc_out:
             # THE GRAD-NORM VERIFICATION (2026-09-20, gate c): does the
             # ARGS LOSS ALONE reach W_rk2? A fresh forward + backward
