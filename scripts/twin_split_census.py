@@ -62,7 +62,7 @@ import lexical_identity_census as LIC
 WILD_A = ".cache/wild_admitted_holdout_a.jsonl"
 DIET_A = ".cache/form_mix_pm35a.jsonl"
 DIET_CAP = 2000
-DUMP_WILD_PMS4 = ".cache/dump_wild_PMS4_241.pkl"
+DUMP_WILD_PMS4 = os.environ.get("TS_DUMP", ".cache/dump_wild_PMS4_241.pkl")
 DUMP_DIET_CANDIDATES = [
     ".cache/dump_formpm35a_PMS4_241.pkl",
     ".cache/dump_diet_PMS4_241.pkl",
