@@ -43300,3 +43300,31 @@ introduction) is the road for the same-cue half ("has 3 ... has 5":
 the order is the difference), and the no-cue sixth has no surface
 signal at all. The ceiling for the role signature as a cue-only
 discriminator is ~0.5-0.6 of the twin cell — stated before the gate.
+
+**2026-09-22 — THE ROLE SIGNATURE ORGAN BUILT; its first gate
+inconclusive on a 76-row fixture; the resolution gate runs.** Built
+(not yet committed): gold g_rcue / g_arcue; the sixth router channel
+"rcue" on `theta_rcue` (a new codes file `bindbus_codes512r.npz`, the
+old keys byte-identical) with its span loss on given slots (ALG_SPAN_
+RCUE) and a light auxiliary on the arg channels (ALG_SPAN_ARCUE, 0.1);
+the role pointer `ALG_PTR_SURF=role:add|sever:<g>`: (u_j W_role . r_k)
+/ sqrt(H) + w_prec (j - k) / L_FAC scattered through the res map; two
+diagnostic bugs found and fixed by the gate's own smoke (the position-
+census branch not excluding "role:", and an injected-magnitude read
+that averaged the -1e4-padded pre-scatter matrix — replaced with
+out["args"] minus the pre-fusion logits, exact under sever). GATES:
+unset 5.2995 / 0.0279 bit-identical (the whole surface_gate ladder);
+the gold identity; rcue on 81.6% of the fixture's given slots; the
+CPU configs clean. THE WARM GATE (from PMS4, 500 steps at B=4, the
+mix64 fixture filtered to 76 rows): the pointer road alive (W_rk2
+grad norm from the args loss 0.67 -> 0.12; the control 0.000); the
+injected role term ~1.0x the bilinear's magnitude; w_prec learned
+-0.0016 (near zero — precedence did not enter in 500 steps). THE TWIN
+CELL: same-noun (n 69) treatment 0.536 -> 0.565, control 0.551 ->
+0.565 — tied after; different-noun (n 21) treatment 0.667 -> 0.571,
+control flat — a fall inside its SE of 0.11. INCONCLUSIVE: the
+fixture cannot resolve the claim; step 2 (the bus storage) held; THE
+RESOLUTION GATE runs on the 1,024-row slice (its gold rebuilt from
+the pm35c stamps), 1,500 steps at B=8, the twin cell in the hundreds:
+the arm fires only if the same-noun cell's control-subtracted rise
+clears 2 SE with the different-noun cell holding within 1 SE.
