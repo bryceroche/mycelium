@@ -43355,3 +43355,31 @@ BARS as pinned: the wild same-noun twin cell >= 0.770 + 0.05; wild
 args >= +0.03 paired; masked wild informational (+0.020 the claim
 bar); mint's identity and the different-noun cell watched. Step 2 (the
 role bound into the bus register) follows the arm's read.
+
+**2026-09-22 — THE ROLE SIGNATURE ARM: the slot record and the row move;
+the twin cell it was built for moves +0.010 on the holdout; the claim
+bar is missed by a hair — the twin is the read.** PMS8_241 (the
+chassis body + arg/op/rcue/arcue span losses + role:add:2.0, 48k at
+0.126 s/step): OPEN wild 0.3198 (the campaign's highest open read; vs
+PMS4's 0.3003: +0.0195, SE 0.0086, z 2.26); MASKED 0.3476 (the highest
+masked read; vs PMS4 0.3325: +0.0151, SE 0.0085, z 1.78; vs the lineage
+0.3291: +0.0185, z 1.93 — the +0.020 / z 2 claim bar missed by 0.0015
+and 0.07 z); matched 0.3564 (highest); ROWS 14 masked / 13 open vs
+PMS4's 9 / 7 and the lineage's 9 / 9 (refused 96 vs 126: the head
+commits more, and +5 of the commitments are right); mint 0.6510 vs
+0.6497 (flat; args 0.650 = 0.649); the wild args FIELD 0.449 vs 0.444
+(the +0.03 bar not met at the field level — the slot gain sits in
+digits 0.415 vs 0.404 and in the composition, not in the pointer
+field). THE TWIN CELL ON THE HOLDOUT (the bar it was built for, +0.05):
+same-noun args-correct 0.770 -> 0.780 (+0.010; the wrong count 88 ->
+84); different-noun 0.846 -> 0.836 (-0.010, inside its SE); mixed /
+no-key 0.671 -> 0.687 (+0.016). The gate's +0.054 was a training-set
+read; on the holdout the cell moved a fifth of that. READING: the
+organ's gain is real at the slot (z 1.8-2.3) and at the row (+5 on one
+seed) and broader than the cell it targeted (the mixed bucket moved as
+much as the twin cell); it is not the mechanism-sized win the gate
+promised, and it is not yet a claim: the seed-242 twin (PMS8_242 vs
+PM35_scratch_242 and PMS4_242) is the certification read, ~2.3 h,
+needing the word. Step 2 (the role bound into the bus register) and
+the mixed-bucket decomposition (66% of the wall; relation-type
+candidates with no key) are the two roads behind it. Numbers asserted.
