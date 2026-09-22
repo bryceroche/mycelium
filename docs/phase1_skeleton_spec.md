@@ -43569,3 +43569,67 @@ own cell is the bus register, and its gate bar (DERIVED-ARG >= 2 SE,
 control-subtracted) is the right bar: the first read that would move the
 number the decomposition named. Artifacts: twin_split_census_PMS8_242.txt,
 mixed_bucket_census_242pair.txt.
+
+**2026-09-22 16:48 — THE BUS REGISTER's FIRST GATE: the pinned bar fires
+and is VOID (the birth-cost confound); post-vs-post the pointer cells are
+NULL; the magnitude census names the flaw (the role stream ten times the
+identity stream); the fix and the addressing road built; re-gating.**
+THE RUN (pc-busreggate, then pc-busreggate2 for the dumps after the 880-row
+valid file tripped the custody guard on a pen row — the 775-row valid2 slice
+is the dump fixture, as the role gate's own dumps used): treatment = PMS8's
+recipe + ALG_BUSREG=2.0 warm from PMS8_241, control = the recipe warm from
+PMS8_241, 1,500 steps at B=8 on the 1,024-row slice (0.346 vs 0.328 s/step:
+the register costs +5.5%); the args loss alone reached W_regq 0.30 / W_idq
+0.34 on the slice (in the loss). THE READS (valid2, 6,186 slots; a
+training-set read): pre_ctrl = PMS8_241 0.6521; pre_treat = the register at
+birth on it 0.4610 (BIRTH COST -0.19; args wrong 466 -> 1,648 — the organ
+entered as noise); post_treat 0.7444, post_ctrl 0.7244. THE BAR AS PINNED
+(control-subtracted): DERIVED-ARG +0.105 (z 4.30), SAME-NOUN(inh) +0.106
+(z 6.42), ALL +0.090 (z 6.18), DIFFERENT-NOUN -0.005 — "THE ARM FIRES",
+AND IT IS VOID: the treatment's PRE was depressed ~0.10 in every cell by
+the untrained register, so its delta is RECOVERY, not movement. THE HONEST
+COMPARISON (post vs post, paired across arms on the same items —
+busreg_cell_compare.py now prints it and judges on it; the control-
+subtracted delta is reported beside the birth cost): DERIVED-ARG +0.003
+(z +0.22), GIVEN-ONLY +0.010 (z +0.71), GIVEN-RELCOMP -0.039 (z -2.44),
+SAME-NOUN(inh) -0.004, DIFFERENT-NOUN(inh) -0.047 (z -2.16), ALL ARGS
+-0.009 (z -1.03): THE POINTER CELLS DID NOT MOVE; the register at gain 2.0
+after 1,500 warm steps is null-to-negative on args. WHERE THE +0.020 SLOT
+GAIN SITS (row_census on the dumps): post_treat vs post_ctrl rows fully
+right 291 vs 265 (37.5% vs 34.2%), DIGITS wrong 738 vs 817, RES 167 vs 250,
+args 519 vs 516 — the given's VALUE and the res map improved, the pointer
+did not (a training-set read; the interesting half). THE READ WEIGHTS
+(W_regq / W_idq, per-plane complex scalars): mean |dw| 0.005 in 1,500
+steps, the real part 1.000 -> 0.993 — SHRINKING: the loss attenuated the
+term rather than learning to read it (the mandatory-road law's "voted
+down", with a coefficient instead of a gate). THE MAGNITUDE CENSUS (the
+pre/post knob law — which should have run BEFORE the gate; the tiny
+fixture on the warm pre ckpt, CPU): the bilinear args logits |.| 30.7 (sd
+36.5); the register's ROLE read 11.0 with sd across candidates 1.7; its
+IDENTITY read 1.1-1.3 with sd 0.2-0.6; the router's token keys have norm
+13.4. THE FLAW: the role key and query are bus keys (norm ~13), the
+identities unit — the role read was TEN TIMES the identity read and mostly
+a per-slot offset with noise, the identity read (the discriminative one) a
+thirtieth of the bilinear; the two streams were never commensurate, so the
+superposition's crosstalk swamped the identity and the organ's birth was
+noise. THE FIX (commit follows the gate): EVERY REGISTER VECTOR IS A
+DIRECTION — the role key and query, the pooled identities and the
+propagated identity unit-normalised; both reads cosines in [-1, 1] (the
+role read no longer divided by sqrt(P)); the crosstalk is then the numpy
+check's (sd 0.065). BUILT BESIDE IT, registered, dead unless set:
+ALG_BUSREG_ADDR=<gain> — DIRECT ADDRESSING (Bryce's gut, "connect the
+sender to the receiver"; the relay's "dial the extension"): from breath 2
+the arg1 / arg2 / given channels' token logits get + gain x (the token's
+identity tag . the identity the slot's register carried at the previous
+breath, detached) BEFORE every consumer of the channels — an exact tag
+match on the existing road, no new middleman; same-noun twins tie on it
+(role and precedence pick), functional re-mentions get nothing. THE
+CORRECTION TO THE RELAY'S FRAMING, kept: the identity MATCH was already
+direct (a pooled dot product equals token-to-token tag matching); the
+middleman was the ADDRESSING (the channels choose tokens through waist
+keys), and the road above is that fix. RE-GATING (CPU, tiny64): unset must
+stay 5.2995 / 0.0279; role8 6.5535 / 1.1061; the normalised register and
+register+addressing must run with nonzero read-weight grad norms; then the
+warm gate re-runs with the normalised register (the bar: post vs post,
+DERIVED-ARG >= 2 SE, GIVEN-ONLY holds), the addressing road gated after
+it. Numbers quote the gate log, busreg_gate_postvspost.txt and the dumps.
