@@ -43513,3 +43513,36 @@ with GIVEN-ONLY holding within 1 SE (the mixed-bucket cells, paired SE,
 the role gate's machinery); the twin-cell compare reported beside. The
 arm (PMS8's recipe + the register from scratch, seed 241, vs PMS8_241)
 fires only on the gate's word.
+
+**2026-09-22 15:21 — THE ROLE SIGNATURE IS A CLAIM: the seed-242 twin clears
+the bar; the slot record moves to 0.3525; the pair reads together.**
+PMS8_242 (pc-pms8t, `.cache/pms8t_chain.sh`: the record body's recipe at
+seed 242, 48k at 0.184 s/step beside a CPU gate): MASKED wild 0.3525 (the
+campaign's highest masked read; fields ftype 0.855 / res 0.802 / args
+0.429 / dig 0.455), OPEN 0.3276 (the highest open read), matched 0.3632,
+mint 0.6638 (flat vs the chassis twin's band), silver 0.2660; ROWS 13
+masked / 9 open (refused 96 / 98). PAIRED (n 2051 slots): vs PMS4_242 (the
+chassis twin, 0.3320) masked +0.0205, SE 0.0085, z 2.42; vs PM35_scratch_242
+(the lineage twin, 0.3267) masked +0.0258, SE 0.0092, z 2.81; open vs the
+chassis twin +0.0219 (z 2.65), vs the lineage twin +0.0283 (z 2.98). THE
+CLAIM BAR (+0.020 masked, z >= 2, paired): CLEARED on seed 242 against both
+controls. THE PAIR: seed 241 +0.0151 / +0.0185 (z 1.78 / 1.93; missed by
+0.0015), seed 242 +0.0205 / +0.0258 (z 2.42 / 2.81) — mean +0.018 vs the
+chassis (combined z 2.97), +0.022 vs the lineage (combined z 3.35); rows
+14 / 13 masked on the two seeds vs the chassis' 9 / 10 and the lineage's
+9 / 11 (+3 to +5 on each seed); mint flat on both. THE ROLE SIGNATURE
+(the rcue channel + the role pointer on the stamped diet, over the chassis)
+is the first organ since the surface pivot to clear the wild claim bar on
+a certification twin. STATED PLAINLY: the ARGS FIELD does not carry it —
+0.429 on seed 242 vs the chassis twin's 0.453 (seed 241: 0.449 vs 0.444) —
+the slot gain sits in ftype / res / the composition (fewer refusals, more
+right commitments: refused 96 vs 126), exactly the shape the mixed-bucket
+decomposition predicted for a road that resolves derived-argument ties
+(the row census: PMS8's args first-breaks 79 vs 100). The organ's own cell
+(same-noun twins) moved +0.010 on the holdout on seed 241; the twin's cell
+read is a zero-GPU follow-up on dump_wild_PMS8_242.pkl. Numbers asserted
+(reads.py, 270 rows ingested at a64a32df). NEXT: the bus register's
+resolution gate (pc-busreggate, now running behind this chain) and, on its
+word, THE ARM: PMS8's recipe + ALG_BUSREG from scratch, seed 241, vs
+PMS8_241 — the register must beat the claim body it stands on, +0.020
+paired, or it is an ablation.

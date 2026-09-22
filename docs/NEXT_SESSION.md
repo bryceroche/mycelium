@@ -30,11 +30,10 @@ The reads table: `.venv/bin/python3 scripts/reads.py table wildhold` (assert-on-
   (the wheel family) is retired as feedback (THE CHASSIS RULING: value propagation).
 
 ## THE QUEUE (all need the word; nothing fires without it)
-1. FIRED 09-22 12:45 as pc-pms8t (.cache/pms8t_chain.sh -> pms8t_chain.log): PMS8_242 vs
-   PM35_scratch_242 and PMS4_242, THE CERTIFICATION READ (~2.3 h). Chain: copy .cache/pms8_chain.sh with SEED=242 and the
-   names swapped (the way .cache/twins_chain.sh was made from pms34_chain.sh); every GPU
-   command under `flock -w 36000 .cache/gpu.lock`; launch with
-   `systemd-run --user --unit=pc-pms8t --property=WorkingDirectory=/home/bryce/mycelium /usr/bin/bash <chain>`.
+1. DONE 09-22 15:20 — THE ROLE SIGNATURE IS A CLAIM: PMS8_242 masked 0.3525 (the slot record; +0.0205 vs
+   PMS4_242 z 2.42, +0.0258 vs the lineage twin z 2.81; open 0.3276 z 2.65/2.98; rows 13/9; mint flat); the
+   pair: +0.018 vs the chassis (combined z 2.97), +0.022 vs the lineage (z 3.35). The args FIELD does not
+   carry it (0.429 vs 0.453) — the gain is composition (refusals 96 vs 126). Ledger 09-22 15:2x.
 2. BUILT + GATED 09-22 (commit de7dc8b9; ledger): THE BUS REGISTER (ALG_BUSREG) = step 2 (the role in the
    slot's bus register at breath 1) and the identity port as ONE organ (identity looked up for givens,
    PROPAGATED for relations). pc-busreggate = the resolution warm gate on the slice, queued behind the twin
