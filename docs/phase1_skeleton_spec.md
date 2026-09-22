@@ -43252,3 +43252,36 @@ binds to the earlier same-noun quantity, "left" to the later) — memory
 inside the slot keyed on role and time. The gate: the same-noun twin
 cell (args-correct 0.770; 0.761 at distance 0) on the warm gate and
 the arm; the different-noun cell must not fall.
+
+**2026-09-22 — THE ROLE SIGNATURE (word given): the build.** Two
+builders. THE DATA (`stamp_given_cues.py` -> form_mix_pm35c + the
+measurement-only wild fixture `_c`): per factor `role_cues` (the role-
+cue words in its clause — for givens within a 6-token window around
+the value numeral — from a lexicon of acquisition/loss verbs, state and
+remainder words, temporal/order words, comparatives, collectives),
+`role_order` (the factor's index), and on relations `arg_role_cues`
+(the cues near each argument's re-mention); THE NUMBER it reports
+first: the fraction of same-noun twin pairs whose two candidates carry
+DIFFERENT role cues — the signal the organ would learn, measured
+before it is built. THE ORGAN (the head): gold `g_rcue` / `g_arcue`; a
+sixth router channel on a new role phasor `theta_rcue` (a new codes
+file, the old byte-identical) supervised by the given's role cue; the
+relation's role query = the op channel's attended state; THE ROLE
+POINTER (`ALG_PTR_SURF=role:add:<g>`, sever as a diagnostic):
+logit[j,k] = (u_j W_role . r_k) / sqrt(H_W) + w_prec (j - k) / L_FAC —
+a learned cue-compatibility over (relation cue, candidate cue) plus a
+learned precedence — ADDED to the bilinear (the role term carries what
+the bilinear cannot; not a bypass of the same signal); then the bus
+storage (the role bound under its phasor into the slot's register at
+breath 1). THE GATES: unset bit-identical; the gold identity; the warm
+gate from PMS4 vs the plain-bilinear control, judged on THE SAME-NOUN
+TWIN CELL's args-correct (the fixture classified by the twin-split
+helpers) — it must rise, the different-noun cell must not fall. THE
+ARM (staged, `.cache/pms8_chain.sh`, fires on the gates): PMS8_241 =
+the chassis body + SPAN_ARGS + SPAN_OP + SPAN_RCUE + role:add:2.0 on
+form_mix_pm35c (the states hard-linked from pm35a's — same texts), 48k,
+seed 241, vs PMS4_241: BARS PINNED — the same-noun twin cell args-
+correct >= 0.770 + 0.05 (the wild fixture's cell, n ~380); wild ARGS
+>= +0.03 paired; masked wild for information (+0.020 is the claim
+bar); mint's identity watched; the different-noun cell not below
+0.846 - 0.03.
