@@ -1,3 +1,81 @@
+# NEXT SESSION — cold start (HANDOFF 2026-09-22 ~12:30; the box restarts)
+
+**READ FIRST:** CLAUDE.md -> this block -> the ledger's entries from
+"2026-09-19 10:20 — THE SURFACE PIVOT" to the end (docs/phase1_skeleton_spec.md;
+the last ~60 entries) -> the memory board (MEMORY.md CURRENT BOARD, current).
+The reads table: `.venv/bin/python3 scripts/reads.py table wildhold` (assert-on-read).
+
+## STATE AT HANDOFF
+- Nothing running: no pc-* units, no agents, no monitors; tree clean at 11ea0c53 (pushed).
+- THE CHASSIS (certified neutral on two seeds, +4-6 mint): the 35%-mint from-scratch
+  lineage's recipe (form_mix_pm35 / the stamped pm35a, random init, 48k, B=8, the numeral
+  mask at the read) + ALG_ROUTER=2 (the bus-native per-field router) + ALG_SPAN_ALL=1
+  (the per-breath span loss) on the stamped diet. Bodies: PMS4_241 masked wild 0.3325,
+  PMS4_242 0.3320; the lineage PM35_scratch_241/242 0.3291/0.3267 (all vs the 311-row
+  wild holdout; SE ~0.009 per read; claims need +0.020 z 2 or a twin pair).
+- THE RECORD BODY (one seed, uncertified): PMS8_241 = the chassis + the arg/op/rcue/arcue
+  span losses + THE ROLE SIGNATURE pointer (ALG_PTR_SURF=role:add:2.0, BIND_CODES=
+  .cache/bindbus_codes512r.npz) on form_mix_pm35c: masked 0.3476 (+0.015 vs PMS4 z 1.78;
+  +0.0185 vs the lineage z 1.93 — the claim bar missed by 0.0015), open 0.3198 (z 2.26),
+  rows 14/311 masked (PMS4 9), mint flat. Its target cell (wild same-noun twins) moved only
+  +0.010 (bar +0.05 missed); the args field flat (0.449).
+- THE WALL (unchanged in kind): wild args 0.43-0.45 on every body; rows 5-14/311 (~3-4%).
+  The pointer wall is SELECTION among correctly labeled candidates (the target-side
+  census), worst in the same sentence; the twins are mostly THE SAME ENTITY at different
+  roles/times (the twin-split census: same-noun 25% of the wrong mass, different-noun 9%,
+  mixed/no-key 66% = relation-type candidates with no key — UNDECOMPOSED).
+- THE SURFACE IS CLOSED for the pointer: pooled clause/value keys, single noun tokens
+  (waist AND trunk), one-token lexical identity, sentence-granular priors (the chart),
+  the HUD, the span-complete prose renderer — none moves wild. Pass/fail alternation
+  (the wheel family) is retired as feedback (THE CHASSIS RULING: value propagation).
+
+## THE QUEUE (all need the word; nothing fires without it)
+1. PMS8_242 — the seed-242 twin of the record body vs PM35_scratch_242 and PMS4_242:
+   THE CERTIFICATION READ (~2.3 h). Chain: copy .cache/pms8_chain.sh with SEED=242 and the
+   names swapped (the way .cache/twins_chain.sh was made from pms34_chain.sh); every GPU
+   command under `flock -w 36000 .cache/gpu.lock`; launch with
+   `systemd-run --user --unit=pc-pms8t --property=WorkingDirectory=/home/bryce/mycelium /usr/bin/bash <chain>`.
+2. Step 2 of the Role Signature: the role bound under theta_rcue into the slot's persistent
+   bus register at breath 1 (the organ's builder had the brief; ledger 2026-09-22).
+3. THE MIXED-BUCKET DECOMPOSITION (zero GPU): 66% of the pointer wall is relation-type
+   candidates with no head-noun key — define a relation's key (its result's noun / its cue)
+   and re-split (scripts/twin_split_census.py, TS_DUMP=<dump>).
+4. THE DUAL-STREAM IDENTITY PORT (registered; low priority: its cell is 85-92% right).
+5. The refusal lever: 40% of wild rows are refusals (the solver rejects a graph the head
+   nearly had) — the row's other half; the failure-class row census on PMS8's dump first.
+
+## RULES LEARNED THIS WEEK (in the ledger; binding)
+- A structural road is verified IN THE LOSS before any arm (a grad norm on its own params
+  from that loss alone) — THE LADDER SHADOW: the loss grades out["breaths"], not out["args"];
+  the ladder patch applies only under an active ALG_PTR_SURF fusion (unconditional it
+  diverged the chassis configs at step ~500).
+- A road that enters as structure must be exact on EVERY register in the diet (the
+  slot->variable map: positional on prose, first-mention on mint; the res-map scatter).
+- A warm gate must have resolution: 20 steps see no divergence at step 300; 44 slots see no
+  0.05; gate on the 1,024-row slice (`.cache/form_pm35_slice1024.jsonl`, states pm35slice),
+  600+ steps, the twin cell with n in the hundreds (scripts/role_twin_cell_compare.py).
+- A masked read must differ from its open read (reads.py flags MASK SANITY on ingest); the
+  numeral mask lives in mycelium/rulebook.legal_digit_logits (one rulebook, two doors).
+- Every GPU command in a chain takes `.cache/gpu.lock` (tinygrad's AM lock refuses a second
+  process; reads collide with training otherwise). PRECOMPUTE_ONLY=<split> when a states
+  memmap is hard-linked (a bare --precompute truncates both names).
+- Ledger timestamps drift when I write ahead of the clock: `date` before stamping.
+- Sonnet builders: small targeted Edits on the head; never `git commit -a` while a builder's
+  tree is live (two sweeps this week); never pgrep/pkill a pattern that appears in your own
+  command line (exit 144).
+
+## ARTIFACTS (all in .cache; the ledger names each)
+Diets: form_mix_pm35{,a,c,v,p,ar,pr}.jsonl (a = arg-mention stamps; c = + role cues;
+v = + value spans; p = positional mint (STRUCK); ar/pr = + the rendered 5k). States:
+phase1_alg_states_formpm35*_states.npy are HARD LINKS of one 53 GB memmap (pm35pr/ar
+are a separate 58 GB one). Checkpoints sharp_<body>.safetensors; per-slot files
+ps_{open,legal}_wild_<body>.npz (paired_read.py); dumps dump_wild_<body>.pkl; censuses
+.cache/{membrane,args,args_target,twin_key,entity_noun,lexical_identity,twin_split}
+_census*.txt. The renderer: scripts/prose_render.py -> render_v1_5k.jsonl. The role codes:
+bindbus_codes512r.npz (old keys byte-identical to bindbus_codes512.npz).
+
+---- (the previous cold-start doc, 2026-08-10, follows; superseded above) ----
+
 # NEXT SESSION — cold start (updated 2026-08-10)
 
 **READ FIRST:** CLAUDE.md → this file → the ledger's last ~40 entries
