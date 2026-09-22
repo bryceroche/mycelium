@@ -43224,3 +43224,31 @@ number = the share of the WRONG same-sentence arguments in each class.
 THE RULE, pinned before the read: different-noun wrong mass dominates
 -> the Dual-Stream Identity Port leads; same-noun dominates -> the Role
 Signature leads. Both remain registered; the loser follows the winner.
+
+**2026-09-22 — THE TWIN-SPLIT VERDICT: same-noun twins carry the wall;
+THE ROLE SIGNATURE LEADS.** Wild (PMS4_241's dump; 1,277 arguments with
+a same-sentence competitor; 347 wrong): DIFFERENT-NOUN twins 15.7% of
+the population, args-correct 0.846, 8.9% of the wrong mass; SAME-NOUN
+twins 29.9%, args-correct 0.770, 25.4% of the wrong mass — 2.8x; at
+distance 0 (the classic tie, n 788) the gap opens to 1.9% vs 21.1% of
+the wrong mass (11x), with different-noun twins 92.5% right there
+already. MIXED / NO-KEY 54% of the population and 66% of the wrong
+mass — not an entity-kind verdict but the key-coverage gap (79-87% of
+relation-type candidates carry no one-token key), to be split further
+when a relation's key is defined. The diet's prose has the same shape
+(12.6 / 25.1 / 62.2). THE RULE FIRES: the Dual-Stream Identity Port
+would address a cell that is already 85-92% right and 2-9% of the
+wall; THE ROLE SIGNATURE addresses the cell that carries 21-25% of it
+— it leads, the identity port follows (both stay registered). THE
+ROLE SIGNATURE, for the build (needing the word): each GIVEN slot
+binds its own clause cue (bought / has / more / left / each / then /
+first — the stamper marks it; the cue lexicon extended with the
+temporal and possessive cues) and its ORDER OF INTRODUCTION (the
+positional index it already carries) under a role phasor on the bus
+beside its value; a relation's argument query carries its own cue and
+relative order; the pointer scores cue-compatibility and precedence
+in phase space (a learned compatibility over cue pairs, e.g. "more"
+binds to the earlier same-noun quantity, "left" to the later) — memory
+inside the slot keyed on role and time. The gate: the same-noun twin
+cell (args-correct 0.770; 0.761 at distance 0) on the warm gate and
+the arm; the different-noun cell must not fall.
