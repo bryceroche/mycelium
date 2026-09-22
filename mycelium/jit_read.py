@@ -240,7 +240,8 @@ class _Slot:
 
 _OPT_PORTS = ("slot_mask", "revoke", "tail", "drop", "anchor", "amask",
               "gmod", "pmask", "lsent", "reg", "fact_buf", "mh_mass",
-              "mh_atlas_traj", "xcorr", "res_map", "hud")
+              "mh_atlas_traj", "xcorr", "res_map", "hud",
+              "ident")   # THE BUS REGISTER's token-id port (2026-09-22)
 
 
 def _make_slot(fwd, p, key, B, ts, tk, se, opts, keys):

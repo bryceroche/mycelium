@@ -34,7 +34,8 @@ def main():
     KEYS = ("pres", "ftype", "op", "dig", "args", "res") + (("dup",) if "h_dup" in p else ())
     from mycelium.rulebook import legal_digit_logits
     _HUD_ON = int(os.environ.get("ALG_HUD", "0")) != 0   # THE TOKEN HUD, read-time road (2026-09-21)
-    if _HUD_ON:
+    _BUSREG_ON = float(os.environ.get("ALG_BUSREG", "0")) != 0   # THE BUS REGISTER's token-id port (2026-09-22)
+    if _HUD_ON or _BUSREG_ON:
         import phase1_algebra_head as _HH
     correct = refused = wrong = 0; nd = None; tasks = []; keys = {}; rawdump = [] if os.environ.get("CA_RAWDUMP") else None
     for s0 in range(0, n, 8):
@@ -46,9 +47,12 @@ def main():
             hud_t = Tensor(np.stack([_HH.hud_row_features(
                 vs[int(i)]["text"], vtk[i], vse[i], _HH.T_ALG)
                 for i in sl_p]).astype(np.int32), dtype=dtypes.int)
-        o0 = forward(p, ts, tk, se, hud=hud_t); onp0 = {k: o0[k].numpy() for k in ("fat", "args", "res")}
+        ident_t = None
+        if _BUSREG_ON:   # THE BUS REGISTER's port: the row's token ids, host-side per batch
+            ident_t = Tensor(np.stack([_HH.ident_row_ids(vs[int(i)]["text"], _HH.T_ALG) for i in sl_p]).astype(np.int32), dtype=dtypes.int)
+        o0 = forward(p, ts, tk, se, hud=hud_t, ident=ident_t); onp0 = {k: o0[k].numpy() for k in ("fat", "args", "res")}
         mk = build_slot_masks(onp0, se.numpy()); _oa = {**onp0, **{k: o0[k].numpy() for k in ("pres", "ftype", "op", "dig") + (("dup",) if "dup" in o0 else ())}}
-        o = forward(p, ts, tk, se, slot_mask=Tensor(mk, dtype=dtypes.float), fact_buf=Tensor(alt2_fact_buf(_oa, se.numpy(), nv, ma), dtype=dtypes.float), hud=hud_t)
+        o = forward(p, ts, tk, se, slot_mask=Tensor(mk, dtype=dtypes.float), fact_buf=Tensor(alt2_fact_buf(_oa, se.numpy(), nv, ma), dtype=dtypes.float), hud=hud_t, ident=ident_t)
         onp = {k: o[k].numpy() for k in KEYS}; qv = o["query"].numpy().argmax(-1); qlog = o["query"].numpy()
         if rawdump is not None:   # CA_RAWDUMP=path: every slot's raw heads per row, for the annealed decode (2026-09-18)
             for bi, i in enumerate(sl):
