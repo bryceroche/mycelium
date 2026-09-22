@@ -76,13 +76,38 @@ def main():
         print(f"    ctrl:  pre={sum(pre_c)/n:.4f} post={sum(post_c)/n:.4f} delta={d_c:+.4f} (paired SE {se_c:.4f})")
         print(f"    CONTROL-SUBTRACTED change: {change:+.4f}  SE={se:.4f}  z={z:+.2f}")
         print()
-    if "DERIVED-ARG" in results and "GIVEN-ONLY" in results:
-        da = results["DERIVED-ARG"]; go = results["GIVEN-ONLY"]
-        fires = da["z"] >= 2.0 and go["change"] >= -1.0 * go["se"]
+    # THE BIRTH-COST CONFOUND (2026-09-22, found on the register's first gate): when the
+    # organ enters LOUD, the treatment's PRE read is depressed and the control-subtracted
+    # delta is mostly RECOVERY. The honest comparison is POST vs POST — the same items,
+    # the same body, the same steps, two checkpoints — paired (McNemar) across arms, and
+    # the birth cost (pre_treat vs pre_ctrl) is printed beside it so the confound is
+    # visible, never hidden.
+    print("=" * 70)
+    print("POST vs POST (paired across arms, same items) and the BIRTH COST (pre_treat vs pre_ctrl):")
+    pp = {}
+    for name, pred in CELLS:
+        keys = [item_key(r) for r in recs if pred(r)]
+        common = [k for k in keys if all(k in per_item[d] for d in dumps)]
+        n = len(common)
+        if n == 0:
+            continue
+        post_c = [per_item["post_ctrl"][k] for k in common]
+        post_t = [per_item["post_treat"][k] for k in common]
+        pre_c = [per_item["pre_ctrl"][k] for k in common]
+        pre_t = [per_item["pre_treat"][k] for k in common]
+        d_pp, se_pp, _, _ = paired_se(post_c, post_t)
+        d_b, se_b, _, _ = paired_se(pre_c, pre_t)
+        pp[name] = dict(n=n, d=d_pp, se=se_pp, z=(d_pp / se_pp if se_pp > 0 else float("nan")))
+        print(f"  {name:20s} n={n:5d}  post treat-ctrl {d_pp:+.4f} (paired SE {se_pp:.4f}, z {pp[name]['z']:+.2f})"
+              f"   | birth cost pre treat-ctrl {d_b:+.4f} (SE {se_b:.4f})")
+    if "DERIVED-ARG" in pp and "GIVEN-ONLY" in pp:
+        da = pp["DERIVED-ARG"]; go = pp["GIVEN-ONLY"]
+        fires = da["z"] >= 2.0 and go["d"] >= -1.0 * go["se"]
         print("=" * 70)
-        print(f"BAR: DERIVED-ARG control-subtracted rise >= 2 SE (got {da['z']:+.2f} SE) AND GIVEN-ONLY "
-              f"does not fall by more than 1 SE (got {go['change']/go['se'] if go['se']>0 else float('nan'):+.2f} SE)")
+        print(f"BAR (post vs post): DERIVED-ARG treat-ctrl >= 2 SE (got {da['z']:+.2f} SE) AND GIVEN-ONLY "
+              f"does not fall by more than 1 SE (got {go['d']/go['se'] if go['se']>0 else float('nan'):+.2f} SE)")
         print(f"VERDICT: THE ARM {'FIRES' if fires else 'DOES NOT FIRE'}")
+        print("(the control-subtracted deltas above are reported, not judged: a loud entry makes them recovery)")
         print("=" * 70)
 
 
