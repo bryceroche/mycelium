@@ -43285,3 +43285,18 @@ correct >= 0.770 + 0.05 (the wild fixture's cell, n ~380); wild ARGS
 >= +0.03 paired; masked wild for information (+0.020 is the claim
 bar); mint's identity watched; the different-noun cell not below
 0.846 - 0.03.
+
+**2026-09-22 — THE GIVEN-CUE STAMP: the role signal exists on half the
+twin cell.** `stamp_given_cues.py` -> form_mix_pm35c (+ the wild
+fixture `_c`, measurement only; identity checks pass): role cues on
+80.6% of prose givens, 77.9% of mint givens, 78.4% of wild givens;
+on relations 85-91%; the lexicon 77 stems + 10 phrases (top cues:
+has / each / times / plus / total). THE DISCRIMINATOR NUMBER: of
+2,887 same-sentence SAME-NOUN twin pairs (the diet's prose + wild),
+56.3% carry DIFFERENT role cues, 26.9% the same cue set, 16.8% no cue
+(wild alone 48.9 / 32.9 / 18.2). So the cue separates roughly half
+the wall-carrying pairs; the pointer's precedence term (order of
+introduction) is the road for the same-cue half ("has 3 ... has 5":
+the order is the difference), and the no-cue sixth has no surface
+signal at all. The ceiling for the role signature as a cue-only
+discriminator is ~0.5-0.6 of the twin cell — stated before the gate.
