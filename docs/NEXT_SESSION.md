@@ -42,8 +42,9 @@ The reads table: `.venv/bin/python3 scripts/reads.py table wildhold` (assert-on-
    selection, 55-57% of it pointing at DERIVED arguments (k a relation; args-correct 0.58-0.62)
    whose identity is in no token — identity must be PROPAGATED through the bus (ledger).
 4. THE DUAL-STREAM IDENTITY PORT (registered; low priority: its cell is 85-92% right).
-5. The refusal lever: 40% of wild rows are refusals (the solver rejects a graph the head
-   nearly had) — the row's other half; the failure-class row census on PMS8's dump first.
+5. The refusal lever: 40% of wild rows are refusals — the row's other half. The failure-class
+   row census DONE 09-22 (row_census.py on four bodies, ledger): DIGITS (the given's value) is the
+   largest failure class on every body, 5x args; one-away rows break on digits and ftype first.
 
 ## RULES LEARNED THIS WEEK (in the ledger; binding)
 - A structural road is verified IN THE LOSS before any arm (a grad norm on its own params
