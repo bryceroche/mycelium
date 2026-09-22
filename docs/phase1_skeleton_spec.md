@@ -43383,3 +43383,69 @@ PM35_scratch_242 and PMS4_242) is the certification read, ~2.3 h,
 needing the word. Step 2 (the role bound into the bus register) and
 the mixed-bucket decomposition (66% of the wall; relation-type
 candidates with no key) are the two roads behind it. Numbers asserted.
+
+**2026-09-22 12:50 — THE QUEUE FIRES (word given, "the queue"): the
+certification twin launched; THE MIXED-BUCKET DECOMPOSITION (zero GPU)
+dissolves the third bucket — the pointer wall is SAME-QUANTITY selection
+and more than half of it points at DERIVED arguments; the row census by
+failure class banked on four bodies.** THE TWIN: pc-pms8t
+(`.cache/pms8t_chain.sh`, derived from pms8_chain.sh with SEED=242 and the
+controls swapped to PM35_scratch_242 + PMS4_242; every GPU command under
+the lock; maskprep key miss expected, the seed is in the key): PMS8_242,
+48k at 0.154 s/step steady, ~2.3 h; the bars as pinned on the pair.
+THE DECOMPOSITION (`scripts/mixed_bucket_census.py` ->
+`.cache/mixed_bucket_census.txt`; the twin-split definitions reused
+verbatim, three dumps PMS4_241 / PMS4_242 / PMS8_241 read side by side):
+a relation candidate's key = KEY-INH, the union of its arguments' literal
+one-token keys transitively through intro_map ("a relation is about what
+its arguments are about" — the census form of the registered identity-
+port design), and a competitor whose argument closure contains k is
+DERIVED-FROM-k (the same quantity at a later time) and counts SAME-NOUN.
+STRUCTURE (wild, 1277 classified instances): the old MIXED/NO-KEY bucket
+(694) goes 89.0% SAME-NOUN (618; 322 of them with a derived-from-k
+competitor, 407 with k itself a relation), 7.5% DIFFERENT-NOUN, 3.5%
+still mixed (24: k has no key 13, a competitor has none 11). Under
+KEY-INH the population is SAME-NOUN 80.0% / DIFFERENT-NOUN 18.2% / MIXED
+1.9%; THE WALL SHARE on PMS8_241 (n_wrong 334): SAME-NOUN 0.877,
+DIFFERENT-NOUN 0.102, MIXED 0.021 (PMS4_241 0.899/0.084/0.017; PMS4_242
+0.895/0.094/0.011); at dist=0 SAME-NOUN 0.948-0.964. The lexical reading
+(KEY-LEX: literal key else the clause's content stems minus cue words)
+agrees (SAME-NOUN 0.883-0.893). THE CELL THAT NAMES THE WALL: k IS A
+RELATION (the argument is itself a derived value — a result feeding a
+later relation): 473 instances (37.0%), args-correct 0.579 / 0.588 /
+0.619 (PMS4_241 / PMS4_242 / PMS8_241), 55-57% of the wrong mass; a
+DERIVED-FROM-k competitor present: 450 (35.2%), 0.67, 42-45% of the
+wall; k a given with only given competitors: 318, 0.858-0.871, 12% of
+the wall; k a given with >= 1 relation competitor: 486, 0.77-0.78, 31-34%.
+WHERE PMS8's GAIN SITS (one seed): the derived-argument cell +0.040 over
+PMS4_241 (+0.031 over PMS4_242) and the shared-key same-noun cell (no
+derived competitor) 0.711 -> 0.748; the given-only cell unmoved (0.871 =
+0.871); different-noun -0.022 (inside SE). READING: (1) there is no
+third kind of tie — the surface census's "no key" was a coverage gap,
+and with it filled the wall is ~90% SAME-QUANTITY selection, ~10%
+different-noun (already 85-93% right); (2) the majority of the wall is
+not given-vs-given twins at all but pointing at DERIVED quantities, whose
+identity is IN NO TOKEN — no numeral, no noun of their own; their
+identity exists only by inheritance from what they consumed; (3) hence a
+context-free identity stream looked up at an attended token (the
+registered dual-stream port) is UNDEFINED for 57% of the wall: identity
+for a relation slot must be PROPAGATED — accumulated from its arguments
+through the bus (the args' identities bound under their role phasors),
+i.e. math-side message passing, the port's second half the design
+already named ("a slot accumulates the identity of what it attended");
+(4) among derived candidates that share an inherited noun (bought 12 ->
+12-5 left -> half given away) only TIME/ORDER in the chain separates
+them — precedence, the role signature's axis, which is where PMS8's
+gain landed. THE ROW CENSUS BY FAILURE CLASS (`scripts/row_census.py`,
+first-failing field per slot, four bodies): rows fully right 8 / 9 / 9 /
+8 (PMS4_241 / PMS4_242 / PMS8_241 / PM35_scratch_241), one away 21 / 23
+/ 23 / 15; the wrong-slot field on all rows: DIGITS 492 / 470 / 460 /
+474 (the given's value — the largest class on every body, ~40% of
+givens), ftype 256-293, res 249-272, presence 174-202, op 104-130, ARGS
+100 / 115 / 79 / 125 (the smallest first-break class; PMS8 -21 vs its
+seed-mate, the role organ's row-side footprint, one seed); the one-away
+rows break on digits and ftype first. READING: the refusal lever's
+first census says the row's other half is VALUE BINDING (digits) by a
+factor of five over args, on every body — the wall the handoff named
+("values 0.45") is the larger of the two. Numbers quote the two census
+files; the wild slot reads asserted.

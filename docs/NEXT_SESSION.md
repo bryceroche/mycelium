@@ -30,16 +30,17 @@ The reads table: `.venv/bin/python3 scripts/reads.py table wildhold` (assert-on-
   (the wheel family) is retired as feedback (THE CHASSIS RULING: value propagation).
 
 ## THE QUEUE (all need the word; nothing fires without it)
-1. PMS8_242 — the seed-242 twin of the record body vs PM35_scratch_242 and PMS4_242:
-   THE CERTIFICATION READ (~2.3 h). Chain: copy .cache/pms8_chain.sh with SEED=242 and the
+1. FIRED 09-22 12:45 as pc-pms8t (.cache/pms8t_chain.sh -> pms8t_chain.log): PMS8_242 vs
+   PM35_scratch_242 and PMS4_242, THE CERTIFICATION READ (~2.3 h). Chain: copy .cache/pms8_chain.sh with SEED=242 and the
    names swapped (the way .cache/twins_chain.sh was made from pms34_chain.sh); every GPU
    command under `flock -w 36000 .cache/gpu.lock`; launch with
    `systemd-run --user --unit=pc-pms8t --property=WorkingDirectory=/home/bryce/mycelium /usr/bin/bash <chain>`.
 2. Step 2 of the Role Signature: the role bound under theta_rcue into the slot's persistent
    bus register at breath 1 (the organ's builder had the brief; ledger 2026-09-22).
-3. THE MIXED-BUCKET DECOMPOSITION (zero GPU): 66% of the pointer wall is relation-type
-   candidates with no head-noun key — define a relation's key (its result's noun / its cue)
-   and re-split (scripts/twin_split_census.py, TS_DUMP=<dump>).
+3. DONE 09-22 12:50 (scripts/mixed_bucket_census.py -> .cache/mixed_bucket_census.txt): the
+   inherited key dissolves the mixed bucket (89% SAME-NOUN); the wall is ~90% same-quantity
+   selection, 55-57% of it pointing at DERIVED arguments (k a relation; args-correct 0.58-0.62)
+   whose identity is in no token — identity must be PROPAGATED through the bus (ledger).
 4. THE DUAL-STREAM IDENTITY PORT (registered; low priority: its cell is 85-92% right).
 5. The refusal lever: 40% of wild rows are refusals (the solver rejects a graph the head
    nearly had) — the row's other half; the failure-class row census on PMS8's dump first.
