@@ -143,6 +143,31 @@ ALG_BUSREG_PROP = int(os.environ.get("ALG_BUSREG_PROP", "1"))   # 1: propagate i
 # a functional re-mention ("total", "them") has no tag and gets nothing.
 # Needs ALG_BUSREG. 0 = dead, bit-identical.
 ALG_BUSREG_ADDR = float(os.environ.get("ALG_BUSREG_ADDR", "0"))
+# THE VALUE STREAM (2026-09-22, registered on the word for the whole queue
+# — the first true alternation: the solver's implied values as the
+# register's THIRD bound stream). A variable's known value (the facts
+# buffer's format: known flag + three digit thirds — at read the solver's
+# forced singletons from the pass-1 consult, at training the row's gold
+# values under a per-variable keep-dropout, the gold-at-training /
+# predicted-at-read convention) becomes its numeral's IDENTITY TAG (0..999
+# are single tokens; the identity table already holds them), carried to
+# the slot through the slot->variable map and bound under theta_val into
+# the register. Two reads, two doors:
+#   ALG_VALREG=<gain>       the pointer read: the arg channels' re-mention
+#                           tags against the candidate's unbound value tag
+#                           (W_valq, identity init) — joins the register's
+#                           args term. Needs ALG_BUSREG.
+#   ALG_VALREG_ADDR=<gain>  THE TEXT-SIDE PRESENCE MAP: (the slot's value
+#                           tag . every token's tag) added to the GIVEN
+#                           channel's logits from breath 1 — a corroborated
+#                           value pulls the value-mention addressing to its
+#                           numeral (the digits wall's road). Detached.
+# ALG_VALREG_KEEP: training keep-probability per known variable (the read
+# sees only the solver's forced subset). 0 = dead, bit-identical.
+ALG_VALREG = float(os.environ.get("ALG_VALREG", "0"))
+ALG_VALREG_ADDR = float(os.environ.get("ALG_VALREG_ADDR", "0"))
+ALG_VALREG_KEEP = float(os.environ.get("ALG_VALREG_KEEP", "0.7"))
+ALG_VALREG_ON = bool(ALG_VALREG or ALG_VALREG_ADDR)
 _GTAP = None      # THE GRADIENT TAP (apply_grad_tap.py): read-only probe leaves per breath
 # THE WHIP (2026-09-12, the word): ALG_WHIP="k:amp" kicks the state ENTERING
 # breath k with Gaussian noise on the content planes (per slot: amp x the
@@ -2255,6 +2280,11 @@ def build_params(seed=0):
                                       np.zeros(_Pbr, np.float32)], -1))
             p["W_idq"] = t(np.stack([np.ones(_Pbr, np.float32),
                                      np.zeros(_Pbr, np.float32)], -1))
+            if ALG_VALREG:
+                # THE VALUE STREAM's pointer read weight (2026-09-22):
+                # the same per-plane complex-scalar form, identity init.
+                p["W_valq"] = t(np.stack([np.ones(_Pbr, np.float32),
+                                          np.zeros(_Pbr, np.float32)], -1))
         # rescue 2026-09-01: default aligned to the AJAR law (0.02);
         # sweepable via R_GAIN_INIT (the 0.1 deviation was unswept)
     if int(os.environ.get("ALG_ALTMASK", "0")):
@@ -3053,6 +3083,58 @@ def ident_build_array(samples, T):
     return np.stack([ident_row_ids(s["text"], T) for s in samples]).astype(np.int32)
 
 
+_VALTOK_CACHE = None
+
+
+def _valtok_table():
+    """THE VALUE STREAM's numeral table: (1000,) int device tensor, the
+    token id of "N" for N in 0..999 under the head's own tokenizer (every
+    one a single bare token in Llama-3's vocabulary — checked at mint:
+    ' 12' is [space, '12']). Built once per process from the tokenizer;
+    never a param."""
+    global _VALTOK_CACHE
+    if _VALTOK_CACHE is None:
+        from tinygrad import Tensor as _Tv, dtypes as _dtv
+        tok = _xcorr_tokenizer()
+        ids = np.zeros(1000, np.int32)
+        for n_ in range(1000):
+            e = [i for i in tok.encode(str(n_)).ids if i < 128000]   # drop BOS/special ids the head's tokenizer prepends
+            assert len(e) == 1, f"value {n_} is not one token: {e}"
+            ids[n_] = e[0]
+        _VALTOK_CACHE = _Tv(ids, dtype=_dtv.int).contiguous().realize()
+    return _VALTOK_CACHE
+
+
+def valfact_build_array(samples):
+    """(n, K_VARS, 4) float32 — the facts-buffer format (known, h/9, t/9,
+    o/9) from every row's gold `solution` (values 0..999 only; others
+    unknown). Host-side; the training feed applies the keep-dropout."""
+    out = np.zeros((len(samples), K_VARS, 4), np.float32)
+    for i, s in enumerate(samples):
+        sol = s.get("solution") or []
+        for v, val in enumerate(sol[:K_VARS]):
+            try:
+                val = int(val)
+            except (TypeError, ValueError):
+                continue
+            if 0 <= val <= 999:
+                out[i, v] = (1.0, (val // 100) / 9.0, (val // 10 % 10) / 9.0, (val % 10) / 9.0)
+    return out
+
+
+def _valtag_from_facts(valfact, B):
+    """(B, K_VARS, 2P) float: each variable's known value as its numeral's
+    unit identity tag (zero where unknown). In-graph from the facts-buffer
+    format: the value is exact from its digit thirds (round(x*9))."""
+    from tinygrad import Tensor as _Tf, dtypes as _dtf
+    _vf = valfact if valfact.dtype == _dtf.float else valfact.cast(_dtf.float)
+    _known = _vf[..., 0:1]
+    _val = ((_vf[..., 1] * 9.0).round() * 100.0 + (_vf[..., 2] * 9.0).round() * 10.0
+            + (_vf[..., 3] * 9.0).round()).clip(0, 999).cast(_dtf.int)          # (B, K_VARS)
+    _tok = _valtok_table()[_val]                                                # (B, K_VARS)
+    return _ident_table()[_tok].cast(_dtf.float) * _known                       # rows are unit already
+
+
 def hud_row_features(text, tokmask_row, sent_row, T):
     """(T, 5) int8 THE TOKEN HUD features per token, re-tokenizing `text`
     with the head's own tokenizer (xcorr_row_features's own path: the SAME
@@ -3708,7 +3790,7 @@ def breath_step(p, state, kb, ctx):
                 "+ ALG_SPAN_RCUE=1, or ALG_PTR_SURF=role:): the register's role "
                 "stream is the RCUE channel's key, its role query the OP channel's")
         if _R2C is None or ("op" not in _R2C and _op_on5) or ("rcue" not in _R2C and _rcue_on6) \
-                or ("id" not in _R2C and ALG_BUSREG):
+                or ("id" not in _R2C and ALG_BUSREG) or ("val" not in _R2C and ALG_VALREG_ON):
             import numpy as _npr2
             from tinygrad import Tensor as _Tr2
             _bzr2 = _npr2.load(_bind_codes_path())
@@ -3723,11 +3805,16 @@ def breath_step(p, state, kb, ctx):
                     f"ALG_BUSREG needs theta_id in the codebook "
                     f"({_bind_codes_path()!r}) — point BIND_CODES at "
                     f".cache/bindbus_codes512ri.npz (ident_codes_mint.py's mint)")
+            if ALG_VALREG_ON:
+                assert "theta_val" in _bzr2.files, (
+                    f"ALG_VALREG needs theta_val in the codebook ({_bind_codes_path()!r}) "
+                    f"— point BIND_CODES at .cache/bindbus_codes512riv.npz")
             if _R2C is None:
                 _R2C = {}
             for _rn2 in (("arg1", "arg2", "res") + (("op",) if _op_on5 else ())
                         + (("rcue",) if _rcue_on6 else ())
-                        + (("id",) if ALG_BUSREG else ())):
+                        + (("id",) if ALG_BUSREG else ())
+                        + (("val",) if ALG_VALREG_ON else ())):
                 if _rn2 in _R2C:
                     continue
                 _th2 = _bzr2[f"theta_{_rn2}"].astype(_npr2.float32)
@@ -3809,6 +3896,30 @@ def breath_step(p, state, kb, ctx):
         # mycelium/complex_tensor.py); verified bit-identical against
         # separate matmuls on a standalone check.
         _S4 = (_Q4 @ _key7t) / math.sqrt(_P7)   # (B, n_ch, L_TOT, T): arg1/arg2/res/given(/op)
+        if ALG_VALREG_ON:
+            # THE VALUE STREAM's per-slot tag (2026-09-22): the variable
+            # tags carried to the slots through the slot->variable map —
+            # gold at training (ctx res_map), else this rung's own
+            # predicted map from the state entering the breath (detached;
+            # the register's propagation convention). Computed once per
+            # breath here, before every consumer; kept in state for the
+            # register block below.
+            _Rv = ctx.get("res_map")
+            if _Rv is None:
+                _hv = _heads_of(p, cur, ctx["vst"], B)
+                _Rv = ((_hv["res"] == _hv["res"].max(-1, keepdim=True)).float()
+                       * (_hv["pres"].sigmoid() > 0.5).float().unsqueeze(-1)).detach()   # (B, L_FAC, K_VARS)
+            state["valtag_k"] = _Rv @ ctx["valtag_v"]          # (B, L_FAC, 2P): unit where known, zero else
+            if ALG_VALREG_ADDR:
+                # THE TEXT-SIDE PRESENCE MAP: a slot whose value is known
+                # pulls the GIVEN channel to the tokens carrying that
+                # numeral (cosine 1.0 at the numeral, ~0 elsewhere) —
+                # exact, detached, on the existing road, from breath 1.
+                _pmap = state["valtag_k"].detach() @ ctx["ident_tok"].transpose(-2, -1)   # (B, L_FAC, T)
+                if L_TOT > L_FAC:
+                    _pmap = Tensor.cat(_pmap, Tensor.zeros(B, L_TOT - L_FAC, _pmap.shape[-1]), dim=1)
+                _chv = Tensor([0.0, 0.0, 0.0, 1.0] + [0.0] * (_n_ch5 - 4)).reshape(1, _n_ch5, 1, 1)   # the given channel
+                _S4 = _S4 + ALG_VALREG_ADDR * _chv * _pmap.unsqueeze(1)
         if ALG_BUSREG_ADDR and kb >= 2 and "busreg_prev" in state:
             # DIRECT ADDRESSING (the env block's brief): the token tags
             # against the slot's carried identity (unit, from the
@@ -3933,14 +4044,31 @@ def breath_step(p, state, kb, ctx):
                     _id_k = _dirR(_e_k + (1.0 - _g_giv) * (_As @ state["busreg_prev"]))   # a direction: two parents match each at ~0.71
             state["busreg_prev"] = _id_k
             _z = state["busreg_role"] + _rot2(_id_k, _cI, -_sI)   # THE REGISTER: role (+) identity, one bus vector per slot
+            if ALG_VALREG_ON:
+                # THE THIRD STREAM (2026-09-22): the slot's known value's
+                # numeral tag, bound under theta_val (zero where unknown).
+                _cV, _sV = _R2C["val"]
+                _z = _z + _rot2(state["valtag_k"], _cV, -_sV)
             _zr = _rot2(_z, _cR, _sR)          # unbind by role   -> r_k (+ crosstalk)
             _zi = _rot2(_z, _cI, _sI)          # unbind by identity -> id_k (+ crosstalk)
             _wq = p["W_regq"]; _wi = p["W_idq"]
             _sRole = _rot2(_u_j, _wq[:, 0], _wq[:, 1]) @ _zr.transpose(-2, -1)   # a cosine in [-1, 1] (unit u, unit r): no sqrt(P)
             _sId = ((_rot2(_q1, _wi[:, 0], _wi[:, 1]) @ _zi.transpose(-2, -1))
                     + (_rot2(_q2, _wi[:, 0], _wi[:, 1]) @ _zi.transpose(-2, -1)))
+            _sTerm = _sRole + _sId
+            if ALG_VALREG:
+                # THE VALUE READ: the re-mention's tag against the
+                # candidate's unbound value tag — a candidate whose value
+                # IS the number the relation names ("the 12 tickets").
+                _zv = _rot2(_z, _cV, _sV)
+                _wv = p["W_valq"]
+                _sVal = ((_rot2(_q1, _wv[:, 0], _wv[:, 1]) @ _zv.transpose(-2, -1))
+                         + (_rot2(_q2, _wv[:, 0], _wv[:, 1]) @ _zv.transpose(-2, -1)))
+                _sTerm = _sTerm + (ALG_VALREG / ALG_BUSREG) * _sVal
+                if _CENSUS is not None:
+                    _CENSUS.append((kb, "busreg(val)", _sVal.realize().numpy()))
             state.setdefault("busreg_terms", []).append(
-                (kb, ALG_BUSREG * (_sRole + _sId)))   # (B, L_FAC, L_FAC): slot j -> candidate slot k, this rung's term
+                (kb, ALG_BUSREG * _sTerm))   # (B, L_FAC, L_FAC): slot j -> candidate slot k, this rung's term
             if _CENSUS is not None:
                 _CENSUS.append((kb, "busreg(role)", _sRole.realize().numpy()))
                 _CENSUS.append((kb, "busreg(id)", _sId.realize().numpy()))
@@ -4713,7 +4841,7 @@ def breath_step(p, state, kb, ctx):
     return state
 
 
-def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, drop=None, anchor=None, amask=None, gmod=None, pmask=None, lsent=None, reg=None, fact_buf=None, mh_mass=None, mh_atlas_traj=None, xcorr=None, res_map=None, hud=None, ident=None):
+def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, drop=None, anchor=None, amask=None, gmod=None, pmask=None, lsent=None, reg=None, fact_buf=None, mh_mass=None, mh_atlas_traj=None, xcorr=None, res_map=None, hud=None, ident=None, valfact=None):
     from tinygrad import Tensor, dtypes   # audit 2026-09-01: was a
     # SCOPE ACCIDENT (bound only via the sixwave/sync branches — any
     # SIXWAVE-off config killed five organs at step 1)
@@ -4947,10 +5075,22 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
                 "does not is refused here rather than run dark")
             _idi = ident if ident.dtype == dtypes.int else ident.cast(dtypes.int)
             _ident_tok = _ident_table()[_idi].cast(dtypes.float)
+        _valtag_v = None
+        if ALG_VALREG_ON:
+            # THE VALUE STREAM's per-forward tags (2026-09-22): each
+            # variable's known value as its numeral's tag. No facts (the
+            # open pass-1 by design; a reader without the port) = no known
+            # values = zero tags, stated here: the stream is SILENT, never
+            # dark by accident (the register still runs; this stream adds
+            # zeros).
+            assert ALG_BUSREG, "ALG_VALREG / ALG_VALREG_ADDR need ALG_BUSREG (the register they ride)"
+            _valtag_v = (_valtag_from_facts(valfact, B) if valfact is not None
+                         else Tensor.zeros(B, K_VARS, int(os.environ.get("ALG_BIND_D", "128"))))
         _bs_ctx = {"B": B, "K_B": K_B, "waist": waist, "tokmask": tokmask,
                    # THE BUS REGISTER's per-forward constants (2026-09-22):
                    # dict keys only — zero compute when ALG_BUSREG unset.
                    "vst": vst, "res_map": res_map, "ident_tok": _ident_tok,
+                   "valtag_v": _valtag_v,
                    "anchor_bias0": _anch_bias0,
                    "slot_mask": slot_mask, "bank": bank, "rot2": _rot2,
                    "sync": _sync, "drop": drop, "gmod": gmod,
@@ -6553,6 +6693,13 @@ def do_train(steps, lr, batch, seed):
               f"array {IDENT.shape} in {time.time() - _id_t0:.1f}s; identity table "
               f"{os.environ.get('IDENT_CODES', '.cache/ident_codes512.npz')}; codes "
               f"{_bind_codes_path()}", flush=True)
+    VALFACT = None   # THE VALUE STREAM's gold facts (2026-09-22): host-only,
+                     # from every row's solution; the feed applies the keep-dropout
+    if ALG_VALREG_ON:
+        VALFACT = valfact_build_array(samples)
+        print(f"[valreg] ALG_VALREG={ALG_VALREG} ADDR={ALG_VALREG_ADDR} KEEP={ALG_VALREG_KEEP}: gold facts "
+              f"{VALFACT.shape}, known variables per row mean {VALFACT[..., 0].sum(1).mean():.2f}; codes "
+              f"{_bind_codes_path()}", flush=True)
     RESMAP = None   # THE RES-SCATTER FIX (2026-09-20, PMS5's collapse):
                     # R[k,v] = presence(k) * 1[gold res[k]==v] — teacher-
                     # forcing the SLOT->VARIABLE map (the target space
@@ -6945,6 +7092,9 @@ def do_train(steps, lr, batch, seed):
         if ALG_HUD else None   # THE TOKEN HUD's feed (b_fact idiom)
     b_ident = fix(np.zeros((batch, T_ALG), np.int32), dtypes.int) \
         if ALG_BUSREG else None   # THE BUS REGISTER's token-id feed (b_fact idiom)
+    b_valfact = fix(np.zeros((batch, K_VARS, 4), np.float32), dtypes.float) \
+        if ALG_VALREG_ON else None   # THE VALUE STREAM's gold-facts feed (b_fact idiom)
+    _valfact_rng = np.random.RandomState(seed + 7331) if ALG_VALREG_ON else None
     b_mha = fix(np.zeros((batch, ATLAS_TAB.shape[1], H_W), np.float32),
                 dtypes.float) if ATLAS_TAB is not None else None
     b_tail = fix(np.zeros((batch, T_ALG), np.float32), dtypes.float) if CLOCK else None
@@ -7093,13 +7243,13 @@ def do_train(steps, lr, batch, seed):
             # commits, self-labeled from gold like the commit loss,
             # DETACHED); the second trains under live release dynamics.
             o0 = forward(p, s_tr, b_tk, b_se, slot_mask=b_mask, tail=b_tail,
-                         reg=b_reg, xcorr=b_xcorr, res_map=b_resmap, hud=b_hud, ident=b_ident)
+                         reg=b_reg, xcorr=b_xcorr, res_map=b_resmap, hud=b_hud, ident=b_ident, valfact=b_valfact)
             ok = ((o0["ftype"].argmax(-1) == bg["ftype"]).float()
                   * (o0["res"].argmax(-1) == bg["res"]).float())
             rv = (bg["presence"] * (1.0 - ok)).detach()
             o = forward(p, s_tr, b_tk, b_se, slot_mask=b_mask, revoke=rv,
                         tail=b_tail, reg=b_reg, fact_buf=b_fact,
-                        mh_mass=b_mhm, mh_atlas_traj=b_mha, xcorr=b_xcorr, res_map=b_resmap, hud=b_hud, ident=b_ident)
+                        mh_mass=b_mhm, mh_atlas_traj=b_mha, xcorr=b_xcorr, res_map=b_resmap, hud=b_hud, ident=b_ident, valfact=b_valfact)
         elif int(os.environ.get("NAZ_TRAIN", "0")):
             # NAZARÉ TRAINING (door #55): the organ-2 two-forward pattern —
             # pre-pass yields the intra-pass event field IN-GRAPH (detached);
@@ -7108,7 +7258,7 @@ def do_train(steps, lr, batch, seed):
             # read-time dup-aware argpair): argmax-change OR dup-flip on
             # rel-typed present slots, breath-0 vs final.
             o0 = forward(p, s_tr, b_tk, b_se, slot_mask=b_mask, tail=b_tail,
-                        xcorr=b_xcorr, res_map=b_resmap, hud=b_hud, ident=b_ident)
+                        xcorr=b_xcorr, res_map=b_resmap, hud=b_hud, ident=b_ident, valfact=b_valfact)
             _b0 = o0["breaths"][0]
             _relmask = (o0["pres"].squeeze(-1) > 0).float() \
                 * (o0["ftype"].argmax(-1) == 0).float()
@@ -7119,13 +7269,13 @@ def do_train(steps, lr, batch, seed):
             _gm = (_bgauth + (1.0 - _bgauth) * _ev).unsqueeze(-1).detach()
             o = forward(p, s_tr, b_tk, b_se, slot_mask=b_mask, tail=b_tail,
                         gmod=_gm, fact_buf=b_fact,
-                        mh_mass=b_mhm, mh_atlas_traj=b_mha, xcorr=b_xcorr, res_map=b_resmap, hud=b_hud, ident=b_ident)
+                        mh_mass=b_mhm, mh_atlas_traj=b_mha, xcorr=b_xcorr, res_map=b_resmap, hud=b_hud, ident=b_ident, valfact=b_valfact)
         else:
             _bd = os.environ.get("BREATH_DROPOUT")
             o = forward(p, s_tr, b_tk, b_se, slot_mask=b_mask, tail=b_tail,
                         drop=(b_drop if _bd else None), lsent=b_ls, reg=b_reg,
                         fact_buf=b_fact,
-                        mh_mass=b_mhm, mh_atlas_traj=b_mha, xcorr=b_xcorr, res_map=b_resmap, hud=b_hud, ident=b_ident)
+                        mh_mass=b_mhm, mh_atlas_traj=b_mha, xcorr=b_xcorr, res_map=b_resmap, hud=b_hud, ident=b_ident, valfact=b_valfact)
         l = loss_fn(o, bg)
         if ALG_CONSUME and "_early" in o:   # support-gated consume-once:
             # any breath claims, each fact pays once; eligibility = the DAG
@@ -7254,7 +7404,8 @@ def do_train(steps, lr, batch, seed):
                 o = forward(p, _t1, _t2, _t3,
                             slot_mask=Tensor(_mkv, dtype=dtypes.float),
                             fact_buf=Tensor(_fbv, dtype=dtypes.float),
-                            mh_mass=_vmh, mh_atlas_traj=_vat, ident=_t_id)
+                            mh_mass=_vmh, mh_atlas_traj=_vat, ident=_t_id,
+                            valfact=(Tensor(_fbv, dtype=dtypes.float) if ALG_VALREG_ON else None))   # THE VALUE STREAM: the val two-pass's LIVE facts
             if _r2log and "rbias2_all" in o:
                 # THE PER-BREATH SPAN LOSS's own log (ALG_SPAN_ALL=1): the
                 # SAME numpy-side BCE mirror, once per breath, read off
@@ -7467,11 +7618,12 @@ def do_train(steps, lr, batch, seed):
         _rc_idx = np.arange(min(batch, n))
         _rc_tm = tokmask[_rc_idx].astype(np.float32)
         _rc_ident = (Tensor(IDENT[_rc_idx], dtype=dtypes.int) if ALG_BUSREG else None)   # THE BUS REGISTER's port (2026-09-22)
+        _rc_valfact = (Tensor(VALFACT[_rc_idx], dtype=dtypes.float) if ALG_VALREG_ON else None)   # THE VALUE STREAM's port (gold facts, no dropout)
         _rc_out = forward(
             p, Tensor(np.ascontiguousarray(states[_rc_idx]), dtype=dtypes.half),
             Tensor(_rc_tm, dtype=dtypes.float),
             Tensor(sent[_rc_idx].astype(np.int32), dtype=dtypes.int),
-            slot_mask=Tensor(MASKS[_rc_idx], dtype=dtypes.float), ident=_rc_ident)
+            slot_mask=Tensor(MASKS[_rc_idx], dtype=dtypes.float), ident=_rc_ident, valfact=_rc_valfact)
         _rc_out["args"].realize()   # force the graph through before reading the census lists
         _rc_cen = globals()["_CENSUS"]; _rc_sc = globals()["_CERT_CENSUS_SC"]
         print(f"[router2-census] one un-JIT'd forward, {len(_rc_idx)} rows:", flush=True)
@@ -7665,7 +7817,7 @@ def do_train(steps, lr, batch, seed):
                 p, Tensor(np.ascontiguousarray(states[_rc_idx]), dtype=dtypes.half),
                 Tensor(_rc_tm, dtype=dtypes.float),
                 Tensor(sent[_rc_idx].astype(np.int32), dtype=dtypes.int),
-                slot_mask=Tensor(MASKS[_rc_idx], dtype=dtypes.float), ident=_rc_ident,
+                slot_mask=Tensor(MASKS[_rc_idx], dtype=dtypes.float), ident=_rc_ident, valfact=_rc_valfact,
                 res_map=(Tensor(RESMAP[_rc_idx], dtype=dtypes.float)
                          if (RESMAP is not None and ALG_BUSREG) else None))   # the register's arm scatters through the gold map here as in training; other configs unchanged
             _pv_gn = Tensor(gold["presence"][_rc_idx].astype(np.float32))
@@ -7685,7 +7837,7 @@ def do_train(steps, lr, batch, seed):
                   f"ALONE (ALG_PTR_SURF={ALG_PTR_SURF!r}): {_gn_rk2:.6f}",
                   flush=True)
             p["W_rk2"].grad = None
-            for _brk in ("W_regq", "W_idq"):
+            for _brk in ("W_regq", "W_idq", "W_valq"):
                 # THE BUS REGISTER's in-the-loss verification (2026-09-22,
                 # the week's rule): the args loss alone must reach both
                 # read weights — nonzero, or the road is outside the loss.
@@ -7933,6 +8085,12 @@ def do_train(steps, lr, batch, seed):
             _fd(b_hud, HUD[idx], _rl)   # THE TOKEN HUD's feed: this batch's precomputed per-token features
         if b_ident is not None:
             _fd(b_ident, IDENT[idx], _rl)   # THE BUS REGISTER's feed: this batch's token ids
+        if b_valfact is not None:
+            # THE VALUE STREAM's feed: the gold facts under a per-variable
+            # keep-dropout (the read sees only the solver's forced subset)
+            _vfb = VALFACT[idx].copy()
+            _vfb *= (_valfact_rng.random_sample(_vfb.shape[:2]) < ALG_VALREG_KEEP)[..., None].astype(np.float32)
+            _fd(b_valfact, _vfb, _rl)
         if b_mha is not None:
             _fd(b_mha, ATLAS_TAB[ATLAS_IDX[idx]], _rl)
         if b_tail is not None:

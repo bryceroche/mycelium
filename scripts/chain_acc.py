@@ -52,7 +52,9 @@ def main():
             ident_t = Tensor(np.stack([_HH.ident_row_ids(vs[int(i)]["text"], _HH.T_ALG) for i in sl_p]).astype(np.int32), dtype=dtypes.int)
         o0 = forward(p, ts, tk, se, hud=hud_t, ident=ident_t); onp0 = {k: o0[k].numpy() for k in ("fat", "args", "res")}
         mk = build_slot_masks(onp0, se.numpy()); _oa = {**onp0, **{k: o0[k].numpy() for k in ("pres", "ftype", "op", "dig") + (("dup",) if "dup" in o0 else ())}}
-        o = forward(p, ts, tk, se, slot_mask=Tensor(mk, dtype=dtypes.float), fact_buf=Tensor(alt2_fact_buf(_oa, se.numpy(), nv, ma), dtype=dtypes.float), hud=hud_t, ident=ident_t)
+        _fb_t = Tensor(alt2_fact_buf(_oa, se.numpy(), nv, ma), dtype=dtypes.float)
+        _valreg_on = bool(float(os.environ.get("ALG_VALREG", "0")) or float(os.environ.get("ALG_VALREG_ADDR", "0")))
+        o = forward(p, ts, tk, se, slot_mask=Tensor(mk, dtype=dtypes.float), fact_buf=_fb_t, hud=hud_t, ident=ident_t, valfact=(_fb_t if _valreg_on else None))   # THE VALUE STREAM: the live pass-1 facts
         onp = {k: o[k].numpy() for k in KEYS}; qv = o["query"].numpy().argmax(-1); qlog = o["query"].numpy()
         if rawdump is not None:   # CA_RAWDUMP=path: every slot's raw heads per row, for the annealed decode (2026-09-18)
             for bi, i in enumerate(sl):
