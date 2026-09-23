@@ -43816,3 +43816,35 @@ slice, read on WILD post vs post against the register-alone checkpoint
 wild paired >= +0.010 (z >= 1.5); the DERIVED-ARG / GIVEN-ONLY cells non-
 negative for both. The main tree merges the branch only after this gate
 reads, between chains, with the CPU gate re-run on the merge.
+
+**2026-09-22 21:59 — THE REGISTER ARM: NULL WITH A COST. Grown from step
+zero, the register does not compound with the role signature; the warm
+form is the form that works.** PMS9_241 (pc-pms9, `.cache/pms9_chain.sh`:
+PMS8's recipe + ALG_BUSREG=2.0 from scratch, 48k at 0.179 s/step beside
+the CPU gates): MASKED wild 0.3384 vs PMS8_241's 0.3476 — -0.0093, paired
+SE 0.0089, z 1.04 AGAINST; OPEN 0.3150 vs 0.3198 (-0.005, z 0.54 against);
+matched 0.3481 vs 0.3564; vs the chassis PMS4_241 +0.006 (z 0.70), vs the
+lineage +0.009 (z 0.99) — the register arm lands where the chassis
+lands, the role signature's +0.015 gone; ROWS 11 masked / 8 open vs the
+body's 14 / 13; MINT 0.5823 vs 0.6510 (-7 points; args 0.565 vs 0.650);
+silver 0.2534 vs 0.2660. THE CELLS vs the claim body (post vs post, wild):
+DERIVED-ARG -0.025 (z -1.25), SAME-NOUN(inh) -0.024 (z -1.99), ALL ARGS
+-0.017 (z -1.71), GIVEN-ONLY -0.006, DIFFERENT-NOUN 0.000. THE BAR (+0.020
+masked, z 2) MISSED by 0.029: THE ARM DOES NOT FIRE. READING: from step
+zero the register's term is noise for the whole early phase (the channels
+are uniform, the pooled tags blends, the read weights per-plane scalars
+that move 1e-4 a step) and the ladder grades it every rung — the pointer
+learns AROUND it and ends slightly worse in every cell, and mint, where
+the bilinear had been exact, pays most. The same organ bolted onto the
+trained body moved the held-out slot +0.018 (z 2.5) in 1,500 steps: THE
+REGISTER IS A WARM ORGAN — it needs sharp channels to read from, and it
+has them only after the body has learned them. This is the note's
+"organs grown together" suspicion tested on one organ and REFUTED for it:
+grown together it interferes; grown after, it helps. THE REGISTERED NEXT
+ARM (needing the word): GENTLE CONTINUATION — PMS8_241 + 12k steps on the
+full diet WITH the register vs the same 12k WITHOUT (the cont-control
+protocol; the regime the campaign already favours: continuation deepens,
+restarts jostle), the bar +0.020 masked paired between the two, the twin
+on 242 if it clears. A gain ramp from zero at scratch is the other form
+and it is a gain (the mandatory-road law's objection stands). Numbers
+asserted on ingest.
