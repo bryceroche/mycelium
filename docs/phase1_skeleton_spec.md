@@ -43884,3 +43884,34 @@ FAMILY: the register warm +0.018 (z 2.5) on the held-out slot; the
 register from scratch null with a cost; the addressing road null; the
 value stream's two doors null with a cost. The one positive is the warm
 register, and the gentle-continuation arm is the registered read of it.
+
+**2026-09-23 11:15 — WORD GIVEN (with the override) for the gentle-continuation arm
+and a fade-in from zero; the order of arrival affirmed with one amendment;
+both fired.** THE ORDER (Bryce's, affirmed): value passing first (the
+alternation itself; digits the largest wall), then the atlas (needs slots
+that know identity and role), then the mask (needs identity, role and
+values to read). THE AMENDMENT the night's evidence forces: the value
+stream's first form was null on wild with a registered cause (dense gold
+facts at training vs sparse pass-1 singletons at read), so its second
+form waits on THE FACTS CENSUS ON WILD (appended to tonight's chain as a
+read); meanwhile the register — the day's one positive read, warm — is
+what the atlas needs certified, so it goes first in fact while value
+passing stays first in aim. THE FADE-IN (commit 20ce25f3, ALG_BUSREG_RAMP=
+<steps>): the register's args term scaled by min(1, step/steps) during
+training, a FIXED SCHEDULE fed as a scalar buffer per step (the _PCV
+idiom), never a learnable gain — the override used only in the form the
+mandatory-road law does not object to (nothing for the loss to vote
+down); readers never pass it. Gate (CPU, tiny64): unset 5.2995 / 0.0279
+BIT-IDENTICAL; busreg 6.3147 / 1.1564 unchanged; ramp at step 0 = 6.5535
+= the role config's own number (the register enters at exactly nothing).
+FIRED: (1) pc-cont (`.cache/cont_chain.sh`): PMS8c_241 = PMS8_241 + 12k on
+form_mix_pm35c WITH the register (ALG_BUSREG=2.0, codes 512ri) vs CTRLc_241
+= the same 12k WITHOUT (the cont-control protocol); BAR (pinned): masked
+wild PAIRED between the two >= +0.020 (z >= 2); both vs PMS8_241, the
+cells, rows and mint beside; then THE FACTS CENSUS ON WILD (known
+variables per row from the live pass-1 facts of the register-alone body
+and of PMS8_241, against the training's gold 11.1). (2) pc-pms9r
+(`.cache/pms9r_chain.sh`, waits for the continuation chain): PMS9r_241 =
+PMS8's recipe + the register faded in over the first 8k steps, from
+scratch, 48k, vs PMS8_241 (BAR: +0.020 masked paired, z >= 2) and vs
+PMS9_241 (does the fade remove the interference? beside). ~1.5 h + ~2.5 h.
