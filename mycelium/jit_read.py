@@ -241,7 +241,8 @@ class _Slot:
 _OPT_PORTS = ("slot_mask", "revoke", "tail", "drop", "anchor", "amask",
               "gmod", "pmask", "lsent", "reg", "fact_buf", "mh_mass",
               "mh_atlas_traj", "xcorr", "res_map", "hud",
-              "ident")   # THE BUS REGISTER's token-id port (2026-09-22)
+              "ident",   # THE BUS REGISTER's token-id port (2026-09-22)
+              "busreg_ramp")   # THE FADE-IN's scalar (training only; readers never pass it)
 
 
 def _make_slot(fwd, p, key, B, ts, tk, se, opts, keys):

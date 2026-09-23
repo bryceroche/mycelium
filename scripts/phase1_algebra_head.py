@@ -143,6 +143,15 @@ ALG_BUSREG_PROP = int(os.environ.get("ALG_BUSREG_PROP", "1"))   # 1: propagate i
 # a functional re-mention ("total", "them") has no tag and gets nothing.
 # Needs ALG_BUSREG. 0 = dead, bit-identical.
 ALG_BUSREG_ADDR = float(os.environ.get("ALG_BUSREG_ADDR", "0"))
+# THE FADE-IN (2026-09-23, Bryce's override for the from-scratch form —
+# the arm PMS9_241 showed the register grown from step zero interferes
+# while its channels are still uniform): ALG_BUSREG_RAMP=<steps> scales
+# the register's args term by min(1, step/steps) during training — a
+# FIXED SCHEDULE fed as a scalar buffer per step (the _PCV idiom: one JIT
+# graph, a dynamic value), never a learnable gain (nothing for the loss
+# to vote down). Readers never pass it (the term at full scale). Unset =
+# no multiplication at all, bit-identical.
+ALG_BUSREG_RAMP = int(os.environ.get("ALG_BUSREG_RAMP", "0"))
 _GTAP = None      # THE GRADIENT TAP (apply_grad_tap.py): read-only probe leaves per breath
 # THE WHIP (2026-09-12, the word): ALG_WHIP="k:amp" kicks the state ENTERING
 # breath k with Gaussian noise on the content planes (per slot: amp x the
@@ -3939,8 +3948,10 @@ def breath_step(p, state, kb, ctx):
             _sRole = _rot2(_u_j, _wq[:, 0], _wq[:, 1]) @ _zr.transpose(-2, -1)   # a cosine in [-1, 1] (unit u, unit r): no sqrt(P)
             _sId = ((_rot2(_q1, _wi[:, 0], _wi[:, 1]) @ _zi.transpose(-2, -1))
                     + (_rot2(_q2, _wi[:, 0], _wi[:, 1]) @ _zi.transpose(-2, -1)))
-            state.setdefault("busreg_terms", []).append(
-                (kb, ALG_BUSREG * (_sRole + _sId)))   # (B, L_FAC, L_FAC): slot j -> candidate slot k, this rung's term
+            _termR = ALG_BUSREG * (_sRole + _sId)   # (B, L_FAC, L_FAC): slot j -> candidate slot k, this rung's term
+            if ctx.get("busreg_ramp") is not None:
+                _termR = _termR * ctx["busreg_ramp"].reshape(1, 1, 1)   # THE FADE-IN: min(1, step/RAMP), a fed scalar
+            state.setdefault("busreg_terms", []).append((kb, _termR))
             if _CENSUS is not None:
                 _CENSUS.append((kb, "busreg(role)", _sRole.realize().numpy()))
                 _CENSUS.append((kb, "busreg(id)", _sId.realize().numpy()))
@@ -4713,7 +4724,7 @@ def breath_step(p, state, kb, ctx):
     return state
 
 
-def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, drop=None, anchor=None, amask=None, gmod=None, pmask=None, lsent=None, reg=None, fact_buf=None, mh_mass=None, mh_atlas_traj=None, xcorr=None, res_map=None, hud=None, ident=None):
+def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, drop=None, anchor=None, amask=None, gmod=None, pmask=None, lsent=None, reg=None, fact_buf=None, mh_mass=None, mh_atlas_traj=None, xcorr=None, res_map=None, hud=None, ident=None, busreg_ramp=None):
     from tinygrad import Tensor, dtypes   # audit 2026-09-01: was a
     # SCOPE ACCIDENT (bound only via the sixwave/sync branches — any
     # SIXWAVE-off config killed five organs at step 1)
@@ -4951,6 +4962,7 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
                    # THE BUS REGISTER's per-forward constants (2026-09-22):
                    # dict keys only — zero compute when ALG_BUSREG unset.
                    "vst": vst, "res_map": res_map, "ident_tok": _ident_tok,
+                   "busreg_ramp": busreg_ramp,   # THE FADE-IN's scalar (training only; None = full scale)
                    "anchor_bias0": _anch_bias0,
                    "slot_mask": slot_mask, "bank": bank, "rot2": _rot2,
                    "sync": _sync, "drop": drop, "gmod": gmod,
@@ -6945,6 +6957,8 @@ def do_train(steps, lr, batch, seed):
         if ALG_HUD else None   # THE TOKEN HUD's feed (b_fact idiom)
     b_ident = fix(np.zeros((batch, T_ALG), np.int32), dtypes.int) \
         if ALG_BUSREG else None   # THE BUS REGISTER's token-id feed (b_fact idiom)
+    b_bgain = fix(np.zeros((1,), np.float32), dtypes.float) \
+        if (ALG_BUSREG and ALG_BUSREG_RAMP) else None   # THE FADE-IN's scalar feed (the _PCV idiom)
     b_mha = fix(np.zeros((batch, ATLAS_TAB.shape[1], H_W), np.float32),
                 dtypes.float) if ATLAS_TAB is not None else None
     b_tail = fix(np.zeros((batch, T_ALG), np.float32), dtypes.float) if CLOCK else None
@@ -7093,13 +7107,13 @@ def do_train(steps, lr, batch, seed):
             # commits, self-labeled from gold like the commit loss,
             # DETACHED); the second trains under live release dynamics.
             o0 = forward(p, s_tr, b_tk, b_se, slot_mask=b_mask, tail=b_tail,
-                         reg=b_reg, xcorr=b_xcorr, res_map=b_resmap, hud=b_hud, ident=b_ident)
+                         reg=b_reg, xcorr=b_xcorr, res_map=b_resmap, hud=b_hud, ident=b_ident, busreg_ramp=b_bgain)
             ok = ((o0["ftype"].argmax(-1) == bg["ftype"]).float()
                   * (o0["res"].argmax(-1) == bg["res"]).float())
             rv = (bg["presence"] * (1.0 - ok)).detach()
             o = forward(p, s_tr, b_tk, b_se, slot_mask=b_mask, revoke=rv,
                         tail=b_tail, reg=b_reg, fact_buf=b_fact,
-                        mh_mass=b_mhm, mh_atlas_traj=b_mha, xcorr=b_xcorr, res_map=b_resmap, hud=b_hud, ident=b_ident)
+                        mh_mass=b_mhm, mh_atlas_traj=b_mha, xcorr=b_xcorr, res_map=b_resmap, hud=b_hud, ident=b_ident, busreg_ramp=b_bgain)
         elif int(os.environ.get("NAZ_TRAIN", "0")):
             # NAZARÉ TRAINING (door #55): the organ-2 two-forward pattern —
             # pre-pass yields the intra-pass event field IN-GRAPH (detached);
@@ -7108,7 +7122,7 @@ def do_train(steps, lr, batch, seed):
             # read-time dup-aware argpair): argmax-change OR dup-flip on
             # rel-typed present slots, breath-0 vs final.
             o0 = forward(p, s_tr, b_tk, b_se, slot_mask=b_mask, tail=b_tail,
-                        xcorr=b_xcorr, res_map=b_resmap, hud=b_hud, ident=b_ident)
+                        xcorr=b_xcorr, res_map=b_resmap, hud=b_hud, ident=b_ident, busreg_ramp=b_bgain)
             _b0 = o0["breaths"][0]
             _relmask = (o0["pres"].squeeze(-1) > 0).float() \
                 * (o0["ftype"].argmax(-1) == 0).float()
@@ -7119,13 +7133,13 @@ def do_train(steps, lr, batch, seed):
             _gm = (_bgauth + (1.0 - _bgauth) * _ev).unsqueeze(-1).detach()
             o = forward(p, s_tr, b_tk, b_se, slot_mask=b_mask, tail=b_tail,
                         gmod=_gm, fact_buf=b_fact,
-                        mh_mass=b_mhm, mh_atlas_traj=b_mha, xcorr=b_xcorr, res_map=b_resmap, hud=b_hud, ident=b_ident)
+                        mh_mass=b_mhm, mh_atlas_traj=b_mha, xcorr=b_xcorr, res_map=b_resmap, hud=b_hud, ident=b_ident, busreg_ramp=b_bgain)
         else:
             _bd = os.environ.get("BREATH_DROPOUT")
             o = forward(p, s_tr, b_tk, b_se, slot_mask=b_mask, tail=b_tail,
                         drop=(b_drop if _bd else None), lsent=b_ls, reg=b_reg,
                         fact_buf=b_fact,
-                        mh_mass=b_mhm, mh_atlas_traj=b_mha, xcorr=b_xcorr, res_map=b_resmap, hud=b_hud, ident=b_ident)
+                        mh_mass=b_mhm, mh_atlas_traj=b_mha, xcorr=b_xcorr, res_map=b_resmap, hud=b_hud, ident=b_ident, busreg_ramp=b_bgain)
         l = loss_fn(o, bg)
         if ALG_CONSUME and "_early" in o:   # support-gated consume-once:
             # any breath claims, each fact pays once; eligibility = the DAG
@@ -7933,6 +7947,8 @@ def do_train(steps, lr, batch, seed):
             _fd(b_hud, HUD[idx], _rl)   # THE TOKEN HUD's feed: this batch's precomputed per-token features
         if b_ident is not None:
             _fd(b_ident, IDENT[idx], _rl)   # THE BUS REGISTER's feed: this batch's token ids
+        if b_bgain is not None:
+            _fd(b_bgain, np.array([min(1.0, s / float(ALG_BUSREG_RAMP))], np.float32), _rl)   # THE FADE-IN: min(1, step/RAMP)
         if b_mha is not None:
             _fd(b_mha, ATLAS_TAB[ATLAS_IDX[idx]], _rl)
         if b_tail is not None:
