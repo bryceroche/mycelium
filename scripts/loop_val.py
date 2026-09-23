@@ -333,7 +333,8 @@ def read(ckpt, data=None, p=None):
         o = _rf(forward, p, ts, tk, se, keys=_jk_masked,
                 slot_mask=Tensor(mk, dtype=dtypes.float),
                 fact_buf=fact_t, mh_mass=mass_t, mh_atlas_traj=_mha_t,
-                xcorr=xcorr_t, hud=hud_t, ident=ident_t)
+                xcorr=xcorr_t, hud=hud_t, ident=ident_t,
+                valfact=(fact_t if float(os.environ.get("ALG_VALREG", "0")) or float(os.environ.get("ALG_VALREG_ADDR", "0")) else None))   # THE VALUE STREAM: the live pass-1 facts
         onp = {k: o[k].realize().numpy() for k in
                (("pres", "ftype", "op", "islit", "dig", "args", "res")
                 + (("dup",) if "h_dup" in p else ()))}
