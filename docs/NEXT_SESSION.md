@@ -34,13 +34,13 @@ The reads table: `.venv/bin/python3 scripts/reads.py table wildhold` (assert-on-
    PMS4_242 z 2.42, +0.0258 vs the lineage twin z 2.81; open 0.3276 z 2.65/2.98; rows 13/9; mint flat); the
    pair: +0.018 vs the chassis (combined z 2.97), +0.022 vs the lineage (z 3.35). The args FIELD does not
    carry it (0.429 vs 0.453) — the gain is composition (refusals 96 vs 126). Ledger 09-22 15:2x.
-2. THE BUS REGISTER (ledger 09-22, four entries): built, bit-identical unset, in the loss; warm gate: the
-   held-out slot +0.018 (z 2.50) with args +0.024; THE ARM FROM SCRATCH (PMS9_241) NULL WITH A COST (masked
-   -0.009 vs PMS8_241, mint -7, cells slightly down) — a WARM organ. The addressing road NULL. REGISTERED (word):
-   gentle continuation PMS8_241 + 12k on the full diet with vs without the register (+0.020 masked paired).
-   THE VALUE STREAM built on branch value-stream (worktree /home/bryce/mycelium-wt; merge between chains + CPU
-   gate); pc-valreggate (VR / VRA warm gates on wild vs the register alone; bars: VRA digits +0.030, VR masked
-   +0.010) RUNNING from the worktree — read valreg_gate_wild.log.
+2. THE REGISTER FAMILY (ledger 09-22, seven entries): the register warm +0.018 (z 2.5) on the held-out slot;
+   the register from scratch NULL WITH A COST (PMS9_241: masked -0.009 vs PMS8_241, mint -7) — a WARM organ;
+   the addressing road NULL; THE VALUE STREAM's two doors NULL WITH A COST (VR masked -0.010; VRA digits flat)
+   — the facts-coverage mismatch registered (census on wild first). Branch value-stream (worktree
+   /home/bryce/mycelium-wt) UNMERGED: built, gated bit-identical, dead unless set. CARD IDLE.
+   WORD NEEDED: the gentle-continuation arm — PMS8_241 + 12k on form_mix_pm35c WITH the register (ALG_BUSREG=2.0,
+   codes 512ri) vs the same 12k WITHOUT, paired masked wild +0.020 (z 2); the seed-242 twin if it clears.
 3. DONE 09-22 12:50 (scripts/mixed_bucket_census.py -> .cache/mixed_bucket_census.txt): the
    inherited key dissolves the mixed bucket (89% SAME-NOUN); the wall is ~90% same-quantity
    selection, 55-57% of it pointing at DERIVED arguments (k a relation; args-correct 0.58-0.62)
