@@ -43915,3 +43915,42 @@ and of PMS8_241, against the training's gold 11.1). (2) pc-pms9r
 PMS8's recipe + the register faded in over the first 8k steps, from
 scratch, 48k, vs PMS8_241 (BAR: +0.020 masked paired, z >= 2) and vs
 PMS9_241 (does the fade remove the interference? beside). ~1.5 h + ~2.5 h.
+
+**2026-09-23 12:59 — THE GENTLE-CONTINUATION PAIR: NULL (the register in
+continuation adds nothing to its control); the continuation regime itself
+costs the converged body; THE FACTS CENSUS confirms the value stream's
+coverage mismatch by a factor of three.** pc-cont (`.cache/cont_chain.sh`):
+PMS8c_241 (PMS8_241 + 12k on form_mix_pm35c WITH the register, LR 1e-4
+fixed) vs CTRLc_241 (the same WITHOUT). THE BAR (masked wild paired
+between the two, +0.020 z 2): 0.3325 vs 0.3320, +0.0005, paired SE 0.0075,
+z 0.06 — MISSED FLAT. Open 0.3062 vs 0.2974 (+0.009, z 1.19); rows 7 / 5
+vs 10 / 6; MINT 0.6377 vs 0.6728 (-3.5 against the register); fields:
+dig 0.398 vs 0.381 (+0.017), pres 0.919 vs 0.890 (+0.029), args 0.420 vs
+0.428 (-0.008). THE CELLS (post vs post, wild): ALL +0.006 (z 0.64),
+GIVEN-ONLY +0.028 (z 1.81), DERIVED-ARG +0.009, GIVEN-RELCOMP -0.012.
+VERDICT: null; the slice warm gate's +0.018 (z 2.5) does NOT replicate on
+the full diet — that read was one seed on a 1,024-row slice regime and
+it stands corrected by this one: the register's held-out gain is not
+robust to the training regime. THE REGIME FINDING beside it: BOTH
+continuation arms sit 0.015 below the claim body (PMS8c -0.0151 z 1.90;
+CTRLc -0.0156 z 1.92), mint UP on the control (+2) and rows DOWN (10 vs
+14): continuing a cosine-ended converged body at the peak LR (1e-4)
+jostles it out of its basin — "gentle" continuation means a tenth of
+that (1e-5) or the tail of the schedule, not its head; the cont-control
+protocol saved the reading (the control fell the same). THE FACTS CENSUS
+ON WILD (the value stream's registered read; the inline reader first
+crashed importing the head without the family env — N_DIG 3 vs the dumped
+7 — re-run under it; the chain's completion line written by hand after):
+known variables per wild row from the live pass-1 facts — the register-
+alone body 3.37 (median 4; 12.5% of rows with none; 75.9% with >= 3),
+PMS8_241 3.46 (median 4; 5.8% none; 80.7% >= 3) — against 11.1 gold at
+training: A FACTOR OF 3.3 FEWER, and the known ones carry the head's own
+decode errors (wild digits ~0.40) while training's are exact. THE VALUE
+STREAM's cause is confirmed: its second form trains on the body's own
+live facts (the maskprep pass's FACTS refreshed per epoch, errors
+included), never gold — registered, not fired. THE REGISTER FAMILY's
+BOOK after five reads: warm on the slice +0.018 (z 2.5, one seed, one
+regime); from scratch null with a cost; faded in from scratch (pc-pms9r,
+running, ~2.5 h) pending; in continuation null; the addressing road
+null; the value stream's two doors null. Numbers asserted (ingest at
+7921d8a9).
