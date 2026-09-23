@@ -177,6 +177,38 @@ ALG_VALREG = float(os.environ.get("ALG_VALREG", "0"))
 ALG_VALREG_ADDR = float(os.environ.get("ALG_VALREG_ADDR", "0"))
 ALG_VALREG_KEEP = float(os.environ.get("ALG_VALREG_KEEP", "0.7"))
 ALG_VALREG_ON = bool(ALG_VALREG or ALG_VALREG_ADDR)
+# THE SEALED VALUE ARM (2026-09-23, word given for the whole queue; the
+# register family closed at six nulls — a language and a channel without
+# a reader; the loss reads a part only when no easier path carries the
+# loss, so: give the register what the bilinear cannot produce AND take
+# away the bilinear's way of ignoring it, on the one cell the
+# decomposition named). Three doors, all dead unless set:
+#   ALG_VALREG_LIVE=1     the value stream trains on the body's OWN facts
+#                         (the consult's FACTS array from the mask-prep
+#                         pass, refreshed per segment from the current
+#                         checkpoint — errors and sparsity included, the
+#                         distribution the read is handed), never gold;
+#                         no keep-dropout.
+#   ALG_BUSREG_SEAL=<s>   THE DERIVED-CANDIDATE SEAL: the bilinear
+#                         pointer's logits multiplied by (1 - s * relvar)
+#                         where relvar[v] = the mass of RELATION slots
+#                         introducing variable v (the rung's own predicted
+#                         ftype and map, detached; the same at training
+#                         and read) — on derived candidates the bilinear
+#                         reads a state with no token anchor and the
+#                         register's propagated identity and solver value
+#                         are the only information; givens stay the
+#                         bilinear's. s=1 severs.
+#   ALG_BUSREG_PREDMAP=1  the register's slot->variable map PREDICTED at
+#                         training too (detached), matching the read —
+#                         the teacher-force-only-where-the-teacher-matches
+#                         rule; the role pointer's own gold scatter is
+#                         untouched.
+ALG_VALREG_LIVE = int(os.environ.get("ALG_VALREG_LIVE", "0"))
+ALG_BUSREG_SEAL = float(os.environ.get("ALG_BUSREG_SEAL", "0"))
+ALG_BUSREG_PREDMAP = int(os.environ.get("ALG_BUSREG_PREDMAP", "0"))
+assert not (ALG_BUSREG_SEAL or ALG_BUSREG_PREDMAP or ALG_VALREG_LIVE) or ALG_BUSREG, (
+    "ALG_BUSREG_SEAL / ALG_BUSREG_PREDMAP / ALG_VALREG_LIVE need ALG_BUSREG (the register they act on)")
 _GTAP = None      # THE GRADIENT TAP (apply_grad_tap.py): read-only probe leaves per breath
 # THE WHIP (2026-09-12, the word): ALG_WHIP="k:amp" kicks the state ENTERING
 # breath k with Gaussian noise on the content planes (per slot: amp x the
@@ -3913,7 +3945,7 @@ def breath_step(p, state, kb, ctx):
             # the register's propagation convention). Computed once per
             # breath here, before every consumer; kept in state for the
             # register block below.
-            _Rv = ctx.get("res_map")
+            _Rv = ctx.get("res_map") if not ALG_BUSREG_PREDMAP else None   # PREDMAP: the rung's own map at training too
             if _Rv is None:
                 _hv = _heads_of(p, cur, ctx["vst"], B)
                 _Rv = ((_hv["res"] == _hv["res"].max(-1, keepdim=True)).float()
@@ -4020,6 +4052,28 @@ def breath_step(p, state, kb, ctx):
             _u_j = _dirR(_attR[:, 4] @ _keyR)    # (B, L_FAC, 2P): the OP channel's role query, bus space, unit
             _cI, _sI = _R2C["id"]              # UNBIND codes (cos, -sin); BIND = the conjugate
             _cR, _sR = _R2C["rcue"]
+            # THE RUNG'S OWN BELIEFS (a FACT, detached — the garage's
+            # deposit law): the emission of the state entering this
+            # breath — its args, its ftype (P(given), index 1), and its
+            # slot->variable map. The map is the trainer's gold res_map
+            # when fed (the ALG_PTR_SURF convention) unless
+            # ALG_BUSREG_PREDMAP asks for the rung's own predicted map at
+            # training too (the read's convention, THE SEALED VALUE ARM).
+            _need_beliefs = (ALG_BUSREG_PROP and kb >= 2) or ALG_BUSREG_SEAL
+            if _need_beliefs:
+                _hprev = _heads_of(p, cur, ctx["vst"], B)
+                _Rm = ctx.get("res_map") if not ALG_BUSREG_PREDMAP else None
+                if _Rm is None:
+                    _res_oh = (_hprev["res"] == _hprev["res"].max(-1, keepdim=True)).float()
+                    _pres_oh = (_hprev["pres"].sigmoid() > 0.5).float().unsqueeze(-1)
+                    _Rm = (_res_oh * _pres_oh).detach()               # (B, L_FAC, K_VARS)
+                _g_giv = _hprev["ftype"].detach().softmax(-1)[..., 1:2]   # (B, L_FAC, 1) P(given)
+                if ALG_BUSREG_SEAL:
+                    # THE DERIVED-CANDIDATE SEAL's mass per variable: how
+                    # much of variable v's introducer is a RELATION slot
+                    # (0 for a given's variable, ~1 for a derived one).
+                    _relvar = (_Rm.transpose(-2, -1) @ (1.0 - _g_giv)).squeeze(-1).clip(0.0, 1.0)   # (B, K_VARS)
+                    state.setdefault("busreg_relvar", []).append((kb, _relvar))
             if kb == 1 or "busreg_role" not in state:
                 # WRITTEN AT BREATH 1 AND KEPT: the role stream (step 2
                 # of the Role Signature — memory inside the slot, keyed
@@ -4030,26 +4084,12 @@ def breath_step(p, state, kb, ctx):
             else:
                 _id_k = _e_k
                 if ALG_BUSREG_PROP:
-                    # PROPAGATION: the previous rung's emission (the
-                    # state entering this breath) says what this slot's
-                    # arguments are (a FACT, detached — the garage's
-                    # deposit law) and whether the slot is a given; a
-                    # believed relation inherits its believed arguments'
-                    # identity from the previous breath's register
-                    # (gradient-carrying content: the identity flows,
-                    # the belief does not). Slot->variable through the
-                    # gold map when the trainer feeds one (res_map, the
-                    # ALG_PTR_SURF convention) else the rung's own
-                    # predicted map (the read).
-                    _hprev = _heads_of(p, cur, ctx["vst"], B)
+                    # PROPAGATION: a believed relation inherits its
+                    # believed arguments' identity from the previous
+                    # breath's register (gradient-carrying content: the
+                    # identity flows, the belief does not).
                     _Av = _hprev["args"].detach().softmax(-1)          # (B, L_FAC, K_VARS)
-                    _Rm = ctx.get("res_map")
-                    if _Rm is None:
-                        _res_oh = (_hprev["res"] == _hprev["res"].max(-1, keepdim=True)).float()
-                        _pres_oh = (_hprev["pres"].sigmoid() > 0.5).float().unsqueeze(-1)
-                        _Rm = (_res_oh * _pres_oh).detach()               # (B, L_FAC, K_VARS)
                     _As = _Av @ _Rm.transpose(-2, -1)                     # (B, L_FAC, L_FAC): slot k -> the slots introducing its believed args
-                    _g_giv = _hprev["ftype"].detach().softmax(-1)[..., 1:2]   # P(given) — ftype index 1 (build_gold)
                     _id_k = _dirR(_e_k + (1.0 - _g_giv) * (_As @ state["busreg_prev"]))   # a direction: two parents match each at ~0.71
             state["busreg_prev"] = _id_k
             _z = state["busreg_role"] + _rot2(_id_k, _cI, -_sI)   # THE REGISTER: role (+) identity, one bus vector per slot
@@ -5292,6 +5332,17 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
         # (healthy, like any attention), not through a product of two
         # near-uniform token distributions. Computed at the LAST breath
         # only (out["rbias2"] is already that breath's channels).
+        _br_seal = None
+        if ALG_BUSREG_SEAL and _bs_state is not None and _bs_state.get("busreg_relvar"):
+            # THE DERIVED-CANDIDATE SEAL (2026-09-23): the bilinear's
+            # logits on variables introduced by relation slots are
+            # multiplied by (1 - s * relvar) BEFORE any surface or
+            # register term joins — the seal is on the bilinear alone;
+            # the register's term (added below) is the only road left on
+            # those candidates. Per rung: this rung's own relvar.
+            _br_seal = {kb_: (1.0 - ALG_BUSREG_SEAL * rv_).reshape(B, 1, K_VARS)
+                        for kb_, rv_ in _bs_state["busreg_relvar"]}
+            out["args"] = out["args"] * _br_seal[K_B - 1]
         if ALG_PTR_SURF:
             if res_map is not None:
                 _R_scat = res_map
@@ -5588,8 +5639,10 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
             for kb_, T_ in _br_terms.items():
                 if kb_ == _nK - 1 and ALG_PTR_SURF:
                     continue
-                out["breaths"][kb_] = dict(out["breaths"][kb_],
-                                           args=out["breaths"][kb_]["args"] + T_)
+                _a_kb = out["breaths"][kb_]["args"]
+                if _br_seal is not None:
+                    _a_kb = _a_kb * _br_seal[kb_]   # THE SEAL on this rung's bilinear, before the register's term
+                out["breaths"][kb_] = dict(out["breaths"][kb_], args=_a_kb + T_)
     return out
 
 
@@ -7106,8 +7159,16 @@ def do_train(steps, lr, batch, seed):
         if ALG_BUSREG else None   # THE BUS REGISTER's token-id feed (b_fact idiom)
     b_bgain = fix(np.zeros((1,), np.float32), dtypes.float) \
         if (ALG_BUSREG and ALG_BUSREG_RAMP) else None   # THE FADE-IN's scalar feed (the _PCV idiom)
+    if ALG_VALREG_ON and ALG_VALREG_LIVE:
+        # THE SEALED VALUE ARM: the value stream reads the consult's OWN
+        # facts (the mask-prep pass's FACTS, this segment's checkpoint),
+        # never gold — the distribution the read is handed.
+        assert FACTS is not None, "ALG_VALREG_LIVE needs the ALT2 facts pass (ALG_ALT2=1)"
+        VALFACT = FACTS
+        print(f"[valreg] LIVE facts: known variables per row mean {FACTS[..., 0].sum(1).mean():.2f} "
+              f"(rows with none {float((FACTS[..., 0].sum(1) == 0).mean()):.3f})", flush=True)
     b_valfact = fix(np.zeros((batch, K_VARS, 4), np.float32), dtypes.float) \
-        if ALG_VALREG_ON else None   # THE VALUE STREAM's gold-facts feed (b_fact idiom)
+        if ALG_VALREG_ON else None   # THE VALUE STREAM's facts feed (b_fact idiom)
     _valfact_rng = np.random.RandomState(seed + 7331) if ALG_VALREG_ON else None
     b_mha = fix(np.zeros((batch, ATLAS_TAB.shape[1], H_W), np.float32),
                 dtypes.float) if ATLAS_TAB is not None else None
@@ -8105,7 +8166,8 @@ def do_train(steps, lr, batch, seed):
             # THE VALUE STREAM's feed: the gold facts under a per-variable
             # keep-dropout (the read sees only the solver's forced subset)
             _vfb = VALFACT[idx].copy()
-            _vfb *= (_valfact_rng.random_sample(_vfb.shape[:2]) < ALG_VALREG_KEEP)[..., None].astype(np.float32)
+            if not ALG_VALREG_LIVE:   # LIVE facts carry their own sparsity; gold facts get the keep-dropout
+                _vfb *= (_valfact_rng.random_sample(_vfb.shape[:2]) < ALG_VALREG_KEEP)[..., None].astype(np.float32)
             _fd(b_valfact, _vfb, _rl)
         if b_mha is not None:
             _fd(b_mha, ATLAS_TAB[ATLAS_IDX[idx]], _rl)
