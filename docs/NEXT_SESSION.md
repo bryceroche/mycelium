@@ -39,8 +39,9 @@ The reads table: `.venv/bin/python3 scripts/reads.py table wildhold` (assert-on-
    the addressing road NULL; THE VALUE STREAM's two doors NULL WITH A COST (VR masked -0.010; VRA digits flat)
    — the facts-coverage mismatch registered (census on wild first). Branch value-stream (worktree
    /home/bryce/mycelium-wt) UNMERGED: built, gated bit-identical, dead unless set. CARD IDLE.
-   WORD NEEDED: the gentle-continuation arm — PMS8_241 + 12k on form_mix_pm35c WITH the register (ALG_BUSREG=2.0,
-   codes 512ri) vs the same 12k WITHOUT, paired masked wild +0.020 (z 2); the seed-242 twin if it clears.
+   09-23 11:15 WORD GIVEN: pc-cont (PMS8c_241 vs CTRLc_241, +0.020 masked paired; + the facts census on wild) then
+   pc-pms9r (the fade-in scratch arm, ALG_BUSREG_RAMP=8000, vs PMS8_241 and PMS9_241) — RUNNING; read cont_chain.log
+   and pms9r_chain.log. The order of arrival: value passing (after the census) -> atlas -> mask.
 3. DONE 09-22 12:50 (scripts/mixed_bucket_census.py -> .cache/mixed_bucket_census.txt): the
    inherited key dissolves the mixed bucket (89% SAME-NOUN); the wall is ~90% same-quantity
    selection, 55-57% of it pointing at DERIVED arguments (k a relation; args-correct 0.58-0.62)
