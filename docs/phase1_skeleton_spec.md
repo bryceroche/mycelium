@@ -43750,3 +43750,24 @@ from identity and role agreement between registers, i.e. the mask the
 mask head tried to learn from state, read off the bus instead, a DSL over
 phasor predicates ("same identity", "earlier role", "consumes") when the
 predicates exist). Numbers: none claimed.
+
+**2026-09-22 19:25 — THE ADDRESSING GATE: NULL.** pc-addrgate (ALG_BUSREG_ADDR=2.0
+on the normalised register, 1,500 warm steps from PMS8_241 on the slice;
+mint-side val proxy 0.5523 vs the register alone's 0.5810; the read
+weights' grad norms identical to the register alone's, the road being
+parameter-free and detached). WILD, post vs post against the register-
+alone checkpoint of the same recipe (n 2051 slots): MASKED 0.3374 vs
+0.3364, +0.0010, paired SE 0.0078, z 0.12; OPEN 0.3062 vs 0.3028, +0.0034,
+z 0.45; fields: args 0.437 vs 0.429, dig 0.389 vs 0.398, res 0.810 vs
+0.794. THE CELLS (post vs post): DERIVED-ARG -0.023 (z -1.31), GIVEN-ONLY
++0.006, GIVEN-RELCOMP +0.023 (z 1.81), DERIVED-COMP +0.016, SAME-NOUN(inh)
++0.003, ALL +0.002 (z 0.18). THE BAR (masked +0.010, z 1.5; the cells
+non-negative) MISSED on the first clause and the derived cell is the wrong
+sign: THE ARM DOES NOT FIRE. READING: at gain 2.0 a cosine tag match
+against channel logits of scale ~10 is a small nudge, and the channels'
+addressing is already span-supervised (the args census: 92% of wild
+relation arguments lexically anchored) — the middleman the relay named
+was not the wall, or not at this scale; the scale caveat is registered
+(a magnitude census of the addressing term against the channel logits
+before any second try), the road stays built and dead unless set. The
+card passed to the register arm (pc-pms9).
