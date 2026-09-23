@@ -41,8 +41,8 @@ The reads table: `.venv/bin/python3 scripts/reads.py table wildhold` (assert-on-
    REGIME: continuing a converged body at LR 1e-4 costs 0.015 (gentle = 1e-5). REGISTERED (word): THE SEALED
    VALUE ARM — live facts refreshed every 8k (the first alternation in training) + the derived-candidate seal on
    the bilinear pointer + the predicted map at training; warm on PMS8_241 at 1e-5 with the cont-control; bars: the
-   wild DERIVED-ARG cell paired, the wild digits field, masked wild as the cost. Branch value-stream unmerged.
-   CARD IDLE.
+   wild DERIVED-ARG cell paired, the wild digits field, masked wild as the cost. 09-23 15:50: MERGED + BUILT +
+   GATED + FIRED as pc-sealed (SV_241 vs CTRLs_241; sealed_chain.sh -> sealed_chain.log; ~1.5 h).
 3. DONE 09-22 12:50 (scripts/mixed_bucket_census.py -> .cache/mixed_bucket_census.txt): the
    inherited key dissolves the mixed bucket (89% SAME-NOUN); the wall is ~90% same-quantity
    selection, 55-57% of it pointing at DERIVED arguments (k a relation; args-correct 0.58-0.62)
