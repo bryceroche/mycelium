@@ -132,6 +132,17 @@ ALG_PTR_SURF_ROLE = ALG_PTR_SURF.startswith("role:")
 # gain, no learnable gate (the mandatory-road law). 0 = dead, bit-identical.
 ALG_BUSREG = float(os.environ.get("ALG_BUSREG", "0"))          # the register's args gain
 ALG_BUSREG_PROP = int(os.environ.get("ALG_BUSREG_PROP", "1"))   # 1: propagate identity along believed args; 0: looked-up only (the ablation)
+# DIRECT ADDRESSING (2026-09-22, registered on the first gate's reading;
+# the sender wired to the receiver): from breath 2, the arg1 / arg2 /
+# given channels' token logits get + gain * (the token's identity tag .
+# the identity this slot's register carried at the previous breath) —
+# an exact tag match, no learned middleman, detached (a fact, the
+# garage's deposit law): the addressing sharpens the identity and the
+# sharpened identity sharpens the addressing on the next breath. Same-
+# noun twins tie on it by construction (role and precedence still pick);
+# a functional re-mention ("total", "them") has no tag and gets nothing.
+# Needs ALG_BUSREG. 0 = dead, bit-identical.
+ALG_BUSREG_ADDR = float(os.environ.get("ALG_BUSREG_ADDR", "0"))
 _GTAP = None      # THE GRADIENT TAP (apply_grad_tap.py): read-only probe leaves per breath
 # THE WHIP (2026-09-12, the word): ALG_WHIP="k:amp" kicks the state ENTERING
 # breath k with Gaussian noise on the content planes (per slot: amp x the
@@ -3798,6 +3809,20 @@ def breath_step(p, state, kb, ctx):
         # mycelium/complex_tensor.py); verified bit-identical against
         # separate matmuls on a standalone check.
         _S4 = (_Q4 @ _key7t) / math.sqrt(_P7)   # (B, n_ch, L_TOT, T): arg1/arg2/res/given(/op)
+        if ALG_BUSREG_ADDR and kb >= 2 and "busreg_prev" in state:
+            # DIRECT ADDRESSING (the env block's brief): the token tags
+            # against the slot's carried identity (unit, from the
+            # previous breath's register; detached), added to the arg1 /
+            # arg2 / given channels' logits BEFORE every consumer (the
+            # bank bias, the span losses, the pointer prior, the register
+            # itself) — the existing road, sharpened; no new middleman.
+            # Scratch rows (L_TOT > L_FAC) get zero.
+            assert ALG_BUSREG, "ALG_BUSREG_ADDR needs ALG_BUSREG (the register it addresses from)"
+            _addr = state["busreg_prev"].detach() @ ctx["ident_tok"].transpose(-2, -1)   # (B, L_FAC, T): cosine tag match
+            if L_TOT > L_FAC:
+                _addr = Tensor.cat(_addr, Tensor.zeros(B, L_TOT - L_FAC, _addr.shape[-1]), dim=1)
+            _chm = Tensor([1.0, 1.0, 0.0, 1.0] + [0.0] * (_n_ch5 - 4)).reshape(1, _n_ch5, 1, 1)   # arg1, arg2, given
+            _S4 = _S4 + ALG_BUSREG_ADDR * _chm * _addr.unsqueeze(1)
         _rb7 = _S4[:, 2] + _S4[:, 3]   # ROAD (a): reuse the rbias
                                        # plumbing verbatim (mandatory-road law: fixed r_gain, no extra gate)
         if ALG_SPAN_OP_ROAD and _n_ch5 >= 5:
@@ -3857,17 +3882,29 @@ def breath_step(p, state, kb, ctx):
             _SR = _fed_core4(_S4)                           # (B, 6, L_FAC, T): the true factor rows
             _attR = (_SR.clip(-1e4, 1e4) + (1.0 - tokmask.reshape(B, 1, 1, -1)) * -1e4).softmax(-1)
             _keyR = state["_r2_key"].squeeze(1).transpose(-2, -1)   # (B, T, 2P): the token key in bus phase space
-            _e_k = _attR[:, 3] @ _idtok        # (B, L_FAC, 2P): the GIVEN channel's pooled identity (the value mention's entity)
-            _q1 = _attR[:, 0] @ _idtok         # the arg1 re-mention's identity (the query)
-            _q2 = _attR[:, 1] @ _idtok         # the arg2 re-mention's identity
-            _u_j = _attR[:, 4] @ _keyR         # (B, L_FAC, 2P): the OP channel's role query, bus space
+            # EVERY REGISTER VECTOR IS A DIRECTION (2026-09-22, the first
+            # gate's magnitude census): the bus keys have norm ~13, so an
+            # unnormalised role read was 10x the identity read and mostly
+            # a per-slot offset (11.0 +- 1.7 vs 1.1 +- 0.2..0.6 against
+            # bilinear logits of 30.7 +- 36.5) — the two streams were
+            # never commensurate and the organ entered as noise (args
+            # wrong 466 -> 1648 at birth). Unit-normalise the role key and
+            # query, the pooled identities and the propagated identity;
+            # both reads are then cosines in [-1, 1] and the superposition
+            # has the crosstalk the numpy check measured (sd 0.065).
+            def _dirR(v):
+                return v / (v.pow(2).sum(-1, keepdim=True).sqrt() + 1e-6)
+            _e_k = _dirR(_attR[:, 3] @ _idtok)   # (B, L_FAC, 2P): the GIVEN channel's pooled identity (the value mention's entity)
+            _q1 = _dirR(_attR[:, 0] @ _idtok)    # the arg1 re-mention's identity (the query)
+            _q2 = _dirR(_attR[:, 1] @ _idtok)    # the arg2 re-mention's identity
+            _u_j = _dirR(_attR[:, 4] @ _keyR)    # (B, L_FAC, 2P): the OP channel's role query, bus space, unit
             _cI, _sI = _R2C["id"]              # UNBIND codes (cos, -sin); BIND = the conjugate
             _cR, _sR = _R2C["rcue"]
             if kb == 1 or "busreg_role" not in state:
                 # WRITTEN AT BREATH 1 AND KEPT: the role stream (step 2
                 # of the Role Signature — memory inside the slot, keyed
                 # on role, the breath as the timing).
-                _r_k = _attR[:, 5] @ _keyR     # the RCUE channel's role key, bus space
+                _r_k = _dirR(_attR[:, 5] @ _keyR)   # the RCUE channel's role key, bus space, unit
                 state["busreg_role"] = _rot2(_r_k, _cR, -_sR)
                 _id_k = _e_k
             else:
@@ -3893,13 +3930,13 @@ def breath_step(p, state, kb, ctx):
                         _Rm = (_res_oh * _pres_oh).detach()               # (B, L_FAC, K_VARS)
                     _As = _Av @ _Rm.transpose(-2, -1)                     # (B, L_FAC, L_FAC): slot k -> the slots introducing its believed args
                     _g_giv = _hprev["ftype"].detach().softmax(-1)[..., 1:2]   # P(given) — ftype index 1 (build_gold)
-                    _id_k = _e_k + (1.0 - _g_giv) * (_As @ state["busreg_prev"])
+                    _id_k = _dirR(_e_k + (1.0 - _g_giv) * (_As @ state["busreg_prev"]))   # a direction: two parents match each at ~0.71
             state["busreg_prev"] = _id_k
             _z = state["busreg_role"] + _rot2(_id_k, _cI, -_sI)   # THE REGISTER: role (+) identity, one bus vector per slot
             _zr = _rot2(_z, _cR, _sR)          # unbind by role   -> r_k (+ crosstalk)
             _zi = _rot2(_z, _cI, _sI)          # unbind by identity -> id_k (+ crosstalk)
             _wq = p["W_regq"]; _wi = p["W_idq"]
-            _sRole = (_rot2(_u_j, _wq[:, 0], _wq[:, 1]) @ _zr.transpose(-2, -1)) / math.sqrt(_P7)
+            _sRole = _rot2(_u_j, _wq[:, 0], _wq[:, 1]) @ _zr.transpose(-2, -1)   # a cosine in [-1, 1] (unit u, unit r): no sqrt(P)
             _sId = ((_rot2(_q1, _wi[:, 0], _wi[:, 1]) @ _zi.transpose(-2, -1))
                     + (_rot2(_q2, _wi[:, 0], _wi[:, 1]) @ _zi.transpose(-2, -1)))
             state.setdefault("busreg_terms", []).append(
