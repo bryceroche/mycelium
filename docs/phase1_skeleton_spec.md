@@ -43693,3 +43693,60 @@ own warm gate (1,500 steps from PMS8_241, register + addressing vs the
 register alone, read on wild) is registered behind the arm. Numbers quote
 the gate logs, busreg3_wild_dumps.log and the dumps; the wild slot reads
 enter the table on the next ingest.
+
+**2026-09-22 19:11 — WORD GIVEN FOR THE WHOLE QUEUE: the addressing gate
+and the register arm fired; THE VALUE STREAM registered (the first true
+alternation); the long-term brainstorm banked.** THE ADDRESSING GATE
+(pc-addrgate, `.cache/addr_gate_wild.sh`): ALG_BUSREG_ADDR=2.0 on the
+normalised register, 1,500 warm steps from PMS8_241 on the slice (the
+register gate's recipe), read on WILD post vs post against the register-
+alone checkpoint of the same recipe (sharp_busreg3_treat_slice_241, its
+wild dumps banked). BARS (pinned): masked wild paired >= +0.010 vs the
+register alone (z >= 1.5 — a within-organ read at n 2051) AND the wild
+DERIVED-ARG / GIVEN-ONLY cells non-negative. THE REGISTER ARM (pc-pms9,
+`.cache/pms9_chain.sh`, waits for the addressing gate to release the
+card): PMS9_241 = PMS8's recipe + ALG_BUSREG=2.0 (codes 512ri) from
+scratch, 48k, seed 241, vs PMS8_241 (the claim body) — grown together.
+BARS (pinned): masked wild paired >= +0.020 vs PMS8_241 (z >= 2); the
+wild DERIVED-ARG cell and the rows beside; mint watched; the twin on
+seed 242 the certification if it clears. THE VALUE STREAM (registered;
+built in a worktree while the card runs — the head under a running chain
+is never edited): the third bound stream on the register, VALUE — the
+solver's implied values, from the ONE mid-loop consult on the committed
+graph the chassis already carries (the ALT2 facts road, one consult per
+row — the wiring truth), written back into each slot's register as the
+numeral's identity tag (the identity table already holds every digit
+token) bound under theta_val; read on the next breath by (a) the digit
+head as a prior on the given's value and (b) a TEXT-SIDE PRESENCE CHECK:
+does a token whose tag matches the carried value sit in the text, and at
+the address the identity stream names — corroboration as evidence the
+loop consumes, per slot, per value, never a supervised diagnostic (the
+Goodhart fence), never pass/fail (the chassis ruling). Timing: NL writes
+on breath b, math writes back on b+1 (the drop-off and the pickup at
+separate curbs, the clock the timing). BAR: the wild DIGITS field (the
+largest failure class, 5x args) paired vs the register alone, z >= 2;
+the criticality meter's wild slope beside. PERF (Bryce's map-reduce
+note): a live consult per breath is a host round trip (the wheel's wall,
+0.6 s/row); the feasible form is ONE consult per row per step at the
+mid-loop breath, the rows' solver calls batched as a map (the facts pool)
+and reduced into one fixed device buffer before the next breath's kernel
+— the JIT stays captured because the consult lands in a buffer the graph
+already reads (the certificate pass's idiom, live instead of epoch-stale).
+THE LONG-TERM BRAINSTORM (the note of the summer, re-read against
+tonight's state): message passing between the loops never worked as dense
+layers because a message needs an ADDRESS; the register is the address
+book (who, which role, and next, what value); the three things — language
+(the phasor codebook), channel (the register), timing (breath parity on
+the T6 clock). The sequence: the arm; the addressing gate; the value
+stream; then the NL-side pickup as a road (a corroborated value pulls the
+given channel's addressing to its token). Out until they earn a road: the
+atlas and dynamic masking (Bryce's gut says both are key long-term; the
+form they take, registered here: the ATLAS as the register's class-
+conditioned prior — Welford centroids of the register vectors per WL
+class in the bus language, a dual projection (waist -> class, register ->
+class) whose disagreement is the mouth's second reading; DYNAMIC MASKING
+as the register's own product — the slot-to-slot attention mask derived
+from identity and role agreement between registers, i.e. the mask the
+mask head tried to learn from state, read off the bus instead, a DSL over
+phasor predicates ("same identity", "earlier role", "consumes") when the
+predicates exist). Numbers: none claimed.
