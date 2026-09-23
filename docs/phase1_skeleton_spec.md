@@ -43633,3 +43633,63 @@ register+addressing must run with nonzero read-weight grad norms; then the
 warm gate re-runs with the normalised register (the bar: post vs post,
 DERIVED-ARG >= 2 SE, GIVEN-ONLY holds), the addressing road gated after
 it. Numbers quote the gate log, busreg_gate_postvspost.txt and the dumps.
+
+**2026-09-22 17:50 — THE BUS REGISTER's SECOND GATE (every vector a
+direction) and ITS WILD READ: the pinned cell bar is MISSED on both
+fixtures; on held-out rows the register moves the SLOT +0.018 (z 2.5) and
+the args field +0.024 — a mechanism signal, not a claim; the arm needs the
+word.** THE RE-RUN (pc-busreggate3, `.cache/warm_busreg_gate3_slice1024.sh`;
+commit 80179fc8: unit-normalised role key/query and identities, cosine
+reads; gate CPU: unset 5.2995/0.0279 bit-identical, role8 unchanged,
+busreg 6.3147/1.1564 with W_regq 0.056 / W_idq 0.132 from the args loss,
+busreg+addr 6.5752/1.2499 runs). THE KNOB CENSUS FIRST THIS TIME (the warm
+body, the register at birth): bilinear args logits 19.5 (sd 22.8); the
+role read 0.55 (sd across candidates 0.07), the identity read 1.55-1.67
+(sd 0.13-0.16); the term x gain 2.3 — commensurate, a tenth of the
+bilinear (was half); the identity read's small spread across candidates
+at birth IS the addressing blur (the channels pool whole-clause tags).
+THE SLICE (valid2, trained rows): pre_treat 0.6060 vs PMS8_241 0.6521 —
+BIRTH COST -0.046 (was -0.19); post_treat 0.7588 vs post_ctrl 0.7244
+(+0.034; the control reproduces its first run to the digit, 0.7244);
+in the loss on the slice W_regq 0.016 / W_idq 0.036. POST vs POST, the
+pinned bar: DERIVED-ARG +0.010 (z +0.61), GIVEN-ONLY +0.015 (z +1.03),
+GIVEN-RELCOMP -0.004, DERIVED-COMP -0.006, SAME-NOUN(inh) +0.010,
+DIFFERENT-NOUN(inh) -0.014 (z -0.91), ALL ARGS +0.007 (z +0.73): THE ARM
+DOES NOT FIRE on the slice. The row census on the slice repeats the first
+gate's shape, larger: rows fully right 313 vs 265 (40.4% vs 34.2%), DIGITS
+wrong 705 vs 817, RES 172 vs 250, args 513 vs 516 — on trained rows the
+register is a VALUE-BINDING organ. THE METHODOLOGICAL POINT, learned
+twice: the gate's rows are TRAINED rows — the control reaches 0.75 on the
+derived-argument cell there against 0.59 on wild — so the bilinear has
+memorised them and a pointer road has nothing to add on them; the role
+gate had the same shape (its slice cell z 2.40, its wild cell +0.010).
+A resolution gate for a POINTER organ reads its cells on HELD-OUT rows.
+THE WILD READ (pc-busreg3wild, `.cache/busreg3_wild_dumps.sh`: the two
+post checkpoints dumped on wildhold; reads on banked artifacts): MASKED
+treat 0.3364 vs ctrl 0.3184, +0.0180, paired SE 0.0072, z 2.50; OPEN
+0.3028 vs 0.2862, +0.0166, z 2.38; fields (open): args 0.429 vs 0.405
+(+0.024), dig 0.398 vs 0.382, pres 0.920 vs 0.902, ftype 0.832 vs 0.843,
+res 0.794 vs 0.801. Both arms sit below PMS8_241 (0.3476 / 0.3198): 1,500
+slice-only steps drift the body, equally; the comparison is clean. THE
+WILD CELLS, post vs post (n 1277 classified instances): DERIVED-ARG
++0.021 (z +1.27), GIVEN-ONLY +0.028 (z +2.08), GIVEN-RELCOMP -0.012,
+DERIVED-COMP -0.016, SAME-NOUN(inh) +0.008, DIFFERENT-NOUN(inh) +0.017,
+ALL +0.010 (z +1.22): the pinned bar (DERIVED-ARG >= 2 SE) MISSED; no cell
+falls beyond noise. Rows: 3 vs 2 of 311 (both arms' row composition
+destroyed by slice-only training — uninformative); args first-breaks 89
+vs 110, presence 165 vs 201. READING: (1) the register's pointer-cell
+claim is NOT resolved by a 1,500-step warm gate on either fixture — the
+derived-argument cell moves +0.02 on wild at 1.3 SE (n 473 is the limit,
+not the organ); (2) the register moves the held-out SLOT at z 2.5 in
+1,500 warm steps with the args field leading (+0.024) and digits beside
+— the first organ since the surface pivot to move a held-out read inside
+a warm gate; this bar was NOT pinned in advance, so it is exploratory
+evidence, banked as such; (3) the pre-pinned claim bar lives in the arm:
+PMS8's recipe + ALG_BUSREG=2.0 from scratch, 48k, seed 241, vs PMS8_241
+(masked wild +0.020 paired, z >= 2; the derived-argument cell and the
+row count beside; mint watched) — ~2.3 h, needing the word. THE
+ADDRESSING ROAD (ALG_BUSREG_ADDR) is built and bit-identical unset; its
+own warm gate (1,500 steps from PMS8_241, register + addressing vs the
+register alone, read on wild) is registered behind the arm. Numbers quote
+the gate logs, busreg3_wild_dumps.log and the dumps; the wild slot reads
+enter the table on the next ingest.
