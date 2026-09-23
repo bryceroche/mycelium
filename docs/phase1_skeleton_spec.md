@@ -43954,3 +43954,46 @@ regime); from scratch null with a cost; faded in from scratch (pc-pms9r,
 running, ~2.5 h) pending; in continuation null; the addressing road
 null; the value stream's two doors null. Numbers asserted (ingest at
 7921d8a9).
+
+**2026-09-23 15:32 — THE FADE-IN ARM: A CLEAN NULL; THE REGISTER FAMILY
+CLOSES — built, gated, in the loss, and unread in every regime; the
+sealed arm registered.** PMS9r_241 (pc-pms9r, `.cache/pms9r_chain.sh`:
+PMS8's recipe + the register faded in over the first 8k steps, from
+scratch, 48k): MASKED wild 0.3462 vs PMS8_241 0.3476 (-0.0015, paired z
+0.19); OPEN 0.3223 vs 0.3198 (+0.0025, z 0.27); matched 0.3549 vs 0.3564;
+ROWS 12 masked / 10 open vs 14 / 13; MINT 0.6388 vs 0.6510 (-1.2);
+fields: args 0.446 vs 0.449, dig 0.412 vs 0.415. Vs the UN-FADED scratch
+arm PMS9_241: masked +0.0078 (z ~1), mint +5.6, args +0.015 — THE FADE
+REMOVES THE INTERFERENCE (the override worked as a schedule: nothing was
+voted down because nothing entered until the channels had formed) and
+adds nothing after it: the register at full scale for 40k steps, present
+in every rung's args logits, unread. THE CELLS vs the claim body (post vs
+post, wild): ALL -0.002 (z -0.16), DERIVED-ARG +0.004, GIVEN-ONLY -0.016,
+DERIVED-COMP +0.024 (z 1.54): THE ARM DOES NOT FIRE. THE FAMILY's BOOK,
+closed at six reads: warm on the slice +0.018 (z 2.5; one seed, one
+regime, not reproduced); from scratch null with a cost (-0.009, mint -7);
+faded in from scratch clean null; in continuation null (+0.0005); the
+addressing road null; the value stream's two doors null with a cost. THE
+READING (the mandatory-road law's and Opus's, converging): the loss reads
+a new part only when it offers what no easier path can, and on every
+training row the bilinear pointer already carries the args — the register
+is a language and a channel without a reader. What was built stands
+(bit-identical unset; the ports, the codebook with role, identity and
+value, the compare tools, the censuses) and what was learned is banked as
+rules. REGISTERED (needing the word) — ONE ARM, not three: THE SEALED
+VALUE ARM: (a) the value stream's second form, trained on the body's own
+LIVE facts (the consult's FACTS and MASKS refreshed from the current
+checkpoint every 8k steps — the epoch-stale form that keeps the JIT; the
+first alternation during training), never gold; (b) THE DERIVED-CANDIDATE
+SEAL: the bilinear pointer's logits severed on relation-slot candidates
+(the cell where the bilinear reads a state with no token anchor and the
+register's propagated identity and solver value are the only
+information), givens left to the bilinear — the residual-seal law applied
+to the one cell the decomposition named, with the same predicted-ftype
+seal at training and read (detached); (c) the slot->variable map
+predicted at training too (train/read consistency: teacher-force only
+where the teacher matches what the read is handed). Warm on the claim
+body at a gentle LR (1e-5, the regime finding), the cont-control beside.
+BARS: the wild DERIVED-ARG cell paired (the seal's), the wild digits
+field (the value's), masked wild paired as the cost line. Numbers
+asserted on ingest.

@@ -34,14 +34,15 @@ The reads table: `.venv/bin/python3 scripts/reads.py table wildhold` (assert-on-
    PMS4_242 z 2.42, +0.0258 vs the lineage twin z 2.81; open 0.3276 z 2.65/2.98; rows 13/9; mint flat); the
    pair: +0.018 vs the chassis (combined z 2.97), +0.022 vs the lineage (z 3.35). The args FIELD does not
    carry it (0.429 vs 0.453) — the gain is composition (refusals 96 vs 126). Ledger 09-22 15:2x.
-2. THE REGISTER FAMILY (ledger 09-22, seven entries): the register warm +0.018 (z 2.5) on the held-out slot;
-   the register from scratch NULL WITH A COST (PMS9_241: masked -0.009 vs PMS8_241, mint -7) — a WARM organ;
-   the addressing road NULL; THE VALUE STREAM's two doors NULL WITH A COST (VR masked -0.010; VRA digits flat)
-   — the facts-coverage mismatch registered (census on wild first). Branch value-stream (worktree
-   /home/bryce/mycelium-wt) UNMERGED: built, gated bit-identical, dead unless set. CARD IDLE.
-   09-23 11:15 WORD GIVEN: pc-cont (PMS8c_241 vs CTRLc_241, +0.020 masked paired; + the facts census on wild) then
-   pc-pms9r (the fade-in scratch arm, ALG_BUSREG_RAMP=8000, vs PMS8_241 and PMS9_241) — RUNNING; read cont_chain.log
-   and pms9r_chain.log. The order of arrival: value passing (after the census) -> atlas -> mask.
+2. THE REGISTER FAMILY CLOSED (09-23 15:31; ledger): six reads, all null on wild — warm on the slice +0.018 once
+   (not reproduced); from scratch -0.009 (mint -7); faded in (ALG_BUSREG_RAMP) clean null; continuation +0.0005;
+   addressing null; value stream's two doors null (facts census: 3.4 known/row on wild vs 11.1 gold). The register
+   is a language and a channel WITHOUT A READER (the loss reads a part only when no easier path carries the loss).
+   REGIME: continuing a converged body at LR 1e-4 costs 0.015 (gentle = 1e-5). REGISTERED (word): THE SEALED
+   VALUE ARM — live facts refreshed every 8k (the first alternation in training) + the derived-candidate seal on
+   the bilinear pointer + the predicted map at training; warm on PMS8_241 at 1e-5 with the cont-control; bars: the
+   wild DERIVED-ARG cell paired, the wild digits field, masked wild as the cost. Branch value-stream unmerged.
+   CARD IDLE.
 3. DONE 09-22 12:50 (scripts/mixed_bucket_census.py -> .cache/mixed_bucket_census.txt): the
    inherited key dissolves the mixed bucket (89% SAME-NOUN); the wall is ~90% same-quantity
    selection, 55-57% of it pointing at DERIVED arguments (k a relation; args-correct 0.58-0.62)
