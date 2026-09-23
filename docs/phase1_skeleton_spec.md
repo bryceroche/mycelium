@@ -43848,3 +43848,39 @@ restarts jostle), the bar +0.020 masked paired between the two, the twin
 on 242 if it clears. A gain ramp from zero at scratch is the other form
 and it is a gain (the mandatory-road law's objection stands). Numbers
 asserted on ingest.
+
+**2026-09-22 22:29 — THE VALUE STREAM's WARM GATE: BOTH DOORS NULL WITH A
+COST on wild; the coverage mismatch named.** pc-valreggate (from the
+worktree; VR = the value pointer read, VRA = VR + the text-side presence
+map on the given channel; 1,500 warm steps from PMS8_241 on the slice;
+gold facts at training, 11.1 known variables per row under KEEP 0.7; the
+live pass-1 facts at read), wild post vs post against the register alone
+(busreg3_treat: masked 0.3364 / open 0.3028 / dig 0.398 / args 0.429 / pres
+0.920). VR: masked 0.3262 (-0.0102, paired SE 0.0078, z 1.31 AGAINST), open
+0.2974 (-0.005), args 0.402 (-0.027), dig 0.399 (flat); mint-side val proxy
+0.5005 vs 0.5810 (-8); cells: ALL -0.002, GIVEN-ONLY -0.025 (z -2.01),
+GIVEN-RELCOMP +0.039 (z +2.79), DERIVED-ARG -0.030 — mass REDISTRIBUTED,
+nothing resolved; rows 6 masked. VRA: masked 0.3247 (-0.0117, z 1.49
+against), open 0.2950 (-0.008), DIG 0.400 vs 0.398 — THE DIGITS BAR
+(+0.030) MISSED FLAT; pres 0.941 (+0.021: the map acted on the given
+slots), ftype 0.822 (-0.010), args 0.417 (-0.012); mint-side proxy 0.5521
+(level with the control); cells: ALL +0.002, DERIVED-ARG -0.023,
+GIVEN-RELCOMP +0.027 (z 1.99); rows 5. THE VERDICT: neither door fires;
+the value read costs the pointer (-0.010 masked, -0.027 args) and the
+presence map does not move the given's value. READING (registered, not
+claimed): the stream's mechanism at read depends on the pass-1 consult's
+forced singletons, which on wild are SPARSE (facts need presence, ftype
+and res all above 0.9 and a consistent partial graph; 30% of wild rows
+refuse outright) while at training the gold facts are DENSE (11 per row)
+— a coverage mismatch the keep-dropout does not bridge: the road is
+trained on a signal the read rarely has. The zero-GPU follow-up: a facts
+census on wild (known variables per row from the live pass-1 facts on the
+register-alone body) before any second form; the second form, if the
+census says sparse, trains on the LIVE facts of the body's own pass-1
+(the maskprep pass's FACTS array, refreshed per epoch — the epoch-stale
+form the certificate pass used) instead of gold. The value stream stays
+built on the branch, dead unless set. THE DAY'S SCORE ON THE REGISTER
+FAMILY: the register warm +0.018 (z 2.5) on the held-out slot; the
+register from scratch null with a cost; the addressing road null; the
+value stream's two doors null with a cost. The one positive is the warm
+register, and the gentle-continuation arm is the registered read of it.
