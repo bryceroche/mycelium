@@ -43771,3 +43771,48 @@ was not the wall, or not at this scale; the scale caveat is registered
 (a magnitude census of the addressing term against the channel logits
 before any second try), the road stays built and dead unless set. The
 card passed to the register arm (pc-pms9).
+
+**2026-09-22 19:48 — THE VALUE STREAM BUILT AND GATED (branch
+value-stream, worktree /home/bryce/mycelium-wt, commit d72ed9c6; the main
+tree's head untouched under the running arm); its warm gate queued behind
+the arm.** THE ORGAN: the register's third bound stream — a variable's
+known value in the facts buffer's own format (known flag + three digit
+thirds; at read the solver's forced singletons from the pass-1 consult
+the chassis already carries, at training the row's gold values under a
+per-variable keep-dropout ALG_VALREG_KEEP=0.7 — gold at training,
+predicted at read) becomes its numeral's IDENTITY TAG (0..999 are single
+bare tokens in Llama-3's vocabulary; the head's tokenizer prepends BOS,
+stripped — the mint caught it), carried to the slots through the slot->
+variable map (gold res_map at training; the rung's own predicted map at
+read, detached) and bound under theta_val (`.cache/bindbus_codes512riv.npz`,
+seed 0x1d60, old keys byte-identical). TWO READS, TWO DOORS, dead unless
+set: ALG_VALREG=<gain> — the pointer read of the value tag (the arg
+channels' re-mention tags against the candidate's unbound value tag,
+W_valq identity-init; joins the register's args term); ALG_VALREG_ADDR=
+<gain> — THE TEXT-SIDE PRESENCE MAP (the slot's value tag . every token's
+tag, cosine 1.0 at the numeral) on the GIVEN channel's logits from breath
+1, detached, before every consumer (the bank bias, the span losses, the
+register) — a corroborated value pulls the value-mention addressing to
+its numeral: the digits wall's road. No facts (the open pass-1, by
+design) = zero tags = the stream silent, stated. Port valfact threaded
+through the trainer (VALFACT from `solution`, b_valfact, the keep-dropout
+feed, quick-val's live facts, both censuses), loop_val and chain_acc (the
+live pass-1 facts in the masked pass), jit_read. THE GATE (CPU, tiny64,
+from the worktree): unset 5.2995 / 0.0279 BIT-IDENTICAL; busreg 6.3147 /
+1.1564 UNCHANGED (the register's numerics untouched); valreg 6.3524 /
+1.1737 and valreg+addr 6.4374 / 1.1995 run; in the loss: W_regq 0.073 /
+W_idq 0.169 / W_valq 0.169 from the args loss alone. AN INSTRUMENT NOTE:
+the identity and value read weights' grad norms coincide to five digits
+because a per-plane complex scalar's gradient norm is invariant to the
+unbind phasor (a common per-plane rotation of the same summed vector) —
+the probe proves the road is in the loss and cannot tell the streams
+apart; stream attribution needs the census taps (busreg(id) / busreg(val)),
+not the grad norm. THE WARM GATE (pc-valreggate, `.cache/valreg_gate_wild.sh`,
+runs FROM THE WORKTREE, waits for PMS9's chain): VR (the pointer read) and
+VRA (+ the presence map), each 1,500 warm steps from PMS8_241 on the
+slice, read on WILD post vs post against the register-alone checkpoint
+(busreg3_treat). BARS (pinned): VRA — the wild DIGITS field (open, n 1009)
+>= +0.030 vs the register alone AND masked wild paired >= 0; VR — masked
+wild paired >= +0.010 (z >= 1.5); the DERIVED-ARG / GIVEN-ONLY cells non-
+negative for both. The main tree merges the branch only after this gate
+reads, between chains, with the CPU gate re-run on the merge.
