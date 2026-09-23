@@ -43997,3 +43997,45 @@ body at a gentle LR (1e-5, the regime finding), the cont-control beside.
 BARS: the wild DERIVED-ARG cell paired (the seal's), the wild digits
 field (the value's), masked wild paired as the cost line. Numbers
 asserted on ingest.
+
+**2026-09-23 15:50 — WORD GIVEN FOR THE WHOLE QUEUE: the value-stream branch
+merged; THE SEALED VALUE ARM built, gated and FIRED.** THE MERGE (commit
+d4c578f9): the fade-in and the value stream side by side in one head (both
+ports; the value read joins the register's term before the ramp scales it);
+the valreg config reproduces the worktree's numbers to the digit (6.3524 /
+1.1737) — the merge exact. THE DOORS (commit f3f4e663), each dead unless
+set: ALG_VALREG_LIVE=1 — the value stream trains on the consult's OWN
+FACTS (the mask-prep pass's array, refreshed per SEGMENT from the current
+checkpoint: the RESUME + STEP_OFFSET mechanism, whose mask-prep
+fingerprint carries the checkpoint, recomputes the facts at every
+segment boundary — the first alternation during training, epoch-stale,
+the JIT intact, no head edit for the refresh), no keep-dropout; ALG_BUSREG_
+SEAL=<s> — THE DERIVED-CANDIDATE SEAL: the bilinear pointer's logits
+multiplied by (1 - s x relvar), relvar the mass of relation slots
+introducing each variable from the rung's own predicted ftype and map
+(detached, per rung, the same at training and read), applied BEFORE any
+surface or register term joins, so on derived candidates the register's
+term is the only road left and givens stay the bilinear's — the residual-
+seal law on the one cell the decomposition named; ALG_BUSREG_PREDMAP=1 —
+the register's and the value tag's slot->variable map predicted at
+training too (teacher-force only where the teacher matches what the read
+is handed); the role pointer's own gold scatter untouched. THE GATE (CPU,
+tiny64, the merged head): unset 5.2995 / 0.0279 BIT-IDENTICAL; busreg
+6.3147 / 1.1564 unchanged; valreg 6.3524 / 1.1737; sealed 12.7504 / 2.2363
+runs (the seal removes the bilinear on derived candidates at random init,
+so the step-0 args loss doubles — the seal is doing what it says); live
+facts on the tiny fixture 4.84 known per row (rows with none 12.5%); in
+the loss: W_regq 0.092 / W_idq 0.214 / W_valq 0.214 from the args loss
+alone (vs 0.073 / 0.169 unsealed: the seal makes the register carry
+more). FIRED: pc-sealed (`.cache/sealed_chain.sh`): SV_241 = PMS8_241 +
+two segments (0..8k warm, 8k..12k RESUME'd with the facts refreshed from
+the 8k checkpoint) at LR 1e-5 with the register + the value pointer read +
+the presence map + LIVE facts + the seal (s=1.0) + PREDMAP; CTRLs_241 = the
+same two segments at 1e-5 with no organ (the cont-control). BARS
+(pinned): the wild DERIVED-ARG cell paired SV vs CTRLs >= 2 SE (the
+seal's cell); the wild DIGITS field (open) >= +0.030 vs CTRLs (the
+value's cell); masked wild paired SV vs CTRLs >= -0.010 (the cost line);
+both vs PMS8_241, rows and mint beside. ~1.5 h. What this arm asks: does
+a slot decide because of what its register carries, once the easier
+path is closed on the one cell where the register holds what the
+bilinear cannot — the pulse the dream needs, or the family's last word.
