@@ -34,14 +34,13 @@ The reads table: `.venv/bin/python3 scripts/reads.py table wildhold` (assert-on-
    PMS4_242 z 2.42, +0.0258 vs the lineage twin z 2.81; open 0.3276 z 2.65/2.98; rows 13/9; mint flat); the
    pair: +0.018 vs the chassis (combined z 2.97), +0.022 vs the lineage (z 3.35). The args FIELD does not
    carry it (0.429 vs 0.453) — the gain is composition (refusals 96 vs 126). Ledger 09-22 15:2x.
-2. WORD GIVEN FOR THE WHOLE QUEUE (09-22 19:15). RUNNING: pc-addrgate (the addressing gate on wild, ~30 min;
-   addr_gate_wild.sh) then pc-pms9 (THE REGISTER ARM: PMS9_241 = PMS8 recipe + ALG_BUSREG=2.0 from scratch,
-   48k, vs PMS8_241; bar +0.020 masked paired z 2; pms9_chain.sh, ~2.5 h). BUILDING in the worktree
-   /home/bryce/mycelium-wt (branch value-stream; .cache symlinked): THE VALUE STREAM (the solver's implied
-   values as a third bound stream on the register, from the mid-loop consult; bar = the wild digits field).
-   The bus register itself: ledger 09-22 (two warm gates; the held-out slot +0.018 z 2.5; the cell bar missed).
-   RULE: never edit the head under a running chain (its end-of-chain reads import it) — build in the worktree,
-   merge + CPU-gate between chains.
+2. THE BUS REGISTER (ledger 09-22, four entries): built, bit-identical unset, in the loss; warm gate: the
+   held-out slot +0.018 (z 2.50) with args +0.024; THE ARM FROM SCRATCH (PMS9_241) NULL WITH A COST (masked
+   -0.009 vs PMS8_241, mint -7, cells slightly down) — a WARM organ. The addressing road NULL. REGISTERED (word):
+   gentle continuation PMS8_241 + 12k on the full diet with vs without the register (+0.020 masked paired).
+   THE VALUE STREAM built on branch value-stream (worktree /home/bryce/mycelium-wt; merge between chains + CPU
+   gate); pc-valreggate (VR / VRA warm gates on wild vs the register alone; bars: VRA digits +0.030, VR masked
+   +0.010) RUNNING from the worktree — read valreg_gate_wild.log.
 3. DONE 09-22 12:50 (scripts/mixed_bucket_census.py -> .cache/mixed_bucket_census.txt): the
    inherited key dissolves the mixed bucket (89% SAME-NOUN); the wall is ~90% same-quantity
    selection, 55-57% of it pointing at DERIVED arguments (k a relation; args-correct 0.58-0.62)
