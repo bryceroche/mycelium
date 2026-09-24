@@ -44387,3 +44387,37 @@ in projection form. The census's remaining slices (nest 8:16, both 16:24)
 import the group-total head (each run a fresh process; stated); nest 0:8
 re-reads under the new form with per-parameter-group cosines (pc-gradcos2).
 The bar: the projected form at or above flat.
+
+**2026-09-24 14:45 — THE GROUP-TOTAL FORM: a NaN gradient found and fixed
+(the sigmoid-backward overflow), gated; the census's second slice says the
+projection form does not restore agreement either.** THE FAULT: the group
+term's first form called sigmoid on raw args logits; on the warm body
+those reach |130|, and tinygrad's sigmoid backward goes through exp(-x),
+which overflows below x = -89 and yields inf/inf — 74 parameters upstream
+of the args head carried non-finite gradients while the loss VALUE stayed
+finite (34.23 at level 1 on balV242, rows 0:2), so the JIT'd step's Adam
+update poisoned the params and the gate's step-0 loss read NaN. The
+localization: per head and per level, only the args head at levels 1-2
+(5 / 12 non-finite entries), the forward values all finite. THE FIX
+(commit c3a09f36): log(1 - p) = -softplus(x) = -(max(x, 0) + log(1 +
+exp(-|x|))) — the BCE's own stable form; 0 non-finite gradients, the same
+loss value to the digit. THE GATE (CPU, tiny64): fence OK; unset 5.2995 /
+0.0279 bit-identical; role8 6.5535 / 1.1061; nest333 = role8 to the
+digit; nest 1,1,2,2,3,3,3 23.5735 / 8.8161 runs (the coarse rungs' scale at
+random init is large — a weighting question, registered, not a gate
+question). THE CENSUS, rows 8:16 (that nested run imported the projection
+head — the sigmoid form, finite on those rows): FLAT 0.7364 (adjacent
+0.856; rung 0 vs 6 0.404; min 0.404); NESTED 0.4180 (adjacent 0.732; 0.098;
+min 0.083). READING: the projection form lowers cross-rung agreement as
+the spread form did, and the reason is now plain — the flat ladder's
+rungs share one LOSS FUNCTION, so their gradient directions agree
+trivially (0.64-0.74) and the cosine measures "same loss?" rather than
+"conflict"; a coarse rung with a different loss has a different gradient
+direction whether or not it conflicts, and no pair is negative on either
+ladder (min 0.08). The mechanism bar as pinned (nested >= flat on mean
+cosine) is the wrong instrument for the question; it is MISSED as
+pinned and the nested ladder earns no wild arm on it. THE RULE (Opus's
+check 3, confirmed): a tug-of-war is a NEGATIVE cosine; the instrument
+for "does nesting help" is a wild read, not a gradient census on a body
+trained flat. The remaining slices (16:24, and 0:8 under the stable head
+with per-parameter-group cosines) are banked when they land.
