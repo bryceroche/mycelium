@@ -44288,3 +44288,31 @@ chain): (1) ALG_ALT3_POOL=0 — the consult in-process for small batches
 (alt2_fact_buf serial: the pool's own bytes, no IPC); (2) a larger batch
 per step (B=16) so the fixed hop amortises. The arm: 12k steps ~75 min,
 reads by ~09:00.
+
+**2026-09-24 09:12 — THE THREE-CONSULT ARM: NULL WITH A SMALL COST on wild,
+a small gain on mint, at 2.2x the step — the alternation skeleton stands,
+its first road (the consults through W_fact) does not move the values'
+cell.** ALT3_241 (pc-alt3; PMS8_241 + 12k at 1e-5 with ALG_ALT3=1, 0.391
+s/step steady vs 0.171) vs CTRLs_241 (n 2051 slots): MASKED 0.3418 vs
+0.3481 (-0.0063 — the cost line >= -0.005 MISSED by a hair; discordant 63
+/ ~50); OPEN 0.3194 vs 0.3242 (-0.005); DIGITS 0.417 vs 0.418 open, 0.464
+vs 0.468 masked — FLAT, the +0.020 bar MISSED; args 0.435 vs 0.453
+(-0.018); ROWS 12 / 10 vs 15 / 12; MINT 0.6606 vs 0.6554 (+0.5; args 0.665
+vs 0.658). THE CELLS: ALL ARGS -0.012 (z -1.96), DERIVED-ARG -0.021 (z
+-1.77), DIFFERENT-NOUN 0.000. VERDICT: the arm does not fire. READING:
+(1) the skeleton is real — the solver runs three times per problem at
+training and at read, the same three curbs, the JIT captured, the fence
+green; (2) on wild the consults carry almost nothing because their input
+is the head's own decode: 3.4 known values per row with the head's digit
+errors in them (the 09-23 facts census), so the facts road learns to
+lean on facts that are mostly absent or wrong on held-out rows, and on
+mint, where the facts are dense and right, the same road gains +0.5 —
+the consult is only as good as the parse it consults on, which is the
+row's own wall stated from the solver's side; (3) the road the facts
+re-enter through (W_fact, the ALT2 injection into the variable states,
+gain ajar 0.02) is an optional pickup, not a mandatory key — the spec's
+stage 3 (the updated-math key on the bank read) is the mandatory form
+and it is untested. THE PERF NUMBER stands as the map-reduce's baseline:
+2.2x, the host shuffle not the solver; ALG_ALT3_POOL=0 (in-process
+consult) and B=16 registered as the first two gains, measured next.
+Numbers asserted (ingest in the chain).

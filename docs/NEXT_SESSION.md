@@ -33,10 +33,13 @@ The reads table: `.venv/bin/python3 scripts/reads.py table wildhold` (assert-on-
 0. THE ALTERNATION SPEC (docs/alternation_spec.md, registered 09-24): the lifecycle (setup + six alternating breaths),
    five keys never summed, the predicate DSL mask soft->hard, the consistency rule, the annotation stream beside, the
    perceiver last; build order + a wild gate per stage in its §7. Stage 1 (consistency) is the first build, on the word.
-0b. 09-24 07:35 WORD GIVEN: THE THREE CONSULTS (ALG_ALT3; commit ad2671b8) — the solver after breaths 2, 4, 6 at train
-   AND read (iterative prefill: three passes per step, each a captured graph; the consult a map-reduce in the facts
-   pool) + THE COMPLEX-TENSOR FENCE (scripts/complex_fence.py, every gate). FIRED as pc-alt3 (ALT3_241 vs CTRLs_241;
-   bars: masked >= -0.005, digits +0.020, rows beside, the step cost quoted; alt3_chain.log). Every head edit: the fence.
+0b. THE THREE CONSULTS BUILT (ALG_ALT3; ad2671b8): the solver after breaths 2/4/6 at train AND read (iterative prefill,
+   3 captured passes per step; the consult a map-reduce in the facts pool) + THE COMPLEX-TENSOR FENCE (every gate). THE
+   ARM (09-24 09:11): NULL with a small cost on wild (masked -0.006 vs CTRLs_241; digits FLAT; rows 12/10 vs 15/12; args
+   cells -0.012 z 2), mint +0.5, at 2.2x the step (0.391 vs 0.171 s/step: the host shuffle). READING: the consult is
+   only as good as the parse it consults on (3.4 known/row on wild, errors in); W_fact is an optional pickup — stage 3
+   (the updated-math key on the bank read) is the mandatory form, untested. PERF gains registered: ALG_ALT3_POOL=0
+   (in-process consult), B=16. CARD IDLE.
 1. DONE 09-22 15:20 — THE ROLE SIGNATURE IS A CLAIM: PMS8_242 masked 0.3525 (the slot record; +0.0205 vs
    PMS4_242 z 2.42, +0.0258 vs the lineage twin z 2.81; open 0.3276 z 2.65/2.98; rows 13/9; mint flat); the
    pair: +0.018 vs the chassis (combined z 2.97), +0.022 vs the lineage (z 3.35). The args FIELD does not
