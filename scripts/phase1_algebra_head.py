@@ -6113,8 +6113,12 @@ def _loss_single(o, g, blur=0.0, sw=None, level=3):
         # to a multi-label head; multigrid's: a coarse target is a
         # projection, never a different question). Slots without args are
         # zeroed by am_w below (the clip keeps the pre-mask value finite).
-        _pk = o["args"].sigmoid()
-        _log_none = ((1.0 - _pk + 1e-7).log() * _args_t).sum(-1)                 # log prod_{k in G} (1 - p_k)
+        # STABLE: log(1 - p_k) = -softplus(x_k) = -(max(x, 0) + log(1 + exp(-|x|))) — the BCE's own form; a
+        # sigmoid on raw logits is NOT safe here (tinygrad's sigmoid backward goes through exp(-x), which
+        # overflows for x < -89 and yields inf/inf: the warm body's args logits reach |130|; found 09-24).
+        _lg_a = o["args"]
+        _log1mp = -(_lg_a.maximum(0) + (1 + (-_lg_a.abs()).exp()).log())         # log(1 - p_k), exact and finite
+        _log_none = (_log1mp * _args_t).sum(-1)                                   # log prod_{k in G} (1 - p_k)
         _l_group = -((1.0 - _log_none.exp()).clip(1e-6, 1.0)).log()               # (B, L_FAC): at least one on
         _neg_m = 1.0 - _args_t
         _l_neg = (bce(o["args"], _args_t * 0.0, "args") * _neg_m).sum(-1) / (_neg_m.sum(-1) + 1e-6)   # outside the group: to 0
