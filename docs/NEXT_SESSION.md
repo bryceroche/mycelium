@@ -6,6 +6,14 @@ the last ~60 entries) -> the memory board (MEMORY.md CURRENT BOARD, current).
 The reads table: `.venv/bin/python3 scripts/reads.py table wildhold` (assert-on-read).
 
 ## STATE AT HANDOFF
+- RUNNING (2026-09-24 15:45): pc-gradcos2 (the clean 0:8 census pair, holds the lock), pc-unlock (UL_241,
+  the plane-unlock arm, queued), pc-clockreads (THE CLOCK-BAND READS, queued: three read-time severs on
+  PMS8_241 — clockturn / clockfield / clockband, from the WORKTREE head /home/bryce/mycelium-wt branch
+  clock-reads ce3f0a57 — paired vs the banked masked read, then scripts/clock_band_probe.py collect+probe;
+  bars pinned in .cache/clock_reads_chain.sh and the ledger 09-24 15:45). Logs: .cache/clock_reads_chain.log,
+  .cache/unlock_chain.log, .cache/grad_cos2_chain.log. MERGE clock-reads into gen-weights only AFTER the
+  unlock chain finishes (its segments import the main head). THE CORRECTION to carry: the 64 clocked planes
+  are a TURNED QUARTER of the state (turn + field + a bypass of the content waist), not a reservation.
 - Nothing running: no pc-* units, no agents, no monitors; tree clean at 11ea0c53 (pushed).
 - THE CHASSIS (certified neutral on two seeds, +4-6 mint): the 35%-mint from-scratch
   lineage's recipe (form_mix_pm35 / the stamped pm35a, random init, 48k, B=8, the numeral
