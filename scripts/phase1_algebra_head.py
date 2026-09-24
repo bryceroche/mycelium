@@ -604,7 +604,13 @@ PF_FORMS = int(os.environ.get("PF_FORMS", "3"))   # pointer/macro forms
 # organ severance for removal-cost reads. Unset = untouched forward.
 _SEVER_ORGANS = frozenset(("notebook", "garage", "s3", "s4", "mixer",
                            "fedtwin", "altv0", "ffn", "pforms",
-                           "s5", "nb2", "t1", "shelf"))   # the balanced generation (+ T1, the shelf readout, 2026-09-12)
+                           "s5", "nb2", "t1", "shelf",
+                           # THE CLOCK-BAND READS (2026-09-24, read-time severs on the polar band's
+                           # 64 clocked planes; each removes ONE of the three things the band does):
+                           "clockturn",    # the TURN: every wheel table identity (cos 1, sin 0) — breath time removed,
+                                           #   the channels kept (state increments, Q-side absolute, the canon frame)
+                           "clockfield",   # the FIELD: the E&B exchange along the mask lanes skipped
+                           "clockband"))   # the CHANNELS: the clock dims zeroed leaving each loop breath (no keep-norm)
 # THE SHELF READOUT (2026-09-12, the word): ALG_SHELF=1 reads the answer from
 # an attention over every breath's state (per slot, query = the final state,
 # + a learned per-breath logit bias) — the shallow-wide edge from the one
@@ -795,6 +801,8 @@ def _polar_tables():
                 continue                              # content: identity
             _dc[:, _pl] = np.cos(_dlt[:, _wi]); _ds[:, _pl] = np.sin(_dlt[:, _wi])
             _ac[:, _pl] = np.cos(_abs[:, _wi]); _as[:, _pl] = np.sin(_abs[:, _wi])
+        if "clockturn" in _SEVER:            # the clock-band read: no turn, the bands kept
+            _dc[:] = 1.0; _ds[:] = 0.0; _ac[:] = 1.0; _as[:] = 0.0
         _POLAR_TAB = (_dc, _ds, _ac, _as, _wof)
     return _POLAR_TAB
 
@@ -4850,7 +4858,7 @@ def breath_step(p, state, kb, ctx):
             from tinygrad import Tensor as _Tp, dtypes as _dp
             _pdc, _pds, _pac, _pas, _pwof = _polar_tables()
             _pol_u = _rot2(_pol_u, _ct(("pdc", kb), _pdc[kb - 1]), _ct(("pds", kb), _pds[kb - 1]))
-        if POLAR_EM:
+        if POLAR_EM and "clockfield" not in _SEVER:
             # (B) THE E&B COUPLING (apply_polar_sink.py, 2026-09-08).
             # AFTER the sextet's turn, BEFORE the content waist: one
             # discrete Maxwell-like exchange step on the CLOCK planes
@@ -5015,6 +5023,8 @@ def breath_step(p, state, kb, ctx):
                 _plv4 = _pcl4.reshape(-1, 1, 1)
                 _wg4 = _dep4 * _plv4 + _dep4.detach() * (1.0 - _plv4)
         _garage.append(_wg4)
+    if "clockband" in _SEVER and ALG_POLAR and 1 <= kb <= _RC_N_LOOP:
+        cur = cur * _polar_sink()[2].reshape(1, 1, -1)    # the clock dims carry nothing between breaths
     state["cur"] = cur; state["nb"] = _nb; state["nb_st"] = _nb_st
     state["rb_last"] = _rb_last
     state["rptr_last"] = _rptr_last; state["s4_last"] = _s4_last
