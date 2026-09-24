@@ -34,15 +34,16 @@ The reads table: `.venv/bin/python3 scripts/reads.py table wildhold` (assert-on-
    PMS4_242 z 2.42, +0.0258 vs the lineage twin z 2.81; open 0.3276 z 2.65/2.98; rows 13/9; mint flat); the
    pair: +0.018 vs the chassis (combined z 2.97), +0.022 vs the lineage (z 3.35). The args FIELD does not
    carry it (0.429 vs 0.453) — the gain is composition (refusals 96 vs 126). Ledger 09-22 15:2x.
-2. THE REGISTER FAMILY CLOSED (09-23 15:31; ledger): six reads, all null on wild — warm on the slice +0.018 once
-   (not reproduced); from scratch -0.009 (mint -7); faded in (ALG_BUSREG_RAMP) clean null; continuation +0.0005;
-   addressing null; value stream's two doors null (facts census: 3.4 known/row on wild vs 11.1 gold). The register
-   is a language and a channel WITHOUT A READER (the loss reads a part only when no easier path carries the loss).
-   REGIME: continuing a converged body at LR 1e-4 costs 0.015 (gentle = 1e-5). REGISTERED (word): THE SEALED
-   VALUE ARM — live facts refreshed every 8k (the first alternation in training) + the derived-candidate seal on
-   the bilinear pointer + the predicted map at training; warm on PMS8_241 at 1e-5 with the cont-control; bars: the
-   wild DERIVED-ARG cell paired, the wild digits field, masked wild as the cost. 09-23 15:50: MERGED + BUILT +
-   GATED + FIRED as pc-sealed (SV_241 vs CTRLs_241; sealed_chain.sh -> sealed_chain.log; ~1.5 h).
+2. THE REGISTER FAMILY's LAST WORD (09-23 18:05; ledger, nine entries over two days): seven reads, all null or
+   negative on wild — THE SEALED VALUE ARM (live facts refreshed per segment + the derived-candidate seal + the
+   predicted map, warm at 1e-5) a SIGNIFICANT NEGATIVE: masked -0.012 vs its control (z 2.6 against), the seal's own
+   cell -0.021, every pointer cell down, mint -12. Forced to carry, the register carries worse than the bilinear.
+   It stays in the head (ALG_BUSREG family, ALG_VALREG family, ALG_BUSREG_SEAL/PREDMAP/RAMP; codes 512riv; the
+   ports) bit-identical unset. THE FREE POSITIVE: CTRLs_241 = PMS8_241 + 12k at LR 1e-5 in two RESUME segments
+   (facts refreshed at 8k): masked 0.3481 (= the body), open 0.3242 (+0.004), mint 0.6554 (+0.004), ROWS 15/12 (the
+   record; noise ~3) — the regime finding both ways (1e-4 cost 0.015). REGISTERED (word): the seed-242 twin of the
+   gentle continuation as a rows read. CARD IDLE. The order of arrival (value -> atlas -> mask) needs a different
+   receiver than the register's pointer read; nothing on the bus has moved a held-out decision.
 3. DONE 09-22 12:50 (scripts/mixed_bucket_census.py -> .cache/mixed_bucket_census.txt): the
    inherited key dissolves the mixed bucket (89% SAME-NOUN); the wall is ~90% same-quantity
    selection, 55-57% of it pointing at DERIVED arguments (k a relation; args-correct 0.58-0.62)
