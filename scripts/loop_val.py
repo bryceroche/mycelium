@@ -330,11 +330,31 @@ def read(ckpt, data=None, p=None):
             _lvai = np.where(_rlv, _xlv, _lvai)
         _mha_t = (Tensor(_ATAB[_lvai], dtype=dtypes.float)
                   if _ATAB is not None else None)
+        _alt3 = int(os.environ.get("ALG_ALT3", "0")) != 0
+        f3_t = f5_t = None
+        if _alt3:
+            # THE THREE CONSULTS at read (2026-09-24): the same three curbs
+            # the trainer walks — a partial pass to breath 2, the solver's
+            # consult, a partial pass to breath 4 with those facts, the
+            # consult again, then the full pass with both. alt2_fact_buf
+            # serial here (8 rows; the pool's bytes by its own assertion).
+            from phase1_algebra_head import alt2_fact_buf as _afb3, K_VARS as _KV3
+            _ck3 = ("pres", "ftype", "op", "dig", "args", "res") + (("dup",) if "dup" in o0 else ())
+            _nv3 = np.array([vs[int(i)].get("n_vars", _KV3) for i in sl_p])
+            _ma3 = np.array([vs[int(i)].get("m", 0) for i in sl_p])
+            _mk3 = Tensor(mk, dtype=dtypes.float)
+            def _consult3(oo):
+                return Tensor(_afb3({k: oo[k].realize().numpy() for k in _ck3}, vse[sl_p].astype(np.int32), _nv3, _ma3), dtype=dtypes.float)
+            _oa3 = _rf(forward, p, ts, tk, se, keys=_ck3, slot_mask=_mk3, xcorr=xcorr_t, hud=hud_t, ident=ident_t, stop_after=2)
+            f3_t = _consult3(_oa3)
+            _ob3 = _rf(forward, p, ts, tk, se, keys=_ck3, slot_mask=_mk3, xcorr=xcorr_t, hud=hud_t, ident=ident_t, stop_after=4, facts3=f3_t)
+            f5_t = _consult3(_ob3)
         o = _rf(forward, p, ts, tk, se, keys=_jk_masked,
                 slot_mask=Tensor(mk, dtype=dtypes.float),
-                fact_buf=fact_t, mh_mass=mass_t, mh_atlas_traj=_mha_t,
+                fact_buf=(None if _alt3 else fact_t), mh_mass=mass_t, mh_atlas_traj=_mha_t,
                 xcorr=xcorr_t, hud=hud_t, ident=ident_t,
-                valfact=(fact_t if float(os.environ.get("ALG_VALREG", "0")) or float(os.environ.get("ALG_VALREG_ADDR", "0")) else None))   # THE VALUE STREAM: the live pass-1 facts
+                valfact=(fact_t if float(os.environ.get("ALG_VALREG", "0")) or float(os.environ.get("ALG_VALREG_ADDR", "0")) else None),   # THE VALUE STREAM: the live pass-1 facts
+                facts3=f3_t, facts5=f5_t)
         onp = {k: o[k].realize().numpy() for k in
                (("pres", "ftype", "op", "islit", "dig", "args", "res")
                 + (("dup",) if "h_dup" in p else ()))}

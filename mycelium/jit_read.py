@@ -243,10 +243,14 @@ _OPT_PORTS = ("slot_mask", "revoke", "tail", "drop", "anchor", "amask",
               "mh_atlas_traj", "xcorr", "res_map", "hud",
               "ident",   # THE BUS REGISTER's token-id port (2026-09-22)
               "busreg_ramp",   # THE FADE-IN's scalar (training only; readers never pass it)
-              "valfact")   # THE VALUE STREAM's facts port (2026-09-22)
+              "valfact",   # THE VALUE STREAM's facts port (2026-09-22)
+              "facts3", "facts5")   # THE THREE CONSULTS' facts ports (2026-09-24)
+# Non-tensor kwargs a reader may pass (python constants baked into the
+# captured graph, so they are part of the key): the partial pass's stop.
+_CONST_KW = ("stop_after",)
 
 
-def _make_slot(fwd, p, key, B, ts, tk, se, opts, keys):
+def _make_slot(fwd, p, key, B, ts, tk, se, opts, keys, consts=None):
     from tinygrad.engine.jit import TinyJit
     bufs = {"trunk": _alloc(ts, B), "tokmask": _alloc(tk, B),
             "sent": _alloc(se, B)}
@@ -258,7 +262,7 @@ def _make_slot(fwd, p, key, B, ts, tk, se, opts, keys):
     @TinyJit
     def _f():
         o = fwd(p, bufs["trunk"], bufs["tokmask"], bufs["sent"],
-                **{nm: bufs[nm] for nm in opt_names})
+                **{nm: bufs[nm] for nm in opt_names}, **(consts or {}))
         meta["avail"] = tuple(o.keys())
         flat = {}
         struct = []
@@ -316,7 +320,8 @@ def read_forward(fwd, p, trunk, tokmask, sent, keys=None, n_real=None,
         "outputs a call site consumes must be declared before the graph "
         "exists. (Eager mode ignores `keys`; that is the only difference.)")
     keys = tuple(keys)
-    opts = {k: v for k, v in kw.items() if v is not None}
+    consts = {k: v for k, v in kw.items() if k in _CONST_KW and v is not None}   # baked constants (part of the key)
+    opts = {k: v for k, v in kw.items() if v is not None and k not in _CONST_KW}
     bad = [k for k in opts if k not in _OPT_PORTS]
     assert not bad, (
         f"read_forward: unknown forward() port(s) {bad} — add them to "
@@ -339,6 +344,7 @@ def read_forward(fwd, p, trunk, tokmask, sent, keys=None, n_real=None,
            ("B", B),
            ("in", _spec(trunk), _spec(tokmask), _spec(sent)),
            ("opts", tuple((k, _spec(v)) for k, v in sorted(opts.items()))),
+           ("consts", tuple(sorted(consts.items()))),
            ("params", id(p)),
            ("env", _env_key(fwd)))
 
@@ -353,7 +359,7 @@ def read_forward(fwd, p, trunk, tokmask, sent, keys=None, n_real=None,
             f"batch). Refusing to capture: a graph per batch is slower "
             f"than eager and hides a real bug. Raise ALG_JIT_READ_MAX "
             f"only when the extra graphs are intended.")
-        slot = _make_slot(fwd, p, key, B, trunk, tokmask, sent, opts, keys)
+        slot = _make_slot(fwd, p, key, B, trunk, tokmask, sent, opts, keys, consts=consts)
         _SLOTS[key] = slot
         _STATS["captures"] += 1
         if _debug():

@@ -54,7 +54,16 @@ def main():
         mk = build_slot_masks(onp0, se.numpy()); _oa = {**onp0, **{k: o0[k].numpy() for k in ("pres", "ftype", "op", "dig") + (("dup",) if "dup" in o0 else ())}}
         _fb_t = Tensor(alt2_fact_buf(_oa, se.numpy(), nv, ma), dtype=dtypes.float)
         _valreg_on = bool(float(os.environ.get("ALG_VALREG", "0")) or float(os.environ.get("ALG_VALREG_ADDR", "0")))
-        o = forward(p, ts, tk, se, slot_mask=Tensor(mk, dtype=dtypes.float), fact_buf=_fb_t, hud=hud_t, ident=ident_t, valfact=(_fb_t if _valreg_on else None))   # THE VALUE STREAM: the live pass-1 facts
+        _alt3 = int(os.environ.get("ALG_ALT3", "0")) != 0
+        f3_t = f5_t = None
+        if _alt3:   # THE THREE CONSULTS at read (2026-09-24): the trainer's three curbs, eager here
+            _ck3 = ("pres", "ftype", "op", "dig", "args", "res") + (("dup",) if "dup" in o0 else ())
+            _mk3 = Tensor(mk, dtype=dtypes.float)
+            _oa3 = forward(p, ts, tk, se, slot_mask=_mk3, hud=hud_t, ident=ident_t, stop_after=2)
+            f3_t = Tensor(alt2_fact_buf({k: _oa3[k].numpy() for k in _ck3}, se.numpy(), nv, ma), dtype=dtypes.float)
+            _ob3 = forward(p, ts, tk, se, slot_mask=_mk3, hud=hud_t, ident=ident_t, stop_after=4, facts3=f3_t)
+            f5_t = Tensor(alt2_fact_buf({k: _ob3[k].numpy() for k in _ck3}, se.numpy(), nv, ma), dtype=dtypes.float)
+        o = forward(p, ts, tk, se, slot_mask=Tensor(mk, dtype=dtypes.float), fact_buf=(None if _alt3 else _fb_t), hud=hud_t, ident=ident_t, valfact=(_fb_t if _valreg_on else None), facts3=f3_t, facts5=f5_t)   # THE VALUE STREAM: the live pass-1 facts; THE THREE CONSULTS' facts
         onp = {k: o[k].numpy() for k in KEYS}; qv = o["query"].numpy().argmax(-1); qlog = o["query"].numpy()
         if rawdump is not None:   # CA_RAWDUMP=path: every slot's raw heads per row, for the annealed decode (2026-09-18)
             for bi, i in enumerate(sl):

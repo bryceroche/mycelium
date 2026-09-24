@@ -221,6 +221,22 @@ ALG_BUSREG_PREDMAP = int(os.environ.get("ALG_BUSREG_PREDMAP", "0"))
 # detach (the bank read is the road; its gradient shapes the previous
 # breath's attention). Unset = the key never built, bit-identical.
 ALG_IDKEY = float(os.environ.get("ALG_IDKEY", "0"))
+# THE THREE CONSULTS (2026-09-24, THE ALTERNATION SPEC §2; word given): the
+# solver consulted THREE times per problem, at training and at read alike
+# — after loop breaths 2, 4 and 6 — its forced values re-entering the
+# variable states at breaths 3 and 5 (the ALT2 injection road, W_fact),
+# the third conditioning the decode. tinygrad's realize substitutes a
+# buffer into every tensor sharing a node, so a host hop INSIDE one
+# forward would cut the gradient at every consult: the form that keeps
+# the JIT and the recurrence is the ITERATIVE PREFILL — three passes per
+# step restarted from the retina (breaths 0..2 -> consult 1; 0..4 with
+# facts3 -> consult 2; all seven with facts3 + facts5 -> the loss), each a
+# captured graph, the consults a MAP over the batch's rows in the facts
+# pool and a REDUCE into one fixed device buffer. Breaths 0..2 are
+# identical across passes, so consult 1 is exact. Unset = one pass, the
+# stale start-of-run facts, bit-identical.
+ALG_ALT3 = int(os.environ.get("ALG_ALT3", "0"))
+assert not ALG_ALT3 or int(os.environ.get("ALG_ALT2", "0")), "ALG_ALT3 needs ALG_ALT2=1 (the facts injection road W_fact it re-enters through)"
 assert not (ALG_BUSREG_SEAL or ALG_BUSREG_PREDMAP or ALG_VALREG_LIVE) or ALG_BUSREG, (
     "ALG_BUSREG_SEAL / ALG_BUSREG_PREDMAP / ALG_VALREG_LIVE need ALG_BUSREG (the register they act on)")
 _GTAP = None      # THE GRADIENT TAP (apply_grad_tap.py): read-only probe leaves per breath
@@ -3100,6 +3116,21 @@ def _hud_pos_bucket(rel_idx, sent_len):
     return 3
 
 
+def rot2_interleaved(v, c, s):
+    """THE BUS'S ROTATION, one definition (2026-09-24, THE COMPLEX-TENSOR
+    FENCE): rotate an interleaved-real (..., 2P) tensor by per-plane
+    angles given as (cos, sin) — the head's own rotate, used by the
+    clock frame, the router's unbind, the garage's snap and the
+    register; equal to mycelium/complex_tensor.tg_rotate and to numpy
+    complex multiplication by the layout law, and ASSERTED equal by
+    scripts/complex_fence.py in every CPU gate. Pure code motion from
+    forward()'s closure `_rot2` (same three lines)."""
+    from tinygrad import Tensor as _Tr
+    vr = v.reshape(*v.shape[:-1], v.shape[-1] // 2, 2)
+    x, y = vr[..., 0], vr[..., 1]
+    return _Tr.stack(x * c - y * s, x * s + y * c, dim=-1).reshape(*v.shape)
+
+
 _IDT_CACHE = None
 
 
@@ -4922,7 +4953,7 @@ def breath_step(p, state, kb, ctx):
     return state
 
 
-def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, drop=None, anchor=None, amask=None, gmod=None, pmask=None, lsent=None, reg=None, fact_buf=None, mh_mass=None, mh_atlas_traj=None, xcorr=None, res_map=None, hud=None, ident=None, busreg_ramp=None, valfact=None):
+def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, drop=None, anchor=None, amask=None, gmod=None, pmask=None, lsent=None, reg=None, fact_buf=None, mh_mass=None, mh_atlas_traj=None, xcorr=None, res_map=None, hud=None, ident=None, busreg_ramp=None, valfact=None, stop_after=None, facts3=None, facts5=None):
     from tinygrad import Tensor, dtypes   # audit 2026-09-01: was a
     # SCOPE ACCIDENT (bound only via the sixwave/sync branches — any
     # SIXWAVE-off config killed five organs at step 1)
@@ -4972,6 +5003,7 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
         # load-bearing: env unset -> byte-identical baseline; fact_buf
         # None -> byte-identical too (the injection is skipped entirely).
         vst = _fact_inject(p, vst, fact_buf)
+    _vst_at = [vst] * int(os.environ.get("ALG_BREATH", "1"))   # THE THREE CONSULTS: the variable states each rung's heads read against (updated at breaths 2 and 4 when facts arrive); K_B is bound below from the same env
     _pb = None
     _pb_prior = None
     _sync = None
@@ -5073,10 +5105,7 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
         anchor = fst
         cmt_logits = []
         x_rel = m_c                                   # released-mass ledger
-    def _rot2(v, c, s):        # interleaved-real phasor rotation
-        vr = v.reshape(*v.shape[:-1], v.shape[-1] // 2, 2)
-        x, y = vr[..., 0], vr[..., 1]
-        return Tensor.stack(x * c - y * s, x * s + y * c, dim=-1).reshape(*v.shape)
+    _rot2 = rot2_interleaved   # interleaved-real phasor rotation (the one definition, module level; THE COMPLEX-TENSOR FENCE)
 
     _bus_reg = None
     _rb_last = None
@@ -5211,12 +5240,32 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
                      "x_rel": x_rel if RINGS else None}
         if not (_STEP_TAP is not None and _STEP_TAP.get("hold")):
             _tok = waist
-            for kb in range(1, K_B):
+            # THE THREE CONSULTS (2026-09-24, THE ALTERNATION SPEC §2): a
+            # partial pass stops after `stop_after` loop breaths (the
+            # heads at that breath feed the solver's consult on the host,
+            # between captured graphs — never a hop inside one); the
+            # consult's forced values re-enter as facts3 (after breath 2,
+            # read from breath 3) and facts5 (after breath 4, read from
+            # breath 5) through the ALT2 injection into the variable
+            # states every later rung and the final heads read against.
+            # All three None = the loop as it was, bit-identical.
+            _kb_stop = (min(K_B, int(stop_after) + 1) if stop_after else K_B)
+            for kb in range(1, _kb_stop):
                 if ALG_TOKLOOP and "tok_wq" in p:      # THE NL LOOP: the token step, then the slot step reads it
                     _tok = _token_step(p, _tok, tokmask, sent, B, kb)
                     _bs_ctx["waist"] = _tok
                     _bs_ctx["bank"] = _make_bank(p, _tok, tokmask, B, sent=sent)
                 breath_step(p, _bs_state, kb, _bs_ctx)
+                if kb == 2 and facts3 is not None:
+                    vst = _fact_inject(p, vst, facts3)   # consult 1's values: read from breath 3 on
+                    _bs_ctx["vst"] = vst
+                    for _r in range(3, K_B):
+                        _vst_at[_r] = vst
+                if kb == 4 and facts5 is not None:
+                    vst = _fact_inject(p, vst, facts5)   # consult 2's values: read from breath 5 on
+                    _bs_ctx["vst"] = vst
+                    for _r in range(5, K_B):
+                        _vst_at[_r] = vst
                 if ALG_WRITEBACK and "wb_w" in p and kb < K_B - 1:   # THE WRITE-BACK: the text learns what was committed to it
                     _tok = _writeback(p, _tok, _bs_state["cur"], _bs_state["fat_cur"], tokmask, B, kb)
                     _bs_ctx["waist"] = _tok
@@ -5275,7 +5324,7 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
         _s_final = amask * anchor + (1.0 - amask) * _s_final   # anchors —
                                                      # structural re-entry the
                                                      # forward cannot ignore
-    out = heads_of(_s_final)
+    out = heads_of(_s_final, vst=vst)   # the final variable states (post-consult under THE THREE CONSULTS; the pre-loop vst otherwise — identical)
     _last_heads = dict(out)   # the readout's heads (the shelf read when ALG_SHELF): the ladder's last rung under the shelf
     if _CENSUS is not None and "W_rq2" in p:
         # THE PRE/POST CENSUS's PRE reading for the args logits (the
@@ -5632,9 +5681,9 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
         # loss and the read must share; without it the shelf's params had no
         # gradient — 2026-09-12); off the shelf the rung is bit-identical.
         if ALG_SHELF and "sh_q" in p and "shelf" not in _SEVER:
-            out["breaths"] = [heads_of(s) for s in breaths[:-1]] + [_last_heads]
+            out["breaths"] = [heads_of(s, vst=_vst_at[_ri]) for _ri, s in enumerate(breaths[:-1])] + [_last_heads]
         else:
-            out["breaths"] = [heads_of(s) for s in breaths]
+            out["breaths"] = [heads_of(s, vst=_vst_at[_ri]) for _ri, s in enumerate(breaths)]   # each rung reads the variable states it had (THE THREE CONSULTS)
         # THE LADDER SHADOWS THE ARGS FUSION (2026-09-20, found while
         # chasing the state-space pointer's None-gradient): loss_fn's
         # per-breath ladder calls _loss_single on THESE dicts, each
@@ -7200,6 +7249,8 @@ def do_train(steps, lr, batch, seed):
               f"(rows with none {float((FACTS[..., 0].sum(1) == 0).mean()):.3f})", flush=True)
     b_valfact = fix(np.zeros((batch, K_VARS, 4), np.float32), dtypes.float) \
         if ALG_VALREG_ON else None   # THE VALUE STREAM's facts feed (b_fact idiom)
+    b_fact3 = fix(np.zeros((batch, K_VARS, 4), np.float32), dtypes.float) if ALG_ALT3 else None   # THE THREE CONSULTS: consult 1's values (read from breath 3)
+    b_fact5 = fix(np.zeros((batch, K_VARS, 4), np.float32), dtypes.float) if ALG_ALT3 else None   # consult 2's values (read from breath 5)
     _valfact_rng = np.random.RandomState(seed + 7331) if ALG_VALREG_ON else None
     b_mha = fix(np.zeros((batch, ATLAS_TAB.shape[1], H_W), np.float32),
                 dtypes.float) if ATLAS_TAB is not None else None
@@ -7349,13 +7400,13 @@ def do_train(steps, lr, batch, seed):
             # commits, self-labeled from gold like the commit loss,
             # DETACHED); the second trains under live release dynamics.
             o0 = forward(p, s_tr, b_tk, b_se, slot_mask=b_mask, tail=b_tail,
-                         reg=b_reg, xcorr=b_xcorr, res_map=b_resmap, hud=b_hud, ident=b_ident, busreg_ramp=b_bgain, valfact=b_valfact)
+                         reg=b_reg, xcorr=b_xcorr, res_map=b_resmap, hud=b_hud, ident=b_ident, busreg_ramp=b_bgain, valfact=b_valfact, facts3=b_fact3, facts5=b_fact5)
             ok = ((o0["ftype"].argmax(-1) == bg["ftype"]).float()
                   * (o0["res"].argmax(-1) == bg["res"]).float())
             rv = (bg["presence"] * (1.0 - ok)).detach()
             o = forward(p, s_tr, b_tk, b_se, slot_mask=b_mask, revoke=rv,
                         tail=b_tail, reg=b_reg, fact_buf=b_fact,
-                        mh_mass=b_mhm, mh_atlas_traj=b_mha, xcorr=b_xcorr, res_map=b_resmap, hud=b_hud, ident=b_ident, busreg_ramp=b_bgain, valfact=b_valfact)
+                        mh_mass=b_mhm, mh_atlas_traj=b_mha, xcorr=b_xcorr, res_map=b_resmap, hud=b_hud, ident=b_ident, busreg_ramp=b_bgain, valfact=b_valfact, facts3=b_fact3, facts5=b_fact5)
         elif int(os.environ.get("NAZ_TRAIN", "0")):
             # NAZARÉ TRAINING (door #55): the organ-2 two-forward pattern —
             # pre-pass yields the intra-pass event field IN-GRAPH (detached);
@@ -7364,7 +7415,7 @@ def do_train(steps, lr, batch, seed):
             # read-time dup-aware argpair): argmax-change OR dup-flip on
             # rel-typed present slots, breath-0 vs final.
             o0 = forward(p, s_tr, b_tk, b_se, slot_mask=b_mask, tail=b_tail,
-                        xcorr=b_xcorr, res_map=b_resmap, hud=b_hud, ident=b_ident, busreg_ramp=b_bgain, valfact=b_valfact)
+                        xcorr=b_xcorr, res_map=b_resmap, hud=b_hud, ident=b_ident, busreg_ramp=b_bgain, valfact=b_valfact, facts3=b_fact3, facts5=b_fact5)
             _b0 = o0["breaths"][0]
             _relmask = (o0["pres"].squeeze(-1) > 0).float() \
                 * (o0["ftype"].argmax(-1) == 0).float()
@@ -7375,13 +7426,13 @@ def do_train(steps, lr, batch, seed):
             _gm = (_bgauth + (1.0 - _bgauth) * _ev).unsqueeze(-1).detach()
             o = forward(p, s_tr, b_tk, b_se, slot_mask=b_mask, tail=b_tail,
                         gmod=_gm, fact_buf=b_fact,
-                        mh_mass=b_mhm, mh_atlas_traj=b_mha, xcorr=b_xcorr, res_map=b_resmap, hud=b_hud, ident=b_ident, busreg_ramp=b_bgain, valfact=b_valfact)
+                        mh_mass=b_mhm, mh_atlas_traj=b_mha, xcorr=b_xcorr, res_map=b_resmap, hud=b_hud, ident=b_ident, busreg_ramp=b_bgain, valfact=b_valfact, facts3=b_fact3, facts5=b_fact5)
         else:
             _bd = os.environ.get("BREATH_DROPOUT")
             o = forward(p, s_tr, b_tk, b_se, slot_mask=b_mask, tail=b_tail,
                         drop=(b_drop if _bd else None), lsent=b_ls, reg=b_reg,
-                        fact_buf=b_fact,
-                        mh_mass=b_mhm, mh_atlas_traj=b_mha, xcorr=b_xcorr, res_map=b_resmap, hud=b_hud, ident=b_ident, busreg_ramp=b_bgain, valfact=b_valfact)
+                        fact_buf=(None if ALG_ALT3 else b_fact),   # THE THREE CONSULTS: the start-of-run facts give way to facts3/facts5
+                        mh_mass=b_mhm, mh_atlas_traj=b_mha, xcorr=b_xcorr, res_map=b_resmap, hud=b_hud, ident=b_ident, busreg_ramp=b_bgain, valfact=b_valfact, facts3=b_fact3, facts5=b_fact5)
         l = loss_fn(o, bg)
         if ALG_CONSUME and "_early" in o:   # support-gated consume-once:
             # any breath claims, each fact pays once; eligibility = the DAG
@@ -7432,6 +7483,47 @@ def do_train(steps, lr, batch, seed):
         return l.realize()
     if not _WHEEL_TRAIN:
         step = TinyJit(step)
+
+    # THE THREE CONSULTS' partial passes (2026-09-24; the env block's brief):
+    # two more captured graphs of the SAME training forward (same mode,
+    # same ports, same batch buffers), stopped after loop breath 2 and
+    # after loop breath 4, returning the decode heads the consult needs;
+    # the consult itself is the host MAP (facts_pool.run over the batch's
+    # rows, walled, DEV=CPU children) and the REDUCE is one copyin into
+    # the fixed facts buffer the next graph reads.
+    if ALG_ALT3:
+        from facts_pool import run as _fp_run_c
+        _c_keys = ("pres", "ftype", "op", "dig", "args", "res") + (("dup",) if "h_dup" in p else ())
+        _bd_c = os.environ.get("BREATH_DROPOUT")
+        def _partial(stop, f3):
+            Tensor.training = True
+            s_c = b_tr.cast(dtypes.float)
+            o = forward(p, s_c, b_tk, b_se, slot_mask=b_mask, tail=b_tail,
+                        drop=(b_drop if _bd_c else None), lsent=b_ls, reg=b_reg,
+                        fact_buf=None,
+                        mh_mass=b_mhm, mh_atlas_traj=b_mha, xcorr=b_xcorr, res_map=b_resmap, hud=b_hud, ident=b_ident, busreg_ramp=b_bgain, valfact=b_valfact,
+                        stop_after=stop, facts3=f3)
+            return {k: o[k].realize() for k in _c_keys}
+        def pass_a():
+            return _partial(2, None)
+        def pass_b():
+            return _partial(4, b_fact3)
+        pass_a = TinyJit(pass_a)
+        pass_b = TinyJit(pass_b)
+        _consult_t = [0.0, 0]   # host seconds, count (the perf line)
+        def _consult_into(buf, pass_fn, idx):
+            _t0c = time.time()
+            o = pass_fn()
+            onp = {k: o[k].numpy() for k in _c_keys}
+            nv = np.array([samples[int(i)].get("n_vars", K_VARS) for i in idx])
+            ma = np.array([samples[int(i)].get("m", 0) for i in idx])
+            fb = _fp_run_c(onp, sent[idx], nv, ma)          # (B, K_VARS, 4): the forced values, walled per row
+            _rlc = []
+            _fd(buf, fb, _rlc)
+            if _rlc:
+                Tensor.realize(*_rlc)
+            _consult_t[0] += time.time() - _t0c; _consult_t[1] += 1
+            return fb
 
     # HYGIENE (the stack-at-convergence protocol): cosine LR decay + periodic
     # validation on the SMALL test slice (bigtest stays untouched as measurement
@@ -8283,6 +8375,12 @@ def do_train(steps, lr, batch, seed):
         if _WHEEL_TRAIN:   # arm the wheel for this batch's rows (the read-time dict, per batch): n_vars / m per row, beta, mode, a fresh memo
             globals()["_WHEEL"] = {"n_vars": [int(samples[int(i)].get("n_vars", K_VARS)) for i in idx], "m": [int(samples[int(i)].get("m", 300)) for i in idx],
                                    "beta": float(os.environ.get("ALG_WHEEL_BETA", "3.0")), "mode": os.environ.get("ALG_WHEEL_MODE", "union"), "memo": {}}
+        if ALG_ALT3:
+            # THE THREE CONSULTS, per step: pass a -> consult 1 -> facts3;
+            # pass b (with facts3) -> consult 2 -> facts5; then the full
+            # step (with both) — the same three curbs the read walks.
+            _consult_into(b_fact3, pass_a, idx)
+            _consult_into(b_fact5, pass_b, idx)
         if _STEP_PROF and 5 <= s < 25:
             _prof.enable(); lv = step(); _prof.disable()
         else:
