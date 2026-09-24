@@ -44151,3 +44151,32 @@ before the fire — the random-init gate says nothing about scale. THE
 RE-FIRE (the same word; the knob set by the census): IK32_241 = the same
 recipe with ALG_IDKEY=32.0 (the key's gap ~1.7 at breath 6, inside the
 router's 2-4), vs CTRLs_241; the bars as pinned. ~45 min.
+
+**2026-09-23 20:34 — TWO NOTES (Bryce's, banked).** (1) THE RHYTHM IS
+ALREADY THERE: seven breaths are one grounding breath plus six loop
+breaths, and six loop breaths are three drop-off / pickup pairs — which is
+the six-wave clock's own count. Today every loop breath is NL-leading
+(slots pick up from tokens: the bank read, the router's channels, the
+identity key) and the math side enters once, at pass level (pass-1 ->
+the solver -> pass-2). ALTERNATION in the dream's sense is breath parity
+on the clock: odd breaths NL-leading (tokens present, slots collect),
+even breaths math-leading (tokens pick up from slots — the annotation
+stream, a per-token state that IS the attention output over slots, a
+third key beside the retina and the identity on the next NL breath; and
+at one designated even breath the solver's consult returning implied
+values). The retina is never rewritten (the chassis ruling); the ladder
+grades every breath, so both loops stay in the loss. The missing piece is
+the even-breath road; the timing needs no new organ. (2) THE COMPLEX-
+TENSOR FENCE (registered for the NEXT head edit, riding its facts-pass
+tax): `mycelium/complex_tensor.py` (2026-08-28) is the bus's formal
+language — lift / lower / phasor / bind / unbind / cleanup and a
+tinygrad rotate on the interleaved-real layout — and the head never
+imports it: every runtime rotation (the clock frame, the router's
+unbind, the garage's snap, the register) is the head's own inline
+rotate, equal to the library's by the layout law and checked bit-
+identical once at the perf pass, never since. The fence: a self-test
+that runs the head's rotate against the library's tinygrad rotate and
+numpy bind on a random tensor and asserts equality, run by the CPU gate
+with every head edit — so the specification and the implementation
+cannot drift apart silently. Load-bearing as the specification; the
+clock, the bus and the register all share its one layout.
