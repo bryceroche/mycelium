@@ -44495,3 +44495,26 @@ clock band's increment >= +0.10 R^2 AND above the content control's
 spread = the band carries story time. Any shrink of the band is a fresh
 48k run (the body learned in this frame) and needs the word; these reads
 decide whether it is worth one.
+
+### 2026-09-24 (17:05) — THE CLEAN CENSUS PAIR, rows 0:8, per parameter group (pc-gradcos2; PMS8_241; the STABLE group-total head on both arms)
+
+The instrument the earlier reads lacked: cross-rung gradient cosines PER
+GROUP (a tug-of-war = a NEGATIVE pair). FLAT: aggregate 0.6356 (adjacent
+0.796; rung 0 vs 6 0.238); args-head 0.439 (min -0.102, negatives 4/42),
+dig-head 0.691 (0/42), ftype-head 0.617 (0/42), router 0.962 (0/42), rest
+0.629 (0/42). NESTED (ALG_NEST=1,1,2,2,3,3,3): aggregate 0.4481 (adjacent
+0.709; rung 0 vs 6 0.224); args-head 0.267 (min -0.185, negatives
+16/42), dig-head 0.582 (0/42), ftype-head 0.413 (min -0.135, negatives
+10/42), router 0.908 (0/42), rest 0.450 (0/42). READING: nesting the
+labels manufactures the tug-of-war it was meant to prevent, exactly in
+the heads whose targets were nested (args 4 -> 16 negative pairs of 42;
+ftype 0 -> 10); the digits head, whose coarse form was a leading-digit
+MASK (a projection of the same target), stays positive. The flat ladder
+is not free of it: the pointer's rungs already disagree mildly (4/42)
+under one loss — the one place a per-breath view-change could help or
+hurt, to be read on the unlock arm's body. THE NESTED LADDER'S PARKING
+IS CONFIRMED BY THE RIGHT INSTRUMENT (ledger 09-24 earlier: parked on
+aggregate cosine; now on negative pairs). Regime tag: rows 0:8, one
+body, the stable form; the projection-form rule stands (same target,
+only the view changes). Artifacts: .cache/grad_cos2_{flat,nest}_0:8.log,
+.cache/grad_cos_summary2.txt.
