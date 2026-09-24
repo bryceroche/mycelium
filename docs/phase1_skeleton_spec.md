@@ -44125,3 +44125,29 @@ centroids of that interface state and the mask as predicates over the
 key streams. THE COUNTERWEIGHT, stated: in four months only n moved the
 binding wall; if this key reads null, identity-in-attention closes with
 it and the next lever is annotated wild rows.
+
+**2026-09-23 20:04 — THE IDENTITY KEY AT tau 4: INERT BY SCALE (the knob
+law, again); the census sets tau 32 and the arm re-fires.** IK_241
+(pc-idkey; PMS8_241 + the two gentle segments with ALG_IDKEY=4.0) vs
+CTRLs_241: MASKED wild 0.3491 vs 0.3481 (+0.0010, paired SE 0.0032, z 0.30
+— the cost line passed; the highest masked read on seed 241, inside
+noise); OPEN 0.3233 vs 0.3242 (-0.001); ARGS FIELD 0.463 vs 0.453 (+0.010
+— the +0.020 bar MISSED; the highest args read on any body); dig 0.419 vs
+0.418; MINT 0.6535 vs 0.6554 (flat); ROWS 15 / 13 vs 15 / 12. THE TELL: the
+two checkpoints disagree on 44 of 2,051 slots (discordant 21 / 23 vs the
+~250 of any other pair) — the key changed almost no decision; the cells:
+DERIVED-ARG 0.000, ALL -0.003 (paired SE 0.003). THE MAGNITUDE CENSUS on
+the trained arm (the tiny fixture, CPU; the pbias port's terms, real
+tokens, per slot): the router's bank bias |.| 19-23, sd across a slot's
+tokens 7.3 / 11.3 / 9.5 (breaths 1 / 3 / 6), top1-top2 gap 2.1 / 3.5 /
+3.8; the identity key at tau 4 |.| 2.5 / 2.0 / 2.0, sd 0.12 / 0.37 / 0.39,
+gap 0.08 / 0.21 / 0.21 — a whisper beside a shout, 25-60x smaller in
+spread; the pooled identity query is a blend whose cosine with every
+token is nearly the same constant. Its spread TRIPLES from breath 1 to
+breath 6: the booster sharpens in the direction designed, at a scale
+that cannot move the softmax. THE LESSON, the third time: census the
+organ's injection on the WARM body against the port's other terms
+before the fire — the random-init gate says nothing about scale. THE
+RE-FIRE (the same word; the knob set by the census): IK32_241 = the same
+recipe with ALG_IDKEY=32.0 (the key's gap ~1.7 at breath 6, inside the
+router's 2-4), vs CTRLs_241; the bars as pinned. ~45 min.
