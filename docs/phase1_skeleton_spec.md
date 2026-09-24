@@ -44275,3 +44275,16 @@ vs the banked CTRLs_241. BARS (pinned): masked wild paired >= -0.005 (the
 cost line); the wild DIGITS field (open) >= +0.020 vs the control (the
 values' cell); ROWS beside (the consults' facts are the row's other half);
 the step cost in the steady frame quoted as the map-reduce's number.
+
+**2026-09-24 07:46 — THE THREE CONSULTS' STEP COST (the map-reduce's first
+number): 0.374 s/step steady vs the one-pass control's 0.171 — 2.2x, not
+the +70% the forward count predicts.** The forward is 15 breaths per step
+instead of 7; the rest is the host: two facts-pool round trips per step for
+8 rows each, where the solver's propagation is milliseconds and the
+pickling of the decode heads, the pool's chunking and its per-result walls
+are the cost — a map-reduce with a tiny map and a heavy shuffle. Two gains
+registered to measure after this arm reads (the head is under a running
+chain): (1) ALG_ALT3_POOL=0 — the consult in-process for small batches
+(alt2_fact_buf serial: the pool's own bytes, no IPC); (2) a larger batch
+per step (B=16) so the fixed hop amortises. The arm: 12k steps ~75 min,
+reads by ~09:00.
