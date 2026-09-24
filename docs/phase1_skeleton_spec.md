@@ -44421,3 +44421,40 @@ check 3, confirmed): a tug-of-war is a NEGATIVE cosine; the instrument
 for "does nesting help" is a wild read, not a gradient census on a body
 trained flat. The remaining slices (16:24, and 0:8 under the stable head
 with per-parameter-group cosines) are banked when they land.
+
+**2026-09-24 15:33 — THE PLANE UNLOCK built, gated and FIRED (the
+Matryoshka piece: same target every breath, only the view changes); the
+census's third slice under the stable form.** THE BRAINSTORM (Bryce's
+unsettled feeling, Opus's reframe, affirmed against the code): nested
+labels — even the projection form — are a different question per breath,
+and the census said so; the fields put the coarseness in the INPUT
+(diffusion's noise = the ladder's fog, built), the WEIGHTS (RAFT's rising
+weights = the rung weights, built) or the REPRESENTATION (Matryoshka's
+prefix = the plane unlock, now built), never in the label. The nested
+ladder is PARKED (built, projection form, finite, gated; it earns no arm).
+THE ORGAN (commit ffcfa3f5, ALG_UNLOCK=<k_1,..,k_6>): after loop
+breath kb the refined state keeps only its first k_kb CONTENT planes of
+the polar band (the 64 clock planes never touched), the rest zeroed, the
+content block's norm restored over the OPEN planes (the keep-norm, so
+early breaths are not diluted by empty planes); the ink, the ladder rung,
+the garage and the next breath all see that view; the ladder grades it
+on the FULL target — the early rungs can only answer with a prefix, so
+the prefix learns to hold the general part and the coarse answer emerges
+from limited sight (no designed codebook needed for the LEARNED state;
+the hierarchical codebook is for the fixed tables only). THE GATE (CPU,
+tiny64): fence OK; unset 5.2995 / 0.0279 BIT-IDENTICAL; role8 6.5535 /
+1.1061; unlock192 (every plane open at every breath) = role8 TO THE
+DIGIT; unlock 32,64,96,128,160,192 6.6870 / 1.5205 runs (the first run
+caught a module-level name slip in the assert — fixed). FIRED: pc-unlock
+(`.cache/unlock_chain.sh`): UL_241 = PMS8_241 + the two gentle segments at
+1e-5 with ALG_UNLOCK=32,64,96,128,160,192 (of 192 content planes), vs the
+banked CTRLs_241. BARS (pinned): masked wild paired >= +0.010 vs the
+control (z >= 1.5); the wild SAME-NOUN cell paired >= 2 SE; the cost line
+>= -0.005; rows, digits, mint beside. ~45 min (queued at the lock behind
+the census's last read). THE CENSUS, rows 16:24 (the nested run under
+the STABLE group-total head): FLAT 0.6759 (adjacent 0.808; min 0.334),
+NESTED 0.6187 (adjacent 0.773; min 0.295) — a gap of 0.06 against 0.15 /
+0.32 on the earlier slices under the spread / sigmoid forms; the clean
+pair on rows 0:8 with per-parameter-group cosines (pc-gradcos2) lands
+next. The three nested reads are three FORMS (spread; sigmoid group-
+total; softplus group-total), stated, not one; the flat reads stand.
