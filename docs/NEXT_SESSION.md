@@ -42,8 +42,11 @@ The reads table: `.venv/bin/python3 scripts/reads.py table wildhold` (assert-on-
    ports) bit-identical unset. THE FREE POSITIVE: CTRLs_241 = PMS8_241 + 12k at LR 1e-5 in two RESUME segments
    (facts refreshed at 8k): masked 0.3481 (= the body), open 0.3242 (+0.004), mint 0.6554 (+0.004), ROWS 15/12 (the
    record; noise ~3) — the regime finding both ways (1e-4 cost 0.015). REGISTERED (word): the seed-242 twin of the
-   gentle continuation as a rows read. CARD IDLE. The order of arrival (value -> atlas -> mask) needs a different
-   receiver than the register's pointer read; nothing on the bus has moved a held-out decision.
+   registered. 09-23 19:05 WORD GIVEN: THE IDENTITY KEY ON THE BANK READ (ALG_IDKEY=<tau>, commit 80c959bb —
+   the message on the mandatory road: every token's exact tag scored against the slot's identity query = what it
+   attended last breath, on the pbias port, no params) built + gated; FIRED as pc-idkey (IK_241 vs the banked
+   CTRLs_241; bars: args field +0.020, DERIVED-ARG >= 2 SE, masked >= -0.005; idkey_chain.log, ~45 min). Behind it
+   (word): the annotation stream (math->NL as a mandatory road), then the atlas and the mask on the key streams.
 3. DONE 09-22 12:50 (scripts/mixed_bucket_census.py -> .cache/mixed_bucket_census.txt): the
    inherited key dissolves the mixed bucket (89% SAME-NOUN); the wall is ~90% same-quantity
    selection, 55-57% of it pointing at DERIVED arguments (k a relation; args-correct 0.58-0.62)
