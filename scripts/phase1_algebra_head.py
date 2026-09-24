@@ -250,6 +250,45 @@ ALG_ALT3 = int(os.environ.get("ALG_ALT3", "0"))
 # Unset = every rung at level 3 = the ladder as it was.
 ALG_NEST = os.environ.get("ALG_NEST", "")
 _NEST_LEVELS = [int(x) for x in ALG_NEST.split(",")] if ALG_NEST else None
+# THE PLANE UNLOCK (2026-09-24, word given; the Matryoshka piece of the
+# diffusion compiler): SAME TARGET EVERY BREATH, ONLY THE VIEW CHANGES.
+# ALG_UNLOCK = the number of CONTENT planes open at each loop breath
+# 1..K_B-1, comma-separated (the polar band's clock planes are never
+# touched); a breath's refined state keeps only its first k content
+# planes (the rest zeroed) with the content block's norm restored over
+# the OPEN planes only (the keep-norm, so early breaths are not diluted
+# by empty planes), and the ladder grades that state on the full target
+# — the early rungs can only answer with a prefix, so the prefix learns
+# to hold the general part (Matryoshka: every prefix trained on the same
+# full labels); the coarse answer EMERGES from limited sight instead of
+# being dictated by a different label (the nested ladder's lesson). k >=
+# every content plane = no-op; unset = bit-identical.
+ALG_UNLOCK = os.environ.get("ALG_UNLOCK", "")
+_UNLOCK_K = [int(x) for x in ALG_UNLOCK.split(",")] if ALG_UNLOCK else None
+assert _UNLOCK_K is None or int(os.environ.get("ALG_POLAR", "0")), "ALG_UNLOCK needs ALG_POLAR=1 (the content band the prefix runs inside)"
+_UNLOCK_MASKS = {}
+
+
+def _unlock_planes(cur, kb):
+    """THE PLANE UNLOCK's step: cur (B, L, H_W) after loop breath kb -> the
+    first _UNLOCK_K[kb-1] content planes kept, the rest zeroed, the content
+    block's norm restored over the open planes (clock dims bitwise
+    untouched: the keep-norm's gate is the content indicator)."""
+    if _UNLOCK_K is None or kb < 1 or kb > len(_UNLOCK_K):
+        return cur
+    from tinygrad import Tensor as _Tu
+    _cd, _, _gc, _, _ = _polar_sink()
+    n_content = len(_cd) // 2
+    k = int(_UNLOCK_K[kb - 1])
+    if k >= n_content:
+        return cur                                   # every content plane open: the state as it was
+    m = _UNLOCK_MASKS.get(kb)
+    if m is None:
+        arr = np.ones(H_W, np.float32)
+        arr[np.asarray(_cd)[2 * k:]] = 0.0           # close content planes k.. (both dims of each pair)
+        m = _Tu(arr).reshape(1, 1, -1)
+        _UNLOCK_MASKS[kb] = m
+    return _polar_keepnorm(cur * m, cur, _gc.reshape(1, 1, -1))
 assert not ALG_ALT3 or int(os.environ.get("ALG_ALT2", "0")), "ALG_ALT3 needs ALG_ALT2=1 (the facts injection road W_fact it re-enters through)"
 assert not (ALG_BUSREG_SEAL or ALG_BUSREG_PREDMAP or ALG_VALREG_LIVE) or ALG_BUSREG, (
     "ALG_BUSREG_SEAL / ALG_BUSREG_PREDMAP / ALG_VALREG_LIVE need ALG_BUSREG (the register they act on)")
@@ -4849,6 +4888,7 @@ def breath_step(p, state, kb, ctx):
             # scripts/polar_birth_smoke.py item 5).
             state.setdefault("u_all", []).append(_pol_u.detach())
             state.setdefault("r_all", []).append(_pol_r.detach())
+    cur = _unlock_planes(cur, kb)   # THE PLANE UNLOCK: this breath's refined state keeps its open prefix (the ink, the ladder rung, the garage and the next breath all see the same view); no-op unless ALG_UNLOCK
     if ALG_NOTEBOOK:
         _cur_w = (_clock_frame(cur, kb, -1, _rot2)
                   if ALG_CLOCK_CANON and ALG_POLAR else cur)   # canonical frame
