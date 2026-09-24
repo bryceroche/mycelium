@@ -207,6 +207,20 @@ ALG_VALREG_ON = bool(ALG_VALREG or ALG_VALREG_ADDR)
 ALG_VALREG_LIVE = int(os.environ.get("ALG_VALREG_LIVE", "0"))
 ALG_BUSREG_SEAL = float(os.environ.get("ALG_BUSREG_SEAL", "0"))
 ALG_BUSREG_PREDMAP = int(os.environ.get("ALG_BUSREG_PREDMAP", "0"))
+# THE IDENTITY KEY ON THE BANK READ (2026-09-23, word given; the register
+# family's last word: a message must be on the MANDATORY road, and the
+# mandatory road is the slots<-tokens attention every breath). A second
+# key stream on the bank's read, never summed with the waist: every
+# token's exact lexical identity tag (the identity table), scored against
+# the slot's IDENTITY QUERY = the unit identity of what the slot attended
+# on the PREVIOUS breath (breath 0's grounding read for breath 1) — the
+# booster: what I read last tick I ask for again by exact tag, which
+# reaches EVERY mention of that entity, not the same tokens (the anchor's
+# form). tau x cosine enters the bank's pbias port (the road the router's
+# bias, the anchor and the chart ride), fixed tau, no learnable gain, no
+# detach (the bank read is the road; its gradient shapes the previous
+# breath's attention). Unset = the key never built, bit-identical.
+ALG_IDKEY = float(os.environ.get("ALG_IDKEY", "0"))
 assert not (ALG_BUSREG_SEAL or ALG_BUSREG_PREDMAP or ALG_VALREG_LIVE) or ALG_BUSREG, (
     "ALG_BUSREG_SEAL / ALG_BUSREG_PREDMAP / ALG_VALREG_LIVE need ALG_BUSREG (the register they act on)")
 _GTAP = None      # THE GRADIENT TAP (apply_grad_tap.py): read-only probe leaves per breath
@@ -4197,6 +4211,22 @@ def breath_step(p, state, kb, ctx):
         _pb_kb = _anch_b0 if _pb_kb is None else _pb_kb + _anch_b0
         if _CENSUS is not None:
             _CENSUS.append((kb, "anchor", _anch_b0.realize().numpy()))
+    if ALG_IDKEY:
+        # THE IDENTITY KEY ON THE BANK READ (the env block's brief): the
+        # slot's identity query = the unit identity of what it attended
+        # on the previous breath (breath 0's grounding read for breath
+        # 1), scored by exact tag against every token — tau x cosine on
+        # the pbias road, before the clip, every breath. No params, no
+        # gain, no detach.
+        _fat_prev = state.get("fat_cur") if kb >= 2 else ctx["fat0"]   # (B, L_TOT, T) head-mean slots<-tokens attention
+        assert _fat_prev is not None, "ALG_IDKEY: no previous-breath attention to build the identity query from"
+        _idt_k = ctx["ident_tok"]                                          # (B, T, 2P) unit tags (zero on pad)
+        _q_id = _fat_prev @ _idt_k                                          # (B, L_TOT, 2P) pooled identity of the last read
+        _q_id = _q_id / (_q_id.pow(2).sum(-1, keepdim=True).sqrt() + 1e-6)
+        _idk_b = (ALG_IDKEY * (_q_id @ _idt_k.transpose(-2, -1))).reshape(B, 1, L_TOT, -1)   # (B, 1, L_TOT, T)
+        _pb_kb = _idk_b if _pb_kb is None else _pb_kb + _idk_b
+        if _CENSUS is not None:
+            _CENSUS.append((kb, "idkey", _idk_b.realize().numpy()))
     h_tok, fat_cur = bank(p["fq"], L_TOT, extra=q_extra, kb=kb,
                           pbias=_pb_kb,
                           rbias=_rb7,
@@ -5113,14 +5143,14 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
         _anch_bias0 = ((ALG_ANCHOR * fat.detach()).reshape(B, 1, L_TOT, -1)
                        if ALG_ANCHOR else None)
         _ident_tok = None
-        if ALG_BUSREG:
+        if ALG_BUSREG or ALG_IDKEY:
             # THE BUS REGISTER's identity stream (2026-09-22): the token
             # ids' rows of the frozen identity table, gathered ONCE per
             # forward (the p["sent_emb"][sent] idiom), (B, T, 2P) float.
             # No port = a hard error (no silent dark organ): every
             # caller that arms the register threads `ident`.
             assert ident is not None, (
-                "ALG_BUSREG needs forward(..., ident=<(B, T) int token ids>) "
+                "ALG_BUSREG / ALG_IDKEY needs forward(..., ident=<(B, T) int token ids>) "
                 "— ident_build_array / ident_row_ids (host-side); the "
                 "trainer, loop_val and chain_acc thread it; a reader that "
                 "does not is refused here rather than run dark")
@@ -5142,6 +5172,7 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
                    # dict keys only — zero compute when ALG_BUSREG unset.
                    "vst": vst, "res_map": res_map, "ident_tok": _ident_tok,
                    "busreg_ramp": busreg_ramp,   # THE FADE-IN's scalar (training only; None = full scale)
+                   "fat0": fat,   # THE IDENTITY KEY's breath-1 query source: breath 0's grounding attention (B, L_TOT, T)
                    "valtag_v": _valtag_v,
                    "anchor_bias0": _anch_bias0,
                    "slot_mask": slot_mask, "bank": bank, "rot2": _rot2,
@@ -6751,7 +6782,7 @@ def do_train(steps, lr, batch, seed):
     IDENT = None   # THE BUS REGISTER's token ids (2026-09-22): host-only,
                    # the head's own tokenizer (tokenize()'s path), no model
                    # call — built here like XCORR/HUD
-    if ALG_BUSREG:
+    if ALG_BUSREG or ALG_IDKEY:
         _id_t0 = time.time()
         IDENT = ident_build_array(samples, T_ALG)
         print(f"[busreg] ALG_BUSREG={ALG_BUSREG} prop={ALG_BUSREG_PROP}: token-id "
@@ -7156,7 +7187,7 @@ def do_train(steps, lr, batch, seed):
     b_hud = fix(np.zeros((batch, T_ALG, HUD_N_FEATS), np.int32), dtypes.int) \
         if ALG_HUD else None   # THE TOKEN HUD's feed (b_fact idiom)
     b_ident = fix(np.zeros((batch, T_ALG), np.int32), dtypes.int) \
-        if ALG_BUSREG else None   # THE BUS REGISTER's token-id feed (b_fact idiom)
+        if (ALG_BUSREG or ALG_IDKEY) else None   # THE BUS REGISTER's / THE IDENTITY KEY's token-id feed (b_fact idiom)
     b_bgain = fix(np.zeros((1,), np.float32), dtypes.float) \
         if (ALG_BUSREG and ALG_BUSREG_RAMP) else None   # THE FADE-IN's scalar feed (the _PCV idiom)
     if ALG_VALREG_ON and ALG_VALREG_LIVE:
@@ -7440,7 +7471,7 @@ def do_train(steps, lr, batch, seed):
             _t2 = Tensor(vtk[sl_p].astype(np.float32), dtype=dtypes.float)
             _t3 = Tensor(vse[sl_p].astype(np.int32), dtype=dtypes.int)
             _t_id = (Tensor(ident_build_array([vs[int(i)] for i in sl_p], T_ALG), dtype=dtypes.int)
-                     if ALG_BUSREG else None)   # THE BUS REGISTER's port on the val split (host, per batch)
+                     if (ALG_BUSREG or ALG_IDKEY) else None)   # THE BUS REGISTER's / THE IDENTITY KEY's port on the val split (host, per batch)
             o = forward(p, _t1, _t2, _t3, ident=_t_id)
             if int(os.environ.get("ALG_ALT2", "0")):
                 # ALTERNATOR V2 val two-pass: masked pass-2 + LIVE facts
@@ -7649,7 +7680,7 @@ def do_train(steps, lr, batch, seed):
                 Tensor(tokmask[_cc_idx].astype(np.float32), dtype=dtypes.float),
                 Tensor(sent[_cc_idx].astype(np.int32), dtype=dtypes.int),
                 slot_mask=Tensor(MASKS[_cc_idx], dtype=dtypes.float),
-                ident=(Tensor(IDENT[_cc_idx], dtype=dtypes.int) if ALG_BUSREG else None))
+                ident=(Tensor(IDENT[_cc_idx], dtype=dtypes.int) if (ALG_BUSREG or ALG_IDKEY) else None))
             _cc_fat = _cc_out["fat"].realize()   # out["fat"] is FED-trimmed to L_FAC (scratch rows
                                                  # dropped); every real flag lives in [0, L_FAC) by
                                                  # construction (_decode_slots only visits L_FAC rows),
@@ -7692,7 +7723,7 @@ def do_train(steps, lr, batch, seed):
         globals()["_CERT_CENSUS_SC"] = {}
         _rc_idx = np.arange(min(batch, n))
         _rc_tm = tokmask[_rc_idx].astype(np.float32)
-        _rc_ident = (Tensor(IDENT[_rc_idx], dtype=dtypes.int) if ALG_BUSREG else None)   # THE BUS REGISTER's port (2026-09-22)
+        _rc_ident = (Tensor(IDENT[_rc_idx], dtype=dtypes.int) if (ALG_BUSREG or ALG_IDKEY) else None)   # THE BUS REGISTER's port (2026-09-22)
         _rc_valfact = (Tensor(VALFACT[_rc_idx], dtype=dtypes.float) if ALG_VALREG_ON else None)   # THE VALUE STREAM's port (gold facts, no dropout)
         _rc_out = forward(
             p, Tensor(np.ascontiguousarray(states[_rc_idx]), dtype=dtypes.half),

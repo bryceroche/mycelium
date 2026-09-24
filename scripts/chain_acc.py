@@ -34,7 +34,7 @@ def main():
     KEYS = ("pres", "ftype", "op", "dig", "args", "res") + (("dup",) if "h_dup" in p else ())
     from mycelium.rulebook import legal_digit_logits
     _HUD_ON = int(os.environ.get("ALG_HUD", "0")) != 0   # THE TOKEN HUD, read-time road (2026-09-21)
-    _BUSREG_ON = float(os.environ.get("ALG_BUSREG", "0")) != 0   # THE BUS REGISTER's token-id port (2026-09-22)
+    _BUSREG_ON = float(os.environ.get("ALG_BUSREG", "0")) != 0 or float(os.environ.get("ALG_IDKEY", "0")) != 0   # THE BUS REGISTER's token-id port (2026-09-22)
     if _HUD_ON or _BUSREG_ON:
         import phase1_algebra_head as _HH
     correct = refused = wrong = 0; nd = None; tasks = []; keys = {}; rawdump = [] if os.environ.get("CA_RAWDUMP") else None

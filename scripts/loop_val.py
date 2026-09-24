@@ -231,7 +231,7 @@ def read(ckpt, data=None, p=None):
         _XCORR_CHART = _HX.xcorr_load_chart()
         _XCORR_GF, _XCORR_GV = _HX.ALG_XCORR_GAIN, _HX.ALG_XCORR_V_GAIN
     _HUD_ON = int(os.environ.get("ALG_HUD", "0")) != 0   # THE TOKEN HUD, read-time road (2026-09-21)
-    _BUSREG_ON = float(os.environ.get("ALG_BUSREG", "0")) != 0   # THE BUS REGISTER's token-id port (2026-09-22)
+    _BUSREG_ON = float(os.environ.get("ALG_BUSREG", "0")) != 0 or float(os.environ.get("ALG_IDKEY", "0")) != 0   # THE BUS REGISTER's token-id port (2026-09-22)
     if _BUSREG_ON:
         import phase1_algebra_head as _HB
     if _HUD_ON:
