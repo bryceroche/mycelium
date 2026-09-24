@@ -44039,3 +44039,49 @@ both vs PMS8_241, rows and mint beside. ~1.5 h. What this arm asks: does
 a slot decide because of what its register carries, once the easier
 path is closed on the one cell where the register holds what the
 bilinear cannot — the pulse the dream needs, or the family's last word.
+
+**2026-09-23 17:46 — THE SEALED VALUE ARM: A SIGNIFICANT NEGATIVE — forced
+to carry the derived cell, the register carries it worse than the
+bilinear; THE REGISTER FAMILY's LAST WORD. Beside it, a free positive:
+gentle continuation at 1e-5 holds the slot and sets the row record.**
+pc-sealed (`.cache/sealed_chain.sh`): SV_241 = PMS8_241 + two segments
+(0..8k warm, 8k..12k RESUME'd) at LR 1e-5 with the register + the value
+pointer read + the presence map + LIVE facts (segment 1: 2.39 known
+variables per row from PMS8_241's own consult, 14.5% of rows none;
+segment 2 refreshed from the 8k checkpoint) + THE DERIVED-CANDIDATE SEAL
+(s=1.0) + PREDMAP; CTRLs_241 = the same two segments at 1e-5, no organ.
+THE READS (wild, n 2051 slots): MASKED SV 0.3359 vs CTRLs 0.3481 —
+-0.0122, paired SE 0.0046, z 2.62 AGAINST (the cost line >= -0.010
+MISSED); OPEN 0.3130 vs 0.3242, -0.0112, z 2.49 against; fields: args
+0.430 vs 0.453 (-0.023), dig 0.419 vs 0.418 (FLAT — the digits bar
++0.030 MISSED), pres 0.910 vs 0.914; ROWS 7 / 7 vs 15 / 12 (refused 117
+vs 93); MINT 0.6011 vs 0.6554 (args 0.542 vs 0.658: -12 — the seal on
+mint's dense derived candidates removes a pointer that was exact). THE
+CELLS (post vs post): DERIVED-ARG -0.021 (z -1.16) — THE SEAL'S OWN
+CELL, WRONG SIGN; GIVEN-ONLY -0.031 (z -2.52), GIVEN-RELCOMP -0.031 (z
+-2.48), SAME-NOUN(inh) -0.028 (z -2.74), ALL ARGS -0.027 (z -3.12). THE
+VERDICT: the arm does not fire on any bar; every pointer cell falls.
+READING: with the bilinear closed on derived candidates, the register's
+propagated identity + value tag carried those candidates WORSE than the
+bilinear's anchorless state did — the bus register, as built, is not a
+better carrier of derived-argument identity than the residual, and the
+givens fell with it (the predicted seal leaks into given candidates, and
+the value roads cost the pointer as they did in the value gate). THE
+LAW, confirmed at the sharpest test the family could be given: the
+residual-seal law's converse — a seal converts headroom only if the
+sealed road can carry; sever the bypass on a road that cannot, and the
+loss simply loses. THE FAMILY's LAST WORD (seven reads): the register is
+built, gated, bit-identical unset, in the loss, exact in its algebra,
+and it moves no held-out read in any regime — from scratch, faded,
+warm, continued, addressed, valued, sealed. It stays in the head as a
+language and a channel; the reader it needs is not this pointer. THE
+FREE POSITIVE BESIDE IT (CTRLs_241, one seed): gentle continuation of
+the claim body at 1e-5 for 12k with the facts refreshed at 8k holds the
+masked slot exactly (0.3481 vs 0.3476, z 0.09), lifts the open read
+(0.3242 vs 0.3198), lifts MINT (0.6554 vs 0.6510) and sets THE ROW
+RECORD: 15 masked / 12 open vs the body's 14 / 13 (refused 93 vs 96) —
+at rows' noise (~3 on 311) a candidate, not a claim; the 1e-4
+continuation had cost 0.015 (09-23 13:00): the regime finding stands in
+both directions. REGISTERED (needing the word): the seed-242 twin of the
+gentle continuation (PMS8_242 + the same two segments at 1e-5) as a
+rows read. Numbers asserted (ingest in the chain).
