@@ -44085,3 +44085,43 @@ continuation had cost 0.015 (09-23 13:00): the regime finding stands in
 both directions. REGISTERED (needing the word): the seed-242 twin of the
 gentle continuation (PMS8_242 + the same two segments at 1e-5) as a
 rows read. Numbers asserted (ingest in the chain).
+
+**2026-09-23 19:05 — WORD GIVEN: THE IDENTITY KEY ON THE BANK READ built,
+gated and FIRED — the message on the mandatory road.** THE DIAGNOSIS
+(Bryce's, affirmed by the family's book): the register was a mailbox —
+drop-off with an optional pickup; attention solves pickup because the
+receiver's output IS the weighted sum of the messages, query, key and
+value at the same tick with no bypass; every organ that died this month
+was an additive term the loss could route around, every organ that lives
+(the router's bias, the role channel) sits on the bank read. THE
+BOOSTERS: the membrane census's decay (a given's span found at breath 0
+at 0.48, lost to 0.34 by breath 6; 84% of wrong given slots never land
+on the binding) is a signal not re-presented between hops; the identity
+of a token never changes, so it can be re-presented at every read. THE
+ORGAN (commit 80c959bb, ALG_IDKEY=<tau>): a second key stream on the
+slots<-tokens attention, never summed with the waist — every token's
+exact lexical tag (the identity table) scored against the slot's
+IDENTITY QUERY = the unit identity of what the slot attended on the
+previous breath (breath 0's grounding read for breath 1): "what I read
+last tick I ask for again by exact tag", which reaches EVERY mention of
+the entity rather than the same tokens (the anchor's form, inert); tau x
+cosine enters the bank's pbias port (the router's, the anchor's and the
+chart's road), before the clip, every breath; no parameters, no gain,
+not detached (the bank read is the road; its gradient shapes the
+previous breath's attention). The retina is untouched (the chassis
+ruling): the key rides beside the waist. THE GATE (CPU, tiny64): unset
+5.2995 / 0.0279 BIT-IDENTICAL; role8 6.5535 / 1.1061 unchanged; idkey
+(tau 4.0) 6.5613 / 1.1161 runs. FIRED: pc-idkey (`.cache/idkey_chain.sh`):
+IK_241 = PMS8_241 + the two gentle segments (0..8k warm, 8k..12k
+RESUME'd, LR 1e-5) with ALG_IDKEY=4.0, vs the banked CTRLs_241 (the same
+recipe, no organ). BARS (pinned): the wild ARGS FIELD (open) >= +0.020
+vs the control; the wild DERIVED-ARG cell paired >= 2 SE; masked wild
+paired >= -0.005 (the cost line); rows, mint, the same-noun cell beside.
+~45 min. REGISTERED BEHIND IT, on this read's word: the annotation stream
+(the math->NL direction as a mandatory road: a per-token state = the
+attention output over slots each breath, presented as a third key on the
+next breath's read — the retina never rewritten), then the atlas as
+centroids of that interface state and the mask as predicates over the
+key streams. THE COUNTERWEIGHT, stated: in four months only n moved the
+binding wall; if this key reads null, identity-in-attention closes with
+it and the next lever is annotated wild rows.
