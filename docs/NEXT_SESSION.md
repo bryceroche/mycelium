@@ -40,6 +40,13 @@ The reads table: `.venv/bin/python3 scripts/reads.py table wildhold` (assert-on-
    only as good as the parse it consults on (3.4 known/row on wild, errors in); W_fact is an optional pickup — stage 3
    (the updated-math key on the bank read) is the mandatory form, untested. PERF gains registered: ALG_ALT3_POOL=0
    (in-process consult), B=16. CARD IDLE.
+0c. 09-24 (word for the whole queue, continued): BLOG 'One job, six resolutions' LIVE; THE NL CERTIFIER v1 carries
+   (AUROC 0.811; nl_certifier.py, FAMILY ENV required); HIERARCHICAL TARGETS minted; THE NESTED LADDER (ALG_NEST) built,
+   gated, PARKED (the grad-cosine census: nested lowers cross-rung cosine, no negative pairs — the bar was the wrong
+   instrument; a coarse label is a different question; RULE: never a sigmoid on raw logits in a loss); THE PLANE
+   UNLOCK (ALG_UNLOCK=32,64,96,128,160,192: same target every breath, only the view changes) built, gated, FIRED as
+   pc-unlock (UL_241 vs CTRLs_241; bars: masked +0.010, SAME-NOUN cell 2 SE, cost >= -0.005; unlock_chain.log).
+   pc-gradcos2 = the census's clean 0:8 pair with per-parameter-group cosines (grad_cos2_chain.log).
 1. DONE 09-22 15:20 — THE ROLE SIGNATURE IS A CLAIM: PMS8_242 masked 0.3525 (the slot record; +0.0205 vs
    PMS4_242 z 2.42, +0.0258 vs the lineage twin z 2.81; open 0.3276 z 2.65/2.98; rows 13/9; mint flat); the
    pair: +0.018 vs the chassis (combined z 2.97), +0.022 vs the lineage (z 3.35). The args FIELD does not
