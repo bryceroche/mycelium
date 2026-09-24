@@ -44218,3 +44218,21 @@ annotation stream) stays REGISTERED as the alternation's missing piece —
 untested, and now with the identity key's null as a warning that an NL-
 leading booster on the mandatory road did not help either. Numbers
 asserted (ingest in the chain).
+
+**2026-09-24 07:07 — THE ALTERNATION SPEC registered (`docs/alternation_spec.md`;
+Bryce's six-point focus).** One setup breath and six alternating breaths
+(odd NL-driven, even math-driven, the consult at breath 4 as a map-reduce
+between two captured graphs); the identity key ONCE, at breath 0, on the
+given channel only (the tau-32 lesson: identity binds a token to a slot,
+never chooses among slots); five keys never summed (identity, contextual,
+updated math, updated NL, updated shared), each its own score stream at a
+fixed temperature; the DSL predicate mask (same_identity, same_role,
+earlier, consumes, same_sentence, forced) soft-to-hard over the six
+breaths on a schedule, parameter-free, identical at train and read by
+construction — the reader the register never had; the consistency rule
+with its four measured mismatches and their fixes; the annotation stream
+as the data lever running beside every stage; the perceiver last, a
+monitor steering the mask from diagnostics (atlas distance, the NL and
+math certifiers' readings) that are inputs and never losses. Build order
+and a wild gate per stage in §7; every head edit carries the complex-
+tensor fence. Nothing fires without the word.

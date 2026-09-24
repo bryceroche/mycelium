@@ -30,6 +30,9 @@ The reads table: `.venv/bin/python3 scripts/reads.py table wildhold` (assert-on-
   (the wheel family) is retired as feedback (THE CHASSIS RULING: value propagation).
 
 ## THE QUEUE (all need the word; nothing fires without it)
+0. THE ALTERNATION SPEC (docs/alternation_spec.md, registered 09-24): the lifecycle (setup + six alternating breaths),
+   five keys never summed, the predicate DSL mask soft->hard, the consistency rule, the annotation stream beside, the
+   perceiver last; build order + a wild gate per stage in its §7. Stage 1 (consistency) is the first build, on the word.
 1. DONE 09-22 15:20 — THE ROLE SIGNATURE IS A CLAIM: PMS8_242 masked 0.3525 (the slot record; +0.0205 vs
    PMS4_242 z 2.42, +0.0258 vs the lineage twin z 2.81; open 0.3276 z 2.65/2.98; rows 13/9; mint flat); the
    pair: +0.018 vs the chassis (combined z 2.97), +0.022 vs the lineage (z 3.35). The args FIELD does not
