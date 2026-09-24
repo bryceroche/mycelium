@@ -44458,3 +44458,40 @@ NESTED 0.6187 (adjacent 0.773; min 0.295) — a gap of 0.06 against 0.15 /
 pair on rows 0:8 with per-parameter-group cosines (pc-gradcos2) lands
 next. The three nested reads are three FORMS (spread; sigmoid group-
 total; softplus group-total), stated, not one; the flat reads stand.
+
+### 2026-09-24 (15:45) — THE CLOCK-BAND READS registered: are 64 of 256 planes too many for the clock?
+
+Bryce's question (Opus's relay beside it): the T256 bus reserves 64 planes
+(128 of 512 dims: breath-hand 32 / parity 16 / pass 16, the frozen
+`.cache/polar_bands.json`) for the clock — too much, given the T6 six-wave?
+THE CORRECTION FIRST (from the head, not the prose): the clocked planes
+are not a reservation. They are ordinary state dims that receive, per loop
+breath, (i) THE TURN (the sextet's increment on the state, the absolute
+phase on the Q side, the canon frame on the notebook), (ii) THE FIELD
+(the E&B exchange between slots along the open mask lanes, kappa 0.1),
+and (iii) a BYPASS of the 128-d content waist (the polar waist projects
+the 384 content dims only; the clock dims pass bitwise). Every organ
+writes into all 512 dims; the six-wave is the same clock's attention-
+side twin (a zero-born carrier gate), not a second timer. So nothing is
+stolen; the design question is what the turned quarter of the state
+CARRIES, and whether the turn/field are read at all. Three reads, zero
+training, on the claim body PMS8_241, masked wild paired against its
+banked open-turn read (worktree head, branch clock-reads ce3f0a57 —
+the main head is under the unlock chain; three new ALG_SEVER organs:
+clockturn = wheel tables identity, clockfield = the exchange skipped,
+clockband = the clock dims zeroed leaving each loop breath; CPU gate
+`.cache/clocksev_gate.sh`: unset bit-identical, each sever must run AND
+differ from role8) + THE BAND PROBE (`scripts/clock_band_probe.py`,
+f725de3d: the state entering each loop breath per factor slot, banked;
+A: breath <- band, how few clock planes name the breath, vs content;
+B: story time — gold derivation depth and anchor sentence <- band, as
+the held-out R^2 INCREMENT over the slot index, vs five size-matched
+random 64-plane content controls). BARS (pinned, `.cache/clock_reads_
+chain.sh`, unit pc-clockreads): a sever's |delta masked| < 0.010 (one
+SE) = a PASSENGER at read; >= 0.020 = LOAD-BEARING; between = a twin
+body needed. A: breath accuracy >= 0.90 from <= 4 clock planes = the
+breath is cheap to read (64 is redundancy, not information). B: the
+clock band's increment >= +0.10 R^2 AND above the content control's
+spread = the band carries story time. Any shrink of the band is a fresh
+48k run (the body learned in this frame) and needs the word; these reads
+decide whether it is worth one.
