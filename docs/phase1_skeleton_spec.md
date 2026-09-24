@@ -44346,3 +44346,44 @@ masks); FTYPE c1 = {relation, given, other}. Wild: 992 relation slots, mean
 group c1 4.71 / c2 2.54 vs the gold's ~1.9 args, 83% of slots with c1 > fine;
 the diet: 173,385 relation slots, c1 5.61 / c2 2.51, 68%. BUILDING: the
 nested ladder (ALG_NEST=<levels per rung>) and the gradient-cosine census.
+
+**2026-09-24 14:07 — THE NESTED LADDER built and gated; THE FIRST GRADIENT-
+COSINE READ goes AGAINST the prediction, and the code says why: the coarse
+args target was the SPREAD form; the GROUP-TOTAL (projection) form built.**
+THE BUILD (commit 19a4d1df; ALG_NEST=<level per rung>): args at level 1/2
+from the sidecar's same-entity / same-depth groups, digits by leading-
+position masks, ftype by the 3-way collapse (log of the summed softmax).
+THE GATE (CPU, tiny64): fence OK; unset 5.2995 / 0.0279 bit-identical;
+role8 6.5535 / 1.1061; nest333 (every rung at level 3) = role8 TO THE
+DIGIT (the nesting code inert at level 3); nest 1,1,2,2,3,3,3 12.8773 /
+5.7575 runs. THE CENSUS (`scripts/grad_cosine_census.py`: eager, one
+backward per rung, the rungs' gradient vectors on the shared weights,
+pairwise cosines; pc-gradcos on the claim body PMS8_241): rows 0:8 FLAT
+mean off-diagonal cosine 0.6356 (adjacent 0.796; rung 0 vs 6 0.238; min
+0.238); NESTED (the spread form) 0.4877 (adjacent 0.715; 0.214; min
+0.163); rows 8:16 FLAT 0.7364 (adjacent 0.856; min 0.404). READING: (1) no
+negative cosine anywhere — on the trained body the flat ladder's rungs
+already agree (0.64-0.74 mean, every pair positive): there is no tug-of-
+war to remove here, so the measure cannot separate the ladders on the
+question it was asked; (2) the nested read LOWERED agreement, and the
+code says why (Opus's check 1, confirmed): the coarse args target set
+every group member to 1 — the SPREAD form — which the fine rung pushes
+back to 0: opposite signs on the same logits, a fight by construction;
+the ftype and digit coarse terms were projections (the summed softmax;
+the true leading digits) and cannot fight. THE FIX (built, gating): THE
+GROUP-TOTAL FORM — the coarse args target is the projection "at least one
+member of the group is on", loss = -log(1 - prod_{k in G}(1 - p_k)), the
+candidates outside the group to 0; raising the right member always helps,
+no member is ever pushed up, the fine target sits inside (hierarchical
+softmax's rule for a multi-label head; multigrid's: a coarse target is a
+projection of the fine one, never a different question). THE FIELDS
+(Opus's survey, affirmed against the code): diffusion puts the blur in
+the INPUT (the blurred ladder's fog, built), RAFT puts it in the WEIGHTS
+(the ladder's rising rung weights, built), Matryoshka in the
+REPRESENTATION (the plane unlock, designed, unbuilt); none in the label
+except as a projection. The long-term shape: full target every breath, a
+growing plane prefix, rising weights — the label-side nesting rides only
+in projection form. The census's remaining slices (nest 8:16, both 16:24)
+import the group-total head (each run a fresh process; stated); nest 0:8
+re-reads under the new form with per-parameter-group cosines (pc-gradcos2).
+The bar: the projected form at or above flat.

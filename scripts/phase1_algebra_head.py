@@ -6095,13 +6095,32 @@ def _loss_single(o, g, blur=0.0, sw=None, level=3):
     # group at the same chain depth (level 2); the gold's exact args are
     # inside both, so a right group is never contradicted by the fine rung.
     _args_t = (g["args_c1"] if level == 1 else g["args_c2"]) if (level < 3 and "args_c1" in g) else g["args"]
-    args_w = 1.0 + 4.0 * _args_t
+    args_w = 1.0 + 4.0 * g["args"]
     is_chain = g["is_chain"] if "is_chain" in g else is_mod * 0.0
     am = pres * (is_rel + is_sel + is_mod + is_pct + is_fdiv + is_macro + is_frac + is_chain)
     n_am = am.sum() + 1e-6
     _ow_ptr = float(os.environ.get("OBJW_PTR", "1.0"))   # pool axis OBJW
     am_w, n_am_w = (am, n_am) if sw is None else (am * sw, (am * sw).sum() + 1e-6)
-    l = l + ((bce(o["args"], _args_t, "args") * args_w).mean(-1) * am_w).sum() / n_am_w * 2.0 * _ow_ptr
+    if level < 3 and "args_c1" in g:
+        # THE GROUP-TOTAL FORM (2026-09-24; the first census read the SPREAD
+        # form — every group member pushed to 1, which the fine rung pushes
+        # back to 0: a fight by construction, 0.636 -> 0.488 mean cosine).
+        # The coarse target is the PROJECTION of the fine one: "at least
+        # one member of the group is on" — loss = -log(1 - prod_{k in G}
+        # (1 - p_k)) — plus the candidates outside the group to 0. Raising
+        # the right member always lowers it, no member is ever pushed up,
+        # the fine target sits inside (hierarchical softmax's rule carried
+        # to a multi-label head; multigrid's: a coarse target is a
+        # projection, never a different question). Slots without args are
+        # zeroed by am_w below (the clip keeps the pre-mask value finite).
+        _pk = o["args"].sigmoid()
+        _log_none = ((1.0 - _pk + 1e-7).log() * _args_t).sum(-1)                 # log prod_{k in G} (1 - p_k)
+        _l_group = -((1.0 - _log_none.exp()).clip(1e-6, 1.0)).log()               # (B, L_FAC): at least one on
+        _neg_m = 1.0 - _args_t
+        _l_neg = (bce(o["args"], _args_t * 0.0, "args") * _neg_m).sum(-1) / (_neg_m.sum(-1) + 1e-6)   # outside the group: to 0
+        l = l + ((_l_group + _l_neg) * am_w).sum() / n_am_w * 2.0 * _ow_ptr
+    else:
+        l = l + ((bce(o["args"], g["args"], "args") * args_w).mean(-1) * am_w).sum() / n_am_w * 2.0 * _ow_ptr
     l = l + (ce(o["res"], g["res"], "res") * pres_w).sum() / n_p_w * 2.0 * _ow_ptr
     l = l + ce(o["query"], g["query"]).mean() * 2.0 * _ow_ptr
     fsn = g["fspan"] / (g["fspan"].sum(-1, keepdim=True) + 1e-6)

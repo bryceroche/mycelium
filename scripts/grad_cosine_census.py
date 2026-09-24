@@ -48,6 +48,21 @@ for kb in range(K):
     print(f"[grad-cos] rung {kb} level {lvl}: loss {losses[-1]:.4f} |grad| {norms[-1]:.4f}", flush=True)
 V = np.stack(vecs); N = np.linalg.norm(V, axis=1, keepdims=True) + 1e-12
 C = (V / N) @ (V / N).T
+# PER PARAMETER GROUP (Opus's check 3): an average can hide a fight inside one head — the args head,
+# the digit head, the ftype head, the router's own weights, and everything else, each its own cosine.
+_off = 0; _spans = {}
+for k in shared:
+    n_ = int(np.prod(p[k].shape)); _spans[k] = (_off, _off + n_); _off += n_
+GROUPS = {"args-head": ["W_args"], "dig-head": ["h_dig", "h_dig_b"], "ftype-head": ["h_ftype", "h_ftype_b"],
+          "router": [k for k in shared if k in ("W_rk2", "W_rq2", "theta_given", "W_role", "w_prec")]}
+GROUPS["rest"] = [k for k in shared if not any(k in v for v in GROUPS.values())]
+for gname, keys in GROUPS.items():
+    idx = np.concatenate([np.arange(*_spans[k]) for k in keys if k in _spans]) if keys else np.zeros(0, int)
+    if len(idx) == 0:
+        continue
+    Vg = V[:, idx]; Ng = np.linalg.norm(Vg, axis=1, keepdims=True) + 1e-12; Cg = (Vg / Ng) @ (Vg / Ng).T
+    og = Cg[~np.eye(K, dtype=bool)]
+    print(f"[grad-cos]   group {gname:11s} ({len(idx):9d} params): mean off-diag cosine {og.mean():+.4f} | min {og.min():+.4f} | negatives {int((og < 0).sum())}/{len(og)}")
 off = C[~np.eye(K, dtype=bool)]
 np.set_printoptions(precision=3, suppress=True, linewidth=140)
 print("[grad-cos] pairwise cosine between rungs' gradients on the shared weights:"); print(C)
