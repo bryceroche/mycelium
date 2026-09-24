@@ -45,7 +45,10 @@ The reads table: `.venv/bin/python3 scripts/reads.py table wildhold` (assert-on-
    registered. 09-23 19:05 WORD GIVEN: THE IDENTITY KEY ON THE BANK READ (ALG_IDKEY=<tau>, commit 80c959bb —
    the message on the mandatory road: every token's exact tag scored against the slot's identity query = what it
    attended last breath, on the pbias port, no params) built + gated; FIRED as pc-idkey (IK_241 vs the banked
-   CTRLs_241; bars: args field +0.020, DERIVED-ARG >= 2 SE, masked >= -0.005; idkey_chain.log, ~45 min). Behind it
+   CTRLs_241) -> tau 4 INERT BY SCALE; tau 32 A SIGNIFICANT NEGATIVE on its own cell (DERIVED-ARG -0.036 z 2.7 against,
+   same-noun -0.018, different-noun 0.000): an exact-tag booster blurs which-mention/which-time — IDENTITY-IN-ATTENTION
+   CLOSES (ledger 09-23 21:0x). The wall is ROLE and TIME among identical identities. CARD IDLE. Levers the book points
+   at: n (annotated wild rows), the refusal lever; the even-breath road registered, untested. Behind it
    (word): the annotation stream (math->NL as a mandatory road), then the atlas and the mask on the key streams.
    NEXT HEAD EDIT carries: THE COMPLEX-TENSOR FENCE (a self-test: the head's inline rotate vs mycelium/complex_tensor.py's
    tg_rotate + numpy bind on a random tensor, asserted equal, run by the CPU gate). NOTE: six loop breaths = three
