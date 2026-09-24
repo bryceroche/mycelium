@@ -236,6 +236,20 @@ ALG_IDKEY = float(os.environ.get("ALG_IDKEY", "0"))
 # identical across passes, so consult 1 is exact. Unset = one pass, the
 # stale start-of-run facts, bit-identical.
 ALG_ALT3 = int(os.environ.get("ALG_ALT3", "0"))
+# THE NESTED LADDER (2026-09-24, word given; the blog "One job, six
+# resolutions"): every breath does the WHOLE job graded at its own
+# resolution, and the targets NEST (fine ⊂ medium ⊂ coarse) so the
+# rungs' gradients agree instead of fighting. ALG_NEST = the level per
+# rung, comma-separated, one per breath (rung 0 = breath 0's state):
+# 1 = coarse (args: the same-entity group as a multi-hot; digits: the
+# MSD position only; ftype: {relation, given, other}); 2 = medium (args:
+# the group at the same chain depth; digits: the two leading positions;
+# ftype: fine); 3 = fine (the gold as it was — bit-identical). The
+# targets come from scripts/hier_targets_mint.py's sidecar
+# (.cache/phase1_alg_hier_<split>.npz), merged into the gold at load.
+# Unset = every rung at level 3 = the ladder as it was.
+ALG_NEST = os.environ.get("ALG_NEST", "")
+_NEST_LEVELS = [int(x) for x in ALG_NEST.split(",")] if ALG_NEST else None
 assert not ALG_ALT3 or int(os.environ.get("ALG_ALT2", "0")), "ALG_ALT3 needs ALG_ALT2=1 (the facts injection road W_fact it re-enters through)"
 assert not (ALG_BUSREG_SEAL or ALG_BUSREG_PREDMAP or ALG_VALREG_LIVE) or ALG_BUSREG, (
     "ALG_BUSREG_SEAL / ALG_BUSREG_PREDMAP / ALG_VALREG_LIVE need ALG_BUSREG (the register they act on)")
@@ -1821,6 +1835,21 @@ def load_alg(split):
               f"row_gold (test fixture admitted; solution fields "
               f"independently confirmed)")
     gold = {k[2:]: z[k] for k in z.files if k.startswith("g_")}
+    if _NEST_LEVELS is not None:
+        # THE NESTED LADDER's sidecar (hier_targets_mint.py): the train split
+        # MUST have it (a loud stop); a test split takes it when present
+        # (the loss never runs on test — the val reads are fac-exact).
+        _hp = f".cache/phase1_alg_hier_{split}.npz"
+        if os.path.exists(_hp):
+            _hz = np.load(_hp)
+            assert int(_hz["n"]) == len(gold["presence"]), (
+                f"NESTED LADDER: sidecar {_hp} has {int(_hz['n'])} rows but the staged gold has "
+                f"{len(gold['presence'])} — re-mint (hier_targets_mint.py) for this split")
+            for k in ("args_c1", "args_c2", "dig_m1", "dig_m2", "ftype_c1"):
+                gold[k] = _hz["g_" + k]
+            print(f"[nest] {split}: hierarchical targets from {_hp} (levels per rung {_NEST_LEVELS})", flush=True)
+        else:
+            assert not is_train, f"NESTED LADDER: no sidecar {_hp} for the TRAIN split — run hier_targets_mint.py first"
     if os.path.exists(STATES_NPY.format(split=split)):
         states = np.load(STATES_NPY.format(split=split), mmap_mode="r")
         # SAMPLES-STATES DESYNC GUARD (deep clean 2026-07-30): samples come
@@ -5736,7 +5765,8 @@ def loss_fn(o, g):
             full = dict(o, **ob)
             w = 1.0 + kb / max(K_B - 1, 1)
             beta = (ALG_BLUR_MAX * math.cos(kb * math.pi / (2 * max(K_B - 1, 1))) ** 2) if ALG_BLUR else 0.0
-            term = _loss_single(full, g, blur=_clock_fog(kb, beta)) * w
+            _lvl = (_NEST_LEVELS[kb] if (_NEST_LEVELS is not None and kb < len(_NEST_LEVELS)) else 3)   # THE NESTED LADDER: this rung's resolution
+            term = _loss_single(full, g, blur=_clock_fog(kb, beta), level=_lvl) * w
             tot = term if tot is None else tot + term
         if int(os.environ.get("BREATH_NORM", "0")):
             _wsum = sum(1.0 + kb / max(K_B - 1, 1) for kb in range(K_B))
@@ -5755,7 +5785,10 @@ def _clock_fog(kb, beta):
                           for f, (a, d) in _CLOCK_TARGET.items()}}
 
 
-def _loss_single(o, g, blur=0.0, sw=None):
+def _loss_single(o, g, blur=0.0, sw=None, level=3):
+    """level (THE NESTED LADDER, 2026-09-24): 3 = the gold as it was (bit-
+    identical); 2 = medium; 1 = coarse — the args, digits and ftype terms
+    read the sidecar's nested targets instead (fine ⊂ medium ⊂ coarse)."""
     from tinygrad import Tensor
     pres = g["presence"]
     n_p = pres.sum() + 1e-6
@@ -5797,7 +5830,20 @@ def _loss_single(o, g, blur=0.0, sw=None):
         return c.contiguous()   # perf: own kernel
 
     l = bce(o["pres"], pres, "pres").mean()
-    l = l + (ce(o["ftype"], g["ftype"], "ftype") * pres_w).sum() / n_p_w
+    if level == 1 and "ftype_c1" in g:
+        # THE NESTED LADDER, coarse ftype: the 9-way head graded on the
+        # 3-way collapse {relation 0, given 1, other 2} — the group's
+        # probability is the sum over its classes (exact: log of the
+        # summed softmax), so a right group is never contradicted by the
+        # fine target.
+        _lsf = o["ftype"].log_softmax(-1)
+        _n_ft = int(o["ftype"].shape[-1])
+        _grp = np.full((3, _n_ft), 0.0, np.float32); _grp[0, 0] = 1.0; _grp[1, 1] = 1.0; _grp[2, 2:] = 1.0
+        _lg_grp = ((_lsf.exp() @ Tensor(_grp).transpose(0, 1)) + 1e-9).log()   # (B, L_FAC, 3)
+        _c1 = (_lg_grp * -1).gather(-1, g["ftype_c1"].unsqueeze(-1)).squeeze(-1)
+        l = l + (_c1 * pres_w).sum() / n_p_w
+    else:
+        l = l + (ce(o["ftype"], g["ftype"], "ftype") * pres_w).sum() / n_p_w
     l = l + (ce(o["op"], g["op"], "op") * rel_w).sum() / n_rel_w
     l = l + bce(o["islit"], g["is_lit_f"]).mean()
     if "depth" in o and "depth" in g:      # the position channel (gold-fed)
@@ -5996,8 +6042,17 @@ def _loss_single(o, g, blur=0.0, sw=None):
     is_frac = g["is_frac"] if "is_frac" in g else is_mod * 0.0
     dm = g["is_lit_f"] + is_mod + is_pct + is_fdiv + is_macro + is_frac
     dm_w = dm if sw is None else dm * sw
-    l = l + (ce(o["dig"], g["digits"], "dig").mean(-1) * dm_w).sum() / (dm_w.sum() + 1e-6) \
-        * float(os.environ.get("OBJW_DIG", "1.0"))       # pool axis OBJW
+    _dig_m = (g["dig_m1"] if level == 1 else g["dig_m2"]) if (level < 3 and "dig_m1" in g) else None
+    if _dig_m is not None:
+        # THE NESTED LADDER, coarse digits: only the leading position(s)
+        # are graded at this rung (a per-position mask from the sidecar;
+        # the fine rung grades all N_DIG) — a right leading digit is
+        # never contradicted by the exact number.
+        _dce = (ce(o["dig"], g["digits"], "dig") * _dig_m).sum(-1) / (_dig_m.sum(-1) + 1e-6)
+        l = l + (_dce * dm_w).sum() / (dm_w.sum() + 1e-6) * float(os.environ.get("OBJW_DIG", "1.0"))
+    else:
+        l = l + (ce(o["dig"], g["digits"], "dig").mean(-1) * dm_w).sum() / (dm_w.sum() + 1e-6) \
+            * float(os.environ.get("OBJW_DIG", "1.0"))       # pool axis OBJW
     if "sgn" in o and "sign" in g:              # E1: sign BCE on value slots
         l = l + (bce(o["sgn"], g["sign"]) * dm).sum() / (dm.sum() + 1e-6)
     if "cmt" in o:      # RUNG-3: commit-when-correct (self-labeled, DETACHED
@@ -6035,13 +6090,18 @@ def _loss_single(o, g, blur=0.0, sw=None):
         l = l + (ce(o["op"], g["op"]) * mac).sum() / n_mac
         l = l + (ce(o["dig2"], g["digits2"]).mean(-1) * mac).sum() / n_mac
         l = l + (ce(o["y"], g["y"]) * mac).sum() / n_mac * 2.0
-    args_w = 1.0 + 4.0 * g["args"]
+    # THE NESTED LADDER, coarse args: the target at this rung is the
+    # sidecar's multi-hot over the same-entity group (level 1) or the
+    # group at the same chain depth (level 2); the gold's exact args are
+    # inside both, so a right group is never contradicted by the fine rung.
+    _args_t = (g["args_c1"] if level == 1 else g["args_c2"]) if (level < 3 and "args_c1" in g) else g["args"]
+    args_w = 1.0 + 4.0 * _args_t
     is_chain = g["is_chain"] if "is_chain" in g else is_mod * 0.0
     am = pres * (is_rel + is_sel + is_mod + is_pct + is_fdiv + is_macro + is_frac + is_chain)
     n_am = am.sum() + 1e-6
     _ow_ptr = float(os.environ.get("OBJW_PTR", "1.0"))   # pool axis OBJW
     am_w, n_am_w = (am, n_am) if sw is None else (am * sw, (am * sw).sum() + 1e-6)
-    l = l + ((bce(o["args"], g["args"], "args") * args_w).mean(-1) * am_w).sum() / n_am_w * 2.0 * _ow_ptr
+    l = l + ((bce(o["args"], _args_t, "args") * args_w).mean(-1) * am_w).sum() / n_am_w * 2.0 * _ow_ptr
     l = l + (ce(o["res"], g["res"], "res") * pres_w).sum() / n_p_w * 2.0 * _ow_ptr
     l = l + ce(o["query"], g["query"]).mean() * 2.0 * _ow_ptr
     fsn = g["fspan"] / (g["fspan"].sum(-1, keepdim=True) + 1e-6)
@@ -7323,6 +7383,10 @@ def do_train(steps, lr, batch, seed):
                          ("op", (L_FAC,), dtypes.int),
                          ("res", (L_FAC,), dtypes.int),
                          ("digits", (L_FAC, N_DIG), dtypes.int),
+                         *((("args_c1", (L_FAC, K_VARS), dtypes.float), ("args_c2", (L_FAC, K_VARS), dtypes.float),
+                            ("dig_m1", (L_FAC, N_DIG), dtypes.float), ("dig_m2", (L_FAC, N_DIG), dtypes.float),
+                            ("ftype_c1", (L_FAC,), dtypes.int))
+                           if _NEST_LEVELS is not None else ()),   # THE NESTED LADDER's targets (the generic feed rides them)
                          ("sel", (L_FAC,), dtypes.int),
                          ("is_rel", (L_FAC,), dtypes.float),
                          ("is_mod", (L_FAC,), dtypes.float),
