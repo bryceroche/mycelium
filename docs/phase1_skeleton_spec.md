@@ -44316,3 +44316,33 @@ and it is untested. THE PERF NUMBER stands as the map-reduce's baseline:
 2.2x, the host shuffle not the solver; ALG_ALT3_POOL=0 (in-process
 consult) and B=16 registered as the first two gains, measured next.
 Numbers asserted (ingest in the chain).
+
+**2026-09-24 12:14 — THE BLOG POST LIVE; THE NL CERTIFIER v1 CARRIES (AUROC
+0.81 from the text alone); THE HIERARCHICAL TARGETS MINTED.** THE POST:
+"One job, six resolutions" (site/blog/2026-09-24-one-job-six-resolutions.md;
+built, deployed to production, pinned first; theshapeofthought.ai/blog/
+lists it) — nested targets, Matryoshka keys, the NL certifier, the week
+of honest nulls. THE NL CERTIFIER v1 (`scripts/nl_certifier.py`; zero
+GPU; reads a chain_acc raw-slots dump, decodes with the numeral mask
+exactly as chain_acc does, solves host-side for the row's label, benches
+every certificate): on dump_wild PMS8_241 (labels correct 14 / wrong 201 /
+refused 96 — chain_acc's own to the row, once the script ran under the
+FAMILY ENV: the digit width N_DIG is 7 only under ALG_WIDE, the 09-23
+facts-census trap a second time, now asserted loudly in the script):
+AUROC correct-vs-wrong — coverage (the text's numerals claimed by some
+given) 0.836, no_double 0.746, derived_stated (a relation's implied value
+appears in the text) 0.689, chain_reaches 0.623, cue_agree 0.543,
+value_present 0.532 (the numeral mask already enforces it); THE COMBINED
+score 0.811 (means: correct 0.745, wrong 0.586, refused 0.549) — against
+the solver-side certifier bench's 0.75 of 09-18, from the text alone, no
+parameters, n 14 correct (a first form; the perceiver's input and the
+accept/refuse evidence; never a loss). THE HIERARCHICAL TARGETS
+(`scripts/hier_targets_mint.py` -> .cache/phase1_alg_hier_{wildhold,
+test23,formpm35c}.npz): per relation slot, ARGS c1 = the same-entity group
+(the inherited key, KEY-INH) as a multi-hot over variables, c2 = c1 at the
+same chain depth, fine = the gold (fine ⊂ c2 ⊂ c1 by construction); DIGITS
+m1 = the MSD position only, m2 = the two leading positions (per-position
+masks); FTYPE c1 = {relation, given, other}. Wild: 992 relation slots, mean
+group c1 4.71 / c2 2.54 vs the gold's ~1.9 args, 83% of slots with c1 > fine;
+the diet: 173,385 relation slots, c1 5.61 / c2 2.51, 68%. BUILDING: the
+nested ladder (ALG_NEST=<levels per rung>) and the gradient-cosine census.
