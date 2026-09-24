@@ -44236,3 +44236,42 @@ monitor steering the mask from diagnostics (atlas distance, the NL and
 math certifiers' readings) that are inputs and never losses. Build order
 and a wild gate per stage in §7; every head edit carries the complex-
 tensor fence. Nothing fires without the word.
+
+**2026-09-24 07:36 — WORD GIVEN: THE THREE CONSULTS built, gated and FIRED (the
+alternation spec's stage 1+2 skeleton on the math side); THE COMPLEX-
+TENSOR FENCE in every gate.** CONFIRMED to Bryce: the solver executes
+THREE times per problem, at training and at inference alike — after loop
+breaths 2, 4 and 6 (the third conditions the decode; registered, the
+read-side certifier's input), its forced values re-entering the variable
+states at breaths 3 and 5 through the ALT2 injection road. THE FORM (commit
+ad2671b8, ALG_ALT3=1): tinygrad's realize substitutes a buffer into every
+tensor sharing a node (Monday's census fault), so a host hop inside one
+forward would cut the gradient at every consult and truncate the
+recurrence to two-breath windows; the form that keeps the JIT and the
+full recurrence is the ITERATIVE PREFILL — three passes per step
+restarted from the retina (breaths 0..2 -> consult 1 -> facts3; 0..4 with
+facts3 -> consult 2 -> facts5; all seven with both -> the loss and the
+backward), each a captured graph (two new TinyJit'd partial passes beside
+the step), breaths 0..2 identical across passes so consult 1 is exact,
+the recomputation replacing state serialisation across hops. THE MAP-
+REDUCE: each consult maps the batch's rows as independent solver jobs in
+the facts pool (spawned DEV=CPU children, walled per row) and reduces
+their forced values into one fixed device buffer the next graph reads;
+15 breaths of forward per step instead of 7 (~+70% expected; measured in
+the arm). forward(stop_after, facts3, facts5) with per-rung variable
+states (each rung's heads read the states it had); the readers (loop_val,
+chain_acc) walk the same three curbs; jit_read bakes constant kwargs into
+its key. THE FENCE: rot2_interleaved at module level is the head's one
+rotate (pure code motion from forward's closure); scripts/complex_fence.py
+asserts it equal to mycelium/complex_tensor.tg_rotate BIT-EXACTLY (0.0)
+and to numpy complex bind to 3.6e-7, unbind(bind(v)) = v to 4.8e-7,
+modulus drift 4.8e-7 — run in every CPU gate. THE GATE (CPU, tiny64):
+fence OK; unset 5.2995 / 0.0279 BIT-IDENTICAL; role8 6.5535 / 1.1061
+unchanged; alt3 6.5344 / 1.1057 runs (the first run caught a binding-
+order bug of mine — the variable-state list read the breath count before
+it was bound — fixed). FIRED: pc-alt3 (`.cache/alt3_chain.sh`): ALT3_241 =
+PMS8_241 + 12k at LR 1e-5, one segment (the consults live in every step),
+vs the banked CTRLs_241. BARS (pinned): masked wild paired >= -0.005 (the
+cost line); the wild DIGITS field (open) >= +0.020 vs the control (the
+values' cell); ROWS beside (the consults' facts are the row's other half);
+the step cost in the steady frame quoted as the map-reduce's number.

@@ -33,6 +33,10 @@ The reads table: `.venv/bin/python3 scripts/reads.py table wildhold` (assert-on-
 0. THE ALTERNATION SPEC (docs/alternation_spec.md, registered 09-24): the lifecycle (setup + six alternating breaths),
    five keys never summed, the predicate DSL mask soft->hard, the consistency rule, the annotation stream beside, the
    perceiver last; build order + a wild gate per stage in its §7. Stage 1 (consistency) is the first build, on the word.
+0b. 09-24 07:35 WORD GIVEN: THE THREE CONSULTS (ALG_ALT3; commit ad2671b8) — the solver after breaths 2, 4, 6 at train
+   AND read (iterative prefill: three passes per step, each a captured graph; the consult a map-reduce in the facts
+   pool) + THE COMPLEX-TENSOR FENCE (scripts/complex_fence.py, every gate). FIRED as pc-alt3 (ALT3_241 vs CTRLs_241;
+   bars: masked >= -0.005, digits +0.020, rows beside, the step cost quoted; alt3_chain.log). Every head edit: the fence.
 1. DONE 09-22 15:20 — THE ROLE SIGNATURE IS A CLAIM: PMS8_242 masked 0.3525 (the slot record; +0.0205 vs
    PMS4_242 z 2.42, +0.0258 vs the lineage twin z 2.81; open 0.3276 z 2.65/2.98; rows 13/9; mint flat); the
    pair: +0.018 vs the chassis (combined z 2.97), +0.022 vs the lineage (z 3.35). The args FIELD does not
