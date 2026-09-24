@@ -44180,3 +44180,41 @@ numpy bind on a random tensor and asserts equality, run by the CPU gate
 with every head edit — so the specification and the implementation
 cannot drift apart silently. Load-bearing as the specification; the
 clock, the bus and the register all share its one layout.
+
+**2026-09-23 21:02 — THE IDENTITY KEY AT tau 32: A SIGNIFICANT NEGATIVE ON
+THE CELL IT WAS BUILT FOR; IDENTITY-IN-ATTENTION CLOSES — the wall is not
+an identity problem.** IK32_241 (pc-idkey32; the same two gentle segments
+with ALG_IDKEY=32.0, the census-set knob) vs CTRLs_241 (n 2051 slots):
+MASKED wild 0.3506 vs 0.3481 (+0.0024, paired SE 0.0059, z 0.42 — the
+highest masked read on seed 241, inside noise; discordant 70 / 75: the
+key now acts); OPEN 0.3281 vs 0.3242 (+0.004, z 0.68); fields: ARGS 0.437
+vs 0.453 (-0.016), dig 0.426 vs 0.418 (+0.008), ftype 0.857 vs 0.852;
+ROWS 14 / 11 vs 15 / 12; MINT 0.6464 vs 0.6554 (-0.9). THE CELLS (post vs
+post): DERIVED-ARG -0.036 (z -2.74) — THE KEY's OWN CELL, WRONG SIGN AT
+2.7 SE; SAME-NOUN(inh) -0.018 (z -2.61); ALL ARGS -0.015 (z -2.48);
+GIVEN-ONLY 0.000; DIFFERENT-NOUN 0.000. VERDICT: the arm does not fire;
+the key HURTS exactly the cell it targeted and touches nothing else.
+READING, and it is sharp: an exact-tag booster pulls a slot's read
+toward EVERY mention of its entity — which is the definition of a same-
+noun / same-quantity tie — so on the wall's own cell it blurs the one
+distinction that matters (which mention, which time) while leaving the
+cells identity already separates untouched (different-noun 0.000:
+nothing to gain, nothing lost). The wall is NOT an identity problem: the
+candidates share an identity by construction (the twin-split and mixed-
+bucket censuses said so on 09-22), and the only axes that separate them
+are role and time — precedence, order in the chain — which is what the
+Role Signature carried to its certified +0.02 (composition) and what no
+identity road can add. IDENTITY-IN-ATTENTION CLOSES with the register
+family: eight organs on the bus and the bank read, exact in their
+algebra, in the loss, and not one moved a held-out decision the right
+way. THE POSITIVE READ THAT STANDS: gentle continuation at 1e-5 (the
+control, CTRLs_241: slot held, mint +0.4, rows 15 / 12 the record, one
+seed; the 242 twin registered). THE LEVER THE BOOK POINTS AT, said for
+the third time and now with eight nulls behind it: n — annotated wild
+rows moved the binding wall +31% at n=100 and nothing else has moved it;
+and, for the row, the refusal lever (30% of wild rows refuse a graph the
+head nearly had). The even-breath road (math-leading breaths, the
+annotation stream) stays REGISTERED as the alternation's missing piece —
+untested, and now with the identity key's null as a warning that an NL-
+leading booster on the mandatory road did not help either. Numbers
+asserted (ingest in the chain).
