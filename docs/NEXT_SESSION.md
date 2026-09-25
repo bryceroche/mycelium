@@ -6,15 +6,18 @@ the last ~60 entries) -> the memory board (MEMORY.md CURRENT BOARD, current).
 The reads table: `.venv/bin/python3 scripts/reads.py table wildhold` (assert-on-read).
 
 ## STATE AT HANDOFF
-- RUNNING (2026-09-24 15:45): pc-gradcos2 (the clean 0:8 census pair, holds the lock), pc-unlock (UL_241,
-  the plane-unlock arm, queued), pc-clockreads (THE CLOCK-BAND READS, queued: three read-time severs on
-  PMS8_241 — clockturn / clockfield / clockband, from the WORKTREE head /home/bryce/mycelium-wt branch
-  clock-reads ce3f0a57 — paired vs the banked masked read, then scripts/clock_band_probe.py collect+probe;
-  bars pinned in .cache/clock_reads_chain.sh and the ledger 09-24 15:45). Logs: .cache/clock_reads_chain.log,
-  .cache/unlock_chain.log, .cache/grad_cos2_chain.log. MERGE clock-reads into gen-weights only AFTER the
-  unlock chain finishes (its segments import the main head). THE CORRECTION to carry: the 64 clocked planes
-  are a TURNED QUARTER of the state (turn + field + a bypass of the content waist), not a reservation.
-- Nothing running: no pc-* units, no agents, no monitors; tree clean at 11ea0c53 (pushed).
+- RUNNING (2026-09-24 17:55): pc-nbsever only (THE NOTEBOOK BYPASS read on PMS8_241: ALG_SEVER=nbroad = the
+  notebook read dropped AND the stellarator handoff skipped; 'notebook' alone beside it for the record; bars = the
+  clock lines; .cache/nbsev_chain.log). Tree at 8ef58bb4; the worktree branch clock-reads is MERGED (the worktree
+  /home/bryce/mycelium-wt can be removed).
+- 09-24 VERDICTS (ledger 17:05-17:50): THE PLANE UNLOCK ARM DOES NOT FIRE (UL_241 vs CTRLs_241: masked -0.003 z 0.6;
+  rows 11/9 vs 15/12; the pointer cells DOWN, all -0.017 z 2.9, same-noun -0.018 z 2.5 = the bar's sign inverted;
+  mint flat). THE CENSUS PAIR per group: nesting the labels makes negative cross-rung pairs in the args (4->16/42) and
+  ftype (0->10/42) heads — the parking confirmed by the right instrument. THE CLOCK-BAND READS: turn -0.031 (a frame-
+  mismatch injection, not a clean removal), field -0.006 (passenger), channels -0.011 (between the lines); THE PROBE:
+  the sextet is a relative-phase code that needs its width (4 planes 0.69, 16 planes 0.93 = the content drift, 64
+  planes 0.995); story time (sentence) is everywhere in the state, the band no better than random content; depth
+  nowhere beyond the slot index. VERDICT: 64 planes is not too many; no shrink run; the field is the one droppable part.
 - THE CHASSIS (certified neutral on two seeds, +4-6 mint): the 35%-mint from-scratch
   lineage's recipe (form_mix_pm35 / the stamped pm35a, random init, 48k, B=8, the numeral
   mask at the read) + ALG_ROUTER=2 (the bus-native per-field router) + ALG_SPAN_ALL=1
