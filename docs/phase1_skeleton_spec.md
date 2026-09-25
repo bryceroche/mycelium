@@ -44518,3 +44518,29 @@ aggregate cosine; now on negative pairs). Regime tag: rows 0:8, one
 body, the stable form; the projection-form rule stands (same target,
 only the view changes). Artifacts: .cache/grad_cos2_{flat,nest}_0:8.log,
 .cache/grad_cos_summary2.txt.
+
+### 2026-09-24 (17:30) — THE CLOCK-BAND SEVERS READ (PMS8_241, masked wild, paired vs the banked open-turn read 0.3476; rows 14)
+
+clockturn (the wheel tables identity; channels kept): 0.3169, -0.0307,
+paired SE 0.0068, z 4.49 (130 vs 67 discordant); rows 7/311; fields:
+pres 0.834 (from 0.92), dig 0.462, args 0.430. clockfield (the E&B
+exchange skipped): 0.3418, -0.0059, SE 0.0027, z 2.19 (21 vs 9) —
+under the 0.010 PASSENGER line. clockband (the clock dims zeroed leaving
+each loop breath): 0.3364, -0.0112, SE 0.0048, z 2.34 (60 vs 37) —
+BETWEEN the lines (a twin body needed to call it). THE ORDERING IS THE
+FINDING: removing the turn costs three times removing the channels
+altogether, so the turn read is not a clean removal — with the state
+never turned, the notebook's canon frame (re-phased by +k on the read)
+and the Q-side absolute rotation still apply, a quarter of the dims
+arrive MISALIGNED, and the stellarator handoff blends the misaligned
+read into the state (presence 0.92 -> 0.83 is that damage). The clean
+statement of what the band carries BETWEEN breaths is the channel
+sever: ~0.011, ~60 slots of 2051. What the turn is worth per se cannot
+be separated from the frame mismatch by a read; a body trained without
+the turn is the only clean instrument (a fresh 48k run; needs the word).
+The field is a passenger at read. Regime tag: one body, the claim
+lineage, the masked read. Artifacts: .cache/ps_legal_wild_PMS8_241_sev
+{clockturn,clockfield,clockband}.npz, .cache/read_legal_wild_PMS8_241_
+sev*.log, .cache/clock_reads_chain.log. The probe re-fired (pc-clockprobe:
+the collect's assert took breath 0's state stamp for a missing loop
+breath; fixed 0d6e9634).
