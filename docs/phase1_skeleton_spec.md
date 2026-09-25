@@ -44732,3 +44732,22 @@ removed (the readout's gate stands: unset bit-identical, matry192 =
 role8 to the digit, matry 6.5275/1.4390). Regime tag: one body, the
 claim lineage, the masked read. Artifacts: .cache/ps_legal_wild_PMS8_
 241_sevwaist.npz, .cache/read_legal_wild_PMS8_241_sevwaist.log.
+
+### 2026-09-24 (19:50) — WORD GIVEN FOR THE WHOLE QUEUE ("Salute!"): what fires, in order
+
+GPU (queued at the lock behind pc-matry): pc-sevreads (mixer, garage);
+pc-ctrls242 (THE GENTLE-CONTINUATION TWIN: CTRLs_242 = PMS8_242 + the two
+1e-5 segments, no organ; bar: the slot holds >= -0.005 paired vs PMS8_242
+and rows >= the body's 13 — a twin pair certifies the continuation as
+free). CPU, now, as delegate reads on banked artifacts: (a) THE BEAM
+ORACLE BOUND (running); (b) THE SINKHORN CLAIM READ (givens x text
+numerals balanced; rows recovered; self-gate = the masked 14); (c) THE
+MEMBRANE CENSUS BY SCALE (of the given slots that miss their token, the
+share landing inside the right mention span / clause / sentence — which
+level of a pyramid the misses live at; the collect for PMS8_241 on the
+card under the lock if no intermediate exists). AFTER the reads land,
+without a further word: the picker as a panel (on the oracle's branch
+records, cross-validated, in rows), and the next arm ranked among the
+competition reply (garage or mixer, per the sever reads), the mention
+layer, and pyramid keys on the router — one arm at a time, the usual
+shape, bars pinned in the ledger before each fire.
