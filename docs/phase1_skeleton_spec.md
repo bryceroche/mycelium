@@ -44786,3 +44786,28 @@ the state's frame (k-1 turns) and the query side to the absolute phase
 k — by design, not a fault. Registered, needing the word: THE SIX-WAVE
 TICK (the wave's phase advancing 60 deg per breath in lockstep with the
 hand — a head edit, gated bit-identical at breath 1, an arm).
+
+### 2026-09-24 (20:45) — THE SIX-WAVE TICK registered + fired (word given; "your choice" on re-running)
+
+BUILT (worktree branch sixwave-tick 63e7b051; the main head is under
+pc-matry/pc-ctrls242): ALG_SW_TICK=1 carries the six-wave into every
+loop breath's bank read with the SLOT phase advanced (kb-1) x 60 deg,
+in lockstep with the sextet's hand (the per-breath bias road _pb_kb the
+old sync organ used; breath 0 unchanged; unset bit-identical). Gate
+(CPU): unset 5.2995/0.0279; role8 6.5535/1.1061; swtick must run AND
+differ. ARM SW_241 (pc-swtick, .cache/swtick_chain.sh, from the
+worktree): PMS8_241 + the two gentle segments at 1e-5 vs CTRLs_241;
+BARS (pinned, the unlock's): masked wild paired >= +0.010 (z >= 1.5);
+SAME-NOUN(inh) cell >= 2 SE; cost >= -0.005; rows, digits, mint beside.
+Caveat stated before the read: a warm body trained with the wave at
+breath 0 only meets a new bias at breaths 1-6 (sw_g 0.13) — a frame
+change on a trained body costs by itself (the turn sever's lesson);
+a null here is not the tick's last word, a from-scratch twin is (48k;
+low priority unless the warm read is ambiguous or positive). ON RE-
+RUNNING PAST EXPERIMENTS UNDER THE TICK (my choice): NO. Every verdict
+this month carries its regime tag (the static wave); they expire only
+if the tick clears its bar and becomes the regime, and then only the
+lines whose mechanism the wave touches (the pointer's same-noun cell,
+the membrane) get re-read, one at a time, never the whole book. GPU
+queue now: pc-matry (arm) -> pc-sevreads -> pc-ctrls242 -> the membrane
+collect -> pc-swtick.
