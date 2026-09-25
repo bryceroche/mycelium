@@ -44902,3 +44902,25 @@ on the road the mixer already occupies; never a new organ beside it.
 Ranked against the mention layer and the pyramid's sentence key when
 the beam bound lands. Artifacts: .cache/ps_legal_wild_PMS8_241_sev
 {mixer,garage}.npz, .cache/sevreads_chain.log.
+
+### 2026-09-24 (20:26) — THE BEAM-SEARCH ORACLE BOUND (delegate; scripts/beam_oracle.py; PMS8_241, the banked rawslots dump, zero GPU): THE DECODE-LEVEL BEAM IS CLOSED AT THIS BODY
+
+Self-gate PASSED (k=0 reproduces the masked 14/311; 2757 distinct
+solves, 243 s). Branching the k lowest-margin argument decisions (2^k
+parses, a PERFECT judge assumed): k=1 -> 15, k=2 -> 15, k=3 -> 17,
+k=4 -> 18 correct-somewhere; recoverable rows 1/1/3/4; choice-set size
+at k=4 mean 8.3 (a judge must pick among ~8 solved parses); free wins
+(only one branch solves) 1. Margins: the flips that fix a row sit at
+median 3.06 vs 2.77 for all decisions — the ranking does not
+concentrate the fixes. VERDICT: the ceiling of argument branching is
++4 rows with an oracle picker; the Sinkhorn claim (the digits axis)
+is +4 with no picker at all. The row wall is MULTI-ERROR PER ROW
+(the row census's one-away rows are ~20 of 311; the rest carry
+several wrong slots), so no single-decision branching reaches it and
+THE PICKER PANEL IS NOT BUILT (registered 18:30; the bound says 4
+rows is all it could win — struck as a build, kept as a bench). The
+beam's honest residue: the union of the two axes as a decode-time
+road (Sinkhorn on givens + the k=4 arg branches, oracle-judged) is a
+zero-GPU ceiling read worth one run for the record, no more. Regime
+tag: one body, the masked decode, the June solver's domain rule.
+Artifacts: .cache/beam_oracle_PMS8_241.{txt,pkl}.
