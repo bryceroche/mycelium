@@ -231,6 +231,7 @@ def read(ckpt, data=None, p=None):
         _XCORR_CHART = _HX.xcorr_load_chart()
         _XCORR_GF, _XCORR_GV = _HX.ALG_XCORR_GAIN, _HX.ALG_XCORR_V_GAIN
     _HUD_ON = int(os.environ.get("ALG_HUD", "0")) != 0   # THE TOKEN HUD, read-time road (2026-09-21)
+    _TREE_ON = bool(os.environ.get("ALG_TREE", ""))   # THE TREE DESCENT's unit-id port (2026-09-25)
     _BUSREG_ON = float(os.environ.get("ALG_BUSREG", "0")) != 0 or float(os.environ.get("ALG_IDKEY", "0")) != 0   # THE BUS REGISTER's token-id port (2026-09-22)
     if _BUSREG_ON:
         import phase1_algebra_head as _HB
@@ -271,6 +272,11 @@ def read(ckpt, data=None, p=None):
                 vs[int(i)]["text"], vtk[i], vse[i], _HH.T_ALG)
                 for i in sl_p]).astype(np.int32)
             hud_t = Tensor(_hb, dtype=dtypes.int)
+        tree_t = None
+        if _TREE_ON:
+            import phase1_algebra_head as _HT
+            tree_t = Tensor(np.stack([_HT.tree_row_ids(vs[int(i)]["text"], vtk[i], vse[i], _HH.T_ALG)
+                                      for i in sl_p]).astype(np.int32), dtype=dtypes.int)
         ident_t = None
         if _BUSREG_ON:
             # THE BUS REGISTER's port (2026-09-22): the row's token ids
@@ -278,7 +284,7 @@ def read(ckpt, data=None, p=None):
             # HUD idiom: no cached array for an arbitrary TEST fixture).
             ident_t = Tensor(np.stack([_HB.ident_row_ids(vs[int(i)]["text"], _HB.T_ALG)
                                        for i in sl_p]).astype(np.int32), dtype=dtypes.int)
-        o0 = _rf(forward, p, ts, tk, se, keys=_jk_open, xcorr=xcorr_t, hud=hud_t, ident=ident_t)
+        o0 = _rf(forward, p, ts, tk, se, keys=_jk_open, xcorr=xcorr_t, hud=hud_t, tree=tree_t, ident=ident_t)
         onp0 = {k: o0[k].realize().numpy() for k in ("fat", "args", "res")}
         mk = build_slot_masks(onp0, vse[sl_p].astype(np.int32))
         fact_t = mass_t = None
@@ -345,14 +351,14 @@ def read(ckpt, data=None, p=None):
             _mk3 = Tensor(mk, dtype=dtypes.float)
             def _consult3(oo):
                 return Tensor(_afb3({k: oo[k].realize().numpy() for k in _ck3}, vse[sl_p].astype(np.int32), _nv3, _ma3), dtype=dtypes.float)
-            _oa3 = _rf(forward, p, ts, tk, se, keys=_ck3, slot_mask=_mk3, xcorr=xcorr_t, hud=hud_t, ident=ident_t, stop_after=2)
+            _oa3 = _rf(forward, p, ts, tk, se, keys=_ck3, slot_mask=_mk3, xcorr=xcorr_t, hud=hud_t, tree=tree_t, ident=ident_t, stop_after=2)
             f3_t = _consult3(_oa3)
-            _ob3 = _rf(forward, p, ts, tk, se, keys=_ck3, slot_mask=_mk3, xcorr=xcorr_t, hud=hud_t, ident=ident_t, stop_after=4, facts3=f3_t)
+            _ob3 = _rf(forward, p, ts, tk, se, keys=_ck3, slot_mask=_mk3, xcorr=xcorr_t, hud=hud_t, tree=tree_t, ident=ident_t, stop_after=4, facts3=f3_t)
             f5_t = _consult3(_ob3)
         o = _rf(forward, p, ts, tk, se, keys=_jk_masked,
                 slot_mask=Tensor(mk, dtype=dtypes.float),
                 fact_buf=(None if _alt3 else fact_t), mh_mass=mass_t, mh_atlas_traj=_mha_t,
-                xcorr=xcorr_t, hud=hud_t, ident=ident_t,
+                xcorr=xcorr_t, hud=hud_t, tree=tree_t, ident=ident_t,
                 valfact=(fact_t if float(os.environ.get("ALG_VALREG", "0")) or float(os.environ.get("ALG_VALREG_ADDR", "0")) else None),   # THE VALUE STREAM: the live pass-1 facts
                 facts3=f3_t, facts5=f5_t)
         onp = {k: o[k].realize().numpy() for k in

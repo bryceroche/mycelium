@@ -45028,3 +45028,52 @@ small bias; the organs that moved anything this month were STRUCTURAL
 at read (the numeral mask, the role pointer) or trained from scratch.
 Artifacts: sharp_LF_241, ps_{open,legal}_wild_LF_241.npz, dump_wild_
 LF_241.pkl, livefacts_chain.log.
+
+### 2026-09-25 (00:40) — THE TREE DESCENT built (the word: "coarse to fine is the entire thesis — tree-structured dials plus a CNN, each breath further down the tree"); the arm written and HELD
+
+THE RECORD FIRST: every coarse-to-fine form so far was a nudge on a warm
+body — the annealed kernel and the hierarchical window (09-17, null on
+the crippled body; Bryce: "tested on a crippled model"; the family
+re-read never run), the nested labels, the plane unlock, the readout
+view (09-24, null under gentle continuation of the claim body). The
+09-24 night's reading (the warm regime is a settled basin; what moved
+was structural or from scratch) does not close the thesis; it says the
+thesis has never been given its structural, from-scratch form. THE
+BUILD (ALG_TREE=<level per breath>, levels s/c/m/t; commit follows):
+the text's own tree — sentence ids from the fixture, clauses at , ;
+and/but, mentions at . or + verb-ish words (membrane_scale's
+definitions; the host builds (T,3) unit ids per row, banked like the
+HUD, a port `tree` through the trainer, jit_read and both readers) —
+and at loop breath kb the grounding bank's scores are the SUM of one
+term per open level: the slot's level query (tree_wq0..2, zero at
+birth) against the unit's POOLED key (the mean of the token states over
+the unit, then the bank's own key projection: the CNN's shared filter;
+only the pooling changes), broadcast to the unit's tokens; the token
+term and the router's token bias are OPEN ONLY at level t. Schedule
+t,s,c,m,t,t,t: breath 0 (the grounding read; every reader's pass 1; the
+facts' source) keeps the leaf (asserted; form 2 = descent from breath 0
+with the consult moved past the token level); breath 1 chooses a
+sentence, 2 a clause, 3 a mention, 4-6 the token. A successive-
+approximation read — Opus's ADC — with the coarse choice FORCED by
+structure and one loss (the ladder's, unchanged; the per-breath span
+loss grades the coarse attention against the span: the projection
+form, the coarse answer emerging from limited sight). Soft by
+construction: the level softmax carries every unit with its mass (no
+top-2 pruning needed). NOT a hierarchical softmax over separate
+factors: the sum of level terms under one softmax IS the product form
+P(sentence) x P(clause | sentence) x ... when each level term is
+constant within its unit, which the broadcast guarantees. The twin
+caveat stated: same-noun twins share the sentence and clause; the tree
+reaches the clause, the role signature (kept) picks the mention. GATE
+(CPU, running): unset bit-identical; role8 unchanged; treeflat
+(t at every breath) = role8 to the digit (the level terms are exact
+zeros at birth; no leaf cut); tree (t,s,c,m,t,t,t) runs. THE ARM
+(.cache/tree_chain.sh, WRITTEN, HELD FOR THE WORD — a 48k from-scratch
+run, ~5 h): TR_241 = the PMS8 recipe + ALG_TREE=t,s,c,m,t,t,t vs the
+banked PMS8_241. BARS (pinned): masked wild paired >= +0.020 (z >= 2)
+or the twin pair; MECHANISM (the membrane census by scale on the arm):
+the wrong-sentence share of wrong given slots < 0.40 (from 0.50) AND
+breath-1 attention mass in the gold sentence above the body's; rows
+>= 14; mint beside. The from-scratch control is the right one: PMS8_241
+was born the same way. Cost caveat: the pooled matmuls add three (B,T,T)
+x (B,T,512) products per breath; the step cost is read at the arm.

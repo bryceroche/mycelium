@@ -2378,6 +2378,9 @@ def build_params(seed=0):
              (_rngF.randn(N_SCR, H_W) * 0.02).astype(np.float32)], 0))
     if ALG_SIXWAVE:      # door #62: carrier gate — structure enters at zero
         p["sw_g"] = t(np.zeros((1,)))
+    if _TREE_LEVELS is not None:   # THE TREE DESCENT: three level queries, zero at birth (the keys are the bank's own)
+        for _tl in range(3):
+            p[f"tree_wq{_tl}"] = t(np.zeros((H_W, H_W)))
     if int(os.environ.get("ALG_BUSGARAGE", "0")):
         # THE PARKING GARAGE (2026-08-30, word given): typed relational
         # mail — deposits are role-bound wires; retrieval is content-
@@ -3027,6 +3030,104 @@ ALG_KANNEAL = [float(x) for x in os.environ.get("ALG_KANNEAL", "").split(",") if
 ALG_KWINDOW = [float(x) for x in os.environ.get("ALG_KWINDOW", "").split(",") if x.strip()]   # THE HIERARCHICAL WINDOW (2026-09-17, word given): half-width per breath, in tokens (0 = whole text)
 ALG_KWINDOW_GAIN = float(os.environ.get("ALG_KWINDOW_GAIN", "4"))                            # the penalty at one half-width, in nats/2 (fixed — not a parameter)
 
+# ===========================================================================
+# THE TREE DESCENT (2026-09-25, the word: "coarse to fine is the entire
+# thesis — tree-structured dials plus a CNN, each breath further down the
+# tree"). The text IS a tree: sentence > clause > mention > token. ALG_TREE=
+# "<level per breath 0..K_B-1>" with levels s (sentence), c (clause), m
+# (mention), t (token), e.g. "t,s,c,m,t,t,t": at loop breath kb the
+# grounding bank's scores are the SUM of one term per OPEN level — a level
+# term is the slot's LEVEL QUERY (tree_wq<l>, zero at birth) against the
+# level's POOLED KEY (the mean of the token states over the unit, then the
+# SAME key projection as the leaf: the CNN's shared filter; only the pooling
+# changes with the level), broadcast back to the unit's tokens — and the
+# TOKEN (leaf) term, the router's token bias included, is OPEN ONLY at
+# level t. So at breath 1 a slot can only choose a sentence, at breath 2 a
+# clause within it, at breath 3 a mention, from breath 4 the token: a
+# successive-approximation read, the coarse choice forced FIRST by
+# structure, one loss (the ladder's, unchanged). Units come from the text's
+# own tree on the host (sentence ids from the fixture's `sent`; clauses at
+# , ; and/but; mentions at . or + verb-ish words — membrane_scale.py's
+# definitions), never from the model's parse. Breath 0 (the grounding read,
+# every reader's pass 1, the facts' source) KEEPS the leaf in this form
+# (asserted); descent from breath 0 with the consult moved past the token
+# level is form 2. Flat ("t" every breath) = bit-identical to unset (the
+# level terms are exactly 0 at birth, no leaf is cut). Prior forms of this
+# line: the annealed kernel and the hierarchical window (09-17, null WARM on
+# a crippled body; the family re-read never run), the nested labels / the
+# plane unlock / the readout view (09-24, warm, null) — none structural
+# and from scratch.
+ALG_TREE = os.environ.get("ALG_TREE", "")
+_TREE_LV = {"s": 0, "c": 1, "m": 2, "t": 3}
+_TREE_LEVELS = [_TREE_LV[x.strip()] for x in ALG_TREE.split(",")] if ALG_TREE else None
+if _TREE_LEVELS is not None:
+    assert _TREE_LEVELS[0] == 3, "ALG_TREE form 1: breath 0 (the grounding read, every reader's pass 1) keeps the leaf; form 2 needs the consult moved"
+_TREE_PUNCT_CLAUSE = {",", ";"}
+_TREE_CONJ_CLAUSE = {"and", "but"}
+_TREE_MENTION_EXTRA = {".", "or"}
+_TREE_VERBISH = {
+    "is", "are", "was", "were", "be", "been", "being", "has", "have", "had",
+    "will", "would", "can", "could", "costs", "cost", "spent", "spend",
+    "spends", "gives", "gave", "give", "given", "bought", "buy", "buys",
+    "sold", "sell", "sells", "needs", "need", "wants", "want", "makes",
+    "made", "make", "paid", "pay", "pays", "receives", "receive",
+    "received", "left", "leaves", "leave", "remains", "remain", "earns",
+    "earn", "earned", "uses", "use", "used", "takes", "take", "took",
+    "adds", "add", "added", "gets", "get", "got", "found", "finds", "find",
+    "totals", "total", "equals", "equal", "contains", "contain", "starts",
+    "start", "started", "ends", "end", "ended", "if", "then", "so",
+    "because", "after", "before", "each", "per",
+}
+
+
+def _tree_segment_ids(dec, tokmask_row, sent_row, extra_boundary_words):
+    """membrane_scale._segment_ids verbatim: segments cut at , ; + the extra
+    words, and at every sentence change; the boundary token opens the NEW
+    segment. int32, -1 at padding."""
+    T = len(dec)
+    seg = -np.ones(T, dtype=np.int32)
+    cur = 0
+    prev_sent = None
+    for t in range(T):
+        if not tokmask_row[t]:
+            continue
+        s_ = int(sent_row[t])
+        if prev_sent is not None and s_ != prev_sent:
+            cur += 1
+        if dec[t] in _TREE_PUNCT_CLAUSE or dec[t] in extra_boundary_words:
+            cur += 1
+        seg[t] = cur
+        prev_sent = s_
+    return seg
+
+
+def tree_row_ids(text, tokmask_row, sent_row, T):
+    """(T, 3) int32: per token its SENTENCE, CLAUSE and MENTION unit id
+    (0-based, contiguous spans; -1 at padding). Host-side, deterministic,
+    the head's own tokenizer (hud_row_features's path)."""
+    tok = _xcorr_tokenizer()
+    ids = tok.encode(text).ids[:T]
+    n = len(ids)
+    out = -np.ones((T, 3), np.int32)
+    if n == 0:
+        return out
+    dec = [tok.decode([int(tid)]).strip().lower() for tid in ids] + [""] * (T - n)
+    tm = np.zeros(T, bool); tm[:n] = np.asarray(tokmask_row[:n]) > 0
+    sr = np.zeros(T, np.int64); sr[:n] = np.asarray(sent_row[:n], np.int64)
+    out[:, 0] = np.where(tm, sr, -1)
+    out[:, 1] = _tree_segment_ids(dec, tm, sr, _TREE_CONJ_CLAUSE)
+    out[:, 2] = _tree_segment_ids(dec, tm, sr, _TREE_MENTION_EXTRA | _TREE_VERBISH)
+    return out
+
+
+def tree_build_array(samples, tokmask, sent, T):
+    """(n, T, 3) int32 for every row of a split (banked like HUD)."""
+    n = len(samples)
+    out = -np.ones((n, T, 3), np.int32)
+    for i in range(n):
+        out[i] = tree_row_ids(samples[i]["text"], tokmask[i], sent[i], T)
+    return out
+
 
 # ===========================================================================
 # THE CORRESPONDENCE CHART (ALG_XCORR, 2026-09-19, word given: THE SURFACE
@@ -3485,6 +3586,30 @@ def _make_bank(p, waist, tokmask, B, sent=None):
         kh = k.reshape(B, -1, N_HEADS, hd).permute(0, 2, 1, 3)
         vh = v.reshape(B, -1, N_HEADS, hd).permute(0, 2, 1, 3)
         sc = (qh @ kh.transpose(-2, -1)) / math.sqrt(hd)
+        _leaf_open = 1.0
+        if _TREE_LEVELS is not None and tree is not None and nq == L_TOT:
+            # THE TREE DESCENT (2026-09-25): this breath's finest open level
+            # (kb None = breath 0). Coarse levels 0..min(lv,2) add a pooled-
+            # key term each; the leaf (this sc, and the router's token bias
+            # below) is open only at level 3.
+            _kb0 = kb if kb is not None else 0
+            _lv = _TREE_LEVELS[_kb0] if _kb0 < len(_TREE_LEVELS) else 3
+            if _lv < 3:
+                _leaf_open = 0.0
+                sc = sc * 0.0                     # exact zeros, the graph kept
+            _T = int(src.shape[1])
+            _tm_c = tokmask.reshape(B, _T, 1)
+            _ar = Tensor.arange(_T).reshape(1, 1, _T)
+            for _l in range(min(_lv, 2) + 1):
+                _M = ((tree[:, :, _l:_l + 1] == _ar).float() * _tm_c)        # (B, T, U): token -> unit one-hot (pads 0)
+                _cnt = _M.sum(1).reshape(B, _T, 1)                          # (B, U, 1) tokens per unit
+                _P = (_M.transpose(-2, -1) @ src) / _cnt.maximum(1.0)       # (B, U, H_W): the unit's mean state
+                _kl = _P @ p["attn_wk"] + p["attn_wk_b"]                    # the shared key filter
+                _ql = q_in @ p[f"tree_wq{_l}"]                              # the level query (zero at birth)
+                _qlh = _ql.reshape(B if extra is not None else 1, nq, N_HEADS, hd).permute(0, 2, 1, 3)
+                _klh = _kl.reshape(B, -1, N_HEADS, hd).permute(0, 2, 1, 3)
+                _sl = (_qlh @ _klh.transpose(-2, -1)) / math.sqrt(hd)       # (B, H, nq, U)
+                sc = sc + _sl @ _M.transpose(-2, -1).unsqueeze(1)           # broadcast to the unit's tokens
         if kb is not None:
             # THE PRE/POST CENSUS (ALG_CERT_CENSUS=1; the pre/post knob law):
             # a diagnostic-only readback of the raw pre-bias score magnitude
@@ -3508,7 +3633,7 @@ def _make_bank(p, waist, tokmask, B, sent=None):
         if pbias is not None:   # door #62: six-wave phase-resonance bias
             sc = sc + pbias
         if rbias is not None:   # v3: the router's soft token bias (never
-            sc = sc + rbias.unsqueeze(1) * p["r_gain"].reshape(1, 1, 1, 1)
+            sc = sc + rbias.unsqueeze(1) * p["r_gain"].reshape(1, 1, 1, 1) * _leaf_open   # THE TREE DESCENT: a token road, closed below level t
                                 # hard -inf — A0's grave)
         sc = sc.clip(-1e4, 1e4) + (1.0 - tokmask.reshape(B, 1, 1, -1)) * -1e4
         at = sc.softmax(-1)
@@ -5108,7 +5233,7 @@ def breath_step(p, state, kb, ctx):
     return state
 
 
-def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, drop=None, anchor=None, amask=None, gmod=None, pmask=None, lsent=None, reg=None, fact_buf=None, mh_mass=None, mh_atlas_traj=None, xcorr=None, res_map=None, hud=None, ident=None, busreg_ramp=None, valfact=None, stop_after=None, facts3=None, facts5=None):
+def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, drop=None, anchor=None, amask=None, gmod=None, pmask=None, lsent=None, reg=None, fact_buf=None, mh_mass=None, mh_atlas_traj=None, xcorr=None, res_map=None, hud=None, ident=None, busreg_ramp=None, valfact=None, stop_after=None, facts3=None, facts5=None, tree=None):
     from tinygrad import Tensor, dtypes   # audit 2026-09-01: was a
     # SCOPE ACCIDENT (bound only via the sixwave/sync branches — any
     # SIXWAVE-off config killed five organs at step 1)
@@ -7452,6 +7577,10 @@ def do_train(steps, lr, batch, seed):
         if (ALG_PTR_SURF or ALG_BUSREG) else None   # THE RES-SCATTER FIX's feed (b_fact idiom); the register scatters through it too
     b_hud = fix(np.zeros((batch, T_ALG, HUD_N_FEATS), np.int32), dtypes.int) \
         if ALG_HUD else None   # THE TOKEN HUD's feed (b_fact idiom)
+    TREE = tree_build_array(samples, tokmask, sent, T_ALG) if _TREE_LEVELS is not None else None   # THE TREE DESCENT's unit ids (host, banked like HUD)
+    if TREE is not None:
+        print(f"[tree] ALG_TREE={ALG_TREE}: unit ids ready {TREE.shape} | units/row mean s={np.mean([len(set(r[:, 0][r[:, 0] >= 0])) for r in TREE]):.1f} c={np.mean([len(set(r[:, 1][r[:, 1] >= 0])) for r in TREE]):.1f} m={np.mean([len(set(r[:, 2][r[:, 2] >= 0])) for r in TREE]):.1f}", flush=True)
+    b_tree = fix(np.zeros((batch, T_ALG, 3), np.int32), dtypes.int) if TREE is not None else None
     b_ident = fix(np.zeros((batch, T_ALG), np.int32), dtypes.int) \
         if (ALG_BUSREG or ALG_IDKEY) else None   # THE BUS REGISTER's / THE IDENTITY KEY's token-id feed (b_fact idiom)
     b_bgain = fix(np.zeros((1,), np.float32), dtypes.float) \
@@ -7621,13 +7750,13 @@ def do_train(steps, lr, batch, seed):
             # commits, self-labeled from gold like the commit loss,
             # DETACHED); the second trains under live release dynamics.
             o0 = forward(p, s_tr, b_tk, b_se, slot_mask=b_mask, tail=b_tail,
-                         reg=b_reg, xcorr=b_xcorr, res_map=b_resmap, hud=b_hud, ident=b_ident, busreg_ramp=b_bgain, valfact=b_valfact, facts3=b_fact3, facts5=b_fact5)
+                         reg=b_reg, xcorr=b_xcorr, res_map=b_resmap, hud=b_hud, tree=b_tree, ident=b_ident, busreg_ramp=b_bgain, valfact=b_valfact, facts3=b_fact3, facts5=b_fact5)
             ok = ((o0["ftype"].argmax(-1) == bg["ftype"]).float()
                   * (o0["res"].argmax(-1) == bg["res"]).float())
             rv = (bg["presence"] * (1.0 - ok)).detach()
             o = forward(p, s_tr, b_tk, b_se, slot_mask=b_mask, revoke=rv,
                         tail=b_tail, reg=b_reg, fact_buf=b_fact,
-                        mh_mass=b_mhm, mh_atlas_traj=b_mha, xcorr=b_xcorr, res_map=b_resmap, hud=b_hud, ident=b_ident, busreg_ramp=b_bgain, valfact=b_valfact, facts3=b_fact3, facts5=b_fact5)
+                        mh_mass=b_mhm, mh_atlas_traj=b_mha, xcorr=b_xcorr, res_map=b_resmap, hud=b_hud, tree=b_tree, ident=b_ident, busreg_ramp=b_bgain, valfact=b_valfact, facts3=b_fact3, facts5=b_fact5)
         elif int(os.environ.get("NAZ_TRAIN", "0")):
             # NAZARÉ TRAINING (door #55): the organ-2 two-forward pattern —
             # pre-pass yields the intra-pass event field IN-GRAPH (detached);
@@ -7636,7 +7765,7 @@ def do_train(steps, lr, batch, seed):
             # read-time dup-aware argpair): argmax-change OR dup-flip on
             # rel-typed present slots, breath-0 vs final.
             o0 = forward(p, s_tr, b_tk, b_se, slot_mask=b_mask, tail=b_tail,
-                        xcorr=b_xcorr, res_map=b_resmap, hud=b_hud, ident=b_ident, busreg_ramp=b_bgain, valfact=b_valfact, facts3=b_fact3, facts5=b_fact5)
+                        xcorr=b_xcorr, res_map=b_resmap, hud=b_hud, tree=b_tree, ident=b_ident, busreg_ramp=b_bgain, valfact=b_valfact, facts3=b_fact3, facts5=b_fact5)
             _b0 = o0["breaths"][0]
             _relmask = (o0["pres"].squeeze(-1) > 0).float() \
                 * (o0["ftype"].argmax(-1) == 0).float()
@@ -7647,13 +7776,13 @@ def do_train(steps, lr, batch, seed):
             _gm = (_bgauth + (1.0 - _bgauth) * _ev).unsqueeze(-1).detach()
             o = forward(p, s_tr, b_tk, b_se, slot_mask=b_mask, tail=b_tail,
                         gmod=_gm, fact_buf=b_fact,
-                        mh_mass=b_mhm, mh_atlas_traj=b_mha, xcorr=b_xcorr, res_map=b_resmap, hud=b_hud, ident=b_ident, busreg_ramp=b_bgain, valfact=b_valfact, facts3=b_fact3, facts5=b_fact5)
+                        mh_mass=b_mhm, mh_atlas_traj=b_mha, xcorr=b_xcorr, res_map=b_resmap, hud=b_hud, tree=b_tree, ident=b_ident, busreg_ramp=b_bgain, valfact=b_valfact, facts3=b_fact3, facts5=b_fact5)
         else:
             _bd = os.environ.get("BREATH_DROPOUT")
             o = forward(p, s_tr, b_tk, b_se, slot_mask=b_mask, tail=b_tail,
                         drop=(b_drop if _bd else None), lsent=b_ls, reg=b_reg,
                         fact_buf=(None if ALG_ALT3 else b_fact),   # THE THREE CONSULTS: the start-of-run facts give way to facts3/facts5
-                        mh_mass=b_mhm, mh_atlas_traj=b_mha, xcorr=b_xcorr, res_map=b_resmap, hud=b_hud, ident=b_ident, busreg_ramp=b_bgain, valfact=b_valfact, facts3=b_fact3, facts5=b_fact5)
+                        mh_mass=b_mhm, mh_atlas_traj=b_mha, xcorr=b_xcorr, res_map=b_resmap, hud=b_hud, tree=b_tree, ident=b_ident, busreg_ramp=b_bgain, valfact=b_valfact, facts3=b_fact3, facts5=b_fact5)
         l = loss_fn(o, bg)
         if ALG_CONSUME and "_early" in o:   # support-gated consume-once:
             # any breath claims, each fact pays once; eligibility = the DAG
@@ -7722,7 +7851,7 @@ def do_train(steps, lr, batch, seed):
             o = forward(p, s_c, b_tk, b_se, slot_mask=b_mask, tail=b_tail,
                         drop=(b_drop if _bd_c else None), lsent=b_ls, reg=b_reg,
                         fact_buf=None,
-                        mh_mass=b_mhm, mh_atlas_traj=b_mha, xcorr=b_xcorr, res_map=b_resmap, hud=b_hud, ident=b_ident, busreg_ramp=b_bgain, valfact=b_valfact,
+                        mh_mass=b_mhm, mh_atlas_traj=b_mha, xcorr=b_xcorr, res_map=b_resmap, hud=b_hud, tree=b_tree, ident=b_ident, busreg_ramp=b_bgain, valfact=b_valfact,
                         stop_after=stop, facts3=f3)
             return {k: o[k].realize() for k in _c_keys}
         def pass_a():
@@ -7770,7 +7899,7 @@ def do_train(steps, lr, batch, seed):
         def _pass_live():
             Tensor.training = True
             s_c = b_tr.cast(dtypes.float)
-            o = forward(p, s_c, b_tk, b_se, hud=b_hud, ident=b_ident)
+            o = forward(p, s_c, b_tk, b_se, hud=b_hud, tree=b_tree, ident=b_ident)
             return {k: o[k].realize() for k in _lf_keys}
         _pass_live = TinyJit(_pass_live)
         _lf_t = [0.0, 0]   # host seconds, count (the ALT3 perf-line idiom)
@@ -8558,6 +8687,8 @@ def do_train(steps, lr, batch, seed):
             _fd(b_resmap, RESMAP[idx], _rl)   # THE RES-SCATTER FIX's feed: this batch's gold slot->variable map
         if b_hud is not None:
             _fd(b_hud, HUD[idx], _rl)   # THE TOKEN HUD's feed: this batch's precomputed per-token features
+        if b_tree is not None:
+            _fd(b_tree, TREE[idx], _rl)   # THE TREE DESCENT's feed: this batch's unit ids
         if b_ident is not None:
             _fd(b_ident, IDENT[idx], _rl)   # THE BUS REGISTER's feed: this batch's token ids
         if b_bgain is not None:
