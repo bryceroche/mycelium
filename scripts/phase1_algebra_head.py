@@ -267,6 +267,42 @@ ALG_UNLOCK = os.environ.get("ALG_UNLOCK", "")
 _UNLOCK_K = [int(x) for x in ALG_UNLOCK.split(",")] if ALG_UNLOCK else None
 assert _UNLOCK_K is None or int(os.environ.get("ALG_POLAR", "0")), "ALG_UNLOCK needs ALG_POLAR=1 (the content band the prefix runs inside)"
 _UNLOCK_MASKS = {}
+# THE MATRYOSHKA READOUT (2026-09-24, the word: "real matryoshka first — each
+# breath's grader reads progressively more content dials"): ALG_MATRY=<content
+# planes the ladder rung of each breath READS>, e.g. 32,64,96,128,160,192 for
+# the six loop breaths (breath 0's rung takes the first value; a K_B-long list
+# sets every rung). ONLY THE RUNG'S VIEW is cut: the state, the notebook, the
+# final heads and everything that flows forward see all planes (the plane
+# unlock cut the state itself and lost the pointer's fine planes every breath —
+# the arm did not fire, ledger 09-24 17:40). Same full target every rung, the
+# content norm restored over the open planes (clock dims bitwise untouched).
+# All planes open = bit-identical.
+ALG_MATRY = os.environ.get("ALG_MATRY", "")
+_MATRY_K = [int(x) for x in ALG_MATRY.split(",")] if ALG_MATRY else None
+_MATRY_MASKS = {}
+
+
+def _matry_view(s, ri):
+    """the ladder rung ri's view of state s (B, L, H_W): the first n content
+    planes (n = _MATRY_K[ri], breath 0 -> the first entry when the list is one
+    short), the rest zeroed, the content norm restored over the open planes."""
+    if _MATRY_K is None:
+        return s
+    from tinygrad import Tensor as _Tm
+    _cd, _, _gc, _, _ = _polar_sink()
+    n_content = len(_cd) // 2
+    _kl = ([_MATRY_K[0]] + _MATRY_K) if len(_MATRY_K) == int(os.environ.get("ALG_BREATH", "1")) - 1 else _MATRY_K
+    k = int(_kl[ri]) if ri < len(_kl) else n_content
+    if k >= n_content:
+        return s
+    m = _MATRY_MASKS.get(k)
+    if m is None:
+        arr = np.ones(H_W, np.float32)
+        arr[np.asarray(_cd)[2 * k:]] = 0.0
+        m = _Tm(arr).reshape(1, 1, -1)
+        _MATRY_MASKS[k] = m
+    return _polar_keepnorm(s * m, s, _gc.reshape(1, 1, -1))
+assert _MATRY_K is None or int(os.environ.get("ALG_POLAR", "0")), "ALG_MATRY needs ALG_POLAR=1 (the content planes it opens)"
 
 
 def _unlock_planes(cur, kb):
@@ -615,7 +651,8 @@ _SEVER_ORGANS = frozenset(("notebook", "garage", "s3", "s4", "mixer",
                            # read dropped from the query AND the stellarator handoff skipped (the state keeps its
                            # own residual). "notebook" alone zeroes the read but leaves the handoff, which under
                            # ALG_STELLAR=2 replaces the state with that zero at the last loop breath.
-                           "nbroad"))
+                           "nbroad",
+                           "waist"))       # the polar content waist skipped (content passes straight through; nothing zeroed)
 # THE SHELF READOUT (2026-09-12, the word): ALG_SHELF=1 reads the answer from
 # an attention over every breath's state (per slot, query = the final state,
 # + a learned per-breath logit bias) — the shallow-wide edge from the one
@@ -4887,7 +4924,8 @@ def breath_step(p, state, kb, ctx):
             # the content block's norm is restored inside the organ, so
             # ||u|| == 1 still holds and r is untouched.
             _cs_u1 = _pol_u if _CENSUS is not None else None
-            _pol_u = _polar_waist(_pol_u, p, state)
+            if "waist" not in _SEVER:      # THE WAIST READ (2026-09-24): the fair sever — content passes straight through, no squeeze
+                _pol_u = _polar_waist(_pol_u, p, state)
             if _CENSUS is not None:
                 _CENSUS.append((kb, "sink_waist",
                                 _polar_ru_join(_pol_u - _cs_u1, _pol_r,
@@ -5765,9 +5803,9 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
         # loss and the read must share; without it the shelf's params had no
         # gradient — 2026-09-12); off the shelf the rung is bit-identical.
         if ALG_SHELF and "sh_q" in p and "shelf" not in _SEVER:
-            out["breaths"] = [heads_of(s, vst=_vst_at[_ri]) for _ri, s in enumerate(breaths[:-1])] + [_last_heads]
+            out["breaths"] = [heads_of(_matry_view(s, _ri), vst=_vst_at[_ri]) for _ri, s in enumerate(breaths[:-1])] + [_last_heads]
         else:
-            out["breaths"] = [heads_of(s, vst=_vst_at[_ri]) for _ri, s in enumerate(breaths)]   # each rung reads the variable states it had (THE THREE CONSULTS)
+            out["breaths"] = [heads_of(_matry_view(s, _ri), vst=_vst_at[_ri]) for _ri, s in enumerate(breaths)]   # each rung reads the variable states it had (THE THREE CONSULTS); THE MATRYOSHKA READOUT cuts the rung's VIEW only
         # THE LADDER SHADOWS THE ARGS FUSION (2026-09-20, found while
         # chasing the state-space pointer's None-gradient): loss_fn's
         # per-breath ladder calls _loss_single on THESE dicts, each
