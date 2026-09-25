@@ -6,10 +6,10 @@ the last ~60 entries) -> the memory board (MEMORY.md CURRENT BOARD, current).
 The reads table: `.venv/bin/python3 scripts/reads.py table wildhold` (assert-on-read).
 
 ## STATE AT HANDOFF
-- RUNNING (2026-09-24 17:55): pc-nbsever only (THE NOTEBOOK BYPASS read on PMS8_241: ALG_SEVER=nbroad = the
-  notebook read dropped AND the stellarator handoff skipped; 'notebook' alone beside it for the record; bars = the
-  clock lines; .cache/nbsev_chain.log). Tree at 8ef58bb4; the worktree branch clock-reads is MERGED (the worktree
-  /home/bryce/mycelium-wt can be removed).
+- Nothing running (2026-09-24 18:05). THE NOTEBOOK BYPASS read (ledger 18:00): the notebook is LOAD-BEARING
+  (nbroad -0.134 z 12.6, args halves, rows 2/311; the confounded 'notebook' form -0.240) — under ALG_STELLAR=2
+  it is the road the state takes at late breaths. The worktree branch clock-reads is MERGED (the worktree
+  /home/bryce/mycelium-wt can be removed). CPU-backend note: the notebook severs segfault at step 1 on DEV=CPU.
 - 09-24 VERDICTS (ledger 17:05-17:50): THE PLANE UNLOCK ARM DOES NOT FIRE (UL_241 vs CTRLs_241: masked -0.003 z 0.6;
   rows 11/9 vs 15/12; the pointer cells DOWN, all -0.017 z 2.9, same-noun -0.018 z 2.5 = the bar's sign inverted;
   mint flat). THE CENSUS PAIR per group: nesting the labels makes negative cross-rung pairs in the args (4->16/42) and
