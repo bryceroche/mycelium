@@ -22,6 +22,13 @@ The reads table: `.venv/bin/python3 scripts/reads.py table wildhold` (assert-on-
   free). THE READING: the warm regime on the claim body is a SETTLED BASIN — gentle continuation moves nothing for any
   organ whose effect is a small bias; what moved this month was structural at read (the numeral mask, the role pointer)
   or trained from scratch.
+- 09-25 MORNING: THE TREE DESCENT BUILT + GATED (ALG_TREE=<level per breath>, s/c/m/t; ledger 08:53, 09:50): the
+  grounding bank's scores as the sum of one term per open level (level queries zero at birth against pooled keys over
+  the text's own sentence/clause/mention units, the bank's key projection shared); the token term and the router's
+  token bias open only at level t; breath 0 keeps the leaf. Schedule t,s,c,m,t,t,t. THE ARM IS WRITTEN AND HELD FOR
+  THE WORD: .cache/tree_chain.sh = TR_241 (the PMS8 recipe from scratch + the tree) vs PMS8_241; bars: masked +0.020
+  z 2 or the twin; mechanism: wrong-sentence share of wrong givens < 0.40 (from 0.50), breath-1 mass in the gold
+  sentence up; rows >= 14. ~5 h. Fire with: systemd-run --user --unit=pc-tree --property=WorkingDirectory=/home/bryce/mycelium /usr/bin/bash /home/bryce/mycelium/.cache/tree_chain.sh
 - NEXT (decided by the reads, the word given for the queue): (1) THE COMPETITIVE TYPED MIXER in place (the mixer is the
   only load-bearing slot-to-slot channel: edge types from the decoded graph as sc2 biases + the competitor road writing
   the pointer's posterior back into the candidates) — census the injection scale on the warm body BEFORE the fire (the
