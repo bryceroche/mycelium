@@ -44881,3 +44881,24 @@ mention/clause splits, a lower bound on real spans) in the script's
 docstring; the earlier census's 84% and "sentence distance is the load"
 reproduce. Artifacts: .cache/membrane_raw_wild_PMS8_241.npz,
 .cache/membrane_scale_PMS8_241.txt.
+
+### 2026-09-24 (20:24) — THE MESSAGE-PASSING SEVERS READ (pc-sevreads, 19:10; PMS8_241, masked wild, paired vs 0.3476): BOTH PREDICTIONS HELD
+
+mixer (the slot-to-slot attention zeroed; h_slot on the main road):
+0.3228, -0.0249, paired SE 0.0067, z 3.69 (121 lost, 70 gained); fields
+ftype 0.84 -> 0.82, args 0.449 -> 0.443, dig flat. LOAD-BEARING, as
+pinned (>= 0.020). garage (the typed role-bound mail through the bus_g
+gain, trained to 0.057): 0.3486, +0.0010, SE 0.0043, z -0.23 (38 vs 40).
+PASSENGER, as pinned — the mandatory-road law's fourth proof this month
+(a gained organ is voted down from birth). READING: the body's slot-to-
+slot message passing is the MIXER and only the mixer — untyped, all-
+to-all, one softmax per breath — worth 0.025 at the slot; the typed
+mail beside it carries nothing. THE BUILD THIS DECIDES (ledger 18:55):
+make the mixer typed and competitive IN PLACE — edge types from the
+decoded graph (consumes / produces / competes-for-the-same-position)
+as additive score biases on sc2 plus a competitor road that writes the
+pointer's posterior back into the candidates (the "you lost" reply) —
+on the road the mixer already occupies; never a new organ beside it.
+Ranked against the mention layer and the pyramid's sentence key when
+the beam bound lands. Artifacts: .cache/ps_legal_wild_PMS8_241_sev
+{mixer,garage}.npz, .cache/sevreads_chain.log.
