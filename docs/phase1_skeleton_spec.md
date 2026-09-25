@@ -44953,7 +44953,7 @@ from-scratch form carries a low prior and is not registered.
 Artifacts: sharp_MT_241, dump_wild_MT_241.pkl, ps_{open,legal}_wild_
 MT_241.npz, matry_chain.log.
 
-### 2026-09-24 (23:48) — THE GENTLE-CONTINUATION TWIN: CTRLs_242 vs PMS8_242 (ctrls242_chain.log)
+### 2026-09-24 (23:40) — THE GENTLE-CONTINUATION TWIN: CTRLs_242 vs PMS8_242 (ctrls242_chain.log)
 
 CTRLs_242 (PMS8_242 + the two 1e-5 segments, no organ): masked wild
 0.3462 vs the body's 0.3525, paired -0.0063 (SE 0.0051, z 1.25) — the
