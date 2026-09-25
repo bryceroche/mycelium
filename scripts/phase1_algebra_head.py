@@ -236,6 +236,25 @@ ALG_IDKEY = float(os.environ.get("ALG_IDKEY", "0"))
 # identical across passes, so consult 1 is exact. Unset = one pass, the
 # stale start-of-run facts, bit-identical.
 ALG_ALT3 = int(os.environ.get("ALG_ALT3", "0"))
+# THE LIVE-FACTS TRAINING ROAD (2026-09-24, ledger 21:05; the out-of-sync
+# audit's cure, item 2): at READ (loop_val.py, chain_acc.py) the facts
+# injected at breath 2 come from the CURRENT model's own pass 1 (an
+# unmasked full forward -> host decode -> the facts pool -> fact_buf); at
+# TRAINING the old road feeds b_fact from the MASKPREP CACHE — a pass 1
+# of the segment's STARTING checkpoint, stale for up to 8k steps. ALG_
+# LIVE_FACTS=1 replaces that stale feed: every training step first runs
+# one JIT-captured full unmasked pass with the CURRENT parameters (the
+# read's own pass 1 — no slot_mask, so forward()'s breath loop never
+# runs; no fact_buf/facts3/facts5; no stop_after), decodes on the host
+# exactly as chain_acc.py's o0 does, consults the facts pool, and copies
+# the result into the EXISTING fixed buffer b_fact before step() runs.
+# THE THREE CONSULTS' machinery (JIT-captured partial pass + host decode
+# + facts_pool map + fixed-buffer copy-in) is the template; this road
+# only replaces WHICH pass feeds b_fact, never facts3/facts5. The cached
+# FACTS array is still built (masks come from the same cache; ALG_SLOT_
+# ALL keeps them all-to-all) but its values are overwritten before every
+# step — unused under the flag. Dead unless set; unset bit-identical.
+ALG_LIVE_FACTS = int(os.environ.get("ALG_LIVE_FACTS", "0"))
 # THE NESTED LADDER (2026-09-24, word given; the blog "One job, six
 # resolutions"): every breath does the WHOLE job graded at its own
 # resolution, and the targets NEST (fine ⊂ medium ⊂ coarse) so the
@@ -326,6 +345,8 @@ def _unlock_planes(cur, kb):
         _UNLOCK_MASKS[kb] = m
     return _polar_keepnorm(cur * m, cur, _gc.reshape(1, 1, -1))
 assert not ALG_ALT3 or int(os.environ.get("ALG_ALT2", "0")), "ALG_ALT3 needs ALG_ALT2=1 (the facts injection road W_fact it re-enters through)"
+assert not ALG_LIVE_FACTS or int(os.environ.get("ALG_ALT2", "0")), "ALG_LIVE_FACTS needs ALG_ALT2=1 (the facts injection road W_fact it re-enters through)"
+assert not (ALG_LIVE_FACTS and ALG_ALT3), "ALG_LIVE_FACTS and ALG_ALT3 both replace the training-step facts feed by different roads (one pass to b_fact vs three passes to b_fact3/b_fact5) — not yet composed; pick one"
 assert not (ALG_BUSREG_SEAL or ALG_BUSREG_PREDMAP or ALG_VALREG_LIVE) or ALG_BUSREG, (
     "ALG_BUSREG_SEAL / ALG_BUSREG_PREDMAP / ALG_VALREG_LIVE need ALG_BUSREG (the register they act on)")
 _GTAP = None      # THE GRADIENT TAP (apply_grad_tap.py): read-only probe leaves per breath
@@ -7705,6 +7726,62 @@ def do_train(steps, lr, batch, seed):
             _consult_t[0] += time.time() - _t0c; _consult_t[1] += 1
             return fb
 
+    # THE LIVE-FACTS TRAINING ROAD (2026-09-24; ledger 21:05, the out-of-
+    # sync audit's cure, item 2): a sibling of THE THREE CONSULTS above,
+    # same idiom (JIT-captured pass -> host decode -> facts_pool map ->
+    # fixed-buffer copyin) but a DIFFERENT pass — not a partial view of
+    # the training forward (ALT3's _partial re-runs the SAME ports up to
+    # `stop_after`), but the READ's own pass 1 verbatim: no slot_mask (so
+    # forward()'s breath loop never executes at all — see the maskprep
+    # pass above and chain_acc.py's/loop_val.py's o0), no fact_buf/
+    # facts3/facts5, no stop_after. Only hud/ident are threaded (the
+    # pre-loop ports chain_acc.py's o0 call feeds); tail/reg/xcorr/
+    # res_map/busreg_ramp/valfact/mh_mass/mh_atlas_traj are ALL consumed
+    # only inside breath_step (grep it) or (xcorr) after the point this
+    # pass stops reading — dead weight on a breath-loop-free pass, and
+    # chain_acc's own o0 omits every one of them (loop_val's o0 threads
+    # xcorr too; the RS8/FAM arm this road ships under runs with
+    # ALG_XCORR unset, so the two reads agree for THIS arm — a caveat
+    # for any future arm that turns xcorr on, stated, not silently
+    # patched over).
+    if ALG_LIVE_FACTS:
+        from facts_pool import run as _fp_run_lf
+        _lf_keys = ("pres", "ftype", "op", "dig", "args", "res") + (("dup",) if "h_dup" in p else ())
+        def _pass_live():
+            Tensor.training = True
+            s_c = b_tr.cast(dtypes.float)
+            o = forward(p, s_c, b_tk, b_se, hud=b_hud, ident=b_ident)
+            return {k: o[k].realize() for k in _lf_keys}
+        _pass_live = TinyJit(_pass_live)
+        _lf_t = [0.0, 0]   # host seconds, count (the ALT3 perf-line idiom)
+        def _live_facts_into(idx):
+            _t0lf = time.time()
+            o = _pass_live()
+            onp = {k: o[k].numpy() for k in _lf_keys}
+            nv = np.array([samples[int(i)].get("n_vars", K_VARS) for i in idx])
+            ma = np.array([samples[int(i)].get("m", 0) for i in idx])
+            fb = _fp_run_lf(onp, sent[idx], nv, ma)   # (B, K_VARS, 4): THIS step's own pass-1 parse, walled per row
+            if os.environ.get("ALG_LIVE_FACTS_DEBUG"):
+                # THE LIVE-VS-CACHE CENSUS (debug-only, dead unless set): banked
+                # during the gate investigation (2026-09-24) — a converged
+                # checkpoint's decode is threshold-saturated, so one gentle
+                # step at LR 1e-4 on a 2-row CPU batch left this print at
+                # max|diff|=0 (identical to the maskprep cache) on BOTH gate
+                # steps; forcing LR 1e-2 for 8 steps (a stress probe, never a
+                # shipping config) showed the live facts diverge from the
+                # cache from step 1 on (max|diff|=1.0) — the road is wired,
+                # the CPU smoke gate's 2-step/converged fixture just doesn't
+                # move any decode decision across its 0.9 threshold.
+                _dcache = FACTS[idx]
+                print(f"[livefacts-debug] max|live-cache|={float(np.abs(fb - _dcache).max()):.6f} "
+                      f"known live={float(fb[..., 0].mean()):.3f} cache={float(_dcache[..., 0].mean()):.3f}", flush=True)
+            _rll = []
+            _fd(b_fact, fb, _rll)   # overwrites whatever the maskprep-cache FACTS[idx] feed just wrote
+            if _rll:
+                Tensor.realize(*_rll)
+            _lf_t[0] += time.time() - _t0lf; _lf_t[1] += 1
+            return fb
+
     # HYGIENE (the stack-at-convergence protocol): cosine LR decay + periodic
     # validation on the SMALL test slice (bigtest stays untouched as measurement
     # set) + PICK-BEST-BY-VAL. The overnight constant-lr spike taught this.
@@ -8561,6 +8638,13 @@ def do_train(steps, lr, batch, seed):
             # step (with both) — the same three curbs the read walks.
             _consult_into(b_fact3, pass_a, idx)
             _consult_into(b_fact5, pass_b, idx)
+        if ALG_LIVE_FACTS:
+            # THE LIVE-FACTS ROAD: this step's own pass-1 parse overwrites
+            # the maskprep-cache feed already copied into b_fact above —
+            # the cached FACTS array is still built (the masks it shares
+            # the cache with are still needed) but its VALUES never reach
+            # step() under this flag.
+            _live_facts_into(idx)
         if _STEP_PROF and 5 <= s < 25:
             _prof.enable(); lv = step(); _prof.disable()
         else:
