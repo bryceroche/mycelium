@@ -44859,7 +44859,7 @@ xcorr where loop_val threads it (inert for this arm: ALG_XCORR unset).
 FIRED: pc-livefacts (LF_241 vs CTRLs_241, the unlock's bars; rows weigh
 as much as the slot, pinned 19:46), queued at the lock.
 
-### 2026-09-24 (20:40) — THE MEMBRANE CENSUS BY SCALE (delegate; scripts/membrane_scale.py; PMS8_241, wild, masked-read correctness; 551 wrong / 441 right given slots)
+### 2026-09-24 (20:21) — THE MEMBRANE CENSUS BY SCALE (delegate; scripts/membrane_scale.py; PMS8_241, wild, masked-read correctness; 551 wrong / 441 right given slots)
 
 Where the head's final-breath attention lands relative to the gold
 numeral, finest band wins (mass-weighted; argmax beside): WRONG slots —
