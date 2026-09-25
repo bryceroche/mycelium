@@ -6,10 +6,23 @@ the last ~60 entries) -> the memory board (MEMORY.md CURRENT BOARD, current).
 The reads table: `.venv/bin/python3 scripts/reads.py table wildhold` (assert-on-read).
 
 ## STATE AT HANDOFF
-- Nothing running (2026-09-24 18:05). THE NOTEBOOK BYPASS read (ledger 18:00): the notebook is LOAD-BEARING
-  (nbroad -0.134 z 12.6, args halves, rows 2/311; the confounded 'notebook' form -0.240) — under ALG_STELLAR=2
-  it is the road the state takes at late breaths. The worktree branch clock-reads is MERGED (the worktree
-  /home/bryce/mycelium-wt can be removed). CPU-backend note: the notebook severs segfault at step 1 on DEV=CPU.
+- RUNNING (2026-09-24 20:30): pc-matry (MT_241, THE MATRYOSHKA READOUT arm: each breath's ladder rung reads
+  32..192 content planes, the state untouched; vs CTRLs_241 at the unlock's bars; segment 2 + reads), then queued at
+  the lock: pc-ctrls242 (the seed-242 gentle-continuation twin), pc-swtick (SW_241, THE SIX-WAVE TICK: the wave
+  carried into every loop breath, slot phase +60 deg/breath; worktree /home/bryce/mycelium-wt branch sixwave-tick),
+  pc-livefacts (LF_241, THE LIVE-FACTS ROAD: training on the current model's own pass-1 facts as the read does;
+  worktree /home/bryce/mycelium-wt2 branch live-facts). MERGE the two worktree branches only after their chains end.
+  Logs: .cache/{matry,ctrls242,swtick,livefacts}_chain.log. Bars for all: masked +0.010 z 1.5 vs CTRLs_241, same-noun
+  cell 2 SE, cost >= -0.005 (live facts: rows weigh as much as the slot).
+- 09-24 EVENING VERDICTS (ledger 18:00-20:26): THE NOTEBOOK IS LOAD-BEARING (bypass -0.134 z 12.6; under ALG_STELLAR=2
+  the last breath's state IS the notebook read). THE WAIST IS LOAD-BEARING (-0.064 z 7.0, rows 5). THE MIXER IS
+  LOAD-BEARING (-0.025 z 3.7) and THE GARAGE A PASSENGER (+0.001) — the body's only slot-to-slot message passing is the
+  untyped all-to-all mixer; the build this decides = the competitive typed mixer in place. THE MEMBRANE BY SCALE: half
+  the wrong given mass sits in ANOTHER SENTENCE, flat across breaths (a pyramid's payoff is a sentence-level key); 23%
+  of wrong givens have the binding right (digit failures). THE SINKHORN CLAIM: 69% of wild rows have given-numeral
+  collisions; balancing = +4 rows (diagnostic). THE BEAM ORACLE: +4 rows at k=4 with a perfect judge — the row wall
+  is multi-error per row; THE PICKER PANEL STRUCK as a build. THE OUT-OF-SYNC AUDIT: the six-wave never ticked (breath-0
+  only) -> the tick arm; facts stale at training vs live at read -> the live-facts arm.
 - 09-24 VERDICTS (ledger 17:05-17:50): THE PLANE UNLOCK ARM DOES NOT FIRE (UL_241 vs CTRLs_241: masked -0.003 z 0.6;
   rows 11/9 vs 15/12; the pointer cells DOWN, all -0.017 z 2.9, same-noun -0.018 z 2.5 = the bar's sign inverted;
   mint flat). THE CENSUS PAIR per group: nesting the labels makes negative cross-rung pairs in the args (4->16/42) and
