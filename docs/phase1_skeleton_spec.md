@@ -44610,3 +44610,30 @@ record) on PMS8_241 at the same lines — Bryce's "do we need the
 notebook if the bus tracks state?"; the honest answer needs the bypass
 because under ALG_STELLAR=2 the last loop breath's state IS the
 notebook read.
+
+### 2026-09-24 (18:00) — THE NOTEBOOK BYPASS READ: THE NOTEBOOK IS LOAD-BEARING (PMS8_241, masked wild, paired vs 0.3476; rows 14)
+
+nbroad (the read dropped from the query AND the stellarator handoff
+skipped — the state keeps its own residual): 0.2136, -0.1341, paired SE
+0.0102, z 12.64 (374 slots lost, 99 gained); fields: args 0.449 -> 0.238,
+ftype 0.84 -> 0.70, res 0.80 -> 0.69, dig 0.46 -> 0.41; rows 2/311.
+notebook (the read zeroed, the handoff kept — the confounded form, for
+the record): 0.1073, -0.2404, z 19.66 — under ALG_STELLAR=2 the last
+loop breath's state becomes the zeroed read, as predicted; this form
+cannot answer the question. ANSWER to "do we need the notebook if the
+bus tracks state": YES, by an order of magnitude over the load-bearing
+line — in this body the per-slot breath log is not a side memory; the
+handoff makes it THE ROAD the state takes at late breaths (weight 0 -> 1
+across the six), and the pointer depends on it most (args halves). The
+bus carries state between breaths (the channel sever cost 0.011, the
+turn 0.031); the notebook carries the composition the heads read. The
+version-history uses Bryce and Opus named (change detection, early vs
+late commitment, a record for the certifier/perceiver) ride on an organ
+that is already load-bearing, so they cost nothing to add. CPU-gate
+note: both notebook severs SEGFAULT in the CPU backend at step 1 (the
+pre-existing "notebook" sever too — the backend under a zero-multiplied
+read in the backward, not the edit); step 0 ran and differed, which is
+what a read-time sever's gate needs; the reads ran on the card.
+Regime tag: one body, the claim lineage, the masked read. Artifacts:
+.cache/ps_legal_wild_PMS8_241_sev{nbroad,notebook}.npz, .cache/read_
+legal_wild_PMS8_241_sev{nbroad,notebook}.log, .cache/nbsev_chain.log.
