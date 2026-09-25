@@ -44903,7 +44903,7 @@ Ranked against the mention layer and the pyramid's sentence key when
 the beam bound lands. Artifacts: .cache/ps_legal_wild_PMS8_241_sev
 {mixer,garage}.npz, .cache/sevreads_chain.log.
 
-### 2026-09-24 (20:26) — THE BEAM-SEARCH ORACLE BOUND (delegate; scripts/beam_oracle.py; PMS8_241, the banked rawslots dump, zero GPU): THE DECODE-LEVEL BEAM IS CLOSED AT THIS BODY
+### 2026-09-24 (20:22) — THE BEAM-SEARCH ORACLE BOUND (delegate; scripts/beam_oracle.py; PMS8_241, the banked rawslots dump, zero GPU): THE DECODE-LEVEL BEAM IS CLOSED AT THIS BODY
 
 Self-gate PASSED (k=0 reproduces the masked 14/311; 2757 distinct
 solves, 243 s). Branching the k lowest-margin argument decisions (2^k
