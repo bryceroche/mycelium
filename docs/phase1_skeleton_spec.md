@@ -44637,3 +44637,38 @@ what a read-time sever's gate needs; the reads ran on the card.
 Regime tag: one body, the claim lineage, the masked read. Artifacts:
 .cache/ps_legal_wild_PMS8_241_sev{nbroad,notebook}.npz, .cache/read_
 legal_wild_PMS8_241_sev{nbroad,notebook}.log, .cache/nbsev_chain.log.
+
+### 2026-09-24 (18:30) — REGISTERED + FIRED (the word: "real matryoshka first, then beam search; the waist is load-bearing, I suspect")
+
+1. THE MATRYOSHKA READOUT (ALG_MATRY=<planes per rung>, 145304a5): only
+the ladder rung's VIEW is cut — rung k reads the first n_k content planes
+(32,64,96,128,160,192 over the loop breaths; breath 0's rung the first
+value), keep-norm over the open planes, clock dims untouched; the state,
+the notebook and the final heads see everything. Same full target every
+rung. The plane unlock (09-24 17:40) cut the STATE and lost the pointer's
+fine planes every breath; this is the form that never wipes what flows
+forward. Gate (CPU, running): unset bit-identical; role8 unchanged;
+matry192 (all open) must equal role8 to the digit; matry runs. ARM
+MT_241 (pc-matry, .cache/matry_chain.sh): PMS8_241 + the two gentle
+segments at 1e-5 vs CTRLs_241; BARS = the unlock's, pinned: masked wild
+paired >= +0.010 (z >= 1.5); SAME-NOUN(inh) cell >= 2 SE; cost >= -0.005;
+rows, digits, mint beside. 2. THE WAIST READ (ALG_SEVER=waist: the polar
+content waist skipped, content passes straight through — the fair sever,
+nothing zeroed) on PMS8_241 first in the same chain, at the clock lines
+(< 0.010 passenger; >= 0.020 load-bearing). Bryce's prediction: load-
+bearing. 3. THE BEAM-SEARCH ORACLE BOUND (zero GPU, on the banked
+rawslots dump of PMS8_241, built by a delegate; scripts/beam_oracle.py):
+branch the k lowest-margin argument decisions (k <= 4, 2^k parses),
+solve each as chain_acc does, count rows where ANY branch matches the
+key; self-gate: k=0 reproduces the masked 14. It decides whether a
+picker is worth building; the recoverable rows' choice-set sizes say
+how hard the picker's job is. 4. THE PICKER AS A PANEL (Bryce, 18:25:
+"different angles to see the whole picture" — applied to the NL
+certifier): the NL certifier v1 (text certificates, AUROC 0.811) is ONE
+angle and is NOT wired into any decision yet; the picker is to be a
+panel of angles scored on held-out rows — text certificates, the
+5-view permutation agreement (diagram invariance), cross-lineage
+agreement (landscape invariance; the reads table holds both lineages),
+solver consistency/uniqueness, graph length (the inverted signal) —
+combined by a cross-validated stacker and judged in ROWS recovered,
+never by any single AUROC. Registered; built after the bound reads.
