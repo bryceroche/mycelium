@@ -45078,7 +45078,7 @@ breath-1 attention mass in the gold sentence above the body's; rows
 was born the same way. Cost caveat: the pooled matmuls add three (B,T,T)
 x (B,T,512) products per breath; the step cost is read at the arm.
 
-### 2026-09-25 (09:50) — THE TREE DESCENT GATED; a gate rule learned (the training graph's compile order)
+### 2026-09-25 (09:20) — THE TREE DESCENT GATED; a gate rule learned (the training graph's compile order)
 
 Gate (CPU tiny64, warm balV242): unset 5.2995/0.0279 bit-identical;
 role8 6.5535/1.1061; treeflat (t at every breath) 6.5498/1.1053 —
