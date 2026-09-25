@@ -44835,3 +44835,26 @@ two). The reading rule, pinned: the consistency road is judged on
 ROWS as much as the slot — its mechanism is that the parse the model
 trains against is its own, so its first effect should be at the row
 (the chain), not the slot.
+
+### 2026-09-24 (20:35) — THE LIVE-FACTS ROAD built + gated + fired (delegate; worktree /home/bryce/mycelium-wt2, branch live-facts dbccf805)
+
+ALG_LIVE_FACTS=1: one TinyJit-captured pass 1 per step (the read's own:
+no slot mask, no facts — the breath loop does not run without a slot
+mask, so pass 1 is the breath-0 parse, as at read), decoded on the host
+on chain_acc's seven keys, the facts pool consulted, the result copied
+into b_fact over the cache's feed before step(). Asserts: needs ALG_ALT2;
+exclusive with ALG_ALT3 (two roads to one buffer, not composed). Gate:
+unset 5.2995/0.0279; role8 6.5535/1.1061; livefacts 6.5535/1.1061 —
+IDENTICAL BY CONSTRUCTION on the fixture (same parameters => same
+parse => the same facts; the debug census read max|live - cache| = 0 at
+both steps), and DIVERGING under a stress probe (LR 1e-2, 8 steps:
+max|live - cache| = 1.0 from step 1): the road is wired; the smoke
+fixture cannot exercise it. RULE (the gate's third kind): a road whose
+only effect is to keep a feed CURRENT is bit-identical at step 0 by
+construction — its gate is the divergence census under movement, not
+a differing loss. CPU cost +1.7% at batch 2 (not representative; the
+card's number is the arm's). Named siblings, out of scope: the mask-
+head mass port still rides the stale cache; chain_acc's pass 1 omits
+xcorr where loop_val threads it (inert for this arm: ALG_XCORR unset).
+FIRED: pc-livefacts (LF_241 vs CTRLs_241, the unlock's bars; rows weigh
+as much as the slot, pinned 19:46), queued at the lock.
