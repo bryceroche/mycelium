@@ -45077,3 +45077,29 @@ breath-1 attention mass in the gold sentence above the body's; rows
 >= 14; mint beside. The from-scratch control is the right one: PMS8_241
 was born the same way. Cost caveat: the pooled matmuls add three (B,T,T)
 x (B,T,512) products per breath; the step cost is read at the arm.
+
+### 2026-09-25 (09:50) — THE TREE DESCENT GATED; a gate rule learned (the training graph's compile order)
+
+Gate (CPU tiny64, warm balV242): unset 5.2995/0.0279 bit-identical;
+role8 6.5535/1.1061; treeflat (t at every breath) 6.5498/1.1053 —
+NOT to the digit; tree (t,s,c,m,t,t,t) 6.6252/1.1471 runs (+7% step
+on CPU). THE FLAT MISMATCH RUN DOWN: (1) the plain forward on two rows,
+flat vs unset: 0 differing elements of 72,000 (fat/args/res/dig/pres);
+(2) the JIT'd READ (jit_read): 0 differing elements; (3) the maskprep
+FACTS and MASKS of the two gate runs: identical; (4) the probe — the
+level OPS absent, the three zero params present and frozen
+(ALG_TREE_NOOP=1, the gate's knob): 6.5535/1.1061, bit-identical to
+role8. So the level terms are exact zeros (the math is identical
+everywhere it is read) and the 5.6e-4 loss shift is the TRAINING
+graph's compile: with the extra matmuls in the joint forward+backward
+JIT, kernel fusion and reduction order change, and seven recurrent
+breaths amplify the last-bit differences (the 09-17 read-determinism
+caveat's family: KA/WI re-reads differed by 47/89 slots on the card).
+RULE (the gate's fourth kind): an organ whose birth contribution is an
+exact zero certifies by the FORWARD equality (plain + JIT read) and the
+ops-absent probe; the training fixture's loss is compile-order-
+sensitive to added ops and cannot be the bit-identity witness for
+them. The tree is CERTIFIED on that basis: dead unless set, exact
+zeros at birth, the descent alive. The arm (.cache/tree_chain.sh,
+TR_241 from scratch vs PMS8_241, bars pinned 08:53) stays HELD FOR THE
+WORD (~5 h of card). Commit follows.

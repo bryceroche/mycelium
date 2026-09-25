@@ -3562,7 +3562,7 @@ def _kanneal_smooth(waist, tokmask, sent, B, sigma):
     return g @ waist
 
 
-def _make_bank(p, waist, tokmask, B, sent=None):
+def _make_bank(p, waist, tokmask, B, sent=None, tree=None):
     """forward()'s bank attention, factored BY PURE CODE MOTION
     (apply_step_trainer.py, 2026-09-03) so the step trainer can rebuild
     the closure over ITS OWN waist tensor. forward's call sites are
@@ -3587,7 +3587,8 @@ def _make_bank(p, waist, tokmask, B, sent=None):
         vh = v.reshape(B, -1, N_HEADS, hd).permute(0, 2, 1, 3)
         sc = (qh @ kh.transpose(-2, -1)) / math.sqrt(hd)
         _leaf_open = 1.0
-        if _TREE_LEVELS is not None and tree is not None and nq == L_TOT:
+        if _TREE_LEVELS is not None and tree is not None and nq == L_TOT and not int(os.environ.get("ALG_TREE_NOOP", "0")):   # NOOP: the gate's probe — params present, the level ops absent
+            from tinygrad import Tensor
             # THE TREE DESCENT (2026-09-25): this breath's finest open level
             # (kb None = breath 0). Coarse levels 0..min(lv,2) add a pooled-
             # key term each; the leaf (this sc, and the router's token bias
@@ -5260,7 +5261,7 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
     if ALG_T1 and "t1_dw" in p and "t1" not in _SEVER:
         waist = _t1_conv(p, waist, tokmask)   # T1: the token convolution (a road)
 
-    bank = _make_bank(p, waist, tokmask, B, sent=sent)
+    bank = _make_bank(p, waist, tokmask, B, sent=sent, tree=tree)
     if N_SCR and slot_mask is not None:
         # FED item 6 mask ruling: scratch rows (queries) OPEN to all;
         # scratch columns CLOSED here (no cold read-back at birth —
