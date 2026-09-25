@@ -44968,3 +44968,29 @@ for every warm arm (that is its job) and the rows say it does not
 hurt the chain. No claim. Regime tag: two seeds, 12k at 1e-5.
 Artifacts: sharp_CTRLs_242, ps_{open,legal}_wild_CTRLs_242.npz,
 dump_wild_CTRLs_242.pkl.
+
+### 2026-09-24 (23:47) — THE SIX-WAVE TICK ARM: INERT BY SCALE (SW_241 vs CTRLs_241; swtick_chain.log)
+
+SW_241 (PMS8_241 + the two 1e-5 segments, ALG_SW_TICK=1; step cost
+0.24-0.26 s vs 0.16 plain, +50%) vs CTRLs_241: masked 0.3467 vs 0.3481,
+paired -0.0015 with SEVEN discordant slots of 2051 (5 vs 2; SE 0.0013);
+open 0.3237 vs 0.3242 (4 vs 3 discordant); rows 14/12 vs 15/12; mint
+0.6551 vs 0.6554; cells: all within 4 slots per thousand (ALL -0.0031,
+z 2.0 on 1277 items — a handful of slots). VERDICT: THE ARM DOES NOT
+FIRE, and the read is a NON-EVENT: the two bodies decide the same slots.
+CAUSE (the knob law, skipped this time — census the injection BEFORE the
+fire; the third organ this month to teach it): the wave enters the bank
+scores through the carrier gate sw_g = 0.13, so the per-breath bias is
++/-0.13 on logits whose other terms spread 7-11; a warm body does not
+move for it and gentle continuation at 1e-5 does not grow it. The
+identity key's tau-4 read exactly. What the read does say: carrying
+the wave into every loop breath at its trained gain costs nothing and
+changes nothing; the wave's whole share in the body is its breath-0
+bias. The tick as designed is not refuted; it is untested at scale.
+Honest continuations (registered, low priority; the word needed):
+(a) the tick as a ROAD — a fixed amplitude (no gain) matched to the
+bank's logit spread, gated bit-identical at amplitude 0; (b) a from-
+scratch body with the tick (48k). Neither fires ahead of the mixer
+build. Artifacts: sharp_SW_241, ps_{open,legal}_wild_SW_241.npz,
+dump_wild_SW_241.pkl, swtick_chain.log. The worktree branch sixwave-
+tick is safe to merge (dead unless set).
