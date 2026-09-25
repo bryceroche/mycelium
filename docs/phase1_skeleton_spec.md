@@ -44969,7 +44969,7 @@ hurt the chain. No claim. Regime tag: two seeds, 12k at 1e-5.
 Artifacts: sharp_CTRLs_242, ps_{open,legal}_wild_CTRLs_242.npz,
 dump_wild_CTRLs_242.pkl.
 
-### 2026-09-24 (23:47) — THE SIX-WAVE TICK ARM: INERT BY SCALE (SW_241 vs CTRLs_241; swtick_chain.log)
+### 2026-09-24 (23:42) — THE SIX-WAVE TICK ARM: INERT BY SCALE (SW_241 vs CTRLs_241; swtick_chain.log)
 
 SW_241 (PMS8_241 + the two 1e-5 segments, ALG_SW_TICK=1; step cost
 0.24-0.26 s vs 0.16 plain, +50%) vs CTRLs_241: masked 0.3467 vs 0.3481,
