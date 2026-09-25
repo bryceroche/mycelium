@@ -6,14 +6,27 @@ the last ~60 entries) -> the memory board (MEMORY.md CURRENT BOARD, current).
 The reads table: `.venv/bin/python3 scripts/reads.py table wildhold` (assert-on-read).
 
 ## STATE AT HANDOFF
-- RUNNING (2026-09-24 20:30): pc-matry (MT_241, THE MATRYOSHKA READOUT arm: each breath's ladder rung reads
-  32..192 content planes, the state untouched; vs CTRLs_241 at the unlock's bars; segment 2 + reads), then queued at
-  the lock: pc-ctrls242 (the seed-242 gentle-continuation twin), pc-swtick (SW_241, THE SIX-WAVE TICK: the wave
-  carried into every loop breath, slot phase +60 deg/breath; worktree /home/bryce/mycelium-wt branch sixwave-tick),
-  pc-livefacts (LF_241, THE LIVE-FACTS ROAD: training on the current model's own pass-1 facts as the read does;
-  worktree /home/bryce/mycelium-wt2 branch live-facts). MERGE the two worktree branches only after their chains end.
-  Logs: .cache/{matry,ctrls242,swtick,livefacts}_chain.log. Bars for all: masked +0.010 z 1.5 vs CTRLs_241, same-noun
-  cell 2 SE, cost >= -0.005 (live facts: rows weigh as much as the slot).
+- Nothing running (2026-09-24 23:55); card idle. Tree: gen-weights with the worktree branches sixwave-tick and
+  live-facts MERGED (72fd5074); the post-merge CPU gate (.cache/merge_gate.sh -> .cache/merge_gate.log: unset must
+  read 5.2995/0.0279, role8 6.5535/1.1061) was fired at close — CHECK IT before any fire. Worktrees
+  /home/bryce/mycelium-wt and -wt2 can be removed (git worktree remove).
+- 09-24 NIGHT VERDICTS (ledger 23:34-23:44), the four warm arms vs CTRLs_241, all DO NOT FIRE: THE MATRYOSHKA READOUT
+  (MT_241: masked -0.003 z 0.9, rows 11/10 vs 15/12, cells flat-to-down) — the coarse-to-fine line CLOSES for the warm
+  regime (nested labels parked, state unlock refused, readout view null); THE SIX-WAVE TICK (SW_241: 7 discordant slots
+  of 2051 — INERT BY SCALE, the carrier gain 0.13 vs a logit spread of 7-11; the knob law skipped; the road form and a
+  from-scratch form registered, low priority); THE LIVE-FACTS ROAD (LF_241: 15 discordant slots, rows 15/13 vs 15/12 —
+  NULL BY CONSTRUCTION: a converged body's parse does not move under gentle continuation, so cached = live facts; the
+  road bites in FROM-SCRATCH training -> PMLF_241 registered: the lineage recipe + ALG_LIVE_FACTS=1 vs PM35_scratch_241,
+  bar +0.020 or a twin, rows weigh as much as the slot; 4-5 h; needs the word); THE CONTINUATION TWIN (CTRLs_242: slot
+  -0.006 z 1.25, rows 15/10 vs 13/9 — neutral across the pair, rows up on both seeds; the honest control, not certified
+  free). THE READING: the warm regime on the claim body is a SETTLED BASIN — gentle continuation moves nothing for any
+  organ whose effect is a small bias; what moved this month was structural at read (the numeral mask, the role pointer)
+  or trained from scratch.
+- NEXT (decided by the reads, the word given for the queue): (1) THE COMPETITIVE TYPED MIXER in place (the mixer is the
+  only load-bearing slot-to-slot channel: edge types from the decoded graph as sc2 biases + the competitor road writing
+  the pointer's posterior back into the candidates) — census the injection scale on the warm body BEFORE the fire (the
+  knob law, three lessons); (2) the sentence-level key on the router (the membrane by scale: half the wrong mass is in
+  another sentence); (3) PMLF_241 from scratch (the live-facts road where it bites).
 - 09-24 EVENING VERDICTS (ledger 18:00-20:26): THE NOTEBOOK IS LOAD-BEARING (bypass -0.134 z 12.6; under ALG_STELLAR=2
   the last breath's state IS the notebook read). THE WAIST IS LOAD-BEARING (-0.064 z 7.0, rows 5). THE MIXER IS
   LOAD-BEARING (-0.025 z 3.7) and THE GARAGE A PASSENGER (+0.001) — the body's only slot-to-slot message passing is the
