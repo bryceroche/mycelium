@@ -44751,3 +44751,38 @@ records, cross-validated, in rows), and the next arm ranked among the
 competition reply (garage or mixer, per the sever reads), the mention
 layer, and pyramid keys on the router — one arm at a time, the usual
 shape, bars pinned in the ledger before each fire.
+
+### 2026-09-24 (20:25) — THE SINKHORN CLAIM READ (delegate; scripts/sinkhorn_claim.py; PMS8_241, zero GPU) + THE OUT-OF-SYNC AUDIT (Bryce's gut)
+
+SINKHORN: self-gate PASSED (the mask alone reproduces the masked 14/311).
+THE COLLISION CENSUS: 216/311 wild rows (69%) have two or more GIVEN
+slots claiming the SAME numeral under the per-slot argmax mask — the
+digits failure class, seen from the text's side. Balanced claims
+(givens x text numerals; each given one numeral, each numeral at most
+one given; relations untouched): Hungarian and Sinkhorn T=0.5 both 18
+rows (+4: 4 wrong->correct, 2 refused->correct, 2 correct->wrong); T=1
+17; T=2 16. Slot-level given-digit accuracy flat (0.52 -> 0.50-0.53):
+the claim fixes the collided slots that feed the query and trades
+elsewhere. A DIAGNOSTIC, no claim (+4 on 14 is inside noise for a bar);
+registered as a decode-time road candidate for the picker (a branch
+generator: the assignment's alternatives are exactly the beam's moves
+on the digits axis). Artifact: .cache/sinkhorn_claim_PMS8_241.txt.
+THE AUDIT ("something feels out of sync"): (1) THE TWO CLOCKS ARE NOT
+IN SYNC BECAUSE ONE DOES NOT TICK — the six-wave (ALG_SIXWAVE) in the
+family env is a STATIC resonance: slot phase = slot index mod 6, token
+phase = sentence index mod 6, bias cos(phi_slot - theta_tok) through the
+carrier gate (sw_g trained to 0.13 on PMS8_241/242, 0.13 on the
+lineage); it has NO breath term (the rotating form was ALG_SYNC's, not
+in the family). The state's sextet turns (k-1) x 60 deg per breath. So
+the "T6 clock rotating over the breaths" of the roadmap is only half
+built: the state turns, the attention-side wave stands still. (2) THE
+FACTS ARE STALE AT TRAINING AND LIVE AT READ: each training segment
+computes FACTS/MASKS once from its STARTING checkpoint (the maskprep
+cache), so the model trains on the parse of an older self, while every
+read consults its current parse — a train/inference asynchrony under
+every arm; ALT3 (live consults per step) is the built cure, unused by
+the claim body. (3) Within a breath the notebook read is re-phased to
+the state's frame (k-1 turns) and the query side to the absolute phase
+k — by design, not a fault. Registered, needing the word: THE SIX-WAVE
+TICK (the wave's phase advancing 60 deg per breath in lockstep with the
+hand — a head edit, gated bit-identical at breath 1, an arm).
