@@ -22,8 +22,8 @@ The reads table: `.venv/bin/python3 scripts/reads.py table wildhold` (assert-on-
   free). THE READING: the warm regime on the claim body is a SETTLED BASIN — gentle continuation moves nothing for any
   organ whose effect is a small bias; what moved this month was structural at read (the numeral mask, the role pointer)
   or trained from scratch.
-- SESSION CLOSED 2026-09-25 11:15 WITH ONE ARM RUNNING: pc-tree (TR_241, THE TREE DESCENT from scratch vs PMS8_241;
-  fired 10:38; step 8500/48000 at 11:09, 0.19 s/step; training ends ~13:15, reads ~13:45). IT RUNS ON ITS OWN (a
+- SESSION CLOSED 2026-09-25 12:56 WITH ONE ARM RUNNING: pc-tree (TR_241, THE TREE DESCENT from scratch vs PMS8_241;
+  fired 10:38; 0.19 s/step; at close step 42500/48000 — training ends within ~20 min of close, the reads ~30 min after). IT RUNS ON ITS OWN (a
   systemd unit): next session, read .cache/tree_chain.log (masked/open wild, rows, mint, the paired line vs PMS8_241,
   the membrane collect for the arm), then run `MS_MODE=report MS_CKPT=.cache/sharp_TR_241.safetensors .venv/bin/python3
   scripts/membrane_scale.py` for the mechanism bar (wrong-sentence share of wrong givens < 0.40 from 0.50), and BANK
