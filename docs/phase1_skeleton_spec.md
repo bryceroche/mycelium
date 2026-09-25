@@ -44672,3 +44672,43 @@ agreement (landscape invariance; the reads table holds both lineages),
 solver consistency/uniqueness, graph length (the inverted signal) —
 combined by a cross-validated stacker and judged in ROWS recovered,
 never by any single AUROC. Registered; built after the bound reads.
+
+### 2026-09-24 (18:55) — MESSAGE PASSING: what the shoal was, and THE SEVER READS registered (pc-sevreads)
+
+Bryce: "how do we enable proper message passing — the herring shoal showed
+no boost" (the field sever: -0.006, a passenger). FROM THE HEAD: (1) the
+E&B coupling acts on the 64 CLOCK planes only — content passes bitwise
+(_polar_em); it moves no meaning by construction (Opus's check 2 needs
+no run). (2) Under the family env ALG_SLOT_ALL=1 the slot mask is ALL-
+TO-ALL (the severance ladder read the frozen mask as not load-bearing,
+0.2521 vs 0.2511), so the coupling's row-normalised Laplacian step is a
+MEAN-FIELD average over every slot — fixed physics with no structure to
+carry, kappa 0.1: the passenger read is what the construction predicts.
+Opus's check 3 (are the twins connected?) is answered: every slot
+attends to every slot; connectivity is not the missing piece —
+COMPETITION and TYPE are (the pointer's softmax competes at the readout;
+nothing tells the losing candidate; no edge is typed consumes/produces/
+competes). (3) The slot-to-slot channels that exist: THE MIXER (sc2 =
+rotated queries . keys over all slots, untyped; h_slot enters the stream
+_s21 = h_tok + h_slot — the MAIN ROAD) and THE GARAGE (typed role-bound
+mail, ALG_BUSGARAGE=2, entering through the bus_g gain — a gained side
+road, the mandatory-road law's suspect). REGISTERED + FIRED (zero
+training, PMS8_241, masked wild paired, the clock lines): ALG_SEVER=mixer
+and ALG_SEVER=garage (pre-existing sever organs, no head edit).
+Predictions, pinned: mixer LOAD-BEARING (>= 0.020), garage PASSENGER
+(< 0.010). If the mixer is load-bearing, the build is to make THAT
+channel typed and competitive (R-GCN-style edge types on the decoded
+graph + a competitor edge between same-position candidates, learned
+messages, on the road it already occupies), never a new organ beside
+it; if it is a passenger too, no slot-to-slot message passing exists in
+the body and a learned typed channel is a real build. THE NAZARE
+READING (Bryce): the canyon = the polar waist (the per-breath squeeze,
+its removal cost queued in pc-matry), the surge = the stellarator
+handoff (six breaths' logs funnelled into the final state, weight 1 at
+the last breath; load-bearing at -0.134). REGISTERED beside: THE
+SINKHORN CLAIM READ (zero GPU, the rawslots dump): givens x text
+numerals as an assignment (each numeral claimed at most once by a
+given, each given claims one), balanced by Sinkhorn on the masked digit
+probabilities, re-decoded, re-solved — the DIGITS failure class is the
+largest (5x args); rows recovered is the bar; the derived-value reuse
+caveat (only givens claim).
