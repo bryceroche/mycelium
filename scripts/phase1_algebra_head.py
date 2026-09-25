@@ -49,6 +49,14 @@ ALG_VALATT = int(os.environ.get("ALG_VALATT", "0"))  # door #61: given-binding a
 ALG_SIXWAVE = int(os.environ.get("ALG_SIXWAVE", "0"))  # door #62: six-wave slot phasing
 ALG_LSENT = int(os.environ.get("ALG_LSENT", "0"))    # V2: letter-keyed partition input
 ALG_SYNC = int(os.environ.get("ALG_SYNC", "0"))      # sync-complete: one clock, both sides, ticking
+# THE SIX-WAVE TICK (2026-09-24, the word): in the family the six-wave is a STATIC resonance
+# (slot index mod 6 vs sentence index mod 6) applied at the breath-0 bank read ONLY — the
+# out-of-sync audit. ALG_SW_TICK=1 carries the wave into every loop breath with the SLOT
+# phase advanced (kb-1) x 60 deg, in lockstep with the sextet's breath hand: at breath kb the
+# bank read's bias is cos(phi_slot + (kb-1)*pi/3 - theta_tok) * sw_g. Breath 0 unchanged;
+# unset = bit-identical.
+ALG_SW_TICK = int(os.environ.get("ALG_SW_TICK", "0"))
+assert not ALG_SW_TICK or ALG_SIXWAVE, "ALG_SW_TICK needs ALG_SIXWAVE=1 (the wave it advances)"
 ALG_CONSUME = int(os.environ.get("ALG_CONSUME", "0"))  # consume-once credit (any breath, once)
 ALG_NOTEBOOK = int(os.environ.get("ALG_NOTEBOOK", "0"))  # the cathedral notebook
 ALG_CIRCLE = int(os.environ.get("ALG_CIRCLE", "0"))      # the traffic circle
@@ -4334,6 +4342,10 @@ def breath_step(p, state, kb, ctx):
             _CENSUS.append((kb, "tokgate_kl",
                             _tg_kl.mean(1, keepdim=True).realize().numpy()))
     _pb_kb = (_sync[0](kb) if _sync is not None else None)
+    _swt = ctx.get("swtick")
+    if _swt is not None:                   # THE SIX-WAVE TICK: the wave at this breath's phase
+        _swb = _swt(kb)
+        _pb_kb = _swb if _pb_kb is None else _pb_kb + _swb
     _wb = state.get("wheel_bias")
     if _NUMSPOT is not None:               # THE NUMERAL SPOTLIGHT (2026-09-15): a constant certificate, both roads
         _nsb = _ct("numspot", _NUMSPOT) if _NUMSPOT.shape[0] == B else None
@@ -5129,6 +5141,7 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
     _pb = None
     _pb_prior = None
     _sync = None
+    _swtick = None
     if ALG_SYNC:
         from tinygrad import Tensor, dtypes
         _A = float(os.environ.get("SYNC_A", "1.0"))
@@ -5176,6 +5189,13 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
                + _sph.reshape(1, 1, L_TOT, 1)
                * _th.sin().reshape(B, 1, 1, -1)) * p["sw_g"].reshape(1, 1, 1, 1)
         _pb = _sw_term if _pb is None else _pb + _sw_term  # audit #6: adds
+        if ALG_SW_TICK:                   # THE SIX-WAVE TICK: the per-breath maker (kb = 1..6)
+            _sw_cph, _sw_sph, _sw_th = _cph, _sph, _th
+            def _mk_swtick(kb, _c=_sw_cph, _s=_sw_sph, _t=_sw_th):
+                _thk = _t - (kb - 1) * (math.pi / 3.0)    # slot phase +d == token phase -d
+                return (_c.reshape(1, 1, L_TOT, 1) * _thk.cos().reshape(B, 1, 1, -1)
+                        + _s.reshape(1, 1, L_TOT, 1) * _thk.sin().reshape(B, 1, 1, -1)) * p["sw_g"].reshape(1, 1, 1, 1)
+            _swtick = _mk_swtick
     if pmask is not None:                 # A0: imposed route-mask (wiring,
         _pb = pmask if _pb is None else _pb + pmask   # not knobs — no grad)
     if xcorr is not None:
@@ -5327,7 +5347,7 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
                    "valtag_v": _valtag_v,
                    "anchor_bias0": _anch_bias0,
                    "slot_mask": slot_mask, "bank": bank, "rot2": _rot2,
-                   "sync": _sync, "drop": drop, "gmod": gmod,
+                   "sync": _sync, "swtick": _swtick, "drop": drop, "gmod": gmod,
                    "revoke": revoke, "tail": tail, "reg": reg,
                    # MASK HEAD metadata (2026-09-05; plumbing only — a
                    # dict key, zero compute when ALG_MASKHEAD unset).
