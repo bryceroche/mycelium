@@ -44836,7 +44836,7 @@ ROWS as much as the slot — its mechanism is that the parse the model
 trains against is its own, so its first effect should be at the row
 (the chain), not the slot.
 
-### 2026-09-24 (20:35) — THE LIVE-FACTS ROAD built + gated + fired (delegate; worktree /home/bryce/mycelium-wt2, branch live-facts dbccf805)
+### 2026-09-24 (20:14) — THE LIVE-FACTS ROAD built + gated + fired (delegate; worktree /home/bryce/mycelium-wt2, branch live-facts dbccf805)
 
 ALG_LIVE_FACTS=1: one TinyJit-captured pass 1 per step (the read's own:
 no slot mask, no facts — the breath loop does not run without a slot
