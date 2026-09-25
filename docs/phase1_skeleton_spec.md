@@ -44733,7 +44733,7 @@ role8 to the digit, matry 6.5275/1.4390). Regime tag: one body, the
 claim lineage, the masked read. Artifacts: .cache/ps_legal_wild_PMS8_
 241_sevwaist.npz, .cache/read_legal_wild_PMS8_241_sevwaist.log.
 
-### 2026-09-24 (19:50) — WORD GIVEN FOR THE WHOLE QUEUE ("Salute!"): what fires, in order
+### 2026-09-24 (19:32) — WORD GIVEN FOR THE WHOLE QUEUE ("Salute!"): what fires, in order
 
 GPU (queued at the lock behind pc-matry): pc-sevreads (mixer, garage);
 pc-ctrls242 (THE GENTLE-CONTINUATION TWIN: CTRLs_242 = PMS8_242 + the two
@@ -44752,7 +44752,7 @@ competition reply (garage or mixer, per the sever reads), the mention
 layer, and pyramid keys on the router — one arm at a time, the usual
 shape, bars pinned in the ledger before each fire.
 
-### 2026-09-24 (20:25) — THE SINKHORN CLAIM READ (delegate; scripts/sinkhorn_claim.py; PMS8_241, zero GPU) + THE OUT-OF-SYNC AUDIT (Bryce's gut)
+### 2026-09-24 (19:40) — THE SINKHORN CLAIM READ (delegate; scripts/sinkhorn_claim.py; PMS8_241, zero GPU) + THE OUT-OF-SYNC AUDIT (Bryce's gut)
 
 SINKHORN: self-gate PASSED (the mask alone reproduces the masked 14/311).
 THE COLLISION CENSUS: 216/311 wild rows (69%) have two or more GIVEN
@@ -44787,7 +44787,7 @@ k — by design, not a fault. Registered, needing the word: THE SIX-WAVE
 TICK (the wave's phase advancing 60 deg per breath in lockstep with the
 hand — a head edit, gated bit-identical at breath 1, an arm).
 
-### 2026-09-24 (20:45) — THE SIX-WAVE TICK registered + fired (word given; "your choice" on re-running)
+### 2026-09-24 (19:44) — THE SIX-WAVE TICK registered + fired (word given; "your choice" on re-running)
 
 BUILT (worktree branch sixwave-tick 63e7b051; the main head is under
 pc-matry/pc-ctrls242): ALG_SW_TICK=1 carries the six-wave into every
@@ -44812,7 +44812,7 @@ the membrane) get re-read, one at a time, never the whole book. GPU
 queue now: pc-matry (arm) -> pc-sevreads -> pc-ctrls242 -> the membrane
 collect -> pc-swtick.
 
-### 2026-09-24 (21:05) — THE LIVE-FACTS ROAD registered (word given: "consistent training and inference dynamics"; delegated)
+### 2026-09-24 (19:46) — THE LIVE-FACTS ROAD registered (word given: "consistent training and inference dynamics"; delegated)
 
 The asynchrony (20:25 audit, item 2): at read the facts injected at
 breath 2 come from the CURRENT model's pass 1; at training from the
