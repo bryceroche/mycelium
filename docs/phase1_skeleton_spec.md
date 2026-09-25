@@ -44925,7 +44925,7 @@ zero-GPU ceiling read worth one run for the record, no more. Regime
 tag: one body, the masked decode, the June solver's domain rule.
 Artifacts: .cache/beam_oracle_PMS8_241.{txt,pkl}.
 
-### 2026-09-24 (23:45) — THE MATRYOSHKA READOUT ARM: DOES NOT FIRE (MT_241 vs CTRLs_241; matry_chain.log)
+### 2026-09-24 (23:34) — THE MATRYOSHKA READOUT ARM: DOES NOT FIRE (MT_241 vs CTRLs_241; matry_chain.log)
 
 MT_241 (PMS8_241 + two gentle segments at 1e-5, ALG_MATRY=32,64,96,128,
 160,192 — the rung's VIEW cut, the state untouched; step cost 0.154 s =
