@@ -44995,7 +44995,7 @@ build. Artifacts: sharp_SW_241, ps_{open,legal}_wild_SW_241.npz,
 dump_wild_SW_241.pkl, swtick_chain.log. The worktree branch sixwave-
 tick is safe to merge (dead unless set).
 
-### 2026-09-24 (23:50) — THE LIVE-FACTS ARM: NULL ON THE WARM BODY, BY CONSTRUCTION (LF_241 vs CTRLs_241; livefacts_chain.log)
+### 2026-09-24 (23:44) — THE LIVE-FACTS ARM: NULL ON THE WARM BODY, BY CONSTRUCTION (LF_241 vs CTRLs_241; livefacts_chain.log)
 
 LF_241 (PMS8_241 + the two 1e-5 segments, ALG_LIVE_FACTS=1; step cost
 0.27-0.29 s vs 0.16 plain, +65-80%) vs CTRLs_241: masked 0.3467 vs
