@@ -44712,3 +44712,23 @@ given, each given claims one), balanced by Sinkhorn on the masked digit
 probabilities, re-decoded, re-solved — the DIGITS failure class is the
 largest (5x args); rows recovered is the bar; the derived-value reuse
 caveat (only givens claim).
+
+### 2026-09-24 (19:20) — THE WAIST READ: THE PER-BREATH SQUEEZE IS LOAD-BEARING (PMS8_241, masked wild, paired vs 0.3476; rows 14)
+
+ALG_SEVER=waist (the polar content waist skipped — content passes straight
+through, nothing zeroed; the fair sever): 0.2838, -0.0639, paired SE
+0.0091, z 6.97 (242 slots lost, 111 gained); fields: args 0.449 -> 0.404,
+dig 0.46 -> 0.40, res 0.80 -> 0.79, pres 0.92 -> 0.85; rows 5/311.
+Bryce's prediction (18:30: load-bearing) CONFIRMED at three times the
+line. THE NAZARE READING holds: the canyon (the 384 -> 128 -> 384 squeeze
+every breath) shapes what the surge (the handoff) delivers. The body
+learned to pack its per-breath answer through 128 numbers, which is the
+skill the Matryoshka readout asks the ladder to grade prefix by prefix.
+GATE NOTE (a rule for sever organs): a sever that removes PARAMETERS
+from the graph (here polar_wd/polar_wu) trips the training step's
+no-gradient assert by design; a read-time sever's certificate is its
+read, not the training fixture — the chain's gate requirement for it was
+removed (the readout's gate stands: unset bit-identical, matry192 =
+role8 to the digit, matry 6.5275/1.4390). Regime tag: one body, the
+claim lineage, the masked read. Artifacts: .cache/ps_legal_wild_PMS8_
+241_sevwaist.npz, .cache/read_legal_wild_PMS8_241_sevwaist.log.
