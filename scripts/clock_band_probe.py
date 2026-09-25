@@ -142,7 +142,7 @@ def collect():
         o["fat"].realize()
         got = {kb: arr for (kb, tag, arr) in H._CENSUS if tag == "state"}
         H._CENSUS = None
-        assert sorted(got) == list(range(1, K_B)), sorted(got)
+        assert set(range(1, K_B)) <= set(got), sorted(got)   # breath 0 stamps "state" too; the loop breaths are 1..K_B-1
         for kb in range(1, K_B):
             states[sl, kb - 1] = got[kb][:len(sl), :L_FAC].astype(np.float16)
         if s0 % 64 == 0:
