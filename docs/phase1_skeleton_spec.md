@@ -44952,3 +44952,19 @@ tag: one seed, warm continuation of the claim body, 12k at 1e-5; a
 from-scratch form carries a low prior and is not registered.
 Artifacts: sharp_MT_241, dump_wild_MT_241.pkl, ps_{open,legal}_wild_
 MT_241.npz, matry_chain.log.
+
+### 2026-09-24 (23:48) — THE GENTLE-CONTINUATION TWIN: CTRLs_242 vs PMS8_242 (ctrls242_chain.log)
+
+CTRLs_242 (PMS8_242 + the two 1e-5 segments, no organ): masked wild
+0.3462 vs the body's 0.3525, paired -0.0063 (SE 0.0051, z 1.25) — the
+hold line (-0.005) MISSED by 0.0013, inside one SE; open 0.3233 vs
+0.3276 (-0.004); mint 0.6652. ROWS 15/10 vs the body's 13/9 — the row
+lift REPEATS on the second seed (seed 241: 15/12 vs 14/9). READING:
+across the pair the gentle continuation is NEUTRAL at the slot (241
++0.0005, 242 -0.0063; mean -0.003, well inside the seed spread) and
++1 to +2 rows on both seeds. It is not certified "free" at the slot on
+the pinned line (one seed missed by a hair); it is the honest control
+for every warm arm (that is its job) and the rows say it does not
+hurt the chain. No claim. Regime tag: two seeds, 12k at 1e-5.
+Artifacts: sharp_CTRLs_242, ps_{open,legal}_wild_CTRLs_242.npz,
+dump_wild_CTRLs_242.pkl.
