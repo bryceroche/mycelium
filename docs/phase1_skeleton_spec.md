@@ -44882,7 +44882,7 @@ docstring; the earlier census's 84% and "sentence distance is the load"
 reproduce. Artifacts: .cache/membrane_raw_wild_PMS8_241.npz,
 .cache/membrane_scale_PMS8_241.txt.
 
-### 2026-09-24 (20:24) — THE MESSAGE-PASSING SEVERS READ (pc-sevreads, 19:10; PMS8_241, masked wild, paired vs 0.3476): BOTH PREDICTIONS HELD
+### 2026-09-24 (20:21) — THE MESSAGE-PASSING SEVERS READ (pc-sevreads, 19:10; PMS8_241, masked wild, paired vs 0.3476): BOTH PREDICTIONS HELD
 
 mixer (the slot-to-slot attention zeroed; h_slot on the main road):
 0.3228, -0.0249, paired SE 0.0067, z 3.69 (121 lost, 70 gained); fields
