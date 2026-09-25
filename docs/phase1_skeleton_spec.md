@@ -45029,7 +45029,7 @@ at read (the numeral mask, the role pointer) or trained from scratch.
 Artifacts: sharp_LF_241, ps_{open,legal}_wild_LF_241.npz, dump_wild_
 LF_241.pkl, livefacts_chain.log.
 
-### 2026-09-25 (00:40) — THE TREE DESCENT built (the word: "coarse to fine is the entire thesis — tree-structured dials plus a CNN, each breath further down the tree"); the arm written and HELD
+### 2026-09-25 (08:53) — THE TREE DESCENT built (the word: "coarse to fine is the entire thesis — tree-structured dials plus a CNN, each breath further down the tree"); the arm written and HELD
 
 THE RECORD FIRST: every coarse-to-fine form so far was a nudge on a warm
 body — the annealed kernel and the hierarchical window (09-17, null on
