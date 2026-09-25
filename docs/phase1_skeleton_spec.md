@@ -44544,3 +44544,28 @@ lineage, the masked read. Artifacts: .cache/ps_legal_wild_PMS8_241_sev
 sev*.log, .cache/clock_reads_chain.log. The probe re-fired (pc-clockprobe:
 the collect's assert took breath 0's state stamp for a missing loop
 breath; fixed 0d6e9634).
+
+### 2026-09-24 (17:40) — THE PLANE UNLOCK ARM: DOES NOT FIRE (UL_241 vs CTRLs_241; unlock_chain.log)
+
+UL_241 (PMS8_241 + two gentle segments at 1e-5, ALG_UNLOCK=32,64,96,128,
+160,192) vs CTRLs_241 (the same segments, no unlock): masked wild 0.3452
+vs 0.3481, paired -0.0029 (SE 0.0049, z 0.60) — the +0.010 bar MISSED,
+the cost line (-0.005) held; open 0.3184 vs 0.3242 (-0.0059, z 1.18);
+vs the body PMS8_241 -0.0024 (z 0.42; the control itself -0.0005, z 0.09).
+Rows 11/9 vs the control's 15/12. Mint open 0.6543 (control fac-exact=0.6554).
+THE CELLS (post vs post, paired): ALL -0.0172 (SE 0.0059, z 2.90); SAME-
+NOUN(inh) -0.0176 (z 2.50) — the pinned +2 SE bar met with the WRONG
+SIGN; GIVEN-ONLY -0.0252 (z 2.33); DERIVED-ARG -0.0190 (z 1.57); no cell
+up. READING: the pointer cells fall while the slot holds — the unlock
+takes the early breaths' content planes (32 of 192 at breath 1) from
+exactly the reads the pointer's rungs make first (the role signature
+binds at breath 1); digits/res absorb the slack at the slot. The
+Matryoshka premise — the coarse answer emerges from limited sight —
+did not convert on this body under gentle continuation; with the
+census's finding (nesting the labels makes negative pairs; the flat
+ladder's args rungs already mildly disagree), the view-change form did
+not cure the pointer's disagreement either. Regime tag: one seed, warm
+continuation of the claim body, 12k at 1e-5. The organ stays built and
+dead unless set; a from-scratch read is the only remaining form (a 48k
+run; low prior; needs the word). Artifacts: sharp_UL_241, dump_wild_
+UL_241.pkl, ps_{open,legal}_wild_UL_241.npz, unlock_chain.log.
