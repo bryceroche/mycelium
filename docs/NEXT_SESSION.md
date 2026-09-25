@@ -8,7 +8,7 @@ The reads table: `.venv/bin/python3 scripts/reads.py table wildhold` (assert-on-
 ## STATE AT HANDOFF
 - Nothing running (2026-09-24 23:55); card idle. Tree: gen-weights with the worktree branches sixwave-tick and
   live-facts MERGED (72fd5074); the post-merge CPU gate (.cache/merge_gate.sh -> .cache/merge_gate.log: unset must
-  read 5.2995/0.0279, role8 6.5535/1.1061) was fired at close — CHECK IT before any fire. Worktrees
+  read 5.2995/0.0279, role8 6.5535/1.1061) PASSED at close: unset 5.2995/0.0279, role8 6.5535/1.1061 — the merged head is certified. Worktrees
   /home/bryce/mycelium-wt and -wt2 can be removed (git worktree remove).
 - 09-24 NIGHT VERDICTS (ledger 23:34-23:44), the four warm arms vs CTRLs_241, all DO NOT FIRE: THE MATRYOSHKA READOUT
   (MT_241: masked -0.003 z 0.9, rows 11/10 vs 15/12, cells flat-to-down) — the coarse-to-fine line CLOSES for the warm
