@@ -610,7 +610,12 @@ _SEVER_ORGANS = frozenset(("notebook", "garage", "s3", "s4", "mixer",
                            "clockturn",    # the TURN: every wheel table identity (cos 1, sin 0) — breath time removed,
                                            #   the channels kept (state increments, Q-side absolute, the canon frame)
                            "clockfield",   # the FIELD: the E&B exchange along the mask lanes skipped
-                           "clockband"))   # the CHANNELS: the clock dims zeroed leaving each loop breath (no keep-norm)
+                           "clockband",    # the CHANNELS: the clock dims zeroed leaving each loop breath (no keep-norm)
+                           # THE NOTEBOOK BYPASS (2026-09-24): the honest "do we need the notebook" read — the
+                           # read dropped from the query AND the stellarator handoff skipped (the state keeps its
+                           # own residual). "notebook" alone zeroes the read but leaves the handoff, which under
+                           # ALG_STELLAR=2 replaces the state with that zero at the last loop breath.
+                           "nbroad"))
 # THE SHELF READOUT (2026-09-12, the word): ALG_SHELF=1 reads the answer from
 # an attention over every breath's state (per slot, query = the final state,
 # + a learned per-breath logit bias) — the shallow-wide edge from the one
@@ -3697,7 +3702,7 @@ def breath_step(p, state, kb, ctx):
             _rd = sum(_at[:, :, j:j + 1] * _nb[j] for j in range(len(_nb)))
             if ALG_CLOCK_CANON and ALG_POLAR:
                 _rd = _clock_frame(_rd, kb - 1, +1, _rot2)   # the reader's frame
-            if "notebook" in _SEVER:
+            if "notebook" in _SEVER or "nbroad" in _SEVER:
                 _rd = _rd * 0.0
             if _bal_v is not None:            # THE BALANCED COOKER:
                 _rd = _rd * (1.0 - _bal_v.reshape(B, 1, 1))   # lane 1 sealed
@@ -3770,7 +3775,7 @@ def breath_step(p, state, kb, ctx):
                                     .realize().numpy()))
                     _CENSUS.append((kb, "notebook2_pre",
                                     _rd2.reshape(B, 1, -1).realize().numpy()))
-        if ALG_STELLAR:                        # cell-3b: the twist in
+        if ALG_STELLAR and "nbroad" not in _SEVER:   # cell-3b: the twist in
             # THE STELLARATOR, REFIRED (apply_stellarator.py, 2026-09-10):
             # the helical handoff residual -> notebook junction, per-slot
             # payload, SNIPPED to exactly 0 at the last loop breath, the
