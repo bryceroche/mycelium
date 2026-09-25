@@ -45104,7 +45104,7 @@ zeros at birth, the descent alive. The arm (.cache/tree_chain.sh,
 TR_241 from scratch vs PMS8_241, bars pinned 08:53) stays HELD FOR THE
 WORD (~5 h of card). Commit follows.
 
-### 2026-09-25 (09:25) — THE TREE DESCENT ARM FIRED (word given: "word given for the tree arm")
+### 2026-09-25 (10:38) — THE TREE DESCENT ARM FIRED (word given: "word given for the tree arm")
 
 pc-tree: TR_241 = the PMS8 recipe (form_mix_pm35c, random init, 48k,
 B=8, seed 241) + ALG_TREE=t,s,c,m,t,t,t, vs the banked PMS8_241. Bars
