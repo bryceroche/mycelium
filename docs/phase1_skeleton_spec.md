@@ -44924,3 +44924,31 @@ road (Sinkhorn on givens + the k=4 arg branches, oracle-judged) is a
 zero-GPU ceiling read worth one run for the record, no more. Regime
 tag: one body, the masked decode, the June solver's domain rule.
 Artifacts: .cache/beam_oracle_PMS8_241.{txt,pkl}.
+
+### 2026-09-24 (23:45) — THE MATRYOSHKA READOUT ARM: DOES NOT FIRE (MT_241 vs CTRLs_241; matry_chain.log)
+
+MT_241 (PMS8_241 + two gentle segments at 1e-5, ALG_MATRY=32,64,96,128,
+160,192 — the rung's VIEW cut, the state untouched; step cost 0.154 s =
+free) vs CTRLs_241: masked wild 0.3447 vs 0.3481, paired -0.0034 (SE
+0.0039, z 0.88) — the +0.010 bar MISSED, the cost line (-0.005) held;
+open 0.3203 vs 0.3242 (-0.0039, z 1.02); vs the body -0.0029 (z 0.55).
+Rows 11/10 vs the control's 15/12. Mint 0.6546 (control 0.6554).
+CELLS (post vs post): ALL -0.0047 (z 0.95); SAME-NOUN(inh) -0.0069
+(z 1.12) — the +2 SE bar missed; GIVEN-ONLY -0.0189 (z 2.14); no cell
+up. READING: the honest Matryoshka form (nothing wiped, the same target
+every rung, only the grader's view narrowed) is NULL at the slot and
+slightly costly at the row — the same shape as the plane unlock at a
+third of its size. The premise that ordering information into the
+early planes helps the pointer is not supported on this body under
+gentle continuation: the pointer's rungs already agree only mildly
+(the census's 4/42 negative pairs) and a narrower early view did not
+make the coarse answer emerge, it made the early rungs guess. THE
+COARSE-TO-FINE LINE CLOSES for the warm regime (three forms: the nested
+labels — parked by the census; the state unlock — did not fire; the
+readout view — does not fire). What survives of the diffusion framing
+is what was already load-bearing: the same weights every breath, the
+clock as the timestep, the waist as the per-breath squeeze. Regime
+tag: one seed, warm continuation of the claim body, 12k at 1e-5; a
+from-scratch form carries a low prior and is not registered.
+Artifacts: sharp_MT_241, dump_wild_MT_241.pkl, ps_{open,legal}_wild_
+MT_241.npz, matry_chain.log.
