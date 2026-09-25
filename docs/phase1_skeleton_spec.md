@@ -44811,3 +44811,27 @@ lines whose mechanism the wave touches (the pointer's same-noun cell,
 the membrane) get re-read, one at a time, never the whole book. GPU
 queue now: pc-matry (arm) -> pc-sevreads -> pc-ctrls242 -> the membrane
 collect -> pc-swtick.
+
+### 2026-09-24 (21:05) — THE LIVE-FACTS ROAD registered (word given: "consistent training and inference dynamics"; delegated)
+
+The asynchrony (20:25 audit, item 2): at read the facts injected at
+breath 2 come from the CURRENT model's pass 1; at training from the
+maskprep cache — pass 1 of the segment's STARTING checkpoint, up to 8k
+steps stale. THE ROAD: ALG_LIVE_FACTS=1 — every training step runs one
+JIT-captured full unmasked pass with the current parameters (the read's
+pass 1), decodes on the host, consults the facts pool, and copies the
+facts into the fixed b_fact buffer before the step; the cached masks
+stay (all-to-all under ALG_SLOT_ALL). The three consults' machinery
+(pass captures, _consult_into) is the template. Dead unless set;
+unset bit-identical (gate). Built by a delegate in a THIRD worktree
+(/home/bryce/mycelium-wt2, branch live-facts) — the main head and the
+tick worktree are both under chains. ARM (to fire after review of the
+diff and the gate): LF_241 = PMS8_241 + the two gentle segments at 1e-5
+with live facts vs CTRLs_241; BARS (pinned, the unlock's): masked wild
+paired >= +0.010 (z >= 1.5); SAME-NOUN(inh) cell >= 2 SE; cost
+>= -0.005; rows, digits, mint beside; the step cost stated (one extra
+forward + one pool consult per step; ~+60% expected, ALT3 was 2.2x for
+two). The reading rule, pinned: the consistency road is judged on
+ROWS as much as the slot — its mechanism is that the parse the model
+trains against is its own, so its first effect should be at the row
+(the chain), not the slot.
