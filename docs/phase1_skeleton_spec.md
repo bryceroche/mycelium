@@ -44858,3 +44858,26 @@ head mass port still rides the stale cache; chain_acc's pass 1 omits
 xcorr where loop_val threads it (inert for this arm: ALG_XCORR unset).
 FIRED: pc-livefacts (LF_241 vs CTRLs_241, the unlock's bars; rows weigh
 as much as the slot, pinned 19:46), queued at the lock.
+
+### 2026-09-24 (20:40) — THE MEMBRANE CENSUS BY SCALE (delegate; scripts/membrane_scale.py; PMS8_241, wild, masked-read correctness; 551 wrong / 441 right given slots)
+
+Where the head's final-breath attention lands relative to the gold
+numeral, finest band wins (mass-weighted; argmax beside): WRONG slots —
+token 0.18 (0.23), mention 0.13 (0.11), clause 0.04 (0.03), sentence
+0.13 (0.13), OTHER SENTENCE 0.52 (0.50; mean distance 1.35). RIGHT
+slots — token 0.48 (0.62), mention 0.09, clause 0.03, sentence 0.08,
+other sentence 0.32 (0.25). Trajectory: wrong slots are FLAT across all
+seven breaths (other-sentence 0.49-0.52, token 0.22-0.23 throughout —
+no breath ever finds the binding); right slots peak at breath 0 (token
+0.81) and relax to 0.60 by breath 3. READING FOR THE PYRAMID: the
+misses live at the SENTENCE level — half the wrong mass is in another
+sentence entirely, the near-miss bands (mention, clause) are small on
+both wrong and right. A pyramid's payoff is a coarse key that picks the
+sentence first; mention-level keys address the smaller 0.11-0.13 band.
+Also named: 23% of wrong given slots have the argmax ON the gold token —
+those are digit-decode failures with the binding right (the Sinkhorn
+claim's territory), not membrane failures. Definitions (heuristic
+mention/clause splits, a lower bound on real spans) in the script's
+docstring; the earlier census's 84% and "sentence distance is the load"
+reproduce. Artifacts: .cache/membrane_raw_wild_PMS8_241.npz,
+.cache/membrane_scale_PMS8_241.txt.
