@@ -44569,3 +44569,44 @@ continuation of the claim body, 12k at 1e-5. The organ stays built and
 dead unless set; a from-scratch read is the only remaining form (a 48k
 run; low prior; needs the word). Artifacts: sharp_UL_241, dump_wild_
 UL_241.pkl, ps_{open,legal}_wild_UL_241.npz, unlock_chain.log.
+
+### 2026-09-24 (17:50) — THE BAND PROBE READ (PMS8_241, wild, 2051 present slots x 6 loop breaths): THE CLOCK QUESTION ANSWERED
+
+A. BREATH TIME (6-way logistic, row-split 5-fold; chance 0.167): CLOCK
+band 0.995; CONTENT 0.932; random 64-plane content subsets 0.900-0.915;
+breath hand 0.952, parity 0.902, pass wheel 0.615. Top clock planes by
+F-statistic: 1 -> 0.376, 2 -> 0.531, 4 -> 0.691, 8 -> 0.832, 16 -> 0.926,
+32 -> 0.978, 64 -> 0.995 (top content planes: 1 -> 0.295, 16 -> 0.610).
+THE BAR (>= 0.90 from <= 4 clock planes) IS MISSED, and the miss is the
+reading: the sextet is a RELATIVE-phase code (each plane's angle =
+content phase + k x 60 deg; the content phase varies per row), so no
+few dials name the breath to a linear reader — 16 planes reach only what
+the content drift already gives (0.93), and the band's 0.995 is the
+REDUNDANCY of 64 planes with independent content phases. 64 is not a
+3-bit counter over-provisioned; it is a holographic code whose
+readability IS its width. A shrink to 8-16 planes would leave a breath
+signal no better than the drift. B. STORY TIME (ridge, held-out R^2
+increment over the slot index j): depth — no band adds anything (all
+increments <= 0; the baseline j alone 0.305); sentence — EVERY band
+adds +0.19-0.24 at every breath, the clock band +0.231 at breath 0 vs
+the random content control +0.241 +/- 0.015, pooled +0.221 vs +0.218
++/- 0.017: the sentence coordinate is everywhere in the state (the
+retina's position) and the clock band carries it NO BETTER than any
+other 128 dims. THE BAR (clock >= +0.10 AND above the control) is
+missed on its second half: the band does not carry story time of its
+own. VERDICT ON THE QUESTION ("is 64 of 256 too much, given the T6
+clock"): NO — (1) the planes are not reserved (every organ writes
+them; zeroing them between breaths costs 0.011); (2) their breath
+code needs its width; (3) story time is not theirs and not the
+clock's problem; (4) the field (kappa 0.1) is a passenger at read
+(-0.006) and is the one part of the band a future generation may drop.
+No shrink run is warranted. Regime tag: one body, linear probes; the
+turn's own worth is un-separable from the frame mismatch at read.
+Artifacts: .cache/clock_band_states_PMS8_241.npz, .cache/clock_band_
+probe_PMS8_241.txt. REGISTERED beside it (fired, zero training, pc-nbsever):
+THE NOTEBOOK BYPASS read (ALG_SEVER=nbroad e273503d: the read dropped
+AND the stellarator handoff skipped; "notebook" alone read for the
+record) on PMS8_241 at the same lines — Bryce's "do we need the
+notebook if the bus tracks state?"; the honest answer needs the bypass
+because under ALG_STELLAR=2 the last loop breath's state IS the
+notebook read.
