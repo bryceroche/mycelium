@@ -44994,3 +44994,37 @@ scratch body with the tick (48k). Neither fires ahead of the mixer
 build. Artifacts: sharp_SW_241, ps_{open,legal}_wild_SW_241.npz,
 dump_wild_SW_241.pkl, swtick_chain.log. The worktree branch sixwave-
 tick is safe to merge (dead unless set).
+
+### 2026-09-24 (23:50) — THE LIVE-FACTS ARM: NULL ON THE WARM BODY, BY CONSTRUCTION (LF_241 vs CTRLs_241; livefacts_chain.log)
+
+LF_241 (PMS8_241 + the two 1e-5 segments, ALG_LIVE_FACTS=1; step cost
+0.27-0.29 s vs 0.16 plain, +65-80%) vs CTRLs_241: masked 0.3467 vs
+0.3481, paired -0.0015 with 15 discordant slots of 2051 (9 vs 6; SE
+0.0019); open -0.0015 (7 vs 4); rows 15/13 vs 15/12; mint 0.6524 vs
+0.6554; cells all within 9 slots per thousand (ALL -0.0047, z 2.1 on a
+handful). VERDICT: THE ARM DOES NOT FIRE — a non-event at the slot, +1
+row open. READING (the one this arm was for): on a CONVERGED body under
+gentle continuation the parse barely moves in 12k steps, so the cached
+facts (the segment's starting checkpoint) and the live facts (the
+current step) are THE SAME FACTS — the delegate's census read max|live -
+cache| = 0 at the gate, and the arm confirms it at scale. The train/
+read asynchrony is real but its magnitude is proportional to how fast
+the parse changes; in the warm regime it is ~zero by construction and
+the road is a cost with no cargo. WHERE IT BITES: from-scratch training
+(the lineage recipe: random init, 48k, the parse changing every
+hundred steps for the first 20k) — THAT is the regime in which the
+stale cache trains the model against an older self for 8k steps at a
+time. REGISTERED (the word needed; 4-5 h): PMLF_241 = the lineage
+recipe with ALG_LIVE_FACTS=1 vs PM35_scratch_241 (the from-scratch
+control that exists; masked 0.3291, rows 9); bars: masked +0.020 (z 2,
+a from-scratch claim) or a twin; rows weigh as much as the slot. The
+road stays built, dead unless set; the worktree branch live-facts is
+safe to merge. THE DAY'S FOUR WARM ARMS in one line: the readout view
+(null, rows down), the tick (inert by scale), live facts (null by
+construction), the continuation twin (neutral, rows up) — the warm
+regime on the claim body is a settled basin: gentle continuation moves
+almost nothing, in either direction, for any organ whose effect is a
+small bias; the organs that moved anything this month were STRUCTURAL
+at read (the numeral mask, the role pointer) or trained from scratch.
+Artifacts: sharp_LF_241, ps_{open,legal}_wild_LF_241.npz, dump_wild_
+LF_241.pkl, livefacts_chain.log.
