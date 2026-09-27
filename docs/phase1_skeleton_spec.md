@@ -45234,7 +45234,7 @@ the twin stamp on the diet first (the inherited-key machinery). The
 tree's share (39.5%, other-sentence) is read on TR_241 itself.
 Artifact: .cache/twin_gap_PMS8_241.txt.
 
-### 2026-09-27 (15:50) — WORD GIVEN FOR THE WHOLE QUEUE: what builds now, what fires after the tree reads; THE CLOCK AND THE ATLAS (design registered)
+### 2026-09-27 (16:29) — WORD GIVEN FOR THE WHOLE QUEUE: what builds now, what fires after the tree reads; THE CLOCK AND THE ATLAS (design registered)
 
 BUILDING NOW (delegate, worktree branch caric; zero GPU): THE CARICATURE
 MARGIN — the twin stamp (scripts/twin_stamp_mint.py: per relation slot
