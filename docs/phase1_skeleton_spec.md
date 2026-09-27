@@ -45112,3 +45112,17 @@ as pinned 08:53. ETA ~5 h (the step cost read at the arm's first
 hundred steps: the pooled matmuls are three (B,T,T)x(B,T,512) products
 per breath). Then: the family reads, the paired line, the membrane
 census by scale on the arm (the mechanism bar).
+
+### 2026-09-27 (15:15) — TR_241 HUNG AT STEP 43,000 OF 48,000 (09-25, ~13:00); RE-FIRED WITH SNAPSHOTS
+
+The first run died in the card, not the code: a "Wait timeout" on the
+timeline signal during a buffer copyin at step ~43k (Bryce: an
+accidental crash of the box's session, the likely cause), then the AM
+driver's page-table assertion on teardown ("Invalid entries ...
+pte_covers=0x8000000000"). No checkpoint: the recipe saves best-by-val
+at the end (SNAP_EVERY=100000). RULE: every from-scratch arm carries
+SNAP_EVERY=8000 from here (a hang costs one segment, not the run). The
+loss trace to 43k (56.9 -> ~8) matched the lineage's shape; nothing
+read. RE-FIRED 15:14 (pc-tree, the same arm + SNAP_EVERY=8000; the card
+checked free and healthy first); ETA ~3 h to the reads. The hung logs
+kept as sharp_TR_241_hung_0925.log / tree_chain_hung_0925.log.
