@@ -45201,7 +45201,7 @@ the clause-level event vector, and the kind tree is one set of
 centroids read a level deeper each breath (never per-breath copies).
 Registered with the atlas, behind its two gates.
 
-### 2026-09-27 (15:40) — THE TWIN-GAP READ (word given; delegate; scripts/twin_gap.py; PMS8_241, wild, zero GPU): THE WALL SPLITS IN THREE, AND THE CARICATURE'S BAR IS PINNED
+### 2026-09-27 (15:34) — THE TWIN-GAP READ (word given; delegate; scripts/twin_gap.py; PMS8_241, wild, zero GPU): THE WALL SPLITS IN THREE, AND THE CARICATURE'S BAR IS PINNED
 
 1,261 relation-argument decisions with at least one same-sentence
 competitor (gold rel slots; pct/sel/mod/fdiv excluded, stated);
