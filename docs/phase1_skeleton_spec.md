@@ -45113,7 +45113,7 @@ hundred steps: the pooled matmuls are three (B,T,T)x(B,T,512) products
 per breath). Then: the family reads, the paired line, the membrane
 census by scale on the arm (the mechanism bar).
 
-### 2026-09-27 (15:15) — TR_241 HUNG AT STEP 43,000 OF 48,000 (09-25, ~13:00); RE-FIRED WITH SNAPSHOTS
+### 2026-09-27 (15:09) — TR_241 HUNG AT STEP 43,000 OF 48,000 (09-25, ~13:00); RE-FIRED WITH SNAPSHOTS
 
 The first run died in the card, not the code: a "Wait timeout" on the
 timeline signal during a buffer copyin at step ~43k (Bryce: an
@@ -45123,6 +45123,50 @@ pte_covers=0x8000000000"). No checkpoint: the recipe saves best-by-val
 at the end (SNAP_EVERY=100000). RULE: every from-scratch arm carries
 SNAP_EVERY=8000 from here (a hang costs one segment, not the run). The
 loss trace to 43k (56.9 -> ~8) matched the lineage's shape; nothing
-read. RE-FIRED 15:14 (pc-tree, the same arm + SNAP_EVERY=8000; the card
+read. RE-FIRED 15:09 (pc-tree, the same arm + SNAP_EVERY=8000; the card
 checked free and healthy first); ETA ~3 h to the reads. The hung logs
 kept as sharp_TR_241_hung_0925.log / tree_chain_hung_0925.log.
+
+### 2026-09-27 (15:10) — THE PAINTER'S THREAD (Bryce + Opus): what is already law, what is registered, what is measured first
+
+Bryce: "minimum number of brushstrokes to capture the maximum meaning;
+the caricature emphasizing differences; the painter's glance is the
+alternation; tie it to the atlas and masking." READ AGAINST THE LEDGER:
+(1) THE COSINE: high cosine is not the goal — a tug-of-war is a NEGATIVE
+cosine (09-24); same job at a different grain gives non-negative pairs
+for free. (2) MINIMUM STROKES is already banked as a READ, never a loss:
+row length is the inverted signal (shorter decoded graphs are more
+often right, 0.72-0.80; 09-18) and the Goodhart fence forbids
+supervising it; a length penalty in the loss teaches skipped steps
+(the consume-once credit's grave). REGISTERED, zero GPU: THE STROKE
+CENSUS — on the wild dumps, decoded factor count vs the GOLD factor
+count per row, split by correct/wrong/refused: are wrong graphs too
+long (extra strokes; economy pressure could help) or too short
+(missing strokes; it would hurt). The variational form (an information
+cost per breath through the waist, beta from zero) is registered as a
+loss candidate BEHIND that census and behind its own cosine census
+against the sacred loss (the instrument exists: grad_cosine_census). (3)
+THE CARICATURE is the role signature's thesis in a painter's words, and
+the measurement Opus asks for is already banked: THE WAIST BLURS — the
+projection triples same-sentence noun clustering (09-21) — the model
+draws the shared eyes, not the differing nose. The loss form (the twin
+as a hard negative: a margin on the pointer's logit between the gold
+argument and its same-noun twin; the same direction as the task) is
+REGISTERED as the first loss to build after TR_241; it needs a TWIN
+STAMP on the diet (the mixed-bucket census's inherited-key machinery
+finds the pairs). Under tree dials it has the clean form Opus names:
+match on the prefix (entity), differ on the suffix (mention/time) — the
+identity port's second design. (4) THE MASK AS A CONSTRUCTION LINE (a
+soft nudge from breath k's parse on breath k+1's attention, erasable)
+is the hierarchical window's shape (WI242, null on the crippled body)
+and the MASKRE re-formation (open-by-commitment, never tightens); its
+re-read belongs on the tree body. (5) THE ATLAS: one tree of centroids
+read a level deeper each breath (never six copies — per-breath copies
+are per-breath tasks); the OP PALETTE is already the dialect (8-way
+ftype + op, sub/div re-encoded as add/mul: the primitives, combinations
+left to the graph); "store a kind only if it saves more strokes than it
+costs" IS the recursion charter's rank-never-admit gate (macros expand
+before the solver; the hand-quota constitutional) — Opus re-derived
+the constitution. ORDER (unchanged): TR_241 (re-fired) -> the stroke
+census and the twin-gap read (zero GPU) -> the caricature margin ->
+the bottleneck loss only after its cosine census.
