@@ -45233,3 +45233,43 @@ the near-miss table (m = 2 covers the 109). Build after TR_241 reads;
 the twin stamp on the diet first (the inherited-key machinery). The
 tree's share (39.5%, other-sentence) is read on TR_241 itself.
 Artifact: .cache/twin_gap_PMS8_241.txt.
+
+### 2026-09-27 (15:50) — WORD GIVEN FOR THE WHOLE QUEUE: what builds now, what fires after the tree reads; THE CLOCK AND THE ATLAS (design registered)
+
+BUILDING NOW (delegate, worktree branch caric; zero GPU): THE CARICATURE
+MARGIN — the twin stamp (scripts/twin_stamp_mint.py: per relation slot
+and argument position the strongest same-noun twin's VARIABLE id, a gold
+sidecar .cache/phase1_alg_twin_<split>.npz merged at load like the hier
+sidecar; mint rows unstamped) + ALG_CARIC=<m>: a hinge relu(m - (logit
+[gold var] - logit[twin var])) on the args pointer in every rung, weight
+1 through the args term's scale, exactly zero where no twin exists.
+Gate: unset bit-identical; on tiny64 (mint, twinless) identical to role8
+BY DESIGN; the live proof on the pm35c valid slice (a training-diet
+slice). ARM (fires after TR_241's reads free the card; the word given):
+CR_241 = PMS8_241 + the two gentle 1e-5 segments with ALG_CARIC=2.0 vs
+CTRLs_241; BARS (pinned 15:34): the twin-pick share of wrong decisions
+45.1% -> <= 35%; SAME-NOUN(inh) >= +0.03 paired (z >= 2); fragile wins
+not up; masked wild >= control - 0.005; the twin-gap read on both
+bodies. Warm first as the cheap gate (a supervised gradient on the
+pointer is not a small bias — the register's slice gate moved args
++0.024 in 1,500 warm steps), from scratch if it clears or hangs at the
+bar. NEXT after it: the op tree with decaying Welford centroids, read
+first as a delta-probe on the tree body's clause keys. THE CLOCK AND THE
+ATLAS (Bryce: "tie the T6 clock to the atlas so the heads see only the
+relevant layer each breath"): tie them through ONE SCHEDULE keyed by the
+breath index (as the text tree is: exact, identical at train and read),
+never through a decoded clock (the breath is a distributed relative-
+phase code, 0.995 from 64 planes, unreadable from a few); at breath k
+the heads compare against kind centroids down to depth k, CUMULATIVE
+(the coarse kind stays as the fine one is added), soft; the breath hand
+and the level index move together by construction; the learned parts
+know the level because the clock tells them. REQUIREMENT the clock
+imposes: centroids compared across breaths live in the CANONICAL frame
+(the notebook's canon-frame machinery: the clock rotation undone at the
+write, re-phased at the read) — Welford streams in the rotated frame
+would smear across breaths (never-mix-coordinates, within a run).
+Heads are LENSES over every partition (per-head weights: specialization
+is the healthy kind of division); one shared atlas read through each
+head's own query; all partitions descend together every breath (the
+tree's schedule is global). Registered behind the tree's verdict and
+the atlas's two gates.
