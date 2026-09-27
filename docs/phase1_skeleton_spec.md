@@ -45170,3 +45170,33 @@ before the solver; the hand-quota constitutional) — Opus re-derived
 the constitution. ORDER (unchanged): TR_241 (re-fired) -> the stroke
 census and the twin-gap read (zero GPU) -> the caricature margin ->
 the bottleneck loss only after its cosine census.
+
+### 2026-09-27 (15:25) — THE STROKE CENSUS (word given; scripts/stroke_census.py; PMS8_241, wild, zero GPU): WRONG GRAPHS ARE NOT OVER-DRAWN
+
+Top-1 masked decode vs the gold factor list, by the row's chain status:
+CORRECT (14 rows): 4.64 decoded vs 4.71 gold (d -0.07; exact count 64%);
+WRONG (201): 6.14 vs 6.37 (d -0.22: givens +0.04, relations -0.27;
+exact count 40%, shorter 35%, longer 24%); REFUSED (96): 7.45 vs 7.34
+(d +0.10: relations +0.19; exact 47%). READING: (1) the "shorter graphs
+are more often right" signal (09-18, 0.72-0.80) is mostly PROBLEM
+LENGTH — the rows the machine gets right are the SHORT problems (4.7
+gold factors) and the wrong/refused ones are long (6.4 / 7.3); it is
+not the decoder drawing too many strokes. (2) Wrong graphs carry about
+the RIGHT NUMBER of strokes (40% exact, the mode of the histogram at 0)
+with the wrong strokes in them — the failure is stroke PLACEMENT
+(binding, values), not stroke COUNT; when the count is off it is
+slightly SHORT (missing relations), the opposite of over-drawing. (3)
+Refusals lean long by a fraction of a relation — an inconsistent graph
+from a misplaced extra relation. VERDICT ON THE ECONOMY LOSS: struck
+before it is built — a bottleneck pressure toward fewer strokes would
+push the wrong rows further short and could not fix placement; the
+painter's "every stroke earns its place" is already true of the
+decoder in count, and false in placement, which is the caricature's
+job (the twin gap), not economy's. Regime tag: one body, the masked
+decode. Artifact: .cache/stroke_census_PMS8_241.txt. THE ATLAS NOTE
+(Bryce: "use Welford stats to keep the atlas updated"): the atlas
+organ's centroids ARE Welford streams (the family arm's dual projection
++ Welford centroids, 09-18); under the tree the streamed unit becomes
+the clause-level event vector, and the kind tree is one set of
+centroids read a level deeper each breath (never per-breath copies).
+Registered with the atlas, behind its two gates.
