@@ -45200,3 +45200,36 @@ organ's centroids ARE Welford streams (the family arm's dual projection
 the clause-level event vector, and the kind tree is one set of
 centroids read a level deeper each breath (never per-breath copies).
 Registered with the atlas, behind its two gates.
+
+### 2026-09-27 (15:40) — THE TWIN-GAP READ (word given; delegate; scripts/twin_gap.py; PMS8_241, wild, zero GPU): THE WALL SPLITS IN THREE, AND THE CARICATURE'S BAR IS PINNED
+
+1,261 relation-argument decisions with at least one same-sentence
+competitor (gold rel slots; pct/sel/mod/fdiv excluded, stated);
+decode-faithful accuracy on the subset 0.733. The GAP = the pointer's
+logit for the gold variable minus its strongest same-sentence
+competitor's (an upper bound on the true margin over all 23 candidates;
+the args head points at VARIABLE ids, the competitor's own variable
+scored — the delegate's finding, verified on row 0). Correct decisions:
+mean gap 6.40, median 4.07, 17.5% negative (fragile wins the second
+argsort still saves); wrong: mean -2.74, median -2.20, 78.6% negative.
+SAME-NOUN correct 6.05 / wrong -2.64; DIFFERENT-NOUN 7.43 / -4.93. THE
+SPLIT OF THE 337 WRONG DECISIONS: 45.1% picked the same-noun TWIN
+exactly; 15.4% another same-sentence slot; 39.5% a slot OUTSIDE the
+same-sentence pool — the membrane census's other-sentence misses,
+seen from the pointer's side: THE TREE'S share. Within SAME-NOUN, 51.5%
+of the wrong picks are the twin. NEAR-MISS MASS: 109 wrong decisions
+(32.3%) sit within 1 logit of right; 218 correct ones (23.6%) within
+1 logit of wrong. DERIVED competitors are the EASY case for the current
+pointer (gap 7.24 vs 2.66 when the twin is an independent given) —
+the 09-22 reading "derived arguments carry the wall" is refined: the
+hard twin is the OTHER GIVEN of the same noun, not the derived value.
+THE CARICATURE MARGIN'S BAR (pinned here, before the build): a hard-
+negative margin m on the pointer logit between the gold argument and
+its strongest same-noun twin, on the twin-stamped diet; on wild, the
+twin-pick share of wrong decisions falls from 45.1% to <= 35% AND the
+SAME-NOUN(inh) cell rises >= +0.03 paired (z >= 2) AND fragile wins do
+not rise; masked wild >= the control (cost line -0.005). m sized from
+the near-miss table (m = 2 covers the 109). Build after TR_241 reads;
+the twin stamp on the diet first (the inherited-key machinery). The
+tree's share (39.5%, other-sentence) is read on TR_241 itself.
+Artifact: .cache/twin_gap_PMS8_241.txt.
