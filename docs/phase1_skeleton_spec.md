@@ -45273,3 +45273,33 @@ is the healthy kind of division); one shared atlas read through each
 head's own query; all partitions descend together every breath (the
 tree's schedule is global). Registered behind the tree's verdict and
 the atlas's two gates.
+
+### 2026-09-27 (17:40) — THE TREE DESCENT ARM, THE ACCURACY BARS: TR_241 vs PMS8_241 (tree_reads_chain.log; the mechanism bar pending)
+
+TR_241 (the PMS8 recipe from scratch + ALG_TREE=t,s,c,m,t,t,t; 48k;
+0.136 s/step — the descent costs nothing at the step): masked wild
+0.3403 vs the body's 0.3476, paired -0.0073 (SE 0.0097, z 0.7; 204 vs
+189 discordant — the from-scratch pair's usual churn); open 0.3189 vs
+0.3198; vs the lineage PM35_scratch_241 +0.0112 (z 1.16); vs the chassis
+PMS4_241 open +0.0185 (z 1.96). ROWS: 16 masked / 9 open (the body 14 /
+9; CTRLs_241 15 / 12) — 16 is the campaign's highest masked row count,
+one seed, inside the row noise. MINT 0.5913 vs 0.654 (-0.06: args 0.613
+vs 0.652, ftype 0.960 vs 0.993, dig 0.898 vs 0.973 — the descent COSTS
+on mint, whose rows are one- or two-sentence positional problems where
+a sentence-first read has nothing to choose). Fields on wild: args
+0.424 vs 0.449 (down), pres 0.919 (flat), dig 0.419 vs 0.46 (down). THE
+ACCURACY BAR (+0.020 z 2) IS MISSED: NULL at the slot on one seed, a
+row up, a mint cost. Not a verdict on the thesis yet: the mechanism bar
+(the membrane census by scale on the arm: does the wrong-sentence
+share of wrong givens fall from 0.50?) reads next (pc-membranetr; the
+first collect ran WITHOUT the tree port and overwrote PMS8's
+intermediate — the census script now names outputs by body and carries
+the port; PMS8's intermediate is being restored). If the mechanism
+moved and the slot did not, the tree found the sentence and lost it
+downstream (the twin, the digits) — the caricature margin (CR_241,
+running now on the card) is the next stroke on that path. If the
+mechanism did not move, the descent as built does not force the
+sentence choice and the form is wrong, not the thesis. Regime tag: one
+seed, from scratch, the PMS8 recipe. Artifacts: sharp_TR_241,
+ps_{open,legal}_wild_TR_241.npz, dump_wild_TR_241.pkl,
+tree_reads_chain.log.
