@@ -22,22 +22,26 @@ The reads table: `.venv/bin/python3 scripts/reads.py table wildhold` (assert-on-
   free). THE READING: the warm regime on the claim body is a SETTLED BASIN — gentle continuation moves nothing for any
   organ whose effect is a small bias; what moved this month was structural at read (the numeral mask, the role pointer)
   or trained from scratch.
-- RUNNING (2026-09-27 18:20): pc-caric — CR_241 = PMS8_241 + two gentle 1e-5 segments with ALG_CARIC=2.0 (THE
-  CARICATURE MARGIN: a hinge on the args pointer vs the same-noun TWIN, twin sidecars .cache/phase1_alg_twin_<split>.npz;
-  worktree /home/bryce/mycelium-wt branch caric) vs CTRLs_241; bars (ledger 09-27 15:34): twin-pick share of wrong
-  decisions 45.1% -> <= 35% (scripts/twin_gap.py on both bodies), SAME-NOUN(inh) cell >= +0.03 paired z 2, fragile wins
-  flat, masked >= control -0.005. Log .cache/caric_chain.log; MERGE branch caric after it ends.
-- 09-27 VERDICTS (ledger 15:09-18:18): TR_241 (the tree descent from scratch) DOES NOT FIRE — slot -0.007 (z 0.7), rows
-  16/9 (the highest masked count, one seed), mint -0.06; the MECHANISM bar missed: the wrong-sentence share unchanged at
-  the leaf (0.49) and INVERTED in the coarse breaths (b1 0.665: the pooled sentence key locates worse than the token key;
-  the right slots' token hit falls from 0.87 at b0 to 0.61) — the schedule REPLACED the leaf instead of constraining it.
-  FORM 2 REGISTERED: the leaf open every breath + each breath's coarse posterior carried into the next as an additive
-  log-prior (construction lines) + difference-carrying sentence keys (max-pool / numeral-weighted). THE STROKE CENSUS:
-  wrong graphs have the right stroke COUNT (mode 0; slightly short in relations) — placement is the failure; the economy
-  loss STRUCK. THE TWIN-GAP READ: wrong pointer decisions = 45% the twin / 15% same-sentence other / 40% other-sentence;
-  a third within one logit; derived twins are the EASY case. The first TR run hung in the card at 43k (no ckpt) ->
-  SNAP_EVERY=8000 rule. membrane_scale.py now names outputs by body and carries the tree port (the first TR collect
-  overwrote PMS8's intermediate and ran without the port — restored).
+- Nothing running (2026-09-27 22:05); card idle. Tree: gen-weights with branches caric (the caricature margin) and the
+  tree forms merged; the post-merge CPU gate fired at close (.cache/merge_gate.log: unset 5.2995/0.0279, role8
+  6.5535/1.1061) — CHECK IT before any fire. Worktrees /home/bryce/mycelium-wt (branch caric) and -wt2 can be removed.
+- 09-27 VERDICTS (ledger 15:09-21:53), ALL DO NOT FIRE: THE TREE DESCENT form 1 (TR_241, from scratch: slot -0.007, rows
+  16/9, mint -0.06; the MECHANISM INVERTED — the pooled sentence key locates worse than the token key, b1 other-sentence
+  0.665; the closed leaf re-decided) and FORM 2 (TR2_241: open leaf + carried log-priors + numeral-weighted keys: slot
+  -0.002, rows 13/12, mint -0.045; the degradation CURED — right slots hold 0.66 token hits at the leaf vs the flat body's
+  0.60 — but the wrong slots' other-sentence share unmoved at 0.47 from breath 0). THE LINE'S READING: the other-sentence
+  wall is SET AT THE GROUNDING READ (the first look); no coarse-to-fine schedule over the same attention changes the
+  first look; the lever is what changes the grounding read's KEYS (the retina-side identity port, the caricature) or a
+  second look at DIFFERENT evidence (the solver's implied values checked against the text — the chassis ruling's value
+  propagator). THE CARICATURE MARGIN warm (CR_241 vs CTRLs_241): twin-pick share 45.6 -> 42.6% (bar <= 35%), same-noun
+  +0.003, slot -0.007, fragile wins UP (a warm compression) — the from-scratch form PMC8_241 registered. THE STROKE CENSUS
+  (economy loss struck), THE TWIN-GAP READ (45% twin / 40% other-sentence / a third within one logit), THE HANG (43k, no
+  ckpt -> SNAP_EVERY=8000 rule). Read scripts now take the body as an argument (twin_gap, membrane_scale).
+- NEXT (needs the word; ranked): (1) THE VALUE PROPAGATOR as a second look (the chassis ruling: the solver's implied
+  values checked against the text feed the grounding read — a different evidence, not a re-read); (2) the retina-side
+  identity keys on the grounding read (the dual-stream identity port, never summed with the waist); (3) the competitive
+  typed mixer in place; (4) PMC8_241 (the caricature from scratch). The tree and the caricature stay built, dead unless
+  set; the twin sidecars stand for every split.
 - 09-25 MORNING: THE TREE DESCENT BUILT + GATED (ALG_TREE=<level per breath>, s/c/m/t; ledger 08:53, 09:50): the
   grounding bank's scores as the sum of one term per open level (level queries zero at birth against pooled keys over
   the text's own sentence/clause/mention units, the bank's key projection shared); the token term and the router's
