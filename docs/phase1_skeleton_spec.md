@@ -45274,7 +45274,7 @@ head's own query; all partitions descend together every breath (the
 tree's schedule is global). Registered behind the tree's verdict and
 the atlas's two gates.
 
-### 2026-09-27 (17:40) — THE TREE DESCENT ARM, THE ACCURACY BARS: TR_241 vs PMS8_241 (tree_reads_chain.log; the mechanism bar pending)
+### 2026-09-27 (17:39) — THE TREE DESCENT ARM, THE ACCURACY BARS: TR_241 vs PMS8_241 (tree_reads_chain.log; the mechanism bar pending)
 
 TR_241 (the PMS8 recipe from scratch + ALG_TREE=t,s,c,m,t,t,t; 48k;
 0.136 s/step — the descent costs nothing at the step): masked wild
