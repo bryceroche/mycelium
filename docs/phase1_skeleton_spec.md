@@ -45479,7 +45479,27 @@ signals): the consult at breaths 2/4/6 returns, beside the facts, the
 NL certifier's pull/push lines and the math certifier's implied values,
 as a route-bias on a FRESH grounding read at the consult breath; live
 at training (the live-facts road's pattern) and at read; from scratch.
-(09:32, Bryce: "build everything but don't run it yet" — the read-time
-certifier read pc-certmask STOPPED before its first number; it is built
-and HELD (.cache/certmask_chain.sh). Everything below is built and held
-for the word.)
+(09:32, Bryce: "build everything but don't run it yet" — the stop order
+reached pc-certmask after it had already finished (09:31); its numbers
+are banked below; everything after it is built and HELD for the word.)
+
+### 2026-09-28 (09:35) — THE READ-TIME CERTIFIER MASK: NEGATIVE (PMS8_241, masked wild, paired vs 0.3476)
+
+gain 2: 0.3398, -0.0078 (SE 0.0065, z 1.2; 97 vs 81 discordant); fields
+dig 0.469 (+0.009 — the one hint), args 0.442 (-0.007), ftype 0.843
+(-0.009). gain 4: 0.3237, -0.0239 (z 3.1 AGAINST; 152 vs 103); every
+field down (res 0.778 from 0.804). READING: a route-bias the body never
+trained under steers its grounding read off its learned keys — the
+identity key's tau-32 shape (a strong untrained bias blurs more than it
+fixes). The pull signal's precision (0 false positives on right slots)
+does not survive the RESOLUTION of the mask: "+gain on every unclaimed
+numeral's tokens for every colliding slot" moves all colliding slots
+toward all unclaimed numerals at once; the census's 57% is a ceiling
+for a mask that also knows WHICH slot goes to WHICH numeral (the
+assignment — the Sinkhorn/Hungarian read's job, +4 rows) and that the
+body has learned to read. So: the read-time road is NOT the test of
+the loop; the trained form is (the body learns to read the line; the
+line comes with an assignment, not a broadcast). The read-time form
+stays as a diagnostic (LV_CERTMASK). Regime tag: one body, read-time,
+two gains. Artifacts: .cache/ps_legal_wild_PMS8_241_cert{2,4}.npz,
+.cache/certmask_chain.log.
