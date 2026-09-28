@@ -45411,3 +45411,38 @@ value propagator, THE CHASSIS RULING's road). The tree stays built
 (-0.045) is its one clear effect. Regime tag: one seed, from scratch.
 Artifacts: sharp_TR2_241, ps_{open,legal}_wild_TR2_241.npz,
 dump_wild_TR2_241.pkl, tree2_chain.log, membrane_scale_TR2_241.txt.
+
+### 2026-09-27 (22:00) — THE CARICATURE MARGIN ARM: DOES NOT FIRE (CR_241 vs CTRLs_241; caric_chain.log, twinread_chain.log)
+
+CR_241 (PMS8_241 + two gentle 1e-5 segments, ALG_CARIC=2.0 — the twin
+hinge on the args pointer, 998 stamped positions on wild, 250 of 311
+rows) vs CTRLs_241: masked 0.3413 vs 0.3481, paired -0.0068 (SE ~0.0045,
+z 1.5 against — the cost line -0.005 MISSED by 0.0018); open -0.0073;
+rows 12 / 9 vs 15 / 12; mint 0.641 vs 0.655 (-0.014). CELLS (post vs
+post): SAME-NOUN(inh) +0.0029 (z 0.4) — the +0.03 bar MISSED; DERIVED-
+ARG +0.0106 (z 0.8), DERIVED-COMP +0.0133 (z 1.2), GIVEN-ONLY -0.0157
+(z 1.5), ALL 0.0000. THE TWIN-PICK SHARE (twin_gap on both bodies'
+masked raw dumps): 45.6% (control) -> 42.6% (CR_241): -3 points, the
+<= 35% bar MISSED; decode-faithful accuracy on the 1,261 twin
+decisions 0.739 -> 0.738 (flat). FRAGILE WINS UP, 0.239 -> 0.303 of
+correct decisions within one logit (the bar said flat), and near wins
+up too (0.328 -> 0.363): the hinge COMPRESSED the gaps on both sides
+rather than separating the twin — on a converged body at 1e-5 a
+margin at m = 2 is already satisfied on most correct decisions, so its
+gradient acts only at the boundary and the pointer's distribution
+tightens around it. VERDICT: does not fire — a null with the warm
+regime's signature (a small regularizing compression; the cells flat;
+the slot slightly down), the FOURTH organ this week to read that way
+warm. The caricature's direction is the task's own, so its honest test
+is FROM SCRATCH, as an ingredient of the recipe (the twin hinge from
+step 0, where the pointer's geometry is still forming): registered as
+PMC8_241 = the PMS8 recipe + ALG_CARIC=2.0 vs PMS8_241, the same bars,
+low-moderate priority (5 h) — behind whatever changes the FIRST LOOK
+(the tree line's verdict). Learned in the chain: every read script must
+take the body as an argument (twin_gap had a fixed name; fixed), and
+a control's derived artifact (the raw dump) belongs in the control's
+own chain, not the arm's. Artifacts: sharp_CR_241, ps_{open,legal}_
+wild_CR_241.npz, dump_wild_CR_241.pkl, rawslots_wild_{CR_241,CTRLs_
+241}.pkl, twin_gap_{CR_241,CTRLs_241}.txt, caric_chain.log,
+twinread_chain.log. The worktree branch caric is merged (dead unless
+set); the twin sidecars stand for every split.
