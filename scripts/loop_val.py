@@ -287,7 +287,7 @@ def read(ckpt, data=None, p=None):
         o0 = _rf(forward, p, ts, tk, se, keys=_jk_open, xcorr=xcorr_t, hud=hud_t, tree=tree_t, ident=ident_t)
         onp0 = {k: o0[k].realize().numpy() for k in ("fat", "args", "res")}
         mk = build_slot_masks(onp0, vse[sl_p].astype(np.int32))
-        fact_t = mass_t = None
+        fact_t = mass_t = None; cert_t = None
         if int(os.environ.get("ALG_ALT2", "0")) \
                 and not int(os.environ.get("LV_NOFACT", "0")):
             # ALTERNATOR V2 fact-fed read (2026-09-01): live facts from this
@@ -298,6 +298,34 @@ def read(ckpt, data=None, p=None):
             _oa = {**onp0, **{k: o0[k].realize().numpy() for k in _ka}}
             _nv = np.array([vs[int(i)].get("n_vars", K_VARS) for i in sl_p])
             _ma = np.array([vs[int(i)].get("m", 0) for i in sl_p])
+            if float(os.environ.get("LV_CERTMASK", "0")):
+                # THE READ-TIME CERTIFIER MASK (2026-09-28; the certifier-signal census: 57% of wrong-sentence
+                # givens have an UNCLAIMED gold numeral, 0% of right ones): from pass 1's own masked decode,
+                # the givens whose value COLLIDES with another given's get a +gain route-bias on every
+                # UNCLAIMED numeral's tokens for pass 2's grounding read (the A0 pmask port: wiring, no grad).
+                import phase1_algebra_head as _HC
+                import membrane_scale as _MSC
+                from collections import Counter as _Ctr
+                _g = float(os.environ["LV_CERTMASK"]); _tokc = _HC._xcorr_tokenizer()
+                _cert = np.zeros((len(sl_p), 1, _HC.L_TOT, _HC.T_ALG), np.float32)
+                _ck = ("pres", "ftype", "op", "dig", "args", "res") + (("dup",) if "dup" in _oa else ())
+                for _bi, _i in enumerate(sl_p):
+                    _txt = vs[int(_i)]["text"]; _row = {k: _oa[k][_bi].copy() for k in _ck}
+                    for _j in range(_row["ftype"].shape[0]):
+                        if int(_row["ftype"][_j].argmax()) == 0: continue
+                        _fk = _legal_digit_logits(_row["dig"][_j], _txt)
+                        if _fk is not None: _row["dig"][_j] = _fk
+                    _parse = _HC._decode_slots(_row)
+                    _dv = {f["_slot"]: f["value"] for f in _parse if f["ftype"] == "given"}
+                    _cl = _Ctr(_dv.values())
+                    _ids = _tokc.encode(_txt).ids[:_HC.T_ALG]; _ids = _ids + [0] * (_HC.T_ALG - len(_ids))
+                    _runs = _MSC._digit_runs(_tokc, _ids, _HC.T_ALG)
+                    _uncl = [(a, b) for a, b, val in _runs if _cl.get(val, 0) == 0]
+                    if not _uncl: continue
+                    for _j, _v in _dv.items():
+                        if _cl[_v] >= 2:
+                            for a, b in _uncl: _cert[_bi, 0, _j, a:b] += _g
+                cert_t = Tensor(_cert, dtype=dtypes.float)
             _mo = (np.zeros((len(sl_p), K_VARS), np.float32)
                    if int(os.environ.get("ALG_MH_MASS", "0")) else None)
             fb = alt2_fact_buf(_oa, vse[sl_p].astype(np.int32), _nv, _ma,
@@ -358,7 +386,7 @@ def read(ckpt, data=None, p=None):
         o = _rf(forward, p, ts, tk, se, keys=_jk_masked,
                 slot_mask=Tensor(mk, dtype=dtypes.float),
                 fact_buf=(None if _alt3 else fact_t), mh_mass=mass_t, mh_atlas_traj=_mha_t,
-                xcorr=xcorr_t, hud=hud_t, tree=tree_t, ident=ident_t,
+                xcorr=xcorr_t, hud=hud_t, tree=tree_t, ident=ident_t, pmask=cert_t,   # THE READ-TIME CERTIFIER MASK (LV_CERTMASK)
                 valfact=(fact_t if float(os.environ.get("ALG_VALREG", "0")) or float(os.environ.get("ALG_VALREG_ADDR", "0")) else None),   # THE VALUE STREAM: the live pass-1 facts
                 facts3=f3_t, facts5=f5_t)
         onp = {k: o[k].realize().numpy() for k in

@@ -45446,3 +45446,36 @@ wild_CR_241.npz, dump_wild_CR_241.pkl, rawslots_wild_{CR_241,CTRLs_
 241}.pkl, twin_gap_{CR_241,CTRLs_241}.txt, caric_chain.log,
 twinread_chain.log. The worktree branch caric is merged (dead unless
 set); the twin sidecars stand for every split.
+
+### 2026-09-28 (08:35) — THE CERTIFIER-SIGNAL CENSUS (Bryce: "alternation is the key — each loop's certifier updates the attention masking"; Opus's cheap check) + THE READ-TIME CERTIFIER MASK fired
+
+scripts/certifier_signal_census.py, PMS8_241, wild, zero GPU: for the
+given slots whose FINAL-BREATH attention lands in the WRONG SENTENCE
+(273), would a certifier's signal point back? PULL (the gold numeral is
+UNCLAIMED by every decoded given — the NL certifier's "unclaimed number
+in the text"): 0.57; PUSH (the slot's decoded value COLLIDES with another
+given's — the Sinkhorn signal): 0.41; ANY 0.70; the gold numeral UNIQUE
+in the text 0.98. The same-sentence-wrong givens (278): 0.59 / 0.44 /
+0.69. The RIGHT givens (441): PULL 0.00 (by construction — the signal
+never fires on a right slot), PUSH 0.40 (collisions exist among right
+slots too: the twin claims the same number; push alone would mis-steer
+40% of right slots). READING: the loop has something real to feed back
+— for 57% of the wrong-sentence givens there is an unclaimed numeral in
+the text that IS the gold, unique 98% of the time, and the pull signal
+has no false positives on right slots; the push signal must be paired
+with pull (a collision plus an unclaimed numeral = a slot to move and a
+place to move it). This is the first-look lever the tree line could not
+supply: NEW evidence (the text's unclaimed numbers, the solver's implied
+values), not a re-read. THE READ-TIME FORM (built in loop_val,
+LV_CERTMASK=<gain>; no head edit — the A0 route-mask port pmask, wiring
+not knobs): from pass 1's own masked decode, the colliding givens get
++gain on every unclaimed numeral's tokens at pass 2's GROUNDING read (a
+fresh first look under the certifier's line). Fired (pc-certmask) at
+gains 2 and 4 on PMS8_241, paired vs the banked masked read; BAR (a
+read-time road's): masked >= +0.010 paired (z >= 1.5); digits up. The
+numeral mask is the precedent (a read-time legality road, z 7-8). THE
+TRAINED FORM (registered; the alternation spec's DSL mask with these
+signals): the consult at breaths 2/4/6 returns, beside the facts, the
+NL certifier's pull/push lines and the math certifier's implied values,
+as a route-bias on a FRESH grounding read at the consult breath; live
+at training (the live-facts road's pattern) and at read; from scratch.
