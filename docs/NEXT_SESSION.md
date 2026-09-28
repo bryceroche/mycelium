@@ -22,12 +22,22 @@ The reads table: `.venv/bin/python3 scripts/reads.py table wildhold` (assert-on-
   free). THE READING: the warm regime on the claim body is a SETTLED BASIN — gentle continuation moves nothing for any
   organ whose effect is a small bias; what moved this month was structural at read (the numeral mask, the role pointer)
   or trained from scratch.
-- SESSION CLOSED 2026-09-25 12:56 WITH ONE ARM RUNNING: pc-tree (TR_241, THE TREE DESCENT from scratch vs PMS8_241;
-  fired 10:38; 0.19 s/step; at close step 42500/48000 — training ends within ~20 min of close, the reads ~30 min after). IT RUNS ON ITS OWN (a
-  systemd unit): next session, read .cache/tree_chain.log (masked/open wild, rows, mint, the paired line vs PMS8_241,
-  the membrane collect for the arm), then run `MS_MODE=report MS_CKPT=.cache/sharp_TR_241.safetensors .venv/bin/python3
-  scripts/membrane_scale.py` for the mechanism bar (wrong-sentence share of wrong givens < 0.40 from 0.50), and BANK
-  the verdict in the ledger against the bars pinned 09-25 08:53. `systemctl --user status pc-tree` shows it.
+- RUNNING (2026-09-27 18:20): pc-caric — CR_241 = PMS8_241 + two gentle 1e-5 segments with ALG_CARIC=2.0 (THE
+  CARICATURE MARGIN: a hinge on the args pointer vs the same-noun TWIN, twin sidecars .cache/phase1_alg_twin_<split>.npz;
+  worktree /home/bryce/mycelium-wt branch caric) vs CTRLs_241; bars (ledger 09-27 15:34): twin-pick share of wrong
+  decisions 45.1% -> <= 35% (scripts/twin_gap.py on both bodies), SAME-NOUN(inh) cell >= +0.03 paired z 2, fragile wins
+  flat, masked >= control -0.005. Log .cache/caric_chain.log; MERGE branch caric after it ends.
+- 09-27 VERDICTS (ledger 15:09-18:18): TR_241 (the tree descent from scratch) DOES NOT FIRE — slot -0.007 (z 0.7), rows
+  16/9 (the highest masked count, one seed), mint -0.06; the MECHANISM bar missed: the wrong-sentence share unchanged at
+  the leaf (0.49) and INVERTED in the coarse breaths (b1 0.665: the pooled sentence key locates worse than the token key;
+  the right slots' token hit falls from 0.87 at b0 to 0.61) — the schedule REPLACED the leaf instead of constraining it.
+  FORM 2 REGISTERED: the leaf open every breath + each breath's coarse posterior carried into the next as an additive
+  log-prior (construction lines) + difference-carrying sentence keys (max-pool / numeral-weighted). THE STROKE CENSUS:
+  wrong graphs have the right stroke COUNT (mode 0; slightly short in relations) — placement is the failure; the economy
+  loss STRUCK. THE TWIN-GAP READ: wrong pointer decisions = 45% the twin / 15% same-sentence other / 40% other-sentence;
+  a third within one logit; derived twins are the EASY case. The first TR run hung in the card at 43k (no ckpt) ->
+  SNAP_EVERY=8000 rule. membrane_scale.py now names outputs by body and carries the tree port (the first TR collect
+  overwrote PMS8's intermediate and ran without the port — restored).
 - 09-25 MORNING: THE TREE DESCENT BUILT + GATED (ALG_TREE=<level per breath>, s/c/m/t; ledger 08:53, 09:50): the
   grounding bank's scores as the sum of one term per open level (level queries zero at birth against pooled keys over
   the text's own sentence/clause/mention units, the bank's key projection shared); the token term and the router's

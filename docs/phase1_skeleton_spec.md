@@ -45304,7 +45304,7 @@ seed, from scratch, the PMS8 recipe. Artifacts: sharp_TR_241,
 ps_{open,legal}_wild_TR_241.npz, dump_wild_TR_241.pkl,
 tree_reads_chain.log.
 
-### 2026-09-27 (18:25) — THE TREE DESCENT ARM DOES NOT FIRE: THE MECHANISM BAR MISSED, AND THE TRAJECTORY SAYS WHY (membrane census by scale on TR_241 vs the restored PMS8_241)
+### 2026-09-27 (18:18) — THE TREE DESCENT ARM DOES NOT FIRE: THE MECHANISM BAR MISSED, AND THE TRAJECTORY SAYS WHY (membrane census by scale on TR_241 vs the restored PMS8_241)
 
 Final breath, WRONG given slots (564): other-sentence 0.486 argmax /
 0.527 mass — PMS8_241 0.495 / 0.520: UNCHANGED (the bar was < 0.40).
