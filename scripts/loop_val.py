@@ -275,7 +275,7 @@ def read(ckpt, data=None, p=None):
         tree_t = None
         if _TREE_ON:
             import phase1_algebra_head as _HT
-            tree_t = Tensor(np.stack([_HT.tree_row_ids(vs[int(i)]["text"], vtk[i], vse[i], _HH.T_ALG)
+            tree_t = Tensor(np.stack([_HT.tree_row_ids(vs[int(i)]["text"], vtk[i], vse[i], _HT.T_ALG)
                                       for i in sl_p]).astype(np.int32), dtype=dtypes.int)
         ident_t = None
         if _BUSREG_ON:
