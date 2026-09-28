@@ -46,6 +46,11 @@ T_ALG = 256
 ALG_REF = int(os.environ.get("ALG_REF", "0"))   # E-FLOOR referent supervision
 ALG_DIAL = int(os.environ.get("ALG_DIAL", "0"))  # door #45: the dialect reader
 ALG_VALATT = int(os.environ.get("ALG_VALATT", "0"))  # door #61: given-binding aid
+# THE CARICATURE MARGIN (2026-09-27, ledger "THE TWIN-GAP READ"): a hard-negative
+# margin (float, the margin size m; "" or "0" = dead, byte-identical) on the args
+# pointer between the gold argument and its strongest same-sentence same-noun twin
+# (scripts/twin_stamp_mint.py's sidecar .cache/phase1_alg_twin_<split>.npz).
+ALG_CARIC = float(os.environ.get("ALG_CARIC", "0") or "0")
 ALG_SIXWAVE = int(os.environ.get("ALG_SIXWAVE", "0"))  # door #62: six-wave slot phasing
 ALG_LSENT = int(os.environ.get("ALG_LSENT", "0"))    # V2: letter-keyed partition input
 ALG_SYNC = int(os.environ.get("ALG_SYNC", "0"))      # sync-complete: one clock, both sides, ticking
@@ -1105,6 +1110,12 @@ TERMINALS = {
     "cmtreg": {"params": ["w_cmt_reg"],            "emit": "cmt",   "gold": ["ftype", "res"],
                "when": lambda: int(os.environ.get("ALG_RINGS", "0")) and int(os.environ.get("ALG_CMT_REG", "0"))
                and int(os.environ.get("ALG_BREATH", "1")) > 1},
+    # THE CARICATURE MARGIN: no new params, no new emission (reuses "args"'s
+    # W_args logits verbatim) — only a new gold requirement, so the two-terminal
+    # law's gold-door half still applies (a missing sidecar leaves the hinge
+    # silently zero rather than erroring at build).
+    "caric":  {"params": [],                       "emit": "args",  "gold": ["twin_idx", "gold_idx", "twin_m"],
+               "when": lambda: ALG_CARIC != 0},
 }
 
 
@@ -1968,6 +1979,27 @@ def load_alg(split):
             print(f"[nest] {split}: hierarchical targets from {_hp} (levels per rung {_NEST_LEVELS})", flush=True)
         else:
             assert not is_train, f"NESTED LADDER: no sidecar {_hp} for the TRAIN split — run hier_targets_mint.py first"
+    if ALG_CARIC != 0:
+        # THE CARICATURE MARGIN's sidecar (twin_stamp_mint.py): the train split
+        # MUST have it (a loud stop, same shape as THE NESTED LADDER above); a
+        # test/read split takes it when present, else falls back to an
+        # explicit all-(-1) fill (stated, not silent — the hinge then reads as
+        # zero twins for this split, matching what an unstamped mint split IS).
+        _tp = f".cache/phase1_alg_twin_{split}.npz"
+        if os.path.exists(_tp):
+            _tz = np.load(_tp)
+            assert int(_tz["n"]) == len(gold["presence"]), (
+                f"CARICATURE MARGIN: sidecar {_tp} has {int(_tz['n'])} rows but the staged gold has "
+                f"{len(gold['presence'])} — re-stamp (twin_stamp_mint.py) for this split")
+            gold["twin"] = _tz["twin"]
+            gold["twin_gold"] = _tz["twin_gold"]
+            print(f"[caric] {split}: twin stamps from {_tp}", flush=True)
+        else:
+            assert not is_train, f"CARICATURE MARGIN: no sidecar {_tp} for the TRAIN split — run twin_stamp_mint.py first"
+            _n0 = len(gold["presence"])
+            gold["twin"] = np.full((_n0, L_FAC, 2), -1, np.int16)
+            gold["twin_gold"] = np.full((_n0, L_FAC, 2), -1, np.int16)
+            print(f"[caric] {split}: no sidecar {_tp} — filled all-(-1) (no twins on this split)", flush=True)
     if os.path.exists(STATES_NPY.format(split=split)):
         states = np.load(STATES_NPY.format(split=split), mmap_mode="r")
         # SAMPLES-STATES DESYNC GUARD (deep clean 2026-07-30): samples come
@@ -6409,6 +6441,29 @@ def _loss_single(o, g, blur=0.0, sw=None, level=3):
         l = l + ((_l_group + _l_neg) * am_w).sum() / n_am_w * 2.0 * _ow_ptr
     else:
         l = l + ((bce(o["args"], g["args"], "args") * args_w).mean(-1) * am_w).sum() / n_am_w * 2.0 * _ow_ptr
+    if ALG_CARIC != 0 and "twin_idx" in g:
+        # THE CARICATURE MARGIN (2026-09-27): a hard-negative hinge on the SAME
+        # pointer logits the args term above already grades — the gold
+        # argument's logit must beat its strongest same-sentence same-noun
+        # twin's logit by >= ALG_CARIC, per relation slot and per argument
+        # position (0/1); positions/slots without a stamped twin (twin_m==0,
+        # mint rows included) contribute exactly zero. Plain logit differences
+        # (no sigmoid on raw logits — the args logits reach |130|, the same
+        # overflow the group-total form above works around).
+        _car_gold = o["args"].gather(-1, g["gold_idx"])   # (B, L_FAC, 2)
+        _car_twin = o["args"].gather(-1, g["twin_idx"])   # (B, L_FAC, 2)
+        _car_hinge = (ALG_CARIC - (_car_gold - _car_twin)).relu()
+        _car_mask = g["twin_m"] * rel_w.unsqueeze(-1)     # only present, ftype=="rel" slots (twin_stamp_mint's scope)
+        _car_n = _car_mask.sum() + 1e-6
+        _car_term = (_car_hinge * _car_mask).sum() / _car_n
+        if os.environ.get("ALG_CARIC_DEBUG"):
+            # zero-GPU proof-of-life only (CPU gates); reads .numpy() -> whatever
+            # step this fires on is the JIT's own capture step, not necessarily
+            # step 0 (the JIT captures at steps 1-2 per the trainer's own note).
+            print(f"[caric-debug] mean hinge (masked, ALG_CARIC={ALG_CARIC}) = "
+                  f"{float(_car_term.numpy()):.4f}  n_masked_positions={float(_car_mask.sum().numpy()):.1f}",
+                  flush=True)
+        l = l + _car_term * _ow_ptr
     l = l + (ce(o["res"], g["res"], "res") * pres_w).sum() / n_p_w * 2.0 * _ow_ptr
     l = l + ce(o["query"], g["query"]).mean() * 2.0 * _ow_ptr
     fsn = g["fspan"] / (g["fspan"].sum(-1, keepdim=True) + 1e-6)
@@ -7626,7 +7681,12 @@ def do_train(steps, lr, batch, seed):
     b_mha = fix(np.zeros((batch, ATLAS_TAB.shape[1], H_W), np.float32),
                 dtypes.float) if ATLAS_TAB is not None else None
     b_tail = fix(np.zeros((batch, T_ALG), np.float32), dtypes.float) if CLOCK else None
-    _GOLD_ALIAS = {"is_lit_f": "is_lit", "refoh": "refvar"}
+    _GOLD_ALIAS = {"is_lit_f": "is_lit", "refoh": "refvar",
+                   # THE CARICATURE MARGIN: "twin_idx"/"gold_idx"/"twin_m" are built
+                   # in the feed dict from the sidecar's raw "twin"/"twin_gold" ids
+                   # (the refoh/refvar idiom above) -- never staged under their own
+                   # names in the states npz.
+                   "twin_idx": "twin", "gold_idx": "twin_gold", "twin_m": "twin"}
     _GOLD_OPTIONAL = {"opspan", "arg_dup", "sel", "sign", "y", "digits2",
                       "is_macro", "is_frac", "is_chain"}
     for _tn, _t in TERMINALS.items():
@@ -7705,6 +7765,14 @@ def do_train(steps, lr, batch, seed):
                          ("is_pct", (L_FAC,), dtypes.float),
                          ("is_fdiv", (L_FAC,), dtypes.float),
                          ("arg_dup", (L_FAC,), dtypes.float),
+                         # THE CARICATURE MARGIN: clipped-to-0 competitor/gold variable
+                         # ids (twin_idx/gold_idx; feed door converts from the sidecar's
+                         # raw "twin"/"twin_gold" ids the same way "refoh" is built from
+                         # "refvar" above) + a per-position validity mask (twin_m).
+                         *((("twin_idx", (L_FAC, 2), dtypes.int),
+                            ("gold_idx", (L_FAC, 2), dtypes.int),
+                            ("twin_m", (L_FAC, 2), dtypes.float))
+                           if ALG_CARIC != 0 else ()),
                          # gen-15: OP_APPLY gold buffers (two-terminal law —
                          # without these, h_dig2/W_y leave the graph: None grads)
                          *((("is_macro", (L_FAC,), dtypes.float),
@@ -8754,6 +8822,10 @@ def do_train(steps, lr, batch, seed):
                    if "is_chain" in gold
                    and int(os.environ.get("ALG_FTYPES", "4")) >= 9 else {}),
                 **({"valspan": gold["valspan"][idx]} if ALG_VALATT and "valspan" in gold else {}),
+                **({"twin_idx": np.maximum(gold["twin"][idx].astype(np.int32), 0),
+                    "gold_idx": np.maximum(gold["twin_gold"][idx].astype(np.int32), 0),
+                    "twin_m": (gold["twin"][idx] >= 0).astype(np.float32)}
+                   if ALG_CARIC != 0 and "twin" in gold else {}),
                 "arg_dup": (gold["arg_dup"][idx] if "arg_dup" in gold
                             else np.zeros_like(gold["is_rel"][idx])),
                 **({"is_macro": gold["is_macro"][idx],
