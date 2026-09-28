@@ -45374,3 +45374,40 @@ wrong givens < 0.40 from 0.50, and this time the coarse breaths must
 not degrade the grounding read (right slots' token hit at b1-b3 >= the
 flat body's 0.6, vs TR_241's 0.0 by construction and 0.61 recovery);
 rows >= 14; mint's cost read (form 1: -0.06). ~5 h.
+
+### 2026-09-27 (21:55) — THE TREE DESCENT, FORM 2: NULL AT THE SLOT, THE DEGRADATION CURED, THE WALL UNMOVED (TR2_241 vs PMS8_241; tree2_chain.log; membrane_scale_TR2_241.txt)
+
+TR2_241 (from scratch; the leaf open, carried log-priors, numeral-
+weighted keys): masked wild 0.3457 vs 0.3476, paired -0.0020 (SE 0.0099,
+z 0.2); open 0.3218 vs 0.3198; rows 13 masked / 12 open vs 14 / 9; mint
+0.6085 (form 1 0.5913; the body 0.654 — the cost halves but stays);
+vs the lineage +0.0166 (z 1.6); vs the chassis open +0.0215 (z 2.2).
+THE MECHANISM: wrong given slots' other-sentence share 0.469 argmax /
+0.482 mass (PMS8_241 0.495 / 0.520; form 1 0.486 / 0.527) — a 0.03-0.04
+move, the bar (< 0.40) MISSED; flat across breaths (0.45-0.48). THE
+DEGRADATION IS CURED: the right slots' token hit b0 0.837 -> b1-3
+0.675 / 0.649 / 0.658 -> b6 0.662, against form 1's 0.867 -> 0 -> 0.61
+and the flat body's 0.81 -> 0.60: the construction lines HOLD the
+grounding read better than the body's own breaths do (+0.06 token hits
+at the leaf breaths) — the second bar (>= 0.6 at b1-b3) MET. READING:
+carrying the coarse posterior forward preserves what breath 0 found;
+it does not FIND what breath 0 missed — the wrong slots sit in another
+sentence at breath 0 (0.466) and every breath after (0.45-0.48), and a
+prior built from that read carries the miss forward faithfully. The
+numeral-weighted sentence key at b1 (0.451 other-sentence) is only
+slightly better than the leaf's own read. So: the descent as a re-read
+of the same evidence cannot move the other-sentence wall, because the
+wall is set at the grounding read, before any breath — the sentence
+choice is wrong from the first look, and no coarse-to-fine schedule
+over the SAME slots-<-tokens attention changes the first look. THE
+LINE'S VERDICT (two from-scratch forms, both null at the slot; form 2
+clean of degradation): the coarse-to-fine descent on the membrane is
+NOT the lever for the other-sentence wall; the lever is whatever
+changes the FIRST look — the grounding read's keys (the retina-side
+identity port, the caricature), or a second look at a DIFFERENT
+evidence (the solver's implied values checked against the text: the
+value propagator, THE CHASSIS RULING's road). The tree stays built
+(dead unless set) as the descent's honest form; a mint-side cost
+(-0.045) is its one clear effect. Regime tag: one seed, from scratch.
+Artifacts: sharp_TR2_241, ps_{open,legal}_wild_TR2_241.npz,
+dump_wild_TR2_241.pkl, tree2_chain.log, membrane_scale_TR2_241.txt.

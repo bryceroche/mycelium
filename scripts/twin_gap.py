@@ -74,8 +74,9 @@ import lexical_identity_census as LIC    # build_candidate_tables, same_sentence
 import stamp_arg_mentions as SAM         # own_var
 
 WILD_A = MBC.WILD_A                      # ".cache/wild_admitted_holdout_a.jsonl" -- same 311 rows/order as the plain fixture
-RAWSLOTS = ".cache/rawslots_wild_PMS8_241.pkl"
-OUT = ".cache/twin_gap_PMS8_241.txt"
+TAG = sys.argv[1] if len(sys.argv) > 1 and not sys.argv[1].startswith("-") else "PMS8_241"   # 2026-09-27: the body under read
+RAWSLOTS = f".cache/rawslots_wild_{TAG}.pkl"
+OUT = f".cache/twin_gap_{TAG}.txt"
 CLASSES = MBC.CLASSES                    # ("DIFFERENT-NOUN", "SAME-NOUN", "MIXED/NO-KEY")
 
 
