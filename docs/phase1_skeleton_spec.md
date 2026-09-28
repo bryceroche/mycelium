@@ -45375,7 +45375,7 @@ not degrade the grounding read (right slots' token hit at b1-b3 >= the
 flat body's 0.6, vs TR_241's 0.0 by construction and 0.61 recovery);
 rows >= 14; mint's cost read (form 1: -0.06). ~5 h.
 
-### 2026-09-27 (21:55) — THE TREE DESCENT, FORM 2: NULL AT THE SLOT, THE DEGRADATION CURED, THE WALL UNMOVED (TR2_241 vs PMS8_241; tree2_chain.log; membrane_scale_TR2_241.txt)
+### 2026-09-27 (21:51) — THE TREE DESCENT, FORM 2: NULL AT THE SLOT, THE DEGRADATION CURED, THE WALL UNMOVED (TR2_241 vs PMS8_241; tree2_chain.log; membrane_scale_TR2_241.txt)
 
 TR2_241 (from scratch; the leaf open, carried log-priors, numeral-
 weighted keys): masked wild 0.3457 vs 0.3476, paired -0.0020 (SE 0.0099,
