@@ -45412,7 +45412,7 @@ value propagator, THE CHASSIS RULING's road). The tree stays built
 Artifacts: sharp_TR2_241, ps_{open,legal}_wild_TR2_241.npz,
 dump_wild_TR2_241.pkl, tree2_chain.log, membrane_scale_TR2_241.txt.
 
-### 2026-09-27 (22:00) — THE CARICATURE MARGIN ARM: DOES NOT FIRE (CR_241 vs CTRLs_241; caric_chain.log, twinread_chain.log)
+### 2026-09-27 (21:53) — THE CARICATURE MARGIN ARM: DOES NOT FIRE (CR_241 vs CTRLs_241; caric_chain.log, twinread_chain.log)
 
 CR_241 (PMS8_241 + two gentle 1e-5 segments, ALG_CARIC=2.0 — the twin
 hinge on the args pointer, 998 stamped positions on wild, 250 of 311
