@@ -45349,3 +45349,28 @@ the tree body without its tree and was worthless) — every reader must
 thread every port, checked at the port's birth. Regime tag: one seed,
 from scratch. Artifacts: .cache/membrane_scale_TR_241.txt,
 .cache/membrane_raw_wild_TR_241.npz; PMS8_241's intermediate restored.
+
+### 2026-09-27 (18:40) — THE TREE DESCENT, FORM 2, built and fired (word given)
+
+ALG_TREE2=1 (rides on ALG_TREE): the LEAF STAYS OPEN at every breath;
+each breath's head-mean attention, aggregated per unit at every level
+open at that breath, is carried into the next breath as an additive
+LOG-PRIOR on the unit's tokens (floor 1e-3 = -6.9 logits; the same line
+to every head; no gain — the construction line: soft, erasable,
+mandatory); breath 0's grounding attention seeds the first prior.
+ALG_TREE_NUMW=3: numeral tokens weigh 4x in the unit pooling, so the
+sentence and clause keys carry what differs between units (the numbers)
+instead of the mean that blurred them (TR_241's b1: 0.665 other-
+sentence). The unit ids carry a fourth column (the numeral flag); every
+reader threads it (loop_val, chain_acc, membrane_scale via
+tree_row_ids). Gate (CPU): unset bit-identical; role8 unchanged; tree2
+runs — no flat-identity claim under form 2 (the prior is a live function
+of the attention even with zero level queries; the witness is unset).
+ARM TR2_241 (pc-tree2; queued at the lock behind the caricature arm's
+reads): the PMS8 recipe from scratch + ALG_TREE=t,s,c,m,t,t,t ALG_TREE2=1
+ALG_TREE_NUMW=3, SNAP_EVERY=8000, vs PMS8_241; BARS as form 1's (08:53):
+masked +0.020 (z 2) or the twin; MECHANISM: the wrong-sentence share of
+wrong givens < 0.40 from 0.50, and this time the coarse breaths must
+not degrade the grounding read (right slots' token hit at b1-b3 >= the
+flat body's 0.6, vs TR_241's 0.0 by construction and 0.61 recovery);
+rows >= 14; mint's cost read (form 1: -0.06). ~5 h.

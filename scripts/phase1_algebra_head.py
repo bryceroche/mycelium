@@ -3062,6 +3062,14 @@ _TREE_LV = {"s": 0, "c": 1, "m": 2, "t": 3}
 _TREE_LEVELS = [_TREE_LV[x.strip()] for x in ALG_TREE.split(",")] if ALG_TREE else None
 if _TREE_LEVELS is not None:
     assert _TREE_LEVELS[0] == 3, "ALG_TREE form 1: breath 0 (the grounding read, every reader's pass 1) keeps the leaf; form 2 needs the consult moved"
+# FORM 2 (2026-09-27, the word; TR_241's trajectory: the coarse levels chose worse than the leaf and the closed
+# leaf re-decided from scratch): ALG_TREE2=1 keeps the LEAF OPEN at every breath and carries the previous breath's
+# head-mean attention, aggregated per unit at each level open then, into this breath as an additive LOG-PRIOR on the
+# unit's tokens (a construction line: soft, erasable, mandatory — no gain; floor 1e-3 = -6.9 logits). ALG_TREE_NUMW=<w>
+# weights NUMERAL tokens (1 + w) in the unit pooling so the sentence key carries what differs (0 = the plain mean).
+ALG_TREE2 = int(os.environ.get("ALG_TREE2", "0"))
+ALG_TREE_NUMW = float(os.environ.get("ALG_TREE_NUMW", "0"))
+assert not (ALG_TREE2 or ALG_TREE_NUMW) or _TREE_LEVELS is not None, "ALG_TREE2 / ALG_TREE_NUMW ride on ALG_TREE"
 _TREE_PUNCT_CLAUSE = {",", ";"}
 _TREE_CONJ_CLAUSE = {"and", "but"}
 _TREE_MENTION_EXTRA = {".", "or"}
@@ -3102,13 +3110,15 @@ def _tree_segment_ids(dec, tokmask_row, sent_row, extra_boundary_words):
 
 
 def tree_row_ids(text, tokmask_row, sent_row, T):
-    """(T, 3) int32: per token its SENTENCE, CLAUSE and MENTION unit id
-    (0-based, contiguous spans; -1 at padding). Host-side, deterministic,
-    the head's own tokenizer (hud_row_features's path)."""
+    """(T, 4) int32: per token its SENTENCE, CLAUSE and MENTION unit id
+    (0-based, contiguous spans; -1 at padding) and a NUMERAL flag (1 if the
+    token decodes to digits; 0 else; form 2's pooling weight). Host-side,
+    deterministic, the head's own tokenizer (hud_row_features's path)."""
     tok = _xcorr_tokenizer()
     ids = tok.encode(text).ids[:T]
     n = len(ids)
-    out = -np.ones((T, 3), np.int32)
+    out = -np.ones((T, 4), np.int32)
+    out[:, 3] = 0
     if n == 0:
         return out
     dec = [tok.decode([int(tid)]).strip().lower() for tid in ids] + [""] * (T - n)
@@ -3117,13 +3127,14 @@ def tree_row_ids(text, tokmask_row, sent_row, T):
     out[:, 0] = np.where(tm, sr, -1)
     out[:, 1] = _tree_segment_ids(dec, tm, sr, _TREE_CONJ_CLAUSE)
     out[:, 2] = _tree_segment_ids(dec, tm, sr, _TREE_MENTION_EXTRA | _TREE_VERBISH)
+    out[:, 3] = np.array([1 if (tm[t] and dec[t].isdigit()) else 0 for t in range(T)], np.int32)
     return out
 
 
 def tree_build_array(samples, tokmask, sent, T):
     """(n, T, 3) int32 for every row of a split (banked like HUD)."""
     n = len(samples)
-    out = -np.ones((n, T, 3), np.int32)
+    out = -np.ones((n, T, 4), np.int32)
     for i in range(n):
         out[i] = tree_row_ids(samples[i]["text"], tokmask[i], sent[i], T)
     return out
@@ -3572,7 +3583,7 @@ def _make_bank(p, waist, tokmask, B, sent=None, tree=None):
     raw states — bit-identical when the env is unset."""
     _smoothed = {}
     def bank(queries, nq, extra=None, pbias=None, rbias=None, flat=False,
-             tgate=None, tgv=None, kb=None):
+             tgate=None, tgv=None, kb=None, prior=None):
         q_in = queries.unsqueeze(0) + (extra if extra is not None else 0)
         q = q_in @ p["attn_wq"] + p["attn_wq_b"]
         src = waist
@@ -3595,22 +3606,31 @@ def _make_bank(p, waist, tokmask, B, sent=None, tree=None):
             # below) is open only at level 3.
             _kb0 = kb if kb is not None else 0
             _lv = _TREE_LEVELS[_kb0] if _kb0 < len(_TREE_LEVELS) else 3
-            if _lv < 3:
+            if _lv < 3 and not ALG_TREE2:      # form 1 closes the leaf below level t; form 2 keeps it open
                 _leaf_open = 0.0
                 sc = sc * 0.0                     # exact zeros, the graph kept
             _T = int(src.shape[1])
             _tm_c = tokmask.reshape(B, _T, 1)
             _ar = Tensor.arange(_T).reshape(1, 1, _T)
+            _Ms = [((tree[:, :, _l:_l + 1] == _ar).float() * _tm_c) for _l in range(3)]   # (B, T, U) per level
+            _pw = (1.0 + ALG_TREE_NUMW * tree[:, :, 3:4].float()) * _tm_c if ALG_TREE_NUMW else _tm_c   # (B, T, 1) pooling weights
             for _l in range(min(_lv, 2) + 1):
-                _M = ((tree[:, :, _l:_l + 1] == _ar).float() * _tm_c)        # (B, T, U): token -> unit one-hot (pads 0)
-                _cnt = _M.sum(1).reshape(B, _T, 1)                          # (B, U, 1) tokens per unit
-                _P = (_M.transpose(-2, -1) @ src) / _cnt.maximum(1.0)       # (B, U, H_W): the unit's mean state
+                _M = _Ms[_l]
+                _cnt = (_M * _pw).sum(1).reshape(B, _T, 1)                  # (B, U, 1) (weighted) tokens per unit
+                _P = (_M.transpose(-2, -1) @ (src * _pw)) / _cnt.maximum(1.0)   # (B, U, H_W): the unit's (numeral-weighted) mean state
                 _kl = _P @ p["attn_wk"] + p["attn_wk_b"]                    # the shared key filter
                 _ql = q_in @ p[f"tree_wq{_l}"]                              # the level query (zero at birth)
                 _qlh = _ql.reshape(B if extra is not None else 1, nq, N_HEADS, hd).permute(0, 2, 1, 3)
                 _klh = _kl.reshape(B, -1, N_HEADS, hd).permute(0, 2, 1, 3)
                 _sl = (_qlh @ _klh.transpose(-2, -1)) / math.sqrt(hd)       # (B, H, nq, U)
                 sc = sc + _sl @ _M.transpose(-2, -1).unsqueeze(1)           # broadcast to the unit's tokens
+            if ALG_TREE2 and prior is not None and kb is not None and kb >= 1:
+                # FORM 2: the previous breath's attention, aggregated per unit at each level open THEN, as a log-prior
+                _lvp = _TREE_LEVELS[kb - 1] if (kb - 1) < len(_TREE_LEVELS) else 3
+                for _l in range(min(_lvp, 2) + 1):
+                    _mass = prior @ _Ms[_l]                                   # (B, nq, U): the unit's share of last breath's mass
+                    _logp = _mass.clip(1e-3, 1.0).log()
+                    sc = sc + (_logp @ _Ms[_l].transpose(-2, -1)).unsqueeze(1)   # the construction line, every head
         if kb is not None:
             # THE PRE/POST CENSUS (ALG_CERT_CENSUS=1; the pre/post knob law):
             # a diagnostic-only readback of the raw pre-bias score magnitude
@@ -4538,6 +4558,7 @@ def breath_step(p, state, kb, ctx):
     h_tok, fat_cur = bank(p["fq"], L_TOT, extra=q_extra, kb=kb,
                           pbias=_pb_kb,
                           rbias=_rb7,
+                          prior=(state.get("tree_prev_at") if ALG_TREE2 else None),   # FORM 2's construction line
                           # THE TOKEN SEAL: this breath's RE-READING of
                           # the text. `loop` and `all` both cut it; the
                           # grounding at breath 0 is decided in
@@ -5225,6 +5246,8 @@ def breath_step(p, state, kb, ctx):
                 _plv4 = _pcl4.reshape(-1, 1, 1)
                 _wg4 = _dep4 * _plv4 + _dep4.detach() * (1.0 - _plv4)
         _garage.append(_wg4)
+    if ALG_TREE2:
+        state["tree_prev_at"] = fat_cur       # FORM 2: this breath's head-mean attention is the next breath's prior
     if "clockband" in _SEVER and ALG_POLAR and 1 <= kb <= _RC_N_LOOP:
         cur = cur * _polar_sink()[2].reshape(1, 1, -1)    # the clock dims carry nothing between breaths
     state["cur"] = cur; state["nb"] = _nb; state["nb_st"] = _nb_st
@@ -5513,6 +5536,7 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
                    # is unset or the skeleton is `self`.
                    "mc_sent": sent}
         _bs_state = {"cur": cur, "breaths": breaths, "nb": None,
+                     "tree_prev_at": (fat if ALG_TREE2 else None),   # FORM 2: breath 0's attention seeds the first prior
                      # MASK HEAD storage (2026-09-05): the graded
                      # adjacency the organ consumed at the previous
                      # breath_step (detached) — Δ-visibility into the
@@ -7581,7 +7605,7 @@ def do_train(steps, lr, batch, seed):
     TREE = tree_build_array(samples, tokmask, sent, T_ALG) if _TREE_LEVELS is not None else None   # THE TREE DESCENT's unit ids (host, banked like HUD)
     if TREE is not None:
         print(f"[tree] ALG_TREE={ALG_TREE}: unit ids ready {TREE.shape} | units/row mean s={np.mean([len(set(r[:, 0][r[:, 0] >= 0])) for r in TREE]):.1f} c={np.mean([len(set(r[:, 1][r[:, 1] >= 0])) for r in TREE]):.1f} m={np.mean([len(set(r[:, 2][r[:, 2] >= 0])) for r in TREE]):.1f}", flush=True)
-    b_tree = fix(np.zeros((batch, T_ALG, 3), np.int32), dtypes.int) if TREE is not None else None
+    b_tree = fix(np.zeros((batch, T_ALG, 4), np.int32), dtypes.int) if TREE is not None else None
     b_ident = fix(np.zeros((batch, T_ALG), np.int32), dtypes.int) \
         if (ALG_BUSREG or ALG_IDKEY) else None   # THE BUS REGISTER's / THE IDENTITY KEY's token-id feed (b_fact idiom)
     b_bgain = fix(np.zeros((1,), np.float32), dtypes.float) \
