@@ -45303,3 +45303,49 @@ sentence choice and the form is wrong, not the thesis. Regime tag: one
 seed, from scratch, the PMS8 recipe. Artifacts: sharp_TR_241,
 ps_{open,legal}_wild_TR_241.npz, dump_wild_TR_241.pkl,
 tree_reads_chain.log.
+
+### 2026-09-27 (18:25) — THE TREE DESCENT ARM DOES NOT FIRE: THE MECHANISM BAR MISSED, AND THE TRAJECTORY SAYS WHY (membrane census by scale on TR_241 vs the restored PMS8_241)
+
+Final breath, WRONG given slots (564): other-sentence 0.486 argmax /
+0.527 mass — PMS8_241 0.495 / 0.520: UNCHANGED (the bar was < 0.40).
+THE TRAJECTORY IS THE FINDING. TR_241, wrong slots, other-sentence
+share by breath: b0 0.50 (the grounding read, leaf), b1 0.665 (the
+sentence level), b2 0.606 (clause), b3 0.603 (mention), b4-6 0.47-0.49
+(the leaf again). RIGHT slots: b0 token 0.867 / other-sentence 0.072;
+b1-3 other-sentence 0.48 / 0.38 / 0.44 (token 0 by construction); b4-6
+token 0.61 / other-sentence 0.27. PMS8_241 (restored): wrong slots flat
+at 0.49-0.51 every breath; right slots' token hit 0.81 -> 0.60 across
+the breaths (the 09-19 shape). READING: (1) the coarse levels CHOOSE
+WORSE than the leaf — at breath 1 the sentence-level read puts two
+thirds of the wrong slots, and HALF of the slots the body eventually
+gets right, in the wrong sentence, when breath 0 had already located
+93% of the right ones on the token: the pooled sentence key (a mean of
+the tokens' states) is a poorer sentence locator than the token key it
+replaced — the mean averages out exactly what differs between
+sentences (the numerals, the verbs); the painter's point at the
+sentence level. (2) The coarse breaths DEGRADE what the grounding read
+had: the right slots recover only to 0.61 token hits at the leaf from
+0.87 at breath 0 (the flat body: 0.81 -> 0.60, the same loss of the
+initial hit, now from a higher start and a deeper trough). (3) The
+schedule's closing of the leaf REPLACED information instead of
+CONSTRAINING it: at breath 4 the token term re-decides from scratch and
+lands where the flat body lands. VERDICT: the arm does not fire on
+either bar (slot -0.007 z 0.7; mechanism unchanged at the leaf,
+inverted in the coarse breaths); THE FORM IS WRONG, NOT THE THESIS —
+what the record now shows is that a descent must REFINE an open leaf
+with coarse PRIORS, never close the leaf and re-decide. FORM 2
+registered (the product form, Opus's hierarchical softmax done as a
+carried prior): the leaf stays open at every breath; the level terms
+stay; each breath's coarse posterior (softmax over the level's units)
+is carried into the NEXT breath as an additive log-prior on its
+tokens (a construction line: soft, erasable, mandatory — the fine read
+cannot ignore the sentence it chose, but can overrule it with evidence);
+and the sentence key carries what differs: max-pooled or numeral-
+weighted, not the mean. Both are small edits on the tree's code (the
+levels, the masks and the port exist); the arm shape is the same
+(from scratch vs PMS8_241, the same two bars). Also learned: the
+membrane census must carry every read-time port (the first collect ran
+the tree body without its tree and was worthless) — every reader must
+thread every port, checked at the port's birth. Regime tag: one seed,
+from scratch. Artifacts: .cache/membrane_scale_TR_241.txt,
+.cache/membrane_raw_wild_TR_241.npz; PMS8_241's intermediate restored.
