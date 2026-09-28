@@ -90,9 +90,10 @@ import numpy as np  # module-level: _segment_ids/_band_arrays need it outside re
 
 MODE = os.environ.get("MS_MODE", "collect")
 CKPT = os.environ.get("MS_CKPT", ".cache/sharp_PMS8_241.safetensors")
-RAW_PATH = ".cache/membrane_raw_wild_PMS8_241.npz"
-OUT_TXT = ".cache/membrane_scale_PMS8_241.txt"
-PS_LEGAL = ".cache/ps_legal_wild_PMS8_241.npz"
+TAG = os.environ.get("MS_TAG", os.path.basename(CKPT).replace("sharp_", "").replace(".safetensors", ""))   # 2026-09-27: outputs by body, never one fixed name
+RAW_PATH = f".cache/membrane_raw_wild_{TAG}.npz"
+OUT_TXT = f".cache/membrane_scale_{TAG}.txt"
+PS_LEGAL = f".cache/ps_legal_wild_{TAG}.npz"
 WILD_JSONL = ".cache/wild_admitted_holdout.jsonl"
 
 # ---------------------------------------------------------------------
@@ -173,8 +174,13 @@ def collect():
         ts = Tensor(_st_np, dtype=dtypes.half)
         tk = Tensor(_tk_np, dtype=dtypes.float)
         se = Tensor(vse[sl_p].astype(np.int32), dtype=dtypes.int)
+        # THE TREE DESCENT's port (2026-09-27): the unit ids per row, as loop_val builds them
+        tree_t = None
+        if os.environ.get("ALG_TREE", ""):
+            tree_t = Tensor(np.stack([H.tree_row_ids(vs[int(i)]["text"], vtk[i], vse[i], T_ALG)
+                                      for i in sl_p]).astype(np.int32), dtype=dtypes.int)
         # pass 1: unmasked parse -> masks + live facts (loop_val's cycle, verbatim)
-        o0 = forward(p, ts, tk, se)
+        o0 = forward(p, ts, tk, se, tree=tree_t)
         onp0 = {k: o0[k].realize().numpy() for k in ("fat", "args", "res")}
         mk = build_slot_masks(onp0, vse[sl_p].astype(np.int32))
         _ka = ("pres", "ftype", "op", "dig") + (("dup",) if "dup" in o0 else ())
@@ -185,7 +191,7 @@ def collect():
         fact_t = Tensor(fb, dtype=dtypes.float)
         # pass 2: masked walk; the tap hands back the per-breath attention
         o = forward(p, ts, tk, se, slot_mask=Tensor(mk, dtype=dtypes.float),
-                    fact_buf=fact_t)
+                    fact_buf=fact_t, tree=tree_t)
         fat_all = [t.realize().numpy() for t in o["fat_all"]]  # K_B x (8, L_FAC, T)
         assert len(fat_all) == K_B, (len(fat_all), K_B)
         tkm = _tk_np > 0.5  # (8, T) real-token mask (shared across breaths, batch, slots)
