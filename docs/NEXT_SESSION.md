@@ -23,8 +23,7 @@ The reads table: `.venv/bin/python3 scripts/reads.py table wildhold` (assert-on-
   organ whose effect is a small bias; what moved this month was structural at read (the numeral mask, the role pointer)
   or trained from scratch.
 - Nothing running (2026-09-27 21:55); card idle. Tree: gen-weights with branches caric (the caricature margin) and the
-  tree forms merged; the post-merge CPU gate fired at close (.cache/merge_gate.log: unset 5.2995/0.0279, role8
-  6.5535/1.1061) — CHECK IT before any fire. Worktrees /home/bryce/mycelium-wt (branch caric) and -wt2 can be removed.
+  tree forms merged; the post-merge CPU gate PASSED at close (unset 5.2995/0.0279, role8 6.5535/1.1061 bit-identical). Worktrees /home/bryce/mycelium-wt (branch caric) and -wt2 can be removed.
 - 09-27 VERDICTS (ledger 15:09-21:53), ALL DO NOT FIRE: THE TREE DESCENT form 1 (TR_241, from scratch: slot -0.007, rows
   16/9, mint -0.06; the MECHANISM INVERTED — the pooled sentence key locates worse than the token key, b1 other-sentence
   0.665; the closed leaf re-decided) and FORM 2 (TR2_241: open leaf + carried log-priors + numeral-weighted keys: slot
