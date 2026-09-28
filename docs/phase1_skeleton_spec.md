@@ -45350,7 +45350,7 @@ thread every port, checked at the port's birth. Regime tag: one seed,
 from scratch. Artifacts: .cache/membrane_scale_TR_241.txt,
 .cache/membrane_raw_wild_TR_241.npz; PMS8_241's intermediate restored.
 
-### 2026-09-27 (18:40) — THE TREE DESCENT, FORM 2, built and fired (word given)
+### 2026-09-27 (19:42) — THE TREE DESCENT, FORM 2, built and fired (word given)
 
 ALG_TREE2=1 (rides on ALG_TREE): the LEAF STAYS OPEN at every breath;
 each breath's head-mean attention, aggregated per unit at every level
