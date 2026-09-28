@@ -45447,7 +45447,7 @@ wild_CR_241.npz, dump_wild_CR_241.pkl, rawslots_wild_{CR_241,CTRLs_
 twinread_chain.log. The worktree branch caric is merged (dead unless
 set); the twin sidecars stand for every split.
 
-### 2026-09-28 (08:35) — THE CERTIFIER-SIGNAL CENSUS (Bryce: "alternation is the key — each loop's certifier updates the attention masking"; Opus's cheap check) + THE READ-TIME CERTIFIER MASK fired
+### 2026-09-28 (09:30) — THE CERTIFIER-SIGNAL CENSUS (Bryce: "alternation is the key — each loop's certifier updates the attention masking"; Opus's cheap check) + THE READ-TIME CERTIFIER MASK fired
 
 scripts/certifier_signal_census.py, PMS8_241, wild, zero GPU: for the
 given slots whose FINAL-BREATH attention lands in the WRONG SENTENCE
@@ -45479,3 +45479,7 @@ signals): the consult at breaths 2/4/6 returns, beside the facts, the
 NL certifier's pull/push lines and the math certifier's implied values,
 as a route-bias on a FRESH grounding read at the consult breath; live
 at training (the live-facts road's pattern) and at read; from scratch.
+(09:32, Bryce: "build everything but don't run it yet" — the read-time
+certifier read pc-certmask STOPPED before its first number; it is built
+and HELD (.cache/certmask_chain.sh). Everything below is built and held
+for the word.)
