@@ -105,7 +105,11 @@ REFUSED = ("ALG_SHELF", "ALG_WHIP", "ALG_TOKLOOP", "ALG_WRITEBACK", "ALG_KANNEAL
            "ALG_DUPPTR", "ALG_DETWAVE", "ALG_WHEEL_CERT",   # THE CERTIFICATE PASS
            "ALG_SPAN_ALL", "ALG_ANCHOR",   # THE BREATH-SHARPENING ORGANS (2026-09-19):
            "ALG_SPAN_ARGS", "ALG_SPAN_OP", "ALG_SPAN_OP_ROAD", "ALG_PTR_SURF",
-           "ALG_BUSREG", "ALG_VALREG", "ALG_VALREG_ADDR", "ALG_BUSREG_SEAL", "ALG_BUSREG_PREDMAP", "ALG_VALREG_LIVE", "ALG_BUSREG_RAMP", "ALG_IDKEY", "ALG_ALT3", "ALG_NEST", "ALG_UNLOCK", "ALG_MATRY", "ALG_SW_TICK", "ALG_LIVE_FACTS", "ALG_TREE",   # THE BUS REGISTER + THE VALUE STREAM + THE SEALED VALUE ARM (2026-09-22/23): their per-rung terms live in the fused forward()'s loop/ladder only
+           "ALG_BUSREG", "ALG_VALREG", "ALG_VALREG_ADDR", "ALG_BUSREG_SEAL", "ALG_BUSREG_PREDMAP", "ALG_VALREG_LIVE", "ALG_BUSREG_RAMP", "ALG_IDKEY", "ALG_ALT3", "ALG_NEST", "ALG_UNLOCK", "ALG_MATRY", "ALG_SW_TICK", "ALG_LIVE_FACTS", "ALG_TREE", "ALG_CARIC",   # THE BUS REGISTER + THE VALUE STREAM + THE SEALED VALUE ARM (2026-09-22/23): their per-rung terms live in the fused forward()'s loop/ladder only
+           # THE CARICATURE MARGIN (2026-09-27): _loss_single's hinge term reads g["twin_idx"]/g["gold_idx"]/g["twin_m"]
+           # per rung directly off _loss_single's own gold dict — the walker calls _loss_single itself so the term
+           # WOULD thread, but it never builds those buffers itself (they come from do_train's bg/feed door only) and
+           # never passes a "twin" gold split through its own gold-slicing path; refused rather than silently zero.
            "ALG_SPAN_RCUE", "ALG_SPAN_ARCUE",   # THE ROLE SIGNATURE (2026-09-22): same
            # reason as ALG_SPAN_ARGS/ALG_SPAN_OP above — the walker's per-seam heads_of
            # calls never thread a per-breath rcue_all list, and the role pointer's
