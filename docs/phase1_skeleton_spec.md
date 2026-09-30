@@ -45503,3 +45503,39 @@ line comes with an assignment, not a broadcast). The read-time form
 stays as a diagnostic (LV_CERTMASK). Regime tag: one body, read-time,
 two gains. Artifacts: .cache/ps_legal_wild_PMS8_241_cert{2,4}.npz,
 .cache/certmask_chain.log.
+
+### 2026-09-30 (16:10) — THE TRAINED CERTIFIER-MASK ROAD built, gated, MERGED, HELD (the word: "build everything but don't run it yet")
+
+Built by a delegate (branch certloop 56cd6935, merged fast-forward; +233
+lines across the head, loop_val, chain_acc, jit_read, step_trainer):
+`certifier_bias()` in the head turns a decoded parse + the consult's
+facts into a (B, 1, L_TOT, T) route-bias — NL: the colliding given
+slots ASSIGNED to the unclaimed numerals by the Hungarian on the digit-
+head affinity (at most one numeral per slot; a floor on the affinity);
+MATH: a given whose variable the solver knows at a value that differs
+from the decode and appears in the text as a numeral gets +gain on
+that numeral's tokens. Ports cert3/cert5 (jit_read knows them) enter
+the per-breath bank read's pbias at loop breaths >= 3 and >= 5 — the
+fresh reads after each consult see the certifiers' lines (the choice:
+the per-breath reads, not a re-run of breath 0). ALG_CERT=<gain>
+(requires ALG_ALT3), ALG_CERT_IMPLIED=<gain>; in do_train the ALT3
+consults compute the bias beside facts3/facts5 into fixed buffers;
+loop_val and chain_acc's three-pass paths compute it eagerly. GATE
+(CPU tiny64): unset 5.2995/0.0279 bit-identical; role8 6.5535/1.1061;
+alt3 6.5344/1.1057 = the 09-24 alt3 gate line to the digit (the ALT3
+path untouched when ALG_CERT is unset); certloop 6.5344/1.1071 with
+the debug census reading NL fired 0 / IMPLIED fired 0 on the fixture —
+the step-1 shift is the compile-order sensitivity of the training JIT
+to added ops (the 09-25 gate rule), not the bias; the LIVE proof on
+prose (the pm35c valid slice) ran two days on the CPU (three passes +
+solver consults per step at batch 8) and was STOPPED unfinished at
+16:10 — the live proof is the arm's own first hundred steps (the debug
+census prints per step) and the wild census (57% of wrong-sentence
+givens carry the signal). THE ARM (.cache/certloop_chain.sh, WRITTEN,
+NOT FIRED): CL_241 = the PMS8 recipe from scratch + ALG_ALT3=1
+ALG_CERT=2.0, SNAP_EVERY=8000, vs PMS8_241; BARS: masked +0.020 (z 2)
+or the twin; MECHANISM: the wrong-sentence share of wrong givens < 0.40
+from 0.50; rows >= 14; the step cost stated (ALT3 was 2.2x; ~5 x 2.2 h).
+Everything built this week stands dead unless set: the tree (both
+forms), the caricature, the read-time certifier mask, the certifier
+loop. The card is idle. Post-merge CPU gate follows.
