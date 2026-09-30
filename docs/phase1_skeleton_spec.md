@@ -45504,7 +45504,7 @@ stays as a diagnostic (LV_CERTMASK). Regime tag: one body, read-time,
 two gains. Artifacts: .cache/ps_legal_wild_PMS8_241_cert{2,4}.npz,
 .cache/certmask_chain.log.
 
-### 2026-09-30 (16:10) — THE TRAINED CERTIFIER-MASK ROAD built, gated, MERGED, HELD (the word: "build everything but don't run it yet")
+### 2026-09-30 (16:05) — THE TRAINED CERTIFIER-MASK ROAD built, gated, MERGED, HELD (the word: "build everything but don't run it yet")
 
 Built by a delegate (branch certloop 56cd6935, merged fast-forward; +233
 lines across the head, loop_val, chain_acc, jit_read, step_trainer):
@@ -45529,7 +45529,7 @@ the step-1 shift is the compile-order sensitivity of the training JIT
 to added ops (the 09-25 gate rule), not the bias; the LIVE proof on
 prose (the pm35c valid slice) ran two days on the CPU (three passes +
 solver consults per step at batch 8) and was STOPPED unfinished at
-16:10 — the live proof is the arm's own first hundred steps (the debug
+16:05 — the live proof is the arm's own first hundred steps (the debug
 census prints per step) and the wild census (57% of wrong-sentence
 givens carry the signal). THE ARM (.cache/certloop_chain.sh, WRITTEN,
 NOT FIRED): CL_241 = the PMS8 recipe from scratch + ALG_ALT3=1

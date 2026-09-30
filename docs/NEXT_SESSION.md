@@ -22,8 +22,23 @@ The reads table: `.venv/bin/python3 scripts/reads.py table wildhold` (assert-on-
   free). THE READING: the warm regime on the claim body is a SETTLED BASIN — gentle continuation moves nothing for any
   organ whose effect is a small bias; what moved this month was structural at read (the numeral mask, the role pointer)
   or trained from scratch.
-- Nothing running (2026-09-27 21:55); card idle. Tree: gen-weights with branches caric (the caricature margin) and the
-  tree forms merged; the post-merge CPU gate PASSED at close (unset 5.2995/0.0279, role8 6.5535/1.1061 bit-identical). Worktrees /home/bryce/mycelium-wt (branch caric) and -wt2 can be removed.
+- Nothing running (2026-09-30 16:05); card idle; the word standing: "build everything but don't run it yet".
+  Tree: gen-weights at the certloop merge (fast-forward 56cd6935 + ledger); the post-merge CPU gate fired at close
+  (.cache/merge_gate.log — unset 5.2995/0.0279, role8 6.5535/1.1061): CHECK IT before any fire. Worktrees
+  /home/bryce/mycelium-wt (caric), -wt2 (live-facts), -wt3 (certloop) are all merged and can be removed.
+- BUILT AND HELD (09-28..30), all dead unless set, all needing the word to fire:
+  (1) THE TRAINED CERTIFIER-MASK ROAD (ledger 09-30 16:05): ALG_CERT=<gain> on ALG_ALT3 — the consults after breaths
+  2/4 return the NL certifier's pull/push as a Hungarian ASSIGNMENT (colliding givens -> unclaimed numerals) and the
+  math certifier's implied values, as a route-bias (ports cert3/cert5) on the per-breath reads that follow; live at
+  training and read. ARM: .cache/certloop_chain.sh = CL_241 (PMS8 recipe from scratch + ALG_ALT3=1 ALG_CERT=2.0,
+  SNAP_EVERY=8000) vs PMS8_241; bars: masked +0.020 z 2 or the twin; wrong-sentence share of wrong givens < 0.40;
+  rows >= 14; ~2.2x the step. FIRE WITH: systemd-run --user --unit=pc-certloop --property=WorkingDirectory=/home/bryce/mycelium /usr/bin/bash /home/bryce/mycelium/.cache/certloop_chain.sh
+  (the chain cd's into /home/bryce/mycelium-wt3 — after the merge it may run from the main tree; edit its `cd` first).
+  (2) THE READ-TIME CERTIFIER MASK (LV_CERTMASK in loop_val): read on PMS8_241 — NEGATIVE (-0.008 / -0.024 at gains
+  2 / 4): a broadcast bias on an untrained road; kept as a diagnostic. (3) THE CERTIFIER-SIGNAL CENSUS: 57% of
+  wrong-sentence givens have an unclaimed gold numeral (pull; 0% false positives on right slots), 41% collide (push),
+  70% either, 98% unique — the loop has real evidence to feed back. (4) PMC8_241 (the caricature from scratch), the
+  value-propagator design, retina-side identity keys, the competitive typed mixer: registered, unbuilt.
 - 09-27 VERDICTS (ledger 15:09-21:53), ALL DO NOT FIRE: THE TREE DESCENT form 1 (TR_241, from scratch: slot -0.007, rows
   16/9, mint -0.06; the MECHANISM INVERTED — the pooled sentence key locates worse than the token key, b1 other-sentence
   0.665; the closed leaf re-decided) and FORM 2 (TR2_241: open leaf + carried log-priors + numeral-weighted keys: slot
