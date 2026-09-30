@@ -45523,11 +45523,11 @@ consults compute the bias beside facts3/facts5 into fixed buffers;
 loop_val and chain_acc's three-pass paths compute it eagerly. GATE
 (CPU tiny64): unset 5.2995/0.0279 bit-identical; role8 6.5535/1.1061;
 alt3 6.5344/1.1057 = the 09-24 alt3 gate line to the digit (the ALT3
-path untouched when ALG_CERT is unset); certloop 6.5344/1.1071 with
-the debug census reading NL fired 0 / IMPLIED fired 0 on the fixture —
-the step-1 shift is the compile-order sensitivity of the training JIT
-to added ops (the 09-25 gate rule), not the bias; the LIVE proof on
-prose (the pm35c valid slice) ran two days on the CPU (three passes +
+path untouched when ALG_CERT is unset); certloop 6.5344/1.1071 — step 0 equal to alt3 (the debug census: NL fired 0 /
+IMPLIED 0 on the first two consults), step 1 shifted WITH a live fire
+(the third consult: NL fired rows=1 slots=1, one nonzero cell): the
+term is alive on the fixture and exactly zero where nothing fires —
+the live proof at the gate itself; the second proof on prose (the pm35c valid slice) ran two days on the CPU (three passes +
 solver consults per step at batch 8) and was STOPPED unfinished at
 16:05 — the live proof is the arm's own first hundred steps (the debug
 census prints per step) and the wild census (57% of wrong-sentence
