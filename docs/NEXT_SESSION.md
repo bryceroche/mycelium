@@ -23,8 +23,8 @@ The reads table: `.venv/bin/python3 scripts/reads.py table wildhold` (assert-on-
   organ whose effect is a small bias; what moved this month was structural at read (the numeral mask, the role pointer)
   or trained from scratch.
 - Nothing running (2026-09-30 16:05); card idle; the word standing: "build everything but don't run it yet".
-  Tree: gen-weights at the certloop merge (fast-forward 56cd6935 + ledger); the post-merge CPU gate fired at close
-  (.cache/merge_gate.log — unset 5.2995/0.0279, role8 6.5535/1.1061): CHECK IT before any fire. Worktrees
+  Tree: gen-weights at the certloop merge (fast-forward 56cd6935 + ledger); the post-merge CPU gate PASSED at close
+  (unset 5.2995/0.0279, role8 6.5535/1.1061 bit-identical on the merged head). Worktrees
   /home/bryce/mycelium-wt (caric), -wt2 (live-facts), -wt3 (certloop) are all merged and can be removed.
 - BUILT AND HELD (09-28..30), all dead unless set, all needing the word to fire:
   (1) THE TRAINED CERTIFIER-MASK ROAD (ledger 09-30 16:05): ALG_CERT=<gain> on ALG_ALT3 — the consults after breaths
