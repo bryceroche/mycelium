@@ -106,6 +106,7 @@ REFUSED = ("ALG_SHELF", "ALG_WHIP", "ALG_TOKLOOP", "ALG_WRITEBACK", "ALG_KANNEAL
            "ALG_SPAN_ALL", "ALG_ANCHOR",   # THE BREATH-SHARPENING ORGANS (2026-09-19):
            "ALG_SPAN_ARGS", "ALG_SPAN_OP", "ALG_SPAN_OP_ROAD", "ALG_PTR_SURF",
            "ALG_BUSREG", "ALG_VALREG", "ALG_VALREG_ADDR", "ALG_BUSREG_SEAL", "ALG_BUSREG_PREDMAP", "ALG_VALREG_LIVE", "ALG_BUSREG_RAMP", "ALG_IDKEY", "ALG_ALT3", "ALG_NEST", "ALG_UNLOCK", "ALG_MATRY", "ALG_SW_TICK", "ALG_LIVE_FACTS", "ALG_TREE", "ALG_TREE2", "ALG_TREE_NUMW", "ALG_CARIC",   # THE BUS REGISTER + THE VALUE STREAM + THE SEALED VALUE ARM (2026-09-22/23): their per-rung terms live in the fused forward()'s loop/ladder only
+           "ALG_CERT", "ALG_CERT_IMPLIED",   # THE TRAINED CERTIFIER-MASK ROAD (2026-09-28): rides ALG_ALT3's own consult, already refused above; named separately so a future narrowing of the ALG_ALT3 refusal does not silently let this through too
            "ALG_SPAN_RCUE", "ALG_SPAN_ARCUE",   # THE ROLE SIGNATURE (2026-09-22): same
            # reason as ALG_SPAN_ARGS/ALG_SPAN_OP above — the walker's per-seam heads_of
            # calls never thread a per-breath rcue_all list, and the role pointer's

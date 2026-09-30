@@ -61,15 +61,30 @@ def main():
         _fb_t = Tensor(alt2_fact_buf(_oa, se.numpy(), nv, ma), dtype=dtypes.float)
         _valreg_on = bool(float(os.environ.get("ALG_VALREG", "0")) or float(os.environ.get("ALG_VALREG_ADDR", "0")))
         _alt3 = int(os.environ.get("ALG_ALT3", "0")) != 0
-        f3_t = f5_t = None
+        f3_t = f5_t = c3_t = c5_t = None
         if _alt3:   # THE THREE CONSULTS at read (2026-09-24): the trainer's three curbs, eager here
+            from phase1_algebra_head import (certifier_bias as _certb, T_ALG as _T3,
+                                             ALG_CERT as _ACERT, ALG_CERT_IMPLIED as _ACERTI)
             _ck3 = ("pres", "ftype", "op", "dig", "args", "res") + (("dup",) if "dup" in o0 else ())
             _mk3 = Tensor(mk, dtype=dtypes.float)
+            _texts3 = [vs[int(i)]["text"] for i in sl_p]
+            def _consult3(oo):
+                # THE TRAINED CERTIFIER-MASK ROAD (2026-09-28): the same
+                # decode this consult already took, plus the facts it
+                # just forced, straight into certifier_bias.
+                onp3 = {k: oo[k].numpy() for k in _ck3}
+                fb = alt2_fact_buf(onp3, se.numpy(), nv, ma)
+                cb_t = None
+                if _ACERT or _ACERTI:
+                    rows3 = [{k: onp3[k][bi] for k in onp3} for bi in range(len(sl_p))]
+                    cb_t = Tensor(_certb(rows3, fb, _texts3, _T3, _ACERT, _ACERTI), dtype=dtypes.float)
+                return Tensor(fb, dtype=dtypes.float), cb_t
             _oa3 = forward(p, ts, tk, se, slot_mask=_mk3, hud=hud_t, tree=tree_t, ident=ident_t, stop_after=2)
-            f3_t = Tensor(alt2_fact_buf({k: _oa3[k].numpy() for k in _ck3}, se.numpy(), nv, ma), dtype=dtypes.float)
-            _ob3 = forward(p, ts, tk, se, slot_mask=_mk3, hud=hud_t, tree=tree_t, ident=ident_t, stop_after=4, facts3=f3_t)
-            f5_t = Tensor(alt2_fact_buf({k: _ob3[k].numpy() for k in _ck3}, se.numpy(), nv, ma), dtype=dtypes.float)
-        o = forward(p, ts, tk, se, slot_mask=Tensor(mk, dtype=dtypes.float), fact_buf=(None if _alt3 else _fb_t), hud=hud_t, tree=tree_t, ident=ident_t, valfact=(_fb_t if _valreg_on else None), facts3=f3_t, facts5=f5_t)   # THE VALUE STREAM: the live pass-1 facts; THE THREE CONSULTS' facts
+            f3_t, c3_t = _consult3(_oa3)
+            # pass b runs breaths 3-4 too — it must see cert3 (kb >= 3) the same as the full pass below
+            _ob3 = forward(p, ts, tk, se, slot_mask=_mk3, hud=hud_t, tree=tree_t, ident=ident_t, stop_after=4, facts3=f3_t, cert3=c3_t)
+            f5_t, c5_t = _consult3(_ob3)
+        o = forward(p, ts, tk, se, slot_mask=Tensor(mk, dtype=dtypes.float), fact_buf=(None if _alt3 else _fb_t), hud=hud_t, tree=tree_t, ident=ident_t, valfact=(_fb_t if _valreg_on else None), facts3=f3_t, facts5=f5_t, cert3=c3_t, cert5=c5_t)   # THE VALUE STREAM: the live pass-1 facts; THE THREE CONSULTS' facts; THE TRAINED CERTIFIER-MASK ROAD
         onp = {k: o[k].numpy() for k in KEYS}; qv = o["query"].numpy().argmax(-1); qlog = o["query"].numpy()
         if rawdump is not None:   # CA_RAWDUMP=path: every slot's raw heads per row, for the annealed decode (2026-09-18)
             for bi, i in enumerate(sl):

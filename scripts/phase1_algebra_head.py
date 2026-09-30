@@ -249,6 +249,21 @@ ALG_IDKEY = float(os.environ.get("ALG_IDKEY", "0"))
 # identical across passes, so consult 1 is exact. Unset = one pass, the
 # stale start-of-run facts, bit-identical.
 ALG_ALT3 = int(os.environ.get("ALG_ALT3", "0"))
+# THE TRAINED CERTIFIER-MASK ROAD (2026-09-28; ledger 09:30/09:35): the
+# read-time broadcast form (LV_CERTMASK) was NEGATIVE — "every colliding
+# slot toward every unclaimed numeral at once" blurs a body that never
+# trained under the bias. ALG_CERT=<gain> reuses THE THREE CONSULTS'
+# own decode (ALG_ALT3, required) to build an ASSIGNED bias instead (the
+# Hungarian pairing over the digit head's own affinity, certifier_bias()
+# below) and feeds it through cert3/cert5 — a fresh grounding after each
+# consult sees the certifiers' lines, from step 0. ALG_CERT_IMPLIED is
+# the math certifier's half (the solver's known value vs. the decode,
+# when the text carries that numeral too); defaults to ALG_CERT's gain
+# so ALG_CERT=<g> alone arms both halves, and ALG_CERT_IMPLIED=0 can
+# silence the math half only.
+ALG_CERT = float(os.environ.get("ALG_CERT", "0"))
+ALG_CERT_IMPLIED = float(os.environ.get(
+    "ALG_CERT_IMPLIED", str(ALG_CERT) if ALG_CERT else "0"))
 # THE LIVE-FACTS TRAINING ROAD (2026-09-24, ledger 21:05; the out-of-sync
 # audit's cure, item 2): at READ (loop_val.py, chain_acc.py) the facts
 # injected at breath 2 come from the CURRENT model's own pass 1 (an
@@ -358,6 +373,7 @@ def _unlock_planes(cur, kb):
         _UNLOCK_MASKS[kb] = m
     return _polar_keepnorm(cur * m, cur, _gc.reshape(1, 1, -1))
 assert not ALG_ALT3 or int(os.environ.get("ALG_ALT2", "0")), "ALG_ALT3 needs ALG_ALT2=1 (the facts injection road W_fact it re-enters through)"
+assert not ALG_CERT or ALG_ALT3, "ALG_CERT needs ALG_ALT3=1 (the certifier-mask road reads THE THREE CONSULTS' own decode; there is no consult to certify without it)"
 assert not ALG_LIVE_FACTS or int(os.environ.get("ALG_ALT2", "0")), "ALG_LIVE_FACTS needs ALG_ALT2=1 (the facts injection road W_fact it re-enters through)"
 assert not (ALG_LIVE_FACTS and ALG_ALT3), "ALG_LIVE_FACTS and ALG_ALT3 both replace the training-step facts feed by different roads (one pass to b_fact vs three passes to b_fact3/b_fact5) — not yet composed; pick one"
 assert not (ALG_BUSREG_SEAL or ALG_BUSREG_PREDMAP or ALG_VALREG_LIVE) or ALG_BUSREG, (
@@ -529,6 +545,129 @@ def _decode_slots(row):
         for f in _facs:
             f["_slot"] = j; parse.append(f)
     return parse
+
+
+def certifier_bias(decoded_rows, facts, texts, T, gain, implied_gain=None):
+    """THE TRAINED CERTIFIER-MASK ROAD (2026-09-28; ledger 09:30 THE
+    CERTIFIER-SIGNAL CENSUS + 09:35 THE READ-TIME CERTIFIER MASK:
+    NEGATIVE). The read-time form (LV_CERTMASK, scripts/loop_val.py)
+    broadcast every colliding given toward every unclaimed numeral at
+    once and lost (gain 2: -0.0078 z1.2; gain 4: -0.0239 z3.1 AGAINST):
+    "a strong untrained bias blurs more than it fixes" and the census's
+    ceiling (57% of wrong-sentence givens) is for a mask that ALSO knows
+    WHICH slot goes to WHICH numeral. This is that assignment, built for
+    a body trained to read it from step 0 (fed through cert3/cert5, not
+    a read-time-only door):
+
+    NL certifier (PULL+PUSH, `gain`): from the decoded parse (the same
+    numeral-masked `_decode_slots` read LV_CERTMASK used), the UNCLAIMED
+    numeral runs (no decoded given claims them) and the COLLIDING given
+    slots (two+ givens decode to the same value) are paired one-to-one
+    by the Hungarian algorithm (scipy.optimize.linear_sum_assignment) on
+    the digit head's own affinity (scripts/sinkhorn_claim.py's
+    affinity_row — the claim read's own log-prob-of-numeral scoring,
+    reused rather than reimplemented, per the beam-oracle precedent) —
+    each colliding slot claims at most one unclaimed numeral, each
+    numeral at most one slot; a pairing whose affinity sits below
+    ALG_CERT_FLOOR (default -6.0) is refused (no unclaimed numeral fits
+    well enough to be worth pointing at). Assigned pairs get bias[j, a:b]
+    += gain over the run's token span.
+
+    MATH/IMPLIED certifier (`implied_gain`): for every given slot whose
+    decoded VARIABLE has a solver-known value (`facts`, the b_fact3/
+    b_fact5 (B, K_VARS, 4) convention: known-flag + MSD digits/9) that
+    DISAGREES with the slot's own decoded value and appears as a numeral
+    run in the text, every matching run gets bias[j, a:b] += implied_gain
+    — the strongest signal (the solver states what the number should be
+    and the text has it), independent of the NL half (implied_gain=0
+    silences it alone).
+
+    decoded_rows: length-B list of per-row raw head-logit dicts (pres,
+        ftype, op, dig, args, res, optionally dup) — RAW (pre-mask)
+        digits; masking is applied to a per-row COPY inside, never to
+        the input (the affinity's source must stay unmasked).
+    facts:  (B, K_VARS, 4) float32 or None (no consult behind this call
+        = nothing known = the IMPLIED half never fires, not an error).
+    texts:  length-B list of this batch's row text.
+    T:      token width (T_ALG) the runs and the returned bias are
+        indexed in.
+    gain, implied_gain: per-token addends; either 0/None disables that
+        half alone.
+
+    Returns (B, 1, L_TOT, T) float32, zero wherever nothing fired.
+    Bounded and hang-proof: pure numpy/scipy per row, no solver call
+    (the facts are handed in, never recomputed here)."""
+    import numpy as np
+    from collections import Counter
+    B = len(decoded_rows)
+    bias = np.zeros((B, 1, L_TOT, T), np.float32)
+    if not gain and not implied_gain:
+        return bias
+    from scipy.optimize import linear_sum_assignment
+    from mycelium.rulebook import legal_digit_logits
+    import membrane_scale as _MSC
+    from sinkhorn_claim import affinity_row   # THE CLAIM READ's own digit-head affinity — reused, not reimplemented
+    tok = _xcorr_tokenizer()
+    floor = float(os.environ.get("ALG_CERT_FLOOR", "-6.0"))
+    _dbg = int(os.environ.get("ALG_CERT_DEBUG", "0"))
+    _dbg_rows_nl = _dbg_slots_nl = _dbg_rows_im = _dbg_slots_im = 0
+    for bi in range(B):
+        row = decoded_rows[bi]; text = texts[bi]
+        L = row["ftype"].shape[0]
+        ids = tok.encode(text).ids[:T]; ids = ids + [0] * (T - len(ids))
+        runs = _MSC._digit_runs(tok, ids, T)
+        if not runs:
+            continue
+        masked = dict(row); masked["dig"] = row["dig"].copy()
+        for j in range(L):
+            if int(masked["ftype"][j].argmax()) == 0:
+                continue
+            fake = legal_digit_logits(masked["dig"][j], text)
+            if fake is not None:
+                masked["dig"][j] = fake
+        parse = _decode_slots(masked)
+        giv = {f["_slot"]: f for f in parse if f["ftype"] == "given"}
+        dec_val = {j: f["value"] for j, f in giv.items()}
+        claimed = Counter(dec_val.values())
+        if gain:
+            unclaimed = [(a, b, v) for a, b, v in runs if claimed.get(v, 0) == 0]
+            colliding = [j for j, v in dec_val.items() if claimed[v] >= 2]
+            if colliding and unclaimed:
+                nd = row["dig"].shape[1]
+                cand = [v for _, _, v in unclaimed]
+                A = np.stack([affinity_row(row["dig"][j], cand, nd)
+                              for j in colliding], 0)
+                r_idx, c_idx = linear_sum_assignment(-A)
+                _fired = False
+                for ci, ui in zip(r_idx, c_idx):
+                    if A[ci, ui] < floor:
+                        continue
+                    j = colliding[ci]; a, b, _ = unclaimed[ui]
+                    bias[bi, 0, j, a:b] += gain
+                    _dbg_slots_nl += 1; _fired = True
+                _dbg_rows_nl += int(_fired)
+        if implied_gain and facts is not None:
+            frow = facts[bi]
+            _fired = False
+            for j, f in giv.items():
+                v = f["var"]
+                if not (0 <= v < frow.shape[0]) or frow[v, 0] <= 0:
+                    continue
+                fval = (int(round(frow[v, 1] * 9)) * 100
+                        + int(round(frow[v, 2] * 9)) * 10
+                        + int(round(frow[v, 3] * 9)))
+                if fval == f["value"]:
+                    continue
+                for a, b, rv in runs:
+                    if rv == fval:
+                        bias[bi, 0, j, a:b] += implied_gain
+                        _dbg_slots_im += 1; _fired = True
+            _dbg_rows_im += int(_fired)
+    if _dbg:
+        print(f"[certifier-bias] ALG_CERT_DEBUG: B={B} NL fired rows={_dbg_rows_nl} slots={_dbg_slots_nl} "
+              f"| IMPLIED fired rows={_dbg_rows_im} slots={_dbg_slots_im} | nonzero cells={int(np.count_nonzero(bias))}",
+              flush=True)
+    return bias
 
 
 def _wheel_memo_key(row):
@@ -4571,6 +4710,27 @@ def breath_step(p, state, kb, ctx):
         _pb_kb = _anch_b0 if _pb_kb is None else _pb_kb + _anch_b0
         if _CENSUS is not None:
             _CENSUS.append((kb, "anchor", _anch_b0.realize().numpy()))
+    # THE TRAINED CERTIFIER-MASK ROAD (ALG_CERT=<gain>, 2026-09-28; the
+    # ledger's 09:35 negative result's cure): cert3/cert5 are the SAME
+    # (B, 1, L_TOT, T) route-bias shape pmask/anchor use, computed host-
+    # side from THE THREE CONSULTS' own decode (certifier_bias()) and
+    # fed in through forward()'s cert3/cert5 ports — NOT applied to the
+    # grounding read (that road is pmask/LV_CERTMASK's, kept as the
+    # read-time diagnostic; this is the per-breath re-reads that follow
+    # each consult, the ones the body can learn to trust). kb >= 3 sees
+    # cert3 (consult 1, read from breath 3, mirroring facts3's own
+    # entry point above); kb >= 5 additionally sees cert5 (consult 2).
+    # Both None (unset or ALG_ALT3 off) — bit-identical.
+    _cert3 = ctx.get("cert3")
+    if _cert3 is not None and kb >= 3:
+        _pb_kb = _cert3 if _pb_kb is None else _pb_kb + _cert3
+        if _CENSUS is not None:
+            _CENSUS.append((kb, "cert3", _cert3.realize().numpy()))
+    _cert5 = ctx.get("cert5")
+    if _cert5 is not None and kb >= 5:
+        _pb_kb = _cert5 if _pb_kb is None else _pb_kb + _cert5
+        if _CENSUS is not None:
+            _CENSUS.append((kb, "cert5", _cert5.realize().numpy()))
     if ALG_IDKEY:
         # THE IDENTITY KEY ON THE BANK READ (the env block's brief): the
         # slot's identity query = the unit identity of what it attended
@@ -5289,7 +5449,7 @@ def breath_step(p, state, kb, ctx):
     return state
 
 
-def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, drop=None, anchor=None, amask=None, gmod=None, pmask=None, lsent=None, reg=None, fact_buf=None, mh_mass=None, mh_atlas_traj=None, xcorr=None, res_map=None, hud=None, ident=None, busreg_ramp=None, valfact=None, stop_after=None, facts3=None, facts5=None, tree=None):
+def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, drop=None, anchor=None, amask=None, gmod=None, pmask=None, lsent=None, reg=None, fact_buf=None, mh_mass=None, mh_atlas_traj=None, xcorr=None, res_map=None, hud=None, ident=None, busreg_ramp=None, valfact=None, stop_after=None, facts3=None, facts5=None, tree=None, cert3=None, cert5=None):
     from tinygrad import Tensor, dtypes   # audit 2026-09-01: was a
     # SCOPE ACCIDENT (bound only via the sixwave/sync branches — any
     # SIXWAVE-off config killed five organs at step 1)
@@ -5548,6 +5708,7 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
                    "fat0": fat,   # THE IDENTITY KEY's breath-1 query source: breath 0's grounding attention (B, L_TOT, T)
                    "valtag_v": _valtag_v,
                    "anchor_bias0": _anch_bias0,
+                   "cert3": cert3, "cert5": cert5,   # THE TRAINED CERTIFIER-MASK ROAD (2026-09-28): per-breath pbias from kb 3 / 5 on (breath_step below)
                    "slot_mask": slot_mask, "bank": bank, "rot2": _rot2,
                    "sync": _sync, "swtick": _swtick, "drop": drop, "gmod": gmod,
                    "revoke": revoke, "tail": tail, "reg": reg,
@@ -7677,6 +7838,8 @@ def do_train(steps, lr, batch, seed):
         if ALG_VALREG_ON else None   # THE VALUE STREAM's facts feed (b_fact idiom)
     b_fact3 = fix(np.zeros((batch, K_VARS, 4), np.float32), dtypes.float) if ALG_ALT3 else None   # THE THREE CONSULTS: consult 1's values (read from breath 3)
     b_fact5 = fix(np.zeros((batch, K_VARS, 4), np.float32), dtypes.float) if ALG_ALT3 else None   # consult 2's values (read from breath 5)
+    b_cert3 = fix(np.zeros((batch, 1, L_TOT, T_ALG), np.float32), dtypes.float) if ALG_CERT else None   # THE TRAINED CERTIFIER-MASK ROAD: consult 1's bias (read from breath 3)
+    b_cert5 = fix(np.zeros((batch, 1, L_TOT, T_ALG), np.float32), dtypes.float) if ALG_CERT else None   # consult 2's bias (read from breath 5)
     _valfact_rng = np.random.RandomState(seed + 7331) if ALG_VALREG_ON else None
     b_mha = fix(np.zeros((batch, ATLAS_TAB.shape[1], H_W), np.float32),
                 dtypes.float) if ATLAS_TAB is not None else None
@@ -7843,13 +8006,13 @@ def do_train(steps, lr, batch, seed):
             # commits, self-labeled from gold like the commit loss,
             # DETACHED); the second trains under live release dynamics.
             o0 = forward(p, s_tr, b_tk, b_se, slot_mask=b_mask, tail=b_tail,
-                         reg=b_reg, xcorr=b_xcorr, res_map=b_resmap, hud=b_hud, tree=b_tree, ident=b_ident, busreg_ramp=b_bgain, valfact=b_valfact, facts3=b_fact3, facts5=b_fact5)
+                         reg=b_reg, xcorr=b_xcorr, res_map=b_resmap, hud=b_hud, tree=b_tree, ident=b_ident, busreg_ramp=b_bgain, valfact=b_valfact, facts3=b_fact3, facts5=b_fact5, cert3=b_cert3, cert5=b_cert5)
             ok = ((o0["ftype"].argmax(-1) == bg["ftype"]).float()
                   * (o0["res"].argmax(-1) == bg["res"]).float())
             rv = (bg["presence"] * (1.0 - ok)).detach()
             o = forward(p, s_tr, b_tk, b_se, slot_mask=b_mask, revoke=rv,
                         tail=b_tail, reg=b_reg, fact_buf=b_fact,
-                        mh_mass=b_mhm, mh_atlas_traj=b_mha, xcorr=b_xcorr, res_map=b_resmap, hud=b_hud, tree=b_tree, ident=b_ident, busreg_ramp=b_bgain, valfact=b_valfact, facts3=b_fact3, facts5=b_fact5)
+                        mh_mass=b_mhm, mh_atlas_traj=b_mha, xcorr=b_xcorr, res_map=b_resmap, hud=b_hud, tree=b_tree, ident=b_ident, busreg_ramp=b_bgain, valfact=b_valfact, facts3=b_fact3, facts5=b_fact5, cert3=b_cert3, cert5=b_cert5)
         elif int(os.environ.get("NAZ_TRAIN", "0")):
             # NAZARÉ TRAINING (door #55): the organ-2 two-forward pattern —
             # pre-pass yields the intra-pass event field IN-GRAPH (detached);
@@ -7858,7 +8021,7 @@ def do_train(steps, lr, batch, seed):
             # read-time dup-aware argpair): argmax-change OR dup-flip on
             # rel-typed present slots, breath-0 vs final.
             o0 = forward(p, s_tr, b_tk, b_se, slot_mask=b_mask, tail=b_tail,
-                        xcorr=b_xcorr, res_map=b_resmap, hud=b_hud, tree=b_tree, ident=b_ident, busreg_ramp=b_bgain, valfact=b_valfact, facts3=b_fact3, facts5=b_fact5)
+                        xcorr=b_xcorr, res_map=b_resmap, hud=b_hud, tree=b_tree, ident=b_ident, busreg_ramp=b_bgain, valfact=b_valfact, facts3=b_fact3, facts5=b_fact5, cert3=b_cert3, cert5=b_cert5)
             _b0 = o0["breaths"][0]
             _relmask = (o0["pres"].squeeze(-1) > 0).float() \
                 * (o0["ftype"].argmax(-1) == 0).float()
@@ -7869,13 +8032,13 @@ def do_train(steps, lr, batch, seed):
             _gm = (_bgauth + (1.0 - _bgauth) * _ev).unsqueeze(-1).detach()
             o = forward(p, s_tr, b_tk, b_se, slot_mask=b_mask, tail=b_tail,
                         gmod=_gm, fact_buf=b_fact,
-                        mh_mass=b_mhm, mh_atlas_traj=b_mha, xcorr=b_xcorr, res_map=b_resmap, hud=b_hud, tree=b_tree, ident=b_ident, busreg_ramp=b_bgain, valfact=b_valfact, facts3=b_fact3, facts5=b_fact5)
+                        mh_mass=b_mhm, mh_atlas_traj=b_mha, xcorr=b_xcorr, res_map=b_resmap, hud=b_hud, tree=b_tree, ident=b_ident, busreg_ramp=b_bgain, valfact=b_valfact, facts3=b_fact3, facts5=b_fact5, cert3=b_cert3, cert5=b_cert5)
         else:
             _bd = os.environ.get("BREATH_DROPOUT")
             o = forward(p, s_tr, b_tk, b_se, slot_mask=b_mask, tail=b_tail,
                         drop=(b_drop if _bd else None), lsent=b_ls, reg=b_reg,
                         fact_buf=(None if ALG_ALT3 else b_fact),   # THE THREE CONSULTS: the start-of-run facts give way to facts3/facts5
-                        mh_mass=b_mhm, mh_atlas_traj=b_mha, xcorr=b_xcorr, res_map=b_resmap, hud=b_hud, tree=b_tree, ident=b_ident, busreg_ramp=b_bgain, valfact=b_valfact, facts3=b_fact3, facts5=b_fact5)
+                        mh_mass=b_mhm, mh_atlas_traj=b_mha, xcorr=b_xcorr, res_map=b_resmap, hud=b_hud, tree=b_tree, ident=b_ident, busreg_ramp=b_bgain, valfact=b_valfact, facts3=b_fact3, facts5=b_fact5, cert3=b_cert3, cert5=b_cert5)
         l = loss_fn(o, bg)
         if ALG_CONSUME and "_early" in o:   # support-gated consume-once:
             # any breath claims, each fact pays once; eligibility = the DAG
@@ -7938,23 +8101,27 @@ def do_train(steps, lr, batch, seed):
         from facts_pool import run as _fp_run_c
         _c_keys = ("pres", "ftype", "op", "dig", "args", "res") + (("dup",) if "h_dup" in p else ())
         _bd_c = os.environ.get("BREATH_DROPOUT")
-        def _partial(stop, f3):
+        def _partial(stop, f3, c3=None):
             Tensor.training = True
             s_c = b_tr.cast(dtypes.float)
             o = forward(p, s_c, b_tk, b_se, slot_mask=b_mask, tail=b_tail,
                         drop=(b_drop if _bd_c else None), lsent=b_ls, reg=b_reg,
                         fact_buf=None,
                         mh_mass=b_mhm, mh_atlas_traj=b_mha, xcorr=b_xcorr, res_map=b_resmap, hud=b_hud, tree=b_tree, ident=b_ident, busreg_ramp=b_bgain, valfact=b_valfact,
-                        stop_after=stop, facts3=f3)
+                        stop_after=stop, facts3=f3, cert3=c3)
             return {k: o[k].realize() for k in _c_keys}
         def pass_a():
             return _partial(2, None)
         def pass_b():
-            return _partial(4, b_fact3)
+            # THE TRAINED CERTIFIER-MASK ROAD: pass b runs breaths 3-4
+            # too, so it must see cert3 (kb >= 3) the same as the full
+            # step does — b_cert3 is already populated (consult 1 runs
+            # before pass_b is called below) and None when ALG_CERT=0.
+            return _partial(4, b_fact3, b_cert3)
         pass_a = TinyJit(pass_a)
         pass_b = TinyJit(pass_b)
         _consult_t = [0.0, 0]   # host seconds, count (the perf line)
-        def _consult_into(buf, pass_fn, idx):
+        def _consult_into(buf, pass_fn, idx, cert_buf=None):
             _t0c = time.time()
             o = pass_fn()
             onp = {k: o[k].numpy() for k in _c_keys}
@@ -7963,6 +8130,16 @@ def do_train(steps, lr, batch, seed):
             fb = _fp_run_c(onp, sent[idx], nv, ma)          # (B, K_VARS, 4): the forced values, walled per row
             _rlc = []
             _fd(buf, fb, _rlc)
+            if cert_buf is not None:
+                # THE TRAINED CERTIFIER-MASK ROAD (ALG_CERT): the SAME
+                # decode this consult just took (onp) plus the facts it
+                # just forced (fb) go straight into certifier_bias — no
+                # extra pass, no solver call, walled per row already by
+                # _fp_run_c above.
+                texts = [samples[int(i)]["text"] for i in idx]
+                decoded_rows = [{k: onp[k][bi] for k in onp} for bi in range(len(idx))]
+                cb = certifier_bias(decoded_rows, fb, texts, T_ALG, ALG_CERT, ALG_CERT_IMPLIED)
+                _fd(cert_buf, cb, _rlc)
             if _rlc:
                 Tensor.realize(*_rlc)
             _consult_t[0] += time.time() - _t0c; _consult_t[1] += 1
@@ -8884,8 +9061,8 @@ def do_train(steps, lr, batch, seed):
             # THE THREE CONSULTS, per step: pass a -> consult 1 -> facts3;
             # pass b (with facts3) -> consult 2 -> facts5; then the full
             # step (with both) — the same three curbs the read walks.
-            _consult_into(b_fact3, pass_a, idx)
-            _consult_into(b_fact5, pass_b, idx)
+            _consult_into(b_fact3, pass_a, idx, cert_buf=b_cert3)
+            _consult_into(b_fact5, pass_b, idx, cert_buf=b_cert5)
         if ALG_LIVE_FACTS:
             # THE LIVE-FACTS ROAD: this step's own pass-1 parse overwrites
             # the maskprep-cache feed already copied into b_fact above —

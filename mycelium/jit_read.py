@@ -245,7 +245,8 @@ _OPT_PORTS = ("slot_mask", "revoke", "tail", "drop", "anchor", "amask",
               "ident",   # THE BUS REGISTER's token-id port (2026-09-22)
               "busreg_ramp",   # THE FADE-IN's scalar (training only; readers never pass it)
               "valfact",   # THE VALUE STREAM's facts port (2026-09-22)
-              "facts3", "facts5")   # THE THREE CONSULTS' facts ports (2026-09-24)
+              "facts3", "facts5",   # THE THREE CONSULTS' facts ports (2026-09-24)
+              "cert3", "cert5")   # THE TRAINED CERTIFIER-MASK ROAD's bias ports (2026-09-28)
 # Non-tensor kwargs a reader may pass (python constants baked into the
 # captured graph, so they are part of the key): the partial pass's stop.
 _CONST_KW = ("stop_after",)
