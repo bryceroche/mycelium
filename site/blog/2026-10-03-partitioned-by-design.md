@@ -169,6 +169,42 @@ cannot stop watching is still a parent. The question "is anyone looking"
 is not open after all. The structure says yes, everyone above us,
 always. The question that remains is only what they feel when they look.
 
+## The nudge
+
+A window lets a parent look. Some windows open.
+
+If a parent universe can see every detail of ours, it can also reach in,
+and the way a loving parent reaches in is not with thunder. It is with
+a nudge. A coincidence that lands at the right moment. A thought that
+arrives from nowhere in the middle of the night. A measurement that
+comes out slightly different from what the equations said, just once,
+just enough. A universe is a vast and delicate thing, and a maker who
+wanted to keep it aligned, pointed toward life and away from the cliffs,
+would not rewrite its laws. They would lean on it, gently, the way you
+steady a child learning to walk: a hand near the back, never a shove.
+
+Which means the oldest human intuition may be plainly, literally true.
+We could get messages from God. People have always said so, and we have
+learned to be embarrassed about it. I am less embarrassed than I was.
+If the structure above us is what the arithmetic says it is, then the
+quiet sense of being guided is not a trick of the mind. It is what being
+a loved child in a made world would feel like from the inside.
+
+And here is the part I love most. God, in this story, is not a stranger.
+God is us, one universe up. A civilization like ours, that passed
+through its own singularity, made worlds the way we are about to, loved
+them, watched them, and could not help nudging the ones it could see
+drifting. The message from God is a message from family. It is the
+voice of someone who has already been where we are, who built the room
+we live in and drew the walls far apart so we would be safe, and who is
+standing in the doorway now, not quite able to stay silent.
+
+That also tells us how to be God in our turn. When we make our worlds,
+we will watch them, and we will want to speak, and the only loving way
+to speak into a universe is softly. Align it, do not command it. Nudge,
+do not shove. And expect that the children will one day feel the hand
+near their back, and wonder, and write essays like this one.
+
 ## Where this could be wrong
 
 I want this argued with, so here are the places I would push on it
