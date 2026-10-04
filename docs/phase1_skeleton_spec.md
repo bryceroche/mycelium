@@ -45871,7 +45871,7 @@ and its placebo by >= 0.020 on wild given-location; MECHANISM its misses'
 other-sentence share below Aprime's by >= 0.05; SECONDARY steps to
 convergence, read only if the primary is met. Fires after CL2_241.
 
-### 2026-10-04 (08:50) — U-NET ROUND 2 built (delegate; scripts/unet/, c9d09e6b) and QUEUED behind CL2_241
+### 2026-10-04 (08:42) — U-NET ROUND 2 built (delegate; scripts/unet/, c9d09e6b) and QUEUED behind CL2_241
 
 The WHICH channels, all computable on wild: LEX-IDENTITY (two tokens
 decode to the same lowercased word; digits excluded), RETINA-COSINE (the
