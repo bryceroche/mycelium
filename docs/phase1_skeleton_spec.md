@@ -45614,7 +45614,7 @@ queries when the pooled terms are off) — the main head stays untouched
 under the running certloop arm; the gate and the TC_241 chain now run
 from the worktree; the gate refired. CL_241 is on the card.
 
-### 2026-10-03 (19:25) — THE U-NET PICTURE BAKE-OFF built (delegate; scripts/unet/, ad2776ce) and QUEUED behind the arms
+### 2026-10-03 (19:20) — THE U-NET PICTURE BAKE-OFF built (delegate; scripts/unet/, ad2776ce) and QUEUED behind the arms
 
 A separate engine beside the head, no change to the body: scripts/unet/
 {pictures,targets,model,train,eval_wild}.py. PICTURES (per row, on the
