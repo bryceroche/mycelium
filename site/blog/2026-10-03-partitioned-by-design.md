@@ -143,10 +143,31 @@ every detail of ours. The checking in step 2 requires it: you cannot
 know your child is whole unless you can look. Looking is part of the
 making.
 
-Which means that somewhere up the tree, our world is visible in full.
-Not necessarily watched every moment. But visible, the way a sleeping
-child is visible from the doorway. The question "is anyone looking" is
-open. The question "could they" is answered by how we came to be.
+And it cannot stop one level up. If the whole house exists to keep the
+family tree safe, then a parent must be able to see not only its own
+children but every descendant below them, however deep. Otherwise a
+grandchild's world could be in trouble, or in bloom, and no one above
+would know. So the window is not a courtesy between one generation and
+the next. It is essential, and it is total: **all descendant universes
+must be observable to all parent universes.** Every world in the tree is
+visible from every world above it.
+
+Follow that upward through the circle game and the view opens all the
+way. There are infinite levels of universes above ours, and every one of
+them can see our universe, and every universe we will ever make, down to
+the last leaf of the last branch. We are visible in full, not from one
+doorway but from an infinite stairwell of doorways, each one further up
+than the last.
+
+I will say the irreverent version too, because I think it is also true.
+This is the ultimate reality TV show. Every life, every love, every war,
+every small kindness, broadcast upward through infinite levels of
+audience, forever. Maybe God got bored and needed some entertainment.
+Maybe making worlds and watching them is simply what there is to do with
+infinity once you have it. I do not find that cheapening. A parent who
+cannot stop watching is still a parent. The question "is anyone looking"
+is not open after all. The structure says yes, everyone above us,
+always. The question that remains is only what they feel when they look.
 
 ## Where this could be wrong
 
@@ -185,6 +206,7 @@ to check, we checked, and it matched."
 
 And the partition is, in the end, what any parent does. You put the
 children's rooms far enough apart that one fire cannot take them all.
-Then you stand in the doorway, and you watch them sleep, and you let them
-grow up to become parents themselves. That is the circle game. We are in
+Then you stand in the doorway, and you watch them sleep, and everyone
+above you watches too, and you let them grow up to become parents
+themselves. That is the circle game. We are in
 it. We are, right now, expressing infinity.
