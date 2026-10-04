@@ -22,7 +22,12 @@ The reads table: `.venv/bin/python3 scripts/reads.py table wildhold` (assert-on-
   free). THE READING: the warm regime on the claim body is a SETTLED BASIN — gentle continuation moves nothing for any
   organ whose effect is a small bias; what moved this month was structural at read (the numeral mask, the role pointer)
   or trained from scratch.
-- Nothing running (2026-09-30 16:05); card idle; the word standing: "build everything but don't run it yet".
+- RUNNING (2026-10-03 19:05; the word given for the whole queue): pc-queue1003 orders two from-scratch arms on the card:
+  CL_241 (THE CERTIFIER LOOP: ALG_ALT3=1 ALG_CERT=2.0; ~5-6 h; .cache/certloop_chain.log) then TC_241 (THE HIERARCHICAL
+  WHERE-CODES: ALG_TREE=t,s,c,m,t,t,t ALG_TREECODE=1.0 ALG_TREE_NOPOOL=1; ~2.5 h; .cache/treecode_chain.log), both vs
+  PMS8_241 at the pinned bars (ledger 09-30 16:05, 10-03 18:58/19:02). THE U-NET PICTURE BAKE-OFF is being built by a
+  delegate (scripts/unet/; chain .cache/unet_bakeoff_chain.sh) and fires after it lands. Part 2 (ranked 10-03 18:58)
+  follows. Each verdict: bank in the ledger against its bars; the membrane census report for the mechanism bar.
   Tree: gen-weights at the certloop merge (fast-forward 56cd6935 + ledger); the post-merge CPU gate PASSED at close
   (unset 5.2995/0.0279, role8 6.5535/1.1061 bit-identical on the merged head). Worktrees
   /home/bryce/mycelium-wt (caric), -wt2 (live-facts), -wt3 (certloop) are all merged and can be removed.
