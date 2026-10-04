@@ -45753,3 +45753,28 @@ the certifier loop's FORM 2 (a fresh grounding read at the consult
 breaths under the assignment lines — new evidence at the first look,
 the one place no arm has yet reached) and the retina-side identity keys
 on the grounding read; Part 2's ranked list behind them.
+
+### 2026-10-04 (05:40) — THE TWELVE HILLS (Bryce: "deeply held beliefs — all hills I'm willing to die on"): the design constitution, recorded
+
+(1) alternation between the NL and math loops, each with its own solver
+or certifier; (2) a U-Net and a hierarchical codebook traversed coarse-
+to-fine from root to leaves each breath; (3) the perceiver reading the
+system's metadata and adjusting the breath cycles on the two solvers'
+feedback; (4) MCTS and MDP to search for the answer; (5) unit, feature
+and integration testing and API-contract enforcement (Bryce: "we might
+be lacking here" — what stands in: the CPU bit-identity gates, the
+complex-tensor fence, the Goodhart fence, the custody-gold law, reads.py
+assert, the REFUSED list, the no-grad fence; conventional unit tests are
+thin — a standing gap); (6) the atlas = tree-structured centroids with
+Welford stats; (7) the U-Net is the perceiver's eyes, dynamic masking its
+hands; (8) breath cycles do not specialize (the tug-of-war), attention
+heads do; (9) hierarchical embeddings map to the tree-structured codebook,
+perhaps through MLP or MHA blocks; (10) the T6 clock keeps time, the T256
+rotational bus tracks relations; (11) the 512-d and 128-d bottlenecks are
+key; (12) a coarse-to-fine diffusion compiler with alternation and MCTS.
+THE RULING THEY CARRY (the compatibility ruling's form): the hills govern
+what gets BUILT forward; bars and kills still govern what gets CLAIMED;
+a null read is a verdict on a FORM of a belief, never on the belief —
+when a line closes, the next form of the same belief is sought (new
+evidence, not a re-read), never a new belief. Recorded in project memory
+(user_deeply_held_beliefs.md) and here.
