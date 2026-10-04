@@ -25,8 +25,10 @@ The reads table: `.venv/bin/python3 scripts/reads.py table wildhold` (assert-on-
 - RUNNING (2026-10-03 19:05; the word given for the whole queue): pc-queue1003 orders two from-scratch arms on the card:
   CL_241 (THE CERTIFIER LOOP: ALG_ALT3=1 ALG_CERT=2.0; ~5-6 h; .cache/certloop_chain.log) then TC_241 (THE HIERARCHICAL
   WHERE-CODES: ALG_TREE=t,s,c,m,t,t,t ALG_TREECODE=1.0 ALG_TREE_NOPOOL=1; ~2.5 h; .cache/treecode_chain.log), both vs
-  PMS8_241 at the pinned bars (ledger 09-30 16:05, 10-03 18:58/19:02). THE U-NET PICTURE BAKE-OFF is being built by a
-  delegate (scripts/unet/; chain .cache/unet_bakeoff_chain.sh) and fires after it lands. Part 2 (ranked 10-03 18:58)
+  PMS8_241 at the pinned bars (ledger 09-30 16:05, 10-03 18:58/19:02). THE U-NET PICTURE BAKE-OFF is BUILT (scripts/unet/, ad2776ce;
+  ledger 10-03 19:20) and QUEUED as pc-queue2-1003 behind the two arms (.cache/unet_bakeoff_chain.sh: three 20k-step
+  runs A' / A'' / A''s + eval_wild; primary bar: A'' beats both by >= 0.020 on wild given-location; log
+  .cache/unet_bakeoff_chain.log, queue log .cache/queue2_1003.log). CL_241 runs at 0.235 s/step (~3 h). Part 2 (ranked 10-03 18:58)
   follows. Each verdict: bank in the ledger against its bars; the membrane census report for the mechanism bar.
   Tree: gen-weights at the certloop merge (fast-forward 56cd6935 + ledger); the post-merge CPU gate PASSED at close
   (unset 5.2995/0.0279, role8 6.5535/1.1061 bit-identical on the merged head). Worktrees
