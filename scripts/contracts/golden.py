@@ -149,6 +149,9 @@ def select_golden(rows, has_twin, seed=SEED, n_per_cat=N_PER_CAT):
             except Exception as e:
                 skipped.append((i, cat, str(e)[:80]))
                 continue
+            if len(rows[i].get("solution", []) or []) <= int(rows[i].get("query_var", 0)):
+                skipped.append((i, cat, "solution vector shorter than query_var (load_alg reads solution[query_var])"))
+                continue
             picks.append(i)
             if len(picks) == n_per_cat:
                 break
