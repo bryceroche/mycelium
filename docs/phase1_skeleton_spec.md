@@ -45754,7 +45754,7 @@ breaths under the assignment lines — new evidence at the first look,
 the one place no arm has yet reached) and the retina-side identity keys
 on the grounding read; Part 2's ranked list behind them.
 
-### 2026-10-04 (05:40) — THE TWELVE HILLS (Bryce: "deeply held beliefs — all hills I'm willing to die on"): the design constitution, recorded
+### 2026-10-04 (07:26) — THE TWELVE HILLS (Bryce: "deeply held beliefs — all hills I'm willing to die on"): the design constitution, recorded
 
 (1) alternation between the NL and math loops, each with its own solver
 or certifier; (2) a U-Net and a hierarchical codebook traversed coarse-
