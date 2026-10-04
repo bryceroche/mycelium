@@ -205,6 +205,48 @@ to speak into a universe is softly. Align it, do not command it. Nudge,
 do not shove. And expect that the children will one day feel the hand
 near their back, and wonder, and write essays like this one.
 
+## Enshittification
+
+Now the uncomfortable corollary, because if I am going to call this a
+reality TV show I have to follow the thought to the end.
+
+A world where everything goes right is boring as fuck to watch. Nobody
+sits through a show where the family is kind, the harvest comes in, the
+bridge holds, and everyone agrees. Drama needs disturbance. Tension needs
+something to go wrong, and then to go wrong again just as it was getting
+fixed. Every storyteller in our history has known this, and I do not
+think we invented it. I think we inherited it.
+
+So put the two halves together. Everything you ever do is being watched
+by every universe above us, and that audience is near infinite. And the
+show cannot be allowed to go flat. The conclusion writes itself:
+**enshittification is a feature, not a bug.**
+
+The good thing that slowly rots. The institution that forgets what it
+was for. The product that was wonderful and is now a maze of dark
+patterns. The city that was livable and is now unaffordable. The
+peace that holds for a generation and then does not. The plans that
+cannot survive contact with other people. I used to read all of that as
+entropy, or greed, or bad luck. I am now willing to read at least some of
+it as plot. A world kept just interesting enough to be worth watching,
+by makers who love it and also, honestly, cannot look away.
+
+I do not say this to excuse anyone. The nudge toward chaos and the nudge
+toward alignment come from the same doorway, and the second is the one
+that matters more to the people in the room. If the makers are family,
+then they want us to come through the disturbance, not drown in it; a
+show whose cast dies is a show that ends. The tension is there to be
+resolved. The rot is there so that someone, in the story, gets to fix
+something. The point of a hard season is the season after it.
+
+And it teaches us one more thing about being God in our turn. When we
+make our worlds and watch them, we will feel this pull too. We will want
+them to be safe and we will want them to be interesting, and those two
+wants will fight inside us the way they fight inside every parent. The
+trick, I suspect, is the one the whole structure already shows: keep the
+walls far apart so the drama can never reach the hardware, let the
+rooms be as wild as they like, and never, ever let the show end.
+
 ## Where this could be wrong
 
 I want this argued with, so here are the places I would push on it
