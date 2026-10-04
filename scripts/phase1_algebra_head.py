@@ -262,6 +262,14 @@ ALG_ALT3 = int(os.environ.get("ALG_ALT3", "0"))
 # so ALG_CERT=<g> alone arms both halves, and ALG_CERT_IMPLIED=0 can
 # silence the math half only.
 ALG_CERT = float(os.environ.get("ALG_CERT", "0"))
+# FORM 2 OF THE CERTIFIER LOOP (2026-10-04, the word; CL_241's lesson: the lines entered the per-breath reads but the
+# FIRST LOOK was never retaken): ALG_CERT2=1 makes the bank read at the breath after each consult (kb 3 and kb 5)
+# a FRESH GROUNDING READ — the slot queries are the bank's own fq alone (no state in the query, exactly breath 0's
+# read), under the certifiers' lines in pbias — so the slots look at the text again without the memory of where
+# they looked before, guided only by the new evidence. Everything else (the state, the notebook, the facts) flows
+# on. Unset = bit-identical.
+ALG_CERT2 = int(os.environ.get("ALG_CERT2", "0"))
+assert not ALG_CERT2 or ALG_CERT, "ALG_CERT2 rides on ALG_CERT (the lines it re-grounds under)"
 ALG_CERT_IMPLIED = float(os.environ.get(
     "ALG_CERT_IMPLIED", str(ALG_CERT) if ALG_CERT else "0"))
 # THE LIVE-FACTS TRAINING ROAD (2026-09-24, ledger 21:05; the out-of-sync
@@ -4790,7 +4798,7 @@ def breath_step(p, state, kb, ctx):
         _pb_kb = _idk_b if _pb_kb is None else _pb_kb + _idk_b
         if _CENSUS is not None:
             _CENSUS.append((kb, "idkey", _idk_b.realize().numpy()))
-    h_tok, fat_cur = bank(p["fq"], L_TOT, extra=q_extra, kb=kb,
+    h_tok, fat_cur = bank(p["fq"], L_TOT, extra=(None if (ALG_CERT2 and kb in (3, 5)) else q_extra), kb=kb,   # FORM 2: a fresh first look at the consult breaths
                           pbias=_pb_kb,
                           rbias=_rb7,
                           prior=(state.get("tree_prev_at") if ALG_TREE2 else None),   # FORM 2's construction line

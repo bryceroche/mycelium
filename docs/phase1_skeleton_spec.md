@@ -45839,3 +45839,34 @@ build and precede any arm. ORDER: the contracts; the certifier loop's
 form 2 (hills 1 and 3; the first look); the U-Net inside the loop with
 WHICH channels (hills 2 and 7). Recorded in project memory beside the
 hills.
+
+### 2026-10-04 (08:20) — WORD GIVEN FOR THE WHOLE QUEUE: the contracts, form 2 of the loop, the U-Net inside the WHICH tree
+
+(1) THE CERTIFIER LOOP, FORM 2 — BUILT: ALG_CERT2=1 (rides on ALG_CERT):
+the bank read at the breath after each consult (kb 3 and kb 5) becomes a
+FRESH GROUNDING READ — the slot queries are fq alone, no state in the
+query, exactly breath 0's read — under the certifiers' assignment lines
+in pbias: the slots look at the text again without the memory of where
+they looked, guided only by the new evidence; the state, the notebook and
+the facts flow on. Unset bit-identical. Gate (CPU, running): unset;
+role8; certloop (= 10-03's line); cert2 runs. ARM CL2_241 (.cache/cert2_
+chain.sh; from scratch vs PMS8_241): BARS = CL_241's (masked +0.020 z 2
+or the twin; the wrong-sentence share < 0.40; rows >= 14) + digits not
+down (CL_241's cost). Fires on the gate. (2) THE THREE CONTRACTS (hill 5;
+delegate; scripts/contracts/): preflight.py (a chain's every input
+asserted present before it fires, produced files excepted), convergence.py
+(no scoring until the smoothed loss moves < 1% over the last 10% of
+steps, a spike guard), golden.py (24 fixed training-diet rows with keys,
+re-run after every change; the card read documented, fired with the
+word). Every chain from here calls preflight at its top and convergence
+before its first read. (3) U-NET ROUND 2 (delegate; scripts/unet/): the
+WHICH channels computable on wild — lexical identity blocks (the same
+word = the same entity candidate), the retina cosine (Llama's INPUT
+embedding, context-free: the identity port's source), event blocks (a
+clause with a verb-ish cue), a moment channel (signed clause order), role-
+cue proximity — plus their shuffled placebo, the convergence rule as the
+stopping condition (chunks of 20k to a 60k cap), the round-1 control
+re-trained under the same rule. BARS: PRIMARY Awhich beats both Aprime
+and its placebo by >= 0.020 on wild given-location; MECHANISM its misses'
+other-sentence share below Aprime's by >= 0.05; SECONDARY steps to
+convergence, read only if the primary is met. Fires after CL2_241.
