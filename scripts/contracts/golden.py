@@ -145,9 +145,14 @@ def select_golden(rows, has_twin, seed=SEED, n_per_cat=N_PER_CAT):
         picks = []
         for i in pool:
             try:
-                row_gold(rows[i])
+                _key_i = int(row_gold(rows[i]))
             except Exception as e:
                 skipped.append((i, cat, str(e)[:80]))
+                continue
+            _sol_i = rows[i].get("solution", []) or []
+            _q_i = int(rows[i].get("query_var", 0))
+            if _q_i < len(_sol_i) and int(_sol_i[_q_i]) != _key_i:
+                skipped.append((i, cat, f"solution[query]={_sol_i[_q_i]} contradicts the custody key {_key_i} (load_alg refuses the fixture)"))
                 continue
             if len(rows[i].get("solution", []) or []) <= int(rows[i].get("query_var", 0)):
                 skipped.append((i, cat, "solution vector shorter than query_var (load_alg reads solution[query_var])"))
