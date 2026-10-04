@@ -22,6 +22,11 @@ The reads table: `.venv/bin/python3 scripts/reads.py table wildhold` (assert-on-
   free). THE READING: the warm regime on the claim body is a SETTLED BASIN — gentle continuation moves nothing for any
   organ whose effect is a small bias; what moved this month was structural at read (the numeral mask, the role pointer)
   or trained from scratch.
+- 10-04 01:55: TC_241 (THE WHERE-CODES, from scratch) DOES NOT FIRE — slot -0.002 (z 0.2), rows 14/10 vs 14/9, mint
+  -0.007, the wrong-sentence share unmoved (0.508). THE DESCENT LINE ON THE MEMBRANE IS CLOSED: six forms (three warm,
+  three from scratch) null; the first look sets the wall. Open: new evidence at the first look — the U-Net picture
+  (RUNNING: pc-queue2-1003, A' then A'' then A''s, ~? h; .cache/unet_bakeoff_chain.log), the certifier loop's form 2
+  (a fresh grounding read under the lines at the consult breaths), retina-side identity keys.
 - 10-04 00:05: CL_241 (THE CERTIFIER LOOP, from scratch) DOES NOT FIRE — slot -0.0015 (z 0.1), rows 8/8 vs 14/9 (six
   masked rows down), mint -0.011, digits 0.39 vs 0.46; the wrong-sentence share unmoved (0.505; the census collect runs
   the plain two-pass, not the consult path — stated). The lines entered the reads AFTER the consults, never the first

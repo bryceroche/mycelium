@@ -45685,3 +45685,35 @@ registered, unbuilt. Regime tag: one seed, from scratch. Artifacts:
 sharp_CL_241, ps_{open,legal}_wild_CL_241.npz, dump_wild_CL_241.pkl,
 rawslots_wild_CL_241.pkl, membrane_scale_CL_241.txt. TC_241 (the
 where-codes) is on the card next.
+
+### 2026-10-04 (01:55) — THE WHERE-CODES ARM: DOES NOT FIRE; THE DESCENT LINE CLOSES IN THREE FORMS (TC_241 vs PMS8_241; treecode_chain.log)
+
+TC_241 (from scratch: the PMS8 recipe + ALG_TREE=t,s,c,m,t,t,t
+ALG_TREECODE=1.0 ALG_TREE_NOPOOL=1 — fixed hierarchical unit phasors on
+the token keys, the leaf open, no pooled terms): masked wild 0.3457 vs
+0.3476, paired -0.0020 (SE 0.0084, z 0.2; 149 vs 145 discordant); open
+0.3203 vs 0.3198; rows 14 / 10 vs 14 / 9; mint 0.6467 vs 0.654 (-0.007,
+the smallest cost of the tree family: form 1 -0.06, form 2 -0.045);
+fields: op 0.746 (up 0.03), ftype 0.860 (up), args 0.434 (down 0.015),
+dig 0.422 (down 0.04). THE MECHANISM: wrong givens' other-sentence share
+0.508 / 0.524 mass (PMS8 0.495 / 0.520) — unmoved; the breath-1
+sentence code nudged wrong slots INTO other sentences (b1 0.565 vs b0
+0.508, the mildest echo of form 1's 0.665); the right slots 0.80 -> 0.61
+(the body's 0.81 -> 0.60). VERDICT: does not fire on either bar. THE
+LINE: three from-scratch forms of the coarse-to-fine descent over the
+membrane — pooled content keys (TR_241), carried posteriors as priors on
+an open leaf (TR2_241), a hierarchical address code on the keys (TC_241)
+— all null at the slot, all with the wrong-sentence wall unmoved at
+0.47-0.51, each with its own small cost (mint; digits). Together with
+the warm trio (nested labels, the unlock, the readout view) that is six
+forms; THE DESCENT LINE ON THE MEMBRANE IS CLOSED. The first look (the
+grounding read at breath 0) sets the wall, and nothing that re-reads
+the SAME token evidence by any schedule, any key or any prior changes
+it. What remains open is new evidence at the first look: the U-Net
+picture (reading now: a different representation of the same text,
+with the where-blocks as channels and the placebo as the control), the
+certifier loop's second form (a fresh grounding read under the lines at
+the consult breaths), and the retina-side identity keys. Regime tag:
+one seed, from scratch. Artifacts: sharp_TC_241, ps_{open,legal}_wild_
+TC_241.npz, dump_wild_TC_241.pkl, membrane_scale_TC_241.txt. The U-Net
+bake-off began at 01:50 (pc-queue2-1003; A' first).
