@@ -45613,3 +45613,42 @@ gradient. Fixed in a worktree (branch treecode-fix fea7e3cd: no level
 queries when the pooled terms are off) — the main head stays untouched
 under the running certloop arm; the gate and the TC_241 chain now run
 from the worktree; the gate refired. CL_241 is on the card.
+
+### 2026-10-03 (19:25) — THE U-NET PICTURE BAKE-OFF built (delegate; scripts/unet/, ad2776ce) and QUEUED behind the arms
+
+A separate engine beside the head, no change to the body: scripts/unet/
+{pictures,targets,model,train,eval_wild}.py. PICTURES (per row, on the
+fly, ~10 ms, from the cached post-L3 trunk states, never a trunk call):
+A' = the token-state cosine + 8 PCA-band pairwise channels (each band's
+row-normalised outer product, tanh-squashed to [-1, 1] — "band-wise
+cosine" of a 1-D projection is degenerate, so this is the honest form,
+stated); A'' = A' + three WHERE channels (same sentence / clause /
+mention from tree_row_ids); A''s = A'' with the where-blocks shuffled
+(the placebo: unit counts and sizes kept, positions scrambled); A (raw
+trunk attention) stubbed — attention maps were never cached. TARGETS
+(T x T int8): 0 none / 1 given -> its value's numeral run / 2 argument
+mention -> result mention / 3 cue (op words) -> result mention, from
+the cached token-mapped gold (g_vspan / g_aspan / g_cspan); class 1
+overwrites on collision. Class imbalance measured: 19.6M background
+pixels vs 5.1k / 8.6k / 5.1k per 300 rows — class-weighted CE. MODEL: a
+3-resolution tinygrad U-Net (16/32/64 channels, GroupNorm, skips),
+breaths folded into the batch with a fixed per-breath WHERE-channel
+mask and a breath-scalar channel (one static graph for every breath).
+TRAINER: TinyJit'd, fixed buffers, the diet only. EVALUATOR on wild
+(wild has NO mention spans — its states npz predates the span stamper,
+g_vspan all zero, so classes 2/3 and class 1's mention end are
+undecidable there BY CONSTRUCTION): does the predicted class-1 mass over
+the gold numeral's tokens beat the best other numeral's — the given-
+location question the membrane census asks — with a same- / other-
+sentence split of the misses. Smoke (CPU, T=64, 8 rows, 2 steps): all
+three modes finite and decreasing (A'' 1.084 -> 0.830); the per-breath
+mask changes the output. THE CHAIN (.cache/unet_bakeoff_chain.sh,
+pc-queue2-1003, fires after pc-queue1003): three runs, same seed, 20k
+steps at batch 4, T=256, each followed by eval_wild; BARS (pinned):
+PRIMARY A'' beats BOTH A' and A''s on wild given-location by >= 0.020
+(the standing wild-claim margin, stated as a reuse); SECONDARY
+convergence speed read only if the primary is met. Orientation only
+(not a bar): PMS8_241's given-token-hit 0.4445, wrong-sentence share
+0.495. The Llama-layers question needs a per-layer precompute (one
+layer cached) — not in this round. Diet facts: 99.6% of rows carry
+mentions; arg/cue spans on 143,864 of 379,449 factors.
