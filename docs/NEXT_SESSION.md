@@ -22,6 +22,10 @@ The reads table: `.venv/bin/python3 scripts/reads.py table wildhold` (assert-on-
   free). THE READING: the warm regime on the claim body is a SETTLED BASIN — gentle continuation moves nothing for any
   organ whose effect is a small bias; what moved this month was structural at read (the numeral mask, the role pointer)
   or trained from scratch.
+- 10-04 00:05: CL_241 (THE CERTIFIER LOOP, from scratch) DOES NOT FIRE — slot -0.0015 (z 0.1), rows 8/8 vs 14/9 (six
+  masked rows down), mint -0.011, digits 0.39 vs 0.46; the wrong-sentence share unmoved (0.505; the census collect runs
+  the plain two-pass, not the consult path — stated). The lines entered the reads AFTER the consults, never the first
+  look; form 2 (a fresh grounding read at the consult breaths) registered, unbuilt. TC_241 runs next, then the bake-off.
 - RUNNING (2026-10-03 19:05; the word given for the whole queue): pc-queue1003 orders two from-scratch arms on the card:
   CL_241 (THE CERTIFIER LOOP: ALG_ALT3=1 ALG_CERT=2.0; ~5-6 h; .cache/certloop_chain.log) then TC_241 (THE HIERARCHICAL
   WHERE-CODES: ALG_TREE=t,s,c,m,t,t,t ALG_TREECODE=1.0 ALG_TREE_NOPOOL=1; ~2.5 h; .cache/treecode_chain.log), both vs

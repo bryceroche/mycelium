@@ -45652,3 +45652,36 @@ convergence speed read only if the primary is met. Orientation only
 0.495. The Llama-layers question needs a per-layer precompute (one
 layer cached) — not in this round. Diet facts: 99.6% of rows carry
 mentions; arg/cue spans on 143,864 of 379,449 factors.
+
+### 2026-10-04 (00:05) — THE CERTIFIER LOOP ARM: DOES NOT FIRE (CL_241 vs PMS8_241; certloop_chain.log)
+
+CL_241 (from scratch: the PMS8 recipe + ALG_ALT3=1 ALG_CERT=2.0; 48k at
+0.235 s/step = 3.1 h, the consults' cost): masked wild 0.3462 vs 0.3476,
+paired -0.0015 (SE 0.0083, z 0.1; 145 vs 142 discordant); open 0.3150
+vs 0.3198 (-0.005); ROWS 8 / 8 vs 14 / 9 — SIX MASKED ROWS DOWN; mint
+0.6429 vs 0.654 (-0.011); fields: dig 0.393 vs 0.46 (DOWN), args 0.444
+(flat), pres 0.910, ftype 0.857 (up 0.01). vs the lineage +0.017 (z
+1.8), vs the chassis open +0.015 (z 1.8) — the recipe's standing, not
+the organ's. THE MECHANISM (the membrane census on CL_241; CAVEAT: the
+census's collect runs the plain two-pass read, not the three-consult
+path this body trained under, so its attention is the body's without
+its consults): wrong given slots' other-sentence share 0.505 / 0.512
+mass (PMS8 0.495 / 0.520) — unmoved; flat across breaths; the right
+slots' token hit 0.856 -> 0.569 (the body's 0.81 -> 0.60). VERDICT: the
+arm does not fire on either bar, and it costs rows and digits. READING:
+the certifiers' lines entered the per-breath reads AFTER the consults
+(breaths 3-6) — the first look (breath 0's grounding read, which sets
+the other-sentence wall) was never touched by design (form 1 of the
+loop: "the per-breath reads, not a re-run of breath 0"), so the wall
+stood; and a bias toward unclaimed numerals on colliding givens, learned
+from step 0 beside the facts, pulled the DIGITS down (0.46 -> 0.39): the
+assignment is right 57% of the time on the census but the body learned
+to lean on it everywhere. The live census (the certifiers' fire rate per
+step) was not printed (the debug env was off in the arm — a cost of
+skipping it); the loop's second form (a FRESH grounding read at the
+consult breaths, under the lines; the consult moved before the first
+look's commit) is the one the first-look reading asks for, and it is
+registered, unbuilt. Regime tag: one seed, from scratch. Artifacts:
+sharp_CL_241, ps_{open,legal}_wild_CL_241.npz, dump_wild_CL_241.pkl,
+rawslots_wild_CL_241.pkl, membrane_scale_CL_241.txt. TC_241 (the
+where-codes) is on the card next.
