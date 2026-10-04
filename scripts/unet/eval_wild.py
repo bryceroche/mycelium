@@ -62,14 +62,24 @@ sys.path.insert(0, ".")
 sys.path.insert(0, "scripts")
 sys.path.insert(0, "scripts/unet")
 
-from pictures import PictureSource, fit_pca, build_picture, n_channels   # noqa: E402
+from pictures import PictureSource, fit_pca, build_picture, n_channels, n_where as pic_n_where   # noqa: E402
 from model import UNet   # noqa: E402
 from targets import (build_target, digit_runs, value_of_digits,          # noqa: E402
                       N_CLASSES, CLASS_NAMES, CLASS_GIVEN)
 
+# THE HEAD'S OWN BASELINE, quoted for ORIENTATION ONLY (round 2's brief,
+# 2026-10-04): PMS8_241's trained pointer (.cache/membrane_scale_
+# PMS8_241.txt, 2026-09-24), NOT this picture model, NOT a 1:1-comparable
+# metric (a 24-slot pointer's per-slot argmax TOKEN vs this U-Net's RUN-
+# level class-1 mass over ALL numerals) -- a different mechanism, a
+# different granularity, printed so a reader has a sense of scale, never
+# read as this bake-off's own bar.
+PMS8_241_GIVEN_HIT = 441 / (441 + 551)   # n GIVEN slots: right=441 wrong=551
+PMS8_241_WRONG_SENT_SHARE = 0.495        # final breath, other_sent share of the 551 wrong
+
 
 def load_model(un_picture, base, K_B, seed, ckpt, random_init):
-    n_where = 0 if un_picture == "Aprime" else 3
+    n_where = pic_n_where(un_picture)
     Cin = n_channels(un_picture)
     model = UNet(c_content=Cin - n_where, n_where=n_where, K_B=K_B, base=base, seed=seed)
     if random_init:
@@ -188,7 +198,7 @@ def eval_diet_pixelacc(model, src, tok, T, n_eval):
 
 if __name__ == "__main__":
     UN_PICTURE_GLOBAL = os.environ.get("UN_PICTURE", "Adouble")
-    assert UN_PICTURE_GLOBAL in ("Aprime", "Adouble", "Adouble_shuf")
+    assert UN_PICTURE_GLOBAL in ("Aprime", "Adouble", "Adouble_shuf", "Awhich", "Awhich_shuf")
     base = int(os.environ.get("UN_BASE", "16"))
     K_B = int(os.environ.get("UN_BREATHS", "7"))
     T = int(os.environ.get("UN_T", "256"))
@@ -228,3 +238,8 @@ if __name__ == "__main__":
               f"{res['wrong_sentence_share']:.4f}  "
               f"(same-sentence-wrong={res['wrong_same_sentence']}, "
               f"other-sentence={res['wrong_other_sentence']})")
+        print(f"    orientation, a different mechanism (PMS8_241's own trained pointer, "
+              f".cache/membrane_scale_PMS8_241.txt, NOT this picture model, NOT 1:1-"
+              f"comparable -- see this file's module docstring): given-token hit rate "
+              f"{PMS8_241_GIVEN_HIT:.4f} (441/992); final-breath wrong-sentence share "
+              f"{PMS8_241_WRONG_SENT_SHARE:.4f} (of its 551 wrong slots)")

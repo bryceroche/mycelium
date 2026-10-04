@@ -12,8 +12,9 @@ trained on (CLAUDE.md); eval_wild.py is the only thing that ever touches
 wild, and it never backprops.
 
 ENV
-  UN_PICTURE   Aprime | Adouble | Adouble_shuf   (default Adouble)
-  UN_STEPS     training steps                    (default 20000)
+  UN_PICTURE   Aprime | Adouble | Adouble_shuf | Awhich | Awhich_shuf
+               (default Adouble)
+  UN_STEPS     training steps PER CHUNK (see UN_CONVERGE)  (default 20000)
   UN_BATCH     rows per step                      (default 4)
   UN_T         picture side T (<= cached T_full=256)   (default 256)
   UN_LAYERS    trunk layer selector -- only "default" is implemented;
@@ -30,6 +31,22 @@ ENV
                see this file's own census print at startup)
   UN_LOG_EVERY print every N steps                   (default 200)
   UN_SNAP_EVERY  save ckpt every N steps              (default 5000)
+  UN_CONVERGE=1  THE CONVERGENCE RULE (round 2, word given 2026-10-04):
+               instead of one fixed-length run, train in CHUNKS of
+               UN_STEPS steps; after every chunk, smooth the loss over
+               the LAST 10% of all steps run so far (see
+               `convergence_window`) and compare it to the previous
+               chunk's smoothed value (`convergence_rel_change`); stop
+               when the relative change is < 1%, or when UN_MAX_STEPS
+               total steps is hit first (the hard cap -- stated, not
+               silently truncated: a cap-stop and a convergence-stop
+               print different messages). The rule's numbers (window
+               size, both smoothed values, the relative change, the
+               threshold, the cap) are printed at every check. Unset:
+               exactly one chunk of UN_STEPS steps, no checks -- the
+               original round-1 behavior, byte-identical.
+  UN_MAX_STEPS   hard cap on total steps under UN_CONVERGE=1 (default
+               60000); ignored when UN_CONVERGE is unset.
   UN_SMOKE=1   run the PINNED CPU smoke test instead of a real training
                run (ignores the knobs above except UN_PICTURE; see
                `smoke_test()`): 2 steps, batch 2, 8 diet rows, T=64.
@@ -48,7 +65,7 @@ sys.path.insert(0, ".")
 sys.path.insert(0, "scripts")
 sys.path.insert(0, "scripts/unet")
 
-from pictures import PictureSource, fit_pca, build_picture, n_channels   # noqa: E402
+from pictures import PictureSource, fit_pca, build_picture, n_channels, n_where as pic_n_where   # noqa: E402
 from model import UNet   # noqa: E402
 from targets import build_target, N_CLASSES, CLASS_NAMES   # noqa: E402
 
@@ -124,8 +141,68 @@ def make_step(model, opt, b_pic, b_label, b_real, class_w):
     return step
 
 
+def convergence_window(loss_history, frac=0.10):
+    """(window_size, smoothed_loss) over the LAST `frac` fraction of
+    `loss_history` (at least 1 step). Pure function -- also exercised on
+    a synthetic loss list by the CPU smoke test (see `__main__`)."""
+    window = max(1, int(round(frac * len(loss_history))))
+    return window, float(np.mean(loss_history[-window:]))
+
+
+def convergence_rel_change(smoothed, prev_smoothed):
+    """Relative change of `smoothed` vs `prev_smoothed`; +inf when there
+    is no previous reading yet (chunk 1 can never claim convergence)."""
+    if prev_smoothed is None:
+        return float("inf")
+    denom = abs(prev_smoothed) if abs(prev_smoothed) > 1e-12 else 1e-12
+    return abs(smoothed - prev_smoothed) / denom
+
+
+def _converge_at(curve, chunk):
+    """Replays THE CONVERGENCE RULE's own chunked check over a plain
+    python/numpy loss list (no model, no tensor) -- the step index of
+    the first chunk boundary where rel_change < 1%, or None if it never
+    fires within `curve`."""
+    history, prev, at = [], None, None
+    for c in range(len(curve) // chunk):
+        history.extend(curve[c * chunk:(c + 1) * chunk].tolist())
+        window, smoothed = convergence_window(history, frac=0.10)
+        rel = convergence_rel_change(smoothed, prev)
+        print(f"[unet/train smoke] synthetic check chunk={c + 1} "
+              f"total={(c + 1) * chunk} window={window}/{len(history)} "
+              f"smoothed={smoothed:.5f} prev={'n/a' if prev is None else format(prev, '.5f')} "
+              f"rel_change={'inf' if prev is None else format(rel, '.5f')}")
+        if prev is not None and rel < 0.01 and at is None:
+            at = (c + 1) * chunk
+        prev = smoothed
+    return at
+
+
+def check_convergence_rule_synthetic():
+    """CPU smoke requirement 4: exercise `convergence_window` /
+    `convergence_rel_change` on a SYNTHETIC loss list (no model, no GPU)
+    -- a decaying-then-flat curve should converge well before a strictly
+    linearly-falling one does, over the same chunk size."""
+    rng = np.random.RandomState(0)
+    chunk = 50
+    # curve A: exponential decay to a flat plateau -- should converge.
+    flat = 0.2 + 0.01 * np.exp(-np.arange(400) / 40.0) + rng.normal(0, 1e-4, 400)
+    # curve B: still falling linearly over the whole range -- should NOT
+    # converge within the same number of chunks.
+    falling = 1.0 - 0.0015 * np.arange(400) + rng.normal(0, 1e-4, 400)
+    at_flat = _converge_at(flat, chunk)
+    at_falling = _converge_at(falling, chunk)
+    print(f"[unet/train smoke] convergence rule on synthetic curves: "
+          f"flat-plateau converged_at={at_flat}  still-falling converged_at={at_falling}")
+    assert at_flat is not None, "the flat-plateau synthetic curve never converged"
+    assert at_falling is None, "the still-falling synthetic curve converged (it should not have, over this range)"
+    print(f"[unet/train smoke] convergence rule PASS: flat-plateau converged at "
+          f"{at_flat} steps; still-falling never converged over {len(falling)} steps")
+
+
 def run(steps, batch, T, un_picture, lr, base, K_B, seed, split, jsonl,
-        class_w_spec, ckpt, log_every, snap_every, layers="default"):
+        class_w_spec, ckpt, log_every, snap_every, layers="default",
+        converge=False, max_steps=60000):
     from tokenizers import Tokenizer
     import phase1_algebra_head as H   # FAM env must already be set (tree_row_ids/TOKENIZER_JSON)
     tok = Tokenizer.from_file(H.TOKENIZER_JSON)
@@ -136,7 +213,7 @@ def run(steps, batch, T, un_picture, lr, base, K_B, seed, split, jsonl,
           + ", ".join(f"{CLASS_NAMES[c]}={census[c]}" for c in range(N_CLASSES)), flush=True)
     class_w = fixed_class_weights(class_w_spec)
     Cin = n_channels(un_picture)
-    n_where = 0 if un_picture == "Aprime" else 3
+    n_where = pic_n_where(un_picture)
     model = UNet(c_content=Cin - n_where, n_where=n_where, K_B=K_B, base=base, seed=seed)
     opt = AdamW(model.parameters(), lr=lr)
 
@@ -151,24 +228,76 @@ def run(steps, batch, T, un_picture, lr, base, K_B, seed, split, jsonl,
     rng = np.random.default_rng(seed)
     row_rng = np.random.RandomState(seed)
     t0 = time.time()
-    for s in range(steps):
-        idxs = row_rng.choice(src.n, size=batch, replace=False)
-        pics, labels, reals = build_batch(src, idxs, un_picture, mean, comps, tok, T, rng)
-        b_pic.assign(Tensor(np.ascontiguousarray(pics), dtype=b_pic.dtype)).realize()
-        b_label.assign(Tensor(np.ascontiguousarray(labels), dtype=b_label.dtype)).realize()
-        b_real.assign(Tensor(np.ascontiguousarray(reals), dtype=b_real.dtype)).realize()
-        t_step0 = time.time()
-        loss, healthy = step()
-        dt_step = time.time() - t_step0
-        if s % log_every == 0 or s == steps - 1:
-            print(f"[unet/train] step {s:7d} loss={loss.item():.5f} "
-                  f"healthy={healthy.item():.0f} step_time={dt_step:.3f}s "
-                  f"wall={time.time()-t0:.1f}s", flush=True)
-        if snap_every and (s + 1) % snap_every == 0:
-            safe_save(get_state_dict(model), ckpt)
-            print(f"[unet/train] snapshot -> {ckpt}", flush=True)
+
+    def run_chunk(n_steps, g0):
+        """n_steps steps starting at the GLOBAL step index g0 (continuing
+        the same model/optimizer/jit -- chunking is only a place to stop
+        and check the convergence rule, never a restart). Returns this
+        chunk's list of per-step losses."""
+        chunk_losses = []
+        for s in range(n_steps):
+            g = g0 + s
+            idxs = row_rng.choice(src.n, size=batch, replace=False)
+            pics, labels, reals = build_batch(src, idxs, un_picture, mean, comps, tok, T, rng)
+            b_pic.assign(Tensor(np.ascontiguousarray(pics), dtype=b_pic.dtype)).realize()
+            b_label.assign(Tensor(np.ascontiguousarray(labels), dtype=b_label.dtype)).realize()
+            b_real.assign(Tensor(np.ascontiguousarray(reals), dtype=b_real.dtype)).realize()
+            t_step0 = time.time()
+            loss, healthy = step()
+            dt_step = time.time() - t_step0
+            lv = loss.item()
+            chunk_losses.append(lv)
+            if g % log_every == 0 or s == n_steps - 1:
+                print(f"[unet/train] step {g:7d} loss={lv:.5f} "
+                      f"healthy={healthy.item():.0f} step_time={dt_step:.3f}s "
+                      f"wall={time.time()-t0:.1f}s", flush=True)
+            if snap_every and (g + 1) % snap_every == 0:
+                safe_save(get_state_dict(model), ckpt)
+                print(f"[unet/train] snapshot -> {ckpt}", flush=True)
+        return chunk_losses
+
+    if not converge:
+        # byte-identical to round 1: one chunk, no convergence checks.
+        run_chunk(steps, 0)
+        safe_save(get_state_dict(model), ckpt)
+        print(f"[unet/train] DONE -> {ckpt} (total_steps={steps})", flush=True)
+        return
+
+    # THE CONVERGENCE RULE (round 2, word given 2026-10-04): train in
+    # chunks of `steps` (UN_STEPS) until the smoothed loss over the last
+    # 10% of ALL steps run so far changes < 1% from the previous chunk's
+    # reading, or `max_steps` (UN_MAX_STEPS) total steps is hit first.
+    loss_history = []
+    total = 0
+    prev_smoothed = None
+    chunk_idx = 0
+    while True:
+        chunk_idx += 1
+        this_chunk = min(steps, max(0, max_steps - total)) if max_steps else steps
+        if this_chunk <= 0:
+            print(f"[unet/train] HARD CAP already reached at {total} steps "
+                  f"(>= UN_MAX_STEPS={max_steps}) before chunk {chunk_idx} started", flush=True)
+            break
+        loss_history.extend(run_chunk(this_chunk, total))
+        total += this_chunk
+        window, smoothed = convergence_window(loss_history, frac=0.10)
+        rel_change = convergence_rel_change(smoothed, prev_smoothed)
+        print(f"[unet/train] CONVERGENCE CHECK chunk={chunk_idx} total_steps={total} "
+              f"window={window}/{len(loss_history)} smoothed_loss={smoothed:.5f} "
+              f"prev_smoothed={'n/a' if prev_smoothed is None else format(prev_smoothed, '.5f')} "
+              f"rel_change={'inf' if prev_smoothed is None else format(rel_change, '.5f')} "
+              f"threshold=0.01000 max_steps={max_steps}", flush=True)
+        if prev_smoothed is not None and rel_change < 0.01:
+            print(f"[unet/train] CONVERGED at {total} steps "
+                  f"(rel_change {rel_change:.5f} < 0.01)", flush=True)
+            break
+        if total >= max_steps:
+            print(f"[unet/train] HARD CAP reached at {total} steps "
+                  f"(>= UN_MAX_STEPS={max_steps}) -- stopping WITHOUT convergence", flush=True)
+            break
+        prev_smoothed = smoothed
     safe_save(get_state_dict(model), ckpt)
-    print(f"[unet/train] DONE -> {ckpt}", flush=True)
+    print(f"[unet/train] DONE -> {ckpt} (total_steps={total})", flush=True)
 
 
 def smoke_test(un_picture):
@@ -189,7 +318,7 @@ def smoke_test(un_picture):
     T, batch, steps = 64, 2, 2
     class_w = fixed_class_weights("1,50,50,50")
     Cin = n_channels(un_picture)
-    n_where = 0 if un_picture == "Aprime" else 3
+    n_where = pic_n_where(un_picture)
     model = UNet(c_content=Cin - n_where, n_where=n_where, K_B=4, base=8, seed=0)
     opt = AdamW(model.parameters(), lr=1e-3)
 
@@ -237,9 +366,10 @@ def smoke_test(un_picture):
 
 if __name__ == "__main__":
     un_picture = os.environ.get("UN_PICTURE", "Adouble")
-    assert un_picture in ("Aprime", "Adouble", "Adouble_shuf"), un_picture
+    assert un_picture in ("Aprime", "Adouble", "Adouble_shuf", "Awhich", "Awhich_shuf"), un_picture
     if os.environ.get("UN_SMOKE"):
         smoke_test(un_picture)
+        check_convergence_rule_synthetic()
     else:
         run(
             steps=int(os.environ.get("UN_STEPS", "20000")),
@@ -257,4 +387,6 @@ if __name__ == "__main__":
             log_every=int(os.environ.get("UN_LOG_EVERY", "200")),
             snap_every=int(os.environ.get("UN_SNAP_EVERY", "5000")),
             layers=os.environ.get("UN_LAYERS", "default"),
+            converge=bool(os.environ.get("UN_CONVERGE")),
+            max_steps=int(os.environ.get("UN_MAX_STEPS", "60000")),
         )
