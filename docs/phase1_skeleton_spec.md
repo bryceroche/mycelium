@@ -45870,3 +45870,27 @@ re-trained under the same rule. BARS: PRIMARY Awhich beats both Aprime
 and its placebo by >= 0.020 on wild given-location; MECHANISM its misses'
 other-sentence share below Aprime's by >= 0.05; SECONDARY steps to
 convergence, read only if the primary is met. Fires after CL2_241.
+
+### 2026-10-04 (08:50) — U-NET ROUND 2 built (delegate; scripts/unet/, c9d09e6b) and QUEUED behind CL2_241
+
+The WHICH channels, all computable on wild: LEX-IDENTITY (two tokens
+decode to the same lowercased word; digits excluded), RETINA-COSINE (the
+input-embedding identity table .cache/ident_codes512.npz, the identity
+port's source — context-free), EVENT (same clause AND the clause carries
+a verb-ish cue), MOMENT (the signed clause-order difference, scaled by
+the row's clause count), ROLE-CUE proximity (per-token distance to the
+nearest cue in its clause, row- and column-broadcast): Awhich = A' + 6;
+Awhich_shuf shuffles lex-identity and event (the lex classes are not
+contiguous runs, so the placebo permutes class ids over real positions
+keeping the per-class histogram — an interpretation, stated). THE
+CONVERGENCE RULE in train.py (UN_CONVERGE=1: chunks of 20k to a 60k cap;
+stop when the last-10% smoothed loss moves < 1%; verified on a flat
+plateau (stops) and a falling curve (does not)). eval_wild carries
+PMS8_241's orientation line, never a bar. CPU smoke: five modes finite
+and decreasing; the placebo preserves block counts. THE CHAIN (.cache/
+unet_round2_chain.sh; pc-queue3-1004 after the cert2 arm): Aprime
+re-trained under the rule (the fair control), Awhich, Awhich_shuf; BARS
+(pinned): PRIMARY Awhich beats both by >= 0.020 on wild given-location;
+MECHANISM its misses' other-sentence share below Aprime's by >= 0.05
+(read regardless); SECONDARY steps to convergence, read only if the
+primary is met. ~6.5-10 h for the three arms.
