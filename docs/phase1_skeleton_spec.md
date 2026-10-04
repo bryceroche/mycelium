@@ -45931,3 +45931,58 @@ the 24 with CA_ROWS) FIRED as pc-golden (queued at the lock behind
 CL2_241's training), banking .cache/golden24_expect.json on PMS8_241 as
 the expectation; `golden.py check` after every head change. Hill 5's gap
 is now three scripts and a ruling; conventional unit tests remain thin.
+
+### 2026-10-04 (09:05) — BRYCE'S GUT MAPPED ("high to low entropy; coarse to polish; Laplace; steady eyes; different tools; T6 as conductor") + TWO CHEAP CHECKS READ (zero GPU, PMS8_241, banked artifacts)
+
+(1) THE ENTROPY CURVE (the membrane attention's entropy per breath, nats;
+given slots; right n=713 / wrong n=1,338): RIGHT 2.09, 1.21, 1.29, 1.35,
+1.36, 1.32, 1.28; WRONG 2.80, 1.63, 1.71, 1.74, 1.75, 1.74, 1.72 (breaths
+0..6). READING: uncertainty falls ONCE — at the first loop breath — and
+then plateaus and drifts slightly UP; breaths 2-6 do not refine the
+membrane's certainty at all (consistent with the right slots' token hit
+decaying 0.81 -> 0.60 across the breaths: drift, not polish). And the
+entropy SEPARATES right from wrong by ~0.5 nats at every breath — a
+health signal and a panel angle (never a loss: the Goodhart fence;
+Opus's caution stands — half the wrong rows are confidently wrong, and
+a forced descent would deepen that). (2) THE DAMPING CURVE (the relative
+state change per band per breath, from the clock-band probe's states;
+six 32-plane content bands + the clock band; transitions b1->2 .. b5->6):
+EVERY content band damps IDENTICALLY — 1.15-1.27, 0.28, 0.19, 0.17, 0.14
+(right) and the same to two decimals for wrong slots — a geometric
+settling with ONE rate and NO band structure: no coarse band settles
+first, no fine band keeps moving; the content planes are exchangeable
+(nothing in the body distinguishes them — expected). The clock band
+0.69 / 0.95 / 0.56 / 0.49 / 0.52 is the 60-degree turn's own signature
+(a unit vector turned 60 degrees changes by 1.0) plus content. READING:
+the Laplace picture — coarse bands settle early, fine bands adjust
+longer — DOES NOT EXIST in the body; if it is wanted it must be IMPOSED,
+and it can be imposed without wiping anything (the plane unlock's
+lesson): per-band DAMPING RATES on the state update (a band's new state
+= (1 - lambda_b) x old + lambda_b x computed; coarse bands' lambda
+falling to ~0 by breath 3, fine bands' staying open) — a filter on the
+dynamics, the same target every breath, no label, no view cut. THE
+LAPLACE FORM is registered as hill 2's next form on the body (the first
+that touches the dynamics rather than the view). THE MAPPING: "coarse to
+polish" = the first look is the 80-grit and sets the shape; polish never
+changes a shape (six descent forms); the strongest tool belongs at the
+first look (form 2 of the loop, running). "Steady eyes": the pictures are
+built from the FROZEN trunk (steady by construction), the PCA is fit once
+and frozen (round 1 did this), the clock frame is undone by the canon
+frame where a reader needs a still image (the notebook's trick; the
+U-Net inside the loop must read in that frame), and feedback must not
+flicker (the certifier lines should be smoothed across breaths — the
+carried-prior idea, this time on the lines, not the attention). "Different
+tools for different jobs" is the week's lesson in a sentence: CL_241 used
+the unclaimed-number cleaner everywhere and the digits paid; the stain
+table — wrong sentence -> implied values; twins -> role signature and
+WHICH codes; two slots on one number -> the assignment; wrong digits ->
+the numeral mask; missed givens -> the pull — is per-SLOT routing (heads
+and certifiers), never per-breath (hill 8). THE STAIN CENSUS (every
+failing wild slot sorted by stain, a join over the banked per-slot
+artifacts: the membrane bands, the twin-gap picks, the collision and
+unclaimed flags, the digit decode) is registered as the third check. "T6
+promoted to conductor": the breath index already conducts the tree
+schedule and the consults; promotion = one tempo for the levels, the
+temperature, the per-band damping, the consults and the U-Net's looks,
+entering as a FIXED MANDATORY signal (the tick's 0.13 gate is the
+counter-example).
