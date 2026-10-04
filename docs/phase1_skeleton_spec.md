@@ -45539,3 +45539,55 @@ from 0.50; rows >= 14; the step cost stated (ALT3 was 2.2x; ~5 x 2.2 h).
 Everything built this week stands dead unless set: the tree (both
 forms), the caricature, the read-time certifier mask, the certifier
 loop. The card is idle. Post-merge CPU gate follows.
+
+### 2026-10-03 (16:40) — THE WORD STANDS ("build everything, run nothing"): PART 1 BUILDING (the U-Net picture bake-off; the hierarchical where-codes), PART 2 RANKED, NOT BUILT
+
+Bryce: "also a hierarchical codebook that we walk down each breath"; Opus's
+two-part message (the U-Net picture bake-off; MDP reduction and Monte
+Carlo, ranked before firing). THE CRITIQUE FIRST. (1) The picture bake-
+off is a NEW ENGINE beside the head (a token x token picture per problem
+read by a 2D U-Net that segments links — relations as segmentation),
+not an organ in it: zero changes to the body, a from-scratch training
+of its own, judged on wild by whether it LOCATES a given's numeral (the
+membrane census's question) — the right question (the first look) and
+the right control (the placebo picture A''s with shuffled where-blocks:
+a win over it is structure, not channel count). Its honest limits: the
+raw-attention picture A needs trunk attention maps that are not cached
+(the states are; A is stubbed); the wild targets are class-1 (given ->
+numeral) only (wild carries no mention spans); pictures are built on
+the fly from the states memmap (a cached set would be ~100 GB). The
+"how many Llama layers" question needs a per-layer precompute (only
+one layer's states are cached) — stated, not answered by this round.
+(2) THE WHERE-CODES (built, below) are the tree's "where" as a fixed
+hierarchical phasor ADDRESS on the token keys instead of pooled content:
+sentence / clause / mention codes on disjoint bands of the content
+planes (16 / 32 / 48 of 192; clock planes never), cumulative over the
+breaths (the walk down), the leaf open, no learned gain, no parameters
+(ALG_TREECODE=<gain> ALG_TREE_NOPOOL=1 on ALG_TREE's schedule and
+port). Prior stated: LOW-MODERATE — two descent forms over the same
+attention were null, and a code on the keys is still the same evidence
+read with a different key; its one new property is that the slot
+queries can learn to ADDRESS a unit directly (q . code) rather than
+match pooled content, which the tree's level queries could not. ARM
+TC_241 (.cache/treecode_chain.sh, from scratch vs PMS8_241, the tree's
+two bars) WRITTEN, HELD. Gate (CPU) running: unset bit-identical; role8;
+treecode runs. (3) PART 2, RANKED BY COST, NOT BUILT (Opus: "bring me the
+ranking before firing"): [a] the AGREEMENT JUDGE (several noisy decodes
+per row, agreement as a panel angle) — zero training, hours, but the
+picker's ceiling is 4 rows (the oracle bound): a bench, not a lever;
+[b] ADAPTIVE STOPPING (freeze the state after the reading settles; all
+six breaths stay in the graph) — a head edit + a from-scratch arm, 5 h;
+the settle diagnostic exists (the Goodhart fence: never supervised);
+prior low (the warm nulls say the breaths change little after 3);
+[c] SYNTHETIC DATA by sampling factor graphs and rendering them (the
+renderer exists: prose_render.py; PMS6b read the rendered 5k null on
+wild) — the n lever in disguise; cheap to scale; prior moderate ONLY
+if the renderer's prose grows twins and other-sentence structure (the
+wall's shapes), which the current renderer does not; [d] MCTS over
+bindings — re-read the oracle bound when the first look improves
+(zero GPU; today's ceiling 14 -> 18); [e] BISIMULATION / quotient
+discovery for the atlas's kinds — the recursion charter's miner with a
+behavioral-equivalence test; a day's build, no training; prior moderate
+for the ATLAS, none for the wall. Order proposed: Part 1 reads first,
+alone; then [c] (if its renderer is taught the wall's shapes) and [e]
+as builds, [a]/[d] as reads, [b] last. All held for the word.

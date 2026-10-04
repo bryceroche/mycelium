@@ -3238,9 +3238,43 @@ if _TREE_LEVELS is not None:
 # head-mean attention, aggregated per unit at each level open then, into this breath as an additive LOG-PRIOR on the
 # unit's tokens (a construction line: soft, erasable, mandatory — no gain; floor 1e-3 = -6.9 logits). ALG_TREE_NUMW=<w>
 # weights NUMERAL tokens (1 + w) in the unit pooling so the sentence key carries what differs (0 = the plain mean).
+# THE HIERARCHICAL WHERE-CODES (2026-10-03, the word: "a hierarchical codebook that we walk down each breath"; Opus:
+# "where codes on the bus — one phasor band per tree level"): ALG_TREECODE=<gain> adds to every TOKEN KEY in the
+# grounding bank read a FIXED unit phasor code for the token's unit at each level open at this breath (cumulative:
+# breath 1 the sentence code, breath 2 + the clause code, breath 3 + the mention code — the walk down), on disjoint
+# bands of the content planes (sentence 16 / clause 32 / mention 48 planes of the 192; the remaining 96 untouched;
+# clock planes never). Codes are deterministic (seeded FHRR unit phasors per (level, unit id), no parameters, no
+# gain learned: a structural address on the key, RoPE-like but hierarchical). The leaf term stays open (the code is
+# an address beside the content, never a replacement). ALG_TREE_NOPOOL=1 drops the pooled-key level terms so the
+# code road is read alone. Rides on ALG_TREE (the schedule and the unit-id port). Unset = bit-identical.
+ALG_TREECODE = float(os.environ.get("ALG_TREECODE", "0"))
+ALG_TREE_NOPOOL = int(os.environ.get("ALG_TREE_NOPOOL", "0"))
+_TREECODE_UMAX = 64          # unit ids clipped here (sentences <= 32, clauses/mentions rarely past 64)
+_TREECODE_TABS = {}
+
+
+def _treecode_table(level):
+    """(U_MAX, H_W) float: for level l, unit u, a unit-norm FHRR phasor on the level's band of CONTENT planes
+    (zeros on every other dim); cached as a constant tensor."""
+    t = _TREECODE_TABS.get(level)
+    if t is None:
+        from tinygrad import Tensor as _Tc
+        _cd = np.asarray(_polar_sink()[0])                      # the content dims (2 per plane, plane-ordered)
+        _cp = _cd.reshape(-1, 2)                                 # (192, 2) content planes' dim pairs
+        _bands = [(0, 16), (16, 48), (48, 96)]
+        _a, _b = _bands[level]
+        _rng = np.random.RandomState(7_001 + level)
+        _ang = _rng.uniform(0, 2 * np.pi, (_TREECODE_UMAX, _b - _a))
+        arr = np.zeros((_TREECODE_UMAX, H_W), np.float32)
+        _amp = 1.0 / np.sqrt(_b - _a)
+        arr[:, _cp[_a:_b, 0]] = (np.cos(_ang) * _amp).astype(np.float32)
+        arr[:, _cp[_a:_b, 1]] = (np.sin(_ang) * _amp).astype(np.float32)
+        t = _Tc(arr).contiguous().realize()
+        _TREECODE_TABS[level] = t
+    return t
 ALG_TREE2 = int(os.environ.get("ALG_TREE2", "0"))
 ALG_TREE_NUMW = float(os.environ.get("ALG_TREE_NUMW", "0"))
-assert not (ALG_TREE2 or ALG_TREE_NUMW) or _TREE_LEVELS is not None, "ALG_TREE2 / ALG_TREE_NUMW ride on ALG_TREE"
+assert not (ALG_TREE2 or ALG_TREE_NUMW or ALG_TREECODE or ALG_TREE_NOPOOL) or _TREE_LEVELS is not None, "ALG_TREE2 / ALG_TREE_NUMW / ALG_TREECODE / ALG_TREE_NOPOOL ride on ALG_TREE"
 _TREE_PUNCT_CLAUSE = {",", ";"}
 _TREE_CONJ_CLAUSE = {"and", "but"}
 _TREE_MENTION_EXTRA = {".", "or"}
@@ -3762,6 +3796,15 @@ def _make_bank(p, waist, tokmask, B, sent=None, tree=None):
             if kb not in _smoothed: _smoothed[kb] = _kanneal_smooth(waist, tokmask, sent, B, ALG_KANNEAL[kb])
             src = _smoothed[kb]
         k = src @ p["attn_wk"] + p["attn_wk_b"]
+        if ALG_TREECODE and _TREE_LEVELS is not None and tree is not None and nq == L_TOT:
+            # THE HIERARCHICAL WHERE-CODES: each open level's unit phasor added to the token's key (the walk down)
+            _kbc = kb if kb is not None else 0
+            _lvc = _TREE_LEVELS[_kbc] if _kbc < len(_TREE_LEVELS) else 3
+            _Tc_ = int(src.shape[1])
+            for _l in range(min(_lvc, 2) + 1):
+                _uid = tree[:, :, _l].maximum(0).minimum(_TREECODE_UMAX - 1)          # (B, T) unit ids, pads -> 0
+                _code = _treecode_table(_l)[_uid] * tokmask.reshape(B, _Tc_, 1)      # (B, T, H_W), pads zeroed
+                k = k + _code * ALG_TREECODE
         v = src @ p["attn_wv"] + p["attn_wv_b"]
         hd = H_W // N_HEADS
         qh = q.reshape(B if extra is not None else 1, nq, N_HEADS, hd).permute(0, 2, 1, 3)
@@ -3777,7 +3820,7 @@ def _make_bank(p, waist, tokmask, B, sent=None, tree=None):
             # below) is open only at level 3.
             _kb0 = kb if kb is not None else 0
             _lv = _TREE_LEVELS[_kb0] if _kb0 < len(_TREE_LEVELS) else 3
-            if _lv < 3 and not ALG_TREE2:      # form 1 closes the leaf below level t; form 2 keeps it open
+            if _lv < 3 and not ALG_TREE2 and not ALG_TREECODE:      # form 1 closes the leaf below level t; form 2 and the code road keep it open
                 _leaf_open = 0.0
                 sc = sc * 0.0                     # exact zeros, the graph kept
             _T = int(src.shape[1])
@@ -3785,7 +3828,7 @@ def _make_bank(p, waist, tokmask, B, sent=None, tree=None):
             _ar = Tensor.arange(_T).reshape(1, 1, _T)
             _Ms = [((tree[:, :, _l:_l + 1] == _ar).float() * _tm_c) for _l in range(3)]   # (B, T, U) per level
             _pw = (1.0 + ALG_TREE_NUMW * tree[:, :, 3:4].float()) * _tm_c if ALG_TREE_NUMW else _tm_c   # (B, T, 1) pooling weights
-            for _l in range(min(_lv, 2) + 1):
+            for _l in (range(min(_lv, 2) + 1) if not ALG_TREE_NOPOOL else ()):   # ALG_TREE_NOPOOL: the pooled-key terms skipped (the code road alone)
                 _M = _Ms[_l]
                 _cnt = (_M * _pw).sum(1).reshape(B, _T, 1)                  # (B, U, 1) (weighted) tokens per unit
                 _P = (_M.transpose(-2, -1) @ (src * _pw)) / _cnt.maximum(1.0)   # (B, U, H_W): the unit's (numeral-weighted) mean state
