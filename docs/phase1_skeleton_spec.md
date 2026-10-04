@@ -45591,3 +45591,19 @@ behavioral-equivalence test; a day's build, no training; prior moderate
 for the ATLAS, none for the wall. Order proposed: Part 1 reads first,
 alone; then [c] (if its renderer is taught the wall's shapes) and [e]
 as builds, [a]/[d] as reads, [b] last. All held for the word.
+
+### 2026-10-03 (19:02) — WORD GIVEN FOR THE WHOLE QUEUE: the hold lifts; the firing order
+
+pc-queue1003 (one unit ordering the chains so the lock cannot interleave
+their segments): (1) CL_241 — THE CERTIFIER LOOP from scratch (the PMS8
+recipe + ALG_ALT3=1 ALG_CERT=2.0, SNAP_EVERY=8000) vs PMS8_241; bars
+(09-30): masked +0.020 (z 2) or the twin; the wrong-sentence share of
+wrong givens < 0.40; rows >= 14; the step cost stated (~2.2x: ~5-6 h);
+its first hundred steps print the certifiers' fire census (the live
+proof). (2) TC_241 — THE HIERARCHICAL WHERE-CODES from scratch vs
+PMS8_241 (the tree's two bars; ~2.5 h), after its CPU gate completes
+(unset bit-identical already; role8 and treecode pending at the fire).
+(3) THE U-NET BAKE-OFF chain fires when its build lands (the delegate
+is on it); then Part 2 in the ranked order (18:58). The certloop chain
+now runs from the main tree (the merge carries the road; its `cd` was
+the worktree's).
