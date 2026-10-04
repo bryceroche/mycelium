@@ -45894,3 +45894,40 @@ re-trained under the rule (the fair control), Awhich, Awhich_shuf; BARS
 MECHANISM its misses' other-sentence share below Aprime's by >= 0.05
 (read regardless); SECONDARY steps to convergence, read only if the
 primary is met. ~6.5-10 h for the three arms.
+
+### 2026-10-04 (08:45) — THE THREE CONTRACTS built (delegate; scripts/contracts/, 24dc1302); the convergence rule's calibration finding; the golden read fired
+
+PREFLIGHT (preflight.py <chain>): reads a chain's text and classifies
+every .cache input it touches as exists / missing / produced-by-chain
+(checkpoints read, per-slot files, dumps, fixtures, cached states for
+every split name, codebooks, gate logs it waits on, the lock, the
+workdir; a failed-unit scan as a warning); exit 1 on any missing input.
+Smoke: the four named chains PASS; on the caric chain it flags the
+control dump exactly where that chain died. Integration (verified under
+systemd-run: $0 is the chain's path): `.venv/bin/python3 scripts/
+contracts/preflight.py "$0" || exit 1` after the exec line — added to
+the queued U-Net round-2 chain (PASS). CONVERGENCE (convergence.py <log>
+[--rule 1.0] [--smooth 3]): the last 10% of steps, a moving-median trend
+(< rule%) and a spike guard (no point > 1.5x the window median; the
+last-line val/restore jump annotated). CALIBRATION FINDING, banked as it
+reads: every ACCEPTED head body FAILS it (PMS8_241: trend 20.8% at
+smooth 15, a mid-window spike 1.91x; PMS8_242, PMS4_241, TC_241, CL_241
+likewise) — the head logs its per-step batch-8 loss every 500 steps, a
+window of ten noisy points that is NOT a convergence witness (the head's
+convergence is read on its val curve and the best-by-val restore); the
+U-Net logs fail it honestly (a still-falling trend, 25.8%). RULING: the
+contract is BINDING for the U-Net chains (a smooth per-200-step loss;
+UN_CONVERGE=1 trains until it passes) and ADVISORY for head arms until
+a val-based form exists (registered: the head prints val at its snaps;
+the rule on the val series). Not tuned to pass the claim body — a
+contract that fails known-good runs is reported, not bent. GOLDEN
+(golden.py build/status/command/check): 24 training-diet rows (seed 241;
+4 each: shortest one-relation "givens-only" — the diet has NO zero-
+relation rows, stated — one relation, two chained, percentage,
+fraction/division, same-noun twin), keys verified by custody_gold before
+selection (5 unverifiable candidates skipped), states served by slicing
+the diet's cached memmap (no trunk pass); the one card read (chain_acc on
+the 24 with CA_ROWS) FIRED as pc-golden (queued at the lock behind
+CL2_241's training), banking .cache/golden24_expect.json on PMS8_241 as
+the expectation; `golden.py check` after every head change. Hill 5's gap
+is now three scripts and a ruling; conventional unit tests remain thin.

@@ -22,6 +22,14 @@ The reads table: `.venv/bin/python3 scripts/reads.py table wildhold` (assert-on-
   free). THE READING: the warm regime on the claim body is a SETTLED BASIN — gentle continuation moves nothing for any
   organ whose effect is a small bias; what moved this month was structural at read (the numeral mask, the role pointer)
   or trained from scratch.
+- 10-04 08:45 (the word for the whole queue): RUNNING pc-cert2 (CL2_241 = THE CERTIFIER LOOP FORM 2: a state-free
+  grounding read at the consult breaths under the lines; from scratch vs PMS8_241; bars = CL_241's + digits not down;
+  ~3 h; .cache/cert2_chain.log), then pc-queue3-1004 (U-NET ROUND 2: the WHICH channels + the convergence rule;
+  .cache/unet_round2_chain.log; 6.5-10 h), and pc-golden (the 24 golden rows read on PMS8_241 -> golden24_expect.json)
+  at the lock. THE THREE CONTRACTS exist (scripts/contracts/: preflight, convergence, golden; ledger 08:45): every new
+  chain calls preflight after its exec line; convergence is BINDING for U-Net chains, ADVISORY for head arms (the head's
+  per-500-step loss is not a convergence witness — a val-based form is registered); `golden.py check` after every head
+  change once the expectation is banked.
 - 10-04 05:25: THE U-NET PICTURE BAKE-OFF MISSED its bar — located rate A' 0.3095 / A'' 0.3044 / A''s 0.3065 (one number;
   the where-channels equal the shuffled placebo = inert); the picture engine locates givens WORSE than the head (0.30 vs
   0.44) with MORE other-sentence misses (0.63-0.66 vs 0.49). Regime: 20k steps, batch 4, 16-ch base, one seed; A (raw
