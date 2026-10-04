@@ -45717,3 +45717,39 @@ the consult breaths), and the retina-side identity keys. Regime tag:
 one seed, from scratch. Artifacts: sharp_TC_241, ps_{open,legal}_wild_
 TC_241.npz, dump_wild_TC_241.pkl, membrane_scale_TC_241.txt. The U-Net
 bake-off began at 01:50 (pc-queue2-1003; A' first).
+
+### 2026-10-04 (05:25) — THE U-NET PICTURE BAKE-OFF: THE PRIMARY BAR MISSED; THE WHERE-CHANNELS EQUAL THE PLACEBO (unet_bakeoff_chain.log)
+
+Three runs, same seed, 20k steps at batch 4, T=256, the 16/32/64 U-Net
+(0.18 s/step, 68 min each), eval on wild (given -> its numeral located:
+the predicted class-1 mass over the gold numeral's tokens beats the best
+other numeral's): A' (content) 0.3095; A'' (content + where-blocks)
+0.3044; A''s (shuffled blocks) 0.3065. A'' - A' = -0.005, A'' - A''s =
+-0.002: MISS (the bar +0.020 over both); the three are one number within
+the 311-row noise. Among the U-Net's WRONG slots the other-sentence
+share is 0.63-0.66 — WORSE than the head's 0.49-0.51 at a lower hit rate
+(the head's given-token hit 0.4445 vs the picture's 0.30-0.31). READING:
+(1) at this size and budget the picture engine is a weaker locator than
+the head, and its misses are MORE often in another sentence — a token x
+token picture read by a 2D U-Net does not give text the coordinate
+system a spectrogram gives audio, at least not at 20k steps and 16 base
+channels; (2) the where-channels are INERT: identical to their shuffled
+placebo, so the U-Net never used sentence / clause / mention blocks as
+structure — the same verdict the tree family reached from inside the
+head, now from a different architecture: the WHERE of a given is not
+what a membership channel over tokens supplies; (3) the secondary bar
+(convergence) is not read, per the word. Honest limits on the regime:
+one seed; 20k steps (the loss still falling, 0.65 -> 0.22-0.31 by the
+end); a small U-Net; class-1-only targets on wild; A (raw trunk
+attention) never cached, so the baseline the DocuNet shape was named for
+was not in the race. A larger or longer run is a legitimate rescue but
+carries no evidence yet; the where-channel null is the more durable
+finding and is unlikely to reverse with scale (the placebo moves with
+it). Regime tag as stated. Artifacts: .cache/unet_bakeoff_chain.log,
+the three checkpoints and eval logs under .cache/unet_*. THE QUEUE OF
+2026-10-03 IS COMPLETE: CL_241, TC_241 and the bake-off — all null; the
+card is idle. What the week leaves standing as the next lever, unbuilt:
+the certifier loop's FORM 2 (a fresh grounding read at the consult
+breaths under the assignment lines — new evidence at the first look,
+the one place no arm has yet reached) and the retina-side identity keys
+on the grounding read; Part 2's ranked list behind them.

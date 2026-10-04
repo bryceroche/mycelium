@@ -22,6 +22,15 @@ The reads table: `.venv/bin/python3 scripts/reads.py table wildhold` (assert-on-
   free). THE READING: the warm regime on the claim body is a SETTLED BASIN — gentle continuation moves nothing for any
   organ whose effect is a small bias; what moved this month was structural at read (the numeral mask, the role pointer)
   or trained from scratch.
+- 10-04 05:25: THE U-NET PICTURE BAKE-OFF MISSED its bar — located rate A' 0.3095 / A'' 0.3044 / A''s 0.3065 (one number;
+  the where-channels equal the shuffled placebo = inert); the picture engine locates givens WORSE than the head (0.30 vs
+  0.44) with MORE other-sentence misses (0.63-0.66 vs 0.49). Regime: 20k steps, batch 4, 16-ch base, one seed; A (raw
+  attention) never cached. THE 10-03 QUEUE IS COMPLETE — CL_241, TC_241, the bake-off, all null. CARD IDLE. NEXT (needs
+  the word; ranked): (1) THE CERTIFIER LOOP FORM 2 — a FRESH grounding read at the consult breaths (2/4/6) under the
+  certifiers' assignment lines (new evidence at the first look; the one place no arm has reached; the loop's code
+  carries the lines, the re-run of breath 0 is the build); (2) retina-side identity keys on the grounding read (the
+  dual-stream identity port); (3) Part 2 as ranked 10-03 18:58 (synthetic data with twins/other-sentence structure;
+  bisimulation for the atlas; the agreement judge and the MCTS re-read as reads; adaptive stopping last).
 - 10-04 01:55: TC_241 (THE WHERE-CODES, from scratch) DOES NOT FIRE — slot -0.002 (z 0.2), rows 14/10 vs 14/9, mint
   -0.007, the wrong-sentence share unmoved (0.508). THE DESCENT LINE ON THE MEMBRANE IS CLOSED: six forms (three warm,
   three from scratch) null; the first look sets the wall. Open: new evidence at the first look — the U-Net picture
