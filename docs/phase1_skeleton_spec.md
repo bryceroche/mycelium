@@ -46023,3 +46023,9 @@ edges, encoded: a row's solution vector must reach its query variable
 and must AGREE with its custody key (load_alg refuses otherwise).
 Artifacts: sharp_CL2_241, ps_{open,legal}_wild_CL2_241.npz, dump_wild_
 CL2_241.pkl, rawslots_wild_CL2_241.pkl, cert2_chain.log.
+(13:35) CL2_241's mechanism census (the plain two-pass collect, the
+consult-path caveat as for CL_241): wrong givens' other-sentence share
+0.514 / 0.521 mass (PMS8 0.495 / 0.520) — unmoved; flat across breaths;
+right slots 0.79 -> 0.61 token hit. The bar (< 0.40) missed; the closure
+above stands. U-NET ROUND 2 began 13:30 (pc-queue3-1004; the pre-flight
+contract PASSED on its chain — the contracts' first live use).
