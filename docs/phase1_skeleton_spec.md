@@ -45779,7 +45779,7 @@ when a line closes, the next form of the same belief is sought (new
 evidence, not a re-read), never a new belief. Recorded in project memory
 (user_deeply_held_beliefs.md) and here.
 
-### 2026-10-04 (07:45) — THE TWELVE HILLS RECONCILED WITH THE WEEK'S NULLS: the hierarchy MOVES from WHERE to WHICH
+### 2026-10-04 (08:09) — THE TWELVE HILLS RECONCILED WITH THE WEEK'S NULLS: the hierarchy MOVES from WHERE to WHICH
 
 Bryce asked for the reconciliation; Opus's table (relayed) is adopted with
 two corrections and one sharpening. THE PRINCIPLE: a null is a verdict
