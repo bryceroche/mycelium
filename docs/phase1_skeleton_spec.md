@@ -45986,3 +45986,40 @@ schedule and the consults; promotion = one tempo for the levels, the
 temperature, the per-band damping, the consults and the U-Net's looks,
 entering as a FIXED MANDATORY signal (the tick's 0.13 gate is the
 counter-example).
+
+### 2026-10-04 (13:20) — THE CERTIFIER LOOP, FORM 2: DOES NOT FIRE (CL2_241 vs PMS8_241; cert2_chain.log); THE GOLDEN EXPECTATION BANKED
+
+CL2_241 (from scratch: the PMS8 recipe + ALG_ALT3=1 ALG_CERT=2.0
+ALG_CERT2=1 — the state-free grounding read at breaths 3 and 5 under
+the certifiers' lines; 0.337 s/step, 4.5 h): masked wild 0.3501 vs
+0.3476, paired +0.0024 (149 vs 154 discordant; z ~0.3) — the week's
+first positive sign at the slot, inside one SE; open 0.3218 vs 0.3198;
+ROWS 8 / 7 vs 14 / 9 — SIX MASKED ROWS DOWN, as CL_241; mint 0.6508
+(-0.003); fields: dig 0.407 vs 0.46 (DOWN, as CL_241), args 0.446 (flat),
+ftype 0.863 (up). vs the lineage +0.021 (z 2.1), vs the chassis open
++0.0215 (z 2.5) — the recipe's standing. VERDICT: does not fire — the
++0.020 bar missed by a wide margin; rows and digits cost, the same two
+costs as form 1. READING (the mechanism census pending — the collect is
+running): retaking the first look at breaths 3 and 5 with the state
+removed from the query did not move the slot and cost rows and digits
+exactly as form 1 did, which says the cost is in the LINES, not in where
+they enter: a bias toward unclaimed numerals on colliding givens,
+learned from step 0, pulls values off their numerals (digits -0.05 on
+both forms), and the gain it buys at the slot (+0.002) does not reach
+the row. The two forms together close the certifier-loop line AS A ROUTE
+BIAS: the new evidence is right (the census's 57%) but a soft bias is
+the wrong instrument for it — a value that the solver says should be 12
+and the text carries at one place should be WRITTEN, not nudged toward
+(the value propagator as a VALUE road into the digit head and the slot
+state, the chassis ruling's original form), and the pull/push signals
+belong in the PICKER (the Sinkhorn read's +4 rows), not in the
+attention. Registered: the value-propagator road (implied values written
+into the given's value head at the consult, mandatory, from scratch).
+THE GOLDEN EXPECTATION banked (scripts/contracts/golden.py; .cache/
+golden24_expect.json): PMS8_241 on the 24 custody-clean training-diet
+rows, masked: 6 correct / 12 wrong / 6 refused — `golden.py check`
+after every head change compares to this. The set's two selection
+edges, encoded: a row's solution vector must reach its query variable
+and must AGREE with its custody key (load_alg refuses otherwise).
+Artifacts: sharp_CL2_241, ps_{open,legal}_wild_CL2_241.npz, dump_wild_
+CL2_241.pkl, rawslots_wild_CL2_241.pkl, cert2_chain.log.

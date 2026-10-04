@@ -22,6 +22,13 @@ The reads table: `.venv/bin/python3 scripts/reads.py table wildhold` (assert-on-
   free). THE READING: the warm regime on the claim body is a SETTLED BASIN — gentle continuation moves nothing for any
   organ whose effect is a small bias; what moved this month was structural at read (the numeral mask, the role pointer)
   or trained from scratch.
+- 10-04 13:20: CL2_241 (THE CERTIFIER LOOP FORM 2) DOES NOT FIRE — slot +0.002 (z 0.3; the first positive sign), rows
+  8/7 vs 14/9 (six down, as form 1), digits 0.41 vs 0.46 (down, as form 1), mint flat. THE LINE CLOSES AS A ROUTE BIAS:
+  the evidence is right, the soft bias is the wrong instrument — registered: THE VALUE-PROPAGATOR ROAD (the solver's
+  implied value WRITTEN into the given's value head at the consult, mandatory, from scratch) and the pull/push signals in
+  the PICKER. THE GOLDEN EXPECTATION BANKED: PMS8_241 on golden24 masked = 6 / 12 / 6 (.cache/golden24_expect.json);
+  run `golden.py check` after every head change (its selection now requires solution[query] to exist and agree with the
+  custody key). U-NET ROUND 2 is next on the card (pc-queue3-1004).
 - 10-04 08:45 (the word for the whole queue): RUNNING pc-cert2 (CL2_241 = THE CERTIFIER LOOP FORM 2: a state-free
   grounding read at the consult breaths under the lines; from scratch vs PMS8_241; bars = CL_241's + digits not down;
   ~3 h; .cache/cert2_chain.log), then pc-queue3-1004 (U-NET ROUND 2: the WHICH channels + the convergence rule;
