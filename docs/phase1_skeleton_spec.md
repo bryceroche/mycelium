@@ -45607,3 +45607,9 @@ PMS8_241 (the tree's two bars; ~2.5 h), after its CPU gate completes
 is on it); then Part 2 in the ranked order (18:58). The certloop chain
 now runs from the main tree (the merge carries the road; its `cd` was
 the worktree's).
+(19:15) The where-codes gate's treecode config tripped the no-grad fence:
+under ALG_TREE_NOPOOL the three level queries existed with no road to a
+gradient. Fixed in a worktree (branch treecode-fix fea7e3cd: no level
+queries when the pooled terms are off) — the main head stays untouched
+under the running certloop arm; the gate and the TC_241 chain now run
+from the worktree; the gate refired. CL_241 is on the card.
