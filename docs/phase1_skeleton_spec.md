@@ -45778,3 +45778,64 @@ a null read is a verdict on a FORM of a belief, never on the belief —
 when a line closes, the next form of the same belief is sought (new
 evidence, not a re-read), never a new belief. Recorded in project memory
 (user_deeply_held_beliefs.md) and here.
+
+### 2026-10-04 (07:45) — THE TWELVE HILLS RECONCILED WITH THE WEEK'S NULLS: the hierarchy MOVES from WHERE to WHICH
+
+Bryce asked for the reconciliation; Opus's table (relayed) is adopted with
+two corrections and one sharpening. THE PRINCIPLE: a null is a verdict
+on a FORM; a belief changes its MECHANISM before anyone abandons it; but
+the shield cuts both ways — explaining every null as "the experiment did
+not follow the belief" makes the belief unfalsifiable and useless as a
+compass. So each hill gets a status AND the question "what result would
+change how we build it?". STATUS (10-04): (1) alternation + certifiers —
+UNTESTED in its real form (form 1 never touched the first look; form 2
+is the test). (2) U-Net + hierarchical codebook, coarse to fine —
+NARROWED: six descent forms over the same token evidence null; the WHERE
+hierarchy (sentence / clause / mention) handed to the model twice — as
+blocks in the picture, as address codes on the keys — and ignored twice
+(= its placebo); the WHICH hierarchy is UNTESTED, and so is the U-Net
+inside the loop. (3) the perceiver — UNTESTED (unbuilt). (4) MCTS/MDP —
+MEASURED ONCE: a +4-row ceiling because failing rows carry several
+errors; it gains value as the first look improves. (5) tests and
+contracts — A REAL GAP (below). (6) the atlas — UNTESTED (unbuilt). (7)
+U-Net eyes / masks hands — UNTESTED (the bake-off ran outside the loop,
+no feedback layers, no breaths, no solver). (8) breaths never
+specialize, heads do — SUPPORTED (nested labels made negative cross-rung
+pairs). (9) hierarchical embeddings -> the codebook — PARTLY TESTED: the
+WHERE codes inert; the WHICH codes untested. (10) T6 time / T256
+relations — SUPPORTED IN PART: the clock needs its width (the band
+probe), the turn is read (-0.031), the shoal on the bus is a passenger.
+(11) the 512/128 bottlenecks — SUPPORTED: the waist's removal cost WAS
+read (09-24 19:20: -0.064, z 7.0, rows 5 — a correction to the relay,
+which called it unread), the notebook -0.134, the mixer -0.025. (12) the
+diffusion compiler — OPEN as a whole; its pieces mostly unbuilt. None
+falsified as a direction. THE SHARPENING (the one lesson of the week):
+the model does not fail because it cannot tell WHERE a sentence is; it
+fails because it cannot tell WHICH sentence a number belongs to — which
+entity, which event, which moment — and the campaign already measured
+this from three sides: same-noun twins are THE SAME ENTITY at different
+roles and times (the twin-split verdict), derived arguments' identity is
+in no token and must be PROPAGATED (the mixed-bucket decomposition), the
+waist BLURS same-sentence nouns, and the one organ that moved the same-
+noun cell (the role signature) is a WHICH-code at the mention level
+(cue + order under a role phasor). So hills 2 and 9 do not die; their
+tree changes from where (sentence > clause > mention) to WHICH (entity >
+event > moment), walked coarse to fine: which thing, then which
+happening, then before-or-after — and the role signature is already its
+leaf. The U-Net's fair test (hill 7) is inside the loop with WHICH
+channels (entity and event identity painted on the picture), the
+feedback layers, and a convergence rule. HILL 5, CONCRETELY: the bit-
+identity gates are unit tests and the placebo controls are feature
+tests; what is missing is (a) a PRE-FLIGHT CONTRACT — before any chain
+fires, assert every arm's and baseline's inputs exist (checkpoints,
+per-slot files, dumps, fixtures, cached states), so a missing baseline
+crashes at step 0 (the caric chain died on a missing control dump; the
+tree chain's collect overwrote a baseline); (b) a CONVERGENCE CONTRACT —
+no model is scored until its loss has levelled by a rule (< 1% change
+over the last 10% of steps), else "null" may mean "not done" (the
+U-Net's loss was still falling); (c) GOLDEN PROBLEMS — a small fixed set
+with known graphs, re-run after every change. These three are the next
+build and precede any arm. ORDER: the contracts; the certifier loop's
+form 2 (hills 1 and 3; the first look); the U-Net inside the loop with
+WHICH channels (hills 2 and 7). Recorded in project memory beside the
+hills.
