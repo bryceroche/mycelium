@@ -45540,7 +45540,7 @@ Everything built this week stands dead unless set: the tree (both
 forms), the caricature, the read-time certifier mask, the certifier
 loop. The card is idle. Post-merge CPU gate follows.
 
-### 2026-10-03 (16:40) — THE WORD STANDS ("build everything, run nothing"): PART 1 BUILDING (the U-Net picture bake-off; the hierarchical where-codes), PART 2 RANKED, NOT BUILT
+### 2026-10-03 (18:58) — THE WORD STANDS ("build everything, run nothing"): PART 1 BUILDING (the U-Net picture bake-off; the hierarchical where-codes), PART 2 RANKED, NOT BUILT
 
 Bryce: "also a hierarchical codebook that we walk down each breath"; Opus's
 two-part message (the U-Net picture bake-off; MDP reduction and Monte
