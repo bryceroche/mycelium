@@ -46493,3 +46493,19 @@ the 4 regression rows are the audit-before-diet candidate before any
 second read. Honest negative, banked. Artifacts: .cache/panel_picker_
 PMS8_241.txt, .cache/picker/{cand_diet,cand_wild_PMS8_241,feat_diet,
 feat_wild,model}.pkl, .cache/rawslots_slicevalid2_PMS8_241.pkl.
+
+### 2026-10-05 (12:53) — THE UNMERGED FIX: gen-weights' head cannot TRAIN under ALG_TREE_NOPOOL (TC_241 ran from the worktree)
+
+Found by the conductor refactor's 11-config bit-identity gate (worktree mycelium-wt4): the treecode
+config (ALG_TREE + ALG_TREECODE + ALG_TREE_NOPOOL=1) dies in the training step with "params with NO
+gradient: tree_wq0/1/2". The one-line fix (no level-query params under ALG_TREE_NOPOOL) is commit
+fea7e3cd on branch treecode-fix (worktree mycelium-wt) and WAS NEVER MERGED into gen-weights; TC_241
+(10-03/04) trained from that worktree, so the arm and its verdict stand, but the main head's treecode
+recipe has been a latent crash since 10-03 (every reader is unaffected: the assert is the training
+step's no-grad fence). The CPU reference for the config is the worktree's own gate
+(.cache/treecode_gate.log: 6.5209 / 1.1259). RULE: a worktree fix that a fired arm depends on is
+merged in the SAME transaction that fires the arm (prose promotions don't move machines — neither do
+worktrees). Disposition: the fix is applied on the conductor branch and merges with it after
+pc-queue1005's chains end (they import the main head). The other 7 configs of the conductor gate
+read bit-identical so far (unset/role8/tree/tree2/matry/unlock match their references); the
+remaining four (cert2/hier/hierd/swtick) are running.
