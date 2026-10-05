@@ -2675,7 +2675,7 @@ def build_params(seed=0):
              (_rngF.randn(N_SCR, H_W) * 0.02).astype(np.float32)], 0))
     if ALG_SIXWAVE:      # door #62: carrier gate — structure enters at zero
         p["sw_g"] = t(np.zeros((1,)))
-    if _TREE_LEVELS is not None:   # THE TREE DESCENT: three level queries, zero at birth (the keys are the bank's own)
+    if _TREE_LEVELS is not None and not ALG_TREE_NOPOOL:   # THE TREE DESCENT: three level queries, zero at birth (the keys are the bank's own); none under ALG_TREE_NOPOOL (they had no gradient)
         for _tl in range(3):
             p[f"tree_wq{_tl}"] = t(np.zeros((H_W, H_W)))
     if int(os.environ.get("ALG_BUSGARAGE", "0")):
