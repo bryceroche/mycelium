@@ -46447,3 +46447,49 @@ ADOPTED: the conductor refactor is a BIT-IDENTITY refactor (no function
 changes; every scheduled config's gate line must reproduce exactly),
 built in a worktree while the queue's chains import the main head,
 merged after they end; THE EYES are built on it. Delegated.
+
+### 2026-10-05 (12:48) — THE PANEL PICKER: BUILT, PARITY-CHECKED, READ ONCE ON WILD — 19/311, MISSES THE BAR (delegate; scripts/picker/{gen_candidates,angles,build_features,train_picker,wild_read}.py; PMS8_241, one GPU dump + zero-GPU CPU)
+
+Built per the 10-05 11:50 registration. ONE GPU command: chain_acc.py
+on the training-diet valid2 slice (.cache/form_pm35c_slice1024_valid2.
+jsonl, 775 rows) under PMS8_241's own family env + CA_MASK=1, writing
+.cache/rawslots_slicevalid2_PMS8_241.pkl (masked read 310/775 correct,
+236 refused, 229 wrong — the diet's own top-1). Everything else DEV=CPU.
+PARITY (checked before trusting anything): the new candidate generator
+(scripts/picker/gen_candidates.py, importing combined_oracle.py/
+beam_oracle.py/sinkhorn_claim.py as libraries, never editing them)
+reproduces, from scratch, both the wild self-gate (14/311) and —
+independently recomputed via the same consistency-judge logic over
+its OWN regenerated wild candidate set — the ledger's floor (18/311)
+exactly; the diet dump's own top1_correct (310/775) matches chain_acc's
+console read exactly. THE ANGLES (22 features, 7 groups; printed by
+build_features.py): solver status, uniqueness (mycelium.doors.
+certify_unique), the model's log-likelihood (combined_oracle's
+candidate_loglik, reused) + its row rank, graph length vs top-1, the
+NL certifier's text certificates (nl_certifier.py's formulas, adapted
+to score an ARBITRARY candidate's own parse+assignment, not only the
+dump's top-1), exact per-slot flip counts vs top-1 (args/value/
+type-op), and a twin-pick flag (a STATED top1-vs-alternate symmetric
+form of twin_gap.py's gold-vs-pick is_twin predicate — there is no
+gold at read time, see angles.py's TWIN_FLAG_NOTE). THE PICKER:
+logistic, 5-fold GroupKFold BY ROW on the diet (23,642 candidates/775
+rows). DIET: top-1 310/775 (0.400), consistency judge 296/775 (0.382),
+picker CV 297/775 (0.383) — the full picker sits BETWEEN the two
+baselines, not above top-1. ABLATION: flips carries the model (-82 if
+dropped), length/nlc carry real weight (-39/-34), unique a little
+(-15), status near-inert (-1); loglik and twin are NET NEGATIVE in the
+full model (dropping either IMPROVES diet CV: +33 to 330/775=0.426
+without loglik, +8 without twin) — reported, not substituted in,
+since the task pins ONE wild read on the full-angle model as
+registered. THE ONE WILD READ (unmodified diet model, applied once):
+19/311 correct vs the floor 18 / ceiling 43, 4 regressions vs top-1
+(rows 81, 233, 285, 297), 9 fixes (rows 9,18,43,58,94,227,247,255,266)
+— BAR (rows >= 24, regressions <= 2) MISSES on both legs (1 row short,
+2 regressions over). READING: the picker clears the floor by one row
+but trades the consistency judge's zero-regression safety for it; the
+diet ablation's loglik-free variant (0.426 CV, the strongest cell) is
+the natural next arm, not run here (the bar calls for one wild read);
+the 4 regression rows are the audit-before-diet candidate before any
+second read. Honest negative, banked. Artifacts: .cache/panel_picker_
+PMS8_241.txt, .cache/picker/{cand_diet,cand_wild_PMS8_241,feat_diet,
+feat_wild,model}.pkl, .cache/rawslots_slicevalid2_PMS8_241.pkl.

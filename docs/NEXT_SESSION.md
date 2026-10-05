@@ -33,6 +33,13 @@ The reads table: `.venv/bin/python3 scripts/reads.py table wildhold` (assert-on-
   not a freeze — the dead stop's mint cost); DYNAMIC BALANCE read: relative phase, the inner ear and the IMU are
   already built. THE EYES specified (the U-Net on the T256 bus bands in the canon frame, slots x tokens, feedback
   layers, the clock as timestep).
+- 10-05 12:48: THE PICKER PANEL IS BUILT (scripts/picker/) AND READ ONCE: 19/311 vs floor 18 / ceiling 43,
+  4 regressions — MISSES the bar (rows>=24, regressions<=2). Parity double-checked (this pipeline's own
+  self-gate 14/311 and consistency-judge 18/311 reproduce the 11:50 entry's numbers exactly before the wild
+  read was trusted). Diet CV (297/775) sits BETWEEN top-1 (310/775) and the consistency judge (296/775);
+  the ablation says loglik and twin are net NEGATIVE angles in the full model (dropping either improves
+  diet CV, best cell 330/775=0.426 without loglik) — flagged as the next arm, not substituted in. Honest
+  negative, banked (ledger 12:48). Full report: .cache/panel_picker_PMS8_241.txt.
 - 10-05 04:05: HS_241 (THE HIERARCHICAL STATE, from scratch) DOES NOT FIRE — slot +0.0005 (z 0.06), rows 8/7 vs 14/9,
   mint -0.068 (the largest), digits 0.38 vs 0.46, golden 5/24 vs 6 (the early warning showed its sign). MECHANISM: the
   band freezes hold (root change 0.000 from b3, branch from b6); the entropy plateau unchanged; THE DRIFT IS CURED — the
