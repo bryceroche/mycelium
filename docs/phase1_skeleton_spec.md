@@ -46409,7 +46409,7 @@ unique pick TODAY (safe), and on the panel's pick once it clears its
 bar; MCTS has a value function the day the panel does. Artifacts:
 .cache/combined_oracle_PMS8_241.txt.
 
-### 2026-10-05 (12:25) — WORD GIVEN FOR THE WHOLE QUEUE; THE T6 CLOCK AUDIT (docs/audits/t6_clock_audit_2026-10-05.md, 202aeaa4)
+### 2026-10-05 (12:11) — WORD GIVEN FOR THE WHOLE QUEUE; THE T6 CLOCK AUDIT (docs/audits/t6_clock_audit_2026-10-05.md, 202aeaa4)
 
 FIRED (pc-queue1005): HSd_241 — THE DAMPED FORM of the hierarchical state
 (ALG_HIER_TAU=1.0: after its settle breath a band keeps exp(-(kb -
