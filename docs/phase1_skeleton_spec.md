@@ -46251,3 +46251,57 @@ cure; both need the word. Regime tag: one seed, from scratch, the 32 /
 HS_241.json, clock_band_states_HS_241.npz, membrane_scale_HS_241.txt.
 THE 10-04 QUEUE IS COMPLETE (CL2_241, U-Net round 2, HS_241 — all
 null; the contracts live). The card is idle.
+
+### 2026-10-05 (04:20) — THE UNIFIED DESIGN read against the record (Bryce's brainstorm with Gemini); THE COMBINED ORACLE BOUND WITH THE CONSISTENCY JUDGE fired (zero GPU)
+
+Bryce's picture: alternation between the NL and math certifiers, feedback
+through the perceiver; the U-Net as its eyes reading the breathing tree;
+the hands = dynamic masking (soft) and the differentiable circuit breaker
+(hard); Laplace damping over the breaths; MCTS over candidates pruned by
+the certifiers; hierarchical embeddings for the grain; the block-
+diagonal waist so the bottleneck does not mix bands; the fingerpost's
+many angles via MCTS; MoE heads specializing while breaths do the same
+job. "The rotation sickness has largely been cured, right?" — THE
+HONEST ANSWER: largely, with two provisos. CURED: the state no longer
+drifts (HS_241: the right slots' token hit flat at 0.76 across all
+breaths, where every other body decayed 0.81 -> 0.60), and the pictures
+a U-Net would read come from a frozen trunk with a PCA fit once. NOT
+REMOVED, BY DESIGN: the clock planes still turn 60 degrees per breath
+(the T6 clock; the band probe says the turn is read); any reader that
+needs a still frame undoes the turn — the notebook's canon frame does;
+the U-Net inside the loop must. NOT YET BUILT: the smoothing of the
+certifier lines across breaths (the carried-prior idea on the LINES).
+THE HANDS, agreed with Gemini's split and the record's rule: the soft
+hand (dynamic masking) for guesses, the hard hand (the one-hot breaker)
+only for CHECKED facts. GEMINI'S MISSING LINK, adopted as the diagnosis
+of HS_241: hard freezes at breaths 2 and 4 cement a wrong first look;
+the fix is a sledgehammer at breath 0 BEFORE the freeze. BUT THE
+SLEDGEHAMMER NEEDS A SOURCE OF TRUTH, and here the record is stricter
+than the brainstorm: the "value propagator" cannot write a GIVEN's value
+from the solver alone — a given is an input, and an under-determined
+graph implies nothing about it (the certloop gate's census: IMPLIED
+fired on 0 rows); the solver's implied values certify RELATIONS against
+the text, and "inconsistent" names no culprit. The only text-side
+source for a wrong given is the unclaimed-numeral assignment, right 57%
+of the time — as a soft bias it cost digits (two forms), as a hard
+write it would be wrong 43% of the time. So the checked fact must come
+from CONSISTENCY: write an alternative value only when the graph with
+that value SOLVES consistently and uniquely where the original did not
+— the solver as the JUDGE over candidates, which is MCTS with the
+solver as its value function, which is the fingerpost (many angles,
+one truth) and the circuit breaker (prune what does not solve) in one
+read. Whether that judge recovers rows is measurable NOW on the banked
+dump, before any build: THE COMBINED ORACLE BOUND — branch args (the
+beam oracle's k), given values (the Sinkhorn alternatives), type/op
+flips (the registered op-toggle bound) together; (a) the ceiling with
+the key; (b) the CONSISTENCY JUDGE's pick without the key (solves
+uniquely; tie-break by the model's likelihood) in rows vs 14; (c) the
+judge's precision on rows top-1 had right. Delegated, running (zero
+GPU). If the judge recovers rows, the hard hand has a source of truth
+and MCTS has its value function; if it does not, the first look needs
+evidence no candidate search supplies (the retina-side keys). MoE
+heads / same-job breaths / Laplace transfer of gradient energy down the
+tree: consistent with hill 8 and the census (no negative pairs on the
+flat ladder except the args head's 4/42); the freeze does stop the
+gradient to the frozen bands' writers — a transfer, as Gemini says, and
+the mint cost (-0.068) is its price on short rows.
