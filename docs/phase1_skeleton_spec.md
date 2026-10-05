@@ -46030,7 +46030,7 @@ right slots 0.79 -> 0.61 token hit. The bar (< 0.40) missed; the closure
 above stands. U-NET ROUND 2 began 13:30 (pc-queue3-1004; the pre-flight
 contract PASSED on its chain — the contracts' first live use).
 
-### 2026-10-04 (13:50) — HIERARCHICAL EMBEDDINGS (hill 9), brainstormed against the record; THE HIERARCHICAL STATE registered
+### 2026-10-04 (19:25) — HIERARCHICAL EMBEDDINGS (hill 9), brainstormed against the record; THE HIERARCHICAL STATE registered
 
 Bryce (with Gemini's proposal): partition the 512-d state into nested
 subspaces — root (topology), branches (roles/entities), leaves (values) —
