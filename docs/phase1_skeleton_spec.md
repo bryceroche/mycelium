@@ -46121,3 +46121,49 @@ cost read on the warm body before the arm; the arm from scratch vs
 PMS8_241 at the 19:25 bars + the golden warning. Builds after U-Net
 round 2 reads (the card; the control hit its 60k cap unconverged, the
 which-picture is training); the word needed to fire.
+
+### 2026-10-04 (20:10) — WORD GIVEN: THE HIERARCHICAL STATE built and fired; THE ONE-HOT TOGGLE TREE brainstormed against the record
+
+BUILT (main head; the card is the U-Net's until ~00:30 — a gate is CPU):
+ALG_HIER_READ (each readout head reads its band and the clock: pres/
+ftype/op/sel/dup/islit/sgn the ROOT 32 dims, args/dargs/iargs/res/y the
+BRANCH 224, dig/dig2 the LEAF 128; 14 reads rewritten), ALG_HIER_WAIST
+(the polar waist's W_down/W_up masked block-diagonal, 12/72/44 latents),
+ALG_HIER_DAMP=r,b,l (a band's content dims frozen after its settle
+breath; the clock never). Gate (CPU, running): unset bit-identical;
+role8; hierread runs; hier (all three) runs. ARM HS_241 (pc-hier; from
+scratch vs PMS8_241; waits for the gate, then the lock): the pre-flight
+contract at its top (the first arm chain to carry it); after training
+the GOLDEN early warning (>= 6/24 on the arm) and the band-probe
+collect for the damping/entropy census; then the family reads and the
+membrane census; BARS as 19:25/20:00. THE ONE-HOT TOGGLE TREE (Bryce
+with Gemini: a predefined structure, the model sends one-hot vectors to
+toggle branches on and off; Gumbel-softmax / straight-through for the
+gradient; the toggle vector as MCTS's discrete state; the solver's
+one-hot as the symbolic-to-neural bridge). READ AGAINST THE RECORD, open-
+minded: (1) the predefined structure EXISTS — the op palette (8 ftypes
+x ops) and the solver's predicate registry; the alternation spec's "DSL
+predicate mask, soft -> hard over six breaths" is this organ already
+specified; the WHICH tree gives it its branches. (2) The bridge EXISTS in
+soft form: the facts buffer injected at the consult is (known flag +
+MSD digits/9) per variable — a near-one-hot from the solver; the hard
+form is the value WRITTEN into the digit logits (the value-propagator
+road, registered 13:20) — the one-hot encoding is its natural shape.
+(3) Hard toggles: the rule the week taught — CLOSE a branch only on a
+CHECKED fact (the solver's forced singleton, verified against the text;
+the toggle may be hard), OPEN branches on the model's own commitments
+(MASKRE's open-by-commitment, which never tightens); a hard toggle on a
+57%-right guess destroys the 43% (A0's grave). Gumbel-softmax with the
+conductor's temperature is the soft -> hard schedule in one knob: the
+squint early, the hard switch late, differentiable throughout (tinygrad:
+a detach trick). (4) MCTS over toggles: the right discrete state space —
+and its ceiling is measurable before any build, exactly as the arg
+branching's was (+4 rows): THE OP-TOGGLE ORACLE BOUND (branch the k
+lowest-margin ftype/op decisions on the banked dump, solve, count rows
+any branch gets right) — registered as the zero-GPU read that decides
+whether the toggle tree earns an arm. (5) The U-Net inside the loop
+reading the partitioned state and the perceiver flipping toggles is
+hill 7's full form; it waits on the hierarchical state (the partition
+the toggles would act on). Prior: moderate — the soft form (the facts
+injection) exists and read null as a nudge; the hard form on checked
+facts is untested and is the "dictate" the record supports.

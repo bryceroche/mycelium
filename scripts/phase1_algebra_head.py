@@ -1162,9 +1162,12 @@ def _polar_waist(u, p, state):
     _cd, _sel, _gc, _gk, _gp = _polar_sink()
     _wd = state.get("polar_wd_eff")
     if _wd is None:
-        _wd = _sel @ p["polar_wd"]                       # (H_W, d)
+        _pwd, _pwu = p["polar_wd"], p["polar_wu"]
+        if ALG_HIER_WAIST:                               # THE HIERARCHICAL STATE: a block-diagonal waist, one bottleneck per band
+            _bd, _bu = _hier_waist_blocks(); _pwd = _pwd * _bd; _pwu = _pwu * _bu
+        _wd = _sel @ _pwd                                # (H_W, d)
         state["polar_wd_eff"] = _wd
-        state["polar_wu_eff"] = p["polar_wu"] @ _sel.transpose(-2, -1)
+        state["polar_wu_eff"] = _pwu @ _sel.transpose(-2, -1)
     _wu = state["polar_wu_eff"]                          # (d, H_W)
     _cn = (u @ _wd) @ _wu                # exact zeros on every clock dim
     return _polar_keepnorm(u * _gk + _cn, u, _gc)
@@ -3280,6 +3283,59 @@ def _treecode_table(level):
         t = _Tc(arr).contiguous().realize()
         _TREECODE_TABS[level] = t
     return t
+# THE HIERARCHICAL STATE (2026-10-04, the word; ledger 19:25 / 20:00 — hills 2, 9, 11): the content planes NAMED by
+# what reads them. Three bands of the 384 content dims, plane-ordered: ROOT = the first 16 planes (32 dims),
+# BRANCH = the next 112 (224 dims), LEAF = the last 64 (128 dims); the clock planes belong to no band and stay
+# visible to every head (the timestamp). ALG_HIER_READ=1: the readout heads read their band only — pres/ftype/op/
+# sel/dup/islit/sgn the ROOT (what kind of step), the pointers args/dargs/iargs/res/y the BRANCH (who has what,
+# which moment), dig/dig2 the LEAF (which value); the same heads, the same targets, every breath (heads specialize,
+# breaths do not). ALG_HIER_WAIST=1: the polar waist becomes BLOCK-DIAGONAL (root 32 -> 12, branch 224 -> 72,
+# leaf 128 -> 44 = 128 latents) so the partition survives the breath's squeeze instead of being blended back.
+# ALG_HIER_DAMP="<root>,<branch>,<leaf>": the breath after which each band's state is FROZEN (0 = never): the
+# Laplace picture imposed — the root settles first, the leaf keeps moving; nothing wiped, the clock never damped.
+# All three unset = bit-identical. Sizes from the band-sizing probes (what ~8-16 dims, leaf ~32-64, which ~64+).
+ALG_HIER_READ = int(os.environ.get("ALG_HIER_READ", "0"))
+ALG_HIER_WAIST = int(os.environ.get("ALG_HIER_WAIST", "0"))
+_HIER_DAMP = [int(x) for x in os.environ.get("ALG_HIER_DAMP", "").split(",") if x.strip()] or None
+assert _HIER_DAMP is None or len(_HIER_DAMP) == 3, "ALG_HIER_DAMP = <root>,<branch>,<leaf> settle breaths (0 = never)"
+_HIER_PLANES = (16, 112, 64)          # root / branch / leaf content planes (sum 192)
+_HIER_LAT = (12, 72, 44)              # the block waist's latents per band (sum 128 = POLAR_D)
+_HIER_CACHE = {}
+
+
+def _hier_band_dims():
+    """the content dims of each band (plane-ordered), and the clock dims."""
+    if "dims" not in _HIER_CACHE:
+        _cd = np.asarray(_polar_sink()[0]); _cp = _cd.reshape(-1, 2)
+        a, b, c = _HIER_PLANES
+        bands = [_cp[:a].reshape(-1), _cp[a:a + b].reshape(-1), _cp[a + b:a + b + c].reshape(-1)]
+        clock = np.setdiff1d(np.arange(H_W), _cd)
+        _HIER_CACHE["dims"] = (bands, clock)
+    return _HIER_CACHE["dims"]
+
+
+def _hier_mask(which):
+    """(1, 1, H_W) float: 1 on the band's dims AND the clock dims (visible to every head), 0 elsewhere."""
+    key = ("mask", which)
+    if key not in _HIER_CACHE:
+        from tinygrad import Tensor as _Th
+        bands, clock = _hier_band_dims()
+        arr = np.zeros(H_W, np.float32); arr[bands[which]] = 1.0; arr[clock] = 1.0
+        _HIER_CACHE[key] = _Th(arr).reshape(1, 1, -1).contiguous().realize()
+    return _HIER_CACHE[key]
+
+
+def _hier_waist_blocks():
+    """block masks for the polar waist: down (C, d) and up (d, C) in CONTENT-dim order (the waist's own order)."""
+    if "blocks" not in _HIER_CACHE:
+        from tinygrad import Tensor as _Th
+        C = sum(2 * x for x in _HIER_PLANES); d = sum(_HIER_LAT)
+        down = np.zeros((C, d), np.float32)
+        c0 = l0 = 0
+        for pl, la in zip(_HIER_PLANES, _HIER_LAT):
+            down[c0:c0 + 2 * pl, l0:l0 + la] = 1.0; c0 += 2 * pl; l0 += la
+        _HIER_CACHE["blocks"] = (_Th(down).contiguous().realize(), _Th(down.T.copy()).contiguous().realize())
+    return _HIER_CACHE["blocks"]
 ALG_TREE2 = int(os.environ.get("ALG_TREE2", "0"))
 ALG_TREE_NUMW = float(os.environ.get("ALG_TREE_NUMW", "0"))
 assert not (ALG_TREE2 or ALG_TREE_NUMW or ALG_TREECODE or ALG_TREE_NOPOOL) or _TREE_LEVELS is not None, "ALG_TREE2 / ALG_TREE_NUMW / ALG_TREECODE / ALG_TREE_NOPOOL ride on ALG_TREE"
@@ -3929,35 +3985,39 @@ def _make_bank(p, waist, tokmask, B, sent=None, tree=None):
 
 
 def _heads_of(p, s, vst, B):
+    if ALG_HIER_READ:   # THE HIERARCHICAL STATE: each head reads its band (and the clock)
+        _sR = s * _hier_mask(0); _sB = s * _hier_mask(1); _sL = s * _hier_mask(2)
+    else:
+        _sR = _sB = _sL = s
     """forward()'s emission heads, factored BY PURE CODE MOTION
     (apply_step_trainer.py, 2026-09-03): the step trainer runs these on
     intermediate breath states at every seam (commit adapter) and on the
     final state with the seam-current vst. Single source of truth."""
     s = _fed_core(s)   # FED scratch: grade only the true factor rows
     return {
-        "pres": (s @ p["h_pres"] + p["h_pres_b"]).squeeze(-1),
-        "ftype": s @ p["h_ftype"] + p["h_ftype_b"],
-        "op": s @ p["h_op"] + p["h_op_b"],
-        **({"sel": s @ p["h_sel"] + p["h_sel_b"]} if "h_sel" in p else {}),
-        **({"dup": (s @ p["h_dup"] + p["h_dup_b"]).squeeze(-1)}
+        "pres": (_sR @ p["h_pres"] + p["h_pres_b"]).squeeze(-1),
+        "ftype": _sR @ p["h_ftype"] + p["h_ftype_b"],
+        "op": _sR @ p["h_op"] + p["h_op_b"],
+        **({"sel": _sR @ p["h_sel"] + p["h_sel_b"]} if "h_sel" in p else {}),
+        **({"dup": (_sR @ p["h_dup"] + p["h_dup_b"]).squeeze(-1)}
            if "h_dup" in p else {}),
-        "islit": (s @ p["h_islit"] + p["h_islit_b"]).squeeze(-1),
-        "dig": (s @ p["h_dig"] + p["h_dig_b"]).reshape(B, L_FAC, N_DIG, 10),
-        **({"sgn": (s @ p["h_sgn"] + p["h_sgn_b"]).squeeze(-1)}
+        "islit": (_sR @ p["h_islit"] + p["h_islit_b"]).squeeze(-1),
+        "dig": (_sL @ p["h_dig"] + p["h_dig_b"]).reshape(B, L_FAC, N_DIG, 10),
+        **({"sgn": (_sR @ p["h_sgn"] + p["h_sgn_b"]).squeeze(-1)}
            if "h_sgn" in p else {}),
         "args": _fed_pf(p, "args", s, vst,
-                        (s @ p["W_args"]) @ vst.transpose(-2, -1)),
-        **({"dargs": (s @ p["W_dargs"]) @ vst.transpose(-2, -1)}
+                        (_sB @ p["W_args"]) @ vst.transpose(-2, -1)),
+        **({"dargs": (_sB @ p["W_dargs"]) @ vst.transpose(-2, -1)}
            if "W_dargs" in p else {}),
-        **({"iargs": (s @ p["W_iargs"]) @ vst.transpose(-2, -1)}
+        **({"iargs": (_sB @ p["W_iargs"]) @ vst.transpose(-2, -1)}
            if "W_iargs" in p else {}),
         "res": _fed_pf(p, "res", s, vst,
-                       (s @ p["W_res"]) @ vst.transpose(-2, -1)),
+                       (_sB @ p["W_res"]) @ vst.transpose(-2, -1)),
         **({"dig2": _fed_pf(p, "dig2", s, None,
-                            s @ p["h_dig2"] + p["h_dig2_b"])
+                            _sL @ p["h_dig2"] + p["h_dig2_b"])
             .reshape(B, L_FAC, N_DIG, 10),
             "y": _fed_pf(p, "y", s, vst,
-                         (s @ p["W_y"]) @ vst.transpose(-2, -1))}
+                         (_sB @ p["W_y"]) @ vst.transpose(-2, -1))}
            if "h_dig2" in p else {}),
     }
 
@@ -5489,6 +5549,18 @@ def breath_step(p, state, kb, ctx):
                 _plv4 = _pcl4.reshape(-1, 1, 1)
                 _wg4 = _dep4 * _plv4 + _dep4.detach() * (1.0 - _plv4)
         _garage.append(_wg4)
+    if _HIER_DAMP is not None and 1 <= kb <= _RC_N_LOOP:   # THE HIERARCHICAL STATE: a band settled at breath k keeps its state from then on
+        _old = state["cur"]
+        for _bi, _settle in enumerate(_HIER_DAMP):
+            if _settle and kb > _settle:
+                _bands_, _clock_ = _hier_band_dims()
+                _arr = np.zeros(H_W, np.float32); _arr[_bands_[_bi]] = 1.0      # the band's content dims only (never the clock)
+                _key = ("damp", _bi)
+                if _key not in _HIER_CACHE:
+                    from tinygrad import Tensor as _Td
+                    _HIER_CACHE[_key] = _Td(_arr).reshape(1, 1, -1).contiguous().realize()
+                _dm = _HIER_CACHE[_key]
+                cur = cur * (1.0 - _dm) + _old * _dm
     if ALG_TREE2:
         state["tree_prev_at"] = fat_cur       # FORM 2: this breath's head-mean attention is the next breath's prior
     if "clockband" in _SEVER and ALG_POLAR and 1 <= kb <= _RC_N_LOOP:
