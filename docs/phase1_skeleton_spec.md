@@ -46626,3 +46626,21 @@ HS_241 (TAU 0) for EY_241; the rule holds though the damped form is the better-p
 do not bend after the read; the eyes' second arm (if the first fires) takes the damped body as its
 twin. The band probe (CB_MODE=probe) on HSd's collected states runs on CPU; its damping census is
 banked below when it lands.
+
+### 2026-10-05 (14:38) — THE DAMPING CENSUS on the three bodies (zero GPU; scratch damp_census.py over the band probe's collected states, the head's own _hier_band_dims): the imposed Laplace picture HOLDS on both hierarchical bodies
+
+Relative state change ||s[k+1]-s[k]|| / ||s[k]|| per band, mean over 311 rows x 24 slots, transitions b1->2 .. b5->6:
+HS_241 (hard freeze 2,4,0): root 1.898 / 0.202 / 0.000 / 0.000 / 0.000; branch 0.933 / 0.395 / 0.317 /
+0.240 / 0.000; leaf 1.976 / 0.247 / 0.133 / 0.122 / 0.110; clock 0.61 / 0.86 / 0.41 / 0.33 / 0.34.
+HSd_241 (tau 1.0): root 1.738 / 0.327 / 0.051 / 0.018 / 0.009; branch 0.974 / 0.393 / 0.311 / 0.262 /
+0.072; leaf 1.855 / 0.291 / 0.157 / 0.138 / 0.117; clock 0.60 / 0.89 / 0.40 / 0.33 / 0.35.
+PMS8_241 (no partition): root 1.215 / 0.321 / 0.199 / 0.155 / 0.122; branch 1.180 / 0.347 / 0.212 /
+0.167 / 0.125; leaf 1.222 / 0.346 / 0.210 / 0.160 / 0.123 (the 10-04 census's one-rate settling,
+reproduced on a third body). READING: the hierarchical state's bar "root's change at b3->4 below the
+leaf's by 2x" is met on both bodies (HS 0.000 vs 0.133 by construction; HSd 0.051 vs 0.157 = 3x, a
+DECAY not a wall); the damped form keeps the coarse-first order with every band still alive (root
+0.9 % at b5->6, branch 7 %, leaf 12 %) — the skater pulling in. The clock band's signature is the
+same on all three bodies (the turn). The band probe on HSd (clock_band_probe_HSd_241.txt): breath
+time readable from the clock wheels (breath_hand 0.913) and from random content bands (0.86-0.89,
+PMS8 0.915) — story time everywhere in the state, as on every body. The picture the eyes read on the
+HS body is therefore a still one in the root and a slowly moving one in the leaf, as specified.

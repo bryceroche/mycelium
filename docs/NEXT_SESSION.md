@@ -1,3 +1,23 @@
+# NEXT SESSION — cold-start entry (updated 2026-10-05 15:05)
+
+**THE CARD:** pc-queue1005 is running PMC8_241 (the caricature from scratch, 48k; ETA ~17:00 + reads), then pc-queue-eyes
+(armed; .cache/queue_eyes.sh) merges branch `eyes` (= conductor + the NOPOOL fix + ALG_EYES) into gen-weights, runs the
+post-merge CPU gate (.cache/eyes_merge_gate.log), picks the body by the pinned rule (-> HS_241, TAU 0: HSd_241 missed the
+paired bar by -0.0083) and fires EY_241 (.cache/eyes_chain.sh; log .cache/eyes_chain.log; verdict lines "masked wild",
+"paired", "chain-acc]", golden, membrane). Bars: ledger 2026-10-05 "THE EYES, registered as a build".
+**WORD GIVEN FOR EVERYTHING (Bryce, 10-05 ~13:35).** Pending verdicts to bank: PMC8_241 (bars: twin-pick <= 35 %, same-noun
++0.03, masked >= -0.005, rows >= 14, digits not down), EY_241 (masked >= HS_241 + 0.015, rows >= 10, mint >= 0.576, digits,
+the wall >= +0.03 from 0.526, right-slot hit >= 0.72). Then: push gen-weights -> main; the eyes' second arm on the damped
+body (HSd_241 = the better-priced twin: mint 0.628, rows 10) if EY fires; the hard hand (the consistency judge's checked
+facts as a one-hot toggle) is the eyes' second form.
+**TODAY'S LEDGER (10-05):** the combined oracle bound (ceiling 43/311), the panel picker (19/311, bar missed), the T6 clock
+audit -> THE CONDUCTOR built (11/11 bit-identical), the unmerged NOPOOL fix found, THE EYES built + gated (8384f6ef),
+HSd_241 does not fire (mint bar met, drift cure kept, wall unmoved), the damping census (Laplace holds on both bodies).
+**Worktrees:** mycelium-wt4 (conductor), mycelium-wt5 (eyes) — remove after the merge lands (`git worktree remove`).
+
+---
+(The previous entry follows, for the longer board.)
+
 # NEXT SESSION — cold start (HANDOFF 2026-09-22 ~12:30; the box restarts)
 
 **READ FIRST:** CLAUDE.md -> this block -> the ledger's entries from
