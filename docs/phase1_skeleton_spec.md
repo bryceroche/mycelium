@@ -46700,3 +46700,21 @@ the membrane collect + report (the WALL and HIT lines printed per arm), the dry 
 dump (scripts/rack_dryness_census.py, written by the builder), and the paired reads vs the body,
 EY_241 and PMS8_241; last, RK vs RKC paired = THE BAR. Derived from eyes_chain.sh with the gate
 checks regenerated and the per-arm tail rewritten for two arms.
+
+### 2026-10-05 (16:33) — PMC8_241 (THE CARICATURE FROM SCRATCH) DOES NOT FIRE on every bar; THE CARICATURE LINE CLOSES (two forms)
+
+Reads (pmc8_chain.log 16:24; reads.py ingest ran): open wild 0.3062; MASKED wild 0.3379 — paired vs
+PMS8_241 -0.0098 (bar >= -0.005 MISSED; the kill line -0.010 grazed), vs the lineage +0.0088; rows 12
+(masked) / 7 (open) vs PMS8's 14 / 9 (bar >= 14 MISSED); open mint 0.6001 (PMS8 0.65: -0.05); digits
+0.394 (flat vs PMS8's 0.398); silver460 0.2551. THE TWIN GAP (twin_gap_PMC8_241.txt): twin-pick
+share 0.457 vs PMS8's 0.451 and the warm CR_241's 0.426 (bar <= 0.35 MISSED, not even the warm
+compression); SAME-NOUN cell 703 / 1005 right = 0.6995 vs PMS8's 710 / 1005 = 0.7065 (bar +0.03
+MISSED: -0.007); different-noun 194 / 232 = 0.836 (PMS8 ~0.85). VERDICT: the caricature margin
+trained from step 0 (ALG_CARIC=2.0, the twin sidecars) moves nothing on the twins and costs mint
+and rows; warm (CR_241) it compressed the twin-pick share by 3 points without moving a cell; from
+scratch it does neither. THE LINE CLOSES: the twin wall is not a margin problem (same-noun twins are
+mostly the same entity at different roles / times; the role signature already took what a surface
+margin can take). The 10-04 queue's and today's record now read in one line: the hierarchical state
+protects the right answer (no drift), the damped form at a lower price, and nothing built on the
+membrane after the first look moves the wall — the rack (the first form that REMOVES items from
+the active set rather than re-weighting them) is the registered next read, behind the eyes.
