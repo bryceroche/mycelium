@@ -46029,3 +46029,54 @@ consult-path caveat as for CL_241): wrong givens' other-sentence share
 right slots 0.79 -> 0.61 token hit. The bar (< 0.40) missed; the closure
 above stands. U-NET ROUND 2 began 13:30 (pc-queue3-1004; the pre-flight
 contract PASSED on its chain — the contracts' first live use).
+
+### 2026-10-04 (13:50) — HIERARCHICAL EMBEDDINGS (hill 9), brainstormed against the record; THE HIERARCHICAL STATE registered
+
+Bryce (with Gemini's proposal): partition the 512-d state into nested
+subspaces — root (topology), branches (roles/entities), leaves (values) —
+opened by breath under the clock, frozen coarse-first by Laplace damping,
+pruned by hard masks, read by the U-Net as fixed channels. READ AGAINST
+THE RECORD, open-minded: (1) "partition + open by breath" has run twice
+with no semantics — the plane unlock (the state's planes opened 32 -> 192
+by breath; did not fire; the pointer cells fell) and the Matryoshka
+readout (the view cut only; null) — and the damping census (12:38) says
+WHY the partition was empty: every content band damps identically; the
+planes are exchangeable; nothing in the body gives a plane a meaning. So
+the partition is not the idea that failed; the UNNAMED partition is.
+(2) What gives subspaces meaning without per-breath labels (the nested
+labels' tug-of-war) is a READOUT PARTITION: the ftype/op heads read only
+the root dims, the args pointer only the branch dims, the digit head
+only the leaf dims — the same heads, the same targets, every breath
+(hill 8 intact: heads and subspaces specialize, breaths do not); the
+state's bands acquire their meaning by construction, from what reads
+them. Then the Laplace damping per band (hill 2's registered form) has
+content: root dims settle by breath 2 = the op type decided first;
+branch dims by breath 4 = who-has-what; leaf dims keep moving = the
+digits polished last — a descent with nothing wiped and nothing
+relabelled. (3) "Dictate, don't nudge" — half right by the record: the
+two certifier forms cost digits because a soft BIAS is the wrong
+instrument for a VALUE (the ledger's closure), and the hard instrument is
+a WRITE of the verified value (the value-propagator road), not a hard
+attention mask — the certifier's signal is right 57% of the time, so a
+hard mask on it would destroy the other 43% (A0's grave: never a hard
+-inf; the mask re-formation never tightens). Hard where the evidence is a
+checked value; soft where it is a guess. (4) No Poincaré — agreed, and
+already law (the marriage clause); partitioned Euclidean subspaces are
+the fit for the bus and the softmax. (5) The U-Net's channels fixed by
+subspace — yes: red = root, green = branches, blue = leaves — a steady,
+meaningful picture with no PCA; but the picture must then come from the
+HEAD's state (which has the partition), not the trunk's (which does not):
+the U-Net inside the loop, reading the partitioned state in the canon
+frame. REGISTERED — THE HIERARCHICAL STATE (one build, three parts, from
+scratch): (a) ALG_HIER_READ: input masks on the readout heads (root 64 /
+branch 192 / leaf 128 of the 384 content dims — the clock planes outside
+all three; all-open = bit-identical); (b) ALG_HIER_DAMP: per-band
+damping on the state update (root lambda -> 0 by breath 2, branch by 4,
+leaf open); (c) the U-Net's channels by band, later. BARS: masked +0.020
+(z 2) or the twin vs PMS8_241; the damping census on the arm must show
+the band structure the body lacks today (root band's change at b3->4
+below the leaf band's by 2x); the entropy curve must keep falling past
+breath 1 (today it plateaus at 1.3 / 1.7); rows >= 14; digits not down.
+Prior stated: MODERATE for (a) alone (it names the planes; the first
+form that does), LOW-MODERATE for (b) on top (the unlock's shape with
+meaning added). Build after U-Net round 2 reads; the word needed.
