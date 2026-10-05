@@ -22,6 +22,13 @@ The reads table: `.venv/bin/python3 scripts/reads.py table wildhold` (assert-on-
   free). THE READING: the warm regime on the claim body is a SETTLED BASIN — gentle continuation moves nothing for any
   organ whose effect is a small bias; what moved this month was structural at read (the numeral mask, the role pointer)
   or trained from scratch.
+- 10-05 03:55: U-NET ROUND 2 MISSED both bars (located 0.3044 / 0.3085 / 0.3065 — the WHICH channels = the placebo; all
+  three runs hit the 60k cap unconverged; the wrong-sentence share moved the wrong way). THE PICTURE-ENGINE LINE IS
+  CLOSED (two rounds, six runs, two channel families): a U-Net on pictures of the frozen trunk locates givens at 0.30-0.31
+  vs the head's 0.44. Hill 7 (the U-Net inside the loop, on the HEAD's partitioned state, with feedback layers) is
+  untouched and waits on the hierarchical state. RUNNING: pc-hier (HS_241, THE HIERARCHICAL STATE from scratch vs
+  PMS8_241; .cache/hier_chain.log; its gate certified 10-04 20:25; the golden early warning and the band-probe census in
+  its chain; ~3 h + reads).
 - 10-04 20:00: THE HIERARCHICAL STATE registered as the next head build (ledger 19:25, 20:00): readout masks by band
   (root 32 / branch 224 / leaf 128 of the content dims: the ftype/op heads read the root, the args pointer the branch, the
   digit head the leaf — the bands named by what reads them), a BLOCK-DIAGONAL waist (one bottleneck per band; the dense

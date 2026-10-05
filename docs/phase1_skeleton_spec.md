@@ -46175,3 +46175,31 @@ runs. The first gate run crashed on a slip of mine (the band views
 taken before the FED scratch trim, so the heads saw 32 slots; fixed
 fde67fa7). HS_241 fired (pc-hier): the pre-flight contract PASSED; it
 waits at the lock behind U-Net round 2.
+
+### 2026-10-05 (03:55) — U-NET ROUND 2: THE WHICH CHANNELS ARE INERT TOO; THE PICTURE-ENGINE LINE CLOSES (unet_round2_chain.log)
+
+Three arms under the convergence rule, every one to the 60k hard cap
+WITHOUT converging (the rule never passed — three times round 1's steps):
+wild given-location Aprime 0.3044, Awhich 0.3085, Awhich_shuf 0.3065 —
+one number (round 1: 0.3095 / 0.3044 / 0.3065). PRIMARY (Awhich over
+both by >= 0.020): +0.004 / +0.002 — MISS. MECHANISM (Awhich's misses'
+other-sentence share below Aprime's by 0.05): +0.022 the WRONG way —
+MISS. SECONDARY not read. READING: (1) the WHICH channels (lexical
+identity, the retina cosine, event blocks, the moment, role-cue
+proximity) are as inert as the WHERE channels were — identical to their
+shuffled placebo; a token x token picture read by a small U-Net uses
+neither structure. (2) Three times the training budget moved the located
+rate not at all (0.30-0.31 in six runs): that is the picture engine's
+ceiling at this size, and it sits well below the head's 0.44 with MORE
+other-sentence misses (0.63-0.66 vs 0.49). (3) The convergence contract
+earned its place: no run converged, so no run is "scored early" — the
+nulls are the engine's, not the budget's. THE LINE: the U-Net as a
+SEPARATE engine on pictures of the frozen trunk is CLOSED (two rounds,
+six runs, two channel families, two placebos). Hill 7 (the U-Net as the
+perceiver's eyes, masks as its hands) is NOT touched by this — that
+form reads the HEAD's partitioned state inside the loop with feedback
+layers, which no round built; and the hierarchical state (HS_241, on
+the card now) is the precondition that gives such a picture its
+channels. Regime tag: one seed per arm, 60k steps at batch 4, 16-ch
+base, class-1-only targets on wild. Artifacts: .cache/unet_round2_
+chain.log, the three checkpoints and eval logs under .cache/unet_*.
