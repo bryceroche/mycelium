@@ -46203,3 +46203,51 @@ the card now) is the precondition that gives such a picture its
 channels. Regime tag: one seed per arm, 60k steps at batch 4, 16-ch
 base, class-1-only targets on wild. Artifacts: .cache/unet_round2_
 chain.log, the three checkpoints and eval logs under .cache/unet_*.
+
+### 2026-10-05 (04:05) — THE HIERARCHICAL STATE ARM: DOES NOT FIRE; THE DRIFT IS CURED, THE WALL IS NOT (HS_241 vs PMS8_241; hier_chain.log)
+
+HS_241 (from scratch; ALG_HIER_READ=1 ALG_HIER_WAIST=1 ALG_HIER_DAMP=2,4,0;
+48k at 0.128 s/step — trained between the U-Net arms at the lock):
+masked wild 0.3471 vs 0.3476, paired +0.0005 (181 vs 180 discordant;
+z 0.06) — NULL to the slot; open 0.3096 vs 0.3198 (-0.010); ROWS 8 / 7 vs
+14 / 9 — down, as every from-scratch arm this week; MINT 0.5862 vs 0.654
+(-0.068, the largest mint cost of any arm: ftype 0.972 vs 0.993, args
+0.598 vs 0.652, res 0.705); fields on wild: dig 0.383 vs 0.46 (DOWN),
+args 0.441 (flat), ftype 0.853 (flat). THE GOLDEN EARLY WARNING: 5 / 24
+vs PMS8_241's 6 (one row under — inside the noise of 24, but the sign
+the warning was built to show: the bands cost flexibility). THE
+MECHANISM, three censuses: (1) DAMPING — the band structure is PRESENT
+by construction (root 2.62, 0.30, 0.000, 0.000, 0.000; branch 0.99,
+0.30, 0.21, 0.17, 0.000; leaf 1.56, 0.34, 0.16, 0.12, 0.12): the freezes
+hold; (2) ENTROPY — unchanged: right 2.13 -> 1.18 -> 1.25 plateau,
+wrong 2.81 -> 1.61 -> 1.65 plateau (the bar "keeps falling past breath
+1" MISSED); (3) THE MEMBRANE — the wrong slots' other-sentence share
+0.526 / 0.511 mass (PMS8 0.495 / 0.520): UNMOVED; and THE NEW FACT: the
+RIGHT slots' token hit is FLAT across every breath — 0.769, 0.722,
+0.764, 0.755, 0.750, 0.738, 0.764 — where every previous body decayed
+from 0.81 to 0.60. THE DRIFT IS CURED: a partitioned state with frozen
+coarse bands keeps what the grounding read found, for the whole loop.
+It is the first mechanism this month that changed the breath TRAJECTORY
+of a right slot, and it did not convert: the wrong slots are wrong at the
+first look and stay wrong (0.52 in another sentence at every breath),
+the digits pay for the leaf's 128 dims (the band-sizing probe said the
+leading digit needs ~32 linear dims; the digit head may need more than a
+third of the content to read a value nonlinearly), and mint pays most
+(its one-sentence positional rows want the whole state for every head).
+VERDICT: the arm does not fire. THE LINE: the partition names the planes
+(the damping census proves the names hold) and it protects the right
+answer from drifting; it does not find the wrong one — because, as six
+descents and two certifier forms said, the wall is set at the first
+look, and the hierarchical state changes what happens AFTER the first
+look. Hill 2 and hill 9 keep a real win (no drift) and the same open
+problem. WHAT THE RECORD NOW SAYS THE NEXT FORM MUST DO: change the
+grounding read's EVIDENCE at breath 0 — the value-propagator WRITE (a
+checked value into the digit head and the slot state; registered 13:20)
+and the retina-side identity keys on the grounding read — or widen the
+leaf (a 64 / 160 / 160 split) if the partition is kept for its drift
+cure; both need the word. Regime tag: one seed, from scratch, the 32 /
+224 / 128 split, hard freezes at 2 / 4. Artifacts: sharp_HS_241, ps_
+{open,legal}_wild_HS_241.npz, dump_wild_HS_241.pkl, golden24_rows_
+HS_241.json, clock_band_states_HS_241.npz, membrane_scale_HS_241.txt.
+THE 10-04 QUEUE IS COMPLETE (CL2_241, U-Net round 2, HS_241 — all
+null; the contracts live). The card is idle.

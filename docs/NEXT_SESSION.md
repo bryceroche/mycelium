@@ -22,6 +22,16 @@ The reads table: `.venv/bin/python3 scripts/reads.py table wildhold` (assert-on-
   free). THE READING: the warm regime on the claim body is a SETTLED BASIN — gentle continuation moves nothing for any
   organ whose effect is a small bias; what moved this month was structural at read (the numeral mask, the role pointer)
   or trained from scratch.
+- 10-05 04:05: HS_241 (THE HIERARCHICAL STATE, from scratch) DOES NOT FIRE — slot +0.0005 (z 0.06), rows 8/7 vs 14/9,
+  mint -0.068 (the largest), digits 0.38 vs 0.46, golden 5/24 vs 6 (the early warning showed its sign). MECHANISM: the
+  band freezes hold (root change 0.000 from b3, branch from b6); the entropy plateau unchanged; THE DRIFT IS CURED — the
+  right slots' token hit flat at 0.76 across all breaths (every previous body decayed 0.81 -> 0.60) — the first mechanism
+  to change a right slot's breath trajectory; the wrong slots' other-sentence share unmoved (0.526). THE 10-04 QUEUE IS
+  COMPLETE, ALL NULL; CARD IDLE. NEXT (needs the word; ranked): (1) THE VALUE-PROPAGATOR WRITE at the first look (the
+  solver's checked value written into the digit head and the slot state at the consult — the hard form; registered
+  10-04 13:20); (2) retina-side identity keys on the grounding read; (3) THE OP-TOGGLE ORACLE BOUND (zero GPU: branch the
+  k lowest-margin ftype/op decisions; decides whether the toggle tree earns an arm); (4) the hierarchical state kept for
+  its drift cure with a wider leaf (64/160/160) — only beside (1); (5) PMC8_241; Part 2 as ranked.
 - 10-05 03:55: U-NET ROUND 2 MISSED both bars (located 0.3044 / 0.3085 / 0.3065 — the WHICH channels = the placebo; all
   three runs hit the 60k cap unconverged; the wrong-sentence share moved the wrong way). THE PICTURE-ENGINE LINE IS
   CLOSED (two rounds, six runs, two channel families): a U-Net on pictures of the frozen trunk locates givens at 0.30-0.31
