@@ -46167,3 +46167,11 @@ hill 7's full form; it waits on the hierarchical state (the partition
 the toggles would act on). Prior: moderate — the soft form (the facts
 injection) exists and read null as a nudge; the hard form on checked
 facts is untested and is the "dictate" the record supports.
+(20:35) THE HIERARCHICAL STATE's gate certified: unset 5.2995/0.0279
+bit-identical; role8 6.5535/1.1061; hierread 7.3776/2.4956 (the warm
+fixture's heads lose the reads they trained with — a birth cost, as
+expected on a warm body; the arm is from scratch); hier 10.8621/8.8935
+runs. The first gate run crashed on a slip of mine (the band views
+taken before the FED scratch trim, so the heads saw 32 slots; fixed
+fde67fa7). HS_241 fired (pc-hier): the pre-flight contract PASSED; it
+waits at the lock behind U-Net round 2.
