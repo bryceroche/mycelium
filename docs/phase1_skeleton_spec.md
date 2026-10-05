@@ -46305,3 +46305,29 @@ tree: consistent with hill 8 and the census (no negative pairs on the
 flat ladder except the args head's 4/42); the freeze does stop the
 gradient to the frozen bands' writers — a transfer, as Gemini says, and
 the mint cost (-0.068) is its price on short rows.
+
+### 2026-10-05 (10:40) — THE EYES, specified (Bryce: "the U-Net reads the T256 bus bands, not PCA; the T6 clock orchestrates; the perceiver adjusts on metadata and the solvers' feedback")
+
+Adopted as hill 7's real form, replacing the picture engine's PCA
+channels: the U-Net inside the loop reads the HEAD's state — the per-
+slot T256 bus, band by band (root / branch / leaf planes of the
+hierarchical state), in the CANON FRAME (the clock's turn undone, the
+notebook's trick) — never the frozen trunk's statistics. THE PICTURE:
+slots x tokens per breath (the membrane's own coordinates), one channel
+per band = that band's affinity between the slot's bus vector and the
+token's key (the root channel is the "what" picture, the branch the
+"which", the leaf the "value"); plus the FEEDBACK LAYERS painted each
+breath by the certifiers (unclaimed numerals, collisions, the solver's
+consistency verdict per slot), smoothed across breaths; plus the clock
+as the timestep channel. THE HANDS: the U-Net's output per slot x token
+is a soft mask on the next breath's reads (the dynamic mask) and, where
+a candidate is CHECKED (the consistency judge's pick), a hard one-hot
+toggle. THE ORCHESTRATOR: the breath index conducts the band freezes,
+the mask temperature (soft -> hard), the consult breaths and the U-Net's
+looks — one tempo, a fixed mandatory signal. Precondition: the
+hierarchical state (built; its drift cure is the still picture the eyes
+need) and the combined oracle bound's verdict (running: whether the
+solver as judge supplies the checked facts the hard hand needs). Order:
+the bound reads -> the hard hand's source decided -> the eyes built on
+the HS body (from scratch with the U-Net in the loop, the first arm of
+hill 7). Needs the word.
