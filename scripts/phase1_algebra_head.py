@@ -3298,6 +3298,7 @@ ALG_HIER_READ = int(os.environ.get("ALG_HIER_READ", "0"))
 ALG_HIER_WAIST = int(os.environ.get("ALG_HIER_WAIST", "0"))
 _HIER_DAMP = [int(x) for x in os.environ.get("ALG_HIER_DAMP", "").split(",") if x.strip()] or None
 assert _HIER_DAMP is None or len(_HIER_DAMP) == 3, "ALG_HIER_DAMP = <root>,<branch>,<leaf> settle breaths (0 = never)"
+ALG_HIER_TAU = float(os.environ.get("ALG_HIER_TAU", "0"))   # THE DAMPED FORM (2026-10-05): > 0 = after its settle breath a band keeps a share exp(-(kb - settle)/tau) of each breath's update (a decay, the skater pulling in); 0 = the hard freeze
 _HIER_PLANES = (16, 112, 64)          # root / branch / leaf content planes (sum 192)
 _HIER_LAT = (12, 72, 44)              # the block waist's latents per band (sum 128 = POLAR_D)
 _HIER_CACHE = {}
@@ -5549,15 +5550,16 @@ def breath_step(p, state, kb, ctx):
                 _plv4 = _pcl4.reshape(-1, 1, 1)
                 _wg4 = _dep4 * _plv4 + _dep4.detach() * (1.0 - _plv4)
         _garage.append(_wg4)
-    if _HIER_DAMP is not None and 1 <= kb <= _RC_N_LOOP:   # THE HIERARCHICAL STATE: a band settled at breath k keeps its state from then on
+    if _HIER_DAMP is not None and 1 <= kb <= _RC_N_LOOP:   # THE HIERARCHICAL STATE: a band settled at breath k keeps its state from then on (hard) or damps toward it (ALG_HIER_TAU)
         _old = state["cur"]
         for _bi, _settle in enumerate(_HIER_DAMP):
             if _settle and kb > _settle:
-                _bands_, _clock_ = _hier_band_dims()
-                _arr = np.zeros(H_W, np.float32); _arr[_bands_[_bi]] = 1.0      # the band's content dims only (never the clock)
-                _key = ("damp", _bi)
+                _share_old = 1.0 if ALG_HIER_TAU <= 0 else float(1.0 - math.exp(-(kb - _settle) / ALG_HIER_TAU))   # the share of the OLD state kept on the band
+                _key = ("damp", _bi, round(_share_old, 6))
                 if _key not in _HIER_CACHE:
                     from tinygrad import Tensor as _Td
+                    _bands_, _clock_ = _hier_band_dims()
+                    _arr = np.zeros(H_W, np.float32); _arr[_bands_[_bi]] = _share_old      # the band's content dims only (never the clock)
                     _HIER_CACHE[_key] = _Td(_arr).reshape(1, 1, -1).contiguous().realize()
                 _dm = _HIER_CACHE[_key]
                 cur = cur * (1.0 - _dm) + _old * _dm

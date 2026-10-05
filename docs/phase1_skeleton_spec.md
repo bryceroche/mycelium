@@ -46408,3 +46408,42 @@ the hard hand (the one-hot breaker) may fire on the consistency judge's
 unique pick TODAY (safe), and on the panel's pick once it clears its
 bar; MCTS has a value function the day the panel does. Artifacts:
 .cache/combined_oracle_PMS8_241.txt.
+
+### 2026-10-05 (12:25) — WORD GIVEN FOR THE WHOLE QUEUE; THE T6 CLOCK AUDIT (docs/audits/t6_clock_audit_2026-10-05.md, 202aeaa4)
+
+FIRED (pc-queue1005): HSd_241 — THE DAMPED FORM of the hierarchical state
+(ALG_HIER_TAU=1.0: after its settle breath a band keeps exp(-(kb -
+settle)/tau) of each update, the skater pulling in; tau 0 = HS_241's
+hard freeze) from scratch vs PMS8_241 and HS_241; BARS: HS_241's +
+mint's cost halved (open mint >= 0.62 vs 0.586) + the drift cure kept
+(right slots' token hit >= 0.72 at the leaf breaths); its gate (CPU:
+unset; role8; hier = HS_241's config; hierd runs) precedes it. THEN
+PMC8_241 — the caricature from scratch (registered 09-27 21:53): the
+PMS8 recipe + ALG_CARIC=2.0 from step 0; BARS: the twin-pick share
+45.1% -> <= 35%; SAME-NOUN(inh) >= +0.03 (z 2); masked >= -0.005; rows
+>= 14; digits not down; the pre-flight contract on its chain. THE AUDIT
+(sonnet, read-only; VERIFIED vs INFERRED separated): (1) the clock
+itself is sound — rotor_clock's self-tests pass; the two-clock
+compounding contract (the state's increments vs the Q side's absolute
+phase) is asserted at runtime in _polar_tables and holds: one source
+read two ways; the canon frame's write and read signs are self-
+consistent at the call sites. (2) The six-wave does not tick in the
+deployed chassis (static, no kb term) and its carrier gate sw_g = 0.13
+is a live instance of the mandatory-road law's failure mode; the tick
+(ALG_SW_TICK) exists, gated, not in FAM. (3) "T6 promoted to conductor"
+is a DESIGN DECISION, NOT A BUILD: the tree / consult / certifier-line /
+hier-damp / unlock / matryoshka schedules each read the raw breath index
+and re-derive their own thresholds; none of them is in the live FAM
+chassis (they are arms); the two LIVE per-breath organs outside the
+clock table are breath_emb (learned, ungated, a per-breath embedding)
+and the stellarator's hand-written cos^2 taper (fixed, ungated) — no
+mandatory-road violation, but not one tempo. (4) One harmless bug:
+breath_emb row 0 is trained but never read (every read indexes kb in
+1..K_B-1). (5) THE MINIMAL FIX (the audit's §5): one `conductor(kb)`
+table that every per-breath schedule reads — the open tree level, the
+consult and certifier flags, the damping shares, the stellarator weight,
+the unlock/matryoshka prefixes — instead of each re-deriving off kb.
+ADOPTED: the conductor refactor is a BIT-IDENTITY refactor (no function
+changes; every scheduled config's gate line must reproduce exactly),
+built in a worktree while the queue's chains import the main head,
+merged after they end; THE EYES are built on it. Delegated.
