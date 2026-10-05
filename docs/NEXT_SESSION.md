@@ -22,6 +22,17 @@ The reads table: `.venv/bin/python3 scripts/reads.py table wildhold` (assert-on-
   free). THE READING: the warm regime on the claim body is a SETTLED BASIN — gentle continuation moves nothing for any
   organ whose effect is a small bias; what moved this month was structural at read (the numeral mask, the role pointer)
   or trained from scratch.
+- 10-05 11:50: THE COMBINED ORACLE BOUND (args x values x type/op branching of the first look's decode, PMS8_241):
+  the CEILING TRIPLES — 43/311 rows have the right graph among <= 64 candidates (top-1: 14; args alone 17, type/op 22,
+  values 23); THE CONSISTENCY JUDGE (solved + unique, likelihood tie-break, no key) 18/311 with ZERO regressions and 4
+  fixes — safe but weak; 71 refusals become consistent WRONG graphs under it. THE PICKER PANEL IS UN-STRUCK (the 09-24
+  strike was args-only): building — candidates on the valid2 diet slice (a card raw dump), the panel's angles (solver
+  status, uniqueness, likelihood, the NL certifier's text certificates, graph length, the twin flag), a cross-validated
+  picker; read ONCE on wild in rows; bar rows >= 24 with regressions <= 2. The hard hand may fire on the consistency
+  judge's unique pick today. THE DAMPED FORM of the hierarchical state registered (a decay after the settle breath,
+  not a freeze — the dead stop's mint cost); DYNAMIC BALANCE read: relative phase, the inner ear and the IMU are
+  already built. THE EYES specified (the U-Net on the T256 bus bands in the canon frame, slots x tokens, feedback
+  layers, the clock as timestep).
 - 10-05 04:05: HS_241 (THE HIERARCHICAL STATE, from scratch) DOES NOT FIRE — slot +0.0005 (z 0.06), rows 8/7 vs 14/9,
   mint -0.068 (the largest), digits 0.38 vs 0.46, golden 5/24 vs 6 (the early warning showed its sign). MECHANISM: the
   band freezes hold (root change 0.000 from b3, branch from b6); the entropy plateau unchanged; THE DRIFT IS CURED — the

@@ -46364,3 +46364,47 @@ orbit just as stably in the wrong sentence (0.52 at every breath); the
 balance keeps a dancer upright wherever the first step put them — the
 first look chooses the floor's center, which is why the combined
 oracle (running) is the read that matters this morning.
+
+### 2026-10-05 (11:50) — THE COMBINED ORACLE BOUND: THE CEILING TRIPLES (14 -> 43); THE CONSISTENCY JUDGE IS SAFE BUT WEAK (+4, zero regressions); THE PICKER PANEL IS UN-STRUCK (delegate; scripts/combined_oracle.py; PMS8_241, zero GPU)
+
+Self-gate PASSED (14/311). Branching three axes of the top-1 masked
+decode per row — arguments (k <= 3 lowest-margin), given VALUES (the
+Hungarian alternatives for colliding givens + each colliding given's
+top-2 numeral by affinity), TYPE/OP (m <= 2 lowest-margin flips) — <= 64
+deduped parses per row (mean 44; 119 rows at the cap); 13,613 solves +
+7,301 uniqueness checks in 18 min. THE ORACLE CEILING (some candidate
+matches the key): args alone 17 (+3), type/op alone 22 (+8), values
+alone 23 (+9), COMBINED 43/311 (+29) — the candidate set of the FIRST
+LOOK already contains the right graph for 43 rows, three times what the
+decode commits to; the axes are near-additive (3 + 8 + 9 = 20 alone,
+29 together: the fixes compound). THE CONSISTENCY JUDGE (no key: prefer
+solved + unique, tie by the model's log-likelihood): 18/311 (+4) —
+FIXES 4 (rows 94, 227, 255, 266: refused -> correct), REGRESSIONS 0 (it
+never breaks a row the decode had right), 92 rows had NO unique
+candidate (fell back to solved-only), and 71 refused rows became WRONG
+under it (the judge picks a consistent wrong graph — the 09-18 finding
+"half the rows yield a consistent wrong graph", now quantified as the
+judge's blind spot). READING: (1) consistency + uniqueness is a SAFE
+signal (zero regressions) and a WEAK one (4 of the 29 recoverable);
+it is the hard hand's legitimate source of truth where it fires, and
+it fires rarely. (2) The 09-24 striking of the picker panel ("+4
+ceiling, not worth a judge") was an args-axis verdict; the COMBINED
+ceiling of +29 reverses it: a judge is now worth building, and the
+room between 18 and 43 is exactly what the fingerpost's other angles
+are for — the NL certifier's text certificates (AUROC 0.811 correct-
+vs-wrong, the one angle that reads the TEXT), the five-view agreement,
+and the cross-lineage panel, stacked with consistency and likelihood.
+REGISTERED + FIRED (the word for the queue; zero GPU but one short card
+read): THE PANEL PICKER — candidates generated on a TRAINING-DIET slice
+(the valid2 slice, 775 rows; a chain_acc raw dump on the card; never
+wild), each candidate scored on the panel's angles (solver status,
+uniqueness, the model's likelihood, the NL certifier's certificates,
+graph length, the twin-pick flag), a small cross-validated picker
+(logistic, by row) trained to rank the keyed candidate first; then read
+ONCE on wild in ROWS against the floor 18 (the consistency judge) and
+the ceiling 43, with the regression count beside. BAR (pinned): rows
+>= 24 (a third of the room) with regressions <= 2. (3) For the loop:
+the hard hand (the one-hot breaker) may fire on the consistency judge's
+unique pick TODAY (safe), and on the panel's pick once it clears its
+bar; MCTS has a value function the day the panel does. Artifacts:
+.cache/combined_oracle_PMS8_241.txt.
