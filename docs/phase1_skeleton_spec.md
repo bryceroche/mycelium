@@ -46332,7 +46332,7 @@ the bound reads -> the hard hand's source decided -> the eyes built on
 the HS body (from scratch with the U-Net in the loop, the first arm of
 hill 7). Needs the word.
 
-### 2026-10-05 (11:00) — DYNAMIC BALANCE (Bryce's gut; Gemini's mapping) read against the record; THE DAMPED FORM of the hierarchical state registered
+### 2026-10-05 (11:47) — DYNAMIC BALANCE (Bryce's gut; Gemini's mapping) read against the record; THE DAMPED FORM of the hierarchical state registered
 
 Bryce: "dancing on a moving floor requires dynamic balance; the
 attention space rotates each breath by design and we want that."
