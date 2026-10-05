@@ -22,7 +22,7 @@ The reads table: `.venv/bin/python3 scripts/reads.py table wildhold` (assert-on-
   free). THE READING: the warm regime on the claim body is a SETTLED BASIN — gentle continuation moves nothing for any
   organ whose effect is a small bias; what moved this month was structural at read (the numeral mask, the role pointer)
   or trained from scratch.
-- 10-04 19:40: THE HIERARCHICAL STATE registered as the next head build (ledger 19:25, 19:40): readout masks by band
+- 10-04 20:00: THE HIERARCHICAL STATE registered as the next head build (ledger 19:25, 20:00): readout masks by band
   (root 32 / branch 224 / leaf 128 of the content dims: the ftype/op heads read the root, the args pointer the branch, the
   digit head the leaf — the bands named by what reads them), a BLOCK-DIAGONAL waist (one bottleneck per band; the dense
   waist would blend the partition back every breath), per-band Laplace damping (root settles by breath 2, branch by 4,
