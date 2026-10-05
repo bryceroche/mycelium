@@ -46564,3 +46564,19 @@ above); matry 6.5275/1.4390; unlock 6.6870/1.5205; cert2 6.4769/1.0952; hier 10.
 10.8656/8.8945; swtick 6.5536/1.1038. Not merged: pc-queue1005's chains import the main head; the
 merge + post-merge gate follow the queue. THE EYES builder launched in worktree mycelium-wt5
 (branch eyes, off conductor) against the registration above.
+
+### 2026-10-05 (13:39) — WORD GIVEN FOR EVERYTHING (Bryce: "great work. word given for everything -- Salute!"); THE EYES QUEUE staged (pc-queue-eyes)
+
+The queue (.cache/queue_eyes.sh, running as pc-queue-eyes) waits for pc-queue1005's QUEUE COMPLETE
+AND the hand-touched .cache/eyes_ready (set only after the builder's gate table is reviewed), then:
+(1) merges branch eyes (conductor + the NOPOOL fix + ALG_EYES) into gen-weights; (2) runs the
+builder's gate re-pointed at the main checkout as the post-merge gate (unset 5.2995/0.0279 and hierd
+10.8656/8.8945 asserted, the eyes config must run); (3) PICKS THE BODY — pinned now, before HSd_241's
+reads exist: HSd_241 (TAU 1.0) if its paired masked wild is >= -0.005 vs HS_241 AND its open mint
+>= 0.62, else HS_241 (TAU 0); (4) fires .cache/eyes_chain.sh = EY_241 (the body's recipe +
+ALG_EYES=1 from scratch, 48k, SNAP_EVERY=8000, the pre-flight contract) with the family reads, paired
+vs the body and PMS8_241, golden24, the band probe and the membrane census collect + report (the
+wall and the right-slot hit are the mechanism bars). Bars as registered above. The chain was derived
+from hierd_chain.sh with its gate checks regenerated (the template residue rule) and two template
+slips fixed before firing: an undefined $LOCK on the band-probe line (HS/HSd's chains ran that read
+unlocked) and a single-quoted sed that would not have expanded the body's tau.
