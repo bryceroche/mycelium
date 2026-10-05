@@ -46331,3 +46331,36 @@ solver as judge supplies the checked facts the hard hand needs). Order:
 the bound reads -> the hard hand's source decided -> the eyes built on
 the HS body (from scratch with the U-Net in the loop, the first arm of
 hill 7). Needs the word.
+
+### 2026-10-05 (11:00) — DYNAMIC BALANCE (Bryce's gut; Gemini's mapping) read against the record; THE DAMPED FORM of the hierarchical state registered
+
+Bryce: "dancing on a moving floor requires dynamic balance; the
+attention space rotates each breath by design and we want that."
+WHAT THE BODY ALREADY DOES: (1) relative phase — the bank read rotates
+the QUERY by the breath's absolute phase and leaves the keys unrotated
+(the v109pi relative-phase precedent), so the attention is a function of
+phase DIFFERENCES; the bus binding is FHRR (bind / unbind are relative
+by construction); the band probe found the breath encoded as a
+distributed RELATIVE-phase code. The dancers already hold hands. (2) The
+inner ear — the turn is deterministic (60 degrees per breath, the
+sextet) and supplied to the attention as the compensation; the turn
+sever (-0.031) is what dizziness costs: remove the deterministic turn
+and the notebook's canon frame and the Q-side rotation re-phase against
+a floor that did not move. (3) The IMU — the canon frame IS the gimbal:
+the notebook writes in it, and the eyes will read through it. WHAT THE
+RECORD CORRECTS: the hierarchical state's settle is a DEAD STOP (the
+band's content frozen hard after its breath; the clock planes keep
+turning — the floor moves, the dancer stops), and Gemini's orbit
+picture names the cost: mint's -0.068 and the digits' -0.08 are the
+price of stopping the root and branch on rows that still needed them to
+move. THE DAMPED FORM (registered): ALG_HIER_DAMP as a per-band DECAY
+after the settle breath (lambda_b(k) = exp(-(k - settle_b) / tau), tau
+~1 breath; the band keeps a shrinking share of each breath's update —
+the skater pulling in, never a stop), the clock never damped; the same
+bars as HS_241 plus mint's cost halved. A small edit on the built road;
+from scratch; needs the word. WHAT DYNAMIC BALANCE DOES NOT DO: choose
+the attractor. HS_241's right slots orbit at 0.76 and its wrong slots
+orbit just as stably in the wrong sentence (0.52 at every breath); the
+balance keeps a dancer upright wherever the first step put them — the
+first look chooses the floor's center, which is why the combined
+oracle (running) is the read that matters this morning.
