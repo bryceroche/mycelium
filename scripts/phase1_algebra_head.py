@@ -346,8 +346,8 @@ def _matry_view(s, ri):
     from tinygrad import Tensor as _Tm
     _cd, _, _gc, _, _ = _polar_sink()
     n_content = len(_cd) // 2
-    _kl = ([_MATRY_K[0]] + _MATRY_K) if len(_MATRY_K) == int(os.environ.get("ALG_BREATH", "1")) - 1 else _MATRY_K
-    k = int(_kl[ri]) if ri < len(_kl) else n_content
+    _ck = conductor(ri).matry_k            # THE CONDUCTOR: the rung's cap (None = no cap)
+    k = n_content if _ck is None else _ck
     if k >= n_content:
         return s
     m = _MATRY_MASKS.get(k)
@@ -365,12 +365,13 @@ def _unlock_planes(cur, kb):
     first _UNLOCK_K[kb-1] content planes kept, the rest zeroed, the content
     block's norm restored over the open planes (clock dims bitwise
     untouched: the keep-norm's gate is the content indicator)."""
-    if _UNLOCK_K is None or kb < 1 or kb > len(_UNLOCK_K):
+    _uk = conductor(kb).unlock_k           # THE CONDUCTOR: None = unset / kb out of range
+    if _uk is None:
         return cur
     from tinygrad import Tensor as _Tu
     _cd, _, _gc, _, _ = _polar_sink()
     n_content = len(_cd) // 2
-    k = int(_UNLOCK_K[kb - 1])
+    k = _uk
     if k >= n_content:
         return cur                                   # every content plane open: the state as it was
     m = _UNLOCK_MASKS.get(kb)
@@ -1028,6 +1029,117 @@ def _polar_tables():
             _dc[:] = 1.0; _ds[:] = 0.0; _ac[:] = 1.0; _as[:] = 0.0
         _POLAR_TAB = (_dc, _ds, _ac, _as, _wof)
     return _POLAR_TAB
+
+
+class _Conductor:
+    """One breath kb's schedule record — see conductor() below."""
+    __slots__ = ("kb", "tree_level", "matry_k", "unlock_k",
+                 "facts3_inject", "facts5_inject",
+                 "cert3_active", "cert5_active", "cert2_fresh",
+                 "hier_damp_shares", "stellar_weight", "sw_tick_phase")
+
+    def __init__(self, **kw):
+        for _k, _v in kw.items():
+            setattr(self, _k, _v)
+
+    def clock(self):
+        """The clock's own absolute/increment phase rows for THIS loop
+        breath, BY REFERENCE to the one _polar_tables() cache (never
+        re-derived here — see the audit's S3, "structurally only one
+        table, read two ways"): (dc, ds, ac, as_), each (P,). None
+        outside the clocked window (breath 0 is outside time, matching
+        rotor_clock.is_clocked); lazy, so a config that never asks for
+        the clock content never opens POLAR_BANDS."""
+        if not (1 <= self.kb <= _RC_N_LOOP):
+            return None
+        _pdc, _pds, _pac, _pas, _ = _polar_tables()
+        return (_pdc[self.kb - 1], _pds[self.kb - 1],
+                _pac[self.kb - 1], _pas[self.kb - 1])
+
+
+_CONDUCTOR_CACHE = {}
+
+
+def conductor(kb):
+    """THE CONDUCTOR (2026-10-05, the T6 clock audit S5, docs/audits/
+    t6_clock_audit_2026-10-05.md §5): one small immutable record per
+    breath kb (0 = the grounding read, every reader's pass 1; 1..K_B-1
+    = the clocked loop breaths) holding every per-breath SCHEDULE the
+    organs below used to re-derive independently from the raw index kb
+    — the tree descent's open level, the matryoshka readout's cap, the
+    plane unlock's open-plane count, the three consults' injection/
+    active breaths, the certifier lines' fresh-read breaths, the
+    hierarchical state's per-band damping share, the stellarator's
+    helical-handoff weight (idle override folded in), and the six-wave
+    tick's phase offset. This is a BIT-IDENTITY REFACTOR: every field
+    below reproduces exactly the expression the organ used to write
+    inline — nothing here changes what any organ computes (see the
+    gate, .cache/conductor_gate.sh). The clock's own CONTENT (state
+    turn / Q-rotation / E&B / canon frame) is deliberately NOT folded
+    in here — those organs already read the single _polar_tables()
+    cache directly (one table, read two ways, per the audit's S3); this
+    record exposes that same cache, lazily, via .clock() for any future
+    reader, but changes none of today's call sites. Pure function of
+    kb and the env-parsed globals above; cached (several organs read
+    the same breath's record more than once per forward)."""
+    _c = _CONDUCTOR_CACHE.get(kb)
+    if _c is not None:
+        return _c
+    _K_B = int(os.environ.get("ALG_BREATH", "1"))
+    # the tree descent's open level (ALG_TREE); same fallback-to-leaf rule
+    # at every read site today (breath 0's level is asserted == 3 at parse)
+    _tree_level = (_TREE_LEVELS[kb]
+                   if (_TREE_LEVELS is not None and kb < len(_TREE_LEVELS))
+                   else 3)
+    # the matryoshka readout's per-rung cap (ri == kb; None = no cap, i.e.
+    # the rung sees every content plane — the n_content comparison stays
+    # at the use site, which needs the tensor-side plane count)
+    _matry_k = None
+    if _MATRY_K is not None:
+        _mkl = ([_MATRY_K[0]] + _MATRY_K) if len(_MATRY_K) == _K_B - 1 else _MATRY_K
+        if kb < len(_mkl):
+            _matry_k = int(_mkl[kb])
+    # the plane unlock's open-plane count for this loop breath (None = no-op:
+    # unset, or kb outside 1..len(_UNLOCK_K))
+    _unlock_k = (int(_UNLOCK_K[kb - 1])
+                 if (_UNLOCK_K is not None and 1 <= kb <= len(_UNLOCK_K))
+                 else None)
+    # THE THREE CONSULTS: the two injection breaths (consult 1 after breath
+    # 2, consult 2 after breath 4) and the kb-threshold "live from here on"
+    # reads the certifier lines and ALG_CERT2's fresh-read gate share
+    _facts3_inject = (kb == 2)
+    _facts5_inject = (kb == 4)
+    _cert3_active = (kb >= 3)
+    _cert5_active = (kb >= 5)
+    _cert2_fresh = (kb in (3, 5))
+    # THE HIERARCHICAL STATE's per-band damping share kept of the OLD state
+    # (None = this band is not yet settled, or never settles, at this
+    # breath); root/branch/leaf order, matching ALG_HIER_DAMP's csv
+    _hier_shares = (None, None, None)
+    if _HIER_DAMP is not None:
+        _hs = []
+        for _settle in _HIER_DAMP:
+            if _settle and kb > _settle:
+                _hs.append(1.0 if ALG_HIER_TAU <= 0
+                           else float(1.0 - math.exp(-(kb - _settle) / ALG_HIER_TAU)))
+            else:
+                _hs.append(None)
+        _hier_shares = tuple(_hs)
+    # THE STELLARATOR's helical handoff weight (1 -> 0 over the loop; idle
+    # breaths never blend — the idle override folds in here)
+    _stellar_w = (1.0 if kb in _IDLE
+                  else math.cos(kb * math.pi / (2 * (_K_B - 1))) ** 2)
+    # THE SIX-WAVE TICK's per-breath phase offset (read only behind
+    # ALG_SW_TICK; harmless to compute unconditionally — no tensor, no gate)
+    _sw_tick_phase = (kb - 1) * (math.pi / 3.0)
+    _c = _Conductor(kb=kb, tree_level=_tree_level, matry_k=_matry_k,
+                     unlock_k=_unlock_k, facts3_inject=_facts3_inject,
+                     facts5_inject=_facts5_inject, cert3_active=_cert3_active,
+                     cert5_active=_cert5_active, cert2_fresh=_cert2_fresh,
+                     hier_damp_shares=_hier_shares, stellar_weight=_stellar_w,
+                     sw_tick_phase=_sw_tick_phase)
+    _CONDUCTOR_CACHE[kb] = _c
+    return _c
 
 
 def _polar_ru(x, g):
@@ -2380,6 +2492,9 @@ def build_params(seed=0):
             else:
                 _be = 0.02 * np.sqrt(2.0) * np.cos(
                     _bph[:, None] + _bd[None, :] * (2 * np.pi / H_W) * (_bk[:, None] + 1))
+            # NOTE (T6 clock audit S2): row 0 of breath_emb is trained (this init gives it a real phase)
+            # but never read — every read site indexes [kb] for kb in range(1, K_B) only. Left as-is per
+            # the audit (harmless, out of scope for THE CONDUCTOR refactor).
             p["breath_emb"] = t(_be + rng.randn(K_B, H_W) * 0.004)
         else:
             p["breath_emb"] = t(rng.randn(K_B, H_W) * 0.02)
@@ -3864,7 +3979,7 @@ def _make_bank(p, waist, tokmask, B, sent=None, tree=None):
         if ALG_TREECODE and _TREE_LEVELS is not None and tree is not None and nq == L_TOT:
             # THE HIERARCHICAL WHERE-CODES: each open level's unit phasor added to the token's key (the walk down)
             _kbc = kb if kb is not None else 0
-            _lvc = _TREE_LEVELS[_kbc] if _kbc < len(_TREE_LEVELS) else 3
+            _lvc = conductor(_kbc).tree_level            # THE CONDUCTOR
             _Tc_ = int(src.shape[1])
             for _l in range(min(_lvc, 2) + 1):
                 _uid = tree[:, :, _l].maximum(0).minimum(_TREECODE_UMAX - 1)          # (B, T) unit ids, pads -> 0
@@ -3884,7 +3999,7 @@ def _make_bank(p, waist, tokmask, B, sent=None, tree=None):
             # key term each; the leaf (this sc, and the router's token bias
             # below) is open only at level 3.
             _kb0 = kb if kb is not None else 0
-            _lv = _TREE_LEVELS[_kb0] if _kb0 < len(_TREE_LEVELS) else 3
+            _lv = conductor(_kb0).tree_level              # THE CONDUCTOR
             if _lv < 3 and not ALG_TREE2 and not ALG_TREECODE:      # form 1 closes the leaf below level t; form 2 and the code road keep it open
                 _leaf_open = 0.0
                 sc = sc * 0.0                     # exact zeros, the graph kept
@@ -3905,7 +4020,7 @@ def _make_bank(p, waist, tokmask, B, sent=None, tree=None):
                 sc = sc + _sl @ _M.transpose(-2, -1).unsqueeze(1)           # broadcast to the unit's tokens
             if ALG_TREE2 and prior is not None and kb is not None and kb >= 1:
                 # FORM 2: the previous breath's attention, aggregated per unit at each level open THEN, as a log-prior
-                _lvp = _TREE_LEVELS[kb - 1] if (kb - 1) < len(_TREE_LEVELS) else 3
+                _lvp = conductor(kb - 1).tree_level        # THE CONDUCTOR
                 for _l in range(min(_lvp, 2) + 1):
                     _mass = prior @ _Ms[_l]                                   # (B, nq, U): the unit's share of last breath's mass
                     _logp = _mass.clip(1e-3, 1.0).log()
@@ -4275,9 +4390,7 @@ def breath_step(p, state, kb, ctx):
             # the helical handoff residual -> notebook junction, per-slot
             # payload, SNIPPED to exactly 0 at the last loop breath, the
             # clock block exempt (a coordinate system, not a road).
-            _w = math.cos(kb * math.pi / (2 * (K_B - 1))) ** 2   # 1 -> 0
-            if kb in _IDLE:
-                _w = 1.0                     # idle: no junction blend
+            _w = conductor(kb).stellar_weight   # THE CONDUCTOR: 1 -> 0 over the loop, idle override folded in
             _rdj = _rd if NB_PERSLOT else _rd.reshape(B, 1, -1)
             if ALG_POLAR and ALG_STELLAR < 2:
                 _, _, _sg_c, _sg_k, _ = _polar_sink()
@@ -4834,12 +4947,12 @@ def breath_step(p, state, kb, ctx):
     # entry point above); kb >= 5 additionally sees cert5 (consult 2).
     # Both None (unset or ALG_ALT3 off) — bit-identical.
     _cert3 = ctx.get("cert3")
-    if _cert3 is not None and kb >= 3:
+    if _cert3 is not None and conductor(kb).cert3_active:   # THE CONDUCTOR: kb >= 3
         _pb_kb = _cert3 if _pb_kb is None else _pb_kb + _cert3
         if _CENSUS is not None:
             _CENSUS.append((kb, "cert3", _cert3.realize().numpy()))
     _cert5 = ctx.get("cert5")
-    if _cert5 is not None and kb >= 5:
+    if _cert5 is not None and conductor(kb).cert5_active:   # THE CONDUCTOR: kb >= 5
         _pb_kb = _cert5 if _pb_kb is None else _pb_kb + _cert5
         if _CENSUS is not None:
             _CENSUS.append((kb, "cert5", _cert5.realize().numpy()))
@@ -4859,7 +4972,7 @@ def breath_step(p, state, kb, ctx):
         _pb_kb = _idk_b if _pb_kb is None else _pb_kb + _idk_b
         if _CENSUS is not None:
             _CENSUS.append((kb, "idkey", _idk_b.realize().numpy()))
-    h_tok, fat_cur = bank(p["fq"], L_TOT, extra=(None if (ALG_CERT2 and kb in (3, 5)) else q_extra), kb=kb,   # FORM 2: a fresh first look at the consult breaths
+    h_tok, fat_cur = bank(p["fq"], L_TOT, extra=(None if (ALG_CERT2 and conductor(kb).cert2_fresh) else q_extra), kb=kb,   # FORM 2: a fresh first look at the consult breaths (THE CONDUCTOR: kb in (3, 5))
                           pbias=_pb_kb,
                           rbias=_rb7,
                           prior=(state.get("tree_prev_at") if ALG_TREE2 else None),   # FORM 2's construction line
@@ -5552,9 +5665,8 @@ def breath_step(p, state, kb, ctx):
         _garage.append(_wg4)
     if _HIER_DAMP is not None and 1 <= kb <= _RC_N_LOOP:   # THE HIERARCHICAL STATE: a band settled at breath k keeps its state from then on (hard) or damps toward it (ALG_HIER_TAU)
         _old = state["cur"]
-        for _bi, _settle in enumerate(_HIER_DAMP):
-            if _settle and kb > _settle:
-                _share_old = 1.0 if ALG_HIER_TAU <= 0 else float(1.0 - math.exp(-(kb - _settle) / ALG_HIER_TAU))   # the share of the OLD state kept on the band
+        for _bi, _share_old in enumerate(conductor(kb).hier_damp_shares):   # THE CONDUCTOR
+            if _share_old is not None:
                 _key = ("damp", _bi, round(_share_old, 6))
                 if _key not in _HIER_CACHE:
                     from tinygrad import Tensor as _Td
@@ -5679,7 +5791,7 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
         if ALG_SW_TICK:                   # THE SIX-WAVE TICK: the per-breath maker (kb = 1..6)
             _sw_cph, _sw_sph, _sw_th = _cph, _sph, _th
             def _mk_swtick(kb, _c=_sw_cph, _s=_sw_sph, _t=_sw_th):
-                _thk = _t - (kb - 1) * (math.pi / 3.0)    # slot phase +d == token phase -d
+                _thk = _t - conductor(kb).sw_tick_phase    # THE CONDUCTOR: slot phase +d == token phase -d
                 return (_c.reshape(1, 1, L_TOT, 1) * _thk.cos().reshape(B, 1, 1, -1)
                         + _s.reshape(1, 1, L_TOT, 1) * _thk.sin().reshape(B, 1, 1, -1)) * p["sw_g"].reshape(1, 1, 1, 1)
             _swtick = _mk_swtick
@@ -5887,12 +5999,12 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
                     _bs_ctx["waist"] = _tok
                     _bs_ctx["bank"] = _make_bank(p, _tok, tokmask, B, sent=sent)
                 breath_step(p, _bs_state, kb, _bs_ctx)
-                if kb == 2 and facts3 is not None:
+                if conductor(kb).facts3_inject and facts3 is not None:   # THE CONDUCTOR: kb == 2
                     vst = _fact_inject(p, vst, facts3)   # consult 1's values: read from breath 3 on
                     _bs_ctx["vst"] = vst
                     for _r in range(3, K_B):
                         _vst_at[_r] = vst
-                if kb == 4 and facts5 is not None:
+                if conductor(kb).facts5_inject and facts5 is not None:   # THE CONDUCTOR: kb == 4
                     vst = _fact_inject(p, vst, facts5)   # consult 2's values: read from breath 5 on
                     _bs_ctx["vst"] = vst
                     for _r in range(5, K_B):
