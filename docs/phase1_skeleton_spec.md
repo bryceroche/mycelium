@@ -46509,3 +46509,40 @@ worktrees). Disposition: the fix is applied on the conductor branch and merges w
 pc-queue1005's chains end (they import the main head). The other 7 configs of the conductor gate
 read bit-identical so far (unset/role8/tree/tree2/matry/unlock match their references); the
 remaining four (cert2/hier/hierd/swtick) are running.
+
+### 2026-10-05 (12:56) — THE EYES, registered as a build (ALG_EYES; hill 7's first arm; bars pinned before the build)
+
+Form (the 10:38 spec made concrete against the head's roads): THE PICTURE per breath kb >= 1 is a
+(B, C, L_TOT, T_ALG) image in the membrane's own coordinates — slots x tokens. Channels: (a) three
+BAND AFFINITIES, one per hierarchical band (root 16 / branch 112 / leaf 64 content planes, the clock
+planes excluded = the canon frame is the identity on content), each = the slot's state restricted to
+the band against the token's bank key restricted to the band, scaled 1/sqrt(n_band) — the "what" /
+"which" / "value" pictures; (b) THE LAST LOOK: the previous breath's head-mean slots<-tokens attention
+(fat_cur, the membrane itself; breath 0's grounding read for breath 1); (c) THE CLOCK CHANNEL: a
+constant plane conductor(kb)'s breath scalar — the timestep, the only per-breath input; (d) THE
+FEEDBACK LAYERS when the certifiers are on (ALG_CERT): the consult lines cert3/cert5 as channels
+(unclaimed numerals / collisions), zeros before their consult — absent (channel count fixed per run)
+when ALG_CERT is unset. THE U-NET: scripts/unet/model.py's ConvBlock/UNet form in-head (base 16,
+two down levels over the (L_TOT, T) plane, skips, GroupNorm), one output channel, the output conv
+zero at birth; parameters in p (prefix eyes_), trained with everything else (from scratch — the warm
+regime is a settled basin; no arm on a warm body). THE HANDS (soft): the output (B,1,L_TOT,T) is
+SMOOTHED across breaths (m_kb = 0.5 m_{kb-1} + 0.5 u_kb) and enters the NEXT breath's read on the
+pbias road (the route-bias road cert3/cert5/idkey already use, before the clip), scaled by
+conductor(kb)'s mask temperature (the orchestrator: soft -> hard = 1.0 at breath 1 rising linearly to
+ALG_EYES_HARD (default 2.0) at the last breath — a fixed schedule, never a gain). A mandatory road:
+no gate scalar, no detach, every breath >= 1 reads it. The hard one-hot toggle on CHECKED facts (the
+consistency judge's pick) is NOT in this arm (the second form; its source is decided: the judge,
+18 safe / 0 regressions). Unset = bit-identical (unset / role8 / hier / hierd / treecode gate lines
+reproduce exactly); set = differs; grad norm on eyes_ params > 0 in the training step (a structural
+road is verified IN THE LOSS first). Built on the conductor branch (the schedule reads conductor(kb)),
+in its own worktree, merged after pc-queue1005's chains end.
+THE ARM: EY_241 = the hierarchical body's recipe (HSd_241's if its bars fire, else HS_241's) +
+ALG_EYES=1 from scratch, 48k, seed 241, SNAP_EVERY=8000, the pre-flight contract on its chain; read
+vs its body and PMS8_241 with every reader under the family env + the membrane census + the band
+probe. BARS (pinned now): ACCURACY — masked wild >= body + 0.015 (candidate; a CLAIM needs +0.020 or
+the 242 twin), rows >= body + 2, open mint >= body - 0.01, digits not down; MECHANISM — the membrane
+census's WALL (wrong given slots' landing on the binding, 0.526 on every body this week) moves
+>= +0.03, and the right slots' token hit stays >= 0.72 at the leaf breaths (the drift cure kept).
+KILL: masked < body - 0.010 or the wall < body - 0.01. The word (12:11, "the whole queue"; the 10:38
+registration: "the eyes built on the HS body ... the first arm of hill 7") covers the build and the
+arm; it fires after the conductor merge, behind PMC8_241.
