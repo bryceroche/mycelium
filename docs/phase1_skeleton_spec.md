@@ -46306,7 +46306,7 @@ flat ladder except the args head's 4/42); the freeze does stop the
 gradient to the frozen bands' writers — a transfer, as Gemini says, and
 the mint cost (-0.068) is its price on short rows.
 
-### 2026-10-05 (10:40) — THE EYES, specified (Bryce: "the U-Net reads the T256 bus bands, not PCA; the T6 clock orchestrates; the perceiver adjusts on metadata and the solvers' feedback")
+### 2026-10-05 (10:38) — THE EYES, specified (Bryce: "the U-Net reads the T256 bus bands, not PCA; the T6 clock orchestrates; the perceiver adjusts on metadata and the solvers' feedback")
 
 Adopted as hill 7's real form, replacing the picture engine's PCA
 channels: the U-Net inside the loop reads the HEAD's state — the per-
