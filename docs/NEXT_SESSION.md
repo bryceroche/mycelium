@@ -1,4 +1,4 @@
-# NEXT SESSION — cold-start entry (updated 2026-10-05 15:05)
+# NEXT SESSION — cold-start entry (updated 2026-10-05 14:40)
 
 **THE CARD:** pc-queue1005 is running PMC8_241 (the caricature from scratch, 48k; ETA ~17:00 + reads), then pc-queue-eyes
 (armed; .cache/queue_eyes.sh) merges branch `eyes` (= conductor + the NOPOOL fix + ALG_EYES) into gen-weights, runs the
