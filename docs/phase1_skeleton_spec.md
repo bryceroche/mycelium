@@ -46546,3 +46546,21 @@ census's WALL (wrong given slots' landing on the binding, 0.526 on every body th
 KILL: masked < body - 0.010 or the wall < body - 0.01. The word (12:11, "the whole queue"; the 10:38
 registration: "the eyes built on the HS body ... the first arm of hill 7") covers the build and the
 arm; it fires after the conductor merge, behind PMC8_241.
+
+### 2026-10-05 (13:16) — THE CONDUCTOR BUILT: conductor(kb) reproduces all 11 scheduled configs to the digit (branch conductor, ea13f970 + f4a89b06; merge after the queue)
+
+The 12:11 adoption delivered: one `conductor(kb)` table (phase1_algebra_head.py ~line 1063, cached
+per kb) that every per-breath schedule reads — (1) the tree descent's open level (three sites in
+_make_bank + _matry_view's matryoshka cap), (2) the plane unlock's open-plane count, (3) the three
+consults' injection breaths (kb 2 / 4) and the certifier lines' active / fresh-read breaths (kb >= 3,
+>= 5, in (3, 5)), (4) the hierarchical state's per-band damping share (ALG_HIER_DAMP / ALG_HIER_TAU),
+(5) the stellarator's cos^2 taper with the idle override folded in, and the six-wave tick's phase
+offset. The clock's own content (turn / Q-rotation / E&B / canon frame) still reads _polar_tables()
+directly per the audit; conductor(kb).clock() exposes the same cache for future readers. breath_emb
+row 0 noted, untouched. THE GATE (CPU, tiny64 / WARM_FROM balV242 / BATCH=2 STEPS=2), all eleven
+bit-identical to their banked references: unset 5.2995/0.0279; role8 6.5535/1.1061; tree
+6.6252/1.1471; tree2 6.4694/1.0754; treecode 6.5209/1.1259 (after the NOPOOL fix, see the entry
+above); matry 6.5275/1.4390; unlock 6.6870/1.5205; cert2 6.4769/1.0952; hier 10.8621/8.8935; hierd
+10.8656/8.8945; swtick 6.5536/1.1038. Not merged: pc-queue1005's chains import the main head; the
+merge + post-merge gate follow the queue. THE EYES builder launched in worktree mycelium-wt5
+(branch eyes, off conductor) against the registration above.
