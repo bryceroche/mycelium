@@ -3985,15 +3985,15 @@ def _make_bank(p, waist, tokmask, B, sent=None, tree=None):
 
 
 def _heads_of(p, s, vst, B):
-    if ALG_HIER_READ:   # THE HIERARCHICAL STATE: each head reads its band (and the clock)
-        _sR = s * _hier_mask(0); _sB = s * _hier_mask(1); _sL = s * _hier_mask(2)
-    else:
-        _sR = _sB = _sL = s
     """forward()'s emission heads, factored BY PURE CODE MOTION
     (apply_step_trainer.py, 2026-09-03): the step trainer runs these on
     intermediate breath states at every seam (commit adapter) and on the
     final state with the seam-current vst. Single source of truth."""
     s = _fed_core(s)   # FED scratch: grade only the true factor rows
+    if ALG_HIER_READ:   # THE HIERARCHICAL STATE: each head reads its band (and the clock), after the slot trim
+        _sR = s * _hier_mask(0); _sB = s * _hier_mask(1); _sL = s * _hier_mask(2)
+    else:
+        _sR = _sB = _sL = s
     return {
         "pres": (_sR @ p["h_pres"] + p["h_pres_b"]).squeeze(-1),
         "ftype": _sR @ p["h_ftype"] + p["h_ftype_b"],
