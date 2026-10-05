@@ -46606,3 +46606,23 @@ slots and reads 2 rows (15 s on CPU). Cost on CPU +32-34 % per step (convs; not 
 number). UNVERIFIED BY CONSTRUCTION: conv2d / avg_pool2d inside the training JIT on the AM driver
 — EY_241's first steps are the smoke; the chain FAILs loudly if the card refuses them. The ready
 flag (.cache/eyes_ready) is set; pc-queue-eyes merges, gates and fires when pc-queue1005 ends.
+
+### 2026-10-05 (14:33) — HSd_241 (THE DAMPED FORM) DOES NOT FIRE: the mint bar MET and the drift cure KEPT, the slot flat, the wall unmoved; the body pick = HS_241
+
+Reads (hierd_chain.log 14:29; reads.py ingest ran): open wild 0.3023 (HS_241 0.3096), MASKED wild
+0.3389 — paired vs HS_241 -0.0083 (SE 0.0085, z ~1.0, NOISE), vs PMS8_241 -0.0088, vs the lineage
++0.0098; rows 10 (masked) / 6 (open) vs HS_241 8 / 7 and PMS8_241 14 / 9; OPEN MINT 0.6281 — THE
+MINT BAR (>= 0.62) IS MET (HS_241 0.5862: the decay recovers +0.042 of the hard freeze's -0.068 mint
+cost; PMS8 0.65); digits 0.375 vs 0.383 (flat-to-down); silver460 0.2298; golden24 5/13/6 (= HS_241,
+PMS8 6/12/6). THE MEMBRANE CENSUS (report run on CPU from the chain's collect): right slots' token
+hit 0.796 at b0 and 0.745-0.762 at b2-b6 — THE DRIFT CURE KEPT (>= 0.72 met; PMS8 falls to 0.59-0.62);
+THE WALL (wrong given slots' other-sentence share at b6, argmax) 0.512 vs HS_241's 0.526 (mass-
+weighted 0.507 vs 0.511) — -0.014, under the mechanism bar's noise, UNMOVED for the fourth body. VERDICT:
+HSd_241's accuracy bars (HS_241's: masked +0.020 vs PMS8, rows >= 14) MISSED; its own two bars (mint
+>= 0.62, hit >= 0.72) MET. The damped form is the hierarchical state at a lower price (mint +0.042,
+rows +2) and the same slot; the hierarchical state itself remains a drift cure without a slot gain.
+THE BODY PICK (the rule pinned at 13:45 before these reads): paired masked -0.0083 < -0.005 -> BODY =
+HS_241 (TAU 0) for EY_241; the rule holds though the damped form is the better-priced body — bars
+do not bend after the read; the eyes' second arm (if the first fires) takes the damped body as its
+twin. The band probe (CB_MODE=probe) on HSd's collected states runs on CPU; its damping census is
+banked below when it lands.
