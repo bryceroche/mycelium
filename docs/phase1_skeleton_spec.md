@@ -46644,3 +46644,46 @@ same on all three bodies (the turn). The band probe on HSd (clock_band_probe_HSd
 time readable from the clock wheels (breath_hand 0.913) and from random content bands (0.86-0.89,
 PMS8 0.915) — story time everywhere in the state, as on every body. The picture the eyes read on the
 HS body is therefore a still one in the root and a slowly moving one in the leaf, as specified.
+
+### 2026-10-05 (16:13) — WORD GIVEN: THE RACK (Bryce's kitchen: "you can't start washing because the drying rack is full; put the dry dishes away first; then drying is free and the wet never drips on the dry")
+
+THE MAPPING (banked as the reading of the record): the splash is MEASURED (right slots' token hit
+0.81 -> 0.60 across breaths on every ordinary body; the hierarchical state stops the splash by
+damping = drying for free, and moves the wall not at all because damping protects the dry and never
+takes them off the rack); the rack is NEVER CLEARED (every slot re-reads all 256 tokens every breath,
+all-to-all through the mixer; 69 % of wild rows have givens colliding on numerals; 57 % of
+wrong-sentence givens have an unclaimed gold numeral); coarse-to-fine was built BACKWARDS twice
+(the plane unlock and the Matryoshka readout OPENED capacity over breaths; the kitchen says the
+ACTIVE SET SHRINKS — fewer wet dishes, not a bigger sink); and the symbolic jaw already lives this
+way (forced-only commits + MRV: settle what is forced, remove it from the domain). THE RACK = forced-
+only commits brought into the neural loop as a CONDUCTOR PHASE at every breath boundary. Critique of
+the relay (Gemini) adopted: dishes are ITEMS not bands (the unit of commitment is the SLOT; per-band
+is the damping we have); dry means CHECKED never confident (the annealed decode refuted confidence
+19:1; temperature is orthogonal to truth); soft forms of this family all nulled (certifier loop as
+route bias, read-time broadcast mask, LV_CERTMASK) — the road is HARD and trained from scratch.
+THE FORM (ALG_RACK, built on the eyes branch; the hard hand = the eyes' registered second form,
+given its reason): at each consult (ALT3's kb 2 / 4, the facts road ALG_CERT already walks) the
+conductor runs THE DRYNESS TEST per slot — (a) a given slot whose decoded numeral it claims UNIQUELY
+(the numeral occurs once in the text and no other slot claims it: a text-side certificate), (b) a
+relation slot whose solver-implied value matches a text numeral (the certifier's implied-values
+signal); no gold at the hands, at training or at read. THE COMMIT for a dry slot: (1) its state
+FREEZES for the remaining breaths (update share 0: the skater's own tau, per slot); (2) its claimed
+token positions are MASKED OUT of every other slot's bank read with a hard mask (-1e4 on the pbias
+road, inside the clip) from the next breath on; (3) its value is carried forward unchanged (the
+value-propagator write is NOT in this arm — the frozen state carries it). ONE-WAY GLASS: wet slots
+still read dry slots through the mixer; dry slots take no update. Unset = bit-identical; set =
+differs (no new params: the loss must move through the mask). ADMISSION OF A DRYNESS TEST (pinned
+before the census): a test enters the commit only if its PRECISION on right slots, censused
+zero-GPU on the banked wild and diet dumps (dump_wild_PMS8_241 / HS_241), is >= 0.90 — a dish
+that is "dry" one time in ten poisons the row; the census is banked whichever way it falls.
+THE ARMS (from scratch, 48k, seed 241, SNAP_EVERY=8000; behind EY_241): RK_241 = EY_241's recipe +
+ALG_ALT3=1 + ALG_CERT (the facts road; the lines' gain at the certloop arm's value) + ALG_RACK=1;
+RKC_241 = the same WITHOUT ALG_RACK (the honest control: the consults' own cost, 2.2x step). BARS
+(pinned now): vs RKC_241 paired — masked wild >= +0.015 (a CLAIM needs +0.020 or the twin), rows
+>= +2, mint >= -0.01, digits not down; MECHANISM — right slots' token hit >= 0.76 flat (no splash),
+THE WALL moves >= +0.03 from the body's 0.526 (the first move in five bodies), and the DRY CENSUS
+on wild: the share of slots committed by the last breath and their precision (>= 0.90, or the
+commit is poisoning). KILL: masked < RKC - 0.010, or dry precision < 0.80. Prediction: the Sinkhorn
+claim diagnostic's +4 rows is the untrained lower bound. Facts on wild are sparse (3.4 / row vs 11
+gold): the rack may clear slowly; the bet is that clearing a few dishes early changes the first
+look's successors, which nothing else has. Delegated (worktree mycelium-wt6, branch rack off eyes).
