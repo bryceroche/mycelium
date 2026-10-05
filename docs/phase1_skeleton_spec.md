@@ -46687,3 +46687,16 @@ commit is poisoning). KILL: masked < RKC - 0.010, or dry precision < 0.80. Predi
 claim diagnostic's +4 rows is the untrained lower bound. Facts on wild are sparse (3.4 / row vs 11
 gold): the rack may clear slowly; the bet is that clearing a few dishes early changes the first
 look's successors, which nothing else has. Delegated (worktree mycelium-wt6, branch rack off eyes).
+
+### 2026-10-05 (16:15) — THE RACK QUEUE staged (pc-queue-rack); the chain written before the build lands
+
+.cache/queue_rack.sh waits for pc-queue-eyes' EYES QUEUE COMPLETE and the hand-touched .cache/rack_ready
+(set only after the builder's dryness census and gate tables are reviewed), then merges branch rack
+into gen-weights, runs the builder's gate re-pointed at the main checkout (unset 5.2995/0.0279 and
+eyes 10.8656/8.8945 asserted; the rack config must run), and fires .cache/rack_chain.sh: RK_241 then
+RKC_241 (the HS_241 body + ALG_EYES=1 + ALG_ALT3=1 ALG_CERT=2.0, with / without ALG_RACK=1; 48k,
+SNAP_EVERY=8000, the pre-flight contract), each with the family reads, golden24, the band probe,
+the membrane collect + report (the WALL and HIT lines printed per arm), the dry census on the wild
+dump (scripts/rack_dryness_census.py, written by the builder), and the paired reads vs the body,
+EY_241 and PMS8_241; last, RK vs RKC paired = THE BAR. Derived from eyes_chain.sh with the gate
+checks regenerated and the per-arm tail rewritten for two arms.
