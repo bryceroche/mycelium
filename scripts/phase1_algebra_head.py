@@ -346,8 +346,8 @@ def _matry_view(s, ri):
     from tinygrad import Tensor as _Tm
     _cd, _, _gc, _, _ = _polar_sink()
     n_content = len(_cd) // 2
-    _kl = ([_MATRY_K[0]] + _MATRY_K) if len(_MATRY_K) == int(os.environ.get("ALG_BREATH", "1")) - 1 else _MATRY_K
-    k = int(_kl[ri]) if ri < len(_kl) else n_content
+    _ck = conductor(ri).matry_k            # THE CONDUCTOR: the rung's cap (None = no cap)
+    k = n_content if _ck is None else _ck
     if k >= n_content:
         return s
     m = _MATRY_MASKS.get(k)
@@ -365,12 +365,13 @@ def _unlock_planes(cur, kb):
     first _UNLOCK_K[kb-1] content planes kept, the rest zeroed, the content
     block's norm restored over the open planes (clock dims bitwise
     untouched: the keep-norm's gate is the content indicator)."""
-    if _UNLOCK_K is None or kb < 1 or kb > len(_UNLOCK_K):
+    _uk = conductor(kb).unlock_k           # THE CONDUCTOR: None = unset / kb out of range
+    if _uk is None:
         return cur
     from tinygrad import Tensor as _Tu
     _cd, _, _gc, _, _ = _polar_sink()
     n_content = len(_cd) // 2
-    k = int(_UNLOCK_K[kb - 1])
+    k = _uk
     if k >= n_content:
         return cur                                   # every content plane open: the state as it was
     m = _UNLOCK_MASKS.get(kb)
@@ -1028,6 +1029,128 @@ def _polar_tables():
             _dc[:] = 1.0; _ds[:] = 0.0; _ac[:] = 1.0; _as[:] = 0.0
         _POLAR_TAB = (_dc, _ds, _ac, _as, _wof)
     return _POLAR_TAB
+
+
+class _Conductor:
+    """One breath kb's schedule record — see conductor() below."""
+    __slots__ = ("kb", "tree_level", "matry_k", "unlock_k",
+                 "facts3_inject", "facts5_inject",
+                 "cert3_active", "cert5_active", "cert2_fresh",
+                 "hier_damp_shares", "stellar_weight", "sw_tick_phase",
+                 "breath_scalar", "eyes_temp")   # THE EYES (2026-10-05): the clock channel's scalar; the hands' mask temperature
+
+    def __init__(self, **kw):
+        for _k, _v in kw.items():
+            setattr(self, _k, _v)
+
+    def clock(self):
+        """The clock's own absolute/increment phase rows for THIS loop
+        breath, BY REFERENCE to the one _polar_tables() cache (never
+        re-derived here — see the audit's S3, "structurally only one
+        table, read two ways"): (dc, ds, ac, as_), each (P,). None
+        outside the clocked window (breath 0 is outside time, matching
+        rotor_clock.is_clocked); lazy, so a config that never asks for
+        the clock content never opens POLAR_BANDS."""
+        if not (1 <= self.kb <= _RC_N_LOOP):
+            return None
+        _pdc, _pds, _pac, _pas, _ = _polar_tables()
+        return (_pdc[self.kb - 1], _pds[self.kb - 1],
+                _pac[self.kb - 1], _pas[self.kb - 1])
+
+
+_CONDUCTOR_CACHE = {}
+
+
+def conductor(kb):
+    """THE CONDUCTOR (2026-10-05, the T6 clock audit S5, docs/audits/
+    t6_clock_audit_2026-10-05.md §5): one small immutable record per
+    breath kb (0 = the grounding read, every reader's pass 1; 1..K_B-1
+    = the clocked loop breaths) holding every per-breath SCHEDULE the
+    organs below used to re-derive independently from the raw index kb
+    — the tree descent's open level, the matryoshka readout's cap, the
+    plane unlock's open-plane count, the three consults' injection/
+    active breaths, the certifier lines' fresh-read breaths, the
+    hierarchical state's per-band damping share, the stellarator's
+    helical-handoff weight (idle override folded in), and the six-wave
+    tick's phase offset. This is a BIT-IDENTITY REFACTOR: every field
+    below reproduces exactly the expression the organ used to write
+    inline — nothing here changes what any organ computes (see the
+    gate, .cache/conductor_gate.sh). The clock's own CONTENT (state
+    turn / Q-rotation / E&B / canon frame) is deliberately NOT folded
+    in here — those organs already read the single _polar_tables()
+    cache directly (one table, read two ways, per the audit's S3); this
+    record exposes that same cache, lazily, via .clock() for any future
+    reader, but changes none of today's call sites. Pure function of
+    kb and the env-parsed globals above; cached (several organs read
+    the same breath's record more than once per forward)."""
+    _c = _CONDUCTOR_CACHE.get(kb)
+    if _c is not None:
+        return _c
+    _K_B = int(os.environ.get("ALG_BREATH", "1"))
+    # the tree descent's open level (ALG_TREE); same fallback-to-leaf rule
+    # at every read site today (breath 0's level is asserted == 3 at parse)
+    _tree_level = (_TREE_LEVELS[kb]
+                   if (_TREE_LEVELS is not None and kb < len(_TREE_LEVELS))
+                   else 3)
+    # the matryoshka readout's per-rung cap (ri == kb; None = no cap, i.e.
+    # the rung sees every content plane — the n_content comparison stays
+    # at the use site, which needs the tensor-side plane count)
+    _matry_k = None
+    if _MATRY_K is not None:
+        _mkl = ([_MATRY_K[0]] + _MATRY_K) if len(_MATRY_K) == _K_B - 1 else _MATRY_K
+        if kb < len(_mkl):
+            _matry_k = int(_mkl[kb])
+    # the plane unlock's open-plane count for this loop breath (None = no-op:
+    # unset, or kb outside 1..len(_UNLOCK_K))
+    _unlock_k = (int(_UNLOCK_K[kb - 1])
+                 if (_UNLOCK_K is not None and 1 <= kb <= len(_UNLOCK_K))
+                 else None)
+    # THE THREE CONSULTS: the two injection breaths (consult 1 after breath
+    # 2, consult 2 after breath 4) and the kb-threshold "live from here on"
+    # reads the certifier lines and ALG_CERT2's fresh-read gate share
+    _facts3_inject = (kb == 2)
+    _facts5_inject = (kb == 4)
+    _cert3_active = (kb >= 3)
+    _cert5_active = (kb >= 5)
+    _cert2_fresh = (kb in (3, 5))
+    # THE HIERARCHICAL STATE's per-band damping share kept of the OLD state
+    # (None = this band is not yet settled, or never settles, at this
+    # breath); root/branch/leaf order, matching ALG_HIER_DAMP's csv
+    _hier_shares = (None, None, None)
+    if _HIER_DAMP is not None:
+        _hs = []
+        for _settle in _HIER_DAMP:
+            if _settle and kb > _settle:
+                _hs.append(1.0 if ALG_HIER_TAU <= 0
+                           else float(1.0 - math.exp(-(kb - _settle) / ALG_HIER_TAU)))
+            else:
+                _hs.append(None)
+        _hier_shares = tuple(_hs)
+    # THE STELLARATOR's helical handoff weight (1 -> 0 over the loop; idle
+    # breaths never blend — the idle override folds in here)
+    _stellar_w = (1.0 if kb in _IDLE
+                  else math.cos(kb * math.pi / (2 * (_K_B - 1))) ** 2)
+    # THE SIX-WAVE TICK's per-breath phase offset (read only behind
+    # ALG_SW_TICK; harmless to compute unconditionally — no tensor, no gate)
+    _sw_tick_phase = (kb - 1) * (math.pi / 3.0)
+    # THE EYES (2026-10-05, ledger 12:56): the clock channel's breath scalar
+    # kb/(K_B-1) (the timestep, the only per-breath input the picture gets —
+    # a constant plane, never a learned embedding) and THE HANDS' mask
+    # temperature, soft -> hard: 1.0 at breath 1 rising linearly to
+    # ALG_EYES_HARD at the last breath (a fixed schedule in this table,
+    # never a gain). None outside the loop breaths / when the eyes are shut.
+    _breath_scalar = float(kb) / max(_K_B - 1, 1)
+    _eyes_temp = ((1.0 + (ALG_EYES_HARD - 1.0) * (kb - 1) / (_K_B - 2))
+                  if (ALG_EYES and 1 <= kb <= _K_B - 1) else None)
+    _c = _Conductor(kb=kb, tree_level=_tree_level, matry_k=_matry_k,
+                     unlock_k=_unlock_k, facts3_inject=_facts3_inject,
+                     facts5_inject=_facts5_inject, cert3_active=_cert3_active,
+                     cert5_active=_cert5_active, cert2_fresh=_cert2_fresh,
+                     hier_damp_shares=_hier_shares, stellar_weight=_stellar_w,
+                     sw_tick_phase=_sw_tick_phase,
+                     breath_scalar=_breath_scalar, eyes_temp=_eyes_temp)
+    _CONDUCTOR_CACHE[kb] = _c
+    return _c
 
 
 def _polar_ru(x, g):
@@ -2380,6 +2503,9 @@ def build_params(seed=0):
             else:
                 _be = 0.02 * np.sqrt(2.0) * np.cos(
                     _bph[:, None] + _bd[None, :] * (2 * np.pi / H_W) * (_bk[:, None] + 1))
+            # NOTE (T6 clock audit S2): row 0 of breath_emb is trained (this init gives it a real phase)
+            # but never read — every read site indexes [kb] for kb in range(1, K_B) only. Left as-is per
+            # the audit (harmless, out of scope for THE CONDUCTOR refactor).
             p["breath_emb"] = t(_be + rng.randn(K_B, H_W) * 0.004)
         else:
             p["breath_emb"] = t(rng.randn(K_B, H_W) * 0.02)
@@ -2560,9 +2686,25 @@ def build_params(seed=0):
              (_rngF.randn(N_SCR, H_W) * 0.02).astype(np.float32)], 0))
     if ALG_SIXWAVE:      # door #62: carrier gate — structure enters at zero
         p["sw_g"] = t(np.zeros((1,)))
-    if _TREE_LEVELS is not None:   # THE TREE DESCENT: three level queries, zero at birth (the keys are the bank's own)
+    if _TREE_LEVELS is not None and not ALG_TREE_NOPOOL:   # THE TREE DESCENT: three level queries, zero at birth (the keys are the bank's own); none under ALG_TREE_NOPOOL (they had no gradient)
         for _tl in range(3):
             p[f"tree_wq{_tl}"] = t(np.zeros((H_W, H_W)))
+    if ALG_EYES:
+        # THE EYES (2026-10-05): the in-head U-Net's parameters, prefix eyes_ — conv weights and
+        # biases at scripts/unet/model.py's (tinygrad Conv2d's) uniform +-1/sqrt(fan_in), the
+        # GroupNorm affines at ones/zeros, and THE OUTPUT CONV ZERO AT BIRTH (weight AND bias): the
+        # road exists from step 0 and the hands are exactly zero until the first gradient reaches
+        # them. Trained with everything else; no gain scalar anywhere.
+        _rE = np.random.RandomState(seed + 9107)
+        for _enm, _eci, _eco in _eyes_block_spec(ALG_EYES_BASE):
+            _eci = _EYES_C_IN if _eci is None else _eci
+            _esc = 1.0 / math.sqrt(_eci * 9)
+            p[f"eyes_{_enm}_w"] = t(_rE.uniform(-_esc, _esc, (_eco, _eci, 3, 3)))
+            p[f"eyes_{_enm}_b"] = t(_rE.uniform(-_esc, _esc, (_eco,)))
+            p[f"eyes_{_enm}_gw"] = t(np.ones(_eco))
+            p[f"eyes_{_enm}_gb"] = t(np.zeros(_eco))
+        p["eyes_out_w"] = t(np.zeros((1, ALG_EYES_BASE, 1, 1)))
+        p["eyes_out_b"] = t(np.zeros((1,)))
     if int(os.environ.get("ALG_BUSGARAGE", "0")):
         # THE PARKING GARAGE (2026-08-30, word given): typed relational
         # mail — deposits are role-bound wires; retrieval is content-
@@ -3337,6 +3479,98 @@ def _hier_waist_blocks():
             down[c0:c0 + 2 * pl, l0:l0 + la] = 1.0; c0 += 2 * pl; l0 += la
         _HIER_CACHE["blocks"] = (_Th(down).contiguous().realize(), _Th(down.T.copy()).contiguous().realize())
     return _HIER_CACHE["blocks"]
+
+
+# THE EYES (2026-10-05; the 10:38 spec, registered as a build at 12:56 — hill 7's first arm):
+# a U-Net INSIDE the loop that reads the head's OWN state as a PICTURE in the membrane's
+# coordinates, slots x tokens, every loop breath kb >= 1 (breath 0's grounding read is never
+# masked). THE PICTURE's channels: (a) three BAND AFFINITIES — the slot's state restricted to one
+# hierarchical band's CONTENT planes (root 16 / branch 112 / leaf 64; the clock planes excluded =
+# the canon frame is the identity on content) against the token's key restricted to the same
+# band, scaled 1/sqrt(n_band): the "what" / "which" / "value" pictures; (b) THE LAST LOOK — the
+# previous breath's head-mean slots<-tokens attention (breath 0's grounding read for breath 1);
+# (c) THE CLOCK CHANNEL — conductor(kb).breath_scalar as a constant plane, the timestep; (d) under
+# ALG_CERT, THE FEEDBACK LAYERS — the consult lines cert3/cert5 as channels, zero planes before
+# their consult (the channel count is fixed per run: 5, or 7 with ALG_CERT). THE U-NET is
+# scripts/unet/model.py's ConvBlock/UNet form on p's own tensors (prefix eyes_): 3x3 convs,
+# GroupNorm, relu; two down levels (2x2 average pooling over the (L_TOT, T) plane), skips, nearest
+# upsample; ONE output channel from a 1x1 conv whose weight AND bias are zero at birth. THE HANDS
+# (soft): the output (B, 1, L_TOT, T) is smoothed across breaths (m_kb = 0.5 m_{kb-1} + 0.5 u_kb,
+# m_0 = 0; state["eyes_m"]) and enters THIS breath's bank read on the pbias road (the route-bias
+# road cert3/cert5/idkey ride, before the clip) scaled by conductor(kb).eyes_temp (1.0 at breath 1
+# -> ALG_EYES_HARD at the last breath; a fixed schedule, never a gain). A MANDATORY ROAD (CLAUDE.md
+# S4): no gate scalar, no detach, every loop breath reads it; the zero output conv makes step 0
+# the body's own forward and step 1 the first step the road moves (the gradient reaches the zero
+# conv at step 0). The hard one-hot toggle on checked facts is NOT this arm. Unset = no params, no
+# ops, bit-identical. Allowed on a body without ALG_HIER_READ/WAIST (the bands are dim masks of
+# the polar state); needs ALG_POLAR (the band table) and K_B >= 3 (the temperature's schedule).
+ALG_EYES = int(os.environ.get("ALG_EYES", "0"))
+ALG_EYES_HARD = float(os.environ.get("ALG_EYES_HARD", "2.0"))   # the mask temperature at the last breath
+ALG_EYES_BASE = int(os.environ.get("ALG_EYES_BASE", "16"))     # the U-Net's base width
+_EYES_C_IN = 5 + (2 if ALG_CERT else 0)                         # the picture's channel count, fixed per run
+if ALG_EYES:
+    assert ALG_POLAR, "ALG_EYES pictures the hierarchical bands of the POLAR state (ALG_POLAR=1): without the polar sink there is no band table"
+    assert int(os.environ.get("ALG_BREATH", "1")) >= 3, "ALG_EYES needs K_B >= 3 (the mask temperature's schedule spans breaths 1..K_B-1)"
+    assert ALG_EYES_HARD >= 1.0 and ALG_EYES_BASE >= 1, (ALG_EYES_HARD, ALG_EYES_BASE)
+    assert T_ALG % 4 == 0, T_ALG
+
+
+def _eyes_band_mask(which):
+    """(1, 1, H_W) float: 1 on the band's CONTENT dims only, 0 elsewhere — the clock planes
+    EXCLUDED (the registration: the picture never sees the turn). _hier_mask (the heads' read)
+    admits the clock dims to every head; the eyes' affinities do not."""
+    key = ("eyes", which)
+    if key not in _HIER_CACHE:
+        from tinygrad import Tensor as _Th
+        bands, _ = _hier_band_dims()
+        arr = np.zeros(H_W, np.float32); arr[bands[which]] = 1.0
+        _HIER_CACHE[key] = _Th(arr).reshape(1, 1, -1).contiguous().realize()
+    return _HIER_CACHE[key]
+
+
+def _eyes_block_spec(base):
+    """scripts/unet/model.py's UNet layout: (name, c_in, c_out) per ConvBlock; None = the picture's
+    channel count (enc0a). dec blocks take the skip cat (up + enc) on the way in."""
+    return (("enc0a", None, base), ("enc0b", base, base),
+            ("enc1a", base, 2 * base), ("enc1b", 2 * base, 2 * base),
+            ("bota", 2 * base, 4 * base), ("botb", 4 * base, 4 * base),
+            ("dec1a", 4 * base + 2 * base, 2 * base), ("dec1b", 2 * base, 2 * base),
+            ("dec0a", 2 * base + base, base), ("dec0b", base, base))
+
+
+def _eyes_gn_groups(c):
+    """ConvBlock's GroupNorm group rule (scripts/unet/model.py): min(8, c), stepped down until it divides c."""
+    g = min(8, c)
+    while c % g != 0:
+        g -= 1
+    return g
+
+
+def _eyes_block(p, x, nm):
+    """ConvBlock on p's tensors: 3x3 conv (pad 1) -> GroupNorm (eps 1e-5, affine) -> relu."""
+    y = x.conv2d(p[f"eyes_{nm}_w"], p[f"eyes_{nm}_b"], padding=1)
+    _b, _c = int(y.shape[0]), int(y.shape[1])
+    y = y.reshape(_b, _eyes_gn_groups(_c), -1).layernorm(eps=1e-5).reshape(y.shape)
+    return (y * p[f"eyes_{nm}_gw"].reshape(1, -1, 1, 1) + p[f"eyes_{nm}_gb"].reshape(1, -1, 1, 1)).relu()
+
+
+def _eyes_up2(x):
+    """nearest-neighbour x2 upsample by reshape/expand (exact: the plane dims are multiples of 4)."""
+    _b, _c, _h, _w = (int(s) for s in x.shape)
+    return x.reshape(_b, _c, _h, 1, _w, 1).expand(_b, _c, _h, 2, _w, 2).reshape(_b, _c, 2 * _h, 2 * _w)
+
+
+def _eyes_unet(p, x):
+    """THE U-NET's body: a (B, C, Lp, T) picture -> (B, 1, Lp, T) mask logits. Two down levels
+    (2x2 average pooling), a bottleneck, two up levels (nearest upsample + the skip cat), the 1x1
+    output conv (zero at birth). No clip here: the bank clips the summed scores itself."""
+    from tinygrad import Tensor
+    e0 = _eyes_block(p, _eyes_block(p, x, "enc0a"), "enc0b")
+    e1 = _eyes_block(p, _eyes_block(p, e0.avg_pool2d((2, 2)), "enc1a"), "enc1b")
+    bt = _eyes_block(p, _eyes_block(p, e1.avg_pool2d((2, 2)), "bota"), "botb")
+    d1 = _eyes_block(p, _eyes_block(p, Tensor.cat(_eyes_up2(bt), e1, dim=1), "dec1a"), "dec1b")
+    d0 = _eyes_block(p, _eyes_block(p, Tensor.cat(_eyes_up2(d1), e0, dim=1), "dec0a"), "dec0b")
+    return d0.conv2d(p["eyes_out_w"], p["eyes_out_b"])
 ALG_TREE2 = int(os.environ.get("ALG_TREE2", "0"))
 ALG_TREE_NUMW = float(os.environ.get("ALG_TREE_NUMW", "0"))
 assert not (ALG_TREE2 or ALG_TREE_NUMW or ALG_TREECODE or ALG_TREE_NOPOOL) or _TREE_LEVELS is not None, "ALG_TREE2 / ALG_TREE_NUMW / ALG_TREECODE / ALG_TREE_NOPOOL ride on ALG_TREE"
@@ -3864,7 +4098,7 @@ def _make_bank(p, waist, tokmask, B, sent=None, tree=None):
         if ALG_TREECODE and _TREE_LEVELS is not None and tree is not None and nq == L_TOT:
             # THE HIERARCHICAL WHERE-CODES: each open level's unit phasor added to the token's key (the walk down)
             _kbc = kb if kb is not None else 0
-            _lvc = _TREE_LEVELS[_kbc] if _kbc < len(_TREE_LEVELS) else 3
+            _lvc = conductor(_kbc).tree_level            # THE CONDUCTOR
             _Tc_ = int(src.shape[1])
             for _l in range(min(_lvc, 2) + 1):
                 _uid = tree[:, :, _l].maximum(0).minimum(_TREECODE_UMAX - 1)          # (B, T) unit ids, pads -> 0
@@ -3884,7 +4118,7 @@ def _make_bank(p, waist, tokmask, B, sent=None, tree=None):
             # key term each; the leaf (this sc, and the router's token bias
             # below) is open only at level 3.
             _kb0 = kb if kb is not None else 0
-            _lv = _TREE_LEVELS[_kb0] if _kb0 < len(_TREE_LEVELS) else 3
+            _lv = conductor(_kb0).tree_level              # THE CONDUCTOR
             if _lv < 3 and not ALG_TREE2 and not ALG_TREECODE:      # form 1 closes the leaf below level t; form 2 and the code road keep it open
                 _leaf_open = 0.0
                 sc = sc * 0.0                     # exact zeros, the graph kept
@@ -3905,7 +4139,7 @@ def _make_bank(p, waist, tokmask, B, sent=None, tree=None):
                 sc = sc + _sl @ _M.transpose(-2, -1).unsqueeze(1)           # broadcast to the unit's tokens
             if ALG_TREE2 and prior is not None and kb is not None and kb >= 1:
                 # FORM 2: the previous breath's attention, aggregated per unit at each level open THEN, as a log-prior
-                _lvp = _TREE_LEVELS[kb - 1] if (kb - 1) < len(_TREE_LEVELS) else 3
+                _lvp = conductor(kb - 1).tree_level        # THE CONDUCTOR
                 for _l in range(min(_lvp, 2) + 1):
                     _mass = prior @ _Ms[_l]                                   # (B, nq, U): the unit's share of last breath's mass
                     _logp = _mass.clip(1e-3, 1.0).log()
@@ -4275,9 +4509,7 @@ def breath_step(p, state, kb, ctx):
             # the helical handoff residual -> notebook junction, per-slot
             # payload, SNIPPED to exactly 0 at the last loop breath, the
             # clock block exempt (a coordinate system, not a road).
-            _w = math.cos(kb * math.pi / (2 * (K_B - 1))) ** 2   # 1 -> 0
-            if kb in _IDLE:
-                _w = 1.0                     # idle: no junction blend
+            _w = conductor(kb).stellar_weight   # THE CONDUCTOR: 1 -> 0 over the loop, idle override folded in
             _rdj = _rd if NB_PERSLOT else _rd.reshape(B, 1, -1)
             if ALG_POLAR and ALG_STELLAR < 2:
                 _, _, _sg_c, _sg_k, _ = _polar_sink()
@@ -4834,12 +5066,12 @@ def breath_step(p, state, kb, ctx):
     # entry point above); kb >= 5 additionally sees cert5 (consult 2).
     # Both None (unset or ALG_ALT3 off) — bit-identical.
     _cert3 = ctx.get("cert3")
-    if _cert3 is not None and kb >= 3:
+    if _cert3 is not None and conductor(kb).cert3_active:   # THE CONDUCTOR: kb >= 3
         _pb_kb = _cert3 if _pb_kb is None else _pb_kb + _cert3
         if _CENSUS is not None:
             _CENSUS.append((kb, "cert3", _cert3.realize().numpy()))
     _cert5 = ctx.get("cert5")
-    if _cert5 is not None and kb >= 5:
+    if _cert5 is not None and conductor(kb).cert5_active:   # THE CONDUCTOR: kb >= 5
         _pb_kb = _cert5 if _pb_kb is None else _pb_kb + _cert5
         if _CENSUS is not None:
             _CENSUS.append((kb, "cert5", _cert5.realize().numpy()))
@@ -4859,7 +5091,64 @@ def breath_step(p, state, kb, ctx):
         _pb_kb = _idk_b if _pb_kb is None else _pb_kb + _idk_b
         if _CENSUS is not None:
             _CENSUS.append((kb, "idkey", _idk_b.realize().numpy()))
-    h_tok, fat_cur = bank(p["fq"], L_TOT, extra=(None if (ALG_CERT2 and kb in (3, 5)) else q_extra), kb=kb,   # FORM 2: a fresh first look at the consult breaths
+    if ALG_EYES:
+        # THE EYES (2026-10-05; ledger 12:56; the env block's brief): THIS breath's picture,
+        # painted from what the slot carried INTO the breath — `cur`, the state BEFORE this
+        # breath's bank read (so the picture is ready before the read; the same cur q_extra is
+        # built from above) — in slots x tokens. (a) three BAND AFFINITIES. The bank's own keys
+        # are per-head PROJECTIONS of the waist (k = waist @ attn_wk, split N_HEADS ways, see
+        # _make_bank), so the picture reads the PRE-projection pair: the slot state cur
+        # (B, L_TOT, H_W) against the waist ctx["waist"] (B, T, H_W) — the one space the band
+        # masks are defined on (the polar sink's plane table is the STATE's; on the waist the same
+        # dims are a dim mask, as the registration allows), restricted to one band's content
+        # planes and scaled 1/sqrt(n_band). (b) THE LAST LOOK: the previous breath's head-mean
+        # slots<-tokens attention, breath 0's grounding read for breath 1 (ALG_IDKEY's own
+        # source). (c) THE CLOCK CHANNEL: conductor(kb).breath_scalar, a constant plane. (d) under
+        # ALG_CERT, THE FEEDBACK LAYERS cert3/cert5 — zero planes before their consult (channel
+        # count fixed per run; a pass that reaches a consult breath without its line is refused,
+        # never run dark). No detach anywhere: the bank read is the road, and its gradient shapes
+        # the previous breath's attention and state THROUGH the picture.
+        _T_e = int(tokmask.shape[1])
+        assert _T_e == T_ALG and int(cur.shape[1]) == L_TOT, (tuple(cur.shape), _T_e, L_TOT, T_ALG)
+        _fat_e = state.get("fat_cur") if kb >= 2 else ctx["fat0"]       # (B, L_TOT, T)
+        assert _fat_e is not None, "ALG_EYES: no previous-breath attention for THE LAST LOOK"
+        _chs_e = []
+        for _bi_e, _npl_e in enumerate(_HIER_PLANES):
+            _bm_e = _eyes_band_mask(_bi_e)                                # (1, 1, H_W) content dims of the band
+            _chs_e.append((((cur * _bm_e) @ (waist * _bm_e).transpose(-2, -1)) / math.sqrt(2 * _npl_e))
+                          .reshape(B, 1, L_TOT, _T_e))
+        _chs_e.append(_fat_e.reshape(B, 1, L_TOT, _T_e))
+        _chs_e.append(_ct(("eyes_clock", kb, B, L_TOT, _T_e),
+                          np.full((B, 1, L_TOT, _T_e), conductor(kb).breath_scalar, np.float32)))   # THE CONDUCTOR
+        if ALG_CERT:
+            for _cn_e, _ca_e in (("cert3", conductor(kb).cert3_active), ("cert5", conductor(kb).cert5_active)):   # THE CONDUCTOR: kb >= 3 / kb >= 5
+                if _ca_e:
+                    _cv_e = ctx.get(_cn_e)
+                    assert _cv_e is not None, f"ALG_EYES: {_cn_e} is a picture channel from its consult breath on, and this pass did not thread it"
+                    _chs_e.append(_cv_e.reshape(B, 1, L_TOT, _T_e))
+                else:
+                    _chs_e.append(_ct(("eyes_zero", B, L_TOT, _T_e), np.zeros((B, 1, L_TOT, _T_e), np.float32)))
+        _pic_e = Tensor.cat(*_chs_e, dim=1)                                 # (B, C, L_TOT, T)
+        assert int(_pic_e.shape[1]) == _EYES_C_IN, (int(_pic_e.shape[1]), _EYES_C_IN)
+        _padL_e = (-L_TOT) % 4                                               # the slot axis to a multiple of 4 (two poolings)
+        if _padL_e:
+            _pic_e = _pic_e.pad((None, None, (0, _padL_e), None))
+        _u_e = _eyes_unet(p, _pic_e)                                         # (B, 1, Lp, T) this breath's look
+        if _padL_e:
+            _u_e = _u_e[:, :, :L_TOT, :]
+        _m_prev_e = state.get("eyes_m")
+        if kb == 1:
+            assert _m_prev_e is None, "ALG_EYES: a stale smoothed mask at breath 1 (the state was not reset)"
+            _m_e = 0.5 * _u_e                                                # m_0 = 0
+        else:
+            assert _m_prev_e is not None, f"ALG_EYES: no smoothed mask carried into breath {kb}"
+            _m_e = 0.5 * _m_prev_e + 0.5 * _u_e
+        state["eyes_m"] = _m_e                                               # THE HANDS, smoothed across breaths
+        _eyes_b = _m_e * conductor(kb).eyes_temp                             # THE CONDUCTOR: 1.0 at breath 1 -> ALG_EYES_HARD at the last
+        _pb_kb = _eyes_b if _pb_kb is None else _pb_kb + _eyes_b
+        if _CENSUS is not None:
+            _CENSUS.append((kb, "eyes", _eyes_b.realize().numpy()))       # the pre/post knob law: the injection, censused
+    h_tok, fat_cur = bank(p["fq"], L_TOT, extra=(None if (ALG_CERT2 and conductor(kb).cert2_fresh) else q_extra), kb=kb,   # FORM 2: a fresh first look at the consult breaths (THE CONDUCTOR: kb in (3, 5))
                           pbias=_pb_kb,
                           rbias=_rb7,
                           prior=(state.get("tree_prev_at") if ALG_TREE2 else None),   # FORM 2's construction line
@@ -5552,9 +5841,8 @@ def breath_step(p, state, kb, ctx):
         _garage.append(_wg4)
     if _HIER_DAMP is not None and 1 <= kb <= _RC_N_LOOP:   # THE HIERARCHICAL STATE: a band settled at breath k keeps its state from then on (hard) or damps toward it (ALG_HIER_TAU)
         _old = state["cur"]
-        for _bi, _settle in enumerate(_HIER_DAMP):
-            if _settle and kb > _settle:
-                _share_old = 1.0 if ALG_HIER_TAU <= 0 else float(1.0 - math.exp(-(kb - _settle) / ALG_HIER_TAU))   # the share of the OLD state kept on the band
+        for _bi, _share_old in enumerate(conductor(kb).hier_damp_shares):   # THE CONDUCTOR
+            if _share_old is not None:
                 _key = ("damp", _bi, round(_share_old, 6))
                 if _key not in _HIER_CACHE:
                     from tinygrad import Tensor as _Td
@@ -5679,7 +5967,7 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
         if ALG_SW_TICK:                   # THE SIX-WAVE TICK: the per-breath maker (kb = 1..6)
             _sw_cph, _sw_sph, _sw_th = _cph, _sph, _th
             def _mk_swtick(kb, _c=_sw_cph, _s=_sw_sph, _t=_sw_th):
-                _thk = _t - (kb - 1) * (math.pi / 3.0)    # slot phase +d == token phase -d
+                _thk = _t - conductor(kb).sw_tick_phase    # THE CONDUCTOR: slot phase +d == token phase -d
                 return (_c.reshape(1, 1, L_TOT, 1) * _thk.cos().reshape(B, 1, 1, -1)
                         + _s.reshape(1, 1, L_TOT, 1) * _thk.sin().reshape(B, 1, 1, -1)) * p["sw_g"].reshape(1, 1, 1, 1)
             _swtick = _mk_swtick
@@ -5855,6 +6143,7 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
                    "mc_sent": sent}
         _bs_state = {"cur": cur, "breaths": breaths, "nb": None,
                      "tree_prev_at": (fat if ALG_TREE2 else None),   # FORM 2: breath 0's attention seeds the first prior
+                     "eyes_m": None,   # THE EYES (2026-10-05): the smoothed hands, born at kb == 1 (m_0 = 0)
                      # MASK HEAD storage (2026-09-05): the graded
                      # adjacency the organ consumed at the previous
                      # breath_step (detached) — Δ-visibility into the
@@ -5887,12 +6176,12 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
                     _bs_ctx["waist"] = _tok
                     _bs_ctx["bank"] = _make_bank(p, _tok, tokmask, B, sent=sent)
                 breath_step(p, _bs_state, kb, _bs_ctx)
-                if kb == 2 and facts3 is not None:
+                if conductor(kb).facts3_inject and facts3 is not None:   # THE CONDUCTOR: kb == 2
                     vst = _fact_inject(p, vst, facts3)   # consult 1's values: read from breath 3 on
                     _bs_ctx["vst"] = vst
                     for _r in range(3, K_B):
                         _vst_at[_r] = vst
-                if kb == 4 and facts5 is not None:
+                if conductor(kb).facts5_inject and facts5 is not None:   # THE CONDUCTOR: kb == 4
                     vst = _fact_inject(p, vst, facts5)   # consult 2's values: read from breath 5 on
                     _bs_ctx["vst"] = vst
                     for _r in range(5, K_B):
