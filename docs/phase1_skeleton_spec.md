@@ -46080,3 +46080,44 @@ breath 1 (today it plateaus at 1.3 / 1.7); rows >= 14; digits not down.
 Prior stated: MODERATE for (a) alone (it names the planes; the first
 form that does), LOW-MODERATE for (b) on top (the unlock's shape with
 meaning added). Build after U-Net round 2 reads; the word needed.
+
+### 2026-10-04 (19:40) — THE HIERARCHICAL STATE, Opus's three additions adopted; THE BAND-SIZING CHECK read (zero GPU)
+
+ADOPTED: (1) THE BAND-RESPECTING WAIST — the polar waist projects all 384
+content dims through one dense 128 and back, so a partition written
+into the bands would be blended back to soup every breath; the fix is a
+BLOCK-DIAGONAL waist, one small bottleneck per band (the same total
+squeeze, no bleed between bands); the mixer and attention still write
+to every dim, so the bands talk without being blended. The waist is
+load-bearing (-0.064), so the block form is gated bit-identical in its
+all-open configuration and read for its own removal cost. (2) BAND SIZES
+FROM EVIDENCE, read now: linear probes on the final-breath content
+state (384 dims, PCA-ranked; 5-fold by row; 2,051 slots): ftype (what)
+0.87 and saturated at k=8; op 0.74 at k=8; the value's leading digit
+0.45 at k=32 (chance 0.24; weakly linear); the number of digits 0.75 at
+k=16; the slot's sentence (a which/where proxy) 0.53 at k=64 (chance
+0.38). READING: every label saturates far below 384 — the per-slot
+state's information is low-dimensional and the content planes are
+mostly redundant (consistent with the damping census: exchangeable
+planes); the WHAT needs ~8-16 dims, the LEAF (values) ~32-64, the WHICH
+~64 or more (the sentence proxy is the weakest label and the most
+dimensional). Gemini's 64 / 192 / 128 is generous at the root; the
+evidence suggests root 32 / branch 224 / leaf 128 of the 384, with the
+branch widest (identity and role are where the wall is and where the
+dims go). The probes are linear and the heads are not — indicative,
+not a sizing law. (3) THE GOLDEN SET AS THE EARLY WARNING: a partition
+reduces flexibility; if `golden.py check` falls below 6 / 24 on the
+arm's checkpoint, the bands are too tight — read before the wild
+reads. THE TREE IS THE WHICH TREE (Opus): root = the op palette (what
+kind of step), branch = who-has-what and which moment (where the twins
+live), leaf = which exact value — each level constraining the next, and
+"polish cannot change shape" holds between levels: a wrong branch
+cannot be fixed at the leaf. THE BUILD (registered 19:25, amended):
+ALG_HIER_READ (readout masks by band: root 32 / branch 224 / leaf 128),
+ALG_HIER_WAIST (block-diagonal: 32 -> 12, 224 -> 72, 128 -> 44 = 128),
+ALG_HIER_DAMP (per-band settling: root by breath 2, branch by 4, leaf
+open); gates: all-open bit-identical; the waist block form's removal
+cost read on the warm body before the arm; the arm from scratch vs
+PMS8_241 at the 19:25 bars + the golden warning. Builds after U-Net
+round 2 reads (the card; the control hit its 60k cap unconverged, the
+which-picture is training); the word needed to fire.

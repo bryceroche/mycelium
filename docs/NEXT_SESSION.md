@@ -22,6 +22,15 @@ The reads table: `.venv/bin/python3 scripts/reads.py table wildhold` (assert-on-
   free). THE READING: the warm regime on the claim body is a SETTLED BASIN — gentle continuation moves nothing for any
   organ whose effect is a small bias; what moved this month was structural at read (the numeral mask, the role pointer)
   or trained from scratch.
+- 10-04 19:40: THE HIERARCHICAL STATE registered as the next head build (ledger 19:25, 19:40): readout masks by band
+  (root 32 / branch 224 / leaf 128 of the content dims: the ftype/op heads read the root, the args pointer the branch, the
+  digit head the leaf — the bands named by what reads them), a BLOCK-DIAGONAL waist (one bottleneck per band; the dense
+  waist would blend the partition back every breath), per-band Laplace damping (root settles by breath 2, branch by 4,
+  leaf open); gates: all-open bit-identical, the block waist's removal cost on the warm body, golden24 >= 6 as the early
+  warning; the arm from scratch vs PMS8_241 (masked +0.020 or the twin; the damping census shows band structure; the
+  entropy curve keeps falling past breath 1; rows >= 14; digits not down). The band-sizing probes: what ~8-16 dims, leaf
+  ~32-64, which ~64+ (all saturate far below 384). U-NET ROUND 2 running (Aprime hit its 60k cap unconverged; Awhich
+  training; ~00:30). Needs the word to build/fire.
 - 10-04 13:20: CL2_241 (THE CERTIFIER LOOP FORM 2) DOES NOT FIRE — slot +0.002 (z 0.3; the first positive sign), rows
   8/7 vs 14/9 (six down, as form 1), digits 0.41 vs 0.46 (down, as form 1), mint flat. THE LINE CLOSES AS A ROUTE BIAS:
   the evidence is right, the soft bias is the wrong instrument — registered: THE VALUE-PROPAGATOR ROAD (the solver's
