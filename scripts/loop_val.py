@@ -216,6 +216,8 @@ def read(ckpt, data=None, p=None):
     import collections as _c; _FIELDS = _c.defaultdict(lambda: [0, 0]) if os.environ.get("LV_FIELDS") else None
     _DUMP = [] if os.environ.get("LV_DUMP") else None
     _DUMPR = [] if os.environ.get("LV_DUMP_RAW") else None
+    _RACKSIDE = [] if (os.environ.get("LV_DUMP") and int(os.environ.get("ALG_RACK", "0"))) else None   # THE RACK's sidecar beside LV_DUMP (2026-10-05): <LV_DUMP>.rack.npz
+    from phase1_algebra_head import L_TOT as _LTOT3
     _LEGAL = os.environ.get("LV_LEGAL", "") == "num"   # THE NUMERAL MASK (2026-09-17, a read-time road): legal values only — mycelium.rulebook
     if _LEGAL:
         from mycelium.rulebook import legal_digit_logits as _legal_digit_logits
@@ -365,7 +367,7 @@ def read(ckpt, data=None, p=None):
         _mha_t = (Tensor(_ATAB[_lvai], dtype=dtypes.float)
                   if _ATAB is not None else None)
         _alt3 = int(os.environ.get("ALG_ALT3", "0")) != 0
-        f3_t = f5_t = c3_t = c5_t = None
+        f3_t = f5_t = c3_t = c5_t = r3_t = r5_t = None
         if _alt3:
             # THE THREE CONSULTS at read (2026-09-24): the same three curbs
             # the trainer walks — a partial pass to breath 2, the solver's
@@ -374,35 +376,50 @@ def read(ckpt, data=None, p=None):
             # serial here (8 rows; the pool's bytes by its own assertion).
             from phase1_algebra_head import (alt2_fact_buf as _afb3, K_VARS as _KV3,
                                              certifier_bias as _certb, T_ALG as _T3,
-                                             ALG_CERT as _ACERT, ALG_CERT_IMPLIED as _ACERTI)
+                                             ALG_CERT as _ACERT, ALG_CERT_IMPLIED as _ACERTI,
+                                             rack_pack as _rackp, ALG_RACK as _ARACK, ALG_RACK_TESTS as _ARACKT)   # THE RACK (2026-10-05)
             _ck3 = ("pres", "ftype", "op", "dig", "args", "res") + (("dup",) if "dup" in o0 else ())
             _nv3 = np.array([vs[int(i)].get("n_vars", _KV3) for i in sl_p])
             _ma3 = np.array([vs[int(i)].get("m", 0) for i in sl_p])
             _mk3 = Tensor(mk, dtype=dtypes.float)
-            def _consult3(oo):
+            def _consult3(oo, rack_prev=None, rack_detail=None):
                 # THE TRAINED CERTIFIER-MASK ROAD (2026-09-28): the same
                 # decode this consult already took, plus the facts it
                 # just forced, straight into certifier_bias — no extra
                 # pass. Both halves None when ALG_CERT is unset.
                 onp3 = {k: oo[k].realize().numpy() for k in _ck3}
                 fb = _afb3(onp3, vse[sl_p].astype(np.int32), _nv3, _ma3)
-                cb_t = None
-                if _ACERT or _ACERTI:
+                cb_t = rk_t = rk = None
+                if _ACERT or _ACERTI or _ARACK:
                     texts3 = [vs[int(i)]["text"] for i in sl_p]
                     rows3 = [{k: onp3[k][bi] for k in onp3} for bi in range(len(sl_p))]
+                if _ACERT or _ACERTI:
                     cb_t = Tensor(_certb(rows3, fb, texts3, _T3, _ACERT, _ACERTI), dtype=dtypes.float)
-                return Tensor(fb, dtype=dtypes.float), cb_t
+                if _ARACK:
+                    # THE RACK (2026-10-05): the dryness test on this consult's own decode + facts, the trainer's
+                    # exact host path (rack_pack; consult 2 unions over consult 1's array — monotone); the port
+                    # the next pass reads from kb 3 / 5 on. `rack_detail` (the sidecar) records per test.
+                    rk = _rackp(rows3, fb, texts3, _T3, _ARACKT, prev=rack_prev, detail=rack_detail)
+                    rk_t = Tensor(rk, dtype=dtypes.float)
+                return Tensor(fb, dtype=dtypes.float), cb_t, rk_t, rk
+            _rk_d1 = [] if (_ARACK and _RACKSIDE is not None) else None
             _oa3 = _rf(forward, p, ts, tk, se, keys=_ck3, slot_mask=_mk3, xcorr=xcorr_t, hud=hud_t, tree=tree_t, ident=ident_t, stop_after=2)
-            f3_t, c3_t = _consult3(_oa3)
-            # pass b runs breaths 3-4 too — it must see cert3 (kb >= 3) the same as the full pass below
-            _ob3 = _rf(forward, p, ts, tk, se, keys=_ck3, slot_mask=_mk3, xcorr=xcorr_t, hud=hud_t, tree=tree_t, ident=ident_t, stop_after=4, facts3=f3_t, cert3=c3_t)
-            f5_t, c5_t = _consult3(_ob3)
+            f3_t, c3_t, r3_t, r3_np = _consult3(_oa3, rack_detail=_rk_d1)
+            # pass b runs breaths 3-4 too — it must see cert3 / rack3 (kb >= 3) the same as the full pass below
+            _ob3 = _rf(forward, p, ts, tk, se, keys=_ck3, slot_mask=_mk3, xcorr=xcorr_t, hud=hud_t, tree=tree_t, ident=ident_t, stop_after=4, facts3=f3_t, cert3=c3_t, rack3=r3_t)
+            _rk_d2 = [] if (_ARACK and _RACKSIDE is not None) else None
+            f5_t, c5_t, r5_t, r5_np = _consult3(_ob3, rack_prev=r3_np, rack_detail=_rk_d2)
+            if _rk_d2 is not None:   # THE RACK's SIDECAR: the flags the body committed by its last consult (both consults' union), per real row (the DRY CENSUS reads it exactly)
+                for bi, i in enumerate(sl):
+                    _RACKSIDE.append((int(i), r5_np[bi, :_LTOT3].copy(),
+                                      [[1.0 if (j in _rk_d1[bi][t] or j in _rk_d2[bi][t]) else 0.0 for t in _ARACKT] for j in range(_LTOT3)]))
         o = _rf(forward, p, ts, tk, se, keys=_jk_masked,
                 slot_mask=Tensor(mk, dtype=dtypes.float),
                 fact_buf=(None if _alt3 else fact_t), mh_mass=mass_t, mh_atlas_traj=_mha_t,
                 xcorr=xcorr_t, hud=hud_t, tree=tree_t, ident=ident_t, pmask=cert_t,   # THE READ-TIME CERTIFIER MASK (LV_CERTMASK)
                 valfact=(fact_t if float(os.environ.get("ALG_VALREG", "0")) or float(os.environ.get("ALG_VALREG_ADDR", "0")) else None),   # THE VALUE STREAM: the live pass-1 facts
-                facts3=f3_t, facts5=f5_t, cert3=c3_t, cert5=c5_t)   # THE TRAINED CERTIFIER-MASK ROAD
+                facts3=f3_t, facts5=f5_t, cert3=c3_t, cert5=c5_t,   # THE TRAINED CERTIFIER-MASK ROAD
+                rack3=r3_t, rack5=r5_t)   # THE RACK (2026-10-05)
         onp = {k: o[k].realize().numpy() for k in
                (("pres", "ftype", "op", "islit", "dig", "args", "res")
                 + (("dup",) if "h_dup" in p else ()))}
@@ -470,6 +487,14 @@ def read(ckpt, data=None, p=None):
         import pickle; pickle.dump(_DUMP, open(os.environ["LV_DUMP"], "wb")); print(f"[dump] {len(_DUMP)} gold slots with predictions -> {os.environ['LV_DUMP']}", flush=True)
     if _DUMPR is not None:
         import pickle; pickle.dump(_DUMPR, open(os.environ["LV_DUMP_RAW"], "wb")); print(f"[dump-raw] {len(_DUMPR)} gold slots with raw heads -> {os.environ['LV_DUMP_RAW']}", flush=True)
+    if _RACKSIDE is not None:
+        # THE RACK's SIDECAR: per real row, the dry flags the body committed at its last consult (rack5's union) and the
+        # per-test flags — scripts/rack_dryness_census.py reads it for THE DRY CENSUS bar (share committed + precision)
+        import phase1_algebra_head as _HR
+        _side = os.environ["LV_DUMP"] + ".rack.npz"
+        np.savez(_side, rows=np.array([r for r, _, _ in _RACKSIDE], np.int32), dry=np.stack([d for _, d, _ in _RACKSIDE]).astype(np.float32),
+                 tests=np.array(list(_HR.ALG_RACK_TESTS)), per_test=np.array([pt for _, _, pt in _RACKSIDE], np.float32))
+        print(f"[rack] {len(_RACKSIDE)} rows' committed dry flags -> {_side} (dry share {float(np.mean([d.mean() for _, d, _ in _RACKSIDE])):.3f} of slots)", flush=True)
     if _FIELDS is not None:
         print("[fields] " + " ".join(f"{k}={v[0]/max(v[1],1):.3f}({v[1]})" for k, v in _FIELDS.items() if not k.startswith("slot")), flush=True)
         print("[slots]  " + " ".join(f"{k[4:]}:{v[0]/max(v[1],1):.2f}({v[1]})" for k, v in sorted(_FIELDS.items()) if k.startswith("slot")), flush=True)
