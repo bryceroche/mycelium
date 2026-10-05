@@ -46580,3 +46580,29 @@ wall and the right-slot hit are the mechanism bars). Bars as registered above. T
 from hierd_chain.sh with its gate checks regenerated (the template residue rule) and two template
 slips fixed before firing: an undefined $LOCK on the band-probe line (HS/HSd's chains ran that read
 unlocked) and a single-quoted sed that would not have expanded the body's tau.
+
+### 2026-10-05 (14:21) — THE EYES BUILT + GATED (branch eyes, 8384f6ef on conductor); the ready flag set, the queue armed
+
+THE BUILD (worktree mycelium-wt5; head +180 lines, step_trainer +1): env ALG_EYES / ALG_EYES_HARD
+(2.0) / ALG_EYES_BASE (16), 5 input channels (7 under ALG_CERT); band masks over the CONTENT dims
+of _hier_band_dims() (the clock dims excluded — _hier_mask carries them, so it was not used); the
+in-head U-Net (3x3 convs, GroupNorm, relu, 2x2 avg pool, nearest upsample, skips, a zero 1x1 out
+conv; 42 params, 119,201 scalars, prefix eyes_); the picture at every loop breath from the state
+carried INTO the breath against ctx["waist"] (the pre-projection pair — the bank's keys are
+per-head), the last look (fat_cur / fat0), the clock plane conductor(kb).breath_scalar, the cert
+lines or zero planes; the slot axis padded to a multiple of 4 (L_TOT 32 here); state["eyes_m"]
+smoothing; the mask enters the pbias road as m * conductor(kb).eyes_temp (1.0 -> 2.0 across the
+breaths) with a _CENSUS hook "eyes" beside it. THE GATE (CPU): unset 5.2995/0.0279 bit-identical;
+role8 / hier / hierd / treecode reproduce; eyes (hierd + ALG_EYES=1) runs and prints hierd's digits
+at 4 decimals — at full precision step 0 differs by 2e-6 (the compile-order rule: an added exact-zero
+op) and step 1 by 9e-6 (one AdamW step moves eyes_out_w to |w| 4e-4; the hands are ~1e-3 in score
+units) — stated, the gate not widened. IN THE LOSS: the no-grad fence passes with the 42 params;
+at step 0 only eyes_out_w carries gradient (the zero out conv blocks the upstream grads
+structurally, EXACT zeros, not None); at step 1 every eyes_ param has |g| > 0 (conv weights
+8.7e-4..2.9e-3; eyes_out_w 0.25). The one permanent exception: eyes_out_b — a per-row constant
+under a row softmax is shift-invariant, its gradient is mathematically zero; harmless, never
+learns (noted). The read path: loop_val under the eyes env + ALG_JIT_READ=1 captures both JIT
+slots and reads 2 rows (15 s on CPU). Cost on CPU +32-34 % per step (convs; not the card's
+number). UNVERIFIED BY CONSTRUCTION: conv2d / avg_pool2d inside the training JIT on the AM driver
+— EY_241's first steps are the smoke; the chain FAILs loudly if the card refuses them. The ready
+flag (.cache/eyes_ready) is set; pc-queue-eyes merges, gates and fires when pc-queue1005 ends.
