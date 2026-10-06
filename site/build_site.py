@@ -237,6 +237,7 @@ HOOKS = {
  "2026-09-03-the-herring-shoal": "Message passing without a messenger: channel, language, and the parking garage where facts wait to be found.",
  "2026-09-03-the-atlas-of-thought": "Seven pages per centroid, one per breath — a kind is not a dot, it is a trajectory.",
  "2026-09-02-crossing-the-bridge": "Neural, continuous, non-deterministic on one side; symbolic, discrete, deterministic on the other — every term defined.",
+ "2026-10-05-concentration": "A reading is a solution: solute, solvent, saturation, nucleation — and why every organ in the machine has a continuous half and a discrete half.",
  "2026-09-02-the-diffusion-compiler": "Lattner's law plus one amendment: when you do lower, lower everything together.",
  "2026-09-02-the-dancers-silhouette": "The 512-dimension waist: understanding as the selective destruction of costume.",
  "2026-09-02-a-fancy-lookup-table": "The proud deflation — retrieval with the right keys, over an honest atlas, is reasoning you can audit.",
@@ -259,6 +260,14 @@ _posts = [m for m in _posts if m.stem in PIN_FIRST] + [m for m in _posts if m.st
 for md in _posts:
     lines = md.read_text().split("\n")
     meta = {}
+    # 2026-10-05: the posts carry a `---` fenced front-matter block; the parser never skipped the
+    # fences, so every title fell back to the slug and the block leaked into the page body.
+    if lines and lines[0].strip() == "---":
+        lines.pop(0)
+        while lines and lines[0].strip() != "---":
+            k, v = lines.pop(0).split(":", 1)
+            meta[k.strip()] = v.strip()
+        if lines: lines.pop(0)
     while lines and ":" in lines[0] and not lines[0].startswith("#"):
         k, v = lines.pop(0).split(":", 1)
         meta[k.strip()] = v.strip()

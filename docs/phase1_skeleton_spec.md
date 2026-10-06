@@ -46908,3 +46908,18 @@ do no work there); on the rack body it falls. Build: adaptive_stop.py dumps each
 (rawslots_breaths_wild_<TAG>.pkl); the meter runs zero-GPU on every body as it lands (combined
 oracle's enumeration per breath + the solver's accept count). The perceiver drinks from (3), reads
 (1) and (2), and never commits on (1) alone.
+
+### 2026-10-05 (20:44) — BLOG: "Concentration" published (the kitchen, the chemistry of a reading, the continuous / discrete pairs); the site's front-matter bug fixed
+
+site/blog/2026-10-05-concentration.md, live at theshapeofthought.ai/blog/2026-10-05-concentration/:
+the rack as the kitchen's setup step; concentration = solute / solvent / saturation (= solved +
+unique) / evaporation (the rack) / re-dissolving (release) / nucleation (certified facts, the value
+write); the two cautions from the record (entropy is not concentration of the right thing; radius is
+concentration of the wrong kind — the atlas read); the three concentrations and the parse-space
+meter's registered prediction; the pair table (clock / adjustment / state / values / search / time /
+feedback) with each half's state; the telegraph's four symbols; "fewer wet dishes, not a bigger
+sink"; where it could be wrong. Numbers quote banked reads only; the arms on the card are not
+claimed. ROOT-CAUSE FIX on the way: site/build_site.py's front-matter parser never skipped the
+`---` fences, so EVERY blog post's index title fell back to its slug and the front-matter block
+leaked into each page's body since the fence style began; fixed (titles now render; the block is
+consumed). Deployed to production (--branch=main).
