@@ -47052,3 +47052,19 @@ GSM8K) is refuted by the record: the lineage's diet is 65 % GSM8K-family prose a
 — the engine reads it at 0.33-0.35 per slot and 2-5 % per row; the perceiver's job is precisely to
 tell the settled rows from the confused ones on that distribution. Compute: 500 rows on CPU tonight;
 the rest on the card behind the rack chain's lock; the wild collect stays the measurement.
+
+### 2026-10-06 (06:55) — THE NIGHT LOST: the rack chain failed its own pre-flight at 22:13 and the card idled 9 hours; two rules; re-fired as two single-arm chains (pc-queue-rack3)
+
+What happened: .cache/rack_chain.sh carried TWO arms in one `for ARM in` loop; scripts/contracts/
+preflight.py tracks the loop's first arm only, so RKC_241's checkpoint and per-slot read were
+classed as missing inputs and the chain exited 1 at its first line (correct behaviour of the
+contract; wrong shape of the chain). My waiter grepped for "== ARM|ABORT|FAILED" and never matched
+"[preflight] FAIL" or "chain exit 1", so nothing woke me; the next look was 06:51. RULES: (1) a
+chain is ONE arm (every template the contract was written against is); a second arm is a second
+chain in the same queue; (2) a waiter's pattern is the chain's actual failure vocabulary —
+"preflight\] FAIL|chain exit|FAILED|ABORT|Traceback" — and every queue line prints "exit $?".
+(3) the static pre-flight of a second chain that consumes the first's outputs fails before the
+first runs (ps_legal_wild_RK_241.npz "missing"): that is the contract working; the runtime
+pre-flight at the chain's own start sees them. Re-fired: pc-queue-rack3 asserts the post-merge
+gate lines and runs rack_chain_RK.sh (pre-flight PASS, 34 inputs) then rack_chain_RKC.sh (the
+paired RK-vs-RKC bar line at its end). Everything else in the two chains is unchanged.
