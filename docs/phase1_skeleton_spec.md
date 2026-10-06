@@ -47249,7 +47249,7 @@ correlate with the model's; the certifier is a witness, not a judge. Needs the w
 
 ### 2026-10-06 (13:17) — WORD GIVEN FOR THE COURTROOM (Bryce: "word given for the courtroom brother -- Salute!"); delegated (sonnet): scripts/courtroom.py, zero GPU, tau tuned on the diet slice only, one wild read against the picker's bar.
 
-### 2026-10-06 (13:38) — THE COURTROOM BUILT + READ: SAFE, INERT ON WILD (14/311, identical to top-1; 0 regressions; MISSES the picker's own bar of rows>=24) — the margin discipline that keeps it safe is exactly what keeps it from moving anything (scripts/courtroom.py, delegate)
+### 2026-10-06 (13:34) — THE COURTROOM BUILT + READ: SAFE, INERT ON WILD (14/311, identical to top-1; 0 regressions; MISSES the picker's own bar of rows>=24) — the margin discipline that keeps it safe is exactly what keeps it from moving anything (scripts/courtroom.py, delegate)
 
 Built per the 13:13 registration. REUSE, zero new candidate generation: the bailiff + exhaustion
 step is the already-banked .cache/picker/cand_{diet,wild_PMS8_241}.pkl (scripts/picker/
@@ -47348,7 +47348,7 @@ to top-1 outright. Artifacts: scripts/courtroom.py; .cache/courtroom_PMS8_241.{t
 .cache/picker/cand_{diet,wild_PMS8_241}.pkl (the panel picker's own banked generation, parity-
 checked by text before use, never regenerated).
 
-### 2026-10-06 (13:35) — THE COURTROOM'S READING (after the 13:38 entry): the jury as built is INERT (14 / 311 = top-1, 0 regressions, 0 fixes); the stories are told apart by nothing we have un-trained; THE TRAINED JUROR registered as form 2
+### 2026-10-06 (13:35) — THE COURTROOM'S READING (after the 13:34 entry; the builder's stamp 13:38 ran ahead of the clock, corrected): the jury as built is INERT (14 / 311 = top-1, 0 regressions, 0 fixes); the stories are told apart by nothing we have un-trained; THE TRAINED JUROR registered as form 2
 
 The three jurors (the text certificates restricted to the differing slots, the unexplained-numeral
 count, the collision count) with a Copeland tally and a margin never beat top-1 on the diet at any
