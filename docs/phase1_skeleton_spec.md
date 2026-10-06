@@ -46823,3 +46823,34 @@ the fixture): the footprint changes the hold, not the test. Read smoke under lea
 read, the sidecar written. Procedural notes: the gate script's config-subset override word-splits
 (unquoted ${RACK_GATE_CFGS}); unusable as written, unused by the queue. RK_241 runs ALG_RACK=1
 ALG_RACK_TESTS=given_unique ALG_RACK_FREEZE=leaf vs RKC_241; .cache/rack_ready set.
+
+### 2026-10-05 (19:11) — THE ATLAS RADIUS READ (zero GPU; scripts/atlas_radius_read.py; .cache/atlas_radius_read.txt): the ANGLE holds everywhere, the RADIUS tightens only where the state is damped, and tightening is NOT legibility; the atlas separates given from rel and NO op kind
+
+Setup: the band probe's states (311 x 6 x 24 x 512) on wild for PMS8_241 / HS_241 / HSd_241; content
+dims = the head's _hier_band_dims() (384; the clock's 128 excluded; the content planes are the canon
+frame); gold kinds from the fixture's factor graph (slot k introduces var k; rel forward = add / mul,
+inverse = sub / div), asserted against the dump's gold on all 2051 x 3 slots (0 mismatches), the
+custody door passed on 311 rows; RIGHT = ps_legal_wild; nearest-centroid (NC) = leave-one-out cosine.
+THE PREDICTION (registered above) vs THE READ: (1) "on PMS8 the radius does not tighten after breath
+1" — CONFIRMED: the whole drop is b1->b2 (given RIGHT 1.225 -> 0.79) and after b2 the radius is flat
+or RISES (0.78 -> 0.83; rel kinds on ALL 1.48 -> 1.63), monotone on 1 / 8 kinds; (2) "on the
+hierarchical bodies it tightens" — CONFIRMED: HS / HSd fall 50-68 % b1->b6, HSd monotone on 8 / 8;
+(3) "and the NC accuracy holds instead of falling" — REFUTED: on HS / HSd the NC accuracy FALLS over
+breaths (RIGHT 0.856 -> 0.844, 0.879 -> 0.812; ALL 0.594 -> 0.562, 0.603 -> 0.559) and the rel
+margins shrink toward zero (add 0.05 -> 0.012): per-band damping squeezes kind-specific spread AND
+kind separation together — the slots contract toward a SHARED direction. On PMS8 the right slots
+get MORE legible (pooled NC 0.895 -> 0.957, peak b3 0.968, margins 0.05 -> 0.25-0.35) while their
+radius does not fall: they sharpen by SEPARATING, not by contracting. THE ANGLE: the only real turn
+is b1->b2 (cos to the final 0.27-0.53); from b3 cos-to-previous >= 0.96; cos-to-final crosses 0.99
+at b5 (PMS8) / b3-b4 (HS) / b4-b5 (HSd) — the centroid's direction is set by the first loop breath
+and never moves again. THE ATLAS IS A GIVEN-VS-REL ATLAS: on ALL slots every rel kind (add / sub /
+mul / div) has a NEGATIVE LOO margin at every breath on every body (acc 0.18-0.55); only given
+separates (+0.18..+0.28). Op kind is not a centroid-readable direction in the content state — the
+binding theorem again (kind is a binding, not a surface class). READING FOR HILL 6: the shared-angle
++ per-breath-radius form is the right SHAPE (angle = identity, settled by b3; radius = consolidation,
+only under damping), but the radius is not an op-legibility signal and a per-op centroid is not
+readable at all — an atlas of OPS must key on the binding (the args / role register), not the slot's
+content state; the atlas as a PERCEIVER INPUT (distance to the given / rel manifold; the radius as
+the consolidation clock on damped bodies) survives; the atlas as a per-breath per-op road does not
+enter until a kind-separable key exists. Caveat: no per-cell SE; RIGHT kinds 100-440 slots; the
+PMS8 ALL trends are hundredths (flat); the HS / HSd falls and the PMS8 RIGHT rise are 4-7 points.
