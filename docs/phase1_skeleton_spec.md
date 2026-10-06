@@ -47053,6 +47053,74 @@ GSM8K) is refuted by the record: the lineage's diet is 65 % GSM8K-family prose a
 tell the settled rows from the confused ones on that distribution. Compute: 500 rows on CPU tonight;
 the rest on the card behind the rack chain's lock; the wild collect stays the measurement.
 
+### 2026-10-06 (07:09) — MCTS OVER PARSES BUILT + READ: MISSES THE BAR (14/311, flat across every budget x depth cell; 0 regressions) — the first-success stopping rule is the cost, not the search (scripts/mcts_parse.py; item 2 of "WORD GIVEN FOR THE DISCRETE HALVES", ledger 2026-10-05 19:24)
+
+Built per the 19:24 registration: a priority-queue best-first search over combined_oracle.py's own
+(args x type/op x value) node lattice (CO.typeop_decisions combined_oracle.py:265-278, CO.
+apply_typeop_flips :281-292, CO.value_variants :299-333, CO.apply_value_variant :336-346, imported
+from scripts/combined_oracle.py, never edited; CO.BO/CO.SK are the same beam_oracle.py/
+sinkhorn_claim.py module objects combined_oracle.py itself imports: BO.mask_row beam_oracle.py:150-
+161, BO.slot_decisions :164-182, BO.apply_flips :185-195, BO.parse_sig :198-201, BO.build_gv_nvv
+:204-210, SK.given_slots sinkhorn_claim.py:94-103, SK.affinity_row :111-116). Root = the top-1
+decode; each edge commits ONE action (an args-slot flip, a typeop-slot flip, or switching the value
+axis baseline -> one of CO.value_variants' non-baseline reassignments -- a stated INTERPRETATION
+call, see mcts_parse.py's module docstring, "THE TREE": the value axis fires as one action per path
+since that is the granularity CO.value_variants itself already commits to); a node's PRIOR is the
+sum of its path's action margins (0 at the root, every margin >= 0, so the frontier is Dijkstra-
+consistent -- no child is ever popped before its parent); the ROLLOUT solves the node's FULL decoded
+graph (_solve_parse/_check_unique in mcts_parse.py, copies -- not imports -- of combined_oracle.py's
+_solve_task/_uniqueness_task bodies, called in-process since the search is sequential within a row;
+mycelium/doors.py's certify_unique :33-44 is the uniqueness door, same budget constant CO.
+UNIQ_BUDGET=5000); a node with a TRUE solver-certified "unsat" is a dead leaf (BACKTRACK: no
+children, siblings continue via the frontier); "solved"+unique=True is the TERMINAL (adaptive
+stopping, the row's answer); budget <=64 real solver/uniqueness calls per row (cache hits by parse
+signature are free), depth <=3 committed actions. MCTS vs plain best-first: stated and resolved in
+the module docstring -- every rollout is deterministic and every node evaluated at most once, so
+UCT's exploration term is identically its own n<=1 degenerate case everywhere; the heapq priority
+queue IS that degenerate case, visiting the same nodes in the same order a zero-exploration-constant
+UCT tree would, built as the simpler form per the task's own invitation, with PRIOR / ROLLOUT /
+BACKTRACK kept as separable steps for a future learned value function.
+
+SELF-GATE: root-only correct 14/311 (PASS, matches the 10-05 11:50 self-gate exactly).
+
+WILD (.cache/rawslots_wild_PMS8_241.pkl, 311 rows): MCTS final correct 14/311 (vs top-1 14, the
+judge 18, the ceiling 43) -- IDENTICAL to top-1, not one row moved. Terminal successes (a solved+
+unique node reached) on 147/311 rows, but only the SAME 14 are correct (139 of the 147 successes
+are the root itself, trivially top-1's own count; the other 8 -- depth 1:4, depth 2:3, depth 3:1 --
+are all rows where top-1 was NOT correct and the search found a DIFFERENT solved+unique graph that
+is ALSO not correct: zero fixes, zero regressions). BUDGET histogram: mean 14.2, median 2 (most
+rows resolve at the root or its first flip), buckets [1,2)=83 [2,4)=139 [4,8)=3 [8,16)=11 [16,32)=11
+[32,64)=26 (the 26 at-cap rows are where the search never stops, exhausting the full budget without
+a terminal node and keeping top-1 by default). BAR (pinned: rows>=24, regressions<=2): rows MISSES
+(14 < 24), regressions PASSES (0 <= 2). OVERALL: MISS. ABLATION (budget in 16/32/64 at depth 3;
+depth in 1/2/3 at budget 64, six cells, wild): final_correct is 14 and regressions 0 in EVERY cell
+-- the bar miss is not a budget/depth starvation artifact; more search budget buys more terminal
+successes (144 -> 146 -> 147 across depth 1/2/3 at budget 64; 146 -> 147 -> 147 across budget
+16/32/64 at depth 3) but not more CORRECT ones.
+
+READING: the search is SAFE (0 regressions on wild, matching the 10-05 11:50 consistency judge's own
+0) but strictly WORSE than that judge's 18/311, for a structural reason the ablation rules out as a
+budget/depth artifact: adaptive stopping commits to the FIRST solved+unique node the margin-ordered
+frontier reaches, and on this data the first such node is essentially never the correct graph when
+top-1 is wrong -- it is a DIFFERENT, cheaper-to-reach (lower total margin) consistent-but-wrong
+graph that intercepts the search before it would otherwise reach the correct one deeper in the same
+<=64-candidate pool the oracle bound already showed holds the answer for 43/311 rows. This is the
+10-05 11:50 ledger's "the judge picks a consistent wrong graph" finding, now sharpened: the 10-05
+12:48 panel picker's judge beats first-success specifically because it looks at EVERY solved+unique
+candidate in the pool and tie-breaks by LIKELIHOOD, instead of taking whichever one a cost-ordered
+search meets first. DIET (.cache/rawslots_slicevalid2_PMS8_241.pkl, 775 rows, a parity/robustness
+read only, never a bar fixture): top-1 310/775 (matches); MCTS final 296/775 -- 20 regressions
+(rows 17,34,165,199,240,250,286,376,377,414,479,495,497,530,584,642,675,691,702,735), 6 fixes
+(rows 24,354,517,565,580,731), net -14 vs top-1, landing EXACTLY on the 10-05 12:48 panel picker's
+own diet consistency-judge number (296/775) -- consistent with, though not verified identical-path-
+for-path to, that judge's own pick. CONCLUSION: MCTS over parses, built to the letter of the 19:24
+spec, MISSES its bar on wild; the fix is not more budget or depth (the ablation forecloses that) but
+a better terminal rule -- the judge's "pick the best of everything reachable", not "stop at the
+first thing reachable" -- i.e. this script's own frontier, run to exhaustion within the SAME <=64
+budget and scored by CO.candidate_loglik instead of stopped at first success, is the natural next
+arm (not run here; the task's bar called for one read of the build as specified). Honest negative,
+banked. Artifacts: .cache/mcts_parse_PMS8_241.txt + .pkl; scripts/mcts_parse.py.
+
 ### 2026-10-06 (06:55) — THE NIGHT LOST: the rack chain failed its own pre-flight at 22:13 and the card idled 9 hours; two rules; re-fired as two single-arm chains (pc-queue-rack3)
 
 What happened: .cache/rack_chain.sh carried TWO arms in one `for ARM in` loop; scripts/contracts/
