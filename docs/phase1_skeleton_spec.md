@@ -47511,3 +47511,75 @@ queue (pc-queue-rackplain) waits for the rack tail, asserts the gate, aborts if 
 else fires RKP then RKPC. The word (15:1x, "the whole queue") covered the live-facts pair that
 turned out void; this pair replaces it under the same word, with the standing offer to stop it
 before ~21:00 if Bryce prefers to hold.
+
+### 2026-10-06 (15:08) — THE CARICATURE JURY (THE COURTROOM's form 2, the trained pairwise juror) BUILT + CV'd + READ ONCE ON WILD: ties the hand jurors' 14/311 (1 fix, 1 regression), MISSES the rows>=24 bar; diet CV barely beats the hand jurors (0.601 vs 0.584) and collapses toward chance on wild (0.546)
+
+Built per the 13:35 registration (Bryce's caricature frame: "comparing a real face to an average
+baseline and sharply amplifying the unique differences"). scripts/courtroom.py has no juror hook, so
+scripts/courtroom2.py imports it whole and MONKEYPATCHES the module-level `courtroom.pairwise_votes`
+before calling `courtroom.run_courtroom()` -- the bailiff (solved-only survivors), exhaustion (no
+first-success stop), and the verdict-with-a-margin (Copeland over top<=8 survivors union top-1, tau
+tuned on the diet only) all run EXACTLY as courtroom.py wrote them, unedited; only cross-examination's
+per-pair vote is swapped. New files: scripts/picker/jury_features.py (the caricature: discriminating
+slots via courtroom.discriminating_slots(); the grounding span via stamp_arg_mentions.clause_of()/
+windows_of() applied to EVERY differing slot, widened to the enclosing clause; the frozen trunk's
+L0-L3 pooled embedding of that span AND of the whole text, run on CPU exactly as
+scripts/perceiver_collect.py's _get_trunk_host()/_embed_raw_batch() do; a structural A-minus-B diff
+over ftype/op buckets, given-value text-presence, and a cross-clause rate; courtroom.juror1_cert_diff/
+unexplained_count/collision_count reused verbatim for the hand-juror comparison), scripts/jury_train.py
+(pair construction + training + 5-fold GroupKFold CV + ablations), scripts/courtroom2.py (the swap +
+the wild read).
+
+PAIRS (diet, .cache/picker/cand_diet.pkl, 775 rows): no-true-story rows=336, true-but-no-wrong rows=70,
+CONTRIBUTING (>=1 solved-correct "true story" AND >=1 solved-wrong candidate)=369 rows; full
+cross-product of true x wrong candidates, both orderings swap-augmented: pairs(one direction)=21306,
+swap-augmented=42612. The true story is gen_candidates.py's own b["correct"] flag (status=="solved" and
+value==row["key"], the custody-gold answer already applied upstream -- no new solving, no re-grading).
+
+THE JUROR: logistic regression (sklearn) on PCA(span_pool,16) + PCA(span_pool-text_pool,16) + the
+22-dim structural diff, trained with swap augmentation (the embedding half is SHARED between the two
+orderings of a pair -- by construction it cannot itself distinguish them, which the embedding-only
+ablation confirms exactly at 0.5000 every fold, chance by construction). 5-fold GroupKFold BY ROW
+(diet, 369 groups): FULL (struct+embed) mean pairwise accuracy 0.6010 (folds 0.51/0.56/0.62/0.70/0.61);
+ABLATION embed-only 0.5000 (every fold, exactly chance -- the shared caricature embedding alone carries
+no directional signal, as designed); ABLATION struct-only 0.6010 (IDENTICAL to the full model fold for
+fold -- a LINEAR juror extracts zero additional lift from the embedding once the structural diff is
+in; an interaction-aware (nonlinear) juror is the natural next arm, not built here). HAND-JUROR
+BASELINE (courtroom.py's own majority-of-3, same diet pairs): 0.5836 (ties scored as a miss) / 0.6178
+(decisive pairs only, 71.0% of pairs) -- the trained juror beats the hand jurors on the ties-count-as-
+miss basis but trails the hand jurors' own decisive-only number, an honest wash, not a clean win.
+JUROR 1 (cert) granularity: 99.9% span-restricted.
+
+DIET TAU SWEEP (same rule as courtroom.py: smallest tau maximizing diet rows_correct subject to
+regressions<=5; full 775-row dump, top-1=310): tau 0-2 is unmargined and disastrous (214 rows, 142-148
+regressions -- the trained juror's raw sign is noisy exactly like courtroom.py's tau=0 reading); tau=3
+-> 311/775 (regressions=5, fixes=6) -- ONE ROW above top-1, the first time any courtroom-family juror
+has exceeded top-1 on the diet (the hand-juror courtroom plateaued at 309, never above); tau>=7 ->
+310/775, 0 regressions, 0 fixes (converges back to top-1, same shape as courtroom.py's own sweep).
+Chosen tau=3.0.
+
+THE ONE WILD READ (.cache/rawslots_wild_PMS8_241.pkl, 311 rows, top-1=14, tau=3.0 fixed, never
+retuned): COURTROOM(trained) 14/311 -- IDENTICAL COUNT to top-1 and to the hand-juror courtroom's own
+14/311 (10-06 13:34), via one swap: FIXES=1 (row 186), REGRESSIONS=1 (row 98), net zero. STOP-REASON
+HISTOGRAM: bailiff_empty 21, already_top1 12, replaced 17, margin_refused 261. BARS (rows>=24,
+regressions<=2): regressions=1 PASSES; rows=14 MISSES by 10. GOLD-KNOWN PAIRWISE ACCURACY (the true-
+vs-wrong pairs reachable on wild's own bailiff-survivor pools, same construction as the diet, read
+once, no retrain/retune): 41 contributing rows (268 wild rows have no solved-correct candidate at
+all), 2503 pairs, accuracy 1366/2503 = 0.5457 -- the diet CV's modest edge (0.601) nearly vanishes on
+wild, consistent with the diet-to-wild gap the picker and the 10-06 13:13 perceiver read both banked
+this week (a trained signal that transfers weakly and is not yet a judge).
+
+READING: THE TRAINED JUROR is a real but thin improvement over the un-trained hand jurors on the SAME
+diet pairs (0.60 vs 0.58), the first courtroom-family juror to beat top-1 at all on the diet (311 vs
+310), and it inherits the margin discipline's safety (1 regression, within bar) -- but the lift does
+not survive the wild generalization gap: at the only tau its own tuning rule permits, it moves exactly
+one row net zero on wild, landing on the SAME 14/311 the untrained jury and raw MCTS both found,
+bracketed below by the judge's 18 and the picker's 19, far from the 43-row ceiling. The caricature
+embedding, exactly as specified (shared context, not a per-story signal), does not help a LINEAR
+juror once the structural diff is present -- consistent with, not contradicting, Bryce's frame: the
+amplified difference needs an interaction with context ("this kind of ambiguity amplifies that kind
+of structural disagreement"), which logistic regression cannot express. Honest negative, banked.
+Artifacts: scripts/picker/jury_features.py; scripts/jury_train.py; scripts/courtroom2.py;
+.cache/picker/jury_model.pkl; .cache/jury_train_PMS8_241.txt (diet CV+ablation); .cache/jury_diet_
+PMS8_241.{txt,pkl} (diet tau tune+parity); .cache/jury_PMS8_241.{txt,pkl} (the wild read, the task's
+pinned deliverable).
