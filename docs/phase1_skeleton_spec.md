@@ -46951,3 +46951,33 @@ on the rack form; its kill line governs whether the family continues): RK3_241 =
 count and the chalk-token usage censused on wild — a chalk token must be ATTENDED by some slot on
 >= 30 % of the rows that carry one, or the road is unread); fired only after RK / RKC land and RK is
 not killed. Worktree mycelium-wt6 now on rack3; branch rack untouched at a4dd02b9.
+
+### 2026-10-05 (21:24) — EY_241 (THE EYES, hill 7's first arm) KILLED ON THE MECHANISM: the membrane leaves the tokens from breath 1 (right-slot token hit 0.76 -> 0.10-0.14; the wall 0.526 -> 0.576, the WRONG way), the slot -0.012, rows +3, mint +0.055; the rack queue held and re-pointed
+
+Reads (eyes_chain.log 20:56; reads.py ingest ran; body HS_241, TAU 0): open wild 0.3008 (HS 0.3096);
+MASKED wild 0.3354 — paired vs HS_241 -0.0117 (SE ~0.0085, z 1.4; the KILL line -0.010 crossed by
+0.0017), vs PMS8_241 -0.0122, vs the lineage +0.0063; rows 11 / 10 (HS 8 / 7, PMS8 14 / 9: bar rows
+>= body + 2 MET); open mint 0.6415 (HS 0.5862: +0.055 — the eyes recover the hierarchical state's
+whole mint cost; PMS8 0.65); digits 0.368 vs 0.383 (DOWN); silver460 0.2282; golden24 4 / 14 / 6
+(HS 5). THE MEMBRANE CENSUS (collect + report in the chain): RIGHT slots' argmax on the token band
+0.761 at b0 then 0.102 / 0.144 / 0.129 / 0.127 / 0.144 / 0.122 at b1-b6 (HS_241 0.72-0.76 at every
+breath) — the mass to other_sent (0.15 -> 0.50) and clause (0.01 -> 0.19); mass-weighted token share
+0.51 -> 0.17-0.22; WRONG slots' other-sentence share (THE WALL) 0.474 at b0 then 0.572-0.582 (HS
+0.526): +0.05 THE WRONG WAY. Both mechanism bars KILLED (hit >= 0.72; wall >= +0.03). READING: from
+breath 1 the eyes' mask owns the membrane — the later breaths no longer read the text; the per-slot
+read fell only 0.012 because the first look's state carries everything on this body (the drift
+record said the later breaths add nothing; the eyes made that literal). Whether the mask DOMINATES
+the logits (the knob law's reading, never taken before the fire — the third time this law bites) or
+STEERS to specific non-token positions, and whether it is an anti-reread (negative on the breath-0
+argmax), is THE AUTOPSY, fired zero-GPU (scripts/eyes_autopsy.py, 24 rows, CPU). The rows + mint
+gains say the eyes' hands did something useful on the positional register while blinding the
+membrane on wild — consistent with the residual-seal law: the loss took the cheapest road (kill the
+re-read, keep the first look). Hill 7 keeps its principle; this FORM (a soft additive mask with a
+rising temperature on the whole read) is the second form in a row to teach the body not to look.
+THE RACK QUEUE: pc-queue-rack was STOPPED mid-gate (after the merge 0471da82; no arm had started);
+the rack arms were registered "on the eyes body" — stacking on a killed organ is not an experiment:
+RK_241 / RKC_241 now run on HS_241's recipe WITHOUT ALG_EYES (the chain edited; the paired read vs
+EY_241 kept as information); pc-queue-rack2 re-runs the full post-merge gate (asserting unset, eyes,
+rackleaf) and fires. Bars unchanged (RK vs RKC paired). The eyes' next form waits on the autopsy;
+candidates: the mask as a CLAIM-shaped hard road (one-hot where checked, zero elsewhere — the
+telegraph, not a wave) or the picture read by the perceiver only (hill 7's eyes without hands).
