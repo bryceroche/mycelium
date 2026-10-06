@@ -47221,3 +47221,28 @@ commit head trained on the slice's GSM8K rows only vs all (domain match), the pa
 feature (now dumped per breath), and NO stop head until a body exists whose later breaths beat its
 first look. The perceiver stays a reader of metadata; its first commit role is as a FILTER beside
 the rack's certificate (both must fire), not instead of it.
+
+### 2026-10-06 (13:13) — THE COURTROOM (Bryce: the NL certifier as a trial — "a competition between opposing teams determines which story the jury selects"; the fingerpost); registered, zero GPU, needs the word
+
+The furniture already in the room: the LAWYERS = the first look's candidates (<= 64 / row; the right
+story present for 43 / 311); the BAILIFF = the solver (consistent + unique: 18 rows, 0 regressions);
+the JURY sat once as the panel picker (19 / 4 regressions, bar missed) whose ablation is the
+courtroom's evidence — the text certificates carried weight (-34 when dropped), the model's own
+likelihood was a NET-NEGATIVE witness (the defendant testifying for itself; Gemini's "highest
+likelihood wins" is the witness the data struck); the CORRUPT JUDGE = MCTS stopping at the first
+consistent story (14 / 311); the FINGERPOST = the refusal with a readable shape when the stories
+cannot be told apart (the zero-regression mechanism the picker lacked). THE NEW PART = THE
+COMPETITION: the picker judged each story in isolation (absolute; the certifier's absolute AUROC
+0.81); cross-examination puts two surviving stories side by side and asks the certifier about the
+ONE place they differ (for a twin pair, a single binding: which clause does this role cue describe)
+— a relative judgment on a short span; and a story that leaves a numeral unexplained has ignored
+evidence (57 % of wrong readings do). Repulsion at the story level: two stories cannot both own the
+same evidence (the rack's claim, one level up). THE FORM (scripts/courtroom.py, zero GPU on
+rawslots_wild_PMS8_241 via the combined oracle's generator): (1) bailiff — solver-consistent
+survivors; (2) exhaustion — every survivor stands (no first-success stop); (3) cross-examination —
+pairwise contrastive certification on the discriminating span (nl_certifier scoring the DIFFERENCE,
+plus the unexplained-numeral count as evidence ignored); (4) the verdict with a MARGIN — pick only
+when the winner's lead clears tau (tuned on the diet slice's 775 rows, never on wild), else refuse
+and keep top-1. BARS (the picker's): rows >= 24, regressions <= 2; the bailiff is never overridden
+(a story the solver rejects cannot win). Cautions banked: no CSP for language; the jury's errors
+correlate with the model's; the certifier is a witness, not a judge. Needs the word; a day of CPU.
