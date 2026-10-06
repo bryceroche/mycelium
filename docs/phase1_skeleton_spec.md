@@ -46809,3 +46809,17 @@ scripts/atlas_radius_read.py fired (zero GPU); banked below whichever way it fal
 (registered): on PMS8 the radius does not tighten after breath 1 (the one-rate settling, the drift);
 on the hierarchical bodies it tightens in the root and branch and the nearest-centroid accuracy
 holds instead of falling.
+
+### 2026-10-05 (19:08) — ALG_RACK_FREEZE (all | leaf | none) built + gated (branch rack a4dd02b9); the ready flag returns; pc-queue-rack armed behind the eyes
+
+The knob: default all reproduces the rack gate (10.8019/8.7628, full precision equal); leaf = the leaf
+band's content dims only (_hier_band_dims()[0][2]; the damping blend runs on all bands first, then
+the hold on the leaf, so a dry slot's root / branch keep their ordinary update); none = the claim
+alone; any other value hard-errors at import. Gate (CPU, 18:16-19:07, every config in
+.cache/rack_gate.log): unset bit-identical; role8 / hierd / eyes / cert / rackoff / rack / rackprobe
+reproduce; rackleaf 10.8373/8.7737 and racknone 10.8349/8.7704 run and differ from rack and from each
+other at 4 decimals; the dry census identical across the three (4 dry at consult 1, 5 at consult 2 on
+the fixture): the footprint changes the hold, not the test. Read smoke under leaf: 2 rows, the JIT
+read, the sidecar written. Procedural notes: the gate script's config-subset override word-splits
+(unquoted ${RACK_GATE_CFGS}); unusable as written, unused by the queue. RK_241 runs ALG_RACK=1
+ALG_RACK_TESTS=given_unique ALG_RACK_FREEZE=leaf vs RKC_241; .cache/rack_ready set.
