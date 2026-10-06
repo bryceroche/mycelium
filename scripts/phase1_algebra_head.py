@@ -679,6 +679,140 @@ def certifier_bias(decoded_rows, facts, texts, T, gain, implied_gain=None):
     return bias
 
 
+# THE RACK's DRYNESS TESTS (2026-10-05, word given; ledger 16:13 "WORD GIVEN: THE
+# RACK" — Bryce's kitchen: "you can't start washing because the drying rack is
+# full; put the dry dishes away first; then drying is free and the wet never
+# drips on the dry"). Dry means CHECKED, never confident (the annealed decode
+# refuted confidence 19:1; temperature is orthogonal to truth): a slot is dry
+# when a certificate OUTSIDE the head's own confidence vouches for its decoded
+# factor — the text (a numeral claimed uniquely) or the solver (an implied
+# value the text carries). The unit of commitment is the SLOT (dishes are
+# items, not bands). No gold anywhere, at training or at read: every test
+# reads the consult's own decode + the facts it just forced, exactly where
+# certifier_bias builds cert3/cert5. Admission (pinned before the census,
+# scripts/rack_dryness_census.py): a test enters the commit only with
+# precision >= 0.90 on right slots — a dish "dry" one time in ten poisons the
+# row. The four names below are the census's columns; ALG_RACK_TESTS (the env
+# block by ALG_RACK) selects the admitted ones for the commit.
+RACK_TESTS_ALL = ("given_unique",           # (a) a given slot whose decoded numeral occurs ONCE in the text and no other decoded slot claims it
+                  "relation_implied",       # (b) a relation slot whose result variable the solver forced to a value the text carries, and NO decoded given states that variable (the value was DERIVED, through the relations)
+                  "relation_implied_any",   # (b') as (b) without the derived condition (a given may restate the result — the text numeral is then the given's, not the relation's)
+                  "given_any")              # (c) the baseline: a given slot whose decoded numeral appears in the text at all, collisions allowed (census reference / gate probe only)
+
+
+def rack_dry_row(row, frow, text, T, tests):
+    """THE DRYNESS TEST on ONE row: the per-slot certificates, per test.
+
+    row:   one row's RAW head logits (pres, ftype, op, dig, args, res,
+           optionally dup) — the consult's own decode (`onp` in
+           _consult_into / loop_val's _consult3), unmasked; the numeral
+           mask is applied to a per-row COPY here, exactly as
+           certifier_bias does (the same legal_digit_logits door the
+           masked read walks), so a dry given's value IS the numeral the
+           read would score.
+    frow:  (K_VARS, 4) the facts this consult forced (known-flag + MSD
+           digits/9, the b_fact3/b_fact5 convention) or None (no consult
+           behind this call: the relation tests never fire, not an error).
+    text:  the row's text; T: the token width the spans are indexed in.
+    tests: an iterable of RACK_TESTS_ALL names.
+
+    Returns {test: {slot: (value, [(a, b), ...])}} — for every test asked,
+    the slots it certifies, each with the certified numeral and the token
+    spans (start, end_excl) that numeral occupies in the text = THE CLAIM
+    (the tokens a dry slot takes off the rack). A slot may be certified by
+    more than one test; the union is the commit. Pure numpy per row — no
+    solver call (the facts are handed in, never recomputed here)."""
+    import numpy as np
+    from collections import Counter
+    from mycelium.rulebook import legal_digit_logits
+    import membrane_scale as _MSC
+    tests = tuple(tests)
+    bad = [t for t in tests if t not in RACK_TESTS_ALL]
+    assert not bad, f"rack_dry_row: unknown dryness test(s) {bad}; known: {RACK_TESTS_ALL}"
+    out = {t: {} for t in tests}
+    tok = _xcorr_tokenizer()
+    ids = tok.encode(text).ids[:T]; ids = ids + [0] * (T - len(ids))
+    runs = _MSC._digit_runs(tok, ids, T)                    # [(a, b, value)] the text's numerals, in token coordinates
+    if not runs:
+        return out
+    L = row["ftype"].shape[0]
+    masked = dict(row); masked["dig"] = row["dig"].copy()
+    for j in range(L):
+        if int(masked["ftype"][j].argmax()) == 0:
+            continue
+        fake = legal_digit_logits(masked["dig"][j], text)
+        if fake is not None:
+            masked["dig"][j] = fake
+    parse = _decode_slots(masked)
+    by_slot = {f["_slot"]: f for f in parse}
+    # every decoded literal on the row claims its numeral (a given's value, a mod/fdiv's k, a pct's p)
+    claims = {}
+    for j, f in by_slot.items():
+        if f["ftype"] == "given":
+            claims[j] = int(f["value"])
+        elif f["ftype"] in ("mod", "fdiv"):
+            claims[j] = int(f["k"])
+        elif f["ftype"] == "pct":
+            claims[j] = int(f["p"])
+    n_claims = Counter(claims.values())
+    run_count = Counter(v for _, _, v in runs)
+    given_vars = {int(f["var"]) for f in parse if f["ftype"] == "given"}
+    for j, f in by_slot.items():
+        if f["ftype"] == "given":
+            v = int(f["value"]); spans = [(a, b) for a, b, rv in runs if rv == v]
+            if not spans:
+                continue
+            if "given_any" in tests:
+                out["given_any"][j] = (v, spans)
+            if "given_unique" in tests and run_count[v] == 1 and n_claims[v] == 1:
+                out["given_unique"][j] = (v, spans)
+        elif f["ftype"] == "rel" and frow is not None:
+            r = int(f["result"])
+            if not (0 <= r < frow.shape[0]) or frow[r, 0] <= 0:
+                continue
+            fval = (int(round(frow[r, 1] * 9)) * 100 + int(round(frow[r, 2] * 9)) * 10 + int(round(frow[r, 3] * 9)))
+            spans = [(a, b) for a, b, rv in runs if rv == fval]
+            if not spans:
+                continue
+            if "relation_implied_any" in tests:
+                out["relation_implied_any"][j] = (fval, spans)
+            if "relation_implied" in tests and r not in given_vars:
+                out["relation_implied"][j] = (fval, spans)
+    return out
+
+
+def rack_pack(decoded_rows, facts, texts, T, tests, prev=None, detail=None):
+    """THE RACK's host side at a consult (the rack3/rack5 ports): the DRY
+    flags and the CLAIMED token positions of a batch, packed into ONE
+    fixed-shape float32 array (B, L_TOT + T): [:, :L_TOT] = 1.0 on dry
+    slots, [:, L_TOT:] = 1.0 on every token position some dry slot's
+    numeral occupies. `prev` (the previous consult's packed array) makes
+    the commit MONOTONE: a dry slot never becomes wet, a claimed token is
+    never released (the union). `detail`, if a list, receives one
+    {test: {slot: (value, spans)}} per row (the census's sidecar). Same
+    inputs as certifier_bias (the consult's own decode + the facts it
+    just forced + the batch's texts): no gold, no solver call."""
+    import numpy as np
+    B = len(decoded_rows)
+    out = np.zeros((B, L_TOT + T), np.float32)
+    if prev is not None:
+        assert prev.shape == out.shape, (prev.shape, out.shape)
+        out[:] = prev
+    for bi in range(B):
+        d = rack_dry_row(decoded_rows[bi], None if facts is None else facts[bi], texts[bi], T, tests)
+        if detail is not None:
+            detail.append(d)
+        for t in tests:
+            for j, (_v, spans) in d[t].items():
+                out[bi, j] = 1.0
+                for a, b in spans:
+                    out[bi, L_TOT + a:L_TOT + b] = 1.0
+    if int(os.environ.get("ALG_RACK_DEBUG", "0")):
+        print(f"[rack] ALG_RACK_DEBUG: B={B} tests={','.join(tests)} dry slots={int(out[:, :L_TOT].sum())} "
+              f"(prev {0 if prev is None else int(prev[:, :L_TOT].sum())}) claimed tokens={int(out[:, L_TOT:].sum())} rows with a dry slot={int((out[:, :L_TOT].sum(1) > 0).sum())}", flush=True)
+    return out
+
+
 def _wheel_memo_key(row):
     import json as _json
     n_vars, parse, m = row
@@ -3515,6 +3649,89 @@ if ALG_EYES:
     assert T_ALG % 4 == 0, T_ALG
 
 
+# THE RACK (2026-10-05, word given; ledger 16:13 "WORD GIVEN: THE RACK"; Bryce's kitchen: put the dry
+# dishes away first, then drying is free and the wet never drips on the dry): forced-only commits
+# brought into the neural loop as a CONDUCTOR PHASE at the consult breaths. The record it answers:
+# the splash is measured (right slots' token hit 0.81 -> 0.60 across breaths on every ordinary body;
+# the hierarchical state stops it by damping, which protects the dry but never takes them off the
+# rack); the rack is never cleared (every slot re-reads all 256 tokens every breath, all-to-all
+# through the mixer; 69 % of wild rows carry colliding givens); coarse-to-fine was built backwards
+# twice (capacity OPENED over breaths; the kitchen says the ACTIVE SET SHRINKS). THE FORM: at each
+# consult (ALT3's kb 2 / 4, the facts road ALG_CERT already walks) the host runs THE DRYNESS TEST per
+# slot (rack_dry_row / rack_pack above certifier_bias: the ADMITTED tests only, ALG_RACK_TESTS) and
+# feeds the DRY flags + the CLAIMED token positions through the rack3/rack5 ports (one packed
+# (B, L_TOT + T) buffer per consult, like cert3/cert5; consult 2's is the UNION with consult 1's —
+# monotone, a dry slot never becomes wet). THE COMMIT from the breath after each consult (kb >= 3 on
+# rack3, kb >= 5 on rack5): (1) FREEZE — a dry slot's state update share is 0 for the remaining
+# breaths (the skater's own tau, per slot), applied at the end of breath_step where the hierarchical
+# damping applies, on the CONTENT planes of every band and never the clock planes (the damping's own
+# rule: the clock is the timestamp every head reads; a frozen clock would present the dry slot to
+# every later readout as a slot from breath 2 — the commit carries the VALUE, not the time);
+# (2) CLAIM — a hard mask (-1e4 on the pbias road, inside the bank's clip) on every NON-dry slot at
+# every claimed token position: the wet never read the dry's tokens again (dry slots keep every token
+# visible to themselves; they are frozen anyway); (3) ONE-WAY GLASS — the slot mixer (sc2: bq @ bk^T
+# over all slots -> h_slot -> cur) still READS dry slots through bk/bv (the wet see the dry), and the
+# message INTO a dry slot (its own h_slot row) is discarded by the freeze — no mixer edit, the glass
+# is the freeze. No new parameters: the loss must move through the mask. Soft forms of this family
+# all nulled (the certifier loop as a route bias, the read-time broadcast mask, LV_CERTMASK): this
+# road is HARD and trained from scratch (RK_241 vs RKC_241, .cache/rack_chain.sh). Unset = no ports
+# read, no ops, bit-identical. Needs ALG_ALT3 (the consults) + ALG_CERT (the facts road the consult
+# lines walk; the rack reads the same decode + facts) + ALG_POLAR (the band table the freeze's
+# content mask comes from). A reader that arms ALG_RACK and reaches a consult breath without the
+# rack port is refused (never run dark), as the eyes refuse a missing cert line.
+ALG_RACK = int(os.environ.get("ALG_RACK", "0"))
+# THE ADMITTED DRYNESS TESTS. THE CENSUS (2026-10-05, scripts/rack_dryness_census.py on the banked wild
+# dumps, the pinned rule precision >= 0.90 on right slots, RIGHT = the masked read's own positional
+# per-slot verdict): NO TEST IS ADMITTED — given_unique 0.583 (PMS8_241) / 0.546 (HS_241),
+# relation_implied 0.353 / 0.452, relation_implied_any 0.357 / 0.492, given_any 0.444 / 0.444; the
+# row-level judge (solved + unique) 0.094 / 0.049. The audit column: the numeral a dry given claims IS
+# one of the row's gold givens 0.972 / 0.962 of the time — the certificate certifies the NUMERAL, the
+# positional read scores the ORDER (row 0: 8 / 12 / 6 decoded in the wrong slots). So the default is
+# EMPTY and ALG_RACK=1 refuses to run without an explicit ALG_RACK_TESTS=<csv of RACK_TESTS_ALL>: the
+# arm needs a ruling (a slot-order-free "right", or the bar), never a silently un-admitted commit.
+ALG_RACK_TESTS = tuple(t.strip() for t in os.environ.get("ALG_RACK_TESTS", "").split(",") if t.strip())
+if ALG_RACK:
+    assert ALG_ALT3, "ALG_RACK needs ALG_ALT3=1 (the consults the dryness test runs at; there is no decode to certify without them)"
+    assert ALG_CERT, "ALG_RACK needs ALG_CERT=<gain> (the facts road: the consult's facts the relation test reads are built on that road)"
+    assert ALG_POLAR, "ALG_RACK freezes the CONTENT planes of the polar state (ALG_POLAR=1): without the polar sink there is no band table"
+    assert ALG_RACK_TESTS, ("ALG_RACK=1 needs an explicit ALG_RACK_TESTS=<csv of " + ",".join(RACK_TESTS_ALL) + ">: THE DRYNESS CENSUS "
+                            "(.cache/rack_dryness_census_PMS8_241.txt / _HS_241.txt) admitted NO test at the pinned precision bar 0.90 "
+                            "(given_unique 0.58/0.55 positional; its numeral is a gold given 0.97 of the time) — name the tests under a ruling, never by default")
+    _bad_rt = [t for t in ALG_RACK_TESTS if t not in RACK_TESTS_ALL]
+    assert not _bad_rt, f"ALG_RACK_TESTS: unknown test(s) {_bad_rt}; known: {RACK_TESTS_ALL}"
+# THE FREEZE'S FOOTPRINT (THE RACK, 2026-10-05, Bryce: "freeze what the certificate certifies, leave
+# open what it does not"). The certificate certifies the VALUE, not the binding: a dryness test checks
+# the numeral a slot decoded against the row's givens / the solver's implied values — it says nothing
+# about WHAT the slot is (the root band) or WHICH mention it binds (the branch band). So the freeze
+# holds only what the certificate covers, and the rest stays open to the consults' feedback:
+#   all  = the built form (the gate reference 10.8019/8.7628): the content dims of all three bands
+#   leaf = the leaf band's content dims only (_hier_band_dims()[0][2], the value planes); a dry slot's
+#          root/branch dims keep their ordinary update — the hierarchical damping share included, if set
+#   none = no freeze at all: the claim mask alone (the wet never read the dry's tokens; nothing held)
+# The clock planes are untouched under every value, as before (the commit carries the value, never the
+# time). Any other value hard-errors — a misspelt footprint must never run as the default.
+ALG_RACK_FREEZE = os.environ.get("ALG_RACK_FREEZE", "all")
+assert ALG_RACK_FREEZE in ("all", "leaf", "none"), f"ALG_RACK_FREEZE={ALG_RACK_FREEZE!r}: must be one of all | leaf | none (THE RACK's freeze footprint)"
+
+
+def _rack_content_mask():
+    """(1, 1, H_W) float: THE FREEZE's footprint — 1 on the content dims the freeze holds, 0 elsewhere;
+    the clock dims are 0 under every footprint (the hierarchical damping's own rule). ALG_RACK_FREEZE=all:
+    every band's content dims; leaf: the leaf band's only (the value planes — Bryce's ruling, 2026-10-05:
+    the certificate certifies the value, not the binding; root and branch stay open). Never called under
+    `none` (the freeze site is skipped)."""
+    assert ALG_RACK_FREEZE in ("all", "leaf"), ALG_RACK_FREEZE
+    key = ("rack_content", ALG_RACK_FREEZE)
+    if key not in _HIER_CACHE:
+        from tinygrad import Tensor as _Th
+        bands, _ = _hier_band_dims()
+        arr = np.zeros(H_W, np.float32)
+        for _b in (bands if ALG_RACK_FREEZE == "all" else (bands[2],)):   # leaf = bands[2] (root 16 / branch 112 / leaf 64 planes)
+            arr[_b] = 1.0
+        _HIER_CACHE[key] = _Th(arr).reshape(1, 1, -1).contiguous().realize()
+    return _HIER_CACHE[key]
+
+
 def _eyes_band_mask(which):
     """(1, 1, H_W) float: 1 on the band's CONTENT dims only, 0 elsewhere — the clock planes
     EXCLUDED (the registration: the picture never sees the turn). _hier_mask (the heads' read)
@@ -5148,6 +5365,34 @@ def breath_step(p, state, kb, ctx):
         _pb_kb = _eyes_b if _pb_kb is None else _pb_kb + _eyes_b
         if _CENSUS is not None:
             _CENSUS.append((kb, "eyes", _eyes_b.realize().numpy()))       # the pre/post knob law: the injection, censused
+    _rack_dry = None                                                        # THE RACK's dry flags for this breath (B, L_TOT, 1); None = nothing committed yet
+    if ALG_RACK:
+        # THE RACK (2026-10-05; the env block's brief): THE COMMIT's hand on the read. The rack
+        # port of the LAST consult this breath sits after — rack5 from kb 5 (consult 2's union,
+        # monotone over consult 1's), rack3 from kb 3 (consult 1's); nothing before kb 3 (the
+        # first look and breath 1-2 run unmasked, as cert3 does). Each port is the host's packed
+        # (B, L_TOT + T): [:, :L_TOT] the DRY flags, [:, L_TOT:] the CLAIMED token positions
+        # (rack_pack). A reader that reaches a consult breath without the port is refused here,
+        # never run dark. THE CLAIM: -1e4 on every NON-dry slot at every claimed token position,
+        # on the pbias road (the route-bias road cert3/cert5/idkey/eyes ride, before the bank's
+        # clip, inside it by construction): the wet never read the dry's tokens again; a dry slot
+        # keeps every token visible to itself (frozen anyway, see the end of this function).
+        _rack_port = None
+        if conductor(kb).cert5_active:                                      # THE CONDUCTOR: kb >= 5 -> consult 2's rack
+            _rack_port = ctx.get("rack5")
+            assert _rack_port is not None, f"ALG_RACK: breath {kb} sits after consult 2 and this pass did not thread rack5"
+        elif conductor(kb).cert3_active:                                    # THE CONDUCTOR: kb >= 3 -> consult 1's rack
+            _rack_port = ctx.get("rack3")
+            assert _rack_port is not None, f"ALG_RACK: breath {kb} sits after consult 1 and this pass did not thread rack3"
+        if _rack_port is not None:
+            _T_r = int(tokmask.shape[1])
+            assert tuple(_rack_port.shape) == (B, L_TOT + _T_r), (tuple(_rack_port.shape), (B, L_TOT + _T_r))
+            _rack_dry = _rack_port[:, :L_TOT].reshape(B, L_TOT, 1)                                  # (B, L_TOT, 1) 1 = dry
+            _rack_clm = _rack_port[:, L_TOT:].reshape(B, 1, 1, _T_r)                                # (B, 1, 1, T) 1 = claimed
+            _rack_b = (1.0 - _rack_dry).reshape(B, 1, L_TOT, 1) * _rack_clm * -1e4                 # (B, 1, L_TOT, T) the hard hand
+            _pb_kb = _rack_b if _pb_kb is None else _pb_kb + _rack_b
+            if _CENSUS is not None:
+                _CENSUS.append((kb, "rack", _rack_b.realize().numpy()))  # the pre/post knob law: the injection, censused
     h_tok, fat_cur = bank(p["fq"], L_TOT, extra=(None if (ALG_CERT2 and conductor(kb).cert2_fresh) else q_extra), kb=kb,   # FORM 2: a fresh first look at the consult breaths (THE CONDUCTOR: kb in (3, 5))
                           pbias=_pb_kb,
                           rbias=_rb7,
@@ -5851,6 +6096,27 @@ def breath_step(p, state, kb, ctx):
                     _HIER_CACHE[_key] = _Td(_arr).reshape(1, 1, -1).contiguous().realize()
                 _dm = _HIER_CACHE[_key]
                 cur = cur * (1.0 - _dm) + _old * _dm
+    if ALG_RACK and ALG_RACK_FREEZE != "none" and _rack_dry is not None and 1 <= kb <= _RC_N_LOOP:
+        # THE RACK's FREEZE (2026-10-05): a dry slot's state update share is 0 from the breath after
+        # its consult on — the hierarchical damping's own form (cur = cur*(1-dm) + old*dm) with a PER-
+        # SLOT dm = 1 on dry slots over the CONTENT planes the footprint names: every band under
+        # ALG_RACK_FREEZE=all, the LEAF band alone under `leaf` (Bryce, 2026-10-05: "freeze what the
+        # certificate certifies, leave open what it does not" — the certificate certifies the VALUE;
+        # the root/branch dims of a dry slot keep their ordinary update, damping share included, so
+        # the consults' feedback can still move the binding), and no freeze at all under `none` (this
+        # block is skipped; the claim mask alone). Under every footprint the damping's rule: never
+        # the clock planes — the clock is the timestamp every head reads, and a frozen clock would
+        # present the dry slot to every later readout as a slot from its consult breath; the commit
+        # carries the VALUE, not the time). `_old` = the state that entered this breath (the same
+        # source the damping reads), so a dry slot leaves the breath exactly as it came: THE ONE-WAY
+        # GLASS — the slot mixer above (sc2 = bq @ bk^T -> h_slot -> cur) still read this slot's
+        # keys/values for every wet slot, and its message INTO this slot is discarded right here.
+        # Composes with the damping (both are convex blends toward the same `_old`; a dry slot's
+        # content ends at `_old` whatever the band's share). A dry slot never becomes wet (the host
+        # unions consult 2's flags over consult 1's).
+        _old_r = state["cur"]
+        _dm_r = _rack_dry[:, :int(cur.shape[1])] * _rack_content_mask()        # (B, L, H_W): 1 on dry slots' content dims
+        cur = cur * (1.0 - _dm_r) + _old_r * _dm_r
     if ALG_TREE2:
         state["tree_prev_at"] = fat_cur       # FORM 2: this breath's head-mean attention is the next breath's prior
     if "clockband" in _SEVER and ALG_POLAR and 1 <= kb <= _RC_N_LOOP:
@@ -5862,7 +6128,7 @@ def breath_step(p, state, kb, ctx):
     return state
 
 
-def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, drop=None, anchor=None, amask=None, gmod=None, pmask=None, lsent=None, reg=None, fact_buf=None, mh_mass=None, mh_atlas_traj=None, xcorr=None, res_map=None, hud=None, ident=None, busreg_ramp=None, valfact=None, stop_after=None, facts3=None, facts5=None, tree=None, cert3=None, cert5=None):
+def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, drop=None, anchor=None, amask=None, gmod=None, pmask=None, lsent=None, reg=None, fact_buf=None, mh_mass=None, mh_atlas_traj=None, xcorr=None, res_map=None, hud=None, ident=None, busreg_ramp=None, valfact=None, stop_after=None, facts3=None, facts5=None, tree=None, cert3=None, cert5=None, rack3=None, rack5=None):
     from tinygrad import Tensor, dtypes   # audit 2026-09-01: was a
     # SCOPE ACCIDENT (bound only via the sixwave/sync branches — any
     # SIXWAVE-off config killed five organs at step 1)
@@ -6122,6 +6388,7 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
                    "valtag_v": _valtag_v,
                    "anchor_bias0": _anch_bias0,
                    "cert3": cert3, "cert5": cert5,   # THE TRAINED CERTIFIER-MASK ROAD (2026-09-28): per-breath pbias from kb 3 / 5 on (breath_step below)
+                   "rack3": rack3, "rack5": rack5,   # THE RACK (2026-10-05): the packed dry flags + claimed tokens per consult, read from kb 3 / 5 on (breath_step: the claim + the freeze)
                    "slot_mask": slot_mask, "bank": bank, "rot2": _rot2,
                    "sync": _sync, "swtick": _swtick, "drop": drop, "gmod": gmod,
                    "revoke": revoke, "tail": tail, "reg": reg,
@@ -8254,6 +8521,8 @@ def do_train(steps, lr, batch, seed):
     b_fact5 = fix(np.zeros((batch, K_VARS, 4), np.float32), dtypes.float) if ALG_ALT3 else None   # consult 2's values (read from breath 5)
     b_cert3 = fix(np.zeros((batch, 1, L_TOT, T_ALG), np.float32), dtypes.float) if ALG_CERT else None   # THE TRAINED CERTIFIER-MASK ROAD: consult 1's bias (read from breath 3)
     b_cert5 = fix(np.zeros((batch, 1, L_TOT, T_ALG), np.float32), dtypes.float) if ALG_CERT else None   # consult 2's bias (read from breath 5)
+    b_rack3 = fix(np.zeros((batch, L_TOT + T_ALG), np.float32), dtypes.float) if ALG_RACK else None   # THE RACK: consult 1's packed dry flags + claimed tokens (read from breath 3)
+    b_rack5 = fix(np.zeros((batch, L_TOT + T_ALG), np.float32), dtypes.float) if ALG_RACK else None   # consult 2's (the union; read from breath 5)
     _valfact_rng = np.random.RandomState(seed + 7331) if ALG_VALREG_ON else None
     b_mha = fix(np.zeros((batch, ATLAS_TAB.shape[1], H_W), np.float32),
                 dtypes.float) if ATLAS_TAB is not None else None
@@ -8420,13 +8689,13 @@ def do_train(steps, lr, batch, seed):
             # commits, self-labeled from gold like the commit loss,
             # DETACHED); the second trains under live release dynamics.
             o0 = forward(p, s_tr, b_tk, b_se, slot_mask=b_mask, tail=b_tail,
-                         reg=b_reg, xcorr=b_xcorr, res_map=b_resmap, hud=b_hud, tree=b_tree, ident=b_ident, busreg_ramp=b_bgain, valfact=b_valfact, facts3=b_fact3, facts5=b_fact5, cert3=b_cert3, cert5=b_cert5)
+                         reg=b_reg, xcorr=b_xcorr, res_map=b_resmap, hud=b_hud, tree=b_tree, ident=b_ident, busreg_ramp=b_bgain, valfact=b_valfact, facts3=b_fact3, facts5=b_fact5, cert3=b_cert3, cert5=b_cert5, rack3=b_rack3, rack5=b_rack5)
             ok = ((o0["ftype"].argmax(-1) == bg["ftype"]).float()
                   * (o0["res"].argmax(-1) == bg["res"]).float())
             rv = (bg["presence"] * (1.0 - ok)).detach()
             o = forward(p, s_tr, b_tk, b_se, slot_mask=b_mask, revoke=rv,
                         tail=b_tail, reg=b_reg, fact_buf=b_fact,
-                        mh_mass=b_mhm, mh_atlas_traj=b_mha, xcorr=b_xcorr, res_map=b_resmap, hud=b_hud, tree=b_tree, ident=b_ident, busreg_ramp=b_bgain, valfact=b_valfact, facts3=b_fact3, facts5=b_fact5, cert3=b_cert3, cert5=b_cert5)
+                        mh_mass=b_mhm, mh_atlas_traj=b_mha, xcorr=b_xcorr, res_map=b_resmap, hud=b_hud, tree=b_tree, ident=b_ident, busreg_ramp=b_bgain, valfact=b_valfact, facts3=b_fact3, facts5=b_fact5, cert3=b_cert3, cert5=b_cert5, rack3=b_rack3, rack5=b_rack5)
         elif int(os.environ.get("NAZ_TRAIN", "0")):
             # NAZARÉ TRAINING (door #55): the organ-2 two-forward pattern —
             # pre-pass yields the intra-pass event field IN-GRAPH (detached);
@@ -8435,7 +8704,7 @@ def do_train(steps, lr, batch, seed):
             # read-time dup-aware argpair): argmax-change OR dup-flip on
             # rel-typed present slots, breath-0 vs final.
             o0 = forward(p, s_tr, b_tk, b_se, slot_mask=b_mask, tail=b_tail,
-                        xcorr=b_xcorr, res_map=b_resmap, hud=b_hud, tree=b_tree, ident=b_ident, busreg_ramp=b_bgain, valfact=b_valfact, facts3=b_fact3, facts5=b_fact5, cert3=b_cert3, cert5=b_cert5)
+                        xcorr=b_xcorr, res_map=b_resmap, hud=b_hud, tree=b_tree, ident=b_ident, busreg_ramp=b_bgain, valfact=b_valfact, facts3=b_fact3, facts5=b_fact5, cert3=b_cert3, cert5=b_cert5, rack3=b_rack3, rack5=b_rack5)
             _b0 = o0["breaths"][0]
             _relmask = (o0["pres"].squeeze(-1) > 0).float() \
                 * (o0["ftype"].argmax(-1) == 0).float()
@@ -8446,13 +8715,13 @@ def do_train(steps, lr, batch, seed):
             _gm = (_bgauth + (1.0 - _bgauth) * _ev).unsqueeze(-1).detach()
             o = forward(p, s_tr, b_tk, b_se, slot_mask=b_mask, tail=b_tail,
                         gmod=_gm, fact_buf=b_fact,
-                        mh_mass=b_mhm, mh_atlas_traj=b_mha, xcorr=b_xcorr, res_map=b_resmap, hud=b_hud, tree=b_tree, ident=b_ident, busreg_ramp=b_bgain, valfact=b_valfact, facts3=b_fact3, facts5=b_fact5, cert3=b_cert3, cert5=b_cert5)
+                        mh_mass=b_mhm, mh_atlas_traj=b_mha, xcorr=b_xcorr, res_map=b_resmap, hud=b_hud, tree=b_tree, ident=b_ident, busreg_ramp=b_bgain, valfact=b_valfact, facts3=b_fact3, facts5=b_fact5, cert3=b_cert3, cert5=b_cert5, rack3=b_rack3, rack5=b_rack5)
         else:
             _bd = os.environ.get("BREATH_DROPOUT")
             o = forward(p, s_tr, b_tk, b_se, slot_mask=b_mask, tail=b_tail,
                         drop=(b_drop if _bd else None), lsent=b_ls, reg=b_reg,
                         fact_buf=(None if ALG_ALT3 else b_fact),   # THE THREE CONSULTS: the start-of-run facts give way to facts3/facts5
-                        mh_mass=b_mhm, mh_atlas_traj=b_mha, xcorr=b_xcorr, res_map=b_resmap, hud=b_hud, tree=b_tree, ident=b_ident, busreg_ramp=b_bgain, valfact=b_valfact, facts3=b_fact3, facts5=b_fact5, cert3=b_cert3, cert5=b_cert5)
+                        mh_mass=b_mhm, mh_atlas_traj=b_mha, xcorr=b_xcorr, res_map=b_resmap, hud=b_hud, tree=b_tree, ident=b_ident, busreg_ramp=b_bgain, valfact=b_valfact, facts3=b_fact3, facts5=b_fact5, cert3=b_cert3, cert5=b_cert5, rack3=b_rack3, rack5=b_rack5)
         l = loss_fn(o, bg)
         if ALG_CONSUME and "_early" in o:   # support-gated consume-once:
             # any breath claims, each fact pays once; eligibility = the DAG
@@ -8515,14 +8784,14 @@ def do_train(steps, lr, batch, seed):
         from facts_pool import run as _fp_run_c
         _c_keys = ("pres", "ftype", "op", "dig", "args", "res") + (("dup",) if "h_dup" in p else ())
         _bd_c = os.environ.get("BREATH_DROPOUT")
-        def _partial(stop, f3, c3=None):
+        def _partial(stop, f3, c3=None, r3=None):
             Tensor.training = True
             s_c = b_tr.cast(dtypes.float)
             o = forward(p, s_c, b_tk, b_se, slot_mask=b_mask, tail=b_tail,
                         drop=(b_drop if _bd_c else None), lsent=b_ls, reg=b_reg,
                         fact_buf=None,
                         mh_mass=b_mhm, mh_atlas_traj=b_mha, xcorr=b_xcorr, res_map=b_resmap, hud=b_hud, tree=b_tree, ident=b_ident, busreg_ramp=b_bgain, valfact=b_valfact,
-                        stop_after=stop, facts3=f3, cert3=c3)
+                        stop_after=stop, facts3=f3, cert3=c3, rack3=r3)
             return {k: o[k].realize() for k in _c_keys}
         def pass_a():
             return _partial(2, None)
@@ -8531,11 +8800,13 @@ def do_train(steps, lr, batch, seed):
             # too, so it must see cert3 (kb >= 3) the same as the full
             # step does — b_cert3 is already populated (consult 1 runs
             # before pass_b is called below) and None when ALG_CERT=0.
-            return _partial(4, b_fact3, b_cert3)
+            # THE RACK: pass b runs breaths 3-4, so it reads consult 1's rack (kb >= 3) exactly as the full step does
+            return _partial(4, b_fact3, b_cert3, b_rack3)
         pass_a = TinyJit(pass_a)
         pass_b = TinyJit(pass_b)
         _consult_t = [0.0, 0]   # host seconds, count (the perf line)
-        def _consult_into(buf, pass_fn, idx, cert_buf=None):
+        _rack_host = {}   # THE RACK: consult 1's packed flags on the host (consult 2 unions over them — monotone)
+        def _consult_into(buf, pass_fn, idx, cert_buf=None, rack_buf=None, rack_prev=None):
             _t0c = time.time()
             o = pass_fn()
             onp = {k: o[k].numpy() for k in _c_keys}
@@ -8554,6 +8825,17 @@ def do_train(steps, lr, batch, seed):
                 decoded_rows = [{k: onp[k][bi] for k in onp} for bi in range(len(idx))]
                 cb = certifier_bias(decoded_rows, fb, texts, T_ALG, ALG_CERT, ALG_CERT_IMPLIED)
                 _fd(cert_buf, cb, _rlc)
+            if rack_buf is not None:
+                # THE RACK (ALG_RACK, 2026-10-05): THE DRYNESS TEST on the SAME decode this consult
+                # took (onp) + the facts it just forced (fb) — the admitted tests only (ALG_RACK_TESTS),
+                # packed (B, L_TOT + T) into the fixed rack buffer the next graph reads; consult 2's
+                # call unions over consult 1's host copy (a dry slot never becomes wet). No gold.
+                texts = [samples[int(i)]["text"] for i in idx]
+                decoded_rows = [{k: onp[k][bi] for k in onp} for bi in range(len(idx))]
+                rk = rack_pack(decoded_rows, fb, texts, T_ALG, ALG_RACK_TESTS,
+                               prev=(_rack_host.get(rack_prev) if rack_prev is not None else None))
+                _rack_host[id(rack_buf)] = rk
+                _fd(rack_buf, rk, _rlc)
             if _rlc:
                 Tensor.realize(*_rlc)
             _consult_t[0] += time.time() - _t0c; _consult_t[1] += 1
@@ -8689,11 +8971,38 @@ def do_train(steps, lr, batch, seed):
                 _vat = (Tensor(ATLAS_TAB[_vai],
                                dtype=dtypes.float)
                         if ATLAS_TAB is not None else None)
+                _f3v = _f5v = _c3v = _c5v = _r3v = _r5v = None
+                if ALG_ALT3:
+                    # THE THREE CONSULTS on the quick val (2026-10-05, THE RACK's build): the val
+                    # measures the deployable cycle, and under ALG_ALT3 that cycle is the three
+                    # curbs loop_val / chain_acc walk — a partial pass to breath 2, the consult, a
+                    # partial pass to breath 4 with those facts, the consult again, the full pass
+                    # with both (facts3/facts5, the certifier lines cert3/cert5, the rack's
+                    # rack3/rack5). Until now the quick val under ALT3 ran the ALT2 one-consult
+                    # cycle (fact_buf) with every consult port None — the eyes' and the rack's
+                    # refusal of a missing port surfaced it (cert + eyes composed). Eager, host-side,
+                    # the same helpers the readers call; no gold.
+                    _mkv_t = Tensor(_mkv, dtype=dtypes.float)
+                    _ck3v = ("pres", "ftype", "op", "dig", "args", "res") + (("dup",) if "dup" in o else ())
+                    _txv = [vs[int(i)]["text"] for i in sl_p]
+                    def _consult3v(oo, rack_prev=None):
+                        onp3 = {k: oo[k].realize().numpy() for k in _ck3v}
+                        fb3 = alt2_fact_buf(onp3, vse[sl_p], _nvv, _mav)
+                        rows3 = [{k: onp3[k][bi] for k in onp3} for bi in range(len(sl_p))]
+                        cb_t = (Tensor(certifier_bias(rows3, fb3, _txv, T_ALG, ALG_CERT, ALG_CERT_IMPLIED), dtype=dtypes.float)
+                                if (ALG_CERT or ALG_CERT_IMPLIED) else None)
+                        rk = rack_pack(rows3, fb3, _txv, T_ALG, ALG_RACK_TESTS, prev=rack_prev) if ALG_RACK else None
+                        return Tensor(fb3, dtype=dtypes.float), cb_t, (Tensor(rk, dtype=dtypes.float) if rk is not None else None), rk
+                    _oa3v = forward(p, _t1, _t2, _t3, slot_mask=_mkv_t, ident=_t_id, stop_after=2)
+                    _f3v, _c3v, _r3v, _r3np = _consult3v(_oa3v)
+                    _ob3v = forward(p, _t1, _t2, _t3, slot_mask=_mkv_t, ident=_t_id, stop_after=4, facts3=_f3v, cert3=_c3v, rack3=_r3v)
+                    _f5v, _c5v, _r5v, _ = _consult3v(_ob3v, rack_prev=_r3np)
                 o = forward(p, _t1, _t2, _t3,
                             slot_mask=Tensor(_mkv, dtype=dtypes.float),
-                            fact_buf=Tensor(_fbv, dtype=dtypes.float),
+                            fact_buf=(None if ALG_ALT3 else Tensor(_fbv, dtype=dtypes.float)),   # THE THREE CONSULTS: facts3/facts5 carry the facts (chain_acc's own rule)
                             mh_mass=_vmh, mh_atlas_traj=_vat, ident=_t_id,
-                            valfact=(Tensor(_fbv, dtype=dtypes.float) if ALG_VALREG_ON else None))   # THE VALUE STREAM: the val two-pass's LIVE facts
+                            valfact=(Tensor(_fbv, dtype=dtypes.float) if ALG_VALREG_ON else None),   # THE VALUE STREAM: the val two-pass's LIVE facts
+                            facts3=_f3v, facts5=_f5v, cert3=_c3v, cert5=_c5v, rack3=_r3v, rack5=_r5v)
             if _r2log and "rbias2_all" in o:
                 # THE PER-BREATH SPAN LOSS's own log (ALG_SPAN_ALL=1): the
                 # SAME numpy-side BCE mirror, once per breath, read off
@@ -9475,8 +9784,8 @@ def do_train(steps, lr, batch, seed):
             # THE THREE CONSULTS, per step: pass a -> consult 1 -> facts3;
             # pass b (with facts3) -> consult 2 -> facts5; then the full
             # step (with both) — the same three curbs the read walks.
-            _consult_into(b_fact3, pass_a, idx, cert_buf=b_cert3)
-            _consult_into(b_fact5, pass_b, idx, cert_buf=b_cert5)
+            _consult_into(b_fact3, pass_a, idx, cert_buf=b_cert3, rack_buf=b_rack3)
+            _consult_into(b_fact5, pass_b, idx, cert_buf=b_cert5, rack_buf=b_rack5, rack_prev=(id(b_rack3) if ALG_RACK else None))
         if ALG_LIVE_FACTS:
             # THE LIVE-FACTS ROAD: this step's own pass-1 parse overwrites
             # the maskprep-cache feed already copied into b_fact above —
