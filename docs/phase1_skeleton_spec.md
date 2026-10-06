@@ -47455,3 +47455,22 @@ the wall still fell — which says the rack's benefit is REPULSION (one numeral,
 shoal's third zone) more than commitment; the certificate's precision at consult 1 is the rack's
 weak joint — a later first consult (breath 3 / 4) or a stricter test (unique AND the row's judge
 agrees) is the registered next knob. The sign of "the wall moves" is pinned: DOWN.
+
+### 2026-10-06 (14:48) — WORD GIVEN FOR THE WHOLE QUEUE (Bryce: "nice. word given for the whole queue - Salute!"); THE LIVE-FACTS RACK PAIR staged behind the bar, conditional on no kill; the live-facts mechanism stated precisely
+
+A CORRECTION to the 14:3x entry's confidence: ALG_LIVE_FACTS (09-24) replaces the BREATH-2 facts
+feed b_fact — at training the old road feeds it from the maskprep cache (a pass 1 of the segment's
+STARTING checkpoint, stale up to 8k steps); the flag runs the current parameters' own pass 1 every
+step, as the read does. The three consults' road (facts3 / facts5) is already live at training (a
+JIT-captured partial pass + host decode + the facts pool). So the consult bodies' mint cost is not
+"gold-dense facts" on the consult road; the candidate cause the live-facts arm TESTS is the stale
+b_fact feed (train/read mismatch on the breath-2 injection), and the 09-23 "gold dense at training"
+line belonged to the value-stream census. THE PAIR (from scratch, 48k, seed 241): RKL_241 = RK_241's
+recipe + ALG_LIVE_FACTS=1; RKLC_241 = RKC_241's + ALG_LIVE_FACTS=1 (the compositions gated on CPU:
+.cache/racklive_gate.sh running). BARS: RKL vs RKLC paired masked >= +0.015 (the rack's bar again,
+on the live body); RKL vs RK and RKLC vs RKC: open mint >= +0.02 with wild not down (the stale feed
+was mint's price — the registered claim). THE QUEUE (pc-queue-racklive): waits for the rack tail
+(THE BAR line), asserts the gate, computes RK - RKC from the paired line and ABORTS if RK is killed
+(< -0.010), else fires RKL then RKLC (single-arm chains; the sed fixed). The remaining registered
+arms (RK3 = release + chalkboard; the eyes' telegraphic hands; the perceiver v1b; the later first
+consult) stay behind these verdicts.
