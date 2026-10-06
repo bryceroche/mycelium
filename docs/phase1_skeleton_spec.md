@@ -46983,3 +46983,31 @@ candidates: the mask as a CLAIM-shaped hard road (one-hot where checked, zero el
 telegraph, not a wave) or the picture read by the perceiver only (hill 7's eyes without hands).
 
 ### 2026-10-05 (21:36) — the rack arms' exact composition gated before the fire (CPU, .cache/rackarm_gate.log): rkarm (hierd + ALT3 + CERT 2.0 + RACK leaf given_unique, NO eyes) 10.8373/8.7737 = the eyes-bearing rackleaf line (the zero out conv at birth); rkcarm (the control) 10.8389/8.7827 = rackoff. Both run; the chain may fire.
+
+### 2026-10-05 (21:44) — THE EYES AUTOPSY (zero GPU; scripts/eyes_autopsy.py; .cache/eyes_autopsy_EY_241.txt; 24 wild rows, 28 right / 50 wrong given slots): SPIKY DOMINANCE — the mask's mean is a nudge, its max owns the row; not a plain anti-reread
+
+Method: in EY_241's env the pbias road carries ONLY the eyes term at breaths >= 1 (anchor / idkey /
+cert / rack / tick / kwindow / T2 / wheel all off, checked), so one CPU forward with the _CENSUS
+"eyes" hook armed reads the mask as it enters, and a runtime monkeypatch of _make_bank recomputes the
+bank's pre-pbias score at the call site (exact under TREECODE 0 / KANNEAL unset). FINDINGS: (1) the
+knob reading is SPIKY: the mask's MEAN magnitude stays below the bank's own pre-bias spread at every
+breath (0.21-0.45x of the std) while its MAX is 3.7-5.2x the bank's max-minus-median — a few (slot,
+token) cells are wildly over-scaled, most get a modest nudge; (2) right slots' numeral-argmax share
+collapses 0.464 -> 0.036 at b1 and recovers only to 0.11-0.18; the lost mass goes to OTHER REAL
+TOKENS (pad exactly 0.000 at every breath — the bank's clip + tokmask penalty after pbias, not a
+trained behaviour); (3) NOT a simple anti-reread: on RIGHT slots the mask at breath 0's own argmax
+starts slightly negative, flips positive and GROWS every breath (it reinforces the right spot) — the
+argmax still leaves because the spikes land elsewhere and outcompete the reinforced position; on
+WRONG slots it is negative at every breath (an anti-reread exactly where breath 0 was already wrong);
+(4) the mask's growth (2.66x b1 -> b6) tracks eyes_temp (1.0 -> 2.0) plus a modest contribution from
+the U-Net itself. READING: the organ learned the right SIGN (reinforce where right, repel where wrong)
+and the wrong INSTRUMENT — an unbounded additive logit field whose tail dominates a softmax; the
+reinforced position loses to a handful of spikes. This is the third time a soft field on the read
+has failed the knob law, and the first time the autopsy shows the field was pointing the right way.
+THE EYES' NEXT FORM (registered, not built): the same picture and U-Net, the hands made TELEGRAPHIC
+— the output quantised per slot to a one-hot CLAIM (the argmax cell) applied as a hard mask only
+where a certificate confirms it (the rack's dryness test on the pointed-to numeral), zero elsewhere;
+no temperature, no unbounded field; the soft output trains the picture, the hard click moves the
+read. Bounded alternatives (tanh-clipped field) are soft instruments and stay unregistered. Caveats:
+n small (28 / 50); the 4-bin token typing is coarser than the census's pyramid (direction agrees);
+no causal mask-zeroing intervention run.
