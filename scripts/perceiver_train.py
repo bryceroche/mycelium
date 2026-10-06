@@ -269,6 +269,12 @@ def precision_at_coverage(y_true, score, mask, coverage=0.20):
 
 def run_cv(diet_npz, n_folds=5, epochs=200):
     from sklearn.model_selection import GroupKFold
+    lines = []
+
+    def P(s=""):
+        print(s, flush=True)
+        lines.append(s)
+
     z, meta = load_npz(diet_npz)
     assert meta["has_gold"], f"{diet_npz}: not an annotated fixture (has_gold=False) -- CV needs gold"
     Xc_full, right_final = commit_features(z)   # (n, K_B, L, Fc), (n, L)
@@ -285,7 +291,7 @@ def run_cv(diet_npz, n_folds=5, epochs=200):
     for f, (_, val_idx) in enumerate(gkf.split(rows_idx, groups=rows_idx)):
         fold_of[val_idx] = f
 
-    print(f"\n{'='*100}\nSLICE CV ({diet_npz}): n={n} rows, {n_folds}-fold GroupKFold BY ROW, epochs={epochs}\n{'='*100}")
+    P(f"\n{'='*100}\nSLICE CV ({diet_npz}): n={n} rows, {n_folds}-fold GroupKFold BY ROW, epochs={epochs}\n{'='*100}")
 
     commit_aurocs, commit_aurocs_ent, commit_aurocs_b0, commit_precisions, commit_coverages = [], [], [], [], []
     stop_rows_model, stop_rows_judge, stop_regr = [], [], []
@@ -316,7 +322,7 @@ def run_cv(diet_npz, n_folds=5, epochs=200):
         thr, prec, cov = precision_at_coverage(yc_val_f, p_val, mask_val_f, 0.20)
         commit_aurocs.append(a); commit_aurocs_ent.append(a_ent); commit_aurocs_b0.append(a_b0)
         commit_precisions.append(prec); commit_coverages.append(cov)
-        print(f"  fold {f}: COMMIT auroc(model)={a:.4f} auroc(ent_final)={a_ent:.4f} "
+        P(f"  fold {f}: COMMIT auroc(model)={a:.4f} auroc(ent_final)={a_ent:.4f} "
               f"auroc(ent_b0)={a_b0:.4f}  precision@{cov*100:.0f}%cov={prec:.4f}")
 
         # ---- STOP ----
@@ -343,21 +349,21 @@ def run_cv(diet_npz, n_folds=5, epochs=200):
         regr = int(sum(1 for r in range(len(key_val))
                        if last_val[r] == "correct" and ys_val_at_learned[r] != 1))
         stop_rows_model.append(rows_model); stop_rows_judge.append(rows_judge); stop_regr.append(regr)
-        print(f"  fold {f}: STOP rows(model)={rows_model}/{len(key_val)} rows(judge-alone)={rows_judge} "
+        P(f"  fold {f}: STOP rows(model)={rows_model}/{len(key_val)} rows(judge-alone)={rows_judge} "
               f"rows(last-breath)={rows_last} regressions={regr}")
 
-    print(f"\nSLICE CV SUMMARY (mean over {n_folds} folds):")
-    print(f"  COMMIT: auroc(model)={np.mean(commit_aurocs):.4f}  auroc(ent_final)={np.mean(commit_aurocs_ent):.4f}  "
+    P(f"\nSLICE CV SUMMARY (mean over {n_folds} folds):")
+    P(f"  COMMIT: auroc(model)={np.mean(commit_aurocs):.4f}  auroc(ent_final)={np.mean(commit_aurocs_ent):.4f}  "
           f"auroc(ent_b0)={np.mean(commit_aurocs_b0):.4f}  "
           f"BAR (model >= ent_final + 0.05): {'PASS' if np.mean(commit_aurocs) >= np.mean(commit_aurocs_ent) + 0.05 else 'MISS'}")
-    print(f"  COMMIT: precision@20%cov mean={np.nanmean(commit_precisions):.4f}  "
+    P(f"  COMMIT: precision@20%cov mean={np.nanmean(commit_precisions):.4f}  "
           f"BAR (>= 0.90): {'PASS' if np.nanmean(commit_precisions) >= 0.90 else 'MISS'}")
-    print(f"  STOP:   rows(model) sum={sum(stop_rows_model)}  rows(judge-alone) sum={sum(stop_rows_judge)}  "
+    P(f"  STOP:   rows(model) sum={sum(stop_rows_model)}  rows(judge-alone) sum={sum(stop_rows_judge)}  "
           f"regressions sum={sum(stop_regr)}")
     return dict(commit_auroc=float(np.mean(commit_aurocs)), commit_auroc_ent=float(np.mean(commit_aurocs_ent)),
                commit_precision20=float(np.nanmean(commit_precisions)),
                stop_rows_model=sum(stop_rows_model), stop_rows_judge=sum(stop_rows_judge),
-               stop_regressions=sum(stop_regr))
+               stop_regressions=sum(stop_regr)), lines
 
 
 # ===========================================================================================================
@@ -435,14 +441,18 @@ def run_final_and_eval(diet_npz, gsm8k_globs, eval_npz, epochs, out_txt):
           f"({rows_model_w} >= {rows_last_w})")
         P(f"  BAR regressions <= 2: {'PASS' if regr_w <= 2 else 'MISS'} ({regr_w})")
         if rows_last_w == 14 and nw == 311:
-            P("  ASSERT OK: wild last-breath baseline == the banked PMS8_241 mask=1 read (14/311).")
+            P("  ASSERT OK: wild last-breath baseline == the banked PMS8_241 mask=1 read (14/311, chain_acc's record).")
+        elif rows_last_w == 11 and nw == 311:
+            P("  NOTE: wild last-breath baseline is 11/311, not the chain_acc record of 14/311 -- this matches "
+              "scripts/adaptive_stop.py's OWN banked run on this exact body (ledger: \"a chain_acc baseline "
+              "discrepancy (11 vs 14) queued for verification\", not yet resolved) -- the 'rows >= last-breath's' "
+              "bar below is still scored against THIS run's own last-breath number (11), per the coordinator's "
+              "framing (\"14 of record / 11 the script's own\"), not silently against the unreached 14.")
         else:
-            P(f"  NOTE: wild last-breath baseline {rows_last_w}/{nw} -- compare against the banked 14/311 "
-              f"read before trusting the bars above (a mismatch means this telemetry run's solver phase "
-              f"disagreed with the banked chain_acc read; explain, do not silently trust).")
-    with open(out_txt, "w") as f:
-        f.write("\n".join(lines) + "\n")
-    print(f"[perceiver-train] wrote {out_txt}")
+            P(f"  NOTE: wild last-breath baseline {rows_last_w}/{nw} -- matches NEITHER the chain_acc record "
+              f"(14/311) NOR adaptive_stop.py's own banked discrepancy (11/311); explain before trusting the "
+              f"bars above, never silently assume correctness.")
+    return lines
 
 
 def main():
@@ -457,8 +467,22 @@ def main():
     assert os.environ.get("DEV") == "CPU"
     np.random.seed(SEED)
 
-    cv = run_cv(args.diet_npz, n_folds=args.folds, epochs=args.epochs)
-    run_final_and_eval(args.diet_npz, args.gsm8k, args.eval, args.epochs, args.out)
+    import time
+    report = [f"=== THE LEARNED PERCEIVER v1 -- SLICE CV START {time.strftime('%Y-%m-%d %H:%M:%S')} ==="]
+    cv_summary, cv_lines = run_cv(args.diet_npz, n_folds=args.folds, epochs=args.epochs)
+    report += cv_lines
+    report.append(f"=== SLICE CV DONE {time.strftime('%Y-%m-%d %H:%M:%S')} ===")
+    with open(args.out, "w") as f:
+        f.write("\n".join(report) + "\n")
+    print(f"[perceiver-train] wrote {args.out} (CV table)", flush=True)
+
+    report2 = [f"\n=== THE LEARNED PERCEIVER v1 -- WILD EVAL START {time.strftime('%Y-%m-%d %H:%M:%S')} ==="]
+    eval_lines = run_final_and_eval(args.diet_npz, args.gsm8k, args.eval, args.epochs, args.out)
+    report2 += eval_lines
+    report2.append(f"=== WILD EVAL DONE {time.strftime('%Y-%m-%d %H:%M:%S')} ===")
+    with open(args.out, "a") as f:
+        f.write("\n".join(report2) + "\n")
+    print(f"[perceiver-train] appended wild eval table to {args.out}", flush=True)
 
 
 if __name__ == "__main__":
