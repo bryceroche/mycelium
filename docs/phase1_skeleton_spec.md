@@ -47583,3 +47583,23 @@ Artifacts: scripts/picker/jury_features.py; scripts/jury_train.py; scripts/court
 .cache/picker/jury_model.pkl; .cache/jury_train_PMS8_241.txt (diet CV+ablation); .cache/jury_diet_
 PMS8_241.{txt,pkl} (diet tau tune+parity); .cache/jury_PMS8_241.{txt,pkl} (the wild read, the task's
 pinned deliverable).
+
+### 2026-10-06 (15:07) — THE CARICATURE JURY'S READING (after the 15:08 entry): the learned juror is a wash with the hand rules (pairwise 0.60 vs 0.58-0.62 on the diet; 0.546 on wild), the span embedding contributed NOTHING by construction; form 2b registered — the caricature must be rendered PER STORY
+
+The build (0091fe86): 369 contributing diet rows -> 21,306 pairs (swap-augmented 42,612); a linear
+juror on [span-minus-text trunk embedding, A-minus-B structural diff, the hand certificates'
+diffs]; GroupKFold by row: 0.601 vs the hand jurors' 0.584 (ties as misses) / 0.618 (decisive
+only) — a wash; diet tau 3 -> 311 / 775 (ONE row above top-1, the family's first); WILD once: 14 /
+311 (1 fix, row 186; 1 regression, row 98; net zero), pairwise 0.546 on gold-known pairs. BARS:
+regressions 1 PASS, rows 14 MISS. THE FLAW (found by the ablation, and it is a flaw in the test,
+not in Bryce's idea): the embedding-only juror scored EXACTLY 0.500 on every fold — the span's
+embedding is the same tensor under the A / B swap (it embeds the TEXT of the disagreement, which
+both stories share), so an antisymmetric juror cannot use it; the structural diff alone equals the
+full model fold for fold. The caricature as built exaggerated WHERE the stories differ and never
+rendered WHAT each story says there. FORM 2b (registered, zero GPU, needs the word): render each
+story's claim about the span AS TEXT (the binding verbalised: "the 5 that John gave is subtracted
+from John's count" vs "... added to Mary's count"), embed (span, rendering) per story through the
+trunk, and let an interaction model (a small MLP over the two renderings' embeddings and their
+difference) judge — the caricature of the CLAIM, not of the location. The prose renderer
+(prose_render.py, 09-21) is the rendering engine's precedent. The courtroom family's count now:
+hand jurors 14, linear caricature 14, judge 18, picker 19, ceiling 43.
