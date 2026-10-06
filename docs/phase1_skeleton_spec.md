@@ -46981,3 +46981,5 @@ EY_241 kept as information); pc-queue-rack2 re-runs the full post-merge gate (as
 rackleaf) and fires. Bars unchanged (RK vs RKC paired). The eyes' next form waits on the autopsy;
 candidates: the mask as a CLAIM-shaped hard road (one-hot where checked, zero elsewhere — the
 telegraph, not a wave) or the picture read by the perceiver only (hill 7's eyes without hands).
+
+### 2026-10-05 (21:36) — the rack arms' exact composition gated before the fire (CPU, .cache/rackarm_gate.log): rkarm (hierd + ALT3 + CERT 2.0 + RACK leaf given_unique, NO eyes) 10.8373/8.7737 = the eyes-bearing rackleaf line (the zero out conv at birth); rkcarm (the control) 10.8389/8.7827 = rackoff. Both run; the chain may fire.
