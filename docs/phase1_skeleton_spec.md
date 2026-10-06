@@ -47364,3 +47364,25 @@ the diet slice (gold graphs from the custody key; never wild), reading the discr
 the two stories' bindings; the courtroom's step 3 swaps it in; the same bars (rows >= 24,
 regressions <= 2). Prior: moderate — the picker's learned jury already got 19; a span-level pairwise
 juror is the picker trained on the right question.
+
+### 2026-10-06 (14:11) — RK_241 (THE RACK, form 2: claim + leaf freeze on the numeral certificate) ACCURACY READS: slot flat (-0.004 vs HS_241, noise), ROWS 17 masked / 11 open — THE ROW RECORD (PMS8 14, CTRLs 15, HS 8); mint -0.046 (the consults' price); the chain's tail FAILED on a sed delimiter — the mechanism reads run separately
+
+Reads (rack_chain_RK.log 14:06; body HS_241, TAU 0; + ALG_ALT3=1 ALG_CERT=2.0 ALG_RACK=1
+ALG_RACK_TESTS=given_unique ALG_RACK_FREEZE=leaf; no eyes): open wild 0.3033 (HS 0.3096); MASKED
+wild 0.3432 — paired vs HS_241 -0.0039 (SE 0.0081: noise), vs PMS8_241 -0.0044, vs EY_241 +0.0078;
+ROWS (chain-acc) 17 masked / 11 open vs HS_241 8 / 7, PMS8_241 14 / 9, CL_241 (consults + lines
+from scratch) 8 / 8 — the highest row count of the campaign at the slot of the body; open mint
+0.5398 (HS 0.5862: -0.046; CL_241 paid the same consult price); digits 0.372 vs 0.383 (-0.011);
+silver460 0.2049 (HS 0.2298: down); matched fac-exact 0.3286 (order's share +0.025). THE BAR is RK
+vs RKC paired (RKC_241 = the same recipe without ALG_RACK, now training; its pre-flight passed): the
+rows must be the rack's and not the consults' — CL_241's 8 says the consults alone do not give
+rows; RKC says it tonight. THE CHAIN'S TAIL FAILED after the paired reads: the golden line's sed
+("s/ALG_FTYPES=9/ALG_FTYPES=9 $X/") received $X containing paths (BIND_CODES=.cache/...) — the slash
+delimiter broke ("unknown option to `s'"), set -e exited 1, and golden24, the band probe, the
+membrane collect + report (THE WALL and THE HIT, the mechanism bars) and the dry census did not run
+for RK; RKC's chain carries the same line and will fail the same way after ITS reads. RULE: a sed
+whose replacement is a shell variable uses a delimiter that cannot occur in it ("|"), or python.
+DISPOSITION: the dry census (zero GPU) runs now on dump_wild_RK_241.pkl; the membrane census for RK
+runs on CPU beside the card if the reader threads the consults, else after RKC on the card; a tail
+chain (rack_tail.sh: golden, band probe, membrane, dry census for both arms + the final RK-vs-RKC
+paired line) is queued behind "RKC chain exit".
