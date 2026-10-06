@@ -47429,3 +47429,29 @@ cross-examination; the margin tuned on the diet; ONE wild read vs the picker's b
 regressions <= 2). Nuance banked: the caricature margin INSIDE the head nulled twice (CR, PMC8) —
 a training-time pointer margin; a learned pairwise juror at read is a different organ (the learned
 picker's 19 is its precedent). Delegated (sonnet), zero GPU.
+
+### 2026-10-06 (14:35) — RK_241's MECHANISM READS (scripts/membrane_rack.py, the loop_val cycle with the consults and the rack ports; HS_241 parity exact; 6c537e66): THE WALL MOVES for the first time (0.489 vs 0.526, -0.037); THE HIT falls (0.68 vs 0.76); the claim mask is exact (wet mass on claimed tokens 0.000); the committed numerals are right 0.686 — the rack puts away dirty dishes a third of the time, and the rows still rose
+
+The reader: a standalone copy of loop_val's read cycle (pass 1 -> slot mask -> ALT3's two consults
+with certifier_bias / rack_pack -> the masked pass; loop_val._consult3 is a closure, not importable)
+capturing fat_all per breath; the band helpers imported from membrane_scale; HS_241 PARITY on 64
+rows: argmax bands identical, mass-weighted to 5e-7. RK_241 on wild (426 right / 566 wrong given
+slots; HS 424 / 568): THE WALL (wrong slots' other-sentence argmax share at b6) 0.489 vs HS_241's
+0.526 — a drop of 0.037, THE FIRST MOVE OF THE WALL IN SIX BODIES (the mechanism bar "the wall moves
+>= 0.03" is MET in its intended direction: fewer wrong givens landing in another sentence);
+mass-weighted 0.511 vs 0.511 (flat). THE HIT (right slots' token argmax share) 0.68 / 0.68 / 0.70 /
+0.66 / 0.67 at b2-b6 vs HS_241's 0.75-0.76 — bar (>= 0.76 flat) MISSED; mass-weighted right-token
+0.499 vs 0.614: a real cost, attributed to the consults or to the rack by RKC tonight. THE CLAIM IS
+EXACT: wet slots' mass on claimed tokens 0.000 at every breath after consult 1 (656 / 656, 582 /
+582); dry slots keep 0.62-0.64 on their own claim and hit the token band more often (0.51-0.55 vs
+wet 0.35). Rows with >= 1 dry slot (258 / 311; histogram 0:53 1:123 2:77 3:53 4:3 5:2) have a
+worse wall (0.517 vs 0.348) and a better hit (0.70 vs 0.57) than the 53 clean rows — the dry rows
+are the given-rich rows. THE NUMERAL AUDIT of the committed flags (scripts/rack_numeral_audit.py):
+of 458 committed cells, the claimed numeral is a gold given in 314 = 0.686 (positional 0.526) — NOT
+the 0.97 the un-trained test read on PMS8's final decode: the trained body commits at consult 1
+(breath 2) on an immature decode, and the kill line (< 0.80) fires at the numeral level too. THE
+READING (pending RKC): a third of the dishes put away are dirty and the rows still rose to 17 and
+the wall still fell — which says the rack's benefit is REPULSION (one numeral, one owner: the
+shoal's third zone) more than commitment; the certificate's precision at consult 1 is the rack's
+weak joint — a later first consult (breath 3 / 4) or a stricter test (unique AND the row's judge
+agrees) is the registered next knob. The sign of "the wall moves" is pinned: DOWN.
