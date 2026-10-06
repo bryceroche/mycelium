@@ -47386,3 +47386,21 @@ DISPOSITION: the dry census (zero GPU) runs now on dump_wild_RK_241.pkl; the mem
 runs on CPU beside the card if the reader threads the consults, else after RKC on the card; a tail
 chain (rack_tail.sh: golden, band probe, membrane, dry census for both arms + the final RK-vs-RKC
 paired line) is queued behind "RKC chain exit".
+
+### 2026-10-06 (14:13) — RK_241's DRY CENSUS (exact, from the sidecar): 458 slots committed (0.223 of gold slots, 1.47 per row) at POSITIONAL precision 0.526; the numeral-level precision of the committed flags is the ruling's number and is being computed
+
+scripts/rack_dryness_census.py on dump_wild_RK_241.pkl + its .rack.npz: given_unique committed 458
+/ 2051 gold slots; precision 0.526 on the positional per-slot verdict — exactly what the 10-05
+admission census predicted for the test (0.58 on PMS8, 0.55 on HS) and the KILL line as literally
+pinned on 10-05 ("dry precision < 0.80") fires on it. Honest accounting: that kill was written before
+Bryce's ruling re-based the certificate on the NUMERAL (0.97 on PMS8); the ruling did not restate
+the kill. BOTH are banked: positional 0.526 (the drawer), numeral-level pending (the dish; the
+delegate computes it for the committed flags themselves). The accuracy evidence already says the
+drawer does not poison the row: RK_241's 17 rows are the campaign's record at a flat slot. THE
+MECHANISM READ needs a rack-aware membrane reader: membrane_scale.py and clock_band_probe.py run
+the ALT2 two-pass cycle only (no consults, no rack ports — on RK the rack would never fire there),
+so scripts/membrane_rack.py (the loop_val cycle + fat_all + the band tables + the dry-vs-wet and
+claimed-mass tables; HS_241 parity as its gate) is delegated, zero GPU on CPU; the plain readers run
+in the tail chain for information. The tail chain (.cache/rack_tail.sh; the sed fixed with "|") is
+queued as pc-queue-rack-tail behind "RKC chain exit": golden24, the band probe, the plain membrane,
+RKC's dry census, THE BAR (RK vs RKC paired), reads.py ingest.
