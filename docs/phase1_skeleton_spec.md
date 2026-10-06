@@ -46923,3 +46923,31 @@ claimed. ROOT-CAUSE FIX on the way: site/build_site.py's front-matter parser nev
 `---` fences, so EVERY blog post's index title fell back to its slug and the front-matter block
 leaked into each page's body since the fence style began; fixed (titles now render; the block is
 consumed). Deployed to production (--branch=main).
+
+### 2026-10-05 (21:21) — FORM 3 (RELEASE ON CONTRADICTION) and THE CHALKBOARD built + gated on branch rack3 (22e3b2e8, 5f5ecb85); arms registered behind RK / RKC, not fired
+
+FORM 3 (ALG_RACK_RELEASE=1): rack_release_row (:723) / rack_release_rows (:778) run the solver on the
+COMMITTED subgraph (consult 1's dry slots, decoded by _rack_masked_by_slot :703, factored out of
+rack_dry_row with no behaviour change) and release a row's whole prior commit on a proved unsat;
+wired into training (_consult_into), loop_val's _consult3 (the .rack.npz sidecar gains `released`)
+and chain_acc; REFUSED. Gate: unset bit-identical; rackleaf reproduces 10.8373/8.7737; rack3 runs
+loss-identical (0 / 2 rows released: the fixture never contradicts); a probe forcing a wrong numeral
+claim showed the release end to end (6 dry -> 0, 5 claimed -> 0, the other row untouched).
+THE CHALKBOARD (ALG_CHALK=1, ALG_CHALK_N=8): the solver's DERIVED values enter the next breath's bank
+as tokens — params chalk_dig (3 x 10 x H_W, MSD-first) + chalk_tag (H_W), spliced into the bank's
+key / value source inside _make_bank's closure (:4497-4544; no call-site change), visible to the
+slots' reads from the breath after each consult (the rack's exact gate); the host pack chalk_pack
+(:925) writes derived facts only into the last 8 pad positions and drops (and counts) a row whose
+real tokens reach the block; ports through forward / do_train / _quick_val / loop_val / chain_acc /
+jit_read; LV_LEGAL's numeral mask widened to accept chalk numerals (worktree copy). Gate: unset /
+rackleaf reproduce; chalk runs loss-identical to rackleaf because all 64 fixture rows have zero
+derived facts (diagnosed, not assumed); a forced-presence probe shows real gradients (chalk_dig
+616, chalk_tag 668). A bug caught on the way: a debug .numpy() inside the JIT'd step broke TinyJit's
+second call (removed; the quirks reference already names it). UNVERIFIED: the span-supervision
+terms with a populated chalk block on live data; chain_acc's chalk path compile-checked, not
+live-run; the AM driver (CPU only). THE ARMS (registered, NOT fired — RK_241's verdict is a verdict
+on the rack form; its kill line governs whether the family continues): RK3_241 = RK_241 + ALG_RACK_RELEASE=1
++ ALG_CHALK=1 vs RK_241 (paired; bars: masked >= +0.015, rows >= +2, digits not down, the released
+count and the chalk-token usage censused on wild — a chalk token must be ATTENDED by some slot on
+>= 30 % of the rows that carry one, or the road is unread); fired only after RK / RKC land and RK is
+not killed. Worktree mycelium-wt6 now on rack3; branch rack untouched at a4dd02b9.
