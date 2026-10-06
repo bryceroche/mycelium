@@ -47496,3 +47496,18 @@ observation about the partitioned body, not about the consults: a consult on the
 free. REGISTERED in place of the live-facts pair: nothing new — RKC decides; then the rack on the
 PLAIN chassis (PMS8's recipe + ALT3 + CERT + RACK vs ALT3 + CERT) is the natural twin if the rack's
 rows are real on HS: the rows record (17) needs a second body.
+
+### 2026-10-06 (14:50) — THE RACK ON THE PLAIN CHASSIS staged in the void pair's place (RKP_241 / RKPC_241), conditional on no kill at the bar; fires after the tail unless Bryce objects
+
+RKP_241 = PMS8_241's recipe (SURF8; no hierarchical state) + ALG_ALT3=1 ALG_CERT=2.0 + ALG_RACK=1
+ALG_RACK_TESTS=given_unique ALG_RACK_FREEZE=leaf; RKPC_241 = the same without the rack; from
+scratch, 48k, seed 241, single-arm chains (the sed fixed; pre-flight PASS; the compositions' CPU gate
+.cache/rackplain_gate.sh running: rkp / rkpc = the cert config +/- the rack). BARS: RKP vs RKPC
+paired masked >= +0.015 (claim +0.020 or the twin); rows >= 16 (the row record 17 on HS needs a
+second body — the registered question is whether the rack's rows are real); mint vs ALT3_241's
+0.661 (the consults are free on this chassis: if the rack costs mint here, the cost is the rack's);
+the mechanism bars via membrane_rack.py (the wall vs PMS8's 0.526-ish; the hit vs 0.59-0.62). The
+queue (pc-queue-rackplain) waits for the rack tail, asserts the gate, aborts if RK is killed vs RKC,
+else fires RKP then RKPC. The word (15:1x, "the whole queue") covered the live-facts pair that
+turned out void; this pair replaces it under the same word, with the standing offer to stop it
+before ~21:00 if Bryce prefers to hold.
