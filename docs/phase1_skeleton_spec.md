@@ -46854,3 +46854,32 @@ content state; the atlas as a PERCEIVER INPUT (distance to the given / rel manif
 the consolidation clock on damped bodies) survives; the atlas as a per-breath per-op road does not
 enter until a kind-separable key exists. Caveat: no per-cell SE; RIGHT kinds 100-440 slots; the
 PMS8 ALL trends are hundredths (flat); the HS / HSd falls and the PMS8 RIGHT rise are 4-7 points.
+
+### 2026-10-05 (19:24) — WORD GIVEN FOR THE DISCRETE HALVES (Bryce: "we have work to do"); three builds delegated in parallel, bars pinned
+
+(1) ADAPTIVE STOPPING + THE PERCEIVER v0 (read-time; scripts/adaptive_stop.py): decode EVERY breath's
+heads on wild under the family env, apply the consistency judge (solved + unique, the key never
+consulted) per breath, and STOP at the first breath that passes; the row's answer is that breath's.
+Beside it the perceiver's metadata stream per row x breath (membrane entropy, atlas distance to the
+given / rel manifold from atlas_radius_read's centroids, the nl_certifier score, the solver status,
+the dry count where the rack runs) logged to a sidecar — the perceiver v0 is the stop rule reading
+that stream; nothing trained. BARS: rows (chain-acc) >= the last-breath read's; regressions <= 2
+(the judge's safety); the stop histogram banked. Body: PMS8_241 first, then EY_241 / RK_241 when
+they land. One GPU pass per body behind the chains (flock); CPU smoke on 3 rows first.
+(2) MCTS OVER PARSES (zero GPU; scripts/mcts_parse.py over the banked raw heads
+rawslots_wild_PMS8_241.pkl, the picker's candidate generator as the library): a tree over per-slot
+alternatives (args x value x type/op from the first look, as the combined oracle enumerates), the
+solver's PARTIAL consistency on the committed prefix as the pruning rule, the judge as the terminal
+test, a budget of <= 64 expansions per row, backtracking on contradiction; never over solver moves
+(the June law). BARS: rows >= 24 (the picker's bar; the ceiling 43), regressions <= 2 vs top-1.
+(3) FORM 3 — RELEASE ON CONTRADICTION (head; branch rack3 off rack a4dd02b9, worktree mycelium-wt6;
+the rack branch itself stays at the gated form for RK_241): at consult 2 (kb 4) a row whose
+committed subgraph (the dry slots' claims) the solver reports INCONSISTENT releases its consult-1
+commits — the claim mask lifts, the leaf unfreezes — before the kb-4 flags are taken; a dry slot
+returns to the sink only by proof. Gated CPU (unset bit-identical; rack / rackleaf reproduce;
+rack3 config runs and differs from rackleaf only when the fixture has a contradicting row — if none,
+a probe row is constructed and stated). THE VALUE-PROPAGATOR WRITE (the fourth symbol) registered in
+a new FORM — THE CHALKBOARD: the solver's implied values enter as TOKENS appended to the bank (a
+numeral token with its own position and a "derived" tag), so a value enters through the same
+membrane everything enters and any slot can bind to it; built after (3) on the same branch; the
+route bias is retired. Certifier -> perceiver (5) folds into (1)'s stream.
