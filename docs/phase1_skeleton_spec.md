@@ -47248,3 +47248,102 @@ and keep top-1. BARS (the picker's): rows >= 24, regressions <= 2; the bailiff i
 correlate with the model's; the certifier is a witness, not a judge. Needs the word; a day of CPU.
 
 ### 2026-10-06 (13:17) — WORD GIVEN FOR THE COURTROOM (Bryce: "word given for the courtroom brother -- Salute!"); delegated (sonnet): scripts/courtroom.py, zero GPU, tau tuned on the diet slice only, one wild read against the picker's bar.
+
+### 2026-10-06 (13:38) — THE COURTROOM BUILT + READ: SAFE, INERT ON WILD (14/311, identical to top-1; 0 regressions; MISSES the picker's own bar of rows>=24) — the margin discipline that keeps it safe is exactly what keeps it from moving anything (scripts/courtroom.py, delegate)
+
+Built per the 13:13 registration. REUSE, zero new candidate generation: the bailiff + exhaustion
+step is the already-banked .cache/picker/cand_{diet,wild_PMS8_241}.pkl (scripts/picker/
+gen_candidates.py:99-139 build_row_candidates, itself combined_oracle.py's three-axis lattice --
+typeop_decisions :265-278, apply_typeop_flips :281-292, value_variants :299-333, apply_value_variant
+:336-346 -- over beam_oracle.py's mask_row/slot_decisions/apply_flips/parse_sig and sinkhorn_claim.
+py's given_slots/affinity_row/onehot_digit_logits, unmodified); courtroom.py loads these pickles and
+PARITY-CHECKS them against the given rawslots.pkl by row count + text before trusting them (falls
+back to calling gen_candidates.generate() fresh otherwise). THE BAILIFF = branch["status"]=="solved"
+(consistent); THE BAILIFF'S VERDICT IS FINAL -- only solved branches can win, matching the brief's
+"a rejected story can never win" exactly in code (run_row, courtroom.py ~306-320). EXHAUSTION = every
+survivor stands (no first-success stop, the thing MCTS's 07:09 reading diagnosed as the cost).
+
+THE THREE JURORS (pairwise, never the model's log-likelihood -- the panel-picker's own ablation
+ruled that witness out by name): (1) the NL certifier's text certificates (nl_certifier.py:100-131 /
+angles.py's port :63-93) RESTRICTED to the discriminating slots (discriminating_slots(), courtroom.py
+~152-166, the positional law angles.diff_from_top1/twin_flip_flag already rely on: a slot's fact
+never moves rows, only its content does) -- value_present/no_double/cue_agree restricted to facts
+whose _slot is in the differing set (restricted_cert(), ~175-209); GRANULARITY ACHIEVED: SPAN-
+RESTRICTED on 99.7% of wild pairs (7639/7664), ROW-LEVEL FALLBACK on the remainder where the
+differing slots carry no given/rel fact at all (pct/mod/fdiv/sel/macro-only diffs, which
+nlc_certificates' own formulas do not cover) -- both counts reported, never silently merged.
+coverage/chain_reaches are NOT restricted (whole-parse properties with no slot-local meaning) and
+are excluded from juror 1 entirely rather than faked. (2) the unexplained-numeral count ("evidence
+ignored"), full-candidate pairwise difference. (3) the collision count, same. A story wins a pair on
+a MAJORITY of the three signed votes (sum of signs; a 1-1-1 or 0-0-0 split is a tie, contributing
+nothing); Copeland tally (wins minus losses, ties=0) over the top<=8 survivors by fewest edits from
+top-1 (combined_oracle's own "rank" field) UNION top-1 itself (the incumbent always participates as
+the hurdle on the SAME Copeland scale, so "beats top-1" and "beats the runner-up" are one threshold,
+not two interpretations). THE VERDICT WITH A MARGIN: the top-Copeland SURVIVOR replaces top-1 only
+if its lead over BOTH the runner-up and top-1 clears tau; a single-survivor pool has no runner-up
+(that half of the margin is vacuously satisfied, reported as such).
+
+A real bug caught before trusting any number: the first implementation broke ties among equal
+Copeland scores by iterating a `set` of candidate signatures -- Python's per-process string-hash
+randomization made that iteration order (and therefore the winner among ties) NON-REPRODUCIBLE run
+to run (tau=0 on the diet read 230, then 281, then 231 across three runs of the identical code and
+data). Fixed by sorting on an explicit (-score, rank, signature) key over a LIST, never a set,
+confirmed byte-identical across two independent runs of the full diet tau sweep before any number
+below was trusted (audit-before-diet, the rack's own lesson, applied here to the tool itself).
+
+DIET TAU SWEEP (.cache/rawslots_slicevalid2_PMS8_241.pkl, 775 rows, top-1 310; tuned here ONLY, per
+the task's law): rows_correct rises monotonically with tau and PLATEAUS at 309 -- one row short of
+top-1 -- from tau=6 on (regressions 1, fixes 0); it never once exceeds top-1 anywhere on the grid
+0..8. RULE (stated before looking at wild, both readings of the brief's garbled fallback phrase
+agree): the smallest tau maximizing diet rows_correct subject to diet regressions <= 5 -> tau=6
+(rows_correct=309); the stricter reading (regressions <= 2) picks the same tau=6, since regressions
+are already down to 1 there. Full table: tau=0..8 -> rows_correct 281,277,285,297,305,308,309,309,309;
+regressions 68,45,36,20,10,3,1,1,1; fixes 39,12,11,7,5,1,0,0,0 (tau=0, no margin at all, is the
+closest this read comes to the panel picker's own unmargined behavior -- and it is WORSE than the
+picker's diet number, 281 vs 297, consistent with juror 1's cert being a noisier single-row signal
+than the picker's full 22-feature model). The one PERSISTENT regression at tau>=5 (row 329) is a
+genuine high-confidence wrong verdict, not a bug: margin 8 (near the pool's own ceiling for 9
+members) -- all three jurors unanimously preferred a wrong story over the correct top-1 on that row
+(checked by hand: .cache/courtroom_diet_PMS8_241.pkl, row 329).
+
+THE ONE WILD READ (.cache/rawslots_wild_PMS8_241.pkl, 311 rows, top-1 14, tau=6.0 fixed, never
+retuned here): COURTROOM 14/311 -- IDENTICAL to top-1, not one row moved. FIXES 0, REGRESSIONS 0.
+STOP-REASON HISTOGRAM: bailiff_empty 21 (no solved candidate at all -- same rows top-1 already
+refused), already_top1 49 (the Copeland winner WAS top-1), replaced 2, margin_refused 239 (the
+large majority: SOME other survivor outscored top-1 on Copeland but not by >= tau=6). Of the 2
+replacements, confusion shows exactly one visible status change (refused -> wrong, one row) and the
+other lands on a row that was already wrong either way -- net zero against the key either way.
+BAR (pinned, the picker's own): rows >= 24, regressions <= 2 -> rows=14 (10 short), regressions=0
+(clear) -> MISS. CROSS-EXAMINATION STATISTICS (wild): 7664 pairs examined (2466 ties); of the 5198
+decisive (non-tied) pairs, juror 1 (the certificate) was NECESSARY for the majority on 26.0%, the
+unexplained-numeral count on 7.5%, the collision count on 9.2% (consistent with the panel picker's
+own ablation ranking -- the text certificate carries more weight than either full-candidate count,
+though all three fire sometimes); of 6918 pairs with a differing RELATION slot, 915/3728 twin-
+checkable pairs (24.5%) differ on a SAME-NOUN TWIN -- a quarter of all contested argument decisions
+on wild are exactly the twin-confusion the caricature/membrane lines spent September on.
+
+READING: the courtroom is SAFE (0 regressions, matching the consistency judge's own 0 and improving
+on the panel picker's 4) but, at the ONLY tau its own pinned diet procedure permits, completely
+INERT on wild -- every row where cross-examination prefers a different survivor from top-1 fails to
+clear the margin against top-1 specifically (49 pools where the Copeland winner IS top-1; 239 where
+it isn't but the lead is < 6). The diet sweep's own shape explains why: rows_correct approaches but
+never reaches top-1's own count at ANY tau, meaning the three-juror signal, aggregated by Copeland
+over a cross-examined pool, is -- on this diet -- never net-positive relative to simply trusting
+top-1; lower tau buys more FIXES but more REGRESSIONS at a worse exchange rate than the panel
+picker's trained logistic model achieves with the same angles (ablation, 10-05 12:48: dropping
+log-likelihood from that model improves ITS diet CV to 330/775; this script never consults
+log-likelihood at all and still cannot beat top-1-at-tau=0's 281). The margin mechanism (THE
+VERDICT WITH A MARGIN, as specified) is not a bug to fix -- it is working exactly as designed,
+refusing whenever the untrained 3-vote majority's lead is not safely large, and on wild that refusal
+fires on nearly everything that would have moved the needle. Honest negative, banked: a majority-
+vote jury of exactly these three un-trained signals, aggregated by Copeland with a tuned margin, is
+not where the room between the judge's 18 and the ceiling's 43 closes -- the panel picker's TRAINED
+combination of the same angles (plus log-likelihood and twin, both later shown net-negative) still
+holds the high-water mark at 19, also short of the bar. CAUTIONS, kept: no CSP for language, and
+this reading reconfirms it -- row 329's unanimous-wrong verdict shows the jury's errors correlate
+with the model's own confident mistakes, not independent of them; the certifier is a witness, not a
+judge, exactly in the sense that trusting its restricted-span agreement at face value (tau=0) loses
+to top-1 outright. Artifacts: scripts/courtroom.py; .cache/courtroom_PMS8_241.{txt,pkl} (wild);
+.cache/courtroom_diet_PMS8_241.{txt,pkl} (diet tune + parity); candidates reused from
+.cache/picker/cand_{diet,wild_PMS8_241}.pkl (the panel picker's own banked generation, parity-
+checked by text before use, never regenerated).
