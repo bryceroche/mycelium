@@ -377,12 +377,14 @@ def read(ckpt, data=None, p=None):
             from phase1_algebra_head import (alt2_fact_buf as _afb3, K_VARS as _KV3,
                                              certifier_bias as _certb, T_ALG as _T3,
                                              ALG_CERT as _ACERT, ALG_CERT_IMPLIED as _ACERTI,
-                                             rack_pack as _rackp, ALG_RACK as _ARACK, ALG_RACK_TESTS as _ARACKT)   # THE RACK (2026-10-05)
+                                             rack_pack as _rackp, ALG_RACK as _ARACK, ALG_RACK_TESTS as _ARACKT,
+                                             ALG_RACK_RELEASE as _ARELEASE, rack_release_rows as _rrrows)   # THE RACK (2026-10-05) + FORM 3 (branch rack3)
             _ck3 = ("pres", "ftype", "op", "dig", "args", "res") + (("dup",) if "dup" in o0 else ())
             _nv3 = np.array([vs[int(i)].get("n_vars", _KV3) for i in sl_p])
             _ma3 = np.array([vs[int(i)].get("m", 0) for i in sl_p])
             _mk3 = Tensor(mk, dtype=dtypes.float)
-            def _consult3(oo, rack_prev=None, rack_detail=None):
+            _rel2 = np.zeros(len(sl_p), np.float32)   # FORM 3's per-row sidecar flag (consult 2 only; all-zero when ALG_RACK_RELEASE=0 or off the rack path)
+            def _consult3(oo, rack_prev=None, rack_detail=None, released_out=None):
                 # THE TRAINED CERTIFIER-MASK ROAD (2026-09-28): the same
                 # decode this consult already took, plus the facts it
                 # just forced, straight into certifier_bias — no extra
@@ -399,6 +401,12 @@ def read(ckpt, data=None, p=None):
                     # THE RACK (2026-10-05): the dryness test on this consult's own decode + facts, the trainer's
                     # exact host path (rack_pack; consult 2 unions over consult 1's array — monotone); the port
                     # the next pass reads from kb 3 / 5 on. `rack_detail` (the sidecar) records per test.
+                    # FORM 3 — RELEASE ON CONTRADICTION (2026-10-05, branch rack3): rack_release_rows
+                    # is the SAME function _consult_into's host release calls — no-op (rack_prev
+                    # returned unchanged, an all-zero mask) when ALG_RACK_RELEASE=0.
+                    rack_prev, _, _, _rmask = _rrrows(rows3, texts3, _ma3, _nv3, rack_prev)
+                    if released_out is not None:
+                        released_out[:] = _rmask
                     rk = _rackp(rows3, fb, texts3, _T3, _ARACKT, prev=rack_prev, detail=rack_detail)
                     rk_t = Tensor(rk, dtype=dtypes.float)
                 return Tensor(fb, dtype=dtypes.float), cb_t, rk_t, rk
@@ -408,11 +416,12 @@ def read(ckpt, data=None, p=None):
             # pass b runs breaths 3-4 too — it must see cert3 / rack3 (kb >= 3) the same as the full pass below
             _ob3 = _rf(forward, p, ts, tk, se, keys=_ck3, slot_mask=_mk3, xcorr=xcorr_t, hud=hud_t, tree=tree_t, ident=ident_t, stop_after=4, facts3=f3_t, cert3=c3_t, rack3=r3_t)
             _rk_d2 = [] if (_ARACK and _RACKSIDE is not None) else None
-            f5_t, c5_t, r5_t, r5_np = _consult3(_ob3, rack_prev=r3_np, rack_detail=_rk_d2)
+            f5_t, c5_t, r5_t, r5_np = _consult3(_ob3, rack_prev=r3_np, rack_detail=_rk_d2, released_out=_rel2)
             if _rk_d2 is not None:   # THE RACK's SIDECAR: the flags the body committed by its last consult (both consults' union), per real row (the DRY CENSUS reads it exactly)
                 for bi, i in enumerate(sl):
                     _RACKSIDE.append((int(i), r5_np[bi, :_LTOT3].copy(),
-                                      [[1.0 if (j in _rk_d1[bi][t] or j in _rk_d2[bi][t]) else 0.0 for t in _ARACKT] for j in range(_LTOT3)]))
+                                      [[1.0 if (j in _rk_d1[bi][t] or j in _rk_d2[bi][t]) else 0.0 for t in _ARACKT] for j in range(_LTOT3)],
+                                      float(_rel2[bi]) if _rel2 is not None else 0.0))   # FORM 3: 1.0 iff consult 1's commit was released (proved inconsistent) before consult 2's own test
         o = _rf(forward, p, ts, tk, se, keys=_jk_masked,
                 slot_mask=Tensor(mk, dtype=dtypes.float),
                 fact_buf=(None if _alt3 else fact_t), mh_mass=mass_t, mh_atlas_traj=_mha_t,
@@ -489,12 +498,16 @@ def read(ckpt, data=None, p=None):
         import pickle; pickle.dump(_DUMPR, open(os.environ["LV_DUMP_RAW"], "wb")); print(f"[dump-raw] {len(_DUMPR)} gold slots with raw heads -> {os.environ['LV_DUMP_RAW']}", flush=True)
     if _RACKSIDE is not None:
         # THE RACK's SIDECAR: per real row, the dry flags the body committed at its last consult (rack5's union) and the
-        # per-test flags — scripts/rack_dryness_census.py reads it for THE DRY CENSUS bar (share committed + precision)
+        # per-test flags — scripts/rack_dryness_census.py reads it for THE DRY CENSUS bar (share committed + precision).
+        # `released` (FORM 3, 2026-10-05, branch rack3): 1.0 iff this row's consult-1 commit was proved inconsistent and
+        # cleared before consult 2's own test — all-zero when ALG_RACK_RELEASE is unset (the field always exists).
         import phase1_algebra_head as _HR
         _side = os.environ["LV_DUMP"] + ".rack.npz"
-        np.savez(_side, rows=np.array([r for r, _, _ in _RACKSIDE], np.int32), dry=np.stack([d for _, d, _ in _RACKSIDE]).astype(np.float32),
-                 tests=np.array(list(_HR.ALG_RACK_TESTS)), per_test=np.array([pt for _, _, pt in _RACKSIDE], np.float32))
-        print(f"[rack] {len(_RACKSIDE)} rows' committed dry flags -> {_side} (dry share {float(np.mean([d.mean() for _, d, _ in _RACKSIDE])):.3f} of slots)", flush=True)
+        np.savez(_side, rows=np.array([r for r, _, _, _ in _RACKSIDE], np.int32), dry=np.stack([d for _, d, _, _ in _RACKSIDE]).astype(np.float32),
+                 tests=np.array(list(_HR.ALG_RACK_TESTS)), per_test=np.array([pt for _, _, pt, _ in _RACKSIDE], np.float32),
+                 released=np.array([rl for _, _, _, rl in _RACKSIDE], np.float32))
+        print(f"[rack] {len(_RACKSIDE)} rows' committed dry flags -> {_side} (dry share {float(np.mean([d.mean() for _, d, _, _ in _RACKSIDE])):.3f} of slots"
+              + (f"; released {sum(rl for _, _, _, rl in _RACKSIDE):.0f}/{len(_RACKSIDE)}" if _ARELEASE else "") + ")", flush=True)
     if _FIELDS is not None:
         print("[fields] " + " ".join(f"{k}={v[0]/max(v[1],1):.3f}({v[1]})" for k, v in _FIELDS.items() if not k.startswith("slot")), flush=True)
         print("[slots]  " + " ".join(f"{k[4:]}:{v[0]/max(v[1],1):.2f}({v[1]})" for k, v in sorted(_FIELDS.items()) if k.startswith("slot")), flush=True)

@@ -65,7 +65,8 @@ def main():
         if _alt3:   # THE THREE CONSULTS at read (2026-09-24): the trainer's three curbs, eager here
             from phase1_algebra_head import (certifier_bias as _certb, T_ALG as _T3,
                                              ALG_CERT as _ACERT, ALG_CERT_IMPLIED as _ACERTI,
-                                             rack_pack as _rackp, ALG_RACK as _ARACK, ALG_RACK_TESTS as _ARACKT)   # THE RACK (2026-10-05)
+                                             rack_pack as _rackp, ALG_RACK as _ARACK, ALG_RACK_TESTS as _ARACKT,
+                                             rack_release_rows as _rrrows)   # THE RACK (2026-10-05) + FORM 3 (branch rack3)
             _ck3 = ("pres", "ftype", "op", "dig", "args", "res") + (("dup",) if "dup" in o0 else ())
             _mk3 = Tensor(mk, dtype=dtypes.float)
             _texts3 = [vs[int(i)]["text"] for i in sl_p]
@@ -80,6 +81,10 @@ def main():
                 if _ACERT or _ACERTI:
                     cb_t = Tensor(_certb(rows3, fb, _texts3, _T3, _ACERT, _ACERTI), dtype=dtypes.float)
                 if _ARACK:   # THE RACK (2026-10-05): the dryness test on this consult's decode + facts; consult 2 unions over consult 1's
+                    # FORM 3 — RELEASE ON CONTRADICTION (branch rack3): rack_release_rows is the SAME
+                    # function _consult_into / loop_val's _consult3 call, so a chain_acc read of an
+                    # ALG_RACK_RELEASE=1 body matches the trained behavior exactly; no-op otherwise.
+                    rack_prev, _, _, _ = _rrrows(rows3, _texts3, ma, nv, rack_prev)
                     rk = _rackp(rows3, fb, _texts3, _T3, _ARACKT, prev=rack_prev)
                     rk_t = Tensor(rk, dtype=dtypes.float)
                 return Tensor(fb, dtype=dtypes.float), cb_t, rk_t, rk

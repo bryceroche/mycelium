@@ -700,6 +700,124 @@ RACK_TESTS_ALL = ("given_unique",           # (a) a given slot whose decoded num
                   "given_any")              # (c) the baseline: a given slot whose decoded numeral appears in the text at all, collisions allowed (census reference / gate probe only)
 
 
+def _rack_masked_by_slot(row, text):
+    """THE RACK's masked decode, factored out (2026-10-05, FORM 3's build):
+    the per-slot parse under the numeral-legality mask — the SAME door
+    certifier_bias / the masked read walks — keyed by slot index. Shared by
+    rack_dry_row (the dryness test) and rack_release_row (FORM 3's
+    contradiction test), so both certify against IDENTICAL decode. Pure
+    numpy; no solver call."""
+    from mycelium.rulebook import legal_digit_logits
+    L = row["ftype"].shape[0]
+    masked = dict(row); masked["dig"] = row["dig"].copy()
+    for j in range(L):
+        if int(masked["ftype"][j].argmax()) == 0:
+            continue
+        fake = legal_digit_logits(masked["dig"][j], text)
+        if fake is not None:
+            masked["dig"][j] = fake
+    parse = _decode_slots(masked)
+    return {f["_slot"]: f for f in parse}
+
+
+def rack_release_row(by_slot, dry_slots, m, n_vars, budget=5000):
+    """FORM 3 — RELEASE ON CONTRADICTION (2026-10-05, ledger 19:24 "WORD
+    GIVEN FOR THE DISCRETE HALVES" item 3; registered by Bryce's ruling
+    18:02 "a dry slot returns to the sink only when the solver proves the
+    committed set inconsistent at the next consult"). The solver's own
+    verdict on THE COMMITTED SUBGRAPH: `dry_slots` (consult 1's claimed
+    slot indices) restricted from `by_slot` (THIS consult's own masked
+    decode — _rack_masked_by_slot; the freeze keeps a dry slot's content
+    planes fixed, so its decode is unchanged since consult 1 by
+    construction) — every "given" slot among them taken as a solver given,
+    every "rel" slot among them taken as a relation (the only two ftypes a
+    dryness test ever certifies: RACK_TESTS_ALL's four columns touch only
+    "given" and "rel" — see rack_dry_row). No gold anywhere: the key is
+    never consulted, only the decode + the solver.
+
+    Two ways to fail, cheapest first: (a) two dry GIVEN slots bind the SAME
+    variable to different values — a plain {var: value} dict would silently
+    collapse to the last write and hide this, so it is checked explicitly
+    and returns "unsat" without a solver call. Otherwise solve_symbolic on
+    problem_from_algebra(nv, rels, gv, m) is the certificate: 'unsat' is a
+    PROOF the committed set is inconsistent (the whole tree exhausted under
+    budget); 'solved' and 'budget' both mean "not proven inconsistent" —
+    budget exhaustion is never a contradiction certificate (the same law
+    the uniqueness gate and do_errors' DETECT_unsat already keep; CLAUDE.md
+    §5's uniqueness-gate-budget rule, here on a far smaller subgraph).
+
+    by_slot:   {slot: factor_dict} from _rack_masked_by_slot (THIS consult).
+    dry_slots: iterable of slot indices committed at the PREVIOUS consult.
+    m, n_vars: the row's domain bound / variable count (samples[i]'s own).
+
+    Returns the solver's status string ("solved" | "unsat" | "budget")."""
+    from mycelium.csp_domains import problem_from_algebra
+    from mycelium.csp_core import solve_symbolic
+    gv = {}
+    rel_facs = []
+    for j in dry_slots:
+        f = by_slot.get(int(j))
+        if f is None:
+            continue
+        if f["ftype"] == "given":
+            v, val = int(f["var"]), int(f["value"])
+            if v in gv and gv[v] != val:
+                return "unsat"          # two dry givens on the same var, different values
+            gv[v] = val
+        elif f["ftype"] == "rel":
+            rel_facs.append(f)
+    if not rel_facs:
+        return "solved"                # plain givens with no shared-var conflict: trivially consistent
+    nv = max([int(n_vars)] + [v + 1 for v in gv] +
+             [v + 1 for f in rel_facs for v in (list(f["args"]) + [f["result"]])])
+    rels = [(f["op"], int(f["args"][0]), int(f["args"][1]), int(f["result"])) for f in rel_facs]
+    res = solve_symbolic(problem_from_algebra(nv, rels, gv, int(m)), budget=budget, seed=0)
+    return res["status"]
+
+
+def rack_release_rows(decoded_rows, texts, ma, nv, prev):
+    """FORM 3's host-side BATCH form (2026-10-05, branch rack3): the ONE
+    implementation shared by _consult_into (training), loop_val.py's
+    _consult3, and chain_acc.py's _consult3 — so the trained road, the
+    read-time road, and the accuracy-reading road release on IDENTICAL
+    terms by construction, never by three hand-kept copies. Tests every
+    row whose `prev` (the previous consult's packed (B, L_TOT + T) dry
+    array) carries a nonempty commit (prev[bi, :L_TOT].sum() > 0) against
+    rack_release_row on THIS consult's own decode (decoded_rows[bi], via
+    _rack_masked_by_slot — the row dict `_consult_into`'s `onp` already
+    built, or its read-time twins'); a proved 'unsat' clears that row's
+    WHOLE prior commit (dry flags AND claimed tokens — no stale claim
+    survives a release) in a COPY of `prev` (the caller's array, and
+    anything else aliasing it such as _rack_host's cache, is never
+    mutated). No-op when ALG_RACK_RELEASE=0 or prev is None: returns
+    (prev, 0, 0) unchanged — the exact bit-identical path.
+
+    decoded_rows, texts: per-row dict / string, aligned with prev's rows.
+    ma, nv: per-row domain bound / variable count (samples[i]'s own).
+    prev: (B, L_TOT + T) float32 or None.
+
+    Returns (new_prev, n_released, n_tested, released_mask) — released_mask
+    is a (B,) float32 array, 1.0 on rows this call released (0.0 elsewhere,
+    including untested empty-commit rows); n_tested counts only rows with a
+    nonempty commit (an empty row has nothing to test or release)."""
+    B = len(decoded_rows)
+    if not ALG_RACK_RELEASE or prev is None:
+        return prev, 0, 0, np.zeros(B, np.float32)
+    prev = prev.copy()
+    released_mask = np.zeros(B, np.float32)
+    tested = 0
+    for bi in range(B):
+        dry_j = np.nonzero(prev[bi, :L_TOT] > 0)[0]
+        if len(dry_j) == 0:
+            continue
+        tested += 1
+        by_slot = _rack_masked_by_slot(decoded_rows[bi], texts[bi])
+        if rack_release_row(by_slot, dry_j, ma[bi], nv[bi]) == "unsat":
+            prev[bi, :] = 0.0
+            released_mask[bi] = 1.0
+    return prev, int(released_mask.sum()), tested, released_mask
+
+
 def rack_dry_row(row, frow, text, T, tests):
     """THE DRYNESS TEST on ONE row: the per-slot certificates, per test.
 
@@ -724,7 +842,6 @@ def rack_dry_row(row, frow, text, T, tests):
     solver call (the facts are handed in, never recomputed here)."""
     import numpy as np
     from collections import Counter
-    from mycelium.rulebook import legal_digit_logits
     import membrane_scale as _MSC
     tests = tuple(tests)
     bad = [t for t in tests if t not in RACK_TESTS_ALL]
@@ -735,16 +852,8 @@ def rack_dry_row(row, frow, text, T, tests):
     runs = _MSC._digit_runs(tok, ids, T)                    # [(a, b, value)] the text's numerals, in token coordinates
     if not runs:
         return out
-    L = row["ftype"].shape[0]
-    masked = dict(row); masked["dig"] = row["dig"].copy()
-    for j in range(L):
-        if int(masked["ftype"][j].argmax()) == 0:
-            continue
-        fake = legal_digit_logits(masked["dig"][j], text)
-        if fake is not None:
-            masked["dig"][j] = fake
-    parse = _decode_slots(masked)
-    by_slot = {f["_slot"]: f for f in parse}
+    by_slot = _rack_masked_by_slot(row, text)
+    parse = list(by_slot.values())
     # every decoded literal on the row claims its numeral (a given's value, a mod/fdiv's k, a pct's p)
     claims = {}
     for j, f in by_slot.items():
@@ -3712,6 +3821,24 @@ if ALG_RACK:
 # time). Any other value hard-errors — a misspelt footprint must never run as the default.
 ALG_RACK_FREEZE = os.environ.get("ALG_RACK_FREEZE", "all")
 assert ALG_RACK_FREEZE in ("all", "leaf", "none"), f"ALG_RACK_FREEZE={ALG_RACK_FREEZE!r}: must be one of all | leaf | none (THE RACK's freeze footprint)"
+# FORM 3 — RELEASE ON CONTRADICTION (2026-10-05, branch rack3 off rack a4dd02b9; ledger 19:24 "WORD
+# GIVEN FOR THE DISCRETE HALVES" item 3; registered by Bryce's ruling 18:02: "a dry slot returns to
+# the sink only when the solver proves the committed set inconsistent at the next consult"). Default
+# 0 = bit-identical to rack3's parent (no new ops read; _consult_into's rack5 call is unchanged).
+# Set: at consult 2 (kb 4, the rack5 call), BEFORE consult 2's own flags are taken, every row whose
+# consult-1 commit is nonempty is tested — rack_release_row on THE COMMITTED SUBGRAPH (consult 1's
+# dry slots, restricted from consult 2's OWN masked decode — the freeze means that decode is
+# unchanged since consult 1 by construction, so "consult 1's claims" and "consult 2's decode of
+# those same slots" are the same numbers) — if the solver CERTIFIES it inconsistent ('unsat'; budget
+# exhaustion never counts, the uniqueness-gate law), the row's consult-1 dry flags AND claimed
+# tokens are cleared (not just this test's; the WHOLE prior commit, so no stale claim survives a
+# released row) before the union with consult 2's own (fresh) dryness test — the claim mask lifts
+# and the leaf unfreezes from breath 5 on (THE_RACK's own kb-gated ports do the rest; no new ops).
+# Host-side only (_consult_into), so no JIT change. Needs ALG_RACK=1 (there is nothing to release
+# without a commit) and is refused by step_trainer like every other rack knob.
+ALG_RACK_RELEASE = int(os.environ.get("ALG_RACK_RELEASE", "0"))
+if ALG_RACK_RELEASE:
+    assert ALG_RACK, "ALG_RACK_RELEASE needs ALG_RACK=1 (FORM 3 releases a commit THE RACK made; there is nothing to release otherwise)"
 
 
 def _rack_content_mask():
@@ -8806,6 +8933,7 @@ def do_train(steps, lr, batch, seed):
         pass_b = TinyJit(pass_b)
         _consult_t = [0.0, 0]   # host seconds, count (the perf line)
         _rack_host = {}   # THE RACK: consult 1's packed flags on the host (consult 2 unions over them — monotone)
+        _rack_release_n = [0, 0]   # FORM 3: [rows released, rows with a nonempty consult-1 commit tested] cumulative over the run (the _tt idiom)
         def _consult_into(buf, pass_fn, idx, cert_buf=None, rack_buf=None, rack_prev=None):
             _t0c = time.time()
             o = pass_fn()
@@ -8832,8 +8960,21 @@ def do_train(steps, lr, batch, seed):
                 # call unions over consult 1's host copy (a dry slot never becomes wet). No gold.
                 texts = [samples[int(i)]["text"] for i in idx]
                 decoded_rows = [{k: onp[k][bi] for k in onp} for bi in range(len(idx))]
-                rk = rack_pack(decoded_rows, fb, texts, T_ALG, ALG_RACK_TESTS,
-                               prev=(_rack_host.get(rack_prev) if rack_prev is not None else None))
+                prev_rk = _rack_host.get(rack_prev) if rack_prev is not None else None
+                # FORM 3 — RELEASE ON CONTRADICTION (2026-10-05, ledger 19:24 item 3; the ruling
+                # 18:02): BEFORE consult 2's own flags are taken, rack_release_rows tests every row
+                # with a nonempty consult-1 commit against the solver on THE COMMITTED SUBGRAPH
+                # (consult 1's dry slots, restricted from decoded_rows[bi] — THIS consult's own
+                # masked decode; the freeze keeps a dry slot's content unchanged since consult 1, so
+                # the two agree by construction). A proved 'unsat' clears the WHOLE prior commit for
+                # that row, so the claim mask lifts and the leaf unfreezes from breath 5 on, and
+                # consult 2's own dryness test below runs FRESH on it. No-op (prev_rk unchanged)
+                # when ALG_RACK_RELEASE=0 — the exact bit-identical path.
+                prev_rk, _rel, _tst, _ = rack_release_rows(decoded_rows, texts, ma, nv, prev_rk)
+                _rack_release_n[0] += _rel; _rack_release_n[1] += _tst
+                if _rel and int(os.environ.get("ALG_RACK_DEBUG", "0")):
+                    print(f"[rack-release] B={len(idx)} released {_rack_release_n[0]}/{_rack_release_n[1]} (cumulative)", flush=True)
+                rk = rack_pack(decoded_rows, fb, texts, T_ALG, ALG_RACK_TESTS, prev=prev_rk)
                 _rack_host[id(rack_buf)] = rk
                 _fd(rack_buf, rk, _rlc)
             if _rlc:
@@ -9820,7 +9961,8 @@ def do_train(steps, lr, batch, seed):
             print(f"  step {s:5d} loss={v:.4f} lr={cur_lr:.1e} "
                   f"({(time.time()-t0)/(s+1):.2f}s/step"
                   + (f"; steady {(time.time()-_t5)/(s-5):.3f}s/step from step 5" if s > 5 else "") + ")"
-                  + (f" [host feed {1e3*_tt['feed']/max(_tt['n'],1):.0f} ms + step-call {1e3*_tt['step']/max(_tt['n'],1):.0f} ms per step, n={_tt['n']}]" if _STEP_TIME else ""),
+                  + (f" [host feed {1e3*_tt['feed']/max(_tt['n'],1):.0f} ms + step-call {1e3*_tt['step']/max(_tt['n'],1):.0f} ms per step, n={_tt['n']}]" if _STEP_TIME else "")
+                  + (f" [rack-release {_rack_release_n[0]}/{_rack_release_n[1]} rows cumulative]" if ALG_RACK_RELEASE else ""),
                   flush=True)
         if (s + 1) % val_every == 0 or s == steps - 1:
             if int(os.environ.get("ALG_SHELF_CIRCLE", "0")) >= 2:
