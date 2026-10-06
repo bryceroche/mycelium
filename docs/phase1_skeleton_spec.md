@@ -46718,3 +46718,43 @@ margin can take). The 10-04 queue's and today's record now read in one line: the
 protects the right answer (no drift), the damped form at a lower price, and nothing built on the
 membrane after the first look moves the wall — the rack (the first form that REMOVES items from
 the active set rather than re-weighting them) is the registered next read, behind the eyes.
+
+### 2026-10-05 (17:24) — THE RACK BUILT + GATED (branch rack, 2b3838b5 on eyes); THE DRYNESS CENSUS: NO TEST ADMITTED AT THE PINNED BAR — the certificate certifies the NUMERAL, the metric scores the DRAWER; FORM 2 registered on the numeral-level certificate
+
+THE CENSUS (scripts/rack_dryness_census.py; .cache/rack_dryness_census_{PMS8_241,HS_241}.txt; RIGHT = the
+masked read's positional per-slot verdict from ps_legal_wild; the key from custody_gold; PMS8 from the raw
+heads, HS from reconstructed heads = optimistic): given_unique fires 424 / 370 slots, PRECISION 0.583 /
+0.546, coverage of gold 0.21 / 0.18; relation_implied 17 / 31 fires, 0.353 / 0.452; relation_implied_any
+84 / 61, 0.357 / 0.492; given_any (baseline) 993 / 885, 0.444 / 0.444; the row judge (solved + unique)
+139 / 163 rows at 0.094 / 0.049 row precision — its "safety" was zero regressions, never precision.
+ADMITTED AT >= 0.90 POSITIONAL: NONE (banked; the bar does not bend). THE AUDIT COLUMN is the finding: the
+numeral a dry given claims IS one of the row's gold givens 0.972 / 0.962 of the time (relation_implied
+0.88 / 0.90; _any 0.95); the slot is positionally right only 0.55-0.58 because the per-slot verdict
+scores ORDER (row 0: the givens 8 / 12 / 6 decoded in the wrong slots). The dish is dry; the drawer is
+the bookkeeping. Consequence built in by the builder: ALG_RACK_TESTS has NO default and ALG_RACK=1
+without it hard-errors citing the census.
+THE RULING (mine, under the word; flagged for Bryce's veto): the two commits act on different objects.
+The CLAIM mask removes a NUMERAL from the wet slots' reads — its harm is a false numeral, so its
+certificate is numeral-level: P(claimed numeral is a gold given) = 0.97 for given_unique, which
+CLEARS 0.90 (relations do not: 0.88-0.90 at 1-4 % coverage; excluded). The FREEZE holds a slot whose
+numeral is right and whose drawer may be wrong; under the drift record (slots decay after the first
+look, never improve) the freeze's cost is bounded by the positional slot read, which stays a bar.
+FORM 2 = THE RACK ON THE NUMERAL CERTIFICATE: ALG_RACK=1 ALG_RACK_TESTS=given_unique (the same test
+code; a different admission, registered now, not a bend of the positional one). Coverage is thin:
+~1.4 dry givens per wild row by the last breath, fewer at consult 1 — the slow rack, as predicted.
+THE BUILD: rack_dry_row (head :703; the masked decode + _digit_runs, no gold) and rack_pack (:784,
+packed (B, L_TOT + T), monotone union of consult 2 over consult 1); ports through forward / jit_read /
+loop_val (+ a .rack.npz sidecar) / chain_acc; the claim mask -1e4 on the wet slots x claimed tokens
+on the pbias road inside the clip (:5351-5377, _CENSUS "rack"); the freeze = per-slot dm 1 on the
+content dims of all three bands at the hier-damping site (:6083-6097; the clock planes keep turning,
+as the hier damping leaves them); the one-way glass needs no mixer edit (the wet read the dry's
+bk/bv; the dry's own update is discarded by the freeze). A real bug fixed on the way: the trainer's
+_quick_val under ALG_ALT3 never walked the consults (cert3 None -> the eyes refuse), so cert + eyes
+could not train before; it now walks the three curbs like the readers (:8954-8983). THE GATE (CPU):
+unset 5.2995/0.0279 bit-identical; role8, hierd, eyes reproduce; cert 6.5344/1.1071 (= the certloop
+gate); rackoff (cert + eyes + hierd, first composition) 10.8389/8.7827; rack 10.8019/8.7628 (differs
+with no params: 4 dry slots at consult 1, 5 by consult 2 on the fixture); rackprobe (given_any)
+10.7856/8.7535. Read smoke: 2 rows under the rack env + JIT read, both slots captured, the sidecar
+written and the census's DRY branch verified on it. Unverified: the new ops under the AM driver (CPU
+only); consult-time decode (breath 2 / 4) vs the census's final-breath decode. The chain carries
+ALG_RACK_TESTS=given_unique on RK_241; the ready flag is set; pc-queue-rack fires after the eyes.
