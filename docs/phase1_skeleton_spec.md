@@ -47474,3 +47474,25 @@ was mint's price — the registered claim). THE QUEUE (pc-queue-racklive): waits
 (< -0.010), else fires RKL then RKLC (single-arm chains; the sed fixed). The remaining registered
 arms (RK3 = release + chalkboard; the eyes' telegraphic hands; the perceiver v1b; the later first
 consult) stay behind these verdicts.
+
+### 2026-10-06 (14:49) — THE LIVE-FACTS RACK PAIR IS VOID BY CONSTRUCTION: the head asserts ALG_LIVE_FACTS and ALG_ALT3 exclusive (both replace the training-step facts feed; under ALT3 it is already live) — the stale-feed hypothesis for the consult bodies' mint cost is refuted before any fire; the mint attribution table banked
+
+The CPU gate (.cache/racklive_gate.log): rkl / rklc die at import — "ALG_LIVE_FACTS and ALG_ALT3
+both replace the training-step facts feed by different roads (one pass to b_fact vs three consults)".
+So under ALT3 the breath-2 feed at training already comes from the current parameters' own partial
+pass: the consult bodies have NO stale feed, and the hypothesis in the 15:0x entry (the stale
+b_fact as mint's price) is refuted by the head's own contract. pc-queue-racklive stopped; the pair
+struck from the queue (no GPU spent). THE MINT ATTRIBUTION (open mint, banked reads): the lineage
+0.59-0.61; PMS8_241 0.65; ALT3_241 (the consults only, the PMS8 chassis) 0.661; CL_241 (consults +
+lines) 0.64; CL2_241 0.651 — the consults and the lines cost mint NOTHING on the plain chassis;
+HS_241 (the hierarchical state) 0.586 (-0.068: the state's known price); HSd_241 0.628; EY_241 (HS
++ eyes) 0.642 (+0.055: the eyes recover it); RK_241 (HS + consults + lines + rack) 0.540 (-0.046
+below HS). READING: the mint cost lives on the HIERARCHICAL body — the consults / rack cost nothing
+on the plain chassis and -0.046 on the partitioned one (RKC attributes the -0.046 between the
+consults and the rack tonight). Mint's positional one-sentence rows want the whole state for every
+head (the 10-04 reading); organs that write INTO the state (the eyes' mask on the read) help mint,
+organs that act at the consults hurt it on this body. Bryce's rhythm concern stands as an
+observation about the partitioned body, not about the consults: a consult on the plain chassis is
+free. REGISTERED in place of the live-facts pair: nothing new — RKC decides; then the rack on the
+PLAIN chassis (PMS8's recipe + ALT3 + CERT + RACK vs ALT3 + CERT) is the natural twin if the rack's
+rows are real on HS: the rows record (17) needs a second body.

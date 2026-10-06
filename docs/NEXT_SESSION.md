@@ -4,8 +4,8 @@
 ~19:30, reads after; its chain's tail will fail at a sed line as RK's did — expected); then pc-queue-rack-tail (.cache/rack_tail.sh)
 runs golden24, the band probe, the plain membrane, RKC's dry census and THE BAR: `paired masked wild RK_241 vs RKC_241` (>= +0.015;
 claim +0.020); then pc-chainacc-verify (the 11-vs-14 baseline). Logs: .cache/rack_chain_RKC.log, rack_tail.log, queue_rack_tail.log.
-**RK_241 (banked 14:06 + 14:3x):** slot flat (-0.004 vs HS_241), ROWS 17 masked = the row record, mint -0.046 (the consults' facts-coverage
-mismatch; fix = live facts from scratch, registered RKL/RKLC, needs the word); THE WALL MOVED (0.489 vs 0.526) for the first time; the hit
+**RK_241 (banked 14:06 + 14:3x):** slot flat (-0.004 vs HS_241), ROWS 17 masked = the row record, mint -0.046 (the live-facts pair is VOID: ALT3's feed
+is already live; the mint cost lives on the hierarchical body — RKC attributes it); THE WALL MOVED (0.489 vs 0.526) for the first time; the hit
 fell (0.68 vs 0.76); the claim mask exact; committed numerals right 0.686 (the rack commits dirty dishes a third of the time at consult 1).
 RKC decides what is the rack's and what is the consults'.
 **CPU builders in flight:** THE CARICATURE JURY (scripts/jury_train.py; the courtroom's form 2; one wild read vs rows >= 24 / regressions <= 2).
