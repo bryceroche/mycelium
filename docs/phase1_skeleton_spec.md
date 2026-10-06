@@ -46883,3 +46883,28 @@ a new FORM — THE CHALKBOARD: the solver's implied values enter as TOKENS appen
 numeral token with its own position and a "derived" tag), so a value enters through the same
 membrane everything enters and any slot can bind to it; built after (3) on the same branch; the
 route bias is retired. Certifier -> perceiver (5) folds into (1)'s stream.
+
+### 2026-10-05 (20:31) — CONCENTRATION (Bryce's gut: "track how dilute or concentrated the solution is"); the mapping banked; THE PARSE-SPACE METER registered with its prediction
+
+THE MAPPING: solute = the mass on the right reading; solvent = everything the model can still
+attend to or decide; SATURATION = exactly one consistent parse remains = the judge's solved + unique
+(already a named object); evaporation = the rack (claimed tokens and frozen leaves leave the active
+set); re-dissolving = form 3 (release on contradiction); NUCLEATION = a certified fact as the seed,
+propagation through the solver as the crystal's growth (why 1.4 dry givens per row can matter far
+more than 1.4 / 24 suggests — the value write's job). THE CAUTIONS FROM THE RECORD (against the
+relay): entropy is not concentration of the RIGHT thing (falls once at b1, plateaus, separates right
+from wrong by ~0.5 nats = a hydrometer, never a trigger: half the wrong rows are confidently wrong;
+the annealed decode 19:1; the Goodhart fence); radius is concentration of the WRONG kind (the atlas
+read: the damped bodies contracted 50-68 % and the kinds became LESS separable — everything
+precipitated into one crystal; concentration on the state must be a CONTRAST, within-kind spread vs
+between-kind separation — codebook geometry is margin). THREE CONCENTRATIONS: (1) membrane, per slot
+(argmax mass; mass leaked to another sentence — the wall's dilution; measured by the membrane
+census); (2) active-set, per row (open slots / unclaimed numerals over totals — the kitchen's; the
+rack's dry count in the perceiver stream); (3) PARSE-SPACE, per row x breath: how many of the first
+look's candidate graphs (<= 64) the solver still accepts — discrete molarity; the judge's safe rows
+are the rows where it reached one; never measured across breaths. REGISTERED PREDICTION: (3)
+predicts row correctness better than entropy; on PMS8 it does not fall after breath 1 (the breaths
+do no work there); on the rack body it falls. Build: adaptive_stop.py dumps each breath's raw heads
+(rawslots_breaths_wild_<TAG>.pkl); the meter runs zero-GPU on every body as it lands (combined
+oracle's enumeration per breath + the solver's accept count). The perceiver drinks from (3), reads
+(1) and (2), and never commits on (1) alone.
