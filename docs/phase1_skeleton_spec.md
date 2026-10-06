@@ -47512,7 +47512,7 @@ else fires RKP then RKPC. The word (15:1x, "the whole queue") covered the live-f
 turned out void; this pair replaces it under the same word, with the standing offer to stop it
 before ~21:00 if Bryce prefers to hold.
 
-### 2026-10-06 (15:08) — THE CARICATURE JURY (THE COURTROOM's form 2, the trained pairwise juror) BUILT + CV'd + READ ONCE ON WILD: ties the hand jurors' 14/311 (1 fix, 1 regression), MISSES the rows>=24 bar; diet CV barely beats the hand jurors (0.601 vs 0.584) and collapses toward chance on wild (0.546)
+### 2026-10-06 (15:06) — THE CARICATURE JURY (THE COURTROOM's form 2, the trained pairwise juror) BUILT + CV'd + READ ONCE ON WILD: ties the hand jurors' 14/311 (1 fix, 1 regression), MISSES the rows>=24 bar; diet CV barely beats the hand jurors (0.601 vs 0.584) and collapses toward chance on wild (0.546)
 
 Built per the 13:35 registration (Bryce's caricature frame: "comparing a real face to an average
 baseline and sharply amplifying the unique differences"). scripts/courtroom.py has no juror hook, so
@@ -47584,7 +47584,7 @@ Artifacts: scripts/picker/jury_features.py; scripts/jury_train.py; scripts/court
 PMS8_241.{txt,pkl} (diet tau tune+parity); .cache/jury_PMS8_241.{txt,pkl} (the wild read, the task's
 pinned deliverable).
 
-### 2026-10-06 (15:07) — THE CARICATURE JURY'S READING (after the 15:08 entry): the learned juror is a wash with the hand rules (pairwise 0.60 vs 0.58-0.62 on the diet; 0.546 on wild), the span embedding contributed NOTHING by construction; form 2b registered — the caricature must be rendered PER STORY
+### 2026-10-06 (15:07) — THE CARICATURE JURY'S READING (after the 15:06 entry; the builder's stamp ran ahead of the clock, corrected): the learned juror is a wash with the hand rules (pairwise 0.60 vs 0.58-0.62 on the diet; 0.546 on wild), the span embedding contributed NOTHING by construction; form 2b registered — the caricature must be rendered PER STORY
 
 The build (0091fe86): 369 contributing diet rows -> 21,306 pairs (swap-augmented 42,612); a linear
 juror on [span-minus-text trunk embedding, A-minus-B structural diff, the hand certificates'
