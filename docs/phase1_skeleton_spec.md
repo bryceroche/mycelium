@@ -47068,3 +47068,25 @@ first runs (ps_legal_wild_RK_241.npz "missing"): that is the contract working; t
 pre-flight at the chain's own start sees them. Re-fired: pc-queue-rack3 asserts the post-merge
 gate lines and runs rack_chain_RK.sh (pre-flight PASS, 34 inputs) then rack_chain_RKC.sh (the
 paired RK-vs-RKC bar line at its end). Everything else in the two chains is unchanged.
+
+### 2026-10-06 (07:09) — ADAPTIVE STOPPING (the judge as the brake) MISSES BOTH BARS on PMS8_241: 8 rows vs 11 at the last breath, 6 regressions; the perceiver v0 stream banked (af2363bc, scripts/adaptive_stop.py)
+
+The mechanism: ALG_MINE_BREATHS=1 makes forward() return every breath's heads (out["heads_all"],
+head :6503-6507) from the same two passes chain_acc runs (stop_after is a footgun: 0 is falsy and
+runs the full loop — documented, sidestepped). THE READ (wild, 311 rows, CA_MASK=1 decode per breath,
+the judge = solved + unique, the key never consulted): stop at the first passing breath -> correct 8
+/ refused 82 / wrong 221 vs the last breath's 11 / 150 / 150; stop histogram never 121, b0 103, b1
+41, b2 21, b3 14, b4 5, b5 5, b6 1; regressions 6 (rows 1, 98, 113, 147, 285, 294), fixes 3 (32, 149,
+234). BARS (rows >= last breath; regressions <= 2) BOTH MISSED. READING: the judge passes at
+BREATH 0 for a third of the rows and most of those parses are consistent-and-wrong — "solved +
+unique" is zero-regression as a FILTER at the last breath and not a stop rule at earlier breaths
+(the row judge's precision is 5-9 %, measured yesterday). The brake needs a reader of the
+trajectory, not a verdict on one frame — the learned perceiver as registered. THE STREAM
+(.cache/perceiver_stream_PMS8_241.npz, 311 x 7 x features): rows that stop early vs never: entropy
+of given slots 1.66 / 1.90 at b0 -> 1.25 / 1.31 at b6; atlas-given cosine 0.61 / 0.59 -> 0.72 /
+0.70; nl_cert 0.61 / 0.53 — consistent separations, small. THE PER-BREATH RAW HEADS dumped
+(.cache/rawslots_breaths_wild_PMS8_241.pkl: {kb: rows} in chain_acc's CA_RAWDUMP format, 14.5 MB):
+the parse-space meter can now run zero-GPU per breath. UNRESOLVED: the script's last-breath baseline
+reads 11 / 311 where the banked chain_acc read (09-22, pms8_chain.log) is 14 — solver-timing variance
+or a divergence; an unmodified chain_acc re-run is queued (pc-chainacc-verify, behind the lock);
+until it lands, 14 stays the number of record and the 11 is the script's own baseline.
