@@ -3699,17 +3699,34 @@ if ALG_RACK:
                             "(given_unique 0.58/0.55 positional; its numeral is a gold given 0.97 of the time) — name the tests under a ruling, never by default")
     _bad_rt = [t for t in ALG_RACK_TESTS if t not in RACK_TESTS_ALL]
     assert not _bad_rt, f"ALG_RACK_TESTS: unknown test(s) {_bad_rt}; known: {RACK_TESTS_ALL}"
+# THE FREEZE'S FOOTPRINT (THE RACK, 2026-10-05, Bryce: "freeze what the certificate certifies, leave
+# open what it does not"). The certificate certifies the VALUE, not the binding: a dryness test checks
+# the numeral a slot decoded against the row's givens / the solver's implied values — it says nothing
+# about WHAT the slot is (the root band) or WHICH mention it binds (the branch band). So the freeze
+# holds only what the certificate covers, and the rest stays open to the consults' feedback:
+#   all  = the built form (the gate reference 10.8019/8.7628): the content dims of all three bands
+#   leaf = the leaf band's content dims only (_hier_band_dims()[0][2], the value planes); a dry slot's
+#          root/branch dims keep their ordinary update — the hierarchical damping share included, if set
+#   none = no freeze at all: the claim mask alone (the wet never read the dry's tokens; nothing held)
+# The clock planes are untouched under every value, as before (the commit carries the value, never the
+# time). Any other value hard-errors — a misspelt footprint must never run as the default.
+ALG_RACK_FREEZE = os.environ.get("ALG_RACK_FREEZE", "all")
+assert ALG_RACK_FREEZE in ("all", "leaf", "none"), f"ALG_RACK_FREEZE={ALG_RACK_FREEZE!r}: must be one of all | leaf | none (THE RACK's freeze footprint)"
 
 
 def _rack_content_mask():
-    """(1, 1, H_W) float: 1 on every CONTENT dim (all three bands), 0 on the clock dims — THE FREEZE's
-    footprint (the hierarchical damping's own rule, every band at once)."""
-    key = ("rack_content",)
+    """(1, 1, H_W) float: THE FREEZE's footprint — 1 on the content dims the freeze holds, 0 elsewhere;
+    the clock dims are 0 under every footprint (the hierarchical damping's own rule). ALG_RACK_FREEZE=all:
+    every band's content dims; leaf: the leaf band's only (the value planes — Bryce's ruling, 2026-10-05:
+    the certificate certifies the value, not the binding; root and branch stay open). Never called under
+    `none` (the freeze site is skipped)."""
+    assert ALG_RACK_FREEZE in ("all", "leaf"), ALG_RACK_FREEZE
+    key = ("rack_content", ALG_RACK_FREEZE)
     if key not in _HIER_CACHE:
         from tinygrad import Tensor as _Th
         bands, _ = _hier_band_dims()
         arr = np.zeros(H_W, np.float32)
-        for _b in bands:
+        for _b in (bands if ALG_RACK_FREEZE == "all" else (bands[2],)):   # leaf = bands[2] (root 16 / branch 112 / leaf 64 planes)
             arr[_b] = 1.0
         _HIER_CACHE[key] = _Th(arr).reshape(1, 1, -1).contiguous().realize()
     return _HIER_CACHE[key]
@@ -6079,10 +6096,15 @@ def breath_step(p, state, kb, ctx):
                     _HIER_CACHE[_key] = _Td(_arr).reshape(1, 1, -1).contiguous().realize()
                 _dm = _HIER_CACHE[_key]
                 cur = cur * (1.0 - _dm) + _old * _dm
-    if ALG_RACK and _rack_dry is not None and 1 <= kb <= _RC_N_LOOP:
+    if ALG_RACK and ALG_RACK_FREEZE != "none" and _rack_dry is not None and 1 <= kb <= _RC_N_LOOP:
         # THE RACK's FREEZE (2026-10-05): a dry slot's state update share is 0 from the breath after
         # its consult on — the hierarchical damping's own form (cur = cur*(1-dm) + old*dm) with a PER-
-        # SLOT dm = 1 on dry slots over the CONTENT planes of every band (the damping's rule: never
+        # SLOT dm = 1 on dry slots over the CONTENT planes the footprint names: every band under
+        # ALG_RACK_FREEZE=all, the LEAF band alone under `leaf` (Bryce, 2026-10-05: "freeze what the
+        # certificate certifies, leave open what it does not" — the certificate certifies the VALUE;
+        # the root/branch dims of a dry slot keep their ordinary update, damping share included, so
+        # the consults' feedback can still move the binding), and no freeze at all under `none` (this
+        # block is skipped; the claim mask alone). Under every footprint the damping's rule: never
         # the clock planes — the clock is the timestamp every head reads, and a frozen clock would
         # present the dry slot to every later readout as a slot from its consult breath; the commit
         # carries the VALUE, not the time). `_old` = the state that entered this breath (the same

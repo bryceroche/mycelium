@@ -107,7 +107,7 @@ REFUSED = ("ALG_SHELF", "ALG_WHIP", "ALG_TOKLOOP", "ALG_WRITEBACK", "ALG_KANNEAL
            "ALG_SPAN_ARGS", "ALG_SPAN_OP", "ALG_SPAN_OP_ROAD", "ALG_PTR_SURF",
            "ALG_BUSREG", "ALG_VALREG", "ALG_VALREG_ADDR", "ALG_BUSREG_SEAL", "ALG_BUSREG_PREDMAP", "ALG_VALREG_LIVE", "ALG_BUSREG_RAMP", "ALG_IDKEY", "ALG_ALT3", "ALG_NEST", "ALG_UNLOCK", "ALG_MATRY", "ALG_SW_TICK", "ALG_LIVE_FACTS", "ALG_TREE", "ALG_TREE2", "ALG_TREE_NUMW", "ALG_CARIC", "ALG_TREECODE", "ALG_TREE_NOPOOL",   # THE BUS REGISTER + THE VALUE STREAM + THE SEALED VALUE ARM (2026-09-22/23): their per-rung terms live in the fused forward()'s loop/ladder only
            "ALG_CERT", "ALG_CERT_IMPLIED", "ALG_CERT2", "ALG_HIER_READ", "ALG_HIER_WAIST", "ALG_HIER_DAMP", "ALG_HIER_TAU",   # THE TRAINED CERTIFIER-MASK ROAD (2026-09-28): rides ALG_ALT3's own consult, already refused above; named separately so a future narrowing of the ALG_ALT3 refusal does not silently let this through too
-           "ALG_RACK", "ALG_RACK_TESTS",   # THE RACK (2026-10-05): rides the consults' rack3/rack5 ports inside the fused forward's loop — the walker threads neither
+           "ALG_RACK", "ALG_RACK_TESTS", "ALG_RACK_FREEZE",   # THE RACK (2026-10-05): rides the consults' rack3/rack5 ports inside the fused forward's loop — the walker threads neither
            "ALG_EYES", "ALG_EYES_HARD", "ALG_EYES_BASE",   # THE EYES (2026-10-05): the picture reads ctx["fat0"] and the hands live in state["eyes_m"] — the walker's own ctx/state carry neither; the family env must name them explicitly (the ALG_HIER_TAU pattern)
            "ALG_SPAN_RCUE", "ALG_SPAN_ARCUE",   # THE ROLE SIGNATURE (2026-09-22): same
            # reason as ALG_SPAN_ARGS/ALG_SPAN_OP above — the walker's per-seam heads_of
