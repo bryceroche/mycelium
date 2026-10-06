@@ -47404,3 +47404,28 @@ claimed-mass tables; HS_241 parity as its gate) is delegated, zero GPU on CPU; t
 in the tail chain for information. The tail chain (.cache/rack_tail.sh; the sed fixed with "|") is
 queued as pc-queue-rack-tail behind "RKC chain exit": golden24, the band probe, the plain membrane,
 RKC's dry census, THE BAR (RK vs RKC paired), reads.py ingest.
+
+### 2026-10-06 (14:31) — BRYCE: the consults' rhythm cost and the learned caricature jury; THE RHYTHM CONCERN RE-BASED on the record (the facts-coverage mismatch, not rhythm); THE CARICATURE JURY (form 2) delegated
+
+Bryce: "consulting the math solver should be natural and expected — the whole point is alternation;
+that consulting mid-breath throws off the model's rhythm concerns me"; "the hard-coded text rules
+for the jurors must be replaced with a learned component; the caricature idea — exaggerate the
+differences." (1) THE CORRECTION: the consult bodies (CL, CL2, RK, RKC) are trained FROM SCRATCH
+WITH the three consults in the loop (ALT3 at train + read, identical); the machine is born
+breathing around them — the relay's "free diver surprised by a stop" is not the mechanism. The
+mint cost (-0.05 on every consult body) has a registered cause (09-23): THE FACTS-COVERAGE
+MISMATCH — dense facts from the gold graph at training, sparse pass-1 singletons at read (3.4 vs 11
+per wild row); the model leans on a crutch absent at read, and mint (the register where the crutch
+is strongest) pays. The fix exists: ALG_LIVE_FACTS (the solver's actual pass-1 facts at training),
+null as a warm continuation ("the road bites from scratch", PMLF registered 09-24). REGISTERED: the
+next rack arm = the rack + live facts from scratch (RKL_241 vs RKLC_241), after tonight's bar;
+needs the word. (2) THE CARICATURE JURY = the courtroom's form 2 made exact: the courtroom already
+subtracts the average face (the discriminating slots + span on 99.7 % of pairs); the juror now
+LEARNS the amplified difference — the trunk's embedding of the span minus the text's, both bindings'
+structure on the differing slots, the hand certificates as A-minus-B features, never the model's
+likelihood; antisymmetric; trained on the diet slice's banked candidates (gold-consistent story vs
+each consistent wrong story, swap-augmented; GroupKFold by row); plugged into the courtroom's
+cross-examination; the margin tuned on the diet; ONE wild read vs the picker's bar (rows >= 24,
+regressions <= 2). Nuance banked: the caricature margin INSIDE the head nulled twice (CR, PMC8) —
+a training-time pointer margin; a learned pairwise juror at read is a different organ (the learned
+picker's 19 is its precedent). Delegated (sonnet), zero GPU.
