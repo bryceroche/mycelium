@@ -47011,3 +47011,27 @@ no temperature, no unbounded field; the soft output trains the picture, the hard
 read. Bounded alternatives (tanh-clipped field) are soft instruments and stay unregistered. Caveats:
 n small (28 / 50); the 4-bin token typing is coarser than the census's pyramid (direction agrees);
 no causal mask-zeroing intervention run.
+
+### 2026-10-06 (06:45) — WORD GIVEN: THE LEARNED PERCEIVER v1 (Bryce: "train a small learned perceiver with the saved telemetry"); the two laws that shape it; bars pinned
+
+THE LAWS: (1) the wild holdout is MEASURED, never trained on — the trajectories on disk
+(clock_band_states_*, membrane_raw_wild_*, the per-breath raw heads adaptive_stop dumps) are all
+WILD and are the perceiver's MEASUREMENT, never its diet; the perceiver trains on the diet's held-out
+slice (.cache/form_pm35c_slice1024_valid2.jsonl, 775 rows; gold from the harvest via the custody
+door) whose trajectories must first be COLLECTED (CPU, overnight, beside the card: states per breath,
+the head-mean attention per breath, every breath's heads + the judge's verdict per breath); (2) THE
+GOODHART FENCE: the perceiver is trained ON diagnostics (entropy, atlas distance, concentration, the
+certifier score, solver status) and its output NEVER enters the head's loss — it emits discrete
+decisions at read (stop / commit / release), the telegraph's operator, never a gradient into the
+body. THE FORM: input = the movie per slot (breaths 0..6 x features: the slot's attention entropy,
+argmax band, numeral-argmax share, cosine to the given / rel centroids, the leaf-band change, the
+row's certifier score, the solver status per breath, the parse-space count per breath where
+available); a 1-D conv over breaths + a tiny MLP (< 20k params, CPU); heads: COMMIT (per slot:
+P(right at the end)), STOP (per row: P(the judge passes at this breath)). Training: GroupKFold by row
+on the slice; the baselines it must beat are the fixed rules (entropy threshold for commit; the
+judge alone for stop). BARS (pinned): on the slice CV, per-slot commit AUROC >= the entropy
+baseline + 0.05; on ONE wild read (PMS8_241 first): stop-by-perceiver rows >= the last-breath read
+and regressions <= 2; commit precision at the operating point that fires on >= 20 % of slots
+>= 0.90 (the rack's admission bar — a learned dryness test); the rack's given_unique at 0.58
+positional / 0.97 numeral is the reference. KILL: wild AUROC below the entropy baseline. Delegated
+(sonnet): scripts/perceiver_collect.py (CPU unit) + scripts/perceiver_train.py.
