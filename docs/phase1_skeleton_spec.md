@@ -47347,3 +47347,20 @@ to top-1 outright. Artifacts: scripts/courtroom.py; .cache/courtroom_PMS8_241.{t
 .cache/courtroom_diet_PMS8_241.{txt,pkl} (diet tune + parity); candidates reused from
 .cache/picker/cand_{diet,wild_PMS8_241}.pkl (the panel picker's own banked generation, parity-
 checked by text before use, never regenerated).
+
+### 2026-10-06 (13:35) — THE COURTROOM'S READING (after the 13:38 entry): the jury as built is INERT (14 / 311 = top-1, 0 regressions, 0 fixes); the stories are told apart by nothing we have un-trained; THE TRAINED JUROR registered as form 2
+
+The three jurors (the text certificates restricted to the differing slots, the unexplained-numeral
+count, the collision count) with a Copeland tally and a margin never beat top-1 on the diet at any
+tau (309 vs 310 at the plateau) and at tau 6 replaced nothing on wild: in 239 / 311 rows some other
+story out-scored top-1 but never by the margin, in 49 the incumbent already won. READING: the
+un-trained certificates do not separate two solver-consistent stories on their discriminating span —
+pairwise or not; the panel picker's 19 (with 4 regressions) came from a LEARNED weighting of the
+same angles, and MCTS's 14 / the courtroom's 14 / the judge's 18 bracket what un-trained rules can
+do. The fingerpost holds (refusal kept the regressions at zero) and the competition idea is not
+refuted — the jurors are. FORM 2 (registered, needs the word): THE TRAINED JUROR — a pairwise
+certifier trained on (text, story A, story B) -> which is gold, on the harvest's annotated rows and
+the diet slice (gold graphs from the custody key; never wild), reading the discriminating span and
+the two stories' bindings; the courtroom's step 3 swaps it in; the same bars (rows >= 24,
+regressions <= 2). Prior: moderate — the picker's learned jury already got 19; a span-level pairwise
+juror is the picker trained on the right question.
