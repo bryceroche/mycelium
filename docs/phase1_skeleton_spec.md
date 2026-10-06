@@ -47172,3 +47172,26 @@ silently transposed the band-change arrays was caught in the smoke and fixed. Th
 my GPU-stage request on the task's own no-GPU constraint (correct); the CPU chain's pace (~32 s per
 8 rows; ~3.5 h total) stands. pc-perc-train is to wait on the chain and run the CV then the single
 wild evaluation against the pinned bars; the report lands in .cache/perceiver_v1_PMS8_241.txt.
+
+### 2026-10-06 (12:13) — THE SHOAL'S FOURTH VISIT (Bryce: "a herring only talks to its 7 nearest neighbours"): THE COLLISION READ (zero GPU) — active slots do NOT sit on each other in state space; the twins collide in what they point at, not where they are
+
+The record first: GUT #62 (07-24) THE SHOAL LAW — local consensus guarantees agreement, not
+correctness; the solver crosses that boundary; the shoal names it. 09-12: THE SHOAL IS A BANKED NULL
+as a structure-following mixer mask (ALG_SLOT_ALL's removal cost was zero: in parsing the structure
+is the output); flash expansion = the restart law. TODAY'S NEW QUESTION: a shoal has three zones —
+attraction (long range), alignment (mid), REPULSION (short) — and our mixer is attention: attraction
+only. Are the twin errors two fish on one point? THE READ (the band-probe states, 311 x 6 x 24 x 512,
+cosine between ACTIVE (gold) slots' content states; the masked positional verdict): pairs with cos
+> 0.95 among active slots = 0.000 / 0.001 / 0.001 at b1 / b3 / b6 on PMS8_241 (HS 0.000 / 0.003 /
+0.005; HSd 0.000 / 0.002 / 0.004); slots in such a pair 0.4 % (HS 2.0 %, HSd 1.3 %) — and those few
+are wrong 100 % of the time (n ~ 10-40; the base wrong rate 0.65). (Over ALL 24 slots the pair
+collision is 6-27 % — the EMPTY slots collapse together, a bookkeeping fact, not a shoal fact.)
+READING: the states are spread; two twins are distinguishable fish that point at the same numeral /
+entity — the collision is in the MEMBRANE (what they claim), already measured (69 % of rows have
+given-numeral collisions; the twin wall); a repulsion zone in state space would push apart what is
+already apart. The shoal's zones map: attraction = the mixer (load-bearing, -0.025), alignment = the
+clock (one turn for all), repulsion = THE CLAIM (one numeral, one owner: the rack's mask and the
+Sinkhorn balance are repulsion in token space, the only space where the fish touch). The "7 nearest
+neighbours" rule is topological (the starling result) and is what softmax attention already does
+softly; the effective k of the mixer (exp of its attention entropy per slot) is a cheap unmeasured
+census, registered, low prior.
