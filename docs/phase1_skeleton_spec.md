@@ -47246,3 +47246,5 @@ when the winner's lead clears tau (tuned on the diet slice's 775 rows, never on 
 and keep top-1. BARS (the picker's): rows >= 24, regressions <= 2; the bailiff is never overridden
 (a story the solver rejects cannot win). Cautions banked: no CSP for language; the jury's errors
 correlate with the model's; the certifier is a witness, not a judge. Needs the word; a day of CPU.
+
+### 2026-10-06 (13:17) — WORD GIVEN FOR THE COURTROOM (Bryce: "word given for the courtroom brother -- Salute!"); delegated (sonnet): scripts/courtroom.py, zero GPU, tau tuned on the diet slice only, one wild read against the picker's bar.
