@@ -46780,3 +46780,32 @@ rule in the solver's terms; exploration stays alive without trusting confidence)
 (no freeze) is the BISECT if form 2b nulls, not a lost arm. Knob: ALG_RACK_FREEZE = all | leaf | none
 (default all reproduces the gate); RK_241 runs ALG_RACK=1 ALG_RACK_TESTS=given_unique
 ALG_RACK_FREEZE=leaf; the chain updated; the ready flag returns when the knob's gate lands.
+
+### 2026-10-05 (19:07) — THE CONTINUOUS / DISCRETE TOOLKIT (Bryce: "ramp up the alternation to the max; map the continuous to the discrete and back"); THE ATLAS'S FORM sharpened; the radius read fired (zero GPU)
+
+Bryce's pairs: the T6 six-wave clock (continuous) / the four-beat metronome (discrete); dynamic
+masking (continuous) / the differentiable circuit breaker (discrete). Answer banked. BUILT ON BOTH
+SIDES: clock (six-wave + bus rotation / conductor(kb) + the consult ticks at kb 2, 4); state (the
+T256 bus / the decoded factor graph — decode one way, the facts buffer and now the rack the other);
+values (digit logits / the numeral legality mask — the strongest discrete road, z 7-8, the telegraph's
+precedent); adjustment (the eyes' soft mask / the rack's claim + leaf freeze). ONE HALF MISSING:
+search (the eyes / MCTS over PARSE candidates with the solver as judge — the combined oracle's 43 of
+311 and the judge's zero regressions are the discrete half's room; the June law binds: no neural
+guidance of clean-CSP search); time (seven fixed breaths / adaptive stopping on solved + unique —
+registered in Part 2, cheap); text certification (nl_certifier's score / the discrete certificates
+the rack admits). RETIRED HALF: continuous feedback (the route bias) — nulled in every form; the
+telegraph alphabet (claim, freeze-leaf, write-value, release) is the feedback toolkit, whole.
+THE ATLAS (hill 6; Bryce's gut: six or seven versions of each centroid, one per op per breath):
+sharpened by the two-channel law (angle = identity, radius = consolidation; the content planes
+already canon): ONE centroid per op holds the ANGLE across breaths and a per-breath Welford variance
+holds the RADIUS — the tightening without seven copies (seven free centroids = 7x the data per cell;
+percentages smuggle repetition at small n). Its discrete partner = the solver's predicate registry
+(the op palette); the interface = the ftype head's argmax; the PERCEIVER (hill 3) is the reader of
+the continuous side (atlas distance, entropy, certifier score) that emits the discrete decisions
+(consult now / release / stop) — the last unbuilt organ in this frame. A MEASURABLE CLAIM BEFORE A
+BUILD: do the op-kind centroids' radii tighten breath by breath while the angle holds, on the banked
+band-probe states of PMS8_241 / HS_241 / HSd_241 (content dims; gold kinds from the custody key)?
+scripts/atlas_radius_read.py fired (zero GPU); banked below whichever way it falls. Prediction
+(registered): on PMS8 the radius does not tighten after breath 1 (the one-rate settling, the drift);
+on the hierarchical bodies it tightens in the root and branch and the nearest-centroid accuracy
+holds instead of falling.
