@@ -220,7 +220,28 @@ def read(ckpt, data=None, p=None):
     from phase1_algebra_head import L_TOT as _LTOT3
     _LEGAL = os.environ.get("LV_LEGAL", "") == "num"   # THE NUMERAL MASK (2026-09-17, a read-time road): legal values only — mycelium.rulebook
     if _LEGAL:
-        from mycelium.rulebook import legal_digit_logits as _legal_digit_logits
+        from mycelium.rulebook import legal_digit_logits as _legal_digit_logits, legal_values as _legal_values, choose_legal as _choose_legal, digits_of as _digits_of
+        # THE CHALKBOARD'S LEGALITY CHANGE (2026-10-05, branch rack3; worktree-only edit, per the
+        # build's own instruction — loop_val.py in the main checkout is off-limits, this copy is
+        # not): "a derived value IS a legal numeral for the digit path." mycelium/rulebook.py's
+        # legal_values/legal_digit_logits read ONLY the text (no row-specific state); rather than
+        # thread a chalk-values argument through that shared, two-door rulebook (the admission door
+        # has no row-level chalk state to offer either), THE NUMERAL MASK's reader-side call is
+        # widened HERE, in the one door this mask actually walks (LV_LEGAL=num): a row's ACTIVE
+        # chalk block (chalk5 — consult 2 supersedes consult 1, exactly as the bank itself reads it
+        # from breath 5 on) contributes its filled slots' numerals to the legal set a given's digit
+        # argmax is rewritten toward. Off (ALG_CHALK=0, or LV_LEGAL unset): bit-identical — the
+        # extra set is always empty, `_legal_digit_logits` is still the one called.
+        def _legal_digit_logits_chalk(dig_logits, text, chalk_vals, nd=None):
+            nd = nd or dig_logits.shape[0]
+            vals = sorted(set(_legal_values(text, nd)) | set(chalk_vals))
+            v = _choose_legal(dig_logits, vals, nd)
+            if v is None:
+                return None
+            fake = np.full_like(dig_logits, -1e9)
+            for d, dd in enumerate(_digits_of(v, nd)):
+                fake[d, dd] = 0.0
+            return fake
     _LEGAL_ARGS = os.environ.get("LV_LEGAL_ARGS", "")   # THE LEGAL-POINTER MASK (2026-09-21): "intro" | "prefix" | "index" | "" — mycelium.rulebook, composes with LV_LEGAL=num
     assert _LEGAL_ARGS in ("", "intro", "prefix", "index", "index2"), f"LV_LEGAL_ARGS wants intro|prefix|index|index2, got {_LEGAL_ARGS!r}"
     if _LEGAL_ARGS:
@@ -367,7 +388,8 @@ def read(ckpt, data=None, p=None):
         _mha_t = (Tensor(_ATAB[_lvai], dtype=dtypes.float)
                   if _ATAB is not None else None)
         _alt3 = int(os.environ.get("ALG_ALT3", "0")) != 0
-        f3_t = f5_t = c3_t = c5_t = r3_t = r5_t = None
+        f3_t = f5_t = c3_t = c5_t = r3_t = r5_t = k3_t = k5_t = None
+        k5_np = None; _ACHALK = False   # THE CHALKBOARD (2026-10-05, branch rack3): defaults off the ALT3 path (no consult, nothing to chalk)
         if _alt3:
             # THE THREE CONSULTS at read (2026-09-24): the same three curbs
             # the trainer walks — a partial pass to breath 2, the solver's
@@ -378,7 +400,8 @@ def read(ckpt, data=None, p=None):
                                              certifier_bias as _certb, T_ALG as _T3,
                                              ALG_CERT as _ACERT, ALG_CERT_IMPLIED as _ACERTI,
                                              rack_pack as _rackp, ALG_RACK as _ARACK, ALG_RACK_TESTS as _ARACKT,
-                                             ALG_RACK_RELEASE as _ARELEASE, rack_release_rows as _rrrows)   # THE RACK (2026-10-05) + FORM 3 (branch rack3)
+                                             ALG_RACK_RELEASE as _ARELEASE, rack_release_rows as _rrrows,
+                                             chalk_pack as _chalkp, ALG_CHALK as _ACHALK, ALG_CHALK_N as _ACHALKN)   # THE RACK (2026-10-05) + FORM 3 + THE CHALKBOARD (branch rack3)
             _ck3 = ("pres", "ftype", "op", "dig", "args", "res") + (("dup",) if "dup" in o0 else ())
             _nv3 = np.array([vs[int(i)].get("n_vars", _KV3) for i in sl_p])
             _ma3 = np.array([vs[int(i)].get("m", 0) for i in sl_p])
@@ -409,14 +432,21 @@ def read(ckpt, data=None, p=None):
                         released_out[:] = _rmask
                     rk = _rackp(rows3, fb, texts3, _T3, _ARACKT, prev=rack_prev, detail=rack_detail)
                     rk_t = Tensor(rk, dtype=dtypes.float)
-                return Tensor(fb, dtype=dtypes.float), cb_t, rk_t, rk
+                kk_t = kk = None
+                if _ACHALK:
+                    # THE CHALKBOARD (2026-10-05, branch rack3): chalk_pack's host form, the SAME
+                    # function _consult_into calls — no union across consults (chalk5 supersedes).
+                    rows3c = rows3 if (_ACERT or _ACERTI or _ARACK) else [{k: onp3[k][bi] for k in onp3} for bi in range(len(sl_p))]
+                    kk, _ = _chalkp(rows3c, fb, vtk[sl_p], _T3, _ACHALKN)
+                    kk_t = Tensor(kk, dtype=dtypes.float)
+                return Tensor(fb, dtype=dtypes.float), cb_t, rk_t, rk, kk_t, kk
             _rk_d1 = [] if (_ARACK and _RACKSIDE is not None) else None
             _oa3 = _rf(forward, p, ts, tk, se, keys=_ck3, slot_mask=_mk3, xcorr=xcorr_t, hud=hud_t, tree=tree_t, ident=ident_t, stop_after=2)
-            f3_t, c3_t, r3_t, r3_np = _consult3(_oa3, rack_detail=_rk_d1)
+            f3_t, c3_t, r3_t, r3_np, k3_t, _ = _consult3(_oa3, rack_detail=_rk_d1)
             # pass b runs breaths 3-4 too — it must see cert3 / rack3 (kb >= 3) the same as the full pass below
-            _ob3 = _rf(forward, p, ts, tk, se, keys=_ck3, slot_mask=_mk3, xcorr=xcorr_t, hud=hud_t, tree=tree_t, ident=ident_t, stop_after=4, facts3=f3_t, cert3=c3_t, rack3=r3_t)
+            _ob3 = _rf(forward, p, ts, tk, se, keys=_ck3, slot_mask=_mk3, xcorr=xcorr_t, hud=hud_t, tree=tree_t, ident=ident_t, stop_after=4, facts3=f3_t, cert3=c3_t, rack3=r3_t, chalk3=k3_t)
             _rk_d2 = [] if (_ARACK and _RACKSIDE is not None) else None
-            f5_t, c5_t, r5_t, r5_np = _consult3(_ob3, rack_prev=r3_np, rack_detail=_rk_d2, released_out=_rel2)
+            f5_t, c5_t, r5_t, r5_np, k5_t, k5_np = _consult3(_ob3, rack_prev=r3_np, rack_detail=_rk_d2, released_out=_rel2)
             if _rk_d2 is not None:   # THE RACK's SIDECAR: the flags the body committed by its last consult (both consults' union), per real row (the DRY CENSUS reads it exactly)
                 for bi, i in enumerate(sl):
                     _RACKSIDE.append((int(i), r5_np[bi, :_LTOT3].copy(),
@@ -428,7 +458,8 @@ def read(ckpt, data=None, p=None):
                 xcorr=xcorr_t, hud=hud_t, tree=tree_t, ident=ident_t, pmask=cert_t,   # THE READ-TIME CERTIFIER MASK (LV_CERTMASK)
                 valfact=(fact_t if float(os.environ.get("ALG_VALREG", "0")) or float(os.environ.get("ALG_VALREG_ADDR", "0")) else None),   # THE VALUE STREAM: the live pass-1 facts
                 facts3=f3_t, facts5=f5_t, cert3=c3_t, cert5=c5_t,   # THE TRAINED CERTIFIER-MASK ROAD
-                rack3=r3_t, rack5=r5_t)   # THE RACK (2026-10-05)
+                rack3=r3_t, rack5=r5_t,   # THE RACK (2026-10-05)
+                chalk3=k3_t, chalk5=k5_t)   # THE CHALKBOARD (2026-10-05, branch rack3)
         onp = {k: o[k].realize().numpy() for k in
                (("pres", "ftype", "op", "islit", "dig", "args", "res")
                 + (("dup",) if "h_dup" in p else ()))}
@@ -449,12 +480,21 @@ def read(ckpt, data=None, p=None):
                 # slot below.
                 _pres_row = onp["pres"][bi] > 0
                 _res_row = onp["res"][bi].argmax(-1)
+            _chalk_vals_row = ()
+            if _LEGAL and _ACHALK and k5_np is not None:
+                # THE CHALKBOARD'S LEGALITY CHANGE: this row's active (consult-2) chalk numerals,
+                # MSD-first 3 digits -> an int, one per filled (presence > 0) slot — computed once
+                # per row, folded into every slot's legal set below (THE NUMERAL MASK composes).
+                _cp_row = k5_np[bi, :, 0] > 0
+                _chalk_vals_row = tuple(int(d0 * 100 + d1 * 10 + d2) for d0, d1, d2 in
+                                        k5_np[bi, _cp_row, 1:4].astype(int).tolist())
             for j in range(L_FAC):
                 if vg["presence"][i, j] < 0.5:
                     continue
                 n_tot += 1
                 if _LEGAL and vg["ftype"][i, j] != 0 and int(onp["ftype"][bi, j].argmax()) != 0:   # THE NUMERAL MASK (LV_LEGAL=num): one rulebook, two doors
-                    _fake = _legal_digit_logits(onp["dig"][bi, j], vs[int(i)]["text"])
+                    _fake = (_legal_digit_logits_chalk(onp["dig"][bi, j], vs[int(i)]["text"], _chalk_vals_row)
+                            if _chalk_vals_row else _legal_digit_logits(onp["dig"][bi, j], vs[int(i)]["text"]))
                     if _fake is not None: onp["dig"][bi, j] = _fake
                 f_pres = bool(onp["pres"][bi, j] > 0)
                 f_ftype = int(onp["ftype"][bi, j].argmax()) == vg["ftype"][i, j]

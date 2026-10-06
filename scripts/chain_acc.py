@@ -61,12 +61,13 @@ def main():
         _fb_t = Tensor(alt2_fact_buf(_oa, se.numpy(), nv, ma), dtype=dtypes.float)
         _valreg_on = bool(float(os.environ.get("ALG_VALREG", "0")) or float(os.environ.get("ALG_VALREG_ADDR", "0")))
         _alt3 = int(os.environ.get("ALG_ALT3", "0")) != 0
-        f3_t = f5_t = c3_t = c5_t = r3_t = r5_t = None
+        f3_t = f5_t = c3_t = c5_t = r3_t = r5_t = k3_t = k5_t = None
         if _alt3:   # THE THREE CONSULTS at read (2026-09-24): the trainer's three curbs, eager here
             from phase1_algebra_head import (certifier_bias as _certb, T_ALG as _T3,
                                              ALG_CERT as _ACERT, ALG_CERT_IMPLIED as _ACERTI,
                                              rack_pack as _rackp, ALG_RACK as _ARACK, ALG_RACK_TESTS as _ARACKT,
-                                             rack_release_rows as _rrrows)   # THE RACK (2026-10-05) + FORM 3 (branch rack3)
+                                             rack_release_rows as _rrrows,
+                                             chalk_pack as _chalkp, ALG_CHALK as _ACHALK, ALG_CHALK_N as _ACHALKN)   # THE RACK (2026-10-05) + FORM 3 + THE CHALKBOARD (branch rack3)
             _ck3 = ("pres", "ftype", "op", "dig", "args", "res") + (("dup",) if "dup" in o0 else ())
             _mk3 = Tensor(mk, dtype=dtypes.float)
             _texts3 = [vs[int(i)]["text"] for i in sl_p]
@@ -76,7 +77,7 @@ def main():
                 # just forced, straight into certifier_bias.
                 onp3 = {k: oo[k].numpy() for k in _ck3}
                 fb = alt2_fact_buf(onp3, se.numpy(), nv, ma)
-                cb_t = rk_t = rk = None
+                cb_t = rk_t = rk = kk_t = None
                 rows3 = [{k: onp3[k][bi] for k in onp3} for bi in range(len(sl_p))]
                 if _ACERT or _ACERTI:
                     cb_t = Tensor(_certb(rows3, fb, _texts3, _T3, _ACERT, _ACERTI), dtype=dtypes.float)
@@ -87,13 +88,16 @@ def main():
                     rack_prev, _, _, _ = _rrrows(rows3, _texts3, ma, nv, rack_prev)
                     rk = _rackp(rows3, fb, _texts3, _T3, _ARACKT, prev=rack_prev)
                     rk_t = Tensor(rk, dtype=dtypes.float)
-                return Tensor(fb, dtype=dtypes.float), cb_t, rk_t, rk
+                if _ACHALK:   # THE CHALKBOARD (2026-10-05, branch rack3): chalk_pack's host form, the SAME function _consult_into/loop_val call
+                    kk, _ = _chalkp(rows3, fb, vtk[sl_p], _T3, _ACHALKN)
+                    kk_t = Tensor(kk, dtype=dtypes.float)
+                return Tensor(fb, dtype=dtypes.float), cb_t, rk_t, rk, kk_t
             _oa3 = forward(p, ts, tk, se, slot_mask=_mk3, hud=hud_t, tree=tree_t, ident=ident_t, stop_after=2)
-            f3_t, c3_t, r3_t, r3_np = _consult3(_oa3)
+            f3_t, c3_t, r3_t, r3_np, k3_t = _consult3(_oa3)
             # pass b runs breaths 3-4 too — it must see cert3 / rack3 (kb >= 3) the same as the full pass below
-            _ob3 = forward(p, ts, tk, se, slot_mask=_mk3, hud=hud_t, tree=tree_t, ident=ident_t, stop_after=4, facts3=f3_t, cert3=c3_t, rack3=r3_t)
-            f5_t, c5_t, r5_t, r5_np = _consult3(_ob3, rack_prev=r3_np)
-        o = forward(p, ts, tk, se, slot_mask=Tensor(mk, dtype=dtypes.float), fact_buf=(None if _alt3 else _fb_t), hud=hud_t, tree=tree_t, ident=ident_t, valfact=(_fb_t if _valreg_on else None), facts3=f3_t, facts5=f5_t, cert3=c3_t, cert5=c5_t, rack3=r3_t, rack5=r5_t)   # THE VALUE STREAM: the live pass-1 facts; THE THREE CONSULTS' facts; THE TRAINED CERTIFIER-MASK ROAD; THE RACK
+            _ob3 = forward(p, ts, tk, se, slot_mask=_mk3, hud=hud_t, tree=tree_t, ident=ident_t, stop_after=4, facts3=f3_t, cert3=c3_t, rack3=r3_t, chalk3=k3_t)
+            f5_t, c5_t, r5_t, r5_np, k5_t = _consult3(_ob3, rack_prev=r3_np)
+        o = forward(p, ts, tk, se, slot_mask=Tensor(mk, dtype=dtypes.float), fact_buf=(None if _alt3 else _fb_t), hud=hud_t, tree=tree_t, ident=ident_t, valfact=(_fb_t if _valreg_on else None), facts3=f3_t, facts5=f5_t, cert3=c3_t, cert5=c5_t, rack3=r3_t, rack5=r5_t, chalk3=k3_t, chalk5=k5_t)   # THE VALUE STREAM: the live pass-1 facts; THE THREE CONSULTS' facts; THE TRAINED CERTIFIER-MASK ROAD; THE RACK; THE CHALKBOARD
         onp = {k: o[k].numpy() for k in KEYS}; qv = o["query"].numpy().argmax(-1); qlog = o["query"].numpy()
         if rawdump is not None:   # CA_RAWDUMP=path: every slot's raw heads per row, for the annealed decode (2026-09-18)
             for bi, i in enumerate(sl):
