@@ -47195,3 +47195,29 @@ Sinkhorn balance are repulsion in token space, the only space where the fish tou
 neighbours" rule is topological (the starling result) and is what softmax attention already does
 softly; the effective k of the mixer (exp of its attention entropy per slot) is a cheap unmeasured
 census, registered, low prior.
+
+### 2026-10-06 (13:11) — THE LEARNED PERCEIVER v1 READ: the slice CV passes both commit bars, the ONE wild read misses all four — a learned signal transfers (AUROC 0.744 vs entropy 0.708) but is not a dryness test (precision 0.64 at 20 % coverage) and not a brake (9 rows vs 11, 3 regressions)
+
+Diet: the annotated slice (775 rows; commit + stop labels) + 2,000 raw GSM8K-train rows (stop labels
+only; wild excluded by src_idx and text); 5-fold GroupKFold by row; the net a 1-D conv over breaths
++ MLP (< 20k params, tinygrad CPU). SLICE CV — COMMIT: AUROC(model) 0.794 vs entropy-final 0.736 vs
+entropy-b0 0.602 (bar model >= entropy + 0.05: PASS, by 0.008); precision at 20 % coverage 0.912
+(bar >= 0.90: PASS); but FOLD 4 COLLAPSED (AUROC 0.500, no operating point: a degenerate fit —
+folds 0-3 read 0.838-0.910 and 0.963-1.000 precision; the mean is dragged by one dead fold: a
+training-stability bug, not a property of the signal). STOP on the slice: model 207 rows vs the judge
+alone 185 vs the last breath 268; regressions 76 — the stop head loses to the last breath on the diet
+too. THE WILD READ (once; the measurement): COMMIT AUROC 0.7441 vs entropy 0.7079 (+0.036; bar +0.05
+MISSED; the kill line (below entropy) clear); precision at 20 % coverage 0.6375 (bar 0.90 MISSED — a
+learned dryness test is NOT admitted; the rack's given_unique stands at 0.58 positional / 0.97
+numeral); STOP rows 9 vs the last breath's 11 (the script's own baseline; 14 of record pending the
+chain_acc verification), regressions 3 (bars MISSED). VERDICT: v1 does not fire. READINGS: (1) a
+trajectory-reader beats entropy on held-out wild by 3.6 points — the movie carries information the
+hydrometer does not, modestly; (2) the slice -> wild gap (precision 0.91 -> 0.64) is the diet gap:
+the slice is 27 % GSM8K and mostly short synthetic registers; the commit head learned the slice's
+easy slots; (3) the stop head never beat the last breath anywhere: on this body the last breath IS
+the best frame and the judge's early passes are the poison (as adaptive stopping read this morning).
+REGISTERED (not fired): v1b = the fold-4 stability fix (seed / LR / early stop on a held fold), the
+commit head trained on the slice's GSM8K rows only vs all (domain match), the parse-space count as a
+feature (now dumped per breath), and NO stop head until a body exists whose later breaths beat its
+first look. The perceiver stays a reader of metadata; its first commit role is as a FILTER beside
+the rack's certificate (both must fire), not instead of it.
