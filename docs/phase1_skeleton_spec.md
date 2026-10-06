@@ -46758,3 +46758,25 @@ with no params: 4 dry slots at consult 1, 5 by consult 2 on the fixture); rackpr
 written and the census's DRY branch verified on it. Unverified: the new ops under the AM driver (CPU
 only); consult-time decode (breath 2 / 4) vs the census's final-breath decode. The chain carries
 ALG_RACK_TESTS=given_unique on RK_241; the ready flag is set; pc-queue-rack fires after the eyes.
+
+### 2026-10-05 (18:02) — BRYCE'S RULING ON THE RACK: the full freeze VETOED; CLAIM + LEAF FREEZE (form 2b); release-on-contradiction registered (form 3)
+
+Bryce (relaying Gemini's counter-ruling, then choosing): "claim and leaf freeze. ideally we have
+alternation back and forth and a slow diffusion of the image coming into clear view over the breath
+cycles with MCTS considering many options and a gradual tightening of understanding and reduction of
+entropy. the hierarchical codebook is key in funneling the coarse to fine grain resolution."
+THE CRITIQUE BANKED: Gemini's "wrong drawer 40 %" is the positional per-slot metric scoring slot
+ORDER; the row read is order-free (a given in slot 7 instead of 3 with consistent args solves
+identically) — "paralysed MCTS" is not the failure. The real objection stands for a different reason:
+a slot's state carries value + role + args at once; the certificate certifies the VALUE only; the full
+freeze committed the BINDING (the actual wall, args 0.45) — exactly what the second consult's feedback
+should still correct. In the symbolic jaw commits are value assignments, never bindings.
+THE RULING: (1) the CLAIM mask stays (the numeral leaves the wet slots' reads); (2) the freeze holds the
+LEAF band only (the value planes; root / branch = the binding stay open to the consults): freeze what
+the certificate certifies, leave open what it does not — the first time the partition does work
+rather than get measured; (3) FORM 3 registered: RELEASE ON CONTRADICTION — a dry slot returns to the
+sink only when the solver proves the committed set inconsistent at the next consult (the alternation
+rule in the solver's terms; exploration stays alive without trusting confidence). The claim-only arm
+(no freeze) is the BISECT if form 2b nulls, not a lost arm. Knob: ALG_RACK_FREEZE = all | leaf | none
+(default all reproduces the gate); RK_241 runs ALG_RACK=1 ALG_RACK_TESTS=given_unique
+ALG_RACK_FREEZE=leaf; the chain updated; the ready flag returns when the knob's gate lands.
