@@ -1,19 +1,20 @@
-# NEXT SESSION — cold-start entry (updated 2026-10-05 14:40)
+# NEXT SESSION — cold-start entry (updated 2026-10-06 14:50)
 
-**THE CARD:** pc-queue1005 is running PMC8_241 (the caricature from scratch, 48k; ETA ~17:00 + reads), then pc-queue-eyes
-(armed; .cache/queue_eyes.sh) merges branch `eyes` (= conductor + the NOPOOL fix + ALG_EYES) into gen-weights, runs the
-post-merge CPU gate (.cache/eyes_merge_gate.log), picks the body by the pinned rule (-> HS_241, TAU 0: HSd_241 missed the
-paired bar by -0.0083) and fires EY_241 (.cache/eyes_chain.sh; log .cache/eyes_chain.log; verdict lines "masked wild",
-"paired", "chain-acc]", golden, membrane). Bars: ledger 2026-10-05 "THE EYES, registered as a build".
-**WORD GIVEN FOR EVERYTHING (Bryce, 10-05 ~13:35).** Pending verdicts to bank: PMC8_241 (bars: twin-pick <= 35 %, same-noun
-+0.03, masked >= -0.005, rows >= 14, digits not down), EY_241 (masked >= HS_241 + 0.015, rows >= 10, mint >= 0.576, digits,
-the wall >= +0.03 from 0.526, right-slot hit >= 0.72). Then: push gen-weights -> main; the eyes' second arm on the damped
-body (HSd_241 = the better-priced twin: mint 0.628, rows 10) if EY fires; the hard hand (the consistency judge's checked
-facts as a one-hot toggle) is the eyes' second form.
-**TODAY'S LEDGER (10-05):** the combined oracle bound (ceiling 43/311), the panel picker (19/311, bar missed), the T6 clock
-audit -> THE CONDUCTOR built (11/11 bit-identical), the unmerged NOPOOL fix found, THE EYES built + gated (8384f6ef),
-HSd_241 does not fire (mint bar met, drift cure kept, wall unmoved), the damping census (Laplace holds on both bodies).
-**Worktrees:** mycelium-wt4 (conductor), mycelium-wt5 (eyes) — remove after the merge lands (`git worktree remove`).
+**THE CARD:** pc-queue-rack3 is training RKC_241 (the rack's honest control: HS_241 + ALT3 + CERT, no rack; ~0.46 s/step, ends
+~19:30, reads after; its chain's tail will fail at a sed line as RK's did — expected); then pc-queue-rack-tail (.cache/rack_tail.sh)
+runs golden24, the band probe, the plain membrane, RKC's dry census and THE BAR: `paired masked wild RK_241 vs RKC_241` (>= +0.015;
+claim +0.020); then pc-chainacc-verify (the 11-vs-14 baseline). Logs: .cache/rack_chain_RKC.log, rack_tail.log, queue_rack_tail.log.
+**RK_241 (banked 14:06 + 14:3x):** slot flat (-0.004 vs HS_241), ROWS 17 masked = the row record, mint -0.046 (the consults' facts-coverage
+mismatch; fix = live facts from scratch, registered RKL/RKLC, needs the word); THE WALL MOVED (0.489 vs 0.526) for the first time; the hit
+fell (0.68 vs 0.76); the claim mask exact; committed numerals right 0.686 (the rack commits dirty dishes a third of the time at consult 1).
+RKC decides what is the rack's and what is the consults'.
+**CPU builders in flight:** THE CARICATURE JURY (scripts/jury_train.py; the courtroom's form 2; one wild read vs rows >= 24 / regressions <= 2).
+**Banked 10-06:** adaptive stopping (judge as brake) MISS; MCTS over parses NULL (= top-1); the courtroom (hand jurors) INERT; the learned
+perceiver v1 misses on wild (AUROC 0.744 vs entropy 0.708; precision 0.64); the lost night (one arm per chain; waiters match the failure
+vocabulary); the eyes autopsy (right sign, wrong instrument; telegraphic hands registered); the shoal's collision read (twins collide in
+the membrane, not the state); the blog post Concentration.
+**Branches:** rack3 (form 3 release-on-contradiction + the chalkboard, gated, unmerged; RK3 registered behind the rack verdict); worktree
+mycelium-wt6 on rack3. gen-weights is merged with conductor + eyes + rack; main was fast-forwarded at 21:3x on 10-05 (re-sync at the next boundary).
 
 ---
 (The previous entry follows, for the longer board.)
