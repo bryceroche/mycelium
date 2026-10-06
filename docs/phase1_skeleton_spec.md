@@ -47035,3 +47035,20 @@ and regressions <= 2; commit precision at the operating point that fires on >= 2
 >= 0.90 (the rack's admission bar — a learned dryness test); the rack's given_unique at 0.58
 positional / 0.97 numeral is the reference. KILL: wild AUROC below the entropy baseline. Delegated
 (sonnet): scripts/perceiver_collect.py (CPU unit) + scripts/perceiver_train.py.
+
+### 2026-10-06 (06:51) — THE PERCEIVER'S DIET RULED: raw GSM8K-train rows for the STOP head, the annotated slice for the COMMIT head; the wild holdout IS GSM8K (302 / 311) and is excluded by src_idx and text
+
+Bryce: "collect telemetry on GSM8K word problems instead of our own problems to train on." The
+facts (checked): the wild holdout's rows carry gen.src = 'gsm8k' with src_idx into the TRAIN split
+(302 / 311; 9 r7 rows) — wild is GSM8K, annotated; the diet slice valid2 (775) is mixed (gsm8k 212,
+svamp 91, asdiv 84, rendered-wild 44, none 61, ...); the raw dataset sits in the HF cache
+(.cache/gsm8k/datasets--openai--gsm8k; train 7,473 / test 1,319). THE RULING: (a) raw GSM8K-train
+rows carry only the final answer, so they can label ROW-level outcomes (does this breath's decode
+solve to the key?) and the parse-space meter — the STOP head trains on them (target 2,000 rows after
+dedup) plus the slice; (b) per-slot COMMIT labels need gold graphs — the commit head trains on the
+annotated slice only; (c) every wild row is excluded from the GSM8K pool by src_idx AND exact text;
+the test split stays untouched (a measurement set); (d) the relay's "trap" (the engine cannot read
+GSM8K) is refuted by the record: the lineage's diet is 65 % GSM8K-family prose and wild is GSM8K
+— the engine reads it at 0.33-0.35 per slot and 2-5 % per row; the perceiver's job is precisely to
+tell the settled rows from the confused ones on that distribution. Compute: 500 rows on CPU tonight;
+the rest on the card behind the rack chain's lock; the wild collect stays the measurement.
