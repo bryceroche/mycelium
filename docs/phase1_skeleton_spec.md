@@ -47158,3 +47158,17 @@ the parse-space meter can now run zero-GPU per breath. UNRESOLVED: the script's 
 reads 11 / 311 where the banked chain_acc read (09-22, pms8_chain.log) is 14 — solver-timing variance
 or a divergence; an unmodified chain_acc re-run is queued (pc-chainacc-verify, behind the lock);
 until it lands, 14 stays the number of record and the 11 is the script's own baseline.
+
+### 2026-10-06 (07:26) — THE LEARNED PERCEIVER v1: scripts built (ba8dd2ce: perceiver_collect.py, perceiver_train.py); the CPU collect chain running (diet slice -> wild measurement -> GSM8K-train 0:500 -> 500:2000); training auto-runs after
+
+The collect reuses adaptive_stop's per-breath decode / judge / certifier, membrane_scale's bands,
+the combined oracle's candidate generator (the parse-space count); per slot x breath: entropy,
+numeral share and mass, band, cosines to the predicted given / rel centroids, leaf / root / branch
+change; labels right_final (COMMIT) and judge_pass / key_match per breath (STOP, every breath, not
+only the first). Raw GSM8K-train rows embed through the frozen trunk on the fly (no gold -> STOP
+only); dedup against wild by gen.src_idx AND text — all 302 wild GSM8K rows' src_idx match the
+train parquet exactly (checked, not assumed); pool 7,473 - 302. A numpy advanced-indexing bug that
+silently transposed the band-change arrays was caught in the smoke and fixed. The builder refused
+my GPU-stage request on the task's own no-GPU constraint (correct); the CPU chain's pace (~32 s per
+8 rows; ~3.5 h total) stands. pc-perc-train is to wait on the chain and run the CV then the single
+wild evaluation against the pinned bars; the report lands in .cache/perceiver_v1_PMS8_241.txt.
