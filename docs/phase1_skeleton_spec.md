@@ -47890,3 +47890,21 @@ at the price of the hit (-0.08: the same lines knock right givens off their toke
 wrong and hurts the right: the lines' gain 2.0 was never censused on this body; on the plain
 chassis CL_241 moved neither). The schedule-collision pair (RKX / RKXC: the bands settle after the
 evidence) is the registered read of exactly this; ALG_CERT=1.0 is a knob to carry beside it.
+
+### 2026-10-06 (20:27) — THE STROKE PATIENT (Bryce: the hemispheres severed; the atlas as the graft between continuous NL and discrete math); the mapping banked — WHICH BRIDGE IS SEVERED
+
+Two bridges. RIGHT -> LEFT (language -> math) = the decode: the trained heads turn the state into a
+factor graph the solver executes — it works at the slot record, trained on gold; a centroid graft is
+a weaker copy of it (the NL atlas v0: 0.646 vs 0.72). LEFT -> RIGHT (math -> language) is the
+stroke: the solver's facts bypass the damped bands (the collision diagnosis); the certifier lines
+arrive as a SHOUT (gain 2.0: moves the wrong, knocks the right); the one road where math speaks in
+language's own medium — a derived value as a TOKEN (the chalkboard) — is built and unfired. The
+graft to grow is left -> right; the centroid-with-DSL picture points at the wrong bank.
+Rehabilitation as the project's laws: constraint-induced therapy = the residual-seal law (restrain
+the healthy path or the body survives without the organ); plasticity from gentle, timed signals =
+the mandatory-road + knob laws; the listening breath is timing, the gain is volume, the chalkboard
+is the signal in the right language. Split-brain failure = tasks needing both halves = the DERIVED
+quantity (identity in no token, 55 % of the wall): language cannot see it, math can compute it; only
+a bridge carrying math's value into the text's medium lets language point at it. THE THERAPY
+ORDER (registered): lower the shout (ALG_CERT 1.0 / 0.5 censused beside the schedule fix) -> the
+chalkboard (RK3) -> the hammerhead test for clean commits.
