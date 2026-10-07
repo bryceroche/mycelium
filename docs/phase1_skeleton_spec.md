@@ -48052,3 +48052,80 @@ design, not a bug a tap fix can close. Artifacts: .cache/rawslots_breaths_wild_P
 perceiver_telemetry_PMS8_241_pm35cslicevalid2.npz's final-breath labels — a re-collect for the learned
 perceiver v1 is Bryce's call, not fired here). RKP_241 ran unaffected throughout (confirmed alive,
 steady CPU%, at every poll).
+
+### 2026-10-06 (23:43) — THE HAMMERHEAD CENSUS (scripts/hammerhead_census.py, zero-GPU-design/CPU-forward; Bryce's hammerhead): VIEW UNANIMITY clears the dryness bar, at RICHER coverage than predicted; the AND with given_unique does NOT keep its coverage (majority does); breath-2 ≈ final throughout
+
+THE QUESTION: can VIEW UNANIMITY (the same claim under K=5 sentence-permutation views, tta_views.py's
+machinery — first/last sentence pinned, middle shuffled, seed 1000*k+i) serve as a SECOND dryness test
+for THE RACK, alone and crossed (AND) with given_unique? Bar (pinned before the run): numeral-level
+precision >= 0.90 (the claimed numeral is a gold GIVEN of the row), coverage reported.
+
+METHOD: per row, 5 views (original + 4 permuted); per view, PASS 1 (unmasked o0 -> build_slot_masks ->
+alt2_fact_buf's live facts for non-ALT3 bodies) then the main masked forward with ALG_MINE_BREATHS=1;
+breath 2 = out["heads_all"][2] (the position a consult body's consult-1 sits at), final = heads_all[-1].
+VIEW-ALIGNMENT: NOT by slot index j (the 24-slot factor bank is content-addressed by sentence order —
+unstable under permutation) but by ROLE = the decoded VARIABLE a given-slot assigns a value to (the
+var bank is letter-keyed, lexical, invariant to sentence order by construction — "mint packs letters
+consecutively"). Positional verdict (.cache/ps_legal_wild_<tag>.npz, a (row, slot-j) table from the
+body's own standard final-breath masked read) is looked up via view 0's OWN slot_j for that role — an
+approximation for the breath-2 condition (ps_legal_wild is a final-breath artifact; slot assignment is
+assumed stable across breaths, the same assumption the rack's own freeze makes). Gold: the custody door
+(.cache/phase1_alg_states_wildhold.npz's g_* arrays), never the fixture's own "factors" field.
+
+PMS8_241 (.cache/sharp_PMS8_241.safetensors; SURF8, no HIER/ALT3; 311 rows, 2051 gold slots / 1009 gold
+GIVEN; .cache/hammerhead_census_PMS8_241.txt), final breath:
+  given_unique            390 fires, 242 rows, cov 0.190, PRECISION 0.979
+  unanimous                661 fires, 283 rows, cov 0.322, PRECISION 0.970   <- CLEARS 0.90, richer coverage than predicted (~0.15)
+  majority                 832 fires, 311 rows, cov 0.406, PRECISION 0.965   <- clears too, richest coverage of all three
+  given_unique AND unanimous   307 fires, cov 0.150, PRECISION 0.984        <- clears, but coverage SHRINKS below given_unique's own (0.190)
+  given_unique AND majority    383 fires, cov 0.187, PRECISION 0.971        <- clears, coverage ~= given_unique's own (nearly unchanged)
+Breath 2 vs final: given_unique 0.976 vs 0.979, unanimous 0.966 vs 0.970 — flat (consistent with the
+drift record: a converged body's decode barely moves across breaths without a consult). Positional
+precision (ps_legal_wild, order-sensitive) sits far below numeral precision throughout (~0.50-0.65 vs
+~0.96-0.98) — the drawer-vs-dish gap, reproduced exactly as the 2026-10-05 admission census found it.
+Cost: 4922s wall / 5 views / 311 rows (CPU, batch 8; ~1230s per extra view) — a consult body training
+K views per consult would multiply its per-step cost by K.
+
+THE READING (the 6-line census, banked in .cache/hammerhead_census_PMS8_241.txt):
+1. unanimity alone CLEARS 0.90 (0.970), at coverage 0.322 — more than DOUBLE the ~0.15 predicted; a
+   genuinely useful second certificate, not a weak one.
+2. the AND (given_unique x unanimous) also clears 0.90 (0.984) but at coverage 0.150, BELOW given_
+   unique's own 0.190 — unanimity is pickier than predicted, so ANDing with it costs coverage rather
+   than confirming it near given_unique's own number.
+3. the AND keeps given_unique's coverage: NO for the unanimous AND (0.150 vs 0.190); the MAJORITY AND
+   is the one that nearly preserves it (0.187 vs 0.190) at comparable precision (0.971 vs 0.979) — a
+   near-redundant check (most given_unique claims already reach majority agreement), not a new signal.
+4. breath-2 ≈ final: no meaningful difference on this non-consult body.
+5-6. cost and the positional/numeral gap, as above.
+
+FOLLOW-UP (23:42, the coordinator's question: is RK_241's 0.686 consult-1 given_unique precision the
+consult chassis, the damped chassis, or the rack's own training?): the same breath-2/consult-1 census
+on HS_241 (.cache/sharp_HS_241.safetensors; SURF8 + ALG_HIER_READ/WAIST/DAMP=2,4,0, TAU=0 hard freeze,
+no consults) and RKC_241 (.cache/sharp_RKC_241.safetensors; the HS env + ALG_ALT3=1 ALG_CERT=2.0, the
+consult body WITHOUT ALG_RACK; breath 2 = consult-1 = forward(..., stop_after=2)'s own top-level output,
+no heads_all needed) — both niced CPU reads, concurrent with an active GPU training chain (RKP_241; its
+fact workers left unthrottled, the new jobs reniced via `nice -n 19` at launch — a live renice/
+set-property attempt on the already-running HS job failed, EPERM, under this sandbox; HS ran at normal
+priority, already well underway):
+  given_unique @ breath 2:  PMS8_241 0.976 (368 fires)  |  HS_241 0.978 (366 fires)  |  RKC_241 0.981 (362 fires)
+All three read within 1 point of each other — well inside noise at n~360-390. NEITHER chassis half (the
+damped hierarchical freeze, the three-consult cycle) is the weak link; both independently reproduce the
+~0.97-0.98 this census finds everywhere on this checkpoint family. RK_241's reported 0.686 (its OWN
+committed dry-census flags, ledger 2026-10-06 14:13) is therefore NOT a chassis property — it is most
+plausibly THE RACK'S OWN TRAINING (ALG_RACK=1, the one ingredient present in RK_241 and absent from both
+RKC_241 and HS_241): the freeze rewards an early claim whether or not it is right (a wrong frozen claim
+pays once, same as never claiming — no symmetric punishment the way an always-re-read slot gets), which
+plausibly loosens what given_unique certifies specifically among the claims the TRAINED rack selects,
+vs. the claims an untrained read (this census, or PMS8/HS/RKC's plain decode) would select from the same
+text. NOT YET MEASURED: given_unique on RK_241's OWN checkpoint via this same script (its decode claims,
+not its committed rack_pack flags) — near 0.97-0.98 would localize the gap to the COMMIT mechanism
+(rack_pack's union-over-consults selection), near 0.686 would mean the rack's training degrades the
+DECODE itself. Both tables + the 4-line reading appended to .cache/hammerhead_census_PMS8_241.txt
+(23:42 heading).
+
+UNVERIFIED / caveats banked: the positional lookup under breath-2 reuses a FINAL-breath ps_legal_wild
+table (slot-stability assumption, stated); "majority" needs >=3 of 5 views and is undefined (reported as
+a non-fire) below 3 agreeing views, so K=5's majority column would not be directly comparable at a
+different K; RK_241 itself was not read by this script (the coordinator's follow-up compares the two
+chassis halves, not the rack body) — the "not yet measured" item above remains open; no SE/z computed
+for the numeral-precision deltas between PMS8/HS/RKC (all n~360-390, visually flat, not pinned to a bar).
