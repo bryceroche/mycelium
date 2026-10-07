@@ -48448,3 +48448,62 @@ BARS (the registered v1b's): AUROC >= entropy + 0.05; precision >= 0.90 at >= 20
 PREDICTION (pinned): the flight path adds a few points over the final cosine (0.77 -> ~0.79); JS
 adds little over the cosines (the same information in another ruler); the learned commit reaches
 ~0.85 precision at 20 % — short of the dryness bar, because the wall's wrong slots look settled.
+
+### 2026-10-07 (11:51) — THE PERCEIVER v1b READ (141058f7; .cache/welford_atlas_PMS8_241_content_breaths.npz, .cache/perceiver_v1b_features_PMS8_241_{pm35cslicevalid2,wildhold}.npz, .cache/perceiver_v1b_PMS8_241.txt): BOTH BARS MISS on wild (AUROC 0.7200 vs entropy+0.05's 0.7579; precision 0.6058 vs 0.90) — v1b DOES NOT FIRE; the flight path's diet-CV jump (+0.17) far exceeds the prediction, JS's addition (+0.03) lands on it, and the dryness bar misses by far more than predicted
+
+THE BUILD: welford_atlas.py's build() now taps ALL K_B=7 breaths from the SAME diet forward pass
+(zero extra CPU cost beyond the existing ~16 min), writing a (kind,breath)/(knot,breath) library
+(5812 slots x 7 breaths; kind counts given 2550 / add 1242 / mul 359 / sub 919 / div 260) and caching
+the raw per-row states (states_all, 775x7x24x384 float16) so the feature step never re-forwards.
+VERIFIED: the new library's kb=6 cells equal the pre-existing final-only library's cells exactly
+(cos=1.000000, n matches, all 5 kinds) — the per-breath tap is the same data, not a different read.
+TAU: the sweep (own-kind softmax-probability AUROC vs diet right_final, final breath) was FLAT
+(0.5260-0.5343 across tau in [0.01,1.0], spread 0.0083 < the 0.01 floor) -> fixed at 0.1 per the
+pinned fallback. NOTE ON THE RULE'S READING: the raw cosine's own AUROC is tau-invariant by
+construction (a monotone rescaling of one number), so "the diet's AUROC of the final-breath cosine
+feature" was read as the softmax PROBABILITY MASS on the slot's own gold kind (tau-sensitive once
+>2 kinds compete) — stated here as an explicit interpretation choice, not a literal reading of the
+registration's words, since the literal reading has no tau-dependence to tune.
+
+SANITY CHECK (zero-GPU, a recompute of already-banked arrays, not a second wild touch): the new
+atlas_cos array's wild final-breath cosine reproduces the ORIGINAL welford_atlas read's AUROC
+EXACTLY (0.76611 vs the banked 0.7661) — the per-breath pipeline is the same construction as the
+final-only read it extends, end to end.
+
+v1b DIET CV (5-fold GroupKFold by row, commit head only):
+  ablation   Fc   auroc(model)  auroc(entropy)  precision@20%cov
+  a (final cosine alone)    1       0.6312          0.7355            0.8235
+  b (+ flight path)         1       0.8055          0.7355            0.9755
+  c (+ JS move/dev/entropy) 4       0.8397          0.7355            0.9822
+  d (+ old telemetry, full) 27      0.8732          0.7355            0.9845
+SELECTION RULE (pinned before any wild touch): highest diet CV AUROC wins, ties toward fewer
+features -> 'd' (0.8732) — the full model IS the diet-chosen best cell, so only one wild read fired.
+
+ONE WILD READ (ablation d, the full model; n=2051 gold slots): AUROC 0.7200 vs entropy 0.7079 (bar
+entropy+0.05=0.7579: MISS); precision@20%cov 0.6058 (bar 0.90: MISS); KILL (AUROC < entropy) clear.
+
+THE SIX-LINE READING (perceiver_train.py's own run_v1b output):
+  1. final-breath cosine alone (a) UNDERPERFORMS entropy in diet CV (0.6312 vs 0.7355) — a single
+     scalar funneled through the window+MLP loses to the plain entropy threshold; the net's own
+     direct (unlearned) AUROC of this SAME feature on wild is 0.766 (and sanity-matches exactly), so
+     the LEARNED net is actively worse than the raw feature here — texture flag, not explained.
+  2. the per-breath flight path (b) adds +0.174 over (a) in diet CV, FAR beyond the "a few points"
+     prediction — giving the net the trajectory, not just its last frame, is the load-bearing move.
+  3. JS movement+deviation+entropy (c) adds +0.034 over (b) — "JS adds little" lands almost exactly.
+  4. the old v1 telemetry (d) adds +0.034 more over (c) — comparable size to JS's own addition.
+  5. the ONE wild read misses both bars by a wide margin (precision 0.61 vs the predicted ~0.85 vs
+     the 0.90 bar) — the diet CV -> wild generalization gap (0.87 -> 0.72 AUROC; 0.98 -> 0.61
+     precision) is LARGER here than it was for v1 (0.794 -> 0.744 AUROC) despite more features,
+     repeating v1's own reading: the diet slice's easy/short register does not carry to wild's.
+  6. VERDICT: v1b DOES NOT FIRE (same verdict as v1); the atlas's per-breath trajectory is diet-CV's
+     best single addition (bigger than predicted) but buys nothing on the bar that matters.
+UNVERIFIED / OPEN: the diet's OWN unlearned final-breath cosine is AUROC 0.4230 for right_final
+(BELOW chance — anti-correlated), the opposite sign from wild's 0.766 on the identical construction;
+not a code bug (the same function/sign convention reproduces wild's 0.766 to 5 decimals) and not
+investigated further here (out of this task's scope) — a second unexplained curve shape beside
+"the learned net loses to its own raw feature" (line 1), together clearing the texture rule's "2
+unexplained shapes" bar for a mechanism probe, registered, not fired.
+REGISTERED (not fired): the orthodontist (v2, per-row temperature/damping from the flight path) per
+the 11:18 entry's (3) — v1b's own bar miss does not by itself kill it (the flight path READS; the
+ask was whether a dryness TEST could be built on top, which misses here); the diet-cosine-sign
+texture probe above.

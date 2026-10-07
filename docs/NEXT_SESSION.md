@@ -1,4 +1,13 @@
-# NEXT SESSION — cold-start entry (updated 2026-10-07 09:05)
+# NEXT SESSION — cold-start entry (updated 2026-10-07 11:51)
+
+**THE PERCEIVER v1b READ (11:51, 141058f7):** DOES NOT FIRE — wild AUROC 0.7200 vs the entropy+0.05
+bar 0.7579 (MISS), precision@20%cov 0.6058 vs the 0.90 dryness bar (MISS). Built: the (kind,breath)
+Welford library (.cache/welford_atlas_PMS8_241_content_breaths.npz, verified bit-for-bit against the
+final-only library at kb=6) + the codebook-distribution/JS features (.cache/perceiver_v1b_features_
+PMS8_241_{pm35cslicevalid2,wildhold}.npz; tau sweep flat, fixed 0.1). Diet CV: the per-breath flight
+path alone beats entropy by +0.07 (0.8055 vs 0.7355) and beats the final-cosine-alone ablation by
++0.174 (bigger than predicted); JS+telemetry add another +0.07 combined; none of it survives to
+wild. Full report: .cache/perceiver_v1b_PMS8_241.txt; ledger 11:18 (prediction) + 11:51 (read).
 
 **THE CARD:** pc-queue-listen merged branch listen into gen-weights (ac23f552: ALG_HIER_LISTEN + the ALG_HIER_DAMP=3,5,0 schedule) and is
 running the post-merge CPU gate (.cache/listen_merge_gate.log), then fires RKX_241 (RK_241's recipe with DAMP 3,5,0 = the schedule-
