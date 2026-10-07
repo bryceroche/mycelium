@@ -1,4 +1,13 @@
-# NEXT SESSION — cold-start entry (updated 2026-10-07 11:51)
+# NEXT SESSION — cold-start entry (updated 2026-10-07 12:00)
+
+**THE TEXTURE PROBE (12:00, 9690738d):** closed the diet-vs-wild cosine sign flip (diet 0.423 vs
+wild 0.766, same construction). NOT in-sample bias (LORO moves every register bucket <=0.002).
+Register mix is A factor (gsm8k 0.6317 is the diet's best bucket; the synthetic/pen buckets
+rendered-wild/mint-like/none are strongly anti-predictive, <0.40, and are 67% of the slice) but not
+THE explanation (even gsm8k alone falls far short of wild's 0.766). A GSM8K-only library does not
+fix either side (diet gsm8k LORO 0.6206; wild rescored 0.7487, slightly worse than the full-diet
+library's 0.7661) — the flip is a ceiling/near-memorized-continuation-regime property of the diet's
+own slots, not a library-composition artifact. Full table + reading: .cache/perceiver_v1b_PMS8_241.txt.
 
 **THE PERCEIVER v1b READ (11:51, 141058f7):** DOES NOT FIRE — wild AUROC 0.7200 vs the entropy+0.05
 bar 0.7579 (MISS), precision@20%cov 0.6058 vs the 0.90 dryness bar (MISS). Built: the (kind,breath)

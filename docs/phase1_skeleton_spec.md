@@ -48529,3 +48529,41 @@ members regardless of correctness), (b) the slice's register mix (asdiv / svamp 
 mint-like rows whose right slots sit off the GSM8K kind mean), (c) a labelling difference (the
 slice's per-slot verdict vs wild's ps_legal). PROBE (zero GPU, registered): the diet cosine AUROC
 per gen.src bucket, and leave-one-row-out means; if (b), the library must be built per register.
+
+### 2026-10-07 (12:00) — THE TEXTURE PROBE READ (9690738d; scripts/welford_atlas.py texture_probe(), mode textureprobe; .cache/perceiver_v1b_PMS8_241.txt): NOT in-sample bias (LORO moves every bucket <=0.002); register mix is A factor but not THE explanation (every bucket reads under wild's 0.766, gsm8k closest at 0.6317); a GSM8K-only library does not recover it either on the diet's own gsm8k rows (0.6206) or on wild (0.7487, -0.0174 vs the full-diet library) — the flip is the DIET REGIME's own ceiling effect, not a library-composition artifact
+
+Bucket partition of the 775-row diet slice (gen.src / gen.wild.words, raw jsonl -- load_alg's own
+vs[] silently drops/normalizes a few dozen rows' gen field, confirmed by inspection, so the raw file
+is the source of truth here): gsm8k 212 rows/1794 slots, asdiv 84/296, svamp 91/307, rendered-wild
+(synthetic, wild.words=True) 133/1191, mint-like (synthetic, wild.words=False) 57/610, none (no gen
+at all -- pen rows) 198/1988.
+
+(a) PLAIN in-sample cosine AUROC per bucket: gsm8k 0.6317, asdiv 0.4619, svamp 0.4397, rendered-wild
+0.3163, mint-like 0.2856, none 0.3936 -- EVERY bucket sits under wild's 0.766; the three synthetic/
+pen buckets are STRONGLY anti-predictive (<0.40), gsm8k (closest register to wild's own 302/311
+gsm8k rows) is the least bad but still only 0.63.
+(b) LORO (leave-one-row-out): moves every bucket by <=0.002 (gsm8k 0.6317->0.6314, mint-like
+0.2856->0.2855, none 0.3936->0.3937) -- each kind mean is built from hundreds-to-~1300 slots, so one
+row's own contribution is noise. IN-SAMPLE BIAS IS RULED OUT.
+(c) GSM8K-only library: LORO on gsm8k rows 0.6206 (vs 0.6317/0.6314 on the full-diet library --
+slightly WORSE, not better); plain-scored on the other buckets, the synthetic ones move UP but stay
+anti-predictive (rendered-wild 0.3163->0.3606, mint-like 0.2856->0.3289, none 0.3936->0.4222) while
+asdiv/svamp move down slightly (0.4619->0.4271, 0.4397->0.4198).
+(d) wild rescored against the GSM8K-only library: 0.7487 (n=2051) vs the banked full-diet-library
+read 0.7661 -- SLIGHTLY WORSE (-0.0174); the broader multi-register diet library is marginally
+BETTER for wild than a library built from wild's own dominant source register alone.
+
+THE FOUR-LINE READING (verbatim from the report): (1) NOT in-sample bias -- LORO changes nothing.
+(2) register mix is A factor (synthetic/pen buckets are 67% of the slice and strongly anti-
+predictive, pulling the pooled diet number to 0.4230) but not THE whole story -- even gsm8k alone
+never reaches wild's 0.766. (3) LABELLING/REGIME is the remaining and most likely cause: the diet is
+the body's OWN continuation data (68% right overall vs wild's 35% -- a ceiling/near-memorized
+regime) where "looking typical of its kind" associates with WRONG more often, the opposite of
+wild's harder, never-trained-on distribution; not a measurement artifact (ruled out by (b)) and not
+purely register composition (gsm8k alone still falls short, same direction as wild but far short of
+its magnitude). (4) a per-register (GSM8K-only) library does NOT improve wild's 0.766 in any
+direction that matters -- it is marginally WORSE (0.7487) and does not rescue the diet's own GSM8K
+read either -- the sign flip is a property of the diet regime's slots, not of which rows build the
+library. CLOSED (registered, not pursued further): the mechanism (ceiling/ dose effects on
+near-memorized continuation data) is a books-campaign question, not a v1b blocker -- v1b's own
+verdict (11:51, DOES NOT FIRE) stands unchanged by this probe.
