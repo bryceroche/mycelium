@@ -47675,3 +47675,29 @@ right graph is in the pool it is the right motif with a flipped binding — the 
 inside the meta. Registered: the meta share as a reporting axis for every future row read (meta vs
 tail rows correct), and the recursion charter's next book aimed at the tail knots with the highest
 wild mass.
+
+### 2026-10-06 (17:57) — THE NL ATLAS WITH DSL PAYLOADS (Bryce's gut: centroids in embedding space, each with explicit execution instructions and I/O arguments mapped to factor-graph slots; no separate math atlas); the mapping banked; NL ATLAS v0 fired with its bar
+
+THE MAPPING: the payload (op + typed inputs + output on slots) = a MACRO-FACTOR of the recursion
+charter (expands to primitives before the solver; the key grades in primitives) — the DSL exists
+(the predicate registry + the macro grammar); the new thing is the KEY: a macro indexed by an
+embedding centroid of the clause that invokes it (retrieval over an auditable table — "a fancy
+lookup table", the essay) instead of by an annotation rule; the math atlas IS the payload keyed by
+NL (one table, two faces — Bryce's "no separate math atlas" accepted). THE SPACE, by the record:
+NOT the slot state (the radius read: op kind not centroid-readable there) — the RETINA (the frozen
+trunk's clause embedding; the mouth is already an NL atlas in that space); caution: the trunk failed
+to separate same-sentence TWINS (a binding question, not an op question). WHAT THE PAYLOAD DOES:
+the WHAT (ops: ftype 0.86 / op 0.72 on wild, the easier part) at the root; the WHICH (args 0.44,
+the wall) handed to the binding roads as a TYPED DEMAND ("one slot of type time") instead of a
+blind pointer — the genuinely new leverage; the consult executes the partial DSL (the chalkboard's
+values). THE COMPILER: b0-1 clause -> centroid -> macro (the root; a click); b2-4 the branch binds
+the typed arguments under the consults; b5-6 the leaf's values + the rack's commit / release.
+CORRECTIONS to the relay: the snap is a retrieval at the retina, not a drift of the state toward
+gravity wells (damping reduced kind separation); the payload is mined from the GOLD graphs aligned
+to clauses (the arg-mention stamps), not from "the math the model executed". NL ATLAS v0 (zero
+GPU, delegated): cluster the diet's clause embeddings (k 50-400), payload = the majority gold
+template, purity per centroid, THE BAR (pinned): nearest-centroid (ftype, op) on wild's gold
+clauses >= the head's 0.86 / 0.72 for the atlas to earn a build as the root's dictionary; plus the
+typed-demand census (how far the argument TYPE pattern narrows the binding). Prediction (pinned):
+op purity high (>= 0.8 at k 200) — ops are lexical; the typed demand narrows the binding to <= 2
+candidates in a minority of rows (same-type twins are the wall).
