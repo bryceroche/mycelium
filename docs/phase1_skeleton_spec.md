@@ -47625,3 +47625,26 @@ only). Gates on CPU (unset / hierd / rkarm / rkcarm reproduce; listen / listenra
 differ); the arm RKX_241 / RKXC_241 (RK / RKC + the knob) registered with bars: open mint >= 0.586
 (the cost removed), masked >= 0.338, rows >= 15, the hit >= 0.72, the wall <= 0.49; NOT fired — it
 joins the queue behind the plain-chassis pair on the word.
+
+### 2026-10-06 (17:08) — THE META (Bryce: unique primes vs common patterns; an NL and a math atlas; the game's meta — deviation hurts unless genuinely new); the mapping banked; THE META READ fired with its prediction
+
+THE MAPPING: the math atlas EXISTS in discrete form = the schema miner's knot table (canonical WL
+digest = the problem's ID; group by subgraph, count desc; the recursion charter's macro-factors);
+the META = the common motifs (total-then-difference, rate x time, percent-of), not the primes; the
+primes (the 8 factor types) are the ROOT of the hierarchical codebook, the common knots its BRANCHES
+ordered by the miner's counts, instances the leaves — primes vs patterns is a depth, not a trade;
+the NL atlas = phrasings grouped by count PER MOTIF (the arg-mention stamps joined to the knots; the
+role signature is its working miniature; the prose renderer is the join in reverse); the thing of
+value is the JOINED table phrase <-> motif with counts (the interface as data). CORRECTIONS to the
+relay: the solver never sees the continuous state (a hybrid slot decodes to its argmax; unsat comes
+from bindings); damping does not push toward centroids (the radius read: it reduced kind
+separation); the rack checks a text certificate, not a centroid. THE META'S OPERATIONAL CONTENT:
+deviation hurts unless CERTIFIED — a frequency prior reads the common way; the courtroom lets a
+non-meta reading win only if the solver accepts it and the jury prefers it. THE META READ (zero
+GPU, delegated): the knot (WL digest of the gold graph) of every wild row and of the training
+diet; the knot's frequency in the diet vs the row's wild verdict (chain_acc, masked) and per-slot
+verdict; the share of the wall (wrong rows / slots) on meta knots (top-k by count) vs tail knots;
+and whether a frequency prior over the first look's candidates (the courtroom's survivors
+re-ranked by their knot's diet frequency) changes the row count. PREDICTION (pinned): the wall is
+MOSTLY ON META ROWS (the twin censuses: same-entity bindings inside common motifs), so the meta
+prior is inert on rows; the tail is a minority of both the right and the wrong.
