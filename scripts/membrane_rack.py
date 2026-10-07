@@ -75,6 +75,16 @@ def _set_env():
     for k, v in _FAM.items():
         os.environ.setdefault(k, v)
     assert os.environ.get("DEV") == "CPU", f"DEV={os.environ.get('DEV')!r}: this script is CPU-only by brief"
+    # audit 2026-10-06: _FAM's BIND_CODES default is the PLAIN bank (bindbus_codes512.npz). SURF8 pairs the
+    # role pointer (ALG_PTR_SURF=role:...) with the ROLE bank (bindbus_codes512r.npz) and every chain exports
+    # both together — but a hand invocation that exports ALG_PTR_SURF without SURF8's BIND_CODES would read a
+    # role checkpoint against the plain bank with no error anywhere (the head only checks the bank's pair
+    # count; the codes are a frozen input, not a state-dict key). Refuse that pairing loudly.
+    _bc = os.environ.get("BIND_CODES", "")
+    if os.environ.get("ALG_PTR_SURF", "").startswith("role") and _bc.endswith("bindbus_codes512.npz"):
+        raise SystemExit(f"membrane_rack: ALG_PTR_SURF={os.environ['ALG_PTR_SURF']!r} (the role pointer) with "
+                         f"BIND_CODES={_bc!r} (the plain bank, this script's _FAM default) — SURF8 pairs the role "
+                         f"pointer with .cache/bindbus_codes512r.npz; export SURF8's BIND_CODES (audit 2026-10-06)")
 
 
 # ===========================================================================
