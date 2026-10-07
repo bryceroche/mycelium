@@ -47603,3 +47603,25 @@ trunk, and let an interaction model (a small MLP over the two renderings' embedd
 difference) judge — the caricature of the CLAIM, not of the location. The prose renderer
 (prose_render.py, 09-21) is the rendering engine's precedent. The courtroom family's count now:
 hand jurors 14, linear caricature 14, judge 18, picker 19, ceiling 43.
+
+### 2026-10-06 (17:02) — BRYCE: "the hierarchical chassis ... unable to work well with the alternation rhythm — fix that; both are key"; THE SCHEDULE COLLISION hypothesis registered and delegated (diagnosis first, then THE LISTENING BREATH)
+
+THE HYPOTHESIS: two schedules on one clock collide. The consults fire at kb 2 and 4 and their
+evidence (facts3 / facts5, the lines, the rack's flags) enters from kb 3 and 5; the hierarchical
+damping (2,4,0) closes the ROOT at kb 2 and the BRANCH at kb 4 — the first consult's evidence
+arrives the breath after the root has shut, the second's the breath after the branch has shut, and
+only the leaf can absorb it; on the plain chassis nothing is ever shut and the consults are free
+(the mint table). Bryce's "rhythm" names exactly this: the kitchen's setup step and the band
+freeze are both conductor phases and must be ORDERED — you put the dry dishes away before you shut
+the cupboard, not after. DELEGATED (sonnet; worktree mycelium-wt7, branch listen): (1) THE
+DIAGNOSIS, zero GPU — the per-band change at b3 / b5 on RK_241 vs HS_241 (does the consult's
+arrival move only the leaf on the damped body?), THE KNOB CENSUS of the consults' injection split by
+band (how much lands in frozen bands and is discarded by the blend), on wild and on mint; (2) THE
+FIX: ALG_HIER_LISTEN — the listening breath: on the breath after each consult every band's damping
+share is 0 for one breath (read from conductor(kb) as a flag beside the consult ticks), then the
+damping resumes; and the schedule form ALG_HIER_DAMP=3,5,0 (settle AFTER the evidence arrives);
+(3) if the census says the evidence lands mostly in frozen bands, the leaf-routed consult (register
+only). Gates on CPU (unset / hierd / rkarm / rkcarm reproduce; listen / listenrack / damp35 run and
+differ); the arm RKX_241 / RKXC_241 (RK / RKC + the knob) registered with bars: open mint >= 0.586
+(the cost removed), masked >= 0.338, rows >= 15, the hit >= 0.72, the wall <= 0.49; NOT fired — it
+joins the queue behind the plain-chassis pair on the word.
