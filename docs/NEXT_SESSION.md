@@ -1,24 +1,22 @@
-# NEXT SESSION — cold-start entry (updated 2026-10-06 14:50)
+# NEXT SESSION — cold-start entry (updated 2026-10-06 20:50)
 
-**THE CARD:** pc-queue-rack3 is training RKC_241 (the rack's honest control: HS_241 + ALT3 + CERT, no rack; ~0.46 s/step, ends
-~19:30, reads after; its chain's tail will fail at a sed line as RK's did — expected); then pc-queue-rack-tail (.cache/rack_tail.sh)
-runs golden24, the band probe, the plain membrane, RKC's dry census and THE BAR: `paired masked wild RK_241 vs RKC_241` (>= +0.015;
-claim +0.020); then pc-chainacc-verify (the 11-vs-14 baseline). Logs: .cache/rack_chain_RKC.log, rack_tail.log, queue_rack_tail.log.
-**RK_241 (banked 14:06 + 14:3x):** slot flat (-0.004 vs HS_241), ROWS 17 masked = the row record, mint -0.046 (the live-facts pair is VOID: ALT3's feed
-is already live; the mint cost lives on the hierarchical body — RKC attributes it); THE WALL MOVED (0.489 vs 0.526) for the first time; the hit
-fell (0.68 vs 0.76); the claim mask exact; committed numerals right 0.686 (the rack commits dirty dishes a third of the time at consult 1).
-RKC decides what is the rack's and what is the consults'.
-**THE QUEUE (word given 18:02, all self-sequencing):** RKC -> tail (THE BAR) -> RKP/RKPC (the rack on the plain chassis; pc-queue-rackplain,
-aborts on a kill) -> RKX/RKXC (the rack on the hierarchical body with ALG_HIER_DAMP=3,5,0 = the schedule-collision fix; pc-queue-listen merges
-branch listen, gates, fires) -> pc-chainacc-verify. CPU: NL ATLAS v0 (scripts/nl_atlas_v0.py; bar op/ftype >= 0.72/0.86 on wild).
-**Banked 10-06 PM:** the courtroom + the caricature jury (both 14/311: inert; form 2b = render each story's claim); the meta read (meta rows
-6x easier; the wall tracks the population; only the coarse knot repeats); the schedule collision (consult evidence lands on frozen bands).
-**Banked 10-06:** adaptive stopping (judge as brake) MISS; MCTS over parses NULL (= top-1); the courtroom (hand jurors) INERT; the learned
-perceiver v1 misses on wild (AUROC 0.744 vs entropy 0.708; precision 0.64); the lost night (one arm per chain; waiters match the failure
-vocabulary); the eyes autopsy (right sign, wrong instrument; telegraphic hands registered); the shoal's collision read (twins collide in
-the membrane, not the state); the blog post Concentration.
-**Branches:** rack3 (form 3 release-on-contradiction + the chalkboard, gated, unmerged; RK3 registered behind the rack verdict); worktree
-mycelium-wt6 on rack3. gen-weights is merged with conductor + eyes + rack; main was fast-forwarded at 21:3x on 10-05 (re-sync at the next boundary).
+**THE CARD:** pc-queue-rackplain is training RKP_241 (the rack on the PLAIN chassis: PMS8 recipe + ALT3 + CERT 2.0 + RACK leaf; started
+20:03, ~0.3 s/step -> reads ~00:30) then RKPC_241 (its control); then pc-queue-listen merges branch listen (ALG_HIER_LISTEN + the
+ALG_HIER_DAMP=3,5,0 schedule, gated), runs the post-merge gate, fires RKX_241 then RKXC_241 (the hierarchical body + consults with the
+schedule-collision fix). Logs: .cache/rack_chain_RKP.log / RKPC / RKX / RKXC, queue_rackplain.log, queue_listen.log. Waiters match
+"preflight] FAIL|chain exit|FAILED|ABORT|Traceback".
+**THE RACK'S VERDICT (10-06, final):** form 2 (given_unique at consult 1, claim + leaf freeze) DOES NOT FIRE — RK vs RKC paired -0.002
+(z 0.24), rows 17 vs 13 (noise), mint -0.015; the claim mask exact; the committed numerals right only 0.686. THE CONSULTS on the
+hierarchical body: the first wall move in six bodies (-0.033) at the price of the hit (-0.08), rows +5, mint -0.032 — the certifier
+lines' gain (2.0) never censused on this body (the knob law); the listening-breath pair reads the schedule collision; ALG_CERT=1.0 is
+the knob beside it. THE HAMMERHEAD DRYNESS TEST (view unanimity x given_unique; scripts/hammerhead_census.py) is being censused on CPU —
+if admitted (>= 0.90 numeral precision), the rack's test is replaced and RK3 (release + chalkboard, gated on rack3) is the next arm.
+**Banked 10-06:** adaptive stopping MISS; MCTS over parses NULL; the courtroom INERT; the caricature jury a WASH (form 2b: render the
+claim); the perceiver v1 MISS on wild; the meta read (meta rows 6x easier; only the coarse knot repeats; the prior inert); NL atlas v0
+MISS (clause centroids 0.646 vs the head 0.72); the schedule collision diagnosed (consult evidence lands on frozen bands); the lost
+night (one arm per chain). Rules added: a tail's grep pipelines guarded under pipefail; a derived queue diffed against its source.
+**Branches:** rack3 (form 3 + chalkboard), listen (the schedule fix) — unmerged until their queues; worktrees wt6 (rack3), wt7 (listen).
+main last fast-forwarded 10-05 21:3x; re-sync at the next boundary.
 
 ---
 (The previous entry follows, for the longer board.)
