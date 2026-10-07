@@ -365,7 +365,21 @@ def main():
         KEYS = ("pres", "ftype", "op", "dig", "args", "res") + (("dup",) if "dup" in heads_all[0] else ())
         tkm_np = (vtk[sl_p].astype(np.float32) > 0.5)
         for kb in range(K_B):
-            hk = {k: heads_all[kb][k].numpy() for k in KEYS}
+            if kb == K_B - 1:
+                # IDENTITY FIX (bug audit 2026-10-06): heads_all[K_B-1] is the bare pre-injection
+                # decode (phase1_algebra_head.py's heads_of() on the raw final-breath state), but
+                # `o` -- this SAME forward() call's return dict -- has already received post-hoc
+                # head injections that apply only to the final breath (e.g. ALG_PTR_SURF's trained
+                # role-pointer addition into out["args"], gain 2.0, on PMS8_241). The tap therefore
+                # silently disagrees with chain_acc.py's read of `o` directly on the one breath that
+                # matters most -- the root cause of the banked 11-vs-14 discrepancy (ledger
+                # 2026-10-06 07:09; row-level repro: rows 48/81/292 flip correct -> wrong/refused
+                # under the tap's pre-injection args, net 14-3=11). Read the last breath from `o`
+                # (falling back to the tap only for a key `o` doesn't carry) so "last breath" means
+                # the same thing here as it does in chain_acc.py, by construction.
+                hk = {k: (o[k].numpy() if k in o else heads_all[kb][k].numpy()) for k in KEYS}
+            else:
+                hk = {k: heads_all[kb][k].numpy() for k in KEYS}
             fa_kb = fat_all[kb]
             st_kb = breaths_all[kb][:, :, CONTENT]
             for bi, i in enumerate(sl):
