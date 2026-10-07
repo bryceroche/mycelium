@@ -48235,3 +48235,20 @@ claimed numeral at all, let alone the buggy one (line 18's unmasked LV_DUMP writ
 exposed to this bug. Two legitimately different numbers, both now on record: 0.526 (order-sensitive,
 does the committed slot decode the row's gold slot exactly) and 0.963 (order-free, is the claimed
 numeral one of the row's gold givens) — the drawer vs. the dish, again, now both correctly measured.
+
+### 2026-10-07 (03:22) — RKP_241 (THE RACK ON THE PLAIN CHASSIS) ACCURACY READS: the slot flat (+0.001 vs PMS8_241), ROWS DOWN (9 vs 14), mint flat (0.654 = PMS8's 0.65 — the consults + rack are FREE on mint here, as the table said), open wild +0.018, silver +0.038; the HS body's +4 rows do not transfer
+
+Reads (rack_chain_RKP.log 03:13; PMS8's recipe + ALT3 + CERT 2.0 + RACK leaf given_unique; no
+hierarchical state): open wild 0.3184 (PMS8 0.3003: +0.018 open); MASKED wild 0.3467 — paired vs
+PMS8_241 -0.0009 (flat), vs RK_241 (the same arm on HS) +0.0034; ROWS 9 masked / 5 open vs PMS8's
+14 / 9 and RK's 17 / 11 — DOWN; open mint 0.6540 (PMS8 0.65, ALT3_241 0.661: the consults and the
+rack cost mint nothing on this chassis — the mint price is the hierarchical body's, confirmed a
+third time); digits 0.405 (PMS8 0.398); silver460 0.2678 (PMS8 ~0.23: +0.04, the largest silver
+move of the week); matched 0.3598 (order's share +0.041); golden24 5 / 13 / 6 (PMS8 6). THE BAR is
+RKP vs RKPC paired (RKPC_241 training now; pre-flight PASS). READING: the rack's rows on the
+hierarchical body (+4 over RKC) were not a transferable effect — on the plain chassis the same
+organ reads 5 rows below the body; with RKC's +5 (consults alone on HS) the row effects of this
+family look like body x organ interactions inside row noise (SE ~4). The slot is flat on both
+chassis: THE RACK IS NULL ON THE SLOT on two bodies. The chain's tail exited 1 at the known -A4
+line (the executing chain could not be patched); the dry census ran by hand; the rack-aware
+membrane census (membrane_rack.py) runs on CPU; reads.py ingested.
