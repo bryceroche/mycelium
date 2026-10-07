@@ -1,9 +1,30 @@
 """scripts/picker/build_features.py -- THE PANEL PICKER's feature table (2026-10-05, delegate).
 
-Loads a gen_candidates.py output pickle (per-row candidate records) + the matching gold-factor fixture
-(for the twin-pick angle's row tables), computes every angle in scripts/picker/angles.py for every
-candidate of every row, and writes a flat feature table (list of dicts; one per candidate) to a
-pickle. Prints THE FEATURE LIST explicitly (the task brief's requirement).
+Loads a gen_candidates.py output pickle (per-row candidate records) + the matching gold-factor fixture,
+computes every angle in scripts/picker/angles.py for every candidate of every row, and writes a flat
+feature table (list of dicts; one per candidate) to a pickle. Prints THE FEATURE LIST explicitly (the
+task brief's requirement).
+
+BUG FIX (2026-10-06, Goodhart-fence audit): twin_flip_flag/twin_n_checked (angles.build_row_tables /
+angles.twin_flip_flag) are now DIAGNOSTIC-ONLY (written to each record's top level, never into `X`,
+never in FEATURE_NAMES/ANGLE_GROUPS) because their computation is NOT key-free: angles.build_row_tables
+-> lexical_identity_census.build_candidate_tables keys every non-given slot's lexical identity off
+SAM.own_value(fac, solution) -- `solution` is the row's own CUSTODY-GOLD answer array (fixture_row["solution"]).
+That means the "twin" angle, if it feeds the trained picker's score (as it did until this fix: it was in
+FEATURE_NAMES and therefore in the model clf.decision_function() consults at wild_read.py's argmax), lets
+the picker consult THIS ROW's own gold answer while CHOOSING among candidates for this same row -- the
+Goodhart fence violation docs/CLAUDE.md and diagnostic_register.py both name (see
+scripts/picker/angles.py's TWIN_FLAG_NOTE, which claimed "no gold at read time"; that claim was false for
+the deployed wild pipeline, which passes .cache/wild_admitted_holdout_a.jsonl -- full factors+solution --
+as `fixture_jsonl` at wild build-features time: .cache/picker/run_panel_picker.sh step 3). Contrast with
+scripts/courtroom.py's own use of the SAME angles.twin_flip_flag: there it only increments a `stats`
+counter for the printed report, never touching the Copeland `scores` that pick the winner -- that use
+stays safe. Here the angle fed `X` directly, so it was live at selection time. The diet's own 5-fold CV
+ablation already showed this angle net-NEGATIVE (-twin: 305/775 vs FULL 297/775, delta +8) even before
+the leak was understood structurally, so dropping it from the feature set costs nothing it was buying.
+The one registered wild read (.cache/panel_picker_PMS8_241.txt, 19/311, ledger c02ce884) was produced
+with this feature live and should be treated as compromised; a fresh wild read under the corrected
+feature set is a decision for Bryce (wild is read ONCE per the project's own law), not fired here.
 
 Usage: .venv/bin/python3 scripts/picker/build_features.py <cand_pkl> <fixture_jsonl> <out_pkl>
 """
@@ -24,8 +45,9 @@ FEATURE_NAMES = [
     "nlc_value_present", "nlc_coverage", "nlc_no_double", "nlc_cue_agree", "nlc_chain_reaches",
     "nlc_derived_stated", "nlc_cert",
     "n_args_flip", "n_val_flip", "n_typeop_flip",
-    "twin_flip_flag", "twin_n_checked",
 ]
+# twin_flip_flag/twin_n_checked are intentionally NOT in FEATURE_NAMES -- see the Goodhart-fence
+# bug-fix note above. They are still computed (DIAG_KEYS below) for reporting/diagnostics only.
 
 ANGLE_GROUPS = {
     "status": ["status_solved", "status_inconsistent", "status_refused"],
@@ -35,8 +57,9 @@ ANGLE_GROUPS = {
     "nlc": ["nlc_value_present", "nlc_coverage", "nlc_no_double", "nlc_cue_agree", "nlc_chain_reaches",
             "nlc_derived_stated", "nlc_cert"],
     "flips": ["n_args_flip", "n_val_flip", "n_typeop_flip"],
-    "twin": ["twin_flip_flag", "twin_n_checked"],
 }
+
+DIAG_KEYS = ["twin_flip_flag", "twin_n_checked"]   # gold-derived; diagnostic-only, never in X
 
 
 def status_bucket(status):
@@ -106,10 +129,11 @@ def build(cand_pkl, fixture_jsonl, out_pkl, log=print):
                 nlc_chain_reaches=certs["chain_reaches"], nlc_derived_stated=certs["derived_stated"],
                 nlc_cert=certs["cert"],
                 n_args_flip=float(n_args_flip), n_val_flip=float(n_val_flip), n_typeop_flip=float(n_typeop_flip),
-                twin_flip_flag=1.0 if twin_flag else 0.0, twin_n_checked=float(twin_n),
             )
             out.append(dict(row=i, sig=sig, y=bool(b.get("correct")), status=status, value=b.get("value"),
-                             key=key, is_top1=(sig == top1_sig), loglik_raw=ll, X=feat))
+                             key=key, is_top1=(sig == top1_sig), loglik_raw=ll, X=feat,
+                             # DIAGNOSTIC ONLY (gold-derived -- see module docstring): never merged into X.
+                             diag_twin_flip_flag=1.0 if twin_flag else 0.0, diag_twin_n_checked=float(twin_n)))
     pickle.dump(out, open(out_pkl, "wb"))
     log(f"[build-features] {len(rows)} rows -> {len(out)} candidate rows ({n_twin_tables_built} rows had twin tables) "
         f"-> {out_pkl}")
@@ -119,6 +143,7 @@ def build(cand_pkl, fixture_jsonl, out_pkl, log=print):
     log("[build-features] ANGLE GROUPS (for ablation):")
     for g, names in ANGLE_GROUPS.items():
         log(f"    {g}: {names}")
+    log(f"[build-features] DIAGNOSTIC-ONLY keys (gold-derived, never in X/FEATURE_NAMES): {DIAG_KEYS}")
     return out
 
 

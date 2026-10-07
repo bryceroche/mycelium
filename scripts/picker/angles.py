@@ -43,7 +43,17 @@ TWIN_FLAG_NOTE = (
     "twin_flip_flag asks: among this candidate's ARGUMENT flips vs the row's top-1 candidate, is the "
     "newly-picked variable a SAME-NOUN TWIN (same sentence as, and either derived-from or inherited-key-"
     "overlapping with) the variable it replaced? This is the top1-vs-alternate symmetric form of twin_gap.py's "
-    "gold-vs-model-pick is_twin predicate, not a verbatim reuse (there is no gold at read time)."
+    "gold-vs-model-pick is_twin predicate, not a verbatim reuse. "
+    "CORRECTION (2026-10-06, Goodhart-fence audit): the claim this note used to make -- 'there is no gold "
+    "at read time' -- is FALSE for build_row_tables()'s own machinery: lexical_identity_census.build_"
+    "candidate_tables keys every non-given slot off stamp_arg_mentions.own_value(fac, solution), i.e. the "
+    "row's own CUSTODY-GOLD solution array, taken straight from the fixture row this function is called "
+    "with. twin_flip_flag is therefore NOT key-free -- it is a function of this row's own gold. It is safe "
+    "ONLY as a post-hoc diagnostic/report statistic (as scripts/courtroom.py uses it: a `stats` counter, "
+    "never touching the Copeland scores that pick a winner) and MUST NOT be fed as an input feature to any "
+    "model/scorer that chooses among this row's own candidates. scripts/picker/build_features.py was doing "
+    "exactly that until this fix (see its own docstring) -- fixed there, not here, since this function's "
+    "behavior is unchanged and still legitimately used by courtroom.py's reporting path."
 )
 
 ADD_CUES = set("total sum altogether combined together more plus gained added increase increased extra "
