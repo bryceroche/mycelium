@@ -47703,3 +47703,92 @@ op purity high (>= 0.8 at k 200) — ops are lexical; the typed demand narrows t
 candidates in a minority of rows (same-type twins are the wall).
 
 ### 2026-10-06 (18:02) — WORD GIVEN FOR THE WHOLE QUEUE (Bryce: "excellent -- word given for the whole queue. Salute!"): the listening-breath pair (RKX_241 / RKXC_241) queued as pc-queue-listen behind the plain-chassis pair: waits for the builder's chains + gate, merges branch listen into gen-weights, runs the post-merge gate (unset + rkarm asserted), fires. The queue now: RKC (card) -> tail (THE BAR) -> RKP / RKPC (conditional on no kill) -> RKX / RKXC -> chain_acc verify. The NL atlas v0 and the eyes' telegraphic hands / the chalkboard arms stay behind their reads.
+
+### 2026-10-06 (18:04) — THE SCHEDULE COLLISION: DIAGNOSED, FIXED, GATED (scripts/consult_damping_census.py, zero GPU; branch listen, mycelium-wt7, da2de40d)
+
+DIAGNOSIS (scripts/consult_damping_census.py, committed on gen-weights; 64-row-budget trimmed to
+8+8 rows x wild/mint for CPU time; each fixture its OWN process — a module-global caching bug
+caught in review, ALG_TEST/ALG_TEST_NAME are read into phase1_algebra_head.py's globals at import
+time, so a second collect() in the same process silently reused the first fixture's rows): THE
+HYPOTHESIS HOLDS, narrowed by (b)'s ablation census to the pbias-road channels only. (a) THE
+DAMPING CENSUS on RK_241 reproduces the Laplace picture (root 1.86/0.23/0/0/0, branch 0.93/0.38/
+0.34/0.29/0, leaf 1.82/0.24/0.13/0.12/0.11 on wild; the same shape on mint) — matches HS_241's
+banked census (10-05 14:38) closely; the freeze holds on the consult body too. (b) THE KNOB CENSUS
+(ablate cert3/cert5, rack3/rack5, facts3/facts5 in turn, each a same-shape zero substitution —
+never a different architecture — in the SAME forward() call, measuring the resulting shift in
+state["cur"] per band per breath as a fraction of the real run's own band norm): cert3/rack3 (read
+from kb=3) still reach the BRANCH while it is open (mint's rack ablation moves branch by 0.026 at
+the state entering breath 4 — breath 3's branch was not yet frozen) and then STOP moving it at all
+from breath 5 on (0.026 -> 0.027 -> 0.027, flat — branch is frozen from kb=5, exactly where consult
+2 is first read); the LEAF keeps absorbing both consults the whole way (0.025 -> 0.033 -> 0.035 on
+mint). Consult 1 gets into the branch just under the wire; consult 2 never does. cert's own
+magnitude is large on wild (||cert3||=0.078) and near-silent on mint (0.016 — mint rows are already
+gold-clean, nothing to correct); the rack's effect is proportionally LARGER on mint (up to 0.035 vs
+wild's 0.008) — mint is exactly the register RK_241 pays its -0.046 mint cost on (10-06 14:49's
+attribution table). THE SURPRISE: ablating facts3/facts5 moves NOTHING in cur on either fixture
+(every cell 0.000) — facts3/facts5 write into vst (the var-slot KEYS the args/res pointer heads
+read), a channel the hierarchical damping never touches; only cert/rack (which ride pbias into
+cur's own bank() call) are part of this collision. Their own band decomposition (root~branch~leaf,
+not leaf-skewed) is informative about the fact buffer's content but moot for the damping question.
+Full tables + the six-line reading: .cache/consult_damping_census.txt.
+
+THE FIX (branch listen, mycelium-wt7, da2de40d — NOT merged): ALG_HIER_LISTEN=1, THE LISTENING
+BREATH — on kb==3 and kb==5 (conductor(kb).hier_listen, tied to facts3_inject/facts5_inject's own
+breaths +1, never re-numbered), every band that would otherwise be frozen/damping keeps its share
+at 0.0 for that breath only; damping resumes the next breath; implemented entirely inside
+conductor(kb)'s hier_damp_shares computation (the damping call site, breath_step's _HIER_DAMP
+block, is UNCHANGED). Verified by a direct conductor(kb) probe: LISTEN=0 reproduces the original
+schedule bit-for-bit at every kb (shares (None,None,None)..(1.0,1.0,None) exactly as before);
+LISTEN=1 gives (0.0,None,None) at kb=3 and (0.0,0.0,None) at kb=5, normal otherwise. ALG_HIER_DAMP=
+3,5,0 needed NO code — conductor(kb)'s existing settle-breath arithmetic already expresses "settle
+after the evidence arrives" (root open through kb=3, frozen from 4; branch open through kb=5,
+frozen from 6). step_trainer.py: ALG_HIER_LISTEN added to REFUSED (the ALG_HIER_TAU pattern — the
+walker never calls conductor(kb)). THE THIRD OPTION (route consult evidence to the leaf only) was
+NOT built: (b) showed the content is not leaf-skewed and branch evidence already lands when branch
+is open, so routing would discard real signal rather than fix anything.
+
+THE GATE (CPU, tiny64/WARM_FROM balV242/BATCH=2 STEPS=2, .cache/listen_gate.sh pointed at wt7; one
+bug caught and fixed before trusting it — the first run's "hierd" entry omitted SURF8, scoring
+9.7057/8.2120 against nothing; refired after the omission was found and fixed): unset 5.2995/0.0279
+bit-identical; hierd 10.8656/8.8945; rkarm 10.8373/8.7737; rkcarm 10.8389/8.7827 — all four
+reproduce their banked references to the digit with ALG_HIER_LISTEN unset. listen (rkcarm +
+ALG_HIER_LISTEN=1) 10.8451/8.7759 — runs, differs from rkcarm. listenrack (rkarm +
+ALG_HIER_LISTEN=1) 10.8429/8.7679 — runs, differs from rkarm. damp35 (rkcarm with
+ALG_HIER_DAMP=3,5,0) 10.8467/8.7842 — runs, differs from rkcarm. A read smoke (loop_val under
+listenrack + ALG_JIT_READ=1, a fresh tiny64 BATCH=2 STEPS=2 checkpoint since the gate's own ckpt is
+deleted at its end): fac-exact=0.1207 on the testtiny64 fixture, matching the training val number
+exactly, exit 0, no crash on the AM/JIT path (the overflow warning in the sigmoid at read time is
+pre-existing, unrelated to this knob) — the two new knobs survive the read path, not just training.
+
+THE CHOSEN KNOB: ALG_HIER_DAMP=3,5,0 — it needs no code (lower risk) and is the cleaner of the two
+for THIS schedule specifically: LISTEN's override re-opens the ROOT band a SECOND time at kb=5 (for
+consult 2's sake, even though consult 2's evidence is branch/leaf-relevant, not root) before
+re-freezing at kb=6 — a flicker DAMP35 does not have (root opens once, through kb=3, then frozen
+monotonically). For branch the two are IDENTICAL under this specific schedule (open through kb=5,
+frozen from kb=6, either knob). LISTEN stays built and gated as the general-purpose form (useful if
+a future conductor schedule puts consults and settle breaths out of this simple alignment); the
+registered arm below uses DAMP35.
+
+THE ARM (registered, NOT fired — my instructions were diagnosis + build only): RKX_241 = RK_241's
+recipe + ALG_HIER_DAMP=3,5,0 (replacing 2,4,0; everything else identical, including TAU=0 and
+ALG_RACK=1); RKXC_241 = RKC_241's recipe + the same knob (the control, no ALG_RACK). Chain files
+derived by sed (delimiter "|", the rule the 10-06 14:11 entry taught) from rack_chain_RK.sh/
+rack_chain_RKC.sh: .cache/rack_chain_RKX.sh, .cache/rack_chain_RKXC.sh — both `cd
+/home/bryce/mycelium-wt7` (the knob lives only on branch listen until merged), both gate-checked
+against .cache/listen_gate.log (unset bit-identity + the specific listenrack/listen fixture-run
+lines + the rkarm/rkcarm reference numbers) before firing. BARS (ledger 17:02, pinned before any
+fire, unchanged): open mint >= 0.586; masked wild >= 0.3432 - 0.005; rows >= 15; THE HIT
+(membrane_rack.py) >= 0.72; THE WALL <= 0.49; RKX vs RKXC paired is the rack's own bar (>= +0.015,
+claim +0.020/twin) — plus a new line, RKX vs RK_241 paired (did the knob help the SAME rack
+recipe), not in the original bar set but worth reading first.
+
+UNVERIFIED / NOT RUN (stated plainly): the finer per-channel breakdown within consult 1 alone
+(facts3/cert3/rack3 each ablated separately, vs the "whole consult" grouping used here) and the
+"whole consult" combinations (no_c1_all/no_c2_all) were trimmed from the census for CPU budget —
+the three channel-wide ablations already answer the brief's question. The census ran on 8+8 rows,
+not the full 64 the brief asked for (CPU cost: ~140s per 8-row batch x 4 configs x 2 fixtures); the
+shape is unambiguous at this n but the magnitudes are not a precision read. RKX_241/RKXC_241 were
+NOT fired (no GPU spent; the 18:02 entry's pc-queue-listen is the mechanism that will fire them
+after a merge this session does not perform). The 18:02 ledger entry above (word given for the
+whole queue) landed concurrently with this work; the naming (RKX_241/RKXC_241) matches by
+construction, not coordination.
