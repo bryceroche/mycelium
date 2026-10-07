@@ -48201,3 +48201,37 @@ says the sink's problem is not the dry dishes — it is the wet ones' bindings (
 inside the meta: the meta read, the twin censuses). RULE: a measurement script that joins two
 artifacts asserts they were produced under the SAME mask (the dump's mask flag is recorded in the
 dump; the audit asserts it) — the apples-to-oranges door.
+
+### 2026-10-07 (00:39) — THE 0.686 IS FULLY EXPLAINED: scripts/rack_numeral_audit.py FIXED, all 458 of RK_241's committed cells re-scored at 0.963 (clears the 0.90 bar); scripts/rack_dryness_census.py's "precision 0.526" re-confirmed CLEAN, a separate positional number never touching the bug
+
+THE FIX (scripts/rack_numeral_audit.py, mandate from the coordinator after the 00:15 finding): the
+committed cell's claimed numeral is no longer read from the dump's raw/unmasked LV_DUMP pdig. The
+script now re-runs the body's real two-consult cycle (--ckpt + --rows + the full env, the family's own
+convention) and calls rack_dry_row (scripts/phase1_algebra_head.py, the SAME unmodified organ the live
+commit used, unconditional internal masking) at breath 2 (consult 1) and breath 4 (consult 2, fed
+consult 1's facts3/cert3/rack3 exactly as loop_val.py's _consult3 does) to re-derive the masked numeral
+per committed cell — consult-1's claim if it fired there, else consult-2's (the monotone union, the
+same "j in d1 or j in d2" the sidecar itself encodes). The OLD raw-dump reading is kept as a labeled
+"void" column, computed but never used for a claim.
+
+FULL RE-SCORE (.cache/rack_numeral_audit_RK_241_fixed.log, 815s CPU/niced/concurrent with RKP_241's
+training; appended to .cache/rack_dryness_census_RK_241.txt), all 458 of RK_241's committed cells:
+  OLD (raw-dump, void):    314/458 = 0.686
+  NEW (corrected, masked): 441/458 = 0.963  — CLEARS the 0.90 admission bar
+  374 cells claimed at consult 1, 84 first claimed at consult 2 (the union's own split)
+  REPRODUCTION CONSISTENCY: the re-derived dry set matches the sidecar's own committed set EXACTLY,
+  458/458, zero mismatches either direction — independent, bit-for-bit validation of the live commit.
+  Per-row histogram UNCHANGED (53/123/77/53/3/2 rows at 0-5 dry slots; 258/311 rows with >=1).
+VERDICT: the 0.686 is FULLY EXPLAINED by the masking bug (gap to 0.90: 0.214 -> -0.063). RK_241's
+commits were correct all along; neither the decode (00:15) nor the commit mechanism was ever at
+fault — only a downstream audit script's numeral source.
+
+SECOND CHECK (the coordinator's other question): scripts/rack_dryness_census.py's "precision 0.526"
+line is UNRELATED and UNCONTAMINATED — re-run fresh (.venv/bin/python3 scripts/rack_dryness_census.py
+.cache/dump_wild_RK_241.pkl --tag RK_241, zero GPU) reproduces 0.526 exactly. That number is the
+POSITIONAL verdict (verdict_from_ps, .cache/ps_legal_wild_RK_241.npz) computed inside a SEPARATE,
+fully LV_LEGAL=num masked loop_val.py invocation (.cache/rack_chain_RK.sh line 20) — it never reads a
+claimed numeral at all, let alone the buggy one (line 18's unmasked LV_DUMP write), so it was never
+exposed to this bug. Two legitimately different numbers, both now on record: 0.526 (order-sensitive,
+does the committed slot decode the row's gold slot exactly) and 0.963 (order-free, is the claimed
+numeral one of the row's gold givens) — the drawer vs. the dish, again, now both correctly measured.
