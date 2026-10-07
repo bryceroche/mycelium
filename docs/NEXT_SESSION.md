@@ -1,28 +1,28 @@
-# NEXT SESSION — cold-start entry (updated 2026-10-06 20:50)
+# NEXT SESSION — cold-start entry (updated 2026-10-07 09:05)
 
-**THE CARD:** pc-queue-rackplain is training RKP_241 (the rack on the PLAIN chassis: PMS8 recipe + ALT3 + CERT 2.0 + RACK leaf; started
-20:03, ~0.3 s/step -> reads ~00:30) then RKPC_241 (its control); then pc-queue-listen merges branch listen (ALG_HIER_LISTEN + the
-ALG_HIER_DAMP=3,5,0 schedule, gated), runs the post-merge gate, fires RKX_241 then RKXC_241 (the hierarchical body + consults with the
-schedule-collision fix). Logs: .cache/rack_chain_RKP.log / RKPC / RKX / RKXC, queue_rackplain.log, queue_listen.log. Waiters match
-"preflight] FAIL|chain exit|FAILED|ABORT|Traceback".
-**THE RACK'S VERDICT (10-06, final):** form 2 (given_unique at consult 1, claim + leaf freeze) DOES NOT FIRE — RK vs RKC paired -0.002
-(z 0.24), rows 17 vs 13 (noise), mint -0.015; the claim mask exact; the commits are CLEAN (the 0.686 was a masked-vs-unmasked
-measurement bug, struck 10-07; RK's consult-1 decode reads given_unique at 0.979 like every body). THE CONSULTS on the
-hierarchical body: the first wall move in six bodies (-0.033) at the price of the hit (-0.08), rows +5, mint -0.032 — the certifier
-lines' gain (2.0) never censused on this body (the knob law); the listening-breath pair reads the schedule collision; ALG_CERT=1.0 is
-the knob beside it. THE HAMMERHEAD CENSUS (scripts/hammerhead_census.py): unanimity 0.970 / cov 0.32, majority-of-5 0.965 / 0.41, given_unique 0.979 / 0.19 —
-every test admitted; THE MAJORITY TEST registered as the next rack test (reach, not cleanliness); RK3 (release + chalkboard) next after the queue.
-**Banked 10-06:** adaptive stopping MISS; MCTS over parses NULL; the courtroom INERT; the caricature jury a WASH (form 2b: render the
-claim); the perceiver v1 MISS on wild; the meta read (meta rows 6x easier; only the coarse knot repeats; the prior inert); NL atlas v0
-MISS (clause centroids 0.646 vs the head 0.72); the schedule collision diagnosed (consult evidence lands on frozen bands); the lost
-night (one arm per chain). Rules added: a tail's grep pipelines guarded under pipefail; a derived queue diffed against its source.
-**THE AUDIT (10-06 21:14):** the panel picker's 19/311 is STRUCK (its features read the key; a corrected single read fired); the
-last-breath tap heads_all[K_B-1] predates the role pointer (readers fixed; HEAD DIFF A pending: apply on a branch after the queue, gate,
-then re-read adaptive stopping and the perceiver's stop head); the rack's claim before the clip (DIFF B) and on scratch rows (DIFF C) —
-both pending the same branch + gate; cert3/cert5 need rack3's never-run-dark assert. RKP's executing tail will exit 1 at its -A4 line:
-run its dry census + reads.py ingest by hand. Every early-breath decode carries no role pointer (the stop-early line's structural caveat).
-**Branches:** rack3 (form 3 + chalkboard), listen (the schedule fix) — unmerged until their queues; worktrees wt6 (rack3), wt7 (listen).
-main last fast-forwarded 10-05 21:3x; re-sync at the next boundary.
+**THE CARD:** pc-queue-listen merged branch listen into gen-weights (ac23f552: ALG_HIER_LISTEN + the ALG_HIER_DAMP=3,5,0 schedule) and is
+running the post-merge CPU gate (.cache/listen_merge_gate.log), then fires RKX_241 (RK_241's recipe with DAMP 3,5,0 = the schedule-
+collision fix) then RKXC_241 (its control). Logs: .cache/rack_chain_RKX.log / RKXC.log, queue_listen.log. BARS (ledger 10-06 17:0x):
+open mint >= 0.586 (the consults' cost on the hierarchical body removed), masked >= 0.338, rows >= 15, the hit >= 0.72 (membrane_rack.py),
+the wall <= 0.49. Waiters match "preflight] FAIL|chain exit|FAILED|ABORT|Traceback".
+**THE RACK FAMILY, CLOSED ON TWO BODIES (10-06/07):** form 2 (given_unique at consult 1, claim + leaf freeze) commits CLEAN certificates
+(0.963 on HS, 0.972 on the plain chassis; the 0.686 was a masked-vs-unmasked bug, struck) at ~1.5 slots/row and is NULL on the slot on
+both bodies (RK vs RKC -0.002; RKP vs RKPC +0.0005); rows inside noise; it halves the drift on the plain chassis (the hit +0.05-0.10, the
+rack's own) and nothing else. THE CONSULTS: +5 rows / -0.032 mint / the first wall move (-0.033) / the hit -0.08 on the hierarchical body;
+-6 rows / open +0.015 / silver +0.03 on the plain chassis — the lines' gain 2.0 uncensused on both (ALG_CERT 1.0/0.5 is the next knob).
+**POSITIVE READS THIS WEEK:** THE WELFORD ATLAS (c21968ae: the content-space cosine to the slot's kind mean predicts correctness at AUROC
+0.766 vs entropy 0.700; one library per body — PMS8's basis is near-orthogonal to the hierarchical bodies'); THE HAMMERHEAD CENSUS
+(unanimity 0.970 at 0.32 coverage; majority-of-5 0.965 at 0.41: the next rack test for reach).
+**REGISTERED NEXT (needs the word unless stated):** RK3 (release on contradiction + THE CHALKBOARD, gated on branch rack3; the derived
+quantity made visible — the governor census says 61 % of the same-owner wall is invisible to syntax); THE OWNER SIGNATURE (ceiling 46 %
+of wrong given slots; re-measure with coreference first); the perceiver v1b (Welford distance + the dying-ReLU fix; commit head only);
+the mouth v2 (the row's Welford distance); head diffs A/B/C from the audit (the last-breath tap carries the fused args; the claim after
+the clip; scratch rows exempt) on a branch + gate after the listen pair.
+**Banked 10-06/07 (all in the ledger):** adaptive stopping MISS (structural: early breaths lack the final-breath pointers); MCTS over
+parses NULL; the courtroom INERT; the caricature jury a WASH (form 2b: render the claim); the perceiver v1 MISS on wild; the meta read;
+NL atlas v0 MISS; the governor census (same-owner 20 % / different-owner 36 % / no-chain 44 %; the event rotor not earned); the
+schedule collision diagnosed; the bug audit (the picker's 19 struck -> 18 corrected; 13 commits).
+**Branches/worktrees:** rack3 (wt6), listen (merged; wt7 removable after the pair). main fast-forwarded 10-07 09:0x.
 
 ---
 (The previous entry follows, for the longer board.)
