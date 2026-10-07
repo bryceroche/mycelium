@@ -48293,3 +48293,21 @@ PREDICTION (pinned): most of the wall RESPECTS the governor path (same owner); s
 owner alone is a minority; owner + order separates the most. If the wall respects the path, the
 parse is inert as a road and the wall is confirmed temporal; if it violates it, a dependency
 legality mask is a structural road with the numeral mask's precedent.
+
+### 2026-10-07 (06:36) — NARRATIVE TIME (Bryce: "propagating waves across the token sequence to differentiate Alice's apples across time — that is RoPE, right?"); THE EVENT ROTOR registered as a measurement, behind the governor census
+
+RoPE = the token rotor (one of the three: trunk RoPE / the six-wave breath clock / the bus
+phasors). The relay's "narrative wave" = a FOURTH clock ticking per EVENT, not per token. THE
+RECORD: the where-codes (TC_241, 10-03) were that wave at the sentence / clause / mention levels
+(fixed unit phasors per tree level on every token's key) and NULLED — because the wall's twins
+sit in the same sentence and mostly the same clause (the 09-21 turning point: identical clause
+keys by construction). UNTESTED: the EVENT level — a phase advancing at each state-changing verb
+(had / gave / bought), three phases inside one clause; the role signature binds number to verb cue
+already, and its gain sat in precedence = order among same-cue twins; an event phase is precedence
+made a key. MEASUREMENT FIRST (the where-codes' lesson): the governor census gains the event index
+(the governing verb's ordinal among the row's verbs) — the share of the same-owner wall separable
+by event vs by clause, the event-oracle mask's yield, the event-distance histogram. If the
+same-owner wall separates at the event level, THE EVENT ROTOR is registered as a build (the
+where-codes at the verb level: a phasor from the stamps' verb order on the keys; bar = the
+same-noun cell); if it does not, the time story is derivation, not order (the 55 % pointing at
+quantities no token carries) and the chalkboard stays the road.
