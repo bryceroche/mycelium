@@ -533,7 +533,16 @@ def main():
                 rowcache[bi] = dict(is_num=np.zeros(T_ALG, dtype=bool), clause_id=None, mention_id=None, runs=None)
             row_info.setdefault(i, {"text": text, "q": int(qv[bi]), "key": keys_all[i], "parses": {}})
         for kb in range(K_B):
-            hk = {k: heads_all[kb][k].numpy() for k in KEYS}
+            if kb == K_B - 1:
+                # IDENTITY FIX (bug audit 2026-10-06, the same gap adaptive_stop.py carried): heads_all[K_B-1]
+                # is heads_of() on the raw final-breath state, built (phase1_algebra_head.py:6774) AFTER the
+                # final-breath-only args injections that live in out["args"] alone (ALG_PTR_SURF role:add:2.0
+                # at :6740, the router pointer :6752, busreg :6768). The tap's last breath therefore decodes a
+                # DIFFERENT graph from chain_acc.py's read of `o` (the banked 11-vs-14). Read the last breath
+                # from `o` so the stop head's final-breath labels mean what the chain means.
+                hk = {k: (o[k].numpy() if k in o else heads_all[kb][k].numpy()) for k in KEYS}
+            else:
+                hk = {k: heads_all[kb][k].numpy() for k in KEYS}
             fa_kb = fat_all[kb]
             st_kb = breaths_all[kb][:, :, CONTENT]
             for bi, i in enumerate(sl):
