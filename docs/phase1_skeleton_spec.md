@@ -48269,3 +48269,27 @@ first; the listening pair reads it. The dry census on RKP: 502 committed cells (
 slots; positional 0.526 = the drawer, as everywhere); the numeral-level re-score under the same
 mask is the number to quote (rack_numeral_audit.py --ckpt, pending). RKPC attributes the hit lift
 between the consults and the rack this morning.
+
+### 2026-10-07 (06:24) — THE BINDING PROBLEM'S MATURE FIELDS (Bryce: "has this been solved elsewhere?"); the mapping banked; THE GOVERNOR CENSUS fired with its prediction
+
+Three fields: (1) cognitive science's binding problem (temporal synchrony; vector-symbolic
+binding) — ALREADY OURS: the T256 bus is an FHRR / VSA binding (roles as phasors, binding by
+phase); the role signature (the slot record) binds cue to role by exactly that; "sync the Alice
+slot and the 5 slot" is the bind bus (08-30); synchrony adds nothing for two fillers of one role at
+one phase; (2) databases' foreign keys (bind to the edge owner -> number, not to the number) —
+ALREADY OURS: the arg-mention stamps + the role-cue channel; precedence (which came first) is the
+only axis that separates same-owner twins and is where the signature's gain sat; (3) compilers'
+lexical scoping / the symbol table = THE SYNTACTIC GOVERNOR (the numeral's head noun -> verb ->
+subject / possessor), mature (~95 % on English), local, UNUSED here (the trunk carries it only
+implicitly). CORRECTION to the relay: "Alice has 5 apples and Bob has 3" is the EASY case
+(different-owner twins 85-92 % right, the twin-split verdict); the wall is the same-owner twin
+(Alice had 5, gave 2, bought 3) = a TIME axis, plus the derived quantity with no token — a namespace
+gives all three one address. THE GOVERNOR CENSUS (scripts/governor_census.py; spaCy for
+measurement only — adding a parser to the DEPLOYED stack is Bryce's decision): per wild given
+slot, the gold and the chosen numerals' governor chains; the wrong picks classified same-owner /
+different-owner / no-chain; same-owner splits by verb and by clause order; THE ORACLE MASK: how
+many wrong slots a governor mask (owner; owner + verb; owner + order) would make unambiguous.
+PREDICTION (pinned): most of the wall RESPECTS the governor path (same owner); separability by
+owner alone is a minority; owner + order separates the most. If the wall respects the path, the
+parse is inert as a road and the wall is confirmed temporal; if it violates it, a dependency
+legality mask is a structural road with the numeral mask's precedent.
