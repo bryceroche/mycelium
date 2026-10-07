@@ -48180,3 +48180,24 @@ decision rather than the dump's raw digits. UNVERIFIED: whether this fully accou
 0.686 on every committed cell, or only a share (row 1 is the first, fully-reproduced example; a full
 corrected re-score across all committed cells was not run). Full trace + citations: .cache/
 hammerhead_census_PMS8_241.txt (00:15 heading).
+
+### 2026-10-07 (00:17) — CORRECTION: the rack's "dirty dishes" (0.686) are STRUCK — the audit compared the sidecar's masked claims against the dump's UNMASKED digits; RK_241's consult-1 decode reads given_unique at 0.979, the same as every body; the 10-06 entries that reasoned from 0.686 are re-read
+
+The 00:15 entry's root cause: rack_dry_row masks internally (always), but loop_val writes the
+LV_DUMP only on the OPEN read (rack_chain line 18, no LV_LEGAL=num) while the masked read (line
+20) writes no dump; rack_numeral_audit.py scored the sidecar's (masked) committed flags against
+the dump's raw final argmax — on row 1 the "committed 30, 20" were numbers not in the text; the
+real cycle committed (40, 10) correctly. Re-scoring of all 458 cells is running (the script fixed
+to read the masked decision). WHAT IS STRUCK: "the rack puts away dirty dishes a third of the
+time" (14:3x), "the committed numerals right 0.686" (the attribution entry), "the rack's own
+training behind the 0.686" (23:4x) and its reading that the body feeds the organ what it rewards —
+all built on a mis-measurement; the positional 0.526 is a DIFFERENT number (the drawer) and stands.
+WHAT STANDS: the rack's verdict (null on the slot vs RKC, +4 rows in noise, -0.015 mint) — now a
+null WITH CLEAN COMMITS: claiming ~1.4 certified givens per row and freezing their value planes
+does not move the slot read; the first-consult decode is sound; the hammerhead's majority test
+(2x the coverage at the same precision) is the registered next test for reach, not for
+cleanliness. The kitchen's lesson is amended: a dish put away clean and still not moving the sink
+says the sink's problem is not the dry dishes — it is the wet ones' bindings (the wall is binding
+inside the meta: the meta read, the twin censuses). RULE: a measurement script that joins two
+artifacts asserts they were produced under the SAME mask (the dump's mask flag is recorded in the
+dump; the audit asserts it) — the apples-to-oranges door.
