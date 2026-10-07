@@ -496,6 +496,8 @@ def main():
     ap.add_argument("--tag", default=None)
     ap.add_argument("--tau", type=float, default=None)
     ap.add_argument("--tune", action="store_true", help="sweep tau on THIS dump (use the diet dump) and report")
+    ap.add_argument("--allow-wild-tune", action="store_true",
+                     help="override the wild-tune refusal below (never use this for a real read)")
     ap.add_argument("--k", type=int, default=8, dest="k_max")
     ap.add_argument("--cand", default=None)
     ap.add_argument("--fixture", default=None)
@@ -526,6 +528,16 @@ def main():
     if not args.tune and args.tau is None:
         log("[courtroom] neither --tau nor --tune given -- nothing to do (the task pins tau tuning on the "
             "diet ONLY; pass --tune on the diet dump first, then --tau <chosen> here).")
+        sys.exit(2)
+
+    if args.tune and "wild" in b and not args.allow_wild_tune:
+        # BUG AUDIT 2026-10-06 (item 1, key leakage): the "diet only" rule above was convention,
+        # not code -- nothing stopped --tune from sweeping tau (which selects on verdict_correct,
+        # itself gold-derived) against a wild dump. No real invocation ever did this (ledger-verified:
+        # every --tune ran on slicevalid2), but refuse it at the code level rather than by discipline.
+        log(f"[courtroom] REFUSED: --tune on a wild dump ({b}) would tune tau against wild's own gold "
+            "verdicts -- the law pins tau-tuning to the diet slice only. Pass --allow-wild-tune to "
+            "override (never for a real read).")
         sys.exit(2)
 
     tau_sweep_table = None

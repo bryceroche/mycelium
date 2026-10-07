@@ -88,6 +88,8 @@ def main():
     ap.add_argument("--tag", default=None)
     ap.add_argument("--tau", type=float, default=None)
     ap.add_argument("--tune", action="store_true")
+    ap.add_argument("--allow-wild-tune", action="store_true",
+                     help="override the wild-tune refusal below (never use this for a real read)")
     ap.add_argument("--k", type=int, default=8, dest="k_max")
     ap.add_argument("--cand", default=None)
     ap.add_argument("--fixture", default=None)
@@ -116,6 +118,16 @@ def main():
         import re
         out_base = ".cache/jury_" + re.sub(r"^rawslots_", "", b).replace(".pkl", "")
     out_txt, out_pkl = out_base + ".txt", out_base + ".pkl"
+
+    if args.tune and "wild" in b and not args.allow_wild_tune:
+        # BUG AUDIT 2026-10-06 (item 1, key leakage): same code-level guard as courtroom.py -- tau
+        # tuning is pinned to the diet slice by convention only; no real invocation ever tuned on
+        # wild, but refuse it structurally rather than by discipline, and refuse it BEFORE any model
+        # load / candidate generation starts (not just before the tau choice is made). Pass
+        # --allow-wild-tune to override.
+        log(f"[courtroom2] REFUSED: --tune on a wild dump ({b}) would tune tau against wild's own gold "
+            "verdicts. Pass --allow-wild-tune to override (never for a real read).")
+        sys.exit(2)
 
     log(f"[courtroom2] loading trained juror: {args.model}")
     model = pickle.load(open(args.model, "rb"))
