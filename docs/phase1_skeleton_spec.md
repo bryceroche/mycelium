@@ -48129,3 +48129,18 @@ a non-fire) below 3 agreeing views, so K=5's majority column would not be direct
 different K; RK_241 itself was not read by this script (the coordinator's follow-up compares the two
 chassis halves, not the rack body) — the "not yet measured" item above remains open; no SE/z computed
 for the numeral-precision deltas between PMS8/HS/RKC (all n~360-390, visually flat, not pinned to a bar).
+
+### 2026-10-06 (23:45) — THE BODY-DEPENDENCE VERDICT (after the 23:43 census): given_unique reads 0.976 / 0.978 / 0.981 at breath 2 on PMS8 / HS / RKC — THE RACK'S OWN TRAINING is the only ingredient behind RK_241's 0.686; the decode-vs-commit read fired
+
+Neither chassis half is the cause (the damped body 0.978, the consult body 0.981, n ~ 360-390
+fires each; within noise of the plain body's 0.976). RK_241 (the same consult body + ALG_RACK=1)
+committed at 0.686 — the rack's training degraded either its own consult-1 DECODE (the loss took
+the cheapest road to a claim: under the hard claim mask every claim helps the OTHER slots by
+repulsion whether or not it is right, and a wrong frozen leaf costs the row once — the residual-seal
+law's shape: the body learns to feed the organ what the organ rewards) or its COMMIT PATH selects
+claims the decode did not make (a bug). The read that separates them is fired (the script on RK's
+own checkpoint under its full env). EITHER WAY the lesson for the kitchen: a dryness test the body
+can satisfy by its own choices will be satisfied by its own choices — the test must stand on
+evidence the body cannot manufacture: the TEXT (the numeral is a given), the VIEWS (independent
+reads agree), the SOLVER (the value is implied). The majority test keeps the text certificate in
+its AND for exactly this reason.
