@@ -48367,3 +48367,32 @@ the four bodies' banked states (per-kind mean directions, pairwise cosines, the 
 Prediction (pinned): the slot-state distance beats entropy by a small margin (the perceiver's
 atlas feature separated early-stopped rows); the clause-space distance does not; kinds rotate
 across bodies by cos 0.9-0.98 (the law's drift, visible inside one generation).
+
+### 2026-10-07 (07:53) — THE WELFORD ATLAS v1 READ (c21968ae; mycelium/welford.py + scripts/welford_atlas.py; .cache/welford_atlas_PMS8_241.txt): THE BAR IS MET — the content-space cosine to the slot's own KIND mean predicts per-slot correctness on wild at AUROC 0.766 vs entropy's 0.700 (+0.066; bar +0.03), rows 0.796 vs 0.750; the retina space and the diagonal Mahalanobis underperform; PMS8's basis is nearly ORTHOGONAL to the hierarchical bodies' (cos 0.13-0.26)
+
+The library: streaming accumulators (count / mean / M2, decay, Chan merge) per kind and per coarse
+knot in two spaces — the head's final-breath content state (384-d; 481 keys) and the retina's
+clause embedding (2048-d; 199 keys) — built from 705 / 775 diet-slice rows that pass the custody
+door (70 asdiv eq_sets rows excluded, logged, custody_gold untouched; a fresh CPU forward under the
+SURF8 env, ~16 min); knot cells carry distinct-row membership (65 / 471 content knots clear a
+>= 2-row floor: thin at this n; the recursion charter's books mature it). THE WILD READ (once;
+2051 gold slots, 713 right): content-space cosine-to-own-kind-mean AUROC 0.7661 vs the recomputed
+entropy 0.7005 (+0.0656: BAR MET); per row (the mean over the row's slots vs the 14 correct rows)
+0.7961 vs 0.7504; the retina-space distance and the Mahalanobis-lite both below the plain content
+cosine (the prediction held on both counts: the slot-state distance wins, the clause space does
+not). VERDICT: THE ATLAS EARNS THE PERCEIVER'S INPUT SLOT — the first bar met since the hammerhead
+and the first positive organ-level read of the week: a frozen, diet-built library of kind centroids
+is a better per-slot hydrometer than the membrane's own entropy, at zero cost at read. THE DRIFT
+MONITOR (banked band-probe states, final breath, per-kind mean directions): the three hierarchical
+bodies (HS / HSd / EY) share a basis (pairwise cos 0.75-0.97) while PMS8_241 sits nearly
+orthogonal to all three (0.13-0.26) — the never-mix law's drift is not a small rotation across
+generations: ACROSS ARCHITECTURE FAMILIES THE KIND DIRECTIONS ROTATE TO NEAR-INDEPENDENCE (RK_241
+has no banked states; EY substituted, flagged); the radius reproduces the 10-05 read (PMS8 loose
+0.53-0.67, the partitioned bodies tight 0.78-0.84). REGISTERED: (1) the perceiver v1b takes the
+Welford distance (content space, own kind) as a feature beside entropy, with the dying-ReLU fix,
+the commit head only (no stop head until a body's later breaths beat its first look) — one wild
+read, the same bars (precision >= 0.90 at >= 20 % coverage; AUROC >= entropy + 0.05); (2) a
+Welford library is built PER BODY (the law: a library's coordinates belong to the body that wrote
+them; a read on another body is a read in a foreign frame); (3) the library as THE MOUTH v2 (the
+row's mean distance to its kinds' means as the OOD register: 0.796 AUROC on rows) — the mouth's
+length-correction discipline applies.
