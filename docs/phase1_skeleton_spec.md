@@ -47869,3 +47869,24 @@ at the final breath; the cost per view. BARS: admission at >= 0.90 numeral preci
 (pinned): unanimity alone >= 0.90 at ~15 % coverage; the AND >= 0.90 near given_unique's 22 %.
 The build, if admitted: the rack's test takes K views at the consult (K pass-1s per consult at
 training; ALT3 is already 2.2x — the price is stated before any fire).
+
+### 2026-10-06 (20:11) — THE ATTRIBUTION (membrane_rack.py on RKC_241): THE WALL MOVE AND THE HIT DROP ARE THE CONSULTS', NOT THE RACK'S — THE RACK'S FINAL VERDICT: NULL (rows +4 within row noise, mint -0.015); THE CONSULTS ON THE HIERARCHICAL BODY: the wall -0.033, the hit -0.08, rows +5, mint -0.032, the slot flat
+
+The three bodies, wild, b6: THE WALL (wrong givens' other-sentence argmax share) HS_241 0.526 /
+RK_241 0.489 / RKC_241 0.493 — the move (-0.033..-0.037) belongs to the CONSULTS (RK vs RKC
+-0.004: nothing); mass-weighted 0.511 / 0.511 / 0.515 (flat on all three). THE HIT (right slots on
+the token band, b2-b6) HS 0.75-0.76 / RK 0.66-0.70 / RKC 0.68-0.70 — the drop is the consults'
+(RK vs RKC flat). THE RACK'S OWN LEDGER, complete: slot -0.002 (null), rows +4 (17 vs 13; the row
+SE on 13-17 of 311 is ~4), mint -0.015, digits flat, the wall -0.004, the hit flat, the claim exact
+(wet mass on claimed 0.000), the committed numerals right 0.686. VERDICT: THE RACK (form 2:
+given_unique at consult 1, claim + leaf freeze) DOES NOT FIRE — it is null on every read but a
+row count inside its noise; the hands work mechanically and move nothing that is measured. The
+reading for the kitchen: putting dishes away that are dirty one time in three does not clean the
+sink — the test, not the rack, is the joint (the hammerhead census is reading the stronger test
+now). THE CONSULTS' OWN LEDGER on the hierarchical body (RKC vs HS): THE FIRST WALL MOVE IN SIX
+BODIES is THEIRS (-0.033: the certifier lines redirect wrong givens away from other sentences),
+at the price of the hit (-0.08: the same lines knock right givens off their tokens), rows +5, mint
+-0.032, the slot flat — the knob-law pattern once more (an injection on the read that helps the
+wrong and hurts the right: the lines' gain 2.0 was never censused on this body; on the plain
+chassis CL_241 moved neither). The schedule-collision pair (RKX / RKXC: the bands settle after the
+evidence) is the registered read of exactly this; ALG_CERT=1.0 is a knob to carry beside it.
