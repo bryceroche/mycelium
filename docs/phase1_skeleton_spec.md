@@ -47648,3 +47648,30 @@ and whether a frequency prior over the first look's candidates (the courtroom's 
 re-ranked by their knot's diet frequency) changes the row count. PREDICTION (pinned): the wall is
 MOSTLY ON META ROWS (the twin censuses: same-entity bindings inside common motifs), so the meta
 prior is inert on rows; the tail is a minority of both the right and the wrong.
+
+### 2026-10-06 (17:18) — THE META READ (scripts/meta_read.py, 23576001; .cache/meta_read_PMS8_241.txt): the prediction is HALF REFUTED — the wall tracks the population (the tail is 62 % of wild and 64 % of the wall), META ROWS ARE 6x EASIER (9.2 % vs 1.6 % correct), the meta prior is inert (15 vs 14), and only the COARSE knot repeats at all
+
+Facts: the fine knot (canonical_digest keeps values) is unseen for 96.8 % of wild rows — numbers
+do not repeat; the COARSE knot (values stripped, the op / type skeleton; hash_audit_iso's level-0
+macro expansion reused) is the only level with repetition: 10,778 distinct coarse knots over 50,653
+diet rows; the top 181 cover 50 % of the diet (THE META). Wild: 38.3 % of rows are meta, 61.7 %
+tail; of the 297 wall rows (wrong + refused) 36.4 % meta / 63.6 % tail = the population split (the
+prediction "the wall is mostly on meta rows" REFUTED in its letter: the wall is wherever the rows
+are). But META ROWS ARE EASIER: 9.2 % correct vs 1.6 % on the tail (frequency buckets non-monotone
+and noisy: unseen 1.6 %, 1-9 0.0 %, 10-99 9.8 %, 100+ 3.6 %). THE META PRIOR as a picker angle
+(the courtroom's survivors re-ranked by coarse-knot diet frequency): 15 / 311 vs top-1 14 (4 fixes,
+3 regressions) — inert, as predicted; its ceiling is the lattice's: ANY survivor's coarse knot
+matches the gold knot in 7.7 % of rows (exact isomorph 5.1 %) — the candidate pool rarely contains
+the gold MOTIF as an alternative; the first look's errors are inside the motif, not across motifs.
+HS / RK: row verdicts not reconstructible from the LV_DUMP format (flagged, not fabricated); their
+per-slot wrong share by bucket tracks PMS8's. THE READING: (1) Bryce's "deviation from the meta
+hurts" is TRUE OF THE MODEL: it wins almost only on meta knots (6x); (2) a prior cannot help the
+tail because the model's alternatives live inside the wrong motif — the lever for the tail is n
+(annotated tail rows) or the RECURSION CHARTER (make tail knots meta by composition: macro-factors,
+book N+1 one floor up), not a centroid; (3) THE ATLAS'S LEVEL is settled by data: the coarse knot
+(the branch of the hierarchical codebook); values never repeat, so the leaf is instance-only; (4)
+the row ceiling at 43 (the combined oracle) and the motif oracle at 7.7 % together say: when the
+right graph is in the pool it is the right motif with a flipped binding — the wall is binding
+inside the meta. Registered: the meta share as a reporting axis for every future row read (meta vs
+tail rows correct), and the recursion charter's next book aimed at the tail knots with the highest
+wild mass.
