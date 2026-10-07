@@ -47792,3 +47792,28 @@ NOT fired (no GPU spent; the 18:02 entry's pc-queue-listen is the mechanism that
 after a merge this session does not perform). The 18:02 ledger entry above (word given for the
 whole queue) landed concurrently with this work; the naming (RKX_241/RKXC_241) matches by
 construction, not coordination.
+
+### 2026-10-06 (18:40) — NL ATLAS v0 READ (scripts/nl_atlas_clause.py, 247df82b — the registered name nl_atlas_v0.py was taken by an unrelated 08-28 artifact; .cache/nl_atlas_v0.txt): THE BAR MISSED — a clause-embedding centroid predicts add-vs-mul on wild at 0.646 (the head 0.72); purity 0.61-0.67; the typed demand leaves 3.1 candidates per argument; the caricature variant adds nothing
+
+Setup: 6,000 relation + 6,179 given factors from the prose diet (form_mix_pm35a; gsm8k / asdiv /
+svamp), each with its clause span (the result variable's clause) embedded through the frozen trunk
+(L0-L3 pooled) and its DSL payload (ftype, op, the argument-role pattern, the template); k-means k
+50 / 100 / 200 / 400; wild's 311 annotated rows as the measurement. RESULTS: (1) the plain span pool
+is the better key — the span-minus-text caricature does not beat it at any k; (2) weighted (ftype,
+op) purity 0.608-0.674; full-template purity 0.22-0.31; (3) THE BAR: the only non-degenerate test
+on wild is op given rel (add vs mul: wild carries no sel / mod / pct / fdiv / macro gold) — best
+0.6456 at k 100 vs the head's 0.72 (re-derived from the LV_DUMP: ftype 0.848, op 0.713; 0.721 on
+right-slot placements) — MISSED; the ftype comparison is degenerate (an atlas handed the given / rel
+split scores 1.0 trivially); (4) THE TYPED DEMAND: with the ORACLE role pattern the mean branching
+factor per argument is 3.14 and only 11.7 % of arguments are identified uniquely by type — the wall
+is WITHIN a role class (which given / which derived variable), not across ftype / op (the
+prediction's second half confirmed; its first half, op purity >= 0.8, REFUTED); (5) meta / tail:
+the atlas is flat across the split (0.676 vs 0.635) where the head is 6x easier on meta. VERDICT:
+the atlas-with-payload does NOT earn a build as the root's dictionary: a clause embedding is a
+weaker op-reader than the trained head, and the payload's typed demand narrows the binding only
+one in nine times. THE READING FOR THE GUT: the DSL idea survives as the recursion charter's
+macro-factors (keyed by annotation, expanded exactly); its NL key is not a centroid of the clause
+embedding — the trunk's clause pool does not carry the operation cleanly (0.65 on a binary
+question), which is the binding theorem one more time: what a clause MEANS mathematically is a
+binding of its cues, not a point in the retina. The joined phrase-motif table (counts, not
+centroids) remains the useful NL atlas; the role signature remains its working miniature.
