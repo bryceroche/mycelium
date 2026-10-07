@@ -48567,3 +48567,26 @@ read either -- the sign flip is a property of the diet regime's slots, not of wh
 library. CLOSED (registered, not pursued further): the mechanism (ceiling/ dose effects on
 near-memorized continuation data) is a books-campaign question, not a v1b blocker -- v1b's own
 verdict (11:51, DOES NOT FIRE) stands unchanged by this probe.
+
+### 2026-10-07 (15:39) — RKX_241 (THE SCHEDULE-COLLISION FIX: RK_241's recipe with ALG_HIER_DAMP=3,5,0 — the bands settle AFTER the consults' evidence arrives): MINT RECOVERED (0.599 vs RK's 0.540: +0.059; bar >= 0.586 MET), THE HIT RECOVERED (0.70-0.74 vs RK's 0.66-0.70; bar >= 0.72 met at the margin), the wall kept (0.489; bar <= 0.49 MET), the slot flat (0.3413; bar >= 0.338 MET), ROWS 7 (bar >= 15 MISSED — RK's 17 did not survive the schedule change)
+
+Reads (rack_chain_RKX.log 15:38; the audit-fixed chain ran to completion with its WALL / HIT
+lines): open wild 0.2984 (HS 0.3096; RK 0.3033); MASKED 0.3413 — paired vs HS_241 -0.0059 (SE
+~0.008, noise), vs PMS8 -0.0063, vs EY +0.0059; rows 7 / 7 (RK 17 / 11; HS 8 / 7; RKC 13 / 12); OPEN
+MINT 0.5987 (RK 0.5398, RKC 0.5545, HS 0.5862: the consults' mint price on the hierarchical body is
+GONE and then some — +0.013 over the body itself); digits 0.369; silver460 0.2120; golden24 5 / 12
+/ 7. THE MECHANISM: THE WALL 0.514 / 0.523 / 0.516 / 0.505 / 0.504 / 0.493 / 0.489 at b0-b6 (RK
+0.489 at b6; HS 0.526): kept; THE HIT 0.797 / 0.700 / 0.743 / 0.722 / 0.738 / 0.708 / 0.708 (RK
+0.662-0.700; HS 0.72-0.76): the consults' knock on the right givens is HALF UNDONE by moving the
+settle breaths after the evidence. READING: the schedule collision diagnosis is CONFIRMED on its
+own terms — with the root settling at 3 and the branch at 5, the consult's lines land on open bands
+and the body stops paying mint and stops losing its right givens; the slot read is unchanged (the
+wall moved by the consults, kept by the fix; the hit recovered; neither reaches the slot). THE
+ROWS: 7 vs RK's 17 — the row record of the week does not survive a schedule change on the same
+body with the same organs; with RKC's 13 and RKP's 9 / RKPC's 8, the row counts of this family
+read as body x schedule x organ noise around ~10 (SE ~4): the 17 was never a claim and is now not
+even a candidate. THE BAR for the schedule fix proper is RKX vs RKXC (the control with the fixed
+schedule, no rack; training now): if RKXC also reads mint ~0.60 and the hit ~0.72, the fix is the
+schedule's and the rack is, as on two bodies before, null beside it. RKX's commits re-scored under
+the same mask (pending, zero GPU). The listening-breath form proper (ALG_HIER_LISTEN) is gated and
+unfired: the schedule form was chosen as the lower-risk read; it has now paid.
