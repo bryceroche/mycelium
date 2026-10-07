@@ -47972,3 +47972,26 @@ road, which the auditor disputes: both readings banked, the gradient probe decid
 carry no ALG_RACK. RULES: a selector's feature list is diffed against the gold fields before any
 wild read (the conviction index's door for pickers); a subagent never overwrites a banked artifact
 or fires a long job on its own (the one-arm, one-owner rule for .cache).
+
+### 2026-10-06 (21:20) — THE CORRECTED PICKER'S SINGLE WILD READ (sonnet, under the standing word): 18/311, TIES THE FLOOR, MISSES THE BAR — the void 19 is struck, this is the legitimate read
+
+Candidates (.cache/picker/cand_diet.pkl, cand_wild_PMS8_241.pkl) are unchanged from 10-05 (the
+Goodhart-fence fix a23a4479 lives entirely in build_features.py's angle computation, not candidate
+generation) — no GPU step needed; rebuilt .cache/picker/feat_diet_v2.pkl / feat_wild_v2.pkl with the
+corrected FEATURE_NAMES (diag_twin_* excluded from X), re-trained on the diet only
+(scripts/picker/train_picker.py, 5-fold GroupKFold by row): top-1 310/775 (0.400), consistency judge
+296/775 (0.382), picker 305/775 (0.394) — matching the pre-fix ablation's own "-twin: 305/775" line
+exactly, confirming the leak bought nothing. Ablation: -loglik 331/775 (+26), -flips 209/775 (-96,
+the load-bearing angle), -length 258/775 (-47), -nlc 272/775 (-33), -unique 290/775 (-15), -status
+0 (+0). THE ONE WILD READ (scripts/picker/wild_read.py, model_v2.pkl, never refit): 18/311 —
+TIES THE FLOOR (the consistency judge) exactly, below the void 19, MISSES the pinned bar (rows>=24,
+regressions<=2): regressions=4 (rows 81, 233, 285, 297), fixes=8 (rows 18, 43, 58, 94, 227, 247,
+255, 266). Confusion: 69/311 refused->wrong (the picker's modal failure is picking a wrong-but-
+consistent graph over a correct refusal-worthy top-1 — i.e. it is not conservative), 21 refused-
+>refused, 10 correct->correct held, 6 refused->correct (new fixes via refusal), 2 wrong->correct, 4
+correct->wrong (the regressions). READING: the panel picker's true number was never 19 — the leaked
+feature was buying nothing (as the diet CV already said) and losing it costs nothing either; 18
+sits exactly at the floor it was built to beat and still misses its own bar. Artifacts:
+.cache/panel_picker_v2_PMS8_241.txt (full report), .cache/picker/{feat_diet_v2,feat_wild_v2,
+model_v2,diet_report_v2,wild_report_v2}. The original .cache/panel_picker_PMS8_241.txt (19/311)
+stays on disk as the struck record, not deleted.
