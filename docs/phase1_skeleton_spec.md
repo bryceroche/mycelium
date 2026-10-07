@@ -48423,3 +48423,28 @@ on the hierarchical body the first wall move (-0.033) and the hit's fall (-0.08)
 -0.032; on the plain chassis rows -6, open +0.015, silver +0.03, mint flat, the wall and hit flat —
 the lines' gain (2.0) is uncensused on both and is the knob to turn before any further consult arm
 (ALG_CERT=1.0 / 0.5 registered beside the listening pair, which is now merging).
+
+### 2026-10-07 (11:18) — THE BRIDGE BRAINSTORM (Bryce: the composite key (centroid, breath); Jensen-Shannon in the 512 space; the perceiver as orthodontist; a temporal U-Net); the mapping banked; THE PERCEIVER v1b fired (per-breath Welford library + the codebook distribution + JS trajectory features; one wild read)
+
+(1) THE COMPOSITE KEY = the two-channel law as a table: per (kind, breath) the ANGLE is fixed from
+b3 on every body (the 10-05 radius read) and only the RADIUS moves — the key carries the expected
+consolidation per breath, the orthodontist's flight path; the per-breath library unites v1's
+on-the-fly cosines (0.744) and the frozen final-breath library (0.766). (2) JS: NOT over the 512
+dims (a set, rotating by design — a softmax over dims reads the clock's turn; the ledger refused
+plane-axis convolutions for the same reason); the machine's probability objects are the attention
+rows, the head softmaxes, and THE DISTRIBUTION OVER CENTROIDS p(kind | state) = softmax(cos / tau)
+— categories with meaning, rotation-safe in the canon frame; JS between breaths = the thought's
+movement in discrete space; JS to the kind's expected profile at that breath = the deviation from
+the flight path; cosine stays the ruler, JS measures the trajectory. (3) THE ORTHODONTIST = the
+knob law with a face: a fixed wire's small sustained force is a road, a 2.0 hand yanking once is a
+gain; pain = mint / digits; the perceiver v1 reads, the orthodontist ACTS (per-row temperature /
+damping from the trajectory: the registered v2, after v1b proves the flight path is readable).
+(4) The temporal U-Net = the movie-reader registered 10-05 (the perceiver's eyes); features first,
+the net on the raw movie after. FIRED (zero GPU): the (kind, breath) Welford library on the diet
+slice; the codebook distribution per slot per breath on wild; features = the flight path
+(cosine per breath), JS movement, JS deviation, codebook entropy, + v1's telemetry; the perceiver
+v1b (commit head only; leaky_relu; GroupKFold; ablations chosen on the diet) with ONE wild read.
+BARS (the registered v1b's): AUROC >= entropy + 0.05; precision >= 0.90 at >= 20 % coverage.
+PREDICTION (pinned): the flight path adds a few points over the final cosine (0.77 -> ~0.79); JS
+adds little over the cosines (the same information in another ruler); the learned commit reaches
+~0.85 precision at 20 % — short of the dryness bar, because the wall's wrong slots look settled.
