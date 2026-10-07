@@ -854,9 +854,211 @@ def jsfeat():
 
 
 # ======================================================================================
+# THE TEXTURE PROBE (2026-10-07, coordinator ask -- the ledger's texture rule: 2 unexplained curve
+# shapes = a mechanism probe): the diet's own final-breath cosine-to-kind-mean reads AUROC 0.4230
+# (anti-predictive) where wild reads 0.766 on the IDENTICAL construction. Four zero-GPU reads on
+# already-banked states (no new forward pass): (a) per gen.src/gen.wild register bucket, the plain
+# in-sample cosine AUROC; (b) the same, LEAVE-ONE-ROW-OUT (LORO) kind means -- kills in-sample bias
+# by construction; (c) a GSM8K-only library, LORO-scored on gsm8k rows and plain-scored on every
+# other bucket; (d) wild rescored against that GSM8K-only library, against the banked 0.7661.
+# ======================================================================================
+
+def _bucket_of_row(row):
+    g = row.get("gen", {}) or {}
+    if not isinstance(g, dict):
+        return "none"
+    src = g.get("src")
+    wild = g.get("wild", {}) or {}
+    if not isinstance(wild, dict):
+        wild = {}
+    if src == "gsm8k":
+        return "gsm8k"
+    if src == "asdiv":
+        return "asdiv"
+    if src == "svamp":
+        return "svamp"
+    if wild.get("words") is True:
+        return "rendered-wild"      # the generator's OWN "rendered as words" flag (mint/dag-shaped, src-less or form37/chain56)
+    if wild.get("words") is False:
+        return "mint-like"          # pure symbolic mint (src=='None' literal, wild.words=False)
+    return "none"                    # fallback -- empty on this slice (the partition above sums to 775/775)
+
+
+def _cos_rows(Xv, means_per_row):
+    num = (Xv * means_per_row).sum(-1)
+    den = np.linalg.norm(Xv, axis=-1) * np.linalg.norm(means_per_row, axis=-1) + 1e-12
+    return num / den
+
+
+def texture_probe():
+    vs, vg, states_all, admissible = _diet_rows_and_states()
+    n = len(vs)
+    final_kb = states_all.shape[1] - 1
+    X = states_all[:, final_kb].astype(np.float32)   # (n, L_FAC, C)
+    C = X.shape[-1]
+
+    tel = np.load(".cache/perceiver_telemetry_PMS8_241_pm35cslicevalid2.npz", allow_pickle=True)
+    right_final = tel["right_final"]
+    assert right_final.shape[0] == n, (right_final.shape, n)
+
+    # bucket labels read from the RAW jsonl (not vs[i] -- load_alg's own caching normalizes/drops
+    # some rows' "gen" field (dict -> None/str for a few dozen rows, confirmed by inspection); the
+    # raw file and vs share the IDENTICAL row order (0 text mismatches, checked), so this is the
+    # faithful "slice's gen field" the ask names.
+    raw_rows = load_jsonl(DIET_SLICE)
+    assert len(raw_rows) == n and all(raw_rows[i]["text"] == vs[i]["text"] for i in range(0, n, 97)), \
+        "texture_probe: raw jsonl row order does not match vs -- bucket labels would be misaligned"
+    ri, ji, kind, bucket = [], [], [], []
+    for i in range(n):
+        facs = vs[i]["factors"]
+        b = _bucket_of_row(raw_rows[i])
+        for j in range(min(X.shape[1], len(facs))):
+            if vg["presence"][i, j] <= 0.5 or right_final[i, j] < 0:
+                continue
+            ri.append(i); ji.append(j); kind.append(gold_kind(facs[j], j)); bucket.append(b)
+    ri, ji = np.array(ri), np.array(ji)
+    kind, bucket = np.array(kind), np.array(bucket)
+    y = right_final[ri, ji].astype(bool)
+    Xs = X[ri, ji]
+    rows_of_slot = ri
+    admissible_slot = admissible[ri]
+    gsm_slot = bucket == "gsm8k"
+
+    def build_lib(mask):
+        S, Ncnt = {}, {}
+        for k in KINDS:
+            sel = (kind == k) & mask
+            S[k] = Xs[sel].astype(np.float64).sum(0) if sel.any() else np.zeros(C)
+            Ncnt[k] = float(sel.sum())
+        return S, Ncnt
+
+    def local_sums(mask):
+        loc_sum = {k: np.zeros((n, C), np.float64) for k in KINDS}
+        loc_cnt = {k: np.zeros(n, np.float64) for k in KINDS}
+        for k in KINDS:
+            sel = (kind == k) & mask
+            if sel.any():
+                rs = rows_of_slot[sel]
+                np.add.at(loc_sum[k], rs, Xs[sel].astype(np.float64))
+                np.add.at(loc_cnt[k], rs, 1.0)
+        return loc_sum, loc_cnt
+
+    def score_plain(S, Ncnt, mask_score=None):
+        out = np.full(len(Xs), np.nan)
+        for k in KINDS:
+            sel = kind == k
+            if mask_score is not None:
+                sel = sel & mask_score
+            if Ncnt[k] > 0 and sel.any():
+                mu = (S[k] / Ncnt[k]).astype(np.float32)
+                out[sel] = _cos_rows(Xs[sel], np.broadcast_to(mu, Xs[sel].shape))
+        return out
+
+    def score_loro(S, Ncnt, loc_sum, loc_cnt, mask_score):
+        out = np.full(len(Xs), np.nan)
+        for k in KINDS:
+            sel = (kind == k) & mask_score
+            if not sel.any() or Ncnt[k] <= 0:
+                continue
+            rs = rows_of_slot[sel]
+            num = S[k][None, :] - loc_sum[k][rs]
+            den = Ncnt[k] - loc_cnt[k][rs]
+            valid = den > 0
+            mu = np.full((int(sel.sum()), C), np.nan, np.float32)
+            mu[valid] = (num[valid] / den[valid, None]).astype(np.float32)
+            cv = np.full(int(sel.sum()), np.nan)
+            cv[valid] = _cos_rows(Xs[sel][valid], mu[valid])
+            out[sel] = cv
+        return out
+
+    # ---- global (admissible-rows) library: plain in-sample (a), LORO (b) ----
+    S_g, N_g = build_lib(admissible_slot)
+    loc_sum_g, loc_cnt_g = local_sums(admissible_slot)
+    cos_global = score_plain(S_g, N_g)
+    cos_loro = score_loro(S_g, N_g, loc_sum_g, loc_cnt_g, np.ones(len(Xs), bool))
+
+    # ---- GSM8K-only library: (c) LORO on gsm8k rows, plain on every other bucket ----
+    gsm_adm = admissible_slot & gsm_slot
+    S_gsm, N_gsm = build_lib(gsm_adm)
+    loc_sum_gsm, loc_cnt_gsm = local_sums(gsm_adm)
+    cos_gsmlib_other = score_plain(S_gsm, N_gsm, mask_score=~gsm_slot)
+    cos_gsmlib_loro_gsm = score_loro(S_gsm, N_gsm, loc_sum_gsm, loc_cnt_gsm, gsm_slot)
+
+    BUCKETS = ["gsm8k", "asdiv", "svamp", "rendered-wild", "mint-like", "none"]
+    P("\n" + "=" * 100)
+    P("THE TEXTURE PROBE (2026-10-07): why does the diet's final-breath cosine read AUROC 0.4230")
+    P("(anti-predictive) where wild reads 0.766 on the IDENTICAL construction?")
+    P("=" * 100)
+    P("\nbucket sizes (gen.src/gen.wild partition of the 775-row diet slice, gold-present slots with a right_final label):")
+    for b in BUCKETS:
+        sel = bucket == b
+        P(f"  {b:14} n_slots={int(sel.sum()):5d}  n_rows={len(set(rows_of_slot[sel].tolist()))}")
+
+    P("\n(a) PLAIN in-sample cosine AUROC, global library, per bucket:")
+    for b in BUCKETS:
+        sel = bucket == b
+        if sel.sum() < 10:
+            P(f"  {b:14} n={int(sel.sum()):5d}  too few slots"); continue
+        a, n1, n0 = auroc(y[sel], cos_global[sel])
+        P(f"  {b:14} n={int(sel.sum()):5d}  AUROC={a:.4f}  (n_pos={n1} n_neg={n0})")
+
+    P("\n(b) LORO (leave-one-ROW-out) global-library kind means, per bucket:")
+    for b in BUCKETS:
+        sel = bucket == b
+        if sel.sum() < 10:
+            P(f"  {b:14} n={int(sel.sum()):5d}  too few slots"); continue
+        a, n1, n0 = auroc(y[sel], cos_loro[sel])
+        P(f"  {b:14} n={int(sel.sum()):5d}  AUROC={a:.4f}  (n_pos={n1} n_neg={n0})")
+
+    P("\n(c) GSM8K-ONLY library -- LORO on gsm8k rows, PLAIN scoring on every other bucket:")
+    for b in BUCKETS:
+        arr = cos_gsmlib_loro_gsm if b == "gsm8k" else cos_gsmlib_other
+        sel = (bucket == b) & np.isfinite(arr)
+        if sel.sum() < 10:
+            P(f"  {b:14} n={int(sel.sum()):5d}  too few slots"); continue
+        a, n1, n0 = auroc(y[sel], arr[sel])
+        P(f"  {b:14} n={int(sel.sum()):5d}  AUROC={a:.4f}  (n_pos={n1} n_neg={n0})")
+
+    # ---- (d) wild rescored against the GSM8K-only library ----
+    import phase1_algebra_head as H
+    bands, clock_dims = H._hier_band_dims()
+    CONTENT = np.sort(np.concatenate(bands))
+    rows_w = load_jsonl(WILD_PATH)
+    riw, jiw, kindw = [], [], []
+    for r_idx, row in enumerate(rows_w):
+        for j, fac in enumerate(row["factors"]):
+            riw.append(r_idx); jiw.append(j); kindw.append(gold_kind(fac, j))
+    riw, jiw, kindw = np.array(riw), np.array(jiw), np.array(kindw)
+    ps = np.load(".cache/ps_legal_wild_PMS8_241.npz")
+    okmap = {(int(r), int(j)): bool(o) for r, j, o in zip(ps["rows"], ps["slots"], ps["ok"])}
+    yw = np.array([okmap[(r, j)] for r, j in zip(riw, jiw)])
+    zc = np.load(".cache/clock_band_states_PMS8_241.npz")
+    Sst = zc["states"].astype(np.float32)        # (nw, 6, L_FAC, 512), loop breaths 1..6
+    Xw = Sst[riw, 5, jiw, :][:, CONTENT]          # final loop breath, content dims
+
+    cos_w_gsmlib = np.full(len(Xw), np.nan)
+    for k in KINDS:
+        sel = kindw == k
+        if N_gsm.get(k, 0) > 0 and sel.any():
+            mu = (S_gsm[k] / N_gsm[k]).astype(np.float32)
+            cos_w_gsmlib[sel] = _cos_rows(Xw[sel], np.broadcast_to(mu, Xw[sel].shape))
+    valid_w = np.isfinite(cos_w_gsmlib)
+    a_w_gsm, n1w, n0w = auroc(yw[valid_w], cos_w_gsmlib[valid_w])
+    P(f"\n(d) wild rescored against the GSM8K-only library: n={int(valid_w.sum())} AUROC={a_w_gsm:.4f} "
+      f"(n_pos={n1w} n_neg={n0w}) vs the banked full-diet-library read 0.7661")
+
+    a_all, _, _ = auroc(y, cos_global)
+    a_all_loro, _, _ = auroc(y, cos_loro)
+    a_gsm_plain, n1g, n0g = auroc(y[gsm_slot], cos_global[gsm_slot])
+    a_gsm_loro, _, _ = auroc(y[gsm_slot], cos_loro[gsm_slot])
+    return dict(a_all=a_all, a_all_loro=a_all_loro, a_gsm_plain=a_gsm_plain, a_gsm_loro=a_gsm_loro,
+                a_w_gsm=a_w_gsm, buckets=BUCKETS)
+
+
+# ======================================================================================
 def main():
     mode = sys.argv[1] if len(sys.argv) > 1 else "all"
-    assert mode in ("build", "read", "drift", "jsfeat", "all"), mode
+    assert mode in ("build", "read", "drift", "jsfeat", "textureprobe", "all"), mode
     P(f"THE WELFORD ATLAS -- PMS8_241 -- mode={mode} -- {time.strftime('%Y-%m-%d %H:%M:%S')}")
     if mode in ("build", "all"):
         build()
@@ -869,6 +1071,8 @@ def main():
         drift_monitor()
     if mode in ("jsfeat", "all"):
         jsfeat()
+    if mode == "textureprobe":
+        texture_probe()
     if mode == "all":
         P("\n" + "=" * 100)
         P("THE SIX-LINE READING")
