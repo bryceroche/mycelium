@@ -6,11 +6,12 @@ ALG_HIER_DAMP=3,5,0 schedule, gated), runs the post-merge gate, fires RKX_241 th
 schedule-collision fix). Logs: .cache/rack_chain_RKP.log / RKPC / RKX / RKXC, queue_rackplain.log, queue_listen.log. Waiters match
 "preflight] FAIL|chain exit|FAILED|ABORT|Traceback".
 **THE RACK'S VERDICT (10-06, final):** form 2 (given_unique at consult 1, claim + leaf freeze) DOES NOT FIRE — RK vs RKC paired -0.002
-(z 0.24), rows 17 vs 13 (noise), mint -0.015; the claim mask exact; the committed numerals right only 0.686. THE CONSULTS on the
+(z 0.24), rows 17 vs 13 (noise), mint -0.015; the claim mask exact; the commits are CLEAN (the 0.686 was a masked-vs-unmasked
+measurement bug, struck 10-07; RK's consult-1 decode reads given_unique at 0.979 like every body). THE CONSULTS on the
 hierarchical body: the first wall move in six bodies (-0.033) at the price of the hit (-0.08), rows +5, mint -0.032 — the certifier
 lines' gain (2.0) never censused on this body (the knob law); the listening-breath pair reads the schedule collision; ALG_CERT=1.0 is
-the knob beside it. THE HAMMERHEAD DRYNESS TEST (view unanimity x given_unique; scripts/hammerhead_census.py) is being censused on CPU —
-if admitted (>= 0.90 numeral precision), the rack's test is replaced and RK3 (release + chalkboard, gated on rack3) is the next arm.
+the knob beside it. THE HAMMERHEAD CENSUS (scripts/hammerhead_census.py): unanimity 0.970 / cov 0.32, majority-of-5 0.965 / 0.41, given_unique 0.979 / 0.19 —
+every test admitted; THE MAJORITY TEST registered as the next rack test (reach, not cleanliness); RK3 (release + chalkboard) next after the queue.
 **Banked 10-06:** adaptive stopping MISS; MCTS over parses NULL; the courtroom INERT; the caricature jury a WASH (form 2b: render the
 claim); the perceiver v1 MISS on wild; the meta read (meta rows 6x easier; only the coarse knot repeats; the prior inert); NL atlas v0
 MISS (clause centroids 0.646 vs the head 0.72); the schedule collision diagnosed (consult evidence lands on frozen bands); the lost
