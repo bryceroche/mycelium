@@ -48144,3 +48144,39 @@ can satisfy by its own choices will be satisfied by its own choices — the test
 evidence the body cannot manufacture: the TEXT (the numeral is a given), the VIEWS (independent
 reads agree), the SOLVER (the value is implied). The majority test keeps the text certificate in
 its AND for exactly this reason.
+
+### 2026-10-07 (00:15) — THE RACK'S 0.686 IS A MEASUREMENT BUG, NOT A DEFECT: given_unique on RK_241's OWN checkpoint reads 0.979 at consult-1 (breath 2); the audit's source dump carries the UNMASKED final decode, not the masked numeral the rack's own commit used — root-caused on row 1
+
+THE DECISIVE READ (scripts/hammerhead_census.py, RK_241's own checkpoint, full env incl. ALG_RACK=1
+ALG_RACK_TESTS=given_unique ALG_RACK_FREEZE=leaf, breath 2/consult-1, K=1, 311 rows, niced CPU, 648s):
+given_unique PRECISION 0.979 (337 fires, coverage 0.164) — matching PMS8_241/HS_241/RKC_241's 0.976-
+0.981 (23:43 entry) exactly. OUTCOME (b): the consult-1 decode is fine; the rack's training did not
+degrade it. The discrepancy with the previously-reported 0.686 (scripts/rack_numeral_audit.py on
+dump_wild_RK_241.pkl.rack.npz, 2026-10-06 14:13/14:31) is in the MEASUREMENT, not the mechanism.
+
+ROOT CAUSE, localized on row 1 ("James spends 40 years teaching... His partner... 10 years less...";
+gold 40/10; the text's ONLY legal numerals): rack_numeral_audit.py reads the "claimed numeral" of a
+committed slot from the LV_DUMP tuple's pdig field (dump_wild_RK_241.pkl) — for row 1 slots 0/1 this
+reads 30/20, numbers that do not even appear in the text (impossible for a value given_unique could
+have certified, by the test's own definition). Reproducing the body's real three-consult cycle on this
+exact row directly (this script's stop_after=2/4 forward calls, loop_val.py's own facts3/cert3/rack3
+feed pattern): consult 1 gives slot0=40, slot1=40 (a collision — given_unique correctly abstains);
+consult 2 resolves it to slot0=40, slot1=10 — given_unique NOW fires on both, CORRECTLY (both match
+gold); the union (rack_pack) commits exactly these two slots, matching the on-disk sidecar; the final,
+un-stopped pass still reads 40/10 (no drift). The rack's actual commit is right. THE BUG: THE RACK's
+own dryness test (rack_dry_row, scripts/phase1_algebra_head.py) ALWAYS applies the numeral mask
+internally (unconditional, no env gate) — but the TOP-LEVEL LV_DUMP write (scripts/loop_val.py:477)
+only gets that mask applied (line 447) when the RUN itself was invoked with LV_LEGAL=num. .cache/
+rack_chain_RK.sh's dump-writing invocation (line 18, the "open" read) never sets LV_LEGAL=num — the
+masked/legal read is a SEPARATE invocation (line 20) that writes no dump at all. So dump_wild_RK_241
+.pkl's pdig is the body's RAW, unmasked final digit argmax (free to drift to an illegal 30/20), while
+the sidecar's dry flags (and the rack's real commits) always worked off the masked {40, 10}. rack_
+numeral_audit.py's own docstring assumption ("LV_DUMP write happens after the LV_LEGAL=num mask") holds
+only when the generating run passed LV_LEGAL=num — this one did not. CONSEQUENCE: the audit scores the
+sidecar's genuinely-correct commits against the wrong (unmasked) numeral source — apples to oranges —
+not a property of the rack. FIX (flagged, not applied under this task's read-only mandate): LV_LEGAL=
+num on the LV_DUMP-writing invocation, or re-derive the claimed numeral from the sidecar's own masked
+decision rather than the dump's raw digits. UNVERIFIED: whether this fully accounts for the gap to
+0.686 on every committed cell, or only a share (row 1 is the first, fully-reproduced example; a full
+corrected re-score across all committed cells was not run). Full trace + citations: .cache/
+hammerhead_census_PMS8_241.txt (00:15 heading).
