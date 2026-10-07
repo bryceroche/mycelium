@@ -47927,3 +47927,48 @@ shrinking per cycle while the rhythm persists (the parse-space meter). REGISTERE
 bands; settle on even), the consults' evidence always landing on an inhale; the listening pair
 (RKX / RKXC) is its first read; the bar for the rhythm to earn the clock: the hit back toward 0.76
 with the wall kept (<= 0.49) and mint not below RKC's 0.555.
+
+### 2026-10-06 (21:16) — THE BUG AUDIT (sonnet; 13 commits): THE PANEL PICKER WAS READING THE KEY — its 19 / 311 is STRUCK; the "11 vs 14" was a stale tap (the last breath's heads predate the role pointer's injection); the rack's claim sits before the clip and vetoes the scratch rows; the perceiver's dead fold was a dying ReLU; the chains carried the sed/pipefail class again
+
+1 (CRITICAL, fixed a23a4479): scripts/picker/angles.py / build_features.py — twin_flip_flag and
+twin_n_checked were derived from each row's own custody-gold solution and sat in FEATURE_NAMES: a
+live wild selector consulted the key before picking. THE PANEL PICKER'S 19 / 311 (10-05 12:48) IS
+VOID and STRUCK from every comparison (the courtroom and jury entries cited it as the learned
+jury's precedent: that precedent is gone; the honest learned-jury count is the caricature jury's
+14). The features are now diag_twin_*, never in X; ONE fresh wild read under the corrected features
+is the legitimate single read (the void one does not count) — fired below. 2 (HIGH): the 11-vs-14
+divergence — out["heads_all"][K_B-1] is built from heads_of() on the raw final state BEFORE the
+final-breath injections into out["args"] (the role pointer at gain 2.0, the router pointer, busreg;
+max |delta| 10.7; 172 / 311 parses differ; rows 48 / 81 / 292 flip = 14 - 3); the readers fixed
+(adaptive_stop 0bff104f, perceiver_collect 98502e62: the last breath read from out["args"]); the
+head-side fix proposed (diff A: heads_all[K_B-1]["args"] = out["args"] at ~:6774) — applied after
+the queue, with a gate. CONSEQUENCES: the adaptive-stop MISS (8 vs 11) and the perceiver v1's wild
+stop read were scored on a stale last breath — both re-read after the regen; the per-breath dump's
+last-breath slice was unfused; and the earlier breaths' decodes carry NO role pointer by
+construction (the ladder's last breath alone takes the fused args) — every "stop early" read
+compares a weaker machine's early frames to the full machine's last: a structural caveat on the
+whole adaptive-stopping line. 3 (MEDIUM, proposed diff C): the rack's claim veto covers the full
+L_TOT axis; rack_pack zero-fills the scratch rows (N_SCR 8 under ALG_FED), so scratch rows read
+"wet" and inherit the -1e4 claim penalty — live in RK / RKP, unregistered. 4 (MEDIUM, diff B): the
+claim's -1e4 is added BEFORE sc.clip(-1e4, 1e4), unlike every sibling hard mask (clip then add) —
+bit-identical in the bounded regime, defeatable under overflow. 5 (MEDIUM, fixed 7a7de93c
+99024410 3c80588d 0bff104f 17819d02 0cb7dcda): the not-yet-started chains (RKPC / RKX / RKXC)
+carried the sed-delimiter and unguarded-pipeline class, a vestigial two-arm conditional, the plain
+membrane reader where the rack-aware one is needed, a grep window one line short, a golden command
+that word-split its redirect; RKP's executing chain keeps the -A4 line and will exit 1 at its tail
+(the dry census and reads.py ingest for RKP run by hand after). 6 (MEDIUM, fixed 10c1c5b9): the
+perceiver's fold 4 at AUROC 0.500 = a seed-dependent dying-ReLU (100 % of H1 dead by epoch 11 under
+relu + full-batch Adam 0.05); leaky_relu + a --selftest; fold 4 -> 0.863. 7 (fixed 45f114f2): an
+audit fork overwrote the banked rawslots_breaths dump with a 3-row smoke (hard-coded path) and
+launched a 70-minute regen beside the training — stopped by the auditor; the dump is absent, not
+corrupt; partial reads now suffix _rows<n>. 8 (fixed 1f90463e): courtroom --tune refuses a wild
+dump without --allow-wild-tune. 9-11: cert3 / cert5 lack rack3's never-run-dark assert (add); ~21
+raw kb comparisons outside conductor() (one site each, no drift; ALG_HIER_LISTEN correctly inside);
+membrane_rack refuses a bank / role mismatch (acd33d93). VERIFIED CLEAN: key use post-pick
+everywhere else; the GSM8K dedup by text; the readers' port threading bit-identical by
+construction; the rack's monotone union; the eyes' EMA state fresh per forward (and eyes_out_b is a
+LIVE conv bias — the 10-05 "structurally dead" note was the softmax-shift argument on the pbias
+road, which the auditor disputes: both readings banked, the gradient probe decides); true controls
+carry no ALG_RACK. RULES: a selector's feature list is diffed against the gold fields before any
+wild read (the conviction index's door for pickers); a subagent never overwrites a banked artifact
+or fires a long job on its own (the one-arm, one-owner rule for .cache).
