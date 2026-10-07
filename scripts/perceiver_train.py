@@ -474,6 +474,207 @@ def run_final_and_eval(diet_npz, gsm8k_globs, eval_npz, epochs, out_txt):
 
 
 # ===========================================================================================================
+# THE PERCEIVER v1b (2026-10-06/07, "THE WELFORD ATLAS v1 READ" registration): COMMIT head only (no
+# stop head -- registered off until a body's later breaths beat its first look, per that ledger
+# entry), fed scripts/welford_atlas.py's jsfeat() atlas features (atlas_cos / atlas_entropy /
+# atlas_js_move / atlas_js_dev) ALONGSIDE this file's own commit_features(). Four ablations, a diet-
+# only selection rule, then ONE wild read apiece of the full model and the diet-chosen best cell.
+# ===========================================================================================================
+
+ABLATIONS_V1B = ["a", "b", "c", "d"]
+
+
+def load_atlas_npz(path):
+    z = np.load(path, allow_pickle=True)
+    return dict(atlas_cos=z["atlas_cos"], atlas_entropy=z["atlas_entropy"],
+                atlas_js_move=z["atlas_js_move"], atlas_js_dev=z["atlas_js_dev"],
+                tau=float(z["tau"]))
+
+
+def commit_features_v1b(z, atlas, ablation):
+    """(n, K_B, L, F) slot feature tensor + (n, L) right_final, per the ablation ladder (cumulative):
+      a: the final-breath Welford cosine ALONE (one channel, zeroed at every other breath);
+      b: a, but the cosine lives at EVERY breath (the flight path itself);
+      c: b + the codebook entropy, the JS movement (to the previous breath) and the JS deviation
+         (from the kind's own diet-expected reading at that breath) -- every breath;
+      d: c + every one of perceiver v1's OWN telemetry features (commit_features(), unchanged,
+         imported not reimplemented) -- the complete feature set ('the full model')."""
+    assert ablation in ABLATIONS_V1B, ablation
+    cos = atlas["atlas_cos"]
+    if ablation == "a":
+        cos_final_only = np.zeros_like(cos)
+        cos_final_only[:, -1, :] = cos[:, -1, :]
+        feats = [_nan0(cos_final_only)[..., None]]
+    else:
+        feats = [_nan0(cos)[..., None]]
+    if ablation in ("c", "d"):
+        feats += [_nan0(atlas["atlas_entropy"])[..., None], _nan0(atlas["atlas_js_move"])[..., None],
+                  _nan0(atlas["atlas_js_dev"])[..., None]]
+    X_old, right_final = commit_features(z)
+    if ablation == "d":
+        feats.append(X_old)
+    X = np.concatenate(feats, axis=-1).astype(np.float32)
+    return X, right_final
+
+
+def run_cv_v1b(diet_npz, atlas_diet_npz, ablation, n_folds=5, epochs=200):
+    from sklearn.model_selection import GroupKFold
+    lines = []
+
+    def P(s=""):
+        print(s, flush=True); lines.append(s)
+
+    z, meta = load_npz(diet_npz)
+    assert meta["has_gold"], f"{diet_npz}: not an annotated fixture"
+    atlas = load_atlas_npz(atlas_diet_npz)
+    Xc_full, right_final = commit_features_v1b(z, atlas, ablation)
+    n, K_B, L, Fc = Xc_full.shape
+    ent_final = z["ent"][:, -1, :]
+
+    rows_idx = np.arange(n)
+    gkf = GroupKFold(n_splits=n_folds)
+    fold_of = np.full(n, -1, np.int32)
+    for f, (_, val_idx) in enumerate(gkf.split(rows_idx, groups=rows_idx)):
+        fold_of[val_idx] = f
+
+    P(f"\n{'='*100}\nv1b SLICE CV ablation={ablation} ({diet_npz}): n={n} rows, Fc={Fc}, "
+      f"{n_folds}-fold GroupKFold BY ROW, epochs={epochs}\n{'='*100}")
+    aurocs, aurocs_ent, precisions, coverages = [], [], [], []
+
+    def flat(X):
+        return X.transpose(0, 2, 1, 3).reshape(-1, K_B, Fc)
+
+    for f in range(n_folds):
+        val_mask_rows = fold_of == f
+        tr_mask_rows = ~val_mask_rows
+        gp_tr = right_final[tr_mask_rows] >= 0
+        gp_val = right_final[val_mask_rows] >= 0
+        yc_tr = np.clip(right_final[tr_mask_rows], 0, 1)
+        yc_val = np.clip(right_final[val_mask_rows], 0, 1)
+        Xc_tr_f, Xc_val_f = flat(Xc_full[tr_mask_rows]), flat(Xc_full[val_mask_rows])
+        yc_tr_f, mask_tr_f = yc_tr.reshape(-1), gp_tr.reshape(-1)
+        yc_val_f, mask_val_f = yc_val.reshape(-1), gp_val.reshape(-1)
+        net_c = TinyTemporalNet(Fc, K_B, "commit", seed=SEED + f)
+        net_c.bce_fit(Xc_tr_f, yc_tr_f, mask_tr_f, epochs=epochs)
+        p_val = net_c.predict(Xc_val_f)
+        a = auroc(yc_val_f, p_val, mask_val_f)
+        a_ent = auroc(yc_val_f, -ent_final[val_mask_rows].reshape(-1), mask_val_f)
+        thr, prec, cov = precision_at_coverage(yc_val_f, p_val, mask_val_f, 0.20)
+        aurocs.append(a); aurocs_ent.append(a_ent); precisions.append(prec); coverages.append(cov)
+        P(f"  fold {f}: auroc(model)={a:.4f} auroc(ent_final)={a_ent:.4f} precision@{cov*100:.0f}%cov={prec:.4f}")
+
+    P(f"v1b CV ablation={ablation} SUMMARY: auroc(model)={np.mean(aurocs):.4f} "
+      f"auroc(ent_final)={np.mean(aurocs_ent):.4f} precision@20%cov={np.nanmean(precisions):.4f}")
+    return dict(ablation=ablation, commit_auroc=float(np.mean(aurocs)),
+                commit_auroc_ent=float(np.mean(aurocs_ent)),
+                commit_precision20=float(np.nanmean(precisions)), Fc=Fc), lines
+
+
+def run_final_eval_v1b(diet_npz, atlas_diet_npz, eval_npz, atlas_wild_npz, ablation, epochs):
+    z_diet, meta_diet = load_npz(diet_npz)
+    atlas_diet = load_atlas_npz(atlas_diet_npz)
+    Xc, right_final = commit_features_v1b(z_diet, atlas_diet, ablation)
+    n, K_B, L, Fc = Xc.shape
+    Xc_f = Xc.transpose(0, 2, 1, 3).reshape(-1, K_B, Fc)
+    yc_f = np.clip(right_final, 0, 1).reshape(-1)
+    mask_f = (right_final >= 0).reshape(-1)
+    net_c = TinyTemporalNet(Fc, K_B, "commit", seed=SEED + 2000)
+    net_c.bce_fit(Xc_f, yc_f, mask_f, epochs=epochs)
+
+    lines = [f"v1b FINAL FIT ablation={ablation} (diet={diet_npz}, atlas={atlas_diet_npz}) + ONE wild read ({eval_npz})"]
+
+    def P(s):
+        print(s, flush=True); lines.append(s)
+
+    z_wild, meta_wild = load_npz(eval_npz)
+    assert meta_wild["has_gold"], f"{eval_npz}: wild telemetry must carry gold"
+    atlas_wild = load_atlas_npz(atlas_wild_npz)
+    Xc_w, right_w = commit_features_v1b(z_wild, atlas_wild, ablation)
+    nw, K_B_w, L_w, Fc_w = Xc_w.shape
+    assert Fc_w == Fc, (Fc_w, Fc)
+    Xc_w_f = Xc_w.transpose(0, 2, 1, 3).reshape(-1, K_B_w, Fc)
+    yc_w_f = np.clip(right_w, 0, 1).reshape(-1)
+    mask_w_f = (right_w >= 0).reshape(-1)
+    p_w = net_c.predict(Xc_w_f)
+    ent_final_w = z_wild["ent"][:, -1, :].reshape(-1)
+    a_w = auroc(yc_w_f, p_w, mask_w_f)
+    a_ent_w = auroc(yc_w_f, -ent_final_w, mask_w_f)
+    thr_w, prec_w, cov_w = precision_at_coverage(yc_w_f, p_w, mask_w_f, 0.20)
+    P(f"WILD COMMIT ablation={ablation}: n_slots={int(mask_w_f.sum())} auroc(model)={a_w:.4f} "
+      f"auroc(ent_final)={a_ent_w:.4f} precision@{cov_w*100:.0f}%cov={prec_w:.4f}")
+    P(f"  BAR commit AUROC >= entropy+0.05: {'PASS' if a_w >= a_ent_w + 0.05 else 'MISS'} "
+      f"({a_w:.4f} vs {a_ent_w + 0.05:.4f})")
+    P(f"  BAR commit precision@20%cov >= 0.90: {'PASS' if prec_w >= 0.90 else 'MISS'} ({prec_w:.4f})")
+    P(f"  KILL commit AUROC < entropy baseline: {'KILL TRIPPED' if a_w < a_ent_w else 'clear'}")
+    return dict(ablation=ablation, a_w=a_w, a_ent_w=a_ent_w, prec_w=prec_w, cov_w=cov_w,
+                n_slots=int(mask_w_f.sum())), lines
+
+
+def run_v1b(diet_npz, atlas_diet_npz, eval_npz, atlas_wild_npz, epochs, out_txt):
+    report = [f"=== THE PERCEIVER v1b -- START {__import__('time').strftime('%Y-%m-%d %H:%M:%S')} ===",
+              "COMMIT head only (no stop head -- registered off per the 2026-10-07 Welford Atlas v1 "
+              "ledger entry, until a body's later breaths beat its first look).", ""]
+    cv_results = {}
+    for ab in ABLATIONS_V1B:
+        res, lines = run_cv_v1b(diet_npz, atlas_diet_npz, ab, epochs=epochs)
+        cv_results[ab] = res
+        report += lines
+    report.append("\nv1b DIET CV TABLE (all four ablations):")
+    report.append(f"  {'ablation':10} {'Fc':>4} {'auroc(model)':>14} {'auroc(entropy)':>16} {'precision@20%cov':>18}")
+    for ab in ABLATIONS_V1B:
+        r = cv_results[ab]
+        report.append(f"  {ab:10} {r['Fc']:4d} {r['commit_auroc']:14.4f} {r['commit_auroc_ent']:16.4f} "
+                       f"{r['commit_precision20']:18.4f}")
+    # THE SELECTION RULE (stated BEFORE any wild touch): the ablation with the highest DIET CV commit
+    # AUROC is "the best ablation cell"; ties broken by lower Fc (the simpler cell).
+    best_ab = max(ABLATIONS_V1B, key=lambda ab: (cv_results[ab]["commit_auroc"], -cv_results[ab]["Fc"]))
+    report.append(f"\nTHE SELECTION RULE (pinned before the wild read): the ablation with the highest "
+                   f"diet CV commit AUROC wins, ties broken toward fewer features -- winner = '{best_ab}' "
+                   f"(diet CV AUROC {cv_results[best_ab]['commit_auroc']:.4f}).")
+
+    report.append(f"\n=== ONE WILD READ: ablation 'd' (the full model) ===")
+    res_full, lines_full = run_final_eval_v1b(diet_npz, atlas_diet_npz, eval_npz, atlas_wild_npz, "d", epochs)
+    report += lines_full
+    if best_ab != "d":
+        report.append(f"\n=== ONE WILD READ: ablation '{best_ab}' (the diet-chosen best cell) ===")
+        res_best, lines_best = run_final_eval_v1b(diet_npz, atlas_diet_npz, eval_npz, atlas_wild_npz, best_ab, epochs)
+        report += lines_best
+    else:
+        res_best, lines_best = res_full, []
+        report.append("\n(the diet-chosen best cell IS 'd' -- the full-model read above already covers it, no second read fired.)")
+
+    # THE SIX-LINE READING
+    report.append("\n" + "=" * 100)
+    report.append("THE SIX-LINE READING")
+    report.append("=" * 100)
+    a_cv, b_cv, c_cv, d_cv = (cv_results[x]["commit_auroc"] for x in "abcd")
+    l1 = (f"1. Does the final-breath cosine alone help? ablation a diet CV AUROC {a_cv:.4f} vs "
+          f"entropy {cv_results['a']['commit_auroc_ent']:.4f} ({'beats' if a_cv > cv_results['a']['commit_auroc_ent'] else 'does not beat'} it).")
+    l2 = (f"2. Does the per-breath trajectory add over the single final cosine? ablation b {b_cv:.4f} "
+          f"vs a {a_cv:.4f} (delta {b_cv - a_cv:+.4f}).")
+    l3 = (f"3. Does JS movement+deviation add over the trajectory alone? ablation c {c_cv:.4f} vs b "
+          f"{b_cv:.4f} (delta {c_cv - b_cv:+.4f}).")
+    l4 = (f"4. Does the old telemetry add on top of the atlas? ablation d (full) {d_cv:.4f} vs c "
+          f"{c_cv:.4f} (delta {d_cv - c_cv:+.4f}).")
+    l5 = (f"5. ONE wild read, full model (d): AUROC {res_full['a_w']:.4f} vs entropy {res_full['a_ent_w']:.4f} "
+          f"(bar entropy+0.05={res_full['a_ent_w']+0.05:.4f}: "
+          f"{'PASS' if res_full['a_w'] >= res_full['a_ent_w'] + 0.05 else 'MISS'}); "
+          f"precision@{res_full['cov_w']*100:.0f}%cov {res_full['prec_w']:.4f} (bar 0.90: "
+          f"{'PASS' if res_full['prec_w'] >= 0.90 else 'MISS'}).")
+    commit_fires = (res_full['a_w'] >= res_full['a_ent_w'] + 0.05) and (res_full['prec_w'] >= 0.90)
+    l6 = (f"6. VERDICT: the learned COMMIT head {'FIRES' if commit_fires else 'DOES NOT FIRE'} "
+          f"(both bars {'met' if commit_fires else 'not both met'} on the full model); diet-chosen "
+          f"best cell = '{best_ab}'" + (f", wild AUROC {res_best['a_w']:.4f} precision {res_best['prec_w']:.4f}."
+          if best_ab != "d" else " (== full model, no separate read)."))
+    for l in (l1, l2, l3, l4, l5, l6):
+        report.append(l)
+    with open(out_txt, "w") as f:
+        f.write("\n".join(report) + "\n")
+    print(f"[perceiver-train] v1b: wrote {out_txt}", flush=True)
+    return dict(cv=cv_results, best_ab=best_ab, full=res_full, best=res_best)
+
+
+# ===========================================================================================================
 # SELFTEST (--selftest): synthetic regression check for the dying-ReLU fold-collapse bug fixed above.
 # ===========================================================================================================
 
@@ -620,6 +821,10 @@ def main():
     ap.add_argument("--out", default=".cache/perceiver_v1_PMS8_241.txt")
     ap.add_argument("--selftest", action="store_true",
                      help="run the synthetic dying-relu regression check and exit (no npz needed)")
+    ap.add_argument("--v1b", action="store_true",
+                     help="run THE PERCEIVER v1b (commit-only, Welford-atlas ablations a-d) instead of v1")
+    ap.add_argument("--atlas-diet", default=".cache/perceiver_v1b_features_PMS8_241_pm35cslicevalid2.npz")
+    ap.add_argument("--atlas-wild", default=".cache/perceiver_v1b_features_PMS8_241_wildhold.npz")
     args = ap.parse_args()
     assert os.environ.get("DEV") == "CPU"
     np.random.seed(SEED)
@@ -628,6 +833,11 @@ def main():
         _selftest()
         return
     assert args.diet_npz, "diet_npz is required unless --selftest is given"
+
+    if args.v1b:
+        out = args.out if args.out != ".cache/perceiver_v1_PMS8_241.txt" else ".cache/perceiver_v1b_PMS8_241.txt"
+        run_v1b(args.diet_npz, args.atlas_diet, args.eval, args.atlas_wild, args.epochs, out)
+        return
 
     import time
     report = [f"=== THE LEARNED PERCEIVER v1 -- SLICE CV START {time.strftime('%Y-%m-%d %H:%M:%S')} ==="]

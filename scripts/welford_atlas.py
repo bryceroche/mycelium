@@ -67,7 +67,7 @@ import numpy as np
 import adaptive_stop as AS          # FAMILY_ENVS["PMS8_241"] -- the SURF8 recipe, imported not retyped
 import meta_read as MR              # coarse_knot() -- the value-abstracted WL digest, imported
 from mycelium.custody_gold import row_gold
-from mycelium.welford import Welford, WelfordLibrary
+from mycelium.welford import Welford, WelfordLibrary, js_divergence
 
 AS._build_family_env("PMS8_241", "")
 assert os.environ["DEV"] == "CPU", "welford_atlas: zero-GPU, always"
@@ -77,6 +77,10 @@ WILD_PATH = ".cache/wild_admitted_holdout.jsonl"
 CKPT = ".cache/sharp_PMS8_241.safetensors"
 CONTENT_LIB_PATH = ".cache/welford_atlas_PMS8_241_content.npz"
 RETINA_LIB_PATH = ".cache/welford_atlas_PMS8_241_retina.npz"
+CONTENT_BREATHS_LIB_PATH = ".cache/welford_atlas_PMS8_241_content_breaths.npz"   # THE PER-BREATH LIBRARY (2026-10-07 build)
+DIET_STATES_BREATHS_PATH = ".cache/welford_atlas_PMS8_241_diet_states_breaths.npz"  # raw per-breath content states, diet, cached so the feature step never re-forwards
+PERCEIVER_V1B_DIET_FEAT = ".cache/perceiver_v1b_features_PMS8_241_pm35cslicevalid2.npz"
+PERCEIVER_V1B_WILD_FEAT = ".cache/perceiver_v1b_features_PMS8_241_wildhold.npz"
 OUT_TXT = ".cache/welford_atlas_PMS8_241.txt"
 DRIFT_TAGS = ["PMS8_241", "HS_241", "HSd_241", "EY_241"]   # RK_241: no clock_band_states file (checked, absent)
 MIN_N_KIND = 40       # atlas_radius_read.py's own floor for a kept kind-cell
@@ -198,7 +202,12 @@ def build():
     P(f"[build] ckpt loaded ({time.time()-t0:.0f}s); C={C} content dims / 512; K_B={K_B}")
 
     final_kb = K_B - 1
-    states_final = np.zeros((n, L_FAC, C), np.float32)
+    # THE PER-BREATH TAP (2026-10-07 extension): the SAME forward pass already stamps "state" (the
+    # content entering EVERY breath kb=0..K_B-1, H._CENSUS's own convention -- clock_band_probe.py's
+    # "the state the band probe would see", verified below against the pre-existing final-only
+    # library) -- captured once here so the per-breath library and the original final-breath library
+    # cost exactly one forward pass between them, not two.
+    states_all = np.zeros((n, K_B, L_FAC, C), np.float16)
     for s0 in range(0, n, BATCH):
         sl = np.arange(s0, min(s0 + BATCH, n))
         pad = BATCH - len(sl)
@@ -220,10 +229,13 @@ def build():
         got = {kb: arr for (kb, tag, arr) in H._CENSUS if tag == "state"}
         H._CENSUS = None
         assert final_kb in got, sorted(got)
-        states_final[sl] = got[final_kb][:len(sl), :L_FAC, :][:, :, CONTENT].astype(np.float32)
+        assert set(range(K_B)) <= set(got), sorted(got)
+        for kb in range(K_B):
+            states_all[sl, kb] = got[kb][:len(sl), :L_FAC, :][:, :, CONTENT].astype(np.float16)
         if s0 % (BATCH * 8) == 0:
             P(f"[build] content forward {s0 + len(sl)}/{n} ({time.time()-t0:.0f}s)")
     P(f"[build] content forward passes done ({time.time()-t0:.0f}s)")
+    states_final = states_all[:, final_kb].astype(np.float32)
 
     # ---- CONTENT-SPACE LIBRARY: keyed by kind and by coarse knot ----
     # A knot's SLOT count (cell.n) is not the same question as how many DISTINCT ROWS fed it -- one
@@ -265,6 +277,55 @@ def build():
       f"{sum(1 for k in knot_cells if content_lib[k].n >= MIN_N_KNOT)} with n>={MIN_N_KNOT} slots, "
       f"{len(knot_multi_row)} fed by >={MIN_ROWS_KNOT} DISTINCT ROWS (the honest repetition floor -- "
       f"a single row's own 3-8 factors otherwise clears a slot-count floor trivially)")
+
+    # ---- CONTENT-SPACE PER-BREATH LIBRARY: keyed by (kind, breath) and (coarse knot, breath) ----
+    # (Bryce 2026-10-07: "a composite key (centroid, breath) in the atlas = the expected flight path
+    # per breath") -- reuses states_all (the SAME forward pass above, zero extra GPU/CPU cost) and the
+    # SAME admissibility/knot assignment as the final-breath library, so the kb=K_B-1 slice of this
+    # library is, by construction, the IDENTICAL data the final-only library above was built from
+    # (verified below, not assumed).
+    content_breaths_lib = WelfordLibrary()
+    n_slots_b = 0
+    for i in range(n):
+        if not admissible[i]:
+            continue
+        row = vs[i]
+        facs = row["factors"]
+        knot = row_knot[i]
+        for j in range(min(L_FAC, len(facs))):
+            if vg["presence"][i, j] <= 0.5:
+                continue
+            k = gold_kind(facs[j], j)
+            for kb in range(K_B):
+                x = states_all[i, kb, j].astype(np.float32)
+                content_breaths_lib.get_or_create(f"kind:{k}@{kb}", dim=C).update(x)
+                content_breaths_lib.get_or_create(f"knot:{knot}@{kb}", dim=C).update(x)
+            n_slots_b += 1
+    content_breaths_lib.save(CONTENT_BREATHS_LIB_PATH, extra_meta=json.dumps(dict(
+        tag="PMS8_241", space="content_breaths", source=DIET_SLICE, n_rows=n, n_slots=n_slots_b,
+        content_dims=C, K_B=K_B, generated=time.strftime("%Y-%m-%d %H:%M:%S"))))
+    # the knot's distinct-row floor is BREATH-INDEPENDENT (the same rows feed every kb of a given
+    # knot) -- reuse the final-breath library's own knot_rows tally (computed above) rather than
+    # re-tracking row membership seven times over.
+    knot_rows_b = {f"knot:{knot_key}@{kb}": len(rows_) for knot_key, rows_ in
+                   ((k[5:], knot_rows[k]) for k in knot_cells) for kb in range(K_B)}
+    json.dump(knot_rows_b, open(CONTENT_BREATHS_LIB_PATH + ".knot_rows.json", "w"))
+    np.savez_compressed(DIET_STATES_BREATHS_PATH, states_all=states_all, admissible=admissible,
+                         n=n, K_B=K_B, C=C,
+                         meta=json.dumps(dict(source=DIET_SLICE, generated=time.strftime("%Y-%m-%d %H:%M:%S"))))
+    P(f"[build] per-breath content library: {n_slots_b} slots x {K_B} breaths -> {CONTENT_BREATHS_LIB_PATH}")
+    P(f"[build] raw diet per-breath states cached -> {DIET_STATES_BREATHS_PATH} "
+      f"(states_all {states_all.shape} float16, admissible {int(admissible.sum())}/{n})")
+    # ---- VERIFICATION: the per-breath library's kb=K_B-1 cell == the final-only library's cell ----
+    P(f"[build] VERIFY: per-breath library kb={final_kb} vs the final-only library (cosine, expect ~1.0000):")
+    for k in KINDS:
+        kk, kb_key = f"kind:{k}", f"kind:{k}@{final_kb}"
+        if kk in content_lib and kb_key in content_breaths_lib:
+            ma, mb = content_lib[kk].mean, content_breaths_lib[kb_key].mean
+            c = float((ma @ mb) / (np.linalg.norm(ma) * np.linalg.norm(mb) + 1e-12))
+            na, nb = content_lib[kk].n, content_breaths_lib[kb_key].n
+            P(f"    {k:10} cos={c:.6f}  n(final-only)={na:.0f} n(per-breath@{final_kb})={nb:.0f} "
+              f"{'MATCH' if na == nb and c > 0.9999 else 'MISMATCH -- investigate'}")
 
     # ---- RETINA-SPACE LIBRARY: clause embeddings, prose rows only, nl_atlas_clause's own machinery ----
     import nl_atlas_clause as NAC   # row_factor_records, embed_and_pool, l2norm, gen_src/is_prose (DEV=CPU asserted inside)
@@ -555,9 +616,247 @@ def drift_monitor():
 
 
 # ======================================================================================
+# ACT 4: THE CODEBOOK DISTRIBUTION + JS (2026-10-07, Bryce: "a composite key (centroid, breath) in
+# the atlas = the expected flight path per breath"; "Jensen-Shannon divergence on the DISTRIBUTION
+# OVER CENTROIDS ... never over the 512 dims"). Per gold slot, per breath: p_b = softmax(cos(state_b,
+# mean[kind,b]) / tau) over the KINDS present at that breath (the per-breath library above); features
+# built from p_b: the cosine to the slot's OWN kind (the flight path itself), the entropy of p_b (how
+# undecided the reading is), the JS to the PREVIOUS breath's p (the movement) and the JS to the
+# kind's own EXPECTED p at that breath -- a diet-only average over admissible diet slots of that
+# kind, never wild, never a read-time "win" (the deviation from the flight path). tau is tuned ONCE
+# (tune_tau, diet only, before any wild touch) and then reused unchanged for both the diet's own
+# feature file and the wild read.
+# ======================================================================================
+TAU_GRID = [0.01, 0.02, 0.05, 0.07, 0.1, 0.15, 0.2, 0.3, 0.5, 1.0]
+
+
+def _kind_means_by_breath(lib, K_B, kinds=KINDS, min_n=MIN_N_KIND):
+    out = {}
+    for kb in range(K_B):
+        present = [k for k in kinds if f"kind:{k}@{kb}" in lib and lib[f"kind:{k}@{kb}"].n >= min_n]
+        means = (np.stack([lib[f"kind:{k}@{kb}"].mean for k in present], axis=0).astype(np.float32)
+                 if present else None)
+        out[kb] = (present, means)
+    return out
+
+
+def _softmax_p(X, means, tau):
+    """X: (...,C), means: (K,C) -> (p (...,K) softmax(cos/tau), cos (...,K)) -- cosine (both sides
+    L2-normalized), never a raw dot product (states are not unit-norm)."""
+    Xu = X / (np.linalg.norm(X, axis=-1, keepdims=True) + 1e-12)
+    mu = means / (np.linalg.norm(means, axis=-1, keepdims=True) + 1e-12)
+    cos = Xu @ mu.T
+    z = cos / tau
+    z = z - z.max(axis=-1, keepdims=True)
+    e = np.exp(z)
+    return (e / (e.sum(axis=-1, keepdims=True) + 1e-12)).astype(np.float32), cos.astype(np.float32)
+
+
+def _diet_rows_and_states():
+    from phase1_algebra_head import load_alg
+    os.environ.setdefault("ALG_TEST", DIET_SLICE)
+    os.environ.setdefault("ALG_TEST_NAME", "pm35cslicevalid2")
+    vs, vst, vtk, vg, vse = load_alg("test")
+    z = np.load(DIET_STATES_BREATHS_PATH)
+    states_all = z["states_all"].astype(np.float32)   # (n, K_B, L_FAC, C)
+    admissible = z["admissible"]
+    assert states_all.shape[0] == len(vs), (states_all.shape, len(vs))
+    return vs, vg, states_all, admissible
+
+
+def tune_tau(content_breaths_lib, K_B):
+    """THE ONE TAU-TUNING PASS (diet only, before any wild touch): own-kind softmax probability at
+    the FINAL breath vs right_final, AUROC-maximising over TAU_GRID -- the raw cosine's own AUROC is
+    tau-invariant (a monotone rescaling of one number), so the tau-SENSITIVE quantity this rule tunes
+    is the softmax PROBABILITY MASS on the slot's own gold kind (which depends on every kind's
+    cosine, not just the own one, once more than two kinds compete for the normalization). Falls back
+    to 0.1 if the sweep's AUROC spread is < 0.01 (flat -- no informative tau to pick)."""
+    vs, vg, states_all, _ = _diet_rows_and_states()
+    n = len(vs)
+    final_kb = K_B - 1
+    present, means = _kind_means_by_breath(content_breaths_lib, K_B)[final_kb]
+    assert means is not None, "tune_tau: no kind means at the final breath"
+    tel = np.load(".cache/perceiver_telemetry_PMS8_241_pm35cslicevalid2.npz", allow_pickle=True)
+    right_final = tel["right_final"]
+    assert right_final.shape[0] == n, (right_final.shape, n)
+
+    ri, ji, kind = [], [], []
+    for i in range(n):
+        facs = vs[i]["factors"]
+        for j in range(min(states_all.shape[2], len(facs))):
+            if vg["presence"][i, j] <= 0.5:
+                continue
+            ri.append(i); ji.append(j); kind.append(gold_kind(facs[j], j))
+    ri, ji, kind = np.array(ri), np.array(ji), np.array(kind)
+    y = right_final[ri, ji]
+    keep = y >= 0
+    ri, ji, kind, y = ri[keep], ji[keep], kind[keep], y[keep].astype(bool)
+    X = states_all[ri, final_kb, ji, :]
+    kidx = {k: ii for ii, k in enumerate(present)}
+    own = np.array([kidx.get(k, -1) for k in kind])
+    has_own = own >= 0
+
+    results = []
+    for tau in TAU_GRID:
+        p, _ = _softmax_p(X, means, tau)
+        p_own = np.where(has_own, p[np.arange(len(p)), np.clip(own, 0, None)], np.nan)
+        a, _, _ = auroc(y[has_own], p_own[has_own])
+        results.append((tau, a))
+    aurocs = [a for _, a in results if np.isfinite(a)]
+    spread = (max(aurocs) - min(aurocs)) if aurocs else 0.0
+    if spread < 0.01 or not aurocs:
+        tau_star, rule = 0.1, f"sweep flat (spread {spread:.4f} < 0.01) -> fixed 0.1"
+    else:
+        tau_star = max(results, key=lambda t: (t[1] if np.isfinite(t[1]) else -1.0))[0]
+        rule = f"argmax over the sweep (spread {spread:.4f})"
+    return tau_star, results, rule
+
+
+def build_q_table(content_breaths_lib, K_B, tau):
+    """q[kb] = (present_kinds, {kind: mean p_b vector}) -- the diet's OWN expected codebook reading
+    per kind per breath, admissible diet rows only (the SAME membership the library's means were
+    built from); THE reference point THE JS-deviation feature reads against. Diet-only by
+    construction -- never touches wild."""
+    vs, vg, states_all, admissible = _diet_rows_and_states()
+    n = len(vs)
+    kmb = _kind_means_by_breath(content_breaths_lib, K_B)
+    q = {}
+    for kb in range(K_B):
+        present, means = kmb[kb]
+        if means is None:
+            q[kb] = (present, {})
+            continue
+        acc = {k: [] for k in present}
+        X_kb = states_all[:, kb]
+        for i in range(n):
+            if not admissible[i]:
+                continue
+            facs = vs[i]["factors"]
+            for j in range(min(X_kb.shape[1], len(facs))):
+                if vg["presence"][i, j] <= 0.5:
+                    continue
+                k = gold_kind(facs[j], j)
+                if k not in acc:
+                    continue
+                p, _ = _softmax_p(X_kb[i, j][None, :], means, tau)
+                acc[k].append(p[0])
+        q[kb] = (present, {k: (np.mean(v, axis=0) if v else None) for k, v in acc.items()})
+    return q
+
+
+def build_atlas_features(side, tau, content_breaths_lib, q_table, K_B):
+    """side in {'diet','wild'} -> (n, K_B, L_FAC) atlas_cos / atlas_ent / atlas_js_move /
+    atlas_js_dev, written to PERCEIVER_V1B_{DIET,WILD}_FEAT. wild's per-breath states come from the
+    ALREADY-BANKED clock_band_states_PMS8_241.npz (loop breaths 1..6 only, zero-GPU read of an
+    existing artifact -- kb=0 is honestly NaN for wild, never fabricated); diet's come from the
+    DIET_STATES_BREATHS_PATH cache this same run's build() wrote (all 7 breaths)."""
+    kmb = _kind_means_by_breath(content_breaths_lib, K_B)
+    if side == "diet":
+        vs, vg, states_all, _ = _diet_rows_and_states()
+        rows = vs
+        n = len(rows)
+        presence = vg["presence"] > 0.5
+        out_path = PERCEIVER_V1B_DIET_FEAT
+    else:
+        import phase1_algebra_head as H
+        bands, clock_dims = H._hier_band_dims()
+        CONTENT = np.sort(np.concatenate(bands))
+        rows = load_jsonl(WILD_PATH)
+        n = len(rows)
+        zc = np.load(".cache/clock_band_states_PMS8_241.npz")
+        S = zc["states"].astype(np.float32)   # (n, 6, L_FAC, 512), loop breaths 1..6
+        assert S.shape[0] == n, (S.shape, n)
+        L_FAC_w = S.shape[2]
+        states_all = np.full((n, K_B, L_FAC_w, len(CONTENT)), np.nan, np.float32)
+        for bb in range(S.shape[1]):
+            kb = bb + 1
+            if kb < K_B:
+                states_all[:, kb] = S[:, bb][:, :, CONTENT]
+        tel = np.load(".cache/perceiver_telemetry_PMS8_241_wildhold.npz", allow_pickle=True)
+        presence = tel["pres_gold"] > 0
+        out_path = PERCEIVER_V1B_WILD_FEAT
+
+    L_FAC = states_all.shape[2]
+    C = states_all.shape[-1]
+    kind_of = np.full((n, L_FAC), "", dtype=object)
+    for i in range(n):
+        facs = rows[i]["factors"]
+        for j in range(min(L_FAC, len(facs))):
+            if presence[i, j]:
+                kind_of[i, j] = gold_kind(facs[j], j)
+
+    atlas_cos = np.full((n, K_B, L_FAC), np.nan, np.float32)
+    atlas_ent = np.full((n, K_B, L_FAC), np.nan, np.float32)
+    atlas_js_move = np.full((n, K_B, L_FAC), np.nan, np.float32)
+    atlas_js_dev = np.full((n, K_B, L_FAC), np.nan, np.float32)
+    p_prev = None
+    present_prev = None
+    mism_move = 0
+    for kb in range(K_B):
+        present, means = kmb[kb]
+        if means is None:
+            p_prev, present_prev = None, None
+            continue
+        X = states_all[:, kb].reshape(-1, C)
+        valid = np.isfinite(X).all(-1)
+        p = np.full((X.shape[0], len(present)), np.nan, np.float32)
+        cosv = np.full((X.shape[0], len(present)), np.nan, np.float32)
+        if valid.any():
+            pv, cv = _softmax_p(X[valid], means, tau)
+            p[valid], cosv[valid] = pv, cv
+        p = p.reshape(n, L_FAC, len(present))
+        cosv = cosv.reshape(n, L_FAC, len(present))
+        kidx = {k: ii for ii, k in enumerate(present)}
+        q_present, q_map = q_table[kb]
+        for i in range(n):
+            for j in range(L_FAC):
+                k = kind_of[i, j]
+                if not k or np.isnan(p[i, j]).any():
+                    continue
+                atlas_ent[i, kb, j] = float(-(p[i, j] * np.log(p[i, j] + 1e-12)).sum())
+                if k in kidx:
+                    atlas_cos[i, kb, j] = cosv[i, j, kidx[k]]
+                qv = q_map.get(k) if k in (q_present or []) else None
+                if qv is not None and len(qv) == len(present):
+                    atlas_js_dev[i, kb, j] = js_divergence(p[i, j], qv)
+                if p_prev is not None and present_prev == present and not np.isnan(p_prev[i, j]).any():
+                    atlas_js_move[i, kb, j] = js_divergence(p[i, j], p_prev[i, j])
+        if p_prev is not None and present_prev != present:
+            mism_move += 1
+        p_prev, present_prev = p, present
+    if mism_move:
+        P(f"[jsfeat] {side}: {mism_move} breath-pairs had a DIFFERENT present-kind set -- js_move left NaN there")
+
+    np.savez(out_path, atlas_cos=atlas_cos, atlas_entropy=atlas_ent, atlas_js_move=atlas_js_move,
+             atlas_js_dev=atlas_js_dev, tau=np.float32(tau), K_B=K_B, n=n,
+             meta=json.dumps(dict(side=side, tau=float(tau), generated=time.strftime("%Y-%m-%d %H:%M:%S"))))
+    P(f"[jsfeat] {side}: wrote {out_path} (atlas_cos/entropy/js_move/js_dev, shape ({n},{K_B},{L_FAC}))")
+    return out_path
+
+
+def jsfeat():
+    if not os.path.exists(CONTENT_BREATHS_LIB_PATH):
+        raise SystemExit(f"welford_atlas jsfeat: {CONTENT_BREATHS_LIB_PATH} missing -- run `build` first")
+    import phase1_algebra_head as H
+    K_B = int(os.environ.get("ALG_BREATH", "7"))
+    lib = WelfordLibrary.load(CONTENT_BREATHS_LIB_PATH)
+    tau_star, results, rule = tune_tau(lib, K_B)
+    P("\n" + "=" * 100)
+    P("THE CODEBOOK DISTRIBUTION + JS -- tau tuning (diet only)")
+    P("=" * 100)
+    for tau, a in results:
+        P(f"  tau={tau:<6} own-kind-probability AUROC (final breath, diet right_final) = {a:.4f}")
+    P(f"  TAU* = {tau_star} ({rule})")
+    q_table = build_q_table(lib, K_B, tau_star)
+    build_atlas_features("diet", tau_star, lib, q_table, K_B)
+    build_atlas_features("wild", tau_star, lib, q_table, K_B)
+    return tau_star
+
+
+# ======================================================================================
 def main():
     mode = sys.argv[1] if len(sys.argv) > 1 else "all"
-    assert mode in ("build", "read", "drift", "all"), mode
+    assert mode in ("build", "read", "drift", "jsfeat", "all"), mode
     P(f"THE WELFORD ATLAS -- PMS8_241 -- mode={mode} -- {time.strftime('%Y-%m-%d %H:%M:%S')}")
     if mode in ("build", "all"):
         build()
@@ -568,6 +867,8 @@ def main():
         read_wild()
     if mode in ("drift", "all"):
         drift_monitor()
+    if mode in ("jsfeat", "all"):
+        jsfeat()
     if mode == "all":
         P("\n" + "=" * 100)
         P("THE SIX-LINE READING")

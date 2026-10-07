@@ -28,6 +28,21 @@ usage:
 import numpy as np
 
 
+def js_divergence(p, q, axis=-1, eps=1e-12):
+    """Jensen-Shannon divergence between two (already-normalized) categorical distributions, batched
+    over `axis` (Bryce, 2026-10-07: "Jensen-Shannon divergence on the DISTRIBUTION OVER CENTROIDS ...
+    never over the 512 dims" -- this is that computation, kept here beside the accumulator it reads
+    from since both are small, dependency-free monitor math, never a decoder). Natural log (nats);
+    bounded in [0, ln 2]. p, q: (..., K) arrays summing to ~1 along `axis` (not re-normalized here --
+    callers pass a softmax output, which already sums to 1; silently re-normalizing a non-distribution
+    would hide a caller bug)."""
+    p = np.asarray(p, dtype=np.float64)
+    q = np.asarray(q, dtype=np.float64)
+    m = 0.5 * (p + q)
+    kl = lambda a, b: (a * (np.log(a + eps) - np.log(b + eps))).sum(axis=axis)
+    return 0.5 * kl(p, m) + 0.5 * kl(q, m)
+
+
 class Welford:
     """One streaming accumulator over a fixed dim. decay=None -> exact Welford (Chan's online
     algorithm); decay in (0,1) -> exponentially-weighted mean/second-moment (the cell forgets its
