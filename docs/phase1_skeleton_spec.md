@@ -48311,3 +48311,34 @@ same-owner wall separates at the event level, THE EVENT ROTOR is registered as a
 where-codes at the verb level: a phasor from the stamps' verb order on the keys; bar = the
 same-noun cell); if it does not, the time story is derivation, not order (the 55 % pointing at
 quantities no token carries) and the chalkboard stays the road.
+
+### 2026-10-07 (06:41) — THE GOVERNOR CENSUS (scripts/governor_census.py, 37a94573; spaCy en_core_web_sm in the venv for measurement; .cache/governor_census_PMS8_241.txt): the prediction REFUTED in its letter — same-owner is 20.5 % of the wrong given picks, different-owner 35.8 %, no-chain 43.7 %; the owner oracle resolves 46 %, owner + event 70 %; the event index is granularity, not new evidence
+
+Method: the parse's governor chain per gold numeral (numeral -> head noun -> verb -> nsubj / poss
+owner; climbing copulas, coordination, control clauses); the gold value bound to a text numeral
+greedily (`mentions` is empty on all 311 wild rows — the stamps live on the diet, not the holdout);
+the chosen numeral = the dump's raw pdig (58 / 1009 given slots disagree with the masked verdict —
+the same raw-vs-masked gap as yesterday; carved out as a NOT-A-VALUE-ERROR bucket of 34). OF 533
+WRONG GIVEN PICKS: SAME-OWNER 20.5 % (gold and chosen share the owner: the parse cannot separate
+them), DIFFERENT-OWNER 35.8 % (a governor mask would have forbidden the pick), NO-CHAIN 43.7 % (no
+resolvable owner for one side). Among the same-owner wrong picks: 39 % differ by clause order, 19 %
+by verb, 61 % by NEITHER (indistinguishable to this parse: the same owner, verb and clause — the
+derived / restated quantity). THE ORACLE MASKS (wrong slots made unambiguous, among the eligible):
+owner alone 46.3 %, owner + verb 56.8 %, owner + clause order 66.9 %, owner + EVENT INDEX 69.7 % —
+the event level adds 3 points over the clause level and reads off the same parse: granularity, not
+independent evidence. Parse quality: an owner chain for 87 % of given numerals; relation-argument
+pointers onto givens are 88 % no-chain (the "extra" target is usually a derived variable with no
+text occurrence). CAVEATS (banked): no coreference (she / Alice compare as different lemmas: the
+different-owner share is an upper bound, same-owner a lower bound); the greedy value-to-numeral
+binding; 20-row spot check in the file. READING: (1) the wall is NOT mostly inside the governor
+path as predicted — a third of the wrong given picks cross owners, which is the other-sentence
+wall seen through the parse (a different sentence's numeral has a different owner); (2) an OWNER
+LEGALITY MASK at read has a ceiling of 46 % of wrong given slots — but only with the slot's owner
+KNOWN: the oracle supplies it; the machine would have to PREDICT it, which is the binding problem
+one level up (an owner pointer: the registered "retina-side identity keys" / an OWNER SIGNATURE as
+the role signature's sibling — now with a measured ceiling); (3) the event rotor's own share is
+small (+3 points over clause order) — not registered as a build on this evidence; (4) 61 % of the
+same-owner wall is invisible to syntax entirely: derivation and restatement, the chalkboard's
+territory. REGISTERED: THE OWNER SIGNATURE (an owner cue channel + an owner-legality road), ceiling
+46 % of wrong given slots (~250 of 2051), bar = the different-owner cell; measured with
+coreference-aware owners before any build (the lower-bound caveat).
