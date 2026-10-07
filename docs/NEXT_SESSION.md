@@ -8,7 +8,11 @@ claim +0.020); then pc-chainacc-verify (the 11-vs-14 baseline). Logs: .cache/rac
 is already live; the mint cost lives on the hierarchical body — RKC attributes it); THE WALL MOVED (0.489 vs 0.526) for the first time; the hit
 fell (0.68 vs 0.76); the claim mask exact; committed numerals right 0.686 (the rack commits dirty dishes a third of the time at consult 1).
 RKC decides what is the rack's and what is the consults'.
-**CPU builders in flight:** THE CARICATURE JURY (scripts/jury_train.py; the courtroom's form 2; one wild read vs rows >= 24 / regressions <= 2).
+**THE QUEUE (word given 18:02, all self-sequencing):** RKC -> tail (THE BAR) -> RKP/RKPC (the rack on the plain chassis; pc-queue-rackplain,
+aborts on a kill) -> RKX/RKXC (the rack on the hierarchical body with ALG_HIER_DAMP=3,5,0 = the schedule-collision fix; pc-queue-listen merges
+branch listen, gates, fires) -> pc-chainacc-verify. CPU: NL ATLAS v0 (scripts/nl_atlas_v0.py; bar op/ftype >= 0.72/0.86 on wild).
+**Banked 10-06 PM:** the courtroom + the caricature jury (both 14/311: inert; form 2b = render each story's claim); the meta read (meta rows
+6x easier; the wall tracks the population; only the coarse knot repeats); the schedule collision (consult evidence lands on frozen bands).
 **Banked 10-06:** adaptive stopping (judge as brake) MISS; MCTS over parses NULL (= top-1); the courtroom (hand jurors) INERT; the learned
 perceiver v1 misses on wild (AUROC 0.744 vs entropy 0.708; precision 0.64); the lost night (one arm per chain; waiters match the failure
 vocabulary); the eyes autopsy (right sign, wrong instrument; telegraphic hands registered); the shoal's collision read (twins collide in
