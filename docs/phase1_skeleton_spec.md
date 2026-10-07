@@ -47817,3 +47817,30 @@ embedding — the trunk's clause pool does not carry the operation cleanly (0.65
 question), which is the binding theorem one more time: what a clause MEANS mathematically is a
 binding of its cues, not a point in the retina. The joined phrase-motif table (counts, not
 centroids) remains the useful NL atlas; the role signature remains its working miniature.
+
+### 2026-10-06 (20:03) — THE BAR: RK_241 vs RKC_241 paired masked -0.0020 (SE 0.0083, z 0.24) — THE RACK IS NULL ON THE SLOT; rows 17 vs 13 (+4), mint 0.540 vs 0.555 (-0.015), digits flat; the consults alone give the hierarchical body +5 rows at -0.032 mint; the chain_acc baseline verified (14)
+
+RKC_241 (rack_chain_RKC.log 19:4x; HS_241 + ALT3 + CERT 2.0, no rack): open wild 0.2999; MASKED
+wild 0.3452 — paired vs HS_241 +0.0020 (flat), vs PMS8_241 -0.0024, vs EY_241 +0.0098; rows 13
+masked / 12 open; open mint 0.5545 (HS 0.5862: -0.032 = the consults' price on this body); digits
+0.368; silver460 0.2033; golden24 banked. THE BAR (computed directly; the tail chain died before its
+paired line — see below): RK_241 0.3432 vs RKC_241 0.3452, diff -0.0020, discordant 142 / 146 of
+2051, paired SE 0.0083, McNemar z 0.24 — the accuracy bar (>= +0.015) MISSED, the kill (< -0.010)
+clear: NULL. ROWS: RK 17 / RKC 13 / HS 8 / PMS8 14 — the rack +4 rows over its control (the rows bar
+>= +2 MET), the consults +5 over the body; MINT: RK -0.015 vs RKC (the bar >= -0.01 MISSED by
+0.005); digits not down (MET). Pending the attribution of the WALL (-0.037) and the HIT (-0.08)
+between the rack and the consults: membrane_rack.py on RKC_241 running on CPU. PROVISIONAL VERDICT:
+the rack as form 2 (numeral certificate, claim + leaf freeze, consult 1 at breath 2) moves ROWS and
+not the SLOT — four rows at the cost of 0.015 mint, on a body where its commits are right about the
+numeral two times in three; the slot read, the campaign's headline, does not see it. The row read
+(2-5 % of 311; SE on 13-17 rows ~ +/-4) cannot carry a claim alone. VERIFIED: the unmodified
+chain_acc re-run on PMS8_241 (pc-chainacc-verify, 13:56) reads 14 / 311 — the number of record
+stands; adaptive_stop.py's 11 is its own decode path's divergence (a bug to find, flagged on that
+script), not solver variance. FAILURES, FIXED: (1) the tail chain died at 19:54 on a grep pipeline
+with no match under pipefail (the plain membrane txt was missing because the band probe and the
+plain membrane collect both refuse a rack body: "this pass did not thread rack3" — correct
+refusals; the WALL / HIT lines must come from membrane_rack.py) — RKC's tail part and the final
+paired line never ran; (2) pc-queue-rackplain aborted at 19:54 on a gate check still pointing at
+racklive_gate.log (a sed without g) — fixed, the bar computed directly in the queue, re-fired at
+20:1x: RKP_241 starts on the idle card (the kill did not fire). RULES: a tail's grep pipelines are
+guarded (|| true) under pipefail; a derived queue is diffed against its source before arming.
