@@ -1170,8 +1170,8 @@ class _Conductor:
     __slots__ = ("kb", "tree_level", "matry_k", "unlock_k",
                  "facts3_inject", "facts5_inject",
                  "cert3_active", "cert5_active", "cert2_fresh",
-                 "hier_damp_shares", "stellar_weight", "sw_tick_phase",
-                 "breath_scalar", "eyes_temp")   # THE EYES (2026-10-05): the clock channel's scalar; the hands' mask temperature
+                 "hier_damp_shares", "hier_listen", "stellar_weight", "sw_tick_phase",
+                 "breath_scalar", "eyes_temp")   # THE EYES (2026-10-05): the clock channel's scalar; the hands' mask temperature; hier_listen: THE LISTENING BREATH (2026-10-06)
 
     def __init__(self, **kw):
         for _k, _v in kw.items():
@@ -1249,14 +1249,25 @@ def conductor(kb):
     _cert2_fresh = (kb in (3, 5))
     # THE HIERARCHICAL STATE's per-band damping share kept of the OLD state
     # (None = this band is not yet settled, or never settles, at this
-    # breath); root/branch/leaf order, matching ALG_HIER_DAMP's csv
+    # breath); root/branch/leaf order, matching ALG_HIER_DAMP's csv.
+    # THE LISTENING BREATH (ALG_HIER_LISTEN, 2026-10-06): kb is a listen
+    # breath iff it is the breath right after a consult's evidence first
+    # arrives — exactly _facts3_inject's / _facts5_inject's OWN injection
+    # breath + 1 (facts3 at kb==2 -> read from kb==3; facts5 at kb==4 ->
+    # read from kb==5), never re-numbered here. On a listen breath every
+    # band that would otherwise be damping/frozen keeps its share at 0.0
+    # instead (fully open; a band not yet settled was already None/open
+    # and stays that way — no new op). ALG_HIER_LISTEN unset -> _listen_now
+    # is always falsy -> this block reproduces the old code exactly.
     _hier_shares = (None, None, None)
+    _listen_now = bool(ALG_HIER_LISTEN) and (kb == 3 or kb == 5)
     if _HIER_DAMP is not None:
         _hs = []
         for _settle in _HIER_DAMP:
             if _settle and kb > _settle:
-                _hs.append(1.0 if ALG_HIER_TAU <= 0
-                           else float(1.0 - math.exp(-(kb - _settle) / ALG_HIER_TAU)))
+                _hs.append(0.0 if _listen_now
+                           else (1.0 if ALG_HIER_TAU <= 0
+                                 else float(1.0 - math.exp(-(kb - _settle) / ALG_HIER_TAU))))
             else:
                 _hs.append(None)
         _hier_shares = tuple(_hs)
@@ -1280,7 +1291,7 @@ def conductor(kb):
                      unlock_k=_unlock_k, facts3_inject=_facts3_inject,
                      facts5_inject=_facts5_inject, cert3_active=_cert3_active,
                      cert5_active=_cert5_active, cert2_fresh=_cert2_fresh,
-                     hier_damp_shares=_hier_shares, stellar_weight=_stellar_w,
+                     hier_damp_shares=_hier_shares, hier_listen=_listen_now, stellar_weight=_stellar_w,
                      sw_tick_phase=_sw_tick_phase,
                      breath_scalar=_breath_scalar, eyes_temp=_eyes_temp)
     _CONDUCTOR_CACHE[kb] = _c
@@ -3575,6 +3586,17 @@ ALG_HIER_WAIST = int(os.environ.get("ALG_HIER_WAIST", "0"))
 _HIER_DAMP = [int(x) for x in os.environ.get("ALG_HIER_DAMP", "").split(",") if x.strip()] or None
 assert _HIER_DAMP is None or len(_HIER_DAMP) == 3, "ALG_HIER_DAMP = <root>,<branch>,<leaf> settle breaths (0 = never)"
 ALG_HIER_TAU = float(os.environ.get("ALG_HIER_TAU", "0"))   # THE DAMPED FORM (2026-10-05): > 0 = after its settle breath a band keeps a share exp(-(kb - settle)/tau) of each breath's update (a decay, the skater pulling in); 0 = the hard freeze
+# ALG_HIER_LISTEN=1 — THE LISTENING BREATH (2026-10-06, the schedule collision ruling): on the breath
+# right after each of THE THREE CONSULTS' evidence first arrives (kb 3, the breath after facts3_inject/
+# cert3_active first turn true at kb 2/3; kb 5, the breath after facts5_inject/cert5_active first turn
+# true at kb 4/5 — conductor(kb)'s own facts3_inject/facts5_inject breaths, never re-numbered here), every
+# band's damping share is forced to 0 for THAT BREATH ONLY (whatever band would otherwise freeze/decay
+# this breath stays fully open — "put the dry dishes away before you shut the cupboard, not after"); the
+# damping resumes on the very next breath, at whatever share its own schedule says. The clock planes are
+# untouched either way (ALG_HIER_DAMP never reaches them). Unset (0) = conductor(kb).hier_damp_shares is
+# computed exactly as before — bit-identical. Needs ALG_HIER_DAMP (there is nothing to re-open otherwise).
+ALG_HIER_LISTEN = int(os.environ.get("ALG_HIER_LISTEN", "0"))
+assert not ALG_HIER_LISTEN or _HIER_DAMP is not None, "ALG_HIER_LISTEN re-opens a band's damping share — it needs ALG_HIER_DAMP set (nothing to re-open otherwise)"
 _HIER_PLANES = (16, 112, 64)          # root / branch / leaf content planes (sum 192)
 _HIER_LAT = (12, 72, 44)              # the block waist's latents per band (sum 128 = POLAR_D)
 _HIER_CACHE = {}
