@@ -435,7 +435,11 @@ def main():
     print(f"[adaptive-stop] GPU passes done ({time.time()-t0:.0f}s); {len(tasks_by_id)} solver tasks "
           f"over {n} rows x {K_B} breaths", flush=True)
 
-    raw_path = f".cache/rawslots_breaths_wild_{args.tag}.pkl"
+    # THE RAW-DUMP PATH GUARD (bug audit 2026-10-06): the banked dump is the FULL read (all n_full rows);
+    # a `--rows N` smoke must never overwrite it (one did, 21:05 — a 24-row file replaced the 311-row
+    # artifact the ledger's 07:09 entry banks). A partial read writes beside it, suffixed by its n.
+    raw_path = (f".cache/rawslots_breaths_wild_{args.tag}.pkl" if n == n_full
+                else f".cache/rawslots_breaths_wild_{args.tag}_rows{n}.pkl")
     pickle.dump(rawbreaths, open(raw_path, "wb"))
     print(f"[adaptive-stop] wrote {raw_path}: dict breath(0..{K_B-1}) -> list of {n} row-records "
           f"(chain_acc's CA_RAWDUMP format -- i/text/q/{'/'.join(KEYS)}/key, float16) "
