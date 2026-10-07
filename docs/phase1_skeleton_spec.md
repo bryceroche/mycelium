@@ -47701,3 +47701,5 @@ clauses >= the head's 0.86 / 0.72 for the atlas to earn a build as the root's di
 typed-demand census (how far the argument TYPE pattern narrows the binding). Prediction (pinned):
 op purity high (>= 0.8 at k 200) — ops are lexical; the typed demand narrows the binding to <= 2
 candidates in a minority of rows (same-type twins are the wall).
+
+### 2026-10-06 (18:02) — WORD GIVEN FOR THE WHOLE QUEUE (Bryce: "excellent -- word given for the whole queue. Salute!"): the listening-breath pair (RKX_241 / RKXC_241) queued as pc-queue-listen behind the plain-chassis pair: waits for the builder's chains + gate, merges branch listen into gen-weights, runs the post-merge gate (unset + rkarm asserted), fires. The queue now: RKC (card) -> tail (THE BAR) -> RKP / RKPC (conditional on no kill) -> RKX / RKXC -> chain_acc verify. The NL atlas v0 and the eyes' telegraphic hands / the chalkboard arms stay behind their reads.
