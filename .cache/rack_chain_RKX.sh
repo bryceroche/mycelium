@@ -10,6 +10,13 @@
 # REGISTERED, NOT FIRED (ledger 2026-10-06; the diagnosis + listen_gate.sh land first).
 BODY=HS_241; TAU=0
 set -eo pipefail; cd /home/bryce/mycelium; exec > .cache/rack_chain_RKX.log 2>&1
+# audit 2026-10-06: .cache/listen_merge_gate.log exists only when queue_listen.sh performs the merge itself (its "listen already merged" branch
+# produces no post-merge gate) — and the preflight below re-greps that log, so a hand-merged tree would abort this chain at 05:00 with nobody
+# watching. Self-heal: derive and run the SAME post-merge gate queue_listen.sh would have (the rule: the arm trains what was gated).
+if [ ! -s .cache/listen_merge_gate.log ]; then echo "NOTE: no .cache/listen_merge_gate.log — deriving and running the post-merge gate now ($(date +%H:%M))"
+  sed -e 's#/home/bryce/mycelium-wt7#/home/bryce/mycelium#g' -e 's#listen_gate.log#listen_merge_gate.log#' -e 's#listen_gate_\$N#listen_merge_gate_$N#g' .cache/listen_gate.sh > .cache/listen_merge_gate.sh
+  /usr/bin/bash .cache/listen_merge_gate.sh || true; echo "post-merge gate (run by $0): $(grep -a '^gate' .cache/listen_merge_gate.log | tr '\n' ' ' | cut -c1-700)"
+fi
 .venv/bin/python3 scripts/contracts/preflight.py "$0" || exit 1   # THE PRE-FLIGHT CONTRACT
 FAM="DEV=PCI+AMD ALG2=1 ALG_FTYPES=9 ALG_DUP=1 ALG_HW=512 ALG_WIDE=1 ALG_BREATH=7 ALG_NOTEBOOK=1 ALG_SIXWAVE=1 NB_PERSLOT=1 ALG_BINDBUS=7 ALG_BIND_D=512 BIND_CODES=.cache/bindbus_codes512.npz ALG_BUSGARAGE=2 ALG_SHELF_CIRCLE=2 ALG_ALTMASK=1 ALG_ALT21=1 ALG_ALT2=1 ALG_MASKHEAD=1 ALG_FED=1 ALG_POLAR=1 ALG_POLAR_D=128 ALG_POLAR_EM=0.1 ALG_POLAR_D_INIT=.cache/polar_waist_init_d128u.npz ALG_PRUNE=pforms,s4,fednl0,lane2 ALG_SLOT_ALL=1 ALG_STELLAR=2 ALG_CLOCK_CANON=1 SC_EVAL=0"
 TR="ALG_ALLOW_PEN_TRAIN=1 ALG_TRAIN=.cache/form_mix_pm35c.jsonl ALG_TRAIN_NAME=formpm35c ALG_TEST=.cache/algebra_nl_test.jsonl ALG_TEST_NAME=test23 ALG_MASKPREP_CACHE=1 ALG_MASKPREP_JIT=1 ALG_FACTS_POOL=1 ALG_FACTS_WORKERS=6 ALG_MASKPREP_IGNORE=ALG_MASK_COOK,ALG_MASK_COOK_SKEL,ALG_TOK_COOK,ALG_TOK_COOK_S3,ALG_TG_INIT,ALG_BAL_COOK,ALG_NB2,ALG_ALT5,ALG_PRUNE,ALG_MASKPREP_JIT,ALG_MASKPREP_B,ALG_FACTS_POOL,ALG_FACTS_FLUSH,ALG_JIT_VAL LR=1e-4 SEED=241 SNAP_EVERY=100000"
@@ -33,12 +40,12 @@ for C in RKX_241; do X="$SURF8 ALG_HIER_READ=1 ALG_HIER_WAIST=1 ALG_HIER_DAMP=3,
   echo "paired masked wild $C vs $BODY (the body): $(.venv/bin/python3 scripts/paired_read.py .cache/ps_legal_wild_$BODY.npz .cache/ps_legal_wild_$C.npz $BODY $C | tail -1)"
   echo "paired masked wild $C vs EY_241 (the eyes): $(.venv/bin/python3 scripts/paired_read.py .cache/ps_legal_wild_EY_241.npz .cache/ps_legal_wild_$C.npz EY_241 $C | tail -1)"
   echo "paired masked wild $C vs PMS8_241: $(.venv/bin/python3 scripts/paired_read.py .cache/ps_legal_wild_PMS8_241.npz .cache/ps_legal_wild_$C.npz PMS8_241 $C | tail -1)"
-  $(.venv/bin/python3 scripts/contracts/golden.py command .cache/sharp_$C.safetensors --tag $C 2>/dev/null | grep -v "^#" | head -1 | sed "s|ALG_FTYPES=9|ALG_FTYPES=9 $X|")
+  CMD=$(.venv/bin/python3 scripts/contracts/golden.py command .cache/sharp_$C.safetensors --tag $C 2>/dev/null | grep -v "^#" | head -1 | sed "s|ALG_FTYPES=9|ALG_FTYPES=9 $X|") || true
+  if [ -n "$CMD" ]; then eval "$CMD" || echo "golden command FAILED $C"; else echo "golden command EMPTY $C (golden.py command printed nothing)"; fi   # audit 2026-10-06: the bare $(...) form executed golden.py's line by word-splitting, so its "> .cache/golden24_check_$C.log 2>&1" became literal argv and the log was never written (rack_tail.sh's eval form is the one that worked at 19:54); an empty expansion also aborted the chain under set -e
   .venv/bin/python3 scripts/contracts/golden.py check .cache/golden24_rows_$C.json --tag $C || echo "golden: see above"
   flock -w 36000 .cache/gpu.lock env $FAM $W $X CB_MODE=collect CKPT=.cache/sharp_$C.safetensors .venv/bin/python3 scripts/clock_band_probe.py > .cache/clock_band_collect_$C.log 2>&1 || echo "band-probe collect FAILED $C"
-  flock -w 36000 .cache/gpu.lock env $FAM $W $X MS_CKPT=.cache/sharp_$C.safetensors MS_MODE=collect .venv/bin/python3 scripts/membrane_scale.py > .cache/membrane_scale_collect_$C.log 2>&1 || echo "membrane collect FAILED $C"
-  flock -w 36000 .cache/gpu.lock env $FAM $W $X MS_MODE=report MS_CKPT=.cache/sharp_$C.safetensors .venv/bin/python3 scripts/membrane_scale.py > .cache/membrane_scale_report_$C.log 2>&1 || echo "FAILED report $C"
-  grep -A4 "argmax band share, WRONG" .cache/membrane_scale_$C.txt | grep other_sent | sed "s/^/WALL $C /" || true; grep -A4 "argmax band share, RIGHT" .cache/membrane_scale_$C.txt | grep "  token" | sed "s/^/HIT $C /" || true
+  env $FAM $W $X DEV=CPU .venv/bin/python3 scripts/membrane_rack.py .cache/sharp_$C.safetensors --tag $C > .cache/membrane_rack_$C.log 2>&1 || echo "membrane-rack collect FAILED $C"   # audit 2026-10-06: the rack-aware ALT3+CERT+RACK read cycle (CPU, ~7 min; the ledger's own 14:35/20:11 instrument). membrane_scale.py's collect threads none of facts3/cert3/rack3: it asserts at the head under ALG_RACK=1 (rack_tail.log 19:54) and on the consult-only controls silently measures the ALT2 cycle, not the trained composition.
+  grep -A8 "argmax band share, WRONG" .cache/membrane_rack_$C.txt | grep other_sent | sed "s/^/WALL $C /" || true; grep -A8 "argmax band share, RIGHT" .cache/membrane_rack_$C.txt | grep "  token" | sed "s/^/HIT $C /" || true   # audit 2026-10-06: other_sent sits 7 lines below the header (-A4 never reached it: the WALL bar printed NOTHING, silently)
   [ -f scripts/rack_dryness_census.py ] && .venv/bin/python3 scripts/rack_dryness_census.py .cache/dump_wild_$C.pkl --tag $C 2>&1 | tail -6 | sed "s/^/DRY $C /"
 done
 .venv/bin/python3 scripts/reads.py ingest | tail -1; echo "RACK RKX CHAIN COMPLETE ($(date +%H:%M))"
