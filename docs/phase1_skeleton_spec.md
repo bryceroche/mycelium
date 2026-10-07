@@ -47844,3 +47844,28 @@ paired line never ran; (2) pc-queue-rackplain aborted at 19:54 on a gate check s
 racklive_gate.log (a sed without g) — fixed, the bar computed directly in the queue, re-fired at
 20:1x: RKP_241 starts on the idle card (the kill did not fire). RULES: a tail's grep pipelines are
 guarded (|| true) under pipefail; a derived queue is diffed against its source before arming.
+
+### 2026-10-06 (20:08) — THE HAMMERHEAD (Bryce: two separated sensors triangulate the ray); the mapping banked; THE HAMMERHEAD DRYNESS TEST registered and its census fired (zero GPU)
+
+THE MAPPING: a hammerhead's eyes triangulate because of BASELINE (the same sense from two
+positions), and it finds a buried ray because of MODALITY (electroreception: the field, not the
+surface). Gemini's two eyes (the typed demand + the NL cue) are already crossed in the role pointer
+(cue-compatibility x precedence — the slot record's organ) and do not triangulate the twins: for a
+same-noun twin both sensors see the SAME thing (same type, often the same cue class) — correlated
+errors do not triangulate. THE BASELINE WE OWN: the five sentence-permutation views and the
+cross-model lattice (unanimity measured at 1.0000 precision on the in-register certification set) —
+used only as the certifier at the END of the read, never as a sensor INSIDE it. THE RACK'S WEAK
+JOINT is its dryness test (given_unique: 0.686 numeral precision at consult 1 on RK_241); view
+unanimity is a far stronger certificate; crossed with the text certificate it is the
+triangulation in the kitchen: a dish is dry when the text says the numeral is unique AND every eye
+saw the same claim. THE MODALITY WE OWN: the buried ray = the DERIVED quantity (55 % of the wall
+points at arguments whose identity is in no token); its field = the solver's implied value; THE
+CHALKBOARD (implied values as bank tokens; gated on rack3, unfired) is the ampullae — the clearest
+reason yet to fire RK3 after the plain pair. REGISTERED: THE HAMMERHEAD DRYNESS TEST = given_unique
+AND view-unanimous (K = 5; at the consult breath); THE CENSUS (scripts/hammerhead_census.py,
+delegated, CPU): per gold given slot on wild (PMS8_241; HS_241 if time), the numeral-level
+precision and coverage of unanimity alone, majority, given_unique, and the ANDs, at breath 2 and
+at the final breath; the cost per view. BARS: admission at >= 0.90 numeral precision; PREDICTION
+(pinned): unanimity alone >= 0.90 at ~15 % coverage; the AND >= 0.90 near given_unique's 22 %.
+The build, if admitted: the rack's test takes K views at the consult (K pass-1s per consult at
+training; ALT3 is already 2.2x — the price is stated before any fire).
