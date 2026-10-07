@@ -48027,3 +48027,28 @@ RKC_241 and HS_241 decides (fired). REGISTERED (the next rack test, after RKP / 
 TEST — a slot is dry when >= 3 of 5 views claim the same numeral AND the numeral is a text given
 (any multiplicity), K pass-1s per consult; or, cheaper, K = 3 unanimous; the cost stated before
 the fire. The kitchen's first rule stands: a dry dish is one every eye agrees on.
+
+### 2026-10-06 (22:11) — THE BANKED DUMP REGENERATED UNDER THE FIX: last-breath baseline now reads 14/311 (ASSERT OK vs chain_acc); adaptive stop re-verdicted at 9/311 — the structural caveat confirmed
+
+Under the standing word (coordinator follow-up #2 to the bug audit). .cache/rawslots_breaths_wild_PMS8_241.pkl
+regenerated full (311/311 rows, DEV=CPU, nice 19 so RKP_241's fact workers kept the CPU — 3087s wall,
+GPU-pass phase ~2964s at ~7.6s/row, solve+uniqueness ~123s) with the FIXED adaptive_stop.py (the last
+breath read from out["args"], not the stale out["heads_all"][K_B-1] tap). Re-ran adaptive_stop's own
+verdict on the regenerated dump: LAST-BREATH BASELINE now 14/311 (0.045) — ASSERT OK against chain_acc's
+banked mask=1 read, closing the 11-vs-14 divergence at the artifact level (not just the live-forward
+level 0bff104f already fixed). ADAPTIVE STOP (the judge: solved+unique, key never consulted) now reads
+9/311 (0.029) against the corrected baseline — regressions 8 (rows 1, 48, 81, 98, 113, 147, 285, 294),
+fixes 3 (rows 32, 149, 234); BARS (rows >= last-breath's 14, regressions <= 2): both MISS. STOP
+HISTOGRAM: b-1 (never passed, used last breath) 107, b0 103, b1 41, b2 21, b3 14, b4 5, b5 5, b6 15 —
+210/311 rows stop at breath 0 or never pass at all. STRUCTURAL CAVEAT (confirmed, not merely proposed):
+the role pointer (ALG_PTR_SURF, gain 2.0) and the router/busreg terms are final-breath-only injections
+into out["args"] by construction — breaths 0-5 NEVER carry them. So every row the judge stops early on
+(210/311, the histogram above) is scored against a strictly weaker machine's decode than the one the
+last-breath baseline (and the key) are compared to; the adaptive-stopping line's own MISS (9 vs 14,
+8 regressions) is now measured honestly, but the comparison it makes is apples-to-a-smaller-apple by
+design, not a bug a tap fix can close. Artifacts: .cache/rawslots_breaths_wild_PMS8_241.pkl (restored,
+14.5MB, timestamp 22:08), .cache/adaptive_stop_PMS8_241_fixed_cpu.log (full run log),
+.cache/perceiver_stream_PMS8_241_fixed.npz (the v0 stream, superseding the pre-fix
+perceiver_telemetry_PMS8_241_pm35cslicevalid2.npz's final-breath labels — a re-collect for the learned
+perceiver v1 is Bryce's call, not fired here). RKP_241 ran unaffected throughout (confirmed alive,
+steady CPU%, at every poll).
