@@ -15,6 +15,11 @@ if admitted (>= 0.90 numeral precision), the rack's test is replaced and RK3 (re
 claim); the perceiver v1 MISS on wild; the meta read (meta rows 6x easier; only the coarse knot repeats; the prior inert); NL atlas v0
 MISS (clause centroids 0.646 vs the head 0.72); the schedule collision diagnosed (consult evidence lands on frozen bands); the lost
 night (one arm per chain). Rules added: a tail's grep pipelines guarded under pipefail; a derived queue diffed against its source.
+**THE AUDIT (10-06 21:14):** the panel picker's 19/311 is STRUCK (its features read the key; a corrected single read fired); the
+last-breath tap heads_all[K_B-1] predates the role pointer (readers fixed; HEAD DIFF A pending: apply on a branch after the queue, gate,
+then re-read adaptive stopping and the perceiver's stop head); the rack's claim before the clip (DIFF B) and on scratch rows (DIFF C) —
+both pending the same branch + gate; cert3/cert5 need rack3's never-run-dark assert. RKP's executing tail will exit 1 at its -A4 line:
+run its dry census + reads.py ingest by hand. Every early-breath decode carries no role pointer (the stop-early line's structural caveat).
 **Branches:** rack3 (form 3 + chalkboard), listen (the schedule fix) — unmerged until their queues; worktrees wt6 (rack3), wt7 (listen).
 main last fast-forwarded 10-05 21:3x; re-sync at the next boundary.
 
