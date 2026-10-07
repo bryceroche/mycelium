@@ -48342,3 +48342,5 @@ same-owner wall is invisible to syntax entirely: derivation and restatement, the
 territory. REGISTERED: THE OWNER SIGNATURE (an owner cue channel + an owner-legality road), ceiling
 46 % of wrong given slots (~250 of 2051), bar = the different-owner cell; measured with
 coreference-aware owners before any build (the lower-bound caveat).
+
+### 2026-10-07 (06:51) — RKP_241's commits re-scored under the same mask: 488 / 502 = 0.972 numeral-level (the void raw-dump column read 0.779); clean on the plain chassis as on the hierarchical one (RK 0.963). The rack commits clean certificates on both bodies and moves the slot on neither.
