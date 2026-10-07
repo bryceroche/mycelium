@@ -48252,3 +48252,20 @@ family look like body x organ interactions inside row noise (SE ~4). The slot is
 chassis: THE RACK IS NULL ON THE SLOT on two bodies. The chain's tail exited 1 at the known -A4
 line (the executing chain could not be patched); the dry census ran by hand; the rack-aware
 membrane census (membrane_rack.py) runs on CPU; reads.py ingested.
+
+### 2026-10-07 (03:33) — RKP_241's MECHANISM READS (membrane_rack.py on the plain chassis): the wall flat (0.500 vs PMS8's 0.495), THE HIT UP (0.65-0.70 vs 0.59-0.62 at b2-b6: the drift halved) — on the plain chassis the consults + rack LIFT the right slots where on the hierarchical body they knocked them off
+
+RKP_241 vs PMS8_241 on wild, per breath (b0..b6): the wall (wrong givens' other-sentence argmax
+share) 0.496 / 0.495 / 0.509 / 0.504 / 0.498 / 0.500 / 0.500 vs 0.486 / 0.505 / 0.505 / 0.492 /
+0.485 / 0.494 / 0.495 — flat (no move either way); the hit (right givens on the token band) 0.819 /
+0.674 / 0.649 / 0.674 / 0.695 / 0.656 / 0.656 vs 0.807 / 0.626 / 0.603 / 0.617 / 0.617 / 0.592 /
+0.621 — up 0.04-0.08 at every loop breath: the plain body's drift (0.81 -> 0.60) is roughly halved
+by the consult + rack organ (the hierarchical state's cure holds at 0.76; this is the second organ
+to slow the splash, by a different route: the lines and the claims keep right givens on their
+tokens). The body x organ interaction is now explicit: the same consults + rack lower the hit on
+the hierarchical body (RK / RKC 0.68 vs HS 0.76) and raise it on the plain one (RKP 0.67 vs PMS8
+0.61) — the schedule collision (the lines landing on frozen bands) is the registered cause of the
+first; the listening pair reads it. The dry census on RKP: 502 committed cells (0.245 of gold
+slots; positional 0.526 = the drawer, as everywhere); the numeral-level re-score under the same
+mask is the number to quote (rack_numeral_audit.py --ckpt, pending). RKPC attributes the hit lift
+between the consults and the rack this morning.
