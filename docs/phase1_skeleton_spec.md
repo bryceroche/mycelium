@@ -47995,3 +47995,35 @@ sits exactly at the floor it was built to beat and still misses its own bar. Art
 .cache/panel_picker_v2_PMS8_241.txt (full report), .cache/picker/{feat_diet_v2,feat_wild_v2,
 model_v2,diet_report_v2,wild_report_v2}. The original .cache/panel_picker_PMS8_241.txt (19/311)
 stays on disk as the struck record, not deleted.
+
+### 2026-10-06 (21:44) — THE CORRECTED PICKER (v2, leak-free): 18 / 311 with 4 regressions — MISS; THE HAMMERHEAD CENSUS: view unanimity is a dryness test at 0.970 precision and 0.32 COVERAGE (given_unique 0.979 at 0.19; majority-of-5 0.965 at 0.41; the AND 0.984 at 0.15) — the prediction's coverage was pessimistic by 2x
+
+THE PICKER v2 (.cache/panel_picker_v2_PMS8_241.txt; the same candidates; features without the
+gold-derived twin flags): diet CV 305 / 775 (below top-1's 310; the judge 296); THE ONE WILD READ:
+18 / 311 — fixes 8 (rows 18, 43, 58, 94, 227, 247, 255, 266), regressions 4 (81, 233, 285, 297);
+bar (rows >= 24, regressions <= 2) MISSED. The leak had been worth exactly one row (19 -> 18); the
+learned picker without the key equals the judge's count with four regressions the judge does not
+make. The courtroom family's honest table: hand jurors 14, caricature jury 14, learned picker 18
+(4 regressions), the judge 18 (0), the ceiling 43.
+THE HAMMERHEAD (.cache/hammerhead_census_PMS8_241.txt; PMS8_241, wild, K = 5 sentence-permutation
+views, pass-1 decodes at breath 2 and at the final breath; numeral-level precision = the claimed
+numeral is a gold given; coverage = share of gold given slots): FINAL BREATH — given_unique 390
+fires / 0.979 / cov 0.190; UNANIMOUS (all 5 views claim the same numeral) 661 / 0.970 / 0.322;
+MAJORITY (>= 3 of 5) 832 / 0.965 / 0.406; given_unique AND unanimous 307 / 0.984 / 0.150; AND
+majority 383 / 0.971 / 0.187. BREATH 2 — the same within 0.01 (given_unique 0.976 / 0.179;
+unanimous 0.966 / 0.319; the AND 0.982 / 0.139). Positional precision lags numeral precision
+everywhere (0.52-0.65: the drawer vs the dish, again). Cost: 1,230 s per extra view on CPU for 311
+rows (K pass-1s per consult at training). VERDICT: every test is ADMITTED at the numeral level; the
+prediction (unanimity >= 0.90 at ~15 % coverage) was right on precision and pessimistic by 2x on
+coverage; the AND does NOT keep given_unique's coverage (0.150 vs 0.190: the eyes disagree on a
+fifth of the unique claims) — the triangulation buys precision (0.984), the majority buys COVERAGE
+(0.406 at 0.965: twice given_unique's reach at the same precision). THE OPEN QUESTION it exposes:
+given_unique on PMS8's own breath-2 decode is 0.976, yet RK_241's committed flags (its own
+consult-1 decode, the same test) were right only 0.686 — the test is sound on the plain body's
+pass 1 and dirty on the trained rack body's: either the rack's training degraded its consult-1
+decode (the body learned to claim uniquely and wrongly: the loss took the cheapest road to a
+claim) or the consult bodies' breath-2 decode is weaker than the plain body's. The census on
+RKC_241 and HS_241 decides (fired). REGISTERED (the next rack test, after RKP / RKPC): THE MAJORITY
+TEST — a slot is dry when >= 3 of 5 views claim the same numeral AND the numeral is a text given
+(any multiplicity), K pass-1s per consult; or, cheaper, K = 3 unanimous; the cost stated before
+the fire. The kitchen's first rule stands: a dry dish is one every eye agrees on.
