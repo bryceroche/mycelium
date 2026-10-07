@@ -48507,3 +48507,25 @@ REGISTERED (not fired): the orthodontist (v2, per-row temperature/damping from t
 the 11:18 entry's (3) — v1b's own bar miss does not by itself kill it (the flight path READS; the
 ask was whether a dryness TEST could be built on top, which misses here); the diet-cosine-sign
 texture probe above.
+
+### 2026-10-07 (11:54) — THE PERCEIVER v1b's READING (after the 11:51 entries): the learned reader LOSES to the fixed ruler on wild — AUROC 0.720 (v1 0.744) vs the unlearned Welford cosine's 0.766; the diet CV 0.873 is a diet-shaped fit; the diet's own cosine reads 0.423 (anti-predictive) where wild reads 0.766 — a texture probe registered
+
+The facts: the per-breath library reproduces the final-breath one exactly (cos 1.000000 at kb 6);
+the codebook distribution + JS features built (tau flat, fixed 0.1); the diet CV climbs with every
+feature group (0.63 -> 0.81 -> 0.84 -> 0.87 vs entropy 0.74) and the diet-chosen full model reads
+0.7200 on wild (bar 0.758 MISSED; precision 0.606 at 20 % — MISSED). THE LINE'S VERDICT (three
+reads): v1 0.744, v1b 0.720, the unlearned cosine-to-kind-mean 0.766 — every learned perceiver
+trained on the diet slice reads BELOW the fixed ruler on wild: the reader learns the diet's
+slot-health signature, which is not wild's. The perceiver's commit role is therefore THE FIXED
+WELFORD COSINE (a threshold, no learning) until the diet matches the measurement's register —
+registered: v1c trains on the GSM8K-only rows of the slice (212) + the 2,000 raw GSM8K-train rows'
+slot features where per-slot labels exist (none: raw rows have no gold graphs — so v1c = the 212
+rows only, or the annotated GSM8K books; the lever is n of annotated GSM8K rows again). THE
+TEXTURE (two unexplained shapes = a mechanism probe, the rule): on the diet slice the same cosine
+feature reads AUROC 0.423 (slots NEAR their kind's mean are more often WRONG) while on wild it reads
+0.766 — the same function, verified; candidates: (a) in-sample bias (the library was built from
+the slice itself: a right slot's own vector pulls the mean toward it — but that raises cosines for
+members regardless of correctness), (b) the slice's register mix (asdiv / svamp / rendered-wild /
+mint-like rows whose right slots sit off the GSM8K kind mean), (c) a labelling difference (the
+slice's per-slot verdict vs wild's ps_legal). PROBE (zero GPU, registered): the diet cosine AUROC
+per gen.src bucket, and leave-one-row-out means; if (b), the library must be built per register.
