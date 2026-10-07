@@ -48344,3 +48344,26 @@ territory. REGISTERED: THE OWNER SIGNATURE (an owner cue channel + an owner-lega
 coreference-aware owners before any build (the lower-bound caveat).
 
 ### 2026-10-07 (06:51) — RKP_241's commits re-scored under the same mask: 488 / 502 = 0.972 numeral-level (the void raw-dump column read 0.779); clean on the plain chassis as on the hierarchical one (RK 0.963). The rack commits clean certificates on both bodies and moves the slot on neither.
+
+### 2026-10-07 (07:00) — THE WELFORD ATLAS (Bryce: "the centroids need some love, and Welford stats; telemetry of every problem solved; a clean library over time"); the ruling and the build (zero GPU)
+
+THE RULING: (1) the clause centroids lost (0.646) on the CLEANEST data we own (6k gold-annotated
+clauses), not on a muddy snapshot — Welford moves a mean and tightens a radius, it does not change
+the space (the binding theorem); (2) "harvest the certified wins" at read is a trap the record
+measured: the judge's solved + unique rows are 9 % precise and are the META rows — a library fed by
+read-time wins learns consistent-but-wrong parses where the model already succeeds; the clean
+telemetry is the annotated diet, and its growth over time is the books campaign (n); (3) WHERE
+WELFORD IS RIGHT: the atlas's job here is RECOGNITION and MONITORING — the two-channel law (angle
+= identity, radius = consolidation), the mouth (near solved territory?), the perceiver's distance
+feature, the generation-drift monitor (centroids rotate across generations at cos 0.988: a running
+mean and variance per kind is the honest tracker; the monitor centroids are rebuilt by hand per
+promotion today) — "shadow mode" accepted as a monitor beside the heads, never a replacement that
+takes the wheel on purity. THE BUILD (scripts/welford_atlas.py + mycelium/welford.py; delegated):
+streaming accumulators per kind and per coarse knot in two spaces (the head's final-breath slot
+state; the retina clause embedding) over the diet's gold rows; ONE wild read: the distance's AUROC
+for per-slot and per-row correctness vs the entropy baseline (0.708) — BAR (pinned): >= entropy +
+0.03 in at least one space for the atlas to earn the perceiver's input; THE DRIFT MONITOR across
+the four bodies' banked states (per-kind mean directions, pairwise cosines, the Welford radius).
+Prediction (pinned): the slot-state distance beats entropy by a small margin (the perceiver's
+atlas feature separated early-stopped rows); the clause-space distance does not; kinds rotate
+across bodies by cos 0.9-0.98 (the law's drift, visible inside one generation).
