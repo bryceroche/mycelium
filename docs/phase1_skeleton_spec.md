@@ -48396,3 +48396,30 @@ Welford library is built PER BODY (the law: a library's coordinates belong to th
 them; a read on another body is a read in a foreign frame); (3) the library as THE MOUTH v2 (the
 row's mean distance to its kinds' means as the OOD register: 0.796 AUROC on rows) — the mouth's
 length-correction discipline applies.
+
+### 2026-10-07 (08:53) — THE PLAIN-CHASSIS BAR: RKP_241 vs RKPC_241 paired +0.0005 — THE RACK IS NULL ON THE SLOT ON TWO BODIES WITH CLEAN COMMITS; rows 9 vs 8; mint flat; the hit lift on the plain chassis IS the rack's (+0.05-0.10); THE CONSULTS ON THE PLAIN CHASSIS COST ROWS (14 -> 8) while lifting open wild (+0.015) and silver (+0.03)
+
+RKPC_241 (the control: PMS8's recipe + ALT3 + CERT 2.0, no rack; rack_chain_RKPC.log 08:51 — the
+audit-fixed chain ran to completion with its WALL / HIT / DRY lines): open wild 0.3150 (PMS8
+0.3003: +0.015); MASKED 0.3462 (paired vs PMS8 -0.0015, vs RKC_241 +0.0010: flat); rows 8 / 8
+(PMS8 14 / 9); open mint 0.6429 (PMS8 0.65: flat); digits 0.393; silver460 0.2597 (PMS8 ~0.23);
+golden24 6 / 13 / 5 (= PMS8). THE BAR: RKP 0.3467 vs RKPC 0.3462, diff +0.0005 (SE ~0.008): NULL —
+the rack's second body says what the first did. ROWS: RKP 9 / RKPC 8 / PMS8 14: the rack adds +1
+(noise); the consults + lines COST the plain chassis 6 rows (ALT3_241 alone had rows ~ the body's;
+the lines at gain 2.0 are the suspect: CL_241 on the plain chassis read 8 / 8 too). THE MECHANISM
+(membrane_rack.py on both): the wall flat on both (RKP 0.500 / RKPC 0.491 / PMS8 0.495); THE HIT
+RKP 0.65-0.70 vs RKPC 0.54-0.61 (= PMS8's 0.59-0.62): the drift-halving on the plain chassis is
+THE RACK'S OWN (the claim keeps right givens on their tokens — the shoal's repulsion, measured),
+with no slot or row consequence. THE RACK FAMILY'S LEDGER, closed on two bodies: claim + leaf
+freeze on clean certificates (0.963 / 0.972) at ~1.5 slots per row: slot null (x2), rows inside
+noise (x2), mint -0.015 on the hierarchical body / flat on the plain, the hit +0.05-0.10 on the
+plain body / flat on the hierarchical, the wall untouched (x2). THE READING: putting the certified
+dishes away does not change what the wet dishes decide — the wall is the bindings of the slots the
+certificate never reaches (the governor census: 61 % of the same-owner wall invisible to syntax;
+the meta read: the wall is binding inside the motif). The next forms of the kitchen are the ones
+that touch the WET dishes: the chalkboard (a derived value made visible), the owner signature (a
+locating road with a 46 % ceiling), the majority test for reach. THE CONSULTS' LEDGER, two bodies:
+on the hierarchical body the first wall move (-0.033) and the hit's fall (-0.08), rows +5, mint
+-0.032; on the plain chassis rows -6, open +0.015, silver +0.03, mint flat, the wall and hit flat —
+the lines' gain (2.0) is uncensused on both and is the knob to turn before any further consult arm
+(ALG_CERT=1.0 / 0.5 registered beside the listening pair, which is now merging).
