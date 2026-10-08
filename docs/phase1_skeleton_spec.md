@@ -48590,3 +48590,23 @@ schedule, no rack; training now): if RKXC also reads mint ~0.60 and the hit ~0.7
 schedule's and the rack is, as on two bodies before, null beside it. RKX's commits re-scored under
 the same mask (pending, zero GPU). The listening-breath form proper (ALG_HIER_LISTEN) is gated and
 unfired: the schedule form was chosen as the lower-risk read; it has now paid.
+
+### 2026-10-07 (17:15) — THE DEFENCE OF THE LEARNED PERCEIVER (Bryce: "we are building a fancy lookup table; overfitting isn't always bad here; memorization plays a role"); the ruling: the TABLE memorizes by design, the READER needs the wild regime it has never been fed
+
+(1) The Welford atlas IS the lookup table — a frozen library of gold-labelled kind means, 0.766 on
+held-out GSM8K with no learning on top; never regularized. (2) The reader (v1 / v1b) did not
+overfit in the textbook sense (honest grouped CV on a slice held out from training); it learned the
+slice's truth, which is INVERTED relative to wild because the slice shares the body's register
+(68 % right there vs 35 % on wild: the residue it gets wrong is the strange residue, so typical =
+wrong; on wild typical = right) — a REGIME SHIFT (the texture probe: not in-sample bias, partly the
+synthetic registers, mostly regime). (3) Gemini's defences, priced: a MONOTONE constraint (the
+cosine's weight >= 0) is hygiene — a reader must never invert its ruler — but would not have
+rescued v1b (the other features carry the same inverted signal; a constrained model just fits the
+diet worse): registered for v1c; "train on confusion" is the cure stated too loosely — the slice
+already is held out; the reader needs the WILD REGIME: held-out GSM8K rows the body never trained
+on and whose register it did not learn — today those rows ARE the measurement and stay untouched.
+THE DEFENCE: the learned perceiver is not refuted; it has never been fed the regime it is meant to
+read. REGISTERED: THE READER'S HOLDOUT — the books campaign's next annotated GSM8K rows split at
+birth into a reader-training set and a fresh measurement set (the n lever, allocated); v1c =
+monotone-in-the-ruler + trained on the reader's holdout; until then the fixed cosine holds the
+commit role. The Goodhart fence is untouched: the reader's loss never enters the head.
