@@ -49009,3 +49009,41 @@ unchanged) before the arm fires; `pc-rk3x` reset-failed and re-launched as a tra
 `pc-rk3x-watch` armed per the 10-08 mtime-watch rule (ledger 53823168): a 10-minute loop that kills the
 trainer and logs "HUNG" to `.cache/rk3x_watch.log` if `.cache/sharp_RK3X_241.log` goes 30+ min stale while
 the trainer is alive and the chain has not finished.
+
+### 2026-10-08 (12:30) — THE POLAR LATENT PROBE READ (11c5d67f; scripts/polar_latent_hook.py [new] + scripts/welford_atlas.py; .cache/welford_atlas_PMS8_241.txt): a WASH on correctness (slot +0.0079, row -0.0118, both inside the content library's own noise) with a small, REAL geometric sharpening (pairwise kind-mean cosine 0.560 -> 0.544) that does not convert to legibility — the pinned prediction's "about the same" holds, "slightly worse" is only half right
+
+Zero-GPU (CPU, nice 19, gpu.lock never touched; no chain-imported file edited): scripts/
+polar_latent_hook.py (new) is a runtime monkeypatch of H.breath_step + H._polar_waist (the eyes_
+autopsy.py `H._make_bank` precedent) that taps _polar_waist's 128-d content-plane bottleneck (384
+content dims -> ALG_POLAR_D=128 -> 384, phase1_algebra_head.py:1569) INSIDE the loop and appends it
+to the existing H._CENSUS hook under tag "polar_latent" — _polar_waist carries no `kb` argument, so
+the breath_step patch stashes kb into `state` (popped after) for the _polar_waist patch to read
+back; both patches call the real function FIRST and return its result unchanged (a read-only tap,
+bit-identical forward with or without install()). welford_atlas.py's build() now also builds the
+polar-latent library (kind:{k} at the final breath + kind:{k}@{kb} per loop breath kb=1..6 — breath
+0 is "outside time", absent by construction) in the SAME diet forward pass (re-run; 5812 slots,
+kind counts identical to the 384-d content library's own, confirming the tap sees the same slots).
+Wild's 128-d states needed a FRESH CPU forward (clock_band_states_PMS8_241.npz never captured this
+tag) — new CLI mode "polarwild" (311/311 rows, ~7min); the read itself — mode "polarread" — mirrors
+caricature_probe()'s own per-slot/row AUROC, right-slot margin, and nearest-centroid kind-accuracy
+machinery, plus the kind means' own pairwise-cosine geometry.
+
+RESULTS (wild, n=2051 gold slots / 311 rows): entropy baseline AUROC 0.7005 (recomputed, matches the
+banked 0.700). polar (128-d): slot AUROC 0.7740, row AUROC 0.7843, margin(right) +0.2521, nearest-
+kind acc 5-way 0.6314 / given-vs-rel 0.8586 / rel-subtype-4way 0.4559, mean pairwise kind-mean cosine
+0.5437. content (384-d, reference): slot AUROC 0.7661 (matches the banked 0.766), row AUROC 0.7961
+(matches the banked 0.796), margin +0.2402, 5-way 0.6212 / given-vs-rel 0.8606 / rel4 0.4280, mean
+pairwise cosine 0.5600.
+
+THE FOUR-LINE READING (verbatim from the report): (1) slot AUROC is about the same, if anything
+marginally BETTER for the squeeze (+0.0079), not worse as predicted — both clear entropy cleanly.
+(2) row AUROC IS slightly worse for the squeeze (-0.0118) — the prediction's direction holds here.
+(3) the silhouette is SHARPER, not just smaller: the mean pairwise cosine between the 5 kind means
+is LOWER in 128-d (0.5437) than 384-d (0.5600) — a scale-only copy would preserve cosines exactly
+(cosine is scale-invariant), so the waist reshapes the geometry, mildly separating the kinds further
+— consistent with 128-d's higher margin and its rel-subtype-only accuracy bump (0.4559 vs 0.4280,
+chance 0.25); given-vs-rel and 5-way accuracy stay flat. (4) VERDICT: "about the same" is right,
+"slightly worse" is only half right — a WASH on the metric that matters (slot/row correctness AUROC,
+one up one down, both inside the gap between entropy and the content library) alongside a small,
+real geometric sharpening on kind-SEPARATION that does not convert into correctness legibility. The
+384-d content library stays the perceiver's atlas space; no reason to move to the 128-d squeeze.

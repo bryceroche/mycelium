@@ -15,7 +15,10 @@ starved (diet 0.27 vs wild 0.36); the cues unread. Worth up to +0.03 wild. THE D
 **OTHER READS 10-07/08:** the Welford atlas = a wild-regime ruler (0.766 vs entropy 0.700; one library per body); the learned perceivers
 lose to it (regime, not overfitting; the reader's holdout registered as a books allocation); the caricatured library a wash; the early
 release refused (0.61 precision); the replay harness (branch replay, wt8: decode-exact; the chalkboard dry-run; the resonance read: the kind
-axis is real, right and wrong ring the same, add/sub and mul/div near-colinear = the positional law); the governor census (owner oracle 46 %).
+axis is real, right and wrong ring the same, add/sub and mul/div near-colinear = the positional law); the governor census (owner oracle 46 %);
+THE POLAR LATENT PROBE (12:30, 11c5d67f): the 128-d _polar_waist bottleneck is a WASH vs the 384-d content library (slot +0.0079, row
+-0.0118) with a real but small geometric sharpening (kind-mean pairwise cosine 0.560 -> 0.544) that buys no legibility — content stays
+the atlas space; new hook scripts/polar_latent_hook.py (runtime monkeypatch, no chain file edited).
 **Registered, unbuilt:** the depth pair (2/4 mixer layers per breath; cheap), the sorting room (token-side attention), the owner signature,
 the majority dryness test, the acting perceiver (the gym), head diffs A/B/C from the audit.
 **Branches/worktrees:** replay (wt8), dirbit (wt9), rack3 (merged), listen (merged). main fast-forwarded 10-07 21:3x.
