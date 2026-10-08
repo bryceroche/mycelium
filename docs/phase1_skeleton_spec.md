@@ -48691,3 +48691,41 @@ behind its gate: kick at b3 on training rows, replay, score with the key; if kic
 only when the solver's contradiction aimed the kick, the fence was right and form 3 is the whole
 move. The acting perceiver's first two moves are therefore: release-by-certificate (if admitted)
 and release-by-contradiction (form 3); the kick only as the gym decides.
+
+### 2026-10-07 (18:48) — THE DRYNESS PROBE READ (f51854cd; scripts/welford_atlas.py dryness_probe(), mode dryness; .cache/welford_atlas_PMS8_241.txt): BOTH BARS MISS — the fixed cosine tops out at 0.61 precision at 20% coverage (bar 0.90) and "settled AND centered" is WORSE, not better (0.58 at the same coverage, pool caps at 29.2%); 'settled and centered' is NOT a legitimate early release
+
+Zero-GPU, on wild gold GIVEN slots only (n=1009): ps_legal_wild_PMS8_241.npz (positional ok),
+.cache/perceiver_v1b_features_PMS8_241_wildhold.npz (the fixed final-breath cosine-to-own-kind-mean
++ atlas_js_move, which at kb=6 already IS the b5->6 movement by construction), perceiver_telemetry_
+PMS8_241_wildhold.npz (leaf/root/branch_chg, which at kb=6 already IS the b5->6 state change by
+construction), + (numeral-level, derivable) the already-banked .cache/rawslots_breaths_wild_PMS8_241
+.pkl (mycelium.rulebook's legal_values/choose_legal, the SAME masked-decode convention adaptive_stop
+/hammerhead_census use). "Settled" = band_chg (mean of leaf/root/branch_chg) >= its own median;
+"centered" = js_move <= its own median; the pool is their intersection (295/1009 = 29.2%, slightly
+ABOVE the 25% independence expectation — the two are mildly positively correlated).
+
+PRECISION AT COVERAGE (plain, ranked by the fixed cosine): 10%=0.6139, 20%=0.6089, 30%=0.5842,
+40%=0.5743 (positional == numeral at every row — see below). "SETTLED AND CENTERED" (same ranking,
+restricted to the pool): 10%=0.5842, 20%=0.5842, 30%/40%=0.5390 CAPPED at 29.2% achieved coverage
+(the pool is too small to reach 30%/40%) — WORSE than plain at matched coverage, not better. THE
+BAR (>= 0.90 precision at >= 20% coverage): MISS for both variants, both labels.
+
+THE NUMERAL-LEVEL CHECK (derivable): a proper superset of positional-right (487/1009 = 0.4827 vs
+442/1009 = 0.4381; ok => num_ok holds with ZERO exceptions, +45 slots gained by the digit-only
+relaxation) — but all 45 extra-correct slots sit BELOW the cosine's own top-404 (40% coverage)
+cutoff, so prec_positional == prec_numeral exactly at every coverage level in both tables; the
+extra leniency buys nothing the cosine ranking would reach.
+
+THE THREE-LINE READING (verbatim from the report): (1) neither variant clears the bar; "settled AND
+centered" is not better (0.5842 vs 0.6089 at 20%) and cannot reach 30%/40% coverage at all (pool
+caps at 29.2%). (2) the numeral-level relaxation raises the overall right rate (+0.045) but buys
+nothing at any tested coverage — the gained slots are not among the cosine's own top picks. (3)
+VERDICT: 'settled and centered' is NOT a legitimate early release on this body — gating on low
+state change and low JS movement does not concentrate correctness better than the plain fixed
+cosine (if anything, slightly worse); the cosine is informative (+0.17 over the 0.438 base rate at
+20% coverage) but far short of dry on GIVEN slots alone. NOTE (process): a file-truncation bug in
+the texture-probe append (earlier today) left .cache/welford_atlas_PMS8_241.txt with a duplicated
+texture-probe section and a dropped reading for ~6 hours; caught by the coordinator's own file-
+changed notice and rebuilt clean (one copy of each of the three probes' sections, verified by
+grep count before replacing) — the committed ledger text above was never affected (it was written
+from the same verified numbers independently), only the .cache scratch file was at risk.

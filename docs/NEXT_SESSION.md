@@ -1,4 +1,13 @@
-# NEXT SESSION — cold-start entry (updated 2026-10-07 17:44)
+# NEXT SESSION — cold-start entry (updated 2026-10-07 18:48)
+
+**THE DRYNESS PROBE (18:48, f51854cd):** BOTH BARS MISS — the fixed final-breath cosine tops out at
+0.6089 precision at 20% coverage on wild gold GIVEN slots (bar 0.90); "settled AND centered" (low
+state change + low JS movement at b5->6, median-split) is WORSE at matched coverage (0.5842) and
+its pool caps at 29.2%, below the 30/40% targets. The numeral-level relaxation (derivable from the
+banked rawslots dump) is a clean superset (+45 slots, zero exceptions) but buys nothing at any
+tested coverage. 'Settled and centered' is NOT a legitimate early release on this body. Table +
+reading: .cache/welford_atlas_PMS8_241.txt (a file-truncation bug from an earlier probe append was
+caught and fixed in the same pass — see the 18:48 ledger entry's closing note).
 
 **THE CARICATURE PROBE (17:44, 8110f516):** BAR MISSED — no caricatured variant (centered/whitened/
 lda-lite) beats plain's wild AUROC 0.766 by +0.02 (best is -0.0058); kind legibility is unchanged
