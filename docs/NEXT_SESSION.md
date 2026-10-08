@@ -57,7 +57,10 @@ the clip; scratch rows exempt) on a branch + gate after the listen pair.
 parses NULL; the courtroom INERT; the caricature jury a WASH (form 2b: render the claim); the perceiver v1 MISS on wild; the meta read;
 NL atlas v0 MISS; the governor census (same-owner 20 % / different-owner 36 % / no-chain 44 %; the event rotor not earned); the
 schedule collision diagnosed; the bug audit (the picker's 19 struck -> 18 corrected; 13 commits).
-**Branches/worktrees:** rack3 (wt6), listen (merged; wt7 removable after the pair). main fast-forwarded 10-07 09:0x.
+**THE REPLAY HARNESS (branch replay, wt8, 6079b855; decode-exact; unmerged):** ALG_SNAP_AT/ALG_SNAP_OUT + replay(p, snapshot, kb_start,
+overrides); scripts/replay_gate_check.py, scripts/chalk_dryrun.py. THE GYM's registered tests: the chalk table trained by replay (warm caveat),
+the kick at b3 (training rows only), the acting perceiver's release. Merge after the listen pair's chains end; gate.
+**Branches/worktrees:** rack3 (wt6), replay (wt8), listen (merged). main fast-forwarded 10-07 09:0x.
 
 ---
 (The previous entry follows, for the longer board.)
