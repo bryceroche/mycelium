@@ -48877,3 +48877,5 @@ same scores at 24.7 % disagreement; the slot record came from structure; every m
 changed what the read sees, not how much reads it). REGISTERED, low prior, from scratch at 3-4x
 the step cost: THE DEPTH PROBE (2 and 4 stacked bank + mixer blocks per breath on the chassis,
 vs the lineage), behind the chalkboard's verdict, on the word.
+
+### 2026-10-08 (11:50) — RK3X_241 HUNG ON THE HOST at step ~2,500-3,000 (22:45 -> 11:49, 13 hours at 99.8 % CPU, no step line, no snapshot before 8,000): killed; the chain exited FAILED; the card idle. Suspect: a solver call inside the training loop WITHOUT the hang-proof pool's wall (form 3's release runs the solver on the committed subgraph at consult 2; the consults themselves go through the facts pool with walls). The rule "hang-proof pools everywhere" (the row catalog, 09-19) is the door the release bypassed. Diagnosis and fix follow; a night of card time lost — the second this week; RULE: a chain's waiter also watches the TRAINING LOG's mtime (no step line for 30 minutes = hung; kill and fail loudly).
