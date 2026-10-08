@@ -48671,3 +48671,23 @@ unchanged from 10-05 — given-vs-rel stays the only clean cut; the caricature o
 among the rel subtypes. (4) VERDICT: a geometry win and a correctness-signal wash-to-loss — the
 plain cosine stays the perceiver's atlas feature (07:53/11:51); CLOSED as a negative result for
 "does centroid separability buy correctness or kind legibility" (it does not, on this body).
+
+### 2026-10-07 (18:44) — THE STAGNATION MONITOR (Bryce: the perceiver must confirm the system changes state every breath, the T6 clock's rotation excluded) and THE ORTHODONTIST'S TWO MOVES; what exists, what is fenced, what the gym tests
+
+EXISTS: "settle" (the per-breath state change) is one of the five registered diagnostics behind
+the Goodhart fence; measured on CONTENT planes only (the clock planes excluded by the band mask, so
+the turn never reads as motion): the damping census on four bodies (the plain body's geometric
+settling 1.2 / 0.3 / 0.2 / 0.16 / 0.12; the damped bodies' root at exactly 0.000 from b4); the
+perceiver stream carries the per-band change per slot per breath; v1b added the discrete form —
+the JS between consecutive breaths over the codebook distribution. STUCK IS NOT DONE: half the
+wrong rows are confidently wrong (settled, centred, wrong) — "stopped and centred" is a dryness
+CANDIDATE; its precision at coverage is being read (the fixed cosine alone, and jointly with low
+b5->6 change / low JS movement; the bar = the rack's 0.90 at 20 %). THE EARLY RELEASE = a commit on
+the atlas's certificate if that read admits it. THE KICK hits the photo-booth fence (perturbation
+for truth at inference is the banked grave; the impulse read: a kick at b1 never contracts); the
+sanctioned reopening at read is form 3 (release by proof); the kick is legitimate at TRAINING time
+as anti-stagnation (flash expansion, measured paying in July) — REGISTERED as the replay gym's test
+behind its gate: kick at b3 on training rows, replay, score with the key; if kicked rows improve
+only when the solver's contradiction aimed the kick, the fence was right and form 3 is the whole
+move. The acting perceiver's first two moves are therefore: release-by-certificate (if admitted)
+and release-by-contradiction (form 3); the kick only as the gym decides.
