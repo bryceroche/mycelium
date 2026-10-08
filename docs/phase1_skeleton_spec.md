@@ -48961,3 +48961,51 @@ dose law's two legs declared (share AND reps-per-unique); (c) THE SORTING ROOM �
 attention binding the direction cue to the numeral before the slots look (behind (a) / (b): the
 cue census says the cues exist and are unread). Bars for (a) / (b): inverse-form res >= 0.60 on
 wild (from 0.25), forward res not down, masked wild >= +0.015 (claim +0.020 / twin).
+
+### 2026-10-08 (12:28) — THE RELEASE WALL fixes RK3X_241's 13 h hang (scripts/phase1_algebra_head.py:rack_release_row); gate reproduces rack3_merge_gate.log to the digit; probe PASSES; chain re-armed with a watcher
+
+Root cause: `rack_release_row` (FORM 3 — RELEASE ON CONTRADICTION) calls `mycelium.csp_core.solve_symbolic`
+DIRECTLY on the committed subgraph, with a DECISION budget only (5000) — the one solver call on the
+release path with no wall clock. `_ping_walled`'s facts pass already learned this lesson 2026-09-17: a
+decision budget bounds the TREE, not the CLOCK — a pathological committed subgraph can spend hours on
+expensive individual decisions well under 5000 of them. RK3X_241 hung 13 h at 99.8 % CPU with no step
+line past ~2,500-3,000 steps; killed (ledger 53823168). FIX: `rack_release_row`'s solve_symbolic call is
+now bounded by the IDENTICAL SIGALRM pattern `_ping_walled` uses (same `ALG_FACTS_ROW_WALL` env var,
+default 5 s, same handler-save/restore shape) — valid here because this call runs on the main thread by
+construction in every caller (`_consult_into`'s training step; loop_val.py's and chain_acc.py's per-batch
+`_consult3`, batches of 8 rows, no worker pool). THE LAW HELD: a wall is never a contradiction
+certificate — timeout returns `"budget"`, never `"unsat"`, so a walled row keeps its prior commits
+exactly like a decision-budget-exhausted row would; `rack_release_rows`' caller-side `== "unsat"` check
+is unchanged by this, so no bit ever flips on a non-hanging fixture. A new module-level counter
+(`_RACK_WALL_N`) threads the walled-row count into the existing `[rack-release]` per-500-step line
+("... walled N") with no change to `rack_release_rows`' 4-tuple return (chain_acc.py and loop_val.py's
+unpacking sites untouched). AUDITED THE REST OF THE RELEASE PATH: `rack_dry_row` and `chalk_pack` make
+NO solver call (confirmed by reading both — pure numpy over handed-in facts/decode, matching chalk_pack's
+own docstring); `rack_release_rows`' per-row loop is plain Python with no pool, so the wall is per ROW,
+small (default 5 s), and SERIAL — worst case for a full pass is (rows with a nonempty commit) x 5 s: on
+chain_acc.py's wild census (911 rows, batches of 8) that is ~76 min in the pathological limit of every
+single row timing out; on a training step (BATCH=8 per RK3X_241's own chain) that is at most 8 x 5 s = 40 s
+added to one step. In practice only the rare pathological committed subgraph times out — this bounds the
+hang, it does not parallelize the check — flagged, not fixed further here.
+
+GATE (`.cache/release_wall_gate.sh` -> `.cache/release_wall_gate.log`, zero-GPU, DEV=CPU, the tiny64 /
+WARM_FROM balV242 / BATCH=2 STEPS=2 fixture, `.cache/rack3_merge_gate.sh`'s own config strings):
+reproduces `.cache/rack3_merge_gate.log` to the digit on every config exercising the release path — unset
+5.2995/0.0279 (bit-identical to the unset head), rackleaf 10.8373/8.7737, rack3 (rackleaf +
+ALG_RACK_RELEASE=1) 10.8373/8.7737 (loss-identical to rackleaf: 0 released on this fixture, `[rack-release
+0/3 rows cumulative walled 0]`), rk3x (the arm's exact composition) 10.8447/8.7772 — the wall changes NO
+VALUE when no call times out, as predicted. PROBE (`.cache/release_wall_probe.py`): `rack_release_row` on
+a deliberately hard 6-relation add-chain over 8 vars, m=999, 0 givens (1.438 s to "solved" with the wall
+disabled) returns `status='budget'` in 0.013 s under `ALG_FACTS_ROW_WALL=0.01` — the wall fires, never
+hangs, never reads as "unsat". NOTE ON CUSTODY: this fix landed in commit 3e7792a9 (bundled with a
+concurrent session's unrelated THE POLARITY CENSUS commit — both sessions shared this checkout, not a
+worktree; `git diff` against 53823168, the commit standing when this fix started, confirms the
+phase1_algebra_head.py delta is exactly this fix and nothing else) — recorded here, its own ledger
+transaction, per the prose-promotions law.
+
+RE-FIRE: `.cache/rack_chain_RK3X.sh` amended to also assert `"gate rk3x:"` out of
+`.cache/release_wall_gate.log` (the merge gate's own two asserts — unset bit-identical, rk3x runs — are
+unchanged) before the arm fires; `pc-rk3x` reset-failed and re-launched as a transient systemd unit;
+`pc-rk3x-watch` armed per the 10-08 mtime-watch rule (ledger 53823168): a 10-minute loop that kills the
+trainer and logs "HUNG" to `.cache/rk3x_watch.log` if `.cache/sharp_RK3X_241.log` goes 30+ min stale while
+the trainer is alive and the chain has not finished.
