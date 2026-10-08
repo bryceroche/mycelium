@@ -210,7 +210,8 @@ def read(ckpt, data=None, p=None):
                    and not int(os.environ.get("LV_NOFACT", "0")) else ())
                 + (("nl0",) if _XPV else ()))
     _jk_masked = (("pres", "ftype", "op", "islit", "dig", "args", "res")
-                  + (("dup",) if "h_dup" in p else ()))
+                  + (("dup",) if "h_dup" in p else ())
+                  + (("dir",) if "h_dir" in p else ()))
     n_ok = n_tot = 0
     _PS = [] if os.environ.get("LV_PER_SLOT") else None
     import collections as _c; _FIELDS = _c.defaultdict(lambda: [0, 0]) if os.environ.get("LV_FIELDS") else None
