@@ -49076,3 +49076,28 @@ inverse-form res >= 0.60 on wild (from 0.25), forward res not down, masked >= +0
 / twin) vs PMS8_241; DIRD vs DIR = the dose's own share. Caveat: pm35d was built by a dedicated
 splice of pm35c's mint pool, not a byte-for-byte replay of the original generator command
 (functionally equivalent, stated).
+
+### 2026-10-08 (15:06) — WORD GIVEN for the direction-bit pair (queued behind the chalkboard arm); THE COUNTER (Bryce: "you wipe the counter once at the end, not after every dish — a map-reduce component is missing, something about coarse-to-fine granularity"); the mapping banked; THE SHUFFLE READ fired in the gym
+
+(1) The per-breath squeeze (384 -> 128 -> 384) is NOT a wipe and not a flaw: it is LOAD-BEARING
+(-0.064, z 7.0 — the second organ after the notebook); it is the breath's computation; delaying it
+(the relay's "delayed bottleneck") would remove a measured organ to cure a metaphor. (2) The wiping
+that exists is the DAMPING (bands settled by breath = a progressive wipe): 2,4 cured the drift and
+cost mint; 3,5 recovered the mint and kept the wall; no wiping at all (the plain body) drifts —
+"wipe later" is right up to a limit; the schedule is the dial; no schedule has moved the slot
+(the wall is set at the first look). (3) WHAT IS MISSING IS THE SHUFFLE: map-reduce's middle stage.
+MAP = the membrane (24 slots read the text in parallel); REDUCE = the mixer (untyped, all-to-all)
+and, at the end, the solver; nothing GROUPS THE SLOTS BY KEY (which entity / which quantity each is
+about) before they are reduced — the mixer reduces everyone with everyone, the rack commits
+without grouping, and the binding wall IS a key error (the right numeral on the wrong owner or
+moment; the governor census's owner ceiling 46 % / 70 % with order). The shuffle is the OWNER
+SIGNATURE's frame: group by owner, then reduce. (4) The countertop node EXISTS (the 8 scratch
+slots; the parking garage) and was a passenger (+0.001): a global slot with no key to group on has
+nothing to reduce. FIRED (zero GPU, the gym): THE SHUFFLE READ — the mixer's slot x slot attention
+per breath on PMS8 (64 wild rows), keyed by the governor census's owners: the grouping factor
+(same-owner / different-owner attention), the effective k, right vs wrong, across breaths, and the
+relation -> its-args attention. PREDICTION (pinned): the grouping factor is near 1 (the shuffle is
+absent: the mixer is untyped by construction), the effective k ~ 6-10 (a shoal, not a leader), and
+relations attend to their gold args only slightly more than to others on right slots and not at
+all on wrong ones. If absent, the shuffle enters as STRUCTURE (an owner-keyed mixer mask — the
+factor-graph slot mask's sibling with a key the text supplies) behind the owner signature.
