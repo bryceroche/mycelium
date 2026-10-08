@@ -1056,9 +1056,154 @@ def texture_probe():
 
 
 # ======================================================================================
+# THE CARICATURE PROBE (2026-10-07, Bryce: "caricature the centroids" -- make the kind means more
+# SEPARABLE by subtracting the average face). Zero-GPU: the existing final-breath content library
+# (CONTENT_LIB_PATH) + the cached diet states (DIET_STATES_BREATHS_PATH, for the global mean) +
+# wild's already-banked clock_band_states (the one read). Four variants of the SAME cosine-to-own-
+# kind feature the 2026-10-07 07:53 read banked at AUROC 0.766:
+#   plain     -- the reference, unchanged.
+#   (a) centered  -- subtract the diet's global mean (over ALL admissible gold slots, every kind)
+#                    from every kind mean AND from the wild slot's state, before the cosine.
+#   (b) whitened  -- (a), then divide by the per-dim POOLED WITHIN-KIND std (the library's own
+#                    per-kind Welford variance, n-weighted across kinds -- within-class scatter,
+#                    never the total scatter) elementwise, before the cosine.
+#   (c) lda-lite  -- (a), then project onto the span of the 5 centered kind means (rank <= 4, via
+#                    SVD) and take the cosine IN that subspace.
+# ======================================================================================
+
+def _diet_global_mean(content_lib):
+    """mu_global over ALL admissible diet gold slots (every kind), from the cached raw states
+    directly -- cross-checked against the library's own n-weighted kind-mean average (mathematically
+    identical: every admissible gold slot belongs to exactly one kind, an exhaustive, non-
+    overlapping partition), reported, not assumed."""
+    vs, vg, states_all, admissible = _diet_rows_and_states()
+    n = len(vs)
+    final_kb = states_all.shape[1] - 1
+    X = states_all[:, final_kb].astype(np.float64)
+    tot = np.zeros(X.shape[-1], np.float64)
+    cnt = 0
+    for i in range(n):
+        if not admissible[i]:
+            continue
+        for j in range(min(X.shape[1], len(vs[i]["factors"]))):
+            if vg["presence"][i, j] <= 0.5:
+                continue
+            tot += X[i, j]
+            cnt += 1
+    mu = (tot / cnt).astype(np.float32)
+    ks = [k for k in KINDS if f"kind:{k}" in content_lib]
+    ns = np.array([content_lib[f"kind:{k}"].n for k in ks])
+    ms = np.stack([content_lib[f"kind:{k}"].mean for k in ks])
+    mu_lib = (ns[:, None] * ms).sum(0) / ns.sum()
+    cross_cos = float((mu @ mu_lib) / (np.linalg.norm(mu) * np.linalg.norm(mu_lib) + 1e-12))
+    return mu, cnt, cross_cos
+
+
+def _pooled_within_kind_var(content_lib, ks):
+    ns = np.array([content_lib[f"kind:{k}"].n for k in ks])
+    vrs = np.stack([content_lib[f"kind:{k}"].variance for k in ks])
+    return (ns[:, None] * vrs).sum(0) / ns.sum()
+
+
+def caricature_probe():
+    lib = WelfordLibrary.load(CONTENT_LIB_PATH)
+    ks = [k for k in KINDS if f"kind:{k}" in lib]
+    mu_global, n_diet_slots, cross_cos = _diet_global_mean(lib)
+    P(f"\n[caricature] diet global mean over {n_diet_slots} admissible gold slots; cross-check cos "
+      f"vs the n-weighted kind-mean average = {cross_cos:.6f} (expect ~1.0)")
+    pooled_var = _pooled_within_kind_var(lib, ks)
+    std = np.sqrt(pooled_var + 1e-6).astype(np.float32)
+
+    mu_k = {k: lib[f"kind:{k}"].mean.astype(np.float32) for k in ks}
+    mu_k_c = {k: (mu_k[k] - mu_global) for k in ks}
+    mu_k_w = {k: (mu_k_c[k] / std) for k in ks}
+
+    M = np.stack([mu_k_c[k] for k in ks], axis=0)
+    U, Sv, Vt = np.linalg.svd(M, full_matrices=False)
+    tol = Sv.max() * 1e-6 if Sv.size else 0.0
+    r = min(4, int((Sv > tol).sum()))
+    basis = Vt[:r]
+    mu_k_lda = {k: (basis @ mu_k_c[k]) for k in ks}
+    P(f"[caricature] LDA-lite basis: singular values {np.round(Sv, 4).tolist()}; rank kept r={r}")
+
+    rows = load_jsonl(WILD_PATH)
+    assert len(rows) == 311, len(rows)
+    import phase1_algebra_head as H
+    bands, clock_dims = H._hier_band_dims()
+    CONTENT = np.sort(np.concatenate(bands))
+    ri, ji, kind = [], [], []
+    for r_idx, row in enumerate(rows):
+        for j, fac in enumerate(row["factors"]):
+            ri.append(r_idx); ji.append(j); kind.append(gold_kind(fac, j))
+    ri, ji, kind = np.array(ri), np.array(ji), np.array(kind)
+    ps = np.load(".cache/ps_legal_wild_PMS8_241.npz")
+    okmap = {(int(r), int(j)): bool(o) for r, j, o in zip(ps["rows"], ps["slots"], ps["ok"])}
+    ok = np.array([okmap[(r, j)] for r, j in zip(ri, ji)])
+    zc = np.load(".cache/clock_band_states_PMS8_241.npz")
+    S_w = zc["states"].astype(np.float32)
+    X = S_w[ri, 5, ji, :][:, CONTENT]
+
+    court = pickle.load(open(".cache/courtroom_PMS8_241.pkl", "rb"))
+    row_correct = np.zeros(311, dtype=bool)
+    for res in court["final"]["results"]:
+        row_correct[res["i"]] = bool(res["top1"]["correct"])
+
+    def cos_mat(V, means_dict):
+        Mm = np.stack([means_dict[k] for k in ks], axis=0)
+        Vu = V / (np.linalg.norm(V, axis=-1, keepdims=True) + 1e-12)
+        Mu = Mm / (np.linalg.norm(Mm, axis=-1, keepdims=True) + 1e-12)
+        return Vu @ Mu.T
+
+    Xc = X - mu_global[None, :]
+    variants = {
+        "plain":    (X,            mu_k),
+        "centered": (Xc,           mu_k_c),
+        "whitened": (Xc / std[None, :], mu_k_w),
+        "lda-lite": (Xc @ basis.T, mu_k_lda),
+    }
+    kidx = {k: i for i, k in enumerate(ks)}
+    own_idx = np.array([kidx[k] for k in kind])
+    rel_mask = kind != "given"
+
+    P("\n" + "=" * 100)
+    P("THE CARICATURE PROBE (2026-10-07): does subtracting the average face make the kind means")
+    P("more separable? per-slot/per-row AUROC, margins, nearest-centroid kind accuracy, on wild")
+    P("=" * 100)
+    results = {}
+    for name, (V, means_dict) in variants.items():
+        cosall = cos_mat(V, means_dict)
+        cos_own = cosall[np.arange(len(V)), own_idx]
+        a_slot, n1, n0 = auroc(ok, cos_own)
+        row_score = np.full(311, np.nan)
+        for r_idx in range(311):
+            sel = ri == r_idx
+            if sel.any():
+                row_score[r_idx] = cos_own[sel].mean()
+        valid = ~np.isnan(row_score)
+        a_row, rn1, rn0 = auroc(row_correct[valid], row_score[valid])
+        cos_other = cosall.copy()
+        cos_other[np.arange(len(V)), own_idx] = -np.inf
+        best_other = cos_other.max(1)
+        margin_right = float((cos_own - best_other)[ok].mean())
+        pred_kind = np.array(ks)[cosall.argmax(1)]
+        acc5 = float((pred_kind == kind).mean())
+        is_rel_pred, is_rel_gold = (pred_kind != "given"), (kind != "given")
+        acc_bin = float((is_rel_pred == is_rel_gold).mean())
+        acc_rel4 = float((pred_kind[rel_mask] == kind[rel_mask]).mean()) if rel_mask.any() else float("nan")
+        results[name] = dict(a_slot=a_slot, a_row=a_row, margin=margin_right, acc5=acc5,
+                              acc_bin=acc_bin, acc_rel4=acc_rel4)
+        P(f"\n  {name:10} slot AUROC={a_slot:.4f} (n_pos={n1} n_neg={n0})  row AUROC={a_row:.4f} "
+          f"(n_valid={int(valid.sum())}, n_correct={int(row_correct[valid].sum())})  "
+          f"margin(right slots)={margin_right:+.4f}")
+        P(f"  {'':10} nearest-kind acc: 5-way={acc5:.4f}  given-vs-rel={acc_bin:.4f}  "
+          f"rel-subtype-only(4-way among add/mul/sub/div)={acc_rel4:.4f}")
+    return results
+
+
+# ======================================================================================
 def main():
     mode = sys.argv[1] if len(sys.argv) > 1 else "all"
-    assert mode in ("build", "read", "drift", "jsfeat", "textureprobe", "all"), mode
+    assert mode in ("build", "read", "drift", "jsfeat", "textureprobe", "caricature", "all"), mode
     P(f"THE WELFORD ATLAS -- PMS8_241 -- mode={mode} -- {time.strftime('%Y-%m-%d %H:%M:%S')}")
     if mode in ("build", "all"):
         build()
@@ -1073,6 +1218,8 @@ def main():
         jsfeat()
     if mode == "textureprobe":
         texture_probe()
+    if mode == "caricature":
+        caricature_probe()
     if mode == "all":
         P("\n" + "=" * 100)
         P("THE SIX-LINE READING")
