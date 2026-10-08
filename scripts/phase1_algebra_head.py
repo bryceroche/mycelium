@@ -700,6 +700,124 @@ RACK_TESTS_ALL = ("given_unique",           # (a) a given slot whose decoded num
                   "given_any")              # (c) the baseline: a given slot whose decoded numeral appears in the text at all, collisions allowed (census reference / gate probe only)
 
 
+def _rack_masked_by_slot(row, text):
+    """THE RACK's masked decode, factored out (2026-10-05, FORM 3's build):
+    the per-slot parse under the numeral-legality mask — the SAME door
+    certifier_bias / the masked read walks — keyed by slot index. Shared by
+    rack_dry_row (the dryness test) and rack_release_row (FORM 3's
+    contradiction test), so both certify against IDENTICAL decode. Pure
+    numpy; no solver call."""
+    from mycelium.rulebook import legal_digit_logits
+    L = row["ftype"].shape[0]
+    masked = dict(row); masked["dig"] = row["dig"].copy()
+    for j in range(L):
+        if int(masked["ftype"][j].argmax()) == 0:
+            continue
+        fake = legal_digit_logits(masked["dig"][j], text)
+        if fake is not None:
+            masked["dig"][j] = fake
+    parse = _decode_slots(masked)
+    return {f["_slot"]: f for f in parse}
+
+
+def rack_release_row(by_slot, dry_slots, m, n_vars, budget=5000):
+    """FORM 3 — RELEASE ON CONTRADICTION (2026-10-05, ledger 19:24 "WORD
+    GIVEN FOR THE DISCRETE HALVES" item 3; registered by Bryce's ruling
+    18:02 "a dry slot returns to the sink only when the solver proves the
+    committed set inconsistent at the next consult"). The solver's own
+    verdict on THE COMMITTED SUBGRAPH: `dry_slots` (consult 1's claimed
+    slot indices) restricted from `by_slot` (THIS consult's own masked
+    decode — _rack_masked_by_slot; the freeze keeps a dry slot's content
+    planes fixed, so its decode is unchanged since consult 1 by
+    construction) — every "given" slot among them taken as a solver given,
+    every "rel" slot among them taken as a relation (the only two ftypes a
+    dryness test ever certifies: RACK_TESTS_ALL's four columns touch only
+    "given" and "rel" — see rack_dry_row). No gold anywhere: the key is
+    never consulted, only the decode + the solver.
+
+    Two ways to fail, cheapest first: (a) two dry GIVEN slots bind the SAME
+    variable to different values — a plain {var: value} dict would silently
+    collapse to the last write and hide this, so it is checked explicitly
+    and returns "unsat" without a solver call. Otherwise solve_symbolic on
+    problem_from_algebra(nv, rels, gv, m) is the certificate: 'unsat' is a
+    PROOF the committed set is inconsistent (the whole tree exhausted under
+    budget); 'solved' and 'budget' both mean "not proven inconsistent" —
+    budget exhaustion is never a contradiction certificate (the same law
+    the uniqueness gate and do_errors' DETECT_unsat already keep; CLAUDE.md
+    §5's uniqueness-gate-budget rule, here on a far smaller subgraph).
+
+    by_slot:   {slot: factor_dict} from _rack_masked_by_slot (THIS consult).
+    dry_slots: iterable of slot indices committed at the PREVIOUS consult.
+    m, n_vars: the row's domain bound / variable count (samples[i]'s own).
+
+    Returns the solver's status string ("solved" | "unsat" | "budget")."""
+    from mycelium.csp_domains import problem_from_algebra
+    from mycelium.csp_core import solve_symbolic
+    gv = {}
+    rel_facs = []
+    for j in dry_slots:
+        f = by_slot.get(int(j))
+        if f is None:
+            continue
+        if f["ftype"] == "given":
+            v, val = int(f["var"]), int(f["value"])
+            if v in gv and gv[v] != val:
+                return "unsat"          # two dry givens on the same var, different values
+            gv[v] = val
+        elif f["ftype"] == "rel":
+            rel_facs.append(f)
+    if not rel_facs:
+        return "solved"                # plain givens with no shared-var conflict: trivially consistent
+    nv = max([int(n_vars)] + [v + 1 for v in gv] +
+             [v + 1 for f in rel_facs for v in (list(f["args"]) + [f["result"]])])
+    rels = [(f["op"], int(f["args"][0]), int(f["args"][1]), int(f["result"])) for f in rel_facs]
+    res = solve_symbolic(problem_from_algebra(nv, rels, gv, int(m)), budget=budget, seed=0)
+    return res["status"]
+
+
+def rack_release_rows(decoded_rows, texts, ma, nv, prev):
+    """FORM 3's host-side BATCH form (2026-10-05, branch rack3): the ONE
+    implementation shared by _consult_into (training), loop_val.py's
+    _consult3, and chain_acc.py's _consult3 — so the trained road, the
+    read-time road, and the accuracy-reading road release on IDENTICAL
+    terms by construction, never by three hand-kept copies. Tests every
+    row whose `prev` (the previous consult's packed (B, L_TOT + T) dry
+    array) carries a nonempty commit (prev[bi, :L_TOT].sum() > 0) against
+    rack_release_row on THIS consult's own decode (decoded_rows[bi], via
+    _rack_masked_by_slot — the row dict `_consult_into`'s `onp` already
+    built, or its read-time twins'); a proved 'unsat' clears that row's
+    WHOLE prior commit (dry flags AND claimed tokens — no stale claim
+    survives a release) in a COPY of `prev` (the caller's array, and
+    anything else aliasing it such as _rack_host's cache, is never
+    mutated). No-op when ALG_RACK_RELEASE=0 or prev is None: returns
+    (prev, 0, 0) unchanged — the exact bit-identical path.
+
+    decoded_rows, texts: per-row dict / string, aligned with prev's rows.
+    ma, nv: per-row domain bound / variable count (samples[i]'s own).
+    prev: (B, L_TOT + T) float32 or None.
+
+    Returns (new_prev, n_released, n_tested, released_mask) — released_mask
+    is a (B,) float32 array, 1.0 on rows this call released (0.0 elsewhere,
+    including untested empty-commit rows); n_tested counts only rows with a
+    nonempty commit (an empty row has nothing to test or release)."""
+    B = len(decoded_rows)
+    if not ALG_RACK_RELEASE or prev is None:
+        return prev, 0, 0, np.zeros(B, np.float32)
+    prev = prev.copy()
+    released_mask = np.zeros(B, np.float32)
+    tested = 0
+    for bi in range(B):
+        dry_j = np.nonzero(prev[bi, :L_TOT] > 0)[0]
+        if len(dry_j) == 0:
+            continue
+        tested += 1
+        by_slot = _rack_masked_by_slot(decoded_rows[bi], texts[bi])
+        if rack_release_row(by_slot, dry_j, ma[bi], nv[bi]) == "unsat":
+            prev[bi, :] = 0.0
+            released_mask[bi] = 1.0
+    return prev, int(released_mask.sum()), tested, released_mask
+
+
 def rack_dry_row(row, frow, text, T, tests):
     """THE DRYNESS TEST on ONE row: the per-slot certificates, per test.
 
@@ -724,7 +842,6 @@ def rack_dry_row(row, frow, text, T, tests):
     solver call (the facts are handed in, never recomputed here)."""
     import numpy as np
     from collections import Counter
-    from mycelium.rulebook import legal_digit_logits
     import membrane_scale as _MSC
     tests = tuple(tests)
     bad = [t for t in tests if t not in RACK_TESTS_ALL]
@@ -735,16 +852,8 @@ def rack_dry_row(row, frow, text, T, tests):
     runs = _MSC._digit_runs(tok, ids, T)                    # [(a, b, value)] the text's numerals, in token coordinates
     if not runs:
         return out
-    L = row["ftype"].shape[0]
-    masked = dict(row); masked["dig"] = row["dig"].copy()
-    for j in range(L):
-        if int(masked["ftype"][j].argmax()) == 0:
-            continue
-        fake = legal_digit_logits(masked["dig"][j], text)
-        if fake is not None:
-            masked["dig"][j] = fake
-    parse = _decode_slots(masked)
-    by_slot = {f["_slot"]: f for f in parse}
+    by_slot = _rack_masked_by_slot(row, text)
+    parse = list(by_slot.values())
     # every decoded literal on the row claims its numeral (a given's value, a mod/fdiv's k, a pct's p)
     claims = {}
     for j, f in by_slot.items():
@@ -811,6 +920,47 @@ def rack_pack(decoded_rows, facts, texts, T, tests, prev=None, detail=None):
         print(f"[rack] ALG_RACK_DEBUG: B={B} tests={','.join(tests)} dry slots={int(out[:, :L_TOT].sum())} "
               f"(prev {0 if prev is None else int(prev[:, :L_TOT].sum())}) claimed tokens={int(out[:, L_TOT:].sum())} rows with a dry slot={int((out[:, :L_TOT].sum(1) > 0).sum())}", flush=True)
     return out
+
+
+def chalk_pack(decoded_rows, facts, tokmask, T, n_chalk=None):
+    """THE CHALKBOARD's host side at a consult (2026-10-05, branch rack3; the chalk3/chalk5
+    ports): the solver's DERIVED facts (known AND not already a literal given in this consult's
+    own decode — THE RACK's relation_implied criterion, reused so "derived" means the same thing
+    on both roads) packed as up to `n_chalk` 3-digit (MSD-first) numerals, deterministic by
+    variable index. Returns (packed (B, n_chalk, 4) float32 — col0 presence, cols 1-3 digit ids
+    0-9, zero on padding — , n_dropped): n_dropped counts rows whose REAL tokens already occupy
+    the reserved block (tokmask[bi, T - n_chalk:].any()) — THE CHALKBOARD never shadows a real
+    token nor reads one as a digit; such a row's chalk is dropped ENTIRELY (presence all zero),
+    never partially. No gold; no solver call (facts are handed in, already forced).
+
+    decoded_rows: per-row dict of raw head logits (this consult's own decode, onp) — used only to
+    find which vars are already literal GIVENS. facts: (B, K_VARS, 4) known-flag + MSD digit/9
+    triplet (the b_fact3/b_fact5 convention), or None (no consult yet: every row drops, n_dropped
+    stays 0 — nothing to test room for without a chalk candidate anyway)."""
+    import numpy as np
+    n_chalk = n_chalk if n_chalk is not None else ALG_CHALK_N
+    B = len(decoded_rows)
+    out = np.zeros((B, n_chalk, 4), np.float32)
+    n_dropped = 0
+    for bi in range(B):
+        if tokmask is not None and bool(tokmask[bi, T - n_chalk:].any()):
+            n_dropped += 1
+            continue
+        if facts is None:
+            continue
+        parse = _decode_slots(decoded_rows[bi])
+        given_vars = {int(f["var"]) for f in parse if f["ftype"] == "given"}
+        frow = facts[bi]
+        cand = [v for v in range(frow.shape[0]) if frow[v, 0] > 0 and v not in given_vars]
+        for ci, v in enumerate(cand[:n_chalk]):
+            out[bi, ci, 0] = 1.0
+            out[bi, ci, 1] = float(np.clip(round(frow[v, 1] * 9), 0, 9))
+            out[bi, ci, 2] = float(np.clip(round(frow[v, 2] * 9), 0, 9))
+            out[bi, ci, 3] = float(np.clip(round(frow[v, 3] * 9), 0, 9))
+    if int(os.environ.get("ALG_CHALK_DEBUG", "0")):
+        print(f"[chalk] B={B} n_chalk={n_chalk} dropped(no room)={n_dropped} "
+              f"chalk slots filled={int(out[:, :, 0].sum())} rows with >=1 chalk={int((out[:, :, 0].sum(1) > 0).sum())}", flush=True)
+    return out, n_dropped
 
 
 def _wheel_memo_key(row):
@@ -2822,6 +2972,14 @@ def build_params(seed=0):
         for _hnm, _hsz in HUD_TABLE_SIZES.items():
             p[_hnm] = t(np.zeros((_hsz, H_W), np.float32) if ALG_HUD_ZERO
                        else (_rngH.randn(_hsz, H_W) * 0.02).astype(np.float32))
+    if ALG_CHALK:
+        # THE CHALKBOARD (2026-10-05): a 3-digit (MSD-first) embedding table (3 positions x 10
+        # digits x H_W) + one "derived" tag vector, same N(0, 0.02) convention as THE TOKEN HUD's
+        # tables above — live from birth, no gain (the mandatory-road law: a chalk token enters
+        # through the bank's ordinary attn_wk/attn_wv projection, never behind a learned gate).
+        _rngC = np.random.RandomState(seed + 8231)
+        p["chalk_dig"] = t((_rngC.randn(3, 10, H_W) * 0.02).astype(np.float32))
+        p["chalk_tag"] = t((_rngC.randn(H_W) * 0.02).astype(np.float32))
     if FED_SCRATCH:
         # FED item 6: +8 scratch slot embeds appended to fq (pad-warm
         # loads the trained 24; the doctrine: factor slots stay 24,
@@ -3734,6 +3892,48 @@ if ALG_RACK:
 # time). Any other value hard-errors — a misspelt footprint must never run as the default.
 ALG_RACK_FREEZE = os.environ.get("ALG_RACK_FREEZE", "all")
 assert ALG_RACK_FREEZE in ("all", "leaf", "none"), f"ALG_RACK_FREEZE={ALG_RACK_FREEZE!r}: must be one of all | leaf | none (THE RACK's freeze footprint)"
+# FORM 3 — RELEASE ON CONTRADICTION (2026-10-05, branch rack3 off rack a4dd02b9; ledger 19:24 "WORD
+# GIVEN FOR THE DISCRETE HALVES" item 3; registered by Bryce's ruling 18:02: "a dry slot returns to
+# the sink only when the solver proves the committed set inconsistent at the next consult"). Default
+# 0 = bit-identical to rack3's parent (no new ops read; _consult_into's rack5 call is unchanged).
+# Set: at consult 2 (kb 4, the rack5 call), BEFORE consult 2's own flags are taken, every row whose
+# consult-1 commit is nonempty is tested — rack_release_row on THE COMMITTED SUBGRAPH (consult 1's
+# dry slots, restricted from consult 2's OWN masked decode — the freeze means that decode is
+# unchanged since consult 1 by construction, so "consult 1's claims" and "consult 2's decode of
+# those same slots" are the same numbers) — if the solver CERTIFIES it inconsistent ('unsat'; budget
+# exhaustion never counts, the uniqueness-gate law), the row's consult-1 dry flags AND claimed
+# tokens are cleared (not just this test's; the WHOLE prior commit, so no stale claim survives a
+# released row) before the union with consult 2's own (fresh) dryness test — the claim mask lifts
+# and the leaf unfreezes from breath 5 on (THE_RACK's own kb-gated ports do the rest; no new ops).
+# Host-side only (_consult_into), so no JIT change. Needs ALG_RACK=1 (there is nothing to release
+# without a commit) and is refused by step_trainer like every other rack knob.
+ALG_RACK_RELEASE = int(os.environ.get("ALG_RACK_RELEASE", "0"))
+if ALG_RACK_RELEASE:
+    assert ALG_RACK, "ALG_RACK_RELEASE needs ALG_RACK=1 (FORM 3 releases a commit THE RACK made; there is nothing to release otherwise)"
+# THE CHALKBOARD (2026-10-05, branch rack3; ledger 19:24 "WORD GIVEN FOR THE DISCRETE HALVES":
+# "THE VALUE-PROPAGATOR WRITE (the fourth symbol) registered in a new FORM"): the solver's IMPLIED
+# VALUES (facts the consult derives for RELATION slots — frow, the facts road ALG_CERT/THE RACK
+# already walk; "derived" = known AND not already a literal given, THE RACK's relation_implied
+# criterion reused) enter the NEXT breath's bank as TOKENS, not as an additive write into vst (THE
+# ALT2 injection, _fact_inject, stays — this is a SECOND, token-shaped road beside it): a value
+# enters through the SAME membrane every token enters, and any slot can bind to it like any other
+# token (THE CLAIM's sibling: a road, not a gain). THE FORM: ALG_CHALK_N (default 8) reserved
+# positions at the END of the token axis (T_ALG unchanged at 256 — chalk_pack, host-side, below,
+# never lets a row's real tokens reach them: a row that would needs its last ALG_CHALK_N positions
+# for real content DROPS its chalk entirely, counted); each chalk token's embedding is a learned
+# 3-digit (MSD-first, <= 999) table + a learned "derived" tag, additive, run through the SAME
+# attn_wk/attn_wv projection a text token's waist vector feeds (_make_bank's `bank()`, above — no
+# trunk state, because there is none). Unmasked in the bank's own tokmask (the CHALKBOARD's own
+# visibility gate, not the claim mask) from the breath after its consult on (cert3_active /
+# cert5_active — THE RACK's exact kb >= 3 / kb >= 5 gate); consult 2's block SUPERSEDES consult 1's
+# (not a monotone union like the rack's claim — chalk5 is a fresh, more-complete read of the SAME
+# facts road, not a commit). Needs ALG_ALT3 (there is no consult to derive a value from otherwise).
+# Default 0 = bit-identical (no new ops read; _make_bank's chalk3/chalk5 default to None).
+ALG_CHALK = int(os.environ.get("ALG_CHALK", "0"))
+ALG_CHALK_N = int(os.environ.get("ALG_CHALK_N", "8"))
+if ALG_CHALK:
+    assert ALG_ALT3, "ALG_CHALK needs ALG_ALT3=1 (THE CHALKBOARD writes the consult's own implied values; there is no consult otherwise)"
+    assert ALG_CHALK_N > 0, "ALG_CHALK_N must be positive"
 
 
 def _rack_content_mask():
@@ -4316,22 +4516,57 @@ def _kanneal_smooth(waist, tokmask, sent, B, sigma):
     return g @ waist
 
 
-def _make_bank(p, waist, tokmask, B, sent=None, tree=None):
+def _make_bank(p, waist, tokmask, B, sent=None, tree=None, chalk3=None, chalk5=None):
     """forward()'s bank attention, factored BY PURE CODE MOTION
     (apply_step_trainer.py, 2026-09-03) so the step trainer can rebuild
     the closure over ITS OWN waist tensor. forward's call sites are
     unchanged; behavior bit-identical by construction.
     THE ANNEALED KERNEL (ALG_KANNEAL, 2026-09-17): at breath kb the keys and values are built from the
     token states smoothed by sigma_kb (coarse early, fine late); kb None (stage 0) and sigma 0 read the
-    raw states — bit-identical when the env is unset."""
+    raw states — bit-identical when the env is unset.
+    THE CHALKBOARD (ALG_CHALK, 2026-10-05; branch rack3): chalk3/chalk5 (B, ALG_CHALK_N, 4) —
+    [presence, digit0, digit1, digit2] — closed over exactly like `tree`, so every bank() call this
+    closure answers (the var/query banks too) can see the override; only the SLOT reads (nq == L_TOT,
+    this breath's own `kb`) ever splice it in — see below."""
     _smoothed = {}
     def bank(queries, nq, extra=None, pbias=None, rbias=None, flat=False,
              tgate=None, tgv=None, kb=None, prior=None):
         q_in = queries.unsqueeze(0) + (extra if extra is not None else 0)
         q = q_in @ p["attn_wq"] + p["attn_wq_b"]
         src = waist
+        _tm = tokmask
+        if ALG_CHALK and nq == L_TOT and "chalk_dig" in p:
+            # THE CHALKBOARD (2026-10-05): the solver's implied values enter as TOKENS — the last
+            # ALG_CHALK_N positions of the token axis (T_ALG unchanged; chalk_pack, host-side,
+            # never lets a row's real tokens reach them) hold a numeral's embedding built the SAME
+            # way a text numeral's key/value are built (through this SAME src -> attn_wk/attn_wv
+            # projection, never the trunk): a learned 3-digit (MSD-first) table + a learned
+            # "derived" tag, additive, then multiplied by `presence` (0 drops a padding slot's
+            # content AND its tokmask bit together). Visible from the breath AFTER its consult on
+            # (cert3_active / cert5_active — THE CONDUCTOR's own kb >= 3 / kb >= 5, THE RACK's
+            # exact gate), consult 2's block superseding consult 1's (not unioned: chalk5 already
+            # carries every var chalk3 could, recomputed fresh — unlike the rack's monotone claim).
+            # Unset (ALG_CHALK=0) or no chalk3/chalk5 threaded: `src`/`_tm` stay `waist`/`tokmask`,
+            # bit-identical. kb=None (breath 0's grounding read) is never active (conductor(0)).
+            from tinygrad import Tensor, dtypes
+            _kb0 = kb if kb is not None else 0
+            _cck = conductor(_kb0)
+            _csrc = chalk5 if (_cck.cert5_active and chalk5 is not None) else (chalk3 if (_cck.cert3_active and chalk3 is not None) else None)
+            if _csrc is not None:
+                _cp = _csrc[:, :, 0:1]                                  # (B, N, 1) presence
+                _cdi = _csrc[:, :, 1:4].cast(dtypes.int)                 # (B, N, 3) digit ids, MSD-first
+                _cemb = (p["chalk_dig"][0][_cdi[:, :, 0]] + p["chalk_dig"][1][_cdi[:, :, 1]]
+                        + p["chalk_dig"][2][_cdi[:, :, 2]] + p["chalk_tag"]) * _cp               # (B, N, H_W)
+                _Tc = int(waist.shape[1]); _Nc = int(_csrc.shape[1])
+                src = Tensor.cat(waist[:, :_Tc - _Nc, :], _cemb, dim=1)
+                _tm = Tensor.cat(tokmask[:, :_Tc - _Nc], _cp.reshape(B, _Nc), dim=1)
+                # NO .numpy()/print HERE (the tinygrad+AM quirk this build's own gate found): this
+                # branch runs inside the JIT'd training step (pass_a/pass_b/step()); a host read
+                # breaks capture on the SECOND call ("cannot access tensor data during JIT capture").
+                # chalk_pack's own print (host-side, outside the JIT) is the diagnostic; ALG_CHALK_DEBUG
+                # gates that one, not this one.
         if ALG_KANNEAL and kb is not None and sent is not None and kb < len(ALG_KANNEAL) and ALG_KANNEAL[kb] > 0:
-            if kb not in _smoothed: _smoothed[kb] = _kanneal_smooth(waist, tokmask, sent, B, ALG_KANNEAL[kb])
+            if kb not in _smoothed: _smoothed[kb] = _kanneal_smooth(src, _tm, sent, B, ALG_KANNEAL[kb])
             src = _smoothed[kb]
         k = src @ p["attn_wk"] + p["attn_wk_b"]
         if ALG_TREECODE and _TREE_LEVELS is not None and tree is not None and nq == L_TOT:
@@ -4408,7 +4643,7 @@ def _make_bank(p, waist, tokmask, B, sent=None, tree=None):
         if rbias is not None:   # v3: the router's soft token bias (never
             sc = sc + rbias.unsqueeze(1) * p["r_gain"].reshape(1, 1, 1, 1) * _leaf_open   # THE TREE DESCENT: a token road, closed below level t
                                 # hard -inf — A0's grave)
-        sc = sc.clip(-1e4, 1e4) + (1.0 - tokmask.reshape(B, 1, 1, -1)) * -1e4
+        sc = sc.clip(-1e4, 1e4) + (1.0 - _tm.reshape(B, 1, 1, -1)) * -1e4
         at = sc.softmax(-1)
         if flat:
             # THE TOKEN SEAL (apply_tok_seal.py, 2026-09-09). The
@@ -4424,7 +4659,7 @@ def _make_bank(p, waist, tokmask, B, sent=None, tree=None):
             # in the graph with defined zero grads: the ALG_BREATH_ARM
             # idiom, the None-grad lesson. softmax output is finite, so
             # `at * 0.0` is exactly zero.
-            at = at * 0.0 + _tok_flat(tokmask, B)
+            at = at * 0.0 + _tok_flat(_tm, B)
         if tgate is not None:
             # THE TOKEN COOKER (apply_tok_cook.py, 2026-09-09; spec
             # docs/token_cooker_spec.md; the mandatory-road law + the
@@ -6150,7 +6385,7 @@ def breath_step(p, state, kb, ctx):
     return state
 
 
-def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, drop=None, anchor=None, amask=None, gmod=None, pmask=None, lsent=None, reg=None, fact_buf=None, mh_mass=None, mh_atlas_traj=None, xcorr=None, res_map=None, hud=None, ident=None, busreg_ramp=None, valfact=None, stop_after=None, facts3=None, facts5=None, tree=None, cert3=None, cert5=None, rack3=None, rack5=None):
+def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, drop=None, anchor=None, amask=None, gmod=None, pmask=None, lsent=None, reg=None, fact_buf=None, mh_mass=None, mh_atlas_traj=None, xcorr=None, res_map=None, hud=None, ident=None, busreg_ramp=None, valfact=None, stop_after=None, facts3=None, facts5=None, tree=None, cert3=None, cert5=None, rack3=None, rack5=None, chalk3=None, chalk5=None):
     from tinygrad import Tensor, dtypes   # audit 2026-09-01: was a
     # SCOPE ACCIDENT (bound only via the sixwave/sync branches — any
     # SIXWAVE-off config killed five organs at step 1)
@@ -6177,7 +6412,7 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
     if ALG_T1 and "t1_dw" in p and "t1" not in _SEVER:
         waist = _t1_conv(p, waist, tokmask)   # T1: the token convolution (a road)
 
-    bank = _make_bank(p, waist, tokmask, B, sent=sent, tree=tree)
+    bank = _make_bank(p, waist, tokmask, B, sent=sent, tree=tree, chalk3=chalk3, chalk5=chalk5)
     if N_SCR and slot_mask is not None:
         # FED item 6 mask ruling: scratch rows (queries) OPEN to all;
         # scratch columns CLOSED here (no cold read-back at birth —
@@ -6463,7 +6698,7 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
                 if ALG_TOKLOOP and "tok_wq" in p:      # THE NL LOOP: the token step, then the slot step reads it
                     _tok = _token_step(p, _tok, tokmask, sent, B, kb)
                     _bs_ctx["waist"] = _tok
-                    _bs_ctx["bank"] = _make_bank(p, _tok, tokmask, B, sent=sent)
+                    _bs_ctx["bank"] = _make_bank(p, _tok, tokmask, B, sent=sent, chalk3=chalk3, chalk5=chalk5)
                 breath_step(p, _bs_state, kb, _bs_ctx)
                 if conductor(kb).facts3_inject and facts3 is not None:   # THE CONDUCTOR: kb == 2
                     vst = _fact_inject(p, vst, facts3)   # consult 1's values: read from breath 3 on
@@ -6478,7 +6713,7 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
                 if ALG_WRITEBACK and "wb_w" in p and kb < K_B - 1:   # THE WRITE-BACK: the text learns what was committed to it
                     _tok = _writeback(p, _tok, _bs_state["cur"], _bs_state["fat_cur"], tokmask, B, kb)
                     _bs_ctx["waist"] = _tok
-                    _bs_ctx["bank"] = _make_bank(p, _tok, tokmask, B, sent=sent)
+                    _bs_ctx["bank"] = _make_bank(p, _tok, tokmask, B, sent=sent, chalk3=chalk3, chalk5=chalk5)
                 if _WHEEL is not None and kb < K_B - 1:
                     _bs_state["wheel_bias"] = _wheel_turn(p, _bs_state, kb, fat, sent, vst, B)
                 # THE CERTIFICATE PASS (2026-09-18): the IN-GRAPH twin of the
@@ -8545,6 +8780,8 @@ def do_train(steps, lr, batch, seed):
     b_cert5 = fix(np.zeros((batch, 1, L_TOT, T_ALG), np.float32), dtypes.float) if ALG_CERT else None   # consult 2's bias (read from breath 5)
     b_rack3 = fix(np.zeros((batch, L_TOT + T_ALG), np.float32), dtypes.float) if ALG_RACK else None   # THE RACK: consult 1's packed dry flags + claimed tokens (read from breath 3)
     b_rack5 = fix(np.zeros((batch, L_TOT + T_ALG), np.float32), dtypes.float) if ALG_RACK else None   # consult 2's (the union; read from breath 5)
+    b_chalk3 = fix(np.zeros((batch, ALG_CHALK_N, 4), np.float32), dtypes.float) if ALG_CHALK else None   # THE CHALKBOARD: consult 1's packed [presence, d0, d1, d2] (read from breath 3)
+    b_chalk5 = fix(np.zeros((batch, ALG_CHALK_N, 4), np.float32), dtypes.float) if ALG_CHALK else None   # consult 2's (SUPERSEDES, not unioned; read from breath 5)
     _valfact_rng = np.random.RandomState(seed + 7331) if ALG_VALREG_ON else None
     b_mha = fix(np.zeros((batch, ATLAS_TAB.shape[1], H_W), np.float32),
                 dtypes.float) if ATLAS_TAB is not None else None
@@ -8711,13 +8948,13 @@ def do_train(steps, lr, batch, seed):
             # commits, self-labeled from gold like the commit loss,
             # DETACHED); the second trains under live release dynamics.
             o0 = forward(p, s_tr, b_tk, b_se, slot_mask=b_mask, tail=b_tail,
-                         reg=b_reg, xcorr=b_xcorr, res_map=b_resmap, hud=b_hud, tree=b_tree, ident=b_ident, busreg_ramp=b_bgain, valfact=b_valfact, facts3=b_fact3, facts5=b_fact5, cert3=b_cert3, cert5=b_cert5, rack3=b_rack3, rack5=b_rack5)
+                         reg=b_reg, xcorr=b_xcorr, res_map=b_resmap, hud=b_hud, tree=b_tree, ident=b_ident, busreg_ramp=b_bgain, valfact=b_valfact, facts3=b_fact3, facts5=b_fact5, cert3=b_cert3, cert5=b_cert5, rack3=b_rack3, rack5=b_rack5, chalk3=b_chalk3, chalk5=b_chalk5)
             ok = ((o0["ftype"].argmax(-1) == bg["ftype"]).float()
                   * (o0["res"].argmax(-1) == bg["res"]).float())
             rv = (bg["presence"] * (1.0 - ok)).detach()
             o = forward(p, s_tr, b_tk, b_se, slot_mask=b_mask, revoke=rv,
                         tail=b_tail, reg=b_reg, fact_buf=b_fact,
-                        mh_mass=b_mhm, mh_atlas_traj=b_mha, xcorr=b_xcorr, res_map=b_resmap, hud=b_hud, tree=b_tree, ident=b_ident, busreg_ramp=b_bgain, valfact=b_valfact, facts3=b_fact3, facts5=b_fact5, cert3=b_cert3, cert5=b_cert5, rack3=b_rack3, rack5=b_rack5)
+                        mh_mass=b_mhm, mh_atlas_traj=b_mha, xcorr=b_xcorr, res_map=b_resmap, hud=b_hud, tree=b_tree, ident=b_ident, busreg_ramp=b_bgain, valfact=b_valfact, facts3=b_fact3, facts5=b_fact5, cert3=b_cert3, cert5=b_cert5, rack3=b_rack3, rack5=b_rack5, chalk3=b_chalk3, chalk5=b_chalk5)
         elif int(os.environ.get("NAZ_TRAIN", "0")):
             # NAZARÉ TRAINING (door #55): the organ-2 two-forward pattern —
             # pre-pass yields the intra-pass event field IN-GRAPH (detached);
@@ -8726,7 +8963,7 @@ def do_train(steps, lr, batch, seed):
             # read-time dup-aware argpair): argmax-change OR dup-flip on
             # rel-typed present slots, breath-0 vs final.
             o0 = forward(p, s_tr, b_tk, b_se, slot_mask=b_mask, tail=b_tail,
-                        xcorr=b_xcorr, res_map=b_resmap, hud=b_hud, tree=b_tree, ident=b_ident, busreg_ramp=b_bgain, valfact=b_valfact, facts3=b_fact3, facts5=b_fact5, cert3=b_cert3, cert5=b_cert5, rack3=b_rack3, rack5=b_rack5)
+                        xcorr=b_xcorr, res_map=b_resmap, hud=b_hud, tree=b_tree, ident=b_ident, busreg_ramp=b_bgain, valfact=b_valfact, facts3=b_fact3, facts5=b_fact5, cert3=b_cert3, cert5=b_cert5, rack3=b_rack3, rack5=b_rack5, chalk3=b_chalk3, chalk5=b_chalk5)
             _b0 = o0["breaths"][0]
             _relmask = (o0["pres"].squeeze(-1) > 0).float() \
                 * (o0["ftype"].argmax(-1) == 0).float()
@@ -8737,13 +8974,13 @@ def do_train(steps, lr, batch, seed):
             _gm = (_bgauth + (1.0 - _bgauth) * _ev).unsqueeze(-1).detach()
             o = forward(p, s_tr, b_tk, b_se, slot_mask=b_mask, tail=b_tail,
                         gmod=_gm, fact_buf=b_fact,
-                        mh_mass=b_mhm, mh_atlas_traj=b_mha, xcorr=b_xcorr, res_map=b_resmap, hud=b_hud, tree=b_tree, ident=b_ident, busreg_ramp=b_bgain, valfact=b_valfact, facts3=b_fact3, facts5=b_fact5, cert3=b_cert3, cert5=b_cert5, rack3=b_rack3, rack5=b_rack5)
+                        mh_mass=b_mhm, mh_atlas_traj=b_mha, xcorr=b_xcorr, res_map=b_resmap, hud=b_hud, tree=b_tree, ident=b_ident, busreg_ramp=b_bgain, valfact=b_valfact, facts3=b_fact3, facts5=b_fact5, cert3=b_cert3, cert5=b_cert5, rack3=b_rack3, rack5=b_rack5, chalk3=b_chalk3, chalk5=b_chalk5)
         else:
             _bd = os.environ.get("BREATH_DROPOUT")
             o = forward(p, s_tr, b_tk, b_se, slot_mask=b_mask, tail=b_tail,
                         drop=(b_drop if _bd else None), lsent=b_ls, reg=b_reg,
                         fact_buf=(None if ALG_ALT3 else b_fact),   # THE THREE CONSULTS: the start-of-run facts give way to facts3/facts5
-                        mh_mass=b_mhm, mh_atlas_traj=b_mha, xcorr=b_xcorr, res_map=b_resmap, hud=b_hud, tree=b_tree, ident=b_ident, busreg_ramp=b_bgain, valfact=b_valfact, facts3=b_fact3, facts5=b_fact5, cert3=b_cert3, cert5=b_cert5, rack3=b_rack3, rack5=b_rack5)
+                        mh_mass=b_mhm, mh_atlas_traj=b_mha, xcorr=b_xcorr, res_map=b_resmap, hud=b_hud, tree=b_tree, ident=b_ident, busreg_ramp=b_bgain, valfact=b_valfact, facts3=b_fact3, facts5=b_fact5, cert3=b_cert3, cert5=b_cert5, rack3=b_rack3, rack5=b_rack5, chalk3=b_chalk3, chalk5=b_chalk5)
         l = loss_fn(o, bg)
         if ALG_CONSUME and "_early" in o:   # support-gated consume-once:
             # any breath claims, each fact pays once; eligibility = the DAG
@@ -8806,14 +9043,14 @@ def do_train(steps, lr, batch, seed):
         from facts_pool import run as _fp_run_c
         _c_keys = ("pres", "ftype", "op", "dig", "args", "res") + (("dup",) if "h_dup" in p else ())
         _bd_c = os.environ.get("BREATH_DROPOUT")
-        def _partial(stop, f3, c3=None, r3=None):
+        def _partial(stop, f3, c3=None, r3=None, k3=None):
             Tensor.training = True
             s_c = b_tr.cast(dtypes.float)
             o = forward(p, s_c, b_tk, b_se, slot_mask=b_mask, tail=b_tail,
                         drop=(b_drop if _bd_c else None), lsent=b_ls, reg=b_reg,
                         fact_buf=None,
                         mh_mass=b_mhm, mh_atlas_traj=b_mha, xcorr=b_xcorr, res_map=b_resmap, hud=b_hud, tree=b_tree, ident=b_ident, busreg_ramp=b_bgain, valfact=b_valfact,
-                        stop_after=stop, facts3=f3, cert3=c3, rack3=r3)
+                        stop_after=stop, facts3=f3, cert3=c3, rack3=r3, chalk3=k3)
             return {k: o[k].realize() for k in _c_keys}
         def pass_a():
             return _partial(2, None)
@@ -8823,12 +9060,14 @@ def do_train(steps, lr, batch, seed):
             # step does — b_cert3 is already populated (consult 1 runs
             # before pass_b is called below) and None when ALG_CERT=0.
             # THE RACK: pass b runs breaths 3-4, so it reads consult 1's rack (kb >= 3) exactly as the full step does
-            return _partial(4, b_fact3, b_cert3, b_rack3)
+            # THE CHALKBOARD: same reason — pass b must see chalk3 (kb >= 3) exactly as the full step does
+            return _partial(4, b_fact3, b_cert3, b_rack3, b_chalk3)
         pass_a = TinyJit(pass_a)
         pass_b = TinyJit(pass_b)
         _consult_t = [0.0, 0]   # host seconds, count (the perf line)
         _rack_host = {}   # THE RACK: consult 1's packed flags on the host (consult 2 unions over them — monotone)
-        def _consult_into(buf, pass_fn, idx, cert_buf=None, rack_buf=None, rack_prev=None):
+        _rack_release_n = [0, 0]   # FORM 3: [rows released, rows with a nonempty consult-1 commit tested] cumulative over the run (the _tt idiom)
+        def _consult_into(buf, pass_fn, idx, cert_buf=None, rack_buf=None, rack_prev=None, chalk_buf=None):
             _t0c = time.time()
             o = pass_fn()
             onp = {k: o[k].numpy() for k in _c_keys}
@@ -8854,10 +9093,33 @@ def do_train(steps, lr, batch, seed):
                 # call unions over consult 1's host copy (a dry slot never becomes wet). No gold.
                 texts = [samples[int(i)]["text"] for i in idx]
                 decoded_rows = [{k: onp[k][bi] for k in onp} for bi in range(len(idx))]
-                rk = rack_pack(decoded_rows, fb, texts, T_ALG, ALG_RACK_TESTS,
-                               prev=(_rack_host.get(rack_prev) if rack_prev is not None else None))
+                prev_rk = _rack_host.get(rack_prev) if rack_prev is not None else None
+                # FORM 3 — RELEASE ON CONTRADICTION (2026-10-05, ledger 19:24 item 3; the ruling
+                # 18:02): BEFORE consult 2's own flags are taken, rack_release_rows tests every row
+                # with a nonempty consult-1 commit against the solver on THE COMMITTED SUBGRAPH
+                # (consult 1's dry slots, restricted from decoded_rows[bi] — THIS consult's own
+                # masked decode; the freeze keeps a dry slot's content unchanged since consult 1, so
+                # the two agree by construction). A proved 'unsat' clears the WHOLE prior commit for
+                # that row, so the claim mask lifts and the leaf unfreezes from breath 5 on, and
+                # consult 2's own dryness test below runs FRESH on it. No-op (prev_rk unchanged)
+                # when ALG_RACK_RELEASE=0 — the exact bit-identical path.
+                prev_rk, _rel, _tst, _ = rack_release_rows(decoded_rows, texts, ma, nv, prev_rk)
+                _rack_release_n[0] += _rel; _rack_release_n[1] += _tst
+                if _rel and int(os.environ.get("ALG_RACK_DEBUG", "0")):
+                    print(f"[rack-release] B={len(idx)} released {_rack_release_n[0]}/{_rack_release_n[1]} (cumulative)", flush=True)
+                rk = rack_pack(decoded_rows, fb, texts, T_ALG, ALG_RACK_TESTS, prev=prev_rk)
                 _rack_host[id(rack_buf)] = rk
                 _fd(rack_buf, rk, _rlc)
+            if chalk_buf is not None:
+                # THE CHALKBOARD (ALG_CHALK, 2026-10-05): the consult's own DERIVED facts (fb,
+                # restricted to vars not already a literal given in this consult's own decode)
+                # packed as up to ALG_CHALK_N 3-digit numerals — chalk_pack's host form, the same
+                # function loop_val's/chain_acc's read paths call. No union across consults.
+                decoded_rows = [{k: onp[k][bi] for k in onp} for bi in range(len(idx))]
+                ck, _ndrop = chalk_pack(decoded_rows, fb, tokmask[idx], T_ALG, ALG_CHALK_N)
+                if int(os.environ.get("ALG_CHALK_DEBUG", "0")) and _ndrop:
+                    print(f"[chalk] B={len(idx)} dropped(no room) cumulative this call={_ndrop}", flush=True)
+                _fd(chalk_buf, ck, _rlc)
             if _rlc:
                 Tensor.realize(*_rlc)
             _consult_t[0] += time.time() - _t0c; _consult_t[1] += 1
@@ -8993,7 +9255,7 @@ def do_train(steps, lr, batch, seed):
                 _vat = (Tensor(ATLAS_TAB[_vai],
                                dtype=dtypes.float)
                         if ATLAS_TAB is not None else None)
-                _f3v = _f5v = _c3v = _c5v = _r3v = _r5v = None
+                _f3v = _f5v = _c3v = _c5v = _r3v = _r5v = _k3v = _k5v = None
                 if ALG_ALT3:
                     # THE THREE CONSULTS on the quick val (2026-10-05, THE RACK's build): the val
                     # measures the deployable cycle, and under ALG_ALT3 that cycle is the three
@@ -9014,17 +9276,19 @@ def do_train(steps, lr, batch, seed):
                         cb_t = (Tensor(certifier_bias(rows3, fb3, _txv, T_ALG, ALG_CERT, ALG_CERT_IMPLIED), dtype=dtypes.float)
                                 if (ALG_CERT or ALG_CERT_IMPLIED) else None)
                         rk = rack_pack(rows3, fb3, _txv, T_ALG, ALG_RACK_TESTS, prev=rack_prev) if ALG_RACK else None
-                        return Tensor(fb3, dtype=dtypes.float), cb_t, (Tensor(rk, dtype=dtypes.float) if rk is not None else None), rk
+                        kk = (chalk_pack(rows3, fb3, vtk[sl_p], T_ALG, ALG_CHALK_N)[0] if ALG_CHALK else None)   # THE CHALKBOARD: same host form as _consult_into
+                        return (Tensor(fb3, dtype=dtypes.float), cb_t, (Tensor(rk, dtype=dtypes.float) if rk is not None else None), rk,
+                                (Tensor(kk, dtype=dtypes.float) if kk is not None else None))
                     _oa3v = forward(p, _t1, _t2, _t3, slot_mask=_mkv_t, ident=_t_id, stop_after=2)
-                    _f3v, _c3v, _r3v, _r3np = _consult3v(_oa3v)
-                    _ob3v = forward(p, _t1, _t2, _t3, slot_mask=_mkv_t, ident=_t_id, stop_after=4, facts3=_f3v, cert3=_c3v, rack3=_r3v)
-                    _f5v, _c5v, _r5v, _ = _consult3v(_ob3v, rack_prev=_r3np)
+                    _f3v, _c3v, _r3v, _r3np, _k3v = _consult3v(_oa3v)
+                    _ob3v = forward(p, _t1, _t2, _t3, slot_mask=_mkv_t, ident=_t_id, stop_after=4, facts3=_f3v, cert3=_c3v, rack3=_r3v, chalk3=_k3v)
+                    _f5v, _c5v, _r5v, _, _k5v = _consult3v(_ob3v, rack_prev=_r3np)
                 o = forward(p, _t1, _t2, _t3,
                             slot_mask=Tensor(_mkv, dtype=dtypes.float),
                             fact_buf=(None if ALG_ALT3 else Tensor(_fbv, dtype=dtypes.float)),   # THE THREE CONSULTS: facts3/facts5 carry the facts (chain_acc's own rule)
                             mh_mass=_vmh, mh_atlas_traj=_vat, ident=_t_id,
                             valfact=(Tensor(_fbv, dtype=dtypes.float) if ALG_VALREG_ON else None),   # THE VALUE STREAM: the val two-pass's LIVE facts
-                            facts3=_f3v, facts5=_f5v, cert3=_c3v, cert5=_c5v, rack3=_r3v, rack5=_r5v)
+                            facts3=_f3v, facts5=_f5v, cert3=_c3v, cert5=_c5v, rack3=_r3v, rack5=_r5v, chalk3=_k3v, chalk5=_k5v)
             if _r2log and "rbias2_all" in o:
                 # THE PER-BREATH SPAN LOSS's own log (ALG_SPAN_ALL=1): the
                 # SAME numpy-side BCE mirror, once per breath, read off
@@ -9806,8 +10070,8 @@ def do_train(steps, lr, batch, seed):
             # THE THREE CONSULTS, per step: pass a -> consult 1 -> facts3;
             # pass b (with facts3) -> consult 2 -> facts5; then the full
             # step (with both) — the same three curbs the read walks.
-            _consult_into(b_fact3, pass_a, idx, cert_buf=b_cert3, rack_buf=b_rack3)
-            _consult_into(b_fact5, pass_b, idx, cert_buf=b_cert5, rack_buf=b_rack5, rack_prev=(id(b_rack3) if ALG_RACK else None))
+            _consult_into(b_fact3, pass_a, idx, cert_buf=b_cert3, rack_buf=b_rack3, chalk_buf=b_chalk3)
+            _consult_into(b_fact5, pass_b, idx, cert_buf=b_cert5, rack_buf=b_rack5, rack_prev=(id(b_rack3) if ALG_RACK else None), chalk_buf=b_chalk5)
         if ALG_LIVE_FACTS:
             # THE LIVE-FACTS ROAD: this step's own pass-1 parse overwrites
             # the maskprep-cache feed already copied into b_fact above —
@@ -9842,7 +10106,8 @@ def do_train(steps, lr, batch, seed):
             print(f"  step {s:5d} loss={v:.4f} lr={cur_lr:.1e} "
                   f"({(time.time()-t0)/(s+1):.2f}s/step"
                   + (f"; steady {(time.time()-_t5)/(s-5):.3f}s/step from step 5" if s > 5 else "") + ")"
-                  + (f" [host feed {1e3*_tt['feed']/max(_tt['n'],1):.0f} ms + step-call {1e3*_tt['step']/max(_tt['n'],1):.0f} ms per step, n={_tt['n']}]" if _STEP_TIME else ""),
+                  + (f" [host feed {1e3*_tt['feed']/max(_tt['n'],1):.0f} ms + step-call {1e3*_tt['step']/max(_tt['n'],1):.0f} ms per step, n={_tt['n']}]" if _STEP_TIME else "")
+                  + (f" [rack-release {_rack_release_n[0]}/{_rack_release_n[1]} rows cumulative]" if ALG_RACK_RELEASE else ""),
                   flush=True)
         if (s + 1) % val_every == 0 or s == steps - 1:
             if int(os.environ.get("ALG_SHELF_CIRCLE", "0")) >= 2:
