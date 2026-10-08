@@ -462,7 +462,8 @@ def read(ckpt, data=None, p=None):
                 chalk3=k3_t, chalk5=k5_t)   # THE CHALKBOARD (2026-10-05, branch rack3)
         onp = {k: o[k].realize().numpy() for k in
                (("pres", "ftype", "op", "islit", "dig", "args", "res")
-                + (("dup",) if "h_dup" in p else ()))}
+                + (("dup",) if "h_dup" in p else ())
+                + (("dir",) if "h_dir" in p else ()))}
         if _NUMSPOT_BETA:
             import phase1_algebra_head as _H2; _H2._NUMSPOT = None
         if _LEX in (1, 2):
@@ -500,9 +501,16 @@ def read(ckpt, data=None, p=None):
                 f_ftype = int(onp["ftype"][bi, j].argmax()) == vg["ftype"][i, j]
                 f_res = int(onp["res"][bi, j].argmax()) == vg["res"][i, j]
                 ok = f_pres and f_ftype and f_res
-                f_op = f_args = f_dig = None
+                f_op = f_args = f_dig = f_dir = None
                 if vg["ftype"][i, j] == 0:
                     gset = set(np.where(vg["args"][i, j] > .5)[0].tolist())
+                    if "dir" in onp and "arg_dir" in vg and "dir_mask" in vg \
+                            and vg["dir_mask"][i, j] > 0.5:
+                        # THE DIRECTION BIT, carried for the census (LV_FIELDS):
+                        # predicted p(inverse)>=0.5 vs gold, on the cleanly-
+                        # classified residue only (dir_mask) — never folded
+                        # into `ok`, a diagnostic field beside it.
+                        f_dir = (onp["dir"][bi, j] > 0) == bool(vg["arg_dir"][i, j] > 0.5)
                     if _LEGAL_ARGS:   # THE LEGAL-POINTER MASK: applied BEFORE the top-2/argmax, same convention as LV_LEGAL=num
                         _legalset = _legal_arg_vars(_pres_row, _res_row, j, _LEGAL_ARGS)
                         _NOTIN_DEN += len(gset); _NOTIN_NUM += len(gset - _legalset)
@@ -527,7 +535,7 @@ def read(ckpt, data=None, p=None):
                     _DUMP.append((i, j, int(vg["ftype"][i, j]), int(vg["op"][i, j]), np.where(vg["args"][i, j] > .5)[0].tolist(), int(vg["res"][i, j]), vg["digits"][i, j].tolist(),
                                   int(onp["ftype"][bi, j].argmax()), int(onp["op"][bi, j].argmax()), np.argsort(-onp["args"][bi, j])[:2].tolist(), int(onp["res"][bi, j].argmax()), onp["dig"][bi, j].argmax(-1).tolist(), bool(onp["pres"][bi, j] > 0), bool(onp["dup"][bi, j] > 0) if "dup" in onp else False))
                 if _FIELDS is not None:   # LV_FIELDS=1: per-field and per-slot-position tallies (the fit-read instrument, 2026-09-16)
-                    for k, v in (("pres", f_pres), ("ftype", f_ftype), ("res", f_res), ("op", f_op), ("args", f_args), ("dig", f_dig), ("exact", ok)):
+                    for k, v in (("pres", f_pres), ("ftype", f_ftype), ("res", f_res), ("op", f_op), ("args", f_args), ("dig", f_dig), ("dir", f_dir), ("exact", ok)):
                         if v is not None: _FIELDS[k][0] += int(v); _FIELDS[k][1] += 1
                     _FIELDS["slot%02d" % j][0] += int(ok); _FIELDS["slot%02d" % j][1] += 1
                 if _PS is not None:

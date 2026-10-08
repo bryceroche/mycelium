@@ -114,7 +114,15 @@ REFUSED = ("ALG_SHELF", "ALG_WHIP", "ALG_TOKLOOP", "ALG_WRITEBACK", "ALG_KANNEAL
            # reason as ALG_SPAN_ARGS/ALG_SPAN_OP above — the walker's per-seam heads_of
            # calls never thread a per-breath rcue_all list, and the role pointer's
            # out["args"] rewrite lives only in the fused forward()'s emission code
-           "ALG_HUD")
+           "ALG_HUD",
+           "ALG_DIR", "ALG_DIR_W")
+           # THE DIRECTION BIT (2026-10-08): _heads_of's own "dir" emission
+           # and res-pointer structural mask ride the walker's per-seam
+           # heads_of calls fine (single source of truth) — but the dir
+           # BCE term lives only in the shared loss_fn() this walker does
+           # NOT call (its own per-seam loss is a separate accumulation);
+           # left unrefused, h_dir/h_dir_b would train on zero gradient
+           # (silent divergence) under the walker's own training path.
            # THE TOKEN HUD (2026-09-21): forward()'s new `hud` port is fed
            # only by the mask-prep pass's b_hud buffer (do_train's own
            # step()) and by loop_val/chain_acc's read-time helper — the
