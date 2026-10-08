@@ -1,81 +1,24 @@
-# NEXT SESSION — cold-start entry (updated 2026-10-07 22:39)
+# NEXT SESSION — cold-start entry (updated 2026-10-08 12:28)
 
-**THE CARD: RK3X_241 RUNNING (pc-rk3x, fired 22:28).** Branch rack3 (22e3b2e8, 5f5ecb85) merged into
-gen-weights (98f06446); the post-merge CPU gate (.cache/rack3_merge_gate.sh/.log) PASSED every
-reference line (unset/hierd/rkarm/listenrack/damp35/rackleaf to the digit; rack3/chalk loss-
-identical to rackleaf; rk3x RUNS at 10.8447/8.7772). scripts/membrane_rack.py was extended to thread
-THE CHALKBOARD's ports (it had none) and to print THE CHALK CENSUS (per-row chalk counts + attention
-mass on the chalk block per slot per active breath, the >=30%-attend bar). Chain
-.cache/rack_chain_RK3X.sh (derived from the audit-fixed rack_chain_RKX.sh; preflight PASS) trains
-RK3X_241 = RKX_241's env + ALG_RACK_RELEASE=1 ALG_CHALK=1, 48k/BATCH=8/SNAP_EVERY=8000, then reads:
-paired vs RKX_241 (THE BAR >= +0.015), RK_241, HS_241; golden24; membrane_rack (WALL/HIT/CHALK);
-rack_dryness_census + rack_numeral_audit (DRY/NUMAUDIT); the open reads' RELEASED counts; reads.py
-ingest. Confirmed at fire: step 0 loss=57.7594 (the family's birth loss), steady 0.27-0.30 s/step,
-[rack-release] already nonzero (2/911 rows by step 1500) — FORM 3 fires in training. Log
-.cache/rack_chain_RK3X.log; waiter pattern "preflight] FAIL|FAILED|ABORT|Traceback|RACK RK3X CHAIN
-COMPLETE". Ledger 2026-10-07 22:39.
-
-**THE DRYNESS PROBE (18:48, f51854cd):** BOTH BARS MISS — the fixed final-breath cosine tops out at
-0.6089 precision at 20% coverage on wild gold GIVEN slots (bar 0.90); "settled AND centered" (low
-state change + low JS movement at b5->6, median-split) is WORSE at matched coverage (0.5842) and
-its pool caps at 29.2%, below the 30/40% targets. The numeral-level relaxation (derivable from the
-banked rawslots dump) is a clean superset (+45 slots, zero exceptions) but buys nothing at any
-tested coverage. 'Settled and centered' is NOT a legitimate early release on this body. Table +
-reading: .cache/welford_atlas_PMS8_241.txt (a file-truncation bug from an earlier probe append was
-caught and fixed in the same pass — see the 18:48 ledger entry's closing note).
-
-**THE CARICATURE PROBE (17:44, 8110f516):** BAR MISSED — no caricatured variant (centered/whitened/
-lda-lite) beats plain's wild AUROC 0.766 by +0.02 (best is -0.0058); kind legibility is unchanged
-from 10-05 (given-vs-rel flat ~0.86; the 4 rel subtypes move only +0.015-0.018 off a 0.428 floor,
-chance=0.25). The margin (own-kind cosine minus best-other-kind on right slots) TRIPLES as designed
-(+0.24 plain -> +0.73 lda-lite) — a clean geometry win that does not transfer to correctness: a
-good lesson, not a feature. Plain cosine stays the perceiver's atlas input. Table + reading:
-.cache/welford_atlas_PMS8_241.txt.
-
-**THE TEXTURE PROBE (12:00, 9690738d):** closed the diet-vs-wild cosine sign flip (diet 0.423 vs
-wild 0.766, same construction). NOT in-sample bias (LORO moves every register bucket <=0.002).
-Register mix is A factor (gsm8k 0.6317 is the diet's best bucket; the synthetic/pen buckets
-rendered-wild/mint-like/none are strongly anti-predictive, <0.40, and are 67% of the slice) but not
-THE explanation (even gsm8k alone falls far short of wild's 0.766). A GSM8K-only library does not
-fix either side (diet gsm8k LORO 0.6206; wild rescored 0.7487, slightly worse than the full-diet
-library's 0.7661) — the flip is a ceiling/near-memorized-continuation-regime property of the diet's
-own slots, not a library-composition artifact. Full table + reading: .cache/perceiver_v1b_PMS8_241.txt.
-
-**THE PERCEIVER v1b READ (11:51, 141058f7):** DOES NOT FIRE — wild AUROC 0.7200 vs the entropy+0.05
-bar 0.7579 (MISS), precision@20%cov 0.6058 vs the 0.90 dryness bar (MISS). Built: the (kind,breath)
-Welford library (.cache/welford_atlas_PMS8_241_content_breaths.npz, verified bit-for-bit against the
-final-only library at kb=6) + the codebook-distribution/JS features (.cache/perceiver_v1b_features_
-PMS8_241_{pm35cslicevalid2,wildhold}.npz; tau sweep flat, fixed 0.1). Diet CV: the per-breath flight
-path alone beats entropy by +0.07 (0.8055 vs 0.7355) and beats the final-cosine-alone ablation by
-+0.174 (bigger than predicted); JS+telemetry add another +0.07 combined; none of it survives to
-wild. Full report: .cache/perceiver_v1b_PMS8_241.txt; ledger 11:18 (prediction) + 11:51 (read).
-
-**THE CARD:** pc-queue-listen merged branch listen into gen-weights (ac23f552: ALG_HIER_LISTEN + the ALG_HIER_DAMP=3,5,0 schedule) and is
-running the post-merge CPU gate (.cache/listen_merge_gate.log), then fires RKX_241 (RK_241's recipe with DAMP 3,5,0 = the schedule-
-collision fix) then RKXC_241 (its control). Logs: .cache/rack_chain_RKX.log / RKXC.log, queue_listen.log. BARS (ledger 10-06 17:0x):
-open mint >= 0.586 (the consults' cost on the hierarchical body removed), masked >= 0.338, rows >= 15, the hit >= 0.72 (membrane_rack.py),
-the wall <= 0.49. Waiters match "preflight] FAIL|chain exit|FAILED|ABORT|Traceback".
-**THE RACK FAMILY, CLOSED ON TWO BODIES (10-06/07):** form 2 (given_unique at consult 1, claim + leaf freeze) commits CLEAN certificates
-(0.963 on HS, 0.972 on the plain chassis; the 0.686 was a masked-vs-unmasked bug, struck) at ~1.5 slots/row and is NULL on the slot on
-both bodies (RK vs RKC -0.002; RKP vs RKPC +0.0005); rows inside noise; it halves the drift on the plain chassis (the hit +0.05-0.10, the
-rack's own) and nothing else. THE CONSULTS: +5 rows / -0.032 mint / the first wall move (-0.033) / the hit -0.08 on the hierarchical body;
--6 rows / open +0.015 / silver +0.03 on the plain chassis — the lines' gain 2.0 uncensused on both (ALG_CERT 1.0/0.5 is the next knob).
-**POSITIVE READS THIS WEEK:** THE WELFORD ATLAS (c21968ae: the content-space cosine to the slot's kind mean predicts correctness at AUROC
-0.766 vs entropy 0.700; one library per body — PMS8's basis is near-orthogonal to the hierarchical bodies'); THE HAMMERHEAD CENSUS
-(unanimity 0.970 at 0.32 coverage; majority-of-5 0.965 at 0.41: the next rack test for reach).
-**REGISTERED NEXT (needs the word unless stated):** RK3 (release on contradiction + THE CHALKBOARD, gated on branch rack3; the derived
-quantity made visible — the governor census says 61 % of the same-owner wall is invisible to syntax); THE OWNER SIGNATURE (ceiling 46 %
-of wrong given slots; re-measure with coreference first); the perceiver v1b (Welford distance + the dying-ReLU fix; commit head only);
-the mouth v2 (the row's Welford distance); head diffs A/B/C from the audit (the last-breath tap carries the fused args; the claim after
-the clip; scratch rows exempt) on a branch + gate after the listen pair.
-**Banked 10-06/07 (all in the ledger):** adaptive stopping MISS (structural: early breaths lack the final-breath pointers); MCTS over
-parses NULL; the courtroom INERT; the caricature jury a WASH (form 2b: render the claim); the perceiver v1 MISS on wild; the meta read;
-NL atlas v0 MISS; the governor census (same-owner 20 % / different-owner 36 % / no-chain 44 %; the event rotor not earned); the
-schedule collision diagnosed; the bug audit (the picker's 19 struck -> 18 corrected; 13 commits).
-**THE REPLAY HARNESS (branch replay, wt8, 6079b855; decode-exact; unmerged):** ALG_SNAP_AT/ALG_SNAP_OUT + replay(p, snapshot, kb_start,
-overrides); scripts/replay_gate_check.py, scripts/chalk_dryrun.py. THE GYM's registered tests: the chalk table trained by replay (warm caveat),
-the kick at b3 (training rows only), the acting perceiver's release. Merge after the listen pair's chains end; gate.
-**Branches/worktrees:** rack3 (wt6), replay (wt8), listen (merged). main fast-forwarded 10-07 09:0x.
+**THE CARD:** RK3X_241 (RKX's recipe + ALG_RACK_RELEASE=1 + ALG_CHALK=1 = release on contradiction + THE CHALKBOARD, from scratch on the
+fixed-schedule hierarchical body) HUNG on the host at step ~2,500 for 13 h on 10-08 (the release's solver call had no wall-clock wall);
+killed; the wall fix (form 3's solve bounded like _ping_walled; timeout = "budget", never unsat) is being gated and the chain re-fired as
+pc-rk3x with an mtime watcher (pc-rk3x-watch: 30 min silent = kill). Reads land ~6 h after the re-fire. Control = RKX_241 (banked).
+BARS: masked >= RKX + 0.015; rows >= 10; digits not down; mint >= 0.59; THE CHALK CENSUS (>= 30 % of chalk-carrying rows must have a slot
+attend a chalk token); the released-row count; the derived-argument cell.
+**THE LEVER OF THE WEEK (10-08, THE POLARITY CENSUS):** 36 % of wild relations are INVERSE forms (sub/div = add/mul with the result moved);
+right 0.148 vs 0.323; the whole gap is the RES head (0.25 vs 0.87): 79 % of misses default to the forward convention; representable;
+starved (diet 0.27 vs wild 0.36); the cues unread. Worth up to +0.03 wild. THE DIRECTION BIT (ALG_DIR, structural) + THE INVERSE DOSE
+(pm35d) are being BUILT in worktree wt9 (branch dirbit); the pair DIR_241 / DIRD_241 (plain chassis) fires after RK3X on the word.
+**THE RACK FAMILY (closed on three bodies):** null on the slot (RK/RKC -0.002; RKP/RKPC +0.0005; RKX/RKXC +0.005) with clean commits
+(0.96-0.97); THE SCHEDULE FIX (DAMP 3,5,0) recovers the consults' mint on the hierarchical body (+0.047) and keeps the wall move.
+**OTHER READS 10-07/08:** the Welford atlas = a wild-regime ruler (0.766 vs entropy 0.700; one library per body); the learned perceivers
+lose to it (regime, not overfitting; the reader's holdout registered as a books allocation); the caricatured library a wash; the early
+release refused (0.61 precision); the replay harness (branch replay, wt8: decode-exact; the chalkboard dry-run; the resonance read: the kind
+axis is real, right and wrong ring the same, add/sub and mul/div near-colinear = the positional law); the governor census (owner oracle 46 %).
+**Registered, unbuilt:** the depth pair (2/4 mixer layers per breath; cheap), the sorting room (token-side attention), the owner signature,
+the majority dryness test, the acting perceiver (the gym), head diffs A/B/C from the audit.
+**Branches/worktrees:** replay (wt8), dirbit (wt9), rack3 (merged), listen (merged). main fast-forwarded 10-07 21:3x.
 
 ---
 (The previous entry follows, for the longer board.)
