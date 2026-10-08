@@ -48729,3 +48729,37 @@ texture-probe section and a dropped reading for ~6 hours; caught by the coordina
 changed notice and rebuilt clean (one copy of each of the three probes' sections, verified by
 grep count before replacing) — the committed ledger text above was never affected (it was written
 from the same verified numbers independently), only the .cache scratch file was at risk.
+
+### 2026-10-07 (19:04) — THE SAVE POINT + THE REPLAY HARNESS BUILT (branch replay, 6079b855; worktree mycelium-wt8): snapshot ~3-4 MB per row; replay from breath 1 / 3 / 5 reproduces the full read at the DECODE level on every row (0 / 24 differ on all six body x breath pairs) and not bit for bit (float noise 1e-4..1e-3 from tinygrad's lazy scheduling, stated); unset bit-identical; THE CHALKBOARD DRY-RUN: an untrained chalk block draws ZERO attention (the mandatory-road law at read), a content-bearing one reaches the membrane
+
+THE BUILD: ALG_SNAP_AT / ALG_SNAP_OUT hook inside forward()'s loop after the breath's injections
+(:7274); a generic recursive (de)serialiser for state + ctx (~40 churning keys) with a JSON
+manifest beside the arrays (live closures bank / rot2 excluded and rebuilt; ALG_SYNC / SW_TICK
+refuse loudly); forward()'s ~420-line final read-out extracted into a shared _forward_tail (:6250)
+called by forward() and by replay() — pure code motion (unset: 5.2995/0.0279, 6.5535/1.1061,
+10.8656/8.8945 reproduced); replay(p, snapshot, kb_start, overrides) (:6817) rebuilds the bank from
+the snapshot's own waist / tokmask / sent / tree (no trunk), runs breath_step for the remaining
+breaths with the snapshot's consult products through the same conductor-gated injection, then the
+shared tail (the fused args, never the tap). A real bug fixed: dict(state) was a shallow copy, so a
+second replay of one snapshot appended to shared lists (IndexError) — every list-valued entry now
+copied: the gym can replay one snapshot thousands of times. THE GATE: PMS8_241 and RK_241 (the
+consults inside the range) at kb 1 / 3 / 5 on 24 wild rows — max |delta| 9.8e-4 (concentrated on
+a census tap; the primary heads ~1e-5; a zero-breath replay at kb 6 still shows pres off by 4e-5
+with args / res / dig exactly 0: not a resumption bug — the rematerialised numpy changes float32
+summation order) and the DECODED PARSE identical on every row: replay is exact at the level the
+solver sees. RULE: a replay verdict is read at the decode level, never on bits. THE CHALKBOARD
+DRY-RUN (scripts/chalk_dryrun.py; chalk_pack and the bank splice re-implemented from rack3's
+5f5ecb85 with citations; RK_241's kb-2 snapshot, 64 wild rows): 34 / 64 rows carry chalk from
+consult 1, 36 from consult 2, none dropped; NULL EMBEDDING (chalk_dig / chalk_tag zero — RK's
+checkpoint has none): decode changed on 0 / 64 rows, attention mass on the 8 chalk positions
+0.00000 at every breath 3-6 — an organ with nothing to say is voted down at read time without any
+training; TEXT-COPY EMBEDDING (a same-valued text token's waist row spliced in; only 5 / 38
+candidates had one): decode changed on 2 / 64 rows (37, 46), both wrong before and after. READING:
+the membrane is REACHABLE from the chalk positions (a real content vector moves decodes) and the
+untrained table says nothing — exactly what the law predicts; the real test is the TRAINED chalk
+table (RK3 from scratch; or, in the gym, the chalk table trained by replay on training rows with
+the key — the warm-regime caveat stated). GAPS (stated): replay never re-derives a consult live
+(the snapshot's products are used — stale if an override changes the trajectory before a consult);
+WRITEBACK / WHEEL / the in-graph certificate pass not replayed; the per-breath ladder excluded
+from the gate's comparison; the dry-run's key check is a coarse proxy. The agent's note that
+gen-weights "moved to an earlier commit" was a misreading (f4efb35a is an ancestor; nothing lost).
