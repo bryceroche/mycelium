@@ -48610,3 +48610,30 @@ read. REGISTERED: THE READER'S HOLDOUT — the books campaign's next annotated G
 birth into a reader-training set and a fresh measurement set (the n lever, allocated); v1c =
 monotone-in-the-ruler + trained on the reader's holdout; until then the fixed cosine holds the
 commit role. The Goodhart fence is untouched: the reader's loss never enters the head.
+
+### 2026-10-07 (17:27) — THE SAVE POINT (Bryce: "save before the boss fight; replay from saved telemetry to isolate and train components"); the two save points; THE REPLAY HARNESS registered and delegated (worktree mycelium-wt8, branch replay); first use: the chalkboard dry-run
+
+THE FIRST SAVE POINT EXISTS: the frozen trunk's states are precomputed once to a disk-backed
+memmap (STATES_NPY, the September recipe) and every training step reads them — the grind is saved;
+the relay's "the trunk re-runs on every idea" is false. THE SECOND is inside the head: nothing
+checkpoints the breath loop mid-loop; a snapshot at breath k of everything the later breaths read
+(the state, the notebook, the last attention, the token bank, the consults' facts and lines, the
+rack's flags) is a few MB per row, ~1 GB for wild, and REPLAY of breaths k+1..6 from it needs no
+trunk and no card. The band-probe collects are half of it (states only; no bank, no notebook) —
+readable, not replayable. WHAT REPLAY BUYS: (1) the chalkboard's injection tested in minutes
+(write the implied values onto the board at breath 2, replay, read whether any slot attends to
+chalk and what the digit head does) — today a 48k arm; (2) THE ORTHODONTIST'S GYM: the acting
+perceiver (per-row temperature / damping / release at breath 3) replayed thousands of times per
+hour with the key as the reward on TRAINING rows — the first way an acting perceiver can be trained
+at all; (3) component isolation, WITH THE RECORD'S CAVEAT: an organ trained in replay learns on a
+converged body's late breaths = the WARM REGIME (a settled basin: soft organs null; the register
+family helped bolted-on and hurt grown from scratch) — replay is the fast laboratory for bolted-on
+and read-time forms; a replay verdict is a verdict on the warm form, never on the from-scratch one.
+THE BUILD (delegated): ALG_SNAP_AT / ALG_SNAP_OUT (a per-batch npz of state + ctx at the end of
+breath k); replay(p, snapshot, kb_start, overrides) running the same breath_step and the same
+final read-out (the fused args, never the tap); THE GATE: replay from kb 1 / 3 / 5 reproduces the
+full forward's heads BIT FOR BIT on 24 wild rows for PMS8_241 and for RK_241's env (the consults
+inside the range); unset bit-identical. FIRST USE: the chalkboard dry-run on RK_241's breath-2
+snapshot (64 rows; the chalk block built as rack3's chalk_pack would; a null embedding and a copied
+text-numeral embedding; replay 3..6): rows with chalk, the attention mass on chalk per slot per
+breath, decodes changed, the key before / after — a mechanism read, not a claim.
