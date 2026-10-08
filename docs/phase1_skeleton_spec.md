@@ -48852,3 +48852,28 @@ growing (2/911 at step 1500) — FORM 3 is firing in training, not dormant. UNVE
 hours): the full masked-wild/mint/silver reads, the three paired bars, the chalk census's own >=30%
 verdict, the released-row count on wild, golden24, and the chain's final "RACK RK3X CHAIN COMPLETE"
 line — all pending this run's completion, to be read and banked in a later entry.
+
+### 2026-10-08 (11:49) — THE 128-D SILHOUETTE, THE RESONANCE READ, FOUR LAYERS IN THE LOOP (Bryce's brainstorm); two reads fired (zero GPU), the depth probe registered behind the chalkboard's verdict
+
+(1) THE TRAJECTORY OF DIMENSION: 2048 (retina) -> 512 (the head; the essay's silhouette: costume
+destroyed) -> 128 inside the loop (the polar waist's per-breath squeeze, load-bearing -0.064).
+The atlas has been read in the 384 content dims (0.766) and the retina (worse); never in the 128
+latent — a linear map of the content state, so the kind directions survive up to the projection's
+anisotropy. FIRED: the Welford library in the polar latent (per kind x breath; the wild read vs
+0.766 / 0.700; the kind-mean pairwise cosines in 128 vs 384: sharper or just smaller?).
+PREDICTION: about the same, slightly worse. (2) RINGING: impulse v2 read the STABILITY (a b1 kick
+never contracts — the first look is the fixed point; b2-b4 kicks contract to 0.2-0.4); the new
+question is the echo's DIRECTION: resonance = a perturbation decays ALONG the slot's kind
+direction and persists; isotropic decay = no resonance. FIRED in the gym (replay from PMS8's kb-2
+snapshot, 64 rows): impulses of 0.1 ||cur|| along the own-kind mean / a random direction / the
+nearest other kind; the response's relative norm and cosines per breath, right vs wrong slots.
+The photo-booth fence forbids steering by a kick at read, not measuring with one. PREDICTION: the
+echo contracts as before, aligns with the own-kind direction more on RIGHT slots than wrong (a
+perceiver channel), and the cross-kind impulse is NOT absorbed (the state has no restoring force
+toward its kind: the radius read's "sharpen by separating, not by contracting"). (3) FOUR MHA
+LAYERS IN THE LOOP: native to the house (the June deducer ran 4 shared Pythia layers across 16
+breaths) and untested on the parser — but capacity has not been this parser's lever (cap2x: the
+same scores at 24.7 % disagreement; the slot record came from structure; every mover this month
+changed what the read sees, not how much reads it). REGISTERED, low prior, from scratch at 3-4x
+the step cost: THE DEPTH PROBE (2 and 4 stacked bank + mixer blocks per breath on the chassis,
+vs the lineage), behind the chalkboard's verdict, on the word.
