@@ -986,6 +986,18 @@ ALG_TOKLOOP = int(os.environ.get("ALG_TOKLOOP", "0"))
 # the message's norm as a fraction of the token's norm; not a parameter), the next breath's keys and
 # values built from the written-back tokens — no bypass. 0 = off (bit-identical).
 ALG_WRITEBACK = float(os.environ.get("ALG_WRITEBACK", "0") or 0)
+# THE CHALKBOARD (ported 2026-10-07 for THE REPLAY HARNESS's first use, THE CHALKBOARD DRY-RUN,
+# worktree mycelium-wt8, branch replay, from branch rack3 commit 5f5ecb85 THE CHALKBOARD --
+# scripts/phase1_algebra_head.py:3910-3914 there; gen-weights never had this organ. Re-implemented
+# verbatim rather than merged (rack3 is a sibling lineage, not an ancestor of gen-weights): the
+# solver's DERIVED values enter the NEXT breath's bank as TOKENS -- see chalk_pack() (ported from
+# rack3:925) and _make_bank's splice below (ported from rack3:4497-4544). Default 0 = bit-identical
+# (no call site in forward()/breath_step passes chalk3/chalk5; only replay()'s `overrides` does).
+ALG_CHALK = int(os.environ.get("ALG_CHALK", "0"))
+ALG_CHALK_N = int(os.environ.get("ALG_CHALK_N", "8"))
+if ALG_CHALK:
+    assert ALG_ALT3, "ALG_CHALK needs ALG_ALT3=1 (THE CHALKBOARD writes the consult's own implied values; there is no consult otherwise)"
+    assert ALG_CHALK_N > 0, "ALG_CHALK_N must be positive"
 # THE BLURRED LADDER (2026-09-12, the word): ALG_BLUR=1 blurs rung k's gold
 # toward uniform by ALG_BLUR_MAX * cos^2(k*pi/(2(K-1))) — the denoising
 # schedule's target-side form (each breath graded on a job its level can do;
@@ -3113,6 +3125,20 @@ def build_params(seed=0):
         p["alt5_attn_wv"], p["alt5_attn_wv_b"] = lin(H_W, H_W)
         p["alt5_attn_wo"] = t(np.zeros((H_W, H_W)))   # ZERO: silent birth
         p["alt5_attn_wo_b"] = t(np.zeros(H_W))
+    if ALG_CHALK:
+        # THE CHALKBOARD's params (ported 2026-10-07 from branch rack3 commit 5f5ecb85,
+        # scripts/phase1_algebra_head.py:2964-2971 there, cited above _make_bank). Gated
+        # on ALG_CHALK (default 0) so build_params()'s param SET is unchanged -- and every
+        # checkpoint's set(sd.keys())==set(p.keys()) gate still holds -- unless a caller
+        # explicitly opts in; THE REPLAY HARNESS's gate (scripts/replay_gate_check.py)
+        # never sets ALG_CHALK, so it never sees these keys. A RUNNING checkpoint trained
+        # without ALG_CHALK (every one on gen-weights, including RK_241) has NO chalk_dig/
+        # chalk_tag rows -- THE CHALKBOARD DRY-RUN's own loader assigns every other key from
+        # the checkpoint and leaves these two at this random (or caller-overridden) init,
+        # stated explicitly there as an untrained probe, never a claim.
+        _rngC = np.random.RandomState(seed + 9100)
+        p["chalk_dig"] = t((_rngC.randn(3, 10, H_W) * 0.02).astype(np.float32))
+        p["chalk_tag"] = t((_rngC.randn(H_W) * 0.02).astype(np.float32))
     return p
 
 
@@ -4316,7 +4342,50 @@ def _kanneal_smooth(waist, tokmask, sent, B, sigma):
     return g @ waist
 
 
-def _make_bank(p, waist, tokmask, B, sent=None, tree=None):
+def chalk_pack(decoded_rows, facts, tokmask, T, n_chalk=None):
+    """THE CHALKBOARD's host side at a consult (ported 2026-10-07 from branch rack3 commit
+    5f5ecb85, scripts/phase1_algebra_head.py:925, verbatim -- cited in full above): the
+    solver's DERIVED facts (known AND not already a literal given in this consult's own
+    decode -- THE RACK's relation_implied criterion, reused so "derived" means the same
+    thing on both roads) packed as up to `n_chalk` 3-digit (MSD-first) numerals,
+    deterministic by variable index. Returns (packed (B, n_chalk, 4) float32 -- col0
+    presence, cols 1-3 digit ids 0-9, zero on padding -- , n_dropped): n_dropped counts
+    rows whose REAL tokens already occupy the reserved block (tokmask[bi, T - n_chalk:]
+    .any()) -- THE CHALKBOARD never shadows a real token nor reads one as a digit; such a
+    row's chalk is dropped ENTIRELY (presence all zero), never partially. No gold; no
+    solver call (facts are handed in, already forced).
+
+    decoded_rows: per-row dict of raw head logits (this consult's own decode, onp) -- used
+    only to find which vars are already literal GIVENS. facts: (B, K_VARS, 4) known-flag +
+    MSD digit/9 triplet (the b_fact3/b_fact5 convention), or None (no consult yet: every row
+    drops, n_dropped stays 0 -- nothing to test room for without a chalk candidate anyway)."""
+    import numpy as np
+    n_chalk = n_chalk if n_chalk is not None else ALG_CHALK_N
+    B = len(decoded_rows)
+    out = np.zeros((B, n_chalk, 4), np.float32)
+    n_dropped = 0
+    for bi in range(B):
+        if tokmask is not None and bool(tokmask[bi, T - n_chalk:].any()):
+            n_dropped += 1
+            continue
+        if facts is None:
+            continue
+        parse = _decode_slots(decoded_rows[bi])
+        given_vars = {int(f["var"]) for f in parse if f["ftype"] == "given"}
+        frow = facts[bi]
+        cand = [v for v in range(frow.shape[0]) if frow[v, 0] > 0 and v not in given_vars]
+        for ci, v in enumerate(cand[:n_chalk]):
+            out[bi, ci, 0] = 1.0
+            out[bi, ci, 1] = float(np.clip(round(frow[v, 1] * 9), 0, 9))
+            out[bi, ci, 2] = float(np.clip(round(frow[v, 2] * 9), 0, 9))
+            out[bi, ci, 3] = float(np.clip(round(frow[v, 3] * 9), 0, 9))
+    if int(os.environ.get("ALG_CHALK_DEBUG", "0")):
+        print(f"[chalk] B={B} n_chalk={n_chalk} dropped(no room)={n_dropped} "
+              f"chalk slots filled={int(out[:, :, 0].sum())} rows with >=1 chalk={int((out[:, :, 0].sum(1) > 0).sum())}", flush=True)
+    return out, n_dropped
+
+
+def _make_bank(p, waist, tokmask, B, sent=None, tree=None, chalk3=None, chalk5=None):
     """forward()'s bank attention, factored BY PURE CODE MOTION
     (apply_step_trainer.py, 2026-09-03) so the step trainer can rebuild
     the closure over ITS OWN waist tensor. forward's call sites are
@@ -4330,6 +4399,34 @@ def _make_bank(p, waist, tokmask, B, sent=None, tree=None):
         q_in = queries.unsqueeze(0) + (extra if extra is not None else 0)
         q = q_in @ p["attn_wq"] + p["attn_wq_b"]
         src = waist
+        _tm = tokmask
+        if ALG_CHALK and nq == L_TOT and "chalk_dig" in p:
+            # THE CHALKBOARD (ported 2026-10-07 from branch rack3 commit 5f5ecb85,
+            # scripts/phase1_algebra_head.py:4505-4544 there, cited in full above the
+            # function): the solver's implied values enter as TOKENS -- the last
+            # ALG_CHALK_N positions of the token axis (T_ALG unchanged; chalk_pack,
+            # host-side, never lets a row's real tokens reach them) hold a numeral's
+            # embedding built the SAME way a text numeral's key/value are built
+            # (through this SAME src -> attn_wk/attn_wv projection, never the trunk):
+            # a learned 3-digit (MSD-first) table + a learned "derived" tag,
+            # additive, then multiplied by `presence` (0 drops a padding slot's
+            # content AND its tokmask bit together). Visible from the breath AFTER
+            # its consult on (cert3_active / cert5_active -- THE CONDUCTOR's own
+            # kb >= 3 / kb >= 5, THE RACK's exact gate), consult 2's block
+            # superseding consult 1's. Unset (ALG_CHALK=0) or no chalk3/chalk5
+            # threaded: `src`/`_tm` stay `waist`/`tokmask`, bit-identical.
+            _kb0 = kb if kb is not None else 0
+            _cck = conductor(_kb0)
+            _csrc = chalk5 if (_cck.cert5_active and chalk5 is not None) else (chalk3 if (_cck.cert3_active and chalk3 is not None) else None)
+            if _csrc is not None:
+                from tinygrad import Tensor, dtypes
+                _cp = _csrc[:, :, 0:1]                                  # (B, N, 1) presence
+                _cdi = _csrc[:, :, 1:4].cast(dtypes.int)                 # (B, N, 3) digit ids, MSD-first
+                _cemb = (p["chalk_dig"][0][_cdi[:, :, 0]] + p["chalk_dig"][1][_cdi[:, :, 1]]
+                        + p["chalk_dig"][2][_cdi[:, :, 2]] + p["chalk_tag"]) * _cp               # (B, N, H_W)
+                _Tc = int(waist.shape[1]); _Nc = int(_csrc.shape[1])
+                src = Tensor.cat(waist[:, :_Tc - _Nc, :], _cemb, dim=1)
+                _tm = Tensor.cat(tokmask[:, :_Tc - _Nc], _cp.reshape(B, _Nc), dim=1)
         if ALG_KANNEAL and kb is not None and sent is not None and kb < len(ALG_KANNEAL) and ALG_KANNEAL[kb] > 0:
             if kb not in _smoothed: _smoothed[kb] = _kanneal_smooth(waist, tokmask, sent, B, ALG_KANNEAL[kb])
             src = _smoothed[kb]
@@ -4408,7 +4505,7 @@ def _make_bank(p, waist, tokmask, B, sent=None, tree=None):
         if rbias is not None:   # v3: the router's soft token bias (never
             sc = sc + rbias.unsqueeze(1) * p["r_gain"].reshape(1, 1, 1, 1) * _leaf_open   # THE TREE DESCENT: a token road, closed below level t
                                 # hard -inf — A0's grave)
-        sc = sc.clip(-1e4, 1e4) + (1.0 - tokmask.reshape(B, 1, 1, -1)) * -1e4
+        sc = sc.clip(-1e4, 1e4) + (1.0 - _tm.reshape(B, 1, 1, -1)) * -1e4
         at = sc.softmax(-1)
         if flat:
             # THE TOKEN SEAL (apply_tok_seal.py, 2026-09-09). The
@@ -6150,370 +6247,17 @@ def breath_step(p, state, kb, ctx):
     return state
 
 
-def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, drop=None, anchor=None, amask=None, gmod=None, pmask=None, lsent=None, reg=None, fact_buf=None, mh_mass=None, mh_atlas_traj=None, xcorr=None, res_map=None, hud=None, ident=None, busreg_ramp=None, valfact=None, stop_after=None, facts3=None, facts5=None, tree=None, cert3=None, cert5=None, rack3=None, rack5=None):
-    from tinygrad import Tensor, dtypes   # audit 2026-09-01: was a
-    # SCOPE ACCIDENT (bound only via the sixwave/sync branches — any
-    # SIXWAVE-off config killed five organs at step 1)
-    B = trunk.shape[0]
-    if trunk.dtype != dtypes.float:
-        trunk = trunk.cast(dtypes.float)   # perf audit #4: half feeds upcast in-graph (exact)
-    waist = (trunk @ p["waist_w"] + p["waist_b"]).gelu() + p["sent_emb"][sent]
-    if ALG_HUD and hud is not None:
-        # THE TOKEN HUD (2026-09-21): a deterministic per-token feature
-        # strip added to the waist ONCE, here, where it is formed from the
-        # trunk states — so every downstream consumer (the bank's keys,
-        # breath 0's grounding read, every later breath) sees it, never
-        # threaded through the per-breath loop. `hud` arrives (B, T, 5)
-        # int (hud_row_features / hud_build_array, host-side, no gain).
-        _hi = hud if hud.dtype == dtypes.int else hud.cast(dtypes.int)
-        for _hfi, _hnm in enumerate(HUD_TABLE_NAMES):
-            waist = waist + p[_hnm][_hi[:, :, _hfi]]
-    if FED_WAIST and "fed_w2b" in p:
-        # FED item 3: waist2 = waist + MLP(waist), output ZERO-INIT —
-        # exact zeros at birth; every downstream organ (bank closure,
-        # breath ctx, step-trainer tap) inherits the rebound name
-        waist = waist + ((waist @ p["fed_w2a"] + p["fed_w2a_b"]).gelu()
-                         @ p["fed_w2b"] + p["fed_w2b_b"])
-    if ALG_T1 and "t1_dw" in p and "t1" not in _SEVER:
-        waist = _t1_conv(p, waist, tokmask)   # T1: the token convolution (a road)
-
-    bank = _make_bank(p, waist, tokmask, B, sent=sent, tree=tree)
-    if N_SCR and slot_mask is not None:
-        # FED item 6 mask ruling: scratch rows (queries) OPEN to all;
-        # scratch columns CLOSED here (no cold read-back at birth —
-        # the raising law; the fed mixer's zero door is the channel)
-        _f6c = slot_mask[:, :, :1] * 0.0            # (B, L_FAC, 1) zeros
-        _f6top = Tensor.cat(slot_mask,
-                            *([_f6c] * N_SCR), dim=2)  # (B, L_FAC, L_TOT)
-        _f6r = _f6top[:, :1, :] * 0.0 + 1.0         # (B, 1, L_TOT) ones
-        slot_mask = Tensor.cat(_f6top,
-                               *([_f6r] * N_SCR), dim=1)  # (B, L_TOT, L_TOT)
-    _lb = None
-    if lsent is not None:               # V2: letter-keyed partition — imposed
-        _lb = lsent.reshape(B, 1, K_VARS, -1) * float(os.environ.get("LS_A", "1.0"))
-    vst, vat = bank(p["vq"], K_VARS, pbias=_lb)
-    _vst_base = vst   # pre-injection tap (step trainer reads this)
-    if int(os.environ.get("ALG_ALT2", "0")) and fact_buf is not None:
-        # ALTERNATOR V2 injection: symbolic facts ((B, 24, 4): known flag
-        # + MSD digits/9) condition the var-slot states that args/res/y/
-        # query pointers and every breath read against. BOTH guards are
-        # load-bearing: env unset -> byte-identical baseline; fact_buf
-        # None -> byte-identical too (the injection is skipped entirely).
-        vst = _fact_inject(p, vst, fact_buf)
-    _vst_at = [vst] * int(os.environ.get("ALG_BREATH", "1"))   # THE THREE CONSULTS: the variable states each rung's heads read against (updated at breaths 2 and 4 when facts arrive); K_B is bound below from the same env
-    _pb = None
-    _pb_prior = None
-    _sync = None
-    _swtick = None
-    if ALG_SYNC:
-        from tinygrad import Tensor, dtypes
-        _A = float(os.environ.get("SYNC_A", "1.0"))
-        _phi = np.pi / 3.0 * (np.arange(L_TOT) % 6)
-        _cph = Tensor(np.cos(_phi).astype(np.float32), dtype=dtypes.float)
-        _sph = Tensor(np.sin(_phi).astype(np.float32), dtype=dtypes.float)
-        _th0 = (sent - (sent // 6) * 6).float() * (math.pi / 3.0)
-        _cth, _sth = _th0.cos(), _th0.sin()
-        _scr = None
-        if int(os.environ.get("SYNC_SCRAMBLE", "0")):
-            _scr = np.random.RandomState(227).uniform(0, 2 * np.pi, 8)
-        def _mk_pb(kb):
-            _d = float(_scr[kb]) if _scr is not None else kb * (math.pi / 3.0)
-            ck, sk = math.cos(_d), math.sin(_d)
-            cthk = _cth * ck - _sth * sk
-            sthk = _sth * ck + _cth * sk
-            return (_cph.reshape(1, 1, L_TOT, 1) * cthk.reshape(B, 1, 1, -1)
-                    + _sph.reshape(1, 1, L_TOT, 1)
-                    * sthk.reshape(B, 1, 1, -1)) * _A
-        _php = np.zeros((L_TOT, H_W), np.float32)
-        def _mk_osc(kb):   # the receiver's local oscillator — same clock
-            _d = float(_scr[kb]) if _scr is not None else kb * (math.pi / 3.0)
-            _o = _php.copy()
-            _o[:, 0] = np.cos(_phi + _d) * _A
-            _o[:, 1] = np.sin(_phi + _d) * _A
-            return Tensor(_o, dtype=dtypes.float).reshape(1, L_TOT, H_W)
-        _sync = (_mk_pb, _mk_osc)
-        _pb = _mk_pb(0)
-    if ALG_SIXWAVE:
-        from tinygrad import Tensor, dtypes
-        # six helical carriers: token phase from sentence index (mod 6, 60
-        # deg apart, antiphase pairs); slot phase from slot index mod 6.
-        # Resonance bias cos(phi_slot - theta_tok) enters the factor bank's
-        # scores through the zero-init gate — structure, never supervision.
-        if int(os.environ.get("SW_SCRAMBLE", "0")):
-            _tab = Tensor(np.random.RandomState(227).randint(0, 6, 16)
-                          .astype(np.float32) * (math.pi / 3.0), dtype=dtypes.float)
-            _th = _tab[sent - (sent // 16) * 16]
-        else:
-            _th = (sent - (sent // 6) * 6).float() * (math.pi / 3.0)
-        _phi = np.pi / 3.0 * (np.arange(L_TOT) % 6)
-        _cph = Tensor(np.cos(_phi).astype(np.float32), dtype=dtypes.float)
-        _sph = Tensor(np.sin(_phi).astype(np.float32), dtype=dtypes.float)
-        _sw_term = (_cph.reshape(1, 1, L_TOT, 1) * _th.cos().reshape(B, 1, 1, -1)
-               + _sph.reshape(1, 1, L_TOT, 1)
-               * _th.sin().reshape(B, 1, 1, -1)) * p["sw_g"].reshape(1, 1, 1, 1)
-        _pb = _sw_term if _pb is None else _pb + _sw_term  # audit #6: adds
-        if ALG_SW_TICK:                   # THE SIX-WAVE TICK: the per-breath maker (kb = 1..6)
-            _sw_cph, _sw_sph, _sw_th = _cph, _sph, _th
-            def _mk_swtick(kb, _c=_sw_cph, _s=_sw_sph, _t=_sw_th):
-                _thk = _t - conductor(kb).sw_tick_phase    # THE CONDUCTOR: slot phase +d == token phase -d
-                return (_c.reshape(1, 1, L_TOT, 1) * _thk.cos().reshape(B, 1, 1, -1)
-                        + _s.reshape(1, 1, L_TOT, 1) * _thk.sin().reshape(B, 1, 1, -1)) * p["sw_g"].reshape(1, 1, 1, 1)
-            _swtick = _mk_swtick
-    if pmask is not None:                 # A0: imposed route-mask (wiring,
-        _pb = pmask if _pb is None else _pb + pmask   # not knobs — no grad)
-    if xcorr is not None:
-        # THE CORRESPONDENCE CHART (ALG_XCORR, 2026-09-19): a coordinate-
-        # free, era-free PRIOR on where each slot's FACTOR/VALUE binding
-        # lives in the text, mined from gold spans (no model involved).
-        # `xcorr` arrives (B, L_FAC, T) with the road's gain(s) ALREADY
-        # baked in and each term clipped to [-4, 4] by the caller
-        # (xcorr_row_bias / xcorr_build_array) — imposed structure, like
-        # pmask/lsent above, applied ONLY at this grounding read, never
-        # threaded through the per-breath loop.
-        _xb = xcorr
-        if _xb.dtype != dtypes.float:
-            _xb = _xb.cast(dtypes.float)
-        if N_SCR:
-            _xb = Tensor.cat(_xb, Tensor.zeros(B, N_SCR, _xb.shape[-1]), dim=1)
-        _xb = _xb.reshape(B, 1, L_TOT, _xb.shape[-1])
-        _pb = _xb if _pb is None else _pb + _xb
-    # THE TOKEN SEAL (apply_tok_seal.py, 2026-09-09): breath 0's
-    # GROUNDING. `loop` leaves it intact (the slots are grounded once
-    # and only the re-reading is severed); `all` flattens it too — the
-    # floor, where no factor slot ever aims at a token.
-    # NOT SEALED, registered: the VAR bank above (vst — the pointer
-    # TARGET space; flattening it deletes the alphabet rather than
-    # severing a reading) and the QUERY bank below.
-    fst, fat = bank(p["fq"], L_TOT, pbias=_pb, flat=_tok_seal_on(0))
-    qst, _qa = bank(p["qq"], 1)
-
-    # BRICK-P breathing (2026-07-09): K-1 refinement passes. Each breath
-    # re-reads the text conditioned on current beliefs (bank-with-extra) +
-    # MASKED slot-to-slot settling — evidence-sharing topology AS STRUCTURE
-    # (the v98 escape; free-form slot attention is the perceiver trap and is
-    # not built). Deltas enter via zero-init W_bo + init-closed gates:
-    # at init the K-breath output is byte-identical to the incumbent.
-    K_B = int(os.environ.get("ALG_BREATH", "1"))
-    breaths = [fst]
-    RINGS = int(os.environ.get("ALG_RINGS", "0")) and "W_cmt" in p
-    # ORGAN-2: the reverse gear (spec §2). Release DYNAMICS only — the
-    # revoke signal is an INPUT PORT: transport arrives solver-side, from
-    # outside the neural partition (#152's leading candidate). Rates are
-    # PINNED (2-3 breath release scale; #136), never tuned by feel. No
-    # new params: no new terminal; the register clause holds (no settle,
-    # no entropy — revoke is a named contradiction or nothing).
-    XOUT = RINGS and int(os.environ.get("ALG_XOUT", "0"))
-    XARM = os.environ.get("ALG_XARM", "dump")        # dump|graded|elastic
-    XR_GRADED, XR_ELASTIC = 0.5, 0.15                # pinned, breath-scale
-    if RINGS:
-        m_c = (fst * 0.0).sum(-1, keepdim=True)      # (B,L_FAC,1) zeros
-        anchor = fst
-        cmt_logits = []
-        x_rel = m_c                                   # released-mass ledger
-    _rot2 = rot2_interleaved   # interleaved-real phasor rotation (the one definition, module level; THE COMPLEX-TENSOR FENCE)
-
-    _bus_reg = None
-    _rb_last = None
-    _rptr_last = None
-    _s4_last = None
-    _rbias_all = None
-    _rbias2_all = None
-    _aspan_all = None
-    _ospan_all = None
-    _rcue_all = None
-    _garage = None
-    global _CENSUS                  # the port census hook (inert unless
-    try: _CENSUS                    # port_census.py arms it — same
-    except NameError: _CENSUS = None  # pattern as _IMP below)
-    global _IMP                     # the impulse hook (systems-ID probe;
-    try: _IMP                       # None everywhere except under
-    except NameError: _IMP = None   # impulse_response.py — inert in training)
-    if (int(os.environ.get("ALG_BUSGARAGE", "0")) and "W_gq" in p
-            and "W_bind2" in p):
-        assert int(os.environ.get("ALG_BUSGARAGE", "0")) >= 2, \
-            "garage v1 (raw wires) is dead — canonical shelf only"
-        global _SGC
-        try: _SGC
-        except NameError: _SGC = None
-        if _SGC is None:
-            import numpy as _np4
-            from tinygrad import Tensor as _Ts4
-            _bz4 = _np4.load(_bind_codes_path())
-            _conj4, _plus4 = {}, {}
-            for _rn4 in ("arg1", "arg2", "res", "op"):
-                _th4 = _bz4[f"theta_{_rn4}"]
-                _conj4[_rn4] = (_Ts4(_np4.cos(-_th4).astype(_np4.float32)),
-                                _Ts4(_np4.sin(-_th4).astype(_np4.float32)))
-                _plus4[_rn4] = (_Ts4(_np4.cos(_th4).astype(_np4.float32)),
-                                _Ts4(_np4.sin(_th4).astype(_np4.float32)))
-            _SGC = (_conj4, _plus4, _Ts4(_bz4["CB"].astype(_np4.float32)))
-        _garage = []
-    _snaps = []
-    _snaps_g = []   # router graded-input repair: softmax snap tuple (ALG_ROUTER_GRADED)
-    _bs_ctx = _bs_state = None
-    if K_B > 1 and slot_mask is not None and "W_bo" in p:
-        cur = fst
-        # FINAL BOSS rung 0 (2026-09-03): the loop BODY lives in
-        # module-level breath_step (pure code motion — bit-identical by
-        # construction); state carries what crosses breath boundaries,
-        # ctx the per-forward constants. Under _STEP_TAP hold the fused
-        # loop is SKIPPED — the step trainer drives the walk itself.
-        _fed_nl0 = None
-        if FED_NL0 and int(os.environ.get("ALG_MASKHEAD", "0")) \
-                and "fed_nl0_w" in p:
-            # FED item 8: the breath-0 invariant NL page (two-tap law)
-            # — the nl-tap's pooled read, computed ONCE (the fq bank
-            # pass has no cur/fact/mask reach), DETACHED at entry (the
-            # mask head's metadata contract)
-            _fed_nl0 = (_fed_core(fat).mean(1).unsqueeze(1)
-                        @ waist).squeeze(1).detach()
-        # THE BREATH-0 ANCHOR (ALG_ANCHOR=<beta>, 2026-09-19): fat (B,
-        # L_TOT, T), the grounding read's head-mean slots<-tokens
-        # attention — NOT FED-trimmed, so scratch rows ride as-is —
-        # detached (a keep-bias, no grad) and pre-scaled by beta once
-        # here rather than every breath. None (the default, beta==0)
-        # means breath_step's ctx.get returns None and nothing is added
-        # anywhere: bit-identical.
-        _anch_bias0 = ((ALG_ANCHOR * fat.detach()).reshape(B, 1, L_TOT, -1)
-                       if ALG_ANCHOR else None)
-        _ident_tok = None
-        if ALG_BUSREG or ALG_IDKEY:
-            # THE BUS REGISTER's identity stream (2026-09-22): the token
-            # ids' rows of the frozen identity table, gathered ONCE per
-            # forward (the p["sent_emb"][sent] idiom), (B, T, 2P) float.
-            # No port = a hard error (no silent dark organ): every
-            # caller that arms the register threads `ident`.
-            assert ident is not None, (
-                "ALG_BUSREG / ALG_IDKEY needs forward(..., ident=<(B, T) int token ids>) "
-                "— ident_build_array / ident_row_ids (host-side); the "
-                "trainer, loop_val and chain_acc thread it; a reader that "
-                "does not is refused here rather than run dark")
-            _idi = ident if ident.dtype == dtypes.int else ident.cast(dtypes.int)
-            _ident_tok = _ident_table()[_idi].cast(dtypes.float)
-        _valtag_v = None
-        if ALG_VALREG_ON:
-            # THE VALUE STREAM's per-forward tags (2026-09-22): each
-            # variable's known value as its numeral's tag. No facts (the
-            # open pass-1 by design; a reader without the port) = no known
-            # values = zero tags, stated here: the stream is SILENT, never
-            # dark by accident (the register still runs; this stream adds
-            # zeros).
-            assert ALG_BUSREG, "ALG_VALREG / ALG_VALREG_ADDR need ALG_BUSREG (the register they ride)"
-            _valtag_v = (_valtag_from_facts(valfact, B) if valfact is not None
-                         else Tensor.zeros(B, K_VARS, int(os.environ.get("ALG_BIND_D", "128"))))
-        _bs_ctx = {"B": B, "K_B": K_B, "waist": waist, "tokmask": tokmask,
-                   # THE BUS REGISTER's per-forward constants (2026-09-22):
-                   # dict keys only — zero compute when ALG_BUSREG unset.
-                   "vst": vst, "res_map": res_map, "ident_tok": _ident_tok,
-                   "busreg_ramp": busreg_ramp,   # THE FADE-IN's scalar (training only; None = full scale)
-                   "fat0": fat,   # THE IDENTITY KEY's breath-1 query source: breath 0's grounding attention (B, L_TOT, T)
-                   "valtag_v": _valtag_v,
-                   "anchor_bias0": _anch_bias0,
-                   "cert3": cert3, "cert5": cert5,   # THE TRAINED CERTIFIER-MASK ROAD (2026-09-28): per-breath pbias from kb 3 / 5 on (breath_step below)
-                   "rack3": rack3, "rack5": rack5,   # THE RACK (2026-10-05): the packed dry flags + claimed tokens per consult, read from kb 3 / 5 on (breath_step: the claim + the freeze)
-                   "slot_mask": slot_mask, "bank": bank, "rot2": _rot2,
-                   "sync": _sync, "swtick": _swtick, "drop": drop, "gmod": gmod,
-                   "revoke": revoke, "tail": tail, "reg": reg,
-                   # MASK HEAD metadata (2026-09-05; plumbing only — a
-                   # dict key, zero compute when ALG_MASKHEAD unset).
-                   # ctx also serves the OPTIONAL per-seam ports read
-                   # via ctx.get: "mh_mass" (per-var domain-mass from
-                   # the solver ping) and "mh_atlas" (step_atlas
-                   # consult page) — populated by seam drivers only.
-                   "fact_buf": fact_buf, "mh_mass": mh_mass,
-                   "fed_nl0": _fed_nl0,
-                   "mh_atlas_traj": mh_atlas_traj,
-                   "RINGS": RINGS, "XOUT": XOUT, "XARM": XARM,
-                   "XR_GRADED": XR_GRADED, "XR_ELASTIC": XR_ELASTIC,
-                   # THE MASK COOKER's sentence-skeleton port
-                   # (ALG_MASK_COOK_SKEL=sentence): the token->sentence
-                   # ids. A dict key only — zero compute when the door
-                   # is unset or the skeleton is `self`.
-                   "mc_sent": sent}
-        _bs_state = {"cur": cur, "breaths": breaths, "nb": None,
-                     "tree_prev_at": (fat if ALG_TREE2 else None),   # FORM 2: breath 0's attention seeds the first prior
-                     "eyes_m": None,   # THE EYES (2026-10-05): the smoothed hands, born at kb == 1 (m_0 = 0)
-                     # MASK HEAD storage (2026-09-05): the graded
-                     # adjacency the organ consumed at the previous
-                     # breath_step (detached) — Δ-visibility into the
-                     # commitment FLOW; the notebook-threading contract
-                     "mh_prev": None,
-                     # FED item 9: shelf lane-2 ink (born at kb == 1)
-                     "nb2": None,
-                     "nb_st": None, "garage": _garage, "snaps": _snaps,
-                     "snaps_g": _snaps_g, "rb_last": _rb_last,
-                     "rptr_last": _rptr_last, "s4_last": _s4_last,
-                     "m_c": m_c if RINGS else None,
-                     "anchor": anchor if RINGS else None,
-                     "cmt_logits": cmt_logits if RINGS else None,
-                     "x_rel": x_rel if RINGS else None}
-        if not (_STEP_TAP is not None and _STEP_TAP.get("hold")):
-            _tok = waist
-            # THE THREE CONSULTS (2026-09-24, THE ALTERNATION SPEC §2): a
-            # partial pass stops after `stop_after` loop breaths (the
-            # heads at that breath feed the solver's consult on the host,
-            # between captured graphs — never a hop inside one); the
-            # consult's forced values re-enter as facts3 (after breath 2,
-            # read from breath 3) and facts5 (after breath 4, read from
-            # breath 5) through the ALT2 injection into the variable
-            # states every later rung and the final heads read against.
-            # All three None = the loop as it was, bit-identical.
-            _kb_stop = (min(K_B, int(stop_after) + 1) if stop_after else K_B)
-            for kb in range(1, _kb_stop):
-                if ALG_TOKLOOP and "tok_wq" in p:      # THE NL LOOP: the token step, then the slot step reads it
-                    _tok = _token_step(p, _tok, tokmask, sent, B, kb)
-                    _bs_ctx["waist"] = _tok
-                    _bs_ctx["bank"] = _make_bank(p, _tok, tokmask, B, sent=sent)
-                breath_step(p, _bs_state, kb, _bs_ctx)
-                if conductor(kb).facts3_inject and facts3 is not None:   # THE CONDUCTOR: kb == 2
-                    vst = _fact_inject(p, vst, facts3)   # consult 1's values: read from breath 3 on
-                    _bs_ctx["vst"] = vst
-                    for _r in range(3, K_B):
-                        _vst_at[_r] = vst
-                if conductor(kb).facts5_inject and facts5 is not None:   # THE CONDUCTOR: kb == 4
-                    vst = _fact_inject(p, vst, facts5)   # consult 2's values: read from breath 5 on
-                    _bs_ctx["vst"] = vst
-                    for _r in range(5, K_B):
-                        _vst_at[_r] = vst
-                if ALG_WRITEBACK and "wb_w" in p and kb < K_B - 1:   # THE WRITE-BACK: the text learns what was committed to it
-                    _tok = _writeback(p, _tok, _bs_state["cur"], _bs_state["fat_cur"], tokmask, B, kb)
-                    _bs_ctx["waist"] = _tok
-                    _bs_ctx["bank"] = _make_bank(p, _tok, tokmask, B, sent=sent)
-                if _WHEEL is not None and kb < K_B - 1:
-                    _bs_state["wheel_bias"] = _wheel_turn(p, _bs_state, kb, fat, sent, vst, B)
-                # THE CERTIFICATE PASS (2026-09-18): the IN-GRAPH twin of the
-                # wheel-turn above — a precomputed (row, breath) certificate,
-                # read live from a fixed device buffer (do_train arms it; None
-                # everywhere else, so this whole road is dead weight when
-                # ALG_WHEEL_CERT is unset). No host call, no python branching
-                # on tensor values: the JIT stays on (unlike ALG_WHEEL_TRAIN).
-                _cb = globals().get("_CERT_BUF")
-                # THE EVAL/READ FENCE: _CERT_BUF is a fixed BATCH-shaped
-                # buffer, armed once for the whole training run — a same-
-                # process eval call (_quick_val's fixed batch of 8) never
-                # matches the train batch's B and must see None, exactly
-                # like loop_val/chain_acc's fresh imports do by construction.
-                if _cb is not None and int(_cb.shape[0]) == B and kb < K_B - 1:
-                    from mycelium.loop_bridge import cert_spotlight
-                    _certF = (_cb[:, kb, :] > 0).float()
-                    _bs_state["wheel_melt"] = (_certF if _WHEEL_MELT is not None else None)
-                    _bs_state["wheel_bias"] = cert_spotlight(
-                        _certF, fat, sent, _WHEEL_CERT_BETA, _WHEEL_CERT_MODE)
-            cur = _bs_state["cur"]
-            _rb_last = _bs_state["rb_last"]
-            _rptr_last = _bs_state.get("rptr_last")
-            _s4_last = _bs_state.get("s4_last")
-            _rbias_all = _bs_state.get("rbias_all")
-            _rbias2_all = _bs_state.get("rbias2_all")
-            _aspan_all = _bs_state.get("aspan_all")
-            _ospan_all = _bs_state.get("ospan_all")
-            _rcue_all = _bs_state.get("rcue_all")
-            if RINGS:
-                m_c = _bs_state["m_c"]
-                anchor = _bs_state["anchor"]
-                cmt_logits = _bs_state["cmt_logits"]
-                x_rel = _bs_state["x_rel"]
-
+def _forward_tail(p, B, K_B, waist, tokmask, vst, _vst_base, _vst_at, fst, qst, fat, vat, slot_mask, breaths, _bs_state, _bs_ctx, anchor, amask, res_map, RINGS, XOUT, m_c, cmt_logits, x_rel, _rb_last, _rptr_last, _s4_last, _rbias_all, _rbias2_all, _aspan_all, _ospan_all, _rcue_all):
+    """THE SAVE POINT / THE REPLAY HARNESS (2026-10-07, worktree mycelium-wt8, branch replay):
+    forward()'s final read-out, factored out BY PURE CODE MOTION (the breath_step / _make_bank
+    precedent, apply_step_trainer.py 2026-09-03 and apply_census_organs.py) so replay() can call
+    the IDENTICAL tail on a state resumed from a mid-loop snapshot instead of a state forward()
+    built fresh from breath 0. Every line below is forward()'s own 2026-10-06 tail, UNCHANGED;
+    forward() now ends with one call into this function. Bit-identical by construction: the
+    call site passes exactly the locals this code already closed over.
+    """
+    from tinygrad import Tensor, dtypes   # forward() imports this locally too (module-level
+                                          # Tensor/dtypes are not guaranteed bound here otherwise)
     def heads_of(s, vst=vst):
         return _heads_of(p, s, vst, B)
     if _STEP_TAP is not None:
@@ -6932,6 +6676,639 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
                 if _br_seal is not None:
                     _a_kb = _a_kb * _br_seal[kb_]   # THE SEAL on this rung's bilinear, before the register's term
                 out["breaths"][kb_] = dict(out["breaths"][kb_], args=_a_kb + T_)
+    return out
+
+
+# ===========================================================================
+# THE SNAPSHOT PORT + THE REPLAY ENTRY (2026-10-07, worktree mycelium-wt8,
+# branch replay; docs/phase1_skeleton_spec.md 2026-10-07 17:27 "THE SAVE
+# POINT"). A generic, recursive (de)serializer for the ctx/state dicts
+# (and the handful of forward()-level params the tail needs) — generic
+# because these dicts grow a new key almost every week (CLAUDE.md's own
+# "every registration, bar, verdict, and law" churn); hand-enumerating
+# them would silently go stale. Tensors are realized to numpy; the nested
+# dict/list/tuple/None/scalar shape is kept in a JSON manifest string
+# stored alongside the arrays in the same .npz.
+# ===========================================================================
+
+def _snap_leaf_key(path):
+    # npz entry names: avoid "/" (zip-path semantics) and the manifest's
+    # own reserved key.
+    return "leaf" + path.replace("/", "\x1f")
+
+
+def _snap_flatten(path, obj, arrays, manifest):
+    if obj is None:
+        manifest[path] = {"kind": "none"}
+        return
+    if isinstance(obj, dict):
+        manifest[path] = {"kind": "dict", "keys": list(obj.keys())}
+        for k, v in obj.items():
+            _snap_flatten(f"{path}/{k}", v, arrays, manifest)
+        return
+    if isinstance(obj, (list, tuple)):
+        manifest[path] = {"kind": "list" if isinstance(obj, list) else "tuple", "len": len(obj)}
+        for i, v in enumerate(obj):
+            _snap_flatten(f"{path}/{i}", v, arrays, manifest)
+        return
+    if hasattr(obj, "realize") and hasattr(obj, "numpy"):   # a tinygrad Tensor
+        arr = obj.realize().numpy()
+        manifest[path] = {"kind": "tensor", "dtype": str(arr.dtype)}
+        arrays[_snap_leaf_key(path)] = arr
+        return
+    if isinstance(obj, np.ndarray):
+        manifest[path] = {"kind": "ndarray", "dtype": str(obj.dtype)}
+        arrays[_snap_leaf_key(path)] = obj
+        return
+    if isinstance(obj, bool):
+        manifest[path] = {"kind": "bool", "value": obj}
+        return
+    if isinstance(obj, (int, float)):
+        manifest[path] = {"kind": "num", "value": obj}
+        return
+    if isinstance(obj, str):
+        manifest[path] = {"kind": "str", "value": obj}
+        return
+    # a non-tensor, non-serializable object (e.g. a live closure like
+    # ctx["bank"], or a conductor() namedtuple some reader stashed) —
+    # refuse loudly rather than silently drop it; replay() rebuilds
+    # ctx["bank"] itself and never expects it in the snapshot.
+    raise TypeError(f"_snap_flatten: unsupported type {type(obj)} at {path!r} "
+                    f"(ctx['bank'] and similar live closures must be excluded "
+                    f"by the caller before dumping, and rebuilt by replay())")
+
+
+def _snap_unflatten(path, manifest, loader):
+    m = manifest[path]
+    kind = m["kind"]
+    if kind == "none":
+        return None
+    if kind == "dict":
+        return {k: _snap_unflatten(f"{path}/{k}", manifest, loader) for k in m["keys"]}
+    if kind in ("list", "tuple"):
+        vals = [_snap_unflatten(f"{path}/{i}", manifest, loader) for i in range(m["len"])]
+        return vals if kind == "list" else tuple(vals)
+    if kind == "tensor":
+        from tinygrad import Tensor, dtypes
+        arr = loader(_snap_leaf_key(path))
+        if "float" in m["dtype"]:
+            dt = dtypes.half if "float16" in m["dtype"] else dtypes.float
+        elif "bool" in m["dtype"]:
+            dt = dtypes.bool
+        else:
+            dt = dtypes.int
+        return Tensor(np.ascontiguousarray(arr), dtype=dt)
+    if kind == "ndarray":
+        return loader(_snap_leaf_key(path))
+    if kind in ("bool", "num", "str"):
+        return m["value"]
+    raise TypeError(f"_snap_unflatten: unknown kind {kind!r} at {path!r}")
+
+
+def _snap_dump(out_path, **top):
+    """forward()'s host-side hook (called from inside the breath loop at kb ==
+    ALG_SNAP_AT; see the call site above breath_step). `top` holds ctx, state,
+    and the few forward()-level params (facts3/facts5/anchor/amask/res_map/
+    waist/tokmask/tree/vst_at/B/K_B/kb_done) replay() needs beyond ctx/state —
+    see THE BUILD item (1), docs/phase1_skeleton_spec.md 2026-10-07 17:27.
+    ctx['bank'] is a live closure, not data — excluded here explicitly
+    (replay() always rebuilds it fresh from the snapshot's own waist/
+    tokmask/sent/tree via _make_bank, which is how an `overrides` chalk
+    block gets injected in the first place). ctx['rot2'] is always the
+    same frozen module-level function (rot2_interleaved) — excluded and
+    reattached by replay() rather than serialized. ctx['sync']/['swtick']
+    are PER-FORWARD-CALL closures (THE SIX-WAVE / THE CONSULT-rate tick,
+    ALG_SYNC / ALG_SW_TICK) that close over this call's own B/sent — out
+    of scope for this build (neither gate body nor RK_241 arms them);
+    refuse loudly rather than silently drop them."""
+    assert top["ctx"].get("sync") is None, (
+        "_snap_dump: ctx['sync'] is set (ALG_SYNC) — THE SNAPSHOT PORT does not "
+        "serialize this per-call closure; out of scope for THE BUILD (2026-10-07)")
+    assert top["ctx"].get("swtick") is None, (
+        "_snap_dump: ctx['swtick'] is set (ALG_SW_TICK) — THE SNAPSHOT PORT does not "
+        "serialize this per-call closure; out of scope for THE BUILD (2026-10-07)")
+    ctx_clean = {k: v for k, v in top["ctx"].items() if k not in ("bank", "rot2")}
+    top = dict(top, ctx=ctx_clean)
+    arrays, manifest = {}, {}
+    _snap_flatten("snap", top, arrays, manifest)
+    np.savez(out_path, __manifest__=np.array(json.dumps(manifest)), **arrays)
+    sizes = {k: (v.shape, str(v.dtype)) for k, v in arrays.items()}
+    n_bytes = sum(v.nbytes for v in arrays.values())
+    print(f"[snap] wrote {out_path}: kb_done={top['kb_done']} B={top['B']} K_B={top['K_B']} "
+          f"{len(arrays)} arrays, {n_bytes / 1e6:.2f} MB", flush=True)
+    return sizes
+
+
+def snap_load(path):
+    """Loads an ALG_SNAP_OUT npz back into the nested {"ctx":..., "state":...,
+    "B":..., "K_B":..., "kb_done":..., "waist":..., "tokmask":..., "tree":...,
+    "facts3":..., "facts5":..., "anchor":..., "amask":..., "res_map":...,
+    "vst_at":...} structure _snap_dump wrote. Tensors come back on whatever
+    device tinygrad defaults to — the caller is responsible for DEV=CPU
+    being set (this task's brief: never .cache/gpu.lock) before importing
+    this module."""
+    z = np.load(path, allow_pickle=True)
+    manifest = json.loads(str(z["__manifest__"]))
+    def _loader(key):
+        return z[key]
+    return _snap_unflatten("snap", manifest, _loader)
+
+
+def replay(p, snapshot, kb_start, overrides=None):
+    """THE REPLAY ENTRY (2026-10-07, worktree mycelium-wt8, branch replay; THE SAVE POINT,
+    docs/phase1_skeleton_spec.md 2026-10-07 17:27). Rebuilds ctx/state from `snapshot`
+    (snap_load()'s return, taken at the end of breath kb_start) and runs breaths
+    kb_start+1 .. K_B-1 through the SAME breath_step and the SAME final read-out as
+    forward() (_forward_tail — the identical code, pure code motion, not a
+    reimplementation), returning the same `out` dict forward() would return. No trunk
+    tensor is read at all: everything needed lives in the snapshot or is rebuilt
+    deterministically from it (_make_bank from waist/tokmask/sent/tree + p).
+
+    `overrides` (optional dict) is applied to ctx/state BEFORE resuming, so an organ can
+    be injected at the save point:
+      overrides["state"]   -- a dict merged into `state` (e.g. a modified state["cur"])
+      overrides["ctx"]     -- a dict merged into `ctx` (anything except "bank")
+      overrides["chalk3"] / overrides["chalk5"] -- threaded into _make_bank's rebuild
+          (THE CHALKBOARD's bank, see chalk_pack() below); omit both for the plain bank.
+      overrides["waist"] / overrides["tokmask"] -- replace the snapshot's own waist/
+          tokmask tensors wholesale BEFORE the bank rebuild and in the final tail (e.g.
+          THE CHALKBOARD DRY-RUN's text-embedding-copy variant, which splices a copied
+          token embedding directly into waist's last ALG_CHALK_N columns rather than
+          going through the trained chalk_dig/chalk_tag table -- see the dry-run script).
+
+    SCOPE LIMIT (stated, not hidden): replay threads the snapshot's OWN facts3/facts5/
+    cert3/cert5/rack3/rack5 (the ORIGINAL forward call's consult products) through the
+    SAME conductor()-gated injection forward()'s loop uses. It does NOT re-run the
+    host-side consult (alt2_fact_buf/certifier_bias/rack_pack, membrane_rack.py's
+    consult3) live during replay -- if `overrides` changes the trajectory BEFORE a
+    consult point in a way that would change what the consult concludes, the threaded
+    facts/cert/rack become stale relative to the modified run. Exact for the unmodified
+    gate (THE BUILD item 3) and for overrides applied AFTER both consults have already
+    fired (THE BUILD item 4, the chalkboard dry-run at kb=2); a live re-derivation would
+    need membrane_rack.py's consult3 called mid-replay -- not built here."""
+    from tinygrad import Tensor, dtypes
+    ov = overrides or {}
+    kb_done = int(snapshot["kb_done"])
+    assert kb_done == kb_start, f"snapshot is for kb_done={kb_done}, kb_start={kb_start} must match"
+    B = int(snapshot["B"]); K_B = int(snapshot["K_B"])
+    waist = ov.get("waist", snapshot["waist"]); tokmask = ov.get("tokmask", snapshot["tokmask"])
+    tree = snapshot["tree"]
+    facts3 = snapshot["facts3"]; facts5 = snapshot["facts5"]
+    anchor = snapshot["anchor"]; amask = snapshot["amask"]; res_map = snapshot["res_map"]
+
+    # THE REPEATED-CALL FIX: snapshot["state"]/["ctx"] are shared mutable structures (the
+    # whole point of a snapshot is to replay it "thousands of times per hour" -- the
+    # orthodontist's gym, 2026-10-07 17:27). dict(...) alone is a SHALLOW copy: a list
+    # value (breaths, rbias_all, busreg_terms, ...) is still the SAME list object, and
+    # breath_step appends to it in place -- a second replay() call on the same snapshot
+    # would keep growing it (verified: the chalkboard dry-run's own null-vs-text-copy
+    # pair caught this on the first run). Every list-valued entry gets a fresh shallow
+    # copy (the tensors inside are never mutated in place, so copying the list is enough).
+    ctx = dict(snapshot["ctx"])
+    state = {k: (list(v) if isinstance(v, list) else v) for k, v in snapshot["state"].items()}
+    ctx["waist"] = waist; ctx["tokmask"] = tokmask
+    sent = ctx["mc_sent"]   # forward()'s own idiom: ctx carries `sent` only under this key
+
+    bank_kwargs = {}
+    if "chalk3" in ov or "chalk5" in ov:
+        bank_kwargs = {"chalk3": ov.get("chalk3"), "chalk5": ov.get("chalk5")}
+    bank = _make_bank(p, waist, tokmask, B, sent=sent, tree=tree, **bank_kwargs)
+    ctx["bank"] = bank
+    ctx["rot2"] = rot2_interleaved   # the one frozen definition; _snap_dump excludes it, not serialized
+    ctx.update({k: v for k, v in ov.get("ctx", {}).items() if k != "bank"})
+    state.update(ov.get("state", {}))
+
+    vst = ctx["vst"]
+    breaths = state["breaths"]
+    fst = breaths[0]
+    # qst/vat are breath-0 bank reads, independent of the breath loop's state and of
+    # lsent (every read-mode caller — membrane_rack.py, loop_val.py, chain_acc — passes
+    # lsent=None; replay assumes the same, matching the gate's and the dry-run's bodies).
+    _, vat = bank(p["vq"], K_VARS, pbias=None)
+    qst, _qa = bank(p["qq"], 1)
+
+    _vst_at = list(snapshot["vst_at"])
+    while len(_vst_at) < K_B:
+        _vst_at.append(vst)
+
+    for kb in range(kb_start + 1, K_B):
+        breath_step(p, state, kb, ctx)
+        if conductor(kb).facts3_inject and facts3 is not None:   # THE CONDUCTOR: kb == 2
+            vst = _fact_inject(p, vst, facts3); ctx["vst"] = vst
+            for _r in range(3, K_B):
+                _vst_at[_r] = vst
+        if conductor(kb).facts5_inject and facts5 is not None:   # THE CONDUCTOR: kb == 4
+            vst = _fact_inject(p, vst, facts5); ctx["vst"] = vst
+            for _r in range(5, K_B):
+                _vst_at[_r] = vst
+        # ALG_WRITEBACK / _WHEEL / the in-graph certificate pass are NOT replayed here:
+        # none of the gate's three bodies (unset/role8/hierd) or RK_241's env arm them
+        # (grep confirms); a future caller that needs them must thread _tok/_WHEEL state
+        # through `overrides` and extend this loop the same way forward()'s does.
+
+    _rb_last = state.get("rb_last"); _rptr_last = state.get("rptr_last"); _s4_last = state.get("s4_last")
+    _rbias_all = state.get("rbias_all"); _rbias2_all = state.get("rbias2_all")
+    _aspan_all = state.get("aspan_all"); _ospan_all = state.get("ospan_all"); _rcue_all = state.get("rcue_all")
+    RINGS = bool(ctx.get("RINGS")); XOUT = bool(ctx.get("XOUT"))
+    m_c = state.get("m_c") if RINGS else None
+    cmt_logits = state.get("cmt_logits") if RINGS else None
+    x_rel = state.get("x_rel") if RINGS else None
+
+    out = _forward_tail(p, B, K_B, waist, tokmask, vst, vst, _vst_at, fst, qst, ctx["fat0"], vat,
+                         ctx.get("slot_mask"), breaths, state, ctx, anchor, amask, res_map,
+                         RINGS, XOUT, m_c, cmt_logits, x_rel,
+                         _rb_last, _rptr_last, _s4_last, _rbias_all, _rbias2_all, _aspan_all,
+                         _ospan_all, _rcue_all)
+    return out
+
+
+def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, drop=None, anchor=None, amask=None, gmod=None, pmask=None, lsent=None, reg=None, fact_buf=None, mh_mass=None, mh_atlas_traj=None, xcorr=None, res_map=None, hud=None, ident=None, busreg_ramp=None, valfact=None, stop_after=None, facts3=None, facts5=None, tree=None, cert3=None, cert5=None, rack3=None, rack5=None):
+    from tinygrad import Tensor, dtypes   # audit 2026-09-01: was a
+    # SCOPE ACCIDENT (bound only via the sixwave/sync branches — any
+    # SIXWAVE-off config killed five organs at step 1)
+    B = trunk.shape[0]
+    if trunk.dtype != dtypes.float:
+        trunk = trunk.cast(dtypes.float)   # perf audit #4: half feeds upcast in-graph (exact)
+    waist = (trunk @ p["waist_w"] + p["waist_b"]).gelu() + p["sent_emb"][sent]
+    if ALG_HUD and hud is not None:
+        # THE TOKEN HUD (2026-09-21): a deterministic per-token feature
+        # strip added to the waist ONCE, here, where it is formed from the
+        # trunk states — so every downstream consumer (the bank's keys,
+        # breath 0's grounding read, every later breath) sees it, never
+        # threaded through the per-breath loop. `hud` arrives (B, T, 5)
+        # int (hud_row_features / hud_build_array, host-side, no gain).
+        _hi = hud if hud.dtype == dtypes.int else hud.cast(dtypes.int)
+        for _hfi, _hnm in enumerate(HUD_TABLE_NAMES):
+            waist = waist + p[_hnm][_hi[:, :, _hfi]]
+    if FED_WAIST and "fed_w2b" in p:
+        # FED item 3: waist2 = waist + MLP(waist), output ZERO-INIT —
+        # exact zeros at birth; every downstream organ (bank closure,
+        # breath ctx, step-trainer tap) inherits the rebound name
+        waist = waist + ((waist @ p["fed_w2a"] + p["fed_w2a_b"]).gelu()
+                         @ p["fed_w2b"] + p["fed_w2b_b"])
+    if ALG_T1 and "t1_dw" in p and "t1" not in _SEVER:
+        waist = _t1_conv(p, waist, tokmask)   # T1: the token convolution (a road)
+
+    bank = _make_bank(p, waist, tokmask, B, sent=sent, tree=tree)
+    if N_SCR and slot_mask is not None:
+        # FED item 6 mask ruling: scratch rows (queries) OPEN to all;
+        # scratch columns CLOSED here (no cold read-back at birth —
+        # the raising law; the fed mixer's zero door is the channel)
+        _f6c = slot_mask[:, :, :1] * 0.0            # (B, L_FAC, 1) zeros
+        _f6top = Tensor.cat(slot_mask,
+                            *([_f6c] * N_SCR), dim=2)  # (B, L_FAC, L_TOT)
+        _f6r = _f6top[:, :1, :] * 0.0 + 1.0         # (B, 1, L_TOT) ones
+        slot_mask = Tensor.cat(_f6top,
+                               *([_f6r] * N_SCR), dim=1)  # (B, L_TOT, L_TOT)
+    _lb = None
+    if lsent is not None:               # V2: letter-keyed partition — imposed
+        _lb = lsent.reshape(B, 1, K_VARS, -1) * float(os.environ.get("LS_A", "1.0"))
+    vst, vat = bank(p["vq"], K_VARS, pbias=_lb)
+    _vst_base = vst   # pre-injection tap (step trainer reads this)
+    if int(os.environ.get("ALG_ALT2", "0")) and fact_buf is not None:
+        # ALTERNATOR V2 injection: symbolic facts ((B, 24, 4): known flag
+        # + MSD digits/9) condition the var-slot states that args/res/y/
+        # query pointers and every breath read against. BOTH guards are
+        # load-bearing: env unset -> byte-identical baseline; fact_buf
+        # None -> byte-identical too (the injection is skipped entirely).
+        vst = _fact_inject(p, vst, fact_buf)
+    _vst_at = [vst] * int(os.environ.get("ALG_BREATH", "1"))   # THE THREE CONSULTS: the variable states each rung's heads read against (updated at breaths 2 and 4 when facts arrive); K_B is bound below from the same env
+    _pb = None
+    _pb_prior = None
+    _sync = None
+    _swtick = None
+    if ALG_SYNC:
+        from tinygrad import Tensor, dtypes
+        _A = float(os.environ.get("SYNC_A", "1.0"))
+        _phi = np.pi / 3.0 * (np.arange(L_TOT) % 6)
+        _cph = Tensor(np.cos(_phi).astype(np.float32), dtype=dtypes.float)
+        _sph = Tensor(np.sin(_phi).astype(np.float32), dtype=dtypes.float)
+        _th0 = (sent - (sent // 6) * 6).float() * (math.pi / 3.0)
+        _cth, _sth = _th0.cos(), _th0.sin()
+        _scr = None
+        if int(os.environ.get("SYNC_SCRAMBLE", "0")):
+            _scr = np.random.RandomState(227).uniform(0, 2 * np.pi, 8)
+        def _mk_pb(kb):
+            _d = float(_scr[kb]) if _scr is not None else kb * (math.pi / 3.0)
+            ck, sk = math.cos(_d), math.sin(_d)
+            cthk = _cth * ck - _sth * sk
+            sthk = _sth * ck + _cth * sk
+            return (_cph.reshape(1, 1, L_TOT, 1) * cthk.reshape(B, 1, 1, -1)
+                    + _sph.reshape(1, 1, L_TOT, 1)
+                    * sthk.reshape(B, 1, 1, -1)) * _A
+        _php = np.zeros((L_TOT, H_W), np.float32)
+        def _mk_osc(kb):   # the receiver's local oscillator — same clock
+            _d = float(_scr[kb]) if _scr is not None else kb * (math.pi / 3.0)
+            _o = _php.copy()
+            _o[:, 0] = np.cos(_phi + _d) * _A
+            _o[:, 1] = np.sin(_phi + _d) * _A
+            return Tensor(_o, dtype=dtypes.float).reshape(1, L_TOT, H_W)
+        _sync = (_mk_pb, _mk_osc)
+        _pb = _mk_pb(0)
+    if ALG_SIXWAVE:
+        from tinygrad import Tensor, dtypes
+        # six helical carriers: token phase from sentence index (mod 6, 60
+        # deg apart, antiphase pairs); slot phase from slot index mod 6.
+        # Resonance bias cos(phi_slot - theta_tok) enters the factor bank's
+        # scores through the zero-init gate — structure, never supervision.
+        if int(os.environ.get("SW_SCRAMBLE", "0")):
+            _tab = Tensor(np.random.RandomState(227).randint(0, 6, 16)
+                          .astype(np.float32) * (math.pi / 3.0), dtype=dtypes.float)
+            _th = _tab[sent - (sent // 16) * 16]
+        else:
+            _th = (sent - (sent // 6) * 6).float() * (math.pi / 3.0)
+        _phi = np.pi / 3.0 * (np.arange(L_TOT) % 6)
+        _cph = Tensor(np.cos(_phi).astype(np.float32), dtype=dtypes.float)
+        _sph = Tensor(np.sin(_phi).astype(np.float32), dtype=dtypes.float)
+        _sw_term = (_cph.reshape(1, 1, L_TOT, 1) * _th.cos().reshape(B, 1, 1, -1)
+               + _sph.reshape(1, 1, L_TOT, 1)
+               * _th.sin().reshape(B, 1, 1, -1)) * p["sw_g"].reshape(1, 1, 1, 1)
+        _pb = _sw_term if _pb is None else _pb + _sw_term  # audit #6: adds
+        if ALG_SW_TICK:                   # THE SIX-WAVE TICK: the per-breath maker (kb = 1..6)
+            _sw_cph, _sw_sph, _sw_th = _cph, _sph, _th
+            def _mk_swtick(kb, _c=_sw_cph, _s=_sw_sph, _t=_sw_th):
+                _thk = _t - conductor(kb).sw_tick_phase    # THE CONDUCTOR: slot phase +d == token phase -d
+                return (_c.reshape(1, 1, L_TOT, 1) * _thk.cos().reshape(B, 1, 1, -1)
+                        + _s.reshape(1, 1, L_TOT, 1) * _thk.sin().reshape(B, 1, 1, -1)) * p["sw_g"].reshape(1, 1, 1, 1)
+            _swtick = _mk_swtick
+    if pmask is not None:                 # A0: imposed route-mask (wiring,
+        _pb = pmask if _pb is None else _pb + pmask   # not knobs — no grad)
+    if xcorr is not None:
+        # THE CORRESPONDENCE CHART (ALG_XCORR, 2026-09-19): a coordinate-
+        # free, era-free PRIOR on where each slot's FACTOR/VALUE binding
+        # lives in the text, mined from gold spans (no model involved).
+        # `xcorr` arrives (B, L_FAC, T) with the road's gain(s) ALREADY
+        # baked in and each term clipped to [-4, 4] by the caller
+        # (xcorr_row_bias / xcorr_build_array) — imposed structure, like
+        # pmask/lsent above, applied ONLY at this grounding read, never
+        # threaded through the per-breath loop.
+        _xb = xcorr
+        if _xb.dtype != dtypes.float:
+            _xb = _xb.cast(dtypes.float)
+        if N_SCR:
+            _xb = Tensor.cat(_xb, Tensor.zeros(B, N_SCR, _xb.shape[-1]), dim=1)
+        _xb = _xb.reshape(B, 1, L_TOT, _xb.shape[-1])
+        _pb = _xb if _pb is None else _pb + _xb
+    # THE TOKEN SEAL (apply_tok_seal.py, 2026-09-09): breath 0's
+    # GROUNDING. `loop` leaves it intact (the slots are grounded once
+    # and only the re-reading is severed); `all` flattens it too — the
+    # floor, where no factor slot ever aims at a token.
+    # NOT SEALED, registered: the VAR bank above (vst — the pointer
+    # TARGET space; flattening it deletes the alphabet rather than
+    # severing a reading) and the QUERY bank below.
+    fst, fat = bank(p["fq"], L_TOT, pbias=_pb, flat=_tok_seal_on(0))
+    qst, _qa = bank(p["qq"], 1)
+
+    # BRICK-P breathing (2026-07-09): K-1 refinement passes. Each breath
+    # re-reads the text conditioned on current beliefs (bank-with-extra) +
+    # MASKED slot-to-slot settling — evidence-sharing topology AS STRUCTURE
+    # (the v98 escape; free-form slot attention is the perceiver trap and is
+    # not built). Deltas enter via zero-init W_bo + init-closed gates:
+    # at init the K-breath output is byte-identical to the incumbent.
+    K_B = int(os.environ.get("ALG_BREATH", "1"))
+    breaths = [fst]
+    RINGS = int(os.environ.get("ALG_RINGS", "0")) and "W_cmt" in p
+    # ORGAN-2: the reverse gear (spec §2). Release DYNAMICS only — the
+    # revoke signal is an INPUT PORT: transport arrives solver-side, from
+    # outside the neural partition (#152's leading candidate). Rates are
+    # PINNED (2-3 breath release scale; #136), never tuned by feel. No
+    # new params: no new terminal; the register clause holds (no settle,
+    # no entropy — revoke is a named contradiction or nothing).
+    XOUT = RINGS and int(os.environ.get("ALG_XOUT", "0"))
+    XARM = os.environ.get("ALG_XARM", "dump")        # dump|graded|elastic
+    XR_GRADED, XR_ELASTIC = 0.5, 0.15                # pinned, breath-scale
+    if RINGS:
+        m_c = (fst * 0.0).sum(-1, keepdim=True)      # (B,L_FAC,1) zeros
+        anchor = fst
+        cmt_logits = []
+        x_rel = m_c                                   # released-mass ledger
+    _rot2 = rot2_interleaved   # interleaved-real phasor rotation (the one definition, module level; THE COMPLEX-TENSOR FENCE)
+
+    _bus_reg = None
+    _rb_last = None
+    _rptr_last = None
+    _s4_last = None
+    _rbias_all = None
+    _rbias2_all = None
+    _aspan_all = None
+    _ospan_all = None
+    _rcue_all = None
+    _garage = None
+    global _CENSUS                  # the port census hook (inert unless
+    try: _CENSUS                    # port_census.py arms it — same
+    except NameError: _CENSUS = None  # pattern as _IMP below)
+    global _IMP                     # the impulse hook (systems-ID probe;
+    try: _IMP                       # None everywhere except under
+    except NameError: _IMP = None   # impulse_response.py — inert in training)
+    if (int(os.environ.get("ALG_BUSGARAGE", "0")) and "W_gq" in p
+            and "W_bind2" in p):
+        assert int(os.environ.get("ALG_BUSGARAGE", "0")) >= 2, \
+            "garage v1 (raw wires) is dead — canonical shelf only"
+        global _SGC
+        try: _SGC
+        except NameError: _SGC = None
+        if _SGC is None:
+            import numpy as _np4
+            from tinygrad import Tensor as _Ts4
+            _bz4 = _np4.load(_bind_codes_path())
+            _conj4, _plus4 = {}, {}
+            for _rn4 in ("arg1", "arg2", "res", "op"):
+                _th4 = _bz4[f"theta_{_rn4}"]
+                _conj4[_rn4] = (_Ts4(_np4.cos(-_th4).astype(_np4.float32)),
+                                _Ts4(_np4.sin(-_th4).astype(_np4.float32)))
+                _plus4[_rn4] = (_Ts4(_np4.cos(_th4).astype(_np4.float32)),
+                                _Ts4(_np4.sin(_th4).astype(_np4.float32)))
+            _SGC = (_conj4, _plus4, _Ts4(_bz4["CB"].astype(_np4.float32)))
+        _garage = []
+    _snaps = []
+    _snaps_g = []   # router graded-input repair: softmax snap tuple (ALG_ROUTER_GRADED)
+    _bs_ctx = _bs_state = None
+    if K_B > 1 and slot_mask is not None and "W_bo" in p:
+        cur = fst
+        # FINAL BOSS rung 0 (2026-09-03): the loop BODY lives in
+        # module-level breath_step (pure code motion — bit-identical by
+        # construction); state carries what crosses breath boundaries,
+        # ctx the per-forward constants. Under _STEP_TAP hold the fused
+        # loop is SKIPPED — the step trainer drives the walk itself.
+        _fed_nl0 = None
+        if FED_NL0 and int(os.environ.get("ALG_MASKHEAD", "0")) \
+                and "fed_nl0_w" in p:
+            # FED item 8: the breath-0 invariant NL page (two-tap law)
+            # — the nl-tap's pooled read, computed ONCE (the fq bank
+            # pass has no cur/fact/mask reach), DETACHED at entry (the
+            # mask head's metadata contract)
+            _fed_nl0 = (_fed_core(fat).mean(1).unsqueeze(1)
+                        @ waist).squeeze(1).detach()
+        # THE BREATH-0 ANCHOR (ALG_ANCHOR=<beta>, 2026-09-19): fat (B,
+        # L_TOT, T), the grounding read's head-mean slots<-tokens
+        # attention — NOT FED-trimmed, so scratch rows ride as-is —
+        # detached (a keep-bias, no grad) and pre-scaled by beta once
+        # here rather than every breath. None (the default, beta==0)
+        # means breath_step's ctx.get returns None and nothing is added
+        # anywhere: bit-identical.
+        _anch_bias0 = ((ALG_ANCHOR * fat.detach()).reshape(B, 1, L_TOT, -1)
+                       if ALG_ANCHOR else None)
+        _ident_tok = None
+        if ALG_BUSREG or ALG_IDKEY:
+            # THE BUS REGISTER's identity stream (2026-09-22): the token
+            # ids' rows of the frozen identity table, gathered ONCE per
+            # forward (the p["sent_emb"][sent] idiom), (B, T, 2P) float.
+            # No port = a hard error (no silent dark organ): every
+            # caller that arms the register threads `ident`.
+            assert ident is not None, (
+                "ALG_BUSREG / ALG_IDKEY needs forward(..., ident=<(B, T) int token ids>) "
+                "— ident_build_array / ident_row_ids (host-side); the "
+                "trainer, loop_val and chain_acc thread it; a reader that "
+                "does not is refused here rather than run dark")
+            _idi = ident if ident.dtype == dtypes.int else ident.cast(dtypes.int)
+            _ident_tok = _ident_table()[_idi].cast(dtypes.float)
+        _valtag_v = None
+        if ALG_VALREG_ON:
+            # THE VALUE STREAM's per-forward tags (2026-09-22): each
+            # variable's known value as its numeral's tag. No facts (the
+            # open pass-1 by design; a reader without the port) = no known
+            # values = zero tags, stated here: the stream is SILENT, never
+            # dark by accident (the register still runs; this stream adds
+            # zeros).
+            assert ALG_BUSREG, "ALG_VALREG / ALG_VALREG_ADDR need ALG_BUSREG (the register they ride)"
+            _valtag_v = (_valtag_from_facts(valfact, B) if valfact is not None
+                         else Tensor.zeros(B, K_VARS, int(os.environ.get("ALG_BIND_D", "128"))))
+        _bs_ctx = {"B": B, "K_B": K_B, "waist": waist, "tokmask": tokmask,
+                   # THE BUS REGISTER's per-forward constants (2026-09-22):
+                   # dict keys only — zero compute when ALG_BUSREG unset.
+                   "vst": vst, "res_map": res_map, "ident_tok": _ident_tok,
+                   "busreg_ramp": busreg_ramp,   # THE FADE-IN's scalar (training only; None = full scale)
+                   "fat0": fat,   # THE IDENTITY KEY's breath-1 query source: breath 0's grounding attention (B, L_TOT, T)
+                   "valtag_v": _valtag_v,
+                   "anchor_bias0": _anch_bias0,
+                   "cert3": cert3, "cert5": cert5,   # THE TRAINED CERTIFIER-MASK ROAD (2026-09-28): per-breath pbias from kb 3 / 5 on (breath_step below)
+                   "rack3": rack3, "rack5": rack5,   # THE RACK (2026-10-05): the packed dry flags + claimed tokens per consult, read from kb 3 / 5 on (breath_step: the claim + the freeze)
+                   "slot_mask": slot_mask, "bank": bank, "rot2": _rot2,
+                   "sync": _sync, "swtick": _swtick, "drop": drop, "gmod": gmod,
+                   "revoke": revoke, "tail": tail, "reg": reg,
+                   # MASK HEAD metadata (2026-09-05; plumbing only — a
+                   # dict key, zero compute when ALG_MASKHEAD unset).
+                   # ctx also serves the OPTIONAL per-seam ports read
+                   # via ctx.get: "mh_mass" (per-var domain-mass from
+                   # the solver ping) and "mh_atlas" (step_atlas
+                   # consult page) — populated by seam drivers only.
+                   "fact_buf": fact_buf, "mh_mass": mh_mass,
+                   "fed_nl0": _fed_nl0,
+                   "mh_atlas_traj": mh_atlas_traj,
+                   "RINGS": RINGS, "XOUT": XOUT, "XARM": XARM,
+                   "XR_GRADED": XR_GRADED, "XR_ELASTIC": XR_ELASTIC,
+                   # THE MASK COOKER's sentence-skeleton port
+                   # (ALG_MASK_COOK_SKEL=sentence): the token->sentence
+                   # ids. A dict key only — zero compute when the door
+                   # is unset or the skeleton is `self`.
+                   "mc_sent": sent}
+        _bs_state = {"cur": cur, "breaths": breaths, "nb": None,
+                     "tree_prev_at": (fat if ALG_TREE2 else None),   # FORM 2: breath 0's attention seeds the first prior
+                     "eyes_m": None,   # THE EYES (2026-10-05): the smoothed hands, born at kb == 1 (m_0 = 0)
+                     # MASK HEAD storage (2026-09-05): the graded
+                     # adjacency the organ consumed at the previous
+                     # breath_step (detached) — Δ-visibility into the
+                     # commitment FLOW; the notebook-threading contract
+                     "mh_prev": None,
+                     # FED item 9: shelf lane-2 ink (born at kb == 1)
+                     "nb2": None,
+                     "nb_st": None, "garage": _garage, "snaps": _snaps,
+                     "snaps_g": _snaps_g, "rb_last": _rb_last,
+                     "rptr_last": _rptr_last, "s4_last": _s4_last,
+                     "m_c": m_c if RINGS else None,
+                     "anchor": anchor if RINGS else None,
+                     "cmt_logits": cmt_logits if RINGS else None,
+                     "x_rel": x_rel if RINGS else None}
+        if not (_STEP_TAP is not None and _STEP_TAP.get("hold")):
+            _tok = waist
+            # THE THREE CONSULTS (2026-09-24, THE ALTERNATION SPEC §2): a
+            # partial pass stops after `stop_after` loop breaths (the
+            # heads at that breath feed the solver's consult on the host,
+            # between captured graphs — never a hop inside one); the
+            # consult's forced values re-enter as facts3 (after breath 2,
+            # read from breath 3) and facts5 (after breath 4, read from
+            # breath 5) through the ALT2 injection into the variable
+            # states every later rung and the final heads read against.
+            # All three None = the loop as it was, bit-identical.
+            _kb_stop = (min(K_B, int(stop_after) + 1) if stop_after else K_B)
+            for kb in range(1, _kb_stop):
+                if ALG_TOKLOOP and "tok_wq" in p:      # THE NL LOOP: the token step, then the slot step reads it
+                    _tok = _token_step(p, _tok, tokmask, sent, B, kb)
+                    _bs_ctx["waist"] = _tok
+                    _bs_ctx["bank"] = _make_bank(p, _tok, tokmask, B, sent=sent)
+                breath_step(p, _bs_state, kb, _bs_ctx)
+                if conductor(kb).facts3_inject and facts3 is not None:   # THE CONDUCTOR: kb == 2
+                    vst = _fact_inject(p, vst, facts3)   # consult 1's values: read from breath 3 on
+                    _bs_ctx["vst"] = vst
+                    for _r in range(3, K_B):
+                        _vst_at[_r] = vst
+                if conductor(kb).facts5_inject and facts5 is not None:   # THE CONDUCTOR: kb == 4
+                    vst = _fact_inject(p, vst, facts5)   # consult 2's values: read from breath 5 on
+                    _bs_ctx["vst"] = vst
+                    for _r in range(5, K_B):
+                        _vst_at[_r] = vst
+                if ALG_WRITEBACK and "wb_w" in p and kb < K_B - 1:   # THE WRITE-BACK: the text learns what was committed to it
+                    _tok = _writeback(p, _tok, _bs_state["cur"], _bs_state["fat_cur"], tokmask, B, kb)
+                    _bs_ctx["waist"] = _tok
+                    _bs_ctx["bank"] = _make_bank(p, _tok, tokmask, B, sent=sent)
+                if _WHEEL is not None and kb < K_B - 1:
+                    _bs_state["wheel_bias"] = _wheel_turn(p, _bs_state, kb, fat, sent, vst, B)
+                # THE CERTIFICATE PASS (2026-09-18): the IN-GRAPH twin of the
+                # wheel-turn above — a precomputed (row, breath) certificate,
+                # read live from a fixed device buffer (do_train arms it; None
+                # everywhere else, so this whole road is dead weight when
+                # ALG_WHEEL_CERT is unset). No host call, no python branching
+                # on tensor values: the JIT stays on (unlike ALG_WHEEL_TRAIN).
+                _cb = globals().get("_CERT_BUF")
+                # THE EVAL/READ FENCE: _CERT_BUF is a fixed BATCH-shaped
+                # buffer, armed once for the whole training run — a same-
+                # process eval call (_quick_val's fixed batch of 8) never
+                # matches the train batch's B and must see None, exactly
+                # like loop_val/chain_acc's fresh imports do by construction.
+                if _cb is not None and int(_cb.shape[0]) == B and kb < K_B - 1:
+                    from mycelium.loop_bridge import cert_spotlight
+                    _certF = (_cb[:, kb, :] > 0).float()
+                    _bs_state["wheel_melt"] = (_certF if _WHEEL_MELT is not None else None)
+                    _bs_state["wheel_bias"] = cert_spotlight(
+                        _certF, fat, sent, _WHEEL_CERT_BETA, _WHEEL_CERT_MODE)
+                # THE SNAPSHOT PORT (ALG_SNAP_AT / ALG_SNAP_OUT, 2026-10-07, worktree
+                # mycelium-wt8, branch replay; THE SAVE POINT, docs/phase1_skeleton_spec.md
+                # 2026-10-07 17:27): at the END of breath kb (after breath_step for kb and
+                # this kb's own consult-injection/writeback/wheel updates — everything
+                # breaths kb+1..K_B-1 will read), dump _bs_ctx + _bs_state + the few
+                # forward-level params the tail needs (facts3/facts5/anchor/amask/res_map,
+                # waist/tokmask/tree) to an npz. Host-side only (.realize().numpy() —
+                # NEVER call this inside a JIT'd step; breath_step's own JIT callers never
+                # set ALG_SNAP_AT). Both env vars default empty: zero cost, same code path,
+                # bit-identical when unset.
+                _ALG_SNAP_AT = int(os.environ.get("ALG_SNAP_AT", "0") or "0")
+                if _ALG_SNAP_AT and kb == _ALG_SNAP_AT:
+                    _snap_dump(os.environ["ALG_SNAP_OUT"], B=B, K_B=K_B, kb_done=kb,
+                               waist=waist, tokmask=tokmask, tree=tree,
+                               facts3=facts3, facts5=facts5, anchor=anchor, amask=amask,
+                               res_map=res_map, vst_at=list(_vst_at),
+                               ctx=_bs_ctx, state=_bs_state)
+            cur = _bs_state["cur"]
+            _rb_last = _bs_state["rb_last"]
+            _rptr_last = _bs_state.get("rptr_last")
+            _s4_last = _bs_state.get("s4_last")
+            _rbias_all = _bs_state.get("rbias_all")
+            _rbias2_all = _bs_state.get("rbias2_all")
+            _aspan_all = _bs_state.get("aspan_all")
+            _ospan_all = _bs_state.get("ospan_all")
+            _rcue_all = _bs_state.get("rcue_all")
+            if RINGS:
+                m_c = _bs_state["m_c"]
+                anchor = _bs_state["anchor"]
+                cmt_logits = _bs_state["cmt_logits"]
+                x_rel = _bs_state["x_rel"]
+
+    out = _forward_tail(p, B, K_B, waist, tokmask, vst, _vst_base, _vst_at, fst, qst, fat, vat,
+                         slot_mask, breaths, _bs_state, _bs_ctx, anchor, amask, res_map,
+                         RINGS, XOUT, (m_c if RINGS else None), (cmt_logits if RINGS else None),
+                         (x_rel if RINGS else None),
+                         _rb_last, _rptr_last, _s4_last, _rbias_all, _rbias2_all, _aspan_all,
+                         _ospan_all, _rcue_all)
     return out
 
 
