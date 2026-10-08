@@ -48790,3 +48790,65 @@ rows carrying chalk must have a slot ATTEND a chalk token (mass >= 0.1) or the r
 released-row count; the derived-argument cell (the governor census's 61 % syntax-invisible wall is
 its target). The merge of branch rack3 into gen-weights (which now carries listen) and a post-merge
 gate precede the fire (delegated).
+
+### 2026-10-07 (22:39) — THE RACK3 MERGE + GATE + RK3X FIRED: branch rack3 (22e3b2e8, 5f5ecb85) merged into gen-weights (98f06446); the post-merge CPU gate PASSED every reference line to the digit, rack3/chalk loss-identical to rackleaf (0 released/0 derived on the tiny64 fixture), rk3x RUNS (10.8447/8.7772, a new composition); RK3X_241 fired as pc-rk3x, step 0 = 57.7594 (the family's birth loss), steady ~0.27-0.30 s/step, [rack-release] already nonzero by step 1500 (2/911 rows)
+
+THE MERGE: rack3 (branch off rack a4dd02b9, already gen-weights' ancestor) adds FORM 3 — RELEASE ON
+CONTRADICTION (ALG_RACK_RELEASE) and THE CHALKBOARD (ALG_CHALK/ALG_CHALK_N) across scripts/
+phase1_algebra_head.py, scripts/loop_val.py, scripts/chain_acc.py, mycelium/jit_read.py (all four
+auto-merged clean — listen's ALG_HIER_LISTEN lives only in phase1_algebra_head.py's conductor(kb)
+table, disjoint from rack3's additive ports) and scripts/step_trainer.py (one manual resolution: the
+REFUSED tuple keeps both HEAD's ALG_HIER_LISTEN line and rack3's ALG_RACK_RELEASE + ALG_CHALK/
+ALG_CHALK_N line). Every new env default stays off. Commit 98f06446.
+
+THE GATE (.cache/rack3_merge_gate.sh, derived from .cache/listen_gate.sh + .cache/rack3_gate.sh,
+pointed at /home/bryce/mycelium; log .cache/rack3_merge_gate.log): unset 5.2995/0.0279 (bit-
+identical); hierd 10.8656/8.8945; rkarm 10.8373/8.7737; listenrack 10.8429/8.7679; damp35
+10.8467/8.7842; rackleaf 10.8373/8.7737 — all five reproduced to the digit. rack3 (rackleaf +
+ALG_RACK_RELEASE=1) 10.8373/8.7737 and chalk (rackleaf + ALG_CHALK=1) 10.8373/8.7737: both loss-
+identical to rackleaf (0 rows released, 0 derived facts beyond the literal givens on this 2-row
+tiny64 fixture — stated, not silently passed). rk3x (hierd's S8 + ALG_HIER_DAMP=3,5,0 + ALT3 +
+CERT 2.0 + RACK leaf given_unique + RELEASE=1 + CHALK=1) RUNS: 10.8447/8.7772, a genuinely new
+composition (differs from damp35's 10.8467/8.7842 — the rack's own leaf freeze moves it). No
+Error/Traceback/assert on any of the nine configs.
+
+MEMBRANE_RACK.PY EXTENDED (this tree had no chalk port at all — rack3's chalk ports were threaded
+into loop_val.py/chain_acc.py/jit_read.py, never into this standalone CPU census script): added
+chalk_pack/ALG_CHALK/ALG_CHALK_N to the import, threaded chalk3/chalk5 through consult3's two
+forward() calls exactly as loop_val's own _consult3/_consult_into thread them (chalk5 supersedes
+chalk3, no union), and added THE CHALKBOARD CENSUS (chalk_census(), gated on has_chalk): per-row
+chalk-fill counts at each consult (chalk_n3/chalk_n5, saved to the raw npz) and, per active breath
+(cert3_active kb in {3,4}, cert5_active kb in {5,6} — the conductor's own static gate), the
+attention mass each slot places on the chalk block's last ALG_CHALK_N token columns (reusing the
+already-captured fat_mass array — no new JIT-side tap, per the chalk splice's own "no .numpy()/print
+inside the JIT" rule); prints as CHALK lines + the ledger's own >=30%-of-carrying-rows-attend
+(mass>=0.1) bar verdict. VERIFIED: a synthetic 4-row unit test confirms the mass summation/argmax/
+bar logic; a live 2-row CPU smoke read under the FULL rk3x env (a quick from-WARM_FROM tiny64
+checkpoint trained just to allocate chalk_dig/chalk_tag, since RKX_241's own checkpoint correctly
+HARD-ERRORS on the key mismatch per the eval-only-load law) ran the full ALT3+CERT+RACK+CHALK
+forward cycle with no crash and wrote the raw npz with chalk_n3/chalk_n5/has_chalk populated
+(all-zero on this undertrained 2-step checkpoint, as expected — nothing to derive yet).
+
+THE CHAIN (.cache/rack_chain_RK3X.sh, derived from the audit-fixed .cache/rack_chain_RKX.sh): arm
+RK3X_241 = RKX_241's exact env (SURF8 + ALG_HIER_DAMP=3,5,0 TAU=0 + ALG_ALT3=1 ALG_CERT=2.0 +
+ALG_RACK=1 ALG_RACK_TESTS=given_unique ALG_RACK_FREEZE=leaf) + ALG_RACK_RELEASE=1 ALG_CHALK=1,
+SNAP_EVERY=8000, 48k, BATCH=8; self-heals .cache/rack3_merge_gate.log if missing (re-runs the gate
+script, now pointed at the main tree directly — no sed rewrite needed, unlike the listen-gate
+chains); checks the gate's unset + rk3x lines before firing; preflight.py PASS (34 tracked paths, 6
+loop-expansions, every required input present). Paired reads vs RKX_241 (THE BAR, >= +0.015), RK_241,
+HS_241; golden24; clock-band collect; membrane_rack.py (WALL/HIT/CHALK lines); rack_dryness_census.py
+(DRY); scripts/rack_numeral_audit.py appended to the same dryness-census file (DEV=CPU override
+added — the script's own os.environ.setdefault("DEV","CPU") is a no-op once $FAM has already set
+DEV=PCI+AMD, so the chain sets it explicitly, matching the one existing precedent,
+.cache/rack_numeral_audit_fix_run.sh); the open reads' own "[rack] ... released N/M" lines echoed
+as RELEASED per fixture; reads.py ingest.
+
+FIRED: systemd-run --user --unit=pc-rk3x --property=WorkingDirectory=/home/bryce/mycelium
+/usr/bin/bash /home/bryce/mycelium/.cache/rack_chain_RK3X.sh (22:28). Confirmed: step 0 loss=57.7594
+(the family's birth loss, matching every prior arm — the fresh-init forward pass is unaffected by
+the new knobs until a row actually releases or derives something); steady 0.27-0.30 s/step from
+step 5 (in the family's usual range); [rack-release] cumulative nonzero by step 1000 (2/327) and
+growing (2/911 at step 1500) — FORM 3 is firing in training, not dormant. UNVERIFIED (the run takes
+hours): the full masked-wild/mint/silver reads, the three paired bars, the chalk census's own >=30%
+verdict, the released-row count on wild, golden24, and the chain's final "RACK RK3X CHAIN COMPLETE"
+line — all pending this run's completion, to be read and banked in a later entry.

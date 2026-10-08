@@ -1,4 +1,19 @@
-# NEXT SESSION — cold-start entry (updated 2026-10-07 18:48)
+# NEXT SESSION — cold-start entry (updated 2026-10-07 22:39)
+
+**THE CARD: RK3X_241 RUNNING (pc-rk3x, fired 22:28).** Branch rack3 (22e3b2e8, 5f5ecb85) merged into
+gen-weights (98f06446); the post-merge CPU gate (.cache/rack3_merge_gate.sh/.log) PASSED every
+reference line (unset/hierd/rkarm/listenrack/damp35/rackleaf to the digit; rack3/chalk loss-
+identical to rackleaf; rk3x RUNS at 10.8447/8.7772). scripts/membrane_rack.py was extended to thread
+THE CHALKBOARD's ports (it had none) and to print THE CHALK CENSUS (per-row chalk counts + attention
+mass on the chalk block per slot per active breath, the >=30%-attend bar). Chain
+.cache/rack_chain_RK3X.sh (derived from the audit-fixed rack_chain_RKX.sh; preflight PASS) trains
+RK3X_241 = RKX_241's env + ALG_RACK_RELEASE=1 ALG_CHALK=1, 48k/BATCH=8/SNAP_EVERY=8000, then reads:
+paired vs RKX_241 (THE BAR >= +0.015), RK_241, HS_241; golden24; membrane_rack (WALL/HIT/CHALK);
+rack_dryness_census + rack_numeral_audit (DRY/NUMAUDIT); the open reads' RELEASED counts; reads.py
+ingest. Confirmed at fire: step 0 loss=57.7594 (the family's birth loss), steady 0.27-0.30 s/step,
+[rack-release] already nonzero (2/911 rows by step 1500) — FORM 3 fires in training. Log
+.cache/rack_chain_RK3X.log; waiter pattern "preflight] FAIL|FAILED|ABORT|Traceback|RACK RK3X CHAIN
+COMPLETE". Ledger 2026-10-07 22:39.
 
 **THE DRYNESS PROBE (18:48, f51854cd):** BOTH BARS MISS — the fixed final-breath cosine tops out at
 0.6089 precision at 20% coverage on wild gold GIVEN slots (bar 0.90); "settled AND centered" (low

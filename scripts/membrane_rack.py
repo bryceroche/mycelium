@@ -15,6 +15,11 @@ union), then computes membrane_scale's band tables on top — importing its band
 import, never copied, since those are pure module-level functions/constants with no import-time side
 effects.
 
+ADDENDUM (2026-10-07, the RK3X merge gate's own chain build): THE CHALKBOARD's ports (chalk3/chalk5,
+branch rack3) were threaded into collect()'s consult3 closure and both forward() calls, exactly as
+loop_val.py's _consult3/_consult_into thread them (chalk_pack's host form; chalk5 supersedes chalk3,
+no union) — this script had none before. ALG_CHALK=0 (the default) is bit-identical: kk_t stays None.
+
 On a body with no ALG_ALT3 (HS_241: ALG_RACK unset too) this reduces to membrane_scale.collect()'s own
 ALT2 cycle exactly (same forward() calls, same arguments) — the PARITY GATE this script must pass
 before its RK_241 numbers are trusted: run `--tag HS_241 --rows 64` and compare the resulting band
@@ -99,7 +104,8 @@ def collect(ckpt, tag, n_rows=None):
     from phase1_algebra_head import (
         build_params, forward, load_alg, build_slot_masks, alt2_fact_buf,
         certifier_bias, rack_pack, K_VARS, L_FAC, L_TOT, T_ALG,
-        ALG_CERT, ALG_CERT_IMPLIED, ALG_RACK, ALG_RACK_TESTS)
+        ALG_CERT, ALG_CERT_IMPLIED, ALG_RACK, ALG_RACK_TESTS,
+        chalk_pack, ALG_CHALK, ALG_CHALK_N)   # THE CHALKBOARD (2026-10-05, branch rack3): threaded 2026-10-07 per loop_val's own cycle (this script had none)
 
     ALT3 = int(os.environ.get("ALG_ALT3", "0")) != 0
     print(f"[membrane-rack] collect tag={tag} ALT3={ALT3} CERT={ALG_CERT}/{ALG_CERT_IMPLIED} "
@@ -122,6 +128,7 @@ def collect(ckpt, tag, n_rows=None):
     fat_mass = np.zeros((n, K_B, L_FAC, T_ALG), np.float16)
     rack_dry3 = np.zeros((n, L_FAC), np.float32); rack_claim3 = np.zeros((n, T_ALG), np.float32)
     rack_dry5 = np.zeros((n, L_FAC), np.float32); rack_claim5 = np.zeros((n, T_ALG), np.float32)
+    chalk_n3 = np.zeros((n,), np.int32); chalk_n5 = np.zeros((n,), np.int32)   # THE CHALKBOARD CENSUS (2026-10-07): per-row count of filled chalk slots at each consult
 
     t_start = time.time()
     for s0 in range(0, n, 8):
@@ -156,15 +163,27 @@ def collect(ckpt, tag, n_rows=None):
                 if ALG_RACK:
                     rk = rack_pack(rows3, fb_, texts3, T_ALG, ALG_RACK_TESTS, prev=rack_prev, detail=rack_detail)
                     rk_t = Tensor(rk, dtype=dtypes.float)
-                return Tensor(fb_, dtype=dtypes.float), cb_t, rk_t, rk
+                kk_t = kk = None
+                if ALG_CHALK:
+                    # THE CHALKBOARD (2026-10-05, branch rack3): chalk_pack's host form, the SAME
+                    # function loop_val's _consult_into calls — no union across consults (chalk5
+                    # supersedes chalk3, exactly as the bank itself reads it from breath 5 on).
+                    rows3c = rows3 if (ALG_CERT or ALG_CERT_IMPLIED or ALG_RACK) else [{k: onp3[k][bi] for k in onp3} for bi in range(len(sl_p))]
+                    kk, _ = chalk_pack(rows3c, fb_, vtk[sl_p], T_ALG, ALG_CHALK_N)
+                    kk_t = Tensor(kk, dtype=dtypes.float)
+                return Tensor(fb_, dtype=dtypes.float), cb_t, rk_t, rk, kk_t, kk
 
             oa3 = forward(p, ts, tk, se, slot_mask=mk_t, stop_after=2)
-            f3_t, c3_t, r3_t, r3_np = consult3(oa3)
-            ob3 = forward(p, ts, tk, se, slot_mask=mk_t, stop_after=4, facts3=f3_t, cert3=c3_t, rack3=r3_t)
-            f5_t, c5_t, r5_t, r5_np = consult3(ob3, rack_prev=r3_np)
+            f3_t, c3_t, r3_t, r3_np, k3_t, k3_np = consult3(oa3)
+            ob3 = forward(p, ts, tk, se, slot_mask=mk_t, stop_after=4, facts3=f3_t, cert3=c3_t, rack3=r3_t, chalk3=k3_t)
+            f5_t, c5_t, r5_t, r5_np, k5_t, k5_np = consult3(ob3, rack_prev=r3_np)
+            if ALG_CHALK:
+                chalk_n3[sl] = k3_np[:len(sl), :, 0].sum(-1).astype(np.int32)
+                chalk_n5[sl] = k5_np[:len(sl), :, 0].sum(-1).astype(np.int32)
 
             o = forward(p, ts, tk, se, slot_mask=mk_t,
-                        facts3=f3_t, facts5=f5_t, cert3=c3_t, cert5=c5_t, rack3=r3_t, rack5=r5_t)
+                        facts3=f3_t, facts5=f5_t, cert3=c3_t, cert5=c5_t, rack3=r3_t, rack5=r5_t,
+                        chalk3=k3_t, chalk5=k5_t)   # THE CHALKBOARD (2026-10-05, branch rack3)
         else:
             _ka = ("pres", "ftype", "op", "dig") + (("dup",) if "dup" in o0 else ())
             _oa = {**onp0, **{k: o0[k].realize().numpy() for k in _ka}}
@@ -202,7 +221,8 @@ def collect(ckpt, tag, n_rows=None):
              ids=ids_all, tokmask=vtk[:n].astype(np.uint8), sent=vse[:n].astype(np.int8),
              g_presence=vg["presence"][:n], g_ftype=vg["ftype"][:n], g_digits=vg["digits"][:n],
              rack_dry3=rack_dry3, rack_claim3=rack_claim3, rack_dry5=rack_dry5, rack_claim5=rack_claim5,
-             has_rack=np.array([bool(ALG_RACK)]))
+             has_rack=np.array([bool(ALG_RACK)]),
+             chalk_n3=chalk_n3, chalk_n5=chalk_n5, has_chalk=np.array([bool(ALG_CHALK)]))   # THE CHALKBOARD CENSUS (2026-10-07)
     print(f"[membrane-rack] wrote {raw_path} ({time.time() - t_start:.0f}s total)", flush=True)
     return raw_path
 
@@ -407,6 +427,54 @@ def rack_tables(raw, ok, lines):
     return lines
 
 
+def chalk_census(raw, lines):
+    """THE CHALKBOARD CENSUS (2026-10-07, the RK3X chain's own mechanism read): per-row chalk-
+    token count (chalk_n3/chalk_n5 — chalk_pack's own presence column, summed, at each consult)
+    and the attention mass each slot places on the chalk block's token columns (the last
+    ALG_CHALK_N positions of the T_ALG token axis) at the breaths where that consult's chalk is
+    VISIBLE (THE CONDUCTOR's static gate: cert3_active kb in {3,4}; cert5_active kb in {5,6},
+    chalk5 superseding chalk3 from kb>=5 on — phase1_algebra_head.py's bank(), the same gate).
+    BAR (ledger 2026-10-07 21:26, THE RK3X queue): of rows carrying >=1 chalk token at an active
+    breath, >= 30% must have >=1 slot attend it (mass >= 0.1) there, or the road is read as unread."""
+    import phase1_algebra_head as H
+    T_ALG = H.T_ALG; N_CHALK = H.ALG_CHALK_N
+    fat_mass = raw["fat_mass"].astype(np.float32)
+    n, K_B, L_FAC = raw["argmax_breath"].shape
+    chalk_n3 = raw["chalk_n3"]; chalk_n5 = raw["chalk_n5"]
+
+    P = lines.append
+    P(""); P("=" * 78)
+    P("THE CHALKBOARD CENSUS (2026-10-07): per-row chalk tokens + attention mass on the chalk block")
+    P("=" * 78)
+    for label, arr in (("consult 1 (chalk3)", chalk_n3), ("consult 2 (chalk5)", chalk_n5)):
+        carry = arr > 0
+        mean_filled = float(arr[carry].mean()) if carry.any() else float("nan")
+        P(f"  rows with >=1 chalk slot filled at {label}: {int(carry.sum())}/{n} "
+          f"(mean filled | carrying = {mean_filled:.2f})")
+    P("  breath  rows-carrying  mean-mass(carrying)  max-mass  rows-attending(mass>=0.1)  frac-attending")
+    fracs = []
+    for kb in (3, 4, 5, 6):
+        if kb >= K_B:
+            continue
+        chalk_n = chalk_n3 if kb in (3, 4) else chalk_n5
+        carrying = np.where(chalk_n > 0)[0]
+        if len(carrying) == 0:
+            P(f"  b{kb}      0              -                     -         -                          -")
+            continue
+        mass = fat_mass[carrying, kb, :, T_ALG - N_CHALK:].sum(-1)   # (n_carrying, L_FAC): mass per slot on the chalk cols
+        row_max = mass.max(axis=1)
+        n_attend = int((row_max >= 0.1).sum())
+        frac = n_attend / len(carrying)
+        fracs.append(frac)
+        P(f"  b{kb}      {len(carrying):4d}           {mass.mean():.4f}                {row_max.max():.4f}    "
+          f"{n_attend:4d}/{len(carrying):<4d}                {frac:.3f}")
+    bar_frac = max(fracs) if fracs else 0.0
+    P("")
+    P(f"  BAR (ledger 2026-10-07 21:26): >= 30% of rows carrying chalk attend it (mass>=0.1) at >=1 active "
+      f"breath -> best breath's fraction = {bar_frac:.3f} -> {'MET' if bar_frac >= 0.30 else 'MISS (the road is read as unread)'}")
+    return lines
+
+
 # ===========================================================================
 # main
 # ===========================================================================
@@ -446,6 +514,12 @@ def main():
         rack_tables(raw, ok, lines)
     else:
         lines.append(""); lines.append("(ALG_RACK was not set for this collect — no rack-specific tables; this is the HS_241-parity / no-rack body)")
+
+    has_chalk = bool(raw["has_chalk"][0]) if "has_chalk" in raw.files else False
+    if has_chalk:
+        chalk_census(raw, lines)
+    else:
+        lines.append(""); lines.append("(ALG_CHALK was not set for this collect — no chalk census)")
 
     out_path = f".cache/membrane_rack_{a.tag}.txt"
     txt = "\n".join(lines) + "\n"
