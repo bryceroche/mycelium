@@ -1201,9 +1201,137 @@ def caricature_probe():
 
 
 # ======================================================================================
+# THE DRYNESS PROBE (2026-10-07, coordinator ask): the FIXED final-breath cosine-to-own-kind-mean,
+# read as a dryness test on wild GOLD GIVEN slots -- precision at coverage 10/20/30/40 %, plain vs
+# "settled AND centered" (the cosine jointly gated by a low per-slot state change at b5->6 -- the
+# band-change features, leaf/root/branch_chg, already in perceiver_telemetry -- and low JS movement
+# at b5->6, already in the atlas feature file). Zero-GPU, reads only: ps_legal_wild_PMS8_241.npz,
+# perceiver_v1b_features_PMS8_241_wildhold.npz, perceiver_telemetry_PMS8_241_wildhold.npz, and (for
+# the numeral-level check, if derivable) the already-banked .cache/rawslots_breaths_wild_PMS8_241.pkl
+# (same convention adaptive_stop.py/hammerhead_census.py read; no new forward pass).
+# ======================================================================================
+COVERAGES = (0.10, 0.20, 0.30, 0.40)
+
+
+def _coverage_table(score, eligible, ok, num_ok, n_given):
+    """score: (n_given,) higher=better; eligible: (n_given,) bool pool; ok/num_ok: (n_given,) bool
+    or None. For each COVERAGE, take the top ceil(coverage*n_given) ELIGIBLE slots by score (capped
+    at the pool size, flagged) and report precision under both labels."""
+    out = []
+    elig_idx = np.flatnonzero(eligible)
+    order = elig_idx[np.argsort(-score[elig_idx])]
+    for cov in COVERAGES:
+        k = int(np.ceil(cov * n_given))
+        capped = k > len(order)
+        top = order[:min(k, len(order))]
+        prec_pos = float(ok[top].mean()) if len(top) else float("nan")
+        prec_num = float(num_ok[top].mean()) if (num_ok is not None and len(top)) else float("nan")
+        out.append(dict(coverage_target=cov, n_taken=len(top), achieved_cov=len(top) / n_given,
+                         capped=capped, prec_pos=prec_pos, prec_num=prec_num))
+    return out
+
+
+def dryness_probe():
+    rows = load_jsonl(WILD_PATH)
+    assert len(rows) == 311, len(rows)
+    ri, ji, gold_val = [], [], []
+    for r_idx, row in enumerate(rows):
+        for j, fac in enumerate(row["factors"]):
+            if fac["ftype"] == "given":
+                ri.append(r_idx); ji.append(j); gold_val.append(int(fac["value"]))
+    ri, ji, gold_val = np.array(ri), np.array(ji), np.array(gold_val)
+    n_given = len(ri)
+
+    ps = np.load(".cache/ps_legal_wild_PMS8_241.npz")
+    okmap = {(int(r), int(j)): bool(o) for r, j, o in zip(ps["rows"], ps["slots"], ps["ok"])}
+    ok = np.array([okmap.get((r, j), False) for r, j in zip(ri, ji)])
+
+    za = np.load(PERCEIVER_V1B_WILD_FEAT, allow_pickle=True)
+    cos_final = za["atlas_cos"][ri, -1, ji]
+    js_move_final = za["atlas_js_move"][ri, -1, ji]     # JS(p_b6, p_b5) by construction -- the b5->6 movement
+
+    tel = np.load(".cache/perceiver_telemetry_PMS8_241_wildhold.npz", allow_pickle=True)
+    band_chg = np.nanmean(np.stack([tel["leaf_chg"][ri, -1, ji], tel["root_chg"][ri, -1, ji],
+                                     tel["branch_chg"][ri, -1, ji]], axis=0), axis=0)   # high = settled
+
+    P(f"\n[dryness] wild gold GIVEN slots: {n_given}; positional-right (ps_legal ok)={int(ok.sum())} "
+      f"({ok.mean():.4f})")
+    P(f"[dryness] js_move_final finite={np.isfinite(js_move_final).mean():.4f}  "
+      f"band_chg finite={np.isfinite(band_chg).mean():.4f}")
+
+    # ---- numeral-level check, IF derivable (zero-GPU: the already-banked per-breath raw dump) ----
+    num_ok = None
+    raw_path = ".cache/rawslots_breaths_wild_PMS8_241.pkl"
+    if os.path.exists(raw_path):
+        from mycelium.rulebook import legal_values, choose_legal
+        d = pickle.load(open(raw_path, "rb"))
+        final_kb_raw = max(d.keys())
+        recs = d[final_kb_raw]
+        rec_by_i = {int(r["i"]): r for r in recs}
+        missing = text_mismatch = 0
+        num_ok = np.zeros(n_given, dtype=bool)
+        for n_i, (r_idx, j) in enumerate(zip(ri, ji)):
+            rec = rec_by_i.get(int(r_idx))
+            if rec is None:
+                missing += 1
+                continue
+            if rec["text"] != rows[r_idx]["text"]:
+                text_mismatch += 1
+                continue
+            vals = legal_values(rec["text"], nd=rec["dig"].shape[1])
+            v = choose_legal(rec["dig"][j], vals, nd=rec["dig"].shape[1])
+            num_ok[n_i] = (v is not None and v == gold_val[n_i])
+        P(f"[dryness] numeral-level decode from {raw_path} (final breath kb={final_kb_raw}): "
+          f"{missing} rows missing from the dump, {text_mismatch} text mismatches (both excluded, "
+          f"counted as not-ok); numeral-right={int(num_ok.sum())}/{n_given} ({num_ok.mean():.4f}) "
+          f"vs positional-right {ok.mean():.4f} (numeral should lag the positional ok LESS -- it is "
+          f"the more lenient, digit-only check: no f_pres/f_ftype/f_res requirement)")
+    else:
+        P(f"[dryness] {raw_path} not found -- numeral-level check NOT derivable from the named dump; "
+          f"positional only")
+
+    # ---- the two pools ----
+    pool_plain = np.ones(n_given, dtype=bool)
+    settled = band_chg >= np.nanmedian(band_chg)
+    centered = js_move_final <= np.nanmedian(js_move_final)
+    pool_sc = settled & centered
+    P(f"\n[dryness] 'settled AND centered' pool (median-split on each): settled={int(settled.sum())} "
+      f"({settled.mean():.4f}), centered={int(centered.sum())} ({centered.mean():.4f}), "
+      f"BOTH={int(pool_sc.sum())} ({pool_sc.mean():.4f}) of {n_given} gold given slots")
+
+    tabs = {}
+    for name, pool in (("plain (all given slots)", pool_plain), ("settled AND centered", pool_sc)):
+        tabs[name] = _coverage_table(cos_final, pool, ok, num_ok, n_given)
+
+    BAR = 0.90
+    P("\n" + "=" * 100)
+    P("THE DRYNESS PROBE (2026-10-07): the FIXED final-breath cosine-to-own-kind-mean as a dryness")
+    P(f"test on wild gold GIVEN slots (n={n_given}) -- precision at coverage 10/20/30/40 %")
+    P("=" * 100)
+    for name, tab in tabs.items():
+        P(f"\n  {name}:")
+        P(f"    {'cov target':>10} {'n taken':>8} {'cov achieved':>13} {'capped':>7} "
+          f"{'prec positional':>17} {'prec numeral':>13}")
+        for row_ in tab:
+            P(f"    {row_['coverage_target']*100:>9.0f}% {row_['n_taken']:>8d} "
+              f"{row_['achieved_cov']*100:>12.1f}% {('YES' if row_['capped'] else 'no'):>7} "
+              f"{row_['prec_pos']:>17.4f} {row_['prec_num']:>13.4f}")
+    bar_hits = {}
+    for name, tab in tabs.items():
+        hit_pos = any(r["achieved_cov"] >= 0.20 - 1e-9 and r["prec_pos"] >= BAR for r in tab)
+        hit_num = any(r["achieved_cov"] >= 0.20 - 1e-9 and np.isfinite(r["prec_num"]) and r["prec_num"] >= BAR for r in tab)
+        bar_hits[name] = (hit_pos, hit_num)
+    P(f"\n  THE BAR (>= {BAR:.2f} precision at >= 20% coverage):")
+    for name, (hp, hn) in bar_hits.items():
+        P(f"    {name:24} positional: {'PASS' if hp else 'MISS'}" +
+          (f"   numeral: {'PASS' if hn else 'MISS'}" if num_ok is not None else ""))
+    return dict(tabs=tabs, bar_hits=bar_hits, n_given=n_given)
+
+
+# ======================================================================================
 def main():
     mode = sys.argv[1] if len(sys.argv) > 1 else "all"
-    assert mode in ("build", "read", "drift", "jsfeat", "textureprobe", "caricature", "all"), mode
+    assert mode in ("build", "read", "drift", "jsfeat", "textureprobe", "caricature", "dryness", "all"), mode
     P(f"THE WELFORD ATLAS -- PMS8_241 -- mode={mode} -- {time.strftime('%Y-%m-%d %H:%M:%S')}")
     if mode in ("build", "all"):
         build()
@@ -1220,6 +1348,8 @@ def main():
         texture_probe()
     if mode == "caricature":
         caricature_probe()
+    if mode == "dryness":
+        dryness_probe()
     if mode == "all":
         P("\n" + "=" * 100)
         P("THE SIX-LINE READING")
