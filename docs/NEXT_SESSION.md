@@ -1,4 +1,12 @@
-# NEXT SESSION — cold-start entry (updated 2026-10-07 12:00)
+# NEXT SESSION — cold-start entry (updated 2026-10-07 17:44)
+
+**THE CARICATURE PROBE (17:44, 8110f516):** BAR MISSED — no caricatured variant (centered/whitened/
+lda-lite) beats plain's wild AUROC 0.766 by +0.02 (best is -0.0058); kind legibility is unchanged
+from 10-05 (given-vs-rel flat ~0.86; the 4 rel subtypes move only +0.015-0.018 off a 0.428 floor,
+chance=0.25). The margin (own-kind cosine minus best-other-kind on right slots) TRIPLES as designed
+(+0.24 plain -> +0.73 lda-lite) — a clean geometry win that does not transfer to correctness: a
+good lesson, not a feature. Plain cosine stays the perceiver's atlas input. Table + reading:
+.cache/welford_atlas_PMS8_241.txt.
 
 **THE TEXTURE PROBE (12:00, 9690738d):** closed the diet-vs-wild cosine sign flip (diet 0.423 vs
 wild 0.766, same construction). NOT in-sample bias (LORO moves every register bucket <=0.002).

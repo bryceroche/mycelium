@@ -48641,3 +48641,33 @@ breath, decodes changed, the key before / after — a mechanism read, not a clai
 ### 2026-10-07 (17:41) — WHERE JSD / THE COMPOSITE KEY / THE CARICATURE LANDED (Bryce's check): JSD lives on the codebook distribution p(kind | state) over the content dims — the canon frame IS the gimbal (only the clock planes turn), built in v1b, its wild value un-isolated (the reader lost as a whole); the composite (kind, breath) key is BUILT as the per-breath Welford library (verified) and stands as the flight path's data; "caricature" is NOT temperature annealing (the annealed decode 19:1; the margin forms inert) — its legitimate form is a SEPARABLE library: the average face subtracted (centered / whitened / LDA-lite kind means), fired as a zero-GPU read vs the plain cosine's 0.766 (bar: any variant >= +0.02 AUROC or a legible kind accuracy where 10-05 found only given-vs-rel).
 
 ### 2026-10-07 (17:41) — RKX_241's commits re-scored under the same mask: 478 / 498 = 0.960 (the void raw column 0.709): clean on the third body (RK 0.963, RKP 0.972) — the rack's certificate is sound everywhere it has been read; its null is the null of clean dishes.
+
+### 2026-10-07 (17:44) — THE CARICATURE PROBE READ (8110f516; scripts/welford_atlas.py caricature_probe(), mode caricature; .cache/welford_atlas_PMS8_241.txt): BAR MISSED on both legs — no variant beats plain's 0.766 by +0.02 (best is -0.0058), and kind legibility is UNCHANGED from 10-05 (given-vs-rel flat ~0.86, the 4 rel subtypes move only +0.015-0.018 off a 0.428 floor); the margin triples (geometry wins) while correctness AUROC stays flat-to-down (the signal does not)
+
+Four variants of the final-breath cosine-to-own-kind feature on wild (zero GPU: the existing content
+library + the cached diet states, for the global mean, + the banked clock_band_states): plain
+(reference, 0.7661 slot / 0.7961 row, matching the 07:53 banked numbers exactly), centered (subtract
+the diet's global mean from every kind mean and the wild state before the cosine), whitened
+(centered, then divide by the pooled within-kind diagonal std), lda-lite (centered, then project
+onto the rank-4 span of the 5 centered kind means via SVD, cosine in that subspace). GLOBAL-MEAN
+CROSS-CHECK: the direct sum over all 5812 admissible diet gold slots vs the library's own n-weighted
+kind-mean average, cos=0.9957 (not exactly 1.0, explained — the diet carries 6 off-table ftypes
+outside the 5 KINDS, counted in the direct sum, absent from the n-weighted average; not a bug).
+
+RESULTS: slot AUROC plain 0.7661 -> centered 0.7599 -> whitened 0.7603 -> lda-lite 0.7450 (every
+variant BELOW plain, none clears the +0.02 bar); row AUROC 0.7961 -> 0.7268 / 0.7246 / 0.7431 (a
+larger drop); the RIGHT-SLOT MARGIN (own-kind cosine minus best-other-kind) triples as designed:
++0.2402 (plain) -> +0.5033 (centered) -> +0.4790 (whitened) -> +0.7286 (lda-lite); nearest-centroid
+kind accuracy: given-vs-rel 0.8606/0.8649/0.8630/0.8664 (flat across all four — still the one real
+seam); the 4 rel subtypes (add/mul/sub/div, chance 0.25) 0.4280/0.4463/0.4434/0.4434 (a small +0.015-
+0.018 bump, nowhere near legible).
+
+THE READING (four lines, verbatim from the report): (1) the margin scales exactly as designed —
+subtracting the average face DOES carve the kind centroids apart geometrically, monotonically with
+each added step. (2) that separation does NOT transfer to the correctness signal — slot AUROC is
+flat-to-down, row AUROC falls further; separating kinds FROM EACH OTHER and separating right FROM
+wrong WITHIN a kind are different axes, not aligned here. (3) kind legibility is essentially
+unchanged from 10-05 — given-vs-rel stays the only clean cut; the caricature opens no second seam
+among the rel subtypes. (4) VERDICT: a geometry win and a correctness-signal wash-to-loss — the
+plain cosine stays the perceiver's atlas feature (07:53/11:51); CLOSED as a negative result for
+"does centroid separability buy correctness or kind legibility" (it does not, on this body).
