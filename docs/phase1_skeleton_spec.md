@@ -48905,3 +48905,30 @@ The acting perceiver's resonance channel is therefore closed at the slot level o
 rel-op kinds' colinearity (0.92-0.94) is itself a finding: the body does not separate inverse
 operations in its state, which the op-pointer's 0.72 and the atlas's 0.43 four-way accuracy both
 echo. The clean given-vs-rel ring is registered as a mouth / OOD channel (row-level), low prior.
+
+### 2026-10-08 (12:14) — THE ALGEBRAIC EPIPHANY (Bryce: add / sub share a basin and mul / div share one by algebra; "the problem is that we're not detecting negative and inverse numbers"; four MHA layers at 512-d are cheap; layers between tokens and slots); the record agrees by LAW; THE POLARITY CENSUS fired; the depth pair and the sorting room registered
+
+(1) The POSITIONAL LAW already states the epiphany: sub / div are add / mul RE-ENCODED with the
+result role moved — the only difference between "A = B - C" and "B = A + C" is which variable the
+res pointer names; the atlas's rel:sub / rel:div labels were derived from exactly that (result
+elsewhere), so the 0.94 / 0.92 colinearity is the encoding showing through the state, not a
+confusion. (2) The precision: the fixture has NO negative numbers (positive naturals, no sign in
+the digit head) — the "minus sign" the model drops is not a token; the polarity is the DIRECTION
+of the relation (which argument is the result: "fewer than" vs "more than"); the atlas read noted
+in passing that the inverse forms are rarely right — the measured blindspot, pointing at the res
+pointer (0.80 on wild overall). FIRED (zero GPU): THE POLARITY CENSUS — forward vs inverse
+relations on wild per head (ftype / op / args / res / value), the direction-flip confusion, the
+cue words of inverse forms, the representability of the inverse form in the res head, and the
+inverse forms' frequency in the diet (starved vs unrepresentable). PREDICTION (pinned): inverse
+forms fail mostly on RES (the direction) with ftype / op right; they are a minority of the diet
+(starved more than unrepresentable); the cues are "fewer / less / gave / left / half". If so, A
+DIRECTION BIT as structure (the ALG_DUP precedent: one bit fixed three generations) or a
+rehearsal dose for inverse forms is the lever. (3) FOUR MHA LAYERS IN THE LOOP, RE-PRICED: the
+mixer is attention over 24 slots at 512-d; four of them per breath cost almost nothing in compute
+and ~1M params each — the earlier "3-4x" was the convolutions' price, withdrawn; the standing prior
+is only that width never moved this parser (cap2x) and depth-over-slots is untested. REGISTERED:
+THE DEPTH PAIR (2 and 4 mixer layers per breath on the chassis, from scratch, vs the lineage; bars:
+masked >= +0.015 / twin, rows, mint not down), behind the chalkboard, on the word. (4) THE SORTING
+ROOM: a trained token-side attention over the 256 waist tokens before the bank (the token
+convolution's untested sibling; the modifier bound to the number before the slots look); its need
+is what the polarity census measures; registered behind it.
