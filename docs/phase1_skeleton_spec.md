@@ -48637,3 +48637,5 @@ inside the range); unset bit-identical. FIRST USE: the chalkboard dry-run on RK_
 snapshot (64 rows; the chalk block built as rack3's chalk_pack would; a null embedding and a copied
 text-numeral embedding; replay 3..6): rows with chalk, the attention mass on chalk per slot per
 breath, decodes changed, the key before / after — a mechanism read, not a claim.
+
+### 2026-10-07 (17:41) — WHERE JSD / THE COMPOSITE KEY / THE CARICATURE LANDED (Bryce's check): JSD lives on the codebook distribution p(kind | state) over the content dims — the canon frame IS the gimbal (only the clock planes turn), built in v1b, its wild value un-isolated (the reader lost as a whole); the composite (kind, breath) key is BUILT as the per-breath Welford library (verified) and stands as the flight path's data; "caricature" is NOT temperature annealing (the annealed decode 19:1; the margin forms inert) — its legitimate form is a SEPARABLE library: the average face subtracted (centered / whitened / LDA-lite kind means), fired as a zero-GPU read vs the plain cosine's 0.766 (bar: any variant >= +0.02 AUROC or a legible kind accuracy where 10-05 found only given-vs-rel).
