@@ -48763,3 +48763,30 @@ the key — the warm-regime caveat stated). GAPS (stated): replay never re-deriv
 WRITEBACK / WHEEL / the in-graph certificate pass not replayed; the per-breath ladder excluded
 from the gate's comparison; the dry-run's key check is a coarse proxy. The agent's note that
 gen-weights "moved to an earlier commit" was a misreading (f4efb35a is an ancestor; nothing lost).
+
+### 2026-10-07 (21:26) — THE SCHEDULE BAR: RKX_241 vs RKXC_241 paired +0.0049 (the rack's third body: null again, positive for once); THE MINT RECOVERY IS THE SCHEDULE'S (RKXC 0.601 = RKX 0.599 vs RKC 0.555): the collision fix pays on both arms; the slot of the fixed-schedule body sits -0.009..-0.011 below the frozen one (noise-level); THE QUEUE IS COMPLETE; the card is idle; RK3X fired
+
+RKXC_241 (HS + ALT3 + CERT 2.0 + DAMP 3,5,0; no rack; rack_chain_RKXC.log 21:21): open wild 0.2960;
+MASKED 0.3364 — paired vs HS_241 -0.0107 (SE ~0.008, z 1.3), vs PMS8 -0.0112, vs EY -0.0010; rows
+10 / 7 (RKX 7 / 7; RKC 13 / 12; HS 8 / 7); OPEN MINT 0.6011 (RKC 0.5545: +0.047 — the schedule's;
+RKX 0.5987: the rack adds nothing to it; HS 0.5862: +0.015 over the body); digits 0.370; silver
+0.2114; golden24 6 / 12 / 6. THE MECHANISM: the wall 0.484 at b6 (RKX 0.489, RKC 0.493, HS 0.526:
+the consults' wall move is kept under the fixed schedule, with or without the rack); the hit 0.714
+/ 0.745 / 0.686 / 0.686 / 0.657 / 0.667 at b1-b6 (RKX 0.700-0.743; RKC 0.68; HS 0.72-0.76): the
+schedule recovers the hit's early breaths and the rack keeps it a little higher late. THE BAR (RKX
+vs RKXC): +0.0049, discordant ~150 / 150 — the rack's accuracy bar (+0.015) MISSED on the third body,
+the sign positive for the first time, inside noise; rows 7 vs 10. THE SCHEDULE FIX'S OWN LEDGER
+(RKXC vs RKC, the same organs, the bands settling after the evidence): mint +0.047, the wall kept,
+the hit's early breaths recovered, rows -3, the slot -0.009 (z ~1) — the collision diagnosis is
+CONFIRMED on its own terms on both arms; the mint price of consults on the hierarchical body was
+the schedule's; the slot read does not see the fix either way (the slot has not moved for any
+organ since the role signature). THE QUEUE (word given 10-06 18:02) IS COMPLETE: RKP / RKPC / RKX /
+RKXC all read. THE CARD IS IDLE. NEXT FIRE (under the standing word; the registered RK3 made
+cheaper): RK3X_241 = RKX_241's recipe + ALG_RACK_RELEASE=1 + ALG_CHALK=1 (release on contradiction
++ THE CHALKBOARD, trained from scratch on the fixed-schedule hierarchical body) with RKX_241 as its
+already-banked control; BARS (the registered RK3's, re-based on RKX): masked >= RKX + 0.015 (claim
++0.020 / twin), rows >= 10, digits not down, mint >= 0.59; THE CHALK CENSUS on wild: >= 30 % of
+rows carrying chalk must have a slot ATTEND a chalk token (mass >= 0.1) or the road is unread; the
+released-row count; the derived-argument cell (the governor census's 61 % syntax-invisible wall is
+its target). The merge of branch rack3 into gen-weights (which now carries listen) and a post-merge
+gate precede the fire (delegated).
