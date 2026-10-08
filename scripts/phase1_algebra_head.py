@@ -5717,7 +5717,15 @@ def breath_step(p, state, kb, ctx):
         # BEAM EXIT (door #8): committed slots leave the mixer as
         # keys, proportional to mass — soft, init-closed (m starts 0)
         sc2 = sc2 + m_c.reshape(B, 1, L_FAC) * -8.0
-    h_slot = (sc2.softmax(-1) @ bv) @ p["W_bo"] + p["W_bo_b"]
+    _at2 = sc2.softmax(-1)
+    if _CENSUS is not None:
+        # THE SHUFFLE READ's tap (2026-10-08, worktree mycelium-wt8, branch replay): the
+        # single-head mixer's REAL post-mask, post-bias attention weights (sc2's own
+        # "state_slot" tap upstream is pre-mask/pre-bias logits, not usable for a
+        # grouping-factor read directly) -- dark unless _CENSUS is armed, same idiom as
+        # every other tap in this function.
+        _CENSUS.append((kb, "mixer_attn1", _at2.realize().numpy()))
+    h_slot = (_at2 @ bv) @ p["W_bo"] + p["W_bo_b"]
     if "mixer" in _SEVER:
         h_slot = h_slot * 0.0
     if _CENSUS is not None:
@@ -5803,7 +5811,11 @@ def breath_step(p, state, kb, ctx):
         if _A5 is not None and "alt_g" in p:   # same v0 bias as sc2
             _mx_sc = _mx_sc + ((_A5 + _A5.transpose(-2, -1))
                                * p["alt_g"].reshape(1, 1, 1)).unsqueeze(1)
-        _mx_raw = _mx_sc.softmax(-1) @ _mx_v          # PRE-gain (named)
+        _mx_at = _mx_sc.softmax(-1)
+        if _CENSUS is not None:
+            # THE SHUFFLE READ's per-head tap (2026-10-08): (B, MX_HEADS, L_TOT, L_TOT).
+            _CENSUS.append((kb, "mixer_attn_heads", _mx_at.realize().numpy()))
+        _mx_raw = _mx_at @ _mx_v          # PRE-gain (named)
         _mx_o = _mx_raw \
             * p["fed_mx_hg"].reshape(1, MX_HEADS, 1, 1)   # ZERO gains
         _mx_inj = _mx_o.permute(0, 2, 1, 3) \
