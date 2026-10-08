@@ -49047,3 +49047,32 @@ chance 0.25); given-vs-rel and 5-way accuracy stay flat. (4) VERDICT: "about the
 one up one down, both inside the gap between entropy and the content library) alongside a small,
 real geometric sharpening on kind-SEPARATION that does not convert into correctness legibility. The
 384-d content library stays the perceiver's atlas space; no reason to move to the 128-d squeeze.
+
+### 2026-10-08 (13:09) — THE DIRECTION BIT + THE INVERSE DOSE BUILT + GATED (branch dirbit, 90ce7167 + de7a3d49; worktree wt9); the pair DIR_241 / DIRD_241 queued behind the chalkboard arm (pc-queue-dirbit: merge -> post-merge gate -> fire)
+
+THE DIRECTION BIT (ALG_DIR=1): a per-relation head p(inverse) ("the result is one of my
+arguments"); gold built in build_gold by replaying the row's variable-introduction order with
+polarity_census.classify_row ported verbatim (training gold and the census can never drift);
+params :2831-2835 (asserts K_VARS == L_FAC); emission + the STRUCTURAL ENTRY into the res pointer
+inside _heads_of (:4787-4818): the own-index logit favoured when forward and suppressed when
+inverse — hard -1e4 at read (ALG_JIT_READ), soft log p / log(1 - p) on the args' and own positions
+at training (the args membership from the same bilinear args uses); BCE on the cleanly classified
+relation slots (ALG_DIR_W 1.0; :7598-7605); REFUSED; the readers carry "dir" (loop_val's
+_jk_masked + an f_dir LV_FIELDS tally, never folded into ok). GATE (CPU): unset / role8 / hierd
+bit-identical; dir (role8 + ALG_DIR) 6.5288 / 1.0316 and dirhier 11.4041 / 9.5551 run and differ;
+the grad probe: h_dir 0.188, h_dir_b 0.447 (> 0: the two-terminal law holds); the read smoke: the
+bit reaches the dump. A TINYGRAD QUIRK found on the way (pre-existing): calling l.numpy() BEFORE
+l.backward() detaches every param's grad — reproduced on the repo's own selftest in the main tree
+and the worktree; added to the quirks file. THE INVERSE DOSE: scripts/build_diet_v2.py gains
+--inverse-frac (slot-weighted bucket reselection — a first row-weighted draft landed 5 points
+short and was corrected); .cache/form_mix_pm35d.jsonl = pm35c's prose + its own mint pool
+re-selected: 17,348 mint rows both; share-of-mix (inverse) 0.1767 -> 0.5793; reps-per-unique
+1.041 -> 1.044 (the dose law's two legs declared); the same three-stage stamp pipeline. THE
+CHAINS (not fired by the builder): rack_chain_DIR.sh (DIR_241 = PMS8's recipe + ALG_DIR on pm35c)
+and rack_chain_DIRD.sh (DIRD_241 = the same on pm35d), pre-flighted; THE QUEUE (pc-queue-dirbit):
+waits for RK3X's chain to end and the trainer to exit, asserts the branch carries ALG_DIR, merges,
+runs the post-merge gate (unset + dir asserted), fires DIR then DIRD. BARS (the polarity entry's):
+inverse-form res >= 0.60 on wild (from 0.25), forward res not down, masked >= +0.015 (claim +0.020
+/ twin) vs PMS8_241; DIRD vs DIR = the dose's own share. Caveat: pm35d was built by a dedicated
+splice of pm35c's mint pool, not a byte-for-byte replay of the original generator command
+(functionally equivalent, stated).
