@@ -49101,3 +49101,24 @@ absent: the mixer is untyped by construction), the effective k ~ 6-10 (a shoal, 
 relations attend to their gold args only slightly more than to others on right slots and not at
 all on wrong ones. If absent, the shuffle enters as STRUCTURE (an owner-keyed mixer mask — the
 factor-graph slot mask's sibling with a key the text supplies) behind the owner signature.
+
+### 2026-10-08 (15:20) — THE SHUFFLE READ (branch replay 4feab380; .cache/shuffle_read_PMS8_241.txt): THE SHUFFLE IS ABSENT — the mixer's same-owner / different-owner attention ratio is 0.77 -> 1.05 (b2) -> 0.87-0.91 (never 1.5; slightly the wrong way late); the effective k settles at 7-8 (a shoal); THE BINDING IS THERE — a relation attends to its own gold ARGS 1.5-2.4x more than to other slots, right and wrong alike
+
+Method: two dark _CENSUS taps on the mixer's post-mask attention (single-head and the FED
+multi-head twin; the unset gate bit-identical), one CPU forward on 64 wild rows (PMS8_241),
+owners from the governor census's chain, right / wrong from ps_legal. (a) THE GROUPING FACTOR
+(same-owner / different-owner mean attention): 0.77 at b1, 1.05 at b2 (the peak), 0.87-0.91 at
+b4-b6 — the shuffle is NOT latent in the mixer (the prediction confirmed: ~1; late breaths lean
+slightly to OTHER owners); right vs wrong noise-level (gap -0.05..+0.08, sign unstable): no
+perceiver channel (the fourth read to say so this week). (b) THE EFFECTIVE K: ~14 at b1 (diffuse),
+7-8 from b2 on — a shoal of seven, the starlings' number, by the same contract-then-settle shape
+the resonance read saw. (c) THE BINDING: relation slots attend to their gold ARGS 1.5-2.4x more
+than to other gold slots at every breath, for right AND wrong relations — the operand binding
+exists in the mixer and is not organised along the owner axis the governor census resolves.
+READING: the mixer knows WHICH slots a relation combines and not WHO the givens belong to — the
+map-reduce has a reduce wired by operands and no shuffle by key; the owner signature would have
+to supply the key from the text, as structure (an owner-keyed mixer mask, the factor-graph mask's
+sibling), since nothing in the dynamics produces it. That the binding read is as strong on wrong
+relations as on right ones says the wrong relations combine the wrong operands CONFIDENTLY — the
+same confidently-wrong law, now at the mixer. (The script's endpoint "rising" line hides the b2
+peak and the decline; stated.)
