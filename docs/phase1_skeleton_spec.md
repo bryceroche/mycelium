@@ -48932,3 +48932,32 @@ masked >= +0.015 / twin, rows, mint not down), behind the chalkboard, on the wor
 ROOM: a trained token-side attention over the 256 waist tokens before the bank (the token
 convolution's untested sibling; the modifier bound to the number before the slots look); its need
 is what the polarity census measures; registered behind it.
+
+### 2026-10-08 (12:27) — THE POLARITY CENSUS (scripts/polarity_census.py, 8717c259; .cache/polarity_census_PMS8_241.txt): THE INVERSE-FORM BLINDSPOT IS REAL AND LARGE — 372 / 1042 wild relations are inverse forms, right 0.148 vs forward 0.323; the gap is the RES HEAD (0.250 vs 0.873); 79 % of the wrong inverse res pointers DEFAULT TO THE FORWARD CONVENTION; representable; starved (diet 0.27 vs wild 0.36); the cues are not bound to the direction; body-independent
+
+Method: every wild relation classified by replaying the row's variable-introduction order (668
+forward / 372 inverse / 2 other); per head from the dumps of PMS8 / HS / RK, cross-checked against
+ps_legal; cues from the sentence containing an arg's gold numeral (no stamps on wild); diet
+frequency from form_mix_pm35a / c (byte-identical factor structure, verified). THE NUMBERS
+(PMS8_241): inverse fac-exact 0.148 vs forward 0.323; ftype 0.828 vs 0.895; op 0.717 vs 0.707
+(equal); RES 0.250 vs 0.873 — the whole gap is the direction; of the 279 inverse relations wrong
+on res, 78.9 % predict res == the slot's OWN index (the forward convention: "the result is the new
+variable"); the mirror flip is 71.8 % of a far smaller set (85). REPRESENTABILITY: not the
+bottleneck — res is a plain pointer over the same 24-wide space args uses, no diagonal bias
+(:1104, :1687, :5381). FREQUENCY: inverse share 0.27 in the diet vs 0.36 on wild — starved, not
+unrepresentable (reps-per-unique not computed: flagged). THE CUES: "less" / "fewer" genuinely
+inverse-skewed, "half" a tie, "gave" / "left" FORWARD-skewed on this holdout (the prediction's cue
+list half wrong); even the inverse-skewed cues carry res accuracy ~0.30 vs the 0.25 inverse
+baseline — the model does not bind the cue to the direction decision. HS_241 / RK_241 within
+0.01-0.02 on every head: body-independent. THE PREDICTION: confirmed on the head (res), on
+representability, on starvation; half wrong on the cues. THE SIZE OF THE LEVER: inverse forms are
+18 % of all gold slots (372 / 2051); lifting their res from 0.25 toward the forward 0.87 would lift
+the wild slot read by up to ~+0.03 — the largest single lever located since the role signature
+(+0.0185). THE FORMS (registered; from scratch; the next pair after the chalkboard, on the word):
+(a) THE DIRECTION BIT — a binary head "is this relation's result one of its arguments" entering the
+res pointer AS STRUCTURE (a mask over own-index vs the args: the ALG_DUP precedent — one bit, three
+generations of mystery); (b) THE INVERSE DOSE — mint re-balanced to >= 50 % inverse forms with the
+dose law's two legs declared (share AND reps-per-unique); (c) THE SORTING ROOM — the token-side
+attention binding the direction cue to the numeral before the slots look (behind (a) / (b): the
+cue census says the cues exist and are unread). Bars for (a) / (b): inverse-form res >= 0.60 on
+wild (from 0.25), forward res not down, masked wild >= +0.015 (claim +0.020 / twin).

@@ -720,6 +720,12 @@ def _rack_masked_by_slot(row, text):
     return {f["_slot"]: f for f in parse}
 
 
+_RACK_WALL_N = [0]   # THE RELEASE WALL (2026-10-08): cumulative count of rows that hit ALG_FACTS_ROW_WALL
+                      # inside rack_release_row, process-wide — module-level so the training loop's
+                      # [rack-release] per-500-step line can report it with no signature change anywhere
+                      # that unpacks rack_release_rows' return tuple (chain_acc.py, loop_val.py included).
+
+
 def rack_release_row(by_slot, dry_slots, m, n_vars, budget=5000):
     """FORM 3 — RELEASE ON CONTRADICTION (2026-10-05, ledger 19:24 "WORD
     GIVEN FOR THE DISCRETE HALVES" item 3; registered by Bryce's ruling
@@ -750,7 +756,9 @@ def rack_release_row(by_slot, dry_slots, m, n_vars, budget=5000):
     dry_slots: iterable of slot indices committed at the PREVIOUS consult.
     m, n_vars: the row's domain bound / variable count (samples[i]'s own).
 
-    Returns the solver's status string ("solved" | "unsat" | "budget")."""
+    Returns the solver's status string ("solved" | "unsat" | "budget" — "budget" also
+    covers THE RELEASE WALL below: a timeout is never a contradiction certificate)."""
+    import os as _os
     from mycelium.csp_domains import problem_from_algebra
     from mycelium.csp_core import solve_symbolic
     gv = {}
@@ -771,8 +779,40 @@ def rack_release_row(by_slot, dry_slots, m, n_vars, budget=5000):
     nv = max([int(n_vars)] + [v + 1 for v in gv] +
              [v + 1 for f in rel_facs for v in (list(f["args"]) + [f["result"]])])
     rels = [(f["op"], int(f["args"][0]), int(f["args"][1]), int(f["result"])) for f in rel_facs]
-    res = solve_symbolic(problem_from_algebra(nv, rels, gv, int(m)), budget=budget, seed=0)
-    return res["status"]
+    prob = problem_from_algebra(nv, rels, gv, int(m))
+    # THE RELEASE WALL (2026-10-08, RK3X_241's 13 h hang at 99.8% CPU, no step line past ~2,500-3,000
+    # steps): this was the one solve_symbolic call in the release path with a DECISION budget only and
+    # no wall clock — a pathological committed subgraph can spin for hours on expensive decisions well
+    # under a 5000-decision budget. Bounded here by the IDENTICAL SIGALRM mechanism _ping_walled uses
+    # for the facts pass (same ALG_FACTS_ROW_WALL env var, same default, same handler-restore shape);
+    # this call runs on the main thread by construction (_consult_into's training step, loop_val.py's
+    # and chain_acc.py's per-batch _consult3 — none of them run this inside a worker pool, so SIGALRM
+    # is valid here exactly as it is in _ping_walled). The law (ledger 09-19): budget exhaustion and a
+    # wall are never a contradiction certificate — timeout returns "budget", NEVER "unsat", so a walled
+    # row keeps its prior commits exactly like a decision-budget-exhausted row would.
+    wall = float(_os.environ.get("ALG_FACTS_ROW_WALL", "5"))
+    if wall <= 0:
+        return solve_symbolic(prob, budget=budget, seed=0)["status"]
+    import signal as _sg
+    armed = [True]
+    def _al(signum, frame):
+        if armed[0]:
+            raise _FactsTimeout()
+    _old = _sg.signal(_sg.SIGALRM, _al)
+    try:
+        _sg.setitimer(_sg.ITIMER_REAL, wall)
+        try:
+            res = solve_symbolic(prob, budget=budget, seed=0)
+            armed[0] = False
+            return res["status"]
+        except _FactsTimeout:
+            armed[0] = False
+            _RACK_WALL_N[0] += 1
+            return "budget"
+    finally:
+        armed[0] = False
+        _sg.setitimer(_sg.ITIMER_REAL, 0)
+        _sg.signal(_sg.SIGALRM, _old)
 
 
 def rack_release_rows(decoded_rows, texts, ma, nv, prev):
@@ -9106,7 +9146,7 @@ def do_train(steps, lr, batch, seed):
                 prev_rk, _rel, _tst, _ = rack_release_rows(decoded_rows, texts, ma, nv, prev_rk)
                 _rack_release_n[0] += _rel; _rack_release_n[1] += _tst
                 if _rel and int(os.environ.get("ALG_RACK_DEBUG", "0")):
-                    print(f"[rack-release] B={len(idx)} released {_rack_release_n[0]}/{_rack_release_n[1]} (cumulative)", flush=True)
+                    print(f"[rack-release] B={len(idx)} released {_rack_release_n[0]}/{_rack_release_n[1]} walled {_RACK_WALL_N[0]} (cumulative)", flush=True)
                 rk = rack_pack(decoded_rows, fb, texts, T_ALG, ALG_RACK_TESTS, prev=prev_rk)
                 _rack_host[id(rack_buf)] = rk
                 _fd(rack_buf, rk, _rlc)
@@ -10107,7 +10147,7 @@ def do_train(steps, lr, batch, seed):
                   f"({(time.time()-t0)/(s+1):.2f}s/step"
                   + (f"; steady {(time.time()-_t5)/(s-5):.3f}s/step from step 5" if s > 5 else "") + ")"
                   + (f" [host feed {1e3*_tt['feed']/max(_tt['n'],1):.0f} ms + step-call {1e3*_tt['step']/max(_tt['n'],1):.0f} ms per step, n={_tt['n']}]" if _STEP_TIME else "")
-                  + (f" [rack-release {_rack_release_n[0]}/{_rack_release_n[1]} rows cumulative]" if ALG_RACK_RELEASE else ""),
+                  + (f" [rack-release {_rack_release_n[0]}/{_rack_release_n[1]} rows cumulative walled {_RACK_WALL_N[0]}]" if ALG_RACK_RELEASE else ""),
                   flush=True)
         if (s + 1) % val_every == 0 or s == steps - 1:
             if int(os.environ.get("ALG_SHELF_CIRCLE", "0")) >= 2:
