@@ -48879,3 +48879,29 @@ the step cost: THE DEPTH PROBE (2 and 4 stacked bank + mixer blocks per breath o
 vs the lineage), behind the chalkboard's verdict, on the word.
 
 ### 2026-10-08 (11:50) — RK3X_241 HUNG ON THE HOST at step ~2,500-3,000 (22:45 -> 11:49, 13 hours at 99.8 % CPU, no step line, no snapshot before 8,000): killed; the chain exited FAILED; the card idle. Suspect: a solver call inside the training loop WITHOUT the hang-proof pool's wall (form 3's release runs the solver on the committed subgraph at consult 2; the consults themselves go through the facts pool with walls). The rule "hang-proof pools everywhere" (the row catalog, 09-19) is the door the release bypassed. Diagnosis and fix follow; a night of card time lost — the second this week; RULE: a chain's waiter also watches the TRAINING LOG's mtime (no step line for 30 minutes = hung; kill and fail loudly).
+
+### 2026-10-08 (11:59) — THE RESONANCE READ (the gym's second use; branch replay 671832da; scripts/resonance_read.py; .cache/resonance_read_PMS8_241.txt): the echo contracts hard, the KIND DIRECTION IS A REAL AXIS (own-kind alignment 0.83 -> 0.43 vs 0.02 for a random impulse), and right and wrong slots ring the SAME — no perceiver channel; the cross-kind test is confounded by near-colinear kind means
+
+Setup: PMS8_241's kb-2 snapshot on 64 wild rows (419 gold slots: 134 right / 285 wrong); impulses of
+0.1 ||cur|| along the own-kind mean / a random direction / the nearest other kind (the Welford
+means on the 384 content dims); replay 3..6 with per-breath states captured; all gold slots of a
+row perturbed together per condition (cross-slot leakage not ruled out — a mean-over-slots read).
+CONTRACTION: relative response norm 0.49 / 0.28 / 0.49 (own / random / other) at b3 -> 0.06 / 0.03
+/ 0.06 at b6 — tighter than impulse v2's 0.2-0.4 (predicted: confirmed). RESONANCE: under the
+own-kind impulse the response's cosine to the own-kind mean runs 0.83 -> 0.43 across b3-b6;
+under the random impulse it sits at 0.02-0.03 — the kind direction is a genuine axis of the
+state's dynamics, not an artefact of the library. THE PERCEIVER CHANNEL (predicted: right slots
+align more): NOT CONFIRMED — at b6 own-kind cosine 0.434 (right) vs 0.424 (wrong), +0.010, the
+sign flipping at b4 (0.529 vs 0.566): right and wrong slots ring the same (the confidently-wrong
+law again: the dynamics do not know which slots are wrong). THE CROSS-KIND IMPULSE: its cosine to
+the injected direction stays 0.77 -> 0.39 — but the nearest-other pairings are near-COLINEAR on
+this body (rel:add vs rel:sub cos 0.942; rel:mul vs rel:div 0.917; only given vs rel:sub at 0.675
+is a clean pair, not broken out) — the "no restoring force toward its own kind" prediction is
+confounded, not read. Decodes changed on 6 / 2 / 5 of 64 rows (own / random / other), wrong
+before and after on nearly all. READING: ringing finds the kind axis and finds nothing that
+separates right from wrong — the echo's shape is the body's, not the row's; the given-vs-rel axis
+is the only clean resonance (the atlas read's given-vs-rel legibility, from the dynamics' side).
+The acting perceiver's resonance channel is therefore closed at the slot level on this body; the
+rel-op kinds' colinearity (0.92-0.94) is itself a finding: the body does not separate inverse
+operations in its state, which the op-pointer's 0.72 and the atlas's 0.43 four-way accuracy both
+echo. The clean given-vs-rel ring is registered as a mouth / OOD channel (row-level), low prior.
