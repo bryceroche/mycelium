@@ -81,6 +81,9 @@ CONTENT_BREATHS_LIB_PATH = ".cache/welford_atlas_PMS8_241_content_breaths.npz"  
 DIET_STATES_BREATHS_PATH = ".cache/welford_atlas_PMS8_241_diet_states_breaths.npz"  # raw per-breath content states, diet, cached so the feature step never re-forwards
 PERCEIVER_V1B_DIET_FEAT = ".cache/perceiver_v1b_features_PMS8_241_pm35cslicevalid2.npz"
 PERCEIVER_V1B_WILD_FEAT = ".cache/perceiver_v1b_features_PMS8_241_wildhold.npz"
+POLAR_LIB_PATH = ".cache/welford_atlas_PMS8_241_polar.npz"                    # kind:{k} (final) + kind:{k}@{kb} (per breath, kb=1..K_B-1)
+POLAR_DIET_STATES_PATH = ".cache/welford_atlas_PMS8_241_polar_diet_states.npz"
+POLAR_WILD_STATES_PATH = ".cache/welford_atlas_PMS8_241_polar_wild_states.npz"
 OUT_TXT = ".cache/welford_atlas_PMS8_241.txt"
 DRIFT_TAGS = ["PMS8_241", "HS_241", "HSd_241", "EY_241"]   # RK_241: no clock_band_states file (checked, absent)
 MIN_N_KIND = 40       # atlas_radius_read.py's own floor for a kept kind-cell
@@ -166,6 +169,9 @@ def build():
     from phase1_algebra_head import build_params, forward, load_alg, build_slot_masks, alt2_fact_buf, K_VARS, L_FAC
     from tinygrad import Tensor, dtypes
     from tinygrad.nn.state import safe_load
+    import polar_latent_hook
+    polar_latent_hook.install(H)      # THE POLAR LATENT TAP (2026-10-08) -- read-only, bit-identical forward
+    POLAR_D = H.POLAR_D
 
     bands, clock_dims = H._hier_band_dims()
     CONTENT = np.sort(np.concatenate(bands))
@@ -208,6 +214,7 @@ def build():
     # library) -- captured once here so the per-breath library and the original final-breath library
     # cost exactly one forward pass between them, not two.
     states_all = np.zeros((n, K_B, L_FAC, C), np.float16)
+    polar_all = np.zeros((n, K_B, L_FAC, POLAR_D), np.float16)   # kb=0 stays zero -- breath_step/_polar_waist never runs for breath 0 ("outside time")
     for s0 in range(0, n, BATCH):
         sl = np.arange(s0, min(s0 + BATCH, n))
         pad = BATCH - len(sl)
@@ -227,15 +234,20 @@ def build():
         o = forward(p, ts, tk, se, slot_mask=Tensor(mk, dtype=dtypes.float), fact_buf=Tensor(fb, dtype=dtypes.float))
         o["fat"].realize()
         got = {kb: arr for (kb, tag, arr) in H._CENSUS if tag == "state"}
+        got_polar = {kb: arr for (kb, tag, arr) in H._CENSUS if tag == polar_latent_hook.TAG}
         H._CENSUS = None
         assert final_kb in got, sorted(got)
         assert set(range(K_B)) <= set(got), sorted(got)
+        assert set(range(1, K_B)) <= set(got_polar), sorted(got_polar)   # breath_step runs kb=1..K_B-1 only
         for kb in range(K_B):
             states_all[sl, kb] = got[kb][:len(sl), :L_FAC, :][:, :, CONTENT].astype(np.float16)
+        for kb in range(1, K_B):
+            polar_all[sl, kb] = got_polar[kb][:len(sl), :L_FAC, :].astype(np.float16)
         if s0 % (BATCH * 8) == 0:
             P(f"[build] content forward {s0 + len(sl)}/{n} ({time.time()-t0:.0f}s)")
     P(f"[build] content forward passes done ({time.time()-t0:.0f}s)")
     states_final = states_all[:, final_kb].astype(np.float32)
+    polar_final = polar_all[:, final_kb].astype(np.float32)
 
     # ---- CONTENT-SPACE LIBRARY: keyed by kind and by coarse knot ----
     # A knot's SLOT count (cell.n) is not the same question as how many DISTINCT ROWS fed it -- one
@@ -326,6 +338,34 @@ def build():
             na, nb = content_lib[kk].n, content_breaths_lib[kb_key].n
             P(f"    {k:10} cos={c:.6f}  n(final-only)={na:.0f} n(per-breath@{final_kb})={nb:.0f} "
               f"{'MATCH' if na == nb and c > 0.9999 else 'MISMATCH -- investigate'}")
+
+    # ---- POLAR-LATENT LIBRARY (2026-10-08, Bryce: "is the silhouette 128 dims?") ----
+    # The SAME forward pass's 128-d content-plane bottleneck (polar_latent_hook.py's tap on
+    # _polar_waist), keyed by kind at the FINAL breath (plain "kind:{k}") AND by (kind, breath) for
+    # every loop breath kb=1..K_B-1 ("kind:{k}@{kb}" -- breath_step/_polar_waist never runs for
+    # breath 0, "outside time"; kb=0 is absent from this library by construction, not an omission).
+    polar_lib = WelfordLibrary()
+    n_slots_p = 0
+    for i in range(n):
+        if not admissible[i]:
+            continue
+        facs = vs[i]["factors"]
+        for j in range(min(L_FAC, len(facs))):
+            if vg["presence"][i, j] <= 0.5:
+                continue
+            k = gold_kind(facs[j], j)
+            polar_lib.get_or_create(f"kind:{k}", dim=POLAR_D).update(polar_final[i, j])
+            for kb in range(1, K_B):
+                polar_lib.get_or_create(f"kind:{k}@{kb}", dim=POLAR_D).update(polar_all[i, kb, j].astype(np.float32))
+            n_slots_p += 1
+    polar_lib.save(POLAR_LIB_PATH, extra_meta=json.dumps(dict(tag="PMS8_241", space="polar_latent",
+                    source=DIET_SLICE, n_rows=n, n_slots=n_slots_p, polar_dims=POLAR_D, K_B=K_B,
+                    generated=time.strftime("%Y-%m-%d %H:%M:%S"))))
+    np.savez_compressed(POLAR_DIET_STATES_PATH, polar_all=polar_all, admissible=admissible,
+                         meta=json.dumps(dict(source=DIET_SLICE, generated=time.strftime("%Y-%m-%d %H:%M:%S"))))
+    P(f"[build] polar-latent library: {n_slots_p} slots x (1 final + {K_B-1} per-breath) -> {POLAR_LIB_PATH}")
+    pkind_n = {k: polar_lib[f"kind:{k}"].n for k in KINDS if f"kind:{k}" in polar_lib}
+    P(f"[build] polar kind counts (final breath): {pkind_n}")
 
     # ---- RETINA-SPACE LIBRARY: clause embeddings, prose rows only, nl_atlas_clause's own machinery ----
     import nl_atlas_clause as NAC   # row_factor_records, embed_and_pool, l2norm, gen_src/is_prose (DEV=CPU asserted inside)
@@ -1329,9 +1369,191 @@ def dryness_probe():
 
 
 # ======================================================================================
+# THE POLAR LATENT PROBE (2026-10-08, Bryce: "is the silhouette 128 dims?"). polar_latent_hook.py
+# taps _polar_waist's 128-d bottleneck (the SAME content-plane squeeze every loop breath pays, 384
+# content dims -> ALG_POLAR_D -> 384) via a runtime monkeypatch (no chain-imported file edited).
+# build() (above) now also builds the polar-latent library in the SAME diet forward pass; the two
+# functions below build wild's polar states (a fresh CPU forward -- clock_band_states_PMS8_241.npz
+# never captured this tag) and do the read.
+# ======================================================================================
+
+def build_polar_wild():
+    # ALG_TEST / ALG_TEST_NAME become MODULE-LEVEL CONSTANTS (H.ALG_TEST / H.TEST_NAME) baked in at
+    # phase1_algebra_head's FIRST import in this process (scripts/phase1_algebra_head.py:1758-9) --
+    # os.environ writes AFTER that point have no effect on them (Python caches the module in
+    # sys.modules; a second `import` does not re-run its top level). This function must therefore be
+    # run as its OWN fresh process (it is -- CLI mode "polarwild", never folded into "all"/"build" in
+    # the same process); the assert below catches the trap loudly instead of silently reading the
+    # diet slice's states for a file named "wildhold".
+    assert "phase1_algebra_head" not in sys.modules, (
+        "build_polar_wild: phase1_algebra_head already imported in this process (by `build` or "
+        "otherwise) -- its ALG_TEST/TEST_NAME constants are already baked to the WRONG fixture; "
+        "run `python3 scripts/welford_atlas.py polarwild` as its own fresh process")
+    os.environ["ALG_TEST"], os.environ["ALG_TEST_NAME"] = WILD_PATH, "wildhold"
+    import phase1_algebra_head as H
+    from phase1_algebra_head import build_params, forward, load_alg, build_slot_masks, alt2_fact_buf, K_VARS, L_FAC
+    from tinygrad import Tensor, dtypes
+    from tinygrad.nn.state import safe_load
+    import polar_latent_hook
+    polar_latent_hook.install(H)
+    POLAR_D = H.POLAR_D
+    K_B = int(os.environ["ALG_BREATH"])
+    assert H.ALG_TEST == WILD_PATH and H.TEST_NAME == "wildhold", (H.ALG_TEST, H.TEST_NAME)
+
+    vs, vst, vtk, vg, vse = load_alg("test")
+    n_full = len(vs)
+    assert n_full == 311, n_full
+    limit = int(os.environ.get("WA_BUILD_LIMIT", "0")) or n_full
+    n = min(n_full, limit)
+    P(f"[build-polar-wild] wild holdout {WILD_PATH}: {n}/{n_full} rows, POLAR_D={POLAR_D} "
+      f"(WA_BUILD_LIMIT={os.environ.get('WA_BUILD_LIMIT', '0')})")
+
+    p = build_params(0)
+    sd = safe_load(CKPT)
+    assert set(sd) == set(p), (sorted(set(sd) - set(p))[:4], sorted(set(p) - set(sd))[:4])
+    for k in p:
+        p[k].assign(sd[k].to(p[k].device).cast(p[k].dtype)).realize()
+
+    t0 = time.time()
+    polar_all = np.zeros((n, K_B, L_FAC, POLAR_D), np.float16)
+    for s0 in range(0, n, BATCH):
+        sl = np.arange(s0, min(s0 + BATCH, n))
+        pad = BATCH - len(sl)
+        sl_p = np.concatenate([sl, sl[:1].repeat(pad)]) if pad else sl
+        ts = Tensor(np.ascontiguousarray(vst[sl_p]), dtype=dtypes.half)
+        tk = Tensor(vtk[sl_p].astype(np.float32), dtype=dtypes.float)
+        se = Tensor(vse[sl_p].astype(np.int32), dtype=dtypes.int)
+        o0 = forward(p, ts, tk, se)
+        onp0 = {k: o0[k].realize().numpy() for k in ("fat", "args", "res")}
+        mk = build_slot_masks(onp0, vse[sl_p].astype(np.int32))
+        _ka = ("pres", "ftype", "op", "dig") + (("dup",) if "dup" in o0 else ())
+        _oa = {**onp0, **{k: o0[k].realize().numpy() for k in _ka}}
+        _nv = np.array([vs[int(i)].get("n_vars", K_VARS) for i in sl_p])
+        _ma = np.array([vs[int(i)].get("m", 0) for i in sl_p])
+        fb = alt2_fact_buf(_oa, vse[sl_p].astype(np.int32), _nv, _ma)
+        H._CENSUS = []
+        o = forward(p, ts, tk, se, slot_mask=Tensor(mk, dtype=dtypes.float), fact_buf=Tensor(fb, dtype=dtypes.float))
+        o["fat"].realize()
+        got_polar = {kb: arr for (kb, tag, arr) in H._CENSUS if tag == polar_latent_hook.TAG}
+        H._CENSUS = None
+        assert set(range(1, K_B)) <= set(got_polar), sorted(got_polar)
+        for kb in range(1, K_B):
+            polar_all[sl, kb] = got_polar[kb][:len(sl), :L_FAC, :].astype(np.float16)
+        if s0 % (BATCH * 8) == 0:
+            P(f"[build-polar-wild] forward {s0 + len(sl)}/{n} ({time.time()-t0:.0f}s)")
+    np.savez_compressed(POLAR_WILD_STATES_PATH, polar_all=polar_all,
+                         meta=json.dumps(dict(source=WILD_PATH, generated=time.strftime("%Y-%m-%d %H:%M:%S"))))
+    P(f"[build-polar-wild] wrote {POLAR_WILD_STATES_PATH} ({time.time()-t0:.0f}s)")
+
+
+def _pairwise_mean_cos(means_dict, ks):
+    pairs = []
+    for a_i in range(len(ks)):
+        for b_i in range(a_i + 1, len(ks)):
+            ma, mb = means_dict[ks[a_i]], means_dict[ks[b_i]]
+            pairs.append(float((ma @ mb) / (np.linalg.norm(ma) * np.linalg.norm(mb) + 1e-12)))
+    return float(np.mean(pairs)), pairs
+
+
+def read_polar():
+    if not (os.path.exists(POLAR_LIB_PATH) and os.path.exists(POLAR_WILD_STATES_PATH)):
+        raise SystemExit(f"read_polar: missing {POLAR_LIB_PATH} or {POLAR_WILD_STATES_PATH} -- "
+                          f"run `build` then `polarwild` first")
+    import phase1_algebra_head as H
+    K_B = int(os.environ.get("ALG_BREATH", "7"))
+    final_kb = K_B - 1
+    polar_lib = WelfordLibrary.load(POLAR_LIB_PATH)
+    content_lib = WelfordLibrary.load(CONTENT_LIB_PATH)
+    ks = [k for k in KINDS if f"kind:{k}" in polar_lib and f"kind:{k}" in content_lib]
+
+    rows = load_jsonl(WILD_PATH)
+    assert len(rows) == 311, len(rows)
+    ri, ji, kind = [], [], []
+    for r_idx, row in enumerate(rows):
+        for j, fac in enumerate(row["factors"]):
+            ri.append(r_idx); ji.append(j); kind.append(gold_kind(fac, j))
+    ri, ji, kind = np.array(ri), np.array(ji), np.array(kind)
+    ps = np.load(".cache/ps_legal_wild_PMS8_241.npz")
+    okmap = {(int(r), int(j)): bool(o) for r, j, o in zip(ps["rows"], ps["slots"], ps["ok"])}
+    ok = np.array([okmap[(r, j)] for r, j in zip(ri, ji)])
+
+    tel = np.load(".cache/perceiver_telemetry_PMS8_241_wildhold.npz", allow_pickle=True)
+    ent_final = tel["ent"][:, -1, :]
+    ent = ent_final[ri, ji]
+
+    zw = np.load(POLAR_WILD_STATES_PATH)
+    X_polar = zw["polar_all"][ri, final_kb, ji, :].astype(np.float32)
+
+    bands, clock_dims = H._hier_band_dims()
+    CONTENT = np.sort(np.concatenate(bands))
+    zc = np.load(".cache/clock_band_states_PMS8_241.npz")
+    S_w = zc["states"].astype(np.float32)
+    X_content = S_w[ri, 5, ji, :][:, CONTENT]
+
+    court = pickle.load(open(".cache/courtroom_PMS8_241.pkl", "rb"))
+    row_correct = np.zeros(311, dtype=bool)
+    for res in court["final"]["results"]:
+        row_correct[res["i"]] = bool(res["top1"]["correct"])
+
+    mu_polar = {k: polar_lib[f"kind:{k}"].mean.astype(np.float32) for k in ks}
+    mu_content = {k: content_lib[f"kind:{k}"].mean.astype(np.float32) for k in ks}
+
+    def cos_mat(V, means_dict):
+        Mm = np.stack([means_dict[k] for k in ks], axis=0)
+        Vu = V / (np.linalg.norm(V, axis=-1, keepdims=True) + 1e-12)
+        Mu = Mm / (np.linalg.norm(Mm, axis=-1, keepdims=True) + 1e-12)
+        return Vu @ Mu.T
+
+    kidx = {k: i for i, k in enumerate(ks)}
+    own_idx = np.array([kidx[k] for k in kind])
+    rel_mask = kind != "given"
+
+    a_ent, n1, n0 = auroc(ok, -ent)
+    P("\n" + "=" * 100)
+    P("THE POLAR LATENT PROBE (2026-10-08): the 128-d _polar_waist bottleneck vs the 384-d content")
+    P("library (0.766) and entropy (0.700) -- per-slot/row AUROC, margin, nearest-kind accuracy, on wild")
+    P("=" * 100)
+    P(f"  entropy baseline (membrane, final breath): AUROC={a_ent:.4f} (n_pos={n1} n_neg={n0})")
+
+    results = {}
+    for name, (V, means_dict, dim) in (("polar (128-d)", (X_polar, mu_polar, X_polar.shape[-1])),
+                                        ("content (384-d, reference)", (X_content, mu_content, X_content.shape[-1]))):
+        cosall = cos_mat(V, means_dict)
+        cos_own = cosall[np.arange(len(V)), own_idx]
+        a_slot, _, _ = auroc(ok, cos_own)
+        row_score = np.full(311, np.nan)
+        for r_idx in range(311):
+            sel = ri == r_idx
+            if sel.any():
+                row_score[r_idx] = cos_own[sel].mean()
+        valid = ~np.isnan(row_score)
+        a_row, _, _ = auroc(row_correct[valid], row_score[valid])
+        cos_other = cosall.copy()
+        cos_other[np.arange(len(V)), own_idx] = -np.inf
+        best_other = cos_other.max(1)
+        margin_right = float((cos_own - best_other)[ok].mean())
+        pred_kind = np.array(ks)[cosall.argmax(1)]
+        acc5 = float((pred_kind == kind).mean())
+        is_rel_pred, is_rel_gold = (pred_kind != "given"), (kind != "given")
+        acc_bin = float((is_rel_pred == is_rel_gold).mean())
+        acc_rel4 = float((pred_kind[rel_mask] == kind[rel_mask]).mean()) if rel_mask.any() else float("nan")
+        pw_mean, pw_all = _pairwise_mean_cos(means_dict, ks)
+        results[name] = dict(dim=dim, a_slot=a_slot, a_row=a_row, margin=margin_right, acc5=acc5,
+                              acc_bin=acc_bin, acc_rel4=acc_rel4, pw_mean=pw_mean)
+        P(f"\n  {name:28} dim={dim:4d}  slot AUROC={a_slot:.4f}  row AUROC={a_row:.4f}  "
+          f"margin(right)={margin_right:+.4f}")
+        P(f"  {'':28} nearest-kind acc: 5-way={acc5:.4f}  given-vs-rel={acc_bin:.4f}  "
+          f"rel-subtype-4way={acc_rel4:.4f}")
+        P(f"  {'':28} mean pairwise cosine between the {len(ks)} kind means ({dim}-d): {pw_mean:+.4f} "
+          f"(all pairs: {[round(x,4) for x in pw_all]})")
+    return results
+
+
+# ======================================================================================
 def main():
     mode = sys.argv[1] if len(sys.argv) > 1 else "all"
-    assert mode in ("build", "read", "drift", "jsfeat", "textureprobe", "caricature", "dryness", "all"), mode
+    assert mode in ("build", "read", "drift", "jsfeat", "textureprobe", "caricature", "dryness",
+                     "polarwild", "polarread", "all"), mode
     P(f"THE WELFORD ATLAS -- PMS8_241 -- mode={mode} -- {time.strftime('%Y-%m-%d %H:%M:%S')}")
     if mode in ("build", "all"):
         build()
@@ -1350,6 +1572,10 @@ def main():
         caricature_probe()
     if mode == "dryness":
         dryness_probe()
+    if mode == "polarwild":
+        build_polar_wild()
+    if mode == "polarread":
+        read_polar()
     if mode == "all":
         P("\n" + "=" * 100)
         P("THE SIX-LINE READING")
