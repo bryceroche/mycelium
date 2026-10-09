@@ -1,23 +1,21 @@
-# NEXT SESSION — cold-start entry (updated 2026-10-08 20:20)
+# NEXT SESSION — cold-start entry (updated 2026-10-09 03:17)
 
-**THE CARD:** pc-queue-dirbit is merging branch dirbit (THE DIRECTION BIT, ALG_DIR; THE INVERSE DOSE pm35d) into gen-weights, gating,
-then firing DIR_241 (PMS8's recipe + ALG_DIR on pm35c) and DIRD_241 (the same on pm35d) — the week's largest lever (inverse-form relations:
-res 0.25 vs 0.87; worth up to +0.03 wild). BARS: inverse-form res >= 0.60 (scripts/polarity_census.py on the arm's dump), forward res not
-down, masked >= PMS8 + 0.015 (claim +0.020 / twin); DIRD vs DIR = the dose's share. Logs: .cache/queue_dirbit.log, rack_chain_DIR.log,
-rack_chain_DIRD.log. Waiters match the chains' real failure vocabulary + the training log's mtime (pc-*-watch).
-**CLOSED TODAY:** THE CHALKBOARD as tokens (RK3X_241: no slot ever attends a chalk token, trained or untrained — the mandatory-road law;
-slot +0.006 vs RKX, null); release on contradiction = a wild no-op on clean commits (0/311; 97/300 on mint). FORM 2 registered: the implied
-value as a LEGAL numeral in the digit path's mask (no bypass; zero params) — the next arm after the direction-bit pair.
-**THE RACK FAMILY (four bodies):** clean commits (0.96-0.97), null on the slot everywhere; the schedule fix (DAMP 3,5,0) recovers the
-consults' mint on the hierarchical body.
-**THE GYM (branch replay, wt8, unmerged):** the save point + replay (decode-exact); the chalk dry-run; the resonance read (the kind axis is
-real; right and wrong ring the same); the shuffle read (the mixer binds operands 1.5-2.4x, groups by owner not at all); THE PILOT'S CEILING
-(+1/128 diet, +0/64 wild over the fixed schedule: after breath 2 the row's fate is set; the pilot's actions are the consults', not the clock's).
-**OTHER READS 10-08:** the 128-d library a wash (0.774 vs 0.766); the polarity census (THE LEVER); the credit census running (who the gradient
-comes from).
-**Registered, unbuilt:** the chalkboard form 2 (legality); the owner signature (the shuffle as structure; ceiling 46 %); the sorting room;
-the depth pair (cheap at 512-d); the majority dryness test; head diffs A/B/C from the audit; the reader's holdout (books).
-**Branches/worktrees:** replay (wt8), dirbit (wt9, merging), rack3 + listen (merged). main fast-forwarded 10-08 20:3x.
+**THE CARD IS IDLE (03:03).** Next arm under the standing word: THE TEACHER-FORCED DIRECTION BIT (building on branch dirbit, wt9: the gold
+direction as the res mask at training; the predicted bit at read only where confident) vs PMS8_241 on pm35c; bars: inverse res >= 0.60,
+forward res >= 0.85, masked >= PMS8 - 0.005. In the gym (zero GPU): THE CHALKBOARD FORM 2 as a read-time road (the solver's implied value
+admitted as a LEGAL numeral for relation slots on RKX_241's dump/replay).
+**THE DIRECTION-BIT FAMILY (10-08/09), closed on its first form:** DIR_241 (bit) masked -0.015, inverse res 0.25->0.33, forward 0.87->0.75;
+DOSE_241 (inverse-heavy mint, no bit) wild inverse res UNCHANGED (starvation refuted), mint +0.08; DIRD_241 (both) masked -0.033. The
+blindspot stands (36 % of wild relations; the res head gets 3.6x its share of gradient and cannot use it = a missing INPUT: the prose
+cue->direction binding). Forms registered: the teacher-forced bit; the sorting room; the direction cue as a ROLE in the role signature.
+**CLOSED 10-08:** the chalkboard as tokens (no slot ever attends; form 2 = legality); the rack family on four bodies (clean commits, slot null);
+the pilot's ceiling (+1/128, +0/64: after breath 2 the row's fate is set); the credit census (wrong slots loud, same direction).
+**Positive this week:** the Welford atlas (0.766 vs entropy 0.700; one library per body); the schedule fix (mint +0.047 on the hierarchical
+body); the hammerhead census (view unanimity 0.970 at 0.32 coverage; majority 0.965 at 0.41).
+**Rules added this week (all in the ledger):** one arm per chain; waiters match the chain's failure vocabulary + the training log's mtime;
+a watcher binds the log to the process it would kill (the wrapper's cmdline); a derived chain is grepped for the organ's env NAME; joined
+artifacts must share the same mask; a selector's features are diffed against the gold fields; replay verdicts at the decode level.
+**Branches/worktrees:** replay (wt8: the gym), dirbit (wt9; merged fa7d7559), rack3 + listen (merged). main fast-forwarded 10-09 03:2x.
 
 ---
 (The previous entry follows, for the longer board.)
