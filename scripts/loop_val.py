@@ -258,10 +258,13 @@ def read(ckpt, data=None, p=None):
     _HUD_ON = int(os.environ.get("ALG_HUD", "0")) != 0   # THE TOKEN HUD, read-time road (2026-09-21)
     _TREE_ON = bool(os.environ.get("ALG_TREE", ""))   # THE TREE DESCENT's unit-id port (2026-09-25)
     _BUSREG_ON = float(os.environ.get("ALG_BUSREG", "0")) != 0 or float(os.environ.get("ALG_IDKEY", "0")) != 0   # THE BUS REGISTER's token-id port (2026-09-22)
+    _DIRROLE_ON = int(os.environ.get("ALG_DIRROLE", "0")) != 0   # THE DIRECTION ROLE, read-time road (2026-10-09)
     if _BUSREG_ON:
         import phase1_algebra_head as _HB
     if _HUD_ON:
         import phase1_algebra_head as _HH
+    if _DIRROLE_ON:
+        import phase1_algebra_head as _HD
   # THE PAIRED READ (2026-09-12): per-slot outcomes to an npz
     for s0 in range(0, len(vs), 8):
         sl = np.arange(s0, min(s0 + 8, len(vs)))
@@ -297,6 +300,17 @@ def read(ckpt, data=None, p=None):
                 vs[int(i)]["text"], vtk[i], vse[i], _HH.T_ALG)
                 for i in sl_p]).astype(np.int32)
             hud_t = Tensor(_hb, dtype=dtypes.int)
+        dircue_t = None
+        if _DIRROLE_ON:
+            # THE DIRECTION ROLE (2026-10-09): per-batch, host-side, from
+            # RAW TEXT alone (dirrole_row_features — the HUD idiom: no
+            # cached per-row array exists for an arbitrary TEST fixture,
+            # so this re-derives it every batch, identically to how
+            # do_train derives it from `samples` via dirrole_build_array
+            # — same function, same input, the train/read parity rule).
+            _db = np.stack([_HD.dirrole_row_features(vs[int(i)]["text"], _HD.T_ALG)
+                            for i in sl_p]).astype(np.int32)
+            dircue_t = Tensor(_db, dtype=dtypes.int)
         tree_t = None
         if _TREE_ON:
             import phase1_algebra_head as _HT
@@ -309,7 +323,7 @@ def read(ckpt, data=None, p=None):
             # HUD idiom: no cached array for an arbitrary TEST fixture).
             ident_t = Tensor(np.stack([_HB.ident_row_ids(vs[int(i)]["text"], _HB.T_ALG)
                                        for i in sl_p]).astype(np.int32), dtype=dtypes.int)
-        o0 = _rf(forward, p, ts, tk, se, keys=_jk_open, xcorr=xcorr_t, hud=hud_t, tree=tree_t, ident=ident_t)
+        o0 = _rf(forward, p, ts, tk, se, keys=_jk_open, xcorr=xcorr_t, hud=hud_t, tree=tree_t, ident=ident_t, dircue=dircue_t)
         onp0 = {k: o0[k].realize().numpy() for k in ("fat", "args", "res")}
         mk = build_slot_masks(onp0, vse[sl_p].astype(np.int32))
         fact_t = mass_t = None; cert_t = None
@@ -443,10 +457,10 @@ def read(ckpt, data=None, p=None):
                     kk_t = Tensor(kk, dtype=dtypes.float)
                 return Tensor(fb, dtype=dtypes.float), cb_t, rk_t, rk, kk_t, kk
             _rk_d1 = [] if (_ARACK and _RACKSIDE is not None) else None
-            _oa3 = _rf(forward, p, ts, tk, se, keys=_ck3, slot_mask=_mk3, xcorr=xcorr_t, hud=hud_t, tree=tree_t, ident=ident_t, stop_after=2)
+            _oa3 = _rf(forward, p, ts, tk, se, keys=_ck3, slot_mask=_mk3, xcorr=xcorr_t, hud=hud_t, tree=tree_t, ident=ident_t, dircue=dircue_t, stop_after=2)
             f3_t, c3_t, r3_t, r3_np, k3_t, _ = _consult3(_oa3, rack_detail=_rk_d1)
             # pass b runs breaths 3-4 too — it must see cert3 / rack3 (kb >= 3) the same as the full pass below
-            _ob3 = _rf(forward, p, ts, tk, se, keys=_ck3, slot_mask=_mk3, xcorr=xcorr_t, hud=hud_t, tree=tree_t, ident=ident_t, stop_after=4, facts3=f3_t, cert3=c3_t, rack3=r3_t, chalk3=k3_t)
+            _ob3 = _rf(forward, p, ts, tk, se, keys=_ck3, slot_mask=_mk3, xcorr=xcorr_t, hud=hud_t, tree=tree_t, ident=ident_t, dircue=dircue_t, stop_after=4, facts3=f3_t, cert3=c3_t, rack3=r3_t, chalk3=k3_t)
             _rk_d2 = [] if (_ARACK and _RACKSIDE is not None) else None
             f5_t, c5_t, r5_t, r5_np, k5_t, k5_np = _consult3(_ob3, rack_prev=r3_np, rack_detail=_rk_d2, released_out=_rel2)
             if _rk_d2 is not None:   # THE RACK's SIDECAR: the flags the body committed by its last consult (both consults' union), per real row (the DRY CENSUS reads it exactly)
@@ -457,7 +471,7 @@ def read(ckpt, data=None, p=None):
         o = _rf(forward, p, ts, tk, se, keys=_jk_masked,
                 slot_mask=Tensor(mk, dtype=dtypes.float),
                 fact_buf=(None if _alt3 else fact_t), mh_mass=mass_t, mh_atlas_traj=_mha_t,
-                xcorr=xcorr_t, hud=hud_t, tree=tree_t, ident=ident_t, pmask=cert_t,   # THE READ-TIME CERTIFIER MASK (LV_CERTMASK)
+                xcorr=xcorr_t, hud=hud_t, tree=tree_t, ident=ident_t, dircue=dircue_t, pmask=cert_t,   # THE READ-TIME CERTIFIER MASK (LV_CERTMASK)
                 valfact=(fact_t if float(os.environ.get("ALG_VALREG", "0")) or float(os.environ.get("ALG_VALREG_ADDR", "0")) else None),   # THE VALUE STREAM: the live pass-1 facts
                 facts3=f3_t, facts5=f5_t, cert3=c3_t, cert5=c5_t,   # THE TRAINED CERTIFIER-MASK ROAD
                 rack3=r3_t, rack5=r5_t,   # THE RACK (2026-10-05)
