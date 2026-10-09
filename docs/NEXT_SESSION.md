@@ -1,27 +1,23 @@
-# NEXT SESSION — cold-start entry (updated 2026-10-08 12:28)
+# NEXT SESSION — cold-start entry (updated 2026-10-08 20:20)
 
-**THE CARD:** RK3X_241 (RKX's recipe + ALG_RACK_RELEASE=1 + ALG_CHALK=1 = release on contradiction + THE CHALKBOARD, from scratch on the
-fixed-schedule hierarchical body) HUNG on the host at step ~2,500 for 13 h on 10-08 (the release's solver call had no wall-clock wall);
-killed; the wall fix (form 3's solve bounded like _ping_walled; timeout = "budget", never unsat) is being gated and the chain re-fired as
-pc-rk3x with an mtime watcher (pc-rk3x-watch: 30 min silent = kill). Reads land ~6 h after the re-fire. Control = RKX_241 (banked).
-BARS: masked >= RKX + 0.015; rows >= 10; digits not down; mint >= 0.59; THE CHALK CENSUS (>= 30 % of chalk-carrying rows must have a slot
-attend a chalk token); the released-row count; the derived-argument cell.
-**THE LEVER OF THE WEEK (10-08, THE POLARITY CENSUS):** 36 % of wild relations are INVERSE forms (sub/div = add/mul with the result moved);
-right 0.148 vs 0.323; the whole gap is the RES head (0.25 vs 0.87): 79 % of misses default to the forward convention; representable;
-starved (diet 0.27 vs wild 0.36); the cues unread. Worth up to +0.03 wild. THE DIRECTION BIT (ALG_DIR, structural) + THE INVERSE DOSE
-(pm35d) are being BUILT in worktree wt9 (branch dirbit); the pair DIR_241 / DIRD_241 (plain chassis) fires after RK3X on the word.
-**THE RACK FAMILY (closed on three bodies):** null on the slot (RK/RKC -0.002; RKP/RKPC +0.0005; RKX/RKXC +0.005) with clean commits
-(0.96-0.97); THE SCHEDULE FIX (DAMP 3,5,0) recovers the consults' mint on the hierarchical body (+0.047) and keeps the wall move.
-**OTHER READS 10-07/08:** the Welford atlas = a wild-regime ruler (0.766 vs entropy 0.700; one library per body); the learned perceivers
-lose to it (regime, not overfitting; the reader's holdout registered as a books allocation); the caricatured library a wash; the early
-release refused (0.61 precision); the replay harness (branch replay, wt8: decode-exact; the chalkboard dry-run; the resonance read: the kind
-axis is real, right and wrong ring the same, add/sub and mul/div near-colinear = the positional law); the governor census (owner oracle 46 %);
-THE POLAR LATENT PROBE (12:30, 11c5d67f): the 128-d _polar_waist bottleneck is a WASH vs the 384-d content library (slot +0.0079, row
--0.0118) with a real but small geometric sharpening (kind-mean pairwise cosine 0.560 -> 0.544) that buys no legibility — content stays
-the atlas space; new hook scripts/polar_latent_hook.py (runtime monkeypatch, no chain file edited).
-**Registered, unbuilt:** the depth pair (2/4 mixer layers per breath; cheap), the sorting room (token-side attention), the owner signature,
-the majority dryness test, the acting perceiver (the gym), head diffs A/B/C from the audit.
-**Branches/worktrees:** replay (wt8), dirbit (wt9), rack3 (merged), listen (merged). main fast-forwarded 10-07 21:3x.
+**THE CARD:** pc-queue-dirbit is merging branch dirbit (THE DIRECTION BIT, ALG_DIR; THE INVERSE DOSE pm35d) into gen-weights, gating,
+then firing DIR_241 (PMS8's recipe + ALG_DIR on pm35c) and DIRD_241 (the same on pm35d) — the week's largest lever (inverse-form relations:
+res 0.25 vs 0.87; worth up to +0.03 wild). BARS: inverse-form res >= 0.60 (scripts/polarity_census.py on the arm's dump), forward res not
+down, masked >= PMS8 + 0.015 (claim +0.020 / twin); DIRD vs DIR = the dose's share. Logs: .cache/queue_dirbit.log, rack_chain_DIR.log,
+rack_chain_DIRD.log. Waiters match the chains' real failure vocabulary + the training log's mtime (pc-*-watch).
+**CLOSED TODAY:** THE CHALKBOARD as tokens (RK3X_241: no slot ever attends a chalk token, trained or untrained — the mandatory-road law;
+slot +0.006 vs RKX, null); release on contradiction = a wild no-op on clean commits (0/311; 97/300 on mint). FORM 2 registered: the implied
+value as a LEGAL numeral in the digit path's mask (no bypass; zero params) — the next arm after the direction-bit pair.
+**THE RACK FAMILY (four bodies):** clean commits (0.96-0.97), null on the slot everywhere; the schedule fix (DAMP 3,5,0) recovers the
+consults' mint on the hierarchical body.
+**THE GYM (branch replay, wt8, unmerged):** the save point + replay (decode-exact); the chalk dry-run; the resonance read (the kind axis is
+real; right and wrong ring the same); the shuffle read (the mixer binds operands 1.5-2.4x, groups by owner not at all); THE PILOT'S CEILING
+(+1/128 diet, +0/64 wild over the fixed schedule: after breath 2 the row's fate is set; the pilot's actions are the consults', not the clock's).
+**OTHER READS 10-08:** the 128-d library a wash (0.774 vs 0.766); the polarity census (THE LEVER); the credit census running (who the gradient
+comes from).
+**Registered, unbuilt:** the chalkboard form 2 (legality); the owner signature (the shuffle as structure; ceiling 46 %); the sorting room;
+the depth pair (cheap at 512-d); the majority dryness test; head diffs A/B/C from the audit; the reader's holdout (books).
+**Branches/worktrees:** replay (wt8), dirbit (wt9, merging), rack3 + listen (merged). main fast-forwarded 10-08 20:3x.
 
 ---
 (The previous entry follows, for the longer board.)
