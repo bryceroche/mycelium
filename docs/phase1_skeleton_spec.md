@@ -49974,3 +49974,23 @@ truncate the shared log out from under the watcher).
 STATUS at 14:05: PC_241 (`pc-pc.service`) ACTIVE, `pc-pc-watch.service` standing guard (DONE_MARK "PC CHAIN
 COMPLETE", `.cache/trainer_watch.sh`'s 30-min silent-kill), mask-prep pass running on the real 48k corpus
 (form_mix_pm35c). Bars NOT YET MEASURED — the chain is mid-flight; the next entry reads the dump.
+
+### 2026-10-09 (14:36) — REGISTERED (Bryce: "MHA needs help connecting the macro to micro — that's where the U-Net comes in"): THE HOURGLASS SORTING ROOM (form 2b) — the token-side stack as a 1-D U-Net over the sequence (tokens -> clauses -> sentences -> back, skips at each level, pooling by the head's own tree segmentation); the flat 4-layer stack (SR_241) is its control
+
+The reading against the ledger: (1) correct that flat MHA has no explicit scale — one layer, one receptive field; a
+stack builds macro context implicitly, a U-Net makes it explicit with pooling and skips. (2) The relay's claim that
+"the U-Net hierarchy is built inside the loop" is FALSE on the record: the picture engine outside the loop CLOSED
+(0.30 vs the head's 0.44), the in-loop eyes were KILLED on the mechanism (the soft mask owned the membrane), and
+hill 7's real form (a U-Net on the partitioned state) is untouched. What IS inside the loop is the hierarchical
+STATE — a band partition (root 32 / branch 224 / leaf 128, named by what READS them) with per-band Laplace damping —
+a readout partition, not a U-Net (no cross-scale paths); the semantic band labels in the relay ("root = this is a
+subtraction problem") are invented — the damping census found NO band structure in the plain body. (3) The wall's
+macro-to-micro problem is on the TOKEN side (which mention, which sentence; set at the first look), so the place for
+U-Net structure is the sorting room itself, not the slot loop: an hourglass transformer — 2 layers at token
+resolution, pool to clause spans (the head's tree segmentation; mean/attention pooling), 1 layer at clause resolution,
+pool to sentences, 1 layer, unpool with skips back to tokens. RISK (the residual-seal law): the fine path can compute
+sentence context implicitly, so the coarse path may be voted down from birth — the tree descent's null (pooled keys
+on the FROZEN trunk states, ignored twice) is the warning; a trained stack is a different regime, and the pre/post
+knob census on the coarse path's contribution is the gate requirement. ORDER: SR_241 (flat) first = the control; if
+flat moves twin-pick / other-sentence, the hourglass is the refinement; if flat does not, the hourglass is the next
+form (bars inherited; KILL: the coarse path's contribution < 10% of the token path's at the last layer = inert).
