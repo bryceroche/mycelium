@@ -49406,3 +49406,24 @@ SORTING ROOM (the cue bound at the token side); (c) the direction cue as a ROLE 
 signature (the rcue channel widened: "fewer / less / left / gave" as role cues bound under the
 role phasor — the slot record's own organ extended to direction). The card is idle; (a) fires on
 the standing word after its gate.
+
+### 2026-10-09 (03:37) — THE CHALKBOARD'S SECOND FORM (legality, read-time; branch replay 2bab8bc1; .cache/chalk_legality_RKX_241.txt): NULL, and the reason is upstream — the solver's implied values on wild are RIGHT only 11.5 % of the time (24 % coverage); the digit head prefers them 14 % of the time when legal; the syntax-invisible wall stays at 0.0 % under both masks; THE DERIVED-VALUE LINE CLOSES behind the args wall
+
+Method: RKX_241's kb-2 snapshots replayed unchanged; at the final decode each relation slot with a
+solver-implied value (facts3 / facts5) has that value added to its legal numerals before
+choose_legal; rows re-solved through chain_acc's machinery when the digit head prefers the implied
+value. 128 diet rows, then wild (300 of 311 rows staged by the precomputed states — flagged, not a
+script bug). RESULTS: rows — 0 / 128 diet change verdict, wild 1 / 300 the wrong way (140 -> 139);
+COVERAGE — 23.3 % diet / 24.3 % wild of gold relation slots have any implied value (the facts
+census's 3.4 facts per row); PRECISION — the implied value equals the gold value 13.0 % / 11.5 %;
+PREFERENCE — the digit head chooses the implied value when legal 15.6 % / 13.9 %; per-slot digit
+accuracy unchanged (50.1 -> 50.0 %; 49.7 -> 49.6 %); THE WALL (relation slots whose gold value is in
+no token: 471 / 824 diet, 1029 / 1834 wild) — 0.0 % under both masks: not one wall slot rescued.
+READING: the ceiling is PRECISION, not preference — the solver derives from the model's own graph,
+and when the args are wrong (0.44) the derived number is wrong: garbage in, a certified-looking
+garbage out; no form of the chalkboard (tokens, legality, or a write into the state) can help until
+the ARGS are right, because every derived value inherits the binding error. THE DERIVED-VALUE LINE
+CLOSES behind the args wall: the solver as a value propagator is downstream of the binding, not a
+cure for it. What remains upstream of everything: the binding of arguments (0.44) — the owner /
+time keys the governor census and the shuffle read said are missing — and the direction (the res
+head's missing input). The gym's five uses are banked on branch replay (6079b855 -> 2bab8bc1).
