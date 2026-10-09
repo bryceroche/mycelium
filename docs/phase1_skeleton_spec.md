@@ -49264,3 +49264,28 @@ only at read — ALG_DUP's actual pattern) so the forward forms are never suppre
 ### 2026-10-08 (23:14) — THE WATCHER MISFIRED: pc-dose-watch killed DOSE_241 minutes after its start — it compared the FINISHED DIR_241 log's mtime (silent since 22:32) against "any live trainer" and killed the live one; the dose queue exited FAILED at 23:13. RULE: a watcher binds the log to the process it would kill (the trainer's own ALG_CKPT from /proc/<pid>/environ names its log); never a list of logs against any trainer. Rewritten (.cache/trainer_watch.sh); the dose queue re-fired (the precompute done: 50,653 rows x 256 x 2048 to the memmap).
 
 ### 2026-10-08 (23:15) — the dose queue's state resolved: the first queue had proceeded to DIRD_241 after DOSE's kill; my stop ended it a minute in; pc-queue-dose2 now runs DOSE_241 (stepping) then DIRD_241; the watcher rebound to the wrapper's cmdline (ALG_CKPT; /proc/<pid>/environ is ptrace-scoped under this kernel) so it can only kill the trainer whose own log is silent.
+
+### 2026-10-09 (01:16) — DOSE_241 (THE INVERSE DOSE ALONE: PMS8's recipe on pm35d, inverse share 0.18 -> 0.58 in mint, no bit): WILD INVERSE RES UNCHANGED (0.239 vs 0.250) — STARVATION IS REFUTED AS THE CAUSE ON WILD; OPEN MINT +0.08 (0.730 vs 0.650) — the dose teaches the mint register's own inverse forms and nothing of prose's; masked -0.010 (noise); rows 12 / 7
+
+Reads (rack_chain_DOSE.log 01:08): open wild 0.3091 (PMS8 0.3003); MASKED 0.3379 — paired vs PMS8
+-0.0098 (SE ~0.009), vs DIR_241 +0.0049; rows 12 masked / 7 open (PMS8 14 / 9); OPEN MINT 0.7304 vs
+PMS8's 0.650 — THE LARGEST MINT MOVE OF THE CAMPAIGN (+0.080; res on mint 0.814 vs ~0.70: the mint
+fixture's inverse forms are now read); digits 0.393 (flat); silver 0.23x. THE POLARITY READ on the
+arm's dump: inverse fac-exact 0.159 (PMS8 0.148) vs forward 0.322 (0.323); inverse RES 0.239
+(0.250) vs forward 0.871 (0.873); of the 283 inverse res-wrong, 78 % own-index (79 %) — NOTHING
+MOVED ON WILD. VERDICT: the dose's bars (inverse res >= 0.50; masked >= -0.005) MISSED; the
+prediction "starved" is REFUTED for wild: tripling the inverse forms in mint (reps-per-unique
+held) moves mint by +0.08 and prose's inverse res by zero — mint's inverse forms are formulaic
+(one-sentence positional systems: "the result is one of the arguments" is read off the template)
+and prose's are a BINDING of a cue ("fewer than", "less") to the direction, which the mint
+rehearsal never exercises. THE LEVER RE-LOCATED: the inverse-form wall on wild is a PROSE cue ->
+direction binding, not a frequency; the polarity census said the cues are present and unread; the
+roads that touch it are (a) the direction bit TEACHER-FORCED at training (the gold direction as
+the res mask during training so the forward forms are never suppressed by a guess; the bit learns
+the cue -> direction map on prose rows and is applied only at read where confident) — DIRD_241
+(bit + dose; training now) is the first read of the bit on a diet that at least carries inverse
+forms in volume; (b) THE SORTING ROOM (the token-side attention binding the direction cue to the
+numeral before the slots look); (c) annotated prose rows rich in inverse forms (the books: n, the
+same lever as always). The mint +0.08 is banked as the dose's real effect: the deployed stack's
+mint read has headroom in the generator's dose, which the campaign had declared an INGREDIENT, not
+a score (09-14) — noted, not claimed.
