@@ -50107,3 +50107,29 @@ would need to beat this oracle's own ~0.60-0.62 ceiling to be worth building; a 
 road (DIR's own form, closed 2026-10-08/09, four times) tops out near here, so the next structural
 form must additionally resolve B-vs-C, not just direction. The sorting room (token-side binding) is
 the standing next arm either way (16:46 entry); this oracle sharpens what it needs to supply.
+
+### 2026-10-09 (16:56) — THE ORACLE'S READING: the direction IS a lever (own clamped with the gold direction: inverse res 0.25 -> 0.60 / 0.62 on PMS8 / PC; B rank 2 on 40 %; the residue 55 % the other arg C), so PC_241's null is a FAILURE TO EXPRESS WITH THE RIGHT INPUTS, not a wrong frame — the comparator for the OWN candidate saw (h_i, v_own) and the direction lives in (own, ARGS) per the probe; two forms registered: THE ARGS-CONDITIONED RES (a road; needs the word) and THE DIRECTION TIE-BREAK at read (zero training; fired)
+
+The 16:4x entry's reframing is CORRECTED by the oracle (3b8b7b3a): finding B is not scattered — with own removed,
+B is the argmax 60-62 % of the time and rank 2 on 40 % of inverse rows; the remaining wrong picks are the other
+arg C (55 %), givens (21-24 %), derived (21-23 %). So ~0.35 of inverse res is available to ANY correct direction
+read, and a B-vs-C confusion rides on top (a binding problem, the args wall's class, worth the rest). Why PC_241
+could not express it: the comparator scores candidate j from (h_i, v_j, h_i*v_j). For the decision that matters
+(suppress OWN on inverse forms) the candidate is own itself, so the comparator saw (h_i, v_i) — the relation's state
+and its own variable's state — and the probe never measured the own state ALONE: the direction it found lives in
+own + the ARGS' states (0.98 with the self-match shortcut; 0.85 from the args' states alone). The resonance read
+agrees: add/sub kind means are colinear (0.92) in the slot's own state. The representable form must let the res
+decision READ the args decision's states. Second symptom (the oracle's task 5): 60 % of inverse ARGS errors are the
+args head failing to place own among its own top-2 — the same direction fact, unread by the args head too.
+REGISTERED, needs the word: THE ARGS-CONDITIONED RES (ALG_ARGSRES): res_logit[i,j] += phi(h_i, v_j, m_i) where
+m_i = sum_k softmax/sigmoid(args_logit[i,k]) * v_k is the args head's PREDICTED soft selection of variable states
+(predicted at both; no gold; the knob census at the gate; in the loss at every breath; from scratch vs PMS8_241; the
+comparator's scale lesson applied). Bars: inverse res >= 0.50 (ceiling 0.60), forward >= 0.85, masked >= PMS8 -
+0.005. Expected if it works: inverse ok toward forward's 0.31 (~+0.15 x 372 slots ~ +0.027 masked).
+FIRED (zero training; the re-admission table's "direction bit as a decode-time tie-break" row, its trigger now met by
+the oracle): THE DIRECTION TIE-BREAK — the probe's MLP read-out re-trained on diet states with PREDICTED args (the
+args head's top-2 at the last breath; no gold at read), p(inverse) per relation slot on wild; where p > tau clamp the
+own index out of the res logits and re-decode. Reads: AUROC of the predicted-args feature vs the gold-args 0.85;
+inverse res / forward res / masked wild paired vs PMS8_241 at tau chosen on the DIET (never on wild). BARS: inverse
+res >= 0.40, forward res >= 0.84, masked >= +0.010 paired (z >= 1). A decoder component (trained on the key's rows),
+not a diagnostic — the fence is not crossed; if it clears, it is a free read-time lever on every body.
