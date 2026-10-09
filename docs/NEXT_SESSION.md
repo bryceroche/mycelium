@@ -1,12 +1,12 @@
-# NEXT SESSION — cold-start entry (updated 2026-10-09 14:07)
+# NEXT SESSION — cold-start entry (updated 2026-10-09 16:46)
 
-**PC_241 IS ON THE CARD (fired 14:02; pc-pc + pc-pc-watch; .cache/sharp_PC_241.log; chain .cache/rack_chain_PC.log).** THE PAIRWISE
-COMPARATOR ROAD (ALG_PAIRCMP=1, scale 20, merged f13a4205, ledger 9c6fca48): phi([h_i, v_j, h_i*v_j]) over the 384 content dims (the
-probe's door) added to every res logit at every breath; small-random output (live from birth), knob census warm 0.19 / fresh 2.85 (bar 0.10,
-re-read at the arm's last breath: < 0.10 = VOID). BARS: inverse res >= 0.50, forward >= 0.85, masked >= PMS8_241 - 0.005. Behind it:
-THE SORTING ROOM (ALG_SORT=4; worktree wt13, branch sortroom; the gate re-running with identity-at-init blocks after a 574 step-0 loss;
-.cache/queue_sr.sh waits on "PC CHAIN COMPLETE"); SR_241 bars: twin-pick <= 0.35, other-sentence <= 0.40, masked +0.020 / twin.
-SM_241 (the self-match term) DID NOT FIRE: inert by scale (autopsy 13:09); the knob census is now a gate requirement. Updated 14:07.
+**THE CARD IS IDLE (16:46) until the sorting room's queue fires (it waits on PC's done mark; its gate is finishing).** PC_241 (THE PAIRWISE
+COMPARATOR) DOES NOT FIRE: inverse res 0.253 UNCHANGED, forward 0.867, masked +0.001 (null), rows 12, mint -0.014 — with the knob
+census PASSING at 1.59x: a road live at scale on the probe's states did not move the inverse res. THE FRAME WAS WRONG: under the
+positional law the inverse res is a THIRD variable (the minuend B: A = B - C stored as B = A + C, args [A own, C], res B); the
+direction says only "not own"; finding B is a BINDING read (the args wall's class). THE OWN-SUPPRESSION ORACLE fired (zero
+training): gold-direction own removal + B's rank histogram on PMS8/PC dumps = the ceiling of any direction-aware fix. Next arm:
+SR_241 (the sorting room, 4 token-side MHA layers; queue_sr.sh). Ledger 16:46.
 
 **THE CARD IS IDLE (09:38).** THE DIRECTION PROBE FIRED (zero-GPU; scripts/direction_probe.py; .cache/direction_probe_PMS8_241.txt):
 PRESENT-BUT-UNEXPRESSIBLE — a read-out trained on PMS8_241's own frozen states reaches wild AUROC 0.98 (own state + both gold args'

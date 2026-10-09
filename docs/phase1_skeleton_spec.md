@@ -50027,3 +50027,26 @@ diff (the 108-key dump diff = 0.0) + unset bit-identical + a finite post-update 
 on the knob census (12:5x rule). The gate's loss display alone certifies neither. (4) QUIRK (memory file): reading
 l or o (.numpy()/.realize()) inside step() before backward severs the autograd graph — the no-grad fence then names
 every param; pre-update reads must come from a separate replay, never from inside the captured step.
+
+### 2026-10-09 (16:46) — PC_241 (THE PAIRWISE COMPARATOR ROAD, from scratch vs PMS8_241) DOES NOT FIRE: inverse res 0.253 (bar >= 0.50; PMS8 0.25 — UNCHANGED), forward res 0.867 (bar met), masked 0.3486 vs 0.3476 (+0.0010, null; bar met), rows 12 (PMS8 14), mint 0.640 (-0.014); THE KNOB CENSUS PASSES AT 1.59x (the term's std 10.99 vs the bilinear's 6.89 at the last breath) — a road LIVE AT SCALE, fed by the states the probe read, inside the loss, and the inverse res did not move: THE DIRECTION LINE'S FRAME WAS WRONG
+
+Artifacts: .cache/rack_chain_PC.log; sharp_PC_241.safetensors; dump_wild_PC_241.pkl; ps_legal_wild_PC_241.npz; the
+knob census line (KNOB PC_241). MECH by form: fwd n=668 ok 0.320 args 0.513 res 0.867; inv n=372 ok 0.156 args 0.312
+res 0.253. Fields masked wild: res 0.80 args 0.43.
+THE READING. Two previous nulls were excused — SM_241 by scale (0.2% of the port), the masks by their self-driven
+guess. PC_241 removes both excuses: the comparator is 1.6x the bilinear, reads [h_i, v_j, h_i*v_j] over the 384
+content dims (the probe's door), is in the loss at every breath, and the body trained from scratch with it. So
+"present but unexpressible" cannot be the whole story. Re-derive what the inverse res pointer must DO under the
+positional law: the text says A = B - C; the graph stores B = A + C with args = [A (own), C] and res = B. The
+direction tells the pointer only "not own". To be RIGHT it must then find B — the minuend — a THIRD variable that is
+neither own nor the other arg, i.e. a binding read from the text, the same class of problem as the args wall. The
+probe's 0.85-0.98 measured whether the states separate forward from inverse (they do: own ∈ args is the structural
+tell, readable from the GOLD args' states) — it never measured whether B is findable. DIR_241 already showed the
+cost of suppressing own by the body's guess: inverse res rose only to 0.33 — B was not the bilinear's next choice
+two times in three. THE OWN-SUPPRESSION ORACLE registered and fired (zero training, banked dumps): on PMS8_241 and
+PC_241 wild, for gold-inverse relation slots, remove the own index from the res logits with the GOLD direction and
+re-decode — the ceiling of ANY direction-aware fix — and the rank histogram of the gold res B among the 24 res logits
+(if B is rank 2 on most inverse rows, the direction is the lever and the comparator failed to learn it; if B's rank
+is scattered, the lever is BINDING B — the minuend — and the direction line closes INTO the args wall). The sorting
+room (the token-side binding road) is then the right next arm either way; its queue is armed behind this chain.
+Honest accounting: the comparator is a clean null at scale (masked +0.001; the knob at 1.6x; mint -0.014).
