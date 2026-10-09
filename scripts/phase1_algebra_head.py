@@ -6860,6 +6860,11 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
     B = trunk.shape[0]
     if trunk.dtype != dtypes.float:
         trunk = trunk.cast(dtypes.float)   # perf audit #4: half feeds upcast in-graph (exact)
+    if int(os.environ.get("ALG_SORT_DEBUG", "0")):
+        _tm0 = tokmask.reshape(B, -1, 1).numpy()
+        _trn = (trunk * tokmask.reshape(B, -1, 1)).numpy()
+        print(f"[sort-debug] trunk INPUT: std={_trn[_tm0[:, :, 0] > 0].std():.6f} "
+              f"shape={tuple(trunk.shape)} dtype={trunk.dtype}", flush=True)
     waist = (trunk @ p["waist_w"] + p["waist_b"]).gelu() + p["sent_emb"][sent]
     if ALG_HUD and hud is not None:
         # THE TOKEN HUD (2026-09-21): a deterministic per-token feature
@@ -6885,7 +6890,19 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
         # law: no bypass). Every bank() read after this line, breath 0's grounding call and
         # every loop breath alike, closes over this rebound tensor; see _make_bank's own
         # `src = waist` default.
+        if int(os.environ.get("ALG_SORT_DEBUG", "0")):
+            # ONE-OFF DEBUG PRINT (2026-10-09, the coordinator's bisect): a .numpy() read
+            # here is fine ONLY under JIT=0 (a bare print would break JIT capture) — this
+            # organ's own door, dark unless armed, never used inside a captured step.
+            _tm_dbg = tokmask.reshape(B, -1, 1)
+            _wpre = (waist * _tm_dbg).numpy()
+            print(f"[sort-debug] waist PRE-sort: std={_wpre[_tm_dbg.numpy()[:, :, 0] > 0].std():.6f} "
+                  f"shape={tuple(waist.shape)} dtype={waist.dtype}", flush=True)
         waist = _sort_room(p, waist, tokmask, B)
+        if int(os.environ.get("ALG_SORT_DEBUG", "0")):
+            _wpost = (waist * _tm_dbg).numpy()
+            print(f"[sort-debug] waist POST-sort: std={_wpost[_tm_dbg.numpy()[:, :, 0] > 0].std():.6f} "
+                  f"maxdiff={np.abs(_wpost - _wpre).max():.3e}", flush=True)
     _sort_tok_key = (waist @ p["sort_key_w"] + p["sort_key_b"]) \
         if (ALG_SORT_KEY and "sort_key_w" in p) else None   # THE OWNER-KEY SHUFFLE: zero compute when unset
 
@@ -10628,6 +10645,20 @@ def do_train(steps, lr, batch, seed):
             # the cache with are still needed) but its VALUES never reach
             # step() under this flag.
             _live_facts_into(idx)
+        if int(os.environ.get("ALG_SORT_DEBUG", "0")):
+            # ONE-OFF DEBUG, SAFE: these are INPUT buffers, read BEFORE step() is
+            # called -- never touches the autograd graph (reading `o`/`l` inside
+            # step(), even a detached .realize(), was found to sever backward for
+            # EVERY param; this is the safe alternative the coordinator's bisect
+            # needs: what step() is ABOUT to feed forward(), not what it computed).
+            print(f"[sort-debug] step {s} INPUT BUFFERS: b_tr.sum={float(b_tr.numpy().astype('float64').sum()):.6f} "
+                  f"b_tk.sum={float(b_tk.numpy().astype('float64').sum()):.6f} "
+                  f"b_se.sum={float(b_se.numpy().astype('float64').sum()):.6f} "
+                  f"b_mask.sum={float(b_mask.numpy().astype('float64').sum()):.6f} "
+                  f"idx={idx.tolist()}", flush=True)
+            print(f"[sort-debug] step {s} bg BUFFERS: " + " ".join(
+                f"{k_}={float(v_.numpy().astype('float64').sum()):.6f}"
+                for k_, v_ in sorted(bg.items())), flush=True)
         if _STEP_PROF and 5 <= s < 25:
             _prof.enable(); lv = step(); _prof.disable()
         else:
