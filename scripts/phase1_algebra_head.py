@@ -1688,6 +1688,7 @@ TERMINALS = {
     "query":  {"params": ["W_query"],              "emit": "query", "gold": ["query"],    "when": lambda: True},
     "sel":    {"params": ["h_sel", "h_sel_b"],     "emit": "sel",   "gold": ["sel"],      "when": lambda: _ft() >= 5},
     "dup":    {"params": ["h_dup", "h_dup_b"],     "emit": "dup",   "gold": ["arg_dup"],  "when": lambda: int(os.environ.get("ALG_DUP", "0")) > 0},
+    "dir":    {"params": ["h_dir", "h_dir_b"],     "emit": "dir",   "gold": ["arg_dir"],  "when": lambda: int(os.environ.get("ALG_DIR", "0")) > 0},
     "dig2":   {"params": ["h_dig2", "h_dig2_b"],   "emit": "dig2",  "gold": ["digits2", "is_macro"], "when": lambda: int(os.environ.get("ALG2", "0")) and _ft() >= 7},
     "y":      {"params": ["W_y"],                  "emit": "y",     "gold": ["y"],        "when": lambda: int(os.environ.get("ALG2", "0")) and _ft() >= 7},
     "sgn":    {"params": ["h_sgn", "h_sgn_b"],     "emit": "sgn",   "gold": ["sign"],     "when": lambda: ALG_WIDE},
@@ -1870,6 +1871,17 @@ def build_gold(samples, offsets):
         # UNREPRESENTABLE (multi-hot gold + top-2-distinct decode); the
         # [85] fix. 1.0 on rel factors whose two args are the same var.
         "arg_dup": np.zeros((n, L_FAC), np.float32),
+        # THE DIRECTION BIT (2026-10-08, THE POLARITY CENSUS): p(inverse) —
+        # "this relation's result is one of its arguments" — gold 1.0 when
+        # the slot's single NEW variable (replaying the row's own var-
+        # introduction order, polarity_census.classify_row's exact method)
+        # is one of the relation's args rather than its result; 0.0 forward.
+        # dir_mask is 1.0 only where that single-new-variable condition
+        # holds cleanly (polarity_census's "other" bucket, ~0.2% of wild
+        # relations, is excluded from the loss by dir_mask=0 — the two-
+        # terminal law without poisoning the ambiguous residue).
+        "arg_dir": np.zeros((n, L_FAC), np.float32),
+        "dir_mask": np.zeros((n, L_FAC), np.float32),
         # gen-15 (2026-07-20): OP_APPLY macro floor (ALG_FTYPES=7) — second
         # digit bank (k2) + ordered second operand pointer (y). Structural
         # entry per the pointer law; gold-fed from birth (two-terminal law).
@@ -1899,6 +1911,11 @@ def build_gold(samples, offsets):
                           key=lambda f: min(s for s, _ in f["spans"]))
         else:
             facs = list(smp["factors"])
+        _seen_dir = set()   # THE DIRECTION BIT: replays THIS row's own
+                             # variable-introduction order, slot by slot —
+                             # polarity_census.classify_row/vars_of, ported
+                             # verbatim so the training gold and the
+                             # mechanism-read census never drift apart.
         assert len(facs) <= L_FAC and smp["n_vars"] <= K_VARS
         g["query"][i] = smp["query_var"]
         g["band"][i] = smp["decisions"]
@@ -1923,6 +1940,25 @@ def build_gold(samples, offsets):
                         _spans_to_tokmask([(_a,_b)], offs, g["lsent"][i, _v])
         for j, f in enumerate(facs):
             g["presence"][i, j] = 1.0
+            # THE DIRECTION BIT's gold (ported verbatim from
+            # polarity_census.classify_row/vars_of): vs = the variable(s)
+            # this factor carries (given: its own var; rel: its two args
+            # + its result; every other ftype: none — polarity_census's
+            # own choice, kept bit-identical so the training gold and the
+            # mechanism-read census never classify a row differently).
+            # A rel factor whose vs minus the vars already seen is exactly
+            # one variable is cleanly classified: inverse (1.0) iff that
+            # one new variable sits in args rather than at result; a rel
+            # factor with zero or two unseen vars is "other" and left
+            # dir_mask=0 (excluded from the BCE below).
+            _vs_dir = (set(f.get("args", [])) | {f.get("result")}) if f["ftype"] == "rel" \
+                else ({f["var"]} if f["ftype"] == "given" else set())
+            if f["ftype"] == "rel":
+                _unseen_dir = _vs_dir - _seen_dir
+                if len(_unseen_dir) == 1:
+                    g["arg_dir"][i, j] = 0.0 if next(iter(_unseen_dir)) == f.get("result") else 1.0
+                    g["dir_mask"][i, j] = 1.0
+            _seen_dir |= _vs_dir
             if ALG_DIAL and f["ftype"] == "rel" and any(a in _indvars for a in f.get("args", [])):
                 g["is_ind"][i, j] = 1.0
             _spans_to_tokmask(f.get("spans") or [], offs, g["fspan"][i, j])
@@ -2792,6 +2828,11 @@ def build_params(seed=0):
     p["h_op"], p["h_op_b"] = lin(H_W, 2)
     if int(os.environ.get("ALG_DUP", "0")):   # gen-9: arg-multiplicity bit
         p["h_dup"], p["h_dup_b"] = lin(H_W, 1)
+    if int(os.environ.get("ALG_DIR", "0")):   # THE DIRECTION BIT (2026-10-08)
+        assert K_VARS == L_FAC, \
+            "ALG_DIR's res-pointer structural entry assumes the slot-index " \
+            "== own-variable-index identity (K_VARS == L_FAC); it no longer holds"
+        p["h_dir"], p["h_dir_b"] = lin(H_W, 1)
     p["h_islit"], p["h_islit_b"] = lin(H_W, 1)
     p["h_dig"], p["h_dig_b"] = lin(H_W, N_DIG * 10)
     if ALG_WIDE:                              # E1: the sign terminal
@@ -4743,6 +4784,38 @@ def _heads_of(p, s, vst, B):
         _sR = s * _hier_mask(0); _sB = s * _hier_mask(1); _sL = s * _hier_mask(2)
     else:
         _sR = _sB = _sL = s
+    _args_out = _fed_pf(p, "args", s, vst,
+                        (_sB @ p["W_args"]) @ vst.transpose(-2, -1))
+    _res_out = _fed_pf(p, "res", s, vst,
+                       (_sB @ p["W_res"]) @ vst.transpose(-2, -1))
+    _dir_out = None
+    if "h_dir" in p:
+        _dir_out = (_sR @ p["h_dir"] + p["h_dir_b"]).squeeze(-1)   # (B, L_FAC): p(inverse) logit
+        if int(os.environ.get("ALG_DIR", "0")):
+            # THE DIRECTION BIT ENTERS THE RES POINTER AS STRUCTURE (ledger
+            # 2026-10-08 "THE POLARITY CENSUS"): own = a one-hot over
+            # K_VARS at the slot's OWN index (K_VARS==L_FAC, the identity
+            # convention at :1104/:5381-82 above); args_prob = the model's
+            # OWN predicted args membership (sigmoid of the args bilinear,
+            # the SAME 24-wide space res uses — the two-terminal law's
+            # "else the predicted bit" branch: ALG_DUP's own precedent
+            # never threads gold structurally into the forward graph
+            # either, only at decode). AT READ (ALG_JIT_READ=1): own is
+            # HARD-suppressed (-1e4) wherever p(inverse) >= 0.5; forward
+            # slots (p < 0.5) are left untouched (already favoured by
+            # training). AT TRAIN: soft by p — logit += log(p) weighted
+            # onto args' positions, log(1-p) onto the own position —
+            # exactly the ledger's stated form.
+            from tinygrad import Tensor as _Tdir
+            _p_inv = _dir_out.sigmoid()                              # (B, L_FAC)
+            _own = _Tdir.eye(L_FAC).reshape(1, L_FAC, K_VARS)         # static one-hot, own index per slot
+            _args_prob = _args_out.sigmoid()                          # (B, L_FAC, K_VARS)
+            if int(os.environ.get("ALG_JIT_READ", "0")):
+                _inv_hard = (_p_inv >= 0.5).float().reshape(B, L_FAC, 1)
+                _res_out = _res_out + _own * (_inv_hard * -1e4)
+            else:
+                _p3 = _p_inv.reshape(B, L_FAC, 1).clip(1e-6, 1 - 1e-6)
+                _res_out = _res_out + _own * (1.0 - _p3).log() + _args_prob * _p3.log()
     return {
         "pres": (_sR @ p["h_pres"] + p["h_pres_b"]).squeeze(-1),
         "ftype": _sR @ p["h_ftype"] + p["h_ftype_b"],
@@ -4750,18 +4823,17 @@ def _heads_of(p, s, vst, B):
         **({"sel": _sR @ p["h_sel"] + p["h_sel_b"]} if "h_sel" in p else {}),
         **({"dup": (_sR @ p["h_dup"] + p["h_dup_b"]).squeeze(-1)}
            if "h_dup" in p else {}),
+        **({"dir": _dir_out} if _dir_out is not None else {}),
         "islit": (_sR @ p["h_islit"] + p["h_islit_b"]).squeeze(-1),
         "dig": (_sL @ p["h_dig"] + p["h_dig_b"]).reshape(B, L_FAC, N_DIG, 10),
         **({"sgn": (_sR @ p["h_sgn"] + p["h_sgn_b"]).squeeze(-1)}
            if "h_sgn" in p else {}),
-        "args": _fed_pf(p, "args", s, vst,
-                        (_sB @ p["W_args"]) @ vst.transpose(-2, -1)),
+        "args": _args_out,
         **({"dargs": (_sB @ p["W_dargs"]) @ vst.transpose(-2, -1)}
            if "W_dargs" in p else {}),
         **({"iargs": (_sB @ p["W_iargs"]) @ vst.transpose(-2, -1)}
            if "W_iargs" in p else {}),
-        "res": _fed_pf(p, "res", s, vst,
-                       (_sB @ p["W_res"]) @ vst.transpose(-2, -1)),
+        "res": _res_out,
         **({"dig2": _fed_pf(p, "dig2", s, None,
                             _sL @ p["h_dig2"] + p["h_dig2_b"])
             .reshape(B, L_FAC, N_DIG, 10),
@@ -7523,6 +7595,14 @@ def _loss_single(o, g, blur=0.0, sw=None, level=3):
         l = l + (ce(o["sel"], g["sel"]) * sm).sum() / (sm.sum() + 1e-6)
     if "dup" in o and "arg_dup" in g:           # gen-9: arg-multiplicity BCE
         l = l + (bce(o["dup"], g["arg_dup"]) * rel).sum() / n_rel
+    if "dir" in o and "arg_dir" in g:           # THE DIRECTION BIT: p(inverse) BCE,
+        # relation slots only, masked to the cleanly-classified residue
+        # (dir_mask=0 on polarity_census's "other" bucket — excluded, not
+        # zero-labeled).
+        _dm_dir = rel * g["dir_mask"]
+        _n_dm_dir = _dm_dir.sum() + 1e-6
+        l = l + float(os.environ.get("ALG_DIR_W", "1.0")) * \
+            (bce(o["dir"], g["arg_dir"]) * _dm_dir).sum() / _n_dm_dir
     if "dargs" in o and "arg_dup" in g:         # door #12: the dedicated dup
         dm2 = rel * g["arg_dup"]                # pointer — single-target gold
         l = l + (ce(o["dargs"], g["args"].argmax(-1)) * dm2).sum() / (dm2.sum() + 1e-6)
@@ -8833,7 +8913,7 @@ def do_train(steps, lr, batch, seed):
                    # names in the states npz.
                    "twin_idx": "twin", "gold_idx": "twin_gold", "twin_m": "twin"}
     _GOLD_OPTIONAL = {"opspan", "arg_dup", "sel", "sign", "y", "digits2",
-                      "is_macro", "is_frac", "is_chain"}
+                      "is_macro", "is_frac", "is_chain", "arg_dir"}
     for _tn, _t in TERMINALS.items():
         if not _t["when"](): continue
         for _gk in _t["gold"]:
@@ -8910,6 +8990,8 @@ def do_train(steps, lr, batch, seed):
                          ("is_pct", (L_FAC,), dtypes.float),
                          ("is_fdiv", (L_FAC,), dtypes.float),
                          ("arg_dup", (L_FAC,), dtypes.float),
+                         ("arg_dir", (L_FAC,), dtypes.float),
+                         ("dir_mask", (L_FAC,), dtypes.float),
                          # THE CARICATURE MARGIN: clipped-to-0 competitor/gold variable
                          # ids (twin_idx/gold_idx; feed door converts from the sidecar's
                          # raw "twin"/"twin_gold" ids the same way "refoh" is built from
@@ -10054,6 +10136,10 @@ def do_train(steps, lr, batch, seed):
                    if ALG_CARIC != 0 and "twin" in gold else {}),
                 "arg_dup": (gold["arg_dup"][idx] if "arg_dup" in gold
                             else np.zeros_like(gold["is_rel"][idx])),
+                "arg_dir": (gold["arg_dir"][idx] if "arg_dir" in gold
+                            else np.zeros_like(gold["is_rel"][idx])),
+                "dir_mask": (gold["dir_mask"][idx] if "dir_mask" in gold
+                             else np.zeros_like(gold["is_rel"][idx])),
                 **({"is_macro": gold["is_macro"][idx],
                     "digits2": gold["digits2"][idx],
                     "y": gold["y"][idx]} if "is_macro" in bg else {}),
