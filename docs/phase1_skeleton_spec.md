@@ -49711,3 +49711,22 @@ merge gate log (expected before the merge — the self-heal path is also wired, 
 dirbit precedent). BARS: inverse res >= 0.50 (from 0.25), forward res >= 0.85 (from 0.873), paired
 masked wild SM_241 vs PMS8_241 >= PMS8 - 0.005. Fired under the standing word: `bash
 .cache/queue_sm.sh`.
+
+### 2026-10-09 (10:53) — THE SELF-REFERENCE RESIDUE AUDITED (zero GPU, read-only): the diet's 95.9% is a MEASUREMENT PROXY — the true law (the inverse relation's NEW variable is among its args) holds 555/555; the 23 residue slots are LEGACY MINT SHAPES (dag7/dag, gens 6-7, no canonical stamp) whose variable ids drifted off slot order
+
+Reproduced from the probe's own artifact (.cache/form_pm35c_slice1024_valid2.jsonl, 705/775 custody-admissible rows
+under the welford_atlas admissible mask): n_inv 555, slot-index-in-args 532 = 0.9586 (the ledger's 95.9%). The 23
+residue slots: 100% mint (0 pen / 0 prose), ftype rel, two args, ops add x21 / mul x2 (the sub/div -> add/mul re-encoding
+FIRED in every case; not ALG_DUP, not fdiv/frac/macro misfiled). Recomputed with the classifier's OWN new variable
+(the one unseen variable in args ∪ {result}) instead of the slot index: 555/555 = 1.000, tautologically — the law is
+universal; the 4.1% is the slot==variable positional convention failing on OLD generator shapes (shape dag7 gen 7: 15;
+dag gen 6: 4; untagged legacy: 4; none carry the `canonical` key) where frame-strip factors (mod/sel/pct/fdiv) advance
+the slot index without advancing variable-id space. Wild (all 311 rows by the current generator) shows 0 drift =
+372/372. pm35d (the inverse-dose diet) carries MORE of it: 2573/43473 = 5.92% (dag7 1609, dag 413, untagged 501,
+prose-v0 30, pen 56) — the dose pool draws on the same legacy mint generations. VERDICT: not a re-encoding bug, not a
+wild form under another ftype: a diet-hygiene fact. CONSEQUENCE FOR THE SELF-MATCH TERM: it reads s_own at the slot's
+own DIAGONAL (the positional proxy), which is exact on wild and off on ~4% of the diet's inverse relations (~6% on
+pm35d) — a small label noise the arm trains through, not a ceiling; the term's correctness was never bounded by 95.9%.
+REGISTERED (no GPU; needs no word): a diet-hygiene pass that drops or re-packs legacy mint rows whose variable ids are
+not in slot order (the positional law's own assertion at the diet door), before any next from-scratch arm on pm35c/d.
+Scripts: scratchpad audit (not committed); the census = direction_probe.self_reference_census + polarity_census.classify_row.
