@@ -117,7 +117,16 @@ REFUSED = ("ALG_SHELF", "ALG_WHIP", "ALG_TOKLOOP", "ALG_WRITEBACK", "ALG_KANNEAL
            "ALG_HUD",
            "ALG_DIR", "ALG_DIR_W",
            "ALG_DIRROLE", "ALG_DIRROLE_LEXICON",
-           "ALG_SELFMATCH")
+           "ALG_SELFMATCH",
+           "ALG_SORT", "ALG_SORT_KEY", "ALG_SORT_KEY_GAIN")
+           # THE SORTING ROOM form 2 (2026-10-09): forward()'s own rebinding of the local `waist`
+           # name (ALG_SORT) and breath_step's ctx["tok_key"] read (ALG_SORT_KEY) are the fused
+           # forward()'s single source of truth; the walker never calls forward() at all (its own
+           # per-seam heads_of calls stop well short of where `waist` is built or the bank is
+           # closed over it) — a config that set these under the walker would train with a token
+           # side the walker's own path never built, silently. ALG_SORT_KEY_GAIN (the gain's init
+           # override) refused alongside its gate for the same reason the other per-organ
+           # hyperparameters above are (ALG_DIR_W's precedent).
            # THE SELF-MATCH TERM (2026-10-09): _heads_of's own res-pointer
            # bias (sm_w_self/sm_w_arg against the args head's own-index
            # score) is the fused forward()'s single source of truth and
