@@ -49429,3 +49429,29 @@ time keys the governor census and the shuffle read said are missing — and the 
 head's missing input). The gym's five uses are banked on branch replay (6079b855 -> 2bab8bc1).
 
 ### 2026-10-09 (03:47) — THE TEACHER-FORCED BIT (ALG_DIR=2; branch dirbit 555888fb) built + gated (unset / role8 / hierd bit-identical; dir reproduces; dir2 6.5289/1.0315 runs and differs; the bit's grad flows through the BCE alone; the read carries a [dir] confidence line and a .dir.npz sidecar) and FIRED under the standing word: pc-queue-dir2 merges dirbit, runs the post-merge gate, fires DIR2_241 (PMS8's recipe + ALG_DIR=2 on pm35c) vs PMS8_241 and DIR_241; BARS: inverse res >= 0.60, forward res >= 0.85, masked >= PMS8 - 0.005, the bit's own accuracy and confident coverage reported. The trainer watcher re-armed.
+
+### 2026-10-09 (06:04) — DIR2_241 (THE TEACHER-FORCED BIT) DOES NOT FIRE — THE WORST SLOT READ OF THE FAMILY: masked 0.2852 (-0.062 vs PMS8; -0.048 vs DIR_241), res 0.682, inverse res 0.250 (unchanged), forward res 0.762; the bit is confident on 2.3 % of inverse slots at read; THE LESSON: a structural mask supplied as GOLD at training is a CRUTCH absent at read; THE DIRECTION-BIT LINE CLOSES on both forms
+
+Reads (rack_chain_DIR2.log 05:56; the merge 09ee45b9 by hand after the queue's autostash balked;
+the post-merge gate passed): open wild 0.2662; MASKED 0.2852 — paired vs PMS8 -0.0624 (discordant
+287 vs ~160: a large real loss), vs DIR_241 -0.0478; rows 11 / 9; open mint 0.6434 (flat); the
+polarity read: inverse res 0.250 (PMS8 0.250), forward res 0.762 (0.873); THE BIT at read:
+inverse-confident 24 / 1042 relation slots (2.3 %), nearly everything ambiguous (no mask) — the
+res head trained under the GOLD direction's -1e4 mask never had to learn the direction itself
+(the mask did the choosing), and at read the mask is absent on 97 % of slots: the head is lost
+without its crutch — the train / read mismatch of the facts-coverage kind (dense gold structure
+at training, nothing at read), the eyes' residual-seal lesson in reverse (the body learned to
+survive WITH the seal and cannot without it). VERDICT: both forms of the direction bit fail by
+construction — the self-driven mask redistributes (form 1), the gold-driven mask makes a crutch
+(form 2); THE LINE CLOSES. WHAT STANDS: the inverse-form blindspot (0.25; 36 % of wild relations)
+and its characterization as a MISSING INPUT (the prose cue -> direction binding; the res head's
+gradient arrives 3.6x and is unusable). THE HONEST NEXT FORMS supply the INPUT, not a mask: (a)
+THE DIRECTION ROLE — the direction cues ("fewer", "less", "more than", "left", "gave", "half",
+"per") entered as ROLE CUES in the role signature (the rcue channel + the role pointer: the one
+organ that moved the slot record, extended from "which given" to "which direction"), stamped on
+the diet rows as the arg-mention stamps are (form_mix_pm35a's pipeline), read through the same
+bilinear by the res pointer; (b) THE SORTING ROOM (a token-side attention that binds the cue to
+the numeral before the slots look). Both from scratch; (a) first (the smaller edit on the proven
+organ). RULE (new): a structural road is supplied at training ONLY in the form the read can
+supply — never gold where the read has a guess (ALG_DUP's pattern works because its bit is
+PREDICTED at both; the arg-multiplicity bit's gold was the loss target, not the mask).
