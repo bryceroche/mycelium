@@ -49527,3 +49527,28 @@ rack_chain_DIRROLE.sh (DIRROLE_241 = PMS8_241's exact recipe + ALG_DIRROLE=1 on 
 log, as expected before the merge) and .cache/queue_dirrole.sh (waits for no running trainer on
 the main tree, `git merge --no-edit dirrole`, the post-merge gate, fires the chain). Needs the
 word.
+
+### 2026-10-09 (09:11) — DIRROLE_241 (THE DIRECTION ROLE: direction cues as role cues in the role signature, read by the res pointer) DOES NOT FIRE: inverse res 0.245 (UNCHANGED from 0.250; bar >= 0.50 MISSED) with forward res 0.876 kept and the slot flat (+0.002 vs PMS8 — the first direction arm that cost nothing); THE DIRECTION LINE CLOSES ON FOUR FORMS with inverse res pinned at 0.25 — the representability signature
+
+Reads (rack_chain_DIRROLE.log 09:09; the merge by hand after an index-lock collision and a ledger
+conflict): open wild 0.3194; MASKED 0.3496 — paired vs PMS8_241 +0.0020 (null); rows 13 / 12 (PMS8
+14 / 9); open mint 0.6224 (-0.03); args 0.450 (PMS8 0.44); the polarity read: forward n = 668 ok
+0.332 res 0.876 args 0.542; inverse n = 372 ok 0.167 res 0.245 args 0.288. THE LINE: DIR (the
+self-driven mask) inverse res 0.33 / forward 0.75 / slot -0.015; DOSE (frequency) 0.24 / 0.87 / mint
++0.08; DIRD (both) 0.33 / 0.79 / -0.033; DIR2 (the gold mask) 0.25 / 0.76 / -0.062; DIRROLE (the cue
+as a role in the proven organ) 0.245 / 0.876 / +0.002 — four forms, three roads (a mask, a dose, a
+cue), and the inverse res never leaves 0.25 except when a mask redistributes it. THE REPRESENTABILITY
+AUDIT'S SHAPE (the law: a metric flat across trainings AND a targeted data intervention is
+structurally excluded, not starved): the res pointer's inputs do not carry what distinguishes
+"the result is one of my arguments" on prose — neither a cue embedding in its query (DIRROLE) nor
+3x the examples (DOSE) nor a louder gradient (3.6x) moves it; only a mask that pre-decides the
+direction moves it, and that mask cannot be supplied honestly at read. THE DECISIVE PROBE
+(registered, zero GPU, fired): THE DIRECTION PROBE — on PMS8_241's frozen per-slot states (the
+Welford build's 705 diet rows + wild), train a small READ-OUT (logistic / 2-layer MLP) from (the
+relation slot's state, its two args' states, the cue ids) to the gold direction, GroupKFold by row,
+then wild once: if the state carries the direction at AUROC >= 0.85, the information is PRESENT and
+the res pointer's ROAD (the bilinear against the args' states) cannot express it — the fix is a
+different res head (a direction-aware pointer: two bilinears, one per direction, gated by a learned
+mixture — representable, no mask); if the probe reads ~0.6, the information is ABSENT from the
+state — the input must come from the retina (the sorting room: the token-side binding of the
+cue to the numeral) and no head change can help. The card is idle until the probe answers.
