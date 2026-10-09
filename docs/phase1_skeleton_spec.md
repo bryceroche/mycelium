@@ -49552,3 +49552,70 @@ different res head (a direction-aware pointer: two bilinears, one per direction,
 mixture — representable, no mask); if the probe reads ~0.6, the information is ABSENT from the
 state — the input must come from the retina (the sorting room: the token-side binding of the
 cue to the numeral) and no head change can help. The card is idle until the probe answers.
+
+### 2026-10-09 (09:38) — THE DIRECTION PROBE FIRED (scripts/direction_probe.py [new], zero-GPU, CPU-only; .cache/direction_probe_PMS8_241.txt): PRESENT-BUT-UNEXPRESSIBLE — wild AUROC 0.98 (feature set B, MLP, breath 2) clears the 0.85 PRESENT bar by a wide margin; THE SELF-REFERENCE ARTIFACT caveats the headline number but the cleaner read (E, args alone) still nearly clears it at 0.84-0.85
+
+Method: logistic regression (L2, C swept {0.01,0.1,1,10,100} by 5-fold GroupKFold-by-row CV on
+diet) and a from-scratch 2-layer numpy MLP (64 hidden, Adam, seeded) trained on PMS8_241's own
+FROZEN per-slot content states (CONTENT dims only, 384/512, `_hier_band_dims()`'s own door) at two
+breaths (final = diet kb=6 / wild loop-breath 6, and breath2 = diet kb=2 / wild loop-breath 2), on
+five feature sets per classified relation slot (polarity_census.classify_row, THE POSITIONAL LAW,
+verbatim import, not reimplemented): (A) own state alone (384d); (B) own + both gold args' states,
+sorted by slot index (1152d); (C) own state + the dirrole cue one-hot pooled over the slot's own
+clause (`phase1_algebra_head.dirrole_cue_spans`, the SAME matcher the trained organ reads; 384+86d);
+(D) the cue one-hot alone, no state (86d — THE LEXICAL CEILING); (E) the two args' states alone, no
+own state (768d). Diet: .cache/welford_atlas_PMS8_241_diet_states_breaths.npz (775 rows, 705
+custody-admissible, .cache/form_pm35c_slice1024_valid2.jsonl) — fwd=1592/inv=555 classified slots.
+Wild: .cache/clock_band_states_PMS8_241.npz (311 rows, CONTENT-sliced from 512) — fwd=668/inv=372,
+EXACTLY matching THE POLARITY CENSUS's own counts (cross-check passed). Diet-frozen read-outs
+(scaler + model fit on ALL 705 admissible diet rows at the CV-best C) applied to wild EXACTLY ONCE
+per feature-set x breath x model-type (20 cells); AUROC/accuracy both legs; the operating point
+read (t* = the LARGEST threshold with forward-class precision >= 0.85, i.e. the most generous
+forward bucket the deployed res pointer's own forward-precision register still allows) with
+inverse recall AND n_fwd_pred reported together (the degenerate-thin-tail caveat stated in the
+script's own docstring and header).
+
+THE NUMBERS (wild, once): (A) own-state alone best AUROC 0.725 (mlp, breath2) — mediocre. (B) own +
+args best AUROC 0.9804 (mlp, breath2; 0.9716 at final) — clears PRESENT (>=0.85) by +0.13.
+(C) own + cue best AUROC 0.709 (mlp, final) — barely above (A), cues add almost nothing. (D) cue
+alone best AUROC 0.520 (mlp) — CHANCE: THE LEXICAL CEILING IS AT THE FLOOR, confirming the cue
+census's own reading (cues are not bound to direction) from a completely different angle (a
+read-out trained directly on the gold label, not the deployed organ). (E) args alone (no own
+state) best AUROC 0.8448 (mlp, breath2) — just under the bar, well clear of (D) and (A). At the
+operating point (best B/C cell, mlp breath2): forward precision 0.851 held over n_fwd_pred=772/1040
+(74% of wild relations — NOT the thin tail), inverse recall = 0.6909 vs the deployed res pointer's
+0.250 — a +0.44 jump at a comparable precision floor, on a LARGE, stable bucket.
+
+THE SELF-REFERENCE STRUCTURAL CHECK (new in the same script, instant, a data-construction fact, not
+a model output): on wild, EVERY inverse relation's own slot index k is literally one of its own two
+gold args (372/372), and NO forward relation's ever is (0/668) — the reencode_ops sub/div->add/mul
+rewrite's signature (THE POSITIONAL LAW: the newly-introduced variable r sits in the ARGS list for
+an inverse-encoded factor, not the result field, and r==k by the identity convention). Diet is
+95.9% clean (532/555), not fully universal — flagged, not explained further here. CONSEQUENCE: (B)
+has access to a cheap, BIT-IDENTICAL self-match (one of its two concatenated arg-state blocks IS
+the own-state block, same slot, same breath, on >=96% of inverse examples) that (E) cannot see
+directly — (B)'s 0.98 likely mixes this near-trivial identity detector with real geometry. (E)'s
+0.84-0.85 — close to the bar WITHOUT the self-match shortcut available — is the cleaner evidence
+that the ARGS' OWN STATES carry a genuine direction signature (not just index arithmetic): e.g. a
+"freshly-introduced-as-a-relation-node" signature on whichever arg is self-referential, readable in
+CONTENT dims the clock/positional planes were supposed to keep separate from.
+
+VERDICT: PRESENT-BUT-UNEXPRESSIBLE (bar (B)/(C) wild AUROC >= 0.85 clearly met: 0.9804 >> 0.85; the
+ABSENT bar — within 0.05 of (D) or < 0.70 — is not close: gap over the lexical ceiling is +0.46).
+THE READING, net of the self-reference caveat: the direction IS recoverable from the frozen state
+via (B) and, almost as well, via (E) alone — the res pointer's OWN inputs (it already reads args'
+states as candidate keys) already carry enough to decide direction; the four failed structural
+forms (DIR/DOSE/DIRD/DIR2/DIRROLE) didn't fail because the information was missing, they failed
+because none of them gave the bilinear pointer an EXPLICIT self-match / own-vs-args comparison
+feature to exploit — they added masks, doses, or query-side cues, never a direct own-state-vs-
+candidate-state comparison term. ENGINEERING CRITIQUE (offered before any rebuild, CLAUDE.md S7):
+the cheapest next form implied by this reading is NOT the ledger's "two bilinears + gated mixture"
+proposal — it is a near-free SELF-MATCH FEATURE on the res pointer's existing 24-wide candidate
+scan (e.g. a cosine or learned-gate between the query's own current state and each candidate's
+state, feeding a bias term before the softmax) that lets the pointer suppress candidate==self
+when a direction signal says "inverse", using exactly the (E)-style signal this probe just located,
+at a fraction of the two-bilinear design's parameter/training cost. Registered, unbuilt, needing
+the word. Commit: see the gen-weights log for this entry's own hash (direction_probe.py + this
+ledger entry, one transaction, per the prose-promotions law). Unverified / flagged in the script
+itself: the diet's 95.9%-not-100% self-reference rate (cause uncounted); the MLP's hyperparameters
+(64 hidden, 300 epochs, lr 1e-3, L2 1e-4) were fixed by the word's own spec, not swept.

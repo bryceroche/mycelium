@@ -1,8 +1,19 @@
-# NEXT SESSION — cold-start entry (updated 2026-10-09 06:05)
+# NEXT SESSION — cold-start entry (updated 2026-10-09 09:38)
 
-**THE CARD IS IDLE (09:09).** DIRROLE_241 READ: inverse res 0.245 unchanged, slot +0.002 (null): THE DIRECTION LINE CLOSED ON FOUR FORMS;
-THE DIRECTION PROBE (zero GPU) decides whether the direction is present-but-unexpressible in the state (-> a direction-aware res pointer)
-or absent (-> the sorting room). Nothing fires until it answers. (Previously building: THE DIRECTION ROLE — the direction cues ("fewer / less / more than /
+**THE CARD IS IDLE (09:38).** THE DIRECTION PROBE FIRED (zero-GPU; scripts/direction_probe.py; .cache/direction_probe_PMS8_241.txt):
+PRESENT-BUT-UNEXPRESSIBLE — a read-out trained on PMS8_241's own frozen states reaches wild AUROC 0.98 (own state + both gold args'
+states, MLP) vs the 0.85 bar; the cue-alone ceiling is at chance (0.52), ruling out "it's just lexical"; args' states ALONE (no own
+state, no self-match shortcut available) still reach 0.84-0.85 — close to the bar on a clean read. THE SELF-REFERENCE ARTIFACT (new
+finding, same script): every inverse relation's own slot index is literally one of its own two gold args on wild (372/372; 0/668
+forward) — a data-construction fact (reencode_ops sub/div->add/mul), not noise — so the 0.98 number likely mixes a near-trivial
+identity detector with real geometry; the args-alone 0.84-0.85 is the cleaner evidence. At the operating point holding forward
+precision >= 0.85 (the deployed res pointer's own register), inverse recall = 0.69 on a LARGE stable bucket (74% of wild relations)
+vs the deployed 0.25 — a real, non-degenerate gap. ENGINEERING CRITIQUE OFFERED (unbuilt, needs the word): the cheapest next form is
+NOT the ledger's two-bilinear gated-mixture design — it's a near-free self-match/own-vs-candidate comparison term on the EXISTING res
+pointer's 24-wide scan, exploiting exactly the (E)-style signal this probe located. Four prior structural forms (DIR/DOSE/DIRD/DIR2/
+DIRROLE) failed not because the information was absent but because none gave the bilinear an explicit self-vs-candidate comparison.
+NEXT (needs the word): build the self-match res-pointer term; or the owner signature / sorting room (parked, unrelated line).
+(Previously: DIRROLE_241 READ: inverse res 0.245 unchanged, slot +0.002 (null): THE DIRECTION LINE CLOSED ON FOUR FORMS. Previously building: THE DIRECTION ROLE — the direction cues ("fewer / less / more than /
 left / gave / half / per ...") entered as ROLE CUES in the role signature (the organ that set the slot record), stamped from the text at
 training AND at read (the rule: a structural road trains only in the form the read can supply), read by the res pointer through the same
 bilinear; a zero-GPU cue census first (coverage of inverse-form relations must reach >= 60 %); gate; the arm DIRROLE_241 vs PMS8_241 staged
