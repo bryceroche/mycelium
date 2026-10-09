@@ -6891,18 +6891,29 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
         # every loop breath alike, closes over this rebound tensor; see _make_bank's own
         # `src = waist` default.
         if int(os.environ.get("ALG_SORT_DEBUG", "0")):
-            # ONE-OFF DEBUG PRINT (2026-10-09, the coordinator's bisect): a .numpy() read
-            # here is fine ONLY under JIT=0 (a bare print would break JIT capture) — this
-            # organ's own door, dark unless armed, never used inside a captured step.
+            # ONE-OFF DEBUG PRINT (2026-10-09, the coordinator's bisect, revised: the
+            # FIRST version multiplied by tokmask before diffing, hiding anything the
+            # stack wrote into PADDED positions — the mask only ever excludes a padded
+            # position as a KEY (attn's src), never as a QUERY, so a padded ROW still
+            # runs through LayerNorm/attention/FFN like any other and a non-identity
+            # value there would reach the bank's softmax unmasked on the query side).
+            # UNMASKED this time: the full tensor, padding included.
             _tm_dbg = tokmask.reshape(B, -1, 1)
-            _wpre = (waist * _tm_dbg).numpy()
-            print(f"[sort-debug] waist PRE-sort: std={_wpre[_tm_dbg.numpy()[:, :, 0] > 0].std():.6f} "
-                  f"shape={tuple(waist.shape)} dtype={waist.dtype}", flush=True)
+            _wpre_full = waist.numpy()
+            _pad_np = (_tm_dbg.numpy()[:, :, 0] == 0)
+            print(f"[sort-debug] waist PRE-sort: std(real)={_wpre_full[_pad_np == False].std():.6f} "
+                  f"std(pad)={(_wpre_full[_pad_np].std() if _pad_np.any() else float('nan')):.6f} "
+                  f"n_pad={int(_pad_np.sum())} shape={tuple(waist.shape)} dtype={waist.dtype}", flush=True)
         waist = _sort_room(p, waist, tokmask, B)
         if int(os.environ.get("ALG_SORT_DEBUG", "0")):
-            _wpost = (waist * _tm_dbg).numpy()
-            print(f"[sort-debug] waist POST-sort: std={_wpost[_tm_dbg.numpy()[:, :, 0] > 0].std():.6f} "
-                  f"maxdiff={np.abs(_wpost - _wpre).max():.3e}", flush=True)
+            _wpost_full = waist.numpy()
+            _d = np.abs(_wpost_full - _wpre_full)
+            print(f"[sort-debug] waist POST-sort: "
+                  f"std(real)={_wpost_full[_pad_np == False].std():.6f} "
+                  f"std(pad)={(_wpost_full[_pad_np].std() if _pad_np.any() else float('nan')):.6f} "
+                  f"maxdiff(real)={_d[_pad_np == False].max():.3e} "
+                  f"maxdiff(pad)={(_d[_pad_np].max() if _pad_np.any() else float('nan')):.3e} "
+                  f"maxdiff(ALL)={_d.max():.3e}", flush=True)
     _sort_tok_key = (waist @ p["sort_key_w"] + p["sort_key_b"]) \
         if (ALG_SORT_KEY and "sort_key_w" in p) else None   # THE OWNER-KEY SHUFFLE: zero compute when unset
 
@@ -9574,7 +9585,11 @@ def do_train(steps, lr, batch, seed):
             print(f"[dirrole-debug] dir_cue_emb.grad.abs().sum()="
                   f"{float(p['dir_cue_emb'].grad.abs().sum().numpy())}", flush=True)
         opt.step()
-        return l.realize()
+        return l.realize()   # MEASUREMENT FACT (2026-10-09, the sorting-room bisect): `l` is lazy
+        # and unread above, so this realize is the POST-update loss (opt.step() already mutated
+        # the weights) — every "step N loss=" this function has ever printed is post-update, not
+        # the loss the gradient was taken at (see scripts/sort_bisect_replay.py for the pre-update
+        # instrument).
     if not _WHEEL_TRAIN:
         step = TinyJit(step)
 
@@ -10659,6 +10674,36 @@ def do_train(steps, lr, batch, seed):
             print(f"[sort-debug] step {s} bg BUFFERS: " + " ".join(
                 f"{k_}={float(v_.numpy().astype('float64').sum()):.6f}"
                 for k_, v_ in sorted(bg.items())), flush=True)
+            if s == int(os.environ.get("SORT_DEBUG_DUMP_STEP", "-1")):
+                # THE FULL DUMP (coordinator's point A): every kwarg step()'s OWN
+                # forward() call actually passes, named EXACTLY as the call site
+                # (line ~9533) resolves them, so a loader script can replay the
+                # identical call. None-valued kwargs are recorded as the string
+                # sentinel "__NONE__" (never a legal array).
+                _bd_dbg = os.environ.get("BREATH_DROPOUT")
+                _dump = {"s_tr": b_tr, "b_tk": b_tk, "b_se": b_se, "b_mask": b_mask,
+                         "b_tail": b_tail, "drop": (b_drop if _bd_dbg else None),
+                         "lsent": b_ls, "reg": b_reg,
+                         "fact_buf": (None if ALG_ALT3 else b_fact),
+                         "mh_mass": b_mhm, "mh_atlas_traj": b_mha, "xcorr": b_xcorr,
+                         "res_map": b_resmap, "hud": b_hud, "tree": b_tree,
+                         "ident": b_ident, "dircue": b_dircue, "busreg_ramp": b_bgain,
+                         "valfact": b_valfact, "facts3": b_fact3, "facts5": b_fact5,
+                         "cert3": b_cert3, "cert5": b_cert5, "rack3": b_rack3,
+                         "rack5": b_rack5, "chalk3": b_chalk3, "chalk5": b_chalk5,
+                         "dirgold": b_dirgold}
+                _npz_out = {}
+                for _k, _v in _dump.items():
+                    if _v is None:
+                        _npz_out[_k] = np.array("__NONE__")
+                    else:
+                        _npz_out[_k] = _v.numpy()
+                for _k, _v in bg.items():
+                    _npz_out["bg__" + _k] = _v.numpy()
+                _tag = os.environ.get("SORT_DEBUG_TAG", "unknown")
+                np.savez(f".cache/sortroom_bisect_inputs_{_tag}.npz", **_npz_out)
+                print(f"[sort-debug] step {s} DUMPED .cache/sortroom_bisect_inputs_{_tag}.npz "
+                      f"({len(_npz_out)} arrays)", flush=True)
         if _STEP_PROF and 5 <= s < 25:
             _prof.enable(); lv = step(); _prof.disable()
         else:
