@@ -49766,3 +49766,34 @@ feedback moves nothing at read on a trained road, the arm will not either (the r
 (b) head diff A gated; (c) the arm: consults after breaths 1..6, hard feedback only, from scratch vs the
 three-consult body (ALT3 chassis), bars on the breath-0..2 window (right-slot hit, other-sentence share at
 breath 2) + masked wild +0.020 or a twin. KILL: the gym pre-read moves < 4 decodes / 64 rows.
+
+### 2026-10-09 (12:16) — REGISTERED (Bryce's brainstorm: "the atlas and the perceiver create the factor graph for the solver"; "U-Net is our continuous search and MCTS our discrete search"): THE PERCEIVER AS THE VALUE FUNCTION — neural proposes (the pointers' candidate lattice), the perceiver disposes (a learned judge over the candidates reading the state + the Welford atlas with DSL tags + the solver's status), the solver certifies; MCTS over parses re-armed WITH a value; no decode is removed
+
+The reading against the ledger: (1) the binding theorem is measured, not taste — kinds are legible from a slot's own
+state (ftype/op ~0.9; atlas given-vs-rel 0.86) and bindings are not (args 0.43-0.45): a per-slot segment-and-classify
+over centroids (JSD responsibilities in a probability space) yields the easy half of the graph and nothing for the
+wall; any classifier producing bindings compares slot PAIRS = a bilinear pointer by another name; direction likewise
+(add/sub kind means cos 0.92, the direction lives in the relation between a slot and its args: the probe). So the
+pointer decode stays; the perceiver PICKS among what it proposes. (2) Spoofing: Bryce's intuition holds — the
+optimizer rewards drifting toward a centroid only when the centroid match is itself the objective (the Goodhart
+fence's premise, forbidden); under a loss that grades the GRAPH against the key, a spoof that yields the wrong graph
+is punished; Welford centroids outside the gradient = the EMA codebook of VQ (standard). (3) The relay's stop-gradient
+is REFUSED: cutting the gradient between the perceiver and the slots starves the slots of the graph loss (the
+two-terminal law: emission AND gold feed, or the grad is None) and reinstates the pointer loss it meant to remove.
+(4) The searches: CONTINUOUS search = the breath trajectory, sampled by the 5 views (a population; unanimity = the
+certification tier); the U-Net is the step's eyes across scales (hill 7), not a search. DISCRETE search = MCTS over
+the candidate lattice, measured once WITHOUT a value (10-06: 14/311, 0 regressions, null — the solver as the only
+judge passes consistent-wrong graphs). AlphaZero's parts mapped: policy prior = the pointers' logits; value = the
+perceiver (state + atlas cosine / JSD responsibilities + DSL tag + solver status per candidate); environment =
+the solver (rollout + terminal). The tree PERSISTS across breaths: each breath sharpens the prior, each consult
+expands and rolls out, the value re-ranks — the six alternations' discrete object (hill 12's concrete form).
+THE BUILD (needs the word; mostly CPU; the candidate dumps exist): (a) the perceiver-judge = the panel picker's
+learned judge (the un-struck line: 18/311 vs bar 24 WITHOUT these features; 330/775 diet without loglik registered)
+with the atlas angle added (the Welford cosine to the own-kind mean, the JSD responsibility vector over kind
+centroids, the DSL tag of the nearest centroid) and the solver status; label = the key on diet rows (a decoder's
+label, not a diagnostic — the fence is not crossed); read ONCE on wild. BARS (pinned, unchanged from the picker's):
+rows >= 24 / 311, regressions <= 2; ceiling 43 (the oracle bound). KILL: < 20 with the atlas angle = the atlas does
+not carry graph-level truth beyond the cosine's 0.766 slot monitor. (b) if (a) clears: MCTS over parses re-read with
+the judge as the value (the 10-06 script + value), same bars. (c) the ftype/op leaf as a PROTOTYPE HEAD over Welford
+centroids with DSL payloads (the tree codebook's first job; bar: matches the 8-way head within 0.01 on wild).
+Bounds: everything here harvests under the 43-row ceiling until the args wall moves (SM_241, the sorting room).
