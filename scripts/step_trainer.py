@@ -116,7 +116,17 @@ REFUSED = ("ALG_SHELF", "ALG_WHIP", "ALG_TOKLOOP", "ALG_WRITEBACK", "ALG_KANNEAL
            # out["args"] rewrite lives only in the fused forward()'s emission code
            "ALG_HUD",
            "ALG_DIR", "ALG_DIR_W",
-           "ALG_DIRROLE", "ALG_DIRROLE_LEXICON")
+           "ALG_DIRROLE", "ALG_DIRROLE_LEXICON",
+           "ALG_SELFMATCH")
+           # THE SELF-MATCH TERM (2026-10-09): _heads_of's own res-pointer
+           # bias (sm_w_self/sm_w_arg against the args head's own-index
+           # score) is the fused forward()'s single source of truth and
+           # would in fact thread fine through the walker's per-seam
+           # heads_of calls on its own — refused anyway, by the word
+           # given for this build, so a future champion-config change to
+           # the walker's own inverse-form handling is not silently
+           # bypassed by an untested path; narrow this refusal only
+           # after a walker-path gate run proves the two are identical.
            # THE DIRECTION ROLE (2026-10-09): rides the role pointer's
            # own out["args"] rewrite (ALG_PTR_SURF=role:, already refused
            # above) and a host-built per-batch `dircue` port the walker's
