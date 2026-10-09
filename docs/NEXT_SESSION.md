@@ -1,9 +1,12 @@
-# NEXT SESSION — cold-start entry (updated 2026-10-09 12:34)
+# NEXT SESSION — cold-start entry (updated 2026-10-09 14:07)
 
-**THE CARD IS IDLE (12:34).** SM_241 (THE SELF-MATCH TERM) DOES NOT FIRE: inverse res 0.228 (bar 0.50; PMS8 0.25 unchanged),
-forward 0.859, masked 0.3359 vs 0.3476 (-0.0117, z 1.4), rows 5, mint 0.6325. THE TERM WAS INERT BY SCALE (autopsy 13:09: ~0.2% of the res logit's spread; the sign story struck; s_own right-signed but weak, AUROC 0.67-0.70) — THE KNOB LAW SKIPPED A FOURTH TIME; RULE: every road prints its injection's std vs the port's spread at the gate and the read (< 10% = inert, the arm void); zero-init output layers are the trap. The direction IS in the geometry on both bodies (args-alone 0.845/0.868). NEXT FORMS (need the word): (a) THE PAIRWISE COMPARATOR ROAD — the probe's read-out itself, a small
-MLP over [own state, candidate state] added to the res logits (inside the loss, predicted at both); (b) THE SORTING ROOM form 2
-(ledger 11:5x); the six alternations behind the gym pre-read + head diff A; the perceiver-as-value (ledger 12:2x). Ledger 12:34.
+**PC_241 IS ON THE CARD (fired 14:02; pc-pc + pc-pc-watch; .cache/sharp_PC_241.log; chain .cache/rack_chain_PC.log).** THE PAIRWISE
+COMPARATOR ROAD (ALG_PAIRCMP=1, scale 20, merged f13a4205, ledger 9c6fca48): phi([h_i, v_j, h_i*v_j]) over the 384 content dims (the
+probe's door) added to every res logit at every breath; small-random output (live from birth), knob census warm 0.19 / fresh 2.85 (bar 0.10,
+re-read at the arm's last breath: < 0.10 = VOID). BARS: inverse res >= 0.50, forward >= 0.85, masked >= PMS8_241 - 0.005. Behind it:
+THE SORTING ROOM (ALG_SORT=4; worktree wt13, branch sortroom; the gate re-running with identity-at-init blocks after a 574 step-0 loss;
+.cache/queue_sr.sh waits on "PC CHAIN COMPLETE"); SR_241 bars: twin-pick <= 0.35, other-sentence <= 0.40, masked +0.020 / twin.
+SM_241 (the self-match term) DID NOT FIRE: inert by scale (autopsy 13:09); the knob census is now a gate requirement. Updated 14:07.
 
 **THE CARD IS IDLE (09:38).** THE DIRECTION PROBE FIRED (zero-GPU; scripts/direction_probe.py; .cache/direction_probe_PMS8_241.txt):
 PRESENT-BUT-UNEXPRESSIBLE — a read-out trained on PMS8_241's own frozen states reaches wild AUROC 0.98 (own state + both gold args'
