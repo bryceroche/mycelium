@@ -49797,3 +49797,26 @@ not carry graph-level truth beyond the cosine's 0.766 slot monitor. (b) if (a) c
 the judge as the value (the 10-06 script + value), same bars. (c) the ftype/op leaf as a PROTOTYPE HEAD over Welford
 centroids with DSL payloads (the tree codebook's first job; bar: matches the 8-way head within 0.01 on wild).
 Bounds: everything here harvests under the 43-row ceiling until the args wall moves (SM_241, the sorting room).
+
+### 2026-10-09 (12:34) — SM_241 (THE SELF-MATCH TERM, from scratch vs PMS8_241) DOES NOT FIRE: inverse res 0.228 (bar >= 0.50; PMS8 0.25 — UNCHANGED), forward res 0.859 (bar met), masked 0.3359 vs 0.3476 = -0.0117 (bar >= -0.005 MISSED; paired SE 0.0082, McNemar z 1.42), rows 5 (PMS8 14), mint 0.6325 (-0.02); THE LEARNED SCALARS HAVE THE WRONG SIGN (w_self -0.104, w_arg -0.024): the term FAVOURS the own index when the args head says "own is an arg" — the args head's own-index score reads the SELF-LOOP pathology, not the direction
+
+Artifacts: .cache/rack_chain_SM.log; sharp_SM_241.safetensors; dump_wild_SM_241.pkl; ps_legal_wild_SM_241.npz;
+polarity_census_SM_241.txt; rows.sqlite (c2de5214). Fields masked wild: pres 0.916 ftype 0.862 res 0.796 dig 0.447
+exact 0.336 op 0.728 args 0.433. MECH by form: fwd n=668 ok 0.310 args 0.518 res 0.859; inv n=372 ok 0.156 args
+0.282 res 0.228 (PMS8: res 0.87 / 0.25). Discordant 154 / 130 (noise-range on the slot; the wrong sign).
+THE READING: the term was built as res[own] -= w_self*s_own with s_own = the args head's predicted membership of
+the slot's own variable among its args (the diagonal). The probe's own census (10-09 09:3x) had already said the
+args pointer puts MORE own-index mass on FORWARD forms (0.54) than on inverse forms (0.29) — the opposite of gold
+(own-in-args 0/668 forward, 372/372 inverse). So s_own is not a direction read; it is the self-loop error (a
+relation naming itself as its own argument — the registered self-loops diagnostic) and the optimizer used it for
+what it is: a negative w_self turns the term into "when the args head self-loops, keep the result on the own index"
+(a forward-form corrector), and inverse forms got nothing. The probe's 0.85 came from an MLP over the args' STATES
+(the geometry), never from the args head's own-index logit. THE LESSON (the representability audit's shape, a new
+corner): a structural term must be fed by a quantity that CARRIES the structure at read — the direction probe
+measured the states, the build read a logit; the two were conflated in the registration (mine, 09:40). THE LINE:
+the self-match term as built CLOSES; the direction stays present-but-unexpressible; the honest next forms are (a)
+the probe's own read-out as the road — a small MLP over [own state, candidate state] added to the res logits
+(the pairwise comparator the probe trained, inside the loss, predicted at both; the bilinear's missing nonlinearity)
+and (b) the sorting room (registered 11:5x). AUTOPSY fired (zero training): the s_own census by form on
+SM_241 and PMS8_241's wild dumps (does s_own separate forms at all; where the self-loop mass sits), and the probe's
+MLP re-read on SM_241's states (did the body keep the direction in its geometry: a representability check).
