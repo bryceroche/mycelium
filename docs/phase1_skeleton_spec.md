@@ -49427,3 +49427,5 @@ CLOSES behind the args wall: the solver as a value propagator is downstream of t
 cure for it. What remains upstream of everything: the binding of arguments (0.44) — the owner /
 time keys the governor census and the shuffle read said are missing — and the direction (the res
 head's missing input). The gym's five uses are banked on branch replay (6079b855 -> 2bab8bc1).
+
+### 2026-10-09 (03:47) — THE TEACHER-FORCED BIT (ALG_DIR=2; branch dirbit 555888fb) built + gated (unset / role8 / hierd bit-identical; dir reproduces; dir2 6.5289/1.0315 runs and differs; the bit's grad flows through the BCE alone; the read carries a [dir] confidence line and a .dir.npz sidecar) and FIRED under the standing word: pc-queue-dir2 merges dirbit, runs the post-merge gate, fires DIR2_241 (PMS8's recipe + ALG_DIR=2 on pm35c) vs PMS8_241 and DIR_241; BARS: inverse res >= 0.60, forward res >= 0.85, masked >= PMS8 - 0.005, the bit's own accuracy and confident coverage reported. The trainer watcher re-armed.
