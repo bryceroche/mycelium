@@ -49994,3 +49994,23 @@ on the FROZEN trunk states, ignored twice) is the warning; a trained stack is a 
 knob census on the coarse path's contribution is the gate requirement. ORDER: SR_241 (flat) first = the control; if
 flat moves twin-pick / other-sentence, the hourglass is the refinement; if flat does not, the hourglass is the next
 form (bars inherited; KILL: the coarse path's contribution < 10% of the token path's at the last layer = inert).
+
+### 2026-10-09 (15:15) — THE RE-ADMISSION TABLE (Bryce: "many components are state dependent — they might have failed in the past but that doesn't mean they'll never work"): closed FORMS carry a regime tag + the state change that re-admits them + a pinned cheap read for that moment; laws about MECHANISM (the loss takes the cheapest road; the Goodhart fence; representability) do not expire — their APPLICATION to a new form is a prediction with a read, never a dismissal
+
+Standing law restated: scope decay (verdicts expire with their regime) + "a null is on the FORM" (the twelve hills).
+Precedents of re-admission: the picker panel (struck 09-24, un-struck 10-05 when the oracle bound tripled); MCTS over
+parses (null 10-06 with the solver as its only judge; re-armed 10-09 with the perceiver as the value); the registry's
+re-audition (families shrink on contact). Correction of my own usage (15:1x): the residual-seal law was quoted as
+settling the roundabout — it PREDICTS the roundabout loses when the skips reopen; the prediction gets a read.
+THE TABLE (re-read when the trigger fires; every read zero-training where possible):
+| closed form | regime of the null | re-admission trigger | the pinned read |
+| the roundabout / scheduled seal (balanced cooker, 09-10) | September bodies, no token-side organ | the hourglass trains under a PERMANENT seal and the knob census shows the coarse path carrying >= 10% | reopen the skips on a twin; does the coarse path's contribution survive 10k steps? |
+| soft ports (route bias, lines, read-time broadcast; 09-30..10-04) | a settled basin; the membrane leaves the tokens by breath 1 (hit 0.76 -> 0.6) | a body whose right-slot token hit stays >= 0.90 at the first look | the certifier loop's route bias replayed in the gym on that body, decode-level, 64 rows |
+| the eyes (soft mask; killed 10-05) | the plain membrane; the mask owned the road | the partitioned (hierarchical) state + HARD hands (claims), per hill 7 | eyes_autopsy.py on the new body: dominance spiky? membrane hit kept? |
+| the learned perceivers (v1 0.744, v1b 0.720 < the cosine 0.766) | a diet whose own cosine is anti-predictive (0.423; regime, not bias) | a diet/telemetry pool whose cosine is predictive (>= 0.70) — GSM8K-train telemetry, annotated prose | perceiver_train.py LORO on that pool; bar = beat the cosine on wild |
+| the tree descent (6 forms; 09-27..10-04) | the frozen trunk's keys at the first look | a TRAINED token side (the sorting room) | the pooled-key form inside the hourglass = form 2b (already registered) |
+| the direction bit as a mask (DIR/DIRD/DIR2) | the body's own guess drives the mask; gold mask = crutch | a res head that READS the direction (the comparator >= 0.50 inverse) | re-read the mask as a decode-time tie-break on the comparator body |
+| MCTS over parses | solver-only judge | the perceiver as the value (registered 12:2x) | re-admitted |
+RULE: a closed line's ledger entry names its trigger at closing time from now on; the table is appended to, never
+pruned; a re-read that fails re-closes the form with the NEW regime tag. What never expires: the custody key, the
+Goodhart fence, the mandatory-road / knob / seal MECHANISMS, representability, the SE arithmetic.
