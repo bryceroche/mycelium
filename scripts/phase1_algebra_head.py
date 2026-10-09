@@ -122,6 +122,62 @@ ALG_PTR_SURF_ENTITY = ALG_PTR_SURF.startswith("entity:")
 # rebuild a signal the bilinear could in principle already carry);
 # "sever" is the diagnostic twin.
 ALG_PTR_SURF_ROLE = ALG_PTR_SURF.startswith("role:")
+# THE DIRECTION ROLE (2026-10-09, ledger "WHAT STANDS... THE HONEST NEXT
+# FORMS supply the INPUT, not a mask"): the direction-bit family (ALG_DIR
+# forms 1/2) failed because a mask (self-driven or gold-driven) does the
+# choosing instead of informing it. This extends THE ROLE SIGNATURE's own
+# organ with ONE MORE CUE CLASS instead: a small closed lexicon of
+# direction words (fewer/less/more/than/left/remaining/gave/away/lost/
+# spent/half/twice/per/each/total/altogether/together/combined/
+# difference, env-overridable via ALG_DIRROLE_LEXICON) is matched against
+# the row's own TEXT (whole-word, case-insensitive — dirrole_cue_spans/
+# dirrole_row_features below), producing a per-token cue id, IDENTICALLY
+# at train (dirrole_build_array over `samples`) and at READ (loop_val's
+# per-row call on the same raw text) — the train/read mismatch THE
+# TEACHER-FORCED BIT's death taught (a structural road trains only in
+# the form the read can supply). The cue ids feed ONE learned embedding
+# table (p["dir_cue_emb"]), pooled through the role pointer's OWN
+# op-channel attention (_pop5 below — the same weights that already
+# extract the relation's role query u_j) and ADDED into u_j BEFORE the
+# W_role projection — never a mask, never a new loss (point 3: nothing
+# joins the loss beyond the existing res target; the term's only road to
+# training is the args/res loss's gradient through the role pointer,
+# exactly as W_rk2/W_role/w_prec already train with no span BCE of
+# their own, per the "from the ARGS loss" finding in the 2026-09-22
+# ledger). Dead unless set; needs ALG_PTR_SURF=role:... armed (the
+# organ this extends).
+ALG_DIRROLE = int(os.environ.get("ALG_DIRROLE", "0"))
+assert not ALG_DIRROLE or ALG_PTR_SURF_ROLE, \
+    "ALG_DIRROLE extends the role pointer's own query (u_j); it needs " \
+    "ALG_PTR_SURF=role:add:<gain> (or role:sever:<gain>) armed too"
+DIRROLE_LEXICON_DEFAULT = [
+    # the task's own direction-word core
+    "fewer", "less", "more", "than", "left", "remaining", "gave", "away",
+    "lost", "spent", "half", "twice", "per", "each", "total",
+    "altogether", "together", "combined", "difference",
+    # WIDENED (2026-10-09, direction_cue_census.py's word: the core alone
+    # covers only 38.4% of wild's inverse-form relations, missing the bar
+    # of >= 60% — the census's own report, .cache/direction_cue_census.txt,
+    # found the uncovered residue is mostly THE RATE FAMILY, CLAUDE.md's
+    # own standing resident: "costs $5", "earns $28 for 4 hours", "takes 4
+    # bananas", with no comparative word at all, only an acquisition/rate
+    # verb and a temporal/unit noun) — state/possession verbs, their other
+    # inflections, and rate/temporal nouns, reaching 64.0%:
+    "remain", "rest", "still", "now", "gives", "first", "then", "next",
+    "later", "after", "before", "initially", "originally", "finally",
+    "every", "has", "had", "have", "got", "bought", "received", "earned",
+    "found", "made", "sold", "ate", "used", "needs", "wants", "paid",
+    "both", "all", "equally", "divided", "share", "shared", "reduce",
+    "reduced", "decrease", "decreased", "increase", "increased",
+    "additional", "extra", "take", "takes", "took", "removed", "minus",
+    "subtract", "times", "cost", "costs", "charge", "charges", "earn",
+    "earns", "hour", "hours", "day", "days", "week", "weeks", "year",
+    "years", "month", "months",
+]
+_dirrole_lex_env = os.environ.get("ALG_DIRROLE_LEXICON", "")
+DIRROLE_LEXICON = ([w.strip() for w in _dirrole_lex_env.split(",") if w.strip()]
+                   if _dirrole_lex_env else list(DIRROLE_LEXICON_DEFAULT))
+N_DIRROLE_CUES = len(DIRROLE_LEXICON)
 # THE BUS REGISTER (2026-09-22, THE MIXED-BUCKET DECOMPOSITION's reading —
 # ledger 2026-09-22 12:50: the pointer wall is ~90% SAME-QUANTITY selection
 # and 55-57% of it points at DERIVED arguments, whose identity is in no
@@ -1703,7 +1759,8 @@ TERMINALS = {
                           if int(os.environ.get("ALG_ROUTER", "0")) < 2 else
                           ["W_rq2", "W_rk2", "theta_given", "r_gain"]
                           + (["W_ps"] if os.environ.get("ALG_PTR_SURF", "").startswith(("state:", "entity:")) else [])
-                          + (["W_role", "w_prec"] if os.environ.get("ALG_PTR_SURF", "").startswith("role:") else [])),
+                          + (["W_role", "w_prec"] if os.environ.get("ALG_PTR_SURF", "").startswith("role:") else [])
+                          + (["dir_cue_emb"] if int(os.environ.get("ALG_DIRROLE", "0")) else [])),
                "emit": "rbias",
                "gold": (["fspan"] if int(os.environ.get("ALG_ROUTER", "0")) < 2
                         else ["fspan", "vspan"]),
@@ -3194,6 +3251,14 @@ def build_params(seed=0):
             # "earlier/later" on its own rather than being handed one.
             p["W_role"] = t(np.eye(H_W, dtype=np.float32))
             p["w_prec"] = t(np.zeros(1, dtype=np.float32))
+        if ALG_DIRROLE:
+            # THE DIRECTION ROLE's cue table (2026-10-09): one row per
+            # lexicon cue id (1..N_DIRROLE_CUES — see forward()'s gather,
+            # which shifts to 0-based and masks id-0 to an exact zero, so
+            # row content never matters for "no cue"). Small-random init,
+            # the vq/fq/qq convention (a fresh embedding bank learning
+            # from scratch, not a "start silent" door under a gain).
+            p["dir_cue_emb"] = t(rng.randn(N_DIRROLE_CUES, H_W).astype(np.float32) * 0.02)
         if ALG_BUSREG:
             # THE BUS REGISTER's two read weights (2026-09-22): per-plane
             # complex scalars (the W_rq2 form — the structure that keeps
@@ -4571,6 +4636,82 @@ def hud_census(hud, tokmask):
     return {"kind_dist": dist,
            "entity_rate": dist["entity_like"],
            "repeated_rate": float(rep.mean())}
+
+
+# ===========================================================================
+# THE DIRECTION ROLE (2026-10-09): a closed-lexicon per-token cue id,
+# computed from TEXT ALONE (no factor graph, no clause boundary — the HUD
+# idiom, not the role_cues clause-window idiom, precisely because HUD's
+# form is what loop_val already proves derivable identically at train and
+# at read). dirrole_cue_spans/dirrole_row_features/dirrole_build_array are
+# the ONE path both do_train (via `samples`, the jsonl rows) and loop_val
+# (via raw `text` on an arbitrary held-out row) call — never a stamped
+# jsonl field, so there is no second copy of the matcher to drift out of
+# sync with the first (the rule the teacher-forced bit broke).
+# ===========================================================================
+_DIRROLE_RE_CACHE = {}
+
+
+def dirrole_cue_spans(text):
+    """[(char_start, char_end, cue_id)], cue_id in 1..N_DIRROLE_CUES (1-
+    based: 0 is reserved to mean "no cue" in the per-token id array
+    below). Whole-word, case-insensitive; DIRROLE_LEXICON entries are
+    single words by construction (the task's lexicon), so plain \\b...\\b
+    regex suffices — no stemming, no phrase-matching (unlike the older,
+    broader role_cues lexicon this is a narrower sibling of)."""
+    import re as _dre
+    spans = []
+    for idx, w in enumerate(DIRROLE_LEXICON, start=1):
+        pat = _DIRROLE_RE_CACHE.get(w)
+        if pat is None:
+            pat = _dre.compile(r'\b' + _dre.escape(w) + r'\b', _dre.IGNORECASE)
+            _DIRROLE_RE_CACHE[w] = pat
+        for m in pat.finditer(text):
+            spans.append((m.start(), m.end(), idx))
+    return spans
+
+
+def dirrole_row_features(text, T):
+    """(T,) int32 cue ids (0 = no cue, else 1..N_DIRROLE_CUES) — re-
+    tokenizes `text` with the head's own tokenizer (hud_row_features's
+    exact path: _xcorr_tokenizer().encode(text), whose Encoding exposes
+    `.offsets` — the same char-span-to-token convention tokenize() uses
+    for build_gold's `offs`, so a token straddling a matched span is
+    marked exactly as it would be at train). Deterministic; host-only,
+    no model call."""
+    tok = _xcorr_tokenizer()
+    enc = tok.encode(text)
+    offs = enc.offsets[:T]
+    out = np.zeros(T, np.int32)
+    for (cs, ce, cue_id) in dirrole_cue_spans(text):
+        for ti, (ts, te) in enumerate(offs):
+            if ts < ce and te > cs:
+                out[ti] = cue_id
+    return out
+
+
+def dirrole_build_array(samples, T):
+    """(n, T) int32 — dirrole_row_features for every row, host-side, no
+    model call (the mask-prep pass's own kind of array, banked like HUD/
+    XCORR — built once in do_train, independent of the K_B>1 mask-prep
+    pass, read fresh by loop_val per batch on arbitrary held-out rows)."""
+    n = len(samples)
+    out = np.zeros((n, T), np.int32)
+    for i in range(n):
+        out[i] = dirrole_row_features(samples[i]["text"], T)
+    return out
+
+
+def dirrole_census(dircue, tokmask):
+    """Coverage over REAL tokens: the fraction of rows with >=1 matched
+    cue anywhere, and the per-cue match count (which lexicon entries are
+    actually pulling weight on this fixture)."""
+    real = np.asarray(tokmask) > 0
+    n = dircue.shape[0]
+    has_cue = np.array([bool((dircue[i][real[i]] > 0).any()) for i in range(n)])
+    cue_counts = {DIRROLE_LEXICON[c - 1]: int((dircue[real] == c).sum())
+                 for c in range(1, N_DIRROLE_CUES + 1)}
+    return {"row_coverage": float(has_cue.mean()), "cue_counts": cue_counts}
 
 
 def _window_bias(fat_prev, w, B, L, T):
@@ -6530,7 +6671,7 @@ def breath_step(p, state, kb, ctx):
     return state
 
 
-def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, drop=None, anchor=None, amask=None, gmod=None, pmask=None, lsent=None, reg=None, fact_buf=None, mh_mass=None, mh_atlas_traj=None, xcorr=None, res_map=None, hud=None, ident=None, busreg_ramp=None, valfact=None, stop_after=None, facts3=None, facts5=None, tree=None, cert3=None, cert5=None, rack3=None, rack5=None, chalk3=None, chalk5=None, dirgold=None):
+def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, drop=None, anchor=None, amask=None, gmod=None, pmask=None, lsent=None, reg=None, fact_buf=None, mh_mass=None, mh_atlas_traj=None, xcorr=None, res_map=None, hud=None, ident=None, busreg_ramp=None, valfact=None, stop_after=None, facts3=None, facts5=None, tree=None, cert3=None, cert5=None, rack3=None, rack5=None, chalk3=None, chalk5=None, dirgold=None, dircue=None):
     from tinygrad import Tensor, dtypes   # audit 2026-09-01: was a
     # SCOPE ACCIDENT (bound only via the sixwave/sync branches — any
     # SIXWAVE-off config killed five organs at step 1)
@@ -7105,6 +7246,25 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
                 _prc5 = _tsoft5r(out["rbias2"][:, 5])   # (B, L_FAC, T): candidate k's RCUE-channel attention
                 _uj_5 = _pop5 @ waist        # (B, L_FAC, H_W): the relation's role query
                 _rk_5 = _prc5 @ waist        # (B, L_FAC, H_W): the candidate's role-cue key
+                if ALG_DIRROLE and dircue is not None:
+                    # THE DIRECTION ROLE (2026-10-09): one more cue class
+                    # on the SAME query — pool the per-token direction-
+                    # cue embedding through the IDENTICAL op-channel
+                    # attention (_pop5) that already extracts u_j, and
+                    # add it in before the W_role projection (structure
+                    # entering the query, never a mask on the result).
+                    # dircue: (B, T) int, 0 = no cue. Index 0 is masked
+                    # to an exact zero contribution regardless of row
+                    # 0's own embedding content (no live "no-cue" row to
+                    # accidentally inject on every token).
+                    _did5 = dircue if dircue.dtype == dtypes.int else dircue.cast(dtypes.int)
+                    _didx5 = (_did5 - 1).clip(0, N_DIRROLE_CUES - 1)
+                    _dmask5 = (_did5 > 0).float().unsqueeze(-1)          # (B, T, 1)
+                    _etok5 = p["dir_cue_emb"][_didx5] * _dmask5          # (B, T, H_W)
+                    _uj_5 = _uj_5 + _pop5 @ _etok5                       # (B, L_FAC, H_W)
+                    if int(os.environ.get("ALG_DIRROLE_DEBUG", "0")):
+                        print(f"[dirrole-debug] dmask.sum={float(_dmask5.sum().numpy())} "
+                              f"etok.abs().sum={float(_etok5.abs().sum().numpy())}", flush=True)
                 _hw5r = waist.shape[-1]
                 _lgrole_5 = ((_uj_5 @ p["W_role"]) @ _rk_5.transpose(-2, -1)) / math.sqrt(_hw5r)
                 # THE PRECEDENCE TERM: a learned scalar (w_prec, init 0)
@@ -8502,6 +8662,21 @@ def do_train(steps, lr, batch, seed):
               f"{ {k: round(v, 4) for k, v in _hc['kind_dist'].items()} } "
               f"entity_rate={_hc['entity_rate']:.4f} "
               f"repeated_rate={_hc['repeated_rate']:.4f}", flush=True)
+    DIRCUE = None   # THE DIRECTION ROLE (2026-10-09): host-only, no model
+                    # call — built here like XCORR/HUD, from `samples`
+                    # (the SAME function loop_val calls on raw text, so
+                    # train and read are the same input by construction)
+    if ALG_DIRROLE:
+        _dc_t0 = time.time()
+        print(f"[dirrole] ALG_DIRROLE=1 — building the diet's per-token "
+              f"direction-cue array ({n} rows, host, no model call, "
+              f"lexicon={DIRROLE_LEXICON}) ...", flush=True)
+        DIRCUE = dirrole_build_array(samples, T_ALG)
+        _dcc = dirrole_census(DIRCUE, tokmask)
+        print(f"[dirrole] array ready {DIRCUE.shape} {DIRCUE.dtype} in "
+              f"{time.time() - _dc_t0:.1f}s | row_coverage="
+              f"{_dcc['row_coverage']:.4f} cue_counts={_dcc['cue_counts']}",
+              flush=True)
     IDENT = None   # THE BUS REGISTER's token ids (2026-09-22): host-only,
                    # the head's own tokenizer (tokenize()'s path), no model
                    # call — built here like XCORR/HUD
@@ -8909,6 +9084,8 @@ def do_train(steps, lr, batch, seed):
         if (ALG_PTR_SURF or ALG_BUSREG) else None   # THE RES-SCATTER FIX's feed (b_fact idiom); the register scatters through it too
     b_hud = fix(np.zeros((batch, T_ALG, HUD_N_FEATS), np.int32), dtypes.int) \
         if ALG_HUD else None   # THE TOKEN HUD's feed (b_fact idiom)
+    b_dircue = fix(np.zeros((batch, T_ALG), np.int32), dtypes.int) \
+        if ALG_DIRROLE else None   # THE DIRECTION ROLE's feed (b_fact idiom)
     TREE = tree_build_array(samples, tokmask, sent, T_ALG) if _TREE_LEVELS is not None else None   # THE TREE DESCENT's unit ids (host, banked like HUD)
     if TREE is not None:
         print(f"[tree] ALG_TREE={ALG_TREE}: unit ids ready {TREE.shape} | units/row mean s={np.mean([len(set(r[:, 0][r[:, 0] >= 0])) for r in TREE]):.1f} c={np.mean([len(set(r[:, 1][r[:, 1] >= 0])) for r in TREE]):.1f} m={np.mean([len(set(r[:, 2][r[:, 2] >= 0])) for r in TREE]):.1f}", flush=True)
@@ -9105,13 +9282,13 @@ def do_train(steps, lr, batch, seed):
             # commits, self-labeled from gold like the commit loss,
             # DETACHED); the second trains under live release dynamics.
             o0 = forward(p, s_tr, b_tk, b_se, slot_mask=b_mask, tail=b_tail,
-                         reg=b_reg, xcorr=b_xcorr, res_map=b_resmap, hud=b_hud, tree=b_tree, ident=b_ident, busreg_ramp=b_bgain, valfact=b_valfact, facts3=b_fact3, facts5=b_fact5, cert3=b_cert3, cert5=b_cert5, rack3=b_rack3, rack5=b_rack5, chalk3=b_chalk3, chalk5=b_chalk5, dirgold=b_dirgold)
+                         reg=b_reg, xcorr=b_xcorr, res_map=b_resmap, hud=b_hud, tree=b_tree, ident=b_ident, dircue=b_dircue, busreg_ramp=b_bgain, valfact=b_valfact, facts3=b_fact3, facts5=b_fact5, cert3=b_cert3, cert5=b_cert5, rack3=b_rack3, rack5=b_rack5, chalk3=b_chalk3, chalk5=b_chalk5, dirgold=b_dirgold)
             ok = ((o0["ftype"].argmax(-1) == bg["ftype"]).float()
                   * (o0["res"].argmax(-1) == bg["res"]).float())
             rv = (bg["presence"] * (1.0 - ok)).detach()
             o = forward(p, s_tr, b_tk, b_se, slot_mask=b_mask, revoke=rv,
                         tail=b_tail, reg=b_reg, fact_buf=b_fact,
-                        mh_mass=b_mhm, mh_atlas_traj=b_mha, xcorr=b_xcorr, res_map=b_resmap, hud=b_hud, tree=b_tree, ident=b_ident, busreg_ramp=b_bgain, valfact=b_valfact, facts3=b_fact3, facts5=b_fact5, cert3=b_cert3, cert5=b_cert5, rack3=b_rack3, rack5=b_rack5, chalk3=b_chalk3, chalk5=b_chalk5, dirgold=b_dirgold)
+                        mh_mass=b_mhm, mh_atlas_traj=b_mha, xcorr=b_xcorr, res_map=b_resmap, hud=b_hud, tree=b_tree, ident=b_ident, dircue=b_dircue, busreg_ramp=b_bgain, valfact=b_valfact, facts3=b_fact3, facts5=b_fact5, cert3=b_cert3, cert5=b_cert5, rack3=b_rack3, rack5=b_rack5, chalk3=b_chalk3, chalk5=b_chalk5, dirgold=b_dirgold)
         elif int(os.environ.get("NAZ_TRAIN", "0")):
             # NAZARÉ TRAINING (door #55): the organ-2 two-forward pattern —
             # pre-pass yields the intra-pass event field IN-GRAPH (detached);
@@ -9120,7 +9297,7 @@ def do_train(steps, lr, batch, seed):
             # read-time dup-aware argpair): argmax-change OR dup-flip on
             # rel-typed present slots, breath-0 vs final.
             o0 = forward(p, s_tr, b_tk, b_se, slot_mask=b_mask, tail=b_tail,
-                        xcorr=b_xcorr, res_map=b_resmap, hud=b_hud, tree=b_tree, ident=b_ident, busreg_ramp=b_bgain, valfact=b_valfact, facts3=b_fact3, facts5=b_fact5, cert3=b_cert3, cert5=b_cert5, rack3=b_rack3, rack5=b_rack5, chalk3=b_chalk3, chalk5=b_chalk5, dirgold=b_dirgold)
+                        xcorr=b_xcorr, res_map=b_resmap, hud=b_hud, tree=b_tree, ident=b_ident, dircue=b_dircue, busreg_ramp=b_bgain, valfact=b_valfact, facts3=b_fact3, facts5=b_fact5, cert3=b_cert3, cert5=b_cert5, rack3=b_rack3, rack5=b_rack5, chalk3=b_chalk3, chalk5=b_chalk5, dirgold=b_dirgold)
             _b0 = o0["breaths"][0]
             _relmask = (o0["pres"].squeeze(-1) > 0).float() \
                 * (o0["ftype"].argmax(-1) == 0).float()
@@ -9131,13 +9308,13 @@ def do_train(steps, lr, batch, seed):
             _gm = (_bgauth + (1.0 - _bgauth) * _ev).unsqueeze(-1).detach()
             o = forward(p, s_tr, b_tk, b_se, slot_mask=b_mask, tail=b_tail,
                         gmod=_gm, fact_buf=b_fact,
-                        mh_mass=b_mhm, mh_atlas_traj=b_mha, xcorr=b_xcorr, res_map=b_resmap, hud=b_hud, tree=b_tree, ident=b_ident, busreg_ramp=b_bgain, valfact=b_valfact, facts3=b_fact3, facts5=b_fact5, cert3=b_cert3, cert5=b_cert5, rack3=b_rack3, rack5=b_rack5, chalk3=b_chalk3, chalk5=b_chalk5, dirgold=b_dirgold)
+                        mh_mass=b_mhm, mh_atlas_traj=b_mha, xcorr=b_xcorr, res_map=b_resmap, hud=b_hud, tree=b_tree, ident=b_ident, dircue=b_dircue, busreg_ramp=b_bgain, valfact=b_valfact, facts3=b_fact3, facts5=b_fact5, cert3=b_cert3, cert5=b_cert5, rack3=b_rack3, rack5=b_rack5, chalk3=b_chalk3, chalk5=b_chalk5, dirgold=b_dirgold)
         else:
             _bd = os.environ.get("BREATH_DROPOUT")
             o = forward(p, s_tr, b_tk, b_se, slot_mask=b_mask, tail=b_tail,
                         drop=(b_drop if _bd else None), lsent=b_ls, reg=b_reg,
                         fact_buf=(None if ALG_ALT3 else b_fact),   # THE THREE CONSULTS: the start-of-run facts give way to facts3/facts5
-                        mh_mass=b_mhm, mh_atlas_traj=b_mha, xcorr=b_xcorr, res_map=b_resmap, hud=b_hud, tree=b_tree, ident=b_ident, busreg_ramp=b_bgain, valfact=b_valfact, facts3=b_fact3, facts5=b_fact5, cert3=b_cert3, cert5=b_cert5, rack3=b_rack3, rack5=b_rack5, chalk3=b_chalk3, chalk5=b_chalk5, dirgold=b_dirgold)
+                        mh_mass=b_mhm, mh_atlas_traj=b_mha, xcorr=b_xcorr, res_map=b_resmap, hud=b_hud, tree=b_tree, ident=b_ident, dircue=b_dircue, busreg_ramp=b_bgain, valfact=b_valfact, facts3=b_fact3, facts5=b_fact5, cert3=b_cert3, cert5=b_cert5, rack3=b_rack3, rack5=b_rack5, chalk3=b_chalk3, chalk5=b_chalk5, dirgold=b_dirgold)
         l = loss_fn(o, bg)
         if ALG_CONSUME and "_early" in o:   # support-gated consume-once:
             # any breath claims, each fact pays once; eligibility = the DAG
@@ -9184,6 +9361,9 @@ def do_train(steps, lr, batch, seed):
         # nameless at its first step)
         _nog = [k_ for k_, v_ in p.items() if k_ not in _frz and v_.grad is None]
         assert not _nog, f"params with NO gradient in the training step: {_nog}"
+        if ALG_DIRROLE and int(os.environ.get("ALG_DIRROLE_DEBUG", "0")) and "dir_cue_emb" in p:
+            print(f"[dirrole-debug] dir_cue_emb.grad.abs().sum()="
+                  f"{float(p['dir_cue_emb'].grad.abs().sum().numpy())}", flush=True)
         opt.step()
         return l.realize()
     if not _WHEEL_TRAIN:
@@ -9206,7 +9386,7 @@ def do_train(steps, lr, batch, seed):
             o = forward(p, s_c, b_tk, b_se, slot_mask=b_mask, tail=b_tail,
                         drop=(b_drop if _bd_c else None), lsent=b_ls, reg=b_reg,
                         fact_buf=None,
-                        mh_mass=b_mhm, mh_atlas_traj=b_mha, xcorr=b_xcorr, res_map=b_resmap, hud=b_hud, tree=b_tree, ident=b_ident, busreg_ramp=b_bgain, valfact=b_valfact,
+                        mh_mass=b_mhm, mh_atlas_traj=b_mha, xcorr=b_xcorr, res_map=b_resmap, hud=b_hud, tree=b_tree, ident=b_ident, dircue=b_dircue, busreg_ramp=b_bgain, valfact=b_valfact,
                         stop_after=stop, facts3=f3, cert3=c3, rack3=r3, chalk3=k3)
             return {k: o[k].realize() for k in _c_keys}
         def pass_a():
@@ -9306,7 +9486,7 @@ def do_train(steps, lr, batch, seed):
         def _pass_live():
             Tensor.training = True
             s_c = b_tr.cast(dtypes.float)
-            o = forward(p, s_c, b_tk, b_se, hud=b_hud, tree=b_tree, ident=b_ident)
+            o = forward(p, s_c, b_tk, b_se, hud=b_hud, tree=b_tree, ident=b_ident, dircue=b_dircue)
             return {k: o[k].realize() for k in _lf_keys}
         _pass_live = TinyJit(_pass_live)
         _lf_t = [0.0, 0]   # host seconds, count (the ALT3 perf-line idiom)
@@ -10123,6 +10303,8 @@ def do_train(steps, lr, batch, seed):
             _fd(b_resmap, RESMAP[idx], _rl)   # THE RES-SCATTER FIX's feed: this batch's gold slot->variable map
         if b_hud is not None:
             _fd(b_hud, HUD[idx], _rl)   # THE TOKEN HUD's feed: this batch's precomputed per-token features
+        if b_dircue is not None:
+            _fd(b_dircue, DIRCUE[idx], _rl)   # THE DIRECTION ROLE's feed: this batch's precomputed per-token cue ids
         if b_tree is not None:
             _fd(b_tree, TREE[idx], _rl)   # THE TREE DESCENT's feed: this batch's unit ids
         if b_ident is not None:

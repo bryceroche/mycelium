@@ -49457,3 +49457,73 @@ supply — never gold where the read has a guess (ALG_DUP's pattern works becaus
 PREDICTED at both; the arg-multiplicity bit's gold was the loss target, not the mask).
 
 ### 2026-10-09 (07:07) — WORD STANDING: DIRROLE_241 fired (pc-queue-dirrole: merge dirrole -> post-merge gate -> the arm) — the direction role's cue census cleared its road bar (the 86-word lexicon reaches 64 % of wild's inverse-form relations; the 19-word core only 38 % — the rate family carries no comparative word); the gate: unset bit-identical, role8 unchanged, dirrole runs and differs at full precision; the read stamps the cues from the text identically to training (the rule honoured). BARS: inverse res >= 0.50, forward res >= 0.85, masked >= PMS8 - 0.005.
+### 2026-10-09 (07:04) — THE DIRECTION ROLE built + gated (branch dirrole, worktree wt10); THE
+CUE CENSUS widens the lexicon to clear its own road bar before the arm.
+
+THE BUILD (ALG_DIRROLE=1, dead unless set; needs ALG_PTR_SURF=role:... armed — the organ this
+extends): a closed lexicon (DIRROLE_LEXICON, env-overridable via ALG_DIRROLE_LEXICON) matched
+whole-word against a row's TEXT ALONE (dirrole_cue_spans/dirrole_row_features/dirrole_build_array,
+scripts/phase1_algebra_head.py ~line 4597 on, the HUD idiom — re-tokenize with the head's own
+tokenizer, no factor graph, no clause boundary, so train (dirrole_build_array over `samples`) and
+READ (loop_val's per-row dirrole_row_features on raw held-out text) call the SAME function on the
+SAME input by construction, never a stamped jsonl field that could drift) produces a per-token
+cue id (0 = none). A new learned table p["dir_cue_emb"] (N_DIRROLE_CUES x H_W, small-random init,
+the vq/fq/qq convention) is gathered per token, masked to an exact zero contribution where the
+cue id is 0, and POOLED THROUGH THE SAME op-channel attention (_pop5) that already extracts the
+role pointer's query u_j — added into u_j BEFORE the W_role projection (scripts/phase1_algebra_
+head.py:7230-7264; the functions themselves at :4655 on). No new router channel, no new BCE term,
+no mask: point 3 of the brief holds
+exactly — the only road to training is the args/res loss's gradient through the role pointer,
+same as W_role/w_prec already train with no span loss of their own (the "from the ARGS loss"
+finding, 2026-09-22). Threaded into forward()'s `dircue` port at all 7 do_train call sites,
+mycelium/jit_read.py's `_OPT_PORTS`, loop_val.py (4 call sites + per-batch host build, the HUD
+idiom), and chain_acc.py (4 call sites); step_trainer.py's REFUSED list gets ALG_DIRROLE +
+ALG_DIRROLE_LEXICON (the walker threads neither the role pointer's own out["args"] rewrite nor a
+host-built per-batch `dircue` port). THE MASKPREP / JIT-READ CACHE KEYS need no manual extension:
+both key on every env name matching `ALG_*` found in the head's own source (maskprep's
+`_maskprep_fingerprints`, jit_read's `env_names`), and ALG_DIRROLE already matches that pattern.
+
+THE CUE CENSUS (scripts/direction_cue_census.py, zero-GPU; .cache/direction_cue_census.txt):
+reuses polarity_census.classify_row/clause_of (never reimplements the fwd/inv split or the
+clause resolution) joined against dirrole_cue_spans — the organ's own matcher, so the census
+measures exactly what the organ sees. THE TASK'S OWN 19-word core (fewer/less/more/than/left/
+remaining/gave/away/lost/spent/half/twice/per/each/total/altogether/together/combined/
+difference) covers only 38.4% (143/372) of wild's inverse-form relations — MISS on the >= 60%
+road bar. Diagnosis (the uncovered clauses, read by hand): the residue is mostly THE RATE FAMILY,
+CLAUDE.md's own standing resident ("costs $5", "earns $28 for 4 hours", "takes 4 bananas", "patrols
+36 streets in 4 hours") — no comparative word at all, only an acquisition/rate verb and a temporal/
+unit noun. WIDENED to 86 words (state/possession verbs and their inflections: has/had/have/got/
+bought/received/earned/found/made/sold/ate/used/needs/wants/paid/gives; temporal order: first/
+then/next/later/after/before/initially/originally/finally/every/still/now/rest/remain; collective/
+arithmetic: both/all/equally/divided/share/shared/reduce(d)/decrease(d)/increase(d)/additional/
+extra/take(s)/took/removed/minus/subtract/times; rate/temporal nouns: cost(s)/charge(s)/earn(s)/
+hour(s)/day(s)/week(s)/month(s)/year(s)) — DIRROLE_LEXICON_DEFAULT now carries both the core and
+the widened set, declared and dated in the source. Wild inverse coverage 0.6398 (238/372) — PASS;
+diet prose inverse coverage 0.5958 (1048/1759); the per-cue contingency table (inverse_share per
+word) is banked in the artifact for the arm's own reading.
+
+THE GATE (.cache/dirrole_gate.sh, the champion fixture tiny64/WARM_FROM balV242/BATCH=2 STEPS=2,
+DEV=CPU, pointed at wt10): unset 5.2995/0.0279 (bit-identical — no ALG_DIRROLE code on the
+default-off path, dir_cue_emb never allocated); role8 6.5535/1.1061 (THE ROLE SIGNATURE's own
+chassis, unchanged); dirrole 6.5535/1.1061 at the campaign's standard 4-decimal display (RUNS) —
+at full precision role8 6.5534758568 vs dirrole 6.5534806252, a real but small step-0 difference
+(DIFFERS; the 4dp rounding hides it because only 11 of 512 token-slots in this 2-row micro-fixture
+carry any lexicon cue and the champion's step-0 op-channel attention is still near-uniform, so the
+pooled embedding's contribution is diluted ~1/256 — the term is designed to be cheap at birth,
+0.02-scale, the same convention as every other fresh embedding table in this file). GRAD PROBE:
+dir_cue_emb.grad.abs().sum() = 1.08e-4 at step 0 (nonzero; the NO-GRAD FENCE at scripts/
+phase1_algebra_head.py:9363 would have failed loudly otherwise — it did not). READ SMOKE (scripts/
+dirrole_read_smoke.py, zero-GPU: dirrole_build_array over 2 rows of .cache/test_tiny64.jsonl vs
+dirrole_row_features called per-row on the same raw text — IDENTICAL on both rows, cue words
+{gives, minus, together} / {away, has, together, total}; PASS) PLUS an end-to-end loop_val.py read
+under ALG_JIT_READ=1 + ALG_DIRROLE=1 against the gate's own dirrole checkpoint (.cache/
+sharp_dirrolegate_dirrole.safetensors) on the full testtiny64 split — ran clean, fac-exact=0.9561
+(n=820, the warm/trained fixture — not a claim, a wiring proof).
+
+THE ARM (written, NOT fired — gen-weights may be imported by a running chain): .cache/
+rack_chain_DIRROLE.sh (DIRROLE_241 = PMS8_241's exact recipe + ALG_DIRROLE=1 on form_mix_pm35c,
+48k B=8 SEED=241, vs PMS8_241; BARS: paired masked wild >= PMS8 - 0.005, inverse res >= 0.50 (from
+0.25), forward res not down below 0.85 (from 0.873); preflight PASSES modulo the post-merge gate
+log, as expected before the merge) and .cache/queue_dirrole.sh (waits for no running trainer on
+the main tree, `git merge --no-edit dirrole`, the post-merge gate, fires the chain). Needs the
+word.

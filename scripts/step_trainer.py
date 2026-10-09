@@ -115,7 +115,14 @@ REFUSED = ("ALG_SHELF", "ALG_WHIP", "ALG_TOKLOOP", "ALG_WRITEBACK", "ALG_KANNEAL
            # calls never thread a per-breath rcue_all list, and the role pointer's
            # out["args"] rewrite lives only in the fused forward()'s emission code
            "ALG_HUD",
-           "ALG_DIR", "ALG_DIR_W")
+           "ALG_DIR", "ALG_DIR_W",
+           "ALG_DIRROLE", "ALG_DIRROLE_LEXICON")
+           # THE DIRECTION ROLE (2026-10-09): rides the role pointer's
+           # own out["args"] rewrite (ALG_PTR_SURF=role:, already refused
+           # above) and a host-built per-batch `dircue` port the walker's
+           # own step() never constructs or threads — named separately
+           # so a future narrowing of the ALG_PTR_SURF refusal does not
+           # silently let this through too (the ALG_HIER_LISTEN pattern).
            # THE DIRECTION BIT (2026-10-08): _heads_of's own "dir" emission
            # and res-pointer structural mask ride the walker's per-seam
            # heads_of calls fine (single source of truth) — but the dir

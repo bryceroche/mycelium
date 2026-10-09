@@ -248,7 +248,8 @@ _OPT_PORTS = ("slot_mask", "revoke", "tail", "drop", "anchor", "amask",
               "facts3", "facts5",   # THE THREE CONSULTS' facts ports (2026-09-24)
               "cert3", "cert5",   # THE TRAINED CERTIFIER-MASK ROAD's bias ports (2026-09-28)
               "rack3", "rack5",   # THE RACK's packed dry-flag + claimed-token ports (2026-10-05)
-              "chalk3", "chalk5")   # THE CHALKBOARD's packed [presence, digits] ports (2026-10-05, branch rack3)
+              "chalk3", "chalk5",   # THE CHALKBOARD's packed [presence, digits] ports (2026-10-05, branch rack3)
+              "dircue")   # THE DIRECTION ROLE's per-token cue-id port (2026-10-09)
 # Non-tensor kwargs a reader may pass (python constants baked into the
 # captured graph, so they are part of the key): the partial pass's stop.
 _CONST_KW = ("stop_after",)
