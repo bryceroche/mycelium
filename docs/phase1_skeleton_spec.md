@@ -49383,3 +49383,26 @@ bit TEACHER-FORCED (the gold direction as structure during training, so the res 
 cue map under a correct mask; DIRD reads the first form tonight), the sorting room (the cue bound
 to the numeral at the token side), the role-cue channel widened to carry direction cues. Caveat:
 n = 32 rows, 16 inverse slots; a diagnostic read.
+
+### 2026-10-09 (03:17) — DIRD_241 (THE DIRECTION BIT + THE INVERSE DOSE) DOES NOT FIRE: masked 0.3150 (-0.033 vs PMS8, z ~3.5 — the family's worst slot), inverse res 0.331 (= DIR's), forward res 0.787 (from 0.873), rows 14 / 13, mint 0.717 (the dose's); THE DIRECTION-BIT FAMILY CLOSES (three arms, one shape); the queue complete; the card idle
+
+Reads (rack_chain_DIRD.log 03:03): open wild 0.2950; MASKED 0.3150 — paired vs PMS8 -0.0327
+(discordant 233 vs ~165: a real loss), vs DIR_241 -0.0180 (the dose compounds the bit's loss on the
+slot); rows 14 masked / 13 open (PMS8 14 / 9: the open row count is the week's highest, inside the
++/-4 noise); OPEN MINT 0.7170 (the dose's +0.07 again); the polarity read: inverse res 0.331 (DIR
+0.328, DOSE 0.239, PMS8 0.250) vs forward res 0.787 (DIR 0.749, DOSE 0.871, PMS8 0.873); of the 249
+inverse res-wrong, 68 % own-index. ONE SHAPE ACROSS THE FAMILY: the bit lifts inverse res by +0.08
+and costs forward res -0.09..-0.12 wherever it sits (pm35c or pm35d); the dose lifts mint by +0.08
+and nothing on wild; neither moves the slot up. VERDICT: the direction bit AS BUILT — p(inverse)
+from a per-slot head driving a hard own-index mask at read, soft log-priors at training — is a
+manufactured certificate (the body's own guess) and REDISTRIBUTES; the dose is a mint ingredient.
+THE FAMILY CLOSES on this form. WHAT STANDS: the blindspot (inverse res 0.25, 36 % of wild
+relations, the res head's gradient arriving 3.6x and unused — a missing INPUT: the prose cue ->
+direction binding). THE NEXT FORMS (registered): (a) THE TEACHER-FORCED BIT — the GOLD direction as
+the res mask during training (the res head learns the forward / inverse pointer under a correct
+mask, never suppressed by a guess), the predicted bit applied at read ONLY where confident (p >
+0.8 / p < 0.2; otherwise no mask) — ALG_DUP's actual pattern, built on branch dirbit; (b) THE
+SORTING ROOM (the cue bound at the token side); (c) the direction cue as a ROLE in the role
+signature (the rcue channel widened: "fewer / less / left / gave" as role cues bound under the
+role phasor — the slot record's own organ extended to direction). The card is idle; (a) fires on
+the standing word after its gate.
