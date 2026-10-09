@@ -1,6 +1,8 @@
 # NEXT SESSION — cold-start entry (updated 2026-10-09 06:05)
 
-**THE CARD IS IDLE (05:56).** Building (worktree wt10, branch dirrole): THE DIRECTION ROLE — the direction cues ("fewer / less / more than /
+**THE CARD IS IDLE (09:09).** DIRROLE_241 READ: inverse res 0.245 unchanged, slot +0.002 (null): THE DIRECTION LINE CLOSED ON FOUR FORMS;
+THE DIRECTION PROBE (zero GPU) decides whether the direction is present-but-unexpressible in the state (-> a direction-aware res pointer)
+or absent (-> the sorting room). Nothing fires until it answers. (Previously building: THE DIRECTION ROLE — the direction cues ("fewer / less / more than /
 left / gave / half / per ...") entered as ROLE CUES in the role signature (the organ that set the slot record), stamped from the text at
 training AND at read (the rule: a structural road trains only in the form the read can supply), read by the res pointer through the same
 bilinear; a zero-GPU cue census first (coverage of inverse-form relations must reach >= 60 %); gate; the arm DIRROLE_241 vs PMS8_241 staged
