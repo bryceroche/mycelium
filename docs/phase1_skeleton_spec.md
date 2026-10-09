@@ -49730,3 +49730,39 @@ pm35d) — a small label noise the arm trains through, not a ceiling; the term's
 REGISTERED (no GPU; needs no word): a diet-hygiene pass that drops or re-packs legacy mint rows whose variable ids are
 not in slot order (the positional law's own assertion at the diet door), before any next from-scratch arm on pm35c/d.
 Scripts: scratchpad audit (not committed); the census = direction_probe.self_reference_census + polarity_census.classify_row.
+
+### 2026-10-09 (11:46) — REGISTERED (Bryce's brainstorm, two forms; no GPU until the word): THE SORTING ROOM form 2 = four trained MHA layers between tokens and slots as the MANDATORY ROAD emitting the OWNER KEY (the shuffle's key) and THE SIX ALTERNATIONS (a consult after every loop breath, hard feedback only) behind a gym pre-read and head diff A
+
+(1) THE SORTING ROOM form 2. Bryce: "the sorting room is the map reduce shuffle, right? ... two things stand
+out: the map reduce shuffle and 4 layers of MHA between tokens and slots". The reading: two stations with a
+dependency — the sorting room is the MAP (it emits, per numeral token, a key the slots can read), the shuffle
+(the owner-grouping the mixer lacks: the shuffle read 10-08, ratio ~1.0, a shoal) is the grouping BY that key,
+the mixer + consults are the reduce. Today nothing emits an owner key; the role signature (the only organ that
+moved the slot record) is a rule-stamped token-side key — form 2 is its learned generalization: 4 MHA layers at
+512-d over the frozen trunk's 256 token states (~12M params, ~1.5x step), the bank reads ONLY their output (the
+mandatory-road law: no bypass to the raw trunk states), two emissions AS STRUCTURE — the owner key feeding a
+mask in the mixer (the shuffle) and, only if SM_241 misses, a direction emission. From scratch vs PMS8_241 (the
+warm regime is a settled basin). PRE-PINNED READS: first-look twin-pick 0.456 -> bar <= 0.35 (the caricature bar,
+never met); other-sentence share 0.47 -> bar <= 0.40; the owner oracle's 46% of wrong givens = the shuffle's
+ceiling; masked wild +0.020 or a twin pair; mint not down > 0.02. KILL: twin-pick and other-sentence both
+unmoved at 48k = the token side is not the wall's seat. Corrections banked against the relay: the cue census is
+done (cleared its bar; DIRROLE null; cues-alone chance from the state); the parse has no signed numerals — under
+the positional law the direction is a pointer choice, so the sorting room is the SECOND line for direction behind
+the self-match term and the FIRST line for the owner wall.
+(2) THE SIX ALTERNATIONS. Bryce: "have each loop pass a proposal factor graph to the math solver ... and get
+feedback each loop ... six alternations instead of two". Physics corrected for the record: 7 breaths (the
+grounding read + 6 loop breaths); the state 512 = 384 content + the 128-d clocked band (64 planes); the waist
+squeezes the 384 content dims to 128 and back each breath, the clock band bypasses it; the BRIDGE is the hard
+decode -> solver -> route bias / claims, NOT the atlas (a monitor, never a decoder: the Welford verdict + the
+Goodhart fence); the consults sit after breaths 2 and 4. THE ARGUMENT THE LEDGER SUPPLIES: the pilot's ceiling
+(10-08) says the row's fate is set BY breath 2 — both consults land AFTER it; a consult after breath 1 is the
+first form that puts solver feedback in front of the freeze. BOUNDS: every soft feedback form was null (route
+bias, lines, the eyes), the hard forms (claims, legality) are the only ones that moved structure; early-breath
+decodes lack the role pointer / router / busreg (final-breath injections: head diff A is the prerequisite, gate
+pending); cost ~4x step (the host solver per row per consult; ALT3 = 2.2x). ORDER: (a) THE GYM PRE-READ (zero
+training; after SM_241 clears the card): on a trained-consult body (RKX_241 / RK_241), replay from each breath
+with a consult injected after EVERY loop breath, hard feedback only, decode-level verdict — if per-breath
+feedback moves nothing at read on a trained road, the arm will not either (the read-time-broadcast lesson);
+(b) head diff A gated; (c) the arm: consults after breaths 1..6, hard feedback only, from scratch vs the
+three-consult body (ALT3 chassis), bars on the breath-0..2 window (right-slot hit, other-sentence share at
+breath 2) + masked wild +0.020 or a twin. KILL: the gym pre-read moves < 4 decodes / 64 rows.
