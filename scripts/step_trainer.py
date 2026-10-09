@@ -117,7 +117,17 @@ REFUSED = ("ALG_SHELF", "ALG_WHIP", "ALG_TOKLOOP", "ALG_WRITEBACK", "ALG_KANNEAL
            "ALG_HUD",
            "ALG_DIR", "ALG_DIR_W",
            "ALG_DIRROLE", "ALG_DIRROLE_LEXICON",
-           "ALG_SELFMATCH")
+           "ALG_SELFMATCH",
+           "ALG_PAIRCMP", "ALG_PAIRCMP_H")
+           # THE PAIRWISE COMPARATOR ROAD (2026-10-09): _heads_of's own
+           # res-pointer term (pc_w1/pc_b1/pc_w2/pc_b2 against the
+           # content-only slot/candidate states) is the fused forward()'s
+           # single source of truth and would in fact thread fine through
+           # the walker's per-seam heads_of calls on its own, exactly like
+           # THE SELF-MATCH TERM below — refused anyway, by the word given
+           # for this build, named separately so a future narrowing of the
+           # ALG_SELFMATCH refusal does not silently let this one through
+           # untested too.
            # THE SELF-MATCH TERM (2026-10-09): _heads_of's own res-pointer
            # bias (sm_w_self/sm_w_arg against the args head's own-index
            # score) is the fused forward()'s single source of truth and

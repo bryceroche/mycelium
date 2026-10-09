@@ -2911,6 +2911,31 @@ def build_params(seed=0):
             "L_FAC); it no longer holds"
         p["sm_w_self"] = t(np.zeros(1, dtype=np.float32))
         p["sm_w_arg"] = t(np.zeros(1, dtype=np.float32))
+    if int(os.environ.get("ALG_PAIRCMP", "0")):
+        # THE PAIRWISE COMPARATOR ROAD (2026-10-09; registered at SM_241's close as "the
+        # honest next form": the probe's OWN read-out as the road -- a small MLP over
+        # [own state, candidate state, their product] added to the res logits, the
+        # bilinear's missing nonlinearity; SM_241's autopsy struck the self-loop story
+        # and re-pointed the justification at the probe's args-alone wild AUROC 0.84-0.87
+        # on BOTH bodies' states -- the direction IS in the geometry, so the road reads
+        # the geometry directly instead of a single scalar logit). h_i = the factor
+        # slot's own state, v_j = EVERY candidate variable slot's state (not just the
+        # diagonal — unlike ALG_DIR/ALG_SELFMATCH this term carries no slot-index==own-
+        # variable-index assumption), both restricted to the 384 CONTENT dims
+        # (_paircmp_content_sel(), the SAME door direction_probe.py read). Hidden layer
+        # small-random with the head's own seed (the lin() convention, matching every
+        # other head); OUTPUT layer is ALSO small-random (the knob-law correction after
+        # SM_241: a zero-init output layer repeats SM's "inert by scale" shape even when
+        # live) — bit-identity to the unset arm comes from ALG_PAIRCMP=0 never allocating
+        # these params at all, not from a zero-valued layer. ALG_PAIRCMP_SCALE (a FIXED,
+        # non-learned python-float multiplier, not a Tensor param) sets the term's
+        # magnitude at birth to the knob law's own floor (>= 10% of the res bilinear's
+        # own std across candidates, measured on the gate fixture — see
+        # .cache/paircmp_gate.log's "[paircmp-knob]" census lines).
+        _pc_h = int(os.environ.get("ALG_PAIRCMP_H", "64"))
+        _pc_c3 = 3 * sum(2 * _x for _x in _HIER_PLANES)   # 3 * 384 = 1152
+        p["pc_w1"], p["pc_b1"] = lin(_pc_c3, _pc_h)
+        p["pc_w2"], p["pc_b2"] = lin(_pc_h, 1)
     p["h_islit"], p["h_islit_b"] = lin(H_W, 1)
     p["h_dig"], p["h_dig_b"] = lin(H_W, N_DIG * 10)
     if ALG_WIDE:                              # E1: the sign terminal
@@ -3960,6 +3985,52 @@ def _hier_waist_blocks():
             down[c0:c0 + 2 * pl, l0:l0 + la] = 1.0; c0 += 2 * pl; l0 += la
         _HIER_CACHE["blocks"] = (_Th(down).contiguous().realize(), _Th(down.T.copy()).contiguous().realize())
     return _HIER_CACHE["blocks"]
+
+
+def _paircmp_content_sel():
+    """(H_W, C) 0/1 projection onto the 384 CONTENT dims, sorted by raw dim index (EXCLUDES the
+    128 clock dims) -- THE PAIRWISE COMPARATOR ROAD's input door, the EXACT same partition
+    scripts/direction_probe.py read (`CONTENT = np.sort(np.concatenate(bands))`, _hier_band_
+    dims()'s three bands concatenated and sorted -- the same door welford_atlas.py's monitor
+    uses) so the road consumes the same kind of states the probe measured present-but-
+    unexpressible (args-alone wild AUROC 0.84-0.85). A fixed (non-learned) 0/1 matrix -- state
+    @ sel is a pure dim-select, differentiable, JIT-safe (a static constant realized once)."""
+    key = ("paircmp_sel",)
+    if key not in _HIER_CACHE:
+        from tinygrad import Tensor as _Tpc
+        bands, _clock = _hier_band_dims()
+        content = np.sort(np.concatenate(bands))
+        arr = np.zeros((H_W, len(content)), np.float32)
+        arr[content, np.arange(len(content))] = 1.0
+        _HIER_CACHE[key] = (_Tpc(arr).contiguous().realize(), int(len(content)))
+    return _HIER_CACHE[key]
+
+
+# THE PAIRWISE COMPARATOR ROAD's fixed (non-learned) output multiplier (2026-10-09; the
+# coordinator's spec after SM_241's autopsy, "ledger 13:09" -- THE PRE/POST KNOB LAW applied:
+# SM_241's own term was INERT BY SCALE (trained contribution ~0.2% of the res logit's spread),
+# and a zero-init output layer would repeat that shape at birth even with ALG_PAIRCMP=1 (live
+# but starting too small to matter before training has a chance to grow it, on a term that is
+# ADDED to a bilinear the ladder already grades hard). Bit-identity to the unset arm is
+# guaranteed structurally -- ALG_PAIRCMP=0 never allocates pc_w1/pc_w2/pc_b1/pc_b2 at all, so
+# `"pc_w1" in p` is False and none of this code runs -- NOT by a zero-valued output layer, so
+# the output layer is small-random (same `lin()` convention as every other head) and this
+# fixed scale is the knob that sets the term's magnitude at birth. CAUGHT BY THE GATE'S OWN
+# KNOB CENSUS (not assumed going in): the champion gate fixture ALWAYS warm-starts (WARM_FROM
+# balV242, every config -- unset/role8/paircmp alike) so "at init on the fixture" means a
+# TRAINED res bilinear, not a fresh-random one -- the two regimes differ by ~200x in the
+# bilinear's own std (fresh 0.0563 vs warm-body 11.824; the comparator's OWN layers are always
+# fresh-random regardless, since pc_w1/pc_w2 never exist in a pre-paircmp checkpoint, so their
+# raw std only differs ~14x across the same two regimes: 0.00803 vs 0.11362). A scale picked
+# against the FRESH regime (1.5, ratio 0.1425 fresh / only 0.0144 warm -- FAILS the 10% floor on
+# the fixture as actually run) was the wrong calibration; re-measured against the WARM regime
+# (the fixture's real "at init" state): ratio 0.1921 at scale=20 (vs 2.99 on the fresh regime at
+# the SAME scale -- step 0 of a true from-scratch run starts closer to fresh, so this term is
+# intentionally LOUD at the very start of a 48k-step run and expected to re-settle as pc_w1/
+# pc_w2 train; the chain's own post-training knob census is the arm's real arbiter, not this
+# default). See .cache/paircmp_gate.log's "[paircmp-knob]" KNOB-FRESH/KNOB-WARM lines for both
+# readings.
+ALG_PAIRCMP_SCALE = float(os.environ.get("ALG_PAIRCMP_SCALE", "20.0"))
 
 
 # THE EYES (2026-10-05; the 10:38 spec, registered as a build at 12:56 — hill 7's first arm):
@@ -5036,6 +5107,38 @@ def _heads_of(p, s, vst, B, dirgold=None):
         _boost = (p["sm_w_arg"] * _s_own * _args_prob_sm) * (1.0 - _own_sm)
         _suppress = _own_sm * (-p["sm_w_self"] * _s_own)
         _res_out = _res_out + _boost + _suppress
+    if "pc_w1" in p:
+        # THE PAIRWISE COMPARATOR ROAD (2026-10-09, build registration above). h_i =
+        # the factor slot's own state, v_j = EVERY candidate variable slot's state (24
+        # candidates, not just the diagonal), both restricted to the 384 content dims
+        # (_paircmp_content_sel()). phi([h_i, v_j, h_i*v_j]) -> scalar, added to EVERY
+        # res_logit[i, j] at every call site (_heads_of is the single source of truth:
+        # the per-breath consult reads and the final state all carry this term, same
+        # as every other in-head road here). One batched matmul over all 24x24 pairs
+        # (no python loop over slots/candidates).
+        _pc_sel, _pc_c = _paircmp_content_sel()
+        _h_c = s @ _pc_sel                                               # (B, L_FAC, C)
+        _v_c = vst @ _pc_sel                                             # (B, K_VARS, C)
+        _h4 = _h_c.unsqueeze(2).expand(B, L_FAC, K_VARS, _pc_c)          # (B, L_FAC, K_VARS, C)
+        _v4 = _v_c.unsqueeze(1).expand(B, L_FAC, K_VARS, _pc_c)          # (B, L_FAC, K_VARS, C)
+        _pc_feat = _h4.cat(_v4, _h4 * _v4, dim=-1)                       # (B, L_FAC, K_VARS, 3C)
+        _pc_hid = (_pc_feat @ p["pc_w1"] + p["pc_b1"]).relu()
+        _pc_raw = (_pc_hid @ p["pc_w2"] + p["pc_b2"]).squeeze(-1)        # (B, L_FAC, K_VARS), pre-scale
+        _pc_term = _pc_raw * ALG_PAIRCMP_SCALE                          # fixed, non-learned multiplier
+        # THE KNOB CENSUS (the pre/post knob law, after SM_241's autopsy): inert unless a
+        # census script sets the module global _PAIRCMP_CENSUS to a list BEFORE calling
+        # forward() eagerly (never during do_train's real JIT'd step -- nothing in the
+        # training path ever sets this global, so the branch below is skipped at JIT
+        # TRACE time and never enters the captured graph, the SAME safety argument that
+        # already covers every `if _CENSUS is not None:` census line elsewhere in this
+        # file). Records (pre-scale term std, post-scale term std, bilinear res std),
+        # each a candidate-axis std averaged over factor slots and the batch.
+        _pcc = globals().get("_PAIRCMP_CENSUS")
+        if _pcc is not None:
+            _pcc.append((float(_pc_raw.std(axis=-1).mean().numpy()),
+                         float(_pc_term.std(axis=-1).mean().numpy()),
+                         float(_res_out.std(axis=-1).mean().numpy())))
+        _res_out = _res_out + _pc_term
     return {
         "pres": (_sR @ p["h_pres"] + p["h_pres_b"]).squeeze(-1),
         "ftype": _sR @ p["h_ftype"] + p["h_ftype_b"],
