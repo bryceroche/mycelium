@@ -49232,3 +49232,29 @@ Cost: zero parameters; the consult's implied values are already computed. Bars (
 derived-argument cell of the args read and the digits read on relation slots; masked wild >=
 +0.015 vs RKX. THE LINE: release on contradiction is a wild no-op on clean commits (banked); the
 board as tokens closes; the board as legality is the next arm, behind the direction-bit pair.
+
+### 2026-10-08 (22:42) — DIR_241 (THE DIRECTION BIT on the plain chassis, pm35c) DOES NOT FIRE: inverse-form res 0.25 -> 0.328 (bar >= 0.60 MISSED) at the price of forward res 0.87 -> 0.749 — the bit REDISTRIBUTES direction accuracy instead of adding it; masked -0.0146 vs PMS8, mint -0.066; DIRD's chain died at pre-flight (the dose diet's trunk states were never precomputed)
+
+Reads (rack_chain_DIR.log 22:32; 48k at the plain chassis' pace): open wild 0.3033; MASKED 0.3330 —
+paired vs PMS8_241 -0.0146 (z ~1.7, the wrong way; the bar +0.015 MISSED); res 0.767 overall (PMS8
+0.80); args 0.415 (PMS8 0.44); rows 10 / 11 (PMS8 14 / 9); OPEN MINT 0.5840 (PMS8 0.65: -0.066 — the
+positional register pays most); silver 0.234; matched 0.3827 (order's share +0.050: the drawer
+moves). THE POLARITY READ on the arm's own dump: inverse fac-exact 0.218 (PMS8 0.148: +0.07) vs
+forward 0.283 (PMS8 0.323: -0.04); inverse RES 0.328 (from 0.250) vs forward RES 0.749 (from 0.873);
+of the 250 inverse res-wrong, 65 % still default to own-index (from 79 %). VERDICT: the structural
+entry as built — p(inverse) from a per-slot head; the own-index logit suppressed hard (-1e4 at read)
+when p > 0.5 and favoured otherwise; soft log p / log(1 - p) at training — moves direction accuracy
+FROM the forward forms TO the inverse ones and loses on net: a hard mask driven by the model's OWN
+uncertain bit is a manufactured certificate (the eyes' lesson: the right sign, the wrong
+instrument; here the instrument is right — a mask — and the SIGNAL is the body's own guess). The
+bit's own accuracy is the number that decides the next form (read below if the fields line carries
+it). THE DOSE HALF never ran: DIRD_241's chain died at pre-flight — .cache/phase1_alg_states_
+formpm35d.npz / _states.npy (the trunk's precomputed states for the new diet) do not exist; the
+precompute was never part of the chain (the dose builder generated the diet, not its states; the
+chain contract caught it, correctly). NEXT (under the word, the card idle): precompute pm35d's
+states, then THE DOSE ALONE — DOSE_241 = PMS8's recipe on pm35d WITHOUT the bit (the clean test of
+"starved": does feeding the inverse forms at 58 % lift their res from 0.25 without a structural
+road?) — then DIRD (bit + dose) as registered; the bit's second form waits on the dose's answer:
+if the dose alone lifts inverse res past 0.5, the bit is unnecessary; if not, the bit must enter
+teacher-forced at training (the gold direction as the mask during training, the predicted one
+only at read — ALG_DUP's actual pattern) so the forward forms are never suppressed by a guess.
