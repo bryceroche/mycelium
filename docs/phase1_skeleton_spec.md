@@ -49642,3 +49642,72 @@ recall is available at that precision). Fired as a build (worktree, gate, the ch
 fired under the standing word when the gate passes). Caveat: the headline 0.98 has a self-match
 shortcut (feature B contains the own state and the args' states; the own state matches one arg bit
 for bit); the honest ceiling is the args-alone 0.85 and the recall 0.69.
+
+### 2026-10-09 (10:30) — THE SELF-MATCH TERM (ALG_SELFMATCH=1; branch selfmatch d02d7848, worktree
+mycelium-wt11) built + gated: the res pointer gains an explicit own-vs-args comparison the probe's
+reading named missing; zero at birth, bit-identical to role8 at full float64 precision at step 0;
+the grad probe (eager, no JIT) and a direct res-logit diff both confirm the term is live. SM_241
+staged (.cache/rack_chain_SM.sh + .cache/queue_sm.sh) against PMS8_241; NOT YET FIRED in this
+transaction (the queue is written; firing it is the next act, under the standing word).
+
+THE BUILD (scripts/phase1_algebra_head.py): two learned scalars, p["sm_w_self"]/p["sm_w_arg"],
+registered at the params build right after the ALG_DIR block (zero-init, `t(np.zeros(1))`, the
+alt2_g/w_prec convention) and consumed inside `_heads_of` (single source of truth, called at
+every breath/seam and the final state — the audit's own lesson about the tap honoured: the last
+breath's res carries the term in out["res"] because every call carries it, not a special-cased
+final one). s_own = the args head's OWN predicted membership of the slot's own variable among its
+own args — `_args_out.sigmoid()` gathered at the diagonal (own index per slot; K_VARS==L_FAC
+asserted, the ALG_DIR precedent's identity convention) — the SAME tensor the args decode uses, at
+training and at read, never gold, per the 2026-10-09 06:04 rule ("a structural road trains only in
+the form the read can supply — never gold where the read has a guess"). a_j = the args membership
+of every OTHER candidate (the same sigmoid, off-diagonal). res[own] -= w_self * s_own (only);
+res[j != own] += w_arg * s_own * a_j (only, the diagonal zeroed out of this term by (1 - eye) so
+the two never overlap on one entry). No new loss, no new gold field, no new read-time port — in-
+head, exactly as the build spec required. Added to step_trainer.py's REFUSED list by the word
+given for this build (the walker would in fact thread it fine through its own per-seam `_heads_of`
+calls, since nothing here needs host-built per-batch state; refused anyway, named so a future
+narrowing of the blanket refusal does not silently let it through untested).
+
+THE GATE (.cache/selfmatch_gate.sh, the champion fixture tiny64/WARM_FROM balV242/BATCH=2 STEPS=2,
+DEV=CPU, pointed at worktree mycelium-wt11): unset 5.2995/0.0279 (bit-identical — no ALG_SELFMATCH
+code on the default-off path, sm_w_self/sm_w_arg never allocated); role8 6.5535/1.1061 (unchanged);
+selfmatch 6.5535/1.1061 at the campaign's 4dp display (RUNS) — AND at full float64 precision, step
+0 is EXACTLY 6.553475856781006 on both role8 and selfmatch (the zero-at-birth law verified past the
+display's rounding, the thing DIRROLE's own step-0 could not claim since its embedding table starts
+small-random, not exactly zero). THE SURPRISE, found by the gate and not assumed going in: step 1's
+AGGREGATE loss ALSO prints bit-identical (1.1060993671417236, both arms) on this exact 2-row/
+LR=1e-4/one-optimizer-step micro-fixture — NOT a wiring failure: a direct probe (/tmp, not banked)
+forwarding the SAME 2 rows with sm_w_self/sm_w_arg manually set to the gate's own post-training
+values (3.852024e-05 / -0.00014559) against zero shows max|res_logit diff| = 1.4496e-4, mean
+2.108e-6 — nonzero and correctly scaled (matches w_arg's magnitude times a membership probability
+<= 1) — the aggregate SCALAR loss, summed through the full ladder and rounded in float32 end to
+end, simply cannot resolve a change this small relative to the other terms' magnitude over a SINGLE
+step at LR=1e-4; the same dilution shape as THE DIRECTION ROLE's own step-0 (ledger 07:04: "~1/256"
+diluted by sparse cue coverage), one step later here because the scalars start at exact zero rather
+than small-random. GRAD PROBE (scripts/selfmatch_grad_probe.py, eager/no-JIT, the grad_cosine_
+census.py convention — the in-step debug print this replaces hit `tinygrad.engine.jit.JitError:
+cannot access tensor data during JIT capture` on do_train's real 2-call fixture, a wiring lesson
+worth banking: a bare `.numpy()` read inside a TinyJit'd step() body is unsafe on exactly the
+SECOND call of a short fixture, where tinygrad's capture pass is live): on 8 diet rows, warm from
+balV242, sm_w_self.grad=-2.2616e-02, sm_w_arg.grad=-1.9725e-02 — both nonzero, PASS. READ SMOKE
+(scripts/selfmatch_read_smoke.py: loop_val's real `read()`, ALG_JIT_READ=1, 2 rows sliced host-side
+from the already-precomputed testtiny64 states so no new precompute pass runs, against the gate's
+own trained .cache/sharp_selfmatchgate_selfmatch.safetensors): fac-exact 1.0000 (n=18 slots), the
+checkpoint's extra sm_w_self/sm_w_arg keys matched p's keys exactly (read()'s own hard-error assert
+on key-set equality did not fire) — the in-head, no-new-port claim verified end to end.
+
+THE ARM (written, NOT fired in this transaction — gen-weights may be imported by a running chain):
+.cache/rack_chain_SM.sh (SM_241 = PMS8_241's exact recipe + ALG_SELFMATCH=1 on form_mix_pm35c, 48k
+B=8 SEED=241, vs PMS8_241; derived from rack_chain_DIRROLE.sh with every ALG_DIRROLE/DIRROLE_241
+occurrence removed except one informational paired-read line against DIRROLE_241, guarded by a
+file-existence check, kept for context only — not a bar) and .cache/queue_sm.sh (waits for no
+running trainer, `git merge --ff-only|--no-edit selfmatch`, the post-merge gate re-asserting unset/
+role8/selfmatch bit-identical-where-claimed PLUS the grad probe's and read smoke's own PASS lines,
+preflight on the chain, then fires pc-sm-watch (.cache/trainer_watch.sh "SM CHAIN COMPLETE"
+.cache/rack_chain_SM.log, the hang-guard built 2026-10-08 and wired into a queue for the first time
+here) and pc-sm as detached systemd --user units, the dir2-pattern: the queue script itself returns
+once both are launched, it does not block on the 48k run). preflight.py PASSES modulo the post-
+merge gate log (expected before the merge — the self-heal path is also wired, matching the dirrole/
+dirbit precedent). BARS: inverse res >= 0.50 (from 0.25), forward res >= 0.85 (from 0.873), paired
+masked wild SM_241 vs PMS8_241 >= PMS8 - 0.005. Fired under the standing word: `bash
+.cache/queue_sm.sh`.
