@@ -50050,3 +50050,60 @@ re-decode — the ceiling of ANY direction-aware fix — and the rank histogram 
 is scattered, the lever is BINDING B — the minuend — and the direction line closes INTO the args wall). The sorting
 room (the token-side binding road) is then the right next arm either way; its queue is armed behind this chain.
 Honest accounting: the comparator is a clean null at scale (masked +0.001; the knob at 1.6x; mint -0.014).
+
+### 2026-10-09 (16:53) — THE OWN-SUPPRESSION ORACLE (zero training, one banked + one freshly-collected raw-logit dump): the oracle ceiling CLEARS the pinned >=0.6 bar on BOTH bodies — PMS8_241 0.6022 (224/372), PC_241 0.6210 (231/372) — DIRECTION IS A REAL, LARGE LEVER, but the residual skews toward the OTHER ARG C (55-56%), not a scattered field — a genuine B-vs-C binding confusion rides on top of the direction problem, neither framing wins outright
+
+Artifacts: scripts/own_suppression_oracle.py [new]; .cache/ownsup_collect_PC.sh [new, the one GPU
+read PC_241 needed — CA_RAWDUMP under PC_241's exact recipe (FAM+SURF8+ALG_PAIRCMP=1, read off
+.cache/rack_chain_PC.log's own "== ARM PC_241" line), mask=0, held .cache/gpu.lock ~2 min, released];
+.cache/ownsup_rawslots_wild_PC_241.pkl [new, NOT banked over anything]; .cache/ownsup_oracle_report.txt.
+Gold relation slots classified fwd/inv by polarity_census.classify_row (668 fwd / 372 inv), both bodies,
+wild_admitted_holdout.jsonl (311 rows).
+
+THE FIVE TASKS:
+(1) BASELINE reproduced exactly: PMS8_241 fwd res=0.8728 / inv res=0.2500; PC_241 fwd res=0.8668 /
+inv res=0.2527 (matches the ledger's quoted 0.87/0.25 and 0.867/0.253 — the read is sound).
+(2) THE ORACLE (inverse slots: clamp the own-index res logit to -inf, re-argmax over the remaining
+23): PMS8_241 224/372=0.6022; PC_241 231/372=0.6210 — THE CEILING of any direction-aware fix on each
+body's OWN existing res geometry, clearing the pinned >=0.6 bar on both. Forward sanity check
+("always predict own"==gold res): 667/668=0.9985 both bodies (one pre-existing single-new-variable
+edge case, not a script bug).
+(3) RANK HISTOGRAM of gold res B among the 24 raw logits: PMS8_241 inverse rank1=0.250 / rank2=0.401
+/ rank3=0.169 / rank>3=0.180; PC_241 rank1=0.253 / rank2=0.422 / rank3=0.175 / rank>3=0.151 — rank2 is
+the PLURALITY of the mass but not a majority of all inverse slots (forward ranks overwhelmingly 1:
+0.873/0.867). Among slots STILL wrong under the oracle (148 PMS8, 141 PC): the new argmax lands on
+the OTHER GOLD ARG C 55-56% of the time, an OTHER GIVEN variable 21-24%, an OTHER DERIVED variable
+21-23% — the residual is dominated by a B-vs-C confusion (the two variables the relation's own clause
+names), not a scattered miss.
+(4) MARGIN under the oracle on still-wrong inverse slots: mean 4.0-4.8 logits (median 2.9-3.2, p25
+1.1-1.4) — not knife-edge, a confident wrong. B is a GIVEN variable in only 30-34% of still-wrong rows
+(margin there LARGER, 5.4-5.8 vs 3.3-4.3 derived — given B's are if anything harder once direction is
+fixed). B resolves to a sentence via clause_of/find_numeral_sentence on only 31-36/141-148 rows
+(same-sentence share 0.226-0.278 of the resolvable subset; margin there SMALLER, 3.3-3.7 vs 6.0-7.0
+cross-sentence) — weak, low-coverage signal, but where it applies it marks the tighter, more
+fixable misses.
+(5) ARGS ORACLE (inverse slots, the non-own gold arg C): exact-set args accuracy stays low (0.298
+PMS8 / 0.312 PC vs forward 0.525/0.512); the error decomposes as 60-62% "own(k) itself missing from
+the args head's own top-2/dup decode" (a SECOND, independent self-loop symptom — on the ARGS head,
+not the res pointer or the self-match term SM_241 named), 20-23% "own found, C wrong", 16-18%
+degenerate (gold args=={k,k}).
+
+THE VERDICT: the 16:46 entry's two framings were not mutually exclusive, and the data lands between
+them, closer to "direction is a real lever": clamping the own-index default more than DOUBLES
+inverse res accuracy on both bodies (0.25->0.60 PMS8, 0.25->0.62 PC), clearing the pinned ceiling bar
+— a trained "not own" signal has real room to work with, which says PC_241's comparator had the
+right INPUT (the probe's content-dims read B's rank well enough, often) but never converted it into
+a decision (the comparator ADDS to the SAME bilinear that already prefers own; it was never forced
+to choose among the remaining 23 — the comparator's failure is a decision-shape problem, not an
+information problem). But the residual 38-40% that stays wrong even with own removed skews heavily
+toward the OTHER ARG C (55-56%), not a scattered field — the <0.4-ceiling/scattered-rank signature
+that would have closed the line cleanly into the args wall did NOT appear. There is a genuine B-vs-C
+binding confusion riding on top of the direction problem, and the args head's own 60%+ failure to
+find OWN on inverse slots (task 5) says the self-loop pathology is not confined to the res pointer
+or to SM_241's self-match term. NEXT FORM (not built, word not given): a decode that suppresses own
+AND is structurally kept from defaulting to C — e.g. a two-step "not own, then not the OTHER
+DECODED ARG either" pointer, or a term that competes only against the non-own/non-C candidates —
+would need to beat this oracle's own ~0.60-0.62 ceiling to be worth building; a plain "suppress own"
+road (DIR's own form, closed 2026-10-08/09, four times) tops out near here, so the next structural
+form must additionally resolve B-vs-C, not just direction. The sorting room (token-side binding) is
+the standing next arm either way (16:46 entry); this oracle sharpens what it needs to supply.
