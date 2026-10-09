@@ -49455,3 +49455,5 @@ the numeral before the slots look). Both from scratch; (a) first (the smaller ed
 organ). RULE (new): a structural road is supplied at training ONLY in the form the read can
 supply — never gold where the read has a guess (ALG_DUP's pattern works because its bit is
 PREDICTED at both; the arg-multiplicity bit's gold was the loss target, not the mask).
+
+### 2026-10-09 (07:07) — WORD STANDING: DIRROLE_241 fired (pc-queue-dirrole: merge dirrole -> post-merge gate -> the arm) — the direction role's cue census cleared its road bar (the 86-word lexicon reaches 64 % of wild's inverse-form relations; the 19-word core only 38 % — the rate family carries no comparative word); the gate: unset bit-identical, role8 unchanged, dirrole runs and differs at full precision; the read stamps the cues from the text identically to training (the rule honoured). BARS: inverse res >= 0.50, forward res >= 0.85, masked >= PMS8 - 0.005.
