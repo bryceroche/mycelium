@@ -49619,3 +49619,26 @@ the word. Commit: see the gen-weights log for this entry's own hash (direction_p
 ledger entry, one transaction, per the prose-promotions law). Unverified / flagged in the script
 itself: the diet's 95.9%-not-100% self-reference rate (cause uncounted); the MLP's hyperparameters
 (64 hidden, 300 epochs, lr 1e-3, L2 1e-4) were fixed by the word's own spec, not swept.
+
+### 2026-10-09 (09:40) — THE DIRECTION PROBE'S READING (after b54b8702's entry): PRESENT BUT UNEXPRESSIBLE — a read-out from the relation's state + its args' states predicts the direction on wild at AUROC 0.98 (args alone 0.84-0.85; cues alone 0.52 = chance); inverse recall 0.69 at forward precision 0.85 vs the deployed 0.25; THE SELF-MATCH TERM registered as the res pointer's fix and fired as a build
+
+The structural fact the probe surfaced: under the positional law's re-encoding ("A = B - C" stored
+as "B = A + C"), EVERY inverse relation's own variable is one of its own two args (372 / 372 on
+wild; 0 / 668 forward; 95.9 % on the diet — the residue unexplained, flagged) — the direction IS
+"is my own index among my args", a fact the ARGS pointer already decides (0.54 on forward, 0.29 on
+inverse — lower, but present) and the RES pointer never reads: the res bilinear scores each
+candidate variable against the slot's state alone and has no term comparing the candidate to the
+slot's OWN membership in its args. That is why four forms could not move it: the cue (DIRROLE) and
+the dose feed the res query, not the args-vs-own comparison; the masks pre-decide it from outside.
+THE FIX (the probe agent's critique adopted over the two-bilinear mixture): THE SELF-MATCH TERM —
+the res logits gain a learned term from the args head's OWN-INDEX score (the slot's predicted
+membership of its own variable among its args, the same tensor at training and at read: the rule
+honoured — predicted at both, never gold): res_logit[own] -= w_self * s_own and res_logit[args]
++= w_arg * s_own (two scalars or a small vector, zero at birth; a road, differentiable, no mask).
+ALG_SELFMATCH=1. Gate: unset bit-identical; role8 reproduces; selfmatch runs and differs; the grad on
+w_self / w_arg > 0. The arm: SM_241 = PMS8's recipe + ALG_SELFMATCH=1 on pm35c vs PMS8_241; BARS:
+inverse res >= 0.50 (from 0.25), forward res >= 0.85, masked >= PMS8 - 0.005 (the probe says 0.69
+recall is available at that precision). Fired as a build (worktree, gate, the chain staged and
+fired under the standing word when the gate passes). Caveat: the headline 0.98 has a self-match
+shortcut (feature B contains the own state and the args' states; the own state matches one arg bit
+for bit); the honest ceiling is the args-alone 0.85 and the recall 0.69.
