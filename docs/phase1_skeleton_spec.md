@@ -49164,3 +49164,25 @@ the kb-2 certificates predict the winner. PREDICTION (pinned): the oracle gains 
 (<= 5 % of rows change verdict under any override) — the schedules move mint and drift, not the
 wall — and no single override dominates; if so, the pilot's port is built but its first policy
 waits for a body whose later breaths can change a row (the chalkboard / the direction bit).
+
+### 2026-10-08 (19:43) — THE PILOT'S CEILING (branch replay 1c3f5d1b; .cache/pilot_ceiling_RKX_241.txt): a perfect per-row pilot over the conductor's damping schedule gains +1 / 128 diet rows and +0 / 64 wild rows — the prediction confirmed; the schedules move nothing a row needs after breath 2
+
+Method: RKX_241's kb-2 snapshots (after consult 1); five per-row overrides of the conductor's
+schedule applied by patching the module globals (_HIER_DAMP / ALG_HIER_LISTEN) per replay and
+clearing the kb-keyed cache: A the fixed 3,5,0; B the settle delayed to 4,6; C the listening
+breath; D no damping; E the early 2,4 (the pre-fix schedule); scored by chain_acc's own decode + key
+through one shared pool. A found-and-fixed bug in the probe (a leaked global corrupted only the
+SANITY baseline, never the scored conditions; the sanity mismatches now 0 / 128 and 0 / 64). THE
+NUMBERS: the oracle (the best override per row) +1 / 128 on the diet, +0 / 64 on wild; the per-slot
+right fraction identical to three decimals across all five schedules (0.073 diet, 0.086 wild);
+A wins the per-row histogram 123 / 128 and 61 / 64; E is the only override that ever pulls ahead,
+by a handful; the reachable set (verdict differs across >= 2 overrides) 9 / 128 and 5 / 64; the
+kb-2 instruments (dry count 6.2 vs 4.9; kb-2 status) lean the right way on those few rows — no
+predictor. SCOPE (stated): consult 2's products are threaded from the fixed-schedule run on every
+override, so a schedule change alters how the state carries evidence, never what the consults
+concluded. READING: a per-row pilot over the DAMPING schedule has nothing to steer — after breath 2
+the row's fate is set (the first-look law, from the pilot's seat); the port stays registered; the
+pilot's first policy waits for a body whose later breaths can change a row — which is exactly what
+the chalkboard (RK3X, reading tonight) and the direction bit (tomorrow) are built to test. The
+acting perceiver's actions, if they exist, are the consults' (what to commit, what to release, what
+to write), not the clock's.
