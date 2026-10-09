@@ -54,8 +54,14 @@ states the size of the predicted-forward set there (n_fwd_pred) alongside the re
 reader can see when t* sits in the thin, unstable tail (n_fwd_pred small) rather than the bulk of
 the distribution.
 
-usage: .venv/bin/python3 scripts/direction_probe.py
-outputs: .cache/direction_probe_PMS8_241.txt
+usage: .venv/bin/python3 scripts/direction_probe.py [BODY]
+  BODY defaults to PMS8_241 (unchanged paths/output, below). Any other BODY (e.g. SM_241, the
+  self-match-term autopsy, 2026-10-09) reads .cache/sm_autopsy_diet_states_<BODY>.npz (THE
+  REPRESENTABILITY RE-READ's diet states, scripts/sm_autopsy_diet_states.py) and
+  .cache/clock_band_states_<BODY>.npz (clock_band_probe.py CB_MODE=collect, same as PMS8_241's)
+  by default -- override either with DP_DIET_STATES / DP_WILD_STATES / DP_OUT env vars (the rule,
+  2026-10-06..08: "read scripts take the body as an argument").
+outputs: .cache/direction_probe_<BODY>.txt (PMS8_241) or .cache/sm_autopsy_direction_probe_<BODY>.txt (other bodies)
 """
 import collections
 import json
@@ -95,11 +101,17 @@ from args_census import sentence_bounds, sentence_spans
 SEED = 0
 np.random.seed(SEED)
 
+BODY = sys.argv[1] if len(sys.argv) > 1 else "PMS8_241"
 DIET_JSONL = ".cache/form_pm35c_slice1024_valid2.jsonl"
-DIET_STATES_NPZ = ".cache/welford_atlas_PMS8_241_diet_states_breaths.npz"
 WILD_JSONL = ".cache/wild_admitted_holdout.jsonl"
-WILD_STATES_NPZ = ".cache/clock_band_states_PMS8_241.npz"
-OUT_TXT = ".cache/direction_probe_PMS8_241.txt"
+if BODY == "PMS8_241":   # unchanged defaults -- no regression for the banked campaign artifact
+    DIET_STATES_NPZ = os.environ.get("DP_DIET_STATES", ".cache/welford_atlas_PMS8_241_diet_states_breaths.npz")
+    WILD_STATES_NPZ = os.environ.get("DP_WILD_STATES", ".cache/clock_band_states_PMS8_241.npz")
+    OUT_TXT = os.environ.get("DP_OUT", ".cache/direction_probe_PMS8_241.txt")
+else:   # other bodies default into the autopsy namespace (never collide with a banked PMS8_241 path)
+    DIET_STATES_NPZ = os.environ.get("DP_DIET_STATES", f".cache/sm_autopsy_diet_states_{BODY}.npz")
+    WILD_STATES_NPZ = os.environ.get("DP_WILD_STATES", f".cache/clock_band_states_{BODY}.npz")
+    OUT_TXT = os.environ.get("DP_OUT", f".cache/sm_autopsy_direction_probe_{BODY}.txt")
 
 # (label, diet kb index into states_all's K_B=7 axis, wild index into clock_band_states' 6-breath axis)
 # diet kb: 0..6 = breath "outside time" .. loop breath 6 (final); wild index: 0..5 = loop breath 1..6
@@ -369,7 +381,7 @@ def operating_point(y, p, bar=FWD_PRECISION_BAR):
 
 def main():
     t0 = time.time()
-    P("THE DIRECTION PROBE -- PMS8_241 (2026-10-09, zero-GPU)")
+    P(f"THE DIRECTION PROBE -- {BODY} (2026-10-09, zero-GPU)")
     P(f"generated {os.popen('date').read().strip()}")
     P(f"content dims {C_DIM}/512 (bands {[len(b) for b in bands]}; {len(clock_dims)} clock dims excluded); "
       f"N_DIRROLE_CUES={N_CUES}")

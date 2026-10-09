@@ -49820,3 +49820,56 @@ the probe's own read-out as the road — a small MLP over [own state, candidate 
 and (b) the sorting room (registered 11:5x). AUTOPSY fired (zero training): the s_own census by form on
 SM_241 and PMS8_241's wild dumps (does s_own separate forms at all; where the self-loop mass sits), and the probe's
 MLP re-read on SM_241's states (did the body keep the direction in its geometry: a representability check).
+
+### 2026-10-09 (13:09) — THE SM_241 AUTOPSY (three zero-training reads; new .cache/sm_autopsy_* artifacts + a
+BODY-parameterized direction_probe.py): TASK 1, THE s_own CENSUS BY FORM, both bodies, wild (scripts/
+sm_autopsy_selfmatch_census.py; .cache/sm_autopsy_rawslots_wild_SM_241.pkl + the banked rawslots_wild_PMS8_241.pkl,
+chain_acc.py's CA_RAWDUMP convention, raw pre-sigmoid logits) — mean s_own: PMS8_241 fwd=0.3009 inv=0.5666
+(AUROC 0.7004, inverse > forward, the CORRECT order); SM_241 fwd=0.3027 inv=0.5309 (AUROC 0.6705, same order,
+slightly weaker). CORRECTION TO THE 09:40/12:34 ENTRIES' FIGURE: those entries quote "the args pointer... 0.54 on
+forward, 0.29 on inverse" (backward from gold, the basis for "s_own is not a direction read; it is the self-loop
+error"); this script is the first SAVED, reproducible artifact for this exact quantity (sigmoid of the args
+bilinear's own diagonal entry, verbatim the code's `_s_own` term, cross-checked against direction_probe.py's own
+banked structural denominators — 0/668 forward, 372/372 inverse own-in-gold-args, reproduced bit-for-bit here)
+and it finds the OPPOSITE ordering (inverse higher, correctly signed, just weak and noisy — AUROC 0.70, not the
+0.85-0.98 the STATE read-out reaches). The self-loop DECODE rate (own index in the args head's own top-2/dup
+decode) is 0.16/0.44 (fwd/inv) PMS8_241, 0.17/0.38 SM_241 — same correct order, same noise. Own-index logit rank
+among the 24 candidates sits HIGH even on forward slots (mean percentile 0.87-0.88, top-5% share 0.18-0.19 of all
+668 forward slots) — a real, sizeable self-loop CONFUSION coexists with the (weak, correctly-signed) direction
+signal; both things are true at once. TASK 2, THE REPRESENTABILITY RE-READ (direction_probe.py now takes BODY as
+argv[1]; scripts/sm_autopsy_diet_states.py [new, mirrors welford_atlas.build()'s forward loop, inherits the
+caller's family env instead of forcing DEV=CPU] + clock_band_probe.py CB_MODE=collect, both pointed at
+sharp_SM_241.safetensors): SM_241's own body keeps the direction in its geometry at essentially PMS8_241's
+strength — (E) args-alone wild AUROC 0.8677 (final breath) / 0.8615 (breath2) vs PMS8_241's 0.8448/0.8501; (B)
+own+args wild AUROC 0.9881 (breath2, mlp) vs PMS8_241's 0.9804 — both clear the PRESENT bar (>=0.85) by a wide
+margin, confirming the probe's reading transfers: the self-match term's failure is not that SM_241's training
+erased the direction from the states (PMS8_241's regenerated numbers reproduce the banked 0.98/0.84-0.85 exactly,
+confirming the rerun is a faithful, deterministic replay, not a new measurement drifting off the original). TASK
+3, THE TERM'S ACTUAL EFFECT (same script, task 1's SM_241 dump, w_self=-0.10384 w_arg=-0.02445 read off
+sharp_SM_241.safetensors): the term's own contribution to the res logit is NEGLIGIBLE next to the res logit's own
+spread (std ~20.8 across the 24 candidates) — mean |w_self*s_own| at the own index = 0.040 (max 0.104), mean
+max_j|w_arg*s_own*a_j| = 0.009 (max 0.024); ratio to the res spread: own/spread mean 0.0023 (max 0.014),
+arg/spread mean 0.0005 (max 0.0033) — never within two orders of magnitude of flipping a close decision.
+THE READING: three things are true together, not one displacing the others — (1) s_own carries a real but weak,
+CORRECTLY-signed direction signal (AUROC 0.70, not the self-loop-only null the 09:40/12:34 framing asserted; that
+framing's own "0.54/0.29" figure does not reproduce and should be read as superseded by this entry's artifact);
+(2) a genuine self-loop confusion also sits on top of it (forward slots' own-index rank is implausibly high for
+~1-in-5 of them); (3) REGARDLESS of (1) and (2), the trained term's magnitude is so small relative to the res
+logit spread that THE PRE/POST KNOB LAW (CLAUDE.md S4) is the dominant explanation for the null, not the sign
+alone — a correctly-signed term at this same magnitude would likely ALSO have measured flat (masked -0.0117 is
+within noise of zero either way; inverse res pinned at 0.228 vs 0.25, not worse, consistent with near-total
+inertness rather than active harm from the wrong sign). THE LINE: the self-match term as built stays CLOSED (the
+12:34 entry's verdict is unchanged by this autopsy); but its DIAGNOSIS updates — the next structural form (the
+probe's own pairwise-comparator read-out, 12:34's honest-next-form (a)) should budget for a term that must reach
+res-logit scale (std ~20) to matter at all, not just get the sign right; a learned scalar initialized at 0 with no
+scale prior is exactly the shape that can converge to this kind of functionally-inert optimum.
+Artifacts: scripts/sm_autopsy_selfmatch_census.py [new]; scripts/sm_autopsy_diet_states.py [new];
+scripts/direction_probe.py [edited: BODY=argv[1], path overrides via DP_DIET_STATES/DP_WILD_STATES/DP_OUT, default
+behavior for PMS8_241 unchanged]; .cache/sm_autopsy_collect.sh [new, the three GPU reads under flock .cache/
+gpu.lock]; .cache/sm_autopsy_rawslots_wild_SM_241.pkl; .cache/clock_band_states_SM_241_sm_autopsy.npz; .cache/
+sm_autopsy_diet_states_SM_241.npz; .cache/sm_autopsy_direction_probe_SM_241.txt; .cache/
+sm_autopsy_selfmatch_census.txt. PROVENANCE NOTE: direction_probe.py's default (BODY=PMS8_241) run was re-fired
+during this autopsy for the regression check and overwrote the banked .cache/direction_probe_PMS8_241.txt in
+place — the regenerated numbers (B mlp breath2 wild AUROC 0.9804, E mlp breath2 0.8448, inv_recall@fp>=0.85
+0.6909) match the 09:40 entry's quoted 0.98/0.84-0.85/0.69 exactly, confirming the rewrite is a byte-equivalent
+deterministic replay (same seed, same banked state files, same code path for that BODY), not data loss.
