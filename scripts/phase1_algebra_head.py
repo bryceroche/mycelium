@@ -4774,11 +4774,18 @@ def _make_bank(p, waist, tokmask, B, sent=None, tree=None, chalk3=None, chalk5=N
     return bank
 
 
-def _heads_of(p, s, vst, B):
+def _heads_of(p, s, vst, B, dirgold=None):
     """forward()'s emission heads, factored BY PURE CODE MOTION
     (apply_step_trainer.py, 2026-09-03): the step trainer runs these on
     intermediate breath states at every seam (commit adapter) and on the
-    final state with the seam-current vst. Single source of truth."""
+    final state with the seam-current vst. Single source of truth.
+    dirgold (2026-10-09, FORM 2): an optional (B, L_FAC, K_VARS) additive
+    bias, precomputed host-side from GOLD arg_dir/dir_mask/args (do_train's
+    per-step feed) -- -1e4 at the own index on gold-inverse relation slots,
+    -1e4 at the two gold-args indices on gold-forward ones, 0 elsewhere.
+    Only consumed by ALG_DIR=2's train branch below; every other caller
+    (breath_step's consult reads, the step-trainer walker — REFUSED for
+    ALG_DIR regardless) passes nothing and gets the old behaviour."""
     s = _fed_core(s)   # FED scratch: grade only the true factor rows
     if ALG_HIER_READ:   # THE HIERARCHICAL STATE: each head reads its band (and the clock), after the slot trim
         _sR = s * _hier_mask(0); _sB = s * _hier_mask(1); _sL = s * _hier_mask(2)
@@ -4791,31 +4798,57 @@ def _heads_of(p, s, vst, B):
     _dir_out = None
     if "h_dir" in p:
         _dir_out = (_sR @ p["h_dir"] + p["h_dir_b"]).squeeze(-1)   # (B, L_FAC): p(inverse) logit
-        if int(os.environ.get("ALG_DIR", "0")):
+        _dirmode = int(os.environ.get("ALG_DIR", "0"))
+        if _dirmode:
             # THE DIRECTION BIT ENTERS THE RES POINTER AS STRUCTURE (ledger
-            # 2026-10-08 "THE POLARITY CENSUS"): own = a one-hot over
-            # K_VARS at the slot's OWN index (K_VARS==L_FAC, the identity
+            # 2026-10-08 "THE POLARITY CENSUS", FORM 1; 2026-10-09, FORM 2
+            # after FORM 1 closed negative on three arms -- a hard own-
+            # index mask driven by the model's OWN p(inverse) redistributes
+            # accuracy rather than lifting it). own = a one-hot over K_VARS
+            # at the slot's OWN index (K_VARS==L_FAC, the identity
             # convention at :1104/:5381-82 above); args_prob = the model's
             # OWN predicted args membership (sigmoid of the args bilinear,
-            # the SAME 24-wide space res uses — the two-terminal law's
-            # "else the predicted bit" branch: ALG_DUP's own precedent
-            # never threads gold structurally into the forward graph
-            # either, only at decode). AT READ (ALG_JIT_READ=1): own is
-            # HARD-suppressed (-1e4) wherever p(inverse) >= 0.5; forward
-            # slots (p < 0.5) are left untouched (already favoured by
-            # training). AT TRAIN: soft by p — logit += log(p) weighted
-            # onto args' positions, log(1-p) onto the own position —
-            # exactly the ledger's stated form.
+            # the SAME 24-wide space res uses).
             from tinygrad import Tensor as _Tdir
             _p_inv = _dir_out.sigmoid()                              # (B, L_FAC)
             _own = _Tdir.eye(L_FAC).reshape(1, L_FAC, K_VARS)         # static one-hot, own index per slot
             _args_prob = _args_out.sigmoid()                          # (B, L_FAC, K_VARS)
-            if int(os.environ.get("ALG_JIT_READ", "0")):
-                _inv_hard = (_p_inv >= 0.5).float().reshape(B, L_FAC, 1)
-                _res_out = _res_out + _own * (_inv_hard * -1e4)
-            else:
-                _p3 = _p_inv.reshape(B, L_FAC, 1).clip(1e-6, 1 - 1e-6)
-                _res_out = _res_out + _own * (1.0 - _p3).log() + _args_prob * _p3.log()
+            _is_read = int(os.environ.get("ALG_JIT_READ", "0"))
+            if _dirmode == 1:
+                # FORM 1 (closed negative, kept for the record/the paired
+                # reads already banked): AT READ, own is HARD-suppressed
+                # (-1e4) wherever p(inverse) >= 0.5; forward slots (p < 0.5)
+                # are left untouched. AT TRAIN: soft by p -- logit += log(p)
+                # weighted onto args' positions, log(1-p) onto own.
+                if _is_read:
+                    _inv_hard = (_p_inv >= 0.5).float().reshape(B, L_FAC, 1)
+                    _res_out = _res_out + _own * (_inv_hard * -1e4)
+                else:
+                    _p3 = _p_inv.reshape(B, L_FAC, 1).clip(1e-6, 1 - 1e-6)
+                    _res_out = _res_out + _own * (1.0 - _p3).log() + _args_prob * _p3.log()
+            elif _dirmode == 2:
+                # FORM 2, THE TEACHER-FORCED BIT (2026-10-09, word given
+                # after FORM 1's close): AT TRAIN, the res mask uses the
+                # GOLD direction, not the model's own (still-learning) bit
+                # -- dirgold is the host-precomputed additive bias (see the
+                # docstring above); the res head learns the two pointers
+                # under a CORRECT mask while the BCE on p(inverse) trains
+                # beside it unchanged (the loss term above does not change
+                # with mode). AT READ, no gold exists -- the predicted bit
+                # drives the SAME hard mask, but ONLY where confident
+                # (ALG_DIR_CONF, default 0.8): p > conf -> inverse mask
+                # (suppress own); p < 1-conf -> forward mask (suppress the
+                # model's OWN predicted args' positions, soft-weighted by
+                # args_prob since no discrete top-2 is taken here); the
+                # ambiguous middle band gets NO mask (the plain res logits).
+                if _is_read:
+                    _conf = float(os.environ.get("ALG_DIR_CONF", "0.8"))
+                    _inv_conf = (_p_inv >= _conf).float().reshape(B, L_FAC, 1)
+                    _fwd_conf = (_p_inv <= (1.0 - _conf)).float().reshape(B, L_FAC, 1)
+                    _res_out = _res_out + _own * (_inv_conf * -1e4) \
+                                         + _args_prob * (_fwd_conf * -1e4)
+                elif dirgold is not None:
+                    _res_out = _res_out + dirgold
     return {
         "pres": (_sR @ p["h_pres"] + p["h_pres_b"]).squeeze(-1),
         "ftype": _sR @ p["h_ftype"] + p["h_ftype_b"],
@@ -6497,7 +6530,7 @@ def breath_step(p, state, kb, ctx):
     return state
 
 
-def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, drop=None, anchor=None, amask=None, gmod=None, pmask=None, lsent=None, reg=None, fact_buf=None, mh_mass=None, mh_atlas_traj=None, xcorr=None, res_map=None, hud=None, ident=None, busreg_ramp=None, valfact=None, stop_after=None, facts3=None, facts5=None, tree=None, cert3=None, cert5=None, rack3=None, rack5=None, chalk3=None, chalk5=None):
+def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, drop=None, anchor=None, amask=None, gmod=None, pmask=None, lsent=None, reg=None, fact_buf=None, mh_mass=None, mh_atlas_traj=None, xcorr=None, res_map=None, hud=None, ident=None, busreg_ramp=None, valfact=None, stop_after=None, facts3=None, facts5=None, tree=None, cert3=None, cert5=None, rack3=None, rack5=None, chalk3=None, chalk5=None, dirgold=None):
     from tinygrad import Tensor, dtypes   # audit 2026-09-01: was a
     # SCOPE ACCIDENT (bound only via the sixwave/sync branches — any
     # SIXWAVE-off config killed five organs at step 1)
@@ -6862,7 +6895,7 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
                 x_rel = _bs_state["x_rel"]
 
     def heads_of(s, vst=vst):
-        return _heads_of(p, s, vst, B)
+        return _heads_of(p, s, vst, B, dirgold=dirgold)
     if _STEP_TAP is not None:
         # the step trainer's stage-0 seam: everything the per-step walk
         # needs, single source (inert when None — the _CENSUS pattern)
@@ -8902,6 +8935,8 @@ def do_train(steps, lr, batch, seed):
     b_rack5 = fix(np.zeros((batch, L_TOT + T_ALG), np.float32), dtypes.float) if ALG_RACK else None   # consult 2's (the union; read from breath 5)
     b_chalk3 = fix(np.zeros((batch, ALG_CHALK_N, 4), np.float32), dtypes.float) if ALG_CHALK else None   # THE CHALKBOARD: consult 1's packed [presence, d0, d1, d2] (read from breath 3)
     b_chalk5 = fix(np.zeros((batch, ALG_CHALK_N, 4), np.float32), dtypes.float) if ALG_CHALK else None   # consult 2's (SUPERSEDES, not unioned; read from breath 5)
+    _ALG_DIR2 = int(os.environ.get("ALG_DIR", "0")) == 2
+    b_dirgold = fix(np.zeros((batch, L_FAC, K_VARS), np.float32), dtypes.float) if _ALG_DIR2 else None   # FORM 2 (2026-10-09): THE TEACHER-FORCED BIT's host-precomputed additive res bias (-1e4 at own on gold-inverse, -1e4 at the two gold-args on gold-forward, 0 elsewhere) — fed fresh every step from this batch's gold arg_dir/dir_mask/args
     _valfact_rng = np.random.RandomState(seed + 7331) if ALG_VALREG_ON else None
     b_mha = fix(np.zeros((batch, ATLAS_TAB.shape[1], H_W), np.float32),
                 dtypes.float) if ATLAS_TAB is not None else None
@@ -9070,13 +9105,13 @@ def do_train(steps, lr, batch, seed):
             # commits, self-labeled from gold like the commit loss,
             # DETACHED); the second trains under live release dynamics.
             o0 = forward(p, s_tr, b_tk, b_se, slot_mask=b_mask, tail=b_tail,
-                         reg=b_reg, xcorr=b_xcorr, res_map=b_resmap, hud=b_hud, tree=b_tree, ident=b_ident, busreg_ramp=b_bgain, valfact=b_valfact, facts3=b_fact3, facts5=b_fact5, cert3=b_cert3, cert5=b_cert5, rack3=b_rack3, rack5=b_rack5, chalk3=b_chalk3, chalk5=b_chalk5)
+                         reg=b_reg, xcorr=b_xcorr, res_map=b_resmap, hud=b_hud, tree=b_tree, ident=b_ident, busreg_ramp=b_bgain, valfact=b_valfact, facts3=b_fact3, facts5=b_fact5, cert3=b_cert3, cert5=b_cert5, rack3=b_rack3, rack5=b_rack5, chalk3=b_chalk3, chalk5=b_chalk5, dirgold=b_dirgold)
             ok = ((o0["ftype"].argmax(-1) == bg["ftype"]).float()
                   * (o0["res"].argmax(-1) == bg["res"]).float())
             rv = (bg["presence"] * (1.0 - ok)).detach()
             o = forward(p, s_tr, b_tk, b_se, slot_mask=b_mask, revoke=rv,
                         tail=b_tail, reg=b_reg, fact_buf=b_fact,
-                        mh_mass=b_mhm, mh_atlas_traj=b_mha, xcorr=b_xcorr, res_map=b_resmap, hud=b_hud, tree=b_tree, ident=b_ident, busreg_ramp=b_bgain, valfact=b_valfact, facts3=b_fact3, facts5=b_fact5, cert3=b_cert3, cert5=b_cert5, rack3=b_rack3, rack5=b_rack5, chalk3=b_chalk3, chalk5=b_chalk5)
+                        mh_mass=b_mhm, mh_atlas_traj=b_mha, xcorr=b_xcorr, res_map=b_resmap, hud=b_hud, tree=b_tree, ident=b_ident, busreg_ramp=b_bgain, valfact=b_valfact, facts3=b_fact3, facts5=b_fact5, cert3=b_cert3, cert5=b_cert5, rack3=b_rack3, rack5=b_rack5, chalk3=b_chalk3, chalk5=b_chalk5, dirgold=b_dirgold)
         elif int(os.environ.get("NAZ_TRAIN", "0")):
             # NAZARÉ TRAINING (door #55): the organ-2 two-forward pattern —
             # pre-pass yields the intra-pass event field IN-GRAPH (detached);
@@ -9085,7 +9120,7 @@ def do_train(steps, lr, batch, seed):
             # read-time dup-aware argpair): argmax-change OR dup-flip on
             # rel-typed present slots, breath-0 vs final.
             o0 = forward(p, s_tr, b_tk, b_se, slot_mask=b_mask, tail=b_tail,
-                        xcorr=b_xcorr, res_map=b_resmap, hud=b_hud, tree=b_tree, ident=b_ident, busreg_ramp=b_bgain, valfact=b_valfact, facts3=b_fact3, facts5=b_fact5, cert3=b_cert3, cert5=b_cert5, rack3=b_rack3, rack5=b_rack5, chalk3=b_chalk3, chalk5=b_chalk5)
+                        xcorr=b_xcorr, res_map=b_resmap, hud=b_hud, tree=b_tree, ident=b_ident, busreg_ramp=b_bgain, valfact=b_valfact, facts3=b_fact3, facts5=b_fact5, cert3=b_cert3, cert5=b_cert5, rack3=b_rack3, rack5=b_rack5, chalk3=b_chalk3, chalk5=b_chalk5, dirgold=b_dirgold)
             _b0 = o0["breaths"][0]
             _relmask = (o0["pres"].squeeze(-1) > 0).float() \
                 * (o0["ftype"].argmax(-1) == 0).float()
@@ -9096,13 +9131,13 @@ def do_train(steps, lr, batch, seed):
             _gm = (_bgauth + (1.0 - _bgauth) * _ev).unsqueeze(-1).detach()
             o = forward(p, s_tr, b_tk, b_se, slot_mask=b_mask, tail=b_tail,
                         gmod=_gm, fact_buf=b_fact,
-                        mh_mass=b_mhm, mh_atlas_traj=b_mha, xcorr=b_xcorr, res_map=b_resmap, hud=b_hud, tree=b_tree, ident=b_ident, busreg_ramp=b_bgain, valfact=b_valfact, facts3=b_fact3, facts5=b_fact5, cert3=b_cert3, cert5=b_cert5, rack3=b_rack3, rack5=b_rack5, chalk3=b_chalk3, chalk5=b_chalk5)
+                        mh_mass=b_mhm, mh_atlas_traj=b_mha, xcorr=b_xcorr, res_map=b_resmap, hud=b_hud, tree=b_tree, ident=b_ident, busreg_ramp=b_bgain, valfact=b_valfact, facts3=b_fact3, facts5=b_fact5, cert3=b_cert3, cert5=b_cert5, rack3=b_rack3, rack5=b_rack5, chalk3=b_chalk3, chalk5=b_chalk5, dirgold=b_dirgold)
         else:
             _bd = os.environ.get("BREATH_DROPOUT")
             o = forward(p, s_tr, b_tk, b_se, slot_mask=b_mask, tail=b_tail,
                         drop=(b_drop if _bd else None), lsent=b_ls, reg=b_reg,
                         fact_buf=(None if ALG_ALT3 else b_fact),   # THE THREE CONSULTS: the start-of-run facts give way to facts3/facts5
-                        mh_mass=b_mhm, mh_atlas_traj=b_mha, xcorr=b_xcorr, res_map=b_resmap, hud=b_hud, tree=b_tree, ident=b_ident, busreg_ramp=b_bgain, valfact=b_valfact, facts3=b_fact3, facts5=b_fact5, cert3=b_cert3, cert5=b_cert5, rack3=b_rack3, rack5=b_rack5, chalk3=b_chalk3, chalk5=b_chalk5)
+                        mh_mass=b_mhm, mh_atlas_traj=b_mha, xcorr=b_xcorr, res_map=b_resmap, hud=b_hud, tree=b_tree, ident=b_ident, busreg_ramp=b_bgain, valfact=b_valfact, facts3=b_fact3, facts5=b_fact5, cert3=b_cert3, cert5=b_cert5, rack3=b_rack3, rack5=b_rack5, chalk3=b_chalk3, chalk5=b_chalk5, dirgold=b_dirgold)
         l = loss_fn(o, bg)
         if ALG_CONSUME and "_early" in o:   # support-gated consume-once:
             # any breath claims, each fact pays once; eligibility = the DAG
@@ -10101,6 +10136,20 @@ def do_train(steps, lr, batch, seed):
             if not ALG_VALREG_LIVE:   # LIVE facts carry their own sparsity; gold facts get the keep-dropout
                 _vfb *= (_valfact_rng.random_sample(_vfb.shape[:2]) < ALG_VALREG_KEEP)[..., None].astype(np.float32)
             _fd(b_valfact, _vfb, _rl)
+        if b_dirgold is not None:
+            # FORM 2's gold-driven bias, built fresh from this batch's gold
+            # arrays (arg_dir/dir_mask/args already in `gold`, the two-
+            # terminal law's own feed) -- vectorized, no python loop over
+            # L_FAC: inv_m/fwd_m select the two mutually-exclusive cases,
+            # own_oh is the static per-slot identity row, gold["args"][idx]
+            # is already the multi-hot (two 1.0s) gold-args indicator.
+            _gad = gold["arg_dir"][idx] if "arg_dir" in gold else np.zeros((batch, L_FAC), np.float32)
+            _gdm = gold["dir_mask"][idx] if "dir_mask" in gold else np.zeros((batch, L_FAC), np.float32)
+            _gar = gold["args"][idx]
+            _inv_m = ((_gdm > 0.5) & (_gad > 0.5)).astype(np.float32)[..., None]
+            _fwd_m = ((_gdm > 0.5) & (_gad <= 0.5)).astype(np.float32)[..., None]
+            _own_oh = np.eye(L_FAC, K_VARS, dtype=np.float32)[None]
+            _fd(b_dirgold, (_inv_m * -1e4 * _own_oh + _fwd_m * -1e4 * _gar).astype(np.float32), _rl)
         if b_mha is not None:
             _fd(b_mha, ATLAS_TAB[ATLAS_IDX[idx]], _rl)
         if b_tail is not None:
