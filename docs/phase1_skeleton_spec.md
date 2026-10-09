@@ -49359,3 +49359,27 @@ UNVERIFIED / FLAGGED: n=32 rows / 212 gold slots (4 x 8) is small — class-size
 reported via the additivity shortfall/overshoot, never independently decomposed from the genuine
 presence-conditioned signal; no claim here moves any deployed component — this is a diagnostic
 read, not a gate.
+
+### 2026-10-09 (03:00) — THE CREDIT CENSUS'S READING (after the 02:58 entry; 963c5ef4): the manager yells loudest at the strikeouts — wrong slots carry ~3x the per-class gradient on the shared organs — but everyone pulls the same way (right-vs-wrong cosine +0.29, never negative); THE INVERSE FORMS GET 3.6x THEIR SHARE OF THE RES HEAD'S GRADIENT and stay wrong — the res head is not starved of signal, it cannot USE it
+
+The numbers (PMS8_241 on 4 x 8 diet rows, 212 gold slots; class-mean losses, so classes do not add
+to FULL — the agent's own methodology catch; per-breath additivity exact 1.0000): WRONG slots (66)
+3.2x FULL's gradient norm on bank / mixer / waist / notebook, RIGHT (146) 1.2x; the right-vs-wrong
+gradient cosine on the shared organs +0.29 mean, never negative (the prediction confirmed: no
+tug-of-war, the same direction at different magnitude); INVERSE relations (16 of 116) 3.6x FULL's
+gradient on the RES head vs forward 0.98x (the prediction "less than their share" REFUTED — the
+inverse forms pull the res head HARD); the pres / islit heads uninterpretable under slot masking
+(their targets are the mask) — isolated, stated. READING: Judge is not starved of attention — the
+inverse forms are the loudest voices at the res head and the head still defaults to the forward
+convention 79 % of the time on wild and 78 % after the dose: a loud gradient that does not move the
+outcome is the signature of a decision the current roads cannot REPRESENT from their inputs (the
+representability audit's shape: "flat across trainings + a targeted data intervention = structurally
+excluded, not starved" — the dose was the intervention; the census says the signal arrives; the
+res pointer's inputs (the slot's state, the bilinear against the args' states) do not carry the
+cue -> direction binding the prose demands). Together with DOSE_241: the inverse-form wall is
+neither frequency nor gradient share; it is a MISSING INPUT to the res decision — the direction
+cue's identity at the token the relation is grounded in. The roads that supply it: the direction
+bit TEACHER-FORCED (the gold direction as structure during training, so the res head learns the
+cue map under a correct mask; DIRD reads the first form tonight), the sorting room (the cue bound
+to the numeral at the token side), the role-cue channel widened to carry direction cues. Caveat:
+n = 32 rows, 16 inverse slots; a diagnostic read.
