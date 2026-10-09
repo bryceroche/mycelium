@@ -50014,3 +50014,16 @@ THE TABLE (re-read when the trigger fires; every read zero-training where possib
 RULE: a closed line's ledger entry names its trigger at closing time from now on; the table is appended to, never
 pruned; a re-read that fails re-closes the form with the NEW regime tag. What never expires: the custody key, the
 Goodhart fence, the mandatory-road / knob / seal MECHANISMS, representability, the SE arithmetic.
+
+### 2026-10-09 (15:33) — MEASUREMENT NOTE FOR EVERY GATE NUMBER IN THIS LEDGER: the trainer's "step N loss" is the POST-UPDATE loss (step() builds l = loss_fn(o, bg) lazily, runs backward + opt.step() which .assign()s every parameter in place, then returns l.realize() — the deferred realize recomputes forward + loss against the UPDATED weights). Found by the sorting room's bisect (branch sortroom, scripts/sort_bisect_replay.py): replaying backward -> opt.step() -> realize reproduces the CLI's 6.553476 (role8) and 60.764854 (sort4) to six places; the pre-update loss on the same batch is 6.6285
+
+Consequences: (1) every bit-identity gate comparison in the ledger stays VALID — both sides measure the same
+quantity; (2) a "2x of the control at step 0" bar on a WARM fixture is the wrong instrument for a large zero-init
+organ: Adam's t=1 step is ~lr per element regardless of gradient size, so 3.1M correlated zero-init elements move
+together and the warm body downstream sees an out-of-distribution input after ONE step (sort4's 60.76 is that
+artifact; the stack is a proven identity pre-update: all 108 output tensors bit-identical to role8, padding
+included; from scratch the gap is 1.12x); (3) RULE: a road that REPLACES states gates on the PRE-UPDATE output
+diff (the 108-key dump diff = 0.0) + unset bit-identical + a finite post-update loss; a road that ADDS a term gates
+on the knob census (12:5x rule). The gate's loss display alone certifies neither. (4) QUIRK (memory file): reading
+l or o (.numpy()/.realize()) inside step() before backward severs the autograd graph — the no-grad fence then names
+every param; pre-update reads must come from a separate replay, never from inside the captured step.
