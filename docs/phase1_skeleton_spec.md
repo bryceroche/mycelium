@@ -49205,3 +49205,30 @@ commits and a live organ on mint; the chalkboard's effect on the slot is inside 
 slot ever ATTENDED a chalk token (the bar: >= 30 % of chalk-carrying rows) decides whether the
 board was read or ignored (the dry-run's untrained table drew zero attention; this table is
 trained).
+
+### 2026-10-08 (20:20) — THE CHALK CENSUS: 0.000 — NO SLOT EVER ATTENDS A CHALK TOKEN on wild at any breath (the bar: >= 30 % of chalk-carrying rows); THE CHALKBOARD'S FIRST FORM IS UNREAD, trained or not — the mandatory-road law one more time; the derived value must enter as a road with no bypass
+
+The chain's mechanism lines (rack_chain_RK3X.log 20:16): CHALK — the best breath's fraction of
+chalk-carrying rows with any slot's mass >= 0.1 on the chalk block = 0.000 (MISS: "the road is read
+as unread"); DRY — 495 committed cells (0.241 of gold slots), positional 0.535 (the drawer), the
+same-mask numeral re-score 0.958 (clean, the fourth body); rows with >= 1 dry slot 258 / 311
+(histogram 53 / 111 / 69 / 67 / 10 / 1); RELEASED 0 / 311 on wild, 97 / 300 on mint; the judge 11
+solved + unique correct. VERDICT: the chalkboard as built — the solver's derived values appended to
+the bank as tokens with a trained digit table and tag, visible from the breath after each consult
+— is NOT READ: the trained table draws exactly the zero attention the untrained one drew in the
+dry-run. The reading is the law's: a token the slots may attend is an INVITATION; nothing in the
+loss ever needed the derived value at a chalk position (the gold value is in the text or implied
+through the args; the residual already solves the digit loss by its own road), so the organ was
+voted down from birth — the eyes' mask, the register, and now the board, three roads that entered
+as something the body could ignore. THE CHALKBOARD'S SECOND FORM (registered): the derived value
+enters as a ROAD WITH NO BYPASS — through the NUMERAL LEGALITY MASK (the one hard road with a
+large measured effect, z 7-8): for a relation slot whose value the solver implies at the consult,
+the implied value becomes a LEGAL numeral for that slot's digit path (today only text numerals are
+legal: a derived value with no token can never be decoded as a legal digit — which is exactly the
+61 % syntax-invisible wall of the governor census and the 55 % derived-argument wall of the
+mixed-bucket census). No token, no attention, no invitation: the mask admits the value, the digit
+head must choose among legal values, and a wrong implied value is a wrong digit the key grades.
+Cost: zero parameters; the consult's implied values are already computed. Bars (pinned): the
+derived-argument cell of the args read and the digits read on relation slots; masked wild >=
++0.015 vs RKX. THE LINE: release on contradiction is a wild no-op on clean commits (banked); the
+board as tokens closes; the board as legality is the next arm, behind the direction-bit pair.
