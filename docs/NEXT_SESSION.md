@@ -1,10 +1,7 @@
 # NEXT SESSION — cold-start entry (updated 2026-10-09 12:34)
 
 **THE CARD IS IDLE (12:34).** SM_241 (THE SELF-MATCH TERM) DOES NOT FIRE: inverse res 0.228 (bar 0.50; PMS8 0.25 unchanged),
-forward 0.859, masked 0.3359 vs 0.3476 (-0.0117, z 1.4), rows 5, mint 0.6325. THE SCALARS LEARNED THE WRONG SIGN (w_self -0.104):
-the args head's own-index score is the SELF-LOOP error, not the direction (it is HIGHER on forward forms, 0.54 vs 0.29 — the probe's
-own census said so and the registration conflated the states' geometry with a logit). Autopsy fired (s_own census by form; the
-probe's MLP on SM_241's states). NEXT FORMS (need the word): (a) THE PAIRWISE COMPARATOR ROAD — the probe's read-out itself, a small
+forward 0.859, masked 0.3359 vs 0.3476 (-0.0117, z 1.4), rows 5, mint 0.6325. THE TERM WAS INERT BY SCALE (autopsy 13:09: ~0.2% of the res logit's spread; the sign story struck; s_own right-signed but weak, AUROC 0.67-0.70) — THE KNOB LAW SKIPPED A FOURTH TIME; RULE: every road prints its injection's std vs the port's spread at the gate and the read (< 10% = inert, the arm void); zero-init output layers are the trap. The direction IS in the geometry on both bodies (args-alone 0.845/0.868). NEXT FORMS (need the word): (a) THE PAIRWISE COMPARATOR ROAD — the probe's read-out itself, a small
 MLP over [own state, candidate state] added to the res logits (inside the loss, predicted at both); (b) THE SORTING ROOM form 2
 (ledger 11:5x); the six alternations behind the gym pre-read + head diff A; the perceiver-as-value (ledger 12:2x). Ledger 12:34.
 
