@@ -2890,6 +2890,27 @@ def build_params(seed=0):
             "ALG_DIR's res-pointer structural entry assumes the slot-index " \
             "== own-variable-index identity (K_VARS == L_FAC); it no longer holds"
         p["h_dir"], p["h_dir_b"] = lin(H_W, 1)
+    if int(os.environ.get("ALG_SELFMATCH", "0")):
+        # THE SELF-MATCH TERM (2026-10-09; ledger "THE DIRECTION PROBE'S
+        # READING"): the direction probe found the information PRESENT
+        # (args-alone AUROC 0.84-0.85) but UNEXPRESSIBLE by the res
+        # pointer's own road, because the res bilinear scores each
+        # candidate against the slot's state alone and never compares a
+        # candidate to the slot's OWN predicted args-membership — the
+        # exact quantity under the positional law's re-encoding that
+        # IS the direction ("is my own index among my args"). Two
+        # learned scalars, ZERO at birth (bit-identical when unset; the
+        # mandatory-road law's "no gain" form does not apply here — see
+        # w_prec above — these are coefficients on a structural feature,
+        # not a gate on an organ's output, but starting at zero means
+        # the first step is identical to role8's and training discovers
+        # sign/scale on its own).
+        assert K_VARS == L_FAC, \
+            "ALG_SELFMATCH's res-pointer structural entry assumes the " \
+            "slot-index == own-variable-index identity (K_VARS == " \
+            "L_FAC); it no longer holds"
+        p["sm_w_self"] = t(np.zeros(1, dtype=np.float32))
+        p["sm_w_arg"] = t(np.zeros(1, dtype=np.float32))
     p["h_islit"], p["h_islit_b"] = lin(H_W, 1)
     p["h_dig"], p["h_dig_b"] = lin(H_W, N_DIG * 10)
     if ALG_WIDE:                              # E1: the sign terminal
@@ -4990,6 +5011,31 @@ def _heads_of(p, s, vst, B, dirgold=None):
                                          + _args_prob * (_fwd_conf * -1e4)
                 elif dirgold is not None:
                     _res_out = _res_out + dirgold
+    if "sm_w_self" in p:
+        # THE SELF-MATCH TERM (2026-10-09, ledger "THE DIRECTION PROBE'S
+        # READING"): an explicit own-vs-args comparison the res bilinear
+        # never had -- s_own = the PREDICTED membership of the slot's
+        # OWN variable among its OWN args (sigmoid of the args
+        # bilinear's diagonal entry; the SAME quantity the args head's
+        # own decode uses, at training AND at read -- never gold, per
+        # the 2026-10-09 06:04 rule "a structural road trains only in
+        # the form the read can supply"). own = a one-hot over K_VARS
+        # at the slot's OWN index (K_VARS==L_FAC, asserted at the
+        # params build above). a_j = the args membership of every
+        # candidate j (sigmoid of the SAME args bilinear, full 24-wide
+        # -- the positional law's re-encoding makes this exactly the
+        # inverse form's result candidates when s_own is high).
+        from tinygrad import Tensor as _Tsm
+        _args_prob_sm = _args_out.sigmoid()                        # (B, L_FAC, K_VARS)
+        _own_sm = _Tsm.eye(L_FAC).reshape(1, L_FAC, K_VARS)        # static one-hot, own index per slot
+        _s_own = (_args_prob_sm * _own_sm).sum(-1, keepdim=True)   # (B, L_FAC, 1): P(own in own args)
+        # res[own] += -w_self * s_own (ONLY the suppression term);
+        # res[j != own] += w_arg * s_own * a_j (ONLY the boost term --
+        # zeroed at j==own by (1 - _own_sm) so the two terms never
+        # overlap on the same entry, per the build spec).
+        _boost = (p["sm_w_arg"] * _s_own * _args_prob_sm) * (1.0 - _own_sm)
+        _suppress = _own_sm * (-p["sm_w_self"] * _s_own)
+        _res_out = _res_out + _boost + _suppress
     return {
         "pres": (_sR @ p["h_pres"] + p["h_pres_b"]).squeeze(-1),
         "ftype": _sR @ p["h_ftype"] + p["h_ftype_b"],
@@ -10466,6 +10512,12 @@ def do_train(steps, lr, batch, seed):
                   + (f" [host feed {1e3*_tt['feed']/max(_tt['n'],1):.0f} ms + step-call {1e3*_tt['step']/max(_tt['n'],1):.0f} ms per step, n={_tt['n']}]" if _STEP_TIME else "")
                   + (f" [rack-release {_rack_release_n[0]}/{_rack_release_n[1]} rows cumulative walled {_RACK_WALL_N[0]}]" if ALG_RACK_RELEASE else ""),
                   flush=True)
+            if int(os.environ.get("ALG_SELFMATCH_DEBUG", "0")):
+                # full-precision loss (the 4dp display above hides the
+                # DIRROLE-gate-sized step-0 differences the ledger warns
+                # about; this arm's own build spec requires step 0
+                # IDENTICAL to role8, not merely close).
+                print(f"  [selfmatch-debug] step {s:5d} loss_full={v!r}", flush=True)
         if (s + 1) % val_every == 0 or s == steps - 1:
             if int(os.environ.get("ALG_SHELF_CIRCLE", "0")) >= 2:
                 os.environ["SC_EVAL"] = "0"     # val compares OPEN mode
