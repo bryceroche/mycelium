@@ -218,6 +218,7 @@ def read(ckpt, data=None, p=None):
     _DUMP = [] if os.environ.get("LV_DUMP") else None
     _DUMPR = [] if os.environ.get("LV_DUMP_RAW") else None
     _RACKSIDE = [] if (os.environ.get("LV_DUMP") and int(os.environ.get("ALG_RACK", "0"))) else None   # THE RACK's sidecar beside LV_DUMP (2026-10-05): <LV_DUMP>.rack.npz
+    _DIRSIDE = [] if (os.environ.get("LV_DUMP") and "h_dir" in p) else None   # THE DIRECTION BIT's sidecar (2026-10-09, FORM 2): <LV_DUMP>.dir.npz -- per relation slot, the predicted p(inverse) beside gold arg_dir/dir_mask (the confidence histogram's raw material; "dir" is NOT added to the main DUMP tuple to avoid breaking its fixed-width unpack everywhere else)
     from phase1_algebra_head import L_TOT as _LTOT3
     _LEGAL = os.environ.get("LV_LEGAL", "") == "num"   # THE NUMERAL MASK (2026-09-17, a read-time road): legal values only — mycelium.rulebook
     if _LEGAL:
@@ -512,6 +513,11 @@ def read(ckpt, data=None, p=None):
                         # classified residue only (dir_mask) — never folded
                         # into `ok`, a diagnostic field beside it.
                         f_dir = (onp["dir"][bi, j] > 0) == bool(vg["arg_dir"][i, j] > 0.5)
+                    if _DIRSIDE is not None and "dir" in onp:
+                        _pinv = float(1.0 / (1.0 + np.exp(-np.ravel(onp["dir"][bi, j])[0])))
+                        _gdir = float(vg["arg_dir"][i, j]) if "arg_dir" in vg else -1.0
+                        _gmask = float(vg["dir_mask"][i, j]) if "dir_mask" in vg else 0.0
+                        _DIRSIDE.append((int(i), int(j), _pinv, _gdir, _gmask))
                     if _LEGAL_ARGS:   # THE LEGAL-POINTER MASK: applied BEFORE the top-2/argmax, same convention as LV_LEGAL=num
                         _legalset = _legal_arg_vars(_pres_row, _res_row, j, _LEGAL_ARGS)
                         _NOTIN_DEN += len(gset); _NOTIN_NUM += len(gset - _legalset)
@@ -557,6 +563,31 @@ def read(ckpt, data=None, p=None):
                  released=np.array([rl for _, _, _, rl in _RACKSIDE], np.float32))
         print(f"[rack] {len(_RACKSIDE)} rows' committed dry flags -> {_side} (dry share {float(np.mean([d.mean() for _, d, _, _ in _RACKSIDE])):.3f} of slots"
               + (f"; released {sum(rl for _, _, _, rl in _RACKSIDE):.0f}/{len(_RACKSIDE)}" if _ARELEASE else "") + ")", flush=True)
+    if _DIRSIDE is not None:
+        # THE DIRECTION BIT's sidecar + CONFIDENCE HISTOGRAM (2026-10-09, FORM 2): per relation
+        # slot, predicted p(inverse) beside gold arg_dir/dir_mask. Confidence bands use the SAME
+        # ALG_DIR_CONF threshold _heads_of's read-time mask uses (default 0.8) -- "coverage" = the
+        # fraction of relation slots the read-time mask actually touches; "bit accuracy" is scored
+        # on the dir_mask==1 (cleanly-classified) residue only, same convention as the LV_FIELDS dir= line.
+        _side2 = os.environ["LV_DUMP"] + ".dir.npz"
+        _rows_d = np.array([r for r, _, _, _, _ in _DIRSIDE], np.int32)
+        _slots_d = np.array([s for _, s, _, _, _ in _DIRSIDE], np.int32)
+        _pinv_d = np.array([pv for _, _, pv, _, _ in _DIRSIDE], np.float32)
+        _gdir_d = np.array([gd for _, _, _, gd, _ in _DIRSIDE], np.float32)
+        _gmask_d = np.array([gm for _, _, _, _, gm in _DIRSIDE], np.float32)
+        np.savez(_side2, rows=_rows_d, slots=_slots_d, p_inv=_pinv_d, gold_dir=_gdir_d, gold_mask=_gmask_d)
+        _conf = float(os.environ.get("ALG_DIR_CONF", "0.8"))
+        _n = len(_pinv_d)
+        _n_inv_conf = int((_pinv_d >= _conf).sum()); _n_fwd_conf = int((_pinv_d <= (1.0 - _conf)).sum())
+        _n_ambig = _n - _n_inv_conf - _n_fwd_conf
+        _masked = _gmask_d > 0.5
+        _bit_acc = float(((_pinv_d[_masked] >= 0.5) == (_gdir_d[_masked] > 0.5)).mean()) if _masked.sum() else float("nan")
+        print(f"[dir] {_n} relation slots' p(inverse) -> {_side2} | CONFIDENCE (ALG_DIR_CONF={_conf}): "
+              f"inverse-confident {_n_inv_conf} ({_n_inv_conf/max(_n,1):.3f}), forward-confident {_n_fwd_conf} "
+              f"({_n_fwd_conf/max(_n,1):.3f}), ambiguous(no mask) {_n_ambig} ({_n_ambig/max(_n,1):.3f}) | "
+              f"coverage (confident/total) {(_n_inv_conf+_n_fwd_conf)/max(_n,1):.3f} | "
+              f"bit accuracy (p>=0.5 vs gold, masked residue n={int(_masked.sum())}): {_bit_acc:.3f} | "
+              f"HISTOGRAM(p_inv, 10 bins 0..1): {np.histogram(_pinv_d, bins=10, range=(0,1))[0].tolist()}", flush=True)
     if _FIELDS is not None:
         print("[fields] " + " ".join(f"{k}={v[0]/max(v[1],1):.3f}({v[1]})" for k, v in _FIELDS.items() if not k.startswith("slot")), flush=True)
         print("[slots]  " + " ".join(f"{k[4:]}:{v[0]/max(v[1],1):.2f}({v[1]})" for k, v in sorted(_FIELDS.items()) if k.startswith("slot")), flush=True)
