@@ -49258,3 +49258,5 @@ road?) — then DIRD (bit + dose) as registered; the bit's second form waits on 
 if the dose alone lifts inverse res past 0.5, the bit is unnecessary; if not, the bit must enter
 teacher-forced at training (the gold direction as the mask during training, the predicted one
 only at read — ALG_DUP's actual pattern) so the forward forms are never suppressed by a guess.
+
+### 2026-10-08 (22:43) — THE DOSE QUEUE fired (pc-queue-dose): precompute pm35d's trunk states (PRECOMPUTE_ONLY=formpm35d, the dose_ladder recipe) -> DOSE_241 (PMS8's recipe on pm35d, NO direction bit: the clean test of starvation; bars inverse res >= 0.50 from 0.25, forward res >= 0.85, masked >= PMS8 - 0.005) -> DIRD_241 (bit + dose); the mtime watcher re-armed over all three logs. A slip caught before the chain started: the derived DOSE chain still carried ALG_DIR through a $DIRX variable (the two literal sites were removed, the variable was not) — set to empty; RULE: a derived chain is grepped for the organ's env NAME after editing, not only for its literal sites.
