@@ -49186,3 +49186,22 @@ pilot's first policy waits for a body whose later breaths can change a row — w
 the chalkboard (RK3X, reading tonight) and the direction bit (tomorrow) are built to test. The
 acting perceiver's actions, if they exist, are the consults' (what to commit, what to release, what
 to write), not the clock's.
+
+### 2026-10-08 (19:59) — RK3X_241 (RELEASE ON CONTRADICTION + THE CHALKBOARD, from scratch on the fixed-schedule hierarchical body) ACCURACY READS: masked 0.3476 (+0.0063 vs RKX_241; the bar +0.015 MISSED; back to the body's 0.3471), rows 9 / 7 (RKX 7 / 7), mint 0.588 (RKX 0.599: -0.011; bar >= 0.59 missed by 0.002); FORM 3 RELEASED 0 / 311 ROWS ON WILD and 97 / 300 on mint; the chalk census pending
+
+Reads (rack_chain_RK3X.log 19:4x; the re-fired arm with the release wall; 48k at 0.29 s/step; the
+wall fired on a handful of rows): open wild 0.3057; MASKED 0.3476 — paired vs RKX_241 +0.0063 (SE
+~0.008: noise; the bar +0.015 MISSED), vs RK_241 +0.0044, vs HS_241 +0.0005 (the body's own level
+regained: the consults + rack + release + chalk net to ZERO on the slot); rows 9 masked / 7 open
+(RKX 7 / 7; HS 8 / 7); open mint 0.5881 (RKX 0.5987: -0.011 — the chalk or the release costs a
+hundredth on mint); digits 0.378 (RKX 0.369); dry share 0.050 of all slots on wild (~1.2 per row).
+FORM 3: released 0 / 311 rows on wild — the committed subgraphs on wild were NEVER proven
+inconsistent at consult 2 (the clean commits of the dryness test, re-scored at 0.96-0.97, rarely
+contradict; and a wall returns "budget", never unsat) — and 97 / 300 on mint (the one-sentence
+positional rows: the solver proves a committed given inconsistent in a third of them — release
+fires exactly where mint's digits pay, which is where the rack's mint cost came from). READING
+(provisional until the chalk census lands): the release is a wild NO-OP by construction on clean
+commits and a live organ on mint; the chalkboard's effect on the slot is inside noise; whether a
+slot ever ATTENDED a chalk token (the bar: >= 30 % of chalk-carrying rows) decides whether the
+board was read or ignored (the dry-run's untrained table drew zero attention; this table is
+trained).
