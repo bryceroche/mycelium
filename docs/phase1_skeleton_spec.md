@@ -49122,3 +49122,25 @@ sibling), since nothing in the dynamics produces it. That the binding read is as
 relations as on right ones says the wrong relations combine the wrong operands CONFIDENTLY — the
 same confidently-wrong law, now at the mixer. (The script's endpoint "rising" line hides the b2
 peak and the decline; stated.)
+
+### 2026-10-08 (18:44) — AARON JUDGE (Bryce: "could the gradient be distributed more evenly, or more meritocratically?"); the mapping banked; THE CREDIT CENSUS fired (zero GPU)
+
+(1) Judge is paid per inning already: the ladder grades every breath's heads against the full
+answer (the same target every rung; the fused pointer brought inside the loss on 09-20), and the
+loss is PER SLOT — a slot right at breath 2 is not charged the team's final score. (2) The team loss
+that is real: PARAMETER SHARING — every slot and breath runs the same organs, so the 23 confused
+slots' gradients update the parameters the right slot uses; not misattribution but the thing that
+makes 24 slots cost one head (heads specialise, breaths do not); the cross-breath tug-of-war was
+measured (the nested ladder: no negative gradient pairs; parked). (3) WHERE MERITOCRACY HAS TEETH:
+who gets to bat (THE DOSE: inverse forms are 27 % of the diet, 36 % of wild, right 15 % — a hitter
+who rarely sees pitches; the inverse-dose arm queued tonight is the first literal meritocratic
+correction) and along which walls the gradient flows (the shuffle as structure: an owner-keyed
+mixer mask makes the gradient trace the structure — Gemini's "sparse routing" is the shuffle).
+FIRED: THE CREDIT CENSUS (scripts/credit_census.py; the record checkpoint on CPU, 4 diet batches,
+the loss masked per slot class): the gradient-norm share on the shared organs and on each head
+from RIGHT vs WRONG slots, GIVEN vs RELATION, FORWARD vs INVERSE, and per breath; the right-vs-wrong
+gradient cosine per shared group (the tug-of-war per slot class). PREDICTION (pinned): wrong slots
+carry ~2/3 of the shared organs' gradient (larger losses, more of them: 65 % of wild slots, less on
+the diet); inverse forms get LESS than their 27 % share of the res head's gradient (their losses
+are large but few and the forward default is cheap); the right-vs-wrong gradient cosine on the
+shared organs is small and positive (not a fight — the same direction, different magnitude).
