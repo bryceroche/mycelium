@@ -49144,3 +49144,23 @@ carry ~2/3 of the shared organs' gradient (larger losses, more of them: 65 % of 
 the diet); inverse forms get LESS than their 27 % share of the res head's gradient (their losses
 are large but few and the forward default is cheap); the right-vs-wrong gradient cosine on the
 shared organs is small and positive (not a fight — the same direction, different magnitude).
+
+### 2026-10-08 (18:49) — THE CONDUCTOR AND THE PILOT (Bryce: "how do we make sure they are deeply integrated?"); THE PILOT'S PORT registered (conductor(kb, row): per-row overrides of the schedule table — the replay harness's overrides dict is its prototype); THE PILOT'S CEILING fired in the gym
+
+The integration is one argument, not an organ: conductor(kb) already holds every per-breath
+schedule (consults, damping shares, the listen flag, the mask temperature, the stellarator
+weight); the pilot hands it a per-row override vector; nothing else in the head changes. The
+pilot's moves are telegraph clicks in the conductor's grammar (delay the settle one breath;
+consult now; release; stop) — discrete, timed, hard. WHAT THE PILOT CAN SEE: four reads this week
+(entropy, resonance, the mixer's grouping, stillness) found NO right-vs-wrong channel in the
+state's own metadata — a pilot flying on them flies blind; the instruments are the certifiers'
+outputs (the dry count, the solver's status, the views' agreement) and the atlas distance as a
+gauge; the Goodhart fence holds (the pilot's loss never enters the head). THE NUMBER BEFORE THE
+BUILD: the pilot's CEILING — on the schedule-bearing body (RKX_241), snapshots at kb 2, replay
+under five per-row overrides (the fixed schedule; the settle delayed to 4,6; the listening
+breath; no damping; the early settle 2,4), scored by the key on diet rows first, 64 wild rows once:
+the best-per-row vs the fixed = the most any pilot can gain; which override wins per row; whether
+the kb-2 certificates predict the winner. PREDICTION (pinned): the oracle gains a handful of rows
+(<= 5 % of rows change verdict under any override) — the schedules move mint and drift, not the
+wall — and no single override dominates; if so, the pilot's port is built but its first policy
+waits for a body whose later breaths can change a row (the chalkboard / the direction bit).
