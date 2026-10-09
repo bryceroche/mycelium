@@ -49289,3 +49289,73 @@ numeral before the slots look); (c) annotated prose rows rich in inverse forms (
 same lever as always). The mint +0.08 is banked as the dose's real effect: the deployed stack's
 mint read has headroom in the generator's dose, which the campaign had declared an INGREDIENT, not
 a score (09-14) — noted, not claimed.
+
+### 2026-10-09 (02:58) — THE CREDIT CENSUS (Bryce's "Aaron Judge"; scripts/credit_census.py [new],
+8ebe28f9; .cache/credit_census_PMS8_241.txt; zero GPU, DEV=CPU): WHO the gradient on the SHARED
+parameters comes from, measured directly as a gradient-norm partition by slot class, not inferred
+from loss — WRONG SLOTS DOMINATE THE SHARED ORGANS (3.2x FULL's gradient norm from 66 wrong slots
+vs 1.2x from 146 right, bank/mixer/polar-waist/notebook mean); RIGHT and WRONG pull the SAME WAY on
+those organs (cosine +0.29 mean, never negative on this slice) — NO TUG-OF-WAR; INVERSE relations
+(16/116 relation slots on this slice, 13.8%) draw 3.6x FULL's gradient on the res head alone vs
+0.98x from FORWARD — inverse gets MORE than proportional share of exactly the head THE POLARITY
+CENSUS named as the blindspot's location, not less.
+
+Method: PMS8's SURF8/role8 env + the family block, DEV=CPU, WARM_FROM=.cache/sharp_PMS8_241.
+safetensors (no training — load, forward, loss, backward, read grads, discard), the diet's custody
+slice .cache/form_pm35c_slice1024_valid2.jsonl, 4 batches x 8 rows (32 rows / 212 gold slots). The
+open-pass -> build_slot_masks -> masked-pass two-step every trainer step takes; RIGHT/WRONG from
+loop_val.py's own `ok` criterion (pres/ftype/res/op/args or pres/ftype/res/dig) recomputed field-by-
+field under THE NUMERAL MASK; GIVEN/RELATION from g["ftype"]; FORWARD/INVERSE from
+polarity_census.classify_row ported verbatim (the census's own "training gold and the census can
+never drift" discipline). The class mask zeros presence AND every kind-indicator field
+(is_rel/is_lit_f/is_mod/.../is_chain) for slots OUTSIDE the class on a copy of the gold dict, so
+every per-slot term in _loss_single that gates on presence or a kind-sum (ftype/op/args/res/dig,
+every span/canvas term) is cleanly zero for an excluded slot; the "pres" and "islit" heads' own
+BCE terms are UNWEIGHTED means over all 24 slots using presence/is_lit_f as the TARGET, not a gate
+— this masking LIES to those two terms ("this slot is not here"), named loudly and isolated into
+their own groups (pres-head, islit-head) so the leak is visible, not smeared into "rest"; "query"'s
+per-row CE term cannot be split by slot class at all and rides every class identically (absorbed
+into "rest", where W_query lives). Backward() consumes the graph (a fresh forward() per target —
+grad_cosine_census.py's convention); l.numpy() AFTER l.backward(), never before (the known quirk).
+
+THE ENGINEERING COST: eager (no TinyJit — every class/breath target is a one-off loss formula)
+forward+backward on this body (512-d, 7 breaths, FED/NOTEBOOK/SIXWAVE/POLAR/STELLAR/BINDBUS) pays a
+2-12 MINUTE per-distinct-shape kernel-compile tax, ~2 min on repeat within the SAME process; a
+concurrent GPU training chain on this host (DOSE_241/DIRD_241, ~25 GB RSS, gpu.lock's own holder,
+never touched by this script) independently pressured system memory and the kernel's OOM killer
+twice picked this lower-priority `systemd --user` transient unit over that chain — the SAFE
+outcome, but it meant the monolithic single-process design died mid-run. REBUILT as a resumable
+worker+aggregate split (CC_TARGET=ALL per batch for warm-cache speed within a batch, every combo
+saved to .cache/credit_census_tmp/ as computed, skipped on resume) under
+`--property=Restart=on-failure --property=OOMScoreAdjust=900`: the unit auto-restarted three more
+times across the ~4.5 h run and resumed cleanly every time with zero recomputation of already-saved
+combos — THE PATTERN (systemd Restart=on-failure + disk-checkpointed combos) is the general fix for
+any zero-GPU eager-autograd census sharing a host with a live training chain, not specific to this
+script.
+
+THE ADDITIVITY SURPRISE (methodology, not a bug in the masking): the per-breath split sums to FULL
+EXACTLY (sum/FULL = 1.0000 on every one of the 12 parameter groups) because every breath's loss
+term shares the SAME denominators (n_p, n_rel, ...) and differs only by the ladder's scalar weight
+— a true linear decomposition. The SLOT-CLASS splits do NOT sum to FULL even on heads with provably
+zero cross-class leak (e.g. op-head's gradient under GIVEN is exactly zero, confirming GIVEN+
+RELATION = 1.0000 there) — RIGHT+WRONG overshoots FULL by 1.9-4.4x on every "clean" group (bank
+3.4x, mixer 4.4x, dig-head 3.5x) because _loss_single's terms are PER-CLASS MEANS (divided by that
+class's own slot count: n_p_w, n_rel_w, ...), and averages do not add linearly — avg(A) + avg(B) !=
+avg(A union B) unless |A| = |B| or the two groups' means agree. This is NOT the pres-head/islit-head
+leak (which is a separate, far larger effect — 65x and 55x respectively, because those two terms
+are genuinely corrupted by the mask lying about presence/is_lit_f as a TARGET, not merely re-
+normalized). The six-line reading banked at the foot of the .txt file over-states this as an
+"expected SHORTFALL below 1.0" — WRONG DIRECTION, caught only after reading the actual numbers;
+correction banked here: slot-class additivity numbers ABOVE 1.0 are the norm, driven by the smaller
+class's mean amplifying its own per-slot signal (WRONG's 66-slot mean vs FULL's 212-slot mean), and
+this same amplification is PART OF why "WRONG dominates" in the headline share table — the
+per-slot WRONG loss really is higher (mean 21.2 vs RIGHT's 11.6), but some of the 3.2x shared-organ
+ratio is this denominator effect, not purely larger per-slot gradients; both are real properties of
+how the actual training step's mean-normalized loss behaves when a batch is unevenly split between
+right and wrong slots, so the finding stands, with this caveat attached.
+
+UNVERIFIED / FLAGGED: n=32 rows / 212 gold slots (4 x 8) is small — class-size noise is real
+(INVERSE is only 16 slots across all 4 batches); the pres-head/islit-head leak's absolute size is
+reported via the additivity shortfall/overshoot, never independently decomposed from the genuine
+presence-conditioned signal; no claim here moves any deployed component — this is a diagnostic
+read, not a gate.
