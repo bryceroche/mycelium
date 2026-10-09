@@ -1,21 +1,28 @@
-# NEXT SESSION — cold-start entry (updated 2026-10-09 03:17)
+# NEXT SESSION — cold-start entry (updated 2026-10-09 06:05)
 
-**THE CARD IS IDLE (03:03).** Next arm under the standing word: THE TEACHER-FORCED DIRECTION BIT (building on branch dirbit, wt9: the gold
-direction as the res mask at training; the predicted bit at read only where confident) vs PMS8_241 on pm35c; bars: inverse res >= 0.60,
-forward res >= 0.85, masked >= PMS8 - 0.005. In the gym (zero GPU): THE CHALKBOARD FORM 2 as a read-time road (the solver's implied value
-admitted as a LEGAL numeral for relation slots on RKX_241's dump/replay).
-**THE DIRECTION-BIT FAMILY (10-08/09), closed on its first form:** DIR_241 (bit) masked -0.015, inverse res 0.25->0.33, forward 0.87->0.75;
-DOSE_241 (inverse-heavy mint, no bit) wild inverse res UNCHANGED (starvation refuted), mint +0.08; DIRD_241 (both) masked -0.033. The
-blindspot stands (36 % of wild relations; the res head gets 3.6x its share of gradient and cannot use it = a missing INPUT: the prose
-cue->direction binding). Forms registered: the teacher-forced bit; the sorting room; the direction cue as a ROLE in the role signature.
-**CLOSED 10-08:** the chalkboard as tokens (no slot ever attends; form 2 = legality); the rack family on four bodies (clean commits, slot null);
-the pilot's ceiling (+1/128, +0/64: after breath 2 the row's fate is set); the credit census (wrong slots loud, same direction).
-**Positive this week:** the Welford atlas (0.766 vs entropy 0.700; one library per body); the schedule fix (mint +0.047 on the hierarchical
-body); the hammerhead census (view unanimity 0.970 at 0.32 coverage; majority 0.965 at 0.41).
-**Rules added this week (all in the ledger):** one arm per chain; waiters match the chain's failure vocabulary + the training log's mtime;
-a watcher binds the log to the process it would kill (the wrapper's cmdline); a derived chain is grepped for the organ's env NAME; joined
-artifacts must share the same mask; a selector's features are diffed against the gold fields; replay verdicts at the decode level.
-**Branches/worktrees:** replay (wt8: the gym), dirbit (wt9; merged fa7d7559), rack3 + listen (merged). main fast-forwarded 10-09 03:2x.
+**THE CARD IS IDLE (05:56).** Building (worktree wt10, branch dirrole): THE DIRECTION ROLE — the direction cues ("fewer / less / more than /
+left / gave / half / per ...") entered as ROLE CUES in the role signature (the organ that set the slot record), stamped from the text at
+training AND at read (the rule: a structural road trains only in the form the read can supply), read by the res pointer through the same
+bilinear; a zero-GPU cue census first (coverage of inverse-form relations must reach >= 60 %); gate; the arm DIRROLE_241 vs PMS8_241 staged
+(.cache/rack_chain_DIRROLE.sh / queue_dirrole.sh) — fires on the standing word after the gate. BARS: inverse res >= 0.50 (from 0.25), forward
+res >= 0.85, masked >= PMS8 - 0.005.
+**THE DIRECTION-BIT LINE (10-08/09), CLOSED on both forms:** DIR (self-driven mask) redistributes (inverse 0.25->0.33, forward 0.87->0.75,
+masked -0.015); DOSE (inverse-heavy mint) moves mint +0.08 and wild zero (starvation refuted); DIRD both -0.033; DIR2 (the GOLD mask at training)
+-0.062 = a crutch absent at read (the bit confident on 2 % at read). THE BLINDSPOT STANDS: 36 % of wild relations are inverse forms, res 0.25;
+the res head's gradient arrives 3.6x and is unusable (the credit census) = a missing INPUT: the prose cue -> direction binding.
+**CLOSED 10-08/09:** the chalkboard (tokens: unread; legality: the implied values are right 11.5 % on wild — the derived-value line closes
+behind the args wall); the rack family (four bodies); the pilot's ceiling (+1/128, +0/64); the learned perceivers (regime).
+**Positive this week:** the Welford atlas (0.766 vs entropy 0.700); the schedule fix (mint +0.047 on the hierarchical body); the hammerhead
+census (majority-of-5 0.965 at 0.41 coverage); the dose's mint +0.08 (an ingredient, noted).
+**THE GYM (branch replay, wt8, unmerged; 5 uses banked):** the save point + replay (decode-exact), the chalk dry-run, the resonance read, the
+shuffle read, the pilot's ceiling, the chalk-legality read. Merge after the dirrole arm; gate.
+**Rules added this week:** one arm per chain; waiters match the chain's failure vocabulary + the training log's mtime; a watcher binds the
+log to the process it would kill (the wrapper's cmdline); a derived chain is grepped for the organ's env NAME; joined artifacts share the
+same mask; a selector's features are diffed against the gold fields; replay verdicts at the decode level; a structural road trains only in
+the form the read can supply; a worktree's .cache is the shared symlink.
+**Registered, unbuilt:** the sorting room; the owner signature (the shuffle as structure; ceiling 46 %); the majority dryness test; the depth
+pair; head diffs A/B/C from the audit; the reader's holdout (books).
+**Branches/worktrees:** replay (wt8), dirrole (wt10, building), rack3 (wt6, merged), dirbit (merged, wt9 removed). main fast-forwarded 10-09 06:05.
 
 ---
 (The previous entry follows, for the longer board.)
