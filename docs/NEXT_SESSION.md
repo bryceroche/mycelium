@@ -1,4 +1,18 @@
-# NEXT SESSION — cold-start entry (updated 2026-10-09 09:38)
+# NEXT SESSION — cold-start entry (updated 2026-10-09 10:58)
+
+**SM_241 IS ON THE CARD (fired 10-09 10:4x; pc-sm + pc-sm-watch; .cache/sharp_SM_241.log 0.098 s/step from step 5 -> ~80 min
+of training + the reads; chain log .cache/rack_chain_SM.log, chain .cache/rack_chain_SM.sh, queue .cache/queue_sm.sh).** THE
+SELF-MATCH TERM (ALG_SELFMATCH=1; branch selfmatch merged 8c664c7e; worktree /home/bryce/mycelium-wt11 removable): the res
+logits gain res[own] -= w_self*s_own and res[j!=own] += w_arg*s_own*a_j where s_own = the args head's PREDICTED sigmoid membership of
+the slot's own variable (the same tensor at training and read; never gold), w_self/w_arg learned scalars ZERO at birth. Gate
+(.cache/selfmatch_gate.log): unset 5.2995/0.0279 bit-identical; selfmatch = role8 6.5535/1.1061 at full precision at BOTH steps —
+a zero-at-birth scalar moves the res logits by 1.45e-4 after one step, below the aggregate loss's float32 resolution; wiring proven
+by the grad probe (scripts/selfmatch_grad_probe.py: w_self -2.3e-2, w_arg -2.0e-2) and a direct res-logit diff; read smoke 1.0
+(scripts/selfmatch_read_smoke.py). RULE: zero-at-birth organs gate by tensor diff / grad probe, not the printed loss. BARS (pinned
+10-09 09:40): inverse res >= 0.50 (from 0.25), forward res >= 0.85, masked >= PMS8_241 - 0.005; the polarity read on SM_241's dump;
+the paired read vs PMS8_241 is the bar (DIRROLE_241 informational). If it misses: the sorting room / annotated prose (the cue ->
+direction binding as a MISSING INPUT) is the next registered form; if the inverse res moves but masked falls, the term's
+redistribution is the story (DIR_241's shape) — read forward AND inverse, never one.
 
 **THE CARD IS IDLE (09:38).** THE DIRECTION PROBE FIRED (zero-GPU; scripts/direction_probe.py; .cache/direction_probe_PMS8_241.txt):
 PRESENT-BUT-UNEXPRESSIBLE — a read-out trained on PMS8_241's own frozen states reaches wild AUROC 0.98 (own state + both gold args'
