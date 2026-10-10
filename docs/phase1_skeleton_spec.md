@@ -50674,3 +50674,23 @@ judge's feature set on the wild evidence the diet CV cannot see, but the registr
 pinned at a third of the room and this read does not clear it. Artifacts: scripts/picker/
 pvalue_judge.py; .cache/pvalue_judge_{report,PMS8_241}.txt, .cache/pvalue_judge_feat_{diet,wild}_v3.pkl,
 .cache/pvalue_judge_model_v3.pkl.
+
+### 2026-10-10 (10:54) — AR_241 (THE ARGS-CONDITIONED RES: the res pointer reads the args head's PREDICTED soft selection of variable states through an MLP at scale 20, from scratch vs PMS8_241) DOES NOT FIRE: inverse res 0.261 (bar >= 0.50; PMS8 0.25 — UNCHANGED), forward res 0.868 (bar met), masked wild 0.3408 vs 0.3476 = -0.0068 (paired SE 0.0095 | McNemar z +0.72; within the -0.005 bar's noise but the wrong sign), rows 12, open mint 0.651 (flat); THE KNOB CENSUS PASSES AT 1.24x — THE DIRECTION LINE CLOSES ON SEVEN ARCHITECTURAL FORMS
+
+Fields masked wild: pres 0.911 ftype 0.855 res 0.804 dig 0.461 exact 0.341 op 0.726 args 0.437. MECH: fwd ok 0.307
+args 0.516 res 0.868; inv ok 0.164 args 0.296 res 0.261. Discordant 195 / 181. Paired vs PC_241 -0.0078.
+THE READING. Three roads on the res pointer at three input sets — the own-index logit (SM, inert by scale), the
+own + candidate states (PC, live at 1.6x), the own + candidate + PREDICTED-ARGS states (AR, live at 1.2x, the probe's
+exact feature set with predicted args) — and the inverse res sits at 0.25-0.26 on every one, while the gold-direction
+oracle reads 0.60 and the probe's read-out on GOLD args' states reads 0.85. The difference between the probe and AR
+is the args themselves: the probe used gold args (0.85) and the tie-break's predicted-args re-read of the same probe
+collapsed (AUROC 0.35-0.43 on PC; the diet's predicted args are memorized) — the direction read needs the args
+RIGHT, and args are the wall (0.43-0.52). The direction and the binding are the same problem seen from two sides:
+the res pointer cannot know it is on an inverse form until the args are bound, and the args head cannot place the
+own variable among the args (60% of inverse args errors) until it knows the form. A chicken-and-egg that no road
+inside the loop resolves from the training text we have — and the register split says the body's forward-default
+is a PROSE prior learned from the corpus. CLOSED (regime-tagged, the re-admission table): DIR, DIRD, DIR2, DIRROLE,
+SM, PC, AR + the read-time tie-break. OPEN: the DATA road — unmemorized inverse prose in the wild register (the n
+lever; the annotation stream math -> NL rephrasing mint's inverse forms into GSM8K-style prose; the books' lane) —
+and the token-side binding road (SR's twin decides; the owner key). The three-pool rule stands: train / calibrate /
+measure on disjoint pools (the valid2 slice is in-sample; wild is measured only).
