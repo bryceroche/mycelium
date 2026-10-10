@@ -50224,3 +50224,57 @@ is already low, the register story is confirmed at the slot level and the dose b
 probe failing to transfer to PC_241 (AUROC 0.35-0.43) is the never-mix-generations law (a from-scratch body's
 coordinates), not a direction fact. The no-MLP control (clamp every predicted relation) costs -0.10 masked on both
 bodies: the forward cost is ~50x the inverse gain in slots — any direction read must be precise, never broad.
+
+### 2026-10-09 (17:41) — THE REGISTER SPLIT (zero GPU): the SPECIFIC hypothesis FAILS — diet PEN (prose/harvested) inverse res is 0.969, the HIGHEST cell in the table, not close to wild's 0.25 — but a SHARPER register signal holds in the SHAPE of the failure, not its rate: own-default share among wrong inverse slots is 0.800 on diet PEN (matching wild gsm8k's 0.789) vs 0.014 on diet MINT
+
+Artifacts: scripts/register_split.py [new, zero GPU — reuses .cache/dirtb_rawslots_diet_PMS8_241.pkl
+(THE DIRECTION TIE-BREAK's own diet collection) and the banked .cache/rawslots_wild_PMS8_241.pkl;
+no new GPU read, the card untouched per the word given]; .cache/register_split_report.txt.
+
+REGISTERS (read off `gen`, checked directly against this slice's actual contents, not assumed):
+PEN = `gen` is a dict with `src` in {gsm8k, svamp, asdiv} — real harvested/annotated rows (387 of
+775 diet rows, 194/61/62 — pen:gsm8k/svamp/asdiv). MINT = everything else (`gen` is None, a bare
+generator-tag string like "form37"/"chain56", or a dict without a real src) — 388 rows, split
+mint-wild (190, carries a `gen["wild"]` distractor/word-digit sub-tag) / mint-plain (198); both are
+plainly templated "Consider the numbers a, b, ..." synthetic text on inspection, including the
+form37/chain56 ones. No "prose-v0" literal tag exists in this slice. WILD splits 302 gsm8k / 9
+non-gsm8k (`gen.src=="r7"`), per the coordinator's own count.
+
+THE TABLE (slot-level, pooled pen vs pooled mint; full per-dataset breakdown in the report):
+| register | form | n   | res_acc | args_acc | res_wrong_n | wrong->own% |
+|---|---|---|---|---|---|---|
+| diet PEN  | fwd | 587  | 0.9949 | 0.6184 | 3   | 0.000 |
+| diet PEN  | inv | 325  | 0.9692 | 0.7292 | 10  | 0.800 |
+| diet MINT | fwd | 1005 | 0.1662 | 0.1970 | 838 | 0.006 |
+| diet MINT | inv | 230  | 0.1000 | 0.0826 | 207 | 0.014 |
+| wild gsm8k | fwd | 640 | 0.8766 | 0.5344 | 79  | 0.000 |
+| wild gsm8k | inv | 361 | 0.2521 | 0.3047 | 270 | 0.789 |
+| wild non-gsm8k(r7) | fwd | 28 | 0.7857 | 0.3214 | 6 | 0.000 |
+| wild non-gsm8k(r7) | inv | 11 | 0.1818 | 0.0909 | 9 | 0.778 |
+
+THE MEMORIZATION CHECK (zero GPU, a text-identity scan against the actual 48k-step training corpus
+.cache/form_mix_pm35c.jsonl, 50653 rows / 42000 unique texts): this diet slice is NOT a disjoint
+holdout — every diet row's text, PEN and MINT alike, is found VERBATIM in the training corpus
+(317/317 pen, 388/388 mint). The difference is reps-per-unique: PEN rows average 3.14 reps (median
+2, max 6) vs MINT's 1.05 (median 1, max 4) — the dose law's prose upsampling, directly measured.
+
+VERDICT (four parts, in the report): (1) THE SPECIFIC HYPOTHESIS FAILS — diet PEN inverse res
+(0.969) is nowhere near wild's 0.25; it is the ceiling of the whole table (PEN forward is ALSO
+near-ceiling, 0.995), while diet MINT is the floor in BOTH forms (0.166 fwd / 0.100 inv — below
+even wild's forward floor). This inverts, not confirms, the magnitude story. (2) THE REAL DRIVER is
+repetition, not register: PEN's ~3x reps buys rote memorization of the specific repeated rows
+(direction included); MINT's ~1x reps in a 50k-row pool buys almost none. Register and repetition
+are confounded in this diet and repetition is doing the work — "diet inverse res is high because
+it's prose" was the wrong causal story. (3) A DIFFERENT, SHARPER register signal DOES hold, in the
+SHAPE of the failure rather than its RATE: among res-wrong inverse slots, the own-default ("flips to
+forward") share is 0.800 on diet PEN — matching wild gsm8k's 0.789 almost exactly — vs 0.014 on diet
+MINT, a near-total absence. When a prose/harvested inverse relation's res pointer fails, it fails
+via the SAME mechanism on diet and wild alike (defaults to own); when a mint inverse relation fails,
+it fails some other, scattered way. THE OWN-DEFAULT PATHOLOGY ITSELF IS A PROSE-REGISTER PHENOMENON,
+confirmed cleanly, even though raw accuracy magnitude is confounded by memorization and therefore
+cannot be used to confirm (or deny) it. (4) CONSEQUENCE: the coordinator's framing that the inverse
+dose should be a PROSE dose (the n lever in the wild register) is right about WHERE to look, but for
+the (3) reason, not the (originally hypothesized) low-diet-prose-accuracy reason — more prose reps
+would need to teach the res pointer the actual prose direction signal (closing the own-default gap),
+not merely raise rote recall of already-repeated rows further, since the latter is already
+near-ceiling and has nowhere higher to go.
