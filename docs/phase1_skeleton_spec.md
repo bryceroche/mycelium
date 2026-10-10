@@ -50469,3 +50469,90 @@ KEY (ALG_SORT_KEY, built, unfired) is the other emission the stack can carry: th
 sorting room's second arm (SRK_241 = SR + ALG_SORT_KEY=1) behind the twin. The sorting room's port threads every
 reader from here on (ALG_SORT=4 in the body's env; readers take the body). Digits as the gain: the digit head is
 where the prose pivot (09-14..18) and the numeral mask already moved — the token side is the value path's seat.
+
+### 2026-10-09 (21:26) — THE LOOPED TRANSFORMER BUILT + GATED + QUEUED + FIRED (LT_241, worktree wt14, branch loopedtf, merged 236d5195): four SHARED pre-norm transformer blocks (8-head self-attention over the 24 slots, 8-head cross-attention slots(Q) over the bank's own 256-token tensor (K/V; post the sorting room's own replacement when ALG_SORT is set), FFN 512->2048->512) run every loop breath, REPLACING the mixer as the loop's only slot-to-slot road BY VALUE — THE DEPTH PROBE (10-08 11:49/12:14) realized, ~12.9M params at ALG_DEPTH=4
+
+THE BUILD (ALG_DEPTH=N; scripts/phase1_algebra_head.py, `_depth_stack` ~line 4063, built in
+breath_step right after the bank read, before the breath update/polar step; params in
+build_params ~line 3198): per loop breath kb=1..K_B-1 (breath 0's grounding read has no slot
+state and no mixer today — nothing to replace there; the stack's scope is exactly the mixer's,
+no wider), the SAME shared dp{i}_* weights (i=0..N-1) run {LayerNorm -> self-attn over L_TOT
+slots (slot_mask respected, additive -1e4) -> residual; LayerNorm -> cross-attn slots(Q) over
+`waist` (tokmask respected) -> residual; LayerNorm -> FFN -> residual}, weights SHARED across
+breaths / DISTINCT across blocks ("breaths never specialize, heads do"). ReZero at birth: dp{i}_wo
+/ dp{i}_xwo / dp{i}_ffn_w2 (+biases) are ZERO-init off a dedicated RandomState (seed+16180); every
+other matrix is standard small-random. THE REPLACEMENT, REVISED same day after a real crash (see
+below): the base mixer + the FED twin (one organ family, sharing bq/bk/bv/W_bo) still run FOR
+REAL every breath — every one of those params keeps a defined (possibly zero, never None)
+gradient, the project's own None-grad law — but h_slot's VALUE is discarded (`h_slot = h_slot *
+0.0`) and replaced by the depth stack's own delta (`h_slot = h_slot + (_depth_stack(...) -
+cur)`); this is the ALG_BREATH_ARM "tok"/"slot" zero-mult idiom applied to a whole organ family,
+not a literal skip (a literal skip of the mixer's compute broke the None-grad law on the first
+attempt — W_bq/mh_*/fed_mx_hg/alt_g would never touch the graph at all). Stations 3/4/5
+(ALG_ALT21, a slots<-TOKENS road, not slot-to-slot; station 4 pruned in the champion recipe
+regardless) are untouched. The role pointer / router / busreg FINAL-BREATH injections (forward()'s
+own code after the breath loop returns) are OUTSIDE breath_step entirely, untouched by
+construction. ALG_DEPTH added to step_trainer.py's REFUSED tuple (own line, end of list): the
+walker's per-seam heads_of calls never call breath_step or _depth_stack at all.
+
+A REAL SIGSEGV WAS FOUND, BISECTED, AND WORKED AROUND (not a bug in this organ's math): ALG_DEPTH's
+step-1 (TinyJit's SECOND call — the REPLAY, not the trace) reliably crashed on DEV=CPU. ~20
+reproductions bisected it to a tinygrad CPU (HCQ) backend bug in GRAPH BATCHING
+(tinygrad/engine/jit.py's graph_split_rewrite -> create_graph_call -> HCQGraph; CPUDevice is an
+HCQCompiled, the SAME graph-of-command-queues abstraction the AM GPU driver uses) — proven
+independent of the organ's correctness: the crash is IDENTICAL whether the new dp{i}_* tensors
+run real attention/FFN, are reduced to trivial zero-mult sums, or are NEVER REFERENCED AT ALL in
+forward() (ALG_FREEZE-excluded from the optimizer too — 27 params frozen, crash unchanged); a
+single small (4,4) extra tensor does NOT crash, so it is a count/threshold effect in the HCQ
+graph batch, not "any new tensor"; shrinking the FFN hidden dim to 8 (removing the two largest
+matrices) does not avoid it either. JIT=0 (fully eager) and JIT=2 (tinygrad's own
+graph_split_rewrite skipped when JIT>=2) both reproduce role8/depth4's correct numbers with NO
+crash (step0=6.8697 step1=1.0207, matching across three independent eager/no-graph reproductions)
+— proving the MATH is right. THE FIX: JIT_BATCH_SIZE=1 (graph batches capped at size 1, so
+graph_split_rewrite's flush_batch never wraps >=2 kernels into one HCQGraph CUSTOM_FUNCTION —
+ordinary per-kernel JIT caching, and its speed, stays on) runs clean AND leaves role8/unset's own
+bit-identical numbers UNCHANGED (verified: 6.5535/1.1061 exactly). THE READ PATH (ALG_JIT_READ=1,
+a separate captured graph with no backward) does NOT reproduce the crash even WITHOUT the
+workaround — only the TRAINING step's graph (forward+backward+opt.step, the larger one) hits the
+threshold. NOT YET VERIFIED ON DEV=PCI+AMD (the GPU was owned by SR_241 for this entire build) —
+rack_chain_LT.sh runs its OWN pre-arm GPU smoke (BATCH=2 STEPS=2, under the gpu.lock) BEFORE firing
+the 48k arm, and carries JIT_BATCH_SIZE=1 into the real run ONLY if the smoke itself reproduces
+the crash there too; the smoke's own result is in .cache/rack_chain_LT.log.
+
+THE GATE TABLE (.cache/loopedtf_gate.sh, run on wt14 and again post-merge on gen-weights,
+JIT_BATCH_SIZE=1 throughout): unset 5.2995/0.0279 (bit-identical); role8 6.5535/1.1061
+(bit-identical); depth4 finite at steps 0/1 (NOT expected to equal role8 — the mixer is
+genuinely bypassed by value, not merely at birth, unlike the sorting room's own additive form).
+THE IDENTITY PROOF (scripts/depth_identity_probe.py, forward()-only, no TinyJit): depth4 with the
+stack's blocks forced OFF (ALG_DEPTH_STUB=1, `_depth_stack` returns `cur` with no compute) vs
+forced ON (real ReZero compute) — maxdiff=0.000e+00 over every forward()-output key, proving the
+real attention/FFN math mathematically cancels to the stub's trivial answer at birth (the
+mandatory-road law's AJAR form). THE GRAD PROBE (scripts/depth_grad_probe.py, eager): only
+dp{i}_wo/dp{i}_xwo/dp{i}_ffn_w2 (+biases) are nonzero at step 0 (the ReZero signature, exactly
+the sorting room's own "cold-init caveat"); the whole stack's road is live (nonzero grad norm).
+THE KNOB CENSUS (scripts/depth_knob_census.py; the arm's own registered bar, "every block >= 5%
+of the state at the last breath") is INERT by construction on an untrained checkpoint (expected —
+ReZero is exactly zero at init); the real bar reads LT_241's own trained checkpoint, in the chain.
+THE READ SMOKE (scripts/depth_read_identity_smoke.py, loop_val, ALG_JIT_READ=1): both role8 and
+depth4 decode finitely on an untrained warm checkpoint; NOT expected to agree with each other
+(stated in the smoke's own docstring — unlike the sorting room's analogous smoke, which DOES
+expect agreement because its road only adds a ReZero'd stack after an already-warm projection;
+this road zeroes a warm, nonzero mixer output and replaces it, a real difference even at init).
+
+BARS/KILL (unchanged from the registration): masked wild LT_241 vs PMS8_241 >= PMS8 + 0.020 OR a
+twin pair; args >= 0.47 (PMS8 0.43-0.45); mint not down > 0.02; THE KNOB CENSUS reported at the
+arm's end (every block >= 5% of the state at the last breath, else the block is inert and the
+census says so). KILL: masked down, OR args unmoved AND rows down.
+
+FIRED: .cache/queue_lt.sh waited on "SR CHAIN COMPLETE" in .cache/rack_chain_SR.log, merged branch
+loopedtf (236d5195; a REFUSED-tuple conflict against a sibling
+worktree's own REFUSED-tuple addition, if any, resolved mechanically by
+scripts/resolve_refused_merge.py — a union of both sides' new flags, never a real divergence),
+ran the post-merge gate (identical table to wt14's own, above), preflight PASSED, fired
+pc-lt-watch + pc-lt (21:26) — LT_241 (PMS8's recipe + ALG_DEPTH=4, random init, form_mix_pm35c,
+48k, B=8) is running now, against PMS8_241.
+
+Artifacts: scripts/phase1_algebra_head.py (`_depth_stack`, build_params, breath_step),
+scripts/depth_grad_probe.py, scripts/depth_identity_probe.py, scripts/depth_read_identity_smoke.py,
+scripts/depth_knob_census.py, scripts/resolve_refused_merge.py; .cache/loopedtf_gate.sh,
+.cache/rack_chain_LT.sh, .cache/queue_lt.sh; .cache/loopedtf_gate.log, .cache/loopedtf_merge_gate.log.
