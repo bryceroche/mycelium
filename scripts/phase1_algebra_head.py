@@ -1602,6 +1602,25 @@ assert ALG_POLAR or not (POLAR_D or POLAR_EM), \
     ("ALG_POLAR_D / ALG_POLAR_EM ride on the polar direction u — they "
      "require ALG_POLAR=1 (refusing a door that would do nothing)")
 assert POLAR_D >= 0 and POLAR_EM == POLAR_EM, "bad ALG_POLAR_D/ALG_POLAR_EM"
+# THE WAIST SKIP, FORM A (2026-10-09; ledger 18:56 — Bryce: "we have the compression 512 -> 128
+# but we're missing the skip connections when zooming back in on the right side of the U-Net"):
+# a GATED bypass around the content-plane waist's rank-128 squeeze. c' = P c + g * (c - P c)
+# where P c is _polar_waist's own reconstruction (u @ W_down @ W_up) and g = sigmoid(theta) is a
+# per-content-dim learned gate (384 of them, plane-ordered — the SAME order _hier_band_dims
+# slices for the per-band census, whether or not ALG_HIER_WAIST is set: band membership is a
+# property of plane order, not of the block-diagonal waist). theta is born at ALG_WAIST_SKIP_INIT
+# (default -4.0: g ~ 0.018), NEVER at -inf — the mandatory-road/knob law: the bypass is LIVE from
+# birth, not a zero-gain invitation; bit-identity to role8 belongs to the FLAG (ALG_WAIST_SKIP=0
+# never allocates waist_skip_theta at all, the SAME structural mechanism ALG_SELFMATCH/
+# ALG_PAIRCMP use), never to the gate's own value. Rides on ALG_POLAR_D (there is no P c to skip
+# around otherwise). The clock dims stay bitwise untouched: the scatter constant `sel` (from
+# _polar_sink) carries exact zeros outside the content block, and `cn` (P c) is already exactly
+# zero on every clock dim, so the added term g * (u*gc - cn) is exactly 0.0 there too.
+ALG_WAIST_SKIP = int(os.environ.get("ALG_WAIST_SKIP", "0"))
+ALG_WAIST_SKIP_INIT = float(os.environ.get("ALG_WAIST_SKIP_INIT", "-4.0"))
+assert not ALG_WAIST_SKIP or (ALG_POLAR and POLAR_D), \
+    ("ALG_WAIST_SKIP rides on the content-plane waist (ALG_POLAR=1 ALG_POLAR_D=<d>) — "
+     "there is no P c reconstruction to skip around otherwise")
 _POLAR_SINK = None          # (cdim, sel, gate_content, gate_clock, gate_pl)
 _POLAR_SINK_SHOWN = False
 
@@ -1684,7 +1703,60 @@ def _polar_waist(u, p, state):
         state["polar_wu_eff"] = _pwu @ _sel.transpose(-2, -1)
     _wu = state["polar_wu_eff"]                          # (d, H_W)
     _cn = (u @ _wd) @ _wu                # exact zeros on every clock dim
+    if ALG_WAIST_SKIP:
+        _cn = _polar_waist_skip(u, p, state, _cn, _sel, _gc)
     return _polar_keepnorm(u * _gk + _cn, u, _gc)
+
+
+def _polar_waist_skip(u, p, state, cn, sel, gc):
+    """ALG_WAIST_SKIP, FORM A (2026-10-09; ledger 18:56 — THE WAIST SKIP):
+    c' = P c + g * (c - P c) on the content block, g = sigmoid(theta) per
+    content dim (384, plane-ordered — the same order _hier_band_dims
+    slices, whether or not ALG_HIER_WAIST is set). `cn` is P c (already
+    exactly zero on every clock dim); `u * gc` is c (u's own content
+    block, clock zeroed). g is scattered from (C,) into (1, 1, H_W)
+    through `sel` — the SAME scatter constant _polar_waist uses, zero
+    outside the content block — so the added term is exactly 0.0 on
+    every clock dim too, matching `cn`'s own zeros there. Cached per
+    forward in `state` (the polar_wd_eff/polar_wu_eff convention): theta
+    does not move within a forward, so one scatter serves every breath.
+    The whole result is handed back to _polar_waist's own keepnorm call
+    unchanged — the skip rides INSIDE the content block the waist already
+    owns, it does not touch the keepnorm norm-restoration itself."""
+    _g = state.get("waist_skip_gate")
+    if _g is None:
+        _graw = p["waist_skip_theta"].sigmoid()                  # (C,) in (0, 1)
+        _g = (sel @ _graw.reshape(-1, 1)).reshape(1, 1, -1)       # (1, 1, H_W), zero on clock dims
+        state["waist_skip_gate"] = _g
+        state["waist_skip_gate_raw"] = _graw                     # (C,): the census's own read
+    _skip = _g * (u * gc - cn)                                   # exactly 0.0 on every clock dim
+    _wsc = globals().get("_WAISTSKIP_CENSUS")                    # THE KNOB CENSUS (armed only by a
+    if _wsc is not None:                                         # census script, never by do_train's
+        _cn_new = cn + _skip                                     # real JIT'd step — the paircmp/sort
+        _s0 = (u * u * gc).sum(-1, keepdim=True)                  # census convention exactly)
+        _s1 = (_cn_new * _cn_new * gc).sum(-1, keepdim=True)
+        _p0 = _s0 > 0; _p1 = _s1 > 0
+        _n0 = _p0.where(_p0.where(_s0, 1.0).sqrt(), 0.0)
+        _n1 = _p1.where(_p1.where(_s1, 1.0).sqrt(), 1.0)
+        _ratio = _n0 / _n1                                        # keepnorm's own per-(B,L) scalar
+        _skip_c = _skip @ sel                                     # (B, L, C): content-only view
+        _cn_c = cn @ sel
+        _a, _b, _c3 = _HIER_PLANES                                # root/branch/leaf PLANE counts
+        _bounds = (0, 2 * _a, 2 * _a + 2 * _b, 2 * _a + 2 * _b + 2 * _c3)
+        _graw = state["waist_skip_gate_raw"]
+        _wsc.append({
+            "std_skip_pre": float(_skip_c.std(axis=-1).mean().numpy()),
+            "std_pc_pre": float(_cn_c.std(axis=-1).mean().numpy()),
+            "std_skip_post": float((_skip_c * _ratio).std(axis=-1).mean().numpy()),
+            "std_pc_post": float((_cn_c * _ratio).std(axis=-1).mean().numpy()),
+            "g_mean": float(_graw.mean().numpy()),
+            "g_band_root": float(_graw[_bounds[0]:_bounds[1]].mean().numpy()),
+            "g_band_branch": float(_graw[_bounds[1]:_bounds[2]].mean().numpy()),
+            "g_band_leaf": float(_graw[_bounds[2]:_bounds[3]].mean().numpy()),
+            "g_max": float(_graw.max().numpy()),    # THE KILL CHECK'S OWN instrument: "g < 0.1
+                                                      # EVERYWHERE" is a max, not a band mean
+        })
+    return cn + _skip
 
 
 def _polar_em(u, msk, kappa):
@@ -3461,6 +3533,15 @@ def build_params(seed=0):
             f"{POLAR_BANDS} — the waist would collapse the wrong dims")
         p["polar_wd"] = t(_wd0)
         p["polar_wu"] = t(_wu0)
+    if ALG_WAIST_SKIP:
+        # THE WAIST SKIP, FORM A: one learned scalar per content dim (384,
+        # plane-ordered), born at ALG_WAIST_SKIP_INIT — LIVE from birth (the
+        # knob law), never zero. ALG_WAIST_SKIP=0 never reaches this branch,
+        # so waist_skip_theta never exists in p at all (the SAME structural
+        # bit-identity mechanism as sm_w_self/pc_w1: `"waist_skip_theta" in
+        # p` is the only gate _polar_waist's forward code needs).
+        _nc_ws = len(_polar_sink()[0])
+        p["waist_skip_theta"] = t(np.full(_nc_ws, ALG_WAIST_SKIP_INIT, dtype=np.float32))
     global _POLAR_SINK_SHOWN
     if ALG_POLAR and (POLAR_D or POLAR_EM) and not _POLAR_SINK_SHOWN:
         # THE SINK DOOR: one line, once, naming what is about to run.

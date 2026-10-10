@@ -128,7 +128,15 @@ REFUSED = ("ALG_SHELF", "ALG_WHIP", "ALG_TOKLOOP", "ALG_WRITEBACK", "ALG_KANNEAL
            # for this build, named separately so a future narrowing of the
            # ALG_SELFMATCH refusal does not silently let this one through
            # untested too.
-           "ALG_SORT", "ALG_SORT_KEY", "ALG_SORT_KEY_GAIN")
+           "ALG_SORT", "ALG_SORT_KEY", "ALG_SORT_KEY_GAIN",
+           "ALG_WAIST_SKIP", "ALG_WAIST_SKIP_INIT")
+           # THE WAIST SKIP, FORM A (2026-10-09): _polar_waist's own in-head gated bypass
+           # (waist_skip_theta against the content-plane waist's reconstruction) is the fused
+           # forward()'s single source of truth and would in fact thread fine through the
+           # walker's per-seam heads_of calls on its own (breath_step calls _polar_waist the
+           # same way either path reaches it) — refused anyway, by the word given for this
+           # build, named separately so a future narrowing of a nearby ALG_POLAR_D/ALG_HIER_WAIST
+           # refusal does not silently let this one through untested too.
            # THE SORTING ROOM form 2 (2026-10-09): forward()'s own rebinding of the local `waist`
            # name (ALG_SORT) and breath_step's ctx["tok_key"] read (ALG_SORT_KEY) are the fused
            # forward()'s single source of truth; the walker never calls forward() at all (its own
