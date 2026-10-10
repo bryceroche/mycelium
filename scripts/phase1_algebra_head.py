@@ -3008,6 +3008,46 @@ def build_params(seed=0):
         _pc_c3 = 3 * sum(2 * _x for _x in _HIER_PLANES)   # 3 * 384 = 1152
         p["pc_w1"], p["pc_b1"] = lin(_pc_c3, _pc_h)
         p["pc_w2"], p["pc_b2"] = lin(_pc_h, 1)
+    if int(os.environ.get("ALG_ARGSRES", "0")):
+        # THE ARGS-CONDITIONED RES (2026-10-09; ledger "THE ORACLE'S READING" after PC_241's
+        # null + THE OWN-SUPPRESSION ORACLE: clamping the OWN index with the GOLD direction
+        # more than doubles inverse res accuracy on BOTH prior bodies (0.25 -> 0.60/0.62,
+        # PMS8/PC_241) -- the direction is a real, large lever, but THE PAIRWISE COMPARATOR
+        # ROAD's term for the OWN candidate only ever saw (h_i, v_own); the direction probe's
+        # cleanest read WITHOUT the self-match shortcut (feature set E, args' states alone, no
+        # own state) still nearly cleared the PRESENT bar (wild AUROC 0.84-0.85) -- the
+        # direction signature lives in own + the ARGS' states, not own alone, and neither
+        # ALG_SELFMATCH (a single scalar) nor ALG_PAIRCMP (own vs ONE candidate at a time)
+        # ever gave the res pointer a term reading the args head's PREDICTED ARGS AS A WHOLE.
+        # THE BUILD: m_i = a soft readout of factor slot i's predicted args' CONTENT states --
+        # a_ik = sigmoid(args_logit[i, k]), the SAME membership probability the args decode
+        # itself reads ("args sigmoid > theta" -- args is BCE-trained 2-hot, a softmax read is
+        # wrong there; see the ALT2 commit adapter's own docstring above), NOT detached (the
+        # two-terminal law: the res loss's gradient is allowed to flow back through the args
+        # logits too; a census of that gradient's norm relative to the args head's own loss
+        # gradient is this arm's build-time report, not a training gate). v_k restricted to
+        # the 384 CONTENT dims (_paircmp_content_sel(), the SAME door THE PAIRWISE COMPARATOR
+        # ROAD and direction_probe.py both read) -- m_i = a_i @ v_content, (B, L_FAC, C).
+        # res_logit[i, j] gains phi([h_i, v_j, m_i, v_j * m_i]) (4*384 = 1536-wide input;
+        # h_i/v_j = the SAME content-restricted factor/candidate states ALG_PAIRCMP reads,
+        # m_i/v_j*m_i the new args-conditioning terms) for EVERY (i, j) pair, not diagonal-only
+        # (ALG_PAIRCMP's own non-assumption about K_VARS==L_FAC carried forward -- this term
+        # makes no slot-index==own-variable-index assumption either). Hidden layer small-
+        # random (lin()'s convention); OUTPUT layer ALSO small-random (THE PAIRWISE COMPARATOR
+        # ROAD's knob-law correction after SM_241's "inert by scale" autopsy applied again
+        # here: a zero-init output layer repeats that shape even while nominally live) --
+        # bit-identity to the unset arm comes STRUCTURALLY from ALG_ARGSRES=0 never allocating
+        # ar_w1/ar_b1/ar_w2/ar_b2 at all, never from a zero-valued layer. ALG_ARGSRES_SCALE (a
+        # FIXED, non-learned python float, not a Tensor param) sets the term's magnitude at
+        # birth to the knob law's own floor (>= 10% of the res bilinear's own std across
+        # candidates, measured on the WARM gate fixture -- THE PAIRWISE COMPARATOR ROAD's own
+        # calibration lesson: the champion fixture ALWAYS warm-starts, so "at init on the
+        # fixture" means a TRAINED res bilinear, not a fresh-random one -- see
+        # .cache/argsres_gate.log's "[argsres-knob]" census lines).
+        _ar_h = int(os.environ.get("ALG_ARGSRES_H", "64"))
+        _ar_c4 = 4 * sum(2 * _x for _x in _HIER_PLANES)   # 4 * 384 = 1536
+        p["ar_w1"], p["ar_b1"] = lin(_ar_c4, _ar_h)
+        p["ar_w2"], p["ar_b2"] = lin(_ar_h, 1)
     p["h_islit"], p["h_islit_b"] = lin(H_W, 1)
     p["h_dig"], p["h_dig_b"] = lin(H_W, N_DIG * 10)
     if ALG_WIDE:                              # E1: the sign terminal
@@ -4389,6 +4429,21 @@ def _paircmp_content_sel():
 ALG_PAIRCMP_SCALE = float(os.environ.get("ALG_PAIRCMP_SCALE", "20.0"))
 
 
+# THE ARGS-CONDITIONED RES's fixed (non-learned) output multiplier (2026-10-09; the SAME
+# knob-law calibration THE PAIRWISE COMPARATOR ROAD needed: the champion gate fixture ALWAYS
+# warm-starts (WARM_FROM balV242, every config), so "at init on the fixture" means a TRAINED
+# res bilinear (std ~11.8), not a fresh-random one (std ~0.06) -- the two regimes differ
+# ~200x in the bilinear's own std while this term's raw output (always fresh-random, since
+# ar_w1/ar_w2 never exist in a pre-argsres checkpoint) differs only ~10-15x across the same
+# two regimes. Default measured against the WARM regime (the fixture's real init state, the
+# only regime that matters for the bit-identity/knob-census gate reads) -- see
+# .cache/argsres_gate.log's "[argsres-knob]" KNOB-FRESH/KNOB-WARM lines for both readings;
+# the chain's own post-training knob census (scripts/argsres_knob_census.py) is the arm's
+# REAL arbiter per the pinned bar (the term's std at the LAST breath >= 10% of the bilinear's
+# own std, else the arm is VOID BY THE KNOB LAW -- not a verdict on the form).
+ALG_ARGSRES_SCALE = float(os.environ.get("ALG_ARGSRES_SCALE", "20.0"))
+
+
 # THE EYES (2026-10-05; the 10:38 spec, registered as a build at 12:56 — hill 7's first arm):
 # a U-Net INSIDE the loop that reads the head's OWN state as a PICTURE in the membrane's
 # coordinates, slots x tokens, every loop breath kb >= 1 (breath 0's grounding read is never
@@ -5495,6 +5550,37 @@ def _heads_of(p, s, vst, B, dirgold=None):
                          float(_pc_term.std(axis=-1).mean().numpy()),
                          float(_res_out.std(axis=-1).mean().numpy())))
         _res_out = _res_out + _pc_term
+    if "ar_w1" in p:
+        # THE ARGS-CONDITIONED RES (2026-10-09, build registration above). a_ik = the args
+        # head's PREDICTED membership (sigmoid of _args_out, the SAME tensor the args decode
+        # itself reads — computed once above, reused here, never recomputed and never gold;
+        # NOT detached — the two-terminal law). m_i = the args-weighted soft readout of the
+        # candidate states, content dims only (_paircmp_content_sel(), the SAME door
+        # ALG_PAIRCMP reads). phi([h_i, v_j, m_i, v_j*m_i]) -> scalar, added to EVERY
+        # res_logit[i, j] (24x24, not diagonal-only).
+        _ar_sel, _ar_c = _paircmp_content_sel()
+        _ar_hc = s @ _ar_sel                                               # (B, L_FAC, C): h_i
+        _ar_vc = vst @ _ar_sel                                             # (B, K_VARS, C): v_j
+        _ar_aprob = _args_out.sigmoid()                                    # (B, L_FAC, K_VARS): a_ik, NOT detached
+        _ar_m = _ar_aprob @ _ar_vc                                         # (B, L_FAC, C): m_i
+        _ar_h4 = _ar_hc.unsqueeze(2).expand(B, L_FAC, K_VARS, _ar_c)
+        _ar_v4 = _ar_vc.unsqueeze(1).expand(B, L_FAC, K_VARS, _ar_c)
+        _ar_m4 = _ar_m.unsqueeze(2).expand(B, L_FAC, K_VARS, _ar_c)
+        _ar_feat = _ar_h4.cat(_ar_v4, _ar_m4, _ar_v4 * _ar_m4, dim=-1)     # (B, L_FAC, K_VARS, 4C)
+        _ar_hid = (_ar_feat @ p["ar_w1"] + p["ar_b1"]).relu()
+        _ar_raw = (_ar_hid @ p["ar_w2"] + p["ar_b2"]).squeeze(-1)          # (B, L_FAC, K_VARS), pre-scale
+        _ar_term = _ar_raw * ALG_ARGSRES_SCALE                            # fixed, non-learned multiplier
+        # THE KNOB CENSUS (the pre/post knob law): inert unless a census script sets the
+        # module global _ARGSRES_CENSUS to a list BEFORE calling forward() eagerly (never
+        # during do_train's real JIT'd step — the SAME safety argument as _PAIRCMP_CENSUS
+        # above: nothing in the training path ever sets this global, so the branch below is
+        # skipped at JIT trace time and never enters the captured graph).
+        _arc = globals().get("_ARGSRES_CENSUS")
+        if _arc is not None:
+            _arc.append((float(_ar_raw.std(axis=-1).mean().numpy()),
+                         float(_ar_term.std(axis=-1).mean().numpy()),
+                         float(_res_out.std(axis=-1).mean().numpy())))
+        _res_out = _res_out + _ar_term
     return {
         "pres": (_sR @ p["h_pres"] + p["h_pres_b"]).squeeze(-1),
         "ftype": _sR @ p["h_ftype"] + p["h_ftype_b"],
