@@ -50623,3 +50623,54 @@ a chain's late probe must be smoke-tested at the gate against a warm checkpoint 
 fixture's. The verdict stands on the complete reads; the clock probe is a mechanism read, not a bar on the slot.
 
 ### 2026-10-10 (08:0x) — CS_241's trained clock probe, re-run under the family env (scripts/clocksep_probe.py fixed, commit 7107f263): acc 0.9955 / severed (ALG_SEVER=clockband) 0.3333 — clears the >= 0.95 bar; breath time survives 48k steps in the register and the sever drops it hard, same shape as the gate's own init-time read (1.0000 / 0.3333) — the mechanism works; the arm's non-fire verdict above is unaffected (every verdict read had already landed before the probe step died).
+
+### 2026-10-10 (08:16) — THE PERCEIVER AS THE VALUE FUNCTION (read 1): the atlas angle on the picker's judge — rows 23/311 (floor 18/18, ceiling 43), 2 regressions — MISSES the pinned bar by ONE ROW, does NOT trigger the kill (zero GPU; scripts/picker/pvalue_judge.py [new], PMS8_241)
+
+Per the 2026-10-09 12:16 registration's build item (a). Built on the leak-free v2 panel picker
+(.cache/picker/{cand_diet,cand_wild_PMS8_241,feat_{diet,wild}_v2,model_v2}.pkl, unedited) — nothing
+in welford_atlas.py/build_features.py/train_picker.py/wild_read.py touched; pvalue_judge.py only
+imports them. FEATURE-LIST DIFF (printed by the script, the task's own requirement): the 20 base
+features (status/unique/loglik/length/nlc/flips) have EMPTY overlap with the fixture's gold fields
+(factors/solution/decisions/mentions/query_var/key/n_vars/m); the twin flag stays diagnostic-only,
+never in X. FOUR NEW ATLAS FEATURES, each a function of (a candidate's OWN decoded fact's ftype/op
+-> welford_atlas.gold_kind, called on the DECODE, never a gold fact) x (the row+slot's fixed
+final-breath content state, read from the already-banked .cache/clock_band_states_PMS8_241.npz /
+.cache/welford_atlas_PMS8_241_diet_states_breaths.npz) x (the diet-built content Welford library,
+.cache/welford_atlas_PMS8_241_content{,_breaths}.npz, built once offline from gold-graded diet rows
+per the 2026-10-07 ruling): atlas_cos_mean (mean cosine to the decoded kind's own centroid),
+atlas_jsd_ent_mean/atlas_jsd_ent_min (entropy of the softmax-over-5-present-kinds responsibility
+vector, tau*=0.1 by welford_atlas.tune_tau's own sweep, flat spread 0.0083 < 0.01 -> the fixed
+fallback), atlas_dsl_agree_share (nearest-centroid kind vs the candidate's own decoded kind, share
+of agreeing slots). Zero NaNs on either side (0/23642 diet, 0/13613 wild) — the impute-with-diet-mean
+path is a stated safety net, never exercised.
+
+DIET (5-fold GroupKFold by row, in-sample per the 10-07/10-09 register erratum — stated, not hidden):
+  top-1 310/775 (0.400)  consistency judge 296/775 (0.382)  v2-no-atlas CV 305/775 (0.394)
+  v3 FULL (+atlas, 24 feats) CV 302/775 (0.390) -- atlas COSTS 3 rows in-sample
+  ABLATION (vs v3 FULL): -status +2  -unique +15  -loglik +21  -length -23  -nlc -45  -flips -97  -atlas +3
+  SPECIAL (status+atlas only, no loglik/length/nlc/flips/unique): 175/775 (0.226) -- far below both
+  the full model and the no-atlas picker: the atlas alone is a weak freestanding scorer, same
+  reading as the 2026-10-05 ablation's loglik/twin finding -- its value is only IN COMBINATION.
+
+THE ONE WILD READ (311 rows, diet-trained v3 model, applied once):
+  top-1 (this pipeline) 14/311
+  consistency judge (hand rule, ledger 10-05 11:50):      18/311, 0 regressions
+  panel picker v2 (learned, no atlas, ledger 10-06 21:44): 18/311, 4 regressions
+  PERCEIVER-AS-VALUE v3 (learned, +atlas):                 23/311, 2 regressions
+  ceiling (the combined oracle bound):                     43/311
+  FIXES (11): rows 9,18,43,55,58,94,167,227,247,255,266   REGRESSIONS (2): rows 81,254
+  BAR (pinned: rows>=24, regressions<=2): rows=23, regressions=2 -> MISS BY ONE ROW
+  KILL (pinned: <20 with the atlas angle): 23 >= 20 -> NOT KILLED
+
+READING: the atlas angle is the first picker variant to clear BOTH standing floors at once (above
+the consistency judge's 18 AND the no-atlas panel picker's 18, at the no-atlas picker's own
+regression count exactly at the bar's own limit) while still missing the pinned rows>=24 bar by a
+single row -- a real, reproducible lift (+5 rows over the no-atlas picker, same regression budget)
+that the diet's own in-sample CV ablation gets BACKWARDS (atlas costs 3 rows there): the diet slice
+is memorized (the 10-09 17:42 register-split erratum) and cannot calibrate a feature whose value is
+a wild-regime property, the same wall the direction tie-break and the perceivers hit on 10-07/10-09.
+Honest negative-adjacent (one row short of the bar, not a kill): the atlas earns a place in the
+judge's feature set on the wild evidence the diet CV cannot see, but the registration's own bar was
+pinned at a third of the room and this read does not clear it. Artifacts: scripts/picker/
+pvalue_judge.py; .cache/pvalue_judge_{report,PMS8_241}.txt, .cache/pvalue_judge_feat_{diet,wild}_v3.pkl,
+.cache/pvalue_judge_model_v3.pkl.
