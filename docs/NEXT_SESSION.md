@@ -1,18 +1,13 @@
-# NEXT SESSION — cold-start entry (updated 2026-10-09 18:05)
+# NEXT SESSION — cold-start entry (updated 2026-10-10 03:20)
 
-**SR_241 IS ON THE CARD (fired 18:0x; pc-sr + pc-sr-watch; .cache/sharp_SR_241.log; chain .cache/rack_chain_SR.log; the stack ~1.3-1.5x
-step cost -> ~2-2.5 h + reads).** THE SORTING ROOM form 2 (ALG_SORT=4: four pre-norm MHA blocks at 512-d over the 256 token
-states, ReZero/identity-at-init, REPLACING the states every bank read consumes = the mandatory road; the owner-key flag ALG_SORT_KEY
-built, NOT in this arm; merged c11e5d1d, ledger c16bf6c4). BARS: first-look twin-pick <= 0.35 (PMS8 0.456), other-sentence share
-<= 0.40 (0.47), masked wild +0.020 vs PMS8_241 or a twin pair, mint not down > 0.02; KILL: twin-pick and other-sentence both unmoved.
-THE DAY'S VERDICTS (10-09): SM_241 null (inert by scale), PC_241 null WITH the knob at 1.59x (the comparator for the own candidate
-never saw the args' states), THE OWN-SUPPRESSION ORACLE: the direction IS a lever (gold clamp -> inverse res 0.60/0.62; B rank 2 on
-40%; residue = the other arg C 55%), THE DIRECTION TIE-BREAK does not clear (tau on the diet degenerates), THE REGISTER SPLIT: the
-valid2 slice is IN-SAMPLE (memorized; calibration needs a third held-out pool) and the forward-default failure is a PROSE prior
-(0.80 diet pen = 0.79 wild vs 0.014 mint). REGISTERED (word): THE ARGS-CONDITIONED RES (the res reads the args head's predicted
-soft selection of variable states); the hourglass sorting room (2b); the six alternations behind the gym pre-read + head diff A;
-the perceiver as the value function (picker bars 24/2); the re-admission table; the diet-hygiene pass; unmemorized inverse PROSE
-(the n lever in the wild register). MEASUREMENT NOTE: the trainer's step-N loss is POST-update. Updated 18:05.
+**THE NIGHT'S QUEUE (10-10 03:20):** LT_241 DOES NOT FIRE (masked +0.0034 z 0.36; args 0.431 unmoved; rows 18; mint +0.046; knob census
+PASS all blocks live = a road live at scale that moved nothing: depth on the slot side is not the lever). WS_241 (THE WAIST SKIP A) is
+in its resumed queue (the waistskip merge conflicted on step_trainer's REFUSED list — the auto-resolver's shape assumption broke on
+loopedtf's trailing comment; resolved by hand 90a79be2; the resume runs the post-merge gate then fires pc-ws). Then: the clock-band
+pre-read + CS_241 (pc-queue-cs) -> AR_241 (pc-queue-ar) -> SR_242 (pc-queue-sr2). SR_241 VERDICT stands (slot frame fires +0.0239
+z 2.16, rows 23 record, digits +0.053; mechanism frame refuted). Morning: read WS/CS/AR/SR_242 paired vs PMS8_241; the twin decides
+the record; consult the re-admission table for every null. RULE (new): a queue's merge resolver must handle any REFUSED-list shape
+(union of both sides) or abort BEFORE waiting hours — test it against the live branches before arming. Updated 03:20.
 
 **THE CARD IS IDLE (09:38).** THE DIRECTION PROBE FIRED (zero-GPU; scripts/direction_probe.py; .cache/direction_probe_PMS8_241.txt):
 PRESENT-BUT-UNEXPRESSIBLE — a read-out trained on PMS8_241's own frozen states reaches wild AUROC 0.98 (own state + both gold args'

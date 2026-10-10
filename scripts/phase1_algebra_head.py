@@ -1669,6 +1669,25 @@ assert ALG_POLAR or not (POLAR_D or POLAR_EM), \
     ("ALG_POLAR_D / ALG_POLAR_EM ride on the polar direction u — they "
      "require ALG_POLAR=1 (refusing a door that would do nothing)")
 assert POLAR_D >= 0 and POLAR_EM == POLAR_EM, "bad ALG_POLAR_D/ALG_POLAR_EM"
+# THE WAIST SKIP, FORM A (2026-10-09; ledger 18:56 — Bryce: "we have the compression 512 -> 128
+# but we're missing the skip connections when zooming back in on the right side of the U-Net"):
+# a GATED bypass around the content-plane waist's rank-128 squeeze. c' = P c + g * (c - P c)
+# where P c is _polar_waist's own reconstruction (u @ W_down @ W_up) and g = sigmoid(theta) is a
+# per-content-dim learned gate (384 of them, plane-ordered — the SAME order _hier_band_dims
+# slices for the per-band census, whether or not ALG_HIER_WAIST is set: band membership is a
+# property of plane order, not of the block-diagonal waist). theta is born at ALG_WAIST_SKIP_INIT
+# (default -4.0: g ~ 0.018), NEVER at -inf — the mandatory-road/knob law: the bypass is LIVE from
+# birth, not a zero-gain invitation; bit-identity to role8 belongs to the FLAG (ALG_WAIST_SKIP=0
+# never allocates waist_skip_theta at all, the SAME structural mechanism ALG_SELFMATCH/
+# ALG_PAIRCMP use), never to the gate's own value. Rides on ALG_POLAR_D (there is no P c to skip
+# around otherwise). The clock dims stay bitwise untouched: the scatter constant `sel` (from
+# _polar_sink) carries exact zeros outside the content block, and `cn` (P c) is already exactly
+# zero on every clock dim, so the added term g * (u*gc - cn) is exactly 0.0 there too.
+ALG_WAIST_SKIP = int(os.environ.get("ALG_WAIST_SKIP", "0"))
+ALG_WAIST_SKIP_INIT = float(os.environ.get("ALG_WAIST_SKIP_INIT", "-4.0"))
+assert not ALG_WAIST_SKIP or (ALG_POLAR and POLAR_D), \
+    ("ALG_WAIST_SKIP rides on the content-plane waist (ALG_POLAR=1 ALG_POLAR_D=<d>) — "
+     "there is no P c reconstruction to skip around otherwise")
 _POLAR_SINK = None          # (cdim, sel, gate_content, gate_clock, gate_pl)
 _POLAR_SINK_SHOWN = False
 
@@ -1753,7 +1772,60 @@ def _polar_waist(u, p, state):
         state["polar_wu_eff"] = _pwu @ _sel.transpose(-2, -1)
     _wu = state["polar_wu_eff"]                          # (d, H_W)
     _cn = (u @ _wd) @ _wu                # exact zeros on every clock dim
+    if ALG_WAIST_SKIP:
+        _cn = _polar_waist_skip(u, p, state, _cn, _sel, _gc)
     return _polar_keepnorm(u * _gk + _cn, u, _gc)
+
+
+def _polar_waist_skip(u, p, state, cn, sel, gc):
+    """ALG_WAIST_SKIP, FORM A (2026-10-09; ledger 18:56 — THE WAIST SKIP):
+    c' = P c + g * (c - P c) on the content block, g = sigmoid(theta) per
+    content dim (384, plane-ordered — the same order _hier_band_dims
+    slices, whether or not ALG_HIER_WAIST is set). `cn` is P c (already
+    exactly zero on every clock dim); `u * gc` is c (u's own content
+    block, clock zeroed). g is scattered from (C,) into (1, 1, H_W)
+    through `sel` — the SAME scatter constant _polar_waist uses, zero
+    outside the content block — so the added term is exactly 0.0 on
+    every clock dim too, matching `cn`'s own zeros there. Cached per
+    forward in `state` (the polar_wd_eff/polar_wu_eff convention): theta
+    does not move within a forward, so one scatter serves every breath.
+    The whole result is handed back to _polar_waist's own keepnorm call
+    unchanged — the skip rides INSIDE the content block the waist already
+    owns, it does not touch the keepnorm norm-restoration itself."""
+    _g = state.get("waist_skip_gate")
+    if _g is None:
+        _graw = p["waist_skip_theta"].sigmoid()                  # (C,) in (0, 1)
+        _g = (sel @ _graw.reshape(-1, 1)).reshape(1, 1, -1)       # (1, 1, H_W), zero on clock dims
+        state["waist_skip_gate"] = _g
+        state["waist_skip_gate_raw"] = _graw                     # (C,): the census's own read
+    _skip = _g * (u * gc - cn)                                   # exactly 0.0 on every clock dim
+    _wsc = globals().get("_WAISTSKIP_CENSUS")                    # THE KNOB CENSUS (armed only by a
+    if _wsc is not None:                                         # census script, never by do_train's
+        _cn_new = cn + _skip                                     # real JIT'd step — the paircmp/sort
+        _s0 = (u * u * gc).sum(-1, keepdim=True)                  # census convention exactly)
+        _s1 = (_cn_new * _cn_new * gc).sum(-1, keepdim=True)
+        _p0 = _s0 > 0; _p1 = _s1 > 0
+        _n0 = _p0.where(_p0.where(_s0, 1.0).sqrt(), 0.0)
+        _n1 = _p1.where(_p1.where(_s1, 1.0).sqrt(), 1.0)
+        _ratio = _n0 / _n1                                        # keepnorm's own per-(B,L) scalar
+        _skip_c = _skip @ sel                                     # (B, L, C): content-only view
+        _cn_c = cn @ sel
+        _a, _b, _c3 = _HIER_PLANES                                # root/branch/leaf PLANE counts
+        _bounds = (0, 2 * _a, 2 * _a + 2 * _b, 2 * _a + 2 * _b + 2 * _c3)
+        _graw = state["waist_skip_gate_raw"]
+        _wsc.append({
+            "std_skip_pre": float(_skip_c.std(axis=-1).mean().numpy()),
+            "std_pc_pre": float(_cn_c.std(axis=-1).mean().numpy()),
+            "std_skip_post": float((_skip_c * _ratio).std(axis=-1).mean().numpy()),
+            "std_pc_post": float((_cn_c * _ratio).std(axis=-1).mean().numpy()),
+            "g_mean": float(_graw.mean().numpy()),
+            "g_band_root": float(_graw[_bounds[0]:_bounds[1]].mean().numpy()),
+            "g_band_branch": float(_graw[_bounds[1]:_bounds[2]].mean().numpy()),
+            "g_band_leaf": float(_graw[_bounds[2]:_bounds[3]].mean().numpy()),
+            "g_max": float(_graw.max().numpy()),    # THE KILL CHECK'S OWN instrument: "g < 0.1
+                                                      # EVERYWHERE" is a max, not a band mean
+        })
+    return cn + _skip
 
 
 def _polar_em(u, msk, kappa):
@@ -3028,6 +3100,46 @@ def build_params(seed=0):
         _pc_c3 = 3 * sum(2 * _x for _x in _HIER_PLANES)   # 3 * 384 = 1152
         p["pc_w1"], p["pc_b1"] = lin(_pc_c3, _pc_h)
         p["pc_w2"], p["pc_b2"] = lin(_pc_h, 1)
+    if int(os.environ.get("ALG_ARGSRES", "0")):
+        # THE ARGS-CONDITIONED RES (2026-10-09; ledger "THE ORACLE'S READING" after PC_241's
+        # null + THE OWN-SUPPRESSION ORACLE: clamping the OWN index with the GOLD direction
+        # more than doubles inverse res accuracy on BOTH prior bodies (0.25 -> 0.60/0.62,
+        # PMS8/PC_241) -- the direction is a real, large lever, but THE PAIRWISE COMPARATOR
+        # ROAD's term for the OWN candidate only ever saw (h_i, v_own); the direction probe's
+        # cleanest read WITHOUT the self-match shortcut (feature set E, args' states alone, no
+        # own state) still nearly cleared the PRESENT bar (wild AUROC 0.84-0.85) -- the
+        # direction signature lives in own + the ARGS' states, not own alone, and neither
+        # ALG_SELFMATCH (a single scalar) nor ALG_PAIRCMP (own vs ONE candidate at a time)
+        # ever gave the res pointer a term reading the args head's PREDICTED ARGS AS A WHOLE.
+        # THE BUILD: m_i = a soft readout of factor slot i's predicted args' CONTENT states --
+        # a_ik = sigmoid(args_logit[i, k]), the SAME membership probability the args decode
+        # itself reads ("args sigmoid > theta" -- args is BCE-trained 2-hot, a softmax read is
+        # wrong there; see the ALT2 commit adapter's own docstring above), NOT detached (the
+        # two-terminal law: the res loss's gradient is allowed to flow back through the args
+        # logits too; a census of that gradient's norm relative to the args head's own loss
+        # gradient is this arm's build-time report, not a training gate). v_k restricted to
+        # the 384 CONTENT dims (_paircmp_content_sel(), the SAME door THE PAIRWISE COMPARATOR
+        # ROAD and direction_probe.py both read) -- m_i = a_i @ v_content, (B, L_FAC, C).
+        # res_logit[i, j] gains phi([h_i, v_j, m_i, v_j * m_i]) (4*384 = 1536-wide input;
+        # h_i/v_j = the SAME content-restricted factor/candidate states ALG_PAIRCMP reads,
+        # m_i/v_j*m_i the new args-conditioning terms) for EVERY (i, j) pair, not diagonal-only
+        # (ALG_PAIRCMP's own non-assumption about K_VARS==L_FAC carried forward -- this term
+        # makes no slot-index==own-variable-index assumption either). Hidden layer small-
+        # random (lin()'s convention); OUTPUT layer ALSO small-random (THE PAIRWISE COMPARATOR
+        # ROAD's knob-law correction after SM_241's "inert by scale" autopsy applied again
+        # here: a zero-init output layer repeats that shape even while nominally live) --
+        # bit-identity to the unset arm comes STRUCTURALLY from ALG_ARGSRES=0 never allocating
+        # ar_w1/ar_b1/ar_w2/ar_b2 at all, never from a zero-valued layer. ALG_ARGSRES_SCALE (a
+        # FIXED, non-learned python float, not a Tensor param) sets the term's magnitude at
+        # birth to the knob law's own floor (>= 10% of the res bilinear's own std across
+        # candidates, measured on the WARM gate fixture -- THE PAIRWISE COMPARATOR ROAD's own
+        # calibration lesson: the champion fixture ALWAYS warm-starts, so "at init on the
+        # fixture" means a TRAINED res bilinear, not a fresh-random one -- see
+        # .cache/argsres_gate.log's "[argsres-knob]" census lines).
+        _ar_h = int(os.environ.get("ALG_ARGSRES_H", "64"))
+        _ar_c4 = 4 * sum(2 * _x for _x in _HIER_PLANES)   # 4 * 384 = 1536
+        p["ar_w1"], p["ar_b1"] = lin(_ar_c4, _ar_h)
+        p["ar_w2"], p["ar_b2"] = lin(_ar_h, 1)
     p["h_islit"], p["h_islit_b"] = lin(H_W, 1)
     p["h_dig"], p["h_dig_b"] = lin(H_W, N_DIG * 10)
     if ALG_WIDE:                              # E1: the sign terminal
@@ -3284,6 +3396,29 @@ def build_params(seed=0):
             p["sort_key_w"] = t((_rSR.randn(H_W, 64) / math.sqrt(H_W)).astype(np.float32))
             p["sort_key_b"] = t(np.zeros(64, np.float32))
             p["sort_key_gain"] = t(np.full(1, float(os.environ.get("ALG_SORT_KEY_GAIN", "0")), np.float32))
+    if ALG_DEPTH:
+        # THE LOOPED TRANSFORMER (2026-10-09): N blocks of {self-attn over slots, cross-attn
+        # slots->tokens, FFN}, ReZero at birth exactly as the sorting room's own precedent — the
+        # three OUTPUT projections per block (wo, xwo, ffn_w2) are ZERO; every other matrix is
+        # standard small-random off a DEDICATED RandomState (seed + 16180, unused elsewhere) so
+        # an unset ALG_DEPTH never perturbs any other organ's rng draws from the base `rng`
+        # stream (the ALG_SORT/ALG_TOKLOOP/ALG_SHELF precedent).
+        _rDP = np.random.RandomState(seed + 16180)
+        for _i in range(ALG_DEPTH):
+            for _nm in ("wq", "wk", "wv", "xwq", "xwk", "xwv"):
+                p[f"dp{_i}_{_nm}"] = t((_rDP.randn(H_W, H_W) / math.sqrt(H_W)).astype(np.float32))
+                p[f"dp{_i}_{_nm}_b"] = t(np.zeros(H_W, np.float32))
+            p[f"dp{_i}_wo"] = t(np.zeros((H_W, H_W), np.float32))        # ZERO door (ReZero)
+            p[f"dp{_i}_wo_b"] = t(np.zeros(H_W, np.float32))
+            p[f"dp{_i}_xwo"] = t(np.zeros((H_W, H_W), np.float32))       # ZERO door (ReZero)
+            p[f"dp{_i}_xwo_b"] = t(np.zeros(H_W, np.float32))
+            p[f"dp{_i}_ln1_g"] = t(np.ones(H_W, np.float32)); p[f"dp{_i}_ln1_b"] = t(np.zeros(H_W, np.float32))
+            p[f"dp{_i}_ln2_g"] = t(np.ones(H_W, np.float32)); p[f"dp{_i}_ln2_b"] = t(np.zeros(H_W, np.float32))
+            p[f"dp{_i}_ln3_g"] = t(np.ones(H_W, np.float32)); p[f"dp{_i}_ln3_b"] = t(np.zeros(H_W, np.float32))
+            p[f"dp{_i}_ffn_w1"] = t((_rDP.randn(H_W, DEPTH_FFN_HID) / math.sqrt(H_W)).astype(np.float32))
+            p[f"dp{_i}_ffn_b1"] = t(np.zeros(DEPTH_FFN_HID, np.float32))
+            p[f"dp{_i}_ffn_w2"] = t(np.zeros((DEPTH_FFN_HID, H_W), np.float32))   # ZERO door (ReZero)
+            p[f"dp{_i}_ffn_b2"] = t(np.zeros(H_W, np.float32))
     if ALG_HUD:
         # THE TOKEN HUD (2026-09-21): 5 small embedding tables, one per
         # feature (kind/sentence/position/value/repeated); N(0, 0.02) —
@@ -3590,6 +3725,16 @@ def build_params(seed=0):
         # being interleaved into the bus). Standard small-random head init (the H_W, X
         # convention used throughout this file), zero PCA/file dependency.
         p["polar_clk_init"] = t(rng.randn(H_W, 128) / math.sqrt(H_W))
+    if ALG_WAIST_SKIP:
+        # THE WAIST SKIP, FORM A: one learned scalar per content dim (384 -- or 512 under
+        # ALG_CLOCK_SEP, since _nc_ws is read dynamically off _polar_sink() below, not
+        # hardcoded -- plane-ordered), born at ALG_WAIST_SKIP_INIT — LIVE from birth (the
+        # knob law), never zero. ALG_WAIST_SKIP=0 never reaches this branch,
+        # so waist_skip_theta never exists in p at all (the SAME structural
+        # bit-identity mechanism as sm_w_self/pc_w1: `"waist_skip_theta" in
+        # p` is the only gate _polar_waist's forward code needs).
+        _nc_ws = len(_polar_sink()[0])
+        p["waist_skip_theta"] = t(np.full(_nc_ws, ALG_WAIST_SKIP_INIT, dtype=np.float32))
     global _POLAR_SINK_SHOWN
     if ALG_POLAR and (POLAR_D or POLAR_EM) and not _POLAR_SINK_SHOWN:
         # THE SINK DOOR: one line, once, naming what is about to run.
@@ -4096,6 +4241,136 @@ def _sort_room(p, waist, tokmask, B):
     return x
 
 
+# ===========================================================================
+# THE LOOPED TRANSFORMER (2026-10-09, queued behind THE SORTING ROOM form 2;
+# registration: 2026-10-08 11:49 "FOUR MHA LAYERS IN THE LOOP"/THE DEPTH
+# PROBE, re-priced 2026-10-08 12:14; the word given: "4 layers of MHA blocks
+# in 512 dim space inside the 6x loop"). ALG_DEPTH=N: N pre-norm transformer
+# blocks run on the SLOT state `cur` every loop breath (kb = 1..K_B-1 —
+# breath_step's own domain; breath 0's grounding read has no slot state and
+# no mixer today, so there is nothing for the stack to replace there — the
+# stack's scope is EXACTLY the mixer's scope, no wider, no narrower). Each
+# block: {LayerNorm -> 8-head self-attention over the L_TOT slots (slot_mask
+# respected, additive -1e4) -> residual; LayerNorm -> 8-head cross-attention,
+# slots as queries over the SAME 256 token states the bank reads (`waist`,
+# already past the sorting room's own replacement when ALG_SORT is set —
+# breath_step's ctx["waist"] is the one rebound name both organs share;
+# tokmask respected) -> residual; LayerNorm -> FFN 512->2048->512 ->
+# residual}. Weights SHARED across breaths (one set of dp{i}_* tensors,
+# reused at every kb — "breaths never specialize, heads do", the twelve
+# hills' own law), DISTINCT across the N blocks (i = 0..N-1).
+#
+# THE STACK REPLACES THE MIXER (the mandatory road, REPLACEMENT form — the
+# sorting room's own precedent, REVISED same day: a literal skip of the
+# mixer's compute broke THE NONE-GRAD LAW — "params with NO gradient in
+# the training step" — because W_bq/W_bk/W_bv/W_bo/mh_*/fed_mx_hg/alt_g
+# would never enter the graph at all when ALG_DEPTH > 0. FIX, the project's
+# OWN established idiom for exactly this situation — ALG_BREATH_ARM's
+# "tok"/"slot" ablation arms, "zero-mult keeps every param in the graph
+# (defined zero grads — the None-grad lesson, applied)" — applied here
+# verbatim): when ALG_DEPTH > 0, breath_step runs the base mixer + the FED
+# twin FOR REAL, for every forward pass (bq/bk/bv, the ALG_SORT_KEY
+# shuffle on sc2, sc2's mask-head/alt_g/BEXIT biases, sc2's own softmax ->
+# h_slot, and FED_MIXER's twin reshape of the SAME bq/bk/bv/W_bo into
+# MX_HEADS — one organ family, the "twin-kernel" comment's own words,
+# sharing one geometry) — every one of those params gets a real, defined
+# gradient every step — and then DISCARDS h_slot's value (`h_slot =
+# h_slot * 0.0`) and REPLACES it with the depth stack's own contribution
+# (`h_slot = h_slot + (_depth_stack(...) - cur)`), so the stack's self-
+# attention over the 24 slots is the loop's ONLY slot-to-slot path BY
+# VALUE this breath, even though the old mixer's params still live and
+# train. Stations 3/4/5 (ALG_ALT21, a slots<-TOKENS road over its own
+# alt21_* projections, not slot-to-slot; station 4 is pruned in the
+# champion recipe via ALG_PRUNE=s4 regardless) are untouched — a
+# different, additive road, unaffected either way. The role pointer /
+# router / busreg FINAL-BREATH injections (forward()'s own code after the
+# breath loop returns, out["args"] rewrites etc., ~line 7478/7653) are
+# OUTSIDE breath_step entirely and are untouched by construction.
+#
+# ReZero at birth (the sorting room's own precedent): dp{i}_wo (self-attn
+# output), dp{i}_xwo (cross-attn output) and dp{i}_ffn_w2 (+ their biases)
+# are ZERO-init, so every sub-block's residual is EXACTLY zero at step 0
+# regardless of N — the stack returns `cur` bit-for-bit unchanged at birth
+# (real attention/FFN compute runs every forward pass on wq/wk/wv/xwq/xwk/
+# xwv/ffn_w1 — the mandatory-road law's AJAR form, not its violation — it
+# simply CONTRIBUTES zero until the gradient moves the zero-init doors).
+# ALG_DEPTH_STUB=1 (diagnostic only, NOT part of the arm): skips the block
+# loop entirely and returns `cur` with no compute at all — used ONLY by
+# scripts/depth_identity_probe.py to prove the real-compute ReZero path
+# ("ON") and the no-compute stub ("OFF") agree exactly at init, both with
+# the mixer already bypassed (ALG_DEPTH=4 in both configs) — the identity
+# proof the restated bar (2026-10-09, THE SORTING ROOM ledger entry) asks
+# for when a road REPLACES existing state rather than adding to it.
+# A dedicated RandomState offset (seed + 16180, unused by any other organ)
+# so an unset ALG_DEPTH never perturbs any other organ's rng draws.
+# ~12.9M params at ALG_DEPTH=4, H_W=512 (4 * (3*512*512 self-attn qkv +
+# 512*512 self-attn wo + 3*512*512 cross-attn qkv + 512*512 cross-attn wo +
+# 2*512*2048 FFN) = 4 * 3,145,728 ~= 12.6M, + LayerNorm affines + biases).
+ALG_DEPTH = int(os.environ.get("ALG_DEPTH", "0"))
+ALG_DEPTH_STUB = int(os.environ.get("ALG_DEPTH_STUB", "0"))   # diagnostic only — see depth_identity_probe.py
+DEPTH_FFN_HID = 2048     # fixed (not ALG_HW-relative), matching the sorting room's own SORT_FFN_HID convention
+
+
+def _depth_stack(p, cur, slot_mask, waist, tokmask, B, kb=None):
+    """THE LOOPED TRANSFORMER (ALG_DEPTH=N): N pre-norm transformer blocks over the slot state
+    `cur` — self-attention over the L_TOT slots (slot_mask respected), cross-attention slots(Q)
+    over the bank's own token tensor `waist` (tokmask respected), FFN — REPLACING the mixer as
+    breath_step's only slot-to-slot road (see the module comment above for the exact span this
+    bypasses). ReZero at birth: dp{i}_wo / dp{i}_xwo / dp{i}_ffn_w2 (+biases) are ZERO-init, so
+    this function returns `cur` bit-for-bit unchanged at init regardless of N. ALG_DEPTH_STUB=1
+    (diagnostic only) skips all compute and returns `cur` directly — the identity probe's "OFF"
+    arm; see scripts/depth_identity_probe.py. `kb` is breath_step's own loop variable, threaded
+    through ONLY so the census tags land on the SAME (kb, name) grammar every other organ uses —
+    no behavior depends on it (self-attention is masked by slot_mask, not by kb)."""
+    if ALG_DEPTH_STUB:
+        return cur
+    global _CENSUS
+    try: _CENSUS
+    except NameError: _CENSUS = None
+    x = cur
+    L = int(x.shape[1]); T = int(waist.shape[1])
+    hd = H_W // N_HEADS
+    _sm = ((1.0 - slot_mask) * -1e4) if slot_mask is not None else None
+    _tm = tokmask.reshape(B, 1, 1, T)
+    for i in range(ALG_DEPTH):
+        _x0 = x
+        # --- self-attention over the L_TOT slots (slot_mask respected) ---
+        _ln1 = x.layernorm(eps=1e-5) * p[f"dp{i}_ln1_g"] + p[f"dp{i}_ln1_b"]
+        q = (_ln1 @ p[f"dp{i}_wq"] + p[f"dp{i}_wq_b"]).reshape(B, L, N_HEADS, hd).permute(0, 2, 1, 3)
+        k = (_ln1 @ p[f"dp{i}_wk"] + p[f"dp{i}_wk_b"]).reshape(B, L, N_HEADS, hd).permute(0, 2, 1, 3)
+        v = (_ln1 @ p[f"dp{i}_wv"] + p[f"dp{i}_wv_b"]).reshape(B, L, N_HEADS, hd).permute(0, 2, 1, 3)
+        sc = (q @ k.transpose(-2, -1)) / math.sqrt(hd)
+        sc = sc.clip(-1e4, 1e4)
+        if _sm is not None:
+            sc = sc + _sm.reshape(B, 1, L, L)
+        at = sc.softmax(-1)
+        o = (at @ v).permute(0, 2, 1, 3).reshape(B, L, H_W)
+        o = o @ p[f"dp{i}_wo"] + p[f"dp{i}_wo_b"]
+        x = x + o
+        # --- cross-attention: slots (queries) over the bank's own token tensor (keys/values) ---
+        _ln2 = x.layernorm(eps=1e-5) * p[f"dp{i}_ln2_g"] + p[f"dp{i}_ln2_b"]
+        qx = (_ln2 @ p[f"dp{i}_xwq"] + p[f"dp{i}_xwq_b"]).reshape(B, L, N_HEADS, hd).permute(0, 2, 1, 3)
+        kx = (waist @ p[f"dp{i}_xwk"] + p[f"dp{i}_xwk_b"]).reshape(B, T, N_HEADS, hd).permute(0, 2, 1, 3)
+        vx = (waist @ p[f"dp{i}_xwv"] + p[f"dp{i}_xwv_b"]).reshape(B, T, N_HEADS, hd).permute(0, 2, 1, 3)
+        scx = (qx @ kx.transpose(-2, -1)) / math.sqrt(hd)
+        scx = scx.clip(-1e4, 1e4) + (1.0 - _tm) * -1e4
+        atx = scx.softmax(-1)
+        ox = (atx @ vx).permute(0, 2, 1, 3).reshape(B, L, H_W)
+        ox = ox @ p[f"dp{i}_xwo"] + p[f"dp{i}_xwo_b"]
+        x = x + ox
+        # --- FFN ---
+        _ln3 = x.layernorm(eps=1e-5) * p[f"dp{i}_ln3_g"] + p[f"dp{i}_ln3_b"]
+        f = (_ln3 @ p[f"dp{i}_ffn_w1"] + p[f"dp{i}_ffn_b1"]).gelu() @ p[f"dp{i}_ffn_w2"] + p[f"dp{i}_ffn_b2"]
+        x = x + f
+        if _CENSUS is not None:
+            # THE KNOB CENSUS (the pre/post knob law): each block's net residual contribution
+            # this breath vs the state it met (std ratio computed by the reader; raw tensors
+            # recorded here, (kb, name, array) — the SAME grammar as every other organ's tap).
+            _CENSUS.append((kb, f"depth{i}_in", _x0.realize().numpy()))
+            _CENSUS.append((kb, f"depth{i}_out", x.realize().numpy()))
+    return x
+
+
 ALG_KANNEAL = [float(x) for x in os.environ.get("ALG_KANNEAL", "").split(",") if x.strip()]   # THE ANNEALED KERNEL (2026-09-17, word given): sigma per breath, in tokens
 ALG_KWINDOW = [float(x) for x in os.environ.get("ALG_KWINDOW", "").split(",") if x.strip()]   # THE HIERARCHICAL WINDOW (2026-09-17, word given): half-width per breath, in tokens (0 = whole text)
 ALG_KWINDOW_GAIN = float(os.environ.get("ALG_KWINDOW_GAIN", "4"))                            # the penalty at one half-width, in nats/2 (fixed — not a parameter)
@@ -4294,6 +4569,21 @@ def _paircmp_content_sel():
 # default). See .cache/paircmp_gate.log's "[paircmp-knob]" KNOB-FRESH/KNOB-WARM lines for both
 # readings.
 ALG_PAIRCMP_SCALE = float(os.environ.get("ALG_PAIRCMP_SCALE", "20.0"))
+
+
+# THE ARGS-CONDITIONED RES's fixed (non-learned) output multiplier (2026-10-09; the SAME
+# knob-law calibration THE PAIRWISE COMPARATOR ROAD needed: the champion gate fixture ALWAYS
+# warm-starts (WARM_FROM balV242, every config), so "at init on the fixture" means a TRAINED
+# res bilinear (std ~11.8), not a fresh-random one (std ~0.06) -- the two regimes differ
+# ~200x in the bilinear's own std while this term's raw output (always fresh-random, since
+# ar_w1/ar_w2 never exist in a pre-argsres checkpoint) differs only ~10-15x across the same
+# two regimes. Default measured against the WARM regime (the fixture's real init state, the
+# only regime that matters for the bit-identity/knob-census gate reads) -- see
+# .cache/argsres_gate.log's "[argsres-knob]" KNOB-FRESH/KNOB-WARM lines for both readings;
+# the chain's own post-training knob census (scripts/argsres_knob_census.py) is the arm's
+# REAL arbiter per the pinned bar (the term's std at the LAST breath >= 10% of the bilinear's
+# own std, else the arm is VOID BY THE KNOB LAW -- not a verdict on the form).
+ALG_ARGSRES_SCALE = float(os.environ.get("ALG_ARGSRES_SCALE", "20.0"))
 
 
 # THE EYES (2026-10-05; the 10:38 spec, registered as a build at 12:56 — hill 7's first arm):
@@ -5402,6 +5692,37 @@ def _heads_of(p, s, vst, B, dirgold=None):
                          float(_pc_term.std(axis=-1).mean().numpy()),
                          float(_res_out.std(axis=-1).mean().numpy())))
         _res_out = _res_out + _pc_term
+    if "ar_w1" in p:
+        # THE ARGS-CONDITIONED RES (2026-10-09, build registration above). a_ik = the args
+        # head's PREDICTED membership (sigmoid of _args_out, the SAME tensor the args decode
+        # itself reads — computed once above, reused here, never recomputed and never gold;
+        # NOT detached — the two-terminal law). m_i = the args-weighted soft readout of the
+        # candidate states, content dims only (_paircmp_content_sel(), the SAME door
+        # ALG_PAIRCMP reads). phi([h_i, v_j, m_i, v_j*m_i]) -> scalar, added to EVERY
+        # res_logit[i, j] (24x24, not diagonal-only).
+        _ar_sel, _ar_c = _paircmp_content_sel()
+        _ar_hc = s @ _ar_sel                                               # (B, L_FAC, C): h_i
+        _ar_vc = vst @ _ar_sel                                             # (B, K_VARS, C): v_j
+        _ar_aprob = _args_out.sigmoid()                                    # (B, L_FAC, K_VARS): a_ik, NOT detached
+        _ar_m = _ar_aprob @ _ar_vc                                         # (B, L_FAC, C): m_i
+        _ar_h4 = _ar_hc.unsqueeze(2).expand(B, L_FAC, K_VARS, _ar_c)
+        _ar_v4 = _ar_vc.unsqueeze(1).expand(B, L_FAC, K_VARS, _ar_c)
+        _ar_m4 = _ar_m.unsqueeze(2).expand(B, L_FAC, K_VARS, _ar_c)
+        _ar_feat = _ar_h4.cat(_ar_v4, _ar_m4, _ar_v4 * _ar_m4, dim=-1)     # (B, L_FAC, K_VARS, 4C)
+        _ar_hid = (_ar_feat @ p["ar_w1"] + p["ar_b1"]).relu()
+        _ar_raw = (_ar_hid @ p["ar_w2"] + p["ar_b2"]).squeeze(-1)          # (B, L_FAC, K_VARS), pre-scale
+        _ar_term = _ar_raw * ALG_ARGSRES_SCALE                            # fixed, non-learned multiplier
+        # THE KNOB CENSUS (the pre/post knob law): inert unless a census script sets the
+        # module global _ARGSRES_CENSUS to a list BEFORE calling forward() eagerly (never
+        # during do_train's real JIT'd step — the SAME safety argument as _PAIRCMP_CENSUS
+        # above: nothing in the training path ever sets this global, so the branch below is
+        # skipped at JIT trace time and never enters the captured graph).
+        _arc = globals().get("_ARGSRES_CENSUS")
+        if _arc is not None:
+            _arc.append((float(_ar_raw.std(axis=-1).mean().numpy()),
+                         float(_ar_term.std(axis=-1).mean().numpy()),
+                         float(_res_out.std(axis=-1).mean().numpy())))
+        _res_out = _res_out + _ar_term
     return {
         "pres": (_sR @ p["h_pres"] + p["h_pres_b"]).squeeze(-1),
         "ftype": _sR @ p["h_ftype"] + p["h_ftype_b"],
@@ -6384,6 +6705,23 @@ def breath_step(p, state, kb, ctx):
             (_nlw.unsqueeze(1) @ waist).squeeze(1))  # (B, H_W)
         state.setdefault("nlat_all", []).append(_nlw)
         state.setdefault("fat_all", []).append(_fed_core(fat_cur))   # THE PERCEIVER's tap (2026-09-14): this breath's slots<-tokens attention
+    _sm_kb = slot_mask
+    # THE TOKEN COOKER (apply_tok_cook.py, 2026-09-09): the graded
+    # adjacency through `_mh_a5`, ONE definition, because the token
+    # gate needs it EARLIER in this function than the mask head does
+    # (see _mh_ctx). Same expression, same None cases, bit-identical.
+    _A5 = _mh_a5(p, _snaps)
+    if _A5 is not None and int(os.environ.get("ALG_MASKRE", "0")):
+        # v2 THE MASK RE-FORMATION (2026-09-01, word given):
+        # the HARD mask rebuilt per breath — OPEN-BY-
+        # COMMITMENT (committed producer->consumer edges may
+        # attend across the first-pass mask; additive-optional
+        # per the ensemble law; NEVER tightens — A0's grave
+        # stays honored)
+        _sm_kb = (slot_mask
+                  + ((_A5 + _A5.transpose(-2, -1)) > 0.5)
+                  .float()).clip(0, 1)
+
     bq = cur @ p["W_bq"] + p["W_bq_b"]
     bk = cur @ p["W_bk"] + p["W_bk_b"]
     bv = cur @ p["W_bv"] + p["W_bv_b"]
@@ -6432,22 +6770,6 @@ def breath_step(p, state, kb, ctx):
         sc2 = sc2 + _sk_term
         if _CENSUS is not None:
             _CENSUS.append((kb, "sortkey", _sk_term.realize().numpy()))
-    _sm_kb = slot_mask
-    # THE TOKEN COOKER (apply_tok_cook.py, 2026-09-09): the graded
-    # adjacency through `_mh_a5`, ONE definition, because the token
-    # gate needs it EARLIER in this function than the mask head does
-    # (see _mh_ctx). Same expression, same None cases, bit-identical.
-    _A5 = _mh_a5(p, _snaps)
-    if _A5 is not None and int(os.environ.get("ALG_MASKRE", "0")):
-        # v2 THE MASK RE-FORMATION (2026-09-01, word given):
-        # the HARD mask rebuilt per breath — OPEN-BY-
-        # COMMITMENT (committed producer->consumer edges may
-        # attend across the first-pass mask; additive-optional
-        # per the ensemble law; NEVER tightens — A0's grave
-        # stays honored)
-        _sm_kb = (slot_mask
-                  + ((_A5 + _A5.transpose(-2, -1)) > 0.5)
-                  .float()).clip(0, 1)
     _mb = None
     # THE MASK COOKER (apply_mask_cook.py, 2026-09-08): the CLOSE mask.
     # `_sm_kb` until the cooker severs it per sealed row; all THREE slot
@@ -6695,6 +7017,26 @@ def breath_step(p, state, kb, ctx):
                             (_mx_raw.permute(0, 2, 1, 3)
                              .reshape(B, L_TOT, H_W) @ p["W_bo"])
                             .realize().numpy()))
+    if ALG_DEPTH:
+        # THE LOOPED TRANSFORMER (ALG_DEPTH=N): the mixer above (base bilinear + the FED twin,
+        # one organ family sharing bq/bk/bv/W_bo) still runs for REAL every breath — every one of
+        # its params (W_bq/W_bk/W_bv/W_bo/mh_*/fed_mx_hg/alt_g) stays IN THE GRADIENT GRAPH with a
+        # defined gradient (possibly zero, never None — the None-grad lesson; ALG_BREATH_ARM's
+        # own "tok"/"slot" zero-mult idiom, applied here) — but its OUTPUT is discarded (zero-mult)
+        # and REPLACED by the depth stack's own self-attn/cross-attn/FFN blocks over `cur`, the
+        # loop's ONLY slot-to-slot path this breath by value, if not by which params touched the
+        # graph. Stations 3/4/5 (ALG_ALT21, a slots<-TOKENS road, not slot-to-slot; station 4 is
+        # pruned in the champion recipe via ALG_PRUNE=s4 regardless) are untouched. The role
+        # pointer / router / busreg FINAL-BREATH injections (forward()'s own code after the
+        # breath loop returns, out["args"] rewrites etc., ~line 7478/7653) are OUTSIDE breath_step
+        # entirely and are untouched by construction.
+        h_slot = h_slot * 0.0
+        _dp_out = _depth_stack(p, cur, slot_mask, waist, tokmask, B, kb=kb)
+        h_slot = h_slot + (_dp_out - cur)
+        if "mixer" in _SEVER:
+            h_slot = h_slot * 0.0
+        if _CENSUS is not None:
+            _CENSUS.append((kb, "state_hslot", h_slot.realize().numpy()))
     # ABLATION arms (2026-07-10): zero-mult keeps every param in the
     # graph (defined zero grads — the None-grad lesson, applied)
     arm = os.environ.get("ALG_BREATH_ARM", "both")

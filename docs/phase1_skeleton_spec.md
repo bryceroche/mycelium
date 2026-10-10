@@ -50437,3 +50437,143 @@ previous chain's done mark ("<X> CHAIN COMPLETE") + no trainer + the free lock; 
 gate log; the watcher on every arm; SNAP_EVERY=8000. Readers thread every new port (the sorting room's port is in
 every chain from here on: readers take the body as an argument). Morning reads: all five paired vs PMS8_241 with
 the paired SE; the re-admission table consulted for every null's trigger.
+
+### 2026-10-09 (20:43) — SR_241 (THE SORTING ROOM form 2, four trained token-side MHA layers as the mandatory road, from scratch vs PMS8_241) — INTERIM, the chain still reading: MASKED WILD 0.3715 vs 0.3476 = +0.0239, paired SE 0.0111, McNemar z 2.16 — THE +0.020 BAR IS MET ON ITS OWN (the first organ to clear it since the role signature); ROWS 23 / 311 masked (PMS8 14; RK's 17 was the record) = THE ROW RECORD; DIGITS 0.500 (PMS8 0.447); res 0.804; ARGS 0.427 UNMOVED (the wall); inverse res 0.226 unchanged; discordant 282 / 233
+
+Fields masked wild: pres 0.911 ftype 0.863 res 0.804 dig 0.500 exact 0.372 op 0.732 args 0.427. MECH by form: fwd
+ok 0.358 (PMS8 0.31) args 0.525 res 0.876; inv ok 0.137 args 0.253 res 0.226. Rows 22 unmasked / 23 masked. Pending
+in the chain: the first-look reads (twin-pick, other-sentence share — the registration's mechanism bars 0.35 / 0.40),
+the drift (right-slot hit by breath), open mint, the knob/port census. THE CLAIM STANDARD: +0.020 OR a twin — met on
+the first leg; THE SEED TWIN registered and QUEUED under the standing word: SR_242 = SR_241's chain at SEED=242
+(.cache/rack_chain_SR2.sh, log rack_chain_SR2.log, done mark "SR2 CHAIN COMPLETE"; .cache/queue_sr2.sh fires after
+"AR CHAIN COMPLETE" — the night's last arm; unit pc-queue-sr2 running 20:43; the informational pair vs SR_241). The
+verdict entry follows the chain's completion; the hourglass (form 2b) now has its control and becomes tomorrow's
+refinement; the sorting room's port (ALG_SORT=4) threads every reader from here on.
+
+### 2026-10-09 (20:48) — SR_241 VERDICT (THE SORTING ROOM form 2, chain complete; .cache/rack_chain_SR.log): TWO PRE-PINNED FRAMES, READ SEPARATELY. THE SLOT FRAME FIRES: masked wild 0.3715 vs PMS8_241 0.3476 = +0.0239 (paired SE 0.0111, z 2.16; bar +0.020 MET on the first leg), rows 23/311 = THE ROW RECORD, digits 0.500 (+0.053), OPEN MINT 0.7879 (PMS8 0.6510: +0.137). THE MECHANISM FRAME IS REFUTED: twin-pick 0.457 (bar <= 0.35; PMS8 0.456 — UNMOVED), other-sentence share of the wrong mass 0.558-0.573 at the last breath (bar <= 0.40; PMS8 0.526 — UNMOVED, slightly up), args 0.427 UNMOVED, inverse res 0.226 unchanged: the registration's KILL ("both first-look reads unmoved = the token side is not the wall's seat") FIRES AS A MECHANISM VERDICT — a flat trained token stack does not move the first look's binding
+
+THE READING. The sorting room is a real positive on the slot and it is NOT the positive it was built for. Where
+the +0.024 came from: DIGITS (+0.053 on 1009 digit slots — the value path; the trained token side reads numerals
+better) and forward relations (fwd ok 0.358 vs 0.31), while every binding read (args, twin-pick, other-sentence)
+is flat. Mint +0.137 says the stack fits the diet far better than it generalizes (12.6M parameters on the token
+side; the wild gain is one fifth of the mint gain) — the hygiene lesson of the register split applies: the diet is
+memorized, mint is now a weak witness. Honest accounting against the law: the slot claim stands as measured at
+z 2.16 and awaits its TWIN (SR_242 queued last tonight; the claim standard "+0.020 or a twin pair" is met on one leg,
+the pair makes it a record); the mechanism claim (the token side as the wall's seat) is REFUTED for the flat form —
+the other-sentence share is set at the first look and a trained flat stack over the tokens does not change it, the
+third time a re-read of the same keys has left it at ~0.5 (the tree descent x2, now the sorting room). THE HOURGLASS
+(form 2b) targets the same seat with pooled sentence keys inside a TRAINED stack — its prior drops but its trigger
+(a trained token side) is now met; it is tomorrow's build only if the twin confirms the slot gain (then it is a
+refinement of a positive; if the twin fails, the sorting room is a digits organ and the hourglass waits). THE OWNER
+KEY (ALG_SORT_KEY, built, unfired) is the other emission the stack can carry: the shuffle's key — registered as the
+sorting room's second arm (SRK_241 = SR + ALG_SORT_KEY=1) behind the twin. The sorting room's port threads every
+reader from here on (ALG_SORT=4 in the body's env; readers take the body). Digits as the gain: the digit head is
+where the prose pivot (09-14..18) and the numeral mask already moved — the token side is the value path's seat.
+
+### 2026-10-09 (21:26) — THE LOOPED TRANSFORMER BUILT + GATED + QUEUED + FIRED (LT_241, worktree wt14, branch loopedtf, merged 236d5195): four SHARED pre-norm transformer blocks (8-head self-attention over the 24 slots, 8-head cross-attention slots(Q) over the bank's own 256-token tensor (K/V; post the sorting room's own replacement when ALG_SORT is set), FFN 512->2048->512) run every loop breath, REPLACING the mixer as the loop's only slot-to-slot road BY VALUE — THE DEPTH PROBE (10-08 11:49/12:14) realized, ~12.9M params at ALG_DEPTH=4
+
+THE BUILD (ALG_DEPTH=N; scripts/phase1_algebra_head.py, `_depth_stack` ~line 4063, built in
+breath_step right after the bank read, before the breath update/polar step; params in
+build_params ~line 3198): per loop breath kb=1..K_B-1 (breath 0's grounding read has no slot
+state and no mixer today — nothing to replace there; the stack's scope is exactly the mixer's,
+no wider), the SAME shared dp{i}_* weights (i=0..N-1) run {LayerNorm -> self-attn over L_TOT
+slots (slot_mask respected, additive -1e4) -> residual; LayerNorm -> cross-attn slots(Q) over
+`waist` (tokmask respected) -> residual; LayerNorm -> FFN -> residual}, weights SHARED across
+breaths / DISTINCT across blocks ("breaths never specialize, heads do"). ReZero at birth: dp{i}_wo
+/ dp{i}_xwo / dp{i}_ffn_w2 (+biases) are ZERO-init off a dedicated RandomState (seed+16180); every
+other matrix is standard small-random. THE REPLACEMENT, REVISED same day after a real crash (see
+below): the base mixer + the FED twin (one organ family, sharing bq/bk/bv/W_bo) still run FOR
+REAL every breath — every one of those params keeps a defined (possibly zero, never None)
+gradient, the project's own None-grad law — but h_slot's VALUE is discarded (`h_slot = h_slot *
+0.0`) and replaced by the depth stack's own delta (`h_slot = h_slot + (_depth_stack(...) -
+cur)`); this is the ALG_BREATH_ARM "tok"/"slot" zero-mult idiom applied to a whole organ family,
+not a literal skip (a literal skip of the mixer's compute broke the None-grad law on the first
+attempt — W_bq/mh_*/fed_mx_hg/alt_g would never touch the graph at all). Stations 3/4/5
+(ALG_ALT21, a slots<-TOKENS road, not slot-to-slot; station 4 pruned in the champion recipe
+regardless) are untouched. The role pointer / router / busreg FINAL-BREATH injections (forward()'s
+own code after the breath loop returns) are OUTSIDE breath_step entirely, untouched by
+construction. ALG_DEPTH added to step_trainer.py's REFUSED tuple (own line, end of list): the
+walker's per-seam heads_of calls never call breath_step or _depth_stack at all.
+
+A REAL SIGSEGV WAS FOUND, BISECTED, AND WORKED AROUND (not a bug in this organ's math): ALG_DEPTH's
+step-1 (TinyJit's SECOND call — the REPLAY, not the trace) reliably crashed on DEV=CPU. ~20
+reproductions bisected it to a tinygrad CPU (HCQ) backend bug in GRAPH BATCHING
+(tinygrad/engine/jit.py's graph_split_rewrite -> create_graph_call -> HCQGraph; CPUDevice is an
+HCQCompiled, the SAME graph-of-command-queues abstraction the AM GPU driver uses) — proven
+independent of the organ's correctness: the crash is IDENTICAL whether the new dp{i}_* tensors
+run real attention/FFN, are reduced to trivial zero-mult sums, or are NEVER REFERENCED AT ALL in
+forward() (ALG_FREEZE-excluded from the optimizer too — 27 params frozen, crash unchanged); a
+single small (4,4) extra tensor does NOT crash, so it is a count/threshold effect in the HCQ
+graph batch, not "any new tensor"; shrinking the FFN hidden dim to 8 (removing the two largest
+matrices) does not avoid it either. JIT=0 (fully eager) and JIT=2 (tinygrad's own
+graph_split_rewrite skipped when JIT>=2) both reproduce role8/depth4's correct numbers with NO
+crash (step0=6.8697 step1=1.0207, matching across three independent eager/no-graph reproductions)
+— proving the MATH is right. THE FIX: JIT_BATCH_SIZE=1 (graph batches capped at size 1, so
+graph_split_rewrite's flush_batch never wraps >=2 kernels into one HCQGraph CUSTOM_FUNCTION —
+ordinary per-kernel JIT caching, and its speed, stays on) runs clean AND leaves role8/unset's own
+bit-identical numbers UNCHANGED (verified: 6.5535/1.1061 exactly). THE READ PATH (ALG_JIT_READ=1,
+a separate captured graph with no backward) does NOT reproduce the crash even WITHOUT the
+workaround — only the TRAINING step's graph (forward+backward+opt.step, the larger one) hits the
+threshold. NOT YET VERIFIED ON DEV=PCI+AMD (the GPU was owned by SR_241 for this entire build) —
+rack_chain_LT.sh runs its OWN pre-arm GPU smoke (BATCH=2 STEPS=2, under the gpu.lock) BEFORE firing
+the 48k arm, and carries JIT_BATCH_SIZE=1 into the real run ONLY if the smoke itself reproduces
+the crash there too; the smoke's own result is in .cache/rack_chain_LT.log.
+
+THE GATE TABLE (.cache/loopedtf_gate.sh, run on wt14 and again post-merge on gen-weights,
+JIT_BATCH_SIZE=1 throughout): unset 5.2995/0.0279 (bit-identical); role8 6.5535/1.1061
+(bit-identical); depth4 finite at steps 0/1 (NOT expected to equal role8 — the mixer is
+genuinely bypassed by value, not merely at birth, unlike the sorting room's own additive form).
+THE IDENTITY PROOF (scripts/depth_identity_probe.py, forward()-only, no TinyJit): depth4 with the
+stack's blocks forced OFF (ALG_DEPTH_STUB=1, `_depth_stack` returns `cur` with no compute) vs
+forced ON (real ReZero compute) — maxdiff=0.000e+00 over every forward()-output key, proving the
+real attention/FFN math mathematically cancels to the stub's trivial answer at birth (the
+mandatory-road law's AJAR form). THE GRAD PROBE (scripts/depth_grad_probe.py, eager): only
+dp{i}_wo/dp{i}_xwo/dp{i}_ffn_w2 (+biases) are nonzero at step 0 (the ReZero signature, exactly
+the sorting room's own "cold-init caveat"); the whole stack's road is live (nonzero grad norm).
+THE KNOB CENSUS (scripts/depth_knob_census.py; the arm's own registered bar, "every block >= 5%
+of the state at the last breath") is INERT by construction on an untrained checkpoint (expected —
+ReZero is exactly zero at init); the real bar reads LT_241's own trained checkpoint, in the chain.
+THE READ SMOKE (scripts/depth_read_identity_smoke.py, loop_val, ALG_JIT_READ=1): both role8 and
+depth4 decode finitely on an untrained warm checkpoint; NOT expected to agree with each other
+(stated in the smoke's own docstring — unlike the sorting room's analogous smoke, which DOES
+expect agreement because its road only adds a ReZero'd stack after an already-warm projection;
+this road zeroes a warm, nonzero mixer output and replaces it, a real difference even at init).
+
+BARS/KILL (unchanged from the registration): masked wild LT_241 vs PMS8_241 >= PMS8 + 0.020 OR a
+twin pair; args >= 0.47 (PMS8 0.43-0.45); mint not down > 0.02; THE KNOB CENSUS reported at the
+arm's end (every block >= 5% of the state at the last breath, else the block is inert and the
+census says so). KILL: masked down, OR args unmoved AND rows down.
+
+FIRED: .cache/queue_lt.sh waited on "SR CHAIN COMPLETE" in .cache/rack_chain_SR.log, merged branch
+loopedtf (236d5195; a REFUSED-tuple conflict against a sibling
+worktree's own REFUSED-tuple addition, if any, resolved mechanically by
+scripts/resolve_refused_merge.py — a union of both sides' new flags, never a real divergence),
+ran the post-merge gate (identical table to wt14's own, above), preflight PASSED, fired
+pc-lt-watch + pc-lt (21:26) — LT_241 (PMS8's recipe + ALG_DEPTH=4, random init, form_mix_pm35c,
+48k, B=8) is running now, against PMS8_241.
+
+Artifacts: scripts/phase1_algebra_head.py (`_depth_stack`, build_params, breath_step),
+scripts/depth_grad_probe.py, scripts/depth_identity_probe.py, scripts/depth_read_identity_smoke.py,
+scripts/depth_knob_census.py, scripts/resolve_refused_merge.py; .cache/loopedtf_gate.sh,
+.cache/rack_chain_LT.sh, .cache/queue_lt.sh; .cache/loopedtf_gate.log, .cache/loopedtf_merge_gate.log.
+
+### 2026-10-09 (21:49) — LT_241 FIRED under the JIT workaround: the pre-arm GPU smoke (depth4, BATCH=2 STEPS=2, DEV=PCI+AMD) FAILED without it — "RuntimeError: Device hang detected" — and PASSED with JIT_BATCH_SIZE=1 (step 0 13.96 / step 1 33.23, finite); the arm carries it; step 500 loss 26.85 (PMS8 28.77) at 0.342 s/step steady (~3.5x the lineage; 48k ~ 4.6 h -> reads ~02:45)
+
+The tinygrad graph-batching bug the CPU gate found (the replay call segfaults once the training graph passes a size
+threshold; ~20 reproductions; independent of whether the new tensors are used) is a DEVICE HANG on AM, not CPU-only
+— the first organ to cross the threshold. RULE: every chain whose organ grows the training graph runs a pre-arm
+device smoke and applies JIT_BATCH_SIZE=1 only on a reproduced failure (rack_chain_LT.sh's pattern); the workaround
+leaves unset/role8 bit-identical (verified on CPU). The night's order holds: WS -> clock pre-read + CS -> AR -> SR_242.
+
+### 2026-10-10 (03:18) — LT_241 (THE LOOPED TRANSFORMER: 4 MHA blocks per breath on the slot side, replacing the mixer, from scratch vs PMS8_241) DOES NOT FIRE: masked wild 0.3510 vs 0.3476 = +0.0034 (paired SE 0.0095, z 0.36; bar +0.020 MISSED), args 0.431 UNMOVED (bar 0.47), rows 18 (PMS8 14, noise-range), open mint 0.697 (+0.046), inverse res 0.261 (flat); THE KNOB CENSUS PASSES — every block >= 5% of the state at the last breath — a road LIVE AT SCALE that moved nothing: depth on the slot side is not the lever
+
+Fields masked wild: pres 0.907 ftype 0.856 res 0.812 dig 0.466 exact 0.351 op 0.725 args 0.431. MECH: fwd ok 0.323
+args 0.497 res 0.880; inv ok 0.183 args 0.315 res 0.261. Paired vs SR_241: -0.0205 (SR 0.3715). Membrane: the wrong
+slots' other-sentence share 0.48-0.49 (PMS8 0.526: slightly down), the RIGHT slots' other-sentence mass 0.33 (SR
+0.10-0.17; PMS8 ~0.1): the cross-attention stack SPREADS the right slots' attention across sentences without cost or
+gain — a membrane change that is a passenger. The mixer's replacement cost nothing (-0.025 was its removal cost on a
+trained body; a body trained without it from scratch is flat). Rate 0.34 s/step (3.5x) under JIT_BATCH_SIZE=1.
+THE READING: the twelve hills' depth hypothesis (4 MHA layers in the loop) is a clean null in this form — the
+breaths are not compute-starved; the first look's evidence is. Re-admission trigger (the table): a token side that
+moves the first-look binding (then depth may have something to refine). The hourglass / owner-key line and the data
+lever (unmemorized inverse prose) remain the open roads; SR's twin decides the record.
