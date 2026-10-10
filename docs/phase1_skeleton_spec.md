@@ -50597,3 +50597,11 @@ Rule learned from the night's queue failure (and 03:16's by-hand merge): the REF
 of all sides for any shape or aborts BEFORE the wait (scripts/resolve_refused_merge.py fixed on clocksep: it had
 silently swallowed real entries into a comment while the file still parsed — a token-preservation assertion now
 guards it). Next on the card: the clock-band pre-read + CS_241 (pc-queue-cs), AR_241, SR_242.
+
+### 2026-10-10 (05:40) — THE CLOCK-BAND REMOVAL COST (the separated clock's pre-read, zero training, inside pc-queue-cs): the 64 clocked planes' STATE content severed at read, paired vs each body's own read — PMS8_241 -0.0132, SR_241 -0.0024 (COST PMS8_241: diff +0.0132 McNemar z +2.69 COST SR_241: diff +0.0024 McNemar z +0.96); CS_241 fired (step 500 loss 29.05, 0.100 s/step: the separation costs nothing in step time)
+
+Reading: on the claim body the band's content is worth ~0.013 (the 09-24 channels sever read -0.011: reproduced), on
+the sorting-room body ~0.002 — the trained token side makes the clock planes' state content nearly a passenger. The
+quarter is cheap to reclaim; whether the reclaimed 64 planes of content + the 512 -> 128 waist BUY anything is CS_241's
+question (bars: masked +0.020 / twin; the clock probe >= 0.95 on the trained body; the drift; mint). The merge of
+clocksep went clean (bd9f46d5 pre-merged in wt16; the queue's direct merge OK); the post-merge gate passed.
