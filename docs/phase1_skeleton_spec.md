@@ -50437,3 +50437,15 @@ previous chain's done mark ("<X> CHAIN COMPLETE") + no trainer + the free lock; 
 gate log; the watcher on every arm; SNAP_EVERY=8000. Readers thread every new port (the sorting room's port is in
 every chain from here on: readers take the body as an argument). Morning reads: all five paired vs PMS8_241 with
 the paired SE; the re-admission table consulted for every null's trigger.
+
+### 2026-10-09 (20:43) — SR_241 (THE SORTING ROOM form 2, four trained token-side MHA layers as the mandatory road, from scratch vs PMS8_241) — INTERIM, the chain still reading: MASKED WILD 0.3715 vs 0.3476 = +0.0239, paired SE 0.0111, McNemar z 2.16 — THE +0.020 BAR IS MET ON ITS OWN (the first organ to clear it since the role signature); ROWS 23 / 311 masked (PMS8 14; RK's 17 was the record) = THE ROW RECORD; DIGITS 0.500 (PMS8 0.447); res 0.804; ARGS 0.427 UNMOVED (the wall); inverse res 0.226 unchanged; discordant 282 / 233
+
+Fields masked wild: pres 0.911 ftype 0.863 res 0.804 dig 0.500 exact 0.372 op 0.732 args 0.427. MECH by form: fwd
+ok 0.358 (PMS8 0.31) args 0.525 res 0.876; inv ok 0.137 args 0.253 res 0.226. Rows 22 unmasked / 23 masked. Pending
+in the chain: the first-look reads (twin-pick, other-sentence share — the registration's mechanism bars 0.35 / 0.40),
+the drift (right-slot hit by breath), open mint, the knob/port census. THE CLAIM STANDARD: +0.020 OR a twin — met on
+the first leg; THE SEED TWIN registered and QUEUED under the standing word: SR_242 = SR_241's chain at SEED=242
+(.cache/rack_chain_SR2.sh, log rack_chain_SR2.log, done mark "SR2 CHAIN COMPLETE"; .cache/queue_sr2.sh fires after
+"AR CHAIN COMPLETE" — the night's last arm; unit pc-queue-sr2 running 20:43; the informational pair vs SR_241). The
+verdict entry follows the chain's completion; the hourglass (form 2b) now has its control and becomes tomorrow's
+refinement; the sorting room's port (ALG_SORT=4) threads every reader from here on.
