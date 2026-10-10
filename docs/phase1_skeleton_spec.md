@@ -50735,3 +50735,28 @@ nonzero), .cache/rack_chain_SRK.sh, pc-srk + pc-srk-watch at 13:30. BARS: masked
 (a gain that stays ~0 = the key unread, the mandatory-road law's warning for a gated organ — recorded, not a kill
 by itself); twin-pick / other-sentence reported. THE HOURGLASS (2b) builds behind it (CPU; its queue waits on
 "SRK CHAIN COMPLETE").
+
+### 2026-10-10 (13:45) — REGISTERED (Bryce's sine-wave gut + the Opus sketch scripts/sine_breath.py, run on CPU: .cache/sine_breath_run.txt): THE SINE BREATH — the four blocks per breath at log-sine widths [128, 224, 384, 224] (x1.73 per step; 32-d heads 4/7/12/7), the trough INSIDE the crystal (k0: slot attention in the 128-d waist subspace — the one new organ: today the squeeze is a linear per-slot map with no processing at 128), the peak (k2) the token read, the U-Net FLIPPED for the seal law (the crystal is the road, the expansion the detour; the lawful skip k1 -> k3 around the PEAK, none across the trough — the sketch's Jacobian: rank 12/24 with the peak skip, 24/24 with a boundary skip = bypassed); the pair SINE4 vs ANTI4 ([384, 224, 128, 224]: the textbook U at matched params 1.63M vs 1.62M) decides shape vs depth; FLAT4 = LT_241 (null, banked last night)
+
+Params: SINE4 1,631,168 / ANTI4 1,622,976 / FLAT4 2,950,656 (LT_241's full-width stack was 12.6M — the
+sine is 8x cheaper); every parameter receives a gradient (two-terminal: none dead); the clock rides bitwise.
+WHAT THE LEDGER ALREADY SAYS: depth alone is null (LT_241, every block live); the loss prefers the squeeze
+(WS_241: the gate stayed shut) — the crystal-as-road is what the loss asked for; the waist shape 384 -> 128 is
+tuned (CS_241); capacity never moved this parser (cap2x); every mover changed what the read sees. So the prior
+on SINE4 clearing the slot bar is LOW; its value is the MECHANISM read: slots conferring inside the crystal
+(k0's owner-grouping ratio from the shuffle read per block: bar >= 1.5, the mixer never passed ~1.0) — if k0
+groups by owner where the full-width mixer does not, the crystal carries ownership and the sine is not cosmetic.
+THE NAZARÉ FUNNEL as a breath-indexed WIDTH schedule (troughs 128 -> 96 -> 64): the sketch's adversarial case
+stands with the ledger — HS_241's per-band freezes were its closest form (crystallized the right slots, corrected
+nothing: the first look sets the fate); the band-sizing floor ~104-144 dims (a 64 trough cuts under what the heads
+read; digits pay first); CLOCK_SPEC's phase fence (the wave touches commit ordering, never the deduction path).
+THE FUNNEL GATE (registered 11:1x: per-breath gates, the loss draws the envelope) remains the 80-min PREFERENCE
+test that settles it either way before any schedule is built by hand. commit_damp (the funnel's commit-side home:
+per-slot damping keyed to own-sentence evidence completion — the rack's dryness idea as soft hands) PARKED behind
+the rack family's three clean nulls; trigger: a dryness test at precision >= 0.95 with useful coverage (the
+majority test). ARMS (need the word; after SRK_241 and HG_241; from scratch vs PMS8_241; ~1.5x step): SINE4_241,
+ANTI4_241 (one chain each), the seal placebo (SINE4 + the boundary skip; prediction: removing the crystal costs ~0
+— if it costs a lot, the seal law has an exception). BARS: masked >= +0.015 or a twin; rows; mint not down > 0.02;
+MECHANISM: k0 owner ratio >= 1.5 (kill: flat across widths = the crystal carries no ownership). The in-head form is
+one env door (ALG_SINE=1 on the ALG_DEPTH chassis: per-block widths via Matryoshka head slicing + the Resample maps),
+unset bit-identical.
