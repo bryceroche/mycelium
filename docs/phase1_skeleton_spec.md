@@ -50278,3 +50278,15 @@ the (3) reason, not the (originally hypothesized) low-diet-prose-accuracy reason
 would need to teach the res pointer the actual prose direction signal (closing the own-default gap),
 not merely raise rote recall of already-repeated rows further, since the latter is already
 near-ceiling and has nowhere higher to go.
+
+### 2026-10-09 (17:42) — ERRATUM to the 17:3x "TIE-BREAK'S READING" after THE REGISTER SPLIT (90dbcac7): the diet's inverse res 0.61-0.76 is MEMORIZATION, not a learned convention — the valid2 slice is in-sample (every row's text verbatim in form_mix_pm35c; pen rows ~3.1 reps vs mint ~1.05), so the diet cannot calibrate ANY wild lever (tau, the perceivers, the picker's CV, the probe's diet training all read memorized rows); the register story survives in the FAILURE MODE: own-default among res-wrong inverse slots = 0.80 on diet pen = 0.79 on wild GSM8K vs 0.014 on mint
+
+Withdrawn: "the res head reads inverse forms right on the diet" — it recites them. Kept and sharpened: the
+forward-default pathology is a PROSE-register prior (prose relations -> res = own), learned from prose where
+forward forms dominate; mint failures scatter. RULE (standing label, restating 10-07's regime finding as a fence):
+every read on the valid2 slice is IN-SAMPLE and says so in its line; calibration (thresholds, judges, probes) uses
+held-out rows only — wild is MEASURED never calibrated on, so calibration needs a THIRD pool: the books' held-out
+annotated prose (the reader's holdout, registered) or a fresh unmemorized mint/prose slice minted for the purpose
+(the WL digest asserts disjointness). The n-lever conclusion stands and gains precision: the direction needs
+UNMEMORIZED inverse PROSE in the wild register (new annotated rows, the annotation stream), not reps of what the
+body already recites. The sorting room (firing) remains the architectural road that could generalize the cue read.
