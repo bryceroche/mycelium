@@ -50290,3 +50290,87 @@ annotated prose (the reader's holdout, registered) or a fresh unmemorized mint/p
 (the WL digest asserts disjointness). The n-lever conclusion stands and gains precision: the direction needs
 UNMEMORIZED inverse PROSE in the wild register (new annotated rows, the annotation stream), not reps of what the
 body already recites. The sorting room (firing) remains the architectural road that could generalize the cue read.
+
+### 2026-10-09 (18:10) — THE SORTING ROOM form 2 BUILT + GATED + QUEUED BEHIND PC_241 + FIRED (SR_241, worktree wt13, branch sortroom, merged c11e5d1d): four trained pre-norm transformer blocks REPLACE the token states every bank read consumes (the mandatory road); A MEASUREMENT FACT FOUND ALONG THE WAY, LEDGER-WIDE: do_train's `step()` returns the POST-UPDATE loss, not the loss the gradient was taken at — THE BAR FOR ANY STATE-REPLACING ROAD IS RESTATED to the pre-update output diff, not a warm-fixture step-0 number
+
+THE BUILD (ALG_SORT=N; scripts/phase1_algebra_head.py, `_sort_room` ~3914, built in forward() ~6886
+right before `bank = _make_bank(...)`, params in build_params ~3124): N pre-norm blocks over the 256
+token positions — {LayerNorm -> 8-head BIDIRECTIONAL self-attention over tokmask's real tokens (no
+causal mask) -> residual -> LayerNorm -> FFN 512->2048->512 -> residual}, position-free (the frozen
+trunk's RoPE already lives in the states the EXISTING trained `waist_w` projects from — no second
+2048->512 projection is built; the stack consumes and replaces the already-correctly-scaled `waist`).
+ReZero at birth (REVISED same day, 11:46->14:20, after the first gate read 574.36 on a fully-random
+stack): `wo`/`ffn_w2` (+ biases) are ZERO-init, every other matrix standard small-random — the stack
+is the EXACT identity on its input at birth regardless of N (proven, not assumed: see the bisect
+below), so ALG_SORT=4 is bit-identical to role8 at step 0 by construction, not merely close. ~12.6M
+params at N=4 (64 tensors). THE OWNER-KEY SHUFFLE (ALG_SORT_KEY, behind ALG_SORT, NOT in this arm):
+a 64-d per-token key off the stack's last block; each slot's owner key = fat_cur @ tok_key (the
+expectation of that key under the slot's own this-breath token attention — the differentiable form
+of "the token the pointer argmaxes," no gold); the mixer's bilinear logits (breath_step's `sc2`) gain
++ sort_key_gain * cos(key_i, key_j), sort_key_gain a learned scalar, zero at birth (ALG_SORT_KEY_GAIN
+overrides the init only). Both refused in step_trainer.py's walker (forward()-only organs).
+
+THE BISECT (coordinator-directed, scripts/sort_bisect_replay.py + sort_scale_check.py): the first gate
+(fully-random stack) read sort4 step-0 loss 60.76 vs role8's 6.5535 even AFTER the ReZero fix — traced,
+not assumed, to a single line: `step()` computes `l = loss_fn(o, bg)` but never reads it before
+`l.backward(); ...; opt.step(); return l.realize()` — `l` is LAZY, so that final realize RECOMPUTES
+the whole forward+loss graph against the weights `opt.step()` just mutated in place. Replaying step()'s
+EXACT forward() kwarg list (dumped from live buffers, before step() ever runs) plus `loss_fn`, then the
+SAME backward()->opt.step()->realize() order, reproduces the CLI's own numbers to 6 decimals for BOTH
+role8 (6.553476) and sort4 (60.764854) — proving the architecture is not the cause. The PRE-UPDATE
+read (the same replay, no backward) dumps all 108 forward()-output tensors (every top-level key, every
+per-breath head) for role8 and sort4 off the identical feed buffers: **max|diff| = 0.000e+00 over
+108/108 keys** — no organ differs anywhere before the gradient step; the entire gap is one Adam step.
+WHY sort4 swings hard on it: `wo`/`ffn_w2`'s ~3.1M elements are exactly zero at birth; Adam's t=1
+bias-corrected step is ~lr per element REGARDLESS of gradient magnitude, and all of them move together
+(correlated with their own gradient's sign) in one shot, landing a sudden, large, non-identity waist on
+a WARM body that spent its whole prior history tuned to the unchanged distribution. THE FROM-SCRATCH
+READ (the arm's own regime, no WARM_FROM): role8 61.18 vs sort4 68.77 — ~1.12x, unremarkable random-
+init variance; the warm fixture's jump is the FIXTURE's artifact (a mature network meeting a freshly-
+woken 12M-param organ), not an arm-regime risk. Per the standing word: no warmup, no LR change on the
+stack — the arm's control is PMS8's own recipe; SNAP_EVERY=8000 + the trainer watcher cover a genuine
+blow-up if the real run ever produced one.
+
+THE RESTATED BAR (policy, this entry makes it a standing rule): for a road that REPLACES existing
+states rather than adding to them, the gate's identity instrument is the PRE-UPDATE output diff
+(scripts/sort_bisect_replay.py's 108-key diff = 0.0), never a post-update step-0/1 loss number on a
+warm fixture — that number is real (both sides of any bit-identical/paired comparison are the SAME
+post-update quantity, so historical bit-identical checks remain valid) but is not a stability signal
+for a brand-new, large, zero-init parameter block meeting a mature warm body. THE MEMORY-WORTHY QUIRK
+(ledger-wide, not sorting-room-specific): **a lazy loss realized after opt.step() reports the POST-
+UPDATE loss; reading l or o via .numpy()/.realize() BEFORE backward() severs the autograd graph (the
+no-grad fence then fires on every param, not just the new ones)** — every "step N loss=" this
+codebase has ever printed is the loss after step N's own update, not the loss the gradient was taken
+at; worth its own line in the tinygrad+AM quirks file.
+
+THE RESTATED GATE TABLE (.cache/sortroom_gate.sh, run on wt13 and again post-merge on gen-weights,
+identical both times): unset 5.2995/0.0279 (bit-identical); role8 6.5535/1.1061 (bit-identical); sort4
+60.7649/18.6915 (finite, reproducible — the post-update number, not a bar); sort4key 60.7649/18.6916
+(== sort4 at step 0 exactly — the owner-key gain's zero-at-birth law); GRAD4 PASS ROAD (16/64 tensors
+nonzero — exactly wo+ffn_w2+biases, the ReZero "cold-init caveat," wq/wk/wv/ffn_w1/both LayerNorms
+wake at step 1); GRADKEY PASS ROAD + PASS KEY (65/67 nonzero after one step; sort_key_w/b are the two
+that stay at zero, strictly upstream of sort_key_gain's own zero multiply — same caveat, one level
+out); BISECT PRE-UPDATE maxdiff=0.000e+00 over 108/108 keys — THE RESTATED BAR, met. THE IDENTITY READ
+SMOKE (scripts/sort_read_identity_smoke.py, replacing the deleted sort_read_smoke.py whose 0/18 read a
+checkpoint already corrupted by the warm fixture's post-step jump, not a read-path bug): an UNTRAINED
+warm checkpoint (STEPS=0 --train, balV242 + the sorting room's fresh-init keys, no training step at
+all) read under ALG_JIT_READ=1 (a separate captured graph from training) gives role8 18/18 and sort4
+18/18 — exact match, proving the read path threads the stack and the stack is identity at birth on the
+read side too.
+
+BARS/KILL (from the 11:46 registration, unchanged): first-look twin-pick share of wrong decisions
+0.456 -> <= 0.35 (scripts/twin_gap.py); other-sentence share 0.47 -> <= 0.40 (scripts/membrane_rack.py's
+other_sent band); masked wild SR_241 vs PMS8_241 >= PMS8 + 0.020 or a twin pair; mint not down > 0.02.
+KILL: twin-pick and other-sentence both unmoved at 48k.
+
+FIRED: .cache/queue_sr.sh waited on "PC CHAIN COMPLETE" in .cache/rack_chain_PC.log (observed 17:14),
+merged branch sortroom (c11e5d1d; one real conflict in scripts/step_trainer.py's REFUSED tuple against
+paircmp's own ALG_PAIRCMP entries, resolved by hand — both organs' refusals kept, nothing else
+touched), ran the post-merge gate (identical table to wt13's own, above), preflight PASSED, fired
+pc-sr-watch + pc-sr (18:03) — SR_241 (PMS8's recipe + ALG_SORT=4, random init, form_mix_pm35c, 48k,
+B=8) is running now, against PMS8_241.
+
+Artifacts: scripts/sort_bisect_replay.py, scripts/sort_grad_probe.py, scripts/sort_read_identity_smoke.py
+(scripts/sort_read_smoke.py deleted, superseded), scripts/sort_scale_check.py; .cache/sortroom_gate.sh,
+.cache/rack_chain_SR.sh, .cache/queue_sr.sh; .cache/sortroom_gate.log, .cache/sortroom_merge_gate.log,
+.cache/sortroom_bisect_{inputs,outputs}_{role8,sort4}.npz.
