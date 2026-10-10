@@ -50760,3 +50760,38 @@ ANTI4_241 (one chain each), the seal placebo (SINE4 + the boundary skip; predict
 MECHANISM: k0 owner ratio >= 1.5 (kill: flat across widths = the crystal carries no ownership). The in-head form is
 one env door (ALG_SINE=1 on the ALG_DEPTH chassis: per-block widths via Matryoshka head slicing + the Resample maps),
 unset bit-identical.
+
+### 2026-10-10 (14:12) — BRYCE'S PROPOSED ARCHITECTURE (the seven learnings + the five stations) MAPPED ONTO THE MEASURED SYSTEM; THE SORTING ROOM'S FEEDBACK FORM (SRF_241: the token stack re-run EVERY breath, conditioned on the slot state — "more compute on NL, every cycle") registered as the next arm; the narrow math loop deferred to SINE4 (math at the crystal); the perceiver's toggles = the six alternations + the perceiver-as-value (registered)
+
+Learnings vs the ledger: (1) "NL needs more dims and compute than math" — SUPPORTED: the week's only positive is the
+trained token side (SR, a twin pair), the slot-side depth (LT) null. (2) "compression ratio must be limited" —
+SUPPORTED in the specific form: the loss defends 384 -> 128 (WS shut its gate everywhere), 512 -> 128 cost (CS);
+the floor ~104-144 dims (band sizing) — a 2x waist on a 128-d math loop (-> 64) would cut under it. (3)
+"alternation every cycle" — REGISTERED, not yet measured (the six alternations; the pilot's ceiling says the
+consult must land BEFORE breath 2; soft feedback null x N, hard forms moved structure); the gym pre-read + head
+diff A are its prerequisites. (4) "the T6 clock can live outside" — MECHANICALLY TRUE (CS_241's register probe
+0.996) but the arm COST (-0.011 wild, -0.063 mint) — confounded with the waist's domain change (512 -> 128 over 256
+planes); the clean variant (the register + the waist still over 384 of the content) is untested. (5) U-Net
+concepts, not a U-Net — agreed (compression yes; the skip across the trough no: WS; the lawful skip around the
+peak: the sine sketch). (6)/(7) the frozen trunk once, the loop six times — as built.
+The five stations: (0) Llama 2k + 2-4 trained blocks once = THE SORTING ROOM (at 512 after the projection; the
+record; at 2048 the stack would be 16x the params with a memorized diet — the data lever pairs with any wider NL
+side: the three-pool rule). (1) "the NL loop at 1024/512 with 4 blocks, a 2x waist and a skip rebuild, run six
+times" = THE SORTING ROOM'S FEEDBACK FORM: the token stack inside the breath loop, re-run each breath with the slots'
+state as a cross-attention query (the bridge's return traffic: tokens see what the slots currently believe);
+a per-token 2x dim waist (512 -> 256 -> 512) after the last block is the sketch's crest/trough on the token side.
+(2) "the math loop with 2 blocks at 256/128 + a 2x waist" = the slot side narrowed to the crystal: SINE4's k0 (slot
+attention inside the 128-d waist subspace) is the cheap form; a full re-dimensioning of the slot side is the
+expensive form and touches every head (CS's lesson: redesign costs). (3)-(5) the perceiver reviews the two loops'
+proposals, the solver runs them, the perceiver toggles graph branches = THE PERCEIVER AS THE VALUE FUNCTION
+(read 1: 23/311, bar 24) over the candidate lattice + the six alternations with HARD toggles (a one-hot branch
+mask is the telegraph — the measured feedback that moves structure; "differentiable" via straight-through, and the
+knob/road laws say a SOFT gate is voted down). Only the perceiver sees the atlas (the Goodhart fence kept); JSD in
+probability space = the atlas angles already in the judge; DSL tags per centroid = registered; node order by a
+RoPE-like wave = the clock's rotation (built).
+ORDER (by the evidence; needs the word; after SRK_241 / HG_241): (a) SRF_241 — the sorting room re-run every
+breath with slot-conditioned cross-attention (the 4 blocks shared across breaths; ReZero on the slot-query branch so
+breath 0 == SR exactly; ~0.5 s/step; bars: first-look twin-pick / other-sentence vs SR's pair (the mechanism bar
+SR missed), masked >= SR + 0.010 or a twin, the drift, mint; kill: the first-look reads unmoved AND the slot-query
+branch's knob census < 10% = the tokens do not read the slots). (b) SINE4 / ANTI4 (math at the crystal). (c) the
+six alternations with hard toggles behind the gym pre-read + head diff A. The three-pool rule governs every judge.
