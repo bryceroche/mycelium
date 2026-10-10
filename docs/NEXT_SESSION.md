@@ -1,13 +1,17 @@
-# NEXT SESSION — cold-start entry (updated 2026-10-10 03:20)
+# NEXT SESSION — cold-start entry (updated 2026-10-10 08:07)
 
-**THE NIGHT'S QUEUE (10-10 03:20):** LT_241 DOES NOT FIRE (masked +0.0034 z 0.36; args 0.431 unmoved; rows 18; mint +0.046; knob census
-PASS all blocks live = a road live at scale that moved nothing: depth on the slot side is not the lever). WS_241 (THE WAIST SKIP A) is
-in its resumed queue (the waistskip merge conflicted on step_trainer's REFUSED list — the auto-resolver's shape assumption broke on
-loopedtf's trailing comment; resolved by hand 90a79be2; the resume runs the post-merge gate then fires pc-ws). Then: the clock-band
-pre-read + CS_241 (pc-queue-cs) -> AR_241 (pc-queue-ar) -> SR_242 (pc-queue-sr2). SR_241 VERDICT stands (slot frame fires +0.0239
-z 2.16, rows 23 record, digits +0.053; mechanism frame refuted). Morning: read WS/CS/AR/SR_242 paired vs PMS8_241; the twin decides
-the record; consult the re-admission table for every null. RULE (new): a queue's merge resolver must handle any REFUSED-list shape
-(union of both sides) or abort BEFORE waiting hours — test it against the live branches before arming. Updated 03:20.
+**THE MORNING (08:07): AR_241 (THE ARGS-CONDITIONED RES) IS ON THE CARD (fired 07:49, 0.17 s/step -> reads ~10:15; the device smoke
+passed without the JIT workaround); SR_242 (the sorting room's seed twin) fires after it (pc-queue-sr2).** THE NIGHT'S VERDICTS (all
+ledgered, paired vs PMS8_241 0.3476): SR_241 FIRES ON THE SLOT (0.3715, +0.0239 z 2.16; ROWS 23 = record; digits +0.053; mint 0.788)
+with the MECHANISM REFUTED (twin-pick 0.457 / other-sentence 0.56 / args unmoved: a digits organ, not the wall's seat); LT_241 null
+(+0.003; knob PASS all blocks live: depth is not the lever); WS_241 KILLED on its own criterion (g stayed 0.020 everywhere: the loss
+prefers the squeeze); CS_241 negative (-0.011; mint -0.063; clock probe 0.996 on the trained body: the mechanism works, the redesign
+costs). PRE-READ: the clock band's removal cost PMS8 -0.013 (z 2.7) / SR -0.002. THE READING: of the night's five organs the only
+positive is the trained TOKEN SIDE, and it moved the value path (digits), not the binding; the waist's shape (192 planes -> 128, the
+clock beside) is tuned; the slot side is not compute-starved. NEXT: the twin decides SR's record; if it holds -> the owner key
+(SRK_241: SR + ALG_SORT_KEY=1, the shuffle's key as structure) and the hourglass 2b; the perceiver-as-value (CPU) running; the data
+lever (unmemorized inverse prose) is the direction line's road. Chain faults of the night, all fixed + ruled: the WS merge resolver
+(REFUSED shape), the CS late probe (reader env). Updated 08:07.
 
 **THE CARD IS IDLE (09:38).** THE DIRECTION PROBE FIRED (zero-GPU; scripts/direction_probe.py; .cache/direction_probe_PMS8_241.txt):
 PRESENT-BUT-UNEXPRESSIBLE — a read-out trained on PMS8_241's own frozen states reaches wild AUROC 0.98 (own state + both gold args'
