@@ -50397,3 +50397,16 @@ band (128) BYPASSES the waist, root (32) + branch (224) squeeze — fine detail 
 gate (a mandatory road by construction); vs HS_241 (drift already cured there by damping; the question is the wall
 and mint). Same reads. ORDER: A first (one arm, 80 min, on the claim body); B if A's g census opens the leaf-like
 dims. Both wait for the card (SR_241 to ~21:10) and the word.
+
+### 2026-10-09 (19:11) — WORD GIVEN (Bryce: "4 layers of MHA blocks in 512 dim space inside the 6x loop ... implementing concepts from a U-Net in a looped transformer"): THE LOOPED TRANSFORMER (ALG_DEPTH=4: per breath, four pre-norm blocks at 512-d on the slot side — slot self-attention, slots -> tokens cross-attention, FFN; weights shared across breaths, distinct across blocks; REPLACES the mixer; ReZero/identity at birth) = the 10-08 depth probe raised to a full form; LT_241 vs PMS8_241 queued behind SR_241; THE WAIST SKIP form A (WS_241) queued behind LT_241; one organ per arm
+
+The reading of the word: Bryce's blocks go INSIDE the loop (the slot side), not the token-side frontend (that is the
+sorting room, already on the card as SR_241); the two coexist. U-Net concepts inside the loop: the waist = the
+bottleneck (kept), the skip (form A) around it — built as a SEPARATE arm so a verdict names its cause. BARS LT_241:
+masked wild >= PMS8_241 + 0.020 or a twin pair; args >= 0.47 (PMS8 0.43-0.45; the wall); mint not down > 0.02; the
+knob census of each block's contribution per breath (>= 5 % of the state at the last breath or the block is inert);
+the drift read reported. KILL: masked down, or args unmoved AND rows down. Cost ~2-3x step (~4-5 h). WS_241: bars as
+registered 18:4x (masked +0.020 / twin; drift hit >= 0.70; g census; mint). ORDER tonight: SR_241 (reads ~21:10) ->
+LT_241 (overnight) -> WS_241 (toward morning). Builders: worktrees wt14 (loopedtf) and wt15 (waistskip); gates per
+the day's rules (unset bit-identical; grad probes per block; the knob census; the pre-update instrument for a
+state-replacing road; every queue grep tested against its gate log before arming).
