@@ -1,17 +1,17 @@
-# NEXT SESSION — cold-start entry (updated 2026-10-10 08:07)
+# NEXT SESSION — cold-start entry (updated 2026-10-10 10:54)
 
-**THE MORNING (08:07): AR_241 (THE ARGS-CONDITIONED RES) IS ON THE CARD (fired 07:49, 0.17 s/step -> reads ~10:15; the device smoke
-passed without the JIT workaround); SR_242 (the sorting room's seed twin) fires after it (pc-queue-sr2).** THE NIGHT'S VERDICTS (all
-ledgered, paired vs PMS8_241 0.3476): SR_241 FIRES ON THE SLOT (0.3715, +0.0239 z 2.16; ROWS 23 = record; digits +0.053; mint 0.788)
-with the MECHANISM REFUTED (twin-pick 0.457 / other-sentence 0.56 / args unmoved: a digits organ, not the wall's seat); LT_241 null
-(+0.003; knob PASS all blocks live: depth is not the lever); WS_241 KILLED on its own criterion (g stayed 0.020 everywhere: the loss
-prefers the squeeze); CS_241 negative (-0.011; mint -0.063; clock probe 0.996 on the trained body: the mechanism works, the redesign
-costs). PRE-READ: the clock band's removal cost PMS8 -0.013 (z 2.7) / SR -0.002. THE READING: of the night's five organs the only
-positive is the trained TOKEN SIDE, and it moved the value path (digits), not the binding; the waist's shape (192 planes -> 128, the
-clock beside) is tuned; the slot side is not compute-starved. NEXT: the twin decides SR's record; if it holds -> the owner key
-(SRK_241: SR + ALG_SORT_KEY=1, the shuffle's key as structure) and the hourglass 2b; the perceiver-as-value (CPU) running; the data
-lever (unmemorized inverse prose) is the direction line's road. Chain faults of the night, all fixed + ruled: the WS merge resolver
-(REFUSED shape), the CS late probe (reader env). Updated 08:07.
+**SR_242 (the sorting room's SEED TWIN) IS ON THE CARD (10:54; fired 10:53; pc-sr2; ~0.2 s/step -> reads ~13:45). It decides whether SR_241's
++0.0239 (z 2.16, rows 23) is THE RECORD (the claim standard: +0.020 or a twin pair).** AR_241 (THE ARGS-CONDITIONED RES) DOES NOT FIRE
+(inverse res 0.261 unchanged; knob 1.24x; masked -0.007) — THE DIRECTION LINE CLOSES ON SEVEN ARCHITECTURAL FORMS (DIR, DIRD, DIR2,
+DIRROLE, SM, PC, AR + the tie-break): the direction and the binding are one problem (the res cannot know the form until the args are
+bound; the args head cannot place own among the args until it knows the form); the gold-direction oracle's 0.60 is reachable only with
+the args right; the body's forward-default is a PROSE prior from the corpus. OPEN ROADS: the DATA road (unmemorized inverse prose in
+the wild register: the annotation stream math -> NL; the books' lane) and the token-side binding road (the owner key SRK_241 and the
+hourglass 2b, if the twin holds). THE PERCEIVER AS THE VALUE FUNCTION read 1: 23/311 with 2 regressions (bar 24/2, missed by one;
+the atlas angles +5 rows at the same regression budget; one wild read, no re-tuning). THE NIGHT'S VERDICTS: SR_241 fires on the slot
+(mechanism refuted: a digits organ); LT_241 null; WS_241 killed (the loss keeps the squeeze shut); CS_241 negative (mint -0.063; the
+register works 0.996). THE THREE-POOL RULE: train / calibrate / measure on disjoint pools (the valid2 slice is in-sample; wild is
+measured only) — a third held-out pool is the prerequisite for every judge and every direction read. Updated 10:54.
 
 **THE CARD IS IDLE (09:38).** THE DIRECTION PROBE FIRED (zero-GPU; scripts/direction_probe.py; .cache/direction_probe_PMS8_241.txt):
 PRESENT-BUT-UNEXPRESSIBLE — a read-out trained on PMS8_241's own frozen states reaches wild AUROC 0.98 (own state + both gold args'
