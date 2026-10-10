@@ -1,12 +1,18 @@
-# NEXT SESSION — cold-start entry (updated 2026-10-09 16:46)
+# NEXT SESSION — cold-start entry (updated 2026-10-09 18:05)
 
-**THE CARD IS IDLE (16:46) until the sorting room's queue fires (it waits on PC's done mark; its gate is finishing).** PC_241 (THE PAIRWISE
-COMPARATOR) DOES NOT FIRE: inverse res 0.253 UNCHANGED, forward 0.867, masked +0.001 (null), rows 12, mint -0.014 — with the knob
-census PASSING at 1.59x: a road live at scale on the probe's states did not move the inverse res. THE FRAME WAS WRONG: under the
-positional law the inverse res is a THIRD variable (the minuend B: A = B - C stored as B = A + C, args [A own, C], res B); the
-direction says only "not own"; finding B is a BINDING read (the args wall's class). THE OWN-SUPPRESSION ORACLE fired (zero
-training): gold-direction own removal + B's rank histogram on PMS8/PC dumps = the ceiling of any direction-aware fix. Next arm:
-SR_241 (the sorting room, 4 token-side MHA layers; queue_sr.sh). Ledger 16:46.
+**SR_241 IS ON THE CARD (fired 18:0x; pc-sr + pc-sr-watch; .cache/sharp_SR_241.log; chain .cache/rack_chain_SR.log; the stack ~1.3-1.5x
+step cost -> ~2-2.5 h + reads).** THE SORTING ROOM form 2 (ALG_SORT=4: four pre-norm MHA blocks at 512-d over the 256 token
+states, ReZero/identity-at-init, REPLACING the states every bank read consumes = the mandatory road; the owner-key flag ALG_SORT_KEY
+built, NOT in this arm; merged c11e5d1d, ledger c16bf6c4). BARS: first-look twin-pick <= 0.35 (PMS8 0.456), other-sentence share
+<= 0.40 (0.47), masked wild +0.020 vs PMS8_241 or a twin pair, mint not down > 0.02; KILL: twin-pick and other-sentence both unmoved.
+THE DAY'S VERDICTS (10-09): SM_241 null (inert by scale), PC_241 null WITH the knob at 1.59x (the comparator for the own candidate
+never saw the args' states), THE OWN-SUPPRESSION ORACLE: the direction IS a lever (gold clamp -> inverse res 0.60/0.62; B rank 2 on
+40%; residue = the other arg C 55%), THE DIRECTION TIE-BREAK does not clear (tau on the diet degenerates), THE REGISTER SPLIT: the
+valid2 slice is IN-SAMPLE (memorized; calibration needs a third held-out pool) and the forward-default failure is a PROSE prior
+(0.80 diet pen = 0.79 wild vs 0.014 mint). REGISTERED (word): THE ARGS-CONDITIONED RES (the res reads the args head's predicted
+soft selection of variable states); the hourglass sorting room (2b); the six alternations behind the gym pre-read + head diff A;
+the perceiver as the value function (picker bars 24/2); the re-admission table; the diet-hygiene pass; unmemorized inverse PROSE
+(the n lever in the wild register). MEASUREMENT NOTE: the trainer's step-N loss is POST-update. Updated 18:05.
 
 **THE CARD IS IDLE (09:38).** THE DIRECTION PROBE FIRED (zero-GPU; scripts/direction_probe.py; .cache/direction_probe_PMS8_241.txt):
 PRESENT-BUT-UNEXPRESSIBLE — a read-out trained on PMS8_241's own frozen states reaches wild AUROC 0.98 (own state + both gold args'
