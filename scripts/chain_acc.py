@@ -34,7 +34,7 @@ def main():
     KEYS = ("pres", "ftype", "op", "dig", "args", "res") + (("dup",) if "h_dup" in p else ())
     from mycelium.rulebook import legal_digit_logits
     _HUD_ON = int(os.environ.get("ALG_HUD", "0")) != 0   # THE TOKEN HUD, read-time road (2026-09-21)
-    _TREE_ON = bool(os.environ.get("ALG_TREE", ""))   # THE TREE DESCENT's unit-id port (2026-09-25)
+    _TREE_ON = bool(os.environ.get("ALG_TREE", "")) or int(os.environ.get("ALG_SORT_HG", "0")) != 0   # THE TREE DESCENT's unit-id port (2026-09-25); the hourglass (2026-10-09) needs it too, unconditionally
     _BUSREG_ON = float(os.environ.get("ALG_BUSREG", "0")) != 0 or float(os.environ.get("ALG_IDKEY", "0")) != 0   # THE BUS REGISTER's token-id port (2026-09-22)
     _DIRROLE_ON = int(os.environ.get("ALG_DIRROLE", "0")) != 0   # THE DIRECTION ROLE, read-time road (2026-10-09)
     if _HUD_ON or _BUSREG_ON or _DIRROLE_ON:

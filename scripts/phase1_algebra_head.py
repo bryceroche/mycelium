@@ -3396,6 +3396,15 @@ def build_params(seed=0):
             p["sort_key_w"] = t((_rSR.randn(H_W, 64) / math.sqrt(H_W)).astype(np.float32))
             p["sort_key_b"] = t(np.zeros(64, np.float32))
             p["sort_key_gain"] = t(np.full(1, float(os.environ.get("ALG_SORT_KEY_GAIN", "0")), np.float32))
+        if ALG_SORT_HG:
+            # THE HOURGLASS SORTING ROOM form 2b (2026-10-09): the unpool step's two projections,
+            # BOTH weight and bias ZERO-init (never merely the weight) so U_c(clause)=U_s(sent)=0
+            # exactly at birth regardless of what the pooled clause/sentence vectors contain —
+            # the hourglass's own identity-at-birth proof needs this, not just the ReZero blocks'.
+            p["sort_hg_Uc"] = t(np.zeros((H_W, H_W), np.float32))
+            p["sort_hg_Uc_b"] = t(np.zeros(H_W, np.float32))
+            p["sort_hg_Us"] = t(np.zeros((H_W, H_W), np.float32))
+            p["sort_hg_Us_b"] = t(np.zeros(H_W, np.float32))
     if ALG_DEPTH:
         # THE LOOPED TRANSFORMER (2026-10-09): N blocks of {self-attn over slots, cross-attn
         # slots->tokens, FFN}, ReZero at birth exactly as the sorting room's own precedent — the
@@ -4209,6 +4218,80 @@ ALG_SORT_KEY = int(os.environ.get("ALG_SORT_KEY", "0"))
 if ALG_SORT_KEY:
     assert ALG_SORT, "ALG_SORT_KEY needs ALG_SORT > 0 (the stack it keys off; no stack, no owner key)"
 
+# THE HOURGLASS SORTING ROOM form 2b (2026-10-09 14:36 registration; "MHA needs help connecting
+# the macro to micro -- that's where the U-Net comes in"): rewires the SAME 4 sort{i}_* blocks
+# ALG_SORT=4 already builds (no new attention/FFN params) into a 1-D U-Net over the sequence --
+# block0 at TOKEN resolution, pool to CLAUSE spans (the tree descent's own clause unit ids),
+# block1 at CLAUSE resolution, pool clauses to SENTENCES, block2 at SENTENCE resolution, unpool
+# back to tokens through two learned projections U_c/U_s (zero-init), added into block0's own
+# output (the skip at each level = the token path kept), block3 at TOKEN resolution on the
+# result. ALG_SORT_HG=1: the additive skip (token_out = block3(tok1 + U_c(clause) + U_s(sent))).
+# ALG_SORT_HG=2: THE MANDATORY-ROAD QUESTION answered as a MODULATION instead of a bypass (the
+# residual-seal law's warning: an additive skip the fine path can out-compute is a road the
+# coarse path can be voted down from under gentle continuation) -- the coarse path SCALES the
+# token path rather than merely adding beside it: token_out = block3(tok1 * (1 + tanh(U_c(clause)
+# + U_s(sent)))); tanh(0) = 0 at birth, so this is ALSO the identity multiplier (1+0=1) at init.
+# Needs ALG_SORT=4 exactly (it is the 4 blocks this form rewires, not a 5th resolution). Pooling
+# is a masked mean (one-hot cluster-assignment matrix @ content, divided by the per-cluster real-
+# token count, clipped away from zero so an empty cluster -- a row with one clause/sentence --
+# divides by a finite floor instead of NaN/Inf: the degenerate-row rule). Clause/sentence unit
+# ids come from the tree descent's own per-token array (tree[:, :, 1] clause, tree[:, :, 0]
+# sentence; tree_row_ids/tree_build_array, already banked like HUD) -- NOT gated on ALG_TREE
+# itself (the hourglass needs the unit ids regardless of whether any breath's bank read opens a
+# tree level); see the TREE-build trigger below (~tree_build_array call site) and every read-time
+# caller (loop_val.py/chain_acc.py/membrane_rack.py _TREE_ON gates), all extended to build `tree`
+# whenever ALG_SORT_HG is set, same as when ALG_TREE is set. Clause ids never span two sentences
+# by construction (_tree_segment_ids bumps its running counter on every sentence change too), so
+# a clause's sentence is well-defined; it is read back as a masked mean of the SAME one-hot
+# matrix against the token's own sentence id (an exact integer whenever the clause is non-empty,
+# since every member token shares one sentence id) and matched to the nearest unit by <0.5. Unit
+# ids are clipped into [0, MAX_CL-1] / [0, MAX_ST-1] (generous bounds; _TREECODE_UMAX's own
+# precedent) so no real token is ever excluded from pooling, only (in the rare overflow case)
+# merged into the last bucket. ReZero (block0/1/2/3 each return their input bit-for-bit unchanged
+# at init, the flat sorting room's own property, independent of mask or sequence length) PLUS
+# zero-init U_c/U_s together give ALG_SORT_HG={1,2} the exact identity of ALG_SORT=4 at step 0:
+# block0(waist)=waist: pool to clause/sentence is a real but inert computation (zero-weighted by
+# U_c/U_s downstream); block1/block2 return their pooled inputs unchanged; U_c(clause)=U_s(sent)
+# =0 exactly (zero weight AND zero bias); form 1's tok1+0+0=tok1, form 2's tok1*(1+tanh(0))=tok1*1
+# =tok1; block3(tok1)=tok1 -- the WHOLE hourglass is the identity on `waist` at birth, matching
+# the flat form's own bit-identity claim, not merely approximating it.
+ALG_SORT_HG = int(os.environ.get("ALG_SORT_HG", "0"))
+if ALG_SORT_HG:
+    assert ALG_SORT == 4, "ALG_SORT_HG rewires the 4 existing sort{i} blocks (0=token,1=clause,2=sentence,3=token) into an hourglass -- needs ALG_SORT=4 exactly, not a 5th resolution"
+    assert ALG_SORT_HG in (1, 2), "ALG_SORT_HG=1 (additive skip) or 2 (gated-multiplicative skip)"
+SORT_HG_MAX_CL = 64   # max distinct CLAUSE unit ids per row (_TREECODE_UMAX's own precedent: "clauses/mentions rarely past 64")
+SORT_HG_MAX_ST = 32   # max distinct SENTENCE unit ids per row (_TREECODE_UMAX's own precedent: "sentences <= 32" --
+                      # the tiny64 gate fixture's own census (mean s=10.1) showed the FIRST guess of 16 was too
+                      # tight: a tighter cap than the established precedent merges real structure into one bucket
+                      # on overflow rather than crashing, so this was caught as a quality risk, not a crash)
+
+
+def _sort_block(p, i, x, mask1d, B):
+    """ONE ReZero pre-norm transformer block (the sort{i}_* tensors build_params already builds
+    under ALG_SORT), applied at ANY resolution: x is (B, L, H_W) for whatever L this call's
+    caller chose (256 real tokens for the flat form; a clause or sentence pooled axis for the
+    hourglass), mask1d is (B, L) with 1 for a real position / 0 for one to exclude from both the
+    softmax's key axis and (by the same reasoning as the flat form's tokmask) every downstream
+    read. Bit-for-bit the flat `_sort_room`'s own per-block body, factored out so both callers
+    share one source of truth."""
+    T = int(x.shape[1])
+    hd = H_W // N_HEADS
+    _tm = mask1d.reshape(B, 1, 1, T)
+    _ln1 = x.layernorm(eps=1e-5) * p[f"sort{i}_ln1_g"] + p[f"sort{i}_ln1_b"]
+    q = (_ln1 @ p[f"sort{i}_wq"] + p[f"sort{i}_wq_b"]).reshape(B, T, N_HEADS, hd).permute(0, 2, 1, 3)
+    k = (_ln1 @ p[f"sort{i}_wk"] + p[f"sort{i}_wk_b"]).reshape(B, T, N_HEADS, hd).permute(0, 2, 1, 3)
+    v = (_ln1 @ p[f"sort{i}_wv"] + p[f"sort{i}_wv_b"]).reshape(B, T, N_HEADS, hd).permute(0, 2, 1, 3)
+    sc = (q @ k.transpose(-2, -1)) / math.sqrt(hd)
+    sc = sc.clip(-1e4, 1e4) + (1.0 - _tm) * -1e4   # bidirectional: no causal mask, pads/absent-units excluded
+    at = sc.softmax(-1)
+    o = (at @ v).permute(0, 2, 1, 3).reshape(B, T, H_W)
+    o = o @ p[f"sort{i}_wo"] + p[f"sort{i}_wo_b"]
+    x = x + o
+    _ln2 = x.layernorm(eps=1e-5) * p[f"sort{i}_ln2_g"] + p[f"sort{i}_ln2_b"]
+    f = (_ln2 @ p[f"sort{i}_ffn_w1"] + p[f"sort{i}_ffn_b1"]).gelu() @ p[f"sort{i}_ffn_w2"] + p[f"sort{i}_ffn_b2"]
+    x = x + f
+    return x
+
 
 def _sort_room(p, waist, tokmask, B):
     """THE SORTING ROOM form 2 (ALG_SORT=N): N pre-norm transformer blocks, BIDIRECTIONAL
@@ -4221,24 +4304,86 @@ def _sort_room(p, waist, tokmask, B):
     are EXACT zero at init, so this function returns `waist` bit-for-bit unchanged regardless of
     N until the gradient moves wo/ffn_w2 away from zero."""
     x = waist
-    T = int(x.shape[1])
-    hd = H_W // N_HEADS
-    _tm = tokmask.reshape(B, 1, 1, T)
     for i in range(ALG_SORT):
-        _ln1 = x.layernorm(eps=1e-5) * p[f"sort{i}_ln1_g"] + p[f"sort{i}_ln1_b"]
-        q = (_ln1 @ p[f"sort{i}_wq"] + p[f"sort{i}_wq_b"]).reshape(B, T, N_HEADS, hd).permute(0, 2, 1, 3)
-        k = (_ln1 @ p[f"sort{i}_wk"] + p[f"sort{i}_wk_b"]).reshape(B, T, N_HEADS, hd).permute(0, 2, 1, 3)
-        v = (_ln1 @ p[f"sort{i}_wv"] + p[f"sort{i}_wv_b"]).reshape(B, T, N_HEADS, hd).permute(0, 2, 1, 3)
-        sc = (q @ k.transpose(-2, -1)) / math.sqrt(hd)
-        sc = sc.clip(-1e4, 1e4) + (1.0 - _tm) * -1e4   # bidirectional: no causal mask, pads excluded
-        at = sc.softmax(-1)
-        o = (at @ v).permute(0, 2, 1, 3).reshape(B, T, H_W)
-        o = o @ p[f"sort{i}_wo"] + p[f"sort{i}_wo_b"]
-        x = x + o
-        _ln2 = x.layernorm(eps=1e-5) * p[f"sort{i}_ln2_g"] + p[f"sort{i}_ln2_b"]
-        f = (_ln2 @ p[f"sort{i}_ffn_w1"] + p[f"sort{i}_ffn_b1"]).gelu() @ p[f"sort{i}_ffn_w2"] + p[f"sort{i}_ffn_b2"]
-        x = x + f
+        x = _sort_block(p, i, x, tokmask, B)
     return x
+
+
+def _sort_pool(oh, x, cnt):
+    """Masked mean: oh is (B, L_from, L_to) a 0/1 cluster-assignment matrix (each `from` index
+    belongs to at most one `to` cluster), x is (B, L_from, H_W), cnt is (B, L_to, 1) the per-
+    cluster real-member count (already computed from oh so every caller reuses the same count
+    for its own exists-mask). Returns (B, L_to, H_W); an empty cluster (cnt==0) divides by a
+    floor instead of 0/0 -- finite, never read downstream (its exists-mask is 0)."""
+    return (oh.permute(0, 2, 1) @ x) / cnt.maximum(1e-6)
+
+
+def _sort_room_hg(p, waist, tokmask, tree, B):
+    """THE HOURGLASS SORTING ROOM form 2b (ALG_SORT_HG=1 additive / 2 gated-multiplicative): see
+    the module comment above ALG_SORT_HG for the full design and the identity-at-birth proof.
+    `tree` is (B, T, 4) int: col0 sentence unit id, col1 clause unit id, -1 at padding (tree_row_ids
+    / tree_build_array's own schema; cols 2/3 -- mention id, numeral flag -- unused here)."""
+    from tinygrad import Tensor
+    global _CENSUS
+    try:
+        _CENSUS
+    except NameError:
+        _CENSUS = None
+    T = int(waist.shape[1])
+    tm = tokmask.reshape(B, T, 1)
+    sent_tok_i = tree[:, :, 0].maximum(0).minimum(SORT_HG_MAX_ST - 1)      # (B, T) int, pads -> 0
+    clause_tok_i = tree[:, :, 1].maximum(0).minimum(SORT_HG_MAX_CL - 1)    # (B, T) int, pads -> 0
+    sent_tok_f = sent_tok_i.float().reshape(B, T, 1)
+    _cl_ar = Tensor.arange(SORT_HG_MAX_CL).reshape(1, 1, SORT_HG_MAX_CL)
+    _st_ar = Tensor.arange(SORT_HG_MAX_ST).reshape(1, 1, SORT_HG_MAX_ST)
+
+    # block0: token resolution (the flat form's own first block)
+    tok1 = _sort_block(p, 0, waist, tokmask, B)
+
+    # POOL tokens -> clause spans (masked mean; a token's own clause always exists)
+    oh_cl = (clause_tok_i.reshape(B, T, 1) == _cl_ar).float() * tm      # (B, T, MAX_CL)
+    cl_cnt = oh_cl.sum(1, keepdim=True).permute(0, 2, 1)                # (B, MAX_CL, 1)
+    cl_exists = (cl_cnt > 0).float().reshape(B, SORT_HG_MAX_CL)
+    c0 = _sort_pool(oh_cl, tok1, cl_cnt)                                 # (B, MAX_CL, H_W)
+
+    # block1: clause resolution
+    c1 = _sort_block(p, 1, c0, cl_exists, B)
+
+    # POOL clauses -> sentences: a clause's sentence id is the masked mean of its own tokens'
+    # sentence id (exact, since a clause never spans two sentences by construction)
+    cl_sent_id = _sort_pool(oh_cl, sent_tok_f, cl_cnt).reshape(B, SORT_HG_MAX_CL, 1)   # (B, MAX_CL, 1)
+    oh_st = ((cl_sent_id - _st_ar.float()).abs() < 0.5).float() * cl_exists.reshape(B, SORT_HG_MAX_CL, 1)
+    st_cnt = oh_st.sum(1, keepdim=True).permute(0, 2, 1)                 # (B, MAX_ST, 1)
+    st_exists = (st_cnt > 0).float().reshape(B, SORT_HG_MAX_ST)
+    s0 = _sort_pool(oh_st, c1, st_cnt)                                   # (B, MAX_ST, H_W)
+
+    # block2: sentence resolution
+    s1 = _sort_block(p, 2, s0, st_exists, B)
+
+    # UNPOOL back to tokens: each token reads its own clause's and its own sentence's processed
+    # vector (a direct token-level one-hot against sentence id, not routed back through clauses --
+    # the exact inverse of how s0 was gathered FROM tokens for the skip's own sentence term; it is
+    # c1, pooled from the SAME oh_cl, that carries the clause-resolution path back to tokens)
+    oh_st_tok = (sent_tok_i.reshape(B, T, 1) == _st_ar).float() * tm    # (B, T, MAX_ST)
+    c1_to_tok = oh_cl @ c1          # (B, T, H_W): broadcast each token's own clause vector
+    s1_to_tok = oh_st_tok @ s1      # (B, T, H_W): broadcast each token's own sentence vector
+    u_c = c1_to_tok @ p["sort_hg_Uc"] + p["sort_hg_Uc_b"]
+    u_s = s1_to_tok @ p["sort_hg_Us"] + p["sort_hg_Us_b"]
+    if ALG_SORT_HG == 1:
+        combined = tok1 + u_c + u_s
+    else:   # ALG_SORT_HG == 2: the coarse path MODULATES the token path, never merely adds beside it
+        combined = tok1 * (1.0 + (u_c + u_s).tanh())
+
+    if _CENSUS is not None:   # THE KNOB CENSUS (the pre/post knob law): the coarse contribution
+        # vs the token path it meets, at block3's own input -- a single-shot organ (no breath
+        # index), tagged kb=-1 so the generic (kb, name, array) consumers never collide with a
+        # per-breath organ's own kb=0..K_B-1 entries.
+        _CENSUS.append((-1, "sorthg_tok1", tok1.realize().numpy()))
+        _CENSUS.append((-1, "sorthg_Uc", u_c.realize().numpy()))
+        _CENSUS.append((-1, "sorthg_Us", u_s.realize().numpy()))
+
+    # block3: token resolution, final
+    return _sort_block(p, 3, combined, tokmask, B)
 
 
 # ===========================================================================
@@ -7534,7 +7679,17 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
             print(f"[sort-debug] waist PRE-sort: std(real)={_wpre_full[_pad_np == False].std():.6f} "
                   f"std(pad)={(_wpre_full[_pad_np].std() if _pad_np.any() else float('nan')):.6f} "
                   f"n_pad={int(_pad_np.sum())} shape={tuple(waist.shape)} dtype={waist.dtype}", flush=True)
-        waist = _sort_room(p, waist, tokmask, B)
+        if ALG_SORT_HG and "sort_hg_Uc" in p and tree is not None:
+            # the hourglass fires whenever `tree` is threaded (every real training step and every
+            # real read call -- the TREE-build trigger + every _TREE_ON gate make sure of that);
+            # do_train's OWN internal forward() calls that skip optional ports wholesale (the
+            # mask-prep pass's open/certificate-half reads thread neither hud, ident, dircue NOR
+            # tree -- an existing, accepted inconsistency this organ does not get to unilaterally
+            # fix) fall back to the flat sorting room instead of crashing, exactly the HUD/BUSREG/
+            # DIRROLE precedent (`if ALG_HUD and hud is not None:` skips silently, never asserts).
+            waist = _sort_room_hg(p, waist, tokmask, tree, B)
+        else:
+            waist = _sort_room(p, waist, tokmask, B)
         if int(os.environ.get("ALG_SORT_DEBUG", "0")):
             _wpost_full = waist.numpy()
             _d = np.abs(_wpost_full - _wpre_full)
@@ -9943,7 +10098,7 @@ def do_train(steps, lr, batch, seed):
         if ALG_HUD else None   # THE TOKEN HUD's feed (b_fact idiom)
     b_dircue = fix(np.zeros((batch, T_ALG), np.int32), dtypes.int) \
         if ALG_DIRROLE else None   # THE DIRECTION ROLE's feed (b_fact idiom)
-    TREE = tree_build_array(samples, tokmask, sent, T_ALG) if _TREE_LEVELS is not None else None   # THE TREE DESCENT's unit ids (host, banked like HUD)
+    TREE = tree_build_array(samples, tokmask, sent, T_ALG) if (_TREE_LEVELS is not None or ALG_SORT_HG) else None   # THE TREE DESCENT's unit ids (host, banked like HUD); the hourglass needs them unconditionally, not gated on ALG_TREE
     if TREE is not None:
         print(f"[tree] ALG_TREE={ALG_TREE}: unit ids ready {TREE.shape} | units/row mean s={np.mean([len(set(r[:, 0][r[:, 0] >= 0])) for r in TREE]):.1f} c={np.mean([len(set(r[:, 1][r[:, 1] >= 0])) for r in TREE]):.1f} m={np.mean([len(set(r[:, 2][r[:, 2] >= 0])) for r in TREE]):.1f}", flush=True)
     b_tree = fix(np.zeros((batch, T_ALG, 4), np.int32), dtypes.int) if TREE is not None else None
