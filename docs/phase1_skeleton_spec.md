@@ -50133,3 +50133,77 @@ own index out of the res logits and re-decode. Reads: AUROC of the predicted-arg
 inverse res / forward res / masked wild paired vs PMS8_241 at tau chosen on the DIET (never on wild). BARS: inverse
 res >= 0.40, forward res >= 0.84, masked >= +0.010 paired (z >= 1). A decoder component (trained on the key's rows),
 not a diagnostic — the fence is not crossed; if it clears, it is a free read-time lever on every body.
+
+### 2026-10-09 (17:32) — THE DIRECTION TIE-BREAK (zero training): DOES NOT CLEAR — tau* degenerates to "never clamp" because the probe's own diet (.cache/form_pm35c_slice1024_valid2.jsonl) does not share wild's conditional error structure for this mechanism; the predicted-args probe itself also fails to transfer to PC_241 (wild AUROC 0.35-0.43, WORSE than chance — a coordinate-misalignment symptom, not a probe bug); the no-MLP control (tau=0) makes masked fac-exact WORSE by ~0.10 on both bodies
+
+Artifacts: scripts/dirtb_rawdump.py [new, a solve-free CA_RAWDUMP-equivalent — chain_acc.py's own
+dump plus a CSP solve per row, unneeded and slow for ~775 diet rows]; scripts/direction_tiebreak.py
+[new]; .cache/dirtb_collect.sh [new, two short GPU reads under flock .cache/gpu.lock, each
+released immediately — diet rawdump for PMS8_241 (316s) + PC_241's own wild clock-band states
+(CB_TAG=PC_241_dirtb, ~130s)]; .cache/dirtb_rawslots_diet_PMS8_241.pkl [new — byte-identical,
+spot-checked against the BANKED .cache/rawslots_slicevalid2_PMS8_241.pkl from the 2026-10-05
+Panel Picker build, confirming this script's forward pass has no bug]; .cache/
+clock_band_states_PC_241_dirtb.npz [new]; .cache/dirtb_ps_legal_wild_{PMS8_241,PC_241}_{tiebreak,
+tau0}.npz [new, paired_read.py inputs]; .cache/dirtb_report.txt.
+
+(1) THE PREDICTED-ARGS PROBE (diet-trained on PMS8_241, final breath, feature E "args alone" / B
+"own+args", args from the args head's own predicted top-2/dup decode instead of gold): diet CV
+AUROC degrades modestly from the gold-args reference (B mlp 0.9389 vs 0.9753 gold, E mlp 0.9089 vs
+0.9443 gold — chosen probe: feature B, mlp, by diet CV only, never wild). WILD AUROC degrades much
+more on PMS8_241 itself (B mlp 0.6978 vs 0.9716 gold, E mlp 0.6950 vs 0.8408 gold — noisy predicted
+args cost far more out-of-sample than in-sample) and CATASTROPHICALLY on PC_241 (B mlp 0.3638, E mlp
+0.3505 — WORSE than chance): a probe trained on PMS8_241's content states does not transfer to
+PC_241's own states at all, consistent with the standing law (CLAUDE.md §4) that generations' head-
+space coordinates are not interchangeable without Procrustes-alignment — PC_241 is a from-scratch
+random init, not a continuation, so its state basis is unrelated to PMS8_241's. The inv_recall@fwd_
+prec>=0.85 operating point is vacuous everywhere it's reachable (n_fwd_pred 1-42 of 1040, the thin-
+tail caveat direction_probe.py's own docstring already flags).
+
+(2) TAU* ON DIET: DEGENERATE. Among 2074 eligible diet candidates (the head's own predicted
+present+relation decode — the honest, no-gold-ftype criterion used throughout), the best achievable
+net delta over EVERY threshold is +0 — the top-ranked candidate by the chosen probe's own p(inverse)
+already has non-positive expected gain, so tau*=1.0 (never clamp) is the diet's own maximum. Clamping
+ALL 2074 unconditionally costs -462 net slots on the diet. DIAGNOSIS (not a bug — cross-checked
+against the banked rawdump and the diet's own classify_row self-reference census in .cache/
+direction_probe_PMS8_241.txt): this diet's conditional structure is inverted relative to wild's. Among
+inverse-eligible diet slots where the (predicted) args AND op are ALSO already correct, baseline res
+is right 239/241 = 0.992 of the time (a ceiling effect — getting args right on this diet nearly
+guarantees getting res right too); unconditioned, diet forward res = 0.472 (eligible 0.546) is LOWER
+than diet inverse res = 0.609 (eligible 0.758) — the OPPOSITE of wild's 0.87/0.25. THE DIET CANNOT
+SUPPLY A USEFUL TAU because it does not exhibit wild's error asymmetry at all; direction_probe.py's
+own self-reference census already carried the warning unread (diet: 78/1592 forward slots have the
+inverse self-reference signature, vs wild's clean 0/668 — a smaller contamination than the res-
+accuracy inversion, but the same diet-vs-wild divergence).
+
+(3) WILD, TAU* APPLIED (honest read: clamp iff the head itself decodes present+relation AND
+p_inv>tau*): since tau*=1.0, NO slot is ever clamped on either body — res(tau*) == res(baseline)
+exactly (PMS8_241 fwd 0.8728/inv 0.2500; PC_241 fwd 0.8668/inv 0.2527) and the masked fac-exact
+PAIRED read against each body's own banked ps_legal is EXACTLY diff=0.0000, z=0.00 on both bodies (0
+discordant slots — confirms the policy is a true no-op, not a near-miss). pres/ftype/op/args fields
+are unchanged by construction (only res can move under this mechanism).
+
+(4) THE NO-MLP CONTROL (tau=0, clamp every eligible relation slot unconditionally) vs THE ORACLE
+CEILING: inverse res rises to 0.532 (PMS8_241) / 0.535 (PC_241) — approaching but staying below the
+2026-10-09 16:53 oracle's GOLD-direction ceiling (0.6022/0.6210, a strictly larger denominator: ALL
+gold-inv slots, not just eligible ones) — but forward res COLLAPSES to 0.272/0.249 (from 0.873/0.867),
+since clamping an eligible forward slot always destroys a baseline-correct decode (gold res==own by
+definition of forward). Net: masked fac-exact WORSENS by 0.1034 (PMS8_241) / 0.1019 (PC_241) — paired
+read 216 vs 4 discordant (PMS8_241) and 214 vs 5 (PC_241), z=+14.3/+14.1 — the forward cost dominates
+the inverse gain by roughly 50x in slot count, decisively.
+
+THE BARS: inverse res >= 0.40 — FAILS on both bodies (0.2500, 0.2527, unchanged from baseline since
+tau* never fires). forward res >= 0.84 — PASSES trivially on both (unchanged from baseline, 0.8728/
+0.8668). masked fac-exact improvement >= +0.010 with |z| >= 1 — FAILS on both (exactly 0, z=0).
+
+VERDICT: ALL PINNED BARS CLEAR ON EVERY BODY = False. THE DIRECTION TIE-BREAK DOES NOT CLEAR — not a
+near-miss but a clean double null: (a) the predicted-args probe itself is a much weaker signal than
+gold-args, failing to transfer across bodies entirely (PC_241 AUROC<0.5, a coordinate-space artifact,
+not evidence against the mechanism); (b) independent of (a), the diet the word specified for tau
+selection has an inverted, ceiling-saturated conditional structure that cannot teach a useful
+threshold for WILD's actual error pattern — "choose tau on the diet only" was asked to transfer across
+a diet/wild gap this mechanism happens to straddle particularly badly. The no-MLP control confirms
+the underlying tradeoff is real and large (forward cost ~50x the inverse gain in raw slot count) —
+clamping needs a MUCH more selective, better-transferring gate than this diet could supply to ever
+clear the bars, not a fine-tuned tau. NOT threaded into chain_acc.py / the readers (per the word
+given) — no road to build from this read; the own-suppression oracle's B-vs-C binding diagnosis
+(16:53 entry) remains the standing next-form pointer.
