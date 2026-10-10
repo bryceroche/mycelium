@@ -3146,6 +3146,52 @@ def build_params(seed=0):
         p["t1_dw"] = t(_dw)                                   # identity at birth
         p["t1_pw"] = t(np.eye(H_W, dtype=np.float32))         # identity at birth
         p["t1_b"] = t(np.zeros(H_W))
+    if ALG_SORT:
+        # THE SORTING ROOM form 2 (2026-10-09; REVISED same day after the CPU gate's own number:
+        # a fully-random stack's sort4 step-0 loss read 574.36 vs role8's 6.5535 on the warm
+        # fixture, ~90x — the fresh wo/ffn_w2 matrices hand the bank's WARM, already-trained
+        # attn_wk/attn_wv an out-of-distribution `waist`, and the mismatch compounds through 4
+        # stacked blocks before the rest of the (also warm) network ever sees it. FIX: ReZero-
+        # style residual branches (the FED_FFN / mh_wo "ZERO door" precedent already standard in
+        # this file) — wq/wk/wv/ffn_w1 + both LayerNorms' gains/biases are standard small-random
+        # (gain=1, bias=0 at birth, the usual LN init); wo and ffn_w2 (+ their biases) are ZERO.
+        # Consequence, EXACT not approximate: at every block, o = (at@v)@wo+wo_b = 0 and
+        # f = gelu(...)@ffn_w2+ffn_b2 = 0 (0 * finite = 0, no NaN/Inf risk), so x = x+0 = x
+        # through all N blocks — _sort_room returns `waist` UNCHANGED, bit-for-bit, regardless of
+        # N. ALG_SORT=4 is therefore BIT-IDENTICAL to role8 at step 0 (not merely close); the
+        # stack wakes under gradient exactly as mh_gain/fed_mx_hg do (the "COLD-init caveat,
+        # stated honestly" precedent, ~line 6230: wo/ffn_w2 are the first thing backprop touches
+        # from the live residual gradient and move at step 0; wq/wk/wv/ffn_w1 sit STRICTLY
+        # upstream of that same zero multiply, so the chain rule gives them EXACTLY zero gradient
+        # at this first step by construction — zero times any finite upstream factor is zero,
+        # calculus, not a bug — and wake at step 1 once wo/ffn_w2 are no longer exactly zero; "no
+        # deadlock" in the fed_mx_hg sense, never "live from step one" in the SAME sense a road
+        # with no internal zero multiply would be). A dedicated RandomState offset so an unset
+        # ALG_SORT never perturbs any other organ's rng draws from the base `rng` stream (the
+        # ALG_TOKLOOP/ALG_SHELF precedent above).
+        _rSR = np.random.RandomState(seed + 31415)
+        for _i in range(ALG_SORT):
+            for _nm in ("wq", "wk", "wv"):
+                p[f"sort{_i}_{_nm}"] = t((_rSR.randn(H_W, H_W) / math.sqrt(H_W)).astype(np.float32))
+                p[f"sort{_i}_{_nm}_b"] = t(np.zeros(H_W, np.float32))
+            p[f"sort{_i}_wo"] = t(np.zeros((H_W, H_W), np.float32))       # ZERO door (ReZero)
+            p[f"sort{_i}_wo_b"] = t(np.zeros(H_W, np.float32))
+            p[f"sort{_i}_ln1_g"] = t(np.ones(H_W, np.float32))
+            p[f"sort{_i}_ln1_b"] = t(np.zeros(H_W, np.float32))
+            p[f"sort{_i}_ln2_g"] = t(np.ones(H_W, np.float32))
+            p[f"sort{_i}_ln2_b"] = t(np.zeros(H_W, np.float32))
+            p[f"sort{_i}_ffn_w1"] = t((_rSR.randn(H_W, SORT_FFN_HID) / math.sqrt(H_W)).astype(np.float32))
+            p[f"sort{_i}_ffn_b1"] = t(np.zeros(SORT_FFN_HID, np.float32))
+            p[f"sort{_i}_ffn_w2"] = t(np.zeros((SORT_FFN_HID, H_W), np.float32))   # ZERO door (ReZero)
+            p[f"sort{_i}_ffn_b2"] = t(np.zeros(H_W, np.float32))
+        if ALG_SORT_KEY:
+            # THE OWNER-KEY SHUFFLE (2026-10-09): sort_key_gain is the ONLY scalar in this block
+            # that must start at exactly 0.0 by default (the gate's bit-identical-to-sort4-at-
+            # birth claim) — ALG_SORT_KEY_GAIN overrides the INIT value only (the r_gain/R_GAIN_INIT
+            # precedent), never the live value a trained run then moves away from zero.
+            p["sort_key_w"] = t((_rSR.randn(H_W, 64) / math.sqrt(H_W)).astype(np.float32))
+            p["sort_key_b"] = t(np.zeros(64, np.float32))
+            p["sort_key_gain"] = t(np.full(1, float(os.environ.get("ALG_SORT_KEY_GAIN", "0")), np.float32))
     if ALG_HUD:
         # THE TOKEN HUD (2026-09-21): 5 small embedding tables, one per
         # feature (kind/sentence/position/value/repeated); N(0, 0.02) —
@@ -3843,6 +3889,82 @@ def _writeback(p, tok, cur, fat_cur, tokmask, B, kb):
         _CENSUS.append((kb, "writeback_state", (tok * tm).realize().numpy()))
         _CENSUS.append((kb, "writeback", msg.realize().numpy()))
     return tok + msg
+
+
+# THE SORTING ROOM form 2 (2026-10-09, REGISTERED 11:46; Bryce: "the sorting room is the map
+# reduce shuffle ... two things stand out: the map reduce shuffle and 4 layers of MHA between
+# tokens and slots"). N trained pre-norm transformer blocks over the 256 token positions, sitting
+# between the waist's existing trained projection (trunk 2048-d -> H_W, + HUD/FED/T1's additive
+# roads) and the bank: THE BANK'S TOKEN KEYS/VALUES — every breath's read, breath 0's grounding
+# included, since _make_bank closes over this ONE waist tensor once per forward() call — consume
+# ONLY this stack's output (the mandatory-road law: no bypass to the raw projected waist; forward()
+# REBINDS the local `waist` name, it does not add a second tensor). Position-free v1 (the frozen
+# trunk's RoPE already lives in the 2048-d states the waist itself projects from; a second position
+# code is not required to clear the gate — stated, not proven, a v2 candidate if the arm's first-
+# look reads move without it and the ceiling still sits on top of them).
+# ALG_SORT=0 (default): no new params built, no new ops read — bit-identical to today. ALG_SORT=N:
+# N blocks of {LayerNorm -> 8-head BIDIRECTIONAL self-attention over tokmask's real tokens (no
+# causal mask: the sorting room reads the WHOLE problem, not a left-to-right scan) -> residual ->
+# LayerNorm -> FFN 512->2048->512 -> residual}. REVISED (2026-10-09, same day, after the CPU
+# gate's own number): a fully-random stack's sort4 read step-0 loss 574.36 vs role8's 6.5535 on
+# the warm fixture (~90x) — fresh wo/ffn_w2 hand the bank's WARM attn_wk/attn_wv an out-of-
+# distribution `waist`. FIX: ReZero-style zero-init output projections (build_params, below; the
+# FED_FFN/mh_wo "ZERO door" precedent) — wo and ffn_w2 are exact zero at birth, so EVERY block is
+# the exact identity on its input and ALG_SORT=4 is BIT-IDENTICAL to role8 at step 0 regardless of
+# N (not merely close): the road still runs through real attention/FFN compute every forward pass
+# (the mandatory-road law: no bypass, no skipped ops), it simply CONTRIBUTES zero until the
+# gradient moves it — the law's AJAR form, not its violation.
+ALG_SORT = int(os.environ.get("ALG_SORT", "0"))
+SORT_FFN_HID = 2048     # fixed (not ALG_HW-relative): the registration's own figure, ~12.6M params
+                        # at ALG_SORT=4 with H_W=512 (4 * (4*512*512 + 2*512*2048) attn+ffn weights)
+# THE OWNER-KEY SHUFFLE (behind ALG_SORT; a SEPARATE flag, NOT in the first arm — SR_241 runs
+# ALG_SORT=4 alone). The stack's own LAST block's output also feeds a trained 64-d per-token key
+# (p["sort_key_w"/"sort_key_b"]). Each slot's OWNER KEY is fat_cur @ tok_key — the EXPECTATION of
+# that key under fat_cur, THIS breath's own slot->token attention (breath_step's own per-breath
+# re-read of the text; the "given pointer" generalized) — stated: this is the differentiable
+# relaxation of "the token the pointer argmaxes" (a hard index-select has no useful gradient and
+# tinygrad's batched gather is the wrong tool for a quantity this soft; at a confident pointer the
+# expectation and the argmax coincide). PREDICTED at train and read alike, no gold anywhere in the
+# path. The mixer's slot-to-slot bilinear logits (breath_step's `sc2`) gain
+# + sort_key_gain * cos(key_i, key_j) for every pair — THE SHUFFLE itself (the owner-grouping the
+# 10-08 shuffle read found the mixer lacks: ratio ~1.0, a shoal, no grouping by key). sort_key_gain
+# is a LEARNED scalar, p["sort_key_gain"], its INIT value (default exactly 0.0, never the mh_gain-
+# style AJAR 0.02) taken from ALG_SORT_KEY_GAIN so sort4key is bit-identical to sort4 at step 0 at
+# full float32 precision (the gate's own claim).
+ALG_SORT_KEY = int(os.environ.get("ALG_SORT_KEY", "0"))
+if ALG_SORT_KEY:
+    assert ALG_SORT, "ALG_SORT_KEY needs ALG_SORT > 0 (the stack it keys off; no stack, no owner key)"
+
+
+def _sort_room(p, waist, tokmask, B):
+    """THE SORTING ROOM form 2 (ALG_SORT=N): N pre-norm transformer blocks, BIDIRECTIONAL
+    self-attention over the real tokens (tokmask zeroes pads from both the softmax and, by
+    construction, every downstream read), REPLACING the token states `waist` the caller rebinds
+    to this function's return value — see forward()'s own call site, right before `bank =
+    _make_bank(...)`, for the mandatory-road wiring. Position-free (the frozen trunk's RoPE
+    already lives in the states `waist` itself projects from; see the module comment above).
+    ReZero at birth (build_params zero-inits sort{i}_wo and sort{i}_ffn_w2): `o` and `f` below
+    are EXACT zero at init, so this function returns `waist` bit-for-bit unchanged regardless of
+    N until the gradient moves wo/ffn_w2 away from zero."""
+    x = waist
+    T = int(x.shape[1])
+    hd = H_W // N_HEADS
+    _tm = tokmask.reshape(B, 1, 1, T)
+    for i in range(ALG_SORT):
+        _ln1 = x.layernorm(eps=1e-5) * p[f"sort{i}_ln1_g"] + p[f"sort{i}_ln1_b"]
+        q = (_ln1 @ p[f"sort{i}_wq"] + p[f"sort{i}_wq_b"]).reshape(B, T, N_HEADS, hd).permute(0, 2, 1, 3)
+        k = (_ln1 @ p[f"sort{i}_wk"] + p[f"sort{i}_wk_b"]).reshape(B, T, N_HEADS, hd).permute(0, 2, 1, 3)
+        v = (_ln1 @ p[f"sort{i}_wv"] + p[f"sort{i}_wv_b"]).reshape(B, T, N_HEADS, hd).permute(0, 2, 1, 3)
+        sc = (q @ k.transpose(-2, -1)) / math.sqrt(hd)
+        sc = sc.clip(-1e4, 1e4) + (1.0 - _tm) * -1e4   # bidirectional: no causal mask, pads excluded
+        at = sc.softmax(-1)
+        o = (at @ v).permute(0, 2, 1, 3).reshape(B, T, H_W)
+        o = o @ p[f"sort{i}_wo"] + p[f"sort{i}_wo_b"]
+        x = x + o
+        _ln2 = x.layernorm(eps=1e-5) * p[f"sort{i}_ln2_g"] + p[f"sort{i}_ln2_b"]
+        f = (_ln2 @ p[f"sort{i}_ffn_w1"] + p[f"sort{i}_ffn_b1"]).gelu() @ p[f"sort{i}_ffn_w2"] + p[f"sort{i}_ffn_b2"]
+        x = x + f
+    return x
 
 
 ALG_KANNEAL = [float(x) for x in os.environ.get("ALG_KANNEAL", "").split(",") if x.strip()]   # THE ANNEALED KERNEL (2026-09-17, word given): sigma per breath, in tokens
@@ -6138,6 +6260,20 @@ def breath_step(p, state, kb, ctx):
     sc2 = (_bq2 @ bk.transpose(-2, -1)) / math.sqrt(H_W)
     if _CENSUS is not None:
         _CENSUS.append((kb, "state_slot", sc2.realize().numpy()))
+    if ALG_SORT_KEY and ctx.get("tok_key") is not None:
+        # THE OWNER-KEY SHUFFLE (2026-10-09; behind ALG_SORT_KEY, NOT in the first arm): each
+        # slot's owner key = fat_cur @ tok_key, the expectation of the sorting room's per-token
+        # key under THIS breath's own slot->token attention (the differentiable "argmax", no
+        # gold). The mixer's bilinear logits gain a learned, zero-at-birth scalar times the
+        # cosine between every pair of owner keys — grouping slots that point at the same token
+        # region, the shuffle the 10-08 read found the mixer lacks (ratio ~1.0, a shoal).
+        _ok = fat_cur @ ctx["tok_key"]                                    # (B, L_TOT, 64)
+        _okn = _ok / ((_ok * _ok).sum(-1, keepdim=True) + 1e-12).sqrt()   # the writeback's own NaN-guard idiom
+        _okcos = _okn @ _okn.transpose(-2, -1)                            # (B, L_TOT, L_TOT)
+        _sk_term = p["sort_key_gain"].reshape(1, 1, 1) * _okcos
+        sc2 = sc2 + _sk_term
+        if _CENSUS is not None:
+            _CENSUS.append((kb, "sortkey", _sk_term.realize().numpy()))
     _sm_kb = slot_mask
     # THE TOKEN COOKER (apply_tok_cook.py, 2026-09-09): the graded
     # adjacency through `_mh_a5`, ONE definition, because the token
@@ -6827,6 +6963,11 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
     B = trunk.shape[0]
     if trunk.dtype != dtypes.float:
         trunk = trunk.cast(dtypes.float)   # perf audit #4: half feeds upcast in-graph (exact)
+    if int(os.environ.get("ALG_SORT_DEBUG", "0")):
+        _tm0 = tokmask.reshape(B, -1, 1).numpy()
+        _trn = (trunk * tokmask.reshape(B, -1, 1)).numpy()
+        print(f"[sort-debug] trunk INPUT: std={_trn[_tm0[:, :, 0] > 0].std():.6f} "
+              f"shape={tuple(trunk.shape)} dtype={trunk.dtype}", flush=True)
     waist = (trunk @ p["waist_w"] + p["waist_b"]).gelu() + p["sent_emb"][sent]
     if ALG_HUD and hud is not None:
         # THE TOKEN HUD (2026-09-21): a deterministic per-token feature
@@ -6846,6 +6987,38 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
                          @ p["fed_w2b"] + p["fed_w2b_b"])
     if ALG_T1 and "t1_dw" in p and "t1" not in _SEVER:
         waist = _t1_conv(p, waist, tokmask)   # T1: the token convolution (a road)
+    if ALG_SORT and "sort0_wq" in p:
+        # THE SORTING ROOM form 2 (2026-10-09): the LAST station before the bank — sees
+        # whatever HUD/FED/T1 already added — REPLACES `waist` outright (the mandatory-road
+        # law: no bypass). Every bank() read after this line, breath 0's grounding call and
+        # every loop breath alike, closes over this rebound tensor; see _make_bank's own
+        # `src = waist` default.
+        if int(os.environ.get("ALG_SORT_DEBUG", "0")):
+            # ONE-OFF DEBUG PRINT (2026-10-09, the coordinator's bisect, revised: the
+            # FIRST version multiplied by tokmask before diffing, hiding anything the
+            # stack wrote into PADDED positions — the mask only ever excludes a padded
+            # position as a KEY (attn's src), never as a QUERY, so a padded ROW still
+            # runs through LayerNorm/attention/FFN like any other and a non-identity
+            # value there would reach the bank's softmax unmasked on the query side).
+            # UNMASKED this time: the full tensor, padding included.
+            _tm_dbg = tokmask.reshape(B, -1, 1)
+            _wpre_full = waist.numpy()
+            _pad_np = (_tm_dbg.numpy()[:, :, 0] == 0)
+            print(f"[sort-debug] waist PRE-sort: std(real)={_wpre_full[_pad_np == False].std():.6f} "
+                  f"std(pad)={(_wpre_full[_pad_np].std() if _pad_np.any() else float('nan')):.6f} "
+                  f"n_pad={int(_pad_np.sum())} shape={tuple(waist.shape)} dtype={waist.dtype}", flush=True)
+        waist = _sort_room(p, waist, tokmask, B)
+        if int(os.environ.get("ALG_SORT_DEBUG", "0")):
+            _wpost_full = waist.numpy()
+            _d = np.abs(_wpost_full - _wpre_full)
+            print(f"[sort-debug] waist POST-sort: "
+                  f"std(real)={_wpost_full[_pad_np == False].std():.6f} "
+                  f"std(pad)={(_wpost_full[_pad_np].std() if _pad_np.any() else float('nan')):.6f} "
+                  f"maxdiff(real)={_d[_pad_np == False].max():.3e} "
+                  f"maxdiff(pad)={(_d[_pad_np].max() if _pad_np.any() else float('nan')):.3e} "
+                  f"maxdiff(ALL)={_d.max():.3e}", flush=True)
+    _sort_tok_key = (waist @ p["sort_key_w"] + p["sort_key_b"]) \
+        if (ALG_SORT_KEY and "sort_key_w" in p) else None   # THE OWNER-KEY SHUFFLE: zero compute when unset
 
     bank = _make_bank(p, waist, tokmask, B, sent=sent, tree=tree, chalk3=chalk3, chalk5=chalk5)
     if N_SCR and slot_mask is not None:
@@ -7072,6 +7245,7 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
             _valtag_v = (_valtag_from_facts(valfact, B) if valfact is not None
                          else Tensor.zeros(B, K_VARS, int(os.environ.get("ALG_BIND_D", "128"))))
         _bs_ctx = {"B": B, "K_B": K_B, "waist": waist, "tokmask": tokmask,
+                   "tok_key": _sort_tok_key,   # THE OWNER-KEY SHUFFLE (2026-10-09): None when ALG_SORT_KEY unset, zero compute
                    # THE BUS REGISTER's per-forward constants (2026-09-22):
                    # dict keys only — zero compute when ALG_BUSREG unset.
                    "vst": vst, "res_map": res_map, "ident_tok": _ident_tok,
@@ -9514,7 +9688,11 @@ def do_train(steps, lr, batch, seed):
             print(f"[dirrole-debug] dir_cue_emb.grad.abs().sum()="
                   f"{float(p['dir_cue_emb'].grad.abs().sum().numpy())}", flush=True)
         opt.step()
-        return l.realize()
+        return l.realize()   # MEASUREMENT FACT (2026-10-09, the sorting-room bisect): `l` is lazy
+        # and unread above, so this realize is the POST-update loss (opt.step() already mutated
+        # the weights) — every "step N loss=" this function has ever printed is post-update, not
+        # the loss the gradient was taken at (see scripts/sort_bisect_replay.py for the pre-update
+        # instrument).
     if not _WHEEL_TRAIN:
         step = TinyJit(step)
 
@@ -10585,6 +10763,50 @@ def do_train(steps, lr, batch, seed):
             # the cache with are still needed) but its VALUES never reach
             # step() under this flag.
             _live_facts_into(idx)
+        if int(os.environ.get("ALG_SORT_DEBUG", "0")):
+            # ONE-OFF DEBUG, SAFE: these are INPUT buffers, read BEFORE step() is
+            # called -- never touches the autograd graph (reading `o`/`l` inside
+            # step(), even a detached .realize(), was found to sever backward for
+            # EVERY param; this is the safe alternative the coordinator's bisect
+            # needs: what step() is ABOUT to feed forward(), not what it computed).
+            print(f"[sort-debug] step {s} INPUT BUFFERS: b_tr.sum={float(b_tr.numpy().astype('float64').sum()):.6f} "
+                  f"b_tk.sum={float(b_tk.numpy().astype('float64').sum()):.6f} "
+                  f"b_se.sum={float(b_se.numpy().astype('float64').sum()):.6f} "
+                  f"b_mask.sum={float(b_mask.numpy().astype('float64').sum()):.6f} "
+                  f"idx={idx.tolist()}", flush=True)
+            print(f"[sort-debug] step {s} bg BUFFERS: " + " ".join(
+                f"{k_}={float(v_.numpy().astype('float64').sum()):.6f}"
+                for k_, v_ in sorted(bg.items())), flush=True)
+            if s == int(os.environ.get("SORT_DEBUG_DUMP_STEP", "-1")):
+                # THE FULL DUMP (coordinator's point A): every kwarg step()'s OWN
+                # forward() call actually passes, named EXACTLY as the call site
+                # (line ~9533) resolves them, so a loader script can replay the
+                # identical call. None-valued kwargs are recorded as the string
+                # sentinel "__NONE__" (never a legal array).
+                _bd_dbg = os.environ.get("BREATH_DROPOUT")
+                _dump = {"s_tr": b_tr, "b_tk": b_tk, "b_se": b_se, "b_mask": b_mask,
+                         "b_tail": b_tail, "drop": (b_drop if _bd_dbg else None),
+                         "lsent": b_ls, "reg": b_reg,
+                         "fact_buf": (None if ALG_ALT3 else b_fact),
+                         "mh_mass": b_mhm, "mh_atlas_traj": b_mha, "xcorr": b_xcorr,
+                         "res_map": b_resmap, "hud": b_hud, "tree": b_tree,
+                         "ident": b_ident, "dircue": b_dircue, "busreg_ramp": b_bgain,
+                         "valfact": b_valfact, "facts3": b_fact3, "facts5": b_fact5,
+                         "cert3": b_cert3, "cert5": b_cert5, "rack3": b_rack3,
+                         "rack5": b_rack5, "chalk3": b_chalk3, "chalk5": b_chalk5,
+                         "dirgold": b_dirgold}
+                _npz_out = {}
+                for _k, _v in _dump.items():
+                    if _v is None:
+                        _npz_out[_k] = np.array("__NONE__")
+                    else:
+                        _npz_out[_k] = _v.numpy()
+                for _k, _v in bg.items():
+                    _npz_out["bg__" + _k] = _v.numpy()
+                _tag = os.environ.get("SORT_DEBUG_TAG", "unknown")
+                np.savez(f".cache/sortroom_bisect_inputs_{_tag}.npz", **_npz_out)
+                print(f"[sort-debug] step {s} DUMPED .cache/sortroom_bisect_inputs_{_tag}.npz "
+                      f"({len(_npz_out)} arrays)", flush=True)
         if _STEP_PROF and 5 <= s < 25:
             _prof.enable(); lv = step(); _prof.disable()
         else:
