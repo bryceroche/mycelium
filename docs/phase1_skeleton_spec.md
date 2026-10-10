@@ -50556,3 +50556,11 @@ Artifacts: scripts/phase1_algebra_head.py (`_depth_stack`, build_params, breath_
 scripts/depth_grad_probe.py, scripts/depth_identity_probe.py, scripts/depth_read_identity_smoke.py,
 scripts/depth_knob_census.py, scripts/resolve_refused_merge.py; .cache/loopedtf_gate.sh,
 .cache/rack_chain_LT.sh, .cache/queue_lt.sh; .cache/loopedtf_gate.log, .cache/loopedtf_merge_gate.log.
+
+### 2026-10-09 (21:49) — LT_241 FIRED under the JIT workaround: the pre-arm GPU smoke (depth4, BATCH=2 STEPS=2, DEV=PCI+AMD) FAILED without it — "RuntimeError: Device hang detected" — and PASSED with JIT_BATCH_SIZE=1 (step 0 13.96 / step 1 33.23, finite); the arm carries it; step 500 loss 26.85 (PMS8 28.77) at 0.342 s/step steady (~3.5x the lineage; 48k ~ 4.6 h -> reads ~02:45)
+
+The tinygrad graph-batching bug the CPU gate found (the replay call segfaults once the training graph passes a size
+threshold; ~20 reproductions; independent of whether the new tensors are used) is a DEVICE HANG on AM, not CPU-only
+— the first organ to cross the threshold. RULE: every chain whose organ grows the training graph runs a pre-arm
+device smoke and applies JIT_BATCH_SIZE=1 only on a reproduced failure (rack_chain_LT.sh's pattern); the workaround
+leaves unset/role8 bit-identical (verified on CPU). The night's order holds: WS -> clock pre-read + CS -> AR -> SR_242.
