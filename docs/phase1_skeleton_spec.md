@@ -50795,3 +50795,22 @@ breath 0 == SR exactly; ~0.5 s/step; bars: first-look twin-pick / other-sentence
 SR missed), masked >= SR + 0.010 or a twin, the drift, mint; kill: the first-look reads unmoved AND the slot-query
 branch's knob census < 10% = the tokens do not read the slots). (b) SINE4 / ANTI4 (math at the crystal). (c) the
 six alternations with hard toggles behind the gym pre-read + head diff A. The three-pool rule governs every judge.
+
+### 2026-10-10 (16:14) — SRK_241 (the sorting room + THE OWNER KEY, ALG_SORT_KEY=1, SEED 241) DOES NOT FIRE AND THE KEY WAS UNREAD: masked wild 0.3501 — +0.0024 vs PMS8_241 (z 0.23, null) and -0.0215 vs SR_241 (z 2.08); rows 17; open mint 0.773; args 0.429, twin-pick 0.469, other-sentence 0.563 (all flat); the trained gain sort_key_gain = -0.021 (born 0; a cosine term of +-0.02 logits on the mixer = NOTHING: the gated organ was voted down from birth, the mandatory-road law's warning recorded in the registration); THE THIRD BODY OF THE SORTING-ROOM FAMILY reads 0.3501 — the family is 0.3715 / 0.3681 / 0.3501, mean 0.3632 (+0.0156 vs PMS8_241), sd 0.0115: the record's TRUE margin is ~+0.015 +- 0.006, not +0.022
+
+Fields masked wild: pres 0.902 ftype 0.847 res 0.809 dig 0.466 exact 0.350 op 0.739 args 0.429. MECH: fwd ok 0.343
+args 0.516 res 0.873; inv ok 0.148 args 0.274 res 0.247. Discordant vs PMS8 239 / 244; vs SR_241 245 / 201.
+THE READING. With the gain at -0.02 the key contributes nothing the mixer can read, so SRK_241 is, to within the
+key's noise, a THIRD SEED of the sorting room (the key projection's draw from the dedicated stream perturbs the
+stack's init; the gain's tiny gradient perturbs the trajectory) — and it landed 0.02 below the pair. Honest
+accounting under the law: the claim standard ("+0.020 or a twin pair") WAS met by SR_241 / SR_242 (both >= +0.020)
+and stands as written; the third body says the family's spread is wider than the pair suggested (sd 0.011 vs the
+pair's 0.002), so THE RECORD IS RE-STATED as a family mean of ~+0.015 (z of the mean vs PMS8's own pair 0.3476 /
+0.3525: ~+0.013 over the PMS8 family) with the digits gain (0.47-0.50 vs 0.447) and rows (23 / 23 / 17) as its
+texture. The two-read rule ("a two-read difference is 0.0135 at p 0.25") was written for exactly this. THE OWNER
+KEY as a gated cosine term CLOSES (a gain-gated organ, voted down — the third such organ after mh_gain and the
+six-wave tick; registered form 2: the key as STRUCTURE — a hard owner mask on the mixer from the key's argmax
+cluster, no gain; re-admission trigger: the shuffle read on SRK's dump shows any owner grouping at all).
+Rule (restated, the fourth time): an organ enters as a road with no bypass, never as an invitation through a gain
+— SRK was fired as the cheap flag-only follow-on and bought the family's third seed instead; worth it as variance,
+not as the key. NEXT ON THE CARD: HG_241 (THE HOURGLASS 2b; pc-queue-hg waits on SRK's done mark: merging now).

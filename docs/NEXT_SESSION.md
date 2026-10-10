@@ -1,17 +1,14 @@
-# NEXT SESSION — cold-start entry (updated 2026-10-10 13:31)
+# NEXT SESSION — cold-start entry (updated 2026-10-10 16:14)
 
-**THE SORTING ROOM IS THE SLOT RECORD (13:31): a TWIN PAIR vs PMS8_241 0.3476 — SR_241 0.3715 (+0.0239, z 2.16) / SR_242 0.3681 (+0.0205,
-z 1.87), combined z ~2.9; ROWS 23 / 23 (the row record twice); digits +0.05 / +0.04; mint 0.79 / 0.85; args, twin-pick (0.46 / 0.43) and
-other-sentence (0.56 / 0.54) FLAT: a trained token side is the VALUE PATH's organ, the binding wall stands.** Not a deployed-stack
-promotion (the research lineage is measured against itself; promotion is the manifest's battery). ON THE CARD: SRK_241 (SR + the owner
-key ALG_SORT_KEY=1: the shuffle's key as structure; pc-srk, fired 13:31; bars: masked >= SR's pair + 0.010 or a twin; the shuffle ratio
->= 1.3 from ~1.0; the gain's census). BEHIND IT: HG_241 (THE HOURGLASS 2b: tokens -> clauses -> sentences -> back with skips, additive
-form first; builder wt18; its queue waits on "SRK CHAIN COMPLETE"; bars: twin-pick <= 0.35, other-sentence <= 0.40, masked >= SR + 0.010
-or a twin; kill: both first-look reads unmoved AND the coarse path < 10% -> form 2 (multiplicative)). NEEDING THE WORD: THE FUNNEL GATE
-(per-breath gates on the skip and the waist's rank; the loss draws the Nazaré envelope; ~80 min) -> NZ_241; the data road (unmemorized
-inverse prose via the annotation stream); a third held-out pool for every judge. CLOSED THIS WEEK (regime-tagged): the direction line
-(7 forms + the tie-break), the looped transformer (depth), the waist skip (the loss prefers the squeeze), the separated clock (costs).
-Updated 13:31.
+**THE SORTING ROOM FAMILY (16:14): SR_241 0.3715 / SR_242 0.3681 / SRK_241 0.3501 (the owner key UNREAD: gain -0.02 = a third seed) vs
+PMS8_241 0.3476 — the pair met the claim standard (both >= +0.020) and stands; THE RECORD RE-STATED as a family mean +0.015 +- 0.006
+(rows 23 / 23 / 17; digits +0.02-0.05; the binding wall flat on all three). A trained token side is the VALUE PATH's organ.** ON THE
+CARD NEXT: HG_241 (THE HOURGLASS 2b; pc-queue-hg merging/gating now; bars: twin-pick <= 0.35, other-sentence <= 0.40, masked >= SR's
+family + 0.010 or a twin; kill: both first-look reads unmoved AND the coarse path < 10% -> form 2). THE OWNER KEY as a gated term
+CLOSES (voted down from birth; form 2 = a hard owner mask from the key's clusters, registered). NEEDING THE WORD: SRF_241 (the sorting
+room re-run every breath, slot-conditioned), SINE4 / ANTI4 (math at the crystal), THE FUNNEL GATE, the data road (unmemorized inverse
+prose), a third held-out pool. CLOSED THIS WEEK (regime-tagged): the direction line (7 forms + the tie-break), depth on the slot side,
+the waist skip, the separated clock, the owner key as a gain. Updated 16:14.
 
 **THE CARD IS IDLE (09:38).** THE DIRECTION PROBE FIRED (zero-GPU; scripts/direction_probe.py; .cache/direction_probe_PMS8_241.txt):
 PRESENT-BUT-UNEXPRESSIBLE — a read-out trained on PMS8_241's own frozen states reaches wild AUROC 0.98 (own state + both gold args'
