@@ -128,7 +128,7 @@ REFUSED = ("ALG_SHELF", "ALG_WHIP", "ALG_TOKLOOP", "ALG_WRITEBACK", "ALG_KANNEAL
            # for this build, named separately so a future narrowing of the
            # ALG_SELFMATCH refusal does not silently let this one through
            # untested too.
-           "ALG_SORT", "ALG_SORT_KEY", "ALG_SORT_KEY_GAIN")
+           "ALG_SORT", "ALG_SORT_KEY", "ALG_SORT_KEY_GAIN",
            # THE SORTING ROOM form 2 (2026-10-09): forward()'s own rebinding of the local `waist`
            # name (ALG_SORT) and breath_step's ctx["tok_key"] read (ALG_SORT_KEY) are the fused
            # forward()'s single source of truth; the walker never calls forward() at all (its own
@@ -179,6 +179,15 @@ REFUSED = ("ALG_SHELF", "ALG_WHIP", "ALG_TOKLOOP", "ALG_WRITEBACK", "ALG_KANNEAL
            # pings between dispatches (its OWN wheel road) — it does not
            # thread the mask-prep pass's precomputed CERTS buffer or the
            # forward()-loop feed that consumes it
+           "ALG_ARGSRES", "ALG_ARGSRES_H", "ALG_ARGSRES_SCALE")
+           # THE ARGS-CONDITIONED RES (2026-10-09): _heads_of's own res-pointer term
+           # (ar_w1/ar_b1/ar_w2/ar_b2 against the content-only slot/candidate states PLUS the
+           # args head's own predicted soft-selected args states) is the fused forward()'s
+           # single source of truth and would in fact thread fine through the walker's
+           # per-seam heads_of calls on its own, exactly like THE PAIRWISE COMPARATOR ROAD and
+           # THE SELF-MATCH TERM above — refused anyway, by the word given for this build,
+           # named separately so a future narrowing of either refusal does not silently let
+           # this one through untested too.
 
 REQ_CTX = ("B", "K_B", "waist", "tokmask", "slot_mask", "bank", "rot2",
            "sync", "drop", "gmod", "revoke", "tail", "reg", "RINGS",
