@@ -1,13 +1,13 @@
-# NEXT SESSION — cold-start entry (updated 2026-10-09 20:48)
+# NEXT SESSION — cold-start entry (updated 2026-10-10 03:20)
 
-**THE NIGHT'S QUEUE IS RUNNING (20:48; the word given for the whole queue):** LT_241 (THE LOOPED TRANSFORMER: 4 MHA blocks per breath on the
-slot side, replaces the mixer; builder wt14, gate running) -> WS_241 (THE WAIST SKIP A; queued pc-queue-ws) -> the clock-band pre-read + CS_241
-(THE SEPARATED CLOCK; queued pc-queue-cs) -> AR_241 (THE ARGS-CONDITIONED RES; builder wt17) -> SR_242 (the sorting room's SEED TWIN; queued
-pc-queue-sr2). Each one organ, one chain, vs PMS8_241, bars in the ledger; watchers on every arm. SR_241 VERDICT (two frames): THE SLOT
-FRAME FIRES — masked +0.0239 (z 2.16, the +0.020 bar met), ROWS 23 = THE ROW RECORD, digits +0.053, open mint 0.788 (+0.137); THE MECHANISM
-FRAME REFUTED — twin-pick 0.457 and other-sentence 0.56 UNMOVED, args flat: a flat trained token stack is a DIGITS/value-path organ, not
-the wall's seat. The twin decides the record; the hourglass (2b) and the owner key (SRK_241) follow the twin. Morning: read all six arms
-paired vs PMS8_241; consult the re-admission table for every null. Updated 20:48.
+**THE NIGHT'S QUEUE (10-10 03:20):** LT_241 DOES NOT FIRE (masked +0.0034 z 0.36; args 0.431 unmoved; rows 18; mint +0.046; knob census
+PASS all blocks live = a road live at scale that moved nothing: depth on the slot side is not the lever). WS_241 (THE WAIST SKIP A) is
+in its resumed queue (the waistskip merge conflicted on step_trainer's REFUSED list — the auto-resolver's shape assumption broke on
+loopedtf's trailing comment; resolved by hand 90a79be2; the resume runs the post-merge gate then fires pc-ws). Then: the clock-band
+pre-read + CS_241 (pc-queue-cs) -> AR_241 (pc-queue-ar) -> SR_242 (pc-queue-sr2). SR_241 VERDICT stands (slot frame fires +0.0239
+z 2.16, rows 23 record, digits +0.053; mechanism frame refuted). Morning: read WS/CS/AR/SR_242 paired vs PMS8_241; the twin decides
+the record; consult the re-admission table for every null. RULE (new): a queue's merge resolver must handle any REFUSED-list shape
+(union of both sides) or abort BEFORE waiting hours — test it against the live branches before arming. Updated 03:20.
 
 **THE CARD IS IDLE (09:38).** THE DIRECTION PROBE FIRED (zero-GPU; scripts/direction_probe.py; .cache/direction_probe_PMS8_241.txt):
 PRESENT-BUT-UNEXPRESSIBLE — a read-out trained on PMS8_241's own frozen states reaches wild AUROC 0.98 (own state + both gold args'
