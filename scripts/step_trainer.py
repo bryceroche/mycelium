@@ -128,7 +128,12 @@ REFUSED = ("ALG_SHELF", "ALG_WHIP", "ALG_TOKLOOP", "ALG_WRITEBACK", "ALG_KANNEAL
            # for this build, named separately so a future narrowing of the
            # ALG_SELFMATCH refusal does not silently let this one through
            # untested too.
-           "ALG_SORT", "ALG_SORT_KEY", "ALG_SORT_KEY_GAIN")
+           "ALG_SORT", "ALG_SORT_KEY", "ALG_SORT_KEY_GAIN",
+           "ALG_DEPTH")   # THE LOOPED TRANSFORMER (2026-10-09): breath_step's own replacement of
+                          # the mixer + FED twin (bq/bk/bv/sc2/_mx_*) with _depth_stack's self-
+                          # attn/cross-attn/FFN blocks over `cur` is the fused forward()'s single
+                          # source of truth; the walker's per-seam heads_of calls never call
+                          # breath_step or _depth_stack at all (the ALG_SORT precedent, same reason)
            # THE SORTING ROOM form 2 (2026-10-09): forward()'s own rebinding of the local `waist`
            # name (ALG_SORT) and breath_step's ctx["tok_key"] read (ALG_SORT_KEY) are the fused
            # forward()'s single source of truth; the walker never calls forward() at all (its own
