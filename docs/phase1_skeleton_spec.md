@@ -50694,3 +50694,24 @@ SM, PC, AR + the read-time tie-break. OPEN: the DATA road — unmemorized invers
 lever; the annotation stream math -> NL rephrasing mint's inverse forms into GSM8K-style prose; the books' lane) —
 and the token-side binding road (SR's twin decides; the owner key). The three-pool rule stands: train / calibrate /
 measure on disjoint pools (the valid2 slice is in-sample; wild is measured only).
+
+### 2026-10-10 (11:15) — REGISTERED (Bryce: "dims should resemble a sine wave inside a looped transformer ... each breath a full wave ... like Nazaré, funnel the dims across the breath cycles, forcing crystallization"): THE FUNNEL GATE (WS form A': per-BREATH, per-band gates on the waist skip AND on the 128 intermediate's rank, live from birth — the loss draws the envelope) as the pre-test; THE NAZARÉ WAIST (NZ_241: a hard rank schedule R(t) on the waist tied to the breath index via conductor(kb), wide early / narrow late) as the hard form behind it
+
+Standing facts: the bus's planes are phasors (dims ARE sine waves; the clocked quarter turns under six waves); in
+the looped transformer each breath already has a crest (FFN 512 -> 2048, x4) and a trough (the waist 384 -> 128);
+the plane UNLOCK (opening capacity late) was null twice — narrowing is the surviving direction; the pilot's ceiling
+sets the fate by breath 2 (an envelope matters at breaths 0-2 only); WS_241's gate was breath-tied (one g per dim
+for all breaths) — the loss was never offered "open early, shut late"; radius contraction on the damped bodies
+precipitated every kind into one crystal (the margin caution: concentration is a contrast, never a radius). The
+relay's premise that LT's blocks were starved is unmeasured (every block live; mint +0.046).
+THE FUNNEL GATE (needs the word; ~80 min on the plain chassis vs PMS8_241): theta_skip[breath, band] on the bypass
+(c - P c) and theta_rank[breath, 128] on the intermediate's dims, both sigmoid, born at -4 (live, ~0.02), no
+schedule. READ: the gate census BY BREATH (mean g_skip per breath/band; the share of intermediate dims open per
+breath). VERDICTS: (i) skip opens at breaths 0-2 and rank closes at 5-6 = the funnel is the loss's preference ->
+build NZ_241 as the mandatory road (a hard R(t): R_max above 128 early by the un-squeezed content, R_min below 128
+late by masking the intermediate; static shapes, the mask narrows); (ii) shut everywhere = the funnel refuted at the
+preference level (WS_241's verdict extended across time); (iii) rank closes late but the skip stays shut = a late
+crystallization only (cosmetic by the pilot's ceiling; register, low prior). BARS for NZ_241 (if (i)): masked wild
++0.020 or a twin; THE KIND MARGIN (within-kind spread / between-kind distance in the content space) not down vs
+PMS8; the drift reported; mint not down > 0.02. KILL: the margin falls (one crystal) or masked down. No separated
+clock needed: conductor(kb) carries the breath index; CS_241 was negative.
