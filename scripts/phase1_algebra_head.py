@@ -1329,7 +1329,27 @@ POLAR_RG = int(os.environ.get("ALG_POLAR_RG", "8"))           # slotvec groups
 POLAR_QROT = int(os.environ.get("ALG_POLAR_QROT", "2"))       # 0/1/2: off,
                                                 # mixer only, main+mixer
 POLAR_STAMP = int(os.environ.get("ALG_POLAR_STAMP", "1"))     # fix B
+# THE SEPARATED CLOCK (apply_clock_sep.py, 2026-10-09; the word given 19:19 -- ledger
+# "separate the clock from the T256 rotational bus so the waist compresses 512 -> 128
+# instead of 384 -> 128"). ALG_CLOCK_SEP=1: the 64 clocked planes LEAVE the bus -- every
+# one of the 256 waist planes becomes content (_polar_tables below forces wheel_of = -1
+# everywhere, so _polar_sink's content/clock partition degenerates to "all content,"
+# and every existing polar organ (_polar_waist/_polar_em/_polar_keepnorm) keeps running
+# UNCHANGED, now simply spanning the full 512-d bus) -- and the SAME six-wave relative-
+# phase code, at its full 64-plane/128-d width, lives in its own register (state["clk"],
+# _clock_reg_tables below) carried alongside cur, read by: the attention rotation
+# (QROT, an ADDITIVE register x register bias beside sc2/_mx_sc -- see breath_step),
+# the E&B field (_polar_em_reg, the register's own exchange), and the turn (_clock_frame
+# is automatically inert on content tensors once they carry no clock dims -- nothing
+# left to re-phase; see the ledger entry for the argument). Unset (0) = every line below
+# this flag's reads is either skipped outright or collapses to today's path exactly
+# (bit-identical by construction, not by assumption -- the gate's `unset`/`role8` rows
+# prove it). Needs ALG_POLAR=1 (there is no bus to separate the clock from otherwise).
+ALG_CLOCK_SEP = int(os.environ.get("ALG_CLOCK_SEP", "0"))
+assert not ALG_CLOCK_SEP or ALG_POLAR, \
+    "ALG_CLOCK_SEP separates the clock FROM the polar bus -- it needs ALG_POLAR=1"
 _POLAR_TAB = None           # (delta_cos, delta_sin, abs_cos, abs_sin, wheel_of)
+_CLOCK_REG_TAB = None       # ALG_CLOCK_SEP's own dense 64-plane table (delta_cos, delta_sin, abs_cos, abs_sin)
 _POLAR_SHOWN = False
 _MC_SHOWN = False        # THE MASK COOKER's doors: printed once
 _TS_SHOWN = False        # THE TOKEN SEAL's door: printed once
@@ -1385,6 +1405,15 @@ def _polar_tables():
                 assert _wof[_pl] < 0, \
                     f"plane {_pl} claimed twice — SEPARATE BANDS is a law"
                 _wof[_pl] = _wi
+        if ALG_CLOCK_SEP:
+            # THE SEPARATED CLOCK: the bus keeps the band FILE's shape assertions above
+            # (still needs a valid polar_bands.json for H_W/n_planes), but claims NO
+            # plane for any wheel — every one of the 256 planes is content now, the clock
+            # having left for its own register (_clock_reg_tables). This one line is the
+            # entire mechanism: every organ downstream of _polar_sink() (which derives its
+            # content/clock partition from THIS wheel_of) automatically spans the whole
+            # 512-d bus with zero further changes.
+            _wof[:] = -1
         _abs = _rc_wheel_table()                      # (N_LOOP, N_WHEELS)
         _dlt = np.zeros_like(_abs)
         _dlt[0] = _abs[0]
@@ -1409,6 +1438,44 @@ def _polar_tables():
             _dc[:] = 1.0; _ds[:] = 0.0; _ac[:] = 1.0; _as[:] = 0.0
         _POLAR_TAB = (_dc, _ds, _ac, _as, _wof)
     return _POLAR_TAB
+
+
+def _clock_reg_tables():
+    """ALG_CLOCK_SEP's own clock table, over its dedicated 64-plane/128-d register --
+    DENSE (no content gaps to avoid, unlike _polar_tables' 256-plane bus): planes 0-31 =
+    wheel 0 (breath_hand), 32-47 = wheel 1 (parity), 48-63 = wheel 2 (pass_wheel) -- the
+    SAME 32/16/16 split polar_bands.json uses and the SAME rotor_clock angles
+    _polar_tables reads (this function never opens polar_bands.json itself: the register
+    has no stride/offset to avoid colliding with another wheel inside a shared 256-plane
+    space -- it IS the whole clock, nothing else lives there). Returns (dc, ds, ac, as_)
+    each (N_LOOP, 64): dc/ds the per-breath INCREMENT the register's own state compounds
+    (the SAME delta table _polar_tables computes, restricted to the clocked wheels and
+    packed dense); ac/as_ the ABSOLUTE phase (the Q-side read, QROT's register bias).
+    Honors "clockturn" in _SEVER exactly as _polar_tables does (identity -- breath time
+    removed from the register, same read-time instrument, same organ it is a check of)."""
+    global _CLOCK_REG_TAB
+    if _CLOCK_REG_TAB is None:
+        _abs = _rc_wheel_table()                      # (N_LOOP, N_WHEELS)
+        _dlt = np.zeros_like(_abs)
+        _dlt[0] = _abs[0]
+        _dlt[1:] = _abs[1:] - _abs[:-1]
+        _wsizes = (32, 16, 16)                        # breath_hand / parity / pass_wheel
+        assert sum(_wsizes) == 64 and len(_wsizes) == _RC_N_WHEELS
+        _dc = np.ones((_RC_N_LOOP, 64), np.float32)
+        _ds = np.zeros((_RC_N_LOOP, 64), np.float32)
+        _ac = np.ones((_RC_N_LOOP, 64), np.float32)
+        _as = np.zeros((_RC_N_LOOP, 64), np.float32)
+        _p0 = 0
+        for _wi, _n in enumerate(_wsizes):
+            _dc[:, _p0:_p0 + _n] = np.cos(_dlt[:, _wi])[:, None]
+            _ds[:, _p0:_p0 + _n] = np.sin(_dlt[:, _wi])[:, None]
+            _ac[:, _p0:_p0 + _n] = np.cos(_abs[:, _wi])[:, None]
+            _as[:, _p0:_p0 + _n] = np.sin(_abs[:, _wi])[:, None]
+            _p0 += _n
+        if "clockturn" in _SEVER:
+            _dc[:] = 1.0; _ds[:] = 0.0; _ac[:] = 1.0; _as[:] = 0.0
+        _CLOCK_REG_TAB = (_dc, _ds, _ac, _as)
+    return _CLOCK_REG_TAB
 
 
 class _Conductor:
@@ -1627,8 +1694,10 @@ def _polar_sink():
         _wof = _polar_tables()[4]                    # (P,) -1 = content
         _P = H_W // 2
         _cp = np.flatnonzero(_wof < 0).astype(np.int64)
-        assert 0 < len(_cp) < _P, \
-            "the sink needs BOTH a content band and a clock band"
+        assert (0 < len(_cp) < _P) or (ALG_CLOCK_SEP and len(_cp) == _P), \
+            ("the sink needs BOTH a content band and a clock band, UNLESS "
+             "ALG_CLOCK_SEP moved the clock band out of the bus entirely "
+             "(then every plane is content by construction)")
         _cd = np.empty(2 * len(_cp), np.int64)
         _cd[0::2] = 2 * _cp
         _cd[1::2] = 2 * _cp + 1
@@ -1715,6 +1784,29 @@ def _polar_em(u, msk, kappa):
     _kg = _gp.reshape(1, 1, -1) * kappa    # CLOCKED planes only
     _un = _Te.stack(_x + _kg * _ly, _y - _kg * _lx, dim=-1).reshape(_B, _L, _W)
     return _polar_keepnorm(_un, u, _gk)
+
+
+def _polar_em_reg(clk, msk, kappa):
+    """ALG_CLOCK_SEP's own E&B coupling, over the WHOLE register (every one of its 64
+    planes is clocked; there is no content block to exempt, unlike _polar_em's bus
+    version). Same exchange, same kappa convention, same norm-restore -- just the
+    content/clock gate (_gk/_gp) dropped because it would be all-ones here anyway."""
+    from tinygrad import Tensor as _Ter
+    _B, _L, _W = clk.shape[0], clk.shape[1], clk.shape[2]
+    _uv = clk.reshape(_B, _L, _W // 2, 2)
+    _x, _y = _uv[..., 0], _uv[..., 1]
+    _dg = msk.sum(-1, keepdim=True)
+    _pg = _dg > 0
+    _dn = _pg.where(_dg, 1.0)
+    _lx = (msk @ _x) / _dn - _x
+    _ly = (msk @ _y) / _dn - _y
+    _un = _Ter.stack(_x + kappa * _ly, _y - kappa * _lx, dim=-1).reshape(_B, _L, _W)
+    _s0 = (clk * clk).sum(-1, keepdim=True)
+    _s1 = (_un * _un).sum(-1, keepdim=True)
+    _p0 = _s0 > 0; _p1 = _s1 > 0
+    _n0 = _p0.where(_p0.where(_s0, 1.0).sqrt(), 0.0)
+    _n1 = _p1.where(_p1.where(_s1, 1.0).sqrt(), 1.0)
+    return _un * (_n0 / _n1)
 SENT_MAX = 32
 
 
@@ -3440,27 +3532,64 @@ def build_params(seed=0):
         # blur, not compute. A MISSING FILE IS A HARD ERROR: no silent
         # random init, ever (the no-silent-fallbacks rule).
         _cdim = _polar_sink()[0]
-        _pwi = POLAR_D_INIT or f".cache/polar_waist_init_d{POLAR_D}.npz"
-        assert os.path.exists(_pwi), (
-            f"ALG_POLAR_D={POLAR_D} but {_pwi} is missing — the content "
-            f"waist is born as the PCA projection of the champion's own "
-            f"manifold, never at random. Build it with "
-            f"scripts/polar_waist_init.py (ALG_POLAR_D_INIT overrides "
-            f"the path).")
-        _pz = np.load(_pwi)
-        _wd0 = np.asarray(_pz["W_down"], np.float32)
-        _wu0 = np.asarray(_pz["W_up"], np.float32)
-        assert _wd0.shape == (len(_cdim), POLAR_D) \
-            and _wu0.shape == (POLAR_D, len(_cdim)), (
-                f"{_pwi}: W_down{_wd0.shape} / W_up{_wu0.shape} do not "
-                f"match ({len(_cdim)}, {POLAR_D}) / ({POLAR_D}, "
-                f"{len(_cdim)}) — wrong width or wrong band allocation")
-        assert np.array_equal(np.asarray(_pz["content_dims"], np.int64),
-                              _cdim), (
-            f"{_pwi} was built against a DIFFERENT band allocation than "
-            f"{POLAR_BANDS} — the waist would collapse the wrong dims")
+        if ALG_CLOCK_SEP:
+            # THE SEPARATED CLOCK: the champion's PCA birth (.cache/polar_waist_init_d128u
+            # .npz) was fit over the 384-content lineage's manifold — it does not even have
+            # the right shape here (_cdim is now all 512 dims, not 384), and re-fitting a
+            # PCA against a body that has never trained content-only is circular. Birth
+            # random-ORTHOGONAL instead: W_down's columns are an orthonormal basis of a
+            # random POLAR_D-dim subspace of the C=len(_cdim) content dims (QR of a random
+            # Gaussian), W_up = W_down^T — the SAME "V / V^T" shape the PCA birth used, just
+            # an uninformed V. A fresh organ either way; orthogonality keeps the waist's
+            # round-trip c -> c' well-conditioned (no collapsed/duplicated directions) at
+            # step 0, same spirit as the champion's own PCA birth, without claiming to know
+            # the content-only manifold's principal directions in advance.
+            assert POLAR_D <= len(_cdim), \
+                f"ALG_POLAR_D={POLAR_D} must be <= the content width {len(_cdim)}"
+            _qraw = rng.randn(len(_cdim), POLAR_D).astype(np.float32)
+            _wd0, _ = np.linalg.qr(_qraw)
+            _wd0 = np.ascontiguousarray(_wd0[:, :POLAR_D].astype(np.float32))
+            _wu0 = np.ascontiguousarray(_wd0.T.copy())
+        else:
+            # THE CONTENT-PLANE WAIST's two parameters. BIRTH = the champion's
+            # OWN manifold: W_down = V, W_up = V^T with V the top-d principal
+            # directions of the content dims of the dumped fedon242 polar
+            # directions (scripts/polar_waist_init.py; both fixtures, all
+            # breaths, all slots, centered). A random init here would be a
+            # fresh 98k-parameter organ dropped into a warm continuation —
+            # blur, not compute. A MISSING FILE IS A HARD ERROR: no silent
+            # random init, ever (the no-silent-fallbacks rule).
+            _pwi = POLAR_D_INIT or f".cache/polar_waist_init_d{POLAR_D}.npz"
+            assert os.path.exists(_pwi), (
+                f"ALG_POLAR_D={POLAR_D} but {_pwi} is missing — the content "
+                f"waist is born as the PCA projection of the champion's own "
+                f"manifold, never at random. Build it with "
+                f"scripts/polar_waist_init.py (ALG_POLAR_D_INIT overrides "
+                f"the path).")
+            _pz = np.load(_pwi)
+            _wd0 = np.asarray(_pz["W_down"], np.float32)
+            _wu0 = np.asarray(_pz["W_up"], np.float32)
+            assert _wd0.shape == (len(_cdim), POLAR_D) \
+                and _wu0.shape == (POLAR_D, len(_cdim)), (
+                    f"{_pwi}: W_down{_wd0.shape} / W_up{_wu0.shape} do not "
+                    f"match ({len(_cdim)}, {POLAR_D}) / ({POLAR_D}, "
+                    f"{len(_cdim)}) — wrong width or wrong band allocation")
+            assert np.array_equal(np.asarray(_pz["content_dims"], np.int64),
+                                  _cdim), (
+                f"{_pwi} was built against a DIFFERENT band allocation than "
+                f"{POLAR_BANDS} — the waist would collapse the wrong dims")
         p["polar_wd"] = t(_wd0)
         p["polar_wu"] = t(_wu0)
+    if ALG_CLOCK_SEP:
+        # THE SEPARATED CLOCK's one new "reading" parameter: the register's BIRTH value
+        # (state["clk"] at kb == 1, before its first turn) is read off the pre-loop state
+        # cur0 through this small learned projection -- the register's analogue of however
+        # cur0's own clock-plane dims got their initial per-slot content before separation
+        # (whatever upstream construction built cur0's 512 dims already; this is that same
+        # kind of "trained linear read," just landing in the register's own 128 instead of
+        # being interleaved into the bus). Standard small-random head init (the H_W, X
+        # convention used throughout this file), zero PCA/file dependency.
+        p["polar_clk_init"] = t(rng.randn(H_W, 128) / math.sqrt(H_W))
     global _POLAR_SINK_SHOWN
     if ALG_POLAR and (POLAR_D or POLAR_EM) and not _POLAR_SINK_SHOWN:
         # THE SINK DOOR: one line, once, naming what is about to run.
@@ -4069,7 +4198,19 @@ ALG_HIER_TAU = float(os.environ.get("ALG_HIER_TAU", "0"))   # THE DAMPED FORM (2
 # computed exactly as before — bit-identical. Needs ALG_HIER_DAMP (there is nothing to re-open otherwise).
 ALG_HIER_LISTEN = int(os.environ.get("ALG_HIER_LISTEN", "0"))
 assert not ALG_HIER_LISTEN or _HIER_DAMP is not None, "ALG_HIER_LISTEN re-opens a band's damping share — it needs ALG_HIER_DAMP set (nothing to re-open otherwise)"
-_HIER_PLANES = (16, 112, 64)          # root / branch / leaf content planes (sum 192)
+# THE SEPARATED CLOCK's resize (2026-10-09): under ALG_CLOCK_SEP every one of the 256 bus
+# planes is content (64 more than today's 192), so the three bands must re-partition 256
+# planes, not 192. Root (16 planes/32 dims) and leaf (64 planes/128 dims) are kept at their
+# TODAY widths (the judgment call named in the build's own spec: "pick the second" --
+# root 32 / leaf 128 fixed, branch absorbs the rest) and branch grows to take up the slack:
+# 256 - 16 - 64 = 176 planes (352 dims) instead of 112 (224 dims). _HIER_LAT (the waist's
+# latent budget per band, summing to POLAR_D) is left UNCHANGED -- branch's content width
+# grows but its latent share does not, so branch is squeezed harder than root/leaf; this is
+# a judgment call (untested under ALG_CLOCK_SEP, which the CS_241 arm does not set
+# ALG_HIER_WAIST for), not a measured choice. Both module-level names stay plain tuples
+# (every reader already treats them as constants); ALG_CLOCK_SEP is read at import time,
+# same as every other env-gated constant in this file.
+_HIER_PLANES = (16, 176, 64) if ALG_CLOCK_SEP else (16, 112, 64)   # root / branch / leaf content planes
 _HIER_LAT = (12, 72, 44)              # the block waist's latents per band (sum 128 = POLAR_D)
 _HIER_CACHE = {}
 
@@ -5429,6 +5570,12 @@ def breath_step(p, state, kb, ctx):
     _rptr_last = state.get("rptr_last"); _s4_last = state.get("s4_last")
     m_c = state["m_c"]; anchor = state["anchor"]
     cmt_logits = state["cmt_logits"]; x_rel = state["x_rel"]
+    _clk = state.get("clk")
+    if ALG_CLOCK_SEP and _clk is None:
+        # THE SEPARATED CLOCK's register, born once (kb == 1) off the state entering the
+        # loop (cur, after any GTAP/whip/melt mutation above — the same `cur` QROT and the
+        # ALG_POLAR block below both read this breath). See build_params' polar_clk_init.
+        _clk = cur @ p["polar_clk_init"]
     if _IMP is not None and kb == _IMP[0]:
         cur = cur + _IMP[1]          # the kick
     if ALG_NOTEBOOK and kb == 1:
@@ -6258,6 +6405,17 @@ def breath_step(p, state, kb, ctx):
         _mdc, _mds, _mac, _mas, _mwof = _polar_tables()
         _bq2 = _rot2(bq, _ct(("mac", kb), _mac[kb - 1]), _ct(("mas", kb), _mas[kb - 1]))
     sc2 = (_bq2 @ bk.transpose(-2, -1)) / math.sqrt(H_W)
+    if ALG_CLOCK_SEP and POLAR_QROT >= 2 and 1 <= kb <= _RC_N_LOOP:
+        # THE SEPARATED CLOCK'S QROT (main path): with the clock out of the bus, bq/bk carry
+        # no clock-plane dims left to rotate -- the register supplies an ADDITIVE bias term
+        # instead, built the SAME way (Q-side turned by the ABSOLUTE table, "nothing
+        # compounds"; K-side plain -- the v109pi relative-phase precedent, unchanged), dotted
+        # over the register's own 128 dims and added onto sc2 (same role QROT always had:
+        # modulate the score with a breath-synced geometric term; it just no longer shares
+        # bq/bk's coordinate space to do it in).
+        _rdc2, _rds2, _rac2, _ras2 = _clock_reg_tables()
+        _clkq2 = _rot2(_clk, _ct(("rac", kb), _rac2[kb - 1]), _ct(("ras", kb), _ras2[kb - 1]))
+        sc2 = sc2 + (_clkq2 @ _clk.transpose(-2, -1)) / math.sqrt(128.0)
     if _CENSUS is not None:
         _CENSUS.append((kb, "state_slot", sc2.realize().numpy()))
     if ALG_SORT_KEY and ctx.get("tok_key") is not None:
@@ -6498,6 +6656,14 @@ def breath_step(p, state, kb, ctx):
                                  _qx7 * _rs7 + _qy7 * _rc7, dim=-1) \
                 .reshape(B, MX_HEADS, L_TOT, _mx_hd)
         _mx_sc = (_mx_q @ _mx_k.transpose(-2, -1)) / math.sqrt(_mx_hd)
+        if ALG_CLOCK_SEP and POLAR_QROT >= 1 and 1 <= kb <= _RC_N_LOOP:
+            # THE SEPARATED CLOCK'S QROT (mixer path): same register bias as the main path,
+            # HEAD-AGNOSTIC (one shared 128-d register, not split per MX_HEADS head) --
+            # broadcast across the head axis, exactly like the mask-head bias `_mb` below.
+            _rdc3, _rds3, _rac3, _ras3 = _clock_reg_tables()
+            _clkq3 = _rot2(_clk, _ct(("rac", kb), _rac3[kb - 1]), _ct(("ras", kb), _ras3[kb - 1]))
+            _reg_bias3 = (_clkq3 @ _clk.transpose(-2, -1)) / math.sqrt(128.0)
+            _mx_sc = _mx_sc + _reg_bias3.unsqueeze(1)
         if _mb is not None:                 # the same mask-head bias
             _mx_sc = _mx_sc + _mb.unsqueeze(1)
         _sm_tw = _mck              # cooker: the severed close
@@ -6746,6 +6912,14 @@ def breath_step(p, state, kb, ctx):
             from tinygrad import Tensor as _Tp, dtypes as _dp
             _pdc, _pds, _pac, _pas, _pwof = _polar_tables()
             _pol_u = _rot2(_pol_u, _ct(("pdc", kb), _pdc[kb - 1]), _ct(("pds", kb), _pds[kb - 1]))
+            if ALG_CLOCK_SEP:
+                # THE SEPARATED CLOCK'S TURN: the register's own compounding rotation --
+                # exactly the content-plane turn above, just applied to the register's
+                # dedicated 64-plane table instead of a now-empty clock band inside _pol_u
+                # (that rotation is a proven no-op under ALG_CLOCK_SEP: _pdc/_pds are
+                # identity on every plane once _polar_tables forces wheel_of = -1 bus-wide).
+                _rdc4, _rds4, _rac4, _ras4 = _clock_reg_tables()
+                _clk = _rot2(_clk, _ct(("rdc", kb), _rdc4[kb - 1]), _ct(("rds", kb), _rds4[kb - 1]))
         if POLAR_EM and "clockfield" not in _SEVER:
             # (B) THE E&B COUPLING (apply_polar_sink.py, 2026-09-08).
             # AFTER the sextet's turn, BEFORE the content waist: one
@@ -6756,7 +6930,9 @@ def breath_step(p, state, kb, ctx):
             # unlearnable. Content planes pass through bitwise; the
             # clock block's norm is restored inside the organ.
             _cs_u0 = _pol_u if _CENSUS is not None else None
-            _pol_u = _polar_em(_pol_u, _sm_kb, POLAR_EM)
+            _pol_u = _polar_em(_pol_u, _sm_kb, POLAR_EM)   # a proven no-op on _pol_u under ALG_CLOCK_SEP (gp/gk both empty)
+            if ALG_CLOCK_SEP:
+                _clk = _polar_em_reg(_clk, _sm_kb, POLAR_EM)   # the REAL E&B exchange now lives here
             if _CENSUS is not None:
                 _CENSUS.append((kb, "sink_em",
                                 _polar_ru_join(_pol_u - _cs_u0, _pol_r,
@@ -6785,6 +6961,11 @@ def breath_step(p, state, kb, ctx):
             # scripts/polar_birth_smoke.py item 5).
             state.setdefault("u_all", []).append(_pol_u.detach())
             state.setdefault("r_all", []).append(_pol_r.detach())
+            if ALG_CLOCK_SEP:
+                # THE CLOCK PROBE's tap on THE REGISTER (same DETACHED convention as u_all/
+                # r_all above): breath 0 has no register (outside time — it is born at
+                # kb == 1), so this list runs 1..6, not 0..6 like breaths_u/breaths_r.
+                state.setdefault("clk_all", []).append(_clk.detach())
     cur = _unlock_planes(cur, kb)   # THE PLANE UNLOCK: this breath's refined state keeps its open prefix (the ink, the ladder rung, the garage and the next breath all see the same view); no-op unless ALG_UNLOCK
     if ALG_NOTEBOOK:
         _cur_w = (_clock_frame(cur, kb, -1, _rot2)
@@ -6948,8 +7129,12 @@ def breath_step(p, state, kb, ctx):
     if ALG_TREE2:
         state["tree_prev_at"] = fat_cur       # FORM 2: this breath's head-mean attention is the next breath's prior
     if "clockband" in _SEVER and ALG_POLAR and 1 <= kb <= _RC_N_LOOP:
-        cur = cur * _polar_sink()[2].reshape(1, 1, -1)    # the clock dims carry nothing between breaths
+        cur = cur * _polar_sink()[2].reshape(1, 1, -1)    # the clock dims carry nothing between breaths (a no-op under ALG_CLOCK_SEP: no clock dims left in cur)
+        if ALG_CLOCK_SEP and _clk is not None:
+            _clk = _clk * 0.0   # the CHANNELS read, moved to the register: it carries nothing between breaths either
     state["cur"] = cur; state["nb"] = _nb; state["nb_st"] = _nb_st
+    if ALG_CLOCK_SEP:
+        state["clk"] = _clk
     state["rb_last"] = _rb_last
     state["rptr_last"] = _rptr_last; state["s4_last"] = _s4_last
     state["m_c"] = m_c; state["anchor"] = anchor; state["x_rel"] = x_rel
@@ -7687,6 +7872,13 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
             out["breaths_r"] = [_fed_core(_x9) for _x9 in
                                 ([_r0p.detach()]
                                  + ((_bs_state or {}).get("r_all") or []))]
+            if ALG_CLOCK_SEP:
+                # THE SEPARATED CLOCK's own tap surface: 6 entries (breaths 1..6; the
+                # register does not exist at breath 0). Pooled the SAME way breaths_u/
+                # breaths_r are (_fed_core mean over slots) so clock_read.ridge_probe can
+                # read it unchanged.
+                out["clk_all"] = [_fed_core(_x9) for _x9 in
+                                  ((_bs_state or {}).get("clk_all") or [])]
         # NL TAP (apply_nl_tap.py): the seven-page reading — breath
         # 0 is the same fq bank pass fst came from (fat); breaths
         # 1..K-1 were appended by breath_step under the same env.

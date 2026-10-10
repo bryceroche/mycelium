@@ -128,7 +128,14 @@ REFUSED = ("ALG_SHELF", "ALG_WHIP", "ALG_TOKLOOP", "ALG_WRITEBACK", "ALG_KANNEAL
            # for this build, named separately so a future narrowing of the
            # ALG_SELFMATCH refusal does not silently let this one through
            # untested too.
-           "ALG_SORT", "ALG_SORT_KEY", "ALG_SORT_KEY_GAIN")
+           "ALG_SORT", "ALG_SORT_KEY", "ALG_SORT_KEY_GAIN",
+           "ALG_CLOCK_SEP")
+           # THE SEPARATED CLOCK (2026-10-09): breath_step's own state["clk"] (born at
+           # kb == 1 off polar_clk_init, turned/EM-exchanged every clocked breath, read by
+           # QROT's register bias) is carried the same way state["cur"] is -- this walker's
+           # own per-seam dispatches never asserted whether their own state dict survives a
+           # round trip with a key breath_step itself introduces, so (like ALG_SORT/
+           # ALG_SELFMATCH/ALG_PAIRCMP above) refused untested rather than assumed safe.
            # THE SORTING ROOM form 2 (2026-10-09): forward()'s own rebinding of the local `waist`
            # name (ALG_SORT) and breath_step's ctx["tok_key"] read (ALG_SORT_KEY) are the fused
            # forward()'s single source of truth; the walker never calls forward() at all (its own
