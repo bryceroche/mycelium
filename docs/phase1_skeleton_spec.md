@@ -50449,3 +50449,23 @@ the first leg; THE SEED TWIN registered and QUEUED under the standing word: SR_2
 "AR CHAIN COMPLETE" — the night's last arm; unit pc-queue-sr2 running 20:43; the informational pair vs SR_241). The
 verdict entry follows the chain's completion; the hourglass (form 2b) now has its control and becomes tomorrow's
 refinement; the sorting room's port (ALG_SORT=4) threads every reader from here on.
+
+### 2026-10-09 (20:48) — SR_241 VERDICT (THE SORTING ROOM form 2, chain complete; .cache/rack_chain_SR.log): TWO PRE-PINNED FRAMES, READ SEPARATELY. THE SLOT FRAME FIRES: masked wild 0.3715 vs PMS8_241 0.3476 = +0.0239 (paired SE 0.0111, z 2.16; bar +0.020 MET on the first leg), rows 23/311 = THE ROW RECORD, digits 0.500 (+0.053), OPEN MINT 0.7879 (PMS8 0.6510: +0.137). THE MECHANISM FRAME IS REFUTED: twin-pick 0.457 (bar <= 0.35; PMS8 0.456 — UNMOVED), other-sentence share of the wrong mass 0.558-0.573 at the last breath (bar <= 0.40; PMS8 0.526 — UNMOVED, slightly up), args 0.427 UNMOVED, inverse res 0.226 unchanged: the registration's KILL ("both first-look reads unmoved = the token side is not the wall's seat") FIRES AS A MECHANISM VERDICT — a flat trained token stack does not move the first look's binding
+
+THE READING. The sorting room is a real positive on the slot and it is NOT the positive it was built for. Where
+the +0.024 came from: DIGITS (+0.053 on 1009 digit slots — the value path; the trained token side reads numerals
+better) and forward relations (fwd ok 0.358 vs 0.31), while every binding read (args, twin-pick, other-sentence)
+is flat. Mint +0.137 says the stack fits the diet far better than it generalizes (12.6M parameters on the token
+side; the wild gain is one fifth of the mint gain) — the hygiene lesson of the register split applies: the diet is
+memorized, mint is now a weak witness. Honest accounting against the law: the slot claim stands as measured at
+z 2.16 and awaits its TWIN (SR_242 queued last tonight; the claim standard "+0.020 or a twin pair" is met on one leg,
+the pair makes it a record); the mechanism claim (the token side as the wall's seat) is REFUTED for the flat form —
+the other-sentence share is set at the first look and a trained flat stack over the tokens does not change it, the
+third time a re-read of the same keys has left it at ~0.5 (the tree descent x2, now the sorting room). THE HOURGLASS
+(form 2b) targets the same seat with pooled sentence keys inside a TRAINED stack — its prior drops but its trigger
+(a trained token side) is now met; it is tomorrow's build only if the twin confirms the slot gain (then it is a
+refinement of a positive; if the twin fails, the sorting room is a digits organ and the hourglass waits). THE OWNER
+KEY (ALG_SORT_KEY, built, unfired) is the other emission the stack can carry: the shuffle's key — registered as the
+sorting room's second arm (SRK_241 = SR + ALG_SORT_KEY=1) behind the twin. The sorting room's port threads every
+reader from here on (ALG_SORT=4 in the body's env; readers take the body). Digits as the gain: the digit head is
+where the prose pivot (09-14..18) and the numeral mask already moved — the token side is the value path's seat.

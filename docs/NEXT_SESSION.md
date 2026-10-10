@@ -1,18 +1,13 @@
-# NEXT SESSION — cold-start entry (updated 2026-10-09 18:05)
+# NEXT SESSION — cold-start entry (updated 2026-10-09 20:48)
 
-**SR_241 IS ON THE CARD (fired 18:0x; pc-sr + pc-sr-watch; .cache/sharp_SR_241.log; chain .cache/rack_chain_SR.log; the stack ~1.3-1.5x
-step cost -> ~2-2.5 h + reads).** THE SORTING ROOM form 2 (ALG_SORT=4: four pre-norm MHA blocks at 512-d over the 256 token
-states, ReZero/identity-at-init, REPLACING the states every bank read consumes = the mandatory road; the owner-key flag ALG_SORT_KEY
-built, NOT in this arm; merged c11e5d1d, ledger c16bf6c4). BARS: first-look twin-pick <= 0.35 (PMS8 0.456), other-sentence share
-<= 0.40 (0.47), masked wild +0.020 vs PMS8_241 or a twin pair, mint not down > 0.02; KILL: twin-pick and other-sentence both unmoved.
-THE DAY'S VERDICTS (10-09): SM_241 null (inert by scale), PC_241 null WITH the knob at 1.59x (the comparator for the own candidate
-never saw the args' states), THE OWN-SUPPRESSION ORACLE: the direction IS a lever (gold clamp -> inverse res 0.60/0.62; B rank 2 on
-40%; residue = the other arg C 55%), THE DIRECTION TIE-BREAK does not clear (tau on the diet degenerates), THE REGISTER SPLIT: the
-valid2 slice is IN-SAMPLE (memorized; calibration needs a third held-out pool) and the forward-default failure is a PROSE prior
-(0.80 diet pen = 0.79 wild vs 0.014 mint). REGISTERED (word): THE ARGS-CONDITIONED RES (the res reads the args head's predicted
-soft selection of variable states); the hourglass sorting room (2b); the six alternations behind the gym pre-read + head diff A;
-the perceiver as the value function (picker bars 24/2); the re-admission table; the diet-hygiene pass; unmemorized inverse PROSE
-(the n lever in the wild register). MEASUREMENT NOTE: the trainer's step-N loss is POST-update. Updated 18:05.
+**THE NIGHT'S QUEUE IS RUNNING (20:48; the word given for the whole queue):** LT_241 (THE LOOPED TRANSFORMER: 4 MHA blocks per breath on the
+slot side, replaces the mixer; builder wt14, gate running) -> WS_241 (THE WAIST SKIP A; queued pc-queue-ws) -> the clock-band pre-read + CS_241
+(THE SEPARATED CLOCK; queued pc-queue-cs) -> AR_241 (THE ARGS-CONDITIONED RES; builder wt17) -> SR_242 (the sorting room's SEED TWIN; queued
+pc-queue-sr2). Each one organ, one chain, vs PMS8_241, bars in the ledger; watchers on every arm. SR_241 VERDICT (two frames): THE SLOT
+FRAME FIRES — masked +0.0239 (z 2.16, the +0.020 bar met), ROWS 23 = THE ROW RECORD, digits +0.053, open mint 0.788 (+0.137); THE MECHANISM
+FRAME REFUTED — twin-pick 0.457 and other-sentence 0.56 UNMOVED, args flat: a flat trained token stack is a DIGITS/value-path organ, not
+the wall's seat. The twin decides the record; the hourglass (2b) and the owner key (SRK_241) follow the twin. Morning: read all six arms
+paired vs PMS8_241; consult the re-admission table for every null. Updated 20:48.
 
 **THE CARD IS IDLE (09:38).** THE DIRECTION PROBE FIRED (zero-GPU; scripts/direction_probe.py; .cache/direction_probe_PMS8_241.txt):
 PRESENT-BUT-UNEXPRESSIBLE — a read-out trained on PMS8_241's own frozen states reaches wild AUROC 0.98 (own state + both gold args'
