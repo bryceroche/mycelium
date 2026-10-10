@@ -50427,3 +50427,13 @@ read. If ~0.01 again, the quarter is nearly free to reclaim. THE ARM (word): CS_
 from scratch vs PMS8_241. BARS: masked wild +0.020 or a twin; the clock probe (breath time readable from the register
 at 1.0, as the clock reads today); the drift reported; mint not down > 0.02. KILL: the clock probe falls below 0.95, or
 masked down. Order: after SR_241 -> LT_241 -> WS_241 (tonight's card).
+
+### 2026-10-09 (19:22) — WORD GIVEN FOR THE WHOLE QUEUE (Bryce: "word given for the whole queue -- Salute!"): tonight's card = SR_241 (running, reads ~20:55) -> LT_241 (THE LOOPED TRANSFORMER) -> WS_241 (THE WAIST SKIP A) -> the clock-band removal-cost pre-read -> CS_241 (THE SEPARATED CLOCK) -> AR_241 (THE ARGS-CONDITIONED RES); the perceiver-as-value (CPU) and the hourglass 2b (SR's verdict is its control) follow in the morning; the six alternations wait on the gym merge + head diff A
+
+Each arm one chain, one organ, vs PMS8_241 from scratch, its bars as registered (LT 19:0x; WS 18:4x; CS 19:2x; AR
+16:5x). Builders staggered for CPU memory (one gate at a time per worktree; swap was exhausted once today): wt14
+loopedtf + wt15 waistskip now; wt16 clocksep next; wt17 argsres after the first two gates land. Queues chain on the
+previous chain's done mark ("<X> CHAIN COMPLETE") + no trainer + the free lock; every queue grep tested against its
+gate log; the watcher on every arm; SNAP_EVERY=8000. Readers thread every new port (the sorting room's port is in
+every chain from here on: readers take the body as an argument). Morning reads: all five paired vs PMS8_241 with
+the paired SE; the re-admission table consulted for every null's trigger.
