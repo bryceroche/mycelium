@@ -50207,3 +50207,20 @@ clamping needs a MUCH more selective, better-transferring gate than this diet co
 clear the bars, not a fine-tuned tau. NOT threaded into chain_acc.py / the readers (per the word
 given) — no road to build from this read; the own-suppression oracle's B-vs-C binding diagnosis
 (16:53 entry) remains the standing next-form pointer.
+
+### 2026-10-09 (17:34) — THE TIE-BREAK'S READING (after bb8acabd): the direction failure is a WILD-REGISTER failure, not an architecture failure — on the DIET the res head reads inverse forms RIGHT (inverse res 0.61 unconditioned / 0.76 eligible vs forward 0.47 / 0.55) while on wild it is 0.25 vs 0.87; the diet therefore cannot calibrate a wild lever (tau* = never clamp; the same regime wall the perceivers hit, 10-07)
+
+What the three direction arms (DIR, DIRROLE, SM, PC) and the tie-break have in common: every one trained or
+calibrated its direction read on the DIET, where the inverse convention is already learned (0.61-0.76) and the
+cues are mint-formulaic; none of that transfers to GSM8K's phrasing. The polarity census's "starved" was refuted
+(DOSE_241: +0.08 mint, wild unchanged) and "unrepresentable" is now refuted too (the oracle's ceiling 0.60; the diet's
+0.76). What remains: the cue -> direction binding in the WILD REGISTER is not in the training distribution's TEXT.
+Two roads follow, both already registered: (1) THE SORTING ROOM (SR_241, firing: a trained token side that may
+generalize the cue reading across registers — the first look's keys are where the register enters); (2) THE n LEVER
+in the wild register — annotated PROSE with inverse forms (the books campaign's lane; the annotation stream math -> NL;
+GSM8K-train-style rephrasings of mint inverse forms = the dose in the right register). A zero-GPU read registered:
+THE REGISTER SPLIT of inverse res on the diet by source (mint vs pen vs prose-v0) — if prose inverse res on the diet
+is already low, the register story is confirmed at the slot level and the dose becomes a prose dose. The predicted-args
+probe failing to transfer to PC_241 (AUROC 0.35-0.43) is the never-mix-generations law (a from-scratch body's
+coordinates), not a direction fact. The no-MLP control (clamp every predicted relation) costs -0.10 masked on both
+bodies: the forward cost is ~50x the inverse gain in slots — any direction read must be precise, never broad.
