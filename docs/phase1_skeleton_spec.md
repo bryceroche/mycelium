@@ -50564,3 +50564,16 @@ threshold; ~20 reproductions; independent of whether the new tensors are used) i
 — the first organ to cross the threshold. RULE: every chain whose organ grows the training graph runs a pre-arm
 device smoke and applies JIT_BATCH_SIZE=1 only on a reproduced failure (rack_chain_LT.sh's pattern); the workaround
 leaves unset/role8 bit-identical (verified on CPU). The night's order holds: WS -> clock pre-read + CS -> AR -> SR_242.
+
+### 2026-10-10 (03:18) — LT_241 (THE LOOPED TRANSFORMER: 4 MHA blocks per breath on the slot side, replacing the mixer, from scratch vs PMS8_241) DOES NOT FIRE: masked wild 0.3510 vs 0.3476 = +0.0034 (paired SE 0.0095, z 0.36; bar +0.020 MISSED), args 0.431 UNMOVED (bar 0.47), rows 18 (PMS8 14, noise-range), open mint 0.697 (+0.046), inverse res 0.261 (flat); THE KNOB CENSUS PASSES — every block >= 5% of the state at the last breath — a road LIVE AT SCALE that moved nothing: depth on the slot side is not the lever
+
+Fields masked wild: pres 0.907 ftype 0.856 res 0.812 dig 0.466 exact 0.351 op 0.725 args 0.431. MECH: fwd ok 0.323
+args 0.497 res 0.880; inv ok 0.183 args 0.315 res 0.261. Paired vs SR_241: -0.0205 (SR 0.3715). Membrane: the wrong
+slots' other-sentence share 0.48-0.49 (PMS8 0.526: slightly down), the RIGHT slots' other-sentence mass 0.33 (SR
+0.10-0.17; PMS8 ~0.1): the cross-attention stack SPREADS the right slots' attention across sentences without cost or
+gain — a membrane change that is a passenger. The mixer's replacement cost nothing (-0.025 was its removal cost on a
+trained body; a body trained without it from scratch is flat). Rate 0.34 s/step (3.5x) under JIT_BATCH_SIZE=1.
+THE READING: the twelve hills' depth hypothesis (4 MHA layers in the loop) is a clean null in this form — the
+breaths are not compute-starved; the first look's evidence is. Re-admission trigger (the table): a token side that
+moves the first-look binding (then depth may have something to refine). The hourglass / owner-key line and the data
+lever (unmemorized inverse prose) remain the open roads; SR's twin decides the record.
