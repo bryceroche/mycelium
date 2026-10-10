@@ -50605,3 +50605,19 @@ the sorting-room body ~0.002 — the trained token side makes the clock planes' 
 quarter is cheap to reclaim; whether the reclaimed 64 planes of content + the 512 -> 128 waist BUY anything is CS_241's
 question (bars: masked +0.020 / twin; the clock probe >= 0.95 on the trained body; the drift; mint). The merge of
 clocksep went clean (bd9f46d5 pre-merged in wt16; the queue's direct merge OK); the post-merge gate passed.
+
+### 2026-10-10 (07:30) — CS_241 (THE SEPARATED CLOCK: the 64 clocked planes as a 128-d register beside a 512-content bus, waist 512 -> 128, from scratch vs PMS8_241) DOES NOT FIRE AND COSTS: masked wild 0.3364 vs 0.3476 = -0.0112 (paired SE 0.0094 | McNemar z +1.19), rows 10 (PMS8 14), OPEN MINT 0.5878 (-0.063: the night's worst), args 0.445 flat, digits 0.433 (-0.014); the trained-body CLOCK PROBE DID NOT RUN — the chain died at it (CLOCKPROBE-TRAINED: "STRICT key mismatch loading CSEP_CKPT" — the probe built params OUTSIDE the family env, the N_DIG=7 trap's shape) AFTER every verdict read had landed; the done mark was written by hand to release AR_241 and SR_242; the probe re-runs separately under the family env
+
+Fields masked wild: pres 0.907 ftype 0.860 res 0.805 dig 0.433 exact 0.336 op 0.739 args 0.445. Discordant 198 /
+175. Step cost 0.10-0.13 s/step (no overhead). THE READING: freeing the quarter and compressing all 512 content dims
+to 128 made the body WORSE on mint (-0.063) and slightly worse on wild — the 384 -> 128 waist on a 192-plane content
+block (born from the champion's PCA subspace in the lineage; here random-orthogonal over 512) is a better bottleneck
+than 512 -> 128 over 256 planes: a 4:1 squeeze over a bus that also lost its clock planes' turned frame. Together
+with WS_241 (the loss keeps the squeeze shut) the waist's SHAPE is tuned: 192 content planes through 128 dims, the
+clock in the bus beside them. The band's state content was cheap to remove at read (-0.013 / -0.002) and expensive
+to redesign at training — a removal cost is not a redesign cost (the headroom corollary's other face). Hill 10's
+separation (T6 time / T256 relations as separate OBJECTS) is a null in this form; the clock stays a turned quarter of
+the bus. Re-admission trigger: a bus whose content needs more than 192 planes (none measured). RULE (the third time):
+every reader in a chain builds params UNDER THE FAMILY ENV of the body it reads (the chain's own `== ARM` line) —
+a chain's late probe must be smoke-tested at the gate against a warm checkpoint of the SAME family env, not only the
+fixture's. The verdict stands on the complete reads; the clock probe is a mechanism read, not a bar on the slot.
