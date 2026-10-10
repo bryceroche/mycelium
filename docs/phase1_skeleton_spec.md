@@ -50715,3 +50715,23 @@ crystallization only (cosmetic by the pilot's ceiling; register, low prior). BAR
 +0.020 or a twin; THE KIND MARGIN (within-kind spread / between-kind distance in the content space) not down vs
 PMS8; the drift reported; mint not down > 0.02. KILL: the margin falls (one crystal) or masked down. No separated
 clock needed: conductor(kb) carries the breath index; CS_241 was negative.
+
+### 2026-10-10 (13:30) — THE TWIN HOLDS: SR_242 (the sorting room at SEED=242) masked wild 0.3681 vs PMS8_241 0.3476 = +0.0205 (paired SE 0.0110, z 1.87), ROWS 23 / 311 (= SR_241's 23), digits 0.490 (+0.043), open mint 0.8468 (+0.196), vs SR_241 -0.0034 (the twins agree) — THE SORTING ROOM IS THE SLOT RECORD: a TWIN PAIR +0.0239 / +0.0205 (combined z ~2.8), rows 23 / 23 (the row record, twice), the first organ to clear the claim standard since the role signature (PMS8 itself was +0.0185 / +0.0258)
+
+Fields SR_242 masked wild: pres 0.909 ftype 0.863 res 0.819 dig 0.490 exact 0.368 op 0.727 args 0.442. MECH: fwd ok
+0.341 args 0.528 res 0.868; inv ok 0.164 args 0.290 res 0.298. First look: twin-pick 0.429 (SR_241 0.457; PMS8
+0.456; bar 0.35 not met), the wrong slots' other-sentence share 0.544 (unmoved). THE RECORD'S ANATOMY (both twins):
+the gain is DIGITS (+0.043 / +0.053) and forward relations (ok 0.34-0.36 vs 0.31), with args, twin-pick and the
+other-sentence share flat: a trained token side is the value path's organ; the binding wall stands; mint +0.14 /
++0.20 says the stack memorizes the diet far beyond what it generalizes. Mechanism frame unchanged (refuted for the
+flat form); the slot claim is now a pair. THE DEPLOYED-STACK QUESTION is not raised by this record: the research
+lineage (PM35 -> PMS8 -> SR) is measured against itself; promotion to the deployed stack is a separate battery
+(the manifest's bars), not implied. FIRED under the standing word's twin-conditional item (19:0x: "the owner key
+(SRK_241) and the hourglass 2b follow the twin"): SRK_241 = SR_241's chain + ALG_SORT_KEY=1 (the owner-key shuffle:
+the stack emits a 64-d per-token key; each slot's key = its argmaxed given token's key; the mixer's slot-to-slot
+logits gain a learned-gain cosine term, zero at birth — gated 10-09 as sort4key == sort4 at step 0, the gain's grad
+nonzero), .cache/rack_chain_SRK.sh, pc-srk + pc-srk-watch at 13:30. BARS: masked wild >= SR's pair (0.3681-0.3715)
++ 0.010 or a twin; THE SHUFFLE READ (the mixer's owner-grouping ratio, 10-08: ~1.0; bar >= 1.3); the gain's census
+(a gain that stays ~0 = the key unread, the mandatory-road law's warning for a gated organ — recorded, not a kill
+by itself); twin-pick / other-sentence reported. THE HOURGLASS (2b) builds behind it (CPU; its queue waits on
+"SRK CHAIN COMPLETE").
