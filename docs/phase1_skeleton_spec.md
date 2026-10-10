@@ -50374,3 +50374,26 @@ Artifacts: scripts/sort_bisect_replay.py, scripts/sort_grad_probe.py, scripts/so
 (scripts/sort_read_smoke.py deleted, superseded), scripts/sort_scale_check.py; .cache/sortroom_gate.sh,
 .cache/rack_chain_SR.sh, .cache/queue_sr.sh; .cache/sortroom_gate.log, .cache/sortroom_merge_gate.log,
 .cache/sortroom_bisect_{inputs,outputs}_{role8,sort4}.npz.
+
+### 2026-10-09 (18:56) — REGISTERED (Bryce: "we have the compression 512 -> 128 but we're missing the skip connections when zooming back in on the right side of the U-Net"): THE WAIST SKIP — confirmed against the code: _polar_waist is c' = c @ W_down @ W_up with the content block REPLACED by its rank-128 reconstruction every breath (keepnorm(u * g_k + c'): g_k = 1 on the clock dims only) — the clock band is the ONLY skip; two forms registered, both from scratch, needing the word
+
+Facts: (1) the content waist is a rank-128 projection applied to the whole 384-d content block each breath — anything
+outside the (PCA-born, trained) 128-d subspace is ERASED per breath and can persist only by being re-read from the
+tokens; (2) the breath update is residual across time, so the state has a skip in TIME but none around the squeeze;
+(3) the waist is load-bearing AT READ (the fair sever: trained with, read without = -0.064) — a removal cost, NOT a
+training ablation: no body has been trained from scratch with a skip beside the waist; (4) the measured "blur" is the
+drift (right slots 0.81 -> 0.60 across breaths), cured by per-band damping on the hierarchical body, never tested
+against a skip. The relay's "Fable calls this hallucination during expansion" is not a ledger term.
+FORM A — THE GATED WAIST SKIP (ALG_WAIST_SKIP=1; the plain chassis, PMS8's recipe): c' = P c + g ⊙ (c - P c) with g =
+sigmoid(theta) per content dim (or per band under ALG_HIER_WAIST), theta born at -4 (g ~ 0.02: LIVE from birth — the
+knob law — not zero; unset bit-identical by the flag). The loss opens the bypass iff out-of-subspace detail lowers it;
+the risk is the waist's regularization lost (the mandatory-road law's warning applied to a BYPASS: the cheapest road
+will be taken — that is the experiment, not a flaw). READS pinned: masked wild +0.020 or a twin vs PMS8_241; the drift
+(right-slot token hit by breath: PMS8 0.81 -> 0.60; a skip that keeps detail should hold it >= 0.70 without the HS
+body's mint cost); g's census per band at the end (where did the loss open the skip: leaf-like dims or everywhere?);
+mint not down > 0.02. KILL: g < 0.1 everywhere at 48k (the bypass unwanted) or masked down.
+FORM B — THE LEAF SKIP (the U-Net-faithful structural form, on the hierarchical chassis ALG_HIER_WAIST): the leaf
+band (128) BYPASSES the waist, root (32) + branch (224) squeeze — fine detail skips, coarse context compresses, no
+gate (a mandatory road by construction); vs HS_241 (drift already cured there by damping; the question is the wall
+and mint). Same reads. ORDER: A first (one arm, 80 min, on the claim body); B if A's g census opens the leaf-like
+dims. Both wait for the card (SR_241 to ~21:10) and the word.
