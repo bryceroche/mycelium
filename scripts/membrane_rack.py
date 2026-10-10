@@ -138,9 +138,16 @@ def collect(ckpt, tag, n_rows=None):
         ts = Tensor(np.ascontiguousarray(vst[sl_p]), dtype=dtypes.half)
         tk = Tensor(vtk[sl_p].astype(np.float32), dtype=dtypes.float)
         se = Tensor(vse[sl_p].astype(np.int32), dtype=dtypes.int)
+        # THE TREE DESCENT's port (2026-09-27) / THE HOURGLASS SORTING ROOM's own requirement
+        # (2026-10-09): the unit ids per row, as loop_val/chain_acc/membrane_scale build them —
+        # this script had no gate at all before (membrane_scale's own _TREE_ON precedent).
+        tree_t = None
+        if os.environ.get("ALG_TREE", "") or int(os.environ.get("ALG_SORT_HG", "0")):
+            tree_t = Tensor(np.stack([H.tree_row_ids(vs[int(i)]["text"], vtk[i], vse[i], T_ALG)
+                                      for i in sl_p]).astype(np.int32), dtype=dtypes.int)
 
         # pass 1 (unmasked parse) -> the evidence-sharing slot mask, exactly membrane_scale/loop_val
-        o0 = forward(p, ts, tk, se)
+        o0 = forward(p, ts, tk, se, tree=tree_t)
         onp0 = {k: o0[k].realize().numpy() for k in ("fat", "args", "res")}
         mk = build_slot_masks(onp0, vse[sl_p].astype(np.int32))
         mk_t = Tensor(mk, dtype=dtypes.float)
@@ -173,9 +180,9 @@ def collect(ckpt, tag, n_rows=None):
                     kk_t = Tensor(kk, dtype=dtypes.float)
                 return Tensor(fb_, dtype=dtypes.float), cb_t, rk_t, rk, kk_t, kk
 
-            oa3 = forward(p, ts, tk, se, slot_mask=mk_t, stop_after=2)
+            oa3 = forward(p, ts, tk, se, slot_mask=mk_t, stop_after=2, tree=tree_t)
             f3_t, c3_t, r3_t, r3_np, k3_t, k3_np = consult3(oa3)
-            ob3 = forward(p, ts, tk, se, slot_mask=mk_t, stop_after=4, facts3=f3_t, cert3=c3_t, rack3=r3_t, chalk3=k3_t)
+            ob3 = forward(p, ts, tk, se, slot_mask=mk_t, stop_after=4, facts3=f3_t, cert3=c3_t, rack3=r3_t, chalk3=k3_t, tree=tree_t)
             f5_t, c5_t, r5_t, r5_np, k5_t, k5_np = consult3(ob3, rack_prev=r3_np)
             if ALG_CHALK:
                 chalk_n3[sl] = k3_np[:len(sl), :, 0].sum(-1).astype(np.int32)
@@ -183,13 +190,13 @@ def collect(ckpt, tag, n_rows=None):
 
             o = forward(p, ts, tk, se, slot_mask=mk_t,
                         facts3=f3_t, facts5=f5_t, cert3=c3_t, cert5=c5_t, rack3=r3_t, rack5=r5_t,
-                        chalk3=k3_t, chalk5=k5_t)   # THE CHALKBOARD (2026-10-05, branch rack3)
+                        chalk3=k3_t, chalk5=k5_t, tree=tree_t)   # THE CHALKBOARD (2026-10-05, branch rack3)
         else:
             _ka = ("pres", "ftype", "op", "dig") + (("dup",) if "dup" in o0 else ())
             _oa = {**onp0, **{k: o0[k].realize().numpy() for k in _ka}}
             fb = alt2_fact_buf(_oa, vse[sl_p].astype(np.int32), _nv, _ma)
             fact_t = Tensor(fb, dtype=dtypes.float)
-            o = forward(p, ts, tk, se, slot_mask=mk_t, fact_buf=fact_t)
+            o = forward(p, ts, tk, se, slot_mask=mk_t, fact_buf=fact_t, tree=tree_t)
 
         fat_all = [t.realize().numpy() for t in o["fat_all"]]
         assert len(fat_all) == K_B, (len(fat_all), K_B)
