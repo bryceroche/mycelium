@@ -50621,3 +50621,5 @@ the bus. Re-admission trigger: a bus whose content needs more than 192 planes (n
 every reader in a chain builds params UNDER THE FAMILY ENV of the body it reads (the chain's own `== ARM` line) —
 a chain's late probe must be smoke-tested at the gate against a warm checkpoint of the SAME family env, not only the
 fixture's. The verdict stands on the complete reads; the clock probe is a mechanism read, not a bar on the slot.
+
+### 2026-10-10 (08:0x) — CS_241's trained clock probe, re-run under the family env (scripts/clocksep_probe.py fixed, commit 7107f263): acc 0.9955 / severed (ALG_SEVER=clockband) 0.3333 — clears the >= 0.95 bar; breath time survives 48k steps in the register and the sever drops it hard, same shape as the gate's own init-time read (1.0000 / 0.3333) — the mechanism works; the arm's non-fire verdict above is unaffected (every verdict read had already landed before the probe step died).
