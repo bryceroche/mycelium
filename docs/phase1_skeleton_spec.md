@@ -50410,3 +50410,20 @@ registered 18:4x (masked +0.020 / twin; drift hit >= 0.70; g census; mint). ORDE
 LT_241 (overnight) -> WS_241 (toward morning). Builders: worktrees wt14 (loopedtf) and wt15 (waistskip); gates per
 the day's rules (unset bit-identical; grad probes per block; the knob census; the pre-update instrument for a
 state-replacing road; every queue grep tested against its gate log before arming).
+
+### 2026-10-09 (19:19) — REGISTERED (Bryce: "separate the clock from the T256 rotational bus so the waist compresses 512 -> 128 instead of 384 -> 128"): THE SEPARATED CLOCK (ALG_CLOCK_SEP=1) — the 64 clocked planes leave the bus for their own 128-d register (the full six-wave relative-phase code kept at its width; the attention rotation, the field and the turn read the register), all 256 bus planes become content, the waist squeezes 512 -> 128 (hill 11 literal; hill 10: T6 time / T256 relations as separate objects); needs the word + a pre-read
+
+Facts: the clock is already a band (64 of 256 planes; the waist excludes it; it is the one skip) but it occupies a
+quarter of the bus ("a turned quarter, not a reservation", 09-24). The 09-24 clock-band reads: channels -0.011, field
+-0.006 (passenger), turn -0.031 (a frame-mismatch injection) — the band's STATE content is worth ~1 SE; its working role
+is the attention-frame rotation in sync with the breath. The band probe's caution stands: the six-wave is a RELATIVE-
+PHASE code that needs its width — so the separation keeps all 64 planes, outside the bus (state 512 content + 128
+clock = 640), never a tiny positional register (an invitation through a gain). Heads read content only (what the
+sever reads say they effectively do). The hierarchical bands (root/branch/leaf) re-sized over 512; the waist born
+random-orthogonal from scratch (the PCA birth belongs to a 384-content lineage).
+PRE-READ (zero training; fires when the card frees between arms): THE CLOCK-BAND REMOVAL COST re-read on PMS8_241 and
+SR_241 — zero the clocked planes' content at read (the 09-24 channels sever) and the field; paired vs the body's own
+read. If ~0.01 again, the quarter is nearly free to reclaim. THE ARM (word): CS_241 = PMS8's recipe + ALG_CLOCK_SEP=1
+from scratch vs PMS8_241. BARS: masked wild +0.020 or a twin; the clock probe (breath time readable from the register
+at 1.0, as the clock reads today); the drift reported; mint not down > 0.02. KILL: the clock probe falls below 0.95, or
+masked down. Order: after SR_241 -> LT_241 -> WS_241 (tonight's card).
