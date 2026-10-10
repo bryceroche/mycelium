@@ -1,17 +1,17 @@
-# NEXT SESSION — cold-start entry (updated 2026-10-10 10:54)
+# NEXT SESSION — cold-start entry (updated 2026-10-10 13:31)
 
-**SR_242 (the sorting room's SEED TWIN) IS ON THE CARD (10:54; fired 10:53; pc-sr2; ~0.2 s/step -> reads ~13:45). It decides whether SR_241's
-+0.0239 (z 2.16, rows 23) is THE RECORD (the claim standard: +0.020 or a twin pair).** AR_241 (THE ARGS-CONDITIONED RES) DOES NOT FIRE
-(inverse res 0.261 unchanged; knob 1.24x; masked -0.007) — THE DIRECTION LINE CLOSES ON SEVEN ARCHITECTURAL FORMS (DIR, DIRD, DIR2,
-DIRROLE, SM, PC, AR + the tie-break): the direction and the binding are one problem (the res cannot know the form until the args are
-bound; the args head cannot place own among the args until it knows the form); the gold-direction oracle's 0.60 is reachable only with
-the args right; the body's forward-default is a PROSE prior from the corpus. OPEN ROADS: the DATA road (unmemorized inverse prose in
-the wild register: the annotation stream math -> NL; the books' lane) and the token-side binding road (the owner key SRK_241 and the
-hourglass 2b, if the twin holds). THE PERCEIVER AS THE VALUE FUNCTION read 1: 23/311 with 2 regressions (bar 24/2, missed by one;
-the atlas angles +5 rows at the same regression budget; one wild read, no re-tuning). THE NIGHT'S VERDICTS: SR_241 fires on the slot
-(mechanism refuted: a digits organ); LT_241 null; WS_241 killed (the loss keeps the squeeze shut); CS_241 negative (mint -0.063; the
-register works 0.996). THE THREE-POOL RULE: train / calibrate / measure on disjoint pools (the valid2 slice is in-sample; wild is
-measured only) — a third held-out pool is the prerequisite for every judge and every direction read. Updated 10:54.
+**THE SORTING ROOM IS THE SLOT RECORD (13:31): a TWIN PAIR vs PMS8_241 0.3476 — SR_241 0.3715 (+0.0239, z 2.16) / SR_242 0.3681 (+0.0205,
+z 1.87), combined z ~2.9; ROWS 23 / 23 (the row record twice); digits +0.05 / +0.04; mint 0.79 / 0.85; args, twin-pick (0.46 / 0.43) and
+other-sentence (0.56 / 0.54) FLAT: a trained token side is the VALUE PATH's organ, the binding wall stands.** Not a deployed-stack
+promotion (the research lineage is measured against itself; promotion is the manifest's battery). ON THE CARD: SRK_241 (SR + the owner
+key ALG_SORT_KEY=1: the shuffle's key as structure; pc-srk, fired 13:31; bars: masked >= SR's pair + 0.010 or a twin; the shuffle ratio
+>= 1.3 from ~1.0; the gain's census). BEHIND IT: HG_241 (THE HOURGLASS 2b: tokens -> clauses -> sentences -> back with skips, additive
+form first; builder wt18; its queue waits on "SRK CHAIN COMPLETE"; bars: twin-pick <= 0.35, other-sentence <= 0.40, masked >= SR + 0.010
+or a twin; kill: both first-look reads unmoved AND the coarse path < 10% -> form 2 (multiplicative)). NEEDING THE WORD: THE FUNNEL GATE
+(per-breath gates on the skip and the waist's rank; the loss draws the Nazaré envelope; ~80 min) -> NZ_241; the data road (unmemorized
+inverse prose via the annotation stream); a third held-out pool for every judge. CLOSED THIS WEEK (regime-tagged): the direction line
+(7 forms + the tie-break), the looped transformer (depth), the waist skip (the loss prefers the squeeze), the separated clock (costs).
+Updated 13:31.
 
 **THE CARD IS IDLE (09:38).** THE DIRECTION PROBE FIRED (zero-GPU; scripts/direction_probe.py; .cache/direction_probe_PMS8_241.txt):
 PRESENT-BUT-UNEXPRESSIBLE — a read-out trained on PMS8_241's own frozen states reaches wild AUROC 0.98 (own state + both gold args'
