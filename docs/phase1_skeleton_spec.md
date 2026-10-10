@@ -50577,3 +50577,23 @@ THE READING: the twelve hills' depth hypothesis (4 MHA layers in the loop) is a 
 breaths are not compute-starved; the first look's evidence is. Re-admission trigger (the table): a token side that
 moves the first-look binding (then depth may have something to refine). The hourglass / owner-key line and the data
 lever (unmemorized inverse prose) remain the open roads; SR's twin decides the record.
+
+### 2026-10-10 (05:26) — WS_241 (THE WAIST SKIP form A: a per-dim sigmoid gate around the rank-128 content waist, born at g 0.018, from scratch vs PMS8_241) IS KILLED ON ITS OWN CRITERION: g stayed at 0.020 on EVERY dim after 48k steps (g_mean 0.0201, g_max 0.021; root / branch / leaf 0.0200 / 0.0201 / 0.0201) — the loss never opened the bypass; masked wild 0.3491 vs 0.3476 (+0.0015, null), rows 7 (PMS8 14), open mint 0.638 (-0.013), the drift UNCHANGED (right-slot token hit 0.81 -> 0.64; bar >= 0.70 missed), inverse res 0.250 flat
+
+Build (branch waistskip, merged by hand 90a79be2 after the queue's resolver failed on the REFUSED shape): _polar_waist
+-> _polar_waist_skip: c' = P c + g ⊙ (c - P c), theta (384) born -4; gate: unset bit-identical, wskip finite (6.5380),
+theta's grad nonzero on 384/384 dims, the g = 0 identity smoke 18/18 == role8. The chain's knob census: the skipped
+component's std is 2% of the reconstruction's at every breath, i.e. exactly the birth value — the gate was LIVE (it had
+gradient at the gate and in the arm) and the optimizer left it shut.
+THE READING: this is the opposite of the inert-by-scale nulls (SM) and the live-but-useless nulls (PC, LT): the road
+was open at 2% and the loss had 48k steps of a direct, per-dim, zero-cost choice to let out-of-subspace content
+survive the squeeze — and declined everywhere, in every band. The rank-128 projection each breath is PREFERRED by the
+loss, not merely tolerated — the first direct evidence that the waist's erasure is doing work at training time (the
+09-24 sever gave only the removal cost at read). Compression is the U-Net concept that holds here; the skip is not.
+FORM B (the leaf-band skip, structural, no gate) keeps its registration with a lowered prior: it would FORCE what the
+loss declined, and the hierarchical body already cured the drift by damping. Re-admission trigger: a body whose
+first-look binding is right (then fine detail is worth keeping); a from-scratch twin of A is not worth the card.
+Rule learned from the night's queue failure (and 03:16's by-hand merge): the REFUSED-list resolver takes the union
+of all sides for any shape or aborts BEFORE the wait (scripts/resolve_refused_merge.py fixed on clocksep: it had
+silently swallowed real entries into a comment while the file still parsed — a token-preservation assertion now
+guards it). Next on the card: the clock-band pre-read + CS_241 (pc-queue-cs), AR_241, SR_242.
