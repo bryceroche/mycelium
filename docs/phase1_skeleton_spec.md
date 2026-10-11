@@ -51189,3 +51189,14 @@ untested half; (4) yes, already so. The math loop at 128 with a 2x waist to 64 c
 keep the crystal at 128 (the sine's k0 IS the math loop at 128). BUILD ORDER: perf first (A: the solver pipeline +
 memo + budget; B: the JIT threshold), the NL-loop refactor after SRF's read, the per-breath alternation after the
 gym pre-read. Builders fired for A and B (host-side; the card stays with the arms).
+
+### 2026-10-11 (16:48) — REGISTERED (Bryce: "run only breath 1 until it is perfect ... like learning a Rubik's cube, the first step many times, then the first and second"): THE BREATH-COUNT READS — K3_241 (the lineage recipe at ALG_BREATH=3 throughout: the grounding read + two loop breaths, one consult; bar masked wild >= PMS8_241 - 0.010 at ~0.45x the step) and PK_241 (PROGRESSIVE BREATHS: 24k at K=3 then 24k at K=7, weights shared, the clock's K=7 phase schedule fixed throughout — only the loop count grows; bars >= K3's read, plus the drift / other-sentence reads at the grown breaths); the per-breath TARGET is the gold graph (the ladder already grades every breath with the full target; "1/6 diffused" labels were measured negative: the Matryoshka readout null, nested labels = negative cross-rung pairs, hill 8)
+
+Why it may be free: the pilot's ceiling (10-08) — the fate is set by breath 2; breaths 3-6 change no decode on any body
+— predicts K3 == K7 on wild at 40 % of the cost; a pass halves every future arm before any pipeline work and sets the
+budget for v2's six alternations (if two breaths suffice, "every breath" is two consults, not six). Cautions: the
+six-wave is a relative-phase code that needs its width — the arms keep the K=7 phase schedule and stop early (never
+re-pace the clock: the 09-24 clock-band verdict); the consults sit after breaths 2 and 4 (K3 gets the first, the one
+that matters). Reads for PK: do the grown breaths refine (the drift falls, the decode changes after breath 2) or repeat
+(nothing changes = the loop depth is decoration past breath 2, and v2 should be built at K=3 with the solver inside).
+Both need the word; K3 ~40 min of card, PK ~80 min. Perf agents A/B continue regardless.
