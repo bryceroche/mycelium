@@ -50945,3 +50945,70 @@ compiler" sharpens the same resolution each breath (same job, sharper), not a sh
 (the table): a body whose first-look binding is right (then late crystallization might protect something worth
 protecting); until then no width schedule on the loop. The sine breath's k0 (the crystal as a MEETING ROOM — slot
 attention inside the 128, not a change of its width) is untouched by this verdict and is next on the card.
+
+### 2026-10-10 (02:39) — THE SINE BREATH BUILT + GATED + QUEUED + FIRED (SINE4_241 ->
+ANTI4_241 -> SEAL_241, worktree wt21, branch sinebreath, merged 63513695):
+ALG_DEPTH=4's four blocks (scripts/phase1_algebra_head.py, `_depth_stack_sine`, called from
+breath_step alongside the unchanged `_depth_stack`; params in build_params right beside
+ALG_DEPTH's own block) now run at PER-BLOCK WIDTHS over the 384 content planes instead of the
+full H_W=512 state when ALG_SINE=sine|anti|flat is set (unset = bit-identical, the existing
+_depth_stack path untouched) -- a log-sine schedule fixed every breath: SINE4 [128, 224, 384,
+224], ANTI4 [384, 224, 128, 224] (half a period out -- trough and peak trade places), FLAT4
+[384]*4 (built, not armed by any registered arm). The 128-d clock steers self-attention Q/K
+only (dp{i}_cq/ck, new) and is NEVER written -- every block's output scatters back through
+`_paircmp_content_sel()`'s content selector (the same door direction_probe.py/welford_atlas.py/
+the pairwise comparator/the self-match term read), a Matryoshka whole-head PREFIX of the
+content dims for non-trough blocks. THE TROUGH BLOCK (whichever index is width 128 this arm)
+is the one new organ: it projects through THE POLAR WAIST'S OWN W_down/W_up
+(p["polar_wd"]/p["polar_wu"], cached under the SAME state["polar_wd_eff"]/["polar_wu_eff"] keys
+_polar_waist() itself fills later this breath -- one scatter serves both) instead of a
+content-dim prefix, so slots AND the token bank's own cross-attention keys/values meet in the
+crystal's own 128-d coordinates -- THE CRYSTAL AS THE MEETING ROOM, this session's one
+registered correction to the Opus sketch (scripts/sine_breath.py): our `cur` never narrows
+between breaths the way the standalone sketch's own toy state does, so no Resample/lift_in/
+squeeze organs were ported, only the trough's own waist projection. ALG_SINE_SKIP=peak
+(default, lawful) carries block 1's own post-block state around block 2 into block 3's input,
+REGARDLESS of which block is the trough (so under ANTI4 this is in fact the textbook
+skip-around-the-bottleneck shape); =boundary (THE SEAL PLACEBO, SEAL_241 only) instead carries
+the PREVIOUS breath's own final output across THIS breath's trough, additively, into the block
+right after it (state["sine_boundary_carry"]) -- the residual-seal law's own bypass. ReZero at
+birth (every block's wo/xwo/ffn_w2 + biases zero): THE IDENTITY PROOF (scripts/
+depth_identity_probe.py + the new scripts/sine_identity_diff.py, forward()-only, no TinyJit)
+confirms depth4/sine4/anti4/seal are bit-identical at step 0 (maxdiff=0.0 for every pair against
+depth4), proving the state at birth does not depend on width or schedule, only on ReZero. THE
+GRAD PROBE (scripts/depth_grad_probe.py, reused unmodified -- the new dp{i}_* shapes/names match
+the existing convention exactly) confirms a live road and the ReZero signature (only
+wo/xwo/ffn_w2 + biases nonzero at step 0; the new cq/ck sit upstream of the zero wo exactly like
+wq/wk/wv) for all three arms. THE SEAL RANK (scripts/sine_seal_rank.py, a numeric Jacobian-rank
+port of the sketch's own check to `_depth_stack_sine` on a small synthetic body -- see its
+docstring for the tractability simplification) and THE MECHANISM READ (scripts/
+sine_shuffle_read.py, the shuffle read's own grouping-factor method re-pointed at this build's
+NEW `depth_attn_k{i}` per-block attention taps) are both wired into each arm's own chain
+(.cache/rack_chain_SINE4.sh/ANTI4.sh/SEAL.sh, derived from .cache/rack_chain_LT.sh: the same
+pre-arm GPU smoke / knob census / first-look reads / polarity read, PLUS the new mechanism read
+and an informational pairing vs LT_241 and, for SEAL, vs SINE4_241 directly).
+
+ALG_SINE / ALG_SINE_SKIP added to scripts/step_trainer.py's REFUSED tuple (own line, end of
+list): the walker never calls breath_step/_depth_stack_sine at all (the ALG_DEPTH precedent).
+
+BARS (pinned, this registration): masked wild SINE4_241/ANTI4_241/SEAL_241 vs PMS8_241 >= PMS8 +
+0.015 OR a twin pair; rows; mint not down > 0.02; MECHANISM: block 0's (SINE4's own trough)
+owner ratio >= 1.5 (kill: flat across widths = the crystal carries no ownership); SINE4 vs ANTI4
+decides shape vs depth; SEAL's own prediction (informational, read alongside its bar): removing
+the crystal's gatekeeping on the boundary path should cost ~0 vs SINE4_241 directly.
+
+FIRED: .cache/queue_sine.sh waited on "FG CHAIN COMPLETE" in .cache/rack_chain_FG.log, merged
+branch sinebreath (63513695; a REFUSED-tuple conflict against any
+sibling worktree's own addition, if any, resolved mechanically by scripts/resolve_refused_merge.py),
+ran the post-merge gate (identical table to wt21's own, above), preflight PASSED on
+rack_chain_SINE4.sh, fired pc-sine4-watch + pc-sine4 (02:39) -- SINE4_241 is running now,
+against PMS8_241; THIS SAME SCRIPT waits for "SINE4 CHAIN COMPLETE", preflights and fires
+ANTI4_241, waits for "ANTI4 CHAIN COMPLETE", preflights and fires SEAL_241 -- one arm at a time,
+each with its own watcher and its own preflight run just before it fires (the informational
+pairings vs LT_241/SINE4_241 are only real inputs once the earlier arm has actually run) --
+see .cache/queue_sine.log for the live sequence.
+
+Artifacts: scripts/phase1_algebra_head.py (`_depth_stack_sine`, build_params, breath_step),
+scripts/sine_seal_rank.py, scripts/sine_identity_diff.py, scripts/sine_shuffle_read.py,
+scripts/step_trainer.py; .cache/sine_gate.sh, .cache/rack_chain_SINE4.sh/ANTI4.sh/SEAL.sh,
+.cache/queue_sine.sh; .cache/sine_gate.log, .cache/sine_merge_gate.log.
