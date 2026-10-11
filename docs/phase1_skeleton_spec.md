@@ -50894,3 +50894,17 @@ twin (the same entity at another role or time) from the target: the training tex
 register) and the surface road (SRF_241: the token side re-read with the slots' state as the query — the second
 look at DIFFERENT evidence, the chassis ruling of 09-27) are what remain open on the binding; the hub arm (HUB_241)
 tests the slot side's topology. All three need the word; the card is idle at 20:05.
+
+### 2026-10-10 (20:28) — CORRECTION + REGISTRATIONS (Bryce: "the 128-dim math bottleneck would be the central hub, not the notebook"; "message passing like the herring shoal and KNN"): the waist is a chokepoint in DIMENSION (per slot; no information crosses between slots there), the notebook a chokepoint in COMMUNICATION (the star); Bryce's Rome = the crystal as the MEETING ROOM = SINE4's k0 (slot attention inside the 128-d waist subspace) — promoted to the front; HUB_241 (notebook-only) demoted to low priority; THE TYPED MIXER (TM_241: messages along the head's own current decode — relation <-> its argmaxed arg/res variable slots, predicted at both) and THE SHOAL MIXER (SH_241: hard top-k = 6 neighbors by content cosine, recomputed per breath) registered — the typed form first
+
+The shuffle read's facts: the mixer's effective neighborhood is already 7-8 slots (PMS8) / 5-6 (the token-side
+bodies) — soft attention is a loose shoal; it binds operands at 1.5-2.4x chance untyped. The typed mixer gives it
+the graph's EDGES as neighborhoods (the June engine's message passing on a GIVEN graph, here the PREDICTED graph; a
+second look at different evidence — the chassis ruling 09-27); wrong edges send wrong messages early and the
+gradient trains the edges through the messages (two-terminal). ARMS (word): SINE4 / ANTI4 (registered 11:3x; the
+crystal as the hub), TM_241 = PMS8's recipe + ALG_TYPED_MIXER=1 (a masked attention over the decode's edges added to
+the mixer as a ROAD: the untyped all-to-all is removed when the flag is set, not kept beside — the mandatory-road
+law; ReZero on the message projection; from scratch vs PMS8_241; bars: masked +0.020 or a twin; the shuffle read's
+operand-binding ratio >= 3 (from 1.5-2.4: binding made structural); args >= 0.47; kill: masked down or binding ratio
+unmoved), SH_241 behind it (the same bars; prior modest). HUB_241 stays registered, low. The relay's board was stale:
+HUB_241 was never queued; HG_241's verdict landed at 20:0x.
