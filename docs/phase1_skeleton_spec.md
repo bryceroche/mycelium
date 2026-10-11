@@ -51162,3 +51162,30 @@ vs 14 is within the row noise (+-4). Consequence for the chassis: the mixer can 
 to buy step time (its cost is the second-largest after the depth stacks) once a twin confirms (HUB_242 registered,
 low priority — a cost saving, not a claim). The card passes to SRF_241 (the sorting room every breath, slot-conditioned
 — the surface arm), then the fixed sine arms.
+
+### 2026-10-11 (16:41) — ARCHITECTURE v2 REGISTERED (Bryce, from the master design doc: the sorting room renamed THE NL LOOP and run EVERY breath — four MHA blocks at 512 with a 128 bottleneck after the last block and a skip rebuild; the math loop two blocks at 256/128 with its 2x waist; ALTERNATION with the CSP solver on every breath; the perceiver pruning graphs from system metadata + the solver's feedback through a one-hot straight-through circuit breaker; the Goodhart fence kept: Welford centroids visible to the perceiver only) + THE PERF PLAN that gates it
+
+THE COMPUTE BILL (measured pieces): the lineage step 0.10 s (B=8); the sorting room once +0.04-0.07 s; the depth
+stack on the slot side x6 +0.25 s (LT, under JIT_BATCH_SIZE=1); the consults 2.2x the step for TWO (ALT3) — the
+solver runs on the HOST per row per consult, the GPU idles, the JIT graph breaks at each consult; six consults ~ +0.4 s;
+the NL loop every breath (SRF, on the card now) ~ +0.3-0.4 s; the perceiver per breath = candidates + solves again.
+Without perf work v2 is ~1.0-1.5 s/step = 13-20 h per 48k arm (10-15x today). TARGET: <= 0.4 s/step at B=8, or the
+same wall time at B=16. THE LEVERS, by expected gain: (1) THE SOLVER PIPELINE (Bryce's map-reduce): MAP the batch's
+rows to a process pool (the solver is pure Python; 8 rows -> 8 workers), REDUCE the certificates into the mask tensor;
+within a step the breath k+1 depends on breath k's solve, so the parallelism is across ROWS (and across the five
+views at read), not across breaths; (2) MEMOIZE solves by the decode's canonical WL digest (the mint dedup's digest;
+the same row recurs every few epochs with the same decode late in training; an LRU on the host); (3) a TRAINING
+decision budget (ALG_CONSULT_BUDGET, e.g. 500 vs the read's 5000 — a cheaper certificate at training; the wall stays);
+(4) the JIT graph-batching device hang (JIT_BATCH_SIZE=1 costs ~2x on every organ that grows the graph: LT, the sine,
+mixoff): bisect the threshold and patch tinygrad locally (the AM driver precedent) or find the largest working batch;
+(5) the NL loop's cheap form: four full blocks once + ONE light slot-conditioned cross-attention block per breath
+(SRF's read decides whether the full x6 is needed); (6) drop the all-to-all mixer (HUB: dispensable; a twin first).
+AGREEMENT, with caveats: (1) yes — the NL loop every breath is SRF's question, on the card; the 1024 option is 4x the
+params on a memorized diet (mint +0.2 vs wild +0.02): width pairs with DATA; the token-side 512 -> 128 -> 512 waist is
+a new, cheap flag (the loss defended the slot-side waist; the token side is untested); (2) yes as the direction, with
+the measured constraints: feedback must be HARD (masks, claims, toggles), must land BEFORE breath 2, and the gym
+pre-read + head diff A come first; (3) yes — the judge reads 23/311 already; the toggles inside the loop are the
+untested half; (4) yes, already so. The math loop at 128 with a 2x waist to 64 cuts under the label floor (104-144):
+keep the crystal at 128 (the sine's k0 IS the math loop at 128). BUILD ORDER: perf first (A: the solver pipeline +
+memo + budget; B: the JIT threshold), the NL-loop refactor after SRF's read, the per-breath alternation after the
+gym pre-read. Builders fired for A and B (host-side; the card stays with the arms).
