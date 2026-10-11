@@ -1,14 +1,17 @@
-# NEXT SESSION — cold-start entry (updated 2026-10-10 16:14)
+# NEXT SESSION — cold-start entry (updated 2026-10-10 17:44)
 
-**THE SORTING ROOM FAMILY (16:14): SR_241 0.3715 / SR_242 0.3681 / SRK_241 0.3501 (the owner key UNREAD: gain -0.02 = a third seed) vs
-PMS8_241 0.3476 — the pair met the claim standard (both >= +0.020) and stands; THE RECORD RE-STATED as a family mean +0.015 +- 0.006
-(rows 23 / 23 / 17; digits +0.02-0.05; the binding wall flat on all three). A trained token side is the VALUE PATH's organ.** ON THE
-CARD NEXT: HG_241 (THE HOURGLASS 2b; pc-queue-hg merging/gating now; bars: twin-pick <= 0.35, other-sentence <= 0.40, masked >= SR's
-family + 0.010 or a twin; kill: both first-look reads unmoved AND the coarse path < 10% -> form 2). THE OWNER KEY as a gated term
-CLOSES (voted down from birth; form 2 = a hard owner mask from the key's clusters, registered). NEEDING THE WORD: SRF_241 (the sorting
-room re-run every breath, slot-conditioned), SINE4 / ANTI4 (math at the crystal), THE FUNNEL GATE, the data road (unmemorized inverse
-prose), a third held-out pool. CLOSED THIS WEEK (regime-tagged): the direction line (7 forms + the tie-break), depth on the slot side,
-the waist skip, the separated clock, the owner key as a gain. Updated 16:14.
+**HG_241 (THE HOURGLASS 2b) IS ON THE CARD (17:44; fired ~17:40; pc-hg + pc-hg-watch; 0.123 s/step -> reads ~19:30; the control = SR's family).**
+THE SORTING ROOM FAMILY: SR_241 0.3715 / SR_242 0.3681 / SRK_241 0.3501 (the owner key UNREAD: gain -0.02 = a third seed) vs PMS8_241 0.3476 —
+the pair met the claim standard and stands; THE RECORD RE-STATED as a family mean +0.015 +- 0.006 (rows 23 / 23 / 17; digits +0.02-0.05;
+the binding wall flat). THE SHUFFLE READ ON SRK (16:42): the sorting room ITSELF raises the mixer's owner grouping (PMS8 0.9 -> SR 1.27 /
+SRK 1.32); the key adds nothing (form 2 closed); SRK alone shows a positive right-vs-wrong grouping gap every breath (one body, untested;
+the mixer taps live on branch shuffletap, unmerged, gate owed). HG bars: twin-pick <= 0.35, other-sentence <= 0.40, masked >= SR's family
++ 0.010 or a twin; kill: both first-look reads unmoved AND the coarse path < 10% -> form 2 (multiplicative). NEEDING THE WORD: SRF_241 (the
+sorting room re-run every breath, slot-conditioned), SINE4 / ANTI4 (math at the crystal), THE FUNNEL GATE, the data road (unmemorized
+inverse prose), a third held-out pool. RULES OF THE DAY: queues merge in the main checkout only (never inside a symlinked worktree:
+autostash); the main tree is clean while a queue is live (a read-only agent never edits the head); every reader builds under the family
+env. CLOSED THIS WEEK (regime-tagged): the direction line (7 forms + the tie-break), depth on the slot side, the waist skip, the separated
+clock, the owner key as a gain. Updated 17:44.
 
 **THE CARD IS IDLE (09:38).** THE DIRECTION PROBE FIRED (zero-GPU; scripts/direction_probe.py; .cache/direction_probe_PMS8_241.txt):
 PRESENT-BUT-UNEXPRESSIBLE — a read-out trained on PMS8_241's own frozen states reaches wild AUROC 0.98 (own state + both gold args'
