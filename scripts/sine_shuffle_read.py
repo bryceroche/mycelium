@@ -196,11 +196,13 @@ def main():
                     bar_pass.setdefault(blk, []).append((kb, ratio))
 
     L(""); L("-" * 92)
-    L(f"BAR (registered): k0's owner ratio >= 1.5 (whichever block is index 0 this arm)")
-    if 0 in bar_pass:
-        ratios0 = [r for (kb, r) in bar_pass[0]]
-        L(f"  block 0 ratio by breath: {[round(r, 3) for r in ratios0]}  mean={np.nanmean(ratios0):.3f}  "
-          f"-> {'PASS' if np.nanmean(ratios0) >= 1.5 else 'FAIL (flat across widths = the crystal carries no ownership)'}")
+    L(f"BAR (registered): the TROUGH block's owner ratio >= 1.5 (trough_i={H._SINE_TROUGH_I} this "
+      f"arm -- index 0 for SINE4, index 2 for ANTI4; NOT always 'block 0')")
+    if H._SINE_TROUGH_I in bar_pass:
+        ratiost = [r for (kb, r) in bar_pass[H._SINE_TROUGH_I]]
+        L(f"  trough block {H._SINE_TROUGH_I} ratio by breath: {[round(r, 3) for r in ratiost]}  "
+          f"mean={np.nanmean(ratiost):.3f}  "
+          f"-> {'PASS' if np.nanmean(ratiost) >= 1.5 else 'FAIL (flat across widths = the crystal carries no ownership)'}")
     for blk in blocks:
         ratios = [r for (kb, r) in bar_pass.get(blk, [])]
         trough_flag = "  <= TROUGH (the crystal)" if blk == H._SINE_TROUGH_I else ""
