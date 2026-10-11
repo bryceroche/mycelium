@@ -444,6 +444,12 @@ assert not (ALG_LIVE_FACTS and ALG_ALT3), "ALG_LIVE_FACTS and ALG_ALT3 both repl
 assert not (ALG_BUSREG_SEAL or ALG_BUSREG_PREDMAP or ALG_VALREG_LIVE) or ALG_BUSREG, (
     "ALG_BUSREG_SEAL / ALG_BUSREG_PREDMAP / ALG_VALREG_LIVE need ALG_BUSREG (the register they act on)")
 _GTAP = None      # THE GRADIENT TAP (apply_grad_tap.py): read-only probe leaves per breath
+_SRF_GTAP = None  # THE SORTING ROOM'S FEEDBACK FORM's own gradient tap (sort_feed_grad_probe.py):
+                  # {kb: leaf} a single read-only zero probe leaf, same shape as `cross`
+                  # (B, L_FAC, H_W), added onto the cross-attention branch's `cross` BEFORE
+                  # either the key or value projection reads it (so both inherit the tap) at
+                  # breath kb — isolates dL/d(cross) THROUGH THIS BRANCH ALONE from `cur`'s
+                  # other (mixer) gradient paths; see _sort_block.
 # THE WHIP (2026-09-12, the word): ALG_WHIP="k:amp" kicks the state ENTERING
 # breath k with Gaussian noise on the content planes (per slot: amp x the
 # slot's norm); the breaths after it have wrinkles to remove. Training feeds
@@ -3522,6 +3528,23 @@ def build_params(seed=0):
             p["sort_hg_Uc_b"] = t(np.zeros(H_W, np.float32))
             p["sort_hg_Us"] = t(np.zeros((H_W, H_W), np.float32))
             p["sort_hg_Us_b"] = t(np.zeros(H_W, np.float32))
+        if ALG_SORT_FEED:
+            # THE SORTING ROOM'S FEEDBACK FORM (2026-10-10): each sort{i} block's own
+            # cross-attention branch (tokens query the 24 slots' content state) — standard
+            # small-random wq/wk/wv-style init for xwq/xwk/xwv + the pre-cross LayerNorm
+            # (lnx_g=1, lnx_b=0, the usual LN init); xwo(+bias) is the ReZero ZERO door, same
+            # precedent as sort{i}_wo/ffn_w2 above — identity at birth regardless of `cur`.
+            # Continuing the SAME _rSR stream (a dedicated RandomState, seed + 31415) so an
+            # unset ALG_SORT_FEED never perturbs ALG_SORT/ALG_SORT_KEY/ALG_SORT_HG's own draws
+            # (this block's draws are strictly AFTER theirs, consumed only when FEED is set).
+            for _i in range(ALG_SORT):
+                for _nm in ("xwq", "xwk", "xwv"):
+                    p[f"sort{_i}_{_nm}"] = t((_rSR.randn(H_W, H_W) / math.sqrt(H_W)).astype(np.float32))
+                    p[f"sort{_i}_{_nm}_b"] = t(np.zeros(H_W, np.float32))
+                p[f"sort{_i}_xwo"] = t(np.zeros((H_W, H_W), np.float32))      # ZERO door (ReZero)
+                p[f"sort{_i}_xwo_b"] = t(np.zeros(H_W, np.float32))
+                p[f"sort{_i}_lnx_g"] = t(np.ones(H_W, np.float32))
+                p[f"sort{_i}_lnx_b"] = t(np.zeros(H_W, np.float32))
     if ALG_DEPTH:
         # THE LOOPED TRANSFORMER (2026-10-09): N blocks of {self-attn over slots, cross-attn
         # slots->tokens, FFN}, ReZero at birth exactly as the sorting room's own precedent — the
@@ -4417,6 +4440,25 @@ ALG_SORT_HG = int(os.environ.get("ALG_SORT_HG", "0"))
 if ALG_SORT_HG:
     assert ALG_SORT == 4, "ALG_SORT_HG rewires the 4 existing sort{i} blocks (0=token,1=clause,2=sentence,3=token) into an hourglass -- needs ALG_SORT=4 exactly, not a 5th resolution"
     assert ALG_SORT_HG in (1, 2), "ALG_SORT_HG=1 (additive skip) or 2 (gated-multiplicative skip)"
+
+# THE SORTING ROOM'S FEEDBACK FORM (ALG_SORT_FEED=1; SRF_241, 2026-10-10 registration — "the
+# sorting room's feedback form"): default 0 is BIT-IDENTICAL to ALG_SORT=4 (the flat room runs
+# once at breath 0, as today, full stop). Set, the SAME 4 sort{i}_* blocks are RE-RUN at every
+# loop breath kb = 1..K_B-1 (forward()'s per-breath loop, the ALG_TOKLOOP precedent: `waist`/the
+# bank are REBOUND to this breath's own re-sorted tokens — the mandatory road, no bypass to
+# breath 0's tokens for this breath's reads), each block gaining ONE cross-attention branch —
+# tokens (query) over the 24 slots' CURRENT content state `cur` (key/value) — inserted between
+# the block's self-attention residual and its FFN (see _sort_block). Mutually exclusive with
+# ALG_SORT_HG (a separate rewiring of the SAME 4 blocks into resolution levels; composing the
+# two is not this arm's claim). ReZero on the new branch's own output projection (sort{i}_xwo,
+# zero-init, build_params) gives identity at birth regardless of kb (the flat room's own
+# precedent, one level: sort{i}_xwq/xwk/xwv/lnx sit strictly upstream of this zero multiply and
+# get EXACTLY zero gradient at step 0, waking at step 1 once sort{i}_xwo moves — sort_feed_grad_
+# probe.py's own bar). Needs ALG_SORT=4 exactly (the four blocks this form re-runs).
+ALG_SORT_FEED = int(os.environ.get("ALG_SORT_FEED", "0"))
+if ALG_SORT_FEED:
+    assert ALG_SORT == 4, "ALG_SORT_FEED re-runs the 4 existing sort{i} blocks every loop breath -- needs ALG_SORT=4 exactly"
+    assert not ALG_SORT_HG, "ALG_SORT_FEED (per-breath re-run, flat blocks) and ALG_SORT_HG (hourglass resolution levels) both rewire the SAME 4 blocks -- not yet composed; pick one"
 SORT_HG_MAX_CL = 64   # max distinct CLAUSE unit ids per row (_TREECODE_UMAX's own precedent: "clauses/mentions rarely past 64")
 SORT_HG_MAX_ST = 32   # max distinct SENTENCE unit ids per row (_TREECODE_UMAX's own precedent: "sentences <= 32" --
                       # the tiny64 gate fixture's own census (mean s=10.1) showed the FIRST guess of 16 was too
@@ -4424,14 +4466,27 @@ SORT_HG_MAX_ST = 32   # max distinct SENTENCE unit ids per row (_TREECODE_UMAX's
                       # on overflow rather than crashing, so this was caught as a quality risk, not a crash)
 
 
-def _sort_block(p, i, x, mask1d, B):
+def _sort_block(p, i, x, mask1d, B, cross=None, kb=None):
     """ONE ReZero pre-norm transformer block (the sort{i}_* tensors build_params already builds
     under ALG_SORT), applied at ANY resolution: x is (B, L, H_W) for whatever L this call's
     caller chose (256 real tokens for the flat form; a clause or sentence pooled axis for the
     hourglass), mask1d is (B, L) with 1 for a real position / 0 for one to exclude from both the
     softmax's key axis and (by the same reasoning as the flat form's tokmask) every downstream
     read. Bit-for-bit the flat `_sort_room`'s own per-block body, factored out so both callers
-    share one source of truth."""
+    share one source of truth.
+    THE SORTING ROOM'S FEEDBACK FORM (ALG_SORT_FEED=1; SRF_241, 2026-10-10): `cross`, when given
+    (cur[:, :L_FAC, :], the 24 real factor slots' CURRENT content state — scratch slots, when
+    N_SCR > 0, are excluded by the slice itself, the same structural exclusion the diagonal-
+    always-true build_slot_masks convention gives the L_FAC slots and the raising law's zero
+    scratch-column gives the rest, so no separate key mask is needed here), inserts ONE extra
+    cross-attention branch between the self-attention residual above and the FFN below — tokens
+    (x, the query) over `cross` (keys/values) — through its OWN sort{i}_xw{q,k,v,o}(_b) +
+    sort{i}_lnx_g/_b tensors (build_params, under ALG_SORT_FEED). ReZero: sort{i}_xwo(_b) is
+    zero-init, so this branch contributes EXACT zero at birth regardless of `cross`, matching the
+    self-attention/FFN halves' own ReZero identity above — `cross=None` (every call this module
+    made before SRF_241 existed, and the hourglass's own per-resolution calls) skips the branch
+    entirely, bit-identical by construction. `kb` is threaded only for the knob census' (kb,
+    name) tag — no behavior depends on it."""
     T = int(x.shape[1])
     hd = H_W // N_HEADS
     _tm = mask1d.reshape(B, 1, 1, T)
@@ -4445,6 +4500,38 @@ def _sort_block(p, i, x, mask1d, B):
     o = (at @ v).permute(0, 2, 1, 3).reshape(B, T, H_W)
     o = o @ p[f"sort{i}_wo"] + p[f"sort{i}_wo_b"]
     x = x + o
+    if cross is not None and f"sort{i}_xwq" in p:
+        global _CENSUS
+        try: _CENSUS
+        except NameError: _CENSUS = None
+        _x0 = x
+        L = int(cross.shape[1])
+        _lnx = x.layernorm(eps=1e-5) * p[f"sort{i}_lnx_g"] + p[f"sort{i}_lnx_b"]
+        if _SRF_GTAP is not None and kb in _SRF_GTAP:
+            # THE GRADIENT TAP (sort_feed_grad_probe.py; the grad_census.py idiom): a zero,
+            # requires_grad leaf added onto `cross` BEFORE it is read by either projection below
+            # (kx AND vx both derive from this same rebound name, so the tap's gradient — once
+            # read back — is dL/d(cross) THROUGH THIS BRANCH ALONE, isolated from cur's other
+            # (mixer) gradient paths) — ReZero's own cascade predicts this leaf is exactly zero
+            # at step 0 (sort{i}_xwo is zero, so d(loss)/d(cross)=0 exactly through this branch)
+            # and live only once sort{i}_xwo has moved off zero (one optimizer step). A tap added
+            # AFTER kx/vx are each already computed from the OLD `cross` object would be dead
+            # code for whichever one scx is built from first (found the hard way: the kx-only
+            # placement that used to live here read an immovable exact 0.0 at every step because
+            # scx had already captured the untapped kx by the time the tap ran).
+            cross = cross + _SRF_GTAP[kb]
+        qx = (_lnx @ p[f"sort{i}_xwq"] + p[f"sort{i}_xwq_b"]).reshape(B, T, N_HEADS, hd).permute(0, 2, 1, 3)
+        kx = (cross @ p[f"sort{i}_xwk"] + p[f"sort{i}_xwk_b"]).reshape(B, L, N_HEADS, hd).permute(0, 2, 1, 3)
+        vx = (cross @ p[f"sort{i}_xwv"] + p[f"sort{i}_xwv_b"]).reshape(B, L, N_HEADS, hd).permute(0, 2, 1, 3)
+        scx = (qx @ kx.transpose(-2, -1)) / math.sqrt(hd)
+        scx = scx.clip(-1e4, 1e4)
+        atx = scx.softmax(-1)
+        ox = (atx @ vx).permute(0, 2, 1, 3).reshape(B, T, H_W)
+        ox = ox @ p[f"sort{i}_xwo"] + p[f"sort{i}_xwo_b"]
+        x = x + ox
+        if _CENSUS is not None:
+            _CENSUS.append((kb, f"srf{i}_cross_in", _x0.realize().numpy()))
+            _CENSUS.append((kb, f"srf{i}_cross_delta", ox.realize().numpy()))
     _ln2 = x.layernorm(eps=1e-5) * p[f"sort{i}_ln2_g"] + p[f"sort{i}_ln2_b"]
     f = (_ln2 @ p[f"sort{i}_ffn_w1"] + p[f"sort{i}_ffn_b1"]).gelu() @ p[f"sort{i}_ffn_w2"] + p[f"sort{i}_ffn_b2"]
     x = x + f
@@ -4460,10 +4547,43 @@ def _sort_room(p, waist, tokmask, B):
     already lives in the states `waist` itself projects from; see the module comment above).
     ReZero at birth (build_params zero-inits sort{i}_wo and sort{i}_ffn_w2): `o` and `f` below
     are EXACT zero at init, so this function returns `waist` bit-for-bit unchanged regardless of
-    N until the gradient moves wo/ffn_w2 away from zero."""
+    N until the gradient moves wo/ffn_w2 away from zero. Always called with cross=None (breath
+    0's own grounding call, forward()'s pre-loop station — see _sort_room_feed below for the
+    per-breath re-run SRF_241 adds)."""
     x = waist
     for i in range(ALG_SORT):
         x = _sort_block(p, i, x, tokmask, B)
+    return x
+
+
+def _sort_room_feed(p, tok, tokmask, cur, B, kb):
+    """THE SORTING ROOM'S FEEDBACK FORM (ALG_SORT_FEED=1; SRF_241, 2026-10-10 — "the sorting
+    room's feedback form", queued behind the hourglass): re-runs the SAME 4 sort{i}_* blocks
+    ALG_SORT=4 already builds, at loop breath kb (1..K_B-1), each block now gaining the
+    cross-attention branch _sort_block builds under ALG_SORT_FEED — tokens (query) over the 24
+    real factor slots' CURRENT content state `cur[:, :L_FAC, :]` (key/value; scratch slots
+    excluded by the slice, the mandatory road's own "slot mask respected" — see _sort_block's
+    own docstring). ReZero at birth (sort{i}_xwo is zero-init): this function returns
+    `_sort_room`'s own bit-identical output at step 0 regardless of kb or N (the self-attention/
+    FFN halves are the SAME already-trained sort{i}_* tensors; only the inserted branch is new,
+    and it contributes exact zero until the gradient moves it). Called once per loop breath
+    (forward()'s per-breath loop REBINDS ctx["waist"]/ctx["bank"] to this function's return value
+    every breath — the ALG_TOKLOOP precedent, the mandatory road: no bypass to breath 0's own
+    tokens, or to any earlier breath's re-sorted tokens, for the reads this breath makes)."""
+    global _CENSUS
+    try: _CENSUS
+    except NameError: _CENSUS = None
+    _tok_in = tok
+    x = tok
+    cross = cur[:, :L_FAC, :]
+    for i in range(ALG_SORT):
+        x = _sort_block(p, i, x, tokmask, B, cross=cross, kb=kb)
+    if _CENSUS is not None:
+        # THE KNOB CENSUS (the pre/post knob law): the whole re-run's net change to the token
+        # tensor this breath vs the token tensor it met — the arm's own registered bar (>= 10%
+        # of the token path's std at the LAST breath, else the branch is inert).
+        _CENSUS.append((kb, "srf_tok_in", _tok_in.realize().numpy()))
+        _CENSUS.append((kb, "srf_tok_out", x.realize().numpy()))
     return x
 
 
@@ -8470,6 +8590,14 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
                     _tok = _token_step(p, _tok, tokmask, sent, B, kb)
                     _bs_ctx["waist"] = _tok
                     _bs_ctx["bank"] = _make_bank(p, _tok, tokmask, B, sent=sent, chalk3=chalk3, chalk5=chalk5)
+                if ALG_SORT_FEED and "sort0_xwq" in p:    # THE SORTING ROOM'S FEEDBACK FORM: the
+                    # re-sort, then the slot step reads it — same hook shape as ALG_TOKLOOP above,
+                    # over `_bs_state["cur"]` (the slot state entering this breath, still gradient-
+                    # carrying — the two-terminal law: NOT detached, so the slots' own loss
+                    # gradient reaches them through this branch's keys/values too, once it wakes).
+                    _tok = _sort_room_feed(p, _tok, tokmask, _bs_state["cur"], B, kb)
+                    _bs_ctx["waist"] = _tok
+                    _bs_ctx["bank"] = _make_bank(p, _tok, tokmask, B, sent=sent, tree=tree, chalk3=chalk3, chalk5=chalk5)
                 breath_step(p, _bs_state, kb, _bs_ctx)
                 if conductor(kb).facts3_inject and facts3 is not None:   # THE CONDUCTOR: kb == 2
                     vst = _fact_inject(p, vst, facts3)   # consult 1's values: read from breath 3 on
