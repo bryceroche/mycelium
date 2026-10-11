@@ -205,7 +205,15 @@ REFUSED = ("ALG_SHELF", "ALG_WHIP", "ALG_TOKLOOP", "ALG_WRITEBACK", "ALG_KANNEAL
            # called from forward() alone; the walker never calls forward() at all) — refused
            # for the identical reason, named separately so a future narrowing of the ALG_SORT
            # refusal does not silently let this one through untested too.
-           "ALG_SORT_HG")
+           "ALG_SORT_HG",
+           # THE TYPED MIXER / THE SHOAL MIXER / THE MIXER SEVERED (TM_241/SH_241/HUB_241,
+           # 2026-10-10): TYPED needs ctx["vst"] via _heads_of inside breath_step -- REQ_CTX
+           # above does not carry "vst", so the walker's own per-seam ctx would KeyError (or
+           # silently fall back to all-ones if narrowed to .get); SHOAL and MIXER_OFF need no
+           # new ctx key and would likely thread fine as-is, refused anyway by the word given
+           # for this build (a true partial beats a false whole; named separately so a future
+           # narrowing of any one of these does not silently let the others through untested).
+           "ALG_TYPED_MIXER", "ALG_SHOAL_MIXER", "ALG_MIXER_OFF")
            # THE ARGS-CONDITIONED RES (2026-10-09): _heads_of's own res-pointer term
            # (ar_w1/ar_b1/ar_w2/ar_b2 against the content-only slot/candidate states PLUS the
            # args head's own predicted soft-selected args states) is the fused forward()'s
