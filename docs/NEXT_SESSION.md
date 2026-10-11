@@ -1,17 +1,16 @@
-# NEXT SESSION — cold-start entry (updated 2026-10-10 17:44)
+# NEXT SESSION — cold-start entry (updated 2026-10-10 20:05)
 
-**HG_241 (THE HOURGLASS 2b) IS ON THE CARD (17:44; fired ~17:40; pc-hg + pc-hg-watch; 0.123 s/step -> reads ~19:30; the control = SR's family).**
-THE SORTING ROOM FAMILY: SR_241 0.3715 / SR_242 0.3681 / SRK_241 0.3501 (the owner key UNREAD: gain -0.02 = a third seed) vs PMS8_241 0.3476 —
-the pair met the claim standard and stands; THE RECORD RE-STATED as a family mean +0.015 +- 0.006 (rows 23 / 23 / 17; digits +0.02-0.05;
-the binding wall flat). THE SHUFFLE READ ON SRK (16:42): the sorting room ITSELF raises the mixer's owner grouping (PMS8 0.9 -> SR 1.27 /
-SRK 1.32); the key adds nothing (form 2 closed); SRK alone shows a positive right-vs-wrong grouping gap every breath (one body, untested;
-the mixer taps live on branch shuffletap, unmerged, gate owed). HG bars: twin-pick <= 0.35, other-sentence <= 0.40, masked >= SR's family
-+ 0.010 or a twin; kill: both first-look reads unmoved AND the coarse path < 10% -> form 2 (multiplicative). NEEDING THE WORD: SRF_241 (the
-sorting room re-run every breath, slot-conditioned), SINE4 / ANTI4 (math at the crystal), THE FUNNEL GATE, the data road (unmemorized
-inverse prose), a third held-out pool. RULES OF THE DAY: queues merge in the main checkout only (never inside a symlinked worktree:
-autostash); the main tree is clean while a queue is live (a read-only agent never edits the head); every reader builds under the family
-env. CLOSED THIS WEEK (regime-tagged): the direction line (7 forms + the tie-break), depth on the slot side, the waist skip, the separated
-clock, the owner key as a gain. Updated 17:44.
+**THE CARD IS IDLE (20:05).** HG_241 (THE HOURGLASS 2b): 0.3686 (+0.021 vs PMS8 z 2.0; = SR_241 within 0.003), ROWS 24 (the record by one),
+digits 0.517 (the best), mint 0.842; twin-pick 0.470 / other-sentence 0.563 UNMOVED with the coarse path LIVE at 98% of the token path —
+THE OTHER-SENTENCE WALL IS NOT A LACK OF MACRO CONTEXT (form 2 moot; form 3 low prior). THE SORTING-ROOM FAMILY (4 bodies): mean
+0.3646 (+0.017), sd 0.010; every member moves digits/forward relations, none the binding. THE LINE'S READING: the first look is
+short of SUPERVISION that distinguishes twins (wild's twins are not memorized), not of context/capacity/keys. OPEN ON THE BINDING: the
+data road (unmemorized prose with annotated twins; the annotation stream) and SRF_241 (the second look at different evidence: the token
+side re-read with the slots as queries); HUB_241 tests the slot topology (the notebook as the only slot-to-slot road); SINE4/ANTI4; THE
+FUNNEL GATE. ALL NEED THE WORD. THE SHUFFLE READ: the sorting room itself raises the mixer's owner grouping (0.9 -> 1.3); the key adds
+nothing (closed). RULES OF THE DAY: queues merge in the main checkout only; the main tree is clean while a queue is live; readers build
+under the family env; the three-pool rule. CLOSED THIS WEEK (regime-tagged): the direction line (7 forms + the tie-break), depth on the
+slot side, the waist skip, the separated clock, the owner key as a gain, the hourglass's context hypothesis. Updated 20:05.
 
 **THE CARD IS IDLE (09:38).** THE DIRECTION PROBE FIRED (zero-GPU; scripts/direction_probe.py; .cache/direction_probe_PMS8_241.txt):
 PRESENT-BUT-UNEXPRESSIBLE — a read-out trained on PMS8_241's own frozen states reaches wild AUROC 0.98 (own state + both gold args'

@@ -50872,3 +50872,25 @@ notebook the only slot-to-slot road; from scratch vs PMS8_241; ~80 min; bars: ma
 all-to-all is dispensable) and the notebook's read/write census up; a POSITIVE is a bonus; the zero-GPU pre-read
 exists: the mixer's fair sever -0.025 vs the notebook's -0.134). HG form 3 behind HG_241's verdict. Order (word):
 after HG_241 — SRF_241 (surface) and HUB_241 (Rome) are the two arms the gut names; both cheap; one organ each.
+
+### 2026-10-10 (20:05) — HG_241 (THE HOURGLASS SORTING ROOM 2b, additive form, from scratch vs PMS8_241; the control = SR_241) — THE SLOT: 0.3686 (+0.0210 vs PMS8_241, z 1.97; -0.0029 vs SR_241, z 0.28 = EQUAL TO THE FLAT STACK), ROWS 24 / 311 (THE ROW RECORD by one), digits 0.517 (+0.07 vs PMS8; +0.02 vs SR), open mint 0.842; THE MECHANISM: twin-pick 0.470 and the wrong slots' other-sentence share 0.563 UNMOVED (bars 0.35 / 0.40 missed, as on every token-side body) — WITH THE COARSE PATH LIVE AT 98 % OF THE TOKEN PATH (std(U_c+U_s)/std(tok1) = 0.98 at block 3's input; knob PASS): the sentence-level pool is read in full and the first-look binding does not change — THE OTHER-SENTENCE WALL IS NOT A LACK OF MACRO CONTEXT
+
+Fields masked wild: pres 0.907 ftype 0.850 res 0.814 dig 0.517 exact 0.369 op 0.748 args 0.438. MECH: fwd ok 0.332
+args 0.515 res 0.885; inv ok 0.148 args 0.301 res 0.272. Discordant vs PMS8 217 / 260; vs SR 237 / 231.
+THE READING. The kill ("both first-look reads unmoved AND the coarse path < 10 %") does NOT fire — the coarse path
+was not voted down, it carries as much as the token path — so the verdict is sharper than a kill: the hourglass's
+sentence and clause context is AVAILABLE to every token at the first look and the binding still lands in the wrong
+sentence at the same rate (0.56) and still picks the twin at the same rate (0.47). Form 2 (the multiplicative gate)
+is MOOT: the question it answers ("was the coarse path bypassed?") is answered no. Form 3 (the pure hub, no token
+skip) would remove a road the loss uses at 98 % — registered, low prior. What the hourglass did do: digits 0.517
+(the best digit read of any body: the value path again) and rows 24 (the record by one, within noise of 23 / 23).
+THE SORTING-ROOM FAMILY is now four bodies — 0.3715 / 0.3681 / 0.3501 / 0.3686, mean 0.3646 (+0.0170 vs
+PMS8_241), sd 0.0098: the record stands at ~+0.017 +- 0.005 as a family; every member moves digits and forward
+relations and none moves the binding. THE LINE'S READING (the third form of the token side: flat, keyed, hourglass):
+the first look's binding is not short of context, capacity, or ownership structure in the keys — the mixer groups
+by owner at 1.3x on these bodies and the sentence pool is live — it is short of SUPERVISION that distinguishes the
+twin (the same entity at another role or time) from the target: the training text's twins are memorized by surface
+(mint +0.2), and wild's are not. The data road (unmemorized prose with annotated twins = the n lever in the wild
+register) and the surface road (SRF_241: the token side re-read with the slots' state as the query — the second
+look at DIFFERENT evidence, the chassis ruling of 09-27) are what remain open on the binding; the hub arm (HUB_241)
+tests the slot side's topology. All three need the word; the card is idle at 20:05.
