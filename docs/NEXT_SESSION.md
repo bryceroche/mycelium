@@ -1,14 +1,14 @@
-# NEXT SESSION — cold-start entry (updated 2026-10-11 03:07)
+# NEXT SESSION — cold-start entry (updated 2026-10-11 08:54)
 
-**SINE4_241 IS ON THE CARD (03:07; fired 02:5x under JIT_BATCH_SIZE=1 — the device hang reproduced on the sine stack as on LT; 0.353 s/step ->
-reads ~08:15; then ANTI4_241 -> SEAL_241 in the same queue (pc-queue-sine), then TM -> SH -> HUB (pc-queue-mixer3), then SRF (pc-queue-srf).**
-THE NIGHT SO FAR: FG_241 — THE FUNNEL REFUTED AT THE PREFERENCE LEVEL (the loss drew no envelope: skip ~0.02 and rank 0.98 at every breath;
-masked -0.003; NZ_241 not built; the waist's shape measured from three sides). Builders: sine (merged 63513695; gate clean on both trees; param
-count 7.05M; the seal-rank check sealed/sealed/bypassed as predicted), mixer (built; its full gate re-run still owed before its queue's turn
-~13:00+), srfeed (built + gated, 9dd429c5; identity exact; probe RSS 7.4 GB; queue armed). RULES OF THE NIGHT: queues merge in the main
-checkout only; the card-free wait is DEV-aware (CPU gate trainers don't hold the card); an arm's ~24 GB RSS is its memmap (read MemAvailable);
-eager grad probes are the hogs (15-18 GB) — one at a time, sized down, never beside a device smoke; gates/probes run as systemd units (the
-harness reaps idle background shells); the kernel OOM killer took one gate. Updated 03:07.
+**THE CARD PASSES TO THE MIXER QUEUE (08:54; pc-queue-mixer4 merges typedmixer, gates, fires TM_241 -> SH_241 -> HUB_241; then SRF_241;
+then the FIXED sine arms).** SINE4_241 read (CONFOUNDED by the skip bug: the peak skip doubles the state at birth — scripts/sine_birth_check.py;
+Opus found it; the sine queue stopped before ANTI4): slot +0.001 (null), rows 15, args flat; THE MECHANISM READ: k0 (the crystal) owner ratio
+1.33 > 224-wide 1.13 > the peak 0.90 — narrower groups more, the peak groups by nothing; bar 1.5 missed, the "flat = cosmetic" kill does not
+fire. THE FIX in progress (wt21): ALG_SINE_SKIP=none (the residual is the skip), the placebo = the squeeze severed at training, FFN 4x per
+width, the birth check as a gate step; re-queue behind SRF. THE MINIMALITY CHECK (Opus; scripts/picker/minimality.py) running on CPU: R1 the
+gold-minimal rate, R2 the catch on wrong solved+unique graphs (>= 0.25; kill < 0.10), R3 the minimal-first judge (rows >= 24, regs <= 2) —
+if R2 clears, dead facts are the per-slot HARD solver signal the six alternations lacked. FG_241: the funnel refuted at the preference level.
+Updated 08:54.
 
 **THE CARD IS IDLE (09:38).** THE DIRECTION PROBE FIRED (zero-GPU; scripts/direction_probe.py; .cache/direction_probe_PMS8_241.txt):
 PRESENT-BUT-UNEXPRESSIBLE — a read-out trained on PMS8_241's own frozen states reaches wild AUROC 0.98 (own state + both gold args'
