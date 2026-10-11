@@ -205,7 +205,13 @@ REFUSED = ("ALG_SHELF", "ALG_WHIP", "ALG_TOKLOOP", "ALG_WRITEBACK", "ALG_KANNEAL
            # called from forward() alone; the walker never calls forward() at all) — refused
            # for the identical reason, named separately so a future narrowing of the ALG_SORT
            # refusal does not silently let this one through untested too.
-           "ALG_SORT_HG")
+           "ALG_SORT_HG",
+           # THE SORTING ROOM'S FEEDBACK FORM (2026-10-10, SRF_241): the per-breath re-run lives
+           # in forward()'s own loop (the ALG_TOKLOOP-shaped hook rebinding `_bs_ctx["waist"]`/
+           # `_bs_ctx["bank"]` each breath) — the walker steps breath_step directly, one breath
+           # at a time, and never calls that hook (it has no `_tok`/`_sort_room_feed` of its own);
+           # refused for the identical forward()-only reason ALG_SORT_HG above gives.
+           "ALG_SORT_FEED")
            # THE ARGS-CONDITIONED RES (2026-10-09): _heads_of's own res-pointer term
            # (ar_w1/ar_b1/ar_w2/ar_b2 against the content-only slot/candidate states PLUS the
            # args head's own predicted soft-selected args states) is the fused forward()'s
