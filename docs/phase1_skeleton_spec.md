@@ -51068,3 +51068,18 @@ facts) or by gold where the read can supply the same (never). Re-admission trigg
 (the rack's dry commits + the solver's implied values), the uncertified rows left all-to-all — registered as TM form
 2, low prior (the rack family's own nulls stand behind it). SH_241 (the shoal, hard top-6 by content cosine: not
 self-driven by the pointers, so a different question) fires next from the same resume, then HUB_241.
+
+### 2026-10-11 (12:38) — SH_241 (THE SHOAL MIXER: hard top-6 neighbors by content cosine, straight-through, the rest removed; from scratch vs PMS8_241) DIVERGED: loss 56.9 (step 0) -> 80.6 (500) -> 78.4 (1000) -> NaN (do_train's isfinite assert, the chain FAILED, no reads); the device smoke had passed (2 steps finite). The done mark was written by hand to release HUB_241.
+
+THE READING: a hard top-k mask with straight-through gradients on the mixer's softmax, renormalized over 6 of 32 keys,
+is unstable from scratch — the loss rose from its initial value instead of falling (the lineage reads 28.8 at step 500)
+and left the finite range within a thousand steps; the typed mixer's soft mask (density 0.52) trained but cost; the
+plain mixer's effective k is already ~7 by itself. The shoal as a HARD constraint from birth is the wrong form of the
+gut's picture: the shoal in attention is what the softmax learns (effective k 5-8 on every body) — forcing it
+discrete at step 0 removes the gradient's road to the other 26 keys. Re-registered, low prior: SH form 2 — a SOFT
+shoal (a learned temperature on the content-cosine neighborhood added as a bias, born flat) or a hard top-k that
+opens only after the plain mixer has settled (k annealed from 32 to 6 over the first 10k steps; the annealing is a
+schedule, i.e. a cooker — the residual-seal law applies). Neither is built. The mixer line's standing: the typed
+mask (self-driven) costs, the hard shoal diverges, the owner key as a gain is unread; the mixer's own soft shoal
+(effective k ~6-8) and its owner grouping on token-side bodies (1.3) are what the loss builds unaided. HUB_241 (the
+mixer zero-multiplied: is the all-to-all dispensable?) fires next and closes the mixer line's questions either way.
