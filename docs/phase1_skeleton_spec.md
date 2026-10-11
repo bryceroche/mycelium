@@ -51031,3 +51031,5 @@ The FFN alone accounts for most of the gap (2 * w * 2048 params per block, dwarf
 attention matrices at these widths); cross-attention roughly doubles the self-attention cost.
 7.05M is still well under plain ALG_DEPTH's ~12.9M (the registration's own "expected lower"
 holds), just not as low as the sketch's bare self-attention-only shape would have been.
+
+### 2026-10-11 (08:14) — CHAPTER SYNC: main fast-forwarded to gen-weights (5abaea19; 86 commits) and pushed — the remote main had been 86 commits behind (an outside reader of the remote saw the 10-09 morning state); the sync was done by ref (git branch -f + push), never by checking main out in the main checkout, because live queues merge there. Note for outside readers: the content width IS 384 (192 content planes x 2) beside the 128-d clock band; the sine sketch's 384 matched the code.
