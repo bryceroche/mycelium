@@ -1,12 +1,12 @@
-# NEXT SESSION — cold-start entry (updated 2026-10-11 12:21)
+# NEXT SESSION — cold-start entry (updated 2026-10-11 15:47)
 
-**SH_241 (THE SHOAL MIXER, top-6 by content cosine) FIRES NEXT (12:21; the mixer resume chains TM -> SH -> HUB; then SRF; then the FIXED sine
-arms SINE4/ANTI4/SEAL under ALG_SINE_SKIP=none + the waist-sever placebo, pc-queue-sine armed on SRF's done mark).** TM_241 (THE TYPED MIXER)
-DOES NOT FIRE AND COSTS: -0.013 wild, rows 5, mint -0.05; the operand-binding ratio FELL to 1.04-1.44 (plain 1.5-2.4; bar 3): a mask drawn
-from the body's own predicted pointers redistributes (the DIR_241 shape) — form 2 = edges from CERTIFIED slots only (low prior). SINE4_241
-(confounded by the skip bug): slot null; the crystal's owner ratio 1.33 > the peak's 0.90 (not flat; bar 1.5 missed). THE IDENTITY
-INSTRUMENT'S BLIND SPOT (no slot_mask = no breath loop; LT's identity proof was vacuous) — the birth check is the rule. THE MINIMALITY CHECK
-running (R1 wild gold-minimal 0.916 = the angle band; R2/R3 pending). FG_241: the funnel refuted at the preference level. Updated 12:21.
+**SRF_241 (THE SORTING ROOM EVERY BREATH, slot-conditioned) FIRES NEXT (15:47; pc-queue-srf3 waits on HUB's done mark, merges (no-op), gates, fires;
+then the FIXED sine arms SINE4/ANTI4/SEAL via pc-queue-sine).** THE MIXER LINE CLOSED ON FOUR READS: TM_241 (typed, self-driven) -0.013 and the
+binding ratio FELL; SH_241 (hard top-6 shoal) DIVERGED to NaN by step 1000; the owner key as a gain unread (SRK); HUB_241 (the all-to-all
+zero-multiplied at training) MEETS ITS BAR: -0.003 wild (null), mint -0.074 — the complete graph is dispensable for generalization; the
+notebook (the star) carries what matters. SINE4_241 (confounded): the crystal's owner ratio 1.33 > the peak's 0.90. FG_241: the funnel refuted.
+THE MINIMALITY CHECK: an angle (catch 0.41 / false 0.23 / judge flat); the diet is over-annotated (0.608 minimal) -> the minimality audit as an
+admission gate. Updated 15:47.
 
 **THE CARD IS IDLE (09:38).** THE DIRECTION PROBE FIRED (zero-GPU; scripts/direction_probe.py; .cache/direction_probe_PMS8_241.txt):
 PRESENT-BUT-UNEXPRESSIBLE — a read-out trained on PMS8_241's own frozen states reaches wild AUROC 0.98 (own state + both gold args'

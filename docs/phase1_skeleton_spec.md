@@ -51148,3 +51148,17 @@ record since the task brief's write-scope line read ".cache/minimality_*" litera
 banked artifact was overwritten).
 
 ### 2026-10-11 (13:56) — THE MINIMALITY CHECK'S READING (after 2288e254): an ANGLE, not a filter — wild gold-minimal 0.916 (26 gold graphs carry dead facts: distractor numerals, unused intermediates), the catch on wrong solved+unique top-1 graphs 0.41 (bar 0.25 cleared) but false refutation 0.23 on right ones (bar 0.05 missed), the minimal-first judge flat at 18/311 (+2/-2); the twin split confirmed by hand on 7 wild rows (time twins / role mixups / unused intermediates CAUGHT; value / direction errors MISSED). Two consequences: (1) dead facts join the picker as a WEIGHTED angle beside the atlas angles (the perceiver-as-value read 2, with a third held-out pool for its threshold); (2) THE DIET IS OVER-ANNOTATED — the pen-annotated book rows are only 0.608 minimal (4.1 dead facts per RIGHT row; narrative completeness) — a data-hygiene finding for the annotation rulebook: a book row's gold graph should be MINIMAL (every fact forces the answer) or carry its dead facts as explicit distractor-flagged givens, else the body learns that unused facts are normal and the check cannot be a filter. Registered: the minimality audit as a mint/book admission gate (zero GPU; the solver's own machinery).
+
+### 2026-10-11 (15:47) — HUB_241 (the all-to-all MIXER ZERO-MULTIPLIED AT TRAINING: the notebook the only slot-to-slot road; from scratch vs PMS8_241) MEETS ITS BAR: masked wild 0.3447 vs 0.3476 = -0.0029 (paired SE 0.0084 | McNemar z +0.35; bar "not down > 0.005" met), args 0.453 (PMS8 0.43-0.45), rows 9 (PMS8 14), open mint 0.577 (-0.074: the mixer's work is on the MEMORIZED diet), the notebook's read/write norms 13.4 / 16.0 vs PMS8 14.6 / 16.8 (not up: the hub did not take over the mixer's traffic, it never needed to)
+
+THE READING: the complete graph among the slots is DISPENSABLE for generalization — a body that never had it reads
+the wild slot within noise of the lineage (and the fair sever's -0.025 on PMS8 was adaptation, not necessity) — and
+it is where a tenth of mint's recitation lived. "All roads lead to Rome" holds on the slot side in the weak form:
+the star (the notebook, -0.134 at read) carries what matters and the all-to-all adds memorization. THE MIXER LINE
+CLOSES ON FOUR READS: the typed mask (self-driven) costs, the hard shoal diverges, the owner key as a gain is unread,
+the all-to-all is removable. What the slot side's message passing is for — binding operands (1.5-2.4x) and grouping
+owners on token-side bodies (1.3x) — the notebook + the bank read do without a dedicated slot-to-slot organ. Rows 9
+vs 14 is within the row noise (+-4). Consequence for the chassis: the mixer can be dropped from the research recipe
+to buy step time (its cost is the second-largest after the depth stacks) once a twin confirms (HUB_242 registered,
+low priority — a cost saving, not a claim). The card passes to SRF_241 (the sorting room every breath, slot-conditioned
+— the surface arm), then the fixed sine arms.
