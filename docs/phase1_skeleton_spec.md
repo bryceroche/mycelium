@@ -50908,3 +50908,12 @@ law; ReZero on the message projection; from scratch vs PMS8_241; bars: masked +0
 operand-binding ratio >= 3 (from 1.5-2.4: binding made structural); args >= 0.47; kill: masked down or binding ratio
 unmoved), SH_241 behind it (the same bars; prior modest). HUB_241 stays registered, low. The relay's board was stale:
 HUB_241 was never queued; HG_241's verdict landed at 20:0x.
+
+### 2026-10-10 (20:35) — WORD GIVEN FOR THE WHOLE QUEUE (Bryce: "word given for the whole queue -- Salute!"): tonight's card, one organ per arm, each from scratch vs PMS8_241 with its registered bars, chained on the previous done mark — FG_241 (THE FUNNEL GATE: per-breath per-band gates on the waist skip + the 128 intermediate's rank; the loss draws the envelope) -> SINE4_241 -> ANTI4_241 (the crystal as the hub; shape vs depth at matched params) -> TM_241 (THE TYPED MIXER) -> SH_241 (THE SHOAL MIXER) -> SRF_241 (the sorting room every breath, slot-conditioned) -> HUB_241 (the notebook as the only slot road) -> SEAL_241 (SINE4 + the boundary skip: the seal placebo); the data road (annotated prose) is not a card arm and starts tomorrow
+
+Builders (staggered CPU gates; one gate process at a time; worktrees with the shared .cache symlink; code only on
+branches; queues merge in the MAIN checkout only, never inside a worktree; the main tree clean while queues are
+live; every reader under the family env; the pre-arm device smoke on every chain; every queue grep tested against
+its gate log; the fixed REFUSED resolver): wt20 funnelgate (FG), wt21 sinebreath (SINE4 / ANTI4 / SEAL), wt22
+typedmixer (TM / SH / HUB), wt23 srfeed (SRF). FG goes first because it is the smallest build (the card is idle);
+the gut's order (the crystal hub, the typed mixer) follows immediately behind it. ~16 h of card; reads tomorrow.
