@@ -206,15 +206,17 @@ REFUSED = ("ALG_SHELF", "ALG_WHIP", "ALG_TOKLOOP", "ALG_WRITEBACK", "ALG_KANNEAL
            # for the identical reason, named separately so a future narrowing of the ALG_SORT
            # refusal does not silently let this one through untested too.
            "ALG_SORT_HG",
-           # THE SINE BREATH (2026-10-10): ALG_DEPTH's own refusal above already covers the
-           # chassis _depth_stack_sine rides (the walker never calls breath_step/_depth_stack
-           # at all); named separately, own new line at the end, per this build's standing
-           # instruction, so a future narrowing of the ALG_DEPTH refusal does not silently let
-           # the sine schedule / seal placebo through untested too.
-           "ALG_SINE", "ALG_SINE_SKIP")
-           # THE ARGS-CONDITIONED RES (2026-10-09): _heads_of's own res-pointer term
-           # (ar_w1/ar_b1/ar_w2/ar_b2 against the content-only slot/candidate states PLUS the
-           # args head's own predicted soft-selected args states) is the fused forward()'s
+           # THE FUNNEL GATE (2026-10-10): _polar_waist's own per-breath, per-band/per-
+           # intermediate-dim gated bypass + rank gate (funnel_skip_theta/funnel_rank_theta,
+           # indexed by the breath kb breath_step receives) is the fused forward()'s single
+           # source of truth — the walker's per-seam heads_of calls never call _polar_waist
+           # or breath_step at all (the ALG_WAIST_SKIP/ALG_SORT precedent, same reason: a
+           # config that set this under the walker would train with a waist the walker's own
+           # path never built, silently). Refused by the word given for this build.
+           "ALG_FUNNEL", "ALG_FUNNEL_INIT",
+           "ALG_SINE", "ALG_SINE_SKIP",
+           "ALG_MIXER_OFF", "ALG_SHOAL_MIXER", "ALG_TYPED_MIXER",
+           "ALG_SORT_FEED")           # THE ARGS-CONDITIONED RES (2026-10-09): _heads_of's own res-pointer term           # (ar_w1/ar_b1/ar_w2/ar_b2 against the content-only slot/candidate states PLUS the           # args head's own predicted soft-selected args states) is the fused forward()'s
            # single source of truth and would in fact thread fine through the walker's
            # per-seam heads_of calls on its own, exactly like THE PAIRWISE COMPARATOR ROAD and
            # THE SELF-MATCH TERM above — refused anyway, by the word given for this build,

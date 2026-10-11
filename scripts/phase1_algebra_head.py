@@ -444,6 +444,12 @@ assert not (ALG_LIVE_FACTS and ALG_ALT3), "ALG_LIVE_FACTS and ALG_ALT3 both repl
 assert not (ALG_BUSREG_SEAL or ALG_BUSREG_PREDMAP or ALG_VALREG_LIVE) or ALG_BUSREG, (
     "ALG_BUSREG_SEAL / ALG_BUSREG_PREDMAP / ALG_VALREG_LIVE need ALG_BUSREG (the register they act on)")
 _GTAP = None      # THE GRADIENT TAP (apply_grad_tap.py): read-only probe leaves per breath
+_SRF_GTAP = None  # THE SORTING ROOM'S FEEDBACK FORM's own gradient tap (sort_feed_grad_probe.py):
+                  # {kb: leaf} a single read-only zero probe leaf, same shape as `cross`
+                  # (B, L_FAC, H_W), added onto the cross-attention branch's `cross` BEFORE
+                  # either the key or value projection reads it (so both inherit the tap) at
+                  # breath kb — isolates dL/d(cross) THROUGH THIS BRANCH ALONE from `cur`'s
+                  # other (mixer) gradient paths; see _sort_block.
 # THE WHIP (2026-09-12, the word): ALG_WHIP="k:amp" kicks the state ENTERING
 # breath k with Gaussian noise on the content planes (per slot: amp x the
 # slot's norm); the breaths after it have wrinkles to remove. Training feeds
@@ -1698,8 +1704,42 @@ ALG_WAIST_SKIP_INIT = float(os.environ.get("ALG_WAIST_SKIP_INIT", "-4.0"))
 assert not ALG_WAIST_SKIP or (ALG_POLAR and POLAR_D), \
     ("ALG_WAIST_SKIP rides on the content-plane waist (ALG_POLAR=1 ALG_POLAR_D=<d>) — "
      "there is no P c reconstruction to skip around otherwise")
+# THE FUNNEL GATE (2026-10-10; ledger 11:15 — Bryce: "dims should resemble a sine wave inside a
+# looped transformer ... like Nazare, funnel the dims across the breath cycles, forcing
+# crystallization"): WS form A' — the waist skip and the waist's own rank, both made PER-BREATH
+# (one row per kb, 0..K_B-1; breath 0, the grounding read, never calls _polar_waist through
+# breath_step's loop at all — its row is allocated for shape uniformity, never read). Two
+# independent gate families, both sigmoid, both born at theta = ALG_FUNNEL_INIT (default -4.0,
+# live from birth, never -inf — the knob law, the SAME born value WS_241 used):
+#   (a) funnel_skip_theta[K_B, 3] — a per-breath, per-BAND (root/branch/leaf, the SAME three
+#       bands _hier_band_dims() names by content-plane order whether or not ALG_HIER_WAIST is
+#       set — band membership is a property of plane order, never of the block-diagonal waist)
+#       gate g_skip = sigmoid(theta) on the bypass c - P c, THE SAME formula WS_241 used
+#       (c' = P c + g_skip * (c - P c)) but coarsened from one-gate-per-content-dim (384) to
+#       one-gate-per-band-per-breath (3 * K_B): the loss can now ask for a DIFFERENT bypass
+#       width at every breath instead of one fixed-for-all-time gate.
+#   (b) funnel_rank_theta[K_B, POLAR_D] — a per-breath, per-INTERMEDIATE-dim gate on the
+#       waist's own rank-128 code (u @ W_down, BEFORE W_up): r = 1 - sigmoid(theta), so r is
+#       born at 1 - sigmoid(-4) ~ 0.982 (almost fully OPEN — today's waist, not a hard rank
+#       cut); the loss can CLOSE an intermediate dim at a given breath by raising theta (r -> 0
+#       shuts that dim's contribution to P c for that breath only).
+# Independent of ALG_WAIST_SKIP (either, neither, or both may be set; FG_241 sets ALG_FUNNEL=1
+# alone). Rides on ALG_POLAR_D (there is no P c / no 128-d code to gate otherwise). The clock
+# dims stay bitwise untouched: (a)'s per-band gate is scattered through `sel` (zero outside the
+# content block, the SAME constant _polar_waist/_polar_waist_skip use) and (b)'s gate lives
+# entirely inside the POLAR_D-wide intermediate code, which _polar_sink's scatter already zeros
+# out of every clock dim on the way back through W_up. keepnorm runs exactly as today (the
+# funnel changes what goes INTO P c, not how its norm is restored).
+ALG_FUNNEL = int(os.environ.get("ALG_FUNNEL", "0"))
+ALG_FUNNEL_INIT = float(os.environ.get("ALG_FUNNEL_INIT", "-4.0"))
+assert not ALG_FUNNEL or (ALG_POLAR and POLAR_D), \
+    ("ALG_FUNNEL rides on the content-plane waist (ALG_POLAR=1 ALG_POLAR_D=<d>) — "
+     "there is no P c reconstruction / no intermediate code to gate otherwise")
 _POLAR_SINK = None          # (cdim, sel, gate_content, gate_clock, gate_pl)
 _POLAR_SINK_SHOWN = False
+_FUNNEL_BAND_ONEHOT = {}    # {n_content_dims: (C, 3) constant tensor} -- ALG_FUNNEL's skip gate,
+                            # built once, module-cached (band membership is fixed by _HIER_PLANES,
+                            # never by the forward's own data)
 
 
 def _polar_sink():
@@ -1760,7 +1800,7 @@ def _polar_keepnorm(u_new, u_old, gate):
     return u_new * (1.0 + gate * (_n0 / _n1 - 1.0))
 
 
-def _polar_waist(u, p, state):
+def _polar_waist(u, p, state, kb=0):
     """ALG_POLAR_D — THE CONTENT-PLANE WAIST. c' = c @ W_down @ W_up on
     the 384 content dims; the 128 clock dims are in neither the domain
     nor the range. The two (C, d) / (d, C) parameters are scattered into
@@ -1770,7 +1810,11 @@ def _polar_waist(u, p, state):
     EXACT zeros, so the clock columns of the effective W_up are exactly
     0.0 and the clock dims of c' are exactly 0.0 -> u * g_k + c' leaves
     every clock dim BITWISE untouched. Then the content block's norm is
-    restored, so ||u|| == 1 still holds and the clock keeps its share."""
+    restored, so ||u|| == 1 still holds and the clock keeps its share.
+    `kb` is the breath index (0 = the grounding read, never actually
+    reaches this function through breath_step's loop; 1..K_B-1 = the
+    clocked loop breaths) — ALG_FUNNEL's own two gates are the only
+    readers of it; every other door above ignores the argument."""
     _cd, _sel, _gc, _gk, _gp = _polar_sink()
     _wd = state.get("polar_wd_eff")
     if _wd is None:
@@ -1781,9 +1825,14 @@ def _polar_waist(u, p, state):
         state["polar_wd_eff"] = _wd
         state["polar_wu_eff"] = _pwu @ _sel.transpose(-2, -1)
     _wu = state["polar_wu_eff"]                          # (d, H_W)
-    _cn = (u @ _wd) @ _wu                # exact zeros on every clock dim
+    _lat = u @ _wd                       # (B, L, POLAR_D) -- the waist's own intermediate code
+    if ALG_FUNNEL:
+        _lat = _polar_funnel_rank(_lat, p, state, kb)
+    _cn = _lat @ _wu                     # exact zeros on every clock dim
     if ALG_WAIST_SKIP:
         _cn = _polar_waist_skip(u, p, state, _cn, _sel, _gc)
+    if ALG_FUNNEL:
+        _cn = _polar_funnel_skip(u, p, state, _cn, _sel, _gc, kb)
     return _polar_keepnorm(u * _gk + _cn, u, _gc)
 
 
@@ -1835,6 +1884,80 @@ def _polar_waist_skip(u, p, state, cn, sel, gc):
             "g_max": float(_graw.max().numpy()),    # THE KILL CHECK'S OWN instrument: "g < 0.1
                                                       # EVERYWHERE" is a max, not a band mean
         })
+    return cn + _skip
+
+
+def _polar_funnel_rank(lat, p, state, kb):
+    """ALG_FUNNEL's rank gate (THE FUNNEL GATE, 2026-10-10; (b) in the ALG_FUNNEL header note
+    above _polar_sink): a per-breath, per-intermediate-dim gate on the waist's own rank-POLAR_D
+    code `lat` = u @ W_down, applied BEFORE W_up. r = 1 - sigmoid(funnel_rank_theta[kb])
+    (POLAR_D,), born at 1 - sigmoid(ALG_FUNNEL_INIT) ~ 0.982 at the default -4.0 — almost fully
+    OPEN (today's waist, not a hard rank cut; the knob law: live from birth). `lat` lives
+    entirely in POLAR_D-wide coordinates, not H_W ones — there is no clock dim inside it to
+    protect; the clock stays untouched because _polar_waist never routes it through W_down/
+    W_up at all (the scatter constant already carries it around this whole code path). Cached
+    per (forward, breath) in `state` (theta's per-breath row differs, so each breath's gate is
+    its own small tensor, unlike _polar_waist_skip's single per-forward cache)."""
+    _key = ("funnel_rank_gate", kb)
+    _r = state.get(_key)
+    if _r is None:
+        _graw = p["funnel_rank_theta"][kb].sigmoid()          # (POLAR_D,) in (0, 1)
+        _r = (1.0 - _graw).reshape(1, 1, -1)
+        state[_key] = _r
+        state[_key + ("raw",)] = _graw                        # (POLAR_D,): the census's own read
+    _fc = globals().get("_FUNNEL_CENSUS")                      # THE CENSUS (armed only by a census
+    if _fc is not None:                                        # script, never by do_train's real
+        _graw = state[_key + ("raw",)]                         # JIT'd step — the waist-skip
+        _rnp = _graw.numpy()                                   # convention exactly)
+        _rec = _fc.setdefault(kb, {})
+        _rec["rank_share_closed"] = float((_rnp > 0.5).mean())   # share of intermediate dims with r < 0.5
+        _rec["rank_r_mean"] = float(1.0 - _rnp.mean())
+        _rec["rank_r_min"] = float(1.0 - _rnp.max())
+    return lat * _r
+
+
+def _polar_funnel_skip(u, p, state, cn, sel, gc, kb):
+    """ALG_FUNNEL's skip gate (THE FUNNEL GATE, 2026-10-10; (a) in the ALG_FUNNEL header note
+    above _polar_sink): c' = P c + g_skip * (c - P c) — WS_241's own formula (_polar_waist_skip
+    above), coarsened from one gate per content dim to one gate per BAND per BREATH. g_skip =
+    sigmoid(funnel_skip_theta[kb]) is (3,): root/branch/leaf, contiguous in the (C,)
+    plane-ordering (_HIER_PLANES bounds — [0:2a) root, [2a:2a+2b) branch, [2a+2b:2a+2b+2c)
+    leaf — the SAME bounds _polar_waist_skip's own census computes, whether or not
+    ALG_HIER_WAIST is set: band membership is a property of plane order, never of the
+    block-diagonal waist). Broadcast across each band's content dims via a constant one-hot
+    (band membership never changes, cached once at module scope) and scattered into waist
+    coordinates through `sel` — the SAME scatter constant _polar_waist uses, zero outside the
+    content block — so the added term is exactly 0.0 on every clock dim, matching `cn`'s own
+    zeros there. Cached per (forward, breath) in `state`."""
+    _key = ("funnel_skip_gate", kb)
+    _g = state.get(_key)
+    if _g is None:
+        _graw = p["funnel_skip_theta"][kb].sigmoid()           # (3,): root/branch/leaf
+        _a, _b, _c3 = _HIER_PLANES
+        _bounds = (0, 2 * _a, 2 * _a + 2 * _b, 2 * _a + 2 * _b + 2 * _c3)
+        _nc = _bounds[-1]
+        assert sel.shape[-1] == _nc, (sel.shape, _nc)   # the SAME content-dim count sel scatters
+        _oh = _FUNNEL_BAND_ONEHOT.get(_nc)
+        if _oh is None:
+            from tinygrad import Tensor as _Tfg, dtypes as _dfg
+            _band_of = np.zeros(_nc, np.int64)
+            _band_of[_bounds[1]:_bounds[2]] = 1
+            _band_of[_bounds[2]:_bounds[3]] = 2
+            _ohnp = np.zeros((_nc, 3), np.float32)
+            _ohnp[np.arange(_nc), _band_of] = 1.0
+            _oh = _Tfg(_ohnp, dtype=_dfg.float).contiguous().realize()
+            _FUNNEL_BAND_ONEHOT[_nc] = _oh
+        _gc_dim = (_oh @ _graw.reshape(3, 1)).reshape(1, -1)   # (1, C): per-content-dim gate value
+        _g = (sel @ _gc_dim.reshape(-1, 1)).reshape(1, 1, -1)  # (1, 1, H_W), zero on clock dims
+        state[_key] = _g
+        state[_key + ("raw",)] = _graw
+    _skip = _g * (u * gc - cn)                                 # exactly 0.0 on every clock dim
+    _fc = globals().get("_FUNNEL_CENSUS")
+    if _fc is not None:
+        _graw = state[_key + ("raw",)]
+        _gnp = _graw.numpy()
+        _rec = _fc.setdefault(kb, {})
+        _rec["g_skip_root"], _rec["g_skip_branch"], _rec["g_skip_leaf"] = (float(x) for x in _gnp)
     return cn + _skip
 
 
@@ -3415,6 +3538,23 @@ def build_params(seed=0):
             p["sort_hg_Uc_b"] = t(np.zeros(H_W, np.float32))
             p["sort_hg_Us"] = t(np.zeros((H_W, H_W), np.float32))
             p["sort_hg_Us_b"] = t(np.zeros(H_W, np.float32))
+        if ALG_SORT_FEED:
+            # THE SORTING ROOM'S FEEDBACK FORM (2026-10-10): each sort{i} block's own
+            # cross-attention branch (tokens query the 24 slots' content state) — standard
+            # small-random wq/wk/wv-style init for xwq/xwk/xwv + the pre-cross LayerNorm
+            # (lnx_g=1, lnx_b=0, the usual LN init); xwo(+bias) is the ReZero ZERO door, same
+            # precedent as sort{i}_wo/ffn_w2 above — identity at birth regardless of `cur`.
+            # Continuing the SAME _rSR stream (a dedicated RandomState, seed + 31415) so an
+            # unset ALG_SORT_FEED never perturbs ALG_SORT/ALG_SORT_KEY/ALG_SORT_HG's own draws
+            # (this block's draws are strictly AFTER theirs, consumed only when FEED is set).
+            for _i in range(ALG_SORT):
+                for _nm in ("xwq", "xwk", "xwv"):
+                    p[f"sort{_i}_{_nm}"] = t((_rSR.randn(H_W, H_W) / math.sqrt(H_W)).astype(np.float32))
+                    p[f"sort{_i}_{_nm}_b"] = t(np.zeros(H_W, np.float32))
+                p[f"sort{_i}_xwo"] = t(np.zeros((H_W, H_W), np.float32))      # ZERO door (ReZero)
+                p[f"sort{_i}_xwo_b"] = t(np.zeros(H_W, np.float32))
+                p[f"sort{_i}_lnx_g"] = t(np.ones(H_W, np.float32))
+                p[f"sort{_i}_lnx_b"] = t(np.zeros(H_W, np.float32))
     if ALG_DEPTH:
         # THE LOOPED TRANSFORMER (2026-10-09): N blocks of {self-attn over slots, cross-attn
         # slots->tokens, FFN}, ReZero at birth exactly as the sorting room's own precedent — the
@@ -3790,6 +3930,17 @@ def build_params(seed=0):
         # p` is the only gate _polar_waist's forward code needs).
         _nc_ws = len(_polar_sink()[0])
         p["waist_skip_theta"] = t(np.full(_nc_ws, ALG_WAIST_SKIP_INIT, dtype=np.float32))
+    if ALG_FUNNEL:
+        # THE FUNNEL GATE (2026-10-10): two per-breath parameter tables, both born at
+        # ALG_FUNNEL_INIT — LIVE from birth (the knob law), never zero. ALG_FUNNEL=0 never
+        # reaches this branch, so neither key exists in p at all (the SAME structural
+        # bit-identity mechanism as waist_skip_theta/sm_w_self/pc_w1: presence in p is the
+        # only gate _polar_waist's forward code needs). Row 0 of each table (the grounding
+        # read's breath) is allocated for shape uniformity and trains on zero gradient —
+        # never read by breath_step's loop (kb in range(1, K_B) only), the SAME standing
+        # note breath_emb's own row 0 carries (T6 clock audit S2) — not a new convention.
+        p["funnel_skip_theta"] = t(np.full((K_B, 3), ALG_FUNNEL_INIT, dtype=np.float32))
+        p["funnel_rank_theta"] = t(np.full((K_B, POLAR_D), ALG_FUNNEL_INIT, dtype=np.float32))
     global _POLAR_SINK_SHOWN
     if ALG_POLAR and (POLAR_D or POLAR_EM) and not _POLAR_SINK_SHOWN:
         # THE SINK DOOR: one line, once, naming what is about to run.
@@ -4305,6 +4456,25 @@ ALG_SORT_HG = int(os.environ.get("ALG_SORT_HG", "0"))
 if ALG_SORT_HG:
     assert ALG_SORT == 4, "ALG_SORT_HG rewires the 4 existing sort{i} blocks (0=token,1=clause,2=sentence,3=token) into an hourglass -- needs ALG_SORT=4 exactly, not a 5th resolution"
     assert ALG_SORT_HG in (1, 2), "ALG_SORT_HG=1 (additive skip) or 2 (gated-multiplicative skip)"
+
+# THE SORTING ROOM'S FEEDBACK FORM (ALG_SORT_FEED=1; SRF_241, 2026-10-10 registration — "the
+# sorting room's feedback form"): default 0 is BIT-IDENTICAL to ALG_SORT=4 (the flat room runs
+# once at breath 0, as today, full stop). Set, the SAME 4 sort{i}_* blocks are RE-RUN at every
+# loop breath kb = 1..K_B-1 (forward()'s per-breath loop, the ALG_TOKLOOP precedent: `waist`/the
+# bank are REBOUND to this breath's own re-sorted tokens — the mandatory road, no bypass to
+# breath 0's tokens for this breath's reads), each block gaining ONE cross-attention branch —
+# tokens (query) over the 24 slots' CURRENT content state `cur` (key/value) — inserted between
+# the block's self-attention residual and its FFN (see _sort_block). Mutually exclusive with
+# ALG_SORT_HG (a separate rewiring of the SAME 4 blocks into resolution levels; composing the
+# two is not this arm's claim). ReZero on the new branch's own output projection (sort{i}_xwo,
+# zero-init, build_params) gives identity at birth regardless of kb (the flat room's own
+# precedent, one level: sort{i}_xwq/xwk/xwv/lnx sit strictly upstream of this zero multiply and
+# get EXACTLY zero gradient at step 0, waking at step 1 once sort{i}_xwo moves — sort_feed_grad_
+# probe.py's own bar). Needs ALG_SORT=4 exactly (the four blocks this form re-runs).
+ALG_SORT_FEED = int(os.environ.get("ALG_SORT_FEED", "0"))
+if ALG_SORT_FEED:
+    assert ALG_SORT == 4, "ALG_SORT_FEED re-runs the 4 existing sort{i} blocks every loop breath -- needs ALG_SORT=4 exactly"
+    assert not ALG_SORT_HG, "ALG_SORT_FEED (per-breath re-run, flat blocks) and ALG_SORT_HG (hourglass resolution levels) both rewire the SAME 4 blocks -- not yet composed; pick one"
 SORT_HG_MAX_CL = 64   # max distinct CLAUSE unit ids per row (_TREECODE_UMAX's own precedent: "clauses/mentions rarely past 64")
 SORT_HG_MAX_ST = 32   # max distinct SENTENCE unit ids per row (_TREECODE_UMAX's own precedent: "sentences <= 32" --
                       # the tiny64 gate fixture's own census (mean s=10.1) showed the FIRST guess of 16 was too
@@ -4312,14 +4482,27 @@ SORT_HG_MAX_ST = 32   # max distinct SENTENCE unit ids per row (_TREECODE_UMAX's
                       # on overflow rather than crashing, so this was caught as a quality risk, not a crash)
 
 
-def _sort_block(p, i, x, mask1d, B):
+def _sort_block(p, i, x, mask1d, B, cross=None, kb=None):
     """ONE ReZero pre-norm transformer block (the sort{i}_* tensors build_params already builds
     under ALG_SORT), applied at ANY resolution: x is (B, L, H_W) for whatever L this call's
     caller chose (256 real tokens for the flat form; a clause or sentence pooled axis for the
     hourglass), mask1d is (B, L) with 1 for a real position / 0 for one to exclude from both the
     softmax's key axis and (by the same reasoning as the flat form's tokmask) every downstream
     read. Bit-for-bit the flat `_sort_room`'s own per-block body, factored out so both callers
-    share one source of truth."""
+    share one source of truth.
+    THE SORTING ROOM'S FEEDBACK FORM (ALG_SORT_FEED=1; SRF_241, 2026-10-10): `cross`, when given
+    (cur[:, :L_FAC, :], the 24 real factor slots' CURRENT content state — scratch slots, when
+    N_SCR > 0, are excluded by the slice itself, the same structural exclusion the diagonal-
+    always-true build_slot_masks convention gives the L_FAC slots and the raising law's zero
+    scratch-column gives the rest, so no separate key mask is needed here), inserts ONE extra
+    cross-attention branch between the self-attention residual above and the FFN below — tokens
+    (x, the query) over `cross` (keys/values) — through its OWN sort{i}_xw{q,k,v,o}(_b) +
+    sort{i}_lnx_g/_b tensors (build_params, under ALG_SORT_FEED). ReZero: sort{i}_xwo(_b) is
+    zero-init, so this branch contributes EXACT zero at birth regardless of `cross`, matching the
+    self-attention/FFN halves' own ReZero identity above — `cross=None` (every call this module
+    made before SRF_241 existed, and the hourglass's own per-resolution calls) skips the branch
+    entirely, bit-identical by construction. `kb` is threaded only for the knob census' (kb,
+    name) tag — no behavior depends on it."""
     T = int(x.shape[1])
     hd = H_W // N_HEADS
     _tm = mask1d.reshape(B, 1, 1, T)
@@ -4333,6 +4516,38 @@ def _sort_block(p, i, x, mask1d, B):
     o = (at @ v).permute(0, 2, 1, 3).reshape(B, T, H_W)
     o = o @ p[f"sort{i}_wo"] + p[f"sort{i}_wo_b"]
     x = x + o
+    if cross is not None and f"sort{i}_xwq" in p:
+        global _CENSUS
+        try: _CENSUS
+        except NameError: _CENSUS = None
+        _x0 = x
+        L = int(cross.shape[1])
+        _lnx = x.layernorm(eps=1e-5) * p[f"sort{i}_lnx_g"] + p[f"sort{i}_lnx_b"]
+        if _SRF_GTAP is not None and kb in _SRF_GTAP:
+            # THE GRADIENT TAP (sort_feed_grad_probe.py; the grad_census.py idiom): a zero,
+            # requires_grad leaf added onto `cross` BEFORE it is read by either projection below
+            # (kx AND vx both derive from this same rebound name, so the tap's gradient — once
+            # read back — is dL/d(cross) THROUGH THIS BRANCH ALONE, isolated from cur's other
+            # (mixer) gradient paths) — ReZero's own cascade predicts this leaf is exactly zero
+            # at step 0 (sort{i}_xwo is zero, so d(loss)/d(cross)=0 exactly through this branch)
+            # and live only once sort{i}_xwo has moved off zero (one optimizer step). A tap added
+            # AFTER kx/vx are each already computed from the OLD `cross` object would be dead
+            # code for whichever one scx is built from first (found the hard way: the kx-only
+            # placement that used to live here read an immovable exact 0.0 at every step because
+            # scx had already captured the untapped kx by the time the tap ran).
+            cross = cross + _SRF_GTAP[kb]
+        qx = (_lnx @ p[f"sort{i}_xwq"] + p[f"sort{i}_xwq_b"]).reshape(B, T, N_HEADS, hd).permute(0, 2, 1, 3)
+        kx = (cross @ p[f"sort{i}_xwk"] + p[f"sort{i}_xwk_b"]).reshape(B, L, N_HEADS, hd).permute(0, 2, 1, 3)
+        vx = (cross @ p[f"sort{i}_xwv"] + p[f"sort{i}_xwv_b"]).reshape(B, L, N_HEADS, hd).permute(0, 2, 1, 3)
+        scx = (qx @ kx.transpose(-2, -1)) / math.sqrt(hd)
+        scx = scx.clip(-1e4, 1e4)
+        atx = scx.softmax(-1)
+        ox = (atx @ vx).permute(0, 2, 1, 3).reshape(B, T, H_W)
+        ox = ox @ p[f"sort{i}_xwo"] + p[f"sort{i}_xwo_b"]
+        x = x + ox
+        if _CENSUS is not None:
+            _CENSUS.append((kb, f"srf{i}_cross_in", _x0.realize().numpy()))
+            _CENSUS.append((kb, f"srf{i}_cross_delta", ox.realize().numpy()))
     _ln2 = x.layernorm(eps=1e-5) * p[f"sort{i}_ln2_g"] + p[f"sort{i}_ln2_b"]
     f = (_ln2 @ p[f"sort{i}_ffn_w1"] + p[f"sort{i}_ffn_b1"]).gelu() @ p[f"sort{i}_ffn_w2"] + p[f"sort{i}_ffn_b2"]
     x = x + f
@@ -4348,10 +4563,43 @@ def _sort_room(p, waist, tokmask, B):
     already lives in the states `waist` itself projects from; see the module comment above).
     ReZero at birth (build_params zero-inits sort{i}_wo and sort{i}_ffn_w2): `o` and `f` below
     are EXACT zero at init, so this function returns `waist` bit-for-bit unchanged regardless of
-    N until the gradient moves wo/ffn_w2 away from zero."""
+    N until the gradient moves wo/ffn_w2 away from zero. Always called with cross=None (breath
+    0's own grounding call, forward()'s pre-loop station — see _sort_room_feed below for the
+    per-breath re-run SRF_241 adds)."""
     x = waist
     for i in range(ALG_SORT):
         x = _sort_block(p, i, x, tokmask, B)
+    return x
+
+
+def _sort_room_feed(p, tok, tokmask, cur, B, kb):
+    """THE SORTING ROOM'S FEEDBACK FORM (ALG_SORT_FEED=1; SRF_241, 2026-10-10 — "the sorting
+    room's feedback form", queued behind the hourglass): re-runs the SAME 4 sort{i}_* blocks
+    ALG_SORT=4 already builds, at loop breath kb (1..K_B-1), each block now gaining the
+    cross-attention branch _sort_block builds under ALG_SORT_FEED — tokens (query) over the 24
+    real factor slots' CURRENT content state `cur[:, :L_FAC, :]` (key/value; scratch slots
+    excluded by the slice, the mandatory road's own "slot mask respected" — see _sort_block's
+    own docstring). ReZero at birth (sort{i}_xwo is zero-init): this function returns
+    `_sort_room`'s own bit-identical output at step 0 regardless of kb or N (the self-attention/
+    FFN halves are the SAME already-trained sort{i}_* tensors; only the inserted branch is new,
+    and it contributes exact zero until the gradient moves it). Called once per loop breath
+    (forward()'s per-breath loop REBINDS ctx["waist"]/ctx["bank"] to this function's return value
+    every breath — the ALG_TOKLOOP precedent, the mandatory road: no bypass to breath 0's own
+    tokens, or to any earlier breath's re-sorted tokens, for the reads this breath makes)."""
+    global _CENSUS
+    try: _CENSUS
+    except NameError: _CENSUS = None
+    _tok_in = tok
+    x = tok
+    cross = cur[:, :L_FAC, :]
+    for i in range(ALG_SORT):
+        x = _sort_block(p, i, x, tokmask, B, cross=cross, kb=kb)
+    if _CENSUS is not None:
+        # THE KNOB CENSUS (the pre/post knob law): the whole re-run's net change to the token
+        # tensor this breath vs the token tensor it met — the arm's own registered bar (>= 10%
+        # of the token path's std at the LAST breath, else the branch is inert).
+        _CENSUS.append((kb, "srf_tok_in", _tok_in.realize().numpy()))
+        _CENSUS.append((kb, "srf_tok_out", x.realize().numpy()))
     return x
 
 
@@ -6229,6 +6477,114 @@ def _mask_cook_skel(B, L, fat_cur, ctx):
     return (_pp @ _pp.transpose(-2, -1) + _eye).clip(0.0, 1.0).detach()
 
 
+def _mixer_typed_edges(p, cur, ctx, B, kb):
+    """TM_241 (THE TYPED MIXER, 2026-10-10, ledger 20:28/20:35): the previous breath's OWN
+    decode (args/res pointer softmaxes) turned into a soft factor<->factor edge mask, via the
+    SAME K_VARS==L_FAC==24 own-variable-index identity convention router2(ptr)'s _Pa1_7/_Pa2_7
+    already use (:6511 above) — variable index k IS slot index k, so the args/res bilinear's
+    (B, L_FAC, K_VARS) output is directly a (B, L_FAC, L_FAC) factor-to-factor map. `cur` here
+    is the state ENTERING this breath (untouched so far — breath_step's own heads run AFTER
+    the mixer, so "this breath's decode" does not exist yet); for kb==1 this is breath 0's
+    grounding decode (fst), exactly as the ledger states ("breath 0's grounding heads for
+    breath 1") — there is no case in this architecture where `cur` is undefined entering
+    breath_step, so the build spec's "breath 0: no previous decode -> all ones" clause is
+    honored defensively below (ctx.get, never ctx[]) though it does not fire in any deployed
+    config. DETACHED: this is a routing structure (which keys may be attended), not a loss
+    term — nothing should be able to reshape the mask instead of moving the pointer itself
+    (the busreg/valreg precedent for "the rung's own beliefs" already detaches the same way).
+    Returns a (B, L_TOT, L_TOT) tensor in [0, 1] with the diagonal forced to 1 (the self-edge
+    guarantee: a row with no named edges at all keeps a self-edge, trivially, since self is
+    NEVER removed) — or None (the TRUE no-op: _mixer_apply_edges skips the multiply+
+    renormalize entirely, for bit-identity down to the float32 ULP, not just "effectively
+    all-ones") when ALG_TYPED_ALLONES is armed (the gate's identity check: "typed with the
+    mask forced all-ones == role8 exactly") or when `ctx` lacks "vst"."""
+    from tinygrad import Tensor as _Tt
+    if int(os.environ.get("ALG_TYPED_ALLONES", "0")):
+        return None
+    _vst = ctx.get("vst")
+    if _vst is None:
+        return None   # "breath 0: no previous decode" — defensive only, never fires today
+    assert K_VARS == L_FAC, "THE TYPED MIXER needs the own-variable-index identity (K_VARS == L_FAC)"
+    _tau = float(os.environ.get("ALG_TYPED_TAU", "1.0"))
+    _hprev = _heads_of(p, cur, _vst, B)   # the SAME call busreg/valreg already make on `cur`
+    _a_ik = (_hprev["args"].detach() / _tau).softmax(-1)   # (B, L_FAC, K_VARS): soft argmax
+    _r_ik = (_hprev["res"].detach() / _tau).softmax(-1)
+    _e_fwd = (_a_ik + _r_ik).clip(0.0, 1.0)            # i names j (arg OR res), identity convention
+    _e = _e_fwd.maximum(_e_fwd.transpose(-2, -1))      # symmetric: i<->j if EITHER names the other
+    _eye = _Tt.eye(L_FAC).reshape(1, L_FAC, L_FAC)
+    _e = _e.maximum(_eye)                               # the self-edge guarantee, unconditional
+    if N_SCR:
+        # scratch rows/cols stay open (today's behaviour) — they carry no args/res pointers
+        _e = _Tt.cat(_e, _Tt.ones(B, L_FAC, N_SCR), dim=2)
+        _e = _Tt.cat(_e, _Tt.ones(B, N_SCR, L_TOT), dim=1)
+    return _e
+
+
+def _mixer_shoal_edges(cur, B, k):
+    """SH_241 (THE SHOAL MIXER, 2026-10-10): hard top-k attention by CONTENT-SPACE cosine (the
+    same 384-dim partition the Welford atlas / THE PAIRWISE COMPARATOR ROAD read,
+    _paircmp_content_sel() — excludes the 128 clock dims), recomputed every breath from `cur`
+    as it enters this breath's mixer. STRAIGHT-THROUGH: the FORWARD value is the hard top-k
+    mask (the arm actually removes edges, as the build spec requires); the BACKWARD gradient
+    flows through a soft sigmoid relaxation of the same per-row threshold, so bq/bk/bv (and
+    everything upstream of `cur`) keep a defined, non-zero gradient through this road. The
+    threshold is an order statistic (non-differentiable by nature) and is detached; the live
+    (non-detached) cosine still drives the soft surrogate. k >= L_TOT returns None (the TRUE
+    no-op -- _mixer_apply_edges skips the multiply+renormalize entirely, for bit-identity down
+    to the float32 ULP) -- the gate's identity check: "shoal with k=24 == role8 exactly", since
+    L_TOT == L_FAC == 24 with FED_SCRATCH off -- without touching _paircmp_content_sel at all."""
+    from tinygrad import Tensor as _Ts
+    if k >= L_TOT:
+        return None
+    _sel, _c = _paircmp_content_sel()
+    _cc = cur @ _sel                                              # (B, L_TOT, C)
+    _ccn = _cc / ((_cc * _cc).sum(-1, keepdim=True) + 1e-12).sqrt()
+    _cos = _ccn @ _ccn.transpose(-2, -1)                          # (B, L_TOT, L_TOT): live, grad-bearing
+    _cosd = _cos.detach()
+    _thr = _cosd.topk(k, dim=-1)[0][:, :, k - 1:k]                # the k-th largest value per row (detached order stat)
+    _hard = (_cosd >= _thr).float()                                # forward: hard top-k (ties may admit a few extra)
+    _sharp = float(os.environ.get("ALG_SHOAL_SHARP", "20.0"))
+    _soft = ((_cos - _thr) * _sharp).sigmoid()                     # backward surrogate: live `_cos`, same threshold
+    _e = _hard + _soft - _soft.detach()                            # straight-through: value == _hard, grad == d(_soft)
+    _eye = _Ts.eye(L_TOT).reshape(1, L_TOT, L_TOT)
+    _e = _e.maximum(_eye)                                           # the self-edge guarantee (belt+suspenders: cos_ii
+                                                                     # is already ~1 and always its own row-max, but a
+                                                                     # degenerate zero-norm row should never lose self)
+    return _e
+
+
+def _mixer_edge_mask(p, cur, ctx, B, kb):
+    """Dispatcher for THE TYPED MIXER (TM_241) / THE SHOAL MIXER (SH_241) — mutually
+    exclusive, both default OFF (returns None, zero overhead, bit-identical to today). Called
+    ONCE per breath_step call, before sc2 is even built; the SAME returned tensor multiplies
+    both mixer consumers downstream (sc2's own softmax and the FED twin's per-head softmax) —
+    ONE MASK, ONE ROAD, the mask-head bias's own precedent (`_mb` feeds three mixers from one
+    tensor)."""
+    _tm = int(os.environ.get("ALG_TYPED_MIXER", "0"))
+    _sh = int(os.environ.get("ALG_SHOAL_MIXER", "0"))
+    assert not (_tm and _sh), ("ALG_TYPED_MIXER and ALG_SHOAL_MIXER are mutually exclusive "
+                                "(TM_241 / SH_241 are separate arms)")
+    if _tm:
+        return _mixer_typed_edges(p, cur, ctx, B, kb)
+    if _sh:
+        return _mixer_shoal_edges(cur, B, _sh)
+    return None
+
+
+def _mixer_apply_edges(at, E):
+    """Multiply the (post-softmax, post-everything-else) attention by the edge mask and
+    renormalize — the mask MULTIPLIES the softmax (every other road in the mixer, sc2's own
+    close/cooker/alt/QROT terms, is left completely untouched upstream; this is a pure
+    reweighting of the already-computed distribution, per the build spec: "the mask multiplies
+    the softmax, renormalized"). E is broadcast over any leading axes (the FED twin's head
+    axis) by the caller via `.unsqueeze`. No-op (returns `at` unchanged) when E is None — the
+    default-off, bit-identical path (ALG_TYPED_MIXER=0 and ALG_SHOAL_MIXER=0)."""
+    if E is None:
+        return at
+    _m = at * E
+    return _m / (_m.sum(-1, keepdim=True) + 1e-12)
+
+
 def breath_step(p, state, kb, ctx):
     """THE BREATH STEP — forward()'s K-breath loop BODY, factored to
     module level BY PURE CODE MOTION (apply_step_trainer.py, 2026-09-03;
@@ -7113,6 +7469,8 @@ def breath_step(p, state, kb, ctx):
                   + ((_A5 + _A5.transpose(-2, -1)) > 0.5)
                   .float()).clip(0, 1)
 
+    _mix_edge = _mixer_edge_mask(p, cur, ctx, B, kb)   # TM_241 / SH_241 (2026-10-10): None unless armed
+
     bq = cur @ p["W_bq"] + p["W_bq_b"]
     bk = cur @ p["W_bk"] + p["W_bk_b"]
     bv = cur @ p["W_bv"] + p["W_bv_b"]
@@ -7297,7 +7655,14 @@ def breath_step(p, state, kb, ctx):
         # BEAM EXIT (door #8): committed slots leave the mixer as
         # keys, proportional to mass — soft, init-closed (m starts 0)
         sc2 = sc2 + m_c.reshape(B, 1, L_FAC) * -8.0
-    h_slot = (sc2.softmax(-1) @ bv) @ p["W_bo"] + p["W_bo_b"]
+    _at2 = sc2.softmax(-1)
+    if _CENSUS is not None:
+        # THE SHUFFLE READ's tap (ported from branch shuffletap cdc267b5, 2026-10-10): the
+        # single-head mixer's real post-mask, post-bias attention weights -- dark unless
+        # _CENSUS is armed, same idiom as every other tap in this function.
+        _CENSUS.append((kb, "mixer_attn1", _at2.realize().numpy()))
+    _at2 = _mixer_apply_edges(_at2, _mix_edge)   # TM_241 / SH_241: no-op unless armed
+    h_slot = (_at2 @ bv) @ p["W_bo"] + p["W_bo_b"]
     if "mixer" in _SEVER:
         h_slot = h_slot * 0.0
     if _CENSUS is not None:
@@ -7391,7 +7756,13 @@ def breath_step(p, state, kb, ctx):
         if _A5 is not None and "alt_g" in p:   # same v0 bias as sc2
             _mx_sc = _mx_sc + ((_A5 + _A5.transpose(-2, -1))
                                * p["alt_g"].reshape(1, 1, 1)).unsqueeze(1)
-        _mx_raw = _mx_sc.softmax(-1) @ _mx_v          # PRE-gain (named)
+        _mx_at = _mx_sc.softmax(-1)
+        if _CENSUS is not None:
+            # THE SHUFFLE READ's per-head tap (ported from branch shuffletap, 2026-10-10):
+            # (B, MX_HEADS, L_TOT, L_TOT).
+            _CENSUS.append((kb, "mixer_attn_heads", _mx_at.realize().numpy()))
+        _mx_at = _mixer_apply_edges(_mx_at, None if _mix_edge is None else _mix_edge.unsqueeze(1))
+        _mx_raw = _mx_at @ _mx_v          # PRE-gain (named)
         _mx_o = _mx_raw \
             * p["fed_mx_hg"].reshape(1, MX_HEADS, 1, 1)   # ZERO gains
         _mx_inj = _mx_o.permute(0, 2, 1, 3) \
@@ -7408,6 +7779,16 @@ def breath_step(p, state, kb, ctx):
                             (_mx_raw.permute(0, 2, 1, 3)
                              .reshape(B, L_TOT, H_W) @ p["W_bo"])
                             .realize().numpy()))
+    if int(os.environ.get("ALG_MIXER_OFF", "0")):
+        # HUB_241 (2026-10-10, ledger 19:42/20:28): the mixer's OUTPUT zero-multiplied at
+        # TRAINING (the ALG_BREATH_ARM zero-mult idiom) -- every param that fed h_slot above
+        # (W_bq/W_bk/W_bv/W_bo, mh_*, fed_mx_hg, alt_g) still ran a REAL forward pass this
+        # breath and keeps a defined (possibly zero) gradient; only the CONTRIBUTION to `cur`
+        # is removed. The notebook (ALT21/station banks, removal cost -0.134, 5x the plain
+        # mixer's own -0.025) remains the only slot-to-slot road under this arm.
+        h_slot = h_slot * 0.0
+        if _CENSUS is not None:
+            _CENSUS.append((kb, "state_hslot", h_slot.realize().numpy()))
     if ALG_DEPTH:
         # THE LOOPED TRANSFORMER (ALG_DEPTH=N): the mixer above (base bilinear + the FED twin,
         # one organ family sharing bq/bk/bv/W_bo) still runs for REAL every breath — every one of
@@ -7686,7 +8067,7 @@ def breath_step(p, state, kb, ctx):
             # ||u|| == 1 still holds and r is untouched.
             _cs_u1 = _pol_u if _CENSUS is not None else None
             if "waist" not in _SEVER:      # THE WAIST READ (2026-09-24): the fair sever — content passes straight through, no squeeze
-                _pol_u = _polar_waist(_pol_u, p, state)
+                _pol_u = _polar_waist(_pol_u, p, state, kb)
             if _CENSUS is not None:
                 _CENSUS.append((kb, "sink_waist",
                                 _polar_ru_join(_pol_u - _cs_u1, _pol_r,
@@ -7709,8 +8090,16 @@ def breath_step(p, state, kb, ctx):
     if ALG_NOTEBOOK:
         _cur_w = (_clock_frame(cur, kb, -1, _rot2)
                   if ALG_CLOCK_CANON and ALG_POLAR else cur)   # canonical frame
-        _nb.append((_cur_w @ p["W_sil"]) if NB_PERSLOT
+        _nb_new = ((_cur_w @ p["W_sil"]) if NB_PERSLOT
                    else (_fed_core(_cur_w).mean(1) @ p["W_sil"]))
+        _nb.append(_nb_new)
+        if _CENSUS is not None:
+            # HUB_241's own bonus read (2026-10-10): the notebook's WRITE (new ink, this
+            # breath) alongside the READ tap already recorded above as "notebook" (`_rd`,
+            # the shelf's query-weighted readout) -- together the two halves of "the
+            # notebook's read/write census" the build spec asks HUB_241 to report. Dark
+            # unless _CENSUS is armed, the same idiom as every other tap in this function.
+            _CENSUS.append((kb, "notebook_write", _nb_new.realize().numpy()))
         if ALG_NB2 and "nb2_sil" in p and state.get("nbb") is not None:
             state["nbb"].append(cur @ p["nb2_sil"])
         if FED_SHELF and "fed_sil2" in p and state.get("nb2") is not None:
@@ -8242,6 +8631,14 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
                     _tok = _token_step(p, _tok, tokmask, sent, B, kb)
                     _bs_ctx["waist"] = _tok
                     _bs_ctx["bank"] = _make_bank(p, _tok, tokmask, B, sent=sent, chalk3=chalk3, chalk5=chalk5)
+                if ALG_SORT_FEED and "sort0_xwq" in p:    # THE SORTING ROOM'S FEEDBACK FORM: the
+                    # re-sort, then the slot step reads it — same hook shape as ALG_TOKLOOP above,
+                    # over `_bs_state["cur"]` (the slot state entering this breath, still gradient-
+                    # carrying — the two-terminal law: NOT detached, so the slots' own loss
+                    # gradient reaches them through this branch's keys/values too, once it wakes).
+                    _tok = _sort_room_feed(p, _tok, tokmask, _bs_state["cur"], B, kb)
+                    _bs_ctx["waist"] = _tok
+                    _bs_ctx["bank"] = _make_bank(p, _tok, tokmask, B, sent=sent, tree=tree, chalk3=chalk3, chalk5=chalk5)
                 breath_step(p, _bs_state, kb, _bs_ctx)
                 if conductor(kb).facts3_inject and facts3 is not None:   # THE CONDUCTOR: kb == 2
                     vst = _fact_inject(p, vst, facts3)   # consult 1's values: read from breath 3 on

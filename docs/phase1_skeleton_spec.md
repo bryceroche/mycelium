@@ -50917,3 +50917,137 @@ live; every reader under the family env; the pre-arm device smoke on every chain
 its gate log; the fixed REFUSED resolver): wt20 funnelgate (FG), wt21 sinebreath (SINE4 / ANTI4 / SEAL), wt22
 typedmixer (TM / SH / HUB), wt23 srfeed (SRF). FG goes first because it is the smallest build (the card is idle);
 the gut's order (the crystal hub, the typed mixer) follows immediately behind it. ~16 h of card; reads tomorrow.
+
+### 2026-10-10 (22:21) — THE FUNNEL GATE BUILT + GATED + MERGED + FIRED (branch funnelgate, ae5ec0db; worktree wt20): WS form A' generalizes THE WAIST SKIP from one gate per content dim tied for all breaths to two independent per-breath gate families, both sigmoid, both born at theta = -4.0 (live, never zero/one) — (a) `funnel_skip_theta[K_B, 3]` (`scripts/phase1_algebra_head.py` `_polar_funnel_skip`, ~1876-1920): a per-breath, per-band (root/branch/leaf, via `_hier_band_dims()`) gate on the bypass c - P c, WS_241's own formula coarsened from 384 gates to 3*K_B; (b) `funnel_rank_theta[K_B, POLAR_D]` (`_polar_funnel_rank`, ~1851-1875): a per-breath, per-intermediate-dim gate on the waist's own rank-128 code (u @ W_down, before W_up), r = 1 - sigmoid(theta), born ~0.982 (almost fully open). `_polar_waist` (~1784-1812) now threads the breath index kb; `build_params` allocates both tables under `if ALG_FUNNEL:` (~3854-3864, row 0 = the grounding read, allocated for shape uniformity, never read by the loop — the SAME standing note breath_emb's own row 0 carries). `ALG_FUNNEL`/`ALG_FUNNEL_INIT` added to `step_trainer.py`'s REFUSED tuple (own new line, end — the walker never threads this organ).
+
+GATE (.cache/funnel_gate.sh, wt20, CPU, the waistskip_gate.sh precedent): unset 5.2995/0.0279 bit-identical; role8 6.5535/1.1061 bit-identical; funnel 6.5377/1.1036 (finite, DIFFERS from role8 at step 0 by design). Grad probe (eager, scripts/funnel_grad_probe.py): both theta families receive a nonzero gradient on every breath 1..6 (PASS ROAD SKIP: True, PASS ROAD RANK: True; breath 0 correctly zero, not asserted). THE CENSUS AT BIRTH (scripts/funnel_knob_census.py, the arm's own registered read): every breath 1-6 reads g_skip_root/branch/leaf ~0.0180 and rank_share_closed(r<0.5) = 0.0000 / rank_r_mean ~0.9820 — both gate families sit at their birth values after only 2 training steps, as expected (the real read is the 48k arm, now running). Read smoke (scripts/funnel_read_smoke.py) PASS: 18/18. Identity smoke (scripts/funnel_read_identity_smoke.py, theta=-10000 -> g_skip=0.0 / r=1.0 EXACTLY in float32): role8 (18/18) == funnel-off (18/18), exact match.
+
+MERGE: `.cache/queue_fg.sh` (unit pc-queue-fg) waited for the card free, asserted `git status --porcelain -- scripts/` empty, merged funnelgate into gen-weights with NO CONFLICT (FG went first, as the word specified — ae5ec0db is a clean fast-forward-style merge commit), re-ran the post-merge gate against the main tree (.cache/funnel_merge_gate.log — identical numbers to the wt20 gate, confirming the merged code is live), ran preflight on .cache/rack_chain_FG.sh (PASS, 34 inputs/outputs tracked), then fired pc-fg-watch + pc-fg. scripts/resolve_refused_merge.py (the loopedtf/waistskip queues' narrow splice resolver, generalized) stands ready for a REFUSED-tuple conflict if a sibling builder merges before a later arm in tonight's queue; not exercised this time (no conflict).
+
+ONE OPERATIONAL NOTE (not a measured result): pc-fg's first attempt (22:04) was OOM-killed 38s in, during the pre-arm GPU smoke — concurrent sibling-builder processes (wt23's sort_feed_grad_probe.py ~15-18GB RSS, wt21's depth_grad_probe.py ~5GB RSS, both running at the same time on a 30GB box) exhausted system memory (MemAvailable hit 0Gi at 22:07). Not a funnel-gate defect: the pre- and post-merge CPU gates both passed cleanly before and after. Stopped pc-fg-watch, reset the failed unit, waited for MemAvailable to clear (recovered to 26Gi once the sibling processes' own pressure resolved), and re-fired pc-fg + pc-fg-watch at 22:08. THE PRE-ARM GPU SMOKE (the LT_241 precedent) then PASSED on the real device (no JIT_BATCH_SIZE workaround needed): step 0 loss=14.1556, step 1 loss=35.3544. ARM FG_241 (PMS8_241's recipe + ALG_POLAR=1 ALG_POLAR_D=128 ALG_FUNNEL=1, random init, form_mix_pm35c, 48k steps, B=8, SEED=241) started training 22:20; pc-fg / pc-fg-watch both active.
+
+BARS (registered 11:15, unchanged by this entry — not yet measured, the chain is still training): masked wild FG_241 vs PMS8_241 >= PMS8 + 0.020 OR a twin pair; THE DRIFT reported; mint not down > 0.02. THE CENSUS BY BREATH on the TRAINED 48k checkpoint (not the birth values above) is THE READ that decides: (i) skip opens at breaths 0-2 AND rank closes at 5-6 -> build NZ_241; (ii) shut everywhere -> refuted at the preference level; (iii) rank closes late only -> cosmetic. KILL: masked down, or (if verdict i) the kind margin falls. Verdict pending rack_chain_FG.sh's own completion ("FG CHAIN COMPLETE" in .cache/rack_chain_FG.log); the trainer watcher (pc-fg-watch) stands guard (kills + logs if silent > 30 min).
+
+### 2026-10-10 (22:23) — FG_241 FIRED (22:20, pc-fg; the funnel gate merged ae5ec0db, ledger ebf6609c; the first smoke at 22:04 was OOM-KILLED by a sibling builder's EAGER grad probe at 15-18 GB RSS; re-fired clean at 22:08, the device smoke passed) + THE MEMORY RULE: a from-scratch arm's trainer shows ~24 GB RSS (the STATES_NPY memmap, file-backed and reclaimable — NOT pressure; read MemAvailable, never RSS); the eager (no-JIT) grad probes of the full head are the real hogs (15-18 GB each) — ONE eager probe machine-wide at a time, never beside an arm's device smoke, and every gate reports its peak RSS (`/usr/bin/time -v`) before it may run beside a running arm; the harness reaps idle BACKGROUND SHELLS under pressure (never systemd units) — gates and probes run as `systemd-run --user` units
+Coordinator's note: the srfeed gate unit was stopped at 22:2x on a misread of RSS (the arm's memmap) — unnecessary, corrected; it re-runs under the rule. The queues' "no trainer" wait now checks DEV=PCI+AMD in each trainer's environ (a CPU gate's trainer held the card idle for 20 min); the same patch belongs in every queue script (sine / mixer / srf) before their turns.
+
+### 2026-10-11 (00:22) — FG_241 (THE FUNNEL GATE: per-breath, per-band gates on the waist skip + the 128 intermediate's rank, live from birth, from scratch vs PMS8_241) — THE LOSS DREW NO ENVELOPE: g_skip 0.019-0.025 at EVERY breath and band (birth 0.018; the largest 0.0249 at breath 3, branch), the rank gate 0.980 everywhere (share of intermediate dims closed below 0.5 = 0.000 at every breath); masked wild 0.3447 vs 0.3476 (-0.0029, paired SE 0.0083 | McNemar z +0.35; null), rows 10, open mint 0.600 (-0.05), the drift 0.80 -> 0.575 (unchanged) — VERDICT (ii): THE FUNNEL IS REFUTED AT THE PREFERENCE LEVEL; THE NAZARÉ WAIST (NZ_241) IS NOT BUILT
+
+The read that decided it (the chain's census by breath on the trained checkpoint, 32 test rows): offered a zero-cost,
+per-breath, per-band choice to let content around the crystal early and a zero-cost choice to narrow the crystal
+below 128 late, the optimizer took neither at any breath in 48k steps: it keeps the 384 -> 128 squeeze whole at
+breath 1 and at breath 6 alike. Together with WS_241 (the same choice without the breath index: shut) and CS_241
+(512 -> 128 costs), the waist's shape is now measured from three sides: 192 content planes through 128 dims, every
+breath, no envelope. The Nazaré picture (wide early, crystallize late) is what the kitchen's law predicted the loss
+would NOT want on the state — fewer wet dishes is a property of the DECODE (the rack's commits, the solver's forced
+moves), not of the state's rank. Hills 11/12 read: the 512/128 bottleneck is key as a CONSTANT; the "diffusion
+compiler" sharpens the same resolution each breath (same job, sharper), not a shrinking one. Re-admission trigger
+(the table): a body whose first-look binding is right (then late crystallization might protect something worth
+protecting); until then no width schedule on the loop. The sine breath's k0 (the crystal as a MEETING ROOM — slot
+attention inside the 128, not a change of its width) is untouched by this verdict and is next on the card.
+
+### 2026-10-10 (02:39) — THE SINE BREATH BUILT + GATED + QUEUED + FIRED (SINE4_241 ->
+ANTI4_241 -> SEAL_241, worktree wt21, branch sinebreath, merged 63513695):
+ALG_DEPTH=4's four blocks (scripts/phase1_algebra_head.py, `_depth_stack_sine`, called from
+breath_step alongside the unchanged `_depth_stack`; params in build_params right beside
+ALG_DEPTH's own block) now run at PER-BLOCK WIDTHS over the 384 content planes instead of the
+full H_W=512 state when ALG_SINE=sine|anti|flat is set (unset = bit-identical, the existing
+_depth_stack path untouched) -- a log-sine schedule fixed every breath: SINE4 [128, 224, 384,
+224], ANTI4 [384, 224, 128, 224] (half a period out -- trough and peak trade places), FLAT4
+[384]*4 (built, not armed by any registered arm). The 128-d clock steers self-attention Q/K
+only (dp{i}_cq/ck, new) and is NEVER written -- every block's output scatters back through
+`_paircmp_content_sel()`'s content selector (the same door direction_probe.py/welford_atlas.py/
+the pairwise comparator/the self-match term read), a Matryoshka whole-head PREFIX of the
+content dims for non-trough blocks. THE TROUGH BLOCK (whichever index is width 128 this arm)
+is the one new organ: it projects through THE POLAR WAIST'S OWN W_down/W_up
+(p["polar_wd"]/p["polar_wu"], cached under the SAME state["polar_wd_eff"]/["polar_wu_eff"] keys
+_polar_waist() itself fills later this breath -- one scatter serves both) instead of a
+content-dim prefix, so slots AND the token bank's own cross-attention keys/values meet in the
+crystal's own 128-d coordinates -- THE CRYSTAL AS THE MEETING ROOM, this session's one
+registered correction to the Opus sketch (scripts/sine_breath.py): our `cur` never narrows
+between breaths the way the standalone sketch's own toy state does, so no Resample/lift_in/
+squeeze organs were ported, only the trough's own waist projection. ALG_SINE_SKIP=peak
+(default, lawful) carries block 1's own post-block state around block 2 into block 3's input,
+REGARDLESS of which block is the trough (so under ANTI4 this is in fact the textbook
+skip-around-the-bottleneck shape); =boundary (THE SEAL PLACEBO, SEAL_241 only) instead carries
+the PREVIOUS breath's own final output across THIS breath's trough, additively, into the block
+right after it (state["sine_boundary_carry"]) -- the residual-seal law's own bypass. ReZero at
+birth (every block's wo/xwo/ffn_w2 + biases zero): THE IDENTITY PROOF (scripts/
+depth_identity_probe.py + the new scripts/sine_identity_diff.py, forward()-only, no TinyJit)
+confirms depth4/sine4/anti4/seal are bit-identical at step 0 (maxdiff=0.0 for every pair against
+depth4), proving the state at birth does not depend on width or schedule, only on ReZero. THE
+GRAD PROBE (scripts/depth_grad_probe.py, reused unmodified -- the new dp{i}_* shapes/names match
+the existing convention exactly) confirms a live road and the ReZero signature (only
+wo/xwo/ffn_w2 + biases nonzero at step 0; the new cq/ck sit upstream of the zero wo exactly like
+wq/wk/wv) for all three arms. THE SEAL RANK (scripts/sine_seal_rank.py, a numeric Jacobian-rank
+port of the sketch's own check to `_depth_stack_sine` on a small synthetic body -- see its
+docstring for the tractability simplification) and THE MECHANISM READ (scripts/
+sine_shuffle_read.py, the shuffle read's own grouping-factor method re-pointed at this build's
+NEW `depth_attn_k{i}` per-block attention taps) are both wired into each arm's own chain
+(.cache/rack_chain_SINE4.sh/ANTI4.sh/SEAL.sh, derived from .cache/rack_chain_LT.sh: the same
+pre-arm GPU smoke / knob census / first-look reads / polarity read, PLUS the new mechanism read
+and an informational pairing vs LT_241 and, for SEAL, vs SINE4_241 directly).
+
+ALG_SINE / ALG_SINE_SKIP added to scripts/step_trainer.py's REFUSED tuple (own line, end of
+list): the walker never calls breath_step/_depth_stack_sine at all (the ALG_DEPTH precedent).
+
+BARS (pinned, this registration): masked wild SINE4_241/ANTI4_241/SEAL_241 vs PMS8_241 >= PMS8 +
+0.015 OR a twin pair; rows; mint not down > 0.02; MECHANISM: block 0's (SINE4's own trough)
+owner ratio >= 1.5 (kill: flat across widths = the crystal carries no ownership); SINE4 vs ANTI4
+decides shape vs depth; SEAL's own prediction (informational, read alongside its bar): removing
+the crystal's gatekeeping on the boundary path should cost ~0 vs SINE4_241 directly.
+
+FIRED: .cache/queue_sine.sh waited on "FG CHAIN COMPLETE" in .cache/rack_chain_FG.log, merged
+branch sinebreath (63513695; a REFUSED-tuple conflict against any
+sibling worktree's own addition, if any, resolved mechanically by scripts/resolve_refused_merge.py),
+ran the post-merge gate (identical table to wt21's own, above), preflight PASSED on
+rack_chain_SINE4.sh, fired pc-sine4-watch + pc-sine4 (02:39) -- SINE4_241 is running now,
+against PMS8_241; THIS SAME SCRIPT waits for "SINE4 CHAIN COMPLETE", preflights and fires
+ANTI4_241, waits for "ANTI4 CHAIN COMPLETE", preflights and fires SEAL_241 -- one arm at a time,
+each with its own watcher and its own preflight run just before it fires (the informational
+pairings vs LT_241/SINE4_241 are only real inputs once the earlier arm has actually run) --
+see .cache/queue_sine.log for the live sequence.
+
+Artifacts: scripts/phase1_algebra_head.py (`_depth_stack_sine`, build_params, breath_step),
+scripts/sine_seal_rank.py, scripts/sine_identity_diff.py, scripts/sine_shuffle_read.py,
+scripts/step_trainer.py; .cache/sine_gate.sh, .cache/rack_chain_SINE4.sh/ANTI4.sh/SEAL.sh,
+.cache/queue_sine.sh; .cache/sine_gate.log, .cache/sine_merge_gate.log.
+
+### 2026-10-11 (02:5x) — CORRECTION: THE SINE BREATH's own param count, stated honestly. The
+build entry above did not quote a number; the gate's own grad probe does: **7,051,328 params**
+for SINE4/ANTI4 (both schedules are the same four widths, just reordered — 128+224+384+224),
+measured by scripts/depth_grad_probe.py (reused unmodified) against this registration's own
+"~1.6M" estimate. THE DIFFERENCE: the 1.6M figure came from scripts/sine_breath.py's standalone
+sketch, whose SlotMHA block is self-attention ONLY (qkvo at the block's own width, no FFN, no
+cross-attention, no clock-steering matrices) — four such blocks at widths 128/224/384/224 sum
+to roughly that range. THIS build's own four blocks, to stay the single source of truth
+breath_step already has for ALG_DEPTH's shape ("breaths never specialize, heads do" — every
+existing dp{i}_* consumer must keep working unmodified), carry the SAME organs plain
+`_depth_stack` does per block: self-attention (qkvo), cross-attention to the token bank
+(xqkvo), and an FFN (w1/w2, hidden 2048) — plus two NEW (H_W, w) clock-steering matrices
+(dp{i}_cq/ck) the sketch never needed (its clock was already compact at 128-d; ours lives
+inside the 512-d state and must be read through a (512, w) matrix instead of a (128, w) one).
+The FFN alone accounts for most of the gap (2 * w * 2048 params per block, dwarfing the
+attention matrices at these widths); cross-attention roughly doubles the self-attention cost.
+7.05M is still well under plain ALG_DEPTH's ~12.9M (the registration's own "expected lower"
+holds), just not as low as the sketch's bare self-attention-only shape would have been.
+
+### 2026-10-11 (08:14) — CHAPTER SYNC: main fast-forwarded to gen-weights (5abaea19; 86 commits) and pushed — the remote main had been 86 commits behind (an outside reader of the remote saw the 10-09 morning state); the sync was done by ref (git branch -f + push), never by checking main out in the main checkout, because live queues merge there. Note for outside readers: the content width IS 384 (192 content planes x 2) beside the 128-d clock band; the sine sketch's 384 matched the code.
+
+### 2026-10-11 (08:52) — THE SINE ARMS' SKIP BUG (found by Opus's sine_birth_check.py, reproduced on CPU: scripts/sine_birth_check.py): `_depth_stack_sine`'s residual stream is already 512 wide and carries block 1's state around block 2, so the "peak skip" (ALG_SINE_SKIP=peak, the default SINE4 / ANTI4 ran) ADDS IT A SECOND TIME — at ReZero birth the stack returns exactly 2*cur at every breath (||out||/||cur|| = 2.0000; out == 2*cur: True); `none` is the exact identity; `boundary` (SEAL) is identity at breath 1 then 2*cur. Downstream: the breath update's decay term is lost (cur + g*(h_tok + Delta) instead of cur + g*(h_tok + h_slot - cur)), blocks 0-1 count twice, the clock dims are doubled before block 3 — the gate's "pre-update dump diff vs depth4 = 0.0" cannot have exercised this path (the builder's identity script ran under an env where the stack did not double; a gate rule follows). ACTIONS: pc-queue-sine STOPPED before ANTI4 (SINE4's chain left to finish its reads); queue_mixer re-pointed to SINE4's done mark (TM -> SH -> HUB take the card next, then SRF); SINE4_241's verdict is TAGGED CONFOUNDED vs PMS8 / LT (a changed update rule rides along) — its mechanism read (k0's owner ratio) still stands as a read on the crystal; SINE4 vs ANTI4 would have been matched (same defect) but ANTI4 is not run on the defective form. THE FIX: ALG_SINE_SKIP=none is the lawful form in a full-width residual stream (the residual IS the skip); the clean seal placebo = SINE4 with the end-of-breath squeeze severed at training (the existing `waist` sever); the FFN sized 4x each block's width (512 / 896 / 1536 / 896 instead of 2048 everywhere: the 128-d trough currently expands 16x inside itself — the ratio limit the gut asked for was not in the build; ~-1.8M params). GATE RULE: every stack-replacing organ runs the birth check (out == cur bitwise at every breath under the ARM's own env) as a named gate step; "identity at birth" is asserted by the arm's env, never a probe's. Re-fire: SINE4 / ANTI4 (none) + the waist-sever placebo behind SRF_241, after the fixed gate.
+### 2026-10-11 (08:52) — REGISTERED (Opus, with Bryce's axes brainstorm): THE MINIMALITY CHECK — a correct graph needs EVERY fact to force its answer; a slot bound to a stale twin skips a link that becomes dead weight (drop it and the query is still forced to the same wrong value); the existing uniqueness machinery tests it (remove one fact, ban the answer, ask unsolvable). On a synthetic chain: gold minimal; a TIME twin NOT minimal (and it names the skipped link); an argument from another sentence NOT minimal; direction / value / op errors minimal (invisible to it); gold + a distractor number NOT minimal (a false refusal — R1 prices it). The twin problem SPLITS: time twins refutable from structure, role/direction errors not. Reads (scripts/picker/minimality.py, zero GPU, pinned): R1 the gold-minimal rate (diet slice then wild; >= 0.95 = a hard filter, 0.85-0.95 = an angle, below = wrong); R2 among wrong solved+unique top-1 graphs the non-minimal share >= 0.25 (kill < 0.10), among right ones <= 0.05; R3 the minimal-first judge vs the consistency judge (its 18/311 reproduced): rows >= 24 with regressions <= 2. If R2 clears, dead facts are the per-slot HARD signal the six alternations lacked (today UNSAT is the only solver signal). Also Opus's falsifiable read on the loop: slots whose decode changes after breath 2 ~ zero on every arm tonight (none puts the solver inside the loop) — to be counted on the dumps.
+
+### 2026-10-11 (08:54) — SINE4_241 (the sine breath, peak skip — TAGGED CONFOUNDED: the skip bug doubles the state at birth and drops the update's decay term; vs PMS8 / LT the comparison mixes in a changed update rule) — the slot: 0.3486 (+0.0010 vs PMS8_241, paired SE 0.0092 | McNemar z -0.11; -0.0024 vs LT_241: null, bar +0.015 missed), rows 15, open mint 0.673, args 0.438 flat, inverse res 0.312; knob census PASS (every block live); THE MECHANISM READ (per-block owner grouping from the depth_attn taps, the shuffle read's method): k0 (the crystal, 128) 1.33 > k3 (224) 1.13 ~ k1 (224) 1.13 > k2 (the peak, 384) 0.90 — NOT flat across widths: narrower blocks group slots by owner MORE, and the peak groups by nothing (0.90 = the plain mixer's 0.87-0.91); the registered bar (k0 >= 1.5) is MISSED, the kill ("flat = cosmetic") does NOT fire
+
+Reading (under the confound): the one new organ, slots conferring inside the crystal, does something the full-width
+mixer does not — its attention is 1.33x more same-owner than different-owner, monotone in the width (128 > 224 >
+384), with the peak at chance. That is the sine sketch's prediction in direction (k0 beats the peak) short of its
+magnitude (1.5), on a body whose residual carried a doubled state. It moved nothing on the slot (every token-side
+body already reaches 1.27-1.32 in its plain mixer with no gain on the binding — the owner grouping is necessary-
+looking but has not been sufficient anywhere). THE RE-FIRE (behind SRF, after the fixed gate): SINE4 / ANTI4 with
+ALG_SINE_SKIP=none and the FFN at 4x each width, the placebo = the squeeze severed at training; the mechanism read
+repeats on the clean body — if k0's ratio holds or rises without the doubled skip, the crystal-as-meeting-room is a
+real mechanism looking for a reason to matter (the twin supervision); if it falls to ~1.0, it was the skip's
+artifact. Rows 15 and mint 0.673 are within the family's noise. The card passes to the mixer queue (TM -> SH -> HUB).
+
+### 2026-10-11 (08:59) — THE THIRD WORKTREE-AUTOSTASH ABORT (pc-queue-mixer4: 'merge gen-weights into typedmixer in wt22' -> "'.cache/dirbit_gate.sh' is beyond a symbolic link / stash failed"): typedmixer merged by hand in the main checkout (b2f23e1b; REFUSED union by the house tool) and the queue resumed from its post-merge gate (pc-queue-mixer-resume); srfeed PRE-MERGED the same way now (8fa2ad36) so pc-queue-srf's worktree step finds gen-weights already an ancestor and skips it. RULE (third statement, now mechanical): a queue script contains NO git command that runs inside a worktree; the builder merges gen-weights into its branch BEFORE arming (with -c merge.autostash=false, resolving by hand), and the queue's only merge is 'git merge --no-edit <branch>' in the main checkout.
