@@ -3413,21 +3413,51 @@ def build_params(seed=0):
         # an unset ALG_DEPTH never perturbs any other organ's rng draws from the base `rng`
         # stream (the ALG_SORT/ALG_TOKLOOP/ALG_SHELF precedent).
         _rDP = np.random.RandomState(seed + 16180)
-        for _i in range(ALG_DEPTH):
-            for _nm in ("wq", "wk", "wv", "xwq", "xwk", "xwv"):
-                p[f"dp{_i}_{_nm}"] = t((_rDP.randn(H_W, H_W) / math.sqrt(H_W)).astype(np.float32))
-                p[f"dp{_i}_{_nm}_b"] = t(np.zeros(H_W, np.float32))
-            p[f"dp{_i}_wo"] = t(np.zeros((H_W, H_W), np.float32))        # ZERO door (ReZero)
-            p[f"dp{_i}_wo_b"] = t(np.zeros(H_W, np.float32))
-            p[f"dp{_i}_xwo"] = t(np.zeros((H_W, H_W), np.float32))       # ZERO door (ReZero)
-            p[f"dp{_i}_xwo_b"] = t(np.zeros(H_W, np.float32))
-            p[f"dp{_i}_ln1_g"] = t(np.ones(H_W, np.float32)); p[f"dp{_i}_ln1_b"] = t(np.zeros(H_W, np.float32))
-            p[f"dp{_i}_ln2_g"] = t(np.ones(H_W, np.float32)); p[f"dp{_i}_ln2_b"] = t(np.zeros(H_W, np.float32))
-            p[f"dp{_i}_ln3_g"] = t(np.ones(H_W, np.float32)); p[f"dp{_i}_ln3_b"] = t(np.zeros(H_W, np.float32))
-            p[f"dp{_i}_ffn_w1"] = t((_rDP.randn(H_W, DEPTH_FFN_HID) / math.sqrt(H_W)).astype(np.float32))
-            p[f"dp{_i}_ffn_b1"] = t(np.zeros(DEPTH_FFN_HID, np.float32))
-            p[f"dp{_i}_ffn_w2"] = t(np.zeros((DEPTH_FFN_HID, H_W), np.float32))   # ZERO door (ReZero)
-            p[f"dp{_i}_ffn_b2"] = t(np.zeros(H_W, np.float32))
+        if ALG_SINE:
+            # THE SINE BREATH: the SAME dp{i}_* names (so depth_grad_probe.py / depth_knob_
+            # census.py / depth_identity_probe.py all run unmodified against this arm too),
+            # each block sized to ITS OWN width this run (_SINE_WIDTHS[i], fixed every breath —
+            # no cross-breath width change, so no shared max-width slicing is needed within a
+            # single run) instead of H_W. Two NEW per-block matrices (cq/ck) steer self-
+            # attention Q/K from the clock block alone (H_W-wide input — _polar_sink's g_k mask
+            # already zeros their content rows at every forward, so these never see content);
+            # they are small-random, not zero, but sit upstream of the zero wo exactly like
+            # wq/wk/wv — the ReZero signature (depth_grad_probe's EXPECT_NONZERO_AT_STEP0) is
+            # unchanged.
+            for _i in range(ALG_DEPTH):
+                _w = _SINE_WIDTHS[_i]
+                for _nm in ("wq", "wk", "wv", "xwq", "xwk", "xwv"):
+                    p[f"dp{_i}_{_nm}"] = t((_rDP.randn(_w, _w) / math.sqrt(_w)).astype(np.float32))
+                    p[f"dp{_i}_{_nm}_b"] = t(np.zeros(_w, np.float32))
+                p[f"dp{_i}_wo"] = t(np.zeros((_w, _w), np.float32))        # ZERO door (ReZero)
+                p[f"dp{_i}_wo_b"] = t(np.zeros(_w, np.float32))
+                p[f"dp{_i}_xwo"] = t(np.zeros((_w, _w), np.float32))       # ZERO door (ReZero)
+                p[f"dp{_i}_xwo_b"] = t(np.zeros(_w, np.float32))
+                p[f"dp{_i}_ln1_g"] = t(np.ones(_w, np.float32)); p[f"dp{_i}_ln1_b"] = t(np.zeros(_w, np.float32))
+                p[f"dp{_i}_ln2_g"] = t(np.ones(_w, np.float32)); p[f"dp{_i}_ln2_b"] = t(np.zeros(_w, np.float32))
+                p[f"dp{_i}_ln3_g"] = t(np.ones(_w, np.float32)); p[f"dp{_i}_ln3_b"] = t(np.zeros(_w, np.float32))
+                p[f"dp{_i}_ffn_w1"] = t((_rDP.randn(_w, DEPTH_FFN_HID) / math.sqrt(_w)).astype(np.float32))
+                p[f"dp{_i}_ffn_b1"] = t(np.zeros(DEPTH_FFN_HID, np.float32))
+                p[f"dp{_i}_ffn_w2"] = t(np.zeros((DEPTH_FFN_HID, _w), np.float32))   # ZERO door (ReZero)
+                p[f"dp{_i}_ffn_b2"] = t(np.zeros(_w, np.float32))
+                p[f"dp{_i}_cq"] = t((_rDP.randn(H_W, _w) / math.sqrt(H_W)).astype(np.float32) * 0.5)
+                p[f"dp{_i}_ck"] = t((_rDP.randn(H_W, _w) / math.sqrt(H_W)).astype(np.float32) * 0.5)
+        else:
+            for _i in range(ALG_DEPTH):
+                for _nm in ("wq", "wk", "wv", "xwq", "xwk", "xwv"):
+                    p[f"dp{_i}_{_nm}"] = t((_rDP.randn(H_W, H_W) / math.sqrt(H_W)).astype(np.float32))
+                    p[f"dp{_i}_{_nm}_b"] = t(np.zeros(H_W, np.float32))
+                p[f"dp{_i}_wo"] = t(np.zeros((H_W, H_W), np.float32))        # ZERO door (ReZero)
+                p[f"dp{_i}_wo_b"] = t(np.zeros(H_W, np.float32))
+                p[f"dp{_i}_xwo"] = t(np.zeros((H_W, H_W), np.float32))       # ZERO door (ReZero)
+                p[f"dp{_i}_xwo_b"] = t(np.zeros(H_W, np.float32))
+                p[f"dp{_i}_ln1_g"] = t(np.ones(H_W, np.float32)); p[f"dp{_i}_ln1_b"] = t(np.zeros(H_W, np.float32))
+                p[f"dp{_i}_ln2_g"] = t(np.ones(H_W, np.float32)); p[f"dp{_i}_ln2_b"] = t(np.zeros(H_W, np.float32))
+                p[f"dp{_i}_ln3_g"] = t(np.ones(H_W, np.float32)); p[f"dp{_i}_ln3_b"] = t(np.zeros(H_W, np.float32))
+                p[f"dp{_i}_ffn_w1"] = t((_rDP.randn(H_W, DEPTH_FFN_HID) / math.sqrt(H_W)).astype(np.float32))
+                p[f"dp{_i}_ffn_b1"] = t(np.zeros(DEPTH_FFN_HID, np.float32))
+                p[f"dp{_i}_ffn_w2"] = t(np.zeros((DEPTH_FFN_HID, H_W), np.float32))   # ZERO door (ReZero)
+                p[f"dp{_i}_ffn_b2"] = t(np.zeros(H_W, np.float32))
     if ALG_HUD:
         # THE TOKEN HUD (2026-09-21): 5 small embedding tables, one per
         # feature (kind/sentence/position/value/repeated); N(0, 0.02) —
@@ -4455,6 +4485,48 @@ ALG_DEPTH = int(os.environ.get("ALG_DEPTH", "0"))
 ALG_DEPTH_STUB = int(os.environ.get("ALG_DEPTH_STUB", "0"))   # diagnostic only — see depth_identity_probe.py
 DEPTH_FFN_HID = 2048     # fixed (not ALG_HW-relative), matching the sorting room's own SORT_FFN_HID convention
 
+# ===========================================================================
+# THE SINE BREATH (2026-10-10, registered; scripts/sine_breath.py is the Opus sketch this
+# ports). ALG_DEPTH's four blocks (self-attn over slots / cross-attn slots->tokens / FFN) run
+# at PER-BLOCK WIDTHS over the 384 content planes instead of the full H_W=512 state — a
+# log-sine schedule in width, fixed every breath (unlike the sketch's own NAZARE arm, not built
+# here): SINE4 = [128, 224, 384, 224], ANTI4 = [384, 224, 128, 224] (the same four widths, half
+# a period out — trough and peak trade places; the two off-trough/off-peak blocks, index 1 and
+# 3, are ALWAYS 224 in both schedules — the U-Net's own equal-width skip pairing), FLAT4 =
+# [384, 384, 384, 384] (no narrowing at all). The 128-d clock (_polar_sink's clock block) rides
+# every block's self-attention Q/K as an additive steering term and is NEVER written (every
+# block's output is scattered back through the content selector alone — see
+# _depth_stack_sine's own docstring for the exact mechanism and the one departure from the
+# sketch: THE CRYSTAL AS THE MEETING ROOM correction (ledger 2026-10-10) reads the sketch's
+# always-128-wide cross-breath "crystal" as THIS head's EXISTING polar-waist 128-d subspace,
+# used transiently WITHIN a breath by the trough block only — our own `cur` never narrows
+# between breaths the way the standalone sketch's toy state does, so no Resample/lift_in/
+# squeeze organs are ported; only the trough's own waist projection is new.
+# ALG_SINE_SKIP: "peak" (default, the lawful U-Net skip) carries block 1's own output around
+# block 2 into block 3's input, REGARDLESS of which block is the trough that breath (so under
+# ANTI4 — trough at index 2 — "peak" is in fact the textbook skip-around-the-bottleneck shape);
+# "none" skips nothing; "boundary" (THE SEAL PLACEBO) instead carries the PREVIOUS breath's own
+# final (index-3) output across THIS breath's trough block, additively, into the block right
+# after it — the residual-seal law's own bypass, predicted to cost ~0 (removing the crystal's
+# gatekeeping on that one path should not matter if the crystal carries nothing the rest of the
+# state doesn't already carry forward on its own).
+# Unset (ALG_SINE="") = bit-identical to plain ALG_DEPTH (today's _depth_stack, untouched).
+# ===========================================================================
+ALG_SINE = os.environ.get("ALG_SINE", "")
+ALG_SINE_SKIP = os.environ.get("ALG_SINE_SKIP", "peak")
+_SINE_SCHEDULES = {"sine": (128, 224, 384, 224), "anti": (384, 224, 128, 224), "flat": (384, 384, 384, 384)}
+assert ALG_SINE in ("", "sine", "anti", "flat"), f"ALG_SINE must be one of '', sine, anti, flat (got {ALG_SINE!r})"
+assert ALG_SINE_SKIP in ("peak", "none", "boundary"), ALG_SINE_SKIP
+assert not ALG_SINE or ALG_DEPTH == 4, "ALG_SINE requires ALG_DEPTH=4 (exactly four depth blocks — the sine schedules are 4 wide)"
+assert not ALG_SINE or (ALG_POLAR and POLAR_D == 128), \
+    "ALG_SINE's trough block needs the polar waist at d=128 (ALG_POLAR=1 ALG_POLAR_D=128) — the crystal as the meeting room"
+_SINE_HEAD_DIM = 32      # independent of this head's own N_HEADS/H_W split (8 heads @ 64d) — the sketch's own quantum
+_SINE_WIDTHS = _SINE_SCHEDULES.get(ALG_SINE)
+_SINE_TROUGH_I = _SINE_WIDTHS.index(128) if (_SINE_WIDTHS and 128 in _SINE_WIDTHS) else None
+if _SINE_WIDTHS is not None:
+    assert all(w % _SINE_HEAD_DIM == 0 for w in _SINE_WIDTHS), _SINE_WIDTHS
+    assert _SINE_WIDTHS[1] == _SINE_WIDTHS[3], "the U-Net skip pairs equal widths (block 1 <-> block 3)"
+
 
 def _depth_stack(p, cur, slot_mask, waist, tokmask, B, kb=None):
     """THE LOOPED TRANSFORMER (ALG_DEPTH=N): N pre-norm transformer blocks over the slot state
@@ -4513,6 +4585,139 @@ def _depth_stack(p, cur, slot_mask, waist, tokmask, B, kb=None):
             # recorded here, (kb, name, array) — the SAME grammar as every other organ's tap).
             _CENSUS.append((kb, f"depth{i}_in", _x0.realize().numpy()))
             _CENSUS.append((kb, f"depth{i}_out", x.realize().numpy()))
+    return x
+
+
+def _depth_stack_sine(p, cur, slot_mask, waist, tokmask, B, kb, state):
+    """ALG_SINE — THE SINE BREATH (2026-10-10, registered; scripts/sine_breath.py is the Opus
+    sketch this ports; see the module comment above ALG_SINE's definition for the schedules and
+    THE CRYSTAL AS THE MEETING ROOM correction). Same role as _depth_stack (breath_step's only
+    slot-to-slot road this breath, by value — see the module comment above its own call site),
+    same dp{i}_* parameter names (so every existing depth_* probe script runs unmodified), but
+    each of the ALG_DEPTH=4 blocks runs {self-attn over slots, cross-attn slots->tokens, FFN}
+    at ITS OWN width over the 384 CONTENT planes instead of the full H_W state.
+
+    CONTENT DIM SELECTION: `_paircmp_content_sel()` — the SAME 0/1 door direction_probe.py /
+    welford_atlas.py / the pairwise comparator / the self-match term all read, content dims
+    sorted by raw index (plane order). A non-trough block of width w takes the FIRST w columns
+    of that selector (a whole-head Matryoshka prefix, since every scheduled width is a multiple
+    of 32) — `down = csel[:, :w]`, `up = down.T`. Our residual stream `x` (== `cur`) stays at
+    the FULL H_W width throughout (unlike the standalone sketch's own narrowing `h`): a block
+    only reads/writes the content dims its own width covers through this scatter, exactly like
+    any other partial-width organ in this file (the hierarchical bands' own masks); what a
+    narrow block does not touch simply rides through this block unmodified on the residual.
+
+    THE TROUGH BLOCK (the one index with width 128 this arm; ANTI4 puts it at index 2, SINE4 at
+    index 0) is the one new organ: `down`/`up` are instead the polar waist's OWN effective
+    scatter matrices (`state["polar_wd_eff"]`/`["polar_wu_eff"]`, built here on first use and
+    cached under the IDENTICAL keys `_polar_waist()` itself fills later this breath — one
+    scatter serves both organs, and both the self-attention's own slots AND the cross-
+    attention's token bank are projected into THIS SAME 128-d space before attending — the
+    crystal as the meeting room). `cur @ wd_eff` already reads as content-only (wd_eff's clock
+    rows are exactly zero, the `_polar_sink` convention _polar_waist relies on too), and
+    `lat @ wu_eff` lifts back with exact zeros on every clock dim.
+
+    THE CLOCK steers self-attention Q/K only, on EVERY block (trough included): `clock_full =
+    cur * g_k` (zero on content, the clock untouched at its own H_W positions) times a per-block
+    (H_W, w) matrix (`dp{i}_cq`/`dp{i}_ck`) added into q/k. It is never part of v, the cross-
+    attention, or the FFN, and the scatter-back (`@ up`) never touches a clock dim either way —
+    so every clock dim stays bitwise exact through this whole stack, by construction, the same
+    guarantee `_depth_stack` and `_polar_waist` both carry.
+
+    ReZero at birth: wo/xwo/ffn_w2 (+biases) are zero for every block regardless of width or
+    which block is the trough, so this function returns `cur` bit-for-bit unchanged at init —
+    the SAME identity instrument depth_identity_probe.py uses for plain ALG_DEPTH.
+
+    ALG_SINE_SKIP: "peak" (default) carries block 1's own post-block state around block 2 into
+    block 3's input (REGARDLESS of which block is the trough — the U-Net's own equal-width skip
+    pairing, index 1 <-> 3, holds for both schedules); "boundary" (THE SEAL PLACEBO) instead
+    carries `state["sine_boundary_carry"]` — the PREVIOUS breath's own final (index-3) output —
+    across THIS breath's trough block, additively, into the block right after it; "none" skips
+    nothing. `state["sine_boundary_carry"]` is written at the end of every call (this breath's
+    own final output) regardless of the skip mode, so switching mid-chain would pick it up —
+    though no arm does that."""
+    if ALG_DEPTH_STUB:
+        return cur
+    global _CENSUS
+    try: _CENSUS
+    except NameError: _CENSUS = None
+    widths = _SINE_WIDTHS
+    trough_i = _SINE_TROUGH_I
+    csel, _csel_n = _paircmp_content_sel()               # (H_W, 384): content dims, raw-index order
+    assert _csel_n == 384, \
+        f"ALG_SINE's widths assume 384 content dims (got {_csel_n}) — not ported for ALG_CLOCK_SEP"
+    _, _, _gc, _gk, _ = _polar_sink()
+    clock_full = cur * _gk                               # zero on content, clock untouched at its own dims
+
+    wd_eff = state.get("polar_wd_eff")
+    if wd_eff is None:
+        _pwd, _pwu = p["polar_wd"], p["polar_wu"]
+        if ALG_HIER_WAIST:
+            _bd, _bu = _hier_waist_blocks(); _pwd = _pwd * _bd; _pwu = _pwu * _bu
+        wd_eff = csel @ _pwd                             # (H_W, POLAR_D) — the SAME cache _polar_waist() fills
+        state["polar_wd_eff"] = wd_eff
+        state["polar_wu_eff"] = _pwu @ csel.transpose(-2, -1)
+    wu_eff = state["polar_wu_eff"]
+
+    x = cur
+    L = int(x.shape[1]); T = int(waist.shape[1])
+    _sm = ((1.0 - slot_mask) * -1e4) if slot_mask is not None else None
+    _tm = tokmask.reshape(B, 1, 1, T)
+    boundary_in = state.get("sine_boundary_carry") if ALG_SINE_SKIP == "boundary" else None
+    rise = None   # ALG_SINE_SKIP == "peak": block 1's own post-block state
+    for i in range(ALG_DEPTH):
+        w = widths[i]
+        hd = _SINE_HEAD_DIM
+        nh = w // hd
+        if i == trough_i:
+            down, up = wd_eff, wu_eff
+        else:
+            down = csel[:, :w]
+            up = down.transpose(-2, -1)
+        if ALG_SINE_SKIP == "peak" and i == 3 and rise is not None:
+            x = x + rise                                 # THE LAWFUL SKIP: block 1's state rides around block 2
+        _x0 = x
+        # --- self-attention over the L_TOT slots (slot_mask respected; clock steers Q/K) ---
+        _ln1 = (x @ down).layernorm(eps=1e-5) * p[f"dp{i}_ln1_g"] + p[f"dp{i}_ln1_b"]
+        _cq = clock_full @ p[f"dp{i}_cq"]
+        _ck = clock_full @ p[f"dp{i}_ck"]
+        q = (_ln1 @ p[f"dp{i}_wq"] + p[f"dp{i}_wq_b"] + _cq).reshape(B, L, nh, hd).permute(0, 2, 1, 3)
+        k = (_ln1 @ p[f"dp{i}_wk"] + p[f"dp{i}_wk_b"] + _ck).reshape(B, L, nh, hd).permute(0, 2, 1, 3)
+        v = (_ln1 @ p[f"dp{i}_wv"] + p[f"dp{i}_wv_b"]).reshape(B, L, nh, hd).permute(0, 2, 1, 3)
+        sc = (q @ k.transpose(-2, -1) / math.sqrt(hd)).clip(-1e4, 1e4)
+        if _sm is not None:
+            sc = sc + _sm.reshape(B, 1, L, L)
+        at = sc.softmax(-1)
+        if _CENSUS is not None:
+            # THE MECHANISM READ (shuffle_read.py's own tap grammar, ported for the depth
+            # blocks): each block's own slot self-attention weights, (B, nh, L, L).
+            _CENSUS.append((kb, f"depth_attn_k{i}", at.realize().numpy()))
+        o = (at @ v).permute(0, 2, 1, 3).reshape(B, L, w)
+        o = o @ p[f"dp{i}_wo"] + p[f"dp{i}_wo_b"]
+        x = x + o @ up
+        # --- cross-attention: slots (queries) over the bank's own token tensor (keys/values) ---
+        _ln2 = (x @ down).layernorm(eps=1e-5) * p[f"dp{i}_ln2_g"] + p[f"dp{i}_ln2_b"]
+        _wtok = waist @ down
+        qx = (_ln2 @ p[f"dp{i}_xwq"] + p[f"dp{i}_xwq_b"]).reshape(B, L, nh, hd).permute(0, 2, 1, 3)
+        kx = (_wtok @ p[f"dp{i}_xwk"] + p[f"dp{i}_xwk_b"]).reshape(B, T, nh, hd).permute(0, 2, 1, 3)
+        vx = (_wtok @ p[f"dp{i}_xwv"] + p[f"dp{i}_xwv_b"]).reshape(B, T, nh, hd).permute(0, 2, 1, 3)
+        scx = (qx @ kx.transpose(-2, -1) / math.sqrt(hd)).clip(-1e4, 1e4) + (1.0 - _tm) * -1e4
+        atx = scx.softmax(-1)
+        ox = (atx @ vx).permute(0, 2, 1, 3).reshape(B, L, w)
+        ox = ox @ p[f"dp{i}_xwo"] + p[f"dp{i}_xwo_b"]
+        x = x + ox @ up
+        # --- FFN ---
+        _ln3 = (x @ down).layernorm(eps=1e-5) * p[f"dp{i}_ln3_g"] + p[f"dp{i}_ln3_b"]
+        f = (_ln3 @ p[f"dp{i}_ffn_w1"] + p[f"dp{i}_ffn_b1"]).gelu() @ p[f"dp{i}_ffn_w2"] + p[f"dp{i}_ffn_b2"]
+        x = x + f @ up
+        if ALG_SINE_SKIP == "boundary" and i == trough_i and boundary_in is not None:
+            x = x + boundary_in                          # THE SEAL PLACEBO: bypasses THIS breath's own trough
+        if ALG_SINE_SKIP == "peak" and i == 1:
+            rise = x
+        if _CENSUS is not None:
+            _CENSUS.append((kb, f"depth{i}_in", _x0.realize().numpy()))
+            _CENSUS.append((kb, f"depth{i}_out", x.realize().numpy()))
+    state["sine_boundary_carry"] = x
     return x
 
 
@@ -7176,7 +7381,13 @@ def breath_step(p, state, kb, ctx):
         # breath loop returns, out["args"] rewrites etc., ~line 7478/7653) are OUTSIDE breath_step
         # entirely and are untouched by construction.
         h_slot = h_slot * 0.0
-        _dp_out = _depth_stack(p, cur, slot_mask, waist, tokmask, B, kb=kb)
+        if ALG_SINE:
+            # THE SINE BREATH (2026-10-10): same road, same replacement-by-value above — only
+            # which function builds the stack's own delta changes (see _depth_stack_sine's own
+            # docstring for the per-block widths / the trough's waist subspace / the clock door).
+            _dp_out = _depth_stack_sine(p, cur, slot_mask, waist, tokmask, B, kb, state)
+        else:
+            _dp_out = _depth_stack(p, cur, slot_mask, waist, tokmask, B, kb=kb)
         h_slot = h_slot + (_dp_out - cur)
         if "mixer" in _SEVER:
             h_slot = h_slot * 0.0

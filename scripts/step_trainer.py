@@ -205,7 +205,13 @@ REFUSED = ("ALG_SHELF", "ALG_WHIP", "ALG_TOKLOOP", "ALG_WRITEBACK", "ALG_KANNEAL
            # called from forward() alone; the walker never calls forward() at all) — refused
            # for the identical reason, named separately so a future narrowing of the ALG_SORT
            # refusal does not silently let this one through untested too.
-           "ALG_SORT_HG")
+           "ALG_SORT_HG",
+           # THE SINE BREATH (2026-10-10): ALG_DEPTH's own refusal above already covers the
+           # chassis _depth_stack_sine rides (the walker never calls breath_step/_depth_stack
+           # at all); named separately, own new line at the end, per this build's standing
+           # instruction, so a future narrowing of the ALG_DEPTH refusal does not silently let
+           # the sine schedule / seal placebo through untested too.
+           "ALG_SINE", "ALG_SINE_SKIP")
            # THE ARGS-CONDITIONED RES (2026-10-09): _heads_of's own res-pointer term
            # (ar_w1/ar_b1/ar_w2/ar_b2 against the content-only slot/candidate states PLUS the
            # args head's own predicted soft-selected args states) is the fused forward()'s
