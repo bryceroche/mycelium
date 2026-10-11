@@ -50830,3 +50830,19 @@ Numbers (last captured breath b6, wild 64 rows):
   SRK_241 key census: same-owner cos 0.6652 vs diff-owner 0.5969, gap +0.0683, permutation-null z=+2.09.
 
 READING: both SR_241 and SRK_241 sit well above PMS8_241's grouping ratio -- the sorting room (a shared token-side transformer stack, ALG_SORT=4) incidentally raises owner-correlated structure in the downstream mixer's attention regardless of the owner-key shuffle; this is the real, measured effect, and it is NOT what the owner-key registration asked about. The key's own geometry (part e) carries a real but thin signal (z~2, this project's own "+0.020 or a twin" / SE-aware standard for exactly this kind of borderline number) that the trained gain (-0.021, essentially its zero-at-birth init) never read into the mixer -- confirmed directly here, not just inferred from the gain's smallness: SRK_241 and SR_241's mixer attention are indistinguishable. VERDICT FOR THE RE-ADMISSION TABLE: form 2 (hard owner mask off the key's argmax clusters) stays CLOSED -- the one piece of evidence that could re-open it (grouping in SRK's dump) is fully explained by the sorting room, not the key, once the control is run; a future attempt should target the key's borderline-significant raw signal directly (the right-vs-wrong gap SRK_241 showed consistently positive at every breath is also worth a dedicated, non-confounded read before being read as a perceiver channel). Right-vs-wrong grouping gap: PMS8/SR_241 noise-level, SRK_241 consistently positive (+0.11 at b6, up to +0.29 at b4) -- registered as an open observation, not a claim (one body, no control for the key's OWN contribution to it, same confound as the headline finding).
+
+### 2026-10-10 (17:44) — THE HOURGLASS SORTING ROOM form 2b: BUILT + GATED + FIRED as HG_241 (pc-hg + pc-hg-watch; merged 260d26db; the post-merge gate on the clean head: unset 5.2995/0.0279 bit-identical, role8 6.5535/1.1061, sort4 60.7649/18.6915 = the sorting room's own fixture number, hg1 31.4169/7.1217 and hg2 30.4475/5.6651 finite, THE PRE-UPDATE 108-KEY DUMP DIFF vs sort4 = 0.0 for both forms (identity at birth), grad probes PASS (a three-level ReZero cascade: the pooled blocks wake one step after the coarse projections), identity read smoke sort4 == hg1 == hg2 (18/18), the coarse path's birth census 0.0; the device smoke PASSED without the JIT workaround); step 500 loss 27.89 at 0.123 s/step (~10% over the flat stack; reads ~19:15)
+
+The build (branch hourglass e97a3477, builder wt18): ALG_SORT_HG=1|2 rewires ALG_SORT=4's four blocks into a 1-D U-Net
+over the sequence — block0 at token resolution; masked-mean pool to CLAUSE spans (the tree descent's clause ids); block1
+at clause resolution; pool clauses -> SENTENCES; block2 at sentence resolution; unpool through two zero-init projections
+U_c / U_s added to block0's output (the skip = the token path kept); block3 at token resolution. Form 1 (the arm) is
+additive; form 2 is the gated-multiplicative tok1 * (1 + tanh(U_c + U_s)) answering the residual-seal law's warning. The
+tree port is threaded through loop_val / chain_acc / membrane_rack wherever ALG_SORT_HG is set. ARM: HG_241 = SR_241's
+recipe + ALG_SORT_HG=1 from scratch vs PMS8_241, the informational pair vs SR_241 (THE CONTROL: the flat stack). BARS
+(registered 10-09 14:3x): first-look twin-pick <= 0.35 (SR 0.43-0.46), the wrong slots' other-sentence share <= 0.40
+(SR 0.54-0.56), masked wild >= SR's family (mean 0.363; the pair 0.37) + 0.010 or a twin, mint not down > 0.02; the
+coarse path's knob census at the arm's end (>= 10 % of the token path at block3's input, else inert). KILL: both
+first-look reads unmoved vs SR AND the coarse path < 10 % = voted down -> form 2 is the next arm, not a new line.
+Queue faults on the way (both ruled): the worktree autostash over the .cache symlink; the dirty head from a concurrent
+read-only agent.
