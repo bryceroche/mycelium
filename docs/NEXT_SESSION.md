@@ -1,16 +1,15 @@
-# NEXT SESSION — cold-start entry (updated 2026-10-10 20:05)
+# NEXT SESSION — cold-start entry (updated 2026-10-10 20:38)
 
-**THE CARD IS IDLE (20:05).** HG_241 (THE HOURGLASS 2b): 0.3686 (+0.021 vs PMS8 z 2.0; = SR_241 within 0.003), ROWS 24 (the record by one),
-digits 0.517 (the best), mint 0.842; twin-pick 0.470 / other-sentence 0.563 UNMOVED with the coarse path LIVE at 98% of the token path —
-THE OTHER-SENTENCE WALL IS NOT A LACK OF MACRO CONTEXT (form 2 moot; form 3 low prior). THE SORTING-ROOM FAMILY (4 bodies): mean
-0.3646 (+0.017), sd 0.010; every member moves digits/forward relations, none the binding. THE LINE'S READING: the first look is
-short of SUPERVISION that distinguishes twins (wild's twins are not memorized), not of context/capacity/keys. OPEN ON THE BINDING: the
-data road (unmemorized prose with annotated twins; the annotation stream) and SRF_241 (the second look at different evidence: the token
-side re-read with the slots as queries); HUB_241 tests the slot topology (the notebook as the only slot-to-slot road); SINE4/ANTI4; THE
-FUNNEL GATE. ALL NEED THE WORD. THE SHUFFLE READ: the sorting room itself raises the mixer's owner grouping (0.9 -> 1.3); the key adds
-nothing (closed). RULES OF THE DAY: queues merge in the main checkout only; the main tree is clean while a queue is live; readers build
-under the family env; the three-pool rule. CLOSED THIS WEEK (regime-tagged): the direction line (7 forms + the tie-break), depth on the
-slot side, the waist skip, the separated clock, the owner key as a gain, the hourglass's context hypothesis. Updated 20:05.
+**TONIGHT'S QUEUE (20:38; the word given for the whole queue), one organ per arm vs PMS8_241, chained on done marks:** FG_241 (THE FUNNEL GATE:
+per-breath per-band gates on the waist skip + the 128 rank; the census BY BREATH is the read; builder wt20, first on the card) -> SINE4_241 ->
+ANTI4_241 (the crystal as the hub: k0 slot attention inside the waist subspace; shape vs depth at matched params; builder wt21) -> SEAL_241
+(the seal placebo) -> TM_241 (THE TYPED MIXER: messages along the decode's edges; bars masked +0.020/twin, operand binding >= 3x, args >= 0.47)
+-> SH_241 (THE SHOAL MIXER, top-6) -> HUB_241 (the mixer zero-multiplied at training; builder wt22) -> SRF_241 (the sorting room re-run every
+breath, slot-conditioned; bars = the first-look reads SR missed; builder wt23). Queues: pc-queue-fg / pc-queue-sine / pc-queue-mixer /
+pc-queue-srf; each merges in the MAIN checkout only, asserts a clean tree, tests every grep, runs the pre-arm device smoke. ~16 h of card.
+HG_241 (20:0x): = SR on the slot (0.3686), ROWS 24 (record by one), digits 0.517, the first look UNMOVED with the coarse path live at 98% —
+the wall is NOT a lack of macro context. THE SORTING-ROOM FAMILY (4): mean 0.3646 (+0.017 +- 0.005). THE LINE'S READING: the first look is
+short of SUPERVISION distinguishing twins — the data road (annotated twins in unmemorized prose) starts tomorrow. Updated 20:38.
 
 **THE CARD IS IDLE (09:38).** THE DIRECTION PROBE FIRED (zero-GPU; scripts/direction_probe.py; .cache/direction_probe_PMS8_241.txt):
 PRESENT-BUT-UNEXPRESSIBLE — a read-out trained on PMS8_241's own frozen states reaches wild AUROC 0.98 (own state + both gold args'
