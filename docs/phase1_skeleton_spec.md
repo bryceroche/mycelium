@@ -50930,3 +50930,18 @@ BARS (registered 11:15, unchanged by this entry — not yet measured, the chain 
 
 ### 2026-10-10 (22:23) — FG_241 FIRED (22:20, pc-fg; the funnel gate merged ae5ec0db, ledger ebf6609c; the first smoke at 22:04 was OOM-KILLED by a sibling builder's EAGER grad probe at 15-18 GB RSS; re-fired clean at 22:08, the device smoke passed) + THE MEMORY RULE: a from-scratch arm's trainer shows ~24 GB RSS (the STATES_NPY memmap, file-backed and reclaimable — NOT pressure; read MemAvailable, never RSS); the eager (no-JIT) grad probes of the full head are the real hogs (15-18 GB each) — ONE eager probe machine-wide at a time, never beside an arm's device smoke, and every gate reports its peak RSS (`/usr/bin/time -v`) before it may run beside a running arm; the harness reaps idle BACKGROUND SHELLS under pressure (never systemd units) — gates and probes run as `systemd-run --user` units
 Coordinator's note: the srfeed gate unit was stopped at 22:2x on a misread of RSS (the arm's memmap) — unnecessary, corrected; it re-runs under the rule. The queues' "no trainer" wait now checks DEV=PCI+AMD in each trainer's environ (a CPU gate's trainer held the card idle for 20 min); the same patch belongs in every queue script (sine / mixer / srf) before their turns.
+
+### 2026-10-11 (00:22) — FG_241 (THE FUNNEL GATE: per-breath, per-band gates on the waist skip + the 128 intermediate's rank, live from birth, from scratch vs PMS8_241) — THE LOSS DREW NO ENVELOPE: g_skip 0.019-0.025 at EVERY breath and band (birth 0.018; the largest 0.0249 at breath 3, branch), the rank gate 0.980 everywhere (share of intermediate dims closed below 0.5 = 0.000 at every breath); masked wild 0.3447 vs 0.3476 (-0.0029, paired SE 0.0083 | McNemar z +0.35; null), rows 10, open mint 0.600 (-0.05), the drift 0.80 -> 0.575 (unchanged) — VERDICT (ii): THE FUNNEL IS REFUTED AT THE PREFERENCE LEVEL; THE NAZARÉ WAIST (NZ_241) IS NOT BUILT
+
+The read that decided it (the chain's census by breath on the trained checkpoint, 32 test rows): offered a zero-cost,
+per-breath, per-band choice to let content around the crystal early and a zero-cost choice to narrow the crystal
+below 128 late, the optimizer took neither at any breath in 48k steps: it keeps the 384 -> 128 squeeze whole at
+breath 1 and at breath 6 alike. Together with WS_241 (the same choice without the breath index: shut) and CS_241
+(512 -> 128 costs), the waist's shape is now measured from three sides: 192 content planes through 128 dims, every
+breath, no envelope. The Nazaré picture (wide early, crystallize late) is what the kitchen's law predicted the loss
+would NOT want on the state — fewer wet dishes is a property of the DECODE (the rack's commits, the solver's forced
+moves), not of the state's rank. Hills 11/12 read: the 512/128 bottleneck is key as a CONSTANT; the "diffusion
+compiler" sharpens the same resolution each breath (same job, sharper), not a shrinking one. Re-admission trigger
+(the table): a body whose first-look binding is right (then late crystallization might protect something worth
+protecting); until then no width schedule on the loop. The sine breath's k0 (the crystal as a MEETING ROOM — slot
+attention inside the 128, not a change of its width) is untouched by this verdict and is next on the card.

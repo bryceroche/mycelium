@@ -1,7 +1,6 @@
-# NEXT SESSION — cold-start entry (updated 2026-10-10 20:38)
+# NEXT SESSION — cold-start entry (updated 2026-10-11 00:22)
 
-**TONIGHT'S QUEUE (20:38; the word given for the whole queue), one organ per arm vs PMS8_241, chained on done marks:** FG_241 (THE FUNNEL GATE:
-per-breath per-band gates on the waist skip + the 128 rank; the census BY BREATH is the read; builder wt20, first on the card) -> SINE4_241 ->
+**TONIGHT'S QUEUE (20:38; the word given for the whole queue), one organ per arm vs PMS8_241, chained on done marks:** FG_241 DONE (00:22): THE FUNNEL IS REFUTED AT THE PREFERENCE LEVEL (g_skip ~0.02 and rank 0.98 at EVERY breath: the loss drew no envelope; masked -0.003; NZ_241 not built) -> SINE4_241 ->
 ANTI4_241 (the crystal as the hub: k0 slot attention inside the waist subspace; shape vs depth at matched params; builder wt21) -> SEAL_241
 (the seal placebo) -> TM_241 (THE TYPED MIXER: messages along the decode's edges; bars masked +0.020/twin, operand binding >= 3x, args >= 0.47)
 -> SH_241 (THE SHOAL MIXER, top-6) -> HUB_241 (the mixer zero-multiplied at training; builder wt22) -> SRF_241 (the sorting room re-run every
