@@ -205,7 +205,15 @@ REFUSED = ("ALG_SHELF", "ALG_WHIP", "ALG_TOKLOOP", "ALG_WRITEBACK", "ALG_KANNEAL
            # called from forward() alone; the walker never calls forward() at all) — refused
            # for the identical reason, named separately so a future narrowing of the ALG_SORT
            # refusal does not silently let this one through untested too.
-           "ALG_SORT_HG")
+           "ALG_SORT_HG",
+           # THE FUNNEL GATE (2026-10-10): _polar_waist's own per-breath, per-band/per-
+           # intermediate-dim gated bypass + rank gate (funnel_skip_theta/funnel_rank_theta,
+           # indexed by the breath kb breath_step receives) is the fused forward()'s single
+           # source of truth — the walker's per-seam heads_of calls never call _polar_waist
+           # or breath_step at all (the ALG_WAIST_SKIP/ALG_SORT precedent, same reason: a
+           # config that set this under the walker would train with a waist the walker's own
+           # path never built, silently). Refused by the word given for this build.
+           "ALG_FUNNEL", "ALG_FUNNEL_INIT")
            # THE ARGS-CONDITIONED RES (2026-10-09): _heads_of's own res-pointer term
            # (ar_w1/ar_b1/ar_w2/ar_b2 against the content-only slot/candidate states PLUS the
            # args head's own predicted soft-selected args states) is the fused forward()'s

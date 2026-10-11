@@ -1688,8 +1688,42 @@ ALG_WAIST_SKIP_INIT = float(os.environ.get("ALG_WAIST_SKIP_INIT", "-4.0"))
 assert not ALG_WAIST_SKIP or (ALG_POLAR and POLAR_D), \
     ("ALG_WAIST_SKIP rides on the content-plane waist (ALG_POLAR=1 ALG_POLAR_D=<d>) — "
      "there is no P c reconstruction to skip around otherwise")
+# THE FUNNEL GATE (2026-10-10; ledger 11:15 — Bryce: "dims should resemble a sine wave inside a
+# looped transformer ... like Nazare, funnel the dims across the breath cycles, forcing
+# crystallization"): WS form A' — the waist skip and the waist's own rank, both made PER-BREATH
+# (one row per kb, 0..K_B-1; breath 0, the grounding read, never calls _polar_waist through
+# breath_step's loop at all — its row is allocated for shape uniformity, never read). Two
+# independent gate families, both sigmoid, both born at theta = ALG_FUNNEL_INIT (default -4.0,
+# live from birth, never -inf — the knob law, the SAME born value WS_241 used):
+#   (a) funnel_skip_theta[K_B, 3] — a per-breath, per-BAND (root/branch/leaf, the SAME three
+#       bands _hier_band_dims() names by content-plane order whether or not ALG_HIER_WAIST is
+#       set — band membership is a property of plane order, never of the block-diagonal waist)
+#       gate g_skip = sigmoid(theta) on the bypass c - P c, THE SAME formula WS_241 used
+#       (c' = P c + g_skip * (c - P c)) but coarsened from one-gate-per-content-dim (384) to
+#       one-gate-per-band-per-breath (3 * K_B): the loss can now ask for a DIFFERENT bypass
+#       width at every breath instead of one fixed-for-all-time gate.
+#   (b) funnel_rank_theta[K_B, POLAR_D] — a per-breath, per-INTERMEDIATE-dim gate on the
+#       waist's own rank-128 code (u @ W_down, BEFORE W_up): r = 1 - sigmoid(theta), so r is
+#       born at 1 - sigmoid(-4) ~ 0.982 (almost fully OPEN — today's waist, not a hard rank
+#       cut); the loss can CLOSE an intermediate dim at a given breath by raising theta (r -> 0
+#       shuts that dim's contribution to P c for that breath only).
+# Independent of ALG_WAIST_SKIP (either, neither, or both may be set; FG_241 sets ALG_FUNNEL=1
+# alone). Rides on ALG_POLAR_D (there is no P c / no 128-d code to gate otherwise). The clock
+# dims stay bitwise untouched: (a)'s per-band gate is scattered through `sel` (zero outside the
+# content block, the SAME constant _polar_waist/_polar_waist_skip use) and (b)'s gate lives
+# entirely inside the POLAR_D-wide intermediate code, which _polar_sink's scatter already zeros
+# out of every clock dim on the way back through W_up. keepnorm runs exactly as today (the
+# funnel changes what goes INTO P c, not how its norm is restored).
+ALG_FUNNEL = int(os.environ.get("ALG_FUNNEL", "0"))
+ALG_FUNNEL_INIT = float(os.environ.get("ALG_FUNNEL_INIT", "-4.0"))
+assert not ALG_FUNNEL or (ALG_POLAR and POLAR_D), \
+    ("ALG_FUNNEL rides on the content-plane waist (ALG_POLAR=1 ALG_POLAR_D=<d>) — "
+     "there is no P c reconstruction / no intermediate code to gate otherwise")
 _POLAR_SINK = None          # (cdim, sel, gate_content, gate_clock, gate_pl)
 _POLAR_SINK_SHOWN = False
+_FUNNEL_BAND_ONEHOT = {}    # {n_content_dims: (C, 3) constant tensor} -- ALG_FUNNEL's skip gate,
+                            # built once, module-cached (band membership is fixed by _HIER_PLANES,
+                            # never by the forward's own data)
 
 
 def _polar_sink():
@@ -1750,7 +1784,7 @@ def _polar_keepnorm(u_new, u_old, gate):
     return u_new * (1.0 + gate * (_n0 / _n1 - 1.0))
 
 
-def _polar_waist(u, p, state):
+def _polar_waist(u, p, state, kb=0):
     """ALG_POLAR_D — THE CONTENT-PLANE WAIST. c' = c @ W_down @ W_up on
     the 384 content dims; the 128 clock dims are in neither the domain
     nor the range. The two (C, d) / (d, C) parameters are scattered into
@@ -1760,7 +1794,11 @@ def _polar_waist(u, p, state):
     EXACT zeros, so the clock columns of the effective W_up are exactly
     0.0 and the clock dims of c' are exactly 0.0 -> u * g_k + c' leaves
     every clock dim BITWISE untouched. Then the content block's norm is
-    restored, so ||u|| == 1 still holds and the clock keeps its share."""
+    restored, so ||u|| == 1 still holds and the clock keeps its share.
+    `kb` is the breath index (0 = the grounding read, never actually
+    reaches this function through breath_step's loop; 1..K_B-1 = the
+    clocked loop breaths) — ALG_FUNNEL's own two gates are the only
+    readers of it; every other door above ignores the argument."""
     _cd, _sel, _gc, _gk, _gp = _polar_sink()
     _wd = state.get("polar_wd_eff")
     if _wd is None:
@@ -1771,9 +1809,14 @@ def _polar_waist(u, p, state):
         state["polar_wd_eff"] = _wd
         state["polar_wu_eff"] = _pwu @ _sel.transpose(-2, -1)
     _wu = state["polar_wu_eff"]                          # (d, H_W)
-    _cn = (u @ _wd) @ _wu                # exact zeros on every clock dim
+    _lat = u @ _wd                       # (B, L, POLAR_D) -- the waist's own intermediate code
+    if ALG_FUNNEL:
+        _lat = _polar_funnel_rank(_lat, p, state, kb)
+    _cn = _lat @ _wu                     # exact zeros on every clock dim
     if ALG_WAIST_SKIP:
         _cn = _polar_waist_skip(u, p, state, _cn, _sel, _gc)
+    if ALG_FUNNEL:
+        _cn = _polar_funnel_skip(u, p, state, _cn, _sel, _gc, kb)
     return _polar_keepnorm(u * _gk + _cn, u, _gc)
 
 
@@ -1825,6 +1868,80 @@ def _polar_waist_skip(u, p, state, cn, sel, gc):
             "g_max": float(_graw.max().numpy()),    # THE KILL CHECK'S OWN instrument: "g < 0.1
                                                       # EVERYWHERE" is a max, not a band mean
         })
+    return cn + _skip
+
+
+def _polar_funnel_rank(lat, p, state, kb):
+    """ALG_FUNNEL's rank gate (THE FUNNEL GATE, 2026-10-10; (b) in the ALG_FUNNEL header note
+    above _polar_sink): a per-breath, per-intermediate-dim gate on the waist's own rank-POLAR_D
+    code `lat` = u @ W_down, applied BEFORE W_up. r = 1 - sigmoid(funnel_rank_theta[kb])
+    (POLAR_D,), born at 1 - sigmoid(ALG_FUNNEL_INIT) ~ 0.982 at the default -4.0 — almost fully
+    OPEN (today's waist, not a hard rank cut; the knob law: live from birth). `lat` lives
+    entirely in POLAR_D-wide coordinates, not H_W ones — there is no clock dim inside it to
+    protect; the clock stays untouched because _polar_waist never routes it through W_down/
+    W_up at all (the scatter constant already carries it around this whole code path). Cached
+    per (forward, breath) in `state` (theta's per-breath row differs, so each breath's gate is
+    its own small tensor, unlike _polar_waist_skip's single per-forward cache)."""
+    _key = ("funnel_rank_gate", kb)
+    _r = state.get(_key)
+    if _r is None:
+        _graw = p["funnel_rank_theta"][kb].sigmoid()          # (POLAR_D,) in (0, 1)
+        _r = (1.0 - _graw).reshape(1, 1, -1)
+        state[_key] = _r
+        state[_key + ("raw",)] = _graw                        # (POLAR_D,): the census's own read
+    _fc = globals().get("_FUNNEL_CENSUS")                      # THE CENSUS (armed only by a census
+    if _fc is not None:                                        # script, never by do_train's real
+        _graw = state[_key + ("raw",)]                         # JIT'd step — the waist-skip
+        _rnp = _graw.numpy()                                   # convention exactly)
+        _rec = _fc.setdefault(kb, {})
+        _rec["rank_share_closed"] = float((_rnp > 0.5).mean())   # share of intermediate dims with r < 0.5
+        _rec["rank_r_mean"] = float(1.0 - _rnp.mean())
+        _rec["rank_r_min"] = float(1.0 - _rnp.max())
+    return lat * _r
+
+
+def _polar_funnel_skip(u, p, state, cn, sel, gc, kb):
+    """ALG_FUNNEL's skip gate (THE FUNNEL GATE, 2026-10-10; (a) in the ALG_FUNNEL header note
+    above _polar_sink): c' = P c + g_skip * (c - P c) — WS_241's own formula (_polar_waist_skip
+    above), coarsened from one gate per content dim to one gate per BAND per BREATH. g_skip =
+    sigmoid(funnel_skip_theta[kb]) is (3,): root/branch/leaf, contiguous in the (C,)
+    plane-ordering (_HIER_PLANES bounds — [0:2a) root, [2a:2a+2b) branch, [2a+2b:2a+2b+2c)
+    leaf — the SAME bounds _polar_waist_skip's own census computes, whether or not
+    ALG_HIER_WAIST is set: band membership is a property of plane order, never of the
+    block-diagonal waist). Broadcast across each band's content dims via a constant one-hot
+    (band membership never changes, cached once at module scope) and scattered into waist
+    coordinates through `sel` — the SAME scatter constant _polar_waist uses, zero outside the
+    content block — so the added term is exactly 0.0 on every clock dim, matching `cn`'s own
+    zeros there. Cached per (forward, breath) in `state`."""
+    _key = ("funnel_skip_gate", kb)
+    _g = state.get(_key)
+    if _g is None:
+        _graw = p["funnel_skip_theta"][kb].sigmoid()           # (3,): root/branch/leaf
+        _a, _b, _c3 = _HIER_PLANES
+        _bounds = (0, 2 * _a, 2 * _a + 2 * _b, 2 * _a + 2 * _b + 2 * _c3)
+        _nc = _bounds[-1]
+        assert sel.shape[-1] == _nc, (sel.shape, _nc)   # the SAME content-dim count sel scatters
+        _oh = _FUNNEL_BAND_ONEHOT.get(_nc)
+        if _oh is None:
+            from tinygrad import Tensor as _Tfg, dtypes as _dfg
+            _band_of = np.zeros(_nc, np.int64)
+            _band_of[_bounds[1]:_bounds[2]] = 1
+            _band_of[_bounds[2]:_bounds[3]] = 2
+            _ohnp = np.zeros((_nc, 3), np.float32)
+            _ohnp[np.arange(_nc), _band_of] = 1.0
+            _oh = _Tfg(_ohnp, dtype=_dfg.float).contiguous().realize()
+            _FUNNEL_BAND_ONEHOT[_nc] = _oh
+        _gc_dim = (_oh @ _graw.reshape(3, 1)).reshape(1, -1)   # (1, C): per-content-dim gate value
+        _g = (sel @ _gc_dim.reshape(-1, 1)).reshape(1, 1, -1)  # (1, 1, H_W), zero on clock dims
+        state[_key] = _g
+        state[_key + ("raw",)] = _graw
+    _skip = _g * (u * gc - cn)                                 # exactly 0.0 on every clock dim
+    _fc = globals().get("_FUNNEL_CENSUS")
+    if _fc is not None:
+        _graw = state[_key + ("raw",)]
+        _gnp = _graw.numpy()
+        _rec = _fc.setdefault(kb, {})
+        _rec["g_skip_root"], _rec["g_skip_branch"], _rec["g_skip_leaf"] = (float(x) for x in _gnp)
     return cn + _skip
 
 
@@ -3744,6 +3861,17 @@ def build_params(seed=0):
         # p` is the only gate _polar_waist's forward code needs).
         _nc_ws = len(_polar_sink()[0])
         p["waist_skip_theta"] = t(np.full(_nc_ws, ALG_WAIST_SKIP_INIT, dtype=np.float32))
+    if ALG_FUNNEL:
+        # THE FUNNEL GATE (2026-10-10): two per-breath parameter tables, both born at
+        # ALG_FUNNEL_INIT — LIVE from birth (the knob law), never zero. ALG_FUNNEL=0 never
+        # reaches this branch, so neither key exists in p at all (the SAME structural
+        # bit-identity mechanism as waist_skip_theta/sm_w_self/pc_w1: presence in p is the
+        # only gate _polar_waist's forward code needs). Row 0 of each table (the grounding
+        # read's breath) is allocated for shape uniformity and trains on zero gradient —
+        # never read by breath_step's loop (kb in range(1, K_B) only), the SAME standing
+        # note breath_emb's own row 0 carries (T6 clock audit S2) — not a new convention.
+        p["funnel_skip_theta"] = t(np.full((K_B, 3), ALG_FUNNEL_INIT, dtype=np.float32))
+        p["funnel_rank_theta"] = t(np.full((K_B, POLAR_D), ALG_FUNNEL_INIT, dtype=np.float32))
     global _POLAR_SINK_SHOWN
     if ALG_POLAR and (POLAR_D or POLAR_EM) and not _POLAR_SINK_SHOWN:
         # THE SINK DOOR: one line, once, naming what is about to run.
@@ -7434,7 +7562,7 @@ def breath_step(p, state, kb, ctx):
             # ||u|| == 1 still holds and r is untouched.
             _cs_u1 = _pol_u if _CENSUS is not None else None
             if "waist" not in _SEVER:      # THE WAIST READ (2026-09-24): the fair sever — content passes straight through, no squeeze
-                _pol_u = _polar_waist(_pol_u, p, state)
+                _pol_u = _polar_waist(_pol_u, p, state, kb)
             if _CENSUS is not None:
                 _CENSUS.append((kb, "sink_waist",
                                 _polar_ru_join(_pol_u - _cs_u1, _pol_r,
