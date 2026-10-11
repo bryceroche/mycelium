@@ -51012,3 +51012,22 @@ Artifacts: scripts/phase1_algebra_head.py (`_depth_stack_sine`, build_params, br
 scripts/sine_seal_rank.py, scripts/sine_identity_diff.py, scripts/sine_shuffle_read.py,
 scripts/step_trainer.py; .cache/sine_gate.sh, .cache/rack_chain_SINE4.sh/ANTI4.sh/SEAL.sh,
 .cache/queue_sine.sh; .cache/sine_gate.log, .cache/sine_merge_gate.log.
+
+### 2026-10-11 (02:5x) — CORRECTION: THE SINE BREATH's own param count, stated honestly. The
+build entry above did not quote a number; the gate's own grad probe does: **7,051,328 params**
+for SINE4/ANTI4 (both schedules are the same four widths, just reordered — 128+224+384+224),
+measured by scripts/depth_grad_probe.py (reused unmodified) against this registration's own
+"~1.6M" estimate. THE DIFFERENCE: the 1.6M figure came from scripts/sine_breath.py's standalone
+sketch, whose SlotMHA block is self-attention ONLY (qkvo at the block's own width, no FFN, no
+cross-attention, no clock-steering matrices) — four such blocks at widths 128/224/384/224 sum
+to roughly that range. THIS build's own four blocks, to stay the single source of truth
+breath_step already has for ALG_DEPTH's shape ("breaths never specialize, heads do" — every
+existing dp{i}_* consumer must keep working unmodified), carry the SAME organs plain
+`_depth_stack` does per block: self-attention (qkvo), cross-attention to the token bank
+(xqkvo), and an FFN (w1/w2, hidden 2048) — plus two NEW (H_W, w) clock-steering matrices
+(dp{i}_cq/ck) the sketch never needed (its clock was already compact at 128-d; ours lives
+inside the 512-d state and must be read through a (512, w) matrix instead of a (128, w) one).
+The FFN alone accounts for most of the gap (2 * w * 2048 params per block, dwarfing the
+attention matrices at these widths); cross-attention roughly doubles the self-attention cost.
+7.05M is still well under plain ALG_DEPTH's ~12.9M (the registration's own "expected lower"
+holds), just not as low as the sketch's bare self-attention-only shape would have been.
