@@ -7590,8 +7590,16 @@ def breath_step(p, state, kb, ctx):
     if ALG_NOTEBOOK:
         _cur_w = (_clock_frame(cur, kb, -1, _rot2)
                   if ALG_CLOCK_CANON and ALG_POLAR else cur)   # canonical frame
-        _nb.append((_cur_w @ p["W_sil"]) if NB_PERSLOT
+        _nb_new = ((_cur_w @ p["W_sil"]) if NB_PERSLOT
                    else (_fed_core(_cur_w).mean(1) @ p["W_sil"]))
+        _nb.append(_nb_new)
+        if _CENSUS is not None:
+            # HUB_241's own bonus read (2026-10-10): the notebook's WRITE (new ink, this
+            # breath) alongside the READ tap already recorded above as "notebook" (`_rd`,
+            # the shelf's query-weighted readout) -- together the two halves of "the
+            # notebook's read/write census" the build spec asks HUB_241 to report. Dark
+            # unless _CENSUS is armed, the same idiom as every other tap in this function.
+            _CENSUS.append((kb, "notebook_write", _nb_new.realize().numpy()))
         if ALG_NB2 and "nb2_sil" in p and state.get("nbb") is not None:
             state["nbb"].append(cur @ p["nb2_sil"])
         if FED_SHELF and "fed_sil2" in p and state.get("nb2") is not None:
