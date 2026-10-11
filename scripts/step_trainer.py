@@ -214,8 +214,8 @@ REFUSED = ("ALG_SHELF", "ALG_WHIP", "ALG_TOKLOOP", "ALG_WRITEBACK", "ALG_KANNEAL
            # config that set this under the walker would train with a waist the walker's own
            # path never built, silently). Refused by the word given for this build.
            "ALG_FUNNEL", "ALG_FUNNEL_INIT",
-           "ALG_SINE", "ALG_SINE_SKIP")           # THE ARGS-CONDITIONED RES (2026-10-09): _heads_of's own res-pointer term
-           # (ar_w1/ar_b1/ar_w2/ar_b2 against the content-only slot/candidate states PLUS the
+           "ALG_SINE", "ALG_SINE_SKIP",
+           "ALG_MIXER_OFF", "ALG_SHOAL_MIXER", "ALG_TYPED_MIXER")           # THE ARGS-CONDITIONED RES (2026-10-09): _heads_of's own res-pointer term           # (ar_w1/ar_b1/ar_w2/ar_b2 against the content-only slot/candidate states PLUS the
            # args head's own predicted soft-selected args states) is the fused forward()'s
            # single source of truth and would in fact thread fine through the walker's
            # per-seam heads_of calls on its own, exactly like THE PAIRWISE COMPARATOR ROAD and

@@ -6316,6 +6316,114 @@ def _mask_cook_skel(B, L, fat_cur, ctx):
     return (_pp @ _pp.transpose(-2, -1) + _eye).clip(0.0, 1.0).detach()
 
 
+def _mixer_typed_edges(p, cur, ctx, B, kb):
+    """TM_241 (THE TYPED MIXER, 2026-10-10, ledger 20:28/20:35): the previous breath's OWN
+    decode (args/res pointer softmaxes) turned into a soft factor<->factor edge mask, via the
+    SAME K_VARS==L_FAC==24 own-variable-index identity convention router2(ptr)'s _Pa1_7/_Pa2_7
+    already use (:6511 above) — variable index k IS slot index k, so the args/res bilinear's
+    (B, L_FAC, K_VARS) output is directly a (B, L_FAC, L_FAC) factor-to-factor map. `cur` here
+    is the state ENTERING this breath (untouched so far — breath_step's own heads run AFTER
+    the mixer, so "this breath's decode" does not exist yet); for kb==1 this is breath 0's
+    grounding decode (fst), exactly as the ledger states ("breath 0's grounding heads for
+    breath 1") — there is no case in this architecture where `cur` is undefined entering
+    breath_step, so the build spec's "breath 0: no previous decode -> all ones" clause is
+    honored defensively below (ctx.get, never ctx[]) though it does not fire in any deployed
+    config. DETACHED: this is a routing structure (which keys may be attended), not a loss
+    term — nothing should be able to reshape the mask instead of moving the pointer itself
+    (the busreg/valreg precedent for "the rung's own beliefs" already detaches the same way).
+    Returns a (B, L_TOT, L_TOT) tensor in [0, 1] with the diagonal forced to 1 (the self-edge
+    guarantee: a row with no named edges at all keeps a self-edge, trivially, since self is
+    NEVER removed) — or None (the TRUE no-op: _mixer_apply_edges skips the multiply+
+    renormalize entirely, for bit-identity down to the float32 ULP, not just "effectively
+    all-ones") when ALG_TYPED_ALLONES is armed (the gate's identity check: "typed with the
+    mask forced all-ones == role8 exactly") or when `ctx` lacks "vst"."""
+    from tinygrad import Tensor as _Tt
+    if int(os.environ.get("ALG_TYPED_ALLONES", "0")):
+        return None
+    _vst = ctx.get("vst")
+    if _vst is None:
+        return None   # "breath 0: no previous decode" — defensive only, never fires today
+    assert K_VARS == L_FAC, "THE TYPED MIXER needs the own-variable-index identity (K_VARS == L_FAC)"
+    _tau = float(os.environ.get("ALG_TYPED_TAU", "1.0"))
+    _hprev = _heads_of(p, cur, _vst, B)   # the SAME call busreg/valreg already make on `cur`
+    _a_ik = (_hprev["args"].detach() / _tau).softmax(-1)   # (B, L_FAC, K_VARS): soft argmax
+    _r_ik = (_hprev["res"].detach() / _tau).softmax(-1)
+    _e_fwd = (_a_ik + _r_ik).clip(0.0, 1.0)            # i names j (arg OR res), identity convention
+    _e = _e_fwd.maximum(_e_fwd.transpose(-2, -1))      # symmetric: i<->j if EITHER names the other
+    _eye = _Tt.eye(L_FAC).reshape(1, L_FAC, L_FAC)
+    _e = _e.maximum(_eye)                               # the self-edge guarantee, unconditional
+    if N_SCR:
+        # scratch rows/cols stay open (today's behaviour) — they carry no args/res pointers
+        _e = _Tt.cat(_e, _Tt.ones(B, L_FAC, N_SCR), dim=2)
+        _e = _Tt.cat(_e, _Tt.ones(B, N_SCR, L_TOT), dim=1)
+    return _e
+
+
+def _mixer_shoal_edges(cur, B, k):
+    """SH_241 (THE SHOAL MIXER, 2026-10-10): hard top-k attention by CONTENT-SPACE cosine (the
+    same 384-dim partition the Welford atlas / THE PAIRWISE COMPARATOR ROAD read,
+    _paircmp_content_sel() — excludes the 128 clock dims), recomputed every breath from `cur`
+    as it enters this breath's mixer. STRAIGHT-THROUGH: the FORWARD value is the hard top-k
+    mask (the arm actually removes edges, as the build spec requires); the BACKWARD gradient
+    flows through a soft sigmoid relaxation of the same per-row threshold, so bq/bk/bv (and
+    everything upstream of `cur`) keep a defined, non-zero gradient through this road. The
+    threshold is an order statistic (non-differentiable by nature) and is detached; the live
+    (non-detached) cosine still drives the soft surrogate. k >= L_TOT returns None (the TRUE
+    no-op -- _mixer_apply_edges skips the multiply+renormalize entirely, for bit-identity down
+    to the float32 ULP) -- the gate's identity check: "shoal with k=24 == role8 exactly", since
+    L_TOT == L_FAC == 24 with FED_SCRATCH off -- without touching _paircmp_content_sel at all."""
+    from tinygrad import Tensor as _Ts
+    if k >= L_TOT:
+        return None
+    _sel, _c = _paircmp_content_sel()
+    _cc = cur @ _sel                                              # (B, L_TOT, C)
+    _ccn = _cc / ((_cc * _cc).sum(-1, keepdim=True) + 1e-12).sqrt()
+    _cos = _ccn @ _ccn.transpose(-2, -1)                          # (B, L_TOT, L_TOT): live, grad-bearing
+    _cosd = _cos.detach()
+    _thr = _cosd.topk(k, dim=-1)[0][:, :, k - 1:k]                # the k-th largest value per row (detached order stat)
+    _hard = (_cosd >= _thr).float()                                # forward: hard top-k (ties may admit a few extra)
+    _sharp = float(os.environ.get("ALG_SHOAL_SHARP", "20.0"))
+    _soft = ((_cos - _thr) * _sharp).sigmoid()                     # backward surrogate: live `_cos`, same threshold
+    _e = _hard + _soft - _soft.detach()                            # straight-through: value == _hard, grad == d(_soft)
+    _eye = _Ts.eye(L_TOT).reshape(1, L_TOT, L_TOT)
+    _e = _e.maximum(_eye)                                           # the self-edge guarantee (belt+suspenders: cos_ii
+                                                                     # is already ~1 and always its own row-max, but a
+                                                                     # degenerate zero-norm row should never lose self)
+    return _e
+
+
+def _mixer_edge_mask(p, cur, ctx, B, kb):
+    """Dispatcher for THE TYPED MIXER (TM_241) / THE SHOAL MIXER (SH_241) — mutually
+    exclusive, both default OFF (returns None, zero overhead, bit-identical to today). Called
+    ONCE per breath_step call, before sc2 is even built; the SAME returned tensor multiplies
+    both mixer consumers downstream (sc2's own softmax and the FED twin's per-head softmax) —
+    ONE MASK, ONE ROAD, the mask-head bias's own precedent (`_mb` feeds three mixers from one
+    tensor)."""
+    _tm = int(os.environ.get("ALG_TYPED_MIXER", "0"))
+    _sh = int(os.environ.get("ALG_SHOAL_MIXER", "0"))
+    assert not (_tm and _sh), ("ALG_TYPED_MIXER and ALG_SHOAL_MIXER are mutually exclusive "
+                                "(TM_241 / SH_241 are separate arms)")
+    if _tm:
+        return _mixer_typed_edges(p, cur, ctx, B, kb)
+    if _sh:
+        return _mixer_shoal_edges(cur, B, _sh)
+    return None
+
+
+def _mixer_apply_edges(at, E):
+    """Multiply the (post-softmax, post-everything-else) attention by the edge mask and
+    renormalize — the mask MULTIPLIES the softmax (every other road in the mixer, sc2's own
+    close/cooker/alt/QROT terms, is left completely untouched upstream; this is a pure
+    reweighting of the already-computed distribution, per the build spec: "the mask multiplies
+    the softmax, renormalized"). E is broadcast over any leading axes (the FED twin's head
+    axis) by the caller via `.unsqueeze`. No-op (returns `at` unchanged) when E is None — the
+    default-off, bit-identical path (ALG_TYPED_MIXER=0 and ALG_SHOAL_MIXER=0)."""
+    if E is None:
+        return at
+    _m = at * E
+    return _m / (_m.sum(-1, keepdim=True) + 1e-12)
+
+
 def breath_step(p, state, kb, ctx):
     """THE BREATH STEP — forward()'s K-breath loop BODY, factored to
     module level BY PURE CODE MOTION (apply_step_trainer.py, 2026-09-03;
@@ -7200,6 +7308,8 @@ def breath_step(p, state, kb, ctx):
                   + ((_A5 + _A5.transpose(-2, -1)) > 0.5)
                   .float()).clip(0, 1)
 
+    _mix_edge = _mixer_edge_mask(p, cur, ctx, B, kb)   # TM_241 / SH_241 (2026-10-10): None unless armed
+
     bq = cur @ p["W_bq"] + p["W_bq_b"]
     bk = cur @ p["W_bk"] + p["W_bk_b"]
     bv = cur @ p["W_bv"] + p["W_bv_b"]
@@ -7384,7 +7494,14 @@ def breath_step(p, state, kb, ctx):
         # BEAM EXIT (door #8): committed slots leave the mixer as
         # keys, proportional to mass — soft, init-closed (m starts 0)
         sc2 = sc2 + m_c.reshape(B, 1, L_FAC) * -8.0
-    h_slot = (sc2.softmax(-1) @ bv) @ p["W_bo"] + p["W_bo_b"]
+    _at2 = sc2.softmax(-1)
+    if _CENSUS is not None:
+        # THE SHUFFLE READ's tap (ported from branch shuffletap cdc267b5, 2026-10-10): the
+        # single-head mixer's real post-mask, post-bias attention weights -- dark unless
+        # _CENSUS is armed, same idiom as every other tap in this function.
+        _CENSUS.append((kb, "mixer_attn1", _at2.realize().numpy()))
+    _at2 = _mixer_apply_edges(_at2, _mix_edge)   # TM_241 / SH_241: no-op unless armed
+    h_slot = (_at2 @ bv) @ p["W_bo"] + p["W_bo_b"]
     if "mixer" in _SEVER:
         h_slot = h_slot * 0.0
     if _CENSUS is not None:
@@ -7478,7 +7595,13 @@ def breath_step(p, state, kb, ctx):
         if _A5 is not None and "alt_g" in p:   # same v0 bias as sc2
             _mx_sc = _mx_sc + ((_A5 + _A5.transpose(-2, -1))
                                * p["alt_g"].reshape(1, 1, 1)).unsqueeze(1)
-        _mx_raw = _mx_sc.softmax(-1) @ _mx_v          # PRE-gain (named)
+        _mx_at = _mx_sc.softmax(-1)
+        if _CENSUS is not None:
+            # THE SHUFFLE READ's per-head tap (ported from branch shuffletap, 2026-10-10):
+            # (B, MX_HEADS, L_TOT, L_TOT).
+            _CENSUS.append((kb, "mixer_attn_heads", _mx_at.realize().numpy()))
+        _mx_at = _mixer_apply_edges(_mx_at, None if _mix_edge is None else _mix_edge.unsqueeze(1))
+        _mx_raw = _mx_at @ _mx_v          # PRE-gain (named)
         _mx_o = _mx_raw \
             * p["fed_mx_hg"].reshape(1, MX_HEADS, 1, 1)   # ZERO gains
         _mx_inj = _mx_o.permute(0, 2, 1, 3) \
@@ -7495,6 +7618,16 @@ def breath_step(p, state, kb, ctx):
                             (_mx_raw.permute(0, 2, 1, 3)
                              .reshape(B, L_TOT, H_W) @ p["W_bo"])
                             .realize().numpy()))
+    if int(os.environ.get("ALG_MIXER_OFF", "0")):
+        # HUB_241 (2026-10-10, ledger 19:42/20:28): the mixer's OUTPUT zero-multiplied at
+        # TRAINING (the ALG_BREATH_ARM zero-mult idiom) -- every param that fed h_slot above
+        # (W_bq/W_bk/W_bv/W_bo, mh_*, fed_mx_hg, alt_g) still ran a REAL forward pass this
+        # breath and keeps a defined (possibly zero) gradient; only the CONTRIBUTION to `cur`
+        # is removed. The notebook (ALT21/station banks, removal cost -0.134, 5x the plain
+        # mixer's own -0.025) remains the only slot-to-slot road under this arm.
+        h_slot = h_slot * 0.0
+        if _CENSUS is not None:
+            _CENSUS.append((kb, "state_hslot", h_slot.realize().numpy()))
     if ALG_DEPTH:
         # THE LOOPED TRANSFORMER (ALG_DEPTH=N): the mixer above (base bilinear + the FED twin,
         # one organ family sharing bq/bk/bv/W_bo) still runs for REAL every breath — every one of
@@ -7796,8 +7929,16 @@ def breath_step(p, state, kb, ctx):
     if ALG_NOTEBOOK:
         _cur_w = (_clock_frame(cur, kb, -1, _rot2)
                   if ALG_CLOCK_CANON and ALG_POLAR else cur)   # canonical frame
-        _nb.append((_cur_w @ p["W_sil"]) if NB_PERSLOT
+        _nb_new = ((_cur_w @ p["W_sil"]) if NB_PERSLOT
                    else (_fed_core(_cur_w).mean(1) @ p["W_sil"]))
+        _nb.append(_nb_new)
+        if _CENSUS is not None:
+            # HUB_241's own bonus read (2026-10-10): the notebook's WRITE (new ink, this
+            # breath) alongside the READ tap already recorded above as "notebook" (`_rd`,
+            # the shelf's query-weighted readout) -- together the two halves of "the
+            # notebook's read/write census" the build spec asks HUB_241 to report. Dark
+            # unless _CENSUS is armed, the same idiom as every other tap in this function.
+            _CENSUS.append((kb, "notebook_write", _nb_new.realize().numpy()))
         if ALG_NB2 and "nb2_sil" in p and state.get("nbb") is not None:
             state["nbb"].append(cur @ p["nb2_sil"])
         if FED_SHELF and "fed_sil2" in p and state.get("nb2") is not None:
