@@ -1,14 +1,14 @@
-# NEXT SESSION — cold-start entry (updated 2026-10-11 00:22)
+# NEXT SESSION — cold-start entry (updated 2026-10-11 03:07)
 
-**TONIGHT'S QUEUE (20:38; the word given for the whole queue), one organ per arm vs PMS8_241, chained on done marks:** FG_241 DONE (00:22): THE FUNNEL IS REFUTED AT THE PREFERENCE LEVEL (g_skip ~0.02 and rank 0.98 at EVERY breath: the loss drew no envelope; masked -0.003; NZ_241 not built) -> SINE4_241 ->
-ANTI4_241 (the crystal as the hub: k0 slot attention inside the waist subspace; shape vs depth at matched params; builder wt21) -> SEAL_241
-(the seal placebo) -> TM_241 (THE TYPED MIXER: messages along the decode's edges; bars masked +0.020/twin, operand binding >= 3x, args >= 0.47)
--> SH_241 (THE SHOAL MIXER, top-6) -> HUB_241 (the mixer zero-multiplied at training; builder wt22) -> SRF_241 (the sorting room re-run every
-breath, slot-conditioned; bars = the first-look reads SR missed; builder wt23). Queues: pc-queue-fg / pc-queue-sine / pc-queue-mixer /
-pc-queue-srf; each merges in the MAIN checkout only, asserts a clean tree, tests every grep, runs the pre-arm device smoke. ~16 h of card.
-HG_241 (20:0x): = SR on the slot (0.3686), ROWS 24 (record by one), digits 0.517, the first look UNMOVED with the coarse path live at 98% —
-the wall is NOT a lack of macro context. THE SORTING-ROOM FAMILY (4): mean 0.3646 (+0.017 +- 0.005). THE LINE'S READING: the first look is
-short of SUPERVISION distinguishing twins — the data road (annotated twins in unmemorized prose) starts tomorrow. Updated 20:38.
+**SINE4_241 IS ON THE CARD (03:07; fired 02:5x under JIT_BATCH_SIZE=1 — the device hang reproduced on the sine stack as on LT; 0.353 s/step ->
+reads ~08:15; then ANTI4_241 -> SEAL_241 in the same queue (pc-queue-sine), then TM -> SH -> HUB (pc-queue-mixer3), then SRF (pc-queue-srf).**
+THE NIGHT SO FAR: FG_241 — THE FUNNEL REFUTED AT THE PREFERENCE LEVEL (the loss drew no envelope: skip ~0.02 and rank 0.98 at every breath;
+masked -0.003; NZ_241 not built; the waist's shape measured from three sides). Builders: sine (merged 63513695; gate clean on both trees; param
+count 7.05M; the seal-rank check sealed/sealed/bypassed as predicted), mixer (built; its full gate re-run still owed before its queue's turn
+~13:00+), srfeed (built + gated, 9dd429c5; identity exact; probe RSS 7.4 GB; queue armed). RULES OF THE NIGHT: queues merge in the main
+checkout only; the card-free wait is DEV-aware (CPU gate trainers don't hold the card); an arm's ~24 GB RSS is its memmap (read MemAvailable);
+eager grad probes are the hogs (15-18 GB) — one at a time, sized down, never beside a device smoke; gates/probes run as systemd units (the
+harness reaps idle background shells); the kernel OOM killer took one gate. Updated 03:07.
 
 **THE CARD IS IDLE (09:38).** THE DIRECTION PROBE FIRED (zero-GPU; scripts/direction_probe.py; .cache/direction_probe_PMS8_241.txt):
 PRESENT-BUT-UNEXPRESSIBLE — a read-out trained on PMS8_241's own frozen states reaches wild AUROC 0.98 (own state + both gold args'
