@@ -50846,3 +50846,29 @@ coarse path's knob census at the arm's end (>= 10 % of the token path at block3'
 first-look reads unmoved vs SR AND the coarse path < 10 % = voted down -> form 2 is the next arm, not a new line.
 Queue faults on the way (both ruled): the worktree autostash over the .cache symlink; the dirty head from a concurrent
 read-only agent.
+
+### 2026-10-10 (19:42) — REGISTERED (Bryce's gut: "surface area to volume ratio" and "all roads lead to Rome — fully connected with a central hub that re-expands"): (1) SURFACE = the PORTS (where the state touches evidence: the token read, the consults, the atlas), VOLUME = the consolidating state (the crystal) — the measured body is SURFACE-STARVED after breath 2, not volume-starved: grow surface, hold volume; (2) ROME = the hub topology — on the slot side THE NOTEBOOK already is Rome (removal cost -0.134, 5x the all-to-all mixer's -0.025); HUB_241 (the mixer severed from scratch: the notebook as the ONLY slot-to-slot road) registered; the pure hourglass (no token-level skip) registered as HG form 3
+
+(1) The ratio, read against the week: the only positive organ added SURFACE (the sorting room: a trained interface
+at the first look); adding VOLUME (LT_241: 4 blocks on the slot side) was null with every block live; removing
+the squeeze (WS_241) was refused by the loss; widening the waist's domain (CS_241) cost. The pilot's ceiling says
+the fate is set by breath 2 and nothing after it changes a slot — the surface CLOSES after the first look and the
+later breaths are volume-only. So the ratio points at SRF_241 (the token stack re-run every breath with the slots
+as queries: the surface kept open across the breaths) over SINE4 (more internal shape), and reads the hourglass as
+FOLDING — more interface at fixed volume across three scales (tokens, clauses, sentences), the cristae move; the
+5-view vote is the same fold on the diagram axis. The relay's "surface = the FFN 2048 expansion" is off: the FFN is
+internal capacity, not exchange; surface is measured in ports and removal costs.
+(2) Rome, read against the week: the seal law's teeth come from the cookers (a bypass offered WAS taken, 09-10);
+WS_241 is the other case — a bypass offered and REFUSED (the loss kept the crystal's road), so "all roads lead to
+Rome" holds when Rome is the better road, and the law says build Rome as the only road anyway because the loss's
+taste cannot be relied on. Where Rome is: per breath the waist crystal (every slot passes through it); on the slot
+side THE NOTEBOOK (a star: slots write to and read from one register — the most load-bearing organ in the house)
+beside the mixer (a complete graph, untyped all-to-all, weak); across the loop THE SOLVER via the alternation (every
+proposal goes to the capital and the feedback re-expands — the six alternations make it the hub every breath); in
+the hourglass the sentence pool is Rome ONLY in the hub form — the additive skip (HG_241, running) keeps a token
+road around it; form 2 gates the road by the pool; form 3 = tokens -> clauses -> sentences -> tokens with NO
+token-level skip (the pure hub). REGISTERED: HUB_241 = PMS8's recipe with the mixer severed at training (the
+notebook the only slot-to-slot road; from scratch vs PMS8_241; ~80 min; bars: masked not down > 0.005 (the
+all-to-all is dispensable) and the notebook's read/write census up; a POSITIVE is a bonus; the zero-GPU pre-read
+exists: the mixer's fair sever -0.025 vs the notebook's -0.134). HG form 3 behind HG_241's verdict. Order (word):
+after HG_241 — SRF_241 (surface) and HUB_241 (Rome) are the two arms the gut names; both cheap; one organ each.
