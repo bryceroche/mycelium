@@ -1,40 +1,57 @@
-"""shuffle_read.py -- THE GYM's THIRD USE: THE SHUFFLE READ (2026-10-08, worktree
-mycelium-wt8, branch replay; Bryce's map-reduce / "the shuffle").
+"""shuffle_read.py -- THE SHUFFLE READ ON SRK_241 (2026-10-10, ported from branch
+replay's scripts/shuffle_read.py [4feab380, 2026-10-08] onto gen-weights for the
+sorting-room bodies).
 
-QUESTION: does the slot-to-slot MIXER (phase1_algebra_head.py's sc2/h_slot single-head path
-and the FED_MIXER multi-head twin, _mx_sc/_mx_raw) already group slots by OWNER -- the same
-"owner" identity THE GOVERNOR CENSUS (scripts/governor_census.py, spaCy en_core_web_sm)
-resolves from the dependency parse (numeral -> head noun -> verb -> subject/possessor)?
+Ported because: branch replay (worktree mycelium-wt8) forked off gen-weights at
+6079b855 and was never merged forward; its phase1_algebra_head.py lacks every organ
+built since (the sorting room / ALG_SORT, the owner-key shuffle / ALG_SORT_KEY among
+them), so the ORIGINAL script cannot run against SR_241/SRK_241 at all. This script
+is that same read (same two _CENSUS taps: "mixer_attn1" the single-head mixer's real
+post-mask attention, "mixer_attn_heads" the FED multi-head twin's per-head attention)
+at the identical call sites in breath_step -- dark unless _CENSUS is armed, zero
+behavior change when it is not; the mixer's own softmax output is bound to a new
+name and reused, not recomputed.
 
-METHOD: PMS8_241 (SURF8 env, no consults -- a single ALT2 pass is the whole read), 64 wild
-rows, DEV=CPU, a direct forward() call with the _CENSUS hook armed (the eyes_autopsy.py
-precedent the task names) -- NOT the snapshot/replay path, since _CENSUS already captures
-every breath 1..6 in one pass and there is no need to resume from a mid-loop state for a pure
-READ. Two new taps were added to breath_step for this (phase1_algebra_head.py, right where
-the existing single-head and multi-head mixer softmaxes are computed -- dark unless _CENSUS is
-armed, zero cost otherwise, confirmed by the standing unset/role8/hierd gate):
-  "mixer_attn1"      (B, L_TOT, L_TOT)            the single-head mixer's real post-mask attn
-  "mixer_attn_heads" (B, MX_HEADS, L_TOT, L_TOT)   the FED twin's per-head attn
+IMPORTANT -- WHERE THE TAPS ACTUALLY LIVE: editing the shared phase1_algebra_head.py
+head mid-campaign (with the hourglass queue's gate running behind it) is out of
+bounds for a read-only task, so THIS repo's copy of phase1_algebra_head.py does NOT
+carry the two taps -- running this script here against parts (a)/(b)/(d) will find
+no "mixer_attn1" entries and exit cleanly with a note (see the `if not breaths:`
+guard below). The taps live on branch `shuffletap` (worktree /home/bryce/mycelium-
+wt19, forked off gen-weights 2026-10-10), UNMERGED -- a merge is owed a proper gate
+(unset bit-identical) first, same as every other organ in this codebase. Run this
+script FROM that worktree (same env, cwd=mycelium-wt19) to reproduce parts (a)/(b)/
+(d); run it here (or scripts/shuffle_srk_keycensus.py, which needs no taps at all)
+for part (e).
 
-OWNERS: each gold GIVEN slot's owner = governor_census.governor_chain()'s owner_key off its
-bound numeral token (governor_census's own bind_given_occurrences/numeral_candidates reused by
-import -- no reimplementation of the spaCy walk). Each gold RELATION slot's owner = the single
-owner shared by both its gold args IF both args are themselves GIVEN vars and resolve to the
-SAME owner_key ("same-owner"); anything else (an arg that is itself a relation's result, an
-unresolved owner, or two different owners) is "mixed" -- the same coarsening governor_census.py
-itself uses for relation args (its own PART C skips non-given args as "arg_derived_skipped"
-rather than resolving them recursively). "none" is its own owner value (unresolved chain) --
-STATED SIMPLIFICATION: two slots that both fail owner resolution count as "same owner" under
-plain string equality; not corrected for here.
+NEW for this read (THE KEY'S OWN GROUPING, independent of the gain): a third tap,
+"sort_tok_key" (kb=-1, once per forward() call, not per breath) -- the sorting
+room's raw per-TOKEN 64-d owner key, `waist @ sort_key_w + sort_key_b`, captured
+BEFORE fat_cur turns it into a per-slot expectation and before sort_key_gain scales
+anything into the mixer's logits. The ledger's "gain unread" (SRK_241: sort_key_gain
+drifted to -0.021, near its zero-at-birth init) says the GAIN never used this key --
+it says nothing about whether the key itself, geometrically, separates owners. This
+script answers that separately: for every GIVEN-numeral token governor_census.py can
+bind and resolve an owner for, the cosine between its sort_tok_key vector and every
+other such token's vector in the same row, split same-owner vs different-owner.
 
-"Empty" slots = L_TOT positions with no gold fact at all (j >= len(row's factors), and any
-scratch rows) -- destinations of attention that are neither same- nor different-owner, just
-unoccupied.
+BODY is a required positional argument (TAG, e.g. SR_241 or SRK_241) -- this reader
+takes the body as an argument per the delegated task's instruction. Every port the
+arm's own env threads (ALG_SORT, ALG_SORT_KEY, and everything else SURF8/the base
+family set) must be exported by the CALLER before invoking this script (the
+rack_chain_SR.sh / rack_chain_SRK.sh convention: $FAM $SURF8 $SRX, SRX differing by
+body) -- this script does not default ALG_SORT or ALG_SORT_KEY itself, so a missing
+export fails loud (SR_241 has no owner-key shuffle; running it without ALG_SORT_KEY
+unset would silently skip the key census, which is correct for the control).
 
-right/wrong: .cache/ps_legal_wild_PMS8_241.npz, same convention as resonance_read.py /
-replay_gate_check.py.
+Fixture: .cache/wild_admitted_holdout.jsonl, first N_ROWS=64 rows (PMS8_241's own
+64-row convention, for direct comparability with .cache/shuffle_read_PMS8_241.txt).
+right/wrong: .cache/ps_legal_wild_<TAG>.npz (same convention as resonance_read.py /
+replay_gate_check.py / the original shuffle_read.py).
 
-DEV=CPU asserted; .cache/gpu.lock never touched (no flock in this file).
+DEV defaults to CPU (setdefault -- a caller exporting DEV=PCI+AMD under
+`flock .cache/gpu.lock` wins); this script never touches .cache/gpu.lock itself.
+Writes ONLY .cache/shuffle_SRK_<TAG>.txt -- never a banked artifact.
 """
 import os
 import sys
@@ -43,21 +60,29 @@ import collections
 
 sys.path.insert(0, "."); sys.path.insert(0, "scripts")
 os.environ.setdefault("DEV", "CPU")
-assert os.environ.get("DEV") == "CPU"
 
 import numpy as np
 
+if len(sys.argv) < 2:
+    raise SystemExit("usage: shuffle_read.py <TAG> (e.g. SR_241 or SRK_241); "
+                      "caller must export the arm's own env first (FAM+SURF8+W+SRX)")
+TAG = sys.argv[1]
 N_ROWS = 64
-CKPT = ".cache/sharp_PMS8_241.safetensors"
-PS_LEGAL_PATH = ".cache/ps_legal_wild_PMS8_241.npz"
-OUT_TXT = ".cache/shuffle_read_PMS8_241.txt"
+CKPT = f".cache/sharp_{TAG}.safetensors"
+PS_LEGAL_PATH = f".cache/ps_legal_wild_{TAG}.npz"
+OUT_TXT = f".cache/shuffle_SRK_{TAG}.txt"
 
+# ---------------------------------------------------------------------------
+# THE BASE FAMILY (unconditional, matching the original script's convention) --
+# ALG_SORT / ALG_SORT_KEY and anything SURF8 overrides are NOT in this dict; the
+# caller's env (rack_chain_SR.sh / rack_chain_SRK.sh's $FAM $SURF8 $SRX) wins there
+# by simply never being touched here.
+# ---------------------------------------------------------------------------
 _FAM = {
-    "DEV": "CPU", "ALG2": "1", "ALG_FTYPES": "9", "ALG_DUP": "1",
+    "ALG2": "1", "ALG_FTYPES": "9", "ALG_DUP": "1",
     "ALG_HW": "512", "ALG_WIDE": "1", "ALG_BREATH": "7",
     "ALG_NOTEBOOK": "1", "ALG_SIXWAVE": "1", "NB_PERSLOT": "1",
     "ALG_BINDBUS": "7", "ALG_BIND_D": "512",
-    "BIND_CODES": ".cache/bindbus_codes512r.npz",
     "ALG_BUSGARAGE": "2", "ALG_SHELF_CIRCLE": "2", "ALG_ALTMASK": "1",
     "ALG_ALT21": "1", "ALG_ALT2": "1", "ALG_MASKHEAD": "1",
     "ALG_FED": "1", "ALG_POLAR": "1", "ALG_POLAR_D": "128",
@@ -69,7 +94,10 @@ _FAM = {
     "ALG_ROUTER": "2", "R_GAIN_INIT": "1.0", "ALG_FREEZE": "r_gain", "ALG_ROUTER_PTR": "0.0",
     "ALG_SPAN_ALL": "1", "ALG_SPAN_ARGS": "1", "ALG_SPAN_OP": "1", "ALG_SPAN_RCUE": "1",
     "ALG_SPAN_ARCUE": "1", "ALG_PTR_SURF": "role:add:2.0",
+    "BIND_CODES": ".cache/bindbus_codes512r.npz",   # SURF8's role bank (SURF8's own default)
 }
+for k, v in _FAM.items():
+    os.environ.setdefault(k, v)
 
 
 def main():
@@ -78,13 +106,16 @@ def main():
         print(s, flush=True); P.append(s)
 
     t0 = time.time()
-    for k, v in _FAM.items():
-        os.environ[k] = v
+    log(f"[shuffle] TAG={TAG} DEV={os.environ.get('DEV')} ALG_SORT={os.environ.get('ALG_SORT','0')} "
+        f"ALG_SORT_KEY={os.environ.get('ALG_SORT_KEY','0')} ckpt={CKPT}")
     import phase1_algebra_head as H
     from tinygrad.nn.state import safe_load
     from tinygrad import Tensor, dtypes
     import spacy
     import governor_census as GC
+    from tokenizers import Tokenizer
+
+    KEYCENSUS = bool(int(os.environ.get("ALG_SORT_KEY", "0")))
 
     p = H.build_params(0)
     sd = safe_load(CKPT)
@@ -117,29 +148,51 @@ def main():
     H._CENSUS = None
     log(f"[shuffle] census forward done ({time.time() - t0:.0f}s so far); {len(census)} tap entries")
 
-    attn1 = {}; attn_heads = {}
+    attn1 = {}; attn_heads = {}; sort_tok_key = None
     for kb, tag, arr in census:
         if tag == "mixer_attn1":
             attn1[kb] = arr          # (B, L_TOT, L_TOT)
         elif tag == "mixer_attn_heads":
             attn_heads[kb] = arr     # (B, MX_HEADS, L_TOT, L_TOT)
+        elif tag == "sort_tok_key":
+            sort_tok_key = arr       # (B, T_ALG, 64)
     K_B = int(os.environ.get("ALG_BREATH", "7"))
     breaths = sorted(attn1)
-    log(f"[shuffle] mixer_attn1 captured at breaths {breaths}; mixer_attn_heads at {sorted(attn_heads)}")
+    log(f"[shuffle] mixer_attn1 captured at breaths {breaths}; mixer_attn_heads at {sorted(attn_heads)}; "
+        f"sort_tok_key {'captured ' + str(sort_tok_key.shape) if sort_tok_key is not None else 'ABSENT (ALG_SORT_KEY unset or no sort_key_w)'}")
+    if not breaths:
+        # This checkout's phase1_algebra_head.py has no mixer_attn1/mixer_attn_heads taps --
+        # they live on branch `shuffletap` (worktree mycelium-wt19, 2026-10-10), NOT merged to
+        # gen-weights (a gate is owed first: unset bit-identical). Part (e), the key's own
+        # grouping, does not need these taps at all (see scripts/shuffle_srk_keycensus.py).
+        log("[shuffle] NO mixer_attn1/mixer_attn_heads taps on this checkout -- parts (a)/(b)/(d) "
+            "need branch shuffletap (worktree mycelium-wt19); exiting cleanly rather than crashing "
+            "on an empty breath list.")
+        return
+    if KEYCENSUS and sort_tok_key is None:
+        # part (e) needs a dedicated sort_tok_key tap too (also shuffletap-only, OR run
+        # scripts/shuffle_srk_keycensus.py instead, which needs zero head edits) -- downgrade
+        # to a note so parts (a)/(b)/(d) above still run with ALG_SORT_KEY=1 left on (faithful
+        # to the real trained body's forward pass; turning it off here would read a DIFFERENT
+        # computation than the one that was actually trained/evaluated).
+        log("[shuffle] NOTE: ALG_SORT_KEY=1 but no sort_tok_key tap on this checkout -- part (e) "
+            "skipped here; see scripts/shuffle_srk_keycensus.py's own .cache/shuffle_SRK_<TAG>.txt.")
+        KEYCENSUS = False
 
     # ---- THE GOVERNOR CENSUS, reused by import ----
     NLP = spacy.load("en_core_web_sm")
+    tok_hf = Tokenizer.from_file(H.TOKENIZER_JSON)
 
     ps = np.load(PS_LEGAL_PATH)
     ok_lookup = {(int(r), int(c)): bool(o_) for r, c, o_ in zip(ps["rows"], ps["slots"], ps["ok"])}
 
-    # per-row: owner label for every var that is a GIVEN; per-slot owner label (given or
-    # relation, "mixed" / "none" as coarsened above); slot kind (given/rel); gold args (for
-    # relation slots, part (d))
     owner_of_slot = {}     # (i, j) -> owner label string
     kind_of_slot = {}      # (i, j) -> "given" / "rel"
     args_of_slot = {}      # (i, j) -> list of arg var indices (relation slots only)
     right_of_slot = {}     # (i, j) -> bool or None
+
+    # per-row given-var -> (tok_idx_in_hf_encoding, owner_label), for the key census
+    given_tok_of_row = {}
 
     n_resolved = n_unresolved = 0
     for i in range(n):
@@ -153,14 +206,36 @@ def main():
         given_vars = {v for v, _ in given_list}
         bound = GC.bind_given_occurrences(doc, given_list, cands)
         owner_of_var = {}
-        for var, tok in bound.items():
-            if tok is None:
+        tok_of_var = {}       # var -> spaCy token (for the key census's offset lookup)
+        for var, sp_tok in bound.items():
+            if sp_tok is None:
                 owner_of_var[var] = "none"; n_unresolved += 1; continue
-            ch = GC.governor_chain(doc, sent_list, tok)
+            tok_of_var[var] = sp_tok
+            ch = GC.governor_chain(doc, sent_list, sp_tok)
             if ch is None:
                 owner_of_var[var] = "none"; n_unresolved += 1
             else:
                 owner_of_var[var] = ch["owner_key"]; n_resolved += 1
+
+        if KEYCENSUS:
+            enc = tok_hf.encode(text)
+            offs = list(enc.offsets)[:H.T_ALG]
+            entry = []
+            for var, sp_tok in tok_of_var.items():
+                own = owner_of_var.get(var, "none")
+                if own == "none":
+                    continue
+                c0, c1 = sp_tok.idx, sp_tok.idx + len(sp_tok.text)
+                best_k, best_ov = None, 0
+                for k2, (o0_, o1_) in enumerate(offs):
+                    if o1_ <= o0_:          # special token, zero-width offset
+                        continue
+                    ov = min(c1, o1_) - max(c0, o0_)
+                    if ov > best_ov:
+                        best_ov, best_k = ov, k2
+                if best_k is not None:
+                    entry.append((best_k, own))
+            given_tok_of_row[i] = entry
 
         for j, fac in enumerate(facs):
             if j >= H.L_FAC:
@@ -178,7 +253,7 @@ def main():
                     if a in given_vars:
                         arg_owners.append(owner_of_var.get(a, "none"))
                     else:
-                        arg_owners.append(None)   # derived/non-given arg: unresolved by this script's coarsening
+                        arg_owners.append(None)
                 if len(arg_owners) >= 2 and all(o_ is not None and o_ != "none" for o_ in arg_owners) and len(set(arg_owners)) == 1:
                     owner_of_slot[(i, j)] = arg_owners[0]
                 else:
@@ -196,19 +271,18 @@ def main():
     owner_counts = collections.Counter(owner_of_slot[(i, j)] for (i, j) in gold_slots)
     log(f"[shuffle] owner label distribution (top 8): {owner_counts.most_common(8)}")
 
-    # per-row: which L_FAC positions are "empty" (no fact at all)
     n_facs_of_row = {i: len(vs[i]["factors"]) for i in range(n)}
 
     # ================================================================================
-    # (a)/(b)/(c): the grouping factor and effective k, per breath, right vs wrong
+    # (a)/(b): the grouping factor and effective k, per breath, right vs wrong
     # ================================================================================
-    group_rows = {}   # (kb, right) -> list of (mean_same, mean_diff, mean_empty)
-    k_eff_rows = {}    # (kb, right) -> list of k_eff (head-mean attn)
+    group_rows = {}
+    k_eff_rows = {}
     for kb in breaths:
-        A = attn1[kb]   # (B, L_TOT, L_TOT)
+        A = attn1[kb]
         for (i, j) in gold_slots:
             right = right_of_slot[(i, j)]
-            row_av = A[i, j]       # (L_TOT,)
+            row_av = A[i, j]
             own = owner_of_slot[(i, j)]
             same_m, diff_m, empty_m = [], [], []
             nfacs = n_facs_of_row[i]
@@ -222,7 +296,6 @@ def main():
                     (same_m if ok2 == own else diff_m).append(row_av[k])
                 else:
                     empty_m.append(row_av[k])
-            # scratch rows (if any), L_FAC..L_TOT-1, are also "empty"
             for k in range(H.L_FAC, A.shape[-1]):
                 empty_m.append(row_av[k])
             ms = float(np.mean(same_m)) if same_m else float("nan")
@@ -237,7 +310,7 @@ def main():
     # ================================================================================
     # (d): the binding read -- gold-arg attention vs other-slot attention, relation slots only
     # ================================================================================
-    bind_rows = {}   # (kb, right) -> list of (mean_to_args, mean_to_others)
+    bind_rows = {}
     rel_slots = [(i, j) for (i, j) in gold_slots if kind_of_slot.get((i, j)) == "rel"]
     for kb in breaths:
         A = attn1[kb]
@@ -257,16 +330,38 @@ def main():
     log(f"[shuffle] (d) aggregated ({time.time() - t0:.0f}s so far); {len(rel_slots)} relation gold slots")
 
     # ================================================================================
+    # (e) THE KEY'S OWN GROUPING (SRK_241 only, gated on ALG_SORT_KEY): cosine(sort_tok_key_i,
+    # sort_tok_key_j) between GIVEN-numeral tokens, same-owner vs different-owner, independent
+    # of sort_key_gain (never applied here) and of the mixer's attention (never used here).
+    # ================================================================================
+    key_same = []; key_diff = []
+    if KEYCENSUS:
+        for i in range(n):
+            entry = given_tok_of_row.get(i, [])
+            if len(entry) < 2:
+                continue
+            vecs = sort_tok_key[i]   # (T_ALG, 64)
+            norm = vecs / (np.linalg.norm(vecs, axis=-1, keepdims=True) + 1e-12)
+            for a in range(len(entry)):
+                ka, oa = entry[a]
+                for b in range(a + 1, len(entry)):
+                    kb_, ob = entry[b]
+                    cos = float(norm[ka] @ norm[kb_])
+                    (key_same if oa == ob else key_diff).append(cos)
+        log(f"[shuffle] (e) key census: {len(key_same)} same-owner pairs, {len(key_diff)} diff-owner pairs "
+            f"across {sum(1 for i in range(n) if len(given_tok_of_row.get(i, [])) >= 2)} rows with >=2 resolved given tokens")
+
+    # ================================================================================
     # write the report
     # ================================================================================
     lines = []
     L = lines.append
     L("=" * 92)
-    L("THE SHUFFLE READ -- PMS8_241, wild, 64 rows, single-head mixer attention (2026-10-08)")
+    L(f"THE SHUFFLE READ ON {TAG} -- wild, {n} rows, single-head mixer attention (2026-10-10)")
     L("=" * 92)
+    L(f"ALG_SORT={os.environ.get('ALG_SORT','0')} ALG_SORT_KEY={os.environ.get('ALG_SORT_KEY','0')} ckpt={CKPT}")
     L(f"gold slots: {len(gold_slots)} (right={n_right}, wrong={len(gold_slots)-n_right}); "
-      f"owner resolution: {n_resolved} resolved / {n_unresolved} unresolved (both given-slot and "
-      f"relation-arg tokens, before the relation same/mixed coarsening)")
+      f"owner resolution: {n_resolved} resolved / {n_unresolved} unresolved")
     L(f"owner label distribution across gold slots (top 8): {owner_counts.most_common(8)}")
     L("")
     L("-" * 92)
@@ -308,6 +403,18 @@ def main():
             ma, mo = np.nanmean(arr[:, 0]), np.nanmean(arr[:, 1])
             L(f"    b{kb}   {label:5s}  {len(rows):4d}  {ma:.5f}  {mo:.5f}   {ma/(mo+1e-12):7.3f}")
 
+    if KEYCENSUS:
+        L(""); L("-" * 92)
+        L("(e) THE KEY'S OWN GROUPING (gain-independent): cosine(sort_tok_key) between GIVEN-numeral tokens")
+        L("-" * 92)
+        sm = float(np.mean(key_same)) if key_same else float("nan")
+        dm = float(np.mean(key_diff)) if key_diff else float("nan")
+        ss = float(np.std(key_same)) if key_same else float("nan")
+        ds = float(np.std(key_diff)) if key_diff else float("nan")
+        L(f"  same-owner  n={len(key_same):5d}  mean cos={sm:+.4f}  std={ss:.4f}")
+        L(f"  diff-owner  n={len(key_diff):5d}  mean cos={dm:+.4f}  std={ds:.4f}")
+        L(f"  gap (same - diff) = {sm - dm:+.4f}")
+
     L(""); L("-" * 92); L("THE SIX-LINE READING"); L("-" * 92)
     def _ratio_series(right=None):
         out = []
@@ -348,6 +455,13 @@ def main():
                      else "THE WRONG WAY (< 1: attends MORE to different-owner slots)"))
     L(f"6. VERDICT: the shuffle is {verdict} at the last captured breath (b{breaths[-1]}, ratio={r_all[-1]:.2f}); "
       f"right-vs-wrong gap at b{breaths[-1]} = {r_right[-1]-r_wrong[-1]:+.2f}.")
+    if KEYCENSUS:
+        sm = float(np.mean(key_same)) if key_same else float("nan")
+        dm = float(np.mean(key_diff)) if key_diff else float("nan")
+        key_verdict = ("THE KEY CARRIES OWNERSHIP" if (sm - dm) > 0.05
+                        else "THE KEY DOES NOT CARRY OWNERSHIP (gap <= 0.05, noise-level)")
+        L(f"7. THE KEY CENSUS: same-owner cos {sm:+.4f} vs diff-owner cos {dm:+.4f} "
+          f"(gap {sm-dm:+.4f}) -- {key_verdict}.")
 
     txt = "\n".join(lines) + "\n"
     open(OUT_TXT, "w").write(txt)

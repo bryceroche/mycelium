@@ -107,13 +107,78 @@ REFUSED = ("ALG_SHELF", "ALG_WHIP", "ALG_TOKLOOP", "ALG_WRITEBACK", "ALG_KANNEAL
            "ALG_SPAN_ARGS", "ALG_SPAN_OP", "ALG_SPAN_OP_ROAD", "ALG_PTR_SURF",
            "ALG_BUSREG", "ALG_VALREG", "ALG_VALREG_ADDR", "ALG_BUSREG_SEAL", "ALG_BUSREG_PREDMAP", "ALG_VALREG_LIVE", "ALG_BUSREG_RAMP", "ALG_IDKEY", "ALG_ALT3", "ALG_NEST", "ALG_UNLOCK", "ALG_MATRY", "ALG_SW_TICK", "ALG_LIVE_FACTS", "ALG_TREE", "ALG_TREE2", "ALG_TREE_NUMW", "ALG_CARIC", "ALG_TREECODE", "ALG_TREE_NOPOOL",   # THE BUS REGISTER + THE VALUE STREAM + THE SEALED VALUE ARM (2026-09-22/23): their per-rung terms live in the fused forward()'s loop/ladder only
            "ALG_CERT", "ALG_CERT_IMPLIED", "ALG_CERT2", "ALG_HIER_READ", "ALG_HIER_WAIST", "ALG_HIER_DAMP", "ALG_HIER_TAU", "ALG_HIER_LISTEN",   # THE TRAINED CERTIFIER-MASK ROAD (2026-09-28): rides ALG_ALT3's own consult, already refused above; named separately so a future narrowing of the ALG_ALT3 refusal does not silently let this through too. ALG_HIER_LISTEN (2026-10-06): same conductor()-table pattern as ALG_HIER_TAU — the walker never calls conductor(kb) at all
-           "ALG_RACK", "ALG_RACK_TESTS", "ALG_RACK_FREEZE",   # THE RACK (2026-10-05): rides the consults' rack3/rack5 ports inside the fused forward's loop — the walker threads neither
+           "ALG_RACK", "ALG_RACK_TESTS", "ALG_RACK_FREEZE", "ALG_RACK_RELEASE",   # THE RACK (2026-10-05) + FORM 3 (branch rack3): rides the consults' rack3/rack5 ports inside the fused forward's loop and _consult_into's host-side release — the walker threads neither
+           "ALG_CHALK", "ALG_CHALK_N",   # THE CHALKBOARD (2026-10-05, branch rack3): rides _make_bank's chalk3/chalk5 closure (its own _make_bank(self.p, waist, self.b_tk, self.B) call below never passes them) and _consult_into's host pack — the walker threads neither
            "ALG_EYES", "ALG_EYES_HARD", "ALG_EYES_BASE",   # THE EYES (2026-10-05): the picture reads ctx["fat0"] and the hands live in state["eyes_m"] — the walker's own ctx/state carry neither; the family env must name them explicitly (the ALG_HIER_TAU pattern)
            "ALG_SPAN_RCUE", "ALG_SPAN_ARCUE",   # THE ROLE SIGNATURE (2026-09-22): same
            # reason as ALG_SPAN_ARGS/ALG_SPAN_OP above — the walker's per-seam heads_of
            # calls never thread a per-breath rcue_all list, and the role pointer's
            # out["args"] rewrite lives only in the fused forward()'s emission code
-           "ALG_HUD")
+           "ALG_HUD",
+           "ALG_DIR", "ALG_DIR_W",
+           "ALG_DIRROLE", "ALG_DIRROLE_LEXICON",
+           "ALG_SELFMATCH",
+           "ALG_PAIRCMP", "ALG_PAIRCMP_H",
+           # THE PAIRWISE COMPARATOR ROAD (2026-10-09): _heads_of's own
+           # res-pointer term (pc_w1/pc_b1/pc_w2/pc_b2 against the
+           # content-only slot/candidate states) is the fused forward()'s
+           # single source of truth and would in fact thread fine through
+           # the walker's per-seam heads_of calls on its own, exactly like
+           # THE SELF-MATCH TERM below — refused anyway, by the word given
+           # for this build, named separately so a future narrowing of the
+           # ALG_SELFMATCH refusal does not silently let this one through
+           # untested too.
+           "ALG_SORT", "ALG_SORT_KEY", "ALG_SORT_KEY_GAIN",
+           "ALG_CLOCK_SEP",
+           # THE SEPARATED CLOCK (2026-10-09): breath_step's own state["clk"] (born at
+           # kb == 1 off polar_clk_init, turned/EM-exchanged every clocked breath, read by
+           # QROT's register bias) is carried the same way state["cur"] is -- this walker's
+           # own per-seam dispatches never asserted whether their own state dict survives a
+           # round trip with a key breath_step itself introduces, so (like ALG_SORT/
+           # ALG_SELFMATCH/ALG_PAIRCMP above) refused untested rather than assumed safe.
+           "ALG_DEPTH",   # THE LOOPED TRANSFORMER (2026-10-09): breath_step's own replacement of
+                          # the mixer + FED twin (bq/bk/bv/sc2/_mx_*) with _depth_stack's self-
+                          # attn/cross-attn/FFN blocks over `cur` is the fused forward()'s single
+                          # source of truth; the walker's per-seam heads_of calls never call
+                          # breath_step or _depth_stack at all (the ALG_SORT precedent, same reason)
+           "ALG_WAIST_SKIP", "ALG_WAIST_SKIP_INIT",
+           # THE WAIST SKIP, FORM A (2026-10-09): _polar_waist's own in-head gated bypass
+           # (waist_skip_theta against the content-plane waist's reconstruction) is the fused
+           # forward()'s single source of truth and would in fact thread fine through the
+           # walker's per-seam heads_of calls on its own (breath_step calls _polar_waist the
+           # same way either path reaches it) — refused anyway, by the word given for this
+           # build, named separately so a future narrowing of a nearby ALG_POLAR_D/ALG_HIER_WAIST
+           # refusal does not silently let this one through untested too.
+           # THE SORTING ROOM form 2 (2026-10-09): forward()'s own rebinding of the local `waist`
+           # name (ALG_SORT) and breath_step's ctx["tok_key"] read (ALG_SORT_KEY) are the fused
+           # forward()'s single source of truth; the walker never calls forward() at all (its own
+           # per-seam heads_of calls stop well short of where `waist` is built or the bank is
+           # closed over it) — a config that set these under the walker would train with a token
+           # side the walker's own path never built, silently. ALG_SORT_KEY_GAIN (the gain's init
+           # override) refused alongside its gate for the same reason the other per-organ
+           # hyperparameters above are (ALG_DIR_W's precedent).
+           # THE SELF-MATCH TERM (2026-10-09): _heads_of's own res-pointer
+           # bias (sm_w_self/sm_w_arg against the args head's own-index
+           # score) is the fused forward()'s single source of truth and
+           # would in fact thread fine through the walker's per-seam
+           # heads_of calls on its own — refused anyway, by the word
+           # given for this build, so a future champion-config change to
+           # the walker's own inverse-form handling is not silently
+           # bypassed by an untested path; narrow this refusal only
+           # after a walker-path gate run proves the two are identical.
+           # THE DIRECTION ROLE (2026-10-09): rides the role pointer's
+           # own out["args"] rewrite (ALG_PTR_SURF=role:, already refused
+           # above) and a host-built per-batch `dircue` port the walker's
+           # own step() never constructs or threads — named separately
+           # so a future narrowing of the ALG_PTR_SURF refusal does not
+           # silently let this through too (the ALG_HIER_LISTEN pattern).
+           # THE DIRECTION BIT (2026-10-08): _heads_of's own "dir" emission
+           # and res-pointer structural mask ride the walker's per-seam
+           # heads_of calls fine (single source of truth) — but the dir
+           # BCE term lives only in the shared loss_fn() this walker does
+           # NOT call (its own per-seam loss is a separate accumulation);
+           # left unrefused, h_dir/h_dir_b would train on zero gradient
+           # (silent divergence) under the walker's own training path.
            # THE TOKEN HUD (2026-09-21): forward()'s new `hud` port is fed
            # only by the mask-prep pass's b_hud buffer (do_train's own
            # step()) and by loop_val/chain_acc's read-time helper — the
@@ -134,6 +199,29 @@ REFUSED = ("ALG_SHELF", "ALG_WHIP", "ALG_TOKLOOP", "ALG_WRITEBACK", "ALG_KANNEAL
            # pings between dispatches (its OWN wheel road) — it does not
            # thread the mask-prep pass's precomputed CERTS buffer or the
            # forward()-loop feed that consumes it
+           "ALG_ARGSRES", "ALG_ARGSRES_H", "ALG_ARGSRES_SCALE",
+           # THE HOURGLASS SORTING ROOM form 2b (2026-10-09): rides the SAME forward()-only
+           # rebinding of `waist` the flat ALG_SORT already refuses above (_sort_room_hg is
+           # called from forward() alone; the walker never calls forward() at all) — refused
+           # for the identical reason, named separately so a future narrowing of the ALG_SORT
+           # refusal does not silently let this one through untested too.
+           "ALG_SORT_HG",
+           # THE FUNNEL GATE (2026-10-10): _polar_waist's own per-breath, per-band/per-
+           # intermediate-dim gated bypass + rank gate (funnel_skip_theta/funnel_rank_theta,
+           # indexed by the breath kb breath_step receives) is the fused forward()'s single
+           # source of truth — the walker's per-seam heads_of calls never call _polar_waist
+           # or breath_step at all (the ALG_WAIST_SKIP/ALG_SORT precedent, same reason: a
+           # config that set this under the walker would train with a waist the walker's own
+           # path never built, silently). Refused by the word given for this build.
+           "ALG_FUNNEL", "ALG_FUNNEL_INIT",
+           "ALG_SINE", "ALG_SINE_SKIP",
+           "ALG_MIXER_OFF", "ALG_SHOAL_MIXER", "ALG_TYPED_MIXER",
+           "ALG_SORT_FEED")           # THE ARGS-CONDITIONED RES (2026-10-09): _heads_of's own res-pointer term           # (ar_w1/ar_b1/ar_w2/ar_b2 against the content-only slot/candidate states PLUS the           # args head's own predicted soft-selected args states) is the fused forward()'s
+           # single source of truth and would in fact thread fine through the walker's
+           # per-seam heads_of calls on its own, exactly like THE PAIRWISE COMPARATOR ROAD and
+           # THE SELF-MATCH TERM above — refused anyway, by the word given for this build,
+           # named separately so a future narrowing of either refusal does not silently let
+           # this one through untested too.
 
 REQ_CTX = ("B", "K_B", "waist", "tokmask", "slot_mask", "bank", "rot2",
            "sync", "drop", "gmod", "revoke", "tail", "reg", "RINGS",

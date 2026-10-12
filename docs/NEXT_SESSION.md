@@ -1,54 +1,51 @@
-# NEXT SESSION — cold-start entry (updated 2026-10-07 17:44)
+# NEXT SESSION — cold-start entry (updated 2026-10-11 17:30)
 
-**THE CARICATURE PROBE (17:44, 8110f516):** BAR MISSED — no caricatured variant (centered/whitened/
-lda-lite) beats plain's wild AUROC 0.766 by +0.02 (best is -0.0058); kind legibility is unchanged
-from 10-05 (given-vs-rel flat ~0.86; the 4 rel subtypes move only +0.015-0.018 off a 0.428 floor,
-chance=0.25). The margin (own-kind cosine minus best-other-kind on right slots) TRIPLES as designed
-(+0.24 plain -> +0.73 lda-lite) — a clean geometry win that does not transfer to correctness: a
-good lesson, not a feature. Plain cosine stays the perceiver's atlas input. Table + reading:
-.cache/welford_atlas_PMS8_241.txt.
+**SRF_241 (THE SORTING ROOM EVERY BREATH, slot-conditioned) IS ON THE CARD (17:30; fired 16:39; 0.45 s/step -> reads ~23:30; bars = the first-look
+reads SR missed: twin-pick <= 0.35, other-sentence <= 0.40, masked >= SR's family + 0.010).** THE QUEUE UNDER THE WORD (17:1x): the FIXED sine arms
+SINE4/ANTI4/SEAL (pc-queue-sine on SRF's done mark; ALG_SINE_SKIP=none, the waist-sever placebo, FFN 4x, the birth check) -> K3_241 (three breaths
+throughout, ALG_LOOP_STOP=3, the clock kept at K=7) -> PK_241 (progressive: 24k at K=3 then 24k at K=7) [builder wt27] -> RTB_241 (THE REPLAY-TRAINED
+BREATH: one breath per step, a sampled phase, a replay buffer, offline solver feedback — the diffusion recipe; waits on the gym merge (agent on
+CPU) + the solver pipeline (perf A, wt24)) -> the NL-loop refactor's first arm after SRF's read. PERF: A = the solver pipeline (pool + memo +
+training budget; bit-identical gate; wt24), B = the JIT graph-batch hang's threshold (wt25). ARCHITECTURE v2 registered (the master design doc,
+docs/MASTER_DESIGN.md, published to main 6f0f0c57). THE MIXER LINE CLOSED (TM costs, SH diverged, SRK unread, HUB: the all-to-all is dispensable).
+DISK: 1.5 TB of retired forms' state memmaps deleted (1.4 TB free); the checkpoint sweep (61 GB) is next. Updated 17:30.
 
-**THE TEXTURE PROBE (12:00, 9690738d):** closed the diet-vs-wild cosine sign flip (diet 0.423 vs
-wild 0.766, same construction). NOT in-sample bias (LORO moves every register bucket <=0.002).
-Register mix is A factor (gsm8k 0.6317 is the diet's best bucket; the synthetic/pen buckets
-rendered-wild/mint-like/none are strongly anti-predictive, <0.40, and are 67% of the slice) but not
-THE explanation (even gsm8k alone falls far short of wild's 0.766). A GSM8K-only library does not
-fix either side (diet gsm8k LORO 0.6206; wild rescored 0.7487, slightly worse than the full-diet
-library's 0.7661) — the flip is a ceiling/near-memorized-continuation-regime property of the diet's
-own slots, not a library-composition artifact. Full table + reading: .cache/perceiver_v1b_PMS8_241.txt.
-
-**THE PERCEIVER v1b READ (11:51, 141058f7):** DOES NOT FIRE — wild AUROC 0.7200 vs the entropy+0.05
-bar 0.7579 (MISS), precision@20%cov 0.6058 vs the 0.90 dryness bar (MISS). Built: the (kind,breath)
-Welford library (.cache/welford_atlas_PMS8_241_content_breaths.npz, verified bit-for-bit against the
-final-only library at kb=6) + the codebook-distribution/JS features (.cache/perceiver_v1b_features_
-PMS8_241_{pm35cslicevalid2,wildhold}.npz; tau sweep flat, fixed 0.1). Diet CV: the per-breath flight
-path alone beats entropy by +0.07 (0.8055 vs 0.7355) and beats the final-cosine-alone ablation by
-+0.174 (bigger than predicted); JS+telemetry add another +0.07 combined; none of it survives to
-wild. Full report: .cache/perceiver_v1b_PMS8_241.txt; ledger 11:18 (prediction) + 11:51 (read).
-
-**THE CARD:** pc-queue-listen merged branch listen into gen-weights (ac23f552: ALG_HIER_LISTEN + the ALG_HIER_DAMP=3,5,0 schedule) and is
-running the post-merge CPU gate (.cache/listen_merge_gate.log), then fires RKX_241 (RK_241's recipe with DAMP 3,5,0 = the schedule-
-collision fix) then RKXC_241 (its control). Logs: .cache/rack_chain_RKX.log / RKXC.log, queue_listen.log. BARS (ledger 10-06 17:0x):
-open mint >= 0.586 (the consults' cost on the hierarchical body removed), masked >= 0.338, rows >= 15, the hit >= 0.72 (membrane_rack.py),
-the wall <= 0.49. Waiters match "preflight] FAIL|chain exit|FAILED|ABORT|Traceback".
-**THE RACK FAMILY, CLOSED ON TWO BODIES (10-06/07):** form 2 (given_unique at consult 1, claim + leaf freeze) commits CLEAN certificates
-(0.963 on HS, 0.972 on the plain chassis; the 0.686 was a masked-vs-unmasked bug, struck) at ~1.5 slots/row and is NULL on the slot on
-both bodies (RK vs RKC -0.002; RKP vs RKPC +0.0005); rows inside noise; it halves the drift on the plain chassis (the hit +0.05-0.10, the
-rack's own) and nothing else. THE CONSULTS: +5 rows / -0.032 mint / the first wall move (-0.033) / the hit -0.08 on the hierarchical body;
--6 rows / open +0.015 / silver +0.03 on the plain chassis — the lines' gain 2.0 uncensused on both (ALG_CERT 1.0/0.5 is the next knob).
-**POSITIVE READS THIS WEEK:** THE WELFORD ATLAS (c21968ae: the content-space cosine to the slot's kind mean predicts correctness at AUROC
-0.766 vs entropy 0.700; one library per body — PMS8's basis is near-orthogonal to the hierarchical bodies'); THE HAMMERHEAD CENSUS
-(unanimity 0.970 at 0.32 coverage; majority-of-5 0.965 at 0.41: the next rack test for reach).
-**REGISTERED NEXT (needs the word unless stated):** RK3 (release on contradiction + THE CHALKBOARD, gated on branch rack3; the derived
-quantity made visible — the governor census says 61 % of the same-owner wall is invisible to syntax); THE OWNER SIGNATURE (ceiling 46 %
-of wrong given slots; re-measure with coreference first); the perceiver v1b (Welford distance + the dying-ReLU fix; commit head only);
-the mouth v2 (the row's Welford distance); head diffs A/B/C from the audit (the last-breath tap carries the fused args; the claim after
-the clip; scratch rows exempt) on a branch + gate after the listen pair.
-**Banked 10-06/07 (all in the ledger):** adaptive stopping MISS (structural: early breaths lack the final-breath pointers); MCTS over
-parses NULL; the courtroom INERT; the caricature jury a WASH (form 2b: render the claim); the perceiver v1 MISS on wild; the meta read;
-NL atlas v0 MISS; the governor census (same-owner 20 % / different-owner 36 % / no-chain 44 %; the event rotor not earned); the
-schedule collision diagnosed; the bug audit (the picker's 19 struck -> 18 corrected; 13 commits).
-**Branches/worktrees:** rack3 (wt6), listen (merged; wt7 removable after the pair). main fast-forwarded 10-07 09:0x.
+**THE CARD IS IDLE (09:38).** THE DIRECTION PROBE FIRED (zero-GPU; scripts/direction_probe.py; .cache/direction_probe_PMS8_241.txt):
+PRESENT-BUT-UNEXPRESSIBLE — a read-out trained on PMS8_241's own frozen states reaches wild AUROC 0.98 (own state + both gold args'
+states, MLP) vs the 0.85 bar; the cue-alone ceiling is at chance (0.52), ruling out "it's just lexical"; args' states ALONE (no own
+state, no self-match shortcut available) still reach 0.84-0.85 — close to the bar on a clean read. THE SELF-REFERENCE ARTIFACT (new
+finding, same script): every inverse relation's own slot index is literally one of its own two gold args on wild (372/372; 0/668
+forward) — a data-construction fact (reencode_ops sub/div->add/mul), not noise — so the 0.98 number likely mixes a near-trivial
+identity detector with real geometry; the args-alone 0.84-0.85 is the cleaner evidence. At the operating point holding forward
+precision >= 0.85 (the deployed res pointer's own register), inverse recall = 0.69 on a LARGE stable bucket (74% of wild relations)
+vs the deployed 0.25 — a real, non-degenerate gap. ENGINEERING CRITIQUE OFFERED (unbuilt, needs the word): the cheapest next form is
+NOT the ledger's two-bilinear gated-mixture design — it's a near-free self-match/own-vs-candidate comparison term on the EXISTING res
+pointer's 24-wide scan, exploiting exactly the (E)-style signal this probe located. Four prior structural forms (DIR/DOSE/DIRD/DIR2/
+DIRROLE) failed not because the information was absent but because none gave the bilinear an explicit self-vs-candidate comparison.
+NEXT (needs the word): build the self-match res-pointer term; or the owner signature / sorting room (parked, unrelated line).
+(Previously: DIRROLE_241 READ: inverse res 0.245 unchanged, slot +0.002 (null): THE DIRECTION LINE CLOSED ON FOUR FORMS. Previously building: THE DIRECTION ROLE — the direction cues ("fewer / less / more than /
+left / gave / half / per ...") entered as ROLE CUES in the role signature (the organ that set the slot record), stamped from the text at
+training AND at read (the rule: a structural road trains only in the form the read can supply), read by the res pointer through the same
+bilinear; a zero-GPU cue census first (coverage of inverse-form relations must reach >= 60 %); gate; the arm DIRROLE_241 vs PMS8_241 staged
+(.cache/rack_chain_DIRROLE.sh / queue_dirrole.sh) — fires on the standing word after the gate. BARS: inverse res >= 0.50 (from 0.25), forward
+res >= 0.85, masked >= PMS8 - 0.005.
+**THE DIRECTION-BIT LINE (10-08/09), CLOSED on both forms:** DIR (self-driven mask) redistributes (inverse 0.25->0.33, forward 0.87->0.75,
+masked -0.015); DOSE (inverse-heavy mint) moves mint +0.08 and wild zero (starvation refuted); DIRD both -0.033; DIR2 (the GOLD mask at training)
+-0.062 = a crutch absent at read (the bit confident on 2 % at read). THE BLINDSPOT STANDS: 36 % of wild relations are inverse forms, res 0.25;
+the res head's gradient arrives 3.6x and is unusable (the credit census) = a missing INPUT: the prose cue -> direction binding.
+**CLOSED 10-08/09:** the chalkboard (tokens: unread; legality: the implied values are right 11.5 % on wild — the derived-value line closes
+behind the args wall); the rack family (four bodies); the pilot's ceiling (+1/128, +0/64); the learned perceivers (regime).
+**Positive this week:** the Welford atlas (0.766 vs entropy 0.700); the schedule fix (mint +0.047 on the hierarchical body); the hammerhead
+census (majority-of-5 0.965 at 0.41 coverage); the dose's mint +0.08 (an ingredient, noted).
+**THE GYM (branch replay, wt8, unmerged; 5 uses banked):** the save point + replay (decode-exact), the chalk dry-run, the resonance read, the
+shuffle read, the pilot's ceiling, the chalk-legality read. Merge after the dirrole arm; gate.
+**Rules added this week:** one arm per chain; waiters match the chain's failure vocabulary + the training log's mtime; a watcher binds the
+log to the process it would kill (the wrapper's cmdline); a derived chain is grepped for the organ's env NAME; joined artifacts share the
+same mask; a selector's features are diffed against the gold fields; replay verdicts at the decode level; a structural road trains only in
+the form the read can supply; a worktree's .cache is the shared symlink.
+**Registered, unbuilt:** the sorting room; the owner signature (the shuffle as structure; ceiling 46 %); the majority dryness test; the depth
+pair; head diffs A/B/C from the audit; the reader's holdout (books).
+**Branches/worktrees:** replay (wt8), dirrole (wt10, building), rack3 (wt6, merged), dirbit (merged, wt9 removed). main fast-forwarded 10-09 06:05.
 
 ---
 (The previous entry follows, for the longer board.)
