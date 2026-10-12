@@ -1,4 +1,10 @@
-# NEXT SESSION — cold-start entry (updated 2026-10-12 00:5x)
+# NEXT SESSION — cold-start entry (updated 2026-10-12 07:5x)
+
+**10-12 07:4x — SINE4_241 (fixed) DOES NOT FIRE: masked 0.3535 (+0.006 vs PMS8, +0.0025 vs LT_241 = the shape adds nothing over flat depth),
+rows 20, mint 0.663 held, knob PASS (all blocks live), trough owner ratio 1.24 (bar 1.5; blocks 1-3 ~1.0; flat across breaths). THE DOUBLE FIRE:
+the sine queue fired ANTI4 at 01:36 on the confounded run's STALE done mark; ANTI4's device birth check hit the AM lock and aborted; re-fired by
+hand 07:41 (birth checks now DEV=CPU in the ANTI4/SEAL chains); SEAL fires on ANTI4's real done mark; breathstop then RTB behind SEAL.
+RULE: a queue's wait must see a done mark newer than its fire time. ANTI4 ends ~13:30, SEAL ~19:30, K3/PK overnight, RTB 10-13.**
 
 **10-12 00:14 — SRF_241 DOES NOT FIRE (ledger 10-12): masked 0.3520 (= PMS8 +0.004 noise; BELOW the SR family 0.3646; −0.0195 vs SR_241 z 1.8),
 rows 21, mint 0.7555 (−0.03), twin-pick 0.473 / other-sentence 0.52 UNMOVED; the road is LIVE (knob 0.16–1.08 per breath) and the token residual's
