@@ -1,4 +1,9 @@
-# NEXT SESSION — cold-start entry (updated 2026-10-12 13:xx)
+# NEXT SESSION — cold-start entry (updated 2026-10-12 14:xx)
+
+**10-12 14:xx — WORD GIVEN FOR THE WHOLE QUEUE: behind ANTI4 → SEAL → K3 → PK → RTB come DF_241 (THE DENOISER: score noise in the reading
+stream + the scheduled whip in the math stream + the blurred ladder; clock bitwise) with WH_241 (placebo = scheduled whip alone) and the canvas
+test; FL_241 (Arm 1, oracle flags, capability; building in wt30); Arm 2 after. Pins first: the gold-mention census (running), the particle read
+(seeded branch wt29, gate then device reads under flock). Ledger 10-12 (the ruling, the build plan, the word).**
 
 **10-12 13:xx — THE DENOISING BREATH (Bryce + Opus; ledger 10-12 x4 entries): noise on the GRAPH at breath 0 (the body's own near-misses via a
 tabu'd grounding read), the solver LOCATES (unsat core / dead facts / free vars / view disagreement), the loop REMOVES (flag + tabu; unflagged
