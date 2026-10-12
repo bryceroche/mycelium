@@ -216,12 +216,21 @@ REFUSED = ("ALG_SHELF", "ALG_WHIP", "ALG_TOKLOOP", "ALG_WRITEBACK", "ALG_KANNEAL
            "ALG_FUNNEL", "ALG_FUNNEL_INIT",
            "ALG_SINE", "ALG_SINE_SKIP",
            "ALG_MIXER_OFF", "ALG_SHOAL_MIXER", "ALG_TYPED_MIXER",
-           "ALG_SORT_FEED")           # THE ARGS-CONDITIONED RES (2026-10-09): _heads_of's own res-pointer term           # (ar_w1/ar_b1/ar_w2/ar_b2 against the content-only slot/candidate states PLUS the           # args head's own predicted soft-selected args states) is the fused forward()'s
+           "ALG_SORT_FEED",           # THE ARGS-CONDITIONED RES (2026-10-09): _heads_of's own res-pointer term           # (ar_w1/ar_b1/ar_w2/ar_b2 against the content-only slot/candidate states PLUS the           # args head's own predicted soft-selected args states) is the fused forward()'s
            # single source of truth and would in fact thread fine through the walker's
            # per-seam heads_of calls on its own, exactly like THE PAIRWISE COMPARATOR ROAD and
            # THE SELF-MATCH TERM above — refused anyway, by the word given for this build,
            # named separately so a future narrowing of either refusal does not silently let
            # this one through untested too.
+           # THE LOOP STOP (2026-10-11, K3_241/PK_241): forward()'s own _kb_stop truncation of
+           # the breath range (and the matching pass_a/pass_b consult-skip gating in step())
+           # are the fused forward()/step()'s single source of truth — the walker's per-seam
+           # heads_of calls never call forward() or compute _kb_stop at all (the ALG_SORT/
+           # ALG_FUNNEL precedent, same reason): a config that set this under the walker would
+           # train with however many breaths the walker's own fixed per-seam loop happens to
+           # dispatch, silently ignoring the requested cut. ALG_LOOP_STOP_READ is read-time
+           # only and never reaches the walker either way.
+           "ALG_LOOP_STOP", "ALG_LOOP_STOP_READ")
 
 REQ_CTX = ("B", "K_B", "waist", "tokmask", "slot_mask", "bank", "rot2",
            "sync", "drop", "gmod", "revoke", "tail", "reg", "RINGS",

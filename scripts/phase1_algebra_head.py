@@ -305,6 +305,21 @@ ALG_IDKEY = float(os.environ.get("ALG_IDKEY", "0"))
 # identical across passes, so consult 1 is exact. Unset = one pass, the
 # stale start-of-run facts, bit-identical.
 ALG_ALT3 = int(os.environ.get("ALG_ALT3", "0"))
+# THE LOOP STOP (2026-10-11; THE BREATH-COUNT READS, K3_241/PK_241): ALG_BREATH still sizes
+# every clock table, phase schedule and conductor row (K_B below) -- this flag ONLY shortens
+# how many of those K_B breaths the loop in forward() actually RUNS on a given call. Default 0
+# = run all K_B breaths, bit-identical (the flag touches nothing on the path every existing
+# body already takes). ALG_LOOP_STOP=k (k>=1) runs breaths 0..k-1 (breath 0, the grounding
+# read, plus loop breaths 1..k-1) and leaves breaths k..K_B-1 UNRUN for this call: the final
+# decode (`breaths[-1]` / the shelf readout) and the loss both see only the breaths that ran
+# (both already index `breaths` dynamically -- no K_B-sized assumption to patch). k >= K_B is
+# bit-identical to 0 (nothing left to cut). Only the caller's OWN unset `stop_after` picks this
+# up (forward()'s two internal consult-only partial passes, pass_a/pass_b, already pass their
+# own explicit stop_after=2/4 and are untouched by this flag). ALG_LOOP_STOP_READ (read-time
+# only, see forward()) overrides this at a given call without retraining or reshaping anything
+# -- same params, same K_B-sized tables, a different k purely at that call's loop range (the
+# K3-vs-K7 exposure read this build exists to make).
+ALG_LOOP_STOP = int(os.environ.get("ALG_LOOP_STOP", "0"))
 # THE TRAINED CERTIFIER-MASK ROAD (2026-09-28; ledger 09:30/09:35): the
 # read-time broadcast form (LV_CERTMASK) was NEGATIVE — "every colliding
 # slot toward every unclaimed numeral at once" blurs a body that never
@@ -8584,7 +8599,21 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
             # breath 5) through the ALT2 injection into the variable
             # states every later rung and the final heads read against.
             # All three None = the loop as it was, bit-identical.
+            if stop_after is None:
+                # THE LOOP STOP (2026-10-11): only a caller that left stop_after unset (i.e.
+                # every real call except the two internal consult partial passes, which always
+                # pass their own explicit 2/4) picks up the env override — ALG_LOOP_STOP_READ
+                # wins at THIS call if set (the K3-vs-K7 exposure read), else ALG_LOOP_STOP (the
+                # training-time truncation); neither set = stop_after stays None = unchanged.
+                _lsr = os.environ.get("ALG_LOOP_STOP_READ")
+                _ls_eff = int(_lsr) if _lsr not in (None, "") else ALG_LOOP_STOP
+                if _ls_eff:
+                    stop_after = _ls_eff - 1
             _kb_stop = (min(K_B, int(stop_after) + 1) if stop_after else K_B)
+            if int(os.environ.get("ALG_LOOP_STOP_DEBUG", "0")):
+                print(f"[loop-stop-debug] K_B={K_B} stop_after={stop_after} "
+                      f"breaths that will run: 0..{_kb_stop - 1} "
+                      f"(loop breaths {list(range(1, _kb_stop))})", flush=True)
             for kb in range(1, _kb_stop):
                 if ALG_TOKLOOP and "tok_wq" in p:      # THE NL LOOP: the token step, then the slot step reads it
                     _tok = _token_step(p, _tok, tokmask, sent, B, kb)
@@ -8604,11 +8633,15 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
                     _bs_ctx["vst"] = vst
                     for _r in range(3, K_B):
                         _vst_at[_r] = vst
+                    if int(os.environ.get("ALG_LOOP_STOP_DEBUG", "0")):
+                        print(f"[loop-stop-debug] consult 1 (facts3) FIRED at kb={kb}", flush=True)
                 if conductor(kb).facts5_inject and facts5 is not None:   # THE CONDUCTOR: kb == 4
                     vst = _fact_inject(p, vst, facts5)   # consult 2's values: read from breath 5 on
                     _bs_ctx["vst"] = vst
                     for _r in range(5, K_B):
                         _vst_at[_r] = vst
+                    if int(os.environ.get("ALG_LOOP_STOP_DEBUG", "0")):
+                        print(f"[loop-stop-debug] consult 2 (facts5) FIRED at kb={kb}", flush=True)
                 if ALG_WRITEBACK and "wb_w" in p and kb < K_B - 1:   # THE WRITE-BACK: the text learns what was committed to it
                     _tok = _writeback(p, _tok, _bs_state["cur"], _bs_state["fat_cur"], tokmask, B, kb)
                     _bs_ctx["waist"] = _tok
@@ -12051,8 +12084,15 @@ def do_train(steps, lr, batch, seed):
             # THE THREE CONSULTS, per step: pass a -> consult 1 -> facts3;
             # pass b (with facts3) -> consult 2 -> facts5; then the full
             # step (with both) — the same three curbs the read walks.
-            _consult_into(b_fact3, pass_a, idx, cert_buf=b_cert3, rack_buf=b_rack3, chalk_buf=b_chalk3)
-            _consult_into(b_fact5, pass_b, idx, cert_buf=b_cert5, rack_buf=b_rack5, rack_prev=(id(b_rack3) if ALG_RACK else None), chalk_buf=b_chalk5)
+            # THE LOOP STOP (2026-10-11): under ALG_LOOP_STOP=k the MAIN step() call below
+            # never reaches breath 2 (k<=2) or breath 4 (k<=4), so the facts3/facts5 it would
+            # inject never land — running pass_a/pass_b anyway would burn the host consult for
+            # a result the truncated step can't use. k==0 (unset) is the untouched case: both
+            # always run, exactly as before.
+            if (not ALG_LOOP_STOP) or ALG_LOOP_STOP > 2:
+                _consult_into(b_fact3, pass_a, idx, cert_buf=b_cert3, rack_buf=b_rack3, chalk_buf=b_chalk3)
+            if (not ALG_LOOP_STOP) or ALG_LOOP_STOP > 4:
+                _consult_into(b_fact5, pass_b, idx, cert_buf=b_cert5, rack_buf=b_rack5, rack_prev=(id(b_rack3) if ALG_RACK else None), chalk_buf=b_chalk5)
         if ALG_LIVE_FACTS:
             # THE LIVE-FACTS ROAD: this step's own pass-1 parse overwrites
             # the maskprep-cache feed already copied into b_fact above —
