@@ -1,4 +1,14 @@
-# NEXT SESSION — cold-start entry (updated 2026-10-12 13:xx)
+# NEXT SESSION — cold-start entry (updated 2026-10-12 14:1x)
+
+**10-12 14:1x — ANTI4_241 MEETS ITS SLOT BAR: masked 0.3662 = +0.0185 vs PMS8 (+0.0151 vs flat depth LT): the U-Net direction (bottleneck
+THIRD, 384/224/128/224) beats bottleneck-first (SINE4 +0.006); mint held; the trough ANTI-groups by owner (0.86) — the owner frame refuted on
+both shapes. THE TWIN ANTI4_242 queued behind RTB (pc-queue-anti4-242; no merge needed); DF/WH wait on the twin's done mark, FL behind WH.
+SEAL fires next from the sine queue. ANTI4 ran from 07:41 after the stale-done-mark double fire.**
+
+**10-12 14:xx — WORD GIVEN FOR THE WHOLE QUEUE: behind ANTI4 → SEAL → K3 → PK → RTB come DF_241 (THE DENOISER: score noise in the reading
+stream + the scheduled whip in the math stream + the blurred ladder; clock bitwise) with WH_241 (placebo = scheduled whip alone) and the canvas
+test; FL_241 (Arm 1, oracle flags, capability; building in wt30); Arm 2 after. Pins first: the gold-mention census (running), the particle read
+(seeded branch wt29, gate then device reads under flock). Ledger 10-12 (the ruling, the build plan, the word).**
 
 **10-12 13:xx — THE DENOISING BREATH (Bryce + Opus; ledger 10-12 x4 entries): noise on the GRAPH at breath 0 (the body's own near-misses via a
 tabu'd grounding read), the solver LOCATES (unsat core / dead facts / free vars / view disagreement), the loop REMOVES (flag + tabu; unflagged
