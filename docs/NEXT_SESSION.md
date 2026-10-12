@@ -1,4 +1,9 @@
-# NEXT SESSION — cold-start entry (updated 2026-10-11 20:10)
+# NEXT SESSION — cold-start entry (updated 2026-10-11 20:35)
+
+**20:35 — THE BREATHSTOP QUEUE IS ARMED (pc-queue-breathstop: K3_241 then PK_241 behind 'SEAL CHAIN COMPLETE'; branch breathstop merged
+forward over the gym at bdb1e7fb; full gate table in .cache/breathstop_gate.log: ls7 bit-identical to role8, k3 cuts at breath 2, CPU step
+0.54x; queue_dryrun 9/0). The whole queue under the word is now machine-chained: SRF -> SINE4 -> ANTI4 -> SEAL -> K3 -> PK -> RTB (RTB's queue
+arms when its builder finishes).**
 
 **20:10 — THE REPLAY GYM IS MERGED (f7c15c70) and gated on the main line (unset 5.2995/0.0279, role8 6.5535/1.1061
 bit-identical; .cache/replay_merge_gate.log); docs/replay_gym.md names RTB's three gaps. RTB_241's BUILDER IS RUNNING (wt28, branch rtb,
