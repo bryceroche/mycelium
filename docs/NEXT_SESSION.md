@@ -1,4 +1,11 @@
-# NEXT SESSION — cold-start entry (updated 2026-10-11 21:05)
+# NEXT SESSION — cold-start entry (updated 2026-10-12 00:5x)
+
+**10-12 00:14 — SRF_241 DOES NOT FIRE (ledger 10-12): masked 0.3520 (= PMS8 +0.004 noise; BELOW the SR family 0.3646; −0.0195 vs SR_241 z 1.8),
+rows 21, mint 0.7555 (−0.03), twin-pick 0.473 / other-sentence 0.52 UNMOVED; the road is LIVE (knob 0.16–1.08 per breath) and the token residual's
+std grows 1.09→2.39 across the breaths (no norm restoration on the token side) = the texture to probe. THE SORTING ROOM LINE: the single shot stands as
+the record; the per-breath re-run closes in this form. SRF FORM 2 registered (keepnorm on the token residual, or the cross-attention-only feed; needs
+the word). The sine queue merged sinebreath (c48325c6) and is in its post-merge gate; SINE4 fires next. FIXTURE: phase1_alg_states_train.npz was
+removed by the 10-11 cleanup — the knob censuses now read PC_SPLIT=test (the sine chains patched in place).**
 
 **21:05 — RTB_241 IS BUILT, GATED AND QUEUED (pc-queue-rtb behind 'PK CHAIN COMPLETE'; branch rtb/wt28; gate .cache/rtb_gate.log; ledger 21:0x).
 The replay step is EAGER (not captured): I added THE DEVICE COST PROBE to its chain (200 eager steps timed before phase 3; slower than PMS8's
