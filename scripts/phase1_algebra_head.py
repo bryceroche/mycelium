@@ -1325,6 +1325,16 @@ _SEVER = frozenset(x for x in os.environ.get("ALG_SEVER", "").split(",") if x)
 assert _SEVER <= _SEVER_ORGANS, \
     f"ALG_SEVER unknown organ(s) {sorted(_SEVER - _SEVER_ORGANS)}; " \
     f"known: {sorted(_SEVER_ORGANS)}"
+# THE SINE BREATH's SEAL PLACEBO, REDESIGNED (2026-10-11 08:52, after the skip-bug ledger entry):
+# SEAL_241 is now "sever the polar waist's own end-of-breath squeeze AT TRAINING", using the
+# SAME already-registered "waist" sever THE WAIST READ (2026-09-24) reads with — ALG_SEVER=waist
+# already works at train time (read once at import, same as every other _SEVER member), but a
+# real registered arm gets its OWN named door rather than overloading the generic census string
+# (ALG_SINE's own cross-check, "needs ALG_SINE set", lives beside ALG_SINE's own definition
+# below — ALG_SINE isn't defined yet at this point in the file). Union'd into `_SEVER` itself so
+# every one of its ~15 call sites (breath_step, forward) honors it identically to ALG_SEVER=waist.
+ALG_SINE_SEAL_SEVER = int(os.environ.get("ALG_SINE_SEAL_SEVER", "0"))
+_SEVER = _SEVER | (frozenset(("waist",)) if ALG_SINE_SEAL_SEVER else frozenset())
 # THE BALANCED GENERATION (apply_balanced_gen.py, 2026-09-09): prune
 # the dead-by-severance organs at birth; regrow where the removal cost
 # per parameter is highest (lane 2 as a road; station 5); the balanced
@@ -3634,9 +3644,15 @@ def build_params(seed=0):
                 p[f"dp{_i}_ln1_g"] = t(np.ones(_w, np.float32)); p[f"dp{_i}_ln1_b"] = t(np.zeros(_w, np.float32))
                 p[f"dp{_i}_ln2_g"] = t(np.ones(_w, np.float32)); p[f"dp{_i}_ln2_b"] = t(np.zeros(_w, np.float32))
                 p[f"dp{_i}_ln3_g"] = t(np.ones(_w, np.float32)); p[f"dp{_i}_ln3_b"] = t(np.zeros(_w, np.float32))
-                p[f"dp{_i}_ffn_w1"] = t((_rDP.randn(_w, DEPTH_FFN_HID) / math.sqrt(_w)).astype(np.float32))
-                p[f"dp{_i}_ffn_b1"] = t(np.zeros(DEPTH_FFN_HID, np.float32))
-                p[f"dp{_i}_ffn_w2"] = t(np.zeros((DEPTH_FFN_HID, _w), np.float32))   # ZERO door (ReZero)
+                # THE FFN RATIO FIX (ledger 2026-10-11 08:52): 4x THIS BLOCK'S OWN width, not the
+                # global DEPTH_FFN_HID=2048 plain ALG_DEPTH uses for every block regardless of
+                # width — at w=128 (the trough) 2048 is a 16x expansion; 4x keeps the ratio
+                # proportionate (512/896/1536/896 for the sine/anti schedule, ~-1.8M params vs
+                # the original build's flat-2048 version).
+                _ffn_hid = 4 * _w
+                p[f"dp{_i}_ffn_w1"] = t((_rDP.randn(_w, _ffn_hid) / math.sqrt(_w)).astype(np.float32))
+                p[f"dp{_i}_ffn_b1"] = t(np.zeros(_ffn_hid, np.float32))
+                p[f"dp{_i}_ffn_w2"] = t(np.zeros((_ffn_hid, _w), np.float32))   # ZERO door (ReZero)
                 p[f"dp{_i}_ffn_b2"] = t(np.zeros(_w, np.float32))
                 p[f"dp{_i}_cq"] = t((_rDP.randn(H_W, _w) / math.sqrt(H_W)).astype(np.float32) * 0.5)
                 p[f"dp{_i}_ck"] = t((_rDP.randn(H_W, _w) / math.sqrt(H_W)).astype(np.float32) * 0.5)
@@ -4822,24 +4838,57 @@ DEPTH_FFN_HID = 2048     # fixed (not ALG_HW-relative), matching the sorting roo
 # used transiently WITHIN a breath by the trough block only — our own `cur` never narrows
 # between breaths the way the standalone sketch's toy state does, so no Resample/lift_in/
 # squeeze organs are ported; only the trough's own waist projection is new.
-# ALG_SINE_SKIP: "peak" (default, the lawful U-Net skip) carries block 1's own output around
-# block 2 into block 3's input, REGARDLESS of which block is the trough that breath (so under
-# ANTI4 — trough at index 2 — "peak" is in fact the textbook skip-around-the-bottleneck shape);
-# "none" skips nothing; "boundary" (THE SEAL PLACEBO) instead carries the PREVIOUS breath's own
-# final (index-3) output across THIS breath's trough block, additively, into the block right
-# after it — the residual-seal law's own bypass, predicted to cost ~0 (removing the crystal's
-# gatekeeping on that one path should not matter if the crystal carries nothing the rest of the
-# state doesn't already carry forward on its own).
+# ALG_SINE_SKIP: THE BUG (ledger 2026-10-11 08:52, found by Opus's scripts/sine_birth_check.py,
+# reproduced on CPU): the residual stream `x` here is ALREADY the full H_W width and ALREADY
+# carries block 1's own state forward through block 2 by ordinary residual addition (every block
+# only ADDS a delta, never replaces `x`) — so the ORIGINAL "peak" skip (`x = x + rise` before
+# block 3, `rise` = block 1's own post-block state) added that SAME state a SECOND time. At
+# ReZero birth every block's delta is exactly zero, so this is not a subtle drift: the stack
+# returned EXACTLY 2*cur at every breath (verified: ||out||/||cur|| = 2.0000, out == 2*cur
+# bitwise) — not an identity at all. "boundary" (the original seal placebo, which carried the
+# previous breath's own output across the trough) inherited the identical defect through its own
+# carry (identity at breath 1, 2*cur from breath 2 on, since the carry IS last breath's doubled
+# output). THE GATE'S OWN "pre-update dump diff vs depth4 = 0.0" claim did NOT catch this: see
+# the ledger entry and scripts/sine_birth_check.py's docstring for why (depth_identity_probe.py's
+# MODE=dump calls forward() with NO slot_mask, and this head's breath loop — where breath_step /
+# _depth_stack_sine actually runs — never executes without one; both the "depth4" and "sine4"
+# dumps that were diffed silently skipped the organ entirely, comparing two copies of breath 0's
+# grounding read, which is identical by construction either way: a vacuous 0.0, not a proof).
+# THE FIX: "none" (now the ONLY lawful value, and the default) skips nothing — the full-width
+# residual stream already IS the skip, exactly as every other block in this stack. "peak" and
+# "boundary" are REFUSED below, loudly, rather than silently deleted (the asserts preserve the
+# bug's own shape for anyone who comes looking). THE GATE RULE this bug writes into the house
+# style: identity-at-birth is asserted by calling the organ directly under the ARM's OWN env
+# (scripts/sine_birth_check.py, or its being wired into a gate as a named step) — never inferred
+# from a probe whose own calling convention may silently route around the code under test.
+# THE SEAL PLACEBO is REDESIGNED separately: ALG_SINE_SEAL_SEVER=1 (below, beside ALG_SEVER)
+# severs the EXISTING, already-registered "waist" sever (THE WAIST READ, 2026-09-24 — content
+# passes straight through the polar waist's own end-of-breath squeeze, unchanged) as a real
+# TRAINING-time arm, not a read-time census — the residual-seal law's prediction: if the crystal
+# (the polar waist's squeeze-and-reconstruct) carries nothing load-bearing, removing it at
+# training should cost ~0.
 # Unset (ALG_SINE="") = bit-identical to plain ALG_DEPTH (today's _depth_stack, untouched).
 # ===========================================================================
 ALG_SINE = os.environ.get("ALG_SINE", "")
-ALG_SINE_SKIP = os.environ.get("ALG_SINE_SKIP", "peak")
+ALG_SINE_SKIP = os.environ.get("ALG_SINE_SKIP", "none")
 _SINE_SCHEDULES = {"sine": (128, 224, 384, 224), "anti": (384, 224, 128, 224), "flat": (384, 384, 384, 384)}
 assert ALG_SINE in ("", "sine", "anti", "flat"), f"ALG_SINE must be one of '', sine, anti, flat (got {ALG_SINE!r})"
-assert ALG_SINE_SKIP in ("peak", "none", "boundary"), ALG_SINE_SKIP
+assert ALG_SINE_SKIP in ("none", "peak", "boundary"), ALG_SINE_SKIP
+assert not ALG_SINE or ALG_SINE_SKIP == "none", (
+    f"ALG_SINE_SKIP={ALG_SINE_SKIP!r} is REFUSED (ledger 2026-10-11 08:52): 'peak' double-counts "
+    f"block 1's state (the full-width residual already carries it around block 2 by itself — "
+    f"out == 2*cur at birth, see scripts/sine_birth_check.py); 'boundary' inherits the identical "
+    f"defect through its own carry. 'none' is the only lawful form. The seal placebo is now "
+    f"ALG_SINE_SEAL_SEVER=1, an unrelated door (below) — it severs the polar waist's own squeeze, "
+    f"not this one.")
 assert not ALG_SINE or ALG_DEPTH == 4, "ALG_SINE requires ALG_DEPTH=4 (exactly four depth blocks — the sine schedules are 4 wide)"
 assert not ALG_SINE or (ALG_POLAR and POLAR_D == 128), \
     "ALG_SINE's trough block needs the polar waist at d=128 (ALG_POLAR=1 ALG_POLAR_D=128) — the crystal as the meeting room"
+assert not ALG_SINE_SEAL_SEVER or ALG_SINE, (
+    "ALG_SINE_SEAL_SEVER is THE SEAL PLACEBO's own door (SEAL_241): it severs the SAME polar-"
+    "waist squeeze ALG_SEVER=waist already can (THE WAIST READ, 2026-09-24) — registered under "
+    "its own name because this is a real training arm, not a read-time census — and it only "
+    "makes sense alongside ALG_SINE's own schedule")
 _SINE_HEAD_DIM = 32      # independent of this head's own N_HEADS/H_W split (8 heads @ 64d) — the sketch's own quantum
 _SINE_WIDTHS = _SINE_SCHEDULES.get(ALG_SINE)
 _SINE_TROUGH_I = _SINE_WIDTHS.index(128) if (_SINE_WIDTHS and 128 in _SINE_WIDTHS) else None
@@ -4946,16 +4995,17 @@ def _depth_stack_sine(p, cur, slot_mask, waist, tokmask, B, kb, state):
 
     ReZero at birth: wo/xwo/ffn_w2 (+biases) are zero for every block regardless of width or
     which block is the trough, so this function returns `cur` bit-for-bit unchanged at init —
-    the SAME identity instrument depth_identity_probe.py uses for plain ALG_DEPTH.
-
-    ALG_SINE_SKIP: "peak" (default) carries block 1's own post-block state around block 2 into
-    block 3's input (REGARDLESS of which block is the trough — the U-Net's own equal-width skip
-    pairing, index 1 <-> 3, holds for both schedules); "boundary" (THE SEAL PLACEBO) instead
-    carries `state["sine_boundary_carry"]` — the PREVIOUS breath's own final (index-3) output —
-    across THIS breath's trough block, additively, into the block right after it; "none" skips
-    nothing. `state["sine_boundary_carry"]` is written at the end of every call (this breath's
-    own final output) regardless of the skip mode, so switching mid-chain would pick it up —
-    though no arm does that."""
+    verified directly (not inferred from a probe) by scripts/sine_birth_check.py, out == cur
+    bitwise at every breath, under the arm's own env. ALG_SINE_SKIP is always "none" here (the
+    module-level assert above refuses "peak"/"boundary" when ALG_SINE is set): the full-width
+    residual stream already carries every block's own state forward through its neighbors by
+    ordinary addition, so there is nothing left for an explicit skip to do — see the ledger entry
+    2026-10-11 08:52 and the module comment above ALG_SINE's own definition for the bug an
+    explicit "peak" skip caused (out == 2*cur at birth) and why it is gone rather than fixed in
+    place. THE SEAL PLACEBO (SEAL_241) is unrelated to this function: it is ALG_SINE_SEAL_SEVER,
+    which severs the polar waist's own end-of-breath squeeze OUTSIDE this function entirely (in
+    forward()'s own breath loop, beside `_polar_waist()`'s call site) — this function's own
+    ReZero identity is unaffected either way (verified by sine_birth_check.py under both envs)."""
     if ALG_DEPTH_STUB:
         return cur
     global _CENSUS
@@ -4983,8 +5033,6 @@ def _depth_stack_sine(p, cur, slot_mask, waist, tokmask, B, kb, state):
     L = int(x.shape[1]); T = int(waist.shape[1])
     _sm = ((1.0 - slot_mask) * -1e4) if slot_mask is not None else None
     _tm = tokmask.reshape(B, 1, 1, T)
-    boundary_in = state.get("sine_boundary_carry") if ALG_SINE_SKIP == "boundary" else None
-    rise = None   # ALG_SINE_SKIP == "peak": block 1's own post-block state
     for i in range(ALG_DEPTH):
         w = widths[i]
         hd = _SINE_HEAD_DIM
@@ -4994,8 +5042,6 @@ def _depth_stack_sine(p, cur, slot_mask, waist, tokmask, B, kb, state):
         else:
             down = csel[:, :w]
             up = down.transpose(-2, -1)
-        if ALG_SINE_SKIP == "peak" and i == 3 and rise is not None:
-            x = x + rise                                 # THE LAWFUL SKIP: block 1's state rides around block 2
         _x0 = x
         # --- self-attention over the L_TOT slots (slot_mask respected; clock steers Q/K) ---
         _ln1 = (x @ down).layernorm(eps=1e-5) * p[f"dp{i}_ln1_g"] + p[f"dp{i}_ln1_b"]
@@ -5030,14 +5076,9 @@ def _depth_stack_sine(p, cur, slot_mask, waist, tokmask, B, kb, state):
         _ln3 = (x @ down).layernorm(eps=1e-5) * p[f"dp{i}_ln3_g"] + p[f"dp{i}_ln3_b"]
         f = (_ln3 @ p[f"dp{i}_ffn_w1"] + p[f"dp{i}_ffn_b1"]).gelu() @ p[f"dp{i}_ffn_w2"] + p[f"dp{i}_ffn_b2"]
         x = x + f @ up
-        if ALG_SINE_SKIP == "boundary" and i == trough_i and boundary_in is not None:
-            x = x + boundary_in                          # THE SEAL PLACEBO: bypasses THIS breath's own trough
-        if ALG_SINE_SKIP == "peak" and i == 1:
-            rise = x
         if _CENSUS is not None:
             _CENSUS.append((kb, f"depth{i}_in", _x0.realize().numpy()))
             _CENSUS.append((kb, f"depth{i}_out", x.realize().numpy()))
-    state["sine_boundary_carry"] = x
     return x
 
 
