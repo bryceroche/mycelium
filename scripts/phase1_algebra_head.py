@@ -72,6 +72,34 @@ ALG_CLOCK_CANON = int(os.environ.get("ALG_CLOCK_CANON", "0"))   # memories in a 
 # WILD?"): both doors, dead unless set.
 ALG_SPAN_ALL = int(os.environ.get("ALG_SPAN_ALL", "0"))   # supervise the router's span EVERY breath, not just the last
 ALG_ANCHOR = float(os.environ.get("ALG_ANCHOR", "0"))     # beta: breath-0's grounding attention as a keep-bias, every loop breath
+# THE SEEDED READINGS (2026-10-12, STEP 1 of the denoising breath's amended form; ledger
+# "BRYCE'S STATE-SPACE FORM vs THE SEPTEMBER RECORD"): a READ-TIME-ONLY door (asserted off in
+# do_train — see its first executable statement). ALG_SEED_TEMP (0 = off, bit-identical) scales
+# seeded Gumbel noise added to BREATH 0's own slot->token binding logits (the vq and fq bank
+# calls only — never a loop breath, never the mixer): the Gumbel-max trick makes breath 0's
+# argmax a SAMPLE from the row's own binding distribution at temperature ALG_SEED_TEMP, not an
+# independent perturbation — "a confident alternative reading" (the twin, the other-sentence
+# mention), never white noise. ALG_SEED_RNG seeds a numpy Generator per (seed, row_idx) — see
+# seed_gumbel_arrays below — so a fixed (ALG_SEED_RNG, row) reproduces the SAME breath-0 sample
+# every time (gate check 3). ALG_SEED_HOLD=1 additionally commits breath-0's sampled argmax token
+# per slot as a hard claim carried into every LOOP breath (not breath 0 itself) via the same
+# pbias road THE BREATH-0 ANCHOR (ALG_ANCHOR) already uses — see "seed_hold_bias" in _bs_ctx and
+# its read in breath_step beside _anch_b0 — so the loop cannot simply re-read the gold mention
+# and erase the perturbation (the 09-14 "state is a cache" finding this build is built to test).
+ALG_SEED_TEMP = float(os.environ.get("ALG_SEED_TEMP", "0"))
+ALG_SEED_RNG = int(os.environ.get("ALG_SEED_RNG", "0"))
+ALG_SEED_HOLD = int(os.environ.get("ALG_SEED_HOLD", "0"))
+# THE SCHEDULE (2026-10-12, scope extension accepted on Opus's review): ALG_SEED_SCHED=1 moves
+# the fq bank's seed noise from "breath 0 only" to EVERY breath (loop breaths too), at the SAME
+# injection point (the slot->token scores just before bank()'s own softmax — reached through the
+# very same pbias road breath 0 uses, just supplied by breath_step per breath instead of once by
+# forward()), with tau_k = ALG_SEED_TEMP * cos^2(k*pi/(2*(K_B-1))) — breath 0 full strength, the
+# last breath 0 (a decaying confident-alternative-reading schedule, not a constant kick). The clock
+# planes and the mixer never see it: this is still purely a pbias term on bank()'s token-axis
+# attention logits, nothing else. The vq bank is UNCHANGED by this flag (read once, at breath 0,
+# regardless) — see forward()'s seed_vq handling. HOLD (above) is specified for the breath-0-only
+# mode only; it is not extended here.
+ALG_SEED_SCHED = int(os.environ.get("ALG_SEED_SCHED", "0"))
 # THE SURFACE-GROUNDED STRUCTURAL POINTER (2026-09-20, THE ARGUMENT-
 # BINDING CENSUS's arm): arg1/arg2 channels' own span loss, the 5th
 # (operator cue) channel, and its road into the bank bias. All dead
@@ -6096,6 +6124,57 @@ def dirrole_build_array(samples, T):
     return out
 
 
+def seed_gumbel_arrays(seed_rng, row_idx, T, k_vars=None, l_tot=None):
+    """THE SEEDED READINGS (2026-10-12): per-row reproducible Gumbel noise for breath 0's vq
+    bank (K_VARS queries) and fq bank (L_TOT queries), drawn from ONE numpy Generator seeded by
+    ALG_SEED_RNG xor the row index (vq drawn FIRST, then fq, from the same generator, so one
+    seed reproduces both blocks deterministically regardless of which the caller uses) — the
+    rand_like-inside-JIT quirk (reference_tinygrad_am_quirks.md) is why this is precomputed
+    host-side and passed into forward() as a fixed-shape tensor input, never drawn in-graph.
+    Gumbel = -log(-log(U)); the Gumbel-max trick makes argmax(logits + temp * gumbel) a SAMPLE
+    from the row's own softmax(logits / temp) categorical, not independent noise."""
+    k_vars = K_VARS if k_vars is None else k_vars
+    l_tot = L_TOT if l_tot is None else l_tot
+    rng = np.random.default_rng(int(seed_rng) ^ int(row_idx))
+    u_v = rng.random((k_vars, T)).clip(1e-12, 1.0 - 1e-12)
+    u_f = rng.random((l_tot, T)).clip(1e-12, 1.0 - 1e-12)
+    g_v = -np.log(-np.log(u_v))
+    g_f = -np.log(-np.log(u_f))
+    return g_v.astype(np.float32), g_f.astype(np.float32)
+
+
+def seed_gumbel_build_array(seed_rng, row_ids, T, k_vars=None, l_tot=None):
+    """Batch form (the HUD/XCORR/DIRROLE idiom: no cached per-row array exists for an arbitrary
+    TEST fixture, so this re-derives it every batch). row_ids: any int-indexable sequence (the
+    sl_p slice loop_val.py's read() already builds, padding repeats included — reproducibility
+    only needs (seed, row_idx), so a repeated padding row draws the SAME noise, harmlessly).
+    Returns (gvq (len(row_ids), k_vars, T), gfq (len(row_ids), l_tot, T)) float32."""
+    gv, gf = [], []
+    for i in row_ids:
+        a, b = seed_gumbel_arrays(seed_rng, int(i), T, k_vars, l_tot)
+        gv.append(a); gf.append(b)
+    return np.stack(gv).astype(np.float32), np.stack(gf).astype(np.float32)
+
+
+def seed_gumbel_sched_build_array(seed_rng, row_ids, T, k_b, l_tot=None):
+    """THE SCHEDULE's host builder (ALG_SEED_SCHED=1, 2026-10-12): one Gumbel draw per (row,
+    breath, slot, token) for the fq bank only (the vq bank is never scheduled — see forward()).
+    Each breath draws from its OWN generator (seed_rng xor row_idx xor a breath-dependent odd
+    multiplier), so the per-breath noise is reproducible breath by breath, not just row by row,
+    and is NOT the same noise replayed at every breath (that would defeat "a decaying confident
+    alternative reading", collapsing to a constant bias scaled by tau_k alone).
+    Returns (len(row_ids), k_b, l_tot, T) float32."""
+    l_tot = L_TOT if l_tot is None else l_tot
+    out = np.zeros((len(row_ids), k_b, l_tot, T), np.float32)
+    for bi, i in enumerate(row_ids):
+        for k in range(k_b):
+            seed = (int(seed_rng) ^ int(i) ^ (int(k) * 0x9E3779B97F4A7C15)) & ((1 << 64) - 1)
+            rng = np.random.default_rng(seed)
+            u = rng.random((l_tot, T)).clip(1e-12, 1.0 - 1e-12)
+            out[bi, k] = -np.log(-np.log(u))
+    return out
+
+
 def dirrole_census(dircue, tokmask):
     """Coverage over REAL tokens: the fraction of rows with >=1 matched
     cue anywhere, and the per-cue match count (which lexicon entries are
@@ -7410,6 +7489,24 @@ def breath_step(p, state, kb, ctx):
         _pb_kb = _anch_b0 if _pb_kb is None else _pb_kb + _anch_b0
         if _CENSUS is not None:
             _CENSUS.append((kb, "anchor", _anch_b0.realize().numpy()))
+    _seed_hb = ctx.get("seed_hold_bias")
+    if _seed_hb is not None:
+        # THE SEEDED READINGS' HOLD (ALG_SEED_HOLD=1, 2026-10-12): breath 0's claimed token per
+        # slot, -1e4 off the span, carried into EVERY loop breath on the SAME pbias road as the
+        # anchor above — a HARD mask, not a keep-bias (see its construction in forward()).
+        _pb_kb = _seed_hb if _pb_kb is None else _pb_kb + _seed_hb
+        if _CENSUS is not None:
+            _CENSUS.append((kb, "seed_hold", _seed_hb.realize().numpy()))
+    _seed_sched_t = ctx.get("seed_fq_sched")
+    if _seed_sched_t is not None and kb < int(_seed_sched_t.shape[1]):
+        # THE SCHEDULE (ALG_SEED_SCHED=1, 2026-10-12): this breath's OWN slice of the per-
+        # (row, breath) Gumbel noise, scaled by tau_kb (ctx["seed_tau"], the cos^2 decay) —
+        # the SAME pbias road the anchor/hold terms use, never the clock, never the mixer.
+        _tau_kb = ctx["seed_tau"][kb]
+        _sfk = (_seed_sched_t[:, kb].reshape(B, 1, L_TOT, -1) * _tau_kb) * tokmask.reshape(B, 1, 1, -1)
+        _pb_kb = _sfk if _pb_kb is None else _pb_kb + _sfk
+        if _CENSUS is not None:
+            _CENSUS.append((kb, "seed_sched", _sfk.realize().numpy()))
     # THE TRAINED CERTIFIER-MASK ROAD (ALG_CERT=<gain>, 2026-09-28; the
     # ledger's 09:35 negative result's cure): cert3/cert5 are the SAME
     # (B, 1, L_TOT, T) route-bias shape pmask/anchor use, computed host-
@@ -9094,7 +9191,7 @@ def replay(p, snapshot, kb_start, overrides=None):
     return out
 
 
-def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, drop=None, anchor=None, amask=None, gmod=None, pmask=None, lsent=None, reg=None, fact_buf=None, mh_mass=None, mh_atlas_traj=None, xcorr=None, res_map=None, hud=None, ident=None, busreg_ramp=None, valfact=None, stop_after=None, facts3=None, facts5=None, tree=None, cert3=None, cert5=None, rack3=None, rack5=None, chalk3=None, chalk5=None, dirgold=None, dircue=None, flag_mask=None, flag_tabu0=None):
+def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, drop=None, anchor=None, amask=None, gmod=None, pmask=None, lsent=None, reg=None, fact_buf=None, mh_mass=None, mh_atlas_traj=None, xcorr=None, res_map=None, hud=None, ident=None, busreg_ramp=None, valfact=None, stop_after=None, facts3=None, facts5=None, tree=None, cert3=None, cert5=None, rack3=None, rack5=None, chalk3=None, chalk5=None, dirgold=None, dircue=None, seed_vq=None, seed_fq=None, seed_fq_sched=None, flag_mask=None, flag_tabu0=None):
     from tinygrad import Tensor, dtypes   # audit 2026-09-01: was a
     # SCOPE ACCIDENT (bound only via the sixwave/sync branches — any
     # SIXWAVE-off config killed five organs at step 1)
@@ -9182,6 +9279,14 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
     _lb = None
     if lsent is not None:               # V2: letter-keyed partition — imposed
         _lb = lsent.reshape(B, 1, K_VARS, -1) * float(os.environ.get("LS_A", "1.0"))
+    if ALG_SEED_TEMP and seed_vq is not None:
+        # THE SEEDED READINGS (2026-10-12): breath 0's vq bank only — a per (slot, token)
+        # Gumbel bias, shared across heads by construction (pbias broadcasts over the head
+        # axis already), zeroed on padded tokens (the tokmask — never a hard assert here,
+        # the bank's own softmax mask handles padded columns regardless; this just keeps the
+        # noise itself honest about what it is biasing).
+        _sv = (seed_vq.reshape(B, 1, K_VARS, -1) * ALG_SEED_TEMP) * tokmask.reshape(B, 1, 1, -1)
+        _lb = _sv if _lb is None else _lb + _sv
     vst, vat = bank(p["vq"], K_VARS, pbias=_lb)
     _vst_base = vst   # pre-injection tap (step trainer reads this)
     if int(os.environ.get("ALG_ALT2", "0")) and fact_buf is not None:
@@ -9268,6 +9373,27 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
             _xb = Tensor.cat(_xb, Tensor.zeros(B, N_SCR, _xb.shape[-1]), dim=1)
         _xb = _xb.reshape(B, 1, L_TOT, _xb.shape[-1])
         _pb = _xb if _pb is None else _pb + _xb
+    # THE SCHEDULE's per-breath temperatures (ALG_SEED_SCHED=1): tau_k = ALG_SEED_TEMP *
+    # cos^2(k*pi/(2*(K_B-1))) — breath 0 full strength, the last breath exactly 0. Plain python
+    # floats (host-side, trace-time only); K_B is re-read here (same os.environ idiom the rest
+    # of forward() uses; the authoritative read for the loop itself is unchanged, below).
+    _seed_tau = None
+    if ALG_SEED_SCHED:
+        _kb_n = int(os.environ.get("ALG_BREATH", "1"))
+        _seed_tau = ([ALG_SEED_TEMP * (math.cos(_k * math.pi / (2.0 * (_kb_n - 1))) ** 2)
+                      for _k in range(_kb_n)] if _kb_n > 1 else [ALG_SEED_TEMP])
+    if ALG_SEED_SCHED and seed_fq_sched is not None:
+        # THE SCHEDULE (2026-10-12): breath 0's OWN slice of the per-breath noise tensor, at
+        # tau_0 == ALG_SEED_TEMP (cos^2(0) == 1) — replaces the plain seed_fq path below for
+        # this breath only; loop breaths 1..K_B-1 are handled in breath_step, same ctx road
+        # THE BREATH-0 ANCHOR already uses (ctx["seed_fq_sched"] / ctx["seed_tau"]).
+        _sf0 = (seed_fq_sched[:, 0].reshape(B, 1, L_TOT, -1) * _seed_tau[0]) * tokmask.reshape(B, 1, 1, -1)
+        _pb = _sf0 if _pb is None else _pb + _sf0
+    elif ALG_SEED_TEMP and seed_fq is not None:
+        # THE SEEDED READINGS (2026-10-12): breath 0's fq bank only — same per (slot, token)
+        # Gumbel-bias idiom as the vq bank above, zeroed on padded tokens.
+        _sf = (seed_fq.reshape(B, 1, L_TOT, -1) * ALG_SEED_TEMP) * tokmask.reshape(B, 1, 1, -1)
+        _pb = _sf if _pb is None else _pb + _sf
     # THE TOKEN SEAL (apply_tok_seal.py, 2026-09-09): breath 0's
     # GROUNDING. `loop` leaves it intact (the slots are grounded once
     # and only the re-reading is severed); `all` flattens it too — the
@@ -9410,6 +9536,21 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
             _fl_tabu1 = ((_fl_am.reshape(B, L_TOT, 1) == _fl_ar).float()
                         * flag_mask.reshape(B, L_TOT, 1) * -1e4).reshape(B, 1, L_TOT, -1)
             _anch_bias0 = _fl_tabu1 if _anch_bias0 is None else _anch_bias0 + _fl_tabu1
+        # THE SEEDED READINGS' HOLD (ALG_SEED_HOLD=1, 2026-10-12): breath 0's sampled argmax
+        # token per slot (fat — already carries the Gumbel bias added above when ALG_SEED_TEMP
+        # is set; HOLD works at ALG_SEED_TEMP=0 too, holding the plain argmax) becomes a HARD
+        # claim carried into every LOOP breath — reusing THE BREATH-0 ANCHOR's exact road
+        # (ctx["seed_hold_bias"], read beside anchor_bias0 in breath_step) but with -1e4 off the
+        # claimed span instead of a soft keep-bias, per the rack's own claim-mask convention
+        # (_claim_bias / claims_bias): "the loop cannot simply re-read the gold mention and
+        # erase the perturbation." Detached (no grad; fat.detach() already taken for the anchor
+        # tap, reused here). None when ALG_SEED_HOLD is unset — bit-identical.
+        _seed_hold_bias = None
+        if ALG_SEED_HOLD:
+            _hold_tok = fat.detach().argmax(-1)                                # (B, L_TOT) claimed token idx
+            _hold_ar = Tensor.arange(int(tokmask.shape[1])).reshape(1, 1, -1)
+            _hold_onehot = (_hold_ar == _hold_tok.reshape(B, L_TOT, 1)).float()  # (B, L_TOT, T)
+            _seed_hold_bias = ((1.0 - _hold_onehot) * -1e4).reshape(B, 1, L_TOT, -1)
         _ident_tok = None
         if ALG_BUSREG or ALG_IDKEY:
             # THE BUS REGISTER's identity stream (2026-09-22): the token
@@ -9444,6 +9585,9 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
                    "fat0": fat,   # THE IDENTITY KEY's breath-1 query source: breath 0's grounding attention (B, L_TOT, T)
                    "valtag_v": _valtag_v,
                    "anchor_bias0": _anch_bias0,
+                   "seed_hold_bias": _seed_hold_bias,   # THE SEEDED READINGS' HOLD (2026-10-12)
+                   "seed_fq_sched": (seed_fq_sched if ALG_SEED_SCHED else None),   # THE SCHEDULE (2026-10-12)
+                   "seed_tau": _seed_tau,
                    "cert3": cert3, "cert5": cert5,   # THE TRAINED CERTIFIER-MASK ROAD (2026-09-28): per-breath pbias from kb 3 / 5 on (breath_step below)
                    "rack3": rack3, "rack5": rack5,   # THE RACK (2026-10-05): the packed dry flags + claimed tokens per consult, read from kb 3 / 5 on (breath_step: the claim + the freeze)
                    "slot_mask": slot_mask, "bank": bank, "rot2": _rot2,
@@ -10644,6 +10788,14 @@ def do_train(steps, lr, batch, seed):
     # FIRST executable statement — ahead of load_alg, ahead of the
     # mask-prep pass, ahead of every capture — so `_quick_val` inside
     # this process cannot see the door either. Loud, like ALG_MASK_SEAL's.
+    # THE SEEDED READINGS ARE A READ DOOR, NEVER TRAINED THROUGH (2026-10-12): do_train's
+    # FIRST executable statement, same idiom as the token seal's guard right below — loud,
+    # ahead of load_alg, ahead of every capture.
+    assert not ALG_SEED_TEMP and not ALG_SEED_HOLD and not ALG_SEED_SCHED, (
+        f"ALG_SEED_TEMP={ALG_SEED_TEMP!r} / ALG_SEED_HOLD={ALG_SEED_HOLD!r} / "
+        f"ALG_SEED_SCHED={ALG_SEED_SCHED!r} set and this is a TRAINING run — THE SEEDED "
+        f"READINGS (ledger 2026-10-12, STEP 1) are a READ-TIME door only (STEP 2, the training "
+        f"arm, needs its own word). Unset all three for training.")
     assert _tok_seal_mode() == "0", (
         f"ALG_TOK_SEAL={os.environ.get('ALG_TOK_SEAL')!r} is set and this "
         f"is a TRAINING run — the token seal is a READ door (the headroom "
