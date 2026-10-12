@@ -1,4 +1,21 @@
-# NEXT SESSION — cold-start entry (updated 2026-10-11 17:30)
+# NEXT SESSION — cold-start entry (updated 2026-10-11 20:35)
+
+**20:35 — THE BREATHSTOP QUEUE IS ARMED (pc-queue-breathstop: K3_241 then PK_241 behind 'SEAL CHAIN COMPLETE'; branch breathstop merged
+forward over the gym at bdb1e7fb; full gate table in .cache/breathstop_gate.log: ls7 bit-identical to role8, k3 cuts at breath 2, CPU step
+0.54x; queue_dryrun 9/0). The whole queue under the word is now machine-chained: SRF -> SINE4 -> ANTI4 -> SEAL -> K3 -> PK -> RTB (RTB's queue
+arms when its builder finishes).**
+
+**20:10 — THE REPLAY GYM IS MERGED (f7c15c70) and gated on the main line (unset 5.2995/0.0279, role8 6.5535/1.1061
+bit-identical; .cache/replay_merge_gate.log); docs/replay_gym.md names RTB's three gaps. RTB_241's BUILDER IS RUNNING (wt28, branch rtb,
+started 19:41 under the standing word): the multi-kb buffer writer + the offline feedback pass; the one-breath replay training step with the
+sampled phase and periodic refreshes; the exposure read; CPU gate (bit-identity, decode-exact identity at kb 1/3/5, a replay step's finite
+loss + live grads, the step cost GPU-vs-host); pc-queue-rtb behind 'PK CHAIN COMPLETE'. BARS: unrolled wild within 0.010 of PMS8_241 at
+<= 1/4 the card time per step; KILL: masked down > 0.020 (the refresh cadence M/2 is then the knob). PERF B READ (ledger 17:48): the JIT
+graph-batch hang is cumulative/content-dependent, not a single-graph ceiling; JIT_BATCH_SIZE=1 stays the only confirmed-safe setting;
+scripts/jit_batch_probe.py is the CPU gate for new organs (7e0a4d8a); the diagnostic tinygrad branch jitbatch is NOT merged. SRF_241 at
+step 20k/48k (19:51; ~8k steps per 70 min -> training ends ~00:00, reads ~00:40). Gate rule added: a gate's COMPLETE banner is not a result,
+the loss TABLE is. Unmerged branches: shuffletap (mixer taps, needs a gate), jitbatch (tinygrad diagnostic), breathstop (K3/PK builder,
+wt27), rtb (wt28, building).**
 
 **SRF_241 (THE SORTING ROOM EVERY BREATH, slot-conditioned) IS ON THE CARD (17:30; fired 16:39; 0.45 s/step -> reads ~23:30; bars = the first-look
 reads SR missed: twin-pick <= 0.35, other-sentence <= 0.40, masked >= SR's family + 0.010).** THE QUEUE UNDER THE WORD (17:1x): the FIXED sine arms
