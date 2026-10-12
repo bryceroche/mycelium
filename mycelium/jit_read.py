@@ -249,7 +249,9 @@ _OPT_PORTS = ("slot_mask", "revoke", "tail", "drop", "anchor", "amask",
               "cert3", "cert5",   # THE TRAINED CERTIFIER-MASK ROAD's bias ports (2026-09-28)
               "rack3", "rack5",   # THE RACK's packed dry-flag + claimed-token ports (2026-10-05)
               "chalk3", "chalk5",   # THE CHALKBOARD's packed [presence, digits] ports (2026-10-05, branch rack3)
-              "dircue")   # THE DIRECTION ROLE's per-token cue-id port (2026-10-09)
+              "dircue",   # THE DIRECTION ROLE's per-token cue-id port (2026-10-09)
+              "seed_vq", "seed_fq",   # THE SEEDED READINGS' breath-0 Gumbel-bias ports (2026-10-12)
+              "seed_fq_sched")   # THE SCHEDULE's per-breath Gumbel-bias port (2026-10-12)
 # Non-tensor kwargs a reader may pass (python constants baked into the
 # captured graph, so they are part of the key): the partial pass's stop.
 _CONST_KW = ("stop_after",)
