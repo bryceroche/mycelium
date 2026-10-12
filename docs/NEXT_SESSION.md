@@ -1,4 +1,8 @@
-# NEXT SESSION — cold-start entry (updated 2026-10-11 20:35)
+# NEXT SESSION — cold-start entry (updated 2026-10-11 21:05)
+
+**21:05 — RTB_241 IS BUILT, GATED AND QUEUED (pc-queue-rtb behind 'PK CHAIN COMPLETE'; branch rtb/wt28; gate .cache/rtb_gate.log; ledger 21:0x).
+The replay step is EAGER (not captured): I added THE DEVICE COST PROBE to its chain (200 eager steps timed before phase 3; slower than PMS8's
+own 0.126 s/step = ABORT, needs the word; form 2 = per-kb captured graphs). If the probe aborts, the next build is the 7-graph capture.**
 
 **20:35 — THE BREATHSTOP QUEUE IS ARMED (pc-queue-breathstop: K3_241 then PK_241 behind 'SEAL CHAIN COMPLETE'; branch breathstop merged
 forward over the gym at bdb1e7fb; full gate table in .cache/breathstop_gate.log: ls7 bit-identical to role8, k3 cuts at breath 2, CPU step
