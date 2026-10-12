@@ -1,14 +1,35 @@
-# NEXT SESSION — cold-start entry (updated 2026-10-11 08:54)
+# NEXT SESSION — cold-start entry (updated 2026-10-11 21:05)
 
-**THE CARD PASSES TO THE MIXER QUEUE (08:54; pc-queue-mixer4 merges typedmixer, gates, fires TM_241 -> SH_241 -> HUB_241; then SRF_241;
-then the FIXED sine arms).** SINE4_241 read (CONFOUNDED by the skip bug: the peak skip doubles the state at birth — scripts/sine_birth_check.py;
-Opus found it; the sine queue stopped before ANTI4): slot +0.001 (null), rows 15, args flat; THE MECHANISM READ: k0 (the crystal) owner ratio
-1.33 > 224-wide 1.13 > the peak 0.90 — narrower groups more, the peak groups by nothing; bar 1.5 missed, the "flat = cosmetic" kill does not
-fire. THE FIX in progress (wt21): ALG_SINE_SKIP=none (the residual is the skip), the placebo = the squeeze severed at training, FFN 4x per
-width, the birth check as a gate step; re-queue behind SRF. THE MINIMALITY CHECK (Opus; scripts/picker/minimality.py) running on CPU: R1 the
-gold-minimal rate, R2 the catch on wrong solved+unique graphs (>= 0.25; kill < 0.10), R3 the minimal-first judge (rows >= 24, regs <= 2) —
-if R2 clears, dead facts are the per-slot HARD solver signal the six alternations lacked. FG_241: the funnel refuted at the preference level.
-Updated 08:54.
+**21:05 — RTB_241 IS BUILT, GATED AND QUEUED (pc-queue-rtb behind 'PK CHAIN COMPLETE'; branch rtb/wt28; gate .cache/rtb_gate.log; ledger 21:0x).
+The replay step is EAGER (not captured): I added THE DEVICE COST PROBE to its chain (200 eager steps timed before phase 3; slower than PMS8's
+own 0.126 s/step = ABORT, needs the word; form 2 = per-kb captured graphs). If the probe aborts, the next build is the 7-graph capture.**
+
+**20:35 — THE BREATHSTOP QUEUE IS ARMED (pc-queue-breathstop: K3_241 then PK_241 behind 'SEAL CHAIN COMPLETE'; branch breathstop merged
+forward over the gym at bdb1e7fb; full gate table in .cache/breathstop_gate.log: ls7 bit-identical to role8, k3 cuts at breath 2, CPU step
+0.54x; queue_dryrun 9/0). The whole queue under the word is now machine-chained: SRF -> SINE4 -> ANTI4 -> SEAL -> K3 -> PK -> RTB (RTB's queue
+arms when its builder finishes).**
+
+**20:10 — THE REPLAY GYM IS MERGED (f7c15c70) and gated on the main line (unset 5.2995/0.0279, role8 6.5535/1.1061
+bit-identical; .cache/replay_merge_gate.log); docs/replay_gym.md names RTB's three gaps. RTB_241's BUILDER IS RUNNING (wt28, branch rtb,
+started 19:41 under the standing word): the multi-kb buffer writer + the offline feedback pass; the one-breath replay training step with the
+sampled phase and periodic refreshes; the exposure read; CPU gate (bit-identity, decode-exact identity at kb 1/3/5, a replay step's finite
+loss + live grads, the step cost GPU-vs-host); pc-queue-rtb behind 'PK CHAIN COMPLETE'. BARS: unrolled wild within 0.010 of PMS8_241 at
+<= 1/4 the card time per step; KILL: masked down > 0.020 (the refresh cadence M/2 is then the knob). PERF B READ (ledger 17:48): the JIT
+graph-batch hang is cumulative/content-dependent, not a single-graph ceiling; JIT_BATCH_SIZE=1 stays the only confirmed-safe setting;
+scripts/jit_batch_probe.py is the CPU gate for new organs (7e0a4d8a); the diagnostic tinygrad branch jitbatch is NOT merged. SRF_241 at
+step 20k/48k (19:51; ~8k steps per 70 min -> training ends ~00:00, reads ~00:40). Gate rule added: a gate's COMPLETE banner is not a result,
+the loss TABLE is. Unmerged branches: shuffletap (mixer taps, needs a gate), jitbatch (tinygrad diagnostic), breathstop (K3/PK builder,
+wt27), rtb (wt28, building).**
+
+**SRF_241 (THE SORTING ROOM EVERY BREATH, slot-conditioned) IS ON THE CARD (17:30; fired 16:39; 0.45 s/step -> reads ~23:30; bars = the first-look
+reads SR missed: twin-pick <= 0.35, other-sentence <= 0.40, masked >= SR's family + 0.010).** THE QUEUE UNDER THE WORD (17:1x): the FIXED sine arms
+SINE4/ANTI4/SEAL (pc-queue-sine on SRF's done mark; ALG_SINE_SKIP=none, the waist-sever placebo, FFN 4x, the birth check) -> K3_241 (three breaths
+throughout, ALG_LOOP_STOP=3, the clock kept at K=7) -> PK_241 (progressive: 24k at K=3 then 24k at K=7) [builder wt27] -> RTB_241 (THE REPLAY-TRAINED
+BREATH: one breath per step, a sampled phase, a replay buffer, offline solver feedback — the diffusion recipe; waits on the gym merge (agent on
+CPU) + the solver pipeline (perf A, wt24)) -> the NL-loop refactor's first arm after SRF's read. PERF: A = the solver pipeline (pool + memo +
+training budget; bit-identical gate; wt24), B = the JIT graph-batch hang's threshold (wt25). ARCHITECTURE v2 registered (the master design doc,
+docs/MASTER_DESIGN.md, published to main 6f0f0c57). THE MIXER LINE CLOSED (TM costs, SH diverged, SRK unread, HUB: the all-to-all is dispensable).
+DISK: 1.5 TB of retired forms' state memmaps deleted (1.4 TB free); the checkpoint sweep (61 GB) is next. Updated 17:30.
 
 **THE CARD IS IDLE (09:38).** THE DIRECTION PROBE FIRED (zero-GPU; scripts/direction_probe.py; .cache/direction_probe_PMS8_241.txt):
 PRESENT-BUT-UNEXPRESSIBLE — a read-out trained on PMS8_241's own frozen states reaches wild AUROC 0.98 (own state + both gold args'

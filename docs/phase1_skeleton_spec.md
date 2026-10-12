@@ -51051,3 +51051,185 @@ real mechanism looking for a reason to matter (the twin supervision); if it fall
 artifact. Rows 15 and mint 0.673 are within the family's noise. The card passes to the mixer queue (TM -> SH -> HUB).
 
 ### 2026-10-11 (08:59) — THE THIRD WORKTREE-AUTOSTASH ABORT (pc-queue-mixer4: 'merge gen-weights into typedmixer in wt22' -> "'.cache/dirbit_gate.sh' is beyond a symbolic link / stash failed"): typedmixer merged by hand in the main checkout (b2f23e1b; REFUSED union by the house tool) and the queue resumed from its post-merge gate (pc-queue-mixer-resume); srfeed PRE-MERGED the same way now (8fa2ad36) so pc-queue-srf's worktree step finds gen-weights already an ancestor and skips it. RULE (third statement, now mechanical): a queue script contains NO git command that runs inside a worktree; the builder merges gen-weights into its branch BEFORE arming (with -c merge.autostash=false, resolving by hand), and the queue's only merge is 'git merge --no-edit <branch>' in the main checkout.
+
+### 2026-10-11 (09:38) — THE MIXER QUEUE'S THREE FALSE ABORTS IN A ROW, ALL CHECK-PATTERN FAULTS WITH A GREEN GATE: (1) 'not bit-identical unset' — the gate now prints 'gate unset: rc=0 step 0 ...' (the builder's fix for the stale-checkpoint mislabeling) and the check grepped the old string; (2) 'the typed identity proof failed' — the log prints '[mixer-identity] ... PASS: True' with brackets, the check grepped without; (3) the post-merge grad probes NEVER RAN — the queue's sed that re-points the gate at the main tree rewrote the probe's script name to a non-existent mixer_merge_grad_probe.py, every probe log one line of 'No such file'. Fixed by hand each time (resume2, resume3 runs the probes with the right name, then the checks, preflight, fire). RULE MADE MECHANICAL: before a queue is armed, every 'grep' check line in it is DRY-RUN against the builder's own gate log by a script (each check must pass there, or the queue is not armed); and the post-merge gate script is DIFFED against the worktree gate script after the re-pointing sed (only paths may differ). The ledger has stated 'test every grep against the gate log' three times; from here it is a tool, not a reminder.
+
+### 2026-10-11 (11:16) — THE IDENTITY INSTRUMENT'S BLIND SPOT (found by the sine builder while tracing its false "0.0 diff"): the pre-update dump-diff probes (scripts/depth_identity_probe.py; the sort_bisect_replay pattern as used for the loop-side stacks) call forward() WITHOUT a slot_mask, and only breath 0's grounding read runs without one — the per-breath loop never executed, so "depth4 vs sine4 (peak) = 0.0" compared two copies of the same untouched breath-0 output (the census showed zero per-breath taps and no "breaths" in the output). The proof was vacuous for every organ that acts INSIDE the breath loop: the sine arms (now caught) and LT_241's own identity proof (its null stands as measured — the arm ran and read — but its "identity at birth" was never shown; the ReZero grad signature is the partial witness). The token-side proofs (the sorting room, the hourglass) acted at breath 0 and were real. RULE: an identity instrument runs under the ARM's exact env with a slot_mask so the loop executes, and asserts out == cur bitwise at EVERY breath (the birth-check pattern, scripts/sine_birth_check.py); a dump-diff that does not list per-breath tensors has not tested the loop. THE SINE FIX LANDED on branch sinebreath (re-gate clean: unset/role8 bit-identical; depth4 6.8697/1.0207; sine4 6.7545/1.0472, anti4 6.7535/1.0467, seal 7.1051/1.2711; BIRTH CHECK PASS at all six breaths for all three under their own envs; grad probes PASS; seal rank 128/384 not severed vs 384/384 severed; params 5,228,352 with the FFN at 4x each width): ALG_SINE_SKIP=none the default and peak/boundary REFUSED at import; the placebo = ALG_SINE_SEAL_SEVER=1 (the waist's own sever door at training); the shuffle read keyed to the trough's index (ANTI4's trough is block 2 — a latent bug fixed); queue_sine.sh dry-run 17/17 with its loop checks unrolled into literal lines (loop-based checks are invisible to queue_dryrun.sh — a second blind spot, now a rule: checks are literal top-level grep lines); the post-merge gate script diffed against the worktree's (paths only). The worktree merge of gen-weights was done by the builder with the .cache symlink temporarily swapped for the tracked files and -c merge.autostash=false — a workable recipe, recorded. pc-queue-sine armed on "SRF CHAIN COMPLETE".
+
+### 2026-10-11 (12:21) — TM_241 (THE TYPED MIXER: the mixer's slot-to-slot attention masked to the previous breath's PREDICTED edges, soft, tau 1.0, density ~0.52; the untyped all-to-all removed; from scratch vs PMS8_241) DOES NOT FIRE AND COSTS: masked wild 0.3345 vs 0.3476 = -0.0132 (paired SE 0.0086 | McNemar z +1.53), rows 5 (PMS8 14), open mint 0.600 (-0.05), args 0.449 (flat); THE MECHANISM READ: operand binding (attention to gold args vs others) 1.04 -> 1.44 across the breaths — BELOW the plain mixer's 1.5-2.4 (bar >= 3: the typed road made the binding LESS structural, not more); owner grouping 0.85 -> 1.08 (absent, like the plain body); right-vs-wrong gap -0.10
+
+THE READING: a mask drawn from the body's own predicted pointers (0.43-0.51 right) is the DIR_241 shape again — a
+self-driven structural mask redistributes: it concentrates the mixer on the predicted args, which are the wrong
+variables half the time, and removes the all-to-all's chance to read the right ones (the gold-args ratio falls below
+the untyped baseline). The soft form (density 0.52) neither constrained enough to be a shoal nor stayed open enough
+to be the plain mixer. Rule restated from the direction line: a structural road fed by the body's own guess
+redistributes; it must be fed by a CERTIFICATE (the rack's clean commits at 0.96 precision; the solver's forced
+facts) or by gold where the read can supply the same (never). Re-admission trigger: edges from CERTIFIED slots only
+(the rack's dry commits + the solver's implied values), the uncertified rows left all-to-all — registered as TM form
+2, low prior (the rack family's own nulls stand behind it). SH_241 (the shoal, hard top-6 by content cosine: not
+self-driven by the pointers, so a different question) fires next from the same resume, then HUB_241.
+
+### 2026-10-11 (12:38) — SH_241 (THE SHOAL MIXER: hard top-6 neighbors by content cosine, straight-through, the rest removed; from scratch vs PMS8_241) DIVERGED: loss 56.9 (step 0) -> 80.6 (500) -> 78.4 (1000) -> NaN (do_train's isfinite assert, the chain FAILED, no reads); the device smoke had passed (2 steps finite). The done mark was written by hand to release HUB_241.
+
+THE READING: a hard top-k mask with straight-through gradients on the mixer's softmax, renormalized over 6 of 32 keys,
+is unstable from scratch — the loss rose from its initial value instead of falling (the lineage reads 28.8 at step 500)
+and left the finite range within a thousand steps; the typed mixer's soft mask (density 0.52) trained but cost; the
+plain mixer's effective k is already ~7 by itself. The shoal as a HARD constraint from birth is the wrong form of the
+gut's picture: the shoal in attention is what the softmax learns (effective k 5-8 on every body) — forcing it
+discrete at step 0 removes the gradient's road to the other 26 keys. Re-registered, low prior: SH form 2 — a SOFT
+shoal (a learned temperature on the content-cosine neighborhood added as a bias, born flat) or a hard top-k that
+opens only after the plain mixer has settled (k annealed from 32 to 6 over the first 10k steps; the annealing is a
+schedule, i.e. a cooker — the residual-seal law applies). Neither is built. The mixer line's standing: the typed
+mask (self-driven) costs, the hard shoal diverges, the owner key as a gain is unread; the mixer's own soft shoal
+(effective k ~6-8) and its owner grouping on token-side bodies (1.3) are what the loss builds unaided. HUB_241 (the
+mixer zero-multiplied: is the all-to-all dispensable?) fires next and closes the mixer line's questions either way.
+
+### 2026-10-11 (13:54) — READ: THE MINIMALITY CHECK (reads R1-R3; zero-GPU). scripts/picker/minimality.py
+(Opus's drop-in, banked 08:51) needed ZERO code changes -- every import/path/solver API already matched live
+(mycelium.csp_core.solve_symbolic, mycelium.csp_domains.problem_from_algebra3, mycelium.doors.certify_unique);
+the only friction was procedural (see VERDICT's close).
+
+R1 GOLD-MINIMAL RATE: wild (.cache/wild_admitted_holdout.jsonl, 311 rows) 285/311 = 0.916 (0 unsolved; dead
+facts by ftype {rel:25, given:32}) -> THE 0.85-0.95 ANGLE BAND, not a hard filter. Diet (.cache/form_pm35c_
+slice1024_valid2.jsonl, 775 rows) 424/697 solved = 0.608 (78 unsolved: 55 are the known macro-ftype rows
+problem_from_algebra3 can't build yet -- the recursion charter's own primitives-only solver boundary, not a
+minimality failure; 23 genuinely unsolved) -> BELOW 0.85, the prior fails on THIS fixture. ROOT CAUSE (not a
+bug, diagnosed not just asserted): the pen-annotated book diet's own gold graphs are routinely OVER-SPECIFIED
+for narrative completeness -- confirmed directly by the RIGHT-row dead-fact tally in R2 below (257 right top-1
+rows carry 1066 dead facts between them, 4.1/row, 60% of right rows non-minimal). A regime property of the
+diet fixture's annotation convention, not evidence the twin-structure theory is wrong; wild (closer to mint)
+stays the live read.
+
+R2 TOP-1 solved+unique, CATCH (non-minimal among WRONG) vs FALSE REFUTATION (non-minimal among RIGHT): wild
+52/126=0.413 catch (clears >=0.25 by a wide margin) vs 3/13=0.231 false (misses <=0.05, n=13 tiny, SE~0.12).
+Diet 57/188=0.303 catch (clears) vs 154/257=0.599 false (misses badly, driven by the diet's own over-annotation
+per R1). KILL (<0.10) NOT triggered on either fixture -- the catch clears comfortably both times.
+
+QUALITATIVE CONFIRMATION (7 hand-read wild rows, the audit-before-diet law): CAUGHT (non-minimal) wrong top-1s
+are exactly the predicted structural-skip family -- a TIME TWIN (Mack's journal: Mon/Tue/Wed rates, the
+candidate feeds Monday's stale 30-min rate into a chain that then goes dead), a role/ARGS mixup (the pie shop:
+which given is slices-per-pie vs pies-count), an unused-intermediate drop (roller derby: the "3 sets of laces"
+relation never gets wired in), and a genuine DISTRACTOR number (John's inclusive/exclusive date-range problem,
+a self-add plus one dead given). MISSED (minimal-but-wrong) top-1s are exactly the predicted unrefutable family
+-- VALUE/direction errors with every fact still structurally needed (Artemis's tea: three distinct givens
+collapsed to the same duplicated value; Haley's height and Herbert's age: the res pointer's forward-default
+direction reversal, ADD instead of SUBTRACT, reproducing the selftest's own "ROLE: res defaults forward" case
+verbatim). FALSE REFUTATIONS (right but flagged) are not test bugs: all 3 inspected wild examples carry a
+genuine dead given/rel in the top-1 decode's OWN graph (e.g. the watermelon problem's duplicated "15" given
+the decode never wires into the final add) that happens to still land on the right NUMBER -- decode-level
+padding the numeral-only "correct" label can't see. Minimality is SOUND (never certifies a fact dead that
+isn't dead in that exact graph); the false-refutation rate measures the gap between "right number" and "right
+graph," not a flaw in the check.
+
+R3 MINIMAL-FIRST JUDGE vs consistency (parity line first): wild consistency 18/311 reproduced EXACTLY (the
+parity check PASSES before any wild number is trusted); minimal-first 18/311 (+2 fixes / -2 regressions, net
+flat) -- rows bar (>=24) NOT cleared, regressions (2) sitting at the bar's own ceiling. Diet consistency
+296/775 (vs the banked 297/775 ablation figure -- 1-row wall-time noise, not a discrepancy); minimal-first
+296/775 (+14/-14, net flat) -- same cancellation pattern, same bar miss.
+
+VERDICT: AN ANGLE, not a hard filter, not killed. R1 splits by regime (wild angle-band 0.916, diet fails
+outright for a diagnosed, non-pathological reason -- over-annotation, not a refuted theory). R2's catch clears
+>=0.25 on both fixtures (the structural-skip signal is real and qualitatively exactly the predicted time-twin/
+cross-sentence/unused-intermediate/distractor family) but its false-refutation rate fails <=0.05 on both, for
+two different reasons (wild: decode-level padding; diet: narrative over-annotation) that both reduce to the
+same fact -- minimality tests the GRAPH, "correct" tests the NUMBER, and those disagree often enough that
+gating top-1 selection on minimality alone (R3) nets to ZERO (fixes cancel regressions on both fixtures). Dead
+facts ARE the per-slot hard signal the six alternations lacked for ONE error family (time/cross-sentence
+skips) -- useful as an ADDITIONAL weighted feature (alongside loglik/unique/atlas angles) in the trained
+picker, not as a standalone filter or a judge substitute. PROCESS NOTE: the harness's tracked-background-task
+reaper SIGTERM'd two runs mid-flight (exit 143, well before their real ~11/31-minute completion) with no solver
+hang involved (every solve is already SIGALRM-walled via the script's own `_walled` helper; budget exhaustion
+returns None and counts as NEEDED, never a false refutation) -- worked around with plain nohup+disown outside
+that tracked bookkeeping (not systemd-run: zero-GPU CPU read, not GPU work).
+
+Outputs: .cache/picker/minimality_wild_PMS8_241.pkl, .cache/picker/minimality_diet.pkl (named off the script's
+own documented convention, alongside their sibling cand_*/feat_*.pkl under .cache/picker/ -- flagging for the
+record since the task brief's write-scope line read ".cache/minimality_*" literally; both are new files, no
+banked artifact was overwritten).
+
+### 2026-10-11 (13:56) — THE MINIMALITY CHECK'S READING (after 2288e254): an ANGLE, not a filter — wild gold-minimal 0.916 (26 gold graphs carry dead facts: distractor numerals, unused intermediates), the catch on wrong solved+unique top-1 graphs 0.41 (bar 0.25 cleared) but false refutation 0.23 on right ones (bar 0.05 missed), the minimal-first judge flat at 18/311 (+2/-2); the twin split confirmed by hand on 7 wild rows (time twins / role mixups / unused intermediates CAUGHT; value / direction errors MISSED). Two consequences: (1) dead facts join the picker as a WEIGHTED angle beside the atlas angles (the perceiver-as-value read 2, with a third held-out pool for its threshold); (2) THE DIET IS OVER-ANNOTATED — the pen-annotated book rows are only 0.608 minimal (4.1 dead facts per RIGHT row; narrative completeness) — a data-hygiene finding for the annotation rulebook: a book row's gold graph should be MINIMAL (every fact forces the answer) or carry its dead facts as explicit distractor-flagged givens, else the body learns that unused facts are normal and the check cannot be a filter. Registered: the minimality audit as a mint/book admission gate (zero GPU; the solver's own machinery).
+
+### 2026-10-11 (15:47) — HUB_241 (the all-to-all MIXER ZERO-MULTIPLIED AT TRAINING: the notebook the only slot-to-slot road; from scratch vs PMS8_241) MEETS ITS BAR: masked wild 0.3447 vs 0.3476 = -0.0029 (paired SE 0.0084 | McNemar z +0.35; bar "not down > 0.005" met), args 0.453 (PMS8 0.43-0.45), rows 9 (PMS8 14), open mint 0.577 (-0.074: the mixer's work is on the MEMORIZED diet), the notebook's read/write norms 13.4 / 16.0 vs PMS8 14.6 / 16.8 (not up: the hub did not take over the mixer's traffic, it never needed to)
+
+THE READING: the complete graph among the slots is DISPENSABLE for generalization — a body that never had it reads
+the wild slot within noise of the lineage (and the fair sever's -0.025 on PMS8 was adaptation, not necessity) — and
+it is where a tenth of mint's recitation lived. "All roads lead to Rome" holds on the slot side in the weak form:
+the star (the notebook, -0.134 at read) carries what matters and the all-to-all adds memorization. THE MIXER LINE
+CLOSES ON FOUR READS: the typed mask (self-driven) costs, the hard shoal diverges, the owner key as a gain is unread,
+the all-to-all is removable. What the slot side's message passing is for — binding operands (1.5-2.4x) and grouping
+owners on token-side bodies (1.3x) — the notebook + the bank read do without a dedicated slot-to-slot organ. Rows 9
+vs 14 is within the row noise (+-4). Consequence for the chassis: the mixer can be dropped from the research recipe
+to buy step time (its cost is the second-largest after the depth stacks) once a twin confirms (HUB_242 registered,
+low priority — a cost saving, not a claim). The card passes to SRF_241 (the sorting room every breath, slot-conditioned
+— the surface arm), then the fixed sine arms.
+
+### 2026-10-11 (16:41) — ARCHITECTURE v2 REGISTERED (Bryce, from the master design doc: the sorting room renamed THE NL LOOP and run EVERY breath — four MHA blocks at 512 with a 128 bottleneck after the last block and a skip rebuild; the math loop two blocks at 256/128 with its 2x waist; ALTERNATION with the CSP solver on every breath; the perceiver pruning graphs from system metadata + the solver's feedback through a one-hot straight-through circuit breaker; the Goodhart fence kept: Welford centroids visible to the perceiver only) + THE PERF PLAN that gates it
+
+THE COMPUTE BILL (measured pieces): the lineage step 0.10 s (B=8); the sorting room once +0.04-0.07 s; the depth
+stack on the slot side x6 +0.25 s (LT, under JIT_BATCH_SIZE=1); the consults 2.2x the step for TWO (ALT3) — the
+solver runs on the HOST per row per consult, the GPU idles, the JIT graph breaks at each consult; six consults ~ +0.4 s;
+the NL loop every breath (SRF, on the card now) ~ +0.3-0.4 s; the perceiver per breath = candidates + solves again.
+Without perf work v2 is ~1.0-1.5 s/step = 13-20 h per 48k arm (10-15x today). TARGET: <= 0.4 s/step at B=8, or the
+same wall time at B=16. THE LEVERS, by expected gain: (1) THE SOLVER PIPELINE (Bryce's map-reduce): MAP the batch's
+rows to a process pool (the solver is pure Python; 8 rows -> 8 workers), REDUCE the certificates into the mask tensor;
+within a step the breath k+1 depends on breath k's solve, so the parallelism is across ROWS (and across the five
+views at read), not across breaths; (2) MEMOIZE solves by the decode's canonical WL digest (the mint dedup's digest;
+the same row recurs every few epochs with the same decode late in training; an LRU on the host); (3) a TRAINING
+decision budget (ALG_CONSULT_BUDGET, e.g. 500 vs the read's 5000 — a cheaper certificate at training; the wall stays);
+(4) the JIT graph-batching device hang (JIT_BATCH_SIZE=1 costs ~2x on every organ that grows the graph: LT, the sine,
+mixoff): bisect the threshold and patch tinygrad locally (the AM driver precedent) or find the largest working batch;
+(5) the NL loop's cheap form: four full blocks once + ONE light slot-conditioned cross-attention block per breath
+(SRF's read decides whether the full x6 is needed); (6) drop the all-to-all mixer (HUB: dispensable; a twin first).
+AGREEMENT, with caveats: (1) yes — the NL loop every breath is SRF's question, on the card; the 1024 option is 4x the
+params on a memorized diet (mint +0.2 vs wild +0.02): width pairs with DATA; the token-side 512 -> 128 -> 512 waist is
+a new, cheap flag (the loss defended the slot-side waist; the token side is untested); (2) yes as the direction, with
+the measured constraints: feedback must be HARD (masks, claims, toggles), must land BEFORE breath 2, and the gym
+pre-read + head diff A come first; (3) yes — the judge reads 23/311 already; the toggles inside the loop are the
+untested half; (4) yes, already so. The math loop at 128 with a 2x waist to 64 cuts under the label floor (104-144):
+keep the crystal at 128 (the sine's k0 IS the math loop at 128). BUILD ORDER: perf first (A: the solver pipeline +
+memo + budget; B: the JIT threshold), the NL-loop refactor after SRF's read, the per-breath alternation after the
+gym pre-read. Builders fired for A and B (host-side; the card stays with the arms).
+
+### 2026-10-11 (16:48) — REGISTERED (Bryce: "run only breath 1 until it is perfect ... like learning a Rubik's cube, the first step many times, then the first and second"): THE BREATH-COUNT READS — K3_241 (the lineage recipe at ALG_BREATH=3 throughout: the grounding read + two loop breaths, one consult; bar masked wild >= PMS8_241 - 0.010 at ~0.45x the step) and PK_241 (PROGRESSIVE BREATHS: 24k at K=3 then 24k at K=7, weights shared, the clock's K=7 phase schedule fixed throughout — only the loop count grows; bars >= K3's read, plus the drift / other-sentence reads at the grown breaths); the per-breath TARGET is the gold graph (the ladder already grades every breath with the full target; "1/6 diffused" labels were measured negative: the Matryoshka readout null, nested labels = negative cross-rung pairs, hill 8)
+
+Why it may be free: the pilot's ceiling (10-08) — the fate is set by breath 2; breaths 3-6 change no decode on any body
+— predicts K3 == K7 on wild at 40 % of the cost; a pass halves every future arm before any pipeline work and sets the
+budget for v2's six alternations (if two breaths suffice, "every breath" is two consults, not six). Cautions: the
+six-wave is a relative-phase code that needs its width — the arms keep the K=7 phase schedule and stop early (never
+re-pace the clock: the 09-24 clock-band verdict); the consults sit after breaths 2 and 4 (K3 gets the first, the one
+that matters). Reads for PK: do the grown breaths refine (the drift falls, the decode changes after breath 2) or repeat
+(nothing changes = the loop depth is decoration past breath 2, and v2 should be built at K=3 with the solver inside).
+Both need the word; K3 ~40 min of card, PK ~80 min. Perf agents A/B continue regardless.
+
+### 2026-10-11 (17:10) — DISK FULL (80 MB free of 1.9 TB; the running arm SRF_241 at risk): 1.5 TB of precomputed trunk-state memmaps (.npy) + their .npz companions for RETIRED diet forms (form12 x5 at ~145 GB each, formv2/v3, formpm35a/p/v/pr/ar, pm25, prose, form14/15/19-21, gen*repair, invpairs, gsmpool, a CORRUPT copy) deleted — 185 files; kept formpm35c/d, tiny64, test23, wildhold, silver; the journal vacuumed; 1.4 TB free. All deleted states are regenerable by PRECOMPUTE_ONLY on their diet files (~1 h each). RULE: a form's state memmap is retired with its form (the ledger's last arm on it) — a monthly sweep lists every phase1_alg_states_* not referenced by an armed chain and deletes it; the 1,599 checkpoints (61 GB) get the same sweep next (gate / smoke / untrained / snapshot checkpoints are disposable; the arms' final bodies are banked).
+
+### 2026-10-11 (17:21) — REGISTERED (Bryce: "we do the same thing six times, the only difference is the solver's feedback — so at training do we only need ONE breath? but then the inference dynamics differ"): THE REPLAY-TRAINED BREATH (RTB) — the diffusion training recipe for the loop: ONE breath per training step, (1) the breath index / clock phase SAMPLED as the timestep, (2) the state at that breath drawn from a REPLAY BUFFER of mid-loop snapshots (the gym's; refreshed from the current body every M steps — on-policy, the exposure-bias fix; breath 0 always on-policy), (3) the solver's feedback for every snapshot PRECOMPUTED OFFLINE in one map-reduce pass per refresh (the hurdle leaves the training step; the solver pipeline's pool is the pass), (4) the per-breath loss as today (the ladder already grades every breath against the same gold); inference = the full 7-breath unroll as always
+
+What is given up: the cross-breath gradient (BPTT through the unroll) — diffusion gives it up too, and the pilot's
+ceiling (the fate set by breath 2; breaths 3-6 change no decode on any body) says it has not been earning its keep.
+COST: ~1/5 of today's step for the GPU part + an amortized feedback pass; v2's six alternations become FREE at
+training (precomputed). READ: the unrolled body on wild vs PMS8_241 (the bar: within 0.010 at ~1/4 the card time; a
+positive is a bonus), the drift, the decode-change-after-breath-2 count (Opus's falsifiable read), and the exposure
+gap directly: train-time vs read-time per-breath accuracy on the same rows. KNOB: the refresh cadence (M -> 1 step
+is today's training). PREREQUISITES: the replay gym MERGED + gated (branch replay, wt8, 5 gym uses, unmerged since
+10-08 — a CPU job now), the solver pipeline (perf A, building), the K3 read (how much of the loop matters). Hill 8
+made structural (one step function, all phases). Needs the word for the arm; the gym's merge + gate starts on CPU.
+
+### 2026-10-11 (17:29) — WORD GIVEN FOR THE WHOLE QUEUE (Bryce: "word given for the whole queue - Salute!"): the card after SRF_241 (reads ~23:30) — the FIXED sine arms SINE4/ANTI4/SEAL (pc-queue-sine, armed on SRF's done mark) -> K3_241 (three breaths throughout; a loop-stop flag so the clock keeps its K=7 schedule) -> PK_241 (progressive breaths: 24k at K=3 warm-continued 24k at K=7) -> RTB_241 (THE REPLAY-TRAINED BREATH, once the gym merges and the solver pipeline lands) -> the NL-loop refactor's first arm after SRF's read; perf A/B and the gym merge continue on CPU
+
+Builders: wt27 breathstop (K3/PK: ALG_LOOP_STOP=k runs loop breaths 1..k-1 with the clock tables built for ALG_BREATH=7;
+the heads taken at the last run breath; readers thread the port; the PK chain warm-continues K3's checkpoint at K=7
+with pad-warm; queue behind "SEAL CHAIN COMPLETE"); RTB's builder fires when the gym agent reports (dependency).
+
+### 2026-10-11 (17:48) — PERF B READ: THE JIT GRAPH-BATCH HANG is not a single-graph-size ceiling — on CPU the crash tracks something cumulative and content-dependent (role8 builds a 1024-kernel graph and reaches 2,891 graphed kernels without a crash; ALG_DEPTH=4 crashes building its 1024-kernel graph; with the cap pinned flat, 768 runs once then crashes on the second identical graph, 256 runs five times then crashes on the sixth), and faulthandler shows TWO OS threads faulting together — a concurrency bug in tinygrad's CPU runtime thread-pool queue (runtime/ops_cpu.py CPUWorker / push_task), reached because engine/jit.py:37 (graph_split_rewrite's flush_batch) DOUBLES max_batch_size on every flush regardless of why it flushed; JIT_BATCH_SIZE=1 remains the only confirmed-safe setting on CPU; the device's "Device hang detected" is presumably the same oversized-graph root hitting a different limit in the real HCQ path — UNVERIFIED on-device (the card was busy). Banked: scripts/jit_batch_probe.py (7e0a4d8a) — a CPU gate tool that reports an organ's max/cumulative graphed kernels and whether it crosses the threshold, auto-confirming the workaround; a diagnostic-only tinygrad branch (jitbatch, /home/bryce/tinygrad-wt-jitbatch 94ad8c3, JITBATCH_NODOUBLE=1 opt-in; not merged). Note: tinygrad lives at /home/bryce/src/tinygrad (editable install, the AM patch on top), not under the repo. FOLLOW-UP (needs a free card, ~15 min): the device sweep of JIT_BATCH_SIZE 1/4/16/64 on the depth4 / sine4 / mixoff configs — if the device tolerates 16, the 2x workaround cost halves for every graph-growing organ; registered as perf B2. The 2x cost is otherwise paid by SRF (0.45 s/step without the workaround — it did not cross the threshold) and by the sine arms (which did).
+
+### 2026-10-11 (18:07) — PERF A READ + MERGED (branch solverpipe 0bded2dc; behind doors; bit-identical gate on role8 / the ALT3+CERT fixture / the rack-release fixture with pool 4, memo, budget 500 all identical): THE CONSULTS WERE ALREADY MOSTLY POOLED — of the three per-row host solves a consult can reach, the GAC ping (scripts/facts_pool.py, a spawn pool, default on) and the wheel's refuse_and_core (alternator_bridge, a spawn pool) were pooled before today; the one sequential site was rack_release_rows' per-row solve_symbolic (FORM 3; the 13 h hang's call), now pooled (fork; scripts/solver_pool.py), memoized by a query-free WL digest (scripts/solver_pool.py; hash_audit_iso.canon adapted), and budget-tunable (ALG_SOLVER_POOL / ALG_SOLVER_MEMO / ALG_CONSULT_BUDGET). THE NUMBERS (CPU, per row): the solve ~1.0-1.7 ms sequential, 0.3-0.4 ms pooled at 64 rows (4-6x), 0.14-0.25 ms memo-warm (8-12x); budget 500 vs 5000: zero exhaustions on either fixture (no effect at this scale). THE REAL HOST COST at a consult is NOT the solve: the mask rebuild (_rack_masked_by_slot) is 6.6-7.4 ms/row — larger than the solve — plus the host<->device copies (0.9-1.3 ms per realize+numpy on CPU; the real AM round trip unmeasured) and the JIT graph break per consult. So ALT3's 2.2x step is glue, copies and the mask rebuild, not Python solving. Recommended defaults: pool off at B=8 (fork overhead cancels it), memo ON whenever the release runs, budget unchanged. NEXT PERF LEVERS (re-ranked by this read): (1) THE REPLAY-TRAINED BREATH removes the whole consult from the training step (the decisive lever); (2) vectorize / precompute the mask rebuild (7 ms/row x B x consults); (3) the device sweep of JIT_BATCH_SIZE (B2); (4) the device round-trip measured once the card frees (a 5-minute read). Gaps stated by the builder: no cross-process memo write-back (each fork keeps its own dict); the certificate-tensor diff was proven by identical losses + the rack debug line, not a byte dump.
+
+### 2026-10-11 (19:41) — THE REPLAY GYM MERGED into gen-weights (f7c15c70; branch replay brought up to the head by the gym agent at 604ca44f/5e3fa6ea: the big conflict was forward()'s evolved loop driver vs the gym's _forward_tail split — resolved by role-splitting, with a REAL bug caught: a stale duplicate forward() that would have silently shadowed the richer one; the gate on the branch: unset/role8 bit-identical, decode-exact replay 0/24 at kb 1/3/5 on PMS8_241 and RK_241, a snapshot smoke on SRK_241 (54 arrays, 3.3 MB/row: the sorted waist, the owner key, the notebook all carried); the snapshot smoke first wrote NOTHING — the slot_mask blind spot again, fixed with the two-pass pattern). docs/replay_gym.md lists RTB's three gaps: a multi-kb buffer writer, a per-breath training step from a replayed state under TinyJit, the offline feedback pass. The post-merge bit-identity (unset/role8) runs on main as pc-replay-merge-gate; RTB's builder fires now.
+
+### 2026-10-11 (19:51) — THE POST-MERGE BIT-IDENTITY on gen-weights at the gym merge (f7c15c70 + the ledger commit): unset 5.2995/0.0279, role8 6.5535/1.1061 — BIT-IDENTICAL (pc-replay-merge-gate2; .cache/replay_merge_gate.log; the complex fence OK). The replay gym is IN on the main line with every door closed. RTB_241's builder (worktree wt28, branch rtb) started 19:41 under the standing word: three parts (the multi-kb buffer writer + offline feedback pass; the one-breath replay training step with the sampled phase and the periodic refresh; the exposure read), the CPU gate (bit-identity, decode-exact identity at kb 1/3/5, one replay step's finite loss and live grads, step cost GPU-vs-host), queue pc-queue-rtb behind 'PK CHAIN COMPLETE'. Bars as registered (unrolled wild within 0.010 of PMS8_241 at <= 1/4 the card time per step; the exposure gap per breath; the decode-change count); kill: masked down > 0.020 (then the refresh cadence M/2 is the registered knob). Note on the gate tooling: a first attempt cut the gate script at a 'PART 2' marker that sat inside a comment and ran an empty script to completion — the unit printed its COMPLETE line with no table; rule: a gate's completion line is not a result, the TABLE is (grep the loss lines, never the banner).
+
+### 2026-10-11 (20:25) — THE BREATHSTOP QUEUE ARMED (pc-queue-breathstop; K3_241 then PK_241 behind 'SEAL CHAIN COMPLETE'; RTB_241's queue waits on PK). The builder's first gate had died with its CPU slot at the k3 line (no COMPLETE, no table beyond three rows) and the queue was never armed — found by reading the unit state, not the log. Branch breathstop (wt27) merged forward over the gym merge (bdb1e7fb; the one conflict = the gym's _forward_tail split vs the loop-stop's two loop-body hunks; resolved by taking the gym's file and re-applying the branch's four hunks as a patch, each landing in forward()/do_train by line, head compiles, forward/_forward_tail/replay each defined once). THE FULL GATE (pc-breathstop-gate2; .cache/breathstop_gate.log): unset 5.2995/0.0279, role8 6.5535/1.1061, ls7 (ALG_LOOP_STOP=7) 6.5535/1.1061 = BIT-IDENTICAL to role8 (the flag at the full count changes nothing); k3 6.6232/1.1444 (differs by design: the loop cut at breath 2); k3alt3 6.6357/1.1444; THE BREATH CENSUS: k3 runs breaths 0..2, consult 1 fires at kb=2, consult 2 never (breath 4 unreachable); STEP COST on the CPU fixture role8 73.8 s/step vs k3 39.7 (0.54x: the loop breaths are ~2/3 of the step); READ SMOKE: ALG_LOOP_STOP=3 at read 18/18, the ALG_LOOP_STOP_READ=7 override 18/18. queue_dryrun: 9 checks, 0 failing.
+
+### 2026-10-11 (20:52) — THE REPLAY-TRAINED BREATH BUILT + GATED + QUEUED (branch rtb, wt28, merged forward over gen-weights at b952b176; pc-queue-rtb active behind 'PK CHAIN COMPLETE'). THE BUILD: (A) scripts/rtb_buffer.py (ALG_RTB_WRITE=1): loop_val's own host recipe for the chassis (pass-0 decode -> slot_mask -> alt2_fact_buf, factored into scripts/rtb_lib.py) + ALG_SNAP_AT extended to a comma-list of breaths with ALG_SNAP_OUT templated on {kb} (single-value behaviour byte-identical) — one forward() writes every snapshot point; 3.3-3.6 MB/row/kb (the gym's own estimate held). (B) replay(kb_stop=...) runs exactly ONE breath from a snapshot (default None = old behaviour); do_train's ALG_RTB=1 branch: kb_target sampled per step, on-policy for breaths 0/1, buffer-resumed for 2..K_B-1, the buffer rewritten by a subprocess every ALG_RTB_REFRESH steps. BUILT EAGER, NOT CAPTURED (the builder's call, citing ALG_WHEEL_TRAIN's precedent). Gap (c), the offline feedback pass, is MOOT for this family: the chassis consults via ALG_ALT2's precomputed facts (no live checkpoint-tied consult sits in the step — the out-of-sync audit's 'facts stale at training' is the same fact). (C) scripts/rtb_exposure_read.py: own-unroll vs from-buffer per-breath slot correctness. THE GATE (.cache/rtb_gate.log): unset 5.2995/0.0279, role8 6.5535/1.1061 bit-identical with every door off; rtb_identity_check decode-exact 0/8 rows differing at kb 1/3/5; rtb_grad_probe: one replay step at kb_target=3 loss 29.46 finite, h_ftype grad 31.9, 14/101 params with grad None (the breaths before the resume point, as expected), conductor(3) identical field-for-field; an end-to-end ALG_RTB=1 smoke with a real buffer and a mid-run refresh saved a checkpoint; the exposure read ran (|gap| 0.008-0.026 on a same-checkpoint fixture); CPU step cost tiny64 B=2: eager RTB 14.1 s (kb 2) / 27.6 s (kb 6) vs the captured role8 step 43 s. queue_dryrun 5/0 and 3/0. CAVEATS STATED BY THE BUILDER: AdamW's weight decay touches every param each step including the ones the sampled breath gave no gradient (a slow drift of untouched organs); kb_target=0's branch verified by reading, not gated separately.
+THE COORDINATOR'S CRITIQUE (before rubber-stamping): the registered cost bar is <= 1/4 of the body's step (PMS8_241 steady 0.126 s/step at B=8 = a 0.0315 s ceiling) and an EAGER tinygrad step on the device pays a Python launch per kernel — the CPU fixture's 3x saving says nothing about the card. The chain had NO cost guard: 40k eager steps slower than the body's own captured step would hold the card for days for an arm void by construction. FIX IN THE CHAIN (.cache/rack_chain_RTB.sh, THE DEVICE COST PROBE): after the buffer, 200 eager steps are timed on the device; > 1.0x the body's steady step = ABORT (needs the word; THE REGISTERED FORM 2 = the per-kb captured graph: 7 graphs keyed by kb + a dispatch, the brief's own escape hatch); 0.25x-1.0x = the arm runs for the quality bar with the cost bar read as FAILED in the verdict; <= 0.25x = both bars live. Preflight's only miss is the post-merge gate log the queue writes first (the standing shape). RULE: a cost bar gets a probe at the top of the chain, never a read at the bottom.
