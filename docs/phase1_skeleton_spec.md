@@ -51202,3 +51202,15 @@ that matters). Reads for PK: do the grown breaths refine (the drift falls, the d
 Both need the word; K3 ~40 min of card, PK ~80 min. Perf agents A/B continue regardless.
 
 ### 2026-10-11 (17:10) — DISK FULL (80 MB free of 1.9 TB; the running arm SRF_241 at risk): 1.5 TB of precomputed trunk-state memmaps (.npy) + their .npz companions for RETIRED diet forms (form12 x5 at ~145 GB each, formv2/v3, formpm35a/p/v/pr/ar, pm25, prose, form14/15/19-21, gen*repair, invpairs, gsmpool, a CORRUPT copy) deleted — 185 files; kept formpm35c/d, tiny64, test23, wildhold, silver; the journal vacuumed; 1.4 TB free. All deleted states are regenerable by PRECOMPUTE_ONLY on their diet files (~1 h each). RULE: a form's state memmap is retired with its form (the ledger's last arm on it) — a monthly sweep lists every phase1_alg_states_* not referenced by an armed chain and deletes it; the 1,599 checkpoints (61 GB) get the same sweep next (gate / smoke / untrained / snapshot checkpoints are disposable; the arms' final bodies are banked).
+
+### 2026-10-11 (17:21) — REGISTERED (Bryce: "we do the same thing six times, the only difference is the solver's feedback — so at training do we only need ONE breath? but then the inference dynamics differ"): THE REPLAY-TRAINED BREATH (RTB) — the diffusion training recipe for the loop: ONE breath per training step, (1) the breath index / clock phase SAMPLED as the timestep, (2) the state at that breath drawn from a REPLAY BUFFER of mid-loop snapshots (the gym's; refreshed from the current body every M steps — on-policy, the exposure-bias fix; breath 0 always on-policy), (3) the solver's feedback for every snapshot PRECOMPUTED OFFLINE in one map-reduce pass per refresh (the hurdle leaves the training step; the solver pipeline's pool is the pass), (4) the per-breath loss as today (the ladder already grades every breath against the same gold); inference = the full 7-breath unroll as always
+
+What is given up: the cross-breath gradient (BPTT through the unroll) — diffusion gives it up too, and the pilot's
+ceiling (the fate set by breath 2; breaths 3-6 change no decode on any body) says it has not been earning its keep.
+COST: ~1/5 of today's step for the GPU part + an amortized feedback pass; v2's six alternations become FREE at
+training (precomputed). READ: the unrolled body on wild vs PMS8_241 (the bar: within 0.010 at ~1/4 the card time; a
+positive is a bonus), the drift, the decode-change-after-breath-2 count (Opus's falsifiable read), and the exposure
+gap directly: train-time vs read-time per-breath accuracy on the same rows. KNOB: the refresh cadence (M -> 1 step
+is today's training). PREREQUISITES: the replay gym MERGED + gated (branch replay, wt8, 5 gym uses, unmerged since
+10-08 — a CPU job now), the solver pipeline (perf A, building), the K3 read (how much of the loop matters). Hill 8
+made structural (one step function, all phases). Needs the word for the arm; the gym's merge + gate starts on CPU.
