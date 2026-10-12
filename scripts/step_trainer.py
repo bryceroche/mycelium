@@ -216,12 +216,19 @@ REFUSED = ("ALG_SHELF", "ALG_WHIP", "ALG_TOKLOOP", "ALG_WRITEBACK", "ALG_KANNEAL
            "ALG_FUNNEL", "ALG_FUNNEL_INIT",
            "ALG_SINE", "ALG_SINE_SKIP",
            "ALG_MIXER_OFF", "ALG_SHOAL_MIXER", "ALG_TYPED_MIXER",
-           "ALG_SORT_FEED")           # THE ARGS-CONDITIONED RES (2026-10-09): _heads_of's own res-pointer term           # (ar_w1/ar_b1/ar_w2/ar_b2 against the content-only slot/candidate states PLUS the           # args head's own predicted soft-selected args states) is the fused forward()'s
+           "ALG_SORT_FEED",           # THE ARGS-CONDITIONED RES (2026-10-09): _heads_of's own res-pointer term           # (ar_w1/ar_b1/ar_w2/ar_b2 against the content-only slot/candidate states PLUS the           # args head's own predicted soft-selected args states) is the fused forward()'s
            # single source of truth and would in fact thread fine through the walker's
            # per-seam heads_of calls on its own, exactly like THE PAIRWISE COMPARATOR ROAD and
            # THE SELF-MATCH TERM above — refused anyway, by the word given for this build,
            # named separately so a future narrowing of either refusal does not silently let
            # this one through untested too.
+           "ALG_DN_WHIP", "ALG_DN_READ")   # THE STATE-SPACE DENOISER (2026-10-12): breath_step's
+           # own _dn_whip_kick call (ALG_DN_WHIP) and forward()'s seed_fq_sched threading
+           # (ALG_DN_READ) are do_train's fixed-shape JIT inputs (b_dnwhip/b_dnread) built and
+           # fed only by do_train's own step() — the walker's per-seam heads_of calls never
+           # build either buffer and never call breath_step/forward() at all (the ALG_WAIST_
+           # SKIP/ALG_SORT precedent, same reason); a config that set either under the walker
+           # would train with no noise at all, silently.
 
 REQ_CTX = ("B", "K_B", "waist", "tokmask", "slot_mask", "bank", "rot2",
            "sync", "drop", "gmod", "revoke", "tail", "reg", "RINGS",

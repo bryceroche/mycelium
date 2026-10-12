@@ -100,6 +100,41 @@ ALG_SEED_HOLD = int(os.environ.get("ALG_SEED_HOLD", "0"))
 # regardless) — see forward()'s seed_vq handling. HOLD (above) is specified for the breath-0-only
 # mode only; it is not extended here.
 ALG_SEED_SCHED = int(os.environ.get("ALG_SEED_SCHED", "0"))
+# THE STATE-SPACE DENOISER'S READING STREAM (ALG_DN_READ=<tau_max>, 2026-10-12, Bryce's ruling +
+# "the build plan settled"): a TRAIN-TIME door onto THE SEEDED READINGS' OWN schedule mechanism
+# directly above (ALG_SEED_SCHED + ALG_SEED_TEMP) rather than a new injection point — the build
+# plan names the SAME location ("noise on the bank's slot->token SCORES just before the softmax
+# ... one draw per (slot, token) shared across heads ... the SAME schedule at training and
+# read"), so ALG_DN_READ simply BECOMES ALG_SEED_TEMP/ALG_SEED_SCHED for the rest of this module
+# (every downstream site — forward()'s seed_vq/seed_fq_sched handling, breath_step's
+# ctx["seed_fq_sched"]/ctx["seed_tau"] slice — is the unmodified seeded-branch code). The only
+# new thing is WHO feeds the seed_fq_sched port: at READ it stays the per-row reproducible Gumbel
+# draw (seed_gumbel_sched_build_array, host, deterministic, unchanged); IN TRAINING it is FRESH
+# noise drawn every step through a new fixed-shape JIT input (b_dnread, do_train below) — the
+# gold-feed idiom, the same one THE WHIP's b_whip uses for the math stream. do_train's own
+# refusal of ALG_SEED_TEMP/ALG_SEED_SCHED (the seeded branch's training-door guard, right below
+# in do_train) is lifted ONLY when ALG_DN_READ is the flag that set them — see that assert.
+# Unset (0.0): ALG_SEED_TEMP/ALG_SEED_SCHED are whatever the raw env said (0 in any ordinary
+# training run) — bit-identical.
+ALG_DN_READ = float(os.environ.get("ALG_DN_READ", "0.0"))
+if ALG_DN_READ:
+    assert not ALG_SEED_TEMP and not ALG_SEED_SCHED, (
+        f"ALG_DN_READ={ALG_DN_READ!r} derives ALG_SEED_TEMP/ALG_SEED_SCHED itself — do not also "
+        f"set ALG_SEED_TEMP={ALG_SEED_TEMP!r} / ALG_SEED_SCHED={ALG_SEED_SCHED!r} directly.")
+    ALG_SEED_TEMP = ALG_DN_READ
+    ALG_SEED_SCHED = 1
+# THE STATE-SPACE DENOISER'S MATH STREAM (ALG_DN_WHIP=<sigma_max>, 2026-10-12, the same ruling):
+# THE WHIP (ALG_WHIP="k:amp", above) generalized from "one kick at one breath" to "a kick at
+# EVERY loop breath on a cos^2-decreasing schedule", sigma_k = sigma_max * cos^2(k*pi/
+# (2*(K_B-1))) of the CONTENT norm (zero at the last breath — the same clock the blurred ladder
+# and THE SCHEDULE above use), with the content block's norm RESTORED after the kick (keepnorm:
+# a direction perturbation, not a magnitude change) — the 128 clock dims bitwise untouched by
+# construction (gate_content from _polar_sink() zeroes the noise AND excludes the clock block
+# from the renormalization). Own noise source (_dn_whip_noise/_DN_WHIP_SRC), independent of
+# ALG_WHIP's — the two mechanisms are never meant to compose in one arm, but keeping separate
+# state avoids any accidental coupling if they ever are. See _dn_whip_kick below. Unset (0.0):
+# bit-identical (the call site in breath_step is skipped).
+ALG_DN_WHIP = float(os.environ.get("ALG_DN_WHIP", "0.0"))
 # THE SURFACE-GROUNDED STRUCTURAL POINTER (2026-09-20, THE ARGUMENT-
 # BINDING CENSUS's arm): arg1/arg2 channels' own span loss, the 5th
 # (operator cue) channel, and its road into the bank bias. All dead
@@ -509,6 +544,58 @@ def _whip_kick(cur):
     nn = (n * n).sum(-1, keepdim=True).sqrt() + 1e-6
     nc = (cur * cur).sum(-1, keepdim=True).sqrt()
     return cur + n / nn * nc * _WHIP_AMP
+
+
+# THE STATE-SPACE DENOISER'S MATH STREAM (ALG_DN_WHIP, 2026-10-12): own noise source, own
+# schedule, own keepnorm — see the module-level comment above ALG_DN_WHIP's definition.
+_DN_WHIP_SRC = None
+_DN_WHIP_CONST = {}
+
+
+def _dn_whip_noise(B, LT, HW):
+    if _DN_WHIP_SRC is not None:
+        return _DN_WHIP_SRC
+    key = (B, LT, HW)
+    if key not in _DN_WHIP_CONST:
+        from tinygrad import Tensor as _Tdw
+        _DN_WHIP_CONST[key] = _Tdw(np.random.RandomState(5252).randn(B, LT, HW).astype(np.float32)).contiguous().realize()
+    return _DN_WHIP_CONST[key]
+
+
+def _dn_whip_sigma(kb, K_B):
+    """sigma_k = ALG_DN_WHIP * cos^2(k*pi/(2*(K_B-1))) — zero exactly at the last breath
+    (k == K_B-1); K_B<=1 has no loop breaths at all, so sigma is 0 by construction."""
+    if K_B <= 1:
+        return 0.0
+    return ALG_DN_WHIP * (math.cos(kb * math.pi / (2.0 * (K_B - 1))) ** 2)
+
+
+def _dn_whip_kick(cur, kb, K_B):
+    """THE STATE-SPACE DENOISER'S MATH STREAM: the state entering breath kb kicked by
+    sigma_k (see _dn_whip_sigma) of its CONTENT-ONLY norm, direction-only (the content
+    block's norm RESTORED after the kick — keepnorm), the 128 clock dims bitwise untouched
+    (gate_content from _polar_sink() both zeroes the noise on clock dims and keeps the clock
+    block out of the renormalization, which is applied only to the content sub-vector)."""
+    sigma = _dn_whip_sigma(kb, K_B)
+    if not sigma:
+        return cur
+    B, LT, HW = (int(x) for x in cur.shape)
+    n = _dn_whip_noise(B, LT, HW)
+    if ALG_POLAR:
+        gc = _polar_sink()[2]        # 1.0 on content dims, 0.0 on clock dims
+        n = n * gc
+        cur_c = cur * gc
+    else:
+        gc = None
+        cur_c = cur
+    nn = (n * n).sum(-1, keepdim=True).sqrt() + 1e-6
+    nc = (cur_c * cur_c).sum(-1, keepdim=True).sqrt()            # CONTENT-only norm (pre-kick)
+    kicked_c = cur_c + n / nn * nc * sigma                        # direction perturbation only
+    knc = (kicked_c * kicked_c).sum(-1, keepdim=True).sqrt() + 1e-6
+    kicked_c = kicked_c * (nc / knc)                              # KEEPNORM: restore the content norm
+    if gc is not None:
+        return cur * (1.0 - gc) + kicked_c                       # clock planes bitwise untouched
+    return kicked_c
 _CONST_T = {}
 
 
@@ -6789,6 +6876,14 @@ def breath_step(p, state, kb, ctx):
         cur = cur + _GTAP[kb]            # the probe leaf: dL/d(state entering breath kb)
     if _WHIP_K and kb == _WHIP_K:
         cur = _whip_kick(cur)            # THE WHIP: the state entering breath kb, kicked
+    if ALG_DN_WHIP:
+        _dnw_sigma = _dn_whip_sigma(kb, K_B)
+        if _CENSUS is not None and _dnw_sigma:
+            _CENSUS.append((kb, "dn_whip_sigma", np.array([_dnw_sigma], np.float32)))
+            _CENSUS.append((kb, "dn_whip_content_pre", cur.realize().numpy()))
+        cur = _dn_whip_kick(cur, kb, K_B)   # THE STATE-SPACE DENOISER'S MATH STREAM: every loop breath, on the cos^2 schedule
+        if _CENSUS is not None and _dnw_sigma:
+            _CENSUS.append((kb, "dn_whip_content_post", cur.realize().numpy()))
     _wm = state.get("wheel_melt")
     if _LOCUS is not None and kb == _LOCUS["kb"] and _WHEEL_MELT is not None:
         from tinygrad import Tensor as _Tl
@@ -10692,12 +10787,23 @@ def do_train(steps, lr, batch, seed):
     # this process cannot see the door either. Loud, like ALG_MASK_SEAL's.
     # THE SEEDED READINGS ARE A READ DOOR, NEVER TRAINED THROUGH (2026-10-12): do_train's
     # FIRST executable statement, same idiom as the token seal's guard right below — loud,
-    # ahead of load_alg, ahead of every capture.
-    assert not ALG_SEED_TEMP and not ALG_SEED_HOLD and not ALG_SEED_SCHED, (
-        f"ALG_SEED_TEMP={ALG_SEED_TEMP!r} / ALG_SEED_HOLD={ALG_SEED_HOLD!r} / "
-        f"ALG_SEED_SCHED={ALG_SEED_SCHED!r} set and this is a TRAINING run — THE SEEDED "
-        f"READINGS (ledger 2026-10-12, STEP 1) are a READ-TIME door only (STEP 2, the training "
-        f"arm, needs its own word). Unset all three for training.")
+    # ahead of load_alg, ahead of every capture. ALG_SEED_HOLD stays refused unconditionally
+    # (STEP 2's own word never covered it — the build plan withdrew HOLD as a training target,
+    # keeping only the schedule). ALG_SEED_TEMP/ALG_SEED_SCHED are refused UNLESS ALG_DN_READ is
+    # the flag that set them (checked above, at their own definition: ALG_DN_READ asserts they
+    # were not ALSO set directly, so by the time do_train runs, ALG_SEED_TEMP==ALG_DN_READ and
+    # ALG_SEED_SCHED==1 if and only if ALG_DN_READ is the source) — THE STATE-SPACE DENOISER'S
+    # READING STREAM, STEP 2, the training arm, with its own word (2026-10-12, "the build plan
+    # settled").
+    assert not ALG_SEED_HOLD, (
+        f"ALG_SEED_HOLD={ALG_SEED_HOLD!r} set and this is a TRAINING run — THE SEEDED READINGS' "
+        f"HOLD stays a READ-TIME door only; the build plan's training arm covers the schedule "
+        f"(ALG_DN_READ), never HOLD.")
+    assert (not ALG_SEED_TEMP and not ALG_SEED_SCHED) or ALG_DN_READ, (
+        f"ALG_SEED_TEMP={ALG_SEED_TEMP!r} / ALG_SEED_SCHED={ALG_SEED_SCHED!r} set DIRECTLY and "
+        f"this is a TRAINING run without ALG_DN_READ — THE SEEDED READINGS are a READ-TIME door "
+        f"only; set ALG_DN_READ=<tau_max> instead (the legal training door onto this same "
+        f"mechanism).")
     assert _tok_seal_mode() == "0", (
         f"ALG_TOK_SEAL={os.environ.get('ALG_TOK_SEAL')!r} is set and this "
         f"is a TRAINING run — the token seal is a READ door (the headroom "
@@ -11355,6 +11461,16 @@ def do_train(steps, lr, batch, seed):
     b_whip = fix(np.zeros((batch, L_TOT, H_W), np.float32), dtypes.float) if _WHIP_K else None   # THE WHIP's fresh noise per step
     if b_whip is not None:
         globals()["_WHIP_SRC"] = b_whip
+    # THE STATE-SPACE DENOISER'S MATH STREAM (ALG_DN_WHIP, 2026-10-12): own fresh-noise-per-step
+    # buffer, the same b_whip idiom, own global (_DN_WHIP_SRC) so it never couples to ALG_WHIP.
+    _DN_KB = int(os.environ.get("ALG_BREATH", "1"))
+    b_dnwhip = fix(np.zeros((batch, L_TOT, H_W), np.float32), dtypes.float) if ALG_DN_WHIP else None
+    if b_dnwhip is not None:
+        globals()["_DN_WHIP_SRC"] = b_dnwhip
+    # THE STATE-SPACE DENOISER'S READING STREAM (ALG_DN_READ, 2026-10-12): the per-(row, breath,
+    # slot, token) Gumbel noise seed_fq_sched carries, fed FRESH every training step (unlike the
+    # read's per-row-reproducible draw) through a new fixed-shape JIT input, the gold-feed idiom.
+    b_dnread = fix(np.zeros((batch, _DN_KB, L_TOT, T_ALG), np.float32), dtypes.float) if ALG_DN_READ else None
     b_ls = fix(np.zeros((batch, K_VARS, T_ALG), np.float32), dtypes.float) \
         if ALG_LSENT else None                          # V2: letter partition
     if ALG_CONSUME:
@@ -11477,13 +11593,13 @@ def do_train(steps, lr, batch, seed):
             # commits, self-labeled from gold like the commit loss,
             # DETACHED); the second trains under live release dynamics.
             o0 = forward(p, s_tr, b_tk, b_se, slot_mask=b_mask, tail=b_tail,
-                         reg=b_reg, xcorr=b_xcorr, res_map=b_resmap, hud=b_hud, tree=b_tree, ident=b_ident, dircue=b_dircue, busreg_ramp=b_bgain, valfact=b_valfact, facts3=b_fact3, facts5=b_fact5, cert3=b_cert3, cert5=b_cert5, rack3=b_rack3, rack5=b_rack5, chalk3=b_chalk3, chalk5=b_chalk5, dirgold=b_dirgold)
+                         reg=b_reg, xcorr=b_xcorr, res_map=b_resmap, hud=b_hud, tree=b_tree, ident=b_ident, dircue=b_dircue, busreg_ramp=b_bgain, valfact=b_valfact, facts3=b_fact3, facts5=b_fact5, cert3=b_cert3, cert5=b_cert5, rack3=b_rack3, rack5=b_rack5, chalk3=b_chalk3, chalk5=b_chalk5, dirgold=b_dirgold, seed_fq_sched=b_dnread)
             ok = ((o0["ftype"].argmax(-1) == bg["ftype"]).float()
                   * (o0["res"].argmax(-1) == bg["res"]).float())
             rv = (bg["presence"] * (1.0 - ok)).detach()
             o = forward(p, s_tr, b_tk, b_se, slot_mask=b_mask, revoke=rv,
                         tail=b_tail, reg=b_reg, fact_buf=b_fact,
-                        mh_mass=b_mhm, mh_atlas_traj=b_mha, xcorr=b_xcorr, res_map=b_resmap, hud=b_hud, tree=b_tree, ident=b_ident, dircue=b_dircue, busreg_ramp=b_bgain, valfact=b_valfact, facts3=b_fact3, facts5=b_fact5, cert3=b_cert3, cert5=b_cert5, rack3=b_rack3, rack5=b_rack5, chalk3=b_chalk3, chalk5=b_chalk5, dirgold=b_dirgold)
+                        mh_mass=b_mhm, mh_atlas_traj=b_mha, xcorr=b_xcorr, res_map=b_resmap, hud=b_hud, tree=b_tree, ident=b_ident, dircue=b_dircue, busreg_ramp=b_bgain, valfact=b_valfact, facts3=b_fact3, facts5=b_fact5, cert3=b_cert3, cert5=b_cert5, rack3=b_rack3, rack5=b_rack5, chalk3=b_chalk3, chalk5=b_chalk5, dirgold=b_dirgold, seed_fq_sched=b_dnread)
         elif int(os.environ.get("NAZ_TRAIN", "0")):
             # NAZARÉ TRAINING (door #55): the organ-2 two-forward pattern —
             # pre-pass yields the intra-pass event field IN-GRAPH (detached);
@@ -11492,7 +11608,7 @@ def do_train(steps, lr, batch, seed):
             # read-time dup-aware argpair): argmax-change OR dup-flip on
             # rel-typed present slots, breath-0 vs final.
             o0 = forward(p, s_tr, b_tk, b_se, slot_mask=b_mask, tail=b_tail,
-                        xcorr=b_xcorr, res_map=b_resmap, hud=b_hud, tree=b_tree, ident=b_ident, dircue=b_dircue, busreg_ramp=b_bgain, valfact=b_valfact, facts3=b_fact3, facts5=b_fact5, cert3=b_cert3, cert5=b_cert5, rack3=b_rack3, rack5=b_rack5, chalk3=b_chalk3, chalk5=b_chalk5, dirgold=b_dirgold)
+                        xcorr=b_xcorr, res_map=b_resmap, hud=b_hud, tree=b_tree, ident=b_ident, dircue=b_dircue, busreg_ramp=b_bgain, valfact=b_valfact, facts3=b_fact3, facts5=b_fact5, cert3=b_cert3, cert5=b_cert5, rack3=b_rack3, rack5=b_rack5, chalk3=b_chalk3, chalk5=b_chalk5, dirgold=b_dirgold, seed_fq_sched=b_dnread)
             _b0 = o0["breaths"][0]
             _relmask = (o0["pres"].squeeze(-1) > 0).float() \
                 * (o0["ftype"].argmax(-1) == 0).float()
@@ -11503,13 +11619,13 @@ def do_train(steps, lr, batch, seed):
             _gm = (_bgauth + (1.0 - _bgauth) * _ev).unsqueeze(-1).detach()
             o = forward(p, s_tr, b_tk, b_se, slot_mask=b_mask, tail=b_tail,
                         gmod=_gm, fact_buf=b_fact,
-                        mh_mass=b_mhm, mh_atlas_traj=b_mha, xcorr=b_xcorr, res_map=b_resmap, hud=b_hud, tree=b_tree, ident=b_ident, dircue=b_dircue, busreg_ramp=b_bgain, valfact=b_valfact, facts3=b_fact3, facts5=b_fact5, cert3=b_cert3, cert5=b_cert5, rack3=b_rack3, rack5=b_rack5, chalk3=b_chalk3, chalk5=b_chalk5, dirgold=b_dirgold)
+                        mh_mass=b_mhm, mh_atlas_traj=b_mha, xcorr=b_xcorr, res_map=b_resmap, hud=b_hud, tree=b_tree, ident=b_ident, dircue=b_dircue, busreg_ramp=b_bgain, valfact=b_valfact, facts3=b_fact3, facts5=b_fact5, cert3=b_cert3, cert5=b_cert5, rack3=b_rack3, rack5=b_rack5, chalk3=b_chalk3, chalk5=b_chalk5, dirgold=b_dirgold, seed_fq_sched=b_dnread)
         else:
             _bd = os.environ.get("BREATH_DROPOUT")
             o = forward(p, s_tr, b_tk, b_se, slot_mask=b_mask, tail=b_tail,
                         drop=(b_drop if _bd else None), lsent=b_ls, reg=b_reg,
                         fact_buf=(None if ALG_ALT3 else b_fact),   # THE THREE CONSULTS: the start-of-run facts give way to facts3/facts5
-                        mh_mass=b_mhm, mh_atlas_traj=b_mha, xcorr=b_xcorr, res_map=b_resmap, hud=b_hud, tree=b_tree, ident=b_ident, dircue=b_dircue, busreg_ramp=b_bgain, valfact=b_valfact, facts3=b_fact3, facts5=b_fact5, cert3=b_cert3, cert5=b_cert5, rack3=b_rack3, rack5=b_rack5, chalk3=b_chalk3, chalk5=b_chalk5, dirgold=b_dirgold)
+                        mh_mass=b_mhm, mh_atlas_traj=b_mha, xcorr=b_xcorr, res_map=b_resmap, hud=b_hud, tree=b_tree, ident=b_ident, dircue=b_dircue, busreg_ramp=b_bgain, valfact=b_valfact, facts3=b_fact3, facts5=b_fact5, cert3=b_cert3, cert5=b_cert5, rack3=b_rack3, rack5=b_rack5, chalk3=b_chalk3, chalk5=b_chalk5, dirgold=b_dirgold, seed_fq_sched=b_dnread)
         l = loss_fn(o, bg)
         if ALG_CONSUME and "_early" in o:   # support-gated consume-once:
             # any breath claims, each fact pays once; eligibility = the DAG
@@ -12539,6 +12655,15 @@ def do_train(steps, lr, batch, seed):
             _fd(b_reg, REG[idx], _rl)
         if b_whip is not None:
             _fd(b_whip, rng.randn(batch, L_TOT, H_W).astype(np.float32), _rl)   # THE WHIP: fresh noise this step
+        if b_dnwhip is not None:
+            _fd(b_dnwhip, rng.randn(batch, L_TOT, H_W).astype(np.float32), _rl)   # THE DENOISER'S MATH STREAM: fresh noise this step
+        if b_dnread is not None:
+            # THE DENOISER'S READING STREAM: fresh Gumbel noise this step, same shape/formula as
+            # seed_gumbel_sched_build_array's read-time draw (-log(-log(U))), but NOT row-keyed
+            # (training batches are not fixed rows; freshness per step is the point, not
+            # per-row reproducibility, which only the read side needs).
+            _dnu = rng.random_sample((batch, _DN_KB, L_TOT, T_ALG)).clip(1e-12, 1.0 - 1e-12)
+            _fd(b_dnread, (-np.log(-np.log(_dnu))).astype(np.float32), _rl)
         if b_drop is not None:
             _fd(b_drop, np.array(
                 [1.0 if rng.rand() >= float(os.environ["BREATH_DROPOUT"]) else 0.0],
@@ -12732,11 +12857,13 @@ def do_train(steps, lr, batch, seed):
             os.environ["TC_EVAL"] = "0"       # ... and the OPEN reading
             os.environ["BC_EVAL"] = "0"       # ... and the balanced cooker OPEN
             globals()["_WHIP_SRC"] = None          # the val reads with the seeded kick, like the read
+            globals()["_DN_WHIP_SRC"] = None        # THE DENOISER'S MATH STREAM: same idiom (val reads with the seeded kick)
             _cb_bak = globals().get("_CERT_BUF")   # THE CERTIFICATE PASS: _quick_val's fixed
             globals()["_CERT_BUF"] = None          # batch-of-8 must see None (eval reads OPEN)
             fv = _quick_val()
             globals()["_CERT_BUF"] = _cb_bak
             globals()["_WHIP_SRC"] = b_whip
+            globals()["_DN_WHIP_SRC"] = b_dnwhip
             os.environ.pop("BC_EVAL", None)
             os.environ.pop("TC_EVAL", None)
             os.environ.pop("MC_EVAL", None)
