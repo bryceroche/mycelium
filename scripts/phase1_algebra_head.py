@@ -1302,6 +1302,24 @@ if ALG_CHALK:
 # the last rung sharp). CE/BCE are linear in the target: exact.
 ALG_BLUR = int(os.environ.get("ALG_BLUR", "0"))
 ALG_BLUR_MAX = float(os.environ.get("ALG_BLUR_MAX", "0.7"))
+# THE FLAGGED LOOP (ALG_FLAG=1, 2026-10-12; ARM 1 of the amended denoising-breath design,
+# ledger 2026-10-12 12:35, "a capability test under the DIR2 rule"): at breath 0, TRAINING ONLY,
+# a sampled subset of present slots (the host's flag_mask port, (B, L_TOT) 0/1 float) have their
+# grounding read RE-RUN with the gold mention tabu'd (-1e4 on the gold span, the host's
+# flag_tabu0 port, (B, 1, L_TOT, T) raw -1e4*fspan, zeroed for unflagged slots by forward()
+# itself) -- the slot lands on its runner-up; the mixed fst/fat (clean where unflagged,
+# corrupted where flagged) becomes THE grounding read from here on, by construction (no second
+# name, no bypass). (2) a learned per-slot flag embedding (p["flag_emb"], 2 rows, zero-init, a
+# ROAD not a gain) enters `cur` before breath 1; a HARD TABU excludes the flagged slot's own
+# (now-corrupted) breath-0 argmax token from every breath 1..K_B-1 re-read, riding the SAME
+# ctx["anchor_bias0"] port ALG_ANCHOR uses (read C's exact mechanism, dn_read_c.py). (3) the
+# ladder's objective (loss_fn._flag_retarget): flagged slots grade against gold as today;
+# unflagged slots grade against their OWN previous breath's decode (argmax/threshold, .detach()
+# -- no gradient path exists through either op), kb==1 copying breath 0 -- scoped to the five
+# fields the custody-gold scorer reads (ftype, op, res, args, dig; dn_common.score_row_slots).
+# Default 0 / flag_mask None = every one of these branches skipped: bit-identical.
+ALG_FLAG = int(os.environ.get("ALG_FLAG", "0"))
+ALG_FLAG_RATE = float(os.environ.get("ALG_FLAG_RATE", "0.25"))   # host-sampler only; never read inside forward()/loss_fn
 # THE CLOCK-CALIBRATED TARGETS (2026-09-14, registered): ALG_CLOCK_TARGET="field:a:d,..." —
 # per-FIELD fog on the same clock as the blurred ladder: fog_f(k) = a * cos^2(k*pi/(2*d)) for
 # k < d, 0 after (a = the starting fog, d = the deadline breath). Fields: pres ftype res op
@@ -3266,6 +3284,11 @@ def build_params(seed=0):
             "L_FAC); it no longer holds"
         p["sm_w_self"] = t(np.zeros(1, dtype=np.float32))
         p["sm_w_arg"] = t(np.zeros(1, dtype=np.float32))
+    if ALG_FLAG:
+        # THE FLAGGED LOOP's structured feature (2026-10-12): row 0 = unflagged, row 1 =
+        # flagged, zero-init (bit-identical at step 0; a road, not a gain -- added directly
+        # into `cur`, never behind a scalar).
+        p["flag_emb"] = t(np.zeros((2, H_W), dtype=np.float32))
     if int(os.environ.get("ALG_PAIRCMP", "0")):
         # THE PAIRWISE COMPARATOR ROAD (2026-10-09; registered at SM_241's close as "the
         # honest next form": the probe's OWN read-out as the road -- a small MLP over
@@ -9071,7 +9094,7 @@ def replay(p, snapshot, kb_start, overrides=None):
     return out
 
 
-def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, drop=None, anchor=None, amask=None, gmod=None, pmask=None, lsent=None, reg=None, fact_buf=None, mh_mass=None, mh_atlas_traj=None, xcorr=None, res_map=None, hud=None, ident=None, busreg_ramp=None, valfact=None, stop_after=None, facts3=None, facts5=None, tree=None, cert3=None, cert5=None, rack3=None, rack5=None, chalk3=None, chalk5=None, dirgold=None, dircue=None):
+def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, drop=None, anchor=None, amask=None, gmod=None, pmask=None, lsent=None, reg=None, fact_buf=None, mh_mass=None, mh_atlas_traj=None, xcorr=None, res_map=None, hud=None, ident=None, busreg_ramp=None, valfact=None, stop_after=None, facts3=None, facts5=None, tree=None, cert3=None, cert5=None, rack3=None, rack5=None, chalk3=None, chalk5=None, dirgold=None, dircue=None, flag_mask=None, flag_tabu0=None):
     from tinygrad import Tensor, dtypes   # audit 2026-09-01: was a
     # SCOPE ACCIDENT (bound only via the sixwave/sync branches — any
     # SIXWAVE-off config killed five organs at step 1)
@@ -9253,6 +9276,32 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
     # TARGET space; flattening it deletes the alphabet rather than
     # severing a reading) and the QUERY bank below.
     fst, fat = bank(p["fq"], L_TOT, pbias=_pb, flat=_tok_seal_on(0))
+    if ALG_FLAG and flag_mask is not None:
+        # THE FLAGGED LOOP's corruption (2026-10-12, TRAINING ONLY): re-run the SAME
+        # grounding read with the gold mention tabu'd (flag_tabu0, host-built raw
+        # -1e4*fspan, zeroed for unflagged slots here) for the sampled subset -- the slot
+        # lands on its runner-up. Mixed by flag_mask into `fst`/`fat` THEMSELVES (no second
+        # name): every downstream reader of the grounding read (ctx["fat0"], the anchor, the
+        # eyes, cur below) inherits the corrupted version for flagged slots with zero other
+        # code changes, by construction (the mandatory-road law: one road, not a bypass).
+        assert flag_tabu0 is not None, \
+            "ALG_FLAG needs flag_tabu0 (the host-built gold-span tabu bias) threaded alongside flag_mask"
+        if int(flag_mask.shape[1]) < L_TOT:   # FED_SCRATCH padding: scratch rows never flagged
+            flag_mask = Tensor.cat(flag_mask, Tensor.zeros(B, L_TOT - int(flag_mask.shape[1])), dim=1)
+        if int(flag_tabu0.shape[2]) < L_TOT:
+            flag_tabu0 = Tensor.cat(flag_tabu0, Tensor.zeros(
+                B, 1, L_TOT - int(flag_tabu0.shape[2]), int(flag_tabu0.shape[-1])), dim=2)
+        assert int(flag_mask.shape[1]) == L_TOT and int(flag_tabu0.shape[2]) == L_TOT, \
+            (f"ALG_FLAG's flag_mask/flag_tabu0 do not match L_TOT={L_TOT} even after "
+             f"zero-padding (got {int(flag_mask.shape[1])}/{int(flag_tabu0.shape[2])}) -- "
+             f"the host fed something wider than L_FAC and narrower than L_TOT")
+        _fl_m3 = flag_mask.reshape(B, L_TOT, 1)
+        _fl_tabu_g = flag_tabu0 * _fl_m3.reshape(B, 1, L_TOT, 1)
+        fst_c, fat_c = bank(p["fq"], L_TOT,
+                            pbias=(_fl_tabu_g if _pb is None else _pb + _fl_tabu_g),
+                            flat=_tok_seal_on(0))
+        fst = fst * (1.0 - _fl_m3) + fst_c * _fl_m3
+        fat = fat * (1.0 - _fl_m3) + fat_c * _fl_m3
     qst, _qa = bank(p["qq"], 1)
 
     # BRICK-P breathing (2026-07-09): K-1 refinement passes. Each breath
@@ -9321,6 +9370,12 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
     _bs_ctx = _bs_state = None
     if K_B > 1 and slot_mask is not None and "W_bo" in p:
         cur = fst
+        if ALG_FLAG and flag_mask is not None and "flag_emb" in p:
+            # THE FLAGGED LOOP's structured feature (2026-10-12): entered on `cur` itself,
+            # before breath 1 — a position-aligned per-slot vector, not a per-breath port,
+            # since the flag is constant across the loop by construction (same as fat0/the
+            # anchor below). No gain: the mandatory-road law.
+            cur = cur + p["flag_emb"][flag_mask.cast(dtypes.int)]
         # FINAL BOSS rung 0 (2026-09-03): the loop BODY lives in
         # module-level breath_step (pure code motion — bit-identical by
         # construction); state carries what crosses breath boundaries,
@@ -9344,6 +9399,17 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
         # anywhere: bit-identical.
         _anch_bias0 = ((ALG_ANCHOR * fat.detach()).reshape(B, 1, L_TOT, -1)
                        if ALG_ANCHOR else None)
+        if ALG_FLAG and flag_mask is not None:
+            # THE FLAGGED LOOP's hard tabu (2026-10-12): exclude the flagged slot's own
+            # (now-corrupted, since the grounding read above already mixed in the tabu'd
+            # re-run) breath-0 argmax token from every breath 1..K_B-1 re-read -- riding the
+            # SAME constant-across-breaths anchor_bias0 port ALG_ANCHOR uses (read C's exact
+            # mechanism: dn_read_c.py's tabu_tensor, reused rather than a second port).
+            _fl_am = fat.detach().argmax(-1)                                  # (B, L_TOT) token idx
+            _fl_ar = Tensor.arange(int(tokmask.shape[1])).reshape(1, 1, -1)
+            _fl_tabu1 = ((_fl_am.reshape(B, L_TOT, 1) == _fl_ar).float()
+                        * flag_mask.reshape(B, L_TOT, 1) * -1e4).reshape(B, 1, L_TOT, -1)
+            _anch_bias0 = _fl_tabu1 if _anch_bias0 is None else _anch_bias0 + _fl_tabu1
         _ident_tok = None
         if ALG_BUSREG or ALG_IDKEY:
             # THE BUS REGISTER's identity stream (2026-09-22): the token
@@ -9518,6 +9584,37 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
     return out
 
 
+def _flag_retarget(g, breaths, kb):
+    """THE FLAGGED LOOP's objective (ledger 2026-10-12 12:35): flagged slots keep gold;
+    unflagged slots copy their PREVIOUS breath's own decode -- a stop-gradient target
+    (.detach() then argmax/threshold: no gradient path exists through either op, so the
+    "unflagged copy-target carries no gradient into the previous breath" gate check holds by
+    construction, not by convention). `breaths[kb - 1]` is the previous LOOP breath; kb == 1
+    copies breaths[0], breath 0's own grounding-read decode -- "the first loop breath copies
+    breath 0", per the spec. Scoped to the five fields the custody-gold scorer reads
+    (dn_common.score_row_slots: ftype, op, res, args, dig) -- presence/islit and every
+    auxiliary span/bind/direction term are untouched, graded against gold for every slot
+    exactly as today's ladder (THE FLAG IS THE ONLY ROAD TO CHANGE on these five; nothing
+    else moves). g["flag_mask"] is None (the default, ALG_FLAG unset or this call off-arm):
+    returns `g` unchanged -- bit-identical."""
+    fm_full = g.get("flag_mask")
+    if fm_full is None:
+        return g
+    prev = breaths[kb - 1]
+    L = g["ftype"].shape[1]
+    fm = fm_full[:, :L]                                   # (B, L_FAC); scratch rows (if any) never flagged
+    g2 = dict(g)
+    for f in ("ftype", "op", "res"):
+        pv = prev[f].detach().argmax(-1)                  # (B, L_FAC) stop-grad class index
+        g2[f] = (fm * g[f].float() + (1.0 - fm) * pv.float()).cast(g[f].dtype)
+    pv_dig = prev["dig"].detach().argmax(-1)              # (B, L_FAC, 7) stop-grad per-position class
+    fm3 = fm.unsqueeze(-1)
+    g2["digits"] = (fm3 * g["digits"].float() + (1.0 - fm3) * pv_dig.float()).cast(g["digits"].dtype)
+    pv_args = (prev["args"].detach().sigmoid() > 0.5).float()   # (B, L_FAC, K_VARS) stop-grad multi-hot
+    g2["args"] = fm3 * g["args"] + (1.0 - fm3) * pv_args
+    return g2
+
+
 def loss_fn(o, g):
     """Ladder wrapper: with breaths, per-breath weighted CE (1 + k/(K-1)) —
     the v98 ladder; the shared query/span terms ride the final breath only."""
@@ -9526,10 +9623,11 @@ def loss_fn(o, g):
         tot = None
         for kb, ob in enumerate(o["breaths"]):
             full = dict(o, **ob)
+            gg = _flag_retarget(g, o["breaths"], kb) if (ALG_FLAG and kb >= 1) else g
             w = 1.0 + kb / max(K_B - 1, 1)
             beta = (ALG_BLUR_MAX * math.cos(kb * math.pi / (2 * max(K_B - 1, 1))) ** 2) if ALG_BLUR else 0.0
             _lvl = (_NEST_LEVELS[kb] if (_NEST_LEVELS is not None and kb < len(_NEST_LEVELS)) else 3)   # THE NESTED LADDER: this rung's resolution
-            term = _loss_single(full, g, blur=_clock_fog(kb, beta), level=_lvl) * w
+            term = _loss_single(full, gg, blur=_clock_fog(kb, beta), level=_lvl) * w
             tot = term if tot is None else tot + term
         if int(os.environ.get("BREATH_NORM", "0")):
             _wsum = sum(1.0 + kb / max(K_B - 1, 1) for kb in range(K_B))
@@ -11281,6 +11379,8 @@ def do_train(steps, lr, batch, seed):
                            if 0 < int(os.environ.get("ALG_BINDBUS", "0")) < 5 else ()),
                          *((("bind_ids", (L_FAC, 4), dtypes.int),)
                            if int(os.environ.get("ALG_BINDBUS", "0")) >= 3 else ()),
+                         *((("flag_mask", (L_FAC,), dtypes.float),)
+                           if ALG_FLAG else ()),   # THE FLAGGED LOOP: host-sampled per step, never from `gold` (see the explicit _fd() below)
                          ("query", (), dtypes.int)):
         npdt = np.float32 if dt == dtypes.float else np.int32
         bg[k] = fix(np.zeros((batch,) + shape, npdt), dt)
@@ -11354,10 +11454,18 @@ def do_train(steps, lr, batch, seed):
                         mh_mass=b_mhm, mh_atlas_traj=b_mha, xcorr=b_xcorr, res_map=b_resmap, hud=b_hud, tree=b_tree, ident=b_ident, dircue=b_dircue, busreg_ramp=b_bgain, valfact=b_valfact, facts3=b_fact3, facts5=b_fact5, cert3=b_cert3, cert5=b_cert5, rack3=b_rack3, rack5=b_rack5, chalk3=b_chalk3, chalk5=b_chalk5, dirgold=b_dirgold)
         else:
             _bd = os.environ.get("BREATH_DROPOUT")
+            # THE FLAGGED LOOP (2026-10-12): bg["flag_mask"] is the SAME buffer threaded into
+            # forward() and into loss_fn (via bg == g) -- a single source of truth for which
+            # slots are corrupted this step. flag_tabu0 (the gold-span tabu, pre-scaled -1e4)
+            # is built in-graph from bg["fspan"] (already a per-step fixed buffer) -- no new
+            # buffer needed; forward() applies flag_mask to it itself.
+            _fl_mask = bg.get("flag_mask") if ALG_FLAG else None
+            _fl_tabu0 = ((-1e4) * bg["fspan"]).reshape(batch, 1, L_FAC, T_ALG) if ALG_FLAG else None
             o = forward(p, s_tr, b_tk, b_se, slot_mask=b_mask, tail=b_tail,
                         drop=(b_drop if _bd else None), lsent=b_ls, reg=b_reg,
                         fact_buf=(None if ALG_ALT3 else b_fact),   # THE THREE CONSULTS: the start-of-run facts give way to facts3/facts5
-                        mh_mass=b_mhm, mh_atlas_traj=b_mha, xcorr=b_xcorr, res_map=b_resmap, hud=b_hud, tree=b_tree, ident=b_ident, dircue=b_dircue, busreg_ramp=b_bgain, valfact=b_valfact, facts3=b_fact3, facts5=b_fact5, cert3=b_cert3, cert5=b_cert5, rack3=b_rack3, rack5=b_rack5, chalk3=b_chalk3, chalk5=b_chalk5, dirgold=b_dirgold)
+                        mh_mass=b_mhm, mh_atlas_traj=b_mha, xcorr=b_xcorr, res_map=b_resmap, hud=b_hud, tree=b_tree, ident=b_ident, dircue=b_dircue, busreg_ramp=b_bgain, valfact=b_valfact, facts3=b_fact3, facts5=b_fact5, cert3=b_cert3, cert5=b_cert5, rack3=b_rack3, rack5=b_rack5, chalk3=b_chalk3, chalk5=b_chalk5, dirgold=b_dirgold,
+                        flag_mask=_fl_mask, flag_tabu0=_fl_tabu0)
         l = loss_fn(o, bg)
         if ALG_CONSUME and "_early" in o:   # support-gated consume-once:
             # any breath claims, each fact pays once; eligibility = the DAG
@@ -12391,6 +12499,18 @@ def do_train(steps, lr, batch, seed):
             _fd(b_drop, np.array(
                 [1.0 if rng.rand() >= float(os.environ["BREATH_DROPOUT"]) else 0.0],
                 np.float32), _rl)
+        if ALG_FLAG and "flag_mask" in bg:
+            # THE FLAGGED LOOP's host sampler (2026-10-12): per PRESENT slot WITH a nonzero
+            # gold mention span, a fresh coin flip at ALG_FLAG_RATE each step (never from
+            # `gold` -- there is no gold array for this; the explicit block the feed-door
+            # comment above warns a silent terminal needs). Absent/padding slots
+            # (presence == 0) are never flagged; neither is a present slot whose fspan is
+            # all-zero (no textual mention to tabu -- confirmed empirically, 2026-10-12 CPU
+            # smoke: tabu-ing an empty span changes 0% of breath-0 argmaxes, vs 80% on
+            # slots with real span coverage).
+            _flm = ((rng.random_sample((batch, L_FAC)) < ALG_FLAG_RATE).astype(np.float32)
+                   * gold["presence"][idx] * (gold["fspan"][idx].sum(-1) > 0).astype(np.float32))
+            _fd(bg["flag_mask"], _flm, _rl)
         feed = {"presence": gold["presence"][idx], "is_lit_f": gold["is_lit"][idx],
                 **({"opspan": OPGOLD[idx].astype(np.float32)} if OPATT else {}),
                 "args": gold["args"][idx], "fspan": gold["fspan"][idx],
