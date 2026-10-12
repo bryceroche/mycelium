@@ -803,6 +803,42 @@ _RACK_WALL_N = [0]   # THE RELEASE WALL (2026-10-08): cumulative count of rows t
                       # that unpacks rack_release_rows' return tuple (chain_acc.py, loop_val.py included).
 
 
+def _rack_build_problem(by_slot, dry_slots, m, n_vars):
+    """Factored out of rack_release_row (2026-10-11, THE SOLVER PIPELINE's build; pure extraction,
+    no behavior change — see the gate's fixture comparison). scripts/solver_pool.py imports this
+    SAME function to build the identical csp_core.Problem inside a pool worker and to build the
+    memo key's factor list, so the pooled/memoized path and the sequential path can never drift
+    into building two different problems from the same (by_slot, dry_slots, m, n_vars).
+
+    Returns one of:
+      ("unsat",  None, None, None)        — two dry GIVEN slots conflict; no solve needed
+      ("solved", None, None, None)        — no RELATION among the dry slots; trivially consistent
+      ("prob",   problem, gv, rel_facs)   — a csp_core.Problem to solve + the (gv dict, rel factor
+                                             list) the caller needs for a canonical-digest memo key
+    """
+    from mycelium.csp_domains import problem_from_algebra
+    gv = {}
+    rel_facs = []
+    for j in dry_slots:
+        f = by_slot.get(int(j))
+        if f is None:
+            continue
+        if f["ftype"] == "given":
+            v, val = int(f["var"]), int(f["value"])
+            if v in gv and gv[v] != val:
+                return "unsat", None, None, None     # two dry givens on the same var, different values
+            gv[v] = val
+        elif f["ftype"] == "rel":
+            rel_facs.append(f)
+    if not rel_facs:
+        return "solved", None, None, None            # plain givens with no shared-var conflict: trivially consistent
+    nv = max([int(n_vars)] + [v + 1 for v in gv] +
+             [v + 1 for f in rel_facs for v in (list(f["args"]) + [f["result"]])])
+    rels = [(f["op"], int(f["args"][0]), int(f["args"][1]), int(f["result"])) for f in rel_facs]
+    prob = problem_from_algebra(nv, rels, gv, int(m))
+    return "prob", prob, gv, rel_facs
+
+
 def rack_release_row(by_slot, dry_slots, m, n_vars, budget=5000):
     """FORM 3 — RELEASE ON CONTRADICTION (2026-10-05, ledger 19:24 "WORD
     GIVEN FOR THE DISCRETE HALVES" item 3; registered by Bryce's ruling
@@ -836,27 +872,10 @@ def rack_release_row(by_slot, dry_slots, m, n_vars, budget=5000):
     Returns the solver's status string ("solved" | "unsat" | "budget" — "budget" also
     covers THE RELEASE WALL below: a timeout is never a contradiction certificate)."""
     import os as _os
-    from mycelium.csp_domains import problem_from_algebra
     from mycelium.csp_core import solve_symbolic
-    gv = {}
-    rel_facs = []
-    for j in dry_slots:
-        f = by_slot.get(int(j))
-        if f is None:
-            continue
-        if f["ftype"] == "given":
-            v, val = int(f["var"]), int(f["value"])
-            if v in gv and gv[v] != val:
-                return "unsat"          # two dry givens on the same var, different values
-            gv[v] = val
-        elif f["ftype"] == "rel":
-            rel_facs.append(f)
-    if not rel_facs:
-        return "solved"                # plain givens with no shared-var conflict: trivially consistent
-    nv = max([int(n_vars)] + [v + 1 for v in gv] +
-             [v + 1 for f in rel_facs for v in (list(f["args"]) + [f["result"]])])
-    rels = [(f["op"], int(f["args"][0]), int(f["args"][1]), int(f["result"])) for f in rel_facs]
-    prob = problem_from_algebra(nv, rels, gv, int(m))
+    kind, prob, gv, rel_facs = _rack_build_problem(by_slot, dry_slots, m, n_vars)
+    if kind != "prob":
+        return kind                    # "unsat" (conflicting dry givens) or "solved" (no relations)
     # THE RELEASE WALL (2026-10-08, RK3X_241's 13 h hang at 99.8% CPU, no step line past ~2,500-3,000
     # steps): this was the one solve_symbolic call in the release path with a DECISION budget only and
     # no wall clock — a pathological committed subgraph can spin for hours on expensive decisions well
@@ -923,6 +942,33 @@ def rack_release_rows(decoded_rows, texts, ma, nv, prev):
     prev = prev.copy()
     released_mask = np.zeros(B, np.float32)
     tested = 0
+    # THE SOLVER PIPELINE (2026-10-11, perf lever A): this loop's body (_rack_masked_by_slot +
+    # rack_release_row) is the ONE sequential per-row solve left in the consult path (facts_pool.py
+    # and alternator_bridge.core_rows already pool the other two). ALG_SOLVER_POOL/_MEMO/CONSULT_
+    # BUDGET all default to today's values, so with none set this is the UNCHANGED loop below
+    # (same two calls, same order, same mutation of prev) — the pooled/memoized path only engages
+    # when at least one knob asks for it, and even then reduces into this SAME prev array in row
+    # order (scripts/solver_pool.py's contract).
+    if ALG_SOLVER_POOL > 1 or ALG_SOLVER_MEMO or ALG_CONSULT_BUDGET != 5000:
+        from solver_pool import solve_release_rows
+        by_slots, dry_js, idxs = [], [], []
+        for bi in range(B):
+            dry_j = np.nonzero(prev[bi, :L_TOT] > 0)[0]
+            if len(dry_j) == 0:
+                continue
+            tested += 1
+            idxs.append(bi)
+            by_slots.append(_rack_masked_by_slot(decoded_rows[bi], texts[bi]))
+            dry_js.append(dry_j)
+        if idxs:
+            tasks = [(by_slots[k], dry_js[k], ma[idxs[k]], nv[idxs[k]]) for k in range(len(idxs))]
+            statuses = solve_release_rows(tasks, workers=ALG_SOLVER_POOL,
+                                          budget=ALG_CONSULT_BUDGET, use_memo=bool(ALG_SOLVER_MEMO))
+            for bi, status in zip(idxs, statuses):
+                if status == "unsat":
+                    prev[bi, :] = 0.0
+                    released_mask[bi] = 1.0
+        return prev, int(released_mask.sum()), tested, released_mask
     for bi in range(B):
         dry_j = np.nonzero(prev[bi, :L_TOT] > 0)[0]
         if len(dry_j) == 0:
@@ -5314,6 +5360,21 @@ assert ALG_RACK_FREEZE in ("all", "leaf", "none"), f"ALG_RACK_FREEZE={ALG_RACK_F
 ALG_RACK_RELEASE = int(os.environ.get("ALG_RACK_RELEASE", "0"))
 if ALG_RACK_RELEASE:
     assert ALG_RACK, "ALG_RACK_RELEASE needs ALG_RACK=1 (FORM 3 releases a commit THE RACK made; there is nothing to release otherwise)"
+# THE SOLVER PIPELINE (2026-10-11, perf lever A; ledger "ARCHITECTURE v2 REGISTERED ... THE PERF
+# PLAN"; built in worktree solverpipe/branch solverpipe, off main). Of the THREE per-row host
+# solves the consult can reach — (i) alt2_fact_buf's GAC ping (ALG_ALT2/ALT3, pooled already by
+# facts_pool.py/ALG_FACTS_WORKERS, spawn, default-on auto-sized), (ii) THE WHEEL's refuse_and_core
+# (alternator_bridge.core_rows/core_rows_budget, pooled already, spawn) — rack_release_rows' per-row
+# solve_symbolic (FORM 3, ALG_RACK_RELEASE) is the ONE site still sequential in-process, SIGALRM-
+# walled only (ledger 2026-10-08's 13 h hang: the wall it got, never a pool). These three knobs
+# extend the SAME map-reduce pattern to that one site; unset, rack_release_rows runs the identical
+# sequential loop it always has — a fork pool (the solver is pure python: csp_core/csp_domains
+# import neither tinygrad nor torch) is cheaper than facts_pool's spawn (no DEV=CPU re-init needed;
+# nothing here ever touches the GPU handle). scripts/solver_pool.py carries the implementation;
+# this module only reads the env and calls it.
+ALG_SOLVER_POOL = int(os.environ.get("ALG_SOLVER_POOL", "0"))      # workers for rack_release_rows' per-row solves (0/1 = today's sequential loop)
+ALG_SOLVER_MEMO = int(os.environ.get("ALG_SOLVER_MEMO", "0"))      # memoize rack_release_row's solve by (canonical WL digest, m, budget)
+ALG_CONSULT_BUDGET = int(os.environ.get("ALG_CONSULT_BUDGET", "5000"))   # training-time decision budget for THAT solve only; the read-time certificate budget (5000, elsewhere) is untouched
 # THE CHALKBOARD (2026-10-05, branch rack3; ledger 19:24 "WORD GIVEN FOR THE DISCRETE HALVES":
 # "THE VALUE-PROPAGATOR WRITE (the fourth symbol) registered in a new FORM"): the solver's IMPLIED
 # VALUES (facts the consult derives for RELATION slots — frow, the facts road ALG_CERT/THE RACK
