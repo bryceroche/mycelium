@@ -1,12 +1,14 @@
-# NEXT SESSION — cold-start entry (updated 2026-10-11 15:47)
+# NEXT SESSION — cold-start entry (updated 2026-10-11 17:30)
 
-**SRF_241 (THE SORTING ROOM EVERY BREATH, slot-conditioned) FIRES NEXT (15:47; pc-queue-srf3 waits on HUB's done mark, merges (no-op), gates, fires;
-then the FIXED sine arms SINE4/ANTI4/SEAL via pc-queue-sine).** THE MIXER LINE CLOSED ON FOUR READS: TM_241 (typed, self-driven) -0.013 and the
-binding ratio FELL; SH_241 (hard top-6 shoal) DIVERGED to NaN by step 1000; the owner key as a gain unread (SRK); HUB_241 (the all-to-all
-zero-multiplied at training) MEETS ITS BAR: -0.003 wild (null), mint -0.074 — the complete graph is dispensable for generalization; the
-notebook (the star) carries what matters. SINE4_241 (confounded): the crystal's owner ratio 1.33 > the peak's 0.90. FG_241: the funnel refuted.
-THE MINIMALITY CHECK: an angle (catch 0.41 / false 0.23 / judge flat); the diet is over-annotated (0.608 minimal) -> the minimality audit as an
-admission gate. Updated 15:47.
+**SRF_241 (THE SORTING ROOM EVERY BREATH, slot-conditioned) IS ON THE CARD (17:30; fired 16:39; 0.45 s/step -> reads ~23:30; bars = the first-look
+reads SR missed: twin-pick <= 0.35, other-sentence <= 0.40, masked >= SR's family + 0.010).** THE QUEUE UNDER THE WORD (17:1x): the FIXED sine arms
+SINE4/ANTI4/SEAL (pc-queue-sine on SRF's done mark; ALG_SINE_SKIP=none, the waist-sever placebo, FFN 4x, the birth check) -> K3_241 (three breaths
+throughout, ALG_LOOP_STOP=3, the clock kept at K=7) -> PK_241 (progressive: 24k at K=3 then 24k at K=7) [builder wt27] -> RTB_241 (THE REPLAY-TRAINED
+BREATH: one breath per step, a sampled phase, a replay buffer, offline solver feedback — the diffusion recipe; waits on the gym merge (agent on
+CPU) + the solver pipeline (perf A, wt24)) -> the NL-loop refactor's first arm after SRF's read. PERF: A = the solver pipeline (pool + memo +
+training budget; bit-identical gate; wt24), B = the JIT graph-batch hang's threshold (wt25). ARCHITECTURE v2 registered (the master design doc,
+docs/MASTER_DESIGN.md, published to main 6f0f0c57). THE MIXER LINE CLOSED (TM costs, SH diverged, SRK unread, HUB: the all-to-all is dispensable).
+DISK: 1.5 TB of retired forms' state memmaps deleted (1.4 TB free); the checkpoint sweep (61 GB) is next. Updated 17:30.
 
 **THE CARD IS IDLE (09:38).** THE DIRECTION PROBE FIRED (zero-GPU; scripts/direction_probe.py; .cache/direction_probe_PMS8_241.txt):
 PRESENT-BUT-UNEXPRESSIBLE — a read-out trained on PMS8_241's own frozen states reaches wild AUROC 0.98 (own state + both gold args'
