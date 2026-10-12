@@ -51237,3 +51237,66 @@ THE COORDINATOR'S CRITIQUE (before rubber-stamping): the registered cost bar is 
 ### 2026-10-11 (22:31) — BRANCH SINEBREATH MERGED FORWARD over the gym merge (wt21, ab270061: a clean auto-merge; head compiles; forward/_forward_tail/replay each once) so the armed sine queue's own merge at its turn is trivial rather than a real merge of the head file (the breathstop branch needed hand resolution today for exactly this reason). THE GATE RE-RUN on the merged branch (pc-sinebreath-gate2; .cache/sine_gate.log) reads the SAME TABLE as before the merge: unset 5.2995/0.0279, role8 6.5535/1.1061, depth4 6.8697/1.0207 (= loopedtf's own gate), sine4 6.7545/1.0472, anti4 6.7535/1.0467, seal 7.1051/1.2711; THE BIRTH CHECK out == cur bitwise at every breath kb=1..6 for sine4/anti4/seal (skip=none; maxdiff 0); the seal-rank lines as registered (not-severed rank 128/384 sealed; severed 384/384 bypassed); the knob census at BIRTH reads inert on every block (zero-init by design — the bar is read at the trained read). queue_dryrun on queue_sine.sh: 17 checks, 0 failing. The census of the head today (an Explore pass, read-only) also confirmed: the ALT2 chassis injects facts ONCE, before the loop; facts3/facts5 fire only under ALG_ALT3 — the body alternates with the solver once per read, not six times; and the claim body's loop carries FOUR trained attention layers (bank, mixer, mask head, station 3; 27 applications per forward), the sorting room adds 8 (SRF: 79 applications, 29.8M params), the depth stack 8 (SINE4: 75, 20.0M).
 
 ### 2026-10-12 (00:14 chain; ledgered 00:20) — SRF_241 (THE SORTING ROOM EVERY BREATH, slot-conditioned; ALG_SORT=4 ALG_SORT_FEED=1; from scratch, pm35c, 48k, 0.504 s/step) DOES NOT FIRE ON ANY BAR, and the kill clause does NOT apply — the road is LIVE. THE READS (.cache/rack_chain_SRF.log): masked wild 0.3520 vs PMS8_241 0.3476 (paired +0.0044, SE 0.0105: noise) and vs SR_241 0.3715 (paired −0.0195, McNemar z 1.84) = BELOW THE FAMILY MEAN 0.3646 by 0.013 (bar: ≥ 0.3746 or a twin: MISS); open wild 0.3432; rows 21 masked / 19 open (SR 23); open mint 0.7555 (SR 0.788: −0.03, the mint bar 'not down > 0.02' MISSED); silver 0.694; digits 0.480 (SR ~0.50: the digits organ's gain partly kept); matched 0.4505 (+0.0985 order share). THE FIRST-LOOK READS UNMOVED: twin-pick 0.473 (SR 0.457; bar ≤ 0.35 MISS); other-sentence 0.52–0.53 flat across all seven breaths (SR 0.56; bar ≤ 0.40 MISS). MECH: forward 0.344 / inverse 0.137 (args 0.504 / 0.272; inverse res 0.210 — the polarity signature, unchanged). THE KNOB CENSUS (re-run by hand on the wild split, PC_SPLIT=test, 32 rows: .cache/srf_knob_census_SRF_241_wildhold.log): the re-run's change to the token tensor is LIVE at every breath — rel std 1.08 / 0.43 / 0.30 / 0.23 / 0.18 / 0.16 at breaths 1..6 (bar ≥ 0.10 at the last breath: PASS) — so the tokens DO read the slots, the first look does not improve, and the room's own gain is eroded. THE TEXTURE (unexplained curve, two shapes → mechanism probe per the texture rule): std(tok_in) GROWS monotonically 1.09 → 1.42 → 1.63 → 1.90 → 2.15 → 2.39 across the breaths — the token residual has no per-breath norm restoration (the slot side's polar block restores norm; the token side's re-run accumulates magnitude), so every re-sort hands the bank keys of a different scale; the relative injection falls (1.08 → 0.16) because the denominator inflates, not because the room goes quiet. READING: a live second look over the SAME keys, slot-conditioned, is not the lever either — the fourth form of 'more looks at the text' to leave other-sentence at ~0.5 from breath 0 (SR, TR form 1/2, SRF); the chassis-level slot number says the per-breath re-run also costs the room what the single shot earned. THE SORTING ROOM LINE: the single shot (SR/SR_242/SRK/HG; family +0.015 ± 0.006) STANDS as the record; SRF's form (re-run every breath) CLOSES [regime: pm35c from scratch, 48k, this room; trigger: a norm-restored token residual or a cross-attention-only feed]. REGISTERED (needs the word), THE SRF FORM 2 = the texture's probe: keepnorm on the token residual per breath (the polar block's own idiom) OR the feed as the tokens←slots cross-attention delta alone (no self-attn/FFN re-run) — the cheaper of the two first; bars as SRF's. FIXTURE NOTE (a rule): the knob census scripts (depth_knob_census.py, sort_feed_knob_census.py, sort_hg_knob_census.py) default to PC_SPLIT=train = .cache/phase1_alg_states_train.npz, which the 10-11 disk cleanup removed (its source .cache/algebra_nl_train.jsonl, 2000 rows, survives; regenerable); SRF's chain census crashed on it (non-fatal) and the armed SINE4/ANTI4/SEAL chains carried the same call — PATCHED in place to `$W PC_SPLIT=test` (the wild split, the better register for a knob read anyway) before the sine queue reaches them. RULE: a knob census reads on the measurement split; a chain's census call names its split explicitly; a cleanup lists every fixture it removes against the chains that name it.
+
+### 2026-10-11 (01:36) — THE SINE BREATH, FIXED, RE-GATED, RE-QUEUED, RE-FIRED (SINE4_241 ->
+ANTI4_241 -> SEAL_241, worktree wt21, branch sinebreath, merged 6026c15b):
+after THE SKIP BUG (ledger 08:52: ALG_SINE_SKIP=peak returned 2*cur at ReZero birth, SINE4_241's
+own first run tagged CONFOUNDED, the queue stopped before ANTI4), this is the FIX, re-gated and
+re-armed. ALG_SINE_SKIP=peak/boundary are now REFUSED at import (scripts/phase1_algebra_head.py,
+the module comment above ALG_SINE's own definition); "none" is the only lawful value and the
+default — the full-width residual stream already carries every block's own state forward by
+ordinary addition, so an explicit skip has nothing left to do. THE SEAL PLACEBO (SEAL_241) is
+redesigned: ALG_SINE_SEAL_SEVER=1, a door OUTSIDE `_depth_stack_sine` entirely, unions "waist"
+into `_SEVER` (THE WAIST READ, 2026-09-24's own already-registered sever, now a real training
+arm under its own name) so `_polar_waist()`'s end-of-breath squeeze-and-reconstruct never runs
+— content passes straight through. THE FFN hidden width is now 4x each block's own width
+(512/896/1536/896 for the sine/anti schedule, not the flat 2048 every block used before — the
+128-d trough no longer expands 16x inside itself; ~-1.8M params vs the original build's 7.05M
+— this gate's own grad probe counts 5,228,352 params for sine4/anti4 post-fix, quoted verbatim, not re-estimated).
+
+THE GATE RULE THIS BUG WROTE: identity-at-birth is asserted by scripts/sine_birth_check.py,
+which calls `_depth_stack_sine` DIRECTLY under the arm's own env and checks `out == cur`
+bitwise at EVERY breath (kb=1..ALG_BREATH-1) — never inferred from a probe. THE ROOT CAUSE OF
+THE ORIGINAL FALSE PASS: scripts/depth_identity_probe.py's MODE=dump calls `forward()` with NO
+slot_mask, and this head's breath loop (where breath_step / `_depth_stack_sine` actually run)
+NEVER EXECUTES without one (confirmed directly: an armed `_CENSUS` on that exact call captured
+zero tap entries beyond kb=-1's own final-emission tap, and `"breaths" in o` was absent
+entirely) — both the "depth4" and "sine4(peak)" dumps that were diffed silently ran ONLY breath
+0's grounding read, identical by construction either way: the "maxdiff=0.000e+00" was vacuous,
+not a proof. The gate still runs that comparison (labeled "VACUOUS" in its own output, for
+continuity) but no longer asserts on it; the birth check is the real instrument now.
+
+THE GATE TABLE (.cache/sine_merge_gate.log, reproduced identically on wt21 and post-merge):
+unset 5.2995/0.0279 (bit-identical); role8 6.5535/1.1061 (bit-identical); depth4 6.8697/1.0207
+(matches the loopedtf control); sine4/anti4/seal finite. BIRTH CHECK: PASS for sine4, anti4,
+and seal (out == cur bitwise at every one of 6 breaths, under each arm's own env — seal's own
+check additionally confirms ALG_SINE_SEAL_SEVER=1 does not touch `_depth_stack_sine`'s own
+ReZero identity, since the sever lives entirely outside it). GRAD PROBE: PASS ROAD + PASS REZERO
+for all three. SEAL RANK (scripts/sine_seal_rank.py, redesigned to test `_polar_waist` directly
+— a STRUCTURAL rank bound, not a birth-only one): not-severed rank EXACTLY 128/384 (the waist's
+own W_down/W_up composition cannot exceed rank ALG_POLAR_D by construction); severed rank
+384/384 (full content width — the crystal is optional when severed, exactly as the sketch's own
+seal rank was meant to show, now proven on the REAL mechanism rather than a custom carry).
+
+BARS (pinned, unchanged from the original registration): masked wild SINE4_241/ANTI4_241/
+SEAL_241 vs PMS8_241 >= PMS8 + 0.015 OR a twin pair; rows; mint not down > 0.02; MECHANISM: the
+TROUGH block's (index 0 for SINE4, index 2 for ANTI4 — NOT always "block 0") owner ratio >= 1.5;
+SINE4 vs ANTI4 decides shape vs depth; SEAL's own prediction (informational): SEAL_241 vs
+SINE4_241 directly should be ~0.
+
+FIRED: .cache/queue_sine.sh (re-armed) waited on "SRF CHAIN COMPLETE" in
+.cache/rack_chain_SRF.log (tonight's card order moved SRF to last), merged branch sinebreath
+(6026c15b; wt21's own branch was synced with gen-weights BY HAND
+first, in the worktree, with the `.cache` symlink temporarily swapped for the real tracked
+files during the merge — git's stash machinery cannot traverse a symlinked .cache; NEVER done
+by the queue script itself), ran the post-merge gate (identical table to wt21's own, above),
+preflight PASSED on rack_chain_SINE4.sh, fired pc-sine4-watch + pc-sine4 (01:36) — SINE4_241
+is running now, against PMS8_241; THIS SAME SCRIPT waits for "SINE4 CHAIN COMPLETE", preflights
+and fires ANTI4_241, waits for "ANTI4 CHAIN COMPLETE", preflights and fires SEAL_241 — one arm
+at a time, each with its own watcher and its own preflight run just before it fires.
+
+Artifacts: scripts/phase1_algebra_head.py (`_depth_stack_sine`, `ALG_SINE_SEAL_SEVER`,
+build_params, breath_step), scripts/sine_birth_check.py (new gate instrument),
+scripts/sine_seal_rank.py (redesigned), scripts/sine_shuffle_read.py (trough-index fix);
+.cache/sine_gate.sh, .cache/rack_chain_SINE4.sh/ANTI4.sh/SEAL.sh, .cache/queue_sine.sh;
+.cache/sine_gate.log, .cache/sine_merge_gate.log.
