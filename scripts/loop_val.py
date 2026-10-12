@@ -209,13 +209,21 @@ def read(ckpt, data=None, p=None):
                    if int(os.environ.get("ALG_ALT2", "0"))
                    and not int(os.environ.get("LV_NOFACT", "0")) else ())
                 + (("nl0",) if _XPV else ()))
+    _DUMPFULL_ON = bool(os.environ.get("LV_DUMP_FULL"))   # THE SEEDED READINGS (2026-10-12): see below
     _jk_masked = (("pres", "ftype", "op", "islit", "dig", "args", "res")
                   + (("dup",) if "h_dup" in p else ())
-                  + (("dir",) if "h_dir" in p else ()))
+                  + (("dir",) if "h_dir" in p else ())
+                  + (("query",) if _DUMPFULL_ON else ()))
     n_ok = n_tot = 0
     _PS = [] if os.environ.get("LV_PER_SLOT") else None
     import collections as _c; _FIELDS = _c.defaultdict(lambda: [0, 0]) if os.environ.get("LV_FIELDS") else None
     _DUMP = [] if os.environ.get("LV_DUMP") else None
+    # LV_DUMP_FULL=path (2026-10-12, THE SEEDED READINGS): the FULL per-row decode (pres/ftype/
+    # op/dig/args/res[/dup], query, key, text) from the masked pass's own `onp` -- gen_candidates.
+    # py's own candidate-record shape (build_row_candidates), NOT loop_val's own per-GOLD-SLOT
+    # LV_DUMP (which only covers slots present in gold and omits the full row, wrong shape for
+    # candidate-set coverage/judging). New, additive; LV_DUMP's own dump is untouched.
+    _DUMPFULL = [] if _DUMPFULL_ON else None
     _DUMPR = [] if os.environ.get("LV_DUMP_RAW") else None
     _RACKSIDE = [] if (os.environ.get("LV_DUMP") and int(os.environ.get("ALG_RACK", "0"))) else None   # THE RACK's sidecar beside LV_DUMP (2026-10-05): <LV_DUMP>.rack.npz
     _DIRSIDE = [] if (os.environ.get("LV_DUMP") and "h_dir" in p) else None   # THE DIRECTION BIT's sidecar (2026-10-09, FORM 2): <LV_DUMP>.dir.npz -- per relation slot, the predicted p(inverse) beside gold arg_dir/dir_mask (the confidence histogram's raw material; "dir" is NOT added to the main DUMP tuple to avoid breaking its fixed-width unpack everywhere else)
@@ -259,6 +267,10 @@ def read(ckpt, data=None, p=None):
     _TREE_ON = bool(os.environ.get("ALG_TREE", "")) or int(os.environ.get("ALG_SORT_HG", "0")) != 0   # THE TREE DESCENT's unit-id port (2026-09-25); the hourglass (2026-10-09) needs it too, unconditionally
     _BUSREG_ON = float(os.environ.get("ALG_BUSREG", "0")) != 0 or float(os.environ.get("ALG_IDKEY", "0")) != 0   # THE BUS REGISTER's token-id port (2026-09-22)
     _DIRROLE_ON = int(os.environ.get("ALG_DIRROLE", "0")) != 0   # THE DIRECTION ROLE, read-time road (2026-10-09)
+    _SEED_ON = float(os.environ.get("ALG_SEED_TEMP", "0")) != 0   # THE SEEDED READINGS (2026-10-12), read-time road
+    _SEED_RNG = int(os.environ.get("ALG_SEED_RNG", "0"))
+    _SEED_SCHED_ON = int(os.environ.get("ALG_SEED_SCHED", "0")) != 0   # THE SCHEDULE (2026-10-12)
+    _SEED_KB = int(os.environ.get("ALG_BREATH", "1"))
     if _BUSREG_ON:
         import phase1_algebra_head as _HB
     if _HUD_ON:
@@ -323,7 +335,26 @@ def read(ckpt, data=None, p=None):
             # HUD idiom: no cached array for an arbitrary TEST fixture).
             ident_t = Tensor(np.stack([_HB.ident_row_ids(vs[int(i)]["text"], _HB.T_ALG)
                                        for i in sl_p]).astype(np.int32), dtype=dtypes.int)
-        o0 = _rf(forward, p, ts, tk, se, keys=_jk_open, xcorr=xcorr_t, hud=hud_t, tree=tree_t, ident=ident_t, dircue=dircue_t)
+        seed_vq_t = seed_fq_t = seed_fq_sched_t = None
+        if _SEED_ON:
+            # THE SEEDED READINGS (2026-10-12): per-batch, host-side (the HUD idiom), from
+            # seed_gumbel_build_array (ALG_SEED_RNG xor each row's dataset index sl_p — the
+            # PADDED repeats draw the same noise as their source row, harmlessly). half-feed
+            # states go through `ts`/`tk` above; this is a SEPARATE port (forward()'s seed_vq/
+            # seed_fq kwargs), applied inside forward() only at breath 0, scaled by ALG_SEED_TEMP.
+            # The vq bank is never scheduled (read once, at breath 0, regardless of ALG_SEED_SCHED).
+            import phase1_algebra_head as _HS
+            _gvq, _gfq = _HS.seed_gumbel_build_array(_SEED_RNG, sl_p, _HS.T_ALG, _HS.K_VARS, _HS.L_TOT)
+            seed_vq_t = Tensor(_gvq, dtype=dtypes.float)
+            if _SEED_SCHED_ON:
+                # THE SCHEDULE (2026-10-12): one Gumbel draw per (row, breath) for the fq bank,
+                # breaths 0..K_B-1 — replaces seed_fq_t for the grounding read (forward() prefers
+                # seed_fq_sched when ALG_SEED_SCHED is set) and feeds every loop breath besides.
+                _gfqs = _HS.seed_gumbel_sched_build_array(_SEED_RNG, sl_p, _HS.T_ALG, _SEED_KB, _HS.L_TOT)
+                seed_fq_sched_t = Tensor(_gfqs, dtype=dtypes.float)
+            else:
+                seed_fq_t = Tensor(_gfq, dtype=dtypes.float)
+        o0 = _rf(forward, p, ts, tk, se, keys=_jk_open, xcorr=xcorr_t, hud=hud_t, tree=tree_t, ident=ident_t, dircue=dircue_t, seed_vq=seed_vq_t, seed_fq=seed_fq_t, seed_fq_sched=seed_fq_sched_t)
         onp0 = {k: o0[k].realize().numpy() for k in ("fat", "args", "res")}
         mk = build_slot_masks(onp0, vse[sl_p].astype(np.int32))
         fact_t = mass_t = None; cert_t = None
@@ -457,10 +488,10 @@ def read(ckpt, data=None, p=None):
                     kk_t = Tensor(kk, dtype=dtypes.float)
                 return Tensor(fb, dtype=dtypes.float), cb_t, rk_t, rk, kk_t, kk
             _rk_d1 = [] if (_ARACK and _RACKSIDE is not None) else None
-            _oa3 = _rf(forward, p, ts, tk, se, keys=_ck3, slot_mask=_mk3, xcorr=xcorr_t, hud=hud_t, tree=tree_t, ident=ident_t, dircue=dircue_t, stop_after=2)
+            _oa3 = _rf(forward, p, ts, tk, se, keys=_ck3, slot_mask=_mk3, xcorr=xcorr_t, hud=hud_t, tree=tree_t, ident=ident_t, dircue=dircue_t, stop_after=2, seed_vq=seed_vq_t, seed_fq=seed_fq_t, seed_fq_sched=seed_fq_sched_t)
             f3_t, c3_t, r3_t, r3_np, k3_t, _ = _consult3(_oa3, rack_detail=_rk_d1)
             # pass b runs breaths 3-4 too — it must see cert3 / rack3 (kb >= 3) the same as the full pass below
-            _ob3 = _rf(forward, p, ts, tk, se, keys=_ck3, slot_mask=_mk3, xcorr=xcorr_t, hud=hud_t, tree=tree_t, ident=ident_t, dircue=dircue_t, stop_after=4, facts3=f3_t, cert3=c3_t, rack3=r3_t, chalk3=k3_t)
+            _ob3 = _rf(forward, p, ts, tk, se, keys=_ck3, slot_mask=_mk3, xcorr=xcorr_t, hud=hud_t, tree=tree_t, ident=ident_t, dircue=dircue_t, stop_after=4, facts3=f3_t, cert3=c3_t, rack3=r3_t, chalk3=k3_t, seed_vq=seed_vq_t, seed_fq=seed_fq_t, seed_fq_sched=seed_fq_sched_t)
             _rk_d2 = [] if (_ARACK and _RACKSIDE is not None) else None
             f5_t, c5_t, r5_t, r5_np, k5_t, k5_np = _consult3(_ob3, rack_prev=r3_np, rack_detail=_rk_d2, released_out=_rel2)
             if _rk_d2 is not None:   # THE RACK's SIDECAR: the flags the body committed by its last consult (both consults' union), per real row (the DRY CENSUS reads it exactly)
@@ -475,7 +506,8 @@ def read(ckpt, data=None, p=None):
                 valfact=(fact_t if float(os.environ.get("ALG_VALREG", "0")) or float(os.environ.get("ALG_VALREG_ADDR", "0")) else None),   # THE VALUE STREAM: the live pass-1 facts
                 facts3=f3_t, facts5=f5_t, cert3=c3_t, cert5=c5_t,   # THE TRAINED CERTIFIER-MASK ROAD
                 rack3=r3_t, rack5=r5_t,   # THE RACK (2026-10-05)
-                chalk3=k3_t, chalk5=k5_t)   # THE CHALKBOARD (2026-10-05, branch rack3)
+                chalk3=k3_t, chalk5=k5_t,   # THE CHALKBOARD (2026-10-05, branch rack3)
+                seed_vq=seed_vq_t, seed_fq=seed_fq_t, seed_fq_sched=seed_fq_sched_t)   # THE SEEDED READINGS (2026-10-12)
         onp = {k: o[k].realize().numpy() for k in
                (("pres", "ftype", "op", "islit", "dig", "args", "res")
                 + (("dup",) if "h_dup" in p else ())
@@ -488,6 +520,23 @@ def read(ckpt, data=None, p=None):
             # argmax read at intake) lies inside a matched value span takes the
             # entry's digits. Parameter-free; neural proposes, the lexicon disposes.
             _lex_apply(onp, onp0["fat"], sl, sl_p, vs)
+        if _DUMPFULL is not None:
+            # LV_DUMP_FULL (2026-10-12): gen_candidates.py's own candidate-record shape, one per
+            # REAL row (sl, not the padded sl_p) -- "query" is the masked pass's own query logits
+            # (added to _jk_masked above only when this door is open; chain_acc.py's rawdump
+            # convention: qv = argmax, qlog = the logits themselves, kept for the loglik tie-break).
+            from mycelium.custody_gold import row_gold as _rg_full
+            _qlog_full = o["query"].realize().numpy()
+            for bi, i in enumerate(sl):
+                i = int(i)
+                try:
+                    _key_full = int(_rg_full(vs[i]))
+                except Exception:
+                    _kk = vs[i].get("key"); _key_full = int(_kk) if _kk is not None else None
+                _rec = {"i": i, "text": vs[i]["text"], "key": _key_full,
+                        "q": _qlog_full[bi].astype(np.float32),
+                        **{k: onp[k][bi].astype(np.float32) for k in onp}}
+                _DUMPFULL.append(_rec)
         for bi, i in enumerate(sl):
             i = int(i)
             if _LEGAL_ARGS:
@@ -565,6 +614,8 @@ def read(ckpt, data=None, p=None):
         import pickle; pickle.dump(_DUMP, open(os.environ["LV_DUMP"], "wb")); print(f"[dump] {len(_DUMP)} gold slots with predictions -> {os.environ['LV_DUMP']}", flush=True)
     if _DUMPR is not None:
         import pickle; pickle.dump(_DUMPR, open(os.environ["LV_DUMP_RAW"], "wb")); print(f"[dump-raw] {len(_DUMPR)} gold slots with raw heads -> {os.environ['LV_DUMP_RAW']}", flush=True)
+    if _DUMPFULL is not None:
+        import pickle; pickle.dump(_DUMPFULL, open(os.environ["LV_DUMP_FULL"], "wb")); print(f"[dump-full] {len(_DUMPFULL)} full-row candidate records -> {os.environ['LV_DUMP_FULL']}", flush=True)
     if _RACKSIDE is not None:
         # THE RACK's SIDECAR: per real row, the dry flags the body committed at its last consult (rack5's union) and the
         # per-test flags — scripts/rack_dryness_census.py reads it for THE DRY CENSUS bar (share committed + precision).

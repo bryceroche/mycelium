@@ -72,6 +72,34 @@ ALG_CLOCK_CANON = int(os.environ.get("ALG_CLOCK_CANON", "0"))   # memories in a 
 # WILD?"): both doors, dead unless set.
 ALG_SPAN_ALL = int(os.environ.get("ALG_SPAN_ALL", "0"))   # supervise the router's span EVERY breath, not just the last
 ALG_ANCHOR = float(os.environ.get("ALG_ANCHOR", "0"))     # beta: breath-0's grounding attention as a keep-bias, every loop breath
+# THE SEEDED READINGS (2026-10-12, STEP 1 of the denoising breath's amended form; ledger
+# "BRYCE'S STATE-SPACE FORM vs THE SEPTEMBER RECORD"): a READ-TIME-ONLY door (asserted off in
+# do_train — see its first executable statement). ALG_SEED_TEMP (0 = off, bit-identical) scales
+# seeded Gumbel noise added to BREATH 0's own slot->token binding logits (the vq and fq bank
+# calls only — never a loop breath, never the mixer): the Gumbel-max trick makes breath 0's
+# argmax a SAMPLE from the row's own binding distribution at temperature ALG_SEED_TEMP, not an
+# independent perturbation — "a confident alternative reading" (the twin, the other-sentence
+# mention), never white noise. ALG_SEED_RNG seeds a numpy Generator per (seed, row_idx) — see
+# seed_gumbel_arrays below — so a fixed (ALG_SEED_RNG, row) reproduces the SAME breath-0 sample
+# every time (gate check 3). ALG_SEED_HOLD=1 additionally commits breath-0's sampled argmax token
+# per slot as a hard claim carried into every LOOP breath (not breath 0 itself) via the same
+# pbias road THE BREATH-0 ANCHOR (ALG_ANCHOR) already uses — see "seed_hold_bias" in _bs_ctx and
+# its read in breath_step beside _anch_b0 — so the loop cannot simply re-read the gold mention
+# and erase the perturbation (the 09-14 "state is a cache" finding this build is built to test).
+ALG_SEED_TEMP = float(os.environ.get("ALG_SEED_TEMP", "0"))
+ALG_SEED_RNG = int(os.environ.get("ALG_SEED_RNG", "0"))
+ALG_SEED_HOLD = int(os.environ.get("ALG_SEED_HOLD", "0"))
+# THE SCHEDULE (2026-10-12, scope extension accepted on Opus's review): ALG_SEED_SCHED=1 moves
+# the fq bank's seed noise from "breath 0 only" to EVERY breath (loop breaths too), at the SAME
+# injection point (the slot->token scores just before bank()'s own softmax — reached through the
+# very same pbias road breath 0 uses, just supplied by breath_step per breath instead of once by
+# forward()), with tau_k = ALG_SEED_TEMP * cos^2(k*pi/(2*(K_B-1))) — breath 0 full strength, the
+# last breath 0 (a decaying confident-alternative-reading schedule, not a constant kick). The clock
+# planes and the mixer never see it: this is still purely a pbias term on bank()'s token-axis
+# attention logits, nothing else. The vq bank is UNCHANGED by this flag (read once, at breath 0,
+# regardless) — see forward()'s seed_vq handling. HOLD (above) is specified for the breath-0-only
+# mode only; it is not extended here.
+ALG_SEED_SCHED = int(os.environ.get("ALG_SEED_SCHED", "0"))
 # THE SURFACE-GROUNDED STRUCTURAL POINTER (2026-09-20, THE ARGUMENT-
 # BINDING CENSUS's arm): arg1/arg2 channels' own span loss, the 5th
 # (operator cue) channel, and its road into the bank bias. All dead
@@ -1340,6 +1368,16 @@ _SEVER = frozenset(x for x in os.environ.get("ALG_SEVER", "").split(",") if x)
 assert _SEVER <= _SEVER_ORGANS, \
     f"ALG_SEVER unknown organ(s) {sorted(_SEVER - _SEVER_ORGANS)}; " \
     f"known: {sorted(_SEVER_ORGANS)}"
+# THE SINE BREATH's SEAL PLACEBO, REDESIGNED (2026-10-11 08:52, after the skip-bug ledger entry):
+# SEAL_241 is now "sever the polar waist's own end-of-breath squeeze AT TRAINING", using the
+# SAME already-registered "waist" sever THE WAIST READ (2026-09-24) reads with — ALG_SEVER=waist
+# already works at train time (read once at import, same as every other _SEVER member), but a
+# real registered arm gets its OWN named door rather than overloading the generic census string
+# (ALG_SINE's own cross-check, "needs ALG_SINE set", lives beside ALG_SINE's own definition
+# below — ALG_SINE isn't defined yet at this point in the file). Union'd into `_SEVER` itself so
+# every one of its ~15 call sites (breath_step, forward) honors it identically to ALG_SEVER=waist.
+ALG_SINE_SEAL_SEVER = int(os.environ.get("ALG_SINE_SEAL_SEVER", "0"))
+_SEVER = _SEVER | (frozenset(("waist",)) if ALG_SINE_SEAL_SEVER else frozenset())
 # THE BALANCED GENERATION (apply_balanced_gen.py, 2026-09-09): prune
 # the dead-by-severance organs at birth; regrow where the removal cost
 # per parameter is highest (lane 2 as a road; station 5); the balanced
@@ -3649,9 +3687,15 @@ def build_params(seed=0):
                 p[f"dp{_i}_ln1_g"] = t(np.ones(_w, np.float32)); p[f"dp{_i}_ln1_b"] = t(np.zeros(_w, np.float32))
                 p[f"dp{_i}_ln2_g"] = t(np.ones(_w, np.float32)); p[f"dp{_i}_ln2_b"] = t(np.zeros(_w, np.float32))
                 p[f"dp{_i}_ln3_g"] = t(np.ones(_w, np.float32)); p[f"dp{_i}_ln3_b"] = t(np.zeros(_w, np.float32))
-                p[f"dp{_i}_ffn_w1"] = t((_rDP.randn(_w, DEPTH_FFN_HID) / math.sqrt(_w)).astype(np.float32))
-                p[f"dp{_i}_ffn_b1"] = t(np.zeros(DEPTH_FFN_HID, np.float32))
-                p[f"dp{_i}_ffn_w2"] = t(np.zeros((DEPTH_FFN_HID, _w), np.float32))   # ZERO door (ReZero)
+                # THE FFN RATIO FIX (ledger 2026-10-11 08:52): 4x THIS BLOCK'S OWN width, not the
+                # global DEPTH_FFN_HID=2048 plain ALG_DEPTH uses for every block regardless of
+                # width — at w=128 (the trough) 2048 is a 16x expansion; 4x keeps the ratio
+                # proportionate (512/896/1536/896 for the sine/anti schedule, ~-1.8M params vs
+                # the original build's flat-2048 version).
+                _ffn_hid = 4 * _w
+                p[f"dp{_i}_ffn_w1"] = t((_rDP.randn(_w, _ffn_hid) / math.sqrt(_w)).astype(np.float32))
+                p[f"dp{_i}_ffn_b1"] = t(np.zeros(_ffn_hid, np.float32))
+                p[f"dp{_i}_ffn_w2"] = t(np.zeros((_ffn_hid, _w), np.float32))   # ZERO door (ReZero)
                 p[f"dp{_i}_ffn_b2"] = t(np.zeros(_w, np.float32))
                 p[f"dp{_i}_cq"] = t((_rDP.randn(H_W, _w) / math.sqrt(H_W)).astype(np.float32) * 0.5)
                 p[f"dp{_i}_ck"] = t((_rDP.randn(H_W, _w) / math.sqrt(H_W)).astype(np.float32) * 0.5)
@@ -4837,24 +4881,57 @@ DEPTH_FFN_HID = 2048     # fixed (not ALG_HW-relative), matching the sorting roo
 # used transiently WITHIN a breath by the trough block only — our own `cur` never narrows
 # between breaths the way the standalone sketch's toy state does, so no Resample/lift_in/
 # squeeze organs are ported; only the trough's own waist projection is new.
-# ALG_SINE_SKIP: "peak" (default, the lawful U-Net skip) carries block 1's own output around
-# block 2 into block 3's input, REGARDLESS of which block is the trough that breath (so under
-# ANTI4 — trough at index 2 — "peak" is in fact the textbook skip-around-the-bottleneck shape);
-# "none" skips nothing; "boundary" (THE SEAL PLACEBO) instead carries the PREVIOUS breath's own
-# final (index-3) output across THIS breath's trough block, additively, into the block right
-# after it — the residual-seal law's own bypass, predicted to cost ~0 (removing the crystal's
-# gatekeeping on that one path should not matter if the crystal carries nothing the rest of the
-# state doesn't already carry forward on its own).
+# ALG_SINE_SKIP: THE BUG (ledger 2026-10-11 08:52, found by Opus's scripts/sine_birth_check.py,
+# reproduced on CPU): the residual stream `x` here is ALREADY the full H_W width and ALREADY
+# carries block 1's own state forward through block 2 by ordinary residual addition (every block
+# only ADDS a delta, never replaces `x`) — so the ORIGINAL "peak" skip (`x = x + rise` before
+# block 3, `rise` = block 1's own post-block state) added that SAME state a SECOND time. At
+# ReZero birth every block's delta is exactly zero, so this is not a subtle drift: the stack
+# returned EXACTLY 2*cur at every breath (verified: ||out||/||cur|| = 2.0000, out == 2*cur
+# bitwise) — not an identity at all. "boundary" (the original seal placebo, which carried the
+# previous breath's own output across the trough) inherited the identical defect through its own
+# carry (identity at breath 1, 2*cur from breath 2 on, since the carry IS last breath's doubled
+# output). THE GATE'S OWN "pre-update dump diff vs depth4 = 0.0" claim did NOT catch this: see
+# the ledger entry and scripts/sine_birth_check.py's docstring for why (depth_identity_probe.py's
+# MODE=dump calls forward() with NO slot_mask, and this head's breath loop — where breath_step /
+# _depth_stack_sine actually runs — never executes without one; both the "depth4" and "sine4"
+# dumps that were diffed silently skipped the organ entirely, comparing two copies of breath 0's
+# grounding read, which is identical by construction either way: a vacuous 0.0, not a proof).
+# THE FIX: "none" (now the ONLY lawful value, and the default) skips nothing — the full-width
+# residual stream already IS the skip, exactly as every other block in this stack. "peak" and
+# "boundary" are REFUSED below, loudly, rather than silently deleted (the asserts preserve the
+# bug's own shape for anyone who comes looking). THE GATE RULE this bug writes into the house
+# style: identity-at-birth is asserted by calling the organ directly under the ARM's OWN env
+# (scripts/sine_birth_check.py, or its being wired into a gate as a named step) — never inferred
+# from a probe whose own calling convention may silently route around the code under test.
+# THE SEAL PLACEBO is REDESIGNED separately: ALG_SINE_SEAL_SEVER=1 (below, beside ALG_SEVER)
+# severs the EXISTING, already-registered "waist" sever (THE WAIST READ, 2026-09-24 — content
+# passes straight through the polar waist's own end-of-breath squeeze, unchanged) as a real
+# TRAINING-time arm, not a read-time census — the residual-seal law's prediction: if the crystal
+# (the polar waist's squeeze-and-reconstruct) carries nothing load-bearing, removing it at
+# training should cost ~0.
 # Unset (ALG_SINE="") = bit-identical to plain ALG_DEPTH (today's _depth_stack, untouched).
 # ===========================================================================
 ALG_SINE = os.environ.get("ALG_SINE", "")
-ALG_SINE_SKIP = os.environ.get("ALG_SINE_SKIP", "peak")
+ALG_SINE_SKIP = os.environ.get("ALG_SINE_SKIP", "none")
 _SINE_SCHEDULES = {"sine": (128, 224, 384, 224), "anti": (384, 224, 128, 224), "flat": (384, 384, 384, 384)}
 assert ALG_SINE in ("", "sine", "anti", "flat"), f"ALG_SINE must be one of '', sine, anti, flat (got {ALG_SINE!r})"
-assert ALG_SINE_SKIP in ("peak", "none", "boundary"), ALG_SINE_SKIP
+assert ALG_SINE_SKIP in ("none", "peak", "boundary"), ALG_SINE_SKIP
+assert not ALG_SINE or ALG_SINE_SKIP == "none", (
+    f"ALG_SINE_SKIP={ALG_SINE_SKIP!r} is REFUSED (ledger 2026-10-11 08:52): 'peak' double-counts "
+    f"block 1's state (the full-width residual already carries it around block 2 by itself — "
+    f"out == 2*cur at birth, see scripts/sine_birth_check.py); 'boundary' inherits the identical "
+    f"defect through its own carry. 'none' is the only lawful form. The seal placebo is now "
+    f"ALG_SINE_SEAL_SEVER=1, an unrelated door (below) — it severs the polar waist's own squeeze, "
+    f"not this one.")
 assert not ALG_SINE or ALG_DEPTH == 4, "ALG_SINE requires ALG_DEPTH=4 (exactly four depth blocks — the sine schedules are 4 wide)"
 assert not ALG_SINE or (ALG_POLAR and POLAR_D == 128), \
     "ALG_SINE's trough block needs the polar waist at d=128 (ALG_POLAR=1 ALG_POLAR_D=128) — the crystal as the meeting room"
+assert not ALG_SINE_SEAL_SEVER or ALG_SINE, (
+    "ALG_SINE_SEAL_SEVER is THE SEAL PLACEBO's own door (SEAL_241): it severs the SAME polar-"
+    "waist squeeze ALG_SEVER=waist already can (THE WAIST READ, 2026-09-24) — registered under "
+    "its own name because this is a real training arm, not a read-time census — and it only "
+    "makes sense alongside ALG_SINE's own schedule")
 _SINE_HEAD_DIM = 32      # independent of this head's own N_HEADS/H_W split (8 heads @ 64d) — the sketch's own quantum
 _SINE_WIDTHS = _SINE_SCHEDULES.get(ALG_SINE)
 _SINE_TROUGH_I = _SINE_WIDTHS.index(128) if (_SINE_WIDTHS and 128 in _SINE_WIDTHS) else None
@@ -4961,16 +5038,17 @@ def _depth_stack_sine(p, cur, slot_mask, waist, tokmask, B, kb, state):
 
     ReZero at birth: wo/xwo/ffn_w2 (+biases) are zero for every block regardless of width or
     which block is the trough, so this function returns `cur` bit-for-bit unchanged at init —
-    the SAME identity instrument depth_identity_probe.py uses for plain ALG_DEPTH.
-
-    ALG_SINE_SKIP: "peak" (default) carries block 1's own post-block state around block 2 into
-    block 3's input (REGARDLESS of which block is the trough — the U-Net's own equal-width skip
-    pairing, index 1 <-> 3, holds for both schedules); "boundary" (THE SEAL PLACEBO) instead
-    carries `state["sine_boundary_carry"]` — the PREVIOUS breath's own final (index-3) output —
-    across THIS breath's trough block, additively, into the block right after it; "none" skips
-    nothing. `state["sine_boundary_carry"]` is written at the end of every call (this breath's
-    own final output) regardless of the skip mode, so switching mid-chain would pick it up —
-    though no arm does that."""
+    verified directly (not inferred from a probe) by scripts/sine_birth_check.py, out == cur
+    bitwise at every breath, under the arm's own env. ALG_SINE_SKIP is always "none" here (the
+    module-level assert above refuses "peak"/"boundary" when ALG_SINE is set): the full-width
+    residual stream already carries every block's own state forward through its neighbors by
+    ordinary addition, so there is nothing left for an explicit skip to do — see the ledger entry
+    2026-10-11 08:52 and the module comment above ALG_SINE's own definition for the bug an
+    explicit "peak" skip caused (out == 2*cur at birth) and why it is gone rather than fixed in
+    place. THE SEAL PLACEBO (SEAL_241) is unrelated to this function: it is ALG_SINE_SEAL_SEVER,
+    which severs the polar waist's own end-of-breath squeeze OUTSIDE this function entirely (in
+    forward()'s own breath loop, beside `_polar_waist()`'s call site) — this function's own
+    ReZero identity is unaffected either way (verified by sine_birth_check.py under both envs)."""
     if ALG_DEPTH_STUB:
         return cur
     global _CENSUS
@@ -4998,8 +5076,6 @@ def _depth_stack_sine(p, cur, slot_mask, waist, tokmask, B, kb, state):
     L = int(x.shape[1]); T = int(waist.shape[1])
     _sm = ((1.0 - slot_mask) * -1e4) if slot_mask is not None else None
     _tm = tokmask.reshape(B, 1, 1, T)
-    boundary_in = state.get("sine_boundary_carry") if ALG_SINE_SKIP == "boundary" else None
-    rise = None   # ALG_SINE_SKIP == "peak": block 1's own post-block state
     for i in range(ALG_DEPTH):
         w = widths[i]
         hd = _SINE_HEAD_DIM
@@ -5009,8 +5085,6 @@ def _depth_stack_sine(p, cur, slot_mask, waist, tokmask, B, kb, state):
         else:
             down = csel[:, :w]
             up = down.transpose(-2, -1)
-        if ALG_SINE_SKIP == "peak" and i == 3 and rise is not None:
-            x = x + rise                                 # THE LAWFUL SKIP: block 1's state rides around block 2
         _x0 = x
         # --- self-attention over the L_TOT slots (slot_mask respected; clock steers Q/K) ---
         _ln1 = (x @ down).layernorm(eps=1e-5) * p[f"dp{i}_ln1_g"] + p[f"dp{i}_ln1_b"]
@@ -5045,14 +5119,9 @@ def _depth_stack_sine(p, cur, slot_mask, waist, tokmask, B, kb, state):
         _ln3 = (x @ down).layernorm(eps=1e-5) * p[f"dp{i}_ln3_g"] + p[f"dp{i}_ln3_b"]
         f = (_ln3 @ p[f"dp{i}_ffn_w1"] + p[f"dp{i}_ffn_b1"]).gelu() @ p[f"dp{i}_ffn_w2"] + p[f"dp{i}_ffn_b2"]
         x = x + f @ up
-        if ALG_SINE_SKIP == "boundary" and i == trough_i and boundary_in is not None:
-            x = x + boundary_in                          # THE SEAL PLACEBO: bypasses THIS breath's own trough
-        if ALG_SINE_SKIP == "peak" and i == 1:
-            rise = x
         if _CENSUS is not None:
             _CENSUS.append((kb, f"depth{i}_in", _x0.realize().numpy()))
             _CENSUS.append((kb, f"depth{i}_out", x.realize().numpy()))
-    state["sine_boundary_carry"] = x
     return x
 
 
@@ -6044,6 +6113,57 @@ def dirrole_build_array(samples, T):
     out = np.zeros((n, T), np.int32)
     for i in range(n):
         out[i] = dirrole_row_features(samples[i]["text"], T)
+    return out
+
+
+def seed_gumbel_arrays(seed_rng, row_idx, T, k_vars=None, l_tot=None):
+    """THE SEEDED READINGS (2026-10-12): per-row reproducible Gumbel noise for breath 0's vq
+    bank (K_VARS queries) and fq bank (L_TOT queries), drawn from ONE numpy Generator seeded by
+    ALG_SEED_RNG xor the row index (vq drawn FIRST, then fq, from the same generator, so one
+    seed reproduces both blocks deterministically regardless of which the caller uses) — the
+    rand_like-inside-JIT quirk (reference_tinygrad_am_quirks.md) is why this is precomputed
+    host-side and passed into forward() as a fixed-shape tensor input, never drawn in-graph.
+    Gumbel = -log(-log(U)); the Gumbel-max trick makes argmax(logits + temp * gumbel) a SAMPLE
+    from the row's own softmax(logits / temp) categorical, not independent noise."""
+    k_vars = K_VARS if k_vars is None else k_vars
+    l_tot = L_TOT if l_tot is None else l_tot
+    rng = np.random.default_rng(int(seed_rng) ^ int(row_idx))
+    u_v = rng.random((k_vars, T)).clip(1e-12, 1.0 - 1e-12)
+    u_f = rng.random((l_tot, T)).clip(1e-12, 1.0 - 1e-12)
+    g_v = -np.log(-np.log(u_v))
+    g_f = -np.log(-np.log(u_f))
+    return g_v.astype(np.float32), g_f.astype(np.float32)
+
+
+def seed_gumbel_build_array(seed_rng, row_ids, T, k_vars=None, l_tot=None):
+    """Batch form (the HUD/XCORR/DIRROLE idiom: no cached per-row array exists for an arbitrary
+    TEST fixture, so this re-derives it every batch). row_ids: any int-indexable sequence (the
+    sl_p slice loop_val.py's read() already builds, padding repeats included — reproducibility
+    only needs (seed, row_idx), so a repeated padding row draws the SAME noise, harmlessly).
+    Returns (gvq (len(row_ids), k_vars, T), gfq (len(row_ids), l_tot, T)) float32."""
+    gv, gf = [], []
+    for i in row_ids:
+        a, b = seed_gumbel_arrays(seed_rng, int(i), T, k_vars, l_tot)
+        gv.append(a); gf.append(b)
+    return np.stack(gv).astype(np.float32), np.stack(gf).astype(np.float32)
+
+
+def seed_gumbel_sched_build_array(seed_rng, row_ids, T, k_b, l_tot=None):
+    """THE SCHEDULE's host builder (ALG_SEED_SCHED=1, 2026-10-12): one Gumbel draw per (row,
+    breath, slot, token) for the fq bank only (the vq bank is never scheduled — see forward()).
+    Each breath draws from its OWN generator (seed_rng xor row_idx xor a breath-dependent odd
+    multiplier), so the per-breath noise is reproducible breath by breath, not just row by row,
+    and is NOT the same noise replayed at every breath (that would defeat "a decaying confident
+    alternative reading", collapsing to a constant bias scaled by tau_k alone).
+    Returns (len(row_ids), k_b, l_tot, T) float32."""
+    l_tot = L_TOT if l_tot is None else l_tot
+    out = np.zeros((len(row_ids), k_b, l_tot, T), np.float32)
+    for bi, i in enumerate(row_ids):
+        for k in range(k_b):
+            seed = (int(seed_rng) ^ int(i) ^ (int(k) * 0x9E3779B97F4A7C15)) & ((1 << 64) - 1)
+            rng = np.random.default_rng(seed)
+            u = rng.random((l_tot, T)).clip(1e-12, 1.0 - 1e-12)
+            out[bi, k] = -np.log(-np.log(u))
     return out
 
 
@@ -7361,6 +7481,24 @@ def breath_step(p, state, kb, ctx):
         _pb_kb = _anch_b0 if _pb_kb is None else _pb_kb + _anch_b0
         if _CENSUS is not None:
             _CENSUS.append((kb, "anchor", _anch_b0.realize().numpy()))
+    _seed_hb = ctx.get("seed_hold_bias")
+    if _seed_hb is not None:
+        # THE SEEDED READINGS' HOLD (ALG_SEED_HOLD=1, 2026-10-12): breath 0's claimed token per
+        # slot, -1e4 off the span, carried into EVERY loop breath on the SAME pbias road as the
+        # anchor above — a HARD mask, not a keep-bias (see its construction in forward()).
+        _pb_kb = _seed_hb if _pb_kb is None else _pb_kb + _seed_hb
+        if _CENSUS is not None:
+            _CENSUS.append((kb, "seed_hold", _seed_hb.realize().numpy()))
+    _seed_sched_t = ctx.get("seed_fq_sched")
+    if _seed_sched_t is not None and kb < int(_seed_sched_t.shape[1]):
+        # THE SCHEDULE (ALG_SEED_SCHED=1, 2026-10-12): this breath's OWN slice of the per-
+        # (row, breath) Gumbel noise, scaled by tau_kb (ctx["seed_tau"], the cos^2 decay) —
+        # the SAME pbias road the anchor/hold terms use, never the clock, never the mixer.
+        _tau_kb = ctx["seed_tau"][kb]
+        _sfk = (_seed_sched_t[:, kb].reshape(B, 1, L_TOT, -1) * _tau_kb) * tokmask.reshape(B, 1, 1, -1)
+        _pb_kb = _sfk if _pb_kb is None else _pb_kb + _sfk
+        if _CENSUS is not None:
+            _CENSUS.append((kb, "seed_sched", _sfk.realize().numpy()))
     # THE TRAINED CERTIFIER-MASK ROAD (ALG_CERT=<gain>, 2026-09-28; the
     # ledger's 09:35 negative result's cure): cert3/cert5 are the SAME
     # (B, 1, L_TOT, T) route-bias shape pmask/anchor use, computed host-
@@ -9045,7 +9183,7 @@ def replay(p, snapshot, kb_start, overrides=None):
     return out
 
 
-def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, drop=None, anchor=None, amask=None, gmod=None, pmask=None, lsent=None, reg=None, fact_buf=None, mh_mass=None, mh_atlas_traj=None, xcorr=None, res_map=None, hud=None, ident=None, busreg_ramp=None, valfact=None, stop_after=None, facts3=None, facts5=None, tree=None, cert3=None, cert5=None, rack3=None, rack5=None, chalk3=None, chalk5=None, dirgold=None, dircue=None):
+def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, drop=None, anchor=None, amask=None, gmod=None, pmask=None, lsent=None, reg=None, fact_buf=None, mh_mass=None, mh_atlas_traj=None, xcorr=None, res_map=None, hud=None, ident=None, busreg_ramp=None, valfact=None, stop_after=None, facts3=None, facts5=None, tree=None, cert3=None, cert5=None, rack3=None, rack5=None, chalk3=None, chalk5=None, dirgold=None, dircue=None, seed_vq=None, seed_fq=None, seed_fq_sched=None):
     from tinygrad import Tensor, dtypes   # audit 2026-09-01: was a
     # SCOPE ACCIDENT (bound only via the sixwave/sync branches — any
     # SIXWAVE-off config killed five organs at step 1)
@@ -9133,6 +9271,14 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
     _lb = None
     if lsent is not None:               # V2: letter-keyed partition — imposed
         _lb = lsent.reshape(B, 1, K_VARS, -1) * float(os.environ.get("LS_A", "1.0"))
+    if ALG_SEED_TEMP and seed_vq is not None:
+        # THE SEEDED READINGS (2026-10-12): breath 0's vq bank only — a per (slot, token)
+        # Gumbel bias, shared across heads by construction (pbias broadcasts over the head
+        # axis already), zeroed on padded tokens (the tokmask — never a hard assert here,
+        # the bank's own softmax mask handles padded columns regardless; this just keeps the
+        # noise itself honest about what it is biasing).
+        _sv = (seed_vq.reshape(B, 1, K_VARS, -1) * ALG_SEED_TEMP) * tokmask.reshape(B, 1, 1, -1)
+        _lb = _sv if _lb is None else _lb + _sv
     vst, vat = bank(p["vq"], K_VARS, pbias=_lb)
     _vst_base = vst   # pre-injection tap (step trainer reads this)
     if int(os.environ.get("ALG_ALT2", "0")) and fact_buf is not None:
@@ -9219,6 +9365,27 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
             _xb = Tensor.cat(_xb, Tensor.zeros(B, N_SCR, _xb.shape[-1]), dim=1)
         _xb = _xb.reshape(B, 1, L_TOT, _xb.shape[-1])
         _pb = _xb if _pb is None else _pb + _xb
+    # THE SCHEDULE's per-breath temperatures (ALG_SEED_SCHED=1): tau_k = ALG_SEED_TEMP *
+    # cos^2(k*pi/(2*(K_B-1))) — breath 0 full strength, the last breath exactly 0. Plain python
+    # floats (host-side, trace-time only); K_B is re-read here (same os.environ idiom the rest
+    # of forward() uses; the authoritative read for the loop itself is unchanged, below).
+    _seed_tau = None
+    if ALG_SEED_SCHED:
+        _kb_n = int(os.environ.get("ALG_BREATH", "1"))
+        _seed_tau = ([ALG_SEED_TEMP * (math.cos(_k * math.pi / (2.0 * (_kb_n - 1))) ** 2)
+                      for _k in range(_kb_n)] if _kb_n > 1 else [ALG_SEED_TEMP])
+    if ALG_SEED_SCHED and seed_fq_sched is not None:
+        # THE SCHEDULE (2026-10-12): breath 0's OWN slice of the per-breath noise tensor, at
+        # tau_0 == ALG_SEED_TEMP (cos^2(0) == 1) — replaces the plain seed_fq path below for
+        # this breath only; loop breaths 1..K_B-1 are handled in breath_step, same ctx road
+        # THE BREATH-0 ANCHOR already uses (ctx["seed_fq_sched"] / ctx["seed_tau"]).
+        _sf0 = (seed_fq_sched[:, 0].reshape(B, 1, L_TOT, -1) * _seed_tau[0]) * tokmask.reshape(B, 1, 1, -1)
+        _pb = _sf0 if _pb is None else _pb + _sf0
+    elif ALG_SEED_TEMP and seed_fq is not None:
+        # THE SEEDED READINGS (2026-10-12): breath 0's fq bank only — same per (slot, token)
+        # Gumbel-bias idiom as the vq bank above, zeroed on padded tokens.
+        _sf = (seed_fq.reshape(B, 1, L_TOT, -1) * ALG_SEED_TEMP) * tokmask.reshape(B, 1, 1, -1)
+        _pb = _sf if _pb is None else _pb + _sf
     # THE TOKEN SEAL (apply_tok_seal.py, 2026-09-09): breath 0's
     # GROUNDING. `loop` leaves it intact (the slots are grounded once
     # and only the re-reading is severed); `all` flattens it too — the
@@ -9318,6 +9485,21 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
         # anywhere: bit-identical.
         _anch_bias0 = ((ALG_ANCHOR * fat.detach()).reshape(B, 1, L_TOT, -1)
                        if ALG_ANCHOR else None)
+        # THE SEEDED READINGS' HOLD (ALG_SEED_HOLD=1, 2026-10-12): breath 0's sampled argmax
+        # token per slot (fat — already carries the Gumbel bias added above when ALG_SEED_TEMP
+        # is set; HOLD works at ALG_SEED_TEMP=0 too, holding the plain argmax) becomes a HARD
+        # claim carried into every LOOP breath — reusing THE BREATH-0 ANCHOR's exact road
+        # (ctx["seed_hold_bias"], read beside anchor_bias0 in breath_step) but with -1e4 off the
+        # claimed span instead of a soft keep-bias, per the rack's own claim-mask convention
+        # (_claim_bias / claims_bias): "the loop cannot simply re-read the gold mention and
+        # erase the perturbation." Detached (no grad; fat.detach() already taken for the anchor
+        # tap, reused here). None when ALG_SEED_HOLD is unset — bit-identical.
+        _seed_hold_bias = None
+        if ALG_SEED_HOLD:
+            _hold_tok = fat.detach().argmax(-1)                                # (B, L_TOT) claimed token idx
+            _hold_ar = Tensor.arange(int(tokmask.shape[1])).reshape(1, 1, -1)
+            _hold_onehot = (_hold_ar == _hold_tok.reshape(B, L_TOT, 1)).float()  # (B, L_TOT, T)
+            _seed_hold_bias = ((1.0 - _hold_onehot) * -1e4).reshape(B, 1, L_TOT, -1)
         _ident_tok = None
         if ALG_BUSREG or ALG_IDKEY:
             # THE BUS REGISTER's identity stream (2026-09-22): the token
@@ -9352,6 +9534,9 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
                    "fat0": fat,   # THE IDENTITY KEY's breath-1 query source: breath 0's grounding attention (B, L_TOT, T)
                    "valtag_v": _valtag_v,
                    "anchor_bias0": _anch_bias0,
+                   "seed_hold_bias": _seed_hold_bias,   # THE SEEDED READINGS' HOLD (2026-10-12)
+                   "seed_fq_sched": (seed_fq_sched if ALG_SEED_SCHED else None),   # THE SCHEDULE (2026-10-12)
+                   "seed_tau": _seed_tau,
                    "cert3": cert3, "cert5": cert5,   # THE TRAINED CERTIFIER-MASK ROAD (2026-09-28): per-breath pbias from kb 3 / 5 on (breath_step below)
                    "rack3": rack3, "rack5": rack5,   # THE RACK (2026-10-05): the packed dry flags + claimed tokens per consult, read from kb 3 / 5 on (breath_step: the claim + the freeze)
                    "slot_mask": slot_mask, "bank": bank, "rot2": _rot2,
@@ -10538,6 +10723,14 @@ def do_train(steps, lr, batch, seed):
     # FIRST executable statement — ahead of load_alg, ahead of the
     # mask-prep pass, ahead of every capture — so `_quick_val` inside
     # this process cannot see the door either. Loud, like ALG_MASK_SEAL's.
+    # THE SEEDED READINGS ARE A READ DOOR, NEVER TRAINED THROUGH (2026-10-12): do_train's
+    # FIRST executable statement, same idiom as the token seal's guard right below — loud,
+    # ahead of load_alg, ahead of every capture.
+    assert not ALG_SEED_TEMP and not ALG_SEED_HOLD and not ALG_SEED_SCHED, (
+        f"ALG_SEED_TEMP={ALG_SEED_TEMP!r} / ALG_SEED_HOLD={ALG_SEED_HOLD!r} / "
+        f"ALG_SEED_SCHED={ALG_SEED_SCHED!r} set and this is a TRAINING run — THE SEEDED "
+        f"READINGS (ledger 2026-10-12, STEP 1) are a READ-TIME door only (STEP 2, the training "
+        f"arm, needs its own word). Unset all three for training.")
     assert _tok_seal_mode() == "0", (
         f"ALG_TOK_SEAL={os.environ.get('ALG_TOK_SEAL')!r} is set and this "
         f"is a TRAINING run — the token seal is a READ door (the headroom "

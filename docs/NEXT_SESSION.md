@@ -1,4 +1,43 @@
-# NEXT SESSION — cold-start entry (updated 2026-10-11 20:10)
+# NEXT SESSION — cold-start entry (updated 2026-10-12 14:1x)
+
+**10-12 14:1x — ANTI4_241 MEETS ITS SLOT BAR: masked 0.3662 = +0.0185 vs PMS8 (+0.0151 vs flat depth LT): the U-Net direction (bottleneck
+THIRD, 384/224/128/224) beats bottleneck-first (SINE4 +0.006); mint held; the trough ANTI-groups by owner (0.86) — the owner frame refuted on
+both shapes. THE TWIN ANTI4_242 queued behind RTB (pc-queue-anti4-242; no merge needed); DF/WH wait on the twin's done mark, FL behind WH.
+SEAL fires next from the sine queue. ANTI4 ran from 07:41 after the stale-done-mark double fire.**
+
+**10-12 14:xx — WORD GIVEN FOR THE WHOLE QUEUE: behind ANTI4 → SEAL → K3 → PK → RTB come DF_241 (THE DENOISER: score noise in the reading
+stream + the scheduled whip in the math stream + the blurred ladder; clock bitwise) with WH_241 (placebo = scheduled whip alone) and the canvas
+test; FL_241 (Arm 1, oracle flags, capability; building in wt30); Arm 2 after. Pins first: the gold-mention census (running), the particle read
+(seeded branch wt29, gate then device reads under flock). Ledger 10-12 (the ruling, the build plan, the word).**
+
+**10-12 13:xx — THE DENOISING BREATH (Bryce + Opus; ledger 10-12 x4 entries): noise on the GRAPH at breath 0 (the body's own near-misses via a
+tabu'd grounding read), the solver LOCATES (unsat core / dead facts / free vars / view disagreement), the loop REMOVES (flag + tabu; unflagged
+slots hold), the perceiver routes WHEN to cross. READS A–C DONE (zero-GPU): A — the loop revises (correction 0.144, regression 0.230; the ≈0
+prediction refuted; nothing tells it WHICH slots); B — the unsat core is the locator (precision 0.70, recall 0.19); C — the gym's tabu replay:
+untrained fix-given-flag ≈ 0.04, false-flag break rate ≈ 0.08 (cheap) → the ceiling at a trained 0.44 fix rate ≈ +0.05 masked wild. NEXT (needs
+the word): ARM 1 (oracle flags, capability; kill < 0.15) then ARM 2 (solver flags; DN as control). Scripts: scripts/picker/dn_read_{a,b,c}.py.**
+
+**10-12 07:4x — SINE4_241 (fixed) DOES NOT FIRE: masked 0.3535 (+0.006 vs PMS8, +0.0025 vs LT_241 = the shape adds nothing over flat depth),
+rows 20, mint 0.663 held, knob PASS (all blocks live), trough owner ratio 1.24 (bar 1.5; blocks 1-3 ~1.0; flat across breaths). THE DOUBLE FIRE:
+the sine queue fired ANTI4 at 01:36 on the confounded run's STALE done mark; ANTI4's device birth check hit the AM lock and aborted; re-fired by
+hand 07:41 (birth checks now DEV=CPU in the ANTI4/SEAL chains); SEAL fires on ANTI4's real done mark; breathstop then RTB behind SEAL.
+RULE: a queue's wait must see a done mark newer than its fire time. ANTI4 ends ~13:30, SEAL ~19:30, K3/PK overnight, RTB 10-13.**
+
+**10-12 00:14 — SRF_241 DOES NOT FIRE (ledger 10-12): masked 0.3520 (= PMS8 +0.004 noise; BELOW the SR family 0.3646; −0.0195 vs SR_241 z 1.8),
+rows 21, mint 0.7555 (−0.03), twin-pick 0.473 / other-sentence 0.52 UNMOVED; the road is LIVE (knob 0.16–1.08 per breath) and the token residual's
+std grows 1.09→2.39 across the breaths (no norm restoration on the token side) = the texture to probe. THE SORTING ROOM LINE: the single shot stands as
+the record; the per-breath re-run closes in this form. SRF FORM 2 registered (keepnorm on the token residual, or the cross-attention-only feed; needs
+the word). The sine queue merged sinebreath (c48325c6) and is in its post-merge gate; SINE4 fires next. FIXTURE: phase1_alg_states_train.npz was
+removed by the 10-11 cleanup — the knob censuses now read PC_SPLIT=test (the sine chains patched in place).**
+
+**21:05 — RTB_241 IS BUILT, GATED AND QUEUED (pc-queue-rtb behind 'PK CHAIN COMPLETE'; branch rtb/wt28; gate .cache/rtb_gate.log; ledger 21:0x).
+The replay step is EAGER (not captured): I added THE DEVICE COST PROBE to its chain (200 eager steps timed before phase 3; slower than PMS8's
+own 0.126 s/step = ABORT, needs the word; form 2 = per-kb captured graphs). If the probe aborts, the next build is the 7-graph capture.**
+
+**20:35 — THE BREATHSTOP QUEUE IS ARMED (pc-queue-breathstop: K3_241 then PK_241 behind 'SEAL CHAIN COMPLETE'; branch breathstop merged
+forward over the gym at bdb1e7fb; full gate table in .cache/breathstop_gate.log: ls7 bit-identical to role8, k3 cuts at breath 2, CPU step
+0.54x; queue_dryrun 9/0). The whole queue under the word is now machine-chained: SRF -> SINE4 -> ANTI4 -> SEAL -> K3 -> PK -> RTB (RTB's queue
+arms when its builder finishes).**
 
 **20:10 — THE REPLAY GYM IS MERGED (f7c15c70) and gated on the main line (unset 5.2995/0.0279, role8 6.5535/1.1061
 bit-identical; .cache/replay_merge_gate.log); docs/replay_gym.md names RTB's three gaps. RTB_241's BUILDER IS RUNNING (wt28, branch rtb,
