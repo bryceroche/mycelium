@@ -8870,7 +8870,7 @@ def replay(p, snapshot, kb_start, overrides=None):
       overrides["state"]   -- a dict merged into `state` (e.g. a modified state["cur"])
       overrides["ctx"]     -- a dict merged into `ctx` (anything except "bank")
       overrides["chalk3"] / overrides["chalk5"] -- threaded into _make_bank's rebuild
-          (THE CHALKBOARD's bank, see chalk_pack() below); omit both for the plain bank.
+          (THE CHALKBOARD's bank, see chalk_pack() above); omit both for the plain bank.
       overrides["dirgold"] / overrides["dircue"] -- THE DIRECTION BIT / DIRECTION ROLE's
           tail-only inputs (both closed research lines, default None); a pre-DIRROLE
           snapshot carries neither, so these are NEVER re-derived here -- pass them
