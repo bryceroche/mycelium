@@ -51214,3 +51214,9 @@ gap directly: train-time vs read-time per-breath accuracy on the same rows. KNOB
 is today's training). PREREQUISITES: the replay gym MERGED + gated (branch replay, wt8, 5 gym uses, unmerged since
 10-08 — a CPU job now), the solver pipeline (perf A, building), the K3 read (how much of the loop matters). Hill 8
 made structural (one step function, all phases). Needs the word for the arm; the gym's merge + gate starts on CPU.
+
+### 2026-10-11 (17:29) — WORD GIVEN FOR THE WHOLE QUEUE (Bryce: "word given for the whole queue - Salute!"): the card after SRF_241 (reads ~23:30) — the FIXED sine arms SINE4/ANTI4/SEAL (pc-queue-sine, armed on SRF's done mark) -> K3_241 (three breaths throughout; a loop-stop flag so the clock keeps its K=7 schedule) -> PK_241 (progressive breaths: 24k at K=3 warm-continued 24k at K=7) -> RTB_241 (THE REPLAY-TRAINED BREATH, once the gym merges and the solver pipeline lands) -> the NL-loop refactor's first arm after SRF's read; perf A/B and the gym merge continue on CPU
+
+Builders: wt27 breathstop (K3/PK: ALG_LOOP_STOP=k runs loop breaths 1..k-1 with the clock tables built for ALG_BREATH=7;
+the heads taken at the last run breath; readers thread the port; the PK chain warm-continues K3's checkpoint at K=7
+with pad-warm; queue behind "SEAL CHAIN COMPLETE"); RTB's builder fires when the gym agent reports (dependency).
