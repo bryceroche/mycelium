@@ -1,4 +1,11 @@
-# NEXT SESSION — cold-start entry (updated 2026-10-12 07:5x)
+# NEXT SESSION — cold-start entry (updated 2026-10-12 13:xx)
+
+**10-12 13:xx — THE DENOISING BREATH (Bryce + Opus; ledger 10-12 x4 entries): noise on the GRAPH at breath 0 (the body's own near-misses via a
+tabu'd grounding read), the solver LOCATES (unsat core / dead facts / free vars / view disagreement), the loop REMOVES (flag + tabu; unflagged
+slots hold), the perceiver routes WHEN to cross. READS A–C DONE (zero-GPU): A — the loop revises (correction 0.144, regression 0.230; the ≈0
+prediction refuted; nothing tells it WHICH slots); B — the unsat core is the locator (precision 0.70, recall 0.19); C — the gym's tabu replay:
+untrained fix-given-flag ≈ 0.04, false-flag break rate ≈ 0.08 (cheap) → the ceiling at a trained 0.44 fix rate ≈ +0.05 masked wild. NEXT (needs
+the word): ARM 1 (oracle flags, capability; kill < 0.15) then ARM 2 (solver flags; DN as control). Scripts: scripts/picker/dn_read_{a,b,c}.py.**
 
 **10-12 07:4x — SINE4_241 (fixed) DOES NOT FIRE: masked 0.3535 (+0.006 vs PMS8, +0.0025 vs LT_241 = the shape adds nothing over flat depth),
 rows 20, mint 0.663 held, knob PASS (all blocks live), trough owner ratio 1.24 (bar 1.5; blocks 1-3 ~1.0; flat across breaths). THE DOUBLE FIRE:
