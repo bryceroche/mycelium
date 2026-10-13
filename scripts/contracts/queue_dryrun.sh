@@ -10,6 +10,6 @@ while IFS= read -r line; do
   chk=$(echo "$line" | sed 's/ || {.*//; s/ && {.*//')
   [ -n "$REF" ] && chk=${chk//$REF/$LOG}
   n=$((n+1))
-  if bash -c "$chk" 2>/dev/null; then echo "ok    $(echo "$chk" | cut -c1-110)"; else echo "FAIL  $(echo "$chk" | cut -c1-110)"; fail=$((fail+1)); fi
+  if bash -o pipefail -c "$chk" 2>/dev/null; then echo "ok    $(echo "$chk" | cut -c1-110)"; else echo "FAIL  $(echo "$chk" | cut -c1-110)"; fail=$((fail+1)); fi
 done < <(grep -E '^grep -a.*\|\| \{ echo "ABORT' "$Q")
 echo "[queue-dryrun] $n checks, $fail failing against $LOG"; [ $fail -eq 0 ]
