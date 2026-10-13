@@ -375,6 +375,13 @@ def _transfer_flag_mode(p, vs, vst, vtk, vse, vg, t0, snap_tmp_path):
             for j in range(L_FAC):
                 if vg["presence"][i, j] < 0.5:
                     continue
+                if j >= len(facs):   # THE FIX (2026-10-13): vg["presence"] (the bank's own
+                    continue          # padded slot axis, width L_FAC) can mark a slot present
+                                      # past the row's own (shorter) factor list -- never index
+                                      # facs[j] without this bound (edge_read1_transfer.py's own
+                                      # `if j >= L_FAC: continue` guard, adapted: here the loop
+                                      # runs over range(L_FAC), not enumerate(facs), so the bound
+                                      # that matters is len(facs), not L_FAC).
                 k = gold_kind(facs[j], j)
                 kind_sum[k] += cur0_np[bi, j, CONTENT]
                 kind_cnt[k] += 1
@@ -435,7 +442,12 @@ def _transfer_flag_mode(p, vs, vst, vtk, vse, vg, t0, snap_tmp_path):
         present_slots = {}
         for i in sl:
             i = int(i)
-            present_slots[i] = [j for j in range(L_FAC) if vg["presence"][i, j] > 0.5]
+            n_facs_i = len(vs[i]["factors"])   # THE FIX (2026-10-13): bound by the row's OWN
+                                                # factor list, not just L_FAC -- every downstream
+                                                # consumer (the kick's vs[i]["factors"][idx] at
+                                                # the fix below, the decisive-slot loop) indexes
+                                                # vs[i]["factors"] by a value drawn from this set.
+            present_slots[i] = [j for j in range(min(L_FAC, n_facs_i)) if vg["presence"][i, j] > 0.5]
 
         # THE KICK: one replay() call per global slot index 0..23 (not per row) -- kicks every
         # row where that index is gold-present simultaneously (rows never cross-attend).
