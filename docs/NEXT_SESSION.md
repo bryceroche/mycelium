@@ -1,4 +1,12 @@
-# NEXT SESSION — cold-start entry (updated 2026-10-12 16:xx)
+# NEXT SESSION — cold-start entry (updated 2026-10-12 22:2x)
+
+**10-12 22:2x — K3_241 MEETS BOTH BARS: three breaths hold the wild number (0.3384, −0.009 vs PMS8, noise) at 0.33x the step (48k in 34 min);
+mint −0.07; THE EXPOSURE GAP: the K3 body read at K7 collapses to 0.002 — untrained breath indices are off-manifold, not idle (RTB must sample
+every index it is read at; PK tests teaching the extra breaths). PK_241 on the card (22:13). Today's queue faults (all fixed, ledgered): the
+clean-tree abort on untracked scripts; the pipefail false positive (queue_dryrun now runs under pipefail; count-equals-zero never as a pipeline
+tail); the twin's queue had inlined another queue (rewritten). ANTI4_241 +0.0185 (twin queued); SINE4/SEAL null; SRF null; the edge reads:
+the gold-free transfer flag clears (recall 0.36 / precision 0.63), the transfer graph locates but does not correct; pin 2: coverage 53-57/311,
+the vote/agreement gate a safety rule, not a picker.**
 
 **10-12 16:xx — BUILDS LANDED: DF_241/WH_241 (branch denoiser; pc-queue-dn behind the ANTI4 twin), FL_241 (branch flagloop; pc-queue-fl behind WH),
 the seeded readings (MERGED into gen-weights b8c8f583; post-merge gate running). Every pending branch forward-merged (breathstop, rtb, denoiser clean;
