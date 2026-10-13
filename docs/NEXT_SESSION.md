@@ -1,4 +1,11 @@
-# NEXT SESSION — cold-start entry (updated 2026-10-13 06:4x)
+# NEXT SESSION — cold-start entry (updated 2026-10-13 14:5x)
+
+**10-13 14:5x — THE DAY'S VERDICTS: DF_241 (the denoiser) — noise-free +0.012 but the reading-stream noise INERT at the read (the body grew its logit
+spread 1.75x: the logit-scale escape; the knob law's third clause: define injections RELATIVE to the port's spread); WH_241/WH_242 (whip + blurred
+ladder) +0.011/+0.008 → the family +0.010 ± 0.002 over three bodies = a chassis INGREDIENT (mint +0.09..0.23), not a record. RTB aborted at its cost
+probe (33x; form 2 = per-breath captured graphs, needs the word). ZERO-GPU: the handoff is the trained stellarator weight (read-time floors cost the
+decode; no hops); latest-before moot for relation args (n=8); the units lexicon null (parked behind the parser call); the depth probe (binding by
+trunk depth, all layers, three bars) RUNNING; the relational-distillation arm registered behind it. Card: FL_241 (merged b957895b, gating) → OR_241.**
 
 **10-13 06:4x — ANTI4_242 DOES NOT HOLD (+0.0024; the pair mean +0.010 ± 0.008): THE U-NET-ORDER CLAIM WITHDRAWN; the slot-side depth
 family (LT/SINE4/SEAL/ANTI4×2) closes at ≈ +0.009: depth on the slot side is not the lever. DF_241 next (the denoiser; denoiser merged
