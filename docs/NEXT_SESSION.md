@@ -1,4 +1,9 @@
-# NEXT SESSION — cold-start entry (updated 2026-10-12 22:2x)
+# NEXT SESSION — cold-start entry (updated 2026-10-12 23:4x)
+
+**10-12 23:4x — PK_241 HEALS THE EXPOSURE GAP: K3's 24k ckpt + 24k at K7 = 0.3510 (PARITY with PMS8, +0.0127 over K3), mint recovered
+(0.660), silver −0.06, decode-change K3-read vs K7-read 59 % of slots (the grown breaths REFINE); cost 0.67x of PMS8 for parity. RTB's queue
+merged rtb (db0bf95f), post-merge gate running, then THE DEVICE COST PROBE decides RTB's fate (abort if the eager step is slower than the body's).
+denoiser/flagloop forward-merged (dfb994f8 / 3a4f8b1a).**
 
 **10-12 22:2x — K3_241 MEETS BOTH BARS: three breaths hold the wild number (0.3384, −0.009 vs PMS8, noise) at 0.33x the step (48k in 34 min);
 mint −0.07; THE EXPOSURE GAP: the K3 body read at K7 collapses to 0.002 — untrained breath indices are off-manifold, not idle (RTB must sample
