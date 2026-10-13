@@ -51408,3 +51408,90 @@ truncation + breath census debug prints, the pass_a/pass_b consult gate), script
 ### 2026-10-12 (22:12 chain; ledgered 22:14) — K3_241 (THREE BREATHS THROUGHOUT: ALG_LOOP_STOP=3, the clock kept at K=7; from scratch, pm35c, 48k, B=8; branch breathstop landed a151c423) MEETS BOTH BARS: masked wild 0.3384 vs PMS8_241 0.3476 = −0.0092 paired (bar ≥ PMS8 − 0.010: MET, at the edge; z ~1); STEP COST 0.042 s/step vs PMS8's 0.126 = 0.33x (bar ~0.45x: MET — the whole 48k ran in 34 minutes). Rows 10 (PMS8 14; noise); open mint 0.5810 (−0.070: mint USES the later breaths — the formulaic register's chains need the loop); silver not read here; inverse res 0.274 (PMS8 0.25), args 0.441, digits 0.462; the forward/inverse MECH split 0.308 / 0.172. THE EXPOSURE GAP (the registered informational read): the K3 body read at K=7 collapses to 0.0020 masked wild (vs its own K=3 read 0.3384; discordant 712 slots against) — a body trained for three breaths cannot be unrolled to seven: the later breaths are OFF-MANIFOLD for it, not idle; the breaths are not interchangeable iterations of one job on a body that never saw them. READING: (1) on WILD the slot number is set by breath 2 — the pilot's ceiling, now confirmed by a trained body at a third of the cost: breaths 3–6 buy ~0.01 wild (noise) and 0.07 mint; (2) for RTB and the diffusion recipe this is the central caution: a breath index the body has not trained at is not a safe extra step — the replay-trained breath must sample every index it will be read at (RTB does), and the K3→K7 progressive schedule PK_241 (fired 22:13) tests whether a body can be TAUGHT the extra breaths after the fact; (3) for the perf plan: a three-breath body at 0.33x is the cheapest chassis that holds the wild number — the NL-loop refactor's cost budget starts there. The membrane-rack collect read FAILED on this body (a 7-breath array shape assumed by the read; non-fatal; the chain's other reads ran) — registered as a reader fix (readers take the breath count from the body). PK_241 (24k at K=3 then 24k at K=7, warm across) on the card; its registered question: does the K7 read recover PMS8's number after the switch, and what does the K3 read look like after K7 training (the reverse exposure)?
 
 ### 2026-10-12 (23:23 chain; ledgered 23:27) — PK_241 (THE PROGRESSIVE SCHEDULE: K3_241's own step-24,000 checkpoint, then 24k more at K=7, warm across; 0.125 s/step in the K7 phase) MEETS ITS BAR AND HEALS THE EXPOSURE GAP: masked wild 0.3510 vs K3_241 0.3384 = +0.0127 paired (the bar: ≥ K3's own read — MET) and vs PMS8_241 0.3476 = +0.0034 (PARITY with the full body); rows 16 (PMS8 14); open wild 0.3281 (PMS8 0.3242); open mint 0.6598 (= PMS8's 0.651: K3's −0.07 mint cost fully recovered by the grown breaths); silver460 0.3004 vs the plain family's ~0.36 (ANTI4 0.3635, SINE4 0.3604; K3 0.2381) — the one residual cost of the schedule, −0.06 on the formulaic register. THE 'REFINE vs REPEAT' READ: the decode-change between the body's K3 read and its K7 read (both through the tail, so both carry the final-breath injections) = 1208/2051 slots (59 %) on 302/311 rows (args 712, dig 535, op 128, res 77, ftype 51) — the grown breaths 3–6 do REAL WORK once trained (REFINE), where for the K3 body they were off-manifold (0.002). THE COST: 24k × 0.042 + 24k × 0.125 ≈ 67 min of card against PMS8's ~100 min for the same wild number = 0.67x. READING: (1) a body CAN be taught breaths it never saw — the exposure gap is a training fact, not an architectural one; grow-after-the-fact reaches parity, not a gain; (2) THE RUBIK'S-CUBE SCHEDULE (Bryce, 10-11: train breath 1 until it is perfect, then add) reads as: short-then-grow = parity at 2/3 the cost, no free lunch on wild — the cheap first phase buys the expensive phase its warm start; (3) the recipe for the queue's remaining from-scratch arms is NOT changed (each arm must be comparable to PMS8_241 on the same 48k recipe), but the perf plan gains a second lever beside RTB: a 24k K3 prelude before any K7 arm, worth ~1/3 of its card time at parity. The membrane_rack read (the drift) could not run on this body's K3 half (the 7-breath assertion; the reader fix stands registered).
+
+### 2026-10-11 (23:39) — THE REPLAY-TRAINED BREATH, BUILT, GATED, QUEUED, FIRED (RTB_241,
+worktree mycelium-wt28, branch rtb, merged 9de6409f): the
+diffusion-style training recipe for the loop (Bryce, 17:21: "we do the same thing six times, the
+only difference is the solver's feedback"): ONE breath per training step, the breath index
+SAMPLED as the timestep, the state at that breath drawn from a REPLAY BUFFER of mid-loop
+snapshots (THE REPLAY GYM's own multi-point ALG_SNAP_AT extension, this branch: one forward()
+call now dumps snapshots at EVERY requested kb instead of one call per kb), breath 0/1 always
+on-policy (no snapshot exists at kb_done=0; the hook only fires for kb>=1 inside the loop), the
+per-breath loss exactly today's ladder (loss_fn unchanged).
+
+THE FAMILY-SCOPING FINDING (rtb_lib.py's own module docstring): docs/replay_gym.md's gap (c)
+-- the offline solver-feedback pass -- is MOOT for the K3_241/PK_241/RTB_241 lineage: that
+chassis sets ALG_ALT2=1 and leaves ALG_ALT3 unset, and ALG_ALT2's fact_buf is already a
+self-consult (read time) or a one-time gold-keyed precompute (train time) with NO live,
+checkpoint-tied consult to move out of the training step -- it rides into every snapshot
+generically via ctx['fact_buf'] (THE REPLAY GYM's own §4: "a feature, not an oversight"). Gap
+(c) stays real and unbuilt for a future RTB arm on an ALG_ALT3 family.
+
+THE BUILD, three parts:
+(A) THE BUFFER WRITER (scripts/rtb_buffer.py, ALG_RTB_WRITE=1 door): runs the host-side recipe
+    scripts/loop_val.py's read() already uses for this family (pass-0 decode -> slot_mask ->
+    alt2_fact_buf; factored into scripts/rtb_lib.py's build_consult_kwargs) over chunks of
+     diet rows (= training BATCH, so one snapshot file IS one ready-made training
+    batch), dumping ALL of 's points in ONE forward() call via the multi-point
+    ALG_SNAP_AT extension (phase1_algebra_head.py: ALG_SNAP_AT now takes a comma list; a single
+    value is UNCHANGED, bit-identical). Measured: (size reported by the chain's own run).
+(B) THE REPLAY TRAINING STEP (do_train, ALG_RTB=1 door; phase1_algebra_head.py's do_train):
+    an EAGER (non-JIT) step, not the brief's literal 7-captured-TinyJit-graphs ask -- a snapshot
+    resume needs the ENTIRE per-breath ctx/state (waist, vst, tok_key, the notebook, breaths/
+    rbias_all/aspan_all/ospan_all/rcue_all -- THE REPLAY GYM's own §1 shape) threaded through
+    fixed JIT buffers per kb, the size of do_train's existing ~400-line b_tr..b_chalk5 feed
+    section PER kb; do_train already has a precedent for "too complex to capture, run eagerly"
+    (ALG_WHEEL_TRAIN's own un-JIT'd step) -- RTB v1 follows that precedent rather than inventing
+    a new one, stated plainly, not hidden. For kb_target in 2..K_B-1: resume from
+    replay()'s new  param (run EXACTLY one breath, proven decode-exact on
+    scripts/rtb_identity_check.py's gate). For kb_target in {0,1}: fresh on-policy forward
+    (stop_after=-1 / =1 -- the ternary's own falsy-zero quirk worked around for kb_target==0).
+    THE ZERO-FILL TRADEOFF (stated): every param stays on the SAME AdamW instance across every
+    kb_target a step samples (momentum persists correctly); an untouched param gets an explicit
+    zero grad rather than being dropped, so AdamW's decoupled weight decay still nudges it by
+    -lr*wd every step regardless of which breath ran -- a real, small, reported cost, not fixed
+    here. REFRESH: every ALG_RTB_REFRESH steps, do_train shells out to rtb_buffer.py against a
+    freshly-saved checkpoint (a host job between training segments, never inside the JIT) and
+    reloads the manifest.
+(C) THE EXPOSURE READ (scripts/rtb_exposure_read.py): per breath, own-unroll vs from-buffer
+    slot-correctness (a proxy metric: ftype+res+args-argmax agreement on present gold slots,
+    not the solver-backed fac-exact pipeline, which exposes no per-breath signal) -- reads
+    .cache/rtb_buffer_RTB_241, the arm's own last-refreshed buffer.
+
+GATE TABLE (.cache/rtb_merge_gate.log): unset 5.2995/0.0279 (bit-identical); role8 6.5535/1.1061
+(bit-identical); scripts/rtb_identity_check.py PASS (kb 1/3/5 on PMS8_241, one-breath replay via
+kb_stop, decode-level rows differing 0/8 at every kb -- raw float deltas up to ~1e-4 as docs/
+replay_gym.md §3 already characterizes for the gym's own full-remainder replay, "args" showing a
+larger raw delta on unused/masked slot positions without changing any row's discrete decode);
+scripts/rtb_grad_probe.py PASS (ONE replay-training step at kb_target=3: finite loss, nonzero
+grad on h_ftype, conductor(3) identical field-for-field in both contexts, zero-fill tradeoff
+measured at 14/101 params untouched this particular step); an end-to-end ALG_RTB=1 do_train
+smoke (tiny64, 4 steps, BATCH=2-4, a real buffer built by rtb_buffer.py from a tiny64-trained
+checkpoint) ran to completion, including _quick_val and the best-ckpt restore, and saved a
+checkpoint.
+
+THE ARM: .cache/rack_chain_RTB.sh = (1) PHASE 1: PMS8_241's own recipe from scratch, 8k steps,
+B=8; (2) THE BUFFER: 2048 rows x kb_done 1..5, chunk=8, from the phase-1 checkpoint; (3) 40k
+steps of ALG_RTB=1, WARM_FROM phase-1, refresh every 4000 steps; (4) the reads vs PMS8_241 (the
+full unroll as always), the drift, the decode-change-after-breath-2 count
+(scripts/decode_change_breath.py, new -- not yet built by the breathstop/K3/PK lineage at this
+queue's own time, so built here against loop_val's LV_DUMP pickle shape), THE EXPOSURE READ.
+BARS (registered): the unrolled body within 0.010 of PMS8_241 at <= 1/4 of the card time per
+step (a positive is a bonus; the eager step's own cost is reported honestly, not claimed against
+a hypothetical JIT'd form); the exposure gap per breath reported; the decode-change count
+reported. KILL: masked down > 0.020 = the exposure gap bites (the refresh cadence -- ALG_RTB_REFRESH
+-- is the knob: register M/2 and re-fire phase 3 only, warm from the 40k checkpoint).
+
+FIRED: .cache/queue_rtb.sh waited on "PK CHAIN COMPLETE" in .cache/rack_chain_PK.log, merged
+branch rtb (9de6409f; wt28's own branch was synced with
+gen-weights BY HAND first, in the worktree, with the `.cache` symlink temporarily swapped for
+the real tracked files during the merge), ran the post-merge gate (identical table to wt28's
+own, above), preflight PASSED on rack_chain_RTB.sh, fired pc-rtb-watch + pc-rtb (23:39) --
+RTB_241 is running now, against PMS8_241.
+
+Artifacts: scripts/phase1_algebra_head.py (the multi-point ALG_SNAP_AT extension; replay()'s
+new kb_stop param; do_train's ALG_RTB=1 branch), scripts/rtb_lib.py (new: build_consult_kwargs,
+gold_feed, feed_to_tensors, the manifest helpers), scripts/rtb_buffer.py (new),
+scripts/rtb_identity_check.py / scripts/rtb_grad_probe.py (new, the gate),
+scripts/rtb_exposure_read.py (new, part C), scripts/decode_change_breath.py (new);
+.cache/rtb_gate.sh, .cache/rtb_merge_gate.log, .cache/rack_chain_RTB.sh, .cache/queue_rtb.sh.
