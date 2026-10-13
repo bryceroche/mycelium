@@ -1,4 +1,8 @@
-# NEXT SESSION — cold-start entry (updated 2026-10-13 00:3x)
+# NEXT SESSION — cold-start entry (updated 2026-10-13 06:4x)
+
+**10-13 06:4x — ANTI4_242 DOES NOT HOLD (+0.0024; the pair mean +0.010 ± 0.008): THE U-NET-ORDER CLAIM WITHDRAWN; the slot-side depth
+family (LT/SINE4/SEAL/ANTI4×2) closes at ≈ +0.009: depth on the slot side is not the lever. DF_241 next (the denoiser; denoiser merged
+408076e4, post-merge gate running) → WH → FL → OR.**
 
 **10-13 00:3x — RTB_241 ABORTED AT ITS COST PROBE (eager step 4.18 s = 33x the body's; void by construction; the 37 GB buffer + phase-1 ckpt
 banked); FORM 2 (one captured graph per breath index) REGISTERED, NEEDS THE WORD. The queue released; ANTI4_242 (the twin) on the card 00:33
