@@ -222,6 +222,9 @@ REFUSED = ("ALG_SHELF", "ALG_WHIP", "ALG_TOKLOOP", "ALG_WRITEBACK", "ALG_KANNEAL
            # THE SELF-MATCH TERM above — refused anyway, by the word given for this build,
            # named separately so a future narrowing of either refusal does not silently let
            # this one through untested too.
+           "ALG_FLAG",   # THE FLAGGED LOOP (2026-10-12, denoising-breath Arm 1): forward()'s own breath-0
+                         # corrupted-grounding mix and loss_fn's flag-conditioned retarget live in the fused
+                         # forward(); the walker never calls forward() (the ALG_SORT/ALG_FUNNEL precedent).
            "ALG_DN_WHIP", "ALG_DN_READ",
            "ALG_LOOP_STOP", "ALG_LOOP_STOP_READ")   # THE STATE-SPACE DENOISER (2026-10-12): breath_step's
            # own _dn_whip_kick call (ALG_DN_WHIP) and forward()'s seed_fq_sched threading
