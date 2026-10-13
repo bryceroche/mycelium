@@ -176,7 +176,7 @@ def main():
             s = slots.get(idx)
             if s is None:
                 continue
-            gft, gop, gargs_d, gres, gdig, pft, pop, pargs, pres_, pdig, ppres, pdup = s
+            j_, gft, gop, gargs_d, gres, gdig, pft, pop, pargs, pres_, pdig, ppres, pdup = s
             gargs_d = [int(a) for a in gargs_d]
             pargs = [int(a) for a in pargs]
             rel_sent = relation_sentence(idx, given_kfac, chain_of)
