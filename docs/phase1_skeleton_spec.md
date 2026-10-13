@@ -51501,3 +51501,46 @@ scripts/rtb_exposure_read.py (new, part C), scripts/decode_change_breath.py (new
 ### 2026-10-13 (06:33 chain; ledgered 06:36) — ANTI4_242 (THE TWIN) DOES NOT HOLD THE CLAIM: masked wild 0.3501 vs PMS8_241 0.3476 = +0.0024 paired (SE 0.0095, McNemar z −0.26); vs LT_241 +0.0010; rows 19 (noise); open mint 0.6769 (+0.026: the one consistent gain of the depth stack is on mint); knob census PASS (all blocks live); the trough's owner ratio 0.809 (anti-grouping on both seeds). THE PAIR: +0.0185 / +0.0024 → mean +0.010 ± 0.008 — ANTI4_241's read was a seed excursion inside the seed spread, and THE U-NET-ORDER CLAIM IS WITHDRAWN (the standing rule did its work: a +0.0185 single read is not a claim). THE SLOT-SIDE DEPTH FAMILY, COMPLETE (all vs PMS8_241 on the same recipe): LT (flat ×4) +0.003; SINE4 +0.006; SEAL +0.012; ANTI4 +0.0185 / +0.0024 — family mean ≈ +0.009, spread ≈ 0.006: DEPTH ON THE SLOT SIDE IS NOT THE LEVER stands, now on five bodies and two seeds; whether the bottleneck-late ordering is worth ~+0.01 cannot be read inside the family's noise and is not worth a third seed. The sorting room (token side, +0.015 ± 0.006 over four bodies) remains the only depth that moved the slot. [regime: pm35c from scratch, 48k, this depth stack; closed.]
 
 ### 2026-10-13 (06:38) — THE LANDING PROTOCOL, THIRD ROUND (after the denoiser landed at 408076e4 via its queue): flagloop (wt30) merged forward at 8e408180 with two hand resolutions — a do_train forward() call site (the denoiser's seed_fq_sched/b_dn* kwargs vs the flagged loop's flag_mask/flag_tabu0 → the union) and the REFUSED tuple (the resolver refused this shape: both sides' trailing comment blocks; resolved by hand as the union: ALG_FLAG, ALG_DN_WHIP, ALG_DN_READ, ALG_LOOP_STOP, ALG_LOOP_STOP_READ); compiles; the flagloop gate re-runs as pc-flagloop-regate2 behind the denoiser merge gate (one gate at a time). THE ONE-READ BUILDER STALLED (found 06:4x): its gate log (19:16 yesterday) shows the oneread config dying after step 0 (no checkpoint written) and the 8-row smoke fixture never precomputed; uncommitted head edits in wt33; queue_or.sh written, not armed — the builder resumed by message with the fix list (the step-1 crash, the fixture, commit, re-gate, the sever read, the forward merge, dry-run under pipefail, arm). OR_241 is last in the queue (after FL), so no card time is at stake yet.
+
+### 2026-10-12 (06:56) — THE STATE-SPACE DENOISER QUEUED AND FIRED (DF_241 -> WH_241, worktree
+mycelium-wt31, branch denoiser, merged fc53d296): both streams
+built on the seeded branch's own injection points -- ALG_DN_READ=<tau_max> (do_train's own
+refusal of ALG_SEED_TEMP/ALG_SEED_SCHED lifted ONLY when ALG_DN_READ is the flag that set them;
+fresh Gumbel noise every training step through a new fixed-shape JIT input, b_dnread, the
+gold-feed idiom) and ALG_DN_WHIP=<sigma_max> (THE WHIP generalized from one breath to every loop
+breath on the SAME cos^2 schedule, sigma_k = sigma_max*cos^2(k*pi/(2*(K_B-1))), zero at the last
+breath, keepnorm, the 128 clock dims bitwise untouched -- scripts/phase1_algebra_head.py's
+_dn_whip_kick/_dn_whip_sigma, own noise source _DN_WHIP_SRC, independent of ALG_WHIP's own).
+ALG_BLUR=1 ALG_BLUR_MAX=0.7 (the organ's own 09-12 default; chosen so the target schedule's
+strength is not itself a third free variable). DF_241 = role8 + ALG_DN_READ=1.0 + ALG_DN_WHIP=0.3
++ ALG_BLUR=1, from scratch, pm35c, 48k, B=8, SEED=241; WH_241 = the SAME recipe WITHOUT
+ALG_DN_READ (the placebo). GATE (.cache/denoiser_merge_gate.log): unset 5.2995/0.0279 and role8
+6.5535/1.1061 bit-identical; THE CLOCK CHECK + THE SCHEDULE CHECK (scripts/dn_whip_unit_check.py)
+PASS (the 128 clock dims bitwise untouched under the kick at every breath where sigma_k>0; the
+content norm restored to <1e-5 relative; sigma_{K_B-1}/tau_{K_B-1} ~ 1e-33, the same floating-
+point character the blurred ladder's own schedule has at ITS last rung); THE KNOB CENSUS
+(scripts/dn_knob_census.py) at birth: the reading stream's injected Gumbel std dwarfs the bank's
+own pre-bias score spread at breaths 0-5 (ratio 2.7x-48x at random init -- NOT inert by
+construction) and reads exactly inert at breath 6 by design; the math stream's sigma_k ranges
+0.28 (breath 1) to ~0 (breath 6); THE JIT CHECK (STEPS=3): both recipes run, finite, step 2
+differs from step 1 (not a frozen graph); THE READ SMOKE (modes a/b/c, loop_val.py against the
+existing PMS8_241 checkpoint -- machinery only, not a quality claim) produced finite fac-exact
+on every mode. BARS (pinned 2026-10-12 13:08/13:21, unchanged): the noise-free read drops <=
+0.005 vs PMS8_241 (KILL > 0.010); the particle read (8 seeds, scripts/dn_particle_vote.py) beats
+PMS8 by >= 0.020 masked OR reaches >= 24 rows; DF beats WH by >= 0.010 OR flips the canvas test
+(the 09-14 locus melt, 0 of 2,051 changed on PMS8_241); the middle-breath idle cost >= 0.010;
+mint not down > 0.02.
+
+FIRED: .cache/queue_dn.sh waited on ANTI4_242's done mark (coordinator update, mid-task: the
+twin queued ahead of DF/WH after ANTI4_241 met its slot bar on one seed), asserted seeded is an
+ancestor of gen-weights, merged denoiser (fc53d296), ran the
+post-merge gate (table above), preflight PASSED on rack_chain_DF.sh, fired pc-df-watch + pc-df
+(06:56) against PMS8_241 -- DF_241 is running now; THIS SAME SCRIPT waits for "DF CHAIN
+COMPLETE", preflights and fires WH_241 (pc-wh-watch + pc-wh), waits for "WH CHAIN COMPLETE" (the
+flagloop queue's own wait target).
+
+Artifacts: scripts/phase1_algebra_head.py (ALG_DN_READ/ALG_DN_WHIP, _dn_whip_kick/_dn_whip_sigma,
+_dn_whip_noise, do_train's b_dnread/b_dnwhip feed + val toggle), scripts/step_trainer.py (REFUSED
+tuple entries), scripts/dn_whip_unit_check.py, scripts/dn_knob_census.py, scripts/dn_particle_vote.py
+(new); .cache/denoiser_gate.sh/.log, .cache/denoiser_merge_gate.sh/.log,
+.cache/rack_chain_DF.sh/WH.sh, .cache/queue_dn.sh.
