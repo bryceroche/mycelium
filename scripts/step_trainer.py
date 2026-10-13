@@ -222,13 +222,13 @@ REFUSED = ("ALG_SHELF", "ALG_WHIP", "ALG_TOKLOOP", "ALG_WRITEBACK", "ALG_KANNEAL
            # THE SELF-MATCH TERM above — refused anyway, by the word given for this build,
            # named separately so a future narrowing of either refusal does not silently let
            # this one through untested too.
-           "ALG_FLAG")   # THE FLAGGED LOOP (2026-10-12, denoising-breath Arm 1): forward()'s own
+           "ALG_FLAG",
+           "ALG_LOOP_STOP", "ALG_LOOP_STOP_READ")   # THE FLAGGED LOOP (2026-10-12, denoising-breath Arm 1): forward()'s own
                          # breath-0 corrupted-grounding mix (the fst/fat rebind + the hard tabu
                          # riding ctx["anchor_bias0"]) and loss_fn's per-breath flag-conditioned
                          # retarget (_flag_retarget) are the fused forward()'s single source of
                          # truth; the walker never calls forward() at all — the ALG_SORT/
                          # ALG_FUNNEL precedent, same reason.
-
 REQ_CTX = ("B", "K_B", "waist", "tokmask", "slot_mask", "bank", "rot2",
            "sync", "drop", "gmod", "revoke", "tail", "reg", "RINGS",
            "XOUT", "XARM", "XR_GRADED", "XR_ELASTIC")
