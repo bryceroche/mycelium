@@ -222,14 +222,14 @@ REFUSED = ("ALG_SHELF", "ALG_WHIP", "ALG_TOKLOOP", "ALG_WRITEBACK", "ALG_KANNEAL
            # THE SELF-MATCH TERM above — refused anyway, by the word given for this build,
            # named separately so a future narrowing of either refusal does not silently let
            # this one through untested too.
-           "ALG_DN_WHIP", "ALG_DN_READ")   # THE STATE-SPACE DENOISER (2026-10-12): breath_step's
+           "ALG_DN_WHIP", "ALG_DN_READ",
+           "ALG_LOOP_STOP", "ALG_LOOP_STOP_READ")   # THE STATE-SPACE DENOISER (2026-10-12): breath_step's
            # own _dn_whip_kick call (ALG_DN_WHIP) and forward()'s seed_fq_sched threading
            # (ALG_DN_READ) are do_train's fixed-shape JIT inputs (b_dnwhip/b_dnread) built and
            # fed only by do_train's own step() — the walker's per-seam heads_of calls never
            # build either buffer and never call breath_step/forward() at all (the ALG_WAIST_
            # SKIP/ALG_SORT precedent, same reason); a config that set either under the walker
            # would train with no noise at all, silently.
-
 REQ_CTX = ("B", "K_B", "waist", "tokmask", "slot_mask", "bank", "rot2",
            "sync", "drop", "gmod", "revoke", "tail", "reg", "RINGS",
            "XOUT", "XARM", "XR_GRADED", "XR_ELASTIC")
