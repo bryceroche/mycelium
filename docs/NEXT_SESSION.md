@@ -1,4 +1,9 @@
-# NEXT SESSION — cold-start entry (updated 2026-10-12 14:1x)
+# NEXT SESSION — cold-start entry (updated 2026-10-12 16:xx)
+
+**10-12 16:xx — BUILDS LANDED: DF_241/WH_241 (branch denoiser; pc-queue-dn behind the ANTI4 twin), FL_241 (branch flagloop; pc-queue-fl behind WH),
+the seeded readings (MERGED into gen-weights b8c8f583; post-merge gate running). Every pending branch forward-merged (breathstop, rtb, denoiser clean;
+flagloop hand-resolved: union forward() signature + both tabu blocks; re-gating). The particle read grid runs on the card under the lock; its
+coverage analysis on CPU. SEAL on the card. Queue: SEAL → K3 → PK → RTB → ANTI4_242 → DF → WH → FL. Landing protocol in the ledger.**
 
 **10-12 14:1x — ANTI4_241 MEETS ITS SLOT BAR: masked 0.3662 = +0.0185 vs PMS8 (+0.0151 vs flat depth LT): the U-Net direction (bottleneck
 THIRD, 384/224/128/224) beats bottleneck-first (SINE4 +0.006); mint held; the trough ANTI-groups by owner (0.86) — the owner frame refuted on
