@@ -1,4 +1,8 @@
-# NEXT SESSION — cold-start entry (updated 2026-10-12 23:4x)
+# NEXT SESSION — cold-start entry (updated 2026-10-13 00:3x)
+
+**10-13 00:3x — RTB_241 ABORTED AT ITS COST PROBE (eager step 4.18 s = 33x the body's; void by construction; the 37 GB buffer + phase-1 ckpt
+banked); FORM 2 (one captured graph per breath index) REGISTERED, NEEDS THE WORD. The queue released; ANTI4_242 (the twin) on the card 00:33
+→ DF → WH → FL → OR.**
 
 **10-12 23:4x — PK_241 HEALS THE EXPOSURE GAP: K3's 24k ckpt + 24k at K7 = 0.3510 (PARITY with PMS8, +0.0127 over K3), mint recovered
 (0.660), silver −0.06, decode-change K3-read vs K7-read 59 % of slots (the grown breaths REFINE); cost 0.67x of PMS8 for parity. RTB's queue
