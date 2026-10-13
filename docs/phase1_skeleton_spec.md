@@ -51349,3 +51349,54 @@ THE DOUBLE FIRE (a queue bug, found at 07:40): queue_sine fired ANTI4 at 01:36 �
 ### 2026-10-12 (20:56) — THE EDGE READS, FINAL (PMS8_241 only; 64 wild rows; scripts/picker/edge_read1_transfer.py, edge_read2_certificate.py, edge_read1_goldfree_flag.py, edge_batchsize_diag.py; the mixer tap via the shuffletap branch; artifacts .cache/edge_*). A REAL BUG CAUGHT MID-TASK: the first baseline read the final decode from heads_all[-1] (the raw per-breath heads, before the router prior / busreg / self-match / direction post-processing that the top-level out[key] carries) and showed 136/419 decode mismatches; batch size was a red herring (a direct B=64 vs B=8 diagnostic: 0/51); fixed by reading out[key] for the baseline while keeping heads_all for the breath-3..6 transfer measurement — the baseline now decode-exact 0/419. READ 1 CONFIRMED: kick = unit(content − own-kind mean) on the 384 content dims at 0.1·‖state‖ (slot-identity, not kind-generic); on pointer-WRONG relations (n=120) precision@1 0.475 / @2 0.700, chance 0.167, echo 0.583; pointer-right 0.745 / 0.936; arrival-vs-hop Spearman 0.089; damping 0.339 / 0.162 / 0.075 / 0.062 — BAR MET, but gold-conditioned. THE DEPLOYABLE NUMBER — THE GOLD-FREE DISAGREEMENT FLAG (flag a relation when the transfer top-1 ∉ the pointer's own predicted args; the model's own heads, never the key): RECALL 0.358 over pointer-wrong relations, PRECISION 0.632, coverage 0.318 — BAR MET (recall > the unsat core's 0.19 at precision ≥ 0.5): a read-time locator with nearly twice the solver flagger's reach; the top-2 form recall 0.142 / precision 0.708 (bar not met). THE OTHER HALF IS MISSING: among flagged relations the transfer top-1's own gold-arg hit rate is 0.059 — the transfer graph says WHERE the pointer is wrong, not WHAT is right; read 1's 0.475 headline therefore lives mostly in the ECHO cells (the pointer's partially-right arg confirmed by the wiring), and the CANDIDATE AXIS ('replace an arg with the transfer top-1') is MOOT by this number (baseline on the 64 rows measured: oracle coverage 10/64; the move not built — rightly). READ 2 INVERTED, QUANTIFIED: the lowest-certificate 20 % (highest three-view agreement) are WRONG 71.4 % (last breath) / 69.0 % (mean 3–6) against a 56.1 % base wrong-rate: a modest wrong-edge flag; the pointer's entropy 0.607 remains the best single ruler. READING: the loop's wiring is a LOCATOR (where the pointer disagrees with the state's own transfer, the pointer is wrong at 0.63) and not a corrector; that is exactly the input the flagged loop lacks at read — FL_241's read gains a fourth mode (REGISTERED, the chain patched before it fires): THE TRANSFER FLAG at breath 2 (gold-free; ~24 kick-and-replays per row, read-time only) beside the oracle, the placebo and the plain unroll; the bar for the deployable mode = net corrections after breath 2 > 0 with regressions ≤ corrections/3. SR_241 not read (time); registered as the next zero-GPU pass once the card's reads thin out.
 
 ### 2026-10-12 (21:07) — FL_241's chain gains THE TRANSFER-FLAG read mode (branch flagloop c96dd319, scripts/picker/fl_read.py +266: the kick-and-listen reproduced per slot index with the read's OWN per-kind content mean (never another body's coordinates), the gold-free flag rule, FL's tabu applied to the flagged slots, breaths 3–6 replayed; CORRECTIONS / REGRESSIONS / NET / FIX_RATE against the bar corrections > 0 with regressions ≤ corrections/3; FL_TRANSFER_NROWS defaults to 128 of 311 (the mode is ~24x the replays of the other three modes; no device timing yet — raise to 311 after the first run reports per-batch time); the chain's grep/echo lines added; queue_fl.sh unchanged, dry-run 6/0; pc-queue-fl active behind WH).
+
+### 2026-10-11 (21:23) — THE LOOP STOP, BUILT, GATED, QUEUED, FIRED (K3_241 -> PK_241, worktree
+wt27, branch breathstop, merged 79eef93a): ALG_LOOP_STOP=k reuses
+THE THREE CONSULTS' own stop_after/_kb_stop partial-pass mechanism in forward() -- a caller that
+leaves stop_after unset (every real call except the two internal consult partial passes, which
+always pass their own explicit 2/4) picks up ALG_LOOP_STOP_READ if set, else ALG_LOOP_STOP, else
+nothing (default 0 = every existing body's path, bit-identical). ALG_BREATH still sizes every
+clock table/phase schedule/conductor row at K=7 throughout; only the loop RANGE a given call
+runs is cut. step()'s own pass_a/pass_b consult calls are gated the same way (ALG_LOOP_STOP>2 for
+consult 1, >4 for consult 2) so an ALT3 body doesn't burn a host consult the truncated step can't
+use. Added to step_trainer.py's REFUSED tuple (own line, end): the walker never calls forward()
+or computes _kb_stop.
+
+GATE TABLE (.cache/breathstop_merge_gate.log): unset 5.2995/0.0279 (bit-identical); role8
+6.5535/1.1061 (bit-identical); k3 (role8+ALG_LOOP_STOP=3) step     0 loss=6.6232;step     1 loss=1.1444; (finite, DIFFERS from
+role8 by design -- fewer breaths in the ladder); ls7 (role8+ALG_LOOP_STOP=7) bit-identical to
+role8 (the identity check: the flag at the full count changes nothing). BREATH CENSUS
+(ALG_LOOP_STOP_DEBUG=1): k3alt3 (role8+ALG_ALT3=1+ALG_LOOP_STOP=3, a gate-only fixture --
+K3_241's OWN recipe never sets ALG_ALT3) shows breaths 0,1,2 and consult 1 ONLY (consult 2 needs
+breath 4, never reached at k=3) -- confirms the pass_a/pass_b gate in step(). STEP COST
+(role8 vs k3, no ALT3, STEPS=20): COST role8: mean s/step (last up to 5 printed) = 60.9500 / COST k3: mean s/step (last up to 5 printed) = 37.1100. READ SMOKE
+(scripts/loopstop_read_smoke.py): both ALG_LOOP_STOP=3 and the ALG_LOOP_STOP_READ=7 override
+decode on the SAME 2-step checkpoint with no error.
+
+THE ARMS: K3_241 = PMS8_241's exact recipe (SURF8, form_mix_pm35c, random init, 48k, B=8,
+SEED=241) + ALG_LOOP_STOP=3 (breaths 0,1,2 only) -- BARS: masked wild >= PMS8_241 - 0.010 at
+~0.45x the step; the K7 re-read of the SAME checkpoint (ALG_LOOP_STOP_READ=7 -- breaths 3-6 run
+on their own never-trained params) reports the exposure gap, informational. PK_241 = PROGRESSIVE
+BREATHS: PK_a reuses K3_241's own SNAP_EVERY=8000 snapshot at step 24000
+(.cache/sharp_K3_241_s24000.safetensors -- K3 trains at k=3 throughout, so this snapshot IS
+"K3's recipe for 24k steps", no separate run needed); PK_b WARM_FROMs it with ALG_LOOP_STOP
+unset (all 7 breaths) for 24k more steps -- confirmed no param-shape change is possible (build_params
+is sized by ALG_BREATH=7 alone for K3/PK_a/PK_b alike; the pad-warm branch is never exercised,
+only a plain shape-matched load) -- BARS: masked wild >= K3_241's own read; scripts/decode_change_breath.py
+(new: a thin comparator over two loop_val LV_DUMP pickles) and membrane_rack.py's drift read decide
+"refine vs repeat" on the now-trained breaths 3-6.
+
+FIRED: .cache/queue_breathstop.sh waited on "SEAL CHAIN COMPLETE" in .cache/rack_chain_SEAL.log,
+merged branch breathstop (79eef93a; wt27's own branch was synced
+with gen-weights BY HAND first, in the worktree, with the `.cache` symlink temporarily swapped
+for the real tracked files during the merge -- never done by the queue script itself), ran the
+post-merge gate (identical table to wt27's own, above), preflight PASSED on rack_chain_K3.sh,
+fired pc-k3-watch + pc-k3 (21:23) -- K3_241 is running now, against PMS8_241; THIS SAME SCRIPT
+waits for "K3 CHAIN COMPLETE", preflights and fires PK_241, waits for "PK CHAIN COMPLETE" -- one
+arm at a time, each with its own watcher and its own preflight run just before it fires.
+
+Artifacts: scripts/phase1_algebra_head.py (ALG_LOOP_STOP/ALG_LOOP_STOP_READ, the forward() loop
+truncation + breath census debug prints, the pass_a/pass_b consult gate), scripts/step_trainer.py
+(REFUSED), scripts/loopstop_read_smoke.py (new), scripts/decode_change_breath.py (new);
+.cache/breathstop_gate.sh, .cache/breathstop_merge_gate.log, .cache/rack_chain_K3.sh/PK.sh,
+.cache/queue_breathstop.sh.
