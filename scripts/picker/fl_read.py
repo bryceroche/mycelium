@@ -27,6 +27,34 @@ METRICS (the exact lines the chain greps):
                        measured WITHIN the oracle run (the training objective's own promise:
                        flagged slots are the only road to change).
 
+A FOURTH READ MODE (coordinator's addition, 2026-10-12 PM): TRANSFER = THE GOLD-FREE
+DISAGREEMENT FLAG -- scripts/picker/edge_read1_transfer.py's kick-and-listen (kick each
+GOLD-present slot's CONTENT-plane state along unit(content - its own kind's mean) at
+0.1*||state||, replay breaths 3-6, response at every OTHER present slot j = the L2 of its
+(args, res, dig) logit delta, summed over breaths 3-6) + edge_read1_goldfree_flag.py's exact
+rule (flag relation slot j when the transfer graph's top-1 responder -- the slot most
+disturbed when j itself is kicked -- is NOT one of j's OWN predicted args at breath 2: the
+dup-predicted single arg, else the unrestricted top-2 of args[j]; GOLD-FREE -- the decision to
+raise the flag never consults the custody key). FL's tabu is then applied to transfer-flagged
+slots EXACTLY as the oracle mode (same cur injection, same anchor_bias0 tabu, replay 3-6), and
+scored: NET CORRECTIONS (wrong@2 -> right@6 among flagged), REGRESSIONS (right@2 -> wrong@6
+among flagged), FIX RATE (same definition as oracle's, for comparability).
+BAR (coordinator's pin): net corrections > 0 with regressions <= corrections/3.
+ONE DEVIATION FROM edge_read1_transfer.py, STATED: that script's kick direction uses a
+PRECOMPUTED welford atlas (.cache/welford_atlas_PMS8_241_content.npz) -- a body-specific
+artifact FL_241 does not have (CLAUDE.md: never mix generations' coordinates). This read
+builds its OWN per-kind content mean from THIS read's own rows instead (a lightweight
+forward+snapshot-only first pass over the transfer sample, no replay, accumulating
+.KINDS-keyed sums before the kick pass) -- a within-read, body-matched substitute for the
+precomputed atlas, strictly weaker (fewer rows than a full corpus) but never cross-generation.
+READ-TIME ONLY, ~24 kick-and-replay calls per BATCH (one per present slot index 0..23, each
+call kicking that slot across every row in the batch at once -- edge_read1_transfer.py's own
+batching, not literally per-row): capped to FL_TRANSFER_NROWS rows (default 128, this script's
+own judgment call -- the mechanism multiplies this mode's replay-call count by roughly 24x
+over the other three modes combined, and no GPU timing for an un-JIT'd eager replay() at this
+scale was available to weigh 311 against the chain's 20-minute read budget; override via the
+env var once the chain's own first run reports real per-batch timing).
+
 THE KNOB CENSUS (printed every run): flag_emb's row-1 std vs state["cur"]'s own std at the
 snapshot point (the pre/post knob law). The tabu's own exactness is NOT re-derived here --
 out_t["fat"] (replay()'s return) is _forward_tail's `_fed_core(fat)` of the GROUNDING fat
@@ -62,6 +90,10 @@ GOLD_NPZ = os.environ.get("FL_GOLD_NPZ", ".cache/phase1_alg_states_wildhold.npz"
 OUT = os.environ.get("FL_OUT", f".cache/flread_{TAG}")
 SNAP_KB = 2
 BATCH = 8
+BREATHS_MEASURED = (3, 4, 5, 6)
+# THE TRANSFER FLAG mode's own row cap (coordinator's addition, 2026-10-12 PM) -- see the
+# module docstring for why 128, not 311, is this script's own default judgment call.
+TRANSFER_NROWS = int(os.environ.get("FL_TRANSFER_NROWS", "128"))
 
 random.seed(0)
 
@@ -232,6 +264,12 @@ def main():
 
     knob_cur_std = float(np.mean(knob_std_cur)) if knob_std_cur else float("nan")
 
+    # THE TRANSFER FLAG mode (coordinator's addition, 2026-10-12 PM): a separate, self-contained
+    # pass (its own row cap, its own replay budget) -- see the module docstring and
+    # _transfer_flag_mode's own comments. Runs AFTER the three oracle/placebo/noflag modes so a
+    # failure here never costs their own results (already written to `per_slot` above).
+    transfer_lines, transfer_result = _transfer_flag_mode(p, vs, vst, vtk, vse, vg, t0, SNAP_TMP)
+
     report = {
         "tag": TAG, "n_rows": n, "snap_kb": SNAP_KB,
         "decode_exact_baseline": {"n_slots": decode_total_baseline, "n_diff": decode_diff_baseline,
@@ -244,6 +282,7 @@ def main():
         "n_flip_flagged": n_ff, "n_flip_unflagged": n_fu,
         "knob_census": {"flag_emb_row1_std": knob_std_flagrow, "cur_std": knob_cur_std,
                         },
+        "TRANSFER_FLAG": transfer_result,
     }
     json.dump(report, open(OUT + ".json", "w"), indent=1)
 
@@ -273,10 +312,237 @@ def main():
                  "(~7513) before the softmax clip (~6234); flag_emb added to state['cur'] at the snapshot "
                  "point (breath 2), the tabu -1e4 at each flagged slot's breath-2 attention-argmax token, "
                  "held constant for breaths 3..6.")
+    lines.append("")
+    lines.extend(transfer_lines)
     txt = "\n".join(lines)
     open(OUT + ".txt", "w").write(txt + "\n")
     print(txt)
     print(f"\n[fl-read] wrote {OUT}.json and {OUT}.txt ({time.time()-t0:.0f}s total)", flush=True)
+
+
+def _transfer_flag_mode(p, vs, vst, vtk, vse, vg, t0, snap_tmp_path):
+    """THE TRANSFER FLAG mode (gold-free; coordinator's addition, 2026-10-12 PM). See the
+    module docstring for the mechanism and the stated atlas deviation. Returns
+    (report_lines, result_dict)."""
+    import time
+    from tinygrad import Tensor, dtypes
+    import phase1_algebra_head as H
+    from phase1_algebra_head import (forward, build_slot_masks, alt2_fact_buf, K_VARS, L_FAC,
+                                     replay, snap_load)
+    from welford_atlas import gold_kind, KINDS
+
+    n = min(TRANSFER_NROWS, len(vs))
+    n_batches = (n + BATCH - 1) // BATCH
+    print(f"[fl-read-transfer] {n} rows ({n_batches} batches of {BATCH}), ~{L_FAC} kick-and-replay "
+          f"calls per batch (edge_read1_transfer.py's own batching: one replay() call per global "
+          f"slot index, kicking every row where that index is gold-present at once)", flush=True)
+
+    bands, _clock = H._hier_band_dims()
+    CONTENT = np.sort(np.concatenate(bands))
+    H_W = H.H_W
+    os.environ["ALG_MINE_BREATHS"] = "1"
+
+    # ---- PASS 1 (lightweight, no replay): THIS READ'S OWN per-kind content mean, in place of
+    # edge_read1_transfer.py's precomputed (PMS8_241-specific) welford atlas -- see the module
+    # docstring's stated deviation. ----
+    kind_sum = {k: np.zeros(len(CONTENT), np.float64) for k in KINDS}
+    kind_cnt = {k: 0 for k in KINDS}
+    for bidx in range(n_batches):
+        sl = np.arange(bidx * BATCH, min((bidx + 1) * BATCH, n))
+        nv = np.array([vs[int(i)].get("n_vars", K_VARS) for i in sl])
+        ma = np.array([vs[int(i)].get("m", 0) for i in sl])
+        se_np = vse[sl].astype(np.int32)
+        ts = Tensor(np.ascontiguousarray(vst[sl]), dtype=dtypes.half)
+        tk = Tensor(vtk[sl].astype(np.float32))
+        se = Tensor(se_np, dtype=dtypes.int)
+        o0 = forward(p, ts, tk, se)
+        onp0 = {k: o0[k].numpy() for k in ("fat", "args", "res")}
+        mk = build_slot_masks(onp0, se_np)
+        _ka = ("pres", "ftype", "op", "dig") + (("dup",) if "dup" in o0 else ())
+        _oa = {**onp0, **{k: o0[k].numpy() for k in _ka}}
+        fb = alt2_fact_buf(_oa, se_np, nv, ma)
+        fact_t = Tensor(fb, dtype=dtypes.float)
+        os.environ["ALG_SNAP_AT"] = str(SNAP_KB); os.environ["ALG_SNAP_OUT"] = snap_tmp_path
+        forward(p, ts, tk, se, slot_mask=Tensor(mk, dtype=dtypes.float), fact_buf=fact_t)
+        snap = snap_load(snap_tmp_path)
+        if os.path.exists(snap_tmp_path):
+            os.remove(snap_tmp_path)
+        cur0 = snap["state"]["cur"]
+        cur0_np = (cur0.numpy() if hasattr(cur0, "numpy") else np.asarray(cur0)).astype(np.float64)
+        for bi, i in enumerate(sl):
+            i = int(i)
+            facs = vs[i]["factors"]
+            for j in range(L_FAC):
+                if vg["presence"][i, j] < 0.5:
+                    continue
+                k = gold_kind(facs[j], j)
+                kind_sum[k] += cur0_np[bi, j, CONTENT]
+                kind_cnt[k] += 1
+    global_sum = np.zeros(len(CONTENT), np.float64); gn = 0
+    for k in KINDS:
+        global_sum += kind_sum[k]; gn += kind_cnt[k]
+    global_mean = global_sum / max(gn, 1)
+    kind_mean = {k: (kind_sum[k] / kind_cnt[k] if kind_cnt[k] > 0 else global_mean) for k in KINDS}
+    print(f"[fl-read-transfer] pass 1 (this read's own kind means) done, counts={kind_cnt} "
+          f"({time.time()-t0:.0f}s elapsed)", flush=True)
+
+    # ---- PASS 2: baseline (with per-breath heads_all) + the 24-kick listen + decisive
+    # relation slots -> top1 -> THE GOLD-FREE FLAG -> FL's own tabu -> replay -> score. ----
+    per_slot = []   # (row, slot, flagged, ok2, ok6, changed)
+    n_flagged_total = 0
+    for bidx in range(n_batches):
+        sl = np.arange(bidx * BATCH, min((bidx + 1) * BATCH, n))
+        pad = BATCH - len(sl)
+        sl_p = np.concatenate([sl, sl[:1].repeat(pad)]) if pad else sl
+        B = len(sl_p); T = vse.shape[1]
+        nv = np.array([vs[int(i)].get("n_vars", K_VARS) for i in sl_p])
+        ma = np.array([vs[int(i)].get("m", 0) for i in sl_p])
+        se_np = vse[sl_p].astype(np.int32)
+        ts = Tensor(np.ascontiguousarray(vst[sl_p]), dtype=dtypes.half)
+        tk = Tensor(vtk[sl_p].astype(np.float32))
+        se = Tensor(se_np, dtype=dtypes.int)
+        o0 = forward(p, ts, tk, se)
+        onp0 = {k: o0[k].numpy() for k in ("fat", "args", "res")}
+        mk = build_slot_masks(onp0, se_np)
+        _ka = ("pres", "ftype", "op", "dig") + (("dup",) if "dup" in o0 else ())
+        _oa = {**onp0, **{k: o0[k].numpy() for k in _ka}}
+        fb = alt2_fact_buf(_oa, se_np, nv, ma)
+        fact_t = Tensor(fb, dtype=dtypes.float)
+
+        os.environ["ALG_SNAP_AT"] = str(SNAP_KB); os.environ["ALG_SNAP_OUT"] = snap_tmp_path
+        o = forward(p, ts, tk, se, slot_mask=Tensor(mk, dtype=dtypes.float), fact_buf=fact_t)
+        KEYS = ("pres", "ftype", "op", "dig", "args", "res") + (("dup",) if "dup" in o else ())
+        heads2 = {k: o["heads_all"][SNAP_KB][k].numpy() for k in KEYS}
+
+        snap = snap_load(snap_tmp_path)
+        if os.path.exists(snap_tmp_path):
+            os.remove(snap_tmp_path)
+        fat_cur2 = snap["state"]["fat_cur"]
+        fat_cur2 = fat_cur2.numpy() if hasattr(fat_cur2, "numpy") else np.asarray(fat_cur2)
+        tokmask_np = vtk[sl_p].astype(np.float32)
+        L_TOT = fat_cur2.shape[1]
+        cur2 = snap["state"]["cur"]
+        cur2_np = (cur2.numpy() if hasattr(cur2, "numpy") else np.asarray(cur2)).astype(np.float64)
+
+        out_base = replay(p, snap, SNAP_KB)
+        base_final = {k: (out_base[k].numpy() if k in out_base else None) for k in KEYS}
+        heads_base = out_base["heads_all"]   # per-breath RAW heads (edge_read1_transfer.py's own choice:
+                                             # the response signal stays apples-to-apples across
+                                             # breaths 3-6, unlike the top-level post-loop fusions)
+        base_np = {breath: {k: heads_base[breath][k].numpy() for k in ("args", "res", "dig")}
+                  for breath in BREATHS_MEASURED}
+
+        present_slots = {}
+        for i in sl:
+            i = int(i)
+            present_slots[i] = [j for j in range(L_FAC) if vg["presence"][i, j] > 0.5]
+
+        # THE KICK: one replay() call per global slot index 0..23 (not per row) -- kicks every
+        # row where that index is gold-present simultaneously (rows never cross-attend).
+        R_sum = {}   # (row, kicked_idx, responder_j) -> summed combined response, breaths 3-6
+        for idx in range(L_FAC):
+            rows_here_bi = [bi for bi, i in enumerate(sl) if idx in present_slots.get(int(i), [])]
+            if not rows_here_bi:
+                continue
+            impulse = np.zeros_like(cur2_np)
+            for bi in rows_here_bi:
+                i = int(sl[bi])
+                k = gold_kind(vs[i]["factors"][idx], idx)
+                full_vec = cur2_np[bi, idx, :]
+                eps = 0.1 * float(np.linalg.norm(full_vec))
+                diff = full_vec[CONTENT] - kind_mean[k]
+                nrm = np.linalg.norm(diff)
+                unit = diff / nrm if nrm > 1e-12 else diff
+                vec512 = np.zeros(H_W, np.float64); vec512[CONTENT] = unit
+                impulse[bi, idx, :] = eps * vec512
+            pert = (cur2_np + impulse).astype(np.float32)
+            ov = {"state": {"cur": Tensor(pert, dtype=dtypes.float)}}
+            out_t = replay(p, snap, SNAP_KB, overrides=ov)
+            heads_t = out_t["heads_all"]
+            for breath in BREATHS_MEASURED:
+                args_t = heads_t[breath]["args"].numpy(); res_t = heads_t[breath]["res"].numpy()
+                dig_t = heads_t[breath]["dig"].numpy()
+                args_b = base_np[breath]["args"]; res_b = base_np[breath]["res"]; dig_b = base_np[breath]["dig"]
+                for bi in rows_here_bi:
+                    i = int(sl[bi])
+                    for j in present_slots[i]:
+                        if j == idx:
+                            continue
+                        da = float(np.linalg.norm(args_t[bi, j] - args_b[bi, j]))
+                        dr = float(np.linalg.norm(res_t[bi, j] - res_b[bi, j]))
+                        dd = float(np.linalg.norm((dig_t[bi, j] - dig_b[bi, j]).reshape(-1)))
+                        comb = float(np.sqrt(da * da + dr * dr + dd * dd))
+                        key = (i, idx, j)
+                        R_sum[key] = R_sum.get(key, 0.0) + comb
+
+        # THE DECISIVE RELATION SLOTS -> top1 -> THE GOLD-FREE FLAG (edge_read1_goldfree_flag.py's
+        # exact rule: top1 not in pred_args_set, pred_args_set from the model's OWN breath-2
+        # dup/args decode -- no gold consulted to raise it).
+        flags_transfer = {}
+        for bi, i in enumerate(sl):
+            i = int(i)
+            flagged_js = []
+            for j in present_slots.get(i, []):
+                if int(vg["ftype"][i, j]) != 0:   # dn_common.py's own is_rel convention: ftype 0 == relation
+                    continue
+                cands = [c for c in present_slots[i] if c != j]
+                if not cands:
+                    continue
+                scores = {c: R_sum.get((i, j, c), 0.0) for c in cands}
+                top1 = max(cands, key=lambda c: scores[c])
+                dup_pred = bool("dup" in heads2 and heads2["dup"][bi, j] > 0)
+                if dup_pred:
+                    pred_args_set = {int(np.argmax(heads2["args"][bi, j]))}
+                else:
+                    pred_args_set = set(np.argsort(-heads2["args"][bi, j])[:2].tolist())
+                if top1 not in pred_args_set:
+                    flagged_js.append(j)
+            flags_transfer[bi] = flagged_js
+            n_flagged_total += len(flagged_js)
+
+        flag_idx = np.zeros((B, L_TOT), np.float32)
+        for bi, slots in flags_transfer.items():
+            for j in slots:
+                flag_idx[bi, j] = 1.0
+        flag_idx_t = Tensor(flag_idx, dtype=dtypes.int)
+        cur2_t = cur2 if hasattr(cur2, "shape") else Tensor(cur2)
+        cur_mod = cur2_t + p["flag_emb"][flag_idx_t]          # FL's own cur injection, exactly as the oracle mode
+        tb = _tabu_tensor(flags_transfer, fat_cur2, tokmask_np, B, L_TOT, int(T))   # FL's own tabu, exactly as the oracle mode
+        ov = {"state": {"cur": cur_mod}, "ctx": {"anchor_bias0": Tensor(tb, dtype=dtypes.float)}}
+        out_tr = replay(p, snap, SNAP_KB, overrides=ov)
+        t_final = {k: (out_tr[k].numpy() if k in out_tr else None) for k in KEYS}
+        for bi, i in enumerate(sl):
+            i = int(i)
+            s_base = score_row_slots({k: base_final[k][bi] for k in KEYS}, vg, i)
+            s_t = score_row_slots({k: t_final[k][bi] for k in KEYS}, vg, i)
+            row2 = {k: heads2[k][bi] for k in KEYS}
+            s2 = score_row_slots(row2, vg, i)
+            for j in sorted(set(s_t) & set(s2)):
+                flagged = bool(flag_idx[bi, j] > 0.5)
+                changed = not _decode_fields_equal(row2, {k: t_final[k][bi] for k in KEYS}, j)
+                per_slot.append((i, j, flagged, s2[j]["ok"], s_t[j]["ok"], changed))
+
+        print(f"[fl-read-transfer] batch {int(sl[0])}-{int(sl[-1])} done, flagged so far="
+              f"{n_flagged_total} ({time.time()-t0:.0f}s elapsed)", flush=True)
+
+    flagged_pairs = [x for x in per_slot if x[2]]
+    corrections = sum(1 for x in flagged_pairs if (not x[3]) and x[4])
+    regressions = sum(1 for x in flagged_pairs if x[3] and (not x[4]))
+    net = corrections - regressions
+    n_wrong_flagged = sum(1 for x in flagged_pairs if not x[3])
+    fix_rate = (corrections / n_wrong_flagged) if n_wrong_flagged else float("nan")
+    bar_met = corrections > 0 and regressions <= corrections / 3.0
+
+    result = dict(n_rows=n, n_flagged=len(flagged_pairs), corrections=corrections,
+                  regressions=regressions, net=net, fix_rate=fix_rate, n_wrong_flagged=n_wrong_flagged,
+                  bar_met=bar_met)
+    lines = []
+    lines.append(f"TRANSFER FLAG (gold-free, n_rows={n}, FL_TRANSFER_NROWS={TRANSFER_NROWS}) -- "
+                 f"this flag never reads gold to raise itself; still read-time only, never fed to the live run")
+    lines.append(f"  n_flagged={len(flagged_pairs)}  CORRECTIONS={corrections}  REGRESSIONS={regressions}  "
+                 f"NET={net}  FIX_RATE={fix_rate:.4f} (n_wrong_flagged={n_wrong_flagged})")
+    lines.append(f"  BAR (corrections > 0 AND regressions <= corrections/3): {'MET' if bar_met else 'NOT MET'}")
+    return lines, result
 
 
 def _tabu_tensor(flags_per_row, fat_cur, tokmask_np, B, L_TOT, T):
