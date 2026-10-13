@@ -9069,7 +9069,7 @@ def snap_load(path):
     return _snap_unflatten("snap", manifest, _loader)
 
 
-def replay(p, snapshot, kb_start, overrides=None):
+def replay(p, snapshot, kb_start, overrides=None, kb_stop=None):
     """THE REPLAY ENTRY (2026-10-07, worktree mycelium-wt8, branch replay; THE SAVE POINT,
     docs/phase1_skeleton_spec.md 2026-10-07 17:27). Rebuilds ctx/state from `snapshot`
     (snap_load()'s return, taken at the end of breath kb_start) and runs breaths
@@ -9095,6 +9095,21 @@ def replay(p, snapshot, kb_start, overrides=None):
           THE CHALKBOARD DRY-RUN's text-embedding-copy variant, which splices a copied
           token embedding directly into waist's last ALG_CHALK_N columns rather than
           going through the trained chalk_dig/chalk_tag table -- see the dry-run script).
+
+    `kb_stop` (2026-10-11, worktree mycelium-wt28, branch rtb; THE REPLAY-TRAINED BREATH,
+    gap (b)): the EXCLUSIVE upper bound on the resumed loop's `range(kb_start+1, kb_stop)`
+    -- default None reproduces the original behavior exactly (`kb_stop = K_B`, i.e. run
+    every remaining breath, THE BUILD's own read-path contract, bit-identical for every
+    existing caller). RTB passes `kb_stop=kb_start+2` to run EXACTLY ONE breath
+    (kb_start+1) before calling `_forward_tail` -- the same "fewer breaths than K_B"
+    shape forward()'s own ALT3 consult partial passes already exercise today (stop_after
+    stops the LOOP early but `_forward_tail` is still called with the real K_B and a
+    `breaths` list shorter than K_B; see do_train's `_partial`/pass_a/pass_b). The
+    returned tensors are NOT detached -- gradients flow through breath_step(kb_start+1)
+    and `_forward_tail`'s head computation into whatever params they touch; nothing
+    upstream of the snapshot (already `.realize().numpy()`-saved, pure data) carries a
+    graph to backprop through, which is exactly RTB's design: only the SAMPLED breath's
+    own step trains, the trajectory that produced the snapshot does not.
 
     SCOPE LIMIT (stated, not hidden): replay threads the snapshot's OWN facts3/facts5/
     cert3/cert5/rack3/rack5 (the ORIGINAL forward call's consult products) through the
@@ -9151,7 +9166,8 @@ def replay(p, snapshot, kb_start, overrides=None):
     while len(_vst_at) < K_B:
         _vst_at.append(vst)
 
-    for kb in range(kb_start + 1, K_B):
+    _kb_stop = K_B if kb_stop is None else min(kb_stop, K_B)
+    for kb in range(kb_start + 1, _kb_stop):
         breath_step(p, state, kb, ctx)
         if conductor(kb).facts3_inject and facts3 is not None:   # THE CONDUCTOR: kb == 2
             vst = _fact_inject(p, vst, facts3); ctx["vst"] = vst
@@ -9663,9 +9679,21 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
                 # NEVER call this inside a JIT'd step; breath_step's own JIT callers never
                 # set ALG_SNAP_AT). Both env vars default empty: zero cost, same code path,
                 # bit-identical when unset.
-                _ALG_SNAP_AT = int(os.environ.get("ALG_SNAP_AT", "0") or "0")
-                if _ALG_SNAP_AT and kb == _ALG_SNAP_AT:
-                    _snap_dump(os.environ["ALG_SNAP_OUT"], B=B, K_B=K_B, kb_done=kb,
+                #
+                # THE MULTI-POINT EXTENSION (2026-10-11, worktree mycelium-wt28, branch rtb;
+                # THE REPLAY-TRAINED BREATH's buffer writer, docs/replay_gym.md §5 gap (a)):
+                # ALG_SNAP_AT may now name SEVERAL breaths, comma-separated (e.g. "1,2,3,4,5"),
+                # so one forward() call over a batch of diet rows writes every snapshot point
+                # the replay buffer needs instead of one call per kb. ALG_SNAP_OUT must then
+                # contain the literal substring "{kb}" (formatted per dump); a single value is
+                # UNCHANGED from the original build — ALG_SNAP_OUT is used verbatim, exactly
+                # the original code path, bit-identical. Parsed once per breath (cheap; not
+                # hoisted out of the loop, to keep this a pure localized diff on the original).
+                _ALG_SNAP_AT_LIST = [int(x) for x in os.environ.get("ALG_SNAP_AT", "").split(",") if x]
+                if kb in _ALG_SNAP_AT_LIST:
+                    _snap_out_path = (os.environ["ALG_SNAP_OUT"].format(kb=kb)
+                                       if len(_ALG_SNAP_AT_LIST) > 1 else os.environ["ALG_SNAP_OUT"])
+                    _snap_dump(_snap_out_path, B=B, K_B=K_B, kb_done=kb,
                                waist=waist, tokmask=tokmask, tree=tree,
                                facts3=facts3, facts5=facts5, anchor=anchor, amask=amask,
                                res_map=res_map, vst_at=list(_vst_at),
@@ -12481,6 +12509,154 @@ def do_train(steps, lr, batch, seed):
     assert _soff + steps <= _stot, f"STEP_OFFSET {_soff} + STEPS {steps} exceeds SCHED_STEPS {_stot}"
     if _soff or _stot != steps:
         print(f"[train] segmented schedule: steps {_soff}..{_soff + steps} of a {_stot}-step cosine", flush=True)
+
+    # ================================================================================
+    # THE REPLAY-TRAINED BREATH (RTB; ledger 2026-10-11 17:21 registration, docs/replay_gym.md
+    # §5's three gaps; worktree mycelium-wt28, branch rtb). ALG_RTB=1 replaces the ENTIRE main
+    # loop below with its own self-contained one (early return at the bottom) rather than
+    # threading a branch through ~400 lines of fixed-buffer feed code the snapshot-resumed path
+    # does not use: ONE breath per step, state resumed from scripts/rtb_buffer.py's buffer (gap
+    # (a)) for kb_target in 2..K_B-1, on-policy from the trunk for kb_target in {0, 1} (no
+    # snapshot exists at kb_done=0 -- the snapshot hook only fires for kb>=1 inside the loop --
+    # and breath 1 is cheap enough to compute fresh every time: THE SPEC's own "breath 0 always
+    # on-policy"), graded with the SAME loss_fn the live loop uses (gap (b)'s per-breath ladder).
+    #
+    # BUILT AS AN EAGER STEP, NOT the 7-captured-TinyJit-graphs form the brief's literal ask
+    # describes (fixed buffers threading the ENTIRE per-breath ctx/state -- waist, vst, tok_key,
+    # the notebook, breaths/rbias_all/aspan_all/ospan_all/rcue_all/rb_last/rptr_last/s4_last --
+    # THE REPLAY GYM's own §1 shape -- through seven captured graphs, one per kb, the brief's
+    # own sanctioned escape hatch: "capture one graph per kb ... and dispatch"). That is the
+    # size of the b_tr..b_chalk5 feed section above (~400 lines) PER kb; do_train already has a
+    # precedent for "too complex to capture, run eagerly" -- ALG_WHEEL_TRAIN's own un-JIT'd step
+    # a few hundred lines above (`if not _WHEEL_TRAIN: step = TinyJit(step)`) -- RTB v1 follows
+    # THE SAME precedent rather than inventing a new one. The step-cost bar is measured honestly
+    # against THIS eager form in the gate table; a JIT'd RTB step would cost LESS, not more, and
+    # is named as the natural next build (not claimed here).
+    #
+    # GAP (c) (the offline feedback pass) is MOOT for this family: scripts/rtb_lib.py's module
+    # docstring states why (ALG_ALT2's fact_buf here is already a one-time, model-decode-
+    # dependent-but-not-checkpoint-refresh-dependent self-consult, captured generically inside
+    # every snapshot's ctx['fact_buf'] -- no live, checkpoint-tied consult exists on this family
+    # to move out of the training step). A future RTB arm on an ALG_ALT3 family would need gap
+    # (c) built; this body does not.
+    #
+    # THE ZERO-FILL TRADEOFF (stated, not hidden; see scripts/rtb_grad_probe.py's own comment,
+    # proven on the gate): one breath's own forward pass does not touch every param (organs
+    # living only in OTHER breaths never run this step); every param stays registered with the
+    # SAME AdamW instance across every kb_target a step samples (so momentum persists correctly
+    # for a param visited on different steps at different kb's), and an untouched param gets an
+    # explicit ZERO grad rather than being dropped from the optimizer -- AdamW's own decoupled
+    # weight decay therefore still nudges every param by -lr*wd*param EVERY step regardless of
+    # which breath ran, a real small leak, reported here rather than silently eaten.
+    if int(os.environ.get("ALG_RTB", "0")):
+        import importlib
+        import rtb_lib as _RL
+        importlib.reload(_RL)   # a worktree edit to rtb_lib.py must not need a fresh process
+
+        _RTB_BUF_DIR = os.environ["ALG_RTB_BUFFER"]
+        _RTB_REFRESH = int(os.environ.get("ALG_RTB_REFRESH", "4000"))
+        _rtb_manifest = _RL.load_manifest(_RTB_BUF_DIR)
+        assert _rtb_manifest["K_B"] == K_B, (_rtb_manifest["K_B"], K_B)
+        _rtb_kb_done_range = _rtb_manifest["kb_done_range"]
+        print(f"[rtb] buffer {_RTB_BUF_DIR}: {len(_rtb_manifest['chunks'])} chunks, "
+              f"kb_done_range={_rtb_kb_done_range}, ckpt={_rtb_manifest['ckpt']} "
+              f"({_rtb_manifest['ckpt_sha16']}), refresh every {_RTB_REFRESH} steps", flush=True)
+
+        def _rtb_refresh(step_no):
+            tmp_ckpt = ALG_CKPT.replace(".safetensors", "_rtbrefresh.safetensors")
+            safe_save(p, tmp_ckpt)
+            import subprocess
+            cmd = ([sys.executable, "scripts/rtb_buffer.py", "--ckpt", tmp_ckpt,
+                    "--out", _RTB_BUF_DIR, "--n", str(_rtb_manifest["n_rows"]),
+                    "--chunk", str(_rtb_manifest["chunk"]),
+                    "--kb-done", ",".join(str(x) for x in _rtb_kb_done_range)])
+            env = dict(os.environ, ALG_RTB_WRITE="1", ALG_RTB="0")
+            t_r0 = time.time()
+            r = subprocess.run(cmd, env=env, capture_output=True, text=True)
+            assert r.returncode == 0, f"rtb_buffer.py refresh FAILED:\n{r.stdout[-4000:]}\n{r.stderr[-4000:]}"
+            print(f"[rtb] REFRESH @ step {step_no}: {time.time() - t_r0:.1f}s "
+                  f"({r.stdout.strip().splitlines()[-1] if r.stdout.strip() else ''})", flush=True)
+            return _RL.load_manifest(_RTB_BUF_DIR)
+
+        def _rtb_onpolicy_step(kb_target):
+            """kb_target in {0, 1}: fresh grounding read (always on-policy) +, for kb_target==1,
+            exactly breath 1 (stop_after=1 -> loop range(1,2), one breath). kb_target==0 uses
+            stop_after=-1: int(-1) is truthy (unlike 0, the ternary's own falsy-zero quirk) so
+            `_kb_stop = min(K_B, -1+1) = 0` -> loop range(1, 0) is EMPTY -- zero loop breaths,
+            the grounding read alone, out["breaths"][0] is the graded head."""
+            idx = rng.choice(n, batch, replace=False)
+            ts_ = Tensor(np.ascontiguousarray(states[idx]), dtype=dtypes.half).cast(dtypes.float)
+            tk_ = Tensor(tokmask[idx].astype(np.float32), dtype=dtypes.float)
+            se_ = Tensor(sent[idx].astype(np.int32), dtype=dtypes.int)
+            kwargs = _RL.build_consult_kwargs(sys.modules[__name__], p, ts_, tk_, se_, samples, idx)
+            stop_after = -1 if kb_target == 0 else 1
+            out = forward(p, ts_, tk_, se_, stop_after=stop_after, **kwargs)
+            feed = _RL.gold_feed(sys.modules[__name__], gold, idx)
+            bgt = _RL.feed_to_tensors(sys.modules[__name__], feed)
+            return out, bgt
+
+        def _rtb_buffer_step(manifest, kb_target):
+            """kb_target in 2..K_B-1: resume from a buffered snapshot at kb_done=kb_target-1,
+            run EXACTLY breath kb_target (replay's kb_stop), grade against this chunk's own
+            rows' gold."""
+            kb_done = kb_target - 1
+            chunks_with_kb = [c for c in manifest["chunks"] if str(kb_done) in c["files"]]
+            assert chunks_with_kb, f"no buffered chunk carries kb_done={kb_done} (kb_done_range={_rtb_kb_done_range})"
+            c = chunks_with_kb[rng.randint(len(chunks_with_kb))]
+            snap = globals()["snap_load"](c["files"][str(kb_done)])
+            out = globals()["replay"](p, snap, kb_done, kb_stop=kb_target + 1)
+            rows = np.array(c["rows"])
+            feed = _RL.gold_feed(sys.modules[__name__], gold, rows)
+            bgt = _RL.feed_to_tensors(sys.modules[__name__], feed)
+            return out, bgt
+
+        t0 = time.time()
+        for s in range(steps):
+            cur_lr = lr_min + 0.5 * (lr - lr_min) * (1 + math.cos(math.pi * (s + _soff) / _stot))
+            opt.lr.assign(Tensor([cur_lr], dtype=dtypes.float)).realize()
+            if _RTB_REFRESH and s > 0 and s % _RTB_REFRESH == 0:
+                _rtb_manifest = _rtb_refresh(s)
+            kb_target = int(rng.randint(K_B))
+            Tensor.training = True
+            if kb_target <= 1:
+                out, bgt = _rtb_onpolicy_step(kb_target)
+            else:
+                out, bgt = _rtb_buffer_step(_rtb_manifest, kb_target)
+            l = loss_fn(out, bgt)
+            opt.zero_grad()
+            l.backward()
+            for k in p:
+                if k not in _frz and p[k].grad is None:
+                    p[k].grad = Tensor.zeros(*p[k].shape, dtype=p[k].dtype)
+            opt.step()
+            if s % 500 == 0 or s == steps - 1:
+                lv2 = float(l.realize().numpy())
+                assert np.isfinite(lv2)
+                print(f"  step {s:5d} loss={lv2:.4f} lr={cur_lr:.1e} kb_target={kb_target} "
+                      f"({(time.time() - t0) / (s + 1):.2f}s/step)", flush=True)
+            if (s + 1) % val_every == 0 or s == steps - 1:
+                fv = _quick_val()
+                mark = ""
+                if fv > best_val:
+                    best_val = fv
+                    best_snap = {k: t.detach().numpy().copy() for k, t in p.items()}
+                    mark = "  <-- BEST"
+                print(f"  [val @{s + 1}] fac-exact-proxy={fv:.4f}{mark}", flush=True)
+            snap_every = int(os.environ.get("SNAP_EVERY", "0"))
+            if snap_every and (s + 1) % snap_every == 0:
+                sp = ALG_CKPT.replace(".safetensors", f"_s{s + 1}.safetensors")
+                safe_save(p, sp)
+                print(f"  [snap @{s + 1}] -> {sp}", flush=True)
+        if best_snap is not None:
+            for k in p:
+                p[k].assign(Tensor(best_snap[k], dtype=p[k].dtype)).realize()
+            print(f"[train] restored BEST ckpt (val {best_val:.4f})", flush=True)
+        safe_save(p, ALG_CKPT)
+        print(f"[train] saved {ALG_CKPT} (RTB loop, {steps} steps, "
+              f"{(time.time() - t0) / steps:.3f}s/step mean)", flush=True)
+        return
+    # ================================================================================
+
     for s in range(steps):
         _tp0 = time.perf_counter()
         cur_lr = lr_min + 0.5 * (lr - lr_min) * (1 + math.cos(math.pi * (s + _soff) / _stot))
