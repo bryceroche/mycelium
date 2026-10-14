@@ -1,4 +1,8 @@
-# NEXT SESSION — cold-start entry (updated 2026-10-13 18:2x)
+# NEXT SESSION — cold-start entry (updated 2026-10-13 19:5x)
+
+**10-13 19:5x — OR_241 READ: wild HELD (−0.0024, bar met) at 0.67x the step; MINT −0.29 / silver −0.18 (the formulaic registers need the
+re-read; wild does not); the canvas did NOT flip (the cache is the notebook handoff, not the re-read); the membrane frozen at breath 0 by
+construction. THE REGISTER QUESTION registered (does MATH-500 behave like wild or mint?). FL2_241 next on the card; the depth probe pending.**
 
 **10-13 18:2x — OR_241 (ONE READ: the bank re-read + station 3 severed after breath 0) ON THE CARD (18:08; gate PASS; the gym sever on PMS8
 costs only −0.0095 implied — the ink carries most of what the re-reads earn; my 'heavily' prediction wrong). FL_241: the body broken on values
