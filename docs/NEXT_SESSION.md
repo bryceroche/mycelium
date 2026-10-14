@@ -1,4 +1,9 @@
-# NEXT SESSION — cold-start entry (updated 2026-10-13 14:5x)
+# NEXT SESSION — cold-start entry (updated 2026-10-13 18:2x)
+
+**10-13 18:2x — OR_241 (ONE READ: the bank re-read + station 3 severed after breath 0) ON THE CARD (18:08; gate PASS; the gym sever on PMS8
+costs only −0.0095 implied — the ink carries most of what the re-reads earn; my 'heavily' prediction wrong). FL_241: the body broken on values
+(mint 0.03: the self-copy hold target on the digit heads) → the capability read VOID; FL2 (hold on pointer heads only; knob check at read;
+value-sanity bar) building, queued behind OR. The depth probe (binding by trunk layer + the tree probe) still running on CPU.**
 
 **10-13 14:5x — THE DAY'S VERDICTS: DF_241 (the denoiser) — noise-free +0.012 but the reading-stream noise INERT at the read (the body grew its logit
 spread 1.75x: the logit-scale escape; the knob law's third clause: define injections RELATIVE to the port's spread); WH_241/WH_242 (whip + blurred
