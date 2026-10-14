@@ -109,6 +109,41 @@ ALG_SEED_HOLD = int(os.environ.get("ALG_SEED_HOLD", "0"))
 # regardless) — see forward()'s seed_vq handling. HOLD (above) is specified for the breath-0-only
 # mode only; it is not extended here.
 ALG_SEED_SCHED = int(os.environ.get("ALG_SEED_SCHED", "0"))
+# THE STATE-SPACE DENOISER'S READING STREAM (ALG_DN_READ=<tau_max>, 2026-10-12, Bryce's ruling +
+# "the build plan settled"): a TRAIN-TIME door onto THE SEEDED READINGS' OWN schedule mechanism
+# directly above (ALG_SEED_SCHED + ALG_SEED_TEMP) rather than a new injection point — the build
+# plan names the SAME location ("noise on the bank's slot->token SCORES just before the softmax
+# ... one draw per (slot, token) shared across heads ... the SAME schedule at training and
+# read"), so ALG_DN_READ simply BECOMES ALG_SEED_TEMP/ALG_SEED_SCHED for the rest of this module
+# (every downstream site — forward()'s seed_vq/seed_fq_sched handling, breath_step's
+# ctx["seed_fq_sched"]/ctx["seed_tau"] slice — is the unmodified seeded-branch code). The only
+# new thing is WHO feeds the seed_fq_sched port: at READ it stays the per-row reproducible Gumbel
+# draw (seed_gumbel_sched_build_array, host, deterministic, unchanged); IN TRAINING it is FRESH
+# noise drawn every step through a new fixed-shape JIT input (b_dnread, do_train below) — the
+# gold-feed idiom, the same one THE WHIP's b_whip uses for the math stream. do_train's own
+# refusal of ALG_SEED_TEMP/ALG_SEED_SCHED (the seeded branch's training-door guard, right below
+# in do_train) is lifted ONLY when ALG_DN_READ is the flag that set them — see that assert.
+# Unset (0.0): ALG_SEED_TEMP/ALG_SEED_SCHED are whatever the raw env said (0 in any ordinary
+# training run) — bit-identical.
+ALG_DN_READ = float(os.environ.get("ALG_DN_READ", "0.0"))
+if ALG_DN_READ:
+    assert not ALG_SEED_TEMP and not ALG_SEED_SCHED, (
+        f"ALG_DN_READ={ALG_DN_READ!r} derives ALG_SEED_TEMP/ALG_SEED_SCHED itself — do not also "
+        f"set ALG_SEED_TEMP={ALG_SEED_TEMP!r} / ALG_SEED_SCHED={ALG_SEED_SCHED!r} directly.")
+    ALG_SEED_TEMP = ALG_DN_READ
+    ALG_SEED_SCHED = 1
+# THE STATE-SPACE DENOISER'S MATH STREAM (ALG_DN_WHIP=<sigma_max>, 2026-10-12, the same ruling):
+# THE WHIP (ALG_WHIP="k:amp", above) generalized from "one kick at one breath" to "a kick at
+# EVERY loop breath on a cos^2-decreasing schedule", sigma_k = sigma_max * cos^2(k*pi/
+# (2*(K_B-1))) of the CONTENT norm (zero at the last breath — the same clock the blurred ladder
+# and THE SCHEDULE above use), with the content block's norm RESTORED after the kick (keepnorm:
+# a direction perturbation, not a magnitude change) — the 128 clock dims bitwise untouched by
+# construction (gate_content from _polar_sink() zeroes the noise AND excludes the clock block
+# from the renormalization). Own noise source (_dn_whip_noise/_DN_WHIP_SRC), independent of
+# ALG_WHIP's — the two mechanisms are never meant to compose in one arm, but keeping separate
+# state avoids any accidental coupling if they ever are. See _dn_whip_kick below. Unset (0.0):
+# bit-identical (the call site in breath_step is skipped).
+ALG_DN_WHIP = float(os.environ.get("ALG_DN_WHIP", "0.0"))
 # THE SURFACE-GROUNDED STRUCTURAL POINTER (2026-09-20, THE ARGUMENT-
 # BINDING CENSUS's arm): arg1/arg2 channels' own span loss, the 5th
 # (operator cue) channel, and its road into the bank bias. All dead
@@ -342,6 +377,21 @@ ALG_IDKEY = float(os.environ.get("ALG_IDKEY", "0"))
 # identical across passes, so consult 1 is exact. Unset = one pass, the
 # stale start-of-run facts, bit-identical.
 ALG_ALT3 = int(os.environ.get("ALG_ALT3", "0"))
+# THE LOOP STOP (2026-10-11; THE BREATH-COUNT READS, K3_241/PK_241): ALG_BREATH still sizes
+# every clock table, phase schedule and conductor row (K_B below) -- this flag ONLY shortens
+# how many of those K_B breaths the loop in forward() actually RUNS on a given call. Default 0
+# = run all K_B breaths, bit-identical (the flag touches nothing on the path every existing
+# body already takes). ALG_LOOP_STOP=k (k>=1) runs breaths 0..k-1 (breath 0, the grounding
+# read, plus loop breaths 1..k-1) and leaves breaths k..K_B-1 UNRUN for this call: the final
+# decode (`breaths[-1]` / the shelf readout) and the loss both see only the breaths that ran
+# (both already index `breaths` dynamically -- no K_B-sized assumption to patch). k >= K_B is
+# bit-identical to 0 (nothing left to cut). Only the caller's OWN unset `stop_after` picks this
+# up (forward()'s two internal consult-only partial passes, pass_a/pass_b, already pass their
+# own explicit stop_after=2/4 and are untouched by this flag). ALG_LOOP_STOP_READ (read-time
+# only, see forward()) overrides this at a given call without retraining or reshaping anything
+# -- same params, same K_B-sized tables, a different k purely at that call's loop range (the
+# K3-vs-K7 exposure read this build exists to make).
+ALG_LOOP_STOP = int(os.environ.get("ALG_LOOP_STOP", "0"))
 # THE TRAINED CERTIFIER-MASK ROAD (2026-09-28; ledger 09:30/09:35): the
 # read-time broadcast form (LV_CERTMASK) was NEGATIVE — "every colliding
 # slot toward every unclaimed numeral at once" blurs a body that never
@@ -518,6 +568,58 @@ def _whip_kick(cur):
     nn = (n * n).sum(-1, keepdim=True).sqrt() + 1e-6
     nc = (cur * cur).sum(-1, keepdim=True).sqrt()
     return cur + n / nn * nc * _WHIP_AMP
+
+
+# THE STATE-SPACE DENOISER'S MATH STREAM (ALG_DN_WHIP, 2026-10-12): own noise source, own
+# schedule, own keepnorm — see the module-level comment above ALG_DN_WHIP's definition.
+_DN_WHIP_SRC = None
+_DN_WHIP_CONST = {}
+
+
+def _dn_whip_noise(B, LT, HW):
+    if _DN_WHIP_SRC is not None:
+        return _DN_WHIP_SRC
+    key = (B, LT, HW)
+    if key not in _DN_WHIP_CONST:
+        from tinygrad import Tensor as _Tdw
+        _DN_WHIP_CONST[key] = _Tdw(np.random.RandomState(5252).randn(B, LT, HW).astype(np.float32)).contiguous().realize()
+    return _DN_WHIP_CONST[key]
+
+
+def _dn_whip_sigma(kb, K_B):
+    """sigma_k = ALG_DN_WHIP * cos^2(k*pi/(2*(K_B-1))) — zero exactly at the last breath
+    (k == K_B-1); K_B<=1 has no loop breaths at all, so sigma is 0 by construction."""
+    if K_B <= 1:
+        return 0.0
+    return ALG_DN_WHIP * (math.cos(kb * math.pi / (2.0 * (K_B - 1))) ** 2)
+
+
+def _dn_whip_kick(cur, kb, K_B):
+    """THE STATE-SPACE DENOISER'S MATH STREAM: the state entering breath kb kicked by
+    sigma_k (see _dn_whip_sigma) of its CONTENT-ONLY norm, direction-only (the content
+    block's norm RESTORED after the kick — keepnorm), the 128 clock dims bitwise untouched
+    (gate_content from _polar_sink() both zeroes the noise on clock dims and keeps the clock
+    block out of the renormalization, which is applied only to the content sub-vector)."""
+    sigma = _dn_whip_sigma(kb, K_B)
+    if not sigma:
+        return cur
+    B, LT, HW = (int(x) for x in cur.shape)
+    n = _dn_whip_noise(B, LT, HW)
+    if ALG_POLAR:
+        gc = _polar_sink()[2]        # 1.0 on content dims, 0.0 on clock dims
+        n = n * gc
+        cur_c = cur * gc
+    else:
+        gc = None
+        cur_c = cur
+    nn = (n * n).sum(-1, keepdim=True).sqrt() + 1e-6
+    nc = (cur_c * cur_c).sum(-1, keepdim=True).sqrt()            # CONTENT-only norm (pre-kick)
+    kicked_c = cur_c + n / nn * nc * sigma                        # direction perturbation only
+    knc = (kicked_c * kicked_c).sum(-1, keepdim=True).sqrt() + 1e-6
+    kicked_c = kicked_c * (nc / knc)                              # KEEPNORM: restore the content norm
+    if gc is not None:
+        return cur * (1.0 - gc) + kicked_c                       # clock planes bitwise untouched
+    return kicked_c
 _CONST_T = {}
 
 
@@ -1339,6 +1441,24 @@ if ALG_CHALK:
 # the last rung sharp). CE/BCE are linear in the target: exact.
 ALG_BLUR = int(os.environ.get("ALG_BLUR", "0"))
 ALG_BLUR_MAX = float(os.environ.get("ALG_BLUR_MAX", "0.7"))
+# THE FLAGGED LOOP (ALG_FLAG=1, 2026-10-12; ARM 1 of the amended denoising-breath design,
+# ledger 2026-10-12 12:35, "a capability test under the DIR2 rule"): at breath 0, TRAINING ONLY,
+# a sampled subset of present slots (the host's flag_mask port, (B, L_TOT) 0/1 float) have their
+# grounding read RE-RUN with the gold mention tabu'd (-1e4 on the gold span, the host's
+# flag_tabu0 port, (B, 1, L_TOT, T) raw -1e4*fspan, zeroed for unflagged slots by forward()
+# itself) -- the slot lands on its runner-up; the mixed fst/fat (clean where unflagged,
+# corrupted where flagged) becomes THE grounding read from here on, by construction (no second
+# name, no bypass). (2) a learned per-slot flag embedding (p["flag_emb"], 2 rows, zero-init, a
+# ROAD not a gain) enters `cur` before breath 1; a HARD TABU excludes the flagged slot's own
+# (now-corrupted) breath-0 argmax token from every breath 1..K_B-1 re-read, riding the SAME
+# ctx["anchor_bias0"] port ALG_ANCHOR uses (read C's exact mechanism, dn_read_c.py). (3) the
+# ladder's objective (loss_fn._flag_retarget): flagged slots grade against gold as today;
+# unflagged slots grade against their OWN previous breath's decode (argmax/threshold, .detach()
+# -- no gradient path exists through either op), kb==1 copying breath 0 -- scoped to the five
+# fields the custody-gold scorer reads (ftype, op, res, args, dig; dn_common.score_row_slots).
+# Default 0 / flag_mask None = every one of these branches skipped: bit-identical.
+ALG_FLAG = int(os.environ.get("ALG_FLAG", "0"))
+ALG_FLAG_RATE = float(os.environ.get("ALG_FLAG_RATE", "0.25"))   # host-sampler only; never read inside forward()/loss_fn
 # THE CLOCK-CALIBRATED TARGETS (2026-09-14, registered): ALG_CLOCK_TARGET="field:a:d,..." —
 # per-FIELD fog on the same clock as the blurred ladder: fog_f(k) = a * cos^2(k*pi/(2*d)) for
 # k < d, 0 after (a = the starting fog, d = the deadline breath). Fields: pres ftype res op
@@ -3303,6 +3423,11 @@ def build_params(seed=0):
             "L_FAC); it no longer holds"
         p["sm_w_self"] = t(np.zeros(1, dtype=np.float32))
         p["sm_w_arg"] = t(np.zeros(1, dtype=np.float32))
+    if ALG_FLAG:
+        # THE FLAGGED LOOP's structured feature (2026-10-12): row 0 = unflagged, row 1 =
+        # flagged, zero-init (bit-identical at step 0; a road, not a gain -- added directly
+        # into `cur`, never behind a scalar).
+        p["flag_emb"] = t(np.zeros((2, H_W), dtype=np.float32))
     if int(os.environ.get("ALG_PAIRCMP", "0")):
         # THE PAIRWISE COMPARATOR ROAD (2026-10-09; registered at SM_241's close as "the
         # honest next form": the probe's OWN read-out as the road -- a small MLP over
@@ -6798,6 +6923,14 @@ def breath_step(p, state, kb, ctx):
         cur = cur + _GTAP[kb]            # the probe leaf: dL/d(state entering breath kb)
     if _WHIP_K and kb == _WHIP_K:
         cur = _whip_kick(cur)            # THE WHIP: the state entering breath kb, kicked
+    if ALG_DN_WHIP:
+        _dnw_sigma = _dn_whip_sigma(kb, K_B)
+        if _CENSUS is not None and _dnw_sigma:
+            _CENSUS.append((kb, "dn_whip_sigma", np.array([_dnw_sigma], np.float32)))
+            _CENSUS.append((kb, "dn_whip_content_pre", cur.realize().numpy()))
+        cur = _dn_whip_kick(cur, kb, K_B)   # THE STATE-SPACE DENOISER'S MATH STREAM: every loop breath, on the cos^2 schedule
+        if _CENSUS is not None and _dnw_sigma:
+            _CENSUS.append((kb, "dn_whip_content_post", cur.realize().numpy()))
     _wm = state.get("wheel_melt")
     if _LOCUS is not None and kb == _LOCUS["kb"] and _WHEEL_MELT is not None:
         from tinygrad import Tensor as _Tl
@@ -9100,7 +9233,7 @@ def snap_load(path):
     return _snap_unflatten("snap", manifest, _loader)
 
 
-def replay(p, snapshot, kb_start, overrides=None):
+def replay(p, snapshot, kb_start, overrides=None, kb_stop=None):
     """THE REPLAY ENTRY (2026-10-07, worktree mycelium-wt8, branch replay; THE SAVE POINT,
     docs/phase1_skeleton_spec.md 2026-10-07 17:27). Rebuilds ctx/state from `snapshot`
     (snap_load()'s return, taken at the end of breath kb_start) and runs breaths
@@ -9126,6 +9259,21 @@ def replay(p, snapshot, kb_start, overrides=None):
           THE CHALKBOARD DRY-RUN's text-embedding-copy variant, which splices a copied
           token embedding directly into waist's last ALG_CHALK_N columns rather than
           going through the trained chalk_dig/chalk_tag table -- see the dry-run script).
+
+    `kb_stop` (2026-10-11, worktree mycelium-wt28, branch rtb; THE REPLAY-TRAINED BREATH,
+    gap (b)): the EXCLUSIVE upper bound on the resumed loop's `range(kb_start+1, kb_stop)`
+    -- default None reproduces the original behavior exactly (`kb_stop = K_B`, i.e. run
+    every remaining breath, THE BUILD's own read-path contract, bit-identical for every
+    existing caller). RTB passes `kb_stop=kb_start+2` to run EXACTLY ONE breath
+    (kb_start+1) before calling `_forward_tail` -- the same "fewer breaths than K_B"
+    shape forward()'s own ALT3 consult partial passes already exercise today (stop_after
+    stops the LOOP early but `_forward_tail` is still called with the real K_B and a
+    `breaths` list shorter than K_B; see do_train's `_partial`/pass_a/pass_b). The
+    returned tensors are NOT detached -- gradients flow through breath_step(kb_start+1)
+    and `_forward_tail`'s head computation into whatever params they touch; nothing
+    upstream of the snapshot (already `.realize().numpy()`-saved, pure data) carries a
+    graph to backprop through, which is exactly RTB's design: only the SAMPLED breath's
+    own step trains, the trajectory that produced the snapshot does not.
 
     SCOPE LIMIT (stated, not hidden): replay threads the snapshot's OWN facts3/facts5/
     cert3/cert5/rack3/rack5 (the ORIGINAL forward call's consult products) through the
@@ -9182,7 +9330,8 @@ def replay(p, snapshot, kb_start, overrides=None):
     while len(_vst_at) < K_B:
         _vst_at.append(vst)
 
-    for kb in range(kb_start + 1, K_B):
+    _kb_stop = K_B if kb_stop is None else min(kb_stop, K_B)
+    for kb in range(kb_start + 1, _kb_stop):
         breath_step(p, state, kb, ctx)
         if conductor(kb).facts3_inject and facts3 is not None:   # THE CONDUCTOR: kb == 2
             vst = _fact_inject(p, vst, facts3); ctx["vst"] = vst
@@ -9214,7 +9363,7 @@ def replay(p, snapshot, kb_start, overrides=None):
     return out
 
 
-def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, drop=None, anchor=None, amask=None, gmod=None, pmask=None, lsent=None, reg=None, fact_buf=None, mh_mass=None, mh_atlas_traj=None, xcorr=None, res_map=None, hud=None, ident=None, busreg_ramp=None, valfact=None, stop_after=None, facts3=None, facts5=None, tree=None, cert3=None, cert5=None, rack3=None, rack5=None, chalk3=None, chalk5=None, dirgold=None, dircue=None, seed_vq=None, seed_fq=None, seed_fq_sched=None):
+def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, drop=None, anchor=None, amask=None, gmod=None, pmask=None, lsent=None, reg=None, fact_buf=None, mh_mass=None, mh_atlas_traj=None, xcorr=None, res_map=None, hud=None, ident=None, busreg_ramp=None, valfact=None, stop_after=None, facts3=None, facts5=None, tree=None, cert3=None, cert5=None, rack3=None, rack5=None, chalk3=None, chalk5=None, dirgold=None, dircue=None, seed_vq=None, seed_fq=None, seed_fq_sched=None, flag_mask=None, flag_tabu0=None):
     from tinygrad import Tensor, dtypes   # audit 2026-09-01: was a
     # SCOPE ACCIDENT (bound only via the sixwave/sync branches — any
     # SIXWAVE-off config killed five organs at step 1)
@@ -9425,6 +9574,32 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
     # TARGET space; flattening it deletes the alphabet rather than
     # severing a reading) and the QUERY bank below.
     fst, fat = bank(p["fq"], L_TOT, pbias=_pb, flat=_tok_seal_on(0))
+    if ALG_FLAG and flag_mask is not None:
+        # THE FLAGGED LOOP's corruption (2026-10-12, TRAINING ONLY): re-run the SAME
+        # grounding read with the gold mention tabu'd (flag_tabu0, host-built raw
+        # -1e4*fspan, zeroed for unflagged slots here) for the sampled subset -- the slot
+        # lands on its runner-up. Mixed by flag_mask into `fst`/`fat` THEMSELVES (no second
+        # name): every downstream reader of the grounding read (ctx["fat0"], the anchor, the
+        # eyes, cur below) inherits the corrupted version for flagged slots with zero other
+        # code changes, by construction (the mandatory-road law: one road, not a bypass).
+        assert flag_tabu0 is not None, \
+            "ALG_FLAG needs flag_tabu0 (the host-built gold-span tabu bias) threaded alongside flag_mask"
+        if int(flag_mask.shape[1]) < L_TOT:   # FED_SCRATCH padding: scratch rows never flagged
+            flag_mask = Tensor.cat(flag_mask, Tensor.zeros(B, L_TOT - int(flag_mask.shape[1])), dim=1)
+        if int(flag_tabu0.shape[2]) < L_TOT:
+            flag_tabu0 = Tensor.cat(flag_tabu0, Tensor.zeros(
+                B, 1, L_TOT - int(flag_tabu0.shape[2]), int(flag_tabu0.shape[-1])), dim=2)
+        assert int(flag_mask.shape[1]) == L_TOT and int(flag_tabu0.shape[2]) == L_TOT, \
+            (f"ALG_FLAG's flag_mask/flag_tabu0 do not match L_TOT={L_TOT} even after "
+             f"zero-padding (got {int(flag_mask.shape[1])}/{int(flag_tabu0.shape[2])}) -- "
+             f"the host fed something wider than L_FAC and narrower than L_TOT")
+        _fl_m3 = flag_mask.reshape(B, L_TOT, 1)
+        _fl_tabu_g = flag_tabu0 * _fl_m3.reshape(B, 1, L_TOT, 1)
+        fst_c, fat_c = bank(p["fq"], L_TOT,
+                            pbias=(_fl_tabu_g if _pb is None else _pb + _fl_tabu_g),
+                            flat=_tok_seal_on(0))
+        fst = fst * (1.0 - _fl_m3) + fst_c * _fl_m3
+        fat = fat * (1.0 - _fl_m3) + fat_c * _fl_m3
     qst, _qa = bank(p["qq"], 1)
 
     # BRICK-P breathing (2026-07-09): K-1 refinement passes. Each breath
@@ -9502,6 +9677,12 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
     _bs_ctx = _bs_state = None
     if K_B > 1 and slot_mask is not None and "W_bo" in p:
         cur = fst
+        if ALG_FLAG and flag_mask is not None and "flag_emb" in p:
+            # THE FLAGGED LOOP's structured feature (2026-10-12): entered on `cur` itself,
+            # before breath 1 — a position-aligned per-slot vector, not a per-breath port,
+            # since the flag is constant across the loop by construction (same as fat0/the
+            # anchor below). No gain: the mandatory-road law.
+            cur = cur + p["flag_emb"][flag_mask.cast(dtypes.int)]
         # FINAL BOSS rung 0 (2026-09-03): the loop BODY lives in
         # module-level breath_step (pure code motion — bit-identical by
         # construction); state carries what crosses breath boundaries,
@@ -9525,6 +9706,17 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
         # anywhere: bit-identical.
         _anch_bias0 = ((ALG_ANCHOR * fat.detach()).reshape(B, 1, L_TOT, -1)
                        if ALG_ANCHOR else None)
+        if ALG_FLAG and flag_mask is not None:
+            # THE FLAGGED LOOP's hard tabu (2026-10-12): exclude the flagged slot's own
+            # (now-corrupted, since the grounding read above already mixed in the tabu'd
+            # re-run) breath-0 argmax token from every breath 1..K_B-1 re-read -- riding the
+            # SAME constant-across-breaths anchor_bias0 port ALG_ANCHOR uses (read C's exact
+            # mechanism: dn_read_c.py's tabu_tensor, reused rather than a second port).
+            _fl_am = fat.detach().argmax(-1)                                  # (B, L_TOT) token idx
+            _fl_ar = Tensor.arange(int(tokmask.shape[1])).reshape(1, 1, -1)
+            _fl_tabu1 = ((_fl_am.reshape(B, L_TOT, 1) == _fl_ar).float()
+                        * flag_mask.reshape(B, L_TOT, 1) * -1e4).reshape(B, 1, L_TOT, -1)
+            _anch_bias0 = _fl_tabu1 if _anch_bias0 is None else _anch_bias0 + _fl_tabu1
         # THE SEEDED READINGS' HOLD (ALG_SEED_HOLD=1, 2026-10-12): breath 0's sampled argmax
         # token per slot (fat — already carries the Gumbel bias added above when ALG_SEED_TEMP
         # is set; HOLD works at ALG_SEED_TEMP=0 too, holding the plain argmax) becomes a HARD
@@ -9627,7 +9819,21 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
             # breath 5) through the ALT2 injection into the variable
             # states every later rung and the final heads read against.
             # All three None = the loop as it was, bit-identical.
+            if stop_after is None:
+                # THE LOOP STOP (2026-10-11): only a caller that left stop_after unset (i.e.
+                # every real call except the two internal consult partial passes, which always
+                # pass their own explicit 2/4) picks up the env override — ALG_LOOP_STOP_READ
+                # wins at THIS call if set (the K3-vs-K7 exposure read), else ALG_LOOP_STOP (the
+                # training-time truncation); neither set = stop_after stays None = unchanged.
+                _lsr = os.environ.get("ALG_LOOP_STOP_READ")
+                _ls_eff = int(_lsr) if _lsr not in (None, "") else ALG_LOOP_STOP
+                if _ls_eff:
+                    stop_after = _ls_eff - 1
             _kb_stop = (min(K_B, int(stop_after) + 1) if stop_after else K_B)
+            if int(os.environ.get("ALG_LOOP_STOP_DEBUG", "0")):
+                print(f"[loop-stop-debug] K_B={K_B} stop_after={stop_after} "
+                      f"breaths that will run: 0..{_kb_stop - 1} "
+                      f"(loop breaths {list(range(1, _kb_stop))})", flush=True)
             for kb in range(1, _kb_stop):
                 if ALG_TOKLOOP and "tok_wq" in p:      # THE NL LOOP: the token step, then the slot step reads it
                     _tok = _token_step(p, _tok, tokmask, sent, B, kb)
@@ -9647,11 +9853,15 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
                     _bs_ctx["vst"] = vst
                     for _r in range(3, K_B):
                         _vst_at[_r] = vst
+                    if int(os.environ.get("ALG_LOOP_STOP_DEBUG", "0")):
+                        print(f"[loop-stop-debug] consult 1 (facts3) FIRED at kb={kb}", flush=True)
                 if conductor(kb).facts5_inject and facts5 is not None:   # THE CONDUCTOR: kb == 4
                     vst = _fact_inject(p, vst, facts5)   # consult 2's values: read from breath 5 on
                     _bs_ctx["vst"] = vst
                     for _r in range(5, K_B):
                         _vst_at[_r] = vst
+                    if int(os.environ.get("ALG_LOOP_STOP_DEBUG", "0")):
+                        print(f"[loop-stop-debug] consult 2 (facts5) FIRED at kb={kb}", flush=True)
                 if ALG_WRITEBACK and "wb_w" in p and kb < K_B - 1:   # THE WRITE-BACK: the text learns what was committed to it
                     _tok = _writeback(p, _tok, _bs_state["cur"], _bs_state["fat_cur"], tokmask, B, kb)
                     _bs_ctx["waist"] = _tok
@@ -9686,9 +9896,21 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
                 # NEVER call this inside a JIT'd step; breath_step's own JIT callers never
                 # set ALG_SNAP_AT). Both env vars default empty: zero cost, same code path,
                 # bit-identical when unset.
-                _ALG_SNAP_AT = int(os.environ.get("ALG_SNAP_AT", "0") or "0")
-                if _ALG_SNAP_AT and kb == _ALG_SNAP_AT:
-                    _snap_dump(os.environ["ALG_SNAP_OUT"], B=B, K_B=K_B, kb_done=kb,
+                #
+                # THE MULTI-POINT EXTENSION (2026-10-11, worktree mycelium-wt28, branch rtb;
+                # THE REPLAY-TRAINED BREATH's buffer writer, docs/replay_gym.md §5 gap (a)):
+                # ALG_SNAP_AT may now name SEVERAL breaths, comma-separated (e.g. "1,2,3,4,5"),
+                # so one forward() call over a batch of diet rows writes every snapshot point
+                # the replay buffer needs instead of one call per kb. ALG_SNAP_OUT must then
+                # contain the literal substring "{kb}" (formatted per dump); a single value is
+                # UNCHANGED from the original build — ALG_SNAP_OUT is used verbatim, exactly
+                # the original code path, bit-identical. Parsed once per breath (cheap; not
+                # hoisted out of the loop, to keep this a pure localized diff on the original).
+                _ALG_SNAP_AT_LIST = [int(x) for x in os.environ.get("ALG_SNAP_AT", "").split(",") if x]
+                if kb in _ALG_SNAP_AT_LIST:
+                    _snap_out_path = (os.environ["ALG_SNAP_OUT"].format(kb=kb)
+                                       if len(_ALG_SNAP_AT_LIST) > 1 else os.environ["ALG_SNAP_OUT"])
+                    _snap_dump(_snap_out_path, B=B, K_B=K_B, kb_done=kb,
                                waist=waist, tokmask=tokmask, tree=tree,
                                facts3=facts3, facts5=facts5, anchor=anchor, amask=amask,
                                res_map=res_map, vst_at=list(_vst_at),
@@ -9718,6 +9940,37 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
     return out
 
 
+def _flag_retarget(g, breaths, kb):
+    """THE FLAGGED LOOP's objective (ledger 2026-10-12 12:35): flagged slots keep gold;
+    unflagged slots copy their PREVIOUS breath's own decode -- a stop-gradient target
+    (.detach() then argmax/threshold: no gradient path exists through either op, so the
+    "unflagged copy-target carries no gradient into the previous breath" gate check holds by
+    construction, not by convention). `breaths[kb - 1]` is the previous LOOP breath; kb == 1
+    copies breaths[0], breath 0's own grounding-read decode -- "the first loop breath copies
+    breath 0", per the spec. Scoped to the five fields the custody-gold scorer reads
+    (dn_common.score_row_slots: ftype, op, res, args, dig) -- presence/islit and every
+    auxiliary span/bind/direction term are untouched, graded against gold for every slot
+    exactly as today's ladder (THE FLAG IS THE ONLY ROAD TO CHANGE on these five; nothing
+    else moves). g["flag_mask"] is None (the default, ALG_FLAG unset or this call off-arm):
+    returns `g` unchanged -- bit-identical."""
+    fm_full = g.get("flag_mask")
+    if fm_full is None:
+        return g
+    prev = breaths[kb - 1]
+    L = g["ftype"].shape[1]
+    fm = fm_full[:, :L]                                   # (B, L_FAC); scratch rows (if any) never flagged
+    g2 = dict(g)
+    for f in ("ftype", "op", "res"):
+        pv = prev[f].detach().argmax(-1)                  # (B, L_FAC) stop-grad class index
+        g2[f] = (fm * g[f].float() + (1.0 - fm) * pv.float()).cast(g[f].dtype)
+    pv_dig = prev["dig"].detach().argmax(-1)              # (B, L_FAC, 7) stop-grad per-position class
+    fm3 = fm.unsqueeze(-1)
+    g2["digits"] = (fm3 * g["digits"].float() + (1.0 - fm3) * pv_dig.float()).cast(g["digits"].dtype)
+    pv_args = (prev["args"].detach().sigmoid() > 0.5).float()   # (B, L_FAC, K_VARS) stop-grad multi-hot
+    g2["args"] = fm3 * g["args"] + (1.0 - fm3) * pv_args
+    return g2
+
+
 def loss_fn(o, g):
     """Ladder wrapper: with breaths, per-breath weighted CE (1 + k/(K-1)) —
     the v98 ladder; the shared query/span terms ride the final breath only."""
@@ -9726,10 +9979,11 @@ def loss_fn(o, g):
         tot = None
         for kb, ob in enumerate(o["breaths"]):
             full = dict(o, **ob)
+            gg = _flag_retarget(g, o["breaths"], kb) if (ALG_FLAG and kb >= 1) else g
             w = 1.0 + kb / max(K_B - 1, 1)
             beta = (ALG_BLUR_MAX * math.cos(kb * math.pi / (2 * max(K_B - 1, 1))) ** 2) if ALG_BLUR else 0.0
             _lvl = (_NEST_LEVELS[kb] if (_NEST_LEVELS is not None and kb < len(_NEST_LEVELS)) else 3)   # THE NESTED LADDER: this rung's resolution
-            term = _loss_single(full, g, blur=_clock_fog(kb, beta), level=_lvl) * w
+            term = _loss_single(full, gg, blur=_clock_fog(kb, beta), level=_lvl) * w
             tot = term if tot is None else tot + term
         if int(os.environ.get("BREATH_NORM", "0")):
             _wsum = sum(1.0 + kb / max(K_B - 1, 1) for kb in range(K_B))
@@ -10748,12 +11002,23 @@ def do_train(steps, lr, batch, seed):
     # this process cannot see the door either. Loud, like ALG_MASK_SEAL's.
     # THE SEEDED READINGS ARE A READ DOOR, NEVER TRAINED THROUGH (2026-10-12): do_train's
     # FIRST executable statement, same idiom as the token seal's guard right below — loud,
-    # ahead of load_alg, ahead of every capture.
-    assert not ALG_SEED_TEMP and not ALG_SEED_HOLD and not ALG_SEED_SCHED, (
-        f"ALG_SEED_TEMP={ALG_SEED_TEMP!r} / ALG_SEED_HOLD={ALG_SEED_HOLD!r} / "
-        f"ALG_SEED_SCHED={ALG_SEED_SCHED!r} set and this is a TRAINING run — THE SEEDED "
-        f"READINGS (ledger 2026-10-12, STEP 1) are a READ-TIME door only (STEP 2, the training "
-        f"arm, needs its own word). Unset all three for training.")
+    # ahead of load_alg, ahead of every capture. ALG_SEED_HOLD stays refused unconditionally
+    # (STEP 2's own word never covered it — the build plan withdrew HOLD as a training target,
+    # keeping only the schedule). ALG_SEED_TEMP/ALG_SEED_SCHED are refused UNLESS ALG_DN_READ is
+    # the flag that set them (checked above, at their own definition: ALG_DN_READ asserts they
+    # were not ALSO set directly, so by the time do_train runs, ALG_SEED_TEMP==ALG_DN_READ and
+    # ALG_SEED_SCHED==1 if and only if ALG_DN_READ is the source) — THE STATE-SPACE DENOISER'S
+    # READING STREAM, STEP 2, the training arm, with its own word (2026-10-12, "the build plan
+    # settled").
+    assert not ALG_SEED_HOLD, (
+        f"ALG_SEED_HOLD={ALG_SEED_HOLD!r} set and this is a TRAINING run — THE SEEDED READINGS' "
+        f"HOLD stays a READ-TIME door only; the build plan's training arm covers the schedule "
+        f"(ALG_DN_READ), never HOLD.")
+    assert (not ALG_SEED_TEMP and not ALG_SEED_SCHED) or ALG_DN_READ, (
+        f"ALG_SEED_TEMP={ALG_SEED_TEMP!r} / ALG_SEED_SCHED={ALG_SEED_SCHED!r} set DIRECTLY and "
+        f"this is a TRAINING run without ALG_DN_READ — THE SEEDED READINGS are a READ-TIME door "
+        f"only; set ALG_DN_READ=<tau_max> instead (the legal training door onto this same "
+        f"mechanism).")
     assert _tok_seal_mode() == "0", (
         f"ALG_TOK_SEAL={os.environ.get('ALG_TOK_SEAL')!r} is set and this "
         f"is a TRAINING run — the token seal is a READ door (the headroom "
@@ -11428,6 +11693,16 @@ def do_train(steps, lr, batch, seed):
     b_whip = fix(np.zeros((batch, L_TOT, H_W), np.float32), dtypes.float) if _WHIP_K else None   # THE WHIP's fresh noise per step
     if b_whip is not None:
         globals()["_WHIP_SRC"] = b_whip
+    # THE STATE-SPACE DENOISER'S MATH STREAM (ALG_DN_WHIP, 2026-10-12): own fresh-noise-per-step
+    # buffer, the same b_whip idiom, own global (_DN_WHIP_SRC) so it never couples to ALG_WHIP.
+    _DN_KB = int(os.environ.get("ALG_BREATH", "1"))
+    b_dnwhip = fix(np.zeros((batch, L_TOT, H_W), np.float32), dtypes.float) if ALG_DN_WHIP else None
+    if b_dnwhip is not None:
+        globals()["_DN_WHIP_SRC"] = b_dnwhip
+    # THE STATE-SPACE DENOISER'S READING STREAM (ALG_DN_READ, 2026-10-12): the per-(row, breath,
+    # slot, token) Gumbel noise seed_fq_sched carries, fed FRESH every training step (unlike the
+    # read's per-row-reproducible draw) through a new fixed-shape JIT input, the gold-feed idiom.
+    b_dnread = fix(np.zeros((batch, _DN_KB, L_TOT, T_ALG), np.float32), dtypes.float) if ALG_DN_READ else None
     b_ls = fix(np.zeros((batch, K_VARS, T_ALG), np.float32), dtypes.float) \
         if ALG_LSENT else None                          # V2: letter partition
     if ALG_CONSUME:
@@ -11506,6 +11781,8 @@ def do_train(steps, lr, batch, seed):
                            if 0 < int(os.environ.get("ALG_BINDBUS", "0")) < 5 else ()),
                          *((("bind_ids", (L_FAC, 4), dtypes.int),)
                            if int(os.environ.get("ALG_BINDBUS", "0")) >= 3 else ()),
+                         *((("flag_mask", (L_FAC,), dtypes.float),)
+                           if ALG_FLAG else ()),   # THE FLAGGED LOOP: host-sampled per step, never from `gold` (see the explicit _fd() below)
                          ("query", (), dtypes.int)):
         npdt = np.float32 if dt == dtypes.float else np.int32
         bg[k] = fix(np.zeros((batch,) + shape, npdt), dt)
@@ -11550,13 +11827,13 @@ def do_train(steps, lr, batch, seed):
             # commits, self-labeled from gold like the commit loss,
             # DETACHED); the second trains under live release dynamics.
             o0 = forward(p, s_tr, b_tk, b_se, slot_mask=b_mask, tail=b_tail,
-                         reg=b_reg, xcorr=b_xcorr, res_map=b_resmap, hud=b_hud, tree=b_tree, ident=b_ident, dircue=b_dircue, busreg_ramp=b_bgain, valfact=b_valfact, facts3=b_fact3, facts5=b_fact5, cert3=b_cert3, cert5=b_cert5, rack3=b_rack3, rack5=b_rack5, chalk3=b_chalk3, chalk5=b_chalk5, dirgold=b_dirgold)
+                         reg=b_reg, xcorr=b_xcorr, res_map=b_resmap, hud=b_hud, tree=b_tree, ident=b_ident, dircue=b_dircue, busreg_ramp=b_bgain, valfact=b_valfact, facts3=b_fact3, facts5=b_fact5, cert3=b_cert3, cert5=b_cert5, rack3=b_rack3, rack5=b_rack5, chalk3=b_chalk3, chalk5=b_chalk5, dirgold=b_dirgold, seed_fq_sched=b_dnread)
             ok = ((o0["ftype"].argmax(-1) == bg["ftype"]).float()
                   * (o0["res"].argmax(-1) == bg["res"]).float())
             rv = (bg["presence"] * (1.0 - ok)).detach()
             o = forward(p, s_tr, b_tk, b_se, slot_mask=b_mask, revoke=rv,
                         tail=b_tail, reg=b_reg, fact_buf=b_fact,
-                        mh_mass=b_mhm, mh_atlas_traj=b_mha, xcorr=b_xcorr, res_map=b_resmap, hud=b_hud, tree=b_tree, ident=b_ident, dircue=b_dircue, busreg_ramp=b_bgain, valfact=b_valfact, facts3=b_fact3, facts5=b_fact5, cert3=b_cert3, cert5=b_cert5, rack3=b_rack3, rack5=b_rack5, chalk3=b_chalk3, chalk5=b_chalk5, dirgold=b_dirgold)
+                        mh_mass=b_mhm, mh_atlas_traj=b_mha, xcorr=b_xcorr, res_map=b_resmap, hud=b_hud, tree=b_tree, ident=b_ident, dircue=b_dircue, busreg_ramp=b_bgain, valfact=b_valfact, facts3=b_fact3, facts5=b_fact5, cert3=b_cert3, cert5=b_cert5, rack3=b_rack3, rack5=b_rack5, chalk3=b_chalk3, chalk5=b_chalk5, dirgold=b_dirgold, seed_fq_sched=b_dnread)
         elif int(os.environ.get("NAZ_TRAIN", "0")):
             # NAZARÉ TRAINING (door #55): the organ-2 two-forward pattern —
             # pre-pass yields the intra-pass event field IN-GRAPH (detached);
@@ -11565,7 +11842,7 @@ def do_train(steps, lr, batch, seed):
             # read-time dup-aware argpair): argmax-change OR dup-flip on
             # rel-typed present slots, breath-0 vs final.
             o0 = forward(p, s_tr, b_tk, b_se, slot_mask=b_mask, tail=b_tail,
-                        xcorr=b_xcorr, res_map=b_resmap, hud=b_hud, tree=b_tree, ident=b_ident, dircue=b_dircue, busreg_ramp=b_bgain, valfact=b_valfact, facts3=b_fact3, facts5=b_fact5, cert3=b_cert3, cert5=b_cert5, rack3=b_rack3, rack5=b_rack5, chalk3=b_chalk3, chalk5=b_chalk5, dirgold=b_dirgold)
+                        xcorr=b_xcorr, res_map=b_resmap, hud=b_hud, tree=b_tree, ident=b_ident, dircue=b_dircue, busreg_ramp=b_bgain, valfact=b_valfact, facts3=b_fact3, facts5=b_fact5, cert3=b_cert3, cert5=b_cert5, rack3=b_rack3, rack5=b_rack5, chalk3=b_chalk3, chalk5=b_chalk5, dirgold=b_dirgold, seed_fq_sched=b_dnread)
             _b0 = o0["breaths"][0]
             _relmask = (o0["pres"].squeeze(-1) > 0).float() \
                 * (o0["ftype"].argmax(-1) == 0).float()
@@ -11576,13 +11853,21 @@ def do_train(steps, lr, batch, seed):
             _gm = (_bgauth + (1.0 - _bgauth) * _ev).unsqueeze(-1).detach()
             o = forward(p, s_tr, b_tk, b_se, slot_mask=b_mask, tail=b_tail,
                         gmod=_gm, fact_buf=b_fact,
-                        mh_mass=b_mhm, mh_atlas_traj=b_mha, xcorr=b_xcorr, res_map=b_resmap, hud=b_hud, tree=b_tree, ident=b_ident, dircue=b_dircue, busreg_ramp=b_bgain, valfact=b_valfact, facts3=b_fact3, facts5=b_fact5, cert3=b_cert3, cert5=b_cert5, rack3=b_rack3, rack5=b_rack5, chalk3=b_chalk3, chalk5=b_chalk5, dirgold=b_dirgold)
+                        mh_mass=b_mhm, mh_atlas_traj=b_mha, xcorr=b_xcorr, res_map=b_resmap, hud=b_hud, tree=b_tree, ident=b_ident, dircue=b_dircue, busreg_ramp=b_bgain, valfact=b_valfact, facts3=b_fact3, facts5=b_fact5, cert3=b_cert3, cert5=b_cert5, rack3=b_rack3, rack5=b_rack5, chalk3=b_chalk3, chalk5=b_chalk5, dirgold=b_dirgold, seed_fq_sched=b_dnread)
         else:
             _bd = os.environ.get("BREATH_DROPOUT")
+            # THE FLAGGED LOOP (2026-10-12): bg["flag_mask"] is the SAME buffer threaded into
+            # forward() and into loss_fn (via bg == g) -- a single source of truth for which
+            # slots are corrupted this step. flag_tabu0 (the gold-span tabu, pre-scaled -1e4)
+            # is built in-graph from bg["fspan"] (already a per-step fixed buffer) -- no new
+            # buffer needed; forward() applies flag_mask to it itself.
+            _fl_mask = bg.get("flag_mask") if ALG_FLAG else None
+            _fl_tabu0 = ((-1e4) * bg["fspan"]).reshape(batch, 1, L_FAC, T_ALG) if ALG_FLAG else None
             o = forward(p, s_tr, b_tk, b_se, slot_mask=b_mask, tail=b_tail,
                         drop=(b_drop if _bd else None), lsent=b_ls, reg=b_reg,
                         fact_buf=(None if ALG_ALT3 else b_fact),   # THE THREE CONSULTS: the start-of-run facts give way to facts3/facts5
-                        mh_mass=b_mhm, mh_atlas_traj=b_mha, xcorr=b_xcorr, res_map=b_resmap, hud=b_hud, tree=b_tree, ident=b_ident, dircue=b_dircue, busreg_ramp=b_bgain, valfact=b_valfact, facts3=b_fact3, facts5=b_fact5, cert3=b_cert3, cert5=b_cert5, rack3=b_rack3, rack5=b_rack5, chalk3=b_chalk3, chalk5=b_chalk5, dirgold=b_dirgold)
+                        mh_mass=b_mhm, mh_atlas_traj=b_mha, xcorr=b_xcorr, res_map=b_resmap, hud=b_hud, tree=b_tree, ident=b_ident, dircue=b_dircue, busreg_ramp=b_bgain, valfact=b_valfact, facts3=b_fact3, facts5=b_fact5, cert3=b_cert3, cert5=b_cert5, rack3=b_rack3, rack5=b_rack5, chalk3=b_chalk3, chalk5=b_chalk5, dirgold=b_dirgold, seed_fq_sched=b_dnread,
+                        flag_mask=_fl_mask, flag_tabu0=_fl_tabu0)
         l = loss_fn(o, bg)
         if ALG_CONSUME and "_early" in o:   # support-gated consume-once:
             # any breath claims, each fact pays once; eligibility = the DAG
@@ -12521,6 +12806,154 @@ def do_train(steps, lr, batch, seed):
     assert _soff + steps <= _stot, f"STEP_OFFSET {_soff} + STEPS {steps} exceeds SCHED_STEPS {_stot}"
     if _soff or _stot != steps:
         print(f"[train] segmented schedule: steps {_soff}..{_soff + steps} of a {_stot}-step cosine", flush=True)
+
+    # ================================================================================
+    # THE REPLAY-TRAINED BREATH (RTB; ledger 2026-10-11 17:21 registration, docs/replay_gym.md
+    # §5's three gaps; worktree mycelium-wt28, branch rtb). ALG_RTB=1 replaces the ENTIRE main
+    # loop below with its own self-contained one (early return at the bottom) rather than
+    # threading a branch through ~400 lines of fixed-buffer feed code the snapshot-resumed path
+    # does not use: ONE breath per step, state resumed from scripts/rtb_buffer.py's buffer (gap
+    # (a)) for kb_target in 2..K_B-1, on-policy from the trunk for kb_target in {0, 1} (no
+    # snapshot exists at kb_done=0 -- the snapshot hook only fires for kb>=1 inside the loop --
+    # and breath 1 is cheap enough to compute fresh every time: THE SPEC's own "breath 0 always
+    # on-policy"), graded with the SAME loss_fn the live loop uses (gap (b)'s per-breath ladder).
+    #
+    # BUILT AS AN EAGER STEP, NOT the 7-captured-TinyJit-graphs form the brief's literal ask
+    # describes (fixed buffers threading the ENTIRE per-breath ctx/state -- waist, vst, tok_key,
+    # the notebook, breaths/rbias_all/aspan_all/ospan_all/rcue_all/rb_last/rptr_last/s4_last --
+    # THE REPLAY GYM's own §1 shape -- through seven captured graphs, one per kb, the brief's
+    # own sanctioned escape hatch: "capture one graph per kb ... and dispatch"). That is the
+    # size of the b_tr..b_chalk5 feed section above (~400 lines) PER kb; do_train already has a
+    # precedent for "too complex to capture, run eagerly" -- ALG_WHEEL_TRAIN's own un-JIT'd step
+    # a few hundred lines above (`if not _WHEEL_TRAIN: step = TinyJit(step)`) -- RTB v1 follows
+    # THE SAME precedent rather than inventing a new one. The step-cost bar is measured honestly
+    # against THIS eager form in the gate table; a JIT'd RTB step would cost LESS, not more, and
+    # is named as the natural next build (not claimed here).
+    #
+    # GAP (c) (the offline feedback pass) is MOOT for this family: scripts/rtb_lib.py's module
+    # docstring states why (ALG_ALT2's fact_buf here is already a one-time, model-decode-
+    # dependent-but-not-checkpoint-refresh-dependent self-consult, captured generically inside
+    # every snapshot's ctx['fact_buf'] -- no live, checkpoint-tied consult exists on this family
+    # to move out of the training step). A future RTB arm on an ALG_ALT3 family would need gap
+    # (c) built; this body does not.
+    #
+    # THE ZERO-FILL TRADEOFF (stated, not hidden; see scripts/rtb_grad_probe.py's own comment,
+    # proven on the gate): one breath's own forward pass does not touch every param (organs
+    # living only in OTHER breaths never run this step); every param stays registered with the
+    # SAME AdamW instance across every kb_target a step samples (so momentum persists correctly
+    # for a param visited on different steps at different kb's), and an untouched param gets an
+    # explicit ZERO grad rather than being dropped from the optimizer -- AdamW's own decoupled
+    # weight decay therefore still nudges every param by -lr*wd*param EVERY step regardless of
+    # which breath ran, a real small leak, reported here rather than silently eaten.
+    if int(os.environ.get("ALG_RTB", "0")):
+        import importlib
+        import rtb_lib as _RL
+        importlib.reload(_RL)   # a worktree edit to rtb_lib.py must not need a fresh process
+
+        _RTB_BUF_DIR = os.environ["ALG_RTB_BUFFER"]
+        _RTB_REFRESH = int(os.environ.get("ALG_RTB_REFRESH", "4000"))
+        _rtb_manifest = _RL.load_manifest(_RTB_BUF_DIR)
+        assert _rtb_manifest["K_B"] == K_B, (_rtb_manifest["K_B"], K_B)
+        _rtb_kb_done_range = _rtb_manifest["kb_done_range"]
+        print(f"[rtb] buffer {_RTB_BUF_DIR}: {len(_rtb_manifest['chunks'])} chunks, "
+              f"kb_done_range={_rtb_kb_done_range}, ckpt={_rtb_manifest['ckpt']} "
+              f"({_rtb_manifest['ckpt_sha16']}), refresh every {_RTB_REFRESH} steps", flush=True)
+
+        def _rtb_refresh(step_no):
+            tmp_ckpt = ALG_CKPT.replace(".safetensors", "_rtbrefresh.safetensors")
+            safe_save(p, tmp_ckpt)
+            import subprocess
+            cmd = ([sys.executable, "scripts/rtb_buffer.py", "--ckpt", tmp_ckpt,
+                    "--out", _RTB_BUF_DIR, "--n", str(_rtb_manifest["n_rows"]),
+                    "--chunk", str(_rtb_manifest["chunk"]),
+                    "--kb-done", ",".join(str(x) for x in _rtb_kb_done_range)])
+            env = dict(os.environ, ALG_RTB_WRITE="1", ALG_RTB="0")
+            t_r0 = time.time()
+            r = subprocess.run(cmd, env=env, capture_output=True, text=True)
+            assert r.returncode == 0, f"rtb_buffer.py refresh FAILED:\n{r.stdout[-4000:]}\n{r.stderr[-4000:]}"
+            print(f"[rtb] REFRESH @ step {step_no}: {time.time() - t_r0:.1f}s "
+                  f"({r.stdout.strip().splitlines()[-1] if r.stdout.strip() else ''})", flush=True)
+            return _RL.load_manifest(_RTB_BUF_DIR)
+
+        def _rtb_onpolicy_step(kb_target):
+            """kb_target in {0, 1}: fresh grounding read (always on-policy) +, for kb_target==1,
+            exactly breath 1 (stop_after=1 -> loop range(1,2), one breath). kb_target==0 uses
+            stop_after=-1: int(-1) is truthy (unlike 0, the ternary's own falsy-zero quirk) so
+            `_kb_stop = min(K_B, -1+1) = 0` -> loop range(1, 0) is EMPTY -- zero loop breaths,
+            the grounding read alone, out["breaths"][0] is the graded head."""
+            idx = rng.choice(n, batch, replace=False)
+            ts_ = Tensor(np.ascontiguousarray(states[idx]), dtype=dtypes.half).cast(dtypes.float)
+            tk_ = Tensor(tokmask[idx].astype(np.float32), dtype=dtypes.float)
+            se_ = Tensor(sent[idx].astype(np.int32), dtype=dtypes.int)
+            kwargs = _RL.build_consult_kwargs(sys.modules[__name__], p, ts_, tk_, se_, samples, idx)
+            stop_after = -1 if kb_target == 0 else 1
+            out = forward(p, ts_, tk_, se_, stop_after=stop_after, **kwargs)
+            feed = _RL.gold_feed(sys.modules[__name__], gold, idx)
+            bgt = _RL.feed_to_tensors(sys.modules[__name__], feed)
+            return out, bgt
+
+        def _rtb_buffer_step(manifest, kb_target):
+            """kb_target in 2..K_B-1: resume from a buffered snapshot at kb_done=kb_target-1,
+            run EXACTLY breath kb_target (replay's kb_stop), grade against this chunk's own
+            rows' gold."""
+            kb_done = kb_target - 1
+            chunks_with_kb = [c for c in manifest["chunks"] if str(kb_done) in c["files"]]
+            assert chunks_with_kb, f"no buffered chunk carries kb_done={kb_done} (kb_done_range={_rtb_kb_done_range})"
+            c = chunks_with_kb[rng.randint(len(chunks_with_kb))]
+            snap = globals()["snap_load"](c["files"][str(kb_done)])
+            out = globals()["replay"](p, snap, kb_done, kb_stop=kb_target + 1)
+            rows = np.array(c["rows"])
+            feed = _RL.gold_feed(sys.modules[__name__], gold, rows)
+            bgt = _RL.feed_to_tensors(sys.modules[__name__], feed)
+            return out, bgt
+
+        t0 = time.time()
+        for s in range(steps):
+            cur_lr = lr_min + 0.5 * (lr - lr_min) * (1 + math.cos(math.pi * (s + _soff) / _stot))
+            opt.lr.assign(Tensor([cur_lr], dtype=dtypes.float)).realize()
+            if _RTB_REFRESH and s > 0 and s % _RTB_REFRESH == 0:
+                _rtb_manifest = _rtb_refresh(s)
+            kb_target = int(rng.randint(K_B))
+            Tensor.training = True
+            if kb_target <= 1:
+                out, bgt = _rtb_onpolicy_step(kb_target)
+            else:
+                out, bgt = _rtb_buffer_step(_rtb_manifest, kb_target)
+            l = loss_fn(out, bgt)
+            opt.zero_grad()
+            l.backward()
+            for k in p:
+                if k not in _frz and p[k].grad is None:
+                    p[k].grad = Tensor.zeros(*p[k].shape, dtype=p[k].dtype)
+            opt.step()
+            if s % 500 == 0 or s == steps - 1:
+                lv2 = float(l.realize().numpy())
+                assert np.isfinite(lv2)
+                print(f"  step {s:5d} loss={lv2:.4f} lr={cur_lr:.1e} kb_target={kb_target} "
+                      f"({(time.time() - t0) / (s + 1):.2f}s/step)", flush=True)
+            if (s + 1) % val_every == 0 or s == steps - 1:
+                fv = _quick_val()
+                mark = ""
+                if fv > best_val:
+                    best_val = fv
+                    best_snap = {k: t.detach().numpy().copy() for k, t in p.items()}
+                    mark = "  <-- BEST"
+                print(f"  [val @{s + 1}] fac-exact-proxy={fv:.4f}{mark}", flush=True)
+            snap_every = int(os.environ.get("SNAP_EVERY", "0"))
+            if snap_every and (s + 1) % snap_every == 0:
+                sp = ALG_CKPT.replace(".safetensors", f"_s{s + 1}.safetensors")
+                safe_save(p, sp)
+                print(f"  [snap @{s + 1}] -> {sp}", flush=True)
+        if best_snap is not None:
+            for k in p:
+                p[k].assign(Tensor(best_snap[k], dtype=p[k].dtype)).realize()
+            print(f"[train] restored BEST ckpt (val {best_val:.4f})", flush=True)
+        safe_save(p, ALG_CKPT)
+        print(f"[train] saved {ALG_CKPT} (RTB loop, {steps} steps, "
+              f"{(time.time() - t0) / steps:.3f}s/step mean)", flush=True)
+        return
+    # ================================================================================
+
     for s in range(steps):
         _tp0 = time.perf_counter()
         cur_lr = lr_min + 0.5 * (lr - lr_min) * (1 + math.cos(math.pi * (s + _soff) / _stot))
@@ -12612,10 +13045,31 @@ def do_train(steps, lr, batch, seed):
             _fd(b_reg, REG[idx], _rl)
         if b_whip is not None:
             _fd(b_whip, rng.randn(batch, L_TOT, H_W).astype(np.float32), _rl)   # THE WHIP: fresh noise this step
+        if b_dnwhip is not None:
+            _fd(b_dnwhip, rng.randn(batch, L_TOT, H_W).astype(np.float32), _rl)   # THE DENOISER'S MATH STREAM: fresh noise this step
+        if b_dnread is not None:
+            # THE DENOISER'S READING STREAM: fresh Gumbel noise this step, same shape/formula as
+            # seed_gumbel_sched_build_array's read-time draw (-log(-log(U))), but NOT row-keyed
+            # (training batches are not fixed rows; freshness per step is the point, not
+            # per-row reproducibility, which only the read side needs).
+            _dnu = rng.random_sample((batch, _DN_KB, L_TOT, T_ALG)).clip(1e-12, 1.0 - 1e-12)
+            _fd(b_dnread, (-np.log(-np.log(_dnu))).astype(np.float32), _rl)
         if b_drop is not None:
             _fd(b_drop, np.array(
                 [1.0 if rng.rand() >= float(os.environ["BREATH_DROPOUT"]) else 0.0],
                 np.float32), _rl)
+        if ALG_FLAG and "flag_mask" in bg:
+            # THE FLAGGED LOOP's host sampler (2026-10-12): per PRESENT slot WITH a nonzero
+            # gold mention span, a fresh coin flip at ALG_FLAG_RATE each step (never from
+            # `gold` -- there is no gold array for this; the explicit block the feed-door
+            # comment above warns a silent terminal needs). Absent/padding slots
+            # (presence == 0) are never flagged; neither is a present slot whose fspan is
+            # all-zero (no textual mention to tabu -- confirmed empirically, 2026-10-12 CPU
+            # smoke: tabu-ing an empty span changes 0% of breath-0 argmaxes, vs 80% on
+            # slots with real span coverage).
+            _flm = ((rng.random_sample((batch, L_FAC)) < ALG_FLAG_RATE).astype(np.float32)
+                   * gold["presence"][idx] * (gold["fspan"][idx].sum(-1) > 0).astype(np.float32))
+            _fd(bg["flag_mask"], _flm, _rl)
         feed = {"presence": gold["presence"][idx], "is_lit_f": gold["is_lit"][idx],
                 **({"opspan": OPGOLD[idx].astype(np.float32)} if OPATT else {}),
                 "args": gold["args"][idx], "fspan": gold["fspan"][idx],
@@ -12699,8 +13153,15 @@ def do_train(steps, lr, batch, seed):
             # THE THREE CONSULTS, per step: pass a -> consult 1 -> facts3;
             # pass b (with facts3) -> consult 2 -> facts5; then the full
             # step (with both) — the same three curbs the read walks.
-            _consult_into(b_fact3, pass_a, idx, cert_buf=b_cert3, rack_buf=b_rack3, chalk_buf=b_chalk3)
-            _consult_into(b_fact5, pass_b, idx, cert_buf=b_cert5, rack_buf=b_rack5, rack_prev=(id(b_rack3) if ALG_RACK else None), chalk_buf=b_chalk5)
+            # THE LOOP STOP (2026-10-11): under ALG_LOOP_STOP=k the MAIN step() call below
+            # never reaches breath 2 (k<=2) or breath 4 (k<=4), so the facts3/facts5 it would
+            # inject never land — running pass_a/pass_b anyway would burn the host consult for
+            # a result the truncated step can't use. k==0 (unset) is the untouched case: both
+            # always run, exactly as before.
+            if (not ALG_LOOP_STOP) or ALG_LOOP_STOP > 2:
+                _consult_into(b_fact3, pass_a, idx, cert_buf=b_cert3, rack_buf=b_rack3, chalk_buf=b_chalk3)
+            if (not ALG_LOOP_STOP) or ALG_LOOP_STOP > 4:
+                _consult_into(b_fact5, pass_b, idx, cert_buf=b_cert5, rack_buf=b_rack5, rack_prev=(id(b_rack3) if ALG_RACK else None), chalk_buf=b_chalk5)
         if ALG_LIVE_FACTS:
             # THE LIVE-FACTS ROAD: this step's own pass-1 parse overwrites
             # the maskprep-cache feed already copied into b_fact above —
@@ -12805,11 +13266,13 @@ def do_train(steps, lr, batch, seed):
             os.environ["TC_EVAL"] = "0"       # ... and the OPEN reading
             os.environ["BC_EVAL"] = "0"       # ... and the balanced cooker OPEN
             globals()["_WHIP_SRC"] = None          # the val reads with the seeded kick, like the read
+            globals()["_DN_WHIP_SRC"] = None        # THE DENOISER'S MATH STREAM: same idiom (val reads with the seeded kick)
             _cb_bak = globals().get("_CERT_BUF")   # THE CERTIFICATE PASS: _quick_val's fixed
             globals()["_CERT_BUF"] = None          # batch-of-8 must see None (eval reads OPEN)
             fv = _quick_val()
             globals()["_CERT_BUF"] = _cb_bak
             globals()["_WHIP_SRC"] = b_whip
+            globals()["_DN_WHIP_SRC"] = b_dnwhip
             os.environ.pop("BC_EVAL", None)
             os.environ.pop("TC_EVAL", None)
             os.environ.pop("MC_EVAL", None)

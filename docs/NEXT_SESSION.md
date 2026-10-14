@@ -1,4 +1,32 @@
-# NEXT SESSION — cold-start entry (updated 2026-10-12 16:xx)
+# NEXT SESSION — cold-start entry (updated 2026-10-13 14:5x)
+
+**10-13 14:5x — THE DAY'S VERDICTS: DF_241 (the denoiser) — noise-free +0.012 but the reading-stream noise INERT at the read (the body grew its logit
+spread 1.75x: the logit-scale escape; the knob law's third clause: define injections RELATIVE to the port's spread); WH_241/WH_242 (whip + blurred
+ladder) +0.011/+0.008 → the family +0.010 ± 0.002 over three bodies = a chassis INGREDIENT (mint +0.09..0.23), not a record. RTB aborted at its cost
+probe (33x; form 2 = per-breath captured graphs, needs the word). ZERO-GPU: the handoff is the trained stellarator weight (read-time floors cost the
+decode; no hops); latest-before moot for relation args (n=8); the units lexicon null (parked behind the parser call); the depth probe (binding by
+trunk depth, all layers, three bars) RUNNING; the relational-distillation arm registered behind it. Card: FL_241 (merged b957895b, gating) → OR_241.**
+
+**10-13 06:4x — ANTI4_242 DOES NOT HOLD (+0.0024; the pair mean +0.010 ± 0.008): THE U-NET-ORDER CLAIM WITHDRAWN; the slot-side depth
+family (LT/SINE4/SEAL/ANTI4×2) closes at ≈ +0.009: depth on the slot side is not the lever. DF_241 next (the denoiser; denoiser merged
+408076e4, post-merge gate running) → WH → FL → OR.**
+
+**10-13 00:3x — RTB_241 ABORTED AT ITS COST PROBE (eager step 4.18 s = 33x the body's; void by construction; the 37 GB buffer + phase-1 ckpt
+banked); FORM 2 (one captured graph per breath index) REGISTERED, NEEDS THE WORD. The queue released; ANTI4_242 (the twin) on the card 00:33
+→ DF → WH → FL → OR.**
+
+**10-12 23:4x — PK_241 HEALS THE EXPOSURE GAP: K3's 24k ckpt + 24k at K7 = 0.3510 (PARITY with PMS8, +0.0127 over K3), mint recovered
+(0.660), silver −0.06, decode-change K3-read vs K7-read 59 % of slots (the grown breaths REFINE); cost 0.67x of PMS8 for parity. RTB's queue
+merged rtb (db0bf95f), post-merge gate running, then THE DEVICE COST PROBE decides RTB's fate (abort if the eager step is slower than the body's).
+denoiser/flagloop forward-merged (dfb994f8 / 3a4f8b1a).**
+
+**10-12 22:2x — K3_241 MEETS BOTH BARS: three breaths hold the wild number (0.3384, −0.009 vs PMS8, noise) at 0.33x the step (48k in 34 min);
+mint −0.07; THE EXPOSURE GAP: the K3 body read at K7 collapses to 0.002 — untrained breath indices are off-manifold, not idle (RTB must sample
+every index it is read at; PK tests teaching the extra breaths). PK_241 on the card (22:13). Today's queue faults (all fixed, ledgered): the
+clean-tree abort on untracked scripts; the pipefail false positive (queue_dryrun now runs under pipefail; count-equals-zero never as a pipeline
+tail); the twin's queue had inlined another queue (rewritten). ANTI4_241 +0.0185 (twin queued); SINE4/SEAL null; SRF null; the edge reads:
+the gold-free transfer flag clears (recall 0.36 / precision 0.63), the transfer graph locates but does not correct; pin 2: coverage 53-57/311,
+the vote/agreement gate a safety rule, not a picker.**
 
 **10-12 16:xx — BUILDS LANDED: DF_241/WH_241 (branch denoiser; pc-queue-dn behind the ANTI4 twin), FL_241 (branch flagloop; pc-queue-fl behind WH),
 the seeded readings (MERGED into gen-weights b8c8f583; post-merge gate running). Every pending branch forward-merged (breathstop, rtb, denoiser clean;
