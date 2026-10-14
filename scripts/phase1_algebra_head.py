@@ -72,6 +72,15 @@ ALG_CLOCK_CANON = int(os.environ.get("ALG_CLOCK_CANON", "0"))   # memories in a 
 # WILD?"): both doors, dead unless set.
 ALG_SPAN_ALL = int(os.environ.get("ALG_SPAN_ALL", "0"))   # supervise the router's span EVERY breath, not just the last
 ALG_ANCHOR = float(os.environ.get("ALG_ANCHOR", "0"))     # beta: breath-0's grounding attention as a keep-bias, every loop breath
+# THE ONE-READ ARM (OR_241, ledger 2026-10-12 18:36, "THE ENGINE IS MUDDY"): the bank
+# re-read (breath_step's first bank(p["fq"], ...) call) and ALT21 STATION 3 (the second
+# slots<-tokens attention) are SEVERED at every loop breath — each slot's token-side
+# contribution is frozen at its breath-0 read (ctx["one_read_tok"] == forward()'s `fst`,
+# carried; bank() is never called at loop breaths under this flag, and station 3's
+# attention is never built either — not zeroed-after-the-fact, skipped). Router, mixer,
+# mask head, notebook, garage, polar block, bus, consults and the clock are untouched.
+# Default 0 = bit-identical to the unset body (the existing h_tok/_d21a paths, verbatim).
+ALG_ONE_READ = int(os.environ.get("ALG_ONE_READ", "0"))
 # THE SEEDED READINGS (2026-10-12, STEP 1 of the denoising breath's amended form; ledger
 # "BRYCE'S STATE-SPACE FORM vs THE SEPTEMBER RECORD"): a READ-TIME-ONLY door (asserted off in
 # do_train — see its first executable statement). ALG_SEED_TEMP (0 = off, bit-identical) scales
@@ -7739,23 +7748,48 @@ def breath_step(p, state, kb, ctx):
             _pb_kb = _rack_b if _pb_kb is None else _pb_kb + _rack_b
             if _CENSUS is not None:
                 _CENSUS.append((kb, "rack", _rack_b.realize().numpy()))  # the pre/post knob law: the injection, censused
-    h_tok, fat_cur = bank(p["fq"], L_TOT, extra=(None if (ALG_CERT2 and conductor(kb).cert2_fresh) else q_extra), kb=kb,   # FORM 2: a fresh first look at the consult breaths (THE CONDUCTOR: kb in (3, 5))
-                          pbias=_pb_kb,
-                          rbias=_rb7,
-                          prior=(state.get("tree_prev_at") if ALG_TREE2 else None),   # FORM 2's construction line
-                          # THE TOKEN SEAL: this breath's RE-READING of
-                          # the text. `loop` and `all` both cut it; the
-                          # grounding at breath 0 is decided in
-                          # forward(). Every consumer of fat_cur (the
-                          # clock c_j, the NL tap, the cooker's sentence
-                          # skeleton) inherits the flat field from here.
-                          flat=_tok_seal_on(kb),
-                          # THE TOKEN COOKER: the head's aim replaces
-                          # this breath's q.k weights on SEALED rows,
-                          # at the weights' source (so fat_cur and the
-                          # value read inherit it together).
-                          tgate=_tgt, tgv=_tcv)
+    # THE GYM SEVER (scripts/picker/oneread_sever.py, 2026-10-12; a READ-TIME-ONLY hook,
+    # never armed by do_train): ctx["tok_override"], when present, REPLACES h_tok outright
+    # — this is how a replay() caller freezes a slot's token-side contribution at some
+    # earlier breath's own value (e.g. breath 2's h_tok, held through breaths 3..6) without
+    # any env flag and without touching the trained body at all. Checked BEFORE ALG_ONE_READ
+    # so the two mechanisms never fight (a replay override always wins over the training-
+    # time arm, though no caller sets both). None (every ordinary forward()/do_train call) —
+    # bit-identical, zero cost (one dict lookup).
+    _tok_ov = ctx.get("tok_override")
+    if _tok_ov is not None:
+        h_tok = _tok_ov
+        fat_cur = ctx.get("tok_override_fat", state.get("fat_cur"))
+    elif ALG_ONE_READ:
+        # THE SEVER (ALG_ONE_READ=1): the bank's attention is never computed at this
+        # breath — h_tok is breath-0's own bank(fq) output, carried unchanged (a
+        # captured intermediate of THIS forward() call's graph, ctx["one_read_tok"] ==
+        # forward()'s `fst`; not a Python-side cache, so TinyJit fuses it like any other
+        # closed-over tensor). fat_cur likewise reverts to ctx["fat0"]: the token keys
+        # are consulted no more, so every downstream reader of state["fat_cur"] (the
+        # write-back, the NL tap, ALG_IDKEY's query source) sees the frozen first look.
+        h_tok = ctx["one_read_tok"]
+        fat_cur = ctx["fat0"]
+    else:
+        h_tok, fat_cur = bank(p["fq"], L_TOT, extra=(None if (ALG_CERT2 and conductor(kb).cert2_fresh) else q_extra), kb=kb,   # FORM 2: a fresh first look at the consult breaths (THE CONDUCTOR: kb in (3, 5))
+                              pbias=_pb_kb,
+                              rbias=_rb7,
+                              prior=(state.get("tree_prev_at") if ALG_TREE2 else None),   # FORM 2's construction line
+                              # THE TOKEN SEAL: this breath's RE-READING of
+                              # the text. `loop` and `all` both cut it; the
+                              # grounding at breath 0 is decided in
+                              # forward(). Every consumer of fat_cur (the
+                              # clock c_j, the NL tap, the cooker's sentence
+                              # skeleton) inherits the flat field from here.
+                              flat=_tok_seal_on(kb),
+                              # THE TOKEN COOKER: the head's aim replaces
+                              # this breath's q.k weights on SEALED rows,
+                              # at the weights' source (so fat_cur and the
+                              # value read inherit it together).
+                              tgate=_tgt, tgv=_tcv)
     state["fat_cur"] = fat_cur          # THE WRITE-BACK reads this breath's attention (a reference; no op)
+    if _CENSUS is not None:
+        _CENSUS.append((kb, "h_tok", h_tok.realize().numpy()))   # THE SEVER's / THE ONE-READ ARM's direct check: h_tok per breath, always censused when armed (unconditional — oneread_sever.py reads breath 2's value from here; the OR_241 gate diffs every kb against kb=0's own tap, below)
     if int(os.environ.get("ALG_MINE_BREATHS", "0")):
         # NL TAP (apply_nl_tap.py, 2026-09-05, the paired atlas):
         # read-only capture of this breath's READING — head-avg
@@ -8157,52 +8191,64 @@ def breath_step(p, state, kb, ctx):
         # equals baseline exactly at birth; env unset skips the
         # whole block (the chain verifies via eq_check pre/post).
         _s21 = h_tok + h_slot            # the stream after 1-2
-        # STATION 3: second bank-attention (slots<-tokens), live
-        # query = slot codes + stream + this breath's conditioning
-        _qx21 = p["fq"].unsqueeze(0) + _s21 + (q_extra - cur)
-        _q21 = _qx21 @ p["alt21_attn_wq"] + p["alt21_attn_wq_b"]
-        _k21 = waist @ p["alt21_attn_wk"] + p["alt21_attn_wk_b"]
-        _v21 = waist @ p["alt21_attn_wv"] + p["alt21_attn_wv_b"]
-        _hd21 = H_W // N_HEADS
-        _qh21 = _q21.reshape(B, L_TOT, N_HEADS, _hd21).permute(0, 2, 1, 3)
-        _kh21 = _k21.reshape(B, -1, N_HEADS, _hd21).permute(0, 2, 1, 3)
-        _vh21 = _v21.reshape(B, -1, N_HEADS, _hd21).permute(0, 2, 1, 3)
-        _sa21 = (_qh21 @ _kh21.transpose(-2, -1)) / math.sqrt(_hd21)
-        if _sync is not None:            # the same breath rotation
-            _sa21 = _sa21 + _sync[0](kb)
-        if _wb is not None:                        # the wheel's spotlight (+ the numeral spotlight), second road
-            _sa21 = _sa21 + _wb
-        if _t2b is not None:                       # T2: the claims, second road
-            _sa21 = _sa21 + _t2b
-        if _rb7 is not None:             # the same router bias
-            _sa21 = _sa21 + _rb7.unsqueeze(1) * p["r_gain"].reshape(1, 1, 1, 1)
-        _sa21 = _sa21.clip(-1e4, 1e4) + (1.0 - tokmask.reshape(B, 1, 1, -1)) * -1e4
-        _a21 = _sa21.softmax(-1)
-        if _T2_CLAIM:
-            state["prev_a21"] = _a21.mean(1).detach()   # T2: this breath's claims, for the next breath
-        if _tok_seal_on(kb) and int(os.environ.get("ALG_TOK_SEAL_S3", "1")):
-            # THE TOKEN SEAL, second road (registered scope). Station 3
-            # is a SECOND slots<-tokens bank attention over the same
-            # waist and the same tokmask; leaving it live would leave
-            # the grounding BYPASSABLE and a "no headroom" verdict would
-            # be an artifact of the bypass, not a fact about grounding
-            # (THE HEADROOM COROLLARY: removal cost must be the cost of
-            # removing the road, all of it). ALG_TOK_SEAL_S3=0 gives the
-            # NARROW arm (fq bank only) for the texture read.
-            _a21 = _a21 * 0.0 + _tok_flat(tokmask, B)
-        if _tgt is not None and int(os.environ.get("ALG_TOK_COOK_S3", "1")):
-            # THE TOKEN COOKER, second road (spec S1; the severance
-            # probe measured station 3 carrying 2/3 of the WILD
-            # headroom). The SAME gate tensor — one aim, both roads —
-            # blended per row exactly as the main bank's. S3=0 gives
-            # the narrow fq-only arm. Leaving it live would leave the
-            # grounding BYPASSABLE and the cooker would be cooking a
-            # road the machine can walk around (the headroom
-            # corollary's whole point, and the seal's own scope).
-            _a21 = _a21 * (1.0 - _tcv) + _tgt.reshape(B, 1, L_TOT, -1) * _tcv
-        _st21 = (_a21 @ _vh21).permute(0, 2, 1, 3).reshape(B, L_TOT, H_W)
-        _d21a = _st21 @ p["alt21_attn_wo"] + p["alt21_attn_wo_b"]
-        _s21 = _s21 + _d21a              # exact zero at birth
+        _s3_ov = ctx.get("s3_override")   # THE GYM SEVER's second port (oneread_sever.py): station 3's own held value, same seam as tok_override above
+        if _s3_ov is not None:
+            _d21a = _s3_ov
+        elif ALG_ONE_READ:
+            # THE SEVER (ALG_ONE_READ=1): station 3's own slots<-tokens attention is
+            # never built at this breath — no _qx21/_q21/_k21/_v21/_sa21/_a21/_st21 are
+            # computed (skipped, not merely zeroed-after-the-fact), so this road costs
+            # nothing under the flag. _d21a reads as absent (a zero tensor shaped like
+            # _s21, the same additive idiom the rest of this function already uses for
+            # a dead road, e.g. `h_slot = h_slot * 0.0`).
+            _d21a = _s21 * 0.0
+        else:
+            # STATION 3: second bank-attention (slots<-tokens), live
+            # query = slot codes + stream + this breath's conditioning
+            _qx21 = p["fq"].unsqueeze(0) + _s21 + (q_extra - cur)
+            _q21 = _qx21 @ p["alt21_attn_wq"] + p["alt21_attn_wq_b"]
+            _k21 = waist @ p["alt21_attn_wk"] + p["alt21_attn_wk_b"]
+            _v21 = waist @ p["alt21_attn_wv"] + p["alt21_attn_wv_b"]
+            _hd21 = H_W // N_HEADS
+            _qh21 = _q21.reshape(B, L_TOT, N_HEADS, _hd21).permute(0, 2, 1, 3)
+            _kh21 = _k21.reshape(B, -1, N_HEADS, _hd21).permute(0, 2, 1, 3)
+            _vh21 = _v21.reshape(B, -1, N_HEADS, _hd21).permute(0, 2, 1, 3)
+            _sa21 = (_qh21 @ _kh21.transpose(-2, -1)) / math.sqrt(_hd21)
+            if _sync is not None:            # the same breath rotation
+                _sa21 = _sa21 + _sync[0](kb)
+            if _wb is not None:                        # the wheel's spotlight (+ the numeral spotlight), second road
+                _sa21 = _sa21 + _wb
+            if _t2b is not None:                       # T2: the claims, second road
+                _sa21 = _sa21 + _t2b
+            if _rb7 is not None:             # the same router bias
+                _sa21 = _sa21 + _rb7.unsqueeze(1) * p["r_gain"].reshape(1, 1, 1, 1)
+            _sa21 = _sa21.clip(-1e4, 1e4) + (1.0 - tokmask.reshape(B, 1, 1, -1)) * -1e4
+            _a21 = _sa21.softmax(-1)
+            if _T2_CLAIM:
+                state["prev_a21"] = _a21.mean(1).detach()   # T2: this breath's claims, for the next breath
+            if _tok_seal_on(kb) and int(os.environ.get("ALG_TOK_SEAL_S3", "1")):
+                # THE TOKEN SEAL, second road (registered scope). Station 3
+                # is a SECOND slots<-tokens bank attention over the same
+                # waist and the same tokmask; leaving it live would leave
+                # the grounding BYPASSABLE and a "no headroom" verdict would
+                # be an artifact of the bypass, not a fact about grounding
+                # (THE HEADROOM COROLLARY: removal cost must be the cost of
+                # removing the road, all of it). ALG_TOK_SEAL_S3=0 gives the
+                # NARROW arm (fq bank only) for the texture read.
+                _a21 = _a21 * 0.0 + _tok_flat(tokmask, B)
+            if _tgt is not None and int(os.environ.get("ALG_TOK_COOK_S3", "1")):
+                # THE TOKEN COOKER, second road (spec S1; the severance
+                # probe measured station 3 carrying 2/3 of the WILD
+                # headroom). The SAME gate tensor — one aim, both roads —
+                # blended per row exactly as the main bank's. S3=0 gives
+                # the narrow fq-only arm. Leaving it live would leave the
+                # grounding BYPASSABLE and the cooker would be cooking a
+                # road the machine can walk around (the headroom
+                # corollary's whole point, and the seal's own scope).
+                _a21 = _a21 * (1.0 - _tcv) + _tgt.reshape(B, 1, L_TOT, -1) * _tcv
+            _st21 = (_a21 @ _vh21).permute(0, 2, 1, 3).reshape(B, L_TOT, H_W)
+            _d21a = _st21 @ p["alt21_attn_wo"] + p["alt21_attn_wo_b"]
+        _s21 = _s21 + _d21a              # exact zero at birth (ONE-READ: always zero, by construction)
         _d21c = None
         if ALG_ALT5 and "alt5_attn_wo" in p:
             # STATION 5 (the balanced generation, 2026-09-09): a THIRD
@@ -9597,6 +9643,15 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
     global _IMP                     # the impulse hook (systems-ID probe;
     try: _IMP                       # None everywhere except under
     except NameError: _IMP = None   # impulse_response.py — inert in training)
+    if _CENSUS is not None:
+        # breath 0's own bank(fq) output, tapped at kb=0 under the SAME "h_tok" name
+        # breath_step tags every loop breath with (unconditional — always censused when
+        # armed). THE ONE-READ ARM's direct check (OR_241 gate) diffs kb=0's array
+        # against every kb>=1 array and asserts bitwise equality under ALG_ONE_READ=1
+        # (THE SEVER's own proof, not a claim); oneread_sever.py (the gym sever, a
+        # separate read-time-only hook, ctx["tok_override"]) reads breath 2's own tap
+        # from here too — one tap, two readers.
+        _CENSUS.append((0, "h_tok", fst.realize().numpy()))
     if (int(os.environ.get("ALG_BUSGARAGE", "0")) and "W_gq" in p
             and "W_bind2" in p):
         assert int(os.environ.get("ALG_BUSGARAGE", "0")) >= 2, \
@@ -9709,6 +9764,7 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
                    "vst": vst, "res_map": res_map, "ident_tok": _ident_tok,
                    "busreg_ramp": busreg_ramp,   # THE FADE-IN's scalar (training only; None = full scale)
                    "fat0": fat,   # THE IDENTITY KEY's breath-1 query source: breath 0's grounding attention (B, L_TOT, T)
+                   "one_read_tok": fst,   # THE ONE-READ ARM (2026-10-12): breath-0's bank(fq) output, carried as h_tok at every loop breath when ALG_ONE_READ=1 — a reference to an already-computed intermediate (same forward() graph), never a Python-side cache; zero cost when ALG_ONE_READ=0 (just an unread dict entry)
                    "valtag_v": _valtag_v,
                    "anchor_bias0": _anch_bias0,
                    "seed_hold_bias": _seed_hold_bias,   # THE SEEDED READINGS' HOLD (2026-10-12)
@@ -11049,6 +11105,23 @@ def do_train(steps, lr, batch, seed):
                                 .cast(p["W_dargs"].dtype)).realize()
             print("[warm] W_dargs seeded from trained W_args (door #12)", flush=True)
     _frz = [k_ for k_ in (("h_dup", "h_dup_b") if int(os.environ.get("ALG_FREEZE_DUP", "0")) else ())]
+    if ALG_ONE_READ:
+        # THE ONE-READ ARM's own provably-dead params (the GATE CAUGHT THIS, 2026-10-12): q_extra
+        # (breath_step's per-breath "fresh look" conditioning signal) has EXACTLY two consumers
+        # in the whole file -- the main bank(p["fq"], extra=q_extra, ...) call and station 3/5's
+        # own query construction (`p["fq"].unsqueeze(0) + _s21 + (q_extra - cur)`) -- and
+        # ALG_ONE_READ severs BOTH. breath_emb and bus_g feed q_extra and nothing else; station
+        # 3's own attention params (alt21_attn_w*) are never built at all when ALG_ONE_READ is
+        # set (breath_step's own station-3 branch). Freezing them is the representability
+        # audit's own prescribed move (a param with NO path to the loss is structurally
+        # excluded, not starved) -- not a workaround for the no-gradient fence, but what that
+        # fence is FOR. Named here (not left to the caller's own ALG_FREEZE string) so this is
+        # never silently skipped by a chain that forgot to pass it.
+        for _ork in ("breath_emb", "bus_g", "alt21_attn_wq", "alt21_attn_wq_b", "alt21_attn_wk",
+                     "alt21_attn_wk_b", "alt21_attn_wv", "alt21_attn_wv_b", "alt21_attn_wo",
+                     "alt21_attn_wo_b"):
+            if _ork in p and _ork not in _frz:
+                _frz.append(_ork)
     # ALG_FREEZE=a,b,... (2026-09-16): named params held constitutional — the router's r_gain in the
     # silver arm (a fixed gain makes the span-supervised bias a ROAD, not an invitation the residual votes down)
     for _fk in [x for x in os.environ.get("ALG_FREEZE", "").split(",") if x]:

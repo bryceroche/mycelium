@@ -216,7 +216,15 @@ REFUSED = ("ALG_SHELF", "ALG_WHIP", "ALG_TOKLOOP", "ALG_WRITEBACK", "ALG_KANNEAL
            "ALG_FUNNEL", "ALG_FUNNEL_INIT",
            "ALG_SINE", "ALG_SINE_SKIP",
            "ALG_MIXER_OFF", "ALG_SHOAL_MIXER", "ALG_TYPED_MIXER",
-           "ALG_SORT_FEED",           # THE ARGS-CONDITIONED RES (2026-10-09): _heads_of's own res-pointer term           # (ar_w1/ar_b1/ar_w2/ar_b2 against the content-only slot/candidate states PLUS the           # args head's own predicted soft-selected args states) is the fused forward()'s
+           "ALG_SORT_FEED",
+           # THE ONE-READ ARM (OR_241, 2026-10-12): breath_step's own tok_override/
+           # ALG_ONE_READ branch (the h_tok seam skipping bank(p["fq"], ...) and station 3's
+           # _d21a seam skipping its own attention) is the fused forward()'s single source of
+           # truth -- the walker's per-seam heads_of calls never call breath_step at all (the
+           # ALG_SORT/ALG_FUNNEL precedent: a config that set this under the walker would
+           # train with the live re-read while believing it severed, silently). Refused by the
+           # word given for this build.
+           "ALG_ONE_READ",           # THE ARGS-CONDITIONED RES (2026-10-09): _heads_of's own res-pointer term           # (ar_w1/ar_b1/ar_w2/ar_b2 against the content-only slot/candidate states PLUS the           # args head's own predicted soft-selected args states) is the fused forward()'s
            # single source of truth and would in fact thread fine through the walker's
            # per-seam heads_of calls on its own, exactly like THE PAIRWISE COMPARATOR ROAD and
            # THE SELF-MATCH TERM above — refused anyway, by the word given for this build,
