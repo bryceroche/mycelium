@@ -1,4 +1,10 @@
-# NEXT SESSION — cold-start entry (updated 2026-10-13 22:5x)
+# NEXT SESSION — cold-start entry (updated 2026-10-14 12:2x)
+
+**10-14 12:2x — ORK3_241 (one read + three breaths): masked −0.0151 (the chassis bar −0.010 MISSED by 0.005) at 0.27x; mint −0.23. The two
+savings add their costs. RECOMMENDATION: the ITERATION CHASSIS = K3 (−0.009 at 0.33x, mint kept, grows back to K7 at parity per PK); one-read
+stays a design fact for the target. K3_242 (the chassis's second control, 34 min) registered under the word. THE PAGE READ: pages retrieve the
+gold mention (top-3 0.81 / top-4 0.89) but a read-time reranker fails on cost (0.20 vs 0.02) — arbitration needs the keys' missing columns.
+The card is idle; the depth probe (binding by trunk layer + the tree probe) is the gate for the climb/carriers/read-notebook arms.**
 
 **10-13 22:5x — FL2_241: void by its sanity bar (mint 0.199: the pointer hold target froze mint's chains) but on wild the cleanest read of the
 line: a LIVE flag (ratio 0.12) + the tabu repairs flagged-wrong slots at 0.050 = placebo 0.049 = no flag 0.046 — THE FLAGGED-LOOP LINE CLOSES
