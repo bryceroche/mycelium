@@ -1,4 +1,7 @@
-# NEXT SESSION — cold-start entry (updated 2026-10-14 12:2x)
+# NEXT SESSION — cold-start entry (updated 2026-10-14 13:1x)
+
+**10-14 13:1x — K3_242 +0.0024: THE K3 PAIR −0.009 / +0.002 = PARITY with PMS8 at 0.33x the card. THE ITERATION CHASSIS = K3 (claims read against
+the K3 pair 0.3384 / 0.3501; the growth road to K7 per PK). The card is idle; the depth probe is the gate for the next arms.**
 
 **10-14 12:2x — ORK3_241 (one read + three breaths): masked −0.0151 (the chassis bar −0.010 MISSED by 0.005) at 0.27x; mint −0.23. The two
 savings add their costs. RECOMMENDATION: the ITERATION CHASSIS = K3 (−0.009 at 0.33x, mint kept, grows back to K7 at parity per PK); one-read
