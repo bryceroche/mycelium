@@ -1454,8 +1454,11 @@ ALG_BLUR_MAX = float(os.environ.get("ALG_BLUR_MAX", "0.7"))
 # ctx["anchor_bias0"] port ALG_ANCHOR uses (read C's exact mechanism, dn_read_c.py). (3) the
 # ladder's objective (loss_fn._flag_retarget): flagged slots grade against gold as today;
 # unflagged slots grade against their OWN previous breath's decode (argmax/threshold, .detach()
-# -- no gradient path exists through either op), kb==1 copying breath 0 -- scoped to the five
-# fields the custody-gold scorer reads (ftype, op, res, args, dig; dn_common.score_row_slots).
+# -- no gradient path exists through either op), kb==1 copying breath 0 -- FORM 2 (ledger
+# 2026-10-13 17:40, fixing ARM 1's VOID verdict): scoped to EXACTLY the two POINTER heads
+# (args, res -- the binding); every other head (ftype, op, dig, dig2, pres, sel, dup, islit,
+# sgn) keeps the gold ladder on every slot every breath, flagged or not -- form 1's wider
+# scope (ftype/op/dig too) starved the digit head of gold and collapsed the value path.
 # Default 0 / flag_mask None = every one of these branches skipped: bit-identical.
 ALG_FLAG = int(os.environ.get("ALG_FLAG", "0"))
 ALG_FLAG_RATE = float(os.environ.get("ALG_FLAG_RATE", "0.25"))   # host-sampler only; never read inside forward()/loss_fn
@@ -9941,31 +9944,38 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
 
 
 def _flag_retarget(g, breaths, kb):
-    """THE FLAGGED LOOP's objective (ledger 2026-10-12 12:35): flagged slots keep gold;
-    unflagged slots copy their PREVIOUS breath's own decode -- a stop-gradient target
-    (.detach() then argmax/threshold: no gradient path exists through either op, so the
-    "unflagged copy-target carries no gradient into the previous breath" gate check holds by
-    construction, not by convention). `breaths[kb - 1]` is the previous LOOP breath; kb == 1
-    copies breaths[0], breath 0's own grounding-read decode -- "the first loop breath copies
-    breath 0", per the spec. Scoped to the five fields the custody-gold scorer reads
-    (dn_common.score_row_slots: ftype, op, res, args, dig) -- presence/islit and every
-    auxiliary span/bind/direction term are untouched, graded against gold for every slot
-    exactly as today's ladder (THE FLAG IS THE ONLY ROAD TO CHANGE on these five; nothing
-    else moves). g["flag_mask"] is None (the default, ALG_FLAG unset or this call off-arm):
-    returns `g` unchanged -- bit-identical."""
+    """THE FLAGGED LOOP's objective, FORM 2 (ledger 2026-10-13 17:40, fixing ARM 1's VOID
+    verdict): flagged slots keep gold; unflagged slots copy their PREVIOUS breath's own
+    decode -- a stop-gradient target (.detach() then argmax/threshold: no gradient path
+    exists through either op, so the "unflagged copy-target carries no gradient into the
+    previous breath" gate check holds by construction, not by convention). `breaths[kb - 1]`
+    is the previous LOOP breath; kb == 1 copies breaths[0], breath 0's own grounding-read
+    decode -- "the first loop breath copies breath 0", per the spec.
+
+    THE FORM-2 NARROWING (the actual fix): scoped to EXACTLY TWO heads -- "args" and "res",
+    THE POINTER HEADS (the binding: which variable this slot points to / which variables it
+    takes as arguments). EVERY OTHER HEAD -- ftype, op, dig, dig2, pres, sel, dup, islit, sgn
+    -- keeps the gold ladder on EVERY slot, flagged or not, every breath, exactly as today's
+    ladder; `g2` never touches them, so they are not even copied into the returned dict (the
+    caller's own `g` object is reused for everything but args/res). ARM 1 (form 1) held ftype/
+    op/dig to the copy-target too, which starved the digit head of gold on the 75% of slots
+    typically unflagged per step -- THE VALUE PATH COLLAPSED (ledger 2026-10-13: open mint
+    0.029, digits 0.21 on the trained body) and voided the capability read (oracle fix rate
+    0.015). Form 2's bet: the binding (args/res) is what the flag's tabu can actually move
+    (it excludes a TOKEN, which only the grounding/pointer reads act on); the value path
+    (digits, via `dig`) has no tabu-reachable mechanism and must stay gold-trained everywhere
+    to exist at all. g["flag_mask"] is None (the default, ALG_FLAG unset or this call
+    off-arm): returns `g` unchanged -- bit-identical."""
     fm_full = g.get("flag_mask")
     if fm_full is None:
         return g
     prev = breaths[kb - 1]
-    L = g["ftype"].shape[1]
+    L = g["res"].shape[1]
     fm = fm_full[:, :L]                                   # (B, L_FAC); scratch rows (if any) never flagged
     g2 = dict(g)
-    for f in ("ftype", "op", "res"):
-        pv = prev[f].detach().argmax(-1)                  # (B, L_FAC) stop-grad class index
-        g2[f] = (fm * g[f].float() + (1.0 - fm) * pv.float()).cast(g[f].dtype)
-    pv_dig = prev["dig"].detach().argmax(-1)              # (B, L_FAC, 7) stop-grad per-position class
+    pv_res = prev["res"].detach().argmax(-1)              # (B, L_FAC) stop-grad class index
+    g2["res"] = (fm * g["res"].float() + (1.0 - fm) * pv_res.float()).cast(g["res"].dtype)
     fm3 = fm.unsqueeze(-1)
-    g2["digits"] = (fm3 * g["digits"].float() + (1.0 - fm3) * pv_dig.float()).cast(g["digits"].dtype)
     pv_args = (prev["args"].detach().sigmoid() > 0.5).float()   # (B, L_FAC, K_VARS) stop-grad multi-hot
     g2["args"] = fm3 * g["args"] + (1.0 - fm3) * pv_args
     return g2

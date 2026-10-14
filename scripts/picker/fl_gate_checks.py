@@ -1,6 +1,6 @@
-"""fl_gate_checks.py -- THE FLAGGED LOOP's gate-only CPU checks (ALG_FLAG; FL_241, ARM 1 of
-the amended denoising-breath design, ledger 2026-10-12 12:35/12:59). Three checks against
-PMS8_241's OWN trained checkpoint (.cache/sharp_PMS8_241.safetensors, pad-warmed -- only
+"""fl_gate_checks.py -- THE FLAGGED LOOP's gate-only CPU checks (ALG_FLAG; FL2_241, FORM 2 of
+the amended denoising-breath design, ledger 2026-10-12 12:35/12:59, fix registered
+2026-10-13 17:40). Four checks against PMS8_241's OWN trained checkpoint (.cache/sharp_PMS8_241.safetensors, pad-warmed -- only
 "flag_emb" is missing and stays zero-init, exactly ALG_FLAG's own "road, not a gain" promise)
 on its OWN training distribution (form_mix_pm35c.jsonl / formpm35c), using
 FAMILY_ENVS["PMS8_241"] + ALG_FLAG=1 (adaptive_stop.py) -- the exact env/body dn_read_c.py's
@@ -43,6 +43,12 @@ honest miss on this specific fixture while GRAD and TABU both PASS clean).
   (3) TABU EXACT: from the SAME flagged run's snapshot, the tabu'd token (fat0.argmax(-1),
       matching the hard tabu's own construction exactly) must carry EXACTLY 0.0 attention
       mass in state["fat_cur"] (breath 1, the first tabu'd re-read) for every flagged slot.
+  (4) THE VALUE PATH (form 2's own fix, coordinator's addition 2026-10-13): the digit head's
+      (p["h_dig"]) gradient on a loss restricted to UNFLAGGED present slots alone must be
+      nonzero -- form 2 never routes ftype/op/dig/dig2/pres/sel/dup/islit/sgn through
+      _flag_retarget's copy-target, so the value path must train on every slot regardless of
+      the flag; form 1 (ARM 1, VOID verdict, ledger 2026-10-13: open mint 0.029, digits 0.21)
+      is exactly the failure mode this check catches.
 
 THE "BITWISE" CAVEAT (stated once, honestly): the mix formula `fst*(1-m) + fst_c*m` runs a
 SECOND bank() call unconditionally whenever flag_mask is not None, even when every element of
@@ -58,8 +64,9 @@ Usage: DEV=CPU ALG_FLAG=1 .venv/bin/python3 scripts/picker/fl_gate_checks.py
 Prints one line per check in the exact format .cache/flagloop_gate.sh greps:
     CORRUPT [fl-gate] PASS/FAIL ...
     GRAD    [fl-gate] PASS/FAIL ...
+    GRADDIG [fl-gate] PASS/FAIL ...
     TABU    [fl-gate] PASS/FAIL ...
-    [fl-gate] all three checks: PASS/FAIL
+    [fl-gate] all four checks: PASS/FAIL
 """
 import os
 import sys
@@ -238,11 +245,44 @@ def main():
     grad_nonzero = bool(has_grad and float(g_flag.abs().sum().numpy()) > 0.0)
     import inspect
     src = inspect.getsource(_flag_retarget)
-    stopgrad_ok = (".detach()" in src and "prev[f].detach()" in src and "prev[\"dig\"].detach()" in src
-                  and "prev[\"args\"].detach()" in src)
+    # FORM 2 (ledger 2026-10-13 17:40): the copy-target is narrowed to EXACTLY args/res (the
+    # pointer heads); ftype/op/dig/dig2/pres/sel/dup/islit/sgn keep the gold ladder everywhere
+    # -- the construction check below matches the NARROWED source, not form 1's wider one.
+    stopgrad_ok = (".detach()" in src and "prev[\"res\"].detach()" in src
+                  and "prev[\"args\"].detach()" in src
+                  and "prev[f].detach()" not in src and "prev[\"dig\"].detach()" not in src)
     ok2 = bool(has_grad and grad_nonzero and stopgrad_ok)
     print(f"GRAD [fl-gate] {'PASS' if ok2 else 'FAIL'} flag_emb.grad_present={has_grad} "
           f"flag_emb.grad_nonzero={grad_nonzero} copy_target_detach_construction={stopgrad_ok}")
+
+    # ------------------------------------------------------------------
+    # CHECK 4 -- THE VALUE PATH (coordinator's addition, 2026-10-13, fixing ARM 1's VOID
+    # verdict): under ALG_FLAG=1 on this fixture, the digit head's gradient on UNFLAGGED
+    # slots alone must be nonzero -- the value path (digits) is never routed through
+    # _flag_retarget's copy-target in form 2, so it must train on every slot, flagged or
+    # not. Reuses o_tr/g from check 2 (same forward call, flag_half still the mask); a FRESH
+    # backward isolates the digit head's own gradient to a loss restricted to unflagged
+    # present slots only (zeroed first, so no contribution leaks in from check 2's full-ladder
+    # backward above).
+    # ------------------------------------------------------------------
+    for _k in p:
+        p[_k].grad = None
+    dig_logits = o_tr["dig"]                                       # (B, L_FAC, N_DIG, 10)
+    gold_dig = g["digits"]                                         # (B, L_FAC, N_DIG) int, from check 2's gold dict
+    ce_dig = (dig_logits.log_softmax(-1) * -1).gather(-1, gold_dig.unsqueeze(-1)).squeeze(-1).mean(-1)   # (B, L_FAC)
+    unflagged_mask = (1.0 - flag_half) * Tensor(presence, dtype=dtypes.float)
+    n_unflagged_dig = float(unflagged_mask.sum().numpy())
+    loss_unflag_dig = (ce_dig * unflagged_mask).sum() / (unflagged_mask.sum() + 1e-6)
+    loss_unflag_dig.backward()
+    g_dig = p["h_dig"].grad
+    dig_has_grad = g_dig is not None
+    dig_grad_nonzero = bool(dig_has_grad and float(g_dig.abs().sum().numpy()) > 0.0)
+    ok4 = bool(dig_has_grad and dig_grad_nonzero and n_unflagged_dig > 0)
+    print(f"GRADDIG [fl-gate] {'PASS' if ok4 else 'FAIL'} h_dig.grad_present={dig_has_grad} "
+          f"h_dig.grad_nonzero={dig_grad_nonzero} n_unflagged_present_slots={n_unflagged_dig:.0f} "
+          f"(the value path trains on unflagged slots too, not starved by the pointer-only copy-target)")
+    for _k in p:
+        p[_k].grad = None
 
     # ------------------------------------------------------------------
     # CHECK 3 -- THE TABU, EXACT (reuses the flagged run's snapshot from check 1)
@@ -260,8 +300,8 @@ def main():
     print(f"TABU [fl-gate] {'PASS' if ok3 else 'FAIL'} exact_zero_count={n_exact_zero}/{n_checked} "
           f"max_mass={(masses.max() if n_checked else float('nan')):.3e}")
 
-    print(f"[fl-gate] all three checks: {'PASS' if (ok1 and ok2 and ok3) else 'FAIL'}")
-    sys.exit(0 if (ok1 and ok2 and ok3) else 1)
+    print(f"[fl-gate] all four checks: {'PASS' if (ok1 and ok2 and ok3 and ok4) else 'FAIL'}")
+    sys.exit(0 if (ok1 and ok2 and ok3 and ok4) else 1)
 
 
 if __name__ == "__main__":
