@@ -1,4 +1,10 @@
-# NEXT SESSION — cold-start entry (updated 2026-10-13 19:5x)
+# NEXT SESSION — cold-start entry (updated 2026-10-13 22:5x)
+
+**10-13 22:5x — FL2_241: void by its sanity bar (mint 0.199: the pointer hold target froze mint's chains) but on wild the cleanest read of the
+line: a LIVE flag (ratio 0.12) + the tabu repairs flagged-wrong slots at 0.050 = placebo 0.049 = no flag 0.046 — THE FLAGGED-LOOP LINE CLOSES
+on both forms: the re-read has no column to choose by (the keys). THE CARD IS IDLE; nothing queued. Waiting: the depth probe (binding by trunk
+layer + the tree probe) decides the governor climb / distillation; registered and needing the word: RTB form 2, DF form 2, the governor climb,
+the chassis rebuild (parity on wild + the books pool). The register census: the MATH register is wild-like (shallow chains); mint is another genre.**
 
 **10-13 19:5x — OR_241 READ: wild HELD (−0.0024, bar met) at 0.67x the step; MINT −0.29 / silver −0.18 (the formulaic registers need the
 re-read; wild does not); the canvas did NOT flip (the cache is the notebook handoff, not the re-read); the membrane frozen at breath 0 by
