@@ -1,159 +1,72 @@
-# NEXT SESSION — cold-start entry (updated 2026-10-14 13:1x)
+# NEXT SESSION — cold-start entry (HANDOFF 2026-10-14 ~15:00; the box restarts)
 
-**10-14 13:1x — K3_242 +0.0024: THE K3 PAIR −0.009 / +0.002 = PARITY with PMS8 at 0.33x the card. THE ITERATION CHASSIS = K3 (claims read against
-the K3 pair 0.3384 / 0.3501; the growth road to K7 per PK). The card is idle; the depth probe is the gate for the next arms.**
+**READ FIRST:** CLAUDE.md → this block → the ledger's entries from "2026-10-12 — THE DENOISING BREATH" to the end
+(docs/phase1_skeleton_spec.md, ~60 entries) → MEMORY.md's board. Reads table: `.venv/bin/python3 scripts/reads.py table wildhold`.
 
-**10-14 12:2x — ORK3_241 (one read + three breaths): masked −0.0151 (the chassis bar −0.010 MISSED by 0.005) at 0.27x; mint −0.23. The two
-savings add their costs. RECOMMENDATION: the ITERATION CHASSIS = K3 (−0.009 at 0.33x, mint kept, grows back to K7 at parity per PK); one-read
-stays a design fact for the target. K3_242 (the chassis's second control, 34 min) registered under the word. THE PAGE READ: pages retrieve the
-gold mention (top-3 0.81 / top-4 0.89) but a read-time reranker fails on cost (0.20 vs 0.02) — arbitration needs the keys' missing columns.
-The card is idle; the depth probe (binding by trunk layer + the tree probe) is the gate for the climb/carriers/read-notebook arms.**
+## STATE AT HANDOFF
+- **Branch gen-weights = main line, clean, pushed** (last: the override curve + the depth probe's state). Every research branch of
+  10-09..14 has LANDED on gen-weights via its queue (replay, solverpipe, seeded, breathstop, rtb, denoiser, flagloop, oneread, sinebreath,
+  srfeed, …). Worktrees wt8..wt33 are historical; none holds unmerged work the queue needs. `main` lags gen-weights (sync at a chapter boundary).
+- **NOTHING IS ON THE CARD AND NO QUEUE IS ARMED.** The restart kills nothing that matters. After it: `DEV=PCI+AMD` (never bare AMD);
+  long GPU work as `systemd-run --user` units; the AM driver is patched locally (src/tinygrad) and survives the reboot's fresh init.
+- **THE ITERATION CHASSIS IS SETTLED: K3** (three breaths; ALG_LOOP_STOP=3 on the role8 recipe): the pair K3_241/K3_242 reads
+  0.3384 / 0.3501 = PARITY with PMS8_241 (0.3476) at 0.33x the card (48k in 34 min). Claims on it read against the K3 pair; PK's growth
+  road (24k at K3 → 24k at K7, parity, 0.67x) returns a body to the full count. One-read (OR_241: wild −0.002 at 0.67x, mint −0.29) is a
+  DESIGN FACT for the target, not the iteration chassis (ORK3: −0.015, the two savings add). THE REGISTER CENSUS: the MATH register
+  (census pool + 874 book rows) is WILD-LIKE (chain depth 1.6–1.8, ~22 % derived args, 2–3 sentences); mint is a different genre
+  (simultaneous systems, depth 2.7) — mint teaches values/ops, never chassis decisions. The target-register FIXTURE must be a held-out
+  book slice (the books are in the diet) — registered, not yet carved.
+- **THE WALL, measured from five sides this week, is the same place:** the first look's KEYS lack the columns that split twins (owner,
+  event, coreference). Selection (lattice + judges, particles + vote, the agreement gate), the units lexicon, the flagged loop (an oracle
+  flag + tabu repairs at the placebo rate), and the page reranker (retrieval solved: top-3 0.81 / top-4 0.89; arbitration fails on cost;
+  the margin-gated floor +0.005) all land there.
 
-**10-13 22:5x — FL2_241: void by its sanity bar (mint 0.199: the pointer hold target froze mint's chains) but on wild the cleanest read of the
-line: a LIVE flag (ratio 0.12) + the tabu repairs flagged-wrong slots at 0.050 = placebo 0.049 = no flag 0.046 — THE FLAGGED-LOOP LINE CLOSES
-on both forms: the re-read has no column to choose by (the keys). THE CARD IS IDLE; nothing queued. Waiting: the depth probe (binding by trunk
-layer + the tree probe) decides the governor climb / distillation; registered and needing the word: RTB form 2, DF form 2, the governor climb,
-the chassis rebuild (parity on wild + the books pool). The register census: the MATH register is wild-like (shallow chains); mint is another genre.**
+## THE OPEN GATE: THE DEPTH PROBE (zero-GPU; finish it FIRST)
+Its agent died after the trunk pass. SAVED: `.cache/depthprobe_embeddings.npz` (per-layer pooled numeral-mention states, object arrays →
+`np.load(..., allow_pickle=True)`), `.cache/depthprobe_mentions.jsonl` (owner keys, head nouns, verb/owner spans, chain pairs). NOT DONE: the
+probes. Write `scripts/picker/depthprobe_read.py`: per layer L1..L16 (+ the every-fourth stack L0/L4/L8/L12): (a) same-owner vs
+different-owner pairs — row-split logistic probe + a no-training cosine; same-noun pairs separately; distance-matched pairs; shuffled-label
+placebo; (b) which-twin-is-later with a position-only control; (c) THE JULY VALUE MEASURE (digit-exact readout at the gold span) per layer —
+must reproduce L4 0.998 / L8 0.953; (d) THE TREE PROBE (Hewitt & Manning): a rank-64/128 linear map regressing chain distance; is the owner
+the numeral's nearest token in probe space (top-1/3) vs a position baseline. THE DECISION TABLE (ledger 10-14): links readable at L3 → THE
+GOVERNOR CLIMB fires on K3 (spaCy teacher, hops subject→verb→noun→numeral in that order across the room's blocks, coreference waits);
+owner clearly better deeper → add relational distillation (the deep layer teaches block 4); the sorting room's output already carries owner →
+carriers on the key side are the lever; links weak at L3 and owner flat → inject a parse at read time (Bryce's call) or widen the token side.
+BARS: DEEPER-BINDS = best contiguous layer ≥ L3 + 0.05 AUROC and ≥ 2 SE; FLAT = ±0.02; ALREADY-WRITTEN = the room matches the best depth.
+THE CLIMB'S TARGETS ARE BUILT: `.cache/climb_targets_formpm35c.npz` (owner 93 %, alignment failures 0 %; scripts/climb_targets.py).
 
-**10-13 19:5x — OR_241 READ: wild HELD (−0.0024, bar met) at 0.67x the step; MINT −0.29 / silver −0.18 (the formulaic registers need the
-re-read; wild does not); the canvas did NOT flip (the cache is the notebook handoff, not the re-read); the membrane frozen at breath 0 by
-construction. THE REGISTER QUESTION registered (does MATH-500 behave like wild or mint?). FL2_241 next on the card; the depth probe pending.**
+## REGISTERED, NEEDING THE WORD (all on the K3 chassis, vs the K3 pair)
+1. THE GOVERNOR CLIMB (+ carriers: links written into the numeral's key at role phases; a BANDS twin if it fires). Bars: links ≥ 85 % on
+   wild; different-owner wrong picks −1/3; other-sentence 0.54 → ≤ 0.45; masked +0.020 or a twin. Placebo: a random tree. Kill: links learned,
+   different-owner share unmoved (the pointer's keys).
+2. THE READ NOTEBOOK (pages: top-3 tokens kept, listwise rerank across the breaths, read from the chosen page; the reranker must see the
+   carriers). Bars: twin-class given +0.10; other-sentence ≤ 0.45; masked +0.020 or a twin; k=1 ablation; shuffled-label placebo.
+3. RTB form 2 (one captured graph per breath index; the 37 GB buffer + phase-1 ckpt banked; the cost probe 0.25x). 4. DF form 2 (relative
+   temperature; the kick after the handoff). 5. THE CHASSIS REBUILD as parity (keep only measured organs; K3; gate on wild + the held-out
+   book slice). 6. The data road (the n lever; Bryce's lanes). 7. The parser in the system (a constitutional call; the units line waits on it).
 
-**10-13 18:2x — OR_241 (ONE READ: the bank re-read + station 3 severed after breath 0) ON THE CARD (18:08; gate PASS; the gym sever on PMS8
-costs only −0.0095 implied — the ink carries most of what the re-reads earn; my 'heavily' prediction wrong). FL_241: the body broken on values
-(mint 0.03: the self-copy hold target on the digit heads) → the capability read VOID; FL2 (hold on pointer heads only; knob check at read;
-value-sanity bar) building, queued behind OR. The depth probe (binding by trunk layer + the tree probe) still running on CPU.**
+## CLOSED THIS WEEK (regime-tagged in the ledger; do not re-fire without a new form)
+Slot-side depth (LT/SINE4/SEAL/ANTI4×2 ≈ +0.009; the owner-crystal frame refuted); SRF (the room every breath); the denoiser's
+reading-stream noise in the Gumbel form (the body sharpened 1.75x = the logit-scale escape; the knob law's third clause: injections RELATIVE
+to the port's spread); the flagged loop (both forms; a hold/copy target is never a loss term); the per-breath tree (six forms); the handoff
+as a read-time dial (the damping is the trained stellarator weight; the cache is the notebook handoff, not the re-read); the units lexicon;
+latest-before for relation args (n=8). POSITIVE INGREDIENTS: the whip + blurred ladder (+0.010 ± 0.002 over three bodies, mint +0.1..0.2)
+= a chassis ingredient; the sorting room (+0.015 ± 0.006) = the record family; K3/PK (cost); the Welford atlas (the fixed ruler).
 
-**10-13 14:5x — THE DAY'S VERDICTS: DF_241 (the denoiser) — noise-free +0.012 but the reading-stream noise INERT at the read (the body grew its logit
-spread 1.75x: the logit-scale escape; the knob law's third clause: define injections RELATIVE to the port's spread); WH_241/WH_242 (whip + blurred
-ladder) +0.011/+0.008 → the family +0.010 ± 0.002 over three bodies = a chassis INGREDIENT (mint +0.09..0.23), not a record. RTB aborted at its cost
-probe (33x; form 2 = per-breath captured graphs, needs the word). ZERO-GPU: the handoff is the trained stellarator weight (read-time floors cost the
-decode; no hops); latest-before moot for relation args (n=8); the units lexicon null (parked behind the parser call); the depth probe (binding by
-trunk depth, all layers, three bars) RUNNING; the relational-distillation arm registered behind it. Card: FL_241 (merged b957895b, gating) → OR_241.**
+## RULES LEARNED THIS WEEK (binding; full forms in the ledger)
+A gate's COMPLETE banner is not a result, the table is. A queue's wait must see a done mark NEWER than its fire time; a chain that can abort
+by design carries a RELEASE clause. Every device call in a chain under the gpu lock, probes included. The dry-run runs under pipefail;
+'count equals zero' is never a pipeline tail. The card-wait helper reads the trainer's COMMAND LINE (its /proc environ is unreadable).
+A queue's clean-tree check ignores untracked files, aborts on modified ones; agents on the main checkout commit every change immediately.
+The landing protocol: a gated branch lands on its gate's warrant + a post-merge bit-identity; every pending branch is merged FORWARD;
+a hand-resolved conflict re-gates. A cost bar gets a PROBE at the top of the chain. A read mode added after the gate re-runs the smoke on
+≥ 8 rows. A script's env assertions are part of the chain contract. Particle reads dump LV_DUMP_FULL. The knob law censuses at the gate
+AND at the read; an absolute-scale injection trains the body to outgrow it. A chain's census call names its split (the train fixture npz
+was removed by the 10-11 cleanup; use PC_SPLIT=test). The value-sanity bar voids a capability test on a body that lost a register.
 
-**10-13 06:4x — ANTI4_242 DOES NOT HOLD (+0.0024; the pair mean +0.010 ± 0.008): THE U-NET-ORDER CLAIM WITHDRAWN; the slot-side depth
-family (LT/SINE4/SEAL/ANTI4×2) closes at ≈ +0.009: depth on the slot side is not the lever. DF_241 next (the denoiser; denoiser merged
-408076e4, post-merge gate running) → WH → FL → OR.**
-
-**10-13 00:3x — RTB_241 ABORTED AT ITS COST PROBE (eager step 4.18 s = 33x the body's; void by construction; the 37 GB buffer + phase-1 ckpt
-banked); FORM 2 (one captured graph per breath index) REGISTERED, NEEDS THE WORD. The queue released; ANTI4_242 (the twin) on the card 00:33
-→ DF → WH → FL → OR.**
-
-**10-12 23:4x — PK_241 HEALS THE EXPOSURE GAP: K3's 24k ckpt + 24k at K7 = 0.3510 (PARITY with PMS8, +0.0127 over K3), mint recovered
-(0.660), silver −0.06, decode-change K3-read vs K7-read 59 % of slots (the grown breaths REFINE); cost 0.67x of PMS8 for parity. RTB's queue
-merged rtb (db0bf95f), post-merge gate running, then THE DEVICE COST PROBE decides RTB's fate (abort if the eager step is slower than the body's).
-denoiser/flagloop forward-merged (dfb994f8 / 3a4f8b1a).**
-
-**10-12 22:2x — K3_241 MEETS BOTH BARS: three breaths hold the wild number (0.3384, −0.009 vs PMS8, noise) at 0.33x the step (48k in 34 min);
-mint −0.07; THE EXPOSURE GAP: the K3 body read at K7 collapses to 0.002 — untrained breath indices are off-manifold, not idle (RTB must sample
-every index it is read at; PK tests teaching the extra breaths). PK_241 on the card (22:13). Today's queue faults (all fixed, ledgered): the
-clean-tree abort on untracked scripts; the pipefail false positive (queue_dryrun now runs under pipefail; count-equals-zero never as a pipeline
-tail); the twin's queue had inlined another queue (rewritten). ANTI4_241 +0.0185 (twin queued); SINE4/SEAL null; SRF null; the edge reads:
-the gold-free transfer flag clears (recall 0.36 / precision 0.63), the transfer graph locates but does not correct; pin 2: coverage 53-57/311,
-the vote/agreement gate a safety rule, not a picker.**
-
-**10-12 16:xx — BUILDS LANDED: DF_241/WH_241 (branch denoiser; pc-queue-dn behind the ANTI4 twin), FL_241 (branch flagloop; pc-queue-fl behind WH),
-the seeded readings (MERGED into gen-weights b8c8f583; post-merge gate running). Every pending branch forward-merged (breathstop, rtb, denoiser clean;
-flagloop hand-resolved: union forward() signature + both tabu blocks; re-gating). The particle read grid runs on the card under the lock; its
-coverage analysis on CPU. SEAL on the card. Queue: SEAL → K3 → PK → RTB → ANTI4_242 → DF → WH → FL. Landing protocol in the ledger.**
-
-**10-12 14:1x — ANTI4_241 MEETS ITS SLOT BAR: masked 0.3662 = +0.0185 vs PMS8 (+0.0151 vs flat depth LT): the U-Net direction (bottleneck
-THIRD, 384/224/128/224) beats bottleneck-first (SINE4 +0.006); mint held; the trough ANTI-groups by owner (0.86) — the owner frame refuted on
-both shapes. THE TWIN ANTI4_242 queued behind RTB (pc-queue-anti4-242; no merge needed); DF/WH wait on the twin's done mark, FL behind WH.
-SEAL fires next from the sine queue. ANTI4 ran from 07:41 after the stale-done-mark double fire.**
-
-**10-12 14:xx — WORD GIVEN FOR THE WHOLE QUEUE: behind ANTI4 → SEAL → K3 → PK → RTB come DF_241 (THE DENOISER: score noise in the reading
-stream + the scheduled whip in the math stream + the blurred ladder; clock bitwise) with WH_241 (placebo = scheduled whip alone) and the canvas
-test; FL_241 (Arm 1, oracle flags, capability; building in wt30); Arm 2 after. Pins first: the gold-mention census (running), the particle read
-(seeded branch wt29, gate then device reads under flock). Ledger 10-12 (the ruling, the build plan, the word).**
-
-**10-12 13:xx — THE DENOISING BREATH (Bryce + Opus; ledger 10-12 x4 entries): noise on the GRAPH at breath 0 (the body's own near-misses via a
-tabu'd grounding read), the solver LOCATES (unsat core / dead facts / free vars / view disagreement), the loop REMOVES (flag + tabu; unflagged
-slots hold), the perceiver routes WHEN to cross. READS A–C DONE (zero-GPU): A — the loop revises (correction 0.144, regression 0.230; the ≈0
-prediction refuted; nothing tells it WHICH slots); B — the unsat core is the locator (precision 0.70, recall 0.19); C — the gym's tabu replay:
-untrained fix-given-flag ≈ 0.04, false-flag break rate ≈ 0.08 (cheap) → the ceiling at a trained 0.44 fix rate ≈ +0.05 masked wild. NEXT (needs
-the word): ARM 1 (oracle flags, capability; kill < 0.15) then ARM 2 (solver flags; DN as control). Scripts: scripts/picker/dn_read_{a,b,c}.py.**
-
-**10-12 07:4x — SINE4_241 (fixed) DOES NOT FIRE: masked 0.3535 (+0.006 vs PMS8, +0.0025 vs LT_241 = the shape adds nothing over flat depth),
-rows 20, mint 0.663 held, knob PASS (all blocks live), trough owner ratio 1.24 (bar 1.5; blocks 1-3 ~1.0; flat across breaths). THE DOUBLE FIRE:
-the sine queue fired ANTI4 at 01:36 on the confounded run's STALE done mark; ANTI4's device birth check hit the AM lock and aborted; re-fired by
-hand 07:41 (birth checks now DEV=CPU in the ANTI4/SEAL chains); SEAL fires on ANTI4's real done mark; breathstop then RTB behind SEAL.
-RULE: a queue's wait must see a done mark newer than its fire time. ANTI4 ends ~13:30, SEAL ~19:30, K3/PK overnight, RTB 10-13.**
-
-**10-12 00:14 — SRF_241 DOES NOT FIRE (ledger 10-12): masked 0.3520 (= PMS8 +0.004 noise; BELOW the SR family 0.3646; −0.0195 vs SR_241 z 1.8),
-rows 21, mint 0.7555 (−0.03), twin-pick 0.473 / other-sentence 0.52 UNMOVED; the road is LIVE (knob 0.16–1.08 per breath) and the token residual's
-std grows 1.09→2.39 across the breaths (no norm restoration on the token side) = the texture to probe. THE SORTING ROOM LINE: the single shot stands as
-the record; the per-breath re-run closes in this form. SRF FORM 2 registered (keepnorm on the token residual, or the cross-attention-only feed; needs
-the word). The sine queue merged sinebreath (c48325c6) and is in its post-merge gate; SINE4 fires next. FIXTURE: phase1_alg_states_train.npz was
-removed by the 10-11 cleanup — the knob censuses now read PC_SPLIT=test (the sine chains patched in place).**
-
-**21:05 — RTB_241 IS BUILT, GATED AND QUEUED (pc-queue-rtb behind 'PK CHAIN COMPLETE'; branch rtb/wt28; gate .cache/rtb_gate.log; ledger 21:0x).
-The replay step is EAGER (not captured): I added THE DEVICE COST PROBE to its chain (200 eager steps timed before phase 3; slower than PMS8's
-own 0.126 s/step = ABORT, needs the word; form 2 = per-kb captured graphs). If the probe aborts, the next build is the 7-graph capture.**
-
-**20:35 — THE BREATHSTOP QUEUE IS ARMED (pc-queue-breathstop: K3_241 then PK_241 behind 'SEAL CHAIN COMPLETE'; branch breathstop merged
-forward over the gym at bdb1e7fb; full gate table in .cache/breathstop_gate.log: ls7 bit-identical to role8, k3 cuts at breath 2, CPU step
-0.54x; queue_dryrun 9/0). The whole queue under the word is now machine-chained: SRF -> SINE4 -> ANTI4 -> SEAL -> K3 -> PK -> RTB (RTB's queue
-arms when its builder finishes).**
-
-**20:10 — THE REPLAY GYM IS MERGED (f7c15c70) and gated on the main line (unset 5.2995/0.0279, role8 6.5535/1.1061
-bit-identical; .cache/replay_merge_gate.log); docs/replay_gym.md names RTB's three gaps. RTB_241's BUILDER IS RUNNING (wt28, branch rtb,
-started 19:41 under the standing word): the multi-kb buffer writer + the offline feedback pass; the one-breath replay training step with the
-sampled phase and periodic refreshes; the exposure read; CPU gate (bit-identity, decode-exact identity at kb 1/3/5, a replay step's finite
-loss + live grads, the step cost GPU-vs-host); pc-queue-rtb behind 'PK CHAIN COMPLETE'. BARS: unrolled wild within 0.010 of PMS8_241 at
-<= 1/4 the card time per step; KILL: masked down > 0.020 (the refresh cadence M/2 is then the knob). PERF B READ (ledger 17:48): the JIT
-graph-batch hang is cumulative/content-dependent, not a single-graph ceiling; JIT_BATCH_SIZE=1 stays the only confirmed-safe setting;
-scripts/jit_batch_probe.py is the CPU gate for new organs (7e0a4d8a); the diagnostic tinygrad branch jitbatch is NOT merged. SRF_241 at
-step 20k/48k (19:51; ~8k steps per 70 min -> training ends ~00:00, reads ~00:40). Gate rule added: a gate's COMPLETE banner is not a result,
-the loss TABLE is. Unmerged branches: shuffletap (mixer taps, needs a gate), jitbatch (tinygrad diagnostic), breathstop (K3/PK builder,
-wt27), rtb (wt28, building).**
-
-**SRF_241 (THE SORTING ROOM EVERY BREATH, slot-conditioned) IS ON THE CARD (17:30; fired 16:39; 0.45 s/step -> reads ~23:30; bars = the first-look
-reads SR missed: twin-pick <= 0.35, other-sentence <= 0.40, masked >= SR's family + 0.010).** THE QUEUE UNDER THE WORD (17:1x): the FIXED sine arms
-SINE4/ANTI4/SEAL (pc-queue-sine on SRF's done mark; ALG_SINE_SKIP=none, the waist-sever placebo, FFN 4x, the birth check) -> K3_241 (three breaths
-throughout, ALG_LOOP_STOP=3, the clock kept at K=7) -> PK_241 (progressive: 24k at K=3 then 24k at K=7) [builder wt27] -> RTB_241 (THE REPLAY-TRAINED
-BREATH: one breath per step, a sampled phase, a replay buffer, offline solver feedback — the diffusion recipe; waits on the gym merge (agent on
-CPU) + the solver pipeline (perf A, wt24)) -> the NL-loop refactor's first arm after SRF's read. PERF: A = the solver pipeline (pool + memo +
-training budget; bit-identical gate; wt24), B = the JIT graph-batch hang's threshold (wt25). ARCHITECTURE v2 registered (the master design doc,
-docs/MASTER_DESIGN.md, published to main 6f0f0c57). THE MIXER LINE CLOSED (TM costs, SH diverged, SRK unread, HUB: the all-to-all is dispensable).
-DISK: 1.5 TB of retired forms' state memmaps deleted (1.4 TB free); the checkpoint sweep (61 GB) is next. Updated 17:30.
-
-**THE CARD IS IDLE (09:38).** THE DIRECTION PROBE FIRED (zero-GPU; scripts/direction_probe.py; .cache/direction_probe_PMS8_241.txt):
-PRESENT-BUT-UNEXPRESSIBLE — a read-out trained on PMS8_241's own frozen states reaches wild AUROC 0.98 (own state + both gold args'
-states, MLP) vs the 0.85 bar; the cue-alone ceiling is at chance (0.52), ruling out "it's just lexical"; args' states ALONE (no own
-state, no self-match shortcut available) still reach 0.84-0.85 — close to the bar on a clean read. THE SELF-REFERENCE ARTIFACT (new
-finding, same script): every inverse relation's own slot index is literally one of its own two gold args on wild (372/372; 0/668
-forward) — a data-construction fact (reencode_ops sub/div->add/mul), not noise — so the 0.98 number likely mixes a near-trivial
-identity detector with real geometry; the args-alone 0.84-0.85 is the cleaner evidence. At the operating point holding forward
-precision >= 0.85 (the deployed res pointer's own register), inverse recall = 0.69 on a LARGE stable bucket (74% of wild relations)
-vs the deployed 0.25 — a real, non-degenerate gap. ENGINEERING CRITIQUE OFFERED (unbuilt, needs the word): the cheapest next form is
-NOT the ledger's two-bilinear gated-mixture design — it's a near-free self-match/own-vs-candidate comparison term on the EXISTING res
-pointer's 24-wide scan, exploiting exactly the (E)-style signal this probe located. Four prior structural forms (DIR/DOSE/DIRD/DIR2/
-DIRROLE) failed not because the information was absent but because none gave the bilinear an explicit self-vs-candidate comparison.
-NEXT (needs the word): build the self-match res-pointer term; or the owner signature / sorting room (parked, unrelated line).
-(Previously: DIRROLE_241 READ: inverse res 0.245 unchanged, slot +0.002 (null): THE DIRECTION LINE CLOSED ON FOUR FORMS. Previously building: THE DIRECTION ROLE — the direction cues ("fewer / less / more than /
-left / gave / half / per ...") entered as ROLE CUES in the role signature (the organ that set the slot record), stamped from the text at
-training AND at read (the rule: a structural road trains only in the form the read can supply), read by the res pointer through the same
-bilinear; a zero-GPU cue census first (coverage of inverse-form relations must reach >= 60 %); gate; the arm DIRROLE_241 vs PMS8_241 staged
-(.cache/rack_chain_DIRROLE.sh / queue_dirrole.sh) — fires on the standing word after the gate. BARS: inverse res >= 0.50 (from 0.25), forward
-res >= 0.85, masked >= PMS8 - 0.005.
-**THE DIRECTION-BIT LINE (10-08/09), CLOSED on both forms:** DIR (self-driven mask) redistributes (inverse 0.25->0.33, forward 0.87->0.75,
-masked -0.015); DOSE (inverse-heavy mint) moves mint +0.08 and wild zero (starvation refuted); DIRD both -0.033; DIR2 (the GOLD mask at training)
--0.062 = a crutch absent at read (the bit confident on 2 % at read). THE BLINDSPOT STANDS: 36 % of wild relations are inverse forms, res 0.25;
-the res head's gradient arrives 3.6x and is unusable (the credit census) = a missing INPUT: the prose cue -> direction binding.
-**CLOSED 10-08/09:** the chalkboard (tokens: unread; legality: the implied values are right 11.5 % on wild — the derived-value line closes
-behind the args wall); the rack family (four bodies); the pilot's ceiling (+1/128, +0/64); the learned perceivers (regime).
-**Positive this week:** the Welford atlas (0.766 vs entropy 0.700); the schedule fix (mint +0.047 on the hierarchical body); the hammerhead
-census (majority-of-5 0.965 at 0.41 coverage); the dose's mint +0.08 (an ingredient, noted).
-**THE GYM (branch replay, wt8, unmerged; 5 uses banked):** the save point + replay (decode-exact), the chalk dry-run, the resonance read, the
-shuffle read, the pilot's ceiling, the chalk-legality read. Merge after the dirrole arm; gate.
-**Rules added this week:** one arm per chain; waiters match the chain's failure vocabulary + the training log's mtime; a watcher binds the
-log to the process it would kill (the wrapper's cmdline); a derived chain is grepped for the organ's env NAME; joined artifacts share the
-same mask; a selector's features are diffed against the gold fields; replay verdicts at the decode level; a structural road trains only in
-the form the read can supply; a worktree's .cache is the shared symlink.
-**Registered, unbuilt:** the sorting room; the owner signature (the shuffle as structure; ceiling 46 %); the majority dryness test; the depth
-pair; head diffs A/B/C from the audit; the reader's holdout (books).
-**Branches/worktrees:** replay (wt8), dirrole (wt10, building), rack3 (wt6, merged), dirbit (merged, wt9 removed). main fast-forwarded 10-09 06:05.
+## HOUSEKEEPING
+Disk 1.4 TB free; `.cache/rtb_buffer_RTB_241/` (35 GB) is RTB form 2's buffer — keep until form 2 is decided. pc-* units: none should be
+running after the restart. Failed-unit noise: `systemctl --user reset-failed`.
 
 ---
 (The previous entry follows, for the longer board.)
