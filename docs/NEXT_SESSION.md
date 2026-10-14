@@ -21,7 +21,13 @@
   flag + tabu repairs at the placebo rate), and the page reranker (retrieval solved: top-3 0.81 / top-4 0.89; arbitration fails on cost;
   the margin-gated floor +0.005) all land there.
 
-## THE OPEN GATE: THE DEPTH PROBE (zero-GPU; finish it FIRST)
+## THE DEPTH PROBE — READ 2026-10-14 ~16:55 (ledger; .cache/depthprobe2_read_*.log). The saved 16-row pass was a smoke; re-collected
+at 1500 rows x 3 attention regimes (scripts/picker/depthprobe_collect.py). VERDICT: owner pairs NEITHER (D6 +0.026, SE 0.013; position alone 0.78);
+the one-hop head link readable at the tap (0.57 vs position 0.35); the owner never a probe-space neighbour at any depth; regimes within noise.
+-> the climb stays the indicated arm (needs the word); distillation not warranted. ALSO FOUND: do_precompute runs the trunk UNMASKED
+(bidirectional + ~190 '!' pads visible) -> a shared length axis in every state (corr -0.81); the K3 mask arm registered (needs the word).
+(The original gate text follows for reference.)
+## THE OPEN GATE: THE DEPTH PROBE (original registration)
 Its agent died after the trunk pass. SAVED: `.cache/depthprobe_embeddings.npz` (per-layer pooled numeral-mention states, object arrays →
 `np.load(..., allow_pickle=True)`), `.cache/depthprobe_mentions.jsonl` (owner keys, head nouns, verb/owner spans, chain pairs). NOT DONE: the
 probes. Write `scripts/picker/depthprobe_read.py`: per layer L1..L16 (+ the every-fourth stack L0/L4/L8/L12): (a) same-owner vs
