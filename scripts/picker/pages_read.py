@@ -200,8 +200,11 @@ def build_pages(raw, tok, same_sent_of):
                 mag_band=(len(str(val)) if val is not None else -1),
                 value=val, label=bool(val is not None and val == gold_val),
             ))
+        ss = same_sent_of.get((int(i), int(j)))   # None = goldmention's own _collect_cells
         out.append(dict(i=int(i), j=int(j), gold_val=gold_val,
-                         same_sent=bool(same_sent_of.get((int(i), int(j)), False)),
+                         same_sent=ss,   # None (unclassifiable: no textual match / not ps_legal-joined,
+                         # goldmention's own n_nomatch/n_notjoined populations) vs True/False -- callers
+                         # must filter same_sent is None out of twin/other splits, never coerce it
                          pages=page_recs))
     return out
 
@@ -312,8 +315,11 @@ def main():
     all_rows = wild_eval
     wrong_fl = [r for r in wild_eval if not r["first_look_ok"]]
     right_fl = [r for r in wild_eval if r["first_look_ok"]]
-    twin_wrong_fl = [r for r in wrong_fl if r["same_sent"]]
-    other_wrong_fl = [r for r in wrong_fl if not r["same_sent"]]
+    # same_sent is None for goldmention's own unclassifiable population (no textual gold-mention
+    # match / not ps_legal-joined) -- excluded from both classes, not coerced into either
+    twin_wrong_fl = [r for r in wrong_fl if r["same_sent"] is True]
+    other_wrong_fl = [r for r in wrong_fl if r["same_sent"] is False]
+    n_unclassifiable_wrong = sum(1 for r in wrong_fl if r["same_sent"] is None)
 
     sm_all = summarize(all_rows)
     sm_wrong = summarize(wrong_fl)
@@ -324,8 +330,8 @@ def main():
     print("[pages] PART 4: LORO ceiling on wild (fit-on-wild-minus-row, reported as CEILING)", flush=True)
     loro_rows = loro_ceiling(wild_records)
     loro_wrong_fl = [r for r in loro_rows if not r["first_look_ok"]]
-    loro_twin = [r for r in loro_wrong_fl if r["same_sent"]]
-    loro_other = [r for r in loro_wrong_fl if not r["same_sent"]]
+    loro_twin = [r for r in loro_wrong_fl if r["same_sent"] is True]
+    loro_other = [r for r in loro_wrong_fl if r["same_sent"] is False]
     loro_right_fl = [r for r in loro_rows if r["first_look_ok"]]
     loro_sm_all = summarize(loro_rows)
     loro_sm_wrong = summarize(loro_wrong_fl)
@@ -345,7 +351,8 @@ def main():
                                     twin_wrong_at_first_look=sm_twin,
                                     other_sentence_wrong_at_first_look=sm_other,
                                     cost_on_right_at_first_look=cost_right,
-                                    n_right_at_first_look=len(right_fl)),
+                                    n_right_at_first_look=len(right_fl),
+                                    n_unclassifiable_wrong=n_unclassifiable_wrong),
                loro_ceiling_wild=dict(all=loro_sm_all, wrong_at_first_look=loro_sm_wrong,
                                        twin_wrong_at_first_look=loro_sm_twin,
                                        other_sentence_wrong_at_first_look=loro_sm_other,
@@ -375,6 +382,7 @@ def main():
     P(f"    twin class:                n={sm_twin['n']:4d}  reranker={sm_twin['acc'] if sm_twin['n'] else None}")
     P(f"    other-sentence class:      n={sm_other['n']:4d}  reranker={sm_other['acc'] if sm_other['n'] else None}")
     P(f"  cost on right-at-first-look: n={len(right_fl):4d}  flip-to-wrong rate={cost_right:.4f}")
+    P(f"  (unclassifiable wrong-at-first-look, neither twin nor other-sentence: n={n_unclassifiable_wrong})")
     P("-" * 90)
     P(f"  BARS: twin gain >= 0.10 -> measured {bar_twin_gain if bar_twin_gain is not None else 'n/a'} ; "
       f"cost <= 0.02 -> measured {cost_right:.4f}  ==>  {verdict}")
