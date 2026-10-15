@@ -94,7 +94,14 @@ def grade(am, tgt, z, rows):
         a = am[h][rows]
         m = t >= 0
         n = int(m.sum())
-        out[f"hop{h}_{qk}->{tk}"] = {"n": n, "acc": float((a[m] == t[m]).mean()) if n else float("nan")}
+        # the SELF-LINK split: climb_targets.py's noun link falls back to tok.head when no NOUN/PROPN
+        # ancestor exists, which lands on the verb ("x is 5") -- noun == verb, the hop's target is the
+        # query itself (37 % of block 1's pool queries); graded both ways
+        qpos = np.broadcast_to(np.arange(t.shape[1]), t.shape)
+        ms = m & (t == qpos); mn = m & (t != qpos)
+        out[f"hop{h}_{qk}->{tk}"] = {"n": n, "acc": float((a[m] == t[m]).mean()) if n else float("nan"),
+                                     "n_self": int(ms.sum()),
+                                     "acc_nonself": float((a[mn] == t[mn]).mean()) if mn.any() else float("nan")}
     # the chained owner, through the model's own argmaxes
     res = {"named": [0, 0, 0], "pronoun": [0, 0, 0]}   # [n, head-piece right, in-span right]
     for i in rows:
@@ -144,8 +151,9 @@ def main():
         print(f"[climb-read] {label} ({path}) on {H.TEST_NAME} rows {rows[0]}:{rows[-1] + 1}: {line}", flush=True)
         for k, v in g.items():
             if k.startswith("hop"):
-                print(f"[climb-read]   {label} {k}: {v['acc']:.4f} (n={v['n']}) "
-                      f"bar 0.85 {'MET' if v['acc'] >= 0.85 else 'not met'}; floor ref 0.57", flush=True)
+                print(f"[climb-read]   {label} {k}: {v['acc']:.4f} (n={v['n']}; non-self {v['acc_nonself']:.4f}, "
+                      f"self-links {v['n_self']}) bar 0.85 {'MET' if v['acc'] >= 0.85 else 'not met'}; floor ref 0.57",
+                      flush=True)
             elif k.startswith("chain_owner_") and "acc_in_span" in v:
                 print(f"[climb-read]   {label} {k}: head-piece {v['acc']:.4f} / in-span {v['acc_in_span']:.4f} "
                       f"(n={v['n']})", flush=True)
