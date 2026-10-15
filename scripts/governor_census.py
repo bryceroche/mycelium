@@ -106,6 +106,7 @@ Writes .cache/governor_census_PMS8_241.txt with the full tables, the 20-row
 spot check, and a 6-line reading. Run: .venv/bin/python3 scripts/governor_census.py
 """
 import json
+import os
 import pickle
 import re
 import collections
@@ -114,9 +115,10 @@ import numpy as np
 import spacy
 
 HOLDOUT = ".cache/wild_admitted_holdout.jsonl"
-DUMP = ".cache/dump_wild_PMS8_241.pkl"
-PSLEGAL = ".cache/ps_legal_wild_PMS8_241.npz"
-OUT = ".cache/governor_census_PMS8_241.txt"
+GC_TAG = os.environ.get("GC_TAG", "PMS8_241")   # 2026-10-14: any body (default = the banked census body)
+DUMP = f".cache/dump_wild_{GC_TAG}.pkl"
+PSLEGAL = f".cache/ps_legal_wild_{GC_TAG}.npz"
+OUT = f".cache/governor_census_{GC_TAG}.txt"
 
 SPELLED = {
     "zero": 0, "one": 1, "two": 2, "three": 3, "four": 4, "five": 5, "six": 6,
@@ -546,7 +548,7 @@ def main():
     commit = subprocess.check_output(["git", "rev-parse", "HEAD"]).decode().strip()
     lines = []
     P = lines.append
-    P("THE GOVERNOR CENSUS -- PMS8_241 on the wild holdout (311 rows, 2051 gold slots)")
+    P(f"THE GOVERNOR CENSUS -- {GC_TAG} on the wild holdout (311 rows, 2051 gold slots)")
     P(f"generated {ts}; repo HEAD at generation time {commit}")
     P(f"spacy {spacy.__version__} / en_core_web_sm; .venv installed for this measurement (pip install spacy +")
     P("spacy download en_core_web_sm), no external API calls at run time.")

@@ -116,6 +116,10 @@ def collect(ckpt, tag, n_rows=None):
     vs, vst, vtk, vg, vse = load_alg("test")
     n = len(vs) if not n_rows else min(len(vs), n_rows)
     K_B = int(os.environ.get("ALG_BREATH", "1"))
+    # a K3 body (ALG_LOOP_STOP / ALG_LOOP_STOP_READ, 2026-10-14) runs fewer breaths than ALG_BREATH builds
+    _ls = int(os.environ.get("ALG_LOOP_STOP_READ", "") or os.environ.get("ALG_LOOP_STOP", "") or 0)
+    if 0 < _ls < K_B:
+        K_B = _ls
     print(f"[membrane-rack] fixture=wild n={n}/{len(vs)} K_B={K_B}", flush=True)
 
     p = build_params(0)
