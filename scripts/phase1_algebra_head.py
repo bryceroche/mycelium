@@ -4863,6 +4863,7 @@ def carrier_key_term(p, waist, link_attn, tokmask, B):
 
 
 _CARRIER_CENSUS_N = [0]
+_CARRIER_PORT_N = [0]   # the router-port census prints (first 4 breath reads)
 
 
 def _carrier_census(p, waist, carrier, terms, tokmask, B):
@@ -7656,8 +7657,9 @@ def breath_step(p, state, kb, ctx):
         # mycelium/complex_tensor.py); verified bit-identical against
         # separate matmuls on a standalone check.
         _S4 = (_Q4 @ _key7t) / math.sqrt(_P7)   # (B, n_ch, L_TOT, T): arg1/arg2/res/given(/op)
-        if ALG_CARRIER and int(os.environ.get("ALG_CARRIER_CENSUS", "0")) and _CARRIER_CENSUS_N[0] <= 2 \
+        if ALG_CARRIER and int(os.environ.get("ALG_CARRIER_CENSUS", "0")) and _CARRIER_PORT_N[0] < 4 \
                 and state.get("_r2_carrier_t") is not None:
+            _CARRIER_PORT_N[0] += 1
             # THE KNOB CENSUS at the PORT (JIT=0): this breath's router scores split into the base key's
             # share and the carrier's share; std over REAL tokens per (channel, slot) row = the spread
             # the softmax reads (a row-constant offset is invisible to it).
