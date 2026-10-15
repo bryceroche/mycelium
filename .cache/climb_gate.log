@@ -1,0 +1,107 @@
+### THE GOVERNOR CLIMB CPU GATE (2026-10-14) -- worktree branch worktree-agent-a6fbba480f6d464d0
+### REFERENCES on the unmodified code e5053d99 (ref.log)
+code at e5053d99 dirty=0
+gate ref_k3: step     0 loss=6.6232;step     1 loss=1.1444; (40.85s/step 
+gate ref_role8: step     0 loss=6.5535;step     1 loss=1.1061; (68.63s/step 
+gate ref_sort4k3: step     0 loss=52.7963;step     1 loss=9.7296; (34.41s/step 
+gate ref_sort4: step     0 loss=60.7649;step     1 loss=18.6915; (72.95s/step 
+REF DONE
+
+### GATE (gate.log; the first run, gate_run1.log, died at the feed-door fence -> fixed in f7c4e22a)
+code at f7c4e22a dirty=0 Wed Oct 14 05:36:29 PM PDT 2026
+== (1)+(2) UNSET / SORT4 BIT-IDENTITY (BATCH=2 STEPS=2) ==
+gate k3: step     0 loss=6.6232;step     1 loss=1.1444; (38.50s/step 
+gate sort4k3: step     0 loss=52.7963;step     1 loss=9.7296; (34.45s/step 
+gate role8: step     0 loss=6.5535;step     1 loss=1.1061; (63.38s/step 
+gate sort4: step     0 loss=60.7649;step     1 loss=18.6915; (68.07s/step 
+== (3) THE CLIMB (STEPS=2) + THE PLACEBO; (4) THE DIAGNOSTIC FENCE ==
+gate climbk3: step     0 loss=53.8430;step     1 loss=14.5141; (37.29s/step 
+gate placebok3: step     0 loss=55.1692;step     1 loss=14.0377; (37.50s/step 
+gate climb: step     0 loss=58.9168;step     1 loss=21.8898; (83.60s/step 
+gate diagdirect:   Traceback (most recent call last):
+gate diaglink:   Traceback (most recent call last):
+  climb climb:  [climb] step 0 total=58.9168 main=54.9387 climb_ce=3.9782 (W=1.0) per-hop verb->owner=6.0019 noun->verb=3.5522 numeral->noun=2.8141| [climb] step 1 total=21.8898 main=17.9416 climb_ce=3.9482 (W=1.0) per-hop verb->owner=3.8511 noun->verb=3.9094 numeral->noun=4.0678|
+  climbk3 climb:  [climb] step 0 total=53.8430 main=49.6127 climb_ce=4.2303 (W=1.0) per-hop verb->owner=6.0401 noun->verb=3.8923 numeral->noun=3.1462| [climb] step 1 total=14.5141 main=10.5264 climb_ce=3.9877 (W=1.0) per-hop verb->owner=3.8492 noun->verb=3.9541 numeral->noun=4.1367|
+  placebok3 climb:  [climb] step 0 total=55.1692 main=50.7135 climb_ce=4.4557 (W=1.0) per-hop verb->owner=4.9096 noun->verb=4.5705 numeral->noun=3.9841 PLACEBO| [climb] step 1 total=14.0377 main=10.1815 climb_ce=3.8562 (W=1.0) per-hop verb->owner=3.9808 noun->verb=4.3419 numeral->noun=3.2665 PLACEBO|
+  diagdirect refused: AssertionError: ALG_CLIMB_TARGETS='.cache/climb_targets_wild_DIAGNOSTIC_ONLY.npz' is a DIAGNOSTIC-ONLY (measure-only) target file -- no trainer may read it
+  diaglink refused: AssertionError: ALG_CLIMB_TARGETS='.cache/climbgate/innocent_targets.npz' is a DIAGNOSTIC-ONLY (measure-only) target file -- no trainer may read it
+== (3b) ADDITIVITY AT FIXED WEIGHTS (LR=0, STEPS=1) + THE GRAD PROBE (JIT=0, STEPS=1) ==
+gate lr0_sort4k3: step     0 loss=7.0056; (46.48s/step 
+gate lr0_climbk3: step     0 loss=12.8707; (46.50s/step 
+gate lr0_placebok3: step     0 loss=12.5690; (46.50s/step 
+gate gradk3: step     0 loss=53.8430; (69.18s/step 
+  lr0_climbk3 climb:  [climb] step 0 total=12.8707 main=7.0056 climb_ce=5.8651 (W=1.0) per-hop verb->owner=6.4373 noun->verb=6.1019 numeral->noun=5.1787|
+  lr0_placebok3 climb:  [climb] step 0 total=12.5690 main=7.0056 climb_ce=5.5634 (W=1.0) per-hop verb->owner=5.1406 noun->verb=5.7640 numeral->noun=5.6951 PLACEBO|
+  [climb-grad] sort0_wq=2.621747e+02 sort0_wk=2.942491e+02 sort1_wq=3.341664e+02 sort1_wk=3.227283e+02 sort2_wq=2.479927e+02 sort2_wk=2.928730e+02 sort3_wq=0.000000e+00 sort3_wk=0.000000e+00
+== (5) 20 CPU STEPS: the climb CE falls; per-step cost vs sort4 alone (K3, side by side) ==
+gate cost20_sort4k3: step     0 loss=52.7963;step    19 loss=31.6967; (5.14s/step 
+gate cost20_climbk3: step     0 loss=53.8430;step    19 loss=29.1198; (5.13s/step 
+    [climb] step     0 total=53.8430 main=49.6127 climb_ce=4.2303 (W=1.0) per-hop verb->owner=6.0401 noun->verb=3.8923 numeral->noun=3.1462
+    [climb] step     1 total=41.0748 main=37.2646 climb_ce=3.8102 (W=1.0) per-hop verb->owner=3.7749 noun->verb=3.7916 numeral->noun=3.8582
+    [climb] step     2 total=42.4884 main=38.7796 climb_ce=3.7089 (W=1.0) per-hop verb->owner=5.3419 noun->verb=2.9676 numeral->noun=2.8171
+    [climb] step     3 total=25.9884 main=21.3478 climb_ce=4.6407 (W=1.0) per-hop verb->owner=5.5727 noun->verb=4.2856 numeral->noun=4.2071
+    [climb] step     4 total=34.5951 main=30.8549 climb_ce=3.7401 (W=1.0) per-hop verb->owner=5.0969 noun->verb=3.2209 numeral->noun=3.2042
+    [climb] step     5 total=17.5614 main=13.6647 climb_ce=3.8967 (W=1.0) per-hop verb->owner=4.0334 noun->verb=3.8754 numeral->noun=3.8008
+    [climb] step     6 total=7.8481 main=4.0380 climb_ce=3.8101 (W=1.0) per-hop verb->owner=3.9158 noun->verb=3.8682 numeral->noun=3.6726
+    [climb] step     7 total=35.7873 main=31.0500 climb_ce=4.7373 (W=1.0) per-hop verb->owner=5.5735 noun->verb=4.3396 numeral->noun=4.3686
+    [climb] step     8 total=25.1923 main=21.2246 climb_ce=3.9677 (W=1.0) per-hop verb->owner=5.2007 noun->verb=3.4528 numeral->noun=3.5236
+    [climb] step     9 total=28.9539 main=25.7840 climb_ce=3.1699 (W=1.0) per-hop verb->owner=4.5070 noun->verb=2.3468 numeral->noun=2.6559
+    [climb] step    10 total=40.4601 main=36.8375 climb_ce=3.6226 (W=1.0) per-hop verb->owner=4.8191 noun->verb=3.0686 numeral->noun=2.9801
+    [climb] step    11 total=31.5521 main=27.6032 climb_ce=3.9490 (W=1.0) per-hop verb->owner=5.3561 noun->verb=3.3160 numeral->noun=3.1748
+    [climb] step    12 total=45.9163 main=42.1262 climb_ce=3.7901 (W=1.0) per-hop verb->owner=5.4372 noun->verb=3.2245 numeral->noun=2.9025
+    [climb] step    13 total=37.5442 main=33.6704 climb_ce=3.8739 (W=1.0) per-hop verb->owner=5.5489 noun->verb=3.2044 numeral->noun=2.8683
+    [climb] step    14 total=39.2372 main=35.1992 climb_ce=4.0380 (W=1.0) per-hop verb->owner=5.0921 noun->verb=3.2138 numeral->noun=4.0189
+    [climb] step    15 total=25.7764 main=22.1263 climb_ce=3.6501 (W=1.0) per-hop verb->owner=3.4962 noun->verb=4.1533 numeral->noun=3.2347
+    [climb] step    16 total=36.6204 main=32.6900 climb_ce=3.9304 (W=1.0) per-hop verb->owner=4.8943 noun->verb=3.3480 numeral->noun=3.6177
+    [climb] step    17 total=34.1748 main=30.7651 climb_ce=3.4097 (W=1.0) per-hop verb->owner=5.2301 noun->verb=2.2973 numeral->noun=2.7016
+    [climb] step    18 total=69.0663 main=65.2568 climb_ce=3.8095 (W=1.0) per-hop verb->owner=3.7812 noun->verb=3.5561 numeral->noun=4.0842
+    [climb] step    19 total=29.1198 main=25.8048 climb_ce=3.3150 (W=1.0) per-hop verb->owner=4.6726 noun->verb=2.3184 numeral->noun=2.9540
+GATE COMPLETE Wed Oct 14 06:06:29 PM PDT 2026
+
+### TARGETS on the fixture (climb_build_targets)
+[climb] targets block 0 verb->owner: 276 supervised queries (4.31/row), dedup'd 19, conflicts kept-first 0, self-links 0, uniform-attention CE ref mean log(n_real) 4.7135
+[climb] targets block 1 noun->verb: 311 supervised queries (4.86/row), dedup'd 3, conflicts kept-first 0, self-links 197, uniform-attention CE ref mean log(n_real) 4.6838
+[climb] targets block 2 numeral->noun: 315 supervised queries (4.92/row), dedup'd 0, conflicts kept-first 0, self-links 0, uniform-attention CE ref mean log(n_real) 4.6795
+[climb] targets .cache/climb_targets_tiny64.npz: 64 rows, 62 with >=1 supervised query
+
+### READ SMOKE (read_smoke.log)
+== (a) WILD rows 0:48 ==
+[climb-read]   fresh hop0_verb->owner: 0.0224 (n=134; non-self 0.0224, self-links 0) bar 0.85 not met; floor ref 0.57
+[climb-read]   fresh hop1_noun->verb: 0.0058 (n=173; non-self 0.0062, self-links 12) bar 0.85 not met; floor ref 0.57
+[climb-read]   fresh hop2_numeral->noun: 0.0284 (n=176; non-self 0.0284, self-links 0) bar 0.85 not met; floor ref 0.57
+[climb-read]   fresh chain_owner_named: head-piece 0.0000 / in-span 0.0000 (n=107)
+[climb-read]   fresh chain_owner_pronoun: head-piece 0.0000 / in-span 0.0000 (n=58)
+[climb-read]   fresh climb CE (fixed rows, the trainer's quantity): pooled 4.3667 | verb->owner 4.3881 noun->verb 4.3715 numeral->noun 4.3458 (n=483)
+[climb-read]   sort4 hop0_verb->owner: 0.0224 (n=134; non-self 0.0224, self-links 0) bar 0.85 not met; floor ref 0.57
+[climb-read]   sort4 hop1_noun->verb: 0.0058 (n=173; non-self 0.0062, self-links 12) bar 0.85 not met; floor ref 0.57
+[climb-read]   sort4 hop2_numeral->noun: 0.0284 (n=176; non-self 0.0284, self-links 0) bar 0.85 not met; floor ref 0.57
+[climb-read]   sort4 chain_owner_named: head-piece 0.0187 / in-span 0.0187 (n=107)
+[climb-read]   sort4 chain_owner_pronoun: head-piece 0.0000 / in-span 0.0000 (n=58)
+[climb-read]   sort4 climb CE (fixed rows, the trainer's quantity): pooled 4.3337 | verb->owner 4.3903 noun->verb 4.3636 numeral->noun 4.2611 (n=483)
+[climb-read]   climb hop0_verb->owner: 0.0373 (n=134; non-self 0.0373, self-links 0) bar 0.85 not met; floor ref 0.57
+[climb-read]   climb hop1_noun->verb: 0.0116 (n=173; non-self 0.0124, self-links 12) bar 0.85 not met; floor ref 0.57
+[climb-read]   climb hop2_numeral->noun: 0.0455 (n=176; non-self 0.0455, self-links 0) bar 0.85 not met; floor ref 0.57
+[climb-read]   climb chain_owner_named: head-piece 0.0467 / in-span 0.0467 (n=107)
+[climb-read]   climb chain_owner_pronoun: head-piece 0.0000 / in-span 0.0000 (n=58)
+[climb-read]   climb climb CE (fixed rows, the trainer's quantity): pooled 4.2179 | verb->owner 4.2484 noun->verb 4.1607 numeral->noun 4.2508 (n=483)
+READ SMOKE (a) rc=0
+== (b) tiny64 TRAINING rows (fixed-row climb CE) ==
+[climb-read]   fresh hop0_verb->owner: 0.0000 (n=276; non-self 0.0000, self-links 0) bar 0.85 not met; floor ref 0.57
+[climb-read]   fresh hop1_noun->verb: 0.0000 (n=311; non-self 0.0000, self-links 197) bar 0.85 not met; floor ref 0.57
+[climb-read]   fresh hop2_numeral->noun: 0.0159 (n=315; non-self 0.0159, self-links 0) bar 0.85 not met; floor ref 0.57
+[climb-read]   fresh chain_owner_named: head-piece 0.0202 / in-span 0.0202 (n=248)
+[climb-read]   fresh chain_owner_pronoun: head-piece 0.0213 / in-span 0.0213 (n=47)
+[climb-read]   fresh climb CE (fixed rows, the trainer's quantity): pooled 5.3761 | verb->owner 5.5401 noun->verb 5.6909 numeral->noun 4.9216 (n=902)
+[climb-read]   sort4 hop0_verb->owner: 0.0000 (n=276; non-self 0.0000, self-links 0) bar 0.85 not met; floor ref 0.57
+[climb-read]   sort4 hop1_noun->verb: 0.0000 (n=311; non-self 0.0000, self-links 197) bar 0.85 not met; floor ref 0.57
+[climb-read]   sort4 hop2_numeral->noun: 0.0063 (n=315; non-self 0.0063, self-links 0) bar 0.85 not met; floor ref 0.57
+[climb-read]   sort4 chain_owner_named: head-piece 0.0081 / in-span 0.0081 (n=248)
+[climb-read]   sort4 chain_owner_pronoun: head-piece 0.0000 / in-span 0.0000 (n=47)
+[climb-read]   sort4 climb CE (fixed rows, the trainer's quantity): pooled 5.5395 | verb->owner 5.4905 noun->verb 5.7969 numeral->noun 5.3284 (n=902)
+[climb-read]   climb hop0_verb->owner: 0.0725 (n=276; non-self 0.0725, self-links 0) bar 0.85 not met; floor ref 0.57
+[climb-read]   climb hop1_noun->verb: 0.1768 (n=311; non-self 0.2018, self-links 197) bar 0.85 not met; floor ref 0.57
+[climb-read]   climb hop2_numeral->noun: 0.1270 (n=315; non-self 0.1270, self-links 0) bar 0.85 not met; floor ref 0.57
+[climb-read]   climb chain_owner_named: head-piece 0.0363 / in-span 0.0363 (n=248)
+[climb-read]   climb chain_owner_pronoun: head-piece 0.0851 / in-span 0.0851 (n=47)
+[climb-read]   climb climb CE (fixed rows, the trainer's quantity): pooled 3.7306 | verb->owner 4.7591 noun->verb 3.2152 numeral->noun 3.3384 (n=902)
+READ SMOKE (b) rc=0

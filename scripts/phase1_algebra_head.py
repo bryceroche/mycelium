@@ -2297,6 +2297,12 @@ TERMINALS = {
     # silently zero rather than erroring at build).
     "caric":  {"params": [],                       "emit": "args",  "gold": ["twin_idx", "gold_idx", "twin_m"],
                "when": lambda: ALG_CARIC != 0},
+    # THE GOVERNOR CLIMB: no new params (head 0 of sort0..2's existing wq/wk), the emission is the
+    # step's own tap list (forward(climb_taps=[...]), checked len == 3 in do_train's step), the gold
+    # is the (B, 3, T) parent-index buffer climb_tgt (-1 = unsupervised query).
+    "climb":  {"params": [f"sort{_h}_{_nm}" for _h in range(3) for _nm in ("wq", "wk")],
+               "emit": "climb_sc", "gold": ["climb_tgt"],
+               "when": lambda: int(os.environ.get("ALG_CLIMB", "0")) > 0},
 }
 
 
@@ -4712,14 +4718,44 @@ ALG_SORT_FEED = int(os.environ.get("ALG_SORT_FEED", "0"))
 if ALG_SORT_FEED:
     assert ALG_SORT == 4, "ALG_SORT_FEED re-runs the 4 existing sort{i} blocks every loop breath -- needs ALG_SORT=4 exactly"
     assert not ALG_SORT_HG, "ALG_SORT_FEED (per-breath re-run, flat blocks) and ALG_SORT_HG (hourglass resolution levels) both rewire the SAME 4 blocks -- not yet composed; pick one"
-SORT_HG_MAX_CL = 64   # max distinct CLAUSE unit ids per row (_TREECODE_UMAX's own precedent: "clauses/mentions rarely past 64")
+# THE GOVERNOR CLIMB (ALG_CLIMB=1; registered 2026-10-13 14:50 "a tree of relationships the model walks
+# one level per block", hop order 2026-10-14 14:27, targets 14:41, bars amended ~17:40). LISA (Strubell
+# et al. 2018) in THE SORTING ROOM: in blocks 0,1,2 ONE attention head (head 0) is supervised with a
+# cross-entropy on its attention distribution toward the GOVERNOR-CHAIN PARENT, in HOP ORDER so information
+# flows owner -> verb -> noun -> numeral across the blocks (the subject is a CHILD of the verb, so the verb
+# must hear its owner BEFORE the noun reads the verb, else the numeral copies its noun before the noun has
+# heard who the owner is): block 0: each VERB token (query) -> its OWNER; block 1: each head-NOUN -> its
+# VERB; block 2: each NUMERAL (head piece) -> its NOUN. Block 3 unsupervised (coreference waits). NO gain,
+# NO new params, NO gold in the forward path: the existing heads + a loss (the mandatory-road law); the
+# model computes its own links at read. Targets: spaCy's governor chains (scripts/climb_targets.py), a
+# TRAINING teacher only -- never shipping. ALG_CLIMB unset: no new ops, no new buffers (bit-identical).
+# THE PLACEBO (ALG_CLIMB_PLACEBO=1): the same heads trained toward a RANDOM TREE of matched depth and
+# branching -- per row a fixed (seeded by row index) permutation of the row's real token positions
+# applied to BOTH query and target (an isomorphic relabelling of the gold links).
+ALG_CLIMB = int(os.environ.get("ALG_CLIMB", "0"))
+ALG_CLIMB_W = float(os.environ.get("ALG_CLIMB_W", "1.0"))
+ALG_CLIMB_PLACEBO = int(os.environ.get("ALG_CLIMB_PLACEBO", "0"))
+ALG_CLIMB_TARGETS = os.environ.get("ALG_CLIMB_TARGETS", ".cache/climb_targets_formpm35c.npz")
+CLIMB_HOPS = (("verb", "owner"), ("noun", "verb"), ("numeral", "noun"))   # block h: (query kind, target kind)
+if ALG_CLIMB:
+    assert ALG_SORT == 4, "ALG_CLIMB supervises head 0 of sorting-room blocks 0,1,2 (block 3 free) -- needs ALG_SORT=4 exactly"
+    assert not ALG_SORT_HG, "ALG_CLIMB supervises token->token attention; the hourglass's blocks 1,2 attend over clause/sentence units -- not composed"
+    assert not ALG_SORT_FEED, "ALG_CLIMB taps the pre-loop sorting room only; the feedback form's per-breath re-runs are not composed with it"
+    # THE MEASURE-ONLY FENCE: the wild targets (.cache/climb_targets_wild_DIAGNOSTIC_ONLY.npz) are for
+    # scripts/picker/climb_read.py alone; no trainer may ever open a DIAGNOSTIC target file.
+    assert "DIAGNOSTIC" not in ALG_CLIMB_TARGETS and "DIAGNOSTIC" not in os.path.realpath(ALG_CLIMB_TARGETS), \
+        f"ALG_CLIMB_TARGETS={ALG_CLIMB_TARGETS!r} is a DIAGNOSTIC-ONLY (measure-only) target file -- no trainer may read it"
+    assert ALG_CLIMB_W > 0, "ALG_CLIMB_W must be > 0 (unset ALG_CLIMB to turn the climb off)"
+if ALG_CLIMB_PLACEBO:
+    assert ALG_CLIMB, "ALG_CLIMB_PLACEBO is the climb's placebo arm -- needs ALG_CLIMB=1"
+SORT_HG_MAX_CL = 64  # max distinct CLAUSE unit ids per row (_TREECODE_UMAX's own precedent: "clauses/mentions rarely past 64")
 SORT_HG_MAX_ST = 32   # max distinct SENTENCE unit ids per row (_TREECODE_UMAX's own precedent: "sentences <= 32" --
                       # the tiny64 gate fixture's own census (mean s=10.1) showed the FIRST guess of 16 was too
                       # tight: a tighter cap than the established precedent merges real structure into one bucket
                       # on overflow rather than crashing, so this was caught as a quality risk, not a crash)
 
 
-def _sort_block(p, i, x, mask1d, B, cross=None, kb=None):
+def _sort_block(p, i, x, mask1d, B, cross=None, kb=None, tap=None):
     """ONE ReZero pre-norm transformer block (the sort{i}_* tensors build_params already builds
     under ALG_SORT), applied at ANY resolution: x is (B, L, H_W) for whatever L this call's
     caller chose (256 real tokens for the flat form; a clause or sentence pooled axis for the
@@ -4750,6 +4786,12 @@ def _sort_block(p, i, x, mask1d, B, cross=None, kb=None):
     sc = (q @ k.transpose(-2, -1)) / math.sqrt(hd)
     sc = sc.clip(-1e4, 1e4) + (1.0 - _tm) * -1e4   # bidirectional: no causal mask, pads/absent-units excluded
     at = sc.softmax(-1)
+    if tap is not None:
+        # THE GOVERNOR CLIMB's tap (ALG_CLIMB): head 0's masked pre-softmax scores (B, T_query, T_key)
+        # -- the SAME tensor `at` is the softmax of; the climb CE takes log_softmax of it (stable form
+        # of -log(at + eps)). A read of the attention this block already computes: no new op on the
+        # forward path, nothing written back into x.
+        tap.append(sc[:, 0])
     o = (at @ v).permute(0, 2, 1, 3).reshape(B, T, H_W)
     o = o @ p[f"sort{i}_wo"] + p[f"sort{i}_wo_b"]
     x = x + o
@@ -4791,7 +4833,7 @@ def _sort_block(p, i, x, mask1d, B, cross=None, kb=None):
     return x
 
 
-def _sort_room(p, waist, tokmask, B):
+def _sort_room(p, waist, tokmask, B, climb_taps=None):
     """THE SORTING ROOM form 2 (ALG_SORT=N): N pre-norm transformer blocks, BIDIRECTIONAL
     self-attention over the real tokens (tokmask zeroes pads from both the softmax and, by
     construction, every downstream read), REPLACING the token states `waist` the caller rebinds
@@ -4802,11 +4844,119 @@ def _sort_room(p, waist, tokmask, B):
     are EXACT zero at init, so this function returns `waist` bit-for-bit unchanged regardless of
     N until the gradient moves wo/ffn_w2 away from zero. Always called with cross=None (breath
     0's own grounding call, forward()'s pre-loop station — see _sort_room_feed below for the
-    per-breath re-run SRF_241 adds)."""
+    per-breath re-run SRF_241 adds).
+    THE GOVERNOR CLIMB (ALG_CLIMB): `climb_taps`, when a list, receives head 0's masked scores of
+    blocks 0..len(CLIMB_HOPS)-1 in hop order (block 3 untapped); None (every caller but the climb's
+    training step and its read) leaves this function exactly as before."""
     x = waist
     for i in range(ALG_SORT):
-        x = _sort_block(p, i, x, tokmask, B)
+        x = _sort_block(p, i, x, tokmask, B,
+                        tap=(climb_taps if (climb_taps is not None and i < len(CLIMB_HOPS)) else None))
     return x
+
+
+def climb_build_targets(path, samples, tokmask, mix_path, placebo=False, verbose=True, allow_diagnostic=False):
+    """THE GOVERNOR CLIMB's dense targets, host-side, once per run: -> (N, 3, T) int16, -1 = no
+    supervision; [:, h, q] = the parent position query q's head 0 in sort block h must attend to.
+    Block 0 (CLIMB_HOPS[0]): verb -> owner; block 1: noun -> verb; block 2: numeral -> noun.
+    `path` is a climb_targets npz (scripts/climb_targets.py layout) keyed by the jsonl ROW INDEX of
+    `mix_path` (the trainer's ALG_TRAIN, whose rows ARE the states/tokmask rows -- load_alg's own
+    desync guard). Row-key checks: the row count; the sidecar's `mix_sha` stamp when present (else
+    the pool summary's n_pool_rows + pool basename); every target inside the row's real tokens; and
+    a tokenizer re-count of 64 sampled rows == tokmask's real length (a row-order slip fails it).
+    Deduplication: two numerals sharing a noun give the same noun -> verb target once; a query given
+    two DIFFERENT parents keeps the first (text order) and counts the conflict. THE PLACEBO: a fixed
+    per-row permutation (RandomState(row index)) of the row's real token positions applied to both
+    query and target -- the same tree, isomorphically relabelled (matched depth and branching).
+    `allow_diagnostic` is for scripts/picker/climb_read.py alone (the trainer never passes it)."""
+    if not allow_diagnostic:
+        assert "DIAGNOSTIC" not in path and "DIAGNOSTIC" not in os.path.realpath(path), \
+            f"{path} is a DIAGNOSTIC-ONLY target file -- no trainer may read it"
+    z = np.load(path)
+    N, T = len(samples), int(tokmask.shape[1])
+    assert z["numeral_pos"].shape[0] == N, \
+        f"climb targets {path}: {z['numeral_pos'].shape[0]} rows vs {N} rows of {mix_path} (desync)"
+    if "mix_sha" in z.files:
+        from mycelium.era import mix_sha16
+        assert str(z["mix_sha"]) == mix_sha16(mix_path), \
+            f"climb targets {path} were built from a different jsonl (sha {z['mix_sha']} != {mix_sha16(mix_path)} of {mix_path})"
+    else:
+        _sj = path.replace(".npz", "_summary.json")
+        assert os.path.exists(_sj), f"climb targets {path}: no mix_sha stamp and no summary {_sj} -- cannot key rows"
+        _s = json.load(open(_sj))
+        # climb_targets.py's pool summary says pool/n_pool_rows; its wild (diagnostic) summary says source/stats
+        _src = _s.get("pool", _s.get("source"))
+        _ns = int(_s["n_pool_rows"]) if "n_pool_rows" in _s else int(_s["stats"]["n_rows_in"])
+        assert _ns == N and os.path.basename(_src) == os.path.basename(mix_path), \
+            f"climb targets {path} summary source {_src} ({_ns} rows) != {mix_path} ({N} rows)"
+    ri = z["row_idx"]
+    assert ((ri == np.arange(N)) | (ri == -1)).all(), f"climb targets {path}: row_idx is not the jsonl row order"
+    nreal = tokmask.sum(1).astype(np.int64)
+    # the row-key spot check: re-tokenize sampled rows, compare with the states' tokmask length
+    from tokenizers import Tokenizer
+    _tok = Tokenizer.from_file(TOKENIZER_JSON)
+    for i in np.random.RandomState(0).choice(N, min(64, N), replace=False):
+        assert len(_tok.encode(samples[int(i)]["text"]).ids) == nreal[int(i)], \
+            f"climb targets: row {int(i)} tokenizes to a different length than its tokmask (row-order slip)"
+    pos = {"numeral": z["numeral_pos"], "noun": z["noun_pos"], "verb": z["verb_pos"], "owner": z["owner_pos"]}
+    val = {"numeral": z["numeral_pos"] >= 0, "noun": z["noun_valid"] > 0, "verb": z["verb_valid"] > 0,
+           "owner": z["owner_valid"] > 0}
+    tgt = np.full((N, len(CLIMB_HOPS), T), -1, np.int16)
+    st = {k: np.zeros(len(CLIMB_HOPS), np.int64) for k in ("q", "dup", "conflict", "self")}
+    logn = [[] for _ in CLIMB_HOPS]
+    nn = z["n_num"]
+    for i in range(N):
+        n_i = int(nreal[i])
+        perm = np.random.RandomState(i).permutation(n_i) if placebo else None
+        for k in range(int(nn[i])):
+            for h, (qk, tk) in enumerate(CLIMB_HOPS):
+                if not (val[qk][i, k] and val[tk][i, k]):
+                    continue
+                q, t = int(pos[qk][i, k]), int(pos[tk][i, k])
+                assert 0 <= q < n_i and 0 <= t < n_i, f"climb targets: row {i} link {qk}->{tk} ({q}->{t}) outside its {n_i} real tokens"
+                if placebo:
+                    q, t = int(perm[q]), int(perm[t])
+                if tgt[i, h, q] == -1:
+                    tgt[i, h, q] = t
+                    st["q"][h] += 1
+                    st["self"][h] += int(q == t)
+                    logn[h].append(math.log(n_i))
+                elif tgt[i, h, q] == t:
+                    st["dup"][h] += 1
+                else:
+                    st["conflict"][h] += 1
+    if verbose:
+        for h, (qk, tk) in enumerate(CLIMB_HOPS):
+            print(f"[climb] targets{' (PLACEBO: per-row permuted)' if placebo else ''} block {h} {qk}->{tk}: "
+                  f"{st['q'][h]} supervised queries ({st['q'][h] / max(N, 1):.2f}/row), dedup'd {st['dup'][h]}, "
+                  f"conflicts kept-first {st['conflict'][h]}, self-links {st['self'][h]}, "
+                  f"uniform-attention CE ref mean log(n_real) {np.mean(logn[h]) if logn[h] else float('nan'):.4f}",
+                  flush=True)
+        print(f"[climb] targets {path}: {N} rows, {int((tgt >= 0).any(axis=(1, 2)).sum())} with >=1 supervised query", flush=True)
+    return tgt
+
+
+def _climb_ce(taps, tgt):
+    """THE GOVERNOR CLIMB's loss: CE of head 0's attention (log_softmax of the masked scores; the
+    stable form of -log(at + eps)) at each supervised query's gold parent, averaged over every
+    supervised query of the batch (all three hops pooled). taps: [h] (B, T, T); tgt (B, 3, T) int,
+    -1 = unsupervised. A batch with zero supervised queries reads 0 (count clamped at 1: no Python
+    control flow in the JIT). Returns (pooled CE, per-hop CE list)."""
+    from tinygrad import Tensor
+    assert len(taps) == len(CLIMB_HOPS), f"THE CLIMB's emission: {len(taps)} taps != {len(CLIMB_HOPS)} (the sorting room did not run its blocks?)"
+    T = int(taps[0].shape[-1])
+    ar = Tensor.arange(T).reshape(1, 1, T)
+    tot, cnt, per = None, None, []
+    for h in range(len(CLIMB_HOPS)):
+        t = tgt[:, h, :]                                      # (B, T)
+        m = (t >= 0).float()
+        oh = (t.maximum(0).unsqueeze(-1) == ar).float()       # (B, T, T) one-hot parent
+        lp = (taps[h].log_softmax(-1) * oh).sum(-1)           # (B, T) log at[q, parent]
+        s, c = (-lp * m).sum(), m.sum()
+        per.append(s / c.maximum(1.0))
+        tot = s if tot is None else tot + s
+        cnt = c if cnt is None else cnt + c
+    return tot / cnt.maximum(1.0), per
 
 
 def _sort_room_feed(p, tok, tokmask, cur, B, kb):
@@ -9366,7 +9516,12 @@ def replay(p, snapshot, kb_start, overrides=None, kb_stop=None):
     return out
 
 
-def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, drop=None, anchor=None, amask=None, gmod=None, pmask=None, lsent=None, reg=None, fact_buf=None, mh_mass=None, mh_atlas_traj=None, xcorr=None, res_map=None, hud=None, ident=None, busreg_ramp=None, valfact=None, stop_after=None, facts3=None, facts5=None, tree=None, cert3=None, cert5=None, rack3=None, rack5=None, chalk3=None, chalk5=None, dirgold=None, dircue=None, seed_vq=None, seed_fq=None, seed_fq_sched=None, flag_mask=None, flag_tabu0=None):
+def _waist_prefix(p, trunk, tokmask, sent, hud=None, tree=None, climb_taps=None):
+    """The token side up to the bank: trunk -> waist (+ HUD / FED item 3 / T1) -> THE SORTING ROOM.
+    Factored verbatim out of forward() (2026-10-14, THE GOVERNOR CLIMB) so the climb's read
+    (scripts/picker/climb_read.py) runs the SAME token side without the slot loop; forward() calls
+    it with the same arguments in the same order -- the identical op sequence. `climb_taps` (a list
+    or None) is handed to _sort_room only; None everywhere but the climb's training step and read."""
     from tinygrad import Tensor, dtypes   # audit 2026-09-01: was a
     # SCOPE ACCIDENT (bound only via the sixwave/sync branches — any
     # SIXWAVE-off config killed five organs at step 1)
@@ -9427,7 +9582,7 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
             # DIRROLE precedent (`if ALG_HUD and hud is not None:` skips silently, never asserts).
             waist = _sort_room_hg(p, waist, tokmask, tree, B)
         else:
-            waist = _sort_room(p, waist, tokmask, B)
+            waist = _sort_room(p, waist, tokmask, B, climb_taps=climb_taps)
         if int(os.environ.get("ALG_SORT_DEBUG", "0")):
             _wpost_full = waist.numpy()
             _d = np.abs(_wpost_full - _wpre_full)
@@ -9437,6 +9592,15 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
                   f"maxdiff(real)={_d[_pad_np == False].max():.3e} "
                   f"maxdiff(pad)={(_d[_pad_np].max() if _pad_np.any() else float('nan')):.3e} "
                   f"maxdiff(ALL)={_d.max():.3e}", flush=True)
+    return waist
+
+
+def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, drop=None, anchor=None, amask=None, gmod=None, pmask=None, lsent=None, reg=None, fact_buf=None, mh_mass=None, mh_atlas_traj=None, xcorr=None, res_map=None, hud=None, ident=None, busreg_ramp=None, valfact=None, stop_after=None, facts3=None, facts5=None, tree=None, cert3=None, cert5=None, rack3=None, rack5=None, chalk3=None, chalk5=None, dirgold=None, dircue=None, seed_vq=None, seed_fq=None, seed_fq_sched=None, flag_mask=None, flag_tabu0=None, climb_taps=None):
+    from tinygrad import Tensor, dtypes   # audit 2026-09-01: was a
+    # SCOPE ACCIDENT (bound only via the sixwave/sync branches — any
+    # SIXWAVE-off config killed five organs at step 1)
+    B = trunk.shape[0]
+    waist = _waist_prefix(p, trunk, tokmask, sent, hud=hud, tree=tree, climb_taps=climb_taps)
     _sort_tok_key = (waist @ p["sort_key_w"] + p["sort_key_b"]) \
         if (ALG_SORT_KEY and "sort_key_w" in p) else None   # THE OWNER-KEY SHUFFLE: zero compute when unset
 
@@ -11037,6 +11201,14 @@ def do_train(steps, lr, batch, seed):
         f"buffer and its own registration. Unset ALG_TOK_SEAL.")
     samples, states, tokmask, gold, sent = load_alg("train")
     n = states.shape[0]
+    # THE GOVERNOR CLIMB's targets (host, once): keyed by ALG_TRAIN's jsonl row index (== the
+    # states/tokmask row); the DIAGNOSTIC fence + row-key checks live in climb_build_targets.
+    CLIMB_TGT = climb_build_targets(ALG_CLIMB_TARGETS, samples, tokmask, ALG_TRAIN,
+                                    placebo=bool(ALG_CLIMB_PLACEBO)) if ALG_CLIMB else None
+    if CLIMB_TGT is not None:
+        # joined into `gold` like the twin sidecar (load_alg's CARICATURE MARGIN idiom): the feed-door
+        # fence then sees the terminal's gold, and THE FEED DOOR ships it into bg["climb_tgt"] each step
+        gold["climb_tgt"] = CLIMB_TGT
     p = build_params(seed)
     TRUNK_LORA = int(os.environ.get("ALG_TRUNK_LORA", "0"))
     if TRUNK_LORA:
@@ -11803,10 +11975,19 @@ def do_train(steps, lr, batch, seed):
         # ledger: once per fact per RUN — the sharpening subsidy excluded
     if int(os.environ.get("ALG_OPATT", "0")):
         bg["opspan"] = fix(np.zeros((batch, L_FAC, T_ALG), np.float32), dtypes.float)
+    if ALG_CLIMB:
+        # THE GOVERNOR CLIMB's gold: (B, 3, T) parent index per query position, -1 = unsupervised;
+        # a fixed buffer fed in place each step (the gold-feed idiom), read only by the loss.
+        bg["climb_tgt"] = fix(np.full((batch, len(CLIMB_HOPS), T_ALG), -1, np.int32), dtypes.int)
     assert_terminals(p=p, gold_keys=set(bg.keys()), site="do_train buffers")
 
     XOUT_TR = int(os.environ.get("ALG_XOUT", "0")) and \
         int(os.environ.get("ALG_RINGS", "0"))
+    if ALG_CLIMB:
+        assert not XOUT_TR and not int(os.environ.get("NAZ_TRAIN", "0")), \
+            "ALG_CLIMB taps the plain step's single forward; the two-forward XOUT/NAZ steps are not composed with it"
+        assert not int(os.environ.get("ALG_RTB", "0")), \
+            "ALG_CLIMB lives in step(); the RTB eager loop replaces step() and would train without the climb (no silent fallback)"
     INV_TR = int(os.environ.get("ALG_INV", "0"))
     INV_PAIRS_ARR = np.load(os.environ["INV_PAIRS"]) if INV_TR else None
     OPATT = int(os.environ.get("ALG_OPATT", "0"))
@@ -11873,12 +12054,18 @@ def do_train(steps, lr, batch, seed):
             # buffer needed; forward() applies flag_mask to it itself.
             _fl_mask = bg.get("flag_mask") if ALG_FLAG else None
             _fl_tabu0 = ((-1e4) * bg["fspan"]).reshape(batch, 1, L_FAC, T_ALG) if ALG_FLAG else None
+            _ctaps = [] if ALG_CLIMB else None   # THE GOVERNOR CLIMB's emission (sort blocks 0..2, head 0)
             o = forward(p, s_tr, b_tk, b_se, slot_mask=b_mask, tail=b_tail,
                         drop=(b_drop if _bd else None), lsent=b_ls, reg=b_reg,
                         fact_buf=(None if ALG_ALT3 else b_fact),   # THE THREE CONSULTS: the start-of-run facts give way to facts3/facts5
                         mh_mass=b_mhm, mh_atlas_traj=b_mha, xcorr=b_xcorr, res_map=b_resmap, hud=b_hud, tree=b_tree, ident=b_ident, dircue=b_dircue, busreg_ramp=b_bgain, valfact=b_valfact, facts3=b_fact3, facts5=b_fact5, cert3=b_cert3, cert5=b_cert5, rack3=b_rack3, rack5=b_rack5, chalk3=b_chalk3, chalk5=b_chalk5, dirgold=b_dirgold, seed_fq_sched=b_dnread,
-                        flag_mask=_fl_mask, flag_tabu0=_fl_tabu0)
+                        flag_mask=_fl_mask, flag_tabu0=_fl_tabu0,
+                        climb_taps=_ctaps)
         l = loss_fn(o, bg)
+        if ALG_CLIMB:
+            # THE GOVERNOR CLIMB: + W x the head-0 parent CE of sort blocks 0..2 (hop order)
+            _cce, _cper = _climb_ce(_ctaps, bg["climb_tgt"])
+            l = l + ALG_CLIMB_W * _cce
         if ALG_CONSUME and "_early" in o:   # support-gated consume-once:
             # any breath claims, each fact pays once; eligibility = the DAG
             _cw = float(os.environ.get("CO_W", "0.5"))
@@ -11924,10 +12111,23 @@ def do_train(steps, lr, batch, seed):
         # nameless at its first step)
         _nog = [k_ for k_, v_ in p.items() if k_ not in _frz and v_.grad is None]
         assert not _nog, f"params with NO gradient in the training step: {_nog}"
+        if ALG_CLIMB and int(os.environ.get("ALG_CLIMB_GRAD_PROBE", "0")):
+            # THE CLIMB's road check (JIT=0 only: a host read inside a captured step is illegal).
+            # ReZero: the main loss gives sort{i}_wq/wk EXACTLY zero grad at step 0 (wo/ffn_w2 are
+            # zero), so any nonzero grad here at step 0 is the climb's own; sort3 (unsupervised)
+            # must read exactly 0 at step 0.
+            assert os.environ.get("JIT", "") == "0", "ALG_CLIMB_GRAD_PROBE reads grads on the host: run it with JIT=0"
+            print("[climb-grad] " + " ".join(
+                f"{k_}={float(p[k_].grad.abs().sum().numpy()):.6e}"
+                for k_ in [f"sort{_i}_{_nm}" for _i in range(ALG_SORT) for _nm in ("wq", "wk")]), flush=True)
         if ALG_DIRROLE and int(os.environ.get("ALG_DIRROLE_DEBUG", "0")) and "dir_cue_emb" in p:
             print(f"[dirrole-debug] dir_cue_emb.grad.abs().sum()="
                   f"{float(p['dir_cue_emb'].grad.abs().sum().numpy())}", flush=True)
         opt.step()
+        if ALG_CLIMB:
+            # (post-update, like `l`): the pooled climb CE and its three hops, returned beside the loss
+            _cv = Tensor.stack(_cce, *_cper)
+            return l.realize(_cv), _cv
         return l.realize()   # MEASUREMENT FACT (2026-10-09, the sorting-room bisect): `l` is lazy
         # and unread above, so this realize is the POST-update loss (opt.step() already mutated
         # the weights) — every "step N loss=" this function has ever printed is post-update, not
@@ -13227,6 +13427,15 @@ def do_train(steps, lr, batch, seed):
             _prof.enable(); lv = step(); _prof.disable()
         else:
             lv = step()
+        if ALG_CLIMB:
+            lv, _clv = lv
+            if s % int(os.environ.get("ALG_CLIMB_LOG", "100")) == 0 or s == steps - 1:
+                _cn = _clv.numpy(); _lt = float(lv.numpy())
+                assert np.isfinite(_cn).all(), f"climb CE not finite at step {s}: {_cn}"
+                print(f"  [climb] step {s:5d} total={_lt:.4f} main={_lt - ALG_CLIMB_W * float(_cn[0]):.4f} "
+                      f"climb_ce={float(_cn[0]):.4f} (W={ALG_CLIMB_W}) per-hop verb->owner={float(_cn[1]):.4f} "
+                      f"noun->verb={float(_cn[2]):.4f} numeral->noun={float(_cn[3]):.4f}"
+                      f"{' PLACEBO' if ALG_CLIMB_PLACEBO else ''}", flush=True)
         if _WHEEL_TRAIN:
             _wst = globals()["_WHEEL"].get("stats", []); _wtu = globals()["_WHEEL"].get("turned", [])
             if s % 200 == 0: print(f"[wheel-train] step {s}: statuses {dict(__import__('collections').Counter(st for _, st, _ in _wst))} turned {sum(t for _, t, _ in _wtu)}/{sum(b for _, _, b in _wtu)}", flush=True)
