@@ -11205,6 +11205,10 @@ def do_train(steps, lr, batch, seed):
     # states/tokmask row); the DIAGNOSTIC fence + row-key checks live in climb_build_targets.
     CLIMB_TGT = climb_build_targets(ALG_CLIMB_TARGETS, samples, tokmask, ALG_TRAIN,
                                     placebo=bool(ALG_CLIMB_PLACEBO)) if ALG_CLIMB else None
+    if CLIMB_TGT is not None:
+        # joined into `gold` like the twin sidecar (load_alg's CARICATURE MARGIN idiom): the feed-door
+        # fence then sees the terminal's gold, and THE FEED DOOR ships it into bg["climb_tgt"] each step
+        gold["climb_tgt"] = CLIMB_TGT
     p = build_params(seed)
     TRUNK_LORA = int(os.environ.get("ALG_TRUNK_LORA", "0"))
     if TRUNK_LORA:
@@ -13189,8 +13193,6 @@ def do_train(steps, lr, batch, seed):
             _fd(b_tr, states[idx], _rl)   # perf audit #4: half feed
         _fd(b_tk, tokmask[idx], _rl)
         _fd(b_se, sent[idx], _rl)
-        if ALG_CLIMB:
-            _fd(bg["climb_tgt"], CLIMB_TGT[idx], _rl)   # THE GOVERNOR CLIMB's gold, this batch's rows
         if TRUNK_LORA:
             _fd(b_ids, IDS_ALL[idx], _rl)
         if ALG_CONSUME:
