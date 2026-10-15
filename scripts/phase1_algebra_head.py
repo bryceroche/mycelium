@@ -2275,7 +2275,8 @@ TERMINALS = {
                           ["W_rq2", "W_rk2", "theta_given", "r_gain"]
                           + (["W_ps"] if os.environ.get("ALG_PTR_SURF", "").startswith(("state:", "entity:")) else [])
                           + (["W_role", "w_prec"] if os.environ.get("ALG_PTR_SURF", "").startswith("role:") else [])
-                          + (["dir_cue_emb"] if int(os.environ.get("ALG_DIRROLE", "0")) else [])),
+                          + (["dir_cue_emb"] if int(os.environ.get("ALG_DIRROLE", "0")) else [])
+                          + (["W_link"] if int(os.environ.get("ALG_CARRIER", "0")) else [])),   # THE CARRIERS
                "emit": "rbias",
                "gold": (["fspan"] if int(os.environ.get("ALG_ROUTER", "0")) < 2
                         else ["fspan", "vspan"]),
@@ -3966,6 +3967,13 @@ def build_params(seed=0):
             # waist it came from, so nothing here needs to commute with
             # anything). Standard fan-in init.
             p["W_rk2"] = t(rng.randn(H_W, _bd2) / math.sqrt(H_W))
+            if ALG_CARRIER:
+                # THE CARRIERS' shared link projection (H_W x bind_d): random fan-in init exactly like
+                # W_rk2 (a ROAD -- the carrier term is live at birth, never a zero gain), drawn from its
+                # OWN RandomState so every pre-existing param's init is unchanged by arming the flag
+                # (the arm differs from its climb control by the carrier road alone at step 0).
+                _rngc = np.random.RandomState(seed * 1000003 + CARRIER_PHASOR_SEED)
+                p["W_link"] = t(_rngc.randn(H_W, _bd2) / math.sqrt(H_W))
         else:
             raise ValueError(f"unknown ALG_ROUTER version {_rver0!r}")
         p["r_gain"] = t(np.full(1, float(os.environ.get("R_GAIN_INIT", "0.02"))))
@@ -4745,9 +4753,143 @@ if ALG_CLIMB:
     # scripts/picker/climb_read.py alone; no trainer may ever open a DIAGNOSTIC target file.
     assert "DIAGNOSTIC" not in ALG_CLIMB_TARGETS and "DIAGNOSTIC" not in os.path.realpath(ALG_CLIMB_TARGETS), \
         f"ALG_CLIMB_TARGETS={ALG_CLIMB_TARGETS!r} is a DIAGNOSTIC-ONLY (measure-only) target file -- no trainer may read it"
-    assert ALG_CLIMB_W > 0, "ALG_CLIMB_W must be > 0 (unset ALG_CLIMB to turn the climb off)"
+    # (the one exception: THE CARRIERS' grad probe isolates the carrier road's own gradient into the room's
+    # heads with the climb CE weighted 0 -- JIT=0 grad probe only, never a training run)
+    assert ALG_CLIMB_W > 0 or (int(os.environ.get("ALG_CARRIER", "0")) and int(os.environ.get("ALG_CLIMB_GRAD_PROBE", "0"))), \
+        "ALG_CLIMB_W must be > 0 (unset ALG_CLIMB to turn the climb off)"
 if ALG_CLIMB_PLACEBO:
     assert ALG_CLIMB, "ALG_CLIMB_PLACEBO is the climb's placebo arm -- needs ALG_CLIMB=1"
+# THE CARRIERS (ALG_CARRIER; registered 2026-10-14 11:40 "each numeral broadcasts each link (owner, unit,
+# action) on its own carrier and the slot tunes to the carrier it needs"; fired after CLK3_241's kill
+# 2026-10-15 ~17:40: "the owner reaches the token and the bank ignores it: the pointer's KEYS"). The climb's
+# own supervised heads (head 0 of sort blocks 0/1/2; A0 verb->owner, A1 noun->verb, A2 numeral->noun, each the
+# POST-softmax attention (B, T, T) the room already computes) chain the room's OUTPUT `waist` into three soft
+# parent states per token, from the model's OWN predicted links (no gold anywhere in the path):
+#     noun_t = (A2 @ waist)_t     verb_t = (A2 @ A1 @ waist)_t     owner_t = (A2 @ A1 @ A0 @ waist)_t
+# and the bus-native router's TOKEN KEY becomes (ALG_ROUTER=2, the only key this organ writes into)
+#     ALG_CARRIER=1 (PHASES):  key_t = waist_t @ W_rk2 + sum_l bind(link_l,t @ W_link, P_l)
+#     ALG_CARRIER=2 (BANDS):   key_t = waist_t @ W_rk2 + sum_l (link_l,t @ W_link) * M_l
+# W_link (H_W x bind_d) is ONE new learned projection SHARED by the three links, random fan-in init like
+# W_rk2 (a ROAD: the carrier contributes at birth, no zero gain to vote down). SHARED, deliberately: with a
+# PER-link learned projection the fixed phasor is absorbed (bind(x @ W, P) = x @ (W R_P), R_P a fixed per-plane
+# rotation -- a free W'_l), so phases would be a reparametrisation and the twin a tautology; the shared W makes
+# each link the SAME content code on its OWN carrier, which is the design's claim. P_l: three fixed random unit
+# phasors over the bind_d/2 planes (seeded CARRIER_PHASOR_SEED; minted to .cache/carrier_phasors_bd{D}.npz on
+# first use and asserted equal to the seeded mint on every later load); bind = complex multiply on the router's
+# interleaved (re, im) pair layout (rot2_interleaved). M_l: three disjoint PLANE-ALIGNED contiguous bands of the
+# key's bind_d dims (np.array_split over the planes: 86/85/85 planes = 172/170/170 dims at bind_d=512) -- every
+# column of W_link feeds exactly one band, so the twin carries EXACTLY the same parameter count (H_W x bind_d).
+# THE GRADIENT: the chained products use the attention WITH gradients (the room learns links usable by the key;
+# with the room's ReZero the main loss reaches sort0-2 wq/wk at step 0 ONLY through this road). Head 0 only
+# (the supervised climbing heads; heads 1-7 are free and carry no named link). Pads: the carrier term is zeroed
+# on pad tokens (the base key there is untouched). The query side is unchanged (the slot's role-unbound bus
+# vector learns to tune to the carriers). ALG_CARRIER unset: no new params, no new ops (bit-identical).
+ALG_CARRIER = int(os.environ.get("ALG_CARRIER", "0"))
+CARRIER_PHASOR_SEED = 20261015
+CARRIER_LINKS = ("owner", "verb", "noun")
+if ALG_CARRIER:
+    assert ALG_CARRIER in (1, 2), f"ALG_CARRIER={ALG_CARRIER}: 1 (phases) or 2 (the BANDS twin)"
+    assert ALG_SORT == 4 and ALG_CLIMB, \
+        "ALG_CARRIER reads the climb's supervised heads (head 0 of sort blocks 0,1,2) -- needs ALG_SORT=4 ALG_CLIMB=1"
+    assert int(os.environ.get("ALG_ROUTER", "0")) == 2, \
+        "ALG_CARRIER writes into the bus-native router's token key (W_rk2) -- needs ALG_ROUTER=2"
+    assert not ALG_TOKLOOP and not ALG_WRITEBACK, \
+        "ALG_CARRIER: the carrier term is computed once per forward from the room's output; the per-breath token " \
+        "re-binds (ALG_TOKLOOP / ALG_WRITEBACK) would pair a NEW base key with STALE carriers -- not composed"
+
+
+def carrier_phasors(bind_d):
+    """THE CARRIERS' three fixed unit phasors (CARRIER_LINKS order) as angles (3, bind_d // 2) float32:
+    a seeded mint, saved to .cache/carrier_phasors_bd{bind_d}.npz on first use and asserted equal to the
+    seeded mint on every later load (a drifted or hand-edited file fails loudly, never silently used)."""
+    P = bind_d // 2
+    th = np.random.RandomState(CARRIER_PHASOR_SEED).uniform(0.0, 2.0 * np.pi, (len(CARRIER_LINKS), P)).astype(np.float32)
+    path = f".cache/carrier_phasors_bd{bind_d}.npz"
+    if os.path.exists(path):
+        _z = np.load(path)
+        assert _z["theta"].shape == th.shape and np.array_equal(_z["theta"], th), \
+            f"{path} differs from the seeded mint (seed {CARRIER_PHASOR_SEED}) -- refusing a drifted carrier code"
+    else:
+        np.savez(path, theta=th, links=np.array(CARRIER_LINKS), seed=np.int64(CARRIER_PHASOR_SEED))
+    return th
+
+
+def carrier_bands(bind_d):
+    """THE BANDS twin's three disjoint plane-aligned 0/1 masks (3, bind_d) float32 (CARRIER_LINKS order)."""
+    P = bind_d // 2
+    M = np.zeros((len(CARRIER_LINKS), bind_d), np.float32)
+    for l, pl in enumerate(np.array_split(np.arange(P), len(CARRIER_LINKS))):
+        M[l, 2 * pl[0]: 2 * (pl[-1] + 1)] = 1.0
+    assert (M.sum(0) == 1).all(), "carrier bands must partition the key's dims"
+    return M
+
+
+_CARRIER_CONST = None
+
+
+def carrier_key_term(p, waist, link_attn, tokmask, B):
+    """THE CARRIERS' additive key term (B, T, bind_d) from the room's own head-0 attentions
+    link_attn = [A0, A1, A2] (each (B, T, T), post-softmax, WITH gradients) and the room's output
+    `waist` (B, T, H_W). Static shapes only (TinyJit-safe). Returns (term, per-link terms list)."""
+    from tinygrad import Tensor
+    global _CARRIER_CONST
+    assert link_attn is not None and len(link_attn) == 3, \
+        f"ALG_CARRIER: expected the climb heads' 3 attentions from the sorting room, got {None if link_attn is None else len(link_attn)}"
+    A0, A1, A2 = link_attn
+    H = int(waist.shape[-1]); T = int(waist.shape[1])
+    bd = int(p["W_link"].shape[-1])
+    # owner|verb|noun in one chain: y = A1 @ [A0 @ w | w]; z = A2 @ [y | w] = [A2A1A0 w | A2A1 w | A2 w]
+    y = A1 @ Tensor.cat(A0 @ waist, waist, dim=-1)                 # (B, T, 2H)
+    z = A2 @ Tensor.cat(y, waist, dim=-1)                          # (B, T, 3H)
+    links = [z[:, :, l * H:(l + 1) * H] for l in range(3)]         # owner, verb, noun
+    if _CARRIER_CONST is None or _CARRIER_CONST[0] != (ALG_CARRIER, bd):
+        if ALG_CARRIER == 1:
+            th = carrier_phasors(bd)
+            _CARRIER_CONST = ((ALG_CARRIER, bd), [(Tensor(np.cos(th[l])), Tensor(np.sin(th[l]))) for l in range(3)])
+        else:
+            M = carrier_bands(bd)
+            _CARRIER_CONST = ((ALG_CARRIER, bd), [Tensor(M[l]) for l in range(3)])
+    tm = tokmask.reshape(B, T, 1)
+    terms = []
+    for l in range(3):
+        u = links[l] @ p["W_link"]                                 # (B, T, bind_d): the shared content code
+        if ALG_CARRIER == 1:
+            c, s = _CARRIER_CONST[1][l]
+            u = rot2_interleaved(u, c, s)                          # bind: x * e^{i theta_l} per plane
+        else:
+            u = u * _CARRIER_CONST[1][l]                           # the link's own band
+        terms.append(u * tm)
+    return terms[0] + terms[1] + terms[2], terms
+
+
+_CARRIER_CENSUS_N = [0]
+
+
+def _carrier_census(p, waist, carrier, terms, tokmask, B):
+    """THE PRE/POST KNOB CENSUS for THE CARRIERS (ALG_CARRIER_CENSUS=1; host reads -> JIT=0 only; the
+    first 2 forward() calls print). On REAL tokens: the per-token norm of the base key (waist @ W_rk2)
+    vs the carrier term (and each link's), raw and CENTRED per row (the token-varying part -- a row-
+    constant key offset is invisible to the router's softmax over tokens, so the spread is the port)."""
+    if _CARRIER_CENSUS_N[0] >= 2:
+        return
+    _CARRIER_CENSUS_N[0] += 1
+    assert os.environ.get("JIT", "") == "0", "ALG_CARRIER_CENSUS reads tensors on the host: run it with JIT=0"
+    tm = tokmask.numpy().reshape(B, -1) > 0
+    base = (waist @ p["W_rk2"]).numpy(); car = carrier.numpy(); tl = [t_.numpy() for t_ in terms]
+
+    def _nrm(x, centred):
+        out = []
+        for b in range(B):
+            v = x[b][tm[b]]
+            if centred:
+                v = v - v.mean(0, keepdims=True)
+            out.append(np.sqrt((v * v).sum(-1)))
+        return float(np.concatenate(out).mean())
+    print(f"[carrier-census] call {_CARRIER_CENSUS_N[0]} (ALG_CARRIER={ALG_CARRIER}, {int(tm.sum())} real tokens): "
+          f"per-token |key| base {_nrm(base, False):.4f} carrier {_nrm(car, False):.4f} "
+          f"ratio {_nrm(car, False) / _nrm(base, False):.4f} | CENTRED base {_nrm(base, True):.4f} "
+          f"carrier {_nrm(car, True):.4f} ratio {_nrm(car, True) / _nrm(base, True):.4f} | per-link centred "
+          + " ".join(f"{nm}={_nrm(x, True):.4f}" for nm, x in zip(CARRIER_LINKS, tl)), flush=True)
 SORT_HG_MAX_CL = 64  # max distinct CLAUSE unit ids per row (_TREECODE_UMAX's own precedent: "clauses/mentions rarely past 64")
 SORT_HG_MAX_ST = 32   # max distinct SENTENCE unit ids per row (_TREECODE_UMAX's own precedent: "sentences <= 32" --
                       # the tiny64 gate fixture's own census (mean s=10.1) showed the FIRST guess of 16 was too
@@ -4755,7 +4897,7 @@ SORT_HG_MAX_ST = 32   # max distinct SENTENCE unit ids per row (_TREECODE_UMAX's
                       # on overflow rather than crashing, so this was caught as a quality risk, not a crash)
 
 
-def _sort_block(p, i, x, mask1d, B, cross=None, kb=None, tap=None):
+def _sort_block(p, i, x, mask1d, B, cross=None, kb=None, tap=None, atap=None):
     """ONE ReZero pre-norm transformer block (the sort{i}_* tensors build_params already builds
     under ALG_SORT), applied at ANY resolution: x is (B, L, H_W) for whatever L this call's
     caller chose (256 real tokens for the flat form; a clause or sentence pooled axis for the
@@ -4792,6 +4934,10 @@ def _sort_block(p, i, x, mask1d, B, cross=None, kb=None, tap=None):
         # of -log(at + eps)). A read of the attention this block already computes: no new op on the
         # forward path, nothing written back into x.
         tap.append(sc[:, 0])
+    if atap is not None:
+        # THE CARRIERS (ALG_CARRIER): head 0's POST-softmax attention (B, T_query, T_key) -- the very
+        # tensor this block reads its values with, WITH gradients (the carriers' link chain).
+        atap.append(at[:, 0])
     o = (at @ v).permute(0, 2, 1, 3).reshape(B, T, H_W)
     o = o @ p[f"sort{i}_wo"] + p[f"sort{i}_wo_b"]
     x = x + o
@@ -4833,7 +4979,7 @@ def _sort_block(p, i, x, mask1d, B, cross=None, kb=None, tap=None):
     return x
 
 
-def _sort_room(p, waist, tokmask, B, climb_taps=None):
+def _sort_room(p, waist, tokmask, B, climb_taps=None, link_attn=None):
     """THE SORTING ROOM form 2 (ALG_SORT=N): N pre-norm transformer blocks, BIDIRECTIONAL
     self-attention over the real tokens (tokmask zeroes pads from both the softmax and, by
     construction, every downstream read), REPLACING the token states `waist` the caller rebinds
@@ -4847,11 +4993,15 @@ def _sort_room(p, waist, tokmask, B, climb_taps=None):
     per-breath re-run SRF_241 adds).
     THE GOVERNOR CLIMB (ALG_CLIMB): `climb_taps`, when a list, receives head 0's masked scores of
     blocks 0..len(CLIMB_HOPS)-1 in hop order (block 3 untapped); None (every caller but the climb's
-    training step and its read) leaves this function exactly as before."""
+    training step and its read) leaves this function exactly as before.
+    THE CARRIERS (ALG_CARRIER): `link_attn`, when a list, receives head 0's POST-softmax attention
+    of blocks 0..len(CLIMB_HOPS)-1 (the same heads, A0/A1/A2); None leaves this function unchanged."""
     x = waist
     for i in range(ALG_SORT):
+        _hop = i < len(CLIMB_HOPS)
         x = _sort_block(p, i, x, tokmask, B,
-                        tap=(climb_taps if (climb_taps is not None and i < len(CLIMB_HOPS)) else None))
+                        tap=(climb_taps if (climb_taps is not None and _hop) else None),
+                        atap=(link_attn if (link_attn is not None and _hop) else None))
     return x
 
 
@@ -7467,7 +7617,16 @@ def breath_step(p, state, kb, ctx):
         # reassigned), so this recomputes exactly once per distinct
         # waist rather than once per breath.
         if state.get("_r2_waist_id") != id(waist):
-            state["_r2_key"] = (waist @ p["W_rk2"]).transpose(-2, -1).unsqueeze(1)
+            _k2base = waist @ p["W_rk2"]
+            if ALG_CARRIER:
+                # THE CARRIERS: + sum_l bind(link_l @ W_link, P_l) (or the BANDS twin) -- the room's own
+                # climbed links on their own carriers, computed once per forward() (ctx["carrier_key"]).
+                assert ctx.get("carrier_key") is not None, \
+                    "ALG_CARRIER: the router found no carrier term in ctx (forward() did not build it)"
+                _k2base = _k2base + ctx["carrier_key"]
+                if int(os.environ.get("ALG_CARRIER_CENSUS", "0")):
+                    state["_r2_carrier_t"] = ctx["carrier_key"].transpose(-2, -1).unsqueeze(1)
+            state["_r2_key"] = _k2base.transpose(-2, -1).unsqueeze(1)
             state["_r2_waist_id"] = id(waist)
         _key7t = state["_r2_key"]      # (B, 1, bind_d, T)
         # ONE stacked unbind rotate, broadcast over the field axis (4 or
@@ -7497,6 +7656,17 @@ def breath_step(p, state, kb, ctx):
         # mycelium/complex_tensor.py); verified bit-identical against
         # separate matmuls on a standalone check.
         _S4 = (_Q4 @ _key7t) / math.sqrt(_P7)   # (B, n_ch, L_TOT, T): arg1/arg2/res/given(/op)
+        if ALG_CARRIER and int(os.environ.get("ALG_CARRIER_CENSUS", "0")) and _CARRIER_CENSUS_N[0] <= 2 \
+                and state.get("_r2_carrier_t") is not None:
+            # THE KNOB CENSUS at the PORT (JIT=0): this breath's router scores split into the base key's
+            # share and the carrier's share; std over REAL tokens per (channel, slot) row = the spread
+            # the softmax reads (a row-constant offset is invisible to it).
+            _crt7 = state["_r2_carrier_t"]
+            _sc_c = ((_Q4 @ _crt7) / math.sqrt(_P7)).numpy(); _sc_b = ((_Q4 @ (_key7t - _crt7)) / math.sqrt(_P7)).numpy()
+            _tmn = tokmask.numpy().reshape(B, -1) > 0
+            _sd = lambda x: float(np.mean([x[b_][..., _tmn[b_]].std(-1).mean() for b_ in range(B)]))
+            print(f"[carrier-census] breath {kb} router scores (B,{_n_ch5}ch,{L_TOT},T), token-std per row: "
+                  f"base {_sd(_sc_b):.4f} carrier {_sd(_sc_c):.4f} ratio {_sd(_sc_c) / max(_sd(_sc_b), 1e-12):.4f}", flush=True)
         if ALG_VALREG_ON:
             # THE VALUE STREAM's per-slot tag (2026-09-22): the variable
             # tags carried to the slots through the slot->variable map —
@@ -9444,6 +9614,9 @@ def replay(p, snapshot, kb_start, overrides=None, kb_stop=None):
     assert kb_done == kb_start, f"snapshot is for kb_done={kb_done}, kb_start={kb_start} must match"
     B = int(snapshot["B"]); K_B = int(snapshot["K_B"])
     waist = ov.get("waist", snapshot["waist"]); tokmask = ov.get("tokmask", snapshot["tokmask"])
+    assert not (ALG_CARRIER and ("waist" in ov or "tokmask" in ov)), \
+        "ALG_CARRIER: the snapshot's carrier key was built from its OWN waist; a waist/tokmask override would " \
+        "pair a new base key with stale carriers -- not composed"
     tree = snapshot["tree"]
     facts3 = snapshot["facts3"]; facts5 = snapshot["facts5"]
     anchor = snapshot["anchor"]; amask = snapshot["amask"]; res_map = snapshot["res_map"]
@@ -9516,7 +9689,7 @@ def replay(p, snapshot, kb_start, overrides=None, kb_stop=None):
     return out
 
 
-def _waist_prefix(p, trunk, tokmask, sent, hud=None, tree=None, climb_taps=None):
+def _waist_prefix(p, trunk, tokmask, sent, hud=None, tree=None, climb_taps=None, link_attn=None):
     """The token side up to the bank: trunk -> waist (+ HUD / FED item 3 / T1) -> THE SORTING ROOM.
     Factored verbatim out of forward() (2026-10-14, THE GOVERNOR CLIMB) so the climb's read
     (scripts/picker/climb_read.py) runs the SAME token side without the slot loop; forward() calls
@@ -9582,7 +9755,7 @@ def _waist_prefix(p, trunk, tokmask, sent, hud=None, tree=None, climb_taps=None)
             # DIRROLE precedent (`if ALG_HUD and hud is not None:` skips silently, never asserts).
             waist = _sort_room_hg(p, waist, tokmask, tree, B)
         else:
-            waist = _sort_room(p, waist, tokmask, B, climb_taps=climb_taps)
+            waist = _sort_room(p, waist, tokmask, B, climb_taps=climb_taps, link_attn=link_attn)
         if int(os.environ.get("ALG_SORT_DEBUG", "0")):
             _wpost_full = waist.numpy()
             _d = np.abs(_wpost_full - _wpre_full)
@@ -9600,7 +9773,17 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
     # SCOPE ACCIDENT (bound only via the sixwave/sync branches — any
     # SIXWAVE-off config killed five organs at step 1)
     B = trunk.shape[0]
-    waist = _waist_prefix(p, trunk, tokmask, sent, hud=hud, tree=tree, climb_taps=climb_taps)
+    _link_attn = [] if (ALG_CARRIER and "W_link" in p) else None   # THE CARRIERS: the climb heads' A0/A1/A2
+    waist = _waist_prefix(p, trunk, tokmask, sent, hud=hud, tree=tree, climb_taps=climb_taps, link_attn=_link_attn)
+    # THE CARRIERS (ALG_CARRIER): the additive token-key term the bus-native router adds to waist @ W_rk2
+    # (breath_step, ctx["carrier_key"]); None when unset (no ops). A missing W_link under the flag is a hard
+    # error (no silent fallback to the flat key).
+    assert not ALG_CARRIER or "W_link" in p, "ALG_CARRIER set but W_link absent from the params (build/ckpt mismatch)"
+    _carrier_key = None
+    if _link_attn is not None:
+        _carrier_key, _carrier_terms = carrier_key_term(p, waist, _link_attn, tokmask, B)
+        if int(os.environ.get("ALG_CARRIER_CENSUS", "0")):
+            _carrier_census(p, waist, _carrier_key, _carrier_terms, tokmask, B)
     _sort_tok_key = (waist @ p["sort_key_w"] + p["sort_key_b"]) \
         if (ALG_SORT_KEY and "sort_key_w" in p) else None   # THE OWNER-KEY SHUFFLE: zero compute when unset
 
@@ -9926,6 +10109,7 @@ def forward(p, trunk, tokmask, sent, slot_mask=None, revoke=None, tail=None, dro
                          else Tensor.zeros(B, K_VARS, int(os.environ.get("ALG_BIND_D", "128"))))
         _bs_ctx = {"B": B, "K_B": K_B, "waist": waist, "tokmask": tokmask,
                    "tok_key": _sort_tok_key,   # THE OWNER-KEY SHUFFLE (2026-10-09): None when ALG_SORT_KEY unset, zero compute
+                   "carrier_key": _carrier_key,   # THE CARRIERS (2026-10-15): (B, T, bind_d) or None (ALG_CARRIER unset)
                    # THE BUS REGISTER's per-forward constants (2026-09-22):
                    # dict keys only — zero compute when ALG_BUSREG unset.
                    "vst": vst, "res_map": res_map, "ident_tok": _ident_tok,
@@ -12119,7 +12303,8 @@ def do_train(steps, lr, batch, seed):
             assert os.environ.get("JIT", "") == "0", "ALG_CLIMB_GRAD_PROBE reads grads on the host: run it with JIT=0"
             print("[climb-grad] " + " ".join(
                 f"{k_}={float(p[k_].grad.abs().sum().numpy()):.6e}"
-                for k_ in [f"sort{_i}_{_nm}" for _i in range(ALG_SORT) for _nm in ("wq", "wk")]), flush=True)
+                for k_ in [f"sort{_i}_{_nm}" for _i in range(ALG_SORT) for _nm in ("wq", "wk")]
+                + (["W_link", "W_rk2"] if ALG_CARRIER else [])), flush=True)
         if ALG_DIRROLE and int(os.environ.get("ALG_DIRROLE_DEBUG", "0")) and "dir_cue_emb" in p:
             print(f"[dirrole-debug] dir_cue_emb.grad.abs().sum()="
                   f"{float(p['dir_cue_emb'].grad.abs().sum().numpy())}", flush=True)
