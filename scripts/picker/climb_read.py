@@ -48,7 +48,7 @@ assert not H.ALG_SORT_HG, "the hourglass's blocks 1,2 are not token->token: no c
 def _targets_path():
     tp = os.environ.get("CR_TARGETS", "")
     if not tp:
-        assert H.TEST_NAME.startswith("wildhold"), "CR_TARGETS is required for a non-wild fixture"
+        assert H.TEST_NAME.startswith("wildhold") and os.environ.get("CR_SPLIT", "test") == "test", "CR_TARGETS is required for a non-wild fixture"
         tp = ".cache/climb_targets_wild_DIAGNOSTIC_ONLY.npz"
     return tp
 
@@ -66,10 +66,13 @@ def _load_body(path, seed):
     return p, miss
 
 
-def read_body(p, samples, states, tokmask, sent, rows, batch):
-    """-> dict h -> (N, T) int argmax of head-0 attention per query position (rows outside `rows` = -1)."""
+def read_body(p, samples, states, tokmask, sent, rows, batch, tgt):
+    """-> (dict h -> (N, T) int argmax of head-0 attention per query position (rows outside `rows` = -1),
+    dict h -> [sum of -log at[q, gold parent], n] over the supervised queries: the climb CE, the
+    trainer's own quantity, on a FIXED row set)."""
     N, T = tokmask.shape
     am = {h: np.full((N, T), -1, np.int32) for h in range(len(H.CLIMB_HOPS))}
+    ce = {h: [0.0, 0] for h in range(len(H.CLIMB_HOPS))}
     Tensor.training = False
     for b0 in range(0, len(rows), batch):
         sl = rows[b0:b0 + batch]
@@ -83,8 +86,12 @@ def read_body(p, samples, states, tokmask, sent, rows, batch):
         H._waist_prefix(p, ts, tk, se, hud=hud, climb_taps=taps)
         assert len(taps) == len(H.CLIMB_HOPS), f"{len(taps)} taps: the sorting room did not run"
         for h, sc in enumerate(taps):
-            am[h][sl] = sc.argmax(-1).numpy().astype(np.int32)
-    return am
+            lsm = sc.log_softmax(-1).numpy()
+            am[h][sl] = lsm.argmax(-1).astype(np.int32)
+            t = tgt[sl, h, :]
+            bi, qi = np.nonzero(t >= 0)
+            ce[h][0] += float(-lsm[bi, qi, t[bi, qi]].sum()); ce[h][1] += int(len(bi))
+    return am, ce
 
 
 def grade(am, tgt, z, rows):
@@ -124,9 +131,13 @@ def grade(am, tgt, z, rows):
 
 
 def main():
-    samples, states, tokmask, gold, sent = H.load_alg("test")
+    # CR_SPLIT=train reads the TRAINING fixture (ALG_TRAIN / ALG_TRAIN_NAME) through load_alg's train door
+    # (the climb CE on the very rows a smoke trained on); the default is the test door (ALG_TEST: wild).
+    _train = os.environ.get("CR_SPLIT", "test") == "train"
+    samples, states, tokmask, gold, sent = H.load_alg("train" if _train else "test")
+    _mix, _name = (H.ALG_TRAIN, H.TRAIN_NAME) if _train else (H.ALG_TEST, H.TEST_NAME)
     tp = _targets_path()
-    tgt = H.climb_build_targets(tp, samples, tokmask, H.ALG_TEST, placebo=False, verbose=True,
+    tgt = H.climb_build_targets(tp, samples, tokmask, _mix, placebo=False, verbose=True,
                                 allow_diagnostic=True)
     z = np.load(tp)
     N = len(samples)
@@ -136,7 +147,7 @@ def main():
         rows = rows[lo:hi]
     batch = int(os.environ.get("CR_BATCH", "16"))
     seed = int(os.environ.get("SEED", "0"))
-    report = {"fixture": H.ALG_TEST, "split": H.TEST_NAME, "targets": tp, "rows": [int(rows[0]), int(rows[-1]) + 1],
+    report = {"fixture": _mix, "split": _name, "targets": tp, "rows": [int(rows[0]), int(rows[-1]) + 1],
               "bars": {"per_hop_wild": 0.85, "floor_ref_untrained_head_link": 0.57}, "bodies": {}}
     for spec in os.environ["CR_CKPTS"].split(","):
         label, path = spec.split("=", 1)
@@ -144,16 +155,23 @@ def main():
         if miss:
             print(f"[climb-read] {label}: {len(miss)} params at FRESH INIT (CR_INIT_MISSING=1, seed {seed}): "
                   f"{sorted(set(k.split('_')[0] for k in miss))}", flush=True)
-        am = read_body(p, samples, states, tokmask, sent, rows, batch)
+        am, ce = read_body(p, samples, states, tokmask, sent, rows, batch, tgt)
         g = grade(am, tgt, z, rows)
+        _n = sum(c[1] for c in ce.values())
+        g["climb_ce"] = {"n": _n, "acc": sum(c[0] for c in ce.values()) / max(_n, 1),
+                         **{f"hop{h}": c[0] / max(c[1], 1) for h, c in ce.items()}}
         report["bodies"][label] = {"ckpt": path, "fresh_init": miss, **g}
         line = " ".join(f"{k}={v['acc']:.4f}(n={v['n']})" for k, v in g.items())
-        print(f"[climb-read] {label} ({path}) on {H.TEST_NAME} rows {rows[0]}:{rows[-1] + 1}: {line}", flush=True)
+        print(f"[climb-read] {label} ({path}) on {_name} rows {rows[0]}:{rows[-1] + 1}: {line}", flush=True)
         for k, v in g.items():
             if k.startswith("hop"):
                 print(f"[climb-read]   {label} {k}: {v['acc']:.4f} (n={v['n']}; non-self {v['acc_nonself']:.4f}, "
                       f"self-links {v['n_self']}) bar 0.85 {'MET' if v['acc'] >= 0.85 else 'not met'}; floor ref 0.57",
                       flush=True)
+            elif k == "climb_ce":
+                print(f"[climb-read]   {label} climb CE (fixed rows, the trainer's quantity): pooled {v['acc']:.4f} "
+                      f"| verb->owner {v['hop0']:.4f} noun->verb {v['hop1']:.4f} numeral->noun {v['hop2']:.4f} "
+                      f"(n={v['n']})", flush=True)
             elif k.startswith("chain_owner_") and "acc_in_span" in v:
                 print(f"[climb-read]   {label} {k}: head-piece {v['acc']:.4f} / in-span {v['acc_in_span']:.4f} "
                       f"(n={v['n']})", flush=True)
