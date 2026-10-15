@@ -21,6 +21,9 @@
   flag + tabu repairs at the placebo rate), and the page reranker (retrieval solved: top-3 0.81 / top-4 0.89; arbitration fails on cost;
   the margin-gated floor +0.005) all land there.
 
+## UPDATE 2026-10-14 ~19:20: BPK3_241 PARITY -> new bodies train on the {split}BP states (bidir + pad-masked; formpm35cBP/wildholdBP/test23BP/silver460BP);
+mint +0.045 z7 awaits the twin BPK3_242. THE CLIMB landed (ALG_SORT=4 ALG_CLIMB=1; scripts/picker/climb_read.py); CLK3/SRK3/CLPK3 registered, need the word.
+
 ## THE DEPTH PROBE — READ 2026-10-14 ~16:55 (ledger; .cache/depthprobe2_read_*.log). The saved 16-row pass was a smoke; re-collected
 at 1500 rows x 3 attention regimes (scripts/picker/depthprobe_collect.py). VERDICT: owner pairs NEITHER (D6 +0.026, SE 0.013; position alone 0.78);
 the one-hop head link readable at the tap (0.57 vs position 0.35); the owner never a probe-space neighbour at any depth; regimes within noise.
