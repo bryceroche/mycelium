@@ -1,3 +1,63 @@
+# NEXT SESSION — cold-start entry (HANDOFF 2026-10-15 ~20:55; the box restarts)
+
+**READ FIRST:** CLAUDE.md → this block → the ledger (docs/phase1_skeleton_spec.md) from "2026-10-14 (~16:00) — THE DEPTH PROBE'S
+SAVED PASS IS A SMOKE" to the end → MEMORY.md's board. Reads table: `.venv/bin/python3 scripts/reads.py table wildhold`.
+
+## STATE AT HANDOFF
+- **Branch gen-weights, clean, pushed.** NOTHING IS RUNNING (pc-crq completed 19:51, pc-bindtoy completed; no queue armed). The
+  restart kills nothing. After it: `DEV=PCI+AMD`; long GPU work as `systemd-run --user` units; `systemctl --user reset-failed`.
+- **THE TRUNK STATES SWITCHED (two seeds):** do_precompute ran Llama L0–L3 UNMASKED (bidirectional + ~190 id-0 '!' pads visible
+  = a length axis, corr −0.81 content-controlled). New bodies train on the **{split}BP states** (bidirectional, pad keys masked;
+  scripts/precompute_masked.py; formpm35cBP / wildholdBP / test23BP / silver460BP exist): BPK3_241 +0.0014, BPK3_242 +0.0005 vs the
+  K3 pair = parity; mint +0.045 / +0.015 positive, UNCLAIMED (missed its pinned bar on seed 242). Old bodies stay their own lineage.
+- **THE BEST WILD BODIES (K3 + BP + the sorting room, 0.33x PMS8's card):** CLK3_241 0.3793 (+ the climb) / SRK3_241 0.3774 (room
+  alone) — SR_241's level (0.3715) at a third of the card. The climb (ALG_SORT=4 ALG_CLIMB=1) is landed and CPU-gated.
+
+## THE DAY'S THREE KILLS — ONE PLACE (the wall moved to the QUERY side)
+1. **THE DEPTH PROBE** (1500 rows x 3 attention regimes x 21 taps): owner pairs between the bars (D6 +0.026, SE 0.013; position
+   alone 0.78); the one-hop head link readable at the tap; the owner never a probe-space neighbour → no distillation; build links.
+2. **THE CLIMB** (CLK3_241): links LEARNED on wild (0.87–0.90 per hop, chained owner 0.84) — masked wild +0.002, different-owner
+   share unmoved = the pre-registered kill ('the pointer's KEYS'). The placebo (random tree) gained MORE on mint (+0.074 vs +0.059):
+   the climb's mint gain is aux-loss regularization, not the links; true links +0.020 over the wrong tree on wild.
+3. **THE CARRIERS** (CRK3 phases / CBK3 bands, links written into the router's token key, one shared W_link): the carrier term
+   is LIVE AND DOMINANT in the key (1.4–2.0x the base), the owner carrier grew to ~0.8 of the noun's — and wild FELL (−0.016 /
+   −0.018), different-owner 0.483 / 0.490. = the kill as pinned: **the slot QUERY carries no owner expectation**. Phases = bands on
+   wild (+0.002). ON MINT phases beat bands by ~0.12 (0.891 vs 0.768) — a rotation effect on the memorized register, twin needed.
+   READING: the evidence exists on the token side AND in the key; what a given slot ASKS FOR is the unknown.
+
+## REGISTERED, NEEDING THE WORD
+1. **THE OWNER-AWARE QUERY** (the indicated next arm): the slot's query gains the owner expectation of its consuming context (for
+   a given slot, the owner/verb of the clause its relation's cue sits in, read through the climbed links), tuned against the owner
+   carrier; on the CRK3 chassis; bars vs CLK3_241 as the carriers'. Needs a design pass first (which context names the owner a
+   given slot wants — the cue spans? the relation's verb?) — measure the oracle first (zero-GPU: give the query the GOLD owner and
+   read how many different-owner wrong picks it would flip).
+2. **The carriers' mint twin** (CRK3_242 / CBK3_242) — decides whether the phase-over-bands mint gap (0.12) is real.
+3. Carried from 10-14: the read notebook (pages + listwise rerank), RTB form 2 (the 35 GB buffer), DF form 2, the chassis rebuild
+   as parity (now: K3 + BP + the room), the data road, the parser in the system.
+
+## THE BINDING TOYS (Bryce's phase-binding thesis; CPU, scripts/toys/)
+- **v1** (binding_toy.py; .cache/binding_toy.txt): Part 1 — the phase-bound q/k arm NEVER leads the matched plain transformer on
+  held-out combinations (trails by 0.01–0.06 at every coverage 0.5 → ~0.08); learned-multiplicative last. Bugs named: the f=0.05 /
+  0.02 rows are duplicates (allowed_pairs floors at one pair per name); Part 2 saturated the size grid (all arms store the largest
+  table; bits/param = param counts) → UNREAD until re-gridded to ~8k names.
+- **v2** (binding_toy_v2.py, chained lookups, roles from syntax): five feasibility reads; the 4-form task MEMORIZES at 32k scenes
+  (train 0.94 / iid 0.28), data-hungry at 128k (0.36) → the grid would read all-censored; NOT fired; needs a redesign (fewer names
+  or ~1M scenes). Two earlier 'wall in miniature' readings were SUPERSEDED (Opus's audit).
+- mycelium/complex_tensor.py EXISTS (bind/unbind/cleanup/tg_rotate) — the home for shared phase primitives.
+
+## RULES LEARNED TODAY (ledger)
+A ledger time is READ off the box, never estimated (this afternoon's guessed times were corrected). `pkill -f` with a pattern that
+can match your own shell kills your own shell (exit 144) — kill by PID. A saved artifact's n is checked before a handoff calls it
+'done' (the depth probe's 'saved embeddings' were a 16-row smoke). A feasibility read precedes any grid (v2's arithmetic form and
+its 2-layer form would both have read all-censored). The placebo attributes before the claim (the climb's mint gain was the aux loss).
+
+## HOUSEKEEPING
+Worktrees .claude/worktrees/agent-a6fbba480f6d464d0 (climb) and agent-a8ab56b57f8f55a6d (carriers) are merged — removable
+(`git worktree remove`). .cache/rtb_buffer_RTB_241/ (35 GB) kept for RTB form 2. depthprobe2_*.npy (8.8 GB) kept. Disk ~1.3 TB free.
+
+---
+(The previous entry follows.)
+
 # NEXT SESSION — cold-start entry (HANDOFF 2026-10-14 ~15:00; the box restarts)
 
 **READ FIRST:** CLAUDE.md → this block → the ledger's entries from "2026-10-12 — THE DENOISING BREATH" to the end
