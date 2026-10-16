@@ -2485,7 +2485,9 @@ def build_gold(samples, offsets):
         # order even with every span present; the span sort is mint's convention and broke the law
         # on every silver row (the fit read: 0.03 on the machine's own training rows)
         _gen = smp.get("gen") if isinstance(smp.get("gen"), dict) else {}
-        if all(f.get("spans") for f in smp["factors"]) and _gen.get("canonical") != "positional":
+        # THE READING ORDER (2026-10-16, scripts/reading_order.py): a row stamped "reading" (givens in
+        # text-mention order, then the planning block) KEEPS its order under the same law
+        if all(f.get("spans") for f in smp["factors"]) and _gen.get("canonical") not in ("positional", "reading"):
             facs = sorted(smp["factors"],
                           key=lambda f: min(s for s, _ in f["spans"]))
         else:
