@@ -8,8 +8,12 @@ THE HONESTY CHECK (a lying generator teaches lying): per view, (1) the numeral m
            untouched and still solves to the stored key; (3) the Llama token count is identical (so the trunk frame, tokmask
            and sentence indices are unchanged); (4) no fresh name collides with a word already in the text.
            Any failure -> the view keeps the ORIGINAL text for that row and is counted (never a silent pass).
+PB_WIDE=1 (2026-10-17, the training augmentation; default OFF so the banked wild views regenerate unchanged): wider name
+           lists (EXTRA_M / EXTRA_F) and a name outside every list takes its gender from the text's PRONOUNS (only he/him/his
+           -> M; only she/her -> F; no gendered pronoun at all -> either pool, nothing to keep consistent; both -> kept).
+           Titles (Mr, Mrs, Dr, ...) and any name that follows a title (a surname: 'Mrs. Hilt') are never swapped. The honesty check is unchanged.
 usage: photobooth.py IN.jsonl OUT_PREFIX K  ->  OUT_PREFIX_v{1..K}.jsonl + OUT_PREFIX.census.json"""
-import collections, json, random, re, sys
+import collections, json, os, random, re, sys
 
 sys.path.insert(0, "."); sys.path.insert(0, "scripts")
 import spacy  # noqa: E402
@@ -30,6 +34,21 @@ FEMALE = ("Mary Patricia Jennifer Linda Elizabeth Barbara Susan Jessica Sarah Ka
           "Julia Judy Sophia Grace Denise Amber Doris Marilyn Danielle Beverly Isabella Theresa Diana Natalie Brittany Charlotte "
           "Marie Kayla Alexis Lori Jane Kate Lucy Rose Amy Eva Mia Ella Lily Zoe Nina Tina Sue Kim Jill Beth Meg Liz Ava "
           "Chloe Ruby Sofia Elena Rosa Leah Maya Iris Nora Vera Ruth Jade Ivy").split()
+EXTRA_M = ("Ahmed Hassan Yusuf Ibrahim Tariq Kareem Malik Jamal Darius Andre Marcus Terrence Dwayne Rashad Hiroshi Kenji "
+           "Takeshi Arjun Rohan Vikram Sanjay Ravi Amit Rahul Diego Mateo Santiago Javier Miguel Pedro Rafael Alejandro "
+           "Fernando Pablo Lucas Liam Mason Oliver Elias Caleb Isaac Levi Ezra Silas Jasper Milo Theo Finn Kai Ryder Wyatt "
+           "Colton Chase Blake Grant Trevor Derek Dean Neil Kurt Lance Brett Wade Troy Glenn Dale Cole Reid Seth Gavin "
+           "Spencer Victor Simon Martin Stefan Anton Boris Dmitri Sergei Nikolai Lars Sven Erik Hans Klaus Pierre Jacques "
+           "Luca Paolo Giorgio Kwame Kofi Chidi Emeka Tunde Femi Musa Sipho Thabo Mohammed Abdul Omari Jamie Rick Tyrone "
+           "Desmond Reggie Earl Floyd Vernon Leon Lionel Mario Bruno Hector Ramon Enrique Andres Ricardo Emilio").split()
+EXTRA_F = ("Fatima Aisha Layla Zara Yasmin Amira Leila Noor Priya Ananya Divya Kavya Meera Neha Pooja Riya Sana Yuki Akiko "
+           "Sakura Hana Keiko Camila Valentina Lucia Gabriela Daniela Isabel Carmen Ana Paula Martina Chiara Giulia "
+           "Francesca Ingrid Astrid Freya Greta Heidi Katya Olga Natasha Svetlana Irina Tanya Anya Amara Ngozi Chioma Zainab "
+           "Adaeze Thandiwe Naledi Ayanna Imani Keisha Tamika Jasmine Aaliyah Harper Brooke Haley Claire Fiona Molly Holly "
+           "Jenna Erin Tessa Wendy Gina Rita Carla Nadia Vanessa Monica Wanda Tara Kara Lena Mila Elsa Stella Hazel Violet "
+           "Penelope Scarlett Aria Luna Bella Sadie Maggie Josie Rosie Annie Ellie Millie Paige Kendra Tiffany Crystal "
+           "Brianna Gabrielle Mariana Ximena Paloma Inez Dolores Esther Miriam Naomi Tamar Shira").split()
+TITLES = set("Mr Mrs Ms Miss Dr Mx Sir Madam Aunt Uncle Grandma Grandpa Mom Dad Mother Father Coach Professor Principal Captain".split())
 CAP = re.compile(r"^[A-Z][a-z]+$")
 
 
@@ -38,14 +57,16 @@ def main(src, prefix, K):
     L = lambda s: len(tok.encode(s, add_special_tokens=False).ids)
     sig = lambda n: (L(" " + n), L(n))
     nlp = spacy.load("en_core_web_sm")
+    wide = os.environ.get("PB_WIDE") == "1"
+    male, female = (MALE + EXTRA_M, FEMALE + EXTRA_F) if wide else (MALE, FEMALE)
     from reading_order import _solve
     rows = [json.loads(l) for l in open(src)]
     docs = list(nlp.pipe([r["text"] for r in rows]))
     pools = {g: collections.defaultdict(list) for g in ("M", "F")}
-    for g, names in (("M", MALE), ("F", FEMALE)):
+    for g, names in (("M", male), ("F", female)):
         for n in dict.fromkeys(names):
             pools[g][sig(n)].append(n)
-    gender = {**{n: "M" for n in MALE}, **{n: "F" for n in FEMALE}}
+    gender = {**{n: "M" for n in male}, **{n: "F" for n in female}}
     C = collections.Counter()
     keys = []
     for r in rows:
@@ -59,11 +80,22 @@ def main(src, prefix, K):
             names = list(dict.fromkeys(t.text for e in d.ents if e.label_ == "PERSON" for t in e if CAP.match(t.text)))
             words = set(re.findall(r"[A-Za-z]+", text))
             mp = {}
+            low = set(w.lower() for w in words)
+            pm, pf = bool(low & {"he", "him", "his", "himself"}), bool(low & {"she", "her", "hers", "herself"})
             for n in names:
+                if wide and n in TITLES:
+                    C["name_title_kept"] += 1; continue
+                if wide and re.search(rf"\b(?:{'|'.join(TITLES)})\.? {n}\b", text):
+                    C["name_surname_after_title_kept"] += 1; continue
                 g = gender.get(n)
+                if g is None and wide:
+                    g = "M" if (pm and not pf) else "F" if (pf and not pm) else "N" if not (pm or pf) else None
+                    if g is not None:
+                        C[f"name_gender_inferred_{g}"] += 1
                 if g is None:
                     C["name_unknown_gender_kept"] += 1; continue
-                cands = [c for c in pools[g][sig(n)] if c != n and c not in words and c not in mp.values()]
+                pool = pools["M"][sig(n)] + pools["F"][sig(n)] if g == "N" else pools[g][sig(n)]
+                cands = [c for c in pool if c != n and c not in words and c not in mp.values()]
                 if not cands:
                     C["name_no_token_twin_kept"] += 1; continue
                 mp[n] = rng.choice(cands)
@@ -82,7 +114,7 @@ def main(src, prefix, K):
                 a2, _ = _solve(r2)
                 if a2 != key:
                     ok = False; C["FAIL_solve"] += 1; r2["text"] = text
-            r2["gen"] = {**(r.get("gen") or {}), "photobooth": {"view": v, "names": mp if ok and new != text else {}, "source_text": text}}
+            r2["gen"] = {**(r.get("gen") or {}), "photobooth": {"view": v, "names": mp if ok and new != text else {}, "source_text": text, **({"wide": True} if wide else {})}}
             C[f"v{v}_changed"] += ok and new != text
             out.append(r2)
         with open(f"{prefix}_v{v}.jsonl", "w") as fh:

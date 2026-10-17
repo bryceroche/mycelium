@@ -12,7 +12,7 @@ CONTROLS (honesty of the credit signal):
   GOLD CEILING             the same credit on the GOLD graphs (how often a true step's value is in S at all)
   CHANCE                   credit against ANOTHER row's S (rotated by one): how often a value is creditable by accident
 Out: .cache/step_blame_census.txt"""
-import collections, glob, json, pickle, re, sys
+import collections, glob, json, os, pickle, re, sys
 
 sys.path.insert(0, "."); sys.path.insert(0, "scripts")
 import pyarrow.parquet as pq  # noqa: E402
@@ -136,7 +136,7 @@ def main(tags):
             f"{C['cred_W'] / max(C['steps_W'], 1):.3f} ({C['cred_W']} creditable steps inside wrong answers)")
         say(f"   BLAME on FINAL-WRONG: 0 bad steps {C['blame_0'] / w:.3f} | ISOLATED (exactly 1) {C['blame_1'] / w:.3f} | "
             f"2+ {C['blame_2+'] / w:.3f}")
-    open(".cache/step_blame_census.txt", "w").write("\n".join(OUT) + "\n")
+    open(os.environ.get("SBC_OUT", ".cache/step_blame_census.txt"), "w").write("\n".join(OUT) + "\n")
 
 
 if __name__ == "__main__":
