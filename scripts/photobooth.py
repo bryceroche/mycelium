@@ -52,6 +52,41 @@ TITLES = set("Mr Mrs Ms Miss Dr Mx Sir Madam Aunt Uncle Grandma Grandpa Mom Dad 
 CAP = re.compile(r"^[A-Z][a-z]+$")
 
 
+SPAN_KEYS = ("spans", "arg_spans", "cue_spans", "role_cues", "arg_role_cues")
+
+
+def substitute(text, mp):
+    """one pass over whole-word name matches; returns (new text, pmap) with pmap[p] = the new position of old char p
+    (len(text)+1 entries; inside a renamed name, the start maps to the new start and the end to the new end)."""
+    if not mp:
+        return text, None
+    pat = re.compile(r"\b(" + "|".join(re.escape(n) for n in sorted(mp, key=len, reverse=True)) + r")\b")
+    out, pmap, last = [], [], 0
+    for m in pat.finditer(text):
+        a, b = m.span(); rep = mp[m.group(1)]
+        base = sum(len(x) for x in out)
+        pmap.extend(base + i for i in range(a - last)); out.append(text[last:a])
+        base = sum(len(x) for x in out)
+        pmap.extend([base] + [base + len(rep)] * (b - a - 1)); out.append(rep); last = b
+    base = sum(len(x) for x in out)
+    pmap.extend(base + i for i in range(len(text) - last + 1)); out.append(text[last:])
+    return "".join(out), pmap
+
+
+def remap_spans(row, pmap):
+    """THE SPAN CLAUSE (2026-10-17): every char-offset span a row carries (mentions; each factor's spans / arg_spans /
+    cue_spans / role_cues / arg_role_cues) moves with the text. A span is a list whose first two items are ints [s, e, ...]."""
+    def mv(o):
+        if isinstance(o, list) and len(o) >= 2 and isinstance(o[0], int) and isinstance(o[1], int):
+            return [pmap[o[0]], pmap[o[1]]] + o[2:]
+        if isinstance(o, list):
+            return [mv(x) for x in o]
+        return o
+    if isinstance(row.get("mentions"), dict):
+        row["mentions"] = {k: mv(v) for k, v in row["mentions"].items()}
+    row["factors"] = [{k: (mv(v) if k in SPAN_KEYS else v) for k, v in f.items()} for f in row["factors"]]
+
+
 def main(src, prefix, K):
     tok = Tokenizer.from_file(".cache/llama-3.2-1b-weights/tokenizer.json")
     L = lambda s: len(tok.encode(s, add_special_tokens=False).ids)
@@ -99,9 +134,7 @@ def main(src, prefix, K):
                 if not cands:
                     C["name_no_token_twin_kept"] += 1; continue
                 mp[n] = rng.choice(cands)
-            new = text
-            for n, m in mp.items():
-                new = re.sub(rf"\b{n}\b", m, new)
+            new, pmap = substitute(text, mp)
             ok = True
             if sorted(re.findall(r"\d[\d,\.]*", new)) != sorted(re.findall(r"\d[\d,\.]*", text)):
                 ok = False; C["FAIL_numerals"] += 1
@@ -110,10 +143,12 @@ def main(src, prefix, K):
             if any(re.search(rf"\b{m}\b", text) for m in mp.values()):
                 ok = False; C["FAIL_collision"] += 1
             r2 = dict(r); r2["text"] = new if ok else text
+            if ok and new != text:
+                remap_spans(r2, pmap)
             if ok and key is not None:
                 a2, _ = _solve(r2)
                 if a2 != key:
-                    ok = False; C["FAIL_solve"] += 1; r2["text"] = text
+                    ok = False; C["FAIL_solve"] += 1; r2 = dict(r)
             r2["gen"] = {**(r.get("gen") or {}), "photobooth": {"view": v, "names": mp if ok and new != text else {}, "source_text": text, **({"wide": True} if wide else {})}}
             C[f"v{v}_changed"] += ok and new != text
             out.append(r2)
