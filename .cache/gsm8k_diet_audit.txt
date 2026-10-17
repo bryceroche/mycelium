@@ -1,0 +1,21 @@
+GSM8K-tagged diet rows: 21250 | distinct texts 13388 | distinct GSM8K TRAIN source problems 3672 of 7473
+  EXACT-TRAIN    rows  10348 | texts   3672 | source problems  3672
+  SENT-PERM      rows      0 | texts      0 | source problems     0
+  SUBSET         rows      0 | texts      0 | source problems     0
+  OTHER          rows  10902 | texts   9716 | source problems     0
+  TEST-OVERLAP?  rows      0 | texts      0 | source problems     0
+  EXACT-TEST     rows      0 | texts      0 | source problems     0
+  by admission route:
+    OTHER          gsm8k_wild_extract:key-propagation     8532
+    EXACT-TRAIN    machine-gate-2026-09-01                6125
+    EXACT-TRAIN    gsm8k_wild_extract:key-propagation     3303
+    OTHER          admit_annotation:key+rulebook          2370
+    EXACT-TRAIN    admit_annotation:key+rulebook           920
+  e.g. OTHER: Shawn collected 120 plain pebbles. He painted 6 pebbles red and 78 pebbles blue. He then divided the remaining pebbles equally into 2 groups, and painted them p
+  e.g. OTHER: Lara bought 123 stems of flowers at the flower shop. She gave 43 flowers to her mom and gave 12 more flowers than she gave to her mom to her grandma. She put th
+  e.g. OTHER: Jerry has a bunch of half-empty soda cans on his desk. He needs to drain all of them and put them in the recycling bin. He can carry four cans at once, and it t
+  e.g. OTHER: In April, Tank gathered 11 more Easter eggs than Emma in their first round of egg hunt. However, Emma gathered twice as many eggs as Tank in their second round 
+.cache/wild_admitted_holdout.jsonl: {'EXACT-TRAIN': 302, 'OTHER': 9} | rows whose source problem is ALSO in the diet: 0/311
+.cache/silver460_test_RO.jsonl: {'EXACT-TRAIN': 460} | rows whose source problem is ALSO in the diet: 460/460
+FOLLOW-UPS (same session): the 9,716 OTHER texts = 10,902 rows are ALL number-swapped GSM8K train problems (digit-masked skeleton matches a train question; gen.resample.subs records the swap; key='solver'). Distinct GSM8K train problems covered, verbatim or swapped: 3,671 of 7,473. GSM8K test split: 0 rows. silver460 is a FIT fixture by design (training rows; all 460 verbatim in the diet, 1,071 diet rows). Wild: 0 GSM8K overlap; 1 r7 book row (6 couples handshakes, book 6 tranche 2) is verbatim in the diet.
+EXTRACTOR RE-RUN (to scratch, banked drafts untouched): 1,759 / 7,473 drafts; rejects unanchored 2,749 | bounds (>999) 1,165 | non-integer 727 | decimal-in-question 550 | expr-parse 318 | key-not-derived 104 | no-calc 86.
