@@ -1,0 +1,6 @@
+== SRK3_241 NAME-SWAP VOTE READ
+  DETERMINISM GATE (unchanged rows x views, n 812): 1.0000 -> PASS
+  INVARIANCE (changed rows x views, n 432): 0.132
+  FAC-EXACT on changed rows: original 0.3636 | views 0.3535 | change -0.0102 (2948 slot-reads)
+  WHOLE-PROBLEM on changed rows: original 20/432 per view-pair | views 17/432 | 5-read vote on 108 rows: original 5 right, vote 3 right (47 abstain)
+  VERDICT (pinned frame): NAMES MEMORIZED

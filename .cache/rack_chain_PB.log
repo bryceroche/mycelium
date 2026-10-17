@@ -1,0 +1,70 @@
+[preflight] .cache/rack_chain_PB.sh — 41 distinct inputs/outputs tracked, 1 loop-expansion(s)
+STATUS                 KIND               PATH                                                    NOTE
+exists                 gpu lock           .cache/gpu.lock                                         
+exists                 conditional        .cache/phase1_alg_states_wildPB1.npz                    already present — the || producer will not fire
+exists                 conditional        .cache/phase1_alg_states_wildPB1_states.npy             already present — the || producer will not fire
+exists                 fixture/codebook   .cache/bindbus_codes512r.npz                            
+exists                 conditional        .cache/phase1_alg_states_wildPB2.npz                    already present — the || producer will not fire
+exists                 conditional        .cache/phase1_alg_states_wildPB2_states.npy             already present — the || producer will not fire
+exists                 conditional        .cache/phase1_alg_states_wildPB3.npz                    already present — the || producer will not fire
+exists                 conditional        .cache/phase1_alg_states_wildPB3_states.npy             already present — the || producer will not fire
+exists                 conditional        .cache/phase1_alg_states_wildPB4.npz                    already present — the || producer will not fire
+exists                 conditional        .cache/phase1_alg_states_wildPB4_states.npy             already present — the || producer will not fire
+exists                 fixture/codebook   .cache/bindbus_codes512.npz                             
+exists                 fixture/codebook   .cache/polar_waist_init_d128u.npz                       
+exists                 fixture            .cache/wild_admitted_holdout.jsonl                      
+exists                 cached states      .cache/phase1_alg_states_wildholdBP.npz                 
+exists                 cached states      .cache/phase1_alg_states_wildholdBP_states.npy          
+produced-by-chain      output             .cache/dump_wildPB0_SRK3_241.pkl                        written by LV_DUMP
+exists                 checkpoint/dump    .cache/sharp_SRK3_241.safetensors                       
+produced-by-chain      output             .cache/ps_legal_wildPB0_SRK3_241.npz                    written by LV_PER_SLOT
+exists                 fixture            .cache/wild_PB_v1.jsonl                                 
+produced-by-chain      cached states      .cache/phase1_alg_states_wildPB1.npz                    written earlier in this chain
+produced-by-chain      cached states      .cache/phase1_alg_states_wildPB1_states.npy             written earlier in this chain
+produced-by-chain      output             .cache/dump_wildPB1_SRK3_241.pkl                        written by LV_DUMP
+produced-by-chain      output             .cache/ps_legal_wildPB1_SRK3_241.npz                    written by LV_PER_SLOT
+exists                 fixture            .cache/wild_PB_v2.jsonl                                 
+produced-by-chain      cached states      .cache/phase1_alg_states_wildPB2.npz                    written earlier in this chain
+produced-by-chain      cached states      .cache/phase1_alg_states_wildPB2_states.npy             written earlier in this chain
+produced-by-chain      output             .cache/dump_wildPB2_SRK3_241.pkl                        written by LV_DUMP
+produced-by-chain      output             .cache/ps_legal_wildPB2_SRK3_241.npz                    written by LV_PER_SLOT
+exists                 fixture            .cache/wild_PB_v3.jsonl                                 
+produced-by-chain      cached states      .cache/phase1_alg_states_wildPB3.npz                    written earlier in this chain
+produced-by-chain      cached states      .cache/phase1_alg_states_wildPB3_states.npy             written earlier in this chain
+produced-by-chain      output             .cache/dump_wildPB3_SRK3_241.pkl                        written by LV_DUMP
+produced-by-chain      output             .cache/ps_legal_wildPB3_SRK3_241.npz                    written by LV_PER_SLOT
+exists                 fixture            .cache/wild_PB_v4.jsonl                                 
+produced-by-chain      cached states      .cache/phase1_alg_states_wildPB4.npz                    written earlier in this chain
+produced-by-chain      cached states      .cache/phase1_alg_states_wildPB4_states.npy             written earlier in this chain
+produced-by-chain      output             .cache/dump_wildPB4_SRK3_241.pkl                        written by LV_DUMP
+produced-by-chain      output             .cache/ps_legal_wildPB4_SRK3_241.npz                    written by LV_PER_SLOT
+exists                 workdir            /home/bryce/mycelium                                    
+exists                 systemd            pc-* units                                              none failed
+exists                 gpu-lock           .cache/gpu.lock                                         
+
+[preflight] PASS — every required input accounted for
+== STAGE VIEW 1 (19:26) ==
+[precompute-bidirpad] DONE wildPB1: 311 rows in 10s; real-token cos vs banked deployed mean 0.9937 (min 0.4989)
+[pb-stage] GATE PASS wildPB1: tokmask + 26 gold arrays bit-identical to wildholdBP; stamped 2dcdc69c68c5fe5f
+== STAGE VIEW 2 (19:26) ==
+[precompute-bidirpad] DONE wildPB2: 311 rows in 10s; real-token cos vs banked deployed mean 0.9935 (min 0.5373)
+[pb-stage] GATE PASS wildPB2: tokmask + 26 gold arrays bit-identical to wildholdBP; stamped 4b04d3db4791aafa
+== STAGE VIEW 3 (19:26) ==
+[precompute-bidirpad] DONE wildPB3: 311 rows in 10s; real-token cos vs banked deployed mean 0.9934 (min 0.4751)
+[pb-stage] GATE PASS wildPB3: tokmask + 26 gold arrays bit-identical to wildholdBP; stamped 8f74eea6c4d432aa
+== STAGE VIEW 4 (19:26) ==
+[precompute-bidirpad] DONE wildPB4: 311 rows in 10s; real-token cos vs banked deployed mean 0.9938 (min 0.4818)
+[pb-stage] GATE PASS wildPB4: tokmask + 26 gold arrays bit-identical to wildholdBP; stamped 7a4d84b59588f15c
+masked wild view 0 SRK3_241: fac-exact=0.3774
+VIEW-0 GATE: PASS (0.3774 reproduced)
+masked wild view 1 SRK3_241: fac-exact=0.3720
+masked wild view 2 SRK3_241: fac-exact=0.3740
+masked wild view 3 SRK3_241: fac-exact=0.3730
+masked wild view 4 SRK3_241: fac-exact=0.3759
+== SRK3_241 NAME-SWAP VOTE READ
+  DETERMINISM GATE (unchanged rows x views, n 812): 1.0000 -> PASS
+  INVARIANCE (changed rows x views, n 432): 0.132
+  FAC-EXACT on changed rows: original 0.3636 | views 0.3535 | change -0.0102 (2948 slot-reads)
+  WHOLE-PROBLEM on changed rows: original 20/432 per view-pair | views 17/432 | 5-read vote on 108 rows: original 5 right, vote 3 right (47 abstain)
+  VERDICT (pinned frame): NAMES MEMORIZED
+PB CHAIN COMPLETE (19:38)
