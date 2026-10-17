@@ -1,0 +1,7 @@
+GSM8K diet rows 21250 | problems 3671 | HOLD 400 problems (verbatim row) | atlas rows 18970
+atlas clauses 55373 (rows skipped for non-rel/given ftypes 1340)
+query relations 1226 (skipped: no cue / unplaceable 126)
+  OP            atlas-NN 0.589 | random clause 0.504 | majority 0.495
+  ARG KINDS     atlas-NN 0.288 | random clause 0.200 | majority 0.288
+  GIVEN ARGS (1291 in 938 relations), per arg / whole relation's given set:
+    atlas-NN offsets 0.500 / 0.409 | random clause 0.361 / 0.295 | nearest-givens (count from gold) 0.562 / 0.443

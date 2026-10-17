@@ -1,0 +1,10 @@
+wild rows with a GSM8K train rationale: 302/311
+GOLD CEILING: solved 302/302 | relation steps 1001 | creditable (value in S) 0.915 | CHANCE (another row's S) 0.045 | rows with every step creditable 240/302
+
+== SRK3_241: rows 302 | unbuildable 3 | unsolved 64 | solved 235 (FINAL-RIGHT 22, FINAL-WRONG 213)
+   STEP CREDIT: all solved graphs 0.244 of 627 steps (CHANCE 0.049) | on FINAL-RIGHT 0.917 | on FINAL-WRONG 0.188 (109 creditable steps inside wrong answers)
+   BLAME on FINAL-WRONG: 0 bad steps 0.094 | ISOLATED (exactly 1) 0.202 | 2+ 0.704
+
+== ROK3_241: rows 302 | unbuildable 1 | unsolved 74 | solved 227 (FINAL-RIGHT 24, FINAL-WRONG 203)
+   STEP CREDIT: all solved graphs 0.251 of 565 steps (CHANCE 0.041) | on FINAL-RIGHT 0.918 | on FINAL-WRONG 0.188 (97 creditable steps inside wrong answers)
+   BLAME on FINAL-WRONG: 0 bad steps 0.118 | ISOLATED (exactly 1) 0.222 | 2+ 0.660
