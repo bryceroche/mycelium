@@ -1,0 +1,2 @@
+== SRK3_241: per-arg hit by kind | GIVEN 0.571 (n 1062) | PRODUCED 0.368 (n 435) | SEEN-ARG 0.407 (n 162) | FIRST-HERE 0.389 (n 373)
+== ROK3_241: per-arg hit by kind | GIVEN 0.462 (n 1062) | PRODUCED 0.274 (n 435) | SEEN-ARG 0.290 (n 162) | FIRST-HERE 0.367 (n 373)
