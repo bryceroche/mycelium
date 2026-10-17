@@ -67,7 +67,12 @@ def row_gold(row):
     """
     if not is_pen_row(row):
         return row["solution"][row["query_var"]]
-    key = row["text"].strip()
+    # THE PHOTOBOOTH CLAUSE (2026-10-16, ledger 'THE NAME-SWAP VOTE READ'): a photobooth view
+    # (scripts/photobooth.py) is a name-only, ANSWER-PRESERVING transform of a harvested source problem
+    # (its honesty check re-solves the untouched gold graph to the source key on every view). Its gold is
+    # the HARVEST answer of the SOURCE text -- still an answer no pen can touch; the view's own solution
+    # field is never read. Only photobooth.py writes gen.photobooth.source_text.
+    key = ((row.get("gen") or {}).get("photobooth") or {}).get("source_text", row["text"]).strip()
     hb = _load_harvest()
     if key not in hb:
         raise KeyError(

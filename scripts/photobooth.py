@@ -82,7 +82,7 @@ def main(src, prefix, K):
                 a2, _ = _solve(r2)
                 if a2 != key:
                     ok = False; C["FAIL_solve"] += 1; r2["text"] = text
-            r2["gen"] = {**(r.get("gen") or {}), "photobooth": {"view": v, "names": mp if ok and new != text else {}}}
+            r2["gen"] = {**(r.get("gen") or {}), "photobooth": {"view": v, "names": mp if ok and new != text else {}, "source_text": text}}
             C[f"v{v}_changed"] += ok and new != text
             out.append(r2)
         with open(f"{prefix}_v{v}.jsonl", "w") as fh:
