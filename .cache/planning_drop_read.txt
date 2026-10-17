@@ -1,0 +1,26 @@
+== A. THE BACKWARD-UNKNOWN CENSUS (wild gold, derivation order; .cache/wild_admitted_holdout.jsonl)
+  1042 relations, 2084 argument lookups, 311 rows
+    GIVEN        1096  0.526
+    PRODUCED      455  0.218
+    SEEN-ARG      158  0.076
+    FIRST-HERE    375  0.180
+  THE THIRD KIND (SEEN-ARG + FIRST-HERE): 0.256 of lookups; rows needing it 227/311 = 0.730
+  relation RESULTS: NEW 669 | CLOSES (constraint on a known var) 373 (0.358)
+  by ftype: rel:FIRST-HERE 375 | rel:GIVEN 1096 | rel:PRODUCED 455 | rel:SEEN-ARG 158
+
+== B. THE LAYOUT COST (wild; matched per-field verdicts by the change in arg slot distance, old frame -> RO)
+  rows skipped (relation lists differ between frames): 0
+  dist change      n |      exact S->R |       args S->R |        res S->R
+  closer         172 | 0.169->0.105 (-0.064) | 0.192->0.122 (-0.070) | 0.442->0.395 (-0.047)
+  same           339 | 0.195->0.165 (-0.029) | 0.271->0.221 (-0.050) | 0.463->0.469 (+0.006)
+  +0.5..2        473 | 0.262->0.148 (-0.114) | 0.336->0.192 (-0.144) | 0.641->0.611 (-0.030)
+  +>2             58 | 0.241->0.155 (-0.086) | 0.276->0.190 (-0.086) | 0.776->0.741 (-0.034)
+
+== C. MINT BY INTERLEAVING DEPTH (positional, same frame, paired SRK3_241 -> ROK3_241, relation slots)
+  depth  rows   rel |         all slots S->R |              rel exact |                   args |                    res
+  0         7    17 | 0.912->0.882 (-0.029) | 0.882->0.765 (-0.118) | 0.882->0.765 (-0.118) | 0.941->0.882 (-0.059)
+  1        14    44 | 0.909->0.898 (-0.011) | 0.864->0.841 (-0.023) | 0.886->0.864 (-0.023) | 0.977->0.886 (-0.091)
+  2+      279  1773 | 0.797->0.741 (-0.056) | 0.748->0.692 (-0.056) | 0.770->0.711 (-0.059) | 0.903->0.856 (-0.047)
+
+== C2. MINT by FRACTION of givens placed after the first relation (quartiles; relation exact S->R)
+  q0 rel 24: 0.750->0.625 (-0.125) | q1 rel 55: 0.800->0.764 (-0.036) | q2 rel 284: 0.750->0.711 (-0.039) | q3 rel 1471: 0.751->0.692 (-0.058)
