@@ -80,9 +80,20 @@ def gaps_of(i, nt):
     return out
 
 
+# RESUMABLE (2026-10-18: the first run was OOM-killed at row ~175 by the VN chain's peak; the pick and DIR are seeded, so a
+# row's record is a pure function of n -- the partial file carries rows < n_done, rows >= n_done are recomputed)
+PART = ".cache/impulse_boundary_read.partial.npz"
 rec = {"dev": [], "test": []}
-cosg = []
+cosg, n_done = [], 0
+if os.path.exists(PART):
+    z = np.load(PART)
+    assert z["pick"].tolist() == pick, "partial file is from a different pick"
+    rec = {"dev": [tuple(r) for r in z["dev"]], "test": [tuple(r) for r in z["test"]]}
+    cosg, n_done = z["cosg"].tolist(), int(z["n_done"])
+    print(f"  RESUME from row {n_done}/{N}", flush=True)
 for n, i in enumerate(pick):
+    if n < n_done:
+        continue
     nt = int(mask[i].sum())
     G = gaps_of(i, nt)
     ts = sorted({g[0] for g in G})
@@ -108,6 +119,10 @@ for n, i in enumerate(pick):
         rec["dev" if n < N // 2 else "test"].append((lab, *sc, float(np.mean(sc)), pc))
     if n % 25 == 0:
         print(f"  row {n}/{N} gaps {len(G)} gate cos {np.mean(cosg):.5f}", flush=True)
+    if n % 5 == 4:
+        np.savez(PART + ".tmp.npz", pick=np.array(pick), n_done=n + 1, cosg=np.array(cosg),
+                 dev=np.array(rec["dev"]).reshape(-1, 7), test=np.array(rec["test"]).reshape(-1, 7))
+        os.replace(PART + ".tmp.npz", PART)
 g = float(np.mean(cosg))
 say(f"GATE: unperturbed CPU BP trunk vs banked realBP states, mean cos {g:.5f} (min row {min(cosg):.5f}) -> {'PASS' if g >= 0.999 else 'VOID'}")
 names = ["L0", "L1", "L2", "L3", "mean"]
