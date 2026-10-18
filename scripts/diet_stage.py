@@ -25,6 +25,9 @@ for sp in specs:
     idx = np.load(f[2]) if len(f) > 2 else np.arange(n_src)
     if "mix_sha" in z.files:
         assert str(z["mix_sha"]) == mix_sha16(src), f"{split} is not staged from {src}"
+    else:  # an unstamped part is only admitted by name (the TEXT gate below still binds its rows)
+        assert split in os.environ.get("DIET_STAGE_UNSTAMPED", "").split(","), \
+            f"{split} carries no mix_sha stamp; admit it explicitly with DIET_STAGE_UNSTAMPED={split}"
     parts.append((split, src, idx, z))
 keys = sorted(k for k in parts[0][3].files if k.startswith("g_"))
 for p in parts:

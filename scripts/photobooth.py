@@ -9,8 +9,8 @@ THE HONESTY CHECK (a lying generator teaches lying): per view, (1) the numeral m
            and sentence indices are unchanged); (4) no fresh name collides with a word already in the text.
            Any failure -> the view keeps the ORIGINAL text for that row and is counted (never a silent pass).
 PB_WIDE=1 (2026-10-17, the training augmentation; default OFF so the banked wild views regenerate unchanged): wider name
-           lists (EXTRA_M / EXTRA_F) and a name outside every list takes its gender from the text's PRONOUNS (only he/him/his
-           -> M; only she/her -> F; no gendered pronoun at all -> either pool, nothing to keep consistent; both -> kept).
+           lists (EXTRA_M / EXTRA_F, + the NLTK gazetteer .cache/names_gazetteer.json); a name outside every list is KEPT (the 10-17 pronoun inference renamed spaCy false
+           positives -- 'Doritos' -> Takeshi -- and was removed 10-18 after the audit). Names never match inside a hyphenated token.
            Titles (Mr, Mrs, Dr, ...) and any name that follows a title (a surname: 'Mrs. Hilt') are never swapped. The honesty check is unchanged.
 usage: photobooth.py IN.jsonl OUT_PREFIX K  ->  OUT_PREFIX_v{1..K}.jsonl + OUT_PREFIX.census.json"""
 import collections, json, os, random, re, sys
@@ -60,7 +60,7 @@ def substitute(text, mp):
     (len(text)+1 entries; inside a renamed name, the start maps to the new start and the end to the new end)."""
     if not mp:
         return text, None
-    pat = re.compile(r"\b(" + "|".join(re.escape(n) for n in sorted(mp, key=len, reverse=True)) + r")\b")
+    pat = re.compile(r"(?<![\w-])(" + "|".join(re.escape(n) for n in sorted(mp, key=len, reverse=True)) + r")(?![\w-])")  # hyphen-aware: never half of 'Jo-Bob'
     out, pmap, last = [], [], 0
     for m in pat.finditer(text):
         a, b = m.span(); rep = mp[m.group(1)]
@@ -94,6 +94,10 @@ def main(src, prefix, K):
     nlp = spacy.load("en_core_web_sm")
     wide = os.environ.get("PB_WIDE") == "1"
     male, female = (MALE + EXTRA_M, FEMALE + EXTRA_F) if wide else (MALE, FEMALE)
+    if wide:  # (2026-10-18) + the NLTK first-name gazetteer (scripts/build_names_gazetteer.py); the hand lists win a conflict
+        gz = json.load(open(".cache/names_gazetteer.json"))
+        hand = set(male) | set(female)
+        male, female = male + [n for n in gz["M"] if n not in hand], female + [n for n in gz["F"] if n not in hand]
     from reading_order import _solve
     rows = [json.loads(l) for l in open(src)]
     docs = list(nlp.pipe([r["text"] for r in rows]))
@@ -116,17 +120,14 @@ def main(src, prefix, K):
             words = set(re.findall(r"[A-Za-z]+", text))
             mp = {}
             low = set(w.lower() for w in words)
-            pm, pf = bool(low & {"he", "him", "his", "himself"}), bool(low & {"she", "her", "hers", "herself"})
             for n in names:
                 if wide and n in TITLES:
                     C["name_title_kept"] += 1; continue
-                if wide and re.search(rf"\b(?:{'|'.join(TITLES)})\.? {n}\b", text):
+                if wide and re.search(rf"\b(?:{'|'.join(TITLES)})\.?\s+{n}\b", text):
                     C["name_surname_after_title_kept"] += 1; continue
                 g = gender.get(n)
-                if g is None and wide:
-                    g = "M" if (pm and not pf) else "F" if (pf and not pm) else "N" if not (pm or pf) else None
-                    if g is not None:
-                        C[f"name_gender_inferred_{g}"] += 1
+                # (2026-10-18, the audit) NO pronoun-inferred gender: spaCy PERSON false positives ('Doritos', 'Bronze
+                # Status', 'Seattle Seahawks') took a gender from the text and were renamed. Only LISTED names swap.
                 if g is None:
                     C["name_unknown_gender_kept"] += 1; continue
                 pool = pools["M"][sig(n)] + pools["F"][sig(n)] if g == "N" else pools[g][sig(n)]
