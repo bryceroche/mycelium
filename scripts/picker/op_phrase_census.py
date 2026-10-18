@@ -6,7 +6,7 @@ QUESTION, and both sit in ONE question sentence, the sentence is that step's wor
   BETWEEN   the lemmas strictly between the two operand mentions (the tightest context)
 Reported: coverage (steps anchored / all single-op steps), per-op distinct phrasings, and THE AMBIGUITY TABLE: for each
 frequent cue lemma, its op distribution and op-entropy -- a rule table 'word -> op' is only as good as this table says.
-Out: .cache/op_phrase_census.txt + .cache/op_phrase_table.json (lemma -> op counts, both views)."""
+Out (v2, 2026-10-18): .cache/op_phrase_census_v2.txt + .cache/op_phrase_table_v2.json (v1 banked unchanged) (lemma -> op counts, both views)."""
 import collections, glob, json, math, re
 import pyarrow.parquet as pq
 import spacy
@@ -59,7 +59,11 @@ for q, a, d in zip(T["question"], T["answer"], docs):
         sent, lx, ly = best
         C["anchored"] += 1; C["anchored_" + OPN[op]] += 1
         lo, hi = sorted([lx[1], ly[0]]) if lx[0] < ly[0] else sorted([ly[1], lx[0]])
-        keep = lambda t: t.is_alpha and not t.is_stop and t.ent_type_ not in ("PERSON", "CARDINAL", "MONEY") and len(t) > 1
+        # v2 (2026-10-18, the audit): spaCy's stopword list holds the cue words ('each', 'per', 'every', 'more', 'less',
+        # 'give'), so the filter is by part of speech: drop determiners, pronouns, auxiliaries, conjunctions, punctuation
+        keep = lambda t: t.is_alpha and t.lower_ in ("each", "every", "per", "more", "less", "all", "both", "half") or t.is_alpha and t.pos_ not in ("DET", "PRON", "AUX", "CCONJ", "SCONJ", "PUNCT", "PART") \
+            and t.lemma_.lower() not in ("be", "have", "of", "to", "in", "on", "at", "with") \
+            and t.ent_type_ not in ("PERSON", "CARDINAL", "MONEY") and len(t) > 1
         sl = sorted({t.lemma_.lower() for t in sent if keep(t)})
         bl = [t.lemma_.lower() for t in sent if keep(t) and lo <= t.idx < hi]
         for w in sl: SENT[w][OPN[op]] += 1
@@ -86,5 +90,5 @@ for w in ("receive", "give", "more", "less", "each", "per", "total", "leave", "s
         c = tab.get(w)
         if c:
             n = sum(c.values()); say(f"  WATCH {w:8s} ({name:8s}) n {n:5d} | " + " ".join(f"{o} {c[o] / n:.2f}" for o in ("add", "sub", "mul", "div")))
-open(".cache/op_phrase_census.txt", "w").write("\n".join(OUT) + "\n")
-json.dump({"between": {w: dict(c) for w, c in BETW.items()}, "sentence": {w: dict(c) for w, c in SENT.items()}}, open(".cache/op_phrase_table.json", "w"))
+open(".cache/op_phrase_census_v2.txt", "w").write("\n".join(OUT) + "\n")
+json.dump({"between": {w: dict(c) for w, c in BETW.items()}, "sentence": {w: dict(c) for w, c in SENT.items()}}, open(".cache/op_phrase_table_v2.json", "w"))

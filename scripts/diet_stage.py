@@ -43,6 +43,12 @@ for split, src, idx, z in parts:
         assert rows[k0 + j]["text"] == st[i], f"TEXT GATE FAIL: out row {k0 + j} != {split} row {i}"
     k0 += len(idx)
 print(f"[diet-stage] TEXT gate PASS: {N} rows from {[(p[0], len(p[2])) for p in parts]}", flush=True)
+# THE SIBLING FENCE (2026-10-18): no training text within 0.90 similarity of a MATH-500 problem (mycelium/sibling_fence.py)
+from mycelium.sibling_fence import siblings  # noqa: E402
+sib = siblings([r["text"] for r in rows])
+assert not sib, (f"SIBLING FENCE: {len(sib)} rows are MATH-500 template siblings (e.g. row {sib[0][0]} ~ MATH-500 #{sib[0][2]} "
+                 f"at {sib[0][1]:.3f}); drop them from {out_jsonl}")
+print("[diet-stage] SIBLING FENCE PASS", flush=True)
 cat = lambda k: np.concatenate([p[3][k][p[2]] for p in parts])
 # TOKMASK + SENT
 s1, _, m1, o1 = PH.tokenize(out_jsonl)

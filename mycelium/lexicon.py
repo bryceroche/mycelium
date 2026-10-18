@@ -29,10 +29,13 @@ MUL_ENTRIES = {"twice": 2, "double": 2, "doubled": 2, "triple": 3, "tripled": 3,
 # admitted only when the rationale NEEDS that value and a trigger is in the text (a given with the word's span).
 UNIT_ENTRIES = {100: ["%", "percent"], 60: ["hour", "hours", "minute", "minutes"], 7: ["week", "weeks", "weekly"], 24: ["day", "days", "daily"],
                 12: ["year", "years", "month", "months", "dozen"], 365: ["year", "years"], 52: ["year", "years"], 30: ["month", "months"], 31: ["month"],
-                1000: ["kilogram", "kilograms", "kg", "km", "kilometer", "kilometers", "liter", "liters", "thousand"], 16: ["pound", "pounds"], 3: ["yard", "yards", "third"],
+                1000: ["kilogram", "kilograms", "kg", "km", "kilometer", "kilometers", "liter", "liters", "thousand", "gram", "grams", "ml", "milliliter", "milliliters"], 16: ["pound", "pounds", "ounce", "ounces"], 3: ["yard", "yards", "third"],
                 2: ["twice", "double", "doubled", "half", "pair", "couple", "both"], 4: ["quarter", "quarters", "quadruple"], 10: ["decade", "dime", "dimes"], 5: ["nickel", "nickels"], 25: ["quarter", "quarters"],
                 3600: ["hour", "hours"], 1440: ["day", "days"], 20: ["score"], 6: ["half a dozen"], 8: ["byte", "octet"], 1: ["a", "an", "one", "single", "each"]}
-VERSION = "lexicon_v3"
+# lexicon_v4 (2026-10-18, the R1 prime table): 16 <- ounce and 1000 <- gram / ml / milliliter, the two rows the mined
+# hidden-constant table found that v3 lacked. The coin fractions (0.1 / 0.25 / 0.05) are NOT admitted: givens are integer
+# digits (<= 999), so a fractional constant is unrepresentable; artifacts built before today were built under v3.
+VERSION = "lexicon_v4"
 
 def constants(text):
     """every value the text states without a numeral: [(start, end, value)] — table entries (a dozen, twice),
