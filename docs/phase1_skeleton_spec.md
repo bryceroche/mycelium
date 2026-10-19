@@ -51863,3 +51863,8 @@ A 4th register holds a checksum digit k = (a + 7b + 13c) mod 64; the same tree a
 - BAR: **STRUCTURE GENERALIZES** (scoped to this toy) = BOTH complex arms ≥ A4 + 0.05 on held-out at the floor cell AND each arm's gap widens by ≥ +0.03 from f=0.2 to the floor. **DEAD** = both complex arms ≤ A4 + 0.01 at the floor. Between = WEAK.
 - REPORTED: hops 2 / 3 and val per cell; whether the 48-attribute f=0.1 gap reproduces rung 0's sign.
 - A note on the claim's wording (Bryce: 'this completely validates the cross-join theory'): rung 0 was WEAK, and the real twin did not collapse at low coverage (A4 0.761 at f=0.1). This run tests whether the gap WIDENS; the cross-join reading earns its claim only if this bar is met.
+
+### 2026-10-19 (15:12) — REGISTERED: THE WIDTH CONTROL (Fable's catch; scripts/toys/complex_width_ctrl.py; CPU, alongside rung 0b on the other 8 cores)
+- THE CONFOUND: at matched parameters the complex arms carry a WIDER stream (48 planes = 96 reals vs A4's 64). Rung 0's gain could be EQUIVARIANCE (Opus's framing: weights that respect per-plane rotation) or simply WIDTH per parameter.
+- ARM: A_wide = A4 at D = 96, unconstrained (about 2x the parameters). Rung 0b's 48-attribute data, byte-identical; cells f = 0.2 and the floor 0.0368; 3 seeds.
+- BARS (at the floor, against rung 0b's C_split, the best complex arm in rung 0): **WIDTH EXPLAINS IT** = A_wide ≥ C_split − 0.01. **THE CONSTRAINT EARNS IT** = C_split ≥ A_wide + 0.03 (the constrained net wins at about half the parameters). Between = MIXED. Read only if rung 0b's complex arms beat A4 (otherwise reported, with no attribution).
