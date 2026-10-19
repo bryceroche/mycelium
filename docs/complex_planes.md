@@ -109,6 +109,11 @@ the f = 0.1 floor) and lived at two hops. The bet, restated (Opus): **weights co
 in flight: rung 0b (does the gap widen down to the 3.7% floor?) and the width control (at matched parameters the
 complex arms are 1.5x WIDER: is it equivariance or width?).
 
+**Both landed (ledger 16:31).** Rung 0b WEAK: at the floor C_split +0.054 and C_clean +0.041 over A4 (A4 loses 0.043
+from f = 0.2 to the floor; C_split loses nothing). The width control: **WIDTH EXPLAINS IT** — A4 at width 96 (2.14x the
+parameters) holds the floor at 0.906 vs C_split's 0.914 (bar 0.904; margin 0.002). The complex layer's measured gift is
+WIDTH AT HALF THE PARAMETERS, a useful weight structure; equivariance and phase algebra are not attributed.
+
 ## 7. Rung 0.5: the organs, one ablation each (design; bars are pinned when 0b and the width control land, because
 ## they decide the base arm: C_split if the constraint earns it, A_wide if width explains it)
 
