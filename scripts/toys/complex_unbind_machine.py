@@ -21,6 +21,7 @@ ARMS (W_q / W_k initialized to the identity in every machine):
              random orthogonal start): the full-unitary cousin of the phasor (added 10-20 on Opus's reading)
   T6_width   plain transformer, 6 layers (registration 10-20; 4 was too shallow for hop 3), D = 192, pointer readout
   T6_params  the same at the width closest to PH_learn's parameter count
+  T6_fnet    T6_width with attention replaced by FNet Fourier mixing (no content-dependent routing); context arm
   TL_params  LOOPED plain: ONE shared block applied 6 times, at PH_learn's parameter count (the iteration control)
 PAIRS: PH_oracle vs PH_learn = can writing be learned? | PH_learn vs MX_learn = do PHASES beat learned binding? (the
 phase claim) | best machine vs best T4 = does explicit structure beat none? (context: the machines are handed structure)
@@ -124,6 +125,22 @@ class Machine(nn.Module):
 def nparams(m): return sum(p.numel() for p in m.parameters() if p.requires_grad)
 
 
+class FLayer(T.RLayer):
+    """FNet block (Lee-Thorp et al. 2021): token mixing = Re(FFT over the sequence of FFT over the hidden dim), no
+    parameters, no content-dependence; then v1's SwiGLU MLP. (The k-space token mixer, as a context arm, 10-20.)"""
+    def forward(self, x):
+        x = x + torch.fft.fft(torch.fft.fft(self.ln1(x).to(torch.complex64), dim=-1), dim=-2).real
+        h = self.ln2(x)
+        return x + self.w2(F.silu(self.w1(h)) * self.w3(h))
+
+
+def fnet(D, seed):
+    net = T.RNet(D, False, seed); net.layers = torch.nn.ModuleList([FLayer(D) for _ in range(T.N_LAYERS)])
+    for L in net.layers:                                                     # FNet has no attention weights
+        del L.wq, L.wk, L.wv, L.wo
+    return net
+
+
 def looped(D, seed):
     """TL: ONE shared real block applied T.N_LAYERS times (the iteration control, Opus 10-20)."""
     net = T.RNet(D, False, seed); net.layers = nn.ModuleList([net.layers[0]] * T.N_LAYERS)
@@ -137,6 +154,8 @@ def t4_params_width():
 
 
 def build(arm, seed, Dp):
+    if arm == "T6_fnet":
+        return fnet(DR, seed)
     if arm.startswith("TL"):
         return looped(Dp["L"], seed)
     if arm.startswith("T"):
@@ -223,7 +242,7 @@ if __name__ == "__main__":
              "THE PHASE FORM LOSES" if O >= P + 0.02 else "WEAK (between the bars)")
         say(f"VERDICT (pinned 10-20): {v}")
         say(f"WRITING IS LEARNABLE (PH_learn >= PH_oracle - 0.03): {P >= h23('PH_oracle') - 0.03}")
-    for c in ("T6_width", "T6_params", "TL_params"):
+    for c in ("T6_width", "T6_params", "TL_params", "T6_fnet"):
         if c in A and "PH_learn" in A:
             say(f"CONTEXT {c}: hops 2-3 {h23(c):.4f} hop 3 {h3(c):.4f} vs PH_learn {h23('PH_learn'):.4f} / {h3('PH_learn'):.4f}")
     if mode == "feas":
