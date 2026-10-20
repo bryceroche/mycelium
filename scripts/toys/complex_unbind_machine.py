@@ -25,6 +25,12 @@ ARMS (W_q / W_k initialized to the identity in every machine):
   TL_params  LOOPED plain: ONE shared block applied 6 times, at PH_learn's parameter count (the iteration control)
 PAIRS: PH_oracle vs PH_learn = can writing be learned? | PH_learn vs MX_learn = do PHASES beat learned binding? (the
 phase claim) | best machine vs best T4 = does explicit structure beat none? (context: the machines are handed structure)
+DEPTH GENERALIZATION (10-20, Bryce's word on Opus's step 1): UT_MAXHOP=5 widens the query to 5 role slots; training
+  stays on chains of 1-3, and two extra eval sets (val_ext / heldout_ext, chains of 4..5) are read. Arm TL_hop = the
+  looped plain net given the SAME per-hop interface as the machines (one shared block, 2 applications per hop, the hop's
+  role alias added to the query token at that hop, readout after hop d) -- the only plain arm that can represent hop 5
+  (T6_* and TL_params read hop slots 4-5 through embedding rows that training never touches). UM_SAVE=1 saves each
+  seed's state_dict; UM_LR_FROM=<banked json> reuses the banked arms' swept lr (arms not in it are swept).
 Usage: .venv/bin/python3 scripts/toys/complex_unbind_machine.py [--feas | --smoke] -> .cache/complex_unbind_machine{tag}.*
 """
 import json, math, os, sys, time
@@ -43,16 +49,18 @@ STEPS = 300 if mode == "smoke" else int(os.environ.get("UM_STEPS", "4000"))
 SEEDS = [0] if mode != "full" else [0, 1, 2]
 ARMS = os.environ.get("UM_ARMS", "PH_oracle,PH_learn,MX_learn,MX_orth,T6_width,T6_params,TL_params").split(",")
 T.N_LAYERS = int(os.environ.get("UM_PLAIN_LAYERS", "6"))                   # the plain arms' depth (10-20 registration: 6)
+H = T.MAX_HOP                                                                # query slots (3; 5 for the depth read)
+HOPS = list(range(1, H + 1))
 
 
 def gold_nodes(facts, query):
-    """The chain's owner node at each hop (B, 3), from the facts themselves."""
+    """The chain's owner node at each hop (B, H), from the facts themselves."""
     cur = query[:, 0].clone(); nodes = []
-    for h in range(3):
+    for h in range(H):
         nodes.append(cur.clone())
         hit = (facts[..., 0] == cur[:, None]) & (facts[..., 1] // T.N_ALIAS_PER == (query[:, 1 + h] // T.N_ALIAS_PER)[:, None])
         nxt = (hit.long() * facts[..., 2]).sum(1)
-        cur = torch.where(hit.any(1) & (query[:, 4] > h), nxt, cur)
+        cur = torch.where(hit.any(1) & (query[:, H + 1] > h), nxt, cur)
     return torch.stack(nodes, 1)
 
 
@@ -111,14 +119,14 @@ class Machine(nn.Module):
         scene = F.one_hot(facts[..., 0], T.N_ENT).amax(1).bool()
         p = E[query[:, 0]]; atts, outs = [], []
         kx = self.lin(self.wk, mem)
-        for h in range(3):
+        for h in range(H):
             s = torch.einsum("bd,btd->bt", self.lin(self.wq, p), kx) / math.sqrt(self.n) * self.log_tau.exp()
             a = F.softmax(s, -1); atts.append(a)
             u = self.bind(torch.einsum("bt,btd->bd", a, mem), query[:, 1 + h], inverse=True)
             cos = F.normalize(u, dim=-1) @ F.normalize(E, dim=-1).T
             lg = (self.log_beta.exp() * cos).masked_fill(~scene, -1e4); outs.append(lg)
             p = F.softmax(lg, -1) @ E
-        lg = torch.stack(outs, 1)[torch.arange(len(query)), query[:, 4] - 1]
+        lg = torch.stack(outs, 1)[torch.arange(len(query)), query[:, H + 1] - 1]
         return lg, torch.stack(atts, 1)
 
 
@@ -147,15 +155,40 @@ def looped(D, seed):
     return net
 
 
+class TLHop(nn.Module):
+    """TL_hop: the looped plain net with the machines' per-hop interface (10-20). Fact tokens own(o) + alias(a) + fil(f);
+    query token own(X); at hop h the hop's alias embedding is added to the query token, then ONE shared block is applied
+    twice; pointer readout after every hop over the scene (own table), the answer read after hop d. No hop index enters
+    anywhere, so hop 5 is representable. No owner-attention supervision (as every plain arm)."""
+    def __init__(self, D, seed):
+        super().__init__(); torch.manual_seed(seed)
+        self.block = T.RLayer(D); self.own, self.fil = nn.Embedding(T.N_ENT, D), nn.Embedding(T.N_ENT, D)
+        self.alias, self.hop = nn.Embedding(T.N_ALIAS + 1, D), nn.Embedding(T.N_ALIAS + 1, D)
+        self.lnf, self.out = nn.LayerNorm(D), nn.Linear(D, D)
+
+    def forward(self, facts, query):
+        x = torch.cat([self.own(facts[..., 0]) + self.alias(facts[..., 1]) + self.fil(facts[..., 2]),
+                       self.own(query[:, 0])[:, None]], 1)
+        outs = []
+        for h in range(H):
+            x = torch.cat([x[:, :-1], (x[:, -1] + self.hop(query[:, 1 + h]))[:, None]], 1)
+            x = self.block(self.block(x))
+            outs.append(T.scene_mask(self.out(self.lnf(x[:, -1])) @ self.own.weight.T, facts))
+        return torch.stack(outs, 1)[torch.arange(len(query)), query[:, H + 1] - 1]
+
+
 def t4_params_width():
     target = nparams(Machine("PH_learn", 0))
     return {"T": min(range(16, 260, 4), key=lambda D: abs(nparams(T.RNet(D, False, 0)) - target)),
-            "L": min(range(16, 400, 4), key=lambda D: abs(nparams(looped(D, 0)) - target))}
+            "L": min(range(16, 400, 4), key=lambda D: abs(nparams(looped(D, 0)) - target)),
+            "H": min(range(16, 400, 4), key=lambda D: abs(nparams(TLHop(D, 0)) - target))}
 
 
 def build(arm, seed, Dp):
     if arm == "T6_fnet":
         return fnet(DR, seed)
+    if arm == "TL_hop":
+        return TLHop(Dp["H"], seed)
     if arm.startswith("TL"):
         return looped(Dp["L"], seed)
     if arm.startswith("T"):
@@ -163,10 +196,16 @@ def build(arm, seed, Dp):
     return Machine(arm, seed)
 
 
+SAVE = None                                                                  # set in main when UM_SAVE=1
+
+
 def run(arm, seed, lr, Dp):
     torch.manual_seed(seed); rng = np.random.default_rng(seed); held = T.held_table(seed)
     erng = np.random.default_rng(10_000 + seed)
     ev = {"val": T.make_batch(T.N_EVAL, held, False, erng), "heldout": T.make_batch(T.N_EVAL, held, True, erng)}
+    if H > 3:                                                                 # chains longer than training saw (own stream)
+        xrng = np.random.default_rng(20_000 + seed)
+        ev.update(val_ext=T.make_batch(T.N_EVAL, held, False, xrng, 4, H), heldout_ext=T.make_batch(T.N_EVAL, held, True, xrng, 4, H))
     net = build(arm, seed, Dp); mach = isinstance(net, Machine)
     opt = torch.optim.AdamW([p for p in net.parameters() if p.requires_grad], lr=lr, weight_decay=0.01)
     sched = torch.optim.lr_scheduler.OneCycleLR(opt, max_lr=lr, total_steps=STEPS, pct_start=0.1)
@@ -175,7 +214,7 @@ def run(arm, seed, lr, Dp):
         if mach:
             lg, att = net(fa, q); loss = F.cross_entropy(lg, t)
             nodes = gold_nodes(fa, q); own = fa[:, None, :, 0] == nodes[:, :, None]           # (B, 3, T)
-            live = (q[:, 4, None] > torch.arange(3)[None]).float()
+            live = (q[:, H + 1, None] > torch.arange(H)[None]).float()
             la = -torch.log((att * own).sum(-1) + 1e-6)
             loss = loss + ATT_W * (la * live).sum() / live.sum()
         else:
@@ -186,13 +225,16 @@ def run(arm, seed, lr, Dp):
         for split, (fa, q, t) in ev.items():
             out = net(fa, q); pr = (out[0] if mach else out).argmax(-1)
             res[split] = float((pr == t).float().mean())
-            for d in (1, 2, 3):
-                m = q[:, 4] == d; res[f"{split}_hop{d}"] = float((pr[m] == t[m]).float().mean())
+            for d in HOPS:
+                m = q[:, H + 1] == d
+                if m.any(): res[f"{split.replace('_ext', '')}_hop{d}"] = float((pr[m] == t[m]).float().mean())
             if mach:
                 nodes = gold_nodes(fa, q); own = fa[:, None, :, 0] == nodes[:, :, None]
-                live = q[:, 4, None] > torch.arange(3)[None]
+                live = q[:, H + 1, None] > torch.arange(H)[None]
                 res[f"{split}_attmass"] = float((out[1] * own).sum(-1)[live].mean())
     res["params"] = nparams(net); res["final_loss"] = float(loss.detach())
+    if SAVE is not None:
+        torch.save(net.state_dict(), f"{SAVE}_{arm}_s{seed}.pt")
     if mach: res["beta"] = float(net.log_beta.detach().exp())
     return res
 
@@ -211,12 +253,17 @@ if __name__ == "__main__":
     say(f"mode {mode} steps {STEPS} ATT_W {ATT_W}; plain layers {T.N_LAYERS}; params-matched widths {Dp}; trainable params: " +
         ", ".join(f"{a} {nparams(build(a, 0, Dp))}" for a in ARMS))
     lrs = {}
+    banked = ({r["arm"]: r["lr"] for r in json.load(open(os.environ["UM_LR_FROM"]))} if os.environ.get("UM_LR_FROM") else {})
     for arm in ARMS:
-        if mode == "full":
+        if arm in banked:
+            lrs[arm] = banked[arm]; say(f"lr {arm}: {lrs[arm]} (banked, {os.environ['UM_LR_FROM']})")
+        elif mode == "full":
             sc = {lr: run(arm, 0, lr, Dp)["val"] for lr in (1e-3, 3e-3)}
             lrs[arm] = max(sc, key=sc.get); say(f"lr sweep {arm}: {sc} -> {lrs[arm]}  [{time.time() - t0:.0f}s]")
         else:
             lrs[arm] = 3e-3
+    if os.environ.get("UM_SAVE") == "1":
+        SAVE = f".cache/complex_unbind_machine{tag}"
     for arm in ARMS:
         rs = [run(arm, s, lrs[arm], Dp) for s in SEEDS]
         agg = {k: float(np.mean([r[k] for r in rs])) for k in rs[0]}
@@ -224,9 +271,9 @@ if __name__ == "__main__":
         res.append(dict(arm=arm, lr=lrs[arm], seeds=rs, agg=agg, sd=sd))
         extra = (f"  attmass val {agg['val_attmass']:.3f} held {agg['heldout_attmass']:.3f}  beta {agg['beta']:.2f}"
                  if "beta" in agg else "")
+        hs = lambda sp: " ".join(f"h{d} {agg[f'{sp}_hop{d}']:.3f}" for d in HOPS)
         say(f"{arm:<10} params {rs[0]['params']:>7}  loss {agg['final_loss']:.3f}  val {agg['val']:.3f} "
-            f"(h1 {agg['val_hop1']:.3f} h2 {agg['val_hop2']:.3f} h3 {agg['val_hop3']:.3f})  HELDOUT {agg['heldout']:.3f}±{sd:.3f} "
-            f"(h1 {agg['heldout_hop1']:.3f} h2 {agg['heldout_hop2']:.3f} h3 {agg['heldout_hop3']:.3f}){extra}  [{time.time() - t0:.0f}s]")
+            f"({hs('val')})  HELDOUT {agg['heldout']:.3f}±{sd:.3f} ({hs('heldout')}){extra}  [{time.time() - t0:.0f}s]")
     json.dump(res, open(f".cache/complex_unbind_machine{tag}.json", "w"), indent=1)
     A = {r["arm"]: r["agg"] for r in res}
     h23 = lambda a: (A[a]["heldout_hop2"] + A[a]["heldout_hop3"]) / 2
@@ -245,6 +292,24 @@ if __name__ == "__main__":
     for c in ("T6_width", "T6_params", "TL_params", "T6_fnet"):
         if c in A and "PH_learn" in A:
             say(f"CONTEXT {c}: hops 2-3 {h23(c):.4f} hop 3 {h3(c):.4f} vs PH_learn {h23('PH_learn'):.4f} / {h3('PH_learn'):.4f}")
+    if H > 3 and all(a in A for a in ("PH_learn", "TL_hop")):          # THE DEPTH READ (bars pinned 10-20, ledger)
+        h45 = lambda a: (A[a]["heldout_hop4"] + A[a]["heldout_hop5"]) / 2
+        say("HELDOUT hops 4-5: " + " | ".join(f"{a} {h45(a):.4f}" for a in A))
+        P = A["PH_learn"]; trend = P["heldout_hop3"] * (P["heldout_hop3"] / P["heldout_hop2"]) ** 2
+        C3, C5 = 0.966, 0.951                                                  # the analytic ceiling, held-out h3 / h5 at 96 planes (10-20 read)
+        near = (C5 - P["heldout_hop5"]) <= (C3 - P["heldout_hop3"]) + 0.10
+        say(f"CEILING SHORTFALL: h3 {C3 - P['heldout_hop3']:+.4f}, h5 {C5 - P['heldout_hop5']:+.4f} (bar: h5's <= h3's + 0.10: {near})")
+        v = ("EXTRAPOLATES (errors compound at the trained rate)" if P["heldout_hop5"] >= trend - 0.05 and near else
+             "BREAKS AT THE TRAINING HORIZON" if P["heldout_hop4"] <= 0.5 * P["heldout_hop3"] else "DEGRADES (between the bars)")
+        say(f"DEPTH VERDICT: PH_learn held-out h5 {P['heldout_hop5']:.4f} vs the trained-rate trend {trend:.4f} - 0.05 -> {v}")
+        say(f"MACHINE BEATS THE LOOP (PH_learn - TL_hop held-out hops 4-5 >= 0.10): {h45('PH_learn') - h45('TL_hop'):+.4f} -> "
+            f"{h45('PH_learn') - h45('TL_hop') >= 0.10}")
+        if "MX_orth" in A:
+            say(f"ORDER AT HOPS 4-5 (reported, no margin claim): PH_learn - MX_orth {h45('PH_learn') - h45('MX_orth'):+.4f}")
+    if os.environ.get("UM_VERDICT") == "order" and all(a in A for a in ("PH_learn", "MX_orth", "MX_learn")):
+        g1, g2 = h23("PH_learn") - h23("MX_orth"), h23("MX_orth") - h23("MX_learn")    # THE SECOND CONFIGURATION (10-20)
+        v = ("ORDER HOLDS" if g1 >= 0.02 and g2 >= 0.02 else "ORDER BREAKS" if g1 <= -0.02 or g2 <= -0.02 else "PARTIAL")
+        say(f"ORDER VERDICT (pinned 10-20): PH_learn - MX_orth {g1:+.4f}, MX_orth - MX_learn {g2:+.4f} -> {v}")
     if mode == "feas":
         learns = max(A[a]["val"] for a in A) >= 0.80
         say(f"FEASIBILITY: some arm val >= 0.80: {learns} -> {'FEASIBLE (pin the bars)' if learns else 'NOT FEASIBLE'}")

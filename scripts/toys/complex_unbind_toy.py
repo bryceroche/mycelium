@@ -45,6 +45,7 @@ N_ENT, N_ROLE, N_ALIAS_PER, N_SCENE = 40, 6, 3, 6
 N_ALIAS = N_ROLE * N_ALIAS_PER; PAD_A = N_ALIAS
 HELD_FRAC, N_CODES, N_LAYERS, N_HEADS = 0.25, 8, 3, 4
 KF = int(os.environ.get("UT_K", "3"))
+MAX_HOP = int(os.environ.get("UT_MAXHOP", "3"))   # query slots; >3 only for the depth-generalization read (10-20)
 STEPS = 300 if mode == "smoke" else int(os.environ.get("UT_STEPS", "4000"))
 BATCH, N_EVAL = 128, (500 if mode == "smoke" else 2000)
 SEEDS = [0] if mode != "full" else [0, 1, 2]
@@ -62,12 +63,12 @@ def held_table(seed):
     return held
 
 
-def make_batch(B, held, test, rng):
-    facts = np.zeros((B, N_SCENE * KF, 3), np.int64); query = np.zeros((B, 5), np.int64); tgt = np.zeros(B, np.int64)
+def make_batch(B, held, test, rng, dmin=1, dmax=3):
+    facts = np.zeros((B, N_SCENE * KF, 3), np.int64); query = np.zeros((B, MAX_HOP + 2), np.int64); tgt = np.zeros(B, np.int64)
     alias = lambda r: r * N_ALIAS_PER + rng.integers(N_ALIAS_PER)
     for b in range(B):
         while True:
-            ents = rng.choice(N_ENT, N_SCENE, replace=False); d = int(rng.integers(1, 4))
+            ents = rng.choice(N_ENT, N_SCENE, replace=False); d = int(rng.integers(dmin, dmax + 1))
             path = ents[:d + 1]                                              # distinct chain nodes
             roles, ok = [], True
             for h in range(d):
@@ -86,7 +87,7 @@ def make_batch(B, held, test, rng):
             if all(len(v) == KF for v in rec.values()): break                  # else redraw the scene (rare)
         fs = [(o, alias(r), f) for o in rec for r, f in rec[o].items()]
         facts[b] = np.array(fs)[rng.permutation(len(fs))]
-        qa = [alias(r) for r in roles] + [PAD_A] * (3 - d)
+        qa = [alias(r) for r in roles] + [PAD_A] * (MAX_HOP - d)
         query[b] = [path[0], *qa, d]; tgt[b] = path[d]
     return torch.from_numpy(facts), torch.from_numpy(query), torch.from_numpy(tgt)
 
@@ -114,8 +115,8 @@ class RNet(nn.Module):                                                       # R
         super().__init__()
         self.D, self.unbind = D, unbind
         self.layers = nn.ModuleList([RLayer(D) for _ in range(N_LAYERS)])
-        self.alias = nn.Embedding(N_ALIAS + 1, D); self.slot = nn.Parameter(torch.randn(3, N_ALIAS + 1, D) * 0.02)
-        self.depth = nn.Embedding(4, D); self.lnf = nn.LayerNorm(D)
+        self.alias = nn.Embedding(N_ALIAS + 1, D); self.slot = nn.Parameter(torch.randn(MAX_HOP, N_ALIAS + 1, D) * 0.02)
+        self.depth = nn.Embedding(MAX_HOP + 1, D); self.lnf = nn.LayerNorm(D)
         self.out = nn.Linear(D, D) if PTR else nn.Linear(D, N_ENT)
         if unbind:
             self.ent = nn.Embedding(N_ENT, D)
@@ -131,7 +132,7 @@ class RNet(nn.Module):                                                       # R
         return torch.einsum("...k,kij->...ij", F.softmax(self.rho(a), -1), self.R)
 
     def forward(self, facts, query):
-        q0 = sum(self.slot[h][query[:, 1 + h]] for h in range(3)) + self.depth(query[:, 4])
+        q0 = sum(self.slot[h][query[:, 1 + h]] for h in range(MAX_HOP)) + self.depth(query[:, MAX_HOP + 1])
         if self.unbind:
             mem = self.ent(facts[..., 0]) + torch.einsum("bti,btij->btj", self.ent(facts[..., 2]), self.role(facts[..., 1]))
             qx = self.ent(query[:, 0]) + q0
@@ -145,7 +146,7 @@ class RNet(nn.Module):                                                       # R
                 s = torch.einsum("bd,btd->bt", self.uq[l](h), self.uk[l](mem)) / math.sqrt(self.D)
                 r = torch.einsum("bt,btd->bd", F.softmax(s, -1), mem)
                 u = torch.einsum("bj,bij->bi", r, self.role(query[:, 1 + l]))        # r @ role^T
-                g = (query[:, 4] > l).float()[:, None]
+                g = (query[:, MAX_HOP + 1] > l).float()[:, None]
                 x = torch.cat([x[:, :-1], (x[:, -1] + g * u)[:, None]], 1)
             x = L(x)
         h = self.out(self.lnf(x[:, -1]))
