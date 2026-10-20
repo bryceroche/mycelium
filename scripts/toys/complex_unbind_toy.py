@@ -48,7 +48,8 @@ KF = int(os.environ.get("UT_K", "3"))
 STEPS = 300 if mode == "smoke" else int(os.environ.get("UT_STEPS", "4000"))
 BATCH, N_EVAL = 128, (500 if mode == "smoke" else 2000)
 SEEDS = [0] if mode != "full" else [0, 1, 2]
-ARMS = ["C_clean+U", "C_split+U", "R_tpr+U", "R_width", "R_params"]
+ARMS = os.environ.get("UT_ARMS", "C_clean+U,C_split+U,R_tpr+U,R_width,R_params").split(",")
+PTR = os.environ.get("UT_PTR", "1") == "1"        # answer = a POINTER over the scene's entities (Opus fix 2; 10-19 19:30)
 M = R0.M                                                                     # 48 planes
 
 
@@ -114,7 +115,8 @@ class RNet(nn.Module):                                                       # R
         self.D, self.unbind = D, unbind
         self.layers = nn.ModuleList([RLayer(D) for _ in range(N_LAYERS)])
         self.alias = nn.Embedding(N_ALIAS + 1, D); self.slot = nn.Parameter(torch.randn(3, N_ALIAS + 1, D) * 0.02)
-        self.depth = nn.Embedding(4, D); self.lnf = nn.LayerNorm(D); self.out = nn.Linear(D, N_ENT)
+        self.depth = nn.Embedding(4, D); self.lnf = nn.LayerNorm(D)
+        self.out = nn.Linear(D, D) if PTR else nn.Linear(D, N_ENT)
         if unbind:
             self.ent = nn.Embedding(N_ENT, D)
             self.rho = nn.Embedding(N_ALIAS + 1, N_CODES)
@@ -146,14 +148,18 @@ class RNet(nn.Module):                                                       # R
                 g = (query[:, 4] > l).float()[:, None]
                 x = torch.cat([x[:, :-1], (x[:, -1] + g * u)[:, None]], 1)
             x = L(x)
-        return self.out(self.lnf(x[:, -1]))
+        h = self.out(self.lnf(x[:, -1]))
+        if not PTR:
+            return h
+        E = (self.ent if self.unbind else self.own).weight
+        return scene_mask(h @ E.T, facts)
 
 
 # ---------------------------------------------------------------- the complex arms
 class CUNet(nn.Module):                                                      # C_clean+U / C_split+U
-    def __init__(self, mlp, seed):
+    def __init__(self, mlp, seed, oracle=False):
         super().__init__()
-        gen = torch.Generator().manual_seed(1000 + seed)
+        gen = torch.Generator().manual_seed(1000 + seed); self.oracle = oracle
         self.layers = nn.ModuleList([R0.CLayer(mlp, gen) for _ in range(N_LAYERS)])
         self.ent = nn.Embedding(N_ENT, 2 * M); self.slot = nn.Parameter(torch.randn(3, N_ALIAS + 1, 2 * M) * 0.02)
         self.depth = nn.Embedding(4, 2 * M); self.rho = nn.Embedding(N_ALIAS + 1, N_CODES)
@@ -162,10 +168,16 @@ class CUNet(nn.Module):                                                      # C
         self.uq = nn.ModuleList([R0.CLinear(M, M) for _ in range(N_LAYERS)])
         self.uk = nn.ModuleList([R0.CLinear(M, M) for _ in range(N_LAYERS)])
         self.un = nn.ModuleList([R0.CNorm(M) for _ in range(N_LAYERS)])
-        self.nf = R0.CNorm(M); self.out = nn.Linear(2 * M, N_ENT)
+        self.nf = R0.CNorm(M)
+        self.out = R0.CLinear(M, M) if PTR else nn.Linear(2 * M, N_ENT)
+        if oracle:   # ORACLE WRITE (Opus fix 1): fixed unit-phasor entity codes, alias -> its role's code given, exact binding
+            te = torch.rand(N_ENT, M, generator=gen) * 2 * math.pi
+            self.ent.weight.data = torch.cat([torch.cos(te), torch.sin(te)], -1); self.ent.weight.requires_grad_(False)
 
     def role(self, a):                                                       # unit phasor per plane
-        w = F.softmax(self.rho(a), -1); pr, pi = w @ self.Pr, w @ self.Pi
+        w = (F.one_hot((a // N_ALIAS_PER).clamp(max=N_CODES - 1), N_CODES).float() if self.oracle
+             else F.softmax(self.rho(a), -1))
+        pr, pi = w @ self.Pr, w @ self.Pi
         n = torch.sqrt(pr * pr + pi * pi + 1e-6)
         return pr / n, pi / n
 
@@ -188,7 +200,15 @@ class CUNet(nn.Module):                                                      # C
             xi = torch.cat([xi[:, :-1], (xi[:, -1] + g * ui)[:, None]], 1)
             xr, xi = L(xr, xi)
         xr, xi = self.nf(xr, xi)
-        return self.out(torch.cat([xr[:, -1], xi[:, -1]], -1))
+        if not PTR:
+            return self.out(torch.cat([xr[:, -1], xi[:, -1]], -1))
+        zr, zi = self.out(xr[:, -1], xi[:, -1]); E = self.ent.weight
+        return scene_mask(zr @ E[:, :M].T + zi @ E[:, M:].T, facts)          # Re(z . conj(e)) over the scene
+
+
+def scene_mask(logits, facts):                                              # only the scene's entities are answers
+    m = F.one_hot(facts[..., 0], N_ENT).amax(1).bool()
+    return logits.masked_fill(~m, -1e4)
 
 
 def nparams(m): return sum(p.numel() for p in m.parameters())
@@ -201,6 +221,7 @@ def r_params_width():
 
 def build(arm, seed, Dp=None):
     return {"C_clean+U": lambda: CUNet("clean", seed), "C_split+U": lambda: CUNet("split", seed),
+            "C_oracle+U": lambda: CUNet("clean", seed, oracle=True),
             "R_tpr+U": lambda: RNet(2 * M, True, seed), "R_width": lambda: RNet(2 * M, False, seed),
             "R_params": lambda: RNet(Dp, False, seed)}[arm]()
 
@@ -227,13 +248,14 @@ def run(arm, seed, lr, Dp):
 
 if __name__ == "__main__":
     torch.set_num_threads(int(os.environ.get("TOY_THREADS", "8")))
-    tag = {"feas": "_feas", "smoke": "_smoke", "full": ""}[mode] + (f"_K{KF}" if KF != 3 else "")
+    tag = ({"feas": "_feas", "smoke": "_smoke", "full": ""}[mode] + (f"_K{KF}" if KF != 3 else "")
+           + os.environ.get("UT_TAG", ""))
     out = open(f".cache/complex_unbind_toy{tag}.txt", "w"); res = []; t0 = time.time()
 
     def say(s):
         print(s, flush=True); out.write(s + "\n"); out.flush()
     Dp = r_params_width()
-    say(f"mode {mode} K={KF} steps {STEPS}; R_params width {Dp}; params: " +
+    say(f"mode {mode} K={KF} steps {STEPS} pointer {PTR}; R_params width {Dp}; params: " +
         ", ".join(f"{a} {nparams(build(a, 0, Dp))}" for a in ARMS))
     fa, q, t = make_batch(4, held_table(0), True, np.random.default_rng(0))
     say(f"sample (held-out) facts[0] {fa[0].tolist()} query {q[0].tolist()} -> {int(t[0])}")
@@ -256,6 +278,8 @@ if __name__ == "__main__":
     A = {r["arm"]: r["agg"] for r in res}
     h23 = lambda a: (A[a]["heldout_hop2"] + A[a]["heldout_hop3"]) / 2
     say("HELDOUT hops 2-3: " + " | ".join(f"{a} {h23(a):.4f}" for a in ARMS))
+    if not all(a in A for a in ("C_clean+U", "C_split+U", "R_tpr+U", "R_width", "R_params")):
+        say(f"DONE in {time.time() - t0:.0f}s"); sys.exit()
     say(f"CMP cleanup needs the algebra (C_clean+U - C_split+U): {h23('C_clean+U') - h23('C_split+U'):+.4f}")
     say(f"CMP unbinding needs the phases (C_clean+U - R_tpr+U): {h23('C_clean+U') - h23('R_tpr+U'):+.4f}")
     say(f"CMP beats width (C_clean+U - max(R_width, R_params)): {h23('C_clean+U') - max(h23('R_width'), h23('R_params')):+.4f}")
