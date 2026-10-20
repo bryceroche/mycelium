@@ -19,8 +19,9 @@ ARMS (W_q / W_k initialized to the identity in every machine):
              unbind r @ R^T (tensor-product style; the same machine, the same supervision)
   MX_orth    MX_learn with the role matrices constrained ORTHOGONAL (R_k = Q_k exp(S_k), S_k skew, learned; Q_k a fixed
              random orthogonal start): the full-unitary cousin of the phasor (added 10-20 on Opus's reading)
-  T4_width   plain transformer, 4 layers (hops + 1: Opus's depth caveat), D = 192, pointer readout over the scene
-  T4_params  the same at the width closest to PH_learn's parameter count
+  T6_width   plain transformer, 6 layers (registration 10-20; 4 was too shallow for hop 3), D = 192, pointer readout
+  T6_params  the same at the width closest to PH_learn's parameter count
+  TL_params  LOOPED plain: ONE shared block applied 6 times, at PH_learn's parameter count (the iteration control)
 PAIRS: PH_oracle vs PH_learn = can writing be learned? | PH_learn vs MX_learn = do PHASES beat learned binding? (the
 phase claim) | best machine vs best T4 = does explicit structure beat none? (context: the machines are handed structure)
 Usage: .venv/bin/python3 scripts/toys/complex_unbind_machine.py [--feas | --smoke] -> .cache/complex_unbind_machine{tag}.*
@@ -39,8 +40,8 @@ MP, DR = 96, 192                                                             # c
 ATT_W = float(os.environ.get("UM_ATT_W", "0.3"))
 STEPS = 300 if mode == "smoke" else int(os.environ.get("UM_STEPS", "4000"))
 SEEDS = [0] if mode != "full" else [0, 1, 2]
-ARMS = os.environ.get("UM_ARMS", "PH_oracle,PH_learn,MX_learn,T4_width,T4_params").split(",")
-T.N_LAYERS = 4                                                               # the plain arms' depth (hops + 1)
+ARMS = os.environ.get("UM_ARMS", "PH_oracle,PH_learn,MX_learn,MX_orth,T6_width,T6_params,TL_params").split(",")
+T.N_LAYERS = int(os.environ.get("UM_PLAIN_LAYERS", "6"))                   # the plain arms' depth (10-20 registration: 6)
 
 
 def gold_nodes(facts, query):
@@ -123,14 +124,23 @@ class Machine(nn.Module):
 def nparams(m): return sum(p.numel() for p in m.parameters() if p.requires_grad)
 
 
+def looped(D, seed):
+    """TL: ONE shared real block applied T.N_LAYERS times (the iteration control, Opus 10-20)."""
+    net = T.RNet(D, False, seed); net.layers = nn.ModuleList([net.layers[0]] * T.N_LAYERS)
+    return net
+
+
 def t4_params_width():
     target = nparams(Machine("PH_learn", 0))
-    return min(range(16, 260, 4), key=lambda D: abs(nparams(T.RNet(D, False, 0)) - target))
+    return {"T": min(range(16, 260, 4), key=lambda D: abs(nparams(T.RNet(D, False, 0)) - target)),
+            "L": min(range(16, 400, 4), key=lambda D: abs(nparams(looped(D, 0)) - target))}
 
 
 def build(arm, seed, Dp):
-    if arm.startswith("T4"):
-        return T.RNet(DR if arm == "T4_width" else Dp, False, seed)
+    if arm.startswith("TL"):
+        return looped(Dp["L"], seed)
+    if arm.startswith("T"):
+        return T.RNet(DR if arm.endswith("_width") else Dp["T"], False, seed)
     return Machine(arm, seed)
 
 
@@ -170,13 +180,16 @@ def run(arm, seed, lr, Dp):
 
 if __name__ == "__main__":
     torch.set_num_threads(int(os.environ.get("TOY_THREADS", "8")))
-    tag = {"feas": "_feas", "smoke": "_smoke", "full": ""}[mode] + os.environ.get("UM_TAG", "")
+    tag = ({"feas": "_feas", "smoke": "_smoke", "full": ""}[mode] + os.environ.get("UM_TAG", "")
+           + (f"_s{STEPS}" if mode != "smoke" and STEPS != 4000 else ""))
+    assert mode == "smoke" or not os.path.exists(f".cache/complex_unbind_machine{tag}.txt"), \
+        f"refusing to overwrite .cache/complex_unbind_machine{tag}.txt (a banked read; set UM_TAG)"   # the 10-20 05:56 lesson
     out = open(f".cache/complex_unbind_machine{tag}.txt", "w"); res = []; t0 = time.time()
 
     def say(s):
         print(s, flush=True); out.write(s + "\n"); out.flush()
     Dp = t4_params_width()
-    say(f"mode {mode} steps {STEPS} ATT_W {ATT_W}; T4_params width {Dp}; trainable params: " +
+    say(f"mode {mode} steps {STEPS} ATT_W {ATT_W}; plain layers {T.N_LAYERS}; params-matched widths {Dp}; trainable params: " +
         ", ".join(f"{a} {nparams(build(a, 0, Dp))}" for a in ARMS))
     lrs = {}
     for arm in ARMS:
@@ -199,11 +212,20 @@ if __name__ == "__main__":
     A = {r["arm"]: r["agg"] for r in res}
     h23 = lambda a: (A[a]["heldout_hop2"] + A[a]["heldout_hop3"]) / 2
     say("HELDOUT hops 2-3: " + " | ".join(f"{a} {h23(a):.4f}" for a in A))
-    if all(a in A for a in ("PH_oracle", "PH_learn", "MX_learn", "T4_width", "T4_params")):
-        say(f"PAIR can writing be learned (PH_learn - PH_oracle): {h23('PH_learn') - h23('PH_oracle'):+.4f}")
-        say(f"PAIR do phases beat learned binding (PH_learn - MX_learn): {h23('PH_learn') - h23('MX_learn'):+.4f}")
-        say(f"PAIR structure vs none (max machine - max T4): "
-            f"{max(h23(a) for a in ('PH_oracle', 'PH_learn', 'MX_learn')) - max(h23('T4_width'), h23('T4_params')):+.4f}")
+    h3 = lambda a: A[a]["heldout_hop3"]
+    say("HELDOUT hop 3: " + " | ".join(f"{a} {h3(a):.4f}" for a in A))
+    if all(a in A for a in ("PH_oracle", "PH_learn", "MX_learn", "MX_orth")):
+        P, O, L = h23("PH_learn"), h23("MX_orth"), h23("MX_learn")
+        say(f"PAIR PH_learn - MX_orth {P - O:+.4f} | PH_learn - MX_learn {P - L:+.4f} | MX_orth - MX_learn {O - L:+.4f} | "
+            f"PH_learn - PH_oracle {P - h23('PH_oracle'):+.4f}")
+        v = ("STRUCTURED LOW-PARAMETER UNITARY BINDING EARNS IT" if P >= O + 0.05 and P >= L + 0.05 else
+             "UNITARY BINDING (named so, not 'phases')" if abs(P - O) < 0.02 and min(P, O) >= L + 0.05 else
+             "THE PHASE FORM LOSES" if O >= P + 0.02 else "WEAK (between the bars)")
+        say(f"VERDICT (pinned 10-20): {v}")
+        say(f"WRITING IS LEARNABLE (PH_learn >= PH_oracle - 0.03): {P >= h23('PH_oracle') - 0.03}")
+    for c in ("T6_width", "T6_params", "TL_params"):
+        if c in A and "PH_learn" in A:
+            say(f"CONTEXT {c}: hops 2-3 {h23(c):.4f} hop 3 {h3(c):.4f} vs PH_learn {h23('PH_learn'):.4f} / {h3('PH_learn'):.4f}")
     if mode == "feas":
         learns = max(A[a]["val"] for a in A) >= 0.80
         say(f"FEASIBILITY: some arm val >= 0.80: {learns} -> {'FEASIBLE (pin the bars)' if learns else 'NOT FEASIBLE'}")
