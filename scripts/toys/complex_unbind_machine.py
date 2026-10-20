@@ -17,6 +17,8 @@ ARMS (W_q / W_k initialized to the identity in every machine):
   PH_learn   complex, 96 planes: entity codes LEARNED, alias -> code choice LEARNED over 8 FIXED phasor role codes
   MX_learn   real, 192 dims: entity codes LEARNED, role = LEARNED mix of 8 LEARNED 192x192 role matrices; bind f @ R,
              unbind r @ R^T (tensor-product style; the same machine, the same supervision)
+  MX_orth    MX_learn with the role matrices constrained ORTHOGONAL (R_k = Q_k exp(S_k), S_k skew, learned; Q_k a fixed
+             random orthogonal start): the full-unitary cousin of the phasor (added 10-20 on Opus's reading)
   T4_width   plain transformer, 4 layers (hops + 1: Opus's depth caveat), D = 192, pointer readout over the scene
   T4_params  the same at the width closest to PH_learn's parameter count
 PAIRS: PH_oracle vs PH_learn = can writing be learned? | PH_learn vs MX_learn = do PHASES beat learned binding? (the
@@ -67,7 +69,11 @@ class Machine(nn.Module):
             self.wk = nn.ParameterList([nn.Parameter(torch.eye(MP)), nn.Parameter(torch.zeros(MP, MP))])
         else:
             self.ent = nn.Parameter(torch.randn(T.N_ENT, DR, generator=g))
-            self.R = nn.Parameter(torch.linalg.qr(torch.randn(T.N_CODES, DR, DR, generator=g))[0])  # LEARNED role matrices
+            Q = torch.linalg.qr(torch.randn(T.N_CODES, DR, DR, generator=g))[0]
+            if kind == "MX_orth":   # ORTHOGONAL role matrices (Opus: a phasor is a DIAGONAL unitary, this is a FULL one)
+                self.register_buffer("Q", Q); self.A = nn.Parameter(torch.zeros(T.N_CODES, DR, DR))
+            else:
+                self.Rp = nn.Parameter(Q)                                       # LEARNED role matrices, unconstrained
             self.wq, self.wk = nn.Parameter(torch.eye(DR)), nn.Parameter(torch.eye(DR))
         self.rho = nn.Embedding(T.N_ALIAS + 1, T.N_CODES)
         self.log_tau = nn.Parameter(torch.zeros(())); self.log_beta = nn.Parameter(torch.tensor(math.log(2.0)))
@@ -93,7 +99,8 @@ class Machine(nn.Module):
         if self.cx:
             pr, pi = w @ self.Pr, w @ self.Pi; nrm = torch.sqrt(pr * pr + pi * pi + 1e-6)
             return self.cmul(f, torch.cat([pr / nrm, pi / nrm], -1), conj=inverse)
-        fR = torch.einsum("...j,kij->...ki", f, self.R) if inverse else torch.einsum("...i,kij->...kj", f, self.R)
+        R = self.Q @ torch.matrix_exp(self.A - self.A.transpose(-1, -2)) if self.kind == "MX_orth" else self.Rp
+        fR = torch.einsum("...j,kij->...ki", f, R) if inverse else torch.einsum("...i,kij->...kj", f, R)
         return torch.einsum("...k,...kd->...d", w, fR)                        # linear in w: mix after applying each R_k
 
     def forward(self, facts, query):
