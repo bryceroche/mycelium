@@ -64,7 +64,7 @@ if args.selftest:
     print(f"[selftest] PASS: BP padded+masked == unpadded bidirectional, 2 rows x taps {TAPS} (worst rel {worst:.1e})")
     sys.exit(0)
 
-ct = np.load(".cache/climb_targets_formpm35c.npz", allow_pickle=True)
+_z = np.load(".cache/climb_targets_formpm35c.npz", allow_pickle=True); ct = {k: _z[k] for k in _z.files}   # loaded once (npz re-reads per access)
 dp = set(np.load(".cache/depthprobe2_index.npz", allow_pickle=True)["pool_idx"].tolist())
 elig = np.where((ct["truncated"] == 0) & (ct["n_num"] >= 2) & (ct["owner_valid"].sum(1) >= 2))[0]
 elig = np.array([c for c in elig if int(ct["row_idx"][c]) not in dp])
