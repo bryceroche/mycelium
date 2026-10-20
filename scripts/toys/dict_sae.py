@@ -31,9 +31,10 @@ ap.add_argument("--k", type=int, default=32)
 ap.add_argument("--steps", type=int, default=8000)
 ap.add_argument("--lr", type=float, default=4e-4)
 ap.add_argument("--smoke", action="store_true")
+ap.add_argument("--load", default="", help="skip training: read with a saved dictionary (.pt)")
 args = ap.parse_args()
 torch.set_num_threads(int(os.environ.get("TOY_THREADS", "16"))); torch.manual_seed(0)
-tag = "_smoke" if args.smoke else ""
+tag = ("_smoke" if args.smoke else "") + ("_reread" if args.load else "")
 OUT = f".cache/dict_sae_D{args.tap}{tag}"
 assert args.smoke or not os.path.exists(OUT + ".txt"), f"refusing to overwrite {OUT}.txt"
 log = open(OUT + ".txt", "w")
@@ -75,7 +76,12 @@ def encode(x):
     return torch.zeros_like(pre).scatter_(-1, i, v)
 
 
-steps = 300 if args.smoke else args.steps; t0 = time.time(); g = torch.Generator().manual_seed(1)
+steps = 0 if args.load else 300 if args.smoke else args.steps; t0 = time.time(); g = torch.Generator().manual_seed(1)
+if args.load:
+    ck = torch.load(args.load)
+    with torch.no_grad():
+        for P_, k_ in ((We, "We"), (be, "be"), (Wd, "Wd"), (bd, "bd")): P_.copy_(ck[k_])
+    mu, s = ck["mu"], ck["s"]; say(f"loaded {args.load} (no training)")
 for step in range(steps):
     xb = Xtr[torch.randint(len(Xtr), (4096,), generator=g)]
     loss = ((encode(xb) @ Wd.T + bd - xb) ** 2).sum(-1).mean()
@@ -132,34 +138,46 @@ def auroc_cols(y, A):
     return (r[y].sum(0) - n1 * (n1 + 1) / 2) / (n1 * n0)
 
 
+def strat_auroc(y, t, A, words):
+    """AUROC comparing role vs non-role tokens of the SAME word only, averaged over words weighted by n1*n0 pairs.
+    (The 10-20 smoke's pooled-after-centering AUROC put the PLACEBO at 0.708: pooling words with different role rates is a
+    Simpson's-paradox estimator. Within-word ranks have no lexical coordinate to leak.)"""
+    from scipy.stats import rankdata
+    num, den = np.zeros(A.shape[1]), 0.0
+    for w in words:
+        m = t == w; yw = y[m]; n1 = int(yw.sum()); n0 = int(len(yw) - n1)
+        if n1 == 0 or n0 == 0: continue
+        r = rankdata(A[m], axis=0)
+        num += r[yw].sum(0) - n1 * (n1 + 1) / 2; den += n1 * n0
+    return num / den
+
+
 def role_read(name, shuffle=False):
     out = {}
     for split, idx, t, Z in (("select", I["select"], tsel, Zs), ("measure", I["measure"], tmea, Zm)):
         y = ix[name][idx] > 0
         ids, cnt1 = np.unique(t[y], return_counts=True)
         ok = [i for i, c in zip(ids, cnt1) if c >= 5 and (~y & (t == i)).sum() >= 5]
-        m = np.isin(t, ok)
-        yy, tt, ZZ = y[m].copy(), t[m], Z[m].astype(np.float32)
+        m = np.isin(t, ok); yy, tt = y[m].copy(), t[m]
         if shuffle:
             rng = np.random.default_rng(11)
             for i in ok:
                 w = np.where(tt == i)[0]; yy[w] = yy[rng.permutation(w)]
-        for i in ok:                                                          # the lexical control
-            w = tt == i; ZZ[w] -= ZZ[w].mean(0)
-        out[split] = (yy, ZZ, len(ok))
-    (ys_, Zs_, ns), (ym_, Zm_, nm) = out["select"], out["measure"]
+        out[split] = (yy, tt, Z[m], ok)
+    (ys_, ts_, Zs_, oks), (ym_, tm_, Zm_, okm) = out["select"], out["measure"]
     live = np.where((Zs_ != 0).any(0))[0]
-    raw = auroc_cols(ys_, Zs_[:, live]); jj = int(np.argmax(np.maximum(raw, 1 - raw)))   # a feature may mark by silence
-    j = live[jj]; am = float(auroc_cols(ym_, Zm_[:, [j]])[0])
+    raw = strat_auroc(ys_, ts_, Zs_[:, live], oks); jj = int(np.argmax(np.maximum(raw, 1 - raw)))  # may mark by silence
+    j = live[jj]; am = float(strat_auroc(ym_, tm_, Zm_[:, [j]], okm)[0])
     if raw[jj] < 0.5: am = 1 - am                                             # the orientation is chosen on SELECT
-    return am, int(j), int(ym_.sum()), int(len(ym_)), nm
+    return am, int(j), int(ym_.sum()), int(len(ym_)), len(okm)
 
 
 for name in ("owner", "recipient"):
     am, j, npos, n, nw = role_read(name); pl = role_read(name, shuffle=True)[0]
-    res[f"{name}_auroc"], res[f"{name}_placebo"] = am, pl
+    powered = nw >= 20 and npos >= 200                                        # the power rule (10-20, after the smoke)
+    res[f"{name}_auroc"], res[f"{name}_placebo"], res[f"{name}_powered"] = am, pl, powered
     say(f"{name.upper()} lexically-controlled best-feature AUROC (measure) {am:.3f} (feature {j}; {npos} role tokens of {n}, "
-        f"{nw} word types) | PLACEBO (labels shuffled within word) {pl:.3f}")
+        f"{nw} word types) | PLACEBO (labels shuffled within word) {pl:.3f} | {'POWERED' if powered else 'UNDERPOWERED (< 20 words or < 200 role tokens): reported, not read'}")
 json.dump(res, open(OUT + ".json", "w"), indent=1)
 torch.save({"We": We.detach(), "be": be.detach(), "Wd": Wd.detach(), "bd": bd.detach(), "mu": mu, "s": s}, OUT + ".pt")
 say(f"DONE in {time.time() - t0:.0f}s")
