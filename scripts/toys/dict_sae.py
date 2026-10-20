@@ -47,6 +47,24 @@ def say(s):
 from tokenizers import Tokenizer  # noqa: E402
 tok = Tokenizer.from_file(".cache/llama-3.2-1b-weights/tokenizer.json")
 ix = np.load(".cache/dict_index.npz")
+
+
+def dep_labels():
+    """spaCy (en_core_web_sm) dependency label of the word covering each stored token; cached. 0 = none/whitespace."""
+    path = ".cache/dict_deps.npz"
+    if os.path.exists(path): return np.load(path)["dep"]
+    import spacy, json as _j
+    nlp = spacy.load("en_core_web_sm"); need = {int(p): k for k, p in enumerate(ix["pool_idx"])}; texts = [None] * len(need)
+    for i, l in enumerate(open(".cache/form_mix_pm35c.jsonl")):
+        if i in need: texts[need[i]] = _j.loads(l)["text"]
+    labs = {"": 0}; dep = np.zeros(len(ix["row"]), np.int16); starts = np.searchsorted(ix["row"], np.arange(len(texts)))
+    for r, doc in enumerate(nlp.pipe(texts, batch_size=256)):
+        ch = np.zeros(len(texts[r]) + 1, np.int16)
+        for t in doc: ch[t.idx:t.idx + len(t.text)] = labs.setdefault(t.dep_, len(labs))
+        enc = tok.encode(texts[r]); assert list(enc.ids) == ix["tok"][starts[r]:starts[r] + len(enc.ids)].tolist()
+        for k, (c0, c1) in enumerate(enc.offsets):
+            seg = ch[c0:c1]; seg = seg[seg > 0]; dep[starts[r] + k] = seg[0] if len(seg) else 0
+    np.savez(path, dep=dep, labels=np.array(sorted(labs, key=labs.get))); return dep
 X = np.load(f".cache/dict_states_D{args.tap}.npy", mmap_mode="r")
 row, tid = ix["row"], ix["tok"]
 keep = tid != tok.token_to_id("<|begin_of_text|>")
@@ -152,10 +170,11 @@ def strat_auroc(y, t, A, words):
     return num / den
 
 
-def role_read(name, shuffle=False):
+def role_read(name, shuffle=False, key=None):
     out = {}
     for split, idx, t, Z in (("select", I["select"], tsel, Zs), ("measure", I["measure"], tmea, Zm)):
         y = ix[name][idx] > 0
+        if key is not None: t = t.astype(np.int64) * 1000 + key[idx]           # stratum = (word, dependency label)
         ids, cnt1 = np.unique(t[y], return_counts=True)
         ok = [i for i, c in zip(ids, cnt1) if c >= 5 and (~y & (t == i)).sum() >= 5]
         m = np.isin(t, ok); yy, tt = y[m].copy(), t[m]
@@ -172,7 +191,12 @@ def role_read(name, shuffle=False):
     return am, int(j), int(ym_.sum()), int(len(ym_)), len(okm)
 
 
+DEP = dep_labels()
 for name in ("owner", "recipient"):
+    ad, jd, npd, _, nsd = role_read(name, key=DEP); pd = role_read(name, shuffle=True, key=DEP)[0]
+    res[f"{name}_auroc_dep"], res[f"{name}_placebo_dep"] = ad, pd
+    say(f"{name.upper()} WORD+DEPENDENCY-controlled (subject-matched) AUROC (measure) {ad:.3f} (feature {jd}; {npd} role "
+        f"tokens, {nsd} strata) | PLACEBO {pd:.3f} | {'POWERED' if nsd >= 20 and npd >= 200 else 'UNDERPOWERED'}")
     am, j, npos, n, nw = role_read(name); pl = role_read(name, shuffle=True)[0]
     powered = nw >= 20 and npos >= 200                                        # the power rule (10-20, after the smoke)
     res[f"{name}_auroc"], res[f"{name}_placebo"], res[f"{name}_powered"] = am, pl, powered
