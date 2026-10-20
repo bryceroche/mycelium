@@ -143,7 +143,9 @@ class Machine(nn.Module):
             v = self.r0.expand(*ks.shape[:-1], DR)
             for l in range(L):
                 live = (depth > l)[..., None]
-                v = torch.where(live, torch.einsum("...j,...ij->...i", v, R[ks[..., l].clamp(max=NB - 1)]), v)
+                Rv = torch.einsum("...j,kij->...ki", v, R)                     # every label's matrix on v, then pick (no matrix gather)
+                pick = torch.gather(Rv, -2, ks[..., l].clamp(max=NB - 1)[..., None, None].expand(*v.shape[:-1], 1, DR))[..., 0, :]
+                v = torch.where(live, pick, v)
             return v
         k = self.kind; ph = torch.zeros(*ks.shape[:-1], MP); acc = torch.zeros(*ks.shape[:-1], 2 * MP)
         for l in range(L):
