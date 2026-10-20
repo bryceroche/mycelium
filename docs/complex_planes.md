@@ -136,3 +136,32 @@ earn ≥ +0.02 at hops 2–3 at the floor to stay.
   part of the coherent error that recurs; random error cannot be echoed.
 - **The independent check** (§2's lesson): an address check only counts if its evidence is decorrelated from the
   encoder's: solver/units and rationale step values (training time); photobooth views detect but do not correct.
+
+## 9. The research line, re-scoped (2026-10-19, Bryce): complex planes are the branch's focus; MATH-500 waits
+
+**What three toys say (v1, rung 0, rung 0b):** a bare complex layer is a tied real layer (2 numbers doing 4's work) and
+buys width at half the parameters. None of the three tasks REQUIRED unbinding: width solved them. And none of the arms
+had an organ that USES ⊙ conj: the only phase-specific part was the cleanup MLP. The algebra has never been given a
+job; it has not yet been tested. "Love" (Bryce) = build the organ that exercises the algebra, then test it fairly.
+
+**The lesson of both earlier task designs:** v1 is solvable by width; v2 (roles from syntax) memorized at toy budget
+(i.i.d. val ~0.25 for every arm). The next task sits between them: a feasibility read places it off both the floor and
+the ceiling BEFORE any grid.
+
+### Rung 1T — the unbinding task (draft; bars pinned on the word, after the feasibility read)
+- **Scene:** K role–filler pairs per record (K in {3, 5}); each role is written with one of 3 alias tokens, the pairs in
+  shuffled order. Query "role of X" → the filler. **Multi-hop:** a filler names another record ("role_a of (role_b of
+  X)"), hops 1–3. **Held out:** a share of (role, filler) combinations never appears in training (each role and each
+  filler is seen; only the combination is new); the aliases of a role are all seen.
+- **This is the task FHRR solves by construction:** record = Σ role ⊙ filler; record ⊙ conj(role) → cleanup → filler.
+- **Arms (stream width FIXED at 96 reals = 48 planes; the same depth, steps, data, lr sweep, 3 seeds):**
+  - **C_clean+U**: the complex net plus UNBINDING HEADS (q = state ⊙ conj(role code), role codes a fixed phasor
+    codebook, the role choice learned) and the cleanup MLP. The algebra intact end to end.
+  - **C_split+U**: the same organs, the MLP split on Re/Im (the algebra broken inside the layer).
+  - **R_width**: a real net at width 96 (about 2x the parameters).
+  - **R_params**: a real net at C_clean+U's parameter count.
+- **Decision rule (Opus, to pin):** PHASE ALGEBRA EARNS IT = C_clean+U ≥ max(C_split+U, R_width, R_params) + 0.03 on
+  held-out hops 2–3. THE FORM IS NULL = C_clean+U ≤ that max + 0.01. Between = WEAK, with ONE pre-registered rescue variant.
+  A null closes this FORM (the bare-layer + unbinding-head form), never the line: the next form must name what changed.
+- **Feasibility gate (before the bars pin):** a smoke at K = 3 must show i.i.d. val ≥ 0.80 for at least one arm (it
+  learns rather than memorizes) and held-out hop 2 ≤ 0.90 for R_width (width does not already solve it).
