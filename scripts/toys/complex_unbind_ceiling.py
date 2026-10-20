@@ -1,7 +1,7 @@
 # The analytic ceiling of rung 1T's oracle-write arm: exact owner attention, exact unbind, nearest scene entity. No training.
 import sys; sys.path.insert(0, "scripts/toys"); sys.argv = [sys.argv[0], "--smoke"]
 import numpy as np, complex_unbind_toy as T
-rng = np.random.default_rng(0); M = 48
+import os; rng = np.random.default_rng(0); M = int(os.environ.get("CEIL_M", "48"))
 E = np.exp(1j * rng.uniform(0, 2 * np.pi, (T.N_ENT, M))); P = np.exp(1j * rng.uniform(0, 2 * np.pi, (T.N_ROLE, M)))
 for test in (False, True):
     fa, q, t = (x.numpy() for x in T.make_batch(2000, T.held_table(0), test, rng))
