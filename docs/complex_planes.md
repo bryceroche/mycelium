@@ -165,3 +165,26 @@ the ceiling BEFORE any grid.
   A null closes this FORM (the bare-layer + unbinding-head form), never the line: the next form must name what changed.
 - **Feasibility gate (before the bars pin):** a smoke at K = 3 must show i.i.d. val ≥ 0.80 for at least one arm (it
   learns rather than memorizes) and held-out hop 2 ≤ 0.90 for R_width (width does not already solve it).
+
+## 10. Rung 1T: the first trained foothold (2026-10-20, ledger 08:57)
+
+On a task that REQUIRES unbinding (role-filler records, aliases, chains of 1–3 hops, held-out role x filler pairs at
+every hop), with the unbinding chain as the only road (form 2: pointer → owner lookup → unbind → soft snap):
+
+| Held-out, hops 2–3 (3 seeds) | |
+|---|---|
+| **Phase binding, learned write (44.7k params)** | **0.832** |
+| Orthogonal role matrices (376k) | 0.767 |
+| Phase binding, oracle write | 0.765 |
+| Free role matrices (376k) | 0.576 |
+| Plain transformer, 6 layers, 1.63M params | 0.566 (hop 3: 0.222; fails hop 3 even in-distribution) |
+| Looped plain, 44k | 0.095 |
+
+**Verdict: STRUCTURED LOW-PARAMETER UNITARY BINDING EARNS IT** (+0.065 over orthogonal; bar +0.05). The claim is named
+for what it is: a phase rotation is an orthogonal map with very few degrees of freedom, and the fewer degrees of freedom
+the binding operator has, the less it can memorize seen pairs, the better it generalizes to unseen ones. Writing is
+learnable (the learned entity codes beat fixed phasors). What the history of this line shows: the algebra never failed;
+three toys tested equivariance and width, and the first toy that gave the algebra a job (and no bypass) found it.
+
+Open: the owner lookup still degrades on held-out (the memory key carries the bound filler) — form 2b keys the lookup by
+owner alone. Then the dictionary supplies real fillers (Llama's features → phasors by random Fourier features).
