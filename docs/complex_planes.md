@@ -263,3 +263,20 @@ artifact in `.cache/`. **STANDING** says how much weight a law can bear:
 2. The hybrid as one machine: learned lookup + snap + static memory, with the clock as address, storage stamp and order key.
 3. Scope fence: the toys test GIVEN events. The main line's (who, when) failure was DERIVED values (0.013 addressable),
    which have no event of their own; nothing here touches it yet.
+4. **HYPOTHESIS (Opus, 10-21; not a run): the fence has a door: the breath stamp as the derived value's address.** T6
+   never stamped tokens; it stamps BREATHS, where derived values are born. So 'the result of step j' (the address the main
+   line's census found missing: derived values 0.013 addressable) may be (breath tick, slot).
+   - **Prior art on the main line:** the ledger already names this address. The (who, when) census (2026-10-15) read the
+     planning address as 'mention pointer | derivation register keyed by the producing step'. The breath stamp is a
+     candidate IMPLEMENTATION of that step key, not a new address.
+   - **Fence 1, the forward requirement:** the gold graph is declarative and solved BACKWARD. The backward-unknown census
+     found a third kind of lookup (0.256 'seen-arg' + first-here), so a step key exists only for a FORWARD-planning arm
+     (or forward-rewritten gold); the pointer | register pair reached 0.744 of wild lookups.
+   - **Fence 2, ticks are not unique:** K3 is three breaths and T6 has six ticks; a problem can have more derivation
+     steps than ticks, and one breath can produce several values. The address is (tick, slot), plus a pass wheel if
+     steps outrun the ticks: the odometer again.
+   - **Toy form, when its turn comes:** some events are COMPUTED (f of two earlier events) and stamped with their producing
+     step rather than a token position; does gate-then-compare find them?
+
+Footnote: 'average the vectors, not the angles' (Opus, an engineering note) is the identity behind the router's soft stamp
+Σ α_t c(t): a circular mean is taken over phasors, never over raw angles. It was never tested; it is not a law.
