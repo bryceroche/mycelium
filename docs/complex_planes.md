@@ -278,5 +278,12 @@ artifact in `.cache/`. **STANDING** says how much weight a law can bear:
    - **Toy form, when its turn comes:** some events are COMPUTED (f of two earlier events) and stamped with their producing
      step rather than a token position; does gate-then-compare find them?
 
+5. **HYPOTHESIS (Opus, 10-21; not a run): three clock stamps for the three planning addresses.** The 0.256 of lookups that
+   are not forward-addressable (unknowns not yet produced, values born at the relation) have a time of their own: the
+   moment the unknown is INTRODUCED. So: mention k = a token-position stamp (when it was SAID); result of step j = a breath
+   stamp at production (when it was COMPUTED; the derivation register); unknown introduced at step j = a breath stamp at
+   birth, before it has a value (when it was PROMISED; a promise slot). Census question, zero GPU, queued behind the
+   fuzzy gate and the hybrid: what fraction of the 0.256 point to an unknown whose introduction step is identifiable in gold?
+
 Footnote: 'average the vectors, not the angles' (Opus, an engineering note) is the identity behind the router's soft stamp
 Σ α_t c(t): a circular mean is taken over phasors, never over raw angles. It was never tested; it is not a law.

@@ -33,6 +33,15 @@ RACE 3 (Opus's structural fix; RR_RACE=3): ORDER AS A COMPARISON AMONG CANDIDATE
   R_2st_fzs  the same fuzzy content, the VETO side SNAPPED: a gate below 0.5 vetoes nothing (snapped to 0; straight-
             through), above 0.5 its soft veto stands; the same dead zone on the OWN gate (the smoke found a 2nd leak: N x eps of own
             weight dilutes the anchor in the normalization). Two harder snaps died at init.
+RACE 4 (the fuzzy-gate rung, 2026-10-21; Bryce's word; RR_RACE=4): a KNOWN, irreducible gate leak. A soft gate on genuinely
+ambiguous events is not a bug (with calibrated gates the product IS the Bayes posterior that t is the last real sale);
+the leak is a bug when the gate cannot push CLEAR non-matches below a floor. So every non-matching event's gate is
+floored at eps (g <- g + eps (1 - g), train and eval; the model cannot remove it), eps in {0.001, 0.01, 0.05}:
+  L_soft_<e>  the R_2stage product, soft
+  L_snap_<e>  the dead zone on both sides (R_2st_fzs's snap)
+PINNED ARITHMETIC (Opus's (1-eps)^k): with an ideal content gate, the soft router flips to a non-match once more than
+ln(eps)/ln(1-eps) events lie beyond the anchor (58 / 458 / ~6900 for eps 0.05 / 0.01 / 0.001); predict_ideal() computes
+the predicted router accuracy and anchor weight per N from the same batches, BEFORE training.
 EVAL: N 16/32/64 (in range), 128, 256 (4000 sequences each at 128 and 256: ~50 gap-1-2 two-sale cases). Router anchor accuracy + answer accuracy;
 two-sale splits by GAP between the sales (1-2 / 3-8 / 9-32 / 33+) and by query-anchor distance (<= 64 / > 64).
 ORDER HORIZON (Opus's turning point, made robust to the fast gears' wiggle; the smoke read the raw turning point as 0 for
@@ -54,9 +63,12 @@ SEEDS = [0] if mode != "full" else [0, 1, 2]
 EVAL_N, N_BIG = (16, 32, 64, 128, 256), (300 if mode == "smoke" else 4000)
 RACE = int(os.environ.get("RR_RACE", "1"))
 ALL = {1: ["R_rope", "R_none", "R_alibi", "R_slowL", "R_gear"], 2: ["R_gearS", "R_alibiC"],
-       3: ["R_2stage", "R_2st_idx", "R_2st_odo", "R_2st_fz", "R_2st_fzv", "R_2st_fzs"]}[RACE]
+       3: ["R_2stage", "R_2st_idx", "R_2st_odo", "R_2st_fz", "R_2st_fzv", "R_2st_fzs"],
+       4: [f"L_{m}_{e}" for e in ("001", "01", "05") for m in ("soft", "snap")]}[RACE]
+LEAK = {"001": 0.001, "01": 0.01, "05": 0.05}
 FZ_SIGMA = float(os.environ.get("FZ_SIGMA", "1.0"))
 if RACE == 3: EVAL_N = EVAL_N + (1024, 1536)                                    # the horizon reads (one turn = 1296)
+if RACE == 4: EVAL_N = EVAL_N + (1024,)
 ARMS = os.environ.get("RR_ARMS", ",".join(ALL)).split(",")
 GEARS = (3.0, 6.0, 36.0, 216.0, 1296.0)
 IN_RANGE_BANKED = 0.995                                                       # HYB in-range mean, .cache/who_when_rung.txt
@@ -66,7 +78,7 @@ class Router(W.Hybrid):
     def __init__(self, arm, seed):
         super().__init__("HYB", seed); self.router = arm[2:].lower(); self.arm = arm
         if arm == "R_gearS": self.router = "gear"
-        if arm.startswith("R_2st"):
+        if arm.startswith(("R_2st", "L_")):
             self.router = "2stage"
             self.kappa_log, self.theta = nn.Parameter(torch.tensor(math.log(4.0))), nn.Parameter(torch.tensor(0.0))
         if arm in ("R_alibi", "R_alibiC"): self.slope = nn.Parameter(torch.zeros(2))
@@ -91,6 +103,10 @@ class Router(W.Hybrid):
     def two_stage(self, bt, c, live, tt):
         which = bt["x2"][torch.arange(len(bt["ns"])), bt["ns"]] - W.V_WH        # 0 first, 1 last
         g = torch.sigmoid(self.kappa_log.exp() * (c - self.theta)) * live     # stage 1: content candidates
+        if self.arm.startswith("L_"):                                         # RACE 4: the known leak floor on non-matches
+            A = bt["x1"][torch.arange(len(bt["ns"])), bt["ns"]] - W.V_QA
+            nonm = (bt["x2"][:, :g.shape[1]] != W.V_ACT + A[:, None]).float() * live
+            g = g + LEAK[self.arm.split("_")[2]] * (1 - g) * nonm
         self.gate = g
         # SNAP the VETO side only (R_2st_fzs; the leak lives in (1 - g_u)), straight-through IN LOG SPACE: forward = the hard
         # factor, backward = the soft gradient (a snapped own gate, and a snap through the clamp, both died in the smoke)
@@ -103,13 +119,13 @@ class Router(W.Hybrid):
                 key = sector * 2 * math.pi + key
         later = (key[None, :] > key[:, None]).float()                         # later[t, u]: u's key is later than t's
         l1g = torch.log((1 - g).clamp(min=1e-6))
-        if self.arm in ("R_2st_fzs", "R_2st_fzv"):
+        if self.arm in ("R_2st_fzs", "R_2st_fzv") or self.arm.startswith("L_snap"):
             hard = torch.where(g > 0.5, l1g, torch.zeros_like(l1g))           # DEAD ZONE: a sub-threshold gate vetoes nothing
             l1g = l1g + (hard - l1g).detach()                                 # (a full {0,1} snap died at init: ~half the gates
                                                                               # start > 0.5 and veto every candidate)
         veto = torch.where(which[:, None] == 1, l1g @ later.T, l1g @ later)   # sum of log(1-g_u) over later / earlier u
         own = torch.log(g.clamp(min=1e-6))
-        if self.arm == "R_2st_fzs":                                           # the dead zone on the OWN gate too: the smoke showed
+        if self.arm == "R_2st_fzs" or self.arm.startswith("L_snap"):         # the dead zone on the OWN gate too: the smoke showed
             own = own + (torch.where(g > 0.5, own, torch.full_like(own, -30.0)) - own).detach()   # a 2nd leak (N x eps of own mass)
         a = torch.exp(own + veto) * live
         return a / (a.sum(-1, keepdim=True) + 1e-6)
@@ -120,6 +136,19 @@ class Router(W.Hybrid):
     def pos_bias(self, bt, tt):
         which = bt["x2"][torch.arange(len(bt["ns"])), bt["ns"]] - W.V_WH
         return self.bias(which, tt)
+
+
+def predict_ideal(eps, n, nb=4000, seed=0):                                  # RACE 4's pinned arithmetic (no training)
+    er = np.random.default_rng(30_000 + seed); bt = W.batch(nb, er, n)
+    ns, x2, x1 = bt["ns"].numpy(), bt["x2"].numpy(), bt["x1"].numpy(); hit, aw = [], []
+    for b in range(nb):
+        A = x1[b, ns[b]] - W.V_QA; which = x2[b, ns[b]] - W.V_WH
+        g = np.where(x2[b, :n] == W.V_ACT + A, 1.0 - 1e-6, eps)
+        l1g = np.log1p(-g); c = np.cumsum(l1g[::-1])[::-1]                   # c[t] = sum_{u >= t} log(1 - g_u)
+        later = np.append(c[1:], 0.0); earlier = np.cumsum(l1g) - l1g
+        a = g * np.exp(later if which == 1 else earlier); a = a / a.sum()
+        hit.append(a.argmax() == bt["anc"][b].item()); aw.append(a[bt["anc"][b].item()])
+    return float(np.mean(hit)), float(np.mean(aw))
 
 
 def build(arm, seed):
@@ -208,6 +237,8 @@ if __name__ == "__main__":
         say(f"{arm:<8} in-range {A['mean']:.3f} (router {A['route_mean']:.3f}) | N128 {A['N128']:.3f} router {A['route128']:.3f} "
             f"(one {A['one128']:.3f} two {A['two128']:.3f} two-far {A['twofar128']:.3f}) | N256 {A['N256']:.3f} router {A['route256']:.3f} "
             f"(one {A['one256']:.3f} two {A['two256']:.3f})  [{time.time() - t0:.0f}s]")
+        if RACE == 4:
+            say("         N1024 router " + f"{A['route1024']:.3f}" + " | anchor weight: " + "  ".join(f"N{n} {A.get(f'aw{n}', float('nan')):.3f}" for n in (64, 128, 256, 1024)))
         if RACE == 3:
             say("         long: " + "  ".join(f"N{n} router {A[f'route{n}']:.3f} (one {A[f'one{n}']:.3f} two {A[f'two{n}']:.3f})" for n in (1024, 1536))
                 + " | anchor weight / gate leak eps: " + "  ".join(f"N{n} {A.get(f'aw{n}', float('nan')):.3f}/{A.get(f'eps{n}', float('nan')):.4f}" for n in (64, 128, 256, 1024)))
@@ -218,6 +249,19 @@ if __name__ == "__main__":
     R = {r["arm"]: r["agg"] for r in res}
     if mode == "feas":
         say(f"FEASIBILITY (some arm in-range >= 0.80): {max(a['mean'] for a in R.values()) >= 0.80}")
+    if mode == "full" and RACE == 4:                                         # RACE 4 BARS (ledger 2026-10-21)
+        say("VERDICTS (3-seed means; router anchor accuracy vs the pinned ideal-gate arithmetic)")
+        for e in ("001", "01", "05"):
+            pred = {n: predict_ideal(LEAK[e], n) for n in (64, 128, 256, 1024)}
+            dev = max(abs(R[f"L_soft_{e}"][f"route{n}"] - pred[n][0]) for n in pred)
+            say(f"(L1) eps {LEAK[e]}: " + ("THE ARITHMETIC HOLDS" if dev <= 0.03 else "THE ARITHMETIC MISSES") + f"  (max |soft - predicted| {dev:.3f}; "
+                + ", ".join(f"N{n} {R[f'L_soft_{e}'][f'route{n}']:.3f}/{pred[n][0]:.3f}" for n in pred) + ")")
+            sn = all(R[f"L_snap_{e}"][f"route{n}"] >= 0.95 for n in (64, 128, 256, 1024))
+            say(f"(L2) eps {LEAK[e]}: " + ("THE SNAP REMOVES THE LEAK" if sn else "THE SNAP DOES NOT REMOVE THE LEAK") + "  ("
+                + ", ".join(f"N{n} {R[f'L_snap_{e}'][f'route{n}']:.3f}" for n in (64, 128, 256, 1024)) + ")")
+        e01 = R["L_soft_01"]
+        say("(L3) " + ("THE READ PAYS BEFORE THE ROUTER" if e01["route256"] >= 0.95 and e01["N256"] <= e01["route256"] - 0.10 else "THE READ DOES NOT PAY FIRST")
+            + f"  (eps 0.01 at 256: router {e01['route256']:.3f}, answer {e01['N256']:.3f}, anchor weight {e01['aw256']:.3f})")
     if mode == "full" and RACE == 3:                                         # RACE 3 BARS (ledger 2026-10-21)
         g = lambda a, k: R[a][k]
         say("VERDICTS (3-seed means; router anchor accuracy)")
