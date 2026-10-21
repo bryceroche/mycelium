@@ -99,6 +99,8 @@ class Mix(nn.Module):
             self.qkv, self.o, self.nh, self.dk = nn.Linear(D, 3 * D), nn.Linear(D, D), 4, D
         elif kind == "ATT_m8":                                               # equal-memory cache: k, v of 8 dims, one head
             self.qkv, self.o, self.nh, self.dk = nn.Linear(D, 3 * 8), nn.Linear(8, D), 1, 8
+        elif kind == "ATT_m24":                                              # who_when_rung's equal-memory rival (k, v of 24)
+            self.qkv, self.o, self.nh, self.dk = nn.Linear(D, 3 * 24), nn.Linear(24, D), 1, 24
         elif kind in ("GF", "GGF"):
             nf = Lmax + 1                                                    # rfft of a 2*Lmax zero-padded sequence
             self.filt = nn.Parameter(torch.randn(nf, D, 2) * 0.02); self.filt.data[..., 0] += 1.0 / Lmax
@@ -107,7 +109,7 @@ class Mix(nn.Module):
 
     def forward(self, h, pad):
         B, L, _ = h.shape
-        if self.kind in ("ATT", "ATT_m8"):
+        if self.kind in ("ATT", "ATT_m8", "ATT_m24"):
             nh, dk = self.nh, self.dk
             q, k, v = (t.reshape(B, L, nh, dk // nh).transpose(1, 2) for t in self.qkv(h).chunk(3, -1))
             s = rope(q) @ rope(k).transpose(-1, -2) / math.sqrt(dk // nh)
