@@ -191,7 +191,7 @@ owner alone. Then the dictionary supplies real fillers (Llama's features → pha
 
 ## 11. Two days on the line (2026-10-20 → 21): from binding to time — the laws, each with its standing
 
-Every number below is in the ledger (`docs/phase1_skeleton_spec.md`, 2026-10-20 11:37 → 2026-10-21 12:03) with its
+Every number below is in the ledger (`docs/phase1_skeleton_spec.md`, 2026-10-20 11:37 → 2026-10-21 16:45) with its
 artifact in `.cache/`. **STANDING** says how much weight a law can bear:
 - **BLIND**: bars pinned before any full-length read (a 300-step smoke at most);
 - **POST-FEAS**: bars pinned after a seed-0 feasibility read had shown the shape (a three-seed confirmation, not a blind
@@ -237,6 +237,10 @@ artifact in `.cache/`. **STANDING** says how much weight a law can bear:
 | **The clock carries the read** | scrambled stamps: 0.084, though that arm's router still finds the anchor ~0.7 | POST-FEAS |
 | **The rival gets the interface** | plain attention never learns the three-step (who, when) composition in 4000 steps (≤ 0.115); given the router + clock interface, a per-event cache learns it at once (0.997). Same lesson as TL_hop in the depth run | POST-FEAS ('did not learn in 4000 steps', not 'cannot') |
 | **A soft content gate leaks with length, (1 − ε)^N; snapping removes it** | the fuzzy arms' gate learned THROUGH σ 1.0 noise (ε → 0), so no leak was induced | **UNTESTED** (not refuted). The smoke also found a second leak the arithmetic missed: N × ε of OWN weight dilutes the anchor |
+| **The arithmetic of the leak holds in a trained system** | router race 4: (1 − ε)^N plus the normalization leak, max deviation 0.020; the snap removes it; the READ pays before the router (ε 0.01 at 256: router 1.000, answer 0.777) | POST-FEAS |
+| **Marginalize over a beam that covers the live mass; blending never beats it and miscalibrates the gate** | read race, known posterior: marginalizing in answer space sits on the Bayes floor at both q (log loss +0.006 / +0.008, flat to 256) and teaches the gate q from answers alone (0.294 / 0.701); blend ties accuracy only when one candidate dominates (q 0.7), with 3× the log loss, and drives its gate to 0.181 / 1.000 | M1 BLIND at q 0.3, POST-FEAS at q 0.7; M5 BLIND at q 0.3 |
+| **The beam must be as wide as the live ambiguity** | with up to three live candidates top-2 drops ~20 % of the posterior (accuracy 0.761 vs 0.795 at q 0.3); beam-4 = exact marginalization | BLIND (the pinned prediction 'top-2 suffices' failed) |
+| **The snap gives the answer cheaply; its confidence is dishonest** | snap accuracy −0.007 / −0.023 vs marginalize, log loss 3–4× | BLIND (under straight-through) |
 
 ### 11.3 Earlier reads from the same two days (context)
 
