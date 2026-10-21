@@ -99,6 +99,7 @@ class Hybrid(nn.Module):
         super().__init__(); self.kind = kind; g = torch.Generator().manual_seed(5000 + seed)
         self.emb = nn.Embedding(VOCAB, 64); self.q, self.kk = nn.Linear(64, 64), nn.Linear(64, 64)
         self.log_beta_a = nn.Parameter(torch.tensor(math.log(4.0)))
+        self.router = "rope"                                                 # router_race.py swaps this (default = the banked rung)
         self.register_buffer("om", torch.rand(MP, generator=g) * 2 * math.pi)
         self.oms = nn.Parameter(2 * math.pi / torch.exp(torch.linspace(math.log(256.0), math.log(2048.0), MS)))
         self.log_beta_r = nn.Parameter(torch.tensor(math.log(5.0)))
@@ -122,7 +123,9 @@ class Hybrid(nn.Module):
         fq = 1.0 / (10000 ** (torch.arange(0, 64, 2).float() / 64)); ang = rel[..., None] * fq
         k1, k2 = kv[..., :L, 0::2].squeeze(1), kv[..., :L, 1::2].squeeze(1)
         kr = torch.stack([k1 * torch.cos(ang) - k2 * torch.sin(ang), k1 * torch.sin(ang) + k2 * torch.cos(ang)], -1).flatten(-2)
+        if self.router != "rope": kr = kv[..., :L, :].squeeze(1)             # content only; position enters as a bias
         s = (kr @ qv.squeeze(1).squeeze(1)[..., None]).squeeze(-1) / 8.0     # (B, L)
+        if self.router != "rope": s = s + self.pos_bias(bt, tt)
         s = (self.log_beta_a.exp() * s).masked_fill(live == 0, -1e4)
         alpha = F.one_hot(bt["anc"], L).float() if self.kind == "ORACLE" else F.softmax(s, -1)
         self.router_hit = (alpha.argmax(-1) == bt["anc"]).float()
