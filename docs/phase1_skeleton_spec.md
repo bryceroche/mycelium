@@ -52093,7 +52093,7 @@ A 4th register holds a checksum digit k = (a + 7b + 13c) mod 64; the same tree a
 - PINNED READING (F4, values, lenient, all lookups): **CHEAP** if ≥ 0.80 of lookups have ≤ 2 live values and < 0.20 have ≥ 5 (beams are insurance); **COSTLY** if ≥ 0.20 have ≥ 5 (beam width is a design cost; the mass beam matters); MIXED otherwise.
 - PREDICTION (coordinator): CHEAP; F0 median ~4 values; the owner filter halves it; wrong slots carry more live values than right ones at every level.
 
-### 2026-10-21 (16:50) — THE CANDIDATE CENSUS VERDICT (.cache/candidate_census_CLK3_241.txt): **CHEAP** behind the filters — after owner + type + event, 0.938 of gold lookups have ≤ 2 live values and none has ≥ 5 (max 4); before any filter 0.208 have ≥ 5. The width lives in the FILTER, not the beam
+### 2026-10-21 (16:46) — THE CANDIDATE CENSUS VERDICT (.cache/candidate_census_CLK3_241.txt): **CHEAP** behind the filters — after owner + type + event, 0.938 of gold lookups have ≤ 2 live values and none has ≥ 5 (max 4); before any filter 0.208 have ≥ 5. The width lives in the FILTER, not the beam
 
 - n: 1009 wild given slots; 943 with a text occurrence counted, 66 excluded (no text numeral carries the value). Gold features unreadable: type 184 (20 %), owner 61, event 7 (LENIENT keeps every unreadable candidate live).
 - Live VALUES per lookup, LENIENT, all (mean / =1 / ≤ 2 / ≥ 5): F0 none 3.72 / 0.010 / 0.111 / **0.208**; F1 type 2.75 / 0.162 / 0.462 / 0.093; F2 owner 2.12 / 0.367 / 0.703 / 0.046; F3 owner + type 1.71 / 0.562 / 0.823 / 0.024; **F4 owner + type + event 1.30 / 0.774 / 0.938 / 0.000 (max 4)**. STRICT F4: 1.15 / 0.871 / 0.976 / 0.000. Token counts within ~0.1 of value counts.
