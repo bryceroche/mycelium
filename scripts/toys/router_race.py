@@ -22,7 +22,17 @@ RACE 3 (Opus's structural fix; RR_RACE=3): ORDER AS A COMPARISON AMONG CANDIDATE
             stage 2 THE CLOCK COMPARES: alpha_t ~ g_t * prod_{u: phi_u later than phi_t} (1 - g_u) ('last': no candidate
             with a later slow-wheel phase; 'first' mirrored), phi = angle of the 1296 wheel, FROZEN, nothing learned in
             stage 2. An additive form (log g + gamma phi) was rejected on paper: a non-candidate 240 ticks later outbids
-            any finite gate. Horizon by construction: the phase wraps at 1296 / 2 = 648 ticks.
+            any finite gate. The ANGLE is read on [0, 2 pi) (Bryce: 'track distance around the circle'; the smoke's
+            atan2 on (-pi, pi] wrapped at HALF a turn): horizon = one full turn, 1296 ticks.
+  R_2st_idx  the same product with order from the RAW INDEX (no clock): the honest rival
+  R_2st_odo  THE ODOMETER (Bryce's pass wheel): order key = sector of a 7776 wheel (60 deg per full turn of the 1296
+            wheel, rotor_clock's pass-wheel rule) x 2 pi + the 1296 wheel's angle: horizon 7776, frozen, nothing learned
+  R_2st_fz   R_2stage on FUZZY content: Gaussian noise (sigma FZ_SIGMA per dim) on every event's router embedding, train
+            and eval, so the gate must be soft (Opus: a leak eps per later event multiplies the anchor by (1-eps)^k)
+  R_2st_fzv  the same fuzzy content, the dead zone on the VETO side only (reported, no bar)
+  R_2st_fzs  the same fuzzy content, the VETO side SNAPPED: a gate below 0.5 vetoes nothing (snapped to 0; straight-
+            through), above 0.5 its soft veto stands; the same dead zone on the OWN gate (the smoke found a 2nd leak: N x eps of own
+            weight dilutes the anchor in the normalization). Two harder snaps died at init.
 EVAL: N 16/32/64 (in range), 128, 256 (4000 sequences each at 128 and 256: ~50 gap-1-2 two-sale cases). Router anchor accuracy + answer accuracy;
 two-sale splits by GAP between the sales (1-2 / 3-8 / 9-32 / 33+) and by query-anchor distance (<= 64 / > 64).
 ORDER HORIZON (Opus's turning point, made robust to the fast gears' wiggle; the smoke read the raw turning point as 0 for
@@ -43,7 +53,10 @@ STEPS = 300 if mode == "smoke" else int(os.environ.get("RR_STEPS", "4000"))
 SEEDS = [0] if mode != "full" else [0, 1, 2]
 EVAL_N, N_BIG = (16, 32, 64, 128, 256), (300 if mode == "smoke" else 4000)
 RACE = int(os.environ.get("RR_RACE", "1"))
-ALL = {1: ["R_rope", "R_none", "R_alibi", "R_slowL", "R_gear"], 2: ["R_gearS", "R_alibiC"], 3: ["R_2stage"]}[RACE]
+ALL = {1: ["R_rope", "R_none", "R_alibi", "R_slowL", "R_gear"], 2: ["R_gearS", "R_alibiC"],
+       3: ["R_2stage", "R_2st_idx", "R_2st_odo", "R_2st_fz", "R_2st_fzv", "R_2st_fzs"]}[RACE]
+FZ_SIGMA = float(os.environ.get("FZ_SIGMA", "1.0"))
+if RACE == 3: EVAL_N = EVAL_N + (1024, 1536)                                    # the horizon reads (one turn = 1296)
 ARMS = os.environ.get("RR_ARMS", ",".join(ALL)).split(",")
 GEARS = (3.0, 6.0, 36.0, 216.0, 1296.0)
 IN_RANGE_BANKED = 0.995                                                       # HYB in-range mean, .cache/who_when_rung.txt
@@ -53,7 +66,8 @@ class Router(W.Hybrid):
     def __init__(self, arm, seed):
         super().__init__("HYB", seed); self.router = arm[2:].lower(); self.arm = arm
         if arm == "R_gearS": self.router = "gear"
-        if arm == "R_2stage":
+        if arm.startswith("R_2st"):
+            self.router = "2stage"
             self.kappa_log, self.theta = nn.Parameter(torch.tensor(math.log(4.0))), nn.Parameter(torch.tensor(0.0))
         if arm in ("R_alibi", "R_alibiC"): self.slope = nn.Parameter(torch.zeros(2))
         if arm == "R_gearS":
@@ -77,12 +91,31 @@ class Router(W.Hybrid):
     def two_stage(self, bt, c, live, tt):
         which = bt["x2"][torch.arange(len(bt["ns"])), bt["ns"]] - W.V_WH        # 0 first, 1 last
         g = torch.sigmoid(self.kappa_log.exp() * (c - self.theta)) * live     # stage 1: content candidates
-        phi = torch.atan2(torch.sin(2 * math.pi * tt / 1296.0), torch.cos(2 * math.pi * tt / 1296.0))  # the slow wheel's angle
-        later = (phi[None, :] > phi[:, None]).float()                         # later[t, u]: u's phase is later than t's
-        M = torch.where(which[:, None, None] == 1, later[None], later.T[None])  # 'last': beaten by later; 'first': by earlier
-        lg = torch.log(g.clamp(min=1e-6)) + torch.einsum("btu,bu->bt", M, torch.log((1 - g).clamp(min=1e-6)))
-        a = lg.exp() * live
+        self.gate = g
+        # SNAP the VETO side only (R_2st_fzs; the leak lives in (1 - g_u)), straight-through IN LOG SPACE: forward = the hard
+        # factor, backward = the soft gradient (a snapped own gate, and a snap through the clamp, both died in the smoke)
+        if self.arm == "R_2st_idx":
+            key = tt
+        else:
+            key = torch.remainder(2 * math.pi * tt / 1296.0, 2 * math.pi)     # the 1296 wheel's angle on [0, 2 pi)
+            if self.arm == "R_2st_odo":                                       # + the pass wheel's sector (60 deg per turn)
+                sector = torch.floor(torch.remainder(2 * math.pi * tt / 7776.0, 2 * math.pi) / (math.pi / 3) + 1e-9)
+                key = sector * 2 * math.pi + key
+        later = (key[None, :] > key[:, None]).float()                         # later[t, u]: u's key is later than t's
+        l1g = torch.log((1 - g).clamp(min=1e-6))
+        if self.arm in ("R_2st_fzs", "R_2st_fzv"):
+            hard = torch.where(g > 0.5, l1g, torch.zeros_like(l1g))           # DEAD ZONE: a sub-threshold gate vetoes nothing
+            l1g = l1g + (hard - l1g).detach()                                 # (a full {0,1} snap died at init: ~half the gates
+                                                                              # start > 0.5 and veto every candidate)
+        veto = torch.where(which[:, None] == 1, l1g @ later.T, l1g @ later)   # sum of log(1-g_u) over later / earlier u
+        own = torch.log(g.clamp(min=1e-6))
+        if self.arm == "R_2st_fzs":                                           # the dead zone on the OWN gate too: the smoke showed
+            own = own + (torch.where(g > 0.5, own, torch.full_like(own, -30.0)) - own).detach()   # a 2nd leak (N x eps of own mass)
+        a = torch.exp(own + veto) * live
         return a / (a.sum(-1, keepdim=True) + 1e-6)
+
+    def fuzz(self, h):
+        return h + FZ_SIGMA * torch.randn_like(h) if self.arm in ("R_2st_fz", "R_2st_fzs", "R_2st_fzv") else h
 
     def pos_bias(self, bt, tt):
         which = bt["x2"][torch.arange(len(bt["ns"])), bt["ns"]] - W.V_WH
@@ -96,7 +129,7 @@ def build(arm, seed):
 
 
 def turning(net):                                                            # the ORDER HORIZON per which (first, last)
-    if not isinstance(net, Router) or net.router in ("none", "alibi", "alibic"): return [None, None]
+    if not isinstance(net, Router) or net.router in ("none", "alibi", "alibic", "2stage"): return [None, None]
     t = torch.arange(0, 4001).float(); res = []
     with torch.no_grad():
         for w in (0, 1):
@@ -112,10 +145,21 @@ def evaluate(net, seed):
     er = np.random.default_rng(30_000 + seed); res = {}; net.eval()
     with torch.no_grad():
         for n in EVAL_N:
-            nb = N_BIG if n >= 128 else W.N_EVAL; bt = W.batch(nb, er, n); pr = net(bt).argmax(-1)
-            hit = net.router_hit.numpy(); ok = (pr == bt["y"]).float().numpy()
+            nb = {1024: 500, 1536: 300}.get(n, N_BIG if n >= 128 else W.N_EVAL)
+            if mode == "smoke": nb = min(nb, 100)
+            prs, hits, ys, aws, eps = [], [], [], [], []
+            full = W.batch(nb, er, n)
+            for i in range(0, nb, 100):
+                bt_ = {k_: v_[i:i + 100] for k_, v_ in full.items()}; prs.append(net(bt_).argmax(-1)); hits.append(net.router_hit.numpy())
+                if hasattr(net, "gate"):
+                    g_ = net.gate; anc = bt_["anc"]; ar_ = torch.arange(len(anc))
+                    aws.append(net.last_alpha[ar_, anc].numpy())
+                    x2_ = bt_["x2"]; A_ = bt_["x1"][ar_, bt_["ns"]] - W.V_QA
+                    nonm = (x2_[:, :n] != W.V_ACT + A_[:, None]); eps.append(float(g_[nonm].mean()))
+            bt = full; pr = torch.cat(prs); hit = np.concatenate(hits); ok = (pr == bt["y"]).float().numpy()
+            if aws: res[f"aw{n}"], res[f"eps{n}"] = float(np.concatenate(aws).mean()), float(np.mean(eps))
             res[f"N{n}"], res[f"route{n}"] = float(ok.mean()), float(hit.mean())
-            if n >= 128:
+            if n >= 64:
                 ns = bt["ns"].numpy(); x2 = bt["x2"].numpy(); A = bt["x1"].numpy()[np.arange(nb), ns] - W.V_QA
                 isA = x2[:, :n] == W.V_ACT + A[:, None]; cnt = isA.sum(1); dist = ns - bt["anc"].numpy()
                 gap = np.array([np.ptp(np.nonzero(r)[0]) if r.sum() == 2 else 0 for r in isA])
@@ -164,6 +208,9 @@ if __name__ == "__main__":
         say(f"{arm:<8} in-range {A['mean']:.3f} (router {A['route_mean']:.3f}) | N128 {A['N128']:.3f} router {A['route128']:.3f} "
             f"(one {A['one128']:.3f} two {A['two128']:.3f} two-far {A['twofar128']:.3f}) | N256 {A['N256']:.3f} router {A['route256']:.3f} "
             f"(one {A['one256']:.3f} two {A['two256']:.3f})  [{time.time() - t0:.0f}s]")
+        if RACE == 3:
+            say("         long: " + "  ".join(f"N{n} router {A[f'route{n}']:.3f} (one {A[f'one{n}']:.3f} two {A[f'two{n}']:.3f})" for n in (1024, 1536))
+                + " | anchor weight / gate leak eps: " + "  ".join(f"N{n} {A.get(f'aw{n}', float('nan')):.3f}/{A.get(f'eps{n}', float('nan')):.4f}" for n in (64, 128, 256, 1024)))
         say(f"         gaps@128 1-2 {A['gap1_128']:.3f}  3-8 {A['gap3_128']:.3f}  9-32 {A['gap9_128']:.3f}  33+ {A['gap33_128']:.3f} | "
             f"order horizons (first, last) per seed: {[(r['turn_first'], r['turn_last']) for r in rs]}"
             + (f" | min learned period {[round(r['min_period']) for r in rs]}" if arm == "R_slowL" else ""))
@@ -171,6 +218,23 @@ if __name__ == "__main__":
     R = {r["arm"]: r["agg"] for r in res}
     if mode == "feas":
         say(f"FEASIBILITY (some arm in-range >= 0.80): {max(a['mean'] for a in R.values()) >= 0.80}")
+    if mode == "full" and RACE == 3:                                         # RACE 3 BARS (ledger 2026-10-21)
+        g = lambda a, k: R[a][k]
+        say("VERDICTS (3-seed means; router anchor accuracy)")
+        t1 = all(g("R_2stage", f"{w}128") >= 0.95 and g("R_2stage", f"{w}256") >= 0.90 for w in ("one", "two")) and g("R_2stage", "mean") >= 0.985
+        say("(T1) " + ("THE COMPARISON HOLDS" if t1 else "THE COMPARISON DOES NOT HOLD") + f"  (one/two at 128 {g('R_2stage', 'one128'):.3f}/{g('R_2stage', 'two128'):.3f}, 256 {g('R_2stage', 'one256'):.3f}/{g('R_2stage', 'two256'):.3f}, in-range {g('R_2stage', 'mean'):.3f})")
+        wrap = g("R_2stage", "two1024") >= 0.90 and g("R_2stage", "two1536") <= g("R_2st_idx", "two1536") - 0.10
+        say("(T2) " + ("ONE TURN IS THE HORIZON (holds at 1024, wraps by 1536)" if wrap else "NO WRAP AS PREDICTED") + f"  (two 1024 {g('R_2stage', 'two1024'):.3f}, 1536 {g('R_2stage', 'two1536'):.3f} vs index {g('R_2st_idx', 'two1536'):.3f})")
+        tie = all(abs(g("R_2stage", f"route{n}") - g("R_2st_idx", f"route{n}")) <= 0.02 for n in (128, 256, 1024))
+        say("(T3) " + ("THE CLOCK IS A SUFFICIENT ORDER KEY WITHIN ONE TURN (ties the index)" if tie else "THE CLOCK AND THE INDEX DIFFER WITHIN ONE TURN"))
+        say("(T4) " + ("THE PASS WHEEL UNWRAPS" if g("R_2st_odo", "two1536") >= 0.95 else "THE PASS WHEEL DOES NOT UNWRAP") + f"  (odometer two-sale 1536 {g('R_2st_odo', 'two1536'):.3f})")
+        decay = g("R_2st_fz", "aw64") - g("R_2st_fz", "aw256") >= 0.10 and g("R_2st_fz", "route256") < g("R_2st_fz", "route64")
+        say("(F1) " + ("THE SOFT GATE LEAKS WITH LENGTH" if decay else "NO LENGTH LEAK") + f"  (anchor weight 64 {g('R_2st_fz', 'aw64'):.3f} -> 256 {g('R_2st_fz', 'aw256'):.3f} -> 1024 {g('R_2st_fz', 'aw1024'):.3f}; eps {g('R_2st_fz', 'eps256'):.4f})")
+        f2 = g("R_2st_fzs", "route128") >= 0.95 and g("R_2st_fzs", "route256") >= 0.90
+        say("(F2) " + ("THE SNAPPED GATE HOLDS ON FUZZY CONTENT" if f2 else "THE SNAPPED GATE DOES NOT HOLD") + f"  (router 128 {g('R_2st_fzs', 'route128'):.3f}, 256 {g('R_2st_fzs', 'route256'):.3f}; veto-only {g('R_2st_fzv', 'route128'):.3f}/{g('R_2st_fzv', 'route256'):.3f}; soft {g('R_2st_fz', 'route128'):.3f}/{g('R_2st_fz', 'route256'):.3f})")
+        dz, ds = g("R_2st_fz", "route64") - g("R_2st_fz", "route1024"), g("R_2st_fzs", "route64") - g("R_2st_fzs", "route1024")
+        say("(F3) " + ("THE SNAP STOPS THE LENGTH DECAY" if ds <= 0.5 * dz and dz > 0.05 else "THE SNAP DOES NOT STOP THE DECAY")
+            + f"  (router 64 -> 1024 drop: soft {dz:+.3f}, snapped {ds:+.3f}, veto-only {g('R_2st_fzv', 'route64') - g('R_2st_fzv', 'route1024'):+.3f})")
     if mode == "full" and RACE == 2:                                         # RACE 2 BARS (ledger 2026-10-21 ~09:57)
         say("VERDICTS (3-seed means; router anchor accuracy)")
         ok = {a: R[a]["route128"] >= 0.95 and R[a]["route256"] >= 0.90 and R[a]["mean"] >= IN_RANGE_BANKED - 0.01 for a in ALL}

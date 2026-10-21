@@ -116,6 +116,7 @@ class Hybrid(nn.Module):
         tt = torch.arange(L).float()
         # ROUTER: the query token attends over the events by content (+ RoPE relative position for first/last)
         h = embed(self.emb, bt)
+        if hasattr(self, "fuzz"): h = torch.cat([self.fuzz(h[:, :L]), h[:, L:]], 1)   # router_race: noisy EVENTS only
         qv = self.q(h[ar, ns])[:, None, None, :]                             # (B, 1, 1, 64)
         kv = self.kk(h)[:, None]                                             # (B, 1, L1, 64)
         # rotate keys by their position relative to the query (RoPE): the query sits at ns
@@ -131,7 +132,7 @@ class Hybrid(nn.Module):
             if self.router != "rope": s = s + self.pos_bias(bt, tt)
             s = (self.log_beta_a.exp() * s).masked_fill(live == 0, -1e4)
             alpha = F.one_hot(bt["anc"], L).float() if self.kind == "ORACLE" else F.softmax(s, -1)
-        self.router_hit = (alpha.argmax(-1) == bt["anc"]).float()
+        self.router_hit = (alpha.argmax(-1) == bt["anc"]).float(); self.last_alpha = alpha
         # WRITE: actors stamped by the fast clock (absolute tick), in registers by absolute tick
         ws = tt[None].expand(B, L)
         if self.kind == "PLACEBO":
