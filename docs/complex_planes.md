@@ -188,3 +188,78 @@ three toys tested equivariance and width, and the first toy that gave the algebr
 
 Open: the owner lookup still degrades on held-out (the memory key carries the bound filler) — form 2b keys the lookup by
 owner alone. Then the dictionary supplies real fillers (Llama's features → phasors by random Fourier features).
+
+## 11. Two days on the line (2026-10-20 → 21): from binding to time — the laws, each with its standing
+
+Every number below is in the ledger (`docs/phase1_skeleton_spec.md`, 2026-10-20 11:37 → 2026-10-21 12:03) with its
+artifact in `.cache/`. **STANDING** says how much weight a law can bear:
+- **BLIND**: bars pinned before any full-length read (a 300-step smoke at most);
+- **POST-FEAS**: bars pinned after a seed-0 feasibility read had shown the shape (a three-seed confirmation, not a blind
+  prediction);
+- **CONSTRUCTION**: passes largely by how the arm is built (the learned part is small);
+- **UNPREDICTED**: a finding no pinned prediction asked for;
+- **UNTESTED**.
+
+### 11.1 The claims, as they now stand (each narrowed by a measurement)
+
+1. **The phase claim is a statement about binding machines.** Phases beat orthogonal and free matrices
+   (K = 3: +0.065; K = 4: ORDER HOLDS, +0.068 / +0.207). But a 46k plain looped block with one soft snap per hop beats
+   every binding machine on unseen pairs, in and past the horizon (snap control: hops 4–5 0.965 / 0.980 vs 0.755).
+   Phase unbinding is optional in the hybrid.
+2. **The clock's job is ADDRESSING, not compression.**
+   - Superposed registers TIE per-event slots at equal memory ((who, when) bar c: −0.023).
+   - The registers' memory win is real only against equal-memory ATTENTION (+0.450), not against a cache with the same
+     interface.
+   - Finding by content needs a per-event key in every design: the registers compress values only.
+3. **The clock's edge is INTEGRATION, not accuracy (a fit argument, not a measured edge).** Within one turn the wheel
+   ties the raw index exactly (race 3 T3), and the odometer is a base-6 counter written in phases. What the clock gives
+   is ONE frozen object that addresses the registers, stamps storage and orders events, where a shift is a rotation and
+   nothing can drift. That argument belongs to the compatibility ruling (fit builds), not to the bars (bars claim).
+4. **'The clock wins the time trial' (Bryce): DOES NOT WIN OUTRIGHT.**
+   - Accuracy ties.
+   - Parameters are 18× fewer (by construction).
+   - Length is +0.083 on short k but **+0.046 on long k against a pinned +0.05**, with full attention holding 16× the
+     memory.
+
+### 11.2 The laws
+
+| Law | Evidence | Standing |
+|---|---|---|
+| **Discretize between steps**: multi-hop extrapolation is carried by a cleanup to a clean symbol after every hop, not by the binding algebra | snap control: TL_snap h5 0.948, TL_snapmem 0.980, vs plain loop 0.300 | BLIND (registered before the full run) |
+| **Order past the trained length is a COMPARISON among content candidates, not a score added to content** | races 1–2: every additive order bias fails at 128; race 3: gate, then 'no candidate keyed later' (a product) reads 1.000 to 1024 | 3 races BLIND; the fix itself CONSTRUCTION (the learned part is a clean content gate) |
+| **An unbounded position bias swamps the content match** | ALiBi: a sale that occurs ONCE found at 0.529 at 128 and 0.254 at 256, vs 1.000 with no position at all; the slowest wheel alone (a ramp over 0–256) the same, 0.597 / 0.292 | UNPREDICTED (both pinned predictions said ALiBi would tie the clock); race 2 confirmed it, as Opus cautioned |
+| **Frozen rates beat learned ones (the Goodhart door, rotor_clock's law)** | the learned slow band sped its periods from 256+ to ~166 until its order horizon equalled the training horizon (~62); frozen gears beat it by +0.213 | BLIND |
+| **Bands address, registers store** | bands in one vector lose (CLOCK_ms 0.789, LRU_spread 0.410 on long k); registers routed by a slow band hold 0.999 at 128 | BLIND (a 300-step smoke seen) |
+| **Decay chooses which window the capacity covers; it adds no capacity** | the LRU learned decay 0.064 on short k (1.000 at 128), cut it to 0.001 when the task asked far back (bar e), then hit the capacity wall (0.521) | BLIND |
+| **One wheel orders for exactly one turn; a locked pass wheel extends it (the odometer)** | one 1296 wheel: two-sale 1.000 at 1024, 0.775 at 1536; with the pass wheel 1.000 at 1536. Read the ANGLE, not the sine (the sine turns back at a quarter turn; Bryce's 'hands moving downward'); gears must be phase-locked so the carries line up | CONSTRUCTION, confirmed (smoke-shaped) |
+| **Content lookup needs attention; Fourier filters do position only for SHORT windows** | content: ATT 1.000, gated filter 0.448, plain filter 0.235. The plain filter is perfect on 'k back' for k ≤ 8 (0.989) but reads 0.112 when the query picks k up to 63 | content: POST-FEAS; the short-window limit UNPREDICTED |
+| **The router, not the clock, is the length wall** | (who, when): accuracy at 128 tracks the router's anchor hit (0.733 vs 0.731); the oracle tick reads 0.999 | POST-FEAS; decomposed (one sale perfect at every distance; every miss a two-sale order judgment) |
+| **The clock carries the read** | scrambled stamps: 0.084, though that arm's router still finds the anchor ~0.7 | POST-FEAS |
+| **The rival gets the interface** | plain attention never learns the three-step (who, when) composition in 4000 steps (≤ 0.115); given the router + clock interface, a per-event cache learns it at once (0.997). Same lesson as TL_hop in the depth run | POST-FEAS ('did not learn in 4000 steps', not 'cannot') |
+| **A soft content gate leaks with length, (1 − ε)^N; snapping removes it** | the fuzzy arms' gate learned THROUGH σ 1.0 noise (ε → 0), so no leak was induced | **UNTESTED** (not refuted). The smoke also found a second leak the arithmetic missed: N × ε of OWN weight dilutes the anchor |
+
+### 11.3 Earlier reads from the same two days (context)
+
+- The analytic ceiling, extended: 96 planes, K = 3, held-out hops 1–5: 0.993 / 0.982 / 0.964 / 0.949 / 0.951.
+- The dictionaries (D4, D7): no single sparse feature carries 'owner' at either depth once syntax and position are
+  controlled (the binding theorem's prediction on features).
+- FNet fails lookup (0.352).
+- The tree rung passed B1–B5:
+  - order needs per-level codes;
+  - a clock carries order as a frequency, not as an offset;
+  - path sums route coarse queries to unseen leaves.
+- Correction banked on 2026-10-20: the rung-1T line 'beats plain networks up to 36× larger' (§10) holds only for plain
+  nets WITHOUT the per-hop interface.
+
+### 11.4 Open, in order
+
+1. **The fuzzy-gate rung, with irreducible and KNOWN ambiguity** (Opus's design):
+   - decoy actions share surface tokens with the queried one;
+   - a fraction ε of events carry deliberately ambiguous labels, so even a perfect gate stays soft at ε;
+   - sweep ε ∈ {0.001, 0.01, 0.05};
+   - the (1 − ε)^N decay and the snap's flattening are checked against a number set in advance.
+
+   This is the version the main line meets: 'sold', 'the sale', 'she got $12 for'.
+2. The hybrid as one machine: learned lookup + snap + static memory, with the clock as address, storage stamp and order key.
+3. Scope fence: the toys test GIVEN events. The main line's (who, when) failure was DERIVED values (0.013 addressable),
+   which have no event of their own; nothing here touches it yet.
