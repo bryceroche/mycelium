@@ -19,6 +19,11 @@ ARMS (every arm sees the same tokens; k is part of the QUESTION, given to all; n
            registers' mean slow stamps); the fast stamp UNBINDS the actor from it (registers hold sum_t c(t) (*) actor_t);
            snap over the 40 actors (cosine, learned beta). Actor codes learned unit-init phasors.
   HYB_1vec the hybrid with ONE register (all events in one vector): the capacity comparator under learned routing
+  CACHE    THE FAIR RIVAL (feas: every plain attention arm, 2 or 4 layers, sat at the floor ~0.07-0.10, so the rival
+           gets the hybrid's INTERFACE, the depth run's lesson): the same router and the same clock as the address, but
+           each event's actor stored in its OWN 32-d slot (no superposition), read by a sharp positional attention at the
+           target stamp (cosine over the 256 fast planes, learned sharpness). Memory = the router's keys 8,192 + slots
+           4,096 = 12,288 = the hybrid's. The clock addresses both; they differ only in STORAGE (superposed vs slots).
   ORACLE   the hybrid handed the TRUE anchor tick (alpha one-hot): the routing ceiling (a ceiling, not a win)
   PLACEBO  the hybrid with SCRAMBLED write stamps (each sequence's events stamped by a random permutation of the ticks):
            if the clock carries the read, this collapses
@@ -33,12 +38,13 @@ import torch.nn as nn  # noqa: E402
 import torch.nn.functional as F  # noqa: E402
 import time_content_rung as T  # noqa: E402  (Block, rope)
 
-NA, NACT, KMAX, D, NL, MP, MS, W = 40, 8, 8, 128, 2, 256, 16, 16
+NA, NACT, KMAX, D, MP, MS, W = 40, 8, 8, 128, 256, 16, 16
+NL = int(os.environ.get("WW_ATT_NL", "2"))                                 # the attention rivals' depth
 TRAIN_N, EVAL_N = (12, 64), (16, 32, 64, 128)
 STEPS = 300 if mode == "smoke" else int(os.environ.get("WW_STEPS", "4000"))
 BATCH, N_EVAL = 64, (300 if mode == "smoke" else 1000)
 SEEDS = [0] if mode != "full" else [0, 1, 2]
-ALL = ["ATT", "ATT_m8", "ATT_m24", "HYB", "HYB_1vec", "ORACLE", "PLACEBO"]
+ALL = ["ATT", "ATT_m24", "HYB", "HYB_1vec", "CACHE", "ORACLE", "PLACEBO"]
 ARMS = os.environ.get("WW_ARMS", ",".join(ALL)).split(",")
 # vocab (summed channels): actors 0..39 | actions 40..47 | query-action 48..55 | which 56..57 | k 58..65 | PAD 66
 V_ACT, V_QA, V_WH, V_K, PADT, VOCAB = 40, 48, 56, 58, 66, 67
@@ -99,6 +105,9 @@ class Hybrid(nn.Module):
         te = torch.rand(NA, MP, generator=g) * 2 * math.pi
         self.ent = nn.Parameter(torch.cat([torch.cos(te), torch.sin(te)], -1))
         self.log_beta = nn.Parameter(torch.tensor(math.log(2.0)))
+        if kind == "CACHE":
+            self.val, self.vout = nn.Embedding(NA, 32), nn.Linear(32, NA)
+            self.log_beta_p = nn.Parameter(torch.tensor(math.log(10.0)))
 
     def forward(self, bt):
         x = bt["x1"]; B, L1 = x.shape; L = L1 - 1; ns = bt["ns"]; ar = torch.arange(B)
@@ -116,6 +125,7 @@ class Hybrid(nn.Module):
         s = (kr @ qv.squeeze(1).squeeze(1)[..., None]).squeeze(-1) / 8.0     # (B, L)
         s = (self.log_beta_a.exp() * s).masked_fill(live == 0, -1e4)
         alpha = F.one_hot(bt["anc"], L).float() if self.kind == "ORACLE" else F.softmax(s, -1)
+        self.router_hit = (alpha.argmax(-1) == bt["anc"]).float()
         # WRITE: actors stamped by the fast clock (absolute tick), in registers by absolute tick
         ws = tt[None].expand(B, L)
         if self.kind == "PLACEBO":
@@ -132,6 +142,10 @@ class Hybrid(nn.Module):
         ar_, ai_ = (alpha[..., None] * torch.cos(fa)).sum(1), (alpha[..., None] * torch.sin(fa)).sum(1)
         rb = -kf * self.om; cr, ci = torch.cos(rb), torch.sin(rb)
         tr, ti = ar_ * cr - ai_ * ci, ar_ * ci + ai_ * cr                    # the target's fast stamp
+        if self.kind == "CACHE":                                             # slots: a positional read at the target stamp
+            sc = (torch.cos(fa)[0] @ tr[..., None] + torch.sin(fa)[0] @ ti[..., None]).squeeze(-1) / MP   # (B, L)
+            w = F.softmax((self.log_beta_p.exp() * sc).masked_fill(live == 0, -1e4), -1)
+            return self.vout((w[..., None] * self.val(bt["actor"])).sum(1))
         if R > 1:
             sa = tt[:, None] * self.oms[None]                                # (L, MS)
             kc = torch.einsum("bl,lr,ls->brs", live, reg, torch.cos(sa)); ks_ = torch.einsum("bl,lr,ls->brs", live, reg, torch.sin(sa))
@@ -162,7 +176,8 @@ def memfloats(arm, n):
     if arm == "ATT": return NL * 2 * D * n
     if arm == "ATT_m8": return NL * 2 * 8 * n
     if arm == "ATT_m24": return NL * 2 * 24 * n
-    if arm == "HYB_1vec": return 2 * MP + 64 * n                             # the vector + the router's keys
+    if arm == "HYB_1vec": return 2 * MP + 64 * n
+    if arm == "CACHE": return 32 * n + 64 * n                             # the vector + the router's keys
     return -(-n // W) * 2 * MP + 64 * n
 
 
@@ -179,6 +194,7 @@ def run(arm, seed, lr):
     with torch.no_grad():
         for n, bt in ev.items():
             res[f"N{n}"] = float((net(bt).argmax(-1) == bt["y"]).float().mean())
+            if hasattr(net, "router_hit"): res[f"route{n}"] = float(net.router_hit.mean())
     res["mean"] = float(np.mean([res[f"N{n}"] for n in EVAL_N if n <= TRAIN_N[1]]))
     res["params"] = nparams(net); res["final_loss"] = float(loss.detach()); res["mem_floats_N128"] = memfloats(arm, 128)
     return res
@@ -203,11 +219,28 @@ if __name__ == "__main__":
         A = {k: float(np.mean([r[k] for r in rs])) for k in rs[0]}
         res.append(dict(arm=arm, lr=lr, seeds=rs, agg=A))
         say(f"{arm:<9} params {rs[0]['params']:>7} loss {A['final_loss']:.3f}  "
-            + "  ".join(f"{k} {v:.3f}" for k, v in A.items() if k.startswith("N") or k == "mean")
+            + "  ".join(f"{k} {v:.3f}" for k, v in A.items() if k.startswith(("N", "route")) or k == "mean")
             + f"  mem {A['mem_floats_N128']:.0f}  [{time.time() - t0:.0f}s]")
     json.dump(res, open(f".cache/who_when_rung{tag}.json", "w"), indent=1)
     R = {r["arm"]: r["agg"] for r in res}
     if mode == "feas":
         ok = max(a["mean"] for k_, a in R.items() if k_ not in ("ORACLE", "PLACEBO")) >= 0.80   # a ceiling cannot pass it
         say(f"FEASIBILITY: some arm >= 0.80 in range: {ok} -> {'FEASIBLE (pin the bars)' if ok else 'NOT FEASIBLE'}")
+    if mode == "full":                                                       # THE PINNED BARS (ledger 2026-10-21 ~06:35)
+        g = lambda a, k: R[a][k]
+        v = lambda c, y, n: y if c else n
+        say("VERDICTS (3-seed means)")
+        say("(a) " + v(g("HYB", "N128") >= 0.90, "THE HYBRID HOLDS AT 128", "THE HYBRID DOES NOT HOLD AT 128") + f"  ({g('HYB', 'N128'):.3f})")
+        say("(b) " + v(g("ORACLE", "N128") - g("HYB", "N128") <= 0.05, "ROUTING IS CHEAP", "ROUTING COSTS") + f"  (oracle - hybrid at 128 {g('ORACLE', 'N128') - g('HYB', 'N128'):+.3f})")
+        dN, dm = g("HYB", "N128") - g("CACHE", "N128"), g("HYB", "mean") - g("CACHE", "mean")
+        say("(c) " + ("SUPERPOSITION TIES SLOTS AT EQUAL MEMORY" if abs(dN) <= 0.03 and abs(dm) <= 0.03 else
+                      "SUPERPOSITION BEATS SLOTS" if dN >= 0.05 else
+                      "SLOTS BEAT SUPERPOSITION" if dN <= -0.05 or dm <= -0.05 else "NEAR (within 0.05)")
+            + f"  (hybrid - cache: 128 {dN:+.3f}, in range {dm:+.3f})")
+        say("(d) " + v(g("PLACEBO", "mean") <= 0.30, "THE CLOCK CARRIES THE READ (placebo collapses)", "THE PLACEBO SURVIVES") + f"  ({g('PLACEBO', 'mean'):.3f})")
+        say("(e) " + v(g("HYB", "N128") - g("HYB_1vec", "N128") >= 0.20, "REGISTERS NEEDED UNDER LEARNED ROUTING", "REGISTERS NOT NEEDED") + f"  ({g('HYB', 'N128') - g('HYB_1vec', 'N128'):+.3f})")
+        say("(f) " + v(g("HYB", "route128") <= 0.90 and abs(g("HYB", "N128") - g("HYB", "route128")) <= 0.05, "THE ROUTER IS THE LENGTH WALL", "THE ROUTER IS NOT THE (WHOLE) WALL")
+            + f"  (route128 {g('HYB', 'route128'):.3f}, N128 {g('HYB', 'N128'):.3f})")
+        say("CONTEXT " + v(max(g("ATT", "mean"), g("ATT_m24", "mean")) <= 0.30, "PLAIN ATTENTION DOES NOT LEARN THE COMPOSITION", "PLAIN ATTENTION LEARNS IT")
+            + f"  (ATT {g('ATT', 'mean'):.3f}, ATT_m24 {g('ATT_m24', 'mean'):.3f})")
     say(f"DONE in {time.time() - t0:.0f}s")
