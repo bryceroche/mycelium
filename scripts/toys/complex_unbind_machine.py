@@ -162,7 +162,7 @@ class TLHop(nn.Module):
     anywhere, so hop 5 is representable. No owner-attention supervision (as every plain arm)."""
     def __init__(self, D, seed, snap=False, static=False):
         super().__init__(); torch.manual_seed(seed); self.snap, self.static = snap, static
-        if snap: self.log_beta = nn.Parameter(torch.tensor(math.log(2.0)))
+        if snap: self.log_beta = nn.Parameter(torch.tensor(math.log(float(os.environ.get("UM_SNAP_BETA", "2.0")))))
         self.block = T.RLayer(D); self.own, self.fil = nn.Embedding(T.N_ENT, D), nn.Embedding(T.N_ENT, D)
         self.alias, self.hop = nn.Embedding(T.N_ALIAS + 1, D), nn.Embedding(T.N_ALIAS + 1, D)
         self.lnf, self.out = nn.LayerNorm(D), nn.Linear(D, D)
@@ -267,7 +267,7 @@ if __name__ == "__main__":
         if arm in banked:
             lrs[arm] = banked[arm]; say(f"lr {arm}: {lrs[arm]} (banked, {os.environ['UM_LR_FROM']})")
         elif mode == "full":
-            sc = {lr: run(arm, 0, lr, Dp)["val"] for lr in (1e-3, 3e-3)}
+            sc = {lr: run(arm, 0, lr, Dp)["val"] for lr in [float(x) for x in os.environ.get("UM_LRS", "1e-3,3e-3").split(",")]}
             lrs[arm] = max(sc, key=sc.get); say(f"lr sweep {arm}: {sc} -> {lrs[arm]}  [{time.time() - t0:.0f}s]")
         else:
             lrs[arm] = 3e-3
