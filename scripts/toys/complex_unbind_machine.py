@@ -160,20 +160,29 @@ class TLHop(nn.Module):
     query token own(X); at hop h the hop's alias embedding is added to the query token, then ONE shared block is applied
     twice; pointer readout after every hop over the scene (own table), the answer read after hop d. No hop index enters
     anywhere, so hop 5 is representable. No owner-attention supervision (as every plain arm)."""
-    def __init__(self, D, seed):
-        super().__init__(); torch.manual_seed(seed)
+    def __init__(self, D, seed, snap=False, static=False):
+        super().__init__(); torch.manual_seed(seed); self.snap, self.static = snap, static
+        if snap: self.log_beta = nn.Parameter(torch.tensor(math.log(2.0)))
         self.block = T.RLayer(D); self.own, self.fil = nn.Embedding(T.N_ENT, D), nn.Embedding(T.N_ENT, D)
         self.alias, self.hop = nn.Embedding(T.N_ALIAS + 1, D), nn.Embedding(T.N_ALIAS + 1, D)
         self.lnf, self.out = nn.LayerNorm(D), nn.Linear(D, D)
 
     def forward(self, facts, query):
-        x = torch.cat([self.own(facts[..., 0]) + self.alias(facts[..., 1]) + self.fil(facts[..., 2]),
-                       self.own(query[:, 0])[:, None]], 1)
-        outs = []
+        fx0 = self.own(facts[..., 0]) + self.alias(facts[..., 1]) + self.fil(facts[..., 2])
+        x = torch.cat([fx0, self.own(query[:, 0])[:, None]], 1)
+        outs = []; Eo = self.own.weight
         for h in range(H):
+            if self.static:                                                  # facts re-fed from their embeddings every hop
+                x = torch.cat([fx0, x[:, -1:]], 1)
             x = torch.cat([x[:, :-1], (x[:, -1] + self.hop(query[:, 1 + h]))[:, None]], 1)
             x = self.block(self.block(x))
-            outs.append(T.scene_mask(self.out(self.lnf(x[:, -1])) @ self.own.weight.T, facts))
+            z = self.out(self.lnf(x[:, -1]))
+            if self.snap:                                                    # the machine's soft snap: cosine, learned beta,
+                lg = T.scene_mask(self.log_beta.exp() * F.normalize(z, dim=-1) @ F.normalize(Eo, dim=-1).T, facts)
+                x = torch.cat([x[:, :-1], (F.softmax(lg, -1) @ Eo)[:, None]], 1)   # the pointer REPLACED by the snapped entity
+            else:
+                lg = T.scene_mask(z @ Eo.T, facts)
+            outs.append(lg)
         return torch.stack(outs, 1)[torch.arange(len(query)), query[:, H + 1] - 1]
 
 
@@ -187,8 +196,8 @@ def t4_params_width():
 def build(arm, seed, Dp):
     if arm == "T6_fnet":
         return fnet(DR, seed)
-    if arm == "TL_hop":
-        return TLHop(Dp["H"], seed)
+    if arm in ("TL_hop", "TL_snap", "TL_snapmem"):
+        return TLHop(Dp["H"], seed, snap=arm != "TL_hop", static=arm == "TL_snapmem")
     if arm.startswith("TL"):
         return looped(Dp["L"], seed)
     if arm.startswith("T"):
@@ -306,6 +315,23 @@ if __name__ == "__main__":
             f"{h45('PH_learn') - h45('TL_hop') >= 0.10}")
         if "MX_orth" in A:
             say(f"ORDER AT HOPS 4-5 (reported, no margin claim): PH_learn - MX_orth {h45('PH_learn') - h45('MX_orth'):+.4f}")
+    if H > 3 and all(a in A for a in ("TL_snap", "TL_snapmem")):    # WHICH HALF CARRIES EXTRAPOLATION (pinned 10-20, ledger)
+        h45 = lambda a: (A[a]["heldout_hop4"] + A[a]["heldout_hop5"]) / 2
+        def ext(a):
+            P = A[a]; tr = P["heldout_hop3"] * (P["heldout_hop3"] / P["heldout_hop2"]) ** 2
+            return P["heldout_hop5"] >= tr - 0.05 and (0.951 - P["heldout_hop5"]) <= (0.966 - P["heldout_hop3"]) + 0.10
+        PH45 = 0.7546                                                         # PH_learn held-out hops 4-5, the 17:40 read
+        for a in ("TL_snap", "TL_snapmem"):
+            say(f"{a}: held-out h3 {A[a]['heldout_hop3']:.4f} h4 {A[a]['heldout_hop4']:.4f} h5 {A[a]['heldout_hop5']:.4f}; "
+                f"EXTRAPOLATES (PH_learn's rule) {ext(a)}; hops 4-5 {h45(a):.4f} vs PH_learn {PH45} (match: >= {PH45 - 0.05:.4f})")
+        ok = {a: A[a]["heldout_hop3"] >= 0.8137 - 0.05 for a in ("TL_snap", "TL_snapmem")}   # readable: in-horizon intact
+        say(f"READABLE (held-out h3 >= PH_learn's 0.8137 - 0.05): {ok}")
+        v = ("NOT READABLE (the snap broke the in-horizon net)" if not any(ok.values()) else
+             "THE CLEANUP CARRIES IT (phases optional)" if ok["TL_snap"] and ext("TL_snap") and h45("TL_snap") >= PH45 - 0.05 else
+             "CLEANUP + STATIC MEMORY CARRY IT (phases optional)" if ok["TL_snapmem"] and ext("TL_snapmem")
+             and h45("TL_snapmem") >= PH45 - 0.05 else
+             "THE PHASE UNBINDING CARRIES IT" if max(h45(a) for a in ok if ok[a]) <= PH45 - 0.10 else "SPLIT (between the bars)")
+        say(f"SNAP VERDICT (pinned 10-20): {v}")
     if os.environ.get("UM_VERDICT") == "order" and all(a in A for a in ("PH_learn", "MX_orth", "MX_learn")):
         g1, g2 = h23("PH_learn") - h23("MX_orth"), h23("MX_orth") - h23("MX_learn")    # THE SECOND CONFIGURATION (10-20)
         v = ("ORDER HOLDS" if g1 >= 0.02 and g2 >= 0.02 else "ORDER BREAKS" if g1 <= -0.02 or g2 <= -0.02 else "PARTIAL")
