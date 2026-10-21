@@ -125,9 +125,12 @@ class Hybrid(nn.Module):
         kr = torch.stack([k1 * torch.cos(ang) - k2 * torch.sin(ang), k1 * torch.sin(ang) + k2 * torch.cos(ang)], -1).flatten(-2)
         if self.router != "rope": kr = kv[..., :L, :].squeeze(1)             # content only; position enters as a bias
         s = (kr @ qv.squeeze(1).squeeze(1)[..., None]).squeeze(-1) / 8.0     # (B, L)
-        if self.router != "rope": s = s + self.pos_bias(bt, tt)
-        s = (self.log_beta_a.exp() * s).masked_fill(live == 0, -1e4)
-        alpha = F.one_hot(bt["anc"], L).float() if self.kind == "ORACLE" else F.softmax(s, -1)
+        if self.router == "2stage":                                          # router_race RACE 3: gate, then the clock compares
+            alpha = self.two_stage(bt, s, live, tt)
+        else:
+            if self.router != "rope": s = s + self.pos_bias(bt, tt)
+            s = (self.log_beta_a.exp() * s).masked_fill(live == 0, -1e4)
+            alpha = F.one_hot(bt["anc"], L).float() if self.kind == "ORACLE" else F.softmax(s, -1)
         self.router_hit = (alpha.argmax(-1) == bt["anc"]).float()
         # WRITE: actors stamped by the fast clock (absolute tick), in registers by absolute tick
         ws = tt[None].expand(B, L)

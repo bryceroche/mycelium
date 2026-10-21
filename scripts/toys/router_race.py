@@ -17,6 +17,12 @@ readout mixed the 216 wheel and the fast wheels into the order judgment. The rot
             their job in the read's address clock, untouched)
   R_alibiC  THE BOUNDED-RAMP RIVAL: bias = s_which * tanh(t / tau), tau = 1296 / 2 pi FIXED (the slow wheel's own scale):
             is boundedness alone enough, or does the clock's shape matter?
+RACE 3 (Opus's structural fix; RR_RACE=3): ORDER AS A COMPARISON AMONG CANDIDATES, never a bias added to content.
+  R_2stage  stage 1 CONTENT GATE g_t = sigmoid(kappa (c_t - theta)) (c = the content score; kappa, theta learned);
+            stage 2 THE CLOCK COMPARES: alpha_t ~ g_t * prod_{u: phi_u later than phi_t} (1 - g_u) ('last': no candidate
+            with a later slow-wheel phase; 'first' mirrored), phi = angle of the 1296 wheel, FROZEN, nothing learned in
+            stage 2. An additive form (log g + gamma phi) was rejected on paper: a non-candidate 240 ticks later outbids
+            any finite gate. Horizon by construction: the phase wraps at 1296 / 2 = 648 ticks.
 EVAL: N 16/32/64 (in range), 128, 256 (4000 sequences each at 128 and 256: ~50 gap-1-2 two-sale cases). Router anchor accuracy + answer accuracy;
 two-sale splits by GAP between the sales (1-2 / 3-8 / 9-32 / 33+) and by query-anchor distance (<= 64 / > 64).
 ORDER HORIZON (Opus's turning point, made robust to the fast gears' wiggle; the smoke read the raw turning point as 0 for
@@ -37,7 +43,7 @@ STEPS = 300 if mode == "smoke" else int(os.environ.get("RR_STEPS", "4000"))
 SEEDS = [0] if mode != "full" else [0, 1, 2]
 EVAL_N, N_BIG = (16, 32, 64, 128, 256), (300 if mode == "smoke" else 4000)
 RACE = int(os.environ.get("RR_RACE", "1"))
-ALL = ["R_rope", "R_none", "R_alibi", "R_slowL", "R_gear"] if RACE == 1 else ["R_gearS", "R_alibiC"]
+ALL = {1: ["R_rope", "R_none", "R_alibi", "R_slowL", "R_gear"], 2: ["R_gearS", "R_alibiC"], 3: ["R_2stage"]}[RACE]
 ARMS = os.environ.get("RR_ARMS", ",".join(ALL)).split(",")
 GEARS = (3.0, 6.0, 36.0, 216.0, 1296.0)
 IN_RANGE_BANKED = 0.995                                                       # HYB in-range mean, .cache/who_when_rung.txt
@@ -47,6 +53,8 @@ class Router(W.Hybrid):
     def __init__(self, arm, seed):
         super().__init__("HYB", seed); self.router = arm[2:].lower(); self.arm = arm
         if arm == "R_gearS": self.router = "gear"
+        if arm == "R_2stage":
+            self.kappa_log, self.theta = nn.Parameter(torch.tensor(math.log(4.0))), nn.Parameter(torch.tensor(0.0))
         if arm in ("R_alibi", "R_alibiC"): self.slope = nn.Parameter(torch.zeros(2))
         if arm == "R_gearS":
             self.register_buffer("om_r", 2 * math.pi / torch.tensor([1296.0])); self.wr = nn.Parameter(torch.zeros(2, 2))
@@ -65,6 +73,16 @@ class Router(W.Hybrid):
         if self.router == "alibi": return self.slope[which][:, None] * t[None] / 64.0
         if self.router == "alibic": return self.slope[which][:, None] * torch.tanh(t[None] / (1296.0 / (2 * math.pi)))
         return self.wr[which] @ self.feats(t).T                            # (B, len(t))
+
+    def two_stage(self, bt, c, live, tt):
+        which = bt["x2"][torch.arange(len(bt["ns"])), bt["ns"]] - W.V_WH        # 0 first, 1 last
+        g = torch.sigmoid(self.kappa_log.exp() * (c - self.theta)) * live     # stage 1: content candidates
+        phi = torch.atan2(torch.sin(2 * math.pi * tt / 1296.0), torch.cos(2 * math.pi * tt / 1296.0))  # the slow wheel's angle
+        later = (phi[None, :] > phi[:, None]).float()                         # later[t, u]: u's phase is later than t's
+        M = torch.where(which[:, None, None] == 1, later[None], later.T[None])  # 'last': beaten by later; 'first': by earlier
+        lg = torch.log(g.clamp(min=1e-6)) + torch.einsum("btu,bu->bt", M, torch.log((1 - g).clamp(min=1e-6)))
+        a = lg.exp() * live
+        return a / (a.sum(-1, keepdim=True) + 1e-6)
 
     def pos_bias(self, bt, tt):
         which = bt["x2"][torch.arange(len(bt["ns"])), bt["ns"]] - W.V_WH
