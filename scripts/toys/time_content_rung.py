@@ -8,7 +8,7 @@ TASKS (fresh sequences every batch; one answer token per sequence):
   TIME     N events (40 entity tokens), then a query token 'k back' (k in 1..8): the answer is the event k before the
            last one (k = 1 -> the second-to-last... precisely: events x_0..x_{N-1}; answer x_{N-1-k}). Train N ~ U[12, 64].
   CONTENT  MQAR (Zoology): N pairs (key in 40 keys, value in 40 values; keys distinct), then a query key: answer its
-           value. Train N ~ U[4, 32].
+           value. Train N ~ U[4, 32]. FUSED since feas v3: token = key + value embeddings; 8 supervised queries.
   Eval per N: TIME at N = 16 / 32 / 64; CONTENT at N = 8 / 16 / 32.
 MIXER ARMS (2 layers, D 128, SwiGLU MLP, pre-LN residual; token + nothing else unless stated; readout at the last token):
   ATT     softmax attention with RoPE (the strong baseline; relative position is native to it)
@@ -36,7 +36,7 @@ import torch  # noqa: E402
 import torch.nn as nn  # noqa: E402
 import torch.nn.functional as F  # noqa: E402
 
-NE, KMAX, D, NL, MP = 40, 8, 128, 2, 256
+NE, KMAX, D, NL, MP, NQ = 40, 8, 128, 2, 256, 8
 TIME_N, CONT_N = (12, 64), (4, 32)
 TIME_EVAL, CONT_EVAL = (16, 32, 64, 128), (8, 16, 32)          # TIME N 128 = LENGTH EXTRAPOLATION (trained <= 64)
 STEPS = 300 if mode == "smoke" else int(os.environ.get("TC_STEPS", "4000"))
@@ -59,13 +59,15 @@ def batch_time(B, rng, n=None):
     return tuple(torch.from_numpy(a) for a in (x, ns, k, t, ev))
 
 
-def batch_content(B, rng, n=None):
-    ns = rng.integers(CONT_N[0], CONT_N[1] + 1, size=B) if n is None else np.full(B, n)
-    L = 2 * int(ns.max()) + 1; x = np.full((B, L), PADT, np.int64); t = np.zeros(B, np.int64)
-    for b in range(B):
-        ks = rng.choice(NE, ns[b], replace=False); vs = rng.integers(NE, size=ns[b]); i = rng.integers(ns[b])
-        x[b, 0:2 * ns[b]:2] = V_KEY + ks; x[b, 1:2 * ns[b]:2] = V_VAL + vs; x[b, 2 * ns[b]] = V_KEY + ks[i]; t[b] = vs[i]
-    return torch.from_numpy(x), torch.from_numpy(ns), None, torch.from_numpy(t), None
+def batch_content(B, rng, n=None):                                           # FUSED fact tokens (feas v3): token i = key_i + value_i
+    ns = rng.integers(CONT_N[0], CONT_N[1] + 1, size=B) if n is None else np.full(B, n)   # (embeddings summed), then NQ
+    L = int(ns.max()) + NQ; x = np.full((B, L), PADT, np.int64); xv = np.full((B, L), -1, np.int64)   # supervised query keys.
+    t = np.zeros((B, NQ), np.int64)                                          # v1/v2 (key, value as two tokens) sat on the
+    for b in range(B):                                                       # induction plateau in ALL nets incl. stock torch:
+        ks = rng.choice(NE, ns[b], replace=False); vs = rng.integers(NE, size=ns[b]); qi = rng.integers(ns[b], size=NQ)
+        x[b, :ns[b]] = V_KEY + ks; xv[b, :ns[b]] = V_VAL + vs                # that read tests a 2-hop copy circuit, not lookup
+        x[b, ns[b]:ns[b] + NQ] = V_KEY + ks[qi]; t[b] = vs[qi]
+    return torch.from_numpy(x), torch.from_numpy(ns), torch.from_numpy(xv), torch.from_numpy(t), None
 
 
 # ---------------------------------------------------------------- mixers
@@ -122,9 +124,12 @@ class MixNet(nn.Module):
 
     def forward(self, x, ns, k, task):
         pad = x == PADT; h = self.emb(x)
+        if task == "content": h = h + self.emb(k.clamp(min=0)) * (k >= 0)[..., None]   # k carries the fused value channel
         for b in self.blocks: h = b(h, pad)
-        last = (ns if task == "time" else 2 * ns)                            # the query token's position
-        return self.out(self.lnf(h[torch.arange(len(x)), last]))
+        if task == "time":
+            return self.out(self.lnf(h[torch.arange(len(x)), ns]))           # the query token's position
+        qp = ns[:, None] + torch.arange(NQ)[None]                            # the NQ query positions
+        return self.out(self.lnf(h[torch.arange(len(x))[:, None], qp]))
 
 
 # ---------------------------------------------------------------- memory arms (time only)
@@ -180,7 +185,7 @@ def run(arm, seed, lr, task):
     sched = torch.optim.lr_scheduler.OneCycleLR(opt, max_lr=lr, total_steps=STEPS, pct_start=0.1)
     fwd = lambda bt: net(bt[0], bt[1], bt[2], task, bt[4]) if mem else net(bt[0], bt[1], bt[2], task)
     for step in range(STEPS):
-        bt = mk(BATCH, rng); loss = F.cross_entropy(fwd(bt), bt[3])
+        bt = mk(BATCH, rng); loss = F.cross_entropy(fwd(bt).reshape(-1, NE), bt[3].reshape(-1))
         opt.zero_grad(); loss.backward(); torch.nn.utils.clip_grad_norm_(net.parameters(), 1.0); opt.step(); sched.step()
     net.eval(); res = {}
     with torch.no_grad():
@@ -201,14 +206,15 @@ if __name__ == "__main__":
     def say(s):
         print(s, flush=True); out.write(s + "\n"); out.flush()
     say(f"mode {mode} steps {STEPS}; params: " + ", ".join(f"{a} {nparams(build(a, 0))}" for a in ARMS))
-    for task in ("time", "content"):
+    TASKS = os.environ.get("TC_TASKS", "time,content").split(",")
+    for task in TASKS:
         for arm in ARMS:
             if task == "content" and arm in MEMS: continue
             if mode == "full":
                 sc = {lr: run(arm, 0, lr, task)["mean"] for lr in (1e-3, 3e-3)}; lr = max(sc, key=sc.get)
                 say(f"lr sweep {task} {arm}: {sc} -> {lr}  [{time.time() - t0:.0f}s]")
             else:
-                lr = 3e-3
+                lr = float(os.environ.get("TC_LR", "3e-3"))
             rs = [run(arm, s, lr, task) for s in SEEDS]
             A = {k: float(np.mean([r[k] for r in rs])) for k in rs[0]}
             res.append(dict(task=task, arm=arm, lr=lr, seeds=rs, agg=A))
@@ -218,6 +224,6 @@ if __name__ == "__main__":
     json.dump(res, open(f".cache/time_content_rung{tag}.json", "w"), indent=1)
     R = {(r["task"], r["arm"]): r["agg"] for r in res}
     if mode == "feas":
-        ok = max(a["mean"] for (t, _), a in R.items() if t == "time") >= 0.80 and max(a["mean"] for (t, _), a in R.items() if t == "content") >= 0.80
+        ok = all(max(a["mean"] for (t, _), a in R.items() if t == tk) >= 0.80 for tk in TASKS)
         say(f"FEASIBILITY: some arm >= 0.80 on each task: {ok} -> {'FEASIBLE (pin the bars)' if ok else 'NOT FEASIBLE'}")
     say(f"DONE in {time.time() - t0:.0f}s")
