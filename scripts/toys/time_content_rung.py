@@ -38,7 +38,7 @@ import torch.nn.functional as F  # noqa: E402
 
 NE, KMAX, D, NL, MP = 40, 8, 128, 2, 256
 TIME_N, CONT_N = (12, 64), (4, 32)
-TIME_EVAL, CONT_EVAL = (16, 32, 64), (8, 16, 32)
+TIME_EVAL, CONT_EVAL = (16, 32, 64, 128), (8, 16, 32)          # TIME N 128 = LENGTH EXTRAPOLATION (trained <= 64)
 STEPS = 300 if mode == "smoke" else int(os.environ.get("TC_STEPS", "4000"))
 BATCH, N_EVAL = 64, (300 if mode == "smoke" else 1000)
 SEEDS = [0] if mode != "full" else [0, 1, 2]
@@ -164,7 +164,7 @@ class ClockMem(nn.Module):
 
 def build(arm, seed):
     torch.manual_seed(seed)
-    if arm in MIXERS: return MixNet(arm, 2 * CONT_N[1] + 1)
+    if arm in MIXERS: return MixNet(arm, TIME_EVAL[-1] + 1)                 # filters sized for the N 128 read
     return ClockMem(arm, seed)
 
 
@@ -186,7 +186,8 @@ def run(arm, seed, lr, task):
     with torch.no_grad():
         for n, bt in ev.items():
             pr = fwd(bt).argmax(-1); res[f"N{n}"] = float((pr == bt[3]).float().mean())
-    res["mean"] = float(np.mean([res[f"N{n}"] for n in ev])); res["params"] = nparams(net); res["final_loss"] = float(loss.detach())
+    res["mean"] = float(np.mean([res[f"N{n}"] for n in ev if n <= (TIME_N if task == "time" else CONT_N)[1]]))   # in-range only
+    res["params"] = nparams(net); res["final_loss"] = float(loss.detach())
     if arm == "LRU": res["mean_decay_per_tick"] = float(net.lognu.detach().exp().mean())
     return res
 
