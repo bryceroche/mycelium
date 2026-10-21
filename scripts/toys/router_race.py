@@ -11,6 +11,12 @@ ROUTERS (all: content score q.k WITHOUT RoPE, plus a position bias per 'which' (
   R_gear    THE T6 GEAR CLOCK: bias = w_which . [cos, sin](2 pi t / P), P in {3, 6, 36, 216, 1296} FROZEN (rotor_clock's
             breath hand 6 + parity 3, extended as an odometer: each wheel turns once per turn of the one below;
             frequencies frozen per the rotor_clock law; only the readout weights learn)
+RACE 2 (2026-10-21 ~09:55, Bryce's word; RR_RACE=2): the gear clock's order horizon (69-92) stopped short because the learned
+readout mixed the 216 wheel and the fast wheels into the order judgment. The rotor-clock design gives each wheel a job:
+  R_gearS   ORDER READS THE SLOWEST GEAR ONLY: bias = w_which . [cos, sin](2 pi t / 1296), frozen (the fast wheels keep
+            their job in the read's address clock, untouched)
+  R_alibiC  THE BOUNDED-RAMP RIVAL: bias = s_which * tanh(t / tau), tau = 1296 / 2 pi FIXED (the slow wheel's own scale):
+            is boundedness alone enough, or does the clock's shape matter?
 EVAL: N 16/32/64 (in range), 128, 256 (4000 sequences each at 128 and 256: ~50 gap-1-2 two-sale cases). Router anchor accuracy + answer accuracy;
 two-sale splits by GAP between the sales (1-2 / 3-8 / 9-32 / 33+) and by query-anchor distance (<= 64 / > 64).
 ORDER HORIZON (Opus's turning point, made robust to the fast gears' wiggle; the smoke read the raw turning point as 0 for
@@ -30,7 +36,8 @@ import who_when_rung as W  # noqa: E402
 STEPS = 300 if mode == "smoke" else int(os.environ.get("RR_STEPS", "4000"))
 SEEDS = [0] if mode != "full" else [0, 1, 2]
 EVAL_N, N_BIG = (16, 32, 64, 128, 256), (300 if mode == "smoke" else 4000)
-ALL = ["R_rope", "R_none", "R_alibi", "R_slowL", "R_gear"]
+RACE = int(os.environ.get("RR_RACE", "1"))
+ALL = ["R_rope", "R_none", "R_alibi", "R_slowL", "R_gear"] if RACE == 1 else ["R_gearS", "R_alibiC"]
 ARMS = os.environ.get("RR_ARMS", ",".join(ALL)).split(",")
 GEARS = (3.0, 6.0, 36.0, 216.0, 1296.0)
 IN_RANGE_BANKED = 0.995                                                       # HYB in-range mean, .cache/who_when_rung.txt
@@ -39,7 +46,10 @@ IN_RANGE_BANKED = 0.995                                                       # 
 class Router(W.Hybrid):
     def __init__(self, arm, seed):
         super().__init__("HYB", seed); self.router = arm[2:].lower(); self.arm = arm
-        if arm == "R_alibi": self.slope = nn.Parameter(torch.zeros(2))
+        if arm == "R_gearS": self.router = "gear"
+        if arm in ("R_alibi", "R_alibiC"): self.slope = nn.Parameter(torch.zeros(2))
+        if arm == "R_gearS":
+            self.register_buffer("om_r", 2 * math.pi / torch.tensor([1296.0])); self.wr = nn.Parameter(torch.zeros(2, 2))
         if arm == "R_slowL":
             self.om_r = nn.Parameter(2 * math.pi / torch.exp(torch.linspace(math.log(256.0), math.log(2048.0), 16)))
             self.wr = nn.Parameter(torch.zeros(2, 32))
@@ -53,6 +63,7 @@ class Router(W.Hybrid):
     def bias(self, which, t):                                                # which (B,), t (L,) or (T,)
         if self.router == "none": return torch.zeros(len(which), len(t))
         if self.router == "alibi": return self.slope[which][:, None] * t[None] / 64.0
+        if self.router == "alibic": return self.slope[which][:, None] * torch.tanh(t[None] / (1296.0 / (2 * math.pi)))
         return self.wr[which] @ self.feats(t).T                            # (B, len(t))
 
     def pos_bias(self, bt, tt):
@@ -67,7 +78,7 @@ def build(arm, seed):
 
 
 def turning(net):                                                            # the ORDER HORIZON per which (first, last)
-    if not isinstance(net, Router) or net.router in ("none", "alibi"): return [None, None]
+    if not isinstance(net, Router) or net.router in ("none", "alibi", "alibic"): return [None, None]
     t = torch.arange(0, 4001).float(); res = []
     with torch.no_grad():
         for w in (0, 1):
@@ -115,7 +126,7 @@ def run(arm, seed, lr):
 
 if __name__ == "__main__":
     torch.set_num_threads(int(os.environ.get("TOY_THREADS", "8")))
-    tag = {"feas": "_feas", "smoke": "_smoke", "full": ""}[mode] + os.environ.get("RR_TAG", "")
+    tag = {"feas": "_feas", "smoke": "_smoke", "full": ""}[mode] + ("" if RACE == 1 else f"_race{RACE}") + os.environ.get("RR_TAG", "")
     assert mode == "smoke" or not os.path.exists(f".cache/router_race{tag}.txt"), "refusing to overwrite a banked read"
     out = open(f".cache/router_race{tag}.txt", "w"); res = []; t0 = time.time()
 
@@ -142,7 +153,19 @@ if __name__ == "__main__":
     R = {r["arm"]: r["agg"] for r in res}
     if mode == "feas":
         say(f"FEASIBILITY (some arm in-range >= 0.80): {max(a['mean'] for a in R.values()) >= 0.80}")
-    if mode == "full":                                                       # THE PINNED BARS (ledger 2026-10-21)
+    if mode == "full" and RACE == 2:                                         # RACE 2 BARS (ledger 2026-10-21 ~09:57)
+        say("VERDICTS (3-seed means; router anchor accuracy)")
+        ok = {a: R[a]["route128"] >= 0.95 and R[a]["route256"] >= 0.90 and R[a]["mean"] >= IN_RANGE_BANKED - 0.01 for a in ALL}
+        for a in ALL:
+            say(f"(S1) {a:<8} " + ("HOLDS" if ok[a] else "DOES NOT HOLD") + f"  (router128 {R[a]['route128']:.3f}, router256 {R[a]['route256']:.3f}, in-range {R[a]['mean']:.3f})")
+        d = R["R_gearS"]["route128"] - R["R_alibiC"]["route128"]
+        say("(S2) " + ("THE CLOCK EARNS THE TIME SENSE" if ok["R_gearS"] and d >= 0.03 else
+                       "BOUNDEDNESS IS ENOUGH (the clock = a bounded frozen ramp)" if ok["R_gearS"] and ok["R_alibiC"] and abs(d) < 0.03 else
+                       "THE BOUNDED RAMP BEATS THE CLOCK" if ok["R_alibiC"] and d <= -0.03 else
+                       "THE TIME SENSE IS NOT EARNED") + f"  (gearS - alibiC router128 {d:+.3f})")
+        for a in ALL:
+            say(f"(S3) {a:<8} gap 1-2 {R[a]['gap1_128']:.3f} vs 33+ {R[a]['gap33_128']:.3f}; one {R[a]['one128']:.3f} two {R[a]['two128']:.3f}")
+    if mode == "full" and RACE == 1:                                         # THE PINNED BARS (ledger 2026-10-21)
         say("VERDICTS (3-seed means; router anchor accuracy)")
         for a in ALL:
             ok = R[a]["route128"] >= 0.95 and R[a]["mean"] >= IN_RANGE_BANKED - 0.01
