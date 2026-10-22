@@ -1,0 +1,13 @@
+mode full steps 4000 lr 0.001
+FLAT      iid 0.670 (lookup 0.628 left 0.770; rec name/pron/desc 0.650/0.768/0.780; query name/desc 0.667/0.678) | combo 0.703 (lookup 0.686 left 0.741; rec name/pron/desc 0.682/0.808/0.782; query name/desc 0.719/0.666) | long 0.205 (lookup 0.155 left 0.294; rec name/pron/desc 0.281/0.149/0.128; query name/desc 0.205/0.206)  loss 0.421 [289s]
+STRUCT_U  iid 0.671 (lookup 0.630 left 0.766; rec name/pron/desc 0.647/0.797/0.774; query name/desc 0.666/0.681) | combo 0.703 (lookup 0.685 left 0.742; rec name/pron/desc 0.682/0.789/0.801; query name/desc 0.712/0.682) | long 0.183 (lookup 0.142 left 0.255; rec name/pron/desc 0.258/0.132/0.131; query name/desc 0.189/0.170)  loss 0.416 [559s]
+STRUCT_S  iid 0.990 (lookup 0.989 left 0.994; rec name/pron/desc 0.990/0.992/0.992; query name/desc 0.999/0.970) | combo 0.983 (lookup 0.979 left 0.990; rec name/pron/desc 0.982/0.990/0.980; query name/desc 0.997/0.948) | long 0.150 (lookup 0.180 left 0.098; rec name/pron/desc 0.165/0.183/0.154; query name/desc 0.164/0.119)  loss 0.149 [849s]
+BIND      iid 0.670 (lookup 0.629 left 0.768; rec name/pron/desc 0.643/0.798/0.799; query name/desc 0.672/0.667) | combo 0.710 (lookup 0.698 left 0.736; rec name/pron/desc 0.687/0.825/0.793; query name/desc 0.719/0.687) | long 0.185 (lookup 0.126 left 0.287; rec name/pron/desc 0.262/0.128/0.103; query name/desc 0.187/0.178)  loss 0.419 [1127s]
+BIND_S    iid 0.992 (lookup 0.991 left 0.995; rec name/pron/desc 0.992/0.997/0.992; query name/desc 1.000/0.975) | combo 0.988 (lookup 0.986 left 0.993; rec name/pron/desc 0.987/0.998/0.990; query name/desc 1.000/0.962) | long 0.177 (lookup 0.197 left 0.140; rec name/pron/desc 0.192/0.219/0.194; query name/desc 0.193/0.138)  loss 0.191 [1431s]
+VERDICTS (3-seed means)
+(S1) SUPERVISED STRUCTURE WINS  (COMBO STRUCT_S 0.983 vs FLAT 0.703, +0.279)
+(S2) STRUCTURE ALONE TIES  (STRUCT_U − FLAT -0.000)
+(S3) BINDING TIES THE TABLE  (BIND_S − STRUCT_S +0.006; BIND − FLAT +0.006)
+(S4) PRONOUNS DO NOT COST MOST IN EVERY ARM  (lowest form per arm on COMBO: FLAT name, STRUCT_U name, STRUCT_S desc, BIND name, BIND_S name)
+(S5) LENGTH (reported): FLAT 0.205 vs iid 0.670, STRUCT_U 0.183 vs iid 0.671, STRUCT_S 0.150 vs iid 0.990, BIND 0.185 vs iid 0.670, BIND_S 0.177 vs iid 0.992
+DONE in 1431s
