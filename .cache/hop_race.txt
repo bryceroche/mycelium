@@ -1,0 +1,55 @@
+mode full steps 4000 lr 0.003 R_WEAK 0.3 D_DEAD 0.4
+FILT     exact      H2 acc 0.554 ll 0.922 (Bayes 0.564/0.922) reads 10.19  H3 acc 0.535 ll 1.021 (Bayes 0.534/1.020) reads 17.82 | weak 0.299 bit 0.00  [117s]
+FILT     collapse   H2 acc 0.549 ll 1.002 (Bayes 0.564/0.922) reads 10.19  H3 acc 0.508 ll 1.235 (Bayes 0.534/1.020) reads 17.82 | weak 0.612 bit 0.00  [230s]
+FILT     snap       H2 acc 0.113 ll 2.756 (Bayes 0.564/0.922) reads 1.00  H3 acc 0.067 ll 2.783 (Bayes 0.534/1.020) reads 1.00 | weak 0.996 bit 0.00  [348s]
+FILT     beam2      H2 acc 0.512 ll 1.617 (Bayes 0.564/0.922) reads 2.00  H3 acc 0.438 ll 1.935 (Bayes 0.534/1.020) reads 2.00 | weak 0.288 bit 0.00  [463s]
+FILT     beam4      H2 acc 0.555 ll 1.039 (Bayes 0.564/0.922) reads 4.00  H3 acc 0.522 ll 1.239 (Bayes 0.534/1.020) reads 4.00 | weak 0.300 bit 0.00  [577s]
+FILT     mass       H2 acc 0.553 ll 0.932 (Bayes 0.564/0.922) reads 3.12  H3 acc 0.530 ll 1.071 (Bayes 0.534/1.020) reads 3.46 | weak 0.298 bit 0.00  [692s]
+UNF      exact      H2 acc 0.268 ll 1.930 (Bayes 0.266/1.930) reads 26.07  H3 acc 0.244 ll 2.066 (Bayes 0.243/2.066) reads 45.50 | weak 0.302 bit 0.00  [842s]
+UNF      collapse   H2 acc 0.256 ll 2.012 (Bayes 0.266/1.930) reads 26.07  H3 acc 0.231 ll 2.187 (Bayes 0.243/2.066) reads 45.50 | weak 0.446 bit 0.00  [990s]
+UNF      snap       H2 acc 0.071 ll 2.792 (Bayes 0.266/1.930) reads 1.00  H3 acc 0.062 ll 2.798 (Bayes 0.243/2.066) reads 1.00 | weak 1.000 bit 0.00  [1138s]
+UNF      beam2      H2 acc 0.123 ll 2.728 (Bayes 0.266/1.930) reads 2.00  H3 acc 0.089 ll 2.764 (Bayes 0.243/2.066) reads 2.00 | weak 0.677 bit 0.00  [1323s]
+UNF      beam4      H2 acc 0.106 ll nan (Bayes 0.266/1.930) reads 2.67  H3 acc 0.088 ll nan (Bayes 0.243/2.066) reads 2.67 | weak nan bit nan  [1507s]
+UNF      mass       H2 acc 0.262 ll 1.972 (Bayes 0.266/1.930) reads 9.13  H3 acc 0.243 ll 2.115 (Bayes 0.243/2.066) reads 10.57 | weak 0.305 bit 0.00  [1711s]
+FALL0.9  exact      H2 acc 0.735 ll 0.689 (Bayes 0.735/0.685) reads 25.85  H3 acc 0.720 ll 0.738 (Bayes 0.722/0.733) reads 45.57 | weak 0.317 bit 1.26  [1901s]
+FALL0.9  collapse   H2 acc 0.720 ll 0.753 (Bayes 0.735/0.685) reads 25.85  H3 acc 0.692 ll 0.876 (Bayes 0.722/0.733) reads 45.57 | weak 0.575 bit 3.70  [2079s]
+FALL0.9  snap       H2 acc 0.284 ll 2.558 (Bayes 0.735/0.685) reads 1.00  H3 acc 0.134 ll 2.733 (Bayes 0.722/0.733) reads 1.00 | weak 0.356 bit 0.89  [2260s]
+FALL0.9  beam2      H2 acc 0.713 ll 1.003 (Bayes 0.735/0.685) reads 2.00  H3 acc 0.673 ll 1.155 (Bayes 0.722/0.733) reads 2.00 | weak 0.294 bit 4.32  [2447s]
+FALL0.9  beam4      H2 acc 0.727 ll 0.785 (Bayes 0.735/0.685) reads 4.00  H3 acc 0.713 ll 0.868 (Bayes 0.722/0.733) reads 4.00 | weak 0.289 bit 4.42  [2633s]
+FALL0.9  mass       H2 acc 0.731 ll 0.752 (Bayes 0.735/0.685) reads 2.86  H3 acc 0.712 ll 0.815 (Bayes 0.722/0.733) reads 3.28 | weak 0.297 bit 1.37  [2819s]
+FALL0.9  hard_exact H2 acc 0.713 ll 0.920 (Bayes 0.735/0.685) reads 25.85  H3 acc 0.677 ll 1.025 (Bayes 0.722/0.733) reads 45.57 | weak 0.273 bit -0.28  [3000s]
+FALL0.9  hard_mass  H2 acc 0.714 ll 0.923 (Bayes 0.735/0.685) reads 1.75  H3 acc 0.665 ll 1.046 (Bayes 0.722/0.733) reads 2.13 | weak 0.288 bit -0.02  [3189s]
+FALL0.7  exact      H2 acc 0.388 ll 1.658 (Bayes 0.390/1.658) reads 25.97  H3 acc 0.355 ll 1.799 (Bayes 0.354/1.799) reads 45.59 | weak 0.300 bit 1.69  [3370s]
+FALL0.7  collapse   H2 acc 0.383 ll 1.752 (Bayes 0.390/1.658) reads 25.97  H3 acc 0.334 ll 1.956 (Bayes 0.354/1.799) reads 45.59 | weak 0.461 bit 1.24  [3550s]
+FALL0.7  snap       H2 acc 0.112 ll 2.826 (Bayes 0.390/1.658) reads 1.00  H3 acc 0.080 ll 2.860 (Bayes 0.354/1.799) reads 1.00 | weak 0.864 bit -0.00  [3730s]
+FALL0.7  beam2      H2 acc 0.185 ll 2.594 (Bayes 0.390/1.658) reads 2.00  H3 acc 0.127 ll 2.720 (Bayes 0.354/1.799) reads 2.00 | weak 0.340 bit 1.00  [3915s]
+FALL0.7  beam4      H2 acc 0.378 ll 1.935 (Bayes 0.390/1.658) reads 4.00  H3 acc 0.329 ll 2.124 (Bayes 0.354/1.799) reads 4.00 | weak 0.300 bit 1.69  [4101s]
+FALL0.7  mass       H2 acc 0.387 ll 1.722 (Bayes 0.390/1.658) reads 7.53  H3 acc 0.352 ll 1.854 (Bayes 0.354/1.799) reads 8.89 | weak 0.302 bit 1.68  [4287s]
+FALL0.7  hard_exact H2 acc 0.358 ll 2.084 (Bayes 0.390/1.658) reads 25.97  H3 acc 0.321 ll 2.177 (Bayes 0.354/1.799) reads 45.59 | weak 0.254 bit -0.01  [4474s]
+FALL0.7  hard_mass  H2 acc 0.355 ll 2.091 (Bayes 0.390/1.658) reads 4.10  H3 acc 0.317 ll 2.186 (Bayes 0.354/1.799) reads 7.22 | weak 0.271 bit -0.03  [4699s]
+VERDICTS (3-seed means; log loss in nats)
+(P1) FILT: PATHS ARE CALIBRATED  (H2 0.922 vs Bayes 0.922, H3 1.021 vs Bayes 1.020)
+(P2) FILT: COLLAPSE LOSES AND WORSENS WITH HOPS  (ll gap H2 +0.080 H3 +0.215; acc H3 0.508 vs 0.535)
+(P3) FILT: THE GARDEN PATH TAKES THE SNAP  (snap acc gap H2 +0.441 H3 +0.468)
+(P4) FILT: BEAM-4 DOES NOT SUFFICE  (H2 0.555/1.039 vs 0.554/0.922, H3 0.522/1.239 vs 0.535/1.021)
+(P5) FILT: THE MASS BEAM DOES NOT TRACK EXACT  (H2 0.553/0.932, reads/hop 3.12, H3 0.530/1.071, reads/hop 3.46)
+(P7) FILT: THE FLAG GATE CALIBRATES  (exact weak ratio 0.299 vs 0.3; other arms: collapse 0.61, snap 1.00, beam2 0.29, beam4 0.30, mass 0.30)
+(P1) UNF: PATHS ARE CALIBRATED  (H2 1.930 vs Bayes 1.930, H3 2.066 vs Bayes 2.066)
+(P2) UNF: COLLAPSE LOSES AND WORSENS WITH HOPS  (ll gap H2 +0.082 H3 +0.121; acc H3 0.231 vs 0.244)
+(P3) UNF: THE SNAP SURVIVES THE GARDEN PATH  (snap acc gap H2 +0.197 H3 +0.182)
+(P4) UNF: BEAM-4 DOES NOT SUFFICE [reported, not barred]  (H2 0.106/nan vs 0.268/1.930, H3 0.088/nan vs 0.244/2.066)
+(P5) UNF: THE MASS BEAM TRACKS EXACT  (H2 0.262/1.972, reads/hop 9.13, H3 0.243/2.115, reads/hop 10.57)
+(P7) UNF: THE FLAG GATE CALIBRATES  (exact weak ratio 0.302 vs 0.3; other arms: collapse 0.45, snap 1.00, beam2 0.68, beam4 nan, mass 0.31)
+(P1) FALL0.9: PATHS ARE CALIBRATED  (H2 0.689 vs Bayes 0.685, H3 0.738 vs Bayes 0.733)
+(P2) FALL0.9: COLLAPSE LOSES AND WORSENS WITH HOPS  (ll gap H2 +0.064 H3 +0.138; acc H3 0.692 vs 0.720)
+(P4) FALL0.9: BEAM-4 DOES NOT SUFFICE [reported, not barred]  (H2 0.727/0.785 vs 0.735/0.689, H3 0.713/0.868 vs 0.720/0.738)
+(P5) FALL0.9: THE MASS BEAM DOES NOT TRACK EXACT  (H2 0.731/0.752, reads/hop 2.86, H3 0.712/0.815, reads/hop 3.28)
+(P6) FALL0.9: SOFT FILTER DOES NOT BEAT HARD BY 0.10 [reported, not barred]  (H3 mass soft 0.712 vs hard 0.665; hard_exact 0.677; arithmetic ceiling F^3 = 0.729)
+(P7) FALL0.9: THE FLAG GATE CALIBRATES  (exact weak ratio 0.317 vs 0.3; bit log-odds 1.26 vs 4.39 -> BIT DOES NOT CALIBRATE; other arms: collapse 0.58, snap 0.36, beam2 0.29, beam4 0.29, mass 0.30)
+(P1) FALL0.7: PATHS ARE CALIBRATED  (H2 1.658 vs Bayes 1.658, H3 1.799 vs Bayes 1.799)
+(P2) FALL0.7: COLLAPSE LOSES AND WORSENS WITH HOPS  (ll gap H2 +0.094 H3 +0.157; acc H3 0.334 vs 0.355)
+(P4) FALL0.7: BEAM-4 DOES NOT SUFFICE [reported, not barred]  (H2 0.378/1.935 vs 0.388/1.658, H3 0.329/2.124 vs 0.355/1.799)
+(P5) FALL0.7: THE MASS BEAM DOES NOT TRACK EXACT  (H2 0.387/1.722, reads/hop 7.53, H3 0.352/1.854, reads/hop 8.89)
+(P6) FALL0.7: SOFT FILTER DOES NOT BEAT HARD BY 0.10  (H3 mass soft 0.352 vs hard 0.317; hard_exact 0.321; arithmetic ceiling F^3 = 0.343)
+(P7) FALL0.7: THE FLAG GATE CALIBRATES  (exact weak ratio 0.300 vs 0.3; bit log-odds 1.69 vs 1.69 -> BIT CALIBRATES; other arms: collapse 0.46, snap 0.86, beam2 0.34, beam4 0.30, mass 0.30)
+DONE in 4699s
