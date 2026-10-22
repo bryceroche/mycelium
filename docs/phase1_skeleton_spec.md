@@ -52293,7 +52293,7 @@ Bryce's word ~11:15 ("word given"), Opus's three points. `scripts/toys/supervisi
 
 ## 2026-10-22 11:55 — T2c VERDICTS: RECORD-SIDE SUPERVISION CARRIES THE WHOLE +0.28; query-only recovers ~60 % of it; the implicit form is UNTESTED (design leak); first mentions explain S4
 
-Unit supervision-split, done 11:4x (1509 s), 3 seeds. Outputs `.cache/supervision_split{,_feas}.{txt,json}`. COMBO, explicit-query rows: STRUCT_U 0.696, **SUP_REC 0.983**, SUP_QRY 0.867, SUP_BOTH 0.978 (FLAT 0.721 overall). Implicit rows: STRUCT_U 0.768, SUP_REC 0.983, SUP_QRY 0.915, SUP_BOTH 0.973.
+Unit supervision-split, done 11:51 (1509 s), 3 seeds. Outputs `.cache/supervision_split{,_feas}.{txt,json}`. COMBO, explicit-query rows: STRUCT_U 0.696, **SUP_REC 0.983**, SUP_QRY 0.867, SUP_BOTH 0.978 (FLAT 0.721 overall). Implicit rows: STRUCT_U 0.768, SUP_REC 0.983, SUP_QRY 0.915, SUP_BOTH 0.973.
 - **(Q1) FAIL on its second clause**: SUP_REC 0.983 clears ≥ 0.95, but SUP_QRY lifts +0.171 over STRUCT_U (bar ≤ +0.10). Reading: supervising the RECORD side alone gives all of T2's gain (both sides adds nothing beyond it, −0.005); supervising the QUERY side alone gives ~60 % of it. The record side is the stronger lever in this toy.
 - **(Q2) FAIL / (Q3) PASS — both UNTESTED by design** (the leak ledgered at 11:32 before the verdicts: the object nearly fixes the implicit owner). Opus's ruling: count Q2/Q3 predictions as untested, as P3 was.
 - **(P4) PASS**: FLAT first-mention records 0.701 vs later names 0.773 (pronoun 0.792, desc 0.760). S4's 'names are hardest' was first mentions (an entity's first record) dragging the name bucket; once split out, names sit with the other forms.
