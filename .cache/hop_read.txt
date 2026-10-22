@@ -1,0 +1,31 @@
+mode full steps 4000
+FILT     H2 Bayes 0.564/0.922 | exact 0.564/0.922 (+b 0.564/0.922; oracle 0.564; reads 9.84)  snap 0.431/8.706 (+b 0.431/2.160; oracle 0.420; reads 1.00)  beam2 0.515/4.259 (+b 0.515/1.534; oracle 0.513; reads 2.00)  beam4 0.558/1.288 (+b 0.558/0.984; oracle 0.562; reads 4.00)  mass 0.560/0.941 (+b 0.560/0.927; oracle 0.564; reads 3.12)
+FILT     H3 Bayes 0.534/1.020 | exact 0.532/1.021 (+b 0.532/1.021; oracle 0.534; reads 17.39)  snap 0.312/10.513 (+b 0.312/2.451; oracle 0.325; reads 1.00)  beam2 0.446/5.688 (+b 0.445/1.853; oracle 0.447; reads 2.00)  beam4 0.522/1.831 (+b 0.522/1.182; oracle 0.527; reads 4.00)  mass 0.526/1.147 (+b 0.525/1.057; oracle 0.533; reads 3.46)
+FILT     gates: weak 0.299 bit 0.00  [149s]
+UNF      H2 Bayes 0.266/1.930 | exact 0.267/1.930 (+b 0.267/1.930; oracle 0.266; reads 25.80)  snap 0.177/11.483 (+b 0.177/2.705; oracle 0.174; reads 1.00)  beam2 0.201/8.994 (+b 0.200/2.566; oracle 0.196; reads 2.00)  beam4 0.224/5.673 (+b 0.223/2.304; oracle 0.229; reads 4.00)  mass 0.264/2.091 (+b 0.264/1.965; oracle 0.267; reads 9.11)
+UNF      H3 Bayes 0.243/2.066 | exact 0.243/2.066 (+b 0.243/2.066; oracle 0.243; reads 45.14)  snap 0.131/12.117 (+b 0.131/2.756; oracle 0.117; reads 1.00)  beam2 0.159/9.900 (+b 0.159/2.685; oracle 0.161; reads 2.00)  beam4 0.206/6.620 (+b 0.204/2.495; oracle 0.201; reads 4.00)  mass 0.247/2.296 (+b 0.247/2.115; oracle 0.245; reads 10.52)
+UNF      gates: weak 0.302 bit 0.00  [325s]
+FALL0.9  H2 Bayes 0.735/0.685 | exact 0.738/0.685 (+b 0.738/0.685; oracle 0.735; reads 24.14)  snap 0.653/5.271 (+b 0.653/1.468; oracle 0.629; reads 1.00)  beam2 0.713/2.190 (+b 0.714/0.938; oracle 0.709; reads 2.00)  beam4 0.728/1.159 (+b 0.728/0.767; oracle 0.732; reads 4.00)  mass 0.731/1.083 (+b 0.731/0.764; oracle 0.727; reads 2.86)
+FALL0.9  H3 Bayes 0.722/0.733 | exact 0.723/0.733 (+b 0.723/0.733; oracle 0.722; reads 43.22)  snap 0.552/6.805 (+b 0.552/1.820; oracle 0.511; reads 1.00)  beam2 0.676/2.697 (+b 0.677/1.110; oracle 0.664; reads 2.00)  beam4 0.713/1.280 (+b 0.712/0.844; oracle 0.707; reads 4.00)  mass 0.711/1.186 (+b 0.711/0.840; oracle 0.708; reads 3.05)
+FALL0.9  gates: weak 0.305 bit 4.29  [503s]
+FALL0.7  H2 Bayes 0.390/1.658 | exact 0.390/1.658 (+b 0.390/1.658; oracle 0.390; reads 25.45)  snap 0.291/10.365 (+b 0.291/2.511; oracle 0.285; reads 1.00)  beam2 0.341/6.947 (+b 0.341/2.205; oracle 0.340; reads 2.00)  beam4 0.383/4.019 (+b 0.383/1.912; oracle 0.376; reads 4.00)  mass 0.390/1.982 (+b 0.390/1.726; oracle 0.388; reads 7.46)
+FALL0.7  H3 Bayes 0.354/1.799 | exact 0.354/1.799 (+b 0.354/1.799; oracle 0.354; reads 44.90)  snap 0.223/11.400 (+b 0.223/2.659; oracle 0.195; reads 1.00)  beam2 0.281/8.236 (+b 0.281/2.427; oracle 0.282; reads 2.00)  beam4 0.333/4.910 (+b 0.332/2.130; oracle 0.328; reads 4.00)  mass 0.354/2.119 (+b 0.354/1.861; oracle 0.352; reads 8.74)
+FALL0.7  gates: weak 0.300 bit 1.69  [686s]
+VERDICTS (3-seed means; nats)
+(RN0) FILT: THE RETRAINED EXACT ARM IS ON THE FLOOR  (H2 0.922 vs 0.922, H3 1.021 vs 1.020)
+(RN1) FILT: CHEAP READS REACH THEIR ORACLES  (snap H2 +0.011, snap H3 -0.012, beam2 H2 +0.002, beam2 H3 -0.001, beam4 H2 -0.004, beam4 H3 -0.005, mass H2 -0.004, mass H3 -0.007)
+(RN2) FILT: THE GARDEN PATH TAKES THE SNAP  (exact - snap acc H2 +0.133 H3 +0.219)
+(RN3) FILT: THE BUCKET DOES NOT CLEAR THE BARS; accuracy UNCHANGED  (beam4 H2 ll 1.288 -> 0.984 vs exact 0.922, beam4 H3 ll 1.831 -> 1.182 vs exact 1.021, mass H2 ll 0.941 -> 0.927 vs exact 0.922, mass H3 ll 1.147 -> 1.057 vs exact 1.021)
+(RN0) UNF: THE RETRAINED EXACT ARM IS ON THE FLOOR  (H2 1.930 vs 1.930, H3 2.066 vs 2.066)
+(RN1) UNF: CHEAP READS REACH THEIR ORACLES  (snap H2 +0.003, snap H3 +0.014, beam2 H2 +0.004, beam2 H3 -0.001, beam4 H2 -0.004, beam4 H3 +0.004, mass H2 -0.002, mass H3 +0.002)
+(RN2) UNF: THE GARDEN PATH TAKES THE SNAP  (exact - snap acc H2 +0.090 H3 +0.112)
+(RN3) UNF: THE BUCKET DOES NOT CLEAR THE BARS; accuracy UNCHANGED  (beam4 H2 ll 5.673 -> 2.304 vs exact 1.930, beam4 H3 ll 6.620 -> 2.495 vs exact 2.066, mass H2 ll 2.091 -> 1.965 vs exact 1.930, mass H3 ll 2.296 -> 2.115 vs exact 2.066)
+(RN0) FALL0.9: THE RETRAINED EXACT ARM IS ON THE FLOOR  (H2 0.685 vs 0.685, H3 0.733 vs 0.733)
+(RN1) FALL0.9: CHEAP READS DO NOT REACH THEIR ORACLES  (snap H2 +0.024, snap H3 +0.041, beam2 H2 +0.004, beam2 H3 +0.013, beam4 H2 -0.004, beam4 H3 +0.006, mass H2 +0.003, mass H3 +0.004)
+(RN3) FALL0.9: THE BUCKET DOES NOT CLEAR THE BARS; accuracy UNCHANGED  (beam4 H2 ll 1.159 -> 0.767 vs exact 0.685, beam4 H3 ll 1.280 -> 0.844 vs exact 0.733, mass H2 ll 1.083 -> 0.764 vs exact 0.685, mass H3 ll 1.186 -> 0.840 vs exact 0.733)
+(RN4) FALL0.9: THE ONE-DOOR BIT CALIBRATES  (bit log-odds 4.29 vs 4.39; weak 0.305 vs 0.3)
+(RN0) FALL0.7: THE RETRAINED EXACT ARM IS ON THE FLOOR  (H2 1.658 vs 1.658, H3 1.799 vs 1.799)
+(RN1) FALL0.7: CHEAP READS DO NOT REACH THEIR ORACLES  (snap H2 +0.006, snap H3 +0.027, beam2 H2 +0.001, beam2 H3 -0.000, beam4 H2 +0.008, beam4 H3 +0.004, mass H2 +0.002, mass H3 +0.002)
+(RN3) FALL0.7: THE BUCKET DOES NOT CLEAR THE BARS; accuracy UNCHANGED  (beam4 H2 ll 4.019 -> 1.912 vs exact 1.658, beam4 H3 ll 4.910 -> 2.130 vs exact 1.799, mass H2 ll 1.982 -> 1.726 vs exact 1.658, mass H3 ll 2.119 -> 1.861 vs exact 1.799)
+(RN4) FALL0.7: THE ONE-DOOR BIT CALIBRATES  (bit log-odds 1.69 vs 1.69; weak 0.300 vs 0.3)
+DONE in 686s
