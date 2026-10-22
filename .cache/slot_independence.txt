@@ -1,0 +1,9 @@
+== CLK3_241: rows 311, slots 2051 (per row mean 6.59), per-slot acc 0.379; per-ftype acc 0:0.294, 1:0.468
+   OBSERVED all-slots-right 0.0514 (16/311) | PREDICTED per-ftype product 0.0063, global p^n 0.0065 | ratio obs/pred 8.16 -> CLUSTERED
+   by slots per row (n rows: observed / predicted): 3: 6 0/0.3  4: 38 5/0.7  5: 89 10/0.8  6: 50 1/0.1  7: 52 0/0.1  8: 16 0/0.0  9+: 60 0/0.0
+== SRK3_241: rows 311, slots 2051 (per row mean 6.59), per-slot acc 0.377; per-ftype acc 0:0.276, 1:0.482
+   OBSERVED all-slots-right 0.0643 (20/311) | PREDICTED per-ftype product 0.0060, global p^n 0.0064 | ratio obs/pred 10.77 -> CLUSTERED
+   by slots per row (n rows: observed / predicted): 3: 6 0/0.3  4: 38 7/0.7  5: 89 9/0.7  6: 50 0/0.1  7: 52 4/0.0  8: 16 0/0.0  9+: 60 0/0.0
+== K3_242: rows 311, slots 2051 (per row mean 6.59), per-slot acc 0.350; per-ftype acc 0:0.273, 1:0.430
+   OBSERVED all-slots-right 0.0322 (10/311) | PREDICTED per-ftype product 0.0044, global p^n 0.0046 | ratio obs/pred 7.25 -> CLUSTERED
+   by slots per row (n rows: observed / predicted): 3: 6 0/0.2  4: 38 7/0.5  5: 89 3/0.5  6: 50 0/0.1  7: 52 0/0.0  8: 16 0/0.0  9+: 60 0/0.0
