@@ -52290,3 +52290,36 @@ Bryce's word ~11:15 ("word given"), Opus's three points. `scripts/toys/supervisi
 - RULING: "we're allowed to create training data" — offline generation (e.g. Haiku subagents) is a dataset source, outside the system. Guards kept: generated answers are not gold until checked (solver/answer key, custody-gold law); never prompt with eval items.
 - T2c FEASIBILITY (seed 0, PASS): implicit queries are EASIER than named ones in the unsupervised arms (COMBO FLAT 0.767 vs name 0.734; STRUCT_U 0.759 vs 0.685), and SUP_REC reaches 0.980 on them with no query supervision. The leak: the implicit form is generated whenever exactly one entity has an OUT on the object, and in a 3–4-entity story the OBJECT then nearly fixes the owner (few entities own it at all). The question names the object; the owner is mostly free. So Q2 will very likely fail for a design reason, not a law; and SUP_QRY (0.953 COMBO) already sits well past STRUCT_U + 0.10, so Q1 likely fails on its second clause. The bars stand as pinned; the verdicts get read by them.
 - THE FIX, for a T2d if wanted: the implicit owner must have a DISTRACTOR — require ≥ 2 owners of the object in the story (one lost it, the other did not), so the owner can only be inferred through the event.
+
+## 2026-10-22 11:55 — T2c VERDICTS: RECORD-SIDE SUPERVISION CARRIES THE WHOLE +0.28; query-only recovers ~60 % of it; the implicit form is UNTESTED (design leak); first mentions explain S4
+
+Unit supervision-split, done 11:4x (1509 s), 3 seeds. Outputs `.cache/supervision_split{,_feas}.{txt,json}`. COMBO, explicit-query rows: STRUCT_U 0.696, **SUP_REC 0.983**, SUP_QRY 0.867, SUP_BOTH 0.978 (FLAT 0.721 overall). Implicit rows: STRUCT_U 0.768, SUP_REC 0.983, SUP_QRY 0.915, SUP_BOTH 0.973.
+- **(Q1) FAIL on its second clause**: SUP_REC 0.983 clears ≥ 0.95, but SUP_QRY lifts +0.171 over STRUCT_U (bar ≤ +0.10). Reading: supervising the RECORD side alone gives all of T2's gain (both sides adds nothing beyond it, −0.005); supervising the QUERY side alone gives ~60 % of it. The record side is the stronger lever in this toy.
+- **(Q2) FAIL / (Q3) PASS — both UNTESTED by design** (the leak ledgered at 11:32 before the verdicts: the object nearly fixes the implicit owner). Opus's ruling: count Q2/Q3 predictions as untested, as P3 was.
+- **(P4) PASS**: FLAT first-mention records 0.701 vs later names 0.773 (pronoun 0.792, desc 0.760). S4's 'names are hardest' was first mentions (an entity's first record) dragging the name bucket; once split out, names sit with the other forms.
+- (S5) length still collapses (0.14–0.28).
+- PREDICTIONS SCORED. Opus Q1 ✗ (second clause). Coordinator Q1 ✗, Q2/Q3 untested, P4 ✓.
+- FOR THE MAIN LINE, WITH A CAVEAT: the toy says 'supervise what each NUMERAL is about' (record side) is the strong move. The main line already tried a record-side form — the climb's learned owner links in the router's token key (10-14/15: links live and dominant, wild +0.002/−0.016). So the toy's record-side law did NOT transfer through that road; the difference to probe is that the toy supervises owner/object/verb CLASSES on the record's read channel directly, the climb supervised attention LINKS. A T2d with distractor owners is still owed for the query side.
+
+## 2026-10-22 11:55 — NESTING CENSUS (zero-GPU, delegated; Opus's question): wild relations nest; depth ≥ 2 is a quarter of them
+
+`scripts/nesting_census.py` → `.cache/nesting_census.txt` (graph structure only — ftype/args/result/var/given values; no solution fields). Forward determination from givens; a factor's nesting = max depth of the variables it consumes.
+- WILD (wild_admitted_holdout, 311 problems, 1042 rel factors): nesting 0/1/2/3/4+ = 437/341/157/62/45 → **25.3 % at depth ≥ 2**; 17.6 % consume ≥ 2 derived values. Per-problem max nesting 0/1/2/3/4+ = 3/163/84/36/25.
+- MINT test23: every factor simultaneous (coupled add/sub pairs) — no forward depth; not a depth distribution.
+- dag8_test: 32.6 % of resolvable factors at depth ≥ 2.
+- READING: nested arguments are common on wild, so T3's depth axis speaks to the main line (and to the measured relation-slot wall).
+
+## 2026-10-22 11:55 — REGISTERED (HELD for the word) T3, THE CROSS-JOIN TOY: does imposed binding keep the cross join unmemorized, and do redundant registers with metadata survive data loss?
+
+Bryce: "our true superpower is lossless binding and unbinding so AI doesn't memorize the SQL cross join — NOT superposition"; "adding the snap sounds good"; "save composite keys with meta data to multiple registers to avoid losing data". Opus: lossless = exact recovery of ONE factor given the others; race exactness against a snap; add a tensor-product ceiling and a learned fixed-width compression rival. `scripts/toys/cross_join_toy.py`, chain `scripts/toys/cj_chain.sh` (W 32 then W 128).
+- WORLD: 32 owners × 8 objects; records (owner ⊗ object key, partner, value, day = metadata); depth-D chains (match → read partner → match → … → value), D 1–3. COVERAGE: per object only 50 / 25 / 12.5 % of owners own it in training; UNSEEN eval uses only uncovered pairs. Loss of data: each register fails with p 0 / 0.1 / 0.3 at eval.
+- ARMS: analytic (fixed codes) PHASOR / MAP / HRR / CONCAT / TENSOR / REDUNDANT (two W/4-plane copies + the metadata check: a copy whose day field won't decode cleanly is dropped) / REDUNDANT_2X; trained PHASOR_L (learned phases; starts factored — it asks whether training on a sparse cross join BREAKS the imposed structure), COMPRESS (learned fixed-width compression of the concatenation), FLAT (free-form MLP memory). Snap vs raw partner carried between hops.
+- HONESTY ABOUT THE SMOKE: the analytic arms have no training, so the 1-seed smokes (n = 200) ALREADY SHOW their numbers. These are construction; the full run only confirms them over 3 seeds. Seen in the smoke:
+  - W 128: with a snap every exact arm and HRR read depth 3 at 0.99–1.00; RAW (no snap) depth 3: PHASOR 0.785, MAP 0.385, HRR 0.350 → the snap rescues everything, and without it complex phasors hold best (the 'exactness' term is not what separates MAP from PHASOR — both are exact; the raw estimate carries superposition crosstalk from the other fields).
+  - W 32: the SIDE-BY-SIDE table (CONCAT) beats superposed binding at depth 3 (0.93 vs PHASOR 0.53 snap; HRR 0.25): with four fields in 16 complex planes, superposing them inside one register costs more than splitting the width. Binding's fixed-width case needs MORE fields than this.
+  - DATA LOSS p 0.3, depth 1: W 128 REDUNDANT (with the metadata check) 0.930 vs single PHASOR 0.785 (+0.145) at equal floats; REDUNDANT_2X 0.945. At W 32 the copies are too narrow (0.495 vs 0.635).
+- REAL BARS (trained arms, W 128, 3 seeds, unseen pairs at 12.5 % coverage, snap):
+  - **(X1)** PHASOR_L ≥ FLAT + 0.30 at depth 1.
+  - **(X2)** PHASOR_L ≥ COMPRESS + 0.15 at depth 3.
+  - Coverage-break table reported for all trained arms.
+- PREDICTIONS (coordinator): X1 PASS, X2 PASS — the imposed algebra cannot memorize the join; the free-form memories fit seen pairs and fail unseen ones (the 30-step smoke already leans this way, undertrained). Construction confirmations reported, not claimed.

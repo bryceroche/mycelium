@@ -1,0 +1,21 @@
+== wild  (.cache/wild_admitted_holdout.jsonl)  n_problems=311  n_nongiven_factors=1042  by ftype={'rel': 1042}
+factor nesting histogram (ok factors; 4 = 4+): 0:437  1:341  2:157  3:62  4:45  redundant:0  simultaneous:0
+share nesting>=2: 264/1042 = 0.2534 (of ok factors 0.2534)
+share with >=2 derived args consumed: 183/1042 = 0.1756
+per-problem max nesting hist: 0:3  1:163  2:84  3:36  4:25  sim:0  none:0  (sim = problem whose only factors are simultaneous)
+median factor nesting (ok): 1.0; median per-problem chain length (max nesting+1 factors): see hist; mean nesting 1.021
+
+== mint test23  (.cache/algebra_nl_test.jsonl)  n_problems=300  n_nongiven_factors=1834  by ftype={'rel': 1834}
+factor nesting histogram (ok factors; 4 = 4+): 0:0  1:0  2:0  3:0  4:0  redundant:0  simultaneous:1834
+share nesting>=2: 0/1834 = 0.0000 (of ok factors 0.0000)
+share with >=2 derived args consumed: 0/1834 = 0.0000
+per-problem max nesting hist: 0:0  1:0  2:0  3:0  4:0  sim:300  none:0  (sim = problem whose only factors are simultaneous)
+median factor nesting (ok): None; median per-problem chain length (max nesting+1 factors): see hist; mean nesting 0.000
+
+== mint dag8_test  (.cache/dag8_test.jsonl)  n_problems=700  n_nongiven_factors=5643  by ftype={'rel': 3379, 'sel': 489, 'mod': 1318, 'fdiv': 457}
+factor nesting histogram (ok factors; 4 = 4+): 0:1464  1:749  2:414  3:250  4:406  redundant:893  simultaneous:1467
+share nesting>=2: 1070/5643 = 0.1896 (of ok factors 0.3259)
+share with >=2 derived args consumed: 234/5643 = 0.0415
+per-problem max nesting hist: 0:181  1:168  2:90  3:55  4:124  sim:63  none:19  (sim = problem whose only factors are simultaneous)
+median factor nesting (ok): 1; median per-problem chain length (max nesting+1 factors): see hist; mean nesting 1.342
+

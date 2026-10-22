@@ -1,0 +1,18 @@
+mode full steps 4000 lr 0.001
+FLAT      iid 0.688 (query name/desc/IMPLICIT 0.662/0.640/0.778; rec first/name/pron/desc 0.666/0.776/0.764/0.710) | combo 0.721 (query name/desc/IMPLICIT 0.716/0.677/0.776; rec first/name/pron/desc 0.701/0.773/0.792/0.760) | long 0.240 (query name/desc/IMPLICIT 0.200/0.189/0.334; rec first/name/pron/desc 0.444/0.103/0.118/0.085)  loss 0.353 [265s]
+          n combo query name/desc/implicit 1074/471/456; rec first/name/pron/desc 1345/290/224/140
+STRUCT_U  iid 0.687 (query name/desc/IMPLICIT 0.657/0.652/0.776; rec first/name/pron/desc 0.675/0.751/0.733/0.702) | combo 0.712 (query name/desc/IMPLICIT 0.705/0.674/0.768; rec first/name/pron/desc 0.701/0.743/0.761/0.711) | long 0.250 (query name/desc/IMPLICIT 0.198/0.218/0.351; rec first/name/pron/desc 0.447/0.092/0.118/0.104)  loss 0.360 [550s]
+          n combo query name/desc/implicit 1074/471/456; rec first/name/pron/desc 1345/290/224/140
+SUP_REC   iid 0.990 (query name/desc/IMPLICIT 0.998/0.968/0.991; rec first/name/pron/desc 0.988/0.996/0.995/0.993) | combo 0.983 (query name/desc/IMPLICIT 0.997/0.952/0.983; rec first/name/pron/desc 0.981/0.992/0.993/0.986) | long 0.283 (query name/desc/IMPLICIT 0.274/0.216/0.343; rec first/name/pron/desc 0.380/0.290/0.286/0.224)  loss 0.054 [869s]
+          n combo query name/desc/implicit 1074/471/456; rec first/name/pron/desc 1345/290/224/140
+SUP_QRY   iid 0.867 (query name/desc/IMPLICIT 0.852/0.852/0.910; rec first/name/pron/desc 0.862/0.887/0.903/0.889) | combo 0.878 (query name/desc/IMPLICIT 0.864/0.873/0.915; rec first/name/pron/desc 0.877/0.894/0.902/0.865) | long 0.139 (query name/desc/IMPLICIT 0.125/0.102/0.184; rec first/name/pron/desc 0.197/0.154/0.161/0.116)  loss 0.253 [1183s]
+          n combo query name/desc/implicit 1074/471/456; rec first/name/pron/desc 1345/290/224/140
+SUP_BOTH  iid 0.988 (query name/desc/IMPLICIT 0.999/0.962/0.990; rec first/name/pron/desc 0.987/0.994/0.992/0.996) | combo 0.977 (query name/desc/IMPLICIT 0.996/0.938/0.973; rec first/name/pron/desc 0.973/0.990/0.987/0.981) | long 0.172 (query name/desc/IMPLICIT 0.168/0.138/0.202; rec first/name/pron/desc 0.210/0.231/0.209/0.171)  loss 0.190 [1509s]
+          n combo query name/desc/implicit 1074/471/456; rec first/name/pron/desc 1345/290/224/140
+VERDICTS (3-seed means, COMBO split)
+(Q1) EXPLICIT QUERIES: NOT THE RECORD SIDE ALONE  (explicit-query COMBO: SUP_REC 0.983 [bar >= 0.95], SUP_QRY 0.867 vs STRUCT_U 0.696 [bar <= +0.10], SUP_BOTH 0.978)
+(Q2) IMPLICIT QUERIES: QUERY SUPERVISION ADDS < 0.10 OVER RECORDS  (implicit COMBO: SUP_BOTH 0.973 − SUP_REC 0.983 = -0.010; SUP_QRY 0.915; STRUCT_U 0.768)
+(Q3) IMPLICIT QUERIES ARE SOLVABLE WITH BOTH SIDES SUPERVISED  (SUP_BOTH implicit COMBO 0.973 [bar >= 0.90] vs its explicit 0.978)
+(P4) FIRST MENTIONS EXPLAIN S4  (FLAT COMBO record forms: first 0.701, later name 0.773, pronoun 0.792, desc 0.760)
+(S5) LENGTH (reported): FLAT 0.240, STRUCT_U 0.250, SUP_REC 0.283, SUP_QRY 0.139, SUP_BOTH 0.172
+DONE in 1509s
