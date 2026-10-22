@@ -1,0 +1,13 @@
+mode feas steps 4000 lr 0.001
+FLAT      iid 0.710 (query name/desc/IMPLICIT 0.688/0.699/0.771; rec first/name/pron/desc 0.678/0.846/0.803/0.800) | combo 0.733 (query name/desc/IMPLICIT 0.730/0.716/0.768; rec first/name/pron/desc 0.703/0.793/0.852/0.803) | long 0.231 (query name/desc/IMPLICIT 0.191/0.239/0.342; rec first/name/pron/desc 0.406/0.098/0.120/0.086)  loss 0.371 [96s]
+          n combo query name/desc/implicit 1113/542/345; rec first/name/pron/desc 1385/275/203/137
+STRUCT_U  iid 0.716 (query name/desc/IMPLICIT 0.704/0.697/0.765; rec first/name/pron/desc 0.688/0.838/0.798/0.819) | combo 0.730 (query name/desc/IMPLICIT 0.732/0.710/0.754; rec first/name/pron/desc 0.700/0.807/0.833/0.774) | long 0.194 (query name/desc/IMPLICIT 0.176/0.159/0.297; rec first/name/pron/desc 0.366/0.081/0.085/0.076)  loss 0.372 [190s]
+          n combo query name/desc/implicit 1113/542/345; rec first/name/pron/desc 1385/275/203/137
+SUP_REC   iid 0.947 (query name/desc/IMPLICIT 0.998/0.884/0.889; rec first/name/pron/desc 0.938/0.988/0.978/0.981) | combo 0.949 (query name/desc/IMPLICIT 0.996/0.869/0.925; rec first/name/pron/desc 0.947/0.982/0.956/0.949) | long 0.228 (query name/desc/IMPLICIT 0.199/0.175/0.385; rec first/name/pron/desc 0.307/0.203/0.208/0.162)  loss 0.155 [285s]
+          n combo query name/desc/implicit 1113/542/345; rec first/name/pron/desc 1385/275/203/137
+SUP_QRY   iid 0.832 (query name/desc/IMPLICIT 0.842/0.842/0.800; rec first/name/pron/desc 0.816/0.947/0.910/0.886) | combo 0.854 (query name/desc/IMPLICIT 0.858/0.873/0.814; rec first/name/pron/desc 0.833/0.902/0.921/0.927) | long 0.147 (query name/desc/IMPLICIT 0.137/0.102/0.235; rec first/name/pron/desc 0.191/0.164/0.190/0.114)  loss 0.407 [378s]
+          n combo query name/desc/implicit 1113/542/345; rec first/name/pron/desc 1385/275/203/137
+SUP_BOTH  iid 0.951 (query name/desc/IMPLICIT 0.995/0.886/0.911; rec first/name/pron/desc 0.946/0.988/0.978/0.962) | combo 0.929 (query name/desc/IMPLICIT 0.996/0.825/0.878; rec first/name/pron/desc 0.917/0.971/0.961/0.964) | long 0.156 (query name/desc/IMPLICIT 0.132/0.141/0.251; rec first/name/pron/desc 0.186/0.217/0.190/0.135)  loss 0.389 [482s]
+          n combo query name/desc/implicit 1113/542/345; rec first/name/pron/desc 1385/275/203/137
+FEASIBILITY GATE (some arm IID >= 0.70 at seed 0, >= 200 implicit queries in IID): PASS (best 0.951)
+DONE in 482s

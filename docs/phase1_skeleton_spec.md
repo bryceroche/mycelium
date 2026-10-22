@@ -52332,3 +52332,12 @@ Bryce: "our true superpower is lossless binding and unbinding so AI doesn't memo
 - T2d BARS (3 seeds, COMBO): **(D2, validity first)** SUP_REC implicit ≤ SUP_REC explicit − 0.05 (else the form is still easy and D1 is UNTESTED); **(D1)** SUP_BOTH − SUP_REC ≥ +0.10 on implicit rows; **(D3)** SUP_BOTH implicit ≥ 0.90.
 - PREDICTIONS: coordinator D2 PASS, D1 PASS (narrowly), D3 FAIL (~0.85). Opus (from Q2/Q3, carried): D1 PASS, D3 PASS narrowly.
 - Chain `scripts/toys/t2d_t3_chain.sh`, unit t2d-t3.
+
+## 2026-10-22 12:57 — T2d VERDICTS: D2 (validity) FAILS by 0.004 → D1 UNTESTED; query supervision adds nothing on top of record supervision for the second time (−0.004); D3 passes at the bar
+
+Unit t2d-t3, T2d part done 12:37; 3 seeds. Outputs `.cache/supervision_split_d{,_feas}.{txt,json}`. COMBO: explicit — STRUCT_U 0.741, SUP_REC 0.954, SUP_QRY 0.791, SUP_BOTH 0.943; IMPLICIT (distractor owner present) — STRUCT_U 0.765, SUP_REC 0.908, SUP_QRY 0.793, SUP_BOTH 0.903.
+- **(D2) FAIL**: SUP_REC implicit 0.908 vs its explicit 0.954 = −0.046 against the −0.05 validity bar. The distractor made the implicit form harder (record-only 0.983 in T2c → 0.908), but not by the pinned margin, so **(D1) is UNTESTED** as registered. The number it would have read: SUP_BOTH − SUP_REC −0.004.
+- **(D3) PASS** at the bar: 0.903.
+- The descriptor query form also got harder under shared objects (SUP_REC 0.859, SUP_BOTH 0.898 on desc queries).
+- PREDICTIONS SCORED: coordinator D2 ✗, D1 untested, D3 ✗ (predicted ~0.85; 0.903). Opus D1 untested, D3 ✓.
+- READING (no bar claims it): in two toys and four query forms, adding query-side supervision on top of record-side supervision never helped (−0.010, −0.004). The toy does not yet separate 'the query side has nothing to learn here' from 'record-side classes are enough' — D2 missed by 0.004. For the port, record-side class heads are the candidate both runs point at; the query-side question stays open on the main line, where the slot query really is implicit.
