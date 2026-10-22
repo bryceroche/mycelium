@@ -1,0 +1,13 @@
+mode full steps 4000 lr 0.001
+FLATEMB_TABLE  iid 0.859 (lookup 0.926 left 0.894 coarse 0.747) | unseen 0.498 (lookup 0.671 left 0.561 coarse 0.219)  loss 0.449 [414s]
+TREEEMB_TABLE  iid 0.934 (lookup 0.966 left 0.958 coarse 0.877) | unseen 0.862 (lookup 0.902 left 0.873 coarse 0.799)  loss 0.533 [886s]
+FLATEMB_BIND   iid 0.890 (lookup 0.966 left 0.951 coarse 0.753) | unseen 0.638 (lookup 0.824 left 0.795 coarse 0.294)  loss 0.660 [1323s]
+TREEEMB_BIND   iid 0.939 (lookup 0.980 left 0.962 coarse 0.869) | unseen 0.861 (lookup 0.931 left 0.877 coarse 0.752)  loss 0.632 [1813s]
+VERDICTS (3-seed means)
+(H1) TABLE: TREE CODES CARRY COARSE QUERIES TO UNSEEN LEAVES  (unseen coarse tree 0.799 vs flat 0.219; tree iid coarse 0.877)
+(H2) TABLE: FINE LOOKUPS DIFFER BY EMBEDDING  (unseen lookup tree − flat +0.231)
+(H1) BIND: TREE CODES CARRY COARSE QUERIES TO UNSEEN LEAVES  (unseen coarse tree 0.752 vs flat 0.294; tree iid coarse 0.869)
+(H2) BIND: FINE LOOKUPS DIFFER BY EMBEDDING  (unseen lookup tree − flat +0.107)
+(H3) FLATEMB: COMPOSITE BINDING DOES NOT TIE THE TABLE  (max |BIND − TABLE| over splits 0.140)
+(H3) TREEEMB: COMPOSITE BINDING TIES THE COMPOSITE TABLE  (max |BIND − TABLE| over splits 0.005)
+DONE in 1813s

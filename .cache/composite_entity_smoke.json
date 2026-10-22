@@ -1,0 +1,110 @@
+[
+ {
+  "arm": "FLATEMB_TABLE",
+  "seeds": [
+   {
+    "acc_iid": 0.09333333373069763,
+    "acc_iid_lookup": 0.17213115096092224,
+    "acc_iid_left": 0.10294117778539658,
+    "acc_iid_coarse": 0.0,
+    "acc_unseen": 0.10333333164453506,
+    "acc_unseen_lookup": 0.20714285969734192,
+    "acc_unseen_left": 0.05128205195069313,
+    "acc_unseen_coarse": 0.0,
+    "final_loss": 19.71453094482422
+   }
+  ],
+  "agg": {
+   "acc_iid": 0.09333333373069763,
+   "acc_iid_lookup": 0.17213115096092224,
+   "acc_iid_left": 0.10294117778539658,
+   "acc_iid_coarse": 0.0,
+   "acc_unseen": 0.10333333164453506,
+   "acc_unseen_lookup": 0.20714285969734192,
+   "acc_unseen_left": 0.05128205195069313,
+   "acc_unseen_coarse": 0.0,
+   "final_loss": 19.71453094482422
+  }
+ },
+ {
+  "arm": "TREEEMB_TABLE",
+  "seeds": [
+   {
+    "acc_iid": 0.07666666805744171,
+    "acc_iid_lookup": 0.1803278625011444,
+    "acc_iid_left": 0.014705882407724857,
+    "acc_iid_coarse": 0.0,
+    "acc_unseen": 0.1133333370089531,
+    "acc_unseen_lookup": 0.22142857313156128,
+    "acc_unseen_left": 0.07692307978868484,
+    "acc_unseen_coarse": 0.0,
+    "final_loss": 18.821876525878906
+   }
+  ],
+  "agg": {
+   "acc_iid": 0.07666666805744171,
+   "acc_iid_lookup": 0.1803278625011444,
+   "acc_iid_left": 0.014705882407724857,
+   "acc_iid_coarse": 0.0,
+   "acc_unseen": 0.1133333370089531,
+   "acc_unseen_lookup": 0.22142857313156128,
+   "acc_unseen_left": 0.07692307978868484,
+   "acc_unseen_coarse": 0.0,
+   "final_loss": 18.821876525878906
+  }
+ },
+ {
+  "arm": "FLATEMB_BIND",
+  "seeds": [
+   {
+    "acc_iid": 0.10999999940395355,
+    "acc_iid_lookup": 0.2540983557701111,
+    "acc_iid_left": 0.014705882407724857,
+    "acc_iid_coarse": 0.00909090880304575,
+    "acc_unseen": 0.15333333611488342,
+    "acc_unseen_lookup": 0.2857142984867096,
+    "acc_unseen_left": 0.05128205195069313,
+    "acc_unseen_coarse": 0.03305784985423088,
+    "final_loss": 18.45119857788086
+   }
+  ],
+  "agg": {
+   "acc_iid": 0.10999999940395355,
+   "acc_iid_lookup": 0.2540983557701111,
+   "acc_iid_left": 0.014705882407724857,
+   "acc_iid_coarse": 0.00909090880304575,
+   "acc_unseen": 0.15333333611488342,
+   "acc_unseen_lookup": 0.2857142984867096,
+   "acc_unseen_left": 0.05128205195069313,
+   "acc_unseen_coarse": 0.03305784985423088,
+   "final_loss": 18.45119857788086
+  }
+ },
+ {
+  "arm": "TREEEMB_BIND",
+  "seeds": [
+   {
+    "acc_iid": 0.11666666716337204,
+    "acc_iid_lookup": 0.2295081913471222,
+    "acc_iid_left": 0.10294117778539658,
+    "acc_iid_coarse": 0.0,
+    "acc_unseen": 0.10999999940395355,
+    "acc_unseen_lookup": 0.2142857164144516,
+    "acc_unseen_left": 0.05128205195069313,
+    "acc_unseen_coarse": 0.00826446246355772,
+    "final_loss": 18.18680763244629
+   }
+  ],
+  "agg": {
+   "acc_iid": 0.11666666716337204,
+   "acc_iid_lookup": 0.2295081913471222,
+   "acc_iid_left": 0.10294117778539658,
+   "acc_iid_coarse": 0.0,
+   "acc_unseen": 0.10999999940395355,
+   "acc_unseen_lookup": 0.2142857164144516,
+   "acc_unseen_left": 0.05128205195069313,
+   "acc_unseen_coarse": 0.00826446246355772,
+   "final_loss": 18.18680763244629
+  }
+ }
+]

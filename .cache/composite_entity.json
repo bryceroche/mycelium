@@ -1,0 +1,198 @@
+[
+ {
+  "arm": "FLATEMB_TABLE",
+  "seeds": [
+   {
+    "acc_iid": 0.8769999742507935,
+    "acc_iid_lookup": 0.9475409984588623,
+    "acc_iid_left": 0.9371727705001831,
+    "acc_iid_coarse": 0.7524893283843994,
+    "acc_unseen": 0.6004999876022339,
+    "acc_unseen_lookup": 0.7818552255630493,
+    "acc_unseen_left": 0.7454545497894287,
+    "acc_unseen_coarse": 0.27285921573638916,
+    "final_loss": 0.5490995049476624
+   },
+   {
+    "acc_iid": 0.843999981880188,
+    "acc_iid_lookup": 0.8943965435028076,
+    "acc_iid_left": 0.8820375204086304,
+    "acc_iid_coarse": 0.7567954063415527,
+    "acc_unseen": 0.4230000078678131,
+    "acc_unseen_lookup": 0.5657894611358643,
+    "acc_unseen_left": 0.422839492559433,
+    "acc_unseen_coarse": 0.21802325546741486,
+    "final_loss": 0.39621222019195557
+   },
+   {
+    "acc_iid": 0.8565000295639038,
+    "acc_iid_lookup": 0.936873733997345,
+    "acc_iid_left": 0.8633720874786377,
+    "acc_iid_coarse": 0.7310030460357666,
+    "acc_unseen": 0.47099998593330383,
+    "acc_unseen_lookup": 0.6649746298789978,
+    "acc_unseen_left": 0.5146198868751526,
+    "acc_unseen_coarse": 0.16493313014507294,
+    "final_loss": 0.4017770290374756
+   }
+  ],
+  "agg": {
+   "acc_iid": 0.859166661898295,
+   "acc_iid_lookup": 0.9262704253196716,
+   "acc_iid_left": 0.8941941261291504,
+   "acc_iid_coarse": 0.7467625935872396,
+   "acc_unseen": 0.49816666046778363,
+   "acc_unseen_lookup": 0.6708731055259705,
+   "acc_unseen_left": 0.5609713097413381,
+   "acc_unseen_coarse": 0.21860520044962564,
+   "final_loss": 0.4490295847256978
+  }
+ },
+ {
+  "arm": "TREEEMB_TABLE",
+  "seeds": [
+   {
+    "acc_iid": 0.9204999804496765,
+    "acc_iid_lookup": 0.9584699273109436,
+    "acc_iid_left": 0.9476439952850342,
+    "acc_iid_coarse": 0.8563300371170044,
+    "acc_unseen": 0.8009999990463257,
+    "acc_unseen_lookup": 0.8450560569763184,
+    "acc_unseen_left": 0.8090909123420715,
+    "acc_unseen_coarse": 0.7343976497650146,
+    "final_loss": 0.5527836680412292
+   },
+   {
+    "acc_iid": 0.9304999709129333,
+    "acc_iid_lookup": 0.9612069129943848,
+    "acc_iid_left": 0.9571045637130737,
+    "acc_iid_coarse": 0.8755365014076233,
+    "acc_unseen": 0.8694999814033508,
+    "acc_unseen_lookup": 0.9109311699867249,
+    "acc_unseen_left": 0.8641975522041321,
+    "acc_unseen_coarse": 0.8125,
+    "final_loss": 0.5534929633140564
+   },
+   {
+    "acc_iid": 0.9505000114440918,
+    "acc_iid_lookup": 0.9779559373855591,
+    "acc_iid_left": 0.9680232405662537,
+    "acc_iid_coarse": 0.8996960520744324,
+    "acc_unseen": 0.9150000214576721,
+    "acc_unseen_lookup": 0.9492385983467102,
+    "acc_unseen_left": 0.9444444179534912,
+    "acc_unseen_coarse": 0.849925696849823,
+    "final_loss": 0.4913315773010254
+   }
+  ],
+  "agg": {
+   "acc_iid": 0.9338333209355673,
+   "acc_iid_lookup": 0.9658775925636292,
+   "acc_iid_left": 0.9575905998547872,
+   "acc_iid_coarse": 0.8771875301996866,
+   "acc_unseen": 0.8618333339691162,
+   "acc_unseen_lookup": 0.9017419417699178,
+   "acc_unseen_left": 0.8725776274998983,
+   "acc_unseen_coarse": 0.7989411155382792,
+   "final_loss": 0.5325360695521036
+  }
+ },
+ {
+  "arm": "FLATEMB_BIND",
+  "seeds": [
+   {
+    "acc_iid": 0.8924999833106995,
+    "acc_iid_lookup": 0.9748634099960327,
+    "acc_iid_left": 0.9764397740364075,
+    "acc_iid_coarse": 0.7396870851516724,
+    "acc_unseen": 0.684499979019165,
+    "acc_unseen_lookup": 0.8817533254623413,
+    "acc_unseen_left": 0.8969696760177612,
+    "acc_unseen_coarse": 0.30188679695129395,
+    "final_loss": 0.7301025986671448
+   },
+   {
+    "acc_iid": 0.8769999742507935,
+    "acc_iid_lookup": 0.9493534564971924,
+    "acc_iid_left": 0.9356568455696106,
+    "acc_iid_coarse": 0.7496423721313477,
+    "acc_unseen": 0.6035000085830688,
+    "acc_unseen_lookup": 0.7550607323646545,
+    "acc_unseen_left": 0.709876537322998,
+    "acc_unseen_coarse": 0.3357558250427246,
+    "final_loss": 0.6555190086364746
+   },
+   {
+    "acc_iid": 0.9014999866485596,
+    "acc_iid_lookup": 0.9739478826522827,
+    "acc_iid_left": 0.9418604373931885,
+    "acc_iid_coarse": 0.7705166935920715,
+    "acc_unseen": 0.6265000104904175,
+    "acc_unseen_lookup": 0.834517776966095,
+    "acc_unseen_left": 0.7777777910232544,
+    "acc_unseen_coarse": 0.24517087638378143,
+    "final_loss": 0.5949360132217407
+   }
+  ],
+  "agg": {
+   "acc_iid": 0.8903333147366842,
+   "acc_iid_lookup": 0.9660549163818359,
+   "acc_iid_left": 0.9513190189997355,
+   "acc_iid_coarse": 0.7532820502916971,
+   "acc_unseen": 0.6381666660308838,
+   "acc_unseen_lookup": 0.8237772782643636,
+   "acc_unseen_left": 0.7948746681213379,
+   "acc_unseen_coarse": 0.29427116612593335,
+   "final_loss": 0.6601858735084534
+  }
+ },
+ {
+  "arm": "TREEEMB_BIND",
+  "seeds": [
+   {
+    "acc_iid": 0.9350000023841858,
+    "acc_iid_lookup": 0.9814207553863525,
+    "acc_iid_left": 0.9685863852500916,
+    "acc_iid_coarse": 0.8563300371170044,
+    "acc_unseen": 0.8784999847412109,
+    "acc_unseen_lookup": 0.9306829571723938,
+    "acc_unseen_left": 0.8909090757369995,
+    "acc_unseen_coarse": 0.798258364200592,
+    "final_loss": 0.6492956280708313
+   },
+   {
+    "acc_iid": 0.965499997138977,
+    "acc_iid_lookup": 0.9881465435028076,
+    "acc_iid_left": 0.989276111125946,
+    "acc_iid_coarse": 0.9227467775344849,
+    "acc_unseen": 0.9359999895095825,
+    "acc_unseen_lookup": 0.9736841917037964,
+    "acc_unseen_left": 0.9444444179534912,
+    "acc_unseen_coarse": 0.8779069781303406,
+    "final_loss": 0.6470779180526733
+   },
+   {
+    "acc_iid": 0.9150000214576721,
+    "acc_iid_lookup": 0.968937873840332,
+    "acc_iid_left": 0.9273256063461304,
+    "acc_iid_coarse": 0.826747715473175,
+    "acc_unseen": 0.7680000066757202,
+    "acc_unseen_lookup": 0.8873096704483032,
+    "acc_unseen_left": 0.7953216433525085,
+    "acc_unseen_coarse": 0.5794947743415833,
+    "final_loss": 0.5997730493545532
+   }
+  ],
+  "agg": {
+   "acc_iid": 0.9385000069936117,
+   "acc_iid_lookup": 0.9795017242431641,
+   "acc_iid_left": 0.961729367574056,
+   "acc_iid_coarse": 0.8686081767082214,
+   "acc_unseen": 0.8608333269755045,
+   "acc_unseen_lookup": 0.9305589397748312,
+   "acc_unseen_left": 0.8768917123476664,
+   "acc_unseen_coarse": 0.7518867055575053,
+   "final_loss": 0.6320488651593527
+  }
+ }
+]

@@ -1,0 +1,6 @@
+mode smoke steps 20 lr 0.001
+FLATEMB_TABLE  iid 0.093 (lookup 0.172 left 0.103 coarse 0.000) | unseen 0.103 (lookup 0.207 left 0.051 coarse 0.000)  loss 19.715 [1s]
+TREEEMB_TABLE  iid 0.077 (lookup 0.180 left 0.015 coarse 0.000) | unseen 0.113 (lookup 0.221 left 0.077 coarse 0.000)  loss 18.822 [2s]
+FLATEMB_BIND   iid 0.110 (lookup 0.254 left 0.015 coarse 0.009) | unseen 0.153 (lookup 0.286 left 0.051 coarse 0.033)  loss 18.451 [3s]
+TREEEMB_BIND   iid 0.117 (lookup 0.230 left 0.103 coarse 0.000) | unseen 0.110 (lookup 0.214 left 0.051 coarse 0.008)  loss 18.187 [4s]
+DONE in 4s
