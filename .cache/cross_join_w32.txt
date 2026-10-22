@@ -1,0 +1,41 @@
+mode full steps 3000 W 32
+PHASOR       snap cov 0.125 | seen D1 0.788 D2 0.656 D3 0.549 | unseen D1 0.795 D2 0.658 D3 0.565 | unseen D1 p.1/.3 0.718/0.567 D3 p.1/.3 0.452/0.274  [85s]
+PHASOR       raw  cov 0.125 | seen D1 0.788 D2 0.415 D3 0.275 | unseen D1 0.795 D2 0.425 D3 0.278 | unseen D1 p.1/.3 0.718/0.567 D3 p.1/.3 0.240/0.175  [168s]
+MAP          snap cov 0.125 | seen D1 0.786 D2 0.638 D3 0.522 | unseen D1 0.778 D2 0.632 D3 0.524 | unseen D1 p.1/.3 0.702/0.552 D3 p.1/.3 0.418/0.270  [248s]
+MAP          raw  cov 0.125 | seen D1 0.786 D2 0.380 D3 0.152 | unseen D1 0.778 D2 0.374 D3 0.158 | unseen D1 p.1/.3 0.702/0.552 D3 p.1/.3 0.146/0.125  [332s]
+HRR          snap cov 0.125 | seen D1 0.515 D2 0.336 D3 0.249 | unseen D1 0.515 D2 0.340 D3 0.273 | unseen D1 p.1/.3 0.471/0.385 D3 p.1/.3 0.236/0.165  [414s]
+HRR          raw  cov 0.125 | seen D1 0.515 D2 0.220 D3 0.139 | unseen D1 0.515 D2 0.213 D3 0.155 | unseen D1 p.1/.3 0.471/0.385 D3 p.1/.3 0.141/0.123  [498s]
+CONCAT       snap cov 0.125 | seen D1 0.919 D2 0.924 D3 0.908 | unseen D1 0.926 D2 0.908 D3 0.914 | unseen D1 p.1/.3 0.833/0.655 D3 p.1/.3 0.697/0.395  [573s]
+CONCAT       raw  cov 0.125 | seen D1 0.919 D2 0.924 D3 0.908 | unseen D1 0.926 D2 0.908 D3 0.914 | unseen D1 p.1/.3 0.833/0.655 D3 p.1/.3 0.696/0.393  [650s]
+TENSOR       snap cov 0.125 | seen D1 1.000 D2 1.000 D3 1.000 | unseen D1 1.000 D2 1.000 D3 1.000 | unseen D1 p.1/.3 0.900/0.704 D3 p.1/.3 0.766/0.434  [728s]
+TENSOR       raw  cov 0.125 | seen D1 1.000 D2 1.000 D3 1.000 | unseen D1 1.000 D2 1.000 D3 1.000 | unseen D1 p.1/.3 0.900/0.704 D3 p.1/.3 0.764/0.429  [806s]
+REDUNDANT    snap cov 0.125 | seen D1 0.761 D2 0.597 D3 0.481 | unseen D1 0.758 D2 0.587 D3 0.491 | unseen D1 p.1/.3 0.672/0.498 D3 p.1/.3 0.369/0.215  [899s]
+REDUNDANT    raw  cov 0.125 | seen D1 0.761 D2 0.389 D3 0.260 | unseen D1 0.758 D2 0.390 D3 0.263 | unseen D1 p.1/.3 0.672/0.498 D3 p.1/.3 0.217/0.147  [993s]
+REDUNDANT_2X snap cov 0.125 | seen D1 0.956 D2 0.930 D3 0.891 | unseen D1 0.958 D2 0.922 D3 0.889 | unseen D1 p.1/.3 0.887/0.741 D3 p.1/.3 0.718/0.455  [1093s]
+REDUNDANT_2X raw  cov 0.125 | seen D1 0.956 D2 0.660 D3 0.488 | unseen D1 0.958 D2 0.660 D3 0.475 | unseen D1 p.1/.3 0.887/0.741 D3 p.1/.3 0.361/0.235  [1197s]
+PHASOR_L     snap cov 0.500 | seen D1 0.919 D2 0.861 D3 0.813 | unseen D1 0.868 D2 0.781 D3 0.702 | unseen D1 p.1/.3 0.781/0.623 D3 p.1/.3 0.549/0.328  [1311s]
+PHASOR_L     snap cov 0.250 | seen D1 0.933 D2 0.907 D3 0.890 | unseen D1 0.879 D2 0.779 D3 0.698 | unseen D1 p.1/.3 0.785/0.641 D3 p.1/.3 0.544/0.326  [1423s]
+PHASOR_L     snap cov 0.125 | seen D1 0.954 D2 0.955 D3 0.957 | unseen D1 0.871 D2 0.769 D3 0.682 | unseen D1 p.1/.3 0.785/0.620 D3 p.1/.3 0.535/0.329  [1530s]
+PHASOR_L     raw  cov 0.500 | seen D1 0.910 D2 0.583 D3 0.419 | unseen D1 0.872 D2 0.535 D3 0.380 | unseen D1 p.1/.3 0.783/0.629 D3 p.1/.3 0.306/0.208  [1636s]
+PHASOR_L     raw  cov 0.250 | seen D1 0.924 D2 0.629 D3 0.483 | unseen D1 0.866 D2 0.527 D3 0.381 | unseen D1 p.1/.3 0.774/0.630 D3 p.1/.3 0.315/0.212  [1743s]
+PHASOR_L     raw  cov 0.125 | seen D1 0.932 D2 0.695 D3 0.592 | unseen D1 0.860 D2 0.536 D3 0.366 | unseen D1 p.1/.3 0.776/0.613 D3 p.1/.3 0.294/0.202  [1841s]
+COMPRESS     snap cov 0.500 | seen D1 1.000 D2 1.000 D3 1.000 | unseen D1 0.996 D2 0.974 D3 0.963 | unseen D1 p.1/.3 0.893/0.710 D3 p.1/.3 0.744/0.413  [1931s]
+COMPRESS     snap cov 0.250 | seen D1 1.000 D2 1.000 D3 1.000 | unseen D1 0.988 D2 0.911 D3 0.851 | unseen D1 p.1/.3 0.887/0.717 D3 p.1/.3 0.664/0.371  [2000s]
+COMPRESS     snap cov 0.125 | seen D1 1.000 D2 1.000 D3 1.000 | unseen D1 0.961 D2 0.707 D3 0.547 | unseen D1 p.1/.3 0.866/0.679 D3 p.1/.3 0.442/0.271  [2068s]
+COMPRESS     raw  cov 0.500 | seen D1 1.000 D2 1.000 D3 1.000 | unseen D1 0.996 D2 0.917 D3 0.862 | unseen D1 p.1/.3 0.893/0.709 D3 p.1/.3 0.668/0.385  [2137s]
+COMPRESS     raw  cov 0.250 | seen D1 1.000 D2 1.000 D3 1.000 | unseen D1 0.986 D2 0.820 D3 0.709 | unseen D1 p.1/.3 0.884/0.715 D3 p.1/.3 0.561/0.319  [2205s]
+COMPRESS     raw  cov 0.125 | seen D1 1.000 D2 1.000 D3 1.000 | unseen D1 0.953 D2 0.610 D3 0.424 | unseen D1 p.1/.3 0.858/0.674 D3 p.1/.3 0.352/0.224  [2269s]
+FLAT         snap cov 0.500 | seen D1 0.999 D2 0.999 D3 0.998 | unseen D1 0.988 D2 0.948 D3 0.897 | unseen D1 p.1/.3 0.878/0.686 D3 p.1/.3 0.713/0.445  [2372s]
+FLAT         snap cov 0.250 | seen D1 0.998 D2 0.996 D3 0.995 | unseen D1 0.956 D2 0.785 D3 0.622 | unseen D1 p.1/.3 0.852/0.692 D3 p.1/.3 0.521/0.366  [2474s]
+FLAT         snap cov 0.125 | seen D1 0.995 D2 0.994 D3 0.995 | unseen D1 0.902 D2 0.586 D3 0.393 | unseen D1 p.1/.3 0.817/0.636 D3 p.1/.3 0.347/0.271  [2581s]
+FLAT         raw  cov 0.500 | seen D1 0.999 D2 0.999 D3 0.999 | unseen D1 0.992 D2 0.968 D3 0.930 | unseen D1 p.1/.3 0.884/0.688 D3 p.1/.3 0.727/0.440  [2679s]
+FLAT         raw  cov 0.250 | seen D1 0.997 D2 0.994 D3 0.992 | unseen D1 0.956 D2 0.860 D3 0.745 | unseen D1 p.1/.3 0.854/0.689 D3 p.1/.3 0.605/0.404  [2781s]
+FLAT         raw  cov 0.125 | seen D1 0.996 D2 0.995 D3 0.994 | unseen D1 0.897 D2 0.711 D3 0.521 | unseen D1 p.1/.3 0.815/0.637 D3 p.1/.3 0.452/0.354  [2880s]
+VERDICTS at W 32 (3-seed means). REAL BARS = trained arms, pinned at W 128. Analytic arms are CONSTRUCTION (fixed codes; the smoke already showed them) -> reported as 3-seed confirmations, not claims.
+CONSTRUCTION CONFIRMATIONS (unseen, cov 0.125):
+   D1 p0 snap/raw: PHASOR 0.795/0.795, MAP 0.778/0.778, HRR 0.515/0.515, CONCAT 0.926/0.926, TENSOR 1.000/1.000, REDUNDANT 0.758/0.758, REDUNDANT_2X 0.958/0.958
+   D2 p0 snap/raw: PHASOR 0.658/0.425, MAP 0.632/0.374, HRR 0.340/0.213, CONCAT 0.908/0.908, TENSOR 1.000/1.000, REDUNDANT 0.587/0.390, REDUNDANT_2X 0.922/0.660
+   D3 p0 snap/raw: PHASOR 0.565/0.278, MAP 0.524/0.158, HRR 0.273/0.155, CONCAT 0.914/0.914, TENSOR 1.000/1.000, REDUNDANT 0.491/0.263, REDUNDANT_2X 0.889/0.475
+   LOSS p 0.1 snap D1/D3: PHASOR 0.718/0.452, MAP 0.702/0.418, HRR 0.471/0.236, CONCAT 0.833/0.697, TENSOR 0.900/0.766, REDUNDANT 0.672/0.369, REDUNDANT_2X 0.887/0.718
+   LOSS p 0.3 snap D1/D3: PHASOR 0.567/0.274, MAP 0.552/0.270, HRR 0.385/0.165, CONCAT 0.655/0.395, TENSOR 0.704/0.434, REDUNDANT 0.498/0.215, REDUNDANT_2X 0.741/0.455
+DONE in 2880s

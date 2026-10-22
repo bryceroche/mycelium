@@ -1,0 +1,44 @@
+mode full steps 3000 W 128
+PHASOR       snap cov 0.125 | seen D1 0.999 D2 1.000 D3 1.000 | unseen D1 1.000 D2 1.000 D3 0.999 | unseen D1 p.1/.3 0.901/0.708 D3 p.1/.3 0.765/0.449  [79s]
+PHASOR       raw  cov 0.125 | seen D1 0.999 D2 0.908 D3 0.836 | unseen D1 1.000 D2 0.908 D3 0.835 | unseen D1 p.1/.3 0.901/0.708 D3 p.1/.3 0.650/0.387  [149s]
+MAP          snap cov 0.125 | seen D1 1.000 D2 1.000 D3 0.999 | unseen D1 1.000 D2 1.000 D3 1.000 | unseen D1 p.1/.3 0.901/0.706 D3 p.1/.3 0.766/0.439  [211s]
+MAP          raw  cov 0.125 | seen D1 1.000 D2 0.805 D3 0.374 | unseen D1 1.000 D2 0.807 D3 0.375 | unseen D1 p.1/.3 0.901/0.706 D3 p.1/.3 0.312/0.207  [272s]
+HRR          snap cov 0.125 | seen D1 0.994 D2 0.987 D3 0.987 | unseen D1 0.993 D2 0.989 D3 0.985 | unseen D1 p.1/.3 0.893/0.701 D3 p.1/.3 0.761/0.441  [341s]
+HRR          raw  cov 0.125 | seen D1 0.994 D2 0.525 D3 0.319 | unseen D1 0.993 D2 0.529 D3 0.332 | unseen D1 p.1/.3 0.893/0.701 D3 p.1/.3 0.285/0.202  [412s]
+CONCAT       snap cov 0.125 | seen D1 1.000 D2 1.000 D3 1.000 | unseen D1 1.000 D2 1.000 D3 1.000 | unseen D1 p.1/.3 0.900/0.704 D3 p.1/.3 0.766/0.434  [470s]
+CONCAT       raw  cov 0.125 | seen D1 1.000 D2 1.000 D3 1.000 | unseen D1 1.000 D2 1.000 D3 1.000 | unseen D1 p.1/.3 0.900/0.704 D3 p.1/.3 0.764/0.429  [528s]
+TENSOR       snap cov 0.125 | seen D1 1.000 D2 1.000 D3 1.000 | unseen D1 1.000 D2 1.000 D3 1.000 | unseen D1 p.1/.3 0.902/0.705 D3 p.1/.3 0.770/0.438  [589s]
+TENSOR       raw  cov 0.125 | seen D1 1.000 D2 1.000 D3 1.000 | unseen D1 1.000 D2 1.000 D3 1.000 | unseen D1 p.1/.3 0.902/0.705 D3 p.1/.3 0.768/0.439  [650s]
+REDUNDANT    snap cov 0.125 | seen D1 0.999 D2 0.998 D3 0.995 | unseen D1 0.999 D2 0.998 D3 0.996 | unseen D1 p.1/.3 0.980/0.884 D3 p.1/.3 0.936/0.751  [733s]
+REDUNDANT    raw  cov 0.125 | seen D1 0.999 D2 0.902 D3 0.815 | unseen D1 0.999 D2 0.894 D3 0.818 | unseen D1 p.1/.3 0.980/0.884 D3 p.1/.3 0.663/0.430  [817s]
+REDUNDANT_2X snap cov 0.125 | seen D1 1.000 D2 1.000 D3 1.000 | unseen D1 1.000 D2 1.000 D3 1.000 | unseen D1 p.1/.3 0.988/0.907 D3 p.1/.3 0.969/0.797  [915s]
+REDUNDANT_2X raw  cov 0.125 | seen D1 1.000 D2 0.990 D3 0.978 | unseen D1 1.000 D2 0.989 D3 0.981 | unseen D1 p.1/.3 0.988/0.907 D3 p.1/.3 0.862/0.584  [1052s]
+PHASOR_L     snap cov 0.500 | seen D1 1.000 D2 1.000 D3 1.000 | unseen D1 1.000 D2 1.000 D3 1.000 | unseen D1 p.1/.3 0.896/0.716 D3 p.1/.3 0.764/0.428  [1186s]
+PHASOR_L     snap cov 0.250 | seen D1 1.000 D2 1.000 D3 1.000 | unseen D1 1.000 D2 1.000 D3 1.000 | unseen D1 p.1/.3 0.895/0.726 D3 p.1/.3 0.773/0.421  [1316s]
+PHASOR_L     snap cov 0.125 | seen D1 1.000 D2 1.000 D3 1.000 | unseen D1 1.000 D2 1.000 D3 1.000 | unseen D1 p.1/.3 0.902/0.706 D3 p.1/.3 0.768/0.449  [1435s]
+PHASOR_L     raw  cov 0.500 | seen D1 1.000 D2 0.957 D3 0.928 | unseen D1 1.000 D2 0.939 D3 0.897 | unseen D1 p.1/.3 0.896/0.716 D3 p.1/.3 0.692/0.391  [1560s]
+PHASOR_L     raw  cov 0.250 | seen D1 1.000 D2 0.966 D3 0.946 | unseen D1 1.000 D2 0.936 D3 0.895 | unseen D1 p.1/.3 0.896/0.725 D3 p.1/.3 0.701/0.377  [1690s]
+PHASOR_L     raw  cov 0.125 | seen D1 1.000 D2 0.984 D3 0.976 | unseen D1 1.000 D2 0.936 D3 0.889 | unseen D1 p.1/.3 0.901/0.707 D3 p.1/.3 0.686/0.398  [1815s]
+COMPRESS     snap cov 0.500 | seen D1 1.000 D2 1.000 D3 1.000 | unseen D1 0.997 D2 0.981 D3 0.960 | unseen D1 p.1/.3 0.896/0.712 D3 p.1/.3 0.730/0.401  [1922s]
+COMPRESS     snap cov 0.250 | seen D1 1.000 D2 1.000 D3 1.000 | unseen D1 0.957 D2 0.847 D3 0.763 | unseen D1 p.1/.3 0.859/0.698 D3 p.1/.3 0.601/0.341  [2031s]
+COMPRESS     snap cov 0.125 | seen D1 1.000 D2 1.000 D3 1.000 | unseen D1 0.825 D2 0.577 D3 0.394 | unseen D1 p.1/.3 0.748/0.591 D3 p.1/.3 0.318/0.213  [2131s]
+COMPRESS     raw  cov 0.500 | seen D1 1.000 D2 1.000 D3 1.000 | unseen D1 0.980 D2 0.846 D3 0.750 | unseen D1 p.1/.3 0.882/0.700 D3 p.1/.3 0.591/0.349  [2239s]
+COMPRESS     raw  cov 0.250 | seen D1 1.000 D2 1.000 D3 1.000 | unseen D1 0.913 D2 0.602 D3 0.446 | unseen D1 p.1/.3 0.822/0.679 D3 p.1/.3 0.371/0.245  [2350s]
+COMPRESS     raw  cov 0.125 | seen D1 1.000 D2 1.000 D3 1.000 | unseen D1 0.805 D2 0.465 D3 0.296 | unseen D1 p.1/.3 0.728/0.572 D3 p.1/.3 0.246/0.171  [2449s]
+FLAT         snap cov 0.500 | seen D1 1.000 D2 0.997 D3 0.997 | unseen D1 0.993 D2 0.961 D3 0.912 | unseen D1 p.1/.3 0.890/0.711 D3 p.1/.3 0.745/0.489  [2584s]
+FLAT         snap cov 0.250 | seen D1 0.997 D2 0.995 D3 0.994 | unseen D1 0.968 D2 0.799 D3 0.656 | unseen D1 p.1/.3 0.868/0.710 D3 p.1/.3 0.553/0.396  [2719s]
+FLAT         snap cov 0.125 | seen D1 0.995 D2 0.996 D3 0.996 | unseen D1 0.898 D2 0.607 D3 0.414 | unseen D1 p.1/.3 0.822/0.651 D3 p.1/.3 0.374/0.305  [2850s]
+FLAT         raw  cov 0.500 | seen D1 1.000 D2 0.999 D3 0.998 | unseen D1 0.993 D2 0.968 D3 0.938 | unseen D1 p.1/.3 0.892/0.712 D3 p.1/.3 0.756/0.493  [2987s]
+FLAT         raw  cov 0.250 | seen D1 0.997 D2 0.996 D3 0.995 | unseen D1 0.969 D2 0.868 D3 0.752 | unseen D1 p.1/.3 0.868/0.708 D3 p.1/.3 0.627/0.439  [3123s]
+FLAT         raw  cov 0.125 | seen D1 0.998 D2 0.994 D3 0.994 | unseen D1 0.912 D2 0.685 D3 0.490 | unseen D1 p.1/.3 0.829/0.656 D3 p.1/.3 0.436/0.342  [3254s]
+VERDICTS at W 128 (3-seed means). REAL BARS = trained arms, pinned at W 128. Analytic arms are CONSTRUCTION (fixed codes; the smoke already showed them) -> reported as 3-seed confirmations, not claims.
+(X1) LEARNED PHASOR CODES DO NOT BEAT FLAT BY 0.30  (unseen D1 snap: PHASOR_L 1.000, FLAT 0.898, COMPRESS 0.825)
+(X2) LEARNED BINDING BEATS THE LEARNED FIXED-WIDTH COMPRESSION AT DEPTH 3  (unseen D3 snap: PHASOR_L 1.000 vs COMPRESS 0.394)
+CONSTRUCTION CONFIRMATIONS (unseen, cov 0.125):
+   D1 p0 snap/raw: PHASOR 1.000/1.000, MAP 1.000/1.000, HRR 0.993/0.993, CONCAT 1.000/1.000, TENSOR 1.000/1.000, REDUNDANT 0.999/0.999, REDUNDANT_2X 1.000/1.000
+   D2 p0 snap/raw: PHASOR 1.000/0.908, MAP 1.000/0.807, HRR 0.989/0.529, CONCAT 1.000/1.000, TENSOR 1.000/1.000, REDUNDANT 0.998/0.894, REDUNDANT_2X 1.000/0.989
+   D3 p0 snap/raw: PHASOR 0.999/0.835, MAP 1.000/0.375, HRR 0.985/0.332, CONCAT 1.000/1.000, TENSOR 1.000/1.000, REDUNDANT 0.996/0.818, REDUNDANT_2X 1.000/0.981
+   LOSS p 0.1 snap D1/D3: PHASOR 0.901/0.765, MAP 0.901/0.766, HRR 0.893/0.761, CONCAT 0.900/0.766, TENSOR 0.902/0.770, REDUNDANT 0.980/0.936, REDUNDANT_2X 0.988/0.969
+   LOSS p 0.3 snap D1/D3: PHASOR 0.708/0.449, MAP 0.706/0.439, HRR 0.701/0.441, CONCAT 0.704/0.434, TENSOR 0.705/0.438, REDUNDANT 0.884/0.751, REDUNDANT_2X 0.907/0.797
+COVERAGE BREAK (trained arms, unseen D1 / D3 snap, cov 0.5/0.25/0.125): PHASOR_L 1.000:1.000/1.000:1.000/1.000:1.000, COMPRESS 0.997:0.960/0.957:0.763/0.825:0.394, FLAT 0.993:0.912/0.968:0.656/0.898:0.414
+DONE in 3254s
