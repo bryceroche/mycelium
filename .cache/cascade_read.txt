@@ -1,0 +1,21 @@
+== CLK3_241
+   PARENTS: P(wrong | all ok) 0.545 (n 310) | P(wrong | a parent wrong) 0.764 (n 682) | gap +0.219
+   PLACEBO: P(wrong | all ok) 0.661 (n 242) | P(wrong | one wrong) 0.724 (n 702) | gap +0.062
+   (C1) CASCADE DOES NOT EXPLAIN IT; (C2) BEYOND ROW HARDNESS (parent gap − placebo gap +0.156)
+   HARD rows 113: acc 0.144 | slots/row 7.42 | text 236 ch | relation share 0.529 | no-parent arg share 0.215 | given acc 0.185 | relation acc 0.106
+   MID  rows  94: acc 0.391 | slots/row 6.74 | text 221 ch | relation share 0.511 | no-parent arg share 0.235 | given acc 0.477 | relation acc 0.281
+   EASY rows 104: acc 0.736 | slots/row 5.57 | text 188 ch | relation share 0.475 | no-parent arg share 0.218 | given acc 0.826 | relation acc 0.611
+== SRK3_241
+   PARENTS: P(wrong | all ok) 0.525 (n 324) | P(wrong | a parent wrong) 0.804 (n 668) | gap +0.279
+   PLACEBO: P(wrong | all ok) 0.642 (n 243) | P(wrong | one wrong) 0.749 (n 701) | gap +0.107
+   (C1) CASCADE DOES NOT EXPLAIN IT; (C2) BEYOND ROW HARDNESS (parent gap − placebo gap +0.172)
+   HARD rows 106: acc 0.121 | slots/row 7.51 | text 235 ch | relation share 0.534 | no-parent arg share 0.231 | given acc 0.162 | relation acc 0.080
+   MID  rows 104: acc 0.377 | slots/row 6.62 | text 219 ch | relation share 0.509 | no-parent arg share 0.224 | given acc 0.473 | relation acc 0.268
+   EASY rows 101: acc 0.761 | slots/row 5.60 | text 191 ch | relation share 0.470 | no-parent arg share 0.205 | given acc 0.887 | relation acc 0.602
+== K3_242
+   PARENTS: P(wrong | all ok) 0.621 (n 277) | P(wrong | a parent wrong) 0.754 (n 715) | gap +0.133
+   PLACEBO: P(wrong | all ok) 0.758 (n 207) | P(wrong | one wrong) 0.723 (n 737) | gap -0.035
+   (C1) CASCADE DOES NOT EXPLAIN IT; (C2) BEYOND ROW HARDNESS (parent gap − placebo gap +0.168)
+   HARD rows 116: acc 0.144 | slots/row 7.45 | text 236 ch | relation share 0.527 | no-parent arg share 0.225 | given acc 0.191 | relation acc 0.095
+   MID  rows 109: acc 0.393 | slots/row 6.68 | text 215 ch | relation share 0.514 | no-parent arg share 0.213 | given acc 0.469 | relation acc 0.299
+   EASY rows  86: acc 0.706 | slots/row 5.34 | text 187 ch | relation share 0.464 | no-parent arg share 0.230 | given acc 0.772 | relation acc 0.606
