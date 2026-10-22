@@ -52259,7 +52259,7 @@ A 4th register holds a checksum digit k = (a + 7b + 13c) mod 64; the same tree a
 - PREDICTIONS SCORED. Opus: S1 ✓, S2 ✓, S3 ✓, S4 ✗. Coordinator: S1 ✗ ('wins by < 0.15'; it won by +0.28 although the query text names the owner), S2 ✓, S3 ✓, S4's alternative (descriptors cost most) ✗ in four arms.
 - READING: Opus's honest answer to Bryce's 'binding superpower', now measured: **binding is a good FORMAT for the working memory (it ties the table at equal memory, and costs nothing), and what makes the read work is SUPERVISING what each record and each query is ABOUT** (owner, object, verb: the attention-bootstrap law, +0.28). Unsupervised structure does not discover the channels by itself in 4000 steps. OPEN SPLIT (the main-line question): the supervised arms supervised BOTH the record side (coreference: whose number is this) and the query side (what the slot wants); the main line's measured wall is the query side — which side carries the +0.28 is the next cut (QUERY-only vs RECORD-only supervision).
 
-## 2026-10-22 11:31 — T2b VERDICTS: TREE CODES CARRY COMPOSITES TO UNSEEN LEAVES (H1 PASS ×2); FINE LOOKUPS ALSO GAIN (H2 FAILS, in the tree's favor); BINDING TIES THE TABLE ONLY UNDER TREE CODES (H3 split)
+## 2026-10-22 11:18 — T2b VERDICTS: TREE CODES CARRY COMPOSITES TO UNSEEN LEAVES (H1 PASS ×2); FINE LOOKUPS ALSO GAIN (H2 FAILS, in the tree's favor); BINDING TIES THE TABLE ONLY UNDER TREE CODES (H3 split)
 
 Unit composite-ent, `scripts/toys/composite_entity_toy.py` (ce_chain.sh), 3 seeds × 4000 steps, done 10:27 (1813 s). Outputs `.cache/composite_entity.{txt,json}`.
 - UNSEEN split (every query touches a held-out leaf), acc (lookup / left / coarse): FLATEMB_TABLE 0.498 (0.671 / 0.561 / 0.219); **TREEEMB_TABLE 0.862 (0.902 / 0.873 / 0.799)**; FLATEMB_BIND 0.638 (0.824 / 0.795 / 0.294); **TREEEMB_BIND 0.861 (0.931 / 0.877 / 0.752)**. IID coarse: flat 0.747 / 0.753, tree 0.877 / 0.869 (the tree helps coarse even on seen leaves).
@@ -52269,9 +52269,9 @@ Unit composite-ent, `scripts/toys/composite_entity_toy.py` (ce_chain.sh), 3 seed
 - PREDICTIONS SCORED. Coordinator: H1 ✓, H2 ✗, H3 half (✓ tree, ✗ flat). Opus: H1 ✓ (the 0.80 transfer bar "most likely close": 0.87–0.91 on the mean, one seed under).
 - READING for Bryce's composite entities: Janet ⊗ apples as a composite key works, and the TREE inside the object part is what lets 'Janet's pears' (never seen) and 'all of Janet's fruit' be read. Binding vs a table is again a draw once the codes are structured.
 
-## 2026-10-22 11:31 — REGISTERED + FIRED T2c, THE SUPERVISION SPLIT (where does T2's +0.28 live?) + the S4 first-mention probe
+## 2026-10-22 11:18 — REGISTERED + FIRED T2c, THE SUPERVISION SPLIT (where does T2's +0.28 live?) + the S4 first-mention probe
 
-Bryce's word 11:1x ("word given"), Opus's three points. `scripts/toys/supervision_split_toy.py` (T2's generator, trunk and reads; chain `scripts/toys/ss_chain.sh`: feasibility at seed 0, then the full 3 seeds on PASS). Unit supervision-split.
+Bryce's word ~11:15 ("word given"), Opus's three points. `scripts/toys/supervision_split_toy.py` (T2's generator, trunk and reads; chain `scripts/toys/ss_chain.sh`: feasibility at seed 0, then the full 3 seeds on PASS). Unit supervision-split.
 - ARMS (all STRUCT reads except FLAT): STRUCT_U (no supervision; the same-read-form control), SUP_REC (record channels only), SUP_QRY (query channels only), SUP_BOTH (= T2's STRUCT_S), FLAT (reported).
 - NEW QUERY FORM, IMPLICIT (Opus point 1: T2's questions name the owner, so the query side had little to learn): 'Q WHO OBJ LEFT ?' / 'Q WHO HAS OBJ ?' = the one entity that lost or gave OBJ, generated only when exactly one entity has an OUT event on OBJ; one query in three in every split, train included. Its query-side label is the generator's gold owner.
 - S4 PROBE: records whose owner mention is the entity's FIRST mention are split out of 'name' ('first').
