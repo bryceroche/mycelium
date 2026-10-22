@@ -29,6 +29,7 @@ D, NH, NL = 64, 4, 2
 STEPS = int(os.environ.get("BM_STEPS", "300" if mode == "smoke" else "4000"))
 BATCH, N_EVAL = 64, (300 if mode == "smoke" else 2000)
 SEEDS = [0] if mode in ("smoke", "feas") else [0, 1, 2]
+DISTRACT = os.environ.get("SS_DISTRACT", "0") == "1"           # T2d (ledger 2026-10-22): implicit owner gets a distractor
 ARMS = os.environ.get("BM_ARMS", "FLAT,STRUCT_U,SUP_REC,SUP_QRY,SUP_BOTH").split(",")
 LR = float(os.environ.get("BM_LR", "1e-3"))
 GENDER = np.array([0] * 8 + [1] * 8)                     # entity -> he (0) / she (1)
@@ -68,6 +69,8 @@ def story(rng, n_ev, split):
             e, o = open_[int(rng.integers(len(open_)))]
         else:
             e = int(rng.choice(ents)); o = int(rng.integers(NOBJ))
+            if DISTRACT and pairs and rng.random() < 0.6:                 # T2d: share objects across owners (distractors)
+                o = int(list(pairs)[int(rng.integers(len(pairs)))][1])
         if (split == "train" and (e, o) in HELD) or (split == "combo" and (e, o) not in HELD and rng.random() < 0.7):
             continue
         st = pairs.setdefault((e, o), set())
@@ -107,7 +110,9 @@ def example(rng, split):
         if r[3] == 2:
             outs.setdefault(r[2], []).append(r[1])
     ipool = [r for r in pool if len(outs.get(r[2], [])) == 1 and outs[r[2]][0] == r[1]]
-    if ipool and rng.random() < 1 / 3:                                 # IMPLICIT: the owner is 'the one who lost/gave OBJ'
+    if DISTRACT:                                                       # T2d: another owner of the object must exist
+        ipool = [r for r in ipool if len({x[1] for x in recs if x[2] == r[2]}) >= 2]
+    if ipool and rng.random() < (0.7 if DISTRACT else 1 / 3):                                 # IMPLICIT: the owner is 'the one who lost/gave OBJ'
         tgt = ipool[int(rng.integers(len(ipool)))]; e, o = tgt[1], tgt[2]
         same = {r[3]: r for r in recs if r[1] == e and r[2] == o}
         if rng.random() < 0.5:
@@ -273,7 +278,7 @@ def run(arm, seed):
 
 if __name__ == "__main__":
     torch.set_num_threads(int(os.environ.get("TOY_THREADS", "8")))
-    tag = {"smoke": "_smoke", "feas": "_feas", "full": ""}[mode]
+    tag = ("_d" if DISTRACT else "") + {"smoke": "_smoke", "feas": "_feas", "full": ""}[mode]
     assert mode == "smoke" or not os.path.exists(f".cache/supervision_split{tag}.txt"), "refusing to overwrite a banked read"
     out = open(f".cache/supervision_split{tag}.txt", "w"); allres = []; t0 = time.time()
 
@@ -314,5 +319,13 @@ if __name__ == "__main__":
         p4 = fi <= nl - 0.05 and abs(nl - (pr + de) / 2) <= 0.05
         say("(P4) " + ("FIRST MENTIONS EXPLAIN S4" if p4 else "FIRST MENTIONS DO NOT EXPLAIN S4")
             + f"  (FLAT COMBO record forms: first {fi:.3f}, later name {nl:.3f}, pronoun {pr:.3f}, desc {de:.3f})")
+        if DISTRACT:                                                      # T2d's own bars
+            re_, ri_, bi_ = g("SUP_REC", "acc_combo_qexplicit"), g("SUP_REC", "acc_combo_qimplicit"), g("SUP_BOTH", "acc_combo_qimplicit")
+            d2 = ri_ <= re_ - 0.05
+            say("(D2, validity) " + ("THE DISTRACTOR MAKES IMPLICIT QUERIES HARD WITHOUT QUERY SUPERVISION" if d2 else "IMPLICIT QUERIES STILL EASY -> D1 UNTESTED")
+                + f"  (SUP_REC implicit {ri_:.3f} vs its explicit {re_:.3f})")
+            say("(D1) " + ("QUERY SUPERVISION EARNS ITS KEEP ON IMPLICIT QUERIES" if bi_ - ri_ >= 0.10 else "QUERY SUPERVISION ADDS < 0.10 ON IMPLICIT QUERIES")
+                + f"  (SUP_BOTH {bi_:.3f} − SUP_REC {ri_:.3f} = {bi_ - ri_:+.3f}; SUP_QRY {g('SUP_QRY', 'acc_combo_qimplicit'):.3f}; STRUCT_U {g('STRUCT_U', 'acc_combo_qimplicit'):.3f})")
+            say("(D3) " + ("IMPLICIT QUERIES SOLVABLE FULLY SUPERVISED" if bi_ >= 0.90 else "IMPLICIT QUERIES STAY HARD FULLY SUPERVISED") + f"  (SUP_BOTH implicit {bi_:.3f})")
         say("(S5) LENGTH (reported): " + ", ".join(f"{a} {g(a, 'acc_long'):.3f}" for a in ARMS))
     say(f"DONE in {time.time() - t0:.0f}s")

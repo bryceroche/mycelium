@@ -52323,3 +52323,12 @@ Bryce: "our true superpower is lossless binding and unbinding so AI doesn't memo
   - **(X2)** PHASOR_L ≥ COMPRESS + 0.15 at depth 3.
   - Coverage-break table reported for all trained arms.
 - PREDICTIONS (coordinator): X1 PASS, X2 PASS — the imposed algebra cannot memorize the join; the free-form memories fit seen pairs and fail unseen ones (the 30-step smoke already leans this way, undertrained). Construction confirmations reported, not claimed.
+
+## 2026-10-22 12:02 — WORD GIVEN (Bryce, "word given -- Salute!") for T3 AND T2d (Opus asked for both); FIRED as one sequential chain (T2d first, then T3 W 32 → W 128)
+
+- OPUS'S FAIRNESS FIX ("give every arm the snap") is ALREADY IN T3: FLAT and COMPRESS snap their partner estimate to their own codebook (soft at train, hard at eval) exactly as the binding arms do; X1/X2 read the snap=True runs for every arm. No code change; the raw runs are reported alongside.
+- OPUS'S PREDICTIONS PINNED: X1 PASS; X2 close (binding by ~0.10–0.20 at depth 3).
+- **T2d, THE DISTRACTOR-OWNER IMPLICIT QUERY** (`supervision_split_toy.py` with SS_DISTRACT=1; outputs `.cache/supervision_split_d{,_feas}.*`): an implicit query ('the one who lost OBJ') is generated only when ANOTHER entity also owns OBJ in the story, so the object no longer fixes the owner; the generator shares objects across owners (p 0.6 for a fresh pair) and asks the implicit form at p 0.7 when it can (smoke: 48/300 COMBO rows implicit). Arms/splits/supervision as T2c. Feasibility gate as T2c (≥ 200 implicit IID rows).
+- T2d BARS (3 seeds, COMBO): **(D2, validity first)** SUP_REC implicit ≤ SUP_REC explicit − 0.05 (else the form is still easy and D1 is UNTESTED); **(D1)** SUP_BOTH − SUP_REC ≥ +0.10 on implicit rows; **(D3)** SUP_BOTH implicit ≥ 0.90.
+- PREDICTIONS: coordinator D2 PASS, D1 PASS (narrowly), D3 FAIL (~0.85). Opus (from Q2/Q3, carried): D1 PASS, D3 PASS narrowly.
+- Chain `scripts/toys/t2d_t3_chain.sh`, unit t2d-t3.
