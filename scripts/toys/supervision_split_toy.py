@@ -89,7 +89,7 @@ def story(rng, n_ev, split):
         toks.extend([T_S] + mk + [verb])
         if verb == T_GIVES:
             rk, _ = mention(r); toks.extend(rk)
-        recs.append((len(toks), e, o, VERB_CLS[verb], n, form))
+        recs.append((len(toks), e, o, VERB_CLS[verb], n, form, r if verb == T_GIVES else -1))   # [6] recipient (T2e's structured noise)
         toks.extend([O_NUM + n - 1, O_OBJ + o, T_DOT])
         st.add(VERB_CLS[verb])
     return toks, recs, desc, introduced
@@ -139,13 +139,13 @@ def batch(rng, B, split):
     exs = [example(rng, split) for _ in range(B)]
     L = max(len(x["toks"]) for x in exs); R = max(len(x["recs"]) for x in exs)
     tok = np.full((B, L), T_PAD); rpos = np.zeros((B, R), np.int64); rmask = np.zeros((B, R), bool)
-    rfeat = np.zeros((B, R, 3), np.int64); qpos = np.zeros(B, np.int64)
+    rfeat = np.zeros((B, R, 3), np.int64); qpos = np.zeros(B, np.int64); rrecip = np.full((B, R), -1)
     tgt = np.full((B, 2), -1); nop = np.zeros(B, np.int64)
     rform = []
     for b, x in enumerate(exs):
         tok[b, :len(x["toks"])] = x["toks"]; qpos[b] = len(x["toks"]) - 1
         for k, r in enumerate(x["recs"]):
-            rpos[b, k] = r[0]; rmask[b, k] = True; rfeat[b, k] = (r[1], r[2], r[3])
+            rpos[b, k] = r[0]; rmask[b, k] = True; rfeat[b, k] = (r[1], r[2], r[3]); rrecip[b, k] = r[6]
         for i, op in enumerate(x["ops"]):
             tgt[b, i] = x["recs"].index(op)
         nop[b] = len(x["ops"])
@@ -156,7 +156,7 @@ def batch(rng, B, split):
         for i, op in enumerate(x["ops"]):
             qfeat[b, i] = (op[1], op[2], op[3])
     return dict(tok=t(tok), rpos=t(rpos), rmask=t(rmask), rfeat=t(rfeat), qpos=t(qpos), tgt=t(tgt), nop=t(nop),
-                qfeat=t(qfeat), kind=[x["kind"] for x in exs], rform=rform, qform=[x["qform"] for x in exs])
+                qfeat=t(qfeat), rrecip=t(rrecip), kind=[x["kind"] for x in exs], rform=rform, qform=[x["qform"] for x in exs])
 
 
 def sinus(L):
