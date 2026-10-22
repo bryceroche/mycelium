@@ -1,0 +1,12 @@
+== body CLK3_241 ==  pick = gold value 497, pick elsewhere in text 400, pick has no text occurrence 46, gold has no text occurrence 66
+  owner  f (all lookups) 0.696 (n 832) | wrong picks 0.314 (n 369) vs chance 0.325 -> -0.010
+  type   f (all lookups) 0.772 (n 670) | wrong picks 0.414 (n 261) vs chance 0.414 -> -0.001
+  event  f (all lookups) 0.653 (n 890) | wrong picks 0.222 (n 397) vs chance 0.220 -> +0.002
+  joint  f (all three, all lookups) 0.642 (n 617) | wrong picks 0.071 (n 238)
+  F^H with the joint f: H1 0.642 H2 0.412 H3 0.264
+== body K3_242 ==  pick elsewhere in text 432, pick = gold value 448, pick has no text occurrence 63, gold has no text occurrence 66
+  owner  f (all lookups) 0.687 (n 812) | wrong picks 0.352 (n 392) vs chance 0.316 -> +0.036
+  type   f (all lookups) 0.778 (n 675) | wrong picks 0.472 (n 284) vs chance 0.417 -> +0.055
+  event  f (all lookups) 0.646 (n 875) | wrong picks 0.279 (n 430) vs chance 0.227 -> +0.052
+  joint  f (all three, all lookups) 0.631 (n 620) | wrong picks 0.109 (n 257)
+  F^H with the joint f: H1 0.631 H2 0.398 H3 0.251
