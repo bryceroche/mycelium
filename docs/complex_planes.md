@@ -191,7 +191,7 @@ owner alone. Then the dictionary supplies real fillers (Llama's features → pha
 
 ## 11. Two days on the line (2026-10-20 → 21): from binding to time — the laws, each with its standing
 
-Every number below is in the ledger (`docs/phase1_skeleton_spec.md`, 2026-10-20 11:37 → 2026-10-21 16:45) with its
+Every number below is in the ledger (`docs/phase1_skeleton_spec.md`, 2026-10-20 11:37 → 2026-10-21 19:24) with its
 artifact in `.cache/`. **STANDING** says how much weight a law can bear:
 - **BLIND**: bars pinned before any full-length read (a 300-step smoke at most);
 - **POST-FEAS**: bars pinned after a seed-0 feasibility read had shown the shape (a three-seed confirmation, not a blind
@@ -241,6 +241,29 @@ artifact in `.cache/`. **STANDING** says how much weight a law can bear:
 | **Marginalize over a beam that covers the live mass; blending never beats it and miscalibrates the gate** | read race, known posterior: marginalizing in answer space sits on the Bayes floor at both q (log loss +0.006 / +0.008, flat to 256) and teaches the gate q from answers alone (0.294 / 0.701); blend ties accuracy only when one candidate dominates (q 0.7), with 3× the log loss, and drives its gate to 0.181 / 1.000 | M1 BLIND at q 0.3, POST-FEAS at q 0.7; M5 BLIND at q 0.3 |
 | **The beam must be as wide as the live ambiguity** | with up to three live candidates top-2 drops ~20 % of the posterior (accuracy 0.761 vs 0.795 at q 0.3); beam-4 = exact marginalization | BLIND (the pinned prediction 'top-2 suffices' failed) |
 | **The snap gives the answer cheaply; its confidence is dishonest** | snap accuracy −0.007 / −0.023 vs marginalize, log loss 3–4× | BLIND (under straight-through) |
+| **Carry hypotheses separately; mix only answers** | the read race's blend (gate 0.181 / 1.000; 3× log loss) and the hop race's collapse (log-loss gap grows with hops in all four regimes; gate 0.45–0.61 vs 0.3) | BLIND, two independent supports |
+| **Exact path marginalization holds the Bayes floor through three hops** | hop race P1 ×4 (≤ 0.005 nats), reproduced in log space (RN0 ×4) | BLIND |
+| **Train wide, read narrow** | a beam narrower than the live frontier cannot be trained through (the snap at chance everywhere; beam-2 / beam-4 where the frontier is wider); narrow reads on exact-trained weights land on their true-weight oracles (RN1: within 0.014 behind the filter and with none) and the garden path costs the snap what the oracle says (0.219 vs 0.209) | train half UNPREDICTED; read half BLIND; one race each |
+| **The cheap read keeps the answer, not the confidence** | the mass beam: accuracy within 0.008 of exact at 3–10 reads per hop vs 10–45; log loss +0.01 to +0.11; a uniform leftover bucket helps (beam-4 6.62 → 2.50) but meets +0.05 only for the mass beam behind the filter or with none; escalation on the leftover mass recovers calibration at 25 % only behind the filter (the overconfidence elsewhere is diffuse) | BLIND |
+| **The filter, not the beam, is the lever** | a hard filter's accuracy ≈ its survival F^H (0.321 vs 0.343; 0.677 vs 0.729); the calibrated soft filter is never worse (Bayes) and buys back +0.035 / +0.047; on the main line, 79 % of wrong given picks would have one live value behind a perfect owner + type + event filter (the candidate census) | census: pinned reading CHEAP; P6 ≥ 0.10 FAILED; soft ≥ hard held |
+| **A leak is a fallback as good as the gate that steers it** | after a dead end the leaking snap re-finds the truth with strong evidence (+0.164 at F 0.9), partly with weak (+0.053 at 0.7), not at all with none (FILT); race 4's leak was pure harm because a match always existed | L1: PASS at 0.9, FAIL at 0.7 by margin |
+
+### 11.2b Which laws came FROM the phase line, and which were found ON it (the honesty fence, Opus 10-21)
+
+Most of the architecture these two days produced is **general probabilistic inference, found while working on the phase line, not
+produced by phases**: carrying paths instead of mixtures, marginalizing in answer space, train wide / read narrow, the mass beam and
+its escalation, the leak as a steered fallback, and 'filters do most of the work' (the census's lesson). A non-complex network would
+inherit every one of them.
+
+What is **specific to complex planes** is a short list, and it is still real:
+1. **The clock as address and order key**: frozen phase wheels address the registers, stamp storage, and (read as an ANGLE, gears
+   phase-locked, an odometer pass wheel) order events past the trained length by comparison: the cleanest results of the week. Its
+   edge over a raw index is INTEGRATION (one frozen object; shifts are rotations; nothing drifts), not accuracy (race 3 T3 ties).
+2. **The binding machines**: phases beat orthogonal and free matrices (K = 3: +0.065; K = 4: +0.068 / +0.207), though a plain looped
+   block with a snap beats every binding machine on unseen pairs (§11.1 claim 1).
+3. **The parameter economy**: e.g. the clock's 18× fewer parameters in the time trial (by construction).
+
+Nothing from the toys is in Mycelium: the deployed stack is unchanged (GENERATION.json), and the bridge is measured first.
 
 ### 11.3 Earlier reads from the same two days (context)
 

@@ -1,0 +1,40 @@
+FILT     H2 exact ll 0.922 acc 0.564
+   beam4+bucket ll 0.984 acc 0.558 (leftover mean 0.044 sd 0.086) | leftover 10%:0.951 25%:0.923 50%:0.922  margin 10%:0.963 25%:0.944 50%:0.927
+   mass +bucket ll 0.927 acc 0.560 (leftover mean 0.004 sd 0.012) | leftover 10%:0.922 25%:0.922 50%:0.922  margin 10%:0.925 25%:0.923 50%:0.923
+   LEAK snap acc model 0.431 vs oracle 0.420 | oracle dead-ends 0.294 of queries: model acc 0.332 vs oracle 0.329 (model also dead there 1.000) | no oracle dead-end: model 0.472 vs oracle 0.458
+FILT     H3 exact ll 1.021 acc 0.532
+   beam4+bucket ll 1.182 acc 0.522 (leftover mean 0.096 sd 0.127) | leftover 10%:1.139 25%:1.079 50%:1.021  margin 10%:1.149 25%:1.113 50%:1.067
+   mass +bucket ll 1.057 acc 0.525 (leftover mean 0.012 sd 0.020) | leftover 10%:1.039 25%:1.024 50%:1.021  margin 10%:1.051 25%:1.046 50%:1.039
+   LEAK snap acc model 0.312 vs oracle 0.325 | oracle dead-ends 0.521 of queries: model acc 0.238 vs oracle 0.249 (model also dead there 1.000) | no oracle dead-end: model 0.393 vs oracle 0.407
+UNF      H2 exact ll 1.930 acc 0.267
+   beam4+bucket ll 2.304 acc 0.223 (leftover mean 0.506 sd 0.190) | leftover 10%:2.260 25%:2.196 50%:2.100  margin 10%:2.262 25%:2.204 50%:2.109
+   mass +bucket ll 1.965 acc 0.264 (leftover mean 0.051 sd 0.041) | leftover 10%:1.959 25%:1.950 50%:1.939  margin 10%:1.960 25%:1.955 50%:1.945
+   LEAK snap acc model 0.177 vs oracle 0.174 | oracle dead-ends 0.394 of queries: model acc 0.150 vs oracle 0.147 (model also dead there 1.000) | no oracle dead-end: model 0.194 vs oracle 0.191
+UNF      H3 exact ll 2.066 acc 0.243
+   beam4+bucket ll 2.495 acc 0.204 (leftover mean 0.695 sd 0.160) | leftover 10%:2.446 25%:2.381 50%:2.271  margin 10%:2.451 25%:2.388 50%:2.278
+   mass +bucket ll 2.115 acc 0.247 (leftover mean 0.105 sd 0.058) | leftover 10%:2.106 25%:2.097 50%:2.086  margin 10%:2.110 25%:2.101 50%:2.088
+   LEAK snap acc model 0.131 vs oracle 0.117 | oracle dead-ends 0.631 of queries: model acc 0.109 vs oracle 0.087 (model also dead there 1.000) | no oracle dead-end: model 0.170 vs oracle 0.167
+FALL0.9  H2 exact ll 0.685 acc 0.738
+   beam4+bucket ll 0.767 acc 0.728 (leftover mean 0.066 sd 0.087) | leftover 10%:0.733 25%:0.717 50%:0.700  margin 10%:0.737 25%:0.726 50%:0.710
+   mass +bucket ll 0.764 acc 0.731 (leftover mean 0.061 sd 0.019) | leftover 10%:0.755 25%:0.743 50%:0.722  margin 10%:0.750 25%:0.743 50%:0.724
+   LEAK snap acc model 0.653 vs oracle 0.629 | oracle dead-ends 0.121 of queries: model acc 0.357 vs oracle 0.215 (model also dead there 1.000) | no oracle dead-end: model 0.694 vs oracle 0.686
+FALL0.9  H3 exact ll 0.733 acc 0.723
+   beam4+bucket ll 0.844 acc 0.712 (leftover mean 0.110 sd 0.111) | leftover 10%:0.795 25%:0.768 50%:0.751  margin 10%:0.804 25%:0.785 50%:0.763
+   mass +bucket ll 0.840 acc 0.711 (leftover mean 0.092 sd 0.022) | leftover 10%:0.827 25%:0.807 50%:0.786  margin 10%:0.821 25%:0.803 50%:0.776
+   LEAK snap acc model 0.552 vs oracle 0.511 | oracle dead-ends 0.252 of queries: model acc 0.227 vs oracle 0.063 (model also dead there 1.000) | no oracle dead-end: model 0.662 vs oracle 0.662
+FALL0.7  H2 exact ll 1.658 acc 0.390
+   beam4+bucket ll 1.912 acc 0.383 (leftover mean 0.318 sd 0.154) | leftover 10%:1.876 25%:1.829 50%:1.762  margin 10%:1.878 25%:1.840 50%:1.773
+   mass +bucket ll 1.726 acc 0.390 (leftover mean 0.063 sd 0.023) | leftover 10%:1.718 25%:1.707 50%:1.690  margin 10%:1.721 25%:1.715 50%:1.700
+   LEAK snap acc model 0.291 vs oracle 0.285 | oracle dead-ends 0.293 of queries: model acc 0.183 vs oracle 0.170 (model also dead there 1.000) | no oracle dead-end: model 0.335 vs oracle 0.332
+FALL0.7  H3 exact ll 1.799 acc 0.354
+   beam4+bucket ll 2.130 acc 0.332 (leftover mean 0.492 sd 0.154) | leftover 10%:2.086 25%:2.028 50%:1.941  margin 10%:2.090 25%:2.036 50%:1.948
+   mass +bucket ll 1.861 acc 0.354 (leftover mean 0.103 sd 0.027) | leftover 10%:1.855 25%:1.845 50%:1.828  margin 10%:1.856 25%:1.848 50%:1.835
+   LEAK snap acc model 0.223 vs oracle 0.195 | oracle dead-ends 0.507 of queries: model acc 0.153 vs oracle 0.100 (model also dead there 1.000) | no oracle dead-end: model 0.294 vs oracle 0.294
+VERDICTS (3-seed means; nats)
+(E1) FILT: MASS + LEFTOVER TRIGGER @25% IS CALIBRATED; (E2) LEFTOVER BEATS MARGIN FOR BEAM4; (E3) MASS + MARGIN TRIGGER @25% IS NOT CALIBRATED
+(L1) FILT H3: THE LEAK DOES NOT EXPLAIN IT  (dead-end queries 0.521: model 0.238 vs oracle 0.249; their share of the surplus -0.006 of -0.012)
+(E1) UNF: MASS + LEFTOVER TRIGGER @25% IS NOT CALIBRATED; (E2) LEFTOVER BEATS MARGIN FOR BEAM4; (E3) MASS + MARGIN TRIGGER @25% IS NOT CALIBRATED
+(E1) FALL0.9: MASS + LEFTOVER TRIGGER @25% IS NOT CALIBRATED; (E2) LEFTOVER BEATS MARGIN FOR BEAM4; (E3) MASS + MARGIN TRIGGER @25% IS NOT CALIBRATED
+(L1) FALL0.9 H3: THE LEAK RECOVERS DEAD ENDS  (dead-end queries 0.252: model 0.227 vs oracle 0.063; their share of the surplus +0.041 of +0.041)
+(E1) FALL0.7: MASS + LEFTOVER TRIGGER @25% IS NOT CALIBRATED; (E2) LEFTOVER BEATS MARGIN FOR BEAM4; (E3) MASS + MARGIN TRIGGER @25% IS NOT CALIBRATED
+(L1) FALL0.7 H3: THE LEAK DOES NOT EXPLAIN IT  (dead-end queries 0.507: model 0.153 vs oracle 0.100; their share of the surplus +0.027 of +0.027)
