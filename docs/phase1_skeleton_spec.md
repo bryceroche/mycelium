@@ -52796,7 +52796,7 @@ After the fixes the smoke read 0.49. Nothing else changed.
 - **PREDICTIONS (coordinator):** R1 ~0.55 (GSM8K often resolves within the sentence: 'John buys 3 apples and he eats 1'); R2 ~0.55; R3 ~0.75 on a small n.
 - **CONSEQUENCE:** if R1 is low, the port's role flag must also carry WITHIN-sentence subjects. That is a scope note for the port, not a T2k reversal.
 
-### 2026-10-23 (16:57) — THE GSM8K PREVIOUS-SUBJECT CHECK: VALID (29/30). R1 previous-sentence 0.37, R2 the literal rule 0.327, R3 role-like slice 0.421 (n 19). GSM8K pronouns follow the PROTAGONIST (0.753 diagnostic), not the previous subject.
+### 2026-10-23 (16:27) — THE GSM8K PREVIOUS-SUBJECT CHECK: VALID (29/30). R1 previous-sentence 0.37, R2 the literal rule 0.327, R3 role-like slice 0.421 (n 19). GSM8K pronouns follow the PROTAGONIST (0.753 diagnostic), not the previous subject.
 (scripts/prev_subject_check.py. Outputs: .cache/prevsubj_{haiku_in,haiku_out,rule,gold30}.jsonl/txt and prevsubj_check.txt, all GSM8K text, not committed.)
 - **Sample:** 150 pronouns from 1,469 candidates in 600 GSM8K-train questions.
 - **VALIDITY GATE: PASS, 29/30.**
