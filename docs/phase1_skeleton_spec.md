@@ -52681,3 +52681,27 @@ After the fixes the smoke read 0.49. Nothing else changed.
 - Train on GSM8K-train text, as much overfitting as wanted.
 - Score on gsm8k_cf2_train's counterfactual intermediates. A memorizer of values scores ~0.06; a binder recomputes.
 - GSM8K-test stays the honest generalization read.
+
+### 2026-10-23 (14:14) — WORD GIVEN ("word given for your choice -- Salute!"); REGISTERED + FIRED (CPU): T2k, ROLE AS STRUCTURE vs DEPTH (scripts/toys/role_structure_toy.py, chain scripts/toys/rk_chain.sh)
+**Why:** T2j's open wall is the role cell (HYBRID 0.699 vs the 0.90 bar). Reading (3) from T2j: "subject of the previous sentence" is a two-step relation that a 2-layer contextual match learns only partly. Reading (4), the structural-entry law: the parse already gives grammatical role, so role can enter as STRUCTURE.
+**SETUP:**
+- T2j's generator, seeds, eval sets, reader, query hop and HYBRID resolver are UNCHANGED.
+- The episode now also records the previous sentence's (subject, recipient), the P that drives pronoun choice. This adds NO rng draw, so the episodes are byte-identical to T2j's.
+**ARMS (3 seeds × 4000 steps):**
+- **HYBRID** — the control, re-run in this script.
+- **HYBRID_NL4** — depth: 4 encoder layers.
+- **HYBRID_ROLE** — HYBRID plus a per-slot role feature on pronoun mentions: is-previous-subject and is-previous-recipient. The weights are learned; the flags come from the gold parse, as spaCy would give them.
+- **HYBRID_ROLE_N15** — the same with 15 % noise on the flags: per pronoun mention, the subject and recipient flags are swapped when both exist, else dropped. The noise draws from its own generator, so the episodes are unchanged.
+**BARS (pinned):**
+- **K1 (structure closes the cell):** HYBRID_ROLE in-dist role ≥ 0.90; every other in-dist cell ≥ HYBRID − 0.01; held-out all ≥ HYBRID − 0.02; recipient drift ≤ 0.02.
+- **K2 (depth closes it):** HYBRID_NL4 in-dist role ≥ 0.90. Reported either way.
+- **K3 (robust to parse noise):** HYBRID_ROLE_N15 role ≥ 0.80 AND ≥ HYBRID + 0.10.
+**PORT RULE (written RELATIVE TO EXACT, cell by cell; EXACT from the banked T2j read .cache/learned_resolver.json):**
+- The port carries the first of HYBRID_ROLE, HYBRID that is ≥ EXACT − 0.01 on every in-dist cell AND ≥ EXACT on held-out all.
+- Otherwise it carries EXACT plus a flag on each failing cell.
+- A cell EXACT already fails (role 0.235) cannot block an arm that beats it.
+**PREDICTIONS (coordinator):**
+- K1 PASS (role ~0.97);
+- K2 FAIL (NL4 role ~0.75);
+- K3 PASS (~0.86);
+- port = HYBRID_ROLE.
