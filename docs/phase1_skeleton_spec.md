@@ -52744,3 +52744,25 @@ After the fixes the smoke read 0.49. Nothing else changed.
 - **NOT CONFIRMED** if the role term itself favors the wrong slot in ≥ 0.30 of errors (the flag is not learned strongly enough, or not applied), or if the re-run misses the banked 0.703 by > 0.03 (the autopsy is void).
 **If confirmed, the next arm (needs its own word):** ROLE AS GATE. On pronoun mentions, the role flag masks the candidate set to the previous sentence's {subject, recipient}, and type/context choose within it. A road, not a gain.
 **Prediction (coordinator):** CONFIRMED; culprit = the LEARNED context match (unseen frozen names partly defeat it, T2j's held-out alias drop) or the pronoun type read.
+
+### 2026-10-23 (15:32) — HELD-OUT ROLE AUTOPSY: OUTVOTE CONFIRMED (1.000 of errors). Culprit = the PRONOUN TYPE READ (+2.585 mean wrong-push, pushes wrong in 0.989 of errors), then LEARNED (+1.128). The registered gate would NOT fix it.
+(.cache/role_autopsy.{txt,json}; unit role-autopsy. The re-run reproduces the banked read EXACTLY: 0.703, seeds 0.709 / 0.720 / 0.679, n 4,795 held-out role mentions, 1,424 errors. The term split is asserted to reproduce the resolver's argmax.)
+**Per-term margins over errors (wrong − gold):**
+- type +2.585 (pushes wrong 0.989)
+- learned +1.128 (0.952)
+- rank +0.126 (0.701)
+- overlap 0.000; kind 0.000
+- role −2.471 (favors gold in 1.000; wrong never)
+- Learned role weights: subject +1.30 / recipient −1.51.
+**CRITERIA:** the role term favors gold in 1.000 of errors and is outvoted in 1.000 (≥ 0.70); it favors the wrong slot in 0.000 (< 0.30) → **CONFIRMED.** The coordinator predicted LEARNED or type; it is type first, LEARNED second.
+**THE MECHANISM, read from the setup:**
+- In the held-out split the GIVER, the previous sentence's subject, carries an UNSEEN first name.
+- The type read (he/she from the slot's head-token embedding) misreads the unseen name's gender and so points the shared pronoun at the RECIPIENT, whose name is seen.
+- The role cell is exactly the case where gender cannot separate the two candidates, but the model does not KNOW they share a pronoun when it misreads one of them.
+**CONSEQUENCE FOR THE NEXT ARM (a correction to the 15:21 plan):**
+- ROLE AS GATE as registered (mask to {subject, recipient}, type chooses within) would leave both candidates in and let the same type misread choose. It would NOT fix this.
+- The defect is an ENTITY ATTRIBUTE inferred from a surface embedding.
+- The principled fix is Bryce's point 4: the entity's type (gender / they / it) is a FIELD of its slot's database row, written at creation from a lookup (the name gazetteer, titles, an explicit pronoun) and read by the resolver, not re-inferred from the name embedding at every mention.
+**PROPOSED (needs the word): T2l, TYPE AS A DATABASE FIELD.**
+- Arms: HYBRID_ROLE (control); HYBRID_ROLE with the type read REPLACED by the row's stored type; the same with a 10 % row-type error (gazetteer misses).
+- Bar: held-out role ≥ 0.90; in-dist cells held; held-out pron_gender ≥ 0.95.
