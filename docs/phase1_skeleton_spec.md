@@ -52565,3 +52565,40 @@ Unit entity-slot finished 07:0x (`.cache/entity_slot.{txt,json}`; 3 seeds, 6000 
 - **F3 SEPARATION:** the value memorizer's counterfactual intermediate score is ≤ 0.15.
 **THE LIMIT, STATED NOW:** the fixture separates VALUE memorizers from binders. It does NOT separate a GRAPH memorizer (problem identity → op graph) from a reader. That anchor scores perfectly, and arguably it IS the "frame lexicon" Bryce's point 5 wants. Name swaps and GSM8K-test carry that separation; paraphrase would too (not built).
 **PREDICTIONS (coordinator):** trace parse + self-consistency ~0.95 of train. F1 yield ~0.60 (loss to ambiguous sourcing, negatives, definitional literals). F2 ~37/40 (borderline: world-plausibility like ages and prices is the risk). F3 floor ~0.10.
+
+### 2026-10-23 (13:30) — GSM8K COUNTERFACTUAL FIXTURE VERDICTS: F1 FAILS (0.494 vs 0.50), F3 PASSES (0.057), F2 AT THE BAR ON A JUDGMENT CALL (35 OK + 1 borderline of 40). The deeper finding is a GOLD-ERROR CLASS (3/40), so v1 is NOT adopted as a measurement fixture.
+(scripts/gsm8k_counterfactual.py; .cache/gsm8k_cf_train.jsonl, gsm8k_cf_census.{json,txt}, gsm8k_cf_handcheck40.txt with verdicts — GSM8K text, not committed; 1m55s CPU.)
+**SMOKE PREVIEW (disclosed):** the first 300 problems previewed F1 0.38. Two construction bugs were fixed before the full run:
+- the collision guard barred new values equal to ANY implicit constant, which emptied small-literal pools;
+- the percent factor .01 was missing.
+After the fixes the smoke read 0.49. Nothing else changed.
+
+**CENSUS (7,171 eligible after 302 fixture texts excluded):**
+- ok 3,545; unsourced 1,136; dup literal 919; literal-vs-number-word 483; literal-vs-result 392; final not in trace 216; no valid draw 210; no literal used 174; no trace 95; unparseable 1.
+- 11,901 rows (1,669 with names swapped; 1,118 names kept for ambiguous gender).
+- Operand sources: literal 10,682 / result 7,604 / constant 4,327. Frozen literals: year 85, time 51, definitional 11.
+
+**THE BARS:**
+- **F1 YIELD 0.494: FAILS** by 0.006. My prediction was ~0.60. Most of the loss is design-intended: missing `<<>>` steps (unsourced) and duplicate literals.
+- **F3 VALUE MEMORIZER 0.057: PASSES** (30,534 intermediates). A memorizer keeps ~6 % of intermediates by luck, so the fixture separates value memorizers from binders by a wide margin. The graph memorizer scores 1.000 by construction, as registered.
+- **F2:** 35 rows OK, 1 borderline (#26: a 1,040 lb squat, math right), 4 BAD. Counting the borderline, F2 sits at 36/40; striking it, 35/40 fails. Not claimed as a pass.
+
+**THE FINDING (from the autopsy of the 4 BAD rows):**
+- **Gold errors, 3/40 (#12, #16, #27), one shared cause.** A value DERIVED from a question literal appears in the trace as a bare number:
+  - #12: 0.25 = 15 min / 60, derived from the original "30 minutes";
+  - #16: 12 = 2 × 6;
+  - #27: an algebra identity step `<<100=100>>`.
+  The IMPLICIT whitelist (0.25, 12, 100, …) sourced these as constants, so they never moved with the literal they came from. The whitelist is the hole: an implicit constant must be LICENSED by a word in the text ('quarter', 'dozen', 'percent', a unit pair), and a step whose expression is a bare constant must be rejected.
+- **World-BAD, 1/40 (#37):** 'field goals worth 11 points'. Some literals are world facts (3-point field goals). This needs a guard: small literals tied to sports, unit, or calendar facts are frozen, or small values move only ±1–3.
+
+**PREDICTIONS vs RESULTS:**
+- yield ~0.60 → 0.494;
+- F2 ~37/40 → 35 + 1 borderline;
+- F3 ~0.10 → 0.057;
+- parse plus self-consistency ~0.95 → the self-inconsistent class did not appear as a top reason, because inconsistent traces mostly land in 'unsourced'.
+
+**READING:**
+- (1) The counterfactual idea works where it was meant to: a value memorizer is cleanly separated (0.057).
+- (2) The construction is not yet trustworthy as gold. A ~7.5 % gold-error rate exceeds the gaps any arm will be judged on (claims need +0.020).
+- (3) The fix is defined, not tuned: licensed constants only, reject identity steps, a world-fact freeze. It needs its own registration (v2), with this run disclosed as a preview. v2 will likely LOWER yield, so F1's bar should be re-pinned with that tradeoff stated before v2 runs, never after.
+- (4) The graph-memorizer limit stands as registered. Name swaps and GSM8K-test carry reader-vs-graph separation.
