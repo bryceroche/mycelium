@@ -52766,3 +52766,32 @@ After the fixes the smoke read 0.49. Nothing else changed.
 **PROPOSED (needs the word): T2l, TYPE AS A DATABASE FIELD.**
 - Arms: HYBRID_ROLE (control); HYBRID_ROLE with the type read REPLACED by the row's stored type; the same with a 10 % row-type error (gazetteer misses).
 - Bar: held-out role ≥ 0.90; in-dist cells held; held-out pron_gender ≥ 0.95.
+
+### 2026-10-23 (16:23) — WORD GIVEN ("word given for both -- Salute!"); REGISTERED + FIRED (CPU): T2l TYPE FROM THE PERMANENT TREE + THE GSM8K PREVIOUS-SUBJECT CHECK
+**Bryce's architecture (16:0x, recorded):**
+- **The PERMANENT database is the coarse-to-fine hierarchical TREE:** entity → person → {female, male} / group / business, plus name→type leaves, and concepts.
+- **The VOLATILE per-problem composite key (slot, time, tree level)** is made by phase binding and unbinding. It points a story slot at a permanent node.
+- The 15:32 proposal ('type as a DB row field') was the right information flow in the wrong place: the type lives on the TREE NODE the slot binds to.
+**T2l (scripts/toys/tree_type_toy.py, chain scripts/toys/tl_chain.sh):** T2k's episodes are unchanged; slot types come from the gold entity, with no rng draw.
+- **Arms (3 seeds × 4000 steps):**
+  - HYBRID_ROLE (control);
+  - **TREE**: the resolver's he/she/they/it type read (and the title read) of the slot's head-token EMBEDDING is replaced by the slot's bound tree node, a one-hot type looked up at slot creation, matched against the mention's pronoun or title with learned weights;
+  - **TREE_BOUND**: the same type, stored as a phasor binding. The slot's composite key (slot ⊙ time ⊙ level phasors, P = 64) is bound to the type node's phasor; at read it is unbound with the key and cleaned up against the tree's 4 type nodes (mycelium/complex_tensor.py, numpy backend; no superposition);
+  - **TREE_N10**: TREE with 10 % of person entities given the WRONG gender node (gazetteer misses; consistent within an episode; its own generator).
+- **BARS (pinned):**
+  - **L1:** TREE held-out role ≥ 0.90; every in-dist cell ≥ control − 0.01; held-out all ≥ control − 0.02.
+  - **L2 (lossless):** TREE_BOUND within 0.01 of TREE on held-out role and in-dist all, and the unbind+cleanup type recovery = 1.000.
+  - **L3:** TREE_N10 held-out role ≥ 0.85.
+- **PREDICTIONS (coordinator):** L1 PASS (~0.97); L2 PASS (identical: single bindings are exact); L3 PASS (~0.88).
+- **DISCLOSED:** TREE and TREE_BOUND carry the same information. T2l tests write-once typing from the permanent tree; TREE_BOUND checks only that binding/unbinding is lossless. The creation-time type decision on wild text is handed over by construction; N10 bounds its error.
+**THE GSM8K PREVIOUS-SUBJECT CHECK (scripts/prev_subject_check.py; zero-GPU, Haiku labels):**
+- **Sample:** 150 third-person pronouns (he/she/they/it/him/her/them/his/its/their) from GSM8K-TRAIN questions, seed 1023, all wild-fixture texts excluded, the answer field never read.
+- **Labels:** Haiku labels each marked pronoun's antecedent (a span copied from the text, or NONE for pleonastic/generic). It sees only the text with the pronoun marked.
+- **The rule's prediction** (spaCy, hidden from Haiku): the RULE AS T2k ENCODES IT. The antecedent is a PERSON/entity of the PREVIOUS sentence: its subject if pronoun-compatible (number and, for names, gazetteer gender), else its next compatible noun phrase.
+- **VALIDITY GATE:** the coordinator labels 30 seeded items BLIND to Haiku's labels. Haiku must agree on ≥ 26/30, else the read is VOID.
+- **READS (a census, not a mechanism verdict):**
+  - R1: share of pronouns whose antecedent lies in the PREVIOUS sentence (vs. the same sentence, earlier, or none);
+  - R2: the rule's accuracy over all pronouns;
+  - R3: the rule's accuracy on the role-like slice (the previous sentence holds ≥ 2 compatible candidates).
+- **PREDICTIONS (coordinator):** R1 ~0.55 (GSM8K often resolves within the sentence: 'John buys 3 apples and he eats 1'); R2 ~0.55; R3 ~0.75 on a small n.
+- **CONSEQUENCE:** if R1 is low, the port's role flag must also carry WITHIN-sentence subjects. That is a scope note for the port, not a T2k reversal.
