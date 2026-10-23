@@ -52795,3 +52795,24 @@ After the fixes the smoke read 0.49. Nothing else changed.
   - R3: the rule's accuracy on the role-like slice (the previous sentence holds ≥ 2 compatible candidates).
 - **PREDICTIONS (coordinator):** R1 ~0.55 (GSM8K often resolves within the sentence: 'John buys 3 apples and he eats 1'); R2 ~0.55; R3 ~0.75 on a small n.
 - **CONSEQUENCE:** if R1 is low, the port's role flag must also carry WITHIN-sentence subjects. That is a scope note for the port, not a T2k reversal.
+
+### 2026-10-23 (16:57) — THE GSM8K PREVIOUS-SUBJECT CHECK: VALID (29/30). R1 previous-sentence 0.37, R2 the literal rule 0.327, R3 role-like slice 0.421 (n 19). GSM8K pronouns follow the PROTAGONIST (0.753 diagnostic), not the previous subject.
+(scripts/prev_subject_check.py. Outputs: .cache/prevsubj_{haiku_in,haiku_out,rule,gold30}.jsonl/txt and prevsubj_check.txt, all GSM8K text, not committed.)
+- **Sample:** 150 pronouns from 1,469 candidates in 600 GSM8K-train questions.
+- **VALIDITY GATE: PASS, 29/30.**
+  - The coordinator wrote the gold-30 blind, before Haiku ran and without reading the rule file.
+  - The one disagreement is ps60, a sloppy GSM8K original that names Leo and then Lucas.
+- **R1 (where the nearest preceding mention of the antecedent sits):** same sentence 0.31, PREVIOUS 0.37, earlier 0.30, none 0.02. The coordinator predicted ~0.55 for previous; wrong.
+- **R2 (the rule as T2k encodes it, literal): 49/150 = 0.327** (coordinator predicted ~0.55; wrong). Rule outcomes: subject 45, other NP 30, no compatible candidate 51, first sentence 24.
+  - The dominant miss is STRUCTURAL: the previous sentence's subject is usually itself a PRONOUN ("He has…"), so a rule that reads only noun phrases finds no candidate.
+  - In GSM8K the entity rides a pronoun CHAIN.
+- **R3 (role-like slice, ≥ 2 compatible candidates in the previous sentence): 8/19 = 0.421** (coordinator predicted ~0.75; wrong; small n).
+- **DIAGNOSTICS (NOT registered; computed after R2 to explain it):**
+  - PROTAGONIST (the first compatible entity in the text): 113/150 = 0.753.
+  - RECENCY (the nearest compatible NP): 102/150 = 0.680.
+  - A CHAINED previous-subject rule (a pronoun subject inherits the chain head): 76/150 = 0.507; role-like slice 10/19.
+- **READING:**
+  - (1) T2k's coreference rule is a TOY ARTIFACT. GSM8K's register is protagonist-centric: one main character carried by a pronoun chain, with recency second.
+  - (2) T2k's MECHANISM finding stands (role structure is accepted, depth does not substitute), but the port's role flag must carry the DISCOURSE TOPIC (the chain head / protagonist) and the recency order, not the previous sentence's literal subject.
+  - (3) This is Bryce's tree again: the protagonist is the problem's first-created person slot, a property of the volatile key's creation order (the time component), not of the previous sentence's syntax.
+- **NEXT (needs the word):** re-run T2k's generator with a PROTAGONIST-CENTRIC coreference rule matched to these rates (protagonist ~0.75, recency ~0.20, other), with a topic flag in place of the previous-subject flag. This keeps the toy honest to the register before the port.
