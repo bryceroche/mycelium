@@ -1,0 +1,19 @@
+mode full steps 4000 seeds [0, 1, 2] | train record shares: plain 0.532 pronoun 0.383 ownerless 0.085
+STRUCT_U pron true  ownerless none   | combo 0.735 (target rec pronoun 0.808 name 0.781; CONTESTED 0.632 n 2395: pronoun 0.619 n 224 name 0.625; uncontested 0.803; distracted 0.741 n 1468 / undistracted 0.733)  [381s]
+SUP_REC  pron true  ownerless none   | combo 0.948 (target rec pronoun 0.967 name 0.969; CONTESTED 0.876 n 2395: pronoun 0.845 n 224 name 0.865; uncontested 0.995; distracted 0.932 n 1468 / undistracted 0.953) | decode: pronoun true 0.921 wrong-rule 0.058; plain true 0.973; ownerless NONE 1.000 invented 0.000  [787s]
+SUP_REC  pron wrong ownerless none   | combo 0.934 (target rec pronoun 0.953 name 0.961; CONTESTED 0.849 n 2395: pronoun 0.785 n 224 name 0.852; uncontested 0.992; distracted 0.924 n 1468 / undistracted 0.938) | decode: pronoun true 0.069 wrong-rule 0.860; plain true 0.979; ownerless NONE 1.000 invented 0.000  [1215s]
+SUP_REC  pron mask  ownerless none   | combo 0.940 (target rec pronoun 0.969 name 0.974; CONTESTED 0.856 n 2395: pronoun 0.855 n 224 name 0.874; uncontested 0.996; distracted 0.924 n 1468 / undistracted 0.945) | decode: pronoun true 0.464 wrong-rule 0.356; plain true 0.974; ownerless NONE 1.000 invented 0.000  [1623s]
+SUP_REC  pron true  ownerless invent | combo 0.942 (target rec pronoun 0.965 name 0.958; CONTESTED 0.866 n 2395: pronoun 0.841 n 224 name 0.846; uncontested 0.993; distracted 0.928 n 1468 / undistracted 0.947) | decode: pronoun true 0.907 wrong-rule 0.067; plain true 0.970; ownerless NONE 0.000 invented 0.953  [2037s]
+SUP_REC  pron true  ownerless mask   | combo 0.940 (target rec pronoun 0.961 name 0.957; CONTESTED 0.860 n 2395: pronoun 0.827 n 224 name 0.833; uncontested 0.993; distracted 0.925 n 1468 / undistracted 0.945) | decode: pronoun true 0.906 wrong-rule 0.066; plain true 0.970; ownerless NONE 0.000 invented 0.791  [2442s]
+SUP_REC  pron mask  ownerless mask   | combo 0.935 (target rec pronoun 0.965 name 0.974; CONTESTED 0.845 n 2395: pronoun 0.824 n 224 name 0.896; uncontested 0.996; distracted 0.919 n 1468 / undistracted 0.941) | decode: pronoun true 0.468 wrong-rule 0.327; plain true 0.975; ownerless NONE 0.000 invented 0.466  [2866s]
+SUP_REC  pron wrong ownerless invent | combo 0.936 (target rec pronoun 0.960 name 0.961; CONTESTED 0.852 n 2395: pronoun 0.814 n 224 name 0.848; uncontested 0.993; distracted 0.924 n 1468 / undistracted 0.941) | decode: pronoun true 0.087 wrong-rule 0.850; plain true 0.976; ownerless NONE 0.000 invented 0.895  [3284s]
+SUP_REC  pron allmask ownerless mask   | combo 0.871 (target rec pronoun 0.943 name 0.934; CONTESTED 0.676 n 2395: pronoun 0.658 n 224 name 0.697; uncontested 1.000; distracted 0.843 n 1468 / undistracted 0.880)  [3672s]
+VERDICTS (3-seed means, COMBO; CONTESTED = another owner holds an operand's object + verb class)
+(V0, validity) OWNER LABELS MATTER ON CONTESTED QUERIES  (contested acc clean 0.876 vs no owner labels 0.676 [bar >= +0.05])
+(C1) WRONG PRONOUN LABELS ARE LEARNED AS THE RULE  (P_WRONG decodes pronoun records as the wrong rule's owner 0.860 [bar >= 0.80], as the true owner 0.069)
+(C1b) NOT (CONTESTED PRONOUN TARGETS TO THE FLOOR AND NAME TARGETS UNTOUCHED)  (contested pronoun-target acc P_WRONG 0.785 vs no-label 0.658 [bar <= +0.05]; contested name-target 0.852 vs clean 0.865 [bar >= -0.03])
+(C2) MASKING PRONOUN LABELS IS NEARLY AS GOOD AS CLEAN  (contested pronoun-target acc P_MASK 0.855 vs clean 0.845 vs P_WRONG 0.785; P_MASK decodes pronoun records true 0.464)
+(C3) INVENTED OWNERS COST < 0.05 ON DISTRACTED QUERIES  (distracted acc N_INVENT 0.928 vs clean 0.932)
+(C4) MASKING OWNERLESS LABELS IS AS GOOD AS A NONE CLASS  (distracted acc N_MASK 0.925 vs clean 0.932)
+REPORTED: combo / contested -- spaCy+masking 0.935 / 0.845, spaCy as-is 0.936 / 0.852, clean 0.948 / 0.876, no owner labels 0.871 / 0.676, floor 0.735 / 0.632
+DONE in 3672s
