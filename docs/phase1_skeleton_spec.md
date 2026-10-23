@@ -52733,7 +52733,7 @@ After the fixes the smoke read 0.49. Nothing else changed.
 - If it holds: role structure should GATE the pronoun decision (a road, per the mandatory-road law), not add to it (a gain).
 **READING:** structure, not depth: the second time today the single learned pass failed at a join and an imposed structure closed it (T2g → T2h, T2j → T2k). Role enters as structure, as the binding/structural-entry laws say.
 
-### 2026-10-23 (15:10) — WORD GIVEN ("word given for your choice!"); REGISTERED + FIRED (CPU, diagnostic): THE HELD-OUT ROLE AUTOPSY (scripts/toys/role_autopsy.py)
+### 2026-10-23 (15:21) — WORD GIVEN ("word given for your choice!"); REGISTERED + FIRED (CPU, diagnostic): THE HELD-OUT ROLE AUTOPSY (scripts/toys/role_autopsy.py)
 **Question:** why does HYBRID_ROLE, with a perfect role flag, still miss ~0.30 of held-out-name role pronouns (0.703)? **Hypothesis (coordinator's, 14:57):** the other resolver terms put confident wrong logits on unseen names and OUTVOTE the flag (a gain, not a road).
 **Method:**
 - Retrain HYBRID_ROLE on T2k's recipe: seeds 0–2, 4000 steps, the same episodes. Nets were not saved at 14:57, so this is a re-run, checked against the banked 0.703.
