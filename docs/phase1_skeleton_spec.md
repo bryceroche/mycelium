@@ -52732,3 +52732,15 @@ After the fixes the smoke read 0.49. Nothing else changed.
 - Unconfirmed; an autopsy would compare logit shares per term on that cell.
 - If it holds: role structure should GATE the pronoun decision (a road, per the mandatory-road law), not add to it (a gain).
 **READING:** structure, not depth: the second time today the single learned pass failed at a join and an imposed structure closed it (T2g → T2h, T2j → T2k). Role enters as structure, as the binding/structural-entry laws say.
+
+### 2026-10-23 (15:10) — WORD GIVEN ("word given for your choice!"); REGISTERED + FIRED (CPU, diagnostic): THE HELD-OUT ROLE AUTOPSY (scripts/toys/role_autopsy.py)
+**Question:** why does HYBRID_ROLE, with a perfect role flag, still miss ~0.30 of held-out-name role pronouns (0.703)? **Hypothesis (coordinator's, 14:57):** the other resolver terms put confident wrong logits on unseen names and OUTVOTE the flag (a gain, not a road).
+**Method:**
+- Retrain HYBRID_ROLE on T2k's recipe: seeds 0–2, 4000 steps, the same episodes. Nets were not saved at 14:57, so this is a re-run, checked against the banked 0.703.
+- On the held-out role cell, split the resolver logit into its terms: overlap, kind bias, pronoun type read, recency rank, LEARNED context match, role flag.
+- For each ERROR, take each term's margin (wrong pick − gold slot).
+**CRITERIA (pinned):**
+- **OUTVOTE CONFIRMED** if, in ≥ 0.70 of held-out role errors, the role term's margin is negative (it favors gold) AND the sum of the other terms' margins exceeds its magnitude. The term with the largest mean positive margin is named the culprit.
+- **NOT CONFIRMED** if the role term itself favors the wrong slot in ≥ 0.30 of errors (the flag is not learned strongly enough, or not applied), or if the re-run misses the banked 0.703 by > 0.03 (the autopsy is void).
+**If confirmed, the next arm (needs its own word):** ROLE AS GATE. On pronoun mentions, the role flag masks the candidate set to the previous sentence's {subject, recipient}, and type/context choose within it. A road, not a gain.
+**Prediction (coordinator):** CONFIRMED; culprit = the LEARNED context match (unseen frozen names partly defeat it, T2j's held-out alias drop) or the pronoun type read.
