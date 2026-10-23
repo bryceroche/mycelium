@@ -52634,3 +52634,50 @@ After the fixes the smoke read 0.49. Nothing else changed.
 - F1 ~2,300 accepted (PASS).
 - F2 39/40.
 - F3 ~0.06.
+
+### 2026-10-23 (13:51) — COUNTERFACTUAL FIXTURE v2 VERDICTS: G0 PASS, F1 PASS (2,932 problems), F2 PASS (40/40, 0 gold errors), F3 PASS (0.058) → v2 ADOPTED as the GSM8K-train counterfactual fixture
+(scripts/gsm8k_counterfactual_v2.py. Outputs: .cache/gsm8k_cf2_train.jsonl, gsm8k_cf2_census.{json,txt}, gsm8k_cf2_handcheck40.txt with verdicts, and the working files under .cache/cf2/. These are GSM8K text, not committed.)
+**HAIKU USE:**
+- 22 proposer agents (150 problems each).
+- 99 blind solver batches of 63, run on ~45 Haiku agents. The 125-row batches were re-split to 63 before any solver ran, because a 40-row batch had cost 61k tokens.
+- One G0 agent.
+- Haiku never saw an answer field or a gold value.
+
+**THE BARS:**
+- **G0 (solver-guard validity): PASS.**
+  - On v1's 3 known gold errors the blind solver DISAGREED 3/3: #12 solver 1.333 vs exec 2; #16 108 vs 156; #27 133.3 vs 100.
+  - It agreed on 37/37 of the others. The registration said "≥ 33 of the 36 others"; the true count is 37 (40 minus 3), so it passes either way.
+- **SOURCING (v2 licensed constants):**
+  - 3,202 problems sourced (v1: 3,545).
+  - unsourced 1,852 (v1: 1,136; the licence table cut ~700 problems); bare-constant steps 18.
+- **EXECUTE:**
+  - 3,144 problems got ≥ 1 counterfactual; 6,223 candidates (haiku 4,844 / rule fallback 1,379).
+  - 0 proposals missing.
+- **AGREEMENT 0.922 (5,736 / 6,223):** haiku-sourced 0.933, rule-sourced 0.883.
+- **F1: 2,932 accepted problems vs ≥ 1,500 → PASS.**
+  - 7,088 rows; 1,352 with names swapped.
+  - 16,782 intermediates.
+- **F2: 40/40 OK, 0 gold errors vs ≥ 38 and ≤ 1 → PASS.** Notes on the sheet:
+  - #12 near-borderline (a 73-year-old and a 3-year-old, no relation stated);
+  - #39 inherits the original's 6-eggs-a-day implausibility.
+  Striking both would still pass.
+- **F3: value memorizer 0.058 vs ≤ 0.15 → PASS.** The graph memorizer scores 1.000 by construction.
+
+**PREDICTIONS vs RESULTS (coordinator):**
+- G0 pass → pass (37/37, better than ~35).
+- Sourced ~2,800 → 3,202.
+- Agreement ~0.88 → 0.922.
+- F1 ~2,300 → 2,932.
+- F2 39/40 → 40/40.
+- F3 ~0.06 → 0.058.
+
+**DISCLOSED LIMITS (standing):**
+- **(1) The agreement filter keeps Haiku-legible problems.** Solver reports list ambiguous wording, self-referential originals, and world-inconsistent draws. Examples: a gift larger than the stock, budget shares summing to 185 %, "the distance to table 3" with 2 tables. Rows where the solver's literal reading differs from the executor are dropped. Rows where both read a broken world identically can survive: the solver flagged those reads, and the F2 sample caught none.
+- **(2) A LATENT DERIVED-CONSTANT CLASS remains.** The free constants 0/1/2 can be derived (F2 #8: 2 = 4 toys / 2 pairs, safe there only because the 4 was not perturbed). G0 shows the solver guard catches this class.
+- **(3) The graph-memorizer limit (registered).** This fixture separates VALUE memorizers from binders, not graph memorizers from readers. Name swaps and GSM8K-test carry that.
+- **(4) Construction note:** the agreement tolerance is 1e-6 or 0.005 (cents).
+
+**WHAT IT IS FOR:** Bryce's point 11, made measurable.
+- Train on GSM8K-train text, as much overfitting as wanted.
+- Score on gsm8k_cf2_train's counterfactual intermediates. A memorizer of values scores ~0.06; a binder recomputes.
+- GSM8K-test stays the honest generalization read.

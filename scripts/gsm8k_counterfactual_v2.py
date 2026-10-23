@@ -16,7 +16,7 @@ from gsm8k_counterfactual import C, near, isint, ndec, fmt_num, fmt_like, mask, 
 
 D = C("cf2")
 K = 2                                                                   # numeral counterfactuals per problem
-PROP_B, SOLVE_B = 150, 125
+PROP_B, SOLVE_B = 150, 63
 LICENSE = [({60}, r"minute|hour|second|mph"), ({24}, r"hour|day|daily"), ({7}, r"\bdays?\b|week"),
            ({12}, r"dozen|month|year|\bfoot\b|\bfeet\b|inch"), ({52}, r"week|year|annual"), ({365}, r"year|\bdays?\b|annual"),
            ({30, 31}, r"month|\bdays?\b"), ({100, 0.01}, r"%|percent|\bcents?\b|dollar|century"),
@@ -209,7 +209,7 @@ def stage_execute():
         for r in cands: f.write(json.dumps(r) + "\n")
     order = list(range(len(cands))); random.Random(7).shuffle(order)          # solver batches mix problems
     for b in range(0, len(order), SOLVE_B):
-        with open(os.path.join(D, f"solve_in_{b // SOLVE_B:02d}.jsonl"), "w") as f:
+        with open(os.path.join(D, f"solve_in_{b // SOLVE_B:03d}.jsonl"), "w") as f:
             for k in order[b:b + SOLVE_B]:
                 f.write(json.dumps(dict(id=cands[k]["id"], question=cands[k]["question_cf"])) + "\n")
     json.dump(dict(census), open(os.path.join(D, "census_execute.json"), "w"), indent=1)
